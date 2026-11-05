@@ -34,7 +34,10 @@ impl std::fmt::Display for WriteError {
         match self {
             Self::Tilemap => write!(f, "tilemap layers cannot be written yet"),
             Self::DanglingLink { frame, layer } => {
-                write!(f, "frame {frame}, layer {layer}: linked cel without an owner")
+                write!(
+                    f,
+                    "frame {frame}, layer {layer}: linked cel without an owner"
+                )
             }
         }
     }
@@ -117,7 +120,9 @@ fn cel_chunk(c: &crate::file::AseCel) -> Result<Vec<u8>, WriteError> {
     match &c.body {
         AseCelBody::Image { w, h, pixels } => {
             u16s(&mut b, &[*w, *h]);
-            b.extend_from_slice(&miniz_oxide::deflate::compress_to_vec_zlib(pixels, ZLIB_LEVEL));
+            b.extend_from_slice(&miniz_oxide::deflate::compress_to_vec_zlib(
+                pixels, ZLIB_LEVEL,
+            ));
         }
         AseCelBody::Linked { frame } => u16s(&mut b, &[*frame]),
         AseCelBody::Tilemap(_) => {}
@@ -188,9 +193,9 @@ pub fn write_file(file: &AseFile) -> Result<Vec<u8>, WriteError> {
         for c in &frame.cels {
             if let AseCelBody::Linked { frame: owner } = c.body {
                 let has = file.frames.get(usize::from(owner)).is_some_and(|f| {
-                    f.cels.iter().any(|o| {
-                        o.layer == c.layer && matches!(o.body, AseCelBody::Image { .. })
-                    })
+                    f.cels
+                        .iter()
+                        .any(|o| o.layer == c.layer && matches!(o.body, AseCelBody::Image { .. }))
                 });
                 if !has {
                     return Err(WriteError::DanglingLink {
@@ -205,7 +210,12 @@ pub fn write_file(file: &AseFile) -> Result<Vec<u8>, WriteError> {
         body.extend_from_slice(&((16 + chunks.len()) as u32).to_le_bytes());
         u16s(
             &mut body,
-            &[FRAME_MAGIC, n.min(usize::from(u16::MAX) - 1) as u16, frame.duration_ms, 0],
+            &[
+                FRAME_MAGIC,
+                n.min(usize::from(u16::MAX) - 1) as u16,
+                frame.duration_ms,
+                0,
+            ],
         );
         body.extend_from_slice(&(n as u32).to_le_bytes());
         body.extend_from_slice(&chunks);

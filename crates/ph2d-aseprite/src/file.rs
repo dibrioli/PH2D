@@ -84,13 +84,19 @@ pub struct AseCel {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AseCelBody {
     /// `w * h * depth/8` bytes.
-    Image { w: u16, h: u16, pixels: Vec<u8> },
+    Image {
+        w: u16,
+        h: u16,
+        pixels: Vec<u8>,
+    },
     /// A imagem é a do cel da mesma camada no quadro `frame`.
-    Linked { frame: u16 },
+    Linked {
+        frame: u16,
+    },
     Tilemap(AseTilemap),
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct AseTilemap {
     pub w: u16,
     pub h: u16,
@@ -116,7 +122,11 @@ impl AseFile {
     /// A imagem de um tilemap: `(w, h, píxeis)` na profundidade do ficheiro, com os flips da spec.
     /// `None` se a camada não disser que tileset usa.
     #[must_use]
-    pub fn expand_tilemap(&self, map: &AseTilemap, tileset_index: u32) -> Option<(u16, u16, Vec<u8>)> {
+    pub fn expand_tilemap(
+        &self,
+        map: &AseTilemap,
+        tileset_index: u32,
+    ) -> Option<(u16, u16, Vec<u8>)> {
         let set = self.tilesets.iter().find(|t| t.id == tileset_index)?;
         let bpp = usize::from(self.depth / 8);
         let (tw, th) = (usize::from(set.tile_w), usize::from(set.tile_h));
@@ -133,7 +143,11 @@ impl AseFile {
                 continue;
             }
             let (cx, cy) = (i % usize::from(map.w), i / usize::from(map.w));
-            let (xf, yf, df) = (t & map.x_flip != 0, t & map.y_flip != 0, t & map.d_flip != 0);
+            let (xf, yf, df) = (
+                t & map.x_flip != 0,
+                t & map.y_flip != 0,
+                t & map.d_flip != 0,
+            );
             for sy in 0..th {
                 for sx in 0..tw {
                     let (mut dx, mut dy) = if df { (sy, sx) } else { (sx, sy) };
@@ -236,6 +250,28 @@ pub fn parse_file(bytes: &[u8]) -> Result<AseFile, AseError> {
     Ok(b.file)
 }
 
+fn tilemap(r: &mut Reader<'_>) -> Option<AseTilemap> {
+    let (w, h, _bits) = (r.u16()?, r.u16()?, r.u16()?);
+    let (tile_mask, x_flip, y_flip, d_flip) = (r.u32()?, r.u32()?, r.u32()?, r.u32()?);
+    r.skip(10)?;
+    let raw = miniz_oxide::inflate::decompress_to_vec_zlib(r.rest()).ok()?;
+    let tiles = raw
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|b| u32::from_le_bytes(*b))
+        .collect();
+    Some(AseTilemap {
+        w,
+        h,
+        tile_mask,
+        x_flip,
+        y_flip,
+        d_flip,
+        tiles,
+    })
+}
+
 struct Build {
     file: AseFile,
     /// Viu-se um 0x2019: os chunks antigos de paleta deixam de contar (spec).
@@ -280,7 +316,11 @@ impl Build {
             kind,
             child_level,
             blend,
-            opacity: if self.layer_opacity_valid { opacity } else { 255 },
+            opacity: if self.layer_opacity_valid {
+                opacity
+            } else {
+                255
+            },
             tileset,
         });
     }
@@ -414,34 +454,8 @@ impl Build {
                 let Some(frame) = r.u16() else { return Ok(()) };
                 AseCelBody::Linked { frame }
             }
-            3 => {
-                let (Some(w), Some(h), Some(_bits)) = (r.u16(), r.u16(), r.u16()) else {
-                    return Ok(());
-                };
-                let (Some(tile_mask), Some(x_flip), Some(y_flip), Some(d_flip)) =
-                    (r.u32(), r.u32(), r.u32(), r.u32())
-                else {
-                    return Ok(());
-                };
-                let _ = r.skip(10);
-                let raw = miniz_oxide::inflate::decompress_to_vec_zlib(r.rest())
-                    .map_err(|_| AseError::BadZlib(frame))?;
-                let tiles = raw
-                    .as_chunks::<4>()
-                    .0
-                    .iter()
-                    .map(|b| u32::from_le_bytes(*b))
-                    .collect();
-                AseCelBody::Tilemap(AseTilemap {
-                    w,
-                    h,
-                    tile_mask,
-                    x_flip,
-                    y_flip,
-                    d_flip,
-                    tiles,
-                })
-            }
+            // Um tilemap ilegível fica vazio: a camada continua a existir, e quem compõe avisa.
+            3 => AseCelBody::Tilemap(tilemap(r).unwrap_or_default()),
             _ => return Ok(()),
         };
         if let Some(f) = self.file.frames.last_mut() {

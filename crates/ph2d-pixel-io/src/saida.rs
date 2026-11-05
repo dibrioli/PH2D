@@ -47,7 +47,10 @@ pub enum AvisoSaida {
 pub enum ErroSaida {
     Formato(String),
     /// Limite do GIF: lados em 16 bits.
-    GifGrandeDemais { w: u32, h: u32 },
+    GifGrandeDemais {
+        w: u32,
+        h: u32,
+    },
     Ase(ase::AseErro),
 }
 
@@ -92,9 +95,18 @@ pub fn png_do_documento(s: &Sprite, rgba: &[u8]) -> (PixelPng, Vec<u8>) {
             }
         }
         ColorMode::Gray => {
-            let cinza = rgba.as_chunks::<4>().0.iter().all(|c| c[0] == c[1] && c[1] == c[2]);
+            let cinza = rgba
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .all(|c| c[0] == c[1] && c[1] == c[2]);
             if cinza {
-                let d = rgba.as_chunks::<4>().0.iter().flat_map(|c| [c[0], c[3]]).collect();
+                let d = rgba
+                    .as_chunks::<4>()
+                    .0
+                    .iter()
+                    .flat_map(|c| [c[0], c[3]])
+                    .collect();
                 (PixelPng::GrayAlpha, d)
             } else {
                 (PixelPng::Rgba, rgba.to_vec())
@@ -120,7 +132,8 @@ fn png_de(s: &Sprite, q: &QuadroSaida) -> Result<Vec<u8>, ErroSaida> {
         // Escalado por inteiro continua exato; a resposta é a mesma pergunta.
         png_do_documento(s, &q.rgba)
     };
-    ph2d_imageio_png::encode_pixel(q.w, q.h, &modo, &dados).map_err(|e| ErroSaida::Formato(e.to_string()))
+    ph2d_imageio_png::encode_pixel(q.w, q.h, &modo, &dados)
+        .map_err(|e| ErroSaida::Formato(e.to_string()))
 }
 
 fn pares(qs: &[QuadroSaida]) -> Vec<(Vec<u8>, u32)> {
@@ -165,12 +178,19 @@ pub fn exportar(s: &Sprite, p: &Pedido, f: Formato, repeat: u16) -> Result<Saida
             if refs.iter().any(|q| q.as_chunks::<4>().0.iter().any(meio)) {
                 avisos.push(AvisoSaida::GifAlfa);
             }
-            let fr: Vec<_> = r.quadros.into_iter().zip(qs.iter().map(|q| q.duration_ms)).collect();
-            let b = ph2d_imageio_gif::encode_indexed(gw, gh, &r.paleta, r.transparente, &fr, repeat).map_err(err)?;
+            let fr: Vec<_> = r
+                .quadros
+                .into_iter()
+                .zip(qs.iter().map(|q| q.duration_ms))
+                .collect();
+            let b =
+                ph2d_imageio_gif::encode_indexed(gw, gh, &r.paleta, r.transparente, &fr, repeat)
+                    .map_err(err)?;
             vec![(String::new(), b)]
         }
         Formato::Apng => {
-            let b = ph2d_imageio_apng::encode_animated(w, h, &pares(&qs), u32::from(repeat)).map_err(err)?;
+            let b = ph2d_imageio_apng::encode_animated(w, h, &pares(&qs), u32::from(repeat))
+                .map_err(err)?;
             vec![(String::new(), b)]
         }
         Formato::Webp => {

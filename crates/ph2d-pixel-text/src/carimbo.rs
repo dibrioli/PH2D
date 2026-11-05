@@ -255,9 +255,6 @@ impl Fonte {
         fg: [u8; 4],
     ) -> Vec<(Cell, [u8; 4])> {
         let cells = self.cells(texto, at, size);
-        cells
-            .into_iter()
-            .map(|(p, _)| (p, fg))
-            .collect()
+        cells.into_iter().map(|(p, _)| (p, fg)).collect()
     }
 }

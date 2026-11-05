@@ -96,13 +96,7 @@ pub fn estilo(o: &Options) -> Fonte {
 
 /// As células que o texto carimba com `fg`, nos valores do modo do sprite.
 #[must_use]
-pub fn valores(
-    s: &Sprite,
-    t: &str,
-    f: &Fonte,
-    at: Cell,
-    fg: [u8; 4],
-) -> Vec<(Cell, u32)> {
+pub fn valores(s: &Sprite, t: &str, f: &Fonte, at: Cell, fg: [u8; 4]) -> Vec<(Cell, u32)> {
     let v = f.stamp(t, at, (s.width(), s.height()), fg);
     v.into_iter()
         .map(|(p, c)| (p, s.value_of_rgba(c)))

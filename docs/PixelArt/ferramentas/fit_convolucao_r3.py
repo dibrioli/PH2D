@@ -86,9 +86,12 @@ for name,k in [('misc-texturize',21),('misc-emboss',22),('misc-rock',24)]:
         if best is None or m<best[0]: best=(m,w,div,bias)
     print('  best',best)
     if best[0]==0: res[name]=(best[1],best[2],best[3])
-ps=pairs('A2_conv_low_contrast',17)
-print('edges zero kernel', [miss(pairs('A2_conv_low_contrast',k),{(0,0):0},1,128) for k in (17,18,19)])
-for n in ('edges-find','edges-find-horizontal','edges-find-vertical'): res[n]=({(0,0):0},1,128)
+# edges-find*: o «128 constante» de A2 era o xadrez sob alfa 0; as matrizes medem-se em `edges_alpha`
+# (trial_edges_alfa.py: alfa6 + impulsos opacos de A solto, 0 celulas fora).
+_g3 = lambda r: {(x-1,y-1):r[y*3+x] for y in range(3) for x in range(3) if r[y*3+x]}
+res['edges-find']=(_g3([-1,-1,-1,-1,8,-1,-1,-1,-1]),1,0)
+res['edges-find-horizontal']=(_g3([1,2,1,0,0,0,-1,-2,-1]),1,0)
+res['edges-find-vertical']=(_g3([1,0,-1,2,0,-2,1,0,-1]),1,0)
 json.dump({n:{'w':{f'{a},{b}':v for (a,b),v in w.items()},'div':dv,'bias':bs} for n,(w,dv,bs) in res.items()}, open(sys.argv[1],'w'))
 print('A3 tiled', miss(pairs('A3_conv_tiled',3,':tiled'),{(x,y):[1,2,1][x+1]*[1,2,1][y+1] for x in (-1,0,1) for y in (-1,0,1)},16,0,True),
  miss(pairs('A3_conv_tiled',14,':tiled'),{**{(x,y):-1 for x in (-1,0,1) for y in (-1,0,1)},(0,0):16},8,0,True))

@@ -224,7 +224,7 @@ pub fn sheet_json(j: &SheetJson) -> String {
         if j.array {
             let _ = write!(o, "   {{\n    \"filename\": {},\n", cadeia(&f.filename));
         } else {
-            let _ = write!(o, "   {}: {{\n", cadeia(&f.filename));
+            let _ = writeln!(o, "   {}: {{", cadeia(&f.filename));
         }
         let _ = write!(
             o,

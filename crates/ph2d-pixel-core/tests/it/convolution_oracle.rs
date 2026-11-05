@@ -2,7 +2,7 @@
 //! da lista sobre as CINCO entradas medidas (r1 `imp`/`edge` pretas, r2 `impg`/`imp0`/`stepg`
 //! cinzentas), célula a célula. As matrizes nasceram de `fit_convolucao.py`; este gate as prende.
 
-use ph2d_pixel_core::filter::convolution::{Convolution, KERNELS};
+use ph2d_pixel_core::filter::convolution::{Convolution, KERNELS, Kernel};
 use ph2d_pixel_core::filter::{Edge, Filter, Source};
 use serde_json::Value;
 
@@ -59,6 +59,16 @@ fn input(name: &str) -> Source {
     Source::from_rgba(N as u32, N as u32, rgba.collect())
 }
 
+/// O que o ecrã do Trial mostra da saída: com o canal A ligado e alfa 0 sai o xadrez da tela, cinza
+/// 128 nestas imagens de 15×15, que cabem num quadrado dele (`edges_alpha`, `impg40`).
+fn on_screen(k: &Kernel, got: [u8; 4]) -> [u8; 3] {
+    if k.channels[3] && got[3] == 0 {
+        [128; 3]
+    } else {
+        [got[0], got[1], got[2]]
+    }
+}
+
 #[test]
 fn every_listed_kernel_gives_the_trials_cells_on_all_five_inputs() {
     let d: Value = serde_json::from_str(include_str!("../fixtures/oracle_trial_convolution.json"))
@@ -92,7 +102,12 @@ fn every_listed_kernel_gives_the_trials_cells_on_all_five_inputs() {
                 for (x, &v) in row.iter().enumerate() {
                     let got = f.at(&src, x as i32, y as i32);
                     // As rodadas 1–2 leram o ecrã (só RGB); o alfa é `the_color_under_alpha_…`.
-                    assert_eq!(got[..3], [v; 3], "{} sobre {case} em ({x},{y})", k.name);
+                    assert_eq!(
+                        on_screen(k, got),
+                        [v; 3],
+                        "{} sobre {case} em ({x},{y})",
+                        k.name
+                    );
                 }
             }
             checked += 1;
@@ -152,7 +167,11 @@ fn round3_kernels_on_the_wide_and_low_contrast_inputs() {
             for (y, row) in gray_grid(out).iter().enumerate() {
                 for (x, &v) in row.iter().enumerate() {
                     let got = f.at(&src, x as i32, y as i32);
-                    assert_eq!(got[..3], [v; 3], "{name} sobre {key} em ({x},{y})");
+                    assert_eq!(
+                        on_screen(kernel, got),
+                        [v; 3],
+                        "{name} sobre {key} em ({x},{y})"
+                    );
                 }
             }
             checked += 1;
@@ -310,6 +329,112 @@ fn the_color_under_alpha_and_the_alpha_channel_match_the_trial_cell_by_cell() {
     );
 }
 
+/// `edges-find*` sobre `alfa6` (`edges_alpha`, RGBA pelo clipboard), com o A ligado e desligado, e os
+/// controlos opacos: `impl`/`imp0l` de A solto dão a matriz, `impg40` de A premido apaga tudo (o Ctrl+C
+/// de imagem toda transparente não substitui a sentinela).
+#[test]
+fn o_alfa_do_edges_find_bate_com_o_trial() {
+    use ph2d_pixel_core::filter::Channels;
+    let d: Value = serde_json::from_str(include_str!("../fixtures/oracle_trial_round3.json"))
+        .expect("fixtura");
+    let e = &d["edges_alpha"];
+    let grid = |v: &Value| -> Vec<Vec<[u8; 4]>> {
+        v.as_array()
+            .expect("linhas")
+            .iter()
+            .map(|r| {
+                r.as_array()
+                    .expect("linha")
+                    .iter()
+                    .map(|c| std::array::from_fn(|i| c[i].as_u64().expect("u8") as u8))
+                    .collect()
+            })
+            .collect()
+    };
+    let conv = |name: &str| Convolution {
+        kernel: KERNELS.iter().find(|k| k.name == name).expect("kernel"),
+        edge: Edge::Clamp,
+    };
+    let chans = |a: bool| Channels {
+        r: true,
+        g: true,
+        b: true,
+        a,
+    };
+    let source = |rows: &[Vec<[u8; 4]>]| {
+        Source::from_rgba(rows[0].len() as u32, rows.len() as u32, rows.concat())
+    };
+    let mut fora = Vec::new();
+    let mut compare =
+        |key: &str, name: &str, a: bool, inp: &[Vec<[u8; 4]>], out: &[Vec<[u8; 4]>]| {
+            let (f, src) = (conv(name), source(inp));
+            for (y, row) in out.iter().enumerate() {
+                for (x, want) in row.iter().enumerate() {
+                    let got = chans(a).merge(inp[y][x], f.at(&src, x as i32, y as i32));
+                    let vis = if want[3] == 0 { 3..4 } else { 0..4 };
+                    if vis.into_iter().any(|c| got[c] != want[c]) {
+                        fora.push(format!("{key} ({x},{y}) Trial {want:?} nós {got:?}"));
+                    }
+                }
+            }
+        };
+    let alfa6 = grid(&e["input_rgba"]);
+    let cases = e["cases_rgba"].as_object().expect("casos");
+    assert_eq!(cases.len(), 6, "3 kernels × A ligado e desligado");
+    for (key, out) in cases {
+        let (name, mode) = key.split_once(':').expect("kernel:modo");
+        compare(key, name, mode == "A_on", &alfa6, &grid(out));
+    }
+    let opaque = |n: usize, at: usize, v: u8, base: u8| -> Vec<Vec<[u8; 4]>> {
+        (0..n)
+            .map(|y| {
+                (0..n)
+                    .map(|x| {
+                        let c = if (x, y) == (at, at) { v } else { base };
+                        [c, c, c, 255]
+                    })
+                    .collect()
+            })
+            .collect()
+    };
+    let controls = e["opaque"].as_object().expect("controlos");
+    assert_eq!(controls.len(), 9, "impl, imp0l e impg40 × 3 kernels");
+    for (key, c) in controls {
+        let p: Vec<&str> = key.split(':').collect();
+        match p[0] {
+            "impl" => compare(
+                key,
+                p[1],
+                false,
+                &opaque(15, 7, 136, 128),
+                &grid(&c["clipboard_rgba"]),
+            ),
+            "imp0l" => compare(
+                key,
+                p[1],
+                false,
+                &opaque(15, 7, 120, 128),
+                &grid(&c["clipboard_rgba"]),
+            ),
+            _ => {
+                assert_eq!(c["clipboard_is_sentinel"], true, "{key}: toda transparente");
+                let (f, src) = (conv(p[1]), source(&opaque(40, 20, 255, 128)));
+                for y in 0..40 {
+                    for x in 0..40 {
+                        assert_eq!(f.at(&src, x, y)[3], 0, "{key} ({x},{y})");
+                    }
+                }
+            }
+        }
+    }
+    assert!(
+        fora.is_empty(),
+        "{} células fora: {:#?}",
+        fora.len(),
+        &fora[..fora.len().min(12)]
+    );
+}
+
 /// Os botões que escolher cada kernel deixa (`A5_kernel_channels`), um por um.
 #[test]
 fn every_kernel_carries_the_trials_channel_buttons() {
@@ -330,9 +455,9 @@ fn every_kernel_carries_the_trials_channel_buttons() {
 }
 
 /// Só o centro opaco e o divisor = a soma dos pesos fora dele (todos transparentes): `div − Σ w`
-/// dá 0 e a cor divide por 1. Fixa a ESCOLHA do «1» — o Trial não a mediu (handoff P8b §3).
+/// dá 0 e a célula fica como estava. Medido com `div` 1 em `edges_alpha`; revoga o «divide por 1».
 #[test]
-fn a_color_divisor_that_drops_to_zero_divides_by_one() {
+fn a_color_divisor_that_drops_to_zero_leaves_the_cell_as_it_was() {
     static K: ph2d_pixel_core::filter::convolution::Kernel =
         ph2d_pixel_core::filter::convolution::Kernel {
             name: "teste-centro-so",
@@ -353,5 +478,5 @@ fn a_color_divisor_that_drops_to_zero_divides_by_one() {
         kernel: &K,
         edge: Edge::Clamp,
     };
-    assert_eq!(f.at(&src, 1, 1), [40, 80, 120, 255]);
+    assert_eq!(f.at(&src, 1, 1), [10, 20, 30, 255]);
 }

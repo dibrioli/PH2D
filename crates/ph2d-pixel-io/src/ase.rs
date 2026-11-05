@@ -38,7 +38,10 @@ pub enum AseErro {
     /// Limite do FORMATO: mais quadros que o WORD do cabeçalho.
     QuadrosDemais(usize),
     /// Limite do FORMATO: um cel fora do SHORT da posição.
-    CelForaDoFormato { x: i32, y: i32 },
+    CelForaDoFormato {
+        x: i32,
+        y: i32,
+    },
 }
 
 impl std::fmt::Display for AseErro {
@@ -76,7 +79,10 @@ fn bandeiras(l: &Layer) -> u16 {
         (l.background, LAYER_BACKGROUND),
         (l.continuous, LAYER_PREFER_LINKED),
         (l.reference, LAYER_REFERENCE),
-        (matches!(l.kind, LayerKind::Group { collapsed: true }), LAYER_COLLAPSED),
+        (
+            matches!(l.kind, LayerKind::Group { collapsed: true }),
+            LAYER_COLLAPSED,
+        ),
     ] {
         if cond {
             f |= bit;
@@ -262,13 +268,17 @@ pub fn ler(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>), AseErro> {
         c.reference = l.flags & LAYER_REFERENCE != 0;
         c.opacity = l.opacity;
         c.parent = abertos.last().copied();
-        c.background = l.flags & LAYER_BACKGROUND != 0 && i == 0 && c.parent.is_none() && l.kind != KIND_GROUP;
-        c.blend = u8::try_from(l.blend).ok().and_then(BlendMode::from_code).unwrap_or_else(|| {
-            if !avisos.contains(&Aviso::ModoDesconhecido) {
-                avisos.push(Aviso::ModoDesconhecido);
-            }
-            BlendMode::Normal
-        });
+        c.background =
+            l.flags & LAYER_BACKGROUND != 0 && i == 0 && c.parent.is_none() && l.kind != KIND_GROUP;
+        c.blend = u8::try_from(l.blend)
+            .ok()
+            .and_then(BlendMode::from_code)
+            .unwrap_or_else(|| {
+                if !avisos.contains(&Aviso::ModoDesconhecido) {
+                    avisos.push(Aviso::ModoDesconhecido);
+                }
+                BlendMode::Normal
+            });
         if l.kind == KIND_GROUP {
             c.kind = LayerKind::Group {
                 collapsed: l.flags & LAYER_COLLAPSED != 0,
@@ -362,7 +372,11 @@ fn cels_de(
     let mut out: BTreeMap<(LayerId, FrameId), Cel> = BTreeMap::new();
     for (fi, f) in file.frames.iter().enumerate() {
         for c in &f.cels {
-            let Some(l) = file.layers.get(usize::from(c.layer)).and(layers.get(usize::from(c.layer))) else {
+            let Some(l) = file
+                .layers
+                .get(usize::from(c.layer))
+                .and(layers.get(usize::from(c.layer)))
+            else {
                 continue;
             };
             if l.is_group() {
@@ -371,13 +385,15 @@ fn cels_de(
             let key = (l.id, frames[fi].id);
             let cel = match &c.body {
                 AseCelBody::Linked { frame } => ligado(file, layers, frames, c, *frame, bpp, &out),
-                _ => imagem(file, c).filter(|(b, px)| px.len() == b.area() * bpp).map(|(b, px)| Cel {
-                    bbox: b,
-                    data: px,
-                    opacity: c.opacity,
-                    z: c.z,
-                    link: None,
-                }),
+                _ => imagem(file, c)
+                    .filter(|(b, px)| px.len() == b.area() * bpp)
+                    .map(|(b, px)| Cel {
+                        bbox: b,
+                        data: px,
+                        opacity: c.opacity,
+                        z: c.z,
+                        link: None,
+                    }),
             };
             if let Some(cel) = cel {
                 out.insert(key, cel);

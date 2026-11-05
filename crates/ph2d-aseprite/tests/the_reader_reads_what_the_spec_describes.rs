@@ -64,7 +64,7 @@ impl Ase {
         w16(&mut out, self.width);
         w16(&mut out, self.height);
         w16(&mut out, self.depth);
-        w32(&mut out, 0); // flags
+        w32(&mut out, 1); // flags: bit 0 = a opacidade das camadas vale
         w16(&mut out, 100); // speed, obsoleto
         w32(&mut out, 0);
         w32(&mut out, 0);
@@ -574,7 +574,16 @@ fn the_layer_opacity_and_the_cel_opacity_multiply() {
                 cel_kind(0, 0, 0, cel_op, 0, 1, 1, RED.to_vec()),
             ],
         });
-        px(&parse(&a.bytes()).unwrap(), 0, 0, 0)[3]
+        let mut b = a.bytes();
+        let com = px(&parse(&b).unwrap(), 0, 0, 0)[3];
+        // Sem o bit do cabeçalho, a spec manda ignorar a opacidade da camada.
+        b[14] = 0;
+        assert_eq!(
+            px(&parse(&b).unwrap(), 0, 0, 0)[3],
+            cel_op,
+            "sem o bit, só a do cel"
+        );
+        com
     };
     assert_eq!(half(255, 255), 255, "opaco com opaco fica opaco");
     assert_eq!(half(128, 255), 128, "a opacidade da CAMADA chega ao alfa");

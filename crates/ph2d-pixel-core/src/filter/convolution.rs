@@ -3,9 +3,10 @@
 //! volta). Lei e matrizes: `oracle_trial_convolution.json` (rodadas 1 e 2), lista em [`KERNELS`].
 //!
 //! A cor: a célula de alfa 0 sai da soma e o seu peso sai do divisor (`div − Σ w` dos
-//! transparentes; 0 → 1). O alfa é a fórmula linear, que só vale com o canal A ligado
-//! ([`super::Channels::merge`]). Lei: `docs/PixelArt/ferramentas/fit_convolucao_alfa.py` sobre
-//! `oracle_trial_round3.json` `A4b`/`A4` (0 células fora).
+//! transparentes); se esse divisor dá 0, a célula fica como estava, alfa incluído. O alfa é a
+//! fórmula linear, que só vale com o canal A ligado ([`super::Channels::merge`]). Lei:
+//! `docs/PixelArt/ferramentas/fit_convolucao_alfa.py` sobre `oracle_trial_round3.json`
+//! `A4b`/`A4` (0 células fora); o divisor 0: `edges_alpha` (`trial_edges_alfa.py`).
 
 use super::{Edge, Filter, Source};
 
@@ -64,10 +65,10 @@ impl Filter for Convolution {
         }
         let ch = |s: i32, div: i32| ((s / div) + k.bias).clamp(0, 255) as u8;
         let div = k.div.max(1);
-        let cdiv = match div - dropped {
-            0 => 1,
-            d => d,
-        };
+        let cdiv = div - dropped;
+        if cdiv == 0 {
+            return src.at_edge(x, y, self.edge);
+        }
         [
             ch(sum[0], cdiv),
             ch(sum[1], cdiv),

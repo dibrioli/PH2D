@@ -3,7 +3,7 @@
 //! encolhe ao que usou; `--trim` larga os vazios; em `split` os ligados partilham retângulo.
 //! Sem oráculo (ausentes dele), definidos pelo CLI do Aseprite: 2ⁿ, merge, extrude, split de tags.
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use ph2d_pixel_core::{FrameId, Layer, LayerId, LayerKind, Sprite};
 use ph2d_sprite_sheet::pack::{LayoutItem, PackOptions, layout};
@@ -116,7 +116,14 @@ fn recorte(px: &[u8], w: u32, r: [u32; 4]) -> Vec<u8> {
 /// Tokens do `--filename-format`. `{frame}` conta na saída; `{frameNN}`: largura pelos dígitos, e o
 /// valor deles é o primeiro número (`{frame1}` começa em 1, `{frame01}` tem 2 dígitos).
 #[must_use]
-pub fn nome_do_quadro(fmt: &str, titulo: &str, camada: &str, tag: &str, n: usize, ext: &str) -> String {
+pub fn nome_do_quadro(
+    fmt: &str,
+    titulo: &str,
+    camada: &str,
+    tag: &str,
+    n: usize,
+    ext: &str,
+) -> String {
     let mut out = String::new();
     let mut resto = fmt;
     while let Some(a) = resto.find('{') {
@@ -187,7 +194,12 @@ fn pecas(s: &Sprite, o: &OpcoesFolha, titulo: &str, ext: &str) -> Vec<Peca> {
         s.tags()
             .iter()
             .enumerate()
-            .map(|(i, t)| (Some(t.name.as_str()), ordem(s, Quadros::Tag(i), Direcao::Forward)))
+            .map(|(i, t)| {
+                (
+                    Some(t.name.as_str()),
+                    ordem(s, Quadros::Tag(i), Direcao::Forward),
+                )
+            })
             .collect()
     } else {
         let nome = match o.quadros {
@@ -245,7 +257,10 @@ fn apara(mut v: Vec<Peca>, o: &OpcoesFolha, w: u32, h: u32) -> Vec<Peca> {
             .fold(None, |a: Option<[u32; 4]>, r| {
                 Some(a.map_or(r, |a| {
                     let (x0, y0) = (a[0].min(r[0]), a[1].min(r[1]));
-                    let (x1, y1) = ((a[0] + a[2]).max(r[0] + r[2]), (a[1] + a[3]).max(r[1] + r[3]));
+                    let (x1, y1) = (
+                        (a[0] + a[2]).max(r[0] + r[2]),
+                        (a[1] + a[3]).max(r[1] + r[3]),
+                    );
                     [x0, y0, x1 - x0, y1 - y0]
                 }))
             })
@@ -276,12 +291,17 @@ fn grelha(tam: &[[u32; 2]], grupos: &[usize], o: &OpcoesFolha) -> (Vec<[u32; 2]>
     let colunar = matches!(o.tipo, Tipo::Columns | Tipo::Vertical);
     let lado = |t: [u32; 2]| if colunar { [t[1], t[0]] } else { t };
     let n = tam.len() as u32;
-    let max = tam.iter().map(|&t| lado(t)).fold([0, 0], |a, t| [a[0].max(t[0]), a[1].max(t[1])]);
+    let max = tam
+        .iter()
+        .map(|&t| lado(t))
+        .fold([0, 0], |a, t| [a[0].max(t[0]), a[1].max(t[1])]);
     // O limite no eixo em que a linha corre, ou quantas por linha.
     let (por_px, por_n): (Option<u32>, Option<u32>) = match (o.tipo, o.limite) {
         (Tipo::Horizontal | Tipo::Vertical, _) | (_, Limite::Nenhum) => (None, None),
         (Tipo::Rows, Limite::Largura(p)) | (Tipo::Columns, Limite::Altura(p)) => (Some(p), None),
-        (Tipo::Rows, Limite::Colunas(c)) | (Tipo::Columns, Limite::Linhas(c)) => (None, Some(c.max(1))),
+        (Tipo::Rows, Limite::Colunas(c)) | (Tipo::Columns, Limite::Linhas(c)) => {
+            (None, Some(c.max(1)))
+        }
         (Tipo::Rows, Limite::Linhas(r)) | (Tipo::Columns, Limite::Colunas(r)) => {
             (None, Some(n.div_ceil(r.max(1)).max(1)))
         }
@@ -291,7 +311,8 @@ fn grelha(tam: &[[u32; 2]], grupos: &[usize], o: &OpcoesFolha) -> (Vec<[u32; 2]>
         }
         (Tipo::Packed, _) => (None, None),
     };
-    let quebra_por_grupo = por_px.is_none() && por_n.is_none() && matches!(o.tipo, Tipo::Rows | Tipo::Columns);
+    let quebra_por_grupo =
+        por_px.is_none() && por_n.is_none() && matches!(o.tipo, Tipo::Rows | Tipo::Columns);
     let mut out = Vec::with_capacity(tam.len());
     let (mut u, mut v, mut alto, mut na_linha, mut maior_u) = (b, b, 0, 0, 0);
     for (i, &t) in tam.iter().enumerate() {
@@ -333,7 +354,10 @@ fn empacotado(tam: &[[u32; 2]], o: &OpcoesFolha) -> (Vec<[u32; 2]>, u32, u32) {
     };
     match layout(&itens, opts) {
         Ok(l) => (
-            l.places.iter().map(|(_, p)| [p[0] + o.border, p[1] + o.border]).collect(),
+            l.places
+                .iter()
+                .map(|(_, p)| [p[0] + o.border, p[1] + o.border])
+                .collect(),
             l.size + 2 * o.border,
             l.size + 2 * o.border,
         ),
@@ -350,12 +374,14 @@ pub fn montar(s: &Sprite, o: &OpcoesFolha, titulo: &str, ext: &str) -> Folha {
     let pad = o.inner + o.extrude;
 
     // Quem partilha retângulo: `unico[i]` é o índice da peça que pinta a i-ésima.
-    let mut por_conteudo: HashMap<(u32, u32, &[u8]), usize> = HashMap::new();
-    let mut por_dono: HashMap<(LayerId, FrameId), usize> = HashMap::new();
+    let mut por_conteudo: BTreeMap<(u32, u32, &[u8]), usize> = BTreeMap::new();
+    let mut por_dono: BTreeMap<(LayerId, FrameId), usize> = BTreeMap::new();
     let mut unico = Vec::with_capacity(v.len());
     for (i, p) in v.iter().enumerate() {
         let j = if o.merge_duplicates {
-            *por_conteudo.entry((p.rect[2], p.rect[3], &p.px)).or_insert(i)
+            *por_conteudo
+                .entry((p.rect[2], p.rect[3], &p.px))
+                .or_insert(i)
         } else if let Some(d) = p.dono {
             *por_dono.entry(d).or_insert(i)
         } else {
@@ -468,7 +494,13 @@ pub fn nome_do_modo(c: u8) -> &'static str {
 
 /// O texto do `.json` da folha. As tags saem por `from` (medido).
 #[must_use]
-pub fn json_da_folha(s: &Sprite, f: &Folha, image: &str, formato: &'static str, o: OpcoesJson) -> String {
+pub fn json_da_folha(
+    s: &Sprite,
+    f: &Folha,
+    image: &str,
+    formato: &'static str,
+    o: OpcoesJson,
+) -> String {
     use ph2d_sprite_sheet::aseprite::{JsonFrame, JsonLayer, JsonTag, SheetJson, sheet_json};
     const DIRECOES: [&str; 4] = ["forward", "reverse", "pingpong", "pingpong_reverse"];
     let frames = f

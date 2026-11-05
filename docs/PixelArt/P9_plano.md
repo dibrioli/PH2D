@@ -5,7 +5,7 @@
 > Lei do módulo: [ADR-0196](../architecture/decisions/0196-o-pixel-art-e-um-modulo-proprio-com-documento-inteiro-e-desfazer-por-sprite.md).
 > Referência de produto: menu File do Aseprite ([foto 12](aseprite/12_sub_export_import_paste_rotate.png)), diálogo da folha
 > ([foto 31](aseprite/31_camada_tamanho_folha_prefs.png)), CLI ([40](aseprite/40_cli_help_1.3.18.6.txt)).
-> **Estado: plano aprovado pelo dono em 05/11. Em construção: P9a (motor).**
+> **Estado: plano aprovado pelo dono em 05/11. P9a (motor) feita, [handoff](handoffs/HANDOFF_CONTINUACAO_line_PixelArt_2026-11-05_P9a.md). Próxima: P9b (tela).**
 
 ## 0. O que entra
 
@@ -168,7 +168,7 @@ Mutações por `mutacao`: lei do `.ase` (flags de cel, ordem de chunks), trim, d
 |---|---|
 | Texto mono em fontes do sistema contra FreeType (1–2 células) | **Fecha registrando:** o produto já não oferece fontes do sistema. Nota em `crates/ph2d-pixel-text/fonts/README.md`; `FontChoice::System` e `rasterize_outline` ficam só para os oráculos, conferir se saem do caminho do app |
 | AA3 sem fixtura | **Fecha:** sem Antialias no painel. Registro na mesma nota |
-| `edges-find*`, alfa nunca medido | M9. Hoje são kernels 1×1 de peso 0 (`filter/kernels.rs:28-30`): lei medida e gate; se a resposta for outra, corrige-se |
+| `edges-find*`, alfa nunca medido | **Feito, e a lei mudou:** eram matrizes reais, o «128» era o xadrez sob alfa 0. `trial_edges_alfa.py`, teste `o_alfa_do_edges_find_bate_com_o_trial`. |
 | `curve_a11y`/`range_a11y` sem publicar | **Não se faz nesta linha (medido na P9a):** `sync_a11y` (`surface_input.rs:224`) só publica a janela e as abas de família; **nenhum** widget de painel chega à árvore, nem os sliders. Ligar só estes dois não muda nada para quem usa leitor de ecrã. É uma lacuna do app inteiro: pede a sua própria onda. |
 | Mistura parcial | **Feito:** saíram `carimbo::tinge`, `over` e o `below` do `stamp`; `texto::mistura` virou `na_cor`. |
 

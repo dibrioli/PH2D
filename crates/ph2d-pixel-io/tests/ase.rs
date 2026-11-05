@@ -68,7 +68,12 @@ fn o_composto_bate_com_o_libresprite_em_cada_quadro() {
                 .filter(|(k, _)| !sobre_vazio[*k])
                 .map(|(k, (a, b))| (k % w, k / w, *a, *b))
                 .collect();
-            assert!(dif.is_empty(), "{n}, quadro {i}: {} células; {:?}", dif.len(), &dif[..dif.len().min(8)]);
+            assert!(
+                dif.is_empty(),
+                "{n}, quadro {i}: {} células; {:?}",
+                dif.len(),
+                &dif[..dif.len().min(8)]
+            );
         }
     }
 }
@@ -101,7 +106,11 @@ fn o_documento_guarda_o_que_o_ficheiro_diz() {
     assert!(!s.layers()[4].visible);
     let ms: Vec<_> = s.frames().iter().map(|f| f.duration_ms).collect();
     assert_eq!(ms, [100, 150, 70, 333, 20]);
-    let t: Vec<_> = s.tags().iter().map(|t| (t.name.as_str(), t.from, t.to, t.repeat)).collect();
+    let t: Vec<_> = s
+        .tags()
+        .iter()
+        .map(|t| (t.name.as_str(), t.from, t.to, t.repeat))
+        .collect();
     assert_eq!(t, [("idle", 0, 1, 0), ("walk", 2, 4, 2), ("back", 1, 3, 3)]);
     // O ligado continua ligado, o dono é o do quadro 1.
     let c = s.entry((s.layers()[0].id, s.frames()[2].id)).unwrap();
@@ -137,7 +146,10 @@ fn o_libresprite_le_o_nosso_ase() {
     for (n, sha) in f["sha256"].as_object().unwrap() {
         let (a, _) = ase::ler(&entrada(&o, n)).unwrap();
         let (b, _) = ase::escrever(&a).unwrap();
-        let hex: String = Sha256::digest(&b).iter().map(|x| format!("{x:02x}")).collect();
+        let hex: String = Sha256::digest(&b)
+            .iter()
+            .map(|x| format!("{x:02x}"))
+            .collect();
         assert_eq!(&hex, sha.as_str().unwrap(), "{n}");
     }
 }

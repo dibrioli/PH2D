@@ -1,7 +1,7 @@
 //! As 256 cores do GIF. Decisão do dono (05/11): reduz às mais próximas, sem pontilhado, e avisa.
 //! Alfa: abaixo de 128 é buraco, o resto é opaco (medido no LibreSprite, 119 → buraco, 136 → opaco).
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 const LIMIAR_ALFA: u8 = 128;
 const MAX_CORES: usize = 256;
@@ -26,7 +26,10 @@ impl Caixa {
     fn eixo_maior(&self) -> (usize, u8) {
         let mut melhor = (0, 0);
         for e in 0..3 {
-            let (lo, hi) = self.cores.iter().fold((255, 0), |(lo, hi), (c, _)| (c[e].min(lo), c[e].max(hi)));
+            let (lo, hi) = self
+                .cores
+                .iter()
+                .fold((255, 0), |(lo, hi), (c, _)| (c[e].min(lo), c[e].max(hi)));
             if hi - lo > melhor.1 {
                 melhor = (e, hi - lo);
             }
@@ -82,7 +85,11 @@ fn corte_mediano(cores: &BTreeMap<[u8; 3], u64>, alvo: usize) -> Vec<[u8; 3]> {
 }
 
 fn mais_proxima(p: &[[u8; 3]], c: [u8; 3]) -> u8 {
-    let d = |q: &[u8; 3]| -> i32 { (0..3).map(|e| (i32::from(q[e]) - i32::from(c[e])).pow(2)).sum() };
+    let d = |q: &[u8; 3]| -> i32 {
+        (0..3)
+            .map(|e| (i32::from(q[e]) - i32::from(c[e])).pow(2))
+            .sum()
+    };
     p.iter()
         .enumerate()
         .min_by_key(|(_, q)| d(q))
@@ -120,7 +127,7 @@ pub fn reduzir(quadros: &[&[u8]]) -> Reduzido {
     if paleta.len() < 2 {
         paleta.resize(2, [0, 0, 0]);
     }
-    let mut cache: HashMap<[u8; 3], u8> = HashMap::new();
+    let mut cache: BTreeMap<[u8; 3], u8> = BTreeMap::new();
     let quadros = quadros
         .iter()
         .map(|q| {
@@ -132,7 +139,9 @@ pub fn reduzir(quadros: &[&[u8]]) -> Reduzido {
                         return transparente.unwrap_or(0);
                     }
                     let rgb = [c[0], c[1], c[2]];
-                    *cache.entry(rgb).or_insert_with(|| mais_proxima(&cheias, rgb))
+                    *cache
+                        .entry(rgb)
+                        .or_insert_with(|| mais_proxima(&cheias, rgb))
                 })
                 .collect()
         })

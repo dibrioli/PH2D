@@ -34,8 +34,17 @@ impl std::fmt::Display for ErroAbrir {
     }
 }
 
+/// `(largura, altura, [(RGBA, ms)])`.
+type QuadrosRgba = (u32, u32, Vec<(Vec<u8>, u32)>);
+
 /// A caixa mínima de uma imagem no modo do documento, e os bytes nela; `None` = só transparente.
-fn apertada(px: &[u8], w: u32, h: u32, bpp: usize, vazio: &dyn Fn(&[u8]) -> bool) -> Option<(Rect, Vec<u8>)> {
+fn apertada(
+    px: &[u8],
+    w: u32,
+    h: u32,
+    bpp: usize,
+    vazio: &dyn Fn(&[u8]) -> bool,
+) -> Option<(Rect, Vec<u8>)> {
     let (mut x0, mut y0, mut x1, mut y1) = (w, h, 0_u32, 0_u32);
     for y in 0..h {
         for x in 0..w {
@@ -90,7 +99,11 @@ fn documento(
         width: w,
         height: h,
         mode: Some(mode),
-        palette: if pal.is_empty() { palette::DEFAULT.to_vec() } else { pal },
+        palette: if pal.is_empty() {
+            palette::DEFAULT.to_vec()
+        } else {
+            pal
+        },
         transparent,
         layers: vec![Layer::image(camada, "Layer 1")],
         frames,
@@ -102,8 +115,16 @@ fn documento(
 
 /// Compõe as sub-imagens de um APNG/GIF no quadro inteiro, com o `dispose` de cada uma.
 fn quadros_inteiros(fs: &[ph2d_imageio::AnimFrame]) -> (u32, u32, Vec<(Vec<u8>, u32)>) {
-    let w = fs.iter().map(|f| f.offset_xy.0.max(0) as u32 + f.image.width).max().unwrap_or(1);
-    let h = fs.iter().map(|f| f.offset_xy.1.max(0) as u32 + f.image.height).max().unwrap_or(1);
+    let w = fs
+        .iter()
+        .map(|f| f.offset_xy.0.max(0) as u32 + f.image.width)
+        .max()
+        .unwrap_or(1);
+    let h = fs
+        .iter()
+        .map(|f| f.offset_xy.1.max(0) as u32 + f.image.height)
+        .max()
+        .unwrap_or(1);
     let mut tela = vec![0_u8; w as usize * h as usize * 4];
     let mut out = Vec::with_capacity(fs.len());
     for f in fs {
@@ -113,14 +134,19 @@ fn quadros_inteiros(fs: &[ph2d_imageio::AnimFrame]) -> (u32, u32, Vec<(Vec<u8>, 
             for x in 0..f.image.width as usize {
                 let c = f.image.pixels[y * f.image.width as usize + x].0;
                 let i = ((oy + y) * w as usize + ox + x) * 4;
-                if c[3] == 255 || tela[i + 3] == 0 || matches!(f.blend_op, ph2d_imageio::AnimBlendOp::Source) {
+                if c[3] == 255
+                    || tela[i + 3] == 0
+                    || matches!(f.blend_op, ph2d_imageio::AnimBlendOp::Source)
+                {
                     tela[i..i + 4].copy_from_slice(&c);
                 } else if c[3] != 0 {
                     // Over de alfa reto, em inteiros.
                     let (sa, da) = (u32::from(c[3]), u32::from(tela[i + 3]));
                     let a = sa + da * (255 - sa) / 255;
                     for e in 0..3 {
-                        let v = (u32::from(c[e]) * sa + u32::from(tela[i + e]) * da * (255 - sa) / 255) / a.max(1);
+                        let v = (u32::from(c[e]) * sa
+                            + u32::from(tela[i + e]) * da * (255 - sa) / 255)
+                            / a.max(1);
                         tela[i + e] = v.min(255) as u8;
                     }
                     tela[i + 3] = a as u8;
@@ -142,7 +168,7 @@ fn quadros_inteiros(fs: &[ph2d_imageio::AnimFrame]) -> (u32, u32, Vec<(Vec<u8>, 
     (w, h, out)
 }
 
-fn de_decodificado(d: DecodedImage) -> Result<(u32, u32, Vec<(Vec<u8>, u32)>), ErroAbrir> {
+fn de_decodificado(d: DecodedImage) -> Result<QuadrosRgba, ErroAbrir> {
     match d {
         DecodedImage::Flat(b) => {
             let px = b.pixels.iter().flat_map(|p| p.0).collect();
@@ -178,17 +204,23 @@ fn tem_actl(bytes: &[u8]) -> bool {
 pub fn abrir(bytes: &[u8], extensao: &str) -> Result<(Sprite, Vec<ase::Aviso>), ErroAbrir> {
     let ler = |e: ph2d_imageio::Error| ErroAbrir::Ler(e.to_string());
     let opts = ImportOpts::default();
-    let rgba = |(w, h, q): (u32, u32, Vec<(Vec<u8>, u32)>)| documento(w, h, ColorMode::Rgba, Vec::new(), 0, &q);
+    let rgba = |(w, h, q): (u32, u32, Vec<(Vec<u8>, u32)>)| {
+        documento(w, h, ColorMode::Rgba, Vec::new(), 0, &q)
+    };
     let doc = match extensao.to_ascii_lowercase().as_str() {
         "ase" | "aseprite" => {
             return ase::ler(bytes).map_err(|e| ErroAbrir::Ler(e.to_string()));
         }
         "png" | "apng" if tem_actl(bytes) => rgba(de_decodificado(
-            ph2d_imageio_apng::ApngImporter.import(bytes, &opts).map_err(ler)?,
+            ph2d_imageio_apng::ApngImporter
+                .import(bytes, &opts)
+                .map_err(ler)?,
         )?)?,
         "png" | "apng" => png_doc(bytes)?,
         "gif" => rgba(de_decodificado(
-            ph2d_imageio_gif::GifImporter.import(bytes, &opts).map_err(ler)?,
+            ph2d_imageio_gif::GifImporter
+                .import(bytes, &opts)
+                .map_err(ler)?,
         )?)?,
         "webp" => rgba(ph2d_imageio_webp::decode_frames(bytes).map_err(ler)?)?,
         outra => return Err(ErroAbrir::Formato(outra.to_owned())),
@@ -214,7 +246,10 @@ pub fn abrir_sequencia(pngs: &[Vec<u8>]) -> Result<Sprite, ErroAbrir> {
         return Err(ErroAbrir::TamanhosDiferentes);
     }
     let igual = lidos.iter().all(|l| l.2 == modo);
-    let quadros: Vec<_> = lidos.iter().map(|l| (l.3.clone(), DEFAULT_FRAME_MS)).collect();
+    let quadros: Vec<_> = lidos
+        .iter()
+        .map(|l| (l.3.clone(), DEFAULT_FRAME_MS))
+        .collect();
     match (&modo, igual) {
         (PixelPng::Indexed(p), true) => {
             let t = p.iter().position(|c| c[3] == 0).unwrap_or(0) as u8;
@@ -235,7 +270,12 @@ pub fn abrir_sequencia(pngs: &[Vec<u8>]) -> Result<Sprite, ErroAbrir> {
 fn em_rgba(modo: &PixelPng, d: &[u8]) -> Vec<u8> {
     match modo {
         PixelPng::Rgba => d.to_vec(),
-        PixelPng::GrayAlpha => d.as_chunks::<2>().0.iter().flat_map(|c| [c[0], c[0], c[0], c[1]]).collect(),
+        PixelPng::GrayAlpha => d
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .flat_map(|c| [c[0], c[0], c[0], c[1]])
+            .collect(),
         PixelPng::Indexed(p) => d
             .iter()
             .flat_map(|&i| p.get(usize::from(i)).copied().unwrap_or([0, 0, 0, 0]))

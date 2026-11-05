@@ -23,7 +23,9 @@ fn unhex(h: &str) -> Vec<u8> {
 }
 
 fn doc(o: &Value, n: &str) -> Sprite {
-    ase::ler(&unhex(o["entradas_hex"][n].as_str().unwrap())).unwrap().0
+    ase::ler(&unhex(o["entradas_hex"][n].as_str().unwrap()))
+        .unwrap()
+        .0
 }
 
 fn limpo(mut px: Vec<u8>) -> Vec<u8> {
@@ -40,21 +42,42 @@ fn q(s: &Sprite, i: usize) -> Vec<u8> {
 }
 
 fn pedido() -> Pedido {
-    Pedido { escala: 1.0, ..Pedido::default() }
+    Pedido {
+        escala: 1.0,
+        ..Pedido::default()
+    }
 }
 
 #[test]
 fn a_escala_bate_com_o_libresprite() {
     let o = oraculo();
     let s = doc(&o, "folha");
-    let f = montar(&s, &OpcoesFolha { tipo: Tipo::Horizontal, ..OpcoesFolha::default() }, "t", "ase");
+    let f = montar(
+        &s,
+        &OpcoesFolha {
+            tipo: Tipo::Horizontal,
+            ..OpcoesFolha::default()
+        },
+        "t",
+        "ase",
+    );
     for (nome, fator) in [("scale2", 2.0), ("scale05", 0.5)] {
         let (w, h, px) = escalado(&f.rgba, f.w, f.h, fator);
         let c = &o["escalas"][nome]["sheet"];
-        assert_eq!((u64::from(w), u64::from(h)), (c["w"].as_u64().unwrap(), c["h"].as_u64().unwrap()), "{nome}");
+        assert_eq!(
+            (u64::from(w), u64::from(h)),
+            (c["w"].as_u64().unwrap(), c["h"].as_u64().unwrap()),
+            "{nome}"
+        );
         // A folha DELE é a dos quadros escalados um a um, lado a lado.
         let _ = px;
-        let qs = ph2d_pixel_io::render::quadros(&s, &Pedido { escala: fator, ..Pedido::default() });
+        let qs = ph2d_pixel_io::render::quadros(
+            &s,
+            &Pedido {
+                escala: fator,
+                ..Pedido::default()
+            },
+        );
         let (qw, qh) = (qs[0].w as usize, qs[0].h as usize);
         let mut folha = vec![0_u8; w as usize * h as usize * 4];
         for (i, q) in qs.iter().enumerate() {
@@ -63,7 +86,10 @@ fn a_escala_bate_com_o_libresprite() {
                 folha[d..d + qw * 4].copy_from_slice(&q.rgba[y * qw * 4..(y + 1) * qw * 4]);
             }
         }
-        let hex: String = Sha256::digest(limpo(folha)).iter().map(|b| format!("{b:02x}")).collect();
+        let hex: String = Sha256::digest(limpo(folha))
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect();
         // ⛔ Recusa medida: ao reduzir, ele escala cada CEL antes de compor (nenhum deslocamento único
         // explica o resultado). Aqui sai o composto que o artista vê; só o tamanho é comparável.
         if fator >= 1.0 {
@@ -81,7 +107,10 @@ fn a_direcao_nao_repete_as_pontas() {
     assert_eq!(ordem(&s, t, Direcao::Reverse), [4, 3, 2]);
     assert_eq!(ordem(&s, t, Direcao::PingPong), [2, 3, 4, 3]);
     assert_eq!(ordem(&s, t, Direcao::PingPongReverse), [4, 3, 2, 3]);
-    assert_eq!(ordem(&s, Quadros::Intervalo { de: 3, ate: 1 }, Direcao::Forward), [1, 2, 3]);
+    assert_eq!(
+        ordem(&s, Quadros::Intervalo { de: 3, ate: 1 }, Direcao::Forward),
+        [1, 2, 3]
+    );
 }
 
 #[test]
@@ -129,13 +158,17 @@ fn o_gif_com_cores_demais_reduz_avisa_e_nao_pontilha() {
     let (d, _) = abrir(&r.ficheiros[0].1, "gif").unwrap();
     // Sem pontilhado: a mesma cor de entrada dá sempre a mesma de saída.
     let (a, b) = (q(&s, 0), q(&d, 0));
-    let mut mapa = std::collections::HashMap::new();
+    let mut mapa = std::collections::BTreeMap::new();
     for (x, y) in a.as_chunks::<4>().0.iter().zip(b.as_chunks::<4>().0) {
         assert_eq!(*mapa.entry(*x).or_insert(*y), *y);
     }
     let cores: std::collections::BTreeSet<_> = b.as_chunks::<4>().0.iter().collect();
     assert!(cores.len() <= 256, "{}", cores.len());
-    assert!(cores.len() > 200, "o corte desperdiçou a paleta: {}", cores.len());
+    assert!(
+        cores.len() > 200,
+        "o corte desperdiçou a paleta: {}",
+        cores.len()
+    );
 }
 
 #[test]
@@ -145,7 +178,11 @@ fn o_alfa_do_gif_corta_como_o_libresprite() {
     let r = exportar(&s, &pedido(), Formato::Gif, 0).unwrap();
     assert_eq!(r.avisos, [AvisoSaida::GifAlfa]);
     let (d, _) = abrir(&r.ficheiros[0].1, "gif").unwrap();
-    let dele = unhex(o["saidas"]["alfa_parcial"]["gif"]["info"]["first_rgba_hex"].as_str().unwrap());
+    let dele = unhex(
+        o["saidas"]["alfa_parcial"]["gif"]["info"]["first_rgba_hex"]
+            .as_str()
+            .unwrap(),
+    );
     assert_eq!(limpo(q(&d, 0)), limpo(dele));
 }
 
@@ -156,7 +193,9 @@ fn o_png_guarda_o_modo_e_a_paleta() {
     let r = exportar(&ix, &pedido(), Formato::Png, 0).unwrap();
     assert_eq!(r.ficheiros.len(), 1);
     let (_, _, modo, _) = ph2d_imageio_png::decode_pixel(&r.ficheiros[0].1).unwrap();
-    let PixelPng::Indexed(p) = modo else { panic!("{modo:?}") };
+    let PixelPng::Indexed(p) = modo else {
+        panic!("{modo:?}")
+    };
     assert_eq!(p, ix.palette(), "a tabela inteira, com o alfa em tRNS");
     let (d, _) = abrir(&r.ficheiros[0].1, "png").unwrap();
     assert_eq!(d.mode(), ColorMode::Indexed);
@@ -175,7 +214,11 @@ fn varios_quadros_em_png_saem_em_sequencia_e_voltam() {
     let s = doc(&o, "plano");
     let r = exportar(&s, &pedido(), Formato::Png, 0).unwrap();
     let suf: Vec<_> = r.ficheiros.iter().map(|f| f.0.as_str()).collect();
-    assert_eq!(suf, ["1", "2", "3", "4", "5"], "como o LibreSprite: nome1.png…");
+    assert_eq!(
+        suf,
+        ["1", "2", "3", "4", "5"],
+        "como o LibreSprite: nome1.png…"
+    );
     let pngs: Vec<_> = r.ficheiros.iter().map(|f| f.1.clone()).collect();
     let d = abrir_sequencia(&pngs).unwrap();
     for i in 0..5 {
@@ -187,8 +230,27 @@ fn varios_quadros_em_png_saem_em_sequencia_e_voltam() {
 fn a_folha_importada_volta_quadro_a_quadro() {
     let o = oraculo();
     let s = doc(&o, "plano");
-    let f = montar(&s, &OpcoesFolha { tipo: Tipo::Rows, limite: ph2d_pixel_io::sheet::Limite::Colunas(2), shape: 3, border: 2, ..OpcoesFolha::default() }, "t", "png");
-    let g = Grelha { x: 2, y: 2, w: 24, h: 16, gap_x: 3, gap_y: 3, por_colunas: false };
+    let f = montar(
+        &s,
+        &OpcoesFolha {
+            tipo: Tipo::Rows,
+            limite: ph2d_pixel_io::sheet::Limite::Colunas(2),
+            shape: 3,
+            border: 2,
+            ..OpcoesFolha::default()
+        },
+        "t",
+        "png",
+    );
+    let g = Grelha {
+        x: 2,
+        y: 2,
+        w: 24,
+        h: 16,
+        gap_x: 3,
+        gap_y: 3,
+        por_colunas: false,
+    };
     assert_eq!(celulas(&g, f.w, f.h), (2, 3));
     let d = importar_folha(&f.rgba, f.w, f.h, &g).unwrap();
     assert_eq!(d.frames().len(), 6, "a célula vazia do fim também é quadro");
@@ -206,7 +268,9 @@ fn abrir_o_que_nao_se_le_diz_o_que_e() {
 
 #[test]
 fn o_corte_mediano_e_deterministico() {
-    let px: Vec<u8> = (0..4096_u32).flat_map(|i| [(i % 256) as u8, (i / 16) as u8, (i * 7 % 256) as u8, 255]).collect();
+    let px: Vec<u8> = (0..4096_u32)
+        .flat_map(|i| [(i % 256) as u8, (i / 16) as u8, (i * 7 % 256) as u8, 255])
+        .collect();
     let a = gif_cores::reduzir(&[&px]);
     let b = gif_cores::reduzir(&[&px]);
     assert_eq!(a, b);
@@ -221,7 +285,12 @@ fn gif_apng_webp_para_os_de_fora() {
     let o = oraculo();
     for n in ["plano", "duracoes", "muitas_cores", "um_quadro_indexado"] {
         let s = doc(&o, n);
-        for (f, e) in [(Formato::Gif, "gif"), (Formato::Apng, "apng"), (Formato::Webp, "webp"), (Formato::Ase, "ase")] {
+        for (f, e) in [
+            (Formato::Gif, "gif"),
+            (Formato::Apng, "apng"),
+            (Formato::Webp, "webp"),
+            (Formato::Ase, "ase"),
+        ] {
             let r = exportar(&s, &pedido(), f, 0).unwrap();
             std::fs::write(format!("{dir}/{n}.{e}"), &r.ficheiros[0].1).unwrap();
         }

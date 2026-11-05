@@ -374,7 +374,12 @@ impl Sprite {
     /// # Errors
     /// [`CodecError::Invalid`] com o campo que não passou.
     pub fn from_parts(p: SpriteParts) -> Result<Sprite, CodecError> {
-        let last = p.layers.iter().map(|l| l.id.0).chain(p.frames.iter().map(|f| f.id.0)).max();
+        let last = p
+            .layers
+            .iter()
+            .map(|l| l.id.0)
+            .chain(p.frames.iter().map(|f| f.id.0))
+            .max();
         let mut s = Sprite {
             width: p.width,
             height: p.height,

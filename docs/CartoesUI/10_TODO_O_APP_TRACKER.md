@@ -736,6 +736,28 @@ Par travado: a proporção é um dado do cadeado ([`ParTravado`](../../crates/ph
 
 **Decisões tomadas sem o dono.** Arrastar uma alça além do lado oposto não espelha: pára no piso, como já parava; espelhar é o verbo do cartão. O FigJam só documenta a âncora oposta, e o virar por arrasto do Figma só apareceu em fonte fraca. Eixo a zero abre a positivo. Pergunta para o smoke: quer espelhar ao atravessar?
 
+### Fatia F7: fecho do que a F2 deixou incompleto (05/11)
+
+**Bones, Reach + Handles.** O vermelho era do LAYOUT: Reach em y 405, a escolha em y 458. «Manual | From Chain» pede 127 px e a coluna mede 122, e a linha descia (lei 5). Cura pela lei 7, o nome encurta: «Chain» no cartão (`card.bones.handles.chain`); `PH2D_CARDS=0` e o Curve Tip continuam com «From Chain». O teste compara o centro, porque o segmento é registado dentro da pílula. `o_alcance_e_as_alcas_do_bones.rs`: mesma linha, grelha de Length e Segments, clique em cada segmento, pega de Reach. Vermelho visto antes da cura.
+
+**Portões por correr.** `the_vector_panel_crosses_the_display_frontier` (7): verdes, sem cura. `the_pen_down_stores_the_corner`: verde, mas ficara mais fraco que o antigo: um ramo ao lado podia pedir o centro. Agora recusa `anchor_pivot_world` no despacho.
+
+**Ramo novo da alça.** `pivo_da_alca` é a conta de `ramo_gizmo_alca`; `o_pivo_da_alca_tests.rs` corre-a com o `gizmo_anchor_half` real, vetor e sprite espelhados, o sprite sob um pai. O gesto com `App` real continua sem prova: pede janela. A shell encolheu 34 linhas na fatia (+183 −217), por comentários condensados.
+
+**Item 16, cartão preso.** `o_cartao_preso_anda_com_a_sua_forma_e_as_alcas_dela`: do gesto ao pedido no hero real; a escrita é a de `inspector_commits`, sem a fila (pede a shell). Sem mutante próprio: o `transform_do_gesto` citado em `o_bloco5_abertos.rs` já não existe com esse nome.
+
+**Item 11.** Gizmo global com o primário a zero: o fator caía a 1, os outros não mudavam. Curado: o fator sai do pivô partilhado, o primário fica a zero (`partida_do_grupo`, `escala_do_primario`). Seleção rodada: a alça do eixo a zero ficava morta; curado, abre (`uniforme_do_grupo`). Prova pura em `escala_tests`, fiação por `the_group_math_and_its_factor…`; o arrasto de grupo real não correu.
+
+**Item 6: premissa desfeita.** «Stroke ▾» não é seta em letra em cartões: `paint_cartao::face_de_opcao` corta o `▾` da face e pinta `ChevronDown` (foto). A letra só aparece com `PH2D_CARDS=0`, como no «+ Track». `lista_em` pede `CardCtx`, e este chip é da fila: sem mudança de código.
+
+**Mutantes, 25 corridos, 25 vermelhos no fim.** Shell 3. Vector 8: `flutua` (2), `mark_card_field`, recado do ícone, largura da lista, tinta do papel, `cabe`, «+». Gizmo 9: Shift do canto e do lado, `sem_pai`, zero do canto e do lado, lado com piso, e os 3 do item 11. Censo 5: `controlo_curto` fora e `curta` sangraram logo; `pede`, `sob` e `rotulo_livre` sobreviviam; testes novos `a_chip_too_long…`, `a_chip_outside…`, `a_label_answers…`. Lotes com `try/finally`, árvore restaurada.
+
+**Fotos.** `f7_bones_reach_handles.png`, `f7_stroke_seta.png`, `f7_stroke_popover.png` (sobre o HUD, janela baixa), `f7_gizmo_abre_o_zero.png` (o gizmo real em duas poses, não o gesto), pelo arnês `f7_fotos.rs`, não em janela real.
+
+**Decisões tomadas sem o dono.** Individual com outros selecionados e o primário a zero: o primário abre, os outros não mudam nesse eixo, porque de um zero não há razão a ler. Membro a zero numa escala de grupo fica a zero; o Figma não documenta o caso (16). «Chain» em vez de «From Chain» no cartão.
+
+**Aberto.** Barra de rolagem do painel do traço colada aos controlos na janela baixa (foto): não curada, fora do pedido.
+
 ### Revisão de capricho e lei do ritmo (04/11, fatia q)
 
 Queixa do dono na foto do 9-Slice. Lei em [05 §4](05_ESPECIFICACAO_UI_COMPLETA.md) «Ritmo vertical»; lista em [18](18_REVISAO_DE_CAPRICHO.md). Portão `lei_do_ritmo`, por pintura real, em tema `Dark`; `PENDENTES_RITMO` só desce (inspector 6, audio_editor 4, macros 1, painter_layers 6, wet_tuning 8, widget_gallery 18). 54 cartões olhados por `tests/it/q_fotos.rs`. Ordering e Material & Blend estavam fora de todo censo: nasciam dobrados e `abre_as_gavetas` não os abria. Fotos `q_*`. Contraprovas: 4/4 vermelhas (rótulo colado, título sem vão, frase do 9-Slice sem porta, lista sem vão). `ph2d-panel-registry-init` ganhou dev-deps de foto (`ph2d-gpu`, `ph2d-render`, `image`). Aberto: 18, famílias A2, D2, H2, K, L, M, N, O, Script.

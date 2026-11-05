@@ -195,6 +195,36 @@ fn a_linha_de_uma_ferramenta_so_aparece_com_ela_na_mao() {
     set_current_brush(None);
 }
 
+/// O expoente através só age com o seletor em «Own exponent» (R23): em «Same as along» a linha leva a dica; o seletor
+/// fica logo acima e nunca esmaece.
+#[test]
+fn o_expoente_atraves_esmaece_sem_o_seletor() {
+    let dica = ph2d_i18n::tr(ph2d_tool_painter::Dependente::ExpoenteAtravesSemProprio.dica());
+    let linha = |chave: &str| {
+        rows::rows()
+            .iter()
+            .find(|r| r.key == chave)
+            .expect("a linha existe")
+    };
+    let (seletor, expoente) = (linha("textureAcrossOwn"), linha("textureAcrossExp"));
+    assert!(seletor.options.is_some(), "o seletor é uma escolha de 2");
+    for (proprio, esperado) in [(0.0, true), (1.0, false)] {
+        let mut t = ferramenta(WetTool::Paint, false);
+        // A rota do clique na opção (`event.rs`): o `SetValue` no slider da linha, ao índice da opção.
+        t.handle_panel_event(PanelEvent::SetValue(seletor.slider, proprio));
+        let mesa = Mesa::nova(&t);
+        assert!(mesa.rect(expoente.slider).is_some(), "o expoente pintado");
+        for id in [expoente.slider, expoente.chip] {
+            assert_eq!(
+                mesa.host.store().tooltip_for(id).is_some_and(|t| t == dica),
+                esperado,
+                "o expoente com o seletor em {proprio}"
+            );
+        }
+    }
+    set_current_brush(None);
+}
+
 /// Depth, Gloss e Paper Press só agem com o Real Oil: desligado, a linha leva a dica (e o véu); ligado, nenhuma.
 #[test]
 fn o_material_do_oleo_esmaece_sem_o_real_oil() {

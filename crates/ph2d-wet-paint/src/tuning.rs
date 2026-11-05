@@ -263,8 +263,8 @@ pub enum Knob {
     KnifeLevel,
     /// ⭐ **O expoente da textura ATRAVÉS do traço** (W3 K5, `docs/Painter/Pinceis/W3_K5.md`): o
     /// [`Knob::TextureSizeExp`] fica no 1.º eixo do Size das cerdas do Shape (X: ao longo do traço com Flow/Rake e
-    /// ângulo 0) e este no 2.º (Y: através) — os fios do leque crescem num eixo sem engrossar no outro. Negativo (o
-    /// default) = o mesmo `γ` nos dois eixos, ao bit.
+    /// ângulo 0) e este no 2.º (Y: através) — os fios do leque crescem num eixo sem engrossar no outro. Só age com
+    /// [`Knob::TextureAcrossOwn`] ligado.
     TextureSizeExpAcross,
     /// … Transmission (W3b, o «Transmission Weight» do Principled): a luz atravessa o filme, bate no papel e volta
     /// tingida ([`crate::material::transmite`]). No FIM do enum: a ordem dos knobs é a dos índices.
@@ -363,9 +363,12 @@ pub enum Knob {
     /// ⭐ **O CORPO** (E10, dono 01/11 Q9): a tensão de cedência do PINCEL somada à do meio; viaja na célula com a
     /// tinta e substitui a parede binária `levelingOwnStroke` (Bug #56). `0` = só a do meio.
     Body,
+    /// **O eixo através tem expoente próprio** (seletor de 2, R23): `0` = o mesmo `γ` nos dois eixos, ao bit; `1` =
+    /// o [`Knob::TextureSizeExpAcross`]. Substitui a sentinela `-0,01` que esse knob guardava.
+    TextureAcrossOwn,
 }
 
-pub const KNOB_COUNT: usize = 142;
+pub const KNOB_COUNT: usize = 143;
 
 /// O LEITOR TOLERANTE das chaves do material de antes da W3 (preset e macro gravados com elas): `(knob, valor)`
 /// na lei nova, `None` para uma chave que não é antiga. `roughnessMul` m → Roughness `0,5·m` (o neutro `1` → `0,5`,
@@ -381,6 +384,16 @@ pub fn chave_antiga(key: &str, v: f64) -> Option<(Knob, f64)> {
         "translucency" => (Knob::Subsurface, v),
         _ => return None,
     })
+}
+
+/// O `textureSizeExpAcross` de antes de R23 (preset e macro gravados com ele): `v ≥ 0` = expoente próprio `v`;
+/// negativo (a sentinela) = o mesmo dos dois eixos, que é a omissão. `None` para qualquer outra chave.
+#[must_use]
+pub fn chave_antiga_atraves(key: &str, v: f64) -> Option<[(Knob, f64); 2]> {
+    (key == "textureSizeExpAcross" && v >= 0.0).then_some([
+        (Knob::TextureAcrossOwn, 1.0),
+        (Knob::TextureSizeExpAcross, v),
+    ])
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -516,6 +529,29 @@ mod tests {
         for (i, d) in KNOB_DEFS.iter().enumerate() {
             assert_eq!(d.knob as usize, i, "KNOB_DEFS[{i}] holds {:?}", d.knob);
         }
+    }
+
+    /// R23: «desligado» é um seletor, nunca um valor abaixo da faixa escondido dentro de um número.
+    #[test]
+    fn nenhum_knob_guarda_uma_sentinela_negativa() {
+        for d in &KNOB_DEFS {
+            assert!(d.min >= 0.0, "{}: mínimo {}", d.key, d.min);
+        }
+    }
+
+    #[test]
+    fn o_expoente_atraves_antigo_vira_o_seletor() {
+        let atraves = |v| chave_antiga_atraves("textureSizeExpAcross", v);
+        assert_eq!(atraves(-0.01), None, "a sentinela é a omissão");
+        assert_eq!(atraves(f64::NAN), None);
+        assert_eq!(
+            atraves(0.0),
+            Some([
+                (Knob::TextureAcrossOwn, 1.0),
+                (Knob::TextureSizeExpAcross, 0.0)
+            ])
+        );
+        assert_eq!(chave_antiga_atraves("textureAcrossExp", 0.5), None);
     }
 
     #[test]

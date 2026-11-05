@@ -395,8 +395,6 @@ fn n_camadas_de_amarelo_sobre_azul_seco_convergem_sem_preto() {
                 e.sim.glaze = 0.47;
                 e.sim.lei = ph2d_wet_paint::assenta::Lei::Porto;
                 e.sim.molhada_escurece = 1.0;
-                e.tuning
-                    .set(ph2d_wet_paint::tuning::Knob::PigmentPerDab, 800.0);
             };
             barra("controlo", &cena(false, 10, km(TUDO), &antes), true)
         });
@@ -536,8 +534,6 @@ fn o_traco_nao_muda_de_tom_ao_secar() {
         e.sim.glaze = 0.47;
         e.sim.glaze_filme = 0.20;
         e.sim.molhada_escurece = 1.0;
-        e.tuning
-            .set(ph2d_wet_paint::tuning::Knob::PigmentPerDab, 800.0);
     };
     let pior = |v: &[[f64; 3]]| v[1..].iter().map(|c| tom(v[0], *c)).fold(0.0, f64::max);
     // Uma condição por thread (independentes; o gancho `CAIXAS` é por thread).

@@ -332,6 +332,12 @@ impl PainterTool {
             if let Some((knob, v)) = ph2d_wet_paint::tuning::chave_antiga(chave, v) {
                 k.set(knob, v);
             }
+            for (knob, v) in ph2d_wet_paint::tuning::chave_antiga_atraves(chave, v)
+                .into_iter()
+                .flatten()
+            {
+                k.set(knob, v);
+            }
         }
         // A Dry speed é da TELA (dono 01/11 Q3): o preset não a lê — fica a de agora.
         for def in KNOB_DEFS.iter().filter(|d| d.knob != Knob::Evaporation) {

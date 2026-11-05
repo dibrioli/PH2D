@@ -219,7 +219,7 @@ Regra única: **mover a fracção α de uma fatia move α de `v`, de `K_Σ` e de
 | R20 `PorCima` por omissão | E5 | |
 | R21 dois pipelines óleo/sem | E5 (§3.3) | |
 | R22 constantes Rebelle | E12 | `colorops.rs:101-192` apagadas |
-| R23 sentinela `-0.01` | E10 (controlos) | knob → bool explícito ou sai |
+| R23 sentinela `-0.01` | E10 (controlos) | knob → bool explícito ou sai. **FEITA 04/11:** `textureSizeExpAcross` virou o seletor `textureAcrossOwn` (0 Same as along · 1 Own exponent, `KNOB_COUNT` 143) + `textureAcrossExp` 0..1,5; esmaece em «Same as along» (`Dependente::ExpoenteAtravesSemProprio`); a chave antiga lê-se por `tuning::chave_antiga_atraves` (só o ficheiro do Fan a grava, valor 0; NÃO regravado — é do dono); gate `nenhum_knob_guarda_uma_sentinela_negativa` |
 
 ## 5. A ESCOLHA EM EXECUÇÃO
 

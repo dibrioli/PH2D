@@ -508,7 +508,7 @@ pela K-M em vez de tapar com branco. NÃO cura o #54: o Marker Bullet e a faixa 
 escorreu sem ele (`oleo` 0) seguem a lei da obra — continuam creme no papel de cor
 ([prancha](Pinceis/pranchas/J8_over_oil_tint_mix_blend.jpg)). Estender a lei a toda a tinta é a decisão pendente.
 
-## Bug #56 (ABERTO, E10) — a parede entre traços (`levelingOwnStroke = 1`) EMPILHA a tinta molhada da água
+## Bug #56 (CURADO na régua 04/11, falta o olho do dono no smoke) — a parede entre traços (`levelingOwnStroke = 1`) EMPILHA a tinta molhada da água
 
 Medido em 31/10 ([F3b §1](Arquitetura/F3b_medicoes.md), teste `f3_body_dois_tracos`, dois traços que se cruzam, o 2.º
 sobre o 1.º molhado): Wet Liner, Wet Wash e Gouache Opaque com a parede retêm 100 % do 1.º traço mas a orla p99 sobe a
@@ -516,6 +516,56 @@ sobre o 1.º molhado): Wet Liner, Wet Wash e Gouache Opaque com a parede retêm 
 do 1.º. A parede é binária (0/1), não uma tensão de cedência. Nos 12 óleos a parede não muda nada (≤ 0,02 µm): o meio
 basta. Decisão de produto no smoke da E10 (o Body sai e os três escoam como as outras águas, ou fica como tensão de
 cedência somada à do meio); a pilha cura-se com essa decisão, nunca com um tecto.
+
+**Medido em 04/11 (curado na régua).** `f3_body_dois_tracos` e `f3_espessura_relevo_body` (`crates/ph2d-wet-paint/tests/f3_medicoes.rs`;
+nova variável `PH2D_F3_LEI=velha|pigmento`, por omissão Pigmento; Engine directo, 29 px para quem não grava `size_px`, Filbert 64 px;
+preset lido dos `.ph2d-brush.png`). Dois traços cruzados, o 1.º molhado, Body 0 → 0,16 (a lei Velha dá o mesmo a ±3 %):
+
+| pincel | borda p99 µm | cruz p99 µm | fuga de massa |
+|---|---|---|---|
+| Wet Liner | 0,034 → 0,029 | 0,129 → 0,151 | 0 |
+| Wet Wash | 0,006 → 0,006 | 0,030 → 0,034 | 0 |
+| Gouache Opaque | 0,924 → 0,271 | 0,649 → 0,848 | 0,0001 → 0 |
+| Filbert (controlo, óleo) | 0,182 igual ao bit nos dois Body | | |
+
+3 passadas no mesmo eixo, µm p99 com o Body de fábrica: Wet Liner 0,266 · Wet Wash 0,053 · Gouache Opaque 1,668 · Filbert 3,411
+(com a parede de antes eram 49,3 e até 300). A Gouache Opaque SEM Body deixa fugir 12,3 % da massa em 3 passadas (1 010 células
+fora); com ele, 0.
+⚠️ **Limite da régua:** em 01/11 (E10a2) as bordas eram 0,8–4,4 µm e hoje são uma ordem abaixo porque as alturas caíram (a migração
+para Dilution/Volume); o número absoluto não se compara, vale a RELAÇÃO: a borda fica ABAIXO do miolo em todos, e na Gouache sem
+Body ela ficava ACIMA (0,924 > 0,649). Sem a ferramenta (sem cerdas nem caneta): falta o olho do dono no smoke.
+
+## Bug #61 (CURADO na régua 04/11, falta o smoke) — «Same as Paper» do Grain pousa até 20× a tinta nos pincéis de cerdas
+
+Relato do dono no smoke de 04/11 (Wet Drip e os outros). **Mecanismo:** o `texv` do depósito (`ph2d-wet-paint/src/trail/deposit.rs:169`,
+`stamp = fall·texv·intensity`) é o tapete de cerdas (média ~0,02, [doc 27 D7](../NewFeaturesWetPaint/27_plano_shape_casa_dos_pinceis.md))
+e um Grain armado SUBSTITUI-o (`wetpaint/pousa_o_dab.rs`); a média do papel é muito maior. **Quem esconde:** os ficheiros gravam
+Shape `None`, mas as chaves `bristle*` migram o pincel para Shape Bristles ao aplicar: lê-se como pincel liso e é de cerdas.
+
+Medido (traço de 40 px; massa e ecrã ÷ sem a opção; «lisa» = sem cerdas nem grão; «noise» = Grain Noise escolhido à mão):
+
+| pincel | papel massa/ecrã | lisa massa | noise massa | cura massa/ecrã |
+|---|---|---|---|---|
+| Wet Drip | 9,87 / 4,46 | 11,92 | 8,00 | 1,01 / 1,00 |
+| Wet Round | 13,76 / 5,86 | 16,90 | 10,71 | 1,01 / 1,00 |
+| Wet Wash | 0,99 / 0,99 | 1,00 | 0,93 | 0,99 / 0,99 |
+| Wet Liner | 0,99 / 0,99 | 1,00 | 0,92 | 0,99 / 0,99 |
+| Wet Dry Brush | 20,31 / 5,06 | 23,02 | 16,51 | 1,01 / 1,01 |
+| Gouache Opaque | 1,94 / 1,19 | 1,94 | 1,96 | 1,01 / 1,00 |
+| Filbert | 1,65 / 1,14 | 1,66 | 1,70 | 0,98 / 0,99 |
+| Dabber | 1,68 / 1,18 | 1,74 | 1,50 | 1,01 / 0,99 |
+
+(Wet Wash e Wet Liner têm filme liso: não usam o tapete.) ⚠️ A coluna «cura» vem da simulação com a média do papel medida por dab;
+a versão final mede-a numa grelha fixa da tela por lote (`wetpaint/lote.rs::media_do_grao`), logo os números finais são os que o
+gate imprime — confirmar num lugar.
+
+**Cura:** com «Same as Paper» sobre cerdas, as cerdas continuam a ser o `texv` e o papel entra DEPOIS do portão (o `padrao`),
+dividido pela sua média (`LoteDoDab::media_do_papel`, `pousa_o_dab.rs`, `dab_route.rs`). Gates em
+`wetpaint/same_as_paper_volume_tests.rs`: `o_same_as_paper_nao_muda_a_quantidade_de_tinta` (0,9–1,1 em 8 pincéis) e
+`o_same_as_paper_ainda_desenha_o_papel`. As Grain Colors (`grao_e_cor`) ficam como estavam.
+
+⚠️ **ABERTO, decisão do dono:** escolher um Grain qualquer à mão num pincel de cerdas dá o mesmo salto (coluna noise, até 16,5×).
+É a decisão D7 do doc 27 (os pastéis pintam pelo grão) e a cura mudaria presets aprovados que têm cerdas + grão; não foi tocada.
 
 ## Bug #57 (FECHADO 04/11) — `wet_water` com `PAINTER_WETPAINT_FASTDRY`: de raiz × de `instantaneo()` difere
 

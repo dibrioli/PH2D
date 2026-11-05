@@ -61,7 +61,11 @@ fn knob(key: &str) -> Option<Knob> {
 
 fn motor(p: &Pre, extra: &[(Knob, f64)]) -> Engine {
     let mut e = Engine::new(W, H);
-    e.sim.set_tinta(LeiDaTinta::Pigmento);
+    // `PH2D_F3_LEI=velha` mede a outra lei; por omissão, a nova.
+    e.sim.set_tinta(
+        std::env::var("PH2D_F3_LEI")
+            .map_or(LeiDaTinta::Pigmento, |l| l.parse().expect("PH2D_F3_LEI")),
+    );
     let mut oleo = false;
     for (k, v) in &p.knobs {
         if k == "realOil" {

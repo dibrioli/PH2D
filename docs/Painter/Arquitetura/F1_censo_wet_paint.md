@@ -227,7 +227,7 @@
 | R20 | `wp/render.rs:463-465` | o render troca `PorCima(glaze)` por omissão quando a lei não é `Cobre`/`Camada`. |
 | R21 | `wp/render.rs:487` `w_oleo = c.oleo_em(cx,cy)` + `render_pigment_row_oleo*` (`render.rs:378,407,722`) | o píxel final mistura a óptica do óleo com a da tinta sem óleo pela fracção de óleo da célula — dois pipelines de cor. |
 | R22 | `wp/colorops.rs:101,169-182` `TINTA_ESCONDE`, `TINTA_ESCONDE_EM_VELATURA`, `VELATURA_MEDIDA`, `VELATURA_DO_FILME(_VIVA)`, `molhada_escurece` | constantes calibradas contra o Rebelle que fazem de parâmetros escondidos da lei (`authored_actions.rs:59-65` fixa `pickup_assentado=0`, `lei=Cobre`, `esconde=TINTA_ESCONDE`). |
-| R23 | `wp/tuning/defs.rs:306` `TextureSizeExpAcross` mín. `-0.01` = «desligado» | sentinela numérica num knob. |
+| R23 | `wp/tuning/defs.rs:306` `TextureSizeExpAcross` mín. `-0.01` = «desligado» | sentinela numérica num knob. **FEITA 04/11:** seletor `textureAcrossOwn` (0 Same as along · 1 Own exponent, `Knob::TextureAcrossOwn`, `KNOB_COUNT` 143) + `textureAcrossExp` 0..1,5; chave antiga por `tuning::chave_antiga_atraves`; gate `nenhum_knob_guarda_uma_sentinela_negativa`. |
 
 **Leitura:** a cor de uma célula sai de `Lei` × `ColorMix` × (`filme`,`esconde`,`molhada`,`vela`,`oleo` com sinal,`opaca`) × caixa das tintas × (pipeline óleo | sem óleo); a aguarela, a guache, o óleo e o Óleo Real são combinações destes ramos, não pontos de uma escala.
 

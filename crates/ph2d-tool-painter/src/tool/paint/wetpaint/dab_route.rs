@@ -265,6 +265,8 @@ impl PainterTool {
         let esmaece_fino = super::rota_da_lane::esmaece_fino(&sess.engine, brush);
         let escala_tex = super::lote::escala_da_textura(&sess.engine, brush);
         let grao_e_o_papel = self.grao_e_o_papel_do(brush);
+        let media_do_papel = (grao_e_o_papel && cerdas && grain_active && !grao_e_cor)
+            .then(|| super::lote::media_do_grao(brush, grain_image.as_ref(), canvas_wh));
         let pigmento_da_marca = if marca_do_spray {
             super::lote::pigmento_da_marca(brush)
         } else {
@@ -338,6 +340,7 @@ impl PainterTool {
             esmaece_fino,
             escala_tex,
             grao_e_o_papel,
+            media_do_papel,
             pigmento_da_marca,
             escala_cerdas,
             copia: &copia,

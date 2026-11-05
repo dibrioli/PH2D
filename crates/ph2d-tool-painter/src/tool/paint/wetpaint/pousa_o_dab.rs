@@ -38,6 +38,7 @@ pub(super) struct LoteDoDab<'a> {
     pub(super) esmaece_fino: f64,
     pub(super) escala_tex: f32,
     pub(super) grao_e_o_papel: bool,
+    pub(super) media_do_papel: Option<f64>,
     pub(super) pigmento_da_marca: f32,
     pub(super) escala_cerdas: [f32; 2],
     pub(super) copia: &'a [u32],
@@ -90,6 +91,7 @@ pub(super) fn pousa_o_dab(
         esmaece_fino,
         escala_tex,
         grao_e_o_papel,
+        media_do_papel,
         pigmento_da_marca,
         escala_cerdas,
         copia,
@@ -473,9 +475,9 @@ pub(super) fn pousa_o_dab(
     // centro do dab (`x − cx`, como `brush.rs::stamp_row_shaped`) — no neutro, o `sample_bristle` do
     // motor ao bit. Um Grain armado continua a tomar o lugar delas (W2.4; D7 medido no 27 §6.7).
     // Com o FILME do traço (`Knob::StrokeFilm`, J4 aguarela) o tapete fica de fora: a lavagem é lisa.
-    let cerdas_sb = shape_basis
-        .as_ref()
-        .filter(|_| cerdas && grain.is_none() && !filme_liso && !marca_do_spray);
+    let cerdas_sb = shape_basis.as_ref().filter(|_| {
+        cerdas && (grain.is_none() || media_do_papel.is_some()) && !filme_liso && !marca_do_spray
+    });
     let cerdas_fn = cerdas_sb.map(|sb| {
         let forma = &spec_ref.shape;
         let px_por_celula = f64::from(ratio);
@@ -507,6 +509,7 @@ pub(super) fn pousa_o_dab(
     let grain_arg: Option<ph2d_wet_paint::brush::CellFn<'_>> =
         Some(match (grain.as_ref(), cerdas_fn.as_ref()) {
             (Some(_), _) if grao_e_cor => &lisa,
+            (Some(_), Some(c)) => c,
             (Some(g), _) => g,
             (None, Some(c)) => c,
             (None, None) => &lisa,
@@ -521,6 +524,20 @@ pub(super) fn pousa_o_dab(
         r.padrao(padrao_arg, &sil, ratio, pegada)
     });
     let padrao_arg = pad
+        .as_ref()
+        .map_or(padrao_arg, |p| Some(p as ph2d_wet_paint::brush::CellFn<'_>));
+    // «Same as Paper» sobre cerdas (Bug #61): elas continuam a dar a quantidade e o papel desenha depois do portão, de
+    // média 1 — o tapete tem média ~0,02 e trocá-lo pelo papel pousava até 20× a tinta.
+    let papel_depois = cerdas_fn
+        .as_ref()
+        .zip(grain.as_ref())
+        .zip(media_do_papel)
+        .map(|((_, g), media)| {
+            move |cx: i32, cy: i32| -> f64 {
+                g(cx, cy) / media * padrao_arg.map_or(1.0, |p| p(cx, cy))
+            }
+        });
+    let padrao_arg = papel_depois
         .as_ref()
         .map_or(padrao_arg, |p| Some(p as ph2d_wet_paint::brush::CellFn<'_>));
     // As pontas rectas: metade dos dabs cobre cada célula — a soma volta pelo padrão (depois do portão), e a

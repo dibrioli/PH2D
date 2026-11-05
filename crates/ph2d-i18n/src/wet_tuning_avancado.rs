@@ -68,7 +68,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.wet_tuning.knob.dustDrop" => "Dust grain size",
         "panel.wet_tuning.knob.textureSizeExp" => "Texture follows brush size",
         "panel.wet_tuning.knob.textureSizeRef" => "Texture size reference",
-        "panel.wet_tuning.knob.textureSizeExpAcross" => "Texture follows size across",
+        "panel.wet_tuning.knob.textureAcrossOwn" => "Texture across the stroke",
+        "panel.wet_tuning.option.textureAcrossOwn.0" => "Same as along",
+        "panel.wet_tuning.option.textureAcrossOwn.1" => "Own exponent",
+        "panel.wet_tuning.knob.textureAcrossExp" => "Texture follows size across",
         // Water — a borda graduada da secagem (31/10).
         "panel.wet_tuning.knob.edgeSoftMass" => "Edge darkening fades with the paint",
         // Wet effects — o que a água faz depois.

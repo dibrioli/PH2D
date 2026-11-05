@@ -40,7 +40,7 @@ pub const UNIDADES: [(&str, ph2d_editor_core::widget::Unit); 1] =
 
 /// The knobs painted as a 2-way CHOICE (dono 28/10: the Transmission mode — Blender · Clear glass — is a selector,
 /// never a slider nor a checkbox). Each is `0..1` with step `1` in the registry.
-pub const CHOICES: [&str; 1] = ["transmissionMode"];
+pub const CHOICES: [&str; 2] = ["transmissionMode", "textureAcrossOwn"];
 
 impl TuneRow {
     /// ⭐ **A linha é da ferramenta na MÃO?** — a de um knob que só uma ferramenta da água lê
@@ -164,6 +164,15 @@ pub fn rows() -> &'static [TuneRow] {
                     .unwrap_or(rows.len());
                 rows.insert(j, r);
             }
+        }
+        // O seletor logo acima do expoente que ele acorda (o enum é append-only; a ordem aqui é de EXIBIÇÃO).
+        if let Some(i) = rows.iter().position(|r| r.key == "textureAcrossOwn") {
+            let seletor = rows.remove(i);
+            let j = rows
+                .iter()
+                .position(|r| r.key == "textureAcrossExp")
+                .unwrap_or(rows.len());
+            rows.insert(j, seletor);
         }
         rows
     })
@@ -338,7 +347,7 @@ mod tests {
     /// Mais 1 a 31/10: o arco dos tufos do leque (`tuftArc`) no Bristles (20 → 21).
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 91);
+        assert_eq!(rows().len(), 92);
         for g in [
             (KnobGroup::Paint, 19),
             (KnobGroup::Water, 7),
@@ -346,7 +355,7 @@ mod tests {
             (KnobGroup::Tools, 6),
             (KnobGroup::Paper, 1),
             (KnobGroup::Bristles, 21),
-            (KnobGroup::Stroke, 11),
+            (KnobGroup::Stroke, 12),
             (KnobGroup::WetEffects, 4),
             (KnobGroup::Material, 16),
         ] {
@@ -472,7 +481,12 @@ mod tests {
             .filter(|r| r.options.is_some())
             .map(|r| r.key)
             .collect();
-        assert_eq!(escolhas, CHOICES, "só o modo da Transmission é um seletor");
+        assert_eq!(
+            escolhas.len(),
+            CHOICES.len(),
+            "os seletores são os de CHOICES"
+        );
+        assert!(CHOICES.iter().all(|k| escolhas.contains(k)));
         for k in CHOICES {
             let d = KNOB_DEFS.iter().find(|d| d.key == k).expect("knob");
             assert_eq!(

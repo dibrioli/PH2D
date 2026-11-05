@@ -216,19 +216,53 @@ pub(super) fn escala_as_cerdas(
 }
 
 /// O factor das cerdas ATRAVÉS do traço: `(D ÷ ref)^γ⊥` com `γ⊥` = [`ph2d_wet_paint::tuning::Knob::TextureSizeExpAcross`];
-/// negativo (o default) = o `escala` do [`escala_da_textura`], ao bit.
+/// com [`ph2d_wet_paint::tuning::Knob::TextureAcrossOwn`] desligado (o default), o `escala` do [`escala_da_textura`], ao bit.
 pub(super) fn escala_atraves(
     engine: &ph2d_wet_paint::painter::Engine,
     brush: &BrushSpec,
     escala: f32,
 ) -> f32 {
     use ph2d_wet_paint::tuning::Knob;
-    let gama = engine.tuning.get(Knob::TextureSizeExpAcross);
-    if gama < 0.0 {
+    if engine.tuning.get(Knob::TextureAcrossOwn) <= 0.0 {
         return escala;
     }
+    let gama = engine.tuning.get(Knob::TextureSizeExpAcross);
     let d = 2.0 * f64::from(brush.clamped_radius()).max(0.5);
     (d / engine.tuning.get(Knob::TextureSizeRef).max(1.0)).det_powf(gama) as f32
+}
+
+/// A média do grão preso à tela, numa grelha fixa da tela (não depende de onde o traço passa nem de como os dabs se
+/// agrupam em lotes): a régua que deixa o papel desenhar sem mudar a quantidade (Bug #61).
+pub(super) fn media_do_grao(
+    brush: &BrushSpec,
+    imagem: Option<&ph2d_painter_brush::ImageMask<'_>>,
+    canvas_wh: [f32; 2],
+) -> f64 {
+    const LADO: i64 = 64;
+    const PASSO: i64 = 7;
+    let mut rng = 0u64;
+    let base = ph2d_painter_brush::texture::dab_basis(
+        &brush.texture,
+        &mut rng,
+        canvas_wh,
+        ph2d_painter_brush::footprint::FootprintDeform::identity(),
+    );
+    let mut soma = 0.0;
+    for y in 0..LADO {
+        for x in 0..LADO {
+            soma += f64::from(ph2d_painter_brush::dab::grain_at_na_ponta(
+                brush,
+                &base,
+                imagem,
+                x * PASSO,
+                y * PASSO,
+                [0.0, 0.0],
+                brush.clamped_radius(),
+                1.0,
+            ));
+        }
+    }
+    (soma / (LADO * LADO) as f64).max(1e-3)
 }
 
 /// ⭐ **A nuvem do spray pousa o pigmento de UM dab** (W3 K5, `docs/Painter/Pinceis/W3_K5.md`): o depósito do Wet é

@@ -70,6 +70,8 @@ const CHAVE_REAL_OIL: &str = "realOil";
 pub(crate) const SEM_KM: (&str, f64) = ("pigmentMixing", 0.0);
 /// A chave da parede binária de antes da E10, que os ficheiros de fábrica ainda gravam.
 const PAREDE_DE_ANTES: &str = "levelingOwnStroke";
+/// O expoente através de antes de R23, que o ficheiro do Fan ainda grava (`tuning::chave_antiga_atraves`).
+const ATRAVES_DE_ANTES: &str = "textureSizeExpAcross";
 
 fn raiz() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes")
@@ -207,6 +209,7 @@ pub(super) fn parametros(r: &Receita) -> Parametros {
         assert!(
             (chave == SEM_KM.0 && v == SEM_KM.1)
                 || chave == PAREDE_DE_ANTES
+                || chave == ATRAVES_DE_ANTES
                 || ph2d_wet_paint::tuning::KNOB_DEFS
                     .iter()
                     .any(|d| d.key == chave),

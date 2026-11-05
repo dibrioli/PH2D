@@ -149,6 +149,37 @@ fn o_eixo_atraves_tem_expoente_proprio() {
         miniatura_do_preset(&com(None)),
         "o expoente através negativo tem de ser o de sempre, ao byte"
     );
+    // R23: a sentinela virou seletor. O ficheiro antigo abre igual ao novo, e o seletor é quem decide.
+    let novo = |proprio: f64, expoente: f64| {
+        let mut p = com(None);
+        for (k, v) in [
+            ("textureAcrossOwn", proprio),
+            ("textureAcrossExp", expoente),
+        ] {
+            p.parametros.engine.insert(k.into(), v);
+        }
+        p
+    };
+    assert_eq!(
+        miniatura_do_preset(&com(Some(0.0))),
+        miniatura_do_preset(&novo(1.0, 0.0)),
+        "o `textureSizeExpAcross` 0 antigo é o Own exponent 0"
+    );
+    assert_eq!(
+        miniatura_do_preset(&novo(0.0, 0.7)),
+        miniatura_do_preset(&com(None)),
+        "em Same as along o expoente escrito não age"
+    );
+    let mut as_duas = com(Some(0.0));
+    as_duas
+        .parametros
+        .engine
+        .insert("textureAcrossOwn".into(), 0.0);
+    assert_eq!(
+        miniatura_do_preset(&as_duas),
+        miniatura_do_preset(&com(None)),
+        "com as duas chaves, a nova manda"
+    );
     let (ax, ay) = transicoes(&com(None));
     let (bx, by) = transicoes(&com(Some(0.0)));
     let (dois, um) = (ay / ax, by / bx);

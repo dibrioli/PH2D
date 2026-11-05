@@ -263,7 +263,12 @@ fn dica_da_inercia(
         match dica {
             Some(chave) => store.set_tooltip(id, tr(chave)),
             None if store.tooltip_for(id).is_some_and(|t| {
-                t == tr(ph2d_tool_painter::Dependente::MaterialSemOleo.dica())
+                [
+                    ph2d_tool_painter::Dependente::MaterialSemOleo,
+                    ph2d_tool_painter::Dependente::ExpoenteAtravesSemProprio,
+                ]
+                .iter()
+                .any(|d| t == tr(d.dica()))
             }) =>
             {
                 store.set_tooltip(id, "");

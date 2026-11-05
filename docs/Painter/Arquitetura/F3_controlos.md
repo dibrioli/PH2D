@@ -260,7 +260,7 @@ padrão (matriz (b)). **⚑** = o destino depende de uma medição antes de deci
 | 119 | `transparency` (301) | S | **Transparency** | 0 | |
 | 120 | `lockMaterial` (302) | R | bool; o material da célula é a média pelo volume (como `m`, E9 §7.1) | 0 | |
 | 121 | `knifeLevel` (304) | T | Knife **Strength** | 1 | |
-| 122 | `textureSizeExpAcross` (306) | R | sentinela −0,01 (R23), D18 | 0 | |
+| 122 | `textureSizeExpAcross` (306) | R | sentinela −0,01 (R23), D18 — **FEITA 04/11:** seletor `textureAcrossOwn` (0 Same as along · 1 Own exponent) + `textureAcrossExp` 0..1,5; chave antiga por `chave_antiga_atraves` | 0 | |
 | 123 | `transmission` (308) | M | **Transparency** | 0 | |
 | 124 | `paperRelief` (309) | C | **Relief** × (1 − `C`) pela luz | 0 | |
 | 125 | `transmissionMode` (311) | R | bool | 0 | |

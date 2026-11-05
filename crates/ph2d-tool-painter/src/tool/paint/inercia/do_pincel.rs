@@ -92,7 +92,11 @@ impl PainterTool {
             (
                 Dependente::CerdasDaAgua,
                 agua && b.shape.kind == ph2d_painter_brush::TextureKind::Bristles
-                    && (g.grain_samples(imagem_do_grao)
+                    // O «Same as Paper» não tira as cerdas: o papel desenha por cima delas (Bug #61). Com as Grain
+                    // Colors o grão só dá a cor e a ponta é lisa.
+                    && ((g.grain_samples(imagem_do_grao)
+                        && (!self.grao_e_o_papel()
+                            || self.paint.texture_ramp_enabled))
                         || (!self.paint.eraser
                             && self.paint.wetpaint.tool != super::super::WetTool::Paint)),
             ),
@@ -163,6 +167,15 @@ impl PainterTool {
             (
                 Dependente::MaterialSemOleo,
                 agua && self.paint.wetpaint.oleo_real.is_none(),
+            ),
+            (
+                Dependente::ExpoenteAtravesSemProprio,
+                agua && self
+                    .paint
+                    .wetpaint
+                    .knobs
+                    .get(ph2d_wet_paint::tuning::Knob::TextureAcrossOwn)
+                    <= 0.0,
             ),
             // A Watercolor com a Shape «Automatic» não lê a pegada deitada (`inclinacao_dos_antigos`).
             (

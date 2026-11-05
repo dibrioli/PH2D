@@ -70,10 +70,12 @@ pub enum Dependente {
     // O material do Real Oil no Tuning (Depth, Gloss, Paper Press): sem o Real Oil a célula é NEUTRA
     // (`grid/oleo_celula.rs::do_pincel`) e o relevo do papel na tinta nem se soma (`oleo_real.rs`).
     MaterialSemOleo,
+    // O expoente através só vale com o seletor em «Own exponent» (`lote.rs::escala_atraves`).
+    ExpoenteAtravesSemProprio,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 44] = [
+    pub const TODOS: [Dependente; 45] = [
         Dependente::ForaDaPontaDePixel,
         Dependente::TaperTip,
         Dependente::TaperOpacity,
@@ -118,6 +120,7 @@ impl Dependente {
         Dependente::MaciezSemDureza,
         Dependente::WashComAccumulate,
         Dependente::MaterialSemOleo,
+        Dependente::ExpoenteAtravesSemProprio,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -222,6 +225,7 @@ impl Dependente {
             // «Speed lag», pela ordem de `LINHAS_DA_MAO`.
             Dependente::AtrasoSemVelocidade => &[ids::PAINTER_PEN_FIELDS[20]],
             Dependente::MaterialSemOleo => material_do_oleo(),
+            Dependente::ExpoenteAtravesSemProprio => expoente_atraves(),
         }
     }
 
@@ -278,6 +282,7 @@ impl Dependente {
             Dependente::DualForaDoTraco => "panel.painter_layers.inerte.freehand_paint_stroke",
             Dependente::AtrasoSemVelocidade => "panel.painter_layers.inerte.speed_on",
             Dependente::MaterialSemOleo => "panel.wet_tuning.inerte.real_oil_on",
+            Dependente::ExpoenteAtravesSemProprio => "panel.wet_tuning.inerte.texture_across_own",
         }
     }
 
@@ -317,6 +322,17 @@ fn material_do_oleo() -> &'static [NodeId] {
             .iter()
             .flat_map(|k| [ids::wet_tuning_slider_id(k), ids::wet_tuning_chip_id(k)])
             .collect()
+    })
+}
+
+/// A linha do expoente através: o slider e o chip.
+fn expoente_atraves() -> &'static [NodeId] {
+    static IDS: std::sync::OnceLock<[NodeId; 2]> = std::sync::OnceLock::new();
+    IDS.get_or_init(|| {
+        [
+            ids::wet_tuning_slider_id("textureAcrossExp"),
+            ids::wet_tuning_chip_id("textureAcrossExp"),
+        ]
     })
 }
 

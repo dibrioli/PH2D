@@ -296,8 +296,8 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::LockMaterial, KnobGroup::Material, "lockMaterial", 0.0, 1.0, 1.0, 0.0, None),
     // a faca que nivela (W3 K3a): à vista no Tuning › Stroke, ao lado do rebordo
     k(Knob::KnifeLevel, KnobGroup::Stroke, "knifeLevel", 0.0, 1.0, 0.01, 0.0, None),
-    // o expoente através do traço (W3 K5): um passo abaixo de 0 = «o mesmo que o textureSizeExp», o de sempre
-    k(Knob::TextureSizeExpAcross, KnobGroup::Stroke, "textureSizeExpAcross", -0.01, 1.5, 0.01, -0.01, None),
+    // o expoente através do traço (W3 K5): só vale com o seletor `TextureAcrossOwn` (R23); a chave antiga: `chave_antiga_atraves`
+    k(Knob::TextureSizeExpAcross, KnobGroup::Stroke, "textureAcrossExp", 0.0, 1.5, 0.01, 0.0, None),
     // a Transmission e o Relevo do papel (W3b): neutro 0 = a tinta de sempre, ao bit
     k(Knob::Transmission, KnobGroup::Material, "transmission", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::PaperRelief, KnobGroup::Material, "paperRelief", 0.0, 1.0, 0.01, 0.0, None),
@@ -347,4 +347,6 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::Volume, KnobGroup::Hidden, "volume", 0.0, 1000.0, 0.01, crate::painter::receita::H_REF / crate::grid::tinta::M_UM as f64, None),
     // ⚑ faixa provisória: a E10-A2 mede-a contra a fuga de 5–40 % dos 3 de água (F3b (1)) e fixa-a aqui
     k(Knob::Body, KnobGroup::Hidden, "body", 0.0, 1.0, 0.01, 0.0, None),
+    // R23: 0 = o eixo através segue o `textureSizeExp`, o de sempre; 1 = usa o `textureAcrossExp`
+    k(Knob::TextureAcrossOwn, KnobGroup::Stroke, "textureAcrossOwn", 0.0, 1.0, 1.0, 0.0, None),
 ];

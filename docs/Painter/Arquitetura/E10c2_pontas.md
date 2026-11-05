@@ -115,3 +115,6 @@ Vermelhos, **não causados por esta ponta** (nenhum lê `traco`/`paredes`, e a `
    a E10; o controlo continua a reprovar pelas outras leis (o teste está verde), mas a linha não mede nada.
 4. `git rm --cached` deixou a remoção de `wp/grid/traco.rs` JÁ no índice (`D `): quem comitar por caminhos inclui-a.
 5. Os 4 vermelhos acima são do dono do motor/preset (B1/A2/E12).
+
+**Estado em 04/11:** itens 1 e 2 feitos na E10h; item 3 feito (as duas linhas `PigmentPerDab` de `mistura_camadas_tests.rs` saíram);
+os 4 vermelhos do item 5 estão verdes; `every_key_of_this_panel_exists_on_both_sides` também (o falso vermelho citado na E10h já não existe).

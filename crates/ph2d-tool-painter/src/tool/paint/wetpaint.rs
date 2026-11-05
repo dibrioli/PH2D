@@ -466,8 +466,11 @@ mod flow_ratio_tests; // os gates de PRODUTO da razão da grade de FLUXO
 #[path = "wetpaint/offthread_tests.rs"]
 mod offthread_tests; // os gates da sim FORA da thread do frame
 #[cfg(test)]
+#[path = "wetpaint/same_as_paper_volume_tests.rs"]
+mod same_as_paper_volume_tests;
+#[cfg(test)]
 #[path = "wetpaint/verde_no_soltar_tests.rs"]
-mod verde_no_soltar_tests; // azul sobre azul não fica verde no soltar (Bug #49)
+mod verde_no_soltar_tests; // azul sobre azul não fica verde no soltar (Bug #49) // o Same as Paper e a quantidade de tinta (smoke 04/11)
 
 // o veu do Show Wet e VIVO (report do Enio, 2026-08-07)
 #[cfg(test)]

@@ -58,6 +58,7 @@ fmt/clippy verdes nas 11 crates antes do último commit (depois só hashes); gat
 ## PRÓXIMO (ordem aprovada pelo dono, smoke a cada etapa)
 
 1. Pontas soltas da E10: E10c2, `levelingOwnStroke` sentinela (R23), Bug #56 parede entre traços.
+   ⚠️ Nota: a R23 era do `textureSizeExpAcross`, não do `levelingOwnStroke` (feita em 04/11; ver [BUGS #56/#61](../BUGS_painter.md)).
 2. E11: placa de vídeo lê meio e pasta.
 3. E12: apagar a lei velha (23 referências a `LeiDaTinta::Velha`) depois de o portão-mãe passar inteiro; plano em [F4_2_plano_wet_paint.md](../Arquitetura/F4_2_plano_wet_paint.md) l.266–280.
 

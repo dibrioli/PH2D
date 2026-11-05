@@ -86,9 +86,15 @@ pub(crate) fn paint_spectral_section(
 
     // Denoise: Learn (from a time selection of pure noise) → Amount → apply.
     let half = (w - gap) * 0.5;
-    button(
-        Rect::new(x, y, half, row_h),
+    let (learn, denoise) = (
         tr("panel.audio_editor.spectral.learn_noise"),
+        tr("panel.audio_editor.spectral.denoise"),
+    );
+    let desce = crate::cards::grupo::fileiras(w, &[2], &[learn, denoise], text_system).len() > 1;
+    let (peca_w, x2) = if desce { (w, x) } else { (half, x + half + gap) };
+    button(
+        Rect::new(x, y, peca_w, row_h),
+        learn,
         can_edit && has_sel,
         AEDIT_SPEC_LEARN,
         scene,
@@ -96,9 +102,12 @@ pub(crate) fn paint_spectral_section(
         theme,
         hit_index,
     );
+    if desce {
+        y += row_h + gap;
+    }
     button(
-        Rect::new(x + half + gap, y, half, row_h),
-        tr("panel.audio_editor.spectral.denoise"),
+        Rect::new(x2, y, peca_w, row_h),
+        denoise,
         can_edit && spectral_state::has_profile(),
         AEDIT_SPEC_DENOISE,
         scene,

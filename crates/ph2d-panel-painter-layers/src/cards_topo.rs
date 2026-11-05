@@ -357,6 +357,14 @@ fn lista_e_sync(
         "card.painter.brush.sync",
         b.link_shared,
     );
+    // Lei 5 de 05 §4: na coluna estreita o par desce em vez de cortar «Sync tools».
+    let nome = c
+        .text_system
+        .prefix_width(tr("card.painter.brush.sync"), m::VALUE_PX);
+    if nome + m::ICON_CELL + m::FIELD_PAD_R > (c.w - m::FIELD_GAP) * 0.5 {
+        let y = c.row(std::slice::from_ref(&celula), y);
+        return c.row(std::slice::from_ref(&sync), y);
+    }
     c.row(&[celula, sync], y)
 }
 

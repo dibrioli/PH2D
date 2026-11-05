@@ -202,20 +202,27 @@ pub(crate) fn paint_edit_section(
     ];
     // ⭐⭐ **As CINCO fileiras são um corpo só** — as quatro daqui mais a `Invert | Force Mono`
     //    logo abaixo: elas fazem a mesma coisa (agir sobre o clipe inteiro), logo encostam.
-    let block = block_cells(
-        Rect::new(x, y, w, 0.0),
-        &[2, 2, 2, 2, 2],
-        crate::cards::fila(),
-    );
-    for (r, row) in rows.into_iter().enumerate() {
-        let seg = &block[r];
-        for (i, (label, id, enabled)) in row.into_iter().enumerate() {
+    let invert = tr("panel.audio_editor.edit.invert");
+    let force_mono = tr("panel.audio_editor.edit.force_mono");
+    let nomes: Vec<&str> = rows
+        .iter()
+        .flatten()
+        .map(|c| c.0)
+        .chain([invert, force_mono])
+        .collect();
+    let cols = crate::cards::grupo::fileiras(w, &[2, 2, 2, 2, 2], &nomes, text_system);
+    let block = block_cells(Rect::new(x, y, w, 0.0), &cols, crate::cards::fila());
+    let mut pecas = block.iter().flatten().copied();
+    let mut peca = || pecas.next().expect("uma peça por nome");
+    for row in rows {
+        for (label, id, enabled) in row {
+            let (seg, pos) = peca();
             button_in_group(
-                seg[i].0,
+                seg,
                 label,
                 enabled,
                 id,
-                seg[i].1,
+                pos,
                 scene,
                 text_system,
                 theme,
@@ -224,22 +231,23 @@ pub(crate) fn paint_edit_section(
         }
     }
     // Invert | Force Mono (downmix the whole clip for 3D positional audio).
-    let seg = &block[4];
+    let (seg, pos) = peca();
     button_in_group(
-        seg[0].0,
-        tr("panel.audio_editor.edit.invert"),
+        seg,
+        invert,
         loaded,
         AEDIT_INVERT,
-        seg[0].1,
+        pos,
         scene,
         text_system,
         theme,
         hit_index,
     );
+    let (seg, pos) = peca();
     toggle_in_group(
-        seg[1].0,
-        seg[1].1,
-        tr("panel.audio_editor.edit.force_mono"),
+        seg,
+        pos,
+        force_mono,
         loop_state::mono_on(),
         loaded,
         AEDIT_MONO,
@@ -252,7 +260,7 @@ pub(crate) fn paint_edit_section(
     //    (2026-09-07, 1.ª seta vermelha). ⛔ O censo da wave 19 não o via: ele procura a
     //    CAUDA de um pintor (uma expressão sem `;`) e esta fronteira é uma **instrução** a
     //    meio da função. *Um censo que conhece uma forma da mesma pergunta é cego às outras.*
-    y += grid_height(5, crate::cards::fila())
+    y += grid_height(cols.len(), crate::cards::fila())
         + crate::cards::grupo::vao(ph2d_tokens::control_gap_px());
 
     // Selection range ops — enabled only when a waveform selection exists (drag on the overlay

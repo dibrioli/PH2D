@@ -82,6 +82,37 @@ fn fileira(x: f32, y: f32, h: f32, larguras: &[f32]) -> Vec<(Rect, GroupCell)> {
         .collect()
 }
 
+/// Lei 5 de 05 §4: num cartão, a fileira com um nome que não cabe na parte dela desce, um por linha (`nomes` pela
+/// ordem das células). Fora de um cartão, `cols`.
+#[must_use]
+pub(crate) fn fileiras(
+    w: f32,
+    cols: &[usize],
+    nomes: &[&str],
+    text_system: &mut TextSystem,
+) -> Vec<usize> {
+    if card_body().is_none() {
+        return cols.to_vec();
+    }
+    let mut saida = Vec::with_capacity(cols.len());
+    let mut i = 0;
+    for &n in cols {
+        let parte = (w - m::FIELD_GAP * n.saturating_sub(1) as f32) / n.max(1) as f32;
+        let cabe = nomes[i..i + n].iter().all(|t| {
+            ph2d_editor_core::paint::rect_for_label(
+                text_system.prefix_width(t, ph2d_tokens::TypeToken::Sm.px()),
+            ) <= parte
+        });
+        if cabe {
+            saida.push(n);
+        } else {
+            saida.extend(std::iter::repeat_n(1, n));
+        }
+        i += n;
+    }
+    saida
+}
+
 /// O `block_cells` do painel.
 #[must_use]
 pub(crate) fn block_cells(

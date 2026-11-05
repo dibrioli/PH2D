@@ -110,9 +110,11 @@ pub(crate) fn buttons_block(
         cols_per_row.iter().sum::<usize>(),
         "a grelha declarada nao cobre os botoes"
     );
+    let nomes: Vec<&str> = items.iter().map(|it| it.0).collect();
+    let cols_per_row = crate::cards::grupo::fileiras(rect.w, cols_per_row, &nomes, text_system);
     let block = crate::cards::grupo::block_cells(
         Rect::new(rect.x, rect.y, rect.w, 0.0),
-        cols_per_row,
+        &cols_per_row,
         rect.h,
     );
     let mut i = 0usize;

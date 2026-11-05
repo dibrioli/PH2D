@@ -404,16 +404,34 @@ fn paint_transport_section(
     // ⭐⭐ **As QUATRO fileiras do transporte são um corpo só** (`1 · 2 · 2 · 1`) — Enio,
     //    2026-09-06: *«na vertical ainda tem muito espaço ainda»*. Elas fazem a mesma coisa
     //    (comandar o clipe), logo encostam, e só os quatro cantos do BLOCO arredondam.
-    let block = block_cells(Rect::new(x, y, w, 0.0), &[1, 2, 2, 1], crate::cards::fila());
+    let (stop, looping) = (
+        tr("panel.audio_editor.transport.stop"),
+        tr("panel.audio_editor.transport.loop"),
+    );
+    let (load, export_wav, batch_lufs) = (
+        tr("panel.audio_editor.transport.load"),
+        tr("panel.audio_editor.transport.export_wav"),
+        tr("panel.audio_editor.transport.batch_lufs"),
+    );
+    let cols = crate::cards::grupo::fileiras(
+        w,
+        &[1, 2, 2, 1],
+        &["", stop, looping, load, export_wav, batch_lufs],
+        text_system,
+    );
+    let block = block_cells(Rect::new(x, y, w, 0.0), &cols, crate::cards::fila());
+    let mut pecas = block.iter().flatten().copied();
+    let mut peca = || pecas.next().expect("uma peça por nome");
     // Transport: Play/Pause (full width toggle, active while playing).
     let play_label = if t.playing {
         tr("panel.audio_editor.transport.pause")
     } else {
         tr("panel.audio_editor.transport.play")
     };
+    let (seg, pos) = peca();
     toggle_in_group(
-        block[0][0].0,
-        block[0][0].1,
+        seg,
+        pos,
         play_label,
         t.playing,
         t.loaded,
@@ -425,22 +443,23 @@ fn paint_transport_section(
     );
 
     // Stop | Loop side by side.
-    let seg = &block[1];
+    let (seg, pos) = peca();
     button_in_group(
-        seg[0].0,
-        tr("panel.audio_editor.transport.stop"),
+        seg,
+        stop,
         t.loaded,
         AEDIT_STOP,
-        seg[0].1,
+        pos,
         scene,
         text_system,
         theme,
         hit_index,
     );
+    let (seg, pos) = peca();
     toggle_in_group(
-        seg[1].0,
-        seg[1].1,
-        tr("panel.audio_editor.transport.loop"),
+        seg,
+        pos,
+        looping,
         t.looping,
         true,
         AEDIT_LOOP,
@@ -451,24 +470,25 @@ fn paint_transport_section(
     );
 
     // Load | Export WAV side by side.
-    let seg = &block[2];
+    let (seg, pos) = peca();
     button_in_group(
-        seg[0].0,
-        tr("panel.audio_editor.transport.load"),
+        seg,
+        load,
         true,
         AEDIT_LOAD,
-        seg[0].1,
+        pos,
         scene,
         text_system,
         theme,
         hit_index,
     );
+    let (seg, pos) = peca();
     button_in_group(
-        seg[1].0,
-        tr("panel.audio_editor.transport.export_wav"),
+        seg,
+        export_wav,
         t.loaded,
         AEDIT_EXPORT,
-        seg[1].1,
+        pos,
         scene,
         text_system,
         theme,
@@ -476,18 +496,19 @@ fn paint_transport_section(
     );
 
     // Batch LUFS — a FOLDER op (independent of the loaded clip), so always enabled.
+    let (seg, pos) = peca();
     button_in_group(
-        block[3][0].0,
-        tr("panel.audio_editor.transport.batch_lufs"),
+        seg,
+        batch_lufs,
         true,
         AEDIT_BATCH_LUFS,
-        block[3][0].1,
+        pos,
         scene,
         text_system,
         theme,
         hit_index,
     );
-    y + grid_height(4, crate::cards::fila())
+    y + grid_height(cols.len(), crate::cards::fila())
         + crate::cards::grupo::vao(ph2d_tokens::control_gap_px())
 }
 

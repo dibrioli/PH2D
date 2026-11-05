@@ -639,7 +639,8 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
     //    19/09). *Uma catraca que desce é a metade justa dela a funcionar.*
     // ⬇️ 04/11 (R6): as abas num cartão falam o corpo do segmentado (`authored` 2→0, `vector` 2→0); a fila do Delay
-    //    e o par Foreground/Background descem (lei 5 de 05 §4, `audio_mixer` 6→3, `pixel_tools` 1→0).
+    //    e o par Foreground/Background descem (lei 5 de 05 §4, `audio_mixer` 6→3, `pixel_tools` 1→0), e os botões do
+    //    Audio Editor (`grupo::fileiras`, 7→0) e o Sync do Painter (1→0) também.
     ("audio_mixer", 3),
     ("hierarchy", 5),
     // ⬇️ `5 → 2` em 2026-09-23: o *Reset* de cada linha virou ÍCONE (era um botão de texto de
@@ -657,7 +658,6 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    para o «Stroke settings» atrás do ⚙ (UIUX F44) — MEDIDO na árvore combinada.
     ("color_equalization", 0),
     ("tags", 0),
-    ("audio_editor", 7),
     ("widget_lab", 1),
     // ⛔⛔⛔ **OS TRÊS QUE SÓ A ÁRVORE INTEIRA VÊ** (integração de 2026-09-20). Eles estão atrás de
     //    features que o `default` desta crate NÃO liga (`panel-flip`, `panel-painter-layers`,
@@ -697,7 +697,6 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⬇️ `3 → 0` em 2026-11-03 (line/NovaUI): as secções do painel QUEBRAM o nome que não cabe em
     //    duas linhas dentro da coluna (`Seccao::que_quebra_o_nome`, a linha cresce um passo) e a
     //    secção da ponta pede o chip da opção mais larga (`Seccao::com_os_menus`) — medido `0`.
-    ("painter_layers", 1),
     // `["Glaze layering (K-M)"]`
     // ⬇️ `2 → 1` em 2026-11-03 (integração 02/11c, árvore combinada `292110c7af`): MEDIDO `1` — o
     //    «Pigment mixing (K-M)» saiu do Tuning para o cartão Wet Paint (`56993f6f54`, 30/10).
@@ -734,7 +733,8 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⬇️ `85 → 84` em 2026-10-25, o «Show Sheet» da irmã acima (`87 → 86`).
     ("inspector", 78),
     // ⬇️ 04/11 (R6): as abas num cartão falam o corpo do segmentado (`authored` 2→0, `vector` 2→0); a fila do Delay
-    //    e o par Foreground/Background descem (lei 5 de 05 §4, `audio_mixer` 6→3, `pixel_tools` 1→0).
+    //    e o par Foreground/Background descem (lei 5 de 05 §4, `audio_mixer` 6→3, `pixel_tools` 1→0), e os botões do
+    //    Audio Editor (`grupo::fileiras`, 7→0) e o Sync do Painter (1→0) também.
     ("audio_mixer", 3),
     ("hierarchy", 5),
     // ⬇️ `5 → 2` em 2026-09-23: o *Reset* de cada linha virou ÍCONE (era um botão de texto de
@@ -752,7 +752,6 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    Weight ganha a largura do número. Medido pelo gate.
     ("color_equalization", 0),
     ("tags", 0),
-    ("audio_editor", 7),
     ("widget_lab", 1),
     // ⛔ Os dois que só a árvore inteira vê — o mecanismo está na irmã
     //    [`CORTES_NO_DEGRAU_ESTREITO`]. ⚠️ O `wet_tuning` NÃO entra aqui: os dois rótulos dele
@@ -766,7 +765,6 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⚠️ `5 → 4` em 2026-10-02: a linha Mapping do Paper saiu do painel (ver a nota da irmã).
     // ⚠️ `4 → 3` em 2026-10-27: medido `3` no fecho do Óleo Real W3 (ver a nota da irmã).
     // ⬇️ `3 → 0` em 2026-11-03: o nome QUEBRA em vez de elidir (ver a nota da irmã).
-    ("painter_layers", 1),
 ];
 
 /// ⭐⭐⭐ **E NENHUM PAINEL PASSA A COMER MAIS LETRAS** — as duas metades, como a irmã.

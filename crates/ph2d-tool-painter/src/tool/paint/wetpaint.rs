@@ -224,7 +224,7 @@ impl Default for WetPaintState {
             tilt_spoke: 3,
             show_wet: false,
             paper_visual: false,
-            smooth_edges: 0.0,
+            smooth_edges: SMOOTH_EDGES_DE_FABRICA,
             absorcao: ph2d_wet_paint::sim::ABSORCAO_NEUTRA,
             oleo_real: None,
             oleo_na_tela: false,
@@ -433,6 +433,9 @@ pub(in crate::tool::paint) use oleo_plano::{
 };
 /// O Solid e os fios na água, pela porta da MÁSCARA do motor (doc 46 item 9).
 mod mascara;
+/// O Smooth Edges da tela ao abrir (dono 04/11, Bug #62: a borda dura e pixelada; 0,12 foi o que ele testou).
+pub const SMOOTH_EDGES_DE_FABRICA: f32 = 0.12;
+
 mod smooth_edges; // o Smooth Edges do Watercolor sobre a mancha do Wet Paint (dono 09/10)
 #[cfg(test)]
 pub(in crate::tool::paint) use composite::split as composite_split;

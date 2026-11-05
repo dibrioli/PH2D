@@ -512,6 +512,7 @@ fn o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes() {
     let (mut t, cob) = cena_papel_texturizado(true, 0.6, true);
     let (mut so_papel, _) = cena_papel_texturizado(true, 0.6, false);
     for x in [&mut t, &mut so_papel] {
+        x.paint.wetpaint.smooth_edges = 0.0; // o hash e o Cycles medem o material
         x.reconcile_substrate();
         poe_o_papel(x, CREME);
         x.reconcile_substrate();

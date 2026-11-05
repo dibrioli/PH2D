@@ -3,7 +3,7 @@
 //! (a ponta da W1f) ANTES do primeiro commit da W1g. Um hash que muda aqui com as opções no neutro é a
 //! opção a vazar para o produto: a cura é desfazer, nunca regravar o número.
 use super::sonda_achatamento::{Variante, cena};
-use super::sonda_gota::bancada;
+use super::sonda_gota::bancada_toda;
 
 fn fnv1a(bytes: &[u8]) -> u64 {
     bytes.iter().fold(0xcbf2_9ce4_8422_2325u64, |h, &b| {
@@ -48,16 +48,22 @@ fn com_as_opcoes_desligadas_o_s_e_a_bancada_sao_os_de_hoje_ao_byte() {
             .iter()
             .map(|&(nome, anel, _)| {
                 s.spawn(move || {
+                    // Sem o Smooth Edges de fábrica: os hashes medem o traço.
                     fnv1a(&if nome == "S" {
                         cena(
-                            &Variante::default(),
+                            &Variante {
+                                smooth: Some(0.0),
+                                ..Variante::default()
+                            },
                             anel.map(|a| (3, a)),
                             30,
                             &mut |_, _| {},
                         )
                         .0
                     } else {
-                        bancada(0.005, 0.0, &[], anel, AGUAS)
+                        bancada_toda(0.005, 0.0, &[], anel, AGUAS, &|_| {}, &|t| {
+                            t.paint.wetpaint.smooth_edges = 0.0;
+                        })
                     })
                 })
             })
@@ -87,7 +93,8 @@ fn com_as_opcoes_desligadas_o_s_e_a_bancada_sao_os_de_hoje_ao_byte() {
 #[test]
 fn a_heavy_edge_a_meio_pesa_na_orla_de_baixo() {
     let orla = |v: f64, anel: Option<u8>, cold: bool| {
-        let px = super::sonda_gota::bancada_toda(0.005, 0.0, &[], anel, AGUAS, &|_| {}, &|t| {
+        let px = bancada_toda(0.005, 0.0, &[], anel, AGUAS, &|_| {}, &|t| {
+            t.paint.wetpaint.smooth_edges = 0.0; // mede a massa da orla
             t.set_wet_borda_que_pesa(v);
             if cold {
                 t.set_brush_paper_kind(ph2d_painter_brush::TextureKind::PaperCold.to_u8());
@@ -98,6 +105,7 @@ fn a_heavy_edge_a_meio_pesa_na_orla_de_baixo() {
     let s_com_heavy = |anel: u8| {
         let v = Variante {
             heavy_edge: Some(0.5),
+            smooth: Some(0.0),
             ..Variante::default()
         };
         super::achatamento_tests::le(&cena(&v, Some((3, anel)), 30, &mut |_, _| {}).0)

@@ -496,7 +496,11 @@ fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
     use crate::tool::paint::watercolor_render::SS0;
     use ph2d_editor_core::tool::PanelEvent;
     let mut t = wet_tool(1);
-    assert_eq!(t.paint.wetpaint.smooth_edges, 0.0, "desligado de fábrica");
+    assert_eq!(
+        t.paint.wetpaint.smooth_edges,
+        super::SMOOTH_EDGES_DE_FABRICA,
+        "o de fábrica"
+    );
     assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
         crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
         1.0

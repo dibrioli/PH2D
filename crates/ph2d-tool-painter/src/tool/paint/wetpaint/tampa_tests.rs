@@ -20,6 +20,7 @@ fn recto_alem(rectas: bool, alem: f32) -> Vec<f64> {
     t.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
     t.set_paint_tool_mode("wetpaint");
     t.set_wet_relogio_fixo(true);
+    t.paint.wetpaint.smooth_edges = 0.0; // mede o depósito
     t.set_brush_size_px(40.0);
     t.set_brush_color_srgb8([30, 60, 200]);
     if rectas {

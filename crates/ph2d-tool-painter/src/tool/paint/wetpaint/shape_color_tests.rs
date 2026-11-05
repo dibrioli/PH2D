@@ -80,6 +80,7 @@ pub(super) fn impressao(px: &[u8]) -> u64 {
 /// recolha da cor da tela por um 2.º traço vermelho que cruza o azul ainda molhado).
 pub(super) fn cena(n: usize) -> PainterTool {
     let mut t = tela();
+    t.paint.wetpaint.smooth_edges = 0.0; // as impressões medem o depósito
     match n {
         0 => {}
         1 => t.set_brush_shape_kind(TextureKind::Voronoi.to_u8()),

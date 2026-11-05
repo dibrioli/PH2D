@@ -30,7 +30,7 @@ pub const PAPEL_TEXTURIZADO: PapelPreset = PapelPreset {
     offset: [0.0, 0.0],
     size: [1.0, 1.0],
     tooth: 1.0,
-    smooth_edges: 0.0,
+    smooth_edges: super::paint::SMOOTH_EDGES_DE_FABRICA,
     params: [0.5, 0.5],
 };
 

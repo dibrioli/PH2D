@@ -209,3 +209,17 @@ fn the_eye_of_the_card_is_of_the_published_object_not_of_the_selection_box() {
     crate::state::set_current_inspector_visibility(None);
     crate::state::set_current_inspector_transform(None);
 }
+
+/// ⭐ O Inspector semeia a cor de cada camada na amostra dela, sem depender do painel Vector estar à frente:
+/// o seletor abria no cinzento de fábrica e carimbava-o (visto em janela real, F8).
+/// *Mutação: tirar a sementeira de `prepare` ⇒ vermelho.*
+#[test]
+fn the_card_seeds_the_swatch_of_each_layer() {
+    let cor = [0x12, 0x34, 0x56, 0xFF];
+    uma_camada(cor);
+    let mut store = ph2d_editor_core::interaction::WidgetStore::with_capacity(8);
+    prepare(&mut store);
+    let id = vids::vector_paint_swatch_id(0);
+    assert_eq!(store.widget_color(id).map(|c| [c[0], c[1], c[2]]), Some([0x12, 0x34, 0x56]));
+    appearance::set_current_appearance(None);
+}

@@ -371,19 +371,33 @@ fn with_the_row_at_the_bottom_the_panels_stay_up_and_the_pill_clears_it() {
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut hero = HeroScreen::new(NodeId(1));
-    hero.panel_visibility.insert("inspector", true);
+    let paineis: Vec<(&'static str, NodeId)> = ph2d_editor_core::panel::with_registry_ref(|reg| {
+        reg.panels()
+            .iter()
+            .map(|p| (p.manifest.id, p.manifest.panel_node_id))
+            .collect()
+    });
+    let mut bones = None;
+    for (n, id) in paineis {
+        hero.panel_visibility.insert(n, n == "skeleton");
+        if n == "skeleton" {
+            bones = Some(id);
+        }
+    }
+    let bones = bones.expect("o painel Bones");
+    ph2d_panel_skeleton::state::set_current_bone(None);
     pinta(&mut hero, &mut ts);
-    let em_cima = hero.store.panel_rect(ids::INSP_PANEL).expect("Inspector");
+    let em_cima = hero.store.panel_rect(bones).expect("a lista");
     hero.store.set_tool_row_bottom(true);
     for _ in 0..3 {
         pinta(&mut hero, &mut ts);
     }
     let l = hero.last_layout.expect("layout");
     assert!(l.tool_bar.y > l.draw_area.y, "a fila desceu");
-    let lista = hero.store.panel_rect(ids::INSP_PANEL).expect("Inspector");
+    let lista = hero.store.panel_rect(bones).expect("a lista");
     assert!(
         (lista.y - em_cima.y).abs() <= l.tool_bar.h + 1.0 && lista.y < l.tool_bar.y,
-        "o Inspector saiu do alto: {} (antes {}), a fila em {}",
+        "a lista saiu do alto: {} (antes {}), a fila em {}",
         lista.y,
         em_cima.y,
         l.tool_bar.y

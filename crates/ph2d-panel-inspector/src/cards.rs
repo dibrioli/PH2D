@@ -389,6 +389,13 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
     dropdown::declare(DD_STROKE_ALIGN);
     dica_do_cadeado(store);
     semeia_a_opacidade(store);
+    // A cor de cada camada semeia a amostra dela: sem o Vector à frente ninguém o fazia, e abrir o
+    // seletor na 2.ª camada carimbava o cinzento de fábrica (visto em janela real, F8).
+    if let Some(a) = ph2d_tool_vector::appearance::current_appearance() {
+        for (i, row) in a.layers.iter().enumerate() {
+            store.set_widget_color(vids::vector_paint_swatch_id(i), row.color);
+        }
+    }
     for i in 0..ph2d_vec_scene::MAX_PAINT_LAYERS {
         // C2: o cartão não depende do painel Vector para a amostra de uma camada abrir o seletor.
         store.register_picker_swatch(vids::vector_paint_swatch_id(i));

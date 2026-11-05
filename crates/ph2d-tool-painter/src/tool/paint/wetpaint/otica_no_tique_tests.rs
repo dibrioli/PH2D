@@ -371,10 +371,21 @@ fn a_imagem_velha_nao_esvazia_o_que_a_casa_ja_pintou() {
         assert!(s.otica.uniao_local.is_none(), "premissa: a imagem chegou");
         assert_eq!(s.otica.tocadas, d0, "premissa: a imagem não toca o traço");
         assert_eq!(s.otica.aplicadas, a0, "a imagem velha foi aplicada");
-        assert_eq!(s.planos.suave.is_empty(), suave == 0.0, "a imagem velha mexeu nos degraus");
-        assert_eq!(s.planos.sombra.is_empty(), !oleo, "a imagem velha mexeu na sombra");
+        assert_eq!(
+            s.planos.suave.is_empty(),
+            suave == 0.0,
+            "a imagem velha mexeu nos degraus"
+        );
+        assert_eq!(
+            s.planos.sombra.is_empty(),
+            !oleo,
+            "a imagem velha mexeu na sombra"
+        );
         assenta(&mut t);
-        confere_com_casa(&mut t, &format!("a imagem velha (abaixo {abaixo}, óleo {oleo}, suave {suave})"));
+        confere_com_casa(
+            &mut t,
+            &format!("a imagem velha (abaixo {abaixo}, óleo {oleo}, suave {suave})"),
+        );
     }
 }
 

@@ -70,7 +70,7 @@ pub(super) fn sample_kind_t(
         TextureKind::Crosshatch => crosshatch(u, v, k),
         TextureKind::Dots => dots_t(u, v, k, pu, pv, 0.0),
         TextureKind::Grid => grid(u, v, k),
-        TextureKind::Bricks => bricks(u, v, k),
+        TextureKind::Bricks => bricks(u, v, k, 0.0),
         TextureKind::Waves => waves(u, v, k),
         TextureKind::Chevron => chevron(u, v, k),
         TextureKind::Diamonds => diamonds(u, v, k),
@@ -98,7 +98,7 @@ pub(super) fn sample_kind_t(
 }
 
 /// [`sample_kind_t`] sabendo a largura `fw` de um píxel da tela em coordenadas da textura: os Dots leem a borda pela
-/// ÁREA dele ([`dots_t`]); os outros kinds, e `fw = 0`, são a amostra no centro ao bit.
+/// ÁREA dele ([`dots_t`]), os Bricks também ([`bricks`]); os outros kinds, e `fw = 0`, são a amostra no centro ao bit.
 #[must_use]
 pub(super) fn sample_kind_px(
     kind: TextureKind,
@@ -111,6 +111,13 @@ pub(super) fn sample_kind_px(
     if kind == TextureKind::Dots && fw > 0.0 {
         let raw = dots_t(tex[0], tex[1], &params[2..], period[0], period[1], fw);
         return apply_tone(raw, params[0], params[1]);
+    }
+    if kind == TextureKind::Bricks && fw > 0.0 {
+        return apply_tone(
+            bricks(tex[0], tex[1], &params[2..], fw),
+            params[0],
+            params[1],
+        );
     }
     sample_kind_t(kind, tex, params, image, period)
 }
@@ -144,6 +151,12 @@ pub fn render_texture_preview(
     let sx = size[0].clamp(super::TEX_SIZE_MIN, super::TEX_SIZE_MAX);
     let sy = size[1].clamp(super::TEX_SIZE_MIN, super::TEX_SIZE_MAX);
     let step = 3.0 / w as f32; // procedural: ~3 tiles across, square cells
+    // A largura de um píxel da faixa em células: os degraus leem-se pela área, como na tela.
+    let fw = if super::pela_area::le_pela_area(kind) {
+        step * sx.max(sy)
+    } else {
+        0.0
+    };
     // An imported image previews as ONE centred picture filling the strip (footprint `−1..1`, matching
     // the dab at size 1), not the procedural 3-tile field — else it reads repeated + offset.
     let is_image = matches!(kind, TextureKind::Image);
@@ -170,7 +183,7 @@ pub fn render_texture_preview(
             let bv = bu0 * sa + bv0 * ca + centre;
             let u = bu * sx + offset[0];
             let v = bv * sy + offset[1];
-            let s = sample_kind(kind, [u, v], params, image).clamp(0.0, 1.0);
+            let s = sample_kind_px(kind, [u, v], params, image, [0, 0], fw).clamp(0.0, 1.0);
             let [r, g, b] = match ramp {
                 Some((lut, mode)) if !lut.is_empty() => {
                     let idx = ((s * (lut.len() - 1) as f32) + 0.5) as usize;
@@ -535,12 +548,17 @@ fn grid(u: f32, v: f32, k: &[f32]) -> f32 {
 }
 
 /// **Bricks**: rectangles separated by mortar gaps. `Gap` = mortar width, `Bond` = per-row offset.
-fn bricks(u: f32, v: f32, k: &[f32]) -> f32 {
+/// `fw` = a largura de um píxel em células: a fracção do píxel dentro do tijolo; `0` = o degrau num ponto.
+fn bricks(u: f32, v: f32, k: &[f32], fw: f32) -> f32 {
     let row = ifloor(v);
     let offset = if row & 1 == 0 { 0.0 } else { knob(k, 1) };
+    let mortar = (knob(k, 0) * 0.2).clamp(0.02, 0.45);
+    if fw > 0.0 {
+        return super::pela_area::dentro_do_periodo(u + offset, mortar, fw)
+            * super::pela_area::dentro_do_periodo(v, mortar, fw);
+    }
     let fu = (u + offset) - (u + offset).floor();
     let fv = v - v.floor();
-    let mortar = (knob(k, 0) * 0.2).clamp(0.02, 0.45);
     let inside = |f: f32| f > mortar && f < 1.0 - mortar;
     if inside(fu) && inside(fv) { 1.0 } else { 0.0 }
 }

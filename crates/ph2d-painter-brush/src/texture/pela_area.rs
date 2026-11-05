@@ -33,7 +33,7 @@ fn esticao(b: &TexDabBasis) -> f32 {
 
 /// A largura de um píxel em células do padrão preso à tela ([`sample_tiled_rot_wrapped`]). `0` = lê-se num ponto.
 pub(super) fn largura_tiled(s: &TextureSettings) -> f32 {
-    if s.kind == TextureKind::Dots && ligada() {
+    if le_pela_area(s.kind) {
         maior_size(s) / TEX_TILE_BASE_PX
     } else {
         0.0
@@ -42,7 +42,7 @@ pub(super) fn largura_tiled(s: &TextureSettings) -> f32 {
 
 /// A largura de um píxel em células na amostra de um dab ([`sample`]), por mapeamento.
 pub(super) fn largura_no_dab(s: &TextureSettings, b: &TexDabBasis, radius: f32) -> f32 {
-    if s.kind != TextureKind::Dots || !ligada() {
+    if !le_pela_area(s.kind) {
         return 0.0;
     }
     if s.mapping.is_stencil() {
@@ -60,11 +60,23 @@ pub(super) fn largura_no_dab(s: &TextureSettings, b: &TexDabBasis, radius: f32) 
 
 /// A largura de um píxel em células na máscara assada: `passo` = o lado do texel em unidades do dab.
 pub(super) fn largura_unit(s: &TextureSettings, b: &TexDabBasis, passo: f32) -> f32 {
-    if s.kind == TextureKind::Dots && ligada() {
+    if le_pela_area(s.kind) {
         maior_size(s) * esticao(b) * passo
     } else {
         0.0
     }
+}
+
+/// Este padrão tem um degrau que se lê pela área do píxel?
+pub(super) fn le_pela_area(kind: TextureKind) -> bool {
+    matches!(kind, TextureKind::Dots | TextureKind::Bricks) && ligada()
+}
+
+/// A fracção de um píxel de largura `fw`, centrado em `f`, dentro de `(m, 1 − m)` de cada período.
+pub(super) fn dentro_do_periodo(f: f32, m: f32, fw: f32) -> f32 {
+    let cheio = 1.0 - 2.0 * m;
+    let ate = |x: f32| x.floor() * cheio + (x - x.floor() - m).clamp(0.0, cheio);
+    (ate(f + fw * 0.5) - ate(f - fw * 0.5)) / fw
 }
 
 /// ⭐ **O GRÃO de imagem pela ÁREA do píxel** (o Stars pequeno, 23/10 — a mesma lei da ponta de imagem,

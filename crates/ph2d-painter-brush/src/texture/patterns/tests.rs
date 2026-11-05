@@ -393,3 +393,70 @@ fn paper_tiles_are_mid_band_tooth_not_low_frequency_blotch() {
         }
     }
 }
+
+/// Bug #59: os Bricks pela área são a média do degrau no píxel (a lei dos Dots), e `fw = 0` é o degrau de antes.
+#[test]
+fn os_bricks_pela_area_sao_a_media_do_degrau_no_pixel() {
+    let params = [0.0, 1.0, 0.5, 0.5, 0.5, 0.5];
+    let k = &params[2..];
+    let ponto = |u: f32, v: f32| bricks(u, v, k, 0.0);
+    let mut na_borda = 0;
+    for i in 0..400 {
+        let (u, v) = (0.137 + i as f32 * 0.0171, 0.291 + i as f32 * 0.0093);
+        for fw in [0.05f32, 0.2] {
+            // Uma fila só: o Bond muda de fila para fila e a área lê a do centro do píxel.
+            if ifloor(v - fw * 0.5) != ifloor(v + fw * 0.5) {
+                continue;
+            }
+            let n = 64;
+            let mut soma = 0.0;
+            for a in 0..n {
+                for b in 0..n {
+                    let d = |j: i32| (j as f32 + 0.5) / n as f32 - 0.5;
+                    soma += ponto(u + d(a) * fw, v + d(b) * fw);
+                }
+            }
+            let media = soma / (n * n) as f32;
+            let area = bricks(u, v, k, fw);
+            assert!(
+                (area - media).abs() < 0.04,
+                "({u}, {v}) fw {fw}: área {area}, média {media}"
+            );
+            na_borda += usize::from(area > 0.05 && area < 0.95);
+        }
+    }
+    assert!(
+        na_borda > 20,
+        "a amostra quase não pisou a borda ({na_borda})"
+    );
+}
+
+/// Bug #59: a pré-visualização do grão lê os degraus pela área, como a tela: há tons de borda onde o ponto só dava dois.
+#[test]
+fn a_previsualizacao_le_os_degraus_pela_area() {
+    let (w, h) = (120u32, 60u32);
+    for kind in [TextureKind::Dots, TextureKind::Bricks] {
+        let params = [0.5f32, 0.5, 0.5, 0.0, 0.0, 0.5];
+        let mut buf = vec![0u8; (w * h * 4) as usize];
+        render_texture_preview(
+            kind,
+            params,
+            [1.0, 1.0],
+            // Fora da grelha dos píxeis: a 120 px por 3 células a borda do tijolo cai certa entre dois.
+            [0.0071, 0.0033],
+            0,
+            None,
+            None,
+            &mut buf,
+            w,
+            h,
+        );
+        let meios = buf
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .filter(|p| p[0] > 10 && p[0] < 245)
+            .count();
+        assert!(meios > 20, "{kind:?}: só {meios} píxeis de borda na faixa");
+    }
+}

@@ -22,11 +22,22 @@ use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, TypeToken};
 const LADOS: f32 = 3.0; // LITERAL-PX-OK: conta de botões, não geometria
 /// Numa coluna estreita ela cede até dois botões.
 const LADOS_MINIMOS: f32 = 2.0; // LITERAL-PX-OK: conta de botões, não geometria
+/// O registo para o teste não cresce sem fim: quem não o lê paga só esta moldura.
+const PINTADAS_GUARDADAS: usize = 8;
 const NOME_PX: f32 = TypeToken::Base.px();
 const TAMANHO_PX: f32 = TypeToken::Xs.px();
 
 thread_local! {
     static TROCA_PINTADA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    static IMAGENS_PINTADAS: std::cell::RefCell<Vec<(u64, String)>> =
+        const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// `(objecto, nome da imagem)` de cada moldura pintada desde a última leitura. Para o teste do cartão preso.
+#[doc(hidden)]
+#[must_use]
+pub fn imagens_pintadas() -> Vec<(u64, String)> {
+    IMAGENS_PINTADAS.with(std::cell::RefCell::take)
 }
 
 /// O ícone de troca pintou no último quadro? Para o teste do hover.
@@ -77,6 +88,12 @@ pub(crate) fn cabeca(c: &mut CardCtx<'_>, y: f32, info: &InspectorSpriteInfo) ->
     let img = slot_image::current_slot_image(info.entity_bits);
     let nome = nome_da_imagem(img.as_ref());
     let tamanho = linha_do_tamanho(info);
+    IMAGENS_PINTADAS.with(|v| {
+        let mut v = v.borrow_mut();
+        if v.len() < PINTADAS_GUARDADAS {
+            v.push((info.entity_bits, nome.clone()));
+        }
+    });
     // A linha do tamanho mostra-se inteira: a miniatura cede o que ela pede, quadrada e até ao mínimo.
     let pede_tamanho = tamanho
         .as_deref()

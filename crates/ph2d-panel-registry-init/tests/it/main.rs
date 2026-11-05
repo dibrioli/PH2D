@@ -33,6 +33,7 @@ mod nenhum_rotulo_do_app_pinta_nada;
 mod o_alcance_e_as_alcas_do_bones;
 mod o_alfinete_com_corda;
 mod o_alfinete_da_sprite;
+mod o_alfinete_de_todo_cartao;
 mod o_alfinete_do_inspector;
 mod o_alfinete_dos_cartoes_c1;
 mod o_alfinete_fill_stroke_c2;

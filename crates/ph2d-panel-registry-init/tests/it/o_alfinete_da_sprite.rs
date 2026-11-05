@@ -29,6 +29,22 @@ const SELECOES: [&[u64]; 3] = [&[B], &[B, C], &[A, B]];
 /// A sprite de `b`, como a shell a publica; A difere de B e C.
 pub(super) fn arma(b: u64) {
     let a = b == A;
+    insp::set_current_inspector_transform(Some(
+        ph2d_editor_core::screens::hero::InspectorTransformInfo {
+            entity_bits: b,
+            translation: [b as f32, 0.0],
+            rotation_rad: 0.0,
+            scale: [1.0, 1.0],
+            skew_rad: [0.0, 0.0],
+        },
+    ));
+    insp::slot_image::set_current_slot_image(Some(insp::slot_image::SlotImage {
+        entity_bits: b,
+        name: if a { "Hero sheet" } else { "Tree sheet" }.to_owned(),
+        rgba: std::sync::Arc::new(vec![255; 16]),
+        w: 2,
+        h: 2,
+    }));
     insp::set_current_inspector_name(Some(ph2d_editor_core::screens::hero::InspectorNameInfo {
         entity_bits: b,
         name: if a { "Hero" } else { "Tree" }.to_owned(),
@@ -90,7 +106,7 @@ pub(super) fn arma(b: u64) {
     }));
 }
 
-fn quadros(h: &mut HeroScreen, sel: &[u64], n: usize) {
+pub(super) fn quadros(h: &mut HeroScreen, sel: &[u64], n: usize) {
     for _ in 0..n {
         insp::com_cada_preso(
             &h.store.loose_pins_of(ph2d_editor_core::ids::INSP_PANEL),
@@ -103,7 +119,7 @@ fn quadros(h: &mut HeroScreen, sel: &[u64], n: usize) {
 }
 
 /// O cartão `sec` solto e preso a A, com a seleção em `sel`.
-fn preso(sec: NodeId, sel: &[u64]) -> HeroScreen {
+pub(super) fn preso(sec: NodeId, sel: &[u64]) -> HeroScreen {
     let _ = ph2d_panel_registry_init::register_all_panels();
     insp::set_cards_on(true);
     arma(A);
@@ -126,6 +142,7 @@ fn preso(sec: NodeId, sel: &[u64]) -> HeroScreen {
         INSP_LIVE_SLICE_SECTION,
         INSP_LIVE_SAMPLING_SECTION,
         insp::CARD_TRANSFORM,
+        insp::CARD_TRANSFORM_IMAGE,
         insp::CARD_APPEARANCE,
     ] {
         h.store.set_collapsed(c, c != sec);
@@ -143,7 +160,12 @@ fn preso(sec: NodeId, sel: &[u64]) -> HeroScreen {
 }
 
 /// Um clique em `id`, que tem de cair no solto; os pedidos que ele deixou.
-fn no_solto(h: &mut HeroScreen, sec: NodeId, id: NodeId, sel: &[u64]) -> Vec<EditorAction> {
+pub(super) fn no_solto(
+    h: &mut HeroScreen,
+    sec: NodeId,
+    id: NodeId,
+    sel: &[u64],
+) -> Vec<EditorAction> {
     let r = h
         .hit_index
         .rect_for(id)

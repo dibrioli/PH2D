@@ -50,3 +50,11 @@ a VT323 a 16 sai melhor SEM hinting (com ele perde linhas do «a» e do «3»).
 | Tiny5 | Variável com 5 eixos, não medida |
 | m5x7, m3x6, Monogram | Muito populares, mas sem licença verificável num arquivo baixável por script |
 | Fontes do sistema | Decisão do dono, 05/11. A lista antiga ia às centenas |
+
+## Fechado com o fim das fontes do sistema (P9, 05/11)
+
+- **Texto mono em fontes do sistema contra a FreeType (1–2 células):** o produto já não oferece fontes do
+  sistema; só o oráculo (`FontChoice::System`, `rasterize_outline`, `tests/fixtures/oracle_freetype_*`) as usa.
+- **AA3 sem fixtura:** sem Antialias no painel, não há o que medir.
+- **Mistura parcial:** saiu (`carimbo::tinge`, `carimbo::over`, o `below` do `stamp`). As 12 não têm célula
+  cinza (`every_font_has_no_grey_cell_at_its_native_size`), portanto nada a produzia.

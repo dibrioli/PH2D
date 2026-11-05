@@ -126,3 +126,18 @@ fn grava_os_nossos_para_o_oraculo() {
         std::fs::write(format!("{dir}/{n}.ase"), b).unwrap();
     }
 }
+
+/// O LibreSprite leu ESTES bytes e deu os mesmos quadros (`oracle_ase_nosso.json`). Mudou o escritor,
+/// fica vermelho: corra a verificação de novo, nunca regrave só o hash.
+#[test]
+fn o_libresprite_le_o_nosso_ase() {
+    use sha2::{Digest, Sha256};
+    let f: Value = serde_json::from_str(include_str!("fixtures/oracle_ase_nosso.json")).unwrap();
+    let o = oraculo();
+    for (n, sha) in f["sha256"].as_object().unwrap() {
+        let (a, _) = ase::ler(&entrada(&o, n)).unwrap();
+        let (b, _) = ase::escrever(&a).unwrap();
+        let hex: String = Sha256::digest(&b).iter().map(|x| format!("{x:02x}")).collect();
+        assert_eq!(&hex, sha.as_str().unwrap(), "{n}");
+    }
+}

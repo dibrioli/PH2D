@@ -4,7 +4,7 @@
 
 use ph2d_pixel_core::raster::Cell;
 use ph2d_pixel_core::transform::{Floating, Image};
-use ph2d_pixel_core::{CelKey, Sprite, Stroke};
+use ph2d_pixel_core::{Sprite, Stroke};
 use ph2d_pixel_text::carimbo::{self, Edit, Editing, Fonte};
 use winit::keyboard::KeyCode;
 
@@ -94,18 +94,16 @@ pub fn estilo(o: &Options) -> Fonte {
     Fonte::pick(o.text_font, o.text_px.max(1))
 }
 
-/// As células que o texto carimba com `fg` sobre o cel `ck` (Antialias = por cima do que lá está).
+/// As células que o texto carimba com `fg`, nos valores do modo do sprite.
 #[must_use]
 pub fn valores(
     s: &Sprite,
-    ck: CelKey,
     t: &str,
     f: &Fonte,
     at: Cell,
     fg: [u8; 4],
 ) -> Vec<(Cell, u32)> {
-    let below = |(x, y)| s.rgba_of_value(s.value_at(ck, x, y));
-    let v = f.stamp(t, at, (s.width(), s.height()), fg, below);
+    let v = f.stamp(t, at, (s.width(), s.height()), fg);
     v.into_iter()
         .map(|(p, c)| (p, s.value_of_rgba(c)))
         .collect()
@@ -172,7 +170,7 @@ pub(crate) fn refaz(app: &mut PixelApp) {
     let s = &doc.sprite;
     let ck = (doc.layer, doc.frame);
     // Toda escrita de píxeis corta-se à selecção (o preview é o mesmo traço).
-    let mut v = valores(s, ck, &c.ed.text, &style, c.at, fg);
+    let mut v = valores(s, &c.ed.text, &style, c.at, fg);
     (c.moldura, c.caret) = style.frame(&c.ed.text, c.at, c.ed.cursor);
     let (mx, my, mw, mh) = c.moldura;
     let (mut x0, mut y0, mut x1, mut y1) = (mx, my, mx + mw as i32 - 1, my + mh as i32 - 1);
@@ -196,9 +194,9 @@ pub(crate) fn previa(app: &PixelApp, key: u32) -> Option<Stroke> {
         .and_then(|c| c.traco.clone())
 }
 
-/// A cobertura `fl` (1 byte, já no sítio) misturada em `fg` sobre o cel `ck` e cortada ao sprite e
-/// à selecção: as células no modo do sprite, prontas a assentar.
-pub(crate) fn mistura(s: &Sprite, ck: CelKey, fl: &Floating, fg: [u8; 4]) -> Floating {
+/// A cobertura `fl` (1 byte, já no sítio) pintada em `fg` e cortada ao sprite e à selecção: as células
+/// no modo do sprite, prontas a assentar.
+pub(crate) fn na_cor(s: &Sprite, fl: &Floating, fg: [u8; 4]) -> Floating {
     let (w, h) = (fl.image.w, fl.image.h);
     let mut image = Image::new(w, h, s.mode().bpp(), s.transparent_value());
     let mut keep = vec![false; w as usize * h as usize];
@@ -208,8 +206,7 @@ pub(crate) fn mistura(s: &Sprite, ck: CelKey, fl: &Floating, fg: [u8; 4]) -> Flo
             let i = (y * w + x) as usize;
             let c = u8::try_from(fl.image.get(x, y)).unwrap_or(u8::MAX);
             if fl.keep[i] && c > 0 && s.bounds().contains(cx, cy) && s.in_selection(cx, cy) {
-                let below = s.rgba_of_value(s.value_at(ck, cx, cy));
-                image.set(x, y, s.value_of_rgba(carimbo::tinge(fg, c, below)));
+                image.set(x, y, s.value_of_rgba(fg));
                 keep[i] = true;
             }
         }

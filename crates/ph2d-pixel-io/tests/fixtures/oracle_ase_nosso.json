@@ -1,0 +1,18 @@
+{
+ "source": "libresprite 1.3-1.1 (GPL-2, corrido como oraculo; nunca lido; o rodape do app diz \u00ab1.2-dev (local build)\u00bb)",
+ "method": "O LibreSprite abre o .ase que o nosso escritor grava (--verifica) e cada quadro composto sai igual ao da entrada. Muda o escritor: corra de novo e regrave.",
+ "date": "2026-11-05",
+ "command": "cargo test -p ph2d-pixel-io --test ase grava -- --include-ignored; python3 -I docs/PixelArt/ferramentas/oraculo_export.py <pasta> --verifica <pasta dos nossos>/*.ase",
+ "sha256": {
+  "alfa_parcial": "d4ff3459880edf921e569aa6660e6258610ff4cbcf0e1052f25a7358222d065c",
+  "cinza": "fc608077f5cf756790e184c1c874476b275f8ca188bd1de370974d8e79add4f7",
+  "completo": "895d1a37438598899656adf99b8ef52f7081449dae6e245c021d3cb8fbe9cfa2",
+  "duracoes": "dd815428d5e0cc7b397e4c750920924a63e54fb6feaab1e19bc863855e013b4e",
+  "folha": "e141f10802b1d81b79f1bb0ea7d4f93110118787b6e94fcf01344fbfb36d78a2",
+  "indexado": "35449b91a49bf8766cdc74684f1b4117bb0dba79ee308839de4785159e29f87a",
+  "modos": "333f0983c37c230256afedf7f3dfa4d33df14b6a46a3f55332dd5ad8e187b37b",
+  "muitas_cores": "dcce8f88961fb722cf5f87ab351d0669516d77f5b7432bb3bf3fff633dfbd36b",
+  "plano": "3fcf9064f38641f571c921baaff2127238f2531946db3883d8afa47d1d54ef03",
+  "um_quadro_indexado": "81eb2801da49b1d7524250c083e9aa8e3fb8dcc00edcfd4144c42b4bf4cb2225"
+ }
+}

@@ -11,7 +11,7 @@
 
 | Grupo | Peças | No Aseprite |
 |---|---|---|
-| **E — Export As** | PNG, sequência de PNG, GIF, APNG, WebP, `.ase`; escala, direção, pixel ratio, quadros (todos/tag/intervalo), camada (visíveis/uma) | File › Export › Export As, `Ctrl+Alt+Shift+S` |
+| **E — Export As** | PNG, sequência de PNG, GIF, APNG, WebP, `.ase`; escala, direção, quadros (todos/tag/intervalo), camada (visíveis/uma) | File › Export › Export As, `Ctrl+Alt+Shift+S` |
 | **F — Export Sprite Sheet** | abas Layout · Sprite · Borders · Output, com todas as opções do CLI que têm sentido sem slices e tilemaps; prévia ao vivo | File › Export › Export Sprite Sheet, `Ctrl+E` |
 | **J — O JSON** | `json-hash` e `json-array`, `meta.frameTags/layers/slices` | Output |
 | **R — Repeat Last Export** | repete a última exportação do sprite | `Ctrl+Shift+X` |
@@ -76,7 +76,7 @@ versionadas nascem de entradas nossas.
    modo; o `parse` antigo vira composição sobre ele, com a saída byte-idêntica (gate) e `import_ase` intocado. `write` novo, deflate por `miniz_oxide`.
    Tradução `Sprite ⇄ doc` em `ph2d-pixel-io/src/ase.rs`.
 2. **«O que o documento põe em cada quadro exportado?»** → `ph2d_pixel_io::render::frames(sprite, &Selecao) -> Vec<QuadroSaida>`: camada (visíveis/uma/uma por imagem),
-   quadros (todos/tag/intervalo), direção (as 4 de `sprite.rs`, Forward, Reverse, PingPong, PingPongReverse; a passada reusa a lei do `Play` em `play.rs`, nunca uma 2.ª; `pingpong_reverse` não existe no LibreSprite, sem oráculo aqui), escala inteira e pixel ratio. **Tudo o resto consome
+   quadros (todos/tag/intervalo), direção (as 4 de `sprite.rs`, Forward, Reverse, PingPong, PingPongReverse; a passada reusa a lei do `Play` em `play.rs`, nunca uma 2.ª; `pingpong_reverse` não existe no LibreSprite, sem oráculo aqui), escala. **Tudo o resto consome
    isto**, e o PNG, o GIF e a folha não têm caminho próprio. A composição continua `compose_rgba`.
 3. **«Como cada formato grava?»** → os `ph2d-imageio-*`, estendidos e não copiados: GIF com `repeat`; APNG e WebP animados **novos** nos crates deles (WebP = VP8L do `image-webp` num
    `ANIM`/`ANMF`). Indexado em PNG: `ph2d-imageio-png` ganha escrita com `PLTE`/`tRNS`.
@@ -141,6 +141,27 @@ Um script, `ferramentas/oraculo_export.py` (`libresprite -b` + API JS, como `ora
 Mutações por `mutacao`: lei do `.ase` (flags de cel, ordem de chunks), trim, direção, `repeat` em string, durações GIF. Portões por nome no fecho: `the_shell_only_shrinks`, `no_magic_numeric`, `no_literal_color`, `architecture_panel_wiring_parity`, `node_id_collisions`, `architecture_workspace_file_loc_cap`, `panel_functions_under_loc_cap`. Crate nova e formato gravado ⇒ crate inteira, com `motivo:`.
 **Aceitação congelada:** sprite de teste com todos os recursos do §5 sai pelos 6 formatos e pela folha, e `.ase`/folha voltam iguais. **Kill-criterion do WebP animado:** se o `ffmpeg` e o LibreSprite recusarem o contentor depois de 2 tentativas, o WebP sai só de um quadro e o dono é avisado.
 
+## 6b. O que a P9a mediu e mudou neste plano (05/11)
+
+- **Pixel ratio saiu:** o documento não tem pixel ratio (`grep` em `ph2d-pixel-core`); o `.ase` grava 1:1.
+- **O JSON é um escritor novo ao lado do antigo** (`aseprite::sheet_json`), não uma extensão: `to_aseprite_json` ordena por nome e a saída dele tem de ficar byte-idêntica para quem a usa.
+- **`.ase` nosso aberto no Trial: feito** ([foto](handoffs/trial_abre_o_nosso_ase_P9a_2026-11-05.png): grupo, paleta, cinza). Sem limite, By Rows dá uma linha (5 quadros: 120×16; 16 quadros: 128×8), igual ao nosso.
+- **Curas do leitor antigo, que mudam o que `parse` devolve:** índice transparente lia o byte 24 em vez do 28 (`bg-index-3.aseprite`); paleta só no chunk `0x0004` dava rampa de cinza (`file-tests-props.aseprite`); opacidade de camada sem o bit 1 do cabeçalho vale 255. Os outros 16 `.aseprite` reais saem iguais.
+
+### ⛔ Recusas MEDIDAS (LibreSprite 1.3, `oracle_export.json`)
+
+| O que ele faz | O que fazemos | Porquê |
+|---|---|---|
+| Modo de mistura sobre destino transparente dá preto | A fonte | Trial, P3, 6 144/6 144 |
+| `--scale 0.5` escala cada cel antes de compor | Escala o composto | Sai o que o artista vê; nenhum deslocamento único explica o dele |
+| `--layer` de camada escondida dá folha vazia | Sai desenhada | Quem a escolheu quer vê-la |
+| GIF trunca a demora: 7 ms → 0, 15 → 10 | Arredonda, mínimo 10 ms | Demora 0 vira 100 ms em muitos leitores |
+| `--sheet-type vertical` devolve a horizontal | Uma coluna | Defeito dele |
+| `rows --sheet-height` e `columns --sheet-width` ignoram o limite | O limite vale | O diálogo do Aseprite oferece-o (foto 31) |
+| `{frame01}` não existe | Largura e início pelos dígitos | CLI do Aseprite |
+| `addition`, `subtract`, `divide` saem `unknown` no JSON | Os nomes da spec | Defeito dele |
+| Grava WebP só de um quadro e recusa paleta/cinza | WebP animado RGBA | Lido por `image-webp`, Pillow e ffprobe |
+
 ## 7. Pendências da P8 — resolvidas neste bloco
 
 | Pendência | Destino |
@@ -148,8 +169,8 @@ Mutações por `mutacao`: lei do `.ase` (flags de cel, ordem de chunks), trim, d
 | Texto mono em fontes do sistema contra FreeType (1–2 células) | **Fecha registrando:** o produto já não oferece fontes do sistema. Nota em `crates/ph2d-pixel-text/fonts/README.md`; `FontChoice::System` e `rasterize_outline` ficam só para os oráculos, conferir se saem do caminho do app |
 | AA3 sem fixtura | **Fecha:** sem Antialias no painel. Registro na mesma nota |
 | `edges-find*`, alfa nunca medido | M9. Hoje são kernels 1×1 de peso 0 (`filter/kernels.rs:28-30`): lei medida e gate; se a resposta for outra, corrige-se |
-| `curve_a11y`/`range_a11y` sem publicar | Ligar à árvore AccessKit na publicação dos diálogos (`publish_`, ao lado de `paint_pixel_edit_dialog`). Gate: o nó aparece. Mesmo passo em que os diálogos novos publicam os deles |
-| Mistura parcial | `carimbo::over` sem chamador; `tinge`/`texto::mistura` chamados por `solta.rs:154`, mas com 12 fontes a cobertura é sempre 0 ou 1. **Censo; sem produtor parcial, remove-se** com gate de que o texto assentado não mudou |
+| `curve_a11y`/`range_a11y` sem publicar | **Não se faz nesta linha (medido na P9a):** `sync_a11y` (`surface_input.rs:224`) só publica a janela e as abas de família; **nenhum** widget de painel chega à árvore, nem os sliders. Ligar só estes dois não muda nada para quem usa leitor de ecrã. É uma lacuna do app inteiro: pede a sua própria onda. |
+| Mistura parcial | **Feito:** saíram `carimbo::tinge`, `over` e o `below` do `stamp`; `texto::mistura` virou `na_cor`. |
 
 ## 8. Ordem e contratos
 

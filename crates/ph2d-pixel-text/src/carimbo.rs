@@ -141,30 +141,6 @@ pub type Moldura = (i32, i32, u32, u32);
 /// O cursor do texto: `(x, y, altura)` em células.
 pub type Cursor = (i32, i32, i32);
 
-/// A cor que o texto deixa numa célula de cobertura `c` sobre `dst`: cobertura cheia = `fg` tal e
-/// qual, parcial (Antialias) = [`over`]. A lei do carimbo e do texto solto que assenta.
-#[must_use]
-pub fn tinge(fg: [u8; 4], c: u8, dst: [u8; 4]) -> [u8; 4] {
-    if c == u8::MAX { fg } else { over(fg, c, dst) }
-}
-
-/// `fg` com o alfa multiplicado por `c/255`, por cima de `dst` (alfa reto).
-#[must_use]
-pub fn over(fg: [u8; 4], c: u8, dst: [u8; 4]) -> [u8; 4] {
-    let a = u32::from(fg[3]) * u32::from(c) / 255;
-    let da = u32::from(dst[3]) * (255 - a) / 255;
-    let oa = a + da;
-    if oa == 0 {
-        return [0; 4];
-    }
-    let mut out = [0u8; 4];
-    for k in 0..3 {
-        out[k] = ((u32::from(fg[k]) * a + u32::from(dst[k]) * da) / oa) as u8;
-    }
-    out[3] = oa as u8;
-    out
-}
-
 /// Uma tecla de edição da caixa.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Edit<'a> {
@@ -269,8 +245,7 @@ impl Fonte {
         Self::new(TextStyle::new(FontChoice::Builtin(nome.to_owned()), px))
     }
 
-    /// As células que `texto` carimba com `fg`: a cobertura cheia é `fg`, a parcial (Antialias) é
-    /// `fg` por cima de `below(célula)` ([`over`]).
+    /// As células que `texto` carimba com `fg`. As 12 de fábrica não têm cinza (`fabrica.rs`).
     #[must_use]
     pub fn stamp(
         &self,
@@ -278,12 +253,11 @@ impl Fonte {
         at: Cell,
         size: (u32, u32),
         fg: [u8; 4],
-        below: impl Fn(Cell) -> [u8; 4],
     ) -> Vec<(Cell, [u8; 4])> {
         let cells = self.cells(texto, at, size);
         cells
             .into_iter()
-            .map(|(p, c)| (p, tinge(fg, c, below(p))))
+            .map(|(p, _)| (p, fg))
             .collect()
     }
 }

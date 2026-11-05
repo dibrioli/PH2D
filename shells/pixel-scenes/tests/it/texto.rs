@@ -60,7 +60,7 @@ fn escreve(app: &mut PixelApp, sim: &SimWorld, bits: u64, s: &str) {
 fn previsto(app: &PixelApp, sim: &SimWorld, bits: u64, s: &str, a: (i32, i32)) -> Vec<(i32, i32)> {
     let d = app.doc(chave(sim, bits)).expect("doc");
     let style = ph2d_app_pixel::texto::estilo(&app.options);
-    let v = ph2d_app_pixel::texto::valores(&d.sprite, (d.layer, d.frame), s, &style, a, app.fg);
+    let v = ph2d_app_pixel::texto::valores(&d.sprite, s, &style, a, app.fg);
     v.into_iter().map(|(c, _)| c).collect()
 }
 

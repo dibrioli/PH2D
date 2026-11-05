@@ -43,6 +43,32 @@ A primeira ronda de fotos saiu em `Forge` (fundos bordô, botões com traço): a
 | Instance/Variant, Properties | sim | aberto: K |
 | Visibility | sim | grade de 32 com `GRID_CELL`, vão menor de propósito (05 §4) |
 
+## Os outros painéis (fatia q3, 04/11)
+
+Arnês: `PH2D_FOTO_DIR=<pasta> PH2D_FOTO_PAINEIS=vector,physics cargo test -p ph2d-panel-registry-init --profile smoke --test it q_foto_paineis -- --ignored` (de fábrica, armado e em cada estado de `censo_estados`). Olhados: Vector (6 estados), Painter (`molhado`, 3 fatias de 6), Physics, Flip, Pixel, Tags, Audio Mixer, Audio Editor, Macros, Padding, Upscale, Equalize, Background Removal, Color Equalization, Bones. O Wet Tuning, Grid, Design Tokens e Assets não saem na coluna do retrato (por rever).
+
+### Famílias
+
+| # | Família | Onde | Estado |
+|---|---|---|---|
+| P | Grupo de botões colados em peça única (vão 0, cantos só nas pontas) num cartão; `Play`, `Load`, `Cut`… | Audio Editor (Transport, Loop, Edit, Effects, Markers, Variations) | aberto |
+| Q | Selector com o texto a sair por baixo («Footsteps»), caixa vazia sem nome («◀ ▬ ▶»), vão sem nada em Delivery | Audio Editor (Transport, Effects, Delivery) | aberto |
+| R | Slider com rótulo à esquerda e 3 colunas próprias, fora da grelha do cartão; `Add clips to build a set` centrada e a 14 | Audio Editor (Crossfade, Amount, Pitch/Gain jitter, Quality) | aberto |
+| S | Frase indentada 6 px (x do corpo + 6): `Record captures the Painter`, `Edited from step 2`, `Your library is empty` | Macros | aberto |
+| T | Amostra de cor pequena e alta na lista `1. Stroke 1 ▪ 0.50`; lista sem vão entre linhas | Macros | aberto |
+| U | Título de sub-grupo (Blend, Morph, Envelope, Pattern on Path, Contour) a 4–8 do controlo de cima em vez de `GROUP_TOP` 14; chevron pequeno e acima do texto | Vector Advanced | aberto |
+| V | Texto menor num irmão: «Pick Shapes» a corpo menor e com traço, ao lado de «Blend» | Vector Advanced | aberto |
+| W | Abreviatura que cabia inteira: `Persp`, `Symm`, `Accel`, `Norm LUFS`, `Rm DC`, `Comp`, `Morph t` | Vector, Audio | aberto |
+| X | Duas letras iguais lado a lado (D2 de cima): Size/Spacing «S S», Spacing/Slide, Width/Slant/Optical, Temperature/Tint, Cover/Dry cover, Fall-off/Full for, Random 2nd/Pressure 2nd «2» | Vector, Painter, Color Equalization | aberto |
+| Y | Grelha partida: Align (3 ícones) mais estreito que a coluna, Width começa fora dela | Vector Paragraph | aberto |
+| Z | Rótulo ou frase a 10 por ser `Whole canvas`/`no canvas` solto (`lei_do_ritmo`), Taper com 28 de vão | Painter | aberto |
+| AA | Texto solto a fazer de campo, parece título: «Hello / world» sem caixa | Vector Text | dúvida |
+| AB | Nome do botão repete o título: «Text on Path» no cartão Text on Path; «Morph», «Envelope» idem | Vector | baixo |
+| AC | Linhas da lista a 2 de vão contra 6 | Tags (`All tags`) | aberto |
+| AD | Caixa de marcar com a marca colada no nome, fora da coluna | Audio Mixer (Limiter, Ducking Enabled) | aberto |
+| AE | Lista de botões de 1 coluna quando os nomes curtos cabem em 2: `All`, `Inverse`, `Color Range…`, `Load from MSK…`, `Rotate 90 CCW`, `Invert…`, `Insert Text` | Pixel (Select, Edit, Sprite) | aberto |
+| AF | Selector de 5 opções longas em 3 filas | Pixel (Selector) | baixo |
+
 ## Decisões tomadas sem o dono
 
 - 9-Slice: os dois atalhos saíram de ao lado da grade para uma fila própria nas colunas do cartão; ao lado da grade ficou a legenda, fila a fila. Rive edita N-Slice por eixos no canvas, sem grade: não serve de modelo aqui.

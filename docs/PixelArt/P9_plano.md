@@ -5,7 +5,7 @@
 > Lei do módulo: [ADR-0196](../architecture/decisions/0196-o-pixel-art-e-um-modulo-proprio-com-documento-inteiro-e-desfazer-por-sprite.md).
 > Referência de produto: menu File do Aseprite ([foto 12](aseprite/12_sub_export_import_paste_rotate.png)), diálogo da folha
 > ([foto 31](aseprite/31_camada_tamanho_folha_prefs.png)), CLI ([40](aseprite/40_cli_help_1.3.18.6.txt)).
-> **Estado: plano aprovado pelo dono em 05/11. P9a (motor) feita, [handoff](handoffs/HANDOFF_CONTINUACAO_line_PixelArt_2026-11-05_P9a.md). Próxima: P9b (tela).**
+> **Estado: plano aprovado pelo dono em 05/11. P9a e P9b feitas, [handoff P9a](handoffs/HANDOFF_CONTINUACAO_line_PixelArt_2026-11-05_P9a.md), [handoff P9b](handoffs/HANDOFF_CONTINUACAO_line_PixelArt_2026-11-05_P9b.md). Próxima: smoke do dono da cena 20.**
 
 ## 0. O que entra
 

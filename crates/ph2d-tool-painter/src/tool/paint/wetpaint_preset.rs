@@ -345,6 +345,13 @@ impl PainterTool {
                 k.set(def.knob, v);
             }
         }
+        if let Some(v) = self.paint.wetpaint.suave_da_macro_antiga
+            && !prm
+                .engine
+                .contains_key(KNOB_DEFS[Knob::SmoothEdges as usize].key)
+        {
+            k.set(Knob::SmoothEdges, v);
+        }
         k.set(
             Knob::Evaporation,
             self.paint.wetpaint.knobs.get(Knob::Evaporation),

@@ -341,7 +341,7 @@ fn azul_sobre_vermelho(forca: f32, assentar: bool) -> Vec<u8> {
         k.set(Knob::Volume, volume);
     }
     t.paint.wetpaint.tilt_on = false;
-    t.paint.wetpaint.smooth_edges = forca;
+    t.set_wet_smooth_edges(forca);
     let cp = |x: f32, y: f32, phase| CanvasPointer {
         pos: [x, y],
         pressure: 1.0,
@@ -477,7 +477,7 @@ fn fios_sobre_vermelho(forca: f32) -> Vec<u8> {
     t.set_wet_relogio_fixo(true);
     assert!(t.wet_preset_aplicar(p).is_empty());
     t.set_wet_largura_crua(1.0);
-    t.paint.wetpaint.smooth_edges = forca;
+    t.set_wet_smooth_edges(forca);
     let cp = |x: f32, y: f32, phase| CanvasPointer {
         pos: [x, y],
         pressure: 1.0,
@@ -511,7 +511,7 @@ fn fios_sobre_vermelho(forca: f32) -> Vec<u8> {
         .preset;
     assert!(t.wet_preset_aplicar(wash).is_empty());
     t.set_wet_largura_crua(1.0);
-    t.paint.wetpaint.smooth_edges = forca;
+    t.set_wet_smooth_edges(forca);
     (t.paint.wetpaint.tilt_on, t.paint.wetpaint.tilt_ring) = (true, 8);
     t.set_wet_borda_que_pesa(1.0);
     t.wet_preset_aplicar_volumes(&Volumes {

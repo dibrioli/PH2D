@@ -368,7 +368,7 @@ mod tests {
     /// esta lista: um knob novo nasce aqui (e alguém decide onde mora) ou num grupo à vista.
     #[test]
     fn os_escondidos_sao_so_os_de_outra_superficie_ou_de_calibracao() {
-        const NOUTRA_SUPERFICIE: [&str; 37] = [
+        const NOUTRA_SUPERFICIE: [&str; 38] = [
             // a Shape › Bristles (plano 27 W2)
             "felt",
             "bristleCount",
@@ -411,6 +411,7 @@ mod tests {
             "dilution",
             "volume",
             "body",
+            "smoothEdges",
             // e os fundidos neles: a mesma grandeza que um controlo acima já escreve (o Hardness escreve o paperGate)
             "pigmentPerDab",
             "waterPerDab",

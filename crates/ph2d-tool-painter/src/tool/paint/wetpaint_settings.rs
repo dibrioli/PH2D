@@ -566,7 +566,7 @@ impl PainterTool {
             return true;
         }
         if id == crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES {
-            self.set_wet_smooth_edges(v as f32);
+            self.poe_o_suave(v);
             return true;
         }
         if id == crate::ids::PAINTER_WETPAINT_HEAVY_EDGE {

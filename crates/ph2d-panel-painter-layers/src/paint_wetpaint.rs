@@ -51,7 +51,13 @@ const DO_DEPOSITO: [ph2d_a11y::NodeId; 11] = [
 /// **Os controlos NUMÉRICOS de lei da E10 no cartão** (F3 §9): `(depois de que linha, rótulo, id)`. A Hardness junto
 /// do Pickup (o contacto com o papel); o Body junto do Leveling (o que nivela × o que resiste). O Medium é o menu
 /// Paint type que abre o cartão ([`tipo_de_tinta`], E10f). Só no Pincel (`DepositoMolhado`).
-const E10_NO_CARTAO: [(Option<ph2d_a11y::NodeId>, &str, ph2d_a11y::NodeId); 2] = [
+const E10_NO_CARTAO: [(Option<ph2d_a11y::NodeId>, &str, ph2d_a11y::NodeId); 3] = [
+    // O Smooth Edges é do traço (dono 04/11), junto do Edge Darkening: os dois desenham a borda.
+    (
+        Some(ph2d_tool_painter::ids::PAINTER_WETPAINT_EDGE),
+        "panel.painter_layers.wetpaint.smooth_edges",
+        ph2d_tool_painter::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
+    ),
     (
         Some(ph2d_tool_painter::ids::PAINTER_WETPAINT_PICKUP),
         "panel.painter_layers.wetpaint.hardness",

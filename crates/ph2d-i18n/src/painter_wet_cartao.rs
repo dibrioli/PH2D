@@ -75,6 +75,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_wet_cartao.body_tip" => {
             "How stiff the paint is: high stays exactly where the brush leaves it, low levels out."
         }
+        "panel.painter_wet_cartao.smooth_edges_tip" => {
+            "How soft the outline of the next strokes is: 0 = crisp, higher = softer, in color and in relief. Paint already on the canvas stays as it is."
+        }
         "panel.painter_wet_cartao.hardness_tip" => {
             "How deep the tip reaches into the paper's tooth: 0 = only the peaks, 1 = fills the valleys."
         }

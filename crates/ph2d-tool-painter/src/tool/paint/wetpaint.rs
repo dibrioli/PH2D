@@ -118,10 +118,9 @@ pub(crate) struct WetPaintState {
     /// TRAÇO (dono 28/10): pousa na célula (`grid::aparencia::textura`), logo viaja com o preset e com a ferramenta
     /// ([`Self::textura_por_slot`]), como o Glaze.
     pub(super) paper_visual: bool,
-    /// **Smooth Edges** (dono 09/10; intensidade `0..1` desde 10/10): a silhueta da mancha com meio-tom,
-    /// pela lei do Watercolor ([`smooth_edges`]). `0` de fábrica = o composite de antes, ao byte. É do TRAÇO (dono
-    /// 04/11): pousa na célula (`grid::aparencia::suave`); na cor e no relevo (`oleo_real::amacia_a_silhueta`).
-    pub(super) smooth_edges: f32,
+    /// O Smooth Edges de uma macro gravada quando ele era da TELA: vale para os presets sem a chave `smoothEdges` que ela
+    /// aplica a tocar, como valia então. Fora de uma dessas macros, `None`. O valor vivo é o `Knob::SmoothEdges`.
+    pub(super) suave_da_macro_antiga: Option<f64>,
     /// **Absorbency** (E10d2): a taxa com que o papel bebe a água do filme, em múltiplos da de fábrica
     /// (`Sim::absorcao`, [`ph2d_wet_paint::sim::ABSORCAO_NEUTRA`] = o motor de antes, ao bit). É da TELA (secção
     /// comum Paper): fora dos `WetKnobs` e de todo preset.
@@ -223,7 +222,7 @@ impl Default for WetPaintState {
             tilt_spoke: 3,
             show_wet: false,
             paper_visual: false,
-            smooth_edges: 0.0,
+            suave_da_macro_antiga: None,
             absorcao: ph2d_wet_paint::sim::ABSORCAO_NEUTRA,
             oleo_real: None,
             oleo_na_tela: false,
@@ -425,6 +424,8 @@ mod por_quadro; // R3: a tela do Wet compõe-se uma vez por quadro, na união do
 mod por_quadro_tests;
 #[cfg(test)]
 mod sonda_r3_facas; // R3: células e ms da composição nas facas do oráculo 4K
+#[cfg(test)]
+mod suave_do_pincel_tests; // cada pincel tem o seu: o preset, a miniatura e a macro antiga (dono 04/11)
 #[cfg(test)]
 mod suave_por_traco_tests; // o Smooth Edges pousa com a tinta: cada borda lê o seu (dono 04/11)
 mod veu; // o véu do Show-wet sobre o composite — filho por LOC // o papel liso da sombra do Óleo Real: uma conta por linha, não por célula

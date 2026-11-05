@@ -349,4 +349,6 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::Body, KnobGroup::Hidden, "body", 0.0, 1.0, 0.01, 0.0, None),
     // R23: 0 = o eixo através segue o `textureSizeExp`, o de sempre; 1 = usa o `textureAcrossExp`
     k(Knob::TextureAcrossOwn, KnobGroup::Stroke, "textureAcrossOwn", 0.0, 1.0, 1.0, 0.0, None),
+    // dono 04/11: no cartão do pincel (Hidden no Tuning). O passo é o degrau da célula (`grid::aparencia::DEGRAUS_DO_SUAVE`: 25 em 0..1)
+    k(Knob::SmoothEdges, KnobGroup::Hidden, "smoothEdges", 0.0, 1.0, 0.04, 0.0, None),
 ];

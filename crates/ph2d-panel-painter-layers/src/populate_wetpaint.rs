@@ -116,6 +116,10 @@ pub(crate) fn register_wetpaint(store: &mut WidgetStore) {
             "panel.painter_wet_cartao.body_tip",
         ),
         (
+            ph2d_tool_painter::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
+            "panel.painter_wet_cartao.smooth_edges_tip",
+        ),
+        (
             ph2d_tool_painter::ids::PAINTER_WETPAINT_HARDNESS,
             "panel.painter_wet_cartao.hardness_tip",
         ),

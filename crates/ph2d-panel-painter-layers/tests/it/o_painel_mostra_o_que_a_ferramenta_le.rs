@@ -143,7 +143,7 @@ const AGUADA: [NodeId; 6] = [
 ];
 
 /// Os ids do que o pincel do Wet Paint pousa.
-const DEPOSITO_MOLHADO: [NodeId; 22] = [
+const DEPOSITO_MOLHADO: [NodeId; 23] = [
     PAINTER_BRUSH_DAB_QUINA,
     // A ponta que gira com inércia (L3).
     PAINTER_BRUSH_DAB_ROTATION_LAG,
@@ -162,6 +162,8 @@ const DEPOSITO_MOLHADO: [NodeId; 22] = [
     PAINTER_WETPAINT_DILUTION,
     PAINTER_WETPAINT_MEDIUM,
     PAINTER_WETPAINT_BODY,
+    // O Smooth Edges é do TRAÇO (dono 04/11): pousa na célula, como a caixa Real Oil.
+    PAINTER_WETPAINT_SMOOTH_EDGES,
     PAINTER_WETPAINT_PICKUP,
     PAINTER_WETPAINT_DUST,
     PAINTER_WETPAINT_WET_BLOOM,

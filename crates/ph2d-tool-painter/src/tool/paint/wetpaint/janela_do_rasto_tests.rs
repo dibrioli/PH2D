@@ -197,7 +197,7 @@ fn o_pincel_do_dono_pinta_o_que_a_janela_grande_pinta() {
         t.set_brush_continuous_spacing(true);
         t.set_brush_jitter_norm(0.1);
         t.paint.wetpaint.knobs.water = 1.0;
-        t.paint.wetpaint.smooth_edges = 0.0;
+        t.set_wet_smooth_edges(0.0);
         t
     };
     let caneta = |t: &mut PainterTool| {

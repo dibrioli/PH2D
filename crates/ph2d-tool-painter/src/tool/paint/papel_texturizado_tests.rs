@@ -36,7 +36,6 @@ fn o_papel_texturizado_nasce_com_os_valores_do_dono() {
     assert_eq!(b.paper_offset, [0.0, 0.0], "Offset");
     assert_eq!(b.paper_size, [1.0, 1.0], "Size");
     assert_eq!(b.paper_depth, 1.0, "Tooth");
-    assert_eq!(b.wet_smooth_edges, 0.0, "Smooth Edges");
     assert_eq!(b.paper_params[0], 0.5, "Contrast");
     assert_eq!(b.paper_params[1], 0.5, "Brightness");
 }

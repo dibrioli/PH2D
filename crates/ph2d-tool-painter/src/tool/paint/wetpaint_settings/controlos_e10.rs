@@ -115,6 +115,7 @@ impl WetKnobs {
         let knob = match id {
             x if x == ids::PAINTER_WETPAINT_DILUTION => Knob::Dilution,
             x if x == ids::PAINTER_WETPAINT_BODY => Knob::Body,
+            x if x == ids::PAINTER_WETPAINT_SMOOTH_EDGES => Knob::SmoothEdges,
             x if x == ids::PAINTER_WETPAINT_VOL_OPACITY => Knob::Volume,
             x if x == ids::PAINTER_WETPAINT_HARDNESS => {
                 let passo = KNOB_DEFS[Knob::Body as usize].step;

@@ -153,7 +153,7 @@ fn sonda_smooth_edges_sobre_tinta() {
             water: Some(1.0),
             ..Volumes::default()
         });
-        t.paint.wetpaint.smooth_edges = s;
+        t.set_wet_smooth_edges(s);
         // `PH2D_SONDA_BORDA=<v>`: a Heavy Edge (5.º smoke do dono: as linhas escuras dela sobre a tinta).
         if let Some(v) = std::env::var("PH2D_SONDA_BORDA")
             .ok()

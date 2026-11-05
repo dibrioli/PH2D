@@ -6,18 +6,22 @@ impl PainterTool {
     /// A intensidade do **Smooth Edges** do Wet Paint (`0..1`; NaN = `0`). É do TRAÇO (dono 04/11: «cada pincel deve ter
     /// o seu»): vale para a tinta que se pousar daqui em diante; o que já está pintado não muda nem recompõe.
     pub fn set_wet_smooth_edges(&mut self, forca: f32) {
-        let forca = if forca.is_nan() {
-            0.0
-        } else {
-            forca.clamp(0.0, 1.0)
-        };
-        self.paint.wetpaint.smooth_edges = forca;
+        self.poe_o_suave(f64::from(forca));
+    }
+
+    /// A porta do valor exacto (o `SetValue` do painel). Uma macro antiga continua a mandar nos presets que aplica.
+    pub(in crate::tool::paint) fn poe_o_suave(&mut self, forca: f64) {
+        let w = &mut self.paint.wetpaint;
+        w.knobs.set(Knob::SmoothEdges, forca);
+        if w.suave_da_macro_antiga.is_some() {
+            w.suave_da_macro_antiga = Some(w.knobs.get(Knob::SmoothEdges));
+        }
     }
 
     /// A intensidade do **Smooth Edges** do Wet Paint (`0` = desligado).
     #[must_use]
     pub fn wet_smooth_edges(&self) -> f32 {
-        self.paint.wetpaint.smooth_edges
+        self.paint.wetpaint.knobs.get(Knob::SmoothEdges) as f32
     }
 
     /// O **Óleo Real** (doc 49): a caixa do pincel (`Some`) e, com ela, os números do cartão. A caixa é do TRAÇO (dono

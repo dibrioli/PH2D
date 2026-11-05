@@ -134,8 +134,7 @@ fn a_edicao_da_heavy_edge_chega_a_ferramenta() {
 }
 
 /// O **Smooth Edges** é uma linha numérica desde 10/10 (dono: «ajustar a intensidade»): viva sob o
-/// ponteiro, a edição vira `SetValue`, e a ferramenta guarda a intensidade presa a `0..1`. Desde a W3b (D1) é da
-/// TELA e mora no cartão Paper (`seam_papel`).
+/// ponteiro, a edição vira `SetValue`, e a ferramenta guarda a intensidade presa a `0..1`.
 #[test]
 fn o_smooth_edges_e_um_slider_que_chega_a_ferramenta() {
     use ph2d_tool_painter::ids::PAINTER_WETPAINT_SMOOTH_EDGES as ID;
@@ -171,6 +170,108 @@ fn o_smooth_edges_e_um_slider_que_chega_a_ferramenta() {
         tool.wet_smooth_edges(),
         0.0,
         "o Smooth Edges não se prende a 0..1"
+    );
+}
+
+/// **O Smooth Edges mora no cartão do pincel** (dono 04/11), entre Edge Darkening e Gravity, com dica; o cartão Paper
+/// passa do Tooth à Absorbency sem ele. Mutações que sangram: tirá-lo de `E10_NO_CARTAO`, devolvê-lo ao Paper, a dica
+/// fora do `populate`.
+#[test]
+fn o_smooth_edges_mora_no_cartao_do_pincel_e_nao_no_paper() {
+    use ph2d_tool_painter::ids::{
+        PAINTER_WATERCOLOR_PAPER_DEPTH, PAINTER_WETPAINT_ABSORBENCY, PAINTER_WETPAINT_EDGE,
+        PAINTER_WETPAINT_GRAVITY, PAINTER_WETPAINT_SMOOTH_EDGES as ID,
+    };
+    let (mut host, mut st, _) = pinta(&molhado());
+    host.open_all_sections();
+    let rects = host.paint::<PainterLayersPanel>(&mut st, viewport());
+    let y = |id| rect_de(&rects, id).expect("pintado").y;
+    assert!(
+        y(PAINTER_WETPAINT_EDGE) < y(ID) && y(ID) < y(PAINTER_WETPAINT_GRAVITY),
+        "fora do cartão do pincel: Edge {} · Smooth {} · Gravity {}",
+        y(PAINTER_WETPAINT_EDGE),
+        y(ID),
+        y(PAINTER_WETPAINT_GRAVITY)
+    );
+    let (tooth, absorb) = (
+        y(PAINTER_WATERCOLOR_PAPER_DEPTH),
+        y(PAINTER_WETPAINT_ABSORBENCY),
+    );
+    assert!(
+        !(tooth.min(absorb) < y(ID) && y(ID) < tooth.max(absorb)),
+        "o cartão Paper ainda tem o Smooth Edges"
+    );
+    assert_eq!(
+        host.store().tooltip_for(ID),
+        Some(ph2d_i18n::tr("panel.painter_wet_cartao.smooth_edges_tip"))
+    );
+}
+
+/// ⭐ **O evento real muda o valor, o traço seguinte pinta com ele e o já pintado fica igual** (dono 04/11): escrever na
+/// caixa do painel entre dois traços, contra a mesma cena sem escrever. Mutações que sangram: o braço da ferramenta em
+/// falta (a metade de baixo não muda), recompor a tela com o valor de agora (a metade de cima muda).
+#[test]
+fn escrever_no_smooth_edges_vale_para_o_traco_seguinte_e_nao_para_o_ja_pintado() {
+    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
+    use ph2d_tool_painter::ids::PAINTER_WETPAINT_SMOOTH_EDGES as ID;
+    const LADO: usize = 256;
+    fn traco(t: &mut PainterTool, y: f32, ultima: &mut Option<Vec<u8>>) {
+        let p = |x: f32, phase| CanvasPointer {
+            pos: [x, y],
+            pressure: 0.9,
+            tilt: [0.0, 0.0],
+            phase,
+        };
+        t.on_canvas_pointer(p(30.0, PointerPhase::Down));
+        for i in 1..=24 {
+            t.on_canvas_pointer(p(30.0 + i as f32 * 8.0, PointerPhase::Move));
+            t.on_tick(8.0);
+            if let Some((px, _, _)) = t.take_preview_arc() {
+                *ultima = Some(px.as_ref().clone());
+            }
+        }
+        t.on_canvas_pointer(p(222.0, PointerPhase::Up));
+        t.on_tick(0.0);
+        if let Some((px, _, _)) = t.take_preview_arc() {
+            *ultima = Some(px.as_ref().clone());
+        }
+    }
+    let cena = |escreve: bool| {
+        let mut tool = molhado();
+        tool.set_source(vec![255u8; LADO * LADO * 4], LADO as u32, LADO as u32);
+        tool.set_wet_relogio_fixo(true);
+        tool.set_brush_size_px(14.0);
+        let mut ultima = None;
+        traco(&mut tool, 60.0, &mut ultima);
+        if escreve {
+            let (mut host, mut st, _) = pinta(&tool);
+            host.open_all_sections();
+            let _ = host.paint::<PainterLayersPanel>(&mut st, viewport());
+            for ev in host.type_into_number(ID, "0.52") {
+                host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
+            }
+            entrega(&mut host, &mut tool);
+            assert!(
+                (tool.wet_smooth_edges() - 0.52).abs() < 1e-6,
+                "o evento não chegou: {}",
+                tool.wet_smooth_edges()
+            );
+        }
+        traco(&mut tool, 190.0, &mut ultima);
+        ultima.expect("os traços sujaram a pré-visualização")
+    };
+    let (com, sem) = (cena(true), cena(false));
+    let meio = LADO / 2 * LADO * 4;
+    let difs = |a: &[u8], b: &[u8]| a.iter().zip(b).filter(|(x, y)| x != y).count();
+    assert_eq!(
+        difs(&com[..meio], &sem[..meio]),
+        0,
+        "o já pintado mudou com o controlo"
+    );
+    assert!(
+        difs(&com[meio..], &sem[meio..]) > 100,
+        "o traço seguinte não leu o valor: {} bytes",
+        difs(&com[meio..], &sem[meio..])
     );
 }
 

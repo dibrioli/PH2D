@@ -132,7 +132,20 @@ fn gera_os_presets_de_fabrica() {
                 t.wet_largura_tabela()
             );
         }
-        preset.miniatura = miniatura_do_preset(&preset);
+        // `PH2D_REGERA_MANTEM_MINIATURA=1`: muda só a receita; a miniatura aprovada fica, e o alarme mostra ao dono o antes.
+        let aprovada = (std::env::var("PH2D_REGERA_MANTEM_MINIATURA").as_deref() == Ok("1"))
+            .then(|| {
+                std::fs::read(raiz().join(caminho_relativo(
+                    MOTOR_DOS_PRESETS,
+                    r.meio,
+                    r.grupo,
+                    r.nome,
+                )))
+                .ok()
+            })
+            .flatten()
+            .map(|b| ler(&b).unwrap().miniatura);
+        preset.miniatura = aprovada.unwrap_or_else(|| miniatura_do_preset(&preset));
         let larguras: Vec<String> = preset
             .parametros
             .width_table

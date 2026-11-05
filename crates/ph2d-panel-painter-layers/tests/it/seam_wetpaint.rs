@@ -105,9 +105,7 @@ fn the_knob_rows_are_offered_only_while_armed() {
     for id in ph2d_tool_painter::ids::PAINTER_WETPAINT_FIELDS
         .into_iter()
         .filter(|id| !DA_FERRAMENTA.iter().any(|(i, _)| i == id))
-        // D1 W3b: o Smooth Edges é da TELA e mora no cartão Paper (presença e ausência: `seam_papel`).
-        .filter(|id| *id != ph2d_tool_painter::ids::PAINTER_WETPAINT_SMOOTH_EDGES)
-        // E10 D2: a Absorbency é da TELA e mora no cartão Paper, como o Smooth Edges.
+        // E10 D2: a Absorbency é da TELA e mora no cartão Paper.
         .filter(|id| *id != ph2d_tool_painter::ids::PAINTER_WETPAINT_ABSORBENCY)
         // E10: o Water do topo é só da ferramenta Wet; no Pincel o slot é a Dilution (`os_valores_rapidos_mudam_o_volume`).
         .filter(|id| *id != ph2d_tool_painter::ids::PAINTER_WETPAINT_WATER)
@@ -242,7 +240,6 @@ fn every_doc22_wet_widget_is_offered_only_while_armed() {
     wet.set_wetpaint_armed(true);
     let on = painted(&wet);
     let off = painted(&PainterTool::default());
-    // (O Smooth Edges saiu daqui na W3b — D1: é da tela, no cartão Paper, `seam_papel`.)
     let ids: [NodeId; 7] = [
         ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_TOGGLE,
         ph2d_tool_painter::ids::PAINTER_WETPAINT_TILT_PAD,

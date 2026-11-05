@@ -139,11 +139,7 @@ fn a_chave_muda_com_cada_parametro_e_o_traco_tambem() {
         // As opções da W1g (smoke do dono 10/10: «o Preview não obedece Heavy Edge»).
         ("heavy edge", &|t| t.set_wet_borda_que_pesa(1.0), true),
         ("live water", &|t| t.set_wet_agua_viva(true), true),
-        (
-            "smooth edges",
-            &|t| t.paint.wetpaint.smooth_edges = 0.5,
-            true,
-        ),
+        ("smooth edges", &|t| t.set_wet_smooth_edges(0.5), true),
         // O Volume (a Opacity de antes, smoke do dono 10/10: «o preview ficou mais claro, os traços não»).
         (
             "volume",

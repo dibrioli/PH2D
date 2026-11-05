@@ -129,7 +129,7 @@ pub(super) fn cena(
         t.set_wet_agua_viva(v);
     }
     if let Some(v) = v.smooth {
-        t.paint.wetpaint.smooth_edges = v;
+        t.set_wet_smooth_edges(v);
     }
     if v.cold {
         t.set_brush_paper_kind(ph2d_painter_brush::TextureKind::PaperCold.to_u8());

@@ -227,7 +227,7 @@ fn sonda_corte_nos_pinceis_de_fabrica() {
                         td.0,
                         td.1,
                         dabs.len(),
-                        t.paint.wetpaint.smooth_edges,
+                        t.wet_smooth_edges(),
                         t.paint.wetpaint.tilt_on,
                         dabs.iter()
                             .take(4)
@@ -294,7 +294,7 @@ fn sonda_corte_espacamentos() {
                     };
                     let mut t = monta(c);
                     t.paint.wetpaint.knobs.set(Knob::Spacing, knob_sp);
-                    t.paint.wetpaint.smooth_edges = suave;
+                    t.set_wet_smooth_edges(suave);
                     let dabs = pinta(&mut t, c);
                     for _ in 0..30 {
                         t.on_tick(1000.0 / 60.0);

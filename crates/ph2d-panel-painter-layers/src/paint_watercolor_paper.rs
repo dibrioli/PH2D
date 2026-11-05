@@ -188,7 +188,6 @@ pub(crate) fn paint_paper_section(
             let sec = seccao_do_papel(ctx);
             y = paint_tooth_row(ctx, theme, x, content_w, y, brush, sec);
         }
-        y = paint_smooth_edges_row(ctx, theme, x, content_w, y, brush);
         y = paint_absorbency_row(ctx, theme, x, content_w, y, brush);
         return crate::paint_brush_top::end_fold(ctx, fold, y);
     }
@@ -254,7 +253,6 @@ pub(crate) fn paint_paper_section(
         sec,
     );
     y = paint_tooth_row(ctx, theme, x, content_w, y, brush, sec);
-    y = paint_smooth_edges_row(ctx, theme, x, content_w, y, brush);
     y = paint_absorbency_row(ctx, theme, x, content_w, y, brush);
     // ── Per-pattern params (Contrast / Brightness / kind knobs) ──
     let pp = crate::number_field::params_de_padrao(
@@ -295,35 +293,6 @@ fn paint_tooth_row(
         number_field::FINE_STEP,
         2,
         sec,
-    )
-}
-
-/// ── Smooth Edges (só o Wet Paint): da TELA (D1 do dono, 27/10: «para todo o papel, de todos os traços já pintados
-///    ou futuros») — amacia a silhueta de toda a tinta, a cor e, com o Óleo Real, o relevo. `0` de fábrica.
-fn paint_smooth_edges_row(
-    ctx: &mut PaintCtx,
-    theme: ph2d_tokens::Theme,
-    x: f32,
-    content_w: f32,
-    y: f32,
-    brush: BrushSettings,
-) -> f32 {
-    if !brush.wetpaint {
-        return y;
-    }
-    crate::card::card_row(
-        ctx,
-        theme,
-        x,
-        content_w,
-        y,
-        "panel.painter_layers.wetpaint.smooth_edges",
-        ph2d_tool_painter::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
-        brush.wet_smooth_edges,
-        0.0,
-        1.0,
-        number_field::FINE_STEP,
-        2,
     )
 }
 

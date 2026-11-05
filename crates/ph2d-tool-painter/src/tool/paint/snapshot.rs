@@ -473,7 +473,6 @@ impl PainterTool {
             wet_tilt_spoke: self.paint.wetpaint.tilt_spoke,
             wet_show_wet: self.paint.wetpaint.show_wet,
             wet_paper_visual: self.paint.wetpaint.paper_visual,
-            wet_smooth_edges: self.paint.wetpaint.smooth_edges,
             wet_absorbency: self.paint.wetpaint.absorcao as f32,
             wet_oleo_real: self.paint.wetpaint.oleo_real.is_some(),
             wet_oleo_na_tela: self.paint.wetpaint.oleo_na_tela,

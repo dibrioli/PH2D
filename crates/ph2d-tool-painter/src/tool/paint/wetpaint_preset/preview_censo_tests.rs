@@ -225,6 +225,10 @@ const WET_FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ("tuning_open", UI),
     ("relogio_fixo", "o preview corre no relógio fixo dele"),
     (
+        "suave_da_macro_antiga",
+        "só a tocar uma macro antiga: o preview lê o `Knob::SmoothEdges` dos knobs",
+    ),
+    (
         "largura_por_slot",
         "a das ferramentas FORA da mão: o preview pinta a da mão (`largura`)",
     ),

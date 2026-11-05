@@ -307,21 +307,23 @@ fn com_o_oleo_a_orla_da_tinta_e_a_do_campo() {
     );
 }
 
-/// **Pegar um pincel não muda o Smooth Edges da tela** (D1 W3b: não viaja no preset de pincel).
+/// **Pegar um pincel traz o Smooth Edges dele** (dono 04/11, revoga a D1 W3b: era da tela e não viajava): o Wet Liner e o
+/// Wet Wash `0,12`; o resto, sem a chave no ficheiro, `0`, por cima do valor que estava na mão.
 #[test]
-fn escolher_um_pincel_nao_muda_o_smooth_edges_da_tela() {
+fn cada_pincel_traz_o_seu_smooth_edges() {
     let mut t = PainterTool::default();
     t.abre_a_sprite(vec![255u8; 64 * 64 * 4], 64, 64);
     t.set_paint_media(PaintMedia::WetPaint);
-    t.set_wet_smooth_edges(0.7);
-    for nome in ["Dabber", "Knife Oily"] {
+    for (nome, esperado) in [
+        ("Wet Liner", 0.12),
+        ("Dabber", 0.0),
+        ("Wet Wash", 0.12),
+        ("Knife Oily", 0.0),
+    ] {
+        t.set_wet_smooth_edges(0.7);
         let p = crate::tool::paint::wetpaint_preset::de_fabrica_ou_candidato(nome);
         assert!(t.wet_preset_aplicar(&p).is_empty());
-        assert_eq!(
-            t.wet_smooth_edges(),
-            0.7,
-            "o pincel {nome} trouxe o Smooth Edges"
-        );
+        assert_eq!(t.wet_smooth_edges(), esperado, "o pincel {nome}");
     }
 }
 

@@ -366,9 +366,12 @@ pub enum Knob {
     /// **O eixo através tem expoente próprio** (seletor de 2, R23): `0` = o mesmo `γ` nos dois eixos, ao bit; `1` =
     /// o [`Knob::TextureSizeExpAcross`]. Substitui a sentinela `-0,01` que esse knob guardava.
     TextureAcrossOwn,
+    /// ⭐ **Smooth Edges** (dono 04/11: «cada pincel deve ter o seu»): o meio-tom da silhueta da tinta deste pincel, na
+    /// cor e no relevo. Pousa na célula ([`crate::grid::aparencia::AparenciaCelula::suave`]). `0` (omissão) = a borda de sempre, ao bit.
+    SmoothEdges,
 }
 
-pub const KNOB_COUNT: usize = 143;
+pub const KNOB_COUNT: usize = 144;
 
 /// O LEITOR TOLERANTE das chaves do material de antes da W3 (preset e macro gravados com elas): `(knob, valor)`
 /// na lei nova, `None` para uma chave que não é antiga. `roughnessMul` m → Roughness `0,5·m` (o neutro `1` → `0,5`,

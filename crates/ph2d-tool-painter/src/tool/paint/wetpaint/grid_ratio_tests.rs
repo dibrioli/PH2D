@@ -121,7 +121,7 @@ fn over_as_it_shipped(pigment: &[u8], base: &[u8], px: usize, py: usize) -> [u8;
 fn ratio_one_composites_exactly_what_the_old_over_produced() {
     let mut t = wet_tool(1);
     // A lei do `over` da razão 1, sem o Smooth Edges (que só mexe na silhueta — o gate abaixo).
-    t.paint.wetpaint.smooth_edges = 0.0;
+    t.set_wet_smooth_edges(0.0);
     stroke(&mut t);
     composite_all(&mut t);
     let sess = t.paint.wetpaint.session.as_ref().expect("uma sessao viva");
@@ -496,12 +496,12 @@ fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
     use crate::tool::paint::watercolor_render::SS0;
     use ph2d_editor_core::tool::PanelEvent;
     let mut t = wet_tool(1);
-    assert_eq!(t.paint.wetpaint.smooth_edges, 0.0, "desligado de fábrica");
+    assert_eq!(t.wet_smooth_edges(), 0.0, "desligado de fábrica");
     assert!(t.route_brush_wetpaint_event(&PanelEvent::SetValue(
         crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
         1.0
     )));
-    assert_eq!(t.paint.wetpaint.smooth_edges, 1.0, "o slider no máximo");
+    assert_eq!(t.wet_smooth_edges(), 1.0, "o slider no máximo");
     let a = super::smooth_edges::alcance(super::smooth_edges::RAIO_MAX);
     stroke(&mut t);
     composite_all(&mut t);
@@ -566,7 +566,7 @@ fn smooth_edges_so_toca_a_silhueta_e_desligado_e_o_over_de_antes() {
         crate::ids::PAINTER_WETPAINT_SMOOTH_EDGES,
         0.0
     )));
-    assert_eq!(t.paint.wetpaint.smooth_edges, 0.0, "o slider no zero");
+    assert_eq!(t.wet_smooth_edges(), 0.0, "o slider no zero");
     stroke(&mut t);
     composite_all(&mut t);
     let sess = t.paint.wetpaint.session.as_ref().expect("uma sessao viva");
@@ -601,7 +601,7 @@ fn smooth_edges_no_zero_e_o_desligado_de_antes_ao_byte() {
     };
     let tela = |ratio: u8| {
         let mut t = wet_tool(ratio);
-        t.paint.wetpaint.smooth_edges = 0.0;
+        t.set_wet_smooth_edges(0.0);
         stroke(&mut t);
         composite_all(&mut t);
         fnv(&t.canvas_rgba)
@@ -642,7 +642,7 @@ fn aspereza_e_tinta(px: &[u8]) -> (u64, u64) {
 fn mais_smooth_edges_e_uma_borda_mais_suave() {
     let tela = |forca: f32| {
         let mut t = wet_tool(1);
-        t.paint.wetpaint.smooth_edges = forca;
+        t.set_wet_smooth_edges(forca);
         stroke(&mut t);
         composite_all(&mut t);
         aspereza_e_tinta(&t.canvas_rgba)

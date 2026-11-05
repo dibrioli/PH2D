@@ -58,7 +58,6 @@ impl PainterTool {
                 "flow_ratio": w.flow_ratio,
                 "km_mixing": w.km_mixing,
                 "km_glaze": w.km_glaze,
-                "smooth_edges": w.smooth_edges,
                 "oleo_real": w.oleo_real.is_some(),
                 "oleo_real_valores": oleo_para_json(&w.oleo_real_valores),
                 "show_wet": w.show_wet,
@@ -157,9 +156,7 @@ impl PainterTool {
         w.km_glaze = wv["km_glaze"].as_bool().unwrap_or(w.km_glaze);
         w.show_wet = wv["show_wet"].as_bool().unwrap_or(w.show_wet);
         w.paper_visual = wv["paper_visual"].as_bool().unwrap_or(w.paper_visual);
-        if let Some(x) = wv["smooth_edges"].as_f64() {
-            w.smooth_edges = x as f32;
-        }
+        suave_antigo_no_pincel(w, wv, &v["preset"]["engine"]);
         // O Óleo Real: os knobs primeiro, a caixa por cima (ligada = `Some` deles); ausente = como está.
         oleo_de_json(&mut w.oleo_real_valores, &wv["oleo_real_valores"]);
         if let Some(on) = wv["oleo_real"].as_bool() {
@@ -236,6 +233,25 @@ fn cartao_antigo_no_pincel(k: &mut super::WetKnobs, cartao: &Value, engine: &Val
             k.set(knob, x);
         }
     }
+}
+
+/// A MIGRAÇÃO do Smooth Edges (dono 04/11: era da tela, passou ao pincel): a macro de antes traz `wet.smooth_edges` e um
+/// preset sem a chave ⇒ o valor vira o do pincel, em todos os slots e nos presets que ela aplicar a tocar. Assim cada
+/// traço pousa o valor com que a tela o mostrava ao gravar.
+fn suave_antigo_no_pincel(w: &mut super::wetpaint::WetPaintState, wet: &Value, engine: &Value) {
+    let chave = ph2d_wet_paint::tuning::KNOB_DEFS[Knob::SmoothEdges as usize].key;
+    let Some(x) = wet["smooth_edges"].as_f64() else {
+        return;
+    };
+    if engine.get(chave).is_some() {
+        return;
+    }
+    w.knobs.set(Knob::SmoothEdges, x);
+    let x = w.knobs.get(Knob::SmoothEdges);
+    for slot in &mut w.knobs_por_slot {
+        slot[Knob::SmoothEdges as usize] = x;
+    }
+    w.suave_da_macro_antiga = Some(x);
 }
 
 /// O inverso de [`oleo_para_json`]: um campo ausente fica como está (o Depth e o Gloss de antes:

@@ -670,33 +670,6 @@ fn joining_by_link_says_it_searches_the_internet_and_what_to_do_when_it_fails() 
     assert!(matches!(&t.asked()[..], [LiveRequest::JoinLink { .. }]));
 }
 
-/// ADR-0187 — o anfitrião vê «Invite over the internet» e ele pede a entrada pela internet; a
-/// preparar, o botão sai e fica a frase; pronta, «Copy the link again» pede o mesmo.
-#[test]
-fn the_host_invites_over_the_internet_and_copies_again() {
-    use crate::documents::live::LiveInternet;
-    let mut t = T::new();
-    t.open_live();
-    t.room(LiveRole::Hosting {
-        code: "ABCDEF".into(),
-        addrs: vec!["10.0.0.5:47320".into()],
-    });
-    t.paint();
-    t.asked();
-    t.live_click(Hit::Button(LiveButton::InviteInternet));
-    assert_eq!(t.asked(), vec![LiveRequest::InviteInternet]);
-    t.hero.documents.live_view_mut().internet = LiveInternet::Preparing;
-    t.paint();
-    let id = live_node(Hit::Button(LiveButton::InviteInternet));
-    assert!(t.find(id).is_none(), "a preparar, o botão não se clica");
-    t.hero.documents.live_view_mut().internet = LiveInternet::Ready {
-        link: "ph2d-board://v1/#x".into(),
-    };
-    t.paint();
-    t.live_click(Hit::Button(LiveButton::InviteInternet));
-    assert_eq!(t.asked(), vec![LiveRequest::InviteInternet]);
-}
-
 /// W23 A3 — a lista das pessoas (o «+n» dos avatares e o da lista).
 #[path = "board_live_people_tests.rs"]
 mod people;

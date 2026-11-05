@@ -199,3 +199,30 @@ fn j7_a_kanban_link_in_the_boards_join_is_a_link() {
         assert_eq!(t.hero.documents.live.notice.map(|n| n.0), None);
     }
 }
+
+/// ADR-0187 — o anfitrião vê «Invite over the internet» e ele pede a entrada pela internet; a
+/// preparar, o botão sai e fica a frase; pronta, «Copy the link again» pede o mesmo.
+#[test]
+fn the_host_invites_over_the_internet_and_copies_again() {
+    use crate::documents::live::LiveInternet;
+    let mut t = T::new();
+    t.open_live();
+    t.room(LiveRole::Hosting {
+        code: "ABCDEF".into(),
+        addrs: vec!["10.0.0.5:47320".into()],
+    });
+    t.paint();
+    t.asked();
+    t.live_click(Hit::Button(LiveButton::InviteInternet));
+    assert_eq!(t.asked(), vec![LiveRequest::InviteInternet]);
+    t.hero.documents.live_view_mut().internet = LiveInternet::Preparing;
+    t.paint();
+    let id = live_node(Hit::Button(LiveButton::InviteInternet));
+    assert!(t.find(id).is_none(), "a preparar, o botão não se clica");
+    t.hero.documents.live_view_mut().internet = LiveInternet::Ready {
+        link: "ph2d-board://v1/#x".into(),
+    };
+    t.paint();
+    t.live_click(Hit::Button(LiveButton::InviteInternet));
+    assert_eq!(t.asked(), vec![LiveRequest::InviteInternet]);
+}

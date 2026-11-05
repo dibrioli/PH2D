@@ -168,53 +168,12 @@ impl PaletteModel {
 /// **A BUSCA** — o predicado único do filtro e do `Enter`, com as palavras de intenção (doc
 /// ObjectsAndComponents 01 §7.3). Irmão pelo tecto de 500 LOC dos primitivos.
 mod busca;
+use busca::filter_model;
 pub use busca::{item_matches, label_matches, top_match};
 
 /// **Os PREFIXOS** `>` `@` `:` (CodeEditor I14) — irmão pelo tecto de 500 LOC dos primitivos.
 mod scope;
 pub use scope::{LineScope, PaletteScopes, ScopeState, Scoped, line_target, scoped};
-
-/// A copy of `model` keeping only items whose label matches `query`, dropping any sub-cluster or category
-/// that ends up empty — so a filtered library never shows a coloured header with nothing under it. An
-/// empty query is handled by the caller (it uses the model unfiltered); here every item still matches.
-fn filter_model(model: &PaletteModel, query: &str) -> PaletteModel {
-    let groups = model
-        .groups
-        .iter()
-        .filter_map(|g| {
-            let subs: Vec<PaletteSub> = g
-                .subs
-                .iter()
-                .filter_map(|s| {
-                    let items: Vec<PaletteItem> = s
-                        .items
-                        .iter()
-                        .filter(|it| item_matches(query, it))
-                        .cloned()
-                        .collect();
-                    (!items.is_empty()).then(|| PaletteSub {
-                        title: s.title.clone(),
-                        items,
-                    })
-                })
-                .collect();
-            (!subs.is_empty()).then(|| PaletteGroup {
-                title: g.title.clone(),
-                color: g.color,
-                subs,
-            })
-        })
-        .collect();
-    PaletteModel {
-        title: model.title.clone(),
-        groups,
-        // ⚠️ A caixa ATRAVESSA o filtro: ela é da banda, não do conteúdo — filtrar por texto não a
-        // pode desligar, senão escrever no campo de busca apagava o controlo que a mostra.
-        toggle: model.toggle.clone(),
-        // A dica procura-se pela id: as dos itens filtrados ficam e não pintam.
-        tips: model.tips.clone(),
-    }
-}
 
 // ── Internal placement: a category card laid out at card-local coordinates (origin at the card's
 //    top-left), plus its total height so the arrangement can stack cards before painting. ──

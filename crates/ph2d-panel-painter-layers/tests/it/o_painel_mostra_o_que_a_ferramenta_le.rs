@@ -22,13 +22,21 @@ use std::collections::BTreeMap;
 const PISO: u8 = 8;
 
 /// `(ferramenta, controlo, motivo)`: à vista, inerte no estado do censo e com razão para ficar à vista.
-const INERTES_COM_MOTIVO: [(&str, NodeId, &str); 1] = [(
-    "eraser",
-    PAINTER_SHAPE_RAMP_ENABLE,
-    "na ferramenta sem cor o Shape Tone é tom de COBERTURA e a rampa de fábrica (preto→branco) é a identidade: age \
-     ao mexer na rampa (`dual_ferramenta_tests`, o tom na Borracha). Não esmaece: a linha já é inerte noutros estados \
-     do Pincel (Grain armado, ferramentas do Wet Paint) que a lei teria de cobrir todos",
-)];
+const INERTES_COM_MOTIVO: [(&str, NodeId, &str); 2] = [
+    (
+        "eraser",
+        PAINTER_SHAPE_RAMP_ENABLE,
+        "na ferramenta sem cor o Shape Tone é tom de COBERTURA e a rampa de fábrica (preto→branco) é a identidade: age \
+         ao mexer na rampa (`dual_ferramenta_tests`, o tom na Borracha). Não esmaece: a linha já é inerte noutros estados \
+         do Pincel (Grain armado, ferramentas do Wet Paint) que a lei teria de cobrir todos",
+    ),
+    (
+        "eraser",
+        PAINTER_BRUSH_MEDIA,
+        "as riscas deste censo são SECAS, onde os três meios apagam ao byte; sobre tinta viva o meio decide: a prova é \
+         `o_meio_da_borracha_so_age_sobre_tinta_viva`. Não esmaece: o que a faz agir é a tela, não o pincel",
+    ),
+];
 
 const ARMAR: [Gesto; 2] = [Gesto::Clique(PAINTER_BRUSH_SYNC), Gesto::PontaColorida];
 
@@ -438,6 +446,47 @@ fn a_borracha_em_cada_meio_so_ve_o_que_o_meio_lhe_muda() {
         "controlo: só {medidas} gestos do meio medidos"
     );
     assert!(falhas.is_empty(), "{falhas:#?}");
+}
+
+/// O motivo da Paint Mode em [`INERTES_COM_MOTIVO`]: nas riscas secas os três meios da Borracha apagam ao byte (o mesmo
+/// raio, o do anel); sobre tinta VIVA o meio decide: o Wet Paint levanta do fluido, sair dele encerra a sessão e apaga por
+/// inteiro (`sonda_borracha_por_meio`, Wet vivo: fica 27,8 de tinta × 0,0).
+#[test]
+fn o_meio_da_borracha_so_age_sobre_tinta_viva() {
+    let gs: Vec<Gesto> = gestos_da(bancada_com("eraser", &ARMAR, &Gesto::Nenhum))
+        .into_iter()
+        .filter(|g| chave(g) == Some(PAINTER_BRUSH_MEDIA))
+        .collect();
+    assert_eq!(gs.len(), 3, "a Borracha oferece três meios");
+    let seca = ensaio("eraser", &Gesto::Nenhum, &Gesto::Nenhum);
+    let viva = |g: &Gesto| {
+        let mut b = bancada_do_meio(PaintMedia::WetPaint, true);
+        b.aplica(g, &mut super::censo_dos_controlos::Entrega::default());
+        let meio = b.tool.paint_media();
+        (meio, risca(&mut b.tool))
+    };
+    let (_, base_viva) = viva(&Gesto::Nenhum);
+    let mut meios = Vec::new();
+    for g in &gs {
+        let px = ensaio("eraser", &Gesto::Nenhum, g);
+        let (meio, px_viva) = viva(g);
+        assert_eq!(
+            diferenca(&seca, &px).0,
+            0,
+            "{meio:?}: o meio mudou o apagado nas riscas secas"
+        );
+        let n = diferenca(&base_viva, &px_viva).0;
+        assert_eq!(
+            n > 0,
+            meio != PaintMedia::WetPaint,
+            "{meio:?}: {n} texels sobre tinta viva, contra a Borracha do Wet Paint"
+        );
+        meios.push(meio);
+    }
+    assert!(
+        meios.contains(&PaintMedia::WetPaint),
+        "controlo: o gesto não chegou ao Wet Paint ({meios:?})"
+    );
 }
 
 /// A Hardness está à vista na Borracha do Wet Paint e age no apagado (E10h): a borracha lê o `paperGate`. Cega do

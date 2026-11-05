@@ -120,7 +120,7 @@ impl PainterTool {
                 );
                 // O raio do traço: na água o do MOTOR (a lei da largura, `dab_spec.rs`). ⛔ Não o
                 // `stroke_spec()`: ele pergunta ao painel e voltava aqui (estouro de pilha, medido).
-                let raio = match (agua, &self.paint.wetpaint.largura) {
+                let raio = match (agua, self.largura_da_tinta()) {
                     (true, Some(lei)) => lei.raio_do_motor(b.radius_px),
                     _ => b.radius_px,
                 };

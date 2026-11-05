@@ -20,6 +20,7 @@
 - ⭐⭐ [Dono 04/11 noite: missão autónoma, fechar a linha Painter sem perguntas; smoke no dia seguinte](project_autonomous_close_of_painter_line_2026_11_04.md)
 - ⭐⭐ [Dono 04/11: Smooth Edges por traço, um por pincel (revoga 27/10); Wet Liner e Wet Wash 0,12 + Edge Darkening 0](project_smooth_edges_per_brush_owner_decision_2026_11_04.md)
 - ⭐⭐ [Dono 05/11: Pincel e Borracha com a sua Hardness; Smooth Edges fica fora do Smear/Blend/Water](project_hardness_per_tool_owner_decision_2026_11_05.md)
+- ⭐⭐ [Smoke do dono 05/11: Smooth Edges, Grain, Hardness OK; decisões ficam; macro com Grain bugada FORA desta linha](project_smoke_2026_11_05_owner_verdicts.md)
 - ⭐⭐ [Dono 01/11 (F43): Effects/Filters do Vector no layout Figma — «+» dropdown, lista, propriedades à ESQUERDA](project_vector_effects_filters_figma_layout_2026_11_01.md) · ⭐⭐ [F44: Fill e Stroke no MESMO padrão; Cap/Join/Align com ícones](project_vector_fill_stroke_figma_layout_2026_11_01.md) · ⭐⭐ [campo que não se explica sozinho leva rótulo](feedback_a_field_that_is_not_self_evident_gets_a_label.md) · [unidade no rótulo, nunca na caixa (iPad)](feedback_units_live_in_the_label_not_in_the_box.md)
 - ⭐⭐ [E12 (05/11) NÃO feita: a régua de furos reprova quem passa a cobrir; não apague a lei velha antes de refazê-la](project_e12_blocked_by_mother_gate_ruler_2026_11_05.md)
 - ⭐⭐ [Dono 05/11: Pixel — filtros ao vivo com Apply/Cancel, girar de volta devolve o original, só 12 fontes](project_pixel_text_and_filters_owner_decisions_2026_11_05.md)

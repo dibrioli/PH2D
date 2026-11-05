@@ -77,7 +77,7 @@ impl PainterTool {
             // A LARGURA PROMETIDA (W2): o traço nasce com o raio do MOTOR cuja largura medida é o
             // número do painel — e o espaçamento dos carimbos é o desse raio, como em qualquer pincel
             // daquele tamanho (a tabela do preset mede-se assim). O anel continua no raio pedido.
-            if let Some(lei) = &self.paint.wetpaint.largura {
+            if let Some(lei) = self.largura_da_tinta() {
                 brush.radius_px = lei.raio_do_motor(brush.radius_px);
             }
         }
@@ -166,6 +166,13 @@ impl PainterTool {
     #[must_use]
     pub(crate) fn grao_e_o_papel_do(&self, brush: &ph2d_painter_brush::BrushSpec) -> bool {
         brush.grain_same_as_paper && self.paint_media() != super::media::PaintMedia::Watercolor
+    }
+
+    /// A lei da largura da ferramenta na mão. A Borracha não tem: a que ela herdava é a da tinta do Wet Round, e ela toca o
+    /// que o anel mostra (dono 05/11). As da água têm a sua, medida no preset delas.
+    pub(crate) fn largura_da_tinta(&self) -> Option<&super::wetpaint::largura::LeiDaLargura> {
+        let w = &self.paint.wetpaint;
+        (!self.paint.eraser).then_some(w.largura.as_ref()).flatten()
     }
 
     /// O pincel foi aplicado com um Grain que amostra ([`ph2d_painter_brush::GraoAplicado`])? Então um grão armado toma

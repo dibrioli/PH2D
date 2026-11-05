@@ -630,6 +630,10 @@ Medido (traço de 40 px; massa / ecrã ÷ fábrica; «antes» = o mesmo processo
 
 Portões `grao_a_mao_tests::casos_abertos_*` (com o braço «sem a cura», que sangra, em cada um). **Aberto:** uma macro gravada antes que arma um Grain toca agora a quantidade nova.
 
+## Bug #68 (FECHADO 05/11, smoke do dono) — a Borracha do Wet Paint apagava além do anel do cursor
+
+A Borracha herdava a tabela de largura da tinta do Wet Round (`dab_spec.rs`): anel de raio 30, `dab.r` 49,01. **Medido:** clique em raio 15, caixa 50×50 com a tabela e 30×30 sem; raio 30, 95×82 e 58×58. Sem tinta viva, 98×98 contra anel 60. Os «blocos de lados retos» da foto são dabs discretos (hardness 0,9, força 0,16, passo 10 % do diâmetro) de um disco grande sobre traço estreito: a recomposição foi descartada (Δ 0). **Cura:** `largura_da_tinta()`: a Borracha não tem lei de largura. ⛔ **Recusa medida:** estender às ferramentas da água muda 10 pincéis de fábrica (Blender, Smear, Water Brush; Smear Flat 51,6 → 37,6 a Size 52): elas têm a tabela delas, que cumpre a promessa. As faixas ficam mais finas, não somem; força e dureza da Borracha não mudaram. Portões `raio_igual_ao_anel_tests`, `o_meio_da_borracha_so_age_sobre_tinta_viva`.
+
 ## Bug #66 (FECHADO 05/11, ordem do dono) — o app congela ao pintar: espera pelo motor dentro de um job do rayon
 
 **Sintoma:** smoke do dono: congelou ao pintar com Knife Grainy e não voltou; processo vivo, 0 % de CPU, todos os fios em futex.

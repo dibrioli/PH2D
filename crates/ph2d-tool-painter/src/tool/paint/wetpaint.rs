@@ -483,6 +483,9 @@ mod manchas_liner_tests;
 #[path = "wetpaint/offthread_tests.rs"]
 mod offthread_tests; // os gates da sim FORA da thread do frame
 #[cfg(test)]
+#[path = "wetpaint/raio_igual_ao_anel_tests.rs"]
+mod raio_igual_ao_anel_tests;
+#[cfg(test)]
 #[path = "wetpaint/same_as_paper_volume_tests.rs"]
 mod same_as_paper_volume_tests;
 #[cfg(test)]

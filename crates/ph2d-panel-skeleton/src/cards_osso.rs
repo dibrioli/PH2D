@@ -159,7 +159,7 @@ pub(super) fn cartao_do_osso(osso: ph2d_skeleton::bend::BoneSpec) -> CardDef<'st
                     Seg {
                         id: ids::VECTOR_BONE_HANDLES_AUTO,
                         icon: None,
-                        text: tr("panel.vector.bone.handles.auto"),
+                        text: tr("card.bones.handles.chain"),
                         on: auto,
                     },
                 ];

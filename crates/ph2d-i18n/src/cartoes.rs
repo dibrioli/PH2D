@@ -273,6 +273,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.bones.segments" => "Segments",
         "card.bones.reach" => "Reach Strength",
         "card.bones.handles" => "Curve handles",
+        "card.bones.handles.chain" => "Chain",
         "card.bones.curve_in" => "Curve in",
         "card.bones.curve_out" => "Curve out",
         "card.bones.along_in" => "Along in",

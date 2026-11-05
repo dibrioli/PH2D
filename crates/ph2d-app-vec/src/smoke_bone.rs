@@ -196,7 +196,7 @@ pub fn build(
     if ph2d_skeleton_demo::bifurcacao(sim).is_some() {
         eprintln!(
             "[vec-bone-smoke] em BAIXO, ao MEIO, dois esqueletos pequenos: o osso do MEIO de cada \
-             um curva-se pela corrente (Curve Handles: From Chain). A esquerda («{}») ele tem UM \
+             um curva-se pela corrente (Curve handles: Chain). A esquerda («{}») ele tem UM \
              filho e a curva entra nele; a direita («{}») tem DOIS filhos e a ponta fica RECTA por \
              omissao. Para ESCOLHER quem manda: no painel **Bones** (ja' aberto a' direita), toque no osso \
              e use «Curve Tip» -- ele lista «From Chain», «Nobody» e um filho por linha.",

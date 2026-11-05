@@ -118,7 +118,12 @@ impl PainterTool {
             return;
         };
         if let Some(c) = &im.caixas {
-            let tocou = sess.otica.uniao_local.is_some_and(|u| toca(u, c.caixa_cel));
+            // Pela caixa dos degraus, a maior que `Imagem::aplica` cola (`plano_do_suave`: contém a do pigmento).
+            debug_assert!(toca(c.caixa_cel, c.caixa_suave) && c.caixa_suave.0 <= c.caixa_cel.0);
+            let tocou = sess
+                .otica
+                .uniao_local
+                .is_some_and(|u| toca(u, c.caixa_suave));
             #[cfg(test)]
             {
                 sess.otica.tocadas += u32::from(tocou);

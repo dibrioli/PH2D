@@ -389,6 +389,53 @@ fn a_imagem_velha_nao_esvazia_o_que_a_casa_ja_pintou() {
     }
 }
 
+/// **A caixa dos degraus é maior que a do pigmento** (Bug #65 D1): a imagem pedida a `folga` células do traço não toca a
+/// caixa dele com o pigmento, mas cola os degraus velhos, `alcance` além, por cima dos que a casa acabou de pousar.
+/// Medido antes da cura: 2 389 bytes a Smooth Edges 1,0 e folga 6. O plano já existe: a imagem não vem «vazia».
+#[test]
+fn a_imagem_velha_nao_cola_degraus_velhos_no_traco_ao_lado() {
+    for suave in [1.0, 0.12] {
+        for folga in [6, 8, 10, 14] {
+            for abaixo in [false, true] {
+                let agua = |t: &mut PainterTool| {
+                    t.abre_a_sprite(vec![255u8; LADO * LADO * 4], LADO as u32, LADO as u32);
+                    t.set_paint_tool_mode("wetpaint");
+                    forca_no_teste(Some(true));
+                    let wd = "Watercolor/Fluid/Wet Drip.ph2d-brush.png";
+                    traco(t, wd, [230, 200, 30], 20.0, suave, false);
+                    quadros(t, 3);
+                    assenta(t);
+                };
+                let mut prova = PainterTool::default();
+                agua(&mut prova);
+                let inicio = pinta_e_mede(&mut prova, abaixo, 16.0);
+                let mut t = PainterTool::default();
+                agua(&mut t);
+                let rr = usize::from(sess(&t).ratio);
+                let s = t.paint.wetpaint.session.as_mut().expect("sessao");
+                s.bring_home();
+                s.otica.divida = Some(caixa_ate(inicio + 1 - folga, abaixo, rr));
+                tique(&mut t);
+                assert!(sess(&t).otica.pendente(), "premissa: o pedido saiu");
+                std::thread::sleep(Duration::from_millis(150));
+                risca_da_margem(&mut t, abaixo, 16.0, false, suave);
+                congela(&mut t);
+                let n0 = sess(&t).otica.aplicadas + sess(&t).otica.tocadas;
+                tique(&mut t);
+                assert!(
+                    sess(&t).otica.aplicadas + sess(&t).otica.tocadas > n0,
+                    "premissa: a imagem chegou"
+                );
+                assenta(&mut t);
+                confere_com_casa(
+                    &mut t,
+                    &format!("suave {suave}, folga {folga}, abaixo {abaixo}"),
+                );
+            }
+        }
+    }
+}
+
 /// **A tinta suave NA MARGEM da caixa:** com o plano do Smooth Edges a nascer (esvaziado à mão: a porta que o fazia era
 /// a imagem velha) e a tinta suave fora do sujo, a imagem tem de trazer o degrau de tudo o que o laço de píxel lê,
 /// `alcance(RAIO_MAX)` além da região. Sem isso a tinta na margem lê o degrau 0 e os píxeis da caixa perdem a orla.

@@ -290,17 +290,53 @@ fn paint_verbs(
     // geometria do corpo antes de o motor o ver. Oferecê-lo ali seria um verbo
     // cujo efeito a lei apaga no mesmo tique — a lei do knob morto que o resto
     // desta função já honra.
-    if info.min_float_known && info.spring_is_live {
-        let label = if info.float_height <= info.min_float_height {
+    let fit = (info.min_float_known && info.spring_is_live).then(|| {
+        if info.float_height <= info.min_float_height {
             tr_with(
                 "panel.inspector.player.fit_needs",
                 &[("min", &format!("{:.2}", info.min_float_height))],
             )
         } else {
             tr("panel.inspector.player.fit_to_collider").to_string()
-        };
-        let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, &label);
-        let btn = Button::new(ids::INSP_PLAYER_FIT, &label)
+        }
+    });
+    let fit_crouch = (info.min_float_known && info.crouch_height > 0.0).then(|| {
+        if info.crouch_height <= info.min_float_height {
+            tr_with(
+                "panel.inspector.player.fit_crouch_needs",
+                &[("min", &format!("{:.2}", info.min_float_height))],
+            )
+        } else {
+            tr("panel.inspector.player.fit_crouch_to_collider").to_string()
+        }
+    });
+    // Num cartão os dois irmãos dividem a linha (05 §4, lei 1).
+    if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        yy = super::rows::fila_de_botoes(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            &[
+                (
+                    fit.is_some(),
+                    ids::INSP_PLAYER_FIT,
+                    fit.as_deref().unwrap_or_default(),
+                ),
+                (
+                    fit_crouch.is_some(),
+                    ids::INSP_PLAYER_FIT_CROUCH,
+                    fit_crouch.as_deref().unwrap_or_default(),
+                ),
+            ],
+        );
+    } else if let Some(label) = &fit {
+        let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, label);
+        let btn = Button::new(ids::INSP_PLAYER_FIT, label)
             .kind(ButtonKind::Default)
             .visual(store.button_visual(ids::INSP_PLAYER_FIT));
         paint_button(&btn, rect, scene, text_system, theme);
@@ -322,17 +358,9 @@ fn paint_verbs(
     // ⚠️ **Só com o agachar ARMADO:** em zero a capacidade está desligada e não há
     // defeito nenhum — e um botão que a ligasse pelas costas conflataria *dar um
     // agachar* com *consertar o que ele mede*.
-    if info.min_float_known && info.crouch_height > 0.0 {
-        let label = if info.crouch_height <= info.min_float_height {
-            tr_with(
-                "panel.inspector.player.fit_crouch_needs",
-                &[("min", &format!("{:.2}", info.min_float_height))],
-            )
-        } else {
-            tr("panel.inspector.player.fit_crouch_to_collider").to_string()
-        };
-        let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, &label);
-        let btn = Button::new(ids::INSP_PLAYER_FIT_CROUCH, &label)
+    if let (Some(label), None) = (&fit_crouch, ph2d_editor_core::widget::card_ink::card_body()) {
+        let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, label);
+        let btn = Button::new(ids::INSP_PLAYER_FIT_CROUCH, label)
             .kind(ButtonKind::Default)
             .visual(store.button_visual(ids::INSP_PLAYER_FIT_CROUCH));
         paint_button(&btn, rect, scene, text_system, theme);

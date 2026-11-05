@@ -99,7 +99,7 @@ fn avisos(
     } else {
         tr_with(
             "panel.inspector.luz.white_at_d_m",
-            &[("d", &format!("{:.2}", i.luz_a_1m))],
+            &[("d", &crate::unidade_mundo::distancia_na_frase(i.luz_a_1m))],
         )
     };
     y = super::rows::aviso(

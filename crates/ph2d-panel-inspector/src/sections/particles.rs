@@ -134,16 +134,7 @@ fn titulo(
     y: f32,
     texto: &str,
 ) -> f32 {
-    super::rows::titulo_de_grupo(
-        scene,
-        text_system,
-        theme,
-        x,
-        w,
-        y,
-        texto,
-        ColorToken::Text3,
-    )
+    super::rows::titulo_de_grupo(scene, text_system, theme, x, w, y, texto)
 }
 
 /// ⭐⭐ **A coluna do nome desta secção — UMA, para as três espécies de linha.**

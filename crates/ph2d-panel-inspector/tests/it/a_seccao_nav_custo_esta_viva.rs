@@ -427,9 +427,12 @@ fn as_frases_da_ordem_e_da_passagem_aparecem_quando_valem() {
     };
     let cede = tr_with(
         "panel.inspector.nav.giving_way_x_m_to_go",
-        &[("dist", &"2.00")],
+        &[("dist", &"2.00 m")],
     );
-    let anda = tr_with("panel.inspector.nav.moving_x_m_to_go", &[("dist", &"2.00")]);
+    let anda = tr_with(
+        "panel.inspector.nav.moving_x_m_to_go",
+        &[("dist", &"2.00 m")],
+    );
     let f = frases(info(Some(a_andar(true)), None, None));
     assert!(f.contains(&cede) && !f.contains(&anda), "{f:?}");
     let f = frases(info(Some(a_andar(false)), None, None));

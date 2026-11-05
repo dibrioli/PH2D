@@ -423,7 +423,6 @@ fn editor(
         w,
         cur_y,
         tr("panel.inspector.animation.signals_empty_silent"),
-        ColorToken::Text2,
     );
     cur_y = text_row(
         scene,

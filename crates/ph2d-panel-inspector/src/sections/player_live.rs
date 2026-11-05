@@ -92,8 +92,7 @@ pub(super) fn paint_live_readout(
         scene,
         text_system,
     );
-    let n = |v: f32| ph2d_editor_core::widget::zero_sem_sinal(&format!("{v:.2}")).into_owned();
-    let speed = format!("{}, {} m/s", n(l.velocity[0]), n(l.velocity[1]));
+    let speed = crate::unidade_mundo::velocidade_na_frase(l.velocity);
     line(
         tr("panel.inspector.player.speed"),
         &speed,

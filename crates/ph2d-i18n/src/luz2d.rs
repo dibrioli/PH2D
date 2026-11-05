@@ -9,7 +9,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.luz.point" => "Point",
         "panel.inspector.luz.ambient" => "Ambient",
         "panel.inspector.luz.limit_range" => "Limit Range",
-        "panel.inspector.luz.white_at_d_m" => "A white sprite is fully lit at {d} m.",
+        "panel.inspector.luz.white_at_d_m" => "A white sprite is fully lit at {d}.",
         "panel.inspector.luz.ambient_n_percent" => {
             "Lights every open spot at {n} % \u{2014} 100 % is the scene as it was without light."
         }

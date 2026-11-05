@@ -28,17 +28,13 @@ const PENDENTES: &[(&str, usize, usize, usize)] = &[("widget_gallery", 7, 1, 0)]
 
 /// `(painel, fronteiras fora da lei do ritmo)`, medido em 04/11. Só desce: é o alvo de zero.
 const PENDENTES_RITMO: &[(&str, usize)] = &[
-    ("audio_editor", 5),
-    ("audio_mixer", 6),
+    ("audio_editor", 4),
     // Instance e Properties (família K de `18_REVISAO_DE_CAPRICHO`), e o nome dentro do chip da tag.
     ("inspector", 6),
     ("macros", 1),
-    ("painter_layers", 10),
-    ("physics", 10),
-    ("tags", 1),
-    ("upscale", 1),
-    ("wet_tuning", 16),
-    ("widget_gallery", 22),
+    ("painter_layers", 6),
+    ("wet_tuning", 8),
+    ("widget_gallery", 18),
 ];
 
 /// Linhas medidas por painel, o piso (medido em 04/11): abaixo disto o zero já não é aprovação.
@@ -86,11 +82,23 @@ fn junta(a: &mut Acusa, c: &Censo) {
     }
 }
 
+/// As gavetas, e os dois cartões que nascem dobrados por decisão do painel (`set_collapsed_if_unchosen`): sem
+/// escolha gravada eles voltavam a fechar, e Ordering e Material & Blend ficavam fora de todo censo.
+pub(super) fn abre_tudo(store: &mut ph2d_editor_core::interaction::WidgetStore) {
+    abre_as_gavetas(store);
+    for id in [
+        ph2d_panel_inspector::CARD_ORDERING,
+        ph2d_panel_inspector::CARD_MATERIAL,
+    ] {
+        store.set_collapsed(id, false);
+    }
+}
+
 /// Os cartões que nascem dobrados só existem depois do 1.º quadro: abre, pinta, abre outra vez e mede.
 fn mede(host: &mut MockPanelHost, painel: &mut ph2d_editor_core::panel::ErasedPanel) -> Censo {
-    abre_as_gavetas(host.store_mut());
+    abre_tudo(host.store_mut());
     let _ = host.medindo_a_pintura_do_registo(painel, viewport());
-    abre_as_gavetas(host.store_mut());
+    abre_tudo(host.store_mut());
     censo::grava(|| host.medindo_a_pintura_do_registo(painel, viewport())).1
 }
 
@@ -231,3 +239,72 @@ fn diag_a_tabela_da_compactacao() {
     }
 }
 
+/// ⭐ A grade do 9-Slice no cartão (foto do dono, 04/11): três filas e três colunas de células da altura de
+/// todo controlo, os dois atalhos numa fila própria, de ponta a ponta, e cada id responde ao clique no meio.
+#[test]
+fn a_grade_do_9_slice_anda_fila_a_fila() {
+    use ph2d_card_stack::metrics as m;
+    use ph2d_panel_inspector::ids as i;
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    ph2d_panel_inspector::set_cards_on(true);
+    ph2d_editor_core::panel::with_registry(|reg| {
+        let painel = reg
+            .panels_mut()
+            .iter_mut()
+            .find(|p| p.manifest.id == "inspector")
+            .expect("o inspector");
+        let mut host = MockPanelHost::new().in_theme(ph2d_tokens::Theme::Dark);
+        super::o_inspector_armado::arma_tudo();
+        painel.populate(host.store_mut());
+        let _ = mede(&mut host, painel);
+        let regs = host.registos_da_ultima_pintura();
+        let rect = |id| {
+            regs.iter()
+                .rev()
+                .find(|(n, _)| *n == id)
+                .map(|(_, r)| *r)
+                .expect("id pintado")
+        };
+        let celulas: Vec<_> = i::INSP_SLICE_REGION
+            .iter()
+            .copied()
+            .chain([i::INSP_SLICE_CENTRE])
+            .collect();
+        let mut ys: Vec<f32> = celulas.iter().map(|&c| rect(c).y).collect();
+        let mut xs: Vec<f32> = celulas.iter().map(|&c| rect(c).x).collect();
+        for v in [&mut ys, &mut xs] {
+            v.sort_by(f32::total_cmp);
+            v.dedup();
+        }
+        assert_eq!((ys.len(), xs.len()), (3, 3), "{ys:?} {xs:?}");
+        let passo = m::FIELD_H + m::FIELD_ROW_GAP;
+        assert!(
+            ys.windows(2).all(|p| (p[1] - p[0] - passo).abs() < 0.5),
+            "{ys:?}"
+        );
+        assert!(celulas.iter().all(|&c| rect(c).h == m::FIELD_H));
+        let (tile, stretch) = (
+            rect(i::INSP_SLICE_ALL_TILE),
+            rect(i::INSP_SLICE_ALL_STRETCH),
+        );
+        assert_eq!((tile.y, tile.h), (stretch.y, stretch.h));
+        assert_eq!(tile.h, m::FIELD_H);
+        assert!((tile.y - (ys[2] + m::FIELD_H) - m::FIELD_ROW_GAP).abs() < 0.5);
+        assert_eq!(tile.x, xs[0], "os atalhos começam na coluna da grade");
+        assert!((tile.w - stretch.w).abs() < 0.5, "duas colunas iguais");
+        for id in celulas
+            .iter()
+            .copied()
+            .chain([i::INSP_SLICE_ALL_TILE, i::INSP_SLICE_ALL_STRETCH])
+        {
+            let r = rect(id);
+            let no_meio = host.hit_index_mut().hit(r.x + r.w * 0.5, r.y + r.h * 0.5);
+            assert_eq!(
+                no_meio,
+                Some(id),
+                "o clique no meio de {id:?} chega a outro"
+            );
+        }
+        super::o_inspector_armado::desarma_tudo();
+    });
+}

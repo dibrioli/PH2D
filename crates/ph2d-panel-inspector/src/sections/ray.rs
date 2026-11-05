@@ -73,7 +73,7 @@ fn leitura(
             "panel.inspector.ray.sees_x_at_y_m",
             &[
                 ("name", &i.sees.as_str()),
-                ("dist", &format!("{:.2}", i.sees_at)),
+                ("dist", &crate::unidade_mundo::distancia_na_frase(i.sees_at)),
             ],
         ),
         ColorToken::Text1,

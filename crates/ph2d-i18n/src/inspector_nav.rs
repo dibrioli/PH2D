@@ -66,14 +66,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         // ⭐ A LEITURA VIVA — o que ele faz AGORA, do `NavNow` que a ponte publica.
         "panel.inspector.nav.idle" => "Idle.",
-        "panel.inspector.nav.moving_x_m_to_go" => "Moving \u{b7} {dist} m to go",
-        "panel.inspector.nav.giving_way_x_m_to_go" => "Giving way \u{b7} {dist} m to go",
+        "panel.inspector.nav.moving_x_m_to_go" => "Moving \u{b7} {dist} to go",
+        "panel.inspector.nav.giving_way_x_m_to_go" => "Giving way \u{b7} {dist} to go",
         "panel.inspector.nav.cant_reach_x_m" => {
-            "Can\u{2019}t reach it \u{b7} going to the nearest point, {dist} m"
+            "Can\u{2019}t reach it \u{b7} going to the nearest point, {dist}"
         }
         "panel.inspector.nav.arrived" => "Arrived.",
         "panel.inspector.nav.no_way_there" => "No way there.",
-        "panel.inspector.nav.radius_x_m_from_the_collider" => "Radius {r} m, from the collider",
+        "panel.inspector.nav.radius_x_m_from_the_collider" => "Radius {r}, from the collider",
         "panel.inspector.nav.the_clock_is_stopped" => {
             "The clock is stopped \u{2014} it walks while the clock plays."
         }

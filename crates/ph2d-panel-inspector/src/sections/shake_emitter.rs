@@ -48,7 +48,11 @@ fn resumo(row: &InspectorEmitterRow) -> String {
     if row.on.trim().is_empty() {
         return tr("panel.inspector.emitter.mute").to_owned();
     }
-    format!("{:.2} \u{00b7} {:.0} m", row.forca, row.fora)
+    format!(
+        "{:.2} \u{00b7} {}",
+        row.forca,
+        crate::unidade_mundo::distancia_na_frase(row.fora)
+    )
 }
 
 /// A lista das fontes. Devolve o `y` seguinte.
@@ -162,8 +166,16 @@ fn botoes(
         w,
         y,
         &[
-            (pode_juntar, ids::INSP_EMITTER_ADD, tr("panel.inspector.emitter.plus_add_source")),
-            (pode_tirar, ids::INSP_EMITTER_REMOVE, tr("panel.inspector.emitter.x_remove_source")),
+            (
+                pode_juntar,
+                ids::INSP_EMITTER_ADD,
+                tr("panel.inspector.emitter.plus_add_source"),
+            ),
+            (
+                pode_tirar,
+                ids::INSP_EMITTER_REMOVE,
+                tr("panel.inspector.emitter.x_remove_source"),
+            ),
         ],
     )
 }

@@ -289,8 +289,6 @@ const CORTADOS_HOJE: &[(&str, &str)] = &[
 const O_PRECO_DA_COLUNA_UNICA: &[(&str, &str)] = &[
     ("inspector", "Aim from spawner"),
     ("inspector", "Always show anchors"),
-    ("inspector", "Bounds X / Y / W / H"),
-    ("inspector", "Center X / Y / W / H"),
     ("inspector", "Corner Look-ahead"),
     ("inspector", "Foot Ray Spread"),
     ("inspector", "Lifetime Randomness"),

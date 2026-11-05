@@ -58,26 +58,15 @@ pub(crate) fn titulo_de_grupo(
     w: f32,
     y: f32,
     texto: &str,
-    token: ColorToken,
 ) -> f32 {
     let font = TypeToken::Sm.px();
-    let em_cartao = card_body().is_some();
-    let topo = if em_cartao { y + m::GROUP_TOP } else { y };
-    paint_text(
-        text_system,
-        scene,
-        texto,
-        x,
-        topo,
-        font,
-        w,
-        resolve(token, theme),
-    );
-    if em_cartao {
-        topo + font
-    } else {
-        topo + font + ph2d_tokens::control_gap_px()
+    let cor = resolve(ColorToken::Text3, theme);
+    if card_body().is_none() {
+        paint_text(text_system, scene, texto, x, y, font, w, cor);
+        return y + font + ph2d_tokens::control_gap_px();
     }
+    let topo = y + m::GROUP_TOP;
+    topo + paint_text_block(text_system, scene, texto, x, topo, font, w, cor).max(font)
 }
 
 /// O `y` onde uma lista começa: num cartão ela é uma linha, com o vão da grelha em cima.
@@ -149,11 +138,7 @@ pub(crate) fn fila_de_botoes(
     y: f32,
     pecas: &[(bool, NodeId, &str)],
 ) -> f32 {
-    let ativas: Vec<(NodeId, &str)> = pecas
-        .iter()
-        .filter(|p| p.0)
-        .map(|p| (p.1, p.2))
-        .collect();
+    let ativas: Vec<(NodeId, &str)> = pecas.iter().filter(|p| p.0).map(|p| (p.1, p.2)).collect();
     if ativas.is_empty() {
         return y;
     }

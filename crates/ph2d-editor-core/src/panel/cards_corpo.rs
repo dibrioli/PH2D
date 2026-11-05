@@ -40,8 +40,8 @@ fn glifo(rotulo: &str, eixos: Eixos, n: usize, i: usize) -> Glyph<'_> {
 /// A tabela de onde [`letra_da_grandeza`] fatia a letra (um `&str` que vive sem alocar).
 const MAIUSCULAS: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
-/// As palavras que nunca dão a letra de um campo.
-const PREPOSICOES: [&str; 6] = ["at", "after", "on", "of", "per", "from"];
+/// As palavras que nunca dão a letra de um campo; se todas o forem, vale a primeira («To state» ⇒ `T`).
+const SEM_LETRA: [&str; 8] = ["at", "after", "on", "of", "per", "from", "to", "state"];
 
 /// A letra de um campo só: a inicial, em maiúscula, da ÚLTIMA palavra do rótulo — a que nomeia a
 /// grandeza ou o eixo (T56: «Half Width» ⇒ `W`, nunca o `H` de «Half»; «Offset Y» ⇒ `Y`; o nome de
@@ -61,7 +61,7 @@ pub fn letra_da_grandeza(rotulo: &str) -> &str {
         todas
             .iter()
             .rev()
-            .find(|p| !PREPOSICOES.contains(&p.to_ascii_lowercase().as_str()))
+            .find(|p| !SEM_LETRA.contains(&p.to_ascii_lowercase().as_str()))
             .copied()
             .unwrap_or(primeira)
     };
@@ -181,6 +181,20 @@ pub fn columns(
                 .map_or_else(|| c.rotulo.to_owned(), |u| format!("{} ({u})", c.rotulo))
         })
         .collect();
+    // X · Y / W · H, como no Figma: quatro caixas numa linha cortam o número (05 §4, lei 7).
+    if let ([c], [texto]) = (cols, textos.as_slice())
+        && let (Eixos::Retangulo, [a, b, d, e]) = (c.eixos, c.ids)
+    {
+        let campo = |id, i| {
+            Cell::new(Widget::Field {
+                id,
+                glyph: Glyph::Text(c.eixos.letra(i)),
+            })
+        };
+        let mut linha = ctx(scene, text_system, store, hit_index, ink, x, w);
+        let y = linha.row(&[campo(*a, 0).label(texto), campo(*b, 1).key(c.ids)], y);
+        return linha.row(&[campo(*d, 2), campo(*e, 3)], y);
+    }
     let mut cells: Vec<Cell<'_>> = Vec::new();
     for (c, texto) in cols.iter().zip(&textos) {
         let n = c.ids.len();

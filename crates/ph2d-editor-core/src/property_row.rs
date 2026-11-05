@@ -321,7 +321,7 @@ pub fn paint_fields_row<'a>(
 ) -> f32 {
     let label = label.into();
     if let Some((ink, rows)) = cartao::card_rows() {
-        let u = unit.map(Unit::suffix);
+        let u = unit.map(Unit::no_rotulo);
         return (rows.fields)(
             scene,
             text_system,

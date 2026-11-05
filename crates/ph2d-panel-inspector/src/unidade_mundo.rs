@@ -327,6 +327,40 @@ pub(crate) fn no_campo(ids: &[NodeId], unit: Option<Unit>, passo: f64) -> (Optio
     }
 }
 
+/// Uma distância do mundo numa frase, na unidade que o artista escolheu («450 px» ou «4.50 m»): o campo
+/// ao lado dela mostra essa unidade.
+pub(crate) fn distancia_na_frase(metros: f32) -> String {
+    let ppm = crate::state::current_pixels_per_meter();
+    match crate::state::current_display_unit() {
+        DisplayUnit::Pixels => ph2d_i18n::tr_with(
+            "panel.inspector.unit.distance_px",
+            &[("v", &format!("{:.0}", metros * ppm))],
+        ),
+        DisplayUnit::Meters => ph2d_i18n::tr_with(
+            "panel.inspector.unit.distance_m",
+            &[("v", &format!("{metros:.2}"))],
+        ),
+    }
+}
+
+/// Uma velocidade do mundo numa frase («100, 0 px/s» ou «1.00, 0.00 m/s»).
+pub(crate) fn velocidade_na_frase([vx, vy]: [f32; 2]) -> String {
+    let n = |v: f32, casas: usize| {
+        ph2d_editor_core::widget::zero_sem_sinal(&format!("{v:.casas$}")).into_owned()
+    };
+    let ppm = crate::state::current_pixels_per_meter();
+    match crate::state::current_display_unit() {
+        DisplayUnit::Pixels => ph2d_i18n::tr_with(
+            "panel.inspector.unit.speed_px",
+            &[("x", &n(vx * ppm, 0)), ("y", &n(vy * ppm, 0))],
+        ),
+        DisplayUnit::Meters => ph2d_i18n::tr_with(
+            "panel.inspector.unit.speed_m",
+            &[("x", &n(vx, 2)), ("y", &n(vy, 2))],
+        ),
+    }
+}
+
 /// O que a porta guarda de cada id: a faixa e a taxa de arrasto do `populate` (em unidades
 /// GUARDADAS), para as reescrever no seletor de cada quadro.
 pub type FaixasOriginais = BTreeMap<NodeId, (Option<(f64, f64, f64)>, Option<f64>)>;

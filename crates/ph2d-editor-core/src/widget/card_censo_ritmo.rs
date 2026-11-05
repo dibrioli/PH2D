@@ -46,10 +46,10 @@ fn anota(especie: Especie, rect: Rect, px: f32, nome: impl FnOnce() -> String) {
 
 /// A entrelinha sobre o corpo de letra (a altura de uma linha do pintor é `1 + isto`): sai do fundo do
 /// texto, para a distância ser até às letras e não até à caixa da linha.
-const ENTRELINHA: f32 = 0.36;
+const ENTRELINHA: f32 = 0.36; // LITERAL-PX-OK: medida do pintor de texto, não desenho
 
 pub(crate) fn pintou_texto(texto: &str, [x, y, w, alta]: [f32; 4], px: f32) {
-    let uma_linha = alta < px * (1.0 + ENTRELINHA) * 1.5;
+    let uma_linha = alta < px * (1.0 + ENTRELINHA) * 1.5; // LITERAL-PX-OK: meia linha de folga
     let especie = if uma_linha && (px - m::LABEL_PX).abs() < 0.5 {
         Especie::Rotulo
     } else {
@@ -85,8 +85,9 @@ impl Fronteira {
         match self {
             // A pílula do segmentado regista os segmentos `SEG_PAD` para dentro.
             Self::RotuloControlo => (m::LABEL_BOTTOM, m::LABEL_BOTTOM + m::SEG_PAD),
-            Self::AteAoRotulo => (m::LABEL_TOP, f32::INFINITY),
-            Self::ControloFrase | Self::FraseControlo | Self::FraseFrase => {
+            // A porta dá `LABEL_TOP` (8); `FIELD_ROW_GAP` é o chão, porque uma frase curta no corpo do
+            // rótulo é medida como rótulo e a porta do aviso dá-lhe 6.
+            Self::AteAoRotulo | Self::ControloFrase | Self::FraseControlo | Self::FraseFrase => {
                 (m::FIELD_ROW_GAP, f32::INFINITY)
             }
             Self::ControloControlo => (0.0, f32::INFINITY),
@@ -174,7 +175,11 @@ impl super::Censo {
                     continue;
                 };
                 let fronteira = match (p.especie, q.especie) {
+                    // Longe demais para ser o controlo dele: o texto de uma linha de lista.
+                    (Especie::Rotulo, Especie::Controlo) if vao > m::FIELD_H => continue,
                     (Especie::Rotulo, Especie::Controlo) => Fronteira::RotuloControlo,
+                    // O rótulo que quebra em duas linhas (`cards_rotulos`).
+                    (Especie::Rotulo, Especie::Rotulo) => continue,
                     (_, Especie::Rotulo) => Fronteira::AteAoRotulo,
                     (Especie::Controlo, Especie::Frase) => Fronteira::ControloFrase,
                     (Especie::Frase, Especie::Controlo) => Fronteira::FraseControlo,

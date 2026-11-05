@@ -190,7 +190,7 @@ fn leitura(
     let Some(agora) = a.agora else {
         return y;
     };
-    let dist = format!("{:.2}", agora.restante);
+    let dist = crate::unidade_mundo::distancia_na_frase(agora.restante);
     let texto = match agora.estado {
         NavEstado::Parado => tr("panel.inspector.nav.idle").to_string(),
         NavEstado::AAndar if agora.dando_passagem => tr_with(
@@ -222,7 +222,7 @@ fn leitura(
             cur_y,
             &tr_with(
                 "panel.inspector.nav.radius_x_m_from_the_collider",
-                &[("r", &format!("{:.2}", agora.raio))],
+                &[("r", &crate::unidade_mundo::distancia_na_frase(agora.raio))],
             ),
             ColorToken::Text3,
         );

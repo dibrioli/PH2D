@@ -119,6 +119,18 @@ impl Unit {
         }
     }
 
+    /// O que o RÓTULO de um cartão escreve (D13): os símbolos que o teclado não dá.
+    #[must_use]
+    pub const fn no_rotulo(self) -> &'static str {
+        match self {
+            Unit::Degrees => "°",
+            Unit::DegreesPerSecond => "°/s",
+            Unit::MetersPerSecondSquared => "m/s²",
+            Unit::PxPerSecondSquared => "px/s²",
+            outra => outra.suffix(),
+        }
+    }
+
     /// **Todas as unidades, na ordem em que o [`Self::parse_suffix`] as testa.**
     ///
     /// ⚠️ Pública para que o gate possa medir a ORDEM em vez de a repetir — uma cópia da lista no

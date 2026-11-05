@@ -1,7 +1,7 @@
 //! A foto do Inspector armado, todos os cartões abertos, em fatias: `PH2D_FOTO_DIR=<pasta>`, `--ignored`,
 //! por nome `q_foto`. Serve para OLHAR cartão a cartão (`docs/CartoesUI/18_REVISAO_DE_CAPRICHO.md`).
 
-use super::a_marca_tem_a_altura_da_linha::abre_as_gavetas;
+use super::lei_da_compactacao::abre_tudo;
 use ph2d_editor_core::panel::{PaintCtx, PanelHostInternal};
 use ph2d_editor_core::screens::layout::HeroLayout;
 use ph2d_editor_core::screens::slot::SlotSet;
@@ -43,7 +43,7 @@ fn q_foto() {
         let slot_id = painel.manifest.default_slot;
         coluna = layout.slot_rects(SlotSet::of(slot_id)).get(slot_id);
         for _ in 0..4 {
-            abre_as_gavetas(host.store_mut());
+            abre_tudo(host.store_mut());
             cena = VectorScene::new();
             host.hit_index_mut().clear_for_frame();
             let mut ctx = PaintCtx {

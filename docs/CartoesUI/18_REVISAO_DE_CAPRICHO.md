@@ -53,20 +53,21 @@ Arnês: `PH2D_FOTO_DIR=<pasta> PH2D_FOTO_PAINEIS=vector,physics cargo test -p ph
 |---|---|---|---|
 | P | Grupo de botões colados em peça única (vão 0, cantos só nas pontas) num cartão | Audio Editor (Transport, Loop, Edit, Effects, Markers, Variations, Spectral) | **curado**: `cards_grupo` (FIELD_GAP, FIELD_ROW_GAP, cantos inteiros). `PH2D_CARDS=0` continua encostado |
 | Q | Texto a sair por baixo da caixa do nome; fileira vazia em Delivery (`stepper_row` já somava, somava-se outra vez: o painel de antes também a tinha) | Audio Editor (Transport, Delivery) | **curado** (`text_input` centra a linha medida num cartão; `y += gap`) |
-| Q2 | `◀ ▬ ▶` sem texto: em Effects e Delivery o nome vem do motor; na foto sem motor fica vazio | Audio Editor | olhar no app (a cena do arnês não publica presets) |
+| Q2 | `◀ ▬ ▶` sem texto: em Effects e Delivery o nome vem do motor; na foto sem motor fica vazio | Audio Editor | **curado**: o estado do arnês publica os nomes mais compridos, nada corta. Só na tabela de textos: Compressor, Multiband Compressor, Transient Shaper, Stereo Delay, Room Reverb, Comb Filter, Ring Modulator; Sharpness (Q), Frequency, Sensitivity, Damping; Final Mix, Sci-Fi Radio; Load/Change Room…; Measuring the export. Ids e ficheiros v1 iguais |
 | R | Slider com rótulo à esquerda, fora da grelha; valor 3 px abaixo da barra | Audio Editor (Crossfade, Amount, Pitch/Gain jitter, Quality) | **curado**: rótulo em cima, barra e valor na mesma linha |
 | R2 | «Add clips to build a set», tempo do clip, «RAM —» | Audio Editor | **curado**: `grupo::linha_de_texto` |
+| R4 | A linha escolhida da Chain saía 4 px da coluna de cada lado, com o texto baixo | Audio Editor | **curado** (foto `q4_audio_efeitos.png`) |
 | R3 | Ícones de Chain e o de repor sem face e maiores que os dos cartões aprovados | Audio Editor (Effects) | **curado**: `grupo::glifo` (ICON_GLYPH), face e vão de todo cartão |
 | S | Frase indentada (x do corpo + 8) | Macros | **curado**: `bloco`/`linha` sem recuo num cartão |
 | T | Lista `1. Stroke 1 ▪ 0.50`: linha baixa, texto abaixo da amostra | Macros | **curado**: `FIELD_H`, texto no meio |
 | U | Título de sub-grupo a 8 do controlo de cima | Vector Advanced | **curado**: 14 até às letras (`o_advanced_separa…`) |
-| U2 | Chevron «⌄» 3 px acima do texto. O «›» de Assets está alinhado e o «⌄» do Flip Frames está alto também: o defeito parece estar no glifo `ChevronDown` a corpo pequeno, não na linha. A cura de `section_header` (centrar a linha medida) ficou e a foto não mudou: confira se ela chega a correr | Vector Advanced | aberto |
-| AG | Faixa inteira no idioma antigo: botões cinzentos (Ghost, Pin, Auto…), números com setinhas pretas, rótulos à esquerda, texto de lista abaixo da caixa | Flip Frames | aberto, é o maior que ficou: conversão, não capricho (fotos: `q_foto_paineis` com `flip_frames`) |
-| AH | Nome da camada 2 px abaixo dos ícones da linha | Pixel Timeline | aberto |
+| U2 | Chevron «⌄» 3 px acima do texto. O glifo está certo (centrado na caixa): quem descia era o título. Num cartão, `paint_section_header` sai cedo para `grupo::paint_group_header`, por isso a cura em `section_header` nunca corria (saiu). O grupo usa `folga_do_texto`, como todo texto de cartão | Vector Advanced, grupos de todo cartão | **curado** (`as_maiusculas_do_grupo_ficam_no_meio_do_chevron`, foto) |
+| AG | Faixa inteira no idioma antigo: botões cinzentos (Ghost, Pin, Auto…), números com setinhas pretas, rótulos à esquerda, texto de lista abaixo da caixa | Flip Frames | **curado** na q4 (`barra_cartoes.rs`): moldura sem cartão, como a Timeline; célula de 78 para 118 px (98 no painel de antes) |
+| AH | Nome da camada 2 px abaixo dos ícones da linha | Pixel Timeline, Pixel | **curado**: `folga_do_texto` em cartões |
 | V | «Pick Shapes» com a letra menor que «Blend»: é um segmentado de uma peça (o modo acende) ao lado de um botão | Vector Advanced | dúvida (Widget::Choice × Button; o tom do modo é decisão) |
 | W | Abreviatura que cabia inteira: `Persp`, `Symm`, `Accel`, `Morph t`, `Norm LUFS`, `Rm DC`, `Comp`, `Iso`, `Stag Sq`, `Stag Hex`, `Tri`, `Von4`, `Moore8` | Vector, Audio, Grid | **curado** |
 | W2 | Ainda crípticos: `Offset (1/n)`, `Jetty`, `+M`, `DTCG`, `Cross` (Snap) | Vector, Timeline, Design Tokens | dúvida: sem nome melhor sem o dono (`Jetty` é o nome do Visio) |
-| X | Duas letras iguais lado a lado (D2): Size/Spacing «S S», Spacing/Slide, Width/Slant/Optical, Temperature/Tint, Cover/Dry cover, Fall-off/Full for, Random 2nd/Pressure 2nd «2» | Vector, Painter, Color Equalization | aberto: o rótulo em cima desambigua; pede letra declarada por campo |
+| X | Duas letras iguais lado a lado (D2): Size/Spacing «S S», Spacing/Slide, Temperature/Tint, Cover/Dry cover, Fall-off/Full for, Random 2nd/Pressure 2nd «2» | Vector, Painter, Color Equalization, e o D2 do Inspector | **curado** de uma vez, na fila (`panel::cards::letras`): o campo da direita mostra a letra que o distingue (inicial de outra palavra, senão a letra seguinte): S·P, T·I, F·U. Letra na fila de baixo pode repetir: não estão lado a lado |
 | Y | Align mais estreito que a coluna, Width fora dela | Vector Paragraph | **curado**: `Widget::Choice` |
 | Y2 | `Morph` sob o vazio do rótulo vizinho (botão à esquerda, campo com rótulo à direita) | Vector Advanced | baixo |
 | Z | Rótulo solto a 10 de um controlo sem rótulo: `Whole canvas`, `no canvas`, `Lighting`, `Modifiers`, `Overlay Color`, `Taper` | Painter | **curado**: `rotulo_sobre_controlo`; o visor do Taper entra no censo com o tamanho dele |
@@ -83,22 +84,18 @@ Arnês: `PH2D_FOTO_DIR=<pasta> PH2D_FOTO_PAINEIS=vector,physics cargo test -p ph
 | Painel | Olhado | Estado |
 |---|---|---|
 | Vector | Transform, Snap, Fill & Stroke, Effects, Pattern, Stroke Pattern, Brush, Connector, Vertex, Text, Font, Paragraph, Text on Path, Axes, Advanced | curado salvo X, U2, V, W2; Fill & Stroke e Effects são F43/F44: intocados |
-| Painter | Wet Paint (Basics, Mixing, Randomize, Shape, Paper, Grain, Stroke, Pen, Symmetry, Tiling) | curado salvo X. E10 intocado. **Por olhar**: Layers, Mask, Deform, Selection, Composite, Impasto, Watercolor, aberto a aberto (o portão mede-os) |
-| Wet Tuning | Paint, Water (2 de 4 fatias) | portão a zero; por olhar: as 2 últimas fatias |
-| Physics, Flip, Tags, Assets, Padding, Upscale, Equalize, Background Removal, Color Equalization (1.ª fatia), Bones (1.ª fatia), Design Tokens (1.ª fatia), Timeline (barra) | sim | sem defeito de vão. **Por olhar**: Color Eq, Bones e Tokens, fatias seguintes |
-| Grid | 1.ª fatia | W curado; H2 (`Radius 30.000`) é do outro agente; por olhar a 2.ª |
+| Painter | Wet Paint e, na q4, Layers, Deform, Select, Composite, Impasto, Watercolor, abertos | curado. E10 intocado. Sem defeito novo. Por olhar: Mask (Clone, Inpaint e Sculpt fotografados e não lidos cartão a cartão) |
+| Wet Tuning | as 4 fatias | sem defeito novo. Dúvida: `Smooth wash body (off · on)` e `Lock material (off · on)` são números de 0 a 1 que agem como caixa; mudar de widget é mudar o controlo |
+| Physics, Flip, Tags, Assets, Padding, Upscale, Equalize, Background Removal, Color Equalization, Bones, Design Tokens, Timeline (barra) | sim, com as fatias seguintes na q4 | sem defeito de vão |
+| Grid | inteiro (`PH2D_FOTO_ROLA=700`, a janela rola em vez de crescer) | sem defeito novo; H2 curado na q2 |
 | Audio Mixer, Audio Editor, Macros | sim | curados salvo R3, Q2 |
 | Pixel | Pencil, Colors, Layers, Palette, Selector, Symmetry, Select, Edit, Sprite | curado salvo AF |
-| Motion Graph (barra) | **não**: `q_foto_paineis` deu 0 fatias sem documento | por fazer: pede cena |
-| Flip Frames, Pixel Timeline | de fábrica e armado | AG, AH abertos |
+| Motion Graph (barra) | sim, no app (`PH2D_GPU_COOK_DEMO=1`) | sem defeito novo no cromo; nós coloridos e pílula como o doc 14 |
+| Flip Frames, Pixel Timeline | de fábrica e armado; Frames também no app | AG e AH curados |
 
-### O plano do próximo agente
+### Fatia q4 (04/11): o plano acima, feito
 
-1. AG (Flip Frames em cartão) seguindo [11](11_RECEITA_PAINEL_EM_CARTOES.md); é a maior diferença que resta a olho nu.
-2. X: letra declarada por campo, onde dois vizinhos dão a mesma.
-3. U2 (o glifo), AH.
-4. Olhar o que falta: Painter Layers, Deform, Selection, Composite, Impasto, Watercolor abertos um a um; Wet Tuning 3.ª e 4.ª fatias; Color Eq, Bones, Tokens, Grid, fatias seguintes; Motion Graph com cena.
-5. Q2: olhar Effects e Delivery com o motor a publicar nomes (no app; o arnês não os semeia).
+Tudo fotografado depois das curas: [Frames, arnês](maquete/q4_frames.png) · [Frames, no app](maquete/q4_frames_no_app.png) · [Effects](maquete/q4_audio_efeitos.png). Ficou por olhar: Mask do Painter, cartão a cartão; a lista aberta de Frames e o Audio Editor com clip real no app (a cena `PH2D_AUDIO_DELIVERY_SMOKE` não abre o painel: pede o HOME semeado da receita 11; o arnês viu os nomes).
 
 ## Decisões tomadas sem o dono
 
@@ -112,6 +109,9 @@ Arnês: `PH2D_FOTO_DIR=<pasta> PH2D_FOTO_PAINEIS=vector,physics cargo test -p ph
 - Slider do Audio Editor com rótulo em cima, como todo campo (02 §2); o valor continua a ser a leitura do motor, sem caixa.
 - «Morph t» virou «Amount», «Von4/Moore8» viraram «4 Neighbors/8 Neighbors», «Comp» virou «Compressor». Os ids não mudam.
 - 9-Slice: os dois atalhos saíram de ao lado da grade para uma fila própria nas colunas do cartão; ao lado da grade ficou a legenda, fila a fila. Rive edita N-Slice por eixos no canvas, sem grade: não serve de modelo aqui.
+- Frames: o painel que era um cartão único passa a moldura sem cartão: a altura é da tira, como na Timeline. Campos com o rótulo ao lado e a mesma coluna para os cinco. Auto, Falloff, Additive, Pin, Ghost, Fade, Pairs viraram caixas (o id continua Button, emite o mesmo Click), `Add` botão. Dica em cada ícone e caixa.
+- Letras iguais: regra na fila, não letra declarada campo a campo: cobre os ~45 sítios de uma vez. Só muda o da direita, e só se repete.
+- Efeitos: abreviaturas e nomes soltos viram o nome por extenso. `Peak EQ`, `Low Shelf`, `De-Esser`, `Gate / Expander`, codecs e `Bitrate` ficam: são o nome que o artista encontra em qualquer outro programa. `Haas` virou `Stereo Delay`, `Q` virou `Sharpness (Q)`.
 - «Remove X» sem o «x ». Direction com os nomes do Aseprite (Forward, Reverse, Ping-pong, Ping-pong Rev): a fila desce para duas linhas, sem corte.
 - Frases com distância passam a seguir a unidade escolhida (px ou m), como o campo ao lado.
 - O vão da grade 3×3 é o de toda linha (6), não `GRID_GAP` (4): a lei 3 de 05 §4 vale para ela.

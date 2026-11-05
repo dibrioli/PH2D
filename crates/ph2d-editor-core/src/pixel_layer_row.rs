@@ -204,7 +204,11 @@ impl LayerRowPainter<'_> {
                 self.scene,
                 &nome,
                 nome_r.x,
-                y + (h - TypeToken::Sm.px()) * 0.5,
+                if crate::panel::cards::ferramenta::cards_on() {
+                    y + crate::paint::folga_do_texto(h, TypeToken::Sm.px())
+                } else {
+                    y + (h - TypeToken::Sm.px()) * 0.5
+                },
                 TypeToken::Sm.px(),
                 nome_r.w,
                 crate::widget::card_ink::tinta(cor, self.theme),

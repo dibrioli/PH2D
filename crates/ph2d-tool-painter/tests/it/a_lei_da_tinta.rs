@@ -27,11 +27,13 @@ const CENAS: [(&str, bool, u64); 20] = [
     // `6cbcce804c` — 2 leituras iguais em cada ponta (3bf498f1ca · d8e5d237e4 · 6cbcce804c · 62e7fc8505 · HEAD).
     // De novo 04/11 (Bug #58, a libm fixada `4b74b57aaf`): 19 cenas; com `ph2d-det-math` devolvida à libm do sistema, o HEAD
     // pinta as 20 de antes ao byte, e a cena não anda em nenhum outro commit da linha.
+    // De novo 05/11 (receita do dono 04/11, `0cec47860d`: Smooth Edges 0,12 + Edge Darkening 0): 3 cenas; com os dois
+    // ficheiros do pai desse commit o HEAD pinta as 20 de antes ao byte, em 2 leituras intercaladas.
     ("Wet Round", false, 0x14e87d2a195785a1), // `167ba3db16` `02ff1d0f9a` `0170428784` `1f9e115c7e` `62e7fc8505` `4b74b57aaf`
-    ("Wet Wash", false, 0xbcd64c43f52eb033), // `167ba3db16` `02ff1d0f9a` `0170428784` `99d1d5806b` `0046ce2414` `7c8e08d16b` `1eecae9e4b` `b176807c40` `62e7fc8505` `4b74b57aaf`
+    ("Wet Wash", false, 0xf35f957ac7c63c03), // `167ba3db16` `02ff1d0f9a` `0170428784` `99d1d5806b` `0046ce2414` `7c8e08d16b` `1eecae9e4b` `b176807c40` `62e7fc8505` `4b74b57aaf` `0cec47860d`
     ("Wet Dry Brush", false, 0xc2bf61d05db6a60e), // `0170428784` `7c8e08d16b` `1f9e115c7e` `6cbcce804c` `62e7fc8505` `4b74b57aaf`
     ("Wet Drip", false, 0xc7525dce9eaaabad), // `167ba3db16` `02ff1d0f9a` `0170428784` `7c8e08d16b` `1f9e115c7e` `62e7fc8505` `4b74b57aaf`
-    ("Wet Liner", false, 0x3a6ec73bb2085f5c), // `167ba3db16` `02ff1d0f9a` `0170428784` `99d1d5806b` `0046ce2414` `7c8e08d16b` `1eecae9e4b` `b176807c40` `92ab6911f0` `62e7fc8505` `4b74b57aaf`
+    ("Wet Liner", false, 0x8b7537ded8abca24), // `167ba3db16` `02ff1d0f9a` `0170428784` `99d1d5806b` `0046ce2414` `7c8e08d16b` `1eecae9e4b` `b176807c40` `92ab6911f0` `62e7fc8505` `4b74b57aaf` `0cec47860d`
     ("Oil Bristle", false, 0x338f8bc28bd68a63), // `0170428784` `0275929512` `47ca63932e` `183d3d02e9` `c77e40484c` `0f32fb6e75` `5acb712ec6` `7c8e08d16b` `1f9e115c7e` `b5dc9a8dec` `032cda64a5` `e7e49f465b` `1eecae9e4b` `b176807c40` `62e7fc8505` `4b74b57aaf`
     ("Express Oil", false, 0x8d2b3e14eac9f607), // `0170428784` `1f9e115c7e`
     ("Graphite 8B", false, 0x950cfa693d7a867c), // `0170428784` `1f9e115c7e` `dc66557b6f` `4b74b57aaf`
@@ -46,7 +48,7 @@ const CENAS: [(&str, bool, u64); 20] = [
     ("Wet Flat", false, 0xaf6d0d44bc987aaf), // `167ba3db16` `02ff1d0f9a` `0170428784` `7c8e08d16b` `1f9e115c7e` `62e7fc8505` `4b74b57aaf`
     ("Gouache Flat", false, 0x55155d3967be546d), // `167ba3db16` `02ff1d0f9a` `0170428784` `7ad2967e2c` `183d3d02e9` `c77e40484c` `1f9e115c7e` `b5dc9a8dec` `62e7fc8505` `4b74b57aaf`
     ("Wet Round", true, 0x43458a2227238430), // `167ba3db16` `02ff1d0f9a` `1f9e115c7e` `62e7fc8505` `4b74b57aaf`
-    ("Wet Liner", true, 0xdc47eaa8f14ae24f), // `167ba3db16` `02ff1d0f9a` `99d1d5806b` `0046ce2414` `7c8e08d16b` `1eecae9e4b` `b176807c40` `92ab6911f0` `62e7fc8505` `4b74b57aaf`
+    ("Wet Liner", true, 0xfad4c5f3732f5e6c), // `167ba3db16` `02ff1d0f9a` `99d1d5806b` `0046ce2414` `7c8e08d16b` `1eecae9e4b` `b176807c40` `92ab6911f0` `62e7fc8505` `4b74b57aaf` `0cec47860d`
 ];
 
 fn cena(preset: &str, obra: bool) -> u64 {

@@ -122,6 +122,34 @@ fn invert_previews_without_writing_and_ok_is_one_step_that_undo_restores() {
     assert_eq!(*p.sprite(), antes, "um Ctrl+Z desfaz o filtro inteiro");
 }
 
+/// Dono, 05/11: «os ajustes não funcionam em tempo real». A vista só recompõe quando o carimbo do
+/// documento muda; `mostrado` lê o traço direto e passava com a tela parada.
+#[test]
+fn each_change_of_an_open_filter_tells_the_canvas_to_redraw() {
+    let mut p = com_quadrado();
+    let key = p.key;
+    p.pede(PixelRequest::Edit(E::HueSaturation));
+    p.quadro();
+    let aberto = p.app.doc(key).map(|d| d.stamp);
+    p.hero.store.set_number_value(ids::PIXEL_FILTER_HUE, 40.0);
+    p.quadro();
+    let mudou = p.app.doc(key).map(|d| d.stamp);
+    assert_ne!(mudou, aberto, "o valor novo chega à tela");
+    p.quadro();
+    assert_eq!(
+        p.app.doc(key).map(|d| d.stamp),
+        mudou,
+        "sem mudança, sem recompor"
+    );
+    carrega(&mut p, ids::PIXEL_EDIT_CANCEL);
+    p.quadro();
+    assert_ne!(
+        p.app.doc(key).map(|d| d.stamp),
+        mudou,
+        "o Cancel tira o efeito da tela"
+    );
+}
+
 #[test]
 fn cancel_and_esc_leave_the_document_byte_for_byte() {
     for fecha in ["cancel", "esc"] {

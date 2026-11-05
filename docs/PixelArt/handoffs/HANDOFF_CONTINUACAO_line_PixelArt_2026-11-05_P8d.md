@@ -72,3 +72,10 @@ Pendências pequenas para resolver junto (P8):
 
 - `rustfmt` num `main.rs` de testes recorre aos módulos: confira `git status` depois.
 - Em zsh, `$VAR` com vários caminhos NÃO se parte em palavras (o `git commit -- $P` falhou): use array ou `$=VAR`.
+
+## 7. Dois defeitos do smoke, curados depois da §1–§6
+
+- **Ajustes sem tempo real.** `filtros::acompanha` trocava a prévia sem mudar o carimbo do documento, e `PixelView::refresh_with` só recompõe quando `(stamp, frame, onion)` muda. Os testes passavam com a tela parada porque `shown_rgba` lê o traço direto. Cura: `app.toca` ao trocar e ao largar a prévia; `filter_number` só lê o buffer com foco e fora de arrasto. Gate: `each_change_of_an_open_filter_tells_the_canvas_to_redraw` (vermelho antes). ⛔ Prova de efeito no canvas tem de olhar o carimbo, não só `shown_rgba`.
+- **Painel errado com Pixel Sprite** (Bones ou Physics na frente, reproduzido com cópia do `layout.txt` do dono). `layout_switch::arrange` fecha tudo e abre a lista da área, inclusive o painel Pixel, e o `panel_z_order` só se povoa depois do 1.º paint, por cima de um `bump` do 1.º quadro. Cura: `panel::painel_do_sujeito`, no flanco de `(entidade, em Draw, área de trabalho)`, com a ordem já povoada: Inspector em Object, Pixel em Draw, Bones fora enquanto durar. Gate: `a_pixel_sprite_brings_its_own_panel_and_moves_the_bones_panel_away`. Foto com a arrumação do dono conferida no arranque em Draw. Não coberto por foto: selecionar pela Hierarchy em Object (a tela virtual não recebe clique).
+- **Tecto:** os 6 testes de `ph2d-app-pixel/tests/it` foram para `shells/pixel-scenes/tests/it` (`ajustes.rs` → `ajustes_app.rs`); `ph2d-app-pixel` 13 4xx → 11 192, tecto 11 415. A P9 tem folga.
+- Com a crate `ph2d-host-pixel-scenes` inteira (motivo: código movido): 240 verdes.

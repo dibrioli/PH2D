@@ -94,6 +94,53 @@ fn os_pedidos_do_painel_mudam_a_ferramenta_e_as_cores() {
     assert_eq!((app.fg, app.bg), ([1, 2, 3, 255], [4, 5, 6, 255]));
 }
 
+/// Dono, 05/11: com um Pixel Sprite, o Bones gravado aberto na arrumação sai da frente; em Object o
+/// painel é o Inspector, em Draw o Pixel. No flanco: reabrir o Bones à mão vale, e ele volta depois.
+#[test]
+fn a_pixel_sprite_brings_its_own_panel_and_moves_the_bones_panel_away() {
+    use ph2d_editor_core::ids::{INSP_PANEL, PIXEL_PANEL, SKELETON_PANEL};
+    let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
+    let (mut sim, mut app) = (SimWorld::new(), PixelApp::default());
+    let bits = object_add::add(object_add::PIXEL_SPRITE, &mut sim, &mut app, spawn_root)
+        .expect("é desta família")
+        .expect("nasce");
+    hero.panel_visibility.insert("skeleton", true);
+    hero.panel_visibility.insert("inspector", false);
+    hero.store.bump_panel_z(SKELETON_PANEL);
+    hero.gizmo.selection = None;
+    let _ = panel::frame(&mut app, sim.world(), &mut hero, &mut avisos());
+    assert!(hero.is_panel_visible("skeleton"), "sem sujeito, nada muda");
+
+    hero.gizmo.selection = Some(bits);
+    let _ = panel::frame(&mut app, sim.world(), &mut hero, &mut avisos());
+    assert!(!hero.is_panel_visible("skeleton"), "o Bones sai da frente");
+    assert!(hero.is_panel_visible("inspector"), "o Inspector abre");
+    assert_eq!(hero.store.panel_z_order().last(), Some(&INSP_PANEL));
+
+    hero.panel_visibility.insert("skeleton", true);
+    let _ = panel::frame(&mut app, sim.world(), &mut hero, &mut avisos());
+    assert!(hero.is_panel_visible("skeleton"), "reabrir à mão vale");
+    hero.panel_visibility.insert("skeleton", false);
+
+    hero.gizmo.mode.enter(bits, ObjectMode::Draw);
+    let _ = panel::frame(&mut app, sim.world(), &mut hero, &mut avisos());
+    assert_eq!(hero.store.panel_z_order().last(), Some(&PIXEL_PANEL));
+
+    // Trocar de área de trabalho fecha tudo e abre a lista dela: o Pixel volta à frente.
+    use ph2d_editor_core::screens::task_layout::TaskLayout;
+    hero.panel_visibility.insert(panel::PANEL_ID, false);
+    hero.store.bump_panel_z(SKELETON_PANEL);
+    hero.store.set_active_layout(TaskLayout::Vector);
+    let _ = panel::frame(&mut app, sim.world(), &mut hero, &mut avisos());
+    assert!(hero.is_panel_visible(panel::PANEL_ID), "o Pixel reabre");
+    assert_eq!(hero.store.panel_z_order().last(), Some(&PIXEL_PANEL));
+
+    let _ = hero.gizmo.mode.leave();
+    hero.gizmo.selection = None;
+    let _ = panel::frame(&mut app, sim.world(), &mut hero, &mut avisos());
+    assert!(hero.is_panel_visible("skeleton"), "o Bones volta depois");
+}
+
 /// O painel abre ao ENTRAR em Edit e fecha ao SAIR — no flanco: entre os dois, quem o fechou à mão
 /// não o vê reaberto a cada quadro.
 #[test]

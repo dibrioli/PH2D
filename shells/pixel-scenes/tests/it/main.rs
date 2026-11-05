@@ -2,16 +2,21 @@
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
 mod ajustes;
+mod ajustes_app;
 mod alvo_todos;
+mod camadas;
 mod catalogo;
 mod cena18;
 mod cena19;
 mod comum;
 mod convolucao;
 mod degrade;
+mod desenho;
 mod dinamica;
+mod edit;
 mod fecho;
 mod filtros;
+mod formas;
 mod intervalo;
 mod painel_e_dialogo;
 mod paleta;
@@ -24,3 +29,4 @@ mod sobreviventes;
 mod texto;
 mod texto_fontes;
 mod tocar;
+mod viva;

@@ -225,6 +225,27 @@ impl Editing {
     }
 }
 
+/// `(w, h, cobertura)` só na caixa da tinta: a folga da máscara vem das métricas, e fazia a Micro 5
+/// parecer minúscula na lista.
+#[must_use]
+pub fn recorta_a_tinta(m: &TextMask) -> (u32, u32, Vec<u8>) {
+    let aceso = |x: u32, y: u32| m.cover[(y * m.w + x) as usize] != 0;
+    let xs = || (0..m.w).filter(|&x| (0..m.h).any(|y| aceso(x, y)));
+    let ys = || (0..m.h).filter(|&y| (0..m.w).any(|x| aceso(x, y)));
+    let (Some(x0), Some(x1), Some(y0), Some(y1)) =
+        (xs().next(), xs().next_back(), ys().next(), ys().next_back())
+    else {
+        return (0, 0, Vec::new());
+    };
+    let mut cover = Vec::with_capacity(((x1 - x0 + 1) * (y1 - y0 + 1)) as usize);
+    for y in y0..=y1 {
+        for x in x0..=x1 {
+            cover.push(m.cover[(y * m.w + x) as usize]);
+        }
+    }
+    (x1 - x0 + 1, y1 - y0 + 1, cover)
+}
+
 /// As fontes do Text, na ordem do índice: as 12 de [`crate::BUILTIN`] (dono, 05/11).
 #[must_use]
 pub fn font_list() -> Vec<String> {

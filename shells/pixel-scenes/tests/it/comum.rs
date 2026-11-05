@@ -132,7 +132,7 @@ impl Palco {
         p
     }
 
-    fn quadro(&mut self) -> PixelPanelInfo {
+    pub(crate) fn quadro(&mut self) -> PixelPanelInfo {
         panel::frame(
             &mut self.app,
             self.sim.world(),

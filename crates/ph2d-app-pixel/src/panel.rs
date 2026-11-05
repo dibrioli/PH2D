@@ -163,6 +163,15 @@ pub fn frame(
             .is_some_and(|b| crate::input::key_of(world, b).is_some());
     hero.store
         .set_family_owns_canvas(editing.is_some() || selecionado);
+    let sujeito = (editing.is_some() || selecionado)
+        .then_some(hero.gizmo.mode.locked_entity().or(hero.gizmo.selection))
+        .flatten()
+        .map(|b| (b, editing.is_some(), hero.store.active_layout()));
+    // No 1.º quadro a ordem dos painéis ainda está vazia: os que se pintam entram por cima do pedido.
+    if sujeito != app.sujeito_do_painel && !hero.store.panel_z_order().is_empty() {
+        app.sujeito_do_painel = sujeito;
+        painel_do_sujeito(app, hero, sujeito);
+    }
     if editing.is_some() != app.painel_em_edicao {
         app.painel_em_edicao = editing.is_some();
         hero.panel_visibility.insert(PANEL_ID, app.painel_em_edicao);
@@ -303,4 +312,31 @@ pub fn publish_bars(app: &PixelApp, hero: &mut HeroScreen, bars: ToolBars) {
     } else if hero.store.tool_bars().is_some_and(|b| b.pixel_rail) {
         hero.store.set_tool_bars(None);
     }
+}
+
+/// O Pixel Sprite que manda nos painéis, se está em Draw, e a área de trabalho.
+pub(crate) type Sujeito = (
+    u64,
+    bool,
+    ph2d_editor_core::screens::task_layout::TaskLayout,
+);
+
+/// Dono, 05/11: **no flanco** de um Pixel Sprite passar a ser o sujeito (ou de a área de trabalho
+/// mudar com ele), o painel é o dele: o Inspector em Object, o Pixel em Draw. O Bones gravado aberto
+/// na arrumação sai da frente enquanto durar, e volta depois; reabri-lo à mão no meio vale.
+fn painel_do_sujeito(app: &mut PixelApp, hero: &mut HeroScreen, sujeito: Option<Sujeito>) {
+    use ph2d_editor_core::ids::{INSP_PANEL, PIXEL_PANEL};
+    let Some((_, em_draw, _)) = sujeito else {
+        if std::mem::take(&mut app.ossos_abertos) {
+            hero.panel_visibility.insert("skeleton", true);
+        }
+        return;
+    };
+    app.ossos_abertos |= hero.is_panel_visible("skeleton");
+    hero.panel_visibility.insert("skeleton", false);
+    // Trocar de área de trabalho fecha tudo e abre a lista dela: o painel do sujeito reabre aqui.
+    hero.panel_visibility
+        .insert(if em_draw { PANEL_ID } else { "inspector" }, true);
+    hero.store
+        .bump_panel_z(if em_draw { PIXEL_PANEL } else { INSP_PANEL });
 }

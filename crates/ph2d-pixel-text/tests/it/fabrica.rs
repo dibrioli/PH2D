@@ -1,7 +1,7 @@
 //! Dono, 05/11: **as 12 fontes do Text, e só elas.** Sem cinza nenhum, sem a perna do «g» cortada,
 //! e cada tamanho é o desenho nativo com as células ampliadas.
 
-use ph2d_pixel_text::carimbo::{Fonte, font_list};
+use ph2d_pixel_text::carimbo::{Fonte, font_list, recorta_a_tinta};
 use ph2d_pixel_text::{BUILTIN, FontChoice, TextMask, TextStyle, builtin_line_height, rasterize};
 
 const AMOSTRA: &str = "Hamburgefonts 0123";
@@ -39,7 +39,10 @@ fn every_font_has_no_grey_cell_at_its_native_size() {
 fn twice_the_native_size_is_every_cell_doubled() {
     for (i, b) in BUILTIN.iter().enumerate() {
         let px = builtin_line_height(i).expect("nativa");
-        let (um, dois) = (tinta(&mascara(b.0, px)), tinta(&mascara(b.0, px * 2)));
+        let (um, dois) = (
+            recorta_a_tinta(&mascara(b.0, px)),
+            recorta_a_tinta(&mascara(b.0, px * 2)),
+        );
         assert_eq!(
             (um.0 * 2, um.1 * 2),
             (dois.0, dois.1),
@@ -54,26 +57,6 @@ fn twice_the_native_size_is_every_cell_doubled() {
             }
         }
     }
-}
-
-/// `(w, h, cobertura)` só da caixa da tinta: a folga da máscara vem das métricas, arredondadas.
-fn tinta(m: &TextMask) -> (u32, u32, Vec<u8>) {
-    let aceso = |x: u32, y: u32| m.cover[(y * m.w + x) as usize] != 0;
-    let xs: Vec<u32> = (0..m.w)
-        .filter(|&x| (0..m.h).any(|y| aceso(x, y)))
-        .collect();
-    let ys: Vec<u32> = (0..m.h)
-        .filter(|&y| (0..m.w).any(|x| aceso(x, y)))
-        .collect();
-    let (x0, x1) = (xs[0], xs[xs.len() - 1]);
-    let (y0, y1) = (ys[0], ys[ys.len() - 1]);
-    let mut c = Vec::new();
-    for y in y0..=y1 {
-        for x in x0..=x1 {
-            c.push(m.cover[(y * m.w + x) as usize]);
-        }
-    }
-    (x1 - x0 + 1, y1 - y0 + 1, c)
 }
 
 /// Foto de mesa, 05/11: o corte da descida do Aseprite comia a última linha do «g» na Micro 5.

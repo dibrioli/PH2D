@@ -18,7 +18,7 @@ pub struct Doc {
     pub frame: FrameId,
     pub(crate) view: SpriteImage,
     /// Muda a cada mudança visível (documento ou traço em curso) — a chave da imagem.
-    pub(crate) stamp: u64,
+    pub stamp: u64,
     /// Ainda não foi aberto em Draw: a primeira entrada enquadra-o (o *Fit Screen*).
     pub(crate) fresh: bool,
     /// Os eixos da simetria em meias células, se o artista os arrastou (`None` = no meio).
@@ -147,6 +147,9 @@ pub struct PixelApp {
     pub(crate) pedidos: Vec<ph2d_editor_core::pixel_panel::PixelRequest>,
     /// Havia sprite em Draw no quadro anterior (o painel abre/fecha no FLANCO).
     pub(crate) painel_em_edicao: bool,
+    /// O Pixel Sprite que manda nos painéis e se está em Draw; o Bones a repor depois dele.
+    pub(crate) sujeito_do_painel: Option<crate::panel::Sujeito>,
+    pub(crate) ossos_abertos: bool,
     /// As cores que as amostras da coluna mostravam no fim do quadro anterior (frente, fundo): o
     /// que o seletor partilhado escrever por cima delas é escolha do artista.
     pub(crate) semeadas: [[u8; 4]; 2],
@@ -256,6 +259,8 @@ impl Default for PixelApp {
             smoke: None,
             pedidos: Vec::new(),
             painel_em_edicao: false,
+            sujeito_do_painel: None,
+            ossos_abertos: false,
             semeadas: [[0; 4]; 2],
             zoom: None,
             na_tela: None,

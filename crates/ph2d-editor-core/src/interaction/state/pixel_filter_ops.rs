@@ -53,11 +53,14 @@ impl WidgetStore {
             .collect()
     }
 
-    /// O número de um campo do filtro AGORA: o que se está a escrever, para o efeito acompanhar
-    /// cada tecla; enquanto não for um número («-»), o último que valeu.
+    /// O número de um campo do filtro AGORA: a escrever, o do buffer, para o efeito acompanhar cada
+    /// tecla (enquanto não for um número, «-», o último que valeu); a arrastar ou sem foco, o valor.
     fn filter_number(&self, id: NodeId) -> Option<f64> {
-        self.text(id)
-            .and_then(|b| b.trim().parse().ok())
+        let a_escrever = self.focus_id == Some(id)
+            && !matches!(self.number_input_drag.as_ref(), Some(d) if d.id == id);
+        a_escrever
+            .then(|| self.text(id).and_then(|b| b.trim().parse().ok()))
+            .flatten()
             .or_else(|| self.number_value(id))
     }
 

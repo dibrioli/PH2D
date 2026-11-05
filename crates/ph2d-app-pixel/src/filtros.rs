@@ -193,7 +193,9 @@ pub(crate) fn aplica(app: &mut PixelApp, key: u32, c: PixelDialogChoice) -> bool
 pub(crate) fn acompanha(app: &mut PixelApp, store: &WidgetStore) {
     let quer = store.pixel_filter_preview().zip(app.chave);
     let Some((pedido, key)) = quer else {
-        app.previa_filtro = None;
+        if let Some(p) = app.previa_filtro.take() {
+            app.toca(p.key);
+        }
         return;
     };
     let cores = [app.fg, app.bg];
@@ -214,6 +216,7 @@ pub(crate) fn acompanha(app: &mut PixelApp, store: &WidgetStore) {
         cores,
         traco,
     });
+    app.toca(key);
 }
 
 /// Os nomes dos kernels da Convolution Matrix, na ordem do núcleo — o que o diálogo lista.

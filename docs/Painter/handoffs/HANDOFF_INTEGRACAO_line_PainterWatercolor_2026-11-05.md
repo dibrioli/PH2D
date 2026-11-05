@@ -1,8 +1,8 @@
 # HANDOFF DE INTEGRAÇÃO — line/PainterWatercolor, 05/11/2026 (Smooth Edges por traço, Grain à mão, placa E11, Bugs #57–#65)
 
-HEAD: PREENCHER
+HEAD: o commit deste handoff, 62 sobre `effe04a1c9` (o `main`, merge-base igual).
 
-SMOOTH_BUILD: PREENCHER
+SMOOTH_BUILD: 2.ª corrida, 0 `Compiling`: `Finished smoke profile [optimized] target(s) in 0.22s`.
 
 Leitor: o integrador (e a próxima LLM da linha). Ordem: **só integra por ordem explícita do Enio**; sem push. A frase do módulo no §5.1 **não muda**; o integrador troca só o link do Painter por este ficheiro.
 
@@ -48,7 +48,9 @@ Leitor: o integrador (e a próxima LLM da linha). Ordem: **só integra por ordem
 
 ## 5. Prova de fecho
 
-Feita pelo coordenador/verificador sobre o diff acumulado (fmt, clippy do fecho, portões por nome). **Esta redação não corre testes; o resultado vai no `SMOOTH_BUILD` e no commit final.** A suíte completa e o `nextest-impacted` são do integrador (regra do dono 23/10).
+Sobre `b6af47cbbe`: fmt, clippy do workspace, machete, standalone, tectos de LOC, censos 132/132, alarmes de pincel e placa por nome: verdes. A suíte completa e o `nextest-impacted` são do integrador.
+
+- ⚠️ **Dois flakes novos, FORA de `FLAKES_DE_CARGA.md`:** `o_fio_da_tela_nao_paga_a_otica` (`chamadas == 0`, 3/3 sozinho; código vizinho desta linha, pode ser contador partilhado: não investigado) e `o_fan_brush_pinta_na_tela_grande_o_que_o_preview_mostra` (só 1/1 sozinho). Reprovaram na corrida por filtro, load 12–22. Vermelho deles na suíte: confira antes de culpar a carga. Listado: `a_agua_pelo_compositor_e_a_tela_de_casa_ao_byte`.
 
 - Já medido nesta linha: o gate `o_indice_da_memoria` 3/3 verde (`bash scripts/cargo-test-narrow.sh ph2d-editor-core o_indice_da_memoria`), `MEMORY.md` 17 601 B (tecto do gate 22 000; alvo 17 KB, ver §9).
 - `ph2d-tool-painter` inteira nunca ficou verde numa só corrida, por 2 flakes de carga (§8); passam sozinhos 3/3.

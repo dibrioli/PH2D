@@ -641,6 +641,7 @@ fn no_text_is_cut_in_any_state() {
                 .cloned()
                 .collect(),
             textos: Vec::new(),
+            pecas: Vec::new(),
         };
         let grudadas = estes.linhas_grudadas();
         assert!(grudadas.is_empty(), "{nome}: {grudadas:#?}");

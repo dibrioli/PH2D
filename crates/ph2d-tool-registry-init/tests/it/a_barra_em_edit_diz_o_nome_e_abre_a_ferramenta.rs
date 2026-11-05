@@ -176,7 +176,7 @@ fn toda_ferramenta_da_fila_diz_o_nome_inteiro() {
     let reg = registry();
     let store = HeroScreen::new(ph2d_a11y::NodeId(1)).store;
     let mut ts = TextSystem::without_system_fonts();
-    let criticas = ["Cutout", "Color", "Equal", "Raster", "Reshape", "Square"];
+    let vagas = ["Cutout", "Color", "Equal", "Raster", "Reshape", "Square"];
     let ferramentas: Vec<_> = reg
         .cluster("image_tools")
         .iter()
@@ -198,7 +198,7 @@ fn toda_ferramenta_da_fila_diz_o_nome_inteiro() {
         let (nome, legenda) = legenda_em(true, &mut ts);
         assert_eq!(nome, legenda, "{}", m.id);
         assert!(
-            legenda.chars().any(char::is_lowercase) && !criticas.contains(&legenda.as_str()),
+            legenda.chars().any(char::is_lowercase) && !vagas.contains(&legenda.as_str()),
             "{}: «{legenda}» não diz o que faz",
             m.id
         );

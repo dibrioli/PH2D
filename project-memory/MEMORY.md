@@ -22,6 +22,7 @@
 - ⭐⭐ [Dono 05/11: Pincel e Borracha com a sua Hardness; Smooth Edges fica fora do Smear/Blend/Water](project_hardness_per_tool_owner_decision_2026_11_05.md)
 - ⭐⭐ [Smoke do dono 05/11: Smooth Edges, Grain, Hardness OK; decisões ficam; macro com Grain bugada FORA desta linha](project_smoke_2026_11_05_owner_verdicts.md)
 - ⭐⭐⭐ [Dono 05/11: «adoro os pincéis como estão»: o app pinta com a lei VELHA e ela é a referência; furos não se perguntam mais](project_brushes_as_they_are_are_the_reference_2026_11_05.md)
+- ⭐ [Bug #71 (tinta afundada em relevo): cura pronta mas DESLIGADA; o dono decide ligar `PH2D_PAPEL_SEM_DEGRAU` (05/11)](project_relief_step_awaits_owner_eye_2026_11_05.md)
 - ⭐⭐ [Dono 01/11 (F43): Effects/Filters do Vector no layout Figma — «+» dropdown, lista, propriedades à ESQUERDA](project_vector_effects_filters_figma_layout_2026_11_01.md) · ⭐⭐ [F44: Fill e Stroke no MESMO padrão; Cap/Join/Align com ícones](project_vector_fill_stroke_figma_layout_2026_11_01.md) · ⭐⭐ [campo que não se explica sozinho leva rótulo](feedback_a_field_that_is_not_self_evident_gets_a_label.md) · [unidade no rótulo, nunca na caixa (iPad)](feedback_units_live_in_the_label_not_in_the_box.md)
 - ⭐⭐ [E12 (05/11) NÃO feita: a régua de furos reprova quem passa a cobrir; não apague a lei velha antes de refazê-la](project_e12_blocked_by_mother_gate_ruler_2026_11_05.md)
 - ⭐⭐ [Dono 05/11: Pixel — filtros ao vivo com Apply/Cancel, girar de volta devolve o original, só 12 fontes](project_pixel_text_and_filters_owner_decisions_2026_11_05.md)

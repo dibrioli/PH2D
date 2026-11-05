@@ -29,7 +29,6 @@
 > [**#1 a #40**](BUGS_painter_fechados_1_a_40.md) · [**#41 a #46** e #37, mais o post-mortem do #15](BUGS_painter_fechados_41_a_46.md).
 > Bug fechado novo: uma linha no fim do segundo pedaço.
 
-
 ---
 
 ## Bug #29 — Impasto na peça 3D: o halo, as ferramentas, os estilhaços e a meia-lua (FECHADO 2026-10-01)
@@ -232,7 +231,6 @@ melhor. As sete fotos dele mostram o mesmo rectângulo; só a sétima diz **quan
   não variáveis de ambiente: *um gate que lê o ambiente mede a máquina*.
 
 ---
-
 
 ## Bug #25 — Composite Brush: a 2.ª figura saía DIFERENTE (e às vezes NÃO SAÍA) (FECHADO 2026-09-21)
 
@@ -630,23 +628,41 @@ Medido (traço de 40 px; massa / ecrã ÷ fábrica; «antes» = o mesmo processo
 
 Portões `grao_a_mao_tests::casos_abertos_*` (com o braço «sem a cura», que sangra, em cada um). **Aberto:** uma macro gravada antes que arma um Grain toca agora a quantidade nova.
 
-## Bug #71 (ABERTO, smoke do dono 05/11) — em papel de alto relevo, a tinta parece afundada: relevo negativo na borda
+## Bug #71 (MEDIDO 05/11, cura DESLIGADA à espera do olho do dono; 9bd76cd02d) — em papel de alto relevo, a tinta parece afundada: relevo negativo na borda
 
-Dono: «nos modos wet paint e watercolor, alguns pincéis aparentam aplicar a tinta com relevo negativo se o papel tem alto relevo». [Foto](handoffs/material_2026-11-05/relevo_negativo_foto_do_dono.png): mancha amarela com faixa clara na borda inferior direita e sombra na superior esquerda, ao contrário do relevo do papel em volta. NÃO reproduzido nem medido. Hipóteses a separar: o «amassar o relevo» (memória `project_paper_press_is_a_brush_control_2026_10_28`, um controlo que não se apaga: decidir o valor, não o controlo); a luz do relevo sobre o papel nu × sob o filme (`grao_no_filme`, `oleo_real::grao_do_papel`); o Edge Darkening que acumula na orla. Primeiro passo: varrer os presets dos dois meios em papel de relevo alto, medir o sinal do degrau de luz na orla e achar quais pincéis invertem.
+Dono: «nos modos wet paint e watercolor, alguns pincéis aparentam aplicar a tinta com relevo negativo se o papel tem alto relevo». [Foto](handoffs/material_2026-11-05/relevo_negativo_foto_do_dono.png): mancha amarela com faixa clara na borda inferior direita e sombra na superior esquerda, ao contrário do relevo do papel em volta.
 
-## Bug #70 (ABERTO, dono decidiu 05/11: opção A, apagar tudo sob o círculo, tinta molhada e antiga dos vários meios) — depois de pintar no Wet Paint, a Borracha não apaga os traços dos outros meios
+**Mecanismo (medido):** `relief_fields.rs height_at` = `h + dente×papel_a_vista`. O dente (0..0,0625; média 0,0313 em Cold a Relief 1) é tapado pela tinta, logo a altura média cai dentro do traço: degrau para BAIXO. Luz `Light::KEY` azimute 230 (convenção não conferida, mas o sinal casa com a foto).
+
+**Métrica S** (`sonda_relevo_negativo`, `wetpaint/sonda_relevo_negativo.rs`): luz da orla de baixo − de cima contra o papel nu, menos o mesmo com Relief 0; S>0 = afundada. 46 pincéis medidos (10 sem orla: Blender/Smear/Water): média +0,048, máx +0,115 (Metallic Flat). Wet Liner +0,080 com ED 0, logo NÃO é o Edge Darkening.
+
+**Cura (atrás de chave):** `papel + meio_do_dente×(1−v)`, `PH2D_PAPEL_SEM_DEGRAU=1`: média +0,005, máx +0,024, mín −0,017. Papel nu ao byte por construção. Alarme de miniatura verde com a chave ligada. Paper Press 0×1 com Real Oil: Knife Stain (15634, Δ44) → (15449, Δ42); Knife Oily (25783, Δ136) → (25647, Δ136): o controlo fica. [Prancha](handoffs/material_2026-11-05/relevo_antes_depois.png).
+
+**Custo visto:** o miolo de Soft Pastel e Graphite 8B perde grão em relevo (até Δ 78 / Δ 50). **Não medido:** só Cold; imagem de papel própria (`meio_do_dente` assume amp/2); alarme de largura com a chave. **Se o dono aprovar:** tirar a chave, portão com S, varrer papéis. Memória: `project_relief_step_awaits_owner_eye_2026_11_05`. Hipóteses antigas (Paper Press, grão no filme, ED) ficam descartadas pela medição acima.
+
+## Bug #70 (CURADO 05/11, a confirmar no smoke do dono; 26b119b58d) — depois de pintar no Wet Paint, a Borracha não apaga os traços dos outros meios
 
 Dono: «não apaga os traços dos outros modos já pintados». **Reproduzido** com X → Wet → pintar → Borracha, menu em Wet, sessão viva: Digital 135,8 → 135,8; Watercolor 92,6 → 92,6; Impasto 156 → 156 (controlo sem Wet: → 0; a mesma passada leva a tinta Wet de 34,2 a 1,1). X → Wet → X → Borracha apaga até 0, e o dono ainda não disse o que o menu mostrava. Mecanismo (rota medida, resto lido): `mode_switch.rs:66` mantém a Borracha no Wet; `wetpaint/ciclo.rs:27`, com sessão viva o Wet fica com os dabs; `wetpaint/dab_route.rs:105` apaga só o fluido; a tinta anterior está na `base` congelada (`session.rs:83`, `:395`). Lei W2.6 (`11337b0e1d`, 21/07) + arme (`9effa4b18b`, 24/10): existe em `main` (lido, não corrido). Impasto: a Borracha não oferece Impasto (`media.rs:245-249`), logo X, Wet, Borracha, X fica no Wet e não apaga.
 
-**Opções:** A (recomendada): apagar também a `base` sob o dab, com a água viva; maior (base, composite, undo; reescreve o motivo de `o_meio_da_borracha_so_age_sobre_tinta_viva`), custo por medir. B: clicar na Borracha sai do Wet e assa; pequena, perde o levantar tinta molhada do dono 24/10. C: manter e avisar no painel. Sonda `sonda_borracha_depois_do_wet`. Por verificar: o app real, tinta seca de verdade, várias camadas, `pick_wet_tool`.
+**Opções (o dono escolheu A):** A: apagar também a `base` sob o dab, com a água viva; maior (base, composite, undo; reescreve o motivo de `o_meio_da_borracha_so_age_sobre_tinta_viva`), custo por medir. B: clicar na Borracha sai do Wet e assa; pequena, perde o levantar tinta molhada do dono 24/10. C: manter e avisar no painel. Sonda `sonda_borracha_depois_do_wet`. Por verificar: o app real, tinta seca de verdade, várias camadas, `pick_wet_tool`.
 
-## Bug #69 (ABERTO, smoke do dono 05/11) — escolher outro pincel endurece a borda da tinta antiga que ainda tem água
+**Cura (opção A):** `wetpaint/borracha_na_base.rs`: cobertura pela borracha normal num escudo opaco (lei de `aplica_borracha_do_traco`), com a sessão retirada para `wet_owns_the_dabs` dar falso; `splat_keep` para selecção e protecção; alfa preso não apaga; a base copia só havendo o que apagar, 1× por passo (7,1 ms a 4096×2560); `merge_dirty_otica` recompõe. Undo: `PassoVivo.base_antes/base_depois` com Arc partilhado, contado no orçamento. Portões: `a_borracha_no_wet_apaga_a_tinta_antiga_de_cada_meio`, `desfazer_a_borracha_no_wet_devolve_a_tinta_antiga`, `a_selecao_protege_a_tinta_antiga_da_borracha`.
+
+**ABERTO novo:** o relevo do Impasto fica depois da Borracha, COM OU SEM Wet (105,97 → 105,97; controlo sem Wet igual, tinta 0,0): a Borracha do trilho tem `brush.impasto=false`, `impasto_batch_active` falso. Pré-existente; sonda `sonda_relevo_do_impasto_sob_a_borracha`. **Não verificado:** clique no app real; vidro de aguada em camadas; várias camadas (a sessão tem uma base só, a tela no nascimento). As respostas do dono sobre o menu vieram sem preencher.
+
+## Bug #69 (CURADO 05/11, a confirmar no smoke do dono; 9b8e5ffb3f) — escolher outro pincel endurece a borda da tinta antiga que ainda tem água
 
 Fotos do dono: bordas macias de traços anteriores ficam duras, com contorno fino, depois de passar um pincel escuro de cerdas; não muda com o Smooth Edges no painel. **Causa medida: o `EdgeDarkening` é global no motor**, e o preset novo troca-o para a tela inteira. Sequência (lida): `wetpaint_preset.rs:435` (`knobs = k`) → `session.rs:251` (`set_knob`, no tique) → `drying.rs:125` (`DryConst`) → `drying.rs:191` (`evap_base * ((1-e)*edge_darkening + base_evaporation)`): a orla de toda a tela perde água mais depressa e o pigmento assenta ali.
 
 Wet Liner em papel com relevo (480×340), região só de A, contra braço de controlo: só o preset Wet Dry Brush (ED 56,25), A com 1 s: 4 337 px, Δ 33. Só `EdgeDarkening` 0→56,25: 4 332 px, Δ 30. O preset sem esse knob: 92 px, Δ 3. Só `SmoothEdges` 0,12→0: 0. Wet Drip (ED 20) com traço: 7 979 px, Δ 46. Compositor fora da thread, A com 2 s: 4 005 px, Δ 28. Só 2 de 55 presets têm ED > 12; 13 têm 12; 40 têm 0. Sentido inverso (A ED 12, B ED 0): Δ 11–15. Janela (relógio fixo, só o preset): A com 1/5/10/20/40 s: Δ 33/28/17/2/0. Tinta seca a sério: 0 bytes nos 55. [Prancha](handoffs/material_2026-11-05/bordas_edge_darkening_antes_depois.png). Descartados por medição: recomposição, Real Oil, plano suave, `suave_teto`, caixa do compositor, placa × CPU. Sonda `sonda_bordas_qual_knob` em `wetpaint/sonda_bordas_longe.rs`.
 
-**Cura proposta (não construída):** o Edge Darkening da célula, pousado com a tinta como o Smooth Edges (`AparenciaCelula`), lido em `drying.rs:191`. A decidir: duas tintas na mesma célula, custo por célula, caminho da placa. **Portão:** Wet Liner, 60 tiques, aplicar Wet Dry Brush, 600 tiques, região de A ao byte contra o controlo. **Por verificar:** o dono disse «até seco» e a medição dá 0 depois de seco (40 s em tela pequena; no app pode ser mais); o nome do pincel dele; o interior texturizado; a ver se isto explica também os detalhes que mudam na cena `PH2D_WETPAINT_SMOKE=4` quando cada caso é pintado em tela própria (até 211 níveis). Fora disto: Pastel Side suja 17–48 px, Δ 117, pó solto (não investigado); razão de grade 2 e 4, até 1 691 px, Δ 6, com A seco (aberto).
+**Cura proposta (feita, ver «Cura» abaixo); o que ficou por verificar:** o Edge Darkening da célula, pousado com a tinta como o Smooth Edges (`AparenciaCelula`), lido em `drying.rs:191`. A decidir: duas tintas na mesma célula, custo por célula, caminho da placa. **Portão:** Wet Liner, 60 tiques, aplicar Wet Dry Brush, 600 tiques, região de A ao byte contra o controlo. **Por verificar:** o dono disse «até seco» e a medição dá 0 depois de seco (40 s em tela pequena; no app pode ser mais); o nome do pincel dele; o interior texturizado; a ver se isto explica também os detalhes que mudam na cena `PH2D_WETPAINT_SMOKE=4` quando cada caso é pintado em tela própria (até 211 níveis). Fora disto: Pastel Side suja 17–48 px, Δ 117, pó solto (não investigado); razão de grade 2 e 4, até 1 691 px, Δ 6, com A seco (aberto).
+
+**Cura:** o Edge Darkening é de cada traço. `AparenciaCelula::borda` (28 B), média pela massa; `Grid::borda_fundo` (f64) = o do 1.º pincel que tocou a grade, nunca muda, nem no Clear (o histórico pode devolver células que o lêem); célula com `BORDA_DO_FUNDO` (-1) lê o fundo, logo tela de um pincel só não aloca o campo. Placa: `aux.w`, nas duas leis (`seca.wgsl`, `seca_tinta.wgsl`; binding 7 acrescentado na `liga_tinta`).
+
+**Prova:** vermelho antes: Wet Liner ED 0→56,25 (4332 px, Δ30); Wet Round ED→0 (9954 px, Δ22). Depois: (0,0) ambos. Alarmes de pincel verdes sem regravar.
+
+**Sobra:** `sonda_bordas_qual_knob` Wet Liner→Wet Dry Brush (92 px, Δ3) é do knob Capillary, global, só ele. Varredura dos 55 B com traço longe: ecrã até Δ 3 (antes até Δ 46); o MESMO pincel como B dá (698 px, Δ2), logo é o assentar normal/cadência, não a borda. **Limitação:** pigmento que a água leve além da orla virgem (2 células) numa grade com 2 bordas lê o fundo. **NÃO verificado:** a cena `PH2D_WETPAINT_SMOKE=4` (se deixa de variar) e o dono ter dito «até seco».
 
 ## Bug #68 (FECHADO 05/11, smoke do dono) — a Borracha do Wet Paint apagava além do anel do cursor
 

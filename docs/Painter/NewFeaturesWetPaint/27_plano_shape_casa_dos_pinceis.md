@@ -208,6 +208,8 @@ Smoke do dono: *«em Wet Paint, Shape ainda não aparece configurado»* — era 
   com um Grain armado ou uma ferramenta da água que não deposita.
 - **D7 decidido:** o Grain SUBSTITUI as cerdas (não multiplica). As cerdas têm média ~0,02 e são calibradas para
   ser o `texv` inteiro com a intensidade 3: multiplicá-las pelo grão apagaria os pastéis (que hoje pintam pelo grão).
+  ⚠️ **Estreitado em 05/11 (dono 04/11, [Bug #61](../BUGS_painter.md)):** só o Grain com que o pincel foi APLICADO as substitui. Armado à
+  mão sobre um pincel aplicado sem Grain, as cerdas ficam e o grão desenha depois do portão.
 - **Tinta por tipo depois da W2** (mesma sonda de 6.1, Wet ÷ None, onde None é agora a ponta LISA = 1 192 616, 4,7×
   as cerdas de fábrica): Noise 0,337 · Clouds 0,702 · Voronoi 0,825 · Musgrave 0,469 · Stucci 0,119 · Bristles
   (Strength 2) 0,464 — **a família do #47 pinta**, nas proporções do Digital. A lei B (W3) fica para o Shape

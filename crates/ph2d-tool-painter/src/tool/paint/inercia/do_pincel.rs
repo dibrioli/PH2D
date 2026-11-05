@@ -87,15 +87,13 @@ impl PainterTool {
             // «Every Dab / Every Stroke» escolhe QUANDO o Randomize Color sorteia — sem Hue/Sat/Value não
             // há sorteio (`jitter::colour_draw`).
             (Dependente::QuandoDoRandomize, !b.has_colour_jitter_amount()),
-            // As cerdas do Shape entram no motor como o `texv` (`wetpaint/dab_route.rs`): um Grain armado
-            // toma o lugar delas (W2.4), e as ferramentas da água que não depositam não as lêem.
+            // As cerdas do Shape entram no motor como o `texv` (`wetpaint/dab_route.rs`): o Grain com que o pincel foi
+            // aplicado toma o lugar delas (W2.4), e as ferramentas da água que não depositam não as lêem. Sobre um pincel
+            // aplicado sem Grain, o grão ou o papel armado desenha por cima delas (Bug #61).
             (
                 Dependente::CerdasDaAgua,
                 agua && b.shape.kind == ph2d_painter_brush::TextureKind::Bristles
-                    // O «Same as Paper» sem Grain próprio não tira as cerdas: o papel desenha por cima delas (Bug #61).
-                    && ((g.grain_samples(imagem_do_grao)
-                        && (!self.grao_e_o_papel()
-                            || b.grain_samples(self.paint.texture_image.is_some())))
+                    && ((g.grain_samples(imagem_do_grao) && self.grao_aplicado_amostra())
                         || (!self.paint.eraser
                             && self.paint.wetpaint.tool != super::super::WetTool::Paint)),
             ),

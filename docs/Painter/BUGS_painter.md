@@ -564,8 +564,49 @@ dividido pela sua média (`LoteDoDab::media_do_papel`, `pousa_o_dab.rs`, `dab_ro
 `wetpaint/same_as_paper_volume_tests.rs`: `o_same_as_paper_nao_muda_a_quantidade_de_tinta` (0,9–1,1 em 8 pincéis) e
 `o_same_as_paper_ainda_desenha_o_papel`. Sem Grain próprio, também com Grain Colors, as cerdas ficam como `texv` (a rampa tinha o mesmo salto, smoke 04/11). Com Grain próprio o papel toma o lugar dele à média dele (`ganho_do_papel`; sem isto o Same as Paper quase apagava esses pincéis). Medido: 0,95–1,00× em 6 deles. Gates `o_same_as_paper_com_grain_colors_nao_muda_a_quantidade`, `o_same_as_paper_sobre_grain_proprio_nao_muda_a_quantidade`. ⚠️ `media_do_grao` corre 1 024 amostras por lote: custo por medir.
 
-⚠️ **ABERTO, decisão do dono:** escolher um Grain qualquer à mão num pincel de cerdas dá o mesmo salto (coluna noise, até 16,5×).
-É a decisão D7 do doc 27 (os pastéis pintam pelo grão) e a cura mudaria presets aprovados que têm cerdas + grão; não foi tocada.
+### Grain escolhido à mão (CURADO na régua 05/11, falta o smoke; decisão do dono 04/11: «consertar»)
+
+Mesmo salto da coluna noise. **Cura:** a quantidade referencia o Grain com que o pincel foi aplicado (`BrushSpec::grao_aplicado`,
+`wetpaint/lote.rs::regua_do_grao`). Aplicado sem Grain: as cerdas ficam como `texv` e o grão desenha depois do portão, de média 1.
+Aplicado com G, outro Kind (ou o papel, ou outra imagem): entra com `ganho = média(G)/média(H)`. Mesmo Kind: o de sempre, ao bit
+(ajustar os sliders do Grain não é trocá-lo). Tudo isto é o mesmo código do Same as Paper.
+
+Medido (traço de 40 px; massa e ecrã ÷ fábrica; «antes» = referência igualada ao grão armado, mesmo processo):
+
+| pincel | grão | massa antes | massa cura | ecrã antes | ecrã cura | desvio do miolo (fábrica · antes · cura) |
+|---|---|---|---|---|---|---|
+| Wet Drip | noise / clouds / voronoi | 8,00 / 8,18 / 6,37 | 1,10 / 1,06 / 1,03 | 3,87 / 3,98 / 3,49 | 1,07 / 1,04 / 1,01 | 0,29 · 0,07 / 0,02 / 0,11 · 0,37 / 0,31 / 0,39 |
+| Wet Round | noise / clouds / voronoi | 10,71 / 11,07 / 8,05 | 1,10 / 1,06 / 1,03 | 4,91 / 5,11 / 4,28 | 1,07 / 1,05 / 1,01 | 0,31 · 0,08 / 0,02 / 0,16 · 0,40 / 0,33 / 0,41 |
+| Wet Dry Brush | noise / clouds / voronoi | 16,51 / 17,34 / 14,30 | 1,10 / 1,06 / 1,03 | 4,28 / 4,48 / 4,18 | 1,05 / 1,04 / 1,00 | 0,42 · 0,02 / 0,00 / 0,08 · 0,46 / 0,43 / 0,48 |
+| Filbert | noise / clouds / voronoi | 1,70 / 1,67 / 1,76 | 1,08 / 1,11 / 1,02 | 1,12 / 1,13 / 1,13 | 0,98 / 1,00 / 0,98 | 0,02 · 0,05 / 0,05 / 0,04 · 0,05 / 0,02 / 0,03 |
+
+A lei antiga também apagava o desenho das cerdas sem o trocar por outro (o miolo saturava, desvio 0,00–0,16). O Clouds do Filbert fica
+em 1,108 de massa (ecrã 1,00): o portão admite até 1,12.
+
+**Trocar G por H nos 10 com Grain próprio:** massa 0,82–1,05, ecrã 0,89–1,02 (antes da cura 0,74–1,06 / 0,80–1,02). ⚠️ **Fica abaixo da
+faixa pedida (0,9–1,1) em massa** só nas facas que saturam o carimbo: Knife Textured e Knife Smooth 3 com Voronoi (0,83 · 0,85), Knife
+Grainy com Noise e Voronoi (0,86 · 0,82).
+
+⛔ **Recusas MEDIDAS** (ganho resolvido pela resposta do depósito, no lugar da média, Voronoi; massa / desvio do miolo):
+
+| lei do ganho | Knife Textured | Knife Grainy | Soft Pastel | Scratch |
+|---|---|---|---|---|
+| **média (adotada)** | 0,83 / 0,24 | 0,82 / 0,25 | 0,93 / 0,25 | 0,95 / 0,45 |
+| saturação `min(1, 3·k·x)` | 1,00 / 0,06 | 1,00 / 0,17 | 1,47 / 0,10 | 2,03 / 0,22 |
+| saturação + portão `0,5·PaperGate` | 1,00 / 0,06 | 0,99 / 0,18 | 1,47 / 0,10 | 2,03 / 0,22 |
+| com a queda do dab e o dente (16× o custo) | 0,89 / 0,19 | 0,87 / 0,22 | 1,03 / 0,21 | 1,13 / 0,40 |
+
+Igualar a massa nas facas apaga o Voronoi escolhido e estoura nos pastéis; a versão fina nem entra na faixa e copia a lei do depósito para fora do motor.
+
+**Custo:** `media_do_grao` = 42–79 µs por grão contra um lote de 479 µs (9–33 % ao trocar: duas médias por lote), medido por
+`sonda_custo_da_media_do_grao`, intercalado, mínimo, load ~15. Pesa: `lote::MediasDoGrao` guarda as médias na sessão (4 entradas), 0,013 µs ao repetir.
+
+**Gravado:** a chave `grao_aplicado` em `brush`, só com o Grain trocado; ausente = o Grain do ficheiro é a referência (os 77 de fábrica não mudam
+ao byte). Gravar NÃO troca a referência por H: sem isto o pincel reabriria com o salto. Grain de imagem que saiu: a média congela em `media`.
+
+Gates em `wetpaint/grao_a_mao_tests.rs` e `seam_same_as_paper::armar_o_grain_pelo_menu_nao_muda_a_quantidade_no_wet` (o evento real do menu).
+**Aberto:** um Grain tirado (`None`) de um pincel que veio com ele volta às cerdas e perde a tinta, como antes; armar um Grain num pincel de ponta lisa
+(sem cerdas, sem Grain próprio) continua a substituir o `texv = 1`, como antes; uma macro gravada antes que arma um Grain toca agora a quantidade nova.
 
 ## Bug #62 (ABERTO, decisão do dono) — cordão escuro na borda do traço simples: Wet Liner e Wet Wash
 

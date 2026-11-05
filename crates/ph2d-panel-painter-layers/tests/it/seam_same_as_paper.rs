@@ -273,3 +273,30 @@ fn o_same_as_paper_do_grain_aceita_o_clique_real_nos_tres_meios() {
         eprintln!("SAP-CLIQUE\t{meio:?}\tn={n}");
     }
 }
+
+/// **Armar um Grain pelo menu, num pincel de cerdas aplicado sem Grain, não muda a quantidade** (Bug #61): o evento real
+/// do painel chega à ferramenta, o traço muda e o ecrã fica na faixa; as cerdas continuam a valer.
+#[test]
+fn armar_o_grain_pelo_menu_nao_muda_a_quantidade_no_wet() {
+    let meio = PaintMedia::WetPaint;
+    let tinta = |px: &[u8]| -> f64 { px.chunks(4).map(|p| 255.0 - f64::from(p[1])).sum() };
+    let (base, _) = ensaio(meio, &[], &Gesto::Nenhum);
+    for k in [1u8, 6, 3] {
+        let menu = Gesto::Opcao(
+            PAINTER_BRUSH_TEXTURE_KIND,
+            painter_brush_texture_kind_option_id(k),
+            0,
+            0,
+        );
+        let (com, entrega) = ensaio(meio, &[], &menu);
+        assert!(
+            entrega.ao_tool > 0 && entrega.ajuste_mudou,
+            "{k}: o menu não chegou"
+        );
+        let razao = tinta(&com) / tinta(&base);
+        let n = diferenca(&base, &com).0;
+        eprintln!("GRAIN-MENU\t{k}\tn={n}\tecra={razao:.3}");
+        assert!(n > 0, "{k}: o grão não pintou");
+        assert!((0.9..1.1).contains(&razao), "{k}: ecrã {razao:.3}×");
+    }
+}

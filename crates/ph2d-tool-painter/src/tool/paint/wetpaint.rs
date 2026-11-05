@@ -383,6 +383,7 @@ pub(crate) mod fita; // a FITA do worker: a água de uma macro idêntica à grav
 pub(super) mod grid_map; // a grade do fluido != a grade de PIXELS — filho por LOC
 pub(super) mod largura; // a LARGURA PROMETIDA (W2): o raio do motor sai da tabela do preset
 mod lote; // o papel e o sub-passo da cápsula de cada lote — filho de dab_route por LOC
+pub(super) use lote::media_do_grao;
 mod po; // o PÓ SOLTO pousado à parte do rasto (J4 pastel_carvao) — filho de dab_route por LOC
 mod ponta_das_cerdas; // a ponta RECTA e DESFIADA das cerdas (J2 §7 c) — filho de dab_route por LOC
 mod pousa_o_dab; // o corpo do laço da rota do dab: um dab entra na água — filho de dab_route por LOC
@@ -465,6 +466,9 @@ mod sil_memo; // a silhueta do dab guardada para o pente do relevo (W3b) // o Em
 #[cfg(test)]
 #[path = "wetpaint/flow_ratio_tests.rs"]
 mod flow_ratio_tests; // os gates de PRODUTO da razão da grade de FLUXO
+#[cfg(test)]
+#[path = "wetpaint/grao_a_mao_tests.rs"]
+mod grao_a_mao_tests;
 #[cfg(test)]
 #[path = "wetpaint/offthread_tests.rs"]
 mod offthread_tests; // os gates da sim FORA da thread do frame

@@ -38,9 +38,9 @@ pub(super) struct LoteDoDab<'a> {
     pub(super) esmaece_fino: f64,
     pub(super) escala_tex: f32,
     pub(super) grao_e_o_papel: bool,
-    pub(super) media_do_papel: Option<f64>,
-    pub(super) cerdas_sob_o_papel: bool,
-    pub(super) ganho_do_papel: f64,
+    pub(super) media_depois_do_portao: Option<f64>,
+    pub(super) cerdas_sob_o_grao: bool,
+    pub(super) ganho_do_grao: f64,
     pub(super) pigmento_da_marca: f32,
     pub(super) escala_cerdas: [f32; 2],
     pub(super) copia: &'a [u32],
@@ -93,9 +93,9 @@ pub(super) fn pousa_o_dab(
         esmaece_fino,
         escala_tex,
         grao_e_o_papel,
-        media_do_papel,
-        cerdas_sob_o_papel,
-        ganho_do_papel,
+        media_depois_do_portao,
+        cerdas_sob_o_grao,
+        ganho_do_grao,
         pigmento_da_marca,
         escala_cerdas,
         copia,
@@ -463,7 +463,7 @@ pub(super) fn pousa_o_dab(
             let px = grid_map::cell_center_texel(cx, ratio);
             let py = grid_map::cell_center_texel(cy, ratio);
             let w = if na_ponta { sil(cx, cy) as f32 } else { 1.0 };
-            ganho_do_papel
+            ganho_do_grao
                 * f64::from(ph2d_painter_brush::dab::grain_at_na_ponta(
                     spec_ref,
                     gb,
@@ -481,7 +481,7 @@ pub(super) fn pousa_o_dab(
     // motor ao bit. Um Grain armado continua a tomar o lugar delas (W2.4; D7 medido no 27 §6.7).
     // Com o FILME do traço (`Knob::StrokeFilm`, J4 aguarela) o tapete fica de fora: a lavagem é lisa.
     let cerdas_sb = shape_basis.as_ref().filter(|_| {
-        cerdas && (grain.is_none() || cerdas_sob_o_papel) && !filme_liso && !marca_do_spray
+        cerdas && (grain.is_none() || cerdas_sob_o_grao) && !filme_liso && !marca_do_spray
     });
     let cerdas_fn = cerdas_sb.map(|sb| {
         let forma = &spec_ref.shape;
@@ -536,7 +536,7 @@ pub(super) fn pousa_o_dab(
     let papel_depois = cerdas_fn
         .as_ref()
         .zip(grain.as_ref())
-        .zip(media_do_papel)
+        .zip(media_depois_do_portao)
         .map(|((_, g), media)| {
             move |cx: i32, cy: i32| -> f64 {
                 g(cx, cy) / media * padrao_arg.map_or(1.0, |p| p(cx, cy))

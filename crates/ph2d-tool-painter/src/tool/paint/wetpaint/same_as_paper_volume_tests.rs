@@ -4,8 +4,8 @@ use crate::tool::PainterTool;
 use ph2d_editor_core::Tool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase, RasterEditTool};
 
-const W: usize = 400;
-const H: usize = 240;
+pub(super) const W: usize = 400;
+pub(super) const H: usize = 240;
 const PINCEIS: [&str; 8] = [
     "Wet Drip",
     "Wet Round",
@@ -56,7 +56,7 @@ fn le(t: &PainterTool) -> [f64; 4] {
     [massa, agua, n, px / (W * H) as f64]
 }
 
-fn traco(p: &ph2d_brush_presets::Preset, papel: bool) -> ([f64; 4], PainterTool) {
+pub(super) fn traco(p: &ph2d_brush_presets::Preset, papel: bool) -> ([f64; 4], PainterTool) {
     traco_com(p, |t| {
         if papel {
             t.toggle_brush_grain_same_as_paper();
@@ -64,7 +64,7 @@ fn traco(p: &ph2d_brush_presets::Preset, papel: bool) -> ([f64; 4], PainterTool)
     })
 }
 
-fn traco_com(
+pub(super) fn traco_com(
     p: &ph2d_brush_presets::Preset,
     muda: impl FnOnce(&mut PainterTool),
 ) -> ([f64; 4], PainterTool) {
@@ -162,6 +162,63 @@ fn o_same_as_paper_com_grain_colors_nao_muda_a_quantidade() {
         let massa = c[0] / s[0];
         println!("{nome}: massa com as Grain Colors {massa:.3}");
         assert!((0.9..1.1).contains(&massa), "{nome}: massa {massa:.3}×");
+    }
+}
+
+/// O desvio do escurecimento do ecrã no miolo do traço, por byte de tinta: a textura desenha?
+pub(super) fn variacao_do_miolo(t: &PainterTool) -> f64 {
+    let v: Vec<f64> = (100..=140usize)
+        .flat_map(|y| (100..=300usize).map(move |x| (x, y)))
+        .map(|(x, y)| 255.0 - f64::from(t.canvas_rgba[(y * W + x) * 4 + 1]))
+        .collect();
+    let m = v.iter().sum::<f64>() / v.len() as f64;
+    (v.iter().map(|x| (x - m) * (x - m)).sum::<f64>() / v.len() as f64).sqrt() / m.max(1e-9)
+}
+
+/// **Sonda A/B do Grain escolhido à mão**: `pincel|grão|massa_hoje|massa_novo|tela_hoje|tela_novo|cv_base|cv_hoje|cv_novo`.
+/// «hoje» = a referência igualada ao grão armado (o que o pincel fazia antes da cura), no mesmo processo.
+#[test]
+#[ignore = "sonda: o Grain à mão, A/B"]
+fn sonda_grain_a_mao_ab() {
+    use ph2d_painter_brush::TextureKind as K;
+    println!("pincel|grao|massa_hoje|massa_novo|tela_hoje|tela_novo|cv_base|cv_hoje|cv_novo");
+    for nome in [
+        "Wet Drip",
+        "Wet Round",
+        "Wet Dry Brush",
+        "Filbert",
+        "Knife Dry",
+        "Knife Stain",
+        "Knife Textured",
+        "Knife Grainy",
+        "Knife Smooth 3",
+        "Metallic Flat",
+        "Soft Pastel",
+        "Scratch",
+        "Thick Impasto",
+        "Dabber 4",
+    ] {
+        let e = crate::tool::paint::wetpaint_preset::de_fabrica_ou_candidato(nome);
+        let (s, base) = traco(&e, false);
+        for (g, k) in [("noise", 1u8), ("clouds", 6), ("voronoi", 3)] {
+            let (novo, tn) = traco_com(&e, |t| t.set_brush_texture_kind(k));
+            let (hoje, th) = traco_com(&e, |t| {
+                t.set_brush_texture_kind(k);
+                t.paint.brush.grao_aplicado.grao = t.paint.brush.texture;
+            });
+            let kind = tn.paint.brush.texture.kind;
+            assert_ne!(kind, K::None);
+            println!(
+                "{nome}|{g}({kind:?})|{:.2}|{:.3}|{:.2}|{:.3}|{:.2}|{:.2}|{:.2}",
+                hoje[0] / s[0],
+                novo[0] / s[0],
+                hoje[3] / s[3],
+                novo[3] / s[3],
+                variacao_do_miolo(&base),
+                variacao_do_miolo(&th),
+                variacao_do_miolo(&tn),
+            );
+        }
     }
 }
 

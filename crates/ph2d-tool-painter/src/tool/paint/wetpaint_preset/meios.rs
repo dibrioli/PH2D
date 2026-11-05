@@ -316,6 +316,7 @@ impl PainterTool {
             &self.paint.brush,
             &campos_do_meio(m),
         ));
+        p.brush.remove("grao_aplicado"); // só o Wet Paint a lê (Bug #61)
         for l in LINHAS_DA_MAO {
             let v = mao::le(&self.paint.dynamics, &self.paint.brush.pen_tilt, l);
             if l.lida_por(m) && (l.grava_no_neutro() || v != l.omissao()) {

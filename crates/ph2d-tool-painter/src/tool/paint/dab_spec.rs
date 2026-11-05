@@ -168,6 +168,52 @@ impl PainterTool {
         brush.grain_same_as_paper && self.paint_media() != super::media::PaintMedia::Watercolor
     }
 
+    /// O pincel foi aplicado com um Grain que amostra ([`ph2d_painter_brush::GraoAplicado`])? Então um grão armado toma
+    /// o lugar das cerdas; senão, desenha por cima delas (`wetpaint/lote.rs::regua_do_grao`).
+    #[must_use]
+    pub(crate) fn grao_aplicado_amostra(&self) -> bool {
+        let g = self.paint.brush.grao_aplicado;
+        g.media.is_some()
+            || ph2d_painter_brush::BrushSpec {
+                texture: g.grao,
+                ..self.paint.brush
+            }
+            .grain_samples(self.paint.texture_image.is_some())
+    }
+
+    /// O pincel a gravar: a média do Grain aplicado congela se ele era de imagem e já não é o Grain (o ficheiro não leva
+    /// aquela imagem, Bug #61).
+    #[must_use]
+    pub(crate) fn pincel_a_gravar(&self) -> ph2d_painter_brush::BrushSpec {
+        let mut b = self.paint.brush;
+        if b.texture.kind != ph2d_painter_brush::TextureKind::Image {
+            b.grao_aplicado = self.grao_aplicado_congelado();
+        }
+        b
+    }
+
+    /// [`ph2d_painter_brush::GraoAplicado`] com a média do Grain de imagem medida agora, enquanto a imagem dele está no slot.
+    #[must_use]
+    pub(crate) fn grao_aplicado_congelado(&self) -> ph2d_painter_brush::GraoAplicado {
+        let mut g = self.paint.brush.grao_aplicado;
+        if g.grao.kind == ph2d_painter_brush::TextureKind::Image
+            && g.media.is_none()
+            && let Some(imagem) = self.paint.texture_image.as_ref()
+        {
+            let (w, h) = self.source_size;
+            let de_g = ph2d_painter_brush::BrushSpec {
+                texture: g.grao,
+                ..self.paint.brush
+            };
+            g.media = Some(super::wetpaint::media_do_grao(
+                &de_g,
+                Some(&imagem.as_mask()),
+                [w as f32, h as f32],
+            ) as f32);
+        }
+        g
+    }
+
     /// O Digital está em condições de pôr o papel como Grain (o Relief ligado com um papel, sem Grain
     /// escolhido) — só falta o Tooth. É a lei do Tooth ESMAECIDO no Digital (`inercia`).
     #[must_use]

@@ -547,6 +547,9 @@ pub struct BrushSpec {
     /// preso à tela, à [`Self::grain_depth`] do pincel. `false` (omissão) = o Grain do pincel, ao bit.
     /// A Aquarela tem a sua ([`Self::granulation_use_paper`]); a porta é `PainterTool::papel_como_grain`.
     pub grain_same_as_paper: bool,
+    /// **O Grain com que o pincel foi aplicado**: a régua da quantidade de tinta quando o artista arma ou troca um
+    /// Grain ([`GraoAplicado`], Bug #61, `wetpaint/lote.rs::regua_do_grao`). Só o Wet Paint o lê.
+    pub grao_aplicado: GraoAplicado,
     /// **Paper Depth** (the panel's *Tooth*), `0..=`[`PAPER_TOOTH_MAX`]: how strongly the
     /// [`Self::paper`] tooth textures the wash (the paper's substrate bite, independent of the
     /// granulation amount). `0` = a flat wash; `1` = the historical full tooth.
@@ -691,3 +694,20 @@ impl BrushSpec {
 }
 
 mod queries;
+
+/// A referência da quantidade do Grain ([`BrushSpec::grao_aplicado`]): o estado do pincel, viaja com ele.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct GraoAplicado {
+    /// O Grain do preset (`kind` `None` = o pincel foi aplicado sem Grain).
+    pub grao: TextureSettings,
+    /// A média dele, congelada quando já não há como amostrá-lo: um Grain de imagem cuja imagem saiu do slot.
+    pub media: Option<f32>,
+}
+
+impl BrushSpec {
+    /// O Grain de agora já não é o aplicado? Mexer nos parâmetros do MESMO Grain não é trocá-lo.
+    #[must_use]
+    pub fn grao_trocado(&self) -> bool {
+        self.grao_aplicado.media.is_some() || self.grao_aplicado.grao.kind != self.texture.kind
+    }
+}

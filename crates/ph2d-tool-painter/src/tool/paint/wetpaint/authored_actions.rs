@@ -97,6 +97,7 @@ impl PainterTool {
             fecho: Vec::new(),
             abrindo: false,
             pincel_do_fecho: None,
+            medias_do_grao: Default::default(),
             fita: self.paint.wetpaint.fita.clone(),
             roteiro_teve_worker: false,
             ritmo: self.paint.wetpaint.ritmo.clone(),

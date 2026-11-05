@@ -70,7 +70,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Acts on a path with Spacing above 2.5%, with the Paint tool, the Eraser or the Mask"
         }
         "panel.painter_layers.inerte.bristles_no_grain" => {
-            "Acts with Grain None and the Paint tool or the Eraser"
+            "Acts unless the brush came with its own Grain, with the Paint tool or the Eraser"
         }
         "panel.painter_layers.inerte.texture_color_needs_a_shape" => {
             "Acts with a Shape texture: a pattern or an image"

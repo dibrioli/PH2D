@@ -546,8 +546,11 @@ impl PainterTool {
         let mut p = base.clone();
         p.schema = SCHEMA;
         MEIO_DO_PRESET.clone_into(&mut p.media);
-        p.brush
-            .extend(json::pincel_para_json(&self.paint.brush, &CAMPOS_DO_PINCEL));
+        p.brush.remove("grao_aplicado");
+        p.brush.extend(json::pincel_para_json(
+            &self.pincel_a_gravar(),
+            &CAMPOS_DO_PINCEL,
+        ));
         // O dente do papel saiu do pincel (W3b): o de um preset antigo não sobrevive à gravação.
         p.brush.remove("paper_depth");
         let k = &self.paint.wetpaint.knobs;

@@ -388,6 +388,11 @@ fn ler_campo(b: &BrushSpec, campo: &str) -> Value {
         "texture" => textura_para_json(&b.texture),
         "grain_depth" => num(b.grain_depth),
         "grain_same_as_paper" => json!(b.grain_same_as_paper),
+        "grao_aplicado" => {
+            let mut v = textura_para_json(&b.grao_aplicado.grao);
+            v["media"] = json!(b.grao_aplicado.media);
+            v
+        }
         "shape" => textura_para_json(&b.shape),
         "dab_flatten" => num(b.dab_flatten),
         "dab_angle_deg" => json!(b.dab_angle_deg),
@@ -567,6 +572,17 @@ fn escrever_campo(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         "grain_depth" => b.grain_depth = f(v, b.grain_depth),
         // Ausente = desligado (a de fábrica): o preset de antes lê o grão de antes.
         "grain_same_as_paper" => b.grain_same_as_paper = booleano(v, false),
+        "grao_aplicado" => {
+            if v.is_some() {
+                b.grao_aplicado = ph2d_painter_brush::GraoAplicado {
+                    grao: textura_de_json(v, TextureSettings::default()),
+                    media: v
+                        .and_then(|o| o.get("media"))
+                        .and_then(Value::as_f64)
+                        .map(|m| m as f32),
+                };
+            }
+        }
         "shape" => b.shape = textura_de_json(v, b.shape),
         "dab_flatten" => b.dab_flatten = f(v, b.dab_flatten),
         "dab_angle_deg" => b.dab_angle_deg = inteiro(v, b.dab_angle_deg),
@@ -646,6 +662,8 @@ pub(crate) fn pincel_para_json(b: &BrushSpec, campos: &[&str]) -> BTreeMap<Strin
         // As pontas rectas (J6) só ligadas: idem.
         .filter(|&&c| !(c == "pontas_rectas" && !b.pontas_rectas))
         .filter(|&&c| !(c == "grain_same_as_paper" && !b.grain_same_as_paper))
+        // A referência do Grain (Bug #61) só quando o Grain já não é ela: a ausência diz «o Grain do ficheiro é ela».
+        .filter(|&&c| !(c == "grao_aplicado" && !b.grao_trocado()))
         .filter(|&&c| !(c == "pontas_alem" && b.pontas_alem <= 0.0))
         // O esbate negativo (as pontas que CARREGAM, R2-A) viaja: só o `0` sai.
         .filter(|&&c| !(c == "pontas_esbate" && b.pontas_esbate == 0.0))
@@ -664,6 +682,12 @@ pub(crate) fn pincel_de_json(
     let mut b = base;
     for &c in campos {
         escrever_campo(&mut b, c, m.get(c));
+    }
+    if campos.contains(&"grao_aplicado") && !m.contains_key("grao_aplicado") {
+        b.grao_aplicado = ph2d_painter_brush::GraoAplicado {
+            grao: b.texture,
+            media: None,
+        };
     }
     // O legado de antes da secção Rendering sair (24/10): o tecto por dab morava em `traco`; o tecto do traço e as
     // orlas dele já não existem e ignoram-se.

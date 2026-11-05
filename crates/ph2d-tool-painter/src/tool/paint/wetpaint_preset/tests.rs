@@ -169,6 +169,10 @@ fn pincel_mexido() -> BrushSpec {
         },
         texture: tex(3, 30),
         grain_depth: 0.6,
+        grao_aplicado: ph2d_painter_brush::GraoAplicado {
+            grao: tex(1, 15),
+            media: Some(0.25),
+        },
         shape: tex(5, 45),
         dab_flatten: 0.3,
         dab_angle_deg: 25,

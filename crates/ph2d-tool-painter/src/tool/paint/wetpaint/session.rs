@@ -154,6 +154,8 @@ pub(in crate::tool::paint) struct WetSession {
     pub(super) abrindo: bool,
     /// O pincel do último lote com as pontas rectas: o fecho pousa com ELE (o resolvido, não o do painel).
     pub(super) pincel_do_fecho: Option<ph2d_painter_brush::BrushSpec>,
+    /// As médias dos grãos que a régua da quantidade lê ([`super::lote::MediasDoGrao`], Bug #61).
+    pub(super) medias_do_grao: super::lote::MediasDoGrao,
     /// A fita da macro ([`super::fita`]), herdada do tool no nascimento: grava as respostas do worker,
     /// ou responde por ele ao tocar. `None` = nem uma coisa nem outra (custo zero).
     pub(super) fita: Option<super::fita::FitaPartilhada>,
@@ -334,6 +336,7 @@ impl Clone for WetSession {
             fecho,
             abrindo,
             pincel_do_fecho,
+            medias_do_grao,
             fita,
             roteiro_teve_worker,
             ritmo,
@@ -367,6 +370,7 @@ impl Clone for WetSession {
             fecho: fecho.clone(),
             abrindo: *abrindo,
             pincel_do_fecho: *pincel_do_fecho,
+            medias_do_grao: *medias_do_grao,
             fita: fita.clone(),
             roteiro_teve_worker: *roteiro_teve_worker,
             ritmo: ritmo.clone(),

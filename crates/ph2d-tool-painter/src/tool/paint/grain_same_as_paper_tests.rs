@@ -54,6 +54,8 @@ fn pinta(media: PaintMedia, papel: Option<TextureSettings>, ligado: bool) -> Pai
     t.set_wet_relogio_fixo(true);
     t.set_brush_color_srgb8([30, 60, 220]);
     t.set_brush_texture_kind(TextureKind::Noise.to_u8());
+    // O Noise é o Grain com que o pincel foi aplicado: armado à mão, as cerdas ficariam e cortariam o padrão (Bug #61).
+    t.paint.brush.grao_aplicado.grao = t.paint.brush.texture;
     t.set_texture_ramp(ColorRamp::new(
         vec![
             RampStop::new(0.0, [0.0, 1.0, 0.0, 1.0]),

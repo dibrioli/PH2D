@@ -233,7 +233,7 @@ pub(super) fn escala_atraves(
 
 /// A média do grão preso à tela, numa grelha fixa da tela (não depende de onde o traço passa nem de como os dabs se
 /// agrupam em lotes): a régua que deixa o papel desenhar sem mudar a quantidade (Bug #61).
-pub(super) fn media_do_grao(
+pub(in crate::tool::paint) fn media_do_grao(
     brush: &BrushSpec,
     imagem: Option<&ph2d_painter_brush::ImageMask<'_>>,
     canvas_wh: [f32; 2],
@@ -263,6 +263,108 @@ pub(super) fn media_do_grao(
         }
     }
     (soma / (LADO * LADO) as f64).max(1e-3)
+}
+
+/// O que decide a média de um grão: um lote só amostra de novo quando isto muda (o custo: BUGS #61).
+#[derive(Clone, Copy, PartialEq)]
+struct ChaveDaMedia {
+    grao: ph2d_painter_brush::texture::TextureSettings,
+    profundidade: f32,
+    granulacao: f32,
+    raio: f32,
+    versao_da_imagem: u64,
+    canvas_wh: [f32; 2],
+}
+
+/// As médias dos últimos grãos (dois por lote: o aplicado e o de agora), na sessão.
+#[derive(Clone, Copy, Default)]
+pub(super) struct MediasDoGrao {
+    fila: [Option<(ChaveDaMedia, f64)>; 4],
+    proxima: usize,
+}
+
+impl MediasDoGrao {
+    pub(super) fn media(
+        &mut self,
+        brush: &BrushSpec,
+        (imagem, versao_da_imagem): GraoComImagem<'_, '_>,
+        canvas_wh: [f32; 2],
+    ) -> f64 {
+        let chave = ChaveDaMedia {
+            grao: brush.texture,
+            profundidade: brush.grain_depth(),
+            granulacao: brush.effective_granulation(),
+            raio: brush.clamped_radius(),
+            versao_da_imagem,
+            canvas_wh,
+        };
+        if let Some((_, m)) = self.fila.iter().flatten().find(|(c, _)| *c == chave) {
+            return *m;
+        }
+        let m = media_do_grao(brush, imagem, canvas_wh);
+        self.fila[self.proxima] = Some((chave, m));
+        self.proxima = (self.proxima + 1) % self.fila.len();
+        m
+    }
+}
+
+/// A imagem de um slot de grão e a versão dela.
+pub(super) type GraoComImagem<'a, 'b> = (Option<&'a ph2d_painter_brush::ImageMask<'b>>, u64);
+
+/// Como o Grain de agora entra na tinta, medido contra o Grain com que o pincel foi aplicado.
+pub(super) struct ReguaDoGrao {
+    /// As cerdas continuam a ser o `texv`, e o grão desenha depois do portão.
+    pub(super) cerdas_sob_o_grao: bool,
+    /// A média que divide o grão depois do portão (ausente nas Grain Colors: o grão só dá a cor).
+    pub(super) media_depois_do_portao: Option<f64>,
+    /// `média(aplicado) ÷ média(agora)` quando o Grain tomou o lugar do aplicado; `1`, ao bit, quando é ele.
+    pub(super) ganho_do_grao: f64,
+}
+
+/// **Armar ou trocar um Grain não muda a quantidade de tinta** (Bug #61, dono 04/11: «consertar»). Aplicado sem Grain,
+/// as cerdas ficam e o grão desenha de média 1; aplicado com G, outro grão entra à média de G. Same as Paper é trocar.
+/// `flags` = `[cerdas, grain_active, grao_e_o_papel, grao_e_cor]`; `brush` já traz o grão que pinta, `vivo` o próprio.
+pub(super) fn regua_do_grao(
+    brush: &BrushSpec,
+    vivo: &BrushSpec,
+    [de_agora, proprio]: [GraoComImagem<'_, '_>; 2],
+    [cerdas, grain_active, grao_e_o_papel, grao_e_cor]: [bool; 4],
+    canvas_wh: [f32; 2],
+    escala_tex: f32,
+    medias: &mut MediasDoGrao,
+) -> ReguaDoGrao {
+    let g = brush.grao_aplicado;
+    let mut do_aplicado = *vivo;
+    do_aplicado.texture = g.grao;
+    let aplicado_amostra = g.media.is_some() || do_aplicado.grain_samples(proprio.0.is_some());
+    let cerdas_sob_o_grao = cerdas && grain_active && !aplicado_amostra;
+    let trocou = grain_active && aplicado_amostra && (grao_e_o_papel || brush.grao_trocado());
+    let (usa_media, usa_ganho) = (cerdas_sob_o_grao && !grao_e_cor, trocou && !grao_e_cor);
+    if !usa_media && !usa_ganho {
+        return ReguaDoGrao {
+            cerdas_sob_o_grao,
+            media_depois_do_portao: None,
+            ganho_do_grao: 1.0,
+        };
+    }
+    // À escala em que o dab o lê (o papel não cresce com o pincel, `pousa_o_dab`).
+    escala_o_grao(&mut do_aplicado.texture, escala_tex);
+    let mut que_pinta = *brush;
+    if !grao_e_o_papel {
+        escala_o_grao(&mut que_pinta.texture, escala_tex);
+    }
+    let media = medias.media(&que_pinta, de_agora, canvas_wh);
+    ReguaDoGrao {
+        cerdas_sob_o_grao,
+        media_depois_do_portao: usa_media.then_some(media),
+        ganho_do_grao: if usa_ganho {
+            g.media
+                .map_or_else(|| medias.media(&do_aplicado, proprio, canvas_wh), f64::from)
+                / media
+        } else {
+            1.0
+        },
+    }
 }
 
 /// ⭐ **A nuvem do spray pousa o pigmento de UM dab** (W3 K5, `docs/Painter/Pinceis/W3_K5.md`): o depósito do Wet é

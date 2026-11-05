@@ -201,6 +201,8 @@ fn pinta_voronoi(m: PaintMedia, arma: impl Fn(&mut PainterTool)) -> Vec<u8> {
     t.set_wet_relogio_fixo(true);
     t.set_brush_color_srgb8([230, 150, 150]);
     t.set_brush_texture_kind(TextureKind::Voronoi.to_u8());
+    // O Voronoi é o Grain com que o pincel foi aplicado: armado à mão, as cerdas ficariam e cortariam o padrão (Bug #61).
+    t.paint.brush.grao_aplicado.grao = t.paint.brush.texture;
     t.paint.brush.granulation_use_paper = false;
     t.set_texture_ramp(ColorRamp::new(
         vec![

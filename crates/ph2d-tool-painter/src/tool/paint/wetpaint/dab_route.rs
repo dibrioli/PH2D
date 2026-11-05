@@ -265,19 +265,28 @@ impl PainterTool {
         let esmaece_fino = super::rota_da_lane::esmaece_fino(&sess.engine, brush);
         let escala_tex = super::lote::escala_da_textura(&sess.engine, brush);
         let grao_e_o_papel = self.grao_e_o_papel_do(brush);
-        // «Same as Paper» não muda a quantidade (Bug #61): sobre cerdas elas ficam e o papel desenha depois do portão;
-        // sobre um Grain próprio o papel toma o lugar dele, à média dele.
         let imagem_propria = self.paint.texture_image.as_ref().map(|i| i.as_mask());
-        let grao_proprio = self.paint.brush.grain_samples(imagem_propria.is_some());
-        let cerdas_sob_o_papel = grao_e_o_papel && cerdas && grain_active && !grao_proprio;
-        let media_do_papel = (cerdas_sob_o_papel && !grao_e_cor)
-            .then(|| super::lote::media_do_grao(brush, grain_image.as_ref(), canvas_wh));
-        let ganho_do_papel = if grao_e_o_papel && grain_active && grao_proprio && !grao_e_cor {
-            super::lote::media_do_grao(&self.paint.brush, imagem_propria.as_ref(), canvas_wh)
-                / super::lote::media_do_grao(brush, grain_image.as_ref(), canvas_wh)
+        let versao_de_agora = if self.papel_como_grain_do(brush) {
+            self.paint.paper_image_version | (1 << 63)
         } else {
-            1.0
+            self.paint.texture_image_version
         };
+        let super::lote::ReguaDoGrao {
+            cerdas_sob_o_grao,
+            media_depois_do_portao,
+            ganho_do_grao,
+        } = super::lote::regua_do_grao(
+            brush,
+            &self.paint.brush,
+            [
+                (grain_image.as_ref(), versao_de_agora),
+                (imagem_propria.as_ref(), self.paint.texture_image_version),
+            ],
+            [cerdas, grain_active, grao_e_o_papel, grao_e_cor],
+            canvas_wh,
+            escala_tex,
+            &mut sess.medias_do_grao,
+        );
         let pigmento_da_marca = if marca_do_spray {
             super::lote::pigmento_da_marca(brush)
         } else {
@@ -351,9 +360,9 @@ impl PainterTool {
             esmaece_fino,
             escala_tex,
             grao_e_o_papel,
-            media_do_papel,
-            cerdas_sob_o_papel,
-            ganho_do_papel,
+            media_depois_do_portao,
+            cerdas_sob_o_grao,
+            ganho_do_grao,
             pigmento_da_marca,
             escala_cerdas,
             copia: &copia,

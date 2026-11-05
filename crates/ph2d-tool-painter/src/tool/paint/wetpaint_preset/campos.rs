@@ -2,7 +2,7 @@
 //! de `wetpaint_preset` por LOC.
 
 /// Os campos do `BrushSpec` que o preset leva, pelo nome do campo.
-pub const CAMPOS_DO_PINCEL: [&str; 42] = [
+pub const CAMPOS_DO_PINCEL: [&str; 43] = [
     // O tecto de tamanho (J3, decisão 8): os quatro meios; gravado só quando o preset o fixa.
     "size_max_px",
     "hardness",
@@ -28,6 +28,8 @@ pub const CAMPOS_DO_PINCEL: [&str; 42] = [
     "grain_depth",
     // O Grain «Same as Paper» fora da Aquarela (28/10): gravado só ligado.
     "grain_same_as_paper",
+    // A referência da quantidade do Grain (Bug #61): gravada só com o Grain trocado.
+    "grao_aplicado",
     "shape",
     "dab_flatten",
     "dab_angle_deg",

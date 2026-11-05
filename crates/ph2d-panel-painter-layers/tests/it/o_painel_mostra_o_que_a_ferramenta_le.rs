@@ -440,6 +440,27 @@ fn a_borracha_em_cada_meio_so_ve_o_que_o_meio_lhe_muda() {
     assert!(falhas.is_empty(), "{falhas:#?}");
 }
 
+/// A Hardness está à vista na Borracha do Wet Paint e age no apagado (E10h): a borracha lê o `paperGate`. Cega do
+/// censo geral até a mutação `brush.eraser ||` (`paint_wetpaint.rs`) sobreviver: esconder a linha passava.
+#[test]
+fn a_hardness_esta_na_borracha_do_wet_paint_e_age() {
+    let b = bancada_do_meio(PaintMedia::WetPaint, false);
+    assert!(
+        b.ids().contains(&PAINTER_WETPAINT_HARDNESS),
+        "a Hardness não está pintada na Borracha do Wet Paint"
+    );
+    let gs: Vec<Gesto> = gestos_da(b)
+        .into_iter()
+        .filter(|g| chave(g) == Some(PAINTER_WETPAINT_HARDNESS))
+        .collect();
+    assert!(!gs.is_empty(), "controlo: sem gesto para a Hardness");
+    let base = ensaio_do_meio(PaintMedia::WetPaint, true, &Gesto::Nenhum);
+    let mudou = gs
+        .iter()
+        .any(|g| diferenca(&base, &ensaio_do_meio(PaintMedia::WetPaint, true, g)).0 > 0);
+    assert!(mudou, "o gesto da Hardness não mudou o apagado");
+}
+
 /// As ferramentas da água, pelo fio do trilho (dono 25/10: moravam no Inspector).
 const DA_AGUA: [(&str, FerramentaDoPincel); 5] = [
     ("wet_smear", FerramentaDoPincel::SmearMolhado),

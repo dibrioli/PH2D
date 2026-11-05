@@ -23,15 +23,6 @@ pub const CARD_INSTANCE: NodeId = hash_node_id("cards.insp.instance");
 pub const CARD_PROPERTIES: NodeId = hash_node_id("cards.insp.properties");
 pub const CARD_EMPTY: NodeId = hash_node_id("cards.insp.empty");
 
-/// Os cartões de sprite escrevem pela seleção (`sync`, `SpriteFieldEdit`), sem a escrita rerouteada
-/// ao objecto preso: nascem sem alfinete (plano 09).
-pub(crate) const SEM_ALFINETE: [NodeId; 4] = [
-    core_ids::INSP_LIVE_RENDER_SECTION,
-    core_ids::INSP_LIVE_COLOR_SECTION,
-    core_ids::INSP_LIVE_SLICE_SECTION,
-    core_ids::INSP_LIVE_SAMPLING_SECTION,
-];
-
 const ANTES_DA_ORDEM: [NodeId; 3] = [
     core_ids::INSP_LIVE_RENDER_SECTION,
     core_ids::INSP_LIVE_COLOR_SECTION,

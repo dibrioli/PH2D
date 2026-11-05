@@ -180,6 +180,10 @@ thread_local! {
     static PICKS_SEEN: Cell<u64> = const { Cell::new(0) };
 }
 
+fn existe(sim: &SimWorld, bits: u64) -> bool {
+    ph2d_ecs::Entity::try_from_bits(bits).is_some_and(|e| sim.world().get_entity(e).is_ok())
+}
+
 /// **O seletor de cor aberto por um cartão preso**: a cor vai à tinta de base do objecto dele, sem
 /// passar pela tool (a ponte não o lê). Com o objecto apagado, fecha. Uma vez por quadro.
 fn seletor_na_base(store: &mut WidgetStore, scene: &mut VecScene, sim: &SimWorld) {
@@ -190,7 +194,10 @@ fn seletor_na_base(store: &mut WidgetStore, scene: &mut VecScene, sim: &SimWorld
         return;
     };
     let Some(id) = forma(sim, bits) else {
-        store.set_picker_target(None);
+        // O objecto saiu. Uma sprite não é uma forma, e a amostra dela é do Inspector, que a escreve.
+        if !existe(sim, bits) {
+            store.set_picker_target(None);
+        }
         return;
     };
     let alvo = store.picker_target();

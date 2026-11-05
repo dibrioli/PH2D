@@ -56,6 +56,8 @@ struct Acusa {
     grudadas: Vec<String>,
     cortados: Vec<String>,
     ritmo: Vec<String>,
+    listas_baixas: Vec<String>,
+    listas_soltas: usize,
     /// O tamanho da população medida: zero lê-se como aprovação, e pode ser só cegueira.
     linhas: usize,
     textos: usize,
@@ -66,6 +68,12 @@ fn junta(a: &mut Acusa, c: &Censo) {
     a.linhas += c.linhas.len();
     a.textos += c.textos.len();
     a.capturadas += c.linhas.iter().filter(|l| l.em_captura).count();
+    a.listas_soltas += c.listas_soltas.len();
+    for frase in c.listas_soltas_baixas() {
+        if !a.listas_baixas.contains(&frase) {
+            a.listas_baixas.push(frase);
+        }
+    }
     for (de, para) in [
         (c.irmaos_separados(), &mut a.irmaos),
         (c.linhas_grudadas(), &mut a.grudadas),
@@ -174,6 +182,24 @@ fn confere(medir: impl Fn(&Acusa) -> &Vec<String>, de: impl Fn((usize, usize, us
 fn lei_da_compactacao() {
     confere(|a| &a.irmaos, |p| p.0);
     confere(|a| &a.grudadas, |p| p.1);
+}
+
+/// ⭐ A lista suspensa sem rótulo (o filtro por tag, o chip do Script) é uma linha do censo, à altura de
+/// todo campo. *Mutação: `caixa_do_chip` a `ROW_H_PX` ⇒ vermelho; sem a anotação ⇒ a população cai a zero.*
+#[test]
+fn toda_lista_solta_tem_a_altura_de_um_campo() {
+    let tudo = censo_de_todos();
+    let baixas: Vec<_> = tudo
+        .iter()
+        .filter(|(_, a)| !a.listas_baixas.is_empty())
+        .map(|(p, a)| format!("{p}: {:#?}", a.listas_baixas))
+        .collect();
+    assert!(baixas.is_empty(), "{}", baixas.join("\n"));
+    let do_inspector = tudo.get("inspector").map_or(0, |a| a.listas_soltas);
+    assert!(
+        do_inspector >= 2,
+        "só {do_inspector} listas soltas no Inspector: o censo está cego"
+    );
 }
 
 /// ⭐ Lei 7 de `05 §4`: nunca «…» num botão.

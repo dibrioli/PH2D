@@ -42,7 +42,10 @@ pub(crate) fn sync_inspector_from_snapshots(
         host.store_mut().end_number_stepper_hold();
         // O seletor de cor da seleção ANTERIOR fecha-se: senão a última cor escolhida escorreria
         // para o objecto novo (a shell espelha seletor → caixa a cada quadro).
-        if matches!(host.store().picker_target(), Some(t) if is_sprite_color_swatch(t)) {
+        // O de um cartão preso continua: é do objecto dele, não da seleção.
+        if host.store().picker_subject().is_none()
+            && matches!(host.store().picker_target(), Some(t) if is_sprite_color_swatch(t))
+        {
             host.store_mut().set_picker_target(None);
         }
         if let Some(InteractiveState::TextInput {
@@ -154,6 +157,7 @@ pub(crate) fn semeia_tudo(
         };
     }
     // W2 Sprite Inspector v2 — reflect the editable Sprite fields.
+    crate::sync_tint_swatches::seletor_do_preso(host);
     if let Some(sp) = current_inspector_sprite() {
         sync_sprite_fields(inspector_state, host, &sp, semeia);
     }

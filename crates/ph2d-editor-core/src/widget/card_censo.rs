@@ -47,6 +47,8 @@ pub struct Censo {
     pub textos: Vec<TextoMedido>,
     /// O que o corpo de cada cartão pintou, para a lei do ritmo ([`ritmo`]).
     pub pecas: Vec<ritmo::Peca>,
+    /// As listas suspensas sem rótulo nem linha dona: `(secção, texto, altura)`.
+    pub listas_soltas: Vec<(NodeId, String, f32)>,
 }
 
 #[path = "card_censo_ritmo.rs"]
@@ -83,6 +85,7 @@ pub(crate) fn na_secao(secao: Option<NodeId>) {
             if let Some(c) = g.borrow_mut().as_mut() {
                 c.linhas.retain(|l| l.secao != id);
                 c.pecas.retain(|p| p.secao != id);
+                c.listas_soltas.retain(|l| l.0 != id);
             }
         });
     }
@@ -178,22 +181,48 @@ pub(crate) fn rotulo((x, w): (f32, f32), topo: f32, fundo: f32, nome: &str, pede
 }
 
 /// O controlo curto (a lista suspensa) pintado em `r`: se está sob o último [`rotulo`], a linha é curta.
-pub(crate) fn controlo_curto(r: crate::zones::Rect, pede: f32) {
+/// Sem linha dona (nenhuma lhe cobre a banda), é uma lista solta: uma linha dela, curta, medida à altura.
+pub(crate) fn controlo_curto(r: crate::zones::Rect, pede: f32, nome: &str) {
     let Some(secao) = secao_da_linha() else {
         return;
     };
+    let fundo = r.y + r.h;
     GRAVACAO.with(|g| {
         let mut g = g.borrow_mut();
-        let Some(l) = g.as_mut().and_then(|c| c.linhas.last_mut()) else {
+        let Some(censo) = g.as_mut() else {
             return;
         };
-        let sob = r.y >= l.topo && r.y + r.h <= l.fundo + 0.5 && r.x >= l.x - 0.5;
-        if l.secao == secao && l.rotulo_livre && sob {
-            for c in &mut l.celulas {
-                c.curta = true;
-                c.pede = c.pede.max(pede);
+        if let Some(l) = censo.linhas.last_mut() {
+            let sob = r.y >= l.topo && fundo <= l.fundo + 0.5 && r.x >= l.x - 0.5;
+            if l.secao == secao && l.rotulo_livre && sob {
+                for c in &mut l.celulas {
+                    c.curta = true;
+                    c.pede = c.pede.max(pede);
+                }
+                l.rotulo_livre = false;
+                return;
             }
-            l.rotulo_livre = false;
+        }
+        let tem_dona = censo
+            .linhas
+            .iter()
+            .any(|l| l.secao == secao && r.y < l.fundo && fundo > l.topo);
+        if !tem_dona {
+            censo.listas_soltas.push((secao, nome.to_owned(), r.h));
+            censo.linhas.push(LinhaMedida {
+                secao,
+                topo: r.y,
+                fundo,
+                x: r.x,
+                w: r.w,
+                celulas: vec![CelulaMedida {
+                    nome: nome.to_owned(),
+                    curta: true,
+                    pede,
+                }],
+                rotulo_livre: false,
+                em_captura: secao_atual().is_none(),
+            });
         }
     });
 }
@@ -312,6 +341,16 @@ impl Censo {
             }
         }
         out
+    }
+
+    /// Lei da grelha: uma lista solta tem a altura de todo campo.
+    #[must_use]
+    pub fn listas_soltas_baixas(&self) -> Vec<String> {
+        self.listas_soltas
+            .iter()
+            .filter(|(_, _, h)| (h - m::FIELD_H).abs() > 0.5)
+            .map(|(_, n, h)| format!("{n:?} mede {h:.0}"))
+            .collect()
     }
 
     /// Lei 7: um texto que não cabe com o respiro de `metrics`.

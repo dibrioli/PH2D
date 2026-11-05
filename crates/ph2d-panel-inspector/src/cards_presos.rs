@@ -127,9 +127,7 @@ pub(crate) fn monta(
         store.mark_card_pinnable(c);
     }
     for p in presentes {
-        if !crate::cards_objeto::SEM_ALFINETE.contains(&p.id) {
-            store.mark_card_pinnable(p.id);
-        }
+        store.mark_card_pinnable(p.id);
     }
     let mut out = Vec::new();
     for (k, solto) in store.loose_cards_of(ids::INSP_PANEL) {

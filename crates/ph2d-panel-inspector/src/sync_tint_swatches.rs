@@ -14,6 +14,64 @@ use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::{InspectorSpriteInfo, SpriteFieldEdit};
 
+/// O seletor de cor de uma amostra de sprite aberto num cartão preso: cada quadro, a cor vai ao
+/// objecto dele. Sem retrato (o objecto saiu), fecha. O cartão não é da seleção: se o objecto é o
+/// primário, a passagem da seleção já o escreve.
+pub(crate) fn seletor_do_preso(host: &mut dyn PanelHostInternal) {
+    let store = host.store();
+    let (Some(pin), Some(alvo)) = (store.picker_subject(), store.picker_target()) else {
+        return;
+    };
+    let Some(campo) = campo_da_amostra(alvo) else {
+        return;
+    };
+    let Some(sp) = crate::retrato::com_preso(pin, crate::state::current_inspector_sprite).flatten()
+    else {
+        host.store_mut().set_picker_target(None);
+        return;
+    };
+    if crate::state::current_inspector_sprite().is_some_and(|s| s.entity_bits == pin) {
+        return;
+    }
+    let Some(picked) = host.store().widget_color(alvo) else {
+        return;
+    };
+    let cor = crate::state_tint::tint_u8_to_f32(picked);
+    let (agora, edit) = match campo {
+        CampoDaAmostra::Tint => (sp.tint, SpriteFieldEdit::Tint(cor)),
+        CampoDaAmostra::SelfTint => (sp.self_tint, SpriteFieldEdit::SelfTint(cor)),
+        CampoDaAmostra::Canto(i) => (
+            sp.per_corner_tint[i],
+            SpriteFieldEdit::PerCornerTintAt(u8::try_from(i).unwrap_or(0), cor),
+        ),
+    };
+    if picked != crate::state_tint::tint_f32_to_u8(agora) {
+        host.bus_mut().push(EditorAction::InspectorSpriteEdit {
+            entity_bits: pin,
+            edit,
+        });
+    }
+}
+
+#[derive(Clone, Copy)]
+enum CampoDaAmostra {
+    Tint,
+    SelfTint,
+    Canto(usize),
+}
+
+fn campo_da_amostra(id: ph2d_a11y::NodeId) -> Option<CampoDaAmostra> {
+    Some(match id {
+        crate::ids::INSP_SPRITE_TINT_SWATCH => CampoDaAmostra::Tint,
+        crate::ids::INSP_SPRITE_SELF_TINT_SWATCH => CampoDaAmostra::SelfTint,
+        crate::ids::INSP_SPRITE_CORNER_TL => CampoDaAmostra::Canto(0),
+        crate::ids::INSP_SPRITE_CORNER_TR => CampoDaAmostra::Canto(1),
+        crate::ids::INSP_SPRITE_CORNER_BL => CampoDaAmostra::Canto(2),
+        crate::ids::INSP_SPRITE_CORNER_BR => CampoDaAmostra::Canto(3),
+        _ => return None,
+    })
+}
+
 /// As seis amostras, na ordem em que a semente sempre as correu.
 pub(crate) fn sync_tint_swatches(host: &mut dyn PanelHostInternal, sp: &InspectorSpriteInfo) {
     // Tint / Self Tint swatches. The BlenderColorPicker round-trips
@@ -33,7 +91,16 @@ pub(crate) fn sync_tint_swatches(host: &mut dyn PanelHostInternal, sp: &Inspecto
     // closed any tint picker bound to the prior selection, so this
     // reads `None` on the switch frame and the loop reseeds both
     // swatches from the new sprite's committed channels.
-    let picker_target = host.store().picker_target();
+    // O seletor aberto por um cartão preso é de outro objecto: [`seletor_do_preso`] trata dele.
+    let picker_target = if host
+        .store()
+        .picker_subject()
+        .is_none_or(|p| p == sp.entity_bits)
+    {
+        host.store().picker_target()
+    } else {
+        None
+    };
     for (swatch_id, chan) in [
         (crate::ids::INSP_SPRITE_TINT_SWATCH, sp.tint),
         (crate::ids::INSP_SPRITE_SELF_TINT_SWATCH, sp.self_tint),

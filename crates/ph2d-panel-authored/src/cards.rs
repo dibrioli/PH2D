@@ -14,7 +14,6 @@ use ph2d_editor_core::panel::cards::linhas_extra::{FloatHandles, paint_floating_
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef};
 use ph2d_editor_core::widget::{SkinParam, icon_glyph, inline_option_rect, paint_widget_skin_with};
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::ROW_H_PX;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -70,7 +69,12 @@ fn grupos(table: &[Row]) -> Vec<Grupo> {
 
 /// Uma row, pela porta única da pele: hit do controlo, um rect por opção e a lista aberta para o fim.
 fn linha(c: &mut CardCtx<'_>, row: &Row, y: f32, abertas: &RefCell<Vec<OpenList>>) {
-    let r = Rect::new(c.x, y, c.w, ROW_H_PX);
+    let r = Rect::new(
+        c.x,
+        y,
+        c.w,
+        ph2d_editor_core::panel::cards::banda::metrics::FIELD_H,
+    );
     let store = c.store;
     if row.wants_pointer() {
         c.hit_index.register(row.id, r);
@@ -148,7 +152,8 @@ pub(crate) fn paint(ctx: &mut PaintCtx, rect: Rect) {
                 add: None,
                 summary: None,
                 body: Some(Box::new(move |c, top| {
-                    let passo = ph2d_tokens::row_pitch_px();
+                    use ph2d_editor_core::panel::cards::banda::metrics as m;
+                    let passo = m::FIELD_H + m::FIELD_ROW_GAP;
                     rows::with_rows(|table| {
                         let mut y = top;
                         for &i in &linhas {
@@ -157,7 +162,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx, rect: Rect) {
                                 y += passo;
                             }
                         }
-                        if y > top { y - (passo - ROW_H_PX) } else { y }
+                        if y > top { y - m::FIELD_ROW_GAP } else { y }
                     })
                 })),
             }

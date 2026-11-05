@@ -23,7 +23,7 @@ pub fn chip(
     if crate::widget::card_censo::ligado() {
         let tw = text_system.prefix_width(texto, m::VALUE_PX).ceil();
         let pede = tw + m::FIELD_PAD_R * 2.0 + m::ICON_GLYPH;
-        crate::widget::card_censo::controlo_curto(r, pede);
+        crate::widget::card_censo::controlo_curto(r, pede, texto);
     }
     let fundo = if aceso {
         ColorToken::CardFieldHover

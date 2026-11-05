@@ -11,7 +11,6 @@
 
 use crate::{ids, state};
 use ph2d_editor_core::action_bus::EditorAction;
-use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::SpriteFieldEdit;
@@ -43,12 +42,9 @@ pub(crate) fn color_tint_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent
             info.self_tint
         };
         let seed = crate::state_tint::tint_f32_to_u8(chan);
+        // A amostra é de quem a premiu: num cartão preso, o seletor fica dele.
         host.store_mut().set_widget_color(id, seed);
-        host.store_mut().set_picker_target(Some(id));
-        host.store_mut().set_blender_value(
-            core_ids::INSP_BLENDER_PICKER,
-            ph2d_tokens::ColorValue::from_rgba8(seed[0], seed[1], seed[2], seed[3]),
-        );
+        host.store_mut().open_picker_on(id);
         return true;
     }
 
@@ -70,12 +66,9 @@ pub(crate) fn color_tint_click(host: &mut dyn PanelHostInternal, ev: WidgetEvent
         && let Some(info) = state::current_inspector_sprite()
     {
         let seed = crate::state_tint::tint_f32_to_u8(info.per_corner_tint[corner]);
+        // A amostra é de quem a premiu: num cartão preso, o seletor fica dele.
         host.store_mut().set_widget_color(id, seed);
-        host.store_mut().set_picker_target(Some(id));
-        host.store_mut().set_blender_value(
-            core_ids::INSP_BLENDER_PICKER,
-            ph2d_tokens::ColorValue::from_rgba8(seed[0], seed[1], seed[2], seed[3]),
-        );
+        host.store_mut().open_picker_on(id);
         return true;
     }
 

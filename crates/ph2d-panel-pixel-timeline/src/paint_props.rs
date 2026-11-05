@@ -158,7 +158,12 @@ pub(crate) fn paint(
     let constante = st.constante.is_some();
     let y = linha(ctx, c, &titulo_do_quadro(info, pos, constante), c.y);
     let y = if cartoes {
-        numeros_do_cartao(ctx, c, &[(tr("card.pixel.duration_ms"), ids::FRAME_DURATION)], y)
+        numeros_do_cartao(
+            ctx,
+            c,
+            &[(tr("card.pixel.duration_ms"), ids::FRAME_DURATION)],
+            y,
+        )
     } else {
         campo(ctx, c, nomes[0], ids::FRAME_DURATION, sec, y)
     };
@@ -302,16 +307,7 @@ fn numeros_do_cartao(
             .label(nome)
         })
         .collect();
-    CardCtx::flutuante(
-        ctx.scene,
-        ctx.text_system,
-        store,
-        hit,
-        ink,
-        area.x,
-        area.w,
-    )
-    .row(&cells, y)
+    CardCtx::flutuante(ctx.scene, ctx.text_system, store, hit, ink, area.x, area.w).row(&cells, y)
         + ph2d_tokens::control_gap_px()
 }
 
@@ -328,7 +324,13 @@ fn direcao(
     // Reverse»), e a coluna do valor de uma linha de campo é a de um número.
     let theme = ctx.host.theme();
     let y = linha(ctx, area, nome, y);
-    let r = Rect::new(area.x, y, area.w, ROW_H_PX);
+    // A caixa solta num cartão tem a altura de todo campo.
+    let alto = if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        ph2d_editor_core::panel::cards::banda::metrics::FIELD_H
+    } else {
+        ROW_H_PX
+    };
+    let r = Rect::new(area.x, y, area.w, alto);
     let open = matches!(
         ctx.host.store().get(ids::TAG_DIRECTION),
         Some(InteractiveState::Dropdown { open: true, .. })
@@ -342,7 +344,7 @@ fn direcao(
     if open {
         st.direction_open = Some((r, cur));
     }
-    y + ROW_H_PX + ph2d_tokens::control_gap_px()
+    y + alto + ph2d_tokens::control_gap_px()
 }
 
 /// O chip do menu da velocidade em `r` (a lista abre por cima, no fim do quadro).

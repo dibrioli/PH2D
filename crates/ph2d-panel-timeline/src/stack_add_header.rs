@@ -84,6 +84,34 @@ pub(crate) fn botao_de_cartao(
     .botao_em(id, texto, r);
 }
 
+/// «+ Track» em cartões: a seta é a da lista do cartão, um ícone, nunca uma letra no texto.
+pub(crate) fn lista_de_cartao(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    id: ph2d_a11y::NodeId,
+    aberta: bool,
+    r: Rect,
+) {
+    use ph2d_editor_core::panel::cards::CardCtx;
+    use ph2d_editor_core::widget::card_ink::CardInk;
+    let (store, hit) = ctx.host.store_and_hit_index_mut();
+    CardCtx::flutuante(
+        ctx.scene,
+        ctx.text_system,
+        store,
+        hit,
+        CardInk::of_list(theme),
+        r.x,
+        r.w,
+    )
+    .lista_em(
+        id,
+        ph2d_i18n::tr("panel.timeline.add_track_lista"),
+        aberta,
+        r,
+    );
+}
+
 /// Paint the lane area's ADD button across the label column's header strip.
 pub(crate) fn paint_add_lane(ctx: &mut PaintCtx, theme: Theme, header: Rect, rows: Rows) {
     let Some(kind) = add_kind(rows) else {

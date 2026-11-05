@@ -37,4 +37,21 @@ pub enum ImageUseEdit {
     Width(f32),
     /// **Height** de uma sprite que repete, em cópias da imagem.
     Height(f32),
+    /// **Edit in Pixel**: a imagem abre no Pixel Art e volta ao sair do Draw.
+    EditInPixel,
+    /// **Edit in Painter**: as pinturas desta sessão passam a todo objecto que usa a mesma imagem.
+    EditInPainter,
+    /// **Keep old size**, depois de um Replace: o tamanho no mundo de antes, em metros.
+    KeepSize([f32; 2]),
+    /// O **Pivot** do cartão Look.
+    Pivot(SpritePivot),
+}
+
+/// Onde pôr o pivô de uma sprite.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum SpritePivot {
+    /// Um dos nove pontos do desenho visível: `[coluna, linha]`, `0..=2`, a linha de cima é a 0.
+    Ponto([u8; 2]),
+    /// **Custom**: px a partir do centro da imagem, `y` para cima.
+    Px([f32; 2]),
 }

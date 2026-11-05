@@ -70,6 +70,7 @@ pub(crate) mod camera;
 pub(crate) mod camera_format;
 mod canal_item;
 mod color_tint;
+pub(crate) mod look;
 /// O cartão CONSTRAINTS — a pilha do objecto.
 pub(crate) mod constraint;
 mod constraint_add;

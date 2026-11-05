@@ -6,8 +6,10 @@ pub mod editor;
 pub mod image_choice;
 pub mod image_use;
 pub mod inspector;
+pub mod pivot;
 pub mod region;
 pub mod sheet;
+pub mod sprite_card;
 pub mod tick;
 pub mod tiled;
 

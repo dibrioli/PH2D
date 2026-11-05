@@ -99,6 +99,8 @@ pub(crate) struct Gesture {
 
 /// **O estado da família Pixel Art.**
 pub struct PixelApp {
+    /// A imagem de uma sprite aberta aqui (`Edit in Pixel`).
+    pub(crate) edicao: Option<crate::imagem::Edicao>,
     pub(crate) docs: BTreeMap<u32, Doc>,
     pub tool: Tool,
     /// As opções das ferramentas (pincel, balde, spray, simetria, ladrilho).

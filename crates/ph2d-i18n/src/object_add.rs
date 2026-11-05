@@ -53,7 +53,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "object_add.group.game" => "Game",
         "object_add.group.empty" => "Empty",
         "object_add.empty" => "Empty",
-        "object_add.image" => "Image\u{2026}",
+        "object_add.image" => "Paint a new image\u{2026}",
         "object_add.flip" => "Flip Drawing",
         "object_add.flip.first_layer" => "Layer",
         "object_add.skeleton" => "Skeleton",

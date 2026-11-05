@@ -21,7 +21,27 @@ const MAX_COPIAS: f64 = 1.0e4;
 pub(crate) fn populate(store: &mut WidgetStore) {
     crate::populate::register_button_ids(store, &ids::INSP_IMAGE_USE);
     crate::populate::register_button_ids(store, &[ids::INSP_IMAGE_EDIT_REGION]);
+    store.register(
+        ids::INSP_SPRITE_CORNERS_ON,
+        InteractiveState::Checkbox {
+            state: ph2d_editor_core::widget::CheckboxState::Normal,
+            value: ph2d_editor_core::widget::CheckboxValue::Unchecked,
+        },
+    );
     crate::populate::register_button_ids(store, &ids::INSP_IMAGE_FRAME_STEP);
+    for id in ids::INSP_SPRITE_PIVOT_XY {
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: 0.0,
+                buffer: "0".to_owned(),
+                caret: 0,
+                last_committed: 0.0,
+                selection_anchor: None,
+            },
+        );
+    }
     for id in ids::INSP_IMAGE_TILED_SIZE {
         store.register(
             id,

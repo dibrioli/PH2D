@@ -56,6 +56,13 @@ impl crate::App {
             })
             .max(crate::EPS_PIXELS_PER_METER);
         let renderer = &mut gfx.renderer;
+        let antes = ph2d_app_sprite_anim::sprite_card::antes_do_replace(
+            gfx.sim.world(),
+            ph2d_ecs::Entity::from_bits(entity_bits),
+            &gfx.asset_db,
+            &gfx.atlas_asset_map,
+            ppm,
+        );
         let r = ph2d_app_sprite_anim::image_choice::choose_library_image(
             &mut gfx.sim,
             &mut |w, h, px| {
@@ -71,6 +78,20 @@ impl crate::App {
         );
         match r {
             Ok(()) => {
+                ph2d_app_sprite_anim::sprite_card::lembra(AssetId::from_digest(asset));
+                #[cfg(feature = "panel-inspector")]
+                ph2d_panel_inspector::slot_image::set_recibo(antes.zip(img.as_ref()).and_then(
+                    |((de, tamanho), i)| {
+                        (de != [i.width, i.height]).then_some(
+                            ph2d_panel_inspector::slot_image::Recibo {
+                                entity_bits,
+                                de,
+                                para: [i.width, i.height],
+                                tamanho,
+                            },
+                        )
+                    },
+                ));
                 // Uma folha largada propõe colunas × linhas no editor de animações (plano GEF 07).
                 if let Some(img) = img {
                     ph2d_app_sprite_anim::editor::propose_after_drop(
@@ -103,6 +124,14 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
+        if edit == ph2d_editor_core::ImageUseEdit::EditInPixel {
+            crate::app_edicao_de_imagem::abre_no_pixel(
+                gfx,
+                &mut self.pixel,
+                entity_bits,
+            );
+            return;
+        }
         let ppm = gfx
             .hero_screen
             .as_ref()

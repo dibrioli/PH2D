@@ -23,12 +23,16 @@ pub const CARD_INSTANCE: NodeId = hash_node_id("cards.insp.instance");
 pub const CARD_PROPERTIES: NodeId = hash_node_id("cards.insp.properties");
 pub const CARD_EMPTY: NodeId = hash_node_id("cards.insp.empty");
 
-const ANTES_DA_ORDEM: [NodeId; 3] = [
+const ANTES_DA_ORDEM: [NodeId; 1] = [core_ids::INSP_LIVE_SLICE_SECTION];
+const DEPOIS_DA_ORDEM: [NodeId; 2] = [
     core_ids::INSP_LIVE_RENDER_SECTION,
-    core_ids::INSP_LIVE_COLOR_SECTION,
-    core_ids::INSP_LIVE_SLICE_SECTION,
+    core_ids::INSP_LIVE_SAMPLING_SECTION,
 ];
-const DEPOIS_DA_ORDEM: [NodeId; 1] = [core_ids::INSP_LIVE_SAMPLING_SECTION];
+/// Logo abaixo da Image: a animação e o Look (ficha da Sprite: «qual imagem?», «como ela parece?»).
+const DEPOIS_DA_IMAGEM: [NodeId; 2] = [
+    core_ids::INSP_LIVE_ANIM_SECTION,
+    core_ids::INSP_LIVE_COLOR_SECTION,
+];
 
 /// A secção Animation de uma sprite tem cartão só no uso Animated, e só na lista de cartões: no
 /// painel de antes ela abre dentro da linha Image.
@@ -59,7 +63,7 @@ pub(crate) fn do_topo() -> Vec<CardDef<'static>> {
         }));
     }
     if let Some(info) = crate::state::current_inspector_sprite() {
-        out.push(imagem(info));
+        out.push(crate::cards_sprite::imagem(info));
     }
     if let Some(info) = crate::state::current_inspector_visibility_section() {
         out.push(visibilidade(info));
@@ -82,7 +86,7 @@ fn sem_titulo(
 }
 
 /// Um corpo de hoje dentro do cartão, sem a moldura de secção.
-fn com_corpo(
+pub(crate) fn com_corpo(
     c: &mut CardCtx<'_>,
     y: f32,
     f: impl FnOnce(&mut Tela<'_>, Theme, &WidgetStore, f32, f32, f32) -> f32,
@@ -107,34 +111,8 @@ fn com_corpo(
     })
 }
 
-/// A linha Image, o seletor Use e os campos do uso (o dono: logo abaixo de Image); o tamanho que o
-/// título do painel de antes escrevia. Sem título: a linha Image não dobra, como no painel de antes
-/// (`SECCOES_FIXAS`), e o rótulo dela já diz o que é.
-fn imagem(info: InspectorSpriteInfo) -> CardDef<'static> {
-    sem_titulo(CARD_IMAGE, move |c, y| {
-        let ink = c.ink;
-        com_corpo(c, y, |t, theme, store, x, w, y| {
-            let y = sections::paint_image_row(t.scene, t.text, theme, t.hit, x, w, y);
-            let y = sections::image_use_rows::paint_image_use(
-                t.scene, t.text, theme, t.hit, store, x, w, y, &info, None,
-            );
-            let (rotulo, texto) = tamanho(&info);
-            ph2d_editor_core::panel::cards::compacta::fact(
-                t.scene,
-                t.text,
-                store,
-                t.hit,
-                ink,
-                (x, w, y),
-                rotulo,
-                &texto,
-            )
-        })
-    })
-}
-
 /// O tamanho no mundo, na unidade do projecto; a unidade vai no rótulo.
-fn tamanho(info: &InspectorSpriteInfo) -> (&'static str, String) {
+pub(crate) fn tamanho(info: &InspectorSpriteInfo) -> (&'static str, String) {
     let unit = crate::state::current_display_unit();
     let ppm = crate::state::current_pixels_per_meter();
     let (w, h) = (
@@ -166,9 +144,32 @@ fn visibilidade(info: InspectorVisibilitySectionInfo) -> CardDef<'static> {
 
 /// As linhas do Ordering depois do Z index.
 pub(crate) fn resto_da_ordem(c: &mut CardCtx<'_>, y: f32, info: &InspectorOrderingInfo) -> f32 {
-    com_corpo(c, y, |t, theme, store, x, w, y| {
+    let y = com_corpo(c, y, |t, theme, store, x, w, y| {
         sections::ordering::paint_ordering_rest(t.scene, t.text, theme, t.hit, store, x, w, y, info)
-    })
+    });
+    let opcoes = sections::ordering::opcoes_por_revelar(info);
+    if opcoes.is_empty() {
+        return y;
+    }
+    let segs: Vec<ph2d_editor_core::panel::cards::Seg<'_>> = opcoes
+        .iter()
+        .map(|(id, text)| ph2d_editor_core::panel::cards::Seg {
+            id: *id,
+            icon: None,
+            text,
+            on: false,
+        })
+        .collect();
+    c.row(
+        &[ph2d_editor_core::panel::cards::Cell::new(
+            ph2d_editor_core::panel::cards::Widget::Dropdown {
+                id: sections::ordering::DD_OPCOES,
+                text: tr("card.insp.order_option"),
+                options: &segs,
+            },
+        )],
+        y,
+    )
 }
 
 /// «A editar 1 de N»: um facto da seleção, por baixo do nome (`paint_cards::paint_selection_card`).
@@ -193,9 +194,8 @@ pub(crate) fn vazio(tem_selecao: bool) -> CardDef<'static> {
     sem_titulo(CARD_EMPTY, move |c, y| c.hint(frase, y))
 }
 
-/// ⭐ **O lugar de cada secção de corpo na lista**: a ordem do painel de antes. A Animation da sprite
-/// logo abaixo da Image, Texture & Atlas, Color & Tint e 9-Slice antes do Ordering, Sampling depois
-/// dele; os componentes no fim, pela ordem da paleta.
+/// ⭐ **O lugar de cada secção de corpo na lista**: a Animation e o Look logo abaixo da Image, o 9-Slice antes
+/// do Ordering, Advanced e Sampling depois dele; os componentes no fim, pela ordem da paleta.
 pub(crate) fn tece<'a>(
     base: Vec<CardDef<'static>>,
     presentes: &'a [Presente],
@@ -203,7 +203,6 @@ pub(crate) fn tece<'a>(
 ) -> Vec<CardDef<'a>> {
     let tem = |s: NodeId| base.iter().any(|c| c.section == s);
     let (com_imagem, com_ordem) = (tem(CARD_IMAGE), tem(crate::cards::CARD_ORDERING));
-    let anim = [core_ids::INSP_LIVE_ANIM_SECTION];
     let mut out: Vec<CardDef<'a>> = Vec::with_capacity(base.len() + presentes.len());
     let poe = |ids: &[NodeId], out: &mut Vec<CardDef<'a>>| {
         out.extend(
@@ -219,13 +218,13 @@ pub(crate) fn tece<'a>(
         }
         out.push(card);
         if s == CARD_IMAGE {
-            poe(&anim, &mut out);
+            poe(&DEPOIS_DA_IMAGEM, &mut out);
         } else if s == crate::cards::CARD_ORDERING {
             poe(&DEPOIS_DA_ORDEM, &mut out);
         }
     }
     let ja_posto = |id: NodeId| {
-        (com_imagem && id == anim[0])
+        (com_imagem && DEPOIS_DA_IMAGEM.contains(&id))
             || (com_ordem && (ANTES_DA_ORDEM.contains(&id) || DEPOIS_DA_ORDEM.contains(&id)))
     };
     out.extend(presentes.iter().filter(|p| !ja_posto(p.id)).map(&cartao));

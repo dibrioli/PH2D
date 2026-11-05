@@ -324,7 +324,7 @@ pub(crate) fn paint_color_tint_section(
 /// preview re-bilerps the live (picker-overridden) corner colors so the
 /// gradient updates while the user picks.
 #[allow(clippy::too_many_arguments)]
-fn paint_per_corner_tab(
+pub(super) fn paint_per_corner_tab(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,

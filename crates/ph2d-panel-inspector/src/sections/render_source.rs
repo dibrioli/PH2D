@@ -166,33 +166,8 @@ pub(crate) fn paint_render_source_section(
         cur_y,
     );
     // A grelha e os quadros vivem sob o seletor «Use» da linha Image (plano GEF 15).
-    let btn_rect = ph2d_editor_core::property_row::caixa_do_botao(
-        text_system,
-        x,
-        w,
-        cur_y,
-        tr("panel.inspector.render_source.reimport_at_current_px_m"),
-    );
-    let id = ids::INSP_RENDER_SOURCE_REIMPORT;
-    let state = if !info.can_reimport {
-        (ButtonState::Disabled, ph2d_editor_core::motion::SETTLED)
-    } else {
-        store.button_visual(id)
-    };
-    hit_index.register(id, btn_rect);
-    let btn = Button::new(
-        id,
-        tr("panel.inspector.render_source.reimport_at_current_px_m"),
-    )
-    .kind(ButtonKind::Default)
-    .visual(state);
-    paint_button(&btn, btn_rect, scene, text_system, theme);
-    fold.finish(
-        store,
-        scene,
-        hit_index,
-        ph2d_editor_core::property_row::abaixo_do_botao(btn_rect) + SECTION_BOTTOM_PAD_PX,
-    )
+    let fim = paint_reimport(scene, text_system, hit_index, store, theme, info, x, w, cur_y);
+    fold.finish(store, scene, hit_index, fim + SECTION_BOTTOM_PAD_PX)
 }
 
 /// **A linha "Strategy"** — o rótulo e o grupo segmentado de três (Atlas / Individual /
@@ -215,7 +190,7 @@ pub(crate) fn paint_render_source_section(
 /// formato, §3.3). O artista tem de ler isso **antes** de carregar, não descobrir depois pelo painel
 /// a mudar sozinho — *uma consequência que só aparece depois do clique lê-se como um bug*.
 #[allow(clippy::too_many_arguments)]
-fn paint_strategy_row(
+pub(super) fn paint_strategy_row(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -271,6 +246,25 @@ fn paint_strategy_row(
     //    grupo arrancava na borda do conteúdo. A porta escolhe a forma pela medida (ao lado quando
     //    cabe numa fileira, paleta quando não) e a coluna é a da secção.
     let seccao = seccao_do_render(text_system);
+    let opcoes = [
+        (
+            tr("panel.inspector.render_source.atlas"),
+            matches!(info.source_kind, InspectorSpriteSource::Atlas { .. }),
+            core_ids::INSP_RENDER_STRATEGY_ATLAS,
+        ),
+        (
+            tr("panel.inspector.render_source.individual"),
+            matches!(info.source_kind, InspectorSpriteSource::Individual { .. }),
+            crate::ids::INSP_RENDER_STRATEGY_INDIVIDUAL,
+        ),
+        (
+            tr("panel.inspector.render_source.hand_packed"),
+            matches!(info.source_kind, InspectorSpriteSource::HandPacked { .. }),
+            crate::ids::INSP_RENDER_STRATEGY_HANDPACKED,
+        ),
+    ];
+    // Hand-packed é um estado a que se chega, não um botão que converte: no cartão só aparece se for o de agora.
+    let so_duas = ph2d_editor_core::widget::card_ink::card_body().is_some() && !opcoes[2].1;
     ph2d_editor_core::property_row::paint_choice_row(
         scene,
         text_system,
@@ -281,25 +275,46 @@ fn paint_strategy_row(
         w,
         cur_y,
         tr("panel.inspector.render_source.strategy"),
-        &[
-            (
-                tr("panel.inspector.render_source.atlas"),
-                matches!(info.source_kind, InspectorSpriteSource::Atlas { .. }),
-                core_ids::INSP_RENDER_STRATEGY_ATLAS,
-            ),
-            (
-                tr("panel.inspector.render_source.individual"),
-                matches!(info.source_kind, InspectorSpriteSource::Individual { .. }),
-                crate::ids::INSP_RENDER_STRATEGY_INDIVIDUAL,
-            ),
-            (
-                tr("panel.inspector.render_source.hand_packed"),
-                matches!(info.source_kind, InspectorSpriteSource::HandPacked { .. }),
-                crate::ids::INSP_RENDER_STRATEGY_HANDPACKED,
-            ),
-        ],
+        if so_duas { &opcoes[..2] } else { &opcoes },
         seccao,
     )
+}
+
+/// **Reimport at current scale**. Devolve o `y` de baixo.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn paint_reimport(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    theme: Theme,
+    info: &InspectorSpriteInfo,
+    x: f32,
+    w: f32,
+    cur_y: f32,
+) -> f32 {
+    let btn_rect = ph2d_editor_core::property_row::caixa_do_botao(
+        text_system,
+        x,
+        w,
+        cur_y,
+        tr("panel.inspector.render_source.reimport_at_current_px_m"),
+    );
+    let id = ids::INSP_RENDER_SOURCE_REIMPORT;
+    let state = if !info.can_reimport {
+        (ButtonState::Disabled, ph2d_editor_core::motion::SETTLED)
+    } else {
+        store.button_visual(id)
+    };
+    hit_index.register(id, btn_rect);
+    let btn = Button::new(
+        id,
+        tr("panel.inspector.render_source.reimport_at_current_px_m"),
+    )
+    .kind(ButtonKind::Default)
+    .visual(state);
+    paint_button(&btn, btn_rect, scene, text_system, theme);
+    ph2d_editor_core::property_row::abaixo_do_botao(btn_rect)
 }
 
 /// ⭐⭐ **A coluna do nome da secção Render Source — UMA para as linhas de nome ao lado.**

@@ -173,6 +173,15 @@ impl crate::App {
             return;
         };
         ph2d_app_macros::com(|m| m.nasceu(&mut gfx.sim, bits));
+        // Uma Sprite nasce a pedir a imagem (ficha da Sprite, 05/11); fechar a escolha deixa o convite no cartão.
+        if entry == ph2d_app_game::object_add::SPRITE
+            && let Some(hero) = gfx.hero_screen.as_mut()
+        {
+            hero.bus
+                .push(ph2d_editor_core::action_bus::EditorAction::OpenImagePicker {
+                    entity_bits: bits,
+                });
+        }
         let name = gfx
             .sim
             .world()

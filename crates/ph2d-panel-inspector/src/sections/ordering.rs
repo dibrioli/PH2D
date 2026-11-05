@@ -403,6 +403,7 @@ pub(crate) fn paint_ordering_section(
 #[path = "ordering_cartao.rs"]
 mod cartao;
 use cartao::em_cartao;
+pub(crate) use cartao::{DD_OPCOES, evento_das_opcoes, opcoes_por_revelar, prepara_opcoes};
 
 /// As linhas da §7 depois do Z Index: o cartão Ordering pinta o Z no campo dele e estas por baixo.
 #[allow(clippy::too_many_arguments)]

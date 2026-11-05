@@ -22,6 +22,50 @@ pub const INSP_IMAGE_USE: [NodeId; 4] = [
     hash_node_id("insp_image_use_region"),
 ];
 
+/// **Replace** do cartão Image: o mesmo pedido do clique na miniatura.
+pub const INSP_IMAGE_REPLACE: NodeId = hash_node_id("insp_image_replace");
+/// A caixa «Tint each corner» do cartão Advanced.
+pub const INSP_SPRITE_CORNERS_ON: NodeId = hash_node_id("insp_sprite_corners_on");
+
+/// **Edit in Pixel** e **Edit in Painter** do cartão Image.
+pub const INSP_IMAGE_EDIT_PIXEL: NodeId = hash_node_id("insp_image_edit_pixel");
+pub const INSP_IMAGE_EDIT_PAINTER: NodeId = hash_node_id("insp_image_edit_painter");
+
+/// **Keep old size** do recibo do Replace.
+pub const INSP_IMAGE_KEEP_SIZE: NodeId = hash_node_id("insp_image_keep_size");
+/// **Paint a new image…** do convite do cartão vazio.
+pub const INSP_IMAGE_PAINT_NEW: NodeId = hash_node_id("insp_image_paint_new");
+/// As imagens recentes do convite.
+pub const INSP_IMAGE_RECENT: [NodeId; 3] = [
+    hash_node_id("insp_image_recent_0"),
+    hash_node_id("insp_image_recent_1"),
+    hash_node_id("insp_image_recent_2"),
+];
+
+/// Os dois verbos do aviso de folha.
+pub const INSP_IMAGE_SHEET_ANIMATED: NodeId = hash_node_id("insp_image_sheet_animated");
+pub const INSP_IMAGE_SHEET_REGION: NodeId = hash_node_id("insp_image_sheet_region");
+
+/// Os nove pontos do Pivot, por linhas, a de cima primeiro.
+pub const INSP_SPRITE_PIVOT: [NodeId; 9] = [
+    hash_node_id("insp_sprite_pivot_0"),
+    hash_node_id("insp_sprite_pivot_1"),
+    hash_node_id("insp_sprite_pivot_2"),
+    hash_node_id("insp_sprite_pivot_3"),
+    hash_node_id("insp_sprite_pivot_4"),
+    hash_node_id("insp_sprite_pivot_5"),
+    hash_node_id("insp_sprite_pivot_6"),
+    hash_node_id("insp_sprite_pivot_7"),
+    hash_node_id("insp_sprite_pivot_8"),
+];
+/// O nome do ponto: o clique abre os campos X e Y.
+pub const INSP_SPRITE_PIVOT_NOME: NodeId = hash_node_id("insp_sprite_pivot_nome");
+/// Os campos do Pivot em Custom.
+pub const INSP_SPRITE_PIVOT_XY: [NodeId; 2] = [
+    hash_node_id("insp_sprite_pivot_x"),
+    hash_node_id("insp_sprite_pivot_y"),
+];
+
 /// **Edit Region…** — abre o editor da área de uma sprite em Region (plano GEF 16 D2).
 pub const INSP_IMAGE_EDIT_REGION: NodeId = hash_node_id("insp_image_edit_region");
 

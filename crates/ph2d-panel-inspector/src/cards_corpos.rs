@@ -112,8 +112,17 @@ fn transform() -> CardDef<'static> {
             ids::INSP_TRANSFORM_FLIP_V,
         )
     };
+    // Na imagem nasce dobrado, com o resumo (ficha da Sprite); id próprio: a dobra das outras não muda.
+    let imagem = crate::state::current_inspector_sprite().is_some();
+    let resumo = crate::state::current_inspector_transform()
+        .filter(|_| imagem)
+        .map(|t| crate::cards_sprite::resumo_do_transform(&t));
     CardDef {
-        section: CARD_TRANSFORM,
+        section: if imagem {
+            crate::cards::CARD_TRANSFORM_IMAGE
+        } else {
+            CARD_TRANSFORM
+        },
         title: tr("card.insp.transform"),
         actions: vec![HeadAction {
             id: ids::INSP_TRANSFORM_RESET,
@@ -121,7 +130,7 @@ fn transform() -> CardDef<'static> {
             on: false,
         }],
         add: None,
-        summary: None,
+        summary: resumo,
         body: Some(Box::new(move |c: &mut CardCtx<'_>, y| {
             const POS: &[NodeId] = &[ids::INSP_TRANSFORM_POS_X, ids::INSP_TRANSFORM_POS_Y];
             const ROT: &[NodeId] = &[ids::INSP_TRANSFORM_ROT];

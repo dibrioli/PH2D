@@ -244,17 +244,21 @@ pub(crate) fn cartao<'a>(
 ) -> CardDef<'a> {
     let id = p.id;
     let cab_h = p.cab_h;
+    let actions: Vec<HeadAction> = repoe(id)
+        .map(|_| HeadAction {
+            id: reset_of(id),
+            icon: IconId::Reset,
+            on: false,
+        })
+        .into_iter()
+        .collect();
+    if let Some(proprio) = crate::cards_sprite::proprio(p, actions.clone()) {
+        return proprio;
+    }
     CardDef {
         section: id,
         title: &p.titulo,
-        actions: repoe(id)
-            .map(|_| HeadAction {
-                id: reset_of(id),
-                icon: IconId::Reset,
-                on: false,
-            })
-            .into_iter()
-            .collect(),
+        actions,
         add: None,
         summary: None,
         body: Some(Box::new(move |c: &mut CardCtx<'_>, y| {

@@ -118,6 +118,7 @@ pub use checkbox::{
     paint_card_check_value, paint_checkbox,
 };
 pub use color_picker::{ColorPicker, ColorPickerMode, paint_color_picker};
+pub use color_swatch::paint_checker;
 pub use color_swatch::{
     ColorSwatch, SwatchSize, SwatchState, paint_color_swatch, paint_mixed_swatch,
     paint_swatch_or_mixed,

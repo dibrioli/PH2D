@@ -47,6 +47,15 @@ impl crate::App {
                 Ok((label, bits)) => {
                     *next_import_cell = next_import_cell.saturating_add(1);
                     ph2d_app_macros::com(|m| m.nasceu(sim, bits));
+                    #[cfg(feature = "panel-inspector")]
+                    if let Some(vazio) = ph2d_panel_inspector::slot_image::take_pintar_no_lugar_de()
+                    {
+                        ph2d_app_sprite_anim::sprite_card::substitui_o_vazio(
+                            sim.world_mut(),
+                            ph2d_ecs::Entity::from_bits(vazio),
+                            ph2d_ecs::Entity::from_bits(bits),
+                        );
+                    }
                     ph2d_app_painter::paint_mode::new_image_nasceu(tools, bits, bg);
                     hero.gizmo.replace_selection(Some(bits));
                     hero.bus

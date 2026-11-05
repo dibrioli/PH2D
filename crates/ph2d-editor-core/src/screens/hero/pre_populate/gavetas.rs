@@ -79,7 +79,12 @@ pub fn marca_as_gavetas(store: &mut WidgetStore) {
     //    da janela). *O painel declara o que tem; quem compõe o editor declara como ele abre.*
     //
     // ⚠️ `_if_unchosen`: a escolha do artista manda. ⭐ A ANIMATION abre sob a linha Image (plano GEF 15 D2).
-    let aberta = |s| s == ids::INSP_LIVE_TRANSFORM_SECTION || s == ids::INSP_LIVE_ANIM_SECTION;
+    // O Look da Sprite abre: é o que se ajusta depois da imagem (ficha da Sprite, 05/11).
+    let aberta = |s| {
+        s == ids::INSP_LIVE_TRANSFORM_SECTION
+            || s == ids::INSP_LIVE_ANIM_SECTION
+            || s == ids::INSP_LIVE_COLOR_SECTION
+    };
     for (seccao, _cor) in ids::LIVE_SECTIONS {
         store.set_collapsed_if_unchosen(seccao, !aberta(seccao));
     }

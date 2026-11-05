@@ -20,10 +20,89 @@ pub struct SlotImage {
     pub h: u32,
 }
 
+/// O que o cartão precisa de saber da sprite seleccionada e o snapshot não diz.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct SpriteFacts {
+    pub entity_bits: u64,
+    /// O quadrado branco de quem ainda não escolheu imagem: o cartão Image é o convite.
+    pub sem_imagem: bool,
+    pub tem_filhos: bool,
+    /// O ponto da grade do Pivot em que o pivô cai: `[coluna, linha]`; `None` = Custom.
+    pub pivot_ponto: Option<[u8; 2]>,
+    /// O pivô em px a partir do centro da imagem, `y` para cima.
+    pub pivot_px: [f32; 2],
+    /// Em Still, a grelha da imagem que é folha (colunas, linhas): o aviso de folha.
+    pub folha: Option<[u32; 2]>,
+}
+
+/// O que o Replace acabou de mudar: os píxeis de antes e de agora, e o tamanho no mundo de antes.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Recibo {
+    pub entity_bits: u64,
+    pub de: [u32; 2],
+    pub para: [u32; 2],
+    pub tamanho: [f32; 2],
+}
+
 thread_local! {
+    static RECIBO: std::cell::Cell<Option<Recibo>> = const { std::cell::Cell::new(None) };
+    static RECENTES: RefCell<Vec<(String, [u8; 32])>> = const { RefCell::new(Vec::new()) };
+    static PINTAR_NO_LUGAR_DE: std::cell::Cell<Option<u64>> = const { std::cell::Cell::new(None) };
+    static FACTS: std::cell::Cell<Option<SpriteFacts>> = const { std::cell::Cell::new(None) };
     static CURRENT: RefCell<Option<SlotImage>> = const { RefCell::new(None) };
     /// A textura estável da miniatura — sem ela o `vello` reenvia os bytes todo o quadro.
     static TEX: RefCell<Option<(Arc<Vec<u8>>, StableImage)>> = const { RefCell::new(None) };
+}
+
+/// O shell publica o que o Replace mudou (`None` = nada a dizer).
+pub fn set_recibo(r: Option<Recibo>) {
+    RECIBO.with(|c| c.set(r));
+}
+
+pub(crate) fn recibo() -> Option<Recibo> {
+    RECIBO.with(std::cell::Cell::get)
+}
+
+/// O shell publica as imagens recentes: o nome e o id.
+pub fn set_recentes(r: Vec<(String, [u8; 32])>) {
+    RECENTES.with(|c| *c.borrow_mut() = r);
+}
+
+pub(crate) fn recentes() -> Vec<(String, [u8; 32])> {
+    RECENTES.with(|c| c.borrow().clone())
+}
+
+pub(crate) fn set_pintar_no_lugar_de(bits: Option<u64>) {
+    PINTAR_NO_LUGAR_DE.with(|c| c.set(bits));
+}
+
+/// O objecto vazio que a imagem nova vai substituir, se ela nasceu do convite do cartão.
+pub fn take_pintar_no_lugar_de() -> Option<u64> {
+    PINTAR_NO_LUGAR_DE.with(std::cell::Cell::take)
+}
+
+/// O shell publica os factos da sprite seleccionada.
+pub fn set_current_sprite_facts(f: Option<SpriteFacts>) {
+    FACTS.with(|c| c.set(f));
+}
+
+/// Os factos publicados (o retrato do objecto, T61).
+pub(crate) fn factos() -> Option<SpriteFacts> {
+    FACTS.with(std::cell::Cell::get)
+}
+
+fn facto(entity_bits: u64, f: impl Fn(SpriteFacts) -> bool) -> bool {
+    factos().is_some_and(|s| s.entity_bits == entity_bits && f(s))
+}
+
+/// `entity_bits` é o quadrado branco de quem ainda não escolheu imagem?
+pub(crate) fn sem_imagem(entity_bits: u64) -> bool {
+    facto(entity_bits, |s| s.sem_imagem)
+}
+
+/// `entity_bits` tem filhos?
+pub(crate) fn tem_filhos(entity_bits: u64) -> bool {
+    facto(entity_bits, |s| s.tem_filhos)
 }
 
 /// O shell publica a imagem da sprite seleccionada (`None` = nenhuma da biblioteca).

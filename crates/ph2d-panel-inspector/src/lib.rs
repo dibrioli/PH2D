@@ -71,6 +71,7 @@ pub use travas::{
 mod cards_componentes;
 mod cards_corpos;
 mod cards_objeto;
+mod cards_sprite;
 mod cards_pilha;
 pub use cards_componentes::reset_of as card_reset_of;
 mod cards_presos;

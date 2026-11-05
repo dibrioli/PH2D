@@ -109,7 +109,7 @@ const CHECKER_DARK: VelloColor = VelloColor::from_rgba8(170, 170, 170, 255); // 
 
 /// Fill rect with a small checkerboard pattern. Used to communicate
 /// translucency under low-alpha fills.
-fn paint_checker(scene: &mut VectorScene, rect: Rect, corner_radius: f32) {
+pub fn paint_checker(scene: &mut VectorScene, rect: Rect, corner_radius: f32) {
     if rect.w <= 0.0 || rect.h <= 0.0 {
         return;
     }

@@ -447,7 +447,7 @@ fn fresh(
 }
 
 /// A imagem da biblioteca que `e` mostra.
-fn shown_id(world: &World, e: Entity, atlas: &BTreeMap<u32, AssetId>) -> Option<AssetId> {
+pub(crate) fn shown_id(world: &World, e: Entity, atlas: &BTreeMap<u32, AssetId>) -> Option<AssetId> {
     texture_of(world.get::<SpritePixels>(e), world.get::<Sprite>(e), atlas)
 }
 
@@ -623,6 +623,14 @@ pub fn apply_edit(
         }
         ImageUseEdit::Width(n) => crate::tiled::set_tiled_side(world, e, 0, n),
         ImageUseEdit::Height(n) => crate::tiled::set_tiled_side(world, e, 1, n),
+        // O Pixel Art é outra família: a shell atende este antes de chegar aqui.
+        ImageUseEdit::EditInPixel => false,
+        ImageUseEdit::EditInPainter => {
+            crate::sprite_card::marca_edicao(world, e, atlas);
+            false
+        }
+        ImageUseEdit::KeepSize(tamanho) => crate::sprite_card::keep_size(world, e, tamanho),
+        ImageUseEdit::Pivot(p) => crate::pivot::set_pivot(world, e, db, atlas, ppm, p),
     }
 }
 

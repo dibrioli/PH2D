@@ -51,7 +51,7 @@ pub(crate) fn auto_commit_painter(
     let edited =
         ph2d_render::SpriteImage::from_bytes(w, h, canvas, ph2d_render::AlphaMode::Straight)
             .into_premultiplied();
-    if texture_edit::commit_edited_texture(
+    if let Ok(texture_id) = texture_edit::commit_edited_texture(
         entity,
         sim,
         renderer,
@@ -59,9 +59,13 @@ pub(crate) fn auto_commit_painter(
         &edited,
         old_size_world,
         toasts,
-    )
-    .is_ok()
-    {
+    ) {
+        ph2d_app_sprite_anim::sprite_card::segue_a_pintura(
+            sim.world_mut(),
+            atlas_asset_map,
+            entity,
+            texture_id,
+        );
         painter.mark_baked();
         true
     } else {

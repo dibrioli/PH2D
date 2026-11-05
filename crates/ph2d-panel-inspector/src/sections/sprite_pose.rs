@@ -310,7 +310,8 @@ fn sheet_preview_row(
     vframes: u32,
 ) -> f32 {
     let cells = u64::from(hframes.max(1)) * u64::from(vframes.max(1));
-    if cells <= 1 {
+    // No cartão ela sai: só faz sentido com a folha, e o editor de animações já a mostra (ficha da Sprite).
+    if cells <= 1 || ph2d_editor_core::widget::card_ink::card_body().is_some() {
         return y;
     }
     let (_, value) = store

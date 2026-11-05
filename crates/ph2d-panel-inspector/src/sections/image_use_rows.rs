@@ -169,8 +169,8 @@ fn paint_size_rows(
     info: &InspectorSpriteInfo,
 ) -> f32 {
     const NOMES: [&str; 2] = [
-        "panel.inspector.image.width_m",
-        "panel.inspector.image.height_m",
+        "panel.inspector.image.width_tiles",
+        "panel.inspector.image.height_tiles",
     ];
     if !matches!(info.draw, InspectorDraw::Tiled { .. }) {
         return y;

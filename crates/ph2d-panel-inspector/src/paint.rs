@@ -44,6 +44,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
     // ⭐ CartoesUI (C4): o Inspector como LISTA de cartões; `PH2D_CARDS=0` = o de hoje.
     if crate::cards::active() {
         crate::cards::prepare(ctx.host.store_mut());
+        crate::cards_sprite::prepara(ctx.host.store_mut());
         crate::cards_componentes::prepara(ctx.host.store_mut());
         // T7: de quem são os cartões (o «Not available for <nome>» do cartão solto).
         let sujeito = state::current_inspector_name().map(|n| (n.entity_bits, n.name));

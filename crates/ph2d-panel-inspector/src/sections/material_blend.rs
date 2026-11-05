@@ -105,6 +105,9 @@ pub(crate) fn paint_material_blend_section(
     // Material slot — read-only placeholder. The renderer is
     // fixed-function (no material / shader runtime yet, spec §3.10);
     // Material + InstanceShaderParams land with that future runtime.
+    if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        return yy + SECTION_BOTTOM_PAD_PX;
+    }
     paint_text(
         text_system,
         scene,

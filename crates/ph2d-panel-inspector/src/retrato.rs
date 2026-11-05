@@ -132,6 +132,8 @@ retrato! {
     script: Option<script_edits::InspectorScriptInfo> =
         c::current_inspector_script(), c::set_current_inspector_script;
     slot: Option<SlotImage> = slot_image::atual(), slot_image::set_current_slot_image;
+    sprite_facts: Option<slot_image::SpriteFacts> =
+        slot_image::factos(), slot_image::set_current_sprite_facts;
     aparencia: Option<appearance::Appearance> =
         appearance::current_appearance(), appearance::set_current_appearance;
     base_paints: Option<[appearance::BasePaint; 2]> =

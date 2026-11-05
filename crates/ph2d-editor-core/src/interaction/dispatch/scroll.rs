@@ -34,10 +34,22 @@ pub fn dispatch_wheel<'frame>(
     arena: &'frame Bump,
 ) -> &'frame [WidgetEvent] {
     let events: BumpVec<'frame, WidgetEvent> = BumpVec::new_in(arena);
+    // Uma lista suspensa aberta flutua sobre tudo: ela é a primeira.
+    if let Some(dd) = store.open_dropdown_popover_at(event.x, event.y) {
+        store.wheel_panel(dd, event.delta_y);
+        return events.into_bump_slice();
+    }
+    // ⭐ A superfície do GRAFO e a do DOPE-SHEET só respondem se o painel delas é o que está por cima neste
+    // ponto: um painel flutuante sobre elas é dono da roda (dono 05/11, «o scroll dos painéis não funciona»).
+    let por_cima = store.panel_at(event.x, event.y);
+    let dona_do_ponto = |surface: NodeId| por_cima.is_none_or(|p| p == surface);
     // Motion Nodes M0.T3 — a wheel over a graph surface is an anchored zoom,
     // consumed BEFORE any panel scroll so the graph zooms instead of scrolling
     // the panel underneath. The panel drains + applies the accumulated zoom.
-    if let Some(surface) = store.graph_surface_at(event.x, event.y) {
+    if let Some(surface) = store
+        .graph_surface_at(event.x, event.y)
+        .filter(|s| dona_do_ponto(*s))
+    {
         store.add_graph_zoom(surface, event.delta_y, event.x, event.y);
         return events.into_bump_slice();
     }
@@ -71,7 +83,10 @@ pub fn dispatch_wheel<'frame>(
     // ⚠️ **O preço, nomeado:** com poucas propriedades as linhas cabem e a roda simples não faz
     // nada, exactamente como em qualquer outro painel cuja lista cabe. Quem zooma o tempo passa a
     // segurar Ctrl.
-    if let Some(surface) = store.timeline_surface_at(event.x, event.y) {
+    if let Some(surface) = store
+        .timeline_surface_at(event.x, event.y)
+        .filter(|s| dona_do_ponto(*s))
+    {
         let m = event.modifiers;
         let (zoom, pan, scroll) = if m.ctrl || m.meta {
             (event.delta_y, event.delta_x, 0.0)
@@ -81,13 +96,6 @@ pub fn dispatch_wheel<'frame>(
             (0.0, event.delta_x, event.delta_y)
         };
         store.add_timeline_wheel(surface, zoom, pan, scroll, event.x);
-        return events.into_bump_slice();
-    }
-    // An OPEN dropdown popover scrolls first — it floats on top of any panel, and its rect lives in a
-    // dedicated slot (not `panel_rects`) so `panel_at` isn't polluted. Its scroll value + heights use
-    // the `panel_scroll`/`panel_*_h` tables keyed by the dropdown id.
-    if let Some(dd) = store.open_dropdown_popover_at(event.x, event.y) {
-        store.wheel_panel(dd, event.delta_y);
         return events.into_bump_slice();
     }
     // ⭐⭐ **Uma SUB-REGIÃO rolável ganha à roda do painel que a contém** — a coluna de catálogos

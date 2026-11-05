@@ -366,3 +366,47 @@ fn a_linha_pintada_com_o_rotulo_do_catalogo_tem_o_canal_dele() {
         "o que não voltou a ser pintado esquece-se"
     );
 }
+
+/// ⭐ Dono 05/11: Flip e Pivot com bolinha. O Flip grava os dois eixos; o Pivot, o pivô e a posição no modo da K.
+/// *Mutação: tirar `POSICAO` do grupo do pivô em [`mascara`] ⇒ o pivô grava-se sem a posição.*
+#[test]
+fn o_flip_e_o_pivo_da_sprite_tem_canal_e_o_pivo_leva_a_posicao() {
+    let k = |c, x| {
+        PropKind::Field(ph2d_ecs::canal_componente::chave("ph2d::render::Sprite", c, x).unwrap())
+    };
+    assert_eq!(
+        canal_do_campo(insp::INSP_SPRITE_FLIP_X),
+        &[k(2, 0), k(3, 0)][..]
+    );
+    assert_eq!(
+        canal_do_campo(insp::INSP_SPRITE_FLIP_Y),
+        &[k(2, 0), k(3, 0)][..]
+    );
+    let d = TimelineDoc::new();
+    let chaves = |e: u64| {
+        let _ = e;
+        vec![
+            ph2d_ecs::canal_componente::chave("ph2d::render::Sprite", 4, 0).unwrap(),
+            ph2d_ecs::canal_componente::chave("ph2d::render::Sprite", 4, 1).unwrap(),
+        ]
+    };
+    let i = clique(
+        &d,
+        &insp::INSP_SPRITE_PIVOT_XY,
+        &[E],
+        em(0.0),
+        chaves,
+        na_curva,
+        add,
+    );
+    let g = gravados(&i);
+    assert!(g.contains(&k(4, 0)) && g.contains(&k(4, 1)), "{g:?}");
+    assert!(
+        g.contains(&PropKind::Position),
+        "a posição na trajectória: {g:?}"
+    );
+    assert!(
+        !g.contains(&PropKind::TranslationX),
+        "só um modo de posição: {g:?}"
+    );
+}

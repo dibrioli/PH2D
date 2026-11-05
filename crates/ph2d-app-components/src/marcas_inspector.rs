@@ -229,8 +229,8 @@ const CAMPOS: &[(NodeId, &[PropKind])] = &[
     (insp::INSP_PHYS_DAMPMODE[1], &[fi(fs::AMORT_MODO)]),
 ];
 
-/// ⭐ **A máscara de culling da câmera** (`camera_fields.4`): 32 células e o cabeçalho, sem linha
-/// que pinte o rótulo — o único campo COMPONENTE que não sai de [`do_rotulo`].
+/// ⭐ **Os campos COMPONENTE sem rótulo do catálogo na linha que os pinta**: a máscara de culling da
+/// câmera (`camera_fields.4`, 32 células e o cabeçalho), e o Flip e o Pivot do cartão da Sprite.
 fn mascara() -> &'static [(NodeId, Box<[PropKind]>)] {
     static D: std::sync::OnceLock<Vec<(NodeId, Box<[PropKind]>)>> = std::sync::OnceLock::new();
     D.get_or_init(|| {
@@ -239,9 +239,24 @@ fn mascara() -> &'static [(NodeId, Box<[PropKind]>)] {
                 .map(PropKind::Field)
                 .into_iter()
                 .collect();
+        let chave = |campo, faixa| {
+            ph2d_ecs::canal_componente::chave("ph2d::render::Sprite", campo, faixa)
+                .map(PropKind::Field)
+        };
+        let flip: Box<[PropKind]> = [chave(2, 0), chave(3, 0)].into_iter().flatten().collect();
+        // O pivô anda com a posição: sem ela, tocar a animação moveria o desenho.
+        let pivo: Box<[PropKind]> = [chave(4, 0), chave(4, 1)]
+            .into_iter()
+            .flatten()
+            .chain(POSICAO.iter().copied())
+            .collect();
         (insp::INSP_CAMERA_CULL_BIT.iter())
             .chain([&insp::INSP_CAMERA_CULL_HEADER])
             .map(|&id| (id, reps.clone()))
+            .chain(
+                [insp::INSP_SPRITE_FLIP_X, insp::INSP_SPRITE_FLIP_Y].map(|id| (id, flip.clone())),
+            )
+            .chain(insp::INSP_SPRITE_PIVOT_XY.map(|id| (id, pivo.clone())))
             .collect()
     })
 }
@@ -365,7 +380,12 @@ pub fn clique(
         return Vec::new();
     };
     if reps.iter().any(|r| matches!(r, PropKind::Field(_))) {
-        return ph2d_timeline::clique_no_grupo(doc, &reps, entidades, inst, lidos, valor, autorar);
+        if !reps.iter().any(|r| POSICAO.contains(r)) {
+            return ph2d_timeline::clique_no_grupo(
+                doc, &reps, entidades, inst, lidos, valor, autorar,
+            );
+        }
+        return clique_com_posicao(doc, &reps, entidades, inst, lidos, valor, autorar);
     }
     let apagar = ph2d_timeline::clique_no_grupo(
         doc,
@@ -387,6 +407,46 @@ pub fn clique(
             reps.iter()
                 .filter(|&&p| (p == PropKind::Position) == na_trajetoria || !POSICAO.contains(&p))
                 .filter_map(|&p| autorar(e, p)),
+        );
+    }
+    out.push(TimelineIntent::EndEdit);
+    out
+}
+
+/// O grupo que mistura campos e posição (o Pivot): a posição grava-se no modo que a K escolheria, objecto a objecto.
+fn clique_com_posicao(
+    doc: &TimelineDoc,
+    reps: &[PropKind],
+    entidades: &[u64],
+    inst: Instante,
+    lidos: impl Fn(u64) -> Vec<FieldKey>,
+    valor: impl Fn(u64, PropKind) -> Option<f32>,
+    autorar: impl Fn(u64, PropKind) -> Option<TimelineIntent>,
+) -> Vec<TimelineIntent> {
+    let apagar = ph2d_timeline::clique_no_grupo(
+        doc,
+        reps,
+        entidades,
+        inst,
+        |_| Vec::new(),
+        &valor,
+        |_, _| None,
+    );
+    if apagar.contains(&TimelineIntent::DeleteSelection) {
+        return apagar;
+    }
+    let mut out = vec![TimelineIntent::BeginEdit];
+    for &e in entidades {
+        let na_trajetoria = doc.position_key_mode(e, true) == ph2d_timeline::PositionKeyMode::Path;
+        let deste: Vec<PropKind> = reps
+            .iter()
+            .copied()
+            .filter(|&p| (p == PropKind::Position) == na_trajetoria || !POSICAO.contains(&p))
+            .collect();
+        out.extend(
+            ph2d_timeline::clique_no_grupo(doc, &deste, &[e], inst, &lidos, &valor, &autorar)
+                .into_iter()
+                .filter(|i| !matches!(i, TimelineIntent::BeginEdit | TimelineIntent::EndEdit)),
         );
     }
     out.push(TimelineIntent::EndEdit);

@@ -21,13 +21,13 @@ use ph2d_panel_inspector as insp;
 use ph2d_panel_inspector::ids as pids;
 use std::collections::BTreeSet;
 
-const A: u64 = 31;
-const B: u64 = 32;
+pub(super) const A: u64 = 31;
+pub(super) const B: u64 = 32;
 const C: u64 = 33;
 const SELECOES: [&[u64]; 3] = [&[B], &[B, C], &[A, B]];
 
 /// A sprite de `b`, como a shell a publica; A difere de B e C.
-fn arma(b: u64) {
+pub(super) fn arma(b: u64) {
     let a = b == A;
     insp::set_current_inspector_name(Some(ph2d_editor_core::screens::hero::InspectorNameInfo {
         entity_bits: b,

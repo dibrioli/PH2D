@@ -15,6 +15,8 @@ use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, Spacing, TypeToken};
 
 const CASAS_POR_LADO: f32 = 3.0; // LITERAL-PX-OK: a grade é 3 × 3, conta e não geometria
+/// A marca do Flip grava os dois eixos; a do Pivot, o pivô e a posição (`marcas_inspector::mascara`).
+const FLIP_KEY: [NodeId; 2] = [ids::INSP_SPRITE_FLIP_X, ids::INSP_SPRITE_FLIP_Y];
 
 /// Os nomes dos nove pontos, por linhas.
 pub(crate) const NOMES_DO_PIVOT: [&str; 9] = [
@@ -146,7 +148,9 @@ pub(crate) fn flip_e_pivot(c: &mut CardCtx<'_>, y: f32) -> f32 {
     let (x0, w0) = (c.x, c.w);
     (c.x, c.w) = (xa, wa);
     let fim_flip = c.row(
-        &[Cell::new(Widget::Icons(&segs)).label(tr("card.insp.flip"))],
+        &[Cell::new(Widget::Icons(&segs))
+            .label(tr("card.insp.flip"))
+            .key(&FLIP_KEY)],
         y,
     );
     let Some(f) = crate::state::current_inspector_sprite()
@@ -157,7 +161,9 @@ pub(crate) fn flip_e_pivot(c: &mut CardCtx<'_>, y: f32) -> f32 {
     };
     (c.x, c.w) = (xb, wb);
     c.row(
-        &[Cell::new(Widget::Readout { text: "" }).label(tr("card.insp.pivot"))],
+        &[Cell::new(Widget::Readout { text: "" })
+            .label(tr("card.insp.pivot"))
+            .key(&ids::INSP_SPRITE_PIVOT_XY)],
         y,
     );
     // A grade começa onde a caixa do Flip começa: logo abaixo dos rótulos.

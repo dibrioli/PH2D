@@ -8,7 +8,7 @@
 
 use crate::cards::{
     CARD_APPEARANCE, CARD_FILL, CARD_MATERIAL, CARD_OBJECT, CARD_ORDERING, CARD_STROKE,
-    CARD_TRANSFORM,
+    CARD_TRANSFORM, CARD_TRANSFORM_IMAGE,
 };
 use crate::cards_componentes::{Abertas, Presente};
 use crate::paint_frame::LiveSnapshots;
@@ -25,9 +25,10 @@ use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 
 /// Os cartões do objecto que se prendem: a escrita de cada um vai ao preso (`docs/CartoesUI/09`).
-const DO_OBJECTO: [NodeId; 7] = [
+const DO_OBJECTO: [NodeId; 8] = [
     CARD_OBJECT,
     CARD_TRANSFORM,
+    CARD_TRANSFORM_IMAGE,
     CARD_APPEARANCE,
     CARD_ORDERING,
     CARD_MATERIAL,

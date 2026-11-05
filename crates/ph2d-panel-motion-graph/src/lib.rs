@@ -155,6 +155,9 @@ impl Panel for MotionGraphPanel {
             ctx.host
                 .store_mut()
                 .clear_panel_rect(ids::MOTION_GRAPH_PANEL);
+            ctx.host
+                .store_mut()
+                .remove_graph_canvas(ids::MOTION_GRAPH_PANEL);
             ctx.host.store_mut().set_graph_focused(None);
             return;
         }
@@ -164,6 +167,9 @@ impl Panel for MotionGraphPanel {
             ctx.host
                 .store_mut()
                 .clear_panel_rect(ids::MOTION_GRAPH_PANEL);
+            ctx.host
+                .store_mut()
+                .remove_graph_canvas(ids::MOTION_GRAPH_PANEL);
             return;
         }
         // Publish the rect so wheel/click dispatch can route to this panel.

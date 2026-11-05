@@ -147,3 +147,32 @@ fn mudar_o_pivo_nao_move_os_filhos() {
         "{no_mundo:?}"
     );
 }
+
+/// ⭐ **A chave do pivô leva a posição** (dono 05/11, Auto Key grava tudo): tocar pivô E posição devolve o desenho
+/// ao sítio; tocar só o pivô move-o. O grupo que o losango grava é `marcas_inspector::mascara`.
+#[test]
+fn tocar_o_pivo_sem_a_posicao_move_o_desenho() {
+    let mut t = Transform {
+        translation: Vec2::new(5.0, 7.0),
+        ..Default::default()
+    };
+    t.rotation = 0.7;
+    let (mut w, e) = mundo_com(sprite_2x2(), t);
+    let centro = |w: &World| {
+        let s = w.get::<Sprite>(e).unwrap();
+        no_pai(*w.get::<Transform>(e).unwrap(), s.resolve_anchor(100.0))
+    };
+    let desenho = centro(&w);
+    let anchor = w.get::<Sprite>(e).unwrap().anchor;
+    assert!(pousa(&mut w, e, 100.0, [0.0, -1.0]));
+    w.get_mut::<Sprite>(e).unwrap().anchor = anchor;
+    assert!(
+        (centro(&w) - desenho).length() > 0.5,
+        "só o pivô tocado: o desenho anda"
+    );
+    w.get_mut::<Transform>(e).unwrap().translation = t.translation;
+    assert!(
+        (centro(&w) - desenho).length() < 1.0e-4,
+        "o pivô e a posição tocados: o desenho volta"
+    );
+}

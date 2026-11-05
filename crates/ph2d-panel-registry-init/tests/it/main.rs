@@ -16,6 +16,7 @@ mod a_marca_tem_a_altura_da_linha;
 mod a_ordem_das_seccoes_e_a_da_paleta;
 mod a_paleta_fecha_ao_escolher_por_cima_de_um_painel;
 mod a_panel_paints_where_its_tab_says;
+mod a_roda_e_o_transform_da_imagem;
 mod a_slot_with_two_panels_shows_tabs;
 mod a_tab_dragged_to_another_dock_moves_the_panel;
 mod a_tinta_de_base_no_cartao;

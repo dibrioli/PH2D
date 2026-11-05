@@ -334,7 +334,10 @@ fn memoria_num_filho(raio: f32) -> (f64, usize) {
 ///
 /// ⚠️ O tecto deixou de separar o mutante do limiar `r` (322 MiB em 29/10 < o pico de hoje): quem o pega é a asserção
 /// `lanes == 1` (o mutante parte o traço em 2 lanes), que corre ANTES do tecto.
-const TECTO_DA_MEMORIA_MIB: [(f32, f64); 2] = [(300.0, 322.0), (1000.0, 1690.0)];
+///
+/// Dono 05/11: o Smooth Edges 0,3 de fábrica do Dabber aloca o campo da aparência e o plano do alisamento. Remedido 3×,
+/// load 10–13: 367–368 MiB (era 305–306) e 1 801–1 802 (era 1 607–1 610). O tecto é esse + 5 %.
+const TECTO_DA_MEMORIA_MIB: [(f32, f64); 2] = [(300.0, 386.0), (1000.0, 1892.0)];
 
 /// ⭐ **A MEMÓRIA do Dabber cabe** (L13, EXAME §3.6): o Jitter espalha UMA ponta — o traço inteiro numa lane — e o
 /// pico do gesto a raio 300 e 1000 fica abaixo do tecto medido. Mutação: o limiar da lane sem o Jitter
@@ -343,6 +346,7 @@ const TECTO_DA_MEMORIA_MIB: [(f32, f64); 2] = [(300.0, 322.0), (1000.0, 1690.0)]
 fn a_memoria_do_dabber_cabe() {
     for (raio, tecto) in TECTO_DA_MEMORIA_MIB {
         let (pico, lanes) = memoria_num_filho(raio);
+        println!("MEMORIA raio {raio}: pico {pico:.0} MiB, tecto {tecto:.0}");
         assert_eq!(
             lanes, 1,
             "raio {raio}: o Jitter partiu o traço em {lanes} lanes"

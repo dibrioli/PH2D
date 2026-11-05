@@ -605,8 +605,30 @@ Igualar a massa nas facas apaga o Voronoi escolhido e estoura nos pastéis; a ve
 ao byte). Gravar NÃO troca a referência por H: sem isto o pincel reabriria com o salto. Grain de imagem que saiu: a média congela em `media`.
 
 Gates em `wetpaint/grao_a_mao_tests.rs` e `seam_same_as_paper::armar_o_grain_pelo_menu_nao_muda_a_quantidade_no_wet` (o evento real do menu).
-**Aberto:** um Grain tirado (`None`) de um pincel que veio com ele volta às cerdas e perde a tinta, como antes; armar um Grain num pincel de ponta lisa
-(sem cerdas, sem Grain próprio) continua a substituir o `texv = 1`, como antes; uma macro gravada antes que arma um Grain toca agora a quantidade nova.
+
+### Os casos abertos: tirar o Grain, armar na ponta lisa (CURADO na régua 05/11, falta o smoke)
+
+Mesma régua, os 77 de fábrica. **Armar na ponta lisa:** a ponta fica como `texv` e o grão desenha depois do portão, de média 1 (a rota das cerdas, agora sem exigir cerdas).
+**Tirar o Grain:** o `texv` fica à média do Grain aplicado e as cerdas, se houver, desenham depois do portão, de média 1 (`ReguaDoGrao::sem_grao`, `MediasDoGrao::do_tapete`).
+Com filme liso (Wet Liner, Wet Wash) o código não muda de rota: o grão continua a ser o `texv` (massa 0,875–0,98 ao armar). A rota nova com filme foi medida e recusada: massa 1,01–1,09, mas o desvio do miolo dobra.
+
+Medido (traço de 40 px; massa / ecrã ÷ fábrica; «antes» = o mesmo processo, com a referência igualada, e igual à sonda antes da cura):
+
+| caso | pincel | antes | cura |
+|---|---|---|---|
+| tirar, cerdas | Knife Stain · Knife Textured · Scratch | 0,001 · 0,003 · 0,08 / 0,001 · 0,006 · 0,09 | 1,03 · 1,01 · 1,04 / 0,99 · 0,98 · 1,02 |
+| tirar, cerdas | Soft Pastel · Metallic Flat · Knife Smooth 3 · Knife Grainy | 0,13 · 0,18 · 0,25 · 0,26 | 1,07 · 1,01 · 0,92 · 0,99 / 1,00 · 1,00 · 0,98 · 0,99 |
+| tirar, cerdas | Dabber 4 · Thick Impasto · **Knife Dry** | 0,36 · 0,42 · 0,60 | 1,07 · 1,04 · **1,26** / 0,96 · 1,02 · **1,00** |
+| tirar, ponta lisa | Oil Pastel · Graphite 8B · Wax Scrape · Charcoal · Pastel Side | 1,88 · 1,73 · 1,69 · 1,55 · 1,41 | 1,01–1,05 / 1,01–1,03 |
+| tirar, Dots | Halftone | 8,12 / 6,79 | 1,00 / **1,16** |
+| armar, ponta lisa | Soft Round · Burn · Watercolor Basic (noise / clouds / voronoi) | 0,52 / 0,52 / 0,38 · 0,62 / 0,64 / 0,48 · 0,64 / 0,66 / 0,50 | 1,01–1,10 / 0,99–1,05 |
+| armar, ponta lisa | Airbrush · Hard Round · Knife Oily · Marker Chisel | 0,69–0,81 · 0,84–0,99 · 0,82–0,89 · 0,81–0,90 | 1,00–1,11 / 0,95–1,03 |
+| armar, tinta que satura | Broad Nib · Dip Pen · Marker Bullet · **Ink Bullet** | massa 1,02 · 0,99–1,07 · 1,09–1,24 · 1,08–1,36 | massa **1,11–1,29 · 1,16–1,34 · 1,25–1,58 · 1,44–1,95**; ecrã 0,93–1,00 |
+
+⚠️ **Fora da faixa, e fica assim:** nas tintas que saturam o portão a massa SOBE (o ecrã não muda: 0,93–1,00), porque o `padrao` passa por cima do tecto do carimbo; Knife Dry 1,26 de massa, ecrã 1,00; Halftone sem os pontos dá 1,16 de ecrã (antes 6,79).
+⛔ **Recusas MEDIDAS** ao tirar o Grain, nos 10 de cerdas: cerdas × `média(G)/média(tapete)` antes do portão: massa 0,52–0,97 (satura); `texv` à média sem nenhum tapete: massa 1,00–1,06, mas tira as cerdas do traço e os sliders delas deixariam de agir (leitura do código, não medido).
+
+Portões `grao_a_mao_tests::casos_abertos_*` (com o braço «sem a cura», que sangra, em cada um). **Aberto:** uma macro gravada antes que arma um Grain toca agora a quantidade nova.
 
 ## Bug #62 (ABERTO, decisão do dono) — cordão escuro na borda do traço simples: Wet Liner e Wet Wash
 
@@ -624,6 +646,24 @@ a janela de leitura mede ±40 px e o traço tem ~80 px, a foto é a prova da for
 
 O cordão é o Edge Darkening. No Wet Liner o Body 0,16 da migração agrava-o. Body 0 também o tira, mas deixa riscas das
 cerdas no miolo. Recomendação: Edge Darkening 0 nos dois presets; regravar só com a aprovação do dono.
+
+### As manchas do miolo do Wet Liner (fotos do dono 04/11): não reproduzidas de fábrica; só com a Hardness abaixo de 100 %
+
+`wetpaint/manchas_liner_tests.rs::sonda_manchas_liner`, régua e pranchas em [`material_2026-11-05/`](handoffs/material_2026-11-05/) (`manchas.py`). Curva de ~65 px, `Textured Paper` e tela lisa, vermelho e preto, com e sem Same as Paper,
+Edge Darkening 0 e 200 (o da foto), molhado e seco. Gestos: pressão 1, pressão a variar, mão (tremor + velocidade + pressão), pausas, traço lento (4×), duas passadas, vaivém, curva apertada.
+Ao longo do eixo, em todos eles: CV 0,00–0,35 %, mínimo ÷ mediana ≥ 0,992, máximo ≤ 1,01 (e os 0,35 % são a luz do relevo: na tela lisa dá 0,00). Same as Paper não muda nada no miolo. [Foto](handoffs/material_2026-11-05/manchas_liner.png).
+
+**Reproduz** com o `paperGate` (a Hardness do painel, `1 − gate ÷ 1,5`; o Wet Liner vem com gate 0, Hardness 100 %): manchas largas e macias, do tamanho do relevo do Cold Press. [Foto](handoffs/material_2026-11-05/manchas_liner_hardness.png).
+
+| `paperGate` (Hardness) | CV no eixo | mín ÷ mediana | máx ÷ mediana |
+|---|---|---|---|
+| 0 (100 %) | 0,35 % | 0,992 | 1,01 |
+| 0,25 (83 %) | 1,31 % | 0,961 | 1,03 |
+| 0,6 (60 %) | 4,83 % | 0,842 | 1,08 |
+
+**Mecanismo, até onde foi medido:** é o `paperGate`, e só ele entre os testados (Capillary 0,5 dá os mesmos números da fábrica); o tamanho casa com o relevo a olho, sem correlação medida, e o caminho dentro do motor não foi lido. Pode ser só a lei do controlo, por isso NÃO curei; sem as fotos também não sei se o dono tinha a Hardness abaixo de 100 %. A curva apertada só foi vista na foto, sem régua. ⚠️ **Não coberto:** a sonda corre com relógio fixo e sem o compositor da óptica; o gesto `real` da sonda não prova o relógio real, porque não dá tempo à água depois do Up. Pergunta para o smoke: qual a Hardness nas fotos, e tinta molhada ou seca?
+
+**«Variar a borda pelo papel» (simulação INCONCLUSIVA, não construído):** [foto](handoffs/material_2026-11-05/borda_pelo_papel.png), `borda_pelo_papel.py`. ⛔ As colunas «sim. orla» são artefacto da simulação em imagem (o relevo lê-se de uma foto que já tem a tinta, e nasce uma linha escura e borrões): não mostram como ficaria, e não são proposta. Só as colunas do motor valem: o `paperGate` não serve de atalho, porque com ele vêm as manchas do miolo do Wet Liner. Falta simular com o relevo verdadeiro do papel.
 
 ## Bug #57 (FECHADO 04/11) — `wet_water` com `PAINTER_WETPAINT_FASTDRY`: de raiz × de `instantaneo()` difere
 

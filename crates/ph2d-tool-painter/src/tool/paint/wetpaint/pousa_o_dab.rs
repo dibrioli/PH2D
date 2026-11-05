@@ -582,6 +582,15 @@ pub(super) fn pousa_o_dab(
         // silhouette and grain shape the erase exactly as they shape
         // the deposit. O Flow (a taxa por dab, à vista na Borracha do Wet) escala a força
         // do Erase Strength; a Strength escondida já saiu do `b` (`coverage / strength`).
+        // A Borracha não tem o canal do padrão: o que desenha depois do portão, de média 1, morde aqui (Bug #65 A1).
+        let grao_mao = grain.as_ref().filter(|_| ponta_sob_o_grao);
+        let grao_mao = grao_mao.zip(media_depois_do_portao);
+        let cerdas_mao = cerdas_fn.as_ref().zip(sem_grao);
+        let morde = (grao_mao.is_some() || cerdas_mao.is_some()).then_some(|cx: i32, cy: i32| {
+            grain_arg.map_or(1.0, |g| g(cx, cy))
+                * grao_mao.map_or(1.0, |(g, m)| g(cx, cy) / m)
+                * cerdas_mao.map_or(1.0, |(c, [_, m])| c(cx, cy) / m)
+        });
         sess.engine.dispatch_pressure_dab_erase(
             cell_x,
             cell_y,
@@ -589,7 +598,9 @@ pub(super) fn pousa_o_dab(
             f64::from(brush.flow.clamp(0.0, 1.0)),
             cell_r,
             Some(&sil),
-            grain_arg,
+            morde
+                .as_ref()
+                .map_or(grain_arg, |f| Some(f as ph2d_wet_paint::brush::CellFn<'_>)),
         );
         // A borracha tira também o relevo que houver (sem o campo, nada a tirar).
         if !sess.engine.active_grid().altura.is_empty() {

@@ -53,3 +53,78 @@ fn apaga(muda: impl FnOnce(&mut PainterTool)) -> (f64, PainterTool) {
     risca(&mut t, 100.0, 50);
     (antes[0] - le(&t)[0], t)
 }
+
+/// ⭐ **A1: o Grain armado à mão morde o que a Borracha apaga, sem mudar a quantidade.** A regra «a ponta fica e o grão
+/// desenha depois do portão» mandava-o pelo canal do padrão, que a Borracha não tem: Noise à mão 0 bytes de diferença.
+#[test]
+fn o_grain_a_mao_morde_na_borracha_e_apaga_o_mesmo() {
+    let (liso, base) = apaga(|_| {});
+    assert!(liso > 0.0, "premissa: a borracha apagou");
+    type Muda = fn(&mut PainterTool);
+    let casos: [(&str, Muda); 4] = [
+        ("Noise", |t| t.set_brush_texture_kind(1)),
+        ("Clouds", |t| t.set_brush_texture_kind(6)),
+        ("imagem", |t| {
+            t.set_brush_texture_image(imagem_com_desenho(), 64, 64);
+        }),
+        ("Same as Paper", |t| {
+            t.set_brush_texture_kind(1);
+            t.toggle_brush_grain_same_as_paper();
+        }),
+    ];
+    let mut falhas = Vec::new();
+    for (nome, muda) in casos {
+        let (a, t) = apaga(muda);
+        let dif = difs(&base, &t);
+        println!("{nome}: {dif} bytes · apagada {:.3}", a / liso);
+        // O xadrez da imagem satura o carimbo onde passa de 1: 0,80.
+        if dif <= W * H / 50 || !(0.75..1.1).contains(&(a / liso)) {
+            falhas.push(format!("{nome}: {dif} bytes, apagou {:.3}×", a / liso));
+        }
+    }
+    assert!(falhas.is_empty(), "{falhas:#?}");
+    // O Grain que veio com a borracha continua a ser o `texv` dela, como sempre.
+    let (a, t) = apaga(|t| {
+        t.set_brush_texture_kind(1);
+        t.paint.brush.grao_aplicado.grao = t.paint.brush.texture;
+    });
+    println!(
+        "Noise de preset: {} bytes · apagada {:.3}",
+        difs(&base, &t),
+        a / liso
+    );
+    assert!(difs(&base, &t) > W * H / 50, "o Noise de preset");
+    // Com o filme do traço na Borracha o grão não passa pelo braço da ponta.
+    let (f, filme) = apaga(|t| t.paint.wetpaint.knobs.set(Knob::StrokeFilm, 1.0));
+    let (g, t) = apaga(|t| {
+        t.paint.wetpaint.knobs.set(Knob::StrokeFilm, 1.0);
+        t.set_brush_texture_kind(1);
+    });
+    println!(
+        "Noise com filme: {} bytes · apagada {:.3}",
+        difs(&filme, &t),
+        g / f
+    );
+    assert!(difs(&filme, &t) > W * H / 50, "o Noise com o filme");
+    // A Borracha de cerdas com o Grain tirado: as cerdas continuam a morder (o mesmo canal, Bug #61).
+    let cerdas = |tira: bool| {
+        apaga(move |t| {
+            let (_, k) = traco(&de_fabrica_ou_candidato("Knife Dry"), false);
+            t.paint.brush = k.paint.brush;
+            t.set_brush_size_px(40.0);
+            if tira {
+                t.set_brush_texture_kind(0);
+            } else {
+                t.paint.brush.shape.kind = ph2d_painter_brush::TextureKind::None;
+                t.set_brush_texture_kind(0);
+            }
+        })
+    };
+    let ((c, com), (s, sem)) = (cerdas(true), cerdas(false));
+    println!(
+        "Knife Dry sem Grain: {} bytes · apagada {:.3}",
+        difs(&com, &sem),
+        c / s
+    );
+    assert!(difs(&com, &sem) > W * H / 50, "as cerdas não morderam");
+}

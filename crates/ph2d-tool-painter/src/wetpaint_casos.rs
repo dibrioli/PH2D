@@ -198,7 +198,7 @@ mod tests {
     fn ppm(dir: &str, nome: &str, t: &mut PainterTool) {
         let (px, w, h) = (t as &mut dyn ph2d_editor_core::tool::RasterEditTool).run_full();
         let mut v = format!("P6\n{w} {h}\n255\n").into_bytes();
-        for p in px.chunks_exact(4) {
+        for p in px.as_chunks::<4>().0 {
             v.extend_from_slice(&p[..3]);
         }
         std::fs::create_dir_all(dir).unwrap();

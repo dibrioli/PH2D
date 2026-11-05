@@ -112,8 +112,8 @@ fn aplicar_o_wet_liner_pousa_0_12_e_outro_pincel_pousa_0() {
         traco(&mut t, 150.0);
         (um.len(), pousados(&t).len())
     };
-    let (um, dois) = cena(&de_fabrica_ou_candidato("Dabber"));
-    assert_eq!(um, dois, "o Dabber pousou um Smooth Edges");
+    let (um, dois) = cena(&de_fabrica_ou_candidato("Thick Impasto"));
+    assert_eq!(um, dois, "o Thick Impasto pousou um Smooth Edges");
     let (um, dois) = cena(&liner);
     assert!(dois > um, "o controlo: o 2.º traço não tocou no campo");
 }
@@ -191,10 +191,13 @@ fn a_macro_antiga_toca_igual_a_uma_com_o_mesmo_valor() {
 #[test]
 fn a_macro_antiga_mantem_o_valor_ao_pegar_num_pincel_a_meio() {
     let (nova, antiga, tx) = estados(0.36);
-    let dabber = de_fabrica_ou_candidato("Dabber");
-    assert!(!dabber.parametros.engine.contains_key(CHAVE), "a fixture");
+    let sem_chave = de_fabrica_ou_candidato("Thick Impasto");
+    assert!(
+        !sem_chave.parametros.engine.contains_key(CHAVE),
+        "a fixture"
+    );
     let mut a = toca(&antiga, &tx);
-    assert!(a.wet_preset_aplicar(&dabber).is_empty());
+    assert!(a.wet_preset_aplicar(&sem_chave).is_empty());
     assert_eq!(a.wet_smooth_edges(), 0.36, "a macro antiga perdeu o valor");
     assert!(
         a.route_brush_wetpaint_event(&ph2d_editor_core::tool::PanelEvent::SetValue(
@@ -202,9 +205,9 @@ fn a_macro_antiga_mantem_o_valor_ao_pegar_num_pincel_a_meio() {
             0.2
         ))
     );
-    assert!(a.wet_preset_aplicar(&dabber).is_empty());
+    assert!(a.wet_preset_aplicar(&sem_chave).is_empty());
     assert_eq!(a.wet_smooth_edges(), 0.2, "a edição a meio da macro antiga");
     let mut n = toca(&nova, &tx);
-    assert!(n.wet_preset_aplicar(&dabber).is_empty());
+    assert!(n.wet_preset_aplicar(&sem_chave).is_empty());
     assert_eq!(n.wet_smooth_edges(), 0.0, "a macro nova é por pincel");
 }

@@ -19,7 +19,7 @@ AO LADO, não em cima: em cima custa 23 px, uma linha de faixa. Recusa medida, n
 | Chips Animation e clip | cara `paint_card_chip`; a lista aberta continua a de sempre | `TIMELINE_ANIM_DD`, `TIMELINE_CLIP_DD` |
 | `+ ⧉ T 🗑`, transporte, `I`, engrenagem | fila de ícones na caixa do cartão, com dica | os mesmos |
 | `+M`, `+ Track`, `+ Lane`, `+ Container` | botão do cartão | os mesmos |
-| Time, Frame, Dur, com setas | campo Figma: pega de scrub + valor, Esc, duplo clique | `*_NUM` |
+| Time, Frame, Dur, com setas | campo Figma: pega de scrub + valor, Esc, duplo clique; o passo exacto das setas é ↑↓ no campo focado (Dur 0,2 s) | `*_NUM` |
 | 11 interruptores `[nome│switch]` à largura da coluna mais larga | caixa T64 à largura do nome | os mesmos, `Toggle` |
 
 Não muda: régua, faixas, curvas, costura de nomes, barra de rolagem, popovers, renomear, pega do topo da banda.

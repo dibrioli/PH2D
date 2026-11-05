@@ -308,14 +308,42 @@ fn the_key_in_cards_walks_the_same_numbers_as_the_old_arrow() {
     assert_eq!(cartoes.len(), passos.len(), "every step authored");
 }
 
-/// At the floor both paths land on `0`, which clears the duration back to ∞, and stop there.
+/// At the floor both paths land on `0`, which clears the duration back to ∞, and stop there:
+/// the next step up starts from `0`, not from a negative value the clear would hide.
 #[test]
 fn both_paths_stop_at_the_floor_and_clear_the_duration() {
-    let passos = [false, false];
+    let passos = [false, false, true];
     let cartoes = caminha(true, 0.2, &passos);
     assert_eq!(cartoes[0], um_clip(None), "0 is the gesture that clears");
     assert_eq!(cartoes[1], um_clip(None), "a duration never goes negative");
+    assert_eq!(cartoes[2], um_clip(Some(0.2)), "the floor held");
     assert_eq!(cartoes, caminha(false, 0.2, &passos));
+}
+
+/// ↓ at the floor leaves Time and Frame at `0` in cards too: the drag rate frees the scrub, not the step.
+#[test]
+fn in_cards_the_key_keeps_time_and_frame_at_the_floor() {
+    for id in [
+        ph2d_panel_timeline::ids::TIMELINE_TIME_NUM,
+        ph2d_panel_timeline::ids::TIMELINE_FRAME_NUM,
+    ] {
+        let _caminho = Caminho::de(true);
+        let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+        let mut state = TimelinePanelState::default();
+        let _ = pinta_a_duracao(&mut host, &mut state, 2.0);
+        let r = host
+            .paint::<TimelinePanel>(&mut state, VIEWPORT)
+            .iter()
+            .find(|(w, _)| *w == id)
+            .map(|(_, r)| *r)
+            .expect("chip");
+        let evs = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
+        route_events(&mut host, &mut state, evs);
+        assert_eq!(host.store().focus_id(), Some(id));
+        let evs = tecla_de_passo(&mut host, false);
+        route_events(&mut host, &mut state, evs);
+        assert_eq!(host.store().number_value(id), Some(0.0));
+    }
 }
 
 /// In cards the old arrow column is VALUE: a click there steps nothing, arms no hold, and opens

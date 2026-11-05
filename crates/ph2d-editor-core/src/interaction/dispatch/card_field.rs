@@ -111,8 +111,14 @@ pub(super) fn arrow(
     };
     let delta = spec.step * store.card_step_mul() * if up { 1.0 } else { -1.0 };
     let mut v = *value + delta;
-    if let Some((lo, hi)) = store.number_scrub_interval(id) {
-        v = v.clamp(lo, hi); // CLAMP-OK: (lo, hi) já normalizado por `number_scrub_interval`
+    // O limite da seta de `PH2D_CARDS=0` (`apply_number_stepper_if_hit`): a faixa manda no passo; a taxa
+    // de arrasto só solta o scrub.
+    let limite = store
+        .number_range(id)
+        .map(|(a, b, _)| (a.min(b), a.max(b)))
+        .or_else(|| store.number_scrub_interval(id));
+    if let Some((lo, hi)) = limite {
+        v = v.clamp(lo, hi); // CLAMP-OK: (lo, hi) já normalizado acima ou por `number_scrub_interval`
     }
     let (v, _) = super::apply_chip_value_with_mirror(store, id, v);
     if let Some(InteractiveState::NumberInput {

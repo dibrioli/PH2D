@@ -101,6 +101,7 @@ pub(super) fn apply_number_stepper_if_hit(
     click_x: f32,
     click_y: f32,
     press_ns: u128,
+    took_focus: bool,
 ) -> bool {
     use crate::widget::NumberInput;
     // Audit fix #6 (HIGH): peek value + step heuristic with an
@@ -154,6 +155,7 @@ pub(super) fn apply_number_stepper_if_hit(
         direction,
         step,
         press_ns,
+        took_focus,
         last_tick_ns: press_ns,
     });
     true

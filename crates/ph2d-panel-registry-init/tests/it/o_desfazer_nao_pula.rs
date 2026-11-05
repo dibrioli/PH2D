@@ -450,3 +450,172 @@ fn the_only_restore_door_of_the_shell_calls_the_two_halves_in_order() {
         "outra porta do restauro passa ao lado"
     );
 }
+
+// ── F13: a proporção é do objecto, não dos bits ─────────────────────────────────────────────────
+
+/// O que a shell faz a cada quadro pela proporção do Scale.
+fn quadro_da_shell(m: &mut Mesa) {
+    ph2d_host_presos::chaves_do_quadro(&mut m.h.store, m.sim.world());
+}
+
+fn publica_escala(m: &mut Mesa, s: [f32; 2]) {
+    insp::set_current_inspector_transform(Some(ph2d_editor_core::InspectorTransformInfo {
+        entity_bits: m.bits[0],
+        translation: [0.0, 0.0],
+        rotation_rad: 0.0,
+        scale: s,
+        skew_rad: [0.0, 0.0],
+    }));
+    m.h.gizmo.replace_selection(Some(m.bits[0]));
+    m.h.store
+        .set_card_subject(INSP_PANEL, Some((m.bits[0], nome(0).to_owned())));
+    pinta(&mut m.h, 2);
+    m.h.bus.drain().for_each(drop);
+}
+
+/// Escreve no Scale X da coluna: devolve a escala que a edição pediu ao mundo.
+fn escreve_scale_x(m: &mut Mesa, t: &str) -> [f32; 2] {
+    let id = insp::ids::INSP_TRANSFORM_SCALE_X;
+    let r = m.h.hit_index.rect_for(id).expect("o Scale X");
+    let c = (r.x + r.w - 6.0, r.y + r.h * 0.5);
+    let _ = m.h.store.record_pointer_down(Some(NodeId(1)), 0);
+    mao(&mut m.h, PointerKind::Down, c);
+    mao(&mut m.h, PointerKind::Up, c);
+    assert_eq!(m.h.store.focus_id(), Some(id), "o Scale X não tomou o foco");
+    m.teclas(t);
+    m.h.bus
+        .drain()
+        .filter_map(|a| match a {
+            EditorAction::InspectorTransformEdit(i) => Some(i.scale),
+            _ => None,
+        })
+        .last()
+        .expect("a escrita não chegou ao objecto")
+}
+
+/// A: 2:1, corrente fechada, par a zero: só a proporção guardada diz para onde ele volta.
+fn trava_a_com_o_par_a_zero(m: &mut Mesa) {
+    for i in 0..3 {
+        let e = ph2d_ecs::Entity::from_bits(m.bits[i]);
+        m.sim.world_mut().entity_mut(e).insert(id_estavel(i));
+    }
+    publica_escala(m, [2.0, 1.0]);
+    clica(&mut m.h, insp::SCALE_LOCK);
+    quadro_da_shell(m);
+    assert_eq!(escreve_scale_x(m, "0"), [0.0, 0.0]);
+    publica_escala(m, [0.0, 0.0]);
+    quadro_da_shell(m);
+}
+
+/// Abre a corrente, que é da thread.
+fn abre_a_corrente(m: &mut Mesa) {
+    m.h.apply_event(ph2d_editor_core::interaction::WidgetEvent::Click(
+        insp::SCALE_LOCK,
+    ));
+    assert!(!insp::scale_lock_on());
+}
+
+/// ⭐ Apagar A e desfazer: A volta com a proporção dele, não com 1:1.
+#[test]
+fn deleting_and_undoing_keeps_the_scale_chain_of_the_object() {
+    let mut m = mesa();
+    trava_a_com_o_par_a_zero(&mut m);
+
+    let a = ph2d_ecs::Entity::from_bits(m.bits[0]);
+    m.sim.world_mut().despawn(a);
+    quadro_da_shell(&mut m);
+
+    let antes = ph2d_host_presos::antes_do_restauro(m.sim.world());
+    respawn(&mut m);
+    depois_com(&mut m, &antes);
+    assert_eq!(
+        insp::travas_de_escala(),
+        [m.bits[0]],
+        "a proporção não voltou com o objecto"
+    );
+    publica_escala(&mut m, [0.0, 0.0]);
+    assert_eq!(escreve_scale_x(&mut m, "4"), [4.0, 2.0], "voltou a 1:1");
+    abre_a_corrente(&mut m);
+}
+
+/// Os mesmos bits noutro objecto (um mundo novo os dá de novo) não herdam a proporção de quem saiu.
+#[test]
+fn recycled_bits_do_not_inherit_the_scale_chain() {
+    let mut m = mesa();
+    trava_a_com_o_par_a_zero(&mut m);
+    let velhos = m.bits.clone();
+
+    m.sim = ph2d_ecs::SimWorld::new();
+    for i in 0..3 {
+        let e = m
+            .sim
+            .world_mut()
+            .spawn((
+                Transform::default(),
+                Name::new("Outro"),
+                VecPathRef(m.ids[i]),
+                id_estavel(i + 10),
+            ))
+            .id();
+        m.bits[i] = e.to_bits();
+    }
+    assert_eq!(m.bits, velhos, "a régua: o mundo novo não repetiu os bits");
+    quadro_da_shell(&mut m);
+    assert_eq!(
+        insp::travas_de_escala(),
+        Vec::<u64>::new(),
+        "os bits ficaram com a proporção de quem saiu"
+    );
+    publica_escala(&mut m, [0.0, 0.0]);
+    assert_eq!(
+        escreve_scale_x(&mut m, "4"),
+        [4.0, 4.0],
+        "herdou a proporção"
+    );
+    abre_a_corrente(&mut m);
+}
+
+/// Refazer e desfazer o apagar, muitas vezes: um registo só, e a proporção intacta no fim.
+#[test]
+fn redoing_the_delete_leaves_no_garbage_behind() {
+    let mut m = mesa();
+    trava_a_com_o_par_a_zero(&mut m);
+    for _ in 0..5 {
+        // Ctrl+Y: o passo sem A.
+        let antes = ph2d_host_presos::antes_do_restauro(m.sim.world());
+        respawn_sem(&mut m, &[0]);
+        depois_com(&mut m, &antes);
+        quadro_da_shell(&mut m);
+        assert_eq!(insp::travas_de_escala(), Vec::<u64>::new());
+        assert_eq!(insp::travas_fora_do_mundo(), 1, "o registo multiplicou-se");
+        // Ctrl+Z: A de volta.
+        let antes = ph2d_host_presos::antes_do_restauro(m.sim.world());
+        respawn(&mut m);
+        depois_com(&mut m, &antes);
+        quadro_da_shell(&mut m);
+        assert_eq!(insp::travas_de_escala(), [m.bits[0]]);
+        assert_eq!(insp::travas_fora_do_mundo(), 0, "ficou lixo fora do mundo");
+    }
+    publica_escala(&mut m, [0.0, 0.0]);
+    assert_eq!(escreve_scale_x(&mut m, "4"), [4.0, 2.0]);
+    // Abrir a corrente esquece também a de quem está fora do mundo.
+    let antes = ph2d_host_presos::antes_do_restauro(m.sim.world());
+    respawn_sem(&mut m, &[0]);
+    depois_com(&mut m, &antes);
+    assert_eq!(insp::travas_fora_do_mundo(), 1);
+    abre_a_corrente(&mut m);
+    assert_eq!(insp::travas_fora_do_mundo(), 0, "abrir não esvaziou");
+}
+
+/// A chave aprende-se enquanto o objecto está no mundo: é a shell que o faz, a cada quadro.
+/// *Mutação: voltar à `chave::resolve` no quadro ⇒ apagar perde a proporção na app e nenhum outro teste vê.*
+#[test]
+fn the_shell_frame_learns_the_keys() {
+    let raiz = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../shells/desktop/src");
+    let src = std::fs::read_to_string(raiz.join("render_loop/fase_selection_mirror_bone_focus.rs"))
+        .expect("a fase");
+    assert_eq!(
+        src.matches("ph2d_host_presos::chaves_do_quadro(").count(),
+        1
+    );
+}

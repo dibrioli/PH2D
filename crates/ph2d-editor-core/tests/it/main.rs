@@ -15,6 +15,8 @@ mod foundation_module_tree;
 #[path = "../common/hero_sources.rs"]
 mod hero_sources;
 
+mod clicar_na_seta_nao_abre_a_escrita;
+
 mod a_barra_aberta_no_seletor_tem_o_anel;
 mod a_button_row_is_laid_out_by_the_door;
 mod a_caixa_de_numero_nao_corta_o_numero;

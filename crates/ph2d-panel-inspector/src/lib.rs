@@ -59,10 +59,15 @@ mod cards;
 /// Os cartões que levam a lista de estilos de cor (D28) — os testes do hero montado nomeiam-nos.
 pub use cards::{
     CARD_APPEARANCE, CARD_FILL, CARD_MATERIAL, CARD_OBJECT, CARD_ORDERING, CARD_STROKE,
-    CARD_TRANSFORM, DD_BLEND, SCALE_LOCK, hex_id as cards_hex_id, reata_travas_de_escala,
-    scale_locked as scale_lock_on, set_cards_on, travas_de_escala,
+    CARD_TRANSFORM, DD_BLEND, SCALE_LOCK, hex_id as cards_hex_id, scale_locked as scale_lock_on,
+    set_cards_on,
 };
+mod travas;
 pub use cards_objeto::{CARD_EMPTY, CARD_IMAGE, CARD_INSTANCE, CARD_PROPERTIES, CARD_VISIBILITY};
+pub use travas::{
+    ChaveDaTrava, anota_chaves_de_trava, devolve_travas, reata_travas_de_escala, travas_de_escala,
+    travas_fora_do_mundo,
+};
 mod cards_componentes;
 mod cards_corpos;
 mod cards_objeto;

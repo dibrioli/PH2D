@@ -83,9 +83,6 @@ pub(crate) fn active() -> bool {
 thread_local! {
     static LIGADO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     static PROPORCAO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
-    /// A proporção de cada objecto tocado com a corrente fechada; esvazia ao abri-la.
-    static TRAVAS: std::cell::RefCell<std::collections::BTreeMap<u64, ParTravado>> =
-        const { std::cell::RefCell::new(std::collections::BTreeMap::new()) };
     /// O hex digitado à espera de a forma o mostrar; depois o seletor fecha.
     static HEX_PENDENTE: std::cell::Cell<Option<HexPendente>> =
         const { std::cell::Cell::new(None) };
@@ -225,38 +222,16 @@ pub fn scale_locked() -> bool {
 pub(crate) fn toggle_scale_lock() {
     let fecha = !scale_locked();
     PROPORCAO.with(|c| c.set(fecha));
-    TRAVAS.with_borrow_mut(|travas| {
-        travas.clear();
-        if let Some(t) = crate::state::current_inspector_transform().filter(|_| fecha) {
-            travas.insert(t.entity_bits, ParTravado::ao_ligar(t.scale.map(f64::from)));
-        }
-    });
-}
-
-/// Os objectos com proporção guardada.
-#[must_use]
-pub fn travas_de_escala() -> Vec<u64> {
-    TRAVAS.with_borrow(|t| t.keys().copied().collect())
-}
-
-/// ⭐ O respawn do Desfazer trocou os bits: a proporção de cada objecto passa aos de agora (`novo`), e a
-/// de quem já não existe sai. Sem isto, desfazer para um par com zero dava 1:1 (`doc CartoesUI/10`).
-pub fn reata_travas_de_escala(novo: impl Fn(u64) -> Option<u64>) {
-    TRAVAS.with_borrow_mut(|t| {
-        *t = std::mem::take(t)
-            .into_iter()
-            .filter_map(|(bits, par)| Some((novo(bits)?, par)))
-            .collect();
-    });
+    crate::travas::recomeca(
+        crate::state::current_inspector_transform()
+            .filter(|_| fecha)
+            .map(|t| (t.entity_bits, ParTravado::ao_ligar(t.scale.map(f64::from)))),
+    );
 }
 
 /// O espelho muda o sinal de um eixo sem levar o outro, e a proporção guardada muda com ele.
 pub(crate) fn scale_espelhado(entity_bits: u64, eixo: usize) {
-    TRAVAS.with_borrow_mut(|travas| {
-        if let Some(t) = travas.get_mut(&entity_bits) {
-            t.espelhou(eixo);
-        }
-    });
+    crate::travas::espelhou(entity_bits, eixo);
 }
 
 /// Com a corrente fechada, mudar um eixo do Scale leva o outro na proporção guardada.
@@ -276,10 +251,7 @@ pub(crate) fn keep_proportion(
         return;
     };
     let vivo = info.scale.map(f64::from);
-    let seguiu = TRAVAS.with_borrow_mut(|travas| {
-        let t = travas
-            .entry(info.entity_bits)
-            .or_insert_with(|| ParTravado::ao_ligar(vivo));
+    let seguiu = crate::travas::com_par(info.entity_bits, vivo, |t| {
         t.rever(vivo);
         t.segue(eixo, v)
     });

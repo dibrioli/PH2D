@@ -122,7 +122,7 @@ impl crate::App {
         let doc = ph2d_editor_core::DocPx::of(&hero.project);
         let (pick, linha) = (self.skeleton.smart_pick, &self.timeline.doc);
         publica_o_osso(sim, osso_em_foco, doc, pick, linha);
-        ph2d_card_rope::chave::resolve(&mut hero.store, sim.world()); // T36: o alfinete durável
+        ph2d_host_presos::chaves_do_quadro(&mut hero.store, sim.world()); // T36: o alfinete durável
         // O cartão solto preso a um osso: o retrato de cada preso e a corda.
         ph2d_panel_skeleton::publica_presos(&hero.store.loose_pins_of(BONES), |b| {
             let vivo = ph2d_skeleton_live::painel::live_bone(sim, b);

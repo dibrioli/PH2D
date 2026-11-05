@@ -100,6 +100,8 @@ pub struct NumberStepperHoldState {
     pub step: f64,
     /// `timestamp_ns` of the Down event.
     pub press_ns: u128,
+    /// Este Down é que deu o foco ao campo: a largada devolve-o. A escrever já, ele fica.
+    pub took_focus: bool,
     /// `timestamp_ns` of the most recent tick that fired (initially
     /// equal to `press_ns` — the Down itself counts as the first
     /// tick). The repeat path checks `now - last_tick_ns` against the

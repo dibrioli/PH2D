@@ -21,13 +21,17 @@ pub fn resolve(store: &mut WidgetStore, world: &World) {
     }
 }
 
-fn chave_de(world: &World, bits: u64) -> Option<(u64, String)> {
+/// A chave durável de `bits`: `None` = bits mortos, ou objecto sem `StableId`.
+#[must_use]
+pub fn chave_de(world: &World, bits: u64) -> Option<(u64, String)> {
     let e = Entity::try_from_bits(bits)?;
     let id = world.get::<StableId>(e).filter(|s| !s.is_none())?;
     Some((id.0, nome(world, e)))
 }
 
-fn achar(world: &World, id: u64, nome_gravado: &str) -> Option<u64> {
+/// Os bits de agora do objecto com esta chave.
+#[must_use]
+pub fn achar(world: &World, id: u64, nome_gravado: &str) -> Option<u64> {
     let e = entity_with_stable_id(world, StableId(id))?;
     (nome(world, e) == nome_gravado).then(|| e.to_bits())
 }

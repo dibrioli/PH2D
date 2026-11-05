@@ -335,6 +335,12 @@ impl Mesa {
             Some(id),
             "a caixa não tomou o foco"
         );
+        self.teclas(t);
+        self.quadros(3);
+    }
+
+    /// Com a caixa em foco: substitui o texto dela por `t` e dá Enter.
+    fn teclas(&mut self, t: &str) {
         let arena = bumpalo::Bump::new();
         let tudo = ph2d_host::KeyEvent {
             keycode: 0x41,
@@ -362,7 +368,6 @@ impl Mesa {
         for e in dispatch_key(&mut self.h.store, enter, &arena).to_vec() {
             self.h.apply_event(e);
         }
-        self.quadros(3);
     }
 
     /// `gesto`: só A muda; B e C ficam byte a byte e a tool volta ao estilo de quem está escolhido.
@@ -841,3 +846,6 @@ pub(super) mod scrub_do_preso;
 
 #[path = "o_desfazer_nao_pula.rs"]
 mod desfazer_nao_pula;
+
+#[path = "o_icone_repoe_no_alvo_certo.rs"]
+mod icone_repoe_no_alvo_certo;

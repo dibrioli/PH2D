@@ -65,9 +65,27 @@ pub fn publica(
 /// O que só se lê ANTES do respawn: a chave durável dos objectos com proporção do Scale guardada.
 pub struct AntesDoRestauro(Vec<(u64, ph2d_ecs::StableId)>);
 
+fn anota_travas(world: &ph2d_ecs::World) {
+    ph2d_panel_inspector::anota_chaves_de_trava(
+        |bits| ph2d_ecs::Entity::try_from_bits(bits).is_some_and(|e| world.get_entity(e).is_ok()),
+        |bits| ph2d_card_rope::chave::chave_de(world, bits),
+    );
+}
+
+/// ⭐ O quadro: os alfinetes e a proporção do Scale ligam os bits de agora à chave durável do objecto,
+/// nos dois sentidos, enquanto ele está no mundo para a dar.
+pub fn chaves_do_quadro(store: &mut WidgetStore, world: &ph2d_ecs::World) {
+    ph2d_card_rope::chave::resolve(store, world);
+    anota_travas(world);
+    ph2d_panel_inspector::devolve_travas(|(id, nome)| {
+        ph2d_card_rope::chave::achar(world, *id, nome)
+    });
+}
+
 /// Chame antes de o restauro apagar o mundo: depois dele os bits de agora não dizem quem eram.
 #[must_use]
 pub fn antes_do_restauro(world: &ph2d_ecs::World) -> AntesDoRestauro {
+    anota_travas(world);
     let chave = |bits: u64| {
         let e = ph2d_ecs::Entity::try_from_bits(bits)?;
         let id = world
@@ -115,7 +133,7 @@ pub fn depois_do_restauro(
         sel,
         vector_active,
     );
-    ph2d_card_rope::chave::resolve(&mut hero.store, sim.world());
+    chaves_do_quadro(&mut hero.store, sim.world());
 }
 
 /// O gesto de base vai à forma do cartão preso sob ele; sem cartão, à selecionada.

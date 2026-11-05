@@ -513,7 +513,15 @@ pub(super) fn dispatch_down<'frame>(
             && !store.is_chip_no_stepper(id)
             // O campo de cartão não pinta setas: a coluna direita dele é valor (smoke 3).
             && (store.card_field(id).is_none() || store.tool_row_slot(id) == Some(rect))
-            && apply_number_stepper_if_hit(store, id, rect, event.x, event.y, event.timestamp_ns);
+            && apply_number_stepper_if_hit(
+                store,
+                id,
+                rect,
+                event.x,
+                event.y,
+                event.timestamp_ns,
+                focus_gained,
+            );
         // M14.A drag-or-edit: when the Down lands on a
         // NumberInput body (NOT on the stepper, NOT a
         // double-click that triggers select-all), record a

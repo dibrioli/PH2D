@@ -90,6 +90,18 @@ pub(super) fn dispatch_up<'frame>(
             events.push(WidgetEvent::ValueChanged(slider_id));
         }
     }
+    // A seta dá o passo e não abre a escrita: fecha como o arrasto no corpo, e o `Blur` é o fim do gesto.
+    if let Some(hold) = store.number_stepper_hold()
+        && hold.took_focus
+        && store.focus_id() == Some(hold.id)
+    {
+        let blurred = super::hover::blurred_field_state(store, hold.id);
+        if let Some(InteractiveState::NumberInput { state, .. }) = store.get_mut(hold.id) {
+            *state = blurred;
+        }
+        store.set_focus(None);
+        events.push(WidgetEvent::Blur(hold.id));
+    }
     store.end_number_stepper_hold();
     // Hierarchy drag ends on Up. If the drag was active
     // (cursor moved past the threshold), find the drop

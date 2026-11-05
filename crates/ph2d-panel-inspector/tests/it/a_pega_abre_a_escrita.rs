@@ -214,3 +214,42 @@ fn arrastar_a_pega_nao_abre_a_escrita() {
         "o scrub abriu a escrita"
     );
 }
+
+/// Escreve `valor` no campo e devolve o que isso pediu ao mundo.
+fn escrever(m: &mut Mesa, id: NodeId, valor: f64) -> String {
+    let p = m.pega(id);
+    m.toque(p, NOVO_GESTO_NS);
+    for e in m.host.type_keys_then_enter(id, &valor.to_string()) {
+        m.host.apply_panel_event::<InspectorPanel>(&mut m.st, e);
+    }
+    format!("{:?}", m.host.drained_actions())
+}
+
+/// ⭐ Em todo campo com valor de fábrica, o duplo clique no ícone pede ao mundo o mesmo que escrever esse
+/// valor à mão: é desse pedido que o Auto Key e o Desfazer vivem.
+/// *Mutação: tirar o `ValueChanged` do `down_on_handle` ⇒ a reposição não pede nada.*
+#[test]
+fn a_reposicao_pede_o_mesmo_que_escrever_a_fabrica() {
+    let ids: Vec<(NodeId, f64)> = {
+        let m = Mesa::nova();
+        m.com_pega()
+            .into_iter()
+            .filter_map(|id| Some((id, m.host.store().card_field(id)?.default?)))
+            .collect()
+    };
+    assert!(ids.len() >= 2, "a varredura viu só {ids:?}");
+    for (id, fabrica) in ids {
+        let longe = if fabrica == 0.0 { 1.0 } else { fabrica * 0.5 };
+        let mut a = Mesa::nova();
+        escrever(&mut a, id, longe);
+        let p = a.pega(id);
+        a.toque(p, NOVO_GESTO_NS);
+        a.toque(p, ENTRE_TOQUES_NS);
+        let reposicao = format!("{:?}", a.host.drained_actions());
+        let mut b = Mesa::nova();
+        escrever(&mut b, id, longe);
+        let escrita = escrever(&mut b, id, fabrica);
+        assert_ne!(escrita, "[]", "{id:?}: a régua: escrever não pediu nada");
+        assert_eq!(reposicao, escrita, "{id:?}");
+    }
+}

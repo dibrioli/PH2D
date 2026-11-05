@@ -74,3 +74,5 @@ corpo do cartão só tem `&WidgetStore`, corre mais de uma vez e pode voar ou es
 Leis que nenhuma fatia desfaz: só pele, **nenhum motor, preset ou pincel muda** (por nome, `a_largura_de_fabrica_e_a_aprovada` e
 `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje`) · E10 · Paper press é controlo do pincel · Paint type Water/Oil · Volume ≠
 Dilution · rótulo em campo não óbvio · Auto Key: `.key` nos ids de `paint_decorator_campo`, o que é ajuste não leva.
+
+**F3 (04/11):** a linha de preset voa como o cartão do Kanban (`paint_dropdown_list_reordering`); On switch + Sync descem sem cortar; grade do Tilt em `TextDisabled` só no cartão (E10: só tinta).

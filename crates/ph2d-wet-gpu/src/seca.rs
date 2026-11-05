@@ -88,6 +88,8 @@ pub struct SecaGpu {
     pub trgb: wgpu::Buffer,
     paper: wgpu::Buffer,
     aux: wgpu::Buffer,
+    edge: wgpu::Buffer,
+    alfa: wgpu::Buffer,
     faixa: wgpu::Buffer,
     pipes: [(wgpu::ComputePipeline, wgpu::BindGroup); 2],
     u: SecaU,
@@ -186,6 +188,8 @@ impl SecaGpu {
             trgb,
             paper,
             aux,
+            edge,
+            alfa,
             faixa,
             pipes,
             u,
@@ -193,6 +197,55 @@ impl SecaGpu {
         };
         s.upload(gpu, g);
         s
+    }
+
+    /// A passada de secagem passa a ser a da lei `Pigmento` (`seca_tinta.wgsl`); a `borda` é a mesma.
+    pub(crate) fn liga_tinta(&mut self, gpu: &GpuContext, t: &crate::tinta::TintaGpu) {
+        let module = gpu
+            .device
+            .create_shader_module(wgpu::ShaderModuleDescriptor {
+                label: Some("seca.wgsl + tinta"),
+                source: wgpu::ShaderSource::Wgsl(crate::tinta::wgsl_seca().into()),
+            });
+        let pipe = gpu
+            .device
+            .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                label: Some("seca_tinta"),
+                layout: None,
+                module: &module,
+                entry_point: Some("seca_tinta"),
+                compilation_options: Default::default(),
+                cache: None,
+            });
+        let buffers: [(u32, &wgpu::Buffer); 14] = [
+            (0, &self.ub),
+            (1, &self.film),
+            (2, &self.susp),
+            (3, &self.sett),
+            (4, &self.srgb),
+            (5, &self.trgb),
+            (6, &self.paper),
+            (8, &self.edge),
+            (9, &self.alfa),
+            (10, &self.faixa),
+            (11, &t.filme),
+            (12, &t.aberto),
+            (13, &t.abertura),
+            (14, &t.meio),
+        ];
+        let entries: Vec<wgpu::BindGroupEntry> = buffers
+            .iter()
+            .map(|(b, bf)| wgpu::BindGroupEntry {
+                binding: *b,
+                resource: bf.as_entire_binding(),
+            })
+            .collect();
+        let bg = gpu.device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("seca_tinta"),
+            layout: &pipe.get_bind_group_layout(0),
+            entries: &entries,
+        });
+        self.pipes[1] = (pipe, bg);
     }
 
     /// Sobe o estado, o papel, a vela/vidrado/óleo por célula, as faixas e os uniformes.

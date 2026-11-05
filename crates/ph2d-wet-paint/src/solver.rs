@@ -605,7 +605,8 @@ mod gota; // a lei da GOTA (W1e, F1) — instrumento das sondas, filho por LOC
 pub(crate) mod ladeira_do_oleo; // Bug 2 (dono 30/10): a altura do óleo assentado entra no nivelamento da água
 pub(crate) use ladeira_do_oleo::fotografa as fotografa_a_ladeira;
 pub use ladeira_do_oleo::{
-    BINGHAM_COM_SETT, BINGHAM_PHI_C, LADEIRA_ROTA, PAPEL_BINGHAM, PAPEL_CORPO,
+    BINGHAM_COM_SETT, BINGHAM_PHI_C, LADEIRA_ROTA, PAPEL_BINGHAM, PAPEL_CORPO, PHI_C, TAU_CORPO,
+    TAU0,
 };
 mod project;
 mod sedimenta;

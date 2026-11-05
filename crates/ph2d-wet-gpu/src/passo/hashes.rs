@@ -57,6 +57,10 @@ pub(super) fn hash_fina(g: &Grid, y: usize) -> u64 {
             .collect();
         h = mistura(h, c(&v));
     }
+    let tinta = crate::tinta::plano_do_hash(g, a, b);
+    if !tinta.is_empty() {
+        h = mistura(h, c(&tinta));
+    }
     h
 }
 

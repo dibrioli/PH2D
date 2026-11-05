@@ -2,7 +2,7 @@
 
 use ph2d_gpu::GpuContext;
 
-/// Carimbos por passo: 2 por passada (rebuild 5 + porta 1 + secagem 4 + plano 24 = 34 ⇒ 68).
+/// Carimbos por passo: 2 por passada (rebuild 5 + porta 1 + secagem 4 + plano 32 = 42 ⇒ 84).
 pub(super) const MAX_CARIMBOS: u32 = 96;
 
 pub(super) enum Despacho<'a> {

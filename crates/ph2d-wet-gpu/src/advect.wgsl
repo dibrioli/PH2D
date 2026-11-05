@@ -273,11 +273,11 @@ struct K {
 @group(0) @binding(14) var<storage, read> sett: array<f32>;
 @group(0) @binding(15) var<uniform> k: K;
 
-// `flow_rows`: o núcleo gather — escreve `flow` e mais nada; lê o `wet` do INÍCIO do passo.
-@compute @workgroup_size(16, 16, 1)
-fn campo(@builtin(global_invocation_id) g: vec3<u32>) {
+// `flow_rows`: o núcleo gather até ao freio; quem escreve `flow` é o `campo` (ou o `campo_oleo`).
+struct CampoV { ok: bool, i: i32, fi: i32, f: f32, e: vec2<f32> }
+fn campo_v(g: vec3<u32>) -> CampoV {
     let c = fcell(g);
-    if !c.ok { return; }
+    if !c.ok { return CampoV(false, 0, 0, 0.0, vec2<f32>(0.0, 0.0)); }
     let px = flow_probe(c.x, u.w);
     let pl = flow_probe(c.x - 1, u.w);
     let pr = flow_probe(c.x + 1, u.w);
@@ -285,7 +285,7 @@ fn campo(@builtin(global_invocation_id) g: vec3<u32>) {
     let yu = flow_probe(c.y - 1, u.h) * u.s;
     let yd = flow_probe(c.y + 1, u.h) * u.s;
     let fi = px + ym;
-    if act[fi] == 0u { return; }
+    if act[fi] == 0u { return CampoV(false, 0, 0, 0.0, vec2<f32>(0.0, 0.0)); }
     let i = c.i;
     let f = st[fi].x;
     var ex = vel_x[i];
@@ -325,8 +325,15 @@ fn campo(@builtin(global_invocation_id) g: vec3<u32>) {
         ex *= br;
         ey *= br;
     }
-    flow_x[i] = clamp(ex, -u.max_v, u.max_v);
-    flow_y[i] = clamp(ey, -u.max_v, u.max_v);
+    return CampoV(true, i, fi, f, vec2<f32>(ex, ey));
+}
+
+@compute @workgroup_size(16, 16, 1)
+fn campo(@builtin(global_invocation_id) g: vec3<u32>) {
+    let r = campo_v(g);
+    if !r.ok { return; }
+    flow_x[r.i] = clamp(r.e.x, -u.max_v, u.max_v);
+    flow_y[r.i] = clamp(r.e.y, -u.max_v, u.max_v);
 }
 
 // `wet_stamp_rows`: film fundo marca a folha úmida (corre DEPOIS do `campo`).

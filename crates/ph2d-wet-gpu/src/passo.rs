@@ -3,19 +3,18 @@
 //! [`PassoPlaca::desce`]; quem lê ou escreve a grade na CPU desce antes e sobe depois (grade inteira).
 
 use crate::seca::{SecaGpu, SecaU};
-use crate::{
-    AdvectGpu, Knobs, PLANO_BORDAS, PLANO_CAMPO, PLANO_PROJETA, PLANO_REBUILD, PLANO_SEDIMENTA,
-    PLANO_SUAVE, PLANO_VMAX, Rect, Uniforms, grupos, read,
-};
+use crate::tinta::TintaGpu;
+use crate::{AdvectGpu, Knobs, PLANO_REBUILD, Rect, Uniforms, grupos, read};
 use ph2d_gpu::GpuContext;
 use ph2d_wet_paint::assenta::Ecra;
 use ph2d_wet_paint::grid::Grid;
 use ph2d_wet_paint::sim::{LeiDaTinta, Sim};
 use ph2d_wet_paint::tuning::{Knob, Tuning};
 
-/// A cena só usa o que a placa sabe: lei Cobre, sem K–M, sem gota/óleo/ladeira, sem fingering/backrun/difusão, passo
-/// Jacobi (degraus 3–5). A tinta OPACA (`Knob::Opaque`, `Ecra::com_opaca`) e a
-/// lei `Pigmento` (até à E11) a placa NÃO sabe: o pincel opaco ou uma célula com ela fica na CPU — nunca diverge.
+/// A cena só usa o que a placa sabe: lei Cobre, sem K–M, sem gota/Real Oil/ladeira, sem fingering/backrun/difusão, passo
+/// Jacobi (degraus 3–5). A tinta OPACA (`Knob::Opaque`, `Ecra::com_opaca`) a placa NÃO sabe. A lei `Pigmento` (E11, portão
+/// `paridade_da_tinta_por_placa`) leva o meio e o corpo da célula; ficam na CPU o Pigment mix (o lado espectral), o chão como
+/// força, a água parada que dissolve (`Knob::Dissolve`) e a borda macia (`Knob::EdgeSoftMass`) — nunca diverge.
 #[must_use]
 pub fn placa_sabe(sim: &Sim, g: &Grid, tuning: &Tuning) -> bool {
     let p = sim.gather_params(tuning);
@@ -23,14 +22,23 @@ pub fn placa_sabe(sim: &Sim, g: &Grid, tuning: &Tuning) -> bool {
         || (p.k(Knob::ExtFingering) == 0.0
             && p.k(Knob::ExtBackrun) == 0.0
             && p.k(Knob::ExtDiffusion) == 0.0);
+    let lei = match sim.tinta {
+        LeiDaTinta::Velha => g.oleo.is_empty(),
+        LeiDaTinta::Pigmento => {
+            p.pigment_mix == 0.0
+                && g.pigmento.is_empty()
+                && g.chao.is_empty()
+                && p.k(Knob::Dissolve) == 0.0
+                && p.k(Knob::EdgeSoftMass) == 0.0
+        }
+    };
     sim.order_invariant
-        && sim.tinta == LeiDaTinta::Velha
+        && lei
         && !sim.step_pending()
         && matches!(p.ecra, Ecra::Cobre { .. })
         && !p.km_mixing
         && p.oleo == 0.0
         && sim.drip_head == 0.0
-        && g.oleo.is_empty()
         && p.k(Knob::Opaque) == 0.0
         && g.aparencia.iter().all(|a| a.opaca == 0.0)
         && ext
@@ -38,14 +46,14 @@ pub fn placa_sabe(sim: &Sim, g: &Grid, tuning: &Tuning) -> bool {
 
 mod fatias;
 mod hashes;
+mod plano;
 mod wgsl;
 
 use fatias::{Despacho, Fatias, MAX_CARIMBOS};
 use hashes::{finas_de, fluxo_de, hash_fina, hash_fluxo, hashes};
+use plano::MAX_PLANO;
 use wgsl::{ENTRELACA, PORTA};
 
-/// Passadas no máximo num passo depois do rebuild (campo 7 + sedimenta 2 + bordas 2 + projecção 5 + vmax 1).
-const MAX_PLANO: usize = 24;
 /// O orçamento de UMA submissão, em workgroups de 256 fios: corta-se antes da passada que o passaria
 /// (uma passada maior que ele vai sozinha). 4K = 41 k grupos por passada de folha ⇒ cada uma vai só.
 /// Medido (PLACA_degrau6.md, Radeon 610M, 4096×2560): maior submissão 93,3 → 22,6 ms (= a maior passada,
@@ -66,6 +74,8 @@ pub struct PassoPlaca {
     stage: wgpu::Buffer,
     adv: AdvectGpu,
     seca: SecaGpu,
+    /// A lei `Pigmento`: os seus buffers; `None` = a lei velha, passada a passada.
+    tinta: Option<TintaGpu>,
     /// `[separa, junta]` com o mesmo grupo (st, film, susp).
     entrelaca: [wgpu::ComputePipeline; 2],
     entrelaca_bg: [wgpu::BindGroup; 2],
@@ -92,8 +102,14 @@ impl PassoPlaca {
     pub fn new(gpu: &GpuContext, g: &Grid, sim: &Sim, tuning: &Tuning) -> Self {
         let p = sim.gather_params(tuning);
         let u = SecaU::new(g, &p, sim.evap_scale, sim.rewet_base, sim.ext_bypass);
-        let adv = AdvectGpu::new(gpu, g);
-        let seca = SecaGpu::new(gpu, g, u);
+        let mut adv = AdvectGpu::new(gpu, g);
+        let mut seca = SecaGpu::new(gpu, g, u);
+        let tinta = (sim.tinta == LeiDaTinta::Pigmento).then(|| {
+            let t = TintaGpu::new(gpu, g);
+            adv.liga_tinta(gpu, &t);
+            seca.liga_tinta(gpu, &t);
+            t
+        });
         let module = gpu
             .device
             .create_shader_module(wgpu::ShaderModuleDescriptor {
@@ -204,6 +220,7 @@ impl PassoPlaca {
             stage,
             adv,
             seca,
+            tinta,
             entrelaca: [p0, p1],
             entrelaca_bg: [b0, b1],
             w: g.w,
@@ -223,10 +240,11 @@ impl PassoPlaca {
         s
     }
 
-    /// A grade tem a forma desta placa (senão recria-se).
+    /// A grade tem a forma desta placa e a lei da tinta é a dos shaders dela (senão recria-se).
     #[must_use]
-    pub fn serve(&self, g: &Grid) -> bool {
+    pub fn serve(&self, g: &Grid, sim: &Sim) -> bool {
         (self.w, self.h, self.rf) == (g.w, g.h, g.flow.rf)
+            && self.tinta.is_some() == (sim.tinta == LeiDaTinta::Pigmento)
     }
 
     /// Sobe a grade INTEIRA (o estado da CPU passa a ser o da placa) e grava o espelho.
@@ -234,6 +252,9 @@ impl PassoPlaca {
         self.adv
             .upload(gpu, g, &Uniforms::from_grid(g, 0.0, Rect::full(g)));
         self.seca.upload(gpu, g);
+        if let Some(t) = &self.tinta {
+            t.sobe(gpu, g, 0, g.cells);
+        }
         self.hash_fina = hashes(g.rows, &|y| hash_fina(g, y));
         self.hash_fluxo = hashes(g.flow.rows, &|y| hash_fluxo(g, y));
         self.suja = g.has_fluid.then_some((g.by0, g.by1));
@@ -272,6 +293,9 @@ impl PassoPlaca {
         self.adv
             .upload_linhas(gpu, g, (y0, y1), fluxo_de(g, y0, y1));
         self.seca.upload_linhas(gpu, g, y0, y1);
+        if let Some(t) = &self.tinta {
+            t.sobe(gpu, g, y0 * g.s, (y1 + 1) * g.s);
+        }
         Some((y0, y1))
     }
 
@@ -288,6 +312,9 @@ impl PassoPlaca {
             faixas.push(((a.max(0) as usize).min(ult), (b.max(0) as usize).min(ult)));
         }
         self.desce_faixas(gpu, g, &faixas);
+        if let Some(t) = &self.tinta {
+            t.desce_faixas(gpu, g, &faixas);
+        }
         for (y0, y1) in faixas {
             let (f0, f1) = fluxo_de(g, y0, y1);
             for y in y0..=y1 {
@@ -399,6 +426,9 @@ impl PassoPlaca {
         g.active = a.iter().map(|&v| v as u8).collect();
         let w = self.adv.readback_wet(gpu);
         g.wet = w.iter().map(|&v| v as u8).collect();
+        if let Some(t) = &self.tinta {
+            t.desce_faixas(gpu, g, &[(0, g.rows - 1)]);
+        }
         // A placa não tem faixas vivas: a linha inteira é o superconjunto declarado (`active ⊆ faixa`);
         // o próximo rebuild da CPU reaperta-as.
         let full = g.s as i32 - 1;
@@ -441,22 +471,16 @@ impl PassoPlaca {
         self.adv.set_knobs(gpu, &k);
         let par = n.is_multiple_of(2);
         let seca = n.is_multiple_of(sim.dry_every);
-        let mut plano = Vec::with_capacity(MAX_PLANO);
-        plano.extend_from_slice(if n.is_multiple_of(4) {
-            &PLANO_CAMPO[..]
-        } else {
-            &PLANO_SUAVE[..]
-        });
-        if p.sedimenta > 0.0 {
-            plano.extend(PLANO_SEDIMENTA);
-        }
-        plano.extend(PLANO_BORDAS);
-        if n.is_multiple_of(3) {
-            plano.extend(PLANO_PROJETA);
-        }
-        plano.extend(PLANO_VMAX);
+        let com_tinta = self.tinta.is_some();
+        // A cura corre logo depois da secagem (`sim_step_stage`), à cabeça do plano; o fecho é depois do passo.
+        let cura = com_tinta && n.is_multiple_of(ph2d_wet_paint::drying::PASSOS_DA_CURA);
+        let plano = plano::do_passo(n, p.sedimenta > 0.0, com_tinta, cura);
         // As escritas da fila aplicam-se antes da PRÓXIMA submissão: todas antes da primeira (como num submit só).
         self.adv.zera_vmax(gpu);
+        if let (true, Some(t)) = (cura, &self.tinta) {
+            gpu.queue
+                .write_buffer(&t.fecham, 0, bytemuck::bytes_of(&0u32));
+        }
         // Rebuild sem secagem no mesmo passo: o resto passa pela porta do `has_fluid` (indirecto).
         let porta = par && !seca;
         let base: Vec<[u32; 3]> = plano
@@ -525,6 +549,17 @@ impl PassoPlaca {
         drop(f);
         let (c, ts) = self.le_stage(gpu, nq);
         self.carimba(&ts, &cortes, gpu);
+        // O fecho da cura é da CPU (a óptica da camada fina): raro, e só quando a placa contou alguém para fechar.
+        let fecha = cura
+            && self
+                .tinta
+                .as_ref()
+                .is_some_and(|t| read::<u32>(gpu, &t.fecham, 4)[0] > 0);
+        if fecha {
+            self.desce(gpu, g);
+            ph2d_wet_paint::drying::cura(g, 0.0);
+            self.sobe(gpu, g);
+        }
         if porta {
             (g.bx0, g.bx1, g.by0, g.by1, g.has_fluid) = (c[10], c[11], c[12], c[13], c[14] != 0);
             self.suja_junta(g);

@@ -183,6 +183,13 @@ pub const PLANO_REBUILD: [usize; 5] = [15, 16, 17, 18, 19];
 pub const PASSADA_VMAX: [&str; 1] = ["vmax_red"];
 /// O índice de [`PASSADA_VMAX`] em `pipes`.
 pub const PLANO_VMAX: [usize; 1] = [20];
+/// As passadas da lei `Pigmento` em `pipes`, depois de [`AdvectGpu::liga_tinta`] (`crate::tinta`).
+pub const T_TRANSPORTE: usize = 21;
+pub const T_COMMIT: usize = 22;
+pub const T_SEDIMENTA: usize = 23;
+pub const T_BORDAS: usize = 24;
+pub const CAMPO_OLEO: usize = 25;
+pub const T_CURA: usize = 26;
 
 /// O passo SEM SECAGEM do quadro `n` (1-based, o `Sim::frame`): estágios 0, 2, 3, 4, 5 do
 /// `sim_step_stage` — rebuild (`n % 2`), campo (`n % 4`) ou suave, advecção, sedimenta (se
@@ -651,10 +658,10 @@ impl AdvectGpu {
 pub(crate) fn grupos(u: &Uniforms, k: usize) -> (u32, u32) {
     let d = |a: i32, b: i32| (b - a + 1).max(0) as u32;
     let (c, r) = match k {
-        0..=3 | 14 | 20 => (d(u.x0, u.x1), d(u.y0, u.y1)),
-        4..=7 | 11..=13 => (d(u.fx0, u.fx1), d(u.fy0, u.fy1)),
+        0..=3 | 14 | 20 | T_TRANSPORTE | T_COMMIT | T_SEDIMENTA => (d(u.x0, u.x1), d(u.y0, u.y1)),
+        4..=7 | 11..=13 | CAMPO_OLEO => (d(u.fx0, u.fx1), d(u.fy0, u.fy1)),
         10 => (d(u.fx0, u.fx1) + 2, d(u.fy0, u.fy1) + 2),
-        8 | 16 | 17 => ((u.w + 2) as u32, (u.h + 2) as u32),
+        8 | 16 | 17 | T_BORDAS | T_CURA => ((u.w + 2) as u32, (u.h + 2) as u32),
         9 => ((u.fw + 2) as u32, (u.fh + 2) as u32),
         18 => return (((u.w + 2) as u32).div_ceil(64), 1),
         _ => return (1, 1),
@@ -667,4 +674,5 @@ pub use transfere::{read, read_at};
 pub mod cena;
 pub mod passo;
 pub mod seca;
+mod tinta;
 mod transfere;

@@ -461,19 +461,38 @@ fn mede_as_submissoes_a_4k() {
 
 /// F4-2 E2: a lei `Pigmento` da tinta fica na CPU até a paridade por placa (E11) — sem placa nenhuma.
 #[test]
-fn a_placa_recusa_a_lei_pigmento() {
+fn a_placa_aceita_a_lei_pigmento_e_recusa_o_que_nao_sabe() {
     use ph2d_wet_paint::sim::LeiDaTinta;
     let mut e = aguada(64, 48);
     let idx = e.active_layer;
-    assert!(
-        placa_sabe(&e.sim, &e.layers[idx].grid, &e.tuning),
-        "a aguada é da placa com a lei velha"
-    );
+    let sabe = |e: &Engine| placa_sabe(&e.sim, &e.layers[idx].grid, &e.tuning);
+    assert!(sabe(&e), "a aguada é da placa com a lei velha");
     e.sim.set_tinta(LeiDaTinta::Pigmento);
-    assert!(
-        !placa_sabe(&e.sim, &e.layers[idx].grid, &e.tuning),
-        "a placa recusa a lei Pigmento"
-    );
+    assert!(sabe(&e), "E11: a placa sabe a lei Pigmento");
+
+    // O meio e o corpo pousados: só a lei nova os leva à placa.
+    e.layers[idx].grid.oleo = vec![Default::default(); e.layers[idx].grid.cells];
+    assert!(sabe(&e), "o óleo da célula é da placa com a lei Pigmento");
     e.sim.set_tinta(LeiDaTinta::Velha);
-    assert!(placa_sabe(&e.sim, &e.layers[idx].grid, &e.tuning));
+    assert!(!sabe(&e), "a lei velha não leva o óleo da célula à placa");
+    e.layers[idx].grid.oleo = Vec::new();
+    e.sim.set_tinta(LeiDaTinta::Pigmento);
+
+    // O que fica na CPU, um a um.
+    e.sim.pigment_mix = 0.5;
+    assert!(!sabe(&e), "o Pigment mix (o lado espectral) fica na CPU");
+    e.sim.pigment_mix = 0.0;
+    e.layers[idx].grid.chao = vec![0.0; e.layers[idx].grid.cells];
+    assert!(!sabe(&e), "o chão como força fica na CPU");
+    e.layers[idx].grid.chao = Vec::new();
+    e.set_knob(Knob::Dissolve, 0.5);
+    assert!(!sabe(&e), "a água parada que dissolve fica na CPU");
+    e.set_knob(Knob::Dissolve, 0.0);
+    e.set_knob(Knob::EdgeSoftMass, 100.0);
+    assert!(!sabe(&e), "a borda macia fica na CPU");
+    e.set_knob(Knob::EdgeSoftMass, 0.0);
+    e.set_knob(Knob::Opaque, 0.5);
+    assert!(!sabe(&e), "a tinta opaca fica na CPU");
+    e.set_knob(Knob::Opaque, 0.0);
+    assert!(sabe(&e));
 }

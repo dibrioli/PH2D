@@ -32,9 +32,9 @@ pub static LADEIRA_ROTA: std::sync::atomic::AtomicU8 = std::sync::atomic::Atomic
 /// Sem óleo (`m = 0`: aquarela, guache, tudo com Medium 0) `τ_y = 0` e o fluxo é o de sempre, ao bit; a tinta aguada
 /// (`φ ≤ φ_c`) também. Constantes MEDIDAS na régua `sonda_relevo_oleo`:
 /// `docs/Painter/Arquitetura/RELEVO_oleo_ondas_e_crateras.md` §6.
-pub(crate) const TAU0: f64 = 3.0;
+pub const TAU0: f64 = 3.0;
 /// O limiar de percolação da rede de partículas (abaixo dele a tinta não tem estrutura: escoa como líquido).
-pub(crate) const PHI_C: f64 = 0.2;
+pub const PHI_C: f64 = 0.2;
 /// O expoente da lei de potência `τ_y ∝ φⁿ` das suspensões floculadas.
 pub(crate) const EXPOENTE: i32 = 2;
 
@@ -93,7 +93,7 @@ pub(crate) fn tensao(t0: f64, m: f64, massa: f64, f: f64, max_v: f64) -> f64 {
 /// cedência que NÃO precisa de `φ > φ_c` (a tinta de água tem `φ` baixo) e substitui a parede binária do
 /// `levelingOwnStroke` (Bug #56: empilhava 12–39 µm na borda). Só onde há pigmento (`massa > 0`). `corpo = 0` ⇒ a
 /// [`tensao`] do meio, ao bit. Faixa MEDIDA: `docs/Painter/Arquitetura/E10a2_meio_e_corpo.md`.
-pub(crate) const TAU_CORPO: f64 = 0.25;
+pub const TAU_CORPO: f64 = 0.25;
 
 /// Ferramenta de MEDIÇÃO: os bits de um `f32` — `0` = [`TAU_CORPO`] (o produto), senão outro.
 #[doc(hidden)]

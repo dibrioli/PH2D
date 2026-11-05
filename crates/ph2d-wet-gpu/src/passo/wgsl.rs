@@ -27,7 +27,7 @@ pub(super) const PORTA: &str = r"
 @group(0) @binding(0) var<storage, read> caixa: array<i32>;
 @group(0) @binding(1) var<storage, read> base: array<u32>;
 @group(0) @binding(2) var<storage, read_write> args: array<u32>;
-@compute @workgroup_size(64)
+@compute @workgroup_size(96)
 fn porta(@builtin(global_invocation_id) g: vec3<u32>) {
     if g.x >= arrayLength(&base) { return; }
     args[g.x] = select(0u, base[g.x], caixa[14] != 0);

@@ -17,6 +17,7 @@ authors.workspace = true
 [dependencies]
 ph2d-gpu = { path = "../ph2d-gpu" }
 ph2d-wet-paint = { path = "../ph2d-wet-paint" }
+ph2d-paint-tinta = { path = "../ph2d-paint-tinta" }
 wgpu = "30.0.1"
 bytemuck = { version = "1", features = ["derive"] }
 

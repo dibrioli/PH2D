@@ -58,7 +58,7 @@ impl Placa {
             let _ = e.active_grid_mut();
             let g = &e.layers[idx].grid;
             match &mut self.passo {
-                Some(p) if p.serve(g) => {
+                Some(p) if p.serve(g, &e.sim) => {
                     let _ = p.sobe_sujo(gpu, g);
                 }
                 _ => {

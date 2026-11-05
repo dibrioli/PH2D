@@ -18,9 +18,11 @@ pub struct SheetImage {
     pub w: u32,
     pub h: u32,
     pub image: ph2d_vector::StableImage,
-    /// As células já recortadas, por `(hframes, vframes, célula)`. Somam no máximo o tamanho da folha por grelha.
-    celulas: Arc<Mutex<BTreeMap<(u32, u32, u32), ph2d_vector::StableImage>>>,
+    celulas: Arc<Mutex<CelulasRecortadas>>,
 }
+
+/// As células já recortadas, por `(hframes, vframes, célula)`. Somam no máximo o tamanho da folha por grelha.
+type CelulasRecortadas = BTreeMap<(u32, u32, u32), ph2d_vector::StableImage>;
 
 impl SheetImage {
     /// `None` se `rgba` não tem `w × h × 4` bytes.

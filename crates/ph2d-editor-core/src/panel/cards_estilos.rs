@@ -31,14 +31,16 @@ pub enum Pedido {
     Soltar { camada: usize },
 }
 
+/// Um ⠿: `(botão, cartão, camada, objecto preso do cartão)`.
+type BotaoDeclarado = (NodeId, NodeId, usize, Option<u64>);
+
 thread_local! {
     static ESTILOS: RefCell<Vec<Estilo>> = const { RefCell::new(Vec::new()) };
     /// O estilo de cada linha da forma mostrada (camadas, depois as duas bases).
     static LIGADOS: RefCell<Vec<Option<u32>>> = const { RefCell::new(Vec::new()) };
     static PEDIDOS: RefCell<Vec<Pedido>> = const { RefCell::new(Vec::new()) };
-    /// Os ⠿ declarados neste quadro: botão → (cartão, camada, objecto preso do cartão).
-    static BOTOES: RefCell<Vec<(NodeId, NodeId, usize, Option<u64>)>> =
-        const { RefCell::new(Vec::new()) };
+    /// Os ⠿ declarados neste quadro.
+    static BOTOES: RefCell<Vec<BotaoDeclarado>> = const { RefCell::new(Vec::new()) };
     /// A lista aberta: o botão que a abriu, e o objecto preso desse cartão (`None` = a seleção).
     static ABERTA: Cell<Option<NodeId>> = const { Cell::new(None) };
     static ABERTA_SUJEITO: Cell<Option<u64>> = const { Cell::new(None) };

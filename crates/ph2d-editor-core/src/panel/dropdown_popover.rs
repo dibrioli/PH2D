@@ -33,7 +33,18 @@ pub fn paint_dropdown_list<T: Clone + PartialEq>(
     theme: Theme,
     rows: Option<PopoverRowPainter<'_>>,
 ) -> PaintedPopover {
-    porta(ctx, dd, chip, region, theme, rows, None, None)
+    porta(
+        ctx,
+        dd,
+        chip,
+        region,
+        theme,
+        Conteudo {
+            rows,
+            row_text_w: None,
+            in_hand: None,
+        },
+    )
 }
 
 /// ⭐⭐ **A porta para linhas que NÃO se pintam no rótulo** (o dropdown de fontes do Pixel Art pinta
@@ -50,7 +61,18 @@ pub fn paint_dropdown_list_measured<T: Clone + PartialEq>(
     rows: Option<PopoverRowPainter<'_>>,
     row_text_w: f32,
 ) -> PaintedPopover {
-    porta(ctx, dd, chip, region, theme, rows, Some(row_text_w), None)
+    porta(
+        ctx,
+        dd,
+        chip,
+        region,
+        theme,
+        Conteudo {
+            rows,
+            row_text_w: Some(row_text_w),
+            in_hand: None,
+        },
+    )
 }
 
 /// A linha de uma lista aberta que a mão leva: a lei do voo do cartão do Kanban
@@ -76,7 +98,18 @@ pub fn paint_dropdown_list_reordering<T: Clone + PartialEq>(
     region: Rect,
     theme: Theme,
 ) -> PaintedPopover {
-    porta(ctx, dd, chip, region, theme, None, None, Some(in_hand))
+    porta(
+        ctx,
+        dd,
+        chip,
+        region,
+        theme,
+        Conteudo {
+            rows: None,
+            row_text_w: None,
+            in_hand: Some(in_hand),
+        },
+    )
 }
 
 /// As faixas visíveis de `dd` onde a lista se vai pintar neste quadro, antes de a pintar: quem
@@ -103,16 +136,26 @@ fn rolagem<T: Clone + PartialEq>(
     store.panel_scroll(dd.id).clamp(0.0, max_scroll) // CLAMP-OK: 0.0 literal; max_scroll is a non-negative px extent
 }
 
+/// O que distingue as portas da lista: quem pinta as linhas, a largura medida e a linha na mão.
+struct Conteudo<'r, 'm, T: Clone + PartialEq> {
+    rows: Option<PopoverRowPainter<'r>>,
+    row_text_w: Option<f32>,
+    in_hand: Option<&'m DropdownRowInHand<'m, T>>,
+}
+
 fn porta<T: Clone + PartialEq>(
     ctx: &mut PaintCtx,
     dd: &Dropdown<T>,
     chip: Rect,
     region: Rect,
     theme: Theme,
-    rows: Option<PopoverRowPainter<'_>>,
-    row_text_w: Option<f32>,
-    in_hand: Option<&DropdownRowInHand<'_, T>>,
+    conteudo: Conteudo<'_, '_, T>,
 ) -> PaintedPopover {
+    let Conteudo {
+        rows,
+        row_text_w,
+        in_hand,
+    } = conteudo;
     let painted = {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         paint_list(

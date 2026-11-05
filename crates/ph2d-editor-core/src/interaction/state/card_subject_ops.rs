@@ -251,9 +251,7 @@ impl WidgetStore {
             topo.and_then(|(_, _, p)| p)
         };
         // C1: o campo em foco no preso faz o commit ao sair do foco, e é aqui que ele sai: é dele.
-        self.card_lists.blur_subject = antes
-            .filter(|_| antes != agora)
-            .and_then(|s| self.focus_id.map(|f| (f, s)));
+        self.card_lists.blur_subject = self.focus_id.zip(antes.filter(|_| antes != agora));
         self.card_lists.press_subject = agora;
         // T40: o gesto parte dos números do preso (o scrub e a edição leem o store já a seguir).
         if let Some((_, k, Some(_))) = topo {

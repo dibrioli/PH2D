@@ -276,11 +276,20 @@ fn diag_tropecos() {
 /// ⚠️ **A unidade é a COLUNA e não o troço** — a 1.ª redacção contava troços, e a prova de mutação
 /// SOBREVIVEU: devolver os chips da timeline à coluna escrita à mão punha uma TERCEIRA coluna no
 /// troço que já estava declarado por causa das abas, e o total de troços continuava `1`.
-const COLUNAS_A_MAIS_DECLARADAS: &[(&str, usize, &str)] = &[(
-    "timeline",
-    1,
-    "as abas (`tab_keys`) são um segmentado na faixa do título, não um par nome/valor",
-)];
+const COLUNAS_A_MAIS_DECLARADAS: &[(&str, usize, &str)] = &[
+    (
+        "timeline",
+        1,
+        "as abas (`tab_keys`) são um segmentado na faixa do título, não um par nome/valor",
+    ),
+    #[cfg(feature = "panel-flip-frames")]
+    (
+        "flip_frames",
+        1,
+        "barra em fluxo: na coluna estreita desta régua cada peça desce sozinha; os 5 valores arrancam \
+         numa coluna só, depois do nome, e ícones e caixas, sem nome à esquerda, na borda do corpo",
+    ),
+];
 
 /// ⭐⭐⭐ **Os painéis que arrancam o valor em MAIS de uma coluna, e porquê** — todo painel que não
 /// está aqui arranca numa coluna SÓ, de ponta a ponta (ordem do dono, 2026-09-23: *«quero tudo
@@ -295,6 +304,12 @@ const COLUNAS_A_MAIS_DECLARADAS: &[(&str, usize, &str)] = &[(
 /// troço deles, e a prova de mutação que lhes devolvia o vão escrito à mão SOBREVIVIA à régua de
 /// troço — ela reprova aqui, porque a coluna é do PAINEL.
 const COLUNAS_DECLARADAS_POR_PAINEL: &[(&str, usize, &str)] = &[
+    #[cfg(feature = "panel-flip-frames")]
+    (
+        "flip_frames",
+        2,
+        "barra em fluxo: ver `COLUNAS_A_MAIS_DECLARADAS`",
+    ),
     (
         "timeline",
         2,

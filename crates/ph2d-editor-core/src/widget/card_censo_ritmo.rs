@@ -158,6 +158,15 @@ fn abaixo<'a>(de: &Rect, todas: &[&'a Peca]) -> Option<(&'a Peca, f32)> {
         .min_by(|a, b| a.1.total_cmp(&b.1))
 }
 
+/// Há um controlo à direita de `p`, na mesma fila.
+fn tem_controlo_ao_lado(p: &Peca, controlos: &[&Peca]) -> bool {
+    let meio = p.rect.y + p.rect.h * 0.5;
+    let fim = p.rect.x + p.rect.w;
+    controlos
+        .iter()
+        .any(|c| c.rect.y <= meio && meio <= c.rect.y + c.rect.h && c.rect.x >= fim - FOLGA)
+}
+
 impl super::Censo {
     /// Toda fronteira vertical dos corpos dos cartões, de cima para baixo.
     #[must_use]
@@ -177,6 +186,10 @@ impl super::Censo {
                 let fronteira = match (p.especie, q.especie) {
                     // Longe demais para ser o controlo dele: o texto de uma linha de lista.
                     (Especie::Rotulo, Especie::Controlo) if vao > m::FIELD_H => continue,
+                    // O rótulo AO LADO (a barra de uma banda, doc 14): o controlo dele não está abaixo.
+                    (Especie::Rotulo, Especie::Controlo) if tem_controlo_ao_lado(p, &controlos) => {
+                        continue;
+                    }
                     (Especie::Rotulo, Especie::Controlo) => Fronteira::RotuloControlo,
                     // O rótulo que quebra em duas linhas (`cards_rotulos`).
                     (Especie::Rotulo, Especie::Rotulo) => continue,

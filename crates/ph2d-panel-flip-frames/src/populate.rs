@@ -12,23 +12,23 @@ use ph2d_editor_core::widget::{ButtonState, SliderOrientation, SliderState, Text
 // para escalar o drag-scrub. O shell re-clampa nos mesmos valores ao aplicar: a
 // caixa é a UI do limite, não a sua fonte de verdade.
 /// FPS do objeto: cinema (24) por padrão, de 1 a 120.
-const FPS_DEFAULT: f64 = 24.0; // LITERAL-PX-OK: domínio (quadros por segundo), não medida de design
+pub(crate) const FPS_DEFAULT: f64 = 24.0; // LITERAL-PX-OK: domínio (quadros por segundo), não medida de design
 const FPS_MIN: f64 = 1.0; // LITERAL-PX-OK: domínio
 const FPS_MAX: f64 = 120.0; // LITERAL-PX-OK: domínio
 /// Fantasmas por lado (0 = nenhum daquele lado).
-const GHOST_DEFAULT: f64 = 1.0; // LITERAL-PX-OK: domínio (nº de desenhos)
+pub(crate) const GHOST_DEFAULT: f64 = 1.0; // LITERAL-PX-OK: domínio (nº de desenhos)
 const GHOST_MIN: f64 = 0.0; // LITERAL-PX-OK: domínio
 const GHOST_MAX: f64 = 8.0; // LITERAL-PX-OK: domínio
 /// Exposição de uma chave, em quadros (≥ 1 — uma chave sempre ocupa um quadro).
-const HOLD_DEFAULT: f64 = 1.0; // LITERAL-PX-OK: domínio (quadros)
+pub(crate) const HOLD_DEFAULT: f64 = 1.0; // LITERAL-PX-OK: domínio (quadros)
 const HOLD_MIN: f64 = 1.0; // LITERAL-PX-OK: domínio
 const HOLD_MAX: f64 = 999.0; // LITERAL-PX-OK: domínio
 /// Inbetweens que o tween gera de uma vez.
-const TWEEN_DEFAULT: f64 = 1.0; // LITERAL-PX-OK: domínio (nº de inbetweens)
+pub(crate) const TWEEN_DEFAULT: f64 = 1.0; // LITERAL-PX-OK: domínio (nº de inbetweens)
 const TWEEN_MIN: f64 = 1.0; // LITERAL-PX-OK: domínio
 const TWEEN_MAX: f64 = 32.0; // LITERAL-PX-OK: domínio
 /// Passo do drag/stepper: um quadro de cada vez (nada aqui é fracionário).
-const STEP: f64 = 1.0; // LITERAL-PX-OK: domínio (o incremento é 1 quadro)
+pub(crate) const STEP: f64 = 1.0; // LITERAL-PX-OK: domínio (o incremento é 1 quadro)
 
 /// Um botão de ação simples.
 fn button(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {

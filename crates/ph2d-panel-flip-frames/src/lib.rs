@@ -24,6 +24,7 @@
 
 #![forbid(unsafe_code)]
 
+mod barra_cartoes;
 mod cards;
 mod event;
 pub mod ids;

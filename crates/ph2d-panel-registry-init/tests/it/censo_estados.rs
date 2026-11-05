@@ -151,12 +151,30 @@ pub const ESTADOS: &[Estado] = &[
 
 #[cfg(feature = "panel-flip-frames")]
 mod tira {
-    use ph2d_panel_flip_frames::{FlipStripSnapshot, set_current_flip_strip};
+    use ph2d_panel_flip_frames::{FlipCell, FlipStripSnapshot, set_current_flip_strip};
 
     pub fn com_camada() {
         set_current_flip_strip(FlipStripSnapshot {
             has_layer: true,
             layer_name: "Ink".to_owned(),
+            fps: 24.0,
+            ghost: true,
+            ghost_before: 2,
+            ghost_after: 1,
+            tween_count: 3,
+            cells: (0..6)
+                .map(|i| FlipCell {
+                    key: i * 4,
+                    exposure: 4,
+                    breakdown: false,
+                    instanced: i == 3,
+                    selected: i == 2,
+                    pinned: i == 4,
+                    weight: 0.5,
+                })
+                .collect(),
+            current_key: Some(4),
+            current_frame: 6,
             ..Default::default()
         });
     }

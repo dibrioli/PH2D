@@ -1,11 +1,13 @@
-//! ⭐ **A tira de Frames, só o cromo em cartão**: os pintores de sempre dentro do cartão único, com os
-//! mesmos ids, e a tira continua a caber na banda. Provado pelo gesto real nos rects pintados.
+//! ⭐ **A tira de Frames em cartões**, o método da Timeline: moldura sem cartão, as peças da lista, os
+//! mesmos ids, e a célula com a altura de antes. Provado pelo gesto real nos rects pintados.
 
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::panel::cards::{ferramenta, scroll_bar_of};
+use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_flip_frames::state::FlipStripState;
@@ -95,7 +97,17 @@ impl Palco {
     }
 }
 
-const BOTOES: [NodeId; 17] = [
+const NUMEROS: [NodeId; 5] = [
+    ids::FLIP_FPS_NUM,
+    ids::FLIP_GHOST_BEFORE_NUM,
+    ids::FLIP_GHOST_AFTER_NUM,
+    ids::FLIP_HOLD_NUM,
+    ids::FLIP_TWEEN_NUM,
+];
+
+const LISTAS: [NodeId; 2] = [ids::FLIP_CYCLE_DD, ids::FLIP_TWEEN_EASE_DD];
+
+const BOTOES: [NodeId; 18] = [
     ids::FLIP_PREV_DRAWING,
     ids::FLIP_PLAY,
     ids::FLIP_NEXT_DRAWING,
@@ -109,14 +121,15 @@ const BOTOES: [NodeId; 17] = [
     ids::FLIP_KEY_INSTANCE,
     ids::FLIP_KEY_UNLINK,
     ids::FLIP_KEY_LEFT,
+    ids::FLIP_KEY_RIGHT,
     ids::FLIP_KEY_DELETE,
     ids::FLIP_TWEEN_FADE,
     ids::FLIP_TWEEN_PAIRS,
     ids::FLIP_TWEEN_ADD,
 ];
 
-/// ⭐ Todo botão da barra responde no cartão, com o mesmo id. *Mutação: tirar o `paint_toolbar::paint` de
-/// `cards::paint` ⇒ «não pintado».*
+/// ⭐ Todo botão da barra responde, com o mesmo id. *Mutação: tirar `barra_cartoes::paint` de `cards::paint`
+/// ⇒ «não pintado».*
 #[test]
 fn every_toolbar_button_answers_a_real_click_in_the_card() {
     for id in BOTOES {
@@ -127,10 +140,10 @@ fn every_toolbar_button_answers_a_real_click_in_the_card() {
     }
 }
 
-/// ⭐⭐ A tira cabe na banda: nenhuma célula nem campo sai dela, e a lista não rola. Mede o que o cromo
-/// custa à tira, contra o corpo de antes. *A régua da decisão «só o cromo»: `novo` e `antes` na mensagem.*
+/// ⭐⭐ A tira cabe na banda: nenhuma célula sai dela, a lista não rola, e a moldura sem cartão devolve à
+/// célula a altura do painel de antes. *A régua da decisão de `docs/CartoesUI/14`: `novo` e `antes` na mensagem.*
 #[test]
-fn the_strip_still_fits_the_band_and_the_list_does_not_scroll() {
+fn the_strip_still_fits_the_band_and_the_cell_keeps_its_old_height() {
     let antes = Palco::novo(false)
         .rect(ids::flip_cell_id(0))
         .expect("antes")
@@ -138,12 +151,12 @@ fn the_strip_still_fits_the_band_and_the_list_does_not_scroll() {
     let p = Palco::novo(true);
     let c = p
         .rect(ids::flip_cell_id(0))
-        .expect("a célula pinta-se no cartão");
+        .expect("a célula pinta-se na faixa");
     let banda = p
         .host
         .store()
         .panel_rect(ph2d_editor_core::ids::FLIP_STRIP_PANEL)
-        .expect("a lista publica o rect");
+        .expect("a moldura publica o rect");
     assert!(
         c.y + c.h <= banda.y + banda.h,
         "a célula sai da banda: {c:?} {banda:?}"
@@ -153,19 +166,15 @@ fn the_strip_still_fits_the_band_and_the_list_does_not_scroll() {
         "por cima da cabeça da lista: {c:?}"
     );
     eprintln!(
-        "MEDIDA tira: antes {antes} · no cartão {} · banda {}",
+        "MEDIDA tira: antes {antes} · novo {} · banda {}",
         c.h, banda.h
     );
     assert!(
         p.rect(scroll_bar_of(ph2d_editor_core::ids::FLIP_STRIP_PANEL))
             .is_none(),
-        "a lista rola: o cromo não bate certo"
+        "a lista rola"
     );
-    assert!(
-        c.h >= antes * 0.75,
-        "a tira perdeu demais: {} contra {antes} de antes",
-        c.h
-    );
+    assert!(c.h >= antes, "a tira perdeu altura: {} contra {antes}", c.h);
 }
 
 /// ⭐ Arrastar a célula dentro do cartão pede mover a chave: o gesto da tira não passou pelo cartão.
@@ -214,22 +223,188 @@ fn cards_off_paints_the_old_body() {
     assert!(p.rect(ids::FLIP_PLAY).is_some());
 }
 
-/// Foto `r4_ghost`: «Additive» saía «Addit…». Lei 7: todo toggle da barra leva o nome inteiro, com o respiro.
-/// *Mutação: a largura de volta a `TOGGLE_W` ⇒ vermelho.*
+/// Lei 7: toda caixa da barra leva o nome inteiro, e toda peça tem a altura de um campo do cartão.
+/// *Mutação: a largura da peça menor ⇒ a marca seguinte encosta ⇒ `sobrepõe`.*
 #[test]
-fn no_toggle_of_the_toolbar_cuts_its_name() {
-    let mesa = Palco::novo(true);
-    let mut ts = ph2d_text::TextSystem::without_system_fonts();
-    for (id, chave) in [
-        (ids::FLIP_GHOST, "panel.flip_frames.toolbar.ghost"),
-        (ids::FLIP_KEY_PIN, "panel.flip_frames.toolbar.pin"),
-        (ids::FLIP_ADDITIVE, "panel.flip_frames.toolbar.additive"),
-    ] {
-        let r = mesa.rect(id).expect("o toggle da barra");
-        let nome = ph2d_i18n::tr(chave);
-        let pede = ph2d_editor_core::paint::rect_for_label(
-            ts.prefix_width(nome, ph2d_editor_core::widget::panel_chrome::segmented_label_font()),
+fn no_piece_of_the_bar_overlaps_or_leaves_the_field_height() {
+    let p = Palco::novo(true);
+    let mut pecas: Vec<(NodeId, Rect)> = BOTOES
+        .iter()
+        .chain(NUMEROS.iter())
+        .chain(LISTAS.iter())
+        .map(|&id| {
+            (
+                id,
+                p.rect(id).unwrap_or_else(|| panic!("{id:?} não pintado")),
+            )
+        })
+        .collect();
+    for (id, r) in &pecas {
+        assert!(r.h >= m::FIELD_H - 0.5, "{id:?} baixo: {r:?}");
+    }
+    pecas.sort_by(|a, b| (a.1.y, a.1.x).partial_cmp(&(b.1.y, b.1.x)).unwrap());
+    for par in pecas.windows(2) {
+        let (a, b) = (par[0].1, par[1].1);
+        let mesma_fila = (a.y - b.y).abs() < m::FIELD_H * 0.5;
+        assert!(
+            !mesma_fila || a.x + a.w <= b.x + 0.5,
+            "sobrepõe: {:?} {a:?} e {:?} {b:?}",
+            par[0].0,
+            par[1].0
         );
-        assert!(r.w + 0.5 >= pede, "{nome}: {} contra {pede}", r.w);
+    }
+}
+
+/// A escolha das duas listas: abrir, clicar a opção, o pedido é o de sempre, com o id do dono.
+/// *Mutação: tirar o `register_if_absent` de `prepara` ⇒ a lista não abre.*
+#[test]
+fn both_lists_open_and_pick_an_option() {
+    for (dd, opcao) in [
+        (ids::FLIP_CYCLE_DD, ids::flip_cycle_option_id(2)),
+        (ids::FLIP_TWEEN_EASE_DD, ids::flip_tween_ease_option_id(1)),
+    ] {
+        let mut p = Palco::novo(true);
+        p.clica(dd);
+        p.assenta();
+        let a = p.clica(opcao);
+        assert!(
+            a.iter().any(|x| matches!(
+                x,
+                EditorAction::ToolPanelEvent(PanelEvent::SelectOption(id, _)) if *id == dd
+            )),
+            "{dd:?}: {a:?}"
+        );
+    }
+}
+
+/// O número escrito chega ao barramento com o id dele. *Mutação: tirar o id de `NUMEROS` de `event.rs` ⇒ vermelho.*
+#[test]
+fn typing_each_number_asks_the_same_as_before() {
+    for id in NUMEROS {
+        let mut p = Palco::novo(true);
+        for e in p.host.type_into_number(id, "3") {
+            p.host.apply_panel_event::<FlipFramesPanel>(&mut p.st, e);
+        }
+        let a = p.host.drained_actions();
+        assert!(
+            a.iter().any(|x| matches!(
+                x,
+                EditorAction::ToolPanelEvent(PanelEvent::SetValue(n, v)) if *n == id && (*v - 3.0).abs() < 0.01
+            )),
+            "{id:?}: {a:?}"
+        );
+    }
+}
+
+/// O scrub na pega pede o novo valor, e o Esc devolve o do documento, no barramento e na caixa.
+/// *Mutação: tirar `mark_card_field` de `prepara` ⇒ a pega não arrasta.*
+#[test]
+fn scrubbing_each_number_writes_it_and_escape_gives_it_back() {
+    use ph2d_editor_core::widget::card_field::handle_rect;
+    for id in NUMEROS {
+        let mut p = Palco::novo(true);
+        let antes = p.host.store().number_value(id).expect("o número");
+        let h = handle_rect(p.rect(id).expect("o campo"));
+        let (x, y) = (h.x + h.w * 0.5, h.y + h.h * 0.5);
+        let ev = |x: f32, kind| PointerEvent {
+            x,
+            y,
+            pressure: 1.0,
+            kind,
+            source: PointerSource::Mouse,
+            button: ph2d_host::PointerButton::Primary,
+            timestamp_ns: 0,
+        };
+        p.host.dispatch_pointer_event(ev(x, PointerKind::Down));
+        p.host
+            .dispatch_pointer_event(ev(x + 8.0, PointerKind::Move));
+        let mudou = p
+            .host
+            .dispatch_pointer_event(ev(x + 40.0, PointerKind::Move));
+        assert!(
+            mudou.contains(&WidgetEvent::ValueChanged(id)),
+            "{id:?}: {mudou:?}"
+        );
+        let meio = p.host.store().number_value(id).unwrap();
+        assert!((meio - antes).abs() > 0.5, "{id:?} não se moveu");
+        let esc = p.host.key_down(0x1B);
+        assert!(
+            esc.contains(&WidgetEvent::ValueChanged(id)),
+            "{id:?}: o Esc não avisou: {esc:?}"
+        );
+        assert_eq!(p.host.store().number_value(id), Some(antes), "{id:?}");
+    }
+}
+
+/// O valor do documento aparece na caixa, e nenhum quadro o reescreve durante a escrita.
+/// *Mutação: tirar `set_number_value` de `prepara` ⇒ o FPS fica no de fábrica.*
+#[test]
+fn the_field_shows_the_document_value() {
+    let mut p = Palco::novo(true);
+    let mut t = tira();
+    t.fps = 12.0;
+    t.ghost_before = 3;
+    t.ghost_after = 2;
+    t.tween_count = 5;
+    t.cells[0].exposure = 7;
+    set_current_flip_strip(t);
+    p.assenta();
+    for (id, v) in [
+        (ids::FLIP_FPS_NUM, 12.0),
+        (ids::FLIP_GHOST_BEFORE_NUM, 3.0),
+        (ids::FLIP_GHOST_AFTER_NUM, 2.0),
+        (ids::FLIP_HOLD_NUM, 7.0),
+        (ids::FLIP_TWEEN_NUM, 5.0),
+    ] {
+        assert_eq!(p.host.store().number_value(id), Some(v), "{id:?}");
+    }
+}
+
+/// Numa janela estreita a barra desce por grupos, nada se perde e as células continuam abaixo dela.
+/// *Mutação: tirar o `desce` de dentro do grupo ⇒ uma peça passa da borda.*
+#[test]
+fn a_narrow_band_wraps_the_bar_and_loses_no_control() {
+    const ESTREITA: Rect = Rect {
+        x: 0.0,
+        y: 0.0,
+        w: 1000.0,
+        h: 1040.0,
+    };
+    let mut p = Palco::novo(true);
+    for _ in 0..60 {
+        let (h, st) = (&mut p.host, &mut p.st);
+        p.rects = ph2d_editor_core::aquecimento::com_passo_fixo(
+            ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
+            || h.paint::<FlipFramesPanel>(st, ESTREITA),
+        );
+    }
+    let banda = p
+        .host
+        .store()
+        .panel_rect(ph2d_editor_core::ids::FLIP_STRIP_PANEL)
+        .expect("o rect");
+    let celula = p.rect(ids::flip_cell_id(0));
+    for id in BOTOES.iter().chain(NUMEROS.iter()).chain(LISTAS.iter()) {
+        let r = p.rect(*id).unwrap_or_else(|| panic!("{id:?} sumiu"));
+        assert!(
+            r.x + r.w <= banda.x + banda.w,
+            "{id:?} sai: {r:?} {banda:?}"
+        );
+        if let Some(c) = celula {
+            assert!(r.y + r.h <= c.y, "{id:?} por cima da célula: {r:?} {c:?}");
+        }
+    }
+}
+
+/// Todo ícone sem nome tem dica. *Mutação: tirar uma linha de `DICAS` ⇒ vermelho nesse id.*
+#[test]
+fn every_icon_of_the_bar_has_a_tooltip() {
+    let p = Palco::novo(true);
+    let icones = ph2d_editor_core::panel::cards::dicas::icon_only_ids(
+        ph2d_editor_core::ids::FLIP_STRIP_PANEL,
+    );
+    assert!(icones.contains(&ids::FLIP_PLAY), "{icones:?}");
+    for id in icones {
+        assert!(p.host.store().tooltip_for(id).is_some(), "{id:?} sem dica");
     }
 }

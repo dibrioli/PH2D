@@ -104,39 +104,17 @@ impl Item {
     }
 }
 
-/// A lista da barra; nos cartões, os dois números do Ghost dizem o que são (`PH2D_CARDS=0` tem a de antes).
-pub(crate) fn items(snap: &FlipStripSnapshot) -> Vec<Item> {
-    let mut v = items_de_antes(snap);
-    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
-        for (id, chave) in [
-            (
-                ids::FLIP_GHOST_BEFORE_NUM,
-                "panel.flip_frames.toolbar.ghost_before",
-            ),
-            (
-                ids::FLIP_GHOST_AFTER_NUM,
-                "panel.flip_frames.toolbar.ghost_after",
-            ),
-        ] {
-            if let Some(i) = v
-                .iter()
-                .position(|it| matches!(it, Item::Number(n, _) if *n == id))
-            {
-                v.insert(i, Item::Label(tr(chave)));
-            }
-        }
-    }
-    v
+/// A exposição da chave ATIVA (o que a caixa "Hold" edita).
+pub(crate) fn hold_atual(snap: &FlipStripSnapshot) -> u32 {
+    snap.current_key
+        .and_then(|k| snap.cells.iter().find(|c| c.key == k))
+        .map_or(1, |c| c.exposure)
 }
 
-/// **A sequência canônica da barra** — transporte · Ghost · autoria · ops de
+/// **A sequência canônica da barra** de `PH2D_CARDS=0` — transporte · Ghost · autoria · ops de
 /// chave · tween · ciclo. É a única lista; medir e pintar leem esta.
-fn items_de_antes(snap: &FlipStripSnapshot) -> Vec<Item> {
-    // A exposição da chave ATIVA (o que a caixa "Hold" edita).
-    let hold = snap
-        .current_key
-        .and_then(|k| snap.cells.iter().find(|c| c.key == k))
-        .map_or(1, |c| c.exposure);
+pub(crate) fn items(snap: &FlipStripSnapshot) -> Vec<Item> {
+    let hold = hold_atual(snap);
     let play_icon = if snap.playing {
         IconId::Pause
     } else {
@@ -255,7 +233,7 @@ pub(crate) fn plan(
     //    o censo dela não a via. *Um `Spacing::Xs` escrito à mão passa em todo gate desta casa e
     //    continua fora do ritmo.*
     let gap = ph2d_tokens::control_gap_px();
-    let row_gap = vao_entre_filas(ph2d_tokens::control_gap_px());
+    let row_gap = ph2d_tokens::control_gap_px();
 
     let mut out = Vec::with_capacity(items.len());
     let mut x = left;
@@ -298,16 +276,7 @@ pub(crate) fn rows(
 /// A altura total de uma barra de `rows` linhas.
 pub(crate) fn bar_height(rows: u32, row_h: f32) -> f32 {
     let n = rows.max(1) as f32;
-    n * row_h + (n - 1.0) * vao_entre_filas(Spacing::Xs.px())
-}
-
-/// O vão entre as filas da barra: num cartão, o da grelha (lei 3 de 05 §4, medido 3 contra 6); fora, `antes`.
-fn vao_entre_filas(antes: f32) -> f32 {
-    if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
-        ph2d_card_stack::metrics::FIELD_ROW_GAP
-    } else {
-        antes
-    }
+    n * row_h + (n - 1.0) * Spacing::Xs.px()
 }
 
 #[cfg(test)]
@@ -474,34 +443,5 @@ mod tests {
             "a fixtura desta wave é o chip literal de 84 px a cortar SEIS das oito opções — se ela \
              deixar de as cortar, os rótulos mudaram e a medição do cabeçalho tem de ser refeita"
         );
-    }
-}
-
-#[cfg(test)]
-mod rotulo_tests {
-    use super::*;
-    use ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread;
-
-    /// ⭐ Nos cartões cada número do Ghost tem o seu nome à frente; `PH2D_CARDS=0` é a lista de antes.
-    /// *Mutação: tirar o `insert` ⇒ vermelho.*
-    #[test]
-    fn os_numeros_do_ghost_tem_nome_so_nos_cartoes() {
-        let snap = FlipStripSnapshot::default();
-        let antes_de = |v: &[Item], id| {
-            let i = v
-                .iter()
-                .position(|it| matches!(it, Item::Number(n, _) if *n == id))
-                .expect("o número");
-            matches!(v[i - 1], Item::Label(_))
-        };
-        force_cards_on_this_thread(Some(true));
-        let v = items(&snap);
-        assert!(antes_de(&v, ids::FLIP_GHOST_BEFORE_NUM));
-        assert!(antes_de(&v, ids::FLIP_GHOST_AFTER_NUM));
-        force_cards_on_this_thread(Some(false));
-        let v = items(&snap);
-        assert!(!antes_de(&v, ids::FLIP_GHOST_BEFORE_NUM));
-        assert!(!antes_de(&v, ids::FLIP_GHOST_AFTER_NUM));
-        force_cards_on_this_thread(None);
     }
 }

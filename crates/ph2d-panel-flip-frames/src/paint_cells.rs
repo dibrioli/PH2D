@@ -15,12 +15,15 @@
 use crate::ids;
 use crate::ruler::{MIN_CELL_W, StripRuler};
 use crate::state::{FlipStripSnapshot, FlipStripState};
+use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::interaction::{FlipStripHitKind, InteractiveState};
 use ph2d_editor_core::paint::{
     fill_rounded_rect, paint_text, paint_text_centered, resolve, stroke_rounded_rect,
     token_to_vello,
 };
 use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::panel::cards::ferramenta::cards_on;
+use ph2d_editor_core::widget::card_ink::tinta;
 use ph2d_editor_core::widget::{Button, ButtonKind, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -40,6 +43,26 @@ const LABEL_FIT: f32 = 1.6; // LITERAL-PX-OK: fator de caber-o-glifo, não medid
 /// arrasto confortável (Enio pediu *"mais espaço da tira de tempo"*).
 fn scrub_lane_h() -> f32 {
     Spacing::Xl.px()
+}
+
+/// O papel de `token` na tira: nos cartões, o trilho é um cartão, a régua e a célula são caixas dele, e a
+/// tinta é a que `cards.rs` publicou; `PH2D_CARDS=0` dá o token de sempre.
+fn papel(token: ColorToken) -> ColorToken {
+    if !cards_on() {
+        return token;
+    }
+    match token {
+        ColorToken::Bg2 => ColorToken::KanbanCard,
+        ColorToken::Bg1 => ColorToken::CardField,
+        ColorToken::Text2 => ColorToken::CardLabel,
+        ColorToken::Accent => ColorToken::KanbanBlueBold,
+        outro => outro,
+    }
+}
+
+/// O raio de `corpo` (o trilho) ou de uma célula.
+fn raio(token: Radius, cartao: f32) -> f32 {
+    if cards_on() { cartao } else { token.px() }
 }
 
 /// **A faixa reservada ACIMA das células** para a régua = a régua + o respiro até elas. O
@@ -69,8 +92,8 @@ pub(crate) fn paint(
     fill_rounded_rect(
         ctx.scene,
         area,
-        Radius::Sm.px(),
-        resolve(ColorToken::Bg2, theme),
+        raio(Radius::Sm, m::CARD_RADIUS),
+        tinta(papel(ColorToken::Bg2), theme),
     );
 
     if snap.cells.is_empty() {
@@ -88,7 +111,7 @@ pub(crate) fn paint(
             area.y + (area.h - font) * 0.5,
             font,
             area.w,
-            resolve(ColorToken::Text2, theme),
+            tinta(papel(ColorToken::Text2), theme),
         );
         return;
     }
@@ -228,7 +251,7 @@ fn paint_cell(
             ctx.scene,
             d,
             Radius::Sm.px(),
-            resolve(ColorToken::Accent, theme),
+            tinta(papel(ColorToken::Accent), theme),
         );
     }
     // Desenho instanciado (a MESMA arte em várias chaves): um ponto discreto.
@@ -243,7 +266,7 @@ fn paint_cell(
             ctx.scene,
             d,
             Radius::Sm.px(),
-            resolve(ColorToken::Text2, theme),
+            tinta(papel(ColorToken::Text2), theme),
         );
     }
     ctx.host.hit_index_mut().register(id, r);
@@ -334,7 +357,7 @@ fn paint_scrub_lane(
         ctx.scene,
         rail,
         Radius::Sm.px(),
-        resolve(ColorToken::Bg1, theme),
+        tinta(papel(ColorToken::Bg1), theme),
     );
 
     // O handle: uma pílula no quadro corrente, no MESMO x da linha do playhead. Clampada
@@ -380,9 +403,14 @@ const ACCENT_INK_MUL: f32 = 0.35; // LITERAL-PX-OK: fração de escurecimento, n
 /// off ⇒ peso `1.0` ⇒ véu nulo ⇒ acento cheio e uniforme). O piso do falloff mantém a célula
 /// visível (o véu nunca chega ao branco).
 fn paint_marked_cell(ctx: &mut PaintCtx, theme: Theme, r: Rect, label: &str, weight: f32) {
-    let radius = Radius::Md.px();
+    let radius = raio(Radius::Md, m::FIELD_RADIUS);
     // Fundo: acento cheio.
-    fill_rounded_rect(ctx.scene, r, radius, resolve(ColorToken::Accent, theme));
+    fill_rounded_rect(
+        ctx.scene,
+        r,
+        radius,
+        tinta(papel(ColorToken::Accent), theme),
+    );
     // Véu de clareamento (o falloff): branco com opacidade `1 − peso`.
     let veil = falloff_veil(weight);
     if veil > 0 {

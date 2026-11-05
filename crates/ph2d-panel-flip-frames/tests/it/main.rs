@@ -8,8 +8,8 @@
 
 mod close_button_seam;
 mod every_word_this_panel_shows_comes_from_the_string_table;
-mod seam;
 mod os_cartoes;
+mod seam;
 
 /// O corpo de antes (`PH2D_CARDS=0`), que estes gates descrevem; o cromo prova-se em `os_cartoes`.
 pub(crate) fn host_de_antes() -> ph2d_ui_testkit::MockPanelHost {

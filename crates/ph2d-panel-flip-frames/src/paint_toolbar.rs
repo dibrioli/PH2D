@@ -11,10 +11,9 @@ use crate::toolbar_plan::{self, Item};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::paint::{paint_text, rect_for_label, resolve};
-use ph2d_editor_core::panel::cards::censo;
+use ph2d_editor_core::paint::{paint_text, resolve};
 use ph2d_editor_core::panel::{PaintCtx, paint_dropdown_list};
-use ph2d_editor_core::widget::panel_chrome::{paint_segmented_button, segmented_label_font};
+use ph2d_editor_core::widget::panel_chrome::paint_segmented_button;
 use ph2d_editor_core::widget::showcase::read_number_input;
 use ph2d_editor_core::widget::{
     Dropdown, DropdownOption, DropdownState, IconButtonStyle, IconGlyph, NumberInput,
@@ -63,7 +62,6 @@ pub(crate) fn paint(
 
     let mut pending = None;
     for (item, r) in items.iter().zip(rects) {
-        anota(ctx, item, r);
         match item {
             Item::Icon(id, glyph) => icon(ctx, theme, r, *id, *glyph),
             Item::Toggle(id, text, active) => toggle(ctx, theme, r, *id, text, *active),
@@ -92,24 +90,6 @@ fn icon(ctx: &mut PaintCtx, theme: Theme, r: Rect, id: NodeId, glyph: IconId) {
         theme,
     );
     ctx.host.hit_index_mut().register(id, r);
-}
-
-/// O que o censo da compactação lê de cada item da barra.
-fn anota(ctx: &mut PaintCtx, item: &Item, r: Rect) {
-    if !censo::ligado() {
-        return;
-    }
-    match item {
-        Item::Toggle(_, nome, _) => {
-            let w = ctx.text_system.prefix_width(nome, segmented_label_font());
-            censo::fora_da_linha(nome, rect_for_label(w), r);
-        }
-        Item::Label(nome) => censo::frase((r.x, r.w), r.y, r.y + r.h, nome),
-        Item::Icon(..) | Item::Number(..) | Item::Cycle(_) | Item::Ease(_) => {
-            censo::frase((r.x, r.w), r.y, r.y + r.h, "");
-        }
-        Item::Gap => {}
-    }
 }
 
 /// Um toggle de texto — o botão segmentado (mesmo idioma do Mode row do painel de

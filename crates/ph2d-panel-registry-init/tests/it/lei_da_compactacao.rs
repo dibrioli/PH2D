@@ -30,7 +30,8 @@ const PENDENTES: &[(&str, usize, usize, usize)] = &[("widget_gallery", 7, 1, 0)]
 const PENDENTES_RITMO: &[(&str, usize)] = &[
     // Instance e Properties (família K de `18_REVISAO_DE_CAPRICHO`), e o nome dentro do chip da tag.
     ("inspector", 0),
-    ("widget_gallery", 18),
+    // 16 desde a q4: dois nomes AO LADO do controlo eram medidos como rótulo em cima.
+    ("widget_gallery", 16),
 ];
 
 /// Linhas medidas por painel, o piso (medido em 04/11): abaixo disto o zero já não é aprovação.

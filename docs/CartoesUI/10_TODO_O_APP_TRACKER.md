@@ -28,12 +28,12 @@ Estado: ⬜ por fazer · 🟨 em curso · ✅ feito (foto vista, testes por nome
 | B | Piloto + receita | Physics em cartões; [11_RECEITA](11_RECEITA_PAINEL_EM_CARTOES.md) nasce daqui | ✅ |
 | C | Alfinete | [Plano 09](09_alfinete_nos_cartoes_PLANO.md): Material, Ordering, Object → Appearance → Fill + Stroke | ✅ (sobras na próxima limpeza) |
 | D | Painéis pequenos | Tokens, Grid Settings, Wet Paint, Macros, Tags, Padding, Upscale, Equalize Sizes, Background Removal, Color Equalization, Audio Mixer, Assets, Authored, Widget Lab | ✅ (contraprovas do D1 na rodada R) |
-| E | Ferramentas | Flip, Frames, Pixel Tools | ⬜ |
-| F | Hierarchy | A árvore dentro da lista flutuante | ⬜ |
+| E | Ferramentas | Flip, Frames, Pixel Tools | ✅ (registo do Bloco E; abertos lá) |
+| F | Hierarchy | A árvore dentro da lista flutuante | ✅ (registo do Bloco F) |
 | G | Vector | 41 k linhas; respeita F43/F44 (layout Figma já decidido). [Plano e fatias](12_VECTOR_PLANO.md) | ✅ G1–G8 (portões e contraprovas: registo da G8) |
 | H | Painter | Respeita E10 (decisão do dono) | ✅ |
-| I | Desenho próprio | Timeline, Motion Graph, Audio Editor, Pixel Timeline, Pixel Preview, Code; o que neles é chrome, não o canvas | ⬜ |
-| J | Resto de 05 §9 | Mola do Kanban (família 3), solto sob a barra de modos, corda sobre soltos de outro painel | ⬜ |
+| I | Desenho próprio | Timeline, Motion Graph, Audio Editor, Pixel Timeline, Pixel Preview, Code; o que neles é chrome, não o canvas | ✅ (registos I1 e I2) |
+| J | Resto de 05 §9 | Mola do Kanban (família 3), solto sob a barra de modos, corda sobre soltos de outro painel | ✅ (registos R2 e J) |
 
 ## Decisões tomadas sem o dono (para ele confirmar no smoke)
 
@@ -87,6 +87,12 @@ Estado: ⬜ por fazer · 🟨 em curso · ✅ feito (foto vista, testes por nome
 - **k, Ordering:** a ordem é a da foto do dono (Z + Order in Layer, Sorting Layer + Top Level, Z as Relative + Behind Parent, Y-Sort + Sorting Group); o Sort Point e o Sort at Root descem para baixo do par. O nome no cartão encurtou para «Behind Parent», porque «Show Behind Parent» pedia 146 px contra 125 da coluna. `PH2D_CARDS=0` segue com o nome inteiro.
 - **k, Transform:** girar em outro objecto soma 90° e normaliza em −180°…180°; espelhar troca o sinal de `scale`. No vetor seguem os verbos que mexem nos pontos. Espelhar um objecto com filhos espelha os filhos, a lei da escala negativa de sempre. A rever no smoke.
 - **k, caixa numa coluna de duas:** a marca de animação anda com o nome; a caixa inteira da coluna é o alvo do clique.
+
+- **F1, contador:** dois cartões do MESMO contador dizem «Now: 42» cada um; mantido, o censo só o veria na fixtura (registo F1).
+- **F5, custo dos presos:** ~1,2 ms por quadro com 5 objectos (não ~0,95; tabela no [plano 09](09_alfinete_nos_cartoes_PLANO.md)). Sem cura: nenhum limite depende disto.
+- **F7, Scale com um eixo a zero em modo individual:** com outros selecionados e o primário a zero, o primário abre e os outros não mudam nesse eixo (de um zero não há razão a ler); membro a zero numa escala de grupo fica a zero.
+- **F4, véu do Add Object:** volta a escurecer a janela inteira, como o código sempre declarou; o dono nunca o viu assim.
+- **F2, alça de escala:** arrastar além do lado oposto não espelha, pára no piso; espelhar é o verbo do cartão. Eixo a zero abre a positivo.
 
 ## Considerações do dono no smoke de 04/11 (aplicar num bloco, quando ele der o sinal)
 

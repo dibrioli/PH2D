@@ -468,7 +468,7 @@ pub(super) use suaves::Suaves;
 /// (o caminho de antes), `0` com o campo alocado por outro controlo, `0,12` em tudo, e `0,5` coberto por um traço a `0`
 /// (a mistura pela massa: o pior número de degraus). `cargo test … --lib medida_do_smooth_edges -- --ignored --nocapture`.
 #[cfg(test)]
-mod medida;
+mod medida_tests;
 
 /// **A lei, num campo desenhado à mão** (5.º smoke do dono, 10/10: «heavy edge nem sempre aceita a
 /// influência de smooth edge» — as linhas escuras finas por dentro da tinta): um vermelho cheio com uma

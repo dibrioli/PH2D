@@ -29,7 +29,7 @@ impl PainterTool {
 
     fn set_brush_texture_image_corpo(&mut self, lum: Vec<u8>, width: u32, height: u32) {
         let was_none = self.paint.brush.texture.kind == TextureKind::None;
-        self.paint.brush.grao_aplicado = self.grao_aplicado_congelado();
+        self.congela_os_graos_da_imagem_que_sai(true);
         self.paint.texture_image = Some(BrushTextureImage::new(lum, width, height));
         self.paint.brush.texture.kind = TextureKind::Image;
         self.paint.texture_image_pending = false;

@@ -55,6 +55,7 @@ impl PainterTool {
         self.paint.shape_image_pending = false;
         self.paint.shape_image_version = self.paint.shape_image_version.wrapping_add(1);
 
+        self.congela_os_graos_da_imagem_que_sai(false);
         self.paint.texture_image = None;
         if self.paint.brush.texture.kind == TextureKind::Image {
             match ler(TEXTURA_GRAO) {

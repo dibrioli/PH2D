@@ -185,17 +185,44 @@ impl PainterTool {
     /// aquela imagem, Bug #61).
     #[must_use]
     pub(crate) fn pincel_a_gravar(&self) -> ph2d_painter_brush::BrushSpec {
-        let mut b = self.paint.brush;
+        self.pincel_a_gravar_de(self.paint.brush)
+    }
+
+    /// [`Self::pincel_a_gravar`] de um pincel qualquer (o vivo ou o guardado num slot).
+    #[must_use]
+    pub(crate) fn pincel_a_gravar_de(
+        &self,
+        mut b: ph2d_painter_brush::BrushSpec,
+    ) -> ph2d_painter_brush::BrushSpec {
         if b.texture.kind != ph2d_painter_brush::TextureKind::Image {
-            b.grao_aplicado = self.grao_aplicado_congelado();
+            b.grao_aplicado = self.grao_aplicado_congelado_de(&b);
         }
         b
+    }
+
+    /// A imagem do Grain vai sair: o slot é único, e cada pincel GUARDADO que a tem por referência fica com a média dela
+    /// (Bug #65 A4). `com_o_vivo = false` quando o vivo já é outro (o preset que traz a imagem nova).
+    pub(crate) fn congela_os_graos_da_imagem_que_sai(&mut self, com_o_vivo: bool) {
+        for i in 0..self.paint.brush_by_mode.len() {
+            self.paint.brush_by_mode[i].grao_aplicado =
+                self.grao_aplicado_congelado_de(&self.paint.brush_by_mode[i]);
+        }
+        if com_o_vivo {
+            self.paint.brush.grao_aplicado = self.grao_aplicado_congelado();
+        }
     }
 
     /// [`ph2d_painter_brush::GraoAplicado`] com a média do Grain de imagem medida agora, enquanto a imagem dele está no slot.
     #[must_use]
     pub(crate) fn grao_aplicado_congelado(&self) -> ph2d_painter_brush::GraoAplicado {
-        let mut g = self.paint.brush.grao_aplicado;
+        self.grao_aplicado_congelado_de(&self.paint.brush)
+    }
+
+    fn grao_aplicado_congelado_de(
+        &self,
+        b: &ph2d_painter_brush::BrushSpec,
+    ) -> ph2d_painter_brush::GraoAplicado {
+        let mut g = b.grao_aplicado;
         if g.grao.kind == ph2d_painter_brush::TextureKind::Image
             && g.media.is_none()
             && let Some(imagem) = self.paint.texture_image.as_ref()
@@ -203,7 +230,7 @@ impl PainterTool {
             let (w, h) = self.source_size;
             let de_g = ph2d_painter_brush::BrushSpec {
                 texture: g.grao,
-                ..self.paint.brush
+                ..*b
             };
             g.media = Some(super::wetpaint::media_do_grao(
                 &de_g,

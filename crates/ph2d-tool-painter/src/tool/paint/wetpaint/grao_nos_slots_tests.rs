@@ -239,3 +239,49 @@ fn sonda_suspeitas_do_grao() {
         println!("blend|{nome}|{s}|{:.3}", s as f64 / liso as f64);
     }
 }
+
+/// A primeira imagem como se viesse do preset.
+fn aplicado_com_imagem(t: &mut PainterTool, v: u8) {
+    t.set_brush_texture_image(imagem(v), 64, 64);
+    t.paint.brush.grao_aplicado.grao = t.paint.brush.texture;
+    assert!(!t.paint.brush.grao_trocado(), "premissa: é o aplicado");
+}
+
+/// ⭐ **A4: trocar a imagem na Borracha não esvazia o Pincel.** O slot de imagem é único: quem a tinha por referência
+/// fica com a média dela (medido: massa 1,3 %, 160 168 contra 12 248 513).
+#[test]
+fn a_imagem_trocada_noutro_slot_nao_esvazia_o_pincel() {
+    let e = || de_fabrica_ou_candidato("Wet Round");
+    let (referencia, _) = traco_com(&e(), |t| aplicado_com_imagem(t, 200));
+    // Pela porta da UI.
+    let (c, _) = traco_com(&e(), |t| {
+        aplicado_com_imagem(t, 200);
+        t.set_paint_tool_mode("eraser");
+        t.set_brush_texture_image(imagem(3), 64, 64);
+        t.set_paint_tool_mode("brush");
+    });
+    let m = c[0] / referencia[0];
+    println!("pela UI: massa {m:.3}");
+    assert!((0.9..1.1).contains(&m), "pela UI: massa {m:.3}×");
+    // Pela porta do preset: um preset de Borracha com a imagem dele.
+    let (c, _) = traco_com(&e(), |t| {
+        aplicado_com_imagem(t, 200);
+        t.set_paint_tool_mode("eraser");
+        let mut b = PainterTool::default();
+        b.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
+        b.set_paint_tool_mode("wetpaint");
+        b.set_paint_tool_mode("eraser");
+        b.set_brush_texture_image(imagem(3), 64, 64);
+        let (parametros, texturas) = b.preset_capturar(&e().parametros);
+        let p = ph2d_brush_presets::Preset {
+            parametros,
+            texturas,
+            ..e()
+        };
+        assert!(t.preset_aplicar(&p).is_ok(), "o preset da Borracha");
+        t.set_paint_tool_mode("brush");
+    });
+    let m = c[0] / referencia[0];
+    println!("pelo preset: massa {m:.3}");
+    assert!((0.9..1.1).contains(&m), "pelo preset: massa {m:.3}×");
+}

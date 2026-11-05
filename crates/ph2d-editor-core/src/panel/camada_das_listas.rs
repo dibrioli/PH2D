@@ -20,6 +20,14 @@ pub fn alvo(hit_index: &mut HitIndex, id: NodeId, rect: Rect) {
     guarda_alvo(id, rect);
 }
 
+/// Um CARTÃO que flutua registou os seus controlos pela porta comum, a partir de `marca` (`hit_index.len()`):
+/// vão todos por cima ao fechar, como as linhas de uma lista.
+pub fn alvos_desde(hit_index: &HitIndex, marca: usize) {
+    for (id, rect) in hit_index.desde(marca) {
+        guarda_alvo(*id, *rect);
+    }
+}
+
 /// Cola a camada por cima de `scene`, e os alvos por cima do índice.
 pub fn fecha(scene: &mut VectorScene, hit_index: &mut HitIndex) {
     let Some(mut camada) = tira() else {
@@ -70,6 +78,28 @@ mod tests {
         fecha(&mut scene, &mut hits);
         assert_eq!(scene.take_record().len(), 1, "a lista não voltou ao fechar");
         assert_eq!(hits.hit(5.0, 5.0), Some(LISTA));
+    }
+
+    /// Os controlos de um cartão que flutua ganham de quem se registou depois; os de antes da marca não.
+    /// *Mutação: `alvos_desde` a começar em 0, ou vazio ⇒ vermelho.*
+    #[test]
+    fn os_alvos_de_um_cartao_que_flutua_voltam_ao_fechar() {
+        const ANTES: NodeId = NodeId(3);
+        let mut scene = VectorScene::new();
+        let mut hits = HitIndex::new();
+        abre(&scene);
+        hits.register(ANTES, Rect::new(20.0, 0.0, 10.0, 10.0));
+        let marca = hits.len();
+        hits.register(LISTA, r());
+        alvos_desde(&hits, marca);
+        hits.register(POR_CIMA, Rect::new(0.0, 0.0, 30.0, 10.0));
+        fecha(&mut scene, &mut hits);
+        assert_eq!(hits.hit(5.0, 5.0), Some(LISTA));
+        assert_eq!(
+            hits.hit(25.0, 5.0),
+            Some(POR_CIMA),
+            "o de antes da marca não sobe"
+        );
     }
 
     /// R5: o seletor de datas (verso do cartão, Planner) passa pela porta.

@@ -103,12 +103,12 @@ impl crate::App {
                     // Guardar o centro aqui tornaria soltar o Ctrl no meio do arrasto
                     // uma operação sem volta — e o modificador deixaria de ser vivo
                     // justamente na direção em que o artista o larga.
-                    ph2d_editor_core::anchor_pivot_world(
+                    ph2d_editor_core::grip_pivot_world(
                         gkind,
                         sprite_anchor_intrinsic,
                         sprite_half_intrinsic,
                         world_snap,
-                        false,
+                        start_world,
                     )
                 };
                 // Onda 2 polish: capture the global view at

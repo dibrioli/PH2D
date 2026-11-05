@@ -265,6 +265,12 @@ impl HitIndex {
             .find_map(|(rid, r)| if *rid == id { Some(*r) } else { None })
     }
 
+    /// O que se registou desde que [`Self::len`] valia `marca`, por ordem.
+    #[must_use]
+    pub fn desde(&self, marca: usize) -> &[(NodeId, Rect)] {
+        self.rects.get(marca..).unwrap_or(&[])
+    }
+
     /// Number of registered rects this frame.
     pub fn len(&self) -> usize {
         self.rects.len()

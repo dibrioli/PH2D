@@ -70,19 +70,19 @@ fn the_derived_anchor_is_never_written_back_over_the_authored_one() {
 
 /// **(3) O pen-down guarda o CANTO, com a tecla premida ou não.**
 ///
-/// ⚠️ O oráculo é o argumento que o abridor passa ao `anchor_pivot_world` — `false` literal —,
-/// e não a ausência de um nome: uma variável chamada `use_center_anchor` podia lá estar valendo
-/// `false`, e o gate ficaria a medir vocabulário em vez de comportamento.
+/// ⚠️ O oráculo é a PORTA que o abridor chama: `grip_pivot_world` não tem o argumento do centro (pede
+/// o canto ao `anchor_pivot_world` com `false`, prova ao bit em `gizmo/escala_tests.rs`), e o lado sai
+/// do cursor do pen-down, para o canto oposto de um objecto espelhado ser o oposto da mão.
 #[test]
 fn the_pen_down_stores_the_corner_so_the_key_has_something_to_give_back() {
     let src = open_src();
     let i = src
-        .find("ph2d_editor_core::anchor_pivot_world(")
+        .find("ph2d_editor_core::grip_pivot_world(")
         .expect("o abridor de arrasto nao calcula o pivo");
     let call_end = src[i..].find(')').map_or(src.len(), |e| i + e);
     let call = &src[i..call_end];
     assert!(
-        call.contains("false"),
+        call.contains("start_world"),
         "o pen-down pede o pivo do CENTRO quando a tecla ja' esta' premida — entao soltar a tecla \
          no meio do arrasto nao tem canto a que voltar (so' o pen-down sabe qual alca foi \
          pega):\n{call}"

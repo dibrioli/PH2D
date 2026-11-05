@@ -31,6 +31,7 @@
 
 pub mod camera;
 pub mod drag;
+mod escala;
 pub mod group;
 pub mod hit;
 pub mod model;
@@ -45,12 +46,16 @@ pub mod transform;
 #[path = "aabb_tests.rs"]
 mod aabb_tests;
 #[cfg(test)]
+#[path = "escala_tests.rs"]
+mod escala_tests;
+#[cfg(test)]
 mod tests;
 
 pub use camera::{GizmoCamera, GizmoModifiers, GizmoSnap};
 pub use drag::{
     GizmoDragKind, GizmoDragState, GizmoHit, GizmoTarget, GroupDragSnapshot, TransformSnapshot,
 };
+pub use escala::grip_pivot_world;
 pub use group::{GroupMotion, MemberPose, group_member_pose, skew_under_world_scale};
 pub use hit::{gizmo_kind_for_id, ids, is_gizmo_handle_id, is_gizmo_id};
 pub use model::{MODEL_IDENTITY, model_apply, model_inverse, skew_about, skew_translation_out};

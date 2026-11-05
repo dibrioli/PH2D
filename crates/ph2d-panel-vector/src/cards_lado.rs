@@ -8,8 +8,8 @@ use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::interaction::HitIndex;
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_icon, rect_to_vello};
-use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::{CardCtx, censo, dicas};
+use ph2d_editor_core::panel::{PaintCtx, camada_das_listas};
 use ph2d_editor_core::widget::PaintedPopover;
 use ph2d_editor_core::widget::card_ink::{self, CardInk};
 use ph2d_editor_core::zones::Rect;
@@ -116,7 +116,10 @@ fn cabecalho(c: &mut CardCtx<'_>, h: &Cabeca<'_>, y: f32) -> f32 {
         c.text_system,
         c.scene,
         h.titulo,
-        [tx, hy + ph2d_editor_core::paint::folga_do_texto(m::CARD_HEAD_H, m::CARD_TITLE_PX)],
+        [
+            tx,
+            hy + ph2d_editor_core::paint::folga_do_texto(m::CARD_HEAD_H, m::CARD_TITLE_PX),
+        ],
         m::CARD_TITLE_PX,
         (ax - tx).max(0.0),
         c.ink.color(ColorToken::Text1),
@@ -193,29 +196,35 @@ pub(crate) fn flutua(
     let rect = onde(conteudo);
     let max = (conteudo - rect.h).max(0.0);
     let rolagem = ctx.host.store().panel_scroll(id).clamp(0.0, max); // CLAMP-OK: 0.0 literal; max é uma extensão não negativa
-    moldura(ctx.scene, ink, rect);
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-    // O fundo ENGOLE o clique: sem ele um clique entre dois campos caía na arte por baixo.
-    hit_index.register(ph2d_editor_core::ids::RAIL_BACKDROP, rect);
-    ctx.scene.push_clip(&rect_to_vello(rect));
-    hit_index.push_clip(rect);
-    {
-        let mut c = CardCtx::flutuante(
-            &mut *ctx.scene,
-            &mut *ctx.text_system,
-            store,
-            &mut *hit_index,
-            ink,
-            rect.x + m::CARD_PAD_X,
-            inner_w,
-        );
-        card_ink::com(ink, || {
-            let y = abre(&mut c, rect.y - rolagem);
-            censo::na_secao_de(id, || corpo(&mut c, y));
-        });
-    }
-    hit_index.pop_clip();
-    ctx.scene.pop_layer();
+    let marca = hit_index.len();
+    let text_system = &mut *ctx.text_system;
+    // Na camada das listas: depois dele vêm os outros painéis, os cartões soltos, a barra e o HUD.
+    camada_das_listas::por_cima(ctx.scene, |scene| {
+        moldura(scene, ink, rect);
+        // O fundo ENGOLE o clique: sem ele um clique entre dois campos caía na arte por baixo.
+        hit_index.register(ph2d_editor_core::ids::RAIL_BACKDROP, rect);
+        scene.push_clip(&rect_to_vello(rect));
+        hit_index.push_clip(rect);
+        {
+            let mut c = CardCtx::flutuante(
+                &mut *scene,
+                &mut *text_system,
+                store,
+                &mut *hit_index,
+                ink,
+                rect.x + m::CARD_PAD_X,
+                inner_w,
+            );
+            card_ink::com(ink, || {
+                let y = abre(&mut c, rect.y - rolagem);
+                censo::na_secao_de(id, || corpo(&mut c, y));
+            });
+        }
+        hit_index.pop_clip();
+        scene.pop_layer();
+    });
+    camada_das_listas::alvos_desde(hit_index, marca);
     let pintada = PaintedPopover {
         id,
         panel: rect,

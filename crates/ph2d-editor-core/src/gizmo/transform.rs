@@ -4,6 +4,7 @@
 
 use super::camera::{GizmoCamera, GizmoModifiers, GizmoSnap};
 use super::drag::{GizmoDragKind, GizmoDragState, GizmoTarget, TransformSnapshot};
+use super::escala::{EIXO_A_ZERO, abre_do_zero, escala_do_eixo};
 
 /// Given the in-progress drag + the live camera state, compute the
 /// new Transform the host should write into SimWorld this frame.
@@ -180,19 +181,41 @@ pub fn compute_gizmo_transform(
             } else {
                 1.0
             };
+            let partida = drag.start_transform.scale;
+            let [zero_x, zero_y] = partida.map(|s| s.abs() <= EIXO_A_ZERO);
             // Shift: lock aspect ratio. Pick the ratio with the
             // larger absolute deviation from 1.0 so a small drag on
             // one axis doesn't override the user's intent on the
-            // other.
-            if modifiers.shift {
+            // other. Um eixo a zero não tem proporção a travar.
+            if modifiers.shift && !zero_x && !zero_y {
                 let dev_x = (ratio_x - 1.0).abs();
                 let dev_y = (ratio_y - 1.0).abs();
                 let chosen = if dev_x > dev_y { ratio_x } else { ratio_y };
                 ratio_x = chosen;
                 ratio_y = chosen;
             }
-            let scale_x = (drag.start_transform.scale[0] * ratio_x).max(0.001);
-            let scale_y = (drag.start_transform.scale[1] * ratio_y).max(0.001);
+            let aberto = |agora: f32, antes: f32, eixo: usize| {
+                abre_do_zero(
+                    agora - antes,
+                    drag.sprite_half_intrinsic[eixo],
+                    drag.parent_world.scale[eixo],
+                )
+            };
+            let mut scale_x = if zero_x {
+                aberto(now_local_x, start_local_x, 0)
+            } else {
+                escala_do_eixo(partida[0], ratio_x)
+            };
+            let mut scale_y = if zero_y {
+                aberto(now_local_y, start_local_y, 1)
+            } else {
+                escala_do_eixo(partida[1], ratio_y)
+            };
+            // Os dois a zero: sem proporção para ler é 1:1, como no cadeado.
+            if modifiers.shift && zero_x && zero_y {
+                scale_x = scale_x.max(scale_y);
+                scale_y = scale_x;
+            }
             // Translation re-anchor: when the opposite corner is the
             // pivot (default — NOT Ctrl/Cmd), the sprite center must
             // shift so that the new opposite-corner world position
@@ -248,13 +271,28 @@ pub fn compute_gizmo_transform(
             } else {
                 1.0
             };
-            let mut scale = drag.start_transform.scale;
-            scale[axis] = (drag.start_transform.scale[axis] * ratio).max(0.001);
+            let partida = drag.start_transform.scale;
+            let other = (axis + 1) % 2;
+            let [zero, zero_outro] = [axis, other].map(|e| partida[e].abs() <= EIXO_A_ZERO);
+            let mut scale = partida;
+            scale[axis] = if zero {
+                abre_do_zero(
+                    now_local - start_local,
+                    drag.sprite_half_intrinsic[axis],
+                    drag.parent_world.scale[axis],
+                )
+            } else {
+                escala_do_eixo(partida[axis], ratio)
+            };
             // Shift on an edge handle also locks AR — copy the
-            // ratio to the other axis (Figma semantics).
+            // ratio to the other axis (Figma semantics). Só com proporção para ler; os dois a zero
+            // são 1:1, como no cadeado.
             if modifiers.shift {
-                let other = (axis + 1) % 2;
-                scale[other] = (drag.start_transform.scale[other] * ratio).max(0.001);
+                match (zero, zero_outro) {
+                    (false, false) => scale[other] = escala_do_eixo(partida[other], ratio),
+                    (true, true) => scale[other] = scale[axis],
+                    _ => {}
+                }
             }
             // Translation re-anchor: same logic as ScaleCorner. The
             // opposite-edge midpoint stays fixed at `pivot_world`, and

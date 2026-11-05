@@ -887,13 +887,29 @@ fn the_stroke_popover_of_the_bar_paints_real_handles() {
     );
 }
 
-/// Com a aba do painel atrás o traço abre na mesma: alguém tem de semear os campos do cartão dele. O
-/// mock força o painel visível; este caminho só existe no hero.
-/// *Mutação: tirar o `prepare` do ramo do painel escondido ⇒ vermelho.*
-#[test]
-fn the_popover_works_with_the_panel_tab_behind() {
+fn pinta_o_hero(
+    hero: &mut ph2d_editor_core::screens::hero::HeroScreen,
+) -> ph2d_vector::VectorScene {
+    let mut scene = ph2d_vector::VectorScene::new();
+    scene.record();
+    let mut text = ph2d_text::TextSystem::without_system_fonts();
+    let janela = Rect::new(0.0, 0.0, 1920.0, 1080.0);
+    ph2d_editor_core::screens::hero::paint_hero_screen(hero, janela, &mut scene, &mut text);
+    scene
+}
+
+/// A fila pinta-se depois do painel e refaz os lugares a cada quadro: o chip vale para o quadro seguinte.
+fn poe_o_chip_do_traco(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
+    hero.store.set_tool_row_slots(vec![(
+        p::VECTOR_BAR_STROKE,
+        Rect::new(400.0, 40.0, 80.0, 24.0),
+    )]);
+}
+
+/// O hero com o painel do traço da barra aberto e a aba do painel atrás.
+fn hero_com_o_traco() -> ph2d_editor_core::screens::hero::HeroScreen {
     use ph2d_editor_core::panel::{ErasedPanel, PanelRegistry};
-    use ph2d_editor_core::screens::hero::{HeroScreen, paint_hero_screen};
+    use ph2d_editor_core::screens::hero::HeroScreen;
     static INIT: std::sync::Once = std::sync::Once::new();
     ph2d_editor_core::test_support::ensure_panel_registry();
     INIT.call_once(|| {
@@ -927,22 +943,22 @@ fn the_popover_works_with_the_panel_tab_behind() {
     }));
     let mut hero = HeroScreen::new(NodeId(1));
     hero.panel_visibility.insert(VectorPanel::ID, false);
-    let janela = Rect::new(0.0, 0.0, 1920.0, 1080.0);
-    let mut pinta = |hero: &mut HeroScreen| {
-        let mut scene = ph2d_vector::VectorScene::new();
-        let mut text = ph2d_text::TextSystem::without_system_fonts();
-        paint_hero_screen(hero, janela, &mut scene, &mut text);
-    };
-    pinta(&mut hero);
-    hero.store.set_tool_row_slots(vec![(
-        p::VECTOR_BAR_STROKE,
-        Rect::new(400.0, 40.0, 80.0, 24.0),
-    )]);
+    pinta_o_hero(&mut hero);
+    poe_o_chip_do_traco(&mut hero);
     if let Some(InteractiveState::Dropdown { open, .. }) = hero.store.get_mut(p::VECTOR_BAR_STROKE)
     {
         *open = true;
     }
-    pinta(&mut hero);
+    pinta_o_hero(&mut hero);
+    hero
+}
+
+/// Com a aba do painel atrás o traço abre na mesma: alguém tem de semear os campos do cartão dele. O
+/// mock força o painel visível; este caminho só existe no hero.
+/// *Mutação: tirar o `prepare` do ramo do painel escondido ⇒ vermelho.*
+#[test]
+fn the_popover_works_with_the_panel_tab_behind() {
+    let hero = hero_com_o_traco();
     let dash = t::VECTOR_DASH_IDS[0];
     assert!(
         hero.hit_index.rect_for(dash).is_some(),
@@ -954,6 +970,58 @@ fn the_popover_works_with_the_panel_tab_behind() {
         Some(50.0),
         "sem semente com a aba atrás"
     );
+    state::set_current_appearance(None);
+}
+
+/// O painel do traço passa pela camada das listas: vem depois do HUD na cena, e os alvos dele voltam a
+/// registar-se ao fechar, por cima do que se registou depois. Vale para os painéis à esquerda: a mesma
+/// `flutua`. *Mutação: tirar `por_cima` ou `alvos_desde` de `cards_lado::flutua` ⇒ vermelho.*
+#[test]
+fn the_stroke_popover_is_painted_over_the_hud() {
+    use ph2d_vector::{DrawOp, Shape as _};
+    let mut hero = hero_com_o_traco();
+    hero.view.stats_visible = true;
+    let aberto = hero.store.dropdown_popover().expect("o traço não abriu").1;
+    poe_o_chip_do_traco(&mut hero);
+    let caixas: Vec<_> = pinta_o_hero(&mut hero)
+        .take_record()
+        .into_iter()
+        .filter_map(|op| match op {
+            DrawOp::Fill { path, .. } => Some(path.bounding_box()),
+            _ => None,
+        })
+        .collect();
+    let ordem = |r: Rect| {
+        let igual = |b: &ph2d_vector::Rect| {
+            (b.x0 - f64::from(r.x)).abs() < 2.0
+                && (b.y0 - f64::from(r.y)).abs() < 2.0
+                && (b.width() - f64::from(r.w)).abs() < 3.0
+                && (b.height() - f64::from(r.h)).abs() < 3.0
+        };
+        caixas.iter().rposition(igual)
+    };
+    let mut text = ph2d_text::TextSystem::without_system_fonts();
+    let layout = hero.last_layout.expect("houve um quadro");
+    let hud = ph2d_editor_core::screens::hero::bottom_hud_rect(
+        &layout,
+        &hero.store,
+        &mut text,
+        hero.stats,
+    );
+    let (traco, hud) = (
+        ordem(aberto).expect("a moldura do traço não se pintou"),
+        ordem(hud).expect("o HUD não se pintou"),
+    );
+    assert!(traco > hud, "o traço ({traco}) ficou sob o HUD ({hud})");
+
+    let dash = t::VECTOR_DASH_IDS[0];
+    let vezes = hero
+        .hit_index
+        .desde(0)
+        .iter()
+        .filter(|(id, _)| *id == dash)
+        .count();
+    assert_eq!(vezes, 2, "o alvo do campo não voltou por cima ao fechar");
     state::set_current_appearance(None);
 }
 

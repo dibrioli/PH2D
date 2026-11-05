@@ -41,7 +41,7 @@ use std::collections::BTreeMap;
 /// prompt 50): o Painter abre sozinho em Wet Paint com o Oil Bristle a 103 px e dois traços inclinados já
 /// pintados — o de HOJE (o relevo sem escada) em cima e o de ONTEM (sem relevo) em baixo; o `3` é a cena do FPS
 /// ([`crate::wetpaint_fps`]): o app pinta sozinho e cronometra cada quadro; o `4` são os casos da lei antiga
-/// ([`crate::wetpaint_casos`]), no papel texturizado padrão.
+/// ([`ph2d_tool_painter::wetpaint_casos`]), no papel texturizado padrão.
 pub const NIVEIS: u32 = 4;
 
 /// A cena do FPS (`=3`) — a ponte chama [`crate::wetpaint_fps::conduz`] a cada quadro.
@@ -101,7 +101,7 @@ pub fn spawn_if_enabled(
     }
     #[cfg(feature = "panel-painter-layers")]
     if nivel() == 4 {
-        use crate::wetpaint_casos::{ALTURA, LARGURA};
+        use ph2d_tool_painter::wetpaint_casos::{ALTURA, LARGURA};
         // A sprite nascida «Textured Paper»: o bind reconhece-a e serve o papel do dono.
         return ph2d_image_import::spawn_rgba(
             sim,
@@ -167,7 +167,7 @@ pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     }
     #[cfg(feature = "panel-painter-layers")]
     if nivel() == 4 {
-        crate::wetpaint_casos::pinta(painter);
+        ph2d_tool_painter::wetpaint_casos::pinta(painter);
         return;
     }
     if nivel() == 3 {

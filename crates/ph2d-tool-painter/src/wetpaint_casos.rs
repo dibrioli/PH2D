@@ -3,10 +3,10 @@
 //! Receitas: a da F0 (`sonda_varredura_oleo`) e a da prancha `branco_em_papel_de_cor.png`
 //! (`sonda_fotos_do_dono`). Nada aqui muda motor nem preset.
 
+use crate::ids::{PAINTER_WETPAINT_DILUTION, PAINTER_WETPAINT_WATER};
+use crate::tool::PainterTool;
 use ph2d_editor_core::Tool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PanelEvent, PointerPhase};
-use ph2d_tool_painter::PainterTool;
-use ph2d_tool_painter::ids::{PAINTER_WETPAINT_DILUTION, PAINTER_WETPAINT_WATER};
 
 /// A tela: 3 × 2 lugares de 400 × 360.
 pub const LARGURA: u32 = 1200;

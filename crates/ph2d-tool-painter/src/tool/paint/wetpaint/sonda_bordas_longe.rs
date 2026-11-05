@@ -204,7 +204,13 @@ pub(super) fn corrida(lib: &Biblioteca, c: &Cfg, b: Option<&Preset>) -> Fotos {
 pub(super) fn dif(a: &[u8], b: &[u8], y0: usize, y1: usize) -> (usize, u8) {
     let (mut n, mut m) = (0, 0u8);
     let (a, b) = (&a[y0 * W * 4..y1 * W * 4], &b[y0 * W * 4..y1 * W * 4]);
-    for (i, (x, y)) in a.chunks_exact(4).zip(b.chunks_exact(4)).enumerate() {
+    for (i, (x, y)) in a
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(b.as_chunks::<4>().0)
+        .enumerate()
+    {
         if i % W < XMAX && x != y {
             n += 1;
             for k in 0..4 {
@@ -217,11 +223,11 @@ pub(super) fn dif(a: &[u8], b: &[u8], y0: usize, y1: usize) -> (usize, u8) {
 
 pub(super) fn grava_ppm(d: &str, nome: &str, f: &[u8]) {
     let mut v = format!("P6\n{W} {H}\n255\n").into_bytes();
-    for px in f.chunks_exact(4) {
+    for px in f.as_chunks::<4>().0 {
         // sobre branco
         let a = u32::from(px[3]);
-        for c in 0..3 {
-            v.push(((u32::from(px[c]) * a + 255 * (255 - a)) / 255) as u8);
+        for &c in &px[..3] {
+            v.push(((u32::from(c) * a + 255 * (255 - a)) / 255) as u8);
         }
     }
     std::fs::create_dir_all(d).unwrap();
@@ -474,14 +480,14 @@ fn sonda_bordas_qual_knob() {
         t.abre_a_sprite(vec![255u8; 64 * 64 * 4], 64, 64);
         t.set_paint_tool_mode("wetpaint");
         t.preset_aplicar(por_nome(&lib, &c.a)).unwrap();
-        t.paint.wetpaint.knobs.clone()
+        t.paint.wetpaint.knobs
     };
     let kb = {
         let mut t = PainterTool::default();
         t.abre_a_sprite(vec![255u8; 64 * 64 * 4], 64, 64);
         t.set_paint_tool_mode("wetpaint");
         t.preset_aplicar(b).unwrap();
-        t.paint.wetpaint.knobs.clone()
+        t.paint.wetpaint.knobs
     };
     // Sem pincelada: `troca` escreve nos knobs vivos, depois de A assentar, e os tiques correm.
     let corre = |troca: &(dyn Fn(&mut PainterTool) + Sync)| -> Vec<u8> {

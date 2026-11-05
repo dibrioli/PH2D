@@ -1,4 +1,4 @@
-//! ⭐ **A lei do ritmo vertical** ([05 §4](../../../../docs/CartoesUI/05_ESPECIFICACAO_UI_COMPLETA.md)):
+//! ⭐ **A lei do ritmo vertical** ([05 §4](../../../../../docs/CartoesUI/05_ESPECIFICACAO_UI_COMPLETA.md)):
 //! a distância real entre o que o corpo de um cartão pintou, texto contra controlo. O censo das linhas
 //! só vê o que passa pelas portas dos cartões; este vê toda a pintura (`paint_text*` e `HitIndex::register`).
 

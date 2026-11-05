@@ -17,6 +17,19 @@ use super::{snap_x_apply, text_rendering};
 use crate::text_elide::elide_tracked;
 use ph2d_text::{FontWeight, PositionedLayoutItem, TextSystem};
 use ph2d_vector::{Affine, Color, Fill, Glyph, VectorScene};
+use std::cell::Cell;
+
+/// Quem ouve o texto pintado: `(texto, [x, y, largura, altura], corpo)`.
+pub(crate) type OuvinteDoTexto = fn(&str, [f32; 4], f32);
+
+thread_local! {
+    static OUVINTE_DO_TEXTO: Cell<Option<OuvinteDoTexto>> = const { Cell::new(None) };
+}
+
+/// O censo dos cartões instala-se aqui enquanto grava: injectado, porque o `paint` fica abaixo do `widget`.
+pub(crate) fn ouve_o_texto(ouvinte: Option<OuvinteDoTexto>) {
+    OUVINTE_DO_TEXTO.with(|o| o.set(ouvinte));
+}
 
 /// Lay out `text` via parley + emit a glyph run for each parley
 /// [`PositionedLayoutItem::GlyphRun`] at `(x, y)` (top-left origin).
@@ -304,9 +317,9 @@ fn paint_text_spans(
         spans,
         tracking_em,
     );
-    if crate::widget::card_censo::ligado() {
+    if let Some(ouvinte) = OUVINTE_DO_TEXTO.with(Cell::get) {
         let largura = text_system.prefix_width_weighted(text, font_size, weight);
-        crate::widget::card_censo::pintou_texto(
+        ouvinte(
             text,
             [x, y, largura.min(max_width), alta.max(font_size)],
             font_size,

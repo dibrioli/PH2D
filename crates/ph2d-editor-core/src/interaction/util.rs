@@ -42,3 +42,17 @@ pub fn format_number(v: f64) -> String {
         crate::widget::zero_sem_sinal(&format!("{v:.3}")).into_owned()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::format_number;
+
+    /// A cópia do lado do despacho também tira o sinal do zero, e só do zero.
+    #[test]
+    fn um_zero_negativo_nao_tem_sinal_no_buffer() {
+        for lido in [format_number(-0.0), format_number(-0.0004)] {
+            assert!(!lido.starts_with('-'), "{lido:?}");
+        }
+        assert_eq!(format_number(-0.5), "-0.500");
+    }
+}

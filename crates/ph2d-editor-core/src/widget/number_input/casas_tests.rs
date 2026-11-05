@@ -119,15 +119,11 @@ fn um_zero_nunca_le_com_sinal() {
     for porta in [
         super::super::format_number(-0.0),
         super::super::format_number(-0.0004),
-        crate::interaction::format_number(-0.0),
-        crate::interaction::format_number(-0.0004),
-        crate::length::format_value(-0.004, 2),
         format_number_com_casas(-0.0, Some(2)),
     ] {
         assert!(!porta.starts_with('-'), "{porta:?}");
     }
     assert_eq!(super::super::format_number(-0.5), "-0.500");
-    assert_eq!(crate::interaction::format_number(-0.5), "-0.500");
 }
 
 /// A caixa e o chip, pintados: o texto pronto que o painel entrega (`display_override`) também passa

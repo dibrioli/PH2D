@@ -207,3 +207,10 @@ fn o_pixel_do_documento_vai_e_volta() {
     assert!((super::DocPx::default().to_world(3.0) - 0.03).abs() < 1e-12);
     assert!(super::DocPx::new(0.0).to_world(3.0).is_finite());
 }
+
+/// `-0` não se lê: a régua tira o sinal do zero pela mesma porta da caixa.
+#[test]
+fn um_zero_negativo_nao_tem_sinal_na_regua() {
+    let lido = format_value(-0.004, 2);
+    assert!(!lido.starts_with('-'), "{lido:?}");
+}

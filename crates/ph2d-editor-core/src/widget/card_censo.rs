@@ -51,7 +51,6 @@ pub struct Censo {
     pub listas_soltas: Vec<(NodeId, String, f32)>,
 }
 
-#[path = "card_censo_ritmo.rs"]
 pub mod ritmo;
 pub(crate) use ritmo::{pintou_controlo, pintou_texto, texto_de_peca};
 
@@ -65,7 +64,9 @@ thread_local! {
 /// Corre `f` e devolve o que os cartões pintaram.
 pub fn grava<R>(f: impl FnOnce() -> R) -> (R, Censo) {
     GRAVACAO.with(|g| *g.borrow_mut() = Some(Censo::default()));
+    crate::paint::ouve_o_texto(Some(pintou_texto));
     let r = f();
+    crate::paint::ouve_o_texto(None);
     let censo = GRAVACAO.with(|g| g.borrow_mut().take()).unwrap_or_default();
     (r, censo)
 }

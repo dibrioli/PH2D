@@ -80,6 +80,7 @@ pub mod lens;
 pub mod luz_recebida;
 pub mod mipgen;
 mod renasce;
+pub mod sprite_emissive;
 pub use renasce::nasce_sob_escopo;
 #[cfg(test)]
 #[path = "renasce_tests.rs"]

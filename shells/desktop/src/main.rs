@@ -46,6 +46,7 @@ mod anchor_smoke;
 mod anim_smoke;
 /// W2 — como esta shell responde ao `ph2d_app_host::AppHost`, o trait por onde uma família de
 /// módulo fala com ela. Um ficheiro, cinco métodos, zero handles devolvidos.
+mod app_edicao_de_imagem;
 mod app_host;
 mod app_state;
 /// **O IMPORT do `.ase`** (Enio, 2026-08-23) — o ficheiro NATIVO do Aseprite vira uma sprite com

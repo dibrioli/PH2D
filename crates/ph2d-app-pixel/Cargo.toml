@@ -13,6 +13,7 @@ authors.workspace = true
 # (lápis, borracha, conta-gotas), o desfazer de cada sprite, a vista e o blob do projecto.
 # ⛔ Nunca `ph2d-app-painter` nem o contrato `Tool=12`: as ferramentas são da família.
 [dependencies]
+ph2d-pixel-formas = { path = "../ph2d-pixel-formas" }
 ph2d-pixel-core = { path = "../ph2d-pixel-core" }
 # P8: a ferramenta Text (o rasterizador de fontes de pixel e do sistema).
 ph2d-pixel-text = { path = "../ph2d-pixel-text" }

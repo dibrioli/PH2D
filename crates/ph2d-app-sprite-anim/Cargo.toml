@@ -28,6 +28,8 @@ ph2d-asset = { path = "../ph2d-asset" }
 ph2d-core = { path = "../ph2d-core" }
 ph2d-image-import = { path = "../ph2d-image-import" }
 ph2d-app-host = { path = "../ph2d-app-host" }
+# O Pivot e a marca do Edit in Painter (`ImageUseEdit`).
+ph2d-sprite-edit = { path = "../ph2d-sprite-edit" }
 ph2d-host = { path = "../ph2d-host" }
 ph2d-sprite-sheet = { path = "../ph2d-sprite-sheet" }
 ph2d-text = { path = "../ph2d-text" }

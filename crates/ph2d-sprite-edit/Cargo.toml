@@ -1,0 +1,21 @@
+[package]
+name = "ph2d-sprite-edit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ Editar a sprite a partir do cartão (GEF 23, docs/GameEngineFuncional/componentes/01_sprite.md) como FOLHA:
+# o Pivot de 9 pontos e a ida e volta da imagem ao Pixel Art e ao Painter. Nasce da catraca
+# `the_shell_only_shrinks_and_every_app_crate_too`; é folha porque família não chama família.
+[dependencies]
+ph2d-asset = { path = "../ph2d-asset" }
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-render = { path = "../ph2d-render" }

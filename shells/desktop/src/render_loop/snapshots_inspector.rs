@@ -199,7 +199,13 @@ pub(super) fn publish(
     // ADR-0029 C.1: os instantâneos vão para os thread-locals do painel.
     #[cfg(feature = "panel-inspector")]
     {
-        publish_slot_image(alvo, sim, asset_db, atlas_asset_map, hero.project.pixels_per_meter);
+        slot_image_snapshot::publish_slot_image(
+            alvo,
+            sim,
+            asset_db,
+            atlas_asset_map,
+            hero.project.pixels_per_meter,
+        );
         ph2d_panel_inspector::set_current_inspector_sprite(inspector_sprite);
         ph2d_panel_inspector::set_current_inspector_ordering(inspector_ordering);
         ph2d_panel_inspector::set_current_inspector_sampling(inspector_sampling);
@@ -488,10 +494,13 @@ fn late(
     }
 }
 
-/// ⭐ A metade da FÍSICA mudou-se para um ficheiro irmão (o tecto de LOC do HR-18, 2026-09-15) —
-/// ver o cabeçalho dele. ⚠️ O `#[path]` é o mesmo idioma das fases-filhas do `render_loop`.
 #[path = "snapshots_inspector_physics.rs"]
 mod fisica;
+/// ⭐ A metade da FÍSICA mudou-se para um ficheiro irmão (o tecto de LOC do HR-18, 2026-09-15) —
+/// ver o cabeçalho dele. ⚠️ O `#[path]` é o mesmo idioma das fases-filhas do `render_loop`.
+#[cfg(feature = "panel-inspector")]
+#[path = "snapshots_slot_image.rs"]
+mod slot_image_snapshot;
 use fisica::{PhysicsSections, physics};
 
 /// O que o [`identity`] constrói, com os nomes que a [`publish`] publica.
@@ -574,55 +583,4 @@ fn identity(alvo: &Alvo, sim: &SimWorld) -> Identity {
         inspector_visibility,
         inspector_name,
     }
-}
-
-/// ⭐ A imagem da linha *Image* do Inspector (plano GEF 12): miniatura e nome da sprite seleccionada.
-#[cfg(feature = "panel-inspector")]
-fn publish_slot_image(
-    alvo: &Alvo,
-    sim: &mut SimWorld,
-    asset_db: &AssetDb,
-    atlas_asset_map: &BTreeMap<u32, AssetId>,
-    ppm: f32,
-) {
-    let vazio = alvo.bits.is_some_and(|b| {
-        ph2d_app_sprite_anim::sprite_card::sem_imagem(sim.world(), ph2d_ecs::Entity::from_bits(b))
-    });
-    ph2d_panel_inspector::slot_image::set_recentes(if vazio {
-        ph2d_app_components::library_names::names_of(
-            sim,
-            asset_db,
-            atlas_asset_map,
-            &ph2d_app_sprite_anim::sprite_card::recentes(),
-        )
-    } else {
-        Vec::new()
-    });
-    ph2d_panel_inspector::slot_image::set_current_sprite_facts(alvo.bits.and_then(|b| {
-        let e = ph2d_ecs::Entity::from_bits(b);
-        use ph2d_app_sprite_anim::sprite_card as card;
-        let w = sim.world();
-        let (pivot_ponto, pivot_px) =
-            ph2d_app_sprite_anim::pivot::pivot_de(w, e, asset_db, atlas_asset_map, ppm)?;
-        Some(ph2d_panel_inspector::slot_image::SpriteFacts {
-            entity_bits: b,
-            sem_imagem: card::sem_imagem(w, e),
-            tem_filhos: card::tem_filhos(w, e),
-            pivot_ponto,
-            pivot_px,
-            folha: card::folha_em_still(w, e, asset_db, atlas_asset_map, ppm),
-        })
-    }));
-    ph2d_panel_inspector::slot_image::set_current_slot_image(alvo.bits.and_then(|b| {
-        let e = ph2d_ecs::Entity::from_bits(b);
-        let (name, t) =
-            ph2d_app_components::asset_index_build::image_card(sim, asset_db, atlas_asset_map, e)?;
-        Some(ph2d_panel_inspector::slot_image::SlotImage {
-            entity_bits: b,
-            name,
-            rgba: t.rgba,
-            w: t.w,
-            h: t.h,
-        })
-    }));
 }

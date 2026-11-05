@@ -177,10 +177,9 @@ impl crate::App {
         if entry == ph2d_app_game::object_add::SPRITE
             && let Some(hero) = gfx.hero_screen.as_mut()
         {
-            hero.bus
-                .push(ph2d_editor_core::action_bus::EditorAction::OpenImagePicker {
-                    entity_bits: bits,
-                });
+            hero.bus.push(
+                ph2d_editor_core::action_bus::EditorAction::OpenImagePicker { entity_bits: bits },
+            );
         }
         let name = gfx
             .sim

@@ -449,7 +449,6 @@ mod snapshots;
 use frame_gfx::FrameGfx;
 /// A sprite como FONTE DE LUZ (plano `docs/Sprite_projeto/18` W8) — lê o espelho pelo `SimRef` e
 /// devolve as instâncias que emitem. ⚠️ Irmão do `sim_extract` de propósito: ele está no tecto de LOC.
-pub(crate) mod sprite_emissive;
 mod upscale_bridge;
 
 // ADR-0108 cutover: the single Vector-tool bridge (style sync + recolour).

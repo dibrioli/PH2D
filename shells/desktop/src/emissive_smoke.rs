@@ -165,7 +165,7 @@ mod tests {
         // seria uma tautologia (o clippy diz isso, e tem razão) e não mediria nada: o dia em que
         // alguém mexer no `bloom_params` do passe é exactamente o dia em que esta cena tem de
         // reprovar, e só ler o número de lá o consegue.
-        let threshold = crate::render_loop::sprite_emissive::bloom_params().threshold;
+        let threshold = ph2d_render::sprite_emissive::bloom_params().threshold;
         assert!(
             INTENSITY > threshold,
             "a intensidade da cena ({INTENSITY}) nao passa do limiar do bright-pass ({threshold}): \

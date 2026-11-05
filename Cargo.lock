@@ -6110,6 +6110,7 @@ dependencies = [
  "ph2d-pen",
  "ph2d-pen-law",
  "ph2d-pixel-core",
+ "ph2d-pixel-formas",
  "ph2d-pixel-io",
  "ph2d-pixel-render",
  "ph2d-pixel-text",
@@ -6229,6 +6230,7 @@ dependencies = [
  "ph2d-physics-ecs",
  "ph2d-preview-drive",
  "ph2d-render",
+ "ph2d-sprite-edit",
  "ph2d-sprite-sheet",
  "ph2d-text",
  "ph2d-tokens",
@@ -7449,6 +7451,7 @@ dependencies = [
  "ph2d-skeleton-ecs",
  "ph2d-skeleton-live",
  "ph2d-skeleton-render",
+ "ph2d-sprite-edit",
  "ph2d-sprite-precision",
  "ph2d-sprite-screen",
  "ph2d-sprite-sheet",
@@ -10358,6 +10361,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-pixel-formas"
+version = "0.0.0"
+dependencies = [
+ "ph2d-editor-core",
+ "ph2d-pixel-core",
+ "ph2d-vec-scene",
+]
+
+[[package]]
 name = "ph2d-pixel-io"
 version = "0.0.0"
 dependencies = [
@@ -10641,6 +10653,18 @@ name = "ph2d-spring"
 version = "0.0.0"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "ph2d-sprite-edit"
+version = "0.0.0"
+dependencies = [
+ "ph2d-asset",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-i18n",
+ "ph2d-render",
 ]
 
 [[package]]

@@ -1,0 +1,17 @@
+[package]
+name = "ph2d-pixel-formas"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# As formas do Vector em células, como FOLHA: saiu de `ph2d-app-pixel` pela catraca
+# `the_shell_only_shrinks_and_every_app_crate_too` (GEF 23).
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-pixel-core = { path = "../ph2d-pixel-core" }
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }

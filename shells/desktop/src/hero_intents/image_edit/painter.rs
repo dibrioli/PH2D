@@ -60,7 +60,7 @@ pub(crate) fn auto_commit_painter(
         old_size_world,
         toasts,
     ) {
-        ph2d_app_sprite_anim::sprite_card::segue_a_pintura(
+        ph2d_sprite_edit::imagem::segue_a_pintura(
             sim.world_mut(),
             atlas_asset_map,
             entity,

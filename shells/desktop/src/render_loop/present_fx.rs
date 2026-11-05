@@ -52,7 +52,7 @@ pub(super) fn run(gpu: &ph2d_gpu::GpuContext, g: FxGear<'_>) {
     //
     // ⚠️ Sem nenhuma sprite a emitir a lista sai VAZIA e este bloco não toca a GPU: o
     //   quadro é byte-idêntico ao de antes desta feature existir (há gate).
-    super::sprite_emissive::collect(g.sim, g.present, g.instances);
+    ph2d_render::sprite_emissive::collect(g.sim, g.present, g.instances);
     if !g.instances.is_empty() {
         g.renderer.render_lifted_instances(
             g.motion_fx.rt_view(),
@@ -69,7 +69,7 @@ pub(super) fn run(gpu: &ph2d_gpu::GpuContext, g: FxGear<'_>) {
         g.motion_fx.bloom_over(
             gpu,
             g.game_rt.view(),
-            &super::sprite_emissive::bloom_params(),
+            &ph2d_render::sprite_emissive::bloom_params(),
             // ⚠️ **Sem rampa, e é a mesma razão dos outros campos deste sítio**: a
             // rampa é autoria de um NÓ, e um emissor de sprite não tem nó nenhum.
             None,

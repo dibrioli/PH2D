@@ -10,7 +10,7 @@
 //! **somar** o resultado sobre o `game_rt` antes do tonemap. O emissor de sprites é a mesma
 //! máquina com outra lista.
 //!
-//! ⚠️ **Reusa o [`MotionFx`](ph2d_render::MotionFx), e isso é uma decisão, não preguiça.** Ele é um
+//! ⚠️ **Reusa o [`MotionFx`](crate::MotionFx), e isso é uma decisão, não preguiça.** Ele é um
 //! RT `Rgba16Float` do tamanho da janela mais a cadeia de mips — construir um segundo custaria a
 //! mesma memória para fazer a mesma coisa. O que **não** se pode é os dois passes correrem
 //! entrelaçados: cada um escreve o RT inteiro e consome-o logo a seguir, por isso eles correm em
@@ -47,8 +47,8 @@ use ph2d_ecs::{PresentWorld, SimWorld, SpriteEmissive};
 /// branco; o bright-pass a 1.0 é exactamente a pergunta *"esta cor passa do que um ecrã consegue
 /// mostrar?"*. Baixá-lo faria uma sprite normal (que vive toda em `[0, 1]`) começar a brilhar sem
 /// ninguém pedir — e aí o emissor deixaria de ser um componente para ser um efeito global.
-pub(crate) fn bloom_params() -> ph2d_render::BloomParams {
-    ph2d_render::BloomParams {
+pub fn bloom_params() -> crate::BloomParams {
+    crate::BloomParams {
         threshold: 1.0,
         // Um joelho estreito: a passagem de «não emite» a «emite» acompanha a intensidade que o
         // artista dialou, em vez de ser mascarada por uma rampa larga aqui.
@@ -97,11 +97,7 @@ pub(crate) fn bloom_params() -> ph2d_render::BloomParams {
 /// cópia só do `RenderInstance` brilhava com o quad de repouso. O `sim` é lido DENTRO da varredura
 /// do `present`: são dois mundos de tipos distintos, e o compilador recusa-o no dia em que o
 /// deixarem de ser.
-pub(crate) fn collect(
-    sim: &SimWorld,
-    present: &mut PresentWorld,
-    out: &mut ph2d_render::LiftedInstances,
-) {
+pub fn collect(sim: &SimWorld, present: &mut PresentWorld, out: &mut crate::LiftedInstances) {
     out.collect_from(present, |sim_entity, inst| {
         let Some(em) = sim.world().get::<SpriteEmissive>(sim_entity).copied() else {
             return false;
@@ -120,8 +116,8 @@ pub(crate) fn collect(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{LiftedInstances, RenderInstance};
     use ph2d_ecs::{GlobalTransform, SimRef, Transform};
-    use ph2d_render::{LiftedInstances, RenderInstance};
 
     /// Uma instância mínima com um `tint` reconhecível.
     ///

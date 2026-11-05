@@ -50,7 +50,7 @@ impl crate::App {
                     #[cfg(feature = "panel-inspector")]
                     if let Some(vazio) = ph2d_panel_inspector::slot_image::take_pintar_no_lugar_de()
                     {
-                        ph2d_app_sprite_anim::sprite_card::substitui_o_vazio(
+                        ph2d_sprite_edit::vazio::substitui_o_vazio(
                             sim.world_mut(),
                             ph2d_ecs::Entity::from_bits(vazio),
                             ph2d_ecs::Entity::from_bits(bits),

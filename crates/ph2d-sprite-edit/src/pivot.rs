@@ -93,12 +93,7 @@ fn repete(world: &World, e: Entity) -> bool {
 }
 
 /// A fração visível do quad de `e`; o quad inteiro se ela não tem píxeis conhecidos.
-fn fracao_de(
-    world: &World,
-    e: Entity,
-    db: &AssetDb,
-    atlas: &BTreeMap<u32, AssetId>,
-) -> [f32; 4] {
+fn fracao_de(world: &World, e: Entity, db: &AssetDb, atlas: &BTreeMap<u32, AssetId>) -> [f32; 4] {
     const INTEIRO: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
     if repete(world, e) {
         return INTEIRO;
@@ -121,7 +116,12 @@ fn fracao_de(
     let area = regiao.map_or([0, 0, w, h], |r| {
         let x = (r[0].max(0.0) as u32).min(w.saturating_sub(1));
         let y = (r[1].max(0.0) as u32).min(h.saturating_sub(1));
-        [x, y, (r[2] as u32).clamp(1, w - x), (r[3] as u32).clamp(1, h - y)]
+        [
+            x,
+            y,
+            (r[2] as u32).clamp(1, w - x),
+            (r[3] as u32).clamp(1, h - y),
+        ]
     });
     let chave = (id, grade, area);
     let medida = CAIXAS.with(|c| {

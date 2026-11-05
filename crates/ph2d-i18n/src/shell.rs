@@ -77,6 +77,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.asset_drop_apply.could_not_place_that" => "Could not place that asset",
         "shell.asset_drop_apply.image_placed" => "Image placed",
         "shell.asset_drop_apply.image" => "Image",
+        "shell.edit_in_pixel.no_pixels" => "This image is not in memory, so it can't be opened.",
         "shell.asset_drop_apply.could_not_apply" => "Could not apply: {e}",
         "shell.asset_drop_apply.texture_applied" => "Texture applied",
         "shell.asset_index_build.pieces" => "{n} {n?piece|pieces}",

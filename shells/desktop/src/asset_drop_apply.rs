@@ -78,7 +78,7 @@ impl crate::App {
         );
         match r {
             Ok(()) => {
-                ph2d_app_sprite_anim::sprite_card::lembra(AssetId::from_digest(asset));
+                ph2d_sprite_edit::vazio::lembra(AssetId::from_digest(asset));
                 #[cfg(feature = "panel-inspector")]
                 ph2d_panel_inspector::slot_image::set_recibo(antes.zip(img.as_ref()).and_then(
                     |((de, tamanho), i)| {
@@ -125,11 +125,7 @@ impl crate::App {
             return;
         };
         if edit == ph2d_editor_core::ImageUseEdit::EditInPixel {
-            crate::app_edicao_de_imagem::abre_no_pixel(
-                gfx,
-                &mut self.pixel,
-                entity_bits,
-            );
+            crate::app_edicao_de_imagem::abre_no_pixel(gfx, &mut self.pixel, entity_bits);
             return;
         }
         let ppm = gfx

@@ -4,7 +4,7 @@
 
 use crate::cards_componentes::Presente;
 use crate::cards_objeto::com_corpo;
-use crate::cards_sprite_cabeca::{cabeca, tira_do_repeated};
+use crate::cards_sprite_cabeca::cabeca;
 use crate::cards_sprite_pivot::{NOMES_DO_PIVOT, evento_do_pivot, flip_e_pivot};
 use crate::ids;
 use crate::sections;
@@ -61,13 +61,13 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
     for id in ids::INSP_IMAGE_RECENT {
         botao(store, id, "card.insp.recent_tip");
     }
+    // O convite e o recibo valem enquanto o objecto deles está à vista: selecionado ou preso num cartão.
     let selecionada = crate::state::current_inspector_sprite().map(|s| s.entity_bits);
-    if slot_image::take_pintar_no_lugar_de().is_some_and(|b| Some(b) == selecionada) {
-        slot_image::set_pintar_no_lugar_de(selecionada);
-    }
-    if let Some(r) = slot_image::recibo()
-        && crate::state::current_inspector_sprite().map(|s| s.entity_bits) != Some(r.entity_bits)
-    {
+    let presos = store.loose_pins_of(core_ids::INSP_PANEL);
+    let a_vista = |b: u64| Some(b) == selecionada || presos.contains(&b);
+    let vazio = slot_image::take_pintar_no_lugar_de().filter(|b| a_vista(*b));
+    slot_image::set_pintar_no_lugar_de(vazio);
+    if slot_image::recibo().is_some_and(|r| !a_vista(r.entity_bits)) {
         slot_image::set_recibo(None);
     }
     botao(
@@ -89,7 +89,6 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
     for (id, nome) in ids::INSP_SPRITE_PIVOT.into_iter().zip(NOMES_DO_PIVOT) {
         botao(store, id, nome);
     }
-    crate::cards_sprite_pivot::prepara_campos_do_pivot(store);
     // Nos cartões a miniatura tem hover (borda e ícone de troca): o clique continua o mesmo.
     if matches!(
         store.get(ids::INSP_RENDER_TEXTURE_SLOT),
@@ -109,6 +108,12 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
         );
     }
     crate::sections::ordering::prepara_opcoes(store);
+    semeia_do_objeto(store);
+}
+
+/// As caixas da Sprite que leem o objecto publicado: a seleção aqui, e o preso no ensaio de `cards_presos`.
+pub(crate) fn semeia_do_objeto(store: &mut WidgetStore) {
+    crate::cards_sprite_pivot::prepara_campos_do_pivot(store);
     if let Some(info) = crate::state::current_inspector_sprite() {
         let valor = if sections::look::cantos_ligados(&info) {
             ph2d_editor_core::widget::CheckboxValue::Checked
@@ -141,7 +146,6 @@ pub(crate) fn imagem(info: InspectorSpriteInfo) -> CardDef<'static> {
                     t.scene, t.text, theme, t.hit, store, x, w, y, &info, None,
                 )
             });
-            let y = tira_do_repeated(c, y, &info);
             let y = recibo_do_replace(c, y, &info);
             aviso_de_folha(c, y, info.entity_bits)
         })),

@@ -199,6 +199,9 @@ mod rotulos;
 mod solto;
 #[path = "cards_solto_some.rs"]
 pub mod solto_some;
+/// ⭐ Os botões baixos de verbo, lado a lado em dois degraus.
+#[path = "cards_verbos.rs"]
+pub mod verbos;
 use cartao::{flight_shadow, paint_card, paint_card_with, shadow};
 pub use lista::{ListTop, paint_card_list_pinned, paint_card_list_top, scroll_at_edge};
 pub use menu::{apply_list_menu_click, list_menu_of};

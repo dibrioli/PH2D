@@ -32,13 +32,14 @@ pub(crate) const NOMES_DO_PIVOT: [&str; 9] = [
 ];
 
 thread_local! {
-    /// Os campos X e Y abertos à mão, com o pivô num dos nove pontos.
-    static PIVOT_ABERTO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// Os objectos com os campos X e Y abertos à mão, com o pivô num dos nove pontos.
+    static PIVOT_ABERTO: std::cell::RefCell<std::collections::BTreeSet<u64>> =
+        const { std::cell::RefCell::new(std::collections::BTreeSet::new()) };
 }
 
 /// Os campos X e Y estão à vista? Sempre em Custom; nos nove pontos, só se a mão os abriu.
 fn pivot_campos_abertos(f: &slot_image::SpriteFacts) -> bool {
-    f.pivot_ponto.is_none() || PIVOT_ABERTO.with(std::cell::Cell::get)
+    f.pivot_ponto.is_none() || PIVOT_ABERTO.with(|a| a.borrow().contains(&f.entity_bits))
 }
 
 pub(crate) fn prepara_campos_do_pivot(store: &mut WidgetStore) {
@@ -195,7 +196,14 @@ pub(crate) fn flip_e_pivot(c: &mut CardCtx<'_>, y: f32) -> f32 {
 pub(crate) fn evento_do_pivot(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     let pivot = match ev {
         WidgetEvent::Click(id) if id == ids::INSP_SPRITE_PIVOT_NOME => {
-            PIVOT_ABERTO.with(|a| a.set(!a.get()));
+            if let Some(s) = crate::state::current_inspector_sprite() {
+                PIVOT_ABERTO.with(|a| {
+                    let mut a = a.borrow_mut();
+                    if !a.remove(&s.entity_bits) {
+                        a.insert(s.entity_bits);
+                    }
+                });
+            }
             return true;
         }
         WidgetEvent::Click(id) => {

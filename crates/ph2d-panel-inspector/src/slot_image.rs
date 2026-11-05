@@ -50,9 +50,13 @@ thread_local! {
     static PINTAR_NO_LUGAR_DE: std::cell::Cell<Option<u64>> = const { std::cell::Cell::new(None) };
     static FACTS: std::cell::Cell<Option<SpriteFacts>> = const { std::cell::Cell::new(None) };
     static CURRENT: RefCell<Option<SlotImage>> = const { RefCell::new(None) };
-    /// A textura estável da miniatura — sem ela o `vello` reenvia os bytes todo o quadro.
-    static TEX: RefCell<Option<(Arc<Vec<u8>>, StableImage)>> = const { RefCell::new(None) };
+    /// A textura estável de cada miniatura à vista (a da seleção e as dos presos) — sem ela o `vello`
+    /// reenvia os bytes todo o quadro. A mais antiga sai ao passar de [`TEXTURAS`].
+    static TEX: RefCell<Vec<(Arc<Vec<u8>>, StableImage)>> = const { RefCell::new(Vec::new()) };
 }
+
+/// Quantas miniaturas ficam em cache: é memória de GPU, não um limite de cartões (acima disto, reenvia).
+const TEXTURAS: usize = 16;
 
 /// O shell publica o que o Replace mudou (`None` = nada a dizer).
 pub fn set_recibo(r: Option<Recibo>) {
@@ -130,13 +134,14 @@ pub fn current_slot_image(entity_bits: u64) -> Option<SlotImage> {
 pub(crate) fn stable(img: &SlotImage) -> Option<StableImage> {
     TEX.with(|t| {
         let mut t = t.borrow_mut();
-        if let Some((rgba, s)) = t.as_ref()
-            && Arc::ptr_eq(rgba, &img.rgba)
-        {
+        if let Some((_, s)) = t.iter().find(|(rgba, _)| Arc::ptr_eq(rgba, &img.rgba)) {
             return Some(s.clone());
         }
         let s = StableImage::from_rgba(img.rgba.clone(), img.w, img.h)?;
-        *t = Some((img.rgba.clone(), s.clone()));
+        if t.len() >= TEXTURAS {
+            t.remove(0);
+        }
+        t.push((img.rgba.clone(), s.clone()));
         Some(s)
     })
 }

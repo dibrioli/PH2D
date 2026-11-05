@@ -11,6 +11,7 @@ use crate::cards::{
     CARD_TRANSFORM, CARD_TRANSFORM_IMAGE,
 };
 use crate::cards_componentes::{Abertas, Presente};
+use crate::cards_objeto::{CARD_IMAGE, CARD_INSTANCE, CARD_PROPERTIES, CARD_VISIBILITY};
 use crate::paint_frame::LiveSnapshots;
 use crate::retrato::{Retrato, com_preso};
 use crate::state::{self, InspectorState};
@@ -25,8 +26,12 @@ use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 
 /// Os cartões do objecto que se prendem: a escrita de cada um vai ao preso (`docs/CartoesUI/09`).
-const DO_OBJECTO: [NodeId; 8] = [
+const DO_OBJECTO: [NodeId; 12] = [
     CARD_OBJECT,
+    CARD_INSTANCE,
+    CARD_PROPERTIES,
+    CARD_IMAGE,
+    CARD_VISIBILITY,
     CARD_TRANSFORM,
     CARD_TRANSFORM_IMAGE,
     CARD_APPEARANCE,
@@ -104,6 +109,7 @@ pub(crate) fn ensaia(inspector_state: &InspectorState, host: &mut dyn PanelHostI
             crate::cards::semeia_a_opacidade(host.store_mut());
             crate::cards::semeia_as_linhas(host.store_mut());
             crate::cards::semeia_as_amostras(host.store_mut());
+            crate::cards_sprite::semeia_do_objeto(host.store_mut());
             let e = host.store_mut().fecha_ensaio(ensaio);
             host.bus_mut().truncate(n);
             e

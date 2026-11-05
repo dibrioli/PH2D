@@ -41,7 +41,7 @@ GameMaker e Unreal: pivô de 9 pontos. GDevelop, Construct e GameMaker: editar a
 11. O Transform dobrado da imagem tem alfinete, como todo Transform solto.
 12. Flip e Pivot têm bolinha de chave. O Flip grava os dois eixos; a chave do Pivot grava também a posição, ou tocar a animação moveria o desenho.
 
-Medido a 270 px de painel: «Edit in Pixel» pede 78 px e «Edit in Painter» 93 (177 com o vão), a coluna à direita da miniatura tem 152 (teste `a_270_px_os_botoes_mostram_o_texto_inteiro_e_a_miniatura_e_maior`). Por isso ficam um por linha; lado a lado só de cerca de 315 px de painel para cima (conta, não medido), pela regra `compact`. Nada é cortado.
+Miniatura quadrada de 72 px com recorte pelo raio, moldura de altura fixa; os botões ficam sempre lado a lado: `[enviar] Pixel` · `[enviar] Painter` de 294 px de painel para cima (medido com o motivo no teste `os_botoes_ficam_lado_a_lado_e_trocam_juntos_dos_dois_lados_do_degrau`), e abaixo disso os dois em ícones. Nada é cortado.
 
 ## O desenho aprovado
 
@@ -74,6 +74,7 @@ Por estado do painel: **vazio** = cartão Image inteiro é «Drop an image or cl
 | 9-Slice como uso «Panel» | quatro usos do dono; rever no item 9-Slice |
 | Colisão a partir da imagem neste item | pertence a Physics Body |
 | Botão Replace | supérfluo: a miniatura é o alvo (dono, 05/11) |
+| Tira de prévia do Repeated | recusada pelo dono em 05/11; a miniatura basta |
 
 ## Provas
 

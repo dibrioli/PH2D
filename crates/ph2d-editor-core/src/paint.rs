@@ -60,8 +60,8 @@ pub use label_box::{
 #[path = "paint_rounded.rs"]
 mod rounded;
 pub use rounded::{
-    fill_rounded_rect, fill_rounded_rect_radii, stroke_rect, stroke_rounded_rect,
-    stroke_rounded_rect_dashed, stroke_rounded_rect_radii,
+    fill_rounded_rect, fill_rounded_rect_radii, push_rounded_clip, stroke_rect,
+    stroke_rounded_rect, stroke_rounded_rect_dashed, stroke_rounded_rect_radii,
 };
 
 /// Apply the snap strategy to a glyph X. `None` returns `x` unchanged

@@ -38,8 +38,9 @@ const OPCOES: [(NodeId, &str); 6] = [
 ];
 
 thread_local! {
-    /// As opções que a mão revelou nesta sessão (um bit por linha de [`OPCOES`]).
-    static REVELADAS: std::cell::Cell<u8> = const { std::cell::Cell::new(0) };
+    /// As opções que a mão revelou nesta sessão, por objecto (um bit por linha de [`OPCOES`]).
+    static REVELADAS: std::cell::RefCell<std::collections::BTreeMap<u64, u8>> =
+        const { std::cell::RefCell::new(std::collections::BTreeMap::new()) };
 }
 
 /// A opção `i` está em uso neste objecto? Em uso nunca se esconde.
@@ -58,7 +59,8 @@ fn a_mostra(i: usize, info: &InspectorOrderingInfo) -> bool {
     // Numa seleção mista o valor do primário não diz o dos outros: nada se esconde.
     info.selected_count > 1
         || em_uso(i, info)
-        || REVELADAS.with(std::cell::Cell::get) & (1 << i) != 0
+        || REVELADAS.with(|r| r.borrow().get(&info.entity_bits).copied().unwrap_or(0)) & (1 << i)
+            != 0
 }
 
 /// As opções ainda por revelar, para a lista suspensa: `(id, nome)`.
@@ -92,7 +94,9 @@ pub(crate) fn evento_das_opcoes(ev: ph2d_editor_core::interaction::WidgetEvent) 
     let Some(i) = OPCOES.iter().position(|(o, _)| *o == id) else {
         return false;
     };
-    REVELADAS.with(|r| r.set(r.get() | (1 << i)));
+    if let Some(info) = crate::state::current_inspector_ordering() {
+        REVELADAS.with(|r| *r.borrow_mut().entry(info.entity_bits).or_default() |= 1 << i);
+    }
     true
 }
 

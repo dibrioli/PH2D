@@ -138,13 +138,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.appearance" => "Appearance",
         "card.insp.opacity" => "Opacity (%)",
         "card.insp.look" => "Look",
-        "card.insp.edit_in_pixel" => "Edit in Pixel",
+        "card.insp.verb_pixel" => "Pixel",
         "card.insp.edit_in_pixel_tip" => {
-            "Edit this image in Pixel Art. Every object using it updates when you leave Draw"
+            "Edit in Pixel. Every object using this image updates when you leave Draw"
         }
-        "card.insp.edit_in_painter" => "Edit in Painter",
+        "card.insp.verb_painter" => "Painter",
         "card.insp.edit_in_painter_tip" => {
-            "Paint on this image. Every object using it updates when you leave Draw"
+            "Edit in Painter. Every object using this image updates when you leave Draw"
         }
         "card.insp.replace_receipt" => "{aw} \u{00d7} {ah} \u{2192} {bw} \u{00d7} {bh} px",
         "card.insp.keep_old_size" => "Keep old size",

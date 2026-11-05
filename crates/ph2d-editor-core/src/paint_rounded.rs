@@ -25,6 +25,17 @@ fn scale_radius(r: f32) -> f32 {
     }
 }
 
+/// Clip what follows to a rounded rect, with the same radius scale as the fill. Pair with `pop_layer`.
+pub fn push_rounded_clip(scene: &mut VectorScene, rect: Rect, radius: f32) {
+    scene.push_clip(&RoundedRect::new(
+        f64::from(rect.x),
+        f64::from(rect.y),
+        f64::from(rect.x + rect.w),
+        f64::from(rect.y + rect.h),
+        f64::from(scale_radius(radius)),
+    ));
+}
+
 /// Fill a rect with rounded corners. Pass `radius == 0` for sharp.
 pub fn fill_rounded_rect(scene: &mut VectorScene, rect: Rect, radius: f32, color: Color) {
     let radius = scale_radius(radius);

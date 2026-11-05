@@ -157,33 +157,44 @@ fn q_foto_paineis() {
     });
 }
 
+/// A cena toda, em fatias da janela inteira, recortadas ao que foi pintado: um painel flutuante não mora na coluna.
 fn fatias(gpu: &ph2d_gpu::GpuContext, cena: &VectorScene, coluna: Rect, base: &str) {
-    let (w, h) = (coluna.w as u32, FATIA);
+    let (w, h) = (JANELA.w as u32, FATIA);
     let mut pass =
         ph2d_render::VelloPass::new(gpu, ph2d_gpu::TextureFormat::Rgba8Unorm, (w, h)).unwrap();
-    let (mut y0, mut n) = (coluna.y as u32, 0_u32);
+    let (mut y0, mut n) = (0_u32, 0_u32);
     while y0 < JANELA.h as u32 {
         let mut fatia = VectorScene::new();
-        fatia.append_transformed(
-            cena,
-            ph2d_vector::Affine::translate((-f64::from(coluna.x), -f64::from(y0))),
-        );
+        fatia.append_transformed(cena, ph2d_vector::Affine::translate((0.0, -f64::from(y0))));
         let px = pass
             .render_and_readback(gpu, fatia.inner(), (w, h))
             .unwrap();
-        if !px.chunks(4).any(|p| p[3] != 0) {
+        // Só o opaco: a sombra de uma janela flutuante não é conteúdo.
+        let opaco = |p: &[u8]| p[3] > 200;
+        let (mut x0, mut x1, mut y_min, mut y_max) = (w, 0, h, 0);
+        for (i, p) in px.chunks(4).enumerate() {
+            if opaco(p) {
+                let (x, y) = (i as u32 % w, i as u32 / w);
+                (x0, x1, y_min, y_max) = (x0.min(x), x1.max(x), y_min.min(y), y_max.max(y));
+            }
+        }
+        y0 += FATIA;
+        if x1 < x0 {
+            if n == 0 {
+                continue;
+            }
             break;
         }
         let img = image::RgbaImage::from_raw(w, h, px).unwrap();
+        let img = image::imageops::crop_imm(&img, x0, y_min, x1 - x0 + 1, y_max - y_min + 1);
         let img = image::imageops::resize(
-            &img,
-            w * AMPLIA,
-            h * AMPLIA,
+            &img.to_image(),
+            (x1 - x0 + 1) * AMPLIA,
+            (y_max - y_min + 1) * AMPLIA,
             image::imageops::FilterType::Nearest,
         );
         img.save(format!("{base}_{n:02}.png")).unwrap();
         n += 1;
-        y0 += FATIA;
     }
-    println!("{base}: {n} fatias, coluna {w} px");
+    println!("{base}: {n} fatias, coluna {} px", coluna.w);
 }

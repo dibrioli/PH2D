@@ -146,7 +146,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         //    língua), logo este cabeçalho de secção era invisível a ela. Os dois irmãos dele
         //    (`delay` · `comp`) já vinham da tabela — *um estranho numa lista de chaves*.
         "panel.audio_mixer.master.eq" => "EQ",
-        "panel.audio_mixer.master.comp" => "Comp",
+        "panel.audio_mixer.master.comp" => "Compressor",
         "panel.audio_mixer.master.ducking" => "Ducking",
         // ⚠️ Era `"Key: {bus}"` — o rótulo de UM botão que ciclava os barramentos. Desde 2026-09-24 a
         //    chave é uma ESCOLHA com as quatro peças à vista, e o nome dela é só o nome.

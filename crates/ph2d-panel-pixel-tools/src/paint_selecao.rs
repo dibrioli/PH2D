@@ -4,6 +4,7 @@
 //! ela — nenhum controlo morto.
 
 use super::*;
+use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::pixel_panel::PixelResample;
 
 /// Os rótulos das opções da P6 (a coluna medida das propriedades).
@@ -160,25 +161,49 @@ impl Corpo<'_> {
 
     pub(super) fn menu_select(&mut self, info: &PixelPanelInfo, y: f32) -> f32 {
         let s = &ids::SELECT_ACTIONS;
-        let mut y = self.titulo(tr("panel.pixel.select"), y);
+        let y = self.titulo(tr("panel.pixel.select"), y);
         let sel = info.has_selection;
-        y = if sel {
-            self.botoes(&[par(s, 0), par(s, 1)], y)
+        let mut filas = vec![if sel {
+            vec![par(s, 0), par(s, 1)]
         } else {
-            self.botoes(&[par(s, 0)], y)
-        };
-        y = if info.can_reselect {
-            self.botoes(&[par(s, 2), par(s, 3)], y)
+            vec![par(s, 0)]
+        }];
+        filas.push(if info.can_reselect {
+            vec![par(s, 2), par(s, 3)]
         } else {
-            self.botoes(&[par(s, 3)], y)
-        };
-        y = self.botoes(&[par(s, 4)], y);
+            vec![par(s, 3)]
+        });
+        filas.push(vec![par(s, 4)]);
         if sel {
-            y = self.botoes(&[par(s, 5), par(s, 6)], y);
-            y = self.botoes(&[par(s, 7)], y);
-            y = self.botoes(&[par(s, 8), par(s, 9)], y);
+            filas.push(vec![par(s, 5), par(s, 6)]);
+            filas.push(vec![par(s, 7)]);
+            filas.push(vec![par(s, 8), par(s, 9)]);
         } else {
-            y = self.botoes(&[par(s, 8)], y);
+            filas.push(vec![par(s, 8)]);
+        }
+        self.filas_de_botoes(&filas, y)
+    }
+
+    /// Os verbos de um menu: num cartão, aos pares pela ordem, salvo o que não cabe na metade (lei 1 de 05 §4);
+    /// no painel de antes, as filas como vêm.
+    fn filas_de_botoes(&mut self, filas: &[Vec<(NodeId, &str)>], y: f32) -> f32 {
+        if self.cartao.is_none() {
+            return filas.iter().fold(y, |y, f| self.botoes(f, y));
+        }
+        let todos: Vec<(NodeId, &str)> = filas.iter().flatten().copied().collect();
+        let meia = (self.w - m::FIELD_GAP) * 0.5;
+        let (mut y, mut i) = (y, 0);
+        while i < todos.len() {
+            let ts = &mut *self.text_system;
+            let mut cabe =
+                |k: &str| ts.prefix_width(tr(k), m::VALUE_PX) + 2.0 * m::FIELD_PAD_R <= meia;
+            let n = if i + 1 < todos.len() && cabe(todos[i].1) && cabe(todos[i + 1].1) {
+                2
+            } else {
+                1
+            };
+            y = self.botoes(&todos[i..i + n], y);
+            i += n;
         }
         y
     }
@@ -186,48 +211,51 @@ impl Corpo<'_> {
     pub(super) fn menu_edit(&mut self, info: &PixelPanelInfo, y: f32) -> f32 {
         let sel = info.has_selection;
         let e = &ids::EDIT_ACTIONS;
-        let mut y = self.titulo(tr("panel.pixel.edit"), y);
+        let y = self.titulo(tr("panel.pixel.edit"), y);
+        let mut filas = Vec::new();
         if sel {
-            y = self.botoes(&[par(e, 0), par(e, 1)], y);
-            y = self.botoes(&[par(e, 2)], y);
+            filas.push(vec![par(e, 0), par(e, 1)]);
+            filas.push(vec![par(e, 2)]);
             // P8: Fill e Stroke pedem selecção (o Aseprite desliga-os sem ela).
-            y = self.botoes(&[par(e, 18), par(e, 19)], y);
+            filas.push(vec![par(e, 18), par(e, 19)]);
         }
         if info.has_clip {
-            y = self.botoes(&[par(e, 3)], y);
+            filas.push(vec![par(e, 3)]);
         }
-        y = self.botoes(&[par(e, 17)], y);
-        y = self.botoes(&[par(e, 4), par(e, 5)], y);
-        y = self.botoes(&[par(e, 6), par(e, 7)], y);
-        y = self.botoes(&[par(e, 8), par(e, 9)], y);
-        y = self.botoes(&[par(e, 10)], y);
+        filas.push(vec![par(e, 17)]);
+        filas.push(vec![par(e, 4), par(e, 5)]);
+        filas.push(vec![par(e, 6), par(e, 7)]);
+        filas.push(vec![par(e, 8), par(e, 9)]);
+        filas.push(vec![par(e, 10)]);
         if sel {
-            y = self.botoes(&[par(e, 11), par(e, 12)], y);
-            y = self.botoes(&[par(e, 13), par(e, 14)], y);
+            filas.push(vec![par(e, 11), par(e, 12)]);
+            filas.push(vec![par(e, 13), par(e, 14)]);
         }
         // P8: Invert… e o grupo FX ▸ (sem widget de submenu: o grupo é uma secção).
-        y = self.botoes(&[par(e, 20)], y);
-        y = self.botoes(&[par(e, 27)], y);
+        filas.push(vec![par(e, 20)]);
+        filas.push(vec![par(e, 27)]);
+        let y = self.filas_de_botoes(&filas, y);
         // P8: Adjustments ▸ (secção, como o FX).
-        y = self.linha(tr("panel.pixel.edit.adjustments"), ColorToken::Text3, y);
-        y = self.botoes(&[par(e, 23)], y);
-        y = self.botoes(&[par(e, 24), par(e, 25)], y);
-        y = self.linha(tr("panel.pixel.edit.fx"), ColorToken::Text3, y);
-        let y = self.botoes(&[par(e, 21), par(e, 22)], y);
-        self.botoes(&[par(e, 26)], y)
+        let y = self.linha(tr("panel.pixel.edit.adjustments"), ColorToken::Text3, y);
+        let y = self.filas_de_botoes(&[vec![par(e, 23)], vec![par(e, 24), par(e, 25)]], y);
+        let y = self.linha(tr("panel.pixel.edit.fx"), ColorToken::Text3, y);
+        self.filas_de_botoes(&[vec![par(e, 21), par(e, 22)], vec![par(e, 26)]], y)
     }
 
     /// Os botões do menu Sprite (o Crop pede selecção).
     pub(super) fn menu_sprite(&mut self, info: &PixelPanelInfo, y: f32) -> f32 {
         let s = &ids::SPRITE_ACTIONS;
-        let mut y = self.botoes(&[par(s, 0), par(s, 1)], y);
-        y = self.botoes(&[par(s, 2), par(s, 3)], y);
-        y = self.botoes(&[par(s, 4)], y);
-        y = self.botoes(&[par(s, 5), par(s, 6)], y);
-        if info.has_selection {
-            self.botoes(&[par(s, 7), par(s, 8)], y)
+        let mut filas = vec![
+            vec![par(s, 0), par(s, 1)],
+            vec![par(s, 2), par(s, 3)],
+            vec![par(s, 4)],
+            vec![par(s, 5), par(s, 6)],
+        ];
+        filas.push(if info.has_selection {
+            vec![par(s, 7), par(s, 8)]
         } else {
-            self.botoes(&[par(s, 8)], y)
-        }
+            vec![par(s, 8)]
+        });
+        self.filas_de_botoes(&filas, y)
     }
 }

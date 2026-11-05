@@ -92,7 +92,10 @@ pub(super) fn abre_tudo(store: &mut ph2d_editor_core::interaction::WidgetStore) 
 }
 
 /// Os cartões que nascem dobrados só existem depois do 1.º quadro: abre, pinta, abre outra vez e mede.
-fn mede(host: &mut MockPanelHost, painel: &mut ph2d_editor_core::panel::ErasedPanel) -> Censo {
+pub(super) fn mede(
+    host: &mut MockPanelHost,
+    painel: &mut ph2d_editor_core::panel::ErasedPanel,
+) -> Censo {
     abre_tudo(host.store_mut());
     let _ = host.medindo_a_pintura_do_registo(painel, viewport());
     abre_tudo(host.store_mut());
@@ -381,7 +384,7 @@ fn os_botoes_do_audio_ficam_soltos_na_grelha() {
         .map(|(_, r)| *r)
         .expect("Export Set");
     // Seletor, rótulo + barra, RAM e o botão: nenhuma fileira vazia no meio.
-    let cabe = 2.0 * m::FIELD_H + 4.0 * m::LABEL_PX + 4.0 * m::FIELD_ROW_GAP;
+    let cabe = m::FIELD_H + 3.0 * m::LABEL_PX + 3.0 * m::FIELD_ROW_GAP;
     assert!(
         qualidade.y - (codec.y + codec.h) < cabe,
         "{} entre o seletor e o Export Set",
@@ -424,4 +427,43 @@ fn o_advanced_separa_os_grupos_e_o_paragraph_tem_duas_colunas() {
         (largura_alinha - largura_quebra).abs() < 0.5,
         "{largura_alinha} × {largura_quebra}"
     );
+}
+
+/// ⭐ Pixel: os verbos do menu Select andam aos pares pela ordem (lei 1 de `05 §4`), e cada um responde ao clique no
+/// meio. *Mutação: `n = 1` em `filas_de_botoes` ⇒ vermelho.*
+#[cfg(feature = "panel-pixel-tools")]
+#[test]
+fn os_verbos_do_pixel_andam_aos_pares() {
+    use ph2d_card_stack::metrics as m;
+    use ph2d_panel_pixel_tools::ids::SELECT_ACTIONS;
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    ph2d_panel_inspector::set_cards_on(true);
+    let arm = super::paineis_armados::TABELA
+        .iter()
+        .find(|a| a.painel == "pixel_tools")
+        .expect("a armação do Pixel");
+    ph2d_editor_core::panel::with_registry(|reg| {
+        let painel = reg
+            .panels_mut()
+            .iter_mut()
+            .find(|p| p.manifest.id == "pixel_tools")
+            .expect("o painel");
+        let mut host = MockPanelHost::new().in_theme(ph2d_tokens::Theme::Dark);
+        (arm.arma)(host.store_mut());
+        painel.populate(host.store_mut());
+        let _ = mede(&mut host, painel);
+        let regs = host.registos_da_ultima_pintura();
+        let (tudo, inverso) = (
+            rect_de(&regs, SELECT_ACTIONS[0].0),
+            rect_de(&regs, SELECT_ACTIONS[3].0),
+        );
+        assert_eq!(tudo.y, inverso.y, "All e Inverse na mesma fila");
+        assert!((inverso.x - (tudo.x + tudo.w) - m::FIELD_GAP).abs() < 0.5);
+        assert!((tudo.w - inverso.w).abs() < 0.5);
+        for (id, r) in [(SELECT_ACTIONS[0].0, tudo), (SELECT_ACTIONS[3].0, inverso)] {
+            let no_meio = host.hit_index_mut().hit(r.x + r.w * 0.5, r.y + r.h * 0.5);
+            assert_eq!(no_meio, Some(id));
+        }
+        (arm.desarma)();
+    });
 }

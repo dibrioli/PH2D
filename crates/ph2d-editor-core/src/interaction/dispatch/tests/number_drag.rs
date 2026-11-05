@@ -485,6 +485,31 @@ fn number_input_body_drag_uses_registered_rate_unbounded() {
     );
 }
 
+/// A chip with a rate and a range stops at the floor, and coming back moves it at once.
+/// The cap stays free (the test above); a rate with no range declares no floor at all.
+#[test]
+fn a_registered_rate_keeps_the_floor_of_the_range() {
+    for (faixa, parou, voltou) in [(true, -1.0, 9.0), (false, -40.0, -30.0)] {
+        let (mut store, hits, rect) = number_input_setup(0.0);
+        if faixa {
+            store.set_number_range(NodeId(77), -1.0, 1.0, 0.01);
+        }
+        store.set_number_drag_rate(NodeId(77), 2.0);
+        let arena = Bump::new();
+        let y = rect.y + rect.h * 0.5;
+        let x0 = rect.x + 40.0;
+        let mut vai = |store: &mut WidgetStore, kind, x| {
+            let _ = dispatch_pointer(store, &hits, pointer(kind, x, y), &arena);
+        };
+        vai(&mut store, PointerKind::Down, x0);
+        vai(&mut store, PointerKind::Move, x0 - 5.0); // cruza o limiar
+        vai(&mut store, PointerKind::Move, x0 - 25.0); // 20 px × 2 = -40
+        assert_eq!(read_value(&store, NodeId(77)), parou, "faixa: {faixa}");
+        vai(&mut store, PointerKind::Move, x0 - 20.0); // 5 px de volta = +10
+        assert_eq!(read_value(&store, NodeId(77)), voltou, "faixa: {faixa}");
+    }
+}
+
 /// M14.A: vertical drag uses the slow rate (5× step / px) and
 /// inverts dy so cursor-up = positive delta (screen coords have
 /// y growing down).

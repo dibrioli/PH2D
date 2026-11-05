@@ -285,6 +285,9 @@ pub(super) fn dispatch_move<'frame>(
             } else {
                 raw_value
             };
+            let new_value = store
+                .number_scrub_floor(d.id)
+                .map_or(new_value, |piso| new_value.max(piso));
             // Advance the per-Move anchor BEFORE writing back —
             // the next Move computes its delta from this new
             // `last`. The anchor advances unconditionally

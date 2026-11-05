@@ -346,6 +346,62 @@ fn in_cards_the_key_keeps_time_and_frame_at_the_floor() {
     }
 }
 
+/// The scrub stops at `0` on both paths, on Dur, Time and Frame; the way back moves the value at
+/// once, with no dead zone. The field never reads a negative number.
+#[test]
+fn the_scrub_stops_at_the_floor_and_comes_back_at_once() {
+    use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
+    for cartoes in [true, false] {
+        for (id, passo) in [
+            (LEN, 0.2),
+            (ph2d_panel_timeline::ids::TIMELINE_TIME_NUM, 1.0 / 60.0),
+            (ph2d_panel_timeline::ids::TIMELINE_FRAME_NUM, 1.0),
+        ] {
+            let _caminho = Caminho::de(cartoes);
+            let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+            let mut state = TimelinePanelState::default();
+            let _ = pinta_a_duracao(&mut host, &mut state, 2.0);
+            let r = host
+                .paint::<TimelinePanel>(&mut state, VIEWPORT)
+                .iter()
+                .find(|(w, _)| *w == id)
+                .map(|(_, r)| *r)
+                .expect("chip");
+            let x0 = if cartoes {
+                ph2d_editor_core::widget::card_field::handle_rect(r).x + 8.0
+            } else {
+                r.x + r.w * 0.3
+            };
+            let y = r.y + r.h * 0.5;
+            let ev = |x: f32, kind: PointerKind, t: u128| PointerEvent {
+                x,
+                y,
+                pressure: 1.0,
+                kind,
+                source: PointerSource::Mouse,
+                button: PointerButton::Primary,
+                timestamp_ns: t,
+            };
+            let _ = host.dispatch_pointer_event(ev(x0, PointerKind::Down, 0));
+            for i in 1..=40 {
+                let x = x0 - (i * 5) as f32;
+                let _ = host.dispatch_pointer_event(ev(x, PointerKind::Move, i as u128));
+                let v = host.store().number_value(id).expect("number");
+                assert!(v >= 0.0, "cartoes={cartoes} {id:?}: read {v}");
+            }
+            assert_eq!(host.store().number_value(id), Some(0.0));
+            let _ = host.dispatch_pointer_event(ev(x0 - 190.0, PointerKind::Move, 41));
+            let v = host.store().number_value(id).expect("number");
+            assert!(
+                (v - 10.0 * passo).abs() < 1e-9,
+                "cartoes={cartoes} {id:?}: 10 px back read {v}"
+            );
+            let _ = host.dispatch_pointer_event(ev(x0 - 190.0, PointerKind::Up, 42));
+            let _ = drain_intents();
+        }
+    }
+}
+
 /// In cards the old arrow column is VALUE: a click there steps nothing, arms no hold, and opens
 /// the writing. Same click as anywhere else on the value.
 #[test]

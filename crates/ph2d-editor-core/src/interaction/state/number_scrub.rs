@@ -49,6 +49,14 @@ use crate::interaction::drag::{self, ScrubLaw};
 use ph2d_a11y::NodeId;
 
 impl WidgetStore {
+    /// O piso do arrasto de quem tem taxa E faixa. A taxa solta o TECTO (o máximo é conveniência do
+    /// stepper); o mínimo continua a ser do domínio. Sem faixa: `None`, a caixa declara não ter limites.
+    #[must_use]
+    pub fn number_scrub_floor(&self, id: NodeId) -> Option<f64> {
+        self.number_drag_rate(id)?;
+        self.number_range(id).map(|(a, b, _)| a.min(b))
+    }
+
     /// **Em que intervalo esta caixa vive?** — `None` quando ela não tem limites.
     ///
     /// A ordem dos arms é a lei, e é a ordem que o clamp do `pointer_move` sempre teve: uma taxa

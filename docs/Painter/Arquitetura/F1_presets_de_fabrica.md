@@ -16,26 +16,28 @@
 
 Total: **77** ficheiros `*.ph2d-brush.png`.
 
+Chaves do mapa `engine` que NÃO são knob, linha da mão nem extra conhecido (lidas por `chave_antiga` ou ignoradas): `extEdgeTint` ×55, `extGrainDither` ×55, `extRakeLight` ×55, `extValleyGran` ×55, `extWetSheen` ×55, `levelingOwnStroke` ×15
+
 ## (b) Cada knob: quantos pincéis o tiram do padrão, faixa usada, alcance do painel
 
 «fora» = pincéis cujo valor EFECTIVO difere do padrão (Wet Paint: ausente = padrão do produto; Digital/Watercolor só têm as linhas da mão no `engine`). «grav.» = presets que gravam a chave. Faixa = min..max dos valores gravados.
 
 | chave | grupo | UI (censo) | faixa do painel | padrão | grav. | fora | faixa usada | painel não alcança |
 |---|---|---|---|---|---|---|---|---|
-| `pigmentPerDab` | Paint | Cartão: Pigment (`wetpaint_settings.rs:5 | 0..2000 | 78 | 55 | **44** | 2.8..2000 | — |
-| `paperGate` | Paint | Tuning | 0..1.5 | 0.4 | 55 | **38** | 0..2.5 | FORA DA FAIXA (preso no load): Knife Stain=2.5 |
+| `pigmentPerDab` | Hidden | Cartão: Pigment (`wetpaint_settings.rs:5 | 0..2000 | 78 | 55 | **44** | 2.8..2000 | — |
+| `paperGate` | Hidden | Tuning | 0..1.5 | 0.4 | 55 | **38** | 0..2.5 | FORA DA FAIXA (preso no load): Knife Stain=2.5 |
 | `felt` | Hidden | só preset | 0..0.2 | 0.03 | 48 | **36** | 0..0.2 | sem painel (36 pincéis o põem) |
 | `bristleCount` | Hidden | só preset | 0..4000 | 2000 | 48 | **14** | 300..4000 | sem painel (14 pincéis o põem) |
 | `drag` | Paint | Tuning | 0..1 | 0.16 | 55 | **20** | 0..0.16 | — |
 | `pickup` | Paint | Cartão: Pickup (`:571`) | 0..0.2 | 0.005 | 55 | **9** | 0..0.05 | — |
-| `intensity` | Paint | Tuning | 0..4 | 1 | 55 | **0** | 1..1 | — |
+| `intensity` | Hidden | Tuning | 0..4 | 0.4505 | 55 | **55** | 1..1 | — |
 | `bristleStrength` | Hidden | só preset | 0..4 | 1 | 49 | **16** | 0..2 | sem painel (16 pincéis o põem) |
 | `bristleSize` | Hidden | só preset | 0.2..4 | 2 | 48 | **10** | 1..7 | FORA DA FAIXA (preso no load): Fan Brush=7, Express Oil=7; sem painel (10 pincéis o põem) |
 | `spacing` | Hidden | só preset | 0.5..8 | 2 | 55 | **0** | 2..2 | — |
 | `tipClean` | Paint | Tuning | 0..0.05 | 0.001 | 55 | **6** | 0.001..1 | FORA DA FAIXA (preso no load): Broad Nib=1, Marker Bullet=1, Marker Chisel=1 |
 | `blendForce` | Hidden | Cartão (linha da ferramenta) (`tabelas.r | 0..1 | 0.8 | 55 | **11** | 0.3..1 | — |
 | `gateSaturation` | Paint | Tuning | 100..6000 | 2000 | 55 | **0** | 2000..2000 | — |
-| `waterPerDab` | Water | Tuning | 0..4 | 1 | 55 | **3** | 0.15..1.5 | — |
+| `waterPerDab` | Hidden | Tuning | 0..4 | 1 | 55 | **3** | 0.15..1.5 | — |
 | `waterCap` | Water | Tuning | 1..30 | 8 | 55 | **1** | 8..30 | — |
 | `evaporation` | Water | Cartão: Dry speed (`:572`) | 0..8 | 1 | 55 | **4** | 0.6..3 | — |
 | `rewet` | Water | Tuning | 0..8 | 1 | 55 | **0** | 1..1 | — |
@@ -70,11 +72,6 @@ Total: **77** ficheiros `*.ph2d-brush.png`.
 | `extStaining` | Hidden | Cartão: staining (`tabelas.rs:148`) | 0..1 | 0.5 | 55 | **0** | 0.5..0.5 | — |
 | `extDryBrush` | Stroke | Tuning | 0..1 | 0 | 55 | **2** | 0..1 | — |
 | `extWetSoften` | Hidden | Cartão: wet_soften (`tabelas.rs:153`) | 0..1 | 0 | 55 | **0** | 0..0 | — |
-| `extRakeLight` | Hidden | só preset | 0..3 | 0 | 55 | **0** | 0..0 | — |
-| `extValleyGran` | Hidden | só preset | 0..1 | 0 | 55 | **0** | 0..0 | — |
-| `extWetSheen` | Hidden | só preset | 0..2 | 0 | 55 | **0** | 0..0 | — |
-| `extGrainDither` | Hidden | só preset | 0..8 | 0 | 55 | **0** | 0..0 | — |
-| `extEdgeTint` | Hidden | só preset | 0..1 | 0.5 | 55 | **0** | 0.5..0.5 | — |
 | `wetLift` | Tools | Tuning | 0..1 | 0.25 | 55 | **1** | 0.25..0.7 | — |
 | `glaze` | Hidden | Cartão: glaze (`tabelas.rs:149`) | 0..1 | 0 | 15 | **7** | 0..1 | — |
 | `dust` | Hidden | Cartão: dust (`tabelas.rs:133`) | 0..1 | 0 | 1 | **1** | 0.8..0.8 | — |
@@ -114,7 +111,6 @@ Total: **77** ficheiros `*.ph2d-brush.png`.
 | `embossSizeExp` | Hidden | só preset | 0..1 | 0 | 6 | **6** | 0.4..0.4 | sem painel (6 pincéis o põem) |
 | `embossSizeRef` | Hidden | só preset | 1..1000 | 41 | 6 | **0** | 41..41 | — |
 | `bristleTipRagged` | Bristles | Tuning | 0..1 | 0 | 8 | **7** | 0..1.6 | FORA DA FAIXA (preso no load): Filbert Dry=1.6, Filbert=1.6, Flat Bristle=1.6, Thick Impasto=1.6, Tilted Shade=1.6 |
-| `levelingOwnStroke` | Stroke | Tuning | 0..1 | 0 | 15 | **15** | 1..1 | — |
 | `tipReservoir` | Hidden | Cartão: tip_pickup (`tabelas.rs:141`) | 0..1 | 0 | 4 | **4** | 0.2..0.4 | — |
 | `pressureGrain` | Stroke | Tuning | 0..1 | 0 | 5 | **3** | 0..0.5 | — |
 | `strokeFilm` | Stroke | Tuning | 0..1 | 0 | 2 | **2** | 1..1 | — |
@@ -144,7 +140,7 @@ Total: **77** ficheiros `*.ph2d-brush.png`.
 | `transparency` | Material | Tuning | 0..1 | 0 | 0 | **0** | —..— | — |
 | `lockMaterial` | Material | Tuning | 0..1 | 0 | 0 | **0** | —..— | — |
 | `knifeLevel` | Stroke | Tuning | 0..1 | 0 | 1 | **1** | 1..1 | — |
-| `textureSizeExpAcross` | Stroke | Tuning | -0.01..1.5 | -0.01 | 0 | **0** | —..— | — |
+| `textureAcrossExp` | Stroke | ? | 0..1.5 | 0 | 0 | **0** | —..— | — |
 | `transmission` | Material | Tuning | 0..1 | 0 | 0 | **0** | —..— | — |
 | `paperRelief` | Material | Tuning | 0..1 | 0 | 0 | **0** | —..— | — |
 | `transmissionMode` | Material | Tuning | 0..1 | 0 | 0 | **0** | —..— | — |
@@ -166,6 +162,12 @@ Total: **77** ficheiros `*.ph2d-brush.png`.
 | `tuftArc` | Bristles | Tuning | 0..1 | 0 | 1 | **1** | 0.8..0.8 | — |
 | `waterDrag` | Hidden | Cartão (linha da ferramenta) (`tabelas.r | 0..1 | 0 | 1 | **1** | 0.8..0.8 | — |
 | `opaque` | Hidden | só preset | 0..1 | 0 | 3 | **3** | 1..1 | sem painel (3 pincéis o põem) |
+| `medium` | Hidden | ? | 0..1 | 0 | 0 | **0** | —..— | — |
+| `dilution` | Hidden | ? | 0..1 | 0.368421 | 0 | **0** | —..— | — |
+| `volume` | Hidden | ? | 0..1000 | 0.691412 | 0 | **0** | —..— | — |
+| `body` | Hidden | ? | 0..1 | 0 | 0 | **0** | —..— | — |
+| `textureAcrossOwn` | Stroke | ? | 0..1 | 0 | 0 | **0** | —..— | — |
+| `smoothEdges` | Hidden | ? | 0..1 | 0 | 0 | **0** | —..— | — |
 | `tiltOpacity` | Mão (fora do registo) | cartão Mão | 0..1 | 0 | 21 | **0** | 0..0 | — |
 | `speedSize` | Mão (fora do registo) | cartão Mão | 0..1 | 0 | 22 | **1** | 0..0.025 | — |
 | `pressureSCurve` | Mão (fora do registo) | cartão Mão | 0..1 | 0 | 0 | **0** | —..— | — |
@@ -187,7 +189,7 @@ Total: **77** ficheiros `*.ph2d-brush.png`.
 | `volumes.opacity` | 1 (ausente = o de agora; referência 1,0) | 76 | **10** | 0.26..1 |
 | `brush.accumulate` | 0 (spec_default.rs) | 22 | **4** | 0..1 |
 | `brush.airbrush_rate_s` | 0.1 (spec_default.rs) | 22 | **0** | 0.1..0.1 |
-| `brush.blend` | Mix (moda (sem padrão escalar no código)) | 77 | **7** | —..— |
+| `brush.blend` | Mix (moda (sem padrão escalar no código)) | 77 | **6** | —..— |
 | `brush.blend_sobre_vazio` | 0 (spec_default.rs) | 22 | **3** | 0..1 |
 | `brush.color_jitter_enabled` | 0 (spec_default.rs) | 77 | **0** | 0..0 |
 | `brush.color_jitter_hue` | 0 (spec_default.rs) | 77 | **0** | 0..0 |
@@ -219,9 +221,9 @@ Total: **77** ficheiros `*.ph2d-brush.png`.
 | `brush.dash_ratio` | 1 (spec_default.rs) | 22 | **0** | 1..1 |
 | `brush.dash_samples` | 20 (spec_default.rs) | 22 | **0** | 20..20 |
 | `brush.edge_to_edge` | 0 (spec_default.rs) | 22 | **0** | 0..0 |
-| `brush.falloff` | Smooth (moda (sem padrão escalar no código)) | 77 | **22** | —..— |
+| `brush.falloff` | Smooth (moda (sem padrão escalar no código)) | 77 | **21** | —..— |
 | `brush.flow` | 1 (spec_default.rs) | 22 | **5** | 0.012..1 |
-| `brush.grain_depth` | 1 (spec_default.rs) | 77 | **1** | 0.3..1 |
+| `brush.grain_depth` | 1 (spec_default.rs) | 77 | **3** | 0.3..1 |
 | `brush.grid_cell_px[0]` | 32 (moda (sem padrão escalar no código)) | 22 | **0** | 32..32 |
 | `brush.grid_cell_px[1]` | 32 (moda (sem padrão escalar no código)) | 22 | **0** | 32..32 |
 | `brush.grid_fit` | 0 (spec_default.rs) | 22 | **0** | 0..0 |
@@ -232,8 +234,8 @@ Total: **77** ficheiros `*.ph2d-brush.png`.
 | `brush.jitter` | 0 (spec_default.rs) | 77 | **20** | 0..1 |
 | `brush.jitter_absolute_px` | 0 (spec_default.rs) | 77 | **0** | 0..0 |
 | `brush.jitter_rotate` | 0 (spec_default.rs) | 77 | **2** | 0..1 |
-| `brush.jitter_scale` | 0 (spec_default.rs) | 77 | **4** | 0..0.9 |
-| `brush.jitter_spacing` | 0 (spec_default.rs) | 77 | **0** | 0..0 |
+| `brush.jitter_scale` | 0 (spec_default.rs) | 77 | **5** | 0..0.9 |
+| `brush.jitter_spacing` | 0 (spec_default.rs) | 77 | **1** | 0..0.6 |
 | `brush.jitter_unit` | Brush (moda (sem padrão escalar no código)) | 77 | **0** | —..— |
 | `brush.line_kind` | None (moda (sem padrão escalar no código)) | 22 | **0** | —..— |
 | `brush.pigment` | 0 (spec_default.rs) | 77 | **1** | 0..1 |
@@ -336,7 +338,7 @@ Total: **77** ficheiros `*.ph2d-brush.png`.
 | `brush.wet_rewet` | 0 (spec_default.rs) | 1 | **1** | 0.5..0.5 |
 | `brush.wet_smudge` | 0 (spec_default.rs) | 1 | **1** | 0.5..0.5 |
 | `volumes.water` | 1 (ausente = o de agora; referência 1,0) | 55 | **40** | 0..1 |
-| `width_table` | [[1.5, 3.9791667], [1.7, 2.884 (moda (sem padrão escalar no código)) | 55 | **53** | —..— |
+| `width_table` | [[1.7, 2.725664], [1.8, 3.8947 (moda (sem padrão escalar no código)) | 55 | **53** | —..— |
 | `tilt.on` | 0 (ausente = OFF) | 55 | **1** | 0..1 |
 | `tilt.ring` | 4 (moda (sem padrão escalar no código)) | 55 | **1** | 4..8 |
 | `tilt.spoke` | 3 (moda (sem padrão escalar no código)) | 55 | **0** | 3..3 |
@@ -379,7 +381,7 @@ Total: **77** ficheiros `*.ph2d-brush.png`.
 
 **Nenhum pincel os tira do padrão (75) — candidatos a sair ou a virar constante:**
 
-`intensity`, `spacing`, `gateSaturation`, `rewet`, `baseEvaporation`, `leveling`, `brake`, `gravity`, `levelClamp`, `viscosity`, `maxVelocity`, `projection`, `brakeReach`, `capillaryGate`, `eraser`, `dryer`, `blow`, `paperFibres`, `paperGrooves`, `visualGrain`, `paperVisibility`, `extBackrun`, `extFingering`, `extRivulets`, `extGranulation`, `extStaining`, `extWetSoften`, `extRakeLight`, `extValleyGran`, `extWetSheen`, `extGrainDither`, `extEdgeTint`, `pressureSmoothing`, `pulledString`, `tiltSmooth`, `bristleWave`, `bristleWaveLength`, `bristleNoiseHue`, `bristleRemove`, `capsuleSpacing`, `embossSizeRef`, `dustDrop`, `bristleStreak`, `bristleStreakLight`, `bristleStreakLength`, `bristleStreakCut`, `thinStrokeFade`, `thinStrokeRef`, `dryerEdge`, `textureSizeRef`, `iorLevel`, `coatRoughness`, `sheen`, `subsurface`, `subsurfaceRadius`, `transparency`, `lockMaterial`, `textureSizeExpAcross`, `transmission`, `paperRelief`, `transmissionMode`, `dryerLevel`, `blendReach`, `paperPress`, `rewetPaint`, `solubility`, `rewetDrag`, `tiltOpacity`, `pressureSCurve`, `speedLag`, `speedHardness`, `speedOpacity`, `erase`, `glazeLayering`, `paintTexture`
+`spacing`, `gateSaturation`, `rewet`, `baseEvaporation`, `leveling`, `brake`, `gravity`, `levelClamp`, `viscosity`, `maxVelocity`, `projection`, `brakeReach`, `capillaryGate`, `eraser`, `dryer`, `blow`, `paperFibres`, `paperGrooves`, `visualGrain`, `paperVisibility`, `extBackrun`, `extFingering`, `extRivulets`, `extGranulation`, `extStaining`, `extWetSoften`, `pressureSmoothing`, `pulledString`, `tiltSmooth`, `bristleWave`, `bristleWaveLength`, `bristleNoiseHue`, `bristleRemove`, `capsuleSpacing`, `embossSizeRef`, `dustDrop`, `bristleStreak`, `bristleStreakLight`, `bristleStreakLength`, `bristleStreakCut`, `thinStrokeFade`, `thinStrokeRef`, `dryerEdge`, `textureSizeRef`, `iorLevel`, `coatRoughness`, `sheen`, `subsurface`, `subsurfaceRadius`, `transparency`, `lockMaterial`, `textureAcrossExp`, `transmission`, `paperRelief`, `transmissionMode`, `dryerLevel`, `blendReach`, `paperPress`, `rewetPaint`, `solubility`, `rewetDrag`, `medium`, `dilution`, `volume`, `body`, `textureAcrossOwn`, `smoothEdges`, `tiltOpacity`, `pressureSCurve`, `speedLag`, `speedHardness`, `speedOpacity`, `erase`, `glazeLayering`, `paintTexture`
 
 **Usados por UM só pincel (26):**
 
@@ -422,10 +424,10 @@ Membro «usado» = valor efectivo fora do padrão. «≥ 2 membros» = pincéis 
 |---|---|---|
 | `pigmentPerDab` | 44 | Fan Brush, Airbrush, Express Oil, Ink Brush, Broad Nib, Dip Pen, Ink Bullet, Marker Bullet, Marker Chisel, Dabber 4, Dabber, Filbert Dry, Filbert, Flat Bristle, Thick Impasto, Tilted Shade, Knife Dry, Knife Grainy, Knife Oily, Knife Smooth 3, Knife Stain, Knife Textured, Metallic Flat, Pastel Side, Soft Pastel, Square Hard, Oil Pastel, Wax Crayon, Wax Scrape, Charcoal, Compressed Charcoal, Colored… |
 | `volumes.opacity` | 10 | Glaze Round, Smear Basic, Kneaded Eraser, Texture Eraser, Ballpoint, Mapping Pen, Bokeh, Stars, Fan Brush, Express Oil |
-| `intensity` | 0 |  |
+| `intensity` | 55 | Fan Brush, Airbrush, Blender Dots, Blender Hard, Blender Soft, Blender Textured, Express Oil, Ink Brush, Broad Nib, Dip Pen, Ink Bullet, Marker Bullet, Marker Chisel, Dabber 4, Dabber, Filbert Dry, Filbert, Flat Bristle, Thick Impasto, Tilted Shade, Knife Dry, Knife Grainy, Knife Oily, Knife Smooth 3, Knife Stain, Knife Textured, Metallic Flat, Pastel Side, Soft Pastel, Square Hard, Oil Pastel, Wa… |
 | `pressureOpacity` | 57 | Glaze Round, Soft Round, Burn, Color Glaze, Dodge, Kneaded Eraser, Ballpoint, Marker Liner, Splatter, Bokeh, Stars, Halftone, Fan Brush, Airbrush, Blender Hard, Express Oil, Ink Brush, Broad Nib, Dip Pen, Ink Bullet, Marker Bullet, Marker Chisel, Dabber 4, Dabber, Filbert Dry, Filbert, Flat Bristle, Thick Impasto, Tilted Shade, Knife Dry, Knife Grainy, Knife Oily, Knife Smooth 3, Knife Stain, Knif… |
 
-**≥ 2 membros: 46 pincéis**: Fan Brush, Airbrush, Express Oil, Ink Brush, Broad Nib, Dip Pen, Ink Bullet, Marker Bullet, Marker Chisel, Dabber 4, Dabber, Filbert Dry, Filbert, Flat Bristle, Thick Impasto, Tilted Shade, Knife Dry, Knife Grainy, Knife Oily, Knife Smooth 3, Knife Stain, Knife Textured, Metallic Flat, Pastel Side, Soft Pastel, Square Hard, Oil Pastel, Wax Crayon, Wax Scrape, Charcoal, Compressed Charcoal, Colored 4B, Graphite 2B, Graphite 2H, Graphite 8B, Graphite HB, Scratch, Wet Flat, Wet Wash, Gouache Flat, Gouache Opaque, Glaze Round, Kneaded Eraser, Ballpoint, Bokeh, Stars
+**≥ 2 membros: 53 pincéis**: Fan Brush, Airbrush, Express Oil, Ink Brush, Broad Nib, Dip Pen, Ink Bullet, Marker Bullet, Marker Chisel, Dabber 4, Dabber, Filbert Dry, Filbert, Flat Bristle, Thick Impasto, Tilted Shade, Knife Dry, Knife Grainy, Knife Oily, Knife Smooth 3, Knife Stain, Knife Textured, Metallic Flat, Pastel Side, Soft Pastel, Square Hard, Oil Pastel, Wax Crayon, Wax Scrape, Charcoal, Compressed Charcoal, Colored 4B, Graphite 2B, Graphite 2H, Graphite 8B, Graphite HB, Scratch, Wet Drip, Wet Dry Brush, Wet Flat, Wet Liner, Wet Wash, Gouache Flat, Gouache Opaque, Glaze Round, Kneaded Eraser, Ballpoint, Bokeh, Stars, Blender Hard, Smear Flat, Smear Soft, Smear Spikey
 
 ### D2 — arrasto ao longo do traço
 
@@ -512,6 +514,7 @@ Membro «usado» = valor efectivo fora do padrão. «≥ 2 membros» = pincéis 
 |---|---|---|
 | `edgeDarkening` | 42 | Fan Brush, Airbrush, Express Oil, Ink Brush, Broad Nib, Dip Pen, Ink Bullet, Marker Bullet, Marker Chisel, Dabber 4, Dabber, Filbert Dry, Filbert, Flat Bristle, Thick Impasto, Tilted Shade, Knife Dry, Knife Grainy, Knife Oily, Knife Smooth 3, Knife Stain, Knife Textured, Metallic Flat, Pastel Side, Soft Pastel, Square Hard, Oil Pastel, Wax Crayon, Wax Scrape, Charcoal, Compressed Charcoal, Colored… |
 | `edgeSoftMass` | 1 | Wet Wash |
+| `smoothEdges` | 0 |  |
 | `heavy_edge` | 0 | (nenhum preset grava o campo) |
 
 **≥ 2 membros: 1 pincéis**: Wet Wash
@@ -525,11 +528,11 @@ Membro «usado» = valor efectivo fora do padrão. «≥ 2 membros» = pincéis 
 | `viscosity` | 0 |  |
 | `brake` | 0 |  |
 | `brakeReach` | 0 |  |
-| `levelingOwnStroke` | 15 | Filbert Dry, Filbert, Flat Bristle, Thick Impasto, Tilted Shade, Knife Dry, Knife Grainy, Knife Oily, Knife Smooth 3, Knife Stain, Knife Textured, Metallic Flat, Wet Liner, Wet Wash, Gouache Opaque |
+| `body` | 0 |  |
 | `knifeLevel` | 1 | Knife Textured |
 | `dryerLevel` | 0 |  |
 
-**≥ 2 membros: 1 pincéis**: Knife Textured
+**≥ 2 membros: 0 pincéis**
 
 ### D11 — força da borracha
 
@@ -610,7 +613,8 @@ Membro «usado» = valor efectivo fora do padrão. «≥ 2 membros» = pincéis 
 | `embossSizeRef` | 0 |  |
 | `textureSizeExp` | 1 | Dabber 4 |
 | `textureSizeRef` | 0 |  |
-| `textureSizeExpAcross` | 0 |  |
+| `textureAcrossExp` | 0 |  |
+| `textureAcrossOwn` | 0 |  |
 | `bristleLaneSizeExp` | 1 | Fan Brush |
 
 **≥ 2 membros: 0 pincéis**
@@ -667,7 +671,7 @@ Membro «usado» = valor efectivo fora do padrão. «≥ 2 membros» = pincéis 
 
 **≥ 2 membros: 1 pincéis**: Metallic Flat
 
-**Resumo:** D1 46 · D2 1 · D3 6 · D4 2 · D5 0 · D6 2 · D7 14 · D8 0 · D9 1 · D10 1 · D11 0 · D12 0 · D13 14 · D14 0 · D15 0 · D16 2 · D17 0 · D18 0 · D19 2 · D20 1 · D21 18 · D22 1
+**Resumo:** D1 53 · D2 1 · D3 6 · D4 2 · D5 0 · D6 2 · D7 14 · D8 0 · D9 1 · D10 0 · D11 0 · D12 0 · D13 14 · D14 0 · D15 0 · D16 2 · D17 0 · D18 0 · D19 2 · D20 1 · D21 18 · D22 1
 
 ## (e) Pincéis de óleo: todos os knobs fora do padrão, lado a lado
 
@@ -675,10 +679,11 @@ Membro «usado» = valor efectivo fora do padrão. «≥ 2 membros» = pincéis 
 
 | knob | padrão | Express Oil | Dabber 4 | Dabber | Filbert Dry | Filbert | Flat Bristle | Thick Impasto | Tilted Shade | Knife Dry | Knife Grainy | Knife Oily | Knife Smooth 3 | Knife Stain | Knife Textured | Metallic Flat |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| `pigmentPerDab` | 78 | 75 | 2000 | 2000 | 90 | 250 | 200 | 600 | 250 | 400 | 600 | 150 | 600 | 1200 | 400 | 80 |
+| `pigmentPerDab` | 78 | 75 | 2000 | 2000 | 90 | 250 | 200 | 600 | 250 | 400 | 600 | 150 | 600 | 250 | 400 | 80 |
 | `paperGate` | 0.4 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 | 1 | 1.2 | 0 | 1.2 | 2.5 | 1 | 0 |
 | `felt` | 0.03 | 0 | 0.05 | 0.05 | 0.05 | 0.05 | 0.05 | 0.05 | 0.05 | 0.05 | 0.05 | 0.05 | 0.05 | 0.05 | 0.05 | 0.05 |
 | `bristleCount` | 2000 | 300 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `intensity` | 0.4505 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 |
 | `bristleStrength` | 1 | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 2 | 0 | 0 | 0 |
 | `bristleSize` | 2 | 7 |  |  | 1 | 1 | 1 | 1 | 1 |  |  |  |  |  |  | 1 |
 | `blendForce` | 0.8 |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 0.3 |
@@ -703,7 +708,6 @@ Membro «usado» = valor efectivo fora do padrão. «≥ 2 membros» = pincéis 
 | `capsuleMaxPx` | 0 |  | 2 | 2 | 4 | 4 | 4 | 4 | 4 | 2 | 2 | 2 | 2 | 2 | 2 | 4 |
 | `embossSizeExp` | 0 |  |  |  | 0.4 | 0.4 | 0.4 | 0.4 | 0.4 |  |  |  |  |  |  | 0.4 |
 | `bristleTipRagged` | 0 |  |  |  | 1.6 | 1.6 | 1.6 | 1.6 | 1.6 |  |  |  |  |  |  |  |
-| `levelingOwnStroke` | 0 |  |  |  | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 |
 | `knifeRidge` | 0 |  |  |  |  |  |  |  |  |  | 2 | 3 | 8 |  | 4 |  |
 | `textureSizeExp` | 0 |  | 0.5 |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `metallic` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 0.2 |
@@ -716,19 +720,21 @@ Membro «usado» = valor efectivo fora do padrão. «≥ 2 membros» = pincéis 
 | `volumes.opacity` | 1 | 0.6 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `brush.continuous_spacing` | 0 | True |  | True | True | True | True | True | True | True | True | True | True | True | True | True |
 | `brush.dab_angle_deg` | 0 |  | 90 | 90 |  | 90 |  | 90 |  | 170 | 90 | 172 | 90 | 90 | 86 | 90 |
-| `brush.dab_flatten` | 0 |  | 0.6 |  | 0.5 |  | 0.7 |  | 0.65 | 0.74 | 0.8 | 0.69 | 0.8 | 0.8 | 0.87 |  |
+| `brush.dab_flatten` | 0 |  | 0.3 |  | 0.5 |  | 0.7 |  | 0.65 | 0.74 | 0.8 | 0.69 | 0.8 | 0.8 | 0.87 |  |
 | `brush.dab_quina` | 0 |  |  |  | 0.4 |  | 1 |  | 0.5 | 1 | 1 | 1 | 1 | 1 | 0.5 | 0.75 |
-| `brush.falloff` | Smooth |  |  |  |  |  |  |  |  |  | Constant |  | Constant | Constant | Constant |  |
-| `brush.grain_depth` | 1 |  |  |  |  |  |  |  |  |  |  |  |  |  |  | 0.3 |
-| `brush.hardness` | 0 | 0.9 | 0.6 | 0.6 | 0.9 | 0.9 | 0.9 | 0.3 | 0.9 | 0.4 | 1 | 0.5 | 1 | 1 | 1 | 1 |
+| `brush.falloff` | Smooth |  |  |  |  |  |  |  |  |  | Constant |  | Constant |  | Constant |  |
+| `brush.grain_depth` | 1 |  | 0.9 |  |  |  |  |  |  |  |  |  |  | 0.5 |  | 0.3 |
+| `brush.hardness` | 0 | 0.9 | 0.6 | 0.6 | 0.9 | 0.9 | 0.9 | 0.3 | 0.9 | 0.4 | 1 | 0.5 | 1 | 0.8 | 1 | 1 |
 | `brush.jitter` | 0 |  | 0.1 | 0.3 |  |  |  | 0.15 |  |  | 0.1 |  |  |  |  |  |
+| `brush.jitter_scale` | 0 |  | 0.05 |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `brush.jitter_spacing` | 0 |  | 0.6 |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `brush.shape.kind` | None |  |  |  |  |  |  |  |  |  |  | Gradient |  |  |  |  |
 | `brush.shape.offset[0]` | 0 |  |  |  |  |  |  |  |  |  |  | 0.5 |  |  |  |  |
 | `brush.shape.offset[1]` | 0 |  |  |  |  |  |  |  |  |  |  | 0.5 |  |  |  |  |
 | `brush.shape.params` | [0.5, 0.5, 0 |  |  |  |  |  |  |  |  |  |  | [0.5, 0.5, 0 |  |  |  |  |
 | `brush.shape.size[0]` | 1 |  |  |  |  |  |  |  |  |  |  | 0.5 |  |  |  |  |
 | `brush.shape.size[1]` | 1 |  |  |  |  |  |  |  |  |  |  | 0.5 |  |  |  |  |
-| `brush.spacing` | 0.1 |  | 0.3 |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `brush.spacing` | 0.1 |  | 0.2 |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `brush.texture.kind` | None |  | Stucci |  |  |  |  | Clouds |  | Noise | Clouds |  | Noise | Noise | Noise | Noise |
 | `brush.texture.params` | [0.5, 0.5, 0 |  | [0.5, 0.6, 0 |  |  |  |  |  |  |  |  |  |  | [1, 0.42, 0. | [0.25, 0.5,  |  |
 | `brush.texture.size[0]` | 1 |  | 180 |  |  |  |  | 48 |  | 6 | 20 |  | 6 | 96 | 60 | 4 |

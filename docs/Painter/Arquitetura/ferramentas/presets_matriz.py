@@ -54,18 +54,42 @@ def ler_preset(caminho):
 
 # ---------------------------------------------------------------- padrões tirados do código
 def sem_comentarios(txt):
-    return re.sub(r"//[^\n]*", "", txt)
+    return re.sub(r"/\*.*?\*/", "", re.sub(r"//[^\n]*", "", txt), flags=re.S)
+
+
+def omissao_do_knob(expr):
+    """A omissão de um knob: um número, ou a expressão da receita (Dilution, Volume) sobre as constantes do motor."""
+    expr = expr.strip()
+    if re.fullmatch(r"-?[\d.]+", expr):
+        return float(expr)
+    receita = open(P("crates/ph2d-wet-paint/src/painter/receita.rs")).read()
+    tinta = open(P("crates/ph2d-wet-paint/src/grid/tinta.rs")).read()
+    pigmento = float(re.search(r"pub const PIGMENTO_DO_MOTOR: f64 = ([\d.]+);", receita).group(1))
+    k_w = float(re.search(r"pub const K_W: f64 = ([\d.]+);", receita).group(1))
+    pressao = float(re.search(r"pub const PRESSAO_DE_REFERENCIA: f64 = ([\d.]+);", receita).group(1))
+    u = 1.0 * 0.35  # `receita::veiculo(1, 1)`
+    h_ref = pigmento + k_w * (2.0 * u * u * 1.0 / (0.2 + 0.7 * pressao + 0.01))
+    nomes = {
+        "PIGMENTO_DO_MOTOR": pigmento,
+        "H_REF": h_ref,
+        "M_UM": float(re.search(r"pub const M_UM: f32 = ([\d.]+);", tinta).group(1)),
+    }
+    limpa = re.sub(r"crate::[\w:]*::(\w+)", r"\1", expr).replace(" as f64", "")
+    return eval(limpa, {"__builtins__": {}}, nomes)
 
 
 def ler_knobs():
     src = sem_comentarios(open(P("crates/ph2d-wet-paint/src/tuning/defs.rs")).read())
     num = r"(-?[\d.]+)"
-    pat = re.compile(r"k\(\s*Knob::(\w+),\s*KnobGroup::(\w+),\s*\"(\w+)\",\s*" + r",\s*".join([num] * 4))
+    pat = re.compile(
+        r"k\(\s*Knob::(\w+),\s*KnobGroup::(\w+),\s*\"(\w+)\",\s*" + r",\s*".join([num] * 3) + r",\s*([^,]+?)\s*,"
+    )
     knobs = collections.OrderedDict()
     for m in pat.finditer(src):
         nome, grupo, chave, mn, mx, passo, fab = m.groups()
+        fab = omissao_do_knob(fab)
         knobs[chave] = dict(nome=nome, grupo=grupo, min=float(mn), max=float(mx), passo=float(passo),
-                            motor=float(fab), produto=float(fab), fonte="defs.rs")
+                            motor=fab, produto=fab, fonte="defs.rs")
     m = re.search(r"pub const KNOB_COUNT: usize = (\d+);", open(P("crates/ph2d-wet-paint/src/tuning.rs")).read())
     assert len(knobs) == int(m.group(1)), (len(knobs), m.group(1))
     por_nome = {v["nome"]: k for k, v in knobs.items()}
@@ -139,8 +163,8 @@ FAMILIAS = collections.OrderedDict([
     ("D6", ("absorção do papel", ["paperGate", "gateSaturation", "capillary", "capillaryGate"])),
     ("D7", ("passo", ["spacing", "capsuleSpacing", "pigmentSpacing", "capsuleMaxPx", "brush.spacing"])),
     ("D8", ("re-dissolver o assentado", ["rewet", "rewetPaint", "solubility"])),
-    ("D9", ("orla escura / sedimento", ["edgeDarkening", "edgeSoftMass", "heavy_edge"])),
-    ("D10", ("nivelamento", ["leveling", "levelClamp", "viscosity", "brake", "brakeReach", "levelingOwnStroke",
+    ("D9", ("orla escura / sedimento", ["edgeDarkening", "edgeSoftMass", "smoothEdges", "heavy_edge"])),
+    ("D10", ("nivelamento", ["leveling", "levelClamp", "viscosity", "brake", "brakeReach", "body",
                              "knifeLevel", "dryerLevel"])),
     ("D11", ("força da borracha", ["erase", "eraser"])),
     ("D12", ("papel visto na tinta", ["paperVisibility", "visualGrain", "paintTexture", "paperRelief", "paperPress",
@@ -151,7 +175,7 @@ FAMILIAS = collections.OrderedDict([
     ("D16", ("velatura", ["glaze", "glazeLayering", "pigmentMixing", "live_water"])),
     ("D17", ("estabilização", ["pulledString", "brush.stabilizer"])),
     ("D18", ("escala com o diâmetro", ["embossSizeExp", "embossSizeRef", "textureSizeExp", "textureSizeRef",
-                                       "textureSizeExpAcross", "bristleLaneSizeExp"])),
+                                       "textureAcrossExp", "textureAcrossOwn", "bristleLaneSizeExp"])),
     ("D19", ("abertura do molhado alheio", ["wetOpen", "wetOpenPush", "wetOpenEdge"])),
     ("D20", ("material Principled (célula)", ["metallic", "roughness", "iorLevel", "coat", "coatRoughness", "sheen",
                                               "subsurface", "subsurfaceRadius"])),

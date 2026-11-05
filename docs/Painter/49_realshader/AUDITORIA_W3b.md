@@ -4,6 +4,7 @@
 
 - D1. «Smooth Edges só atua na cor e não no relevo. Smooth Edges deve ser para todo o papel, de todos os traços já
   pintados ou futuros.» ⇒ revoga a decisão «Smooth Edges por traço» (`65d6a6a16d`): é da TELA e age no relevo.
+  ⚠️ **D1 revogada pelo dono em 04/11** («por traço mesmo e cada pincel deve ter o seu. assim não perde detalhes»: na tela inteira apagava o grão e o pó); fica dela «age na cor e no relevo».
 - D2. «Transparência ainda não é o suficiente» ⇒ Transmission a 1 = **vidro colorido**: o papel bem claro com o grão,
   só tingido pela cor (escolha do dono entre: vidro colorido · igual ao Blender · controlo de espessura).
 - D3. «O painel só vale para os próximos traços não funciona para Transmission e Transparency» — ele mexeu no CARTÃO

@@ -829,7 +829,7 @@ espessura). Não curado: a lei é a do §BUG-papel/Paper Relief e não há Rebel
 ## §Smooth Edges na tela (W3b)
 
 **Pedido do dono (2.º smoke, 27/10, D1):** «Smooth Edges só atua na cor e não no relevo. Smooth Edges deve ser para
-todo o papel, de todos os traços já pintados ou futuros.» Revoga a ronda 2 de cima (`65d6a6a16d`).
+todo o papel, de todos os traços já pintados ou futuros.» Revoga a ronda 2 de cima (`65d6a6a16d`). ⚠️ **D1 revogada pelo dono em 04/11** («por traço mesmo e cada pincel deve ter o seu. assim não perde detalhes»: na tela inteira apagava o grão e o pó); fica «age na cor e no relevo», e esta secção é história.
 
 **Onde mora.** Um número do cartão **Paper** (`paint_watercolor_paper.rs::paint_smooth_edges_row`, só com o Wet Paint;
 chave i18n e id de sempre, `PAINTER_WETPAINT_SMOOTH_EDGES`; o Reset do Paper zera-o, o do Wet Paint já não). Saiu do

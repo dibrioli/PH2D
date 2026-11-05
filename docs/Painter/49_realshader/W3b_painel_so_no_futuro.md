@@ -6,7 +6,7 @@ já colocada no papel — passa a valer para os próximos traços.» Decisão do
 28/10, quando o dono a fez do TRAÇO («Paint Texture deve ser por traço e não para o papel todo») — ver a linha dela abaixo. O Smooth Edges foi do traço
 numa ronda (`65d6a6a16d`) e o 2.º smoke do dono revogou-o (D1, 27/10: «para todo o papel, de todos os traços já pintados
 ou futuros»): é da TELA, mora no cartão **Paper**, não viaja no preset e não está no gate deste item
-(`oraculo/README.md` §Smooth Edges na tela).
+(`oraculo/README.md` §Smooth Edges na tela). ⚠️ **D1 revogada pelo dono em 04/11** («por traço mesmo e cada pincel deve ter o seu. assim não perde detalhes»: na tela inteira apagava o grão e o pó): é do TRAÇO e do cartão do pincel, viaja no preset (`Knob::SmoothEdges`), e fica dela «age na cor e no relevo». As menções abaixo são história.
 
 ## Censo (medido, não lido)
 

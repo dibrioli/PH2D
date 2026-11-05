@@ -2,7 +2,7 @@
 //! UM cartão Animation com regras «quando → animação» (25/10); Paint type Water·Oil, um só Dilution, o
 //! Volume independente e o Paper press no painel do pincel (28/10, 31/10, 01/11).
 
-use crate::controlos::{caixa_para, card, dica, dropdown, head, marca, num, segs};
+use crate::controlos::{caixa_para, card, dica, dropdown, head, marca, marca_cel, num, segs};
 use crate::ids as g;
 use crate::state::{Choices, Flag, Pick, RULES};
 use ph2d_card_stack::metrics as m;
@@ -115,18 +115,14 @@ pub(crate) fn brush(ch: Choices) -> CardDef<'static> {
                     .label(tr("panel.widget_gallery.real.preset"))],
                 y,
             );
-            let y = c.row(
-                &[num!(
-                    g::BR_SIZE,
-                    tr("panel.painter_layers.wetpaint.vol_size")
-                )],
-                y,
-            );
             let tipos = segs([g::BR_WATER, g::BR_OIL], &ch, c.store);
             let y = c.row(
-                &[Cell::new(Widget::Choice(&tipos))
-                    .label(tr("panel.painter_layers.wetpaint.paint_type"))
-                    .key(&[g::BR_WATER, g::BR_OIL])],
+                &[
+                    num!(g::BR_SIZE, tr("panel.painter_layers.wetpaint.vol_size")),
+                    Cell::new(Widget::Choice(&tipos))
+                        .label(tr("panel.painter_layers.wetpaint.paint_type"))
+                        .key(&[g::BR_WATER, g::BR_OIL]),
+                ],
                 y,
             );
             let y = c.row(
@@ -184,14 +180,13 @@ pub(crate) fn bones(ch: Choices) -> CardDef<'static> {
                     y,
                 );
             }
-            let y = marca(
-                c,
-                g::BO_SMART,
-                "card.bones.smart",
-                ch.on(Flag::BoneSmart),
+            let y = c.row(
+                &[
+                    marca_cel(g::BO_SMART, "card.bones.smart", ch.on(Flag::BoneSmart)),
+                    marca_cel(g::BO_IK, "card.bones.ik", ch.on(Flag::BoneIk)),
+                ],
                 y,
             );
-            let y = marca(c, g::BO_IK, "card.bones.ik", ch.on(Flag::BoneIk), y);
             if !ch.on(Flag::BoneIk) {
                 return y;
             }

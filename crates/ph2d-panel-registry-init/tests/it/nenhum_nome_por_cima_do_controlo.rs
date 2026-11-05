@@ -227,9 +227,12 @@ fn nenhuma_escolha_do_app_e_montada_a_mao() {
     // ⛔ Piso de população: medido 48 grupos pela porta a toda a largura (2026-09-23). Sem ele,
     //    um arnês que deixasse de armar os painéis passaria por vácuo. ⬇️ `35 → 31` em 2026-10-05:
     //    as escolhas dos painéis `model3d` e `sculpt3d` saíram com o 3D (ADR-0179); medido `31`.
+    // ⬆️ `31 → 63` em 2026-11-05 (F10), medido com `-p`: os 30 de antes eram cegueira, não redução. Em cartões o
+    //    corpo recua da borda e o teste de `x` deixou de ver 9 painéis (`PH2D_CARDS=0` dava 39); `CardCtx::choice`
+    //    também não se declarava porta.
     let pela_porta = v.iter().filter(|g| g.da_porta).count();
     assert!(
-        pela_porta >= 31,
+        pela_porta >= 63,
         "so' {pela_porta} escolhas pela porta a toda a largura — o arnes deixou de armar paineis?"
     );
     let a_mao: Vec<String> = v

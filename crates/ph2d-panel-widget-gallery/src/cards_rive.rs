@@ -463,11 +463,10 @@ pub(crate) fn gradient(ch: Choices, store: &WidgetStore) -> CardDef<'static> {
             .label(tr("panel.widget_gallery.rive.stop_position"))
             .key(&k_pos);
             // Um gradiente tem sempre duas paragens: com duas, o «−» não aparece.
-            let y = c.row(&[posicao], y);
             if quantas > 2 {
-                c.row(&[cor, Cell::new(Widget::Bare(&menos))], y)
+                c.row(&[posicao, cor, Cell::new(Widget::Bare(&menos))], y)
             } else {
-                c.row(&[cor], y)
+                c.row(&[posicao, cor], y)
             }
         }),
     )

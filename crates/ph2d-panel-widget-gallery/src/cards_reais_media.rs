@@ -1,8 +1,8 @@
 //! ⭐ **Casos reais: luz, áudio, pixel art, script** (doc `CartoesUI/08` §1.3).
 
 use crate::controlos::{
-    CAMPO_MIN, PALETTE_TOKENS, caixa_para, card, dropdown, field, head, letra, marca, num, seg_of,
-    segs,
+    CAMPO_MIN, PALETTE_TOKENS, caixa_para, card, dropdown, field, head, letra, marca, marca_cel,
+    num, seg_of, segs,
 };
 use crate::ids as g;
 use crate::state::{Choices, Flag, Pick, RACKS};
@@ -57,18 +57,14 @@ pub(crate) fn light(ch: Choices) -> CardDef<'static> {
             if ch.pick(Pick::LampKind) != 0 {
                 return y;
             }
-            let y = c.row(
-                &[num!(g::LT_SIZE, tr("panel.widget_gallery.real.lamp_size"))],
-                y,
-            );
             // De fábrica a lâmpada não tem limite (`alcance_m` infinito): como no Inspector, o
             // alcance só aparece com a caixa marcada.
             let limitada = ch.on(Flag::LampLimit);
-            let mut y = marca(
-                c,
-                g::LT_LIMIT,
-                "panel.inspector.luz.limit_range",
-                limitada,
+            let mut y = c.row(
+                &[
+                    num!(g::LT_SIZE, tr("panel.widget_gallery.real.lamp_size")),
+                    marca_cel(g::LT_LIMIT, "panel.inspector.luz.limit_range", limitada),
+                ],
                 y,
             );
             if limitada {

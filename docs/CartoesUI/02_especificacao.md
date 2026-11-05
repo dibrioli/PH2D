@@ -74,6 +74,8 @@ métricas do Kanban que já existem quando o valor coincide.
 | modificador a meio do arrasto | muda a taxa A PARTIR daquele ponto, sem salto no valor |
 | Esc durante o arrasto | devolve o valor de partida |
 | clicar no valor | edita como texto, com tudo selecionado |
+| clicar no ícone sem arrastar (F10) | o mesmo: o que se digita a seguir nunca cai nos atalhos do app |
+| duplo clique no ícone (F10) | repõe o valor de fábrica, quando há, e fica a editar com tudo selecionado |
 | texto | aceita **contas** (`0.35*2`, `120+16`, `(a)`), e sufixo de unidade tolerado (`12px`, `45deg`) |
 | Enter | aplica e mantém a seleção; **Tab / Shift+Tab** = próximo/anterior campo do cartão |
 | Esc a editar | desfaz a edição e sai |

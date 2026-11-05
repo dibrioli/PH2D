@@ -86,10 +86,15 @@ fn escrever_campo(
 
 /// Devolve à entidade a forma que mudou e re-coze a paramétrica.
 fn devolver_forma(sim: &mut SimWorld, scene: &mut VecScene, e: u64, id: u64, sh: VecShape) {
+    let ent = Entity::try_from_bits(e);
     if let VecShape::Param { .. } = sh {
-        crate::shape_live::recook_into(scene, id, &sh);
+        let antes = ent.and_then(|x| sim.world().get::<VecShape>(x).cloned());
+        match antes {
+            Some(a) => crate::shape_live::recook_no_sitio(scene, id, &a, &sh),
+            None => crate::shape_live::recook_into(scene, id, &sh),
+        };
     }
-    if let Some(ent) = Entity::try_from_bits(e) {
+    if let Some(ent) = ent {
         sim.world_mut().entity_mut(ent).insert(sh);
     }
 }

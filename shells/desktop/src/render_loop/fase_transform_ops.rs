@@ -84,13 +84,17 @@ impl crate::App {
                 blend: pending_paint_blend,
             },
         );
+        // Os campos do Transform: a forma do cartão preso sob o gesto, ou a da seleção.
+        let alvo = crate::vec_paint_stack::alvos(&hero.store, &self.vec.pen, sim)
+            .first()
+            .copied();
         if let Some((field, target)) = pending_vec_transform {
             let target = ph2d_editor_core::LengthDisplay::of(&hero.project).to_world(target);
             crate::input_dispatch::apply_vec_transform(
                 sim,
                 &self.vec.entities,
                 vec_scene,
-                &self.vec.pen,
+                alvo,
                 &vec_xf_ops,
                 field,
                 target,
@@ -131,7 +135,7 @@ impl crate::App {
                     sim,
                     &self.vec.entities,
                     vec_scene,
-                    &self.vec.pen,
+                    self.vec.pen.selected(),
                     &vec_xf_ops,
                     field,
                     target,
@@ -139,7 +143,13 @@ impl crate::App {
             }
         }
         if let Some(deg) = pending_vec_rotate_by {
-            crate::input_dispatch::apply_vec_rotate_by(vec_scene, &self.vec.pen, deg);
+            crate::input_dispatch::apply_vec_rotate_by(
+                sim,
+                vec_scene,
+                &self.vec.entities,
+                alvo,
+                deg,
+            );
         }
         Some(vec_xf_ops)
     }

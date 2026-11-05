@@ -7,15 +7,14 @@
 //! só outra mão sobre os mesmos campos, nunca uma segunda mutação da forma. O passo de undo é o do
 //! diff do quadro (o botão premido segura-o até soltar: um arrasto = um passo).
 //!
-//! ⭐ **O alvo é o dos campos** ([`crate::shape_params::shape_field_target`], com o modo e o latch do
-//! catálogo — [`Gate`]): as alças vivem só no modo Forma (F10), e armado no catálogo ninguém as tem.
-//! Alça e campo falam sempre da MESMA forma.
+//! ⭐ **O alvo é o dos campos** ([`crate::shape_params::shape_field_target`], [`Gate`]): só no modo Forma.
 
 use ph2d_ecs::{Entity, SimWorld, VecShape};
 use ph2d_tool_vector::params::DrawMode;
 use ph2d_tool_vector::shape_handles::{self as law, HandleDrag, Mods};
 use ph2d_tool_vector::shape_handles_face as face;
 use ph2d_vec_entities::entities::VecEntityMap;
+use ph2d_vec_entities::receita::desvio_da_receita;
 use ph2d_vec_entities::transform::{world_transform, xform_of_transform};
 use ph2d_vec_scene::{ShapeKind, ShapeValues, VecPath, VecPathId, VecScene, Xform};
 
@@ -52,10 +51,8 @@ impl Gate {
     }
 }
 
-/// `true` = os NÓS da selecção não se desenham: no modo Forma NUNCA (F13, o dono: «shape não deve
-/// mostrar nós como a ferramenta node» — nem armado, nem numa forma sem alças: nada no modo Forma
-/// os arrasta), e onde quer que as alças de uma forma viva estejam à vista (F10: as âncoras laranja
-/// tapavam as alças verdes na foto da cena 16).
+/// `true` = os NÓS da selecção não se desenham: no modo Forma NUNCA (F13, o dono) e onde quer que as
+/// alças de uma forma viva estejam à vista (F10: as âncoras laranja tapavam as verdes).
 #[must_use]
 pub fn hides_the_nodes(vec: &crate::state::VecState, sim: &SimWorld) -> bool {
     vec.draw_config.mode == DrawMode::Shape
@@ -101,9 +98,27 @@ impl Target {
             h: *h,
             inv: xf.inverse()?,
             xf,
-            scale: [f64::from(pose.scale.x), f64::from(pose.scale.y)],
+            scale: [f64::from(pose.scale.x.abs()), f64::from(pose.scale.y.abs())],
             doc: gate.doc,
         })
+    }
+
+    /// ⭐ O alvo de quem desenha ou agarra: a pose com o desvio da geometria real em relação à receita.
+    /// As alças são locais à forma COZIDA; sem isto ficavam na origem quando os pontos saíam dela.
+    fn na_cena(
+        sim: &SimWorld,
+        scene: &VecScene,
+        map: &VecEntityMap,
+        selection: &[VecPathId],
+        gate: Gate,
+    ) -> Option<Self> {
+        let mut t = Self::of(sim, map, selection, gate)?;
+        let cozida = t.cook()(&t.values);
+        let d = desvio_da_receita(scene.path(t.id)?, &cozida);
+        let at = t.xf.apply(d);
+        t.xf = Xform([t.xf.0[0], t.xf.0[1], t.xf.0[2], t.xf.0[3], at[0], at[1]]);
+        t.inv = t.xf.inverse()?;
+        Some(t)
     }
 
     fn half(&self) -> [f64; 2] {
@@ -129,11 +144,8 @@ impl Target {
         v[0].hypot(v[1])
     }
 
-    /// ⭐ (F14b) Quanto o que a forma PINTA passa da curva pela DIREITA, em local — o traço (a
-    /// junta, o miter, o Outer), pela MESMA conta da caixa do gizmo
-    /// (`ph2d_vec_render::path_intrinsic_visual_bbox`, a *Use Preview Bounds*): as alças da caixa
-    /// vivem na caixa visual, e a fila de ⇕ mede-se dela (F13 §7.2: com meia caneta ≥ 9 px o ⇕
-    /// encostava na alça do meio).
+    /// ⭐ (F14b) Quanto o que a forma PINTA passa da curva pela DIREITA, em local, pela MESMA conta
+    /// da caixa do gizmo (`ph2d_vec_render::path_intrinsic_visual_bbox`): a fila de ⇕ mede-se dela.
     fn paint_margin(&self, scene: &VecScene) -> f64 {
         let Some(p) = scene.path(self.id) else {
             return 0.0;
@@ -203,7 +215,7 @@ pub fn view(
     grabbed: Option<usize>,
     hover: Option<[f64; 2]>,
 ) -> Option<ShapeHandlesView> {
-    let t = Target::of(sim, map, selection, gate)?;
+    let t = Target::na_cena(sim, scene, map, selection, gate)?;
     let grips = t.grips(scene, px_to_world);
     let world: Vec<Option<[f64; 2]>> = grips.iter().map(|g| g.map(|p| t.xf.apply(p))).collect();
     let hot_handle = grabbed.or_else(|| hover.and_then(|w| hit(&world, w, HIT_PX * px_to_world)));
@@ -267,7 +279,13 @@ pub fn readout(
     display: ph2d_editor_core::LengthDisplay,
     hover: Option<[f64; 2]>,
 ) -> Option<String> {
-    let t = Target::of(sim, &vec.entities, vec.pen.selected_paths(), Gate::of(vec))?;
+    let t = Target::na_cena(
+        sim,
+        scene,
+        &vec.entities,
+        vec.pen.selected_paths(),
+        Gate::of(vec),
+    )?;
     let k = match vec.shape_handles.grab {
         Some(g) => (t.id == g.id).then_some(g.handle())?,
         None => {
@@ -328,7 +346,7 @@ pub fn press(
     w: [f64; 2],
     px_to_world: f64,
 ) -> Option<ShapeHandleGrab> {
-    let t = Target::of(sim, map, selection, gate)?;
+    let t = Target::na_cena(sim, scene, map, selection, gate)?;
     let grips = t.grips(scene, px_to_world);
     let world: Vec<Option<[f64; 2]>> = grips.iter().map(|g| g.map(|p| t.xf.apply(p))).collect();
     let k = hit(&world, w, HIT_PX * px_to_world)?;
@@ -364,7 +382,7 @@ pub fn drag(
         selection,
         gate,
     } = world;
-    let Some(t) = Target::of(sim, map, selection, gate) else {
+    let Some(t) = Target::na_cena(sim, scene, map, selection, gate) else {
         return false;
     };
     if t.id != grab.id {

@@ -152,6 +152,19 @@ pub fn translate_shape_world(sim: &mut SimWorld, entity: Entity, delta_world: [f
     true
 }
 
+/// O objecto move-se pela POSE? `false` = a geometria dele é reescrita em mundo a cada quadro a partir
+/// de outras coisas (a mesma família que o [`settle_origins`] pula): somar a pose deslocá-lo-ia.
+#[must_use]
+pub fn anda_pela_pose(sim: &SimWorld, e: Entity) -> bool {
+    let w = sim.world();
+    w.get_entity(e).is_ok()
+        && w.get::<ph2d_ecs::VecConnector>(e).is_none()
+        && w.get::<ph2d_ecs::VecBlend>(e).is_none()
+        && w.get::<ph2d_ecs::VecMorph>(e).is_none()
+        && w.get::<ph2d_ecs::VecEnvelope>(e).is_none()
+        && w.get::<ph2d_skeleton_ecs::SkinBind>(e).is_none()
+}
+
 /// **Os paths EM GESTO neste frame** — a porta ÚNICA da pergunta *"quem está escrevendo
 /// geometria de MUNDO agora?"*.
 ///

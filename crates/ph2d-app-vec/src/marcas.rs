@@ -29,8 +29,13 @@ const fn campo(c: u16) -> PropKind {
     em(c, 0)
 }
 
-/// Os pontos do caminho: o Transform do painel (X/Y/W/H/R movem os PONTOS, não o objecto) e o
-/// ponto seleccionado.
+/// A posição do objecto: X/Y movem a pose, como o gizmo (`ph2d_vec_entities::campos_transform`).
+const POSICAO: &[PropKind] = &[
+    PropKind::TranslationX,
+    PropKind::TranslationY,
+    PropKind::Position,
+];
+/// Os pontos do caminho: W/H/R (W/H escalam os PONTOS; R os da forma crua) e o ponto seleccionado.
 const FORMA: PropKind = campo(v::ANCORA_X);
 /// A tinta do preenchimento de base inteira: a cor chapada, as paragens e os pontos do gradiente,
 /// o ângulo — um grupo só (`canal_vetor`, *Tinta*).
@@ -45,8 +50,8 @@ const PONTAS: &[PropKind] = &[campo(v::TRACO_ESCALA_INICIO), campo(v::TRACO_ESCA
 /// pintado com coluna de losango tem de estar aqui, em [`DA_CAMADA_ABERTA`], ou na tabela
 /// `⛔ não-animável` do gate.
 const CAMPOS: &[(NodeId, &[PropKind])] = &[
-    (ferramenta::VECTOR_TRANSFORM_X, &[FORMA]),
-    (ferramenta::VECTOR_TRANSFORM_Y, &[FORMA]),
+    (ferramenta::VECTOR_TRANSFORM_X, POSICAO),
+    (ferramenta::VECTOR_TRANSFORM_Y, POSICAO),
     (ferramenta::VECTOR_TRANSFORM_W, &[FORMA]),
     (ferramenta::VECTOR_TRANSFORM_H, &[FORMA]),
     (painel::VECTOR_TRANSFORM_R, &[FORMA]),

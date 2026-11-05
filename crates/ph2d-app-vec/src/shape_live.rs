@@ -12,63 +12,10 @@ use crate::entity_map::VecEntityMap;
 /// dois tetos divergissem, o `VecShape` truncaria parâmetros em silêncio.
 const _: () = assert!(MAX_SHAPE_VALUES == MAX_SHAPE_FIELDS);
 
-/// A geometria (sem estilo) de uma forma viva, CENTRADA no local 0 — o pivô nasce no
-/// centro (ADR-0112) e o re-cook é idempotente (o `Transform` fica intacto). `None` para
-/// `Text` (que tem o cozimento dele, em [`ph2d_vec_text::glyph`]) e para um `kind`
-/// desconhecido (save de uma versão futura: vira path cru, não pânico).
-#[must_use]
-pub fn recook_shape(shape: &VecShape) -> Option<VecPath> {
-    let VecShape::Param {
-        kind,
-        w,
-        h,
-        ref values,
-    } = *shape
-    else {
-        return None;
-    };
-    let k = ShapeKind::from_u16(kind)?;
-    let (hw, hh) = (w.abs() * 0.5, h.abs() * 0.5);
-    // A reta guarda a DIREÇÃO (w/h com sinal): centrada, vai de −d/2 a +d/2. As demais
-    // são simétricas em torno do centro, então a caixa centrada dá o mesmo resultado.
-    let (a, b) = if k == ShapeKind::Line {
-        ([-w * 0.5, -h * 0.5], [w * 0.5, h * 0.5])
-    } else {
-        ([-hw, -hh], [hw, hh])
-    };
-    Some(ph2d_vec_scene::cook(k, a, b, values))
-}
-
-/// **A caixa AUTORADA de uma forma viva passa a medir `w × h`** — a porta que mantém a RECEITA
-/// em passo com a geometria. `false` se a entidade não tem receita paramétrica (um path cru, um
-/// texto): aí não há nada a manter em passo, e isso não é erro.
-///
-/// ⚠️ **Sem ela, redimensionar apaga-se sozinho.** A geometria de uma forma viva é DERIVADA
-/// (`recook_shape` cozinha de `w`/`h`), e todo redimensionamento do documento escreve os `verts`
-/// e mais nada — o `w`/`h` do painel desde sempre, e a alça da moldura desde esta wave. A receita
-/// fica a descrever a caixa ANTIGA, e a primeira edição de qualquer parâmetro re-cozinha a partir
-/// dela: medido, `100 → 50 → 100`, **o redimensionamento evapora em silêncio**.
-///
-/// ⚠️ **O sinal é preservado**, e não é detalhe: a reta guarda a DIREÇÃO em `w`/`h`
-/// ([`recook_shape`]), então tomar o módulo aqui viraria uma reta ao contrário no primeiro
-/// re-cook.
-pub use ph2d_vec_entities::receita::resize_recipe;
-
-/// Substitui a GEOMETRIA do path `id` pela forma re-cozida (centrada), preservando id e
-/// estilo (fill/stroke). `true` se re-cozinhou.
-pub fn recook_into(scene: &mut VecScene, id: VecPathId, shape: &VecShape) -> bool {
-    let Some(geom) = recook_shape(shape) else {
-        return false;
-    };
-    let Some(p) = scene.path_mut(id) else {
-        return false;
-    };
-    p.verts = geom.verts;
-    p.closed = geom.closed;
-    p.subpaths = geom.subpaths;
-    p.fill_rule = geom.fill_rule;
-    true
-}
+/// As portas da receita moram na `ph2d-vec-entities`, com o porquê de cada uma.
+pub use ph2d_vec_entities::receita::{
+    recook_depois_de_redimensionar, recook_into, recook_no_sitio, recook_shape, resize_recipe,
+};
 
 /// A forma recém-desenhada NASCE VIVA: re-cozinha a geometria centrada no local 0, põe o centro
 /// do gesto no `Transform` e pendura o `VecShape`. Roda pós-`sync` (a entidade existe) e ANTES do

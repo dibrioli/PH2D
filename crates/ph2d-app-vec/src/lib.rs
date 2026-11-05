@@ -324,7 +324,7 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
         },
         ph2d_app_host::SmokeRouter {
             env: "PH2D_VEC_CARTOES_SMOKE",
-            max_level: 10,
+            max_level: 13,
         },
         r("PH2D_VEC_FADE_SMOKE"),
         r("PH2D_VEC_STACK_SMOKE"),

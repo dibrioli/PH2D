@@ -213,6 +213,14 @@ pub(crate) fn apply(
             w0 * g[0],
             h0 * g[1],
         );
+        if g != [1.0; 2] {
+            ph2d_app_vec::shape_live::recook_depois_de_redimensionar(
+                sim,
+                scene,
+                Entity::from_bits(start.entity_bits),
+                start.id,
+            );
+        }
     }
     true
 }

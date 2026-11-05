@@ -10,7 +10,6 @@ use ph2d_tool_vector::params::DrawMode;
 use ph2d_tool_vector::shapes;
 use ph2d_vec_scene::{MAX_SHAPE_FIELDS, ShapeKind, ShapeValues, VecPathId, VecScene};
 
-use crate::shape_live::recook_into;
 use ph2d_vec_entities::entities::VecEntityMap;
 
 /// A forma VIVA paramétrica (não-texto) na seleção — o ALVO dos campos de forma do
@@ -198,7 +197,8 @@ pub fn edit_selected_shape(
     if !f(kind, &mut values) {
         return false;
     }
-    let Some(VecShape::Param { w, h, .. }) = sim.world().get::<VecShape>(entity).cloned() else {
+    let Some(antes @ VecShape::Param { w, h, .. }) = sim.world().get::<VecShape>(entity).cloned()
+    else {
         return false;
     };
     let shape = VecShape::Param {
@@ -207,7 +207,7 @@ pub fn edit_selected_shape(
         h,
         values,
     };
-    if !recook_into(scene, id, &shape) {
+    if !crate::shape_live::recook_no_sitio(scene, id, &antes, &shape) {
         return false;
     }
     if let Ok(mut e) = sim.world_mut().get_entity_mut(entity) {

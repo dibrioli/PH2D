@@ -37,6 +37,7 @@
 //!
 //! [`ph2d-app-vec`]: https://docs.rs/ph2d-app-vec
 
+pub mod campos_transform;
 /// A regra das alças das pontas do conector (o gesto, com o `App`, fica na shell).
 pub mod connector_handles;
 pub mod entities;

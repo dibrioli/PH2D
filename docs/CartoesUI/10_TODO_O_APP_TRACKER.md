@@ -98,6 +98,8 @@ Lei da compactação em [05 §4](05_ESPECIFICACAO_UI_COMPLETA.md) + portão que 
 - Transform: «o da galeria está mais completo»; medido: a única diferença são girar 90° e espelhar H/V, escondidos fora do vetor (`cards_corpos.rs:117`). Ligar para todo objeto via `InspectorTransformEdit` (rotação + π/2, sinal de `scale`); medir antes o sprite de escala negativa na física e no colisor.
 - Micro-pesquisa Figma e Rive antes de cada cartão: [05 §0](05_ESPECIFICACAO_UI_COMPLETA.md), tabela em [16](16_REFERENCIAS_POR_CARTAO.md).
 
+- Smoke 4 (Quadro), dono 04/11: «o desenho dos cartões poderia ser mais belo. Mas por enquanto vamos deixar assim»: aceite por agora, melhoria futura.
+
 ## Registo por bloco
 
 (cada bloco fechado acrescenta aqui: commits, fotos, testes, o que ficou aberto)
@@ -711,6 +713,10 @@ Ordem do cartão do topo: Paint Mode, prévia, Preset + estrela, Save as New/Sav
 **Fotos:** `maquete/z_painter_preset_estrela.png` (cena real, com patch temporário restaurado, porque a cena abre em `No preset`), `maquete/z_painter_preset_estrela_vazia_e_cheia.png` (as duas caras).
 
 **Decisões tomadas sem o dono.** Dois ícones em vez de só mudar a cor, e o aceso com o fundo dos ícones nus. Vista aberta, não corrigida: `Keep volume…` corta em `On switch` na coluna real, ao lado de Sync tools; já era assim e é outra lista.
+
+### Gizmo da forma (04/11)
+
+O X/Y do Transform do Vector assava nos pontos e as alças ficavam para trás: curado na origem, com a família inteira ([BUGS_vector #44](../Vector%20Module/BUGS_vector.md)). Cena `PH2D_VEC_CARTOES_SMOKE=13`; foto [`z_gizmo_forma.png`](maquete/z_gizmo_forma.png).
 
 ### Corrente do Scale com um eixo a zero (04/11)
 

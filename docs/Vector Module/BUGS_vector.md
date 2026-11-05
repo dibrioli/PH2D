@@ -7,7 +7,7 @@ volta. Espelha o [`docs/Painter/BUGS_painter.md`](../Painter/BUGS_painter.md).
 Regra deste arquivo: um bug só é considerado fechado quando existe um teste que **falha**
 se a correção for revertida. "Não reproduzi mais" não fecha nada.
 
-> **O que está VIVO aqui:** os **43 bugs estão TODOS fechados**, então o que vale hoje não é
+> **O que está VIVO aqui:** os **44 bugs estão TODOS fechados**, então o que vale hoje não é
 > nenhum deles — é o que eles ensinaram. Ficaram, nesta ordem: as **recusas com medição atrás**
 > (⛔ — não as reconstrua), os **padrões que se repetem** (leia ANTES de caçar o próximo) e o
 > **índice de uma linha por bug, com o MECANISMO**.
@@ -155,7 +155,19 @@ mutação que tira o teto da rota do painel derruba **três** gates.
     o rato e consumiam o gesto. ⇒ *uma família nova responde às perguntas dela num MÓDULO, e ganha
     um `seam_*` com gesto real cujo oráculo é o `EditorAction`, nunca o `WidgetEvent`.*
 
-## Índice dos 43 FECHADOS — o mecanismo de cada um, em uma linha
+## Índice dos 44 FECHADOS — o mecanismo de cada um, em uma linha
+
+### #44 — *«ao mover a shape com o inspector o gizmo de shape fica para trás»*: o campo assava o X nos pontos e a alça mora na receita ✅ 2026-11-04
+
+**Mecanismo.** O X/Y do Transform do Vector chamava `scene.translate_path_world` (assava o delta nos `verts`) e deixava o `Transform` quieto. As alças vinham de `shape_handles_live::Target`: pose × grelha da receita, que é sempre CENTRADA no local 0. Forma e moldura andavam (leem os pontos), alças, pivô e filhos não. Tinha três irmãos pela MESMA hipótese «os pontos da forma viva estão no local 0»: o W/H e a alça com *Resize Box* (escalam a partir do canto), o *Set Center* (recua os pontos, de propósito), e o re-cook (`recook_into`), que trazia a forma de volta à origem na primeira edição de um parâmetro: a forma SALTAVA. Girar e espelhar assavam nos pontos de uma geometria derivada: as alças não giravam e o giro evaporava no re-cook. O W/H achatava o raio nos pontos, sem o achatar na receita.
+
+**Não é regressão da linha:** o escritor é o mesmo com `PH2D_CARDS=0` (o teste corre os dois) e as alças são de 11/10 (F9), sobre o assado de antes. O cartão do Inspector (`INSP_TRANSFORM_*`) sempre escreveu a pose e nunca teve o defeito.
+
+**Cura** (`crates/ph2d-vec-entities/src/campos_transform.rs`, `receita.rs`). Mover é POSE, como o gizmo (`mover_no_mundo`: campos, setas, Align, Distribute); só quem é geometria de mundo por quadro continua nos pontos (`transform::anda_pela_pose`). Girar e espelhar uma forma viva é pose, com o centro parado. W/H re-cozinha a receita nova no sítio. A receita diz a FORMA e os pontos dizem o SÍTIO: `desvio_da_receita` é lido pelas alças (`Target::na_cena`) e por todo re-cook de forma já viva (`recook_no_sitio`). O círculo vivo só se re-assenta se o DIÂMETRO mudou: antes desfazia o *Set Center* no quadro seguinte. O losango de X/Y passa a mostrar a posição, porque é ela que muda. Os campos escrevem no cartão preso sob o gesto (`paint_stack::alvos`).
+
+**Gate:** `ph2d-panel-registry-init/tests/it/o_gizmo_da_forma_anda.rs`, 8 testes por gesto (escrever e arrastar a pega) e por porta do verbo, em todas as formas com alças e 3 poses (solta, rodada e escalada, filha de pai), com um oráculo de ecrã (a mesma receita nascida no sítio). Contraprovas, todas vermelhas: o defeito original (7 de 8), alças sem desvio (4), X assado (1, pivô e filhos), re-cook sem desvio (1), girar assado (2), W/H sem re-cook (1), círculo (1), guarda da pose (1). Foto: [`z_gizmo_forma.png`](../CartoesUI/maquete/z_gizmo_forma.png). Cena: `PH2D_VEC_CARTOES_SMOKE=13`.
+
+**Sem teste próprio:** os gradient handles (a tinta fica em local e a pose leva-a, pela construção) e o parâmetro animado pela Timeline (`canais::devolver_forma` passa por `recook_no_sitio`; a pose animada é coberta). **Limite herdado:** W/H numa forma RODADA mede a caixa de mundo, a mesma aproximação da forma rodada pelo gizmo.
 
 ### #43 — Inner/Outer TRACEJADO: os pontos viravam meios-discos de raio `w` e a faixa saía quase sólida e esfarrapada ✅ 2026-10-15
 

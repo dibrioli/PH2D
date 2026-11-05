@@ -48,6 +48,8 @@ pub(crate) fn vec_distribute_for_id(id: ph2d_editor_core::NodeId) -> Option<VecD
 /// Align every selected path's bbox to the selection's union bbox per [`VecAlign`]
 /// (needs ≥2 selected). One undo step iff anything moved.
 pub(crate) fn apply_vec_align(
+    sim: &mut ph2d_ecs::SimWorld,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
     scene: &mut ph2d_vec_scene::VecScene,
     pen: &ph2d_vec_edit::PenTool,
     xforms: &ph2d_vec_scene::VecXforms,
@@ -92,7 +94,14 @@ pub(crate) fn apply_vec_align(
             VecAlign::VCenter => dy = (ulo[1] + uhi[1]) * 0.5 - (lo[1] + hi[1]) * 0.5,
         }
         if dx.abs() > 1e-9 || dy.abs() > 1e-9 {
-            scene.translate_path_world(xforms, id, dx, dy);
+            ph2d_vec_entities::campos_transform::mover_no_mundo(
+                sim,
+                scene,
+                map,
+                xforms,
+                id,
+                [dx, dy],
+            );
         }
     }
 }
@@ -100,6 +109,8 @@ pub(crate) fn apply_vec_align(
 /// Evenly space the selected paths' bbox CENTERS along `axis`, keeping the two
 /// extremes fixed (needs ≥3 selected). One undo step iff anything moved.
 pub(crate) fn apply_vec_distribute(
+    sim: &mut ph2d_ecs::SimWorld,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
     scene: &mut ph2d_vec_scene::VecScene,
     pen: &ph2d_vec_edit::PenTool,
     xforms: &ph2d_vec_scene::VecXforms,
@@ -134,31 +145,16 @@ pub(crate) fn apply_vec_distribute(
                 VecDistribute::Horizontal => (d, 0.0),
                 VecDistribute::Vertical => (0.0, d),
             };
-            scene.translate_path(id, dx, dy);
+            ph2d_vec_entities::campos_transform::mover_no_mundo(
+                sim,
+                scene,
+                map,
+                xforms,
+                id,
+                [dx, dy],
+            );
         }
     }
-}
-
-/// Rotate the SELECTED path by `degrees` (panel Transform Angle field — a
-/// relative scrub) about its bbox center, recording ONE undo step iff it turned.
-/// A zero delta is a no-op (no undo). Free fn.
-pub(crate) fn apply_vec_rotate_by(
-    scene: &mut ph2d_vec_scene::VecScene,
-    pen: &ph2d_vec_edit::PenTool,
-    degrees: f64,
-) {
-    if degrees.abs() < 1e-9 {
-        return;
-    }
-    let Some(sel) = pen.selected() else {
-        eprintln!("[ph2d-vec] rotate-by: nenhum path selecionado");
-        return;
-    };
-    let Some((lo, hi)) = scene.path_bbox(sel) else {
-        return;
-    };
-    let pivot = [(lo[0] + hi[0]) * 0.5, (lo[1] + hi[1]) * 0.5];
-    scene.rotate_path_by(sel, degrees.to_radians(), pivot);
 }
 
 /// Whole-path reshape op (panel "Smooth" / "Sharpen" / "Simplify" buttons).
@@ -205,122 +201,19 @@ pub(crate) fn vec_path_shape_for_id(id: ph2d_editor_core::NodeId) -> Option<VecP
     }
 }
 
-/// Which numeric-transform field a Vector-panel edit targets on the selected
-/// path's anchor bbox (X/Y = top-left, W/H = size).
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum VecTransformField {
-    X,
-    Y,
-    W,
-    H,
-}
-
-/// Map a Vector-panel Transform field `NodeId` to its [`VecTransformField`]
-/// (`None` for any other id). Pure — unit-tested; called from the render_loop drain.
+/// O campo do Transform de um id do painel (`None` para qualquer outro).
 pub(crate) fn vec_transform_field_for_id(
     id: ph2d_editor_core::NodeId,
-) -> Option<VecTransformField> {
-    if id == ph2d_tool_vector::ids::VECTOR_TRANSFORM_X {
-        Some(VecTransformField::X)
-    } else if id == ph2d_tool_vector::ids::VECTOR_TRANSFORM_Y {
-        Some(VecTransformField::Y)
-    } else if id == ph2d_tool_vector::ids::VECTOR_TRANSFORM_W {
-        Some(VecTransformField::W)
-    } else if id == ph2d_tool_vector::ids::VECTOR_TRANSFORM_H {
-        Some(VecTransformField::H)
-    } else {
-        None
+) -> Option<crate::input_dispatch::VecTransformField> {
+    use crate::input_dispatch::VecTransformField as F;
+    use ph2d_tool_vector::ids as t;
+    match id {
+        i if i == t::VECTOR_TRANSFORM_X => Some(F::X),
+        i if i == t::VECTOR_TRANSFORM_Y => Some(F::Y),
+        i if i == t::VECTOR_TRANSFORM_W => Some(F::W),
+        i if i == t::VECTOR_TRANSFORM_H => Some(F::H),
+        _ => None,
     }
-}
-
-/// Apply a numeric transform edit to the SELECTED path: X/Y translate the anchor
-/// bbox top-left to `target`; W/H scale (about the bbox min) so that dimension
-/// becomes `target` (clamped > 0; a degenerate dimension can't be resized).
-/// Records ONE undo step iff it changed. Free fn (mirror of [`super::apply_vec_fill_rule`]).
-///
-/// ⚠️ **O `sim`/`map` estão aqui pela RECEITA, e não por conveniência.** Um `W`/`H` escala a
-/// GEOMETRIA (`scale_path`), e a geometria de uma forma VIVA é derivada do `w`/`h` guardado no
-/// `VecShape::Param`. Escrever só os `verts` deixa a receita a descrever a caixa antiga, e a
-/// primeira edição de qualquer parâmetro re-cozinha a partir dela — medido, `100 → 50 → 100`:
-/// **o redimensionamento evapora em silêncio**. Este defeito é ANTERIOR à alça do gizmo (este
-/// caminho era o único que escalava geometria de forma viva), e a alça só o tornou fácil de
-/// alcançar. A porta é a MESMA que ela usa ([`crate::vec_shape_live::resize_recipe`]).
-#[allow(clippy::too_many_arguments)] // a receita mora no ECS; a geometria, na cena
-pub(crate) fn apply_vec_transform(
-    sim: &mut ph2d_ecs::SimWorld,
-    map: &ph2d_vec_entities::entities::VecEntityMap,
-    scene: &mut ph2d_vec_scene::VecScene,
-    pen: &ph2d_vec_edit::PenTool,
-    xforms: &ph2d_vec_scene::VecXforms,
-    field: VecTransformField,
-    target: f64,
-) {
-    let Some(sel) = pen.selected() else {
-        return;
-    };
-    // Os campos do painel são números de MUNDO (ADR-0112).
-    let Some((lo, hi)) = scene.path_world_curve_bbox(xforms, sel) else {
-        return;
-    };
-    // O escalonamento acontece na geometria local, em torno do canto local que
-    // corresponde ao `lo` de mundo — a razão de escala é a mesma nos dois espaços.
-    let local_lo = scene.path_curve_bbox(sel).map_or([0.0, 0.0], |(l, _)| l);
-    match field {
-        VecTransformField::X => {
-            let dx = target - lo[0];
-            dx.abs() > 1e-9 && scene.translate_path_world(xforms, sel, dx, 0.0)
-        }
-        VecTransformField::Y => {
-            let dy = target - lo[1];
-            dy.abs() > 1e-9 && scene.translate_path_world(xforms, sel, 0.0, dy)
-        }
-        VecTransformField::W => {
-            let w = hi[0] - lo[0];
-            if w <= 1e-6 {
-                false
-            } else {
-                let sx = target.max(1e-4) / w;
-                (sx - 1.0).abs() > 1e-9
-                    && scene.scale_path(sel, sx, 1.0, local_lo)
-                    && keep_recipe_in_step(sim, map, sel, sx, 1.0)
-            }
-        }
-        VecTransformField::H => {
-            let h = hi[1] - lo[1];
-            if h <= 1e-6 {
-                false
-            } else {
-                let sy = target.max(1e-4) / h;
-                (sy - 1.0).abs() > 1e-9
-                    && scene.scale_path(sel, 1.0, sy, local_lo)
-                    && keep_recipe_in_step(sim, map, sel, 1.0, sy)
-            }
-        }
-    };
-}
-
-/// A receita da forma VIVA de `id` passa a medir a caixa escalada por `(sx, sy)`. Devolve
-/// **sempre `true`** — a geometria já mudou, e um path CRU (sem receita) não é falha nenhuma.
-///
-/// ⚠️ Ela vive dentro do `&&` do braço de propósito: pendurada ali, um braço de escala novo que
-/// esqueça de a chamar **não conta como escala** — o `changed` fica `false` e o undo grita.
-/// Escrita depois do `match`, ela seria uma linha que o próximo braço não sabe que existe.
-fn keep_recipe_in_step(
-    sim: &mut ph2d_ecs::SimWorld,
-    map: &ph2d_vec_entities::entities::VecEntityMap,
-    id: ph2d_vec_scene::VecPathId,
-    sx: f64,
-    sy: f64,
-) -> bool {
-    if let Some(&bits) = map.get(&id) {
-        let e = ph2d_ecs::Entity::from_bits(bits);
-        if let Some(ph2d_ecs::VecShape::Param { w, h, .. }) =
-            sim.world().get::<ph2d_ecs::VecShape>(e).cloned()
-        {
-            crate::vec_shape_live::resize_recipe(sim, e, w * sx, h * sy);
-        }
-    }
-    true
 }
 
 /// The shape kind a Vector draw-mode maps to (`None` = Pen, the non-shape

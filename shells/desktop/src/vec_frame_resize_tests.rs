@@ -464,7 +464,7 @@ fn the_panels_width_field_keeps_the_recipe_in_step_too() {
         &mut sim,
         &map,
         &mut scene,
-        &pen,
+        pen.selected(),
         &VecXforms::default(),
         crate::input_dispatch::VecTransformField::W,
         50.0,

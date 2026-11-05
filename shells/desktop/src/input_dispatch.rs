@@ -100,9 +100,9 @@ mod painter_grid_erase; // os modificadores que o CanvasPointer nao carrega
 pub(crate) mod protect_brush;
 use despacho_clique_roldana::select_wheel_at;
 pub(crate) use despacho_vetor_alinhar_e_forma::{
-    VecAlign, VecDistribute, VecPathShapeOp, VecTransformField, apply_vec_align,
-    apply_vec_distribute, apply_vec_path_shape, apply_vec_rotate_by, apply_vec_transform,
-    vec_align_for_id, vec_distribute_for_id, vec_path_shape_for_id, vec_transform_field_for_id,
+    VecAlign, VecDistribute, VecPathShapeOp, apply_vec_align, apply_vec_distribute,
+    apply_vec_path_shape, vec_align_for_id, vec_distribute_for_id, vec_path_shape_for_id,
+    vec_transform_field_for_id,
 };
 use despacho_vetor_alinhar_e_forma::{
     gizmo_anchor_half, shape_constraint, shape_kind_for_mode, shape_up_consumes,
@@ -114,9 +114,12 @@ pub(crate) use despacho_vetor_gradiente::{
 };
 pub(crate) use despacho_vetor_ops::{
     VecFillKind, apply_vec_delete_vertex, apply_vec_duplicate, apply_vec_fill_rule,
-    apply_vec_toggle_closed, apply_vec_vertex_kind, duplicate_vec_paths,
-    screen_offset_world, vec_bool_op_for_id, vec_fill_kind_for_id, vec_flip_for_id,
-    vec_reorder_for_id, vec_rotate_for_id, vec_vertex_kind_for_id,
+    apply_vec_toggle_closed, apply_vec_vertex_kind, duplicate_vec_paths, screen_offset_world,
+    vec_bool_op_for_id, vec_fill_kind_for_id, vec_flip_for_id, vec_reorder_for_id,
+    vec_rotate_for_id, vec_vertex_kind_for_id,
+};
+pub(crate) use ph2d_vec_entities::campos_transform::{
+    VecTransformField, apply_vec_rotate_by, apply_vec_transform,
 };
 
 // Só os `cursor_tests` o leem por `super::` — o `timeline_resize_cursor` já o tem no próprio ficheiro.

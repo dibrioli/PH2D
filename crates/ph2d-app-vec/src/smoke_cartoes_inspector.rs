@@ -16,6 +16,7 @@
 //! Material soltos e presos ao «Shape A» (opacidade 30 %, Multiply, Z 5) e o «Shape B» escolhido (C1);
 //! `=11`: dois retângulos de tintas diferentes, com Fill e Stroke soltos e presos a cada um, «Shape B» escolhido (C2);
 //! `=12`: o 11 com o losango do Stroke preso a A clicado a sério (`ph2d_host_presos::losango::cena`, C3).
+//! `=13`: um retângulo arredondado no modo Forma, com o X escrito no campo: os pontos verdes têm de ir junto.
 
 use std::sync::atomic::{AtomicU8, AtomicU64, Ordering};
 
@@ -58,7 +59,12 @@ pub(crate) fn step(
             go(2);
         }
         2 if hero.image_edit.active_tool_id == Some(crate::vector_mode::VECTOR) => {
-            crate::vector_mode::draw_shape(vec, scene, ShapeKind::Rectangle, [0.0, 0.0], MEIO_LADO);
+            let tipo = if std::env::var("PH2D_VEC_CARTOES_SMOKE").as_deref() == Ok("13") {
+                ShapeKind::RoundRect
+            } else {
+                ShapeKind::Rectangle
+            };
+            crate::vector_mode::draw_shape(vec, scene, tipo, [0.0, 0.0], MEIO_LADO);
             if com_player() || dois_cartoes_presos() {
                 crate::vector_mode::draw_shape(
                     vec,
@@ -196,6 +202,9 @@ pub(crate) fn step(
             if modo == "11" || modo == "12" {
                 fill_e_stroke_presos(s, vec, hero);
             }
+            if modo == "13" {
+                move_x_pelo_campo(s, hero);
+            }
             if s == FIM - 1 && modo == "5" {
                 ph2d_editor_core::panel::cards::estilos::abre_o_editor_do_primeiro();
             }
@@ -211,7 +220,7 @@ pub(crate) fn step(
             let insp = ph2d_editor_core::panel::with_registry_opt(|reg| {
                 reg.panels()
                     .iter()
-                    .find(|p| p.manifest.id == "inspector")
+                    .find(|p| p.manifest.id == if modo == "13" { "vector" } else { "inspector" })
                     .map(|p| p.manifest.panel_node_id)
             });
             if let Some(node) = insp.flatten() {
@@ -220,6 +229,24 @@ pub(crate) fn step(
             go(s + 1);
         }
         _ => {}
+    }
+}
+
+/// Cena 13: o modo Forma (as alças à vista) e, no fim, o X escrito no campo do Transform: 80 px à direita.
+fn move_x_pelo_campo(s: u8, hero: &mut HeroScreen) {
+    use ph2d_editor_core::action_bus::EditorAction;
+    use ph2d_editor_core::interaction::WidgetEvent;
+    use ph2d_editor_core::tool::PanelEvent;
+    if s == 6 {
+        hero.apply_event(WidgetEvent::Click(ph2d_tool_vector::ids::VECTOR_MODE_SHAPE));
+        hero.set_panel_visible("vector", true);
+    }
+    if s == FIM - 1 {
+        hero.bus
+            .push(EditorAction::ToolPanelEvent(PanelEvent::SetValue(
+                ph2d_tool_vector::ids::VECTOR_TRANSFORM_X,
+                MEIO_LADO * -100.0 + 80.0,
+            )));
     }
 }
 
@@ -304,7 +331,8 @@ fn fill_e_stroke_presos(s: u8, vec: &mut VecState, hero: &mut HeroScreen) {
     match FIM - s {
         10 => {
             hero.store.detach_card(fill, painel, (280.0, 110.0), 300.0);
-            hero.store.detach_card(stroke, painel, (280.0, 290.0), 300.0);
+            hero.store
+                .detach_card(stroke, painel, (280.0, 290.0), 300.0);
         }
         8 => {
             hero.store.toggle_loose_pin(fill);
@@ -318,7 +346,8 @@ fn fill_e_stroke_presos(s: u8, vec: &mut VecState, hero: &mut HeroScreen) {
         }
         4 => {
             hero.store.detach_card(fill, painel, (620.0, 110.0), 300.0);
-            hero.store.detach_card(stroke, painel, (620.0, 290.0), 300.0);
+            hero.store
+                .detach_card(stroke, painel, (620.0, 290.0), 300.0);
         }
         2 => {
             hero.store.toggle_loose_pin(loose_instance_of(fill, 1));

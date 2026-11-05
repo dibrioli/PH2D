@@ -157,10 +157,22 @@ impl crate::App {
             formas.first().copied()
         });
         if let (Some(axis), Some(forma)) = (pending_vec_flip, alvo) {
-            vec_scene.flip_path(forma, axis);
+            ph2d_vec_entities::campos_transform::espelhar(
+                sim,
+                vec_scene,
+                &self.vec.entities,
+                forma,
+                axis,
+            );
         }
         if let (Some(dir), Some(forma)) = (pending_vec_rotate, alvo) {
-            vec_scene.rotate_path(forma, dir);
+            ph2d_vec_entities::campos_transform::quarto_de_volta(
+                sim,
+                vec_scene,
+                &self.vec.entities,
+                forma,
+                dir,
+            );
         }
     }
 }

@@ -364,7 +364,13 @@ impl crate::App {
             .camera
             .screen_to_world((dx_px as f32, dy_px as f32), win);
         let (dx, dy) = ((moved[0] - base[0]) as f64, (moved[1] - base[1]) as f64);
-        self.vec.pen.nudge(&mut gfx.vec_scene, dx, dy)
+        ph2d_vec_entities::campos_transform::seta(
+            &mut gfx.sim,
+            &mut gfx.vec_scene,
+            &mut self.vec.pen,
+            &self.vec.entities,
+            [dx, dy],
+        )
     }
 
     /// Delete/Backspace no vetor: a cadeia é da crate (`ph2d_app_vec::apaga::delete`).

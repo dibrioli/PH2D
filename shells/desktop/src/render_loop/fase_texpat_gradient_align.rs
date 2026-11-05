@@ -144,10 +144,24 @@ impl crate::App {
                     .or(self.vec.grad_selected);
         }
         if let Some(a) = pending_vec_align {
-            crate::input_dispatch::apply_vec_align(vec_scene, &self.vec.pen, &vec_xf_ops, a);
+            crate::input_dispatch::apply_vec_align(
+                sim,
+                &self.vec.entities,
+                vec_scene,
+                &self.vec.pen,
+                &vec_xf_ops,
+                a,
+            );
         }
         if let Some(d) = pending_vec_distribute {
-            crate::input_dispatch::apply_vec_distribute(vec_scene, &self.vec.pen, &vec_xf_ops, d);
+            crate::input_dispatch::apply_vec_distribute(
+                sim,
+                &self.vec.entities,
+                vec_scene,
+                &self.vec.pen,
+                &vec_xf_ops,
+                d,
+            );
         }
         if pending_vec_grad_remove_stop
             && let Some(si) = self

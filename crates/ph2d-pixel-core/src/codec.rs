@@ -354,6 +354,46 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
     Ok(s)
 }
 
+/// Os campos de um documento vindo de fora (Open de `.ase`, GIF, PNG…).
+#[derive(Debug, Clone, Default)]
+pub struct SpriteParts {
+    pub width: u32,
+    pub height: u32,
+    pub mode: Option<ColorMode>,
+    pub palette: Vec<[u8; 4]>,
+    pub transparent: u8,
+    pub layers: Vec<Layer>,
+    pub frames: Vec<Frame>,
+    pub cels: Vec<((LayerId, FrameId), Cel)>,
+    pub tags: Vec<Tag>,
+}
+
+impl Sprite {
+    /// Monta o documento com as MESMAS leis de um `.ph2dproj` lido: ids únicos, camadas, tags, cels.
+    ///
+    /// # Errors
+    /// [`CodecError::Invalid`] com o campo que não passou.
+    pub fn from_parts(p: SpriteParts) -> Result<Sprite, CodecError> {
+        let last = p.layers.iter().map(|l| l.id.0).chain(p.frames.iter().map(|f| f.id.0)).max();
+        let mut s = Sprite {
+            width: p.width,
+            height: p.height,
+            mode: p.mode.unwrap_or(ColorMode::Rgba),
+            palette: p.palette,
+            transparent: p.transparent,
+            layers: p.layers,
+            frames: p.frames,
+            cels: BTreeMap::new(),
+            tags: p.tags,
+            next_id: last.map_or(1, |n| n + 1),
+            mask: None,
+            last_mask: None,
+        };
+        validate(&mut s, p.cels)?;
+        Ok(s)
+    }
+}
+
 fn validate(s: &mut Sprite, raw_cels: Vec<((LayerId, FrameId), Cel)>) -> Result<(), CodecError> {
     if s.width == 0 || s.height == 0 || s.width > MAX_SIDE || s.height > MAX_SIDE {
         return Err(CodecError::Invalid("sprite.size"));

@@ -34,7 +34,7 @@ Inspector como objeto vivo (P14: aqui só o gate de leitura do ficheiro).
 | `ph2d-imageio-webp` serve | ❌ **um quadro só**. O `image-webp` 0.2.4 codifica VP8L de um quadro; `ANIM`/`ANMF` é contentor RIFF de spec pública |
 | `to_aseprite_json` serve | ❌ como está: sem `duration`, sem `trimmed`, sem tags e camadas, só hash, e ordenado por nome (`aseprite.rs:34`). É o escritor a estender, nunca um segundo |
 | `ph2d-aseprite::parse` serve | ⚠️ devolve quadros JÁ compostos (`lib.rs:49,173`). Sem camadas, cels, paleta ou modo. A lei de blend (`blend.rs`) já existe |
-| Sem escrita de `.ase` | ✔ existe só o escritor Python de teste (`ferramentas/trial_fit_common.py`), a partir da spec pública |
+| Sem escrita de `.ase` | ✔ existe só o escritor Python de teste (`ferramentas/trial_ase_camadas.py`), a partir da spec pública |
 | «O Pixel não tem menu File» | ✔ mas **o app tem** (`hero/file_menu.rs:18`, `menu_tables.rs:174,306`): Save, Save As, Open, Export SVG |
 | `.ase` arrastado | Vira folha animada, não Pixel Sprite: `import_router.rs:83,158` → `shells/desktop/src/ase_import.rs:239` |
 | Costura de diálogo | ✔ `PixelEditAction` (`pixel_panel/selection.rs:90`) → `filtros::menu` (`filtros.rs:32`) → `PixelDialogKind` → `paint_pixel_edit_dialog` (`context_menu_pixel_edit.rs:73`, 621 linhas: **não cabe a folha aí**) |
@@ -60,7 +60,7 @@ Inspector como objeto vivo (P14: aqui só o gate de leitura do ficheiro).
 (§6) e a definição vem do CLI do Aseprite já fotografado (40) e da spec pública. ⛔ Nada de dizer «paridade» neles.
 
 **Correção do plano do módulo e do handoff:** o gate «`.ase` aberto no Aseprite» **cumpre-se sem licença**. O Trial não grava, mas ABRE: foi
-por aí que a P3 mediu os modos de mistura (`.ase` escritos por nós, `trial_fit_common.py:1`). O Trial entra só para isto, abrir e fotografar; a
+por aí que a P3 mediu os modos de mistura (`.ase` escritos por nós, `trial_ase_camadas.py:1`). O Trial entra só para isto, abrir e fotografar; a
 referência de saída é o LibreSprite. ⛔ Fixtura «escrita pelo Aseprite» não existe nem existirá, e isso fica dito.
 
 **Godot 4.7 (MIT):** script `--headless` nosso lê o JSON e a folha, recorta cada quadro, compara com o PNG do quadro. Prova coordenadas e pixels,

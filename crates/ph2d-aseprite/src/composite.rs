@@ -9,13 +9,8 @@
 //! piscar exactamente nos quadros que o artista não redesenhou — que são a maioria deles.
 
 use crate::blend::{BlendMode, blend};
-use crate::read::Reader;
-use crate::{AseDoc, AseError, AseFrame, AseTag};
-
-const CHUNK_LAYER: u16 = 0x2004;
-const CHUNK_CEL: u16 = 0x2005;
-const CHUNK_PALETTE: u16 = 0x2019;
-const CHUNK_TAGS: u16 = 0x2018;
+use crate::file::{AseCel, AseCelBody, AseFile, AseLayer, KIND_GROUP, KIND_TILEMAP, LAYER_VISIBLE};
+use crate::{AseDoc, AseError, AseFrame};
 
 /// Uma camada declarada no ficheiro.
 struct Layer {
@@ -42,47 +37,62 @@ struct Cel {
     rgba: Vec<u8>,
 }
 
-/// O estado do decodificador enquanto ele atravessa o ficheiro.
-pub(crate) struct Build {
+/// O estado da composição enquanto ela atravessa os quadros.
+struct Build<'a> {
     width: u16,
     height: u16,
     depth: u16,
     transparent_index: u8,
-    palette: Vec<[u8; 4]>,
+    palette: &'a [[u8; 4]],
     layers: Vec<Layer>,
     /// Os cels do quadro corrente.
     cels: Vec<Cel>,
-    /// Para os cels LIGADOS: `(layer, frame) -> índice em `linkable``.
+    /// Para os cels LIGADOS: `(layer, frame) -> cel`.
     linkable: Vec<(usize, usize, Cel)>,
     duration_ms: u16,
     frames: Vec<AseFrame>,
-    tags: Vec<AseTag>,
     notes: Vec<String>,
 }
 
-impl Build {
-    pub(crate) fn new(width: u16, height: u16, depth: u16, transparent_index: u8) -> Self {
-        Self {
-            width,
-            height,
-            depth,
-            transparent_index,
-            palette: Vec::new(),
-            layers: Vec::new(),
-            cels: Vec::new(),
-            linkable: Vec::new(),
-            duration_ms: 100,
-            frames: Vec::new(),
-            tags: Vec::new(),
-            notes: Vec::new(),
+/// O documento composto: quadros RGBA + autoria.
+pub(crate) fn compose(file: &AseFile) -> Result<AseDoc, AseError> {
+    let mut b = Build {
+        width: file.width,
+        height: file.height,
+        depth: file.depth,
+        transparent_index: file.transparent_index,
+        palette: &file.palette,
+        layers: Vec::with_capacity(file.layers.len()),
+        cels: Vec::new(),
+        linkable: Vec::new(),
+        duration_ms: 100,
+        frames: Vec::with_capacity(file.frames.len()),
+        notes: Vec::new(),
+    };
+    for l in &file.layers {
+        b.layer(l);
+    }
+    for (index, f) in file.frames.iter().enumerate() {
+        if let Some(p) = &f.palette {
+            b.palette = p;
         }
+        b.duration_ms = f.duration_ms;
+        b.cels.clear();
+        for c in &f.cels {
+            b.cel(c);
+        }
+        b.end_frame(index)?;
     }
+    Ok(AseDoc {
+        width: file.width,
+        height: file.height,
+        frames: b.frames,
+        tags: file.tags.clone(),
+        notes: b.notes,
+    })
+}
 
-    pub(crate) fn begin_frame(&mut self, duration_ms: u16) {
-        self.duration_ms = duration_ms;
-        self.cels.clear();
-    }
-
+impl Build<'_> {
     /// Uma nota só entra UMA vez: um ficheiro com trinta cels de tilemap não deve produzir trinta
     /// linhas iguais para o artista ler.
     fn note(&mut self, line: String) {
@@ -91,156 +101,64 @@ impl Build {
         }
     }
 
-    pub(crate) fn chunk(
-        &mut self,
-        ctype: u16,
-        r: &mut Reader<'_>,
-        frame: usize,
-    ) -> Result<(), AseError> {
-        match ctype {
-            CHUNK_LAYER => self.layer(r),
-            CHUNK_CEL => self.cel(r, frame)?,
-            CHUNK_PALETTE => self.palette(r),
-            CHUNK_TAGS => self.tags(r),
-            _ => {}
-        }
-        Ok(())
-    }
-
-    fn layer(&mut self, r: &mut Reader<'_>) {
-        let Some(flags) = r.u16() else { return };
-        let Some(kind) = r.u16() else { return };
-        let Some(child_level) = r.u16() else { return };
-        let _ = r.skip(4); // largura/altura default, que a spec manda ignorar
-        let Some(blend_raw) = r.u16() else { return };
-        let Some(opacity) = r.u8() else { return };
-        let _ = r.skip(3);
-        let name = r.string().unwrap_or_default();
-        let blend = match BlendMode::from_file(blend_raw) {
+    fn layer(&mut self, l: &AseLayer) {
+        let blend = match BlendMode::from_file(l.blend) {
             Some(b) => b,
             None => {
                 self.note(format!(
-                    "layer \"{name}\" uses a blend mode this version does not know ({blend_raw}) — composited as Normal"
+                    "layer \"{}\" uses a blend mode this version does not know ({}) — composited as Normal",
+                    l.name, l.blend
                 ));
                 BlendMode::Normal
             }
         };
         self.layers.push(Layer {
-            name,
-            visible: flags & 1 != 0,
-            group: kind == 1,
-            tilemap: kind == 2,
-            child_level,
+            name: l.name.clone(),
+            visible: l.flags & LAYER_VISIBLE != 0,
+            group: l.kind == KIND_GROUP,
+            tilemap: l.kind == KIND_TILEMAP,
+            child_level: l.child_level,
             blend,
-            opacity,
+            opacity: l.opacity,
         });
     }
 
-    fn palette(&mut self, r: &mut Reader<'_>) {
-        let Some(size) = r.u32() else { return };
-        let Some(first) = r.u32() else { return };
-        let Some(last) = r.u32() else { return };
-        let _ = r.skip(8);
-        if self.palette.len() < size as usize {
-            self.palette.resize(size as usize, [0, 0, 0, 0]);
-        }
-        for i in first..=last.max(first) {
-            let Some(flags) = r.u16() else { return };
-            let (Some(red), Some(green), Some(blue), Some(alpha)) =
-                (r.u8(), r.u8(), r.u8(), r.u8())
-            else {
-                return;
-            };
-            if flags & 1 != 0 {
-                let _ = r.string(); // o nome da cor, que não usamos
-            }
-            if let Some(slot) = self.palette.get_mut(i as usize) {
-                *slot = [red, green, blue, alpha];
-            }
-        }
-    }
-
-    fn tags(&mut self, r: &mut Reader<'_>) {
-        let Some(n) = r.u16() else { return };
-        let _ = r.skip(8);
-        for _ in 0..n {
-            let (Some(from), Some(to), Some(direction)) = (r.u16(), r.u16(), r.u8()) else {
-                return;
-            };
-            let repeat = r.u16().unwrap_or(0);
-            let _ = r.skip(6);
-            let _ = r.skip(3); // a cor da tag, obsoleta
-            let _ = r.u8();
-            let name = r.string().unwrap_or_default();
-            self.tags.push(AseTag {
-                name,
-                from,
-                to,
-                direction,
-                repeat,
-            });
-        }
-    }
-
-    fn cel(&mut self, r: &mut Reader<'_>, frame: usize) -> Result<(), AseError> {
-        let Some(layer) = r.u16().map(usize::from) else {
-            return Ok(());
-        };
-        let (Some(x), Some(y), Some(opacity), Some(kind)) = (r.i16(), r.i16(), r.u8(), r.u16())
-        else {
-            return Ok(());
-        };
-        let _ = r.skip(7); // z-index (1.3) + reservados
-        match kind {
-            // Cru e comprimido só diferem no zlib.
-            0 | 2 => {
-                let (Some(w), Some(h)) = (r.u16(), r.u16()) else {
-                    return Ok(());
-                };
-                let need = usize::from(w) * usize::from(h) * usize::from(self.depth / 8);
-                let raw = if kind == 0 {
-                    r.rest().to_vec()
-                } else {
-                    miniz_oxide::inflate::decompress_to_vec_zlib(r.rest())
-                        .map_err(|_| AseError::BadZlib(frame))?
-                };
-                if raw.len() < need {
-                    return Err(AseError::Truncated("cel pixels"));
-                }
-                let rgba = self.to_rgba(&raw[..need]);
+    fn cel(&mut self, c: &AseCel) {
+        let layer = usize::from(c.layer);
+        match &c.body {
+            AseCelBody::Image { w, h, pixels } => {
+                let rgba = self.to_rgba(pixels);
                 self.push_cel(Cel {
                     layer,
-                    x,
-                    y,
-                    opacity,
-                    w,
-                    h,
+                    x: c.x,
+                    y: c.y,
+                    opacity: c.opacity,
+                    w: *w,
+                    h: *h,
                     rgba,
                 });
             }
             // LIGADO: aponta para o cel que a mesma camada tem noutro quadro.
-            1 => {
-                let Some(src_frame) = r.u16().map(usize::from) else {
-                    return Ok(());
-                };
-                if let Some((_, _, c)) = self
+            AseCelBody::Linked { frame } => {
+                let src_frame = usize::from(*frame);
+                if let Some((_, _, o)) = self
                     .linkable
                     .iter()
                     .find(|(l, f, _)| *l == layer && *f == src_frame)
                 {
                     let copy = Cel {
                         layer,
-                        x: c.x,
-                        y: c.y,
-                        opacity,
-                        w: c.w,
-                        h: c.h,
-                        rgba: c.rgba.clone(),
+                        x: o.x,
+                        y: o.y,
+                        opacity: c.opacity,
+                        w: o.w,
+                        h: o.h,
+                        rgba: o.rgba.clone(),
                     };
                     self.cels.push(copy);
                 }
             }
-            3 => {
+            AseCelBody::Tilemap(_) => {
                 let name = self
                     .layers
                     .get(layer)
@@ -249,9 +167,7 @@ impl Build {
                     "layer \"{name}\" is a tilemap — tilemaps are not imported, that layer is blank"
                 ));
             }
-            _ => {}
         }
-        Ok(())
     }
 
     /// Guarda o cel no quadro E na tabela dos que podem ser ligados. ⚠️ Um cel só pode ser ligado
@@ -305,7 +221,7 @@ impl Build {
     }
 
     /// Compõe o quadro corrente e arquiva-o.
-    pub(crate) fn end_frame(&mut self, _index: usize) -> Result<(), AseError> {
+    fn end_frame(&mut self, _index: usize) -> Result<(), AseError> {
         let (w, h) = (usize::from(self.width), usize::from(self.height));
         let mut out = vec![0_u8; w * h * 4];
         // A visibilidade de um grupo cai sobre os filhos dele: um nível de aninhamento por entrada.
@@ -362,15 +278,5 @@ impl Build {
             rgba: out,
         });
         Ok(())
-    }
-
-    pub(crate) fn finish(self) -> AseDoc {
-        AseDoc {
-            width: self.width,
-            height: self.height,
-            frames: self.frames,
-            tags: self.tags,
-            notes: self.notes,
-        }
     }
 }

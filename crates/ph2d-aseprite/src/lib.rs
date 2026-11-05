@@ -38,11 +38,15 @@
 
 mod blend;
 mod composite;
+pub mod file;
 mod read;
+mod write;
 
 pub use blend::BlendMode;
-
-use read::Reader;
+pub use file::{
+    AseCel, AseCelBody, AseFile, AseFileFrame, AseLayer, AseTilemap, AseTileset, parse_file,
+};
+pub use write::{WriteError, write_file};
 
 /// Um documento `.ase` decodificado: os quadros já **compostos** em RGBA8 e a autoria.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -81,6 +85,8 @@ pub struct AseTag {
     pub direction: u8,
     /// Quantas voltas a tag dá. `0` = para sempre (Aseprite 1.3; ficheiros mais antigos trazem 0).
     pub repeat: u16,
+    /// A cor da tag no chunk (o campo deprecado que todos os leitores entendem).
+    pub rgb: [u8; 3],
 }
 
 impl AseTag {
@@ -160,75 +166,10 @@ impl std::fmt::Display for AseError {
 
 impl std::error::Error for AseError {}
 
-/// Cabeçalho do ficheiro: 128 bytes, e as posições são as da spec.
-const HEADER_LEN: usize = 128;
-const FILE_MAGIC: u16 = 0xA5E0;
-const FRAME_MAGIC: u16 = 0xF1FA;
-const FRAME_HEADER_LEN: usize = 16;
-
-/// **Lê um `.ase` inteiro.** Função pura sobre bytes — não toca no disco, não fala com a GPU.
+/// **Lê um `.ase` inteiro e compõe-o.** Função pura sobre bytes — não toca no disco, não fala com a GPU.
 ///
 /// # Errors
 /// [`AseError`], uma variante por causa nomeada.
 pub fn parse(bytes: &[u8]) -> Result<AseDoc, AseError> {
-    let mut r = Reader::new(bytes);
-    r.skip(4).ok_or(AseError::Truncated("header"))?; // file size, não confiável
-    if r.u16().ok_or(AseError::Truncated("header"))? != FILE_MAGIC {
-        return Err(AseError::NotAseprite);
-    }
-    let frame_count = r.u16().ok_or(AseError::Truncated("header"))?;
-    let width = r.u16().ok_or(AseError::Truncated("header"))?;
-    let height = r.u16().ok_or(AseError::Truncated("header"))?;
-    let depth = r.u16().ok_or(AseError::Truncated("header"))?;
-    if width == 0 || height == 0 {
-        return Err(AseError::EmptyCanvas);
-    }
-    if frame_count == 0 {
-        return Err(AseError::NoFrames);
-    }
-    if !matches!(depth, 8 | 16 | 32) {
-        return Err(AseError::UnknownColorDepth(depth));
-    }
-    r.skip(10).ok_or(AseError::Truncated("header"))?; // flags, speed, dois zeros
-    let transparent_index = r.u8().ok_or(AseError::Truncated("header"))?;
-    // O resto do cabeçalho não é lido: a paleta chega no chunk 0x2019, e a grelha do Aseprite é
-    // dele, não nossa.
-    r.seek(HEADER_LEN).ok_or(AseError::Truncated("header"))?;
-
-    let mut doc = composite::Build::new(width, height, depth, transparent_index);
-    for index in 0..usize::from(frame_count) {
-        let frame_start = r.pos();
-        let size = r.u32().ok_or(AseError::Truncated("frame header"))? as usize;
-        if r.u16().ok_or(AseError::Truncated("frame header"))? != FRAME_MAGIC {
-            return Err(AseError::BadFrameMagic(index));
-        }
-        let old_chunks = r.u16().ok_or(AseError::Truncated("frame header"))?;
-        let duration_ms = r.u16().ok_or(AseError::Truncated("frame header"))?;
-        r.skip(2).ok_or(AseError::Truncated("frame header"))?;
-        let new_chunks = r.u32().ok_or(AseError::Truncated("frame header"))?;
-        // ⚠️ A spec tem DOIS contadores, e o velho satura em 0xFFFF. O novo manda quando existe.
-        let chunks = if new_chunks == 0 {
-            u32::from(old_chunks)
-        } else {
-            new_chunks
-        };
-        doc.begin_frame(duration_ms);
-        let mut chunk_at = frame_start + FRAME_HEADER_LEN;
-        for _ in 0..chunks {
-            r.seek(chunk_at).ok_or(AseError::Truncated("chunk"))?;
-            let csize = r.u32().ok_or(AseError::Truncated("chunk"))? as usize;
-            let ctype = r.u16().ok_or(AseError::Truncated("chunk"))?;
-            // Um chunk mente sobre o próprio tamanho num ficheiro corrompido; avançar por um
-            // tamanho de zero seria um laço infinito.
-            let body = csize.max(6) - 6;
-            let mut c = r.window(body).ok_or(AseError::Truncated("chunk"))?;
-            doc.chunk(ctype, &mut c, index)?;
-            chunk_at += csize.max(6);
-        }
-        doc.end_frame(index)?;
-        // O tamanho declarado do quadro é a forma de saltar chunks que não conhecemos.
-        r.seek(frame_start + size.max(FRAME_HEADER_LEN))
-            .ok_or(AseError::Truncated("frame"))?;
-    }
-    Ok(doc.finish())
+    composite::compose(&parse_file(bytes)?)
 }

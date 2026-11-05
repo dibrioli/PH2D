@@ -38,7 +38,7 @@ pub mod transform;
 
 pub use codec::{CodecError, MAJOR, MINOR};
 pub use compose::{
-    Ghost, Onion, Purpose, Sample, compose_region, compose_rgba, compose_window,
+    Ghost, Onion, Purpose, Sample, compose_picked, compose_region, compose_rgba, compose_window,
     compose_with_onion, ghosts, onion_tint, pick,
 };
 pub use history::{DEFAULT_CAP_BYTES, History};

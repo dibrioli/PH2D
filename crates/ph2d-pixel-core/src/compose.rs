@@ -66,6 +66,23 @@ pub fn compose_window(
     buf
 }
 
+/// O quadro inteiro com as camadas de imagem que `pick` escolher, e só elas (a resposta dele manda sobre
+/// visibilidade e referência): a porta do Export com «uma camada» ou «todas» (P9).
+#[must_use]
+pub fn compose_picked(sprite: &Sprite, frame: FrameId, pick: &dyn Fn(&Layer) -> bool) -> Vec<u8> {
+    let region = sprite.bounds();
+    let mut buf = vec![0u8; region.area() * 4];
+    Ctx {
+        sprite,
+        frame,
+        pending: None,
+        region,
+        purpose: Purpose::Export,
+    }
+    .draw_picked(pick, &mut buf);
+    buf
+}
+
 /// O papel vegetal (Aseprite: *Onion Skin*). Por omissão o do Trial 1.3.18: um antes e um depois,
 /// opacidade 68 a descer 28 por frame, por TRÁS do frame, sem tinta.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -207,6 +224,17 @@ impl Ctx<'_> {
     fn draw(&self, buf: &mut [u8]) {
         let mut flat = Vec::new();
         self.flatten(None, true, &mut flat);
+        self.draw_flat(flat, buf);
+    }
+
+    fn draw_picked(&self, pick: &dyn Fn(&Layer) -> bool, buf: &mut [u8]) {
+        let mut flat = Vec::new();
+        self.flatten(None, true, &mut flat);
+        let flat = flat.into_iter().map(|(l, _)| (l, pick(l))).collect();
+        self.draw_flat(flat, buf);
+    }
+
+    fn draw_flat<'a>(&'a self, flat: Vec<(&'a Layer, bool)>, buf: &mut [u8]) {
         let z = |l: &Layer| {
             self.sprite
                 .entry((l.id, self.frame))

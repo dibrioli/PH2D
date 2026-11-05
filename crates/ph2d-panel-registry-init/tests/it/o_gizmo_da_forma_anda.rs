@@ -594,3 +594,145 @@ fn quem_nao_anda_pela_pose_continua_nos_pontos() {
         "os pontos não andaram"
     );
 }
+
+fn estado(w: &Mundo) -> (ph2d_vec_scene::VecPath, Transform, VecShape) {
+    let g = w.sim.world();
+    (
+        w.scene.path(w.id).expect("o caminho").clone(),
+        *g.get::<Transform>(w.e).expect("a pose"),
+        g.get::<VecShape>(w.e).expect("a receita").clone(),
+    )
+}
+
+fn repoe(w: &mut Mundo, (p, t, s): (ph2d_vec_scene::VecPath, Transform, VecShape)) {
+    *w.scene.path_mut(w.id).expect("o caminho") = p;
+    w.sim.world_mut().entity_mut(w.e).insert((t, s));
+}
+
+/// O que o Ctrl+Z e o Ctrl+Y restauram (caminho, pose e receita): as alças voltam com a forma, por cima
+/// dela, nos dois sentidos. A fila da shell precisa de janela; o que ela devolve é este estado.
+/// *Mutação: as alças sem `desvio_da_receita` ⇒ vermelho no refazer.*
+#[test]
+fn desfazer_e_refazer_devolvem_as_alcas_com_a_forma() {
+    for kind in formas() {
+        for pose in POSES {
+            let mut c = Cartao::novo(true);
+            let mut w = mundo(kind, pose);
+            let (antes, alcas_antes) = (estado(&w), w.alcas());
+            c.escreve(&mut w, t::VECTOR_TRANSFORM_X, 138.0);
+            c.escreve(&mut w, t::VECTOR_TRANSFORM_W, 90.0);
+            let (depois, alcas_depois) = (estado(&w), w.alcas());
+            repoe(&mut w, antes);
+            w.confere("desfazer");
+            for (a, b) in w.alcas().iter().zip(&alcas_antes) {
+                assert!(
+                    longe(*a, *b) < FOLGA_PX,
+                    "{kind:?}: o desfazer {a:?} × {b:?}"
+                );
+            }
+            repoe(&mut w, depois);
+            w.confere("refazer");
+            for (a, b) in w.alcas().iter().zip(&alcas_depois) {
+                assert!(
+                    longe(*a, *b) < FOLGA_PX,
+                    "{kind:?}: o refazer {a:?} × {b:?}"
+                );
+            }
+        }
+    }
+}
+
+/// O Reset do cartão Transform escreve a pose de fábrica (`INSP_TRANSFORM_RESET`): as alças vão com ela,
+/// mesmo com a forma movida pelo X, que deixou desvio.
+#[test]
+fn o_reset_leva_as_alcas() {
+    for kind in formas() {
+        for pose in POSES {
+            let mut c = Cartao::novo(true);
+            let mut w = mundo(kind, pose);
+            c.escreve(&mut w, t::VECTOR_TRANSFORM_X, 138.0);
+            c.escreve(&mut w, t::VECTOR_TRANSFORM_H, 75.0);
+            w.sim
+                .world_mut()
+                .entity_mut(w.e)
+                .insert(Transform::default());
+            w.confere("reset");
+        }
+    }
+}
+
+/// ⭐ A Timeline pela fila real: a curva escreve em `CanaisEscritos`, e `canais::aplicar` drena-a como a
+/// shell. A forma movida fica no sítio, e as alças por cima, quando o parâmetro muda.
+/// *Mutação: `devolver_forma` a chamar `recook_into` ⇒ a forma salta para a origem, vermelho.*
+#[test]
+fn a_curva_de_um_parametro_deixa_a_forma_no_sitio() {
+    use ph2d_ecs::canal::{CanaisEscritos, FieldKey, familia::VETOR};
+    for kind in formas() {
+        for pose in POSES {
+            let mut c = Cartao::novo(true);
+            let mut w = mundo(kind, pose);
+            c.escreve(&mut w, t::VECTOR_TRANSFORM_X, 138.0);
+            let VecShape::Param { values, .. } = estado(&w).2 else {
+                panic!("a receita");
+            };
+            let Some(v) = values.first().copied() else {
+                continue;
+            };
+            let (forma_antes, n_antes) = (estado(&w).2, w.pontos().len());
+            let caixa = caixa_de_ancoras(w.pontos().into_iter());
+            let chave = FieldKey::new(VETOR, ph2d_ecs::canal_vetor::PARAM_VALOR, 0, 0);
+            let bits = w.e.to_bits();
+            (w.sim.world_mut())
+                .get_resource_or_insert_with(CanaisEscritos::default)
+                .escrever(bits, chave, (v * 0.5 + 0.13) as f32);
+            let mut conducao = ph2d_app_vec::canais::ConducaoVetor::default();
+            let _ = ph2d_app_vec::canais::aplicar(&mut w.sim, &mut w.scene, &mut conducao);
+            assert_ne!(estado(&w).2, forma_antes, "{kind:?}: a curva não chegou");
+            w.confere("a curva");
+            if kind == ShapeKind::RoundRect && w.pontos().len() == n_antes {
+                let agora = caixa_de_ancoras(w.pontos().into_iter());
+                assert!(
+                    longe(caixa, agora) < FOLGA_PX,
+                    "{pose:?}: a forma saltou: {caixa:?} × {agora:?}"
+                );
+            }
+        }
+    }
+}
+
+/// Os pontos do degradê moram no local do caminho: mover pelo campo é pose, logo eles andam com a forma,
+/// o mesmo delta no ecrã. *Mutação: o X a assar nos pontos (`mover_no_mundo` sem o ramo da pose) ⇒ vermelho.*
+#[test]
+fn os_pontos_do_degrade_andam_com_a_forma() {
+    use ph2d_vec_scene::{GradientStop, Paint, PaintSlot, Rgba8};
+    for pose in POSES {
+        let mut c = Cartao::novo(true);
+        let mut w = mundo(ShapeKind::RoundRect, pose);
+        let inicio = [-0.5, 0.2];
+        w.scene.path_mut(w.id).expect("o caminho").fill = Some(Paint::Linear {
+            stops: vec![
+                GradientStop::new(0.0, Rgba8::new(255, 0, 0, 255)),
+                GradientStop::new(1.0, Rgba8::new(0, 0, 255, 255)),
+            ],
+            start: inicio,
+            end: [0.5, -0.2],
+        });
+        let (k0, h0) = (w.canto(), tela(w.xf().apply(inicio)));
+        c.escreve(&mut w, t::VECTOR_TRANSFORM_X, 138.0);
+        let (k1, h1) = (w.canto(), tela(w.xf().apply(inicio)));
+        assert!(longe(k0, k1) > 1.0, "{pose:?}: o X não moveu");
+        assert!(
+            longe(
+                [k1[0] - k0[0], k1[1] - k0[1]],
+                [h1[0] - h0[0], h1[1] - h0[1]]
+            ) < FOLGA_PX,
+            "{pose:?}: a alça do degradê ficou para trás"
+        );
+        let p = w.scene.path(w.id).expect("o caminho");
+        assert_eq!(
+            ph2d_vec_render::hit_gradient_handle(p, PaintSlot::Base, inicio[0], inicio[1], 1e-3),
+            Some(ph2d_vec_render::GradHandle::LinearStart),
+            "{pose:?}: a alça não responde onde está"
+        );
+    }
+}

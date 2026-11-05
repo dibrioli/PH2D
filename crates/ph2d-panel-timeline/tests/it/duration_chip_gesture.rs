@@ -17,7 +17,7 @@
 
 use bumpalo::Bump;
 use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::interaction::dispatch::keymap::KEY_ENTER;
+use ph2d_editor_core::interaction::dispatch::keymap::{KEY_ARROW_DOWN, KEY_ARROW_UP, KEY_ENTER};
 use ph2d_editor_core::interaction::{dispatch_key, dispatch_text_input};
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::zones::Rect;
@@ -30,8 +30,12 @@ use ph2d_ui_testkit::MockPanelHost;
 const VIEWPORT: Rect = Rect::new(0.0, 0.0, 1600.0, 900.0);
 
 fn enter() -> KeyEvent {
+    tecla(KEY_ENTER)
+}
+
+fn tecla(keycode: u32) -> KeyEvent {
     KeyEvent {
-        keycode: KEY_ENTER,
+        keycode,
         modifiers: Modifiers {
             shift: false,
             ctrl: false,
@@ -64,8 +68,8 @@ fn painted_dur_rect(host: &mut MockPanelHost, state: &mut TimelinePanelState, se
 }
 
 /// Paint the Keys tab over a 2 s derived-end doc and return a click point on the
-/// chip's LEFT body (the right column is the stepper zone, a value bump — not a
-/// focus gesture).
+/// chip's LEFT body (with `PH2D_CARDS=0` the right column is the stepper zone, a value
+/// bump — not a focus gesture).
 fn painted_dur_chip(host: &mut MockPanelHost, state: &mut TimelinePanelState) -> (f32, f32) {
     let r = painted_dur_rect(host, state, 2.0);
     (r.x + r.w * 0.3, r.y + r.h * 0.5)
@@ -164,48 +168,181 @@ fn typing_a_new_duration_replaces_the_readout() {
     set_current_timeline(None);
 }
 
-// ── the stepper arrows: +/- 0.2 s per click (Enio, 2026-07-23) ───────────────
+// ── the 0.2 s step (Enio, 2026-07-23) ─────────────────────────────────────────
 //
-// The Dur chip's right column is a stepper. It stepped by `1/fps` (~0.04 s), so a
-// click produced the fiddly "wrong" values the report named (2.04, 2.08, …). A
-// duration is coarser: each click is 0.2 s. `stepper_up_rect`/`_down_rect` mark the
-// upper/lower half of the stepper column (`stepper_width` = clamp(h*0.6, 16, 22)).
+// The Dur chip stepped by `1/fps` (~0.04 s), so a step produced the fiddly "wrong" values
+// the report named (2.04, 2.08, …). A duration is coarser: each step is 0.2 s.
+// The GESTURE depends on the path; the step does not. `PH2D_CARDS=0` keeps the arrows in the
+// chip's right column. A card field has none (`docs/CartoesUI/14_CHROME_TIMELINE_MOTION.md`):
+// ↑/↓ on the focused field give the same step.
 
+use ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread;
 use ph2d_editor_core::widget::NumberInput;
 
-/// A click on the UP arrow raises the authored duration by exactly 0.2 s.
-#[test]
-fn the_up_stepper_adds_a_fifth_of_a_second() {
-    let mut host = MockPanelHost::with_panel::<TimelinePanel>();
-    let mut state = TimelinePanelState::default();
-    let r = painted_dur_rect(&mut host, &mut state, 2.0);
-    let up = NumberInput::new(ph2d_panel_timeline::ids::TIMELINE_LENGTH_NUM, "", 2.0).up_rect(r);
-    let evs = host.click_at(up.x + up.w * 0.5, up.y + up.h * 0.5);
-    route_events(&mut host, &mut state, evs);
-    assert_eq!(
-        drain_intents(),
-        vec![TimelineIntent::SetClipLength { len: Some(2.2) }],
-        "one up-click authors +0.2 s (was 1/fps ~0.04)"
-    );
-    set_current_timeline(None);
+const LEN: ph2d_a11y::NodeId = ph2d_panel_timeline::ids::TIMELINE_LENGTH_NUM;
+
+/// Forces one path on this thread and gives the choice back, even on a panic.
+struct Caminho;
+impl Caminho {
+    fn de(cartoes: bool) -> Self {
+        force_cards_on_this_thread(Some(cartoes));
+        Self
+    }
+}
+impl Drop for Caminho {
+    fn drop(&mut self) {
+        force_cards_on_this_thread(None);
+        set_current_timeline(None);
+    }
 }
 
-/// A click on the DOWN arrow lowers it by exactly 0.2 s.
-#[test]
-fn the_down_stepper_subtracts_a_fifth_of_a_second() {
+fn seta(host: &mut MockPanelHost, r: Rect, sobe: bool) -> Vec<WidgetEvent> {
+    let probe = NumberInput::new(LEN, "", 2.0);
+    let a = if sobe {
+        probe.up_rect(r)
+    } else {
+        probe.down_rect(r)
+    };
+    host.click_at(a.x + a.w * 0.5, a.y + a.h * 0.5)
+}
+
+fn tecla_de_passo(host: &mut MockPanelHost, sobe: bool) -> Vec<WidgetEvent> {
+    let arena = Bump::new();
+    let code = if sobe { KEY_ARROW_UP } else { KEY_ARROW_DOWN };
+    dispatch_key(host.store_mut(), tecla(code), &arena).to_vec()
+}
+
+/// Paints the document the previous step wrote, as the shell would, and returns the chip.
+fn pinta_a_duracao(host: &mut MockPanelHost, state: &mut TimelinePanelState, secs: f64) -> Rect {
+    set_current_timeline(Some(TimelineViewSnapshot {
+        fps: 60.0,
+        view_length_seconds: secs,
+        view_length_explicit: true,
+        keys_mode: true,
+        ..TimelineViewSnapshot::default()
+    }));
+    host.paint::<TimelinePanel>(state, VIEWPORT)
+        .iter()
+        .find(|(w, _)| *w == LEN)
+        .map(|(_, r)| *r)
+        .expect("the Dur(s) chip was painted")
+}
+
+/// Walks `passos` (true = up) from `inicio` with the real gesture of the path, the document
+/// following each step, and returns what each step authored.
+fn caminha(cartoes: bool, inicio: f64, passos: &[bool]) -> Vec<Vec<TimelineIntent>> {
+    let _caminho = Caminho::de(cartoes);
     let mut host = MockPanelHost::with_panel::<TimelinePanel>();
     let mut state = TimelinePanelState::default();
-    let r = painted_dur_rect(&mut host, &mut state, 2.0);
-    let down =
-        NumberInput::new(ph2d_panel_timeline::ids::TIMELINE_LENGTH_NUM, "", 2.0).down_rect(r);
-    let evs = host.click_at(down.x + down.w * 0.5, down.y + down.h * 0.5);
-    route_events(&mut host, &mut state, evs);
+    let mut secs = inicio;
+    let mut r = pinta_a_duracao(&mut host, &mut state, secs);
+    if cartoes {
+        let evs = host.click_at(r.x + r.w * 0.3, r.y + r.h * 0.5);
+        route_events(&mut host, &mut state, evs);
+        assert_eq!(
+            drain_intents(),
+            vec![],
+            "focusing the field authors nothing"
+        );
+    }
+    let mut escritos = Vec::new();
+    for &sobe in passos {
+        let evs = if cartoes {
+            tecla_de_passo(&mut host, sobe)
+        } else {
+            seta(&mut host, r, sobe)
+        };
+        route_events(&mut host, &mut state, evs);
+        let intents = drain_intents();
+        if let Some(TimelineIntent::SetClipLength { len }) = intents.last() {
+            secs = len.unwrap_or(0.0);
+        }
+        escritos.push(intents);
+        r = pinta_a_duracao(&mut host, &mut state, secs);
+    }
+    escritos
+}
+
+fn um_clip(len: Option<f64>) -> Vec<TimelineIntent> {
+    vec![TimelineIntent::SetClipLength { len }]
+}
+
+/// `PH2D_CARDS=0`: a click on the UP arrow raises the authored duration by exactly 0.2 s.
+#[test]
+fn the_up_stepper_adds_a_fifth_of_a_second() {
     assert_eq!(
-        drain_intents(),
-        vec![TimelineIntent::SetClipLength { len: Some(1.8) }],
+        caminha(false, 2.0, &[true]),
+        vec![um_clip(Some(2.2))],
+        "one up-click authors +0.2 s (was 1/fps ~0.04)"
+    );
+}
+
+/// `PH2D_CARDS=0`: a click on the DOWN arrow lowers it by exactly 0.2 s.
+#[test]
+fn the_down_stepper_subtracts_a_fifth_of_a_second() {
+    assert_eq!(
+        caminha(false, 2.0, &[false]),
+        vec![um_clip(Some(1.8))],
         "one down-click authors -0.2 s"
     );
-    set_current_timeline(None);
+}
+
+/// In cards: ↑ on the focused field raises it by exactly the same 0.2 s.
+#[test]
+fn in_cards_the_up_key_adds_a_fifth_of_a_second() {
+    assert_eq!(caminha(true, 2.0, &[true]), vec![um_clip(Some(2.2))]);
+}
+
+/// In cards: ↓ on the focused field lowers it by exactly the same 0.2 s.
+#[test]
+fn in_cards_the_down_key_subtracts_a_fifth_of_a_second() {
+    assert_eq!(caminha(true, 2.0, &[false]), vec![um_clip(Some(1.8))]);
+}
+
+/// The key and the old arrow walk the same numbers, bit by bit, up and back.
+#[test]
+fn the_key_in_cards_walks_the_same_numbers_as_the_old_arrow() {
+    let passos = [true, true, true, true, true, false, false, false];
+    let cartoes = caminha(true, 2.0, &passos);
+    assert_eq!(cartoes, caminha(false, 2.0, &passos));
+    assert_eq!(cartoes.len(), passos.len(), "every step authored");
+}
+
+/// At the floor both paths land on `0`, which clears the duration back to ∞, and stop there.
+#[test]
+fn both_paths_stop_at_the_floor_and_clear_the_duration() {
+    let passos = [false, false];
+    let cartoes = caminha(true, 0.2, &passos);
+    assert_eq!(cartoes[0], um_clip(None), "0 is the gesture that clears");
+    assert_eq!(cartoes[1], um_clip(None), "a duration never goes negative");
+    assert_eq!(cartoes, caminha(false, 0.2, &passos));
+}
+
+/// In cards the old arrow column is VALUE: a click there steps nothing, arms no hold, and opens
+/// the writing. Same click as anywhere else on the value.
+#[test]
+fn in_cards_the_old_arrow_zone_opens_the_writing() {
+    for sobe in [true, false] {
+        let _caminho = Caminho::de(true);
+        let mut host = MockPanelHost::with_panel::<TimelinePanel>();
+        let mut state = TimelinePanelState::default();
+        let r = pinta_a_duracao(&mut host, &mut state, 2.0);
+        let evs = seta(&mut host, r, sobe);
+        route_events(&mut host, &mut state, evs);
+        assert_eq!(drain_intents(), vec![], "no step in a card field");
+        assert_eq!(host.store().number_value(LEN), Some(2.0));
+        assert_eq!(
+            host.store().focus_id(),
+            Some(LEN),
+            "the click opens the writing"
+        );
+
+        let arena = Bump::new();
+        let _ = dispatch_text_input(host.store_mut(), '5', &arena);
+        let evs: Vec<WidgetEvent> = dispatch_key(host.store_mut(), enter(), &arena).to_vec();
+        route_events(&mut host, &mut state, evs);
+        assert_eq!(drain_intents(), um_clip(Some(5.0)));
+    }
 }
 
 // ── the veil DRAG handle is painted + hit-registered (Enio, 2026-07-23) ───────

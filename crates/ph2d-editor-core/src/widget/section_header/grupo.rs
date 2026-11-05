@@ -43,7 +43,7 @@ pub fn paint_group_header(
         scene,
         &header.label,
         label_x,
-        rect.y + (rect.h - font) * 0.5,
+        rect.y + crate::paint::folga_do_texto(rect.h, font),
         font,
         (rect.x + rect.w - label_x).max(0.0),
         crate::widget::card_ink::tinta(ColorToken::Text1, theme),

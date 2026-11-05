@@ -360,6 +360,17 @@ fn the_field_shows_the_document_value() {
     }
 }
 
+/// Um grupo que cabe na fila não se parte: o Ghost e os dois números dele ficam juntos.
+/// *Mutação: tirar o `desce` do grupo ⇒ o After desce sozinho.*
+#[test]
+fn a_group_that_fits_stays_on_one_row() {
+    let p = Palco::novo(true);
+    let y = |id| p.rect(id).expect("pintado").y;
+    assert!((y(ids::FLIP_GHOST_BEFORE_NUM) - y(ids::FLIP_GHOST_AFTER_NUM)).abs() < 0.5);
+    assert!((y(ids::FLIP_KEY_ADD) - y(ids::FLIP_KEY_RIGHT)).abs() < 0.5);
+    assert!((y(ids::FLIP_TWEEN_NUM) - y(ids::FLIP_TWEEN_ADD)).abs() < 8.0);
+}
+
 /// Numa janela estreita a barra desce por grupos, nada se perde e as células continuam abaixo dela.
 /// *Mutação: tirar o `desce` de dentro do grupo ⇒ uma peça passa da borda.*
 #[test]

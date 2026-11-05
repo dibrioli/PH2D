@@ -55,7 +55,7 @@ impl<'s> CardCtx<'s> {
         } else if marcas {
             y += rotulos::so_marcas(self, cells, &cols, y);
         }
-        for (c, (x, w)) in cells.iter().zip(&cols) {
+        for (i, (c, (x, w))) in cells.iter().zip(&cols).enumerate() {
             let r = Rect::new(*x, y, *w, m::FIELD_H);
             match c.widget {
                 Widget::Field { id, glyph } => card_field::paint_field(
@@ -66,7 +66,7 @@ impl<'s> CardCtx<'s> {
                     self.hit_index,
                     r,
                     id,
-                    glyph,
+                    super::letras::glifo_na_fila(cells, i, glyph),
                 ),
                 Widget::Choice(segs) | Widget::Icons(segs) => self.choice(r, segs),
                 Widget::FieldFace { id, glyph, text } => card_field::paint_field_face(

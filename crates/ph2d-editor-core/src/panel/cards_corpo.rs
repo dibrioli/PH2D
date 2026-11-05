@@ -38,10 +38,10 @@ fn glifo(rotulo: &str, eixos: Eixos, n: usize, i: usize) -> Glyph<'_> {
 }
 
 /// A tabela de onde [`letra_da_grandeza`] fatia a letra (um `&str` que vive sem alocar).
-const MAIUSCULAS: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+pub(crate) const MAIUSCULAS: &str = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 
 /// As palavras que nunca dão a letra de um campo; se todas o forem, vale a primeira («To state» ⇒ `T`).
-const SEM_LETRA: [&str; 8] = ["at", "after", "on", "of", "per", "from", "to", "state"];
+pub(crate) const SEM_LETRA: [&str; 8] = ["at", "after", "on", "of", "per", "from", "to", "state"];
 
 /// A letra de um campo só: a inicial, em maiúscula, da ÚLTIMA palavra do rótulo — a que nomeia a
 /// grandeza ou o eixo (T56: «Half Width» ⇒ `W`, nunca o `H` de «Half»; «Offset Y» ⇒ `Y`; o nome de

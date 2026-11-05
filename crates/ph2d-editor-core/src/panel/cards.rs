@@ -161,6 +161,10 @@ pub struct CardCtx<'s> {
 /// ⭐ A moldura e os controlos em fila de um painel-banda (Timeline).
 #[path = "cards_banda.rs"]
 pub mod banda;
+
+/// A letra que distingue dois campos vizinhos.
+#[path = "cards_letras.rs"]
+pub mod letras;
 #[path = "cards_cartao.rs"]
 mod cartao;
 pub use crate::widget::card_censo as censo;

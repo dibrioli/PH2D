@@ -158,7 +158,7 @@ fn o_transform_da_imagem_tem_alfinete_corda_e_nome() {
     let h = preso();
     assert!(h.hit_index.rect_for(loose_pin_of(IMAGEM)).is_some());
     assert!(!h.store.loose_rope(IMAGEM).is_empty(), "a corda não nasceu");
-    assert_eq!(h.store.card_subject_name(A).as_deref(), Some("Hero"));
+    assert_eq!(h.store.card_subject_name(A), Some("Hero"));
 }
 
 /// Com outro objecto selecionado, arrastar o X publica só para o preso, com o Y dele.

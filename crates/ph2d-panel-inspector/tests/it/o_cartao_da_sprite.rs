@@ -372,3 +372,21 @@ fn o_tamanho_do_repeated_vai_entre_parenteses() {
     );
     assert_eq!(t, "256 × 128 px (300 × 50)");
 }
+
+/// ⭐ Dono 05/11: Flip e Pivot pintam a bolinha do canal. *Mutação: tirar `.key(..)` da linha ⇒ o alvo some.*
+#[test]
+fn o_flip_e_o_pivot_pintam_a_bolinha_de_chave() {
+    use ph2d_editor_core::widget::key_mark::{KeyMark, key_mark_id, set_key_marks};
+    let (mut host, mut st) = cena(factos());
+    set_key_marks(
+        [
+            (INSP_SPRITE_FLIP_X, KeyMark::Livre),
+            (INSP_SPRITE_PIVOT_XY[0], KeyMark::Livre),
+        ]
+        .into(),
+    );
+    let r = pinta(&mut host, &mut st);
+    set_key_marks(Default::default());
+    let _ = rect_de(&r, key_mark_id(INSP_SPRITE_FLIP_X));
+    let _ = rect_de(&r, key_mark_id(INSP_SPRITE_PIVOT_XY[0]));
+}

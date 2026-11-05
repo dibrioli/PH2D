@@ -294,3 +294,41 @@ fn o_grafo_aberto_da_zoom_e_fechado_larga_a_superficie() {
     );
     assert!(cinco_entalhes(&mut h, p) > 70.0);
 }
+
+/// Dono 05/11, «a roda nem sempre rola», suspeita (4): sem pintor, a região sai no mesmo quadro. Verde antes da cura.
+#[test]
+fn a_regiao_de_um_painel_que_ja_nao_pinta_nao_come_a_roda() {
+    let mut h = hero(A);
+    quadros(&mut h, A, 30);
+    let p = core_ids::INSP_PANEL;
+    let r = h.store.panel_rect(p).expect("o Inspector publicou o rect");
+    let meio = centro(r);
+    h.store
+        .set_sub_scroll_region(core_ids::ASSET_CATALOG_COL, core_ids::ASSET_PANEL, r);
+    quadros(&mut h, A, 2);
+    assert_eq!(h.store.sub_scroll_region_at(meio.0, meio.1), None);
+}
+
+/// Dono 05/11: o que está por cima no ponto é dono da roda, também sobre uma sub-região de um painel de baixo.
+/// *Mutação: tirar o filtro de `sub_scroll_region_at`.*
+#[test]
+fn o_painel_por_cima_ganha_a_roda_de_uma_sub_regiao_por_baixo() {
+    let mut h = hero(A);
+    quadros(&mut h, A, 30);
+    let p = core_ids::INSP_PANEL;
+    let r = h.store.panel_rect(p).expect("o Inspector publicou o rect");
+    let meio = centro(r);
+    h.store
+        .set_sub_scroll_region(core_ids::ASSET_CATALOG_COL, core_ids::ASSET_PANEL, r);
+    let dono = h.store.panel_at(meio.0, meio.1);
+    assert_eq!(dono, Some(p));
+    let antes = h.store.panel_scroll_target(p);
+    h.store
+        .set_panel_content_h(core_ids::ASSET_CATALOG_COL, 5000.0);
+    h.store.set_panel_content_h(p, 5000.0);
+    roda(&mut h, meio, -16.0);
+    assert!(
+        h.store.panel_scroll_target(p) > antes,
+        "a região por baixo comeu a roda do painel por cima"
+    );
+}

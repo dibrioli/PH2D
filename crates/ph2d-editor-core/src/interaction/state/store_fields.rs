@@ -247,7 +247,7 @@ pub struct WidgetStore {
     /// ⚠️ **Slot próprio, e não o `panel_rects`:** o `panel_at` é consultado por muita gente (o
     /// menu de contexto, a queda de um asset, a roda) e poluí-lo faria uma sub-região responder
     /// *«sou um painel»* a todas elas. É a mesma separação que o popover do dropdown já faz.
-    pub(in crate::interaction) sub_scroll_rects: BTreeMap<NodeId, Rect>,
+    pub(in crate::interaction) sub_scroll_rects: BTreeMap<NodeId, (NodeId, Rect)>,
     /// Painter-published content / visible height per panel — `max_scroll = content_h − visible_h`
     /// for the wheel clamp and the two drags. Published by `widget::scroll_area::close`.
     pub(in crate::interaction) panel_content_h: BTreeMap<NodeId, f32>,

@@ -180,8 +180,8 @@ impl WidgetStore {
     /// ⚠️ **Quem a publica tem de a LIMPAR** quando ela deixa de existir ([`Self::clear_sub_scroll_region`]) —
     /// o mesmo contrato do `panel_rect`, e pela mesma razão: uma região fantasma continua a comer a
     /// roda no sítio onde ela esteve.
-    pub fn set_sub_scroll_region(&mut self, id: NodeId, rect: Rect) {
-        self.sub_scroll_rects.insert(id, rect);
+    pub fn set_sub_scroll_region(&mut self, id: NodeId, dono: NodeId, rect: Rect) {
+        self.sub_scroll_rects.insert(id, (dono, rect));
     }
 
     /// Tira uma sub-região do mapa — ver [`Self::set_sub_scroll_region`].
@@ -189,12 +189,13 @@ impl WidgetStore {
         self.sub_scroll_rects.remove(&id);
     }
 
-    /// A sub-região rolável sob este ponto, se houver.
+    /// A sub-região rolável sob este ponto, se o painel dela é o que está por cima nele.
     #[must_use]
     pub fn sub_scroll_region_at(&self, x: f32, y: f32) -> Option<NodeId> {
+        let por_cima = self.panel_at(x, y);
         self.sub_scroll_rects
             .iter()
-            .find(|(_, r)| r.contains(x, y))
+            .find(|(_, (dono, r))| r.contains(x, y) && por_cima.is_none_or(|p| p == *dono))
             .map(|(id, _)| *id)
     }
 

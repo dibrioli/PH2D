@@ -362,9 +362,9 @@ fn sem_objecto_a_lista_diz_o_que_fazer() {
 
 /// Alfinete (plano 09, F4): Render e Color têm-no porque a escrita deles vai ao preso, gesto a gesto
 /// (`ph2d-panel-registry-init`, `o_alfinete_da_sprite::todo_controlo_do_*_preso_escreve_no_preso`).
-/// A Imagem continua sem ele: o corpo dela escreve pela seleção. Quem tinha, fica.
+/// A Imagem também: o corpo dela lê e escreve pelo retrato do preso (dono 05/11). Quem tinha, fica.
 #[test]
-fn so_tem_alfinete_o_cartao_de_sprite_que_escreve_no_preso() {
+fn os_cartoes_da_sprite_tem_alfinete() {
     limpa();
     set_cards_on(true);
     objeto();
@@ -381,7 +381,7 @@ fn so_tem_alfinete_o_cartao_de_sprite_que_escreve_no_preso() {
     );
     limpa();
     assert!(render && cor, "render {render}, cor {cor}");
-    assert!(!image, "a Imagem escreve pela seleção: alfinete sem efeito");
+    assert!(image, "a Imagem é de um objecto: tem alfinete");
     assert!(transform, "o Transform mantém o alfinete");
 }
 

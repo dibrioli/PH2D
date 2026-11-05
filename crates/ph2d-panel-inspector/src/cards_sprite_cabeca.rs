@@ -24,8 +24,10 @@ const LADOS: f32 = 3.0; // LITERAL-PX-OK: conta de botões, não geometria
 const LADOS_MINIMOS: f32 = 2.0; // LITERAL-PX-OK: conta de botões, não geometria
 /// O registo para o teste não cresce sem fim: quem não o lê paga só esta moldura.
 const PINTADAS_GUARDADAS: usize = 8;
+/// A opacidade do véu sobre o xadrez, medida na referência do dono: células perto de `#3a4150` e `#4a5262`.
+const VEU_DO_XADREZ: f32 = 0.7; // LITERAL-PX-OK: opacidade, não geometria
 const NOME_PX: f32 = TypeToken::Base.px();
-const TAMANHO_PX: f32 = TypeToken::Xs.px();
+const TAMANHO_PX: f32 = TypeToken::Sm.px();
 
 thread_local! {
     static TROCA_PINTADA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
@@ -104,8 +106,8 @@ pub(crate) fn cabeca(c: &mut CardCtx<'_>, y: f32, info: &InspectorSpriteInfo) ->
     let tx = x0 + pad + lado + gap;
     let tw = (util - lado - gap).max(0.0);
     let fundo = y + pad * 2.0 + alto;
-    // O fundo da lista: um degrau abaixo do cartão e dos botões, que ficam legíveis por cima dele.
-    let superficie = c.ink.color(ColorToken::KanbanList);
+    // Um degrau abaixo do cartão, e os botões um degrau acima dela (a referência do dono).
+    let superficie = c.ink.color(ColorToken::CardField);
     fill_rounded_rect(
         c.scene,
         Rect::new(x0, y, w0, fundo - y),
@@ -137,7 +139,7 @@ pub(crate) fn cabeca(c: &mut CardCtx<'_>, y: f32, info: &InspectorSpriteInfo) ->
             nome_y + NOME_PX + m::FIELD_ROW_GAP,
             TAMANHO_PX,
             tw,
-            resolve(ColorToken::Text2, theme),
+            c.ink.color(ColorToken::CardLabel),
         );
     }
     (c.x, c.w) = (tx, tw);
@@ -203,6 +205,13 @@ fn troca_em_hover(c: &mut CardCtx<'_>, foto: Rect) {
 fn miniatura(c: &mut CardCtx<'_>, r: Rect, img: Option<&SlotImage>) {
     push_rounded_clip(c.scene, r, Radius::Sm.px());
     ph2d_editor_core::widget::paint_checker(c.scene, r, 0.0);
+    // O xadrez da referência é escuro: claro, ele brilha mais que o desenho.
+    let veu = c
+        .ink
+        .color(ColorToken::KanbanList)
+        .with_alpha(VEU_DO_XADREZ);
+    c.scene
+        .fill_rect(ph2d_editor_core::paint::rect_to_vello(r), veu);
     if let Some(i) = img
         && let Some(s) = slot_image::stable(i)
     {

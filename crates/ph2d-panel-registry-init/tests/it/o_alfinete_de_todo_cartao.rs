@@ -4,7 +4,7 @@
 #![cfg(all(feature = "panel-inspector", feature = "panel-hierarchy"))]
 
 use super::cartoes_mao::{clica, pinta, solta};
-use super::o_alfinete_da_sprite::{A, B, no_solto, preso};
+use super::o_alfinete_da_sprite::{A, B, no_solto, preso, quadros};
 use super::o_inspector_armado::{BITS, arma_tudo, desarma_tudo};
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
@@ -128,6 +128,9 @@ fn todo_cartao_de_um_objecto_tem_alfinete_salvo_a_lista() {
 fn o_cartao_image_preso_mostra_a_imagem_dele_e_pede_para_ele() {
     let sec = insp::CARD_IMAGE;
     let mut h = preso(sec, &[B]);
+    // O que veio antes da troca de seleção não conta.
+    let _ = insp::imagens_pintadas();
+    quadros(&mut h, &[B], 2);
     let pintadas = insp::imagens_pintadas();
     assert!(
         pintadas.iter().any(|(b, n)| *b == A && n == "Hero sheet"),

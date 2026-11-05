@@ -53,18 +53,18 @@ impl CardCtx<'_> {
         for (i, v) in verbos.iter().enumerate() {
             let r = Rect::new(self.x + (w + vao) * i as f32, topo, w, VERBO_H);
             self.verbo(r, v, com_nome);
-            DEGRAUS.with(|d| d.borrow_mut().push((v.id, com_nome)));
         }
         topo + VERBO_H
     }
 
     fn verbo(&mut self, r: Rect, v: &Verbo<'_>, com_nome: bool) {
+        DEGRAUS.with(|d| d.borrow_mut().push((v.id, com_nome)));
         self.hit_index.register(v.id, r);
         let hover = self.store.hover_live(v.id) > 0.0;
         let fundo = if hover {
             ColorToken::CardFieldHover
         } else {
-            ColorToken::CardField
+            ColorToken::KanbanCardRaised
         };
         fill_rounded_rect(self.scene, r, m::FIELD_RADIUS, self.ink.color(fundo));
         let tinta = self.ink.color(ColorToken::Text1);

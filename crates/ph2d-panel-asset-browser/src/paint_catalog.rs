@@ -292,7 +292,11 @@ pub(crate) fn paint(
     ph2d_editor_core::panel::scroll_area::close(area, ctx, content_h);
     let store = ctx.host.store_mut();
     // ⭐ **Onde ela está**, para a roda a achar antes do painel que a contém.
-    store.set_sub_scroll_region(ph2d_editor_core::ids::ASSET_CATALOG_COL, list_rect);
+    store.set_sub_scroll_region(
+        ph2d_editor_core::ids::ASSET_CATALOG_COL,
+        ph2d_editor_core::ids::ASSET_PANEL,
+        list_rect,
+    );
 
     // A fronteira entre a coluna e a grade — uma linha, não uma sombra: ela diz onde uma região
     // acaba sem competir com o realce da escolhida.

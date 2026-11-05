@@ -709,3 +709,7 @@ Ordem do cartão do topo: Paint Mode, prévia, Preset + estrela, Save as New/Sav
 **Fotos:** `maquete/z_painter_preset_estrela.png` (cena real, com patch temporário restaurado, porque a cena abre em `No preset`), `maquete/z_painter_preset_estrela_vazia_e_cheia.png` (as duas caras).
 
 **Decisões tomadas sem o dono.** Dois ícones em vez de só mudar a cor, e o aceso com o fundo dos ícones nus. Vista aberta, não corrigida: `Keep volume…` corta em `On switch` na coluna real, ao lado de Sync tools; já era assim e é outra lista.
+
+### Corrente do Scale com um eixo a zero (04/11)
+
+Par travado: a proporção é um dado do cadeado ([`ParTravado`](../../crates/ph2d-editor-core/src/par_travado.rs), com sinal; sem proporção para ler, 1:1), no Inspector e na Widget Gallery; Pixel (piso de 1 px, razão do tamanho original) e Texture Pattern (recusa ≤ 0) são imunes; Bones, Motion, nós e Painter não têm par travado. `-0.00`: `zero_sem_sinal` nas portas de número e nas leituras com sinal. O cadeado é da sessão e não é gravado; um objecto a 0 × 0 ao reabrir volta a 1:1. Testes: 8 por gesto até ao `Transform` (contraprova: a conta antiga reprova 6), Galeria 1, porta 9; 6 mutações, todas vermelhas. Foto: [z_scale_travado](maquete/z_scale_travado.png), na Galeria (o mesmo pintor do campo).

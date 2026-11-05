@@ -51,26 +51,50 @@ Arnês: `PH2D_FOTO_DIR=<pasta> PH2D_FOTO_PAINEIS=vector,physics cargo test -p ph
 
 | # | Família | Onde | Estado |
 |---|---|---|---|
-| P | Grupo de botões colados em peça única (vão 0, cantos só nas pontas) num cartão; `Play`, `Load`, `Cut`… | Audio Editor (Transport, Loop, Edit, Effects, Markers, Variations) | aberto |
-| Q | Selector com o texto a sair por baixo («Footsteps»), caixa vazia sem nome («◀ ▬ ▶»), vão sem nada em Delivery | Audio Editor (Transport, Effects, Delivery) | aberto |
-| R | Slider com rótulo à esquerda e 3 colunas próprias, fora da grelha do cartão; `Add clips to build a set` centrada e a 14 | Audio Editor (Crossfade, Amount, Pitch/Gain jitter, Quality) | aberto |
-| S | Frase indentada 6 px (x do corpo + 6): `Record captures the Painter`, `Edited from step 2`, `Your library is empty` | Macros | aberto |
-| T | Amostra de cor pequena e alta na lista `1. Stroke 1 ▪ 0.50`; lista sem vão entre linhas | Macros | aberto |
-| U | Título de sub-grupo (Blend, Morph, Envelope, Pattern on Path, Contour) a 4–8 do controlo de cima em vez de `GROUP_TOP` 14; chevron pequeno e acima do texto | Vector Advanced | aberto |
-| V | Texto menor num irmão: «Pick Shapes» a corpo menor e com traço, ao lado de «Blend» | Vector Advanced | aberto |
-| W | Abreviatura que cabia inteira: `Persp`, `Symm`, `Accel`, `Norm LUFS`, `Rm DC`, `Comp`, `Morph t` | Vector, Audio | aberto |
-| X | Duas letras iguais lado a lado (D2 de cima): Size/Spacing «S S», Spacing/Slide, Width/Slant/Optical, Temperature/Tint, Cover/Dry cover, Fall-off/Full for, Random 2nd/Pressure 2nd «2» | Vector, Painter, Color Equalization | aberto |
-| Y | Grelha partida: Align (3 ícones) mais estreito que a coluna, Width começa fora dela | Vector Paragraph | aberto |
-| Z | Rótulo ou frase a 10 por ser `Whole canvas`/`no canvas` solto (`lei_do_ritmo`), Taper com 28 de vão | Painter | aberto |
-| AA | Texto solto a fazer de campo, parece título: «Hello / world» sem caixa | Vector Text | dúvida |
-| AB | Nome do botão repete o título: «Text on Path» no cartão Text on Path; «Morph», «Envelope» idem | Vector | baixo |
-| AC | Linhas da lista a 2 de vão contra 6 | Tags (`All tags`) | aberto |
-| AD | Caixa de marcar com a marca colada no nome, fora da coluna | Audio Mixer (Limiter, Ducking Enabled) | aberto |
-| AE | Lista de botões de 1 coluna quando os nomes curtos cabem em 2: `All`, `Inverse`, `Color Range…`, `Load from MSK…`, `Rotate 90 CCW`, `Invert…`, `Insert Text` | Pixel (Select, Edit, Sprite) | aberto |
+| P | Grupo de botões colados em peça única (vão 0, cantos só nas pontas) num cartão | Audio Editor (Transport, Loop, Edit, Effects, Markers, Variations, Spectral) | **curado**: `cards_grupo` (FIELD_GAP, FIELD_ROW_GAP, cantos inteiros). `PH2D_CARDS=0` continua encostado |
+| Q | Texto a sair por baixo da caixa do nome; fileira vazia em Delivery (`stepper_row` já somava, somava-se outra vez: o painel de antes também a tinha) | Audio Editor (Transport, Delivery) | **curado** (`text_input` centra a linha medida num cartão; `y += gap`) |
+| Q2 | `◀ ▬ ▶` sem texto: em Effects e Delivery o nome vem do motor; na foto sem motor fica vazio | Audio Editor | olhar no app (a cena do arnês não publica presets) |
+| R | Slider com rótulo à esquerda, fora da grelha; valor 3 px abaixo da barra | Audio Editor (Crossfade, Amount, Pitch/Gain jitter, Quality) | **curado**: rótulo em cima, barra e valor na mesma linha |
+| R2 | «Add clips to build a set», tempo do clip, «RAM —» | Audio Editor | **curado**: `grupo::linha_de_texto` |
+| R3 | Ícones de Chain e o de repor maiores que os dos cartões aprovados; `Chain` à esquerda | Audio Editor (Effects) | aberto |
+| S | Frase indentada (x do corpo + 8) | Macros | **curado**: `bloco`/`linha` sem recuo num cartão |
+| T | Lista `1. Stroke 1 ▪ 0.50`: linha baixa, texto abaixo da amostra | Macros | **curado**: `FIELD_H`, texto no meio |
+| U | Título de sub-grupo a 8 do controlo de cima | Vector Advanced | **curado**: 14 até às letras (`o_advanced_separa…`) |
+| U2 | Chevron do sub-grupo 3 px acima do texto. A cura em `section_header` (centrar a linha medida num cartão) está lá; a foto não mudou: o pintor do título não lê a linha que eu medi | Vector Advanced | aberto |
+| V | «Pick Shapes» com a letra menor que «Blend»: é um segmentado de uma peça (o modo acende) ao lado de um botão | Vector Advanced | dúvida (Widget::Choice × Button; o tom do modo é decisão) |
+| W | Abreviatura que cabia inteira: `Persp`, `Symm`, `Accel`, `Morph t`, `Norm LUFS`, `Rm DC`, `Comp`, `Iso`, `Stag Sq`, `Stag Hex`, `Tri`, `Von4`, `Moore8` | Vector, Audio, Grid | **curado** |
+| W2 | Ainda crípticos: `Offset (1/n)`, `Jetty`, `+M`, `DTCG`, `Cross` (Snap) | Vector, Timeline, Design Tokens | dúvida: sem nome melhor sem o dono (`Jetty` é o nome do Visio) |
+| X | Duas letras iguais lado a lado (D2): Size/Spacing «S S», Spacing/Slide, Width/Slant/Optical, Temperature/Tint, Cover/Dry cover, Fall-off/Full for, Random 2nd/Pressure 2nd «2» | Vector, Painter, Color Equalization | aberto: o rótulo em cima desambigua; pede letra declarada por campo |
+| Y | Align mais estreito que a coluna, Width fora dela | Vector Paragraph | **curado**: `Widget::Choice` |
+| Y2 | `Morph` sob o vazio do rótulo vizinho (botão à esquerda, campo com rótulo à direita) | Vector Advanced | baixo |
+| Z | Rótulo solto a 10 de um controlo sem rótulo: `Whole canvas`, `no canvas`, `Lighting`, `Modifiers`, `Overlay Color`, `Taper` | Painter | **curado**: `rotulo_sobre_controlo`; o visor do Taper entra no censo com o tamanho dele |
+| Z2 | Rótulo curto a meio da faixa quando o vizinho quebra em duas linhas (11,5) | Wet Tuning | **curado**: cola no controlo (`cards_rotulos`) |
+| AA | «Hello / world» sem caixa, parece título | Vector Text | dúvida: é a leitura do texto, edita-se no canvas |
+| AB | Nome do botão repete o título: «Text on Path», «Morph», «Envelope» | Vector | baixo |
+| AC | Linhas da lista sem vão | Tags, Macros | não é defeito: a lista contígua é a do Figma e a da porta `list_row` |
+| AD | Marca colada ao nome numa caixa de meia coluna | Audio Mixer | não é defeito: `check_em`, lei de 05 §8 |
+| AE | Verbos de 1 coluna quando dois cabem | Pixel (Select, Edit, Sprite) | **curado**: `filas_de_botoes` |
 | AF | Selector de 5 opções longas em 3 filas | Pixel (Selector) | baixo |
+
+### Painel a painel
+
+| Painel | Olhado | Estado |
+|---|---|---|
+| Vector | Transform, Snap, Fill & Stroke, Effects, Pattern, Stroke Pattern, Brush, Connector, Vertex, Text, Font, Paragraph, Text on Path, Axes, Advanced | curado salvo X, U2, V, W2; Fill & Stroke e Effects são F43/F44: intocados |
+| Painter | Wet Paint (Basics, Mixing, Randomize, Shape, Paper, Grain, Stroke, Pen, Symmetry, Tiling) | curado salvo X. E10 intocado. **Por olhar**: Layers, Mask, Deform, Selection, Composite, Impasto, Watercolor, aberto a aberto (o portão mede-os) |
+| Wet Tuning | Paint, Water (2 de 4 fatias) | portão a zero; por olhar: as 2 últimas fatias |
+| Physics, Flip, Tags, Assets, Padding, Upscale, Equalize, Background Removal, Color Equalization (1.ª fatia), Bones (1.ª fatia), Design Tokens (1.ª fatia), Timeline (barra) | sim | sem defeito de vão. **Por olhar**: Color Eq, Bones e Tokens, fatias seguintes |
+| Grid | 1.ª fatia | W curado; H2 (`Radius 30.000`) é do outro agente; por olhar a 2.ª |
+| Audio Mixer, Audio Editor, Macros | sim | curados salvo R3, Q2 |
+| Pixel | Pencil, Colors, Layers, Palette, Selector, Symmetry, Select, Edit, Sprite | curado salvo AF |
+| Motion Graph (barra) | **não**: `q_foto_paineis` deu 0 fatias sem documento | por fazer: pede cena |
+| Flip Frames, Pixel Timeline | fotos em `q_foto_paineis`, **não olhadas** | por olhar |
 
 ## Decisões tomadas sem o dono
 
+- Audio Editor: o dono pediu em 2026-09 botões encostados («tudo o que puder ser ajuntado, ajunte»), no painel antigo. Num cartão vale a lei de 05 §4 e o padrão aprovado de Physics e Flip: soltos. `PH2D_CARDS=0` fica como ele pediu.
+- Slider do Audio Editor com rótulo em cima, como todo campo (02 §2); o valor continua a ser a leitura do motor, sem caixa.
+- «Morph t» virou «Amount», «Von4/Moore8» viraram «4 Neighbors/8 Neighbors», «Comp» virou «Compressor». Os ids não mudam.
 - 9-Slice: os dois atalhos saíram de ao lado da grade para uma fila própria nas colunas do cartão; ao lado da grade ficou a legenda, fila a fila. Rive edita N-Slice por eixos no canvas, sem grade: não serve de modelo aqui.
 - «Remove X» sem o «x ». Direction com os nomes do Aseprite (Forward, Reverse, Ping-pong, Ping-pong Rev): a fila desce para duas linhas, sem corte.
 - Frases com distância passam a seguir a unidade escolhida (px ou m), como o campo ao lado.

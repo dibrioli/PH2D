@@ -377,6 +377,11 @@ fn os_botoes_do_audio_ficam_soltos_na_grelha() {
     assert_eq!(play.x, stop.x, "a coluna do cartão");
     assert!((play.w - (stop.w + laco.w + m::FIELD_GAP)).abs() < 0.5);
     let codec = rect_de(&regs, a::AEDIT_CODEC_PREV);
+    let seta = rect_de(&regs, a::AEDIT_CODEC_NEXT);
+    assert!(
+        (seta.x + seta.w - (play.x + play.w)).abs() < 0.5,
+        "a seta de `◀ nome ▶` acaba na borda do cartão: {seta:?} {play:?}"
+    );
     let qualidade = regs
         .iter()
         .rev()

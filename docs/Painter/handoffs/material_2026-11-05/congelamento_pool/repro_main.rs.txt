@@ -1,0 +1,72 @@
+// A forma do PH2D: o fio-sim corre passos paralelos vindos de FORA do pool e devolve o motor por canal;
+// o fio principal entra no pool (no_pool) e, lá dentro, espera o motor com recv() sem prazo.
+// Variante: argv[1] = "dentro" (a forma de hoje) · "fora" (a espera fora do pool: o controlo).
+use rayon::prelude::*;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{mpsc, Arc};
+use std::time::{Duration, Instant};
+
+fn estagio(v: &mut [u64]) {
+    v.par_chunks_mut(64).for_each(|c| {
+        for x in c.iter_mut() {
+            *x = x.wrapping_mul(31).wrapping_add(7);
+        }
+    });
+}
+
+fn main() {
+    let dentro = std::env::args().nth(1).as_deref() != Some("fora");
+    let (to_w, rx) = mpsc::channel::<Box<Vec<u64>>>();
+    let (tx, mut back) = mpsc::channel::<Box<Vec<u64>>>();
+    let want = Arc::new(AtomicBool::new(false));
+    let w2 = want.clone();
+    std::thread::spawn(move || {
+        while let Ok(mut m) = rx.recv() {
+            loop {
+                if w2.swap(false, Ordering::AcqRel) {
+                    if tx.send(m).is_err() {
+                        return;
+                    }
+                    break;
+                }
+                estagio(&mut m);
+            }
+        }
+    });
+    let ciclos = Arc::new(AtomicU64::new(0));
+    let c2 = ciclos.clone();
+    std::thread::spawn(move || {
+        let mut m = Box::new(vec![1u64; 200_000]);
+        loop {
+            want.store(false, Ordering::Release);
+            to_w.send(m).unwrap();
+            std::thread::sleep(Duration::from_micros(200));
+            let (b, w) = (&mut back, &want);
+            let traz = move || {
+                w.store(true, Ordering::Release);
+                b.recv().unwrap()
+            };
+            m = if dentro { rayon::join(traz, || ()).0 } else { traz() };
+            c2.fetch_add(1, Ordering::Relaxed);
+        }
+    });
+    let t0 = Instant::now();
+    let mut ant = 0;
+    loop {
+        std::thread::sleep(Duration::from_secs(3));
+        let n = ciclos.load(Ordering::Relaxed);
+        if n == ant {
+            println!(
+                "{}: TRAVOU depois de {n} ciclos, {:.0} s",
+                if dentro { "dentro" } else { "fora" },
+                t0.elapsed().as_secs_f32()
+            );
+            std::process::exit(3);
+        }
+        ant = n;
+        if t0.elapsed() > Duration::from_secs(45) {
+            println!("{}: sem trava, {n} ciclos em 45 s", if dentro { "dentro" } else { "fora" });
+            std::process::exit(0);
+        }
+    }
+}

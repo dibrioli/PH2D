@@ -630,6 +630,40 @@ Medido (traço de 40 px; massa / ecrã ÷ fábrica; «antes» = o mesmo processo
 
 Portões `grao_a_mao_tests::casos_abertos_*` (com o braço «sem a cura», que sangra, em cada um). **Aberto:** uma macro gravada antes que arma um Grain toca agora a quantidade nova.
 
+## Bug #66 (FECHADO 05/11, ordem do dono) — o app congela ao pintar: espera pelo motor dentro de um job do rayon
+
+**Sintoma:** smoke do dono: congelou ao pintar com Knife Grainy e não voltou; processo vivo, 0 % de CPU, todos os fios em futex.
+
+**Mecanismo** (pilhas e identificação dos quadros em [`congelamento_pool/`](handoffs/material_2026-11-05/congelamento_pool/); o binário não tem símbolos, os quadros saem dos `Location`/textos em volta):
+1. `ph2d-wet-sim`, de fora do pool, corre um estágio paralelo e dorme no latch.
+2. O fio principal entra no pool por `PainterTool::no_pool` (`rayon::join`), que injecta um job na fila global.
+3. Um operário que esperava um pedaço do estágio está em `wait_until` → `find_work`: sem trabalho local nem para roubar, faz `pop_injected_job` e corre o job EM CIMA do pedaço inacabado.
+4. O job chega a `WetSession::bring_home`, `recv` sem prazo. O worker só devolve o motor na fronteira do estágio, e o estágio precisa do pedaço que está por baixo. Ninguém acorda.
+
+**Como o motor estava fora com o traço a começar:** o pen-down traz o motor para casa, mas a faca só pousa no 1.º movimento. Um quadro nesse intervalo entrega-o ao worker (`hand_off_sim` só recusa com `stroke_open`, que o 1.º lote é que abre). O 1.º lote não tenta `try_bring_home_now` (só com `stroke_open`) e cai na porta bloqueante. Lido no código e confirmado pelo portão; nada nas pilhas prova que foi este o instante no binário do dono.
+
+**Origem:** `5c1c5a8aa6` (R3, `no_pool`), já no main antes da linha PainterWatercolor. **Por que nenhum teste viu:** `no_pool` faz `if cfg!(test) { return f(self) }`, nos testes unitários o caminho perigoso nunca corre; e nenhum teste de `tests/it` punha um quadro entre o pen-down e o 1.º movimento.
+
+**Censo das esperas sem prazo alcançáveis em job do pool:**
+
+| Sítio | Veredito |
+|---|---|
+| `dab_route.rs` `bring_home` da porta, `wetpaint_pousa_adiados`, recursão da mangueira | a família: passam a correr FORA do pool, na ordem de antes |
+| `composite.rs:126,128` (via `por_quadro.rs:41`) | seguro: só entra depois de `try_bring_home_now` devolver `true`, logo é no-op; o guarda cobre |
+| `session.rs` `reconcile_facts`, `tampa.rs:194,303` no corpo | seguros: o motor já está em casa; `hand_off_sim` só tem um chamador de produto, o tique (`ciclo.rs:243`), fora do pool |
+| `offthread_ritmo.rs:91` (`Ritmado::pede`) | fora do pool: só `try_bring_home*`, agora todos no fio do evento |
+| `offthread_otica.rs` `no_pool` (`compoe`) | seguro: não espera ninguém, e o compositor recebe no `recv` de fora do job |
+| `fita::trava` em `volta_do_roteiro` (trava durante `anda_ate`) | fora do pool depois da cura; a fita só é tocada pelo dono da sessão |
+| `thread::scope` + `join` em `composite_por_quadro.rs`, `compositor/compose.rs`, `stamp_banded.rs` | não formam ciclo: esperam só os fios que criaram, nunca o worker. Lido, não exercitado com pool de 1 fio |
+
+**Cura:** `stamp_dabs_wetpaint` parte-se em duas metades: `wet_lote_com_o_motor_em_casa` (filas, sessão, motor em casa, fora do pool) e o corpo (depósito e composição, dentro). A ordem das perguntas ao motor é a de antes, logo a fita de macro não muda. `bring_home` passa a recusar alto (`assert!`) esperar num fio do pool: a família não volta calada.
+
+**Medido:**
+- `o_motor_nao_se_espera_dentro_do_pool::o_traco_nao_espera_o_motor_dentro_do_pool` (`tests/it`, sem `cfg(test)`, com vigia que encerra o processo): com o guarda e **sem** a partição, reprova em 0,7 s, em `offthread.rs:215`; com os dois, verde.
+- ⚠️ **O impasse natural NÃO se reproduziu no app:** sem guarda e sem cura, 6 corridas (20–60 voltas, pool de 32 e de 2 fios, com e sem poça) passaram. O vermelho determinístico do portão é o do guarda: prova que a espera acontece dentro do job, não que trava em cada corrida. A prova do impasse é a das pilhas do processo travado + a reprodução mínima (`repro_main.rs.txt`, só rayon e canais): espera dentro 3/3 travam em 6 s (1–3 ciclos), espera fora 0/3 (122 872–139 363 ciclos em 45 s).
+- Velocidade, faca e aguada a 3840×2160, 40 movimentos, mesmo processo, 9 blocos rodados, o mínimo, `--profile smoke` (`nova · velha · sem pool`, ms por traço): Knife Grainy 505,1 · 516,0 · 520,2; Knife Smooth 3 585,4 · 591,9 · 626,4; Wet Round 183,0 · 183,9 · 192,1. A rota nova não devolve a perda do R3. Sonda temporária, removida.
+- Bytes: `a_largura_de_fabrica_e_a_aprovada` e `a_miniatura_de_fabrica_e_a_que_o_motor_pinta_hoje` verdes, nada a aprovar.
+
 ## Bug #65 (05/11, achados da auditoria da parte de CPU) — o Grain e o Smooth Edges fora do traço do Pincel
 
 Portões em `wetpaint/grao_nos_slots_tests.rs` e `otica_no_tique_tests.rs`, sonda `sonda_suspeitas_do_grao`.

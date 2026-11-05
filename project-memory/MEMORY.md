@@ -21,6 +21,7 @@
 - ⭐⭐ [Dono 04/11: Smooth Edges por traço, um por pincel (revoga 27/10); Wet Liner e Wet Wash 0,12 + Edge Darkening 0](project_smooth_edges_per_brush_owner_decision_2026_11_04.md)
 - ⭐⭐ [Dono 01/11 (F43): Effects/Filters do Vector no layout Figma — «+» dropdown, lista, propriedades à ESQUERDA](project_vector_effects_filters_figma_layout_2026_11_01.md) · ⭐⭐ [F44: Fill e Stroke no MESMO padrão; Cap/Join/Align com ícones](project_vector_fill_stroke_figma_layout_2026_11_01.md) · ⭐⭐ [campo que não se explica sozinho leva rótulo](feedback_a_field_that_is_not_self_evident_gets_a_label.md) · [unidade no rótulo, nunca na caixa (iPad)](feedback_units_live_in_the_label_not_in_the_box.md)
 - ⭐⭐ [E12 (05/11) NÃO feita: a régua de furos reprova quem passa a cobrir; não apague a lei velha antes de refazê-la](project_e12_blocked_by_mother_gate_ruler_2026_11_05.md)
+- ⛔⛔ [Espera sem prazo dentro de job do rayon é deadlock: o operário rouba o job por cima do pedaço (Bug #66)](feedback_a_blocking_wait_inside_a_pool_job_is_a_deadlock.md)
 - ⛔ [`fila-pesada.sh correr` corre TUDO: `ver` antes (05/11)](feedback_clear_the_heavy_queue_before_running_it.md)
 - ⭐⭐ [Dono 03/11: teste de pincel = alarme BARATO que aponta o que mudou + o DONO decide (gizmo × traço); fim das tabelas de 40 tamanhos](project_brush_tests_cheap_alarm_owner_decides_2026_11_03.md)
 - ⭐⭐ [Dono 04/11: o mesmo traço dá o mesmo byte em qualquer computador; o motor não chama a matemática do sistema](project_same_stroke_same_byte_on_any_machine_2026_11_04.md)

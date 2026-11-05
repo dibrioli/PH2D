@@ -48,6 +48,9 @@ impl PainterTool {
     /// pool os passes dividem-se pela fila do próprio fio e quem chama trabalha. As contas são as mesmas, no
     /// mesmo fio ou noutro (as linhas de cada passe são independentes por contrato), logo os bytes também.
     /// Nos testes corre no fio do teste (os interruptores de teste são `thread_local!`).
+    ///
+    /// ⛔ **`f` nunca espera o motor** (`WetSession::bring_home` recusa-o): um operário em `wait_until` rouba este job
+    /// por cima de um pedaço do estágio do worker, e o worker só devolve o motor quando esse pedaço acabar.
     pub(in crate::tool::paint) fn no_pool<R: Send>(
         &mut self,
         f: impl FnOnce(&mut Self) -> R + Send,

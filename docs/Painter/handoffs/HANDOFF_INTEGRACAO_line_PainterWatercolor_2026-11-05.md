@@ -110,6 +110,11 @@ PERFIL DO LOOP DO AGENTE — 20 sessao(oes) mais recentes
   ✓ contexto no inicio da sessao               68 mil   alvo: <= 80 mil
 ```
 
+## 11b. Na integração de 05/11 (integrador)
+
+- **Bug #66, o congelamento do smoke do dono:** curado na árvore combinada, não nesta linha ([BUGS](../BUGS_painter.md), [provas](material_2026-11-05/congelamento_pool/)). O defeito já estava no main (`5c1c5a8aa6`). Portão `o_motor_nao_se_espera_dentro_do_pool`; o impasse natural não se reproduziu no app, o vermelho determinístico é o do guarda em `bring_home`.
+- **Cruzamentos com a NovaUI:** o cartão Paper ainda mostrava o Smooth Edges (`5cbcbaa00d`); `ph2d-render` passou a `det_exp` para bater com a cópia canónica. `ph2d-render` continua fora de `o_motor_nao_chama_a_libm`.
+
 ## 12. SMOKE DO DONO (amanhã) — em passos
 
 Binário: `host-desktop` em `--profile smoke`. Para cada teste, abra o programa assim:

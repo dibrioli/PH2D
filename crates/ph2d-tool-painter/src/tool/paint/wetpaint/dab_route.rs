@@ -17,16 +17,31 @@
 
 use super::*;
 
+/// O que a metade de fora do pool decidiu e a de dentro lê.
+struct PreparoDoLote {
+    erasing: bool,
+    opacidade_da_pressao: Option<f32>,
+    nasceu_agora: bool,
+    agua_pela_divida: bool,
+}
+
 impl PainterTool {
     /// The Wet Paint dab route ([`Self::stamp_dabs_inner`] arm). The dab list
     /// is already mirrored (Symmetry) and replicated (Tiling) — the engine
     /// sees exactly what the colour routes would have seen.
     pub(in crate::tool::paint) fn stamp_dabs_wetpaint(&mut self, dabs: &[Dab], brush: &BrushSpec) {
-        // O lote corre dentro do pool do rayon ([`Self::no_pool`]): os passes paralelos dele dividem-se ali.
-        self.no_pool(|t| t.stamp_dabs_wetpaint_corpo(dabs, brush));
+        // Tudo o que pode esperar o motor fica FORA do pool; só o que já o tem em casa entra ([`Self::no_pool`]).
+        if let Some(preparo) = self.wet_lote_com_o_motor_em_casa(dabs, brush) {
+            self.no_pool(|t| t.stamp_dabs_wetpaint_corpo(dabs, brush, preparo));
+        }
     }
 
-    fn stamp_dabs_wetpaint_corpo(&mut self, dabs: &[Dab], brush: &BrushSpec) {
+    /// A metade do lote de antes do pool: as filas, a sessão e o motor em casa. `None` = o lote acabou aqui.
+    fn wet_lote_com_o_motor_em_casa(
+        &mut self,
+        dabs: &[Dab],
+        brush: &BrushSpec,
+    ) -> Option<PreparoDoLote> {
         // A ponta de N imagens (L19): também o lote ADIADO (pousado no tique) carimba cada corrida com a sua imagem.
         if self.mangueira_viva() {
             // O lote VIRTUAL (as pontas rectas) leva a lane de cada dab em `fecho`, paralela ao lote: cada corrida lê a
@@ -38,7 +53,7 @@ impl PainterTool {
                 .as_ref()
                 .map(|s| s.fecho.clone())
                 .unwrap_or_default();
-            return self.stamp_dabs_mangueira_com(dabs, |t, i, corrida| {
+            self.stamp_dabs_mangueira_com(dabs, |t, i, corrida| {
                 if !fecho.is_empty()
                     && let Some(s) = t.paint.wetpaint.session.as_mut()
                 {
@@ -51,6 +66,7 @@ impl PainterTool {
                     s.fecho.clone_from(&fecho);
                 }
             });
+            return None;
         }
         let (w, h) = self.source_size;
         // Two doors in, one belt (doc 21): a LIVE incremental gesture (the
@@ -61,7 +77,7 @@ impl PainterTool {
         // routing regression, and it must stay a WALL, not a debug_assert.
         let live = self.paint.wetpaint.live_gesture && brush.stroke_method.is_incremental();
         if dabs.is_empty() || w == 0 || h == 0 || !(live || self.paint.wetpaint.deposit_pass) {
-            return;
+            return None;
         }
         // A marca do artista (W9): a tinta destes dabs aparece pela água — marcam já. Na água do artista
         // (W12) a cobertura sai do composite.
@@ -80,7 +96,7 @@ impl PainterTool {
                     groups: self.paint.dab_groups.clone(),
                     tex_rng: self.paint.tex_rng,
                 });
-                return;
+                return None;
             }
             if !sess.adiados.is_empty() {
                 self.wetpaint_pousa_adiados();
@@ -100,23 +116,50 @@ impl PainterTool {
         let nasceu_agora = self.paint.wetpaint.session.is_none();
         if self.paint.wetpaint.session.is_none() {
             if erasing {
-                return;
+                return None;
             }
             self.ensure_wet_session();
         }
+        // J13b P8: com o compositor, o sujo que o motor traz é da água e vai pela dívida ([`super::otica_no_tique`]).
+        let agua_pela_divida =
+            !nasceu_agora && !self.paint.wetpaint.composite_pendente && self.wet_otica_fora();
+        // A PORTA: o motor pode estar com o worker desde o fim do último tick.
+        self.paint
+            .wetpaint
+            .session
+            .as_mut()
+            .expect("ensured above")
+            .bring_home();
+        Some(PreparoDoLote {
+            erasing,
+            opacidade_da_pressao,
+            nasceu_agora,
+            agua_pela_divida,
+        })
+    }
+
+    /// A metade do lote de dentro do pool: o motor já está em casa, e nada daqui espera por ele.
+    fn stamp_dabs_wetpaint_corpo(
+        &mut self,
+        dabs: &[Dab],
+        brush: &BrushSpec,
+        preparo: PreparoDoLote,
+    ) {
+        let PreparoDoLote {
+            erasing,
+            opacidade_da_pressao,
+            nasceu_agora,
+            agua_pela_divida,
+        } = preparo;
+        let (w, h) = self.source_size;
         // O dual brush (L6): as marcas da 2.ª ponta na máscara do traço, que recorta o pigmento que pousa.
         let dual =
             self.recorte_do_dual_no_wet(!erasing && self.paint.wetpaint.tool == WetTool::Paint);
         // Take the session out so the prep below can borrow `self.paint`'s
         // Shape state alongside it (disjoint in fact, not in the borrow
         // checker's eyes); restored before the composite.
-        // J13b P8: com o compositor, o sujo que o motor traz é da água e vai pela dívida ([`super::otica_no_tique`]).
-        let agua_pela_divida =
-            !nasceu_agora && !self.paint.wetpaint.composite_pendente && self.wet_otica_fora();
         let mut taken = self.paint.wetpaint.session.take().expect("ensured above");
         let sess = &mut taken;
-        // A PORTA: o motor pode estar com o worker desde o fim do último tick.
-        sess.bring_home();
         if agua_pela_divida {
             sess.a_agua_herdada_vai_pela_divida();
         }

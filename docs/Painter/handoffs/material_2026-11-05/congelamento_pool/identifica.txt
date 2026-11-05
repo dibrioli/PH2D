@@ -1,0 +1,250 @@
+entrada=0x26ea1c0 ret=0x55d7d625d1e5 base=0x55d7d3b73000 desvio=0x25
+
+=== fios 544832 (1), 31 quadros
+  #0  0x7fe1c194932d (fora do binario)
+  #1  0x8571c65  0x1d0:c35b355199727627d07ae34a4e2846d67/library/std/src/sys/sync/rwlock/futex.rs:270 | 0x1d7:ld's PID could not be obtainednul byte found in provided datafatal runtime err
+  #2  0x69f3f69  0x8a:ry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/sleep/mod.rs:130 | 0xc8:ry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/sleep/mod.rs:131 | 0xd6:called `Result::unwrap()` on an `Err` value
+  #3  0x69f29fe  0x58:called `Result::unwrap()` on an `Err` valueowner thread | 0x66:gistry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/latch.rs:246 | 0xa0:gistry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/latch.rs:244
+  #4  0x49d0f64  0x3a:_64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/thread/local.rs:429
+  #5  0x4a39f0f  
+  #6  0x4ab2f8c  0x6e:64-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/thread/scoped.rs:206 | 0x7c:scoped thread panickedcomposite band panickedtransform composite band panicked
+  #7  0x48c0df4  
+  #8  0x4b13472  
+  #9  0x4b1782a  
+  #10 0x4b12d6b  
+  #11 0x4b46625  
+  #12 0x4bc0ab9  
+  #13 0x28ea24a  0x6a:ne BodyRise no BodyFall no Bodylane DriftDrift na lane de cimalane da cena2a i | 0x71:try/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.20.1/src/entity/mod.rs:582 | 0x83:despacho_clique_reclamantes.toolPH2D_CORNER_LOG[ph2d-vec] pick: preso ao camin
+  #14 0x28e91db  
+  #15 0x2895f4c  
+  #16 0x28f43fa  0x14b:try/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.20.1/src/entity/mod.rs:582 | 0x152:ne BodyRise no BodyFall no Bodylane DriftDrift na lane de cimalane da cena2a i
+  #17 0x29193ce  
+  #18 0x294eb3e  0x151:y/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.20.1/src/query/fetch.rs:1951 | 0x1fc:rror unexpectedlyErrorBackendNotEnabledFailedToCreateSurfaceForAnyBackendMisma | 0x203:edlyErrorBackendNotEnabledFailedToCreateSurfaceForAnyBackendMismatchingDisplay
+  #19 0x294ecbb  0x7f:rror unexpectedlyErrorBackendNotEnabledFailedToCreateSurfaceForAnyBackendMisma | 0x86:edlyErrorBackendNotEnabledFailedToCreateSurfaceForAnyBackendMismatchingDisplay | 0xed:indowHandlens_viewa Display implementation returned an error unexpectedlyError
+  #20 0x2850bd4  0x102:8c6b5b557f/winit-0.30.13/src/platform_impl/linux/wayland/event_loop/mod.rs:477
+  #21 0x284b8e7  0x91:.io-1949cf8c6b5b557f/winit-0.30.13/src/platform_impl/linux/x11/xdisplay.rs:190 | 0x98:ed to destroy input contextinternal error: entered unreachable codeFailed to f
+  #22 0x29c0bab  0xb6:go/registry/src/index.crates.io-1949cf8c6b5b557f/smol_str-0.2.2/src/lib.rs:494 | 0x12c:rgo/registry/src/index.crates.io-1949cf8c6b5b557f/png-0.18.1/src/common.rs:312 | 0x15a:rgo/registry/src/index.crates.io-1949cf8c6b5b557f/png-0.18.1/src/common.rs:311
+  #23 0x27834f6  0xa:PH2D desktop shell exited cleanly. | 0x44:PH2D desktop shell starting (close window or Cmd+Q to exit)… | 0x68:event loop crashedPH2D desktop shell exited cleanly.
+  #24 0x27aa553  
+  #25 0x27b6e39  0x16b:src/index.crates.io-1949cf8c6b5b557f/calloop-0.13.0/src/sources/generic.rs:290 | 0x1c4:index.crates.io-1949cf8c6b5b557f/calloop-0.13.0/src/sources/ping/eventfd.rs:89 | 0x1cb:s.io-1949cf8c6b5b557f/winit-0.30.13/src/platform_impl/linux/x11/mod.rsshell.in
+  #26 0x858b889  0x72:/rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/rt.rs:141 | 0x8a:r: assertion failed: signal(libc::SIGPIPE, handler) != libc::SIG_ERR, aborting | 0xa9:std::process::exit called re-entrantlystack backtrace:
+  #27 0x27a91fe  0x39:ry/src/index.crates.io-1949cf8c6b5b557f/x11rb-0.13.2/src/connection/mod.rs:585 | 0x50:ry/src/index.crates.io-1949cf8c6b5b557f/x11rb-0.13.2/src/connection/mod.rs:586 | 0x67:ry/src/index.crates.io-1949cf8c6b5b557f/x11rb-0.13.2/src/connection/mod.rs:559
+  #28 0x7fe1c1827c8e (fora do binario)
+  #29 0x7fe1c1827dcb (fora do binario)
+  #30 0x26ea1e5  0x18d:et_layer_nameadd_raster_layer_with_pixelsthe receiver thread died during setup
+
+=== fios 544963 (1), 24 quadros
+  #0  0x7fe1c194932d (fora do binario)
+  #1  0x857e256  0x178:c/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/thread/local.rs:487
+  #2  0x48c9175  0x95:worker nem ponte de dispositivocalled `Result::unwrap()` on an `Err` valueo to | 0x9c:4-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/sync/mpmc/list.rs:456 | 0xae:4-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/sync/mpmc/list.rs:458
+  #3  0x48d69ff  0x2f5:4-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/sync/mpmc/list.rs:243
+  #4  0x4a709c4  
+  #5  0x4a91829  0x36:ineo worker morreu com o canal de ida vivointernal error: entered unreachable  | 0x3d:crates/ph2d-tool-painter/src/tool/paint/wetpaint/offthread.rs:216 | 0x4f:tered unreachable code: checado acimainternal error: entered unreachable code:
+  #6  0x4b821df  
+  #7  0x4c5e151  0x126:internal error: entered unreachable code�� | 0x12d:registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/job.rs:230 | 0x152:registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/job.rs:102
+  #8  0x4c90111  0x5d:`Result::unwrap()` on an `Err` valueinternal error: entered unreachable code�� | 0x64:try/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/registry.rs:530 | 0x78:registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/job.rs:119
+  #9  0x69eef05  0x2d2:try/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/registry.rs:588 | 0x2d9:adPoolBuildErrorRUST_MIN_STACKfatal runtime error: thread result panicked on d | 0x2e5:try/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/registry.rs:195
+  #10 0x68b7f16  0x5:registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/job.rs:102 | 0x20:registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/job.rs:230 | 0x27:entered unreachable codeassertion failed: injected && !worker_thread.is_null()
+  #11 0x68aa07f  0x2e:tion failed: vec.capacity() - start >= lenambiente: cabeçalhoambiente: tamanho | 0x35:argo/registry/src/index.crates.io-1949cf8c6b5b557f/rayon-1.12.0/src/vec.rs:230
+  #12 0x68b7d58  0x197:entered unreachable codeassertion failed: injected && !worker_thread.is_null() | 0x19e:registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/job.rs:230 | 0x1c3:registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/job.rs:102
+  #13 0x68aa07f  0x2e:tion failed: vec.capacity() - start >= lenambiente: cabeçalhoambiente: tamanho | 0x35:argo/registry/src/index.crates.io-1949cf8c6b5b557f/rayon-1.12.0/src/vec.rs:230
+  #14 0x68b7d58  0x197:entered unreachable codeassertion failed: injected && !worker_thread.is_null() | 0x19e:registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/job.rs:230 | 0x1c3:registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/job.rs:102
+  #15 0x68aa07f  0x2e:tion failed: vec.capacity() - start >= lenambiente: cabeçalhoambiente: tamanho | 0x35:argo/registry/src/index.crates.io-1949cf8c6b5b557f/rayon-1.12.0/src/vec.rs:230
+  #16 0x698ad93  0xb3:registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/job.rs:119
+  #17 0x69eef05  0x2d2:try/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/registry.rs:588 | 0x2d9:adPoolBuildErrorRUST_MIN_STACKfatal runtime error: thread result panicked on d | 0x2e5:try/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/registry.rs:195
+  #18 0x69ee8e2  0x2:try/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/registry.rs:917 | 0x14:try/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/registry.rs:824 | 0x1d:try/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/registry.rs:830
+  #19 0x69f40ca  0x10d:called `Result::unwrap()` on an `Err` value | 0x11b:ry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/sleep/mod.rs:291 | 0x14f:ry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/sleep/mod.rs:289
+  #20 0x69f159d  0x1d5:fatal runtime error: thread result panicked on drop, aborting
+  #21 0x85956c9  0x33:runtime error: current thread handle already set during thread spawn, aborting | 0x17e:rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/thread/id.rs:38 | 0x185:r: assertion failed: signal(libc::SIGPIPE, handler) != libc::SIG_ERR, aborting
+  #22 0x7fe1c18acef1 (fora do binario)
+  #23 0x7fe1c194c05c (fora do binario)
+
+=== fios 544968 (1), 15 quadros
+  #0  0x7fe1c194932d (fora do binario)
+  #1  0x8571c65  0x1d0:c35b355199727627d07ae34a4e2846d67/library/std/src/sys/sync/rwlock/futex.rs:270 | 0x1d7:ld's PID could not be obtainednul byte found in provided datafatal runtime err
+  #2  0x69f3e43  0x16:called `Result::unwrap()` on an `Err` value | 0x24:ry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/sleep/mod.rs:187 | 0x5e:ry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/sleep/mod.rs:131
+  #3  0x69eeeb0  0x27d:try/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/registry.rs:588 | 0x284:adPoolBuildErrorRUST_MIN_STACKfatal runtime error: thread result panicked on d
+  #4  0x68b7f16  0x5:registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/job.rs:102 | 0x20:registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/job.rs:230 | 0x27:entered unreachable codeassertion failed: injected && !worker_thread.is_null()
+  #5  0x68aa07f  0x2e:tion failed: vec.capacity() - start >= lenambiente: cabeçalhoambiente: tamanho | 0x35:argo/registry/src/index.crates.io-1949cf8c6b5b557f/rayon-1.12.0/src/vec.rs:230
+  #6  0x68b7d58  0x197:entered unreachable codeassertion failed: injected && !worker_thread.is_null() | 0x19e:registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/job.rs:230 | 0x1c3:registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/job.rs:102
+  #7  0x6972ca1  0x5f:assertion failed: injected && !worker_thread.is_null() | 0x66:try/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/registry.rs:530 | 0x7a:registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/job.rs:119
+  #8  0x69eef05  0x2d2:try/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/registry.rs:588 | 0x2d9:adPoolBuildErrorRUST_MIN_STACKfatal runtime error: thread result panicked on d | 0x2e5:try/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/registry.rs:195
+  #9  0x69ee8e2  0x2:try/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/registry.rs:917 | 0x14:try/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/registry.rs:824 | 0x1d:try/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/registry.rs:830
+  #10 0x69f40ca  0x10d:called `Result::unwrap()` on an `Err` value | 0x11b:ry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/sleep/mod.rs:291 | 0x14f:ry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/sleep/mod.rs:289
+  #11 0x69f159d  0x1d5:fatal runtime error: thread result panicked on drop, aborting
+  #12 0x85956c9  0x33:runtime error: current thread handle already set during thread spawn, aborting | 0x17e:rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/thread/id.rs:38 | 0x185:r: assertion failed: signal(libc::SIGPIPE, handler) != libc::SIG_ERR, aborting
+  #13 0x7fe1c18acef1 (fora do binario)
+  #14 0x7fe1c194c05c (fora do binario)
+
+=== fios 673710 (1), 15 quadros
+  #0  0x7fe1c194932d (fora do binario)
+  #1  0x8571c65  0x1d0:c35b355199727627d07ae34a4e2846d67/library/std/src/sys/sync/rwlock/futex.rs:270 | 0x1d7:ld's PID could not be obtainednul byte found in provided datafatal runtime err
+  #2  0x69f3f69  0x8a:ry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/sleep/mod.rs:130 | 0xc8:ry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/sleep/mod.rs:131 | 0xd6:called `Result::unwrap()` on an `Err` value
+  #3  0x69f29fe  0x58:called `Result::unwrap()` on an `Err` valueowner thread | 0x66:gistry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/latch.rs:246 | 0xa0:gistry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/latch.rs:244
+  #4  0x688953c  0x29:entered unreachable codeassertion failed: injected && !worker_thread.is_null() | 0x30:registry/src/index.crates.io-1949cf8c6b5b557f/rayon-core-1.13.0/src/job.rs:230
+  #5  0x68aa118  0x64:argo/registry/src/index.crates.io-1949cf8c6b5b557f/rayon-1.12.0/src/vec.rs:230 | 0x6b:tion failed: vec.capacity() - start >= lenambiente: cabeçalhoambiente: tamanho
+  #6  0x6959fb1  0x278:crates/ph2d-wet-paint/src/solver/project.rs:161 | 0x288:crates/ph2d-wet-paint/src/solver/project.rs:189 | 0x295:crates/ph2d-wet-paint/src/solver/project.rs:190
+  #7  0x6915c36  
+  #8  0x68f1bde  0x39:crates/ph2d-wet-paint/src/painter/stage.rs:49 | 0x96:crates/ph2d-wet-paint/src/painter/stage.rs:54 | 0xa2:crates/ph2d-wet-paint/src/painter/stage.rs:22
+  #9  0x4aa0659  0x26:crates/ph2d-tool-painter/src/tool/paint/wetpaint/offthread/placa.rs:108 | 0x77:crates/ph2d-tool-painter/src/tool/paint/wetpaint/offthread/placa.rs:103 | 0xed:&⚠️ [wet-gpu] uma submissão levou � 
+  #10 0x4ab5ce3  0xe9:crates/ph2d-tool-painter/src/tool/paint/stamp_banded.rs:401
+  #11 0x49e75e6  
+  #12 0x85956c9  0x33:runtime error: current thread handle already set during thread spawn, aborting | 0x17e:rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/thread/id.rs:38 | 0x185:r: assertion failed: signal(libc::SIGPIPE, handler) != libc::SIG_ERR, aborting
+  #13 0x7fe1c18acef1 (fora do binario)
+  #14 0x7fe1c194c05c (fora do binario)
+
+=== fios 673709 (1), 11 quadros
+  #0  0x7fe1c194932d (fora do binario)
+  #1  0x857e256  0x178:c/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/thread/local.rs:487
+  #2  0x48c9175  0x95:worker nem ponte de dispositivocalled `Result::unwrap()` on an `Err` valueo to | 0x9c:4-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/sync/mpmc/list.rs:456 | 0xae:4-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/sync/mpmc/list.rs:458
+  #3  0x48d8f24  
+  #4  0x4a70b89  0x274:crates/ph2d-tool-painter/src/tool/paint/curve_trim.rs:63
+  #5  0x48e94ad  
+  #6  0x4ab5e4e  0x233:fregão entrou em pânicoo worker ritmado morreu (pânico na thread da sim) — o p | 0x241:crates/ph2d-tool-painter/src/tool/paint/selection_overlay.rs:107 | 0x254:crates/ph2d-tool-painter/src/tool/paint/stamp_banded.rs:401
+  #7  0x49e77b3  
+  #8  0x85956c9  0x33:runtime error: current thread handle already set during thread spawn, aborting | 0x17e:rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/thread/id.rs:38 | 0x185:r: assertion failed: signal(libc::SIGPIPE, handler) != libc::SIG_ERR, aborting
+  #9  0x7fe1c18acef1 (fora do binario)
+  #10 0x7fe1c194c05c (fora do binario)
+
+=== fios 544867 (1), 10 quadros
+  #0  0x7fe1c18b6132 (fora do binario)
+  #1  0x7fe1c193c062 (fora do binario)
+  #2  0x3d292a5  0x75:internal error: entered unreachable code | 0x7c:cargo/registry/src/index.crates.io-1949cf8c6b5b557f/alsa-0.11.0/src/poll.rs:50 | 0xc2:argo/registry/src/index.crates.io-1949cf8c6b5b557f/alsa-0.11.0/src/pcm.rs:1155
+  #3  0x3d1fc72  0x1ae:Device disconnectedCould not create pipe
+  #4  0x3d2015b  0xad:stry/src/index.crates.io-1949cf8c6b5b557f/cpal-0.18.2/src/host/alsa/mod.rs:687 | 0x15f:try/src/index.crates.io-1949cf8c6b5b557f/cpal-0.18.2/src/host/alsa/mod.rs:1105 | 0x171:stry/src/index.crates.io-1949cf8c6b5b557f/cpal-0.18.2/src/host/alsa/mod.rs:345
+  #5  0x3cb7c5d  
+  #6  0x3ca557e  
+  #7  0x85956c9  0x33:runtime error: current thread handle already set during thread spawn, aborting | 0x17e:rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/thread/id.rs:38 | 0x185:r: assertion failed: signal(libc::SIGPIPE, handler) != libc::SIG_ERR, aborting
+  #8  0x7fe1c18acef1 (fora do binario)
+  #9  0x7fe1c194c05c (fora do binario)
+
+=== fios 544947,544948,544949,544950,544951,544952... (30), 10 quadros
+  (forma ociosa do pool; nao identificada)
+
+=== fios 544862 (1), 9 quadros
+  #0  0x7fe1c18b6132 (fora do binario)
+  #1  0x7fe1c193c062 (fora do binario)
+  #2  0x346f3b8  0x240:fatal runtime error: unreachable, aborting
+  #3  0x3465e4e  0xdc:wrap()` on an `Err` valuetimeout too largeSomehow got invalid index from event | 0xfe:.crates.io-1949cf8c6b5b557f/gilrs-core-0.6.8/src/platform/linux/gamepad.rs:481 | 0x10f:4Received event with devnode that is not valid utf8: �
+  #4  0x346fc43  0x23:ailed to create udev monitor for hot plug thread!minmaxUnknownErrnoEPERMENOENT | 0x46:.crates.io-1949cf8c6b5b557f/gilrs-core-0.6.8/src/platform/linux/gamepad.rs:186 | 0x52:ug thread!minmaxUnknownErrnoEPERMENOENTESRCHEINTREIOENXIOE2BIGENOEXECEBADFECHI
+  #5  0x346bdc4  0x1ce:fatal runtime error: thread result panicked on drop, aborting
+  #6  0x85956c9  0x33:runtime error: current thread handle already set during thread spawn, aborting | 0x17e:rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/thread/id.rs:38 | 0x185:r: assertion failed: signal(libc::SIGPIPE, handler) != libc::SIG_ERR, aborting
+  #7  0x7fe1c18acef1 (fora do binario)
+  #8  0x7fe1c194c05c (fora do binario)
+
+=== fios 544863 (1), 9 quadros
+  #0  0x7fe1c18b6132 (fora do binario)
+  #1  0x7fe1c19008ea (fora do binario)
+  #2  0x858ff77  0x2a:8cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/sys/thread/unix.rs:595
+  #3  0x34544df  0x10c:ceCloseSetListenerPositionSetGamepadsAddGamepadgamepad_idSetRepeatrepeatmodelS | 0x12f:egistry/src/index.crates.io-1949cf8c6b5b557f/gilrs-0.11.2/src/ff/server.rs:157 | 0x1b8:egistry/src/index.crates.io-1949cf8c6b5b557f/gilrs-0.11.2/src/ff/server.rs:159
+  #4  0x345f308  
+  #5  0x3458fe3  0x2f1:failed to write whole buffer
+  #6  0x85956c9  0x33:runtime error: current thread handle already set during thread spawn, aborting | 0x17e:rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/thread/id.rs:38 | 0x185:r: assertion failed: signal(libc::SIGPIPE, handler) != libc::SIG_ERR, aborting
+  #7  0x7fe1c18acef1 (fora do binario)
+  #8  0x7fe1c194c05c (fora do binario)
+
+=== fios 544879 (1), 9 quadros
+  #0  0x7fe1c18b6132 (fora do binario)
+  #1  0x7fe1c18a94e8 (fora do binario)
+  #2  0x7fe1c18ac4ad (fora do binario)
+  #3  0x7fe1b17f569c (fora do binario)
+  #4  0x7fe1b1d5c139 (fora do binario)
+  #5  0x7fe1b1d538e6 (fora do binario)
+  #6  0x7fe1b17f5854 (fora do binario)
+  #7  0x7fe1c18acef1 (fora do binario)
+  #8  0x7fe1c194c05c (fora do binario)
+
+=== fios 545057 (1), 9 quadros
+  #0  0x7fe1c194932d (fora do binario)
+  #1  0x8571c65  0x1d0:c35b355199727627d07ae34a4e2846d67/library/std/src/sys/sync/rwlock/futex.rs:270 | 0x1d7:ld's PID could not be obtainednul byte found in provided datafatal runtime err
+  #2  0x3f5ea39  0x97:EXIF metadata is not supported for this format | 0xa2: not supported for this format | 0xad: for this format
+  #3  0x3f3a012  
+  #4  0x3f8a918  0x251:ry/src/index.crates.io-1949cf8c6b5b557f/image-0.25.10/src/images/buffer.rs:721 | 0x263:ry/src/index.crates.io-1949cf8c6b5b557f/image-0.25.10/src/images/buffer.rs:722 | 0x2ec:Copy Point Indexcode.status.reloobals.type.valuetor.macro.mode.2�YAK2z*��}N�>�
+  #5  0x3f62223  0x25d:-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/sync/mpmc/array.rs:355 | 0x288:-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/sync/mpmc/waker.rs:162 | 0x296:ld not terminate unexpectedlyAttempted to initialize invalid bits as an entity
+  #6  0x85956c9  0x33:runtime error: current thread handle already set during thread spawn, aborting | 0x17e:rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/thread/id.rs:38 | 0x185:r: assertion failed: signal(libc::SIGPIPE, handler) != libc::SIG_ERR, aborting
+  #7  0x7fe1c18acef1 (fora do binario)
+  #8  0x7fe1c194c05c (fora do binario)
+
+=== fios 544869,544870 (2), 8 quadros
+  #0  0x7fe1c18b6132 (fora do binario)
+  #1  0x7fe1c18a94e8 (fora do binario)
+  #2  0x7fe1c18ac1e0 (fora do binario)
+  #3  0x7fe1a387d8fe (fora do binario)
+  #4  0x7fe1a382d43d (fora do binario)
+  #5  0x7fe1a387d86c (fora do binario)
+  #6  0x7fe1c18acef1 (fora do binario)
+  #7  0x7fe1c194c05c (fora do binario)
+
+=== fios 544873 (1), 8 quadros
+  #0  0x7fe1c18b6132 (fora do binario)
+  #1  0x7fe1c18a94e8 (fora do binario)
+  #2  0x7fe1c18ac4ad (fora do binario)
+  #3  0x7fe1b17f569c (fora do binario)
+  #4  0x7fe1b1c35b61 (fora do binario)
+  #5  0x7fe1b17f5854 (fora do binario)
+  #6  0x7fe1c18acef1 (fora do binario)
+  #7  0x7fe1c194c05c (fora do binario)
+
+=== fios 544874 (1), 8 quadros
+  #0  0x7fe1c18b6132 (fora do binario)
+  #1  0x7fe1c18a94e8 (fora do binario)
+  #2  0x7fe1c18ac1e0 (fora do binario)
+  #3  0x7fe1b17f563c (fora do binario)
+  #4  0x7fe1b1c29e9e (fora do binario)
+  #5  0x7fe1b17f5854 (fora do binario)
+  #6  0x7fe1c18acef1 (fora do binario)
+  #7  0x7fe1c194c05c (fora do binario)
+
+=== fios 544876 (1), 8 quadros
+  #0  0x7fe1c18b6132 (fora do binario)
+  #1  0x7fe1c18a94e8 (fora do binario)
+  #2  0x7fe1c18ac1e0 (fora do binario)
+  #3  0x7fe1b17f563c (fora do binario)
+  #4  0x7fe1b1c4b697 (fora do binario)
+  #5  0x7fe1b17f5854 (fora do binario)
+  #6  0x7fe1c18acef1 (fora do binario)
+  #7  0x7fe1c194c05c (fora do binario)
+
+=== fios 544877 (1), 8 quadros
+  #0  0x7fe1c18b6132 (fora do binario)
+  #1  0x7fe1c18a94e8 (fora do binario)
+  #2  0x7fe1c18ac4ad (fora do binario)
+  #3  0x7fe1b17f569c (fora do binario)
+  #4  0x7fe1b1c1dbed (fora do binario)
+  #5  0x7fe1b17f5854 (fora do binario)
+  #6  0x7fe1c18acef1 (fora do binario)
+  #7  0x7fe1c194c05c (fora do binario)
+
+=== fios 544865 (1), 7 quadros
+  #0  0x7fe1c18b6132 (fora do binario)
+  #1  0x7fe1c194c322 (fora do binario)
+  #2  0x7fe1c160c569 (fora do binario)
+  #3  0x7fe1c15f58e9 (fora do binario)
+  #4  0x7fe1c1154fc1 (fora do binario)
+  #5  0x7fe1c18acef1 (fora do binario)
+  #6  0x7fe1c194c05c (fora do binario)
+
+=== fios 544866 (1), 7 quadros
+  #0  0x7fe1c18b6132 (fora do binario)
+  #1  0x7fe1c194c322 (fora do binario)
+  #2  0x7fe1c160c569 (fora do binario)
+  #3  0x7fe1c15f58e9 (fora do binario)
+  #4  0x7fe1c10ec471 (fora do binario)
+  #5  0x7fe1c18acef1 (fora do binario)
+  #6  0x7fe1c194c05c (fora do binario)
+
+=== fios 544909 (1), 6 quadros
+  #0  0x48addc3  
+  #1  0x27aa8c2  
+  #2  0x285e4cc  
+  #3  0x85956c9  0x33:runtime error: current thread handle already set during thread spawn, aborting | 0x17e:rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/thread/id.rs:38 | 0x185:r: assertion failed: signal(libc::SIGPIPE, handler) != libc::SIG_ERR, aborting
+  #4  0x7fe1c18acef1 (fora do binario)
+  #5  0x7fe1c194c05c (fora do binario)
+
+=== fios 544910 (1), 6 quadros
+  #0  0x3f026dc  
+  #1  0x27aa683  
+  #2  0x285e2a3  0x126:src/index.crates.io-1949cf8c6b5b557f/wayland-client-0.31.15/src/globals.rs:355 | 0x12d:d monitor for windowXfwm4Failed to unfocus input contextfailed to reload Xft d | 0x140:-unknown-linux-gnu/lib/rustlib/src/rust/library/std/src/sync/mpmc/array.rs:355
+  #3  0x85956c9  0x33:runtime error: current thread handle already set during thread spawn, aborting | 0x17e:rustc/58cf8f9c35b355199727627d07ae34a4e2846d67/library/std/src/thread/id.rs:38 | 0x185:r: assertion failed: signal(libc::SIGPIPE, handler) != libc::SIG_ERR, aborting
+  #4  0x7fe1c18acef1 (fora do binario)
+  #5  0x7fe1c194c05c (fora do binario)

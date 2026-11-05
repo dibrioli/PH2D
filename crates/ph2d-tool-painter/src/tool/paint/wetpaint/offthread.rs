@@ -210,6 +210,12 @@ impl super::WetSession {
             }
             EngineSlot::Away => {}
         }
+        // O operário que espera aqui pode ter roubado este job por cima de um pedaço do estágio que o worker
+        // precisa de acabar para devolver o motor: é deadlock, não demora (BUGS_painter, congelamento de 05/11).
+        assert!(
+            rayon::current_thread_index().is_none(),
+            "espera pelo motor dentro de um job do rayon: traga-o para casa antes de `no_pool`"
+        );
         let w = self
             .worker
             .as_ref()

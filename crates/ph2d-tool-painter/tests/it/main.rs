@@ -40,6 +40,7 @@ mod o_custo_no_caminho_do_app; // o depósito de um pincel pesado pela rota que 
 mod o_dual_brush;
 mod o_grao_do_lapis; // 03_MOTORES §7.2: o grão é o papel (o mesmo a todo tamanho) e o do lápis é fino
 mod o_modo_do_grao;
+mod o_motor_nao_se_espera_dentro_do_pool; // o congelamento de 05/11: nenhuma espera sem prazo em job do pool
 mod o_pigmento_por_comprimento;
 mod o_po_do_aerografo;
 mod o_preset_nao_herda; // o preset escolhido depois de sujar o pincel é o preset (a família do estado escondido)

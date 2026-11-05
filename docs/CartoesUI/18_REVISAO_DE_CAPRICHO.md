@@ -9,23 +9,23 @@ Estados: **curado** · **aberto** · **dúvida** (decisão para o dono). Lei dos
 | # | Família | Cartões | Estado |
 |---|---|---|---|
 | A | Fila «+ Add X · x Remove X» colada na lista, peças unidas, «x » em ASCII, texto cortado («+ Add Transiti…») | Timers, Signal Actions, State Machine (2), Counter Watch, Trigger, Tween, Shake Emitter, Health/Resistances, Audio Source | **curado**: `rows::fila_de_botoes` (colunas do cartão, `FIELD_H`, vão 6), «x » saiu de 12 textos |
-| A2 | Move Up/Down/Delete da pilha de Constraints ainda na fila antiga | Constraints | aberto |
+| A2 | Move Up/Down/Delete da pilha de Constraints ainda na fila antiga | Constraints | **curado**: `rows::fila_de_botoes` |
 | B | Título de grupo colado ao controlo de cima (vão 0–5) | Particles, Animation (Signals, idle, Playback), Sockets, Health, State Machine | **curado**: `rows::titulo_de_grupo`, `rotulo_do_bloco`, `antes_da_lista` |
 | C | Frase de ajuda colada (vão 2–4) | 9-Slice (duas), Counter Watch | **curado**: `rows::aviso` |
 | D | Letra que não diz o que é | 9-Slice; H Frames/V Frames; Repath At/Stuck After; From/To/Initial state | **curado**: `Eixos::Letras`, regra de `letra_da_grandeza` |
 | D2 | Duas letras iguais lado a lado | Max Bounces e Bounciness; Lasting e Lasts; Radius e Out Radius | aberto (rótulo diferente em cima: baixo) |
 | E | Nome repete as letras | 9-Slice Size; Sockets Position, Bounds, Center | **curado** |
 | F | Número cortado com «…» em 4 colunas | Sockets Bounds e Center; Visibility Enabler Rect | **curado**: `Eixos::Retangulo` em 2×2, como o Figma |
-| G | Nome críptico | 9-Slice (legenda), Sampling, Animation Direction, Texture & Atlas | **curado**; Sequence «Play nothing»: dúvida |
+| G | Nome críptico | 9-Slice (legenda), Sampling, Animation Direction, Texture & Atlas, Sequence | **curado**; «Play nothing» passa a «Clear Cutscene» |
 | H | Unidade de duas maneiras | «(deg)» × «(°)»; «px/s2» × «px/s²»; «m» em frases ao lado de campos em px (Ray, Nav Agent, Player, Light 2D, Shake Emitter) | **curado**: `Unit::no_rotulo`, `distancia_na_frase`, `velocidade_na_frase` |
-| H2 | «Radius 30.000» × «40»: casas diferentes no mesmo cartão | Pulley Wheel, Particles (Gravity), Player | aberto: outro agente mexe em `number_input/casas.rs` |
-| I | Botões de acção com vão de 9 em vez de 6; irmãos que dividiriam a linha | todos os 46 de `caixa_do_botao`; Joint Copy/Paste, Player Fit, Animation Add/Remove | **curado**: `abaixo_do_botao`; pares em `fila_de_botoes`. Aberto: Constraints Bake/Add (o Add abre menu ancorado) |
-| J | Chip sem rótulo a 22 contra 28 | Physics Body, Tags | **curado**: `rows::caixa_do_chip`. Aberto: Script (chip, Browse, Edit, «greeting») |
-| K | Corpo antigo no cartão: caixa dentro de caixa, botão sem face, vãos 0–4 | Instance/Variant, Properties | aberto: `PENDENTES_RITMO` (4 das 6 do Inspector). 5 ficheiros `instance*`, `line` é a altura do botão |
-| L | Conta-gotas pequeno, longe da caixa | Joint (Body A/B), Pulley Wheel, Game Camera | aberto |
-| M | Listas: linha quadrada, cortada com «…» no resumo | Timers («2.50s · repeats · → resp…») | aberto |
-| N | Cor com alfa 0: «FF0000» sem amostra visível | Particles (Color at Death) | aberto |
-| O | Chip de tag (`Enemy ×`) medido como rótulo: 2 pendentes falsos | Tags, régua | aberto: a régua precisa de saber que é chip |
+| H2 | «Radius 30.000» × «40»: casas diferentes no mesmo cartão | Pulley Wheel, Particles (Gravity), Player | **curado**: `card_field/valor.rs`, o número só mostra as casas que tem, mesmo com ruído de `f32` (`casas.rs` estava livre: nada largado a meio) |
+| I | Botões de acção com vão de 9 em vez de 6; irmãos que dividiriam a linha | todos os 46 de `caixa_do_botao`; Joint Copy/Paste, Player Fit, Animation Add/Remove, Constraints Bake/Add | **curado**: `abaixo_do_botao`; pares em `fila_de_botoes`; Bake e Add em duas colunas, o menu do Add abre por baixo dos dois |
+| J | Chip sem rótulo a 22 contra 28 | Physics Body, Tags, Script | **curado**: `rows::caixa_do_chip`; Script com chip, Browse e Edit a `FIELD_H` |
+| K | Corpo antigo no cartão: caixa dentro de caixa, botão sem face, vãos 0–4 | Instance/Variant, Properties | **curado**: `sections/instance_cartao.rs`, mesmos ids; `PH2D_CARDS=0` continua no cartão de antes. `PENDENTES_RITMO` do `inspector`: 6 → 0 |
+| L | Conta-gotas pequeno, longe da caixa | Joint (Body A/B), Pulley Wheel, Game Camera | **curado**: `rows::caixa_de_alvo`, nome e conta-gotas (`GRID_CELL`) dentro da caixa, como o campo de objecto da Unity |
+| M | Listas: linha quadrada, cortada com «…» no resumo | Timers («2.50s · repeats · → resp…»), Script (órfão) | **curado**: o resumo que não cabe perde o sinal inteiro, o órfão perde a razão que a nota de cima já diz; a letra da linha ao meio (`rows::folga_da_linha`, 15 sítios). Canto quadrado fica: é a lei de `paint_row_highlight` |
+| N | Cor com alfa 0: «FF0000» sem amostra visível | Particles (Color at Death) | **curado**: `card_field::paint_amostra`, metade sem alfa e metade como é, à Figma |
+| O | Chip de tag (`Enemy ×`) medido como rótulo: 2 pendentes falsos | Tags, régua | **curado**: `tags.rs` diz à régua que o chip é um controlo |
 
 A primeira ronda de fotos saiu em `Forge` (fundos bordô, botões com traço): artefacto do `MockPanelHost::new()`, não do app. Daí em diante, `in_theme(Dark)`.
 
@@ -35,12 +35,12 @@ A primeira ronda de fotos saiu em `Forge` (fundos bordô, botões com traço): a
 |---|---|---|
 | Object, Transform, Color & Tint, Ordering, Material & Blend, Macro, Top-Down Player, Ray Sensor, Nav Region, Nav Cost Area, Nav Link, Factory, Lifecycle, Path Follow, Weapon, HUD, Health Bar, Motion Input, Game Camera (salvo L), Camera Shake, Parallax, Light Occluder, Unlit, Damage, Projectile Motion | sim | sem defeito de vão (D2 baixo) |
 | 9-Slice, Texture & Atlas, Sampling, Image, Animation, Physics Body, Joint (salvo L), Platform Player, Tags, Particles (salvo N), Sockets/Anchors, Nav Agent, Timers, Signal Actions, State Machine, Counter Watch, Trigger, Tween, Health, Audio Source 2D, Shake Emitter | sim | curados por família |
-| Pulley Wheel | sim | aberto: H2, L |
-| Constraints | sim | aberto: A2, I |
-| Sequence Player | sim | dúvida: «Play nothing» |
-| Light 2D | sim | dúvida: quatro frases seguidas, longas para estarem sempre à vista |
-| Script | sim | aberto: J |
-| Instance/Variant, Properties | sim | aberto: K |
+| Pulley Wheel | sim | curado: H2, L |
+| Constraints | sim | curado: A2, I |
+| Sequence Player | sim | decidido: «Clear Cutscene» |
+| Light 2D | sim | decidido: as duas frases mais longas encurtadas; as outras duas dizem o que só elas dizem |
+| Script | sim | curado: J, M |
+| Instance/Variant, Properties | sim | curado: K |
 | Visibility | sim | grade de 32 com `GRID_CELL`, vão menor de propósito (05 §4) |
 
 ## Os outros painéis (fatia q3, 04/11)
@@ -102,6 +102,12 @@ Arnês: `PH2D_FOTO_DIR=<pasta> PH2D_FOTO_PAINEIS=vector,physics cargo test -p ph
 
 ## Decisões tomadas sem o dono
 
+- Sequence: o botão que tira a cutscene chama-se «Clear Cutscene» («Play nothing» parecia uma ordem de tocar).
+- Light 2D: «Too small to light anything at this zoom. Zoom in or make the lamp bigger.» e «{n} of {total} sprites that glow or cast shadows use their box, not their pixels.». A explicação de malha e tiling saiu da frase.
+- Properties: a escolha de variante não leva marca de animação (o cartão de antes também não a tinha).
+- Hierarchy: sem lugar para o nome e o selo juntos, o selo sai. O nome é por onde se acha a linha.
+- Tokens e Wet na coluna de 220 px: os ícones descem para a linha de baixo, e os números vão um por linha (lei 5 de 05 §4).
+
 - Audio Editor: o dono pediu em 2026-09 botões encostados («tudo o que puder ser ajuntado, ajunte»), no painel antigo. Num cartão vale a lei de 05 §4 e o padrão aprovado de Physics e Flip: soltos. `PH2D_CARDS=0` fica como ele pediu.
 - Slider do Audio Editor com rótulo em cima, como todo campo (02 §2); o valor continua a ser a leitura do motor, sem caixa.
 - «Morph t» virou «Amount», «Von4/Moore8» viraram «4 Neighbors/8 Neighbors», «Comp» virou «Compressor». Os ids não mudam.
@@ -112,4 +118,4 @@ Arnês: `PH2D_FOTO_DIR=<pasta> PH2D_FOTO_PAINEIS=vector,physics cargo test -p ph
 
 ## Ainda por fotografar
 
-Forma (Fill, Stroke, Effects), Texto, e o cartão Objeto de cada tipo: outro retrato; cena `PH2D_VEC_CARTOES_SMOKE=1`. Render Source: só com estado semeado. Cartões nas outras janelas (Bones, Painter, Physics): `PENDENTES_RITMO` aponta os deles.
+Forma (Fill, Stroke, Appearance, Transform): olhada, [q2_forma.png](maquete/q2_forma.png), sem defeito. Render Source: linhas Strategy, Storage e Source na Texture & Atlas das fotos do arnês. **Falta:** Texto e Effects com uma camada (sem cena à mão nesta fatia), e o cartão Objeto de cada tipo. Cartões nas outras janelas: `PENDENTES_RITMO` aponta os deles.

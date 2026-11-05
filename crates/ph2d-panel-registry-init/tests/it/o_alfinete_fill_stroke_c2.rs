@@ -53,7 +53,15 @@ const NOVA: [u8; 4] = [1, 2, 3, 128];
 
 const SELECOES: [&[usize]; 3] = [&[1], &[1, 2], &[0, 1]];
 
+/// Uma mesa de cada vez: os painéis do registo são um só no processo, e medido em 04/11 oito scrubs reprovam
+/// em paralelo e passam em fila (49 de 49), porque o estado de um painel é o da mesa de outro fio.
+pub(super) fn a_vez_da_mesa() -> std::sync::MutexGuard<'static, ()> {
+    static VEZ: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    VEZ.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
 struct Mesa {
+    _vez: std::sync::MutexGuard<'static, ()>,
     h: HeroScreen,
     sim: SimWorld,
     scene: VecScene,
@@ -71,6 +79,7 @@ struct Mesa {
 impl Mesa {
     /// A (0) difere de B (1) e C (2) em tudo; só A tem camadas: `0` preenchimento, `1` traço.
     fn nova() -> Self {
+        let vez = a_vez_da_mesa();
         let _ = ph2d_panel_registry_init::register_all_panels();
         insp::set_cards_on(true);
         insp::set_current_inspector_sprite(None);
@@ -123,6 +132,7 @@ impl Mesa {
             h.store.set_collapsed(sec, true);
         }
         let mut m = Self {
+            _vez: vez,
             h,
             sim,
             scene,

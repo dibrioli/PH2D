@@ -55,57 +55,61 @@ fn preso(sec: NodeId) -> MesaComp {
     m
 }
 
-/// Os cartões de componente. Quantas pegas tem cada um conta-se à vista; ver [`SEM_PEGA`].
-const CARTOES: [(&str, NodeId); 26] = [
-    ("Physics", i::INSP_LIVE_PHYSICS_SECTION),
-    ("Joint", i::INSP_LIVE_JOINT_SECTION),
-    ("Wheel", i::INSP_LIVE_WHEEL_SECTION),
-    ("Player", i::INSP_LIVE_PLAYER_SECTION),
-    ("Timer", i::INSP_LIVE_TIMER_SECTION),
-    ("Action", i::INSP_LIVE_ACTION_SECTION),
-    ("Audio", i::INSP_LIVE_AUDIO_SECTION),
-    ("Camera", i::INSP_LIVE_CAMERA_SECTION),
-    ("Tags", i::INSP_LIVE_TAGS_SECTION),
-    ("Factory", i::INSP_LIVE_FACTORY_SECTION),
-    ("Lifecycle", i::INSP_LIVE_LIFECYCLE_SECTION),
-    ("TopDown", i::INSP_LIVE_TOPDOWN_SECTION),
-    ("Projectile", i::INSP_LIVE_PROJECTILE_SECTION),
-    ("Ray", i::INSP_LIVE_RAY_SECTION),
-    ("StateMachine", i::INSP_LIVE_SM_SECTION),
-    ("Script", i::INSP_LIVE_SCRIPT_SECTION),
-    ("Particles", i::INSP_LIVE_PARTICLES_SECTION),
-    ("Hud", i::INSP_LIVE_HUD_SECTION),
-    ("Sequence", i::INSP_LIVE_SEQ_SECTION),
-    ("Watch", i::INSP_LIVE_WATCH_SECTION),
-    ("Trigger", i::INSP_LIVE_TRIGGER_SECTION),
-    ("Tween", i::INSP_LIVE_TWEEN_SECTION),
-    ("PathFollow", i::INSP_LIVE_PATHFOLLOW_SECTION),
-    ("Shake", i::INSP_LIVE_SHAKE_SECTION),
-    ("Emitter", i::INSP_LIVE_EMITTER_SECTION),
-    ("Weapon", i::INSP_LIVE_WEAPON_SECTION),
-];
-
 /// Os que, armados, não mostram campo com pega (medido 04/11). Um que ganhe pega, ou um dos outros que
 /// a perca, acusa-se aqui.
 const SEM_PEGA: [&str; 4] = ["Action", "Tags", "Sequence", "Trigger"];
 
-/// ⭐ O censo: cada cartão de componente, um a um.
-/// *Mutação: a caixa tem três guardas (a do store, `vivas` em `sync.rs` e a mão em cada `sync_*`), e uma
-/// sozinha sobrevive; as três em `sync_physics` ⇒ vermelho em Joint e Wheel: «levou a caixa de 1300 a 100».*
-#[test]
-fn every_scrub_handle_of_each_pinned_component_card_survives_the_frames() {
+/// Toda pega do cartão: anda, o quadro não a devolve, o Esc repõe.
+fn censo_do_cartao(nome: &str, sec: NodeId) {
     let _ = ph2d_panel_registry_init::register_all_panels();
-    let mut erros = Vec::new();
-    let mut medidas = Vec::new();
-    for (nome, sec) in CARTOES {
-        let mut m = preso(sec);
-        let (n, e) = censo(&mut m, sec, nome);
-        medidas.push((nome, n));
-        erros.extend(e);
-    }
-    eprintln!("CENSO COMPONENTES {medidas:?}");
-    for (nome, n) in &medidas {
-        assert_eq!(*n == 0, SEM_PEGA.contains(nome), "{nome}: {n} pegas");
-    }
-    assert!(erros.is_empty(), "{medidas:?}\n{erros:#?}");
+    let mut m = preso(sec);
+    let (n, erros) = censo(&mut m, sec, nome);
+    eprintln!("CENSO {nome} {n}");
+    assert_eq!(n == 0, SEM_PEGA.contains(&nome), "{nome}: {n} pegas");
+    assert!(erros.is_empty(), "{nome}: {n} pegas\n{erros:#?}");
+}
+
+/// Um teste por cartão, porque o paralelo é o de PROCESSOS do nextest: em fios, a pintura espera pelo
+/// cadeado do registo de painéis (26 cartões em 32 fios: 52 s; em série: 50 s).
+macro_rules! cartoes {
+    ($($teste:ident $nome:literal $sec:ident,)*) => {
+        /// ⭐ O censo: cada cartão de componente, um a um.
+        /// *Mutação: a caixa tem três guardas (a do store, `vivas` em `sync.rs` e a mão em cada `sync_*`), e uma
+        /// sozinha sobrevive; as três em `sync_physics` ⇒ vermelho em Joint e Wheel: «levou a caixa de 1300 a 100».*
+        mod every_scrub_handle_of_each_pinned_component_card_survives_the_frames {
+            $(#[test]
+            fn $teste() {
+                super::censo_do_cartao($nome, super::i::$sec);
+            })*
+        }
+    };
+}
+
+cartoes! {
+    physics "Physics" INSP_LIVE_PHYSICS_SECTION,
+    joint "Joint" INSP_LIVE_JOINT_SECTION,
+    wheel "Wheel" INSP_LIVE_WHEEL_SECTION,
+    player "Player" INSP_LIVE_PLAYER_SECTION,
+    timer "Timer" INSP_LIVE_TIMER_SECTION,
+    action "Action" INSP_LIVE_ACTION_SECTION,
+    audio "Audio" INSP_LIVE_AUDIO_SECTION,
+    camera "Camera" INSP_LIVE_CAMERA_SECTION,
+    tags "Tags" INSP_LIVE_TAGS_SECTION,
+    factory "Factory" INSP_LIVE_FACTORY_SECTION,
+    lifecycle "Lifecycle" INSP_LIVE_LIFECYCLE_SECTION,
+    topdown "TopDown" INSP_LIVE_TOPDOWN_SECTION,
+    projectile "Projectile" INSP_LIVE_PROJECTILE_SECTION,
+    ray "Ray" INSP_LIVE_RAY_SECTION,
+    state_machine "StateMachine" INSP_LIVE_SM_SECTION,
+    script "Script" INSP_LIVE_SCRIPT_SECTION,
+    particles "Particles" INSP_LIVE_PARTICLES_SECTION,
+    hud "Hud" INSP_LIVE_HUD_SECTION,
+    sequence "Sequence" INSP_LIVE_SEQ_SECTION,
+    watch "Watch" INSP_LIVE_WATCH_SECTION,
+    trigger "Trigger" INSP_LIVE_TRIGGER_SECTION,
+    tween "Tween" INSP_LIVE_TWEEN_SECTION,
+    path_follow "PathFollow" INSP_LIVE_PATHFOLLOW_SECTION,
+    shake "Shake" INSP_LIVE_SHAKE_SECTION,
+    emitter "Emitter" INSP_LIVE_EMITTER_SECTION,
+    weapon "Weapon" INSP_LIVE_WEAPON_SECTION,
 }

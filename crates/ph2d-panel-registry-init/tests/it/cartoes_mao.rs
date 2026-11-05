@@ -14,19 +14,25 @@ const VIEWPORT: Rect = Rect {
 };
 
 pub(super) fn pinta(h: &mut HeroScreen, n: usize) {
-    let mut scene = ph2d_vector::VectorScene::new();
-    let mut text = TextSystem::without_system_fonts();
-    for _ in 0..n {
-        scene.reset();
-        ph2d_editor_core::aquecimento::com_passo_fixo(
-            ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
-            || {
-                ph2d_editor_core::screens::hero::paint_hero_screen(
-                    h, VIEWPORT, &mut scene, &mut text,
-                )
-            },
-        );
+    thread_local! {
+        /// Um por fio, como o da app: refazê-lo a cada chamada registava as fontes de novo (90 ms em 100).
+        static TEXTO: std::cell::RefCell<TextSystem> =
+            std::cell::RefCell::new(TextSystem::without_system_fonts());
     }
+    let mut scene = ph2d_vector::VectorScene::new();
+    TEXTO.with_borrow_mut(|text| {
+        for _ in 0..n {
+            scene.reset();
+            ph2d_editor_core::aquecimento::com_passo_fixo(
+                ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
+                || {
+                    ph2d_editor_core::screens::hero::paint_hero_screen(
+                        h, VIEWPORT, &mut scene, text,
+                    )
+                },
+            );
+        }
+    });
 }
 
 pub(super) fn mao(h: &mut HeroScreen, kind: PointerKind, (x, y): (f32, f32)) {

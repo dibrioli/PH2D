@@ -116,7 +116,8 @@ fn corre(smooth: f32, veu: bool) -> (usize, bool) {
             }
             t.set_brush_size_px(18.0);
             t.set_brush_color_srgb8(cor);
-            t.set_wet_smooth_edges(smooth);
+            // É do traço: o 1.º a 0 faz o tecto do espelho subir depois de ele nascer.
+            t.set_wet_smooth_edges(if fi % 2 == 0 { 0.0 } else { smooth });
             t.paint.wetpaint.show_wet = veu;
         });
         // Wet Drip escorre na diagonal: o traço desce um pouco para a água ter onde correr.

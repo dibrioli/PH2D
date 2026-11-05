@@ -236,13 +236,14 @@ Regra única: **mover a fracção α de uma fatia move α de `v`, de `K_Σ` e de
   `lista("PH2D_SONDA_LEI", &[Velha, Pigmento])` e põe-na no laço MAIS INTERNO (depois de `n`, `:449`) — cada célula
   corre as duas leis seguidas, mesmo processo, mesma compilação `smoke`; o TSV ganha a coluna `lei` e o PNG o sufixo.
   `FromStr` para `LeiDaTinta` (`velha|pigmento`).
-- **A placa:** `gpu/passo.rs:21 placa_sabe` ganha `&& p.tinta == LeiDaTinta::Velha` até a E11 — a CPU é a canónica.
+- **A placa:** `gpu/passo.rs placa_sabe` aceita `Pigmento` desde a E11 ([medição](../49_realshader/PLACA_E11_tinta.md), portão verde nas duas placas); a CPU continua a canónica.
 - Default do produto: `Velha` até o portão-mãe passar INTEIRO; depois a E12 apaga `Velha` no mesmo bloco (ADR §5).
 
 ## 6. GPU
 
-Ordem: CPU primeiro (E3–E9) atrás do interruptor, com `placa_sabe == false` para `Pigmento`; GPU depois (E11), lei
-congelada pelo portão-mãe.
+Ordem: CPU primeiro (E3–E9) atrás do interruptor; GPU depois (E11), lei congelada pelo portão-mãe. ⚠️ Feita a E11 (05/11) em
+módulos à parte, não reescrevendo os shaders velhos como a tabela abaixo previa: a lei velha fica byte a byte até a E12 a apagar, e
+só então a tabela vale. O que a placa recusa e a medição: [PLACA_E11_tinta.md](../49_realshader/PLACA_E11_tinta.md).
 
 | shader / ficheiro | muda |
 |---|---|

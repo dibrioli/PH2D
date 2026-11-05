@@ -37,7 +37,7 @@ struct Cena {
     sedimenta: f64,
 }
 
-const CENAS: [Cena; 5] = [
+const CENAS: [Cena; 6] = [
     Cena {
         nome: "água",
         medium: 0.0,
@@ -70,6 +70,15 @@ const CENAS: [Cena; 5] = [
         dilution: Some(0.8),
         body: 0.0,
         abertura: 0.5,
+        sedimenta: 0.0,
+    },
+    Cena {
+        // Quase fechada e com o re-molhar no máximo: o que levanta é a abertura que decide.
+        nome: "óleo quase fechado",
+        medium: 1.0,
+        dilution: Some(0.8),
+        body: 0.0,
+        abertura: 0.02,
         sedimenta: 0.0,
     },
     Cena {
@@ -140,6 +149,23 @@ fn pinta(c: &Cena, w: usize, h: usize) -> Engine {
     if c.sedimenta > 0.0 {
         e.sim.sedimenta = c.sedimenta;
         e.sim.gravity_override = Some([0.0, 0.08]);
+    }
+    if c.abertura < 0.1 {
+        // Muito assente debaixo da água: sem isto o que levanta fica abaixo da régua e a abertura não decide nada à vista.
+        e.set_knob(Knob::Rewet, 8.0);
+        let idx = e.active_layer;
+        let g = &mut e.layers[idx].grid;
+        for i in 0..g.cells {
+            if g.film[i] > 0.0 {
+                g.sett[i] = 2000.0;
+                g.tinta[i].aberto = ph2d_wet_paint::grid::tinta::soma_da_massa(
+                    [200.0, 60.0, 30.0],
+                    0.2,
+                    1.0,
+                    2000.0,
+                );
+            }
+        }
     }
     if c.abertura < 1.0 {
         let idx = e.active_layer;

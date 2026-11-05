@@ -19,16 +19,16 @@ Plano: [F4_2 §6](../Arquitetura/F4_2_plano_wet_paint.md). Portão: `crates/ph2d
 
 `bit` = células com algum campo diferente entre duas corridas na mesma placa. `cor` = níveis sRGB 0–255 sobre branco, placa × CPU.
 
-| cena | placa | bit | cor p99.9 | cor máx | células > 0,5 | massa rel. |
-|---|---|---|---|---|---|---|
-| água | Radeon 610M, Mesa 26.2.5 | 0 | 0,0012 | 1,15 | 5 | 1,0e-7 |
-| óleo diluído | Radeon 610M | 0 | 0,0016 | 0,003 | 0 | 2,8e-7 |
-| pasta alta (`Dilution` 0,2, `Body` 0,5) | Radeon 610M | 0 | 0,107 | 21,6 | 22 | 2,0e-7 |
-| óleo meio curado (`o` = 0,5) | Radeon 610M | 0 | 0,0016 | 0,003 | 0 | 2,8e-7 |
-| água a sedimentar | Radeon 610M | 0 | 0,789 | 15,9 | 75 | 2,4e-7 |
+| cena | Radeon 610M (Mesa 26.2.5): p99.9 / máx | RTX 5060 Ti (615.78.08): p99.9 / máx | bit, nas duas |
+|---|---|---|---|
+| água | 0,0012 / 1,15 | 0,0010 / 0,0018 | 0 |
+| óleo diluído | 0,0016 / 0,0030 | 0,0059 / 6,18 | 0 |
+| pasta alta (`Dilution` 0,2, `Body` 0,5) | 0,107 / 21,6 | 0,107 / 21,6 | 0 |
+| óleo meio curado (`o` = 0,5) | 0,0016 / 0,0030 | 0,0059 / 6,18 | 0 |
+| óleo quase fechado (`o` = 0,02, `Rewet` 8, muito assente) | 0,0010 / 0,057 | 0,0115 / 0,057 | 0 |
+| água a sedimentar | 0,789 / 15,9 | 0,789 / 15,9 | 0 |
 
-A RTX 5060 Ti (NVIDIA 615.78.08) deu, antes de a cena entrar pela borda e de haver as duas últimas: 0 bit; água 0,0009/0,0017, óleo
-diluído 0,0076/6,18, pasta alta 0,0993/21,6. As duas placas dão a MESMA pior célula na pasta: é aritmética de f32 × f64, não ruído de placa.
+Massa total, placa × CPU: ≤ 7,6e-7 relativo em todas. As duas placas dão a MESMA pior célula na pasta: é aritmética de f32 × f64, não ruído de placa.
 
 **A tolerância, de cada linha da tabela:** cor p99.9 ≤ 0,5 (a do degrau da lei velha) · máx ≤ 32 · acima de 0,5 no máximo 0,1 % das células;
 nenhuma pede menos que 1,5× o controlo CPU × CPU a 1 ulp · cada campo no p99.9 (ver as constantes do teste, ~20× o medido).
@@ -50,4 +50,8 @@ como controlo: a mão de um resíduo de 1e-38 decidir um escoamento é um achado
 
 ## Custo (RTX 5060 Ti, 4096×2560, água, intercalado no mesmo processo, mínimo de 8 blocos de 6 passos)
 
-Lei velha 5,74 ms/passo · `Pigmento` 9,21 ms/passo, com `load` ~120 na máquina (a CPU não entra no passo da placa).
+Duas corridas: lei velha 5,74 e 5,69 ms/passo · `Pigmento` 9,21 e 9,23 ms/passo, com `load` ~60–120 na máquina (só o carimbo da placa é fiável sob esta carga; o relógio é o da espera).
+
+## Mutação (18, shaders e descida; Radeon)
+
+As 18 sangram. Duas precisaram de cura da régua: «re-molhar ignora a abertura» sobreviveu até a cena «óleo quase fechado» pôr muito assente debaixo da água; «ninguém pede o fecho» sangrou de início por invalidar o layout (removia o último uso do buffer), e refeita com `atomicAdd(.., 0u)` sangra pela lei (`fechadas CPU 800 placa 0`).

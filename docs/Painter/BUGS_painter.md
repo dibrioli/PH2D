@@ -630,6 +630,12 @@ Medido (traço de 40 px; massa / ecrã ÷ fábrica; «antes» = o mesmo processo
 
 Portões `grao_a_mao_tests::casos_abertos_*` (com o braço «sem a cura», que sangra, em cada um). **Aberto:** uma macro gravada antes que arma um Grain toca agora a quantidade nova.
 
+## Bug #63 (ABERTO, sem pressa, achado da E11 em 05/11) — duas coisas da lei que a paridade com a placa expôs, nenhuma é da placa
+
+**1. Um resíduo de film que desaparece decide o escoamento.** A máscara `active` pergunta `film > 0`. A CPU contra si mesma, zerando film e susp abaixo de ε a cada passo: `1e-38` já move 13 níveis em 3 células da pasta alta; `1e-20`, 112 níveis em 119; com `sedimenta` a ±1 ulp de partida, 15,9 níveis em 75 células ([tabela](49_realshader/PLACA_E11_tinta.md)). A tinta quase não muda (massa ~5 de 3 M), logo a E11 convive com ela, com a tolerância escrita. Um corte físico do film na máscara é a cura provável; não foi medido.
+
+**2. A água parada que dissolve move a massa e não as somas.** `solver/remolha_parada.rs` chama `lift_settled` sobre `susp`/`sett`, sem tocar em `Grid::tinta`: com `Pigmento` deve partir `aberto.v·M_UM == sett`. ⚠️ Lido no código, NÃO medido. A placa recusa `Knob::Dissolve > 0`, logo não diverge por aqui.
+
 ## Bug #62 (ABERTO, decisão do dono) — cordão escuro na borda do traço simples: Wet Liner e Wet Wash
 
 Smoke do dono 04/11: o cruzamento ficou bom, mas o traço simples tem um cordão grosso na borda (do Wet Liner já tinha dito o

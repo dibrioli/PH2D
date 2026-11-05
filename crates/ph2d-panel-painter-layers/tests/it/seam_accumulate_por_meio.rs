@@ -10,7 +10,6 @@ use ph2d_panel_painter_layers::state::{
 };
 use ph2d_tool_painter::ids::{PAINTER_BRUSH_ACCUMULATE, PAINTER_BRUSH_SPACE_ATTEN};
 use ph2d_tool_painter::{PaintMedia, PainterTool};
-use ph2d_ui_testkit::MockPanelHost;
 
 fn pintados(media: PaintMedia) -> Vec<NodeId> {
     pintados_com(media, |_| {})

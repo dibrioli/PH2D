@@ -11,7 +11,7 @@ use ph2d_ecs::{SimWorld, Transform};
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::aquecimento::{PASSO_DE_QUADRO_S, com_passo_fixo};
 use ph2d_editor_core::interaction::{KEY_ARROW_DOWN, KEY_ARROW_UP, WidgetEvent};
-use ph2d_editor_core::panel::{PanelHost, PanelHostInternal};
+use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::InspectorTransformInfo;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind};

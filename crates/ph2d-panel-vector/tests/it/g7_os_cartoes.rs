@@ -392,8 +392,10 @@ fn padding_each_gives_four_sides_two_by_two() {
 fn a_bound_token_slashes_its_number_and_its_box_opens() {
     let pinta = |preso: Option<&str>| {
         let mut mesa = na_interface(true, base);
-        let mut b = state::TokenBindings::default();
-        b.gap_main = preso.map(String::from);
+        let b = state::TokenBindings {
+            gap_main: preso.map(String::from),
+            ..state::TokenBindings::default()
+        };
         state::set_token_bindings(Some(b));
         mesa.assenta();
         let (h, st) = (&mut mesa.host, &mut mesa.st);

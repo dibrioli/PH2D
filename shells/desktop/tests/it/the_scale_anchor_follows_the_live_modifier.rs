@@ -1,6 +1,6 @@
 //! **A âncora de escala é do FRAME, não do pen-down**: arch-gate sobre a costura que nenhum unit test
-//! alcança. A lei é `ph2d_editor_core::live_anchor`, com gates de kernel; aqui, a fiação, que pede `App`
-//! + `HeroScreen` + janela: (1) a porta é chamada por movimento; (2) o resultado é LOCAL e o estado
+//! alcança. A lei é `ph2d_editor_core::live_anchor`, com gates de kernel; aqui, a fiação, que pede `App`,
+//! `HeroScreen` e janela: (1) a porta é chamada por movimento; (2) o resultado é LOCAL e o estado
 //! guardado continua a ser o CANTO, que não se re-deriva depois do pen-down; (3) o pen-down guarda o canto.
 //! Afirma-se qual pergunta é feita e onde a resposta pousa, nunca distância em bytes.
 

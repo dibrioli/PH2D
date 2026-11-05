@@ -44,7 +44,7 @@ impl Mesa {
         }
         let mut mesa = Self {
             host,
-            st: AudioMixerState::default(),
+            st: AudioMixerState,
             rects: Vec::new(),
         };
         mesa.assenta();
@@ -295,7 +295,7 @@ fn effect_checks_and_the_key_choice_answer_a_real_click() {
 fn the_heavy_effects_are_born_folded_and_cards_reorder() {
     force_cards_on_this_thread(Some(true));
     let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
-    let mut st = AudioMixerState::default();
+    let mut st = AudioMixerState;
     let _ = host.paint::<AudioMixerPanel>(&mut st, COLUNA);
     assert!(host.store().is_collapsed(mx::AMIX_SEC_REVERB));
     assert!(!host.store().is_collapsed(mx::AMIX_SEC_EQ));
@@ -337,7 +337,7 @@ fn every_mute_control_has_a_tooltip() {
 fn cards_off_paints_the_old_body() {
     force_cards_on_this_thread(Some(false));
     let mut host = MockPanelHost::with_panel::<AudioMixerPanel>();
-    let mut st = AudioMixerState::default();
+    let mut st = AudioMixerState;
     let rects = host.paint::<AudioMixerPanel>(&mut st, COLUNA);
     assert!(rects.iter().any(|(id, _)| *id == mx::AMIX_EQ_LOW));
     assert!(!rects.iter().any(|(id, _)| *id == chip_de(mx::AMIX_EQ_LOW)));

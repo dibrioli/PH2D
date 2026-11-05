@@ -6,7 +6,6 @@ use super::h1_os_cartoes::{Mesa, pincel};
 use super::h5_os_cartoes::{na_mesma_linha, sem_sobrepor};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::panel::cards::censo;
 use ph2d_tool_painter::ids as p;
 use ph2d_tool_painter::{

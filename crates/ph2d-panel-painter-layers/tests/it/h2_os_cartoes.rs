@@ -9,7 +9,7 @@ use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::panel::cards::grip_of;
 use ph2d_host::PointerKind;
 use ph2d_panel_painter_layers::{
-    FALLBACK_BRUSH, VistaPreset, VistaPresets, set_current_wet_presets, set_current_wet_preview,
+    VistaPreset, VistaPresets, set_current_wet_presets, set_current_wet_preview,
 };
 use ph2d_tool_painter::ids as p;
 use ph2d_tool_painter::{BrushSettings, PaintMedia};

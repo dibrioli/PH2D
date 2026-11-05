@@ -6,7 +6,7 @@
 use bumpalo::Bump;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids;
-use ph2d_editor_core::interaction::{ContextMenuKind, WidgetEvent};
+use ph2d_editor_core::interaction::ContextMenuKind;
 use ph2d_editor_core::object_mode::TOOLS_OPENED_BY_A_MODE;
 use ph2d_editor_core::screens::hero::{HeroScreen, paint_hero_screen, tool_bar};
 use ph2d_editor_core::widget::lista_flutuante::force_cromo_on_this_thread;

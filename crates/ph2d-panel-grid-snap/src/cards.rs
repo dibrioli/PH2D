@@ -357,7 +357,7 @@ fn def<'a>(
     section: NodeId,
     title: &'a str,
     summary: Option<String>,
-    body: Box<dyn Fn(&mut CardCtx<'_>, f32) -> f32 + 'a>,
+    body: ph2d_editor_core::panel::cards::CardBody<'a>,
 ) -> CardDef<'a> {
     CardDef {
         section,

@@ -346,7 +346,7 @@ fn every_native_header_folds_its_card() {
             .into_iter()
             .filter(|(n, r)| *n == cards_grip(id) && r.w > 0.0)
             .map(|(_, r)| r)
-            .last()
+            .next_back()
             .expect("a pega do cartão");
         let antes = mesa.host.store().is_collapsed(id);
         let ev = mesa.host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
@@ -459,7 +459,7 @@ fn the_tabs_live_in_the_list_head_and_switch_the_cards() {
 /// neste abre a mesma lista de sempre. O painel à esquerda nasce à esquerda da LISTA.
 #[test]
 fn an_unconverted_section_lives_in_a_card_and_its_plus_still_opens() {
-    let mut mesa = Mesa::nova(true);
+    let mesa = Mesa::nova(true);
     let sec = t::VECTOR_SECTION_FILL;
     let pega = mesa
         .rect(cards_grip(sec))

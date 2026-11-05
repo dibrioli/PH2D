@@ -17,7 +17,6 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_panel_painter_layers::PainterLayersPanel;
 use ph2d_panel_painter_layers::state::{PainterLayersPanelState, set_current_brush};
 use ph2d_tool_painter::PainterTool;
-use ph2d_ui_testkit::MockPanelHost;
 
 fn viewport() -> Rect {
     Rect::new(0.0, 0.0, 1600.0, 900.0)

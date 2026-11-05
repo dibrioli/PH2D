@@ -72,7 +72,7 @@ pub(crate) fn pattern_stroke(c: &mut CardCtx<'_>, y: f32) -> f32 {
 }
 
 /// O par `(rótulo, chip, barra)` de `fila`.
-fn linha<'a>(nome: &'a str, slot: usize, num: K, barra: K) -> (&'a str, NodeId, NodeId) {
+fn linha(nome: &str, slot: usize, num: K, barra: K) -> (&str, NodeId, NodeId) {
     (nome, kid(slot, num), kid(slot, barra))
 }
 

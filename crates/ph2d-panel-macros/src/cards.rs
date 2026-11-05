@@ -10,7 +10,7 @@ use ph2d_editor_core::macro_edits::{
     FamiliaDaMacro, MacroPanelInfo, PropsDaEtapa, TipoDaEtapaView,
 };
 use ph2d_editor_core::panel::cards::corpo::letra_da_grandeza;
-use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, Widget};
+use ph2d_editor_core::panel::cards::{CardBody, CardCtx, CardDef, Cell, Widget};
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_tokens::ColorToken;
@@ -333,15 +333,14 @@ fn corpo_da_biblioteca(
 
 /// ⭐ Os cartões: gravar, as etapas, a etapa escolhida (só com uma) e a biblioteca.
 pub(crate) fn cards<'a>(info: &'a MacroPanelInfo, st: &'a MacrosPanelState) -> Vec<CardDef<'a>> {
-    let cartao =
-        |section, title, summary, body: Box<dyn Fn(&mut CardCtx<'_>, f32) -> f32 + 'a>| CardDef {
-            section,
-            title,
-            actions: Vec::new(),
-            add: None,
-            summary,
-            body: Some(body),
-        };
+    let cartao = |section, title, summary, body: CardBody<'a>| CardDef {
+        section,
+        title,
+        actions: Vec::new(),
+        add: None,
+        summary,
+        body: Some(body),
+    };
     let resumo = info.objeto.as_ref().map(|o| o.etapas.len().to_string());
     let mut out = vec![
         cartao(

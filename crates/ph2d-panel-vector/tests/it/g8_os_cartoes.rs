@@ -448,7 +448,8 @@ fn what_is_lit_follows_the_document() {
         }
     };
     let nada = com(|_| {});
-    let casos: [(&str, Box<dyn Fn()>); 7] = [
+    type Caso<'a> = (&'a str, Box<dyn Fn() + 'a>);
+    let casos: [Caso<'_>; 7] = [
         ("Preview", Box::new(com(|s| s.preview = Some(true)))),
         ("Move All", Box::new(com(|s| s.move_all = Some(true)))),
         (

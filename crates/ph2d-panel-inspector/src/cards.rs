@@ -86,11 +86,13 @@ thread_local! {
     /// A proporção de cada objecto tocado com a corrente fechada; esvazia ao abri-la.
     static TRAVAS: std::cell::RefCell<std::collections::BTreeMap<u64, ParTravado>> =
         const { std::cell::RefCell::new(std::collections::BTreeMap::new()) };
-    /// O hex digitado à espera de a forma o mostrar: `(camada, cor, quadros, objecto preso)`; depois o
-    /// seletor fecha.
-    static HEX_PENDENTE: std::cell::Cell<Option<(usize, [u8; 4], u8, Option<u64>)>> =
+    /// O hex digitado à espera de a forma o mostrar; depois o seletor fecha.
+    static HEX_PENDENTE: std::cell::Cell<Option<HexPendente>> =
         const { std::cell::Cell::new(None) };
 }
+
+/// `(camada, cor, quadros, objecto preso)`.
+type HexPendente = (usize, [u8; 4], u8, Option<u64>);
 
 /// Quantos quadros o seletor fica aberto, no máximo, à espera de a forma mostrar o hex digitado.
 const HEX_QUADROS: u8 = 30;

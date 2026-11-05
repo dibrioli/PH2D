@@ -329,7 +329,6 @@ pub(crate) fn verbos() -> Verbos<'static> {
 }
 
 /// O fundo do histograma no corpo de antes: o tema do painel.
-#[must_use]
 pub(crate) fn tinta_do_tema(
     theme: ph2d_tokens::Theme,
 ) -> impl Fn(ColorToken) -> ph2d_vector::Color {

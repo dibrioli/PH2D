@@ -7,7 +7,6 @@ use super::h5_os_cartoes::sem_sobrepor;
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m_card;
 use ph2d_editor_core::interaction::{PanelRowFamily, WidgetEvent};
-use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::panel::cards::censo;
 use ph2d_host::PointerKind;
 use ph2d_panel_painter_layers::FALLBACK_BRUSH;
@@ -201,8 +200,6 @@ fn the_blend_list_opens_under_its_box_and_sends_the_same() {
 fn nothing_overlaps_no_text_is_cut_and_no_row_sticks() {
     let (s, _) = pilha();
     let m = abre(true, s);
-    let (_, st) = (0, ());
-    let _ = st;
     let ids: BTreeSet<NodeId> = m.ids();
     let _ = ids.len();
     let s2 = pilha().0;

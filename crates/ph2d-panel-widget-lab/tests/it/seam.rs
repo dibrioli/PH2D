@@ -16,7 +16,6 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_panel_widget_lab::WidgetLabPanel;
 use ph2d_panel_widget_lab::state::WidgetLabState;
-use ph2d_ui_testkit::MockPanelHost;
 
 /// Uma fotografia do estado que o pintor de facto lê. ⚠️ **Derivada dos campos**, não uma lista de
 /// nomes: um eixo novo no `WidgetLabState` que ninguém acrescente aqui deixa de ser vigiado, e o

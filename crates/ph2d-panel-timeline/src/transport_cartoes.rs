@@ -418,8 +418,10 @@ mod tests {
     /// ⭐ Sem duração autorada a Dur lê ∞; com ela, o número. *Mutação: devolver sempre `None` ⇒ vermelho.*
     #[test]
     fn a_dur_le_infinito_so_sem_duracao_autorada() {
-        let mut snap = TimelineViewSnapshot::default();
-        snap.view_length_explicit = false;
+        let mut snap = TimelineViewSnapshot {
+            view_length_explicit: false,
+            ..TimelineViewSnapshot::default()
+        };
         assert_eq!(valor_lido_da_dur(&snap), Some(f64::INFINITY));
         snap.view_length_explicit = true;
         assert_eq!(valor_lido_da_dur(&snap), None);

@@ -134,7 +134,8 @@ fn so_aberto(me: &mut Mesa<PixelToolsPanel>, abre: NodeId) {
 fn os_verbos_dos_menus_nenhum_morre() {
     let i = info(PixelTool::Pencil);
     let moldura = [ids::EDIT_ACTIONS[15].0, ids::EDIT_ACTIONS[16].0];
-    let tabelas: [(&[(NodeId, PixelRequest, &str)], NodeId); 3] = [
+    type Tabela<'a> = (&'a [(NodeId, PixelRequest, &'a str)], NodeId);
+    let tabelas: [Tabela<'_>; 3] = [
         (&ids::SELECT_ACTIONS, ids::PIXEL_SEC_SELECT),
         (&ids::EDIT_ACTIONS, ids::PIXEL_SEC_EDIT),
         (&ids::SPRITE_ACTIONS, ids::PIXEL_SEC_SPRITE),

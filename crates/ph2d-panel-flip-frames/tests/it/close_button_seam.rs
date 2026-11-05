@@ -27,7 +27,6 @@ use ph2d_editor_core::panel::{Panel, PanelHostInternal};
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_flip_frames::state::FlipStripState;
 use ph2d_panel_flip_frames::{FlipCell, FlipFramesPanel, FlipStripSnapshot, ids};
-use ph2d_ui_testkit::MockPanelHost;
 
 const VIEWPORT: Rect = Rect::new(0.0, 0.0, 1600.0, 900.0);
 

@@ -107,7 +107,7 @@ pub(crate) fn paint_instance(
     y = c.botao(
         y,
         ids::INSP_INSTANCE_OPEN_PREFAB,
-        &tr("panel.inspector.instance.edit_prefab"),
+        tr("panel.inspector.instance.edit_prefab"),
     );
     for name in &info.overridden {
         y = c.frase(

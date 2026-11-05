@@ -242,9 +242,8 @@ fn double_clicking_the_handle_gives_the_factory_value_back() {
     let row = rows::rows()
         .iter()
         .find(|r| r.options.is_none())
-        .expect("um número")
-        .clone();
-    let mut mesa = Mesa::nova(ferramenta(dona(&row), true));
+        .expect("um número");
+    let mut mesa = Mesa::nova(ferramenta(dona(row), true));
     let ev = mesa.arrasta_a_pega(row.chip, 60.0);
     mesa.entrega(ev);
     let r = mesa.rect(row.chip).expect("campo");

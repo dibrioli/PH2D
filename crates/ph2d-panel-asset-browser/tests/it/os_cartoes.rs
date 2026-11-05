@@ -36,7 +36,7 @@ fn biblioteca(n: usize) {
             AssetRef::Texture {
                 asset: [(i + 2) as u8; 32],
             },
-            &format!("image {i}"),
+            format!("image {i}"),
         ));
     }
     set_current_index(ix);

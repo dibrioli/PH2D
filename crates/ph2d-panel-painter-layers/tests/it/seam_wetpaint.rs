@@ -13,7 +13,6 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_panel_painter_layers::PainterLayersPanel;
 use ph2d_panel_painter_layers::state::{PainterLayersPanelState, set_current_brush};
 use ph2d_tool_painter::PainterTool;
-use ph2d_ui_testkit::MockPanelHost;
 
 /// ⚠️ **Alto o bastante para o corpo inteiro caber** (2026-09-29): desde a porta `scroll_area` o
 /// `HitIndex` deste painel é recortado pelo corpo, e a 900 px as linhas de baixo deixavam de estar

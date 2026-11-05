@@ -29,7 +29,6 @@ use ph2d_editor_core::panel::EventOutcome;
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_panel_painter_layers::PainterLayersPanel;
 use ph2d_panel_painter_layers::state::{PainterLayersPanelState, set_current_brush};
-use ph2d_ui_testkit::MockPanelHost;
 
 /// Click the fixed "+ Layer" chrome button and prove it forwards as the
 /// SPECIFIC `ToolPanelEvent(PanelEvent::Click(PAINTER_LAYERS_ADD))` — the exact

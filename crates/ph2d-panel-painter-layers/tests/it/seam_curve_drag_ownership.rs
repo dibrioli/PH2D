@@ -27,7 +27,6 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
 use ph2d_panel_painter_layers::PainterLayersPanel;
 use ph2d_panel_painter_layers::state::PainterLayersPanelState;
-use ph2d_ui_testkit::MockPanelHost;
 
 /// O pai de um gesto que pertence a outro painel. É um id que **nenhum** editor deste painel pode
 /// produzir (os dele são hashes de `painter_layer.*` / `painter_curve.*`), e é o papel que o trilho

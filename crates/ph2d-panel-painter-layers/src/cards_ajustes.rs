@@ -280,7 +280,7 @@ fn fila_de_barras(c: &mut CardCtx<'_>, lista: &[Barra], y: f32) -> f32 {
             .iter()
             .all(|b| c.text_system.prefix_width(tr(b.nome), m::LABEL_PX) <= meia);
         if cabe {
-            y = em_pares(c, par, y, |c, b, y| barra(c, b, y));
+            y = em_pares(c, par, y, barra);
         } else {
             for b in par {
                 y = barra(c, b, y);

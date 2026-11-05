@@ -78,7 +78,9 @@ fn folha() -> Vec<u8> {
 
 fn folha_16() -> Vec<u16> {
     folha()
-        .chunks_exact(4)
+        .as_chunks::<4>()
+        .0
+        .iter()
         .flat_map(|p| {
             [p[0], p[1], p[2], p[3]].map(|c| half::f16::from_f32(f32::from(c) / 255.0).to_bits())
         })

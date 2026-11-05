@@ -3,7 +3,7 @@
 use super::h1_os_cartoes::{Mesa, pincel};
 use super::h5_os_cartoes::com_rampa;
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::panel::{PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::screens::HeroLayout;
 use ph2d_editor_core::screens::slot::SlotSet;
 use ph2d_editor_core::zones::Rect;

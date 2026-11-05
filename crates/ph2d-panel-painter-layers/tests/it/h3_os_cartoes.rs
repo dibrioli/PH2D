@@ -6,7 +6,6 @@ use super::h1_os_cartoes::{Mesa, esc, pincel, valor_enviado};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::panel::cards::grip_of;
 use ph2d_editor_core::tool::{PanelEvent, Tool};
 use ph2d_editor_core::widget::key_mark::{KeyMark, add_key_mark, key_mark_target, set_key_marks};

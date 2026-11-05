@@ -19,7 +19,6 @@ use ph2d_panel_audio_mixer::{
     sub_delay_send_target, sub_gain_target, sub_lowcut_target, sub_muted, sub_pan_target,
     sub_send_target, sub_soloed, sub_tone_target,
 };
-use ph2d_ui_testkit::MockPanelHost;
 
 /// The TopBar "MIX" pill toggles the panel: from hidden, the click opens it;
 /// a second click hides it — proving the `TOPBAR_AUDIO_MIXER` arm drives the

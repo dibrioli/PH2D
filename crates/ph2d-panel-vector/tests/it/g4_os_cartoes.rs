@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::interaction::{WidgetEvent, dispatch_key};
-use ph2d_editor_core::panel::{Panel, PanelHostInternal};
+use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::widget::key_mark::{KeyMark, key_mark_id, set_key_marks};
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
@@ -424,12 +424,7 @@ fn what_the_text_cannot_use_is_not_offered() {
     mesa.assenta();
     assert!(mesa.rect(t::VECTOR_SECTION_AXES).is_none(), "Axes vazio");
     let n = p::MAX_TEXT_VARIATION_AXES;
-    ph2d_panel_vector::set_current_text_axes(
-        vec![eixo("E"); 0]
-            .into_iter()
-            .chain((0..=n).map(|_| eixo("E")))
-            .collect(),
-    );
+    ph2d_panel_vector::set_current_text_axes((0..=n).map(|_| eixo("E")).collect());
     mesa.assenta();
     assert!(
         mesa.rect(p::vector_text_axis_id(n - 1)).is_some(),

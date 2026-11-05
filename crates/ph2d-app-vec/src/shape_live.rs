@@ -4,7 +4,7 @@
 
 use ph2d_ecs::{Entity, MAX_SHAPE_VALUES, SimWorld, Transform, VecShape};
 use ph2d_vec_edit::ShapeTool;
-use ph2d_vec_scene::{MAX_SHAPE_FIELDS, ShapeKind, VecPath, VecPathId, VecScene};
+use ph2d_vec_scene::{MAX_SHAPE_FIELDS, VecPathId, VecScene};
 
 use crate::entity_map::VecEntityMap;
 

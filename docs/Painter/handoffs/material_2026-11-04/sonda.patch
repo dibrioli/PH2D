@@ -1,0 +1,84 @@
+--- /home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/crates/ph2d-tool-painter/src/tool/paint/wetpaint/same_as_paper_volume_tests.rs	2026-11-04 21:37:27.851028168 -0300
++++ t.rs	2026-11-04 22:49:55.241396307 -0300
+@@ -245,3 +245,81 @@
+         }
+     }
+ }
++
++/// Sonda do relatório Rebelle × PH2D (só no scratchpad). `PH2D_SONDA_VARS` = linhas
++/// `pincel|tamanho|nome|chave=valor,chave=valor` (`smooth=x` é o Smooth Edges da tela).
++#[test]
++#[ignore = "sonda"]
++fn sonda_prancha_rebelle() {
++    use ph2d_wet_paint::tuning::KNOB_DEFS;
++    let dir = std::env::var("PH2D_SONDA_OUT").unwrap();
++    let vars = std::env::var("PH2D_SONDA_VARS").unwrap();
++    const WW: usize = 1000;
++    const HH: usize = 640;
++    let pt = |x: f32, y: f32, phase| CanvasPointer {
++        pos: [x, y],
++        pressure: 1.0,
++        tilt: [0.0, 0.0],
++        phase,
++    };
++    for l in vars.lines().filter(|l| !l.trim().is_empty()) {
++        let c: Vec<&str> = l.split('|').collect();
++        let (nome, size, v) = (c[0], c[1].parse::<f32>().unwrap(), c[2]);
++        let e = crate::tool::paint::wetpaint_preset::de_fabrica_ou_candidato(nome);
++        let mut t = PainterTool::default();
++        t.set_source(vec![255u8; WW * HH * 4], WW as u32, HH as u32);
++        t.set_paint_tool_mode("wetpaint");
++        t.set_wet_relogio_fixo(true);
++        assert!(t.wet_preset_aplicar(&e).is_empty());
++        t.wet_preset_aplicar_volumes(&e.parametros.volumes);
++        t.set_brush_size_px(size);
++        t.set_brush_color_srgb8([190, 30, 30]);
++        for kv in c.get(3).unwrap_or(&"").split(',').filter(|s| !s.is_empty()) {
++            let (k, x) = kv.split_once('=').unwrap();
++            let x: f64 = x.parse().unwrap();
++            if k == "smooth" {
++                t.set_wet_smooth_edges(x as f32);
++            } else {
++                let d = KNOB_DEFS.iter().find(|d| d.key == k).unwrap_or_else(|| panic!("knob {k}"));
++                t.paint.wetpaint.knobs.set(d.knob, x);
++            }
++        }
++        let mut risca = |t: &mut PainterTool, a: [f32; 2], b: [f32; 2]| {
++            let n = ((b[0] - a[0]).abs().max((b[1] - a[1]).abs()) / 3.0) as usize;
++            t.on_canvas_pointer(pt(a[0], a[1], PointerPhase::Down));
++            for k in 1..=n {
++                let f = k as f32 / n as f32;
++                t.on_canvas_pointer(pt(a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, PointerPhase::Move));
++                t.on_tick(1000.0 / 60.0);
++            }
++            t.on_canvas_pointer(pt(b[0], b[1], PointerPhase::Up));
++            for _ in 0..8 {
++                t.on_tick(1000.0 / 60.0);
++            }
++        };
++        if v.starts_with("d_") {
++            risca(&mut t, [80.0, 110.0], [920.0, 350.0]);
++        } else {
++            risca(&mut t, [80.0, 120.0], [920.0, 120.0]);
++            risca(&mut t, [80.0, 430.0], [920.0, 430.0]);
++            risca(&mut t, [500.0, 230.0], [500.0, 630.0]);
++        }
++        for _ in 0..240 {
++            t.on_tick(1000.0 / 60.0);
++        }
++        t.wetpaint_dry_canvas();
++        for _ in 0..4 {
++            t.on_tick(1000.0 / 60.0);
++        }
++        let mut b = format!("P6 {WW} {HH} 255\n").into_bytes();
++        for p in t.canvas_rgba.chunks(4) {
++            let a = u32::from(p[3]);
++            for k in 0..3 {
++                b.push(((u32::from(p[k]) * a + 255 * (255 - a)) / 255) as u8);
++            }
++        }
++        let arq = format!("{dir}/{}_{size}_{v}.ppm", nome.replace(' ', "_"));
++        std::fs::write(&arq, b).unwrap();
++        println!("OK {arq} smooth={}", t.wet_smooth_edges());
++    }
++}

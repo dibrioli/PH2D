@@ -21,6 +21,7 @@
 - ⭐⭐ [Dono 03/11: estilo de cor = só a cor (opacidade é da linha) · alfinete nos outros cartões só após o CI · a nota anda com o cartão solto](project_color_style_only_colour_pin_after_ci_notes_follow_card_2026_11_03.md)
 - ⭐⭐ [Dono 04/11: cartão compacto como o Figma — irmãos dividem a linha, nada grudado, uma grelha](feedback_card_layout_is_compact_like_figma_2026_11_04.md)
 - ⭐⭐ [Dono 03/11: a Widget Gallery abre no painel lateral, ferramentas fictícias à Figma + casos reais + amostras do Rive](project_widget_gallery_figma_tools_real_cases_2026_11_03.md)
+- ⭐⭐ [Dono 04/11 noite: missão autónoma, fechar a linha Painter sem perguntas; smoke no dia seguinte](project_autonomous_close_of_painter_line_2026_11_04.md)
 - ⭐⭐ [Dono 04/11: Smooth Edges por traço, um por pincel (revoga 27/10); Wet Liner e Wet Wash 0,12 + Edge Darkening 0](project_smooth_edges_per_brush_owner_decision_2026_11_04.md)
 - ⭐⭐ [Dono 03/11: teste de pincel = alarme BARATO que aponta o que mudou + o DONO decide (gizmo × traço); fim das tabelas de 40 tamanhos](project_brush_tests_cheap_alarm_owner_decides_2026_11_03.md)
 - ⭐⭐ [Dono 04/11: o mesmo traço dá o mesmo byte em qualquer computador; o motor não chama a matemática do sistema](project_same_stroke_same_byte_on_any_machine_2026_11_04.md)

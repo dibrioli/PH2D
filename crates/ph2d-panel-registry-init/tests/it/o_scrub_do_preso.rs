@@ -278,6 +278,33 @@ fn scrubbing_an_opacity_of_a_pinned_card_keeps_the_number_on_release() {
     }
 }
 
+/// A régua: o mesmo gesto no cartão não preso anda igual, e na forma escolhida.
+#[test]
+fn the_same_scrub_on_an_unpinned_card_moves_the_same_distance() {
+    let anda = |pino: bool| {
+        let mut m = Mesa::nova();
+        let k = if pino {
+            m.prende(CARD_STROKE, 0, &[1])
+        } else {
+            solta_com_recuo(&mut m.h, CARD_STROKE, 0.0);
+            m.quadros(5);
+            CARD_STROKE
+        };
+        let p = m.pega(k, v::VECTOR_WIDTH_NUM);
+        let w0 = m.largura_px(0);
+        let x = m.anda(p, 2.0, 8);
+        mao(&mut m.h, PointerKind::Up, (x, p.1));
+        m.quadros(3);
+        m.largura_px(0) - w0
+    };
+    let (preso, solto) = (anda(true), anda(false));
+    assert!(solto > 1.0, "o não preso andou {solto}");
+    assert!(
+        (preso - solto).abs() < 1e-3,
+        "preso {preso} × não preso {solto}"
+    );
+}
+
 /// O clique na ponta direita do campo não dá um passo: o cartão não pinta setas.
 #[test]
 fn a_click_on_the_right_end_of_a_card_field_does_not_step() {
@@ -395,12 +422,15 @@ fn the_arrows_on_a_focused_pinned_field_step_from_its_object() {
         kind: ph2d_host::KeyKind::Down,
         timestamp_ns: 0,
     };
-    for e in dispatch_key(&mut m.h.store, seta, &arena).to_vec() {
-        m.h.apply_event(e);
+    // Duas vezes: a 1.ª escrita devolve a tool à seleção, e a 2.ª partia do número dela.
+    for _ in 0..2 {
+        for e in dispatch_key(&mut m.h.store, seta, &arena).to_vec() {
+            m.h.apply_event(e);
+        }
+        m.quadros(2);
     }
-    m.quadros(2);
     assert!(
-        (m.largura_px(0) - (w0 + 1.0)).abs() < 1e-3,
+        (m.largura_px(0) - (w0 + 2.0)).abs() < 1e-3,
         "A ficou com {}, partiu de {w0}",
         m.largura_px(0)
     );
@@ -409,4 +439,28 @@ fn the_arrows_on_a_focused_pinned_field_step_from_its_object() {
         Some(0.01),
         "B recebeu"
     );
+}
+
+/// A dica do campo nasce ao lado do campo sob a mão, mesmo com o mesmo id noutra cópia ou na barra.
+/// *Mutação: `alvo_da_dica` só com `rect_for` ⇒ a dica de uma das cópias aparece longe dela.*
+#[test]
+fn the_field_hint_is_anchored_to_the_copy_under_the_pointer() {
+    let mut m = Mesa::nova();
+    let a = m.prende(CARD_STROKE, 0, &[2]);
+    let b = m.prende(CARD_STROKE, 1, &[2]);
+    for k in [a, b] {
+        let p = m.pega(k, v::VECTOR_WIDTH_NUM);
+        mao(&mut m.h, PointerKind::Move, p);
+        m.quadro();
+        let r = ph2d_editor_core::screens::hero::topbar::alvo_da_dica(
+            &m.h.hit_index,
+            &m.h.store,
+            v::VECTOR_WIDTH_NUM,
+        )
+        .expect("o alvo");
+        assert!(
+            r.contains(p.0, p.1),
+            "{k:?}: a dica em {r:?}, a mão em {p:?}"
+        );
+    }
 }

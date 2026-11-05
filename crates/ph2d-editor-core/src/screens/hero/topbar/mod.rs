@@ -230,6 +230,18 @@ pub fn paint_hover_overlays(
     }
 }
 
+/// O rect da dica: o do `id` sob a mão, porque o mesmo id mora em vários sítios (a barra de opções e as
+/// cópias de um cartão solto); sem a mão sobre ele, o primeiro pintado.
+#[must_use]
+pub fn alvo_da_dica(hit_index: &HitIndex, store: &WidgetStore, id: NodeId) -> Option<Rect> {
+    store
+        .last_pointer()
+        .and_then(|[x, y]| hit_index.hit_with_rect(x, y))
+        .filter(|(sob_a_mao, _)| *sob_a_mao == id)
+        .map(|(_, r)| r)
+        .or_else(|| hit_index.rect_for(id))
+}
+
 /// ⚠️ **Devolve se pintou** — o [`paint_elision_balloon`] corre a seguir e precisa de saber se o
 /// sítio já está ocupado.
 pub fn paint_hover_tooltip(
@@ -268,7 +280,7 @@ pub fn paint_hover_tooltip(
     let Some(text) = store.tooltip_for(id).or(campo.as_deref()) else {
         return false;
     };
-    let Some(target_rect) = hit_index.rect_for(id) else {
+    let Some(target_rect) = alvo_da_dica(hit_index, store, id) else {
         return false;
     };
     // Real text measurement instead of `chars × 6.5` — for

@@ -248,3 +248,30 @@ fn the_gesture_on_a_pinned_card_writes_the_pinned_bone_not_the_selected_one() {
     assert!((comprimento(a) - 25.0).abs() < 1e-4, "A {}", comprimento(a));
     assert!((comprimento(b) - 10.0).abs() < 1e-4, "B {}", comprimento(b));
 }
+
+struct MesaBones(HeroScreen);
+
+impl super::o_alfinete_fill_stroke_c2::scrub_do_preso::MesaDoPreso for MesaBones {
+    fn hero(&mut self) -> &mut HeroScreen {
+        &mut self.0
+    }
+    fn quadros(&mut self, n: usize) {
+        for _ in 0..n {
+            o_foco();
+            skel::publica_presos(&self.0.store.loose_pins_of(bones()), |_| o_preso());
+            pinta(&mut self.0, 1);
+        }
+    }
+}
+
+/// ⭐ O censo do scrub no osso: toda pega do cartão Bone preso anda sem o quadro a devolver ao número
+/// do osso em foco; o Esc repõe.
+#[test]
+fn every_scrub_handle_of_a_pinned_bone_card_survives_the_frames() {
+    let (h, _l) = preso(CARD_BONE);
+    let mut m = MesaBones(h);
+    let (n, erros) =
+        super::o_alfinete_fill_stroke_c2::scrub_do_preso::censo(&mut m, CARD_BONE, "Bone");
+    assert!(n >= 1, "nenhuma pega à vista");
+    assert!(erros.is_empty(), "{n} pegas: {erros:#?}");
+}

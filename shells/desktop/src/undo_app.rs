@@ -114,16 +114,9 @@ impl crate::App {
     /// a ponte, e limpa os **bits** de seleção (o restore dá ids de entidade NOVOS, então
     /// bits antigos ficam mortos). Re-arma o baseline para não re-detectar como mudança.
     ///
-    /// ⚠️ **Os bits morrem; a SELEÇÃO não precisa morrer com eles.** Até 2026-07-18 esta função
-    /// zerava também o `vec_pen`, e a consequência era um bug que o Enio reportou como *"o undo faz
-    /// os pins sumirem, embora ainda funcionando"*: o envelope segue a deformar (o recook varre por
-    /// QUERY) e o **overlay** — gaiola e pinos — é desenhado a partir da seleção, que já não existe.
-    /// A ferramenta ficava funcionando e invisível.
-    ///
-    /// A seleção do pen é `VecPathId` e **viaja no snapshot** (a `VecScene` é parte do estado), então
-    /// ela sobrevive: [`surviving_selection`] mantém os ids que ainda existem na cena restaurada, e o
-    /// `sync_selection` do frame seguinte re-deriva os bits do mapa reconstruído. Nada de bits mortos
-    /// atravessa — que era o perigo real que o zeramento defendia.
+    /// ⚠️ **Os bits morrem; a SELEÇÃO não.** A do pen é `VecPathId` e viaja no snapshot:
+    /// [`surviving_selection`] mantém os ids que existem na cena restaurada, e
+    /// `depois_do_restauro` re-deriva os bits do mapa reconstruído, no mesmo gesto.
     /// ⭐⭐⭐ **A SELEÇÃO DO MODELADOR AGORA**, em identidade durável — o que um passo tem de
     /// guardar ao lado do estado. Ver [`SelectionMark`] para o report que isto fecha.
     pub(crate) fn field_selection_mark(&mut self) -> SelectionMark {
@@ -228,22 +221,29 @@ impl crate::App {
         self.flip_state.entities = flip_map;
         self.vec.sel = ph2d_app_vec::selection_sync::VecSelSync::default();
         self.vec.pen.clear();
-        // E de volta, filtrada pelo que sobreviveu. O `vec_sel` ficou zerado de propósito: no frame
-        // seguinte o `sync_selection` vê "o pen mudou" e republica os bits NOVOS no gizmo.
+        // E de volta, filtrada pelo que sobreviveu; o gizmo e os alfinetes voltam no mesmo gesto.
         let alive = surviving_selection(&was_selected, &gfx.vec_scene);
         if !alive.is_empty() {
             self.vec.pen.select_many(&alive);
+        }
+        if let Some(hero) = gfx.hero_screen.as_mut() {
+            ph2d_host_presos::depois_do_restauro(
+                hero,
+                &gfx.sim,
+                &gfx.vec_scene,
+                &self.vec.entities,
+                &mut self.vec.pen,
+                &mut self.vec.sel,
+                &gfx.tools,
+            );
         }
         // Live Shapes: uma SESSÃO de texto viva reescreveria o `VecShape` (e a pose) da
         // entidade com os params dela a cada frame — ou seja, desfaria o undo no frame
         // seguinte. O estado restaurado é a verdade: a sessão termina (o objeto de texto
         // continua lá, editável pela seleção).
         self.vec.text_edit = None;
-        // O cache de poses dos rótulos é a memória de "o que EU escrevi no frame passado". O
-        // restore põe poses novas no mundo sem passar por ele — deixá-lo faria o passe ler a
-        // pose restaurada como um arrasto do usuário. É inócuo (o estado restaurado é
-        // auto-consistente, e re-absorver devolve o MESMO offset), mas zerar é o honesto: a
-        // memória não é mais de nada. O arm de rótulo pendente morre com a sessão de texto.
+        // O cache de poses dos rótulos é a memória de "o que EU escrevi no frame passado", e o
+        // restore pôs poses novas no mundo sem passar por ele. O rótulo pendente morre com o texto.
         self.vec.label_poses.clear();
         self.vec.label_pending = None;
         self.text_add = ph2d_app_text::TextAdd::default();

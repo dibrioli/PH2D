@@ -62,6 +62,34 @@ pub fn publica(
     );
 }
 
+/// ⭐ **Logo depois de um restauro** (Ctrl+Z, Ctrl+Y, abrir): o gizmo e os alfinetes passam já aos bits
+/// novos. O quadro seguinte publica o Inspector antes do `sync_selection` e do `chave::resolve` dele, e
+/// um quadro sem seleção fechava os cartões todos. Medido na app: `doc CartoesUI/10`, «Smoke 3».
+pub fn depois_do_restauro(
+    hero: &mut ph2d_editor_core::screens::hero::HeroScreen,
+    sim: &SimWorld,
+    scene: &VecScene,
+    map: &ph2d_vec_entities::entities::VecEntityMap,
+    pen: &mut PenTool,
+    sel: &mut ph2d_app_vec::selection_sync::VecSelSync,
+    tools: &ph2d_editor_core::tool::ToolRegistry,
+) {
+    let vector_active = !hero.store.family_owns_canvas()
+        && tools
+            .active()
+            .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("vector"));
+    ph2d_app_vec::vec_selection::sync_selection(
+        &mut hero.gizmo,
+        sim,
+        scene,
+        map,
+        pen,
+        sel,
+        vector_active,
+    );
+    ph2d_card_rope::chave::resolve(&mut hero.store, sim.world());
+}
+
 /// O gesto de base vai à forma do cartão preso sob ele; sem cartão, à selecionada.
 pub fn apply_no_alvo(
     scene: &mut VecScene,

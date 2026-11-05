@@ -725,3 +725,32 @@ Par travado: a proporção é um dado do cadeado ([`ParTravado`](../../crates/ph
 ### Revisão de capricho e lei do ritmo (04/11, fatia q)
 
 Queixa do dono na foto do 9-Slice. Lei em [05 §4](05_ESPECIFICACAO_UI_COMPLETA.md) «Ritmo vertical»; lista em [18](18_REVISAO_DE_CAPRICHO.md). Portão `lei_do_ritmo`, por pintura real, em tema `Dark`; `PENDENTES_RITMO` só desce (inspector 6, audio_editor 4, macros 1, painter_layers 6, wet_tuning 8, widget_gallery 18). 54 cartões olhados por `tests/it/q_fotos.rs`. Ordering e Material & Blend estavam fora de todo censo: nasciam dobrados e `abre_as_gavetas` não os abria. Fotos `q_*`. Contraprovas: 4/4 vermelhas (rótulo colado, título sem vão, frase do 9-Slice sem porta, lista sem vão). `ph2d-panel-registry-init` ganhou dev-deps de foto (`ph2d-gpu`, `ph2d-render`, `image`). Aberto: 18, famílias A2, D2, H2, K, L, M, N, O, Script.
+
+### Smokes do dono: 2 OK, e os dois defeitos do 3 (04/11)
+
+**Smoke 2 (Painter) OK do dono, 04/11.** **Smoke 3: estes dois defeitos**, na cena `PH2D_VEC_CARTOES_SMOKE=11`.
+
+**A, «arrastar no ícone de weight do stroke do cartão solto travado». O dono não disse o sintoma; medido.** Com A = 3 px e B = 1 px, B escolhido: o número ficava a oscilar entre 1,8 e 2,6, sem nunca subir, e ao largar A tomava o 1 de B. O gesto perdia-se. Sem o alfinete anda; escrever o número sempre esteve certo; B e C não recebiam nada; o arrasto acaba no Up. **Não medido:** queda de quadros durante o gesto, e a captura do cursor pelo sistema (o gesto sintético não a exercita).
+
+Mecanismo: o gesto do preso passa pela tool, e `devolve_o_estilo` (`ph2d-app-vec/src/vector_bridge_style.rs:531`) repõe a tool à seleção e escreve o número e a barra dela a cada quadro. O comentário dizia que `set_number_value` respeita o arrasto; só protegia o `last_committed`. O Move seguinte somava à largura de B, e o Up mandava a barra semeada, a única que o painel ouve.
+
+Curas: `set_number_value` não toca na caixa da mão num gesto de preso, em arrasto ou em foco (`store_hierarchy.rs`), e `poe_numero` é a escrita sem guarda da semente do preso; a barra volta ao número no Up (`pointer_up.rs`). Três defeitos vizinhos, achados pela mesma medição: uma tecla a meio do scrub (Shift, Esc) mudava o gesto para a seleção, porque `note_card_key` não contava o scrub, e o Esc revertia em B; a coluna direita de todo campo de cartão dava um passo fantasma ao clicar (a mesma coluna das setas, que o cartão não pinta); a dica de um campo nascia no primeiro id pintado, a barra de opções, e não ao lado da mão (`alvo_da_dica`, visto na foto).
+
+Medido **na app real**, sonda temporária sobre a shell e o dreno, depois da cura: caixa e A sobem juntos de 8 a 20 px, B fica em 6, ao largar A fica em 20, e um Ctrl+Z repõe os 8 de uma vez. A medição de antes (1,8 ↔ 2,6) é da `Mesa`, com a ponte real.
+
+Família: censo por gesto (`o_scrub_do_preso.rs`), toda pega à vista no cartão preso: Transform 7, Appearance 1, Ordering 2, Fill 2, Stroke 3, Bone; o quadro não devolve, o Esc repõe. Antes da cura, nos cinco primeiros cartões (o Bone entrou depois), só o Weight reprovava esse censo, mas a opacidade também perdia o valor no Up (medido pela contraprova do espelho). **Fora do censo:** os cartões de componente; a cura é na porta do store, comum a eles, mas não os medi um a um. Shift ×10 e Alt ×0,1 medidos só no Weight.
+
+**B, «CTRL+Z faz o painel se redesenhar e dar pulos de cartões».** Mecanismo: o restauro respawna o mundo e limpa o gizmo no fim do quadro (`undo_app.rs`); o quadro seguinte publica o Inspector (`fase_snapshots_publish`) antes do `sync_selection` e do `chave::resolve` dele. Um quadro sem seleção.
+
+| Medido na app, por quadro, Ctrl+Z e Ctrl+Y | Antes | Depois |
+|---|---|---|
+| Altura da lista (px) | 681 → 526 → 450 → 681, em 27 quadros | 681 em todos |
+| Cartões a sair | 7 | 0 |
+| Mola a andar | sim | não |
+| Fill solto preso a A (px) | 145 → 99 → 145 | 145 em todos |
+
+Cura: `ph2d_host_presos::depois_do_restauro`, chamada no restauro: gizmo e alfinetes passam já aos bits novos. A rolagem era `0` nessa cena e não a forcei: o salto dela não foi medido, nem na app nem no gate (o gate compara `panel_scroll`, mas a lista dele também pode não transbordar). Com a altura constante não há de onde saltar: é dedução, não medida. O cartão que o desfazer tira ou devolve de verdade continua na mola de T41, gate `a_section_that_leaves_or_enters_with_the_selection_never_jumps`; não medi um desfazer de componente na app. Bones: a mesma porta da seleção; não medido à parte.
+
+Contraprovas: 8 mutantes, 8 vermelhos. O da guarda de foco sobreviveu à 1.ª rodada: uma só seta não o via, e o teste passou a dar duas. Na `Mesa`, a régua de B é viva: `one_frame_without_a_selection_is_what_made_the_cards_jump`. A chamada em `undo_app.rs` não tem gate, porque `App` sem placa não tem `gfx`: quem a prova é a medição acima, e tirá-la não reprova nenhum teste.
+
+**Vermelho que não é desta fatia:** `two_pinned_fill_cards_on_different_objects_edit_their_own` (`o_alfinete_fill_stroke_c2.rs:767`, o ⠿ da 2.ª cópia com a lista da 1.ª aberta). Corrido com os ficheiros da cura de A no estado do HEAD anterior: vermelho igual. Causa não investigada. Foto `z_weight_preso.png` não tirada: a cena parada não mostra um gesto.

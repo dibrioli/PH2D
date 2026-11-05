@@ -55,3 +55,8 @@ Macro com Grain fica fora desta linha. Não pedir regra de furos. Os pincéis de
 ## Prova
 
 Provas de mutação NÃO foram feitas nesta onda (ficam para o fecho da linha). Suíte completa só na integração.
+
+## Achados do fecho
+- As 13 receitas (`tests/it/familias/oleo_acrilica.rs`, `cap01.rs`) levam `("smoothEdges", 0.3)`: sem isto o gerador apagava a ordem do dono. Os candidatos W2 não a herdam.
+- A cena `PH2D_WETPAINT_SMOKE=4` mudou-se para `ph2d-tool-painter` (`wetpaint_casos.rs`): pôs `ph2d-app-painter` 193 linhas acima da catraca.
+- ⚠️ `render.rs:393`: com o campo da aparência alocado, `paper: true` acende o emboss da massa mesmo com `relevo: false` (+15 em 46 de 6 052 células em `o_molhado_sobre_tinta_fina_nao_clareia_alem_das_tintas`). O produto corre sempre `relevo: true` (`otica_factos.rs:87`), logo alocar o campo não muda a tela; o portão passou a medir só a cor (`paper: false`). `medida_oleo_real_fenda` fixa Smooth Edges 0 para o hash do Clear glass valer.

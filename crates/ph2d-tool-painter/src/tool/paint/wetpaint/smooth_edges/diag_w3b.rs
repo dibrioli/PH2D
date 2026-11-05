@@ -316,9 +316,10 @@ fn cada_pincel_traz_o_seu_smooth_edges() {
     t.set_paint_media(PaintMedia::WetPaint);
     for (nome, esperado) in [
         ("Wet Liner", 0.12),
-        ("Dabber", 0.0),
+        ("Dabber", 0.3),
         ("Wet Wash", 0.12),
-        ("Knife Oily", 0.0),
+        ("Knife Oily", 0.3),
+        ("Thick Impasto", 0.0),
     ] {
         t.set_wet_smooth_edges(0.7);
         let p = crate::tool::paint::wetpaint_preset::de_fabrica_ou_candidato(nome);

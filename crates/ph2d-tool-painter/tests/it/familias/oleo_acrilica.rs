@@ -45,6 +45,7 @@ pub const WET: &[Receita] = &[
         // ⛔ Sem o relevo de cada fio (W3, doc 49_medicao): o controlo 7,94 não se distingue do Rebelle 9,0 (o ruído
         // da foto, recto × rápido, é 0,9) — 1 px por ganho dava 8,79, dentro do ruído.
         extras: &[
+            ("smoothEdges", 0.3),
             ("felt", 0.0),
             ("bristleStrength", 2.0),
             ("emboss", 0.2),
@@ -140,6 +141,7 @@ const DABBER: Receita = Receita {
     gate: 1.0,
     achatado: Some((0.0, 90)),
     extras: &[
+        ("smoothEdges", 0.3),
         ("felt", 0.05),
         ("bristleStrength", 2.0),
         // J4 (`exames/oleo_acrilica.md`, contra a bateria do Rebelle `Dabber/Dabber`): o relevo 1,2 → 0,5 e o claro por
@@ -178,6 +180,7 @@ const KNIFE_SMOOTH_3: Receita = Receita {
     achatado: Some((0.8, 90)),
     grao: Some(("Noise", 6.0)),
     extras: &[
+        ("smoothEdges", 0.3),
         ("dabRotation", 1.0),
         ("knifeRidge", 8.0),
         ("emboss", 0.0),
@@ -205,6 +208,7 @@ const KNIFE_OILY: Receita = Receita {
     hardness: 0.5,
     achatado: Some((0.69, 172)),
     extras: &[
+        ("smoothEdges", 0.3),
         ("dabRotation", 0.0),
         ("knifeRidge", 3.0),
         ("emboss", 0.1),
@@ -231,6 +235,7 @@ const KNIFE_GRAINY: Receita = Receita {
     achatado: Some((0.8, 90)),
     grao: Some(("Clouds", 20.0)),
     extras: &[
+        ("smoothEdges", 0.3),
         ("dabRotation", 1.0),
         ("knifeRidge", 2.0),
         ("emboss", 0.1),
@@ -284,6 +289,7 @@ const KNIFE_TEXTURED: Receita = Receita {
     achatado: Some((0.87, 86)),
     grao: None,
     extras: &[
+        ("smoothEdges", 0.3),
         // J6 (Real Oil): oilDepth 0,1 — régua 314 → 374/454 (sem óleo 362).
         ("oilDepth", 0.1),
         ("dabRotation", 0.0),
@@ -314,6 +320,7 @@ const KNIFE_STAIN: Receita = Receita {
     gate: 2.5,
     grao: None,
     extras: &[
+        ("smoothEdges", 0.3),
         // J6 (Real Oil, o grão de 1 px curado no motor): oilDepth 0,1 · oilGloss 0,3 — régua 282 → 322/454 (sem óleo 336).
         ("oilDepth", 0.1),
         ("oilGloss", 0.3),
@@ -343,6 +350,7 @@ const DABBER_4: Receita = Receita {
     // Smoke 04/11: achatado 0,6 afinava o traço vertical para metade; grão 1,0 + serra regular a cada 0,3 liam-se a ruído.
     achatado: Some((0.3, 90)),
     extras: &[
+        ("smoothEdges", 0.3),
         ("dabRotation", 0.0),
         ("textureSizeExp", 0.5),
         // J6 (Real Oil): oilGloss 0,1 — régua 284 → 322/454; com o grão curado no motor + oilDepth 0,3: 316 → 318
@@ -371,6 +379,7 @@ const METALLIC_FLAT: Receita = Receita {
     size_px: Some(40.0),
     grao: Some(("Noise", 4.0)),
     extras: &[
+        ("smoothEdges", 0.3),
         // J6 (Real Oil): oilDepth 0,5 — régua 298 → 326/454; continua mais longe que sem óleo (358).
         ("oilDepth", 0.5),
         ("blendForce", 0.3),
@@ -697,6 +706,7 @@ pub(crate) const FLAT_BRISTLE: Receita = Receita {
     size_px: Some(78.0),
     achatado: Some((0.73, 90)),
     extras: &[
+        ("smoothEdges", 0.3),
         // 2.ª ronda (`exames/oleo_acrilica.md`): o GRÃO sal-e-pimenta da 1.ª era a CAPILARIDADE — o pouco pigmento que ela
         // espalha pelas fibras do papel, píxel a píxel (medido: o mesmo traço com `capillary` 0 é a risca lisa translúcida
         // do Rebelle; o feltro, as fibras, o sulco, a água por dab, o pickup e o papel visível não mexiam no grão). A tinta
@@ -778,6 +788,7 @@ pub(crate) const FILBERT: Receita = Receita {
     size_px: Some(64.0),
     achatado: Some((0.0, 90)),
     extras: &[
+        ("smoothEdges", 0.3),
         // J6 (Real Oil ligado, dono 28/10): a altura do óleo a 0,3 — régua contra o Rebelle 330 → 396/454 (sem óleo 376).
         ("oilDepth", 0.3),
         ("felt", 0.05),
@@ -1156,6 +1167,10 @@ fn os_candidatos_da_w2_sao_as_suas_receitas() {
                 .parametros;
         let mut p = crate::presets_de_fabrica::parametros(r);
         p.width_table.clone_from(&ficheiro.width_table);
+        // Os candidatos ficaram de fora do Smooth Edges de fábrica dos óleos (dono 05/11), que herdam de quem nascem.
+        if !ficheiro.engine.contains_key("smoothEdges") {
+            p.engine.remove("smoothEdges");
+        }
         if p != ficheiro {
             let engine = p
                 .engine

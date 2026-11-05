@@ -20,7 +20,7 @@ pub const WET: &[Receita] = &[
         nome: "Tilted Shade",
         size_px: Some(40.0),
         achatado: Some((0.65, 0)),
-        extras: &[("dabRotation", 1.0)],
+        extras: &[("smoothEdges", 0.3), ("dabRotation", 1.0)],
         pincel: &[("dab_rotation_lag", "1.5"), ("dab_quina", "0.5")],
         nasce_de: Some("Filbert"),
         ..FILBERT
@@ -70,7 +70,11 @@ pub const WET: &[Receita] = &[
         pigment: 90.0,
         size_px: Some(34.0),
         achatado: Some((0.5, 0)),
-        extras: &[("dabRotation", 1.0), ("extDryBrush", 1.0)],
+        extras: &[
+            ("smoothEdges", 0.3),
+            ("dabRotation", 1.0),
+            ("extDryBrush", 1.0),
+        ],
         pincel: &[("dab_rotation_lag", "0.6"), ("dab_quina", "0.4")],
         nasce_de: Some("Filbert"),
         ..FILBERT

@@ -241,6 +241,11 @@ pub(super) fn cena_papel_texturizado(
     t.set_wet_relogio_fixo(true);
     let p = &preset_rel(&b, "WetPainter/Oil/Dabber/Dabber.ph2d-brush.png");
     assert!(t.wet_preset_aplicar(p).is_empty());
+    // A cena mede o vidro e o hash dela é de antes do Smooth Edges de fábrica do Dabber (dono 05/11).
+    t.paint
+        .wetpaint
+        .knobs
+        .set(ph2d_wet_paint::tuning::Knob::SmoothEdges, 0.0);
     t.set_brush_paper_kind(1);
     t.set_substrate_depth(relief);
     t.set_wet_oleo_real_ligado(oleo);

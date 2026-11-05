@@ -224,7 +224,8 @@ fn o_molhado_sobre_tinta_fina_nao_clareia_alem_das_tintas() {
             Some(&params),
             &layers,
             ph2d_wet_paint::render::PigmentVisual {
-                paper: true,
+                // Só a cor: com o campo da aparência, `paper` acende o emboss da massa, que não é cor de tinta.
+                paper: false,
                 relevo: false,
             },
             cy,

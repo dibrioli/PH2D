@@ -297,8 +297,10 @@ pub fn plano_da_foto(
         Foto::OrdemSonda => return None,
         Foto::Seletor => plano.alvo = hills,
         Foto::SpriteVazio => {
-            let mut t = ph2d_ecs::Transform::default();
-            t.translation = ph2d_core::Vec2::new(ONDE_LARGA[0], ONDE_LARGA[1]);
+            let t = ph2d_ecs::Transform {
+                translation: ph2d_core::Vec2::new(ONDE_LARGA[0], ONDE_LARGA[1]),
+                ..Default::default()
+            };
             let sprite =
                 ph2d_render::Sprite::atlas(ph2d_render::WHITE_TILE_KEY, [1.0, 1.0], [1.0; 4]);
             let nome = ph2d_ecs::Name::new("Sprite");

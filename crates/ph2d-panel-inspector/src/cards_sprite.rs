@@ -87,8 +87,6 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
         "card.insp.sheet_use_region_tip",
     );
     store.set_collapsed_if_unchosen(crate::cards::CARD_TRANSFORM_IMAGE, true);
-    // O Look abre: é o que se ajusta depois da imagem (ficha da Sprite). Só nos cartões; o painel de antes fica como era.
-    store.set_collapsed_if_unchosen(core_ids::INSP_LIVE_COLOR_SECTION, false);
     botao(
         store,
         ids::INSP_SPRITE_PIVOT_NOME,
@@ -192,15 +190,15 @@ fn recibo_do_replace(c: &mut CardCtx<'_>, y: f32, info: &InspectorSpriteInfo) ->
             ("bh", &r.para[1]),
         ],
     );
+    let y = com_corpo(c, y, |t, theme, _, x, w, y| {
+        sections::rows::aviso(t.scene, t.text, theme, x, w, y, &texto, ColorToken::Text2)
+    });
     c.row(
-        &[
-            Cell::new(Widget::Readout { text: &texto }),
-            Cell::new(Widget::Button {
-                id: ids::INSP_IMAGE_KEEP_SIZE,
-                text: tr("card.insp.keep_old_size"),
-                primary: false,
-            }),
-        ],
+        &[Cell::new(Widget::Button {
+            id: ids::INSP_IMAGE_KEEP_SIZE,
+            text: tr("card.insp.keep_old_size"),
+            primary: false,
+        })],
         y,
     )
 }

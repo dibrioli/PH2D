@@ -55,8 +55,11 @@ fn a_imagem_abre_exactamente_sobre_o_desenho() {
     let mut s = Sprite::atlas(ph2d_render::WHITE_TILE_KEY, [3.0, 1.0], [1.0; 4]);
     s.anchor = [0.5, 0.0];
     s.flip_x = true;
-    let mut t = Transform::default();
-    t.translation = ph2d_core::Vec2::new(10.0, 20.0);
+    s.flip_y = true;
+    let t = Transform {
+        translation: ph2d_core::Vec2::new(10.0, 20.0),
+        ..Default::default()
+    };
     let origem = w.spawn((s, t)).id();
     let trabalho = w.spawn(Transform::default()).id();
     abre(
@@ -76,7 +79,7 @@ fn a_imagem_abre_exactamente_sobre_o_desenho() {
     );
     assert_eq!(
         (p.scale.x, p.scale.y),
-        (-1.0, 0.5),
+        (-1.0, -0.5),
         "3 m em 300 px; 1 m em 200 px; espelhada"
     );
     encerra(&mut w);

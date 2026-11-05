@@ -139,19 +139,29 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.opacity" => "Opacity (%)",
         "card.insp.look" => "Look",
         "card.insp.edit_in_pixel" => "Edit in Pixel",
-        "card.insp.edit_in_pixel_tip" => "Edit this image in Pixel Art. Every object using it updates when you leave Draw",
+        "card.insp.edit_in_pixel_tip" => {
+            "Edit this image in Pixel Art. Every object using it updates when you leave Draw"
+        }
         "card.insp.edit_in_painter" => "Edit in Painter",
-        "card.insp.edit_in_painter_tip" => "Paint on this image. Every object using it updates when you leave Draw",
+        "card.insp.edit_in_painter_tip" => {
+            "Paint on this image. Every object using it updates when you leave Draw"
+        }
         "card.insp.replace_receipt" => "{aw} \u{00d7} {ah} \u{2192} {bw} \u{00d7} {bh} px",
         "card.insp.keep_old_size" => "Keep old size",
-        "card.insp.keep_old_size_tip" => "The new image takes the size the old one had in the scene",
+        "card.insp.keep_old_size_tip" => {
+            "The new image takes the size the old one had in the scene"
+        }
         "card.insp.paint_new_tip" => "Start from a blank image and paint it",
         "card.insp.recent_tip" => "Use this image, chosen recently in this project",
-        "card.insp.sheet_warning" => "This image looks like a sheet of {c} \u{00d7} {l} cells. Still shows all of it.",
+        "card.insp.sheet_warning" => {
+            "This image looks like a sheet of {c} \u{00d7} {l} cells. Still shows all of it."
+        }
         "card.insp.sheet_make_animated" => "Make it Animated",
         "card.insp.sheet_make_animated_tip" => "Play the cells of this sheet as an animation",
         "card.insp.sheet_use_region" => "Use one Region",
-        "card.insp.sheet_use_region_tip" => "Show one part of this sheet: click a cell to choose it",
+        "card.insp.sheet_use_region_tip" => {
+            "Show one part of this sheet: click a cell to choose it"
+        }
         "card.insp.pivot" => "Pivot",
         "card.insp.pivot_px" => "Pivot (px)",
         "card.insp.pivot_nome_tip" => "Show the exact pivot position",
@@ -176,7 +186,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.silhouette" => "Silhouette (Tint Fill)",
         "card.insp.tint_each_corner" => "Tint each corner",
         "card.insp.order_option" => "+ Order option…",
-        "card.insp.transform_summary" => "{x}, {y} \u{00b7} {r}\u{00b0} \u{00b7} {sx} \u{00d7} {sy}",
+        "card.insp.transform_summary" => {
+            "{x}, {y} \u{00b7} {r}\u{00b0} \u{00b7} {sx} \u{00d7} {sy}"
+        }
         "card.insp.advanced_summary" => "{strategy} \u{00b7} {format}",
         "card.insp.blend" => "Blend",
         "card.insp.fill" => "Fill",

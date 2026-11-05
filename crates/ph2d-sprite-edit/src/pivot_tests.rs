@@ -37,8 +37,10 @@ fn sprite_2x2() -> Sprite {
 /// ⭐ A lei: o desenho não anda. O centro do quad antes e depois é o mesmo, com rotação e escala.
 #[test]
 fn mudar_o_pivo_nao_move_o_desenho() {
-    let mut t = Transform::default();
-    t.translation = Vec2::new(5.0, 7.0);
+    let mut t = Transform {
+        translation: Vec2::new(5.0, 7.0),
+        ..Default::default()
+    };
     t.rotation = 0.7;
     t.scale = Vec2::new(2.0, 3.0);
     let (mut w, e) = mundo_com(sprite_2x2(), t);
@@ -57,8 +59,10 @@ fn mudar_o_pivo_nao_move_o_desenho() {
 /// Controle: sem compensar, o mesmo pivô moveria o desenho; a régua acima sabe ver isso.
 #[test]
 fn a_regua_ve_o_desenho_andar_quando_a_posicao_nao_compensa() {
-    let mut t = Transform::default();
-    t.rotation = 0.7;
+    let t = Transform {
+        rotation: 0.7,
+        ..Default::default()
+    };
     let s = sprite_2x2();
     let antes = no_pai(t, s.resolve_anchor(100.0));
     let depois = no_pai(t, [0.0, 1.0]);
@@ -122,8 +126,10 @@ fn mudar_o_pivo_nao_move_os_filhos() {
             Transform::default(),
         ))
         .id();
-    let mut local = Transform::default();
-    local.translation = Vec2::new(3.0, 1.0);
+    let local = Transform {
+        translation: Vec2::new(3.0, 1.0),
+        ..Default::default()
+    };
     let filho = w.spawn((local, ph2d_ecs::ChildOf(pai))).id();
     assert!(set_pivot(
         &mut w,

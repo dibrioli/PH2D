@@ -39,9 +39,11 @@ fn pose_sobre(world: &World, origem: Entity, (w, h): (u32, u32), ppm: f32) -> Op
     let mundo = ph2d_ecs::world_transform(world, origem)?;
     let s = world.get::<Sprite>(origem)?;
     let lado = world.get::<TiledDraw>(origem).map_or(s.size, |t| t.tile);
-    let mut ancora = Transform::default();
     let a = s.resolve_anchor(ppm);
-    ancora.translation = ph2d_core::Vec2::new(a[0], a[1]);
+    let ancora = Transform {
+        translation: ph2d_core::Vec2::new(a[0], a[1]),
+        ..Default::default()
+    };
     let mut t = mundo;
     t.translation = Transform::compose(mundo, ancora).translation;
     let sinal = |espelho: bool| if espelho { -1.0 } else { 1.0 };

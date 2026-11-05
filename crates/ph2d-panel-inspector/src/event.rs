@@ -345,7 +345,17 @@ fn apply_event_impl(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         && let Some(info) = state::current_inspector_transform()
     {
         crate::cards::keep_proportion(host, id, &info);
-        crate::event_transform::commit_transform_edit(host, info);
+        // A trava de proporção escreveu o outro eixo.
+        let par = if crate::cards::scale_locked() {
+            match id {
+                ids::INSP_TRANSFORM_SCALE_X => ids::INSP_TRANSFORM_SCALE_Y,
+                ids::INSP_TRANSFORM_SCALE_Y => ids::INSP_TRANSFORM_SCALE_X,
+                _ => id,
+            }
+        } else {
+            id
+        };
+        crate::event_transform::commit_transform_edit(host, info, &[id, par]);
         return true;
     }
     if let WidgetEvent::Submit(id) = ev

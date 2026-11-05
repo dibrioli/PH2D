@@ -7,6 +7,9 @@ use ph2d_render::{Sprite, SpriteSource, texture_of};
 use std::cell::Cell;
 use std::collections::BTreeMap;
 
+/// Sobe RGBA8 à placa e devolve a textura (o `SpriteRenderer` no app).
+pub type Sobe<'a> = dyn FnMut(u32, u32, &[u8]) -> Result<u32, String> + 'a;
+
 thread_local! {
     /// A imagem aberta no Painter pelo botão: `(objecto, imagem)`. A próxima pintura dele vale para quem a usa.
     static EDICAO: Cell<Option<(Entity, AssetId)>> = const { Cell::new(None) };
@@ -59,8 +62,10 @@ fn aponta(world: &mut World, e: Entity, texture_id: u32, novo: AssetId, premulti
 /// Dois RGBA8 retos dão o mesmo desenho?
 fn mesmos_pixeis(a: &[u8], b: &[u8]) -> bool {
     a.len() == b.len()
-        && a.chunks_exact(4)
-            .zip(b.chunks_exact(4))
+        && a.as_chunks::<4>()
+            .0
+            .iter()
+            .zip(b.as_chunks::<4>().0)
             .all(|(p, q)| p == q || (p[3] == 0 && q[3] == 0))
 }
 
@@ -68,7 +73,7 @@ fn mesmos_pixeis(a: &[u8], b: &[u8]) -> bool {
 /// imagem. A imagem é endereçada pelo conteúdo, e por isso editar dá um id novo. Devolve quantos objectos mudaram.
 pub fn troca_os_pixeis(
     world: &mut World,
-    acquire: &mut dyn FnMut(u32, u32, &[u8]) -> Result<u32, String>,
+    acquire: &mut Sobe<'_>,
     db: &AssetDb,
     atlas: &BTreeMap<u32, AssetId>,
     origem: Entity,

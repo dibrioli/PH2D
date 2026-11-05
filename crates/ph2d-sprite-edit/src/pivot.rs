@@ -144,8 +144,10 @@ fn ponto_local(s: &Sprite, f: [f32; 4], ponto: [u8; 2]) -> [f32; 2] {
 
 /// Onde `local` cai no espaço do pai de `t`: a composição da casa, com rotação, escala e skew.
 fn no_pai(t: Transform, local: [f32; 2]) -> Vec2 {
-    let mut filho = Transform::default();
-    filho.translation = Vec2::new(local[0], local[1]);
+    let filho = Transform {
+        translation: Vec2::new(local[0], local[1]),
+        ..Default::default()
+    };
     Transform::compose(t, filho).translation
 }
 

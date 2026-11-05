@@ -44,8 +44,15 @@ impl WidgetStore {
     /// Abre o ensaio: guarda estados e cores e larga foco, arrasto, botão premido e seletor de cor
     /// (nenhuma caixa se defende — a semente escreve-as todas).
     pub fn abre_ensaio(&mut self) -> Ensaio {
+        let estados = self.states.clone();
+        // Toda caixa de número fica sem valor: a que a semente escrever é do preso, mesmo que hoje dê o número da seleção.
+        for s in self.states.values_mut() {
+            if let InteractiveState::NumberInput { value, .. } = s {
+                *value = f64::NAN;
+            }
+        }
         Ensaio {
-            estados: self.states.clone(),
+            estados,
             cores: self.widget_colors.clone(),
             foco: self.focus_id.take(),
             arrasto: self.number_input_drag.take(),
@@ -59,7 +66,11 @@ impl WidgetStore {
         let estados = self
             .states
             .iter()
-            .filter(|(id, s)| e.estados.get(id) != Some(*s))
+            .filter(|(id, s)| match s {
+                // ⛔ Sem diferença o cartão mostraria a caixa partilhada: o número que a mão arrasta noutro cartão.
+                InteractiveState::NumberInput { value, .. } => !value.is_nan(),
+                _ => e.estados.get(id) != Some(*s),
+            })
             .map(|(id, s)| (*id, s.clone()))
             .collect();
         let cores = self

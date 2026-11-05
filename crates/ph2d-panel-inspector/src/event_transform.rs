@@ -39,50 +39,42 @@ use ph2d_editor_core::screens::hero::InspectorTransformInfo;
 pub(crate) fn commit_transform_edit(
     host: &mut dyn PanelHostInternal,
     info: ph2d_editor_core::screens::hero::InspectorTransformInfo,
+    campos: &[ph2d_a11y::NodeId],
 ) {
+    use crate::ids::{
+        INSP_TRANSFORM_POS_X, INSP_TRANSFORM_POS_Y, INSP_TRANSFORM_ROT, INSP_TRANSFORM_SCALE_X,
+        INSP_TRANSFORM_SCALE_Y, INSP_TRANSFORM_SKEW_X, INSP_TRANSFORM_SKEW_Y,
+    };
     let unit = host.project().display_unit;
     let ppm = host.project().pixels_per_meter;
     let ang = host.project().display_angle;
-    let x_disp = host
-        .store()
-        .number_value(crate::ids::INSP_TRANSFORM_POS_X)
-        .unwrap_or(unit.from_meters(info.translation[0], ppm) as f64) as f32;
-    let y_disp = host
-        .store()
-        .number_value(crate::ids::INSP_TRANSFORM_POS_Y)
-        .unwrap_or(unit.from_meters(info.translation[1], ppm) as f64) as f32;
-    let rot_disp = host
-        .store()
-        .number_value(crate::ids::INSP_TRANSFORM_ROT)
-        .unwrap_or(ang.from_radians_f64(f64::from(info.rotation_rad))) as f32;
-    let sx = host
-        .store()
-        .number_value(crate::ids::INSP_TRANSFORM_SCALE_X)
-        .unwrap_or(info.scale[0] as f64) as f32;
-    let sy = host
-        .store()
-        .number_value(crate::ids::INSP_TRANSFORM_SCALE_Y)
-        .unwrap_or(info.scale[1] as f64) as f32;
-    // Skew authored in the ACTIVE angle unit, for parity with Rotation; the
-    // ECS-commit boundary converts to radians and clamps to
-    // Transform::SKEW_LIMIT (ADR-0025-amendment-1 §2.5).
-    let skew_x_disp = host
-        .store()
-        .number_value(crate::ids::INSP_TRANSFORM_SKEW_X)
-        .unwrap_or(ang.from_radians_f64(f64::from(info.skew_rad[0]))) as f32;
-    let skew_y_disp = host
-        .store()
-        .number_value(crate::ids::INSP_TRANSFORM_SKEW_Y)
-        .unwrap_or(ang.from_radians_f64(f64::from(info.skew_rad[1]))) as f32;
-    host.bus_mut().push(EditorAction::InspectorTransformEdit(
-        InspectorTransformInfo {
-            entity_bits: info.entity_bits,
-            translation: [unit.to_meters(x_disp, ppm), unit.to_meters(y_disp, ppm)],
-            rotation_rad: ang.to_radians(rot_disp),
-            scale: [sx, sy],
-            skew_rad: [ang.to_radians(skew_x_disp), ang.to_radians(skew_y_disp)],
-        },
-    ));
+    // ⛔ Só o campo que a mão mexeu vem da caixa: as caixas são uma por id, e dois cartões presos partilham-nas. O resto
+    // é do objecto do gesto, ou o Y do outro objecto vem junto (dono 05/11).
+    let da_mao = |id| {
+        campos
+            .contains(&id)
+            .then(|| host.store().number_value(id))
+            .flatten()
+            .map(|v| v as f32)
+    };
+    let edit = InspectorTransformInfo {
+        entity_bits: info.entity_bits,
+        translation: [
+            da_mao(INSP_TRANSFORM_POS_X).map_or(info.translation[0], |v| unit.to_meters(v, ppm)),
+            da_mao(INSP_TRANSFORM_POS_Y).map_or(info.translation[1], |v| unit.to_meters(v, ppm)),
+        ],
+        rotation_rad: da_mao(INSP_TRANSFORM_ROT).map_or(info.rotation_rad, |v| ang.to_radians(v)),
+        scale: [
+            da_mao(INSP_TRANSFORM_SCALE_X).unwrap_or(info.scale[0]),
+            da_mao(INSP_TRANSFORM_SCALE_Y).unwrap_or(info.scale[1]),
+        ],
+        skew_rad: [
+            da_mao(INSP_TRANSFORM_SKEW_X).map_or(info.skew_rad[0], |v| ang.to_radians(v)),
+            da_mao(INSP_TRANSFORM_SKEW_Y).map_or(info.skew_rad[1], |v| ang.to_radians(v)),
+        ],
+    };
+    host.bus_mut()
+        .push(EditorAction::InspectorTransformEdit(edit));
 }
 
 /// ⭐ **Girar 90° e espelhar o objecto que não é vetor** (dono 04/11): soma um quarto de volta à
@@ -98,15 +90,11 @@ pub(crate) fn giro_click(
         INSP_TRANSFORM_SCALE_X, INSP_TRANSFORM_SCALE_Y,
     };
     let troca_sinal = |host: &mut dyn PanelHostInternal, campo, atual: f32| {
-        let v = host.store().number_value(campo).unwrap_or(f64::from(atual));
-        host.store_mut().set_number_value(campo, -v);
+        host.store_mut().set_number_value(campo, -f64::from(atual));
     };
     if id == INSP_TRANSFORM_ROTATE_CW {
         let ang = host.project().display_angle;
-        let agora = host
-            .store()
-            .number_value(INSP_TRANSFORM_ROT)
-            .map_or(info.rotation_rad, |v| ang.to_radians(v as f32));
+        let agora = info.rotation_rad;
         let volta = std::f32::consts::TAU;
         let novo = (agora + std::f32::consts::FRAC_PI_2 + std::f32::consts::PI).rem_euclid(volta)
             - std::f32::consts::PI;
@@ -121,6 +109,13 @@ pub(crate) fn giro_click(
     } else {
         return false;
     }
-    commit_transform_edit(host, info);
+    let campo = if id == INSP_TRANSFORM_ROTATE_CW {
+        INSP_TRANSFORM_ROT
+    } else if id == INSP_TRANSFORM_FLIP_H {
+        INSP_TRANSFORM_SCALE_X
+    } else {
+        INSP_TRANSFORM_SCALE_Y
+    };
+    commit_transform_edit(host, info, &[campo]);
     true
 }

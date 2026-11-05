@@ -4,8 +4,10 @@ use super::*;
 #[test]
 fn a_imagem_pintada_toma_o_lugar_do_vazio() {
     let mut w = World::new();
-    let mut t = ph2d_ecs::Transform::default();
-    t.translation = ph2d_core::Vec2::new(4.0, 5.0);
+    let t = ph2d_ecs::Transform {
+        translation: ph2d_core::Vec2::new(4.0, 5.0),
+        ..Default::default()
+    };
     let vazio = w
         .spawn((Sprite::atlas(WHITE_TILE_KEY, [1.0, 1.0], [1.0; 4]), t))
         .id();

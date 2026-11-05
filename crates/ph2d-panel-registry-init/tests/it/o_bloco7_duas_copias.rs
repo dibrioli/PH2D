@@ -15,11 +15,32 @@ use ph2d_host::PointerKind;
 const CIRCULO: u64 = 11;
 const QUADRADO: u64 = 12;
 
+const Y_CIRCULO: f32 = 2.0;
+const Y_QUADRADO: f32 = 5.0;
+
+fn com_y(bits: u64, x: f32, y: f32) {
+    ph2d_panel_inspector::set_current_inspector_transform(Some(
+        ph2d_editor_core::screens::hero::InspectorTransformInfo {
+            entity_bits: bits,
+            translation: [x, y],
+            rotation_rad: 0.0,
+            scale: [1.0, 1.0],
+            skew_rad: [0.0, 0.0],
+        },
+    ));
+}
+
 fn publica(h: &HeroScreen) {
     let pins = h.store.loose_pins_of(ph2d_editor_core::ids::INSP_PANEL);
     ph2d_panel_inspector::com_cada_preso(&pins, |b| match b {
-        CIRCULO => escolhe(CIRCULO, "Circle", 1.0),
-        QUADRADO => escolhe(QUADRADO, "Square", 9.0),
+        CIRCULO => {
+            escolhe(CIRCULO, "Circle", 1.0);
+            com_y(CIRCULO, 1.0, Y_CIRCULO);
+        }
+        QUADRADO => {
+            escolhe(QUADRADO, "Square", 9.0);
+            com_y(QUADRADO, 9.0, Y_QUADRADO);
+        }
         _ => {}
     });
 }
@@ -71,6 +92,121 @@ fn edita(h: &mut HeroScreen, k: NodeId) -> Option<u64> {
 /// reescrita: um só solto, sem alfinete.*
 #[test]
 fn a_second_transform_card_pins_to_another_object_and_the_first_keeps_its_rope() {
+    let (mut h, dois) = duas_copias();
+    let a = ph2d_panel_inspector::CARD_TRANSFORM;
+    assert_eq!(edita(&mut h, a), Some(CIRCULO));
+    assert_eq!(edita(&mut h, dois), Some(QUADRADO));
+    assert!(
+        !h.store.loose_rope(a).is_empty(),
+        "a corda da cópia 1 partiu-se"
+    );
+}
+
+/// O que um arrasto no campo X do solto `k` publica.
+fn arrasta_o_x(
+    h: &mut HeroScreen,
+    k: NodeId,
+) -> ph2d_editor_core::screens::hero::InspectorTransformInfo {
+    use ph2d_card_stack::metrics as m;
+    let s = h.store.panel_rect(loose_rect_of(k)).expect("o solto");
+    let r = h
+        .hit_index
+        .iter_registrations()
+        .filter(|(i, _)| *i == ph2d_panel_inspector::ids::INSP_TRANSFORM_POS_X)
+        .map(|(_, r)| r)
+        .find(|r| s.contains(r.x + 1.0, r.y + 1.0))
+        .expect("o campo X dentro do solto");
+    // Dois `Down` seguidos no mesmo id e no mesmo instante (`mao` não tem relógio) seriam um duplo clique.
+    let fundo = (s.x + s.w * 0.5, s.y + s.h - 3.0);
+    mao(h, PointerKind::Down, fundo);
+    mao(h, PointerKind::Up, fundo);
+    let _ = h.bus.drain().count();
+    let (xa, y) = (r.x + m::ICON_CELL * 0.5, r.y + r.h * 0.5);
+    arrasta(h, (xa, y), (xa + 40.0, y));
+    let i = h
+        .bus
+        .drain()
+        .filter_map(|a| match a {
+            EditorAction::InspectorTransformEdit(i) => Some(i),
+            _ => None,
+        })
+        .next_back()
+        .unwrap_or_else(|| {
+            panic!(
+                "o arrasto em {k:?} não publicou: campo {r:?} · solto {s:?} · sob a mão {:?}",
+                h.hit_index.hit(xa, y)
+            )
+        });
+    quadros(h, 2);
+    i
+}
+
+/// ⭐ **Dono 05/11: mover um objecto no X não pode mexer no cartão do outro.** Cada solto preso escreve só o campo
+/// que a mão mexeu: o resto é do objecto dele, nunca da caixa partilhada do `WidgetStore`.
+/// *Mutação: `commit_transform_edit` ler o Y do `store` ⇒ o Y do Square vai parar no Circle.*
+#[test]
+fn arrastar_o_x_de_um_preso_nao_traz_o_y_do_outro() {
+    let (mut h, dois) = duas_copias();
+    for (k, bits, x, y) in [
+        (
+            ph2d_panel_inspector::CARD_TRANSFORM,
+            CIRCULO,
+            1.0,
+            Y_CIRCULO,
+        ),
+        (dois, QUADRADO, 9.0, Y_QUADRADO),
+        (
+            ph2d_panel_inspector::CARD_TRANSFORM,
+            CIRCULO,
+            1.0,
+            Y_CIRCULO,
+        ),
+    ] {
+        let i = arrasta_o_x(&mut h, k);
+        assert_eq!(i.entity_bits, bits);
+        assert_eq!(i.translation[1], y, "o Y de {bits} mudou: {i:?}");
+        assert!(
+            (i.translation[0] - x).abs() < 2.0 && i.translation[0] != x,
+            "o X de {bits} tem de andar a partir do dele: {i:?}"
+        );
+    }
+}
+
+/// ⭐ O preso que também é a seleção não tinha diferença guardada: o cartão dele mostrava o X que a mão arrastava no outro.
+#[test]
+fn arrastar_num_cartao_nao_muda_o_numero_que_o_outro_mostra() {
+    let (mut h, dois) = duas_copias();
+    let a = ph2d_panel_inspector::CARD_TRANSFORM;
+    // O Square passa a ser também a seleção.
+    com_y(QUADRADO, 9.0, Y_QUADRADO);
+    h.gizmo.replace_selection(Some(QUADRADO));
+    quadros(&mut h, 5);
+    let antes = pos_x(&h, dois);
+    assert!(antes.is_some());
+    // No MEIO do arrasto: é aí que a caixa partilhada tem o número da mão.
+    use ph2d_card_stack::metrics as m;
+    let solto = h.store.panel_rect(loose_rect_of(a)).expect("o solto");
+    let r = h
+        .hit_index
+        .iter_registrations()
+        .filter(|(i, _)| *i == ph2d_panel_inspector::ids::INSP_TRANSFORM_POS_X)
+        .map(|(_, r)| r)
+        .find(|r| solto.contains(r.x + 1.0, r.y + 1.0))
+        .expect("o campo X dentro do solto");
+    let (xa, y) = (r.x + m::ICON_CELL * 0.5, r.y + r.h * 0.5);
+    mao(&mut h, PointerKind::Down, (xa, y));
+    pinta(&mut h, 2);
+    for i in 1..=4 {
+        mao(&mut h, PointerKind::Move, (xa + 10.0 * i as f32, y));
+        quadros(&mut h, 1);
+        assert_eq!(pos_x(&h, dois), antes, "o número do outro cartão andou");
+    }
+    mao(&mut h, PointerKind::Up, (xa + 40.0, y));
+    assert_eq!(pos_x(&h, dois), antes, "o número do outro cartão andou");
+}
+
+/// O Transform preso ao Circle e a cópia 2 presa ao Square, com outro objecto seleccionado.
+fn duas_copias() -> (HeroScreen, NodeId) {
     use ph2d_panel_inspector::CARD_TRANSFORM;
     let _ = ph2d_panel_registry_init::register_all_panels();
     ph2d_panel_inspector::set_cards_on(true);
@@ -137,10 +273,5 @@ fn a_second_transform_card_pins_to_another_object_and_the_first_keeps_its_rope()
     );
     escolhe(77, "Other", 4.0);
     quadros(&mut h, 3);
-    assert_eq!(edita(&mut h, CARD_TRANSFORM), Some(CIRCULO));
-    assert_eq!(edita(&mut h, dois), Some(QUADRADO));
-    assert!(
-        !h.store.loose_rope(CARD_TRANSFORM).is_empty(),
-        "a corda da cópia 1 partiu-se"
-    );
+    (h, dois)
 }

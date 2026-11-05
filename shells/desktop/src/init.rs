@@ -368,6 +368,11 @@ fn boot_hero_screen(
         // preferências — instalar depois faria o primeiro quadro desenhar a arrumação de omissão e
         // saltar para a do artista no seguinte.
         crate::layout_persist::install_saved(&mut hero, tools, &crate::layout_persist::load());
+        // O Look da Sprite abre: é o que se ajusta depois da imagem (ficha da Sprite). Só nos cartões, e a escolha salva manda.
+        if std::env::var("PH2D_CARDS").as_deref() != Ok("0") {
+            hero.store
+                .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_COLOR_SECTION, false);
+        }
         crate::layout_persist::load_sections(&mut hero.store);
         // A cena de smoke dos QUADROS (`PH2D_BOARD_SMOKE`), inerte sem a env.
         ph2d_app_board::smoke::stage_armed_smokes(&mut hero);

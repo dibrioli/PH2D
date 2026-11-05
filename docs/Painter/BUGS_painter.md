@@ -503,10 +503,10 @@ no retorno do `assenta`): o censo vai a 0, mas 25 miniaturas mudam até 10 níve
 Knife Stain 7, Dabber 4 6, Knife Smooth 3 6, Knife Textured 6…) e reprovam `assentar_guarda_o_ecra_com_o_glaze` e
 `com_o_glaze_assentar_guarda_o_ecra_seco` — mexe em aprovados, logo é do dono pela foto. Revertida; o censo é catraca
 (`ABERTOS`) até lá. Sondas: `diag_a_celula_mais_clara_do_censo`, `sonda_miniatura_antiga_e_de_hoje`.
-J8 (30/10): o **Over Oil** (`1e9a32d0af`) cura a mesma conta SÓ sobre óleo (`OleoCelula::aguada`): a aguada mistura
-pela K-M em vez de tapar com branco. NÃO cura o #54: o Marker Bullet e a faixa fina abaixo de um óleo onde a tinta
-escorreu sem ele (`oleo` 0) seguem a lei da obra — continuam creme no papel de cor
-([prancha](Pinceis/pranchas/J8_over_oil_tint_mix_blend.jpg)). Estender a lei a toda a tinta é a decisão pendente.
+⚠️ **A lei J8 já não existe:** o **Over Oil** (`1e9a32d0af`, 30/10) curava a mesma conta só sobre óleo (`OleoCelula::aguada`,
+[prancha](Pinceis/pranchas/J8_over_oil_tint_mix_blend.jpg)), e foi revertido em `702e98f913` (a aguada sobre o óleo é a mistura
+do main, sem branco; ficaram no `assenta` `Ecra::com_oleo` e `na_caixa_das_tintas`). Não há lei J8 a estender: o que sobra diz-o o
+censo (`ABERTOS`), e a decisão pendente é a da cura simulada acima.
 
 ## Bug #56 (CURADO na régua 04/11, falta o olho do dono no smoke) — a parede entre traços (`levelingOwnStroke = 1`) EMPILHA a tinta molhada da água
 
@@ -629,6 +629,21 @@ Medido (traço de 40 px; massa / ecrã ÷ fábrica; «antes» = o mesmo processo
 ⛔ **Recusas MEDIDAS** ao tirar o Grain, nos 10 de cerdas: cerdas × `média(G)/média(tapete)` antes do portão: massa 0,52–0,97 (satura); `texv` à média sem nenhum tapete: massa 1,00–1,06, mas tira as cerdas do traço e os sliders delas deixariam de agir (leitura do código, não medido).
 
 Portões `grao_a_mao_tests::casos_abertos_*` (com o braço «sem a cura», que sangra, em cada um). **Aberto:** uma macro gravada antes que arma um Grain toca agora a quantidade nova.
+
+## Bug #65 (05/11, achados da auditoria da parte de CPU) — o Grain e o Smooth Edges fora do traço do Pincel
+
+Portões em `wetpaint/grao_nos_slots_tests.rs` e `otica_no_tique_tests.rs`, sonda `sonda_suspeitas_do_grao`.
+
+- **D1 (CURADO):** `wet_aplica_imagem` comparava a união de casa só com `caixa_cel`, e `Imagem::aplica` cola os degraus em `caixa_suave`, maior: degraus velhos no traço ao lado (2 508 bytes a 1,0, folga 6). `toca(u, c.caixa_suave)`; `plano_do_suave` deriva-a da caixa em píxeis, logo contém a do pigmento (a guarda da tinta só cresce). 0 bytes a 1,0 e 0,12, folgas 6/8/10/14, nos dois eixos.
+- **A1 (CURADO):** Grain à mão na Borracha do Wet morto: `ponta_sob_o_grao` mandava-o pelo canal do padrão, que `dispatch_pressure_dab_erase` não recebe. Noise, Clouds, imagem e Same as Paper: 0 bytes. A Borracha multiplica o `texv` pelo que desenha depois do portão: 8 582–40 460 bytes, apagada 0,80–1,00 da lisa (0,80 é o xadrez, que satura). As cerdas com o Grain tirado tinham a mesma doença (0 → 39 121 bytes). Com `StrokeFilm > 0` o grão já estava vivo.
+- **A2 (CURADO):** a macro gravava `p.brush` e os slots crus (`media: null`) por cima do congelado de `preset`, e a imagem não vai na macro: 10 % da tinta. `pincel_a_gravar_de` nos dois; 0 bytes contra o vivo, com o Pincel na mão e no slot.
+- **A4 (CURADO):** slot de imagem único: carregar outra imagem na Borracha deixava o Pincel `{Image, None}` a ler a nova (massa 1,3 %). `congela_os_graos_da_imagem_que_sai` nas duas portas (UI e `instalar_mascaras`): massa 1,000 nas duas.
+- **A5 (CURADO, com um resto):** o preset de Borracha escrevia todos os knobs e `switch_brush_slot` só repõe os da mão: o Pincel voltava com Smooth Edges 0. Escreve só `PaperGate`, `Eraser`, `erase` e a mão, como as ferramentas da água; `macro_estado_aplica` tira a ferramenta para o estado continuar a levar os knobs todos. ⚠️ **Resto:** a Hardness (`PaperGate`) continua partilhada entre a Borracha e o Pincel, à mão e pelo preset; separá-la é um slot novo, com a macro atrás, e não se fez. ⚠️ **Por medir, lido no código:** a macro gravada com uma ferramenta da água na mão entra pelo mesmo ramo curto e não escreve os knobs partilhados.
+- **D4 (CURADO):** `grao_aplicado.media` sem validação: `−1`, `0`, `1e-30` (e `1e300`, infinito em `f32`) não pintavam nada. Abaixo do piso de `media_do_grao` (`1e-3`) ou não finita vale a ausência, com aviso. Não há tecto: `1e30` passa.
+- **A3 (ABERTO, decisão do dono; recomendação: manter):** o Smooth Edges não anda com o Smear, o Blend e o Water (só o pouso escreve a aparência). Wet Liner a 1,0, 240 tiques depois: Smear 493 de 1 137 células de borda a degrau 0, Blend 696 de 1 242, Water 239 de 770 (antes: 0 de 761). [Prancha](handoffs/material_2026-11-05/smooth_edges_no_arrasto.png), por linha Smear, Blend e Water: antes, depois, ×4; `sonda_smooth_edges_no_arrasto`.
+- **Suspeita, Blend com Grain trocado (não é defeito):** `ganho_do_grao` escala a máscara, à razão das médias, como a quantidade do #61: Noise de preset trocado por Clouds 1,243 da lisa, Clouds de preset 1,243. Noise à mão e de preset: 1,223 os dois.
+- **Suspeita, `regua_do_grao` com o pincel vivo (inócua no Size, resto por medir):** a média dos três procedurais não muda de raio 5 a 300 px (0,4936 · 0,4939 · 0,4253), logo mudar o Size com um lote adiado não a move. Com o preset trocado, o `grain_depth` do vivo mediria o Grain do lote: janela de um tique, lido, não medido.
+- **Suspeita, `veste_virgens` acima do tecto (CURADO):** real só no rasto sem pouso, com o campo já alocado: `suave_teto` não subia. Uma linha em `veste_virgens`; portão `vestir_a_orla_virgem_sobe_o_tecto_do_suave`, vermelho sem ela.
 
 ## Bug #64 (FECHADO 05/11, achado pelo portão da margem do Smooth Edges) — a imagem velha apagava a sombra do traço; a região do Smooth Edges era curta
 

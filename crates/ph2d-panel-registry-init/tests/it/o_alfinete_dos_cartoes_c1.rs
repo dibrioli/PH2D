@@ -510,3 +510,42 @@ fn a_material_card_pinned_to_an_object_without_the_component_offers_no_mode() {
         "o cartão continua a oferecer os modos"
     );
 }
+
+struct MesaC1 {
+    h: HeroScreen,
+    sel: &'static [u64],
+}
+
+impl super::o_alfinete_fill_stroke_c2::scrub_do_preso::MesaDoPreso for MesaC1 {
+    fn hero(&mut self) -> &mut HeroScreen {
+        &mut self.h
+    }
+    fn quadros(&mut self, n: usize) {
+        quadros(&mut self.h, self.sel, n);
+    }
+}
+
+/// ⭐ O censo do scrub: toda pega de Transform, Appearance, Ordering e Material presos, com A, B e C
+/// de números diferentes, anda sem o quadro a devolver ao número da seleção; o Esc repõe.
+#[test]
+fn every_scrub_handle_of_the_pinned_object_cards_survives_the_frames() {
+    let mut erros = Vec::new();
+    let mut total = 0;
+    for (sec, nome) in [
+        (insp::CARD_TRANSFORM, "Transform"),
+        (CARD_APPEARANCE, "Appearance"),
+        (CARD_ORDERING, "Ordering"),
+    ] {
+        let mut m = MesaC1 {
+            h: preso(sec, &[B]),
+            sel: &[B],
+        };
+        let (n, e) = super::o_alfinete_fill_stroke_c2::scrub_do_preso::censo(&mut m, sec, nome);
+        eprintln!("CENSO {nome} {n}");
+        assert!(n >= 1, "{nome}: nenhuma pega à vista");
+        total += n;
+        erros.extend(e);
+    }
+    assert!(total >= 8, "só {total} pegas");
+    assert!(erros.is_empty(), "{erros:#?}");
+}

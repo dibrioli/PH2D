@@ -47,6 +47,13 @@ pub(super) fn dispatch_up<'frame>(
         // path mutates `value` + `buffer` only; the rollback
         // anchor lives until this release point so Esc
         // mid-drag can restore the pre-Down value.
+        // Num cartão preso, a barra ligada recebeu o valor da seleção nos quadros do gesto, e o painel
+        // que só a ouve lê-a já a seguir: ela volta ao número da mão.
+        if store.card_press_subject().is_some()
+            && let Some(v) = store.number_value(drag.id)
+        {
+            super::apply_chip_value_with_mirror(store, drag.id, v);
+        }
         let blurred = super::hover::blurred_field_state(store, drag.id);
         if let Some(InteractiveState::NumberInput {
             state,

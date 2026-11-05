@@ -477,7 +477,18 @@ impl WidgetStore {
     /// formatted value when the input is **not** focused; if it is
     /// focused, the user's edit is preserved — a focused buffer the user has
     /// not touched (still the formatted old value) re-seeds, all selected.
+    ///
+    /// ⭐ A caixa que a mão usa num cartão PRESO é do objecto dele: a seleção não a escreve (o que o
+    /// preso mostra chega por [`Self::troca_estados_presos`]). Smoke 3, `docs/CartoesUI/10`.
     pub fn set_number_value(&mut self, id: NodeId, new_value: f64) {
+        let dragging = matches!(self.number_input_drag.as_ref(), Some(d) if d.id == id);
+        if self.card_lists.press_subject.is_some() && (dragging || self.focus_id == Some(id)) {
+            return;
+        }
+        self.poe_numero(id, new_value);
+    }
+
+    pub(super) fn poe_numero(&mut self, id: NodeId, new_value: f64) {
         let focused = self.focus_id == Some(id);
         // Audit re-pass fix: while a drag-slider is actively
         // scrubbing this very NumberInput, do NOT overwrite

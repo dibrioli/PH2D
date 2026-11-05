@@ -796,3 +796,6 @@ fn a_gradient_on_the_pinned_object_stays_quiet_under_the_picker() {
 
 #[path = "o_alfinete_losango_c3.rs"]
 mod losango_c3;
+
+#[path = "o_scrub_do_preso.rs"]
+pub(super) mod scrub_do_preso;

@@ -258,7 +258,7 @@ impl WidgetStore {
         // T40: o gesto parte dos números do preso (o scrub e a edição leem o store já a seguir).
         if let Some((_, k, Some(_))) = topo {
             for (id, v) in self.pinned_values(k).to_vec() {
-                self.set_number_value(id, v);
+                self.poe_numero(id, v);
             }
             self.poe_estados_presos(k);
         }
@@ -295,6 +295,7 @@ impl WidgetStore {
         });
         let do_preso = self.focus_id.is_some()
             || self.active_id().is_some()
+            || self.number_input_drag.is_some()
             || lista
             || self.context_menu().is_some()
             || self.picker_target().is_some();

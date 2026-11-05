@@ -508,6 +508,8 @@ pub(super) fn dispatch_down<'frame>(
         // climbing while the pointer is still.
         let stepper_hit = !combo_cleared
             && !store.is_chip_no_stepper(id)
+            // O campo de cartão não pinta setas: a coluna direita dele é valor (smoke 3).
+            && (store.card_field(id).is_none() || store.tool_row_slot(id) == Some(rect))
             && apply_number_stepper_if_hit(store, id, rect, event.x, event.y, event.timestamp_ns);
         // M14.A drag-or-edit: when the Down lands on a
         // NumberInput body (NOT on the stepper, NOT a

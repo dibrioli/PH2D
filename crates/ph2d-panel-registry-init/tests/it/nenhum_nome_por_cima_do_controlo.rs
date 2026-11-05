@@ -48,6 +48,7 @@ const FONTES: &[&str] = &[
     "../ph2d-panel-tokens/src",
     "../ph2d-panel-skeleton/src",
     "../ph2d-panel-tags/src",
+    "../ph2d-panel-widget-gallery/src",
     "../ph2d-panel-hierarchy/src",
     "../ph2d-editor-core/src/ids",
     "../ph2d-tool-painter/src",
@@ -76,6 +77,12 @@ fn colhe(
         .iter()
         .map(|(_, r)| r.x)
         .fold(f32::INFINITY, f32::min);
+    // A direita do corpo lê-se dos grupos: o painel do Painter regista peças para lá dele.
+    let direita = pintados
+        .iter()
+        .filter(|(n, _)| grupos.iter().any(|g| g.len() >= 2 && g.contains(n)))
+        .map(|(_, r)| r.x + r.w)
+        .fold(f32::NEG_INFINITY, f32::max);
     for g in grupos {
         if g.len() < 2 {
             continue;
@@ -94,7 +101,11 @@ fn colhe(
             .map(|r| r.x + r.w)
             .fold(f32::NEG_INFINITY, f32::max);
         let y0 = rects.iter().map(|r| r.y).fold(f32::INFINITY, f32::min);
-        if (x0 - borda).abs() > 1.5 {
+        // Num cartão o corpo recua da borda do painel (12 a 20 px, medido): lá, «a toda a largura» lê-se na
+        // largura. Metade de linha (o par, 122 de 278) não conta; a linha inteira mede de 246 a 370 px.
+        let na_borda = (x0 - borda).abs() <= 1.5;
+        let na_linha_toda = x1 - x0 >= (direita - borda) * 0.75;
+        if !na_borda && !na_linha_toda {
             continue;
         }
         out.push(Grupo {
@@ -160,6 +171,27 @@ const FORA: &[(&str, &str, &str)] = &[
         "a irmã da de cima na câmera (o `Cull Mask`): a mesma grelha de 32 bits, o nome é o \
          cabeçalho dobrável dela — o censo só a viu quando o clique nele deixou de estar morto",
     ),
+    (
+        "physics",
+        "physics.layer_0_0",
+        "a matriz de camadas da Física: cada célula liga e desliga sozinha, como a grelha de bits",
+    ),
+    (
+        "widget_gallery",
+        "gallery.adv.layer00",
+        "a amostra da mesma grelha de 32 bits na galeria",
+    ),
+    (
+        "vector",
+        "vector.tab.drawing",
+        "as abas do painel: navegam entre vistas, não escolhem um valor; visto quando o censo passou a \
+         ler os corpos em cartões",
+    ),
+    (
+        "widget_gallery",
+        "insp_sample_tab_a",
+        "a amostra do componente Tabs na galeria: é navegação, como a de cima",
+    ),
 ];
 
 /// ⭐⭐⭐ **NENHUMA ESCOLHA DO APP É MONTADA À MÃO** — todo grupo segmentado a toda a largura, em
@@ -196,12 +228,6 @@ fn nenhuma_escolha_do_app_e_montada_a_mao() {
     //    um arnês que deixasse de armar os painéis passaria por vácuo. ⬇️ `35 → 31` em 2026-10-05:
     //    as escolhas dos painéis `model3d` e `sculpt3d` saíram com o 3D (ADR-0179); medido `31`.
     let pela_porta = v.iter().filter(|g| g.da_porta).count();
-    for g in &v {
-        eprintln!(
-            "F10DIAG {} {} porta={} pecas={}",
-            g.painel, g.slug, g.da_porta, g.pecas
-        );
-    } // F10 temporário
     assert!(
         pela_porta >= 31,
         "so' {pela_porta} escolhas pela porta a toda a largura — o arnes deixou de armar paineis?"

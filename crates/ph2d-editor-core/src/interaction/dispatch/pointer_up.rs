@@ -39,7 +39,13 @@ pub(super) fn dispatch_up<'frame>(
     // already entered edit mode (focus + caret), so we just
     // forget the drag candidate. Continuous-hold on the
     // stepper arrow always ends on Up.
-    if let Some(drag) = store.end_number_input_drag()
+    let number_drag = store.end_number_input_drag();
+    if let Some(drag) = number_drag
+        && !drag.crossed_threshold
+    {
+        super::card_field::click_without_scrub(store, drag.id, events);
+    }
+    if let Some(drag) = number_drag
         && drag.crossed_threshold
     {
         // Audit fix #2 (CRITICAL): commit `last_committed` to

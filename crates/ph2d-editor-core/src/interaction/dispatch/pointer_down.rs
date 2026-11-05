@@ -332,7 +332,8 @@ pub(super) fn dispatch_down<'frame>(
     // where the click landed in dead space (canvas, panel
     // chrome, etc.) so the user's typed buffer always
     // commits when the field loses focus.
-    // ⭐ O campo Figma: o Down na PEGA (a célula do ícone) é scrub, nunca edição — não foca.
+    // ⭐ O campo Figma: o Down na PEGA (a célula do ícone) é scrub e não foca; o foco vem no Up, se não
+    // houve scrub (`card_field::click_without_scrub`), ou no duplo clique.
     let card_handle = hit.filter(|(id, r)| {
         event.button == ph2d_host::PointerButton::Primary
             && store.card_field(*id).is_some()

@@ -206,15 +206,17 @@ pub fn paint_tag_with_radius(
     //    [`Tag::width_for`] inverte, e duas cópias divergiriam no dia em que o recuo mudasse.
     //    A pílula lisa continua **byte a byte** como estava: ali o orçamento É o da caixa de
     //    rótulo da casa.
-    crate::paint::paint_text_centered_com_orcamento(
-        text_system,
-        scene,
-        &tag.label,
-        tag.label_rect(rect),
-        tag.label_budget(rect),
-        LABEL_FONT_SIZE_TOKEN.px(),
-        fg,
-    );
+    crate::widget::card_censo::texto_de_peca(|| {
+        crate::paint::paint_text_centered_com_orcamento(
+            text_system,
+            scene,
+            &tag.label,
+            tag.label_rect(rect),
+            tag.label_budget(rect),
+            LABEL_FONT_SIZE_TOKEN.px(),
+            fg,
+        );
+    });
     if let Some(close_rect) = tag.close_rect(rect) {
         paint_icon(
             scene,

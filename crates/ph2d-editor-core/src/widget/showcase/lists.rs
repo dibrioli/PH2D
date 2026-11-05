@@ -138,16 +138,18 @@ pub fn paint_lists_body(
         1 => ("Running simulation · 60 fps", ColorToken::Success),
         _ => ("Logging · 124 events captured", ColorToken::Warn),
     };
-    paint_text(
-        text_system,
-        scene,
-        caption,
-        body_rect.x + Spacing::Md.px(),
-        body_rect.y + (body_rect.h - TypeToken::Xs.px()) * 0.5,
-        TypeToken::Xs.px(),
-        body_rect.w - Spacing::Md.px() * 2.0,
-        resolve(tone, theme),
-    );
+    crate::widget::card_censo::texto_de_peca(|| {
+        paint_text(
+            text_system,
+            scene,
+            caption,
+            body_rect.x + Spacing::Md.px(),
+            body_rect.y + (body_rect.h - TypeToken::Xs.px()) * 0.5,
+            TypeToken::Xs.px(),
+            body_rect.w - Spacing::Md.px() * 2.0,
+            resolve(tone, theme),
+        );
+    });
     y += body_h + row_gap();
 
     // TreeView (1 root + 2 leaves). Expand-state lives on the

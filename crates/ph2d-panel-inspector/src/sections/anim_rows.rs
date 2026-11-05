@@ -398,23 +398,11 @@ fn editor(
             sec_texto,
         );
     }
-    let font = TypeToken::Sm.px();
-
     // **OS SINAIS** (spec §8.10) — no FIM, e depois da direção, porque eles são o que a animação
     // diz para FORA. Tudo acima descreve o que ela faz; isto descreve o que ela anuncia.
     //
     // ⚠️ **Dois campos e não um mais uma fase**: acabar e dar a volta distinguem-se por serem
     // nomes diferentes — a lei que a física já escreveu para os contatos. Vazio = calada.
-    paint_text(
-        text_system,
-        scene,
-        tr("panel.inspector.animation.signals"),
-        x,
-        cur_y,
-        font,
-        w,
-        resolve(ColorToken::Text2, theme),
-    );
     cur_y = super::rows::titulo_de_grupo(
         scene,
         text_system,
@@ -422,7 +410,7 @@ fn editor(
         x,
         w,
         cur_y,
-        tr("panel.inspector.animation.signals_empty_silent"),
+        tr("panel.inspector.animation.signals"),
     );
     cur_y = text_row(
         scene,

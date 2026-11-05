@@ -48,7 +48,23 @@ fn anota(especie: Especie, rect: Rect, px: f32, nome: impl FnOnce() -> String) {
 /// texto, para a distância ser até às letras e não até à caixa da linha.
 const ENTRELINHA: f32 = 0.36; // LITERAL-PX-OK: medida do pintor de texto, não desenho
 
+thread_local! {
+    static TEXTO_DE_PECA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// O texto dentro de uma peça com fundo próprio (etiqueta, legenda numa caixa) não é o rótulo de quem vem
+/// por baixo: `f` pinta sem anotar os textos.
+pub(crate) fn texto_de_peca<R>(f: impl FnOnce() -> R) -> R {
+    let antes = TEXTO_DE_PECA.replace(true);
+    let r = f();
+    TEXTO_DE_PECA.set(antes);
+    r
+}
+
 pub(crate) fn pintou_texto(texto: &str, [x, y, w, alta]: [f32; 4], px: f32) {
+    if TEXTO_DE_PECA.get() {
+        return;
+    }
     let uma_linha = alta < px * (1.0 + ENTRELINHA) * 1.5; // LITERAL-PX-OK: meia linha de folga
     let especie = if uma_linha && (px - m::LABEL_PX).abs() < 0.5 {
         Especie::Rotulo

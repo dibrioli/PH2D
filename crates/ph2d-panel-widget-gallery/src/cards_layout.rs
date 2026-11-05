@@ -12,7 +12,7 @@ use ph2d_editor_core::widget::card_field::Glyph;
 use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_i18n::tr;
 
-/// A grelha 3×3 do alinhamento à esquerda, o `Gap` e o `Padding` à direita. Compõe-se só com a
+/// A grelha 3×3 do alinhamento à esquerda, o `Gap` à direita e o `Padding` por baixo. Compõe-se só com a
 /// `row` pública: duas colunas estreitando o `x`/`w` do corpo e o fundo é o da mais alta.
 fn grelha_e_folgas(c: &mut CardCtx<'_>, ch: &Choices, y: f32) -> f32 {
     let (x0, w0) = (c.x, c.w);
@@ -45,6 +45,9 @@ fn grelha_e_folgas(c: &mut CardCtx<'_>, ch: &Choices, y: f32) -> f32 {
         fundo
     };
     let direita = c.row(&[num!(g::GAP, tr("panel.widget_gallery.gap"))], topo);
+    // O Padding desce sempre: ao lado das filas da grelha ficaria desalinhado (`lei_do_ritmo`).
+    c.x = x0;
+    c.w = w0;
     let direita = c.row(
         &[
             Cell::new(field(
@@ -58,11 +61,9 @@ fn grelha_e_folgas(c: &mut CardCtx<'_>, ch: &Choices, y: f32) -> f32 {
             ))
             .key(&[g::PAD_H, g::PAD_V]),
         ],
-        direita,
+        fundo.max(direita),
     );
-    c.x = x0;
-    c.w = w0;
-    fundo.max(direita)
+    direita
 }
 
 pub(crate) fn layout(ch: Choices) -> CardDef<'static> {

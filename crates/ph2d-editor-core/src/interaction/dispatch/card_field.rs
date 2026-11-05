@@ -5,8 +5,30 @@ use super::super::{InteractiveState, WidgetEvent, WidgetStore, drag};
 use bumpalo::collections::Vec as BumpVec;
 use ph2d_a11y::NodeId;
 
-/// O Down na pega: duplo clique repõe o valor de fábrica (um passo de Desfazer); senão semeia o
-/// arrasto, que só vira scrub depois do limiar (então um clique no ícone não muda nada).
+/// O campo passa a escrever, com o valor selecionado: o que se digitar substitui-o.
+fn entra_em_edicao(store: &mut WidgetStore, id: NodeId, events: &mut BumpVec<'_, WidgetEvent>) {
+    if store.focus_id() == Some(id) {
+        return;
+    }
+    store.set_focus(Some(id));
+    super::init_number_buffer(store, id);
+    events.push(WidgetEvent::Focus(id));
+}
+
+/// O Up de um Down na pega que não chegou a scrub: o clique no ícone não muda o valor e abre a escrita
+/// (sem isto, o que se digitava a seguir ia para os atalhos do app). No corpo do campo o foco já lá está.
+pub(super) fn click_without_scrub(
+    store: &mut WidgetStore,
+    id: NodeId,
+    events: &mut BumpVec<'_, WidgetEvent>,
+) {
+    if store.card_field(id).is_some() {
+        entra_em_edicao(store, id, events);
+    }
+}
+
+/// O Down na pega: duplo clique repõe o valor de fábrica (um passo de Desfazer) e deixa o campo a
+/// escrever; senão semeia o arrasto, que só vira scrub depois do limiar.
 pub(super) fn down_on_handle(
     store: &mut WidgetStore,
     id: NodeId,
@@ -34,6 +56,7 @@ pub(super) fn down_on_handle(
             // O campo com barra ligada (as opacidades do Vector): a barra também avisa o painel dono.
             super::push_mirrored_slider_event(store, id, false, events);
         }
+        entra_em_edicao(store, id, events);
         return;
     }
     store.begin_number_input_drag(drag::NumberInputDragState {

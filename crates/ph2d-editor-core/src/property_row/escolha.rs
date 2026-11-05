@@ -64,6 +64,20 @@ pub fn medindo<R>(f: impl FnOnce() -> R) -> (R, Vec<EscolhaPintada>) {
     (r, out)
 }
 
+/// A escolha de um cartão (`CardCtx::choice`) também é porta: o nome é o rótulo da linha do cartão.
+pub(crate) fn anota_do_cartao(primeira: NodeId, pecas: usize) {
+    if ARMADO.get() {
+        PINTADAS.with_borrow_mut(|v| {
+            v.push(EscolhaPintada {
+                primeira,
+                pecas,
+                fileiras: 1,
+                ao_lado: false,
+            });
+        });
+    }
+}
+
 /// ⭐ **Em quantas fileiras esta escolha reflui ao lado do nome** — a MESMA conta que o pintor faz
 /// (`segmented_row_counts` sobre as larguras naturais), sem pintar nada.
 #[must_use]

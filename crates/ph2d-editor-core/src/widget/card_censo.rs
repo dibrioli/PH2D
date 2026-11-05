@@ -53,7 +53,7 @@ pub struct Censo {
 
 #[path = "card_censo_ritmo.rs"]
 pub mod ritmo;
-pub(crate) use ritmo::{pintou_controlo, pintou_texto};
+pub(crate) use ritmo::{pintou_controlo, pintou_texto, texto_de_peca};
 
 thread_local! {
     static GRAVACAO: RefCell<Option<Censo>> = const { RefCell::new(None) };

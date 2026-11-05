@@ -13,7 +13,8 @@ fn com_a_preso_e_b_escolhido() -> HeroScreen {
     const SEC: NodeId = NodeId(0xC3);
     let mut h = HeroScreen::new(NodeId(1));
     h.store.detach_card(SEC, INSP_PANEL, (0.0, 0.0), 100.0);
-    h.store.set_card_subject(INSP_PANEL, Some((A, "A".to_owned())));
+    h.store
+        .set_card_subject(INSP_PANEL, Some((A, "A".to_owned())));
     h.store.toggle_loose_pin(SEC);
     h.gizmo.replace_selection(Some(B));
     h
@@ -27,7 +28,12 @@ fn an_edit_on_a_pinned_card_keys_its_object_and_one_undo_takes_it_back() {
         ph2d_preview_drive::PreviewDrive::default(),
     );
     let h = com_a_preso_e_b_escolhido();
-    let pop = populacao(&h, &ph2d_app_skeleton::state::SkeletonState::default(), &sim, &drive);
+    let pop = populacao(
+        &h,
+        &ph2d_app_skeleton::state::SkeletonState::default(),
+        &sim,
+        &drive,
+    );
     assert!(pop.contains(&A) && pop.contains(&B), "{pop:?}");
 
     let mut st = TimelineState::new();
@@ -51,7 +57,13 @@ fn an_edit_on_a_pinned_card_keys_its_object_and_one_undo_takes_it_back() {
     assert!(st.doc.bindings().is_empty(), "o quadro parado gravou");
     quadro(3.0, &mut st, &mut ak);
     let b = st.doc.bindings();
-    assert!(!b.is_empty() && b.iter().all(|x| x.entity == A), "a chave não é de A");
+    assert!(
+        !b.is_empty() && b.iter().all(|x| x.entity == A),
+        "a chave não é de A"
+    );
     assert!(st.undo(), "sem passo de desfazer");
-    assert!(st.doc.bindings().is_empty(), "o desfazer não tirou a chave de A");
+    assert!(
+        st.doc.bindings().is_empty(),
+        "o desfazer não tirou a chave de A"
+    );
 }

@@ -81,7 +81,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.physics.more_shapes" => "+ {n} more shapes from children",
         "panel.inspector.physics.add_shape_to" => "Add Shape to {owner}",
         "panel.inspector.physics.chain_bodies" => "Chain {join_count} Selected Bodies",
-        "panel.inspector.physics.rig_parts" => "Rig {rig_parts} {rig_parts?Part|Parts} from Hierarchy",
+        "panel.inspector.physics.rig_parts" => {
+            "Rig {rig_parts} {rig_parts?Part|Parts} from Hierarchy"
+        }
         "panel.inspector.physics.shape_of" => "Shape of {owner} \u{00b7} simulated as part of it",
         "panel.inspector.render_source.atlas_key" => "Atlas \u{00b7} key {key}",
         "panel.inspector.render_source.individual_texture" => {

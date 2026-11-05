@@ -91,7 +91,11 @@ pub(crate) fn paint_spectral_section(
         tr("panel.audio_editor.spectral.denoise"),
     );
     let desce = crate::cards::grupo::fileiras(w, &[2], &[learn, denoise], text_system).len() > 1;
-    let (peca_w, x2) = if desce { (w, x) } else { (half, x + half + gap) };
+    let (peca_w, x2) = if desce {
+        (w, x)
+    } else {
+        (half, x + half + gap)
+    };
     button(
         Rect::new(x, y, peca_w, row_h),
         learn,

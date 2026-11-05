@@ -6,6 +6,7 @@
 //! ganham o prefixo do módulo (`ficheiro::fn`); filtros por `test(nome)` continuam a casar.
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
+mod os_cartoes;
 mod seam_authored;
 mod seam_authored_body;
 mod seam_authored_long_list;
@@ -15,7 +16,6 @@ mod seam_authored_rekind;
 mod seam_authored_sections;
 mod the_generated_panel_is_what_the_emitter_emits;
 mod the_program_writes_no_word_into_this_panel;
-mod os_cartoes;
 
 /// O corpo de antes (`PH2D_CARDS=0`): é ele que as varreduras antigas medem.
 fn corpo_de_antes() -> ph2d_ui_testkit::MockPanelHost {

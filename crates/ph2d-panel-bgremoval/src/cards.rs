@@ -3,11 +3,11 @@
 //! antes do Pick colors porque é ele que decide o que essa linha é (o Add area toma-lhe o lugar).
 
 use ph2d_editor_core::interaction::WidgetStore;
+use ph2d_editor_core::panel::TextKey;
 use ph2d_editor_core::panel::cards::ferramenta::{
     Numero, Verbos, aos_pares, caixa_em_celula, caixas_aos_pares, campo, cartao, opcoes,
     prepara_numeros,
 };
-use ph2d_editor_core::panel::TextKey;
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Widget};
 use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_editor_core::widget::{ColorSwatch, SwatchSize, paint_color_swatch};

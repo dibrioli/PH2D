@@ -162,11 +162,11 @@ pub struct CardCtx<'s> {
 #[path = "cards_banda.rs"]
 pub mod banda;
 
+#[path = "cards_cartao.rs"]
+mod cartao;
 /// A letra que distingue dois campos vizinhos.
 #[path = "cards_letras.rs"]
 pub mod letras;
-#[path = "cards_cartao.rs"]
-mod cartao;
 pub use crate::widget::card_censo as censo;
 #[path = "cards_colunas.rs"]
 mod colunas;

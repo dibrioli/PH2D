@@ -174,7 +174,10 @@ pub(super) fn paint_card_with(
         text_system,
         scene,
         card.title,
-        [tx, hy + crate::paint::folga_do_texto(m::CARD_HEAD_H, m::CARD_TITLE_PX)],
+        [
+            tx,
+            hy + crate::paint::folga_do_texto(m::CARD_HEAD_H, m::CARD_TITLE_PX),
+        ],
         m::CARD_TITLE_PX,
         titulo_w,
         ink.color(tinta),

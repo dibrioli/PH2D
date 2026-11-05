@@ -17,8 +17,8 @@ mod fields;
 #[path = "vector_bridge_style.rs"]
 mod style;
 pub use fields::mixed_of;
-use fields::{fill_merge, restyle_path_fields};
 pub use fields::pick_merge;
+use fields::{fill_merge, restyle_path_fields};
 pub use fields::{restyle_slot_fields, row_fields};
 use ph2d_tool_vector::StyleFields;
 /// ⚠️ `StrokeStyle` sai junto porque o gate de CONSEQUÊNCIA do [`crate::vec_selection`]
@@ -314,7 +314,8 @@ pub fn dispatch(
     // ⭐ **Os CAMPOS que o gesto mudou** (plano 31): cada forma selecionada recebe só esses.
     let authored = tool.take_authored();
     // ⭐ C2: o gesto de um cartão PRESO escreve só na forma dele, sempre na tinta de BASE.
-    let preso = crate::paint_stack::alvo_do_gesto(&hero.store, sim).filter(|_| !authored.is_empty());
+    let preso =
+        crate::paint_stack::alvo_do_gesto(&hero.store, sim).filter(|_| !authored.is_empty());
     let width_authored = authored.has(StyleFields::WIDTH);
     // **Digitar uma espessura SOLTA o token dela** (W4c.4) — a mesma lei da cor, pelo mesmo canal.
     if width_authored {

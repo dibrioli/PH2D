@@ -75,13 +75,16 @@ impl crate::App {
         if layout.dock_reopen_at((x, y)).is_some() {
             return Some(winit::window::CursorIcon::EwResize);
         }
-        self.seam_livre((x, y)).map(|_| winit::window::CursorIcon::EwResize)
+        self.seam_livre((x, y))
+            .map(|_| winit::window::CursorIcon::EwResize)
     }
 
     /// A costura em `p`, se nenhum cartão solto está por cima dela.
     fn seam_livre(&self, p: (f32, f32)) -> Option<ph2d_editor_core::screens::layout::DockSide> {
         let hero = self.gfx.as_ref()?.hero_screen.as_ref()?;
-        let livre = !hero.store.loose_card_covers(ph2d_editor_core::zones::Rect::new(p.0, p.1, 0.0, 0.0));
+        let livre = !hero
+            .store
+            .loose_card_covers(ph2d_editor_core::zones::Rect::new(p.0, p.1, 0.0, 0.0));
         hero.last_layout?.dock_seam_at(p).filter(|_| livre)
     }
 

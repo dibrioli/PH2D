@@ -253,7 +253,10 @@ fn double_clicking_the_handle_gives_the_factory_value_back() {
     mesa.entrega(ev);
     mesa.assenta();
     let mexido = mesa.t.brush_settings().wet_knobs.knobs[row.knob];
-    assert!((mexido - row.default).abs() > 1e-4, "o scrub tem de o tirar da fábrica");
+    assert!(
+        (mexido - row.default).abs() > 1e-4,
+        "o scrub tem de o tirar da fábrica"
+    );
     for _ in 0..2 {
         let ev = mesa.ponteiro(PointerKind::Down, x, y);
         mesa.entrega(ev);

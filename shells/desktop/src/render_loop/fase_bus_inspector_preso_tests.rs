@@ -79,7 +79,8 @@ fn a_pinned_fill_and_stroke_edit_lands_on_its_object_only_and_the_undo_step_rest
         let mut p = rectangle([0.0, 0.0], [2.0, 2.0]);
         p.fill = Some(Paint::Solid(Rgba8::new(10, 20, 30, 255)));
         p.stroke = Some(StrokeSpec::new(Rgba8::new(40, 50, 60, 255), 1.0));
-        p.paints.push(PaintEntry::fill(Paint::Solid(Rgba8::new(1, 1, 1, 255))));
+        p.paints
+            .push(PaintEntry::fill(Paint::Solid(Rgba8::new(1, 1, 1, 255))));
         let id = vec.push_path(p);
         let e = (Transform::default(), Name::new(nome), VecPathRef(id));
         (sim.world_mut().spawn(e).id().to_bits(), id)
@@ -112,7 +113,11 @@ fn a_pinned_fill_and_stroke_edit_lands_on_its_object_only_and_the_undo_step_rest
     assert_eq!(*b2, de_antes.1, "B não recebe");
     assert!(captura(&mut sim, &vec, &reg) != antes, "o documento mudou");
     let (v2, ..) = antes.restore(&mut sim, &reg);
-    assert_eq!(*v2.path(pa).expect("A"), de_antes.0, "o desfazer não repôs A");
+    assert_eq!(
+        *v2.path(pa).expect("A"),
+        de_antes.0,
+        "o desfazer não repôs A"
+    );
     assert_eq!(*v2.path(pb).expect("B"), de_antes.1);
 }
 

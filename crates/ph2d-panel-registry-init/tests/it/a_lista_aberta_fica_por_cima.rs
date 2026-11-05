@@ -6,9 +6,9 @@
 use super::o_cartao_solto_no_canvas::{clica, pinta};
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::screens::hero::HeroScreen;
+use ph2d_editor_core::zones::Rect;
 use ph2d_panel_timeline::ids as tl;
 use ph2d_text::TextSystem;
-use ph2d_editor_core::zones::Rect;
 use ph2d_vector::{DrawOp, Shape as _, VectorScene};
 
 fn hero_com(painel: &'static str) -> HeroScreen {
@@ -84,7 +84,10 @@ fn the_add_track_list_paints_after_the_hud() {
     let (ultima, _) = tl::ADDPROP_BUTTONS[tl::ADDPROP_BUTTONS.len() - 1];
     let u = h.hit_index.rect_for(ultima).expect("a última linha");
     let lista = Rect::new(r.x, r.y, r.w, u.y + u.h - r.y);
-    let (l, hud) = (ordem(&caixas, lista, "a lista"), ordem(&caixas, o_hud(&h), "o HUD"));
+    let (l, hud) = (
+        ordem(&caixas, lista, "a lista"),
+        ordem(&caixas, o_hud(&h), "o HUD"),
+    );
     assert!(l > hud, "a lista ({l}) ficou sob o HUD ({hud})");
     assert_eq!(h.hit_index.hit(r.x + 2.0, r.y + 2.0), Some(primeira));
 }
@@ -98,6 +101,9 @@ fn a_door_list_paints_after_the_hud() {
     pinta(&mut h, 2);
     let aberta = h.store.dropdown_popover().expect("a lista não abriu");
     let caixas = caixas_do_quadro(&mut h);
-    let (l, hud) = (ordem(&caixas, aberta.1, "a lista"), ordem(&caixas, o_hud(&h), "o HUD"));
+    let (l, hud) = (
+        ordem(&caixas, aberta.1, "a lista"),
+        ordem(&caixas, o_hud(&h), "o HUD"),
+    );
     assert!(l > hud, "a lista ({l}) ficou sob o HUD ({hud})");
 }

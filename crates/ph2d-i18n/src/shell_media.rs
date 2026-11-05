@@ -181,7 +181,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "shell.project_io.ph2d_project" => "PH2D project",
         "shell.project_io.ph2d_project_2" => "PH2D project (.{ext})",
-        "shell.project_load.project_loaded_2" => "Project loaded · {tracks} animation {tracks?track|tracks}",
+        "shell.project_load.project_loaded_2" => {
+            "Project loaded · {tracks} animation {tracks?track|tracks}"
+        }
         "shell.project_load.project_loaded" => "Project loaded",
         "shell.project_load.project_refused_its_4" => {
             "Project refused: its sprite images are from another version ({e})"
@@ -321,7 +323,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.sheet_frame.sheet_pieces_packed" => {
             "Sheet: {pieces} {pieces?piece|pieces} packed into {size_px} \u{00d7} {size_px}"
         }
-        "shell.sheet_frame.sheet_re_packed_pieces" => "Sheet re-packed: {moved} {moved?piece|pieces}",
+        "shell.sheet_frame.sheet_re_packed_pieces" => {
+            "Sheet re-packed: {moved} {moved?piece|pieces}"
+        }
         "shell.sheet_import.gpu_upload" => "GPU upload: {e}",
         "shell.sheet_import.the_metadata_declares" => "the metadata declares no frames",
         "shell.sheet_import.metadata_says_x_but_is" => {

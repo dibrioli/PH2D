@@ -72,8 +72,16 @@ fn buttons(
         w,
         y,
         &[
-            (true, ids::INSP_AUDIO_BROWSE, tr("panel.inspector.audio.browse")),
-            (true, ids::INSP_AUDIO_PREVIEW, tr("panel.inspector.audio.preview")),
+            (
+                true,
+                ids::INSP_AUDIO_BROWSE,
+                tr("panel.inspector.audio.browse"),
+            ),
+            (
+                true,
+                ids::INSP_AUDIO_PREVIEW,
+                tr("panel.inspector.audio.preview"),
+            ),
             (true, ids::INSP_AUDIO_STOP, tr("panel.inspector.audio.stop")),
         ],
     )

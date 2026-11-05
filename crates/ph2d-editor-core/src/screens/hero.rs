@@ -24,10 +24,10 @@
 
 mod asset_drag_ghost;
 pub mod bottom_hud;
+mod caixa_cartao;
 pub mod canvas;
 pub mod chrome;
 pub mod color_picker_demo;
-mod caixa_cartao;
 mod context_menu_dialogs;
 pub mod context_menu_overlay;
 mod cromo_smoke;

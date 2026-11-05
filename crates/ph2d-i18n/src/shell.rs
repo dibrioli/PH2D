@@ -280,7 +280,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Deleted {n} \u{2014} {r} removed from this copy only"
         }
         "shell.hierarchy_delete.deleted_entities" => "Deleted {n} {n?entity|entities}",
-        "shell.hierarchy_delete.removed_piece_s_from" => "Removed {r} {r?piece|pieces} from this copy only",
+        "shell.hierarchy_delete.removed_piece_s_from" => {
+            "Removed {r} {r?piece|pieces} from this copy only"
+        }
         "shell.hierarchy_delete.removed_from_this_copy" => {
             "Removed from this copy \u{2014} the prefab still has it"
         }
@@ -409,7 +411,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "shell.tokens_bridge_dtcg.dtcg_import_failed" => "DTCG import failed: {e}",
         "shell.tokens_bridge_dtcg.dtcg_export_failed" => "DTCG export failed: {e}",
-        "shell.tokens_bridge_dtcg.dtcg_exported_tokens" => "DTCG exported: {all} {all?token|tokens} to {path}",
+        "shell.tokens_bridge_dtcg.dtcg_exported_tokens" => {
+            "DTCG exported: {all} {all?token|tokens} to {path}"
+        }
         "shell.tokens_bridge_dtcg.dtcg_tokens" => "DTCG tokens",
         "shell.texture_pattern_pick.image" => "Image",
         "shell.undo_app.sem_entrada_neste" => "sem entrada neste quadro",

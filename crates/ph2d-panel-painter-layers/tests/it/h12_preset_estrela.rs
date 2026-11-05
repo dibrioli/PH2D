@@ -143,9 +143,7 @@ fn without_an_active_preset_there_is_no_star_and_the_chip_takes_the_row() {
     let mesa = mesa_digital(true);
     assert!(mesa.rect(ESTRELA).is_none(), "a condição é a de antes");
     let chip = mesa.rect(CHIP).expect("Preset");
-    let padrao = mesa
-        .rect(p::PAINTER_BRUSH_MEDIA)
-        .expect("Paint Mode");
+    let padrao = mesa.rect(p::PAINTER_BRUSH_MEDIA).expect("Paint Mode");
     assert!((chip.x + chip.w - (padrao.x + padrao.w)).abs() < 1.0);
 }
 
@@ -229,7 +227,10 @@ fn the_chip_beside_the_star_shows_every_factory_name_whole() {
         .map(|n| (n, texto.prefix_width(n, m::VALUE_PX)))
         .fold((&nomes[0], 0.0_f32), |a, b| if b.1 > a.1 { b } else { a });
     println!("MEDIDA o maior nome {maior:?} pede {largura}, o chip dá {cabe}");
-    assert!(largura <= cabe, "{maior:?} pede {largura}, o chip dá {cabe}");
+    assert!(
+        largura <= cabe,
+        "{maior:?} pede {largura}, o chip dá {cabe}"
+    );
 }
 
 /// `PH2D_CARDS=0`: a caixa `Favorite` em fila própria, entre o Preset e a prévia, como era.

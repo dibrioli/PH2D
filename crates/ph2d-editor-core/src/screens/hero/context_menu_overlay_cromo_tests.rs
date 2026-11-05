@@ -194,7 +194,10 @@ fn o_transbordo_da_fila_veste_a_superficie_sem_mover_alvo() {
     assert!(pinta_a_cor(&novo, ColorToken::KanbanCardRaised));
     assert_eq!(vezes_da_cor(&novo, ColorToken::BgElev), 0);
     assert!(vezes_da_cor(&antigo, ColorToken::BgElev) > 0);
-    assert!(!alvos_novos.is_empty(), "um transbordo sem alvos não prova nada");
+    assert!(
+        !alvos_novos.is_empty(),
+        "um transbordo sem alvos não prova nada"
+    );
     assert_eq!(
         alvos_novos.iter().map(|a| a.0).collect::<Vec<_>>(),
         alvos_antigos.iter().map(|a| a.0).collect::<Vec<_>>(),
@@ -266,7 +269,11 @@ fn a_dica_em_cartoes_mostra_o_texto_inteiro_na_largura_do_texto() {
     };
     let inteiro = glifos(w * 4.0, &mut text);
     assert!(inteiro > 0);
-    assert_eq!(glifos(w, &mut text), inteiro, "a dica cortou o próprio texto");
+    assert_eq!(
+        glifos(w, &mut text),
+        inteiro,
+        "a dica cortou o próprio texto"
+    );
 }
 
 /// A trilha do Fill começa depois do rótulo em cartões, e o modo de antes fica como era.
@@ -287,7 +294,9 @@ fn o_fill_em_cartoes_tem_rotulo_e_a_trilha_nos_tons_do_cartao() {
             janela(),
         );
         force_cromo_on_this_thread(None);
-        let r = hits.rect_for(ids::PAINTER_FILL_MODAL_SLIDER).expect("trilha");
+        let r = hits
+            .rect_for(ids::PAINTER_FILL_MODAL_SLIDER)
+            .expect("trilha");
         (scene, r)
     };
     let ((novo, r_novo), (antigo, r_antigo)) = (pinta(true), pinta(false));

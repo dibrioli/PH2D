@@ -164,16 +164,7 @@ pub(super) fn hint(
     text: &str,
 ) -> f32 {
     if ph2d_editor_core::widget::card_ink::card_body().is_some() {
-        return super::rows::aviso(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            y,
-            text,
-            ColorToken::Text3,
-        ) - y;
+        return super::rows::aviso(scene, text_system, theme, x, w, y, text, ColorToken::Text3) - y;
     }
     let h = paint_text_block(
         text_system,

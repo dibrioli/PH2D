@@ -284,7 +284,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.inspector.of" => "{what} of \u{201c}{name}\u{201d}",
         "chrome.inspector.follows_unused" => "Follows the prefab \u{b7} {n} unused",
         "chrome.inspector.overrides" => "{k} {k?override|overrides} on this piece",
-        "chrome.inspector.overrides_unused" => "{k} {k?override|overrides} on this piece \u{b7} {n} unused",
+        "chrome.inspector.overrides_unused" => {
+            "{k} {k?override|overrides} on this piece \u{b7} {n} unused"
+        }
         "chrome.inspector.n_added" => " \u{b7} {n} added",
         "chrome.inspector.n_removed" => " \u{b7} {n} removed",
         // ph2d-migrar-texto:end

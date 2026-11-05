@@ -59,7 +59,9 @@ pub(super) fn glifo_na_fila<'a>(cells: &[Cell<'a>], i: usize, glyph: Glyph<'a>) 
         })
         .collect();
     match glyph {
-        Glyph::Text(l) if ocupadas.contains(&l) => Glyph::Text(letra_que_distingue(rotulo, &ocupadas)),
+        Glyph::Text(l) if ocupadas.contains(&l) => {
+            Glyph::Text(letra_que_distingue(rotulo, &ocupadas))
+        }
         outro => outro,
     }
 }

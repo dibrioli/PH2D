@@ -464,7 +464,17 @@ pub(crate) fn paint_ordering_rest(
 
     if let Some(ink) = ph2d_editor_core::widget::card_ink::card_body() {
         return em_cartao(
-            scene, text_system, theme, hit_index, store, ink, x, w, yy, info, sec,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            ink,
+            x,
+            w,
+            yy,
+            info,
+            sec,
         );
     }
     yy = cb!(

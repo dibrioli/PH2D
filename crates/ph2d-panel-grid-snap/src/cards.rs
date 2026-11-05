@@ -372,9 +372,7 @@ fn def<'a>(
 /// O que as duas sondas dizem da grelha, e as duas sondas (X e Y de uma grandeza: um rótulo).
 fn inspecao(c: &mut CardCtx<'_>, s: &GridSnapState, y: f32) -> f32 {
     let i = ph2d_editor_core::grid_snap::inspect::snapshot(s);
-    let leitura = |chave: &'static str, text| {
-        Cell::new(Widget::Readout { text }).label(tr(chave))
-    };
+    let leitura = |chave: &'static str, text| Cell::new(Widget::Readout { text }).label(tr(chave));
     let mut y = c.pair(
         leitura("chrome.grid_snap.probe_a", &i.probe_a_label),
         leitura("chrome.grid_snap.probe_b", &i.probe_b_label),

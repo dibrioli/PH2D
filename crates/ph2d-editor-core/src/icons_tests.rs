@@ -118,11 +118,7 @@ fn a_full_icon_is_the_one_whose_svg_says_so_and_it_paints_its_fill() {
     let mut cheios = 0;
     for id in ALL_ICONS {
         let svg = std::fs::read_to_string(format!("{pasta}/{}.svg", id.slug())).expect("o SVG");
-        assert_eq!(
-            svg.contains(r#"fill="currentColor""#),
-            id.cheio(),
-            "{id:?}"
-        );
+        assert_eq!(svg.contains(r#"fill="currentColor""#), id.cheio(), "{id:?}");
         cheios += usize::from(id.cheio());
         let mut scene = ph2d_vector::VectorScene::new();
         crate::paint::paint_icon(

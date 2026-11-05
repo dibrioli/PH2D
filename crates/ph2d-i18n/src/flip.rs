@@ -116,7 +116,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.flip_frames.tip.additive" => "A new key starts with a copy of the last drawing",
         "panel.flip_frames.tip.key_add" => "Add a key",
         "panel.flip_frames.tip.key_dup" => "Duplicate this key",
-        "panel.flip_frames.tip.key_instance" => "Duplicate as a linked copy: editing one edits both",
+        "panel.flip_frames.tip.key_instance" => {
+            "Duplicate as a linked copy: editing one edits both"
+        }
         "panel.flip_frames.tip.key_unlink" => "Unlink: give this key its own drawing",
         "panel.flip_frames.tip.key_delete" => "Delete this key",
         "panel.flip_frames.tip.key_left" => "Move this key one frame earlier",

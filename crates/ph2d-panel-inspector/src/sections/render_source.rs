@@ -347,7 +347,11 @@ fn paint_provenance(
     y: f32,
     label_font: f32,
     row_gap: f32,
-    cartao: Option<(ph2d_editor_core::widget::card_ink::CardInk, &WidgetStore, &mut HitIndex)>,
+    cartao: Option<(
+        ph2d_editor_core::widget::card_ink::CardInk,
+        &WidgetStore,
+        &mut HitIndex,
+    )>,
 ) -> f32 {
     // Cleaner phrasing — strategy name + key/id separated by middle dot (the only ASCII-safe
     // non-ASCII glyph allowed in UI strings; vide no_tofu_glyphs gate).

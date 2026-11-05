@@ -41,7 +41,7 @@ GameMaker e Unreal: pivô de 9 pontos. GDevelop, Construct e GameMaker: editar a
 11. O Transform dobrado da imagem tem alfinete, como todo Transform solto.
 12. Flip e Pivot têm bolinha de chave. O Flip grava os dois eixos; a chave do Pivot grava também a posição, ou tocar a animação moveria o desenho.
 
-Medido a 270 px de painel: «Edit in Pixel» pede 78 px e «Edit in Painter» 93 (177 com o vão), a coluna à direita da miniatura tem cerca de 134. Por isso ficam um por linha; lado a lado só de cerca de 330 px de painel para cima, pela regra `compact`. Nada é cortado.
+Medido a 270 px de painel: «Edit in Pixel» pede 78 px e «Edit in Painter» 93 (177 com o vão), a coluna à direita da miniatura tem 152 (teste `a_270_px_os_botoes_mostram_o_texto_inteiro_e_a_miniatura_e_maior`). Por isso ficam um por linha; lado a lado só de cerca de 315 px de painel para cima (conta, não medido), pela regra `compact`. Nada é cortado.
 
 ## O desenho aprovado
 

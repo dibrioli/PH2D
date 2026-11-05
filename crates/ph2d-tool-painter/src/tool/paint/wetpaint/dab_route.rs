@@ -272,9 +272,10 @@ impl PainterTool {
             self.paint.texture_image_version
         };
         let super::lote::ReguaDoGrao {
-            cerdas_sob_o_grao,
+            ponta_sob_o_grao,
             media_depois_do_portao,
             ganho_do_grao,
+            sem_grao,
         } = super::lote::regua_do_grao(
             brush,
             &self.paint.brush,
@@ -282,7 +283,7 @@ impl PainterTool {
                 (grain_image.as_ref(), versao_de_agora),
                 (imagem_propria.as_ref(), self.paint.texture_image_version),
             ],
-            [cerdas, grain_active, grao_e_o_papel, grao_e_cor],
+            [grain_active, grao_e_o_papel, grao_e_cor],
             canvas_wh,
             escala_tex,
             &mut sess.medias_do_grao,
@@ -361,8 +362,9 @@ impl PainterTool {
             escala_tex,
             grao_e_o_papel,
             media_depois_do_portao,
-            cerdas_sob_o_grao,
+            ponta_sob_o_grao,
             ganho_do_grao,
+            sem_grao,
             pigmento_da_marca,
             escala_cerdas,
             copia: &copia,

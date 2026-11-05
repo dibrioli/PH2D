@@ -39,8 +39,9 @@ pub(super) struct LoteDoDab<'a> {
     pub(super) escala_tex: f32,
     pub(super) grao_e_o_papel: bool,
     pub(super) media_depois_do_portao: Option<f64>,
-    pub(super) cerdas_sob_o_grao: bool,
+    pub(super) ponta_sob_o_grao: bool,
     pub(super) ganho_do_grao: f64,
+    pub(super) sem_grao: Option<[f64; 2]>,
     pub(super) pigmento_da_marca: f32,
     pub(super) escala_cerdas: [f32; 2],
     pub(super) copia: &'a [u32],
@@ -94,8 +95,9 @@ pub(super) fn pousa_o_dab(
         escala_tex,
         grao_e_o_papel,
         media_depois_do_portao,
-        cerdas_sob_o_grao,
+        ponta_sob_o_grao,
         ganho_do_grao,
+        sem_grao,
         pigmento_da_marca,
         escala_cerdas,
         copia,
@@ -481,7 +483,7 @@ pub(super) fn pousa_o_dab(
     // motor ao bit. Um Grain armado continua a tomar o lugar delas (W2.4; D7 medido no 27 §6.7).
     // Com o FILME do traço (`Knob::StrokeFilm`, J4 aguarela) o tapete fica de fora: a lavagem é lisa.
     let cerdas_sb = shape_basis.as_ref().filter(|_| {
-        cerdas && (grain.is_none() || cerdas_sob_o_grao) && !filme_liso && !marca_do_spray
+        cerdas && (grain.is_none() || ponta_sob_o_grao) && !filme_liso && !marca_do_spray
     });
     let cerdas_fn = cerdas_sb.map(|sb| {
         let forma = &spec_ref.shape;
@@ -510,11 +512,15 @@ pub(super) fn pousa_o_dab(
             p.ganho * tapete(p.q.map(|v| v / px_por_celula))
         }
     });
-    let lisa = |_: i32, _: i32| -> f64 { 1.0 };
+    let texv_liso = sem_grao.map_or(1.0, |[g, _]| g);
+    let lisa = move |_: i32, _: i32| -> f64 { texv_liso };
+    // Filme liso: o grão continua a ser o `texv`, como o de sempre.
+    let ponta_sob_o_grao = ponta_sob_o_grao && !filme_liso;
     let grain_arg: Option<ph2d_wet_paint::brush::CellFn<'_>> =
         Some(match (grain.as_ref(), cerdas_fn.as_ref()) {
+            (None, Some(_)) if sem_grao.is_some() => &lisa,
             (Some(_), Some(c)) => c,
-            (Some(_), _) if grao_e_cor => &lisa,
+            (Some(_), _) if grao_e_cor || ponta_sob_o_grao => &lisa,
             (Some(g), _) => g,
             (None, Some(c)) => c,
             (None, None) => &lisa,
@@ -531,18 +537,25 @@ pub(super) fn pousa_o_dab(
     let padrao_arg = pad
         .as_ref()
         .map_or(padrao_arg, |p| Some(p as ph2d_wet_paint::brush::CellFn<'_>));
-    // «Same as Paper» sobre cerdas (Bug #61): elas continuam a dar a quantidade e o papel desenha depois do portão, de
-    // média 1 — o tapete tem média ~0,02 e trocá-lo pelo papel pousava até 20× a tinta.
-    let papel_depois = cerdas_fn
+    // Grão (de escolha ou o papel) sobre a ponta aplicada sem Grain (Bug #61): a ponta continua a dar a quantidade e o
+    // grão desenha depois do portão, de média 1 — o tapete tem média ~0,02 e trocá-lo pelo grão pousava até 20× a tinta.
+    let grao_depois = grain
         .as_ref()
-        .zip(grain.as_ref())
+        .filter(|_| ponta_sob_o_grao)
         .zip(media_depois_do_portao)
-        .map(|((_, g), media)| {
+        .map(|(g, media)| {
             move |cx: i32, cy: i32| -> f64 {
                 g(cx, cy) / media * padrao_arg.map_or(1.0, |p| p(cx, cy))
             }
         });
-    let padrao_arg = papel_depois
+    let padrao_arg = grao_depois
+        .as_ref()
+        .map_or(padrao_arg, |p| Some(p as ph2d_wet_paint::brush::CellFn<'_>));
+    // O Grain tirado: as cerdas desenham depois do portão, de média 1, sobre o `texv` à média dele.
+    let cerdas_depois = cerdas_fn.as_ref().zip(sem_grao).map(|(c, [_, media])| {
+        move |cx: i32, cy: i32| -> f64 { c(cx, cy) / media * padrao_arg.map_or(1.0, |p| p(cx, cy)) }
+    });
+    let padrao_arg = cerdas_depois
         .as_ref()
         .map_or(padrao_arg, |p| Some(p as ph2d_wet_paint::brush::CellFn<'_>));
     // As pontas rectas: metade dos dabs cobre cada célula — a soma volta pelo padrão (depois do portão), e a

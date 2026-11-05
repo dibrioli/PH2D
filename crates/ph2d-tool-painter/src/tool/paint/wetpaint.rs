@@ -470,6 +470,9 @@ mod flow_ratio_tests; // os gates de PRODUTO da razão da grade de FLUXO
 #[path = "wetpaint/grao_a_mao_tests.rs"]
 mod grao_a_mao_tests;
 #[cfg(test)]
+#[path = "wetpaint/manchas_liner_tests.rs"]
+mod manchas_liner_tests;
+#[cfg(test)]
 #[path = "wetpaint/offthread_tests.rs"]
 mod offthread_tests; // os gates da sim FORA da thread do frame
 #[cfg(test)]

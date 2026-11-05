@@ -215,6 +215,155 @@ fn sonda_custo_da_media_do_grao() {
     println!("load {:?}", std::fs::read_to_string("/proc/loadavg"));
 }
 
+const COM_GRAIN_LISOS: [&str; 5] = [
+    "Pastel Side",
+    "Oil Pastel",
+    "Charcoal",
+    "Graphite 8B",
+    "Wax Scrape",
+];
+const LISOS: [&str; 6] = [
+    "Soft Round",
+    "Airbrush",
+    "Watercolor Basic",
+    "Hard Round",
+    "Knife Oily",
+    "Marker Chisel",
+];
+/// Só o ecrã: com a pena o carimbo satura o portão e a massa não diz nada do que se vê (1,1–1,9, BUGS #61).
+const LISOS_DE_TINTA: [&str; 4] = ["Dip Pen", "Ink Bullet", "Marker Bullet", "Broad Nib"];
+
+/// O grão armado à referência, o que o pincel fazia antes da cura: o controlo de que o portão sangra.
+fn sem_a_cura(t: &mut crate::tool::PainterTool) {
+    t.paint.brush.grao_aplicado.grao = t.paint.brush.texture;
+}
+
+#[test]
+fn casos_abertos_tirar_o_grain_nao_muda_a_quantidade() {
+    for nome in COM_GRAIN_PROPRIO.into_iter().chain(COM_GRAIN_LISOS) {
+        let e = de_fabrica_ou_candidato(nome);
+        let (s, _) = traco(&e, false);
+        let (c, _) = traco_com(&e, |t| t.set_brush_texture_kind(0));
+        let (massa, tela) = (c[0] / s[0], c[3] / s[3]);
+        let (h, _) = traco_com(&e, |t| {
+            t.set_brush_texture_kind(0);
+            sem_a_cura(t);
+        });
+        let hoje = h[0] / s[0];
+        println!("{nome}: massa {massa:.3} · tela {tela:.3} · sem a cura {hoje:.3}");
+        // Knife Dry: 1,258 de massa e 0,997 de ecrã; as cerdas passam a pousar acima do carimbo cheio dele (BUGS #61).
+        let teto = if nome == "Knife Dry" { 1.3 } else { 1.1 };
+        assert!((0.9..teto).contains(&massa), "{nome}: massa {massa:.3}×");
+        assert!((0.9..1.1).contains(&tela), "{nome}: tela {tela:.3}×");
+        assert!(!(0.9..1.1).contains(&hoje), "{nome}: o controlo não sangra");
+    }
+}
+
+#[test]
+fn casos_abertos_armar_na_ponta_lisa_nao_muda_a_quantidade_e_o_grao_desenha() {
+    for nome in LISOS {
+        let e = de_fabrica_ou_candidato(nome);
+        let (s, base) = traco(&e, false);
+        let cv_base = variacao_do_miolo(&base);
+        for (g, k) in GRAOS {
+            let (c, t) = traco_com(&e, |t| t.set_brush_texture_kind(k));
+            let (massa, tela) = (c[0] / s[0], c[3] / s[3]);
+            let cv = variacao_do_miolo(&t);
+            println!("{nome}|{g}: massa {massa:.3} · tela {tela:.3} · cv {cv:.3} ({cv_base:.3})");
+            assert!(
+                (0.9..1.12).contains(&massa),
+                "{nome}|{g}: massa {massa:.3}×"
+            );
+            assert!((0.9..1.1).contains(&tela), "{nome}|{g}: tela {tela:.3}×");
+            assert!(
+                cv >= 0.5 * cv_base,
+                "{nome}|{g}: o miolo colapsou, cv {cv:.3}"
+            );
+        }
+    }
+    for nome in LISOS_DE_TINTA {
+        let e = de_fabrica_ou_candidato(nome);
+        let (s, _) = traco(&e, false);
+        for (g, k) in GRAOS {
+            let (c, _) = traco_com(&e, |t| t.set_brush_texture_kind(k));
+            let tela = c[3] / s[3];
+            assert!((0.9..1.1).contains(&tela), "{nome}|{g}: tela {tela:.3}×");
+        }
+    }
+    // O controlo: sem a cura, a ponta lisa perde tinta.
+    let e = de_fabrica_ou_candidato("Soft Round");
+    let (s, _) = traco(&e, false);
+    let (h, _) = traco_com(&e, |t| {
+        t.set_brush_texture_kind(1);
+        sem_a_cura(t);
+    });
+    assert!(h[0] / s[0] < 0.7, "o controlo: {:.3}", h[0] / s[0]);
+}
+
+#[test]
+fn casos_abertos_o_pincel_sem_o_grain_reabre_igual() {
+    reabre_igual("Knife Dry", 0);
+    reabre_igual("Graphite 8B", 0);
+    reabre_igual("Soft Round", 1);
+}
+
+/// **Sonda dos dois casos abertos** (BUGS #61): os 77 de fábrica. Com Grain: tirá-lo. Sem Grain nem cerdas: armar três.
+/// `caso|pincel|cerdas|filme|grão|massa|tela|cv_base|cv`. O caso «cerdas» (sem Grain, com cerdas) é o já curado: de controlo.
+#[test]
+#[ignore = "sonda: os casos abertos do Grain"]
+fn sonda_casos_abertos_do_grain() {
+    use ph2d_painter_brush::TextureKind as K;
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    println!("caso|pincel|cerdas|filme|grao|cv_base|hoje: massa tela cv|novo");
+    for e in ph2d_brush_presets::Biblioteca::carregar(&raiz, None).entradas {
+        let nome = e.preset.parametros.name.clone();
+        let mut prova = crate::tool::PainterTool::default();
+        prova.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
+        prova.set_paint_tool_mode("wetpaint");
+        if !prova.wet_preset_aplicar(&e.preset).is_empty() {
+            println!("recusa|{nome}");
+            continue;
+        }
+        let (s, base) = traco(&e.preset, false);
+        let b = base.paint.brush;
+        let cerdas = b.shape.kind == K::Bristles;
+        let filme = base
+            .paint
+            .wetpaint
+            .knobs
+            .get(ph2d_wet_paint::tuning::Knob::StrokeFilm);
+        let cv_base = variacao_do_miolo(&base);
+        let linha = |caso: &str, g: &str, k: u8| {
+            let mut col = format!("{caso}|{nome}|{cerdas}|{filme:.2}|{g}|{cv_base:.3}");
+            for hoje in [true, false] {
+                let (c, t) = traco_com(&e.preset, |t| {
+                    t.set_brush_texture_kind(k);
+                    if hoje {
+                        t.paint.brush.grao_aplicado.grao = t.paint.brush.texture;
+                    }
+                });
+                col += &format!(
+                    "|{:.3} {:.3} {:.3}",
+                    c[0] / s[0].max(1e-9),
+                    c[3] / s[3].max(1e-9),
+                    variacao_do_miolo(&t),
+                );
+            }
+            println!("{col}");
+        };
+        if b.texture.kind == K::None {
+            if cerdas && filme == 0.0 {
+                continue; // o já curado: os portões acima
+            }
+            for (g, k) in GRAOS {
+                linha(if cerdas { "cerdas" } else { "lisa" }, g, k);
+            }
+        } else {
+            linha("tira", &format!("{:?}", b.texture.kind), 0);
+        }
+    }
+}
+
 /// O painel diz a verdade: armado sobre um pincel aplicado sem Grain, as cerdas continuam a agir e os sliders não esmaecem;
 /// no pincel aplicado com o seu Grain, ele toma o lugar delas.
 #[test]

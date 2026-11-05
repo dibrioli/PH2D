@@ -100,7 +100,9 @@ pub use autokey::{
     key_value_in_active_clip,
 };
 pub use binding::{TargetBinding, WireId};
-pub use channel_group::{Forca, Instante, Ligacoes, clique_no_grupo, estado_do_grupo};
+pub use channel_group::{
+    Forca, Instante, Ligacoes, clique_com_posicao, clique_no_grupo, estado_do_grupo,
+};
 pub use channel_mark::{ChannelMark, channel_mark};
 pub use clipboard::{ClipboardKey, TimelineClipboard};
 pub use doc::{

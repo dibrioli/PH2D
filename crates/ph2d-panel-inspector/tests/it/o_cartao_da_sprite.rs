@@ -4,6 +4,7 @@
 use crate::o_inspector_em_cartoes_por_tipo::pinta;
 use crate::seam_render_source::atlas_sprite;
 use ph2d_a11y::NodeId;
+use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::WidgetEvent;
@@ -184,13 +185,12 @@ fn edit_in_pixel_pede_so_a_ida_e_edit_in_painter_entra_no_draw() {
 }
 
 #[test]
-fn replace_e_a_miniatura_abrem_o_seletor() {
+fn a_miniatura_abre_o_seletor() {
     let abre = |a: &[EditorAction]| {
         a.iter()
             .any(|x| matches!(x, EditorAction::OpenImagePicker { entity_bits: 7 }))
     };
     let (mut host, mut st) = cena(factos());
-    assert!(abre(&clica(&mut host, &mut st, INSP_IMAGE_REPLACE).1));
     assert!(abre(&clica(&mut host, &mut st, INSP_RENDER_TEXTURE_SLOT).1));
 }
 
@@ -292,18 +292,83 @@ fn o_convite_so_existe_sem_imagem() {
     let tem = |r: &[(NodeId, Rect)], id| r.iter().any(|(i, q)| *i == id && q.w > 0.0);
     let (mut host, mut st) = cena(factos());
     let r = pinta(&mut host, &mut st);
-    assert!(!tem(&r, INSP_IMAGE_PAINT_NEW) && tem(&r, INSP_IMAGE_REPLACE));
+    assert!(!tem(&r, INSP_IMAGE_PAINT_NEW) && tem(&r, INSP_IMAGE_EDIT_PIXEL));
 
     let (mut host, mut st) = cena(SpriteFacts {
         sem_imagem: true,
         ..factos()
     });
     let r = pinta(&mut host, &mut st);
-    assert!(tem(&r, INSP_IMAGE_PAINT_NEW) && !tem(&r, INSP_IMAGE_REPLACE));
+    assert!(tem(&r, INSP_IMAGE_PAINT_NEW) && !tem(&r, INSP_IMAGE_EDIT_PIXEL));
     let (_, a) = clica(&mut host, &mut st, INSP_RENDER_TEXTURE_SLOT);
     assert!(
         a.iter()
             .any(|x| matches!(x, EditorAction::OpenImagePicker { entity_bits: 7 })),
         "o cartão vazio inteiro é o alvo: {a:?}"
     );
+}
+
+/// ⭐ Dono 05/11: o hover real na miniatura acende a borda e o ícone; sem ele, nada.
+/// *Mutação: tirar o `if` de estado de `troca_em_hover` ⇒ o ícone pinta sempre.*
+#[test]
+fn o_hover_da_miniatura_acende_a_borda_e_o_icone_de_troca() {
+    let (mut host, mut st) = cena(factos());
+    let foto = rect_de(&pinta(&mut host, &mut st), INSP_RENDER_TEXTURE_SLOT);
+    let sinal = |host: &mut MockPanelHost, st: &mut InspectorState| {
+        let _ = pinta(host, st);
+        ph2d_panel_inspector::troca_pintada()
+    };
+    assert!(!sinal(&mut host, &mut st), "sem hover não acende");
+    let mao = |x: f32, y: f32| PointerEvent {
+        x,
+        y,
+        pressure: 0.0,
+        kind: PointerKind::Move,
+        source: ph2d_host::PointerSource::Mouse,
+        button: PointerButton::Primary,
+        timestamp_ns: 0,
+    };
+    let _ = host.dispatch_pointer_event(mao(foto.x + 5.0, foto.y + 5.0));
+    assert!(sinal(&mut host, &mut st), "o hover real não acendeu");
+    let _ = host.dispatch_pointer_event(mao(foto.x + foto.w + 80.0, foto.y + foto.h + 300.0));
+    assert!(!sinal(&mut host, &mut st), "fora dela volta a apagar");
+}
+
+/// ⭐ Dono 05/11: a 270 px de painel os dois botões mostram o texto inteiro, um por linha se não couberem lado a lado,
+/// e a miniatura continua maior que um botão. *Mutação: fixar a coluna em largura zero.*
+#[test]
+fn a_270_px_os_botoes_mostram_o_texto_inteiro_e_a_miniatura_e_maior() {
+    let (mut host, mut st) = cena(factos());
+    let janela = Rect::new(0.0, 0.0, 270.0, 900.0);
+    host.settle_section_folds();
+    let mut r = Vec::new();
+    for _ in 0..30 {
+        r = host.paint::<InspectorPanel>(&mut st, janela);
+    }
+    let (a, b, foto) = (
+        rect_de(&r, INSP_IMAGE_EDIT_PIXEL),
+        rect_de(&r, INSP_IMAGE_EDIT_PAINTER),
+        rect_de(&r, INSP_RENDER_TEXTURE_SLOT),
+    );
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let pede = |ts: &mut ph2d_text::TextSystem, k: &str| {
+        ts.prefix_width(ph2d_i18n::tr(k), m::VALUE_PX).ceil() + m::BUTTON_TEXT_PAD * 2.0
+    };
+    let (pa, pb) = (
+        pede(&mut ts, "card.insp.edit_in_pixel"),
+        pede(&mut ts, "card.insp.edit_in_painter"),
+    );
+    eprintln!("medido a 270: Pixel {a:?} pede {pa} · Painter {b:?} pede {pb} · miniatura {foto:?}");
+    assert!(a.w >= pa && b.w >= pb, "cortou: {a:?}/{pa} {b:?}/{pb}");
+    assert!(foto.h > a.h && foto.x + foto.w < a.x, "{foto:?} × {a:?}");
+}
+
+/// ⭐ Dono 05/11: em Repeated o tamanho do bloco vai entre parênteses na linha da miniatura; «Size (px)» já não existe.
+#[test]
+fn o_tamanho_do_repeated_vai_entre_parenteses() {
+    let t = ph2d_i18n::tr_with(
+        "card.insp.image_size_repeated",
+        &[("pw", &256), ("ph", &128), ("size", &"300 × 50")],
+    );
+    assert_eq!(t, "256 × 128 px (300 × 50)");
 }

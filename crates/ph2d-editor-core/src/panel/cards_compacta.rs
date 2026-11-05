@@ -65,6 +65,16 @@ impl CardCtx<'_> {
         y
     }
 
+    /// [`Self::compact`] poria estas células na mesma linha?
+    pub fn cabem_lado_a_lado(&mut self, cells: &[Cell<'_>]) -> bool {
+        self.tudo_cabe(cells)
+    }
+
+    /// A largura em que `c` mostra o conteúdo inteiro.
+    pub fn largura_pedida(&mut self, c: &Cell<'_>) -> f32 {
+        self.pede(c)
+    }
+
     /// Os botões e segmentos de `cells` mostram o texto inteiro nas colunas desta linha.
     fn textos_cabem(&mut self, cells: &[Cell<'_>]) -> bool {
         let cols = self.columns(cells);

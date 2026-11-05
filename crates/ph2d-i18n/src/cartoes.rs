@@ -177,9 +177,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.pivot.bottom_right" => "Bottom Right",
         "card.insp.advanced" => "Advanced",
         "card.insp.flip" => "Flip",
-        "card.insp.image_replace" => "Replace",
-        "card.insp.image_replace_tip" => "Choose another image for this object",
-        "card.insp.image_slot_tip" => "Click to choose an image, or drop one here from Assets",
+        "card.insp.image_size_repeated" => "{pw} \u{00d7} {ph} px ({size})",
+        "card.insp.image_slot_tip" => {
+            "Click to choose or replace the image, or drop one here from Assets"
+        }
         "card.insp.image_unnamed" => "Untitled image",
         "card.insp.image_drop" => "Drop an image",
         "card.insp.image_drop_hint" => "or click to choose",
@@ -210,10 +211,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.join" => "Join",
         "card.insp.ordering" => "Ordering",
         "card.insp.z_index" => "Z index",
-        "card.insp.size_px" => "Size (px)",
         "card.insp.region_position_px" => "Region position (px)",
         "card.insp.region_size_px" => "Region size (px)",
-        "card.insp.size_m" => "Size (m)",
         "card.insp.material" => "Material & Blend",
         "card.insp.mode" => "Mode",
         "card.insp.add_component" => "Add component",

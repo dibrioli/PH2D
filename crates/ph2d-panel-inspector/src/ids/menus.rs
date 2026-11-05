@@ -22,8 +22,6 @@ pub const INSP_IMAGE_USE: [NodeId; 4] = [
     hash_node_id("insp_image_use_region"),
 ];
 
-/// **Replace** do cartão Image: o mesmo pedido do clique na miniatura.
-pub const INSP_IMAGE_REPLACE: NodeId = hash_node_id("insp_image_replace");
 /// A caixa «Tint each corner» do cartão Advanced.
 pub const INSP_SPRITE_CORNERS_ON: NodeId = hash_node_id("insp_sprite_corners_on");
 

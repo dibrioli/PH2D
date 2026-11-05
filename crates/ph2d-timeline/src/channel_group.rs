@@ -194,6 +194,53 @@ pub fn clique_no_grupo(
     out
 }
 
+/// [`clique_no_grupo`] de um grupo que também leva a posição (o Pivot da sprite): a posição grava-se no modo que a K
+/// escolheria, objecto a objecto. Sem posição no grupo, é o clique de sempre.
+#[must_use]
+#[allow(clippy::too_many_arguments)] // o irmão de `clique_no_grupo`, mais os membros da posição
+pub fn clique_com_posicao(
+    doc: &TimelineDoc,
+    reps: &[PropKind],
+    posicao: &[PropKind],
+    entidades: &[u64],
+    inst: Instante,
+    lidos: impl Fn(u64) -> Vec<FieldKey>,
+    valor: impl Fn(u64, PropKind) -> Option<f32>,
+    autorar: impl Fn(u64, PropKind) -> Option<TimelineIntent>,
+) -> Vec<TimelineIntent> {
+    if !reps.iter().any(|r| posicao.contains(r)) {
+        return clique_no_grupo(doc, reps, entidades, inst, lidos, valor, autorar);
+    }
+    let apagar = clique_no_grupo(
+        doc,
+        reps,
+        entidades,
+        inst,
+        |_| Vec::new(),
+        &valor,
+        |_, _| None,
+    );
+    if apagar.contains(&TimelineIntent::DeleteSelection) {
+        return apagar;
+    }
+    let mut out = vec![TimelineIntent::BeginEdit];
+    for &e in entidades {
+        let na_trajetoria = doc.position_key_mode(e, true) == crate::PositionKeyMode::Path;
+        let deste: Vec<PropKind> = reps
+            .iter()
+            .copied()
+            .filter(|&p| (p == PropKind::Position) == na_trajetoria || !posicao.contains(&p))
+            .collect();
+        out.extend(
+            clique_no_grupo(doc, &deste, &[e], inst, &lidos, &valor, &autorar)
+                .into_iter()
+                .filter(|i| !matches!(i, TimelineIntent::BeginEdit | TimelineIntent::EndEdit)),
+        );
+    }
+    out.push(TimelineIntent::EndEdit);
+    out
+}
+
 #[cfg(test)]
 #[path = "channel_group_tests.rs"]
 mod tests;

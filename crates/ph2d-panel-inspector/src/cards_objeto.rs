@@ -112,7 +112,7 @@ pub(crate) fn com_corpo(
 }
 
 /// O tamanho no mundo, na unidade do projecto; a unidade vai no rótulo.
-pub(crate) fn tamanho(info: &InspectorSpriteInfo) -> (&'static str, String) {
+pub(crate) fn tamanho(info: &InspectorSpriteInfo) -> String {
     let unit = crate::state::current_display_unit();
     let ppm = crate::state::current_pixels_per_meter();
     let (w, h) = (
@@ -120,8 +120,8 @@ pub(crate) fn tamanho(info: &InspectorSpriteInfo) -> (&'static str, String) {
         unit.from_meters(info.world_size[1], ppm),
     );
     match unit {
-        DisplayUnit::Meters => (tr("card.insp.size_m"), format!("{w:.3} × {h:.3}")),
-        DisplayUnit::Pixels => (tr("card.insp.size_px"), format!("{w:.0} × {h:.0}")),
+        DisplayUnit::Meters => format!("{w:.3} × {h:.3}"),
+        DisplayUnit::Pixels => format!("{w:.0} × {h:.0}"),
     }
 }
 

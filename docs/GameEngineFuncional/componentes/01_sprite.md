@@ -32,13 +32,24 @@ GameMaker e Unreal: pivô de 9 pontos. GDevelop, Construct e GameMaker: editar a
 5. **Edit in Painter**, pedido do dono: mesma ida e volta.
 6. 9-Slice segue componente; não vira quinto uso (delegado ao agente).
 
+**Do smoke do dono (05/11, depois das fotos):**
+
+7. O layout da crítica: miniatura, nome, tamanho e botões numa superfície própria dentro do cartão Image.
+8. **Sai o botão Replace:** clicar na miniatura é trocar a imagem. Em hover a borda acende e um ícone de troca entra a girar no canto.
+9. Sai a linha «Size (px)»; em Repeated o tamanho vai entre parênteses na linha da miniatura: `256 × 128 px (300 × 50)`.
+10. A tira do Repeated: cópias coladas na largura do corpo, sem xadrez entre elas.
+11. O Transform dobrado da imagem tem alfinete, como todo Transform solto.
+12. Flip e Pivot têm bolinha de chave. O Flip grava os dois eixos; a chave do Pivot grava também a posição, ou tocar a animação moveria o desenho.
+
+Medido a 270 px de painel: «Edit in Pixel» pede 78 px e «Edit in Painter» 93 (177 com o vão), a coluna à direita da miniatura tem cerca de 134. Por isso ficam um por linha; lado a lado só de cerca de 330 px de painel para cima, pela regra `compact`. Nada é cortado.
+
 ## O desenho aprovado
 
 Por estado do painel: **vazio** = cartão Image inteiro é «Drop an image or click to choose» + recentes + «Paint a new image…» · **em uso** = cartões abaixo · **Repeated** = os mesmos, mudam só os campos do uso.
 
 | Cartão | Conteúdo |
 |---|---|
-| Image | miniatura grande, nome, tamanho em px, Replace, Edit in Pixel, Edit in Painter; Use; campos do uso |
+| Image | superfície com a miniatura (clicar troca), nome, tamanho em px, Edit in Pixel, Edit in Painter; Use; campos do uso |
 | Look | Tint, Opacity, Flip em ícones, Pivot de 9 pontos (+ Custom X/Y); Self Tint só com filhos |
 | Transform (dobrado) | resumo `850, 200 · 0° · 1 × 1` |
 | Ordering (dobrado) | Z Index e Y-Sort; as outras 6 por «+ Order option…», e ficam à vista se em uso |
@@ -46,7 +57,7 @@ Por estado do painel: **vazio** = cartão Image inteiro é «Drop an image or cl
 
 **Sai:** Storage com número · caixa Region · botão Hand-packed (vira texto no resumo se for o caso) · Show Sheet · nota «shader runtime pending».
 
-**Do agente, além dos estudos:** Pivot de 9 pontos conta sobre o que está **visível** (a caixa opaca do desenho), não a borda da imagem · Replace mostra `256 × 128 → 64 × 64 · Keep old size`.
+**Do agente, além dos estudos:** Pivot de 9 pontos conta sobre o que está **visível** (a caixa opaca do desenho), não a borda da imagem · trocar a imagem mostra `256 × 128 → 64 × 64 · Keep old size`.
 
 ## Aceitação
 
@@ -62,6 +73,7 @@ Por estado do painel: **vazio** = cartão Image inteiro é «Drop an image or cl
 | «Frame · click to pick» em Still | contraria 27/10; o gesto vive em *Use one Region* |
 | 9-Slice como uso «Panel» | quatro usos do dono; rever no item 9-Slice |
 | Colisão a partir da imagem neste item | pertence a Physics Body |
+| Botão Replace | supérfluo: a miniatura é o alvo (dono, 05/11) |
 
 ## Provas
 

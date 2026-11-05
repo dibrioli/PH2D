@@ -4,28 +4,27 @@
 
 use crate::cards_componentes::Presente;
 use crate::cards_objeto::com_corpo;
+use crate::cards_sprite_cabeca::{cabeca, tira_do_repeated};
 use crate::cards_sprite_pivot::{NOMES_DO_PIVOT, evento_do_pivot, flip_e_pivot};
 use crate::ids;
 use crate::sections;
-use crate::slot_image::{self, SlotImage};
+use crate::slot_image;
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent, WidgetStore};
-use ph2d_editor_core::paint::{paint_text, resolve};
+use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, HeadAction, Widget};
 use ph2d_editor_core::screens::hero::{
     InspectorSpriteInfo, InspectorSpriteSource, InspectorTransformInfo,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_editor_core::{ImageUseEdit, InspectorDraw, InspectorImageUse};
+use ph2d_editor_core::{ImageUseEdit, InspectorImageUse};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_tokens::{ColorToken, Spacing, TypeToken};
 
-/// A miniatura mede três campos: a imagem é o que se lê primeiro no cartão (Godot, GameMaker).
-const LINHAS_DA_MINIATURA: f32 = 3.0; // LITERAL-PX-OK: conta de campos, não geometria
 /// O convite do cartão vazio mede cinco campos: é o único alvo do cartão.
 const LINHAS_DO_CONVITE: f32 = 5.0; // LITERAL-PX-OK: conta de campos, não geometria
 
@@ -43,11 +42,6 @@ fn botao(store: &mut WidgetStore, id: NodeId, dica: &str) {
 
 /// Os botões e as dobras dos cartões da Sprite: uma vez por quadro, antes da pintura.
 pub(crate) fn prepara(store: &mut WidgetStore) {
-    botao(
-        store,
-        ids::INSP_IMAGE_REPLACE,
-        "card.insp.image_replace_tip",
-    );
     botao(
         store,
         ids::INSP_IMAGE_KEEP_SIZE,
@@ -96,6 +90,18 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
         botao(store, id, nome);
     }
     crate::cards_sprite_pivot::prepara_campos_do_pivot(store);
+    // Nos cartões a miniatura tem hover (borda e ícone de troca): o clique continua o mesmo.
+    if matches!(
+        store.get(ids::INSP_RENDER_TEXTURE_SLOT),
+        Some(InteractiveState::Plain)
+    ) {
+        store.register(
+            ids::INSP_RENDER_TEXTURE_SLOT,
+            InteractiveState::Button {
+                state: ph2d_editor_core::widget::ButtonState::Normal,
+            },
+        );
+    }
     if store.tooltip_for(ids::INSP_RENDER_TEXTURE_SLOT).is_none() {
         store.set_tooltip(
             ids::INSP_RENDER_TEXTURE_SLOT,
@@ -130,24 +136,9 @@ pub(crate) fn imagem(info: InspectorSpriteInfo) -> CardDef<'static> {
                 return convite(c, y);
             }
             let y = cabeca(c, y, &info);
-            let ink = c.ink;
             let y = com_corpo(c, y, |t, theme, store, x, w, y| {
-                let y = sections::image_use_rows::paint_image_use(
+                sections::image_use_rows::paint_image_use(
                     t.scene, t.text, theme, t.hit, store, x, w, y, &info, None,
-                );
-                if info.image_use != InspectorImageUse::Repeated {
-                    return y;
-                }
-                let (rotulo, texto) = crate::cards_objeto::tamanho(&info);
-                ph2d_editor_core::panel::cards::compacta::fact(
-                    t.scene,
-                    t.text,
-                    store,
-                    t.hit,
-                    ink,
-                    (x, w, y),
-                    rotulo,
-                    &texto,
                 )
             });
             let y = tira_do_repeated(c, y, &info);
@@ -155,23 +146,6 @@ pub(crate) fn imagem(info: InspectorSpriteInfo) -> CardDef<'static> {
             aviso_de_folha(c, y, info.entity_bits)
         })),
     }
-}
-
-/// A tira de prévia do Repeated: as cópias de uma fileira, até onde couberem.
-fn tira_do_repeated(c: &mut CardCtx<'_>, y: f32, info: &InspectorSpriteInfo) -> f32 {
-    let InspectorDraw::Tiled { copies } = info.draw else {
-        return y;
-    };
-    let img = slot_image::current_slot_image(info.entity_bits);
-    let lado = m::FIELD_H;
-    let cabem = (c.w / lado).floor().max(1.0);
-    let n = copies[0].ceil().clamp(1.0, cabem) as usize;
-    let y = y + m::FIELD_ROW_GAP;
-    for i in 0..n {
-        let r = Rect::new(c.x + i as f32 * lado, y, lado, lado);
-        miniatura(c, r, img.as_ref());
-    }
-    y + lado
 }
 
 /// Depois de trocar por uma imagem de outro tamanho: o que mudou, e a saída. Quem repete não precisa: o bloco manda.
@@ -292,95 +266,6 @@ fn convite(c: &mut CardCtx<'_>, y: f32) -> f32 {
     )
 }
 
-/// A miniatura grande, o nome, o tamanho e os verbos da imagem.
-fn cabeca(c: &mut CardCtx<'_>, y: f32, info: &InspectorSpriteInfo) -> f32 {
-    let lado = m::FIELD_H * LINHAS_DA_MINIATURA;
-    let caixa = Rect::new(c.x, y, c.w, lado);
-    let theme = c.ink.theme;
-    let img = slot_image::current_slot_image(info.entity_bits);
-    miniatura(c, Rect::new(c.x, y, lado, lado), img.as_ref());
-    let tx = c.x + lado + Spacing::Sm.px();
-    let tw = (c.w - lado - Spacing::Sm.px()).max(0.0);
-    let nome = img.as_ref().map_or_else(
-        || tr("panel.inspector.image.none").to_owned(),
-        |i| {
-            if i.name.is_empty() {
-                tr("card.insp.image_unnamed").to_owned()
-            } else {
-                i.name.clone()
-            }
-        },
-    );
-    paint_text(
-        c.text_system,
-        c.scene,
-        &nome,
-        tx,
-        y + Spacing::Xs.px(),
-        TypeToken::Md.px(),
-        tw,
-        resolve(ColorToken::Text1, theme),
-    );
-    if let Some((pw, ph)) = info.source_pixels {
-        paint_text(
-            c.text_system,
-            c.scene,
-            &tr_with(
-                "panel.inspector.render_source.size_px",
-                &[("pw", &pw), ("ph", &ph)],
-            ),
-            tx,
-            y + Spacing::Xs.px() + TypeToken::Md.px() + m::FIELD_ROW_GAP,
-            TypeToken::Sm.px(),
-            tw,
-            resolve(ColorToken::Text2, theme),
-        );
-    }
-    c.hit_index.register(ids::INSP_RENDER_TEXTURE_SLOT, caixa);
-    c.row(
-        &[
-            Cell::new(Widget::Button {
-                id: ids::INSP_IMAGE_REPLACE,
-                text: tr("card.insp.image_replace"),
-                primary: false,
-            }),
-            Cell::new(Widget::Button {
-                id: ids::INSP_IMAGE_EDIT_PIXEL,
-                text: tr("card.insp.edit_in_pixel"),
-                primary: false,
-            }),
-            Cell::new(Widget::Button {
-                id: ids::INSP_IMAGE_EDIT_PAINTER,
-                text: tr("card.insp.edit_in_painter"),
-                primary: false,
-            }),
-        ],
-        y + lado + m::FIELD_ROW_GAP,
-    )
-}
-
-/// A imagem sobre o xadrez da transparência, com o aspecto dela.
-fn miniatura(c: &mut CardCtx<'_>, r: Rect, img: Option<&SlotImage>) {
-    // Sem raio: o xadrez encolhe pelo raio que recebe, e a imagem por cima não encolheria com ele.
-    ph2d_editor_core::widget::paint_checker(c.scene, r, 0.0);
-    let Some(img) = img else {
-        return;
-    };
-    let Some(s) = slot_image::stable(img) else {
-        return;
-    };
-    let (tw, th) = (img.w.max(1) as f32, img.h.max(1) as f32);
-    let k = (r.w / tw).min(r.h / th);
-    let (dw, dh) = (tw * k, th * k);
-    let x0 = f64::from(r.x + (r.w - dw) * 0.5);
-    let y0 = f64::from(r.y + (r.h - dh) * 0.5);
-    c.scene.draw_stable_image(
-        &s,
-        (x0, y0, x0 + f64::from(dw), y0 + f64::from(dh)),
-        ph2d_vector::ImageQuality::Medium,
-    );
-}
-
 /// O resumo do Transform dobrado: `850, 200 · 0° · 1 × 1`.
 pub(crate) fn resumo_do_transform(t: &InspectorTransformInfo) -> String {
     let unit = crate::state::current_display_unit();
@@ -467,7 +352,7 @@ pub(crate) fn proprio<'a>(p: &'a Presente, actions: Vec<HeadAction>) -> Option<C
     None
 }
 
-/// O clique em Replace é o mesmo pedido do clique na miniatura; as opções do Ordering revelam a linha.
+/// Os verbos da imagem; as opções do Ordering revelam a linha. Clicar na miniatura é `event::texture_slot_click`.
 pub(crate) fn evento(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     if crate::sections::ordering::evento_das_opcoes(ev)
         || sections::look::evento_dos_cantos(host, ev)
@@ -532,25 +417,19 @@ pub(crate) fn evento(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool 
         return true;
     }
     let uso = if id == ids::INSP_IMAGE_SHEET_ANIMATED {
-        Some(InspectorImageUse::Animated)
+        InspectorImageUse::Animated
     } else if id == ids::INSP_IMAGE_SHEET_REGION {
-        Some(InspectorImageUse::Region)
-    } else if id == ids::INSP_IMAGE_REPLACE {
-        None
+        InspectorImageUse::Region
     } else {
         return false;
     };
     let Some(sprite) = crate::state::current_inspector_sprite() else {
         return false;
     };
-    let entity_bits = sprite.entity_bits;
-    host.bus_mut().push(match uso {
-        // Uma Region nova abre o editor: um clique no quadro escolhe a área.
-        Some(u) => EditorAction::ImageUseEdit {
-            entity_bits,
-            edit: ImageUseEdit::Use(u),
-        },
-        None => EditorAction::OpenImagePicker { entity_bits },
+    // Uma Region nova abre o editor: um clique no quadro escolhe a área.
+    host.bus_mut().push(EditorAction::ImageUseEdit {
+        entity_bits: sprite.entity_bits,
+        edit: ImageUseEdit::Use(uso),
     });
     true
 }

@@ -74,6 +74,9 @@ mod cards_corpos;
 mod cards_objeto;
 mod cards_pilha;
 mod cards_sprite;
+mod cards_sprite_cabeca;
+#[doc(hidden)]
+pub use cards_sprite_cabeca::troca_pintada;
 mod cards_sprite_pivot;
 pub use cards_componentes::reset_of as card_reset_of;
 mod cards_presos;

@@ -380,12 +380,9 @@ pub fn clique(
         return Vec::new();
     };
     if reps.iter().any(|r| matches!(r, PropKind::Field(_))) {
-        if !reps.iter().any(|r| POSICAO.contains(r)) {
-            return ph2d_timeline::clique_no_grupo(
-                doc, &reps, entidades, inst, lidos, valor, autorar,
-            );
-        }
-        return clique_com_posicao(doc, &reps, entidades, inst, lidos, valor, autorar);
+        return ph2d_timeline::clique_com_posicao(
+            doc, &reps, POSICAO, entidades, inst, lidos, valor, autorar,
+        );
     }
     let apagar = ph2d_timeline::clique_no_grupo(
         doc,
@@ -407,46 +404,6 @@ pub fn clique(
             reps.iter()
                 .filter(|&&p| (p == PropKind::Position) == na_trajetoria || !POSICAO.contains(&p))
                 .filter_map(|&p| autorar(e, p)),
-        );
-    }
-    out.push(TimelineIntent::EndEdit);
-    out
-}
-
-/// O grupo que mistura campos e posição (o Pivot): a posição grava-se no modo que a K escolheria, objecto a objecto.
-fn clique_com_posicao(
-    doc: &TimelineDoc,
-    reps: &[PropKind],
-    entidades: &[u64],
-    inst: Instante,
-    lidos: impl Fn(u64) -> Vec<FieldKey>,
-    valor: impl Fn(u64, PropKind) -> Option<f32>,
-    autorar: impl Fn(u64, PropKind) -> Option<TimelineIntent>,
-) -> Vec<TimelineIntent> {
-    let apagar = ph2d_timeline::clique_no_grupo(
-        doc,
-        reps,
-        entidades,
-        inst,
-        |_| Vec::new(),
-        &valor,
-        |_, _| None,
-    );
-    if apagar.contains(&TimelineIntent::DeleteSelection) {
-        return apagar;
-    }
-    let mut out = vec![TimelineIntent::BeginEdit];
-    for &e in entidades {
-        let na_trajetoria = doc.position_key_mode(e, true) == ph2d_timeline::PositionKeyMode::Path;
-        let deste: Vec<PropKind> = reps
-            .iter()
-            .copied()
-            .filter(|&p| (p == PropKind::Position) == na_trajetoria || !POSICAO.contains(&p))
-            .collect();
-        out.extend(
-            ph2d_timeline::clique_no_grupo(doc, &deste, &[e], inst, &lidos, &valor, &autorar)
-                .into_iter()
-                .filter(|i| !matches!(i, TimelineIntent::BeginEdit | TimelineIntent::EndEdit)),
         );
     }
     out.push(TimelineIntent::EndEdit);

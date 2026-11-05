@@ -97,4 +97,6 @@ fn a_luz_nasce_na_estufa_e_a_troca_de_nivel_nao_compila() {
             l.acesa()
         );
     }
+    // Quem submete e não lê espera a fila: sair com ela a correr dá SIGSEGV depois do `ok` (FLAKES_DE_CARGA, GPU).
+    let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
 }

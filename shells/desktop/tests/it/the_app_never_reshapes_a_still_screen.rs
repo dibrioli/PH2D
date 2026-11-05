@@ -32,6 +32,8 @@ const VIEWPORT: Rect = Rect {
     h: 1024.0,
 };
 
+const QUADROS_DE_ASSENTAR: usize = 120;
+
 #[test]
 fn a_still_frame_with_every_panel_open_shapes_no_text() {
     let _ = ph2d_panel_registry_init::register_all_panels();
@@ -130,14 +132,23 @@ fn a_still_frame_with_every_panel_open_shapes_no_text() {
          ({LAYOUT_CACHE_CAP}) — esta fixtura já não produz o transbordo que ela existe para medir"
     );
 
-    for _ in 0..3 {
-        scene.reset();
-        paint_hero_screen(&mut h, VIEWPORT, &mut scene, &mut text);
+    // Os cartões entram a mola: ao relógio de parede, quantos textos mudam de largura depende da carga da máquina.
+    //    Com o passo fixo a mola assenta igual em toda corrida, e o que este gate proíbe é o que sobra depois dela.
+    let mut quadro = || {
+        let antes = text.shapes();
+        ph2d_editor_core::aquecimento::com_passo_fixo(
+            ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
+            || {
+                scene.reset();
+                paint_hero_screen(&mut h, VIEWPORT, &mut scene, &mut text);
+            },
+        );
+        text.shapes() - antes
+    };
+    for _ in 0..QUADROS_DE_ASSENTAR {
+        quadro();
     }
-    let antes = text.shapes();
-    scene.reset();
-    paint_hero_screen(&mut h, VIEWPORT, &mut scene, &mut text);
-    let no_quadro = text.shapes() - antes;
+    let no_quadro: u64 = (0..5).map(|_| quadro()).sum();
 
     assert_eq!(
         no_quadro, 0,

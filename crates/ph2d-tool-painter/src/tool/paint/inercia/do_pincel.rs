@@ -92,11 +92,10 @@ impl PainterTool {
             (
                 Dependente::CerdasDaAgua,
                 agua && b.shape.kind == ph2d_painter_brush::TextureKind::Bristles
-                    // O «Same as Paper» não tira as cerdas: o papel desenha por cima delas (Bug #61). Com as Grain
-                    // Colors o grão só dá a cor e a ponta é lisa.
+                    // O «Same as Paper» sem Grain próprio não tira as cerdas: o papel desenha por cima delas (Bug #61).
                     && ((g.grain_samples(imagem_do_grao)
                         && (!self.grao_e_o_papel()
-                            || self.paint.texture_ramp_enabled))
+                            || b.grain_samples(self.paint.texture_image.is_some())))
                         || (!self.paint.eraser
                             && self.paint.wetpaint.tool != super::super::WetTool::Paint)),
             ),

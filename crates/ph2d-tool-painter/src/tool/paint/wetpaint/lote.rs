@@ -238,8 +238,8 @@ pub(super) fn media_do_grao(
     imagem: Option<&ph2d_painter_brush::ImageMask<'_>>,
     canvas_wh: [f32; 2],
 ) -> f64 {
-    const LADO: i64 = 64;
-    const PASSO: i64 = 7;
+    const LADO: i64 = 32;
+    const PASSO: i64 = 13;
     let mut rng = 0u64;
     let base = ph2d_painter_brush::texture::dab_basis(
         &brush.texture,

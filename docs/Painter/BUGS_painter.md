@@ -562,10 +562,27 @@ gate imprime — confirmar num lugar.
 **Cura:** com «Same as Paper» sobre cerdas, as cerdas continuam a ser o `texv` e o papel entra DEPOIS do portão (o `padrao`),
 dividido pela sua média (`LoteDoDab::media_do_papel`, `pousa_o_dab.rs`, `dab_route.rs`). Gates em
 `wetpaint/same_as_paper_volume_tests.rs`: `o_same_as_paper_nao_muda_a_quantidade_de_tinta` (0,9–1,1 em 8 pincéis) e
-`o_same_as_paper_ainda_desenha_o_papel`. As Grain Colors (`grao_e_cor`) ficam como estavam.
+`o_same_as_paper_ainda_desenha_o_papel`. Sem Grain próprio, também com Grain Colors, as cerdas ficam como `texv` (a rampa tinha o mesmo salto, smoke 04/11). Com Grain próprio o papel toma o lugar dele à média dele (`ganho_do_papel`; sem isto o Same as Paper quase apagava esses pincéis). Medido: 0,95–1,00× em 6 deles. Gates `o_same_as_paper_com_grain_colors_nao_muda_a_quantidade`, `o_same_as_paper_sobre_grain_proprio_nao_muda_a_quantidade`. ⚠️ `media_do_grao` corre 1 024 amostras por lote: custo por medir.
 
 ⚠️ **ABERTO, decisão do dono:** escolher um Grain qualquer à mão num pincel de cerdas dá o mesmo salto (coluna noise, até 16,5×).
 É a decisão D7 do doc 27 (os pastéis pintam pelo grão) e a cura mudaria presets aprovados que têm cerdas + grão; não foi tocada.
+
+## Bug #62 (ABERTO, decisão do dono) — cordão escuro na borda do traço simples: Wet Liner e Wet Wash
+
+Smoke do dono 04/11: o cruzamento ficou bom, mas o traço simples tem um cordão grosso na borda (do Wet Liner já tinha dito o
+mesmo em 02/11, [memória](../../project-memory/project_wet_liner_no_dark_edge_2026_11_02.md)). Medido pela ferramenta
+(`sonda_cordao_na_borda`, `wetpaint/same_as_paper_volume_tests.rs`; pico da borda ÷ miolo, massa / ecrã, depois de secar;
+a janela de leitura mede ±40 px e o traço tem ~80 px, a foto é a prova da forma):
+
+| pincel | fábrica | Body 0 | Edge Darkening 0 | Capillary 0 |
+|---|---|---|---|---|
+| Wet Liner | 1,67 / 1,17 | 1,04 / 1,02 | **1,00 / 1,00** | 1,70 / 1,17 |
+| Wet Wash | 1,15 / 1,15 | 1,26 / 1,22 | **1,00 / 1,00** | 1,17 / 1,17 |
+| Wet Round | 1,08 / 1,06 | igual | 1,09 / 1,07 | 1,03 / 1,02 |
+| Gouache Opaque | 1,12 / 1,00 | 1,24 / 1,02 | igual | igual |
+
+O cordão é o Edge Darkening. No Wet Liner o Body 0,16 da migração agrava-o. Body 0 também o tira, mas deixa riscas das
+cerdas no miolo. Recomendação: Edge Darkening 0 nos dois presets; regravar só com a aprovação do dono.
 
 ## Bug #57 (FECHADO 04/11) — `wet_water` com `PAINTER_WETPAINT_FASTDRY`: de raiz × de `instantaneo()` difere
 

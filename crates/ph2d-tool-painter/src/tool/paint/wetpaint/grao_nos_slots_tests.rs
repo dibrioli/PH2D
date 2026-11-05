@@ -328,3 +328,24 @@ fn a_macro_toca_o_grain_de_imagem_trocado_ao_byte() {
         );
     }
 }
+
+/// ⭐ **D4: uma média que não é média vale a ausência.** `−1`, `0` e `1e-30` no ficheiro faziam o pincel não pintar nada;
+/// `1e300` vira infinito ao passar a `f32`. CONTROLO: uma média válida age.
+#[test]
+fn a_media_invalida_no_preset_vale_a_ausencia() {
+    let com_media = |v: serde_json::Value| {
+        let mut e = de_fabrica_ou_candidato("Knife Dry");
+        let mut g = e.parametros.brush["texture"].clone();
+        g["media"] = v;
+        e.parametros.brush.insert("grao_aplicado".to_owned(), g);
+        e
+    };
+    let (_, base) = traco(&de_fabrica_ou_candidato("Knife Dry"), false);
+    for v in [-1.0, 0.0, 1e-30, 1e300] {
+        let (_, t) = traco(&com_media(serde_json::json!(v)), false);
+        assert_eq!(t.paint.brush.grao_aplicado.media, None, "{v}");
+        assert_eq!(difs(&base, &t), 0, "{v}: pintou outra coisa");
+    }
+    let (_, t) = traco(&com_media(serde_json::json!(0.25)), false);
+    assert_eq!(t.paint.brush.grao_aplicado.media, Some(0.25));
+}

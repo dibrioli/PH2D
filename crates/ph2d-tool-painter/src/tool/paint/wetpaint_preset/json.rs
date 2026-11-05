@@ -504,7 +504,7 @@ fn escrever_campo(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
                     media: v
                         .and_then(|o| o.get("media"))
                         .and_then(Value::as_f64)
-                        .map(|m| m as f32),
+                        .and_then(media_do_ficheiro),
                 };
             }
         }
@@ -595,6 +595,17 @@ pub(crate) fn pincel_para_json(b: &BrushSpec, campos: &[&str]) -> BTreeMap<Strin
         .filter(|&&c| !(c == "dab_rotation_lag" && b.dab_rotation_lag <= 0.0))
         .map(|&c| ((*c).to_owned(), ler_campo(b, c)))
         .collect()
+}
+
+/// A média do Grain aplicado que o ficheiro traz: abaixo do piso de `media_do_grao` (ou não finita) o pincel não pintava
+/// nada; vale a ausência, e diz-se (Bug #65 D4).
+fn media_do_ficheiro(m: f64) -> Option<f32> {
+    let media = m as f32;
+    if media.is_finite() && media >= 1e-3 {
+        return Some(media);
+    }
+    eprintln!("[painter-preset] grao_aplicado.media inválida ({m}): ignorada");
+    None
 }
 
 /// `base` com os campos que o JSON fixa. Chaves fora de `campos` (de ondas futuras) são ignoradas

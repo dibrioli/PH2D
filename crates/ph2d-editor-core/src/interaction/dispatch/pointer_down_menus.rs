@@ -386,7 +386,9 @@ pub(super) fn click_belongs_to_the_open_menu(
         }
         // ⭐ Uma linha INDISPONÍVEL (hoje: *Load Custom Theme* sem nada gravado) — o Down nela é
         //   um clique no menu, não fora dele; o clique a seguir chega ao verbo, que recusa.
-        ContextMenuKind::SectionOutline { .. } => store.menu_row_is_unavailable(id),
+        ContextMenuKind::SectionOutline { .. } | ContextMenuKind::MenuBarFile => {
+            store.menu_row_is_unavailable(id)
+        }
         _ => false,
     }
 }

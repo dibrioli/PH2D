@@ -14,6 +14,7 @@ mod degrade;
 mod desenho;
 mod dinamica;
 mod edit;
+mod exportar;
 mod fecho;
 mod filtros;
 mod formas;

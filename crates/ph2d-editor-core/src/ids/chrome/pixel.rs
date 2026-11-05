@@ -12,6 +12,15 @@ pub const PIXEL_PANEL: NodeId = hash_node_id("pixel.panel");
 pub const PIXEL_TIMELINE_PANEL: NodeId = hash_node_id("pixel_timeline.panel");
 /// O rect da janela Preview do Pixel (P5): flutuante, arrasta-se pelo título.
 pub const PIXEL_PREVIEW_PANEL: NodeId = hash_node_id("pixel_preview.panel");
+/// O rect da janela de Export e Import do Pixel (P9b).
+pub const PIXEL_EXPORT_PANEL: NodeId = hash_node_id("pixel_export.panel");
+
+/// As linhas do Pixel no menu *File*: só existem com um Pixel Sprite em Draw.
+pub const CTX_MENU_PIXEL_OPEN: NodeId = hash_node_id("ctx_menu_pixel_open");
+pub const CTX_MENU_PIXEL_IMPORT_SHEET: NodeId = hash_node_id("ctx_menu_pixel_import_sheet");
+pub const CTX_MENU_PIXEL_EXPORT_AS: NodeId = hash_node_id("ctx_menu_pixel_export_as");
+pub const CTX_MENU_PIXEL_EXPORT_SHEET: NodeId = hash_node_id("ctx_menu_pixel_export_sheet");
+pub const CTX_MENU_PIXEL_REPEAT_EXPORT: NodeId = hash_node_id("ctx_menu_pixel_repeat_export");
 
 /// A linha *Pixel* do menu *Window*.
 pub const TOPBAR_PIXEL: NodeId = hash_node_id("topbar_pixel");

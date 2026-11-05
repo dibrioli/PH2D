@@ -30,6 +30,7 @@ ph2d-panel-motion-graph = { path = "../ph2d-panel-motion-graph", optional = true
 ph2d-panel-padding = { path = "../ph2d-panel-padding", optional = true }
 ph2d-panel-painter-layers = { path = "../ph2d-panel-painter-layers", optional = true }
 ph2d-panel-physics = { path = "../ph2d-panel-physics", optional = true }
+ph2d-panel-pixel-export = { path = "../ph2d-panel-pixel-export", optional = true }
 ph2d-panel-pixel-preview = { path = "../ph2d-panel-pixel-preview", optional = true }
 ph2d-panel-pixel-timeline = { path = "../ph2d-panel-pixel-timeline", optional = true }
 ph2d-panel-pixel-tools = { path = "../ph2d-panel-pixel-tools", optional = true }
@@ -62,6 +63,7 @@ default = [
     # A linha do tempo do Pixel (P4): a banda de baixo em Pixel Sprite ▸ Draw.
     "panel-pixel-timeline",
     # A janela Preview do Pixel (P5): flutuante, Shift+Enter ou F7.
+    "panel-pixel-export",
     "panel-pixel-preview",
     "panel-color-equalization", "panel-equalize-sizes", "panel-upscale",
     "panel-audio-mixer", "panel-audio-editor",
@@ -99,6 +101,7 @@ panel-motion-graph = ["dep:ph2d-panel-motion-graph"]
 panel-padding = ["dep:ph2d-panel-padding"]
 panel-painter-layers = ["dep:ph2d-panel-painter-layers"]
 panel-physics = ["dep:ph2d-panel-physics"]
+panel-pixel-export = ["dep:ph2d-panel-pixel-export"]
 panel-pixel-preview = ["dep:ph2d-panel-pixel-preview"]
 panel-pixel-timeline = ["dep:ph2d-panel-pixel-timeline"]
 panel-pixel-tools = ["dep:ph2d-panel-pixel-tools"]
@@ -114,6 +117,7 @@ panel-widget-lab = ["dep:ph2d-panel-widget-lab"]
 # <ph2d-panel-sync:features:end>
 
 [dev-dependencies]
+ph2d-pixel-core = { path = "../ph2d-pixel-core" }
 # ⭐ Os censos daqui medem o APP — o `default` do shell, que liga os 25 painéis. Os quatro de baixo
 # não estão no `default` desta crate, e sem esta aresta `cargo test -p` lia 77 falhas que o
 # `--workspace` (unificação de features) não via. Aresta para si própria: só os testes a sentem.

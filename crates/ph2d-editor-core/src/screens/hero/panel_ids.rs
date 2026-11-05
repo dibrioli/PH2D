@@ -25,6 +25,8 @@ pub(super) fn default_panel_visibility() -> std::collections::BTreeMap<&'static 
     map.insert(PANEL_PIXEL_TIMELINE, false);
     // A Preview do Pixel (P5) nasce FECHADA: Shift+Enter ou F7 abrem-na.
     map.insert(PANEL_PIXEL_PREVIEW, false);
+    // A janela de Export e Import (P9b) nasce FECHADA: abre pelo menu File.
+    map.insert(PANEL_PIXEL_EXPORT, false);
     map
 }
 
@@ -46,6 +48,8 @@ pub const PANEL_PIXEL: &str = "pixel_tools";
 pub const PANEL_PIXEL_TIMELINE: &str = "pixel_timeline";
 /// A janela Preview do Pixel (P5, flutuante) — o `Panel::ID` da `ph2d-panel-pixel-preview`.
 pub const PANEL_PIXEL_PREVIEW: &str = "pixel_preview";
+/// A janela de Export e Import do Pixel (P9b) — o `Panel::ID` da `ph2d-panel-pixel-export`.
+pub const PANEL_PIXEL_EXPORT: &str = "pixel_export";
 
 /// Canonical `&'static str` for known panel ids — keeps the
 /// visibility HashMap keys stable across calls without leaking.
@@ -65,6 +69,7 @@ pub(super) fn canonical_panel_id(id: &str) -> Option<&'static str> {
         PANEL_PIXEL => Some(PANEL_PIXEL),
         PANEL_PIXEL_TIMELINE => Some(PANEL_PIXEL_TIMELINE),
         PANEL_PIXEL_PREVIEW => Some(PANEL_PIXEL_PREVIEW),
+        PANEL_PIXEL_EXPORT => Some(PANEL_PIXEL_EXPORT),
         _ => None,
     }
 }

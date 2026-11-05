@@ -229,6 +229,10 @@ impl WidgetStore {
                     || (id == crate::ids::CTX_MENU_HIER_KANBAN_BACKGROUND
                         && !of.is_some_and(goes_to_kanban_background))
             }
+            crate::interaction::ContextMenuKind::MenuBarFile => {
+                self.pixel_file_menu().is_none()
+                    && crate::pixel_panel::PixelFileAction::of_menu_row(id).is_some()
+            }
             _ => false,
         }
     }

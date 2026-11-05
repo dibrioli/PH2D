@@ -88,6 +88,13 @@ pub const TABELA: &[Armacao] = &[
         arma: |_| arma_a_preview(),
         desarma: || ph2d_panel_pixel_preview::publish(None),
     },
+    // As janelas de Export e Import do Pixel (P9b): abre no Export As, com duas camadas e uma tag.
+    #[cfg(feature = "panel-pixel-export")]
+    Armacao {
+        painel: "pixel_export",
+        arma: |_| arma_o_export(),
+        desarma: || ph2d_panel_pixel_export::canal::publish_contexto(Default::default()),
+    },
     // A linha do tempo do Pixel (P4) com duas camadas × três frames, um par ligado e uma tag.
     #[cfg(feature = "panel-pixel-timeline")]
     Armacao {
@@ -328,6 +335,19 @@ fn arma_a_preview() {
         frame: 1,
         playing: false,
     }));
+}
+
+/// O Export As com um sprite de duas camadas e uma tag publicado.
+#[cfg(feature = "panel-pixel-export")]
+fn arma_o_export() {
+    use ph2d_panel_pixel_export::canal;
+    canal::publish_contexto(canal::Contexto {
+        lados: (16, 8),
+        quadros: 3,
+        camadas: vec![(ph2d_pixel_core::LayerId(1), "Layer 1".to_owned())],
+        tags: vec!["walk".to_owned()],
+    });
+    canal::abrir(canal::Tela::ExportAs);
 }
 
 /// Um Pixel Sprite em Draw com frames, cels ligados e uma tag (a linha do tempo armada).

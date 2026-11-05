@@ -374,3 +374,137 @@ fn o_sprite_inspector_le_a_folha() {
     let meta = ph2d_asset::parse_atlas_meta(j.as_bytes()).unwrap();
     assert_eq!(meta.regions.len(), f.entradas.len());
 }
+
+/// **Um importador de fora, só com os campos do formato** (a ideia do gate do MVP W13): nenhum tipo
+/// nosso daqui para baixo. Remonta a animação pelas tags e confere contra o documento, com o `repeat`
+/// em string e ausente se infinito.
+#[test]
+fn um_importador_so_com_os_campos_do_formato() {
+    let o = oraculo();
+    let mut s = doc(&o, "folha");
+    let n = s.frames().len() as u32;
+    let op = ph2d_pixel_core::frames::new_tag(&s, "fica", 0, 0).unwrap();
+    ph2d_pixel_core::apply(&mut s, op).unwrap();
+    let op = ph2d_pixel_core::frames::new_tag(&s, "tres", n - 1, n - 1).unwrap();
+    ph2d_pixel_core::apply(&mut s, op).unwrap();
+    let i = s.tags().len() - 1;
+    let op = ph2d_pixel_core::frames::edit_tag(&s, i, |t| t.repeat = 3).unwrap();
+    ph2d_pixel_core::apply(&mut s, op).unwrap();
+    let f = montar(&s, &OpcoesFolha::default(), "t", "png");
+    let opcoes = OpcoesJson {
+        array: true,
+        tags: true,
+        ..OpcoesJson::default()
+    };
+    let t = json_da_folha(&s, &f, "t.png", "RGBA8888", opcoes);
+
+    let v: Value = serde_json::from_str(&t).unwrap();
+    let quadros = v["frames"].as_array().unwrap();
+    assert_eq!(quadros.len() as u32, n);
+    let lado = |q: &Value, k: &str| q["frame"][k].as_u64().unwrap() as usize;
+    let tamanho = &v["meta"]["size"];
+    let fw = tamanho["w"].as_u64().unwrap() as usize;
+    assert_eq!(tamanho["h"].as_u64().unwrap() as u32, f.h);
+    for (k, q) in quadros.iter().enumerate() {
+        let (x, y, w, h) = (lado(q, "x"), lado(q, "y"), lado(q, "w"), lado(q, "h"));
+        let esperado = ph2d_pixel_io::frame_rgba(&s, s.frames()[k].id);
+        for l in 0..h {
+            let a = (y + l) * fw * 4 + x * 4;
+            let b = l * w * 4;
+            assert_eq!(
+                f.rgba[a..a + w * 4],
+                esperado[b..b + w * 4],
+                "quadro {k}, linha {l}"
+            );
+        }
+        assert_eq!(
+            q["duration"].as_u64().unwrap() as u32,
+            s.frames()[k].duration_ms
+        );
+    }
+    let tags = v["meta"]["frameTags"].as_array().unwrap();
+    let achada = |nome: &str| {
+        tags.iter()
+            .find(|t| t["name"] == nome)
+            .unwrap_or_else(|| panic!("sem a tag {nome}"))
+    };
+    assert_eq!(achada("tres")["repeat"], "3", "repeat em string");
+    assert!(
+        achada("fica").get("repeat").is_none(),
+        "infinito não escreve"
+    );
+    assert_eq!(achada("tres")["from"].as_u64().unwrap() as u32, n - 1);
+    assert!(achada("fica")["direction"].is_string());
+}
+
+/// **O Godot recorta igual:** a nossa folha e o nosso JSON no Godot instalado (MIT), por script
+/// `--headless`, contra o PNG de cada quadro. Prova coordenadas e píxeis, não um importador da
+/// comunidade. `--ignored`: pede o binário `godot`.
+#[test]
+#[ignore = "corre o Godot instalado"]
+fn o_godot_recorta_igual() {
+    use ph2d_pixel_io::exporta::{self, Export, ExportFolha};
+    use ph2d_pixel_io::render::{Pedido, quadros};
+    let o = oraculo();
+    let s = doc(&o, "folha");
+    let script = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/godot/recorta.gd");
+    for (n, opcoes) in [
+        OpcoesFolha::default(),
+        OpcoesFolha {
+            trim_cels: true,
+            border: 2,
+            shape: 1,
+            inner: 1,
+            ..OpcoesFolha::default()
+        },
+        OpcoesFolha {
+            tipo: ph2d_pixel_io::sheet::Tipo::Packed,
+            trim_cels: true,
+            ..OpcoesFolha::default()
+        },
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let d = std::env::temp_dir().join(format!("ph2d_godot_{}_{n}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        std::fs::create_dir_all(&d).unwrap();
+        let e = Export::Folha(ExportFolha {
+            opcoes: opcoes.clone(),
+            json: Some(OpcoesJson {
+                array: true,
+                ..OpcoesJson::default()
+            }),
+        });
+        exporta::gravar(&s, &e, &d.join("folha.png")).unwrap();
+        let p = Pedido {
+            escala: 1.0,
+            ..Pedido::default()
+        };
+        for (i, q) in quadros(&s, &p).iter().enumerate() {
+            let b = ph2d_imageio_png::encode_pixel(
+                q.w,
+                q.h,
+                &ph2d_imageio_png::PixelPng::Rgba,
+                &q.rgba,
+            )
+            .unwrap();
+            std::fs::write(d.join(format!("q{}.png", i + 1)), b).unwrap();
+        }
+        let saida = std::process::Command::new("godot")
+            .args(["--headless", "--script", script, "--"])
+            .arg(&d)
+            .output()
+            .expect("o godot corre");
+        let texto = String::from_utf8_lossy(&saida.stdout);
+        assert!(saida.status.success(), "caso {n}: {texto}");
+        assert!(
+            // O recorte larga os quadros vazios (medido): conta-se o que a folha leva.
+            texto.contains(&format!(
+                "RECORTOU {}",
+                montar(&s, &opcoes, "folha", "png").entradas.len()
+            )),
+            "caso {n}: {texto}"
+        );
+    }
+}

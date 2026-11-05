@@ -153,3 +153,78 @@ fn o_libresprite_le_o_nosso_ase() {
         assert_eq!(&hex, sha.as_str().unwrap(), "{n}");
     }
 }
+
+/// Acrescenta um chunk ao 1.º quadro de um `.ase`, acertando os contadores (spec pública).
+fn com_chunk(ase: &[u8], tipo: u16, corpo: &[u8]) -> Vec<u8> {
+    const CABECALHO: usize = 128;
+    const QUADRO: usize = 16;
+    let mut v = ase.to_vec();
+    let tam = u32::from_le_bytes(v[CABECALHO..CABECALHO + 4].try_into().unwrap()) as usize;
+    let mut c = Vec::new();
+    c.extend_from_slice(&(6 + corpo.len() as u32).to_le_bytes());
+    c.extend_from_slice(&tipo.to_le_bytes());
+    c.extend_from_slice(corpo);
+    let fim = CABECALHO + tam;
+    v.splice(fim..fim, c.iter().copied());
+    let novo = (tam + c.len()) as u32;
+    v[CABECALHO..CABECALHO + 4].copy_from_slice(&novo.to_le_bytes());
+    let velhos = u16::from_le_bytes([v[CABECALHO + 6], v[CABECALHO + 7]]) + 1;
+    v[CABECALHO + 6..CABECALHO + 8].copy_from_slice(&velhos.to_le_bytes());
+    let novos = u32::from_le_bytes(v[CABECALHO + 12..CABECALHO + QUADRO].try_into().unwrap()) + 1;
+    v[CABECALHO + 12..CABECALHO + QUADRO].copy_from_slice(&novos.to_le_bytes());
+    let total = v.len() as u32;
+    v[0..4].copy_from_slice(&total.to_le_bytes());
+    v
+}
+
+/// **Abrir não perde em silêncio:** o que o documento não guarda vira aviso. *Mutação: tirar o
+/// `avisos.push(Aviso::Slices…)` ⇒ vermelho.*
+#[test]
+fn abrir_nao_perde_em_silencio() {
+    use ph2d_pixel_core::{ColorMode, NewSprite, Sprite};
+    use ph2d_pixel_io::abrir::abrir;
+    use ph2d_pixel_io::ase::{Aviso, escrever};
+    let s = Sprite::new(NewSprite {
+        width: 4,
+        height: 4,
+        mode: ColorMode::Rgba,
+        ..NewSprite::default()
+    })
+    .unwrap();
+    let (limpo, _) = escrever(&s).unwrap();
+    assert_eq!(
+        abrir(&limpo, "ase").unwrap().1,
+        Vec::new(),
+        "sem nada a dizer"
+    );
+
+    // Chunk de slice: 1 slice, sem flags, reservado, nome «s», uma chave em (0,0) 1×1.
+    let mut fatia = Vec::new();
+    fatia.extend_from_slice(&1_u32.to_le_bytes());
+    fatia.extend_from_slice(&0_u32.to_le_bytes());
+    fatia.extend_from_slice(&0_u32.to_le_bytes());
+    fatia.extend_from_slice(&1_u16.to_le_bytes());
+    fatia.push(b's');
+    for campo in [0_u32, 0, 0, 1, 1] {
+        fatia.extend_from_slice(&campo.to_le_bytes());
+    }
+    let com_fatia = com_chunk(&limpo, 0x2022, &fatia);
+    let (_, avisos) = abrir(&com_fatia, "aseprite").unwrap();
+    assert_eq!(avisos, vec![Aviso::Slices(1)]);
+
+    // Uma camada de tilemap: flags, tipo 2, filho, largura/altura, modo, opacidade, nome, tileset.
+    let mut camada = Vec::new();
+    camada.extend_from_slice(&1_u16.to_le_bytes());
+    camada.extend_from_slice(&2_u16.to_le_bytes());
+    camada.extend_from_slice(&0_u16.to_le_bytes());
+    camada.extend_from_slice(&[0; 4]);
+    camada.extend_from_slice(&0_u16.to_le_bytes());
+    camada.push(255);
+    camada.extend_from_slice(&[0; 3]);
+    camada.extend_from_slice(&1_u16.to_le_bytes());
+    camada.push(b't');
+    camada.extend_from_slice(&0_u32.to_le_bytes());
+    let com_tilemap = com_chunk(&limpo, 0x2004, &camada);
+    let (_, avisos) = abrir(&com_tilemap, "ase").unwrap();
+    assert!(avisos.contains(&Aviso::Tilemap), "{avisos:?}");
+}

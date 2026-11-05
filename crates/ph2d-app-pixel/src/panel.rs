@@ -34,6 +34,7 @@ impl PixelApp {
             || self.aplica_intervalo(&r)
             || self.aplica_quadro(&r)
             || self.aplica_pincel(&r)
+            || self.aplica_ficheiro(&r)
             || self.aplica_paleta(r.clone())
         {
             return;
@@ -95,6 +96,7 @@ pub fn frame(
     app.chave = editing.and_then(|b| crate::input::key_of(world, b));
     crate::smoke_intervalo::conduz(hero);
     crate::smoke_efeitos::conduz(app, hero);
+    crate::smoke_exporta::conduz(app);
     hero.store.set_pixel_edit_avoid(app.na_tela);
     for r in std::mem::take(&mut app.pedidos) {
         app.aplica(r);
@@ -114,6 +116,13 @@ pub fn frame(
         s.set_color_mode_dither(c.dither);
         s.set_color_mode_gray(c.gray);
     }
+    if let Some(a) = hero.store.take_pixel_file_request() {
+        app.pede(PixelRequest::File(a));
+        for r in std::mem::take(&mut app.pedidos) {
+            app.aplica(r);
+        }
+    }
+    crate::exportar::frame(app, hero);
     if let Some(c) = hero.store.take_pixel_edit_request() {
         app.aplica_dialogo(c);
     }

@@ -178,7 +178,7 @@ fn tag_de(s: &Sprite, i: usize) -> String {
         .map_or_else(String::new, |t| t.name.clone())
 }
 
-fn pecas(s: &Sprite, o: &OpcoesFolha, titulo: &str, ext: &str) -> Vec<Peca> {
+fn pecas(s: &Sprite, o: &OpcoesFolha, titulo: &str, ext: &str, feito: &dyn Fn(f32)) -> Vec<Peca> {
     let (w, h) = (s.width(), s.height());
     // Cada grupo de saída: uma camada (ou todas) × uma lista de quadros.
     let camadas: Vec<Option<&Layer>> = if o.split_layers {
@@ -208,6 +208,7 @@ fn pecas(s: &Sprite, o: &OpcoesFolha, titulo: &str, ext: &str) -> Vec<Peca> {
         };
         vec![(nome, ordem(s, o.quadros, Direcao::Forward))]
     };
+    let total: usize = camadas.len() * listas.iter().map(|(_, l)| l.len()).sum::<usize>();
     let mut out = Vec::new();
     let mut grupo = 0;
     for camada in &camadas {
@@ -224,6 +225,7 @@ fn pecas(s: &Sprite, o: &OpcoesFolha, titulo: &str, ext: &str) -> Vec<Peca> {
         for (tag, lista) in &listas {
             let fmt = padrao(o, so_uma, tag.is_some(), lista.len() > 1);
             for (n, &i) in lista.iter().enumerate() {
+                feito(out.len() as f32 / total.max(1) as f32);
                 let fr = s.frames()[i];
                 let px = composto(s, fr.id, so);
                 let t = tag.map_or_else(|| tag_de(s, i), str::to_owned);
@@ -369,8 +371,20 @@ fn empacotado(tam: &[[u32; 2]], o: &OpcoesFolha) -> (Vec<[u32; 2]>, u32, u32) {
 /// **A folha.** `titulo` e `ext` são o que `{title}` e `{extension}` dizem.
 #[must_use]
 pub fn montar(s: &Sprite, o: &OpcoesFolha, titulo: &str, ext: &str) -> Folha {
+    montar_com(s, o, titulo, ext, &|_| {})
+}
+
+/// [`montar`], dizendo a fração das peças já compostas.
+#[must_use]
+pub fn montar_com(
+    s: &Sprite,
+    o: &OpcoesFolha,
+    titulo: &str,
+    ext: &str,
+    feito: &dyn Fn(f32),
+) -> Folha {
     let (w, h) = (s.width(), s.height());
-    let v = apara(pecas(s, o, titulo, ext), o, w, h);
+    let v = apara(pecas(s, o, titulo, ext, feito), o, w, h);
     let pad = o.inner + o.extrude;
 
     // Quem partilha retângulo: `unico[i]` é o índice da peça que pinta a i-ésima.

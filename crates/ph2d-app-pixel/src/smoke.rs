@@ -19,6 +19,7 @@
 //! 17 — P5, tags dentro de tags, o tocar e a Preview ([`crate::smoke_tocar`]).
 //! 18 — P7b, os pincéis e a dinâmica ([`crate::smoke_pincel`]).
 //! 19 — P8, gradiente, texto, filtros e ajustes ([`crate::smoke_efeitos`]).
+//! 20 — P9b, Export e Import, sobre os 16 quadros da cena 8 ([`crate::smoke_exporta`]).
 
 use ph2d_ecs::SimWorld;
 use ph2d_pixel_core::{NewSprite, Paint, Stroke};
@@ -30,7 +31,7 @@ use ph2d_editor_core::pixel_panel::{
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_PIXEL_SMOKE",
-    max_level: 19,
+    max_level: 20,
 }];
 
 /// O nível armado em `PH2D_PIXEL_SMOKE`.
@@ -118,6 +119,7 @@ pub fn stage(
         17 => crate::smoke_tocar::stage(app, sim, spawn_root).is_some(),
         18 => crate::smoke_pincel::stage(app, sim, spawn_root).is_some(),
         19 => crate::smoke_efeitos::stage(app, sim, spawn_root).is_some(),
+        20 => crate::smoke_quadros::stage(app, sim, spawn_root).is_some(),
         _ => false,
     }
 }

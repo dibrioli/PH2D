@@ -172,6 +172,21 @@ pub(super) const MENU_BAR_FILE_ROWS: &[MenuRow] = &[
     // *Duas linhas a mexer na mesma superfície fundem sem conflito e uma delas evapora.*
     // ⇒ o gate `the_bar_relocated_every_row_of_the_menus_it_replaced` apanha o próximo.
     menu_row(ids::CTX_MENU_EXPORT_SVG, "chrome.menu.export_svg"),
+    // O Pixel (P9b): só com um Pixel Sprite em Draw (`menu_row_is_hidden`).
+    menu_row(ids::CTX_MENU_PIXEL_OPEN, "chrome.menu.pixel_open"),
+    menu_row(
+        ids::CTX_MENU_PIXEL_IMPORT_SHEET,
+        "chrome.menu.pixel_import_sheet",
+    ),
+    menu_row(ids::CTX_MENU_PIXEL_EXPORT_AS, "chrome.menu.pixel_export_as"),
+    menu_row(
+        ids::CTX_MENU_PIXEL_EXPORT_SHEET,
+        "chrome.menu.pixel_export_sheet",
+    ),
+    menu_row(
+        ids::CTX_MENU_PIXEL_REPEAT_EXPORT,
+        "chrome.menu.pixel_repeat_export",
+    ),
 ];
 
 // ⚠️ `TOOL_UNDO`/`TOOL_REDO` são os ids do TRILHO, e é de propósito: o verbo é o mesmo, e

@@ -186,6 +186,10 @@ pub struct PixelApp {
     pub(crate) clip: Option<crate::edicao::Prancheta>,
     /// *Paste as New Sprite*: o recorte à espera de que a shell nasça o objecto dele.
     pub(crate) nasce: Option<ph2d_pixel_core::layers::Clip>,
+    /// Open e Import Sprite Sheet: o documento à espera de que a shell nasça o objecto dele.
+    pub(crate) nasce_doc: Option<(Sprite, String)>,
+    /// A janela de Export e Import ([`crate::exportar`]).
+    pub(crate) exporta: crate::exportar::Estado,
     /// O gesto de selecção em curso (marquee, laços).
     pub(crate) laco: Option<crate::selecao::Laco>,
     /// A moldura solta (Transform, Ctrl+arrasto com uma selecção, Paste): as células levantadas até
@@ -278,6 +282,8 @@ impl Default for PixelApp {
             abre_color_mode: None,
             clip: None,
             nasce: None,
+            nasce_doc: None,
+            exporta: crate::exportar::Estado::default(),
             laco: None,
             solta: None,
             largada: None,

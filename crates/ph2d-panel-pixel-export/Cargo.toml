@@ -1,0 +1,31 @@
+[package]
+name = "ph2d-panel-pixel-export"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# As janelas de Export e Import do Pixel Art (P9b, ADR-0196): Export As, Export Sprite Sheet com
+# prévia ao vivo e Import Sprite Sheet com a grelha sobre a imagem. O painel não vê a família: as
+# opções e as imagens passam pelo canal desta crate.
+[dependencies]
+ph2d-a11y         = { path = "../ph2d-a11y" }
+ph2d-editor-core  = { path = "../ph2d-editor-core" }
+ph2d-i18n         = { path = "../ph2d-i18n" }
+ph2d-pixel-core   = { path = "../ph2d-pixel-core" }
+ph2d-pixel-io     = { path = "../ph2d-pixel-io" }
+ph2d-pixel-render = { path = "../ph2d-pixel-render" }
+ph2d-tokens       = { path = "../ph2d-tokens" }
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+ph2d-vector       = { path = "../ph2d-vector" }
+
+[dev-dependencies]
+ph2d-label-census = { path = "../ph2d-label-census" }
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+
+[lints]
+workspace = true

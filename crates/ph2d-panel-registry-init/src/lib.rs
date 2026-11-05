@@ -80,6 +80,8 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     >());
     #[cfg(feature = "panel-physics")]
     reg.push(ErasedPanel::new::<ph2d_panel_physics::PhysicsPanel>());
+    #[cfg(feature = "panel-pixel-export")]
+    reg.push(ErasedPanel::new::<ph2d_panel_pixel_export::PixelExportPanel>());
     #[cfg(feature = "panel-pixel-preview")]
     reg.push(ErasedPanel::new::<
         ph2d_panel_pixel_preview::PixelPreviewPanel,

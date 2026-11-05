@@ -62,6 +62,12 @@ pub fn born_from_paste(
     app: &mut PixelApp,
     spawn_root: impl FnOnce(&mut SimWorld, &str) -> u64,
 ) -> Option<Result<u64, &'static str>> {
+    if let Some((sprite, nome)) = app.nasce_doc.take() {
+        let stamp = app.stamp();
+        let key = app.docs.keys().next_back().map_or(1, |k| k + 1);
+        app.docs.insert(key, crate::Doc::new(sprite, stamp));
+        return Some(spawn_doc(sim, app, key, |s, _| spawn_root(s, &nome)));
+    }
     let c = app.nasce.take()?;
     let spec = NewSprite {
         width: c.rect.w,

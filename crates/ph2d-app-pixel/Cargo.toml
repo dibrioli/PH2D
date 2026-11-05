@@ -44,6 +44,8 @@ winit = "0.30"
 ph2d-panel-pixel-timeline = { path = "../ph2d-panel-pixel-timeline" }
 # A janela Preview (P5): o tocar dela e o canal da imagem.
 ph2d-panel-pixel-preview = { path = "../ph2d-panel-pixel-preview" }
+# Export e Import (P9b): as janelas e o canal das opções.
+ph2d-panel-pixel-export = { path = "../ph2d-panel-pixel-export" }
 bumpalo = "3"
 # O diálogo de ficheiro do Load/Save Palette (pela porta `ph2d_app_host::modal`).
 rfd = "0.17"

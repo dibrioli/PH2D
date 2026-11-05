@@ -283,6 +283,27 @@ impl WidgetStore {
         self.close_context_menu();
     }
 
+    /// As linhas do Pixel no menu File: `None` = sem Pixel Sprite em Draw, e elas não se pintam;
+    /// `Some(pode_repetir)` = há e o Repeat Last Export tem o que repetir.
+    #[must_use]
+    pub fn pixel_file_menu(&self) -> Option<bool> {
+        self.pixel.file_menu
+    }
+
+    /// A família publica-o a cada quadro.
+    pub fn set_pixel_file_menu(&mut self, m: Option<bool>) {
+        self.pixel.file_menu = m;
+    }
+
+    pub fn request_pixel_file(&mut self, a: crate::pixel_panel::PixelFileAction) {
+        self.pixel.file_request = Some(a);
+    }
+
+    /// Toma (e limpa) o comando do menu File.
+    pub fn take_pixel_file_request(&mut self) -> Option<crate::pixel_panel::PixelFileAction> {
+        self.pixel.file_request.take()
+    }
+
     /// Toma (e limpa) o pedido do OK. Fechar por outro caminho não arma nada.
     pub fn take_pixel_edit_request(&mut self) -> Option<PixelDialogChoice> {
         self.pixel.edit.request.take()

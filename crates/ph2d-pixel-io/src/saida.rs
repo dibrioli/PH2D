@@ -5,7 +5,7 @@ use ph2d_pixel_core::{ColorMode, Sprite};
 
 use crate::ase;
 use crate::gif_cores;
-use crate::render::{Pedido, QuadroSaida, quadros};
+use crate::render::{Pedido, QuadroSaida, quadros_com};
 
 /// Os formatos do Export As.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -52,6 +52,11 @@ pub enum ErroSaida {
         h: u32,
     },
     Ase(ase::AseErro),
+    /// A escala passa do lado máximo de um documento.
+    GrandeDemais {
+        w: u64,
+        h: u64,
+    },
 }
 
 impl std::fmt::Display for ErroSaida {
@@ -60,6 +65,7 @@ impl std::fmt::Display for ErroSaida {
             Self::Formato(e) => write!(f, "{e}"),
             Self::GifGrandeDemais { w, h } => write!(f, "{w} x {h} does not fit a GIF (65535)"),
             Self::Ase(e) => e.fmt(f),
+            Self::GrandeDemais { w, h } => write!(f, "{w} x {h} is too large"),
         }
     }
 }
@@ -126,12 +132,7 @@ pub fn formato_json(modo: &PixelPng) -> &'static str {
 }
 
 fn png_de(s: &Sprite, q: &QuadroSaida) -> Result<Vec<u8>, ErroSaida> {
-    let (modo, dados) = if (q.w, q.h) == (s.width(), s.height()) {
-        png_do_documento(s, &q.rgba)
-    } else {
-        // Escalado por inteiro continua exato; a resposta é a mesma pergunta.
-        png_do_documento(s, &q.rgba)
-    };
+    let (modo, dados) = png_do_documento(s, &q.rgba);
     ph2d_imageio_png::encode_pixel(q.w, q.h, &modo, &dados)
         .map_err(|e| ErroSaida::Formato(e.to_string()))
 }
@@ -145,6 +146,20 @@ fn pares(qs: &[QuadroSaida]) -> Vec<(Vec<u8>, u32)> {
 /// # Errors
 /// [`ErroSaida`]: limite do formato ou do codificador.
 pub fn exportar(s: &Sprite, p: &Pedido, f: Formato, repeat: u16) -> Result<Saida, ErroSaida> {
+    exportar_com(s, p, f, repeat, &|_| {})
+}
+
+/// [`exportar`], dizendo a fração dos quadros já compostos.
+///
+/// # Errors
+/// [`ErroSaida`]: limite do formato ou do codificador.
+pub fn exportar_com(
+    s: &Sprite,
+    p: &Pedido,
+    f: Formato,
+    repeat: u16,
+    feito: &dyn Fn(f32),
+) -> Result<Saida, ErroSaida> {
     let mut avisos = Vec::new();
     if f == Formato::Ase {
         let (b, av) = ase::escrever(s).map_err(ErroSaida::Ase)?;
@@ -154,7 +169,13 @@ pub fn exportar(s: &Sprite, p: &Pedido, f: Formato, repeat: u16) -> Result<Saida
             avisos,
         });
     }
-    let qs = quadros(s, p);
+    let f_escala = if p.escala > 0.0 { p.escala } else { 1.0 };
+    let lado = |l: u32| (f64::from(l) * f_escala).floor() as u64;
+    let (ew, eh) = (lado(s.width()), lado(s.height()));
+    if ew > u64::from(ph2d_pixel_core::MAX_SIDE) || eh > u64::from(ph2d_pixel_core::MAX_SIDE) {
+        return Err(ErroSaida::GrandeDemais { w: ew, h: eh });
+    }
+    let qs = quadros_com(s, p, feito);
     let (w, h) = qs.first().map_or((s.width(), s.height()), |q| (q.w, q.h));
     let err = |e: ph2d_imageio::Error| ErroSaida::Formato(e.to_string());
     let ficheiros = match f {

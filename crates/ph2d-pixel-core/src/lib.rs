@@ -44,7 +44,7 @@ pub use compose::{
 pub use history::{DEFAULT_CAP_BYTES, History};
 pub use op::{CanvasSet, FrameSet, LayerSet, MaskSet, Op, OpError, Patch, Whole, apply};
 pub use sprite::{
-    Background, Cel, CelKey, ColorMode, DEFAULT_FRAME_MS, Direction, Frame, FrameId, Layer,
-    LayerId, LayerKind, MAX_SIDE, NewSprite, Rect, Sprite, SpriteError, Tag,
+    Background, Cel, CelKey, ColorMode, DEFAULT_FRAME_MS, Direction, ExportPreset, Frame, FrameId,
+    Layer, LayerId, LayerKind, MAX_SIDE, NewSprite, Rect, Sprite, SpriteError, Tag,
 };
 pub use stroke::{Paint, Stroke};

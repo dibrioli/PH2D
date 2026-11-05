@@ -340,6 +340,15 @@ pub struct Sprite {
     pub(crate) mask: Option<Mask>,
     /// A última selecção desfeita por Deselect (Select ▸ Reselect).
     pub(crate) last_mask: Option<Mask>,
+    /// O último export (File ▸ Repeat Last Export). Não é passo do desfazer.
+    pub(crate) export_preset: Option<ExportPreset>,
+}
+
+/// O último export deste sprite: o caminho e as opções em texto (quem as lê é `ph2d-pixel-io`).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExportPreset {
+    pub path: String,
+    pub options: String,
 }
 
 /// A duração por omissão de um frame novo (Aseprite: Frame Properties, 100 ms).
@@ -383,6 +392,7 @@ impl Sprite {
             next_id: 1,
             mask: None,
             last_mask: None,
+            export_preset: None,
         };
         let opaque = background != Background::Transparent;
         let layer = s.alloc_id();
@@ -519,6 +529,17 @@ impl Sprite {
     /// e o desfazer não os devolve: o refazer reata os cels pelo MESMO id).
     pub fn reserve_id(&mut self) -> u32 {
         self.alloc_id()
+    }
+
+    /// O último export deste sprite.
+    #[must_use]
+    pub fn export_preset(&self) -> Option<&ExportPreset> {
+        self.export_preset.as_ref()
+    }
+
+    /// Guarda o último export; não é passo do desfazer.
+    pub fn set_export_preset(&mut self, p: Option<ExportPreset>) {
+        self.export_preset = p;
     }
 
     /// A selecção activa (`None` = nada seleccionado).

@@ -139,7 +139,9 @@ pub fn pick_file(dialog: rfd::FileDialog) -> Option<PathBuf> {
 /// congelamento não era declarado e o toast que ela escreve a seguir morria no `tick` do quadro
 /// seguinte. *Uma porta que cobre metade dos verbos empurra a outra metade para fora dela.*
 pub fn pick_files(dialog: rfd::FileDialog) -> Option<Vec<PathBuf>> {
-    timed(|| dialog.pick_files())
+    respondida()
+        .map(|p| vec![p])
+        .or_else(|| timed(|| dialog.pick_files()))
 }
 
 #[cfg(test)]

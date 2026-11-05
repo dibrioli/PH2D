@@ -132,10 +132,20 @@ pub fn composto(s: &Sprite, frame: FrameId, c: Camadas) -> Vec<u8> {
 /// **Os quadros do pedido.**
 #[must_use]
 pub fn quadros(s: &Sprite, p: &Pedido) -> Vec<QuadroSaida> {
+    quadros_com(s, p, &|_| {})
+}
+
+/// [`quadros`], dizendo a fração feita a cada quadro (a barra de um export longo).
+#[must_use]
+pub fn quadros_com(s: &Sprite, p: &Pedido, feito: &dyn Fn(f32)) -> Vec<QuadroSaida> {
     let f = if p.escala > 0.0 { p.escala } else { 1.0 };
-    ordem(s, p.quadros, p.direcao)
+    let lista = ordem(s, p.quadros, p.direcao);
+    let total = lista.len().max(1) as f32;
+    lista
         .into_iter()
-        .map(|indice| {
+        .enumerate()
+        .map(|(n, indice)| {
+            feito(n as f32 / total);
             let fr = s.frames()[indice];
             let px = composto(s, fr.id, p.camadas);
             let (w, h, rgba) = if (f - 1.0).abs() < f64::EPSILON {

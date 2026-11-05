@@ -1,7 +1,7 @@
 //! **As teclas do Draw** (de [`crate::input`]): os atalhos do Aseprite, com o Alt nos que o levam.
 
 use ph2d_editor_core::pixel_panel::{
-    PixelFrameAction, PixelLayerAction, PixelRequest, PixelSpriteAction,
+    PixelFileAction, PixelFrameAction, PixelLayerAction, PixelRequest, PixelSpriteAction,
 };
 use winit::keyboard::KeyCode;
 
@@ -135,6 +135,10 @@ pub fn key_with(
         }
         // O menu Layer do Aseprite: Shift+N, Ctrl+J, Ctrl+Shift+J, Shift+X (com Alt: `com_alt`).
         // Select/Edit/Sprite: `crate::selecao::key`.
+        // O menu File do Aseprite (Ctrl+Alt+Shift+S: `com_alt`).
+        (KeyCode::KeyE, true, false) => ficheiro(app, PixelFileAction::ExportSheet),
+        (KeyCode::KeyI, true, false) => ficheiro(app, PixelFileAction::ImportSheet),
+        (KeyCode::KeyX, true, true) => ficheiro(app, PixelFileAction::RepeatExport),
         (KeyCode::KeyN, false, true) => camada(app, PixelLayerAction::NewLayer),
         (KeyCode::KeyJ, true, false) => camada(app, PixelLayerAction::ViaCopy),
         (KeyCode::KeyJ, true, true) => camada(app, PixelLayerAction::ViaCut),
@@ -190,6 +194,7 @@ fn com_alt(app: &mut PixelApp, code: KeyCode, ctrl: bool, shift: bool) -> Option
             app.pede(PixelRequest::Sprite(PixelSpriteAction::SpriteSize));
             KeyAnswer::Quiet
         }
+        (KeyCode::KeyS, true, true) => ficheiro(app, PixelFileAction::ExportAs),
         (KeyCode::KeyN, false, true) => camada(app, PixelLayerAction::NewGroup),
         (KeyCode::KeyN, false, false) => quadro(app, PixelFrameAction::NewFrame),
         (KeyCode::KeyB, false, false) => quadro(app, PixelFrameAction::NewEmptyFrame),
@@ -214,6 +219,11 @@ fn espaco(code: KeyCode) -> Option<usize> {
         KeyCode::Digit9,
     ];
     D.iter().position(|&d| d == code)
+}
+
+fn ficheiro(app: &mut PixelApp, a: PixelFileAction) -> KeyAnswer {
+    app.pede(PixelRequest::File(a));
+    KeyAnswer::Quiet
 }
 
 fn quadro(app: &mut PixelApp, a: PixelFrameAction) -> KeyAnswer {

@@ -30,7 +30,7 @@ use crate::sprite::{
 
 pub const MAGIC: &[u8; 9] = b"PH2DPIXEL";
 pub const MAJOR: u16 = 1;
-pub const MINOR: u16 = 2;
+pub const MINOR: u16 = 3;
 
 /// Ficheiro recusado; nunca um documento meio lido.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -193,6 +193,14 @@ fn sprite_record(s: &Sprite) -> Vec<u8> {
         b.push(0);
         put_field(&mut r, 10, &b);
     }
+    // MINOR 3: o último export. Sem export, o registo fica como no MINOR 2.
+    if let Some(p) = &s.export_preset {
+        let mut b = Vec::new();
+        put_field(&mut b, 1, p.path.as_bytes());
+        put_field(&mut b, 2, p.options.as_bytes());
+        b.push(0);
+        put_field(&mut r, 11, &b);
+    }
     r.push(0);
     r
 }
@@ -211,6 +219,7 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
         next_id: 0,
         mask: None,
         last_mask: None,
+        export_preset: None,
     };
     let mut raw_cels = Vec::new();
     for (tag, b) in Fields::new(bytes)? {
@@ -347,6 +356,24 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
                 }
                 s.tags.push(tag);
             }
+            11 => {
+                let mut p = crate::sprite::ExportPreset {
+                    path: String::new(),
+                    options: String::new(),
+                };
+                for (t, v) in Fields::new(b)? {
+                    let texto = || {
+                        String::from_utf8(v.to_vec())
+                            .map_err(|_| CodecError::Invalid("sprite.export_preset"))
+                    };
+                    match t {
+                        1 => p.path = texto()?,
+                        2 => p.options = texto()?,
+                        _ => {}
+                    }
+                }
+                s.export_preset = Some(p);
+            }
             _ => {}
         }
     }
@@ -393,6 +420,7 @@ impl Sprite {
             next_id: last.map_or(1, |n| n + 1),
             mask: None,
             last_mask: None,
+            export_preset: None,
         };
         validate(&mut s, p.cels)?;
         Ok(s)

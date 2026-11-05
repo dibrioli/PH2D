@@ -76,7 +76,10 @@ impl WidgetStore {
     /// já recusa sem gravação.
     #[must_use]
     pub fn menu_row_is_unavailable(&self, id: NodeId) -> bool {
-        id == crate::ids::CTX_MENU_SECTION_THEMES_LOAD_CUSTOM && self.section_prefs.custom.is_none()
+        (id == crate::ids::CTX_MENU_SECTION_THEMES_LOAD_CUSTOM
+            && self.section_prefs.custom.is_none())
+            || (id == crate::ids::CTX_MENU_PIXEL_REPEAT_EXPORT
+                && self.pixel_file_menu() != Some(true))
     }
 }
 

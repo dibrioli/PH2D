@@ -540,6 +540,7 @@ default = [
     "panel-macros",
     "panel-pixel-tools",
     "panel-pixel-timeline",
+    "panel-pixel-export",
     "panel-pixel-preview",
     "panel-flip",
     "panel-flip-frames",
@@ -598,6 +599,7 @@ panel-macros         = ["ph2d-panel-registry-init/panel-macros", "dep:ph2d-panel
 # gestos pelo barramento até à `ph2d-app-pixel`.
 panel-pixel-tools    = ["ph2d-panel-registry-init/panel-pixel-tools", "dep:ph2d-panel-pixel-tools"]
 panel-pixel-timeline = ["ph2d-panel-registry-init/panel-pixel-timeline", "dep:ph2d-panel-pixel-timeline"]
+panel-pixel-export = ["ph2d-panel-registry-init/panel-pixel-export"]
 panel-pixel-preview = ["ph2d-panel-registry-init/panel-pixel-preview"]
 # Flip Style panel + its render_loop bridge (`flip_bridge` publishes the style +
 # layers snapshots via `ph2d_panel_flip::set_current_flip_*` + reads the OKLCH

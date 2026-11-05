@@ -343,3 +343,61 @@ pub fn importar_folha(rgba: &[u8], iw: u32, ih: u32, g: &Grelha) -> Result<Sprit
         .collect();
     documento(g.w, g.h, ColorMode::Rgba, Vec::new(), 0, &quadros)
 }
+
+/// A grelha de partida do Import Sprite Sheet: a divisão que não parte figuras; `None` = a imagem não
+/// a mostra.
+#[must_use]
+pub fn sugerir_grelha(rgba: &[u8], w: u32, h: u32) -> Option<Grelha> {
+    let alfa: Vec<u8> = rgba.as_chunks::<4>().0.iter().map(|c| c[3]).collect();
+    let g = ph2d_sprite_sheet::guess_grid(&alfa, w, h)?;
+    Some(Grelha {
+        x: 0,
+        y: 0,
+        w: w / g.cols.max(1),
+        h: h / g.rows.max(1),
+        gap_x: 0,
+        gap_y: 0,
+        por_colunas: false,
+    })
+}
+
+/// Um ficheiro aberto: o documento, os avisos e o nome para o objecto.
+pub type Aberto = (Sprite, Vec<ase::Aviso>, String);
+
+/// Abre os ficheiros do File ▸ Open: um é o que ele for; vários PNG são os quadros de uma sequência,
+/// pela ordem natural dos nomes.
+///
+/// # Errors
+/// [`ErroAbrir`].
+pub fn abrir_caminhos(caminhos: &[std::path::PathBuf]) -> Result<Aberto, ErroAbrir> {
+    let ler = |c: &std::path::Path| std::fs::read(c).map_err(|e| ErroAbrir::Ler(e.to_string()));
+    let nome_de = |c: &std::path::Path| {
+        c.file_stem()
+            .map_or_else(String::new, |n| n.to_string_lossy().into_owned())
+    };
+    match caminhos {
+        [] => Err(ErroAbrir::Vazio),
+        [um] => {
+            let e = um
+                .extension()
+                .map_or_else(String::new, |x| x.to_string_lossy().into_owned());
+            let (s, av) = abrir(&ler(um)?, &e)?;
+            Ok((s, av, nome_de(um)))
+        }
+        varios => {
+            let mut ordem: Vec<_> = varios.iter().collect();
+            ordem.sort_by_key(|c| chave_natural(&nome_de(c)));
+            let bytes = ordem
+                .iter()
+                .map(|c| ler(c))
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok((abrir_sequencia(&bytes)?, Vec::new(), nome_de(ordem[0])))
+        }
+    }
+}
+
+/// `walk2` antes de `walk10`: o número no fim do nome conta como número.
+fn chave_natural(n: &str) -> (String, u64) {
+    let raiz = n.trim_end_matches(|c: char| c.is_ascii_digit());
+    (raiz.to_owned(), n[raiz.len()..].parse().unwrap_or(0))
+}

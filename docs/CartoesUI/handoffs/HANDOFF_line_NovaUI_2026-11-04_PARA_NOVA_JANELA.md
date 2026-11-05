@@ -1,4 +1,4 @@
-> **Superado pelo handoff de integração da mesma pasta** ([HANDOFF_INTEGRACAO_NovaUI_2026-11-03.md](HANDOFF_INTEGRACAO_NovaUI_2026-11-03.md)): §3 e §4 abaixo não valem.
+> **Superado pelo handoff de integração da mesma pasta** ([HANDOFF_INTEGRACAO_NovaUI_2026-11-05.md](HANDOFF_INTEGRACAO_NovaUI_2026-11-05.md)): §3 e §4 abaixo não valem.
 
 # Handoff — `line/NovaUI`: para a janela que fecha a linha (04/11/2026)
 

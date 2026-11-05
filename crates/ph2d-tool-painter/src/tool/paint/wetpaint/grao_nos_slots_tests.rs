@@ -128,3 +128,114 @@ fn o_grain_a_mao_morde_na_borracha_e_apaga_o_mesmo() {
     );
     assert!(difs(&com, &sem) > W * H / 50, "as cerdas não morderam");
 }
+
+/// ⭐ **A5: o preset de Borracha só escreve o que é da Borracha.** Com a receita do Pincel partilhada, um preset dela
+/// trazia o Smooth Edges, a água e o resto e apagava-os ao voltar ao Pincel. A Hardness e a força dela chegam.
+/// CONTROLO: a macro com a Borracha na mão continua a levar os knobs do Pincel.
+#[test]
+fn o_preset_de_borracha_nao_apaga_a_receita_do_pincel() {
+    const SUAVE: f64 = 0.36;
+    let e = || de_fabrica_ou_candidato("Wet Round");
+    let mut outro = PainterTool::default();
+    outro.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
+    outro.set_paint_tool_mode("wetpaint");
+    outro.set_paint_tool_mode("eraser");
+    outro.paint.wetpaint.knobs.set(Knob::PaperGate, 0.9);
+    outro.paint.wetpaint.knobs.erase = 0.3;
+    let (parametros, texturas) = outro.preset_capturar(&e().parametros);
+    let borracha = ph2d_brush_presets::Preset {
+        parametros,
+        texturas,
+        ..e()
+    };
+    let receita = |t: &mut PainterTool| {
+        t.paint.wetpaint.knobs.set(Knob::SmoothEdges, SUAVE);
+        t.paint.wetpaint.knobs.set(Knob::Dissolve, 0.2);
+    };
+    let (_, base) = traco_com(&e(), receita);
+    let gate_do_pincel = base.paint.wetpaint.knobs.get(Knob::PaperGate);
+    let (_, t) = traco_com(&e(), |t| {
+        receita(t);
+        t.set_paint_tool_mode("eraser");
+        assert!(t.preset_aplicar(&borracha).is_ok());
+        let k = &t.paint.wetpaint.knobs;
+        assert_eq!(k.get(Knob::PaperGate), 0.9, "a Hardness do preset");
+        assert_eq!(k.erase, 0.3, "a força do preset");
+        // A Hardness é partilhada com o Pincel (à mão também): BUGS #65.
+        t.paint.wetpaint.knobs.set(Knob::PaperGate, gate_do_pincel);
+        t.set_paint_tool_mode("brush");
+    });
+    assert_eq!(t.paint.wetpaint.knobs.get(Knob::SmoothEdges), SUAVE);
+    assert_eq!(difs(&base, &t), 0, "o Pincel voltou outro");
+
+    let mut vivo = PainterTool::default();
+    vivo.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
+    vivo.set_paint_tool_mode("wetpaint");
+    receita(&mut vivo);
+    vivo.set_paint_tool_mode("eraser");
+    let (estado, tx) = vivo.macro_estado();
+    let mut tocado = PainterTool::default();
+    tocado.set_source(vec![255u8; W * H * 4], W as u32, H as u32);
+    tocado.macro_estado_aplica(&estado, tx).expect("aplica");
+    assert!(tocado.paint.eraser, "a Borracha na mão");
+    tocado.set_paint_tool_mode("brush");
+    assert_eq!(tocado.paint.wetpaint.knobs.get(Knob::SmoothEdges), SUAVE);
+}
+
+/// **Sonda das suspeitas** (BUGS #65): a força do Blend com o Grain à mão e trocado, e a média do grão contra o Size.
+#[test]
+#[ignore = "sonda: as suspeitas do Blend e da régua"]
+fn sonda_suspeitas_do_grao() {
+    use crate::tool::paint::wetpaint::media_do_grao;
+    let raios = [5.0f32, 20.0, 80.0, 300.0];
+    for (g, k) in [("noise", 1u8), ("clouds", 6), ("voronoi", 3)] {
+        let mut t = PainterTool::default();
+        t.set_brush_texture_kind(k);
+        let col: Vec<String> = raios
+            .iter()
+            .map(|r| {
+                let mut b = t.paint.brush;
+                b.radius_px = *r;
+                format!("{:.4}", media_do_grao(&b, None, [W as f32, H as f32]))
+            })
+            .collect();
+        println!("media|{g}|{col:?}");
+    }
+    let mexida = |muda: &dyn Fn(&mut PainterTool)| {
+        let (_, mut t) = traco(&de_fabrica_ou_candidato("Wet Round"), false);
+        let antes = t.canvas_rgba.to_vec();
+        t.pick_wet_tool(3); // o Blend no rádio do painel
+        t.set_brush_size_px(40.0);
+        muda(&mut t);
+        risca(&mut t, 100.0, 50);
+        let soma: u64 = antes
+            .iter()
+            .zip(t.canvas_rgba.iter())
+            .map(|(a, b)| u64::from(a.abs_diff(*b)))
+            .sum();
+        (t.paint.wetpaint.tool, soma)
+    };
+    let (ferramenta, liso) = mexida(&|_| {});
+    println!("blend|ferramenta {ferramenta:?}|liso {liso}");
+    type Muda = fn(&mut PainterTool);
+    let casos: [(&str, Muda); 4] = [
+        ("Noise à mão", |t| t.set_brush_texture_kind(1)),
+        ("Noise de preset", |t| {
+            t.set_brush_texture_kind(1);
+            t.paint.brush.grao_aplicado.grao = t.paint.brush.texture;
+        }),
+        ("Noise de preset, trocado por Clouds", |t| {
+            t.set_brush_texture_kind(1);
+            t.paint.brush.grao_aplicado.grao = t.paint.brush.texture;
+            t.set_brush_texture_kind(6);
+        }),
+        ("Clouds de preset", |t| {
+            t.set_brush_texture_kind(6);
+            t.paint.brush.grao_aplicado.grao = t.paint.brush.texture;
+        }),
+    ];
+    for (nome, muda) in casos {
+        let (_, s) = mexida(&muda);
+        println!("blend|{nome}|{s}|{:.3}", s as f64 / liso as f64);
+    }
+}

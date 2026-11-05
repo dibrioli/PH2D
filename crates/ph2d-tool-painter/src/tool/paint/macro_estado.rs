@@ -9,7 +9,7 @@
 //! `tests/it/macro_estado_inicial.rs`): cada controlo do painel de cada meio, mexido antes de armar ou a
 //! gravar, tem de chegar à reprodução.
 
-use super::wetpaint_preset::{campos_da_macro, json};
+use super::wetpaint_preset::{campos_da_macro, ferramenta_do_preset, json};
 use crate::tool::PainterTool;
 use ph2d_brush_presets::{Miniatura, Origem, Parametros, Preset};
 use ph2d_wet_paint::tuning::Knob;
@@ -91,8 +91,12 @@ impl PainterTool {
         let v: Value =
             serde_json::from_str(texto).map_err(|e| ErroDoEstado::Json(e.to_string()))?;
         let crus = trilho::separa(&mut texturas);
-        let parametros: Parametros = serde_json::from_value(v["preset"].clone())
+        let mut parametros: Parametros = serde_json::from_value(v["preset"].clone())
             .map_err(|e| ErroDoEstado::Json(e.to_string()))?;
+        // O estado leva os knobs todos mesmo com a Borracha na mão (o preset dela só escreve os dela, Bug #65 A5).
+        if ferramenta_do_preset(&parametros) == crate::FerramentaDoPincel::Borracha {
+            parametros.ferramenta = None;
+        }
         let preset = Preset {
             parametros,
             origem: Origem::default(),

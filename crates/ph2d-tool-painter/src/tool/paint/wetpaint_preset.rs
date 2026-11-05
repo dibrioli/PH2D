@@ -400,10 +400,19 @@ impl PainterTool {
         // Uma ferramenta da água (dono 25/10) escreve só o CORPO dela (os knobs que o leitor dela lê) e os da mão: a
         // tela (a física, o papel, os efeitos da água) é partilhada. O corpo (pincel, máscaras, mão, knobs, tamanho,
         // largura) vai ao slot dela.
-        let da_agua = ferramenta_do_preset(prm).ferramenta_da_agua();
-        if let Some(t) = da_agua {
-            for knob in WetKnobs::do_corpo(t).chain(super::mao::knobs_da_mao()) {
+        // A Borracha também não pousa tinta (Bug #65 A5): a Hardness e a força dela; a receita do Pincel fica.
+        let ferramenta = ferramenta_do_preset(prm);
+        let borracha = ferramenta == crate::FerramentaDoPincel::Borracha;
+        let corpo: Option<Vec<Knob>> = ferramenta
+            .ferramenta_da_agua()
+            .map(|t| WetKnobs::do_corpo(t).collect())
+            .or_else(|| borracha.then(|| vec![Knob::PaperGate, Knob::Eraser]));
+        if let Some(corpo) = corpo {
+            for knob in corpo.into_iter().chain(super::mao::knobs_da_mao()) {
                 self.paint.wetpaint.knobs.set(knob, k.get(knob));
+            }
+            if borracha {
+                self.paint.wetpaint.knobs.erase = k.erase;
             }
             // A largura prometida é do corpo (cada ferramenta tem a sua, `switch_brush_slot`).
             self.paint.wetpaint.largura = Some(largura_do_preset(prm));

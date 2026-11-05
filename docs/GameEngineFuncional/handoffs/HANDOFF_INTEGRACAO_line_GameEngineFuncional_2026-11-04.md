@@ -22,6 +22,18 @@ Gates novos: os seis de `seam_anim_card`/`seam_anim` do plano 22 · `sem_atrito_
 (com a linha de controle e a de Average) · `o_personagem_nasce_sem_atrito`. Mutação com base verde: 4/4 overrides, 8/8 do
 lote da secção. ⚠️ O atrito não levou mutação à parte: o teste carrega os próprios controles.
 
+## Árvore combinada
+
+Censos 12/12 verdes e `recontar` limpo. Suíte completa em `5cbec9933c`: `31 689/31 691`. Os dois vermelhos:
+
+- `nenhum_botao_atravessa_a_linha_a_mao`: da linha. «Edit Animations…» passa por `caixa_do_botao` e fica na coluna do
+  valor: ⚠️ **diferente do que o dono aprovou**, que era à largura inteira. Fotografado na árvore combinada.
+- `o_deposito_de_um_pincel_pesado_de_fabrica_vai_pela_rota_que_paga`: flake de carga já catalogado (load `~51` na suíte);
+  sozinho, verde.
+
+Depois da cura correram só os nomes tocados (`nenhum_botao`, `anim` 53, `a_altura_de_abertura`), sem outra suíte (B2). A
+receita sem atrito foi para `MaterialCombine::sem_atrito`, porque `ph2d-app-game` passava a catraca (`2 737 > 2 728`).
+
 ## ⚠️ Para o próximo
 
 - **O histórico antigo da linha já estava no main:** `git cherry` deu `+` em dois commits só porque o integrador os

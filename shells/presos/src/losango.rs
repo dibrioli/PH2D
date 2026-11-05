@@ -150,7 +150,9 @@ pub fn cena(hero: &mut ph2d_editor_core::screens::hero::HeroScreen) {
     if hero.store.loose_card(sec).and_then(|c| c.pin).is_none() {
         return;
     }
-    let mut pontos = (0..).map(|i| r.y + 2.0 * i as f32).take_while(|y| *y < r.y + r.h);
+    let mut pontos = (0..)
+        .map(|i| r.y + 2.0 * i as f32)
+        .take_while(|y| *y < r.y + r.h);
     let achado = pontos.find_map(|y| {
         (0..)
             .map(|i| r.x + 2.0 * i as f32)

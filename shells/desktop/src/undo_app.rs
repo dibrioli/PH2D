@@ -178,6 +178,7 @@ impl crate::App {
                 field_selection_ids(gfx.sim.world(), &bits)
             }),
         };
+        let antes = ph2d_host_presos::antes_do_restauro(gfx.sim.world());
         let reg = &gfx.component_registry;
         let (vec, map, flip, flip_map) =
             (gfx.painter_reata).em_volta(&mut gfx.sim, &mut gfx.tools, |s| state.restore(s, reg));
@@ -204,10 +205,8 @@ impl crate::App {
         // ⭐⭐⭐ **E a ÁRVORE DE TAGS volta** (TOP-20 #9), com a MESMA disciplina da biblioteca: a
         // árvore restaurada nasce com revisão `0`, logo a cache tem de esquecer a que viu.
         //
-        // ⚠️ **O `remap` corre no MESMO gesto**: um documento com gémeos funde-os, e sem ele os
-        // objectos do gémeo descartado ficariam com um id que a árvore já não tem — a tag deles
-        // desaparecia em silêncio. Num passo de undo ele é vazio (os bytes saíram do nosso
-        // `collect`), e é no LOAD que ele trabalha.
+        // ⚠️ **O `remap` corre no MESMO gesto**: um documento com gémeos funde-os; sem ele, a tag do
+        // gémeo descartado sumia em silêncio. Vazio num passo de undo; é no LOAD que ele trabalha.
         let (arvore, _) = crate::project_tags::apply(&state.tags, gfx.sim.world_mut());
         gfx.tags = arvore;
         gfx.tags_cache.invalidate();
@@ -235,6 +234,7 @@ impl crate::App {
                 &mut self.vec.pen,
                 &mut self.vec.sel,
                 &gfx.tools,
+                &antes,
             );
         }
         // Live Shapes: uma SESSÃO de texto viva reescreveria o `VecShape` (e a pose) da

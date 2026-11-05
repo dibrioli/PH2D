@@ -231,6 +231,23 @@ pub(crate) fn toggle_scale_lock() {
     });
 }
 
+/// Os objectos com proporção guardada.
+#[must_use]
+pub fn travas_de_escala() -> Vec<u64> {
+    TRAVAS.with_borrow(|t| t.keys().copied().collect())
+}
+
+/// ⭐ O respawn do Desfazer trocou os bits: a proporção de cada objecto passa aos de agora (`novo`), e a
+/// de quem já não existe sai. Sem isto, desfazer para um par com zero dava 1:1 (`doc CartoesUI/10`).
+pub fn reata_travas_de_escala(novo: impl Fn(u64) -> Option<u64>) {
+    TRAVAS.with_borrow_mut(|t| {
+        *t = std::mem::take(t)
+            .into_iter()
+            .filter_map(|(bits, par)| Some((novo(bits)?, par)))
+            .collect();
+    });
+}
+
 /// O espelho muda o sinal de um eixo sem levar o outro, e a proporção guardada muda com ele.
 pub(crate) fn scale_espelhado(entity_bits: u64, eixo: usize) {
     TRAVAS.with_borrow_mut(|travas| {

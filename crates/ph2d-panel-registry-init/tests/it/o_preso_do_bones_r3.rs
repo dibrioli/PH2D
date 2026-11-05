@@ -275,3 +275,92 @@ fn every_scrub_handle_of_a_pinned_bone_card_survives_the_frames() {
     assert!(n >= 1, "nenhuma pega à vista");
     assert!(erros.is_empty(), "{n} pegas: {erros:#?}");
 }
+
+/// ⭐ Bones à volta do Ctrl+Z: os ossos respawnam com bits novos. A seleção de osso (que não é forma) fica
+/// no gizmo, com a tool Vector ativa ou não; o Bone preso segue a chave, e nenhum cartão sai nem salta.
+/// *Mutação: tirar `chave::resolve` de `depois_do_restauro` ⇒ o alfinete morre.*
+#[test]
+fn an_undo_around_the_bones_panel_keeps_its_cards_and_the_pinned_bone() {
+    use ph2d_ecs::{Name, SimWorld, StableId, Transform};
+    use ph2d_editor_core::panel::cards::entra_sai;
+    use ph2d_editor_core::tool::ToolRegistry;
+    for vector_ativa in [false, true] {
+        let osso = |sim: &mut SimWorld, id: u64, nome: &str| {
+            let e = (Transform::default(), Name::new(nome), StableId(id));
+            sim.world_mut().spawn(e).id().to_bits()
+        };
+        let mut sim = SimWorld::new();
+        let (mut a, mut b) = (osso(&mut sim, 901, "Bone A"), osso(&mut sim, 902, "Bone B"));
+        let mut tools = ToolRegistry::new();
+        if vector_ativa {
+            tools.register(Box::new(ph2d_tool_vector::VectorTool::new()));
+            assert!(tools.set_active(&ph2d_editor_core::ToolId::new("vector")));
+        }
+        let (scene, mapa) = (
+            ph2d_vec_scene::VecScene::new(),
+            ph2d_vec_entities::entities::VecEntityMap::new(),
+        );
+        let mut h = hero_com_o_bones();
+        let _limpa = Limpa;
+        let do_preso = |bits| publica(bits, "Bone A", &["a1", "a2", "a3"], &["t1", "t2", "t3"]);
+        let do_foco = |bits| publica(bits, "Bone B", &["b1"], &["u1"]);
+        do_preso(a);
+        pinta(&mut h, 20);
+        solta(&mut h, CARD_BONE);
+        clica(&mut h, loose_pin_of(CARD_BONE));
+        assert_eq!(h.store.loose_card(CARD_BONE).and_then(|c| c.pin), Some(a));
+        h.gizmo.replace_selection(Some(b));
+        let quadro = |h: &mut HeroScreen, a, b| {
+            do_foco(b);
+            skel::publica_presos(&h.store.loose_pins_of(bones()), |_| do_preso(a));
+            pinta(h, 1);
+        };
+        let foto = |h: &mut HeroScreen| {
+            let solto = h.store.panel_rect(loose_rect_of(CARD_BONE));
+            let lista = h.store.panel_rect(bones()).map(|r| r.h);
+            let rolagem = h.store.panel_scroll(bones());
+            let cartoes: Vec<(NodeId, f32)> = (h.store.card_list_mut(bones()).items.iter())
+                .map(|i| (i.key, i.h))
+                .collect();
+            (solto, lista, rolagem, cartoes)
+        };
+        let (mut pen, mut sel) = (
+            ph2d_vec_edit::PenTool::default(),
+            ph2d_app_vec::selection_sync::VecSelSync::default(),
+        );
+        ph2d_card_rope::chave::resolve(&mut h.store, sim.world());
+        for _ in 0..200 {
+            quadro(&mut h, a, b);
+        }
+        let antes = foto(&mut h);
+        assert!(!antes.3.is_empty(), "a régua: a lista do Bones está vazia");
+        for _ in 0..2 {
+            let porta = ph2d_host_presos::antes_do_restauro(sim.world());
+            for bits in [a, b] {
+                sim.world_mut().despawn(ph2d_ecs::Entity::from_bits(bits));
+            }
+            (a, b) = (osso(&mut sim, 901, "Bone A"), osso(&mut sim, 902, "Bone B"));
+            // O que o restauro faz antes da porta: a seleção que não é forma volta com os bits novos.
+            h.gizmo.clear_all_selection();
+            h.gizmo.add_to_selection(b);
+            ph2d_host_presos::depois_do_restauro(
+                &mut h, &sim, &scene, &mapa, &mut pen, &mut sel, &tools, &porta,
+            );
+            assert_eq!(
+                h.gizmo.iter_selected().collect::<Vec<_>>(),
+                [b],
+                "vector {vector_ativa}: a seleção de osso não voltou"
+            );
+            assert_eq!(
+                h.store.loose_card(CARD_BONE).and_then(|c| c.pin),
+                Some(a),
+                "vector {vector_ativa}: o alfinete não voltou"
+            );
+            for q in 0..20 {
+                quadro(&mut h, a, b);
+                assert_eq!(foto(&mut h), antes, "vector {vector_ativa}: quadro {q}");
+                assert!(entra_sai::saindo(bones()).is_empty(), "quadro {q}: a sair");
+            }
+        }
+    }
+}

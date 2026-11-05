@@ -62,9 +62,32 @@ pub fn publica(
     );
 }
 
-/// ⭐ **Logo depois de um restauro** (Ctrl+Z, Ctrl+Y, abrir): o gizmo e os alfinetes passam já aos bits
-/// novos. O quadro seguinte publica o Inspector antes do `sync_selection` e do `chave::resolve` dele, e
-/// um quadro sem seleção fechava os cartões todos. Medido na app: `doc CartoesUI/10`, «Smoke 3».
+/// O que só se lê ANTES do respawn: a chave durável dos objectos com proporção do Scale guardada.
+pub struct AntesDoRestauro(Vec<(u64, ph2d_ecs::StableId)>);
+
+/// Chame antes de o restauro apagar o mundo: depois dele os bits de agora não dizem quem eram.
+#[must_use]
+pub fn antes_do_restauro(world: &ph2d_ecs::World) -> AntesDoRestauro {
+    let chave = |bits: u64| {
+        let e = ph2d_ecs::Entity::try_from_bits(bits)?;
+        let id = world
+            .get::<ph2d_ecs::StableId>(e)
+            .filter(|s| !s.is_none())?;
+        Some((bits, *id))
+    };
+    AntesDoRestauro(
+        ph2d_panel_inspector::travas_de_escala()
+            .into_iter()
+            .filter_map(chave)
+            .collect(),
+    )
+}
+
+/// ⭐ **Logo depois de um restauro** (Ctrl+Z, Ctrl+Y, abrir): o gizmo, os alfinetes e a proporção do
+/// Scale passam já aos bits novos. O quadro seguinte publica o Inspector antes do `sync_selection` e do
+/// `chave::resolve` dele, e um quadro sem seleção fechava os cartões todos. Medido na app:
+/// `doc CartoesUI/10`, «Smoke 3».
+#[allow(clippy::too_many_arguments)] // a composição: cada parte é de uma família
 pub fn depois_do_restauro(
     hero: &mut ph2d_editor_core::screens::hero::HeroScreen,
     sim: &SimWorld,
@@ -73,7 +96,12 @@ pub fn depois_do_restauro(
     pen: &mut PenTool,
     sel: &mut ph2d_app_vec::selection_sync::VecSelSync,
     tools: &ph2d_editor_core::tool::ToolRegistry,
+    antes: &AntesDoRestauro,
 ) {
+    ph2d_panel_inspector::reata_travas_de_escala(|bits| {
+        let (_, id) = antes.0.iter().find(|(b, _)| *b == bits)?;
+        ph2d_ecs::entity_with_stable_id(sim.world(), *id).map(ph2d_ecs::Entity::to_bits)
+    });
     let vector_active = !hero.store.family_owns_canvas()
         && tools
             .active()

@@ -307,6 +307,57 @@ fn desfazer_devolve_o_par_e_a_proporcao_segue() {
     perto(m.escala(), [6.0, 2.0]);
 }
 
+/// ⭐ O Ctrl+Z da shell, pela porta real do mundo (`undo.rs`, passos 1 e 2): apaga e re-spawna do
+/// snapshot, e a entidade volta com bits NOVOS. A proporção anda com o objecto: o par a zero do passo
+/// desfeito não vira 1:1. *Contraprova: sem `reata_travas_de_escala`, `[4, 4]`.*
+#[test]
+fn o_respawn_do_desfazer_nao_perde_a_proporcao() {
+    use ph2d_ecs::StableId;
+    use ph2d_ecs::scene::incremental::{CaptureCache, capture_incremental};
+    use ph2d_ecs::scene::{WorldSnapshot, snapshot_to_world};
+    let mut m = Mesa::com_escala(2.0, 1.0);
+    let mut registo = ComponentRegistry::new();
+    register_ecs_components(&mut registo);
+    let id = StableId(4242);
+    m.sim.world_mut().entity_mut(m.e).insert(id);
+    m.clica(SCALE_LOCK);
+    m.escreve(X, "0");
+    perto(m.escala(), [0.0, 0.0]);
+    // O passo de agora, com o par a zero; o seguinte é o que se desfaz.
+    let mut foto = WorldSnapshot::new();
+    let mut cache = CaptureCache::new();
+    capture_incremental(m.sim.world_mut(), &mut cache, &registo, &mut foto).unwrap();
+    m.escreve(X, "4");
+    perto(m.escala(), [4.0, 2.0]);
+
+    let velho = m.e;
+    m.sim.world_mut().despawn(velho);
+    snapshot_to_world(m.sim.world_mut(), &foto, &registo).unwrap();
+    m.e = ph2d_ecs::entity_with_stable_id(m.sim.world(), id).expect("o objecto voltou");
+    assert_ne!(m.e, velho, "a régua: o restauro troca os bits");
+    let novo = m.e.to_bits();
+    ph2d_panel_inspector::reata_travas_de_escala(|b| (b == velho.to_bits()).then_some(novo));
+    assert_eq!(ph2d_panel_inspector::travas_de_escala(), [novo]);
+
+    m.quadro();
+    perto(m.escala(), [0.0, 0.0]);
+    m.escreve(X, "4");
+    perto(m.escala(), [4.0, 2.0]);
+}
+
+/// O objecto que o Desfazer leva deixa de guardar proporção; o outro fica com a dele.
+#[test]
+fn a_proporcao_de_quem_o_desfazer_levou_sai() {
+    let mut m = Mesa::com_escala(2.0, 1.0);
+    m.clica(SCALE_LOCK);
+    let bits = m.e.to_bits();
+    ph2d_panel_inspector::reata_travas_de_escala(|_| None);
+    assert_eq!(ph2d_panel_inspector::travas_de_escala(), Vec::<u64>::new());
+    m.escreve(X, "4");
+    perto(m.escala(), [4.0, 2.0]);
+    assert_eq!(ph2d_panel_inspector::travas_de_escala(), [bits]);
+}
+
 /// Cada objecto tem a sua proporção: trocar de selecção não leva a de outro.
 #[test]
 fn cada_objecto_guarda_a_sua_proporcao() {

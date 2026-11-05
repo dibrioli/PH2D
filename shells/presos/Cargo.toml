@@ -24,6 +24,7 @@ ph2d-app-vec = { path = "../../crates/ph2d-app-vec" }
 ph2d-card-rope = { path = "../../crates/ph2d-card-rope" }
 ph2d-ecs = { path = "../../crates/ph2d-ecs" }
 ph2d-editor-core = { path = "../../crates/ph2d-editor-core" }
+ph2d-panel-inspector = { path = "../../crates/ph2d-panel-inspector" }
 ph2d-panel-vector = { path = "../../crates/ph2d-panel-vector" }
 ph2d-timeline = { path = "../../crates/ph2d-timeline" }
 ph2d-tokens = { path = "../../crates/ph2d-tokens" }

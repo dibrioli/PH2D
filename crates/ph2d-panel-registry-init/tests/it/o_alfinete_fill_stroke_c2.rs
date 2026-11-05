@@ -63,14 +63,19 @@ struct Mesa {
     tools: ToolRegistry,
     map: ph2d_vec_entities::entities::VecEntityMap,
     tiles: ph2d_vec_render::PatternTiles,
-    bits: [u64; 3],
-    ids: [VecPathId; 3],
+    bits: Vec<u64>,
+    ids: Vec<VecPathId>,
     sel: Vec<usize>,
 }
 
 impl Mesa {
     /// A (0) difere de B (1) e C (2) em tudo; só A tem camadas: `0` preenchimento, `1` traço.
     fn nova() -> Self {
+        Self::com_formas(3)
+    }
+
+    /// A mesa com `n` formas; as de lá da 2.ª são iguais a B, para medir o custo por objecto.
+    fn com_formas(n: usize) -> Self {
         let _ = ph2d_panel_registry_init::register_all_panels();
         insp::set_cards_on(true);
         insp::set_current_inspector_sprite(None);
@@ -78,8 +83,8 @@ impl Mesa {
         let mut scene = VecScene::new();
         let mut sim = SimWorld::new();
         let mut map = ph2d_vec_entities::entities::VecEntityMap::new();
-        let (mut bits, mut ids) = ([0; 3], Vec::new());
-        for i in 0..3 {
+        let (mut bits, mut ids) = (vec![0; n], Vec::new());
+        for i in 0..n {
             let mut p = rectangle([i as f64 * 3.0, 0.0], [2.0, 2.0]);
             let cor = if i == 0 { VERMELHO } else { AZUL };
             p.fill = Some(Paint::Solid(cor));
@@ -133,7 +138,7 @@ impl Mesa {
             map,
             tiles: ph2d_vec_render::PatternTiles::new(),
             bits,
-            ids: [ids[0], ids[1], ids[2]],
+            ids,
             sel: vec![0],
         };
         m.escolhe(&[0]);
@@ -398,7 +403,7 @@ impl Mesa {
 }
 
 fn nome(i: usize) -> &'static str {
-    ["A", "B", "C"][i]
+    ["A", "B", "C", "D", "E", "F"][i]
 }
 
 fn cor_de_fill(p: &VecPath) -> Rgba8 {

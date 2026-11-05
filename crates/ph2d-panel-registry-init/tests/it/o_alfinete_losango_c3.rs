@@ -55,7 +55,7 @@ impl Linha {
 
     /// Um quadro com os canais e os dois mapas publicados, e os blocos que o `Mesa::quadro` não publica.
     fn quadro(&self, m: &mut Mesa) {
-        let todos = m.bits;
+        let todos = m.bits.clone();
         ph2d_app_vec::ids_da_pilha::passe(&mut m.sim, &mut m.scene);
         ph2d_app_vec::canais::publicar(
             &mut m.sim,
@@ -561,59 +561,141 @@ fn novo_estilo_com(sel: &'static [usize]) {
     }
 }
 
-/// ⭐ Item 4: o custo por quadro de 5 presos com as tintas no retrato. Duas mesas no MESMO processo,
-/// intercaladas, o mínimo. `bash scripts/cargo-test-narrow.sh ph2d-panel-registry-init --profile smoke -- --ignored custo_por_quadro_de_cinco_presos --nocapture`.
+/// Uma mesa da régua de custo: `formas` objectos, os cartões presos a `objectos` deles e a última forma
+/// escolhida.
+struct Variante {
+    nome: &'static str,
+    m: Mesa,
+    l: Linha,
+    pins: Vec<u64>,
+    quadro: Vec<f64>,
+    frio: Vec<f64>,
+    mapas: Vec<f64>,
+}
+
+impl Variante {
+    /// `objectos == 0`: sem presos.
+    fn nova(nome: &'static str, formas: usize, objectos: usize) -> Self {
+        let (mut m, l) = (Mesa::com_formas(formas), Linha::nova());
+        if objectos > 0 {
+            for (i, sec) in [
+                CARD_FILL,
+                CARD_STROKE,
+                CARD_TRANSFORM,
+                CARD_APPEARANCE,
+                CARD_MATERIAL,
+            ]
+            .into_iter()
+            .enumerate()
+            {
+                m.escolhe(&[i % objectos]);
+                m.h.store.set_collapsed(sec, false);
+                l.quadros(&mut m, 2);
+                m.h.store
+                    .detach_card(sec, INSP_PANEL, (500.0 + 40.0 * i as f32, 100.0), 300.0);
+                l.quadros(&mut m, 2);
+                m.h.store.toggle_loose_pin(sec);
+            }
+            assert_eq!(m.h.store.loose_cards_of(INSP_PANEL).len(), 5);
+        }
+        m.escolhe(&[formas - 1]);
+        l.quadros(&mut m, 5);
+        let pins = losango::pinos(&m.h.store);
+        assert_eq!(pins.len(), objectos, "{nome}: objectos presos");
+        Self {
+            nome,
+            m,
+            l,
+            pins,
+            quadro: Vec::new(),
+            frio: Vec::new(),
+            mapas: Vec::new(),
+        }
+    }
+
+    /// Um bloco: o 1.º quadro à parte (as mesas partilham as caches do painel, e a anterior sujou-as) e
+    /// os outros, depois os mesmos mapas do losango, em ms por quadro.
+    fn bloco(&mut self) {
+        use std::time::Instant;
+        const QUADROS: u32 = 6;
+        let t = Instant::now();
+        self.l.quadro(&mut self.m);
+        self.frio.push(t.elapsed().as_secs_f64() * 1e3);
+        let t = Instant::now();
+        for _ in 1..QUADROS {
+            self.l.quadro(&mut self.m);
+        }
+        self.quadro
+            .push(t.elapsed().as_secs_f64() * 1e3 / f64::from(QUADROS - 1));
+        let t = Instant::now();
+        for _ in 0..QUADROS {
+            self.l.publica(&self.m, &self.pins);
+        }
+        self.mapas
+            .push(t.elapsed().as_secs_f64() * 1e3 / f64::from(QUADROS));
+    }
+}
+
+/// O mínimo e a mediana (`docs/DevOps/MEDIR_VELOCIDADE.md`).
+fn minimo_e_mediana(v: &[f64]) -> (f64, f64) {
+    let mut o = v.to_vec();
+    o.sort_by(f64::total_cmp);
+    (o[0], o[o.len() / 2])
+}
+
+/// ⭐ O custo por quadro de 5 presos com as tintas no retrato, em 2 e em 5 objectos, cada um contra a
+/// mesa do mesmo tamanho sem presos. Mesas no MESMO processo, blocos intercalados por ordem rodada, o
+/// mínimo com a mediana ao lado. Resultado: `docs/CartoesUI/09`, «Custo por quadro».
+/// `bash scripts/cargo-test-narrow.sh ph2d-panel-registry-init --profile smoke -- --ignored custo_por_quadro_de_cinco_presos --nocapture`.
 #[test]
 #[ignore = "mede: só em --profile smoke"]
 fn custo_por_quadro_de_cinco_presos() {
-    use std::time::Instant;
-    let (mut sem, mut com) = (Mesa::nova(), Mesa::nova());
-    let (l0, l1) = (Linha::nova(), Linha::nova());
-    sem.escolhe(&[1]);
-    l0.quadros(&mut sem, 3);
-    for (i, sec) in [
-        CARD_FILL,
-        CARD_STROKE,
-        CARD_TRANSFORM,
-        CARD_APPEARANCE,
-        CARD_MATERIAL,
-    ]
-    .into_iter()
-    .enumerate()
-    {
-        // Em objectos alternados: A com camadas e B sem; o `pins` tem os dois e o retrato varia.
-        com.escolhe(&[i % 2]);
-        com.h.store.set_collapsed(sec, false);
-        l1.quadros(&mut com, 2);
-        com.h
-            .store
-            .detach_card(sec, INSP_PANEL, (500.0 + 40.0 * i as f32, 100.0), 300.0);
-        l1.quadros(&mut com, 2);
-        com.h.store.toggle_loose_pin(sec);
-    }
-    com.escolhe(&[2]);
-    l1.quadros(&mut com, 5);
-    assert_eq!(com.h.store.loose_cards_of(INSP_PANEL).len(), 5);
-    let pins_com = losango::pinos(&com.h.store);
-    let (mut q0, mut q1, mut m0, mut m1) = (f64::MAX, f64::MAX, f64::MAX, f64::MAX);
-    let mede = |f: &mut dyn FnMut()| {
-        let t = Instant::now();
-        f();
-        t.elapsed().as_secs_f64() * 1e3
-    };
-    for _ in 0..200 {
-        q0 = q0.min(mede(&mut || l0.quadro(&mut sem)));
-        q1 = q1.min(mede(&mut || l1.quadro(&mut com)));
-        m0 = m0.min(mede(&mut || l0.publica(&sem, &[])));
-        m1 = m1.min(mede(&mut || l1.publica(&com, &pins_com)));
-    }
+    const RONDAS: usize = 60;
+    let load = || std::fs::read_to_string("/proc/loadavg").unwrap_or_default();
     eprintln!(
-        "[c3-custo] quadro: sem presos {q0:.3} ms · 5 presos {q1:.3} ms · diferença {:.3} ms\n\
-         [c3-custo] só o losango: sem presos {m0:.3} ms · {} objectos presos {m1:.3} ms · diferença {:.3} ms",
-        q1 - q0,
-        pins_com.len(),
-        m1 - m0,
+        "[custo] debug_assertions {} · load {}",
+        cfg!(debug_assertions),
+        load()
     );
+    let mut v = [
+        Variante::nova("3 formas, sem presos", 3, 0),
+        Variante::nova("3 formas, 5 cartões em 2 objectos", 3, 2),
+        Variante::nova("6 formas, sem presos", 6, 0),
+        Variante::nova("6 formas, 5 cartões em 5 objectos", 6, 5),
+    ];
+    for x in &mut v {
+        x.bloco(); // aquece, fora da régua
+        x.quadro.clear();
+        x.frio.clear();
+        x.mapas.clear();
+    }
+    for r in 0..RONDAS {
+        for i in 0..v.len() {
+            let n = v.len();
+            v[(i + r) % n].bloco();
+        }
+    }
+    let mut res = Vec::new();
+    for x in &v {
+        let (q, qm) = minimo_e_mediana(&x.quadro);
+        let (l, lm) = minimo_e_mediana(&x.mapas);
+        let (f, fm) = minimo_e_mediana(&x.frio);
+        eprintln!(
+            "[custo] {}: quadro {q:.3} (mediana {qm:.3}) · 1.º do bloco {f:.3} (mediana {fm:.3}) · mapas {l:.3} (mediana {lm:.3}) ms",
+            x.nome
+        );
+        res.push((q, qm, l, lm));
+    }
+    for (nome, a, b) in [("2 objectos", 0, 1), ("5 objectos", 2, 3)] {
+        eprintln!(
+            "[custo] {nome}: +{:.3} ms no mínimo, +{:.3} na mediana; só os mapas +{:.3}, +{:.3}",
+            res[b].0 - res[a].0,
+            res[b].1 - res[a].1,
+            res[b].2 - res[a].2,
+            res[b].3 - res[a].3,
+        );
+    }
+    eprintln!("[custo] load {}", load());
 }
 
 /// O alfinete não põe nem tira losangos: o mesmo cartão solto, antes e depois de preso, tem os mesmos.

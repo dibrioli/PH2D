@@ -556,6 +556,8 @@ mod sobe_a_ladeira_porta_tests; // sonda J9 §2: por que porta a água entra no 
 #[cfg(test)]
 mod sonda_achatamento; // as rectas do escorrimento no S (W1f, prompt 12)
 #[cfg(test)]
+mod sonda_bordas_longe; // um traço novo longe não muda um byte do antigo (fotos do dono 05/11)
+#[cfg(test)]
 mod sonda_camadas; // as sondas das camadas de amarelo sobre azul (prompt 15)
 #[cfg(test)]
 mod sonda_corte; // o corte vertical no início do traço (smoke do dono 16/10)

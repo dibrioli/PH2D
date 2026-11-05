@@ -40,8 +40,9 @@ use std::collections::BTreeMap;
 /// (CLAUDE.md §5.0): qualquer valor abre a tela de 1024² do `1`; o `2` é a cena do RELEVO DOS FIOS (W3b,
 /// prompt 50): o Painter abre sozinho em Wet Paint com o Oil Bristle a 103 px e dois traços inclinados já
 /// pintados — o de HOJE (o relevo sem escada) em cima e o de ONTEM (sem relevo) em baixo; o `3` é a cena do FPS
-/// ([`crate::wetpaint_fps`]): o app pinta sozinho e cronometra cada quadro.
-pub const NIVEIS: u32 = 3;
+/// ([`crate::wetpaint_fps`]): o app pinta sozinho e cronometra cada quadro; o `4` são os casos da lei antiga
+/// ([`crate::wetpaint_casos`]), no papel texturizado padrão.
+pub const NIVEIS: u32 = 4;
 
 /// A cena do FPS (`=3`) — a ponte chama [`crate::wetpaint_fps::conduz`] a cada quadro.
 pub fn e_a_cena_do_fps() -> bool {
@@ -66,6 +67,7 @@ fn nivel() -> u32 {
     match std::env::var("PH2D_WETPAINT_SMOKE").as_deref() {
         Ok("2") => 2,
         Ok("3") => 3,
+        Ok("4") => 4,
         _ => 1,
     }
 }
@@ -96,6 +98,27 @@ pub fn spawn_if_enabled(
 ) -> Option<u64> {
     if !enabled() {
         return None;
+    }
+    #[cfg(feature = "panel-painter-layers")]
+    if nivel() == 4 {
+        use crate::wetpaint_casos::{ALTURA, LARGURA};
+        // A sprite nascida «Textured Paper»: o bind reconhece-a e serve o papel do dono.
+        return ph2d_image_import::spawn_rgba(
+            sim,
+            renderer,
+            asset_db,
+            cell_idx,
+            LARGURA,
+            ALTURA,
+            ph2d_tool_painter::PainterTool::pixeis_do_papel_texturizado(LARGURA, ALTURA),
+            Vec2::new(0.0, 0.0),
+            pixels_per_meter,
+            atlas_asset_map,
+            "Canvas",
+        )
+        .map(|(_, bits)| bits)
+        .map_err(|e| eprintln!("PH2D_WETPAINT_SMOKE=4: could not spawn the canvas: {e}"))
+        .ok();
     }
     match ph2d_image_import::spawn_blank_canvas(
         sim,
@@ -140,6 +163,11 @@ pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
     painter.set_brush_color_srgb8([30, 90, 200]); // a wet ultramarine (synced to the wet slot)
     if nivel() == 2 {
         pinta_o_relevo(painter);
+        return;
+    }
+    #[cfg(feature = "panel-painter-layers")]
+    if nivel() == 4 {
+        crate::wetpaint_casos::pinta(painter);
         return;
     }
     if nivel() == 3 {

@@ -16,6 +16,7 @@
 - ⛔⛔⛔ [Dono 05/11: lei nova ARQUIVADA, não apagar; produto na antiga](project_new_paint_law_for_all_brushes_2026_11_05.md)
 - [Enio (dibrioli): dono/decisor; o dev é a LLM · ⛔ SEMPRE PT-BR](user_role.md)
 - 📚 [Decisões de produto do dono, por módulo (21) — Luau, Pixel Art, Kanban, macros, constraints, imagem, modos…](reference_topic_owner_product_decisions.md)
+- ⭐⭐⭐ [Dono 05/11: Game Engine recomeça item a item a partir da Sprite; propostas nascem dos 2 estudos de 9 engines, junto com ele](project_game_engine_refounded_item_by_item_2026_11_05.md)
 - ⭐⭐ [Dono 02/11: UI em cartões — referência = os nossos painéis com smoke OK, depois Figma → Rive → Inkscape/Godot/Unity](project_card_ui_reference_order_2026_11_02.md)
 - ⭐⭐ [Dono 04/11: cartão compacto como o Figma — irmãos dividem a linha, nada grudado, uma grelha](feedback_card_layout_is_compact_like_figma_2026_11_04.md)
 - ⭐⭐ [Dono 04/11 noite: missão autónoma, fechar a linha Painter sem perguntas; smoke no dia seguinte](project_autonomous_close_of_painter_line_2026_11_04.md)

@@ -16,7 +16,8 @@ Leitor: a próxima janela da linha. Base: `main` em `c61f228b05`; linha reaberta
 1. **Bug #69, cura:** Edge Darkening por célula. Mecanismo, números e portão em [BUGS #69](../BUGS_painter.md). Vermelho primeiro. Decida: duas tintas na célula, custo por célula medido, caminho da placa. Depois alarmes de pincel por nome. Confira se a cena 4 deixa de variar por isso.
 2. **Smooth Edges 0,3** (ordem do dono) nos óleos com buracos ≥ 5 % à pressão 1, lei velha, papel padrão (grelha de 05/11): Express Oil, Dabber, Dabber 4, Filbert, Filbert Dry, Flat Bristle, Tilted Shade, Knife Grainy, Knife Oily, Knife Smooth 3, Knife Stain, Knife Textured, Metallic Flat. Ficam: Thick Impasto, Knife Dry. A lista foi mostrada ao dono, sem objeção até aqui. Alarme dispara: regrave por ser ordem dele e mostre o relatório no smoke. A grelha cobre só 15 pincéis de óleo.
 3. **Pergunta ao dono ainda sem resposta:** lei antiga como oficial e a nova guardada (recomendado), ou continuar a nova? Se ficar a antiga, oferecer consertar laranja e branco (Bug #54), que aparece também no papel padrão; o conserto testado muda 25 miniaturas, logo por foto.
-4. **Bug #70** (Borracha no Wet Paint não apaga a tinta anterior): a cura depende da resposta do dono (opções em BUGS #70).
-5. Fecho da onda: `/pd-onda-fechar`, smoke em passos, incluindo bordas (#69) e #70.
+4. **Bug #70:** o dono decidiu a opção A: a Borracha no Wet Paint apaga tudo sob o círculo, tinta molhada e antiga dos vários meios (BUGS #70).
+5. **Bug #71:** relevo negativo na borda em papel de alto relevo (BUGS #71, foto do dono): reproduzir e medir antes de curar.
+6. Fecho da onda: `/pd-onda-fechar`, smoke em passos, incluindo bordas (#69), #70 e #71.
 
 Pequenos, sem pressa: Grid/Crosshatch (#59), Bug #63, ajuda ilustrada F5, `bancada_da_agua`, prova do mesmo byte noutro Linux. Os dois vermelhos do fecho 05/11 não reproduziram (BUGS #65): vermelho deles investiga-se, não se promove. O guarda `prazo-do-agente` recusa a palavra «bancada» em qualquer comando de subagente.

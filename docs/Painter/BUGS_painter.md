@@ -630,7 +630,11 @@ Medido (traço de 40 px; massa / ecrã ÷ fábrica; «antes» = o mesmo processo
 
 Portões `grao_a_mao_tests::casos_abertos_*` (com o braço «sem a cura», que sangra, em cada um). **Aberto:** uma macro gravada antes que arma um Grain toca agora a quantidade nova.
 
-## Bug #70 (ABERTO, decisão do dono, smoke 05/11) — depois de pintar no Wet Paint, a Borracha não apaga os traços dos outros meios
+## Bug #71 (ABERTO, smoke do dono 05/11) — em papel de alto relevo, a tinta parece afundada: relevo negativo na borda
+
+Dono: «nos modos wet paint e watercolor, alguns pincéis aparentam aplicar a tinta com relevo negativo se o papel tem alto relevo». [Foto](handoffs/material_2026-11-05/relevo_negativo_foto_do_dono.png): mancha amarela com faixa clara na borda inferior direita e sombra na superior esquerda, ao contrário do relevo do papel em volta. NÃO reproduzido nem medido. Hipóteses a separar: o «amassar o relevo» (memória `project_paper_press_is_a_brush_control_2026_10_28`, um controlo que não se apaga: decidir o valor, não o controlo); a luz do relevo sobre o papel nu × sob o filme (`grao_no_filme`, `oleo_real::grao_do_papel`); o Edge Darkening que acumula na orla. Primeiro passo: varrer os presets dos dois meios em papel de relevo alto, medir o sinal do degrau de luz na orla e achar quais pincéis invertem.
+
+## Bug #70 (ABERTO, dono decidiu 05/11: opção A, apagar tudo sob o círculo, tinta molhada e antiga dos vários meios) — depois de pintar no Wet Paint, a Borracha não apaga os traços dos outros meios
 
 Dono: «não apaga os traços dos outros modos já pintados». **Reproduzido** com X → Wet → pintar → Borracha, menu em Wet, sessão viva: Digital 135,8 → 135,8; Watercolor 92,6 → 92,6; Impasto 156 → 156 (controlo sem Wet: → 0; a mesma passada leva a tinta Wet de 34,2 a 1,1). X → Wet → X → Borracha apaga até 0, e o dono ainda não disse o que o menu mostrava. Mecanismo (rota medida, resto lido): `mode_switch.rs:66` mantém a Borracha no Wet; `wetpaint/ciclo.rs:27`, com sessão viva o Wet fica com os dabs; `wetpaint/dab_route.rs:105` apaga só o fluido; a tinta anterior está na `base` congelada (`session.rs:83`, `:395`). Lei W2.6 (`11337b0e1d`, 21/07) + arme (`9effa4b18b`, 24/10): existe em `main` (lido, não corrido). Impasto: a Borracha não oferece Impasto (`media.rs:245-249`), logo X, Wet, Borracha, X fica no Wet e não apaga.
 

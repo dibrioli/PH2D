@@ -42,7 +42,7 @@ Chaves do mapa `engine` que NÃO são knob, linha da mão nem extra conhecido (l
 | `evaporation` | Water | Cartão: Dry speed (`:572`) | 0..8 | 1 | 55 | **4** | 0.6..3 | — |
 | `rewet` | Water | Tuning | 0..8 | 1 | 55 | **0** | 1..1 | — |
 | `retention` | Water | Tuning | 0.9..1 | 0.995 | 55 | **1** | 0.97..0.995 | — |
-| `edgeDarkening` | Water | Cartão: Edge (`:573`) | 0..200 | 12 | 55 | **42** | 0..200 | — |
+| `edgeDarkening` | Water | Cartão: Edge (`:573`) | 0..200 | 12 | 55 | **42** | 0..56.25 | — |
 | `baseEvaporation` | Water | Tuning | 0..20 | 2 | 55 | **0** | 2..2 | — |
 | `leveling` | Hidden | Cartão: leveling (`tabelas.rs:129`) | 0..2 | 0.5 | 55 | **0** | 0.5..0.5 | — |
 | `capillary` | Hidden | Cartão: capillary (`tabelas.rs:131`) | 0..1 | 0.2 | 55 | **2** | 0.05..0.2 | — |
@@ -167,7 +167,7 @@ Chaves do mapa `engine` que NÃO são knob, linha da mão nem extra conhecido (l
 | `volume` | Hidden | ? | 0..1000 | 0.691412 | 0 | **0** | —..— | — |
 | `body` | Hidden | ? | 0..1 | 0 | 0 | **0** | —..— | — |
 | `textureAcrossOwn` | Stroke | ? | 0..1 | 0 | 0 | **0** | —..— | — |
-| `smoothEdges` | Hidden | ? | 0..1 | 0 | 0 | **0** | —..— | — |
+| `smoothEdges` | Hidden | ? | 0..1 | 0 | 2 | **2** | 0.12..0.12 | — |
 | `tiltOpacity` | Mão (fora do registo) | cartão Mão | 0..1 | 0 | 21 | **0** | 0..0 | — |
 | `speedSize` | Mão (fora do registo) | cartão Mão | 0..1 | 0 | 22 | **1** | 0..0.025 | — |
 | `pressureSCurve` | Mão (fora do registo) | cartão Mão | 0..1 | 0 | 0 | **0** | —..— | — |
@@ -379,9 +379,9 @@ Chaves do mapa `engine` que NÃO são knob, linha da mão nem extra conhecido (l
 
 ## (c) Knobs que nenhum pincel usa e knobs de um só pincel
 
-**Nenhum pincel os tira do padrão (75) — candidatos a sair ou a virar constante:**
+**Nenhum pincel os tira do padrão (74) — candidatos a sair ou a virar constante:**
 
-`spacing`, `gateSaturation`, `rewet`, `baseEvaporation`, `leveling`, `brake`, `gravity`, `levelClamp`, `viscosity`, `maxVelocity`, `projection`, `brakeReach`, `capillaryGate`, `eraser`, `dryer`, `blow`, `paperFibres`, `paperGrooves`, `visualGrain`, `paperVisibility`, `extBackrun`, `extFingering`, `extRivulets`, `extGranulation`, `extStaining`, `extWetSoften`, `pressureSmoothing`, `pulledString`, `tiltSmooth`, `bristleWave`, `bristleWaveLength`, `bristleNoiseHue`, `bristleRemove`, `capsuleSpacing`, `embossSizeRef`, `dustDrop`, `bristleStreak`, `bristleStreakLight`, `bristleStreakLength`, `bristleStreakCut`, `thinStrokeFade`, `thinStrokeRef`, `dryerEdge`, `textureSizeRef`, `iorLevel`, `coatRoughness`, `sheen`, `subsurface`, `subsurfaceRadius`, `transparency`, `lockMaterial`, `textureAcrossExp`, `transmission`, `paperRelief`, `transmissionMode`, `dryerLevel`, `blendReach`, `paperPress`, `rewetPaint`, `solubility`, `rewetDrag`, `medium`, `dilution`, `volume`, `body`, `textureAcrossOwn`, `smoothEdges`, `tiltOpacity`, `pressureSCurve`, `speedLag`, `speedHardness`, `speedOpacity`, `erase`, `glazeLayering`, `paintTexture`
+`spacing`, `gateSaturation`, `rewet`, `baseEvaporation`, `leveling`, `brake`, `gravity`, `levelClamp`, `viscosity`, `maxVelocity`, `projection`, `brakeReach`, `capillaryGate`, `eraser`, `dryer`, `blow`, `paperFibres`, `paperGrooves`, `visualGrain`, `paperVisibility`, `extBackrun`, `extFingering`, `extRivulets`, `extGranulation`, `extStaining`, `extWetSoften`, `pressureSmoothing`, `pulledString`, `tiltSmooth`, `bristleWave`, `bristleWaveLength`, `bristleNoiseHue`, `bristleRemove`, `capsuleSpacing`, `embossSizeRef`, `dustDrop`, `bristleStreak`, `bristleStreakLight`, `bristleStreakLength`, `bristleStreakCut`, `thinStrokeFade`, `thinStrokeRef`, `dryerEdge`, `textureSizeRef`, `iorLevel`, `coatRoughness`, `sheen`, `subsurface`, `subsurfaceRadius`, `transparency`, `lockMaterial`, `textureAcrossExp`, `transmission`, `paperRelief`, `transmissionMode`, `dryerLevel`, `blendReach`, `paperPress`, `rewetPaint`, `solubility`, `rewetDrag`, `medium`, `dilution`, `volume`, `body`, `textureAcrossOwn`, `tiltOpacity`, `pressureSCurve`, `speedLag`, `speedHardness`, `speedOpacity`, `erase`, `glazeLayering`, `paintTexture`
 
 **Usados por UM só pincel (26):**
 
@@ -514,10 +514,10 @@ Membro «usado» = valor efectivo fora do padrão. «≥ 2 membros» = pincéis 
 |---|---|---|
 | `edgeDarkening` | 42 | Fan Brush, Airbrush, Express Oil, Ink Brush, Broad Nib, Dip Pen, Ink Bullet, Marker Bullet, Marker Chisel, Dabber 4, Dabber, Filbert Dry, Filbert, Flat Bristle, Thick Impasto, Tilted Shade, Knife Dry, Knife Grainy, Knife Oily, Knife Smooth 3, Knife Stain, Knife Textured, Metallic Flat, Pastel Side, Soft Pastel, Square Hard, Oil Pastel, Wax Crayon, Wax Scrape, Charcoal, Compressed Charcoal, Colored… |
 | `edgeSoftMass` | 1 | Wet Wash |
-| `smoothEdges` | 0 |  |
+| `smoothEdges` | 2 | Wet Liner, Wet Wash |
 | `heavy_edge` | 0 | (nenhum preset grava o campo) |
 
-**≥ 2 membros: 1 pincéis**: Wet Wash
+**≥ 2 membros: 2 pincéis**: Wet Liner, Wet Wash
 
 ### D10 — nivelamento
 
@@ -671,7 +671,7 @@ Membro «usado» = valor efectivo fora do padrão. «≥ 2 membros» = pincéis 
 
 **≥ 2 membros: 1 pincéis**: Metallic Flat
 
-**Resumo:** D1 53 · D2 1 · D3 6 · D4 2 · D5 0 · D6 2 · D7 14 · D8 0 · D9 1 · D10 0 · D11 0 · D12 0 · D13 14 · D14 0 · D15 0 · D16 2 · D17 0 · D18 0 · D19 2 · D20 1 · D21 18 · D22 1
+**Resumo:** D1 53 · D2 1 · D3 6 · D4 2 · D5 0 · D6 2 · D7 14 · D8 0 · D9 2 · D10 0 · D11 0 · D12 0 · D13 14 · D14 0 · D15 0 · D16 2 · D17 0 · D18 0 · D19 2 · D20 1 · D21 18 · D22 1
 
 ## (e) Pincéis de óleo: todos os knobs fora do padrão, lado a lado
 

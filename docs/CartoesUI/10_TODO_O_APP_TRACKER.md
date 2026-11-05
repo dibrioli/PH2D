@@ -695,3 +695,17 @@ Tabela, o que falta, provas e decisões em [17](17_VARREDURA_FINAL.md). Curados:
 **Avisos.** Saem os do `number_input`, da shell (apelido `vec_appearance`, só de testes) e mais dez que a compilação mostrava em `ph2d-panel-{hierarchy,inspector,pixel-tools,flip,timeline}`.
 
 **Decisões tomadas sem o dono.** Dois cartões largados no mesmo ponto ficam um sobre o outro, como janelas: não se afasta nem se empilha sozinho.
+
+### Painter: Preset debaixo da prévia, estrela do favorito (04/11)
+
+**Decisão do dono:** o Preset passa para logo abaixo da prévia, e Favorite fica à direita dele como ícone de estrela, não caixa de marcar. **Smoke 1 (visão geral) OK do dono, 04/11.**
+
+Ordem do cartão do topo: Paint Mode, prévia, Preset + estrela, Save as New/Save as Default, o resto como estava. A estrela é `Widget::Bare`, com o id e o clique da caixa (`PAINTER_WETPAINT_PRESET_FAVORITE`); dica `Add this preset to Favorites` / `Remove this preset from Favorites`. Sem preset activo não há estrela, e o chip toma a linha. `PH2D_CARDS=0` intacto. Nenhum motor, preset ou pincel mudou.
+
+**API nova:** ícones `card-star` e `card-star-on`. Os ícones só tinham traço: `IconId::cheio()` faz o `paint_icon` pintar também o miolo; `a_full_icon_is_the_one_whose_svg_says_so_and_it_paints_its_fill` ata-o ao `fill="currentColor"` do SVG.
+
+**Medido.** Chip: o maior nome de fábrica, `Compressed Charcoal`, pede `124,8`; o chip dá `175,2` com a estrela (`209,2` antes) na coluna do arnês, e o da foto real mede `217` de largura contra `224` no arnês. Com preset activo, o que vem depois do Preset sobe `34 px` (On switch `587 → 553`). A catraca de abertura mede sem preset publicado e fica em `1670`.
+
+**Fotos:** `maquete/z_painter_preset_estrela.png` (cena real, com patch temporário restaurado, porque a cena abre em `No preset`), `maquete/z_painter_preset_estrela_vazia_e_cheia.png` (as duas caras).
+
+**Decisões tomadas sem o dono.** Dois ícones em vez de só mudar a cor, e o aceso com o fundo dos ícones nus. Vista aberta, não corrigida: `Keep volume…` corta em `On switch` na coluna real, ao lado de Sync tools; já era assim e é outra lista.

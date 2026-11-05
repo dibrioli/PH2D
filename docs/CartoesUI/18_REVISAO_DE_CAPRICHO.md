@@ -45,7 +45,7 @@ A primeira ronda de fotos saiu em `Forge` (fundos bordô, botões com traço): a
 
 ## Os outros painéis (fatia q3, 04/11)
 
-Arnês: `PH2D_FOTO_DIR=<pasta> PH2D_FOTO_PAINEIS=vector,physics cargo test -p ph2d-panel-registry-init --profile smoke --test it q_foto_paineis -- --ignored` (de fábrica, armado e em cada estado de `censo_estados`). Olhados: Vector (6 estados), Painter (`molhado`, 3 fatias de 6), Physics, Flip, Pixel, Tags, Audio Mixer, Audio Editor, Macros, Padding, Upscale, Equalize, Background Removal, Color Equalization, Bones. O Wet Tuning, Grid, Design Tokens e Assets não saem na coluna do retrato (por rever).
+Arnês: `PH2D_FOTO_DIR=<pasta> PH2D_FOTO_PAINEIS=vector,physics cargo test -p ph2d-panel-registry-init --profile smoke --test it q_foto_paineis -- --ignored` (de fábrica, armado e em cada estado de `censo_estados`). Olhados: Vector (6 estados), Painter (`molhado`, 3 fatias de 6), Physics, Flip, Pixel, Tags, Audio Mixer, Audio Editor, Macros, Padding, Upscale, Equalize, Background Removal, Color Equalization, Bones. Fatias recortadas ao que foi pintado: um painel flutuante (Wet Tuning, Grid, Assets, Tokens) não mora na coluna.
 
 ### Famílias
 
@@ -56,11 +56,13 @@ Arnês: `PH2D_FOTO_DIR=<pasta> PH2D_FOTO_PAINEIS=vector,physics cargo test -p ph
 | Q2 | `◀ ▬ ▶` sem texto: em Effects e Delivery o nome vem do motor; na foto sem motor fica vazio | Audio Editor | olhar no app (a cena do arnês não publica presets) |
 | R | Slider com rótulo à esquerda, fora da grelha; valor 3 px abaixo da barra | Audio Editor (Crossfade, Amount, Pitch/Gain jitter, Quality) | **curado**: rótulo em cima, barra e valor na mesma linha |
 | R2 | «Add clips to build a set», tempo do clip, «RAM —» | Audio Editor | **curado**: `grupo::linha_de_texto` |
-| R3 | Ícones de Chain e o de repor maiores que os dos cartões aprovados; `Chain` à esquerda | Audio Editor (Effects) | aberto |
+| R3 | Ícones de Chain e o de repor sem face e maiores que os dos cartões aprovados | Audio Editor (Effects) | **curado**: `grupo::glifo` (ICON_GLYPH), face e vão de todo cartão |
 | S | Frase indentada (x do corpo + 8) | Macros | **curado**: `bloco`/`linha` sem recuo num cartão |
 | T | Lista `1. Stroke 1 ▪ 0.50`: linha baixa, texto abaixo da amostra | Macros | **curado**: `FIELD_H`, texto no meio |
 | U | Título de sub-grupo a 8 do controlo de cima | Vector Advanced | **curado**: 14 até às letras (`o_advanced_separa…`) |
-| U2 | Chevron do sub-grupo 3 px acima do texto. A cura em `section_header` (centrar a linha medida num cartão) está lá; a foto não mudou: o pintor do título não lê a linha que eu medi | Vector Advanced | aberto |
+| U2 | Chevron «⌄» 3 px acima do texto. O «›» de Assets está alinhado e o «⌄» do Flip Frames está alto também: o defeito parece estar no glifo `ChevronDown` a corpo pequeno, não na linha. A cura de `section_header` (centrar a linha medida) ficou e a foto não mudou: confira se ela chega a correr | Vector Advanced | aberto |
+| AG | Faixa inteira no idioma antigo: botões cinzentos (Ghost, Pin, Auto…), números com setinhas pretas, rótulos à esquerda, texto de lista abaixo da caixa | Flip Frames | aberto, é o maior que ficou: conversão, não capricho (fotos: `q_foto_paineis` com `flip_frames`) |
+| AH | Nome da camada 2 px abaixo dos ícones da linha | Pixel Timeline | aberto |
 | V | «Pick Shapes» com a letra menor que «Blend»: é um segmentado de uma peça (o modo acende) ao lado de um botão | Vector Advanced | dúvida (Widget::Choice × Button; o tom do modo é decisão) |
 | W | Abreviatura que cabia inteira: `Persp`, `Symm`, `Accel`, `Morph t`, `Norm LUFS`, `Rm DC`, `Comp`, `Iso`, `Stag Sq`, `Stag Hex`, `Tri`, `Von4`, `Moore8` | Vector, Audio, Grid | **curado** |
 | W2 | Ainda crípticos: `Offset (1/n)`, `Jetty`, `+M`, `DTCG`, `Cross` (Snap) | Vector, Timeline, Design Tokens | dúvida: sem nome melhor sem o dono (`Jetty` é o nome do Visio) |
@@ -88,7 +90,15 @@ Arnês: `PH2D_FOTO_DIR=<pasta> PH2D_FOTO_PAINEIS=vector,physics cargo test -p ph
 | Audio Mixer, Audio Editor, Macros | sim | curados salvo R3, Q2 |
 | Pixel | Pencil, Colors, Layers, Palette, Selector, Symmetry, Select, Edit, Sprite | curado salvo AF |
 | Motion Graph (barra) | **não**: `q_foto_paineis` deu 0 fatias sem documento | por fazer: pede cena |
-| Flip Frames, Pixel Timeline | fotos em `q_foto_paineis`, **não olhadas** | por olhar |
+| Flip Frames, Pixel Timeline | de fábrica e armado | AG, AH abertos |
+
+### O plano do próximo agente
+
+1. AG (Flip Frames em cartão) seguindo [11](11_RECEITA_PAINEL_EM_CARTOES.md); é a maior diferença que resta a olho nu.
+2. X: letra declarada por campo, onde dois vizinhos dão a mesma.
+3. U2 (o glifo), AH.
+4. Olhar o que falta: Painter Layers, Deform, Selection, Composite, Impasto, Watercolor abertos um a um; Wet Tuning 3.ª e 4.ª fatias; Color Eq, Bones, Tokens, Grid, fatias seguintes; Motion Graph com cena.
+5. Q2: olhar Effects e Delivery com o motor a publicar nomes (no app; o arnês não os semeia).
 
 ## Decisões tomadas sem o dono
 

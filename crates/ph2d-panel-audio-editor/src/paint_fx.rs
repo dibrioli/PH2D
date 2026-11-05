@@ -102,7 +102,7 @@ fn icon_in_group(
     ph2d_editor_core::paint::paint_icon(
         ctx.scene,
         icon,
-        rect,
+        crate::cards::grupo::glifo(rect),
         crate::cards::tom(
             if enabled {
                 ColorToken::Text1
@@ -394,9 +394,10 @@ fn paint_chain(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut C
         ),
     ];
     // Right-aligned, so the header reads `Chain ........ + 🗑 ▲ ▼`.
-    let actions_x = x + w - row_h * ACTION_BUTTONS;
+    let passo = row_h + crate::cards::grupo::vao_de_icones();
+    let actions_x = x + w - passo * ACTION_BUTTONS + crate::cards::grupo::vao_de_icones();
     for (i, (glyph, enabled, id)) in actions.into_iter().enumerate() {
-        let rect = Rect::new(actions_x + row_h * i as f32, y, row_h, row_h);
+        let rect = Rect::new(actions_x + passo * i as f32, y, row_h, row_h);
         icon_button(rect, glyph, enabled, id, ctx);
     }
     y += row_h + crate::cards::grupo::vao(ph2d_tokens::control_gap_px());
@@ -538,6 +539,11 @@ fn paint_commit_row(y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut 
 /// A frameless icon button. Disabled ones are dimmed and — crucially — do **not**
 /// register a hit rect, so they cannot be clicked (2026-07-09 audit).
 fn icon_button(rect: Rect, glyph: IconId, enabled: bool, id: NodeId, ctx: &mut Ctx) {
+    // Num cartão, a face e o glifo dos ícones de todo cartão.
+    if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        icon_in_group(rect, glyph, enabled, id, crate::cards::grupo::SOLTA, ctx);
+        return;
+    }
     // ⚠️ **A wave própria que o comentário anterior nomeava ACONTECEU (2026-08-15).** Ele dizia que
     //    a rack «pinta sem store» e que estes botões estavam «registados, clicáveis e inertes sob o
     //    rato desde que nasceram» — verdade, e a causa não era o pintor: os ids sempre estiveram

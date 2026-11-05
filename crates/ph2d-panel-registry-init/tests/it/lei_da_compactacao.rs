@@ -376,6 +376,10 @@ fn os_botoes_do_audio_ficam_soltos_na_grelha() {
     assert!((stop.w - laco.w).abs() < 0.5, "duas colunas iguais");
     assert_eq!(play.x, stop.x, "a coluna do cartão");
     assert!((play.w - (stop.w + laco.w + m::FIELD_GAP)).abs() < 0.5);
+    // Os quatro botões da cadeia, soltos e acabando na borda do cartão.
+    let mais = rect_de(&regs, a::AEDIT_FX_ADD);
+    let espera = play.x + play.w - 4.0 * mais.w - 3.0 * m::FIELD_GAP;
+    assert!((mais.x - espera).abs() < 0.5, "{mais:?} contra {espera}");
     let codec = rect_de(&regs, a::AEDIT_CODEC_PREV);
     let seta = rect_de(&regs, a::AEDIT_CODEC_NEXT);
     assert!(

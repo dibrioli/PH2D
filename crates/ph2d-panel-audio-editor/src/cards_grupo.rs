@@ -7,7 +7,7 @@ use ph2d_editor_core::widget::{self, GroupCell, GroupPos};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 
-const SOLTA: GroupCell = GroupCell {
+pub(crate) const SOLTA: GroupCell = GroupCell {
     col: GroupPos::Only,
     row: GroupPos::Only,
 };
@@ -42,6 +42,31 @@ pub(crate) fn fio() -> f32 {
     } else {
         widget::SEGMENT_HAIRLINE
     }
+}
+
+/// O vão entre dois botões de ícone seguidos: num cartão, o de duas colunas; fora, encostam.
+#[must_use]
+pub(crate) fn vao_de_icones() -> f32 {
+    if card_body().is_some() {
+        m::FIELD_GAP
+    } else {
+        0.0
+    }
+}
+
+/// A caixa do glifo de um botão de ícone: num cartão, o corpo de ícone dele, no meio; fora, o botão todo.
+#[must_use]
+pub(crate) fn glifo(rect: Rect) -> Rect {
+    if card_body().is_none() {
+        return rect;
+    }
+    let (w, h) = (m::ICON_GLYPH.min(rect.w), m::ICON_GLYPH.min(rect.h));
+    Rect::new(
+        rect.x + (rect.w - w) * 0.5,
+        rect.y + (rect.h - h) * 0.5,
+        w,
+        h,
+    )
 }
 
 /// Uma fileira de peças de larguras dadas, soltas.

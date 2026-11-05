@@ -120,6 +120,10 @@ O plano previu mais do que o código pede. **O cartão só emite:** amostra e he
 
 **O seletor de cor, medido:** a guarda do C2 só vale com `picker_subject`. Sem alfinete, na lista ou solto, um clique fora fecha como antes (teste). Achado: o `X` do vetor chama `open_picker_on`, que lê o sujeito da última pressão; depois de um clique num preso, o seletor da seleção nascia do preso, escrevia nele e não fechava. Cura: `open_picker_da_selecao`.
 
+## Os cartões de sprite (F4, 04/11)
+
+Texture & Atlas, Color & Tint, 9-Slice e Sampling têm alfinete; `SEM_ALFINETE` saiu. O comentário dele dizia que escreviam pela seleção, e só o seletor de cor o fazia: os outros pedidos já levavam o `entity_bits` do retrato (`com_retrato` no `apply_event`) e `card_fan_out` já guardava o dreno. O seletor: `open_picker_on` dá-lhe o sujeito; `seletor_do_preso` escreve no preso a cada quadro; trocar a seleção não o fecha; e `seletor_na_base` (`shells/presos`) fechava-o sempre, porque uma sprite não é uma forma: agora só fecha com o objecto apagado. Testes: `o_alfinete_da_sprite.rs`, por gesto, com a seleção em B, B+C e A+B. Sem prova: Ctrl+Z na shell de uma edição de sprite presa (o dreno e o `ProjectState` são os do Material, medidos acima, não repetidos) e a foto de um solto preso de sprite (a cena não solta cartões).
+
 ## Custo por quadro com as tintas no retrato e 5 cartões presos (04/11, C3)
 
 `custo_por_quadro_de_cinco_presos`, `--profile smoke`, duas mesas no MESMO processo, intercaladas, o mínimo de 200 rondas, duas corridas, `load ~16`. Quadro inteiro da `Mesa` (publica, ensaia, pinta, dreno, ponte):

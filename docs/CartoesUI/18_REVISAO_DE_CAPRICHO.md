@@ -125,4 +125,4 @@ Forma (Fill, Stroke, Appearance, Transform): olhada, [q2_forma.png](maquete/q2_f
 
 **Curado, achado pela foto do Render Source.** O arnês publicava `source_precision: None`, estado que a app só tem sem imagem, e escondia o caminho real: com `Rgba8` a frase do preço separava `Format` de `Emissive` (`lei_da_compactacao`: `Source + Format`), e cortava a 268 px com `PH2D_CARDS=0`. Num cartão a frase vem agora depois da fila dos dois; fora dele, quebra em vez de cortar (a única mudança no painel de antes). A fixtura passa a `Rgba8`, sem subir catraca. Contraprova: a frase de volta antes do `Emissive` ⇒ vermelho.
 
-**Baixo, visto nas fotos, não curado:** o resumo do Variant quebra com o «·» no início da linha 2.
+**Curado (F4):** o resumo do Variant quebrava com o «·» no início da linha 2. `paint_text_block` cola o « · » à palavra de antes (NBSP), para toda frase que quebra; teste de 40 a 320 px.

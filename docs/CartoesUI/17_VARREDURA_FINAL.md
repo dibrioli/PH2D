@@ -18,7 +18,7 @@ Custo: **P** até 30 min · **M** uma fatia · **G** mais de uma fatia. Ordem = 
 | 10 | Cartão Constraints do Inspector | `CONSTRAINT=9`, `13` | **Sim** | Números aos pares com a unidade no rótulo, alvo e «Pick» na mesma linha, tipo sem 2.º título. Influence é o campo «Influence (%)», como na Widget Gallery: chip `INSP_CONSTRAINT_FORCA_CHIP`, a barra continua a avisar o painel e o losango lê o mesmo canal | — | ✅ `v2_constraints.png` |
 | 11 | Cartão Animation do Inspector | `GAME=2` | Parcial | «Remove Animation» sem o «x» (teste `remover_animacao_nao_leva_o_x_em_letra`). «Playback» e «Idle» ficam: já são `Sm` em título | P | ✅ |
 | 12 | Editor de scripts: Console e Problems | `CODE=5` | **Sim** | A aba pára acima do HUD (`chrome_over`, porta que só o Kanban lia); «SCRIPTS» no título da lista. A Timeline a meio é a do layout, não mudou | P | ✅ `v2_editor.png` |
-| 13 | Timeline, modos Containers e Arrange | `NEST=2`, `CODE=1` | Sim (bloco I) | «Summary» e linhas da folha são canvas; «+ Track ▾» com seta em letra | P | ⬜ |
+| 13 | Timeline, modos Containers e Arrange | `NEST=2`, `CODE=1` | Sim (bloco I) | «Summary» e linhas da folha são canvas; «+ Track» é uma lista com a seta em ícone (F4, `lista_em`); a letra fica só em `PH2D_CARDS=0` | P | ✅ `f4_track.png` |
 | 14 | Kanban (referência aprovada) | `KANBAN=1`, `4`, `8`, `9`; `BOARD=30`, `31` | Sim | Só divergência do item 1; o relatório de importação tapa o HUD e mistura títulos de 14 px no corpo | — | — |
 | 15 | Balão do tutorial «fazer» (Macros) | `MACRO=3` | **Sim** | `moldura_de_caixa` + `veste`, texto nos tons da lista. Sem o traço de foco: o anel e o fio já apontam | P | ✅ `v2_balao.png` |
 | 16 | Luz 2D | `LIGHT2D=1`, `8` | Sim | Só gizmos no canvas e Inspector já em cartões | — | — |
@@ -32,10 +32,10 @@ Custo: **P** até 30 min · **M** uma fatia · **G** mais de uma fatia. Ordem = 
 
 ## O que falta, por ordem
 
-1. **`paint_stroke_popover` do Vector fora da camada:** em cartões vai por `cards_lado::flutua`, que pinta na cena do painel e não passa por `camada_das_listas::por_cima`. Pode ficar por baixo de outro painel ou do HUD. Não curado nesta fatia: não medi um caso visível.
+1. ✅ **`paint_stroke_popover` do Vector fora da camada** (F2): `cards_lado::flutua` pinta por `por_cima` e devolve os alvos ao fechar (`alvos_desde`); vale para os painéis à esquerda, que passam pela mesma porta. Gate `the_stroke_popover_is_painted_over_the_hud`.
 2. ✅ **Biblioteca de presets do Wet Paint** (H11). Medido: a lista já ia pela camada, porque `paint_dropdown_list` passa por `por_cima`. Fora dela estavam a barra do arrasto e a janela do Delete (`paint_popover`, `paint_dialogo`): a barra caía na cena do painel, por baixo da lista onde cai. Curados, com os alvos da janela por `alvo`. Por decidir: a linha arrastada dentro da lista mostra só a barra, não voa como o cartão do Kanban.
-3. **Item 13:** «+ Track ▾» com seta em letra.
-4. **`v2_dica.png`:** faixa escura no canto de baixo à direita, por trás do fim do HUD. Sem causa achada; não aparece nas outras cenas.
+3. ✅ **Item 13** (F4). Irmão por curar, crate de outra fatia: `panel.vector.bar.stroke_more` («Stroke ▾», `ph2d-panel-vector/src/bars_control.rs:224`).
+4. ✅ **`v2_dica.png`** (F4): não era artefacto do arnês. A faixa era o véu do modal (`BgScrim`, preto a 60 %) com o transform do último texto do HUD: um rect de janela inteira deslocado para `(1380, 971)`, logo só o canto se via. Medido: a origem segue o texto do HUD a `1930` e a `1500` de largura; com o véu em magenta, a faixa fica magenta; `viewport` certo e zero clips abertos. Mecanismo: `Encoding::append` (vello 0.11) faz `flags = other.flags`, e `camada_das_listas::fecha` cola uma cena vazia logo depois do HUD, apagando o `FORCE_NEXT_TRANSFORM` do glifo. Cura na porta, `VectorScene::append_transformed`, para todo preenchimento logo a seguir a um colar. Foto: `f4_dica.png`.
 5. ✅ **`quantas_entradas…a_altura_de_abertura`:** `painter_layers` em `1670`, medido na H9.
 
 ## Proposta para o dono: Widget Gallery

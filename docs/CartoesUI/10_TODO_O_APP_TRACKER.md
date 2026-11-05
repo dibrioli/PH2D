@@ -738,6 +738,12 @@ Par travado: a proporção é um dado do cadeado ([`ParTravado`](../../crates/ph
 
 Queixa do dono na foto do 9-Slice. Lei em [05 §4](05_ESPECIFICACAO_UI_COMPLETA.md) «Ritmo vertical»; lista em [18](18_REVISAO_DE_CAPRICHO.md). Portão `lei_do_ritmo`, por pintura real, em tema `Dark`; `PENDENTES_RITMO` só desce (inspector 6, audio_editor 4, macros 1, painter_layers 6, wet_tuning 8, widget_gallery 18). 54 cartões olhados por `tests/it/q_fotos.rs`. Ordering e Material & Blend estavam fora de todo censo: nasciam dobrados e `abre_as_gavetas` não os abria. Fotos `q_*`. Contraprovas: 4/4 vermelhas (rótulo colado, título sem vão, frase do 9-Slice sem porta, lista sem vão). `ph2d-panel-registry-init` ganhou dev-deps de foto (`ph2d-gpu`, `ph2d-render`, `image`). Aberto: 18, famílias A2, D2, H2, K, L, M, N, O, Script.
 
+### Fatia F4: defeitos pequenos de chrome e cartões (04/11)
+
+Itens 5, 6, 8, 12, 13, 14, 15 do handoff. **Item 6:** a faixa era o véu do modal com o transform do último texto do HUD (17, «O que falta»). **Item 13:** ver 09. **Item 15:** o filtro por tag já media 28; o censo anota a lista sem dona (`toda_lista_solta_tem_a_altura_de_um_campo`, com piso) e apanhou Authored e a Direction do Pixel Timeline a 22, curados. **Item 14:** saíram `registo_privado` e `InspectorPrivado`. Fotos: `f4_dica.png`, `f4_equalize.png`, `f4_track.png`. Contraprovas: 5 mutantes, 5 sangraram.
+
+**Decidido sem o dono:** o véu do Add Object volta a escurecer a janela inteira, como o código sempre declarou; o dono nunca o viu assim. «Upscale if small» e «This»/«Other» só em cartões. **Aberto:** «Stroke ▾» em letra no Vector; Text on Path sem foto; Ctrl+Z de sprite presa sem prova na shell.
+
 ### Smokes do dono: 2 OK, e os dois defeitos do 3 (04/11)
 
 **Smoke 2 (Painter) OK do dono, 04/11.** **Smoke 3: estes dois defeitos**, na cena `PH2D_VEC_CARTOES_SMOKE=11`.

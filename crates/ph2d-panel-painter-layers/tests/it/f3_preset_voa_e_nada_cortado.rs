@@ -20,6 +20,10 @@ use std::sync::Arc;
 const CHIP: ph2d_a11y::NodeId = p::PAINTER_WETPAINT_PRESET;
 const SECAO_GRUPO: u8 = 2;
 const JANELA: Rect = Rect::new(0.0, 0.0, 1600.0, 2400.0);
+/// Quanto o cursor anda para o lado, para o voo sair de cima da lista.
+const AO_LADO: f32 = 600.0;
+/// A marca de acento e o seu antialias no topo do vão.
+const MARCA_PX: u32 = 3;
 const RELS: [&str; 5] = [
     "WetPainter/Oil/A.ph2d-brush.png",
     "WetPainter/Oil/B.ph2d-brush.png",
@@ -245,6 +249,53 @@ fn the_on_switch_row_never_cuts_its_longest_option_nor_sync() {
     }
 }
 
+/// O vão é fundo da lista, liso, mesmo com um controlo por baixo: o voo fica ao lado, para não o tapar.
+#[test]
+fn the_gap_is_list_background_over_the_control_below() {
+    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
+        eprintln!("sem GPU: gate de placa saltado");
+        return;
+    };
+    let _v = ComVista::nova();
+    let (b, _) = pincel(PaintMedia::Digital, "brush");
+    let mut fechada = Mesa::na_janela(true, b, false, JANELA);
+    fechada.so_abertos(&[p::PAINTER_CARD_TOPO]);
+    fechada.assenta();
+    let controlo = fechada
+        .rect(p::PAINTER_WETPAINT_PRESET_EXPORT)
+        .expect("Export");
+
+    let mut mesa = lista_aberta();
+    // Largada antes da linha 3: o vão fica no lugar da linha 2.
+    let vao = mesa.rect(linha(2)).expect("o lugar do vão");
+    assert!(
+        vao.y < controlo.y + controlo.h && controlo.y < vao.y + vao.h,
+        "o vão {vao:?} não passa por cima do controlo {controlo:?}"
+    );
+    let (x, y) = arrasta(&mut mesa, 1, 3, false);
+    let ev = mesa.ponteiro(PointerKind::Move, x - AO_LADO, y);
+    let _ = mesa.aplica(ev);
+    mesa.assenta();
+    let (px, _) = super::h10_fotos::pixeis(&gpu, &mut mesa);
+    let cor = |x: f32, y: f32| {
+        let i = (y as usize * JANELA.w as usize + x as usize) * 4;
+        [px[i], px[i + 1], px[i + 2], px[i + 3]]
+    };
+    let topo = mesa.rect(linha(0)).expect("a 1.ª linha");
+    let fundo = cor(vao.x + vao.w - m::SEG_INSET, topo.y - m::SEG_INSET);
+    let mut outros = 0;
+    let (x0, x1) = (vao.x as u32 + 1, (vao.x + vao.w) as u32 - 1);
+    // Por baixo da marca de acento, até à linha seguinte.
+    let (y0, y1) = (vao.y as u32 + MARCA_PX, (vao.y + vao.h) as u32 - 1);
+    for yy in y0..y1 {
+        for xx in x0..x1 {
+            outros += u32::from(cor(xx as f32, yy as f32) != fundo);
+        }
+    }
+    println!("MEDIDA fundo {fundo:?}, píxeis do vão diferentes: {outros}");
+    assert_eq!(outros, 0, "o vão não é o fundo da lista");
+}
+
 /// `PH2D_FOTO_DIR=<pasta>`, `--ignored`: a meio do arrasto, a fila On switch e o visor do Tilt.
 #[test]
 #[ignore = "fotos: PH2D_FOTO_DIR=<pasta> e --ignored"]
@@ -261,9 +312,18 @@ fn f3_foto() {
     fechada.assenta();
     super::h10_fotos::foto(&gpu, &dir, "f3_on_switch", &mut fechada);
     let mut mesa = lista_aberta();
+    super::h10_fotos::foto(&gpu, &dir, "f3_on_switch_lista_aberta", &mut mesa);
     arrasta(&mut mesa, 1, 3, false);
     mesa.assenta();
     super::h10_fotos::foto(&gpu, &dir, "f3_preset_a_voar", &mut mesa);
+    let (x, y) = (
+        mesa.janela.w * 0.5,
+        mesa.rect(linha(2)).map_or(0.0, |r| r.y + r.h * 1.25),
+    );
+    let ev = mesa.ponteiro(PointerKind::Move, x, y);
+    let _ = mesa.aplica(ev);
+    mesa.assenta();
+    super::h10_fotos::foto(&gpu, &dir, "f3_preset_vao_livre", &mut mesa);
     let mut fora = lista_aberta();
     arrasta(&mut fora, 1, 4, false);
     fora.assenta();

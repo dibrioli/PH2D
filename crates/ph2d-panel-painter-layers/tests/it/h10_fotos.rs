@@ -18,6 +18,28 @@ use ph2d_vector::VectorScene;
 const JANELA: Rect = Rect::new(0.0, 0.0, 1600.0, 2400.0);
 
 pub(super) fn foto(gpu: &ph2d_gpu::GpuContext, dir: &str, nome: &str, m: &mut Mesa) {
+    let (px, slot) = pixeis(gpu, m);
+    let (w, h) = (JANELA.w as u32, JANELA.h as u32);
+    // Só a coluna do painel: o resto é a janela de teste, vazia.
+    let (x0, cw) = (slot.x.max(0.0) as u32, slot.w as u32);
+    let ch = h.min((slot.y + slot.h) as u32);
+    let mut corte = Vec::with_capacity((cw * ch * 4) as usize);
+    for y in 0..ch {
+        let i = ((y * w + x0) * 4) as usize;
+        corte.extend_from_slice(&px[i..i + (cw * 4) as usize]);
+    }
+    image::save_buffer(
+        format!("{dir}/{nome}.png"),
+        &corte,
+        cw,
+        ch,
+        image::ExtendedColorType::Rgba8,
+    )
+    .unwrap();
+}
+
+/// A janela de teste inteira, em RGBA, e o rect do painel nela.
+pub(super) fn pixeis(gpu: &ph2d_gpu::GpuContext, m: &mut Mesa) -> (Vec<u8>, Rect) {
     let (w, h) = (JANELA.w as u32, JANELA.h as u32);
     let mut pass =
         ph2d_render::VelloPass::new(gpu, ph2d_gpu::TextureFormat::Rgba8Unorm, (w, h)).unwrap();
@@ -47,22 +69,7 @@ pub(super) fn foto(gpu: &ph2d_gpu::GpuContext, dir: &str, nome: &str, m: &mut Me
     let px = pass
         .render_and_readback(gpu, scene.inner(), (w, h))
         .unwrap();
-    // Só a coluna do painel: o resto é a janela de teste, vazia.
-    let (x0, cw) = (slot.x.max(0.0) as u32, slot.w as u32);
-    let ch = h.min((slot.y + slot.h) as u32);
-    let mut corte = Vec::with_capacity((cw * ch * 4) as usize);
-    for y in 0..ch {
-        let i = ((y * w + x0) * 4) as usize;
-        corte.extend_from_slice(&px[i..i + (cw * 4) as usize]);
-    }
-    image::save_buffer(
-        format!("{dir}/{nome}.png"),
-        &corte,
-        cw,
-        ch,
-        image::ExtendedColorType::Rgba8,
-    )
-    .unwrap();
+    (px, slot)
 }
 
 fn digital() -> BrushSettings {

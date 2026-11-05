@@ -369,3 +369,104 @@ Leitura do Thick Impasto/Pigmento: azul e amarelo cobrem e misturam sem mancha n
 1. **Furos a pr 0,2 (⚑ régua × física):** 136 células Pigmento (e as mesmas 136 na velha). Decidir se o dente do papel num toque seco leve é defeito; se não for, a régua passa a medir furo só onde o par a pr 1 também fura E a alfa média do miolo ≥ 0,9. O Knife Dry (54/54) é o caso a olhar com o dono.
 2. **Células sem medida** (320 liso / 311 padrão na Pigmento; 172 delas também reprovam): são tinta fina (nada com alfa ≥ 0,9). Hoje não passam nem reprovam por mistura; falta uma régua de mistura que meça onde há cobertura parcial, ou declarar a classe «fina» fora do portão.
 3. **Próxima corrida depois da cura do Bingham:** repetir esta grelha (mesmo comando, 45 min, em `target/`) para ver a regressão da remolha (E10e2 §E3) e comparar célula a célula com `target/e9_0111/varredura.tsv` (guardar uma cópia fora de `target/`, que se limpa).
+
+## 9. A grelha de 05/11
+
+Binário de `a5161b2486`, `target/e9_0511/` (`varredura.tsv` 3 241 linhas, 01:05 → 03:57). A régua é a mesma: entre as duas corridas a sonda só ganhou
+`PH2D_SONDA_KNOBS` e a reposição de `oleo_real` no `render_plano`; `resumo_f0.py` e `corre_f0.sh` não mudaram. **Nenhum pincel, régua ou critério mudou nesta secção.**
+
+⚠️ **Limites da comparação.** `target/e9_0111/` já não existe em nenhuma árvore (a cópia que a §8.5 pedia não foi feita), logo **não há comparação célula a célula**: a base de 01/11 é
+a tabela por pincel da §8.3 (só papel liso) e os totais da §8.2. O estado de 01/11 no papel padrão não existe por pincel. `4e725aff41` também já não é ancestral (história reescrita); a cópia dele é
+`4ea5904182`, e o intervalo real é `4ea5904182..a5161b2486`. Sem bisect: a atribuição é por leitura.
+
+### 9.1 Placar
+
+| papel | lei | passa 01/11 → 05/11 | reprova 05/11 | sem medida 01/11 → 05/11 | só «sem medida» 05/11 |
+|---|---|---|---|---|---|
+| padrao | pigmento | 437 → **401** | 247 | 311 → 339 | 162 |
+| liso | pigmento | 398 → **347** | 320 (era 264) | 320 → 348 | 143 (era 148) |
+
+Em liso: `furos` 235 → 294 (167 · 97 · 30 por pressão), `degraus` 43 → 40, 14 células com os dois. Manchas, ferrugem e `mix_*` seguem em 0.
+**Os 810 são 630:** com Water 0 os três Pigment dão o mesmo resultado (90 de 90 trios iguais, nos dois papéis), logo cada reprovação em W0 conta 3 vezes. Em células distintas: padrão 291 passam, 199 reprovam; liso 255, 250.
+
+**A coluna `velha` mudou na mesma medida:** furos liso 136/76/22 → 157/92/32 (+47, contra +59 na Pigmento). Logo mudou o pincel ou o motor, **não a lei**. A Pigmento cobre mais (furos menores em 287 células de liso e 308 de padrão, contra 18 e 6), por isso cruza
+antes o limiar do par (§9.3). «Furos só na pigmento» 53 = liso 37 + padrão 16; «só na velha» 41 = 24 + 17. Das 94 células só numa lei, em **57 o que difere é o par a pr 1** ter caído de um lado de 1 % e do outro não.
+
+### 9.2 Por pincel (papel liso; furos pr 0,2/0,6/1 · degraus)
+
+| pincel | 01/11 | 05/11 | Δ furos | reprova liso | reprova padrão |
+|---|---|---|---|---|---|
+| **Dabber 4** | 0/0/0 · 2 | 17/17/10 · 2 | **+44** | 45 | 27 |
+| **Knife Smooth 3** | 0/0/0 · 0 | 8/7/3 · 0 | **+18** | 18 | 1 |
+| **Knife Grainy** | 0/0/0 · 7 | 7/4/3 · 5 | **+14** | 19 | 4 |
+| **Knife Dry** | 18/18/18 · 0 | 17/10/8 · 0 | **−19** | 35 | 21 |
+| Dabber | 17/10/0 · 2 | 17/11/0 · 3 | +1 | 29 | 30 |
+| Knife Textured | 12/12/4 · 1 | 12/12/4 · 0 | 0 | 28 | 17 |
+| Tilted Shade | 16/9/1 · 2 | 16/9/1 · 3 | 0 | 28 | 28 |
+| Filbert | 15/8/1 · 3 | 15/8/1 · 5 | 0 | 27 | 27 |
+| Flat Bristle | 15/8/0 · 9 | 15/8/0 · 7 | 0 | 25 | 25 |
+| Knife Oily | 13/2/0 · 2 | 13/2/0 · 3 | 0 | 18 | 19 |
+| Filbert Dry | 8/4/0 · 7 | 7/3/0 · 6 | −2 | 16 | 16 |
+| Thick Impasto | 12/1/0 · 5 | 13/1/0 · 3 | +1 | 14 | 14 |
+| Express Oil | 8/2/0 · 1 | 7/3/0 · 1 | 0 | 11 | 11 |
+| Metallic Flat | 2/1/0 · 2 | 3/2/0 · 1 | +2 | 6 | 7 |
+| Knife Stain | 0/0/0 · 0 | 0/0/0 · 1 | 0 | 1 | 0 |
+| **soma** | 235 · 43 | 294 · 40 | **+59** | 320 | 247 |
+
+**A queda são três pincéis** (+76), com o Knife Dry a devolver 19. Os outros onze mexem ±2.
+
+### 9.3 Por que caiu: a régua de furos reprova quem passa a cobrir
+
+O critério (`reprova`, da F0 §4) só conta furos se o par a pr 1 tiver `furos < 1 %`. Fura mais a pr 1 ⇒ a célula é dispensada. Logo **a régua não é monotónica**: um pincel que melhora de 1,1 % para 0,9 % a pr 1 passa a reprovar nas três pressões.
+
+- A §8.3 dá 0 furos ao Dabber 4, Knife Smooth 3 e Knife Grainy em 01/11, com furos a pr 0,2 de quase 100 % hoje. Isso só fecha se os pares a pr 1 estivessem ≥ 1 % (dedução: a tabela de 01/11 foi perdida). Hoje, a pr 1 (≥ 1 % / entre 0 e 1 % / 0): Dabber 4 **1/10/7**, Knife Smooth 3 10/3/5, Knife Grainy 11/3/4.
+- Na grelha versionada de 31/10 (`fotos/f0_varredura/varredura.tsv`, lei velha, outra receita de Pigment) o Dabber 4 a pr 1, P2000 W0, furava **8,02 %** (N1) e 5,34 % (N3). Hoje, 0,16 %. O mesmo critério a dispensar antes e a reprovar agora.
+- O Knife Dry anda ao contrário: em 01/11 os 18 pares ficavam entre 0 e 1 %; hoje 9 são 0,00 exacto e deixam de reprovar a pr 1.
+- **Papel padrão:** o Knife Smooth 3 fura 8–10 % e o Knife Grainy 5–6 % a pr 1 mesmo em W0, os 18 pares ≥ 1 %, portanto 0 furos contados. Passam lá **porque** o papel os fura: das 401 que passam, **136 têm furos > 0 calados** (Knife Smooth 3 44, Knife Grainy 36, Knife Stain 19…); em liso, 77 de 347. O placar também não é prova de cobertura.
+
+**Atribuição (por leitura, nada de bisect):**
+
+| efeito | commit | certeza |
+|---|---|---|
+| Dabber 4 +44 | `77a1e6cd58` (04/11; `grain_depth` 1 → 0,9, `spacing` 0,3 → 0,2, jitters, `dab_flatten` 0,6 → 0,3; a mensagem diz que o Stucci 1,0 «furava o corpo em sal e pimenta») | **Alta.** A diferença dos ficheiros foi medida (dos 15, só Dabber 4 e Knife Stain mudam parâmetro de tinta), e há viradas em W0, que a E10g não tocou. Não medido com o binário de antes |
+| Knife Smooth 3 +18, Knife Grainy +14 | a família do óleo diluído: `8bd065e572` (E10g), depois `d2cbec488c` (J9) | **Hipótese.** A favor: nenhum parâmetro deles mudou; **todas** as viradas são W > 0; W0 ficou igual a 31/10 (1,85 · 1,80), e a E10g §4 mediu água 0 idêntica. Contra `62e7fc8505` (cobertura, 03/11): não excluído |
+| Knife Dry −19 | a mesma família | **Hipótese** (W > 0 a pr 1 cai a 0,00; W0 fica em 0,05) |
+| «sem medida» +28 em cada papel | `77a1e6cd58` no Knife Stain (`pigmentPerDab` 1 200 → 250; hoje 39 e 35 sem medida) | **Hipótese:** falta a tabela de 01/11 por pincel |
+| padrão −36 | sobretudo Dabber 4 (27 reprovam hoje) e Knife Stain; Knife Smooth 3 e Grainy não viram lá | **Hipótese** |
+
+Excluídos pelo próprio registo: #59 (só Bokeh e Halftone) · #61 (os 77 de fábrica não mudam ao byte; cerdas + Grain próprio ao byte) · #56 (só medição) · #58 (muda bytes, não ordens de grandeza; não medido nesta régua).
+
+### 9.4 Os furos, olhados: o que há no miolo
+
+`furos_pct` lê o alfa do `canvas_rgba` **final, molhado, depois do amarelo**, numa caixa fixa (x 100..260, y 118..142), e o traço amarelo começa em y ≈ 134: a caixa não é «o miolo do azul», é azul + zona de mistura, e não muda com a largura que a pressão dá. Sem o alfa gravado, cada furo foi classificado pelas fotos da célula (`_azul_plano` = azul sozinho, canal G; `_plano` = final seco; distância ao papel). **O limite desta tabela:** é estimativa pela foto, não o alfa; os cortes (papel ≥ 2 %, ≥ 3 linhas sem azul, 50 % fino) são meus.
+
+| família | o que se vê | liso (pr 0,2/0,6/1) | padrão | veredicto |
+|---|---|---|---|---|
+| **C** cor cheia | azul sozinho cobre; no fim sem papel à vista; o alfa baixa na mistura | **138** (68/70/0) | 115 | **Régua** (mecanismo: hipótese). Em 120 e 99 delas o furo excede em > 5 pontos o que o azul sozinho deixa aberto, isto é, nasce depois do azul |
+| **T** tinta fina | toda a caixa translúcida, sem papel nu | **52** (50/2/0) | 47 | **Régua conta física** (a F0 §4 já o diz: «não é furo: é tinta fina») |
+| **P** pontinhos | < 1 %: 1 a 38 píxeis em 3 840 | **59** (8/21/30) | 26 | **Régua** (tolerância zero). Grão do Dabber 4 (17, aprovado no smoke de 04/11) e 2 píxeis do Knife Dry (23) |
+| **G** a caixa sai do traço | a pressão estreita o traço; papel entre azul e amarelo | **23** (19/4/0) | 11 | **Régua** (geometria da cena): Dabber 9, Dabber 4 10, Knife Textured 4 |
+| **F** papel à vista dentro do traço | falhas reais a toque leve | **10** (10/0/0) | 11 | **Física provável, olho do dono:** Dabber 4 7–8, Dabber 2, Tilted Shade 1 |
+| **V** vazio | **nada pintado** na caixa | **12** (12/0/0) | 7 | ⛔ **Defeito provável, e antigo:** ver abaixo |
+| soma | | 294 | 217 | |
+
+[Anatomia do furo: dez células com a caixa](../handoffs/material_2026-11-05/portao_mae/anatomia_do_furo.png) (azul sozinho · seco · molhado com luz).
+Mosaicos (liso, Pigmento): [Dabber 4](../handoffs/material_2026-11-05/portao_mae/dabber_4_liso_pigmento.png) · [Knife Smooth 3](../handoffs/material_2026-11-05/portao_mae/knife_smooth_3_liso_pigmento.png) · [Knife Grainy](../handoffs/material_2026-11-05/portao_mae/knife_grainy_liso_pigmento.png) · [Knife Textured](../handoffs/material_2026-11-05/portao_mae/knife_textured_liso_pigmento.png) · [Knife Dry](../handoffs/material_2026-11-05/portao_mae/knife_dry_liso_pigmento.png).
+
+**Resposta à pergunta:** os furos que subiram **não são tinta a faltar**. Dabber 4, Knife Smooth 3 e Knife Grainy cobrem a pr 0,6–1 nos mosaicos; o que mudou foi o par a pr 1 passar para baixo de 1 %. A tinta que falta de facto, **V** e **F**, é 22 células em liso e 18 em padrão, e o V não é novo (12 em 01/11).
+
+**Knife Textured a pr 0,2 (V):** 18 de 18 células vazias nos dois papéis, com P2000 inclusive; só 12 e 7 reprovam, as outras caladas pelo par. **Hipótese do mecanismo:** raio 16 × pressão 0,2 = 3,2 px, em cima do limiar da `width_table` do pincel (`3,1 → 1 px`, abaixo disso 0; a 3,34 já dá 6 px). O Knife Smooth 3 tem o limiar mais abaixo (2,8) e pinta. Não medido: confirmar a lei pressão → raio antes de tocar na receita.
+
+**Degraus: 40 em liso, 42 em padrão, 26 e 30 só por degraus.** Não explicam a queda (43 → 40). Quase todos em N = 1 (38 e 39), onde `degraus_y ≤ N − 1` não admite nenhum salto, e 31 e 36 em W > 0. **Hipótese:** a frente do líquido da J7 (§5, item 3) sobre um limiar que a F0 §4 chama provisório. Sem veredicto: nenhum foi olhado um a um.
+
+### 9.5 Plano mais curto até «inteiro» (cada passo é decisão do coordenador; nada feito aqui)
+
+| # | o quê | células (liso / padrão) | natureza |
+|---|---|---|---|
+| 1 | Uma sonda grava o alfa do miolo em algumas células C: confirma ou derruba a família C | — | medição, antes de tudo |
+| 2 | Refazer a régua de furos num bloco: azul sozinho e seco, caixa que segue a largura do traço, tolerância de grão, **sem a dispensa do par** (monotónica). ⚠️ Tira os falsos e **traz à tona as caladas**, que têm de ser re-contadas | −272 / −199 falsos; **+77 / +136** calados | régua |
+| 3 | Knife Textured a pr 0,2: medir o raio e curar a receita (o dono aprova) | 12 / 7 (18 / 18 reais) | defeito |
+| 4 | O dono olha F e as caladas no relatório: física do pincel ou falha | 10 / 11 + as caladas | olho do dono |
+| 5 | Degraus: olhar os piores, recalibrar os 3° contra o grão | 40 / 42 | régua ou lei |
+| 6 | Régua de mistura para a camada fina (alfa ≥ 0,3, o que a F0 §4 pedia) ou a classe «fina» fora do portão | 143 / 162 | régua |
+| 7 | Correr a grelha uma vez (2 h 52 sob esta carga) e guardar o `varredura.tsv` versionado, comprimido, para comparar célula a célula | — | fecho |

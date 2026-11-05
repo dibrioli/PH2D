@@ -17,7 +17,7 @@ const PINCEIS: [&str; 8] = [
     "Dabber",
 ];
 
-fn ponto(x: f32, phase: PointerPhase) -> CanvasPointer {
+pub(super) fn ponto(x: f32, phase: PointerPhase) -> CanvasPointer {
     CanvasPointer {
         pos: [x, 120.0],
         pressure: 1.0,
@@ -27,7 +27,7 @@ fn ponto(x: f32, phase: PointerPhase) -> CanvasPointer {
 }
 
 /// `(massa, água, células com tinta, escurecimento médio do ecrã)`.
-fn le(t: &PainterTool) -> [f64; 4] {
+pub(super) fn le(t: &PainterTool) -> [f64; 4] {
     let g = t
         .paint
         .wetpaint

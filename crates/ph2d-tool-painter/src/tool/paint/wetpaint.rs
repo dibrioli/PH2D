@@ -471,6 +471,9 @@ mod flow_ratio_tests; // os gates de PRODUTO da razão da grade de FLUXO
 #[path = "wetpaint/grao_a_mao_tests.rs"]
 mod grao_a_mao_tests;
 #[cfg(test)]
+#[path = "wetpaint/grao_nos_slots_tests.rs"]
+mod grao_nos_slots_tests;
+#[cfg(test)]
 #[path = "wetpaint/manchas_liner_tests.rs"]
 mod manchas_liner_tests;
 #[cfg(test)]
@@ -479,6 +482,9 @@ mod offthread_tests; // os gates da sim FORA da thread do frame
 #[cfg(test)]
 #[path = "wetpaint/same_as_paper_volume_tests.rs"]
 mod same_as_paper_volume_tests;
+#[cfg(test)]
+#[path = "wetpaint/suave_no_arrasto_tests.rs"]
+mod suave_no_arrasto_tests;
 #[cfg(test)]
 #[path = "wetpaint/verde_no_soltar_tests.rs"]
 mod verde_no_soltar_tests; // azul sobre azul não fica verde no soltar (Bug #49) // o Same as Paper e a quantidade de tinta (smoke 04/11)

@@ -125,6 +125,13 @@ fn sem_forma_ou_com_o_inspector_a_frente_o_convite_nao_vale() {
     assert_eq!(h.store.card_guest_h_over(core_ids::VECTOR_PANEL), 0.0);
 
     state::set_current_transform(Some([10.0, 20.0, 100.0, 40.0]));
+    // O solto do Vector faz a aba de trás pintar (e convidar): quem está à frente manda.
+    h.store.detach_card(
+        t::VECTOR_SECTION_SNAP,
+        core_ids::VECTOR_PANEL,
+        (400.0, 300.0),
+        300.0,
+    );
     h.store.bump_panel_z(core_ids::INSP_PANEL);
     quadros(&mut h, 40);
     assert!(pintado(&h, insp::INSP_TRANSFORM_POS_X));
@@ -133,6 +140,18 @@ fn sem_forma_ou_com_o_inspector_a_frente_o_convite_nao_vale() {
         "o Inspector à frente é a lista inteira"
     );
     assert!(!pintado(&h, t::VECTOR_TRANSFORM_W));
+}
+
+/// O Inspector sem Transform a mostrar (nada com pose): a lista curta não ocupa a coluna.
+/// *Mutação: a altura = a do fundo vazio ⇒ o Vector desce por uma lista invisível.*
+#[test]
+fn sem_cartao_a_lista_curta_nao_ocupa_nada() {
+    let mut h = em_draw();
+    ph2d_panel_inspector::set_current_inspector_transform(None);
+    quadros(&mut h, 40);
+    assert_eq!(h.store.card_guest_h_over(core_ids::VECTOR_PANEL), 0.0);
+    assert!(h.store.panel_rect(core_ids::INSP_PANEL).is_none());
+    assert!(pintado(&h, t::VECTOR_TRANSFORM_W));
 }
 
 /// Solto no Draw ele é o de Object: nome, reset, alfinete; preso a A, com B em foco, o arrasto publica só para A.
@@ -153,6 +172,12 @@ fn solto_no_draw_tem_nome_reset_alfinete_e_o_arrasto_vai_so_ao_preso() {
         Some(FORMA_A)
     );
     assert_eq!(h.store.card_subject_name(FORMA_A), Some("Shape A"));
+    clica(&mut h, loose_pin_of(CARD_TRANSFORM));
+    assert_eq!(
+        h.store.loose_card(CARD_TRANSFORM).map(|c| (c.pin, c.rope)),
+        Some((Some(FORMA_A), true)),
+        "o 2.º clique dá a corda"
+    );
 
     escolhe(FORMA_B, "Shape B", 22.0);
     quadros(&mut h, 40);
@@ -280,4 +305,42 @@ fn a_roda_sobre_o_transform_rola_a_coluna_do_vector() {
         quadros(&mut h, 1);
     }
     assert!(h.store.panel_scroll(v) > 0.0, "a roda foi a outro");
+}
+
+/// A roda continua a rolar depois de um clique num campo da coluna: o foco não reescreve o alvo da rolagem.
+#[test]
+fn a_roda_rola_a_coluna_com_um_campo_em_foco() {
+    let mut h = em_draw();
+    for s in p::VECTOR_SECTIONS {
+        h.store.set_collapsed(*s, false);
+    }
+    quadros(&mut h, 40);
+    let r = h
+        .hit_index
+        .rect_for(t::VECTOR_TRANSFORM_W)
+        .expect("o campo");
+    let dentro = (r.x + r.w * 0.6, r.y + r.h * 0.5);
+    mao(&mut h, PointerKind::Down, dentro);
+    mao(&mut h, PointerKind::Up, dentro);
+    quadros(&mut h, 3);
+    assert_eq!(h.store.focus_id(), Some(t::VECTOR_TRANSFORM_W), "sem foco");
+    let arena = bumpalo::Bump::new();
+    for _ in 0..5 {
+        let _ = h.handle_wheel(
+            ph2d_host::WheelEvent {
+                x: dentro.0,
+                y: dentro.1,
+                delta_x: 0.0,
+                delta_y: -16.0,
+                modifiers: Default::default(),
+                timestamp_ns: 0,
+            },
+            &arena,
+        );
+        quadros(&mut h, 1);
+    }
+    assert!(
+        h.store.panel_scroll(core_ids::VECTOR_PANEL) > 0.0,
+        "o foco comeu a roda"
+    );
 }

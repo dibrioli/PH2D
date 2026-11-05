@@ -204,6 +204,7 @@ pub(crate) fn step(
             }
             if modo == "13" {
                 move_x_pelo_campo(s, hero);
+                transform_preso(s, hero);
             }
             if s == FIM - 1 && modo == "5" {
                 ph2d_editor_core::panel::cards::estilos::abre_o_editor_do_primeiro();
@@ -229,6 +230,17 @@ pub(crate) fn step(
             go(s + 1);
         }
         _ => {}
+    }
+}
+
+/// `PH2D_VEC_CARTOES_PRESO=1`: a 13 com o Transform solto no canvas e preso à forma.
+fn transform_preso(s: u8, hero: &mut HeroScreen) {
+    let k = ph2d_editor_core::registry::hash_node_id("cards.insp.transform");
+    if std::env::var_os("PH2D_VEC_CARTOES_PRESO").is_some() && s == FIM - 6 {
+        hero.store
+            .detach_card(k, ph2d_editor_core::ids::INSP_PANEL, (620.0, 110.0), 300.0);
+    } else if std::env::var_os("PH2D_VEC_CARTOES_PRESO").is_some() && s == FIM - 4 {
+        hero.store.toggle_loose_pin(k);
     }
 }
 

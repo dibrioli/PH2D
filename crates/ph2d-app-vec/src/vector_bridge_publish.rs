@@ -384,12 +384,7 @@ pub fn publish(
 
     // Calibrate the Transform fields' drag scrub to the camera: value-units per cursor pixel ⇒
     // dragging a chip N px moves the shape N px on screen at any zoom (unbounded — no clamp).
-    // Live each frame so zoom in/out keeps the 1:1 feel.
-    //
-    // ⚠️ **A TAXA cruza a MESMA fronteira que o valor, e esquecê-la é o defeito que compila.**
-    // Ela é *comprimento por pixel de cursor*, logo é um comprimento — com o valor em pixels de
-    // display e a taxa em metros de mundo, arrastar um chip um pixel moveria o número em `0,01`
-    // enquanto ele mostra centenas: o chip pareceria travado. Uma porta, os dois lados.
+    // ⚠️ A taxa é um comprimento: cruza a MESMA fronteira de display que o valor.
     if vector_active {
         let px_to_world = ph2d_editor_core::LengthDisplay::of(&hero.project).value(px_to_world);
         for id in [
@@ -400,8 +395,7 @@ pub fn publish(
         ] {
             hero.store.set_number_drag_rate(id, px_to_world);
         }
-        // The Angle (R) field is in DEGREES, not world units — a fixed, gentle
-        // scrub (a full drag across the screen ≈ a couple turns), zoom-independent.
+        // The Angle (R) field is in DEGREES: a fixed scrub, zoom-independent.
         const ROT_DRAG_DEG_PER_PX: f64 = 0.5;
         hero.store.set_number_drag_rate(
             ph2d_panel_vector::ids::VECTOR_TRANSFORM_R,

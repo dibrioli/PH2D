@@ -330,7 +330,8 @@ impl Cartao {
 /// antes (`PH2D_CARDS=0`): o ponto verde mantém a distância ao canto da caixa, ao centésimo de pixel.
 #[test]
 fn o_ponto_verde_acompanha_o_canto_quando_o_x_muda() {
-    for cartoes in [false] {
+    let cartoes = false;
+    {
         let mut c = Cartao::novo(cartoes);
         let mut w = mundo(ShapeKind::RoundRect, Pose::Solta);
         c.host

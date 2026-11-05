@@ -273,8 +273,14 @@ impl VectorScene {
     /// ⭐ **Cola `other` por cima desta cena, sob `transform`** — e herda a marca do mundo por
     /// baixo dela. É a porta da escala da interface (`ph2d_editor_core::ui_scale`): o chrome
     /// pinta-se numa cena LÓGICA e entra aqui sob `Affine::scale(s)`.
+    ///
+    /// ⛔ `Encoding::append` (vello 0.11) faz `flags = other.flags`: colar uma cena vazia logo depois de
+    /// um texto apaga o «re-emitir o transform» do texto, e o preenchimento seguinte herda o transform
+    /// do último glifo (o véu do modal só aparecia do último texto do HUD para baixo e para a direita,
+    /// `docs/CartoesUI/17`). Aqui ele volta a valer.
     pub fn append_transformed(&mut self, other: &VectorScene, transform: Affine) {
         self.inner.append(&other.inner, Some(transform));
+        self.inner.encoding_mut().force_next_transform_and_style();
         self.mundo_por_baixo |= other.mundo_por_baixo;
     }
 

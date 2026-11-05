@@ -21,6 +21,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // A linha das etapas da macro do clipe activo (ADR-0186, W5d).
         "panel.timeline.macro_steps" => "Macro steps",
         "panel.timeline.add_track" => "+ Track  \u{25be}",
+        // Em cartões: a seta é o ícone da lista.
+        "panel.timeline.add_track_lista" => "+ Track",
         "panel.timeline.add_lane" => "+ Lane",
         "panel.timeline.add_container" => "+ Container",
         "panel.timeline.crumb_root" => "Scene",

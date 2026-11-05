@@ -125,3 +125,58 @@ fn tracking_measures_and_cuts_with_the_value_it_paints() {
         .unwrap_or_default();
     assert!(x_last > x_last_plain, "{x_last} > {x_last_plain}");
 }
+
+/// ⭐ `v2_dica.png`: o véu do modal só aparecia do último texto do HUD para a direita e para baixo.
+/// O texto pede o transform de novo ao próximo desenho, e colar uma camada vazia apagava o pedido: o
+/// preenchimento herdava o transform do glifo. *Mutação: tirar o `force_next…` de `append_transformed`.*
+#[test]
+fn o_preenchimento_depois_de_um_texto_e_de_uma_camada_vazia_nao_herda_o_transform_do_glifo() {
+    let mut ts = TextSystem::new();
+    let mut scene = VectorScene::new();
+    let branco = Color::WHITE;
+    paint_text(
+        &mut ts,
+        &mut scene,
+        "default-scene",
+        1380.0,
+        971.0,
+        12.0,
+        200.0,
+        branco,
+    );
+    scene.append_transformed(&VectorScene::new(), ph2d_vector::Affine::IDENTITY);
+    let antes = scene.inner().encoding().transforms.len();
+    scene.fill_rect(ph2d_vector::Rect::new(0.0, 0.0, 9.0, 9.0), branco);
+    let e = scene.inner().encoding();
+    assert_eq!(
+        e.transforms.len(),
+        antes + 1,
+        "o preenchimento não emitiu o transform dele"
+    );
+    assert_eq!(e.transforms.last().map(|t| t.translation), Some([0.0, 0.0]));
+}
+
+/// ⭐ 18: o «·» do resumo do Variant abria a 2.ª linha. Em toda largura em que a frase quebra, nenhuma
+/// linha começa por ele. *Mutação: `cola_o_separador` devolve o texto como veio.*
+#[test]
+fn um_texto_que_quebra_nunca_comeca_uma_linha_pelo_separador() {
+    let frase = "Follows the prefab \u{b7} 2 unused \u{b7} 1 added \u{b7} 3 removed";
+    let colado = cola_o_separador(frase);
+    let mut ts = TextSystem::new();
+    let (mut quebrou, mut caiu_na_palavra) = (0, 0);
+    for largura in 40..320 {
+        let layout = ts.layout(&colado, 12.0, largura as f32);
+        for (n, linha) in layout.lines().enumerate() {
+            let texto = &colado[linha.text_range()];
+            assert!(!texto.starts_with('\u{b7}'), "a {largura} px: {texto:?}");
+            if n > 0 {
+                quebrou += 1;
+                caiu_na_palavra += usize::from(texto.starts_with(char::is_alphanumeric));
+            }
+        }
+    }
+    assert!(
+        quebrou > 100 && caiu_na_palavra == quebrou,
+        "{quebrou} × {caiu_na_palavra}"
+    );
+}

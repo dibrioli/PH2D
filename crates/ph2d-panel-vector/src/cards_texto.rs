@@ -303,10 +303,10 @@ pub(crate) fn textpath(c: &mut CardCtx<'_>, y: f32) -> f32 {
     let inicio = tr("panel.vector.textpath.offset");
     let virado = state::flip();
     let lados = [
-        seg(LADO[0], tr("panel.vector.textpath.this_side"), !virado),
-        seg(LADO[1], tr("panel.vector.textpath.other_side"), virado),
+        seg(LADO[0], tr("card.vector.textpath.this"), !virado),
+        seg(LADO[1], tr("card.vector.textpath.other"), virado),
     ];
-    // Dividem a linha; se a coluna não leva os dois lados por inteiro, a escolha desce (05 §4).
+    // Dividem a linha: o rótulo «Side» já diz o substantivo da escolha (05 §4).
     let y = c.row(
         &[
             Cell::new(Widget::Field {

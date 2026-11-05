@@ -584,3 +584,26 @@ fn the_slice_passes_the_compaction_census() {
     let mut mesa = Mesa::presa(true);
     super::g5_os_cartoes::sem_acusacao("preso", || mesa.assenta());
 }
+
+/// Lei da compactação: Offset e Side dividem a linha na largura de fábrica da lista, com os dois lados
+/// inteiros. *Mutação: os nomes longos do painel de antes ⇒ a escolha desce.*
+#[test]
+fn offset_e_side_dividem_a_linha_na_largura_de_fabrica() {
+    let mut mesa = Mesa::presa(true);
+    let janela = Rect::new(0.0, 0.0, 1930.0, 3200.0);
+    for _ in 0..60 {
+        let (h, st) = (&mut mesa.host, &mut mesa.st);
+        mesa.rects = ph2d_editor_core::aquecimento::com_passo_fixo(
+            ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
+            || h.paint::<VectorPanel>(st, janela),
+        );
+    }
+    let campo = mesa.rect(p::VECTOR_TEXTPATH_OFFSET_NUM).expect("Offset");
+    let lado = mesa.rect(p::VECTOR_TEXTPATH_FLIP).expect("Other");
+    let coluna = lado.x + lado.w - campo.x;
+    assert!((250.0..=262.0).contains(&coluna), "a coluna mede {coluna}");
+    assert!(
+        lado.y < campo.y + campo.h && campo.y < lado.y + lado.h,
+        "{campo:?} × {lado:?}"
+    );
+}

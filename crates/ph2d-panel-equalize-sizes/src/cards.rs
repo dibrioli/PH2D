@@ -2,10 +2,10 @@
 //! mesmos ids; `populate` e `event` intocados. Os três modos são uma escolha, e os liga/desliga caixas.
 
 use ph2d_editor_core::interaction::WidgetStore;
+use ph2d_editor_core::panel::TextKey;
 use ph2d_editor_core::panel::cards::ferramenta::{
     Numero, Verbos, caixa_em_celula, caixas_aos_pares, campo, cartao, opcoes, prepara_numeros,
 };
-use ph2d_editor_core::panel::TextKey;
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, Widget};
 use ph2d_editor_core::widget::card_field::Glyph;
 use ph2d_editor_core::widget::key_mark::Rotulo;
@@ -122,7 +122,7 @@ fn cartao_do_resultado(snap: EqualizeSizesUiSnapshot) -> CardDef<'static> {
                 &[
                     (
                         t::EQS_UPSCALE_IF_SMALLER,
-                        "panel.equalize_sizes.size.upscale_if_smaller",
+                        "card.equalize.upscale_if_small",
                         snap.upscale_if_smaller,
                     ),
                     (

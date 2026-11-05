@@ -97,6 +97,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.equalize.fixed_size" => "Size (px)",
         "card.equalize.offset" => "Offset (px)",
         "card.equalize.result" => "Result",
+        // Cabem as duas caixas na linha, na largura de fábrica da lista.
+        "card.equalize.upscale_if_small" => "Upscale if small",
+        "card.vector.textpath.this" => "This",
+        "card.vector.textpath.other" => "Other",
         "card.equalize.algorithm" => "Algorithm",
         "card.padding.edges" => "Edges",
         "card.padding.top" => "Top (px)",

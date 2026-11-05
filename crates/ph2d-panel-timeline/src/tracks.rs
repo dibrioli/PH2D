@@ -67,13 +67,23 @@ const EXTRAP_MARK_MIN_W: f32 = 6.0; // LITERAL-PX-OK: skip a region too small to
 /// Paint the "+ Track" dropdown button filling `header` (the label-column slice
 /// aligned with the ruler strip). The property list opens as an overlay popover
 /// (see [`paint_add_track_popover`], painted last).
-pub(crate) fn paint_add_track(ctx: &mut PaintCtx, theme: Theme, header: Rect) {
+pub(crate) fn paint_add_track(ctx: &mut PaintCtx, theme: Theme, header: Rect, aberta: bool) {
     if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
-        crate::stack_add_header::botao_de_cartao(
-            ctx,
-            theme,
+        let (store, hit) = ctx.host.store_and_hit_index_mut();
+        // A seta é a da lista do cartão, um ícone: nunca uma letra no texto.
+        ph2d_editor_core::panel::cards::CardCtx::flutuante(
+            ctx.scene,
+            ctx.text_system,
+            store,
+            hit,
+            ph2d_editor_core::widget::card_ink::CardInk::of_list(theme),
+            header.x,
+            header.w,
+        )
+        .lista_em(
             ids::TIMELINE_ADD_TRACK,
-            ph2d_i18n::tr("panel.timeline.add_track"),
+            ph2d_i18n::tr("panel.timeline.add_track_lista"),
+            aberta,
             header,
         );
         return;

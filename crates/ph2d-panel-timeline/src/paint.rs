@@ -263,7 +263,14 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     let preview_dx = crate::key_drag::preview_dx(state);
 
     let header = Rect::new(g.region.x, g.region.y, g.label_w, ruler::RULER_H);
-    paint_add_header(ctx, theme, header, state.tab, &snapshot);
+    paint_add_header(
+        ctx,
+        theme,
+        header,
+        state.tab,
+        &snapshot,
+        state.add_track_open,
+    );
     // Track rows (labels + key diamonds + expanded graph bands) below the ruler.
     tracks::paint_rows(ctx, theme, &g, view, preview_dx, state, &snapshot);
     // A handle or anchor drag whose row got culled (scrolled away, or its track
@@ -345,9 +352,10 @@ fn paint_add_header(
     header: Rect,
     tab: crate::tab::Tab,
     snapshot: &ph2d_timeline::TimelineViewSnapshot,
+    aberta: bool,
 ) {
     if tab.shows_keys() {
-        tracks::paint_add_track(ctx, theme, header);
+        tracks::paint_add_track(ctx, theme, header, aberta);
     } else {
         crate::stack_add_header::paint_add_lane(
             ctx,

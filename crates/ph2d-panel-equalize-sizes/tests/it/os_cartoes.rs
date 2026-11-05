@@ -39,10 +39,17 @@ fn grelha() -> EqualizeSizesUiSnapshot {
 /// na coluna (lei 5). *Mutação: um por linha ⇒ vermelho.*
 #[test]
 fn irmaos_curtos_dividem_a_linha() {
-    let m0 = mesa(fixo());
+    let mut m0 = mesa(fixo());
+    // A largura de fábrica: a janela real, nunca a coluna larga da mesa.
+    m0.assenta_em(ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1930.0, 1012.0));
     let (a, b) = (
         m0.rect(t::EQS_UPSCALE_IF_SMALLER).expect("upscale"),
         m0.rect(t::EQS_RASTERIZE_AFTER).expect("rasterize"),
+    );
+    let coluna = b.x + b.w - a.x;
+    assert!(
+        (250.0..=262.0).contains(&coluna),
+        "a coluna de fábrica mede {coluna}"
     );
     assert_eq!(a.y, b.y, "Upscale e Rasterize na mesma linha");
     assert!(a.x + a.w <= b.x, "sem sobreposição");

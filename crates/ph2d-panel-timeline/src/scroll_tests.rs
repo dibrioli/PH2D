@@ -254,3 +254,48 @@ fn a_window_shorter_than_the_list_offers_only_what_it_can_reach() {
     assert!(!outside, "linha registada fora de uma janela de {vh} px");
     assert!(n > 0, "a lista desapareceu por inteiro");
 }
+
+/// Item 13 da varredura (`docs/CartoesUI/17`): em cartões, «+ Track» é uma lista com a seta em ícone;
+/// a letra `▾` fica só no painel de antes. *Mutação: voltar ao `botao_de_cartao`.*
+#[test]
+fn a_caixa_do_track_leva_a_seta_da_lista_e_nao_uma_letra() {
+    use ph2d_editor_core::panel::PaintCtx;
+    use ph2d_editor_core::screens::slot::Slot;
+    let texto = ph2d_i18n::tr("panel.timeline.add_track_lista");
+    assert!(!texto.contains('\u{25be}'), "{texto}");
+    let janela = Rect::new(0.0, 0.0, 1600.0, 900.0);
+    let layout = ph2d_editor_core::screens::hero::HeroLayout::for_viewport(janela);
+    let caixa = Rect::new(10.0, 10.0, 170.0, 22.0);
+    let caminhos = |lista: bool| {
+        ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(true));
+        let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<crate::TimelinePanel>();
+        let (mut scene, mut text) = (
+            ph2d_vector::VectorScene::new(),
+            ph2d_text::TextSystem::new(),
+        );
+        let mut ctx = PaintCtx {
+            host: &mut host,
+            layout: &layout,
+            slot: layout
+                .slot_rects(ph2d_editor_core::screens::slot::SlotSet::of(Slot::RightTop))
+                .get(Slot::RightTop),
+            viewport: janela,
+            scene: &mut scene,
+            text_system: &mut text,
+        };
+        if lista {
+            crate::tracks::paint_add_track(&mut ctx, ph2d_tokens::Theme::Dark, caixa, false);
+        } else {
+            crate::stack_add_header::botao_de_cartao(
+                &mut ctx,
+                ph2d_tokens::Theme::Dark,
+                ids::TIMELINE_ADD_TRACK,
+                texto,
+                caixa,
+            );
+        }
+        ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(None);
+        scene.inner().encoding().n_paths
+    };
+    assert!(caminhos(true) > caminhos(false), "a seta não foi pintada");
+}

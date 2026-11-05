@@ -100,7 +100,7 @@ pub fn paint_text_block(
     paint_text_lines(
         text_system,
         scene,
-        text,
+        &cola_o_separador(text),
         x,
         y,
         font_size,
@@ -112,6 +112,17 @@ pub fn paint_text_block(
         //    Pôr `ElideToOne` aqui (o que eu fiz na 1.ª tentativa) parte as dicas de três painéis.
         Lines::Wrap,
     )
+}
+
+/// O separador « · » fica na linha da palavra de antes: um texto que quebra nunca começa uma linha
+/// por ele. A quebra continua a poder cair logo depois dele.
+#[must_use]
+pub(crate) fn cola_o_separador(text: &str) -> std::borrow::Cow<'_, str> {
+    if text.contains(" \u{b7} ") {
+        text.replace(" \u{b7} ", "\u{a0}\u{b7} ").into()
+    } else {
+        text.into()
+    }
 }
 
 /// SemiBold (600) variant of [`paint_text`] for panel titles and

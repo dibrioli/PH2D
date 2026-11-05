@@ -197,7 +197,6 @@ const SELECOES: [&[u64]; 3] = [&[B], &[B, C], &[A, B]];
 /// ⭐ Material: cada modo edita A e não se espalha. *Mutação: `card_fan_out` sem a guarda ⇒ a seleção recebe.*
 #[test]
 fn every_material_mode_on_the_pinned_card_edits_only_its_object() {
-    let _vez = super::o_alfinete_fill_stroke_c2::a_vez_da_mesa();
     for sel in SELECOES {
         let mut h = preso(CARD_MATERIAL, sel);
         for (i, &id) in pids::INSP_SAMPLE_BLEND.iter().enumerate() {
@@ -229,7 +228,6 @@ fn every_material_mode_on_the_pinned_card_edits_only_its_object() {
 /// fora do cartão. *Mutação: `blur_subject` fora ⇒ o commit vai à seleção com o número de A.*
 #[test]
 fn the_z_typed_on_the_pinned_card_goes_to_its_object_when_the_focus_leaves() {
-    let _vez = super::o_alfinete_fill_stroke_c2::a_vez_da_mesa();
     for sel in SELECOES {
         let mut h = preso(CARD_ORDERING, sel);
         let do_preso = h
@@ -276,7 +274,6 @@ fn the_z_typed_on_the_pinned_card_goes_to_its_object_when_the_focus_leaves() {
 /// seleção (visível). *Mutação: o olho a ler a caixa da seleção ⇒ ícone e pedido trocados.*
 #[test]
 fn name_eye_and_lock_of_the_pinned_object_card_are_of_its_object() {
-    let _vez = super::o_alfinete_fill_stroke_c2::a_vez_da_mesa();
     for sel in SELECOES {
         let mut h = preso(CARD_OBJECT, sel);
         // Olho.
@@ -346,7 +343,6 @@ fn name_eye_and_lock_of_the_pinned_object_card_are_of_its_object() {
 /// ⇒ a caixa mostra a da seleção.*
 #[test]
 fn opacity_blend_and_eye_of_the_pinned_appearance_card_are_of_its_object() {
-    let _vez = super::o_alfinete_fill_stroke_c2::a_vez_da_mesa();
     for sel in SELECOES {
         let mut h = preso(CARD_APPEARANCE, sel);
         let num = vids::VECTOR_OBJ_OPACITY_NUM;
@@ -424,7 +420,6 @@ fn opacity_blend_and_eye_of_the_pinned_appearance_card_are_of_its_object() {
 /// sujeito (`paint_stack::alvos`, gate na shell). *Mutação: voltar a `pen.selected()` na shell.*
 #[test]
 fn rotate_and_flip_on_the_pinned_transform_are_of_its_object() {
-    let _vez = super::o_alfinete_fill_stroke_c2::a_vez_da_mesa();
     for sel in SELECOES {
         let mut h = preso(insp::CARD_TRANSFORM, sel);
         for id in [
@@ -450,7 +445,6 @@ fn rotate_and_flip_on_the_pinned_transform_are_of_its_object() {
 /// o alfinete cai (a chave durável fica) e o gesto volta a ser da seleção.
 #[test]
 fn an_unpinned_card_fans_out_and_a_deleted_object_lets_go() {
-    let _vez = super::o_alfinete_fill_stroke_c2::a_vez_da_mesa();
     let sel: &[u64] = &[B, C];
     let mut h = preso(CARD_MATERIAL, sel);
     h.store.rebind_loose_pin(CARD_MATERIAL, None);
@@ -472,7 +466,6 @@ fn an_unpinned_card_fans_out_and_a_deleted_object_lets_go() {
 /// ⭐ C2: o `Reset` do Transform preso é do objecto dele, com a seleção em qualquer sítio.
 #[test]
 fn the_reset_of_the_pinned_transform_card_is_of_its_object() {
-    let _vez = super::o_alfinete_fill_stroke_c2::a_vez_da_mesa();
     for sel in SELECOES {
         let mut h = preso(insp::CARD_TRANSFORM, sel);
         let c = no_solto(&h, insp::CARD_TRANSFORM, pids::INSP_TRANSFORM_RESET);
@@ -495,7 +488,6 @@ fn the_reset_of_the_pinned_transform_card_is_of_its_object() {
 /// fica, à espera do componente (o que `Mix` causa: ver a shell).
 #[test]
 fn a_material_card_pinned_to_an_object_without_the_component_offers_no_mode() {
-    let _vez = super::o_alfinete_fill_stroke_c2::a_vez_da_mesa();
     let mut h = preso(CARD_MATERIAL, &[B]);
     assert!(h.hit_index.rect_for(pids::INSP_SAMPLE_BLEND[1]).is_some());
     for _ in 0..4 {
@@ -537,7 +529,6 @@ impl super::o_alfinete_fill_stroke_c2::scrub_do_preso::MesaDoPreso for MesaC1 {
 /// de números diferentes, anda sem o quadro a devolver ao número da seleção; o Esc repõe.
 #[test]
 fn every_scrub_handle_of_the_pinned_object_cards_survives_the_frames() {
-    let _vez = super::o_alfinete_fill_stroke_c2::a_vez_da_mesa();
     let mut erros = Vec::new();
     let mut total = 0;
     for (sec, nome) in [

@@ -166,11 +166,28 @@ fn linha_de_cor(c: &mut CardCtx<'_>, theme: Theme, row: usize, armada: bool, y: 
             tint: ColorToken::Warn,
         }));
     }
-    cells.push(Cell::new(Widget::Bare(&icones)));
+    // Coluna estreita: os ícones descem para a linha de baixo, e o nome do token não se corta (05 §4, lei 5).
+    let icones_w = icones.len() as f32 * m::ICON_CELL + m::SEG_PAD * 2.0;
+    let marca = if cells.len() > 1 { m::ICON_CELL } else { 0.0 };
+    let usa = c.text_system.prefix_width(&texto, m::VALUE_PX)
+        + m::ICON_CELL
+        + m::FIELD_PAD_R
+        + m::FIELD_GAP * cells.len() as f32
+        + marca
+        + icones_w;
+    let desce = usa > c.w;
+    if !desce {
+        cells.push(Cell::new(Widget::Bare(&icones)));
+    }
     let fim = c.row(&cells, y);
+    let topo = fim - m::FIELD_H;
+    let fim = if desce {
+        c.row(&[Cell::new(Widget::Bare(&icones))], fim)
+    } else {
+        fim
+    };
     if c.store.picker_target() == Some(swatch) {
         let g = m::ICON_GLYPH;
-        let topo = fim - m::FIELD_H;
         // FRAME-RAW-OK: o anel da amostra que o selector de cor está a editar
         stroke_rounded_rect(
             c.scene,

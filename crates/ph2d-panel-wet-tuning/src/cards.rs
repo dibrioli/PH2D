@@ -102,7 +102,10 @@ fn repor(row: &TuneRow) -> [Seg<'static>; 1] {
 /// As linhas de números vizinhas: duas por fila, cada uma com o seu repor (T56). O véu da inerte só
 /// cobre a metade dela.
 fn numeros(c: &mut CardCtx<'_>, linhas: &[&'static TuneRow], brush: &BrushSettings, y: f32) -> f32 {
-    linhas.chunks(2).fold(y, |topo, par| {
+    // Dois campos com o seu repor só dividem a linha se o número couber (05 §4, lei 5).
+    let um_par = (m::FIELD_VALUE_MIN_W + m::ICON_CELL * 2.0) * 2.0 + m::FIELD_GAP * 3.0;
+    let por_fila = if c.w < um_par { 1 } else { 2 };
+    linhas.chunks(por_fila).fold(y, |topo, par| {
         let repoes: Vec<[Seg<'static>; 1]> = par.iter().map(|r| repor(r)).collect();
         let mut cells: Vec<Cell<'_>> = Vec::with_capacity(par.len() * 2);
         for (r, seg) in par.iter().zip(&repoes) {

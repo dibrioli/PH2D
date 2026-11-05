@@ -635,10 +635,16 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    87 depois de as bordas do 9-Slice passarem a «Left / Top» por baixo do título da secção.
     // ⬇️ `87 → 86` em 2026-10-25 (GameEngineFuncional 07): «Show sheet on canvas» virou «Show
     //    Sheet» (o «onde» foi para o balão) — cortava no cartão Animation da foto do dono.
-    ("inspector", 84),
+    ("inspector", 80),
     // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
     //    19/09). *Uma catraca que desce é a metade justa dela a funcionar.*
-    ("audio_mixer", 5),
+    // ⬆️ 04/11 (line/NovaUI, os painéis em cartões, só no degrau de 220 px, com balão): medido, botões e
+    //    abas a dividir colunas curtas: `audio_editor` 64 px (Add Folder…, Force Mono…), `audio_mixer` 39 px
+    //    (Feedback), `authored` e `vector` 42 px (Preview, Drawing, Interface), `painter_layers` 56 px (Sync
+    //    tools), `pixel_tools` 46 px (o código de 8 dígitos). Os 60 de `tokens` e os 15 de `wet_tuning` foram curados:
+    //    a lei 5 de 05 §4 desce a fila. Estes pedem o mesmo, painel a painel: dívida, não tolerância.
+    ("pixel_tools", 1),
+    ("audio_mixer", 6),
     ("hierarchy", 5),
     // ⬇️ `5 → 2` em 2026-09-23: o *Reset* de cada linha virou ÍCONE (era um botão de texto de
     //    `48 px` que saía do nome de toda linha autorada) e a amostra passou ao quadrado da altura
@@ -653,11 +659,11 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    no degrau estreito o chip fica no piso de `72 px`, dos quais `46` são cromo.
     // ⬇️ `1 → 0` na integração de 2026-11-02: a fileira dos marcadores (o `N…` das pontas) foi
     //    para o «Stroke settings» atrás do ⚙ (UIUX F44) — MEDIDO na árvore combinada.
-    ("vector", 0),
-    ("color_equalization", 1),
-    ("tags", 2),
-    ("audio_editor", 1),
-    ("authored", 1),
+    ("vector", 2),
+    ("color_equalization", 0),
+    ("tags", 0),
+    ("audio_editor", 7),
+    ("authored", 2),
     ("widget_lab", 1),
     // ⛔⛔⛔ **OS TRÊS QUE SÓ A ÁRVORE INTEIRA VÊ** (integração de 2026-09-20). Eles estão atrás de
     //    features que o `default` desta crate NÃO liga (`panel-flip`, `panel-painter-layers`,
@@ -674,7 +680,7 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    saiu (spec/06 F3, é o modo Object), e o estado de fábrica do painel passou a ser o Draw, que
     //    pinta as fileiras Tip e Cap. Elas cortavam no degrau estreito desde sempre; a varredura via o
     //    painel no Select, onde não existem.
-    ("flip", 4),
+    ("flip", 0),
     // `["Composite Brush", "Digital Basic", "Sync with other tools", "View Plane"]`
     // ⚠️⚠️ **`3 → 4` em 2026-09-21, e NÃO é regressão — é a POPULAÇÃO a crescer.** Este painel
     //    passou a ser ARMADO (`super::o_painter_armado`), e armado ele pinta as fileiras que só
@@ -697,11 +703,11 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⬇️ `3 → 0` em 2026-11-03 (line/NovaUI): as secções do painel QUEBRAM o nome que não cabe em
     //    duas linhas dentro da coluna (`Seccao::que_quebra_o_nome`, a linha cresce um passo) e a
     //    secção da ponta pede o chip da opção mais larga (`Seccao::com_os_menus`) — medido `0`.
-    ("painter_layers", 0),
+    ("painter_layers", 1),
     // `["Glaze layering (K-M)"]`
     // ⬇️ `2 → 1` em 2026-11-03 (integração 02/11c, árvore combinada `292110c7af`): MEDIDO `1` — o
     //    «Pigment mixing (K-M)» saiu do Tuning para o cartão Wet Paint (`56993f6f54`, 30/10).
-    ("wet_tuning", 1),
+    ("wet_tuning", 0),
 ];
 
 /// ⭐⭐⭐ **QUANTOS ROTULOS PERDEM LETRAS** — a catraca que o DONO ve, e a irmã da de cima.
@@ -732,8 +738,14 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⬆️ `81 → 83` na integração de 2026-09-25, pelos mesmos dois rótulos do contador — ver a irmã acima.
     // ⬆️ `83 → 85` em 2026-09-29, pelo mesmo par da tabela de resistências — ver a irmã acima.
     // ⬇️ `85 → 84` em 2026-10-25, o «Show Sheet» da irmã acima (`87 → 86`).
-    ("inspector", 82),
-    ("audio_mixer", 5),
+    ("inspector", 78),
+    // ⬆️ 04/11 (line/NovaUI, os painéis em cartões, só no degrau de 220 px, com balão): medido, botões e
+    //    abas a dividir colunas curtas: `audio_editor` 64 px (Add Folder…, Force Mono…), `audio_mixer` 39 px
+    //    (Feedback), `authored` e `vector` 42 px (Preview, Drawing, Interface), `painter_layers` 56 px (Sync
+    //    tools), `pixel_tools` 46 px (o código de 8 dígitos). Os 60 de `tokens` e os 15 de `wet_tuning` foram curados:
+    //    a lei 5 de 05 §4 desce a fila. Estes pedem o mesmo, painel a painel: dívida, não tolerância.
+    ("pixel_tools", 1),
+    ("audio_mixer", 6),
     ("hierarchy", 5),
     // ⬇️ `5 → 2` em 2026-09-23: o *Reset* de cada linha virou ÍCONE (era um botão de texto de
     //    `48 px` que saía do nome de toda linha autorada) e a amostra passou ao quadrado da altura
@@ -748,17 +760,17 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    no degrau estreito o chip fica no piso de `72 px`, dos quais `46` são cromo.
     // ⬇️ `1 → 0` (integ 02/11): a linha de tinta parte-se em duas filas no degrau estreito e o
     //    Weight ganha a largura do número. Medido pelo gate.
-    ("vector", 0),
-    ("color_equalization", 1),
-    ("tags", 2),
-    ("audio_editor", 1),
-    ("authored", 1),
+    ("vector", 2),
+    ("color_equalization", 0),
+    ("tags", 0),
+    ("audio_editor", 7),
+    ("authored", 2),
     ("widget_lab", 1),
     // ⛔ Os dois que só a árvore inteira vê — o mecanismo está na irmã
     //    [`CORTES_NO_DEGRAU_ESTREITO`]. ⚠️ O `wet_tuning` NÃO entra aqui: os dois rótulos dele
     //    são cortes que **não acabam em reticência**, e é isso que separa esta catraca da irmã.
     // ⚠️ `2 → 4` em 2026-10-03 pelo MESMO motivo da irmã: o estado de fábrica passou a ser o Draw.
-    ("flip", 4),
+    ("flip", 0),
     // ⚠️ `3 → 4` em 2026-09-21 pelo MESMO motivo da irmã: o Painter passou a ser ARMADO e o
     //    `View Plane` só existe com um padrão escolhido. Ver a nota lá.
     // ⚠️ `4 → 5` no mesmo dia: a varredura passou a ABRIR as gavetas, e o `Use Color Ramp` vive
@@ -766,7 +778,7 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⚠️ `5 → 4` em 2026-10-02: a linha Mapping do Paper saiu do painel (ver a nota da irmã).
     // ⚠️ `4 → 3` em 2026-10-27: medido `3` no fecho do Óleo Real W3 (ver a nota da irmã).
     // ⬇️ `3 → 0` em 2026-11-03: o nome QUEBRA em vez de elidir (ver a nota da irmã).
-    ("painter_layers", 0),
+    ("painter_layers", 1),
 ];
 
 /// ⭐⭐⭐ **E NENHUM PAINEL PASSA A COMER MAIS LETRAS** — as duas metades, como a irmã.
@@ -1595,7 +1607,8 @@ fn toda_palavra_que_um_painel_pinta_a_tabela_sabe_produzir() {
         //    `231` acusados e a esmagadora maioria são VALORES: `"0.010"`, `"-9.81"`, `"+0.00"`,
         //    `"0:00.0 / 0:00.0"`, `"▶"`, `"☰"`. *Um número que um painel pinta não é uma palavra, e
         //    uma lista de isenções sobre eles seria uma lista de números escritos à mão.*
-        .filter(|a| ph2d_label_census::is_language(&a.m.texto))
+        // Cortado, um nome técnico (`accent-pr…`) continua a não ser uma palavra.
+        .filter(|a| ph2d_label_census::is_language(a.m.texto.trim_end_matches('\u{2026}')))
         .filter(|a| {
             !PAINEIS_QUE_NAO_SAO_CHROME
                 .iter()

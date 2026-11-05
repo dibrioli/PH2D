@@ -368,7 +368,7 @@ impl Corpo<'_> {
         }
         // Só o balde: o Gradient pinta a selecção (ou o cel) inteira, sem contiguidade.
         if t == PixelTool::Bucket {
-            y = self.linha(tr("panel.pixel.bucket"), ColorToken::Text3, y);
+            y = self.titulo(tr("panel.pixel.bucket"), y);
             let conn = [
                 (tr("panel.pixel.connect4"), !o.eight, ids::CONNECT_4),
                 (tr("panel.pixel.connect8"), o.eight, ids::CONNECT_8),

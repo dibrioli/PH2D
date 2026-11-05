@@ -97,6 +97,46 @@ fn pede(a: &[EditorAction]) -> Vec<PixelRequest> {
         .collect()
 }
 
+/// Foto da cena 19 (05/11): «Gradient (Shift+G)» e logo abaixo «Gradient». O nome é do cabeçalho.
+#[test]
+fn a_tool_card_does_not_repeat_the_name_its_header_already_says() {
+    use ph2d_editor_core::text_elide::elisao;
+    use ph2d_editor_core::zones::Rect;
+    for (tool, nome, vizinha) in [
+        (
+            PixelTool::Gradient,
+            "panel.pixel.gradient",
+            "panel.pixel.gradient.shape",
+        ),
+        (PixelTool::Text, "panel.pixel.text", "panel.pixel.text.size"),
+        (
+            PixelTool::Bucket,
+            "panel.pixel.bucket",
+            "panel.pixel.tolerance",
+        ),
+    ] {
+        ferramenta::force_cards_on_this_thread(Some(true));
+        set_current_pixel(PixelPanelInfo { tool, ..info(tool) });
+        let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<PixelToolsPanel>();
+        let mut st = PixelToolsPanelState::default();
+        let vp = Rect {
+            x: 0.0,
+            y: 0.0,
+            w: 320.0,  // LITERAL-PX-OK: a largura da doca não muda o que se conta
+            h: 4000.0, // LITERAL-PX-OK: alto o bastante para o painel inteiro caber sem rolar
+        };
+        let (_, medidos) = elisao::medindo(|| host.paint::<PixelToolsPanel>(&mut st, vp));
+        let conta = |k: &str| {
+            medidos
+                .iter()
+                .filter(|m| m.texto == ph2d_i18n::tr(k))
+                .count()
+        };
+        assert!(conta(vizinha) > 0, "{tool:?}: o censo não viu «{vizinha}»");
+        assert_eq!(conta(nome), 0, "{tool:?}: o nome repete-se no corpo");
+    }
+}
+
 fn opcoes(a: &[EditorAction]) -> ph2d_editor_core::pixel_panel::PixelOptions {
     pede(a)
         .into_iter()

@@ -59,7 +59,7 @@ impl Corpo<'_> {
     /// ramp»; a região (tolerância, contígua, 4/8) é a do balde, logo abaixo.
     pub(super) fn opcoes_gradiente(&mut self, info: &PixelPanelInfo, sec: Seccao, y: f32) -> f32 {
         let o = info.options;
-        let y = self.linha(tr("panel.pixel.gradient"), ColorToken::Text3, y);
+        let y = self.titulo(tr("panel.pixel.gradient"), y);
         let forma = [
             (
                 tr("panel.pixel.gradient.linear"),
@@ -98,7 +98,7 @@ impl Corpo<'_> {
     /// Antialias e Hinting (as omissões do Aseprite). Mudar uma com a caixa aberta refaz o preview.
     pub(super) fn opcoes_texto(&mut self, info: &PixelPanelInfo, sec: Seccao, y: f32) -> f32 {
         let o = info.options;
-        let y = self.linha(tr("panel.pixel.text"), ColorToken::Text3, y);
+        let y = self.titulo(tr("panel.pixel.text"), y);
         let y = self.chip_da_fonte(info, sec, y);
         let y = self.campo(tr("panel.pixel.text.size"), ids::TEXT_SIZE, sec, y);
         let y = self.caixas(

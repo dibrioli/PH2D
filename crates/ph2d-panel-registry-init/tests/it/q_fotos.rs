@@ -38,6 +38,7 @@ fn q_foto() {
             .find(|p| p.manifest.id == "inspector")
             .expect("o inspector");
         super::o_inspector_armado::arma_tudo();
+        arma_o_tipo(std::env::var("PH2D_FOTO_OBJETO").as_deref().unwrap_or(""));
         painel.populate(host.store_mut());
         host.set_panel_visible("inspector", true);
         let slot_id = painel.manifest.default_slot;
@@ -87,6 +88,32 @@ fn q_foto() {
         y0 += FATIA;
     }
     println!("{n} fatias, coluna {w} px");
+}
+
+/// `PH2D_FOTO_OBJETO=vetor|imagem|outro`: o que o cartão Object mostra depende do que o objecto É.
+fn arma_o_tipo(tipo: &str) {
+    use ph2d_tool_vector::appearance::{self, Appearance};
+    let forma = Appearance {
+        opacity: 1.0,
+        blend: ph2d_vec_scene::BlendMode::Normal,
+        layers: Vec::new(),
+        mixed_opacity: false,
+        mixed_blend: false,
+        layers_differ: false,
+        order: Vec::new(),
+    };
+    match tipo {
+        "vetor" => {
+            ph2d_panel_inspector::set_current_inspector_sprite(None);
+            appearance::set_current_appearance(Some(forma));
+        }
+        "imagem" => appearance::set_current_appearance(None),
+        "outro" => {
+            ph2d_panel_inspector::set_current_inspector_sprite(None);
+            appearance::set_current_appearance(None);
+        }
+        _ => {}
+    }
 }
 
 /// Uma pintura de um painel no retrato alto: de fábrica, armado e em cada estado semeado, em fatias.

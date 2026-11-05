@@ -33,8 +33,8 @@ fn grava(t: &PainterTool, arq: &str) {
     let mut b = format!("P6 {W} {H} 255\n").into_bytes();
     for p in t.canvas_rgba.chunks(4) {
         let a = u32::from(p[3]);
-        for k in 0..3 {
-            b.push(((u32::from(p[k]) * a + 255 * (255 - a)) / 255) as u8);
+        for &c in &p[..3] {
+            b.push(((u32::from(c) * a + 255 * (255 - a)) / 255) as u8);
         }
     }
     std::fs::write(arq, b).expect("gravar a foto");

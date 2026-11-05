@@ -161,7 +161,7 @@ fn desfazer_devolve_as_celulas_com_o_valor_antigo() {
             .collect::<Vec<f32>>()
     };
     let v0 = campo(&t);
-    assert!(v0.iter().any(|&v| v == 0.5), "a tinta não pousou o valor");
+    assert!(v0.contains(&0.5), "a tinta não pousou o valor");
     traco(&mut t, [180.0, 40.0], [180.0, 160.0], 0.0);
     t.wet_recomposite_full();
     assert_ne!(campo(&t), v0, "a tinta por cima não misturou o valor");

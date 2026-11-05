@@ -161,7 +161,7 @@ pub(crate) fn linha_antiga_em_captura(coluna: (f32, f32), topo: f32, fundo: f32)
     if ligado() && secao_atual().is_none() && crate::widget::card_ink::card_body().is_some() {
         linha(coluna, topo, fundo, || {
             vec![CelulaMedida {
-                nome: format!("old row at y {topo:.0}"),
+                nome: format!("y {topo:.0}"),
                 curta: false,
                 pede: 0.0,
             }]
@@ -350,7 +350,7 @@ impl Censo {
         self.listas_soltas
             .iter()
             .filter(|(_, _, h)| (h - m::FIELD_H).abs() > 0.5)
-            .map(|(_, n, h)| format!("{n:?} mede {h:.0}"))
+            .map(|(_, n, h)| format!("{n:?}: {h:.0}"))
             .collect()
     }
 
@@ -361,7 +361,7 @@ impl Censo {
             .textos
             .iter()
             .filter(|t| t.pede > t.largura + 0.5)
-            .map(|t| format!("{:?} pede {:.0} em {:.0}", t.texto, t.pede, t.largura))
+            .map(|t| format!("{:?}: {:.0} > {:.0}", t.texto, t.pede, t.largura))
             .collect();
         out.sort();
         out.dedup();

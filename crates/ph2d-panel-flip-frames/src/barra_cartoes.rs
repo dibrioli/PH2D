@@ -86,8 +86,14 @@ fn grupos(snap: &FlipStripSnapshot) -> [Vec<Peca>; 6] {
         ],
         vec![
             Peca::Marca(ids::FLIP_GHOST, t("ghost"), snap.ghost),
-            Peca::Campo(ids::FLIP_GHOST_BEFORE_NUM, t("ghost_before")),
-            Peca::Campo(ids::FLIP_GHOST_AFTER_NUM, t("ghost_after")),
+            Peca::Campo(
+                ids::FLIP_GHOST_BEFORE_NUM,
+                tr("panel.flip_frames.toolbar.ghost_before"),
+            ),
+            Peca::Campo(
+                ids::FLIP_GHOST_AFTER_NUM,
+                tr("panel.flip_frames.toolbar.ghost_after"),
+            ),
             Peca::Marca(ids::FLIP_KEY_PIN, t("pin"), snap.current_pinned),
         ],
         vec![

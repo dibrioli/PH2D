@@ -283,9 +283,9 @@ fn o_painel_live_e_os_botoes_dele_vestem_o_cartao() {
     );
 }
 
-/// «Remove Animation» sem o «x» em letra, e o verbo do lado com o «+» do idioma.
+/// O verbo sem o «x» em letra. A palavra é a do `main` (GEF 22, secção Animation à Godot: «Remove»).
 #[test]
 fn remover_animacao_nao_leva_o_x_em_letra() {
     let t = ph2d_i18n::tr("panel.inspector.animation.x_remove_animation");
-    assert_eq!(t, "Remove Animation");
+    assert_eq!(t, "Remove");
 }

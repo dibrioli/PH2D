@@ -40,61 +40,67 @@ pub(super) fn paint_sub_label(
 
 /// A legenda por extenso nos cartões, em caixa normal. O que o artista conhece por sigla (`FK`) fica
 /// como é, e as ferramentas de imagem já trazem o nome inteiro (`image_tool_rail_entries`).
-const EM_CAIXA_NORMAL: [(&str, TextKey); 41] = [
-    ("MOVE", TextKey::new("chrome.rail.caption.move")),
-    ("ROT", TextKey::new("chrome.rail.caption.rot")),
-    ("SCALE", TextKey::new("chrome.rail.caption.scale")),
-    ("PIVOT", TextKey::new("chrome.rail.caption.pivot")),
-    ("SPACE", TextKey::new("chrome.rail.caption.space")),
-    ("VIEW", TextKey::new("chrome.rail.caption.view")),
-    ("UNDO", TextKey::new("chrome.rail.caption.undo")),
-    ("REDO", TextKey::new("chrome.rail.caption.redo")),
-    ("FILL", TextKey::new("chrome.rail.caption.fill")),
-    ("LINE", TextKey::new("chrome.rail.caption.line")),
-    ("PROFILE", TextKey::new("chrome.rail.caption.profile")),
-    ("TYPE", TextKey::new("chrome.rail.caption.type")),
-    ("OPACITY", TextKey::new("chrome.rail.caption.opacity")),
-    ("TRIM", TextKey::new("chrome.rail.caption.trim")),
-    ("BRUSH", TextKey::new("chrome.rail.caption.brush")),
-    ("PICK", TextKey::new("chrome.rail.caption.pick")),
-    ("BLEND", TextKey::new("chrome.rail.caption.blend")),
-    ("BLUR", TextKey::new("chrome.rail.caption.blur")),
-    ("CLONE", TextKey::new("chrome.rail.caption.clone")),
-    ("SMEAR", TextKey::new("chrome.rail.caption.smear")),
-    ("ERASE", TextKey::new("chrome.rail.caption.erase")),
-    ("SIZE", TextKey::new("chrome.rail.caption.size")),
-    ("MASK", TextKey::new("chrome.rail.caption.mask")),
-    ("SHAPE", TextKey::new("chrome.rail.caption.shape")),
-    ("TOOL", TextKey::new("chrome.rail.caption.tool")),
-    ("WET", TextKey::new("chrome.rail.caption.wet")),
-    ("DRY", TextKey::new("chrome.rail.caption.dry")),
-    ("MODE", TextKey::new("chrome.rail.caption.mode")),
-    ("MIX", TextKey::new("chrome.rail.caption.mix")),
-    ("GRID", TextKey::new("chrome.rail.caption.grid")),
-    ("EDIT", TextKey::new("chrome.rail.caption.edit")),
-    ("CURVE", TextKey::new("chrome.rail.caption.curve")),
-    ("DASH", TextKey::new("chrome.rail.caption.dash")),
-    ("FREE", TextKey::new("chrome.rail.caption.free")),
-    ("BLOW", TextKey::new("chrome.rail.caption.blow")),
-    ("LIQFY", TextKey::new("chrome.rail.caption.liquify")),
-    ("XFORM", TextKey::new("chrome.rail.caption.transform")),
-    ("INPNT", TextKey::new("chrome.rail.caption.inpaint")),
-    ("SEL", TextKey::new("chrome.rail.caption.select")),
-    ("ELLI", TextKey::new("chrome.rail.caption.ellipse")),
-    ("POLY", TextKey::new("chrome.rail.caption.polygon")),
+/// O último segmento da chave é a sigla em minúsculas (`SEL` → `chrome.rail.caption.sel`).
+const POR_EXTENSO: [TextKey; 41] = [
+    TextKey::new("chrome.rail.caption.move"),
+    TextKey::new("chrome.rail.caption.rot"),
+    TextKey::new("chrome.rail.caption.scale"),
+    TextKey::new("chrome.rail.caption.pivot"),
+    TextKey::new("chrome.rail.caption.space"),
+    TextKey::new("chrome.rail.caption.view"),
+    TextKey::new("chrome.rail.caption.undo"),
+    TextKey::new("chrome.rail.caption.redo"),
+    TextKey::new("chrome.rail.caption.fill"),
+    TextKey::new("chrome.rail.caption.line"),
+    TextKey::new("chrome.rail.caption.profile"),
+    TextKey::new("chrome.rail.caption.type"),
+    TextKey::new("chrome.rail.caption.opacity"),
+    TextKey::new("chrome.rail.caption.trim"),
+    TextKey::new("chrome.rail.caption.brush"),
+    TextKey::new("chrome.rail.caption.pick"),
+    TextKey::new("chrome.rail.caption.blend"),
+    TextKey::new("chrome.rail.caption.blur"),
+    TextKey::new("chrome.rail.caption.clone"),
+    TextKey::new("chrome.rail.caption.smear"),
+    TextKey::new("chrome.rail.caption.erase"),
+    TextKey::new("chrome.rail.caption.size"),
+    TextKey::new("chrome.rail.caption.mask"),
+    TextKey::new("chrome.rail.caption.shape"),
+    TextKey::new("chrome.rail.caption.tool"),
+    TextKey::new("chrome.rail.caption.wet"),
+    TextKey::new("chrome.rail.caption.dry"),
+    TextKey::new("chrome.rail.caption.mode"),
+    TextKey::new("chrome.rail.caption.mix"),
+    TextKey::new("chrome.rail.caption.grid"),
+    TextKey::new("chrome.rail.caption.edit"),
+    TextKey::new("chrome.rail.caption.curve"),
+    TextKey::new("chrome.rail.caption.dash"),
+    TextKey::new("chrome.rail.caption.free"),
+    TextKey::new("chrome.rail.caption.blow"),
+    TextKey::new("chrome.rail.caption.liqfy"),
+    TextKey::new("chrome.rail.caption.xform"),
+    TextKey::new("chrome.rail.caption.inpnt"),
+    TextKey::new("chrome.rail.caption.sel"),
+    TextKey::new("chrome.rail.caption.elli"),
+    TextKey::new("chrome.rail.caption.poly"),
 ];
 
 /// A legenda de `text` em cartões.
 pub(super) fn em_caixa_normal(text: &str) -> &str {
-    EM_CAIXA_NORMAL
+    POR_EXTENSO
         .iter()
-        .find(|(cru, _)| *cru == text)
-        .map_or(text, |(_, chave)| chave.tr())
+        .find(|k| {
+            k.key()
+                .rsplit('.')
+                .next()
+                .is_some_and(|sigla| sigla.to_ascii_uppercase() == text)
+        })
+        .map_or(text, |chave| chave.tr())
 }
 
 #[cfg(test)]
 pub(super) fn nomes_por_extenso() -> impl Iterator<Item = &'static str> {
-    EM_CAIXA_NORMAL.iter().map(|(_, chave)| chave.tr())
+    POR_EXTENSO.iter().map(|chave| chave.tr())
 }
 
 /// A largura do chip para `sub` caber inteira no corpo do rótulo, com o vão da fila entre duas legendas.

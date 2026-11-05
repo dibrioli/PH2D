@@ -498,7 +498,7 @@ fn a_registered_rate_keeps_the_floor_of_the_range() {
         let arena = Bump::new();
         let y = rect.y + rect.h * 0.5;
         let x0 = rect.x + 40.0;
-        let mut vai = |store: &mut WidgetStore, kind, x| {
+        let vai = |store: &mut WidgetStore, kind, x| {
             let _ = dispatch_pointer(store, &hits, pointer(kind, x, y), &arena);
         };
         vai(&mut store, PointerKind::Down, x0);

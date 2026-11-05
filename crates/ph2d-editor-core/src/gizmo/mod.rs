@@ -55,7 +55,9 @@ pub use camera::{GizmoCamera, GizmoModifiers, GizmoSnap};
 pub use drag::{
     GizmoDragKind, GizmoDragState, GizmoHit, GizmoTarget, GroupDragSnapshot, TransformSnapshot,
 };
-pub use escala::grip_pivot_world;
+pub use escala::{
+    escala_do_primario, fator_do_grupo, grip_pivot_world, partida_do_grupo, uniforme_do_grupo,
+};
 pub use group::{GroupMotion, MemberPose, group_member_pose, skew_under_world_scale};
 pub use hit::{gizmo_kind_for_id, ids, is_gizmo_handle_id, is_gizmo_id};
 pub use model::{MODEL_IDENTITY, model_apply, model_inverse, skew_about, skew_translation_out};

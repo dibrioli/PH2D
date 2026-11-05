@@ -16,37 +16,13 @@ impl crate::App {
         is_scale: bool,
     ) {
         if let Some(gfx) = self.gfx.as_mut() {
-            // Onda 2C.4 fix: in Local-pivot mode with multi-select
-            // active, every sprite (INCLUDING the primary) must
-            // scale / rotate around its own pivot — translation
-            // stays put. The default `compute_gizmo_transform`
-            // would shift the primary's translation for non-
-            // center anchors. Restore start translation so the
-            // primary matches the extras in Local mode.
-            //
-            // Global mode is the opposite — `compute_gizmo_transform`
-            // returns translation computed via `opposite_anchor_translation`
-            // using the PRIMARY's `sprite_half_intrinsic` and the GLOBAL
-            // pivot, which is geometrically incorrect (it treats the
-            // global center as if it were the primary's opposite
-            // corner). That math sends the primary jumping to wild
-            // positions on tiny drags (smoke: "algumas sprite saltam
-            // para outra posição distante mesmo sem escalonar muito").
-            // For Global Scale/Rotate, override the primary's
-            // translation with the same group-pivot formula the extras
-            // already use: `pivot + R(delta_rot) * factor * (start -
-            // pivot)`. The primary then behaves consistently with
-            // every other selected sprite — "as if the group is a
-            // single rigid object around the global pivot".
-            // ── Uniform-only group scale for ROTATED selections (Enio
-            // 2026-06-03). A non-uniform WORLD-axis scale of a rotated child is
-            // a SHEAR, which `Transform.scale` (local, per-child) cannot
-            // represent → the reported X↔Y swap. Standard editor behaviour:
-            // when the multi-selection contains a rotated object, scaling stays
-            // PROPORTIONAL (both axes by the dominant drag factor). A single
-            // (non-group) scale keeps its correct local-axis non-uniform
-            // behaviour. Applied to `new_t` BEFORE the factor + primary write
-            // below so the primary AND every extra scale uniformly.
+            // Local-pivot multi-select: cada um escala em torno do próprio pivô. Global: a fórmula do
+            // pivô partilhado, como os outros. Seleção rodada: escala proporcional, porque a não
+            // uniforme de um filho rodado é um SHEAR que `Transform.scale` não representa (Enio 2026-06-03).
+            // Eixo a zero: `gizmo/escala.rs`, e a decisão em docs/CartoesUI/10 (F7).
+            let partida = ph2d_editor_core::gizmo::partida_do_grupo(drag)
+                .start_transform
+                .scale;
             let new_t = if !self.group_drag_starts.is_empty()
                 && matches!(
                     drag.kind,
@@ -58,40 +34,18 @@ impl crate::App {
                     || self.group_drag_starts.iter().any(|s| {
                         s.parent_world.rotation + s.start_transform.rotation != 0.0
                     })) {
-                let ss = drag.start_transform.scale;
-                let fx = if ss[0].abs() > f32::EPSILON {
-                    new_t.scale[0] / ss[0]
-                } else {
-                    1.0
-                };
-                let fy = if ss[1].abs() > f32::EPSILON {
-                    new_t.scale[1] / ss[1]
-                } else {
-                    1.0
-                };
-                // The axis the user is actually dragging drives both.
-                let uniform = if (fx - 1.0).abs() >= (fy - 1.0).abs() {
-                    fx
-                } else {
-                    fy
-                };
                 ph2d_editor_core::TransformSnapshot {
-                    scale: [ss[0] * uniform, ss[1] * uniform],
+                    scale: ph2d_editor_core::gizmo::uniforme_do_grupo(partida, new_t.scale),
                     ..new_t
                 }
             } else {
                 new_t
             };
-            let start_scale = drag.start_transform.scale;
-            let factor_x = if start_scale[0].abs() > f32::EPSILON {
-                new_t.scale[0] / start_scale[0]
-            } else {
-                1.0
-            };
-            let factor_y = if start_scale[1].abs() > f32::EPSILON {
-                new_t.scale[1] / start_scale[1]
-            } else {
-                1.0
+            let [factor_x, factor_y] =
+                ph2d_editor_core::gizmo::fator_do_grupo(partida, new_t.scale);
+            let new_t = ph2d_editor_core::TransformSnapshot {
+                scale: ph2d_editor_core::gizmo::escala_do_primario(&drag, new_t.scale),
+                ..new_t
             };
             // Continuous rotation across the atan2 ±π seam (Enio
             // 2026-06-08). `compute_gizmo_transform` derives the angle from
@@ -236,6 +190,7 @@ impl crate::App {
                 |w: [f32; 2]| ph2d_editor_core::gizmo::model_apply(&skew_m, w),
                 |w: [f32; 2]| ph2d_editor_core::gizmo::model_apply(&skew_inv, w),
             );
+            let drag_for_math = ph2d_editor_core::gizmo::partida_do_grupo(drag_for_math);
             let drag_for_math =
                 ph2d_editor_core::gizmo::drag_in_skew_frame(drag_for_math, &skew_m, &cam);
             let new_t = if is_scale && vec_scale_snap {

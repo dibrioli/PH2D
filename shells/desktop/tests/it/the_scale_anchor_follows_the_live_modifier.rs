@@ -75,3 +75,20 @@ fn the_pen_down_stores_the_corner_so_the_key_has_something_to_give_back() {
          pega):\n{call}"
     );
 }
+
+/// **(4) Gizmo global com o primário a zero: a conta e o fator usam a partida do grupo.**
+/// A lei é pura, em `gizmo/escala_tests.rs`; aqui, as duas pontas da fiação.
+#[test]
+fn the_group_math_and_its_factor_read_the_same_start() {
+    let src = std::fs::read_to_string(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/src/input_dispatch/gizmo_drag_calculo.rs"
+    ))
+    .expect("a conta do arrasto mudou de ficheiro: reaponte este gate");
+    assert_eq!(
+        src.matches("gizmo::partida_do_grupo(").count(),
+        2,
+        "a conta e o fator"
+    );
+    assert!(src.contains("gizmo::escala_do_primario(&drag, new_t.scale)"));
+}

@@ -222,6 +222,25 @@ fn a_chip_under_a_label_row_counts_as_short() {
     assert_eq!(c.irmaos_separados().len(), 1, "{:?}", c.linhas);
 }
 
+/// O texto da lista entra no que a linha pede: duas listas longas demais para meia coluna não são irmãs
+/// separadas. *Mutação: `controlo_curto` sem somar o `pede` ⇒ acusadas.*
+#[test]
+fn a_chip_too_long_for_half_a_column_is_not_a_separated_sibling() {
+    let mut f = mesa();
+    let ink = CardInk::of_list(Theme::default());
+    censo::na_secao(Some(A));
+    let longo = "An option name far too long to share the width of a single card column";
+    let (_, c) = censo::grava(|| {
+        let Mesa { scene, ts, .. } = &mut f;
+        for (nome, y) in [("When", 0.0), ("Compare", 51.0)] {
+            let linha = super::super::corpo::rotulo_em_cima(scene, ts, ink, 0.0, 257.0, y, nome);
+            crate::widget::paint_card_chip(scene, ts, ink, linha.control, longo, false);
+        }
+    });
+    censo::na_secao(None);
+    assert!(c.irmaos_separados().is_empty(), "{:?}", c.linhas);
+}
+
 /// Sem lista por baixo, o rótulo continua longo: uma grelha ou um grupo de amostras não se dividem.
 #[test]
 fn a_label_row_without_a_chip_stays_long() {

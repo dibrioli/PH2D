@@ -551,6 +551,81 @@ fn na_multi_selecao_o_campo_move_a_primaria_e_as_alcas_ficam_na_sua_forma() {
     w.confere("a primária");
 }
 
+/// Cartão Transform preso a A, com B em foco: o gesto no preso anda com A e as alças dela, e B e as dele
+/// ficam. Do clique ao pedido é o hero real; a escrita é a de `inspector_commits` (fila pede a shell).
+#[cfg(feature = "panel-inspector")]
+#[test]
+fn o_cartao_preso_anda_com_a_sua_forma_e_as_alcas_dela() {
+    use super::cartoes_mao::{clica, mao, pinta, solta};
+    use super::o_bloco5_abertos::escolhe;
+    use ph2d_editor_core::interaction::{loose_pin_of, loose_rect_of};
+    use ph2d_editor_core::screens::hero::HeroScreen;
+    use ph2d_panel_inspector::{CARD_TRANSFORM, ids as insp_ids};
+
+    let mut w = mundo(ShapeKind::RoundRect, Pose::Solta);
+    let receita = (w.sim.world().get::<VecShape>(w.e).cloned()).expect("receita");
+    let b = w.scene.push_path(recook_shape(&receita).expect("cozinha"));
+    ph2d_vec_entities::entities::sync(&mut w.sim, &mut w.scene, &mut w.map);
+    let b_e = Entity::from_bits(w.map[&b]);
+    w.sim.world_mut().entity_mut(b_e).insert(receita);
+    let (bits_a, bits_b) = (w.e.to_bits(), b_e.to_bits());
+
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    ph2d_panel_inspector::set_cards_on(true);
+    ph2d_panel_inspector::set_current_inspector_sprite(None);
+    escolhe(bits_a, "A", 1.0);
+    let mut h = HeroScreen::new(NodeId(1));
+    let paineis: Vec<&'static str> = ph2d_editor_core::panel::with_registry_ref(|reg| {
+        reg.panels().iter().map(|p| p.manifest.id).collect()
+    });
+    for n in paineis {
+        h.panel_visibility.insert(n, n == "inspector");
+    }
+    pinta(&mut h, 30);
+    solta(&mut h, CARD_TRANSFORM);
+    clica(&mut h, loose_pin_of(CARD_TRANSFORM));
+    escolhe(bits_b, "B", 9.0);
+    let pins = h.store.loose_pins_of(ph2d_editor_core::ids::INSP_PANEL);
+    ph2d_panel_inspector::com_cada_preso(&pins, |bits| escolhe(bits, "A", 1.0));
+    pinta(&mut h, 5);
+    let r = (h.store.panel_rect(loose_rect_of(CARD_TRANSFORM))).expect("o preso");
+    let dentro = (r.x + r.w * 0.5, r.y + r.h - 3.0);
+    mao(&mut h, PointerKind::Down, dentro);
+    mao(&mut h, PointerKind::Up, dentro);
+    let _ = h.bus.drain().count();
+    let x = insp_ids::INSP_TRANSFORM_POS_X;
+    h.store.set_number_value(x, 250.0);
+    h.apply_event(WidgetEvent::ValueChanged(x));
+    let pedido = h.bus.drain().find_map(|a| match a {
+        EditorAction::InspectorTransformEdit(i) => Some(i),
+        _ => None,
+    });
+    let pedido = pedido.expect("o gesto no preso não pediu nada");
+
+    let alcas_de_b = |w: &Mundo| {
+        (alcas::view(&w.sim, &w.scene, &w.map, &[b], Gate::SHAPE, PX, None, None))
+            .expect("as alças de B")
+            .points
+    };
+    let (k0, b0, pose_b) = (
+        w.canto(),
+        alcas_de_b(&w),
+        world_transform(&w.sim, b_e).translation,
+    );
+    let pose = Transform::de_autoria(
+        pedido.translation,
+        pedido.rotation_rad,
+        pedido.scale,
+        pedido.skew_rad,
+    );
+    let alvo = Entity::from_bits(pedido.entity_bits);
+    w.sim.world_mut().entity_mut(alvo).insert(pose);
+    assert!(longe(k0, w.canto()) > 1.0, "A não andou");
+    assert_eq!(world_transform(&w.sim, b_e).translation, pose_b, "B andou");
+    assert_eq!(alcas_de_b(&w), b0, "as alças de B andaram");
+    w.confere("a forma do preso");
+}
+
 /// O Set Center num círculo perfeito não volta ao centro no quadro seguinte, e as alças ficam na forma.
 #[test]
 fn o_set_center_de_um_circulo_fica() {

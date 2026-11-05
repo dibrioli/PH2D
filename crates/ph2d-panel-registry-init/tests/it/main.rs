@@ -21,6 +21,7 @@ mod a_tinta_de_base_no_cartao;
 mod cartoes_mao;
 mod censo_estados;
 mod diag_os_comandos_do_vector;
+mod f7_fotos;
 mod global_palette_catalog;
 mod lei_da_compactacao;
 mod nenhum_botao_das_barras_de_modulo_sumiu;

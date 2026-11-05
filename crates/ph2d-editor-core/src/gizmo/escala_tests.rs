@@ -321,3 +321,41 @@ fn sem_espelho_o_pivo_e_o_de_antes_ao_bit() {
         anchor_pivot_world(GizmoDragKind::Rotate, [0.1, 0.2], MEIO, snap, false)
     );
 }
+
+/// Gizmo GLOBAL com o primário a zero em X: o fator é o do grupo, e o primário fica a zero.
+/// *Mutação: `partida_do_grupo` sem efeito ⇒ o fator cai a 1 e os outros não mudam.*
+#[test]
+fn o_grupo_escala_os_outros_com_o_primario_a_zero() {
+    let mut d = agarra(pose([1.0, 1.0]), RAIZ, MEIO, 0.0, [2.0, 0.0]);
+    d.start_transform = pose([0.0, 1.0]);
+    d.target = GizmoTarget::Global;
+    d.pivot_world = [-2.0, 0.0];
+    let conta = partida_do_grupo(d);
+    let nova = move_para(&conta, [3.0, 0.0], false).scale;
+    let fator = fator_do_grupo(conta.start_transform.scale, nova);
+    perto(fator[0], 1.25, "o fator do grupo");
+    perto(fator[1], 1.0, "Y");
+    assert_eq!(
+        escala_do_primario(&d, nova)[0],
+        0.0,
+        "o primário fica a zero"
+    );
+}
+
+/// Fora do global nada muda: o eixo a zero abre, e os outros não mudam nele.
+#[test]
+fn fora_do_global_o_zero_abre_e_o_fator_e_um() {
+    let d = agarra(pose([0.0, 1.0]), RAIZ, MEIO, 0.0, [0.0, 0.0]);
+    assert_eq!(partida_do_grupo(d).start_transform.scale, [0.0, 1.0]);
+    assert_eq!(escala_do_primario(&d, [0.5, 1.0]), [0.5, 1.0]);
+    assert_eq!(fator_do_grupo([0.0, 1.0], [0.5, 1.0]), [1.0, 1.0]);
+}
+
+/// Seleção rodada: proporcional pelo eixo que a mão move; o eixo a zero abre, senão a alça fica morta.
+/// *Mutação: o eixo a zero a `partida × u` ⇒ não abre.*
+#[test]
+fn a_selecao_rodada_e_proporcional_e_o_zero_abre() {
+    assert_eq!(uniforme_do_grupo([2.0, 1.0], [3.0, 1.0]), [3.0, 1.5]);
+    assert_eq!(uniforme_do_grupo([0.0, 1.0], [0.5, 1.0]), [0.5, 1.0]);
+    assert_eq!(uniforme_do_grupo([0.0, 1.0], [0.0, 2.0]), [0.0, 2.0]);
+}

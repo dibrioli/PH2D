@@ -2,7 +2,7 @@
 
 Leitor: a próxima janela da `line/GameEngineFuncional`. Desenho aprovado e aceitação: [ficha da Sprite](../componentes/01_sprite.md). Regras: [`README.md`](../README.md).
 
-⛔ **O commit `wip` da ponta NÃO COMPILA**: guarda a obra, e a E5 foi escrita sem compilar. Janela anterior parou a ~536 mil tokens por passo. Nada foi visto pelo dono.
+✅ **Atualizado 05/11 (`521a883293`):** compila, portões do item verdes, testes de clique em `o_cartao_da_sprite.rs`, fotos conduzidas (`PH2D_GAME_SMOKE_FOTO=sprite_*`), bug dos Transform presos curado (`o_bloco7_duas_copias.rs`). Código movido para as folhas `ph2d-sprite-edit`, `ph2d-pixel-formas`, `ph2d-game-dicas` e `ph2d_render::sprite_emissive`. **À espera do smoke do dono.** Por conferir: a volta do Edit in Painter no app (só a ida foi fotografada; a lei tem teste), o Pivot com colisão (o collider não tem deslocamento: a colisão anda com o pivô; pergunta ao dono), Auto Key do pivô, o nome da imagem depois de editar (fica o do 1.º objecto), espelhar em dois lugares. A tabela abaixo é o estado ANTES desta rodada.
 
 ## Estado por etapa
 

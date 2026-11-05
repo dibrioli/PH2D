@@ -11,7 +11,7 @@ No momento da escrita: HEAD `7c5485f5ad`, 238 commits, 1208 ficheiros, +74 921 �
 > peça smoke. Faça tudo até o fim e entregue o handoff. Amanhã faremos o smoke.»
 
 Entregas: (a) os abertos da §4; (b) o fecho da §5; (c) handoff de integração em `docs/CartoesUI/handoffs/`; (d) `SendMessage` a `ph2d-44`.
-⛔ Você NÃO integra, NÃO faz push, NÃO faz ship. Dono diz «não integraremos» só nesta janela: quem integra é `ph2d-44`, por ordem dele.
+⛔ Você NÃO integra, NÃO faz push, NÃO faz ship: isso é de `ph2d-44`.
 
 ## 2. O que existe (não reconstrua)
 
@@ -35,14 +35,10 @@ Rive → app com UI premiada → Inkscape/Godot/Unity · micro-pesquisa antes de
 
 **Smoke do dono já feito (04/11):** Visão geral OK · Painter OK · Gizmo da forma OK · Quadro aceite por agora («o desenho dos cartões poderia ser mais belo»). Foram curados e **não vistos por ele**: Scale travado, Weight preso, pulos no Ctrl+Z, estrela do Preset, capricho.
 
-## 3. Duas tarefas ainda em curso na janela anterior
+## 3. As duas últimas tarefas da janela anterior: feitas, sem smoke do dono
 
-Não as faça: ela dá-lhe o sinal quando acabarem, e escreve aqui o resultado.
-
-- **Risco de 1 px na borda dos sprites** (foto do dono; ficheiros do render).
-- **Botão «Remove Background» sumiu da barra de Edit do sprite**; inclui `nenhum_botao_das_barras_de_modulo_sumiu` e os nomes do `tool_rail`, com `M` em `tool_bar.rs`, `image_action_row.rs`, `widget/tool_rail/*`, `chrome_rail.rs`.
-
-(resultado: a janela anterior preenche antes do sinal)
+- **Risco de 1 px na borda dos sprites** (`a3e57a1306`, `ab5f5aa97a`, [22](../../Sprite_projeto/22_o_recorte_nao_le_o_vizinho.md)). O bilinear lia a célula vizinha; `crates/ph2d-gpu/src/recorte_uv.wgsl`, uma porta só, no sprite e na Luz 2D. Medido em RADV e RTX 5060 Ti. Abertos: `c3_mascara.wgsl` sem portão; pré-visualização com pixel só na foto; bits na NVIDIA não medidos e custo por fragmento não medido; a arte que encosta na borda perde orla macia ao minificar (cabelo a 0,5×: 0,39→0,58, 9 px): registe ao dono; `a_repetida_continua_a_costurar` leu zeros 1× em lote pesado, sem causa, verde em 20+ corridas; o campo Filter Clip deixou de ser preciso: fica, decisão do dono.
+- **«Remove Background»** (`3f0c2add91`): nunca saiu; desde a M5 a legenda dizia «Cutout», com ícone de borracha. Agora o nome inteiro vem da dica (Remove Background, Make Square, Color Equalization…; «Reshape» virou Transform), com chip que alarga e `⋯` em lista. Inventário contra o `main` por portão. Abertos: `as_caixas_internas_vestem_a_superficie_sem_mover_alvo` (`NewImageDialog`) VERMELHO, com o teste a esperar os alvos de antes da M8: confira e cure (item 1 da §4); título do painel continua «Background Removal», decisão do dono; o inventário do Vector não teve contraprova própria; na foto do Bones só abriu, não leu.
 
 ## 4. O que está aberto, por ordem
 
@@ -69,7 +65,7 @@ Não as faça: ela dá-lhe o sinal quando acabarem, e escreve aqui o resultado.
 16. Gizmo da forma: Ctrl+Z/Y, Reset, Timeline pela fila real, cartão preso, gradient handles, parâmetro animado. `the_vector_panel_crosses_the_display_frontier` e irmãos não correram depois de mover os escritores para `ph2d-vec-entities/src/campos_transform.rs`.
 17. Weight e Ctrl+Z: cartões de componente um a um, Bones à volta do Ctrl+Z, desfazer que tira cartão de verdade, e a chamada `depois_do_restauro` em `undo_app.rs` (só a medição a prova: tente um teste sem placa).
 18. Scale: Ctrl+Z na shell. Vector: mutantes `mark_card_field`, tinta do papel à vista, nome longo cortado, «+» sempre aceso, recado do ícone, largura da lista. Censo: `controlo_curto` sobrevive. Bones: Reach + Handles sem prova por gesto. `the_flow_is_visible…`: teste novo.
-19. Espaço para o `a_custo_por_quadro`: a medição do Retrato foi com 2 objectos em 5 presos; meça com 5.
+19. Custo por quadro dos presos: medido com 5 cartões em 2 objectos (+0,70 ms); meça com 5 objectos (estimados ~0,95 ms, não medidos).
 20. Fotos em falta na janela real (a maioria é do arnês): voo, solto, popover, scrub. Pelo menos uma passada em janela real por família: Inspector, Vector, Painter, Hierarchy, Timeline. Mask do Painter, lista aberta de Frames, Audio Editor com clip.
 
 **D. Decisões que o dono ainda não respondeu: não pergunte, mantenha o que está e liste no handoff.** Regra 6 (Per-corner sem código) · «Behind Parent» · legendas sobre os chips da barra · Inspector vazio ao lado do Quadro · Size/Wrap width do texto em metros · proposta da Galeria (17) · e as de [10](../10_TODO_O_APP_TRACKER.md) e [18](../18_REVISAO_DE_CAPRICHO.md). Nomes crípticos em dúvida: `Jetty`, `+M`, `DTCG`, `Offset (1/n)`, `Cross`, `Pick Shapes`, `Smooth wash body (off · on)`.

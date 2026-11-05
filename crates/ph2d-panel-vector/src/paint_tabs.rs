@@ -112,11 +112,14 @@ pub(crate) fn paint_on_list(ctx: &mut PaintCtx, lista: Rect, theme: Theme) {
         (fim - x).max(0.0),
         m::HEAD_ICON_BOX,
     );
-    paint_in(ctx, r, theme);
+    ph2d_editor_core::widget::card_ink::com(
+        ph2d_editor_core::widget::card_ink::CardInk::of_list(theme),
+        || paint_in(ctx, r, theme),
+    );
 }
 
 fn paint_in(ctx: &mut PaintCtx, r: Rect, theme: Theme) {
-    let tabs = abas();
+    let tabs = abas().fit_words(ctx.text_system);
     let hot = ctx.host.store().hot_id();
     let hovered = tabs.items.iter().position(|t| hot == Some(t.id));
     paint_tabs_with_hover(&tabs, hovered, r, ctx.scene, ctx.text_system, theme);

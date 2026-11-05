@@ -66,7 +66,7 @@ impl Tabs {
     /// igual chega para a palavra mais larga, nada muda.
     #[must_use]
     pub fn fit_words(mut self, text_system: &mut TextSystem) -> Self {
-        let font = TypeToken::Base.px();
+        let font = corpo_das_palavras();
         self.naturals = self
             .items
             .iter()
@@ -226,7 +226,7 @@ pub fn paint_tabs_with_hover(
                     scene,
                     &item.label,
                     r,
-                    TypeToken::Base.px(),
+                    corpo_das_palavras(),
                     resolve(fg, theme),
                 );
                 if is_selected {
@@ -269,6 +269,15 @@ pub fn paint_tabs_with_hover(
                 );
             }
         }
+    }
+}
+
+/// O corpo da palavra de uma aba: num cartão, o do segmentado (a coluna de 220 px cortava «Preview»).
+fn corpo_das_palavras() -> f32 {
+    if crate::widget::card_ink::card_body().is_some() {
+        ph2d_card_stack::metrics::SEG_TEXT_PX
+    } else {
+        TypeToken::Base.px()
     }
 }
 

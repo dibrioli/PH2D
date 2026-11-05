@@ -333,13 +333,22 @@ impl Corpo<'_> {
         let Some(mut c) = self.cartao_ctx() else {
             return y;
         };
-        let y = c.row(
-            &[
-                celula(ids::PIXEL_FG, info.fg, &frente, tr("card.pixel.fg")),
-                celula(ids::PIXEL_BG, info.bg, &fundo, tr("card.pixel.bg")),
-            ],
-            y,
-        );
+        let par = [
+            celula(ids::PIXEL_FG, info.fg, &frente, tr("card.pixel.fg")),
+            celula(ids::PIXEL_BG, info.bg, &fundo, tr("card.pixel.bg")),
+        ];
+        // Lei 5 de 05 §4: com alfa o hex tem 8 dígitos, e na coluna estreita o par desce em vez de o cortar.
+        let meia = (c.w - m::FIELD_GAP) * 0.5;
+        let hex_w = c
+            .text_system
+            .prefix_width(&frente, m::VALUE_PX)
+            .max(c.text_system.prefix_width(&fundo, m::VALUE_PX));
+        let y = if hex_w + m::ICON_CELL + m::FIELD_PAD_R > meia {
+            par.iter()
+                .fold(y, |y, cel| c.row(std::slice::from_ref(cel), y))
+        } else {
+            c.row(&par, y)
+        };
         let y = y + m::FIELD_ROW_GAP;
         c.full(
             None,

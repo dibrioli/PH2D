@@ -44,7 +44,11 @@ impl BodyCtx<'_> {
         let y = if id == t::VECTOR_SECTION_BLEND {
             y
         } else {
-            y + m::LABEL_TOP
+            y + m::GROUP_TOP
+                - ph2d_editor_core::paint::folga_do_texto(
+                    ph2d_editor_core::panel::section_header_h(),
+                    ph2d_tokens::TypeToken::Sm.px(),
+                )
         };
         let (y, dobrado) = card_ink::com(ink, || self.section_header(id, tr(chave), y));
         if dobrado {

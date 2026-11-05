@@ -301,14 +301,22 @@ fn cartao_de_delay(c: &mut CardCtx<'_>, y: f32) -> f32 {
         snapshot::delay_on(),
         y,
     );
-    let y = c.row(
-        &[
-            campo(&AMIX_DELAY_TIME, tr("panel.audio_mixer.master.time")),
-            campo(&AMIX_DELAY_FEEDBACK, tr("panel.audio_mixer.master.fbk")),
-            campo(&AMIX_DELAY_MIX, tr("panel.audio_mixer.master.return")),
-        ],
-        y,
-    );
+    let tres = [
+        campo(&AMIX_DELAY_TIME, tr("panel.audio_mixer.master.time")),
+        campo(&AMIX_DELAY_FEEDBACK, tr("panel.audio_mixer.master.fbk")),
+        campo(&AMIX_DELAY_MIX, tr("panel.audio_mixer.master.return")),
+    ];
+    // Lei 5 de 05 §4: na coluna estreita a fila desce em vez de cortar o nome.
+    let vaos = tres.len().saturating_sub(1) as f32;
+    let terco = (c.w - m::FIELD_GAP * vaos) / tres.len() as f32;
+    let nome = c
+        .text_system
+        .prefix_width(tr("panel.audio_mixer.master.fbk"), m::LABEL_PX);
+    let y = if nome > terco - m::FIELD_PAD_R {
+        aos_pares(c, &tres, y)
+    } else {
+        c.row(&tres, y)
+    };
     let y = c.hint(tr("card.audio_mixer.sends_hint"), y);
     aos_pares(c, &por_barramento(&SUB_DELAY_SEND), y)
 }

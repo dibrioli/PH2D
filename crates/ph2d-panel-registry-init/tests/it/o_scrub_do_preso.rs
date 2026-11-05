@@ -360,7 +360,7 @@ fn a_key_in_the_middle_of_a_pinned_scrub_keeps_it_on_its_object() {
 /// O Shift é ×10 e o Alt ×0,1, como no cartão da lista (e o preso não os perde).
 #[test]
 fn shift_and_alt_on_a_pinned_scrub_change_the_step() {
-    let mut anda = |shift: bool, alt: bool| {
+    let anda = |shift: bool, alt: bool| {
         let mut m = Mesa::nova();
         let k = m.prende(CARD_STROKE, 0, &[1]);
         m.h.store.set_shift_held(shift);

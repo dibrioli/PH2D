@@ -114,7 +114,8 @@ fn cartoes<'a, 'v: 'a>(
     out.push(cartao(
         ids::PIXEL_SEC_COLORS,
         tr("card.pixel.colors"),
-        Some(hex(info.fg)),
+        // O resumo do título diz a cor; o alfa está na linha da cor, e 8 dígitos não cabem a 220 px.
+        Some(hex([info.fg[0], info.fg[1], info.fg[2], u8::MAX])),
         vista,
         move |k, y| k.cores(info, y),
     ));

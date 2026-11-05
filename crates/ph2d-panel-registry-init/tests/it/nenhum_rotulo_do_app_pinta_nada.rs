@@ -638,13 +638,9 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     ("inspector", 80),
     // ⭐ Era `6`: o `Mute` do Master deixou de ler `…` quando a coluna aperta (report do dono,
     //    19/09). *Uma catraca que desce é a metade justa dela a funcionar.*
-    // ⬆️ 04/11 (line/NovaUI, os painéis em cartões, só no degrau de 220 px, com balão): medido, botões e
-    //    abas a dividir colunas curtas: `audio_editor` 64 px (Add Folder…, Force Mono…), `audio_mixer` 39 px
-    //    (Feedback), `authored` e `vector` 42 px (Preview, Drawing, Interface), `painter_layers` 56 px (Sync
-    //    tools), `pixel_tools` 46 px (o código de 8 dígitos). Os 60 de `tokens` e os 15 de `wet_tuning` foram curados:
-    //    a lei 5 de 05 §4 desce a fila. Estes pedem o mesmo, painel a painel: dívida, não tolerância.
-    ("pixel_tools", 1),
-    ("audio_mixer", 6),
+    // ⬇️ 04/11 (R6): as abas num cartão falam o corpo do segmentado (`authored` 2→0, `vector` 2→0); a fila do Delay
+    //    e o par Foreground/Background descem (lei 5 de 05 §4, `audio_mixer` 6→3, `pixel_tools` 1→0).
+    ("audio_mixer", 3),
     ("hierarchy", 5),
     // ⬇️ `5 → 2` em 2026-09-23: o *Reset* de cada linha virou ÍCONE (era um botão de texto de
     //    `48 px` que saía do nome de toda linha autorada) e a amostra passou ao quadrado da altura
@@ -659,11 +655,9 @@ const CORTES_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    no degrau estreito o chip fica no piso de `72 px`, dos quais `46` são cromo.
     // ⬇️ `1 → 0` na integração de 2026-11-02: a fileira dos marcadores (o `N…` das pontas) foi
     //    para o «Stroke settings» atrás do ⚙ (UIUX F44) — MEDIDO na árvore combinada.
-    ("vector", 2),
     ("color_equalization", 0),
     ("tags", 0),
     ("audio_editor", 7),
-    ("authored", 2),
     ("widget_lab", 1),
     // ⛔⛔⛔ **OS TRÊS QUE SÓ A ÁRVORE INTEIRA VÊ** (integração de 2026-09-20). Eles estão atrás de
     //    features que o `default` desta crate NÃO liga (`panel-flip`, `panel-painter-layers`,
@@ -739,13 +733,9 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     // ⬆️ `83 → 85` em 2026-09-29, pelo mesmo par da tabela de resistências — ver a irmã acima.
     // ⬇️ `85 → 84` em 2026-10-25, o «Show Sheet» da irmã acima (`87 → 86`).
     ("inspector", 78),
-    // ⬆️ 04/11 (line/NovaUI, os painéis em cartões, só no degrau de 220 px, com balão): medido, botões e
-    //    abas a dividir colunas curtas: `audio_editor` 64 px (Add Folder…, Force Mono…), `audio_mixer` 39 px
-    //    (Feedback), `authored` e `vector` 42 px (Preview, Drawing, Interface), `painter_layers` 56 px (Sync
-    //    tools), `pixel_tools` 46 px (o código de 8 dígitos). Os 60 de `tokens` e os 15 de `wet_tuning` foram curados:
-    //    a lei 5 de 05 §4 desce a fila. Estes pedem o mesmo, painel a painel: dívida, não tolerância.
-    ("pixel_tools", 1),
-    ("audio_mixer", 6),
+    // ⬇️ 04/11 (R6): as abas num cartão falam o corpo do segmentado (`authored` 2→0, `vector` 2→0); a fila do Delay
+    //    e o par Foreground/Background descem (lei 5 de 05 §4, `audio_mixer` 6→3, `pixel_tools` 1→0).
+    ("audio_mixer", 3),
     ("hierarchy", 5),
     // ⬇️ `5 → 2` em 2026-09-23: o *Reset* de cada linha virou ÍCONE (era um botão de texto de
     //    `48 px` que saía do nome de toda linha autorada) e a amostra passou ao quadrado da altura
@@ -760,11 +750,9 @@ const LETRAS_PERDIDAS_NO_DEGRAU_ESTREITO: &[(&str, usize)] = &[
     //    no degrau estreito o chip fica no piso de `72 px`, dos quais `46` são cromo.
     // ⬇️ `1 → 0` (integ 02/11): a linha de tinta parte-se em duas filas no degrau estreito e o
     //    Weight ganha a largura do número. Medido pelo gate.
-    ("vector", 2),
     ("color_equalization", 0),
     ("tags", 0),
     ("audio_editor", 7),
-    ("authored", 2),
     ("widget_lab", 1),
     // ⛔ Os dois que só a árvore inteira vê — o mecanismo está na irmã
     //    [`CORTES_NO_DEGRAU_ESTREITO`]. ⚠️ O `wet_tuning` NÃO entra aqui: os dois rótulos dele

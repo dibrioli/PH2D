@@ -89,14 +89,15 @@ fn paridade_da_tinta_por_placa() {
         let cor_de = |a: &Grid, b: &Grid| desvio_cor(a, b, &com_tinta(a, b));
         let (cu_m, cu_p, cu_n) = cor_de(&gc, &g1);
         let (_, uu_p, _) = cor_de(&g1, &g2);
+        let (_, nb_p, _) = cor_de(&gc, &g2);
         // ⭐ O teto é duro: o controlo não sobe limite nenhum. Se a própria CPU se parte a 1 ulp (a lei bifurca: um arredondamento
         // escolhe o ramo), a referência é o ramo da CPU mais perto da placa, e ela responde pelos MESMOS limites contra ele. Tabela no doc.
         let bifurca = cu_p > COR_P999 || uu_p > COR_P999;
         let (sr, gr, nome_ref): (&_, &Grid, &str) = if bifurca {
             [
                 (&sc, &gc, "CPU nominal"),
-                (&s1, &g1, "CPU +ulp"),
-                (&s2, &g2, "CPU −ulp"),
+                (&s1, &g1, "CPU ulp A"),
+                (&s2, &g2, "CPU ulp B"),
             ]
             .into_iter()
             .min_by(|a, b| cor_de(a.1, &gg).1.total_cmp(&cor_de(b.1, &gg).1))
@@ -117,7 +118,7 @@ fn paridade_da_tinta_por_placa() {
         let (wm, wp, _) = desvio_cor(gr, &gw, &pop);
         let frac = |n: usize, p: &[usize]| n as f64 / p.len() as f64;
         eprintln!(
-            "{}: tinta {} · cor máx {cm:.3} p99.9 {cp:.4} frac {:.2e} · CPU×ulp máx {cu_m:.3} p99.9 {cu_p:.4} ({cu_n} cél.) · ulp×ulp p99.9 {uu_p:.4} · \
+            "{}: tinta {} · cor máx {cm:.3} p99.9 {cp:.4} frac {:.2e} · CPU×ulp máx {cu_m:.3} p99.9 {cu_p:.4} ({cu_n} cél.) · A×B p99.9 {uu_p:.4} · CPU×B p99.9 {nb_p:.4} · \
              ref {nome_ref} · devolvido máx {dm:.3} p99.9 {dp:.4} frac {:.2e} · ciclo máx {wm:.3} p99.9 {wp:.4} · bit {bit} · ciclo {bit_ciclo} · \
              massa rel {rel:.2e} · V rel {rel_v:.2e}",
             c.nome,

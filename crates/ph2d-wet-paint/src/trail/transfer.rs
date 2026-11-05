@@ -110,7 +110,7 @@ impl Trail {
         );
         let com_ponta = self.mat_ponta.len() == self.pig.len();
         // A APARÊNCIA (W3b): o que o ecrã lê dos controlos do pincel fica na célula — o painel só vale para o futuro.
-        let aparencia = crate::grid::aparencia::do_pincel(p);
+        let aparencia = crate::grid::aparencia::do_pincel(g, p);
         // O Depth e o Gloss do Óleo Real (dono 28/10) também ficam na célula.
         let oleo = crate::grid::oleo_celula::do_pincel(p);
         // A marca do nivelado (K8): a tinta de um dab que não nivela apaga-a pela massa; a da lâmina é dela.

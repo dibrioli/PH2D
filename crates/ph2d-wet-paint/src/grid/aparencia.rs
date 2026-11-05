@@ -9,7 +9,7 @@ use super::Grid;
 use crate::sim::Params;
 use crate::tuning::Knob;
 
-/// A aparência da tinta de uma célula (24 B).
+/// A aparência da tinta de uma célula (28 B).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct AparenciaCelula {
     /// [`Knob::PaperVisibility`] da tinta (o mestre do papel impresso nela).
@@ -28,7 +28,13 @@ pub struct AparenciaCelula {
     /// O **Smooth Edges** da tinta (`0..1`; dono 04/11: é do TRAÇO, cada pincel o seu): cada borda amacia pelo dela, na
     /// cor e no relevo; mudar o controlo não recompõe o que já está pintado.
     pub suave: f32,
+    /// O **Edge Darkening** da tinta (dono 05/11, Bug #69: é do TRAÇO): a borda desta célula seca por ele, e trocar de
+    /// pincel não a endurece. [`BORDA_DO_FUNDO`] = o da grade ([`Grid::borda_fundo`]).
+    pub borda: f32,
 }
+
+/// A célula sem borda própria lê a da grade: a tela de um pincel só não aloca o campo por causa disto.
+pub const BORDA_DO_FUNDO: f32 = -1.0;
 
 impl AparenciaCelula {
     /// Os valores de fábrica (os do registo e os do produto).
@@ -39,6 +45,7 @@ impl AparenciaCelula {
         textura: 0.0,
         opaca: 0.0,
         suave: 0.0,
+        borda: BORDA_DO_FUNDO,
     };
 }
 
@@ -48,9 +55,14 @@ impl Default for AparenciaCelula {
     }
 }
 
-/// A aparência que o pincel pousa agora.
+/// A aparência que o pincel pousa agora. O primeiro pincel a tocar a grade dá-lhe o fundo da borda, e esse valor não muda
+/// mais: o histórico e o Clear podem devolver células que o lêem.
 #[must_use]
-pub fn do_pincel(p: &Params) -> AparenciaCelula {
+pub fn do_pincel(g: &mut Grid, p: &Params) -> AparenciaCelula {
+    let borda = p.k(Knob::EdgeDarkening);
+    if g.borda_fundo < 0.0 {
+        g.borda_fundo = borda;
+    }
     AparenciaCelula {
         papel: p.k(Knob::PaperVisibility) as f32,
         grao: p.k(Knob::VisualGrain) as f32,
@@ -58,6 +70,11 @@ pub fn do_pincel(p: &Params) -> AparenciaCelula {
         textura: p.textura,
         opaca: p.k(Knob::Opaque) as f32,
         suave: p.suave,
+        borda: if borda == g.borda_fundo {
+            BORDA_DO_FUNDO
+        } else {
+            borda as f32
+        },
     }
 }
 
@@ -80,6 +97,13 @@ pub fn vidrado(campo: &[AparenciaCelula], i: usize) -> f32 {
 #[must_use]
 pub fn opaca(campo: &[AparenciaCelula], i: usize) -> f32 {
     campo.get(i).map_or(0.0, |a| a.opaca)
+}
+
+/// O Edge Darkening próprio da célula `i`, ou [`BORDA_DO_FUNDO`].
+#[inline]
+#[must_use]
+pub fn borda(campo: &[AparenciaCelula], i: usize) -> f32 {
+    campo.get(i).map_or(BORDA_DO_FUNDO, |a| a.borda)
 }
 
 /// Em quantos degraus a força se reparte ao AMACIAR (`raio = degrau ÷ 25 × 6 px`, 0,24 px por degrau): o valor pousado
@@ -153,6 +177,7 @@ pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: AparenciaCelula, v: f64) 
         g.aparencia = vec![AparenciaCelula::NEUTRA; g.cells];
     }
     g.suave_teto = g.suave_teto.max(nova.suave);
+    let fundo = g.borda_fundo as f32;
     let a = g.aparencia[i];
     if a != nova {
         g.aparencia[i] = if m_old > 0.0 {
@@ -165,6 +190,12 @@ pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: AparenciaCelula, v: f64) 
                 textura: m(a.textura, nova.textura),
                 opaca: m(a.opaca, nova.opaca),
                 suave: m(a.suave, nova.suave),
+                borda: if a.borda < 0.0 && nova.borda < 0.0 {
+                    BORDA_DO_FUNDO
+                } else {
+                    let de = |b: f32| if b < 0.0 { fundo } else { b };
+                    m(de(a.borda), de(nova.borda))
+                },
             }
         } else {
             nova

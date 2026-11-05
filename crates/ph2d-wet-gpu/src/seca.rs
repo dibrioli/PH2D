@@ -54,7 +54,12 @@ impl SecaU {
         SecaU {
             // A fuga escalada pela Absorbency da tela, a mesma da CPU (`DryConst::new`, E10d2).
             retention: p.retencao() as f32,
-            edge_dark: p.k(Knob::EdgeDarkening) as f32,
+            // O fundo da grade; a borda própria de cada célula vai no `aux.w`.
+            edge_dark: if g.borda_fundo < 0.0 {
+                p.k(Knob::EdgeDarkening) as f32
+            } else {
+                g.borda_fundo as f32
+            },
             base_evap: p.k(Knob::BaseEvaporation) as f32,
             ext_gran: p.k(Knob::ExtGranulation) as f32,
             ext_stain: p.k(Knob::ExtStaining) as f32,
@@ -217,7 +222,7 @@ impl SecaGpu {
                 compilation_options: Default::default(),
                 cache: None,
             });
-        let buffers: [(u32, &wgpu::Buffer); 14] = [
+        let buffers: [(u32, &wgpu::Buffer); 15] = [
             (0, &self.ub),
             (1, &self.film),
             (2, &self.susp),
@@ -225,6 +230,7 @@ impl SecaGpu {
             (4, &self.srgb),
             (5, &self.trgb),
             (6, &self.paper),
+            (7, &self.aux),
             (8, &self.edge),
             (9, &self.alfa),
             (10, &self.faixa),
@@ -264,7 +270,7 @@ impl SecaGpu {
                     g.vela.get(i).copied().unwrap_or(0.0),
                     aparencia::vidrado(&g.aparencia, i),
                     oleo_celula::da_celula(&g.oleo, i).oleo,
-                    0.0,
+                    aparencia::borda(&g.aparencia, i),
                 ]
             })
             .collect();
@@ -295,7 +301,7 @@ impl SecaGpu {
                     g.vela.get(i).copied().unwrap_or(0.0),
                     aparencia::vidrado(&g.aparencia, i),
                     oleo_celula::da_celula(&g.oleo, i).oleo,
-                    0.0,
+                    aparencia::borda(&g.aparencia, i),
                 ]
             })
             .collect();

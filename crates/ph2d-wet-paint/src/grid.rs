@@ -95,6 +95,9 @@ pub struct Grid {
     /// O maior [`aparencia::AparenciaCelula::suave`] pousado aqui ([`aparencia::teto_do_suave`]): `0` = quem não usa o
     /// Smooth Edges não paga nem a leitura do campo.
     pub suave_teto: f32,
+    /// O Edge Darkening das células sem borda própria ([`aparencia::BORDA_DO_FUNDO`]): o do primeiro pincel que tocou a
+    /// grade; negativo = ninguém, e a secagem lê o knob.
+    pub borda_fundo: f64,
     /// **O Depth e o Gloss do Óleo Real da tinta** (dono 28/10, [`oleo_celula`]): os do pincel que a pousou. VAZIO (=
     /// NEUTRO) até o primeiro pincel fora da fábrica pintar.
     pub oleo: Vec<oleo_celula::OleoCelula>,
@@ -292,6 +295,7 @@ impl Grid {
             material: Vec::new(),
             aparencia: Vec::new(),
             suave_teto: 0.0,
+            borda_fundo: -1.0,
             oleo: Vec::new(),
             oleo_real: false,
             oleo_antes: Vec::new(),

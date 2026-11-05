@@ -311,3 +311,38 @@ fn a_secagem_na_placa_casa_com_a_cpu() {
         );
     }
 }
+
+/// Bug #69: a placa lê a borda da CÉLULA como a CPU, e a célula sem borda própria lê o fundo.
+#[test]
+fn a_borda_de_cada_celula_casa_com_a_cpu() {
+    use ph2d_wet_paint::grid::aparencia::AparenciaCelula;
+    let Some(gpu) = contexto() else { return };
+    let (mut g, p, evap, rewet, by) = wash();
+    g.borda_fundo = 4.0;
+    g.aparencia = (0..g.cells)
+        .map(|i| AparenciaCelula {
+            borda: if i < g.cells / 2 { 60.0 } else { -1.0 },
+            ..AparenciaCelula::NEUTRA
+        })
+        .collect();
+    let a = SecaGpu::new(&gpu, &g, SecaU::new(&g, &p, evap, rewet, by));
+    let mut cpu = g.clone();
+    ph2d_wet_paint::drying::drying_pass_jacobi_rows(&mut cpu, &p, evap, rewet, by, Rows::Serial);
+    a.step(&gpu, 1);
+    let mut placa = g.clone();
+    a.readback(&gpu, &mut placa);
+    assert!(maxdif(&cpu.film, &placa.film) < 1e-3, "film");
+
+    // O controlo: a borda da célula muda mesmo o resultado.
+    let mut uniforme = g.clone();
+    uniforme.aparencia.clear();
+    ph2d_wet_paint::drying::drying_pass_jacobi_rows(
+        &mut uniforme,
+        &p,
+        evap,
+        rewet,
+        by,
+        Rows::Serial,
+    );
+    assert!(maxdif(&cpu.film, &uniforme.film) > 1e-3, "a cena não mede a borda");
+}

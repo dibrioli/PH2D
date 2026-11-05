@@ -12,10 +12,10 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
-const W: usize = 480;
-const H: usize = 340;
+pub(super) const W: usize = 480;
+pub(super) const H: usize = 340;
 /// As linhas da região do A: o traço a `y = 70`, o B a `y = 270`, 200 px de papel.
-const REGIAO: usize = 160;
+pub(super) const REGIAO: usize = 160;
 /// Só o lado longe do encosto (`x < 300`).
 const XMAX: usize = 300;
 
@@ -53,12 +53,12 @@ fn drena(t: &mut PainterTool) {
 }
 
 /// O que o ecrã mostra agora.
-fn ecra(t: &mut PainterTool) -> Vec<u8> {
+pub(super) fn ecra(t: &mut PainterTool) -> Vec<u8> {
     drena(t);
     SAIDA.with(|s| s.borrow().as_ref().map(|a| a.to_vec()).unwrap_or_default())
 }
 
-fn tiques(t: &mut PainterTool, n: usize, fora: bool) {
+pub(super) fn tiques(t: &mut PainterTool, n: usize, fora: bool) {
     for _ in 0..n {
         t.on_tick(1000.0 / 60.0);
         drena(t);
@@ -68,7 +68,7 @@ fn tiques(t: &mut PainterTool, n: usize, fora: bool) {
     }
 }
 
-fn traco(t: &mut PainterTool, y: f32, fora: bool) {
+pub(super) fn traco(t: &mut PainterTool, y: f32, fora: bool) {
     t.on_canvas_pointer(p(60.0, y, PointerPhase::Down));
     for k in 1..=40 {
         let x = 60.0 + 9.0 * k as f32;
@@ -96,7 +96,7 @@ fn encosta(t: &mut PainterTool, fora: bool) {
     t.on_canvas_pointer(p(420.0, 92.0, PointerPhase::Up));
 }
 
-fn por_nome<'a>(b: &'a Biblioteca, n: &str) -> &'a Preset {
+pub(super) fn por_nome<'a>(b: &'a Biblioteca, n: &str) -> &'a Preset {
     &b.entradas
         .iter()
         .find(|e| e.preset.parametros.name == n)

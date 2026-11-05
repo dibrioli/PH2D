@@ -154,6 +154,7 @@ pub(super) fn dry_jacobi<P: EdgePlane>(
                 vela[i],
                 crate::grid::aparencia::vidrado(aparencia, i),
                 crate::grid::aparencia::opaca(aparencia, i),
+                crate::grid::aparencia::borda(aparencia, i),
                 crate::grid::oleo_celula::da_celula(oleo, i),
                 &mut fr[x],
                 &mut sr[x],

@@ -112,6 +112,7 @@ impl crate::grid::Grid {
             material,
             aparencia,
             suave_teto: _,
+            borda_fundo: _,
             oleo,
             oleo_real: _,
             oleo_antes,

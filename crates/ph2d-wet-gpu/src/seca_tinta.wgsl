@@ -68,7 +68,9 @@ fn seca_tinta(@builtin(global_invocation_id) gid: vec3<u32>) {
         evapora = (1.0 - mm) + mm * ENDURECE;
     }
     let f = film0;
-    var new_film = f * reten - u.evap_base * ((1.0 - ev) * u.edge_dark + u.base_evap) * evapora;
+    var borda = u.edge_dark;
+    if aux[i].w >= 0.0 { borda = aux[i].w; }
+    var new_film = f * reten - u.evap_base * ((1.0 - ev) * borda + u.base_evap) * evapora;
     if new_film < 0.0001 { new_film = 0.0; }
     var lost = 1.0;
     if f > 0.0 { lost = 1.0 - clamp(new_film / f, 0.0, 1.0); }

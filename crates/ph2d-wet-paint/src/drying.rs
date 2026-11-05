@@ -119,10 +119,14 @@ pub(crate) struct DryConst {
 }
 
 impl DryConst {
-    pub fn new(p: &Params, evap_base: f64, rewet_base: f64, ext_bypass: bool) -> Self {
+    pub fn new(g: &Grid, p: &Params, evap_base: f64, rewet_base: f64, ext_bypass: bool) -> Self {
         DryConst {
             retention: p.retencao(),
-            edge_darkening: p.k(Knob::EdgeDarkening),
+            edge_darkening: if g.borda_fundo < 0.0 {
+                p.k(Knob::EdgeDarkening)
+            } else {
+                g.borda_fundo
+            },
             base_evaporation: p.k(Knob::BaseEvaporation),
             ext_granulation: p.k(Knob::ExtGranulation),
             ext_staining: p.k(Knob::ExtStaining),
@@ -153,6 +157,7 @@ pub(crate) fn dry_cell(
     vela: f32,
     vidrado: f32,
     opaca: f32,
+    borda: f32,
     oleo: crate::grid::oleo_celula::OleoCelula,
     film: &mut f32,
     susp: &mut f32,
@@ -186,9 +191,14 @@ pub(crate) fn dry_cell(
 
     // Evaporate: retention leak + edge-boosted linear loss — both slowed by the medium (`crate::meio`).
     let m = f64::from(oleo.meio);
+    let borda = if borda < 0.0 {
+        c.edge_darkening
+    } else {
+        f64::from(borda)
+    };
     let mut new_film = f * crate::meio::retencao(c.retention, m)
         - c.evap_base
-            * ((1.0 - e) * c.edge_darkening + c.base_evaporation)
+            * ((1.0 - e) * borda + c.base_evaporation)
             * crate::meio::evaporacao(m);
     if new_film < 0.0001 {
         new_film = 0.0;
@@ -328,7 +338,7 @@ fn dry_gs<W: edge_window::EdgeGather>(
 ) {
     let s = g.s;
     let mut out = [0.0f64; 3];
-    let c = DryConst::new(p, evap_base, rewet_base, ext_bypass);
+    let c = DryConst::new(g, p, evap_base, rewet_base, ext_bypass);
     let pigmento = p.tinta == crate::sim::LeiDaTinta::Pigmento && !g.tinta.is_empty();
     for y in g.by0..=g.by1 {
         // Faixa viva: ela é publicada a partir de `film > 0 || susp > 0` — o
@@ -367,6 +377,7 @@ fn dry_gs<W: edge_window::EdgeGather>(
                 g.vela[i],
                 crate::grid::aparencia::vidrado(&g.aparencia, i),
                 crate::grid::aparencia::opaca(&g.aparencia, i),
+                crate::grid::aparencia::borda(&g.aparencia, i),
                 crate::grid::oleo_celula::da_celula(&g.oleo, i),
                 &mut film,
                 &mut susp,
@@ -521,7 +532,7 @@ fn dry_jacobi<P: edge_window::EdgePlane>(
     soft: &[f64],
 ) {
     let s = g.s;
-    let c = DryConst::new(p, evap_base, rewet_base, ext_bypass);
+    let c = DryConst::new(g, p, evap_base, rewet_base, ext_bypass);
     if p.tinta == crate::sim::LeiDaTinta::Pigmento && !g.tinta.is_empty() {
         return tinta::dry_jacobi::<P>(g, &c, mode, soft);
     }
@@ -581,6 +592,7 @@ fn dry_jacobi<P: edge_window::EdgePlane>(
                     vela[i],
                     crate::grid::aparencia::vidrado(aparencia, i),
                     crate::grid::aparencia::opaca(aparencia, i),
+                    crate::grid::aparencia::borda(aparencia, i),
                     crate::grid::oleo_celula::da_celula(oleo, i),
                     &mut a,
                     &mut b,

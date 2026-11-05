@@ -236,7 +236,9 @@ fn seca(@builtin(global_invocation_id) gid: vec3<u32>) {
         if cnt == 9u { ev = 1.0; } else { ev = f32(cnt) / 9.0; }
     }
     let f = film0;
-    var new_film = f * u.retention - u.evap_base * ((1.0 - ev) * u.edge_dark + u.base_evap);
+    var borda = u.edge_dark;
+    if ax.w >= 0.0 { borda = ax.w; }
+    var new_film = f * u.retention - u.evap_base * ((1.0 - ev) * borda + u.base_evap);
     if new_film < 0.0001 { new_film = 0.0; }
     var lost = 1.0;
     if f > 0.0 { lost = 1.0 - clamp(new_film / f, 0.0, 1.0); }

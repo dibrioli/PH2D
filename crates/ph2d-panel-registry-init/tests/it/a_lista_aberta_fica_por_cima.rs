@@ -122,8 +122,14 @@ fn a_click_outside_closes_the_add_track_list() {
     down(&mut h, ph2d_host::PointerKind::Down, fora);
     down(&mut h, ph2d_host::PointerKind::Up, fora);
     pinta(&mut h, 2);
-    assert!(h.hit_index.rect_for(primeira).is_none(), "o clique de fora tem de a fechar");
+    assert!(
+        h.hit_index.rect_for(primeira).is_none(),
+        "o clique de fora tem de a fechar"
+    );
     clica(&mut h, tl::TIMELINE_ADD_TRACK);
     pinta(&mut h, 2);
-    assert!(h.hit_index.rect_for(primeira).is_some(), "volta a abrir à primeira");
+    assert!(
+        h.hit_index.rect_for(primeira).is_some(),
+        "volta a abrir à primeira"
+    );
 }

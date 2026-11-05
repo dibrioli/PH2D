@@ -288,7 +288,6 @@ pub(super) fn dispatch_down<'frame>(
         }
     }
 
-
     // Eyedropper interception: while a pick is pending and
     // the click isn't on the eyedropper button itself, emit
     // `EyedropperPick` for the host to read back the

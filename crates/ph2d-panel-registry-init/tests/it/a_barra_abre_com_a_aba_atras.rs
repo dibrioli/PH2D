@@ -63,7 +63,11 @@ fn limpa() {
 fn the_stroke_panel_opens_with_the_tab_behind() {
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
     let mut h = com_o_vector_atras(&mut ts);
-    assert!(h.hit_index.rect_for(ph2d_tool_vector::ids::VECTOR_DASH_IDS[0]).is_none());
+    assert!(
+        h.hit_index
+            .rect_for(ph2d_tool_vector::ids::VECTOR_DASH_IDS[0])
+            .is_none()
+    );
     clica(&mut h, VECTOR_BAR_STROKE);
     quadros(&mut h, &mut ts, 900.0, 3);
     let (id, rect) = h.store.dropdown_popover().expect("o painel do traço abriu");
@@ -74,7 +78,9 @@ fn the_stroke_panel_opens_with_the_tab_behind() {
         rect.w
     );
     assert!(
-        h.hit_index.rect_for(ph2d_tool_vector::ids::VECTOR_DASH_IDS[0]).is_some(),
+        h.hit_index
+            .rect_for(ph2d_tool_vector::ids::VECTOR_DASH_IDS[0])
+            .is_some(),
         "as linhas do traço têm de responder ao clique"
     );
     assert!(

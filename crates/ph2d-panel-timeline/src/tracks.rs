@@ -15,12 +15,12 @@
 mod label;
 #[path = "tracks_lista.rs"]
 mod lista;
-pub(crate) use lista::paint_add_track_popover;
-#[cfg(test)]
-use lista::lista_y;
 #[cfg(test)]
 pub(crate) use label::track_label;
 pub(crate) use label::{prop_label, track_label_snap};
+#[cfg(test)]
+use lista::lista_y;
+pub(crate) use lista::paint_add_track_popover;
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind, TrackMenuKind};

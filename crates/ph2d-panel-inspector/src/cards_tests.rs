@@ -220,6 +220,9 @@ fn the_card_seeds_the_swatch_of_each_layer() {
     let mut store = ph2d_editor_core::interaction::WidgetStore::with_capacity(8);
     prepare(&mut store);
     let id = vids::vector_paint_swatch_id(0);
-    assert_eq!(store.widget_color(id).map(|c| [c[0], c[1], c[2]]), Some([0x12, 0x34, 0x56]));
+    assert_eq!(
+        store.widget_color(id).map(|c| [c[0], c[1], c[2]]),
+        Some([0x12, 0x34, 0x56])
+    );
     appearance::set_current_appearance(None);
 }

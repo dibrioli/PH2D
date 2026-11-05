@@ -68,8 +68,16 @@ fn a_lista_do_mais_track_nao_tapa_o_chip() {
     let chip = Rect::new(320.0, 880.0, 180.0, 22.0);
     let h = 396.0;
     assert_eq!(lista_y(chip, h, janela), chip.y - h, "por cima");
-    assert_eq!(lista_y(chip, 100.0, janela), chip.y + chip.h, "cabe por baixo");
+    assert_eq!(
+        lista_y(chip, 100.0, janela),
+        chip.y + chip.h,
+        "cabe por baixo"
+    );
     let baixa = Rect::new(0.0, 0.0, 1930.0, 600.0);
     let meio = Rect::new(320.0, 300.0, 180.0, 22.0);
-    assert_eq!(lista_y(meio, h, baixa), meio.y + meio.h, "não cabe: desliza depois");
+    assert_eq!(
+        lista_y(meio, h, baixa),
+        meio.y + meio.h,
+        "não cabe: desliza depois"
+    );
 }

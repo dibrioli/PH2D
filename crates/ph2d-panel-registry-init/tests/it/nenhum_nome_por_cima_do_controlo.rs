@@ -196,6 +196,12 @@ fn nenhuma_escolha_do_app_e_montada_a_mao() {
     //    um arnês que deixasse de armar os painéis passaria por vácuo. ⬇️ `35 → 31` em 2026-10-05:
     //    as escolhas dos painéis `model3d` e `sculpt3d` saíram com o 3D (ADR-0179); medido `31`.
     let pela_porta = v.iter().filter(|g| g.da_porta).count();
+    for g in &v {
+        eprintln!(
+            "F10DIAG {} {} porta={} pecas={}",
+            g.painel, g.slug, g.da_porta, g.pecas
+        );
+    } // F10 temporário
     assert!(
         pela_porta >= 31,
         "so' {pela_porta} escolhas pela porta a toda a largura — o arnes deixou de armar paineis?"

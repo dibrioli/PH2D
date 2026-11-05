@@ -183,8 +183,15 @@ pub fn paint_harmony_section(
     // Sete nomes numa fila da largura do seletor saíam «C…», «A…», «Tr…» (visto em janela real, F8): duas
     // filas, cada uma com a sua largura de segmento.
     let selecao = lugares_das_harmonias(rect);
-    for fila in [&Harmony::ALL[..HARMONY_NA_1A_FILA], &Harmony::ALL[HARMONY_NA_1A_FILA..]] {
-        let inicio = if fila[0] == Harmony::ALL[0] { 0 } else { HARMONY_NA_1A_FILA };
+    for fila in [
+        &Harmony::ALL[..HARMONY_NA_1A_FILA],
+        &Harmony::ALL[HARMONY_NA_1A_FILA..],
+    ] {
+        let inicio = if fila[0] == Harmony::ALL[0] {
+            0
+        } else {
+            HARMONY_NA_1A_FILA
+        };
         let r = selecao[inicio];
         let toda = Rect::new(rect.x, r.y, rect.w, r.h);
         let group = RadioGroup::new(

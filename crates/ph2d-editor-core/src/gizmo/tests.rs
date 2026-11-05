@@ -1387,6 +1387,9 @@ fn a_zero_axis_gives_the_click_to_the_corners() {
         ids::GIZMO_HANDLE_B,
         ids::GIZMO_HANDLE_L,
     ] {
-        assert!(inteira.rect_for(id).is_some(), "caixa normal mantém as quatro");
+        assert!(
+            inteira.rect_for(id).is_some(),
+            "caixa normal mantém as quatro"
+        );
     }
 }

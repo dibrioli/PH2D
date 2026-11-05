@@ -199,6 +199,8 @@ pub fn veste_virgens(g: &mut Grid, (x0, y0, x1, y1): (i32, i32, i32, i32), nova:
     if g.aparencia.is_empty() {
         return;
     }
+    // O rasto só de água não pousa: sem isto, a tinta que chegasse depois lia um degrau acima do tecto (Bug #65).
+    g.suave_teto = g.suave_teto.max(nova.suave);
     let (x0, y0) = ((x0 - ORLA_VIRGEM).max(1), (y0 - ORLA_VIRGEM).max(1));
     let (x1, y1) = (
         (x1 + ORLA_VIRGEM).min(g.w as i32),
@@ -211,5 +213,23 @@ pub fn veste_virgens(g: &mut Grid, (x0, y0, x1, y1): (i32, i32, i32, i32), nova:
                 g.aparencia[i] = nova;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod veste_tests {
+    use super::*;
+
+    /// O tecto cobre o que a orla virgem veste: um rasto sem pouso não deixa um degrau acima dele.
+    #[test]
+    fn vestir_a_orla_virgem_sobe_o_tecto_do_suave() {
+        let mut g = Grid::new(16, 16);
+        g.aparencia = vec![AparenciaCelula::NEUTRA; g.cells];
+        let nova = AparenciaCelula {
+            suave: 0.5,
+            ..AparenciaCelula::NEUTRA
+        };
+        veste_virgens(&mut g, (4, 4, 6, 6), nova);
+        assert_eq!(g.suave_teto, 0.5);
     }
 }

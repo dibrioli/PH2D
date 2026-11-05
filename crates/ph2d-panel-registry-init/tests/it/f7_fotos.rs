@@ -37,9 +37,9 @@ fn guarda(cena: &VectorScene, nome: &str, janela: Rect, amplia: u32) {
     img.save(format!("{dir}/{nome}.png")).unwrap();
 }
 
-fn quadro(h: &mut HeroScreen, ts: &mut ph2d_text::TextSystem) -> VectorScene {
+fn quadro(h: &mut HeroScreen, ts: &mut ph2d_text::TextSystem, altura: f32) -> VectorScene {
     let mut cena = VectorScene::new();
-    let vp = Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H);
+    let vp = Rect::new(0.0, 0.0, HERO_VIEWPORT_W, altura);
     paint_hero_screen(h, vp, &mut cena, ts);
     cena
 }
@@ -53,12 +53,12 @@ fn bones(ts: &mut ph2d_text::TextSystem) {
     skel::state::set_current_bone_handles(Some(0));
     skel::state::set_current_envelope_manda(true);
     pinta(&mut h, 60);
-    let cena = quadro(&mut h, ts);
+    let cena = quadro(&mut h, ts, HERO_VIEWPORT_H);
     let r = h
         .hit_index
         .rect_for(ids::VECTOR_BONE_STRENGTH)
         .expect("Reach");
-    let janela = Rect::new(r.x - 16.0, r.y - 150.0, r.w + 32.0, 340.0);
+    let janela = Rect::new(r.x - 16.0, r.y - 150.0, r.w * 2.0 + 38.0, 340.0);
     guarda(&cena, "f7_bones_reach_handles", janela, 2);
     skel::state::set_current_bone(None);
 }
@@ -78,10 +78,10 @@ fn traco(ts: &mut ph2d_text::TextSystem) {
     };
     for _ in 0..40 {
         publica(&mut h);
-        let _ = quadro(&mut h, ts);
+        let _ = quadro(&mut h, ts, HERO_VIEWPORT_H);
     }
     publica(&mut h);
-    let cena = quadro(&mut h, ts);
+    let cena = quadro(&mut h, ts, HERO_VIEWPORT_H);
     let chip = ph2d_panel_vector::ids::VECTOR_BAR_STROKE;
     let r = h.hit_index.rect_for(chip).expect("o chip Stroke");
     let barra = Rect::new(
@@ -92,13 +92,14 @@ fn traco(ts: &mut ph2d_text::TextSystem) {
     );
     guarda(&cena, "f7_stroke_seta", barra, 3);
     clica(&mut h, chip);
+    // Janela baixa: o painel do traço passa sobre o HUD, que antes o tapava.
+    let vp = Rect::new(0.0, 0.0, HERO_VIEWPORT_W, 640.0);
     for _ in 0..30 {
         publica(&mut h);
-        let _ = quadro(&mut h, ts);
+        let _ = quadro(&mut h, ts, vp.h);
     }
     publica(&mut h);
-    let cena = quadro(&mut h, ts);
-    let vp = Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H);
+    let cena = quadro(&mut h, ts, vp.h);
     guarda(&cena, "f7_stroke_popover", vp, 1);
     ph2d_panel_vector::set_current_vector_style(None);
     ph2d_panel_vector::set_current_selection_count(0);
@@ -127,7 +128,7 @@ fn gizmo() {
     let fundo = ph2d_vector::Rect::new(0.0, 0.0, 800.0, 600.0);
     cena.fill_rect(
         fundo,
-        ph2d_editor_core::paint::resolve(ph2d_tokens::ColorToken::Bg, tema),
+        ph2d_editor_core::paint::resolve(ph2d_tokens::ColorToken::BgElev, tema),
     );
     paint_sprite_gizmo(&mut cena, &vista(2.2, 0.0), tema, &mut hits);
     paint_sprite_gizmo(&mut cena, &vista(-2.2, 1.5), tema, &mut hits);

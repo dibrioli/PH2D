@@ -241,6 +241,47 @@ fn a_chip_too_long_for_half_a_column_is_not_a_separated_sibling() {
     assert!(c.irmaos_separados().is_empty(), "{:?}", c.linhas);
 }
 
+/// Uma lista fora da coluna do rótulo não é a dele. *Mutação: `sob` sempre verdadeiro ⇒ acusadas.*
+#[test]
+fn a_chip_outside_the_label_column_does_not_shorten_it() {
+    let mut f = mesa();
+    let ink = CardInk::of_list(Theme::default());
+    censo::na_secao(Some(A));
+    let (_, c) = censo::grava(|| {
+        let Mesa { scene, ts, .. } = &mut f;
+        for (nome, y) in [("When", 0.0), ("Compare", 51.0)] {
+            let linha = super::super::corpo::rotulo_em_cima(scene, ts, ink, 100.0, 157.0, y, nome);
+            let fora = crate::zones::Rect {
+                x: 0.0,
+                ..linha.control
+            };
+            crate::widget::paint_card_chip(scene, ts, ink, fora, "Equal", false);
+        }
+    });
+    censo::na_secao(None);
+    assert!(c.irmaos_separados().is_empty(), "{:?}", c.linhas);
+}
+
+/// Um rótulo responde por UMA lista: a segunda sob ele não lhe muda o pedido.
+/// *Mutação: `rotulo_livre` por gastar ⇒ a longa conta, e o par curto deixa de ser acusado.*
+#[test]
+fn a_label_answers_for_its_first_chip_only() {
+    let mut f = mesa();
+    let ink = CardInk::of_list(Theme::default());
+    censo::na_secao(Some(A));
+    let longo = "An option name far too long to share the width of a single card column";
+    let (_, c) = censo::grava(|| {
+        let Mesa { scene, ts, .. } = &mut f;
+        for (nome, y) in [("When", 0.0), ("Compare", 51.0)] {
+            let linha = super::super::corpo::rotulo_em_cima(scene, ts, ink, 0.0, 257.0, y, nome);
+            crate::widget::paint_card_chip(scene, ts, ink, linha.control, "Equal", false);
+            crate::widget::paint_card_chip(scene, ts, ink, linha.control, longo, false);
+        }
+    });
+    censo::na_secao(None);
+    assert_eq!(c.irmaos_separados().len(), 1, "{:?}", c.linhas);
+}
+
 /// Sem lista por baixo, o rótulo continua longo: uma grelha ou um grupo de amostras não se dividem.
 #[test]
 fn a_label_row_without_a_chip_stays_long() {

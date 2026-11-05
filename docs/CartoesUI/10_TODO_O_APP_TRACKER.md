@@ -728,18 +728,6 @@ Par travado: a proporção é um dado do cadeado ([`ParTravado`](../../crates/ph
 
 **Item 4.** `cards_lado::flutua` na camada, pintura e alvos, logo também os painéis à esquerda. Teste `the_stroke_popover_is_painted_over_the_hud`, por pintura do hero, `os_alvos_de_um_cartao_que_flutua_voltam_ao_fechar`. API nova: `HitIndex::desde`, `camada_das_listas::alvos_desde`. Sem mutante nem foto.
 
-**Item 16.** Escritos em `o_gizmo_da_forma_anda.rs`: desfazer e refazer (restaura o estado à mão; a fila da shell pede janela), Reset (escreve a pose; o caminho do `InspectorTransformEdit` é da shell), curva de parâmetro por `CanaisEscritos` + `canais::aplicar`, pontos do degradê. **Cartão preso: sem teste novo.** `the_vector_panel_crosses_the_display_frontier` e irmãos: não correram, prazo.
-
-**Item 18.** Testes novos: `the_live_role_wears_its_ink_on_the_paper`, `a_long_shape_name_pushes_the_key_below_its_label`, `the_plus_is_there_only_where_it_can_add`, verdes, sem mutante corrido. Bones: `reach_and_handles_share_a_row_and_answer_the_hand` escrito, **nunca correu**. `mark_card_field` de States, recado do ícone, largura da lista, `controlo_curto`: não corridos.
-
-**Decisões tomadas sem o dono.** Arrastar uma alça além do lado oposto não espelha: pára no piso, como já parava; espelhar é o verbo do cartão. O FigJam só documenta a âncora oposta, e o virar por arrasto do Figma só apareceu em fonte fraca. Eixo a zero abre a positivo. Pergunta para o smoke: quer espelhar ao atravessar?
-
-### Fatia F2: alças de escala, painel do traço, provas (04/11)
-
-**Item 11.** `gizmo/escala.rs`: a lei do `ParTravado` no canvas. O sinal é o de partida; atravessar o pivô pára no piso; um eixo a zero abre pela alça, com as duas bordas; Shift só trava com proporção a ler; os dois a zero, 1:1. Defeito vizinho, medido no teste: num eixo espelhado o oposto de `anchor_pivot_world` caía sobre a alça agarrada; `grip_pivot_world` decide pelo cursor do pen-down, ao bit sem espelho. Gate da shell `the_pen_down_stores_the_corner…` reapontado para a porta nova. Testes `gizmo::escala_tests` (9). Mutantes: 7 sangram (reflexo, `signum`, conta antiga, `min` do piso, sem meio, canto 1:1, lado 1:1); guarda do Shift sobreviveu, teste reforçado, sem voltar a mutar; não correram `sem_pai` (não compilou), lado com piso, zero do canto, zero do lado: o prazo matou a corrida. **Não coberto:** seleção rodada em grupo com eixo a zero (`ramo_gizmo_escala_e_rotacao` multiplica `ss`, fica a zero); os outros selecionados com o primário a zero (fator 1).
-
-**Item 4.** `cards_lado::flutua` na camada, pintura e alvos, logo também os painéis à esquerda. Teste `the_stroke_popover_is_painted_over_the_hud`, por pintura do hero, `os_alvos_de_um_cartao_que_flutua_voltam_ao_fechar`. API nova: `HitIndex::desde`, `camada_das_listas::alvos_desde`. Sem mutante nem foto.
-
 **Item 16.** Escritos em `o_gizmo_da_forma_anda.rs`: desfazer e refazer (restaura o estado à mão; a fila da shell pede janela), Reset (escreve a pose; o caminho do `InspectorTransformEdit` é da shell), curva de parâmetro por `CanaisEscritos` + `canais::aplicar`, pontos do degradê. Verdes, 12 no ficheiro. **Cartão preso: sem teste novo.** `the_vector_panel_crosses_the_display_frontier` e irmãos: não correram, prazo.
 
 **Item 18.** Testes novos: `the_live_role_wears_its_ink_on_the_paper`, `a_long_shape_name_pushes_the_key_below_its_label`, `the_plus_is_there_only_where_it_can_add`, verdes, sem mutante corrido. Bones: Reach + Handles **continua sem prova**: o teste escrito reprovou na 1.ª corrida (o `y` de Reach não é o de Auto; a direita lê 458), sem tempo de saber se é o teste ou a linha, e foi retirado. `mark_card_field` de States, recado do ícone, largura da lista, `controlo_curto`: não corridos.

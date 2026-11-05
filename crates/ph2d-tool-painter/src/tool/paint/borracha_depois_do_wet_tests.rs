@@ -100,6 +100,125 @@ impl Mesa {
     }
 }
 
+/// Bug #70, decisão do dono: no Wet Paint a Borracha apaga tudo o que está sob o círculo, a tinta molhada e a antiga.
+#[test]
+fn a_borracha_no_wet_apaga_a_tinta_antiga_de_cada_meio() {
+    for x in [
+        PaintMedia::Digital,
+        PaintMedia::Watercolor,
+        PaintMedia::Impasto,
+    ] {
+        let mut m = Mesa::nova();
+        m.meio(x);
+        m.pinta(40.0);
+        let velho = tinta_em(&m.t.canvas_rgba, VELHO);
+        let fora = tinta_em(&m.t.canvas_rgba, VELHO_FORA);
+        m.meio(PaintMedia::WetPaint);
+        m.pinta(90.0);
+        m.quadros(20);
+        assert!(m.t.paint.wetpaint.session.is_some(), "{x:?}: sessão viva");
+        m.trilho("eraser");
+        m.apaga();
+        assert!(m.t.paint.wetpaint.session.is_some(), "{x:?}: a água continua");
+        let (depois, fora2, wet) = (
+            tinta_em(&m.t.canvas_rgba, VELHO),
+            tinta_em(&m.t.canvas_rgba, VELHO_FORA),
+            tinta_em(&m.t.canvas_rgba, WET),
+        );
+        assert!(depois < velho * 0.02, "{x:?}: a antiga {velho:.1} → {depois:.1}");
+        assert!(wet < 3.0, "{x:?}: a molhada ficou {wet:.1}");
+        assert!((fora2 - fora).abs() < 1e-9, "{x:?}: fora do círculo {fora:.1} → {fora2:.1}");
+    }
+}
+
+/// O Ctrl+Z devolve a tinta antiga com a água viva, e o refazer apaga-a outra vez.
+#[test]
+fn desfazer_a_borracha_no_wet_devolve_a_tinta_antiga() {
+    let mut m = Mesa::nova();
+    m.meio(PaintMedia::Digital);
+    m.pinta(40.0);
+    let velho = tinta_em(&m.t.canvas_rgba, VELHO);
+    m.meio(PaintMedia::WetPaint);
+    m.pinta(90.0);
+    m.quadros(20);
+    m.trilho("eraser");
+    // Um traço só, para o Ctrl+Z desfazer a Borracha inteira.
+    m.t.paint.brush.radius_px = 10.0;
+    m.t.paint.brush.strength = 1.0;
+    m.risca([64.0, 20.0], [64.0, 108.0], 44);
+    let apagada = tinta_em(&m.t.canvas_rgba, VELHO);
+    assert!(apagada < velho * 0.8, "a Borracha agiu: {velho:.1} → {apagada:.1}");
+    assert!(m.t.undo_last(), "desfez");
+    m.quadros(2);
+    assert!(m.t.paint.wetpaint.session.is_some(), "a água continua viva");
+    let voltou = tinta_em(&m.t.canvas_rgba, VELHO);
+    assert!((voltou - velho).abs() < 1e-9, "voltou {voltou:.1} de {velho:.1}");
+    assert!(m.t.redo_last(), "refez");
+    m.quadros(2);
+    let de_novo = tinta_em(&m.t.canvas_rgba, VELHO);
+    assert!((de_novo - apagada).abs() < 1e-9, "refez {de_novo:.1} de {apagada:.1}");
+}
+
+/// A selecção protege a tinta antiga como protege a molhada.
+#[test]
+fn a_selecao_protege_a_tinta_antiga_da_borracha() {
+    let mut m = Mesa::nova();
+    m.meio(PaintMedia::Digital);
+    m.pinta(40.0);
+    let velho = tinta_em(&m.t.canvas_rgba, VELHO);
+    m.meio(PaintMedia::WetPaint);
+    m.pinta(90.0);
+    m.quadros(20);
+    m.t.set_rect_selection(0, 60, 128, 68);
+    m.trilho("eraser");
+    m.apaga();
+    let depois = tinta_em(&m.t.canvas_rgba, VELHO);
+    assert!((depois - velho).abs() < 1e-9, "{velho:.1} → {depois:.1}");
+}
+
+/// O relevo do Impasto fica depois da Borracha, com ou sem Wet: a do trilho não tem `impasto` (BUGS #70).
+#[test]
+#[ignore = "sonda: o relevo do Impasto antigo sob a Borracha no Wet"]
+fn sonda_relevo_do_impasto_sob_a_borracha() {
+    let mut m = Mesa::nova();
+    m.meio(PaintMedia::Impasto);
+    m.pinta(40.0);
+    let soma = |t: &PainterTool| -> f64 {
+        t.heights
+            .values()
+            .map(|h| {
+                (34..47usize)
+                    .flat_map(|y| (58..71usize).map(move |x| y * SIZE as usize + x))
+                    .map(|i| f64::from(h[i]))
+                    .sum::<f64>()
+            })
+            .sum()
+    };
+    let antes = soma(&m.t);
+    let mut c = Mesa::nova();
+    c.meio(PaintMedia::Impasto);
+    c.pinta(40.0);
+    c.trilho("eraser");
+    c.apaga();
+    eprintln!(
+        "RELEVO controlo sem Wet: {antes:.2} → {:.2}, tinta {:.1}, impasto no pincel {}",
+        soma(&c.t),
+        tinta_em(&c.t.canvas_rgba, VELHO),
+        c.t.paint.brush.impasto
+    );
+    m.meio(PaintMedia::WetPaint);
+    m.pinta(90.0);
+    m.quadros(20);
+    m.trilho("eraser");
+    m.apaga();
+    eprintln!("RELEVO antes {antes:.2} depois {:.2}", soma(&m.t));
+    let b = std::sync::Arc::new(vec![9u8; 4096 * 2560 * 4]);
+    let mut c = std::sync::Arc::clone(&b);
+    let t0 = std::time::Instant::now();
+    std::sync::Arc::make_mut(&mut c)[0] = 1;
+    eprintln!("COPIA da base 4096×2560: {:.1} ms", t0.elapsed().as_secs_f64() * 1e3);
+}
+
 #[test]
 #[ignore = "sonda: a Borracha sobre os traços dos outros meios, depois do Wet Paint"]
 fn sonda_borracha_depois_do_wet() {

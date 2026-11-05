@@ -555,6 +555,7 @@ mod showwet_tests;
 mod sobe_a_ladeira_porta_tests; // sonda J9 §2: por que porta a água entra no miolo do óleo
 #[cfg(test)]
 mod sonda_achatamento; // as rectas do escorrimento no S (W1f, prompt 12)
+mod borracha_na_base; // a Borracha também apaga a tinta antiga (Bug #70)
 #[cfg(test)]
 mod borda_do_traco_tests; // o Edge Darkening é de cada traço (Bug #69)
 #[cfg(test)]

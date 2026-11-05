@@ -102,7 +102,7 @@ impl PainterTool {
                 self.wetpaint_pousa_adiados();
             }
         }
-        // The wet ERASER (W2.6) erases the FLUID and only the fluid: with no
+        // The wet ERASER (W2.6) erases the fluid and the old paint under it (`borracha_na_base`): with no
         // live session there is nothing wet, and the routing predicate
         // (`wet_owns_the_dabs`) already sent those dabs to the normal
         // eraser — this early-out only covers the guard killing the session
@@ -427,6 +427,9 @@ impl PainterTool {
         }
         let deposit_ms = t_dep.elapsed().as_secs_f32() * 1e3;
         self.paint.wetpaint.session = Some(taken);
+        if erasing {
+            self.apaga_a_base_sob_os_dabs(dabs);
+        }
         let t_comp = std::time::Instant::now();
         self.wet_compoe_ou_adia();
         crate::wet_diag::note_stamp(dabs.len(), deposit_ms, t_comp.elapsed().as_secs_f32() * 1e3);

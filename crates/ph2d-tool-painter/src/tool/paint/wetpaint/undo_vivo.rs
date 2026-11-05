@@ -39,6 +39,9 @@ pub(crate) struct PassoVivo {
     chave: usize,
     antes: FotoDoMotor,
     depois: Option<FotoDoMotor>,
+    /// A tinta antiga: a Borracha muda-a ([`super::borracha_na_base`]). Passos sem Borracha partilham o mesmo `Arc`.
+    base_antes: Arc<Vec<u8>>,
+    base_depois: Option<Arc<Vec<u8>>>,
 }
 
 /// A sessão tirada do caminho do restore, com a fotografia a devolver, o sentido (`true` = refazer) e a chave do
@@ -137,10 +140,15 @@ impl PainterTool {
         sess.engine.capture_history();
         let antes = FotoDoMotor::de(&sess.engine);
         let mut soma = antes.bytes();
+        let mut ultima = Arc::as_ptr(&sess.base);
         // O motor guarda HISTORY_DEPTH registos: um passo mais velho já não tem as suas grades.
         let mut corte = sess.antes_do_passo.len().saturating_sub(HISTORY_DEPTH - 1);
         for (i, p) in sess.antes_do_passo.iter().enumerate().skip(corte).rev() {
             soma += p.bytes();
+            if Arc::as_ptr(&p.base_antes) != ultima {
+                ultima = Arc::as_ptr(&p.base_antes);
+                soma += p.base_antes.len();
+            }
             if soma > teto {
                 corte = i + 1;
                 break;
@@ -151,6 +159,8 @@ impl PainterTool {
             chave,
             antes,
             depois: None,
+            base_antes: Arc::clone(&sess.base),
+            base_depois: None,
         });
     }
 
@@ -195,9 +205,19 @@ impl PainterTool {
                 // instante — e só quando o undo se aplica (drenar antes mudava o ritmo da água à toa).
                 sess.engine.drain_step();
                 let depois = FotoDoMotor::de(&sess.engine);
+                let atual = Arc::clone(&sess.base);
                 if let Some(p) = sess.antes_do_passo.iter_mut().find(|p| p.chave == chave) {
                     p.depois = Some(depois);
+                    p.base_depois = Some(atual);
+                    sess.base = Arc::clone(&p.base_antes);
                 }
+            } else if let Some(b) = sess
+                .antes_do_passo
+                .iter_mut()
+                .find(|p| p.chave == chave)
+                .and_then(|p| p.base_depois.take())
+            {
+                sess.base = b;
             }
             let feito = if refaz {
                 sess.engine.redo()

@@ -32,7 +32,9 @@ const TECTO: usize = 22_000;
 /// ⚠️ Piso de população — sem ele um `MEMORY.md` que ninguém encontra passa este gate a medir nada.
 /// 02/11: 120 → 115 (medido) — compactação do índice (22 KB → 17 KB), ponteiros dobrados nos
 /// `reference_topic_*` (conferido: nenhum ficheiro ficou órfão por causa dela).
-const PISO_DE_PONTEIROS: usize = 115;
+/// 05/11: 115 → 95 (medido: 101 no índice) — 21 decisões de produto dobradas em
+/// `reference_topic_owner_product_decisions`, nenhuma órfã.
+const PISO_DE_PONTEIROS: usize = 95;
 
 fn raiz() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")

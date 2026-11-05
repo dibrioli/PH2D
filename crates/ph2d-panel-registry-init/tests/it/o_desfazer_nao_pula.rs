@@ -489,7 +489,7 @@ fn escreve_scale_x(m: &mut Mesa, t: &str) -> [f32; 2] {
             EditorAction::InspectorTransformEdit(i) => Some(i.scale),
             _ => None,
         })
-        .last()
+        .next_back()
         .expect("a escrita não chegou ao objecto")
 }
 

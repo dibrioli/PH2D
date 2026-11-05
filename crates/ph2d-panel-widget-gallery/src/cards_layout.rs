@@ -48,7 +48,7 @@ fn grelha_e_folgas(c: &mut CardCtx<'_>, ch: &Choices, y: f32) -> f32 {
     // O Padding desce sempre: ao lado das filas da grelha ficaria desalinhado (`lei_do_ritmo`).
     c.x = x0;
     c.w = w0;
-    let direita = c.row(
+    c.row(
         &[
             Cell::new(field(
                 g::PAD_H,
@@ -62,8 +62,7 @@ fn grelha_e_folgas(c: &mut CardCtx<'_>, ch: &Choices, y: f32) -> f32 {
             .key(&[g::PAD_H, g::PAD_V]),
         ],
         fundo.max(direita),
-    );
-    direita
+    )
 }
 
 pub(crate) fn layout(ch: Choices) -> CardDef<'static> {

@@ -1,8 +1,8 @@
 //! ⭐ **Casos reais: luz, áudio, pixel art, script** (doc `CartoesUI/08` §1.3).
 
 use crate::controlos::{
-    CAMPO_MIN, PALETTE_TOKENS, caixa_para, card, dropdown, field, head, letra, marca,
-    num, seg_of, segs,
+    CAMPO_MIN, PALETTE_TOKENS, caixa_para, card, dropdown, field, head, letra, marca, num, seg_of,
+    segs,
 };
 use crate::ids as g;
 use crate::state::{Choices, Flag, Pick, RACKS};

@@ -104,6 +104,9 @@ Tudo fotografado depois das curas: [Frames, arnês](maquete/q4_frames.png) · [F
 - Properties: a escolha de variante não leva marca de animação (o cartão de antes também não a tinha).
 - Hierarchy: sem lugar para o nome e o selo juntos, o selo sai. O nome é por onde se acha a linha.
 - Tokens e Wet na coluna de 220 px: os ícones descem para a linha de baixo, e os números vão um por linha (lei 5 de 05 §4).
+- R6, coluna de 220 px: os pares de botões do Audio Editor, Delay, Foreground/Background e Sync descem de linha em vez de cortar o nome; o painel fica mais alto nessa largura. As abas num cartão usam o corpo do segmentado (11 px).
+- R6, Pixel: o resumo no título de Colors mostra 6 dígitos; o alfa fica na linha da cor.
+- R6, Render Source: a frase do preço do RGBA16 também quebra com `PH2D_CARDS=0`, em vez de cortar. É a única mudança de R6 no painel de antes.
 
 - Audio Editor: o dono pediu em 2026-09 botões encostados («tudo o que puder ser ajuntado, ajunte»), no painel antigo. Num cartão vale a lei de 05 §4 e o padrão aprovado de Physics e Flip: soltos. `PH2D_CARDS=0` fica como ele pediu.
 - Slider do Audio Editor com rótulo em cima, como todo campo (02 §2); o valor continua a ser a leitura do motor, sem caixa.

@@ -14,6 +14,18 @@ use vello::peniko::{
     ImageQuality,
 };
 
+/// ⭐ **A única porta de colar uma cena noutra** (censo `censo_das_colagens`, na `tests/it` desta crate).
+///
+/// ⛔ `Encoding::append` (vello 0.11) faz `flags = other.flags`. O texto deixa o pedido de re-emitir o
+/// transform, porque o glifo muda o transform corrente do fluxo sem o `transforms.last()` saber. Colar
+/// uma cena vazia depois de um texto apagava o pedido, e o preenchimento seguinte de transform igual
+/// herdava o do último glifo: o véu do modal e o marquee saíram do sítio (`docs/CartoesUI/17` e `10`, F6).
+/// Forçar é só mais uma etiqueta no fluxo, o resultado das colagens sãs não muda.
+pub fn colar_cena(alvo: &mut Scene, outra: &Scene, transform: Option<Affine>) {
+    alvo.append(outra, transform);
+    alvo.encoding_mut().force_next_transform_and_style();
+}
+
 pub struct VectorScene {
     pub(crate) inner: Scene,
     /// A gravação ([`crate::record`]), ligada só por quem lê a cena de volta (o export do Quadro).
@@ -274,13 +286,15 @@ impl VectorScene {
     /// baixo dela. É a porta da escala da interface (`ph2d_editor_core::ui_scale`): o chrome
     /// pinta-se numa cena LÓGICA e entra aqui sob `Affine::scale(s)`.
     ///
-    /// ⛔ `Encoding::append` (vello 0.11) faz `flags = other.flags`: colar uma cena vazia logo depois de
-    /// um texto apaga o «re-emitir o transform» do texto, e o preenchimento seguinte herda o transform
-    /// do último glifo (o véu do modal só aparecia do último texto do HUD para baixo e para a direita,
-    /// `docs/CartoesUI/17`). Aqui ele volta a valer.
+    /// A lei da colagem mora em [`colar_cena`].
     pub fn append_transformed(&mut self, other: &VectorScene, transform: Affine) {
-        self.inner.append(&other.inner, Some(transform));
-        self.inner.encoding_mut().force_next_transform_and_style();
+        colar_cena(&mut self.inner, &other.inner, Some(transform));
+        self.mundo_por_baixo |= other.mundo_por_baixo;
+    }
+
+    /// A irmã de [`Self::append_transformed`] sem transform: os transforms de `other` entram tal e qual.
+    pub fn append_scene(&mut self, other: &VectorScene) {
+        colar_cena(&mut self.inner, &other.inner, None);
         self.mundo_por_baixo |= other.mundo_por_baixo;
     }
 

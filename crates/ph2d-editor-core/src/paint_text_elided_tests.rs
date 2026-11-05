@@ -134,6 +134,8 @@ fn o_preenchimento_depois_de_um_texto_e_de_uma_camada_vazia_nao_herda_o_transfor
     let mut ts = TextSystem::new();
     let mut scene = VectorScene::new();
     let branco = Color::WHITE;
+    // O fundo: sem um transform igual no fluxo, o vello re-emitia-o de qualquer modo.
+    scene.fill_rect(ph2d_vector::Rect::new(0.0, 0.0, 9.0, 9.0), branco);
     paint_text(
         &mut ts,
         &mut scene,

@@ -60,7 +60,7 @@ impl KeepAlive {
             return scene;
         }
         self.scene.reset();
-        self.scene.append(scene, None);
+        ph2d_vector::scene::colar_cena(&mut self.scene, scene, None);
         let brush = ImageBrush::new(self.image.clone());
         self.scene
             .draw_image(brush.as_ref(), Affine::translate((-1.0e6, -1.0e6)));

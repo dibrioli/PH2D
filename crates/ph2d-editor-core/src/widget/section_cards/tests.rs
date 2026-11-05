@@ -360,3 +360,28 @@ fn a_section_boundary_inside_a_card_body_paints_no_plate() {
     );
     assert!(fim > 80.0);
 }
+
+/// ⭐ F12: um corpo que não pinta nada, logo depois de um texto. A colagem vazia apagava o pedido de
+/// re-emitir o transform do glifo, e o preenchimento seguinte saía no sítio do último glifo. A régua lê
+/// o transform que o preenchimento emitiu. *Mutação: a porta sem o `force_next…`.*
+#[test]
+fn um_corpo_vazio_depois_de_um_texto_nao_desloca_o_preenchimento_seguinte() {
+    let mut ts = ph2d_text::TextSystem::new();
+    let mut cena = VectorScene::new();
+    let branco = ph2d_vector::Color::WHITE;
+    // O fundo do painel: sem um transform igual no fluxo, o vello re-emitia-o de qualquer modo.
+    cena.fill_rect(ph2d_vector::Rect::new(0.0, 0.0, 9.0, 9.0), branco);
+    crate::paint::paint_text(
+        &mut ts, &mut cena, "Name", 1380.0, 971.0, 12.0, 200.0, branco,
+    );
+    with_section_cards(&mut cena, Theme::MODERN[0], 0.0, |_| {});
+    let antes = cena.inner().encoding().transforms.len();
+    cena.fill_rect(ph2d_vector::Rect::new(0.0, 0.0, 9.0, 9.0), branco);
+    let e = cena.inner().encoding();
+    assert_eq!(
+        e.transforms.len(),
+        antes + 1,
+        "o preenchimento herdou o transform do glifo"
+    );
+    assert_eq!(e.transforms.last().map(|t| t.translation), Some([0.0, 0.0]));
+}

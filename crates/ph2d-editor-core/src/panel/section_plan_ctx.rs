@@ -198,7 +198,7 @@ impl<'s> PlanoCtx<'s> {
                     y = cromo(ctx, panel, id, inner_x, inner_w, y0, y);
                 }
                 std::mem::swap(ctx.scene, &mut parte);
-                ctx.scene.inner_mut().append(parte.inner(), None);
+                ctx.scene.append_scene(&parte);
                 fantasma = Some(parte);
             } else {
                 y = tarefa(ctx, tema, y);

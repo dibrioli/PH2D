@@ -43,7 +43,7 @@ pub fn paint_card_ghost(
     if let Some(cor) = cor {
         fill_rounded_rect(&mut ghost, cartao, raio, cor);
     }
-    ghost.inner_mut().append(conteudo.inner(), None);
+    ghost.append_scene(conteudo);
     let forma = RoundedRect::new(
         f64::from(cartao.x),
         f64::from(cartao.y),
@@ -53,7 +53,7 @@ pub fn paint_card_ghost(
     );
     let normal = VelloBlend::new(Mix::Normal, Compose::SrcOver);
     scene.push_layer_shape(normal, ph2d_tokens::DRAG_GHOST_ALPHA, afim, &forma);
-    scene.inner_mut().append(ghost.inner(), Some(afim));
+    scene.append_transformed(&ghost, afim);
     scene.pop_layer();
 }
 

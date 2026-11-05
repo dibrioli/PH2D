@@ -120,7 +120,7 @@ impl<'a> Plano<'a> {
                     hit: &mut *tela.hit,
                 };
                 y = tarefa(&mut sub, tema, y);
-                tela.scene.inner_mut().append(parte.inner(), None);
+                tela.scene.append_scene(&parte);
                 fantasma = Some(parte);
             } else {
                 y = tarefa(tela, tema, y);

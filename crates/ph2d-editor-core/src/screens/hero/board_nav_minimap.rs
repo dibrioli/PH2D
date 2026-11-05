@@ -118,7 +118,7 @@ pub(super) fn paint(hero: &mut HeroScreen, area: Rect, scene: &mut VectorScene, 
         return;
     };
     scene.push_clip(&crate::paint::rect_to_vello(r));
-    scene.inner_mut().append(cache.cells.inner(), None);
+    scene.append_scene(&cache.cells);
     // A vista: o rectângulo do mundo à vista, na escala do minimapa.
     let a = super::super::board_view::area_of(area);
     let v0 = cache.map.to_screen(board.camera.to_world(a, [a[0], a[1]]));

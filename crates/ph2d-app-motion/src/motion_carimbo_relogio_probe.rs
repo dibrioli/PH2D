@@ -177,7 +177,7 @@ fn rota_append(caminho: &ph2d_vec_scene::VecPath, n: usize, cena: &mut ph2d_vect
         &mut frag,
     );
     for i in 0..n {
-        cena.inner_mut().append(frag.inner(), Some(pose(i)));
+        cena.append_transformed(&frag, pose(i));
     }
 }
 

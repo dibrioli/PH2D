@@ -49,9 +49,12 @@ ph2d-ease = { path = "../ph2d-ease" }
 # wgpu 30 existe e nao e' alcancavel (forcar da' DUAS copias, e o `Device` de
 # uma nao serve a` outra). Reconferir quando o vello suportar wgpu 30:
 # `bash scripts/stack-audit.sh --tetos`. VelloPass takes
-# `&vello::Scene` directly so we don't need ph2d-vector here; the
-# editor builds the Scene via ph2d-vector and passes it through.
+# `&vello::Scene` directly; the editor builds the Scene via ph2d-vector and
+# passes it through.
 vello = "0.11.0"
+# A única porta de colar cenas (`ph2d_vector::scene::colar_cena`). Sem ciclo: a `ph2d-vector`
+# depende só do `vello` e de folhas.
+ph2d-vector = { path = "../ph2d-vector" }
 # serde derives on `Sprite` so it can be carried by `PrefabDoc` /
 # `SceneDoc` through the postcard pipeline (M14.3). HR-14 mitigation
 # until `#[derive(Saveable)]` lands.
@@ -125,10 +128,6 @@ half = "2"
 # speaks raw `u8` blend codes (no enum coupling), and ph2d-painter-effects does
 # NOT depend on ph2d-render, so this is acyclic.
 ph2d-painter-effects = { path = "../ph2d-painter-effects" }
-# A sonda `skin_pieces_gpu_cost` mede PELA PORTA DO PRODUTO (`push_clip` +
-# `draw_stable_image_transformed`), e não por um espelho do encoding. Sem ciclo: a
-# `ph2d-vector` depende só do `vello` e de folhas.
-ph2d-vector = { path = "../ph2d-vector" }
 # F33: a régua filtros × efeitos (`fx_efeito_sob_filtro_gpu.rs`) cozinha a forma pela pilha de
 # efeitos CANÓNICA (`ph2d_vec_scene::effect::run_stack`) em vez de a re-implementar. Sem ciclo: a
 # `ph2d-vec-scene` não depende da `ph2d-render`.

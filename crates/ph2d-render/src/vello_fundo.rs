@@ -221,7 +221,7 @@ pub(crate) fn compoe(composta: &mut Scene, mundo: ImageData, cena: &Scene) {
         &ImageBrush::new(mundo).with_quality(ImageQuality::Low),
         Affine::IDENTITY,
     );
-    composta.append(cena, None);
+    ph2d_vector::scene::colar_cena(composta, cena, None);
 }
 
 #[cfg(test)]

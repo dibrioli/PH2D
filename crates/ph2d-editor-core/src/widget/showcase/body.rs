@@ -199,7 +199,7 @@ pub fn paint_showcase_body(
             // ⭐ A arrastada pinta-se numa cena À PARTE, pousada no sítio de sempre e reusada como
             //    o FANTASMA que segue o cursor. ⚠️ Os alvos dela registam-se no sítio real.
             std::mem::swap(scene, &mut parte);
-            scene.inner_mut().append(parte.inner(), None);
+            scene.append_scene(&parte);
             fantasma = Some(parte);
         }
         corredor.depois(y_before, y);

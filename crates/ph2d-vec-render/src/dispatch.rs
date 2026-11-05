@@ -183,7 +183,7 @@ fn draw_one(
         if let Some(c) = &clip {
             target.push_clip(c);
         }
-        target.inner_mut().append(skin.scene.inner(), None);
+        target.append_scene(&skin.scene);
         if clip.is_some() {
             target.pop_layer();
         }

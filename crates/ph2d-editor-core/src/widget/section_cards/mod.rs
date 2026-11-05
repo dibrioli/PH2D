@@ -239,7 +239,7 @@ pub fn end_section_cards(scene: &mut VectorScene) -> usize {
 
     let n = cards.rects.len();
     cards.paint_into(scene);
-    scene.inner_mut().append(painted_body.inner(), None);
+    scene.append_scene(&painted_body);
     n
 }
 

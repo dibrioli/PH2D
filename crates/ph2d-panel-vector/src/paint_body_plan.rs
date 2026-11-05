@@ -249,7 +249,7 @@ impl BodyCtx<'_> {
                 y = self.cromo(id, y0, y);
             }
             std::mem::swap(self.scene, &mut parte);
-            self.scene.inner_mut().append(parte.inner(), None);
+            self.scene.append_scene(&parte);
             passo.fantasma = Some(parte);
         } else {
             y = self.uma_seccao(y, tarefa);

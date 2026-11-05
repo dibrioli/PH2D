@@ -65,6 +65,9 @@ pub const CURAS_J6_PINCEL: &[(&str, &[(&str, &str)])] = &[];
 /// 100 e 200 dão o mesmo aro, ~0,9; a 40 px a 100 dá orla 1,07; o fio escuro saiu por ordem do dono 02/11). ⛔ As pontas
 /// que esbatem NÃO no Liner (a 40 px o Rebelle é cheio até à tampa, J6t).
 const SEM_KM: (&str, f64) = crate::presets_de_fabrica::SEM_KM;
+/// A receita do dono 04/11 para o Wet Liner e o Wet Wash (Bug #62, `BUGS_painter.md`): `edge` 0 e Smooth Edges 0,12, Body de
+/// fábrica. O fio do Liner ficava 3 px para dentro, seguido de um vale, e lia-se como contorno desenhado.
+const BORDA_DO_DONO: (&str, f64) = ("smoothEdges", 0.12);
 
 pub const WET: &[Receita] = &[
     // J4 3.ª ronda (`exames/aguarela.md`): CURADO, NÃO aprovado — o FILME (o miolo mosqueado e a orla oca que dois revisores
@@ -81,7 +84,7 @@ pub const WET: &[Receita] = &[
         pickup: 0.0,
         gate: 0.0,
         evaporation: 0.7,
-        edge: 40.0,
+        edge: 0.0,
         tilt: DIREITA,
         bristle_size: 3.0,
         bristle_count: 3000.0,
@@ -100,8 +103,9 @@ pub const WET: &[Receita] = &[
             ("strokeFilmDome", 0.5),
             TAMPAS,
             SEM_KM,
+            BORDA_DO_DONO,
             // R1: a borda GRADUADA (`Knob::EdgeSoftMass`) — sem o contorno irregular na tampa; orla 50 → 40 devolve o aro
-            // dos lados (1,41 → 1,33; Rebelle 1,15).
+            // dos lados (1,41 → 1,33; Rebelle 1,15). O `edge` da receita é 0 desde 04/11 (Bug #62).
             ("edgeSoftMass", 4.0),
         ],
         grao: None,
@@ -182,13 +186,14 @@ pub const WET: &[Receita] = &[
         pickup: 0.0,
         gate: 0.0,
         evaporation: 1.0,
-        edge: 200.0,
+        edge: 0.0,
         tilt: DIREITA,
         bristle_size: 2.0,
         bristle_count: 2000.0,
         hardness: 0.9,
         size_px: Some(29.0),
         extras: &[
+            BORDA_DO_DONO,
             FILME,
             SEM_ARRASTO,
             PAREDE,

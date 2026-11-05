@@ -111,6 +111,15 @@ fn bar_list_rows(hero: &HeroScreen, chip: NodeId) -> Vec<Rect> {
         .collect()
 }
 
+/// O fundo do `⋯` aberto: o último `RAIL_BACKDROP` do quadro (a faixa regista o dela antes).
+fn moldura_do_transbordo(hero: &HeroScreen) -> Option<Rect> {
+    hero.hit_index
+        .iter_registrations()
+        .filter(|(id, _)| *id == ids::RAIL_BACKDROP)
+        .map(|(_, r)| r)
+        .last()
+}
+
 /// O chip que abre um menu da fila e a 1.ª linha desse menu, pintada.
 fn chip_e_linha(
     hero: &mut HeroScreen,
@@ -176,6 +185,12 @@ fn chip_e_linha(
             painted.iter().map(|q| q.y).reduce(f32::min),
             painted.iter().map(|q| q.y + q.h).reduce(f32::max),
         ) {
+            // ⚠️ O `⋯` mede a MOLDURA: o menu antigo tinha a coluna mais curta que o fundo, que tapava o chip.
+            let (top, bottom) =
+                match moldura_do_transbordo(hero).filter(|_| chip == ids::TOOL_BAR_OVERFLOW) {
+                    Some(m) => (top.min(m.y), bottom.max(m.y + m.h)),
+                    None => (top, bottom),
+                };
             out.push((chip, r, Rect::new(0.0, top, 0.0, bottom - top)));
         }
         hero.store.close_context_menu();
@@ -214,12 +229,36 @@ fn at_the_bottom_the_row_sits_below_the_area_and_its_menus_grow_up() {
         pares.extend(chip_e_linha(&mut hero, &mut ts));
     }
     mediu_os_tres_da_barra(&pares);
+    assert!(
+        pares.iter().any(|(c, _, _)| *c == ids::TOOL_BAR_OVERFLOW),
+        "o `⋯` não abriu nada medível: a lei mediria só a barra de controle"
+    );
     for (_, chip, row) in pares {
         assert!(
             row.y + row.h <= chip.y + 0.5,
             "um menu da fila embaixo abriu por baixo do chip ({row:?} sob {chip:?})"
         );
     }
+}
+
+/// A paleta abre o `⋯` sem Down: a outra porta de `row_menu_anchor_y`, com a mesma lei.
+#[test]
+fn the_palette_door_also_opens_the_overflow_upwards_at_the_bottom() {
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let mut hero = com_fila(true, DrawMode::Node, &mut ts);
+    let chip = hero
+        .hit_index
+        .rect_for(ids::TOOL_BAR_OVERFLOW)
+        .expect("o Node põe a cauda atrás do `⋯` no mini");
+    hero.apply_event(ph2d_editor_core::interaction::WidgetEvent::Click(
+        ids::TOOL_BAR_OVERFLOW,
+    ));
+    pinta(&mut hero, &mut ts);
+    let m = moldura_do_transbordo(&hero).expect("o menu pintou o fundo");
+    assert!(
+        m.y + m.h <= chip.y + 0.5,
+        "o `⋯` pela paleta tapou o chip: {m:?} sobre {chip:?}"
+    );
 }
 
 /// **O CONTROLO: em cima, os mesmos menus abrem por baixo do chip** — e a fila fica por cima da área.

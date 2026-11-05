@@ -93,7 +93,9 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
             .hit_index
             .rect_for(chip)
             .or_else(|| hero.hit_index.rect_for(ids::TOOL_BAR_OVERFLOW))
-            .map_or((0.0, hero.last_viewport.y), |r| (r.x, r.y + r.h));
+            .map_or((0.0, hero.last_viewport.y), |r| {
+                (r.x, hero.store.row_menu_anchor_y(r, 0.0))
+            });
         hero.store
             .open_context_menu(ContextMenuRequest { x, y, kind });
         return true;

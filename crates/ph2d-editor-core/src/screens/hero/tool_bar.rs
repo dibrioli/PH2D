@@ -474,7 +474,7 @@ pub(super) fn paint_transbordo_em_lista(
     let inner_h = rail.preferred_height(size);
     let rect = crate::widget::panel_chrome::clamp_menu_to_viewport(
         req.x,
-        req.y,
+        super::context_menu_overlay::anchor_y(store, req, inner_h + pad * 2.0),
         inner_w + pad * 2.0,
         inner_h + pad * 2.0,
         viewport,

@@ -77,6 +77,10 @@ fn the_menu_bar_the_tool_bar_and_the_tabs_all_belong_to_the_frame() {
         l.hierarchy
     };
     assert!(
+        esquerda.w > 0.0 && esquerda.h > 0.0,
+        "a fixtura não pintou a coluna da esquerda: o gate saltaria a superfície que trocou"
+    );
+    assert!(
         tab_bar.h > 0.0,
         "a fixtura não abriu duas abas — o gate mediria uma superfície que não está no ecrã"
     );

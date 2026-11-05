@@ -40,6 +40,19 @@ fn clamp_to_viewport(anchor_x: f32, anchor_y: f32, w: f32, h: f32, viewport: Rec
     crate::widget::panel_chrome::clamp_menu_to_viewport(anchor_x, anchor_y, w, h, viewport)
 }
 
+/// Com a fila ② embaixo, um menu dela acaba em `req.y`, o topo do chip (`row_menu_anchor_y`).
+pub(super) fn anchor_y(
+    store: &WidgetStore,
+    req: crate::interaction::ContextMenuRequest,
+    h: f32,
+) -> f32 {
+    if store.tool_row_bottom() && req.kind.opens_from_tool_row() {
+        req.y - h
+    } else {
+        req.y
+    }
+}
+
 /// Five common highlighter colors used for note backgrounds and
 /// section outlines. Wave 8 Phase 2.A re-export from
 /// `ph2d-editor-core::widget::panel_chrome::HIGHLIGHTER_RGBA` so panel
@@ -190,7 +203,13 @@ pub fn paint_context_menu_overlay(
     // tamanho de um comando, e a conta antiga (`ROW_H * len`) deixaria a coluna a transbordar do
     // cartão exactamente pela altura dos riscos.
     let total_h = rows.iter().map(MenuRow::h).sum::<f32>() + pad_y() * 2.0;
-    let rect = clamp_to_viewport(req.x, req.y, MENU_W, total_h, viewport);
+    let rect = clamp_to_viewport(
+        req.x,
+        anchor_y(store, req, total_h),
+        MENU_W,
+        total_h,
+        viewport,
+    );
 
     let superficie = Superficie::de(theme);
     superficie.moldura(scene, rect);
@@ -552,7 +571,7 @@ fn paint_tool_bar_overflow(
     let inner_h = crate::widget::line_pitch(size.chip_px()) * rail.entries.len() as f32;
     let rect = clamp_to_viewport(
         req.x,
-        req.y,
+        anchor_y(store, req, inner_h + pad * 2.0),
         inner_w + pad * 2.0,
         inner_h + pad * 2.0,
         viewport,

@@ -94,7 +94,7 @@ fn the_two_ugly_derived_titles_are_named_here() {
             "o título derivado {pretty:?} devia estar na paleta"
         );
     }
-    // A aba passou a ser uma chave (`c19b4fcb80`): o título feio morreu e o de hoje é o nome do painel.
+    // `f153f77153` deu ao painel o título dele na paleta: o feio morreu, a aba e a paleta dizem o mesmo.
     assert!(!labels.iter().any(|l| l == "Bgremoval"));
     assert!(labels.iter().any(|l| l == "Background Removal"));
 }

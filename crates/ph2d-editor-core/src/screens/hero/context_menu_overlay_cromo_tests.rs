@@ -120,7 +120,14 @@ fn a_lista_de_cenas_e_o_transbordo_vestem_a_mesma_superficie() {
 }
 
 #[test]
-fn as_caixas_internas_vestem_a_superficie_sem_mover_alvo() {
+fn as_caixas_internas_vestem_a_superficie_sem_perder_alvo() {
+    // Desde a M8 o corpo é de linhas de cartão: os controlos são os mesmos, noutro sítio
+    // (`docs/CartoesUI/15_CHROME_CENSO.md`, decisões da M8).
+    let so_ids = |v: &[(NodeId, Rect)]| {
+        let mut ids: Vec<_> = v.iter().map(|(id, _)| id.0).collect();
+        ids.sort_unstable();
+        ids
+    };
     for kind in [
         K::NewImageDialog,
         K::NewSpriteDialog,
@@ -138,16 +145,14 @@ fn as_caixas_internas_vestem_a_superficie_sem_mover_alvo() {
             alvos_novos.iter_registrations().collect(),
             alvos_antigos.iter_registrations().collect(),
         );
-        if kind == K::NewSpriteDialog {
-            // O corpo passou a linhas de cartão: os controlos são os mesmos, noutro sítio.
-            let so_ids = |v: &[(NodeId, Rect)]| {
-                let mut ids: Vec<_> = v.iter().map(|(id, _)| id.0).collect();
-                ids.sort_unstable();
-                ids
-            };
-            assert_eq!(so_ids(&novos), so_ids(&antigos));
-        } else {
-            assert_eq!(novos, antigos, "{kind:?}");
+        assert!(!novos.is_empty(), "{kind:?}: a caixa não registou nada");
+        assert_eq!(so_ids(&novos), so_ids(&antigos), "{kind:?}");
+        let j = janela();
+        for (id, r) in &novos {
+            assert!(
+                r.w > 0.0 && r.h > 0.0 && r.x >= j.x && r.x + r.w <= j.x + j.w,
+                "{kind:?}: alvo {id:?} fora da mão: {r:?}"
+            );
         }
     }
 }

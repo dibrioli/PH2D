@@ -197,13 +197,13 @@ fn cada_botao_responde(wet: bool) {
     let mut medidos = 0;
     let bars = hero.store.tool_bars().cloned().expect("publicada");
     for (b, r) in placed(
-            &bars,
-            hero.last_layout
-                .expect("houve um quadro")
-                .clear_of_left_list(hero.last_content),
-            false,
-            false,
-        ) {
+        &bars,
+        hero.last_layout
+            .expect("houve um quadro")
+            .clear_of_left_list(hero.last_content),
+        false,
+        false,
+    ) {
         let _ = hero.bus.drain().count();
         let ev = clica(&mut hero, r);
         assert!(
@@ -274,32 +274,32 @@ fn a_flyout_item_answers_and_leaving_the_painter_clears_the_column() {
     let (mut hero, mut ts) = pintor(false);
     let bars = hero.store.tool_bars().cloned().expect("publicada");
     let (_, shapes) = placed(
-            &bars,
-            hero.last_layout
-                .expect("houve um quadro")
-                .clear_of_left_list(hero.last_content),
-            false,
-            false,
-        )
-        .into_iter()
-        .find(|(b, _)| b.id == ids::PAINTER_RAIL_SHAPES)
-        .expect("Shapes na coluna");
+        &bars,
+        hero.last_layout
+            .expect("houve um quadro")
+            .clear_of_left_list(hero.last_content),
+        false,
+        false,
+    )
+    .into_iter()
+    .find(|(b, _)| b.id == ids::PAINTER_RAIL_SHAPES)
+    .expect("Shapes na coluna");
     for e in clica(&mut hero, shapes) {
         hero.apply_event(e);
     }
     pinta(&mut hero, &mut ts);
     let bars = hero.store.tool_bars().cloned().expect("publicada");
     let (b, r) = placed(
-            &bars,
-            hero.last_layout
-                .expect("houve um quadro")
-                .clear_of_left_list(hero.last_content),
-            false,
-            false,
-        )
-        .into_iter()
-        .find(|(b, _)| b.id == ids::PAINTER_RAIL_SHAPE_LINE)
-        .expect("o flyout das formas pinta a Linha");
+        &bars,
+        hero.last_layout
+            .expect("houve um quadro")
+            .clear_of_left_list(hero.last_content),
+        false,
+        false,
+    )
+    .into_iter()
+    .find(|(b, _)| b.id == ids::PAINTER_RAIL_SHAPE_LINE)
+    .expect("o flyout das formas pinta a Linha");
     let ev = clica(&mut hero, r);
     assert!(
         ev.iter()

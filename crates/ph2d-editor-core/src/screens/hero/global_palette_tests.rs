@@ -134,16 +134,13 @@ fn the_top_bar_pills_are_out_because_they_open_menus_anchored_to_a_rect() {
     }
 }
 
-/// O nome de um painel é DERIVADO do id — 21 dos 23 saem limpos, e os dois feios estão nomeados.
+/// O nome de um painel é DERIVADO do id; o único que a derivação estragava leva o título dele (f153f77153).
 #[test]
 fn a_panel_title_is_derived_from_its_id() {
     assert_eq!(humanise_panel_id("audio_editor"), "Audio Editor");
     assert_eq!(humanise_panel_id("wet_tuning"), "Wet Tuning");
     assert_eq!(humanise_panel_id("vector"), "Vector");
     assert_eq!(humanise_panel_id("bgremoval"), "Background Removal");
-    // ⚠️ O que a derivação não embeleza, PINADO: quem lhe der um título próprio um dia muda esta
-    // linha de propósito, em vez de descobrir a feiura num screenshot.
-    assert_eq!(humanise_panel_id("bgremoval"), "Bgremoval");
 }
 
 /// A paleta **segue o modo**: com o Painter em mãos ela oferece as ferramentas de pintura.

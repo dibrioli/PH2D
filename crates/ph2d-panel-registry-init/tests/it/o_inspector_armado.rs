@@ -825,14 +825,15 @@ fn arma_o_top20() {
         entity_bits: BITS,
         rows: vec![InspectorWatchRow {
             item: 105,
-            counter: "Score".to_string(),
+            // Outro contador que o da HUD, que é «Score» a 42: um contador só não tem dois valores.
+            counter: "Coins".to_string(),
             compare: 1,
             value: 100,
             signal: "won".to_string(),
             once: true,
             scope_own: false,
             counter_existe: true,
-            valor_vivo: Some(42),
+            valor_vivo: Some(7),
         }],
         clock_playing: true,
         selected_count: selecionados(),
@@ -955,7 +956,7 @@ fn arma_o_top20() {
         counter_name: "Score".to_string(),
         counter_start: 0.0,
         counter_keep: false,
-        counter_value: 41,
+        counter_value: 42,
     }));
     insp::set_current_inspector_path_follow(Some(InspectorPathFollowInfo {
         entity_bits: BITS,

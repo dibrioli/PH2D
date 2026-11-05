@@ -412,6 +412,12 @@ pub enum ContextMenuKind {
 }
 
 impl ContextMenuKind {
+    /// Um menu que um chip da fila ② abre: sobe com a fila embaixo (`row_menu_anchor_y`).
+    #[must_use]
+    pub fn opens_from_tool_row(self) -> bool {
+        matches!(self, Self::ToolBarOverflow | Self::AreaCommands { .. })
+    }
+
     /// **UMA AMOSTRA DE CADA VARIANTE** — a porta que torna este enum ENUMERÁVEL.
     ///
     /// # Por que ela existe

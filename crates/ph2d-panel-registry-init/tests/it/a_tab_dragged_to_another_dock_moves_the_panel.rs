@@ -246,11 +246,30 @@ fn a_slot_the_panel_forbids_is_never_offered_as_a_target() {
     }
 }
 
+/// A lista flutuante tem mola pelo relógio: uma leitura a meio caminho não diz se o gesto a moveu.
+fn assenta_a_mola(h: &mut HeroScreen, id: &str) {
+    let mut iguais = 0;
+    for _ in 0..4000 {
+        let antes = rect_of(h, id);
+        paint(h, 1);
+        iguais = if rect_of(h, id) == antes {
+            iguais + 1
+        } else {
+            0
+        };
+        if iguais >= 8 {
+            return;
+        }
+    }
+    panic!("a mola de {id} não assentou");
+}
+
 /// ⚠️ **Largar FORA de todo destino legal não faz nada** — é a forma de desistir.
 #[test]
 fn dropping_outside_every_legal_target_changes_nothing() {
     let mut h = settled(&["inspector", "audio_mixer"]);
     bring_to_front(&mut h, "audio_mixer");
+    assenta_a_mola(&mut h, "audio_mixer");
     let l = h.last_layout.expect("layout");
     let before = rect_of(&h, "audio_mixer").expect("o mixer desenhou");
 
@@ -264,11 +283,11 @@ fn dropping_outside_every_legal_target_changes_nothing() {
     drag_tab(&mut h, tabs[i], (da.x + da.w * 0.5, da.y + da.h * 0.5));
     paint(&mut h, 2);
 
-    // A altura é a mola da lista flutuante, que anda sozinha; mover é mudar de sítio ou de coluna.
-    let depois = rect_of(&h, "audio_mixer").expect("o mixer continua a pintar");
+    assenta_a_mola(&mut h, "audio_mixer");
+
     assert_eq!(
-        (depois.x, depois.y, depois.w),
-        (before.x, before.y, before.w),
+        rect_of(&h, "audio_mixer"),
+        Some(before),
         "largar sobre o desenho moveu o painel"
     );
 }

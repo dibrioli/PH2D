@@ -248,7 +248,8 @@ fn scrubbing_an_opacity_of_a_pinned_card_keeps_the_number_on_release() {
     let mut m = Mesa::nova();
     let f = m.prende(CARD_FILL, 0, &[1]);
     let s = m.prende(CARD_STROKE, 0, &[1]);
-    let casos: [(NodeId, NodeId, fn(&VecPath) -> f64); 3] = [
+    type Caso = (NodeId, NodeId, fn(&VecPath) -> f64);
+    let casos: [Caso; 3] = [
         (f, v::VECTOR_FILL_OPACITY_NUM, |p| {
             f64::from(cor_de_fill(p).a) * 100.0 / 255.0
         }),

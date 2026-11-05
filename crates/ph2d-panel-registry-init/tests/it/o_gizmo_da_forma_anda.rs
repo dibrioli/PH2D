@@ -83,17 +83,21 @@ fn mundo(kind: ShapeKind, pose: Pose) -> Mundo {
     let id = scene.push_path(recook_shape(&shape).expect("cozinha"));
     ph2d_vec_entities::entities::sync(&mut sim, &mut scene, &mut map);
     let e = Entity::from_bits(map[&id]);
-    let mut local = Transform::default();
-    local.translation = ph2d_core::Vec2::new(1.0, 0.5);
+    let mut local = Transform {
+        translation: ph2d_core::Vec2::new(1.0, 0.5),
+        ..Transform::default()
+    };
     if matches!(pose, Pose::Rodada) {
         local.rotation = 0.5;
         local.scale = ph2d_core::Vec2::new(2.0, 1.5);
     }
     if matches!(pose, Pose::FilhaDePai) {
-        let mut pai = Transform::default();
-        pai.translation = ph2d_core::Vec2::new(-2.0, 1.0);
-        pai.rotation = 0.3;
-        pai.scale = ph2d_core::Vec2::new(1.5, 1.5);
+        let pai = Transform {
+            translation: ph2d_core::Vec2::new(-2.0, 1.0),
+            rotation: 0.3,
+            scale: ph2d_core::Vec2::new(1.5, 1.5),
+            ..Transform::default()
+        };
         let pai = sim.world_mut().spawn(pai).id();
         sim.world_mut().entity_mut(e).insert(ChildOf(pai));
     }
@@ -429,8 +433,10 @@ fn os_verbos_do_transform_deixam_as_alcas_em_cima() {
             }
 
             // O Reset e a Timeline escrevem a pose por fora do cartão.
-            let mut t = Transform::default();
-            t.translation = ph2d_core::Vec2::new(-0.7, 0.9);
+            let t = Transform {
+                translation: ph2d_core::Vec2::new(-0.7, 0.9),
+                ..Transform::default()
+            };
             *w.sim.world_mut().get_mut::<Transform>(e).expect("pose") = t;
             w.confere(&oque("a pose escrita por fora"));
         }

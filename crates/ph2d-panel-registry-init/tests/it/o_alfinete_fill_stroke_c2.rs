@@ -83,7 +83,7 @@ impl Mesa {
         let mut scene = VecScene::new();
         let mut sim = SimWorld::new();
         let mut map = ph2d_vec_entities::entities::VecEntityMap::new();
-        let (mut bits, mut ids) = (vec![0; n], Vec::new());
+        let (mut bits, mut ids) = (Vec::with_capacity(n), Vec::new());
         for i in 0..n {
             let mut p = rectangle([i as f64 * 3.0, 0.0], [2.0, 2.0]);
             let cor = if i == 0 { VERMELHO } else { AZUL };
@@ -105,7 +105,7 @@ impl Mesa {
                 .world_mut()
                 .spawn((Transform::default(), Name::new(nome(i)), VecPathRef(id)))
                 .id();
-            bits[i] = e.to_bits();
+            bits.push(e.to_bits());
             ids.push(id);
             map.insert(id, e.to_bits());
         }
@@ -312,8 +312,7 @@ impl Mesa {
         let meio = achados[achados.len() / 2].1;
         achados
             .into_iter()
-            .filter(|(_, y)| *y == meio)
-            .next_back()
+            .rfind(|(_, y)| *y == meio)
             .expect("a linha do meio")
     }
 
@@ -825,8 +824,7 @@ fn a_gradient_on_the_pinned_object_stays_quiet_under_the_picker() {
                 offset: 1.0,
                 color: VERDE,
             },
-        ]
-        .into(),
+        ],
     };
     m.scene.path_mut(m.ids[0]).expect("A").fill = Some(grad.clone());
     m.quadros(3);

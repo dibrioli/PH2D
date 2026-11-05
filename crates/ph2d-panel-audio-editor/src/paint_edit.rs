@@ -9,6 +9,7 @@
 //! history / no selection / nothing on the clipboard / no cuts). Ends by delegating to the
 //! effects rack.
 
+use crate::cards::grupo::{block_cells, grid_height};
 use crate::paint::{ClippedHits, button_in_group, toggle_in_group};
 use crate::tool_state::{self, EditTool};
 use crate::{
@@ -18,7 +19,6 @@ use crate::{
     AEDIT_TOOL_SCALE, AEDIT_TOOL_SELECT, AEDIT_TRIM, AEDIT_UNDO, loop_state, snapshot,
 };
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::widget::{block_cells, grid_height};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
@@ -136,7 +136,8 @@ fn paint_toolbar(
         theme,
         hit_index,
     );
-    y + grid_height(3, crate::cards::fila()) + ph2d_tokens::control_gap_px()
+    y + grid_height(3, crate::cards::fila())
+        + crate::cards::grupo::vao(ph2d_tokens::control_gap_px())
 }
 
 /// The Edit ops block: the toolbar (tools · clipboard · structure), then whole-clip
@@ -251,7 +252,8 @@ pub(crate) fn paint_edit_section(
     //    (2026-09-07, 1.ª seta vermelha). ⛔ O censo da wave 19 não o via: ele procura a
     //    CAUDA de um pintor (uma expressão sem `;`) e esta fronteira é uma **instrução** a
     //    meio da função. *Um censo que conhece uma forma da mesma pergunta é cego às outras.*
-    y += grid_height(5, crate::cards::fila()) + ph2d_tokens::control_gap_px();
+    y += grid_height(5, crate::cards::fila())
+        + crate::cards::grupo::vao(ph2d_tokens::control_gap_px());
 
     // Selection range ops — enabled only when a waveform selection exists (drag on the overlay
     // with the Select tool to make one). Cut/Copy/Paste used to live down here; they are basic
@@ -301,5 +303,5 @@ pub(crate) fn paint_edit_section(
     // since `HitIndex::hit` walks back-to-front, the copy up here was a ghost: painted,
     // and unclickable. Enio spotted the duplicate on sight (2026-07-12);
     // `no_control_is_painted_twice` keeps it spotted.
-    y + ph2d_tokens::control_gap_px()
+    y + crate::cards::grupo::vao(ph2d_tokens::control_gap_px())
 }

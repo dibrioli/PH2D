@@ -1,7 +1,7 @@
 //! O cartão Impasto em linhas de cartão (fatia H4, `docs/CartoesUI/13_PAINTER_PLANO.md`): mesmos ids, mesmos eventos. As
 //! caixas viram grupos, a lista TOOL desce em linhas, e o rig de luz fica pela lâmpada escolhida.
 
-use crate::cards_linhas::{escolha, grupo, numero, numero_e_cor};
+use crate::cards_linhas::{escolha, grupo, grupo_sobre_controlo, numero, numero_e_cor};
 use crate::cards_wet::{arma_numeros, caixa, campo, numeros};
 use crate::paint_wetpaint::Numero;
 use crate::{
@@ -322,7 +322,7 @@ fn seletor_de_lampada(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
 }
 
 fn luz(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
-    let y = grupo(c, "panel.painter_layers.impasto.lighting", y);
+    let y = grupo_sobre_controlo(c, "panel.painter_layers.impasto.lighting", y);
     let y = caixa(
         c,
         &(

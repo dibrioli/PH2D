@@ -197,7 +197,12 @@ pub fn paint_section_header(
     //    cor `Text1` e o texto **como está escrito na tabela** — ⛔ não mais em CAIXA ALTA (o `Sm` +
     //    `to_uppercase` de 2026-05-24 saiu nesse dia).
     let font = section_title_px();
-    let label_y = rect.y + (rect.h - font) * 0.5;
+    let label_y = if crate::widget::card_ink::card_body().is_some() {
+        let linha = text_system.layout("M", font, f32::INFINITY).height();
+        rect.y + (rect.h - linha) * 0.5
+    } else {
+        rect.y + (rect.h - font) * 0.5
+    };
     // ⚠️ O fim do espaço do título é o início do ornamento da direita (a pega ou a pastilha de
     //    contagem), quando há um.
     let right = if header.grip.is_some() {

@@ -68,7 +68,7 @@ pub(super) fn faixa(cx: &mut CardCtx<'_>, cells: &[Cell<'_>], cols: &[(f32, f32)
                 }
             }
             Some((a, None)) => {
-                let ty = y + extra * 0.5;
+                let ty = y + extra;
                 card_field::paint_label(cx.scene, cx.text_system, cx.ink, r.0, ty, w, a);
             }
             None => {}

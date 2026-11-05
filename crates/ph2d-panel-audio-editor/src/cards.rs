@@ -16,6 +16,8 @@ use ph2d_vector::Color;
 
 #[path = "cards_fileira.rs"]
 pub(crate) mod fileira;
+#[path = "cards_grupo.rs"]
+pub(crate) mod grupo;
 #[path = "cards_moldura.rs"]
 pub mod moldura;
 
@@ -94,7 +96,7 @@ fn corpo(id: NodeId, b: &crate::paint_sections::Body, c: &mut CardCtx<'_>, y0: f
     let mut hits = crate::paint::ClippedHits::new(c.store, c.hit_index, fileira::SEM_RECORTE);
     let (scene, ts) = (&mut *c.scene, &mut *c.text_system);
     card_ink::com(ink, || {
-        paint_corpo(id, y, x, w, b, scene, ts, ink.theme, &mut hits)
+        paint_corpo(id, y, x, w, b, scene, ts, ink.theme, &mut hits) - m::FIELD_ROW_GAP
     })
 }
 

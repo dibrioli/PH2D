@@ -57,7 +57,7 @@ pub(crate) fn paint_variation_section(
     );
 
     // The clip list (selectable rows).
-    let mut y = y + ph2d_tokens::control_gap_px();
+    let mut y = y + crate::cards::grupo::vao(ph2d_tokens::control_gap_px());
     y = paint_var_list(y, x, w, scene, text_system, theme, hit_index);
 
     // ⭐⭐⭐ **Os sete são UM corpo** (wave 20, report do dono: *«tudo o que puder ser ajuntado,
@@ -117,7 +117,7 @@ pub(crate) fn paint_variation_section(
         theme,
         hit_index,
     );
-    let mut y = y + ph2d_tokens::control_gap_px();
+    let mut y = y + crate::cards::grupo::vao(ph2d_tokens::control_gap_px());
 
     // Per-play jitter (container-level). Always adjustable — they are set properties.
     y = paint_jitter_slider(
@@ -166,7 +166,7 @@ pub(crate) fn paint_variation_section(
         theme,
         hit_index,
     );
-    y + ph2d_tokens::control_gap_px()
+    y + crate::cards::grupo::vao(ph2d_tokens::control_gap_px())
 }
 
 /// The variation list: one selectable row per clip (the selected row is tinted). Rows
@@ -184,6 +184,18 @@ fn paint_var_list(
 ) -> f32 {
     let names = variation_state::names();
     if names.is_empty() {
+        if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+            let (topo, px, seguinte) = crate::cards::grupo::linha_de_texto(y);
+            paint_text_centered(
+                text_system,
+                scene,
+                tr("panel.audio_editor.variations.add_clips_to_build_a_set"),
+                Rect::new(x, topo, w, px),
+                px,
+                crate::cards::tom(ColorToken::Text2, theme),
+            );
+            return seguinte;
+        }
         paint_text_centered(
             text_system,
             scene,
@@ -198,7 +210,7 @@ fn paint_var_list(
         // um grupo é a pergunta aberta nº 4 do handoff (o Godot dá `base·2` = 8); ⛔ escolhê-lo
         // aqui seria adivinhá-lo para uma lista só. O que esta wave faz é pôr as duas a dizer
         // o mesmo, para que a wave que o decidir mexa num sítio.
-        return y + crate::cards::fila() + Spacing::Xs.px();
+        return y + crate::cards::fila() + crate::cards::grupo::vao(Spacing::Xs.px());
     }
     let sel = variation_state::variation_sel();
     for (i, name) in names.iter().enumerate().take(MAX_VARIATIONS) {
@@ -243,7 +255,7 @@ fn paint_var_list(
         hit_index.register(AEDIT_VAR_ROWS[i], rect);
         y += crate::cards::fila() + list_row_gap_px();
     }
-    y + ph2d_tokens::control_gap_px()
+    y + crate::cards::grupo::vao(ph2d_tokens::control_gap_px())
 }
 
 /// A labelled, always-adjustable jitter slider (`0..1`; the shell maps it to a `±`
@@ -279,7 +291,7 @@ fn paint_jitter_slider(
         text_system,
         theme,
         hit_index,
-    ) + ph2d_tokens::control_gap_px()
+    ) + crate::cards::grupo::vao(ph2d_tokens::control_gap_px())
 }
 
 /// The Variations readout, for the section header — how many clips the set holds,

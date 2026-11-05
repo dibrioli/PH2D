@@ -139,6 +139,9 @@ fn corpo_das_etapas(
     if let Some(e) = &o.erro {
         y = p.bloco(&frase(e), ColorToken::Danger, y);
     }
+    if !o.etapas.is_empty() {
+        y += ph2d_card_stack::metrics::FIELD_ROW_GAP;
+    }
     for (i, e) in o.etapas.iter().enumerate() {
         let esta = st
             .escolhida
@@ -208,7 +211,10 @@ fn corpo_da_etapa(
             if matches!(e.tipo, TipoDaEtapaView::Preenchimento(_)) {
                 c.row(&[amostra], y)
             } else {
-                c.row(&[campo(ids::MACROS_SIZE, tr("card.macros.size")), amostra], y)
+                c.row(
+                    &[campo(ids::MACROS_SIZE, tr("card.macros.size")), amostra],
+                    y,
+                )
             }
         }
         PropsDaEtapa::Param { .. } if e.familia == FamiliaDaMacro::Motion => {

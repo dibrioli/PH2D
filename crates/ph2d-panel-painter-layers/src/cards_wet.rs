@@ -3,7 +3,8 @@
 //! é o de sempre, pela `Tela`: a lei E10 manda não o redesenhar.
 
 use crate::cards_linhas::{
-    Item, aberta, botoes, com_lei, em_pares, fila, grupo, marca, registra_lista,
+    Item, aberta, botoes, com_lei, em_pares, fila, grupo, grupo_sobre_controlo, marca,
+    registra_lista, rotulo_sobre_controlo,
 };
 use crate::cards_tela::Tela;
 use crate::paint_wetpaint::{self, Numero, oleo, tipo_de_tinta};
@@ -226,7 +227,11 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, y: f32) -> f32 {
     let b = state::current_brush().unwrap_or(paint_brush::FALLBACK_BRUSH);
     let pousa = b.le(LinhaDaFerramenta::DepositoMolhado);
     let y = numeros(c, &paint_wetpaint::numeros_da_grade(&b), y);
-    let y = c.hint(&paint_wetpaint::texto_da_resolucao(&b), y);
+    let y = rotulo_sobre_controlo(
+        c,
+        &paint_wetpaint::texto_da_resolucao(&b),
+        y - m::LABEL_TOP + m::FIELD_ROW_GAP,
+    );
     let y = if b.eraser {
         y
     } else {
@@ -267,7 +272,7 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, y: f32) -> f32 {
             y = numeros(c, &grupo_de, y);
         }
     }
-    let y = grupo(c, "card.painter.wet.canvas", y);
+    let y = grupo_sobre_controlo(c, "card.painter.wet.canvas", y);
     let y = accoes_na_tela(c, y);
     let mut mostrar = vec![(
         pids::PAINTER_WETPAINT_SHOWWET,

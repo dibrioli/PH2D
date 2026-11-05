@@ -15,6 +15,7 @@
 //! plano das secções ([`paint_body`]), que também dá a cada uma a PEGA de arrasto e o TEMA que o
 //! artista lhe escolhe pelo botão direito no título.
 
+use crate::cards::grupo::{block_cells, grid_height};
 use crate::paint::{ClippedHits, button_in_group, fmt_time, toggle_in_group};
 use crate::{
     AEDIT_BATCH_LUFS, AEDIT_EXPORT, AEDIT_LOAD, AEDIT_LOOP, AEDIT_NAME, AEDIT_PLAY,
@@ -27,8 +28,7 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::section_plan_ctx::PlanoCtx;
 use ph2d_editor_core::widget::section_cards::skip_section_header;
 use ph2d_editor_core::widget::{
-    SectionFold, TextInput, TextInputState, block_cells, grid_height, paint_section_header,
-    paint_text_input_with_buffer,
+    SectionFold, TextInput, TextInputState, paint_section_header, paint_text_input_with_buffer,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
@@ -386,19 +386,20 @@ fn paint_transport_section(
         theme,
     );
     scene.pop_layer();
-    y += name_h + ph2d_tokens::control_gap_px();
+    y += name_h + crate::cards::grupo::vao(ph2d_tokens::control_gap_px());
 
     // Position / duration readout.
     let time_line = format!("{} / {}", fmt_time(t.pos), fmt_time(t.dur));
+    let (topo, px, seguinte) = crate::cards::grupo::linha_de_texto(y);
     paint_text_centered(
         text_system,
         scene,
         &time_line,
-        Rect::new(x, y, w, TypeToken::Xs.px()),
-        TypeToken::Xs.px(),
+        Rect::new(x, topo, w, px),
+        px,
         crate::cards::tom(ColorToken::Text2, theme),
     );
-    y += TypeToken::Xs.px() + ph2d_tokens::control_gap_px();
+    y = seguinte;
 
     // ⭐⭐ **As QUATRO fileiras do transporte são um corpo só** (`1 · 2 · 2 · 1`) — Enio,
     //    2026-09-06: *«na vertical ainda tem muito espaço ainda»*. Elas fazem a mesma coisa
@@ -486,7 +487,8 @@ fn paint_transport_section(
         theme,
         hit_index,
     );
-    y + grid_height(4, crate::cards::fila()) + ph2d_tokens::control_gap_px()
+    y + grid_height(4, crate::cards::fila())
+        + crate::cards::grupo::vao(ph2d_tokens::control_gap_px())
 }
 
 #[cfg(test)]

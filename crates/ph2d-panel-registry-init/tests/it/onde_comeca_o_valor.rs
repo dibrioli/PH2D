@@ -296,12 +296,6 @@ const COLUNAS_A_MAIS_DECLARADAS: &[(&str, usize, &str)] = &[(
 /// troço — ela reprova aqui, porque a coluna é do PAINEL.
 const COLUNAS_DECLARADAS_POR_PAINEL: &[(&str, usize, &str)] = &[
     (
-        "audio_editor",
-        2,
-        "sem clip o Stop é inerte e não regista alvo: o Loop, metade direita do par de botões, lê-se \
-         como valor; os parâmetros (Pitch, Gain) arrancam todos na mesma coluna",
-    ),
-    (
         "timeline",
         2,
         "as abas (`tab_keys`) são um segmentado na faixa do título, não um par nome/valor",

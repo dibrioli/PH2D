@@ -1,4 +1,4 @@
-//! A fileira de parâmetro num cartão: rótulo ao lado, a barra do cartão e a leitura do motor. O id continua o do
+//! A fileira de parâmetro num cartão: rótulo em cima, a barra do cartão e a leitura do motor. O id continua o do
 //! `Slider`: o store e o despacho não mudam, e a leitura continua uma string do motor (a curva é de cada efeito).
 
 use super::*;
@@ -6,7 +6,7 @@ use crate::clipped_hits::ClippedHits;
 use ph2d_editor_core::interaction::HitIndex;
 use ph2d_editor_core::paint::paint_text_elided;
 use ph2d_editor_core::panel::cards::linhas_extra::CardBar;
-use ph2d_editor_core::widget::{DEFAULT_LABEL_W, default_chip_w};
+use ph2d_editor_core::widget::default_chip_w;
 use ph2d_text::TextSystem;
 use ph2d_vector::VectorScene;
 
@@ -34,37 +34,35 @@ pub(crate) fn fileira_no_cartao(
     text_system: &mut TextSystem,
     hit_index: &mut ClippedHits,
 ) -> f32 {
-    let centro = |px: f32| y + (m::FIELD_H - px) * 0.5;
+    let topo = y + m::LABEL_TOP - m::FIELD_ROW_GAP;
     paint_text_elided(
         text_system,
         scene,
         label,
         x,
-        centro(m::LABEL_PX),
+        topo,
         m::LABEL_PX,
-        DEFAULT_LABEL_W,
+        w,
         ink.color(ColorToken::CardLabel),
     );
+    let y = topo + m::LABEL_PX + m::LABEL_BOTTOM;
     let lido = valor.map_or_else(|| format!("{:.2}", f64::from(norm)), str::to_owned);
     let col_valor = default_chip_w();
     let tw = text_system.prefix_width(&lido, m::VALUE_PX).ceil();
+    let alto = text_system
+        .layout(&lido, m::VALUE_PX, f32::INFINITY)
+        .height();
     paint_text_elided(
         text_system,
         scene,
         &lido,
         (x + w - tw).max(x + w - col_valor),
-        centro(m::VALUE_PX),
+        y + (m::FIELD_H - alto) * 0.5,
         m::VALUE_PX,
         col_valor,
         ink.color(ColorToken::KanbanCardFg),
     );
-    let bx = x + DEFAULT_LABEL_W + m::FIELD_GAP;
-    let barra = Rect::new(
-        bx,
-        y,
-        (x + w - col_valor - m::FIELD_GAP - bx).max(0.0),
-        m::FIELD_H,
-    );
+    let barra = Rect::new(x, y, (w - col_valor - m::FIELD_GAP).max(0.0), m::FIELD_H);
     hit_index.com_recorte(|store, hits| {
         let mut mudo = HitIndex::default();
         let alvo = if vivo { hits } else { &mut mudo };
@@ -78,5 +76,5 @@ pub(crate) fn fileira_no_cartao(
             barra,
         );
     });
-    y + m::FIELD_H + m::FIELD_ROW_GAP
+    y + m::FIELD_H
 }

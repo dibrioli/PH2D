@@ -211,7 +211,8 @@ pub(crate) fn paragraph(c: &mut CardCtx<'_>, y: f32) -> f32 {
         (ALINHA[2], IconId::CardTextRight, TextAlign::Right),
     ]
     .map(|(id, icone, a)| seg_icone(id, icone, a == vigente));
-    let alinha = Cell::new(Widget::Icons(&alinhamento))
+    // `Choice`: as duas colunas do cartão (lei 4 de 05 §4), com a largura ao lado.
+    let alinha = Cell::new(Widget::Choice(&alinhamento))
         .label(tr("panel.vector.text.align"))
         .key(ALINHA);
     // Num caminho o motor descarta a largura: o texto segue o arco e não há caixa para refluir.

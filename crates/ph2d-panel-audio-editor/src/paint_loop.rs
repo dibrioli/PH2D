@@ -17,7 +17,8 @@ use crate::{
     AEDIT_MARK_DEL, AEDIT_SPLIT, loop_state,
 };
 
-use ph2d_editor_core::widget::{button_label_font, segment_rects_for};
+use crate::cards::grupo::segment_rects_for;
+use ph2d_editor_core::widget::button_label_font;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
@@ -39,7 +40,7 @@ pub(crate) fn paint_loop_section(
     theme: Theme,
     hit_index: &mut ClippedHits,
 ) -> f32 {
-    let gap = Spacing::Xs.px();
+    let gap = crate::cards::grupo::vao(Spacing::Xs.px());
     let has_loop = loop_state::has_loop();
 
     // No title row: the section header above carries the name AND the readout. Printing
@@ -103,7 +104,7 @@ pub(crate) fn paint_loop_section(
         text_system,
         theme,
         hit_index,
-    ) + ph2d_tokens::control_gap_px();
+    ) + crate::cards::grupo::vao(ph2d_tokens::control_gap_px());
 
     // **Crossfade Loop** — bake the seam into the audio.
     //
@@ -122,7 +123,7 @@ pub(crate) fn paint_loop_section(
         theme,
         hit_index,
     );
-    y + row_h + ph2d_tokens::control_gap_px()
+    y + row_h + crate::cards::grupo::vao(ph2d_tokens::control_gap_px())
 }
 
 /// The region readout: `1.20\u{2013}3.40s`, or `No loop` when unset.
@@ -186,7 +187,7 @@ pub(crate) fn paint_markers_section(
         theme,
         hit_index,
     );
-    y + ph2d_tokens::control_gap_px()
+    y + crate::cards::grupo::vao(ph2d_tokens::control_gap_px())
 }
 
 /// The Markers readout, for the section header: the panel says how many cue points the

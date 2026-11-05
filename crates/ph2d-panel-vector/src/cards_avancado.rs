@@ -13,10 +13,11 @@ use crate::section_scope as scope;
 use crate::state::contour as cst;
 use crate::{ids as p, state};
 use ph2d_a11y::NodeId;
+use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::panel::cards::{CardCtx, Cell, Widget, corpo};
 use ph2d_editor_core::widget::card_field::Glyph;
-use ph2d_editor_core::widget::card_ink::CardInk;
+use ph2d_editor_core::widget::card_ink::{self, CardInk};
 use ph2d_i18n::tr;
 use ph2d_tool_vector::VectorStyleSnapshot;
 use ph2d_tool_vector::ids as t;
@@ -38,7 +39,14 @@ impl BodyCtx<'_> {
         y: f32,
         corpo: impl FnOnce(&mut CardCtx<'_>, f32) -> f32,
     ) -> f32 {
-        let (y, dobrado) = self.section_header(id, tr(chave), y);
+        // Grupo a grupo: `GROUP_TOP` até às letras do título (a faixa do cabeçalho dá o resto), salvo o 1.º, que
+        // tem o cabeçalho do cartão em cima.
+        let y = if id == t::VECTOR_SECTION_BLEND {
+            y
+        } else {
+            y + m::LABEL_TOP
+        };
+        let (y, dobrado) = card_ink::com(ink, || self.section_header(id, tr(chave), y));
         if dobrado {
             return y;
         }

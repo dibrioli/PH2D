@@ -148,6 +148,28 @@ pub(crate) fn grupo(c: &mut CardCtx<'_>, chave: &str, y: f32) -> f32 {
     c.hint(tr(chave), fim)
 }
 
+/// O grupo cuja 1.ª linha não tem rótulo: o nome dele é o rótulo dela, a `LABEL_BOTTOM` do controlo.
+pub(crate) fn grupo_sobre_controlo(c: &mut CardCtx<'_>, chave: &str, y: f32) -> f32 {
+    let fim = filete(c, y);
+    rotulo_sobre_controlo(c, tr(chave), fim)
+}
+
+/// Um rótulo solto a `LABEL_TOP` de cima: o `y` devolvido é para quem traz `FIELD_ROW_GAP` e fica a
+/// `LABEL_BOTTOM` dele.
+pub(crate) fn rotulo_sobre_controlo(c: &mut CardCtx<'_>, texto: &str, y: f32) -> f32 {
+    let topo = y + m::LABEL_TOP;
+    ph2d_editor_core::widget::card_field::paint_label(
+        c.scene,
+        c.text_system,
+        c.ink,
+        c.x,
+        topo,
+        c.w,
+        texto,
+    );
+    topo + m::LABEL_PX + m::LABEL_BOTTOM - m::FIELD_ROW_GAP
+}
+
 /// Só o filete: o grupo cujo nome já é o rótulo da 1.ª linha dele. Devolve o fundo.
 pub(crate) fn filete(c: &mut CardCtx<'_>, y: f32) -> f32 {
     let r = Rect::new(c.x, y + m::CARD_HEAD_BOTTOM, c.w, m::FIELD_BORDER);

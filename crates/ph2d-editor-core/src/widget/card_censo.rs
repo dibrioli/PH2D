@@ -224,6 +224,11 @@ pub(crate) fn texto(texto: &str, pede: f32, largura: f32) {
 }
 
 /// Um botão pintado à mão num corpo: o texto, e a fronteira dele como uma linha (lei 3).
+pub fn controlo_maior_que_a_pega(id: ph2d_a11y::NodeId, r: crate::zones::Rect) {
+    pintou_controlo(id, r);
+}
+
+/// Texto de um botão que não coube.
 pub fn fora_da_linha(texto_do_botao: &str, pede: f32, r: crate::zones::Rect) {
     texto(texto_do_botao, pede, r.w);
     linha((r.x, r.w), r.y, r.y + r.h, || {

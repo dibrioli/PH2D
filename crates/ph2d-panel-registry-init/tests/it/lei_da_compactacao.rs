@@ -28,12 +28,8 @@ const PENDENTES: &[(&str, usize, usize, usize)] = &[("widget_gallery", 7, 1, 0)]
 
 /// `(painel, fronteiras fora da lei do ritmo)`, medido em 04/11. Só desce: é o alvo de zero.
 const PENDENTES_RITMO: &[(&str, usize)] = &[
-    ("audio_editor", 4),
     // Instance e Properties (família K de `18_REVISAO_DE_CAPRICHO`), e o nome dentro do chip da tag.
-    ("inspector", 6),
-    ("macros", 1),
-    ("painter_layers", 6),
-    ("wet_tuning", 8),
+    ("inspector", 0),
     ("widget_gallery", 18),
 ];
 
@@ -43,8 +39,9 @@ const POPULACAO: &[(&str, usize)] = &[
     ("skeleton", 12),
     ("inspector", 400),
     // 04/11, H8: 718 medidas com 12 estados semeados (`censo_estados`). Sem eles eram 138 em duas pinturas: o censo
-    // estava CEGO para Máscara, Deform, Selection e Layers, e o piso de 250 aceitava-o.
-    ("painter_layers", 700),
+    // estava CEGO para Máscara, Deform, Selection e Layers, e o piso de 250 aceitava-o. 692 desde a fatia q3: os
+    // rótulos de grupo sobre um controlo deixaram de ser medidos como linha (são rótulos).
+    ("painter_layers", 690),
     ("physics", 30),
     ("audio_editor", 10),
     #[cfg(feature = "panel-flip-frames")]
@@ -307,4 +304,124 @@ fn a_grade_do_9_slice_anda_fila_a_fila() {
         }
         super::o_inspector_armado::desarma_tudo();
     });
+}
+
+/// Pinta o painel no seu `n_estado`-ésimo estado de `censo_estados` e devolve os rects da última pintura.
+#[cfg(all(feature = "panel-audio-editor", feature = "panel-vector"))]
+fn rects_no_estado(
+    painel_id: &str,
+    n_estado: usize,
+) -> (
+    Vec<(ph2d_editor_core::NodeId, ph2d_editor_core::zones::Rect)>,
+    Censo,
+) {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    ph2d_panel_inspector::set_cards_on(true);
+    let e = super::censo_estados::ESTADOS
+        .iter()
+        .filter(|e| e.painel == painel_id)
+        .nth(n_estado)
+        .expect("o estado");
+    let (mut out, mut censo) = (Vec::new(), None);
+    ph2d_editor_core::panel::with_registry(|reg| {
+        let painel = reg
+            .panels_mut()
+            .iter_mut()
+            .find(|p| p.manifest.id == painel_id)
+            .expect("o painel");
+        let mut host = MockPanelHost::new().in_theme(ph2d_tokens::Theme::Dark);
+        (e.arma)();
+        painel.populate(host.store_mut());
+        censo = Some(mede(&mut host, painel));
+        out = host.registos_da_ultima_pintura();
+        (e.desarma)();
+    });
+    (out, censo.expect("pintou"))
+}
+
+#[track_caller]
+fn rect_de(
+    regs: &[(ph2d_editor_core::NodeId, ph2d_editor_core::zones::Rect)],
+    id: ph2d_editor_core::NodeId,
+) -> ph2d_editor_core::zones::Rect {
+    regs.iter()
+        .rev()
+        .find(|(n, _)| *n == id)
+        .map_or_else(|| panic!("{id:?} não foi pintado"), |(_, r)| *r)
+}
+
+/// ⭐ O Audio Editor num cartão: os botões do mesmo assunto são peças soltas, nas colunas e no vão da grelha, e o
+/// `Export Set` não é empurrado por uma fileira vazia. *Mutação: `FIELD_ROW_GAP` ⇒ 0, ou o `+ gap` em dobro.*
+#[cfg(all(feature = "panel-audio-editor", feature = "panel-vector"))]
+#[test]
+fn os_botoes_do_audio_ficam_soltos_na_grelha() {
+    use ph2d_card_stack::metrics as m;
+    use ph2d_panel_audio_editor as a;
+    let (regs, _) = rects_no_estado("audio_editor", 0);
+    let (play, stop, laco, carrega) = (
+        rect_de(&regs, a::AEDIT_PLAY),
+        rect_de(&regs, a::AEDIT_STOP),
+        rect_de(&regs, a::AEDIT_LOOP),
+        rect_de(&regs, a::AEDIT_LOAD),
+    );
+    for r in [play, stop, laco, carrega] {
+        assert_eq!(r.h, m::FIELD_H);
+    }
+    assert!((stop.y - (play.y + play.h) - m::FIELD_ROW_GAP).abs() < 0.5);
+    assert!((carrega.y - (stop.y + stop.h) - m::FIELD_ROW_GAP).abs() < 0.5);
+    assert!((laco.x - (stop.x + stop.w) - m::FIELD_GAP).abs() < 0.5);
+    assert!((stop.w - laco.w).abs() < 0.5, "duas colunas iguais");
+    assert_eq!(play.x, stop.x, "a coluna do cartão");
+    assert!((play.w - (stop.w + laco.w + m::FIELD_GAP)).abs() < 0.5);
+    let codec = rect_de(&regs, a::AEDIT_CODEC_PREV);
+    let qualidade = regs
+        .iter()
+        .rev()
+        .find(|(n, _)| *n == a::AEDIT_EXPORT_SET)
+        .map(|(_, r)| *r)
+        .expect("Export Set");
+    // Seletor, rótulo + barra, RAM e o botão: nenhuma fileira vazia no meio.
+    let cabe = 2.0 * m::FIELD_H + 4.0 * m::LABEL_PX + 4.0 * m::FIELD_ROW_GAP;
+    assert!(
+        qualidade.y - (codec.y + codec.h) < cabe,
+        "{} entre o seletor e o Export Set",
+        qualidade.y - (codec.y + codec.h)
+    );
+}
+
+/// ⭐ Vector: cada membro do Advanced abaixo do 1.º desce `GROUP_TOP` (grupo a grupo), Align e Width são as duas
+/// colunas do cartão. *Mutação: tirar o vão de `membro`; `Choice` ⇒ `Icons` em `paragraph`.*
+#[cfg(all(feature = "panel-audio-editor", feature = "panel-vector"))]
+#[test]
+fn o_advanced_separa_os_grupos_e_o_paragraph_tem_duas_colunas() {
+    use ph2d_card_stack::metrics as m;
+    use ph2d_panel_vector::ids as p;
+    // `avancado`, o 6.º estado de `censo_estados`; o texto é o 5.º.
+    let (_, censo) = rects_no_estado("vector", 5);
+    let distancias = censo.distancias();
+    for grupo in ["Morph", "Envelope"] {
+        let d = distancias
+            .iter()
+            .find(|d| d.para == grupo)
+            .unwrap_or_else(|| panic!("{grupo} não está no censo"));
+        assert!(
+            (d.vao - m::GROUP_TOP).abs() <= 1.5,
+            "{grupo} a {} do controlo de cima",
+            d.vao
+        );
+    }
+    let (regs, _) = rects_no_estado("vector", 4);
+    let (esq, dir, auto, fixa) = (
+        rect_de(&regs, p::VECTOR_TEXT_ALIGN_LEFT),
+        rect_de(&regs, p::VECTOR_TEXT_ALIGN_RIGHT),
+        rect_de(&regs, p::VECTOR_TEXT_WRAP_AUTO),
+        rect_de(&regs, p::VECTOR_TEXT_WRAP_FIXED),
+    );
+    assert_eq!(esq.y, auto.y, "a mesma fila");
+    let largura_alinha = dir.x + dir.w - esq.x;
+    let largura_quebra = fixa.x + fixa.w - auto.x;
+    assert!(
+        (largura_alinha - largura_quebra).abs() < 0.5,
+        "{largura_alinha} × {largura_quebra}"
+    );
 }

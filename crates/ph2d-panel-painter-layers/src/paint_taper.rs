@@ -47,7 +47,7 @@ fn seccao(ctx: &mut PaintCtx) -> ph2d_editor_core::property_row::Seccao {
     crate::seccoes::seccao_da_chave(ctx.text_system, "panel.painter_layers.taper.tip")
 }
 
-const CANVAS_H: f32 = 56.0; // LITERAL-PX-OK: the taper widget's height
+pub(crate) const CANVAS_H: f32 = 56.0; // LITERAL-PX-OK: the taper widget's height
 const HALF_PX: f32 = 13.0; // LITERAL-PX-OK: half-thickness of the preview stroke at full width
 const HANDLE_R: f32 = 6.0; // LITERAL-PX-OK: draggable handle radius
 const GRAB_R: f32 = 10.0; // LITERAL-PX-OK: half-size of a handle's pointer grab box

@@ -42,8 +42,8 @@ pub(crate) fn stepper_row(
     theme: Theme,
     hit_index: &mut ClippedHits,
 ) -> f32 {
-    let mid = ph2d_editor_core::widget::stepper_middle_w(rect.w, ARROW_W);
-    let cells = ph2d_editor_core::widget::block_cells_of(
+    let mid = crate::cards::grupo::stepper_middle_w(rect.w, ARROW_W);
+    let cells = crate::cards::grupo::block_cells_of(
         Rect::new(rect.x, rect.y, rect.w, 0.0),
         &[&[ARROW_W, mid, ARROW_W]],
         rect.h,
@@ -110,7 +110,7 @@ pub(crate) fn buttons_block(
         cols_per_row.iter().sum::<usize>(),
         "a grelha declarada nao cobre os botoes"
     );
-    let block = ph2d_editor_core::widget::block_cells(
+    let block = crate::cards::grupo::block_cells(
         Rect::new(rect.x, rect.y, rect.w, 0.0),
         cols_per_row,
         rect.h,
@@ -134,7 +134,7 @@ pub(crate) fn buttons_block(
         }
         i += count;
     }
-    rect.y + ph2d_editor_core::widget::grid_height(cols_per_row.len(), rect.h)
+    rect.y + crate::cards::grupo::grid_height(cols_per_row.len(), rect.h)
 }
 
 /// **O MOSTRADOR de um stepper** — a peça do meio de `◀ nome ▶`, que diz o que as setas escolhem.

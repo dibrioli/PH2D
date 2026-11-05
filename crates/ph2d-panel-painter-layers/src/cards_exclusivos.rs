@@ -2,7 +2,9 @@
 //! corpo do painel. Mesmos ids, mesmos eventos. As caixas de antes viram grupos; o que escolhe é escolha, o que age é
 //! botão.
 
-use crate::cards_linhas::{Item, Pista, botoes, escolha, fila, filete, grupo};
+use crate::cards_linhas::{
+    Item, Pista, botoes, escolha, fila, filete, grupo, grupo_sobre_controlo, rotulo_sobre_controlo,
+};
 use crate::paint_mask::OVERLAY_COLORS;
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
@@ -157,7 +159,8 @@ fn seg(id: NodeId, chave: &str, on: bool) -> Seg<'static> {
 /// As cinco cores da tinta sobre a máscara: quadrados, porque a cor não tem código a mostrar aqui.
 fn cores_da_mascara(c: &mut CardCtx<'_>, escolhida: usize, y: f32) -> f32 {
     let lado = m::FIELD_H;
-    let topo = c.hint(tr("panel.painter_layers.mask.overlay_color"), y) + m::FIELD_ROW_GAP;
+    let topo = rotulo_sobre_controlo(c, tr("panel.painter_layers.mask.overlay_color"), y)
+        + m::FIELD_ROW_GAP;
     let tema = c.ink.theme;
     for (i, rgba) in OVERLAY_COLORS.iter().enumerate() {
         let id = pids::PAINTER_MASK_COLOR[i];
@@ -207,7 +210,7 @@ pub(crate) fn mascara(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
         })
         .collect();
     let y = escolha(c, tr("panel.painter_layers.mask.brushes"), &pinceis, y);
-    let y = grupo(c, "panel.painter_layers.mask.modifiers", y);
+    let y = grupo_sobre_controlo(c, "panel.painter_layers.mask.modifiers", y);
     let ops = [
         "panel.painter_layers.mask.expand",
         "panel.painter_layers.mask.contract",

@@ -26,9 +26,7 @@ use crate::{
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::paint::{paint_text, paint_text_centered};
-use ph2d_editor_core::widget::{
-    ButtonState, IconButtonStyle, IconGlyph, SEGMENT_HAIRLINE, paint_icon_button,
-};
+use ph2d_editor_core::widget::{ButtonState, IconButtonStyle, IconGlyph, paint_icon_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
@@ -137,15 +135,16 @@ fn paint_head(y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut Ctx) -
     let (kind, _) = snapshot::fx_sel_stage();
     let icon_w = row_h;
 
-    let preset_mid = ph2d_editor_core::widget::stepper_middle_w(w, ARROW_W);
+    let preset_mid = crate::cards::grupo::stepper_middle_w(w, ARROW_W);
+    let fio = crate::cards::grupo::fio();
     // ⚠️ Os fios são `peças − 1`, DERIVADO: escrever o número à mão aqui é a mesma espécie de
     //    literal que o `stepper_middle_w` existe para evitar.
     const FX_PIECES: f32 = 4.0; // LITERAL-PX-OK: contagem de pecas do selector, nao um px
-    let fx_mid = (w - ARROW_W * 2.0 - icon_w - SEGMENT_HAIRLINE * (FX_PIECES - 1.0)).max(1.0);
+    let fx_mid = (w - ARROW_W * 2.0 - icon_w - fio * (FX_PIECES - 1.0)).max(1.0);
     const ACTIONS: f32 = 3.0; // LITERAL-PX-OK: contagem de ordens de preset, nao um px
-    let third = ((w - SEGMENT_HAIRLINE * (ACTIONS - 1.0)) / ACTIONS).max(1.0);
+    let third = ((w - fio * (ACTIONS - 1.0)) / ACTIONS).max(1.0);
 
-    let block = ph2d_editor_core::widget::block_cells_of(
+    let block = crate::cards::grupo::block_cells_of(
         Rect::new(x, y, w, 0.0),
         &[
             &[ARROW_W, preset_mid, ARROW_W],
@@ -264,7 +263,8 @@ fn paint_head(y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut Ctx) -
         ctx.hit_index,
     );
 
-    y + ph2d_editor_core::widget::grid_height(3, row_h) + ph2d_tokens::control_gap_px()
+    y + crate::cards::grupo::grid_height(3, row_h)
+        + crate::cards::grupo::vao(ph2d_tokens::control_gap_px())
 }
 
 /// ⭐⭐⭐ **Uma fileira por parametro, na CAIXA UNICA do app** — o nome a esquerda
@@ -290,7 +290,7 @@ fn paint_head(y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut Ctx) -
 ///
 /// ⚠️ Um slot que o efeito nao usa continua a nao ser pintado nem registado.
 fn paint_params(mut y: f32, x: f32, w: f32, loaded: bool, ctx: &mut Ctx) -> f32 {
-    let gap = Spacing::Xs.px();
+    let gap = crate::cards::grupo::vao(Spacing::Xs.px());
     let views = snapshot::fx_param_views();
     let norms = snapshot::fx_norms();
     for (i, (label, value)) in views.iter().enumerate().take(AEDIT_FX_PARAMS.len()) {
@@ -332,7 +332,8 @@ fn paint_params(mut y: f32, x: f32, w: f32, loaded: bool, ctx: &mut Ctx) -> f32 
             ctx.theme,
             ctx.hit_index,
         );
-        y += ph2d_tokens::row_pitch_px();
+        y += crate::cards::fila()
+            + crate::cards::grupo::vao(ph2d_tokens::row_pitch_px() - crate::cards::fila());
         // Which room is loaded — an empty slot has to look empty, or the user is left
         // wondering why a fully-wet reverb does nothing (it is bypassed: no room, no reverb).
         paint_text_centered(
@@ -356,7 +357,7 @@ fn paint_params(mut y: f32, x: f32, w: f32, loaded: bool, ctx: &mut Ctx) -> f32 
         );
         y += TypeToken::Xs.px() + gap;
     }
-    y + ph2d_tokens::control_gap_px()
+    y + crate::cards::grupo::vao(ph2d_tokens::control_gap_px())
 }
 
 /// The chain: a header carrying the `+ | trash | ▲ | ▼` actions, then one row per
@@ -398,7 +399,7 @@ fn paint_chain(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut C
         let rect = Rect::new(actions_x + row_h * i as f32, y, row_h, row_h);
         icon_button(rect, glyph, enabled, id, ctx);
     }
-    y += row_h + ph2d_tokens::control_gap_px();
+    y += row_h + crate::cards::grupo::vao(ph2d_tokens::control_gap_px());
 
     // ⭐⭐⭐ **A cadeia é uma LISTA, e passa a obedecer às leis de uma** (wave 21, report do dono:
     //    *«sem layout adequado… estude o layout e corrija»*). Ela tinha **três** respostas só
@@ -469,7 +470,7 @@ fn paint_chain(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut C
     // ⛔ **A lista acaba com o vão de um controlo, e o `Bypass` NÃO lhe encosta** (report do dono,
     //    2026-09-07): colada a um botão, a última linha da lista volta a ler-se como um botão —
     //    que é exactamente o defeito que esta wave veio curar.
-    y + ph2d_tokens::control_gap_px()
+    y + crate::cards::grupo::vao(ph2d_tokens::control_gap_px())
 }
 
 /// `Bypass` (global A/B) over `Apply | Cancel`. Bypass mutes the whole chain so the
@@ -490,7 +491,7 @@ fn paint_commit_row(y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut 
     // fastest before/after there is. Apply turns exactly the buffer you heard into one undo step;
     // Cancel drops it. Apply is dimmed while bypassed: what sounds is the dry clip, so committing
     // would land nothing.
-    let block = ph2d_editor_core::widget::block_cells(Rect::new(x, y, w, 0.0), &[1, 2], row_h);
+    let block = crate::cards::grupo::block_cells(Rect::new(x, y, w, 0.0), &[1, 2], row_h);
     toggle_in_group(
         block[0][0].0,
         block[0][0].1,
@@ -530,7 +531,8 @@ fn paint_commit_row(y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut 
             ctx.hit_index,
         );
     }
-    y + ph2d_editor_core::widget::grid_height(2, row_h) + ph2d_tokens::control_gap_px()
+    y + crate::cards::grupo::grid_height(2, row_h)
+        + crate::cards::grupo::vao(ph2d_tokens::control_gap_px())
 }
 
 /// A frameless icon button. Disabled ones are dimmed and — crucially — do **not**

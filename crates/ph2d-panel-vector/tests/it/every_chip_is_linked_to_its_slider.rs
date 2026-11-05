@@ -91,7 +91,7 @@ const PAIRS: &[(&str, ph2d_a11y::NodeId, ph2d_a11y::NodeId)] = &[
         ph2d_tool_vector::ids::VECTOR_BLEND_STEPS_NUM,
     ),
     (
-        "Morph t",
+        "Amount",
         ph2d_panel_vector::ids::VECTOR_MORPH_T,
         ph2d_tool_vector::ids::VECTOR_MORPH_T_NUM,
     ),

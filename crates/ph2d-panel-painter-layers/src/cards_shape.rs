@@ -2,7 +2,8 @@
 //! condições de `paint_shape_section`. Os gizmos (curva, Taper, Flatten) pintam pela `Tela`.
 
 use crate::cards_linhas::{
-    Item, aberta, botoes, fila, filete, grupo, grupo_inicial, numero, par_xy,
+    Item, aberta, botoes, fila, filete, grupo, grupo_sobre_controlo, numero, par_xy,
+    rotulo_sobre_controlo,
 };
 use crate::cards_tela::Tela;
 use crate::paint_texture::Previa;
@@ -440,7 +441,13 @@ fn taper_e_pegada(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
     let viva = !automatica(b);
     let (x, w) = (c.x, c.w);
     let y = if viva {
-        crate::paint_taper::visor(&mut Tela::do_cartao(c), x, w, y + m::FIELD_ROW_GAP, *b)
+        use ph2d_editor_core::zones::Rect;
+        let topo = y + m::FIELD_ROW_GAP;
+        ph2d_editor_core::panel::cards::censo::controlo_maior_que_a_pega(
+            pids::PAINTER_TAPER_TIP_START,
+            Rect::new(x, topo, w, crate::paint_taper::CANVAS_H),
+        );
+        crate::paint_taper::visor(&mut Tela::do_cartao(c), x, w, topo, *b)
     } else {
         y
     };
@@ -549,13 +556,13 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, p: &Pecas, y: f32) -> f32 {
         }
     }
     if !le_a_forma(&b) {
-        let y = grupo_inicial(c, "panel.painter_layers.taper.taper", y);
+        let y = rotulo_sobre_controlo(c, tr("panel.painter_layers.taper.taper"), y - m::LABEL_TOP);
         return taper_e_pegada(c, &b, y);
     }
     if !imagem(&b) {
         y = queda(c, &b, y);
     }
-    y = grupo(c, "panel.painter_layers.taper.taper", y);
+    y = grupo_sobre_controlo(c, "panel.painter_layers.taper.taper", y);
     y = taper_e_pegada(c, &b, y);
     y = filete(c, y);
     textura(c, &b, p, y)

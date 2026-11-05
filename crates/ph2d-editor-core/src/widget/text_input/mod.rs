@@ -333,7 +333,13 @@ pub fn paint_text_input_with_buffer(
     let pad_y = Spacing::Md.px();
     let font_size = TypeToken::Base.px();
     let inner_x = rect.x + pad_x;
-    let inner_y = rect.y + (rect.h - font_size) * 0.5 - pad_y * 0.0;
+    // Num cartão, centra a LINHA medida (a do número ao lado), não o corpo: o texto descia 3 px da caixa.
+    let inner_y = if crate::widget::card_ink::card_body().is_some() {
+        let alto = text_system.layout("M", font_size, f32::INFINITY).height();
+        rect.y + (rect.h - alto) * 0.5
+    } else {
+        rect.y + (rect.h - font_size) * 0.5 - pad_y * 0.0
+    };
     let inner_w = (rect.w - pad_x * 2.0).max(0.0);
 
     let displayed: &str = buffer.unwrap_or(input.value.as_str());

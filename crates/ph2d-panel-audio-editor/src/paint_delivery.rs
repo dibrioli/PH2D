@@ -49,7 +49,7 @@ pub(crate) fn paint_delivery_section(
     theme: Theme,
     hit_index: &mut ClippedHits,
 ) -> f32 {
-    let gap = Spacing::Xs.px();
+    let gap = crate::cards::grupo::vao(Spacing::Xs.px());
     let label_h = TypeToken::Xs.px();
 
     // No title row: the section header above carries the name AND the download size —
@@ -69,7 +69,7 @@ pub(crate) fn paint_delivery_section(
         theme,
         hit_index,
     );
-    y += row_h + gap;
+    y += gap;
 
     // The compression control. It is **Quality** for Vorbis and **Bitrate** for Opus — the same
     // slider, driving a different knob, and it says which rather than calling a bitrate
@@ -106,6 +106,12 @@ pub(crate) fn paint_delivery_section(
     let frac = delivery_state::budget_frac();
     let over = frac > BUDGET_WARN_FRAC;
     let ram = delivery_state::ram();
+    let (topo, px, _) = crate::cards::grupo::linha_de_texto(y);
+    let (topo, px) = if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        (topo, px)
+    } else {
+        (y, label_h)
+    };
     y = text_row(
         if loaded && !ram.is_empty() {
             &ram
@@ -113,9 +119,9 @@ pub(crate) fn paint_delivery_section(
             tr("panel.audio_editor.delivery.ram")
         },
         x,
-        y,
+        topo,
         w,
-        label_h,
+        px,
         crate::cards::tom(
             match (loaded, over) {
                 (false, _) => ColorToken::Text3,
@@ -126,7 +132,11 @@ pub(crate) fn paint_delivery_section(
         ),
         scene,
         text_system,
-    ) + gap;
+    ) + if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        0.0 // a entrelinha do texto já dá os `LABEL_BOTTOM` até ao botão.
+    } else {
+        gap
+    };
 
     // Loop points and cue markers live in WAV chunks. Exporting to Vorbis silently
     // loses them, so the panel says it out loud while the choice can still be changed.
@@ -173,7 +183,7 @@ pub(crate) fn paint_delivery_section(
         theme,
         hit_index,
     );
-    y + row_h + ph2d_tokens::control_gap_px()
+    y + row_h + crate::cards::grupo::vao(ph2d_tokens::control_gap_px())
 }
 
 /// The download size, for the section header. Empty when there is nothing to price.

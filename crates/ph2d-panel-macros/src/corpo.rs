@@ -5,6 +5,7 @@ use crate::ids;
 use crate::nomes;
 use crate::seam::PASSO_FINO;
 use crate::state::{Escolhida, MacrosPanelState};
+use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::macro_edits::{
     EtapaView, FamiliaDaMacro, MacroObjetoView, MacroPanelInfo, PropsDaEtapa, TipoDaEtapaView,
@@ -127,6 +128,9 @@ impl Corpo<'_> {
     }
 
     pub(crate) fn linha(&mut self, texto: &str, cor: ColorToken, y: f32) -> f32 {
+        if self.ink.is_some() {
+            return self.bloco(texto, cor, y);
+        }
         paint_text(
             self.text_system,
             self.scene,
@@ -142,6 +146,20 @@ impl Corpo<'_> {
 
     /// Uma frase que QUEBRA (nunca cortada): a linha cresce pelo que ela transborda.
     pub(crate) fn bloco(&mut self, texto: &str, cor: ColorToken, y: f32) -> f32 {
+        if self.ink.is_some() {
+            let topo = y + m::FIELD_ROW_GAP;
+            let alta = paint_text_block(
+                self.text_system,
+                self.scene,
+                texto,
+                self.x,
+                topo,
+                TypeToken::Sm.px(),
+                self.w.max(1.0),
+                self.cor(cor),
+            );
+            return topo + alta;
+        }
         let topo = y + (ROW_H_PX - TypeToken::Sm.px()) * 0.5;
         let alta = paint_text_block(
             self.text_system,
@@ -167,7 +185,12 @@ impl Corpo<'_> {
         y: f32,
     ) -> f32 {
         let id = ids::row_id(e.trilha, e.k);
-        let rect = Rect::new(self.x, y, self.w, ROW_H_PX);
+        let alto = if self.ink.is_some() {
+            m::FIELD_H
+        } else {
+            ROW_H_PX
+        };
+        let rect = Rect::new(self.x, y, self.w, alto);
         paint_row_highlight(
             self.scene,
             rect,
@@ -182,7 +205,15 @@ impl Corpo<'_> {
             0.0,
         );
         self.hit_index.register(id, rect);
-        let texto_y = y + (ROW_H_PX - TypeToken::Sm.px()) * 0.5;
+        let texto_y = if self.ink.is_some() {
+            let linha = self
+                .text_system
+                .layout("M", TypeToken::Sm.px(), f32::INFINITY)
+                .height();
+            y + (alto - linha) * 0.5
+        } else {
+            y + (alto - TypeToken::Sm.px()) * 0.5
+        };
         let tempo = nomes::segundos(e.t1_s);
         let tempo_w = self.text_system.prefix_width("0000.00", TypeToken::Sm.px());
         let mut direita = self.x + self.w - Spacing::Sm.px() - tempo_w;
@@ -199,17 +230,14 @@ impl Corpo<'_> {
         if let PropsDaEtapa::Pincelada { cor, .. } = e.props {
             let lado = TypeToken::Sm.px();
             direita -= lado + Spacing::Sm.px();
-            let r = Rect::new(direita, y + (ROW_H_PX - lado) * 0.5, lado, lado);
+            let r = Rect::new(direita, y + (alto - lado) * 0.5, lado, lado);
             let cs = ColorSwatch::new(id, "", [cor[0], cor[1], cor[2], 255]);
             paint_color_swatch(&cs, r, self.scene, self.theme);
         }
         let nome_x = self.x + Spacing::Sm.px();
         let nome_w = (direita - Spacing::Sm.px() - nome_x).max(1.0);
         if renomeando {
-            self.campo_de_texto(
-                ids::MACROS_RENAME_INPUT,
-                Rect::new(nome_x, y, nome_w, ROW_H_PX),
-            );
+            self.campo_de_texto(ids::MACROS_RENAME_INPUT, Rect::new(nome_x, y, nome_w, alto));
         } else {
             let texto = format!("{}. {}", i + 1, nomes::nome(e));
             paint_text(
@@ -227,7 +255,7 @@ impl Corpo<'_> {
                 }),
             );
         }
-        y + ROW_H_PX
+        y + alto
     }
 
     /// As propriedades da escolhida: renomear, a espera e as da família.

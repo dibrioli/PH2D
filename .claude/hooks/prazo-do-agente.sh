@@ -47,6 +47,11 @@ fi
 cmd="$(printf '%s' "$inp" | jq -r '.tool_input.command // empty')"
 nega() { jq -n --arg r "$1" '{hookSpecificOutput:{hookEventName:"PreToolUse",permissionDecision:"deny",permissionDecisionReason:$r}}'; exit 0; }
 
+# Pôr na fila é a saída que a recusa abaixo manda usar: passa, se for só isso (sem encadear nada).
+if printf '%s' "$cmd" | grep -qE '^[[:space:]]*bash scripts/fila-pesada\.sh (pôr|por) ' \
+  && ! printf '%s' "$cmd" | grep -qE '[;&|`<>]|\$\('; then
+  exit 0
+fi
 if printf '%s' "$cmd" | grep -qE 'PH2D_REGERA_|bancada'; then
   nega "⛔ O pesado de verdade (regerar presets, bancada) não corre num subagente: ponha-o na fila da onda —
   bash scripts/fila-pesada.sh pôr '<o comando>'

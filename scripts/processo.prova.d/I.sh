@@ -19,7 +19,10 @@ igual "…com PH2D_PRAZO dentro do que falta, passa" "$(_i PreToolUse ag1 3400 '
 igual "aos 46 min o pesado é recusado" "$(_i PreToolUse ag1 3760 'PH2D_PRAZO=10 bash scripts/ph2d-run.sh cargo check')" "deny"
 igual "aos 46 min o leve passa (para escrever o retorno)" "$(_i PreToolUse ag1 3760 'cat x')" ""
 igual "regerar presets num subagente vai à fila" "$(_i PreToolUse ag1 1600 'PH2D_REGERA_PRESETS=1 bash scripts/cargo-test-narrow.sh p q')" "deny"
-igual "a janela principal não é tocada" "$(_i PreToolUse "" 9999999 'bash scripts/ship.sh')" ""
+igual "pôr na fila o regerar passa num subagente" "$(_i PreToolUse ag1 1600 "bash scripts/fila-pesada.sh pôr 'PH2D_REGERA_PRESETS=1 bash scripts/y.sh'")" ""
+igual "pôr na fila não abre buraco para encadear" "$(_i PreToolUse ag1 1600 "bash scripts/fila-pesada.sh pôr x; PH2D_REGERA_PRESETS=1 bash scripts/y.sh")" "deny"
+igual "correr a fila com o regerar continua recusado" "$(_i PreToolUse ag1 1600 "bash scripts/fila-pesada.sh correr PH2D_REGERA_X")" "deny"
+igual "a janela principal não é tocada""$(_i PreToolUse "" 9999999 'bash scripts/ship.sh')" ""
 # a fila
 _f() { PH2D_FILA_DIR="$tmp/fila" bash scripts/fila-pesada.sh "$@"; }
 echo r1 >"$tmp/regua.txt"

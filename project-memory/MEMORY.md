@@ -15,24 +15,20 @@
 ## Perfil & referência
 - [Enio (dibrioli): dono/decisor; o dev é a LLM · ⛔ SEMPRE PT-BR](user_role.md)
 - 📚 [Decisões de produto do dono, por módulo (21) — Luau, Pixel Art, Kanban, macros, constraints, imagem, modos…](reference_topic_owner_product_decisions.md)
-- ⭐⭐ [Engine de jogo (25/10): nomes simples + tooltip ilustrado · jogo separado E ecrã cheio · ordem = essencial × um plataforma médio (o smoke)](project_game_engine_plan_owner_decisions_2026_10_25.md) · ⭐ [câmera 02/11: alvo por arrastar/escrever/Eyedropper, nunca lista · zona morta no meio da moldura · gizmo à Vector](project_camera_intuitive_owner_decisions_2026_11_02.md)
-- ⭐⭐ [Dono 01/11: a Hierarchy manda no DESENHO de todas as famílias e o 1.º clique é do que se vê por cima; ícones especiais ganham; ciclo 1 clique/degrau](project_hierarchy_order_rules_drawing_and_click_2026_11_01.md)
 - ⭐⭐ [Dono 02/11: UI em cartões — referência = os nossos painéis com smoke OK, depois Figma → Rive → Inkscape/Godot/Unity](project_card_ui_reference_order_2026_11_02.md)
-- ⭐⭐ [Dono 03/11: estilo de cor = só a cor (opacidade é da linha) · alfinete nos outros cartões só após o CI · a nota anda com o cartão solto](project_color_style_only_colour_pin_after_ci_notes_follow_card_2026_11_03.md)
 - ⭐⭐ [Dono 04/11: cartão compacto como o Figma — irmãos dividem a linha, nada grudado, uma grelha](feedback_card_layout_is_compact_like_figma_2026_11_04.md)
-- ⭐⭐ [Dono 03/11: a Widget Gallery abre no painel lateral, ferramentas fictícias à Figma + casos reais + amostras do Rive](project_widget_gallery_figma_tools_real_cases_2026_11_03.md)
 - ⭐⭐ [Dono 04/11 noite: missão autónoma, fechar a linha Painter sem perguntas; smoke no dia seguinte](project_autonomous_close_of_painter_line_2026_11_04.md)
 - ⭐⭐ [Dono 04/11: Smooth Edges por traço, um por pincel (revoga 27/10); Wet Liner e Wet Wash 0,12 + Edge Darkening 0](project_smooth_edges_per_brush_owner_decision_2026_11_04.md)
+- ⭐⭐ [Dono 01/11 (F43): Effects/Filters do Vector no layout Figma — «+» dropdown, lista, propriedades à ESQUERDA](project_vector_effects_filters_figma_layout_2026_11_01.md) · ⭐⭐ [F44: Fill e Stroke no MESMO padrão; Cap/Join/Align com ícones](project_vector_fill_stroke_figma_layout_2026_11_01.md) · ⭐⭐ [campo que não se explica sozinho leva rótulo](feedback_a_field_that_is_not_self_evident_gets_a_label.md) · [unidade no rótulo, nunca na caixa (iPad)](feedback_units_live_in_the_label_not_in_the_box.md)
+- ⭐⭐ [E12 (05/11) NÃO feita: a régua de furos reprova quem passa a cobrir; não apague a lei velha antes de refazê-la](project_e12_blocked_by_mother_gate_ruler_2026_11_05.md)
+- ⛔ [`fila-pesada.sh correr` corre TUDO: `ver` antes (05/11)](feedback_clear_the_heavy_queue_before_running_it.md)
 - ⭐⭐ [Dono 03/11: teste de pincel = alarme BARATO que aponta o que mudou + o DONO decide (gizmo × traço); fim das tabelas de 40 tamanhos](project_brush_tests_cheap_alarm_owner_decides_2026_11_03.md)
 - ⭐⭐ [Dono 04/11: o mesmo traço dá o mesmo byte em qualquer computador; o motor não chama a matemática do sistema](project_same_stroke_same_byte_on_any_machine_2026_11_04.md)
 - ⭐⭐ [Dono 04/11: aprovou Marker Liner em Mix, Bokeh com a curva dele, Dabber 4 e Knife Stain — não voltar ao Multiply por paridade](project_brush_tweaks_owner_approved_2026_11_04.md)
 - ⭐⭐ [Dono 03/11: manter a cura da cobertura mas devolver o molhado antigo (Wet Round/Drip); Blend > círculo](project_coverage_cure_must_keep_the_old_wetness_2026_11_03.md)
 - ⭐⭐⭐ [Dono 31/10 noite: o Rebelle DEIXA de ser referência — o Painter busca a própria cara (física + consistência + olho do dono)](project_rebelle_no_longer_the_reference_2026_10_31.md) · antes: [superar o Rebelle](project_superar_rebelle_autonomous_2026_10_31.md) · [02/11: Wet Liner sem fio escuro; cena macro 1 fica](project_wet_liner_no_dark_edge_2026_11_02.md)
-- ⭐⭐⭐ [Dono 01/11: painel E10 — tools na barra vertical, secções comuns aos 4 modos, padrão do Inspector, avançado preservado; Body e sombra ficam](project_painter_panel_e10_owner_decisions_2026_11_01.md)
 - ⭐⭐⭐ [Dono 01/11: óleo diluído escorre — UMA lei, sem 2.º líquido; Medium → seletor «Paint type: Water · Oil»](project_paint_type_water_oil_one_law_2026_11_01.md)
-- ⭐⭐⭐ [Dono 01/11: aguada contra relevo alto — mistura na borda, escorre pelas laterais, senão empoça e transborda com volume](project_watery_paint_against_relief_owner_law_2026_11_01.md)
 - ⭐⭐ [Dono 31/10 noite: refatorar o Wet Paint por áreas (grandeza física, uma lei) + ajuda ilustrada estilo Fusion 360](project_wetpaint_refactor_and_illustrated_help_2026_10_31.md)
-- ⭐ [Dono 04/11: seção Animation simples como a Godot; overrides e Direction fora da vista; GEF não alinha ao visual novo por agora](project_animation_section_like_godot_2026_11_04.md)
 - ⭐⭐ [Auto Key grava ABSOLUTAMENTE TUDO (19/10): cor, traço, pontos — não só transformações](project_autokey_records_everything_2026_10_19.md)
 - [Onde mora cada coisa — tabela verificada](reference_canonical_files.md)
 - [transcripts medem o agente — agent-loop-profile.sh](reference_session_transcripts_are_a_measurable_instrument.md)
@@ -64,7 +60,7 @@
 - ⛔⛔ [Passar a régua do recto não é ser um pincel: Filbert «nada novo», lâminas «inúteis» (P53)](feedback_a_brush_that_passes_the_ruler_can_still_be_useless.md)
 - ⛔ **Nada armengado: SILENCIAR um diagnóstico é armengo** ([§SUPRESSÃO, 29/08](feedback_perfection_no_deferrals.md)) — meio-feito é pior que não começar
 - ⭐⭐ [Máximo AMOSTRADO que vira limite de segurança erra sempre PARA BAIXO](feedback_a_sampled_maximum_that_becomes_a_safety_bound_errs_only_downwards.md)
-- 📚 [Comunicação & decisão: mais (77) lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)
+- 📚 [Comunicação & decisão: mais (90) lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)
 
 ## Git & colisão multi-agente
 - [Perigos de git/edição (15)](reference_topic_git_hazards.md)
@@ -73,7 +69,6 @@
 
 ## Ship / CI / integração
 - ⛔⛔ [Regra de BRIEFING sem medição é «confirmada» por quem a segue](feedback_an_unmeasured_rule_in_a_briefing_is_confirmed_by_the_agents_who_follow_it.md)
-- ⭐ [Placa onboard (23/10): Radeon corre 5 573/5 580 testes de placa, só a Luz 2D falha](project_onboard_radeon_runs_gpu_tests_2026_10_23.md) · ⭐ [dono 24/10: «mesmo bit» é POR PLACA](project_same_bit_law_is_per_device_2026_10_24.md)
 - ⭐ [CI 04/11: 27–30 min com cache · semente `gh workflow run spike.yml --ref main` após o push · teto de CPU 50 vs 100 é do DONO](project_ci_acceleration_2026_11_04.md)
 - ⛔ [A régua de uma linha é o MERGE-BASE, nunca o main a andar](feedback_the_ruler_is_the_merge_base_not_a_moving_main.md)
 - [Integração multi-linha (15) — ordem se MEDE](reference_topic_integration_discipline.md)

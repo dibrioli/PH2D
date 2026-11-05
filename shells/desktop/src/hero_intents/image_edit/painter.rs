@@ -66,6 +66,7 @@ pub(crate) fn auto_commit_painter(
             entity,
             texture_id,
         );
+        ph2d_sprite_edit::imagem::fim_da_edicao();
         painter.mark_baked();
         true
     } else {
@@ -144,6 +145,12 @@ pub(crate) fn drain_painter(
             true
         }
         Ok(texture_id) => {
+            ph2d_sprite_edit::imagem::segue_a_pintura(
+                sim.world_mut(),
+                atlas_asset_map,
+                entity,
+                texture_id,
+            );
             pending_undo_entries.push(ImageEditSnapshot {
                 entity_bits,
                 pre_source: old_source,

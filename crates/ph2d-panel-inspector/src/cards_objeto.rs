@@ -151,6 +151,7 @@ pub(crate) fn resto_da_ordem(c: &mut CardCtx<'_>, y: f32, info: &InspectorOrderi
     if opcoes.is_empty() {
         return y;
     }
+    let y = y + ph2d_card_stack::metrics::FIELD_ROW_GAP;
     let segs: Vec<ph2d_editor_core::panel::cards::Seg<'_>> = opcoes
         .iter()
         .map(|(id, text)| ph2d_editor_core::panel::cards::Seg {

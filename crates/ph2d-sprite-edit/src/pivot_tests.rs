@@ -110,3 +110,34 @@ fn o_pivo_no_mesmo_ponto_nao_muda_nada() {
     let (mut w, e) = mundo_com(sprite_2x2(), Transform::default());
     assert!(!pousa(&mut w, e, 100.0, [0.0, 0.0]));
 }
+
+#[test]
+fn mudar_o_pivo_nao_move_os_filhos() {
+    let db = AssetDb::default();
+    let atlas = BTreeMap::new();
+    let mut w = World::new();
+    let pai = w
+        .spawn((
+            Sprite::atlas(ph2d_render::WHITE_TILE_KEY, [2.0, 2.0], [1.0; 4]),
+            Transform::default(),
+        ))
+        .id();
+    let mut local = Transform::default();
+    local.translation = Vec2::new(3.0, 1.0);
+    let filho = w.spawn((local, ph2d_ecs::ChildOf(pai))).id();
+    assert!(set_pivot(
+        &mut w,
+        pai,
+        &db,
+        &atlas,
+        100.0,
+        SpritePivot::Px([50.0, -100.0])
+    ));
+    let t_pai = *w.get::<Transform>(pai).unwrap();
+    let t_filho = *w.get::<Transform>(filho).unwrap();
+    let no_mundo = Transform::compose(t_pai, t_filho).translation;
+    assert!(
+        (no_mundo.x - 3.0).abs() < 1e-4 && (no_mundo.y - 1.0).abs() < 1e-4,
+        "{no_mundo:?}"
+    );
+}

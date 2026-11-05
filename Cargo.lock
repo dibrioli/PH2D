@@ -5801,6 +5801,7 @@ dependencies = [
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor-core",
+ "ph2d-game-dicas",
  "ph2d-input",
  "ph2d-physics-ecs",
  "ph2d-physics-scene",
@@ -7166,6 +7167,14 @@ name = "ph2d-fx-op"
 version = "0.0.0"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "ph2d-game-dicas"
+version = "0.0.0"
+dependencies = [
+ "ph2d-editor-core",
+ "ph2d-tokens",
 ]
 
 [[package]]

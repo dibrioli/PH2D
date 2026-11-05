@@ -2,7 +2,7 @@
 //!
 //! A shell compõe; a lei vive aqui: [`Sessao`] decide quando o documento se fotografa e quando volta.
 
-mod dicas;
+use ph2d_game_dicas as dicas;
 pub mod encaixe;
 pub mod formato_do_jogo;
 pub mod miniatura;

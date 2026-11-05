@@ -106,3 +106,28 @@ fn com_o_botao_a_pintura_chega_aos_outros_e_a_seguinte_tambem() {
     assert_ne!(w.get::<SpritePixels>(c).unwrap().0, p2);
     EDICAO.with(|c| c.set(None));
 }
+
+#[test]
+fn sair_sem_pintar_nao_muda_ninguem_mesmo_com_a_cor_do_transparente_zerada() {
+    let db = AssetDb::default();
+    let antigo = db.insert_image_rgba8(2, 1, vec![9, 9, 9, 255, 7, 7, 7, 0]);
+    let mut w = World::new();
+    let mut s = Sprite::atlas(WHITE_TILE_KEY, [3.0, 3.0], [1.0; 4]);
+    s.source = SpriteSource::Individual { texture_id: 1 };
+    let a = w.spawn((s, SpritePixels(antigo))).id();
+    let mut subiu = false;
+    let n = troca_os_pixeis(
+        &mut w,
+        &mut |_, _, _| {
+            subiu = true;
+            Ok(2)
+        },
+        &db,
+        &BTreeMap::new(),
+        a,
+        (2, 1, vec![9, 9, 9, 255, 0, 0, 0, 0]),
+    );
+    assert_eq!(n, Ok(0));
+    assert!(!subiu, "nada sobe à placa");
+    assert_eq!(w.get::<SpritePixels>(a).unwrap().0, antigo);
+}

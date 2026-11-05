@@ -30,6 +30,39 @@ pub(crate) fn chaves_da_camera(
 impl crate::App {
     /// A foto `camera_desfaz` (onda 18): no quadro 40 o formato vai a Game Boy pela porta do Inspector (com a
     /// entrada que um clique dá), e depois Ctrl+Z e Ctrl+Y — `[camera-desfaz]` diz o formato a cada passo.
+    pub(super) fn fim_da_imagem_do_smoke(&mut self, m: ph2d_app_game::smoke_mao::Mao) {
+        use ph2d_app_game::smoke_mao::Mao;
+        use ph2d_editor_core::object_mode::{ModeRequest, ObjectMode};
+        self.any_input_this_frame = true;
+        match m {
+            Mao::Desfaz => self.smoke_undo(false),
+            Mao::SaiDoDraw => {
+                if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                    h.bus
+                        .push(ph2d_editor_core::action_bus::EditorAction::ObjectMode(
+                            ModeRequest::Enter(ObjectMode::Object),
+                        ));
+                }
+            }
+            _ => {
+                let Some(g) = self.gfx.as_mut() else { return };
+                for nome in ["Platform High", "Platform Low"] {
+                    let e = ph2d_app_game::smoke::por_nome(&mut g.sim, nome);
+                    let id = e.map(|e| {
+                        let w = g.sim.world();
+                        ph2d_render::texture_of(
+                            w.get::<ph2d_ecs::SpritePixels>(e),
+                            w.get::<ph2d_render::Sprite>(e),
+                            &g.atlas_asset_map,
+                        )
+                        .map(|a| a.as_bytes()[0])
+                    });
+                    eprintln!("[sprite-pixel] {nome}: imagem {id:?}");
+                }
+            }
+        }
+    }
+
     pub(super) fn formato_desfaz_do_smoke(&mut self, quadro: u32) {
         use ph2d_editor_core::{CameraFieldEdit, GamePreset};
         let relata = |app: &Self, quando: &str| {

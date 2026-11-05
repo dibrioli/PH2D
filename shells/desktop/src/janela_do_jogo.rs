@@ -273,6 +273,7 @@ impl crate::App {
                 let (x, y) = ecra(w);
                 self.smoke_pointer_move(x, y);
             }
+            Mao::SaiDoDraw | Mao::Desfaz | Mao::Relata => self.fim_da_imagem_do_smoke(m),
             Mao::Sobe => {
                 self.smoke_pointer_up();
                 if let Some(gfx) = self.gfx.as_mut() {

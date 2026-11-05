@@ -4,6 +4,7 @@
 
 use crate::cards_componentes::Presente;
 use crate::cards_objeto::com_corpo;
+use crate::cards_sprite_pivot::{NOMES_DO_PIVOT, evento_do_pivot, flip_e_pivot};
 use crate::ids;
 use crate::sections;
 use crate::slot_image::{self, SlotImage};
@@ -12,21 +13,21 @@ use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::PanelHostInternal;
-use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, HeadAction, Seg, Widget};
 use ph2d_editor_core::paint::{paint_text, resolve};
+use ph2d_editor_core::panel::PanelHostInternal;
+use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, HeadAction, Widget};
 use ph2d_editor_core::screens::hero::{
     InspectorSpriteInfo, InspectorSpriteSource, InspectorTransformInfo,
 };
 use ph2d_editor_core::zones::Rect;
-use ph2d_editor_core::{IconId, ImageUseEdit, InspectorImageUse, SpritePivot};
+use ph2d_editor_core::{ImageUseEdit, InspectorDraw, InspectorImageUse};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_tokens::{ColorToken, Spacing, TypeToken};
 
 /// A miniatura mede três campos: a imagem é o que se lê primeiro no cartão (Godot, GameMaker).
-const LINHAS_DA_MINIATURA: f32 = 3.0;
+const LINHAS_DA_MINIATURA: f32 = 3.0; // LITERAL-PX-OK: conta de campos, não geometria
 /// O convite do cartão vazio mede cinco campos: é o único alvo do cartão.
-const LINHAS_DO_CONVITE: f32 = 5.0;
+const LINHAS_DO_CONVITE: f32 = 5.0; // LITERAL-PX-OK: conta de campos, não geometria
 
 fn botao(store: &mut WidgetStore, id: NodeId, dica: &str) {
     store.register_if_absent(
@@ -42,10 +43,26 @@ fn botao(store: &mut WidgetStore, id: NodeId, dica: &str) {
 
 /// Os botões e as dobras dos cartões da Sprite: uma vez por quadro, antes da pintura.
 pub(crate) fn prepara(store: &mut WidgetStore) {
-    botao(store, ids::INSP_IMAGE_REPLACE, "card.insp.image_replace_tip");
-    botao(store, ids::INSP_IMAGE_KEEP_SIZE, "card.insp.keep_old_size_tip");
-    botao(store, ids::INSP_IMAGE_EDIT_PIXEL, "card.insp.edit_in_pixel_tip");
-    botao(store, ids::INSP_IMAGE_EDIT_PAINTER, "card.insp.edit_in_painter_tip");
+    botao(
+        store,
+        ids::INSP_IMAGE_REPLACE,
+        "card.insp.image_replace_tip",
+    );
+    botao(
+        store,
+        ids::INSP_IMAGE_KEEP_SIZE,
+        "card.insp.keep_old_size_tip",
+    );
+    botao(
+        store,
+        ids::INSP_IMAGE_EDIT_PIXEL,
+        "card.insp.edit_in_pixel_tip",
+    );
+    botao(
+        store,
+        ids::INSP_IMAGE_EDIT_PAINTER,
+        "card.insp.edit_in_painter_tip",
+    );
     botao(store, ids::INSP_IMAGE_PAINT_NEW, "card.insp.paint_new_tip");
     for id in ids::INSP_IMAGE_RECENT {
         botao(store, id, "card.insp.recent_tip");
@@ -70,11 +87,17 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
         "card.insp.sheet_use_region_tip",
     );
     store.set_collapsed_if_unchosen(crate::cards::CARD_TRANSFORM_IMAGE, true);
-    botao(store, ids::INSP_SPRITE_PIVOT_NOME, "card.insp.pivot_nome_tip");
+    // O Look abre: é o que se ajusta depois da imagem (ficha da Sprite). Só nos cartões; o painel de antes fica como era.
+    store.set_collapsed_if_unchosen(core_ids::INSP_LIVE_COLOR_SECTION, false);
+    botao(
+        store,
+        ids::INSP_SPRITE_PIVOT_NOME,
+        "card.insp.pivot_nome_tip",
+    );
     for (id, nome) in ids::INSP_SPRITE_PIVOT.into_iter().zip(NOMES_DO_PIVOT) {
         botao(store, id, nome);
     }
-    prepara_campos_do_pivot(store);
+    crate::cards_sprite_pivot::prepara_campos_do_pivot(store);
     if store.tooltip_for(ids::INSP_RENDER_TEXTURE_SLOT).is_none() {
         store.set_tooltip(
             ids::INSP_RENDER_TEXTURE_SLOT,
@@ -129,10 +152,28 @@ pub(crate) fn imagem(info: InspectorSpriteInfo) -> CardDef<'static> {
                     &texto,
                 )
             });
+            let y = tira_do_repeated(c, y, &info);
             let y = recibo_do_replace(c, y, &info);
             aviso_de_folha(c, y, info.entity_bits)
         })),
     }
+}
+
+/// A tira de prévia do Repeated: as cópias de uma fileira, até onde couberem.
+fn tira_do_repeated(c: &mut CardCtx<'_>, y: f32, info: &InspectorSpriteInfo) -> f32 {
+    let InspectorDraw::Tiled { copies } = info.draw else {
+        return y;
+    };
+    let img = slot_image::current_slot_image(info.entity_bits);
+    let lado = m::FIELD_H;
+    let cabem = (c.w / lado).floor().max(1.0);
+    let n = copies[0].ceil().clamp(1.0, cabem) as usize;
+    let y = y + m::FIELD_ROW_GAP;
+    for i in 0..n {
+        let r = Rect::new(c.x + i as f32 * lado, y, lado, lado);
+        miniatura(c, r, img.as_ref());
+    }
+    y + lado
 }
 
 /// Depois de trocar por uma imagem de outro tamanho: o que mudou, e a saída. Quem repete não precisa: o bloco manda.
@@ -291,7 +332,7 @@ fn cabeca(c: &mut CardCtx<'_>, y: f32, info: &InspectorSpriteInfo) -> f32 {
                 &[("pw", &pw), ("ph", &ph)],
             ),
             tx,
-            y + Spacing::Xs.px() + TypeToken::Md.px() + Spacing::Xs.px(),
+            y + Spacing::Xs.px() + TypeToken::Md.px() + m::FIELD_ROW_GAP,
             TypeToken::Sm.px(),
             tw,
             resolve(ColorToken::Text2, theme),
@@ -401,7 +442,9 @@ pub(crate) fn proprio<'a>(p: &'a Presente, actions: Vec<HeadAction>) -> Option<C
             summary: None,
             body: Some(Box::new(move |c: &mut CardCtx<'_>, y| {
                 let y = com_corpo(c, y, |t, theme, store, x, w, y| {
-                    sections::look::paint_cores(t.scene, t.text, theme, t.hit, store, x, w, y, &info)
+                    sections::look::paint_cores(
+                        t.scene, t.text, theme, t.hit, store, x, w, y, &info,
+                    )
                 });
                 flip_e_pivot(c, y)
             })),
@@ -424,204 +467,6 @@ pub(crate) fn proprio<'a>(p: &'a Presente, actions: Vec<HeadAction>) -> Option<C
         });
     }
     None
-}
-
-/// Os nomes dos nove pontos, por linhas.
-const NOMES_DO_PIVOT: [&str; 9] = [
-    "card.insp.pivot.top_left",
-    "card.insp.pivot.top",
-    "card.insp.pivot.top_right",
-    "card.insp.pivot.left",
-    "card.insp.pivot.center",
-    "card.insp.pivot.right",
-    "card.insp.pivot.bottom_left",
-    "card.insp.pivot.bottom",
-    "card.insp.pivot.bottom_right",
-];
-
-thread_local! {
-    /// Os campos X e Y abertos à mão, com o pivô num dos nove pontos.
-    static PIVOT_ABERTO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
-}
-
-/// Os campos X e Y estão à vista? Sempre em Custom; nos nove pontos, só se a mão os abriu.
-fn pivot_campos_abertos(f: &slot_image::SpriteFacts) -> bool {
-    f.pivot_ponto.is_none() || PIVOT_ABERTO.with(std::cell::Cell::get)
-}
-
-fn prepara_campos_do_pivot(store: &mut WidgetStore) {
-    let f = slot_image::factos();
-    let foco = store.focus_id();
-    let mao = store.number_input_drag().map(|d| d.id);
-    for (i, id) in ids::INSP_SPRITE_PIVOT_XY.into_iter().enumerate() {
-        store.mark_card_field(
-            id,
-            ph2d_editor_core::widget::card_field::CardFieldSpec {
-                step: 1.0,
-                scrub: 1.0,
-                default: Some(0.0),
-            },
-        );
-        if let Some(f) = f.filter(|_| foco != Some(id) && mao != Some(id)) {
-            let v = f64::from(f.pivot_px[i].round());
-            if store.number_value(id) != Some(v) {
-                store.set_number_value(id, v);
-            }
-        }
-    }
-}
-
-/// A grade 3 × 3 do Pivot, o nome do ponto ao lado; devolve o fundo.
-fn grade_do_pivot(c: &mut CardCtx<'_>, y: f32, f: slot_image::SpriteFacts) -> f32 {
-    let theme = c.ink.theme;
-    let casa = m::FIELD_H * 0.5;
-    let lado = casa * 3.0;
-    let caixa = Rect::new(c.x, y, lado, lado);
-    ph2d_editor_core::paint::fill_rounded_rect(
-        c.scene,
-        caixa,
-        ph2d_tokens::Radius::Sm.px(),
-        resolve(ColorToken::Bg2, theme),
-    );
-    let aceso = f
-        .pivot_ponto
-        .map(|p| usize::from(p[1]) * 3 + usize::from(p[0]));
-    for (i, id) in ids::INSP_SPRITE_PIVOT.into_iter().enumerate() {
-        let r = Rect::new(
-            c.x + (i % 3) as f32 * casa,
-            y + (i / 3) as f32 * casa,
-            casa,
-            casa,
-        );
-        let on = aceso == Some(i);
-        let d = if on {
-            Spacing::Sm.px()
-        } else {
-            Spacing::Xxs.px()
-        };
-        let cor = if on {
-            ColorToken::Accent
-        } else {
-            ColorToken::Text3
-        };
-        ph2d_editor_core::paint::fill_rounded_rect(
-            c.scene,
-            Rect::new(r.x + (r.w - d) * 0.5, r.y + (r.h - d) * 0.5, d, d),
-            d * 0.5,
-            resolve(cor, theme),
-        );
-        c.hit_index.register(id, r);
-    }
-    let nome = aceso.map_or(tr("card.insp.pivot.custom"), |i| tr(NOMES_DO_PIVOT[i]));
-    let tx = c.x + lado + Spacing::Xs.px();
-    let tw = (c.w - lado - Spacing::Xs.px()).max(0.0);
-    paint_text(
-        c.text_system,
-        c.scene,
-        nome,
-        tx,
-        y + (lado - TypeToken::Sm.px()) * 0.5,
-        TypeToken::Sm.px(),
-        tw,
-        resolve(ColorToken::Text1, theme),
-    );
-    c.hit_index
-        .register(ids::INSP_SPRITE_PIVOT_NOME, Rect::new(tx, y, tw, lado));
-    y + lado + m::FIELD_ROW_GAP
-}
-
-/// Flip e Pivot lado a lado. Os ids do Flip continuam caixas de marcar: o clique emite o mesmo `Toggled`.
-fn flip_e_pivot(c: &mut CardCtx<'_>, y: f32) -> f32 {
-    let aceso = |store: &WidgetStore, id: NodeId| {
-        matches!(
-            store.checkbox(id).map(|(_, v)| v),
-            Some(ph2d_editor_core::widget::CheckboxValue::Checked)
-        )
-    };
-    let segs = [
-        Seg {
-            id: ids::INSP_SPRITE_FLIP_X,
-            icon: Some(IconId::FlipH),
-            text: "",
-            on: aceso(c.store, ids::INSP_SPRITE_FLIP_X),
-        },
-        Seg {
-            id: ids::INSP_SPRITE_FLIP_Y,
-            icon: Some(IconId::FlipV),
-            text: "",
-            on: aceso(c.store, ids::INSP_SPRITE_FLIP_Y),
-        },
-    ];
-    let [(xa, wa), (xb, wb)] = ph2d_editor_core::panel::cards::corpo::colunas_iguais(c.x, c.w);
-    let (x0, w0) = (c.x, c.w);
-    (c.x, c.w) = (xa, wa);
-    let fim_flip = c.row(
-        &[Cell::new(Widget::Icons(&segs)).label(tr("card.insp.flip"))],
-        y,
-    );
-    let Some(f) = crate::state::current_inspector_sprite()
-        .and_then(|i| slot_image::factos().filter(|f| f.entity_bits == i.entity_bits))
-    else {
-        (c.x, c.w) = (x0, w0);
-        return fim_flip;
-    };
-    (c.x, c.w) = (xb, wb);
-    c.row(
-        &[Cell::new(Widget::Readout { text: "" }).label(tr("card.insp.pivot"))],
-        y,
-    );
-    // A grade começa onde a caixa do Flip começa: logo abaixo dos rótulos.
-    let topo = fim_flip - m::FIELD_H;
-    let fim_grade = grade_do_pivot(c, topo, f);
-    (c.x, c.w) = (x0, w0);
-    let fim = fim_flip.max(fim_grade);
-    if !pivot_campos_abertos(&f) {
-        return fim;
-    }
-    let (gx, gy) = (tr("card.glyph.x"), tr("card.glyph.y"));
-    c.row(
-        &[
-            Cell::new(Widget::Field {
-                id: ids::INSP_SPRITE_PIVOT_XY[0],
-                glyph: ph2d_editor_core::widget::card_field::Glyph::Text(gx),
-            })
-            .label(tr("card.insp.pivot_px")),
-            Cell::new(Widget::Field {
-                id: ids::INSP_SPRITE_PIVOT_XY[1],
-                glyph: ph2d_editor_core::widget::card_field::Glyph::Text(gy),
-            }),
-        ],
-        fim,
-    )
-}
-
-/// Os cliques e os números do Pivot. `true` = consumido.
-fn evento_do_pivot(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    let pivot = match ev {
-        WidgetEvent::Click(id) if id == ids::INSP_SPRITE_PIVOT_NOME => {
-            PIVOT_ABERTO.with(|a| a.set(!a.get()));
-            return true;
-        }
-        WidgetEvent::Click(id) => {
-            let Some(i) = ids::INSP_SPRITE_PIVOT.iter().position(|o| *o == id) else {
-                return false;
-            };
-            SpritePivot::Ponto([(i % 3) as u8, (i / 3) as u8])
-        }
-        WidgetEvent::ValueChanged(id) if ids::INSP_SPRITE_PIVOT_XY.contains(&id) => {
-            let [a, b] = ids::INSP_SPRITE_PIVOT_XY.map(|n| host.store().number_value(n));
-            SpritePivot::Px([a.unwrap_or(0.0) as f32, b.unwrap_or(0.0) as f32])
-        }
-        _ => return false,
-    };
-    let Some(sprite) = crate::state::current_inspector_sprite() else {
-        return true;
-    };
-    host.bus_mut().push(EditorAction::ImageUseEdit {
-        entity_bits: sprite.entity_bits,
-        edit: ImageUseEdit::Pivot(pivot),
-    });
-    true
 }
 
 /// O clique em Replace é o mesmo pedido do clique na miniatura; as opções do Ordering revelam a linha.
@@ -651,7 +496,9 @@ pub(crate) fn evento(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool 
         if pintor {
             use ph2d_editor_core::object_mode::{ModeRequest, ObjectMode};
             host.bus_mut()
-                .push(EditorAction::ObjectMode(ModeRequest::Enter(ObjectMode::Draw)));
+                .push(EditorAction::ObjectMode(ModeRequest::Enter(
+                    ObjectMode::Draw,
+                )));
         }
         return true;
     }

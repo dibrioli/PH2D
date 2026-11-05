@@ -1,0 +1,16 @@
+[package]
+name = "ph2d-game-dicas"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# As ilustrações das dicas do menu Add, como FOLHA (só dados): saiu de `ph2d-app-game` pela catraca
+# `the_shell_only_shrinks_and_every_app_crate_too` (GEF 23).
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-tokens = { path = "../ph2d-tokens" }

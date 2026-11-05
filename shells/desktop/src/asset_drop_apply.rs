@@ -184,6 +184,7 @@ impl crate::App {
             self.toast_drop_failed();
             return;
         };
+        ph2d_sprite_edit::vazio::lembra(AssetId::from_digest(asset));
         let bits = e.to_bits();
         if let Some(hero) = gfx.hero_screen.as_mut() {
             hero.gizmo.replace_selection(Some(bits));
@@ -298,8 +299,17 @@ impl crate::App {
         for (bits, asset) in plano.escolhas {
             self.choose_image(bits, asset);
         }
+        let pinta = plano.foto == ph2d_app_game::smoke::Foto::SpriteNoPainter;
         for (bits, edit) in plano.edicoes {
             self.image_use_edit(bits, edit);
+        }
+        if pinta && let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            use ph2d_editor_core::object_mode::{ModeRequest, ObjectMode};
+            h.gizmo.replace_selection(Some(alvo));
+            h.bus
+                .push(ph2d_editor_core::action_bus::EditorAction::ObjectMode(
+                    ModeRequest::Enter(ObjectMode::Draw),
+                ));
         }
         if let Some((asset, world, over)) = plano.larga {
             // Pela lei da queda, com o objecto por baixo (o céu); a queda seleciona a sprite que nasce.

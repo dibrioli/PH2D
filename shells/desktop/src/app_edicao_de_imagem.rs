@@ -23,6 +23,12 @@ pub(crate) fn abre_no_pixel(
         )));
         return;
     };
+    let ppm = gfx
+        .hero_screen
+        .as_ref()
+        .map_or(ph2d_editor_core::project::DEFAULT_PIXELS_PER_METER, |h| {
+            h.project.pixels_per_meter
+        });
     let Some(key) = pixel.abre_imagem(w, h, rgba) else {
         gfx.toasts
             .push(ph2d_editor_core::Toast::warning(tr("object_add.not_born")));
@@ -35,6 +41,9 @@ pub(crate) fn abre_no_pixel(
         origem,
         Entity::from_bits(trabalho),
         key,
+        (w, h),
+        ppm,
+        (gfx.camera.center, gfx.camera.height_world),
     );
     pixel.edita_ao_nascer(trabalho);
     if let Some(hero) = gfx.hero_screen.as_mut() {
@@ -61,6 +70,7 @@ pub(crate) fn fecha_agora(gfx: &mut crate::AppGfx, pixel: &mut ph2d_app_pixel::P
 }
 
 fn devolve(gfx: &mut crate::AppGfx, pixel: &mut ph2d_app_pixel::PixelApp, a: no_pixel::Aberta) {
+    (gfx.camera.center, gfx.camera.height_world) = a.vista;
     let Some(img) = pixel.fecha_imagem(a.key) else {
         return;
     };

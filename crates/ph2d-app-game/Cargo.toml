@@ -36,6 +36,7 @@ ph2d-script = { path = "../ph2d-script" }
 # A miniatura do que a câmera vê pinta-se sobre a moldura dela.
 ph2d-vector = { path = "../ph2d-vector" }
 ph2d-camera-frame = { path = "../ph2d-camera-frame" }
+ph2d-game-dicas = { path = "../ph2d-game-dicas" }
 
 [dev-dependencies]
 # A arte de fábrica abre como vetor editável (`arte_tests.rs`).

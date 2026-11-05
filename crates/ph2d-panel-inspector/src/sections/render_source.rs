@@ -166,7 +166,17 @@ pub(crate) fn paint_render_source_section(
         cur_y,
     );
     // A grelha e os quadros vivem sob o seletor «Use» da linha Image (plano GEF 15).
-    let fim = paint_reimport(scene, text_system, hit_index, store, theme, info, x, w, cur_y);
+    let fim = paint_reimport(
+        scene,
+        text_system,
+        hit_index,
+        store,
+        theme,
+        info,
+        x,
+        w,
+        cur_y,
+    );
     fold.finish(store, scene, hit_index, fim + SECTION_BOTTOM_PAD_PX)
 }
 

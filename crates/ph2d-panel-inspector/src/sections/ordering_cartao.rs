@@ -162,7 +162,10 @@ pub(super) fn em_cartao(
             sec,
         );
     }
-    if a_mostra(0, info) {
+    let (com_ordem, com_camada) = (a_mostra(0, info), a_mostra(1, info));
+    let topo = yy;
+    let (xl, wl) = if com_camada { (xa, wa) } else { (x, w) };
+    if com_ordem {
         let l = [ids::INSP_ORDER_ORDER_IN_LAYER];
         let coluna = [Coluna {
             rotulo: tr("component.field.order_in_layer.1"),
@@ -176,26 +179,32 @@ pub(super) fn em_cartao(
             store,
             hit_index,
             ink,
-            x,
-            w,
+            xl,
+            wl,
             yy,
             &coluna,
             1.0,
         );
     }
-    if a_mostra(1, info) {
-        yy = layer_row(
+    if com_camada {
+        // Irmãs, na mesma linha: a lei da compactação.
+        let (xc, wc, yc) = if com_ordem {
+            (xb, wb, topo)
+        } else {
+            (x, w, topo)
+        };
+        yy = yy.max(layer_row(
             scene,
             text_system,
             theme,
             hit_index,
             store,
-            x,
-            w,
-            yy,
+            xc,
+            wc,
+            yc,
             info.sorting_layer as usize,
             sec,
-        );
+        ));
     }
     macro_rules! cb {
         ($id:expr, $l:expr) => {

@@ -164,6 +164,17 @@ fn pousa(world: &mut World, e: Entity, ppm: f32, alvo: [f32; 2]) -> bool {
         return false;
     }
     let delta = no_pai(t, antes) - no_pai(t, depois);
+    // Os filhos também são desenho: ficam onde estão.
+    let filhos: Vec<Entity> = world
+        .get::<ph2d_ecs::Children>(e)
+        .map(|c| c.iter().copied().collect())
+        .unwrap_or_default();
+    for f in filhos {
+        if let Some(mut tf) = world.get_mut::<Transform>(f) {
+            tf.translation.x -= antes[0] - depois[0];
+            tf.translation.y -= antes[1] - depois[1];
+        }
+    }
     let mut ent = world.entity_mut(e);
     if let Some(mut tr) = ent.get_mut::<Transform>() {
         tr.translation += delta;

@@ -70,7 +70,6 @@ pub(crate) mod camera;
 pub(crate) mod camera_format;
 mod canal_item;
 mod color_tint;
-pub(crate) mod look;
 /// O cartão CONSTRAINTS — a pilha do objecto.
 pub(crate) mod constraint;
 mod constraint_add;
@@ -101,6 +100,7 @@ pub(crate) mod instance_removed;
 pub(crate) mod joint;
 mod joint_pair_rows;
 pub(crate) mod lifecycle;
+pub(crate) mod look;
 /// ⭐ A LUZ (Luz 2D, W4).
 pub(crate) mod luz;
 /// ⭐ Os cartões do CORPO na luz — «Light Occluder» e «Unlit».

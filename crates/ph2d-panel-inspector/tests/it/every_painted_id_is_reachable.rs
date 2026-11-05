@@ -95,7 +95,8 @@ pub(crate) fn publish_the_whole_sprite_scene() {
         frame: 3,
         tint: [1.0; 4],
         self_tint: [1.0; 4],
-        per_corner_tint: [[1.0; 4]; 4],
+        // ⚠️ Cantos em uso e tudo no Ordering em uso: o que está por revelar não pinta.
+        per_corner_tint: [[0.5, 1.0, 1.0, 1.0]; 4],
         region_enabled: true,
         region_rect: [8.0, 8.0, 64.0, 64.0],
         region_filter_clip: true,
@@ -123,19 +124,27 @@ pub(crate) fn publish_the_whole_sprite_scene() {
     set_current_inspector_ordering(Some(InspectorOrderingInfo {
         entity_bits: ENTITY,
         z_index: None,
-        z_as_relative: true,
-        show_behind_parent: false,
+        z_as_relative: false,
+        show_behind_parent: true,
         sorting_layer: 2,
-        order_in_layer: 0,
+        order_in_layer: 1,
         y_sort_enabled: false,
         y_sort_point: 0,
         y_sort_axis: [0.0, 0.0],
-        sorting_group: false,
+        sorting_group: true,
         sort_at_root: false,
-        top_level: false,
+        top_level: true,
         selected_count: 1,
         mixed: InspectorOrderingMixed::default(),
     }));
+    // Com filhos, o Look tem Self Tint; o pivô fora dos nove pontos abre os campos Custom.
+    ph2d_panel_inspector::slot_image::set_current_sprite_facts(Some(
+        ph2d_panel_inspector::slot_image::SpriteFacts {
+            entity_bits: ENTITY,
+            tem_filhos: true,
+            ..Default::default()
+        },
+    ));
     set_current_inspector_sampling(Some(InspectorSamplingInfo {
         entity_bits: ENTITY,
         filter_tag: 0,
@@ -246,6 +255,7 @@ pub(crate) fn publish_the_whole_sprite_scene() {
 }
 
 pub(crate) fn clear_the_scene() {
+    ph2d_panel_inspector::slot_image::set_current_sprite_facts(None);
     set_current_inspector_sprite(None);
     set_current_inspector_name(None);
     set_current_inspector_visibility(None);

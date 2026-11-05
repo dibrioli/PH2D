@@ -62,6 +62,7 @@ mod nenhuma_linha_pinta_o_nome_numa_coluna_propria;
 mod nenhuma_seccao_declara_a_propria_altura;
 mod nenhuma_seccao_pinta_o_proprio_aviso;
 mod no_row_paints_its_name_above_its_control;
+mod o_cartao_da_sprite;
 mod o_chip_da_vigia_mostra_um_sinal;
 mod o_chip_de_uma_tag_cabe_na_pilula;
 mod o_corpo_fisico_em_pares;

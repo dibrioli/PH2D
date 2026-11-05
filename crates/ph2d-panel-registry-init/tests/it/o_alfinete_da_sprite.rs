@@ -170,13 +170,13 @@ fn the_pinned_render_card_edits_only_its_object() {
     for sel in SELECOES {
         let sec = INSP_LIVE_RENDER_SECTION;
         let mut h = preso(sec, sel);
-        let feitos = no_solto(&mut h, sec, pids::INSP_SPRITE_CENTERED, sel);
+        let feitos = no_solto(&mut h, sec, pids::INSP_SPRITE_TINT_FILL, sel);
         assert!(
             feitos.iter().any(|a| matches!(
                 a,
                 EditorAction::InspectorSpriteEdit {
                     entity_bits: A,
-                    edit: SpriteFieldEdit::Centered(_)
+                    edit: SpriteFieldEdit::TintFill(_)
                 }
             )),
             "{sel:?}: {feitos:?}"
@@ -348,12 +348,14 @@ fn todo_controlo_escreve_no_preso(sec: NodeId, piso: usize, amostras: usize) {
 
 #[test]
 fn todo_controlo_do_render_preso_escreve_no_preso() {
-    todo_controlo_escreve_no_preso(INSP_LIVE_RENDER_SECTION, 9, 0);
+    // ⬇️ `9 → 6` (05/11): Centered, Offset e Hand-packed saíram do cartão (ficha da Sprite).
+    todo_controlo_escreve_no_preso(INSP_LIVE_RENDER_SECTION, 6, 0);
 }
 
 #[test]
 fn todo_controlo_do_color_preso_escreve_no_preso() {
-    todo_controlo_escreve_no_preso(INSP_LIVE_COLOR_SECTION, 3, 6);
+    // ⬇️ seletores `6 → 1` (05/11): os cantos foram para o Advanced e o Self Tint só existe com filhos.
+    todo_controlo_escreve_no_preso(INSP_LIVE_COLOR_SECTION, 3, 1);
 }
 
 #[test]

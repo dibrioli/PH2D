@@ -146,6 +146,8 @@ fn a_imagem_pinta_em_cartoes_na_ordem_do_dono() {
     let mut st = InspectorState::default();
     host.store_mut()
         .set_collapsed(core_ids::INSP_LIVE_COLOR_SECTION, false);
+    host.store_mut()
+        .set_collapsed(ph2d_panel_inspector::CARD_TRANSFORM_IMAGE, false);
     let r = pinta(&mut host, &mut st);
     let (nome, slot, usa, pos, tinta) = (
         y_de(&r, core_ids::INSP_ENTITY_NAME),
@@ -155,7 +157,7 @@ fn a_imagem_pinta_em_cartoes_na_ordem_do_dono() {
         y_de(&r, INSP_SPRITE_TINT_SWATCH),
     );
     assert!(
-        nome < slot && slot < usa && usa < pos && pos < tinta,
+        nome < slot && slot < usa && usa < tinta && tinta < pos,
         "nome {nome} · image {slot} · use {usa} · transform {pos} · tint {tinta}"
     );
     let chaves = chaves_da_lista(&mut host);
@@ -225,6 +227,8 @@ fn a_animation_da_imagem_e_o_cartao_seguinte_e_so_no_uso_animated() {
     set_current_inspector_sprite(Some(sprite(InspectorImageUse::Animated)));
     let mut host = MockPanelHost::with_panel::<InspectorPanel>();
     let mut st = InspectorState::default();
+    host.store_mut()
+        .set_collapsed(ph2d_panel_inspector::CARD_TRANSFORM_IMAGE, false);
     let r = pinta(&mut host, &mut st);
     let (usa, linha, pos) = (
         y_de(&r, INSP_IMAGE_USE[0]),
@@ -242,7 +246,7 @@ fn a_animation_da_imagem_e_o_cartao_seguinte_e_so_no_uso_animated() {
 
 /// Nenhuma linha do Ordering morre: as do painel de antes, para qualquer objecto.
 #[test]
-fn o_ordering_tem_todas_as_linhas_em_qualquer_objecto() {
+fn o_ordering_mostra_z_e_y_sort_em_qualquer_objecto_e_guarda_o_resto() {
     limpa();
     set_cards_on(true);
     objeto();
@@ -251,16 +255,20 @@ fn o_ordering_tem_todas_as_linhas_em_qualquer_objecto() {
     host.store_mut().set_collapsed(CARD_ORDERING, false);
     let r = pinta(&mut host, &mut st);
     limpa();
+    for id in [INSP_ORDER_Z_INDEX, INSP_ORDER_YSORT_ENABLED] {
+        assert!(tem(&r, id), "Ordering sem {id:?}");
+    }
     for id in [
-        INSP_ORDER_Z_INDEX,
         INSP_ORDER_Z_RELATIVE,
         INSP_ORDER_SHOW_BEHIND,
         INSP_ORDER_ORDER_IN_LAYER,
-        INSP_ORDER_YSORT_ENABLED,
         INSP_ORDER_SORTING_GROUP,
         INSP_ORDER_TOP_LEVEL,
     ] {
-        assert!(tem(&r, id), "Ordering sem {id:?}");
+        assert!(
+            !tem(&r, id),
+            "{id:?} à vista sem estar em uso nem ser pedido"
+        );
     }
 }
 
@@ -389,6 +397,7 @@ pub(crate) fn abre_tudo(host: &mut MockPanelHost) {
         core_ids::INSP_LIVE_SCRIPT_SECTION,
         core_ids::INSP_VIS_LAYER_HEADER,
         ph2d_panel_inspector::CARD_MATERIAL,
+        ph2d_panel_inspector::CARD_TRANSFORM_IMAGE,
         CARD_ORDERING,
     ] {
         host.store_mut().set_collapsed(id, false);
@@ -421,10 +430,19 @@ fn todo_controlo_do_painel_de_antes_existe_nos_cartoes() {
     let faltam: Vec<NodeId> = antes
         .iter()
         .map(|(id, _)| *id)
-        .filter(|id| !tem(&depois, *id) && !da_moldura(*id))
+        .filter(|id| !tem(&depois, *id) && !da_moldura(*id) && !SAIRAM_NA_FICHA.contains(id))
         .collect();
     assert!(faltam.is_empty(), "sem lugar nos cartões: {faltam:?}");
 }
+
+/// O que a ficha da Sprite tirou de propósito (05/11): Hand-packed vira texto no resumo; Centered e Offset são o
+/// Pivot de 9 pontos e Custom. Nada mais pode sumir.
+const SAIRAM_NA_FICHA: [NodeId; 4] = [
+    ph2d_panel_inspector::ids::INSP_RENDER_STRATEGY_HANDPACKED,
+    ph2d_panel_inspector::ids::INSP_SPRITE_CENTERED,
+    ph2d_panel_inspector::ids::INSP_SPRITE_OFFSET_X,
+    ph2d_panel_inspector::ids::INSP_SPRITE_OFFSET_Y,
+];
 
 /// O que só existe na moldura do painel de antes: cabeçalhos e pegas de secção, fechar e o «+».
 fn da_moldura(id: NodeId) -> bool {

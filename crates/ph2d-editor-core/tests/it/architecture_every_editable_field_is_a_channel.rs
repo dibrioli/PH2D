@@ -167,6 +167,11 @@ const LINHAS: &[(&str, &str)] = &[
 /// A classe de uma chamada por um dos seus ids — exacto, ou PREFIXO quando acaba em `_`.
 const POR_ID: &[(&str, Classe, &str)] = &[
     (
+        "INSP_SPRITE_CORNERS_ON",
+        NaoAnimavel,
+        "estado de VISTA do cartão Look: abre os quatro cantos; o que se anima são os cantos, cada um com o seu canal",
+    ),
+    (
         "INSP_CAMERA_CUSTOM_W",
         NaoAnimavel,
         "definição do PROJECTO (blob `jogo`, plano GEF 17/17b), não da cena: o formato do jogo, a moldura e o ícone no canvas não mudam no tempo",

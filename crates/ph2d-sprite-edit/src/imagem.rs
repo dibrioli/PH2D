@@ -56,6 +56,14 @@ fn aponta(world: &mut World, e: Entity, texture_id: u32, novo: AssetId, premulti
     ent.remove::<ph2d_ecs::SpriteSheetRef>();
 }
 
+/// Dois RGBA8 retos dão o mesmo desenho?
+fn mesmos_pixeis(a: &[u8], b: &[u8]) -> bool {
+    a.len() == b.len()
+        && a.chunks_exact(4)
+            .zip(b.chunks_exact(4))
+            .all(|(p, q)| p == q || (p[3] == 0 && q[3] == 0))
+}
+
 /// ⭐ **Os píxeis da imagem que `origem` mostra mudaram**: `rgba` (RGBA8 reto) vale para TODO objecto que usa a mesma
 /// imagem. A imagem é endereçada pelo conteúdo, e por isso editar dá um id novo. Devolve quantos objectos mudaram.
 pub fn troca_os_pixeis(
@@ -69,11 +77,16 @@ pub fn troca_os_pixeis(
     let Some(antigo) = shown_id(world, origem, atlas) else {
         return Err(ph2d_i18n::tr("object_add.not_born").to_owned());
     };
-    let texture_id = acquire(w, h, &rgba)?;
-    let novo = db.insert_image_rgba8(w, h, rgba);
-    if novo == antigo {
+    // Abrir e sair sem pintar não é editar: um píxel transparente não tem cor, e o caminho pode tê-la zerado.
+    let igual = db.get(&antigo).is_some_and(|a| {
+        a.image_rgba8()
+            .is_some_and(|(aw, ah, px)| (aw, ah) == (w, h) && mesmos_pixeis(&px, &rgba))
+    });
+    if igual {
         return Ok(0);
     }
+    let texture_id = acquire(w, h, &rgba)?;
+    let novo = db.insert_image_rgba8(w, h, rgba);
     let todos = usuarios(world, antigo, None, atlas);
     for e in &todos {
         aponta(world, *e, texture_id, novo, false);
@@ -84,6 +97,11 @@ pub fn troca_os_pixeis(
 /// O botão Edit in Painter foi carregado em `e`.
 pub fn marca_edicao(world: &World, e: Entity, atlas: &BTreeMap<u32, AssetId>) {
     EDICAO.with(|c| c.set(shown_id(world, e, atlas).map(|id| (e, id))));
+}
+
+/// O artista saiu do Draw: a pintura seguinte, por outro caminho, volta a ser só do objecto.
+pub fn fim_da_edicao() {
+    EDICAO.with(|c| c.set(None));
 }
 
 /// O Painter acabou de gravar a pintura em `e`, em `texture_id`: se `e` veio do botão, os outros objectos que usavam a

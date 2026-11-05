@@ -13,6 +13,19 @@ use super::*;
 pub enum Foto {
     Seletor,
     Trocado,
+    /// GEF 23, a ficha da Sprite: o cartão vazio, em uso, o Advanced aberto, Custom, o recibo do Replace, a folha,
+    /// o Repeated, o pivô no pé, e a imagem no Pixel Art (aberta, a voltar pintada, e desfeita) e no Painter.
+    SpriteVazio,
+    SpriteUso,
+    SpriteAdvanced,
+    SpriteCustom,
+    SpriteRecibo,
+    SpriteRepetida,
+    SpritePivoPe,
+    SpriteNoPixel,
+    SpritePixelVolta,
+    SpritePixelDesfaz,
+    SpriteNoPainter,
     Bloco,
     Bandeira,
     Animada,
@@ -67,6 +80,17 @@ pub enum Foto {
 pub fn foto() -> Option<Foto> {
     match std::env::var("PH2D_GAME_SMOKE_FOTO").ok()?.trim() {
         "seletor" => Some(Foto::Seletor),
+        "sprite_vazio" => Some(Foto::SpriteVazio),
+        "sprite_uso" => Some(Foto::SpriteUso),
+        "sprite_advanced" => Some(Foto::SpriteAdvanced),
+        "sprite_custom" => Some(Foto::SpriteCustom),
+        "sprite_recibo" => Some(Foto::SpriteRecibo),
+        "sprite_repetida" => Some(Foto::SpriteRepetida),
+        "sprite_pivo_pe" => Some(Foto::SpritePivoPe),
+        "sprite_no_pixel" => Some(Foto::SpriteNoPixel),
+        "sprite_pixel_volta" => Some(Foto::SpritePixelVolta),
+        "sprite_pixel_desfaz" => Some(Foto::SpritePixelDesfaz),
+        "sprite_no_painter" => Some(Foto::SpriteNoPainter),
         "trocado" => Some(Foto::Trocado),
         "bloco" => Some(Foto::Bloco),
         "bandeira" => Some(Foto::Bandeira),
@@ -158,6 +182,16 @@ impl Foto {
         matches!(
             self,
             Self::UsoAnimada
+                | Self::SpriteVazio
+                | Self::SpriteUso
+                | Self::SpriteCustom
+                | Self::SpriteRecibo
+                | Self::SpriteRepetida
+                | Self::SpritePivoPe
+                | Self::SpriteNoPixel
+                | Self::SpritePixelVolta
+                | Self::SpritePixelDesfaz
+                | Self::SpriteNoPainter
                 | Self::UsoParada
                 | Self::PlayerParado
                 | Self::RepetidaDaParada
@@ -262,6 +296,50 @@ pub fn plano_da_foto(
         // A mão da sonda é da cena da ordem, não do nível do jogo.
         Foto::OrdemSonda => return None,
         Foto::Seletor => plano.alvo = hills,
+        Foto::SpriteVazio => {
+            let mut t = ph2d_ecs::Transform::default();
+            t.translation = ph2d_core::Vec2::new(ONDE_LARGA[0], ONDE_LARGA[1]);
+            let sprite =
+                ph2d_render::Sprite::atlas(ph2d_render::WHITE_TILE_KEY, [1.0, 1.0], [1.0; 4]);
+            let nome = ph2d_ecs::Name::new("Sprite");
+            let e = sim.world_mut().spawn((t, nome, sprite)).id();
+            ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+            ph2d_ecs::assign_missing_root_order(sim.world_mut());
+            plano.alvo = e.to_bits();
+        }
+        Foto::SpriteUso | Foto::SpriteAdvanced => {}
+        Foto::SpriteCustom => {
+            plano.edicoes = vec![(
+                alta,
+                ph2d_editor_core::ImageUseEdit::Pivot(ph2d_editor_core::SpritePivot::Px([
+                    20.0, -5.0,
+                ])),
+            )];
+        }
+        Foto::SpriteRecibo => {
+            plano.escolhas = vec![(alta, *heroi)];
+            plano.edicoes = vec![(alta, uso(ph2d_editor_core::InspectorImageUse::Still))];
+        }
+        Foto::SpriteRepetida => {
+            plano.edicoes = vec![
+                (baixa, uso(ph2d_editor_core::InspectorImageUse::Repeated)),
+                (baixa, ph2d_editor_core::ImageUseEdit::Width(4.0)),
+            ];
+            plano.alvo = baixa;
+        }
+        Foto::SpritePivoPe => {
+            plano.edicoes = vec![(
+                player,
+                ph2d_editor_core::ImageUseEdit::Pivot(ph2d_editor_core::SpritePivot::Ponto([1, 2])),
+            )];
+            plano.alvo = player;
+        }
+        Foto::SpriteNoPixel | Foto::SpritePixelVolta | Foto::SpritePixelDesfaz => {
+            plano.edicoes = vec![(alta, ph2d_editor_core::ImageUseEdit::EditInPixel)];
+        }
+        Foto::SpriteNoPainter => {
+            plano.edicoes = vec![(alta, ph2d_editor_core::ImageUseEdit::EditInPainter)];
+        }
         Foto::Trocado => {
             plano.escolhas = vec![(hills, *montes), (player, *heroi)];
             plano.alvo = hills;

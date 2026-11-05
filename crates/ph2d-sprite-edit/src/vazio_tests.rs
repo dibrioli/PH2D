@@ -16,8 +16,16 @@ fn a_imagem_pintada_toma_o_lugar_do_vazio() {
         w.get::<ph2d_ecs::Transform>(nova).unwrap().translation,
         t.translation
     );
-    let db = AssetDb::default();
-    let (mut w2, _, a, _, c) = mundo(&db);
+    let db = ph2d_asset::AssetDb::default();
+    let imagem = db.insert_image_rgba8(1, 1, vec![9, 9, 9, 255]);
+    let mut w2 = World::new();
+    let a = w2
+        .spawn((
+            Sprite::atlas(WHITE_TILE_KEY, [1.0, 1.0], [1.0; 4]),
+            SpritePixels(imagem),
+        ))
+        .id();
+    let c = w2.spawn(ph2d_ecs::Transform::default()).id();
     substitui_o_vazio(&mut w2, a, c);
     assert!(
         w2.get_entity(a).is_ok(),

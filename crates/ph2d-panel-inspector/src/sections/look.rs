@@ -37,8 +37,9 @@ pub(crate) fn paint_cores(
             tr("component.field.sprite.6"),
         ],
     );
-    let mut y = super::color_tint::paint_tint_swatch_cell(
-        Rect::new(x, y, w, ROW_H_PX),
+    let [(xa, wa), (xb, wb)] = ph2d_editor_core::panel::cards::corpo::colunas_iguais(x, w);
+    let fim_tint = super::color_tint::paint_tint_swatch_cell(
+        Rect::new(xa, y, wa, ROW_H_PX),
         TextKey::new("component.field.sprite.1"),
         ids::INSP_SPRITE_TINT_SWATCH,
         crate::state_tint::tint_f32_to_u8(info.tint),
@@ -50,14 +51,14 @@ pub(crate) fn paint_cores(
         theme,
         sec,
     );
-    y = ph2d_editor_core::panel::cards::corpo::bar_field(
+    let mut y = ph2d_editor_core::panel::cards::corpo::bar_field(
         scene,
         text_system,
         store,
         hit_index,
         ph2d_editor_core::widget::card_ink::card_body().expect("só num cartão"),
-        x,
-        w,
+        xb,
+        wb,
         y,
         tr("card.insp.opacity"),
         ids::INSP_SPRITE_OPACITY_CHIP,
@@ -67,7 +68,8 @@ pub(crate) fn paint_cores(
             scrub: 1.0,
             default: Some(OPACIDADE_CHEIA),
         },
-    );
+    )
+    .max(fim_tint);
     if com_self {
         y = super::color_tint::paint_tint_swatch_cell(
             Rect::new(x, y, w, ROW_H_PX),
@@ -206,10 +208,7 @@ pub(crate) fn paint_advanced(
     let sec = ph2d_editor_core::property_row::Seccao::medida(
         text_system,
         1,
-        &[
-            tr("card.insp.silhouette"),
-            tr("card.insp.tint_each_corner"),
-        ],
+        &[tr("card.insp.silhouette"), tr("card.insp.tint_each_corner")],
     );
     let silhueta = matches!(
         store.checkbox(ids::INSP_SPRITE_TINT_FILL).map(|(_, v)| v),

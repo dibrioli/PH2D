@@ -12,6 +12,12 @@ pub enum Mao {
     Desce([f32; 2]),
     Move([f32; 2]),
     Sobe,
+    /// O `Tab` que sai do Draw.
+    SaiDoDraw,
+    /// O `Ctrl+Z`.
+    Desfaz,
+    /// Imprime as imagens das duas plataformas: `[sprite-pixel]`.
+    Relata,
 }
 
 /// Quadros até a cena assentar (a seleção, a 1.ª moldura e o rebobinar já correram).
@@ -26,6 +32,24 @@ const CANTO: [f32; 2] = [-13.0 + 8.0 * 16.0 / 9.0, 7.0];
 #[must_use]
 pub fn mao(foto: Foto, quadro: u32) -> Option<Mao> {
     let (de, ate) = match foto {
+        // Um traço na imagem aberta (o centro da Platform High da cena 4), sair do Draw e, na `desfaz`, Ctrl+Z.
+        Foto::SpritePixelVolta | Foto::SpritePixelDesfaz => {
+            if quadro == INICIO + PASSOS + 20 {
+                return Some(Mao::SaiDoDraw);
+            }
+            if quadro == INICIO + PASSOS + 15 || quadro == INICIO + PASSOS + 50 {
+                return Some(Mao::Relata);
+            }
+            if foto == Foto::SpritePixelDesfaz {
+                if quadro == INICIO + PASSOS + 60 {
+                    return Some(Mao::Desfaz);
+                }
+                if quadro == INICIO + PASSOS + 80 {
+                    return Some(Mao::Relata);
+                }
+            }
+            ([8.0, 2.0], [9.0, 2.0])
+        }
         // Um vaivém de 0,2 m sobre o «Face», onde o «Swarm» cai (`ordem_smoke::pose`), um passo por quadro.
         Foto::OrdemSonda => {
             let k = quadro.checked_sub(INICIO)?;

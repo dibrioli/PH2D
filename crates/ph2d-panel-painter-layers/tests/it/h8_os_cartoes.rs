@@ -2,6 +2,7 @@
 //! (`docs/CartoesUI/13_PAINTER_PLANO.md`). Pelo gesto real, nos rects pintados, e o que chega ao barramento é o MESMO do
 //! painel de antes. O universo é o conjunto dos ids destas peças; só as barras saem, porque nos cartões a caixa é o chip.
 
+use super::censo_dos_controlos::em_paralelo;
 use super::h1_os_cartoes::{Mesa, pincel};
 use super::h5_os_cartoes::{na_mesma_linha, sem_sobrepor};
 use ph2d_a11y::NodeId;
@@ -275,21 +276,21 @@ fn e_clique(mesa: &Mesa, id: NodeId) -> bool {
 fn every_click_sends_the_same_action_as_the_old_panel() {
     let u = universo();
     let listas = [p::PAINTER_LINE_TYPE, p::PAINTER_BRUSH_COMPOSITE_ADD_KIND];
-    let mut vistos = 0;
+    let mut fila = Vec::new();
     for (nome, b) in estados() {
         let mesa = Mesa::nova(true, b, false);
         let cliques: Vec<NodeId> = deste(&mesa, &u)
             .into_iter()
             .filter(|id| !listas.contains(id) && e_clique(&mesa, *id))
             .collect();
-        for id in cliques {
-            let velho = Mesa::nova(false, b, false).clica(id);
-            let novo = Mesa::nova(true, b, false).clica(id);
-            assert_eq!(velho, novo, "{nome}: {id:?}");
-            vistos += 1;
-        }
+        fila.extend(cliques.into_iter().map(|id| (nome, b, id)));
     }
-    assert!(vistos >= 120, "viu {vistos} cliques");
+    em_paralelo(&fila, |(nome, b, id)| {
+        let velho = Mesa::nova(false, *b, false).clica(*id);
+        let novo = Mesa::nova(true, *b, false).clica(*id);
+        assert_eq!(velho, novo, "{nome}: {id:?}");
+    });
+    assert!(fila.len() >= 120, "viu {} cliques", fila.len());
 }
 
 /// O chip de uma barra só se escreve no gesto no painel de antes: o valor confere-se contra o pincel, a faixa contra o

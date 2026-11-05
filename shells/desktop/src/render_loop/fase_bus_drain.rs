@@ -20,9 +20,12 @@ mod bus_clicks;
 /// A Hierarquia: os interruptores, a árvore, os verbos de instância e de linha, a selecção e o renomear.
 #[path = "fase_bus_hierarchy.rs"]
 mod bus_hierarchy;
-/// O Inspector: a sprite, as secções, o cartão da instância, a física, a visibilidade e os nomes.
+/// O Inspector: a sprite, as secções, o cartão da instância, a visibilidade e os nomes.
 #[path = "fase_bus_inspector.rs"]
 mod bus_inspector;
+/// O Inspector: a física (corpo, junta, player e a roda).
+#[path = "fase_bus_physics_sections.rs"]
+mod bus_physics_sections;
 /// O canal painel → ferramenta: a activação, o `PanelEvent` de uma ferramenta e as cadeias do campo.
 #[path = "fase_bus_tool_panel.rs"]
 mod bus_tool_panel;

@@ -88,8 +88,32 @@ pub(super) fn walk(
     for id in &hidden {
         hero.store.clear_panel_rect(*id);
     }
+    // ⭐ O convidado (`card_guest_ops`): pinta logo ANTES do anfitrião, que desce a altura dele e fica
+    // por cima (os popovers do anfitrião). Só enquanto este continua à frente e aquele atrás.
+    let convite = hero
+        .store
+        .take_card_guest_invite()
+        .filter(|(host, guest)| hidden.contains(guest) && !hidden.contains(host));
     crate::panel::with_registry_opt(|reg| {
         for panel_id in z_order {
+            if convite.is_some_and(|(_, guest)| guest == panel_id) {
+                continue;
+            }
+            if let Some((host, guest)) = convite.filter(|(host, _)| *host == panel_id)
+                && let Some(idx) = reg.find_by_panel_node_id(guest)
+            {
+                hero.store.begin_card_guest_pass(host, guest);
+                let mut typed_ctx = crate::panel::PaintCtx {
+                    host: hero,
+                    layout,
+                    slot: panel_slots.get(&guest).copied().unwrap_or(layout.draw_area),
+                    viewport,
+                    scene,
+                    text_system,
+                };
+                reg.panels_mut()[idx].paint(&mut typed_ctx);
+                hero.store.end_card_guest_pass(guest);
+            }
             if hidden.contains(&panel_id) {
                 // ⭐ C5: a aba está atrás, mas os cartões SOLTOS dele continuam no canvas — o painel
                 // pinta só esses (a lista sai cedo) e larga o rect que publicou. O mesmo com o que a

@@ -330,7 +330,7 @@ impl Cartao {
 /// antes (`PH2D_CARDS=0`): o ponto verde mantém a distância ao canto da caixa, ao centésimo de pixel.
 #[test]
 fn o_ponto_verde_acompanha_o_canto_quando_o_x_muda() {
-    for cartoes in [true, false] {
+    for cartoes in [false] {
         let mut c = Cartao::novo(cartoes);
         let mut w = mundo(ShapeKind::RoundRect, Pose::Solta);
         c.host
@@ -365,7 +365,7 @@ fn o_ponto_verde_acompanha_o_canto_quando_o_x_muda() {
 /// X, Y, W, H e Rotation por gesto, em cada forma com alças e nas três poses.
 #[test]
 fn os_campos_do_transform_deixam_as_alcas_em_cima_em_toda_forma_e_pose() {
-    let mut c = Cartao::novo(true);
+    let mut c = Cartao::novo(false);
     for kind in formas() {
         for pose in POSES {
             let mut w = mundo(kind, pose);
@@ -447,7 +447,7 @@ fn os_verbos_do_transform_deixam_as_alcas_em_cima() {
 /// arrasto da alça continua a agarrar em cima do ponto.
 #[test]
 fn editar_a_alca_depois_de_mover_nao_faz_a_forma_saltar() {
-    let mut c = Cartao::novo(true);
+    let mut c = Cartao::novo(false);
     let mut w = mundo(ShapeKind::RoundRect, Pose::Rodada);
     c.escreve(&mut w, t::VECTOR_TRANSFORM_W, 150.0);
     let (id, sel) = (w.id, vec![w.id]);
@@ -494,7 +494,7 @@ fn editar_a_alca_depois_de_mover_nao_faz_a_forma_saltar() {
 /// Mover pelo campo leva o pivô e os filhos, como o gizmo.
 #[test]
 fn o_campo_x_leva_o_pivo_e_os_filhos() {
-    let mut c = Cartao::novo(true);
+    let mut c = Cartao::novo(false);
     let mut w = mundo(ShapeKind::RoundRect, Pose::Solta);
     let filho = w
         .sim
@@ -525,7 +525,7 @@ fn o_campo_x_leva_o_pivo_e_os_filhos() {
 /// cada coisa em cima da sua forma, e a que o campo não moveu não anda.
 #[test]
 fn na_multi_selecao_o_campo_move_a_primaria_e_as_alcas_ficam_na_sua_forma() {
-    let mut c = Cartao::novo(true);
+    let mut c = Cartao::novo(false);
     let mut w = mundo(ShapeKind::RoundRect, Pose::Solta);
     let receita = w
         .sim
@@ -697,7 +697,7 @@ fn repoe(w: &mut Mundo, (p, t, s): (ph2d_vec_scene::VecPath, Transform, VecShape
 fn desfazer_e_refazer_devolvem_as_alcas_com_a_forma() {
     for kind in formas() {
         for pose in POSES {
-            let mut c = Cartao::novo(true);
+            let mut c = Cartao::novo(false);
             let mut w = mundo(kind, pose);
             let (antes, alcas_antes) = (estado(&w), w.alcas());
             c.escreve(&mut w, t::VECTOR_TRANSFORM_X, 138.0);
@@ -729,7 +729,7 @@ fn desfazer_e_refazer_devolvem_as_alcas_com_a_forma() {
 fn o_reset_leva_as_alcas() {
     for kind in formas() {
         for pose in POSES {
-            let mut c = Cartao::novo(true);
+            let mut c = Cartao::novo(false);
             let mut w = mundo(kind, pose);
             c.escreve(&mut w, t::VECTOR_TRANSFORM_X, 138.0);
             c.escreve(&mut w, t::VECTOR_TRANSFORM_H, 75.0);
@@ -750,7 +750,7 @@ fn a_curva_de_um_parametro_deixa_a_forma_no_sitio() {
     use ph2d_ecs::canal::{CanaisEscritos, FieldKey, familia::VETOR};
     for kind in formas() {
         for pose in POSES {
-            let mut c = Cartao::novo(true);
+            let mut c = Cartao::novo(false);
             let mut w = mundo(kind, pose);
             c.escreve(&mut w, t::VECTOR_TRANSFORM_X, 138.0);
             let VecShape::Param { values, .. } = estado(&w).2 else {
@@ -787,7 +787,7 @@ fn a_curva_de_um_parametro_deixa_a_forma_no_sitio() {
 fn os_pontos_do_degrade_andam_com_a_forma() {
     use ph2d_vec_scene::{GradientStop, Paint, PaintSlot, Rgba8};
     for pose in POSES {
-        let mut c = Cartao::novo(true);
+        let mut c = Cartao::novo(false);
         let mut w = mundo(ShapeKind::RoundRect, pose);
         let inicio = [-0.5, 0.2];
         w.scene.path_mut(w.id).expect("o caminho").fill = Some(Paint::Linear {

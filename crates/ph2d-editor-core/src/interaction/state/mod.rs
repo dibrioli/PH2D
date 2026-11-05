@@ -45,6 +45,7 @@ pub use slider_curve::{fracao_para_pista, pista_para_fracao};
 pub use slot_ops::{TAB_DRAG_THRESHOLD_PX, TabDragAnchor};
 mod card_ensaio_ops;
 mod card_field_ops;
+mod card_guest_ops;
 mod card_list_ops;
 mod card_loose_ops;
 mod store_census;

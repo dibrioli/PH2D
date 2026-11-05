@@ -175,13 +175,8 @@ fn cliques_interface() -> Vec<NodeId> {
     v
 }
 
-const NUMEROS: [NodeId; 5] = [
-    t::VECTOR_TRANSFORM_X,
-    t::VECTOR_TRANSFORM_Y,
-    t::VECTOR_TRANSFORM_W,
-    t::VECTOR_TRANSFORM_H,
-    p::VECTOR_TRANSFORM_R,
-];
+/// A posição e a rotação são do Transform do Inspector, por cima do cartão Shape.
+const NUMEROS: [NodeId; 2] = [t::VECTOR_TRANSFORM_W, t::VECTOR_TRANSFORM_H];
 
 /// O inventário, derivado do que o corpo de antes regista: cada id tem de estar no store e pintado.
 #[test]
@@ -252,17 +247,10 @@ fn valor_enviado(accoes: &[String], id: NodeId) -> Option<f64> {
     valores_enviados(accoes, id).last().copied()
 }
 
-/// ⭐ **Scrub de cada número**: chega ao barramento pelo id dele, e o Esc devolve-o. A rotação é
-/// relativa: os deltas somam a distância arrastada, e o re-semear não a pode zerar a meio.
-/// *Mutação: tirar o `scrub != Some(id)` do `seed_number_fields` ⇒ a rotação soma a mais.*
+/// ⭐ **Scrub de cada número**: chega ao barramento pelo id dele, e o Esc devolve-o.
 #[test]
 fn scrubbing_each_number_reaches_the_tool_and_escape_gives_it_back() {
-    for id in [
-        t::VECTOR_TRANSFORM_X,
-        t::VECTOR_TRANSFORM_Y,
-        t::VECTOR_TRANSFORM_W,
-        t::VECTOR_TRANSFORM_H,
-    ] {
+    for id in NUMEROS {
         let mut mesa = Mesa::nova(true);
         let antes = mesa.host.store().number_value(id).expect("semeado");
         let ev = mesa.arrasta_a_pega(id, 60.0);
@@ -295,34 +283,6 @@ fn scrubbing_each_number_reaches_the_tool_and_escape_gives_it_back() {
         let voltou = valor_enviado(&accoes, id).unwrap_or_else(|| panic!("Esc: {accoes:?}"));
         assert!((voltou - antes).abs() < 1e-6, "{id:?}: o Esc deu {voltou}");
     }
-}
-
-#[test]
-fn a_rotation_scrub_sends_deltas_that_sum_to_the_distance() {
-    let id = p::VECTOR_TRANSFORM_R;
-    let mut mesa = Mesa::nova(true);
-    let r = mesa.rect(id).expect("pintado");
-    let (x, y) = (r.x + m::ICON_CELL * 0.5, r.y + r.h * 0.5);
-    let mut total = 0.0;
-    let mut ev = mesa.ponteiro(PointerKind::Down, x, y);
-    ev.extend(mesa.ponteiro(PointerKind::Move, x + 10.0, y));
-    for passo in [20.0_f32, 30.0, 40.0] {
-        ev.extend(mesa.ponteiro(PointerKind::Move, x + passo, y));
-        total += valores_enviados(&mesa.aplica(std::mem::take(&mut ev)), id)
-            .iter()
-            .sum::<f64>();
-        // Um quadro entre dois movimentos: é aqui que a semente zerava o campo arrastado.
-        mesa.host.paint::<VectorPanel>(&mut mesa.st, COLUNA);
-    }
-    let no_campo = mesa.host.store().number_value(id).expect("campo");
-    assert!(
-        no_campo > 0.0,
-        "a semente zerou o campo a meio do arrasto: total {total}"
-    );
-    assert!(
-        (total - no_campo).abs() < 1e-6,
-        "soma dos deltas {total} ≠ o que o campo acumulou {no_campo}"
-    );
 }
 
 /// Escrever um número chega pelo mesmo id.
@@ -410,7 +370,7 @@ fn a_card_dragged_out_of_the_column_comes_loose_and_keeps_working() {
         mesa.host.store().is_loose_in(sec, core_ids::VECTOR_PANEL),
         "o cartão não se soltou"
     );
-    let id = t::VECTOR_TRANSFORM_X;
+    let id = t::VECTOR_TRANSFORM_W;
     let r = mesa.rect(id).expect("o campo do solto");
     assert!(r.x < coluna, "o campo devia estar fora da coluna: {r:?}");
     let ev = mesa.arrasta_a_pega(id, 60.0);
@@ -441,13 +401,13 @@ fn the_tabs_live_in_the_list_head_and_switch_the_cards() {
     );
     assert!(mesa.rect(p::VECTOR_ANCHOR_H_START).is_none());
     assert!(
-        mesa.rect(t::VECTOR_TRANSFORM_X).is_some(),
+        mesa.rect(t::VECTOR_TRANSFORM_W).is_some(),
         "Ambas: em Drawing"
     );
     mesa.abre_interface();
     assert!(mesa.rect(p::VECTOR_ANCHOR_H_START).is_some());
     assert!(
-        mesa.rect(t::VECTOR_TRANSFORM_X).is_some(),
+        mesa.rect(t::VECTOR_TRANSFORM_W).is_some(),
         "Ambas: em Interface"
     );
     let accoes = mesa.clica(core_ids::VECTOR_CLOSE);
@@ -684,13 +644,4 @@ fn the_slice_passes_the_compaction_census() {
     mesa.abre_interface();
     super::g5_os_cartoes::sem_acusacao("Interface", || mesa.assenta());
     mesa.abre_drawing();
-    let (a, b) = (
-        mesa.rect(p::VECTOR_TRANSFORM_R).expect("Rotation"),
-        mesa.rect(p::VECTOR_TRANSFORM_RESIZE_BOX)
-            .expect("Resize Box"),
-    );
-    assert!(
-        (a.y - b.y).abs() < 1.0,
-        "Rotation e Resize Box: {a:?} {b:?}"
-    );
 }

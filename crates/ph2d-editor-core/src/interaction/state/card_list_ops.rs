@@ -93,6 +93,8 @@ pub struct CardLists {
     pub(super) resets: Vec<(u64, &'static str)>,
     /// D25b: o «+» de Add component fica só no pé (fora do modo Object).
     pub(super) add_below: bool,
+    /// O painel de trás que o da frente mostra no topo da coluna (`card_guest_ops`).
+    pub(super) guest: super::card_guest_ops::CardGuest,
 }
 
 impl WidgetStore {

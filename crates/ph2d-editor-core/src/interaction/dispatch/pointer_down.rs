@@ -363,7 +363,8 @@ pub(super) fn dispatch_down<'frame>(
             if let Some(r) = store.panel_rect(panel_id)
                 && r.contains(event.x, event.y)
             {
-                store.bump_panel_z(panel_id);
+                // O convidado é do anfitrião: premi-lo não traz a aba de trás à frente.
+                store.bump_panel_z(store.column_owner(panel_id));
                 break;
             }
         }

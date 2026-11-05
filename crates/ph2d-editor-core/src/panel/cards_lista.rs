@@ -44,6 +44,9 @@ pub fn paint_card_list_top(
 ) -> Rect {
     let theme = ctx.host.theme();
     dicas::comeca(panel);
+    // A lista curta do convidado (`card_guest_ops`): sem título nem rolagem, por cima do anfitrião.
+    let curta = ctx.host.store().in_card_guest_pass(panel);
+    let footer = footer.filter(|_| !curta);
     let slot = ctx.slot;
     let area = ctx.host.content_area().filter(|c| c.h > 0.0);
     // D31, espelho: na coluna da esquerda a lista começa depois da régua vertical, que passa a morar
@@ -66,19 +69,44 @@ pub fn paint_card_list_top(
     };
     // D31: e abaixo da régua de cima (a lista flutua sobre a área de desenho, D24).
     let topo = area.map_or(topo, |c| topo.max(c.y));
+    let convidado_h = ctx.host.store().card_guest_h_over(panel);
+    let topo = if convidado_h > 0.0 {
+        topo + convidado_h + m::LIST_MARGIN
+    } else {
+        topo
+    };
     let top_list = topo + m::LIST_MARGIN;
     let preso_h = preso.map_or(0.0, |p| p.h + m::LIST_TOP_GAP);
-    let body_top = top_list + m::LIST_HEAD_H + preso_h;
+    let cabeca = if curta {
+        m::LIST_PAD_BOTTOM
+    } else {
+        m::LIST_HEAD_H
+    };
+    let body_top = top_list + cabeca + preso_h;
     let keys: Vec<NodeId> = cards.iter().map(|c| c.section).collect();
     let store = ctx.host.store_mut();
-    let cw = rolagem::largura_dos_cartoes(store, panel, x, w);
+    // Na lista curta, só o que o convidado declarou; os soltos dos outros cartões continuam dele.
+    let da_lista: Vec<NodeId> = keys
+        .iter()
+        .copied()
+        .filter(|k| !curta || store.card_guest_only().contains(k))
+        .collect();
+    let cw = if curta {
+        w - m::LIST_PAD_X * 2.0
+    } else {
+        rolagem::largura_dos_cartoes(store, panel, x, w)
+    };
     // A rolagem (a lista que passa da janela): a origem dos cartões sobe o que rolou.
-    let origem = body_top - store.panel_scroll(panel).max(0.0);
+    let origem = if curta {
+        body_top
+    } else {
+        body_top - store.panel_scroll(panel).max(0.0)
+    };
     for k in &keys {
         store.mark_card_section(*k);
     }
     // A ordem: a das secções (`sections.txt`), sobre a ordem natural do painel.
-    let mut ordem = crate::widget::section_plan::ordem(&keys, store);
+    let mut ordem = crate::widget::section_plan::ordem(&da_lista, store);
     let drop = store.take_card_drop(panel, &keys);
     let drag = store
         .card_drag()
@@ -94,7 +122,7 @@ pub fn paint_card_list_top(
         && d.loose
         && era_solto(store, d.section)
     {
-        let cabe = na_lista(d.at) && keys.contains(&store.loose_section(d.section));
+        let cabe = na_lista(d.at) && da_lista.contains(&store.loose_section(d.section));
         reentra = solto::arrasta(store, d, cabe, canvas);
     }
     let drop = match drop {
@@ -105,7 +133,7 @@ pub fn paint_card_list_top(
         outra => outra,
     };
     let drag = drag.filter(|d| !d.loose);
-    if let Some(d) = drag.filter(|d| na_lista(d.at)) {
+    if let Some(d) = drag.filter(|d| !curta && na_lista(d.at)) {
         rolagem::na_borda(store, panel, d.at.1, body_top);
     }
     let todos: Vec<NodeId> = keys
@@ -194,7 +222,10 @@ pub fn paint_card_list_top(
     solto::larga(store, panel, drop, solta);
     if let Some(o) = nova_ordem {
         let atual = store.section_order().to_vec();
-        let mut todas: Vec<NodeId> = atual.into_iter().filter(|k| !keys.contains(k)).collect();
+        let mut todas: Vec<NodeId> = atual
+            .into_iter()
+            .filter(|k| !da_lista.contains(k))
+            .collect();
         todas.extend(o);
         store.set_section_order(todas);
     }
@@ -206,69 +237,83 @@ pub fn paint_card_list_top(
         0.0
     };
     let content_h = placed.content_h + soltas_h + pe;
-    let natural = m::LIST_HEAD_H + preso_h + content_h + m::LIST_PAD_BOTTOM;
+    let natural = cabeca + preso_h + content_h + m::LIST_PAD_BOTTOM;
     let tecto = slot.y + slot.h - top_list - m::LIST_MARGIN;
     let list_h = natural.min(tecto);
-    let lista = Rect::new(x, top_list, w, list_h.max(m::LIST_HEAD_H));
+    let lista = Rect::new(x, top_list, w, list_h.max(cabeca));
     // ⭐ D24: a lista FLUTUA — publica o rect DELA (o clique abaixo vai ao canvas) sem reservar a
     // coluna; a costura de largura passa para a beirada dela (`DockSides::with_floating`).
     ctx.host.store_mut().set_floating_panel_rect(panel, lista);
-    shadow(
-        ctx.scene,
-        lista,
-        m::LIST_RADIUS,
-        resolve(ColorToken::KanbanListShadow, theme),
-        m::LIST_SHADOW_FAR,
-    );
-    shadow(
-        ctx.scene,
-        lista,
-        m::LIST_RADIUS,
-        resolve(ColorToken::KanbanShadowNear, theme),
-        m::LIST_SHADOW_NEAR,
-    );
-    fill_rounded_rect(
-        ctx.scene,
-        lista,
-        m::LIST_RADIUS,
-        resolve(ColorToken::KanbanList, theme),
-    );
-    let nome = title.to_uppercase();
-    let vao = w
-        - m::LIST_PAD_X * 2.0
-        - m::HEAD_ICON_BOX
-            * (1.0
-                + f32::from(u8::from(
-                    footer.is_some_and(|f| f.at_top) || preso.is_some_and(|p| p.add.is_some()),
-                ))
-                + f32::from(u8::from(ctx.host.store().card_list_close(panel).is_some())));
-    let (corpo, tracking) = super::banda::titulo_que_cabe(ctx.text_system, &nome, vao);
-    crate::paint::paint_text_title_elided_tracked(
-        ctx.text_system,
-        ctx.scene,
-        &nome,
-        [
-            x + m::LIST_PAD_X + m::LIST_HEAD_PAD_X,
-            top_list + crate::paint::folga_do_texto(m::LIST_HEAD_H, corpo),
-        ],
-        corpo,
-        vao,
-        resolve(ColorToken::KanbanListFg, theme),
-        tracking,
-    );
-    // ⭐ D21: o ícone de menu do painel (Reset Positions · Reset Colors · Reset All).
-    let do_cabecalho = footer.or(preso.and_then(|p| p.add).map(|(id, text)| Footer {
-        id,
-        text,
-        at_top: true,
-    }));
-    menu::pinta(
-        ctx,
-        panel,
-        theme,
-        Rect::new(x, top_list, w, m::LIST_HEAD_H),
-        do_cabecalho,
-    );
+    if curta {
+        // Sem cartão na lista, ela não ocupa nada: nem fundo, nem vão, nem clique.
+        let vazia = placed.ys.is_empty();
+        let h = if vazia { 0.0 } else { lista.h };
+        ctx.host.store_mut().set_card_guest_h(h);
+        if vazia {
+            ctx.host.store_mut().drop_card_guest_rect(panel);
+        }
+    }
+    let vazia_curta = curta && placed.ys.is_empty();
+    if !vazia_curta {
+        shadow(
+            ctx.scene,
+            lista,
+            m::LIST_RADIUS,
+            resolve(ColorToken::KanbanListShadow, theme),
+            m::LIST_SHADOW_FAR,
+        );
+        shadow(
+            ctx.scene,
+            lista,
+            m::LIST_RADIUS,
+            resolve(ColorToken::KanbanShadowNear, theme),
+            m::LIST_SHADOW_NEAR,
+        );
+        fill_rounded_rect(
+            ctx.scene,
+            lista,
+            m::LIST_RADIUS,
+            resolve(ColorToken::KanbanList, theme),
+        );
+    }
+    if !curta {
+        let nome = title.to_uppercase();
+        let vao = w
+            - m::LIST_PAD_X * 2.0
+            - m::HEAD_ICON_BOX
+                * (1.0
+                    + f32::from(u8::from(
+                        footer.is_some_and(|f| f.at_top) || preso.is_some_and(|p| p.add.is_some()),
+                    ))
+                    + f32::from(u8::from(ctx.host.store().card_list_close(panel).is_some())));
+        let (corpo, tracking) = super::banda::titulo_que_cabe(ctx.text_system, &nome, vao);
+        crate::paint::paint_text_title_elided_tracked(
+            ctx.text_system,
+            ctx.scene,
+            &nome,
+            [
+                x + m::LIST_PAD_X + m::LIST_HEAD_PAD_X,
+                top_list + crate::paint::folga_do_texto(m::LIST_HEAD_H, corpo),
+            ],
+            corpo,
+            vao,
+            resolve(ColorToken::KanbanListFg, theme),
+            tracking,
+        );
+        // ⭐ D21: o ícone de menu do painel (Reset Positions · Reset Colors · Reset All).
+        let do_cabecalho = footer.or(preso.and_then(|p| p.add).map(|(id, text)| Footer {
+            id,
+            text,
+            at_top: true,
+        }));
+        menu::pinta(
+            ctx,
+            panel,
+            theme,
+            Rect::new(x, top_list, w, m::LIST_HEAD_H),
+            do_cabecalho,
+        );
+    }
     if let Some(p) = preso {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
         let ink = CardInk::of_list(theme);
@@ -286,14 +331,16 @@ pub fn paint_card_list_top(
     let mut voltam = Vec::new();
     let mut alturas: Vec<Item<NodeId>> = Vec::with_capacity(cards.len());
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-    let area = crate::widget::scroll_area::open_with(
-        ctx.scene,
-        hit_index,
-        store,
-        panel,
-        scroll_bar_of(panel),
-        clip,
-    );
+    let area = (!curta).then(|| {
+        crate::widget::scroll_area::open_with(
+            ctx.scene,
+            hit_index,
+            store,
+            panel,
+            scroll_bar_of(panel),
+            clip,
+        )
+    });
     if let Some((sy, sh)) = placed.slot {
         let vao = Rect::new(cx, origem + sy, cw, sh);
         fill_rounded_rect(
@@ -351,17 +398,21 @@ pub fn paint_card_list_top(
     // As notas sem cartão (criadas sobre a lista, fora de um cartão) e o fantasma da nota
     // arrastada: sem isto a lista não se declara anfitriã e o botão direito não oferece «Create Note».
     let topo_soltas = origem + placed.content_h;
-    let fim_soltas = crate::widget::showcase::notes_chrome::pinta_as_que_sobram(
-        ctx.scene,
-        ctx.text_system,
-        hit_index,
-        store,
-        panel,
-        theme,
-        cx,
-        cw,
-        topo_soltas,
-    );
+    let fim_soltas = if curta {
+        topo_soltas
+    } else {
+        crate::widget::showcase::notes_chrome::pinta_as_que_sobram(
+            ctx.scene,
+            ctx.text_system,
+            hit_index,
+            store,
+            panel,
+            theme,
+            cx,
+            cw,
+            topo_soltas,
+        )
+    };
     let notas_h = (fim_soltas - topo_soltas).max(0.0);
     if let Some(f) = footer {
         let fr = Rect::new(cx, topo_soltas + soltas_h, cw, m::LIST_FOOTER_H);
@@ -394,14 +445,16 @@ pub fn paint_card_list_top(
             tinta,
         );
     }
-    let rolagem = crate::widget::scroll_area::close_parts(
-        area,
-        ctx.scene,
-        hit_index,
-        store,
-        rolagem::conteudo(placed.content_h + notas_h + pe, natural <= tecto),
-        theme,
-    );
+    let rolagem = area.map(|area| {
+        crate::widget::scroll_area::close_parts(
+            area,
+            ctx.scene,
+            hit_index,
+            store,
+            rolagem::conteudo(placed.content_h + notas_h + pe, natural <= tecto),
+            theme,
+        )
+    });
 
     // ── O que voa: por cima de tudo, inclinado, sem registar cliques ──
     if let Some(f) = voo
@@ -452,7 +505,9 @@ pub fn paint_card_list_top(
     }
     solto::pinta_os_soltos(ctx, panel, theme, canvas, cards, pinned);
     super::linhas_extra::voo::pinta_os_voos(ctx.scene);
-    rolagem.publish(ctx.host.store_mut());
+    if let Some(rolagem) = rolagem {
+        rolagem.publish(ctx.host.store_mut());
+    }
     let list = ctx.host.store_mut().card_list_mut(panel);
     list.items = alturas;
     list.loose_notes_h = notas_h;

@@ -123,6 +123,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.field.drag_hint" => "Drag the icon to change · Shift ×10 · Alt fine",
         "card.field.drag_hint_named" => "{label} — {hint}",
         "card.insp.transform" => "Transform",
+        "card.vector.shape" => "Shape",
         "card.insp.position_px" => "Position (px)",
         "card.insp.position_m" => "Position (m)",
         "card.insp.rotation_deg" => "Rotation (\u{b0})",

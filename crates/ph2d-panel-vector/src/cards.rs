@@ -9,7 +9,6 @@ use crate::paint_sections::BodyCtx;
 use crate::{ids, state};
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
-use ph2d_editor_core::IconId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::panel::TextKey;
@@ -61,12 +60,7 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
     crate::cards_interface::prepare(store);
     crate::cards_estados::prepare(store);
     let p = passo_do_comprimento();
-    for id in [
-        vids::VECTOR_TRANSFORM_X,
-        vids::VECTOR_TRANSFORM_Y,
-        vids::VECTOR_TRANSFORM_W,
-        vids::VECTOR_TRANSFORM_H,
-    ] {
+    for id in [vids::VECTOR_TRANSFORM_W, vids::VECTOR_TRANSFORM_H] {
         let spec = CardFieldSpec {
             step: p,
             scrub: p,
@@ -74,15 +68,6 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
         };
         store.mark_card_field(id, spec);
     }
-    // A rotação é relativa: não há valor de fábrica a que voltar.
-    store.mark_card_field(
-        ids::VECTOR_TRANSFORM_R,
-        CardFieldSpec {
-            step: 1.0,
-            scrub: 1.0,
-            default: None,
-        },
-    );
 }
 
 /// ⭐ Os cartões do painel, pela ordem natural.
@@ -126,7 +111,7 @@ type CorpoNativo = fn(&mut CardCtx<'_>, f32) -> f32;
 
 fn nativo(id: NodeId) -> Option<CorpoNativo> {
     let f: CorpoNativo = if id == vids::VECTOR_SECTION_TRANSFORM {
-        transform
+        shape
     } else if id == vids::VECTOR_SECTION_SNAP {
         snap_card
     } else if id == ids::VECTOR_SECTION_ANCHORS {
@@ -236,22 +221,15 @@ fn campo<'a>(id: NodeId, letra: &'a str) -> Widget<'a> {
     }
 }
 
-fn transform(c: &mut CardCtx<'_>, y: f32) -> f32 {
-    const POS: &[NodeId] = &[vids::VECTOR_TRANSFORM_X, vids::VECTOR_TRANSFORM_Y];
+/// ⭐ O cartão **Shape**: o que só a forma tem. A pose é o Transform do Inspector, por cima deste cartão
+/// (`WidgetStore::invite_card_guest`); `VECTOR_TRANSFORM_X/Y/R` só se pintam com `PH2D_CARDS=0`.
+fn shape(c: &mut CardCtx<'_>, y: f32) -> f32 {
     const TAM: &[NodeId] = &[vids::VECTOR_TRANSFORM_W, vids::VECTOR_TRANSFORM_H];
-    const ROT: &[NodeId] = &[ids::VECTOR_TRANSFORM_R];
-    let (posicao, tamanho) = if comprimento_em_px() {
-        (tr("card.insp.position_px"), tr("card.vector.size_px"))
+    let tamanho = if comprimento_em_px() {
+        tr("card.vector.size_px")
     } else {
-        (tr("card.insp.position_m"), tr("card.vector.size_m"))
+        tr("card.vector.size_m")
     };
-    let y = c.row(
-        &[
-            Cell::new(campo(POS[0], tr("card.glyph.x"))).label(posicao),
-            Cell::new(campo(POS[1], tr("card.glyph.y"))).key(POS),
-        ],
-        y,
-    );
     let y = c.row(
         &[
             Cell::new(campo(TAM[0], tr("card.vector.glyph.w"))).label(tamanho),
@@ -259,24 +237,16 @@ fn transform(c: &mut CardCtx<'_>, y: f32) -> f32 {
         ],
         y,
     );
-    let rotacao = Cell::new(Widget::Field {
-        id: ROT[0],
-        glyph: Glyph::Icon(IconId::CardAngle),
-    })
-    .label(tr("card.insp.rotation_deg"))
-    .key(ROT);
-    // A caixa é a 2.ª coluna do campo (05 §4).
     let y = match state::resize_box() {
-        Some(on) => c.pair(
-            rotacao,
-            crate::cards_tinta::caixa(
+        Some(on) => c.row(
+            &[crate::cards_tinta::caixa(
                 crate::ids::VECTOR_TRANSFORM_RESIZE_BOX,
                 Rotulo::vista(TextKey::new("panel.vector.transform.resize_box")),
                 on,
-            ),
+            )],
             y,
         ),
-        None => c.row(&[rotacao], y),
+        None => y,
     };
     let centro = if state::pivot_edit_armed() {
         tr("panel.vector.transform.click_canvas_to_set_center")

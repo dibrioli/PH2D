@@ -32,7 +32,12 @@ fn titulo_de(id: NodeId) -> Option<&'static str> {
     } else if id == t::VECTOR_SECTION_TRANSFORM {
         (
             state::current_transform().is_some(),
-            "panel.vector.section.transform",
+            // Com cartões a pose é o Transform do Inspector, por cima deste (`cards::shape`).
+            if !crate::cards::cards_on() {
+                "panel.vector.section.transform"
+            } else {
+                "card.vector.shape"
+            },
         )
     } else if id == p::VECTOR_SECTION_ANCHORS {
         (

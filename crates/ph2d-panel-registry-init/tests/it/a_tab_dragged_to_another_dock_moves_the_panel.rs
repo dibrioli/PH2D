@@ -264,9 +264,11 @@ fn dropping_outside_every_legal_target_changes_nothing() {
     drag_tab(&mut h, tabs[i], (da.x + da.w * 0.5, da.y + da.h * 0.5));
     paint(&mut h, 2);
 
+    // A altura é a mola da lista flutuante, que anda sozinha; mover é mudar de sítio ou de coluna.
+    let depois = rect_of(&h, "audio_mixer").expect("o mixer continua a pintar");
     assert_eq!(
-        rect_of(&h, "audio_mixer"),
-        Some(before),
+        (depois.x, depois.y, depois.w),
+        (before.x, before.y, before.w),
         "largar sobre o desenho moveu o painel"
     );
 }

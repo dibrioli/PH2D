@@ -316,7 +316,7 @@ fn the_physics_body_card_puts_two_fields_per_row() {
         &h,
         i::INSP_PHYS_LINEAR_DAMPING,
         i::INSP_PHYS_ANGULAR_DAMPING,
-        ["D", "D"],
+        ["D", "A"],
         "Damping",
     );
     let (fx, fy) = (

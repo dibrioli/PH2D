@@ -94,9 +94,7 @@ fn the_two_ugly_derived_titles_are_named_here() {
             "o título derivado {pretty:?} devia estar na paleta"
         );
     }
-    let ugly = "Bgremoval";
-    assert!(
-        labels.iter().any(|l| l == ugly),
-        "o título {ugly:?} é o que a derivação dá hoje; se ele mudou, foi de propósito"
-    );
+    // A aba passou a ser uma chave (`c19b4fcb80`): o título feio morreu e o de hoje é o nome do painel.
+    assert!(!labels.iter().any(|l| l == "Bgremoval"));
+    assert!(labels.iter().any(|l| l == "Background Removal"));
 }

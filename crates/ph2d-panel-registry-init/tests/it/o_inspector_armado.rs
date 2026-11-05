@@ -955,7 +955,7 @@ fn arma_o_top20() {
         counter_name: "Score".to_string(),
         counter_start: 0.0,
         counter_keep: false,
-        counter_value: 42,
+        counter_value: 41,
     }));
     insp::set_current_inspector_path_follow(Some(InspectorPathFollowInfo {
         entity_bits: BITS,

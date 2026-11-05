@@ -70,6 +70,12 @@ fn the_menu_bar_the_tool_bar_and_the_tabs_all_belong_to_the_frame() {
     let l = h.last_layout.expect("o quadro publicou o layout");
 
     let tab_bar = l.slot_tabs[Slot::RightTop as usize];
+    // A coluna flutuante é a lista dela: por baixo de uma lista curta é desenho (CartoesUI, Hierarchy em cartões).
+    let esquerda = if l.docks.float_left {
+        l.float_lists[ph2d_editor_core::screens::dock_seam::DockSide::Left as usize]
+    } else {
+        l.hierarchy
+    };
     assert!(
         tab_bar.h > 0.0,
         "a fixtura não abriu duas abas — o gate mediria uma superfície que não está no ecrã"
@@ -81,7 +87,7 @@ fn the_menu_bar_the_tool_bar_and_the_tabs_all_belong_to_the_frame() {
         ("a fila de ferramentas", l.tool_bar),
         ("a fila de abas", tab_bar),
         ("a coluna da direita", l.inspector),
-        ("a coluna da esquerda", l.hierarchy),
+        ("a coluna da esquerda", esquerda),
     ] {
         if r.w <= 0.0 || r.h <= 0.0 {
             continue; // esta banda não existe neste quadro

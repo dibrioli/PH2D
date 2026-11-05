@@ -107,7 +107,14 @@ fn clica_tudo(
         "o seletor de modo não foi pintado na fila de cima"
     );
     let bars = hero.store.tool_bars().cloned().expect("publicadas");
-    for (b, r) in placed(&bars, hero.last_content, false, false) {
+    for (b, r) in placed(
+            &bars,
+            hero.last_layout
+                .expect("houve um quadro")
+                .clear_of_left_list(hero.last_content),
+            false,
+            false,
+        ) {
         if hero.store.is_picker_swatch(b.id) {
             let _ = clica(&mut hero, r);
             assert_eq!(

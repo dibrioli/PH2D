@@ -158,7 +158,14 @@ fn the_painter_column_is_painted_by_the_vector_door() {
     for wet in MEIOS {
         let (hero, _) = pintor(wet);
         let bars = hero.store.tool_bars().cloned().expect("publicada");
-        let postos = placed(&bars, hero.last_content, false, false);
+        let postos = placed(
+            &bars,
+            hero.last_layout
+                .expect("houve um quadro")
+                .clear_of_left_list(hero.last_content),
+            false,
+            false,
+        );
         assert_eq!(postos.len(), na_coluna_esperada(wet).len(), "wet {wet}");
         a_porta_do_vetor(&hero, postos);
     }
@@ -189,7 +196,14 @@ fn cada_botao_responde(wet: bool) {
     let (mut hero, mut ts) = pintor(wet);
     let mut medidos = 0;
     let bars = hero.store.tool_bars().cloned().expect("publicada");
-    for (b, r) in placed(&bars, hero.last_content, false, false) {
+    for (b, r) in placed(
+            &bars,
+            hero.last_layout
+                .expect("houve um quadro")
+                .clear_of_left_list(hero.last_content),
+            false,
+            false,
+        ) {
         let _ = hero.bus.drain().count();
         let ev = clica(&mut hero, r);
         assert!(
@@ -259,7 +273,14 @@ fn cada_botao_responde(wet: bool) {
 fn a_flyout_item_answers_and_leaving_the_painter_clears_the_column() {
     let (mut hero, mut ts) = pintor(false);
     let bars = hero.store.tool_bars().cloned().expect("publicada");
-    let (_, shapes) = placed(&bars, hero.last_content, false, false)
+    let (_, shapes) = placed(
+            &bars,
+            hero.last_layout
+                .expect("houve um quadro")
+                .clear_of_left_list(hero.last_content),
+            false,
+            false,
+        )
         .into_iter()
         .find(|(b, _)| b.id == ids::PAINTER_RAIL_SHAPES)
         .expect("Shapes na coluna");
@@ -268,7 +289,14 @@ fn a_flyout_item_answers_and_leaving_the_painter_clears_the_column() {
     }
     pinta(&mut hero, &mut ts);
     let bars = hero.store.tool_bars().cloned().expect("publicada");
-    let (b, r) = placed(&bars, hero.last_content, false, false)
+    let (b, r) = placed(
+            &bars,
+            hero.last_layout
+                .expect("houve um quadro")
+                .clear_of_left_list(hero.last_content),
+            false,
+            false,
+        )
         .into_iter()
         .find(|(b, _)| b.id == ids::PAINTER_RAIL_SHAPE_LINE)
         .expect("o flyout das formas pinta a Linha");

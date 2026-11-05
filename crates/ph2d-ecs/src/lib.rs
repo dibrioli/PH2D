@@ -150,6 +150,7 @@ pub mod sorting;
 /// **§11 Animation** — tags sobre a grelha que a sprite já tem, e o tocador. Módulo irmão.
 pub mod sprite_anim;
 pub mod sprite_anim_frames;
+mod sprite_anim_markers;
 /// O tempo de uma `AnimationTag` (ritmo, tempos próprios por passo) — `impl` irmão.
 mod sprite_anim_timing;
 /// **ADR-0164 F1 passo 6 / ADR-0166** — os três grupos que saíram do `Sprite`, cada um um
@@ -204,6 +205,7 @@ pub use camera_2d::{
 pub use camera_shake::{
     CameraShake, CameraShakeRuntime, SHAKE_EMITTERS_MAX, ShakeEmitter, ShakeSource,
 };
+pub use ph2d_sound_set::{PickStrategy, SoundEntry, SoundSet};
 pub mod vec_path_ref;
 pub mod vec_shape;
 pub mod visibility;
@@ -292,6 +294,7 @@ pub use sprite_anim_frames::{
     ANIM_FRAMES_MAX, SpriteAnimCursor, SpriteAnimFrames, TagFrames, advance_frames, entry_cell,
     fps_of_ms, ms_of_fps, rename_tag, tag_cells,
 };
+pub use sprite_anim_markers::{FrameMarker, SpriteAnimMarkers, advance_frames_marked};
 pub use sprite_corner_tint::{BOTTOM_LEFT, BOTTOM_RIGHT, SpriteCornerTint, TOP_LEFT, TOP_RIGHT};
 pub use sprite_grid::SpriteGrid;
 pub use sprite_pixels::SpritePixels;

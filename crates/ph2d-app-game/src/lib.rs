@@ -10,6 +10,7 @@ pub mod object_add;
 pub mod ordem_smoke;
 pub mod personagem;
 pub mod sessao;
+pub mod sfx_smoke;
 pub mod smoke;
 pub mod smoke_mao;
 pub mod smoke_moedas;

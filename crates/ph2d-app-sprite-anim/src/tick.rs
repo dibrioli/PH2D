@@ -98,8 +98,10 @@ pub fn tick_sprite_animations(
         &mut ph2d_ecs::SpriteGrid,
         Option<&ph2d_ecs::SpriteAnimFrames>,
         Option<&mut ph2d_ecs::SpriteAnimCursor>,
+        Option<&ph2d_ecs::SpriteAnimMarkers>,
     )>();
-    for (entity, mut animator, tags, mut grid, lists, cursor) in q.iter_mut(world) {
+    let mut gritos = Vec::new();
+    for (entity, mut animator, tags, mut grid, lists, cursor, markers) in q.iter_mut(world) {
         // ⚠️ **UMA FOLHA EM PINTURA TOCA, mesmo com o transporte parado** (Enio, 2026-08-23:
         // *«o preview não está animado»*).
         //
@@ -158,7 +160,8 @@ pub fn tick_sprite_animations(
         // ⭐ A lista de quadros (plano GameEngineFuncional 07): sem ela, o intervalo de sempre.
         let list = lists.and_then(|l| l.get(&tag.name));
         let mut step = cursor.as_ref().map_or(0, |c| c.step);
-        let outcome = ph2d_ecs::advance_frames(
+        gritos.clear();
+        let outcome = ph2d_ecs::advance_frames_marked(
             &mut run,
             tag,
             list,
@@ -166,6 +169,8 @@ pub fn tick_sprite_animations(
             &mut step,
             cells,
             dt * u64::from(ticks),
+            markers.filter(|_| !preview_only),
+            &mut gritos,
         );
         if let Some(mut c) = cursor
             && c.step != step
@@ -204,6 +209,11 @@ pub fn tick_sprite_animations(
         // acontecer coisas na cena. Publicar dali faria um som tocar porque alguém pegou no
         // pincel.
         if !preview_only {
+            out.extend(gritos.drain(..).map(|name| AnimSignal {
+                entity,
+                name,
+                cycles: 1,
+            }));
             if outcome.looped > 0 && !tag.signal_on_loop.is_empty() {
                 out.push(AnimSignal {
                     entity,

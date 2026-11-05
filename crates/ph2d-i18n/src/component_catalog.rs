@@ -622,6 +622,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.sprite_pixels.name" => "Sprite Pixels",
         "component.sprite_anim_cursor.name" => "Animation Frame Step",
         "component.sprite_anim_frames.name" => "Animation Frames",
+        "component.sprite_anim_markers.name" => "Frame Markers",
+        "component.sound_set.name" => "Sound List",
         "component.image_use_memory.name" => "Image Use Memory",
         "component.image_region.name" => "Image Region",
         "component.anim_rules.name" => "Animation Rules",

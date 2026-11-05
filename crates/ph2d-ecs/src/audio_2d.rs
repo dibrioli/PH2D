@@ -168,7 +168,7 @@ pub struct AudioSource2D {
     /// ⚠️ **Aqui e não no ficheiro:** o mesmo `.wav` serve de passo (um disparo) e de motor a
     /// trabalhar (em ciclo), e quem sabe qual dos dois é este objecto é a CENA.
     pub looping: bool,
-    /// Começa a tocar quando a cena abre.
+    /// Começa a tocar quando o Play começa, e nunca enquanto se edita.
     ///
     /// ⛔ **Nasce DESLIGADO** — ver o doc do módulo.
     pub autoplay: bool,

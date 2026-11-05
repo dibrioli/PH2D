@@ -24,6 +24,8 @@ ph2d-morph-machine = { path = "../ph2d-morph-machine" }
 # `Tweens` guarda-a, e o tipo tem de estar aqui porque o registo de componentes vive nesta
 # crate. Ela é uma FOLHA (`serde` + `ph2d-anim`), com gate a lê-lo.
 ph2d-tween = { path = "../ph2d-tween" }
+# Os sons de um objeto (SFX Lab W1): nomes do projeto e o sorteio, em folha sem FFT. O registo mora aqui.
+ph2d-sound-set = { path = "../ph2d-sound-set", features = ["component"] }
 # O id de um item de lista (F30 §A1).
 ph2d-item-id = { path = "../ph2d-item-id" }
 # ⭐ A lei do CANVAS do HUD (TOP-20 #20), medida contra o Godot corrido sem interface. Mesmo

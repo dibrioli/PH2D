@@ -493,11 +493,26 @@ pub(crate) fn advance_span(
     hi: u32,
     dt_ticks: u64,
 ) -> AnimOutcome {
+    advance_span_visiting(animator, tag, frame, lo, hi, dt_ticks, &mut |_| {})
+}
+
+/// [`advance_span`] dizendo cada passo em que entra (`frame - lo`): é o que um marcador em quadro lê. Um tique
+/// atrasado atravessa vários passos, e cada um é dito.
+pub(crate) fn advance_span_visiting(
+    animator: &mut SpriteAnimator,
+    tag: &AnimationTag,
+    frame: &mut u32,
+    lo: u32,
+    hi: u32,
+    dt_ticks: u64,
+    visit: &mut dyn FnMut(u32),
+) -> AnimOutcome {
     let mut out = AnimOutcome::default();
     // Um `frame` fora do intervalo é o estado normal ao trocar de tag: entra pela ponta certa.
     if *frame < lo || *frame > hi {
         *frame = if animator.pingpong_reverse { hi } else { lo };
         out.frame_changed = true;
+        visit(*frame - lo);
     }
     if !animator.playing || animator.speed_q16 == 0 || dt_ticks == 0 {
         return out;
@@ -522,7 +537,11 @@ pub(crate) fn advance_span(
             break;
         }
         animator.elapsed_ticks -= step;
+        let antes = *frame;
         step_one(animator, tag, frame, lo, hi, speed < 0, &mut out);
+        if *frame != antes {
+            visit(*frame - lo);
+        }
         if !animator.playing {
             animator.elapsed_ticks = 0;
             break;

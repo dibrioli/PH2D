@@ -565,6 +565,8 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // campos, pelo postcard posicional: ficheiro antigo não tem o blob e toca o intervalo de sempre.
     reg.register_default::<crate::SpriteAnimFrames>("ph2d::ecs::SpriteAnimFrames");
     reg.register_default::<crate::SpriteAnimCursor>("ph2d::ecs::SpriteAnimCursor");
+    // Os sinais em quadro (SFX Lab W1). Irmão pelo mesmo motivo.
+    reg.register_default::<crate::SpriteAnimMarkers>("ph2d::ecs::SpriteAnimMarkers");
     // O que cada uso da imagem guarda enquanto o objecto usa outro (plano GEF 15, dono 27/10): sem o registo o
     // Desfazer e o projecto reaberto perdiam a configuração do uso que o artista deixou.
     reg.register_default::<crate::ImageUseMemory>("ph2d::ecs::ImageUseMemory");
@@ -675,6 +677,9 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     // ADR-0196: o objecto Pixel Sprite — a chave do documento de pixels (blob próprio no projecto).
     reg.register_default::<crate::PixelSprite>("ph2d::ecs::PixelSprite");
     reg.register_default::<crate::AudioSource2D>("ph2d::ecs::AudioSource2D");
+    // Os sons de um objeto (SFX Lab W1). Irmão e não campo, pelo postcard posicional: arquivo antigo não tem
+    // o blob e toca o `sound` de sempre.
+    reg.register_default::<crate::SoundSet>("ph2d::ecs::SoundSet");
     // ⚠️ **Um MARCADOR ainda tem de se registar**: a presença É o valor, e sem ele um Ctrl+Z ou um
     // reabrir devolveriam a cena SEM orelhas — que é a única maneira de tudo ficar mudo de uma vez.
     reg.register_default::<crate::AudioListener2D>("ph2d::ecs::AudioListener2D");

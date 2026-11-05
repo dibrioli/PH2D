@@ -22,6 +22,7 @@ use ph2d_physics_ecs::{
 use std::collections::BTreeSet;
 
 pub(crate) const FRAMES: &str = "ph2d::ecs::SpriteAnimFrames";
+pub(crate) const MARKERS: &str = "ph2d::ecs::SpriteAnimMarkers";
 pub(crate) const CURSOR: &str = "ph2d::ecs::SpriteAnimCursor";
 const CHARACTER: &str = "ph2d::physics::CharacterAnimations";
 const RULES: &str = "ph2d::physics::AnimRules";

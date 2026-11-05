@@ -85,4 +85,6 @@ pub const DESCS: &[ComponentDesc] = &[
         SOURCE_FIELDS,
     )
     .coded("audio_source_2d"),
+    // Os sons de um objeto (SFX Lab W1): o cartão do Audio Source 2D escreve-os.
+    D::machinery("ph2d::ecs::SoundSet", "component.sound_set.name", C::Audio),
 ];

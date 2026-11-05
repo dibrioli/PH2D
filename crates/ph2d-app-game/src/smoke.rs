@@ -75,6 +75,7 @@ pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[
         max_level: CENAS,
     },
     crate::ordem_smoke::ROUTER,
+    crate::sfx_smoke::ROUTER,
 ];
 
 #[must_use]
@@ -89,7 +90,10 @@ pub fn armed_level_in(get: impl Fn(&str) -> Option<String>) -> Option<u32> {
 #[must_use]
 pub fn armed_level() -> Option<u32> {
     static LEVEL: OnceLock<Option<u32>> = OnceLock::new();
-    *LEVEL.get_or_init(|| armed_level_in(|k| std::env::var(k).ok()))
+    *LEVEL.get_or_init(|| {
+        armed_level_in(|k| std::env::var(k).ok())
+            .or(crate::sfx_smoke::nivel().map(|_| crate::sfx_smoke::NIVEL_DO_JOGO))
+    })
 }
 
 static MONTADA: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
@@ -261,7 +265,13 @@ pub struct Portas<'a> {
 /// Monta o nível `nivel` no mundo. Devolve o jogador.
 pub fn montar(sim: &mut SimWorld, portas: Portas<'_>, nivel: u32) -> Entity {
     match nivel {
-        2 => nivel_2(sim, portas),
+        2 => {
+            let jogador = nivel_2(sim, portas);
+            if crate::sfx_smoke::nivel().is_some() {
+                crate::sfx_smoke::veste(sim, portas, jogador);
+            }
+            jogador
+        }
         3 => {
             let jogador = nivel_2(sim, portas);
             println!(

@@ -31,13 +31,16 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::time::{Duration, Instant};
 
 use ph2d_audio::{AudioEngine, BusId, PlayParams, SampleData, VoiceId};
-use ph2d_ecs::{AudioBus, AudioSource2D, ProjectSounds, SoundId, Spatial};
+use ph2d_ecs::{AudioBus, AudioSource2D, ProjectSounds, SoundId, SoundSet, Spatial};
+use ph2d_sound_set::{Jitter, Picker};
 
 /// Uma voz viva de um objecto.
 struct Live {
     voice: VoiceId,
     /// Quando ela deixa de soar. `None` = em ciclo (só um `stop` a cala).
     ends_at: Option<Instant>,
+    /// O ganho sorteado neste disparo: [`SceneAudio::update`] reescreve o ganho a cada quadro e tem de o manter.
+    jitter_gain: f32,
 }
 
 /// **O livro das vozes da cena.**
@@ -59,6 +62,13 @@ pub struct SceneAudio {
     born: BTreeSet<u64>,
     /// As vozes de DISPARO de quem saiu numa corrida — acabam de soar sem dono (GEF 21 E3).
     tails: Vec<Live>,
+    /// O sorteio de cada objecto. Fora do componente: ele anda a cada disparo.
+    pickers: BTreeMap<u64, Picker>,
+    /// A corrida estava ligada no quadro anterior — a borda do Stop.
+    em_corrida: bool,
+    /// O som e o desvio do último disparo — só a sonda os lê.
+    #[cfg(test)]
+    pub(crate) ultimo: Option<(String, Jitter)>,
 }
 
 impl SceneAudio {
@@ -90,6 +100,42 @@ impl SceneAudio {
         self.decoded.values().filter(|d| d.is_none()).count()
     }
 
+    /// **O Stop**: na borda em que a corrida acaba, tudo cala e esquece quem nasceu, para o Play seguinte
+    /// arrancar o Autoplay de novo. Um objecto reposto pelo Stop volta com o mesmo `StableId`, então o
+    /// [`Self::forget_absent`] não o veria sair.
+    pub fn run_edge(&mut self, eng: &AudioEngine, corrida: bool) {
+        if self.em_corrida && !corrida {
+            let vozes = std::mem::take(&mut self.voices);
+            for l in vozes.into_values().flatten().chain(self.tails.drain(..)) {
+                let _ = eng.stop(l.voice);
+            }
+            self.born.clear();
+            self.pickers.clear();
+        }
+        self.em_corrida = corrida;
+    }
+
+    /// **Qual som toca agora**: a única porta do sorteio. Com sons ligados no `set` ele manda; sem, o `sound`
+    /// de sempre. O sorteio de cada objecto tem semente própria, e o `Stop` recomeça-o.
+    fn pick_sound<'a>(
+        &mut self,
+        key: u64,
+        cfg: &'a AudioSource2D,
+        set: Option<&'a SoundSet>,
+    ) -> Option<(&'a str, Jitter)> {
+        let Some(s) = set.filter(|s| s.has_sounds()) else {
+            let nome = cfg.sound.trim();
+            return (!nome.is_empty()).then_some((nome, Jitter::NONE));
+        };
+        let picker = self
+            .pickers
+            .entry(key)
+            .or_insert_with(|| Picker::with_seed(key ^ 0xA5A5_5A5A_C3C3_3C3C));
+        let i = picker.pick(&s.candidates(), s.strategy, s.no_repeat)?;
+        let jitter = picker.jitter(s.pitch_jitter_semitones, s.gain_jitter_db);
+        Some((s.sounds[i].name.as_str(), jitter))
+    }
+
     /// **TOCA o som de um objecto.** `false` = não havia o que tocar (sem nome, um nome que os
     /// sons do projecto não têm, ou bytes que não descodificam) ou o mixer recusou o comando.
     ///
@@ -102,17 +148,22 @@ impl SceneAudio {
         key: u64,
         cfg: &AudioSource2D,
         sp: Spatial,
+        set: Option<&SoundSet>,
         sons: Option<&ProjectSounds>,
     ) -> bool {
-        if cfg.sound.trim().is_empty() {
-            return false;
-        }
-        let Some(data) = sons.and_then(|l| self.sample(l, &cfg.sound)) else {
+        let Some((nome, jitter)) = self.pick_sound(key, cfg, set) else {
             return false;
         };
-        let pitch = if cfg.pitch > 0.0 { cfg.pitch } else { 1.0 };
+        #[cfg(test)]
+        {
+            self.ultimo = Some((nome.to_owned(), jitter));
+        }
+        let Some(data) = sons.and_then(|l| self.sample(l, nome)) else {
+            return false;
+        };
+        let pitch = if cfg.pitch > 0.0 { cfg.pitch } else { 1.0 } * jitter.pitch;
         let params = PlayParams {
-            gain: sp.gain,
+            gain: sp.gain * jitter.gain,
             pan: sp.pan,
             pitch,
             looping: cfg.looping,
@@ -139,6 +190,7 @@ impl SceneAudio {
             } else {
                 Instant::now().checked_add(Duration::from_secs_f64(secs.max(0.0)))
             },
+            jitter_gain: jitter.gain,
         });
         true
     }
@@ -162,7 +214,7 @@ impl SceneAudio {
             return;
         };
         for l in slot {
-            let _ = eng.set_voice_gain(l.voice, sp.gain);
+            let _ = eng.set_voice_gain(l.voice, sp.gain * l.jitter_gain);
             let _ = eng.set_voice_pan(l.voice, sp.pan);
         }
     }
@@ -209,6 +261,7 @@ impl SceneAudio {
             }
         }
         self.born.retain(|k| vivos.contains(k));
+        self.pickers.retain(|k, _| vivos.contains(k));
     }
 
     /// A amostra deste caminho, descodificada uma vez só. ⚠️ Ver o doc do [`Self::decoded`].

@@ -381,6 +381,12 @@ pub fn apply_anim_edit(
             let mut player = world.get::<SpriteAnimator>(entity).cloned();
             let (frames_before, player_before) = (frames.clone(), player.clone());
             ph2d_ecs::rename_tag(&mut lib, frames.as_mut(), player.as_mut(), &old, new_name);
+            if let Some(mut m) = world.get::<ph2d_ecs::SpriteAnimMarkers>(entity).cloned()
+                && m.of_tag(&old).next().is_some()
+            {
+                m.rename_tag(&old, new_name);
+                queue_set(queue, registry, entity_bits, crate::card::MARKERS, &m);
+            }
             if let Some(f) = frames.filter(|f| Some(f) != frames_before.as_ref()) {
                 queue_set(queue, registry, entity_bits, crate::card::FRAMES, &f);
             }

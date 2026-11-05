@@ -97,6 +97,36 @@ fn com_autoplay(looping: bool) -> AudioSource2D {
     }
 }
 
+/// **O Autoplay espera o Play**: nada soa enquanto se edita, o Play arranca, o Stop cala e o Play seguinte
+/// arranca de novo. A voz é contada no mixer, e o som fica em ciclo para continuar vivo entre as bordas.
+#[test]
+fn autoplay_espera_o_play() {
+    let (mut sim, _) = cena(com_autoplay(true));
+    let mut livro = SceneAudio::default();
+    let (mut eng, mut mixer) = motor();
+
+    for _ in 0..3 {
+        let r = update_with(&mut sim, &mut livro, &mut eng);
+        assert_eq!(r.started, 0, "o Autoplay tocou sem Play");
+    }
+    assert_eq!(vozes_no_mixer(&mut mixer), 0, "há voz sem Play");
+
+    for rodada in ["primeiro", "segundo"] {
+        sim.world_mut().insert_resource(ph2d_ecs::RunOnCopy);
+        let r = update_with(&mut sim, &mut livro, &mut eng);
+        assert_eq!(r.started, 1, "o {rodada} Play não arrancou o Autoplay");
+        assert_eq!(vozes_no_mixer(&mut mixer), 1, "{rodada} Play sem voz");
+        assert_eq!(
+            update_with(&mut sim, &mut livro, &mut eng).started,
+            0,
+            "o Autoplay renasceu no quadro seguinte"
+        );
+        sim.world_mut().remove_resource::<ph2d_ecs::RunOnCopy>();
+        update_with(&mut sim, &mut livro, &mut eng);
+        assert_eq!(vozes_no_mixer(&mut mixer), 0, "o Stop não calou o som");
+    }
+}
+
 /// ⭐⭐⭐ **`autoplay` ARRANCA no nascimento — e NÃO renasce a cada quadro.**
 ///
 /// # ⚠️ Este gate existe porque a casa já pagou o defeito ao contrário
@@ -110,6 +140,7 @@ fn com_autoplay(looping: bool) -> AudioSource2D {
 #[test]
 fn autoplay_starts_once_at_birth_and_never_again() {
     let (mut sim, _) = cena(com_autoplay(false));
+    sim.world_mut().insert_resource(ph2d_ecs::RunOnCopy);
     let mut livro = SceneAudio::default();
     // ⚠️ **Aqui o oráculo é o LIVRO, e não o mixer** — e a diferença é de RELÓGIO: o livro retira
     // uma voz pelo relógio de parede, o mixer só avança com os quadros que alguém lhe renderiza.
@@ -264,6 +295,8 @@ fn an_object_that_leaves_the_scene_is_silenced() {
     let (mut sim, fonte) = cena(com_autoplay(true));
     let mut livro = SceneAudio::default();
     let (mut eng, mut mixer) = motor();
+    // Fora da corrida: é o caminho do Ctrl+Z, e nada arranca sozinho aqui.
+    assert!(play_target_with(&mut sim, &mut livro, &mut eng, fonte));
     assert_eq!(update_with(&mut sim, &mut livro, &mut eng).live, 1);
     assert_eq!(
         vozes_no_mixer(&mut mixer),
@@ -333,6 +366,7 @@ fn a_scene_with_no_listener_still_plays_and_says_so() {
         ))
         .id();
     sim.world_mut().insert_resource(sons());
+    sim.world_mut().insert_resource(ph2d_ecs::RunOnCopy);
     assign_missing_stable_ids(sim.world_mut());
     let mut livro = SceneAudio::default();
     let (mut eng, mut mixer) = motor();
@@ -368,6 +402,7 @@ fn a_sound_that_does_not_decode_never_starts_and_is_not_retried() {
             ..AudioSource2D::default()
         },
     ));
+    sim.world_mut().insert_resource(ph2d_ecs::RunOnCopy);
     assign_missing_stable_ids(sim.world_mut());
     let mut livro = SceneAudio::default();
     let (mut eng, mut mixer) = motor();

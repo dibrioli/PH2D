@@ -11,80 +11,9 @@
 //!
 //! It holds **no audio** — the shell owns the decoded [`ph2d_audio::SampleData`] for
 //! each entry (keyed by index) and plays the pick through the preview voice. Like the
-//! rest of `ph2d-audio-edit` this runs on the control thread, so the jitter math may
-//! use `exp2` freely (HR-5 is RT-only).
+//! rest of `ph2d-audio-edit` this runs on the control thread.
 
-/// How the [`VariationPicker`] chooses the next variation from the enabled entries.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PickStrategy {
-    /// Weighted-random each time (may repeat back-to-back).
-    Random,
-    /// Cycle through the enabled entries in order (weights ignored — the order is
-    /// the point). Round-robin.
-    Sequence,
-    /// Weighted-random, but never the same entry twice in a row when ≥2 are enabled
-    /// (avoid-repeat). The natural default for footsteps.
-    Shuffle,
-}
-
-impl PickStrategy {
-    /// The strategies in cycle order (the panel's `◀ name ▶` selector walks this).
-    pub const ALL: [PickStrategy; 3] = [
-        PickStrategy::Random,
-        PickStrategy::Sequence,
-        PickStrategy::Shuffle,
-    ];
-
-    /// ⛔⛔ **O nome do MANIFESTO — não é o rótulo, e a diferença já esteve num `&str` só.**
-    ///
-    /// Ele é o que o [`PickStrategy::from_name`] lê de volta a partir de um ficheiro gravado, logo
-    /// **traduzi-lo partiria todo manifesto que já existe** — e em silêncio, porque o `from_name`
-    /// devolve `None` e o chamador cai no valor de omissão.
-    ///
-    /// ⚠️ Quem o pintava era o selector `◀ nome ▶` do painel de áudio; hoje quem o pinta é o
-    /// [`PickStrategy::label_key`]. *Quando um `&str` tem dois papéis, a cura é PARTI-LO.*
-    pub fn name(self) -> &'static str {
-        match self {
-            PickStrategy::Random => "Random",
-            PickStrategy::Sequence => "Sequence",
-            PickStrategy::Shuffle => "Shuffle",
-        }
-    }
-
-    /// ⭐ **A chave da palavra que o artista lê**, resolvida por quem pinta (`ph2d_i18n::tr`).
-    ///
-    /// ⚠️ **Ela deriva da VARIANTE, nunca do [`PickStrategy::name`]** — derivá-la do nome do
-    /// manifesto ataria a tabela de strings ao formato do ficheiro, e a próxima renomeação de um
-    /// deles partiria o outro.
-    ///
-    /// ⛔ E este motor **não** publica a palavra inglesa: ele não depende da `ph2d-i18n`, de
-    /// propósito. Um `label()` que fosse `tr_em(Ingles, …)` é indistinguível do caminho certo num
-    /// processo em inglês, e foi essa a forma que custou o report *«prefab e Image ainda errados»*.
-    #[must_use]
-    pub fn label_key(self) -> &'static str {
-        match self {
-            PickStrategy::Random => "audio.pick.random",
-            PickStrategy::Sequence => "audio.pick.sequence",
-            PickStrategy::Shuffle => "audio.pick.shuffle",
-        }
-    }
-
-    /// Parse a manifest/display name back to a strategy (unknown → `None`).
-    pub fn from_name(s: &str) -> Option<PickStrategy> {
-        PickStrategy::ALL.into_iter().find(|k| k.name() == s)
-    }
-
-    /// The strategy `delta` steps away in [`PickStrategy::ALL`] order (wrapping).
-    pub fn cycled(self, delta: i32) -> PickStrategy {
-        let n = PickStrategy::ALL.len() as i32;
-        let i = PickStrategy::ALL
-            .iter()
-            .position(|k| *k == self)
-            .unwrap_or(0) as i32;
-        let j = (i + delta).rem_euclid(n) as usize;
-        PickStrategy::ALL[j]
-    }
-}
+pub use ph2d_sound_set::{Jitter, MAX_JITTER, PickStrategy, WEIGHT_RANGE};
 
 /// One clip in a variation set. The `path` doubles as its display label; `weight`
 /// biases the weighted strategies (Random / Shuffle); a disabled entry stays in the
@@ -109,12 +38,6 @@ impl Variation {
         }
     }
 }
-
-/// Inclusive weight range. A weight below the floor is treated as the floor when
-/// summing, so a weighted draw never divides by zero.
-pub const WEIGHT_RANGE: (f32, f32) = (0.01, 16.0);
-/// Maximum jitter, in semitones / decibels, for the container-level randomisers.
-pub const MAX_JITTER: f32 = 24.0;
 
 /// A variation container: the entries, the pick strategy, and container-level
 /// per-play randomisation (symmetric `±` in semitones / dB). The jitter applies to
@@ -144,163 +67,43 @@ impl Default for VariationSet {
 }
 
 impl VariationSet {
-    /// Indices of the entries eligible for a pick (enabled), in list order.
-    fn enabled_indices(&self) -> Vec<usize> {
-        (0..self.entries.len())
-            .filter(|&i| self.entries[i].enabled)
+    fn candidates(&self) -> Vec<ph2d_sound_set::Candidate> {
+        self.entries
+            .iter()
+            .map(|e| ph2d_sound_set::Candidate {
+                weight: e.weight,
+                enabled: e.enabled,
+            })
             .collect()
     }
 }
 
-/// A per-play pitch/gain offset applied to the chosen variation before it sounds.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Jitter {
-    /// Playback-rate multiplier (`1.0` = original pitch), from the pitch randomiser.
-    pub pitch: f32,
-    /// Linear gain (`1.0` = unity), from the gain randomiser.
-    pub gain: f32,
-}
-
-impl Jitter {
-    /// The identity offset (no jitter).
-    pub const NONE: Jitter = Jitter {
-        pitch: 1.0,
-        gain: 1.0,
-    };
-}
-
-/// Selection state for a [`VariationSet`]: a deterministic PRNG plus the little
-/// bookkeeping the Sequence / Shuffle strategies need (the round-robin cursor and the
-/// last index, so consecutive picks differ). Deterministic per session — repeated
-/// picks feel random, and tests can assert exact behaviour.
-#[derive(Debug, Clone)]
-pub struct VariationPicker {
-    rng: u64,
-    /// Round-robin cursor into the *enabled* list (Sequence).
-    seq: usize,
-    /// The last picked entry index (Shuffle avoid-repeat).
-    last: Option<usize>,
-}
-
-impl Default for VariationPicker {
-    fn default() -> Self {
-        // A fixed non-zero seed: deterministic, and never the degenerate all-zero
-        // splitmix64 state.
-        VariationPicker::with_seed(0x9E37_79B9_7F4A_7C15)
-    }
-}
+/// O sorteio de um conjunto: a lei é a de [`ph2d_sound_set::Picker`], a mesma do som de cena. O manifesto
+/// guarda caminhos porque é um arquivo do editor; o `SoundSet` do objeto guarda nomes do projeto.
+#[derive(Debug, Clone, Default)]
+pub struct VariationPicker(ph2d_sound_set::Picker);
 
 impl VariationPicker {
     /// A picker seeded explicitly (tests pin the sequence with this).
     pub fn with_seed(seed: u64) -> Self {
-        Self {
-            rng: seed,
-            seq: 0,
-            last: None,
-        }
+        Self(ph2d_sound_set::Picker::with_seed(seed))
     }
 
-    /// Advance the splitmix64 state and return the next 64-bit value.
-    fn next_u64(&mut self) -> u64 {
-        // splitmix64 — a transcendental-free integer PRNG (same family the painter's
-        // per-dab jitter uses); good distribution, cheap, deterministic.
-        self.rng = self.rng.wrapping_add(0x9E37_79B9_7F4A_7C15);
-        let mut z = self.rng;
-        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-        z ^ (z >> 31)
-    }
-
-    /// A uniform `f32` in `[0, 1)`.
-    fn next_unit(&mut self) -> f32 {
-        // Top 24 bits → the f32 mantissa's worth of resolution.
-        const SCALE: f32 = 1.0 / (1u32 << 24) as f32;
-        ((self.next_u64() >> 40) as u32) as f32 * SCALE
-    }
-
-    /// A uniform `f32` in `[-1, 1)`.
-    fn next_bipolar(&mut self) -> f32 {
-        self.next_unit() * 2.0 - 1.0
-    }
-
-    /// Pick the index of the next variation to play, or `None` when nothing is
-    /// enabled. Honours the set's [`PickStrategy`]; the returned index is always an
-    /// enabled entry.
+    /// Pick the index of the next variation to play, or `None` when nothing is enabled.
     pub fn pick(&mut self, set: &VariationSet) -> Option<usize> {
-        let enabled = set.enabled_indices();
-        if enabled.is_empty() {
-            self.last = None;
-            return None;
-        }
-        if enabled.len() == 1 {
-            self.last = Some(enabled[0]);
-            self.seq = 0;
-            return Some(enabled[0]);
-        }
-        let chosen = match set.strategy {
-            PickStrategy::Sequence => {
-                let i = self.seq % enabled.len();
-                self.seq = (i + 1) % enabled.len();
-                enabled[i]
-            }
-            PickStrategy::Random => self.weighted(set, &enabled),
-            PickStrategy::Shuffle => {
-                // Weighted, but re-draw off the previous pick (bounded tries so a set
-                // whose weight is concentrated on `last` still terminates).
-                let mut pick = self.weighted(set, &enabled);
-                let mut tries = 0;
-                while Some(pick) == self.last && tries < SHUFFLE_MAX_RETRIES {
-                    pick = self.weighted(set, &enabled);
-                    tries += 1;
-                }
-                pick
-            }
-        };
-        self.last = Some(chosen);
-        Some(chosen)
+        self.0.pick(
+            &set.candidates(),
+            set.strategy,
+            set.strategy.no_repeat_of_the_editor(),
+        )
     }
 
-    /// A weight-proportional draw over `enabled` (falls back to uniform if the total
-    /// weight is non-positive).
-    fn weighted(&mut self, set: &VariationSet, enabled: &[usize]) -> usize {
-        let total: f32 = enabled
-            .iter()
-            .map(|&i| set.entries[i].weight.clamp(WEIGHT_RANGE.0, WEIGHT_RANGE.1))
-            .sum();
-        if total <= 0.0 {
-            return enabled[(self.next_u64() as usize) % enabled.len()];
-        }
-        let mut r = self.next_unit() * total;
-        for &i in enabled {
-            let w = set.entries[i].weight.clamp(WEIGHT_RANGE.0, WEIGHT_RANGE.1);
-            if r < w {
-                return i;
-            }
-            r -= w;
-        }
-        *enabled.last().unwrap() // rounding guard
-    }
-
-    /// Draw a per-play pitch/gain offset from the container's jitter ranges. Two
-    /// independent bipolar draws → `pitch = 2^(±st/12)`, `gain = 10^(±dB/20)`. Both
-    /// reduce to a single `exp2` (`10^x = 2^(x·log2 10)`).
+    /// Draw a per-play pitch/gain offset from the container's jitter ranges.
     pub fn jitter(&mut self, set: &VariationSet) -> Jitter {
-        let st = set.pitch_jitter_semitones.clamp(0.0, MAX_JITTER) * self.next_bipolar();
-        let db = set.gain_jitter_db.clamp(0.0, MAX_JITTER) * self.next_bipolar();
-        Jitter {
-            pitch: (st / SEMITONES_PER_OCTAVE).exp2(),
-            gain: (db * DB_TO_EXP2).exp2(),
-        }
+        self.0
+            .jitter(set.pitch_jitter_semitones, set.gain_jitter_db)
     }
 }
-
-/// Retry budget for Shuffle's avoid-repeat re-draw.
-const SHUFFLE_MAX_RETRIES: usize = 8;
-/// Semitones in an octave (pitch-ratio math).
-const SEMITONES_PER_OCTAVE: f32 = 12.0;
-/// dB → base-2 exponent for a linear gain: `10^(dB/20) = 2^(dB · log2(10) / 20)`, so
-/// the multiplier is `log2(10)/20`. Keeps the gain math on `exp2` (no `powf(10, …)`).
-const DB_TO_EXP2: f32 = std::f32::consts::LOG2_10 / 20.0;
 
 // ---------------------------------------------------------------------------------
 // Manifest — a tolerant text format so a set round-trips to a file (the editor's

@@ -14,7 +14,7 @@ use bevy_ecs::component::Component;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 
-use crate::sprite_anim::{AnimOutcome, AnimationTag, SpriteAnimator, advance_span};
+use crate::sprite_anim::{AnimOutcome, AnimationTag, SpriteAnimator, advance_span_visiting};
 use crate::{SimComponent, SpriteAnimations};
 
 /// Quantos quadros uma lista guarda: uma folha de 64 × 64 células cabe inteira.
@@ -102,11 +102,36 @@ pub fn advance_frames(
     cells: u32,
     dt_ticks: u64,
 ) -> AnimOutcome {
+    advance_frames_visiting(
+        animator,
+        tag,
+        list,
+        frame,
+        step,
+        cells,
+        dt_ticks,
+        &mut |_| {},
+    )
+}
+
+/// [`advance_frames`] dizendo cada passo em que entra — ver [`crate::SpriteAnimMarkers`].
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn advance_frames_visiting(
+    animator: &mut SpriteAnimator,
+    tag: &AnimationTag,
+    list: Option<&[u32]>,
+    frame: &mut u32,
+    step: &mut u32,
+    cells: u32,
+    dt_ticks: u64,
+    visit: &mut dyn FnMut(u32),
+) -> AnimOutcome {
     let Some(l) = list.filter(|l| !l.is_empty()) else {
-        let out = crate::advance(animator, tag, frame, cells, dt_ticks);
-        if let Some((lo, _)) = tag.resolve(cells) {
-            *step = frame.saturating_sub(lo);
-        }
+        let Some((lo, hi)) = tag.resolve(cells) else {
+            return AnimOutcome::default();
+        };
+        let out = advance_span_visiting(animator, tag, frame, lo, hi, dt_ticks, visit);
+        *step = frame.saturating_sub(lo);
         return out;
     };
     if cells == 0 || l.iter().any(|&c| c >= cells) {
@@ -122,7 +147,7 @@ pub fn advance_frames(
             .position(|&c| c == *frame)
             .map_or(u32::MAX, |p| p as u32)
     };
-    let out = advance_span(animator, tag, &mut s, 0, n - 1, dt_ticks);
+    let out = advance_span_visiting(animator, tag, &mut s, 0, n - 1, dt_ticks, visit);
     let cell = l[s as usize];
     let changed = cell != *frame || out.frame_changed;
     *frame = cell;

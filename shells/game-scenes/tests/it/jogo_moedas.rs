@@ -172,3 +172,63 @@ fn o_som_da_moeda_e_um_som_do_projeto() {
     assert_eq!(fontes.len(), 5, "{fontes:?}");
     assert!(fontes.iter().all(|(_, s)| s == NOME_DO_SOM), "{fontes:?}");
 }
+
+/// A cena do `PH2D_SFX_SMOKE`: três sons num objeto que fica, o ouvinte no jogador, e toda moeda apontando
+/// para ele. A moeda não pode tocar a si mesma: ela sai da cena ao ser pega, e o sorteio sairia junto.
+#[test]
+fn a_cena_do_sfx_lab_liga_as_moedas_a_um_conjunto_que_fica() {
+    use ph2d_app_game::sfx_smoke as s;
+    let mut sim = SimWorld::new();
+    let jogador = crate::comp::montar(&mut sim, s::NIVEL_DO_JOGO);
+    crate::comp::com_portas(&crate::comp::registo(), |p| s::veste(&mut sim, p, jogador));
+    assert!(
+        sim.world()
+            .get::<ph2d_ecs::AudioListener2D>(jogador)
+            .is_some()
+    );
+
+    let w = sim.world_mut();
+    let (conjunto, _) = w
+        .query::<(ph2d_ecs::Entity, &Name)>()
+        .iter(w)
+        .find(|(_, n)| n.as_str() == s::CONJUNTO)
+        .expect("o objeto dos sons");
+    let set = sim
+        .world()
+        .get::<ph2d_ecs::SoundSet>(conjunto)
+        .expect("os sons")
+        .clone();
+    assert_eq!(set.sounds.len(), 3);
+    let lib = sim
+        .world()
+        .get_resource::<ph2d_ecs::ProjectSounds>()
+        .expect("a biblioteca");
+    for e in &set.sounds {
+        assert!(
+            lib.get(&e.name).is_some(),
+            "{} não é um som do projeto",
+            e.name
+        );
+    }
+    let cfg = sim
+        .world()
+        .get::<ph2d_ecs::AudioSource2D>(conjunto)
+        .expect("a fonte");
+    assert!(!cfg.autoplay, "o conjunto só toca quando uma moeda manda");
+
+    let w = sim.world_mut();
+    let mut n = 0;
+    let mut q = w.query::<(&Name, &ph2d_ecs::SignalActions)>();
+    for (nome, t) in q.iter(w) {
+        if !nome.as_str().starts_with("Coin ") || nome.as_str() == s::CONJUNTO {
+            continue;
+        }
+        n += 1;
+        assert!(
+            t.0.iter()
+                .any(|a| a.verb == ph2d_ecs::SignalVerb::PlaySound && a.target == s::CONJUNTO),
+            "{nome:?} não aponta para o conjunto"
+        );
+    }
+    assert_eq!(n, ph2d_app_game::smoke::MOEDAS_2.len());
+}

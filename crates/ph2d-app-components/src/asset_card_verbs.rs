@@ -50,12 +50,21 @@ pub(crate) fn users_of(
         DragPayload::Sound { asset } => {
             let nome = (sim.world().get_resource::<ph2d_ecs::ProjectSounds>())
                 .and_then(|l| l.name_of(&asset).map(str::to_owned));
-            let mut q = sim
-                .world_mut()
-                .query::<(Entity, &ph2d_ecs::AudioSource2D)>();
+            let mut q = sim.world_mut().query::<(
+                Entity,
+                &ph2d_ecs::AudioSource2D,
+                Option<&ph2d_ecs::SoundSet>,
+            )>();
             q.iter(sim.world())
-                .filter(|(_, s)| nome.as_deref() == Some(s.sound.trim()))
-                .map(|(e, _)| e)
+                .filter(|(_, s, set)| {
+                    nome.as_deref() == Some(s.sound.trim())
+                        || set.is_some_and(|c| {
+                            c.sounds
+                                .iter()
+                                .any(|x| nome.as_deref() == Some(x.name.trim()))
+                        })
+                })
+                .map(|(e, _, _)| e)
                 .collect::<Vec<_>>()
         }
         DragPayload::Prefab { stable_id } => {

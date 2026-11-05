@@ -104,7 +104,7 @@ pub fn audio_2d_smoke(cx: &mut crate::scene_ctx::SceneCtx) {
         ));
 
         // **O ZUMBIDO à esquerda** — `autoplay` ligado e em ciclo, o único da cena que arranca
-        // sozinho.
+        // sozinho, quando o Play começa.
         world.spawn((
             Transform::from_translation(Vec2::new(-3.0, 0.0)),
             Sprite::atlas(WHITE_TILE_KEY, [1.0, 1.0], [0.3, 0.5, 0.9, 1.0]),

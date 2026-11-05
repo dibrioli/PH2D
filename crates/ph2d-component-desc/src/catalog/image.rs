@@ -221,6 +221,12 @@ pub const DESCS: &[D] = &[
         "component.sprite_anim_cursor.name",
         C::Animation,
     ),
+    // Os sinais em quadro (SFX Lab W1): o cartão da animação escreve-os.
+    D::machinery(
+        "ph2d::ecs::SpriteAnimMarkers",
+        "component.sprite_anim_markers.name",
+        C::Animation,
+    ),
     D::machinery(
         "ph2d::ecs::SpriteAnimFrames",
         "component.sprite_anim_frames.name",

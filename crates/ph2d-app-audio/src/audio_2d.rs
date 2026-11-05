@@ -27,7 +27,7 @@
 
 use std::collections::BTreeSet;
 
-use ph2d_ecs::{AudioSource2D, Entity, SimWorld, StableId};
+use ph2d_ecs::{AudioSource2D, Entity, SimWorld, SoundSet, StableId};
 
 use ph2d_audio::AudioEngine;
 
@@ -110,6 +110,7 @@ pub(crate) fn update_with(
     livro.retire();
     let vivos: BTreeSet<u64> = fontes.iter().map(|(id, _, _)| *id).collect();
     let corrida = ph2d_ecs::run_is_on_copy(sim.world());
+    livro.run_edge(motor, corrida);
     livro.forget_absent(motor, &vivos, corrida);
 
     for (id, entity, cfg) in &fontes {
@@ -120,8 +121,14 @@ pub(crate) fn update_with(
         // ⚠️ **A aresta primeiro**: `take_birth` marca-o como nascido mesmo quando o `autoplay`
         // está desligado — senão uma fonte muda ficaria «por nascer» para sempre e ligar o
         // `autoplay` a meio da sessão fá-la-ia arrancar sem ninguém pedir.
-        let nasceu = livro.take_birth(*id);
-        if nasceu && cfg.autoplay && livro.play(motor, *id, cfg, sp, sim.world().get_resource()) {
+        //
+        // ⚠️ **Só nasce na corrida**: fora do Play nada soa sozinho, e quem já existia nasce no Play.
+        let nasceu = corrida && livro.take_birth(*id);
+        let set = sim.world().get::<SoundSet>(*entity);
+        if nasceu
+            && cfg.autoplay
+            && livro.play(motor, *id, cfg, sp, set, sim.world().get_resource())
+        {
             started += 1;
         }
         livro.update(motor, *id, sp);
@@ -164,7 +171,8 @@ pub(crate) fn play_target_with(
     };
     let ouvinte = ears(sim);
     let sp = ph2d_ecs::spatialize(pos, ouvinte, &cfg);
-    livro.play(motor, id, &cfg, sp, sim.world().get_resource())
+    let set = sim.world().get::<SoundSet>(target);
+    livro.play(motor, id, &cfg, sp, set, sim.world().get_resource())
 }
 
 /// **CALA** o som de um alvo — o verbo `StopSound`.
@@ -192,3 +200,7 @@ pub(crate) fn stop_target_with(
 #[cfg(test)]
 #[path = "audio_2d_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "sound_set_tests.rs"]
+mod sound_set_tests;

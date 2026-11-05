@@ -29,6 +29,7 @@ ph2d-audio-ml = { path = "../ph2d-audio-ml", optional = true }
 ph2d-audio-opus = { path = "../ph2d-audio-opus" }
 ph2d-audio-spectral = { path = "../ph2d-audio-spectral" }
 ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-sound-set = { path = "../ph2d-sound-set" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 # O texto que o rack do Audio Editor mostra (nomes de efeito, de parâmetro, de preset e as
 # unidades da leitura) — HR-15.

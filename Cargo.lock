@@ -5561,6 +5561,7 @@ dependencies = [
  "ph2d-label-census",
  "ph2d-panel-audio-editor",
  "ph2d-panel-audio-mixer",
+ "ph2d-sound-set",
  "ph2d-timeline",
  "ph2d-tokens",
  "ph2d-vector",
@@ -6433,6 +6434,7 @@ dependencies = [
  "dhat",
  "ph2d-audio",
  "ph2d-audio-spectral",
+ "ph2d-sound-set",
 ]
 
 [[package]]
@@ -6964,6 +6966,7 @@ dependencies = [
  "ph2d-morph-machine",
  "ph2d-render",
  "ph2d-shake",
+ "ph2d-sound-set",
  "ph2d-stroke-width",
  "ph2d-symmetry",
  "ph2d-tags",
@@ -10640,6 +10643,16 @@ dependencies = [
  "ph2d-affine",
  "ph2d-poly2d",
  "ph2d-skeleton",
+]
+
+[[package]]
+name = "ph2d-sound-set"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "ph2d-det-math",
+ "postcard",
+ "serde",
 ]
 
 [[package]]

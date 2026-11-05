@@ -1,0 +1,26 @@
+[package]
+name = "ph2d-sound-set"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[features]
+# O `Component` do mundo: quem o liga é a `ph2d-ecs`, que registra o tipo. O Audio Editor usa só o sorteio.
+component = ["dep:bevy_ecs"]
+
+[dependencies]
+bevy_ecs = { version = "0.20", optional = true }
+# O sorteio dá a mesma sequência em qualquer máquina: `2^x` e `10^x` passam por aqui.
+ph2d-det-math = { path = "../ph2d-det-math" }
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+postcard = { version = "1", features = ["alloc"] }
+
+[lints]
+workspace = true

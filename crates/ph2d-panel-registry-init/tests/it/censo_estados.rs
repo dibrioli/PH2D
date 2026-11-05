@@ -369,12 +369,24 @@ mod audio {
         a::set_position_secs(1.0);
         a::set_has_selection(true);
         a::set_can_undo(true);
+        // Os nomes que o motor publica no app; os mais compridos à frente: é neles que o texto pode sair.
+        a::set_fx_kind_names(&[ph2d_i18n::tr("audio.fx.kind.multiband")]);
+        a::set_preset_names(&[ph2d_i18n::tr("audio.fx.preset.vocoder_whisper")]);
+        a::delivery_state::set_codec_info(
+            1,
+            ph2d_i18n::tr("audio.codec.ogg_vorbis"),
+            true,
+            ph2d_i18n::tr("audio.editor.delivery.quality"),
+        );
     }
 
     pub fn limpa() {
         a::set_loaded(false);
         a::set_has_selection(false);
         a::set_can_undo(false);
+        a::set_fx_kind_names(&[]);
+        a::set_preset_names(&[]);
+        a::delivery_state::set_codec_info(0, "", false, "");
     }
 }
 

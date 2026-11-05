@@ -30,7 +30,11 @@ pub fn letra_que_distingue<'a>(rotulo: &'a str, ocupadas: &[&str]) -> &'a str {
         .rev()
         .filter(|p| !SEM_LETRA.contains(&p.to_ascii_lowercase().as_str()))
         .filter_map(|p| p.chars().next());
-    let resto = palavras.iter().rev().flat_map(|p| p.chars().skip(1));
+    let resto = palavras
+        .iter()
+        .rev()
+        .filter(|p| !SEM_LETRA.contains(&p.to_ascii_lowercase().as_str()))
+        .flat_map(|p| p.chars().skip(1));
     iniciais
         .chain(resto)
         .filter_map(maiuscula)
@@ -86,6 +90,7 @@ mod tests {
         }
         assert_eq!(letra_que_distingue("Dry cover", &["C"]), "D");
         assert_eq!(letra_que_distingue("Spacing", &["S"]), "P");
+        assert_eq!(letra_que_distingue("Full for", &["F"]), "U");
     }
 
     fn campo<'a>(id: u64, nome: &'a str) -> Cell<'a> {

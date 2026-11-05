@@ -410,7 +410,9 @@ fn paint_chain(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut C
     //    mão: *uma superfície que ninguém declarou escapa a um censo por declaração.*
     let stage_h = crate::cards::fila();
     // A folga do cartão que envolve a secção: é até aí que a faixa de uma linha sangra.
-    let bleed = Spacing::Xs.px();
+    // Num cartão a linha é a coluna: sair dela 4 px de cada lado foi o que a foto q4 mostrou.
+    let em_cartoes = ph2d_editor_core::panel::cards::ferramenta::cards_on();
+    let bleed = if em_cartoes { 0.0 } else { Spacing::Xs.px() };
     for i in 0..count.min(MAX_FX_STAGES) {
         let Some((name, enabled)) = snapshot::fx_stage_view(i) else {
             continue;
@@ -454,7 +456,11 @@ fn paint_chain(mut y: f32, x: f32, w: f32, loaded: bool, row_h: f32, ctx: &mut C
             ctx.scene,
             &format!("{}. {name}", i + 1),
             x + Spacing::Sm.px(),
-            y + (stage_h - fs) * 0.5,
+            if em_cartoes {
+                y + ph2d_editor_core::paint::folga_do_texto(stage_h, fs)
+            } else {
+                y + (stage_h - fs) * 0.5
+            },
             fs,
             w,
             crate::cards::tom(tone, ctx.theme),

@@ -43,9 +43,23 @@ pub fn paint_group_header(
         scene,
         &header.label,
         label_x,
-        rect.y + crate::paint::folga_do_texto(rect.h, font),
+        titulo_y(rect, font),
         font,
         (rect.x + rect.w - label_x).max(0.0),
         crate::widget::card_ink::tinta(ColorToken::Text1, theme),
     );
+}
+
+/// O topo do título: as maiúsculas no meio da faixa, onde o chevron está centrado (doc 18, U2).
+fn titulo_y(rect: Rect, font: f32) -> f32 {
+    rect.y + crate::paint::folga_do_texto(rect.h, font)
+}
+
+#[cfg(test)]
+#[test]
+fn as_maiusculas_do_grupo_ficam_no_meio_do_chevron() {
+    let (rect, font) = (Rect::new(0.0, 10.0, 200.0, 24.0), TypeToken::Sm.px());
+    let meio = titulo_y(rect, font) + ph2d_text::cap_centre_px(font)
+        - (ph2d_text::displayed_font_px(font) - font) * 0.5;
+    assert!((meio - (rect.y + rect.h * 0.5)).abs() < 0.01, "{meio}");
 }

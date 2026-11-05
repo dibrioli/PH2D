@@ -131,6 +131,27 @@ fn q_foto_paineis() {
                         text_system: &mut text,
                     };
                     ph2d_editor_core::aquecimento::com_passo_fixo(0.1, || painel.paint(&mut ctx));
+                    // Uma janela flutuante não cresce com a vista: abre-se até caber o conteúdo dela.
+                    let rects: Vec<Rect> = host.store().panel_rects().collect();
+                    for r in rects {
+                        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+                        let Some(p) = host.store().scrollable_panel_at(cx, cy) else {
+                            continue;
+                        };
+                        let falta = host.store().panel_content_h(p).unwrap_or(0.0)
+                            - host.store().panel_visible_h(p).unwrap_or(0.0);
+                        if falta > 0.0 {
+                            let (dw, dh) = host.store().panel_resize_delta(p);
+                            host.store_mut().set_panel_resize_delta(p, dw, dh + falta);
+                        }
+                        // A que não cresce (Grid) rola: `PH2D_FOTO_ROLA=<px>`.
+                        if let Some(y) = std::env::var("PH2D_FOTO_ROLA")
+                            .ok()
+                            .and_then(|v| v.parse::<f32>().ok())
+                        {
+                            host.store_mut().set_panel_scroll(p, y);
+                        }
+                    }
                 }
                 fatias(&gpu, &cena, coluna, &format!("{dir}/{id}_{nome}"));
             };

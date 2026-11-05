@@ -333,11 +333,24 @@ mod tests {
     /// ⭐⭐ **Every name a v1 file could carry still resolves** (2026-09-16). v1 stored the ENGLISH
     /// DISPLAY NAME; the names moved to the string table, and v2 writes the stable id. A v1 name
     /// missing from [`legacy_alias`] is a user's saved chain silently losing that stage — so the
-    /// list is checked against the display text itself, all 42.
+    /// list is checked against the display text itself, all 42, salvo os sete que a UI renomeou em
+    /// 04/11 (Plain English): o ficheiro v1 deles continua a trazer o nome antigo.
     #[test]
     fn every_v1_name_still_resolves() {
+        const RENOMEADOS: [(&str, &str); 7] = [
+            ("compress", "Compress"),
+            ("multiband", "Multiband"),
+            ("transient", "Transient"),
+            ("haas", "Haas"),
+            ("conv_reverb", "Conv Reverb"),
+            ("comb", "Comb"),
+            ("ring_mod", "Ring Mod"),
+        ];
         for (kind, k) in KINDS.iter().enumerate() {
-            let v1 = k.name.tr();
+            let v1 = RENOMEADOS
+                .iter()
+                .find(|(id, _)| *id == k.id)
+                .map_or_else(|| k.name.tr(), |(_, nome)| *nome);
             assert_eq!(
                 kind_by_name(v1),
                 Some(kind),

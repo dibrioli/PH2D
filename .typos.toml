@@ -1080,6 +1080,8 @@ extend-exclude = [
     # Mac/Linux/Windows (see docs/DevOps/MULTI_MACHINE_SETUP.md). It is pt-BR
     # knowledge base prose, not project source — never lint it.
     "project-memory/**",
+    # As pilhas cruas do processo travado do Bug #66 e o leitor do ELF: pedaços de strings do binário e `.rela.dyn`.
+    "docs/Painter/handoffs/material_2026-11-05/congelamento_pool/**",
     # As SAÍDAS do oráculo Excalidraw (MiroClone): o que o programa de outro escreveu, gravado
     # byte a byte como fixture — os ids aleatórios dele (`…8IZFwDZa…`) não são palavras nossas, e
     # corrigi-los partiria a fixture que os gates leem.

@@ -154,7 +154,7 @@ fn paint_body_rows(
             slot_label,
             sec,
         );
-        let (vx, vw) = (linha.control.x, linha.control.w);
+        let (vx, vw, icon_w) = super::rows::caixa_de_alvo(scene, linha.control, icon_w);
         let (cy, ch) = (linha.control.y, linha.control.h);
         let text_y = cy + (ch - label_font) * 0.5;
         // ⚠️ **Num pino de MUNDO o lado B não é um nome que faltou** — ele é o

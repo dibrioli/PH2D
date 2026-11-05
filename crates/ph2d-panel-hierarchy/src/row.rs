@@ -275,14 +275,19 @@ pub(crate) fn paint_hierarchy_row(
         let badge_w = tag
             .natural_width(text_system, badge_h)
             .max(ICON_BTN_SIZE_PX);
-        let badge_rect = Rect::new(
-            right_x - badge_w,
-            rect.y + (rect.h - badge_h) * 0.5,
-            badge_w,
-            badge_h,
-        );
-        paint_tag(&tag, badge_rect, scene, text_system, ink.theme());
-        right_x -= badge_w + icon_cluster_gap;
+        // O selo é adorno e o nome é por onde se acha a linha: sem lugar para os dois, sai o selo.
+        let nome_x = icon_rect.x + icon_w + ph2d_tokens::icon_label_gap_px();
+        let sobra = right_x - badge_w - icon_cluster_gap - Spacing::Xxs.px() - nome_x;
+        if text_system.prefix_width(&entity.name, ink.name_px()) <= sobra {
+            let badge_rect = Rect::new(
+                right_x - badge_w,
+                rect.y + (rect.h - badge_h) * 0.5,
+                badge_w,
+                badge_h,
+            );
+            paint_tag(&tag, badge_rect, scene, text_system, ink.theme());
+            right_x -= badge_w + icon_cluster_gap;
+        }
     }
 
     // Icon → name gap tightened Md (8) → Xs (4) 2026-05-24 per user:

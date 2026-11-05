@@ -141,7 +141,7 @@ fn lista(
             scene,
             &row.action,
             x + Spacing::Sm.px(),
-            cur_y + (ROW_H - font) * 0.5,
+            cur_y + super::rows::folga_da_linha(ROW_H, font),
             font,
             w,
             cor,
@@ -151,7 +151,7 @@ fn lista(
             scene,
             &resumo(row),
             x + w * 0.5,
-            cur_y + (ROW_H - font) * 0.5,
+            cur_y + super::rows::folga_da_linha(ROW_H, font),
             font,
             w * 0.5 - Spacing::Sm.px(),
             resolve(ColorToken::Text3, theme),
@@ -187,8 +187,16 @@ fn botoes(
         w,
         y,
         &[
-            (pode_juntar, ids::INSP_TRIGGER_ADD, tr("panel.inspector.trigger.plus_add_trigger")),
-            (pode_tirar, ids::INSP_TRIGGER_REMOVE, tr("panel.inspector.trigger.x_remove_trigger")),
+            (
+                pode_juntar,
+                ids::INSP_TRIGGER_ADD,
+                tr("panel.inspector.trigger.plus_add_trigger"),
+            ),
+            (
+                pode_tirar,
+                ids::INSP_TRIGGER_REMOVE,
+                tr("panel.inspector.trigger.x_remove_trigger"),
+            ),
         ],
     )
 }

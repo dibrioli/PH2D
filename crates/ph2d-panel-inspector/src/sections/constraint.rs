@@ -29,6 +29,21 @@ fn fileira(
     y: f32,
     botoes: &[(NodeId, &str)],
 ) -> f32 {
+    if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        let pecas: Vec<(bool, NodeId, &str)> =
+            botoes.iter().map(|&(id, l)| (true, id, l)).collect();
+        return super::rows::fila_de_botoes(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            y,
+            &pecas,
+        );
+    }
     let rotulos: Vec<&str> = botoes.iter().map(|(_, l)| *l).collect();
     // Quebra pelas palavras: no dock estreito «Move Up | Move Down | Delete» não cabe numa fileira.
     let seg = ph2d_editor_core::widget::wrapped_cells_in_font(

@@ -27,7 +27,7 @@ pub(crate) fn rows(info: &InspectorInstanceInfo) -> usize {
 }
 
 /// Quantas ficaram **sem botão** — a tabela de ids tem tecto.
-fn buttonless(info: &InspectorInstanceInfo) -> usize {
+pub(crate) fn buttonless(info: &InspectorInstanceInfo) -> usize {
     info.added_rows
         .len()
         .saturating_sub(ids::INSP_INSTANCE_APPLY_ADDED.len())

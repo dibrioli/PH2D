@@ -34,15 +34,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "A size of 0 is not drawn yet \u{2014} give the lamp a size."
         }
         "panel.inspector.luz.too_small_for_zoom" => {
-            "The lamp is smaller than the light grid at this zoom, so it is dark. Zoom in or make \
-             it bigger."
+            "Too small to light anything at this zoom. Zoom in or make the lamp bigger."
         }
         "panel.inspector.luz.outside_view" => {
             "The lamp is too far outside the view to light anything."
         }
         "panel.inspector.luz.sprites_by_box_n_of_total" => {
-            "{n} of {total} glowing or shadow-casting sprites use their box, not their pixels \
-             (mesh, tiling or baked texture)."
+            "{n} of {total} sprites that glow or cast shadows use their box, not their pixels."
         }
         "panel.inspector.luz.corners_rounded_n" => {
             "This scene has more sharp corners than the GPU keeps \u{2014} {n} small areas draw their \

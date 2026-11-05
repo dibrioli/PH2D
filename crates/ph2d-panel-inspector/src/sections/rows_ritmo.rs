@@ -124,6 +124,32 @@ fn colunas_da_fila(text_system: &mut TextSystem, rotulos: &[&str], w: f32) -> Ve
     m::seg_widths(&pede, util)
 }
 
+/// Onde o texto de uma linha de lista começa: num cartão, com a letra no meio da linha.
+pub(crate) fn folga_da_linha(h: f32, font: f32) -> f32 {
+    if card_body().is_some() {
+        ph2d_editor_core::paint::folga_do_texto(h, font)
+    } else {
+        (h - font) * 0.5
+    }
+}
+
+/// A caixa de um alvo escolhido no canvas (`Body A`, `Mounted On`): num cartão, o nome e o conta-gotas moram
+/// DENTRO da caixa, como no campo de objecto da Unity. Devolve `(x, w, ícone)` do que se pinta lá dentro.
+pub(crate) fn caixa_de_alvo(scene: &mut VectorScene, control: Rect, icone: f32) -> (f32, f32, f32) {
+    let Some(ink) = card_body() else {
+        return (control.x, control.w, icone);
+    };
+    fill_rounded_rect(
+        scene,
+        control,
+        m::FIELD_RADIUS,
+        ink.color(ColorToken::CardField),
+    );
+    let margem = (control.h - m::GRID_CELL) * 0.5;
+    let xi = control.x + m::FIELD_PAD_R;
+    (xi, control.x + control.w - margem - xi, m::GRID_CELL)
+}
+
 /// ⭐ **A fila de botões de uma lista** (`+ Add` · `Remove`, `Browse` · `Preview` · `Stop`): só os ativos.
 /// Num cartão, botões soltos da altura de todo controlo; fora dele, a porta do grupo. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]

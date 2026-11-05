@@ -489,12 +489,7 @@ impl<'s> CardCtx<'s> {
         };
         self.hit_index.register(id, alvo);
         if let Some(c) = rgba {
-            fill_rounded_rect(
-                self.scene,
-                amostra,
-                m::SEG_RADIUS,
-                ph2d_vector::Color::from_rgba8(c[0], c[1], c[2], c[3]),
-            );
+            crate::widget::card_field::paint_amostra(self.scene, self.ink, amostra, c);
         }
         if let Some(e) = edit {
             self.hit_index.register(e, codigo);

@@ -284,7 +284,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // ⭐⭐⭐ A CUTSCENE (TOP-20 #19) — o selector e as sete razões de ela não correr.
         "panel.inspector.sequence.no_cutscenes" => "No cutscenes yet",
         "panel.inspector.sequence.none_chosen" => "None",
-        "panel.inspector.sequence.clear" => "Play nothing",
+        "panel.inspector.sequence.clear" => "Clear Cutscene",
         "panel.inspector.sequence.make_one_in_the_timeline" => {
             "No cutscenes in the timeline yet \u{2014} make one with + Container."
         }

@@ -52,7 +52,7 @@ pub(crate) fn do_topo() -> Vec<CardDef<'static>> {
     if let Some(info) = crate::state::current_inspector_instance() {
         out.push(sem_titulo(CARD_INSTANCE, move |c, y| {
             com_corpo(c, y, |t, theme, store, x, w, y| {
-                sections::instance::paint_instance_card(
+                sections::instance_cartao::paint_instance(
                     t.scene, t.text, theme, t.hit, store, &info, x, w, y,
                 )
             })
@@ -61,7 +61,7 @@ pub(crate) fn do_topo() -> Vec<CardDef<'static>> {
     if let Some(info) = crate::state::current_inspector_properties() {
         out.push(sem_titulo(CARD_PROPERTIES, move |c, y| {
             com_corpo(c, y, |t, theme, store, x, w, y| {
-                sections::properties::paint_properties_card(
+                sections::instance_cartao::paint_properties(
                     t.scene, t.text, theme, t.hit, store, &info, x, w, y,
                 )
             })

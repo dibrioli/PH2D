@@ -109,7 +109,7 @@ fn list(
             scene,
             &summary(row, &info.verb_labels),
             x + Spacing::Sm.px(),
-            cur_y + (ROW_H - font) * 0.5,
+            cur_y + super::rows::folga_da_linha(ROW_H, font),
             font,
             w - Spacing::Sm.px(),
             color,
@@ -144,8 +144,16 @@ fn buttons(
         w,
         y,
         &[
-            (can_add, ids::INSP_ACTION_ADD, tr("panel.inspector.actions.plus_add_action")),
-            (can_remove, ids::INSP_ACTION_REMOVE, tr("panel.inspector.actions.x_remove_action")),
+            (
+                can_add,
+                ids::INSP_ACTION_ADD,
+                tr("panel.inspector.actions.plus_add_action"),
+            ),
+            (
+                can_remove,
+                ids::INSP_ACTION_REMOVE,
+                tr("panel.inspector.actions.x_remove_action"),
+            ),
         ],
     )
 }

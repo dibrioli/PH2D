@@ -83,7 +83,7 @@ fn list(
             scene,
             tr(Canal::from_tag(row.canal).label_key()),
             x + Spacing::Sm.px(),
-            cur_y + (ROW_H - font) * 0.5,
+            cur_y + super::rows::folga_da_linha(ROW_H, font),
             font,
             w,
             color,
@@ -121,8 +121,16 @@ fn buttons(
         w,
         y,
         &[
-            (can_add, ids::INSP_TWEEN_ADD, tr("panel.inspector.tween.plus_add_tween")),
-            (can_remove, ids::INSP_TWEEN_REMOVE, tr("panel.inspector.tween.x_remove_tween")),
+            (
+                can_add,
+                ids::INSP_TWEEN_ADD,
+                tr("panel.inspector.tween.plus_add_tween"),
+            ),
+            (
+                can_remove,
+                ids::INSP_TWEEN_REMOVE,
+                tr("panel.inspector.tween.x_remove_tween"),
+            ),
         ],
     )
 }

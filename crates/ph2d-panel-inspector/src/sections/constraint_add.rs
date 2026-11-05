@@ -22,10 +22,19 @@ pub(super) fn acrescentar(
     aberta: crate::state::MenuAdd,
 ) -> f32 {
     let mut y = y;
+    // Num cartão, Bake e Add dividem a linha (05 §4, lei 1); o menu do Add abre por baixo dos dois.
+    let cheia = i.rows.len() >= ids::INSP_CONSTRAINT_FORCA.len();
+    let par =
+        !i.rows.is_empty() && !cheia && ph2d_editor_core::widget::card_ink::card_body().is_some();
+    let coluna = if par {
+        (w - ph2d_card_stack::metrics::FIELD_GAP) * 0.5
+    } else {
+        w
+    };
     if !i.rows.is_empty() {
         let id = ids::INSP_CONSTRAINT_BAKE;
         let rotulo = tr("panel.inspector.constraint.bake");
-        let caixa = caixa_do_botao(text_system, x, w, y, rotulo);
+        let caixa = caixa_do_botao(text_system, x, coluna, y, rotulo);
         hit_index.register(id, caixa);
         let botao = Button::new(id, rotulo).kind(ButtonKind::Default);
         paint_button(
@@ -35,9 +44,11 @@ pub(super) fn acrescentar(
             text_system,
             theme,
         );
-        y = abaixo_do_botao(caixa);
+        if !par {
+            y = abaixo_do_botao(caixa);
+        }
     }
-    if i.rows.len() >= ids::INSP_CONSTRAINT_FORCA.len() {
+    if cheia {
         return super::rows::aviso(
             scene,
             text_system,
@@ -51,7 +62,7 @@ pub(super) fn acrescentar(
     }
     let id = ids::INSP_CONSTRAINT_ADD;
     let rotulo = tr("panel.inspector.constraint.add");
-    let caixa = caixa_do_botao(text_system, x, w, y, rotulo);
+    let caixa = caixa_do_botao(text_system, x + w - coluna, coluna, y, rotulo);
     hit_index.register(id, caixa);
     let botao = Button::new(id, rotulo).kind(ButtonKind::Default);
     let botao = if aberta != MenuAdd::Fechado {

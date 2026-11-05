@@ -277,7 +277,11 @@ fn follow_body(
     );
     let caixa =
         ph2d_editor_core::property_row::caixa_da_linha_pintada(x, w, y_linha, cur_y, seccao);
-    let icon_w = (ROW_H_PX * 0.82).min(caixa.w); // LITERAL-PX-OK: o quadrado compacto da linha (o mesmo da roldana)
+    let icon_w = if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        ph2d_card_stack::metrics::GRID_CELL
+    } else {
+        (ROW_H_PX * 0.82).min(caixa.w) // LITERAL-PX-OK: o quadrado compacto da linha (o mesmo da roldana)
+    };
     let inset = (caixa.h - icon_w) * 0.5;
     let conta_gotas = Rect::new(
         caixa.x + caixa.w - icon_w - inset,

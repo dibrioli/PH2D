@@ -149,7 +149,7 @@ fn lista(
             scene,
             &row.counter,
             x + Spacing::Sm.px(),
-            cur_y + (ROW_H - font) * 0.5,
+            cur_y + super::rows::folga_da_linha(ROW_H, font),
             font,
             w,
             cor,
@@ -159,7 +159,7 @@ fn lista(
             scene,
             &resumo(row),
             x + w * 0.5,
-            cur_y + (ROW_H - font) * 0.5,
+            cur_y + super::rows::folga_da_linha(ROW_H, font),
             font,
             w * 0.5 - Spacing::Sm.px(),
             resolve(ColorToken::Text3, theme),
@@ -195,8 +195,16 @@ fn botoes(
         w,
         y,
         &[
-            (pode_juntar, ids::INSP_WATCH_ADD, tr("panel.inspector.counter_watch.plus_add_rule")),
-            (pode_tirar, ids::INSP_WATCH_REMOVE, tr("panel.inspector.counter_watch.x_remove_rule")),
+            (
+                pode_juntar,
+                ids::INSP_WATCH_ADD,
+                tr("panel.inspector.counter_watch.plus_add_rule"),
+            ),
+            (
+                pode_tirar,
+                ids::INSP_WATCH_REMOVE,
+                tr("panel.inspector.counter_watch.x_remove_rule"),
+            ),
         ],
     )
 }

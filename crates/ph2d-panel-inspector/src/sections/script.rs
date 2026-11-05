@@ -353,21 +353,32 @@ pub(crate) fn paint_script_section(
         0.0
     };
     cur_y += vao;
-    let r = Rect::new(x, cur_y, w, ALTURA_DE_CAMPO);
+    // Num cartão, chip e botões têm a altura de todo controlo (05 §4).
+    let em_cartao = vao > 0.0;
+    let alto = if em_cartao {
+        ph2d_card_stack::metrics::FIELD_H
+    } else {
+        ALTURA_DE_CAMPO
+    };
+    let r = Rect::new(x, cur_y, w, alto);
     super::script_seletor::seletor(scene, text_system, theme, hit_index, store, r, info);
-    cur_y += ALTURA_DE_CAMPO + ph2d_tokens::control_gap_px().max(vao);
-    let metade = (w - Spacing::Xs.px()) * 0.5;
+    cur_y += alto + ph2d_tokens::control_gap_px().max(vao);
+    let metade = if em_cartao {
+        (w - ph2d_card_stack::metrics::FIELD_GAP) * 0.5
+    } else {
+        (w - Spacing::Xs.px()) * 0.5
+    };
     botao(
         scene,
         text_system,
         theme,
         hit_index,
         store,
-        Rect::new(x, cur_y, metade, ALTURA_DE_CAMPO),
+        Rect::new(x, cur_y, metade, alto),
         ids::INSP_SCRIPT_BROWSE,
         tr("panel.inspector.script.browse"),
     );
-    let editar = Rect::new(x + w - metade, cur_y, metade, ALTURA_DE_CAMPO);
+    let editar = Rect::new(x + w - metade, cur_y, metade, alto);
     let editavel = !matches!(
         info.status,
         InspectorScriptStatus::NoFile
@@ -395,7 +406,12 @@ pub(crate) fn paint_script_section(
             theme,
         );
     }
-    cur_y += ALTURA_DE_CAMPO + ph2d_tokens::control_gap_px();
+    cur_y += alto
+        + if em_cartao {
+            0.0
+        } else {
+            ph2d_tokens::control_gap_px()
+        };
     cur_y = super::script_avisos::avisos(scene, text_system, theme, x, w, cur_y, info);
 
     // ── OS NÚMEROS ───────────────────────────────────────────────────────────
@@ -469,7 +485,14 @@ pub(crate) fn paint_script_section(
         };
         let reset_w = largura_do_botao(text_system, id, tr("panel.inspector.script.remove"));
         let gap = Spacing::Xs.px();
-        let texto = format!("{} = {} \u{2014} {porque}", o.name, legivel(&o.value));
+        // Num cartão, a razão repetida sai (a nota de cima di-la): o nome do artista é que distingue.
+        let texto = if ph2d_editor_core::widget::card_ink::card_body().is_some()
+            && matches!(o.wants, PorqueOrfao::NaoDeclarado)
+        {
+            format!("{} = {}", o.name, legivel(&o.value))
+        } else {
+            format!("{} = {} \u{2014} {porque}", o.name, legivel(&o.value))
+        };
         paint_text(
             text_system,
             scene,

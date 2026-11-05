@@ -331,7 +331,7 @@ fn paint_mount_row(
         tr("component.field.pulley_wheel.7"),
         sec,
     );
-    let (vx, vw) = (linha.control.x, linha.control.w);
+    let (vx, vw, icon_w) = super::rows::caixa_de_alvo(scene, linha.control, icon_w);
     let (cy, ch) = (linha.control.y, linha.control.h);
     let text_y = cy + (ch - font) * 0.5;
     // "(scenery)" e não um vazio: *pregada no cenário* é uma resposta, e uma
@@ -479,7 +479,7 @@ fn paint_rope_row(
         tr("component.field.pulley_wheel.1"),
         sec,
     );
-    let (vx, vw) = (linha.control.x, linha.control.w);
+    let (vx, vw, icon_w) = super::rows::caixa_de_alvo(scene, linha.control, icon_w);
     let (cy, ch) = (linha.control.y, linha.control.h);
     let text_y = cy + (ch - font) * 0.5;
     paint_text(

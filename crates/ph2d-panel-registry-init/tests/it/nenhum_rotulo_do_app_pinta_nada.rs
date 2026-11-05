@@ -1454,6 +1454,12 @@ impl Tabela {
         if self.exactos.contains(t) {
             return true;
         }
+        // O título de uma lista de cartões pinta a palavra da tabela em maiúsculas (`INSPECTOR`).
+        if t.chars().all(|c| !c.is_lowercase())
+            && self.exactos.iter().any(|x| x.to_uppercase() == t)
+        {
+            return true;
+        }
         // ⭐⭐ **UMA LINHA DE PARÁGRAFO não é um texto da tabela — é um PEDAÇO dele.**
         //
         // ⛔ Achado na varredura da árvore inteira: o `wet_tuning` pinta prosa com
@@ -1595,6 +1601,8 @@ fn toda_palavra_que_um_painel_pinta_a_tabela_sabe_produzir() {
                 .iter()
                 .any(|(id, _)| *id == a.painel)
         })
+        // O código de uma cor (`FFFFFF`) é um valor, como um número.
+        .filter(|a| !(a.m.texto.len() >= 6 && a.m.texto.chars().all(|c| c.is_ascii_hexdigit())))
         .filter(|a| !tabela.produz(&a.m.texto))
         .filter(|a| !e_a_mesma_palavra_ja_cortada(&a.m.texto, &tabela))
         .map(|a| format!("{} · {:?}", a.painel, a.m.texto))

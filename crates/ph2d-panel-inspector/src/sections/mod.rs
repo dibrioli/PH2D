@@ -92,6 +92,7 @@ mod identity;
 pub(crate) mod instance;
 /// ⭐⭐ **O bloco das peças ACRESCENTADAS** — irmão por assunto do `instance`, ver o cabeçalho de lá.
 pub(crate) mod instance_added;
+pub(crate) mod instance_cartao;
 /// ⭐⭐ **O bloco das excepções SEM ALVO** — irmão por assunto do `instance`, ver o cabeçalho de lá.
 pub(crate) mod instance_orphans;
 /// ⭐⭐ **O bloco das peças RECUSADAS** — irmão por assunto do `instance`, ver o cabeçalho de lá.

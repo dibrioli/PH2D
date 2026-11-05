@@ -40,7 +40,7 @@ const CARD_PAD: f32 = 8.0; // LITERAL-PX-OK: inset do cartão, irmão do BODY_PA
 /// porque é o painel que o portão da HR-15 varre. Pô-lo em `screens/hero/variant_axes.rs` era uma
 /// string de UI numa camada fora do alcance do gate — *uma regra fora do caminho de quem executa
 /// não existe*. ⏳ Ele migra com os irmãos deste ficheiro quando o Fluent chegar.
-const FLAT_AXIS_LABEL: TextKey = TextKey::new("panel.inspector.properties.variant");
+pub(crate) const FLAT_AXIS_LABEL: TextKey = TextKey::new("panel.inspector.properties.variant");
 
 /// O título do cartão — a palavra, sem o nome.
 ///
@@ -57,7 +57,7 @@ const CARD_TITLE: TextKey = TextKey::new("panel.inspector.properties.properties"
 ///
 /// ⚠️ Enquanto ela estava escrita no meio do pintor, medir era impossível sem a repetir — e duas
 /// cópias de uma frase são duas frases no dia em que uma mudar.
-fn card_title(info: &InspectorPropertiesInfo) -> String {
+pub(crate) fn card_title(info: &InspectorPropertiesInfo) -> String {
     match info.source_name.as_deref() {
         Some(n) => tr_with("panel.inspector.properties.title_of", &[("n", &n)]),
         None => CARD_TITLE.tr().to_string(),

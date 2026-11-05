@@ -128,7 +128,7 @@ pub(crate) fn paint_list(
             scene,
             &row.name,
             text_x,
-            cur_y + (ROW_H - font) * 0.5,
+            cur_y + super::rows::folga_da_linha(ROW_H, font),
             font,
             rect.w * SUMMARY_COL_FRAC - (text_x - x),
             color,
@@ -144,7 +144,7 @@ pub(crate) fn paint_list(
             scene,
             &summary,
             x + rect.w * SUMMARY_COL_FRAC,
-            cur_y + (ROW_H - font) * 0.5,
+            cur_y + super::rows::folga_da_linha(ROW_H, font),
             font,
             rect.w * (1.0 - SUMMARY_COL_FRAC),
             resolve(

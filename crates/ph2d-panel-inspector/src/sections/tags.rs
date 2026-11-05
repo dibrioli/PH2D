@@ -87,6 +87,8 @@ fn chips(
             cy += ROW_H + gap;
         }
         let rect = Rect::new(cx, cy, cw, ROW_H);
+        // A etiqueta é um controlo: só o «×» se regista, e o nome dela não é um rótulo solto (05 §4).
+        ph2d_editor_core::panel::cards::censo::controlo_maior_que_a_pega(id, rect);
         paint_tag(&chip, rect, scene, text_system, theme);
         // ⭐⭐ **Só o `×` é hit-registado, e é isso que separa os dois gestos**: carregar no corpo
         // do chip não faz nada (ainda não há *ir para a tag*), carregar no `×` tira-a. Registar a

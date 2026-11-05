@@ -37,6 +37,16 @@ use ph2d_i18n::tr_with;
 /// A linha de uma lista é a linha do app — pela porta, nunca por um literal que coincide.
 const ROW_H: f32 = ph2d_tokens::ROW_H_PX;
 
+/// O resumo que cabe sempre: o período e se repete.
+fn resumo_curto(row: &InspectorTimerRow) -> String {
+    let repeat = if row.repeat {
+        tr("panel.inspector.timers.repeats")
+    } else {
+        tr("panel.inspector.timers.once")
+    };
+    format!("{:.2}s \u{b7} {repeat}", row.duration_s)
+}
+
 /// **O que esta linha FAZ, numa frase** — a mesma ideia do resumo `2-5 · Forward` da §11.
 ///
 /// ⚠️ Ele diz o **período**, se **repete** e para onde **fala**, porque são exactamente as três
@@ -97,13 +107,32 @@ fn list(
     // ⚠️ **O tecto de `0,55` é sobre o NOME, não sobre o resumo:** o nome é o que o artista escreveu
     //   e é por ele que se acha a linha; sem tecto, um resumo comprido (`→ um_sinal_com_nome_longo`)
     //   engoliria a coluna que serve para escolher.
-    let resumos: Vec<String> = info.rows.iter().map(summary).collect();
+    let tecto = w * 0.55; // LITERAL-PX-OK: o tecto e' do NOME — ver acima
+    let em_cartao = ph2d_editor_core::widget::card_ink::card_body().is_some();
+    // Num cartão, o resumo que não cabe perde o sinal inteiro (lê-se no campo Signal), nunca meia palavra.
+    let resumos: Vec<String> = info
+        .rows
+        .iter()
+        .map(|r| {
+            let inteiro = summary(r);
+            let cabe = ph2d_editor_core::paint::label_column_width(
+                text_system,
+                font,
+                std::iter::once(inteiro.as_str()),
+            ) <= tecto;
+            if cabe || !em_cartao {
+                inteiro
+            } else {
+                resumo_curto(r)
+            }
+        })
+        .collect();
     let sum_col = ph2d_editor_core::paint::label_column_width(
         text_system,
         font,
         resumos.iter().map(String::as_str),
     )
-    .min(w * 0.55); // LITERAL-PX-OK: o tecto e' do NOME — ver acima
+    .min(tecto);
     let sum_x = x + w - Spacing::Sm.px() - sum_col;
     let nome_w = (sum_x - x - Spacing::Sm.px() * 2.0).max(0.0);
     // ⚠️ **`zip` com o array de ids**: uma lista com mais timers do que ids (impossível enquanto o
@@ -157,7 +186,7 @@ fn list(
             scene,
             &row.name,
             x + Spacing::Sm.px(),
-            cur_y + (ROW_H - font) * 0.5,
+            cur_y + super::rows::folga_da_linha(ROW_H, font),
             font,
             nome_w,
             color,
@@ -167,7 +196,7 @@ fn list(
             scene,
             &resumos[i],
             sum_x,
-            cur_y + (ROW_H - font) * 0.5,
+            cur_y + super::rows::folga_da_linha(ROW_H, font),
             font,
             sum_col,
             resolve(ColorToken::Text3, theme),
@@ -210,8 +239,16 @@ fn buttons(
         w,
         y,
         &[
-            (can_add, ids::INSP_TIMER_ADD, tr("panel.inspector.timers.plus_add_timer")),
-            (can_remove, ids::INSP_TIMER_REMOVE, tr("panel.inspector.timers.x_remove_timer")),
+            (
+                can_add,
+                ids::INSP_TIMER_ADD,
+                tr("panel.inspector.timers.plus_add_timer"),
+            ),
+            (
+                can_remove,
+                ids::INSP_TIMER_REMOVE,
+                tr("panel.inspector.timers.x_remove_timer"),
+            ),
         ],
     )
 }

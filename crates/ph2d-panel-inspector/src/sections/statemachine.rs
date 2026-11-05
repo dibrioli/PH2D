@@ -116,7 +116,7 @@ pub(super) fn lista(
             scene,
             texto,
             x + Spacing::Sm.px(),
-            cur_y + (ROW_H - font) * 0.5,
+            cur_y + super::rows::folga_da_linha(ROW_H, font),
             font,
             w - Spacing::Sm.px(),
             color,
@@ -151,10 +151,7 @@ pub(super) fn botoes(
         x,
         w,
         y,
-        &[
-            (pode_add, add.0, add.1),
-            (pode_remover, remove.0, remove.1),
-        ],
+        &[(pode_add, add.0, add.1), (pode_remover, remove.0, remove.1)],
     )
 }
 

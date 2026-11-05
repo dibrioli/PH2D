@@ -628,6 +628,10 @@ Medido (traço de 40 px; massa / ecrã ÷ fábrica; «antes» = o mesmo processo
 
 Portões `grao_a_mao_tests::casos_abertos_*` (com o braço «sem a cura», que sangra, em cada um). **Aberto:** uma macro gravada antes que arma um Grain toca agora a quantidade nova.
 
+## Bug #72 (ABERTO, smoke do dono 05/11) — travamento leve no começo do 1.º traço (Watercolor Basic, Wet Wash)
+
+Sonda `sonda_primeiro_traco` (1920×1080, `--profile smoke`, compositor fora, ms do evento do pen-down; `PH2D_LEI_ANTIGA=1` × lei nova). **Curado o que era de todo traço:** `begin_direct_stroke` chamava `marca_tudo()`: o undo copiava a grade inteira a cada pen-down. Sem ele, 2.º traço, lei nova: Wet Wash 82→12, Wet Round 32→6, Wet Liner 44→15, Marker Bullet 29→10; lei antiga: 53→16, 18→7, 34→18, 18→12. `historia` e `desfazer` verdes. **ABERTO, o que o dono relatou:** o 1.º traço: Wet Wash ~65 + 71 no 3.º evento, Wet Round 51, Wet Liner 69, Marker 53, Watercolor Basic 28–44. Nascer a sessão só custa 10 ms; suspeita não medida: os planos preguiçosos que o 1.º dab aloca e preenche. Falta medir no app real (a placa não entra na sonda). **Custo da lei nova por evento:** mediana 2–3× a antiga (Wet Liner 1,5→4,2; Marker 2,7→8; Wet Wash 2→7).
+
 ## Bug #71 (MEDIDO 05/11, cura DESLIGADA à espera do olho do dono; 9bd76cd02d) — em papel de alto relevo, a tinta parece afundada: relevo negativo na borda
 
 Dono: «nos modos wet paint e watercolor, alguns pincéis aparentam aplicar a tinta com relevo negativo se o papel tem alto relevo». [Foto](handoffs/material_2026-11-05/relevo_negativo_foto_do_dono.png): mancha amarela com faixa clara na borda inferior direita e sombra na superior esquerda, ao contrário do relevo do papel em volta.

@@ -249,7 +249,7 @@ impl Default for WetPaintState {
             composta: None,
             varredura: oleo_no_quadro::Varredura::default(),
             composite_pendente: false,
-            lei_da_tinta: ph2d_wet_paint::sim::LeiDaTinta::Velha,
+            lei_da_tinta: lei_de_fabrica(),
         }
     }
 }
@@ -504,6 +504,15 @@ mod agua_no_oleo_regua_tests; // J11: a água × o óleo seco (atrito do leito, 
 mod agua_no_oleo_tests; // sonda J11: a água × o óleo seco (velocidade, dissolver, pixelado)
 #[cfg(test)]
 mod agua_sobre_oleo_tests; // smoke do dono 30/10: o molhado sobre o óleo com papel de cor
+/// A lei nova é a de todos os pincéis (dono 05/11); `PH2D_LEI_ANTIGA=1` pinta com a de antes, a do backup `lei-antiga`.
+fn lei_de_fabrica() -> ph2d_wet_paint::sim::LeiDaTinta {
+    if std::env::var("PH2D_LEI_ANTIGA").is_ok_and(|v| v == "1") {
+        ph2d_wet_paint::sim::LeiDaTinta::Velha
+    } else {
+        ph2d_wet_paint::sim::LeiDaTinta::Pigmento
+    }
+}
+
 #[cfg(test)]
 mod borda_do_traco_tests; // o Edge Darkening é de cada traço (Bug #69)
 mod borracha_na_base; // a Borracha também apaga a tinta antiga (Bug #70)
@@ -584,6 +593,8 @@ mod sonda_papel_seco;
 mod sonda_pastel_tempo; // o Soft Pastel no TEMPO contra o Rebelle Dry Thin (prompt 35)
 #[cfg(test)]
 mod sonda_presets;
+#[cfg(test)]
+mod sonda_primeiro_traco; // o travamento do começo do 1.º traço (dono 05/11)
 #[cfg(test)]
 mod sonda_relevo_negativo; // a tinta afundada no papel de alto relevo (Bug #71)
 #[cfg(test)]

@@ -13,6 +13,7 @@
 > contagem de uma família CONTA-SE no ficheiro dela**.
 
 ## Perfil & referência
+- ⭐⭐⭐ [Dono 05/11: lei nova em todos os pincéis, ele testa; backup `lei-antiga`](project_new_paint_law_for_all_brushes_2026_11_05.md)
 - [Enio (dibrioli): dono/decisor; o dev é a LLM · ⛔ SEMPRE PT-BR](user_role.md)
 - 📚 [Decisões de produto do dono, por módulo (21) — Luau, Pixel Art, Kanban, macros, constraints, imagem, modos…](reference_topic_owner_product_decisions.md)
 - ⭐⭐ [Dono 02/11: UI em cartões — referência = os nossos painéis com smoke OK, depois Figma → Rive → Inkscape/Godot/Unity](project_card_ui_reference_order_2026_11_02.md)

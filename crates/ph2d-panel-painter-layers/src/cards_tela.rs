@@ -72,6 +72,11 @@ pub(crate) struct Tinta {
 }
 
 impl Tinta {
+    /// A tela é a do corpo de um cartão, não a do painel de antes?
+    pub(crate) fn no_cartao(self) -> bool {
+        self.ink.is_some()
+    }
+
     pub(crate) fn cor(self, token: ColorToken) -> ph2d_vector::Color {
         self.ink
             .map_or_else(|| resolve(token, self.theme), |i| i.color(token))

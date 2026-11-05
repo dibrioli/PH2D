@@ -101,7 +101,12 @@ pub(crate) fn visor(
     let canvas = Rect::new(x + (content_w - side) * 0.5, y, side, side);
     let (cx, cy) = (canvas.x + side * 0.5, canvas.y + side * 0.5);
     let r_max = side * 0.5 - DIAL_PAD_PX * (side / DIAL_PX);
-    let grid = tinta.cor(ColorToken::Border);
+    // No papel do cartão, `Border` quase some (foto F3 em docs/CartoesUI/maquete).
+    let grid = tinta.cor(if tinta.no_cartao() {
+        ColorToken::TextDisabled
+    } else {
+        ColorToken::Border
+    });
     let accent = tinta.cor(ColorToken::Accent);
     let idle = tinta.cor(ColorToken::TextDisabled);
     // The polar grid: 8 concentric rings × 12 spokes of 30°.

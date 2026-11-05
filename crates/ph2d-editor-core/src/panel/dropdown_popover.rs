@@ -11,7 +11,8 @@ use crate::interaction::{HitIndex, InteractiveState, WidgetStore};
 use crate::panel::PaintCtx;
 use crate::widget::{
     ButtonState, DROPDOWN_SCROLLBAR_ID, Dropdown, PaintedPopover, PopoverRowPainter,
-    paint_dropdown_popover_scrolled, paint_scrollbar, scrollbar_is_needed, scrollbar_track_rect,
+    paint_dropdown_popover_scrolled, paint_popover_drop_mark, paint_popover_row_flying,
+    paint_scrollbar, scrollbar_is_needed, scrollbar_track_rect,
 };
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
@@ -32,7 +33,7 @@ pub fn paint_dropdown_list<T: Clone + PartialEq>(
     theme: Theme,
     rows: Option<PopoverRowPainter<'_>>,
 ) -> PaintedPopover {
-    porta(ctx, dd, chip, region, theme, rows, None)
+    porta(ctx, dd, chip, region, theme, rows, None, None)
 }
 
 /// ⭐⭐ **A porta para linhas que NÃO se pintam no rótulo** (o dropdown de fontes do Pixel Art pinta
@@ -49,7 +50,57 @@ pub fn paint_dropdown_list_measured<T: Clone + PartialEq>(
     rows: Option<PopoverRowPainter<'_>>,
     row_text_w: f32,
 ) -> PaintedPopover {
-    porta(ctx, dd, chip, region, theme, rows, Some(row_text_w))
+    porta(ctx, dd, chip, region, theme, rows, Some(row_text_w), None)
+}
+
+/// A linha de uma lista aberta que a mão leva: a lei do voo do cartão do Kanban
+/// ([`crate::paint_flight`]), com a ordem prevista e a marca de acento onde ela cai.
+pub struct DropdownRowInHand<'a, T: Clone + PartialEq> {
+    /// A lista como vai ficar, com o vão na linha `gap`. Mesmas linhas, mesmas alturas.
+    pub preview: &'a Dropdown<T>,
+    pub gap: usize,
+    /// Há onde cair? Sem isto, o vão fica no sítio dela e não há marca: largar não muda nada.
+    pub lands: bool,
+    /// A linha que voa, em `dd.options`, e onde ela está: a mão manda, não a ordem prevista.
+    pub flying: usize,
+    pub at: Rect,
+}
+
+/// A lista aberta que se reordena à mão. Os alvos ficam os de `dd`, a ordem de AGORA: o que se pinta
+/// mexe-se, e o sítio da queda não pode mexer-se com ele.
+pub fn paint_dropdown_list_reordering<T: Clone + PartialEq>(
+    ctx: &mut PaintCtx,
+    dd: &Dropdown<T>,
+    in_hand: &DropdownRowInHand<'_, T>,
+    chip: Rect,
+    region: Rect,
+    theme: Theme,
+) -> PaintedPopover {
+    porta(ctx, dd, chip, region, theme, None, None, Some(in_hand))
+}
+
+/// As faixas visíveis de `dd` onde a lista se vai pintar neste quadro, antes de a pintar: quem
+/// reordena à mão precisa delas para prever a ordem.
+pub fn dropdown_list_bands<T: Clone + PartialEq>(
+    ctx: &mut PaintCtx,
+    dd: &Dropdown<T>,
+    chip: Rect,
+    region: Rect,
+) -> Vec<(NodeId, Rect)> {
+    let panel = dd.popover_rect_fitted(chip, Some(region), ctx.text_system);
+    let scroll = rolagem(ctx.host.store(), dd, chip, panel);
+    visible_option_bands(dd, chip, panel, scroll).collect()
+}
+
+/// A rolagem gravada, clampada ao que `dd` transborda em `panel`.
+fn rolagem<T: Clone + PartialEq>(
+    store: &WidgetStore,
+    dd: &Dropdown<T>,
+    chip: Rect,
+    panel: Rect,
+) -> f32 {
+    let max_scroll = (dd.content_height(chip.h) - panel.h).max(0.0);
+    store.panel_scroll(dd.id).clamp(0.0, max_scroll) // CLAMP-OK: 0.0 literal; max_scroll is a non-negative px extent
 }
 
 fn porta<T: Clone + PartialEq>(
@@ -60,6 +111,7 @@ fn porta<T: Clone + PartialEq>(
     theme: Theme,
     rows: Option<PopoverRowPainter<'_>>,
     row_text_w: Option<f32>,
+    in_hand: Option<&DropdownRowInHand<'_, T>>,
 ) -> PaintedPopover {
     let painted = {
         let (store, hit_index) = ctx.host.store_and_hit_index_mut();
@@ -74,6 +126,7 @@ fn porta<T: Clone + PartialEq>(
             hit_index,
             rows,
             row_text_w,
+            in_hand,
         )
     };
     let store = ctx.host.store_mut();
@@ -138,6 +191,7 @@ pub fn paint_dropdown_popover_scrolled_with_hits<T: Clone + PartialEq>(
         hit_index,
         None,
         None,
+        None,
     )
 }
 
@@ -184,6 +238,7 @@ fn paint_list<T: Clone + PartialEq>(
     hit_index: &mut HitIndex,
     rows: Option<PopoverRowPainter<'_>>,
     row_text_w: Option<f32>,
+    in_hand: Option<&DropdownRowInHand<'_, T>>,
 ) -> PaintedPopover {
     // ⭐ A largura da lista é a da porta ([`Dropdown::popover_rect_fitted`]); os hits abaixo e o
     // clique-fora (o `panel` publicado) leem este MESMO rect.
@@ -197,14 +252,14 @@ fn paint_list<T: Clone + PartialEq>(
     };
     let content_h = dd.content_height(chip.h);
     let visible_h = panel.h;
-    let max_scroll = (content_h - visible_h).max(0.0);
-    let scroll = store.panel_scroll(dd.id).clamp(0.0, max_scroll); // CLAMP-OK: 0.0 literal; max_scroll is a non-negative px extent
+    let scroll = rolagem(store, dd, chip, panel);
+    let cara = in_hand.map_or(dd, |m| m.preview);
     let barra = store.scrollbar_visual_for(DROPDOWN_SCROLLBAR_ID, Some(dd.id));
     // O chip veio de um cartão ⇒ a lista tem a cara dele, tema próprio incluído (T25, 05 §4).
     match crate::widget::card_ink::tinta_do_popover(dd.id) {
         Some(ink) => crate::widget::card_ink::com(ink, || {
             paint_dropdown_popover_scrolled(
-                dd,
+                cara,
                 chip,
                 panel,
                 scroll,
@@ -214,18 +269,36 @@ fn paint_list<T: Clone + PartialEq>(
                 ink.theme,
                 rows,
             );
+            na_mao(
+                dd,
+                in_hand,
+                (chip, panel, scroll),
+                scene,
+                text_system,
+                ink.theme,
+            );
         }),
-        None => paint_dropdown_popover_scrolled(
-            dd,
-            chip,
-            panel,
-            scroll,
-            barra,
-            scene,
-            text_system,
-            theme,
-            rows,
-        ),
+        None => {
+            paint_dropdown_popover_scrolled(
+                cara,
+                chip,
+                panel,
+                scroll,
+                barra,
+                scene,
+                text_system,
+                theme,
+                rows,
+            );
+            na_mao(
+                dd,
+                in_hand,
+                (chip, panel, scroll),
+                scene,
+                text_system,
+                theme,
+            );
+        }
     }
     for (id, band) in visible_option_bands(dd, chip, panel, scroll) {
         super::camada_das_listas::alvo(hit_index, id, band);
@@ -243,5 +316,26 @@ fn paint_list<T: Clone + PartialEq>(
         content_h,
         visible_h,
         scroll,
+    }
+}
+
+/// O que a mão acrescenta à lista pintada: a marca da queda e, por cima dela, a linha que voa.
+fn na_mao<T: Clone + PartialEq>(
+    dd: &Dropdown<T>,
+    in_hand: Option<&DropdownRowInHand<'_, T>>,
+    (chip, panel, scroll): (Rect, Rect, f32),
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+) {
+    let Some(m) = in_hand else {
+        return;
+    };
+    if m.lands {
+        let vao = dd.option_rect_in_scrolled(chip, panel, m.gap, scroll);
+        paint_popover_drop_mark(scene, theme, vao);
+    }
+    if let Some(opt) = dd.options.get(m.flying) {
+        paint_popover_row_flying(scene, text_system, theme, opt, m.at);
     }
 }

@@ -144,6 +144,7 @@ pub use dropdown::{
 };
 pub(crate) use dropdown::{
     paint_dropdown_popover, paint_dropdown_popover_in_viewport, paint_dropdown_popover_scrolled,
+    paint_popover_drop_mark, paint_popover_row_flying,
 };
 pub use segmented_layout::{segment_rects_for, wrapped_cells_for, wrapped_cells_in_font};
 // ⭐ A MESMA conta que o grupo adaptativo faz, para a porta da escolha medir sem pintar

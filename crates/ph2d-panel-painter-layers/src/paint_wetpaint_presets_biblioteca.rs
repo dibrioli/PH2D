@@ -11,15 +11,16 @@ use crate::paint_wetpaint_presets::{escolher_preset, preset_escolhido};
 use crate::state_wet_presets::{VistaPresets, current_wet_presets};
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{PanelRowDrop, PanelRowFamily, WidgetEvent};
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text_block, resolve};
+use ph2d_editor_core::paint::{paint_text_block, resolve};
 use ph2d_editor_core::panel::{
-    PaintCtx, PanelHostInternal, camada_das_listas, paint_dropdown_list, visible_option_bands,
+    DropdownRowInHand, PaintCtx, PanelHostInternal, camada_das_listas, dropdown_list_bands,
+    paint_dropdown_list, paint_dropdown_list_reordering, visible_option_bands,
 };
 use ph2d_editor_core::tool::PanelEvent;
 use ph2d_editor_core::widget::{Button, Dropdown, DropdownOption, Modal, paint_modal};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
-use ph2d_tokens::{ColorToken, Radius};
+use ph2d_tokens::ColorToken;
 use ph2d_tool_painter::ids;
 use std::cell::RefCell;
 
@@ -97,9 +98,9 @@ pub(crate) fn botoes_da_biblioteca(v: &VistaPresets) -> Vec<(ph2d_a11y::NodeId, 
     botoes
 }
 
-/// O popover do Preset aberto: pinta, publica as linhas arrastáveis (as faixas VISÍVEIS, as mesmas que
-/// recebem o clique) e, durante um arrasto, a barra onde o pincel vai cair — a partição 50/50 do
-/// despacho para uma família que não aninha.
+/// O popover do Preset aberto: pinta e publica as linhas arrastáveis (as faixas VISÍVEIS, as mesmas que
+/// recebem o clique). Durante um arrasto, a lei do cartão do Kanban: a linha voa, as outras abrem o vão
+/// onde ela vai cair e a marca de acento diz o sítio; os alvos ficam os de agora.
 pub(crate) fn paint_popover(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -111,39 +112,80 @@ pub(crate) fn paint_popover(
         .selected(atual)
         .open(true);
     let viewport = ctx.viewport;
-    let painted = paint_dropdown_list(ctx, &dd, chip, viewport, theme, None);
-    let bandas: Vec<_> = visible_option_bands(&dd, chip, painted.panel, painted.scroll).collect();
-    let store = ctx.host.store_mut();
-    store.set_panel_row_ids(
-        PanelRowFamily::PainterPreset,
-        bandas.iter().map(|(id, _)| *id).collect(),
-    );
-    let Some((PanelRowFamily::PainterPreset, d)) = store.panel_row_drag() else {
-        return;
+    let na_mao = match ctx.host.store().panel_row_drag() {
+        Some((PanelRowFamily::PainterPreset, d)) if d.active => Some(d),
+        _ => None,
     };
-    if !d.active {
-        return;
-    }
-    let alvo = bandas
-        .iter()
-        .find(|(id, r)| *id != d.dragged && d.cursor_y >= r.y && d.cursor_y < r.y + r.h);
-    if let Some((_, r)) = alvo {
-        let y = if d.cursor_y < r.y + r.h * 0.5 {
-            r.y
-        } else {
-            r.y + r.h
+    let previsto = na_mao.and_then(|d| {
+        let bandas = dropdown_list_bands(ctx, &dd, chip, viewport);
+        let alvo = bandas
+            .iter()
+            .find(|(id, r)| *id != d.dragged && d.cursor_y >= r.y && d.cursor_y < r.y + r.h)
+            .map(|(id, r)| (*id, d.cursor_y >= r.y + r.h * 0.5));
+        let voa = dd.options.iter().position(|o| o.id == d.dragged)?;
+        let (origem, largura, altura) = {
+            let r = bandas.iter().find(|(id, _)| *id == d.dragged);
+            r.map_or((chip.x, chip.w, chip.h), |(_, r)| (r.x, r.w, chip.h))
         };
-        let h = crate::paint_rows::DROP_BAR_H;
-        // Na camada da lista: pintada na cena do painel, a barra ficava por baixo da lista onde ela cai.
-        camada_das_listas::por_cima(ctx.scene, |cena| {
-            fill_rounded_rect(
-                cena,
-                Rect::new(r.x, y - h * 0.5, r.w, h),
-                ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
-                resolve(ColorToken::Accent, theme),
-            );
-        });
-    }
+        let (linhas, vao, cai) = ordem_prevista(&dd.options, voa, alvo);
+        let at = Rect::new(
+            origem + d.cursor_x - d.down_x,
+            d.cursor_y - altura * 0.5,
+            largura,
+            altura,
+        );
+        Some((linhas, vao, cai, voa, at))
+    });
+    let painted = match previsto {
+        Some((linhas, gap, lands, flying, at)) => {
+            let preview = Dropdown::new(ids::PAINTER_WETPAINT_PRESET, "", linhas)
+                .selected(atual)
+                .open(true);
+            let mao = DropdownRowInHand {
+                preview: &preview,
+                gap,
+                lands,
+                flying,
+                at,
+            };
+            paint_dropdown_list_reordering(ctx, &dd, &mao, chip, viewport, theme)
+        }
+        None => paint_dropdown_list(ctx, &dd, chip, viewport, theme, None),
+    };
+    let bandas = visible_option_bands(&dd, chip, painted.panel, painted.scroll);
+    let linhas = bandas.map(|(id, _)| id).collect();
+    ctx.host
+        .store_mut()
+        .set_panel_row_ids(PanelRowFamily::PainterPreset, linhas);
+}
+
+/// O valor do vão: nenhum preset o tem, nem o «sem preset» do popover (`usize::MAX`).
+const VALOR_DO_VAO: usize = usize::MAX - 1;
+
+/// As linhas com `voa` a sair e o vão onde ela cai. `alvo` é a linha sob o cursor e se a queda é depois
+/// dela. Devolve as linhas, o índice do vão e se a queda muda alguma coisa: fora da secção de `voa` (os
+/// títulos e o aviso separam-nas) a ponte recusa, e então o vão fica no sítio dela, sem marca.
+fn ordem_prevista(
+    opcoes: &[DropdownOption<usize>],
+    voa: usize,
+    alvo: Option<(ph2d_a11y::NodeId, bool)>,
+) -> (Vec<DropdownOption<usize>>, usize, bool) {
+    let separa = |o: &DropdownOption<usize>| o.header || o.disabled;
+    let secao = |i: usize| opcoes[..i].iter().filter(|o| separa(o)).count();
+    let mut linhas = opcoes.to_vec();
+    linhas[voa] = DropdownOption::new(opcoes[voa].id, VALOR_DO_VAO, String::new());
+    let lugar = alvo.and_then(|(id, depois)| {
+        let t = opcoes.iter().position(|o| o.id == id)?;
+        (secao(t) == secao(voa)).then_some((t, depois))
+    });
+    let Some((t, depois)) = lugar else {
+        return (linhas, voa, false);
+    };
+    let vao = linhas.remove(voa);
+    // O índice do alvo depois de `voa` sair, e a seguir a ele se a queda é depois.
+    let i = if t > voa { t - 1 } else { t } + usize::from(depois);
+    linhas.insert(i, vao);
+    (linhas, i, true)
 }
 
 /// O popover não se pintou neste quadro: nenhuma linha dele fica arrastável.
@@ -290,4 +332,56 @@ fn largar(host: &mut dyn PanelHostInternal, dragged: ph2d_a11y::NodeId, drop: Pa
             ids::PAINTER_WETPAINT_PRESET_MOVE,
             format!("{a}{sep}{b}{sep}{lado}"),
         )));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ph2d_a11y::NodeId;
+
+    /// Título · A B C D · título · E: os ids são 10 + o índice.
+    fn lista() -> Vec<DropdownOption<usize>> {
+        (0..7)
+            .map(|i| {
+                let o = DropdownOption::new(NodeId(10 + i as u64), i, format!("{i}"));
+                if i == 0 || i == 5 { o.header(true) } else { o }
+            })
+            .collect()
+    }
+
+    /// As linhas pela ordem prevista: o rótulo de cada uma, o vão vazio.
+    fn ordem(voa: usize, alvo: Option<(u64, bool)>) -> (Vec<String>, usize, bool) {
+        let alvo = alvo.map(|(i, d)| (NodeId(10 + i), d));
+        let (l, vao, cai) = ordem_prevista(&lista(), voa, alvo);
+        (l.into_iter().map(|o| o.label).collect(), vao, cai)
+    }
+
+    #[test]
+    fn the_gap_opens_where_the_row_will_land_inside_its_section() {
+        let v = |s: &[&str]| s.iter().map(|x| (*x).to_owned()).collect::<Vec<_>>();
+        // Para baixo, antes e depois do alvo; para cima, antes e depois do alvo.
+        let casos = [
+            ((1, (3, false)), (["0", "2", "", "3", "4", "5", "6"], 2)),
+            ((1, (3, true)), (["0", "2", "3", "", "4", "5", "6"], 3)),
+            ((4, (2, false)), (["0", "1", "", "2", "3", "5", "6"], 2)),
+            ((4, (2, true)), (["0", "1", "2", "", "3", "5", "6"], 3)),
+        ];
+        for ((voa, alvo), (linhas, vao)) in casos {
+            assert_eq!(
+                ordem(voa, Some(alvo)),
+                (v(&linhas), vao, true),
+                "{voa} {alvo:?}"
+            );
+        }
+    }
+
+    /// Sem alvo, ou noutra secção: a ordem é a de agora, com o vão no sítio dela.
+    #[test]
+    fn without_a_place_to_land_the_gap_stays_home() {
+        let parada = ["0", "", "2", "3", "4", "5", "6"]
+            .map(str::to_owned)
+            .to_vec();
+        assert_eq!(ordem(1, None), (parada.clone(), 1, false));
+        assert_eq!(ordem(1, Some((6, false))), (parada, 1, false));
+    }
 }

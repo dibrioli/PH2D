@@ -41,7 +41,8 @@ pub use crate::widget::section_plan;
 pub mod section_plan_ctx;
 
 pub use dropdown_popover::{
-    paint_dropdown_list, paint_dropdown_list_measured, paint_dropdown_popover_scrolled_with_hits,
+    DropdownRowInHand, dropdown_list_bands, paint_dropdown_list, paint_dropdown_list_measured,
+    paint_dropdown_list_reordering, paint_dropdown_popover_scrolled_with_hits,
     paint_popover_scrollbar, visible_option_bands,
 };
 pub use erased::ErasedPanel;

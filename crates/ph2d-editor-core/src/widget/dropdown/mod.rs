@@ -495,4 +495,5 @@ pub use popover::{
 };
 pub(crate) use popover::{
     paint_dropdown_popover, paint_dropdown_popover_in_viewport, paint_dropdown_popover_scrolled,
+    paint_popover_drop_mark, paint_popover_row_flying,
 };

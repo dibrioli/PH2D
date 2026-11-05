@@ -341,6 +341,7 @@ fn lista_e_sync(
     com_sync: bool,
     (chave, id): (&str, NodeId),
     texto: &str,
+    opcoes: &[&str],
     y: f32,
 ) -> f32 {
     if !com_sync {
@@ -357,11 +358,18 @@ fn lista_e_sync(
         "card.painter.brush.sync",
         b.link_shared,
     );
-    // Lei 5 de 05 §4: na coluna estreita o par desce em vez de cortar «Sync tools».
+    // Lei 5 de 05 §4: o par desce em vez de cortar «Sync tools» ou a opção mais longa da lista. Mede-se
+    // a mais longa, não a de agora: escolher outra opção não muda a arrumação.
+    let coluna = (c.w - m::FIELD_GAP) * 0.5;
     let nome = c
         .text_system
         .prefix_width(tr("card.painter.brush.sync"), m::VALUE_PX);
-    if nome + m::ICON_CELL + m::FIELD_PAD_R > (c.w - m::FIELD_GAP) * 0.5 {
+    let longa = opcoes
+        .iter()
+        .map(|o| c.text_system.prefix_width(o, m::VALUE_PX).ceil())
+        .fold(0.0_f32, f32::max);
+    let caixa = longa + m::FIELD_PAD_R * 2.0 + m::ICON_GLYPH;
+    if nome + m::ICON_CELL + m::FIELD_PAD_R > coluna || caixa > coluna {
         let y = c.row(std::slice::from_ref(&celula), y);
         return c.row(std::slice::from_ref(&sync), y);
     }
@@ -459,6 +467,9 @@ fn pinta_linha(c: &mut CardCtx<'_>, linha: &Linha, b: &BrushSettings, y: f32) ->
                 pids::PAINTER_BRUSH_MEDIA,
             ),
             tr(PaintMedia::from_u8(b.media).name_key()),
+            &(0..PaintMedia::COUNT)
+                .map(|i| tr(PaintMedia::from_u8(i).name_key()))
+                .collect::<Vec<_>>(),
             y,
         ),
         Linha::Preset => preset(c, vista, y),
@@ -476,6 +487,9 @@ fn pinta_linha(c: &mut CardCtx<'_>, linha: &Linha, b: &BrushSettings, y: f32) ->
                 pids::PAINTER_WETPAINT_PRESET_POLICY,
             ),
             paint_wetpaint_presets::nome_da_politica(vista.map_or(0, |v| v.politica)),
+            &(0..pids::PAINTER_WETPAINT_PRESET_POLICY_COUNT)
+                .map(paint_wetpaint_presets::nome_da_politica)
+                .collect::<Vec<_>>(),
             y,
         ),
         Linha::Sync => ferramenta::caixa(

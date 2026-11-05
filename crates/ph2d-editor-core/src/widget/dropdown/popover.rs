@@ -212,6 +212,44 @@ fn paint_popover_row_default<T>(
     );
 }
 
+/// A linha `opt` na mão, em `at`: a lei do voo do cartão do Kanban, por cima da lista.
+pub(crate) fn paint_popover_row_flying<T>(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    opt: &DropdownOption<T>,
+    at: Rect,
+) {
+    use crate::paint_flight::{FLIGHT_TILT_DEG, flight_shadow, fly};
+    let _veste = crate::widget::lista_flutuante::veste_fora_de_cartao(theme);
+    let raio = crate::paint::frame_radius(theme, Radius::Sm.px());
+    let local_r = Rect::new(0.0, 0.0, at.w, at.h);
+    let mut local = VectorScene::new();
+    fill_rounded_rect(&mut local, local_r, raio, opaque(ColorToken::BgElev, theme));
+    let row = PopoverRow {
+        index: 0,
+        rect: local_r,
+        selected: false,
+        disabled: false,
+    };
+    paint_popover_row_default(&mut local, text_system, theme, row, opt);
+    crate::widget::camada_das_listas::por_cima(scene, |scene| {
+        flight_shadow(scene, theme, at, raio);
+        fly(scene, &local, at, FLIGHT_TILT_DEG);
+    });
+}
+
+/// A marca de acento no topo de `vao`, a linha onde a que está na mão vai cair.
+pub(crate) fn paint_popover_drop_mark(scene: &mut VectorScene, theme: Theme, vao: Rect) {
+    let h = StrokeToken::Thick.px();
+    let raio = crate::paint::frame_radius(theme, Radius::Sm.px());
+    let marca = Rect::new(vao.x, vao.y - h * 0.5, vao.w, h);
+    let cor = crate::paint::resolve(ColorToken::Accent, theme);
+    crate::widget::camada_das_listas::por_cima(scene, |scene| {
+        fill_rounded_rect(scene, marca, raio, cor);
+    });
+}
+
 /// ⭐ **Um TÍTULO de categoria** ([`DropdownOption::header`]) — o rótulo de secção do design system:
 /// caixa alta, `Xs`, `Text3`, à esquerda e assente no fundo da linha, com um separador `Thin` em
 /// `Border` por cima (salvo a 1.ª linha). Nunca leva realce: não se escolhe.

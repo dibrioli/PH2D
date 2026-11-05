@@ -630,6 +630,12 @@ Medido (traço de 40 px; massa / ecrã ÷ fábrica; «antes» = o mesmo processo
 
 Portões `grao_a_mao_tests::casos_abertos_*` (com o braço «sem a cura», que sangra, em cada um). **Aberto:** uma macro gravada antes que arma um Grain toca agora a quantidade nova.
 
+## Bug #70 (ABERTO, decisão do dono, smoke 05/11) — depois de pintar no Wet Paint, a Borracha não apaga os traços dos outros meios
+
+Dono: «não apaga os traços dos outros modos já pintados». **Reproduzido** com X → Wet → pintar → Borracha, menu em Wet, sessão viva: Digital 135,8 → 135,8; Watercolor 92,6 → 92,6; Impasto 156 → 156 (controlo sem Wet: → 0; a mesma passada leva a tinta Wet de 34,2 a 1,1). X → Wet → X → Borracha apaga até 0, e o dono ainda não disse o que o menu mostrava. Mecanismo (rota medida, resto lido): `mode_switch.rs:66` mantém a Borracha no Wet; `wetpaint/ciclo.rs:27`, com sessão viva o Wet fica com os dabs; `wetpaint/dab_route.rs:105` apaga só o fluido; a tinta anterior está na `base` congelada (`session.rs:83`, `:395`). Lei W2.6 (`11337b0e1d`, 21/07) + arme (`9effa4b18b`, 24/10): existe em `main` (lido, não corrido). Impasto: a Borracha não oferece Impasto (`media.rs:245-249`), logo X, Wet, Borracha, X fica no Wet e não apaga.
+
+**Opções:** A (recomendada): apagar também a `base` sob o dab, com a água viva; maior (base, composite, undo; reescreve o motivo de `o_meio_da_borracha_so_age_sobre_tinta_viva`), custo por medir. B: clicar na Borracha sai do Wet e assa; pequena, perde o levantar tinta molhada do dono 24/10. C: manter e avisar no painel. Sonda `sonda_borracha_depois_do_wet`. Por verificar: o app real, tinta seca de verdade, várias camadas, `pick_wet_tool`.
+
 ## Bug #69 (ABERTO, smoke do dono 05/11) — escolher outro pincel endurece a borda da tinta antiga que ainda tem água
 
 Fotos do dono: bordas macias de traços anteriores ficam duras, com contorno fino, depois de passar um pincel escuro de cerdas; não muda com o Smooth Edges no painel. **Causa medida: o `EdgeDarkening` é global no motor**, e o preset novo troca-o para a tela inteira. Sequência (lida): `wetpaint_preset.rs:435` (`knobs = k`) → `session.rs:251` (`set_knob`, no tique) → `drying.rs:125` (`DryConst`) → `drying.rs:191` (`evap_base * ((1-e)*edge_darkening + base_evaporation)`): a orla de toda a tela perde água mais depressa e o pigmento assenta ali.

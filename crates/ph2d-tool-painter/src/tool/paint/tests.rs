@@ -105,6 +105,9 @@ mod watercolor_solido_tests;
 #[path = "measure_penup_cost.rs"]
 mod measure_penup_cost; // o que custa FECHAR um traço — a irmã do `measure_pendown_cost`
 
+#[path = "borracha_depois_do_wet_tests.rs"]
+mod borracha_depois_do_wet_tests; // a Borracha sobre os traços dos outros meios, depois do Wet Paint
+
 #[path = "borracha_por_meio_tests.rs"]
 mod borracha_por_meio_tests; // a Borracha em cada meio: apaga de outra maneira, e o apagado fica
 

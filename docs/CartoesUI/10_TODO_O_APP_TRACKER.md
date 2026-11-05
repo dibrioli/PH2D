@@ -10,6 +10,8 @@ Sem push, sem integração (CLAUDE.md §0.7). Lei visual: [05](05_ESPECIFICACAO_
 Em cartões: `inspector`, `skeleton`, `widget_gallery`. API reutilizável em `ph2d-editor-core/src/panel/cards*.rs`;
 o modelo mais curto é `ph2d-panel-skeleton/src/cards.rs` + `paint.rs:98-108`. Restam 26 painéis registados.
 
+> Este censo é histórico (04/11): a conversão fechou em 05/11 ([handoff](handoffs/HANDOFF_INTEGRACAO_NovaUI_2026-11-05.md)).
+
 ## Como se trabalha aqui
 
 - Uma árvore, um `target`; agentes em paralelo só em crates disjuntas. Commit por caminho (`git add -- <paths>`,

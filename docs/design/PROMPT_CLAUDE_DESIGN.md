@@ -1,5 +1,7 @@
 # Prompt para Claude Design — PH2D Editor UI
 
+> ⚠️ **Obsoleto nos painéis flutuantes (05/11):** o que este prompt diz de painel flutuante (§4 «Layout canônico», §5 «Manter», §8 tema Blueprint, §9.1 `panel-layout`, §9.2 `FloatingPanel`, §10.7) foi substituído pela UI em cartões. A especificação vigente é [05_ESPECIFICACAO_UI_COMPLETA.md](../CartoesUI/05_ESPECIFICACAO_UI_COMPLETA.md).
+
 Cole este arquivo inteiro como prompt inicial no Claude Design. Ele contém todo o contexto, constraints, referências e critérios de aceitação que você precisa para entregar uma UI completa que o Claude implementador vai construir em Vello.
 
 ---

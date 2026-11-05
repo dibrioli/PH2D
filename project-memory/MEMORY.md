@@ -107,7 +107,7 @@
 - ⛔⛔ [Cura de CONTRASTE carrega a SUPERFÍCIE contra a qual foi calibrada](feedback_a_contrast_cure_carries_the_surface_it_was_calibrated_against.md)
 - ⛔⛔ [Mudar a ARITMÉTICA de um widget partilhado varre-se por CONSUMIDOR](feedback_changing_a_shared_widgets_arithmetic_is_swept_by_consumer_not_by_call_site.md)
 - ⛔⛔⛔ [Impor uma propriedade DEPOIS de um óptimo por-peça é o que ONDULA — antes de forçar suavidade, meça se a VERDADE a tem](feedback_forcing_a_property_after_the_optimum_is_what_ripples.md)
-- [Registro de painel — (5) sítios](reference_topic_panel_registration.md) · [Gotchas de código (36)](reference_topic_code_gotchas.md)
+- [Registro de painel — (6) sítios](reference_topic_panel_registration.md) · [Gotchas de código (36)](reference_topic_code_gotchas.md)
 - 📚 [Padrões de código (gotchas silenciosos): mais (58) lições, uma linha cada, verbatim](reference_topic_code_pattern_gotchas.md)
 
 ## Arquitetura / norte / perf

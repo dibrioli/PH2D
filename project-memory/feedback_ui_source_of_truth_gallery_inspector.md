@@ -7,6 +7,8 @@ metadata:
   originSessionId: c543cb41-2db3-4418-990a-4f3ef501efbc
 ---
 
+> ⛔ **SUPERADA** por [[project_card_ui_reference_order_2026_11_02]]: UI em cartões, com a ordem de referência do dono. Fica como história.
+
 Ao construir QUALQUER UI nova (painel, seções de params, controles), a **fonte da
 verdade é o `ph2d-panel-widget-gallery`** (canon de todos os widgets: Checkbox/Slider/
 NumberInput/Dropdown showcased) **+ o `ph2d-panel-inspector`** (padrão de painel-com-

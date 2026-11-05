@@ -772,6 +772,7 @@ Coord:
 1. Decide `slug`, `DEFAULT_VISIBLE`, feature flag (`panel-<slug>`).
 2. Cria `crates/ph2d-panel-<slug>/` com `Cargo.toml` (deps: `ph2d-editor-core`, `ph2d-a11y`, `ph2d-tokens`, `ph2d-text`, `ph2d-vector`, `ph2d-tool-registry`).
 3. Cria `src/lib.rs` com stub `impl Panel` (template completo: [`ph2d-panel-inspector`](../../crates/ph2d-panel-inspector/src/lib.rs)). **Notas factuais:** `Panel::paint` tem 2 params (`state`, `ctx`); o host fica em `ctx.host` (campo de `PaintCtx`), não param separado; trait usado pelo host é `PanelHostInternal`; `hash_node_id` vive em `ph2d-tool-registry`.
+   3b. O corpo do painel pinta-se em cartões (`panel::cards`, [receita 11](../CartoesUI/11_RECEITA_PAINEL_EM_CARTOES.md)); o painel antigo só fica atrás de `PH2D_CARDS=0`.
 4. `cargo run -p ph2d-panel-sync` — regenera, entre os marcadores `ph2d-panel-sync`, a feature `panel-<slug>`, a dependência opcional no [`ph2d-panel-registry-init/Cargo.toml`](../../crates/ph2d-panel-registry-init/Cargo.toml) e o `reg.push(...)` do `build_typed_registry`. ⛔ **Nunca à mão entre os marcadores** (o gate de staleness reprova). À mão ficam só a entrada em `default = [...]` e um bloco `#[cfg(feature = "panel-<slug>")] { n += 1 }` no `EXPECTED_TYPED` do `#[cfg(test)] mod tests`.
 5. Na shell: a feature-proxy `panel-<slug> = ["ph2d-panel-registry-init/panel-<slug>"]` + a entrada no `default` de `shells/desktop/Cargo.toml` — sem ela o painel compila e não chega ao binário (gate `every_panel_the_registry_ships_reaches_the_binary`).
 6. `impl Panel` com os consts **obrigatórios** `ICON` (variant nova de `IconId` em ordem alfabética + `docs/design/icons/<slug>.svg`) e `DEFAULT_SLOT` ([`panel_trait.rs`](../../crates/ph2d-editor-core/src/panel/panel_trait.rs)); os ids de controlo no `src/ids.rs` da PRÓPRIA crate do painel — quem os lê —, nunca na `ph2d-editor-core` (A5b, 12/09).
@@ -917,7 +918,7 @@ Violação = build vermelho. Não há "vou abrir exceção".
 
 ### 5.2 Widget Gallery é a fonte de verdade
 
-[`ph2d-panel-widget-gallery`](../../crates/ph2d-panel-widget-gallery/) (showcase em [`editor-core/src/widget/showcase/`](../../crates/ph2d-editor-core/src/widget/showcase/) + seed em [`pre_populate.rs`](../../crates/ph2d-editor-core/src/screens/hero/pre_populate.rs)) é a **única fonte de verdade da UI**. Todo painel novo **DEVE** usar EXATAMENTE o mesmo padrão de cada widget que aparece no Gallery. Sem "minha variação compacta".
+[`ph2d-panel-widget-gallery`](../../crates/ph2d-panel-widget-gallery/) (showcase em [`editor-core/src/widget/showcase/`](../../crates/ph2d-editor-core/src/widget/showcase/) + seed em [`pre_populate.rs`](../../crates/ph2d-editor-core/src/screens/hero/pre_populate.rs)) é a **única fonte de verdade da UI**. Todo painel novo **DEVE** usar EXATAMENTE o padrão que aparece no Gallery, em cartões (`panel::cards`). Sem "minha variação compacta".
 
 #### Regras herdadas do Gallery (cada uma já queimou ≥1×)
 

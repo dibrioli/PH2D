@@ -1,5 +1,7 @@
 # Cartões UI — painéis como listas do Kanban, campos como o Figma
 
+> **Estado (05/11): a UI em cartões é o padrão do `main`.** O parágrafo seguinte é a história da linha de teste.
+>
 > **Linha de TESTE FECHADA em 2026-11-02** pelo dono («Já conseguimos testar a UI e ela funciona muito
 > bem e é linda»). `line/TrelloUITeste` (worktree `Worktrees/line-TrelloUITeste`), aberta em 2026-11-01
 > a partir de `line/TrelloClone` @ `4e648ec2b4`. **Nunca foi integrada nem teve push.** A implementação
@@ -22,8 +24,13 @@ Refazer a UI dos painéis laterais do PH2D com duas referências ao mesmo tempo:
 
 Alvo declarado pelo dono: **superar o Figma e a Godot** (a referência atual).
 
-Pilotos: o painel **Bones** (`ph2d-panel-skeleton`) e o **Inspector principal**
-(`ph2d-panel-inspector`).
+Todo o app está em cartões desde 05/11 ([handoff](handoffs/HANDOFF_INTEGRACAO_NovaUI_2026-11-05.md)).
+
+## ABERTO
+
+Falta o portão que reprova painel registado sem `panel::cards` (ao lado de
+[`crates/ph2d-panel-registry-init/tests/it/lei_da_compactacao.rs`](../../crates/ph2d-panel-registry-init/tests/it/lei_da_compactacao.rs)).
+Até lá a regra é só dos documentos. Entra no próximo ship.
 
 ## Índice
 

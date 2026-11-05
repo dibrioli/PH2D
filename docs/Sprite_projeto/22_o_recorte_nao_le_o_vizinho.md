@@ -59,7 +59,7 @@ e a meia-texel da especificação do filtro bilinear; o *Extrude Edges* da Unity
 | Sem bit novo nem atributo | O vértice está cheio (16 atributos), e o arredondamento faz do rect recuado do atlas um ponto fixo: o atlas no nível 0 fica com os mesmos bits |
 | Sem gutter no empacotamento | A grelha é propriedade da sprite, muda depois de empacotar, e o gutter só limpa os níveis até `log2(gutter)`. Sem mudança de formato |
 | Imagem inteira e repetida ficam de fora | O sampler já as resolve. Mesmos bits |
-| LOD pela SOMA dos eixos | É o teto do que a especificação Vulkan deixa a placa estimar. Com a norma, o trilinear rodado sangrava 0,03 |
+| LOD pela SOMA dos eixos | É o teto do que a especificação Vulkan deixa a placa estimar. Com a norma, o trilinear rodado e esmagado sangrava até 0,055 |
 | Folga de um texel do nível (dois do nível 3 em diante) | Medida, intercalada, nas duas placas: `2^k − 1` deixa 5 poses na RADV e 25 na NVIDIA; `2^k` limpa a RADV e deixa 2 na NVIDIA (anisotropia, folha NPOT, zoom ≤ 0,25); dobrar em todo nível limpa tudo, mas engrossa a borda da arte a 0,5× (`0,91` contra `0,58`, ponta do cabelo do dono) |
 | Gradiente cortado além do último nível limpo | Uma célula de 8 px a 0,1× não tem texel limpo nos mips altos. A célula fica com poucos pixels no ecrã: nenhum serrilhado visível |
 
@@ -68,8 +68,8 @@ ecrã (cabelo do dono a 0,5×: `0,39` → `0,58` na 1.ª fileira, 9 px de largur
 Pixel-art em Nearest mantém o xadrez exacto.
 
 **Bits (lei por placa):** imagem inteira (todos os filtros e zooms) e atlas ampliado ou a 1:1, com e sem
-repetição: hash idêntico antes e depois na RADV. Só o atlas minificado muda (`0,5` e `0,25`), e é a cura. Nenhuma
-fixtura dourada mudou nos portões corridos por nome.
+repetição: hash idêntico antes e depois na RADV (50 cenas de ruído, com o shader final; na NVIDIA não medi). Só o atlas
+minificado muda (`0,5` e `0,25`), e é a cura. Nenhum portão com dourada mudou nos corridos por nome.
 
 **CPU:** o único caminho que lê uma folha na CPU é o retrato do prefab (`asset_card_portrait.rs:blit`), por ponto:
 nunca leu a vizinha. A pré-visualização passou a pintar de uma imagem só da célula (`SheetImage::imagem_da_celula`).
@@ -84,8 +84,9 @@ O pipeline de imagens do Motion lê por `textureLoad` e já prendia ao rect.
 (Luz 2D). `sheet_cell::a_celula_recortada_so_tem_os_pixels_dela`. Censo `recorte_uv` em `censo_wgsl_partilhado`.
 
 Contraprovas (8 mutantes, 8 vermelhos): sem recorte 1 274 poses · sem folga de mip 177 · sem corte do gradiente
-52 · repetida recortada, a costura deixa de misturar · um lado só 1 105 · meio texel a mais come a fileira da borda
-· sem recorte na C0 da Luz · (o 8.º é o `lo` a meio texel, que a 1.ª rodada não via: nasceu o portão da fileira).
+52 · repetida recortada, a costura deixa de misturar · um lado só 1 105 · `lo` meio texel além, que sobreviveu à 1.ª
+rodada e fez nascer `a_fileira_da_borda_mantem_a_cor_dela` · sem recorte na C0 da Luz · limite da célula errado na
+`SheetImage`. ⚠️ A pré-visualização tem portão de unidade, não de pixel; o pixel dela está só na foto.
 
 ## O que fica
 
@@ -95,6 +96,6 @@ Contraprovas (8 mutantes, 8 vermelhos): sem recorte 1 274 poses · sem folga de 
 - A célula do atlas continua desviada até meio texel na geometria (o `sprite_sheet_subrect` divide o rect recuado).
   Já não sangra; curá-la mexe nos bits do atlas.
 - Vermelho uma vez em cerca de 25 corridas: `a_repetida_continua_a_costurar` leu o alvo a zeros, na 1.ª corrida depois
-  de mudar o shader, em lote com portões pesados. Não voltou em 24 corridas seguidas, nem nas recompilações dos mutantes.
+  de mudar o shader, em lote com portões pesados. Não voltou em mais de 20 corridas, recompilações dos mutantes incluídas.
   Causa não achada.
 - Custo por fragmento não medido: as amostras de textura continuam duas, somam-se contas de `log2`/`pow`.

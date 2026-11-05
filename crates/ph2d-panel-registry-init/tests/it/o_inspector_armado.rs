@@ -131,7 +131,7 @@ fn arma_a_sprite(uso: ph2d_editor_core::InspectorImageUse) {
             sheet: 1,
             region: 2,
         },
-        source_precision: None,
+        source_precision: Some(ph2d_editor_core::Precision::Rgba8),
         emissive: 0.0,
         sheet_label: Some("hero · idle_0".to_string()),
         source_pixels: Some((64, 64)),

@@ -79,45 +79,45 @@ pub(super) fn paint_precision_row(
         ],
         seccao,
     );
-    // A consequência, escrita ANTES do clique. Só aparece quando há algo a avisar — um sprite que
-    // já é de 16 bits não precisa de ler o preço outra vez.
-    if info.source_precision == Some(ph2d_editor_core::Precision::Rgba8) {
-        // ⚠️ **A consequência de SAIR DA FOLHA estava em falta** (auditoria
-        // `docs/Sprite_projeto/20` §4.2). Numa peça hand-packed a conversão faz
-        // `drop_sheet_authorship` — a sprite deixa de ser uma peça — e nem esta linha nem o toast
-        // («Format · RGBA16») o diziam, enquanto a linha Storage uma acima continuava a ler
-        // *«Hand-packed · folha · região»*. O doc desta função argumenta exatamente que *uma
-        // consequência que só aparece depois do clique lê-se como bug*; faltava aplicá-lo aqui.
-        let consequence = if matches!(info.source_kind, InspectorSpriteSource::HandPacked { .. }) {
-            tr("panel.inspector.render_source.rgba16_doubles_memory_forces_individual")
-        } else {
-            tr("panel.inspector.render_source.rgba16_doubles_memory_and_forces")
-        };
-        // Num cartão a frase quebra: cortada a meio não diz a consequência (foto a2).
-        if ph2d_editor_core::widget::card_ink::card_body().is_some() {
-            cur_y = super::rows::aviso(
-                scene,
-                text_system,
-                theme,
-                x,
-                w,
-                cur_y,
-                consequence,
-                ColorToken::Text2,
-            );
-        } else {
-            paint_text(
-                text_system,
-                scene,
-                consequence,
-                x,
-                cur_y,
-                label_font,
-                w,
-                resolve(ColorToken::Text2, theme),
-            );
-            cur_y += label_font;
-        }
+    // Num cartão a frase vem depois da fila do Format e do Emissive, que dividem a linha (05 §4, lei 1).
+    if ph2d_editor_core::widget::card_ink::card_body().is_none() {
+        cur_y = paint_precision_price(scene, text_system, theme, info, x, w, cur_y);
     }
     cur_y + ph2d_editor_core::widget::panel_chrome::SECTION_INNER_ROW_GAP_PX
+}
+
+/// A consequência, escrita ANTES do clique. Só aparece quando há algo a avisar: um sprite que já é de
+/// 16 bits não precisa de ler o preço outra vez. A frase quebra: cortada a meio não diz o preço (foto a2).
+#[allow(clippy::too_many_arguments)]
+pub(super) fn paint_precision_price(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    info: &InspectorSpriteInfo,
+    x: f32,
+    w: f32,
+    cur_y: f32,
+) -> f32 {
+    if info.source_precision != Some(ph2d_editor_core::Precision::Rgba8)
+        || matches!(info.source_kind, InspectorSpriteSource::CookedTexture)
+    {
+        return cur_y;
+    }
+    // ⚠️ Sair da folha também custa: numa peça hand-packed a conversão faz `drop_sheet_authorship`,
+    // e a linha Storage uma acima ainda lê «Hand-packed · folha · região» (`docs/Sprite_projeto/20` §4.2).
+    let consequence = if matches!(info.source_kind, InspectorSpriteSource::HandPacked { .. }) {
+        tr("panel.inspector.render_source.rgba16_doubles_memory_forces_individual")
+    } else {
+        tr("panel.inspector.render_source.rgba16_doubles_memory_and_forces")
+    };
+    super::rows::aviso(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        cur_y,
+        consequence,
+        ColorToken::Text2,
+    )
 }

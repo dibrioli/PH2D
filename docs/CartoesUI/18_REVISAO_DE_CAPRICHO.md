@@ -118,4 +118,8 @@ Tudo fotografado depois das curas: [Frames, arnês](maquete/q4_frames.png) · [F
 
 ## Ainda por fotografar
 
-Forma (Fill, Stroke, Appearance, Transform): olhada, [q2_forma.png](maquete/q2_forma.png), sem defeito. Render Source: linhas Strategy, Storage e Source na Texture & Atlas das fotos do arnês. **Falta:** Texto e Effects com uma camada (sem cena à mão nesta fatia), e o cartão Objeto de cada tipo. Cartões nas outras janelas: `PENDENTES_RITMO` aponta os deles.
+Forma (Fill, Stroke, Appearance, Transform): olhada, [q2_forma.png](maquete/q2_forma.png), sem defeito. R6, arnês (`PH2D_FOTO_OBJETO=vetor|imagem|outro`): [Text](maquete/r6_texto.png), [Effects com duas camadas](maquete/r6_effects.png), [Object de cada tipo](maquete/r6_objeto_de_cada_tipo.png), [Render Source](maquete/r6_render_source.png). Object: ícone do tipo, nome e olho, igual nos três; o cadeado só nasce com linha na Hierarchy, e a foto não a tem. Cartões nas outras janelas: `PENDENTES_RITMO` aponta os deles.
+
+**Curado, achado pela foto do Render Source.** O arnês publicava `source_precision: None`, estado que a app só tem sem imagem, e escondia o caminho real: com `Rgba8` a frase do preço separava `Format` de `Emissive` (`lei_da_compactacao`: `Source + Format`), e cortava a 268 px com `PH2D_CARDS=0`. Num cartão a frase vem agora depois da fila dos dois; fora dele, quebra em vez de cortar (a única mudança no painel de antes). A fixtura passa a `Rgba8`, sem subir catraca. Contraprova: a frase de volta antes do `Emissive` ⇒ vermelho.
+
+**Baixo, visto nas fotos, não curado:** o resumo do Variant quebra com o «·» no início da linha 2.

@@ -142,6 +142,17 @@ pub(crate) fn paint_render_source_section(
         w,
         cur_y,
     );
+    if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        cur_y = super::render_source_precision::paint_precision_price(
+            scene,
+            text_system,
+            theme,
+            info,
+            x,
+            w,
+            cur_y,
+        );
+    }
 
     // ⭐ O que era a secção «Sprite Sheet» (plano GameEngineFuncional 07 §4): a pose fica na sprite.
     cur_y = super::sprite_pose::paint_sprite_pose_rows(

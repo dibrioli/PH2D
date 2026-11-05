@@ -74,7 +74,7 @@ fn do_substrato(v: &BrushSettings) -> [Numero; 2] {
     ]
 }
 
-/// O Tooth, e os dois números da tela que só o Wet Paint lê. Sem padrão, o Tooth morde o papel de fábrica do Wet Paint.
+/// O Tooth, e o número da tela que só o Wet Paint lê. Sem padrão, o Tooth morde o papel de fábrica do Wet Paint.
 fn do_fim(l: &BrushSettings, v: &BrushSettings) -> Vec<Numero> {
     let mut n = Vec::new();
     let le_o_dente = tem_padrao(l) || (l.wetpaint && l.le(LinhaDaFerramenta::DepositoMolhado));
@@ -90,14 +90,6 @@ fn do_fim(l: &BrushSettings, v: &BrushSettings) -> Vec<Numero> {
     }
     if l.wetpaint {
         let (min, _, max) = pids::PAINTER_WETPAINT_ABSORBENCY_FAIXA;
-        n.push(numero(
-            "panel.painter_layers.wetpaint.smooth_edges",
-            pids::PAINTER_WETPAINT_SMOOTH_EDGES,
-            v.wet_smooth_edges,
-            UNIDADE,
-            nf::FINE_STEP,
-            2,
-        ));
         n.push(numero(
             "panel.painter_layers.paper.absorbency",
             pids::PAINTER_WETPAINT_ABSORBENCY,

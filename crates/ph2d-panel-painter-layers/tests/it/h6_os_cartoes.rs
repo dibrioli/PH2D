@@ -185,12 +185,15 @@ fn these_cards_show_the_same_controls_as_the_old_panel() {
         vistos.extend(agora);
     }
     assert!(vistos.len() > 50, "a régua viu pouco: {}", vistos.len());
+    assert!(
+        !vistos.contains(&p::PAINTER_WETPAINT_SMOOTH_EDGES),
+        "o Smooth Edges é do cartão do pincel, nunca do Paper"
+    );
     for id in [
         p::PAINTER_WATERCOLOR_PAPER_COLOR_THUMB,
         p::PAINTER_WATERCOLOR_PAPER_KIND,
         p::PAINTER_SUBSTRATE_RELIEF,
         p::PAINTER_WATERCOLOR_PAPER_DEPTH,
-        p::PAINTER_WETPAINT_SMOOTH_EDGES,
         p::PAINTER_WETPAINT_ABSORBENCY,
         p::PAINTER_WATERCOLOR_GRAN_SAME,
         p::PAINTER_WATERCOLOR_GRANULATION,

@@ -164,13 +164,16 @@ Também: `docs/Sprite_projeto/` e os docs `12`–`16` desta pasta.
 | Conta-gotas que só apanha sprites | Camera Follow |
 | «Edit Animations…» na coluna do valor (o dono tinha aprovado à largura inteira) | Animated Sprite |
 | A secção Animation aprovada antes do rebase e não alinhada ao visual novo | Animated Sprite |
-| Inimigos (J6) e o resto do jogo (J7–J10) | saem da fila: as peças são revisadas nos seus itens |
+| Inimigos (J6) e o resto do jogo (J7–J10) | continuam no jogo; entram depois de as peças deles (Ray Sensor, Damage, Health…) serem revisadas |
 | Velocidade do `LayerCompositor` | transversal: medir quando um item a expuser |
 
 Os «testes de 1 minuto» e as medições da crítica entram no passo 2 do protocolo do item a que pertencem.
 
 ## O jogo de plataforma
 
-Deixa de mandar na ordem. As cenas `PH2D_GAME_SMOKE` continuam existindo, com os seus testes, e podem servir de banco de
-prova, mas cada item tem o **seu** smoke. ⚠️ Premissa desta reescrita, a confirmar com o dono: continuar ou não o jogo
-como objetivo próprio.
+**É a base de testes e vai até o fim** (dono, 05/11): J1–J10 de [`03`](03_plano_jogo_de_plataforma.md) continuam o
+objetivo do jogo, *«para desenvolver a engine na prática, e não apenas no código»*.
+
+- Não dita a ordem das revisões. A cada item fechado, o jogo passa a usá-lo, e o que ele expuser volta para a ficha.
+- J6–J10 entram quando as peças deles tiverem sido revisadas; cada um é montado com peças, nunca objeto pronto.
+- O item tem também a sua cena de smoke, porque o jogo não exercita todos os estados de um painel.

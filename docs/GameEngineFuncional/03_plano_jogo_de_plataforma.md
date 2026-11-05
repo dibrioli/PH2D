@@ -1,8 +1,8 @@
 # W3+ — O plano: um jogo de plataforma é o smoke, a essencialidade é a ordem
 
-> ⛔ **SUBSTITUÍDO em 05/11/2026** por [`README.md`](README.md) e [`23_refundacao_plano.md`](23_refundacao_plano.md): o jogo
-> deixa de mandar na ordem, e a linha recomeça objeto por objeto, a partir da Sprite. Abaixo, só o histórico. Continuam
-> valendo as decisões 1 (nomes simples e ajuda ilustrada) e 2 (janela separada e ecrã cheio).
+> ⛔ **A ORDEM foi substituída em 05/11/2026** por [`README.md`](README.md) e [`23_refundacao_plano.md`](23_refundacao_plano.md):
+> a linha recomeça objeto por objeto, a partir da Sprite. **O jogo continua até o fim, como base de testes** (dono, 05/11):
+> a tabela J1–J10 abaixo vale. Continuam valendo as decisões 1 (nomes simples e ajuda ilustrada) e 2 (janela separada e ecrã cheio).
 
 > Decisões do dono (25/10), sobre o estudo [`02_godot_2d_catalogo.md`](02_godot_2d_catalogo.md):
 > 1. **Nomes simples** (inglês, HR-15). Ao passar o rato: **não** o nome da Godot, mas uma **explicação completa

@@ -11,6 +11,13 @@ Tornar cada objeto e cada componente da engine **estado da arte** em três eixos
 avaliou que essa abordagem não está atingindo o melhor nos três eixos. Agora a linha **recomeça do zero, objeto por
 objeto, componente por componente, a partir da Sprite**.
 
+**O que a linha entrega por item:** o comportamento **e o desenho do cartão** do item (dono, 05/11). Não há outra linha
+desenhando estes cartões.
+
+**O jogo continua.** O plataforma é a **base de testes** e será implementado **até o fim** (dono, 05/11): é nele que a
+engine se desenvolve na prática, não só no código. Ele não dita a ordem das revisões; mostra o que a peça revisada ainda
+não aguenta. Ver a seção «O jogo de plataforma» na fila.
+
 **«Do zero» é a revisão, não o código.** Nada conta como pronto até passar pelo protocolo abaixo, inclusive Sprite e
 Animated Sprite, já trabalhados. Código só é refeito onde a revisão pedir. As decisões anteriores do dono continuam
 valendo até ele as rever (regra 3).
@@ -79,7 +86,8 @@ para as ver, fotografe-as com `fonte_critica/recorte.py` ou peça ao dono que as
    das maquetes A/B/C), a recomendação e os «vale rever?». Inclua também o que **nenhuma** das 9 faz e poderíamos fazer.
 4. **Registrar a ficha:** `componentes/<NN>_<nome>.md`, com o molde abaixo, **antes** de construir.
 5. **Construir.** Regras normais da linha: `DIRETIVA_IMPLEMENTACAO`, teste que dirige o evento real, drop-crate.
-6. **Smoke do dono:** uma cena do próprio item, fotografada antes, em passos numerados. Vermelho volta ao passo 3 ou 5.
+6. **Smoke do dono:** uma cena do próprio item, fotografada antes, em passos numerados, **e o item em uso no jogo**.
+   Vermelho volta ao passo 3 ou 5.
 7. **Fechar:** atualizar o estado na fila, fechar a onda (`/pd-onda-fechar`), janela nova para o próximo item.
 
 ### Molde da ficha
@@ -111,7 +119,7 @@ Os numerados de `01` a `22` e os `handoffs/` são **histórico**. Valem as decis
 |---|---|
 | `01` | modos, seleção, Inspector |
 | `02` | catálogo 2D da Godot |
-| `03` | o plano pelo jogo de plataforma: **substituído** |
+| `03` | o plano pelo jogo de plataforma: a **ordem** foi substituída; a tabela J1–J10 segue valendo como o que o jogo tem de ter |
 | `04`–`05` | janela de jogo, `Node`, primeiros objetos |
 | `06`, `10` | arte vetorial |
 | `07`–`09`, `22` | animação, regras, abaixar, secção Animation |

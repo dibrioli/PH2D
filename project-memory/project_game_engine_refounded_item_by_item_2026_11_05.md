@@ -20,5 +20,11 @@ e `critica_ph2d.html`.
 - Decisões anteriores dele valem até ele as rever; a proposta contrária vem como «vale rever?».
 - ⛔ Os estudos não entram no repositório: ele é público e há 353 fotos de terceiros.
 
-Substitui a ORDEM de [[project_game_engine_plan_owner_decisions_2026_10_25]] e o papel do jogo em
+- A linha é dona também do **desenho dos cartões** dos itens que revisa (05/11).
+- **O jogo de plataforma vai até o fim, como base de testes**: *«para desenvolver a engine na prática, e não apenas no
+  código»*. Não dita a ordem das revisões.
+
+Substitui a ORDEM de [[project_game_engine_plan_owner_decisions_2026_10_25]]. Segue valendo
 [[project_game_smoke_composes_pieces_never_ready_made_2026_11_02]].
+
+As maquetes dos estudos agradaram (05/11, sobre as de Sprite: *«muito melhores do que temos hoje»*).

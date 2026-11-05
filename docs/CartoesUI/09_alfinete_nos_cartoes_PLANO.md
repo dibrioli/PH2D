@@ -130,3 +130,18 @@ O plano previu mais do que o código pede. **O cartão só emite:** amostra e he
 | só os mapas do losango | 0,132 / 0,141 ms | 0,277 / 0,291 ms | **0,145 / 0,150 ms** |
 
 Abaixo de ~1 ms: nenhuma cura. ⚠️ Os 5 cartões estão em **2 objectos** (a mesa tem 3, um escolhido): o mapa custa ~0,07 ms por objecto, logo 5 objectos dariam ~0,95 ms por conta, não por medição. O perfil `smoke` não é o `release` e a `Mesa` não é a app.
+
+**Com 5 objectos, medido (04/11, F5).** `custo_por_quadro_de_cinco_presos` passou a quatro mesas no MESMO processo, blocos intercalados por ordem rodada, 60 rondas, o mínimo com a mediana ao lado; `--profile smoke` (`debug_assertions false`), `load ~21`, três corridas. Cada mesa contra a do mesmo tamanho sem presos:
+
+| ms por quadro | 2 objectos (3 formas) | 5 objectos (6 formas) |
+|---|---|---|
+| diferença no quadro, mínimo | +0,883 · +0,920 · +0,884 | **+1,207 · +1,237 · +1,264** |
+| diferença no quadro, mediana | +0,981 · +1,143 · +1,016 | +1,329 · +1,429 · +1,291 |
+| só os mapas do losango, mínimo | +0,195 · +0,191 · +0,196 | +0,459 · +0,457 · +0,465 |
+| sem presos, quadro inteiro | 1,587 · 1,584 · 1,573 | 1,633 · 1,628 · 1,591 |
+
+A estimativa de ~0,95 ms ficou curta: são **~1,2 ms**, ~7 % de um quadro a 60 Hz. O mapa custa ~0,09 ms por objecto preso; o resto (~0,7 ms) são os 5 corpos, e quase não muda com o número de objectos. Sem presos, o tamanho do mundo não pesa (6 formas: +0,05 ms).
+
+**Sem cura, por ora:** não há limite que dependa deste número, e 5 objectos cada um com o seu preso é o caso raro. Quem mexer nisto começa pelo mapa do losango, que escala com os objectos.
+
+⚠️ Medida anterior enganou (mediana +2,1 ms): o bloco incluía o 1.º quadro depois de outra mesa. As mesas partilham as caches do painel, e esse quadro é outro evento: **~9 ms na mediana com presos, ~2 ms sem**, separado agora em `1.º do bloco`. É o que um preso paga quando o cache suja. **Não medido:** a frequência disso na app, por exemplo a cada quadro de um scrub num preso, cujo retrato muda; é a pergunta seguinte, se o dono sentir o gesto pesado. O `smoke` não é o `release` e a `Mesa` não é a app.

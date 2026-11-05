@@ -1,23 +1,24 @@
-//! ⭐ **O scrub num cartão de COMPONENTE preso, um a um** (`docs/CartoesUI/10`, smoke 3): a cura do Weight
-//! é na porta do store, comum a todos, mas só o Fill, o Stroke e o Bone tinham censo. Toda pega de cada
-//! cartão: anda, o quadro da seleção não a devolve, o Esc repõe.
+//! ⭐ **O scrub num cartão de COMPONENTE preso, um a um** (`docs/CartoesUI/10`, smoke 3): o Fill, o Stroke
+//! e o Bone tinham censo, os componentes não. Toda pega de cada cartão: anda, o quadro da seleção não a
+//! devolve, o Esc repõe.
 #![cfg(all(feature = "panel-inspector", feature = "panel-hierarchy"))]
 
 use super::cartoes_mao::{clica, pinta};
 use super::o_alfinete_fill_stroke_c2::scrub_do_preso::{MesaDoPreso, censo};
+use super::o_bloco5_abertos::escolhe;
 use super::o_bloco8_player_solto::{hero_com_aberto, solto_de};
 use super::o_inspector_armado::{arma_tudo, fisica_armada};
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::ids::{self as i, INSP_PANEL};
 use ph2d_editor_core::interaction::loose_pin_of;
-use ph2d_editor_core::screens::hero::{HeroScreen, InspectorNameInfo};
+use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_panel_inspector as insp;
 
-/// A seleção é outro objecto; o que ela publica nas secções é o mesmo número da fixtura, e basta: o
-/// defeito é o quadro devolver a caixa ao valor da partida.
+/// A seleção é outro objecto, parado: trocá-la a meio do gesto larga-o, de propósito (`sync.rs`). O que
+/// ela publica é o número da fixtura: o defeito é voltar à partida.
 const OUTRO: u64 = 0xB;
 
-struct MesaComp(HeroScreen, u64);
+struct MesaComp(HeroScreen);
 
 impl MesaDoPreso for MesaComp {
     fn hero(&mut self) -> &mut HeroScreen {
@@ -28,16 +29,12 @@ impl MesaDoPreso for MesaComp {
             arma_tudo();
             let pins = self.0.store.loose_pins_of(INSP_PANEL);
             insp::com_cada_preso(&pins, |_| arma_tudo());
-            insp::set_current_inspector_name(Some(InspectorNameInfo {
-                entity_bits: OUTRO,
-                name: "Other".to_owned(),
-            }));
+            escolhe(OUTRO, "Other", 1.0);
             self.0
                 .store
                 .set_card_subject(INSP_PANEL, Some((OUTRO, "Other".to_owned())));
             pinta(&mut self.0, 1);
         }
-        let _ = self.1;
     }
 }
 
@@ -53,12 +50,12 @@ fn preso(sec: NodeId) -> MesaComp {
         Some(a),
         "{sec:?}"
     );
-    let mut m = MesaComp(h, a);
+    let mut m = MesaComp(h);
     m.quadros(4);
     m
 }
 
-/// `(nome, secção, pegas medidas)`. O número conta-se: uma pega nova entra no censo e acusa-se aqui.
+/// Os cartões de componente. Quantas pegas tem cada um conta-se à vista; ver [`SEM_PEGA`].
 const CARTOES: [(&str, NodeId); 26] = [
     ("Physics", i::INSP_LIVE_PHYSICS_SECTION),
     ("Joint", i::INSP_LIVE_JOINT_SECTION),
@@ -88,7 +85,13 @@ const CARTOES: [(&str, NodeId); 26] = [
     ("Weapon", i::INSP_LIVE_WEAPON_SECTION),
 ];
 
+/// Os que, armados, não mostram campo com pega (medido 04/11). Um que ganhe pega, ou um dos outros que
+/// a perca, acusa-se aqui.
+const SEM_PEGA: [&str; 4] = ["Action", "Tags", "Sequence", "Trigger"];
+
 /// ⭐ O censo: cada cartão de componente, um a um.
+/// *Mutação: a caixa tem três guardas (a do store, `vivas` em `sync.rs` e a mão em cada `sync_*`), e uma
+/// sozinha sobrevive; as três em `sync_physics` ⇒ vermelho em Joint e Wheel: «levou a caixa de 1300 a 100».*
 #[test]
 fn every_scrub_handle_of_each_pinned_component_card_survives_the_frames() {
     let _ = ph2d_panel_registry_init::register_all_panels();
@@ -101,7 +104,8 @@ fn every_scrub_handle_of_each_pinned_component_card_survives_the_frames() {
         erros.extend(e);
     }
     eprintln!("CENSO COMPONENTES {medidas:?}");
-    let total: usize = medidas.iter().map(|(_, n)| n).sum();
-    assert!(total > 0, "a régua não achou pega nenhuma");
+    for (nome, n) in &medidas {
+        assert_eq!(*n == 0, SEM_PEGA.contains(nome), "{nome}: {n} pegas");
+    }
     assert!(erros.is_empty(), "{medidas:?}\n{erros:#?}");
 }

@@ -444,6 +444,46 @@ fn the_flow_is_visible_below_the_panel_only_while_the_body_runs() {
     assert!(!corpo_a_fluir(), "o fluxo desliga ao sair do corpo");
 }
 
+/// O leitor do fluxo: no corpo a fluir `paint_check_rows` empilha e deixa o par ao fluxo; fora dele, no
+/// cartão, emparelha sozinha. *Mutação: `marca.rs` sem `corpo_a_fluir` ⇒ vermelho (sobrevivia antes deste).*
+#[test]
+fn check_rows_leave_the_pairing_to_the_flow_only_while_the_body_runs() {
+    use crate::property_row::paint_check_rows;
+    use crate::widget::{Seccao, card_ink};
+    let caixas = [(A, "On", false), (B, "Up", false)];
+    let pinta = |c: &mut CardCtx<'_>| {
+        let (theme, w) = (Theme::default(), c.w);
+        let sec = Seccao::medida(c.text_system, 1, &["On", "Up"]);
+        paint_check_rows(
+            c.scene,
+            c.text_system,
+            theme,
+            c.hit_index,
+            c.store,
+            c.x,
+            w,
+            0.0,
+            &caixas,
+            sec,
+        )
+    };
+    let mesma_fila = |fluindo: bool| {
+        let mut f = mesa();
+        f.scene.record();
+        card_ink::com(CardInk::of_list(Theme::default()), || {
+            let mut c = ctx(&mut f, 257.0);
+            let _ = if fluindo {
+                fluir(&mut c, pinta)
+            } else {
+                pinta(&mut c)
+            };
+        });
+        f.hit.rect_for(A).unwrap().y == f.hit.rect_for(B).unwrap().y
+    };
+    assert!(mesma_fila(false), "fora do fluxo, o cartão emparelha");
+    assert!(!mesma_fila(true), "no fluxo, quem emparelha é ele");
+}
+
 /// Numa coluna de duas, a marca da caixa anda com o nome: no fim da coluna lia-se da vizinha (05 §8).
 /// *Mutação: `colada` sempre falso em `check_em` ⇒ vermelho.*
 #[test]

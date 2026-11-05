@@ -90,7 +90,7 @@ fn recorta_a_tinta(m: &ph2d_pixel_text::TextMask) -> (u32, u32, Vec<u8>) {
     let xs = || (0..m.w).filter(|&x| (0..m.h).any(|y| aceso(x, y)));
     let ys = || (0..m.h).filter(|&y| (0..m.w).any(|x| aceso(x, y)));
     let (Some(x0), Some(x1), Some(y0), Some(y1)) =
-        (xs().next(), xs().last(), ys().next(), ys().last())
+        (xs().next(), xs().next_back(), ys().next(), ys().next_back())
     else {
         return (0, 0, Vec::new());
     };

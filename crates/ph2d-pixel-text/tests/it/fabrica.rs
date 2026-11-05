@@ -102,12 +102,12 @@ fn the_tail_of_a_descender_is_never_cut() {
 
 #[test]
 fn every_font_places_and_measures_like_the_text_tool_needs() {
-    for i in 0..BUILTIN.len() {
+    for (i, b) in BUILTIN.iter().enumerate() {
         let px = builtin_line_height(i).expect("nativa");
         let f = Fonte::pick(u16::try_from(i).expect("12"), px);
         let (ascent, linha) = f.metrics().expect("métricas");
-        assert!(ascent > 0 && linha >= ascent, "{}", BUILTIN[i].0);
+        assert!(ascent > 0 && linha >= ascent, "{}", b.0);
         let (m, _) = f.place("Ag", (0, 0)).expect("coloca");
-        assert!(m.cover.contains(&u8::MAX), "{}: tinta", BUILTIN[i].0);
+        assert!(m.cover.contains(&u8::MAX), "{}: tinta", b.0);
     }
 }

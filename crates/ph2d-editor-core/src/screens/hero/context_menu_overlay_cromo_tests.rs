@@ -163,6 +163,7 @@ fn o_transbordo_da_fila_veste_a_superficie_sem_mover_alvo() {
             path: ph2d_vector::BezPath::new(),
             active: false,
             sub: String::new(),
+            row_w: 0.0,
         }]);
         store.open_context_menu(ContextMenuRequest {
             x: 40.0,
@@ -189,7 +190,11 @@ fn o_transbordo_da_fila_veste_a_superficie_sem_mover_alvo() {
     assert_eq!(vezes_da_cor(&novo, ColorToken::BgElev), 0);
     assert!(vezes_da_cor(&antigo, ColorToken::BgElev) > 0);
     assert!(!alvos_novos.is_empty(), "um transbordo sem alvos não prova nada");
-    assert_eq!(alvos_novos, alvos_antigos);
+    assert_eq!(
+        alvos_novos.iter().map(|a| a.0).collect::<Vec<_>>(),
+        alvos_antigos.iter().map(|a| a.0).collect::<Vec<_>>(),
+        "o transbordo em lista tem os ids de sempre"
+    );
 }
 
 /// O New Sprite em cartões: mesmos ids, unidade no rótulo, e o Width mede a caixa do cartão.

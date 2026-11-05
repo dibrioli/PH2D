@@ -51,7 +51,10 @@ pub fn entry_advance(entry: &ToolRailEntry, chip_px: f32, axis: RailAxis) -> f32
     match entry {
         ToolRailEntry::Divider => 1.0 + DIVIDER_GAP_PX * 2.0,
         ToolRailEntry::Compound { row_w, .. } if axis == RailAxis::Horizontal => row_w.max(chip_px),
-        ToolRailEntry::Number { row_w, .. } | ToolRailEntry::Text { row_w, .. }
+        ToolRailEntry::Number { row_w, .. }
+        | ToolRailEntry::Text { row_w, .. }
+        | ToolRailEntry::Icon { row_w, .. }
+        | ToolRailEntry::Glyph { row_w, .. }
             if axis == RailAxis::Horizontal =>
         {
             row_w.max(chip_px)
@@ -99,6 +102,13 @@ pub fn size_row_pulldowns(rail: &mut ToolRail, text_system: &mut TextSystem) {
             let w = text_system.prefix_width_weighted(text, font, FontWeight::MEDIUM);
             *row_w =
                 crate::paint::rect_for_label(w).min(crate::widget::number_input::min_w_px() * 2.0);
+        }
+        // Em cartões o chip alarga até a legenda caber inteira: nome cortado ou encolhido não diz o que faz.
+        if crate::widget::lista_flutuante::cromo_em_cartoes()
+            && let ToolRailEntry::Icon { sub, row_w, .. } | ToolRailEntry::Glyph { sub, row_w, .. } =
+                entry
+        {
+            *row_w = super::caption::chip_que_cabe_a_legenda(text_system, sub);
         }
     }
 }

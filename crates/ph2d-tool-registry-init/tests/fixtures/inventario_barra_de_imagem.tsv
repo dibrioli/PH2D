@@ -1,0 +1,44 @@
+# Inventário de a fila da imagem, gravado no main effe04a1c9c9fb60b772d4a3558c70af6c2e1360 em 2026-11-04.
+# família, id, nome no main. O gate compara família e id: novo não reprova, sumido reprova.
+imagem.draw	0x239ce50c2d6de35b	Brush
+imagem.draw	0x2504de3b81d49730	Blur
+imagem.draw	0x33bce7b8ad8c120a	Inpaint
+imagem.draw	0x5e343d2ecd81bf82	Liquify
+imagem.draw	0x714c87eadc0fd296	Eyedropper
+imagem.draw	0xa0aa0b1cfc1cab00	C&F
+imagem.draw	0xa2435fa2db872147	Shapes
+imagem.draw	0xb564a1c262c086b1	Mask
+imagem.draw	0xc88cdcee8b5b572d	Select
+imagem.draw	0xc9d222e9349a0643	Smear
+imagem.draw	0xce543602cad95c6f	Frame view
+imagem.draw	0xd4a269f6c582e5b6	Undo
+imagem.draw	0xd72b2a20dbc0ee4d	Eraser
+imagem.draw	0xe755d14ee4a6b8aa	Clone
+imagem.draw	0xf20ebadee2e7c620	Redo
+imagem.draw	0xf8ee54593e72688e	Coordinate space
+imagem.draw	0xfcce7f74c54ee663	Transform
+imagem.edit	0x01773940057fa676	PAD
+imagem.edit	0x20dbe7a3e9e8637e	EQSZ
+imagem.edit	0x322319103e7e9fea	RASTR
+imagem.edit	0x38832f04d6328ce2	UPSC
+imagem.edit	0x9bbb9d84f0c778b7	Rotate
+imagem.edit	0xa8eb665654896b0f	SQUAR
+imagem.edit	0xaaa27bdc3b2b438a	Scale
+imagem.edit	0xb1511fc1e6f0ea27	SIZE
+imagem.edit	0xcbb045086a9d3fee	Translate
+imagem.edit	0xce543602cad95c6f	Frame view
+imagem.edit	0xd177d82e713d4bee	BGRMV
+imagem.edit	0xd4a269f6c582e5b6	Undo
+imagem.edit	0xd6045e2e1a76ed8c	Pivot
+imagem.edit	0xe66318788b9f46a8	TRIM
+imagem.edit	0xf09ebbf09457f945	CEQ
+imagem.edit	0xf20ebadee2e7c620	Redo
+imagem.edit	0xf8ee54593e72688e	Coordinate space
+repouso	0x9bbb9d84f0c778b7	Rotate
+repouso	0xaaa27bdc3b2b438a	Scale
+repouso	0xcbb045086a9d3fee	Translate
+repouso	0xce543602cad95c6f	Frame view
+repouso	0xd4a269f6c582e5b6	Undo
+repouso	0xd6045e2e1a76ed8c	Pivot
+repouso	0xf20ebadee2e7c620	Redo
+repouso	0xf8ee54593e72688e	Coordinate space

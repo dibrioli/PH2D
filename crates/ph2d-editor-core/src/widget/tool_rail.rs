@@ -96,6 +96,8 @@ pub enum ToolRailEntry {
         /// Short UPPERCASE tag painted vertically to the LEFT of
         /// the chip. Empty string means "no sub-label".
         sub: String,
+        /// A largura na fila em cartões, medida por [`size_row_pulldowns`]; `0` ⇒ chip quadrado.
+        row_w: f32,
     },
     Compound {
         id: NodeId,
@@ -138,6 +140,8 @@ pub enum ToolRailEntry {
         path: ph2d_vector::BezPath,
         active: bool,
         sub: String,
+        /// A largura na fila em cartões, medida por [`size_row_pulldowns`]; `0` ⇒ chip quadrado.
+        row_w: f32,
     },
     /// ⭐ **Um CAMPO NUMÉRICO na fila** — o chip numérico de um painel (`NumberInput` registado
     /// pelo painel dono), pintado aqui com o rótulo à esquerda. O valor, o foco, a edição e as
@@ -206,6 +210,7 @@ impl ToolRailEntry {
             icon,
             active: false,
             sub: String::new(),
+            row_w: 0.0,
         }
     }
 
@@ -311,7 +316,22 @@ impl ToolRailEntry {
             path,
             active: false,
             sub: sub.into(),
+            row_w: 0.0,
         }
+    }
+
+    /// A mesma entrada sem a legenda: o `⋯` em cartões diz o nome inteiro ao lado do chip.
+    #[must_use]
+    pub fn sem_legenda(mut self) -> Self {
+        match &mut self {
+            Self::Icon { sub, .. }
+            | Self::Compound { sub, .. }
+            | Self::Swatch { sub, .. }
+            | Self::Glyph { sub, .. }
+            | Self::Number { sub, .. } => sub.clear(),
+            Self::Text { .. } | Self::Divider => {}
+        }
+        self
     }
 
     /// Builder shortcut for the Icon/Swatch variants — flips `active` true.

@@ -23,6 +23,7 @@ mod censo_estados;
 mod diag_os_comandos_do_vector;
 mod global_palette_catalog;
 mod lei_da_compactacao;
+mod nenhum_botao_das_barras_de_modulo_sumiu;
 mod nenhum_nome_carrega_uma_regra;
 mod nenhum_nome_por_cima_do_controlo;
 mod nenhum_rotulo_do_app_pinta_nada;

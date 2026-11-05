@@ -208,33 +208,56 @@ fn a_legenda_em_cartoes_e_em_caixa_normal() {
     use super::caption::em_caixa_normal as f;
     assert_eq!(f("MOVE"), "Move");
     assert_eq!(f("ROT"), "Rotate");
-    assert_eq!(f("SQUAR"), "Square");
+    assert_eq!(f("XFORM"), "Transform");
     assert_eq!(f("W"), "W");
-    assert_eq!(f("CEQ"), "Color", "nenhuma sigla inventada");
+    assert_eq!(f("Remove Background"), "Remove Background");
     assert_eq!(f("FK"), "FK", "a sigla que o artista conhece fica");
     assert_eq!(f("Corner round"), "Corner round");
 }
 
-/// Toda legenda por extenso cabe inteira no passo do menor chip, nas três fontes.
+/// Em cartões o chip alarga até a legenda caber inteira no corpo do rótulo, nas três fontes; fora de
+/// cartões fica quadrado. CONTROLO: «Remove Background» não cabe no passo do chip quadrado.
 #[test]
-fn toda_legenda_por_extenso_cabe_no_passo_do_chip() {
+fn o_chip_alarga_ate_a_legenda_caber() {
+    use crate::widget::lista_flutuante::force_cromo_on_this_thread;
     let mut text = TextSystem::without_system_fonts();
-    let mut store = WidgetStore::default();
-    store.set_rail_button_size(RailButtonSize::Small);
-    let passo = RailButtonSize::Small.chip_px() + super::entry_gap_px();
+    let chip = RailButtonSize::Small.chip_px();
+    let gap = super::entry_gap_px();
+    let corpo = ph2d_card_stack::metrics::LABEL_PX;
     let mut fora = Vec::new();
+    let nomes =
+        || super::caption::nomes_por_extenso().chain(["Remove Background", "Color Equalization"]);
     for font in ph2d_tokens::UiFont::ALL {
         ph2d_text::set_active_text_style(ph2d_tokens::UiTextStyle {
             font,
             ..Default::default()
         });
-        for nome in super::caption::nomes_por_extenso() {
-            let w = text.prefix_width(nome, super::caption::fonte_de_recuo());
+        for nome in nomes() {
+            let entrada = || ToolRailEntry::icon(NodeId(1), nome, IconId::Transform).with_sub(nome);
+            force_cromo_on_this_thread(Some(true));
+            let mut rail = ToolRail::new(NodeId(2), "", vec![entrada()]);
+            size_row_pulldowns(&mut rail, &mut text);
+            let passo = entry_advance(&rail.entries[0], chip, RailAxis::Horizontal) + gap;
+            let w = text.prefix_width(nome, corpo);
             if w > passo {
                 fora.push(format!("{font:?} {nome}: {w:.1} > {passo:.1}"));
             }
+            force_cromo_on_this_thread(Some(false));
+            let mut rail = ToolRail::new(NodeId(2), "", vec![entrada()]);
+            size_row_pulldowns(&mut rail, &mut text);
+            assert_eq!(
+                entry_advance(&rail.entries[0], chip, RailAxis::Horizontal),
+                chip,
+                "fora de cartões o chip muda de largura: {nome}"
+            );
         }
+        let w = text.prefix_width("Remove Background", corpo);
+        assert!(
+            w > chip + gap,
+            "controlo: o nome longo cabia no chip quadrado"
+        );
     }
+    force_cromo_on_this_thread(None);
     ph2d_text::set_active_text_style(ph2d_tokens::UiTextStyle::default());
     assert!(fora.is_empty(), "{fora:#?}");
 }

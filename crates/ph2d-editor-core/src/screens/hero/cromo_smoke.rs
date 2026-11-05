@@ -21,6 +21,7 @@ fn cena(n: u32) -> Option<(Option<K>, Option<NodeId>)> {
         11 => (Some(K::RenamePaletteDialog), None),
         14 => (Some(K::ConfirmDeleteBoard { board: 1 }), None),
         15 => (Some(K::SendToBoard { row: NodeId(1) }), None),
+        17 => (Some(K::ToolBarOverflow), None),
         _ => return None,
     })
 }

@@ -6,6 +6,8 @@
 //! ganham o prefixo do módulo (`ficheiro::fn`); filtros por `test(nome)` continuam a casar.
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
+mod a_barra_em_edit_diz_o_nome_e_abre_a_ferramenta;
+mod nenhum_botao_da_barra_de_imagem_sumiu;
 mod architecture_image_tool_kind_contract;
 mod architecture_register_all_alphabetical;
 mod chrome_manifest_coverage;

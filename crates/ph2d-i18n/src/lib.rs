@@ -23,7 +23,7 @@
 //! // Image-tool labels are abreviados (cap 5 chars) pra caber no chip;
 //! // o tooltip mantém o nome legível por extenso.
 //! assert_eq!(tr("tool.trim_transparency.label"), "TRIM");
-//! assert_eq!(tr("tool.trim_transparency.tooltip"), "Trim Transparency");
+//! assert_eq!(tr("tool.trim_transparency.tooltip"), "Trim · cut away the transparent edges");
 //! assert_eq!(tr("tool.unknown.key"), "tool.unknown.key"); // missing-key passthrough
 //! ```
 

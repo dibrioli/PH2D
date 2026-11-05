@@ -1,0 +1,977 @@
+# Inventário de as barras dos módulos, gravado no main effe04a1c9c9fb60b772d4a3558c70af6c2e1360 em 2026-11-04.
+# família, id, nome no main. O gate compara família e id: novo não reprova, sumido reprova.
+pixel.None	0x382f90bccb71f8bc	Hand (H)
+pixel.None	0x4db97b2e9edc9034	Background color
+pixel.None	0x4dc64b2e9ee6c900	Foreground color
+pixel.None	0x5323367f015141ac	Swap the foreground and background colors (X)
+pixel.None	0x53f1c1e0c110d7bb	Line (L)
+pixel.None	0x58cb26201414d52f	Paint Bucket (G)
+pixel.None	0x6173cc5a407e4fd0	Curve (Shift+L)
+pixel.None	0x724e805b5d46da1e	Round (U)
+pixel.None	0x73a58fa546e9f647	Transform (V)
+pixel.None	0x8a1f0948e3788f3d	Contour (D)
+pixel.None	0xa684332b8b282845	Polygon (Shift+D)
+pixel.None	0xb09fe3b1f44b9dc5	Rectangular Marquee (M)
+pixel.None	0xb22ceee040816487	Magic Wand (W)
+pixel.None	0xc0602921fcf2bbd2	Text (T)
+pixel.None	0xc092902a176e3761	Eraser (E)
+pixel.None	0xcf85ab374021ff62	Eyedropper (I)
+pixel.None	0xd8c0d1fa153c815e	Spray (Shift+B)
+pixel.None	0xde797981215e5008	Pencil (B)
+pixel.None	0xded4f2d5f6c5ee1c	Blur (R)
+pixel.Some(Bucket)	0x382f90bccb71f8bc	Hand (H)
+pixel.Some(Bucket)	0x4db97b2e9edc9034	Background color
+pixel.Some(Bucket)	0x4dc64b2e9ee6c900	Foreground color
+pixel.Some(Bucket)	0x5323367f015141ac	Swap the foreground and background colors (X)
+pixel.Some(Bucket)	0x53f1c1e0c110d7bb	Line (L)
+pixel.Some(Bucket)	0x58cb26201414d52f	Paint Bucket (G)
+pixel.Some(Bucket)	0x6173cc5a407e4fd0	Curve (Shift+L)
+pixel.Some(Bucket)	0x724e805b5d46da1e	Round (U)
+pixel.Some(Bucket)	0x73a58fa546e9f647	Transform (V)
+pixel.Some(Bucket)	0x8a1f0948e3788f3d	Contour (D)
+pixel.Some(Bucket)	0x8ecb00d21975b2b9	
+pixel.Some(Bucket)	0xa684332b8b282845	Polygon (Shift+D)
+pixel.Some(Bucket)	0xb09fe3b1f44b9dc5	Rectangular Marquee (M)
+pixel.Some(Bucket)	0xb22ceee040816487	Magic Wand (W)
+pixel.Some(Bucket)	0xc0602921fcf2bbd2	Text (T)
+pixel.Some(Bucket)	0xc092902a176e3761	Eraser (E)
+pixel.Some(Bucket)	0xcf85ab374021ff62	Eyedropper (I)
+pixel.Some(Bucket)	0xd8c0d1fa153c815e	Spray (Shift+B)
+pixel.Some(Bucket)	0xde797981215e5008	Pencil (B)
+pixel.Some(Bucket)	0xded4f2d5f6c5ee1c	Blur (R)
+pixel.Some(Bucket)	0xff190d4eb8b5016b	
+pixel.Some(Select)	0x382f90bccb71f8bc	Hand (H)
+pixel.Some(Select)	0x4db97b2e9edc9034	Background color
+pixel.Some(Select)	0x4dc64b2e9ee6c900	Foreground color
+pixel.Some(Select)	0x5323367f015141ac	Swap the foreground and background colors (X)
+pixel.Some(Select)	0x53f1c1e0c110d7bb	Line (L)
+pixel.Some(Select)	0x58cb26201414d52f	Paint Bucket (G)
+pixel.Some(Select)	0x6173cc5a407e4fd0	Curve (Shift+L)
+pixel.Some(Select)	0x6aebf1a5c5263b2d	
+pixel.Some(Select)	0x724e805b5d46da1e	Round (U)
+pixel.Some(Select)	0x73a58fa546e9f647	Transform (V)
+pixel.Some(Select)	0x8a1f0948e3788f3d	Contour (D)
+pixel.Some(Select)	0xa684332b8b282845	Polygon (Shift+D)
+pixel.Some(Select)	0xb09fe3b1f44b9dc5	Rectangular Marquee (M)
+pixel.Some(Select)	0xb22ceee040816487	Magic Wand (W)
+pixel.Some(Select)	0xb91fdca39e1fc0ac	
+pixel.Some(Select)	0xc0602921fcf2bbd2	Text (T)
+pixel.Some(Select)	0xc092902a176e3761	Eraser (E)
+pixel.Some(Select)	0xc99d97bab5806124	
+pixel.Some(Select)	0xcf85ab374021ff62	Eyedropper (I)
+pixel.Some(Select)	0xd51b2e88af5b5476	
+pixel.Some(Select)	0xd8c0d1fa153c815e	Spray (Shift+B)
+pixel.Some(Select)	0xde797981215e5008	Pencil (B)
+pixel.Some(Select)	0xded4f2d5f6c5ee1c	Blur (R)
+pixel.Some(Shape)	0x382f90bccb71f8bc	Hand (H)
+pixel.Some(Shape)	0x4db97b2e9edc9034	Background color
+pixel.Some(Shape)	0x4dc64b2e9ee6c900	Foreground color
+pixel.Some(Shape)	0x5323367f015141ac	Swap the foreground and background colors (X)
+pixel.Some(Shape)	0x53f1c1e0c110d7bb	Line (L)
+pixel.Some(Shape)	0x58cb26201414d52f	Paint Bucket (G)
+pixel.Some(Shape)	0x5ff78449e93b8b30	
+pixel.Some(Shape)	0x5ff78549e93b8ce3	
+pixel.Some(Shape)	0x5ff78649e93b8e96	
+pixel.Some(Shape)	0x5ff78749e93b9049	
+pixel.Some(Shape)	0x5ff78849e93b91fc	
+pixel.Some(Shape)	0x5ff78949e93b93af	
+pixel.Some(Shape)	0x5ff78a49e93b9562	
+pixel.Some(Shape)	0x5ff78b49e93b9715	
+pixel.Some(Shape)	0x5ff78c49e93b98c8	
+pixel.Some(Shape)	0x5ff78d49e93b9a7b	
+pixel.Some(Shape)	0x60089949e94a2212	
+pixel.Some(Shape)	0x60089a49e94a23c5	
+pixel.Some(Shape)	0x60089b49e94a2578	
+pixel.Some(Shape)	0x60089c49e94a272b	
+pixel.Some(Shape)	0x60089d49e94a28de	
+pixel.Some(Shape)	0x60089f49e94a2c44	
+pixel.Some(Shape)	0x6008a049e94a2df7	
+pixel.Some(Shape)	0x6008a149e94a2faa	
+pixel.Some(Shape)	0x6008a249e94a315d	
+pixel.Some(Shape)	0x600c0649e94d1120	
+pixel.Some(Shape)	0x600c0749e94d12d3	
+pixel.Some(Shape)	0x600c0849e94d1486	
+pixel.Some(Shape)	0x600c0949e94d1639	
+pixel.Some(Shape)	0x600c0a49e94d17ec	
+pixel.Some(Shape)	0x600c0b49e94d199f	
+pixel.Some(Shape)	0x600c0c49e94d1b52	
+pixel.Some(Shape)	0x600c0d49e94d1d05	
+pixel.Some(Shape)	0x600c1049e94d221e	
+pixel.Some(Shape)	0x600c1149e94d23d1	
+pixel.Some(Shape)	0x600f8949e9502590	
+pixel.Some(Shape)	0x600f8a49e9502743	
+pixel.Some(Shape)	0x600f8b49e95028f6	
+pixel.Some(Shape)	0x600f8c49e9502aa9	
+pixel.Some(Shape)	0x600f8d49e9502c5c	
+pixel.Some(Shape)	0x600f8e49e9502e0f	
+pixel.Some(Shape)	0x600f8f49e9502fc2	
+pixel.Some(Shape)	0x600f9049e9503175	
+pixel.Some(Shape)	0x600f9549e95039f4	
+pixel.Some(Shape)	0x600f9649e9503ba7	
+pixel.Some(Shape)	0x6173cc5a407e4fd0	Curve (Shift+L)
+pixel.Some(Shape)	0x724e805b5d46da1e	Round (U)
+pixel.Some(Shape)	0x73a58fa546e9f647	Transform (V)
+pixel.Some(Shape)	0x8a1f0948e3788f3d	Contour (D)
+pixel.Some(Shape)	0xa684332b8b282845	Polygon (Shift+D)
+pixel.Some(Shape)	0xb09fe3b1f44b9dc5	Rectangular Marquee (M)
+pixel.Some(Shape)	0xb22ceee040816487	Magic Wand (W)
+pixel.Some(Shape)	0xc0602921fcf2bbd2	Text (T)
+pixel.Some(Shape)	0xc092902a176e3761	Eraser (E)
+pixel.Some(Shape)	0xcf85ab374021ff62	Eyedropper (I)
+pixel.Some(Shape)	0xd8c0d1fa153c815e	Spray (Shift+B)
+pixel.Some(Shape)	0xde3cb4f047bed020	
+pixel.Some(Shape)	0xde3cb5f047bed1d3	
+pixel.Some(Shape)	0xde3cb6f047bed386	
+pixel.Some(Shape)	0xde3cb7f047bed539	
+pixel.Some(Shape)	0xde3cb8f047bed6ec	
+pixel.Some(Shape)	0xde3cb9f047bed89f	
+pixel.Some(Shape)	0xde3cbaf047beda52	
+pixel.Some(Shape)	0xde3cbbf047bedc05	
+pixel.Some(Shape)	0xde3cc0f047bee484	
+pixel.Some(Shape)	0xde3cc1f047bee637	
+pixel.Some(Shape)	0xde797981215e5008	Pencil (B)
+pixel.Some(Shape)	0xded4f2d5f6c5ee1c	Blur (R)
+pixel.Some(Smudge)	0x382f90bccb71f8bc	Hand (H)
+pixel.Some(Smudge)	0x41e2cbcf7169ae48	
+pixel.Some(Smudge)	0x4db97b2e9edc9034	Background color
+pixel.Some(Smudge)	0x4dc64b2e9ee6c900	Foreground color
+pixel.Some(Smudge)	0x5323367f015141ac	Swap the foreground and background colors (X)
+pixel.Some(Smudge)	0x53f1c1e0c110d7bb	Line (L)
+pixel.Some(Smudge)	0x58cb26201414d52f	Paint Bucket (G)
+pixel.Some(Smudge)	0x6173cc5a407e4fd0	Curve (Shift+L)
+pixel.Some(Smudge)	0x724e805b5d46da1e	Round (U)
+pixel.Some(Smudge)	0x73a58fa546e9f647	Transform (V)
+pixel.Some(Smudge)	0x8a1f0948e3788f3d	Contour (D)
+pixel.Some(Smudge)	0xa684332b8b282845	Polygon (Shift+D)
+pixel.Some(Smudge)	0xb09fe3b1f44b9dc5	Rectangular Marquee (M)
+pixel.Some(Smudge)	0xb22ceee040816487	Magic Wand (W)
+pixel.Some(Smudge)	0xb365978d2bbf26d4	
+pixel.Some(Smudge)	0xc0602921fcf2bbd2	Text (T)
+pixel.Some(Smudge)	0xc092902a176e3761	Eraser (E)
+pixel.Some(Smudge)	0xcf85ab374021ff62	Eyedropper (I)
+pixel.Some(Smudge)	0xd8c0d1fa153c815e	Spray (Shift+B)
+pixel.Some(Smudge)	0xde797981215e5008	Pencil (B)
+pixel.Some(Smudge)	0xded4f2d5f6c5ee1c	Blur (R)
+vetor.Bucket	0x02a10826ae075ac6	Edit the other colour · X
+vetor.Bucket	0x0baf7a2f9c9ff170	Eyedropper · I
+vetor.Bucket	0x0ddc7f3c087e5830	Frame · Shift+O
+vetor.Bucket	0x112dce8f26d23934	Shape · M
+vetor.Bucket	0x14a96fe22a9b724b	Stroke width
+vetor.Bucket	0x17998cf3f9b6e9e1	Build · Shift+M
+vetor.Bucket	0x1812652248b16a86	Pen · P
+vetor.Bucket	0x18650cc9a030876a	Pencil · N
+vetor.Bucket	0x33b9a4bcd5f7a65f	Default colours · D
+vetor.Bucket	0x3ad9a189c2874a7b	Node · A
+vetor.Bucket	0x4322c10349ea5fc9	Stroke colour
+vetor.Bucket	0x44f1ff60b33233d3	Trim
+vetor.Bucket	0x471e8321d209be60	HUD Layout
+vetor.Bucket	0x47be0e9f5c7a23f3	Chamfer
+vetor.Bucket	0x6172ba2eb321e1c4	Interface view · the panel shows the UI settings
+vetor.Bucket	0x72746621ea96f619	Cut · C
+vetor.Bucket	0x7e5e576042e7953c	Text · T
+vetor.Bucket	0x8132ab8328188d6b	Select · V
+vetor.Bucket	0x8995b274a183362d	Pick Shapes · W
+vetor.Bucket	0xb455a6d28dda3f9f	Connect
+vetor.Bucket	0xbbcfb99ba2fe3fad	Width · Shift+W
+vetor.Bucket	0xce1c85a780c2b965	Swap fill and stroke · Shift+X
+vetor.Bucket	0xceeca9c138bda806	Fill colour
+vetor.Bucket	0xd426d0c6e38c5c81	Bucket · K
+vetor.Bucket	0xd47a5a311e1ca08d	Stroke options: ends, corners, dashes, arrowheads
+vetor.Bucket	0xdba68978bb3e8726	Width profile
+vetor.Bucket	0xded83b1f2bb48228	Offset Path
+vetor.Bucket	0xecebcb0ff3f67c0b	Fillet
+vetor.Bucket	0xff7bb87b8a1189b2	Rules
+vetor.Build	0x02a10826ae075ac6	Edit the other colour · X
+vetor.Build	0x0baf7a2f9c9ff170	Eyedropper · I
+vetor.Build	0x0ddc7f3c087e5830	Frame · Shift+O
+vetor.Build	0x112dce8f26d23934	Shape · M
+vetor.Build	0x14a96fe22a9b724b	Stroke width
+vetor.Build	0x17998cf3f9b6e9e1	Build · Shift+M
+vetor.Build	0x1812652248b16a86	Pen · P
+vetor.Build	0x18650cc9a030876a	Pencil · N
+vetor.Build	0x33b9a4bcd5f7a65f	Default colours · D
+vetor.Build	0x3ad9a189c2874a7b	Node · A
+vetor.Build	0x4322c10349ea5fc9	Stroke colour
+vetor.Build	0x44f1ff60b33233d3	Trim
+vetor.Build	0x471e8321d209be60	HUD Layout
+vetor.Build	0x47be0e9f5c7a23f3	Chamfer
+vetor.Build	0x6172ba2eb321e1c4	Interface view · the panel shows the UI settings
+vetor.Build	0x72746621ea96f619	Cut · C
+vetor.Build	0x7e5e576042e7953c	Text · T
+vetor.Build	0x8132ab8328188d6b	Select · V
+vetor.Build	0x8995b274a183362d	Pick Shapes · W
+vetor.Build	0xb455a6d28dda3f9f	Connect
+vetor.Build	0xbbcfb99ba2fe3fad	Width · Shift+W
+vetor.Build	0xce1c85a780c2b965	Swap fill and stroke · Shift+X
+vetor.Build	0xceeca9c138bda806	Fill colour
+vetor.Build	0xd426d0c6e38c5c81	Bucket · K
+vetor.Build	0xd47a5a311e1ca08d	Stroke options: ends, corners, dashes, arrowheads
+vetor.Build	0xdba68978bb3e8726	Width profile
+vetor.Build	0xded83b1f2bb48228	Offset Path
+vetor.Build	0xecebcb0ff3f67c0b	Fillet
+vetor.Build	0xff7bb87b8a1189b2	Rules
+vetor.Chamfer	0x02a10826ae075ac6	Edit the other colour · X
+vetor.Chamfer	0x0baf7a2f9c9ff170	Eyedropper · I
+vetor.Chamfer	0x0ddc7f3c087e5830	Frame · Shift+O
+vetor.Chamfer	0x112dce8f26d23934	Shape · M
+vetor.Chamfer	0x14a96fe22a9b724b	Stroke width
+vetor.Chamfer	0x17998cf3f9b6e9e1	Build · Shift+M
+vetor.Chamfer	0x1812652248b16a86	Pen · P
+vetor.Chamfer	0x18650cc9a030876a	Pencil · N
+vetor.Chamfer	0x33b9a4bcd5f7a65f	Default colours · D
+vetor.Chamfer	0x3ad9a189c2874a7b	Node · A
+vetor.Chamfer	0x4322c10349ea5fc9	Stroke colour
+vetor.Chamfer	0x44f1ff60b33233d3	Trim
+vetor.Chamfer	0x471e8321d209be60	HUD Layout
+vetor.Chamfer	0x47be0e9f5c7a23f3	Chamfer
+vetor.Chamfer	0x6172ba2eb321e1c4	Interface view · the panel shows the UI settings
+vetor.Chamfer	0x72746621ea96f619	Cut · C
+vetor.Chamfer	0x7e5e576042e7953c	Text · T
+vetor.Chamfer	0x8132ab8328188d6b	Select · V
+vetor.Chamfer	0x8995b274a183362d	Pick Shapes · W
+vetor.Chamfer	0xb455a6d28dda3f9f	Connect
+vetor.Chamfer	0xbbcfb99ba2fe3fad	Width · Shift+W
+vetor.Chamfer	0xce1c85a780c2b965	Swap fill and stroke · Shift+X
+vetor.Chamfer	0xceeca9c138bda806	Fill colour
+vetor.Chamfer	0xd426d0c6e38c5c81	Bucket · K
+vetor.Chamfer	0xd47a5a311e1ca08d	Stroke options: ends, corners, dashes, arrowheads
+vetor.Chamfer	0xdba68978bb3e8726	Width profile
+vetor.Chamfer	0xded83b1f2bb48228	Offset Path
+vetor.Chamfer	0xecebcb0ff3f67c0b	Fillet
+vetor.Chamfer	0xff7bb87b8a1189b2	Rules
+vetor.Connect	0x02a10826ae075ac6	Edit the other colour · X
+vetor.Connect	0x0baf7a2f9c9ff170	Eyedropper · I
+vetor.Connect	0x0ddc7f3c087e5830	Frame · Shift+O
+vetor.Connect	0x112dce8f26d23934	Shape · M
+vetor.Connect	0x14a96fe22a9b724b	Stroke width
+vetor.Connect	0x17998cf3f9b6e9e1	Build · Shift+M
+vetor.Connect	0x1812652248b16a86	Pen · P
+vetor.Connect	0x18650cc9a030876a	Pencil · N
+vetor.Connect	0x33b9a4bcd5f7a65f	Default colours · D
+vetor.Connect	0x3ad9a189c2874a7b	Node · A
+vetor.Connect	0x4322c10349ea5fc9	Stroke colour
+vetor.Connect	0x44f1ff60b33233d3	Trim
+vetor.Connect	0x471e8321d209be60	HUD Layout
+vetor.Connect	0x47be0e9f5c7a23f3	Chamfer
+vetor.Connect	0x6172ba2eb321e1c4	Interface view · the panel shows the UI settings
+vetor.Connect	0x72746621ea96f619	Cut · C
+vetor.Connect	0x7e5e576042e7953c	Text · T
+vetor.Connect	0x8132ab8328188d6b	Select · V
+vetor.Connect	0x8995b274a183362d	Pick Shapes · W
+vetor.Connect	0xb455a6d28dda3f9f	Connect
+vetor.Connect	0xbbcfb99ba2fe3fad	Width · Shift+W
+vetor.Connect	0xce1c85a780c2b965	Swap fill and stroke · Shift+X
+vetor.Connect	0xceeca9c138bda806	Fill colour
+vetor.Connect	0xd426d0c6e38c5c81	Bucket · K
+vetor.Connect	0xd47a5a311e1ca08d	Stroke options: ends, corners, dashes, arrowheads
+vetor.Connect	0xdba68978bb3e8726	Width profile
+vetor.Connect	0xded83b1f2bb48228	Offset Path
+vetor.Connect	0xecebcb0ff3f67c0b	Fillet
+vetor.Connect	0xff7bb87b8a1189b2	Rules
+vetor.Cut	0x02a10826ae075ac6	Edit the other colour · X
+vetor.Cut	0x0baf7a2f9c9ff170	Eyedropper · I
+vetor.Cut	0x0ddc7f3c087e5830	Frame · Shift+O
+vetor.Cut	0x112dce8f26d23934	Shape · M
+vetor.Cut	0x14a96fe22a9b724b	Stroke width
+vetor.Cut	0x17998cf3f9b6e9e1	Build · Shift+M
+vetor.Cut	0x1812652248b16a86	Pen · P
+vetor.Cut	0x18650cc9a030876a	Pencil · N
+vetor.Cut	0x33b9a4bcd5f7a65f	Default colours · D
+vetor.Cut	0x3ad9a189c2874a7b	Node · A
+vetor.Cut	0x4322c10349ea5fc9	Stroke colour
+vetor.Cut	0x44f1ff60b33233d3	Trim
+vetor.Cut	0x471e8321d209be60	HUD Layout
+vetor.Cut	0x47be0e9f5c7a23f3	Chamfer
+vetor.Cut	0x6172ba2eb321e1c4	Interface view · the panel shows the UI settings
+vetor.Cut	0x72746621ea96f619	Cut · C
+vetor.Cut	0x7e5e576042e7953c	Text · T
+vetor.Cut	0x8132ab8328188d6b	Select · V
+vetor.Cut	0x8995b274a183362d	Pick Shapes · W
+vetor.Cut	0xb455a6d28dda3f9f	Connect
+vetor.Cut	0xbbcfb99ba2fe3fad	Width · Shift+W
+vetor.Cut	0xce1c85a780c2b965	Swap fill and stroke · Shift+X
+vetor.Cut	0xceeca9c138bda806	Fill colour
+vetor.Cut	0xd426d0c6e38c5c81	Bucket · K
+vetor.Cut	0xd47a5a311e1ca08d	Stroke options: ends, corners, dashes, arrowheads
+vetor.Cut	0xdba68978bb3e8726	Width profile
+vetor.Cut	0xded83b1f2bb48228	Offset Path
+vetor.Cut	0xecebcb0ff3f67c0b	Fillet
+vetor.Cut	0xff7bb87b8a1189b2	Rules
+vetor.Eyedropper	0x02a10826ae075ac6	Edit the other colour · X
+vetor.Eyedropper	0x0baf7a2f9c9ff170	Eyedropper · I
+vetor.Eyedropper	0x0ddc7f3c087e5830	Frame · Shift+O
+vetor.Eyedropper	0x112dce8f26d23934	Shape · M
+vetor.Eyedropper	0x14a96fe22a9b724b	Stroke width
+vetor.Eyedropper	0x17998cf3f9b6e9e1	Build · Shift+M
+vetor.Eyedropper	0x1812652248b16a86	Pen · P
+vetor.Eyedropper	0x18650cc9a030876a	Pencil · N
+vetor.Eyedropper	0x33b9a4bcd5f7a65f	Default colours · D
+vetor.Eyedropper	0x3ad9a189c2874a7b	Node · A
+vetor.Eyedropper	0x4322c10349ea5fc9	Stroke colour
+vetor.Eyedropper	0x44f1ff60b33233d3	Trim
+vetor.Eyedropper	0x471e8321d209be60	HUD Layout
+vetor.Eyedropper	0x47be0e9f5c7a23f3	Chamfer
+vetor.Eyedropper	0x6172ba2eb321e1c4	Interface view · the panel shows the UI settings
+vetor.Eyedropper	0x72746621ea96f619	Cut · C
+vetor.Eyedropper	0x7e5e576042e7953c	Text · T
+vetor.Eyedropper	0x8132ab8328188d6b	Select · V
+vetor.Eyedropper	0x8995b274a183362d	Pick Shapes · W
+vetor.Eyedropper	0xb455a6d28dda3f9f	Connect
+vetor.Eyedropper	0xbbcfb99ba2fe3fad	Width · Shift+W
+vetor.Eyedropper	0xce1c85a780c2b965	Swap fill and stroke · Shift+X
+vetor.Eyedropper	0xceeca9c138bda806	Fill colour
+vetor.Eyedropper	0xd426d0c6e38c5c81	Bucket · K
+vetor.Eyedropper	0xd47a5a311e1ca08d	Stroke options: ends, corners, dashes, arrowheads
+vetor.Eyedropper	0xdba68978bb3e8726	Width profile
+vetor.Eyedropper	0xded83b1f2bb48228	Offset Path
+vetor.Eyedropper	0xecebcb0ff3f67c0b	Fillet
+vetor.Eyedropper	0xff7bb87b8a1189b2	Rules
+vetor.Fillet	0x02a10826ae075ac6	Edit the other colour · X
+vetor.Fillet	0x0baf7a2f9c9ff170	Eyedropper · I
+vetor.Fillet	0x0ddc7f3c087e5830	Frame · Shift+O
+vetor.Fillet	0x112dce8f26d23934	Shape · M
+vetor.Fillet	0x14a96fe22a9b724b	Stroke width
+vetor.Fillet	0x17998cf3f9b6e9e1	Build · Shift+M
+vetor.Fillet	0x1812652248b16a86	Pen · P
+vetor.Fillet	0x18650cc9a030876a	Pencil · N
+vetor.Fillet	0x33b9a4bcd5f7a65f	Default colours · D
+vetor.Fillet	0x3ad9a189c2874a7b	Node · A
+vetor.Fillet	0x4322c10349ea5fc9	Stroke colour
+vetor.Fillet	0x44f1ff60b33233d3	Trim
+vetor.Fillet	0x471e8321d209be60	HUD Layout
+vetor.Fillet	0x47be0e9f5c7a23f3	Chamfer
+vetor.Fillet	0x6172ba2eb321e1c4	Interface view · the panel shows the UI settings
+vetor.Fillet	0x72746621ea96f619	Cut · C
+vetor.Fillet	0x7e5e576042e7953c	Text · T
+vetor.Fillet	0x8132ab8328188d6b	Select · V
+vetor.Fillet	0x8995b274a183362d	Pick Shapes · W
+vetor.Fillet	0xb455a6d28dda3f9f	Connect
+vetor.Fillet	0xbbcfb99ba2fe3fad	Width · Shift+W
+vetor.Fillet	0xce1c85a780c2b965	Swap fill and stroke · Shift+X
+vetor.Fillet	0xceeca9c138bda806	Fill colour
+vetor.Fillet	0xd426d0c6e38c5c81	Bucket · K
+vetor.Fillet	0xd47a5a311e1ca08d	Stroke options: ends, corners, dashes, arrowheads
+vetor.Fillet	0xdba68978bb3e8726	Width profile
+vetor.Fillet	0xded83b1f2bb48228	Offset Path
+vetor.Fillet	0xecebcb0ff3f67c0b	Fillet
+vetor.Fillet	0xff7bb87b8a1189b2	Rules
+vetor.Frame	0x02a10826ae075ac6	Edit the other colour · X
+vetor.Frame	0x0baf7a2f9c9ff170	Eyedropper · I
+vetor.Frame	0x0ddc7f3c087e5830	Frame · Shift+O
+vetor.Frame	0x112dce8f26d23934	Shape · M
+vetor.Frame	0x14a96fe22a9b724b	Stroke width
+vetor.Frame	0x14fc31ea3e69cd6d	Outline Stroke · turn the stroke into a shape you can fill
+vetor.Frame	0x17998cf3f9b6e9e1	Build · Shift+M
+vetor.Frame	0x17e161b6e950610b	Bring Forward
+vetor.Frame	0x1812652248b16a86	Pen · P
+vetor.Frame	0x18650cc9a030876a	Pencil · N
+vetor.Frame	0x1919527ce0280db8	BL offset
+vetor.Frame	0x1919537ce0280f6b	BR offset
+vetor.Frame	0x1919547ce028111e	TR offset
+vetor.Frame	0x1919557ce02812d1	Radius
+vetor.Frame	0x3035d63350b39032	Flatten · make it one plain shape for good (Undo brings it back)
+vetor.Frame	0x30e7bb710f00b667	Weld
+vetor.Frame	0x33b9a4bcd5f7a65f	Default colours · D
+vetor.Frame	0x3ad9a189c2874a7b	Node · A
+vetor.Frame	0x3ce3bef90ad4eae2	Subtract · cut the front shapes out of the back one; each shape stays editable
+vetor.Frame	0x4322c10349ea5fc9	Stroke colour
+vetor.Frame	0x44f1ff60b33233d3	Trim
+vetor.Frame	0x471e8321d209be60	HUD Layout
+vetor.Frame	0x47be0e9f5c7a23f3	Chamfer
+vetor.Frame	0x58c14f5932cd3e07	Join
+vetor.Frame	0x5b5d5d7255f21252	Align Center
+vetor.Frame	0x6172ba2eb321e1c4	Interface view · the panel shows the UI settings
+vetor.Frame	0x6f4d19128a3c31c2	Align Bottom
+vetor.Frame	0x7152e25c616d9a50	Align Middle
+vetor.Frame	0x72746621ea96f619	Cut · C
+vetor.Frame	0x737c5cdb78f0d25d	Union · join the shapes into one; each shape stays editable
+vetor.Frame	0x7e5e576042e7953c	Text · T
+vetor.Frame	0x8132ab8328188d6b	Select · V
+vetor.Frame	0x8995b274a183362d	Pick Shapes · W
+vetor.Frame	0x90ee1970788c0c08	Align Left
+vetor.Frame	0x952fd2b8ed0fbf84	Align Top
+vetor.Frame	0xac0ec072847e8ec3	Send Backward
+vetor.Frame	0xaf0d432d14407dda	Symmetry
+vetor.Frame	0xb455a6d28dda3f9f	Connect
+vetor.Frame	0xbbcfb99ba2fe3fad	Width · Shift+W
+vetor.Frame	0xbe85e56184865907	Send to Back
+vetor.Frame	0xbf2d97b1253d3681	Rotate 90° Counter-clockwise
+vetor.Frame	0xc74c7fb5141858f0	Rotate 90° Clockwise
+vetor.Frame	0xce1c85a780c2b965	Swap fill and stroke · Shift+X
+vetor.Frame	0xceeca9c138bda806	Fill colour
+vetor.Frame	0xd4216c3ba656c980	Exclude · keep everything except where the shapes overlap; each shape stays editable
+vetor.Frame	0xd426d0c6e38c5c81	Bucket · K
+vetor.Frame	0xd47a5a311e1ca08d	Stroke options: ends, corners, dashes, arrowheads
+vetor.Frame	0xdba68978bb3e8726	Width profile
+vetor.Frame	0xdc011bb4a48be87d	Align Right
+vetor.Frame	0xdd96933dc26f4772	Flip Horizontal
+vetor.Frame	0xdd96a53dc26f6608	Flip Vertical
+vetor.Frame	0xded83b1f2bb48228	Offset Path
+vetor.Frame	0xe7d09052b724197b	Bring to Front
+vetor.Frame	0xecebcb0ff3f67c0b	Fillet
+vetor.Frame	0xf7c423b6bc18870f	Intersect · keep only where the shapes overlap; each shape stays editable
+vetor.Frame	0xfbeda3dfc71eb5b7	Corner
+vetor.Frame	0xff7bb87b8a1189b2	Rules
+vetor.HudLayout	0x02a10826ae075ac6	Edit the other colour · X
+vetor.HudLayout	0x0baf7a2f9c9ff170	Eyedropper · I
+vetor.HudLayout	0x0ddc7f3c087e5830	Frame · Shift+O
+vetor.HudLayout	0x112dce8f26d23934	Shape · M
+vetor.HudLayout	0x14a96fe22a9b724b	Stroke width
+vetor.HudLayout	0x17998cf3f9b6e9e1	Build · Shift+M
+vetor.HudLayout	0x1812652248b16a86	Pen · P
+vetor.HudLayout	0x18650cc9a030876a	Pencil · N
+vetor.HudLayout	0x33b9a4bcd5f7a65f	Default colours · D
+vetor.HudLayout	0x3ad9a189c2874a7b	Node · A
+vetor.HudLayout	0x4322c10349ea5fc9	Stroke colour
+vetor.HudLayout	0x44f1ff60b33233d3	Trim
+vetor.HudLayout	0x471e8321d209be60	HUD Layout
+vetor.HudLayout	0x47be0e9f5c7a23f3	Chamfer
+vetor.HudLayout	0x6172ba2eb321e1c4	Interface view · the panel shows the UI settings
+vetor.HudLayout	0x72746621ea96f619	Cut · C
+vetor.HudLayout	0x7e5e576042e7953c	Text · T
+vetor.HudLayout	0x8132ab8328188d6b	Select · V
+vetor.HudLayout	0x8995b274a183362d	Pick Shapes · W
+vetor.HudLayout	0xb455a6d28dda3f9f	Connect
+vetor.HudLayout	0xbbcfb99ba2fe3fad	Width · Shift+W
+vetor.HudLayout	0xce1c85a780c2b965	Swap fill and stroke · Shift+X
+vetor.HudLayout	0xceeca9c138bda806	Fill colour
+vetor.HudLayout	0xd426d0c6e38c5c81	Bucket · K
+vetor.HudLayout	0xd47a5a311e1ca08d	Stroke options: ends, corners, dashes, arrowheads
+vetor.HudLayout	0xdba68978bb3e8726	Width profile
+vetor.HudLayout	0xded83b1f2bb48228	Offset Path
+vetor.HudLayout	0xecebcb0ff3f67c0b	Fillet
+vetor.HudLayout	0xff7bb87b8a1189b2	Rules
+vetor.Node	0x02a10826ae075ac6	Edit the other colour · X
+vetor.Node	0x0baf7a2f9c9ff170	Eyedropper · I
+vetor.Node	0x0c77b425c95ae5fc	Lasso
+vetor.Node	0x0ddc7f3c087e5830	Frame · Shift+O
+vetor.Node	0x112dce8f26d23934	Shape · M
+vetor.Node	0x14a96fe22a9b724b	Stroke width
+vetor.Node	0x14fc31ea3e69cd6d	Outline Stroke · turn the stroke into a shape you can fill
+vetor.Node	0x17998cf3f9b6e9e1	Build · Shift+M
+vetor.Node	0x17e161b6e950610b	Bring Forward
+vetor.Node	0x1812652248b16a86	Pen · P
+vetor.Node	0x18650cc9a030876a	Pencil · N
+vetor.Node	0x3035d63350b39032	Flatten · make it one plain shape for good (Undo brings it back)
+vetor.Node	0x30e7bb710f00b667	Weld
+vetor.Node	0x33b9a4bcd5f7a65f	Default colours · D
+vetor.Node	0x3ad9a189c2874a7b	Node · A
+vetor.Node	0x3ce3bef90ad4eae2	Subtract · cut the front shapes out of the back one; each shape stays editable
+vetor.Node	0x3dc493fb241f2855	Smooth
+vetor.Node	0x4322c10349ea5fc9	Stroke colour
+vetor.Node	0x44f1ff60b33233d3	Trim
+vetor.Node	0x471e8321d209be60	HUD Layout
+vetor.Node	0x47be0e9f5c7a23f3	Chamfer
+vetor.Node	0x57ceb9bc200a0412	Subdivide
+vetor.Node	0x58c14f5932cd3e07	Join
+vetor.Node	0x5b5d5d7255f21252	Align Center
+vetor.Node	0x6172ba2eb321e1c4	Interface view · the panel shows the UI settings
+vetor.Node	0x693c6f4800bc44a3	Box
+vetor.Node	0x6f4d19128a3c31c2	Align Bottom
+vetor.Node	0x7152e25c616d9a50	Align Middle
+vetor.Node	0x72746621ea96f619	Cut · C
+vetor.Node	0x737c5cdb78f0d25d	Union · join the shapes into one; each shape stays editable
+vetor.Node	0x7e5e576042e7953c	Text · T
+vetor.Node	0x8132ab8328188d6b	Select · V
+vetor.Node	0x8995b274a183362d	Pick Shapes · W
+vetor.Node	0x90ee1970788c0c08	Align Left
+vetor.Node	0x952fd2b8ed0fbf84	Align Top
+vetor.Node	0x9bceb1568e0589e6	Symm
+vetor.Node	0x9efbfae89db7a9d2	Corner
+vetor.Node	0xa6eaae44ebb49a7c	Simplify
+vetor.Node	0xac0ec072847e8ec3	Send Backward
+vetor.Node	0xb455a6d28dda3f9f	Connect
+vetor.Node	0xbbcfb99ba2fe3fad	Width · Shift+W
+vetor.Node	0xbcffad1019c9a103	Reverse
+vetor.Node	0xbe85e56184865907	Send to Back
+vetor.Node	0xbf1a1654ebe19262	Sharpen
+vetor.Node	0xbf2d97b1253d3681	Rotate 90° Counter-clockwise
+vetor.Node	0xc51aca4cab1a2471	Smooth
+vetor.Node	0xc74c7fb5141858f0	Rotate 90° Clockwise
+vetor.Node	0xcb099f7bd992bddd	Close Path
+vetor.Node	0xce1c85a780c2b965	Swap fill and stroke · Shift+X
+vetor.Node	0xceeca9c138bda806	Fill colour
+vetor.Node	0xd4216c3ba656c980	Exclude · keep everything except where the shapes overlap; each shape stays editable
+vetor.Node	0xd426d0c6e38c5c81	Bucket · K
+vetor.Node	0xd47a5a311e1ca08d	Stroke options: ends, corners, dashes, arrowheads
+vetor.Node	0xdba68978bb3e8726	Width profile
+vetor.Node	0xdc011bb4a48be87d	Align Right
+vetor.Node	0xdd96933dc26f4772	Flip Horizontal
+vetor.Node	0xdd96a53dc26f6608	Flip Vertical
+vetor.Node	0xded83b1f2bb48228	Offset Path
+vetor.Node	0xe7d09052b724197b	Bring to Front
+vetor.Node	0xecebcb0ff3f67c0b	Fillet
+vetor.Node	0xf7c423b6bc18870f	Intersect · keep only where the shapes overlap; each shape stays editable
+vetor.Node	0xff7bb87b8a1189b2	Rules
+vetor.Offset	0x02a10826ae075ac6	Edit the other colour · X
+vetor.Offset	0x0baf7a2f9c9ff170	Eyedropper · I
+vetor.Offset	0x0ddc7f3c087e5830	Frame · Shift+O
+vetor.Offset	0x112dce8f26d23934	Shape · M
+vetor.Offset	0x14a96fe22a9b724b	Stroke width
+vetor.Offset	0x17998cf3f9b6e9e1	Build · Shift+M
+vetor.Offset	0x1812652248b16a86	Pen · P
+vetor.Offset	0x18650cc9a030876a	Pencil · N
+vetor.Offset	0x28aa6753057dcb0e	Result
+vetor.Offset	0x33b9a4bcd5f7a65f	Default colours · D
+vetor.Offset	0x3ad9a189c2874a7b	Node · A
+vetor.Offset	0x4322c10349ea5fc9	Stroke colour
+vetor.Offset	0x44f1ff60b33233d3	Trim
+vetor.Offset	0x471e8321d209be60	HUD Layout
+vetor.Offset	0x47be0e9f5c7a23f3	Chamfer
+vetor.Offset	0x4e9010f57271f29f	Miter limit
+vetor.Offset	0x58415bd127ca7836	Holes
+vetor.Offset	0x5d14bd056761a729	Distance (px)
+vetor.Offset	0x6172ba2eb321e1c4	Interface view · the panel shows the UI settings
+vetor.Offset	0x71d5e5b844a021f9	Miter
+vetor.Offset	0x72746621ea96f619	Cut · C
+vetor.Offset	0x7e5e576042e7953c	Text · T
+vetor.Offset	0x8132ab8328188d6b	Select · V
+vetor.Offset	0x8995b274a183362d	Pick Shapes · W
+vetor.Offset	0xaecb01fbbec1c14c	Round
+vetor.Offset	0xb455a6d28dda3f9f	Connect
+vetor.Offset	0xbbcfb99ba2fe3fad	Width · Shift+W
+vetor.Offset	0xce1c85a780c2b965	Swap fill and stroke · Shift+X
+vetor.Offset	0xceeca9c138bda806	Fill colour
+vetor.Offset	0xd426d0c6e38c5c81	Bucket · K
+vetor.Offset	0xd47a5a311e1ca08d	Stroke options: ends, corners, dashes, arrowheads
+vetor.Offset	0xdba68978bb3e8726	Width profile
+vetor.Offset	0xded83b1f2bb48228	Offset Path
+vetor.Offset	0xecebcb0ff3f67c0b	Fillet
+vetor.Offset	0xfc2110bb0c844930	Bevel
+vetor.Offset	0xff7bb87b8a1189b2	Rules
+vetor.Pen	0x02a10826ae075ac6	Edit the other colour · X
+vetor.Pen	0x0baf7a2f9c9ff170	Eyedropper · I
+vetor.Pen	0x0ddc7f3c087e5830	Frame · Shift+O
+vetor.Pen	0x112dce8f26d23934	Shape · M
+vetor.Pen	0x14a96fe22a9b724b	Stroke width
+vetor.Pen	0x14fc31ea3e69cd6d	Outline Stroke · turn the stroke into a shape you can fill
+vetor.Pen	0x17998cf3f9b6e9e1	Build · Shift+M
+vetor.Pen	0x17e161b6e950610b	Bring Forward
+vetor.Pen	0x1812652248b16a86	Pen · P
+vetor.Pen	0x18650cc9a030876a	Pencil · N
+vetor.Pen	0x3035d63350b39032	Flatten · make it one plain shape for good (Undo brings it back)
+vetor.Pen	0x30e7bb710f00b667	Weld
+vetor.Pen	0x33b9a4bcd5f7a65f	Default colours · D
+vetor.Pen	0x3ad9a189c2874a7b	Node · A
+vetor.Pen	0x3ce3bef90ad4eae2	Subtract · cut the front shapes out of the back one; each shape stays editable
+vetor.Pen	0x4322c10349ea5fc9	Stroke colour
+vetor.Pen	0x44f1ff60b33233d3	Trim
+vetor.Pen	0x471e8321d209be60	HUD Layout
+vetor.Pen	0x47be0e9f5c7a23f3	Chamfer
+vetor.Pen	0x58c14f5932cd3e07	Join
+vetor.Pen	0x5b5d5d7255f21252	Align Center
+vetor.Pen	0x6172ba2eb321e1c4	Interface view · the panel shows the UI settings
+vetor.Pen	0x6f4d19128a3c31c2	Align Bottom
+vetor.Pen	0x7152e25c616d9a50	Align Middle
+vetor.Pen	0x72746621ea96f619	Cut · C
+vetor.Pen	0x737c5cdb78f0d25d	Union · join the shapes into one; each shape stays editable
+vetor.Pen	0x7e5e576042e7953c	Text · T
+vetor.Pen	0x8132ab8328188d6b	Select · V
+vetor.Pen	0x8995b274a183362d	Pick Shapes · W
+vetor.Pen	0x90ee1970788c0c08	Align Left
+vetor.Pen	0x952fd2b8ed0fbf84	Align Top
+vetor.Pen	0xac0ec072847e8ec3	Send Backward
+vetor.Pen	0xaf0d432d14407dda	Symmetry
+vetor.Pen	0xb455a6d28dda3f9f	Connect
+vetor.Pen	0xbbcfb99ba2fe3fad	Width · Shift+W
+vetor.Pen	0xbe85e56184865907	Send to Back
+vetor.Pen	0xbf2d97b1253d3681	Rotate 90° Counter-clockwise
+vetor.Pen	0xc74c7fb5141858f0	Rotate 90° Clockwise
+vetor.Pen	0xce1c85a780c2b965	Swap fill and stroke · Shift+X
+vetor.Pen	0xceeca9c138bda806	Fill colour
+vetor.Pen	0xd4216c3ba656c980	Exclude · keep everything except where the shapes overlap; each shape stays editable
+vetor.Pen	0xd426d0c6e38c5c81	Bucket · K
+vetor.Pen	0xd47a5a311e1ca08d	Stroke options: ends, corners, dashes, arrowheads
+vetor.Pen	0xdba68978bb3e8726	Width profile
+vetor.Pen	0xdc011bb4a48be87d	Align Right
+vetor.Pen	0xdd96933dc26f4772	Flip Horizontal
+vetor.Pen	0xdd96a53dc26f6608	Flip Vertical
+vetor.Pen	0xded83b1f2bb48228	Offset Path
+vetor.Pen	0xe7d09052b724197b	Bring to Front
+vetor.Pen	0xecebcb0ff3f67c0b	Fillet
+vetor.Pen	0xf7c423b6bc18870f	Intersect · keep only where the shapes overlap; each shape stays editable
+vetor.Pen	0xff7bb87b8a1189b2	Rules
+vetor.Pencil	0x02a10826ae075ac6	Edit the other colour · X
+vetor.Pencil	0x0baf7a2f9c9ff170	Eyedropper · I
+vetor.Pencil	0x0ddc7f3c087e5830	Frame · Shift+O
+vetor.Pencil	0x112dce8f26d23934	Shape · M
+vetor.Pencil	0x14a96fe22a9b724b	Stroke width
+vetor.Pencil	0x14fc31ea3e69cd6d	Outline Stroke · turn the stroke into a shape you can fill
+vetor.Pencil	0x17998cf3f9b6e9e1	Build · Shift+M
+vetor.Pencil	0x17e161b6e950610b	Bring Forward
+vetor.Pencil	0x1812652248b16a86	Pen · P
+vetor.Pencil	0x18650cc9a030876a	Pencil · N
+vetor.Pencil	0x1ff0c5e8abac5c7a	QuickShape
+vetor.Pencil	0x3035d63350b39032	Flatten · make it one plain shape for good (Undo brings it back)
+vetor.Pencil	0x3059424f93ca9a78	Pen
+vetor.Pencil	0x30e7bb710f00b667	Weld
+vetor.Pencil	0x33b9a4bcd5f7a65f	Default colours · D
+vetor.Pencil	0x39760fbae631806e	Speed
+vetor.Pencil	0x3ad9a189c2874a7b	Node · A
+vetor.Pencil	0x3ce3bef90ad4eae2	Subtract · cut the front shapes out of the back one; each shape stays editable
+vetor.Pencil	0x4322c10349ea5fc9	Stroke colour
+vetor.Pencil	0x44f1ff60b33233d3	Trim
+vetor.Pencil	0x471e8321d209be60	HUD Layout
+vetor.Pencil	0x47be0e9f5c7a23f3	Chamfer
+vetor.Pencil	0x55d2619c2425833e	Stabilizer
+vetor.Pencil	0x58c14f5932cd3e07	Join
+vetor.Pencil	0x5b5d5d7255f21252	Align Center
+vetor.Pencil	0x6172ba2eb321e1c4	Interface view · the panel shows the UI settings
+vetor.Pencil	0x6f4d19128a3c31c2	Align Bottom
+vetor.Pencil	0x7152e25c616d9a50	Align Middle
+vetor.Pencil	0x72746621ea96f619	Cut · C
+vetor.Pencil	0x737c5cdb78f0d25d	Union · join the shapes into one; each shape stays editable
+vetor.Pencil	0x7e5e576042e7953c	Text · T
+vetor.Pencil	0x8132ab8328188d6b	Select · V
+vetor.Pencil	0x8995b274a183362d	Pick Shapes · W
+vetor.Pencil	0x90ee1970788c0c08	Align Left
+vetor.Pencil	0x952fd2b8ed0fbf84	Align Top
+vetor.Pencil	0xac0ec072847e8ec3	Send Backward
+vetor.Pencil	0xaf0d432d14407dda	Symmetry
+vetor.Pencil	0xb455a6d28dda3f9f	Connect
+vetor.Pencil	0xbbcfb99ba2fe3fad	Width · Shift+W
+vetor.Pencil	0xbbe3154e2a19a72d	Uniform
+vetor.Pencil	0xbe85e56184865907	Send to Back
+vetor.Pencil	0xbf2d97b1253d3681	Rotate 90° Counter-clockwise
+vetor.Pencil	0xc74c7fb5141858f0	Rotate 90° Clockwise
+vetor.Pencil	0xcb7be52fabf3ccb5	Fidelity
+vetor.Pencil	0xce1c85a780c2b965	Swap fill and stroke · Shift+X
+vetor.Pencil	0xceeca9c138bda806	Fill colour
+vetor.Pencil	0xd4216c3ba656c980	Exclude · keep everything except where the shapes overlap; each shape stays editable
+vetor.Pencil	0xd426d0c6e38c5c81	Bucket · K
+vetor.Pencil	0xd47a5a311e1ca08d	Stroke options: ends, corners, dashes, arrowheads
+vetor.Pencil	0xdba68978bb3e8726	Width profile
+vetor.Pencil	0xdc011bb4a48be87d	Align Right
+vetor.Pencil	0xdd96933dc26f4772	Flip Horizontal
+vetor.Pencil	0xdd96a53dc26f6608	Flip Vertical
+vetor.Pencil	0xded83b1f2bb48228	Offset Path
+vetor.Pencil	0xe7d09052b724197b	Bring to Front
+vetor.Pencil	0xecebcb0ff3f67c0b	Fillet
+vetor.Pencil	0xf7c423b6bc18870f	Intersect · keep only where the shapes overlap; each shape stays editable
+vetor.Pencil	0xff7bb87b8a1189b2	Rules
+vetor.PickBlend	0x02a10826ae075ac6	Edit the other colour · X
+vetor.PickBlend	0x0baf7a2f9c9ff170	Eyedropper · I
+vetor.PickBlend	0x0ddc7f3c087e5830	Frame · Shift+O
+vetor.PickBlend	0x112dce8f26d23934	Shape · M
+vetor.PickBlend	0x14a96fe22a9b724b	Stroke width
+vetor.PickBlend	0x17998cf3f9b6e9e1	Build · Shift+M
+vetor.PickBlend	0x1812652248b16a86	Pen · P
+vetor.PickBlend	0x18650cc9a030876a	Pencil · N
+vetor.PickBlend	0x33b9a4bcd5f7a65f	Default colours · D
+vetor.PickBlend	0x3ad9a189c2874a7b	Node · A
+vetor.PickBlend	0x4322c10349ea5fc9	Stroke colour
+vetor.PickBlend	0x44f1ff60b33233d3	Trim
+vetor.PickBlend	0x471e8321d209be60	HUD Layout
+vetor.PickBlend	0x47be0e9f5c7a23f3	Chamfer
+vetor.PickBlend	0x6172ba2eb321e1c4	Interface view · the panel shows the UI settings
+vetor.PickBlend	0x72746621ea96f619	Cut · C
+vetor.PickBlend	0x7e5e576042e7953c	Text · T
+vetor.PickBlend	0x8132ab8328188d6b	Select · V
+vetor.PickBlend	0x8995b274a183362d	Pick Shapes · W
+vetor.PickBlend	0xb455a6d28dda3f9f	Connect
+vetor.PickBlend	0xbbcfb99ba2fe3fad	Width · Shift+W
+vetor.PickBlend	0xce1c85a780c2b965	Swap fill and stroke · Shift+X
+vetor.PickBlend	0xceeca9c138bda806	Fill colour
+vetor.PickBlend	0xd426d0c6e38c5c81	Bucket · K
+vetor.PickBlend	0xd47a5a311e1ca08d	Stroke options: ends, corners, dashes, arrowheads
+vetor.PickBlend	0xdba68978bb3e8726	Width profile
+vetor.PickBlend	0xded83b1f2bb48228	Offset Path
+vetor.PickBlend	0xecebcb0ff3f67c0b	Fillet
+vetor.PickBlend	0xff7bb87b8a1189b2	Rules
+vetor.Rules	0x02a10826ae075ac6	Edit the other colour · X
+vetor.Rules	0x0baf7a2f9c9ff170	Eyedropper · I
+vetor.Rules	0x0ddc7f3c087e5830	Frame · Shift+O
+vetor.Rules	0x112dce8f26d23934	Shape · M
+vetor.Rules	0x14a96fe22a9b724b	Stroke width
+vetor.Rules	0x17998cf3f9b6e9e1	Build · Shift+M
+vetor.Rules	0x1812652248b16a86	Pen · P
+vetor.Rules	0x18650cc9a030876a	Pencil · N
+vetor.Rules	0x33b9a4bcd5f7a65f	Default colours · D
+vetor.Rules	0x3ad9a189c2874a7b	Node · A
+vetor.Rules	0x4322c10349ea5fc9	Stroke colour
+vetor.Rules	0x44f1ff60b33233d3	Trim
+vetor.Rules	0x471e8321d209be60	HUD Layout
+vetor.Rules	0x47be0e9f5c7a23f3	Chamfer
+vetor.Rules	0x6172ba2eb321e1c4	Interface view · the panel shows the UI settings
+vetor.Rules	0x72746621ea96f619	Cut · C
+vetor.Rules	0x7e5e576042e7953c	Text · T
+vetor.Rules	0x8132ab8328188d6b	Select · V
+vetor.Rules	0x8995b274a183362d	Pick Shapes · W
+vetor.Rules	0xb455a6d28dda3f9f	Connect
+vetor.Rules	0xbbcfb99ba2fe3fad	Width · Shift+W
+vetor.Rules	0xce1c85a780c2b965	Swap fill and stroke · Shift+X
+vetor.Rules	0xceeca9c138bda806	Fill colour
+vetor.Rules	0xd426d0c6e38c5c81	Bucket · K
+vetor.Rules	0xd47a5a311e1ca08d	Stroke options: ends, corners, dashes, arrowheads
+vetor.Rules	0xdba68978bb3e8726	Width profile
+vetor.Rules	0xded83b1f2bb48228	Offset Path
+vetor.Rules	0xecebcb0ff3f67c0b	Fillet
+vetor.Rules	0xff7bb87b8a1189b2	Rules
+vetor.Select	0x02a10826ae075ac6	Edit the other colour · X
+vetor.Select	0x0baf7a2f9c9ff170	Eyedropper · I
+vetor.Select	0x0ddc7f3c087e5830	Frame · Shift+O
+vetor.Select	0x112dce8f26d23934	Shape · M
+vetor.Select	0x14a96fe22a9b724b	Stroke width
+vetor.Select	0x14fc31ea3e69cd6d	Outline Stroke · turn the stroke into a shape you can fill
+vetor.Select	0x17998cf3f9b6e9e1	Build · Shift+M
+vetor.Select	0x17e161b6e950610b	Bring Forward
+vetor.Select	0x1812652248b16a86	Pen · P
+vetor.Select	0x18650cc9a030876a	Pencil · N
+vetor.Select	0x3035d63350b39032	Flatten · make it one plain shape for good (Undo brings it back)
+vetor.Select	0x30e7bb710f00b667	Weld
+vetor.Select	0x33b9a4bcd5f7a65f	Default colours · D
+vetor.Select	0x3ad9a189c2874a7b	Node · A
+vetor.Select	0x3ce3bef90ad4eae2	Subtract · cut the front shapes out of the back one; each shape stays editable
+vetor.Select	0x3dc493fb241f2855	Smooth
+vetor.Select	0x4322c10349ea5fc9	Stroke colour
+vetor.Select	0x44f1ff60b33233d3	Trim
+vetor.Select	0x471e8321d209be60	HUD Layout
+vetor.Select	0x47be0e9f5c7a23f3	Chamfer
+vetor.Select	0x57ceb9bc200a0412	Subdivide
+vetor.Select	0x58c14f5932cd3e07	Join
+vetor.Select	0x5b5d5d7255f21252	Align Center
+vetor.Select	0x6172ba2eb321e1c4	Interface view · the panel shows the UI settings
+vetor.Select	0x6f4d19128a3c31c2	Align Bottom
+vetor.Select	0x7152e25c616d9a50	Align Middle
+vetor.Select	0x72746621ea96f619	Cut · C
+vetor.Select	0x737c5cdb78f0d25d	Union · join the shapes into one; each shape stays editable
+vetor.Select	0x7e5e576042e7953c	Text · T
+vetor.Select	0x8132ab8328188d6b	Select · V
+vetor.Select	0x8995b274a183362d	Pick Shapes · W
+vetor.Select	0x90ee1970788c0c08	Align Left
+vetor.Select	0x952fd2b8ed0fbf84	Align Top
+vetor.Select	0xa6eaae44ebb49a7c	Simplify
+vetor.Select	0xac0ec072847e8ec3	Send Backward
+vetor.Select	0xb455a6d28dda3f9f	Connect
+vetor.Select	0xbbcfb99ba2fe3fad	Width · Shift+W
+vetor.Select	0xbcffad1019c9a103	Reverse
+vetor.Select	0xbe85e56184865907	Send to Back
+vetor.Select	0xbf1a1654ebe19262	Sharpen
+vetor.Select	0xbf2d97b1253d3681	Rotate 90° Counter-clockwise
+vetor.Select	0xc74c7fb5141858f0	Rotate 90° Clockwise
+vetor.Select	0xcb099f7bd992bddd	Close Path
+vetor.Select	0xce1c85a780c2b965	Swap fill and stroke · Shift+X
+vetor.Select	0xceeca9c138bda806	Fill colour
+vetor.Select	0xd4216c3ba656c980	Exclude · keep everything except where the shapes overlap; each shape stays editable
+vetor.Select	0xd426d0c6e38c5c81	Bucket · K
+vetor.Select	0xd47a5a311e1ca08d	Stroke options: ends, corners, dashes, arrowheads
+vetor.Select	0xdba68978bb3e8726	Width profile
+vetor.Select	0xdc011bb4a48be87d	Align Right
+vetor.Select	0xdd96933dc26f4772	Flip Horizontal
+vetor.Select	0xdd96a53dc26f6608	Flip Vertical
+vetor.Select	0xded83b1f2bb48228	Offset Path
+vetor.Select	0xe7d09052b724197b	Bring to Front
+vetor.Select	0xecebcb0ff3f67c0b	Fillet
+vetor.Select	0xf7c423b6bc18870f	Intersect · keep only where the shapes overlap; each shape stays editable
+vetor.Select	0xff7bb87b8a1189b2	Rules
+vetor.Shape	0x02a10826ae075ac6	Edit the other colour · X
+vetor.Shape	0x0baf7a2f9c9ff170	Eyedropper · I
+vetor.Shape	0x0ddc7f3c087e5830	Frame · Shift+O
+vetor.Shape	0x112dce8f26d23934	Shape · M
+vetor.Shape	0x14a96fe22a9b724b	Stroke width
+vetor.Shape	0x14fc31ea3e69cd6d	Outline Stroke · turn the stroke into a shape you can fill
+vetor.Shape	0x17998cf3f9b6e9e1	Build · Shift+M
+vetor.Shape	0x17e161b6e950610b	Bring Forward
+vetor.Shape	0x1812652248b16a86	Pen · P
+vetor.Shape	0x18650cc9a030876a	Pencil · N
+vetor.Shape	0x1919557ce02812d1	Corner round
+vetor.Shape	0x3035d63350b39032	Flatten · make it one plain shape for good (Undo brings it back)
+vetor.Shape	0x30e7bb710f00b667	Weld
+vetor.Shape	0x33b9a4bcd5f7a65f	Default colours · D
+vetor.Shape	0x347fc7c1ec607860	
+vetor.Shape	0x347fc8c1ec607a13	
+vetor.Shape	0x347fc9c1ec607bc6	
+vetor.Shape	0x347fcac1ec607d79	
+vetor.Shape	0x347fcbc1ec607f2c	
+vetor.Shape	0x347fccc1ec6080df	
+vetor.Shape	0x347fcdc1ec608292	
+vetor.Shape	0x347fcec1ec608445	
+vetor.Shape	0x347fd2c1ec608b11	
+vetor.Shape	0x3489d4c1ec68e2fc	
+vetor.Shape	0x3489d5c1ec68e4af	
+vetor.Shape	0x3489d8c1ec68e9c8	
+vetor.Shape	0x3489d9c1ec68eb7b	
+vetor.Shape	0x3489dac1ec68ed2e	
+vetor.Shape	0x3489dbc1ec68eee1	
+vetor.Shape	0x3489dcc1ec68f094	
+vetor.Shape	0x3489ddc1ec68f247	
+vetor.Shape	0x3489dec1ec68f3fa	
+vetor.Shape	0x3489dfc1ec68f5ad	
+vetor.Shape	0x3490c6c1ec6ee9e0	
+vetor.Shape	0x3490c7c1ec6eeb93	
+vetor.Shape	0x3490c8c1ec6eed46	
+vetor.Shape	0x3490c9c1ec6eeef9	
+vetor.Shape	0x3490cac1ec6ef0ac	
+vetor.Shape	0x3490cbc1ec6ef25f	
+vetor.Shape	0x3490ccc1ec6ef412	
+vetor.Shape	0x3490cdc1ec6ef5c5	
+vetor.Shape	0x3490d0c1ec6efade	
+vetor.Shape	0x3490d1c1ec6efc91	
+vetor.Shape	0x349449c1ec71fe50	
+vetor.Shape	0x34944ac1ec720003	
+vetor.Shape	0x34944bc1ec7201b6	
+vetor.Shape	0x34944cc1ec720369	
+vetor.Shape	0x34944dc1ec72051c	
+vetor.Shape	0x34944ec1ec7206cf	
+vetor.Shape	0x34944fc1ec720882	
+vetor.Shape	0x349450c1ec720a35	
+vetor.Shape	0x349455c1ec7212b4	
+vetor.Shape	0x349456c1ec721467	
+vetor.Shape	0x3ad9a189c2874a7b	Node · A
+vetor.Shape	0x3ce3bef90ad4eae2	Subtract · cut the front shapes out of the back one; each shape stays editable
+vetor.Shape	0x4322c10349ea5fc9	Stroke colour
+vetor.Shape	0x44f1ff60b33233d3	Trim
+vetor.Shape	0x471e8321d209be60	HUD Layout
+vetor.Shape	0x47be0e9f5c7a23f3	Chamfer
+vetor.Shape	0x58c14f5932cd3e07	Join
+vetor.Shape	0x5b5d5d7255f21252	Align Center
+vetor.Shape	0x603ed75e04a9b460	
+vetor.Shape	0x603ed85e04a9b613	
+vetor.Shape	0x603ed95e04a9b7c6	
+vetor.Shape	0x603eda5e04a9b979	
+vetor.Shape	0x603edb5e04a9bb2c	
+vetor.Shape	0x603edc5e04a9bcdf	
+vetor.Shape	0x603edd5e04a9be92	
+vetor.Shape	0x603ede5e04a9c045	
+vetor.Shape	0x603ee35e04a9c8c4	
+vetor.Shape	0x603ee45e04a9ca77	
+vetor.Shape	0x6172ba2eb321e1c4	Interface view · the panel shows the UI settings
+vetor.Shape	0x6f4d19128a3c31c2	Align Bottom
+vetor.Shape	0x7152e25c616d9a50	Align Middle
+vetor.Shape	0x72746621ea96f619	Cut · C
+vetor.Shape	0x737c5cdb78f0d25d	Union · join the shapes into one; each shape stays editable
+vetor.Shape	0x7e5e576042e7953c	Text · T
+vetor.Shape	0x8132ab8328188d6b	Select · V
+vetor.Shape	0x8995b274a183362d	Pick Shapes · W
+vetor.Shape	0x90ee1970788c0c08	Align Left
+vetor.Shape	0x952fd2b8ed0fbf84	Align Top
+vetor.Shape	0xac0ec072847e8ec3	Send Backward
+vetor.Shape	0xaf0d432d14407dda	Symmetry
+vetor.Shape	0xb455a6d28dda3f9f	Connect
+vetor.Shape	0xbbcfb99ba2fe3fad	Width · Shift+W
+vetor.Shape	0xbe85e56184865907	Send to Back
+vetor.Shape	0xbf2d97b1253d3681	Rotate 90° Counter-clockwise
+vetor.Shape	0xc74c7fb5141858f0	Rotate 90° Clockwise
+vetor.Shape	0xce1c85a780c2b965	Swap fill and stroke · Shift+X
+vetor.Shape	0xceeca9c138bda806	Fill colour
+vetor.Shape	0xd4216c3ba656c980	Exclude · keep everything except where the shapes overlap; each shape stays editable
+vetor.Shape	0xd426d0c6e38c5c81	Bucket · K
+vetor.Shape	0xd47a5a311e1ca08d	Stroke options: ends, corners, dashes, arrowheads
+vetor.Shape	0xdba68978bb3e8726	Width profile
+vetor.Shape	0xdc011bb4a48be87d	Align Right
+vetor.Shape	0xdd96933dc26f4772	Flip Horizontal
+vetor.Shape	0xdd96a53dc26f6608	Flip Vertical
+vetor.Shape	0xded83b1f2bb48228	Offset Path
+vetor.Shape	0xe7d09052b724197b	Bring to Front
+vetor.Shape	0xecebcb0ff3f67c0b	Fillet
+vetor.Shape	0xf7c423b6bc18870f	Intersect · keep only where the shapes overlap; each shape stays editable
+vetor.Shape	0xff7bb87b8a1189b2	Rules
+vetor.Text	0x02a10826ae075ac6	Edit the other colour · X
+vetor.Text	0x0baf7a2f9c9ff170	Eyedropper · I
+vetor.Text	0x0ddc7f3c087e5830	Frame · Shift+O
+vetor.Text	0x112dce8f26d23934	Shape · M
+vetor.Text	0x14a96fe22a9b724b	Stroke width
+vetor.Text	0x14fc31ea3e69cd6d	Outline Stroke · turn the stroke into a shape you can fill
+vetor.Text	0x17998cf3f9b6e9e1	Build · Shift+M
+vetor.Text	0x17e161b6e950610b	Bring Forward
+vetor.Text	0x1812652248b16a86	Pen · P
+vetor.Text	0x18650cc9a030876a	Pencil · N
+vetor.Text	0x3035d63350b39032	Flatten · make it one plain shape for good (Undo brings it back)
+vetor.Text	0x30e7bb710f00b667	Weld
+vetor.Text	0x33b9a4bcd5f7a65f	Default colours · D
+vetor.Text	0x3ad9a189c2874a7b	Node · A
+vetor.Text	0x3ce3bef90ad4eae2	Subtract · cut the front shapes out of the back one; each shape stays editable
+vetor.Text	0x4322c10349ea5fc9	Stroke colour
+vetor.Text	0x44f1ff60b33233d3	Trim
+vetor.Text	0x471e8321d209be60	HUD Layout
+vetor.Text	0x47be0e9f5c7a23f3	Chamfer
+vetor.Text	0x58c14f5932cd3e07	Join
+vetor.Text	0x5b5d5d7255f21252	Align Center
+vetor.Text	0x6172ba2eb321e1c4	Interface view · the panel shows the UI settings
+vetor.Text	0x6f4d19128a3c31c2	Align Bottom
+vetor.Text	0x7152e25c616d9a50	Align Middle
+vetor.Text	0x72746621ea96f619	Cut · C
+vetor.Text	0x737c5cdb78f0d25d	Union · join the shapes into one; each shape stays editable
+vetor.Text	0x7e5e576042e7953c	Text · T
+vetor.Text	0x8132ab8328188d6b	Select · V
+vetor.Text	0x8995b274a183362d	Pick Shapes · W
+vetor.Text	0x90ee1970788c0c08	Align Left
+vetor.Text	0x952fd2b8ed0fbf84	Align Top
+vetor.Text	0xac0ec072847e8ec3	Send Backward
+vetor.Text	0xb455a6d28dda3f9f	Connect
+vetor.Text	0xbbcfb99ba2fe3fad	Width · Shift+W
+vetor.Text	0xbe85e56184865907	Send to Back
+vetor.Text	0xbf2d97b1253d3681	Rotate 90° Counter-clockwise
+vetor.Text	0xc74c7fb5141858f0	Rotate 90° Clockwise
+vetor.Text	0xce1c85a780c2b965	Swap fill and stroke · Shift+X
+vetor.Text	0xceeca9c138bda806	Fill colour
+vetor.Text	0xd4216c3ba656c980	Exclude · keep everything except where the shapes overlap; each shape stays editable
+vetor.Text	0xd426d0c6e38c5c81	Bucket · K
+vetor.Text	0xd47a5a311e1ca08d	Stroke options: ends, corners, dashes, arrowheads
+vetor.Text	0xdba68978bb3e8726	Width profile
+vetor.Text	0xdc011bb4a48be87d	Align Right
+vetor.Text	0xdd96933dc26f4772	Flip Horizontal
+vetor.Text	0xdd96a53dc26f6608	Flip Vertical
+vetor.Text	0xded83b1f2bb48228	Offset Path
+vetor.Text	0xe7d09052b724197b	Bring to Front
+vetor.Text	0xecebcb0ff3f67c0b	Fillet
+vetor.Text	0xf7c423b6bc18870f	Intersect · keep only where the shapes overlap; each shape stays editable
+vetor.Text	0xff7bb87b8a1189b2	Rules
+vetor.Trim	0x02a10826ae075ac6	Edit the other colour · X
+vetor.Trim	0x0baf7a2f9c9ff170	Eyedropper · I
+vetor.Trim	0x0ddc7f3c087e5830	Frame · Shift+O
+vetor.Trim	0x112dce8f26d23934	Shape · M
+vetor.Trim	0x14a96fe22a9b724b	Stroke width
+vetor.Trim	0x17998cf3f9b6e9e1	Build · Shift+M
+vetor.Trim	0x1812652248b16a86	Pen · P
+vetor.Trim	0x18650cc9a030876a	Pencil · N
+vetor.Trim	0x33b9a4bcd5f7a65f	Default colours · D
+vetor.Trim	0x3ad9a189c2874a7b	Node · A
+vetor.Trim	0x4322c10349ea5fc9	Stroke colour
+vetor.Trim	0x44f1ff60b33233d3	Trim
+vetor.Trim	0x471e8321d209be60	HUD Layout
+vetor.Trim	0x47be0e9f5c7a23f3	Chamfer
+vetor.Trim	0x6172ba2eb321e1c4	Interface view · the panel shows the UI settings
+vetor.Trim	0x72746621ea96f619	Cut · C
+vetor.Trim	0x7e5e576042e7953c	Text · T
+vetor.Trim	0x8132ab8328188d6b	Select · V
+vetor.Trim	0x8995b274a183362d	Pick Shapes · W
+vetor.Trim	0xb455a6d28dda3f9f	Connect
+vetor.Trim	0xbbcfb99ba2fe3fad	Width · Shift+W
+vetor.Trim	0xce1c85a780c2b965	Swap fill and stroke · Shift+X
+vetor.Trim	0xceeca9c138bda806	Fill colour
+vetor.Trim	0xd426d0c6e38c5c81	Bucket · K
+vetor.Trim	0xd47a5a311e1ca08d	Stroke options: ends, corners, dashes, arrowheads
+vetor.Trim	0xdba68978bb3e8726	Width profile
+vetor.Trim	0xded83b1f2bb48228	Offset Path
+vetor.Trim	0xecebcb0ff3f67c0b	Fillet
+vetor.Trim	0xff7bb87b8a1189b2	Rules
+vetor.Width	0x02a10826ae075ac6	Edit the other colour · X
+vetor.Width	0x0baf7a2f9c9ff170	Eyedropper · I
+vetor.Width	0x0ddc7f3c087e5830	Frame · Shift+O
+vetor.Width	0x112dce8f26d23934	Shape · M
+vetor.Width	0x14a96fe22a9b724b	Stroke width
+vetor.Width	0x17998cf3f9b6e9e1	Build · Shift+M
+vetor.Width	0x1812652248b16a86	Pen · P
+vetor.Width	0x18650cc9a030876a	Pencil · N
+vetor.Width	0x33b9a4bcd5f7a65f	Default colours · D
+vetor.Width	0x3ad9a189c2874a7b	Node · A
+vetor.Width	0x4322c10349ea5fc9	Stroke colour
+vetor.Width	0x44f1ff60b33233d3	Trim
+vetor.Width	0x471e8321d209be60	HUD Layout
+vetor.Width	0x47be0e9f5c7a23f3	Chamfer
+vetor.Width	0x6172ba2eb321e1c4	Interface view · the panel shows the UI settings
+vetor.Width	0x72746621ea96f619	Cut · C
+vetor.Width	0x7e5e576042e7953c	Text · T
+vetor.Width	0x8132ab8328188d6b	Select · V
+vetor.Width	0x8995b274a183362d	Pick Shapes · W
+vetor.Width	0xb455a6d28dda3f9f	Connect
+vetor.Width	0xbbcfb99ba2fe3fad	Width · Shift+W
+vetor.Width	0xce1c85a780c2b965	Swap fill and stroke · Shift+X
+vetor.Width	0xceeca9c138bda806	Fill colour
+vetor.Width	0xd426d0c6e38c5c81	Bucket · K
+vetor.Width	0xd47a5a311e1ca08d	Stroke options: ends, corners, dashes, arrowheads
+vetor.Width	0xdba68978bb3e8726	Width profile
+vetor.Width	0xded83b1f2bb48228	Offset Path
+vetor.Width	0xecebcb0ff3f67c0b	Fillet
+vetor.Width	0xff7bb87b8a1189b2	Rules

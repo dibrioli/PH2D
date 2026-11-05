@@ -10949,10 +10949,15 @@ dependencies = [
 name = "ph2d-tool-registry-init"
 version = "0.0.0"
 dependencies = [
+ "bumpalo",
  "ph2d-a11y",
+ "ph2d-card-stack",
  "ph2d-core",
  "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-i18n",
  "ph2d-text",
+ "ph2d-tokens",
  "ph2d-tool-bgremoval",
  "ph2d-tool-bone",
  "ph2d-tool-color-equalization",

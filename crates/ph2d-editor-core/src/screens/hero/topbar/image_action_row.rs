@@ -171,24 +171,28 @@ pub(super) fn paint_image_action_row(
 /// caminho de demo. ⇒ **incluindo o Painter**, e com ele toda a face de pintura desta fila
 /// (`rail_shows_painter_tools` exige `active_tool_id == Some("painter")`, que nunca podia acontecer).
 ///
-/// ⚠️ **O sub-rótulo é DERIVADO do nome** (primeira palavra, maiúsculas, 5 caracteres) e não uma
-/// tabela: uma tabela de tags ao lado de uma lista que vem do **registry** seria a lista à mão que
-/// deixa de fora a ferramenta nova. O nome inteiro viaja na etiqueta de acessibilidade.
+/// ⚠️ **O nome é DERIVADO do manifesto** e não uma tabela: uma tabela ao lado de uma lista que vem do
+/// **registry** seria a lista à mão que deixa de fora a ferramenta nova. Em cartões o chip diz o nome
+/// inteiro; com `PH2D_CARDS=0`, a sigla de sempre, e o nome viaja na acessibilidade e na paleta.
 pub(crate) fn image_tool_rail_entries(store: &WidgetStore) -> Vec<crate::widget::ToolRailEntry> {
     use crate::widget::{ButtonState, ToolRailEntry};
     image_action_pills()
         .into_iter()
         .map(|pill| {
-            let label = ph2d_i18n::tr(pill.label_key);
-            let sub: String = label
-                .split_whitespace()
-                .next()
-                .unwrap_or("")
-                .chars()
-                .filter(|c| c.is_alphanumeric())
-                .take(5)
-                .collect::<String>()
-                .to_uppercase();
+            let label = nome_da_ferramenta(pill.label_key);
+            let sub: String = if crate::widget::lista_flutuante::cromo_em_cartoes() {
+                label.to_owned()
+            } else {
+                ph2d_i18n::tr(pill.label_key)
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or("")
+                    .chars()
+                    .filter(|c| c.is_alphanumeric())
+                    .take(5)
+                    .collect::<String>()
+                    .to_uppercase()
+            };
             let mut e = match pill.icon {
                 PillIcon::FromManifest(path) => ToolRailEntry::glyph(pill.id, label, path, sub),
                 PillIcon::Legacy(icon) => ToolRailEntry::icon(pill.id, label, icon).with_sub(sub),
@@ -199,6 +203,16 @@ pub(crate) fn image_tool_rail_entries(store: &WidgetStore) -> Vec<crate::widget:
             e
         })
         .collect()
+}
+
+/// O nome inteiro de uma ferramenta: a cabeça da dica dela (`tool.<x>.tooltip`, «Nome · o que faz»).
+fn nome_da_ferramenta(label_key: &str) -> &'static str {
+    let chave = label_key.replace(".label", ".tooltip");
+    let dica = ph2d_i18n::tr(&chave);
+    if dica == chave {
+        return ph2d_i18n::tr(label_key);
+    }
+    dica.split(" · ").next().unwrap_or(dica)
 }
 
 /// Geometry of the Image Tools action pill row for a given layout.

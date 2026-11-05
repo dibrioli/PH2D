@@ -38,9 +38,9 @@ pub(super) fn paint_sub_label(
     }
 }
 
-/// A legenda por extenso nos cartões, em caixa normal: nenhuma sigla inventada (`CEQ`, `UPSC`). O que
-/// o artista conhece por sigla (`FK`) fica como é.
-const EM_CAIXA_NORMAL: [(&str, TextKey); 49] = [
+/// A legenda por extenso nos cartões, em caixa normal. O que o artista conhece por sigla (`FK`) fica
+/// como é, e as ferramentas de imagem já trazem o nome inteiro (`image_tool_rail_entries`).
+const EM_CAIXA_NORMAL: [(&str, TextKey); 41] = [
     ("MOVE", TextKey::new("chrome.rail.caption.move")),
     ("ROT", TextKey::new("chrome.rail.caption.rot")),
     ("SCALE", TextKey::new("chrome.rail.caption.scale")),
@@ -55,7 +55,6 @@ const EM_CAIXA_NORMAL: [(&str, TextKey); 49] = [
     ("TYPE", TextKey::new("chrome.rail.caption.type")),
     ("OPACITY", TextKey::new("chrome.rail.caption.opacity")),
     ("TRIM", TextKey::new("chrome.rail.caption.trim")),
-    ("SQUAR", TextKey::new("chrome.rail.caption.squar")),
     ("BRUSH", TextKey::new("chrome.rail.caption.brush")),
     ("PICK", TextKey::new("chrome.rail.caption.pick")),
     ("BLEND", TextKey::new("chrome.rail.caption.blend")),
@@ -76,13 +75,6 @@ const EM_CAIXA_NORMAL: [(&str, TextKey); 49] = [
     ("CURVE", TextKey::new("chrome.rail.caption.curve")),
     ("DASH", TextKey::new("chrome.rail.caption.dash")),
     ("FREE", TextKey::new("chrome.rail.caption.free")),
-    ("BGRMV", TextKey::new("chrome.rail.caption.cutout")),
-    ("PAD", TextKey::new("chrome.rail.caption.padding")),
-    ("CEQ", TextKey::new("chrome.rail.caption.color")),
-    ("EQSZ", TextKey::new("chrome.rail.caption.equal")),
-    ("RASTR", TextKey::new("chrome.rail.caption.raster")),
-    ("UPSC", TextKey::new("chrome.rail.caption.upscale")),
-    ("PNTR", TextKey::new("chrome.rail.caption.paint")),
     ("BLOW", TextKey::new("chrome.rail.caption.blow")),
     ("LIQFY", TextKey::new("chrome.rail.caption.liquify")),
     ("XFORM", TextKey::new("chrome.rail.caption.transform")),
@@ -105,9 +97,12 @@ pub(super) fn nomes_por_extenso() -> impl Iterator<Item = &'static str> {
     EM_CAIXA_NORMAL.iter().map(|(_, chave)| chave.tr())
 }
 
-#[cfg(test)]
-pub(super) fn fonte_de_recuo() -> f32 {
-    sub_label_font_px()
+/// A largura do chip para `sub` caber inteira no corpo do rótulo, com o vão da fila entre duas legendas.
+pub(super) fn chip_que_cabe_a_legenda(text_system: &mut TextSystem, sub: &str) -> f32 {
+    let nome = em_caixa_normal(sub);
+    text_system
+        .prefix_width(nome, ph2d_card_stack::metrics::LABEL_PX)
+        .ceil()
 }
 
 /// O corpo do rótulo do cartão, se ele couber em `w`; senão o de sempre, que a fila já garante.

@@ -88,6 +88,12 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 # and compares each entry field-by-field against the matching
 # registered `ToolManifest`. Dev-only — no runtime dep on serde.
 toml = "1"
+# Só para `a_barra_em_edit_diz_o_nome_e_abre_a_ferramenta`: o clique é um Down+Up real.
+bumpalo = { version = "3", features = ["collections"] }
+ph2d-card-stack = { path = "../ph2d-card-stack" }
+ph2d-host = { path = "../ph2d-host" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-tokens = { path = "../ph2d-tokens" }
 
 [lints]
 workspace = true

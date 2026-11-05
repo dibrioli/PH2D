@@ -524,6 +524,19 @@ fn paint_tool_bar_overflow(
     if over.is_empty() {
         return;
     }
+    if crate::widget::lista_flutuante::cromo_em_cartoes() {
+        return super::tool_bar::paint_transbordo_em_lista(
+            req,
+            over,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            motion,
+            viewport,
+        );
+    }
     let size = store.rail_button_size();
     let pad = Spacing::Sm.px();
     // ⚠️ Uma COLUNA, e não uma grelha: o menu abre debaixo de um chip da faixa, e uma grelha larga

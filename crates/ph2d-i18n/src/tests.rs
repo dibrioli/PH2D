@@ -7,7 +7,7 @@ fn known_keys_round_trip_to_english() {
     // Image-tool labels were abbreviated 2026-05-25 to fit the
     // 44-px chip column; tooltips keep the long English form.
     assert_eq!(tr("tool.trim_transparency.label"), "TRIM");
-    assert_eq!(tr("tool.trim_transparency.tooltip"), "Trim Transparency");
+    assert_eq!(tr("tool.trim_transparency.tooltip"), "Trim · cut away the transparent edges");
     assert_eq!(tr("tool.make_square.label"), "SQUAR");
     assert_eq!(tr("edit.undo.label"), "Undo");
     // Timeline panel chrome (W2.E9).

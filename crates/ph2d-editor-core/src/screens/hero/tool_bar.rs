@@ -433,6 +433,98 @@ fn paint_flyout_below(
     }
 }
 
+/// O `⋯` em cartões: uma lista com o chip e o nome inteiro de cada entrada, nunca uma legenda rodada que
+/// não cabe no lado do chip. Os ids são os da fila, e a linha inteira é o alvo.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn paint_transbordo_em_lista(
+    req: crate::interaction::ContextMenuRequest,
+    over: Vec<crate::widget::ToolRailEntry>,
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    motion: &crate::motion::UiMotion,
+    viewport: Rect,
+) {
+    let superficie = crate::widget::lista_flutuante::Superficie::de(theme);
+    let size = store.rail_button_size();
+    let pad = Spacing::Sm.px();
+    let font = ph2d_tokens::TypeToken::Sm.px();
+    let nomes: Vec<String> = over
+        .iter()
+        .map(|e| e.label().unwrap_or_default().to_owned())
+        .collect();
+    let nome_w = nomes
+        .iter()
+        .map(|n| text_system.prefix_width(n, font))
+        .fold(0.0_f32, f32::max)
+        .ceil();
+    let rail = ToolRail::new(
+        NodeId(204),
+        tr("chrome.menu.more_tools"),
+        over.into_iter()
+            .map(crate::widget::ToolRailEntry::sem_legenda)
+            .collect(),
+    );
+    let chip_w = crate::widget::column_width_px(&rail, size)
+        - crate::widget::CHIP_X_OFFSET_PX
+        - Spacing::Xs.px();
+    let inner_w = chip_w + pad + nome_w;
+    let inner_h = rail.preferred_height(size);
+    let rect = crate::widget::panel_chrome::clamp_menu_to_viewport(
+        req.x,
+        req.y,
+        inner_w + pad * 2.0,
+        inner_h + pad * 2.0,
+        viewport,
+    );
+    superficie.moldura(scene, rect);
+    // O fundo ENGOLE o clique e vai ANTES das linhas: o `HitIndex` caminha de trás para a frente.
+    hit_index.register(ids::RAIL_BACKDROP, rect);
+    // A coluna reserva à esquerda o lugar da legenda rodada, que aqui não existe.
+    let coluna = Rect::new(
+        rect.x + pad - crate::widget::CHIP_X_OFFSET_PX,
+        rect.y + pad,
+        inner_w + crate::widget::CHIP_X_OFFSET_PX,
+        inner_h,
+    );
+    let slots = entry_rects(&rail, coluna, size, RailAxis::Vertical);
+    for slot in &slots {
+        if slot.id.is_some() && slot.id == store.hot_id() {
+            let linha = Rect::new(rect.x, slot.rect.y, rect.w, slot.rect.h);
+            superficie.realce(scene, linha);
+        }
+    }
+    paint_tool_rail_axis(
+        &rail,
+        coluna,
+        scene,
+        text_system,
+        theme,
+        store,
+        &|id| Some(motion.get(id).unwrap_or(0.0)),
+        motion.travels(),
+        RailAxis::Vertical,
+    );
+    let x_do_nome = rect.x + pad + chip_w + pad;
+    let cor = superficie.cor(ColorToken::Text1);
+    for slot in slots {
+        let Some(id) = slot.id else { continue };
+        crate::paint::paint_text_elided(
+            text_system,
+            scene,
+            &nomes[slot.index],
+            x_do_nome,
+            slot.rect.y + superficie.folga(slot.rect.h, font),
+            font,
+            nome_w,
+            cor,
+        );
+        hit_index.register(id, Rect::new(rect.x, slot.rect.y, rect.w, slot.rect.h));
+    }
+}
+
 /// ⭐ **Publica o que não coube** para o corpo do menu de transbordo o desenhar.
 ///
 /// ⚠️ **Chamado em TODO quadro, vazio incluído** — um mapa que o tique apaga não envelhece; um que

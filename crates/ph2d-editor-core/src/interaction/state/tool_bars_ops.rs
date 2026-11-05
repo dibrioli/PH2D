@@ -175,11 +175,11 @@ impl WidgetStore {
     /// O `y` de um menu que um chip da fila abre: por baixo do chip, ou o topo dele com a fila embaixo,
     /// onde o menu ACABA (`context_menu_overlay::anchor_y`): o encaixe ao ecrã sozinho deixa-o tapar o chip.
     #[must_use]
-    pub fn row_menu_anchor_y(&self, chip: crate::zones::Rect, gap: f32) -> f32 {
+    pub fn row_menu_anchor_y(&self, chip: crate::zones::Rect) -> f32 {
         if self.tool_row_bottom() {
-            chip.y - gap
+            chip.y
         } else {
-            chip.y + chip.h + gap
+            chip.y + chip.h
         }
     }
 }

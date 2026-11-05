@@ -285,14 +285,9 @@ pub(super) fn handle_down_menus(
         && matches!(store.get(hit_id), Some(InteractiveState::Button { .. }))
         && let Some(kind) = menu_opened_by(hit_id)
     {
-        let y = if kind.opens_from_tool_row() {
-            store.row_menu_anchor_y(hit_rect, MENU_ANCHOR_GAP_PX)
-        } else {
-            hit_rect.y + hit_rect.h + MENU_ANCHOR_GAP_PX
-        };
         store.open_context_menu(ContextMenuRequest {
             x: hit_rect.x,
-            y,
+            y: hit_rect.y + hit_rect.h + MENU_ANCHOR_GAP_PX,
             kind,
         });
         return true;

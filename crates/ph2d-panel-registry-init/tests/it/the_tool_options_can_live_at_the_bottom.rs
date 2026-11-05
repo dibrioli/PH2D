@@ -241,7 +241,51 @@ fn at_the_bottom_the_row_sits_below_the_area_and_its_menus_grow_up() {
     }
 }
 
-/// A paleta abre o `⋯` sem Down: a outra porta de `row_menu_anchor_y`, com a mesma lei.
+/// O pulldown de um módulo (o vetor já não publica nenhum, F16) passa pelo outro pintor do menu.
+#[test]
+fn an_area_pulldown_also_opens_upwards_at_the_bottom() {
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let mut hero = com_fila(true, DrawMode::Node, &mut ts);
+    let linha = |n: u64| ph2d_editor_core::widget::ToolRailEntry::Glyph {
+        id: NodeId(9_000 + n),
+        label: format!("Row {n}"),
+        path: ph2d_vector::BezPath::new(),
+        active: false,
+        sub: String::new(),
+        row_w: 0.0,
+    };
+    hero.store.set_area_commands(
+        vec![ph2d_editor_core::interaction::AreaMenu {
+            label: "View".to_string(),
+            face: "View".to_string(),
+            faces: Vec::new(),
+            rows: (0..4).map(linha).collect(),
+        }],
+        Vec::new(),
+    );
+    pinta(&mut hero, &mut ts);
+    pinta(&mut hero, &mut ts);
+    // No mini o chip dele pode ir para trás do `⋯`, e a âncora é então o `⋯` (`tool_bar_overflow`).
+    let botao = ids::area_menu_button(0);
+    let chip = hero
+        .hit_index
+        .rect_for(botao)
+        .or_else(|| hero.hit_index.rect_for(ids::TOOL_BAR_OVERFLOW))
+        .expect("nem o pulldown nem o `⋯` estão na fila");
+    hero.apply_event(ph2d_editor_core::interaction::WidgetEvent::Click(botao));
+    pinta(&mut hero, &mut ts);
+    let fundo = (0..4)
+        .filter_map(|n| hero.hit_index.rect_for(NodeId(9_000 + n)))
+        .map(|r| r.y + r.h)
+        .reduce(f32::max)
+        .expect("o pulldown não pintou as linhas");
+    assert!(
+        fundo <= chip.y + 0.5,
+        "o pulldown desceu sobre o chip: linhas até {fundo} sob {chip:?}"
+    );
+}
+
+/// A paleta abre o `⋯` sem Down e sem o `tool_bar_overflow` saber por onde veio: a mesma lei.
 #[test]
 fn the_palette_door_also_opens_the_overflow_upwards_at_the_bottom() {
     let mut ts = ph2d_text::TextSystem::without_system_fonts();

@@ -16,8 +16,8 @@ use ph2d_tool_painter::{BrushSettings, PaintMedia};
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-const ROUND: &str = "WetPainter/Watercolor/Fluid/Wet Round.ph2d-brush.png";
-const WASH: &str = "WetPainter/Watercolor/Fluid/Wet Wash.ph2d-brush.png";
+pub(super) const ROUND: &str = "WetPainter/Watercolor/Fluid/Wet Round.ph2d-brush.png";
+pub(super) const WASH: &str = "WetPainter/Watercolor/Fluid/Wet Wash.ph2d-brush.png";
 
 fn vista(ativo: Option<&str>) -> Arc<VistaPresets> {
     let e = |rel: &str, nome: &str| VistaPreset {
@@ -37,10 +37,10 @@ fn vista(ativo: Option<&str>) -> Arc<VistaPresets> {
 }
 
 /// Os presets e a prévia são do fio: cada teste semeia e limpa os dele.
-struct ComPresets;
+pub(super) struct ComPresets;
 
 impl ComPresets {
-    fn com(ativo: Option<&str>) -> Self {
+    pub(super) fn com(ativo: Option<&str>) -> Self {
         set_current_wet_presets(Some(vista(ativo)));
         Self
     }
@@ -53,7 +53,7 @@ impl Drop for ComPresets {
     }
 }
 
-fn previa() {
+pub(super) fn previa() {
     let (l, a) = (8u32, 4u32);
     let px = vec![200u8; (l * a * 4) as usize];
     set_current_wet_preview(Some((Arc::new(px), l, a)));
@@ -502,7 +502,7 @@ fn the_preview_is_a_piece_of_the_top_and_the_pin_is_where_it_says() {
         .rect(p::PAINTER_WETPAINT_PRESET_SAVE_NEW)
         .expect("Save");
     assert!(
-        chip.y < onde.y && onde.y + onde.h <= guardar.y,
+        onde.y + onde.h <= chip.y && chip.y + chip.h <= guardar.y,
         "a prévia saiu do lugar: {chip:?} {onde:?} {guardar:?}"
     );
 }

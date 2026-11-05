@@ -4,6 +4,8 @@
 /// A tradução de uma chave dos cartões, ou `None` se ela não é daqui.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
+        "card.painter.preset.favorite_add" => "Add this preset to Favorites",
+        "card.painter.preset.favorite_remove" => "Remove this preset from Favorites",
         "card.painter.wet.contact" => "Contact and drying",
         "card.painter.wet.thickness" => "Paint thickness",
         "card.painter.wet.pigment" => "Pigment and layers",

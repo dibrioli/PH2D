@@ -143,6 +143,8 @@ pub enum IconId {
     CardRest,
     CardSeg,
     CardSoft,
+    CardStar,
+    CardStarOn,
     CardStyles,
     CardTextCenter,
     CardTextLeft,
@@ -413,9 +415,16 @@ impl IconId {
         icons_generated::ICON_CMDS_BY_ID[self as usize]
     }
 
+    /// O miolo também se pinta (o SVG tem `fill="currentColor"`): o estado «ligado» de um par vazio e cheio.
+    #[must_use]
+    pub fn cheio(self) -> bool {
+        matches!(self, Self::CardStarOn)
+    }
+
     /// Kebab-case slug matching the source SVG filename
     /// (`docs/design/icons/<slug>.svg`). Used by chrome derivation
     /// (manifest `icon_slug` cross-validation) + a11y label fallback.
+    #[must_use]
     pub fn slug(self) -> &'static str {
         icons_generated::ALL_ICON_SLUGS[self as usize]
     }

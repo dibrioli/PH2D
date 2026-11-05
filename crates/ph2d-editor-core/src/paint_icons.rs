@@ -26,6 +26,11 @@ pub fn paint_icon(
     for cmd in icon.cmds() {
         path.extend(cmd_to_path(*cmd));
     }
+    if icon.cheio()
+        && let Some(transform) = encaixe_do_icone(rect)
+    {
+        scene.fill_path(&path, &Brush::Solid(color), transform);
+    }
     paint_icon_path(scene, &path, rect, color, stroke_width);
 }
 
@@ -71,12 +76,23 @@ pub fn paint_icon_path(
     color: Color,
     stroke_width: f32,
 ) {
+    let Some(transform) = encaixe_do_icone(rect) else {
+        return;
+    };
+    let stroke = Stroke::new(stroke_width as f64);
+    let brush = Brush::Solid(color);
+    // Pela porta que GRAVA (mesma codificação): a régua da F18 tem de ver o glifo.
+    scene.stroke_path(&stroke, transform, &brush, path);
+}
+
+/// A viewbox 24×24 posta no `rect`; `None` se o `rect` não tem lugar para o glifo.
+fn encaixe_do_icone(rect: Rect) -> Option<Affine> {
     const VIEWBOX: f64 = 24.0;
     let pad = icon_pad(rect.w.min(rect.h));
     let avail_w = (rect.w - pad * 2.0).max(0.0) as f64;
     let avail_h = (rect.h - pad * 2.0).max(0.0) as f64;
     if avail_w <= 0.0 || avail_h <= 0.0 {
-        return;
+        return None;
     }
     let scale = (avail_w / VIEWBOX).min(avail_h / VIEWBOX);
     let drawn = VIEWBOX * scale;
@@ -88,11 +104,7 @@ pub fn paint_icon_path(
     // crispness win on near-horizontal/vertical strokes).
     let tx = (rect.x as f64 + (rect.w as f64 - drawn) * 0.5).round();
     let ty = (rect.y as f64 + (rect.h as f64 - drawn) * 0.5).round();
-    let transform = Affine::translate((tx, ty)) * Affine::scale(scale);
-    let stroke = Stroke::new(stroke_width as f64);
-    let brush = Brush::Solid(color);
-    // Pela porta que GRAVA (mesma codificação): a régua da F18 tem de ver o glifo.
-    scene.stroke_path(&stroke, transform, &brush, path);
+    Some(Affine::translate((tx, ty)) * Affine::scale(scale))
 }
 
 /// O respiro que [`paint_icon_path`] deixa à volta do ícone num rectângulo de lado `side`.

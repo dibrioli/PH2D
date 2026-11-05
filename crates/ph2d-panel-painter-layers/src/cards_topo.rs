@@ -9,10 +9,11 @@ use crate::{cards_composto, cards_ferramenta, cards_wet, number_field, paint_bru
 use crate::{paint_wetpaint_presets, state};
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
+use ph2d_editor_core::IconId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::{HitIndex, WidgetStore};
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::panel::cards::{CardCtx, Cell, Widget, corpo as linhas, ferramenta};
+use ph2d_editor_core::panel::cards::{CardCtx, Cell, Seg, Widget, corpo as linhas, ferramenta};
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
 use ph2d_i18n::tr;
 use ph2d_tool_painter::ids as pids;
@@ -75,8 +76,8 @@ impl Numero {
 pub(crate) enum Linha {
     /// `true` = Sync divide a linha com ela.
     Modo(bool),
+    /// A lista do Preset, com a estrela do favorito à direita se há preset activo.
     Preset,
-    Favorito,
     Acoes,
     /// `true` = Sync divide a linha com ela.
     Politica(bool),
@@ -119,14 +120,9 @@ pub(crate) fn do_topo(brush: BrushSettings) -> Vec<Linha> {
     if tem_modo {
         l.push(Linha::Modo(vista.is_none()));
     }
-    if let Some(v) = vista.as_deref() {
-        l.push(Linha::Preset);
-        if v.ativo.as_deref().and_then(|r| v.procurar(r)).is_some() {
-            l.push(Linha::Favorito);
-        }
-    }
     l.push(Linha::Previa);
     if vista.is_some() {
+        l.push(Linha::Preset);
         l.push(Linha::Acoes);
     }
     if brush.wetpaint {
@@ -268,6 +264,20 @@ pub(crate) fn prepare(store: &mut WidgetStore, b: &BrushSettings) {
         pids::PAINTER_BRUSH_SYNC,
         tr("panel.painter_layers.brush.sync_tools"),
     );
+    let favorita = st::current_wet_presets().is_some_and(|v| {
+        v.ativo
+            .as_deref()
+            .and_then(|r| v.procurar(r))
+            .is_some_and(|a| a.favorito)
+    });
+    store.set_tooltip(
+        pids::PAINTER_WETPAINT_PRESET_FAVORITE,
+        tr(if favorita {
+            "card.painter.preset.favorite_remove"
+        } else {
+            "card.painter.preset.favorite_add"
+        }),
+    );
 }
 
 /// Os ids destas linhas com linha esmaecida (`Dependente`): a lei é da ferramenta, e aqui só se pinta.
@@ -398,6 +408,36 @@ fn cor(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
     fim
 }
 
+/// A lista do Preset e, com preset activo, a estrela à direita: mesmo id e mesmo clique da caixa `Favorite`.
+fn preset(c: &mut CardCtx<'_>, vista: Option<&VistaPresets>, y: f32) -> f32 {
+    let (chave, id) = (
+        "panel.painter_layers.wetpaint.preset",
+        pids::PAINTER_WETPAINT_PRESET,
+    );
+    let ativo = vista.and_then(|v| v.procurar(v.ativo.as_deref()?));
+    let Some(a) = ativo else {
+        let nada = tr("panel.painter_layers.wetpaint.preset_none");
+        return lista(c, chave, id, nada, y);
+    };
+    let celula = Cell::new(Widget::Dropdown {
+        id,
+        text: a.nome.as_str(),
+        options: &[],
+    })
+    .label(tr(chave));
+    let estrela = [Seg {
+        id: pids::PAINTER_WETPAINT_PRESET_FAVORITE,
+        icon: Some(if a.favorito {
+            IconId::CardStarOn
+        } else {
+            IconId::CardStar
+        }),
+        text: "",
+        on: a.favorito,
+    }];
+    c.row(&[celula, Cell::new(Widget::Bare(&estrela))], y)
+}
+
 fn pinta_linha(c: &mut CardCtx<'_>, linha: &Linha, b: &BrushSettings, y: f32) -> f32 {
     let vista = st::current_wet_presets();
     let vista: Option<&VistaPresets> = vista.as_deref();
@@ -413,31 +453,7 @@ fn pinta_linha(c: &mut CardCtx<'_>, linha: &Linha, b: &BrushSettings, y: f32) ->
             tr(PaintMedia::from_u8(b.media).name_key()),
             y,
         ),
-        Linha::Preset => {
-            let nome = vista
-                .and_then(|v| v.procurar(v.ativo.as_deref()?))
-                .map_or_else(
-                    || tr("panel.painter_layers.wetpaint.preset_none"),
-                    |a| a.nome.as_str(),
-                );
-            lista(
-                c,
-                "panel.painter_layers.wetpaint.preset",
-                pids::PAINTER_WETPAINT_PRESET,
-                nome,
-                y,
-            )
-        }
-        Linha::Favorito => {
-            let a = vista.and_then(|v| v.procurar(v.ativo.as_deref()?));
-            ferramenta::caixa(
-                c,
-                pids::PAINTER_WETPAINT_PRESET_FAVORITE,
-                "panel.painter_layers.wetpaint.preset_favorite",
-                a.is_some_and(|a| a.favorito),
-                y,
-            )
-        }
+        Linha::Preset => preset(c, vista, y),
         Linha::Acoes => vista.map_or(y, |v| {
             let mut todos = biblioteca::botoes_de_guardar(v);
             todos.extend(biblioteca::botoes_da_biblioteca(v));

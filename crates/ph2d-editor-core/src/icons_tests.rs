@@ -111,6 +111,33 @@ fn enum_order_matches_svgs() {
     }
 }
 
+/// O SVG cheio (`fill="currentColor"`) e o `cheio()` dizem o mesmo, e a tinta vem com ele: miolo + contorno.
+#[test]
+fn a_full_icon_is_the_one_whose_svg_says_so_and_it_paints_its_fill() {
+    let pasta = concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/design/icons");
+    let mut cheios = 0;
+    for id in ALL_ICONS {
+        let svg = std::fs::read_to_string(format!("{pasta}/{}.svg", id.slug())).expect("o SVG");
+        assert_eq!(
+            svg.contains(r#"fill="currentColor""#),
+            id.cheio(),
+            "{id:?}"
+        );
+        cheios += usize::from(id.cheio());
+        let mut scene = ph2d_vector::VectorScene::new();
+        crate::paint::paint_icon(
+            &mut scene,
+            *id,
+            crate::zones::Rect::new(0.0, 0.0, 24.0, 24.0),
+            ph2d_vector::Color::WHITE,
+            1.5,
+        );
+        let desenhos = scene.inner().encoding().draw_data.len();
+        assert_eq!(desenhos, 1 + usize::from(id.cheio()), "{id:?}");
+    }
+    assert!(cheios >= 1, "controlo: a régua viu um ícone cheio");
+}
+
 /// Every Path command parses cleanly via kurbo's SVG reader.
 #[test]
 fn every_path_string_parses() {
@@ -255,6 +282,8 @@ const ALL_ICONS: &[IconId] = &[
     IconId::CardRest,
     IconId::CardSeg,
     IconId::CardSoft,
+    IconId::CardStar,
+    IconId::CardStarOn,
     IconId::CardStyles,
     IconId::CardTextCenter,
     IconId::CardTextLeft,

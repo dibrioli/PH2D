@@ -22,6 +22,7 @@ mod curve_handle_menu_e2e;
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod falloff_drain_repro;
 mod falloff_handle_menu_e2e;
+mod h12_preset_estrela; // a ordem do topo e a estrela do favorito (dono 04/11)
 mod h10_fotos; // os estados que a cena do app não semeia
 mod h10_os_cartoes; // o fim da H9: os widgets próprios no corpo do cartão, sem a captura
 mod h11_fotos; // as fotos e o custo por quadro do fecho

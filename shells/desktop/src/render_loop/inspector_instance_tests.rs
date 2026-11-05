@@ -137,7 +137,7 @@ fn the_section_names_the_overridden_component_of_this_piece() {
         vec!["Sprite".to_string()],
         "a secao nao nomeou o componente overridado — o artista continua sem o ver"
     );
-    assert_eq!(after.summary(), "1 override(s) on this piece");
+    assert_eq!(after.summary(), "1 override on this piece");
 }
 
 /// ⚠️ **A lista é da PEÇA selecionada, não da cópia inteira.** O conjunto mora na RAIZ e chaveia
@@ -212,10 +212,7 @@ fn the_orphans_are_counted_and_the_gesture_touches_only_them() {
         info.orphan_rows[0].label(),
         "Sprite \u{2014} was on \u{201c}Arm\u{201d}"
     );
-    assert_eq!(
-        info.summary(),
-        "1 override(s) on this piece \u{b7} 1 unused"
-    );
+    assert_eq!(info.summary(), "1 override on this piece \u{b7} 1 unused");
 
     assert_eq!(super::clear_orphans(&mut sim, info.root_bits), 1);
     let after = sim

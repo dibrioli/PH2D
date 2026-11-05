@@ -64,14 +64,18 @@ fn colunas_pintadas_em(w: f32) -> (f32, f32) {
     }
     let meio = w * 0.5;
     let (mut esq, mut dir) = (0.0f32, 0.0f32);
-    for r in h.store.panel_rects() {
+    // ⚠️ A lista de cartões FLUTUA na coluna e publica o rect DELA (D24): a coluna é ela e as duas margens.
+    let margens = ph2d_card_stack::metrics::LIST_MARGIN * 2.0;
+    let docados = h.store.docked_panel_rects().map(|r| (r, r.w));
+    let listas = h.store.floating_panel_rects().map(|r| (r, r.w + margens));
+    for (r, coluna) in docados.chain(listas) {
         if r.w <= 0.0 || r.w > w {
             continue;
         }
         if r.x + r.w * 0.5 < meio {
-            esq = esq.max(r.w);
+            esq = esq.max(coluna);
         } else {
-            dir = dir.max(r.w);
+            dir = dir.max(coluna);
         }
     }
     (esq, dir)

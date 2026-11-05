@@ -17,6 +17,8 @@ ph2d-layer-ops = { path = "../ph2d-layer-ops" }
 # contra o literal 4 -- um oraculo que nao podia falhar pelo motivo que alegava.
 # `ph2d-light` e folha e e o dono do rig; agora o numero e LIDO.
 ph2d-light = { path = "../ph2d-light" }
+# Bug #58: os pesos do blur têm de ser o MESMO bit da cópia canónica (`spatial_weights_parity`). Folha sobre o `libm`.
+ph2d-det-math = { path = "../ph2d-det-math" }
 ph2d-host = { path = "../ph2d-host" }
 ph2d-core = { path = "../ph2d-core" }
 ph2d-gpu = { path = "../ph2d-gpu" }

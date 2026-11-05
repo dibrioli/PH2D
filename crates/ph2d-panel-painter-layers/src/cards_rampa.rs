@@ -76,7 +76,7 @@ pub(crate) fn titulo_que_dobra(
         c.scene,
         tr(chave),
         texto_x,
-        topo + (h - m::LABEL_PX) * 0.5,
+        topo + ph2d_editor_core::paint::folga_do_texto(h, m::LABEL_PX),
         m::LABEL_PX,
         (c.x + c.w - reservado - texto_x).max(0.0),
         c.ink.color(ColorToken::CardLabel),

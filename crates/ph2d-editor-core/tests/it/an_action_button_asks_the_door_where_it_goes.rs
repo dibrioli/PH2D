@@ -75,7 +75,7 @@ const LINHA_INTEIRA_OK: &[(&str, &str, &str)] = &[
         "CTA-heroi: o botao Snap e' a accao do painel inteiro e tem altura propria (44 px)",
     ),
     (
-        "crates/ph2d-panel-timeline/src/tracks.rs",
+        "crates/ph2d-panel-timeline/src/tracks_lista.rs",
         "r",
         "MENU: a lista de propriedades a acrescentar e' um menu flutuante, cada botao e' uma linha \
          do menu e nao uma linha de propriedade",

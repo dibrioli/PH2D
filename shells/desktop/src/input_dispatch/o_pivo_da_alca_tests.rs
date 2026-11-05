@@ -6,11 +6,15 @@ use super::despacho_vetor_alinhar_e_forma::gizmo_anchor_half;
 use ph2d_editor_core::{GizmoCamera, GizmoDragKind, GizmoDragState, TransformSnapshot as Pose};
 use ph2d_editor_core::{GizmoModifiers, GizmoSnap, GizmoTarget, compose_snapshot};
 
-const CAMERA: GizmoCamera = GizmoCamera {
-    center: [0.0, 0.0],
-    height_world: 10.0,
-    window_w: 800.0,
-    window_h: 600.0,
+const CAMERA: GizmoCamera = {
+    // A cena deste teste não tem banda: a janela dela é a própria fixtura.
+    let janela = [800.0, 600.0];
+    GizmoCamera {
+        center: [0.0, 0.0],
+        height_world: 10.0,
+        window_w: janela[0],
+        window_h: janela[1],
+    }
 };
 const ESPELHO: Pose = Pose {
     translation: [0.0, 0.0],

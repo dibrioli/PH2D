@@ -86,7 +86,13 @@ fn a_section_header_never_promises_a_body_that_is_not_there() {
 
     // Controle: COM alvo ela aparece — senão este gate passaria por a seção estar morta.
     ph2d_panel_vector::set_current_effects(true, false, &["Blur"], Vec::new());
-    paint_in(&mut hero, snap_of(DrawMode::Select));
+    // O cartão que nasce entra a mola: o cabeçalho regista-se quando já tem altura.
+    for _ in 0..30 {
+        ph2d_editor_core::aquecimento::com_passo_fixo(
+            ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
+            || paint_in(&mut hero, snap_of(DrawMode::Select)),
+        );
+    }
     assert!(painted(
         &hero,
         ph2d_tool_vector::ids::VECTOR_SECTION_EFFECTS

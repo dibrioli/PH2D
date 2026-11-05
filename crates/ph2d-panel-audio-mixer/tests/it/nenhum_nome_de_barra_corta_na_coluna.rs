@@ -5,7 +5,8 @@
 //!
 //! | rótulo | inglês | idioma de teste |
 //! |---|---:|---:|
-//! | `Low` · `Mid` · `Fbk` | `18,8`–`21,3` | `29,9`–`31,5` |
+//! | `Low` · `Mid` | `18,8`–`21,3` | `29,9`–`31,5` |
+//! | **`Feedback`** (era `Fbk`; medido 2026-11-05, Inter embutida) | **`49,9`** | **`73,0`** |
 //! | `Size` | `20,6` | **`33,8`** |
 //! | `High` | `24,9` | **`38,2`** |
 //! | `Time` | `25,9` | **`39,1`** |
@@ -101,9 +102,10 @@ fn a_coluna_literal_de_antes_cortava_dois_nomes_ja_em_ingles() {
     //    fonte do SISTEMA (nesta máquina a `NotoSans-Medium`, onde `Depth` passava dos 32 px), e hoje
     //    mede a Inter embutida, a mesma em toda máquina. O controlo continua a ser o que era: a coluna
     //    literal de antes CORTA um nome em inglês, logo a lei que a substituiu é que a cura.
+    // ⚠️ `Fbk` passou a `Feedback` (05/11, inglês por extenso): 49,9 px, um terceiro nome cortado.
     assert_eq!(
         cortados,
-        vec!["Depth", "Return"],
+        vec!["Depth", "Feedback", "Return"],
         "a fixtura desta wave é a coluna literal de 32 px a cortar um nome em inglês — se ela \
          deixar de o cortar, os rótulos mudaram e a medição do cabeçalho tem de ser refeita"
     );

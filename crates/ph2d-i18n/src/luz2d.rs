@@ -40,7 +40,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "The lamp is too far outside the view to light anything."
         }
         "panel.inspector.luz.sprites_by_box_n_of_total" => {
-            "{n} of {total} sprites that glow or cast shadows use their box, not their pixels."
+            "{n} of {total} {total?sprite|sprites} that {total?glows|glow} or {total?casts|cast} \
+             shadows {n?uses its|use their} box, not {n?its|their} pixels."
         }
         "panel.inspector.luz.corners_rounded_n" => {
             "This scene has more sharp corners than the GPU keeps \u{2014} {n} small areas draw their \

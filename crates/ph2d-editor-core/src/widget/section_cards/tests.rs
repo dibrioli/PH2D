@@ -371,8 +371,16 @@ fn um_corpo_vazio_depois_de_um_texto_nao_desloca_o_preenchimento_seguinte() {
     let branco = ph2d_vector::Color::WHITE;
     // O fundo do painel: sem um transform igual no fluxo, o vello re-emitia-o de qualquer modo.
     cena.fill_rect(ph2d_vector::Rect::new(0.0, 0.0, 9.0, 9.0), branco);
+    let coluna_do_nome = 200.0;
     crate::paint::paint_text(
-        &mut ts, &mut cena, "Name", 1380.0, 971.0, 12.0, 200.0, branco,
+        &mut ts,
+        &mut cena,
+        "Name",
+        1380.0,
+        971.0,
+        12.0,
+        coluna_do_nome,
+        branco,
     );
     with_section_cards(&mut cena, Theme::MODERN[0], 0.0, |_| {});
     let antes = cena.inner().encoding().transforms.len();

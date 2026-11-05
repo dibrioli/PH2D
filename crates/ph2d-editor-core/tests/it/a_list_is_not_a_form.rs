@@ -53,9 +53,10 @@ const LIST_SURFACES: &[(&str, &str, &str)] = &[
         "ROW_H",
         "",
     ),
+    // Em cartões a altura depende do cartão, logo deixou de ser `const VAR_ROW_H`/`CHAIN_ROW_H`.
     (
         "crates/ph2d-panel-audio-editor/src/paint_variation.rs",
-        "VAR_ROW_H",
+        "crate::cards::fila()",
         "",
     ),
     // ⛔⛔ **A SEXTA, e ela escapou a este censo durante duas waves** (report do dono,
@@ -64,7 +65,7 @@ const LIST_SURFACES: &[(&str, &str, &str)] = &[
     //    realce só dela: 18 px, zero, e `Bg3` (o repouso de um botão).
     (
         "crates/ph2d-panel-audio-editor/src/paint_fx.rs",
-        "CHAIN_ROW_H",
+        "stage_h",
         "",
     ),
     (
@@ -90,7 +91,7 @@ fn read(rel: &str) -> Option<String> {
 
 /// ⭐ **Nenhuma lista escolhe o próprio vão — ela chama a porta.**
 ///
-/// **Mutação que deve sangrar:** repor `y += VAR_ROW_H + Spacing::Xs.px();` no
+/// **Mutação que deve sangrar:** repor `y += crate::cards::fila() + Spacing::Xs.px();` no
 /// `paint_variation.rs` — é exactamente o estado em que esta wave encontrou o app.
 #[test]
 fn no_list_surface_writes_its_own_row_gap() {
@@ -149,8 +150,11 @@ fn the_declared_list_surfaces_still_exist() {
         match read(rel) {
             None => stale.push(format!("{rel}: o ficheiro nao existe")),
             Some(src) => {
-                if !src.contains(&format!("const {row_h}")) {
-                    stale.push(format!("{rel}: nao declara `const {row_h}`"));
+                let declara = src.contains(&format!("const {row_h}"))
+                    || src.contains(&format!("let {row_h} ="))
+                    || (row_h.ends_with("()") && src.contains(row_h));
+                if !declara {
+                    stale.push(format!("{rel}: nao tem a altura de linha `{row_h}`"));
                 }
             }
         }

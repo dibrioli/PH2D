@@ -72,6 +72,18 @@ fn code_familia(rel: &str) -> String {
     sem_prosa(&familia(rel))
 }
 
+/// O corpo do `apply_no_alvo`, sem comentários: é ele que honra o clique desde o alfinete do Fill e Stroke.
+fn dreno_dos_presos() -> String {
+    let p = Path::new(env!("CARGO_MANIFEST_DIR")).join("../presos/src/lib.rs");
+    let src = sem_prosa(&fs::read_to_string(&p).unwrap_or_else(|e| panic!("{}: {e}", p.display())));
+    let inicio = src
+        .find("pub fn apply_no_alvo(")
+        .expect("a porta do alfinete existe");
+    let resto = &src[inicio..];
+    let fim = resto.find("\n}").expect("o fim da função");
+    resto[..fim].to_owned()
+}
+
 /// **Os quatro sítios**, e cada um mata a feature sozinho.
 #[test]
 fn the_stroke_checkbox_is_wired_at_all_four_sites() {
@@ -91,7 +103,9 @@ fn the_stroke_checkbox_is_wired_at_all_four_sites() {
             "o reconhecimento do clique no despacho",
         ),
         (
-            "crate::vec_stroke_present::apply(",
+            // ⚠️ NovaUI C2: o dreno passou pela porta do alfinete, que escolhe o alvo; a segunda metade
+            // do sítio é o `dreno_dos_presos`, que prova que ela honra mesmo o clique.
+            "ph2d_host_presos::apply_no_alvo(",
             "o dreno que HONRA o clique",
         ),
         (
@@ -104,6 +118,19 @@ fn the_stroke_checkbox_is_wired_at_all_four_sites() {
             "{o_que} saiu do `render_loop` - a caixa fica pintada e inerte"
         );
     }
+    let presos = dreno_dos_presos();
+    for (agulha, o_que) in [
+        ("stroke_present::apply(", "sem alfinete, o gesto na seleção"),
+        (
+            "stroke_present::apply_em(",
+            "com alfinete, o gesto no objecto preso",
+        ),
+    ] {
+        assert!(
+            presos.contains(agulha),
+            "{o_que} saiu do `apply_no_alvo` - a caixa fica pintada e inerte"
+        );
+    }
 }
 
 /// ⚠️⚠️ **HONRAR e só depois PUBLICAR** — a mesma ordem do `resize_box`, e ela é load-bearing.
@@ -114,7 +141,7 @@ fn the_stroke_checkbox_is_wired_at_all_four_sites() {
 fn the_click_is_honoured_before_the_state_is_published() {
     let render = frame_code();
     let honra = render
-        .find("crate::vec_stroke_present::apply(")
+        .find("ph2d_host_presos::apply_no_alvo(")
         .expect("o dreno existe");
     let publica = render
         .find("crate::vec_stroke_present::publish(")

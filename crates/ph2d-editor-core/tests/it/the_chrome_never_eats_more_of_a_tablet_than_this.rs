@@ -256,9 +256,11 @@ fn the_painter_costs_no_screen_because_the_overflow_takes_it() {
             "controlo: {name} — o Painter nao acrescenta ferramenta nenhuma a' fila"
         );
         for (estado, rail) in [("repouso", &idle), ("pincel", &paint)] {
+            // A largura em que os chips correm é a do produto, a mesma de `bar_split` e do pintor.
+            let faixa = Rect::new(0.0, 0.0, area_w, bands.tool_bar_h);
             let lines = ph2d_editor_core::widget::horizontal_lines(
                 rail,
-                area_w - 16.0,
+                tool_bar::content_rect(faixa).w,
                 RailButtonSize::Small,
             );
             assert_eq!(

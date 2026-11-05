@@ -92,7 +92,8 @@ pub fn gaussian_weights(radius: f32) -> (Vec<f32>, u32) {
     let mut sum = 0.0f32;
     for i in 0..=half {
         let x = i as f32;
-        let g = (-(x * x) / two_sigma_sq).exp();
+        // `det_exp`, como a cópia canónica: `f32::exp` é a libm do sistema (Bug #58).
+        let g = ph2d_det_math::DetMath::det_exp(-(x * x) / two_sigma_sq);
         weights.push(g);
         // The centre tap is counted once; each ±i flank tap is counted twice.
         sum += if i == 0 { g } else { 2.0 * g };

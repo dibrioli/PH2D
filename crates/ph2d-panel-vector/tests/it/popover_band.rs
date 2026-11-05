@@ -167,17 +167,19 @@ fn no_popover_in_this_panel_clamps_against_the_window() {
     ];
     for (name, src) in FILES {
         // Controle positivo: o scanner esta' a olhar para um ficheiro que de facto pinta uma lista.
+        // ⚠️ `paint_dropdown_list_measured` é a mesma porta da fundação, com a largura medida (a lista de
+        // fontes, G4: cada linha pinta-se noutra fonte); e essa lista só ENCOLHE a região perguntada.
         assert!(
-            src.contains("paint_dropdown_list("),
+            src.contains("paint_dropdown_list(") || src.contains("paint_dropdown_list_measured("),
             "{name}: o gate deixou de ver a chamada que julga (ficheiro renomeado?)"
         );
         assert!(
-            !src.contains("let region = ctx.viewport") && !src.contains("popover_rect_clamped("),
+            !src.contains("region = ctx.viewport") && !src.contains("popover_rect_clamped("),
             "{name}: clampa contra a JANELA (ou à mão) — a lista encosta na borda de cima e sai de \
              cima do painel dela. A regiao e' `ctx.layout.popover_region()`."
         );
         assert!(
-            src.contains("let region = ctx.layout.popover_region();"),
+            src.contains("region = ctx.layout.popover_region();"),
             "{name}: o popover tem de perguntar a regiao ao layout"
         );
     }

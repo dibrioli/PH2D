@@ -60,9 +60,9 @@ const DECLARED: &[(&str, &str, Kind, &str)] = &[
     ),
     (
         "widget/status_bar.rs",
-        "scene.fill_rect(rect_to_vello(div), resolve(ColorToken::Border, theme));",
+        "scene.fill_rect(rect_to_vello(div), superficie.cor(ColorToken::Border));",
         Divider,
-        "o divisor de 1 px entre segmentos da barra",
+        "o divisor de 1 px entre segmentos da barra, na tinta da superficie da barra",
     ),
     (
         "screens/hero/slot_tabs.rs",

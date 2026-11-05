@@ -105,7 +105,7 @@ fn the_undrawn_svg_text_and_the_missing_fonts_are_named_in_the_warning() {
     };
     let w = p.warning().expect("um aviso");
     assert!(
-        w.contains("1 part(s) of the text inside the SVG will not show (textPath)"),
+        w.contains("1 part of the text inside the SVG will not show (textPath)"),
         "{w}"
     );
     assert!(w.contains("Nao Existe Font"), "{w}");

@@ -34,7 +34,7 @@ pub fn pinta(
     ph2d_editor_core::paint::fill_rounded_rect(
         scene,
         rect,
-        Radius::Sm.px(),
+        ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
         ph2d_editor_core::paint::resolve(ColorToken::BgElev, theme),
     );
     paint_panel_surface_floating(rect, scene, theme);

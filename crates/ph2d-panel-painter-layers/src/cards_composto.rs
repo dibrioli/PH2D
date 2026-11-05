@@ -165,7 +165,7 @@ fn cabeca(c: &mut CardCtx<'_>, b: &BrushSettings, pos: usize, y: f32) -> f32 {
         c.scene,
         &nome,
         c.x,
-        topo + (lado - m::LABEL_PX) * 0.5,
+        topo + ph2d_editor_core::paint::folga_do_texto(lado, m::LABEL_PX),
         m::LABEL_PX,
         (inicio - c.x).max(0.0),
         cor,

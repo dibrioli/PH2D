@@ -22,7 +22,7 @@ const JANELA: Rect = Rect {
     x: 0.0,
     y: 0.0,
     w: 340.0,
-    h: 5200.0,
+    h: 5600.0,
 };
 
 fn ferramenta(na_mao: WetTool, oleo: bool) -> PainterTool {
@@ -184,7 +184,24 @@ fn every_id_of_the_old_panel_is_registered_and_painted_in_cards() {
         .copied()
         .filter(|id| !pintados.contains(id))
         .collect();
-    assert!(mortos.is_empty(), "nunca pintados: {mortos:?}");
+    let nome = |id: &NodeId| {
+        let linha = rows::rows().iter().find(|r| {
+            r.reset == *id || r.chip == *id || r.options.iter().flatten().any(|o| o.1 == *id)
+        });
+        let grupo = rows::SECTIONS
+            .iter()
+            .find(|s| s.header == *id || s.reset == *id);
+        match (linha, grupo) {
+            (Some(r), _) => r.key.to_owned(),
+            (None, Some(s)) => s.label.to_owned(),
+            (None, None) => format!("{id:?}"),
+        }
+    };
+    assert!(
+        mortos.is_empty(),
+        "nunca pintados: {:?}",
+        mortos.iter().map(nome).collect::<Vec<_>>()
+    );
     for b in barras {
         assert!(!pintados.contains(&b), "a barra {b:?} ainda se pinta");
     }

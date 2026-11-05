@@ -91,9 +91,10 @@ const NOT_THIS_QUESTION: &[(&str, &str)] = &[
          linhas desalinhava o dope-sheet do editor de curvas",
     ),
     (
-        "crates/ph2d-panel-timeline/src/tracks.rs",
-        "A MESMA grelha, no ficheiro que a pinta: `y += ROW_H_PX` e' o passo da grade, e as \
-         posicoes das chaves derivam dele (`ROW_H_PX * i`)",
+        // Mudou-se do `tracks.rs` com o código (F8): era o único `y +=` dele no `main`.
+        "crates/ph2d-panel-timeline/src/tracks_lista.rs",
+        "MENU FLUTUANTE, nao formulario: o «+ Track» e' uma caixa de altura `ROW_H_PX * n` com as \
+         linhas encostadas; o passo e' a altura da linha, e um vao mudaria o menu",
     ),
 ];
 

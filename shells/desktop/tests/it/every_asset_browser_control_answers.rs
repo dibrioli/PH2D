@@ -60,6 +60,30 @@ fn name_of(id: ph2d_editor_core::NodeId) -> String {
             return n.to_string();
         }
     }
+    for (n, k) in [
+        ("ASSET_SEC_FIND", ids::ASSET_SEC_FIND),
+        ("ASSET_SEC_CATALOGS", ids::ASSET_SEC_CATALOGS),
+        ("ASSET_SEC_LIBRARY", ids::ASSET_SEC_LIBRARY),
+        ("ASSET_KIND_BOX", ids::ASSET_KIND_BOX),
+        ("ASSET_SIZE_NUM", ids::ASSET_SIZE_NUM),
+    ] {
+        if id == k {
+            return n.to_string();
+        }
+        if id == ph2d_editor_core::panel::cards::grip_of(k) {
+            return format!("grip_of({n})");
+        }
+        if id == ph2d_editor_core::ids::grip_de(k) {
+            return format!("grip_de({n})");
+        }
+    }
+    let lista = ph2d_editor_core::ids::ASSET_PANEL;
+    if id == ph2d_editor_core::panel::cards::list_menu_of(lista) {
+        return "list_menu_of(ASSET_PANEL)".to_string();
+    }
+    if id == ph2d_editor_core::panel::cards::scroll_bar_of(lista) {
+        return "scroll_bar_of(ASSET_PANEL)".to_string();
+    }
     for (i, k) in ids::ASSET_KIND.iter().enumerate() {
         if id == *k {
             return format!("ASSET_KIND[{i}]");
@@ -81,6 +105,24 @@ fn name_of(id: ph2d_editor_core::NodeId) -> String {
         return format!("linha de catalogo[{i}]");
     }
     format!("DESCONHECIDO {id:?}")
+}
+
+/// O cromo da lista de cartões (cabeçalho, pega, «…» da lista): o despachante responde-lhe à frente do
+/// painel, sem `InteractiveState` nem `apply_event`. Derivado do que a pintura marcou; o gesto real
+/// prova-o [`the_card_chrome_answers_the_real_pointer`].
+fn is_card_chrome(host: &MockPanelHost, id: ph2d_editor_core::NodeId) -> bool {
+    let cards = |s| {
+        s == id && host.store().is_card_section(s)
+            || ph2d_editor_core::panel::cards::grip_of(s) == id
+    };
+    id == ph2d_editor_core::panel::cards::list_menu_of(ph2d_editor_core::ids::ASSET_PANEL)
+        || [
+            ids::ASSET_SEC_FIND,
+            ids::ASSET_SEC_CATALOGS,
+            ids::ASSET_SEC_LIBRARY,
+        ]
+        .into_iter()
+        .any(cards)
 }
 
 /// Um painel aberto, com a coluna de catálogos e um filtro de relação ligados — o estado mais
@@ -138,7 +180,7 @@ fn every_painted_control_has_state_in_the_store() {
     );
     let mut mute = Vec::new();
     for (id, _) in &rects {
-        if host.store().get(*id).is_none() {
+        if host.store().get(*id).is_none() && !is_card_chrome(&host, *id) {
             mute.push(name_of(*id));
         }
     }
@@ -264,8 +306,9 @@ fn every_painted_control_that_takes_a_click_is_routed() {
         ph2d_panel_asset_browser::catalog_row_pick(id).is_some_and(|p| p == st.pick)
     };
     let mut dead = Vec::new();
+    let chrome_host = painted().0;
     for (id, _) in &rects {
-        if not_a_click(*id) {
+        if not_a_click(*id) || is_card_chrome(&chrome_host, *id) {
             continue;
         }
         // ⛔⛔ **UM PAINEL FRESCO POR ID, e a 1.ª versão deste gate não o fazia.** Ela reutilizava
@@ -298,6 +341,56 @@ fn every_painted_control_that_takes_a_click_is_routed() {
         "controlos PINTADOS cujo clique nao chega a efeito nenhum:\n  {}",
         dead.join("\n  ")
     );
+}
+
+/// ⭐ O que os dois censos dispensam tem de responder ao ponteiro REAL: cada cabeçalho e pega dobra o
+/// cartão dele, e o «…» da lista chega ao despachante.
+#[test]
+fn the_card_chrome_answers_the_real_pointer() {
+    let lista = ph2d_editor_core::panel::cards::list_menu_of(ph2d_editor_core::ids::ASSET_PANEL);
+    let (host, _st, rects) = painted();
+    let cromo: Vec<_> = rects
+        .iter()
+        .filter(|(id, _)| is_card_chrome(&host, *id))
+        .map(|(id, _)| *id)
+        .collect();
+    assert!(cromo.len() >= 7, "a pintura não trouxe o cromo: {cromo:?}");
+    for id in cromo {
+        let (mut host, _st, rects) = painted();
+        let r = rects
+            .iter()
+            .rev()
+            .find(|(n, _)| *n == id)
+            .map(|(_, r)| *r)
+            .expect("pintado");
+        let (cx, cy) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        // A pega do cartão cobre o meio do cabeçalho dele: é a mesma resposta.
+        let sob_o_dedo = host.hit_at(cx, cy);
+        assert!(
+            sob_o_dedo == Some(id)
+                || sob_o_dedo == Some(ph2d_editor_core::panel::cards::grip_of(id)),
+            "{}: tapado por {sob_o_dedo:?}",
+            name_of(id)
+        );
+        let dobras = |h: &MockPanelHost| {
+            [
+                ids::ASSET_SEC_FIND,
+                ids::ASSET_SEC_CATALOGS,
+                ids::ASSET_SEC_LIBRARY,
+            ]
+            .map(|s| h.store().is_collapsed(s))
+        };
+        let antes = dobras(&host);
+        let eventos = host.click_at(cx, cy);
+        if id == lista {
+            assert!(
+                eventos.contains(&WidgetEvent::Click(id)),
+                "o «…» da lista não chegou ao despachante: {eventos:?}"
+            );
+        } else {
+            assert_ne!(dobras(&host), antes, "{}: o clique não dobrou", name_of(id));
+        }
+    }
 }
 
 /// O controlo da fixtura: se o `InteractiveState` fosse universal, o 1.º gate mediria nada.

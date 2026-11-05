@@ -354,10 +354,7 @@ mod tests {
         );
         // ⚠️ Uma FOLHA não diz «1 tags» — a frase seria verdadeira e ilegível.
         let folha = verbs(Some(&linha(1, 1, 0)));
-        assert_eq!(
-            rotulo(&folha, crate::ids::TAGS_DELETE),
-            "Delete (1 objects)"
-        );
+        assert_eq!(rotulo(&folha, crate::ids::TAGS_DELETE), "Delete (1 object)");
         assert_eq!(rotulo(&folha, crate::ids::TAGS_SELECT), "Select (1)");
     }
 

@@ -80,7 +80,7 @@ mod tests {
 
     fn caminha(t: &mut ParTravado, passos: &[(usize, f64, f64)]) {
         for &(eixo, v, outro) in passos {
-            assert_eq!(t.segue(eixo, v), outro, "eixo {eixo} → {v}");
+            assert_eq!(t.segue(eixo, v), outro, "eixo {eixo} a {v}");
         }
     }
 

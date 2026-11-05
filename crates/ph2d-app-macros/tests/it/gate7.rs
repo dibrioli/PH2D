@@ -36,6 +36,7 @@ const VIEWPORT_TIMELINE: Rect = Rect {
 const LADO: u32 = 128;
 const QUADRO_US: u64 = 16_667;
 const DT_MS: f32 = 1000.0 / 60.0;
+const QUADROS_DE_ASSENTAR: usize = 60;
 
 pub(crate) struct Banca {
     pub(crate) sim: SimWorld,
@@ -168,7 +169,14 @@ impl Banca {
     pub(crate) fn pinta(&mut self) {
         let info = self.info(self.escolhido.or(Some(self.bits)));
         set_current_macros(info);
-        self.rects = self.host.paint::<MacrosPanel>(&mut self.st, VIEWPORT);
+        // O corpo de um cartão cresce a mola: assenta, como os quadros que o artista vê.
+        for _ in 0..QUADROS_DE_ASSENTAR {
+            let (host, st) = (&mut self.host, &mut self.st);
+            self.rects = ph2d_editor_core::aquecimento::com_passo_fixo(
+                ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
+                || host.paint::<MacrosPanel>(st, VIEWPORT),
+            );
+        }
         self.drena();
     }
 
@@ -214,7 +222,11 @@ impl Banca {
     }
 
     fn rect(&self, id: NodeId) -> Option<Rect> {
-        self.rects.iter().find(|(n, _)| *n == id).map(|(_, r)| *r)
+        self.rects
+            .iter()
+            .rev()
+            .find(|(n, r)| *n == id && r.w > 0.0 && r.h > 0.0)
+            .map(|(_, r)| *r)
     }
 
     /// Carregar no meio do controlo, como o rato: o store tem de o considerar focável.

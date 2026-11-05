@@ -212,14 +212,17 @@ fn the_stroke_chip_opens_the_stroke_panel_under_the_bar() {
         !dentro_do_painel(cap),
         "a ponta ficou no painel docado: {cap:?}"
     );
-    let vezes = hero
+    let rects: Vec<Rect> = hero
         .hit_index
         .iter_registrations()
         .filter(|(id, _)| *id == VECTOR_CAP_ROUND)
-        .count();
-    assert_eq!(
-        vezes, 1,
-        "a ponta registada {vezes} vezes com o painel do traço aberto"
+        .map(|(_, r)| r)
+        .collect();
+    // ⚠️ O painel do traço mora na camada das listas, que volta a registar os alvos por cima do índice
+    // (`camada_das_listas::fecha`): o mesmo rect duas vezes. O defeito é um id em dois SÍTIOS.
+    assert!(
+        rects.iter().all(|r| *r == cap),
+        "a ponta pintada em dois sítios com o painel do traço aberto: {rects:?} (painel {painel:?})"
     );
 
     let _ = hero.bus.drain().count();

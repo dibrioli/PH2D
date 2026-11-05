@@ -161,8 +161,8 @@ mod tests {
         ] {
             assert_ne!(ph2d_i18n::tr(k), k, "{k} sem tradução");
         }
-        assert!(n.starts_with("Copied 2 script file(s)"), "{n}");
+        assert!(n.starts_with("Copied 2 script files"), "{n}");
         assert!(n.contains("1 found in the app"), "{n}");
-        assert!(n.contains("1 script file(s) not found"), "{n}");
+        assert!(n.contains("1 script file not found"), "{n}");
     }
 }

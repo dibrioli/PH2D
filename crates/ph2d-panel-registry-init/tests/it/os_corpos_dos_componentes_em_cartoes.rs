@@ -181,7 +181,13 @@ fn a_check_in_a_card_is_a_figma_checkbox_row() {
         ph2d_panel_inspector::ids::INSP_CAMERA_PREVIEW,
     );
     let mut rolar = h.store.panel_scroll(ph2d_editor_core::ids::INSP_PANEL);
-    while h.hit_index.rect_for(ia).is_none() && rolar < 30_000.0 {
+    // Até às duas caixas inteiras: a banda da lista recorta o alvo da linha que ainda entra por baixo.
+    let inteira = |h: &HeroScreen, id| {
+        h.hit_index
+            .rect_for(id)
+            .is_some_and(|r| (r.h - m::FIELD_H).abs() < 0.5)
+    };
+    while !(inteira(&h, ia) && inteira(&h, ib)) && rolar < 30_000.0 {
         rolar += 200.0;
         h.store
             .set_panel_scroll(ph2d_editor_core::ids::INSP_PANEL, rolar);

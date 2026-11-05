@@ -6,7 +6,7 @@
 //! os outros portões correm em paralelo no mesmo processo.
 
 use super::agua_sobre_oleo_tests::preset;
-use super::offthread::otica::forca_no_teste;
+use super::offthread::otica::{CaixaCel, forca_no_teste};
 use super::*;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
 use std::time::{Duration, Instant};
@@ -126,8 +126,10 @@ pub(super) fn confere_com_casa(t: &mut PainterTool, onde: &str) {
     let n = vista.iter().zip(casa).filter(|(a, b)| a != b).count();
     if let Some(i) = vista.iter().zip(casa).position(|(a, b)| a != b) {
         let px = i / 4;
-        panic!(
-            "{onde}: a tela difere da composição de casa em ({}, {}) — tela {:?} casa {:?}; {n} bytes",
+        assert_eq!(
+            n,
+            0,
+            "{onde}: a tela difere da composição de casa em ({}, {}) — tela {:?} casa {:?}",
             px % LADO,
             px / LADO,
             &vista[px * 4..px * 4 + 4],
@@ -264,4 +266,144 @@ fn a_divida_leva_a_caixa_da_imagem_descartada() {
     );
     assenta(&mut t);
     confere_com_casa(&mut t, "Fast dry e dab");
+}
+
+/// Um traço curto de Smooth Edges no máximo, sem tique, à direita da caixa pedida ou (`abaixo`) em baixo dela.
+fn risca_da_margem(t: &mut PainterTool, abaixo: bool, tamanho: f32, oleo: bool, suave: f32) {
+    t.preset_aplicar(&preset("Oil/Dabber/Dabber.ph2d-brush.png"))
+        .expect("o preset");
+    t.set_wet_oleo_real_ligado(oleo);
+    t.set_brush_size_px(tamanho);
+    t.set_brush_color_srgb8([200, 40, 40]);
+    t.set_wet_smooth_edges(suave);
+    let (a, b) = if abaixo {
+        ([30.0, 130.0], [170.0, 130.0])
+    } else {
+        ([110.0, 90.0], [110.0, 170.0])
+    };
+    let p = |k: f32, f| ponto(a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, f);
+    let _ = t.on_canvas_pointer(p(0.0, PointerPhase::Down));
+    for k in 1..=12 {
+        let _ = t.on_canvas_pointer(p(k as f32 / 12.0, PointerPhase::Move));
+    }
+    let _ = t.on_canvas_pointer(p(1.0, PointerPhase::Up));
+}
+
+/// A tela só com água a 0, sem óleo (o tecto das grades e os planos em zero) e parada, com o compositor de pé.
+fn agua_sem_suave() -> PainterTool {
+    let mut t = PainterTool::default();
+    t.abre_a_sprite(vec![255u8; LADO * LADO * 4], LADO as u32, LADO as u32);
+    t.set_paint_tool_mode("wetpaint");
+    forca_no_teste(Some(true));
+    let wd = "Watercolor/Fluid/Wet Drip.ph2d-brush.png";
+    traco(&mut t, wd, [230, 200, 30], 20.0, 0.0, false);
+    quadros(&mut t, 3);
+    assenta(&mut t);
+    t
+}
+
+/// O traço pintado e composto em casa: a célula 0-based onde a mancha começa, no eixo da margem.
+fn pinta_e_mede(t: &mut PainterTool, abaixo: bool, tamanho: f32) -> usize {
+    let antes = sess(t).planos.pigment.clone();
+    risca_da_margem(t, abaixo, tamanho, false, 1.0);
+    congela(t);
+    tique(t);
+    let s = sess(t);
+    let (gw, _) = s.grid;
+    let mut inicio = usize::MAX;
+    for (i, (a, b)) in s.planos.pigment.chunks(4).zip(antes.chunks(4)).enumerate() {
+        if a != b && f32::from(a[3]) / 255.0 >= crate::tool::paint::watercolor_render::SS0 {
+            inicio = inicio.min(if abaixo { i / gw } else { i % gw });
+        }
+    }
+    assert_ne!(inicio, usize::MAX, "premissa: o traço pintou");
+    inicio
+}
+
+/// Uma caixa de 4 células no eixo da margem, acabada em `fim` (1-based), na banda do meio do traço.
+fn caixa_ate(fim: usize, abaixo: bool, rr: usize) -> CaixaCel {
+    let (b0, b1) = if abaixo { (90, 105) } else { (120, 135) };
+    let (b0, b1) = (b0 / rr + 1, b1 / rr + 1);
+    if abaixo {
+        (b0, fim - 3, b1, fim)
+    } else {
+        (fim - 3, b0, fim, b1)
+    }
+}
+
+/// **O traço composto dab a dab é a recomposição inteira ao byte**: dentro da tinta o pixel lê a tinta desfocada a `raio`
+/// px de cada lado, por isso a região cresce o dobro do raio (com o simples, medido: 1 byte em (105, 86), sem compositor).
+#[test]
+fn o_traco_suave_dab_a_dab_e_a_recomposicao_inteira_ao_byte() {
+    for abaixo in [false, true] {
+        let mut t = agua_sem_suave();
+        let _ = pinta_e_mede(&mut t, abaixo, 16.0);
+        confere_com_casa(&mut t, &format!("dab a dab (abaixo {abaixo})"));
+    }
+}
+
+/// **A imagem velha não esvazia o que a casa já pintou.** Um pedido de quando a tela não tinha óleo nem Smooth Edges fica
+/// no canal, o 1.º traço com os dois compõe-se em casa e a imagem chega depois dele, sem o tocar. Ela dizia «planos
+/// vazios» e apagava a sombra e os degraus do traço; a imagem seguinte só traz a caixa dela, e o laço de píxel lia a
+/// sombra 0 na margem (Bug #64, medido: 727 píxeis, 1 018 células de sombra). Vai para a dívida, como a que toca.
+#[test]
+fn a_imagem_velha_nao_esvazia_o_que_a_casa_ja_pintou() {
+    for (abaixo, oleo, suave) in [
+        (false, true, 1.0),
+        (true, true, 1.0),
+        (false, false, 1.0),
+        (false, true, 0.0),
+    ] {
+        let mut t = agua_sem_suave();
+        let velha = caixa_ate(5, abaixo, usize::from(sess(&t).ratio));
+        let s = t.paint.wetpaint.session.as_mut().expect("sessao");
+        s.bring_home();
+        s.otica.divida = Some(velha);
+        tique(&mut t);
+        assert!(sess(&t).otica.pendente(), "premissa: o pedido saiu");
+        std::thread::sleep(Duration::from_millis(150));
+        risca_da_margem(&mut t, abaixo, 16.0, oleo, suave);
+        congela(&mut t);
+        let (a0, d0) = (sess(&t).otica.aplicadas, sess(&t).otica.tocadas);
+        tique(&mut t);
+        let s = sess(&t);
+        // Respondida, a dívida sai logo noutro pedido, que limpa a união; sem resposta, a união ficava.
+        assert!(s.otica.uniao_local.is_none(), "premissa: a imagem chegou");
+        assert_eq!(s.otica.tocadas, d0, "premissa: a imagem não toca o traço");
+        assert_eq!(s.otica.aplicadas, a0, "a imagem velha foi aplicada");
+        assert_eq!(s.planos.suave.is_empty(), suave == 0.0, "a imagem velha mexeu nos degraus");
+        assert_eq!(s.planos.sombra.is_empty(), !oleo, "a imagem velha mexeu na sombra");
+        assenta(&mut t);
+        confere_com_casa(&mut t, &format!("a imagem velha (abaixo {abaixo}, óleo {oleo}, suave {suave})"));
+    }
+}
+
+/// **A tinta suave NA MARGEM da caixa:** com o plano do Smooth Edges a nascer (esvaziado à mão: a porta que o fazia era
+/// a imagem velha) e a tinta suave fora do sujo, a imagem tem de trazer o degrau de tudo o que o laço de píxel lê,
+/// `alcance(RAIO_MAX)` além da região. Sem isso a tinta na margem lê o degrau 0 e os píxeis da caixa perdem a orla.
+#[test]
+fn a_tinta_suave_na_margem_da_caixa_e_a_tela_de_casa_ao_byte() {
+    for abaixo in [false, true] {
+        let mut t = agua_sem_suave();
+        let rr = usize::from(sess(&t).ratio);
+        let inicio = pinta_e_mede(&mut t, abaixo, 16.0);
+        // O resto do sujo do traço sai com uma imagem no canto oposto.
+        let s = t.paint.wetpaint.session.as_mut().expect("sessao");
+        s.otica.divida = Some(caixa_ate(5, abaixo, rr));
+        assenta(&mut t);
+        // A região acaba `r` depois da caixa: a duas células da mancha, ao alcance da orla dela.
+        let r = super::smooth_edges::alcance_da_mudanca(super::smooth_edges::RAIO_MAX);
+        let caixa = caixa_ate(inicio - r / rr - 2, abaixo, rr);
+        let s = t.paint.wetpaint.session.as_mut().expect("sessao");
+        let inteiro = s.planos.suave.iter().filter(|d| **d > 0).count();
+        s.planos.suave = Vec::new();
+        s.otica.divida = Some(caixa);
+        assenta(&mut t);
+        let n = sess(&t).planos.suave.iter().filter(|d| **d > 0).count();
+        assert!(
+            n < inteiro,
+            "premissa: a imagem nova traz só a caixa dela ({n} de {inteiro} células)"
+        );
+        confere_com_casa(&mut t, &format!("a tinta na margem (abaixo {abaixo})"));
+    }
 }

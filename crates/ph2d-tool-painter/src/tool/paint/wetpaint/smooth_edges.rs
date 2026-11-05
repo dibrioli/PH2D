@@ -126,6 +126,13 @@ pub(super) fn alcance(raio: f32) -> usize {
     raio.ceil() as usize + 1
 }
 
+/// Quantos px à volta de uma tinta que mudou um pixel pode mudar: dentro da tinta ele lê a tinta desfocada (a tenda)
+/// a `raio` px de cada lado, logo o alcance dobra.
+#[must_use]
+pub(super) fn alcance_da_mudanca(raio: f32) -> usize {
+    alcance(raio) * 2
+}
+
 /// Uma passada de caixa de meia largura FRACIONÁRIA `h` (as pontas `⌊h⌋ + 1` pesam `h − ⌊h⌋`), lida em
 /// `ler(i)` com o índice preso a `0..n` (a borda repete-se, como na tela).
 #[inline]
@@ -222,7 +229,7 @@ impl Suave {
         linhas: Option<bool>,
         orla: bool,
     ) -> Self {
-        let a = alcance(raio) * 2;
+        let a = alcance_da_mudanca(raio);
         let (rx0, ry0) = (x0.saturating_sub(a), y0.saturating_sub(a));
         let (rx1, ry1) = ((x1 + a).min(w), (y1 + a).min(h));
         let (rw, rh) = (rx1 - rx0, ry1 - ry0);

@@ -102,6 +102,19 @@ pub(in crate::tool::paint::wetpaint) enum RespostaDaOtica {
     Imagem(Box<Imagem>),
 }
 
+impl CaixasDaImagem {
+    /// Algum plano que `planos` tem e esta imagem diz vazio?
+    pub(in crate::tool::paint::wetpaint) fn esvazia(&self, planos: &PlanosDaOtica) -> bool {
+        [
+            (&self.sombra, &planos.sombra),
+            (&self.grao, &planos.grao),
+            (&self.suave, &planos.suave),
+        ]
+        .iter()
+        .any(|(dela, nosso)| dela.is_none() && !nosso.is_empty())
+    }
+}
+
 impl Imagem {
     /// Escreve a imagem nos planos da sessão: o mesmo que [`compoe_a_otica`] lá teria escrito.
     pub(in crate::tool::paint::wetpaint) fn aplica(

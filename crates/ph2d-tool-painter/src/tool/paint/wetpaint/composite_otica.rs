@@ -171,7 +171,7 @@ fn compoe_a_caixa(
     }
     // Smooth Edges: um pixel até ao alcance do raio também muda, logo o retângulo cresce por ele.
     let (px0, py0, px1, py1) = if suave {
-        let a = super::smooth_edges::alcance(raio);
+        let a = super::smooth_edges::alcance_da_mudanca(raio);
         (
             px0.saturating_sub(a),
             py0.saturating_sub(a),

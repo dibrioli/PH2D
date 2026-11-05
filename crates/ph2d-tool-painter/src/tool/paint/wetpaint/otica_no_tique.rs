@@ -123,7 +123,10 @@ impl PainterTool {
             {
                 sess.otica.tocadas += u32::from(tocou);
             }
-            if tocou || (show_wet && c.veu.is_none()) {
+            // A casa pintou depois do pedido e tem um plano que a imagem diz vazio (o 1.º óleo, o 1.º Smooth Edges):
+            // a imagem é velha, e aplicá-la apagava esse plano fora da caixa dela.
+            let velha = sess.otica.uniao_local.is_some() && c.esvazia(&sess.planos);
+            if tocou || velha || (show_wet && c.veu.is_none()) {
                 sess.otica.deve(c.caixa_cel);
                 return;
             }

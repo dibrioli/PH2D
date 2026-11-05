@@ -161,6 +161,21 @@ pub(crate) fn stroke_popover_open(store: &WidgetStore) -> bool {
     is_open(store, crate::ids::VECTOR_BAR_STROKE)
 }
 
+/// A barra tem algo aberto (o painel do traço ou uma das listas)? Com a aba atrás, é o que manda o
+/// painel pintar.
+#[must_use]
+pub(crate) fn abriu_algo(store: &WidgetStore) -> bool {
+    [
+        crate::ids::VECTOR_BAR_STROKE,
+        crate::ids::VECTOR_BAR_PROFILE,
+        crate::ids::VECTOR_BAR_KIND,
+        HOLES.0,
+        RESULT.0,
+    ]
+    .into_iter()
+    .any(|id| is_open(store, id))
+}
+
 /// O perfil de largura DA FORMA selecionada (o Uniform sem perfil), `None` = «Custom».
 fn active_profile() -> Option<usize> {
     crate::state::current_selection_profile()

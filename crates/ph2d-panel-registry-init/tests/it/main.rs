@@ -6,6 +6,7 @@
 //! ganham o prefixo do módulo (`ficheiro::fn`); filtros por `test(nome)` continuam a casar.
 //! ⚠️ Teste novo = ficheiro novo AQUI + uma linha `mod` abaixo — nunca um `tests/*.rs` solto.
 
+mod a_barra_abre_com_a_aba_atras;
 mod a_column_gives_back_exactly_what_it_took;
 mod a_docked_panel_never_reaches_the_drawing_area;
 mod a_fileira_de_cada_item_tem_canal;

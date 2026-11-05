@@ -149,3 +149,20 @@ fn rotating_the_base_rotates_every_partner_by_the_same_delta() {
         );
     }
 }
+
+/// ⭐ Os sete nomes cabem no seletor sem «…» na largura de fábrica do picker. *Mutação: uma fila só ⇒
+/// vermelho (o segmento fica mais estreito que o nome).*
+#[test]
+fn every_scheme_name_fits_its_segment() {
+    let rect = crate::zones::Rect::new(10.0, 20.0, 180.0, 0.0);
+    let lugares = super::lugares_das_harmonias(rect);
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    for (h, l) in Harmony::ALL.iter().zip(lugares) {
+        let w = ts.prefix_width(h.label(), ph2d_tokens::TypeToken::Sm.px());
+        assert!(w > 0.0, "sem fonte a régua não mede");
+        assert!(w <= l.w, "{} mede {w} num segmento de {}", h.label(), l.w);
+        assert!(l.x >= rect.x && l.x + l.w <= rect.x + rect.w + 0.01);
+    }
+    assert_eq!(lugares[0].y, lugares[3].y, "1.ª fila");
+    assert!(lugares[4].y > lugares[3].y, "2.ª fila");
+}

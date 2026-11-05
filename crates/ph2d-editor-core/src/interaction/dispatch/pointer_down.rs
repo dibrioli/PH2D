@@ -51,6 +51,10 @@ pub(super) fn dispatch_down<'frame>(
 
     store.note_card_press(event.x, event.y); // T7: a pressão num cartão PRESO é do sujeito dele
     let hit = hit_index.hit_with_rect(event.x, event.y);
+    // Antes de toda captura: uma lista aberta sobre a tira da Timeline ou do Flip não fechava com o
+    // clique nela (visto em janela real, F8). O clique continua a valer no que acertou.
+    super::pointer_down_menus::light_dismiss_dropdown(store, hit, event);
+    store.dismiss_own_list(hit.map(|(id, _)| id), event.x, event.y);
     // ⭐ O LOSANGO de um campo (plano 35 §5): pedido à shell (gravar/apagar a chave), não ao campo.
     if let Some((id, _)) = hit
         && let Some(mut c) = crate::widget::key_mark::key_mark_target(id)
@@ -284,7 +288,6 @@ pub(super) fn dispatch_down<'frame>(
         }
     }
 
-    super::pointer_down_menus::light_dismiss_dropdown(store, hit, event);
 
     // Eyedropper interception: while a pick is pending and
     // the click isn't on the eyedropper button itself, emit

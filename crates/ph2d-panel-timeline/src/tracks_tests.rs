@@ -59,3 +59,17 @@ fn the_label_names_the_object_first_and_falls_back_to_the_short_id() {
         "duas rows da mesma propriedade em objetos diferentes não podem ler igual"
     );
 }
+
+/// ⭐ Janela com lugar por cima: a lista sobe e o chip fica à vista; sem lugar em lado nenhum, a lei antiga
+/// (desliza). Visto em janela real, F8: empurrada para dentro, ela tapava o «+ Track».
+#[test]
+fn a_lista_do_mais_track_nao_tapa_o_chip() {
+    let janela = Rect::new(0.0, 0.0, 1930.0, 1040.0);
+    let chip = Rect::new(320.0, 880.0, 180.0, 22.0);
+    let h = 396.0;
+    assert_eq!(lista_y(chip, h, janela), chip.y - h, "por cima");
+    assert_eq!(lista_y(chip, 100.0, janela), chip.y + chip.h, "cabe por baixo");
+    let baixa = Rect::new(0.0, 0.0, 1930.0, 600.0);
+    let meio = Rect::new(320.0, 300.0, 180.0, 22.0);
+    assert_eq!(lista_y(meio, h, baixa), meio.y + meio.h, "não cabe: desliza depois");
+}

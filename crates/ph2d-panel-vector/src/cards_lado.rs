@@ -169,13 +169,13 @@ pub(crate) fn flutua(
     corpo: &mut dyn FnMut(&mut CardCtx<'_>, f32) -> f32,
 ) {
     let ink = CardInk::of_card(ctx.host.store().section_theme(seccao), theme);
-    let inner_w = (largura - m::CARD_PAD_X * 2.0).max(0.0);
+    let mut inner_w = (largura - m::CARD_PAD_X * 2.0).max(0.0);
     let abre = |c: &mut CardCtx<'_>, y: f32| match cabeca {
         Some(h) => cabecalho(c, h, y),
         None => y + m::CARD_PAD_TOP,
     };
     // A altura medida numa passagem a seco: o fundo pinta-se ANTES.
-    let medida = {
+    let mut mede = |ctx: &mut PaintCtx, util: f32| {
         let mut scene = VectorScene::new();
         let mut hits = HitIndex::new();
         let mut c = CardCtx::flutuante(
@@ -185,15 +185,23 @@ pub(crate) fn flutua(
             &mut hits,
             ink,
             m::CARD_PAD_X,
-            inner_w,
+            util,
         );
-        card_ink::com(ink, || {
+        let medida = card_ink::com(ink, || {
             let y = abre(&mut c, 0.0);
             corpo(&mut c, y)
-        })
+        });
+        medida + m::CARD_PAD_BOTTOM
     };
-    let conteudo = medida + m::CARD_PAD_BOTTOM;
-    let rect = onde(conteudo);
+    let mut conteudo = mede(ctx, inner_w);
+    let mut rect = onde(conteudo);
+    // A barra de rolagem tem faixa própria: quando ela aparece, as linhas encolhem para não colar nela.
+    if conteudo > rect.h {
+        let faixa = ph2d_editor_core::widget::scrollbar_track_rect(rect).x;
+        inner_w = (faixa - ph2d_tokens::Spacing::Xs.px() - rect.x - m::CARD_PAD_X).max(0.0);
+        conteudo = mede(ctx, inner_w);
+        rect = onde(conteudo);
+    }
     let max = (conteudo - rect.h).max(0.0);
     let rolagem = ctx.host.store().panel_scroll(id).clamp(0.0, max); // CLAMP-OK: 0.0 literal; max é uma extensão não negativa
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();

@@ -335,7 +335,10 @@ fn seed_number_fields(store: &mut ph2d_editor_core::interaction::WidgetStore) {
 }
 
 pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
-    if !ctx.host.panel_visible(VectorPanel::ID) {
+    // Sem cartões a aba atrás não tem lista que saia cedo: só o que a barra abriu, como painel fechado.
+    let so_a_barra = ctx.host.store().loose_only_pass() == Some(VectorPanel::NODE_ID)
+        && !crate::cards::cards_on();
+    if !ctx.host.panel_visible(VectorPanel::ID) || so_a_barra {
         // Symmetric stale-rect cleanup so `panel_at` stops returning
         // VECTOR_PANEL once the tool is deactivated.
         ctx.host
@@ -526,7 +529,13 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
 fn passes_diferidos(ctx: &mut PaintCtx, rect: Rect, theme: ph2d_tokens::Theme) {
     // ② F16: o painel do traço e as listas que a barra de controle abre — ANTES dos popovers
     // diferidos abaixo, porque o das pontas pode nascer DENTRO do painel do traço.
-    crate::bars::paint_bar_popovers(ctx, theme, rect.w);
+    // Aba atrás: a lista tem largura zero, e a barra abre na largura mínima do encaixe.
+    let largura = if rect.w > 0.0 {
+        rect.w
+    } else {
+        ph2d_editor_core::interaction::WidgetStore::DOCK_W_MIN
+    };
+    crate::bars::paint_bar_popovers(ctx, theme, largura);
     // ⭐ F43: a lista do «+» e o painel de propriedades à ESQUERDA — antes dos popovers abaixo,
     // porque a lista de mistura de um filtro nasce DENTRO do painel.
     crate::fx_side::paint(ctx, rect, theme);

@@ -1356,3 +1356,37 @@ fn the_switched_anchor_reaches_the_transform() {
         "o canto oposto saiu do lugar: {sw:?}"
     );
 }
+
+/// ⭐ Um eixo a zero: as alças do meio que moram nele cedem aos cantos, ou nenhum gesto o abria (o T/B só
+/// mexe em Y e ganhava o clique). *Mutação: tirar `alca_de_lado_cede` ⇒ vermelho.*
+#[test]
+fn a_zero_axis_gives_the_click_to_the_corners() {
+    let pinta = |v: GizmoView| {
+        let mut scene = VectorScene::new();
+        let mut hits = HitIndex::new();
+        paint_sprite_gizmo(&mut scene, &v, Theme::Forge, &mut hits);
+        hits
+    };
+    let largura_zero = pinta(view([0.0, -0.5], [0.0, 0.5]));
+    assert!(largura_zero.rect_for(ids::GIZMO_HANDLE_T).is_none());
+    assert!(largura_zero.rect_for(ids::GIZMO_HANDLE_B).is_none());
+    let canto = largura_zero.rect_for(ids::GIZMO_HANDLE_BL).expect("canto");
+    assert_eq!(
+        largura_zero.hit(canto.x + canto.w * 0.5, canto.y + canto.h * 0.5),
+        Some(ids::GIZMO_HANDLE_BR),
+        "o canto de cima da pilha pega o eixo"
+    );
+    let altura_zero = pinta(view([-0.5, 0.0], [0.5, 0.0]));
+    assert!(altura_zero.rect_for(ids::GIZMO_HANDLE_L).is_none());
+    assert!(altura_zero.rect_for(ids::GIZMO_HANDLE_R).is_none());
+    assert!(altura_zero.rect_for(ids::GIZMO_HANDLE_T).is_some());
+    let inteira = pinta(view([-0.5, -0.5], [0.5, 0.5]));
+    for id in [
+        ids::GIZMO_HANDLE_T,
+        ids::GIZMO_HANDLE_R,
+        ids::GIZMO_HANDLE_B,
+        ids::GIZMO_HANDLE_L,
+    ] {
+        assert!(inteira.rect_for(id).is_some(), "caixa normal mantém as quatro");
+    }
+}

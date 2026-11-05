@@ -139,6 +139,8 @@ pub fn partners(base: ColorValue, scheme: Harmony) -> Vec<ColorValue> {
 
 /// Altura do seletor de esquema (uma linha de segmentos).
 pub const HARMONY_SEL_H: f32 = 24.0;
+/// Quantos esquemas vão na 1.ª fila do seletor (a 2.ª leva o resto).
+const HARMONY_NA_1A_FILA: usize = 4;
 /// Altura da tira de swatches das parceiras.
 pub const HARMONY_SWATCH_H: f32 = 22.0;
 
@@ -148,6 +150,26 @@ pub const HARMONY_SWATCH_H: f32 = 22.0;
 ///
 /// As parceiras saem da MESMA [`partners`] que o dispatch consome (o clique num swatch pede a ela de
 /// novo) — uma porta, então o que o artista vê é o que o clique pega.
+/// Onde cada esquema cai: duas filas, porque os sete não cabem numa largura de seletor.
+#[must_use]
+pub fn lugares_das_harmonias(rect: Rect) -> [Rect; Harmony::ALL.len()] {
+    let mut lugares = [Rect::new(0.0, 0.0, 0.0, 0.0); Harmony::ALL.len()];
+    let resto = Harmony::ALL.len() - HARMONY_NA_1A_FILA;
+    for (i, l) in lugares.iter_mut().enumerate() {
+        let (coluna, fila, n) = if i < HARMONY_NA_1A_FILA {
+            (i, 0.0, HARMONY_NA_1A_FILA)
+        } else {
+            (i - HARMONY_NA_1A_FILA, 1.0, resto)
+        };
+        #[allow(clippy::cast_precision_loss)]
+        let w = rect.w / n as f32;
+        #[allow(clippy::cast_precision_loss)]
+        let x = rect.x + w * coluna as f32;
+        *l = Rect::new(x, rect.y + HARMONY_SEL_H * fila, w, HARMONY_SEL_H);
+    }
+    lugares
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn paint_harmony_section(
     cp: &BlenderColorPicker,
@@ -158,32 +180,34 @@ pub fn paint_harmony_section(
     text_system: &mut TextSystem,
     theme: Theme,
 ) -> f32 {
-    let sel_rect = Rect::new(rect.x, rect.y, rect.w, HARMONY_SEL_H);
-    let group = RadioGroup::new(
-        NodeId(0),
-        tr("chrome.color.harmony"),
-        Harmony::ALL
-            .iter()
-            .map(|h| RadioOption::new(NodeId(0), h.key(), h.label()))
-            .collect(),
-    )
-    .orientation(RadioOrientation::Segmented)
-    .selected(cp.harmony.key());
-    paint_radio_group_with_labels(&group, sel_rect, scene, text_system, theme);
-    #[allow(clippy::cast_precision_loss)]
-    let seg_w = sel_rect.w / Harmony::ALL.len() as f32;
-    for (i, id) in ids.harmony_schemes.iter().enumerate() {
+    // Sete nomes numa fila da largura do seletor saíam «C…», «A…», «Tr…» (visto em janela real, F8): duas
+    // filas, cada uma com a sua largura de segmento.
+    let selecao = lugares_das_harmonias(rect);
+    for fila in [&Harmony::ALL[..HARMONY_NA_1A_FILA], &Harmony::ALL[HARMONY_NA_1A_FILA..]] {
+        let inicio = if fila[0] == Harmony::ALL[0] { 0 } else { HARMONY_NA_1A_FILA };
+        let r = selecao[inicio];
+        let toda = Rect::new(rect.x, r.y, rect.w, r.h);
+        let group = RadioGroup::new(
+            NodeId(0),
+            tr("chrome.color.harmony"),
+            fila.iter()
+                .map(|h| RadioOption::new(NodeId(0), h.key(), h.label()))
+                .collect(),
+        )
+        .orientation(RadioOrientation::Segmented)
+        .selected(cp.harmony.key());
+        paint_radio_group_with_labels(&group, toda, scene, text_system, theme);
+    }
+    for (id, lugar) in ids.harmony_schemes.iter().zip(selecao) {
         if id.0 != 0 {
-            #[allow(clippy::cast_precision_loss)]
-            let x = sel_rect.x + seg_w * i as f32;
-            hit_index.register(*id, Rect::new(x, sel_rect.y, seg_w, sel_rect.h));
+            hit_index.register(*id, lugar);
         }
     }
-    let mut used = HARMONY_SEL_H;
+    let mut used = HARMONY_SEL_H * 2.0;
 
     // Parceiras só quando um esquema está ativo (Off = a base sozinha, sem tira).
     if cp.harmony != Harmony::None {
-        let sw_y = rect.y + HARMONY_SEL_H + Spacing::Xs.px();
+        let sw_y = rect.y + used + Spacing::Xs.px();
         let colors = partners(cp.value, cp.harmony);
         // ⭐ Raio e moldura pela porta do TEMA: as amostras e o «+» são planos num tema moderno.
         let radius = crate::paint::frame_radius(theme, Radius::Sm.px());

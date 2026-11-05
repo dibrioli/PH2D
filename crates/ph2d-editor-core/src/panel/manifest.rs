@@ -41,6 +41,8 @@ pub struct PanelManifest {
     pub paint_fn: ErasedPaintFn,
     pub apply_event_fn: ErasedApplyEventFn,
     pub populate_fn: PopulateFn,
+    /// Ver [`Panel::pinta_com_a_aba_atras`].
+    pub pinta_com_a_aba_atras: fn(&crate::interaction::WidgetStore) -> bool,
 }
 
 impl PanelManifest {
@@ -60,6 +62,7 @@ impl PanelManifest {
             paint_fn: paint_dispatch::<P>,
             apply_event_fn: apply_event_dispatch::<P>,
             populate_fn: P::populate,
+            pinta_com_a_aba_atras: P::pinta_com_a_aba_atras,
         }
     }
 }

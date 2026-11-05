@@ -235,6 +235,10 @@ pub struct VectorPanel;
 impl Panel for VectorPanel {
     type State = VectorPanelState;
 
+    fn pinta_com_a_aba_atras(store: &ph2d_editor_core::interaction::WidgetStore) -> bool {
+        bars::abriu_algo(store)
+    }
+
     const ID: &'static str = "vector";
     const NODE_ID: NodeId = ph2d_editor_core::ids::VECTOR_PANEL;
     const DEFAULT_VISIBLE: bool = false;

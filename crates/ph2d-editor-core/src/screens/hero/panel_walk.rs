@@ -92,9 +92,11 @@ pub(super) fn walk(
         for panel_id in z_order {
             if hidden.contains(&panel_id) {
                 // ⭐ C5: a aba está atrás, mas os cartões SOLTOS dele continuam no canvas — o painel
-                // pinta só esses (a lista sai cedo) e larga o rect que publicou.
-                if !hero.store.loose_cards_of(panel_id).is_empty()
-                    && let Some(idx) = reg.find_by_panel_node_id(panel_id)
+                // pinta só esses (a lista sai cedo) e larga o rect que publicou. O mesmo com o que a
+                // barra dele abriu.
+                if let Some(idx) = reg.find_by_panel_node_id(panel_id)
+                    && (!hero.store.loose_cards_of(panel_id).is_empty()
+                        || (reg.panels()[idx].manifest.pinta_com_a_aba_atras)(&hero.store))
                 {
                     hero.store.begin_loose_only_pass(panel_id);
                     let mut typed_ctx = crate::panel::PaintCtx {

@@ -58,7 +58,7 @@ pub fn paint_card_list_top(
     let x = x0 + m::LIST_MARGIN;
     let w = (slot.x + slot.w - x - m::LIST_MARGIN).max(0.0);
     // A barra de opções da ferramenta atravessa a janela por cima dos painéis: a lista começa abaixo.
-    let barra = ctx.layout.tool_bar;
+    let barra = ctx.layout.fila_que_cobre_o_topo();
     let topo = if barra.h > 0.0 {
         slot.y.max(barra.y + barra.h)
     } else {

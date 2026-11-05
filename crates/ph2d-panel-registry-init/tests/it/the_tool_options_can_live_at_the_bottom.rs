@@ -361,3 +361,38 @@ fn the_painter_flyout_climbs_when_the_row_is_at_the_bottom() {
         }
     }
 }
+
+/// ⭐ Com a fila embaixo os painéis continuam no alto e a pílula não a cobre. Visto em janela real (F8):
+/// «a lista começa abaixo da barra» atirava a Hierarchy e o Inspector para fora da janela, e a pílula
+/// ficava em cima da fila. *Mutação: `tool_bar` no lugar de `fila_que_cobre_o_topo` em `cards_lista`, ou
+/// sem o `bottom_hud` de `move_tool_bar_to_bottom` ⇒ vermelho.*
+#[test]
+fn with_the_row_at_the_bottom_the_panels_stay_up_and_the_pill_clears_it() {
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.panel_visibility.insert("inspector", true);
+    pinta(&mut hero, &mut ts);
+    let em_cima = hero.store.panel_rect(ids::INSP_PANEL).expect("Inspector");
+    hero.store.set_tool_row_bottom(true);
+    for _ in 0..3 {
+        pinta(&mut hero, &mut ts);
+    }
+    let l = hero.last_layout.expect("layout");
+    assert!(l.tool_bar.y > l.draw_area.y, "a fila desceu");
+    let lista = hero.store.panel_rect(ids::INSP_PANEL).expect("Inspector");
+    assert!(
+        (lista.y - em_cima.y).abs() <= l.tool_bar.h + 1.0 && lista.y < l.tool_bar.y,
+        "o Inspector saiu do alto: {} (antes {}), a fila em {}",
+        lista.y,
+        em_cima.y,
+        l.tool_bar.y
+    );
+    assert!(
+        l.bottom_hud.y + l.bottom_hud.h <= l.tool_bar.y,
+        "a pílula cobre a fila: {:?} × {:?}",
+        l.bottom_hud,
+        l.tool_bar
+    );
+    hero.store.set_tool_row_bottom(false);
+}

@@ -23,7 +23,7 @@ mod control;
 mod row;
 use actions::{actions, actions_below};
 pub(crate) use control::{
-    body_ctx, close_list_on_pick, paint_bar_popovers, populate as populate_control,
+    abriu_algo, body_ctx, close_list_on_pick, paint_bar_popovers, populate as populate_control,
     stroke_popover_open, toggle_list,
 };
 use ph2d_a11y::NodeId;

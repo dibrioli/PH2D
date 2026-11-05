@@ -409,7 +409,7 @@ pub(super) fn pinta_os_soltos(
 ) {
     let canvas = abaixo_da_barra(
         rola::acima_do_hud(canvas, ctx.layout.bottom_hud),
-        ctx.layout.tool_bar,
+        ctx.layout.fila_que_cobre_o_topo(),
     );
     super::limita_janelinhas(canvas);
     // T61: a pintura troca estados no store — o índice de cliques sai e volta (a mesma ordem).

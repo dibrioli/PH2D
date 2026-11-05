@@ -107,3 +107,23 @@ fn a_door_list_paints_after_the_hud() {
     );
     assert!(l > hud, "a lista ({l}) ficou sob o HUD ({hud})");
 }
+
+/// ⭐ O clique fora da lista de «+ Track» fecha-a e continua a valer no que acertou (visto em janela real,
+/// F8: ela só fechava no próprio chip). *Mutação: tirar `dismiss_own_list` do Down ⇒ vermelho.*
+#[test]
+fn a_click_outside_closes_the_add_track_list() {
+    let mut h = hero_com("timeline");
+    clica(&mut h, tl::TIMELINE_ADD_TRACK);
+    pinta(&mut h, 2);
+    let (primeira, _) = tl::ADDPROP_BUTTONS[0];
+    assert!(h.hit_index.rect_for(primeira).is_some(), "abriu");
+    let down = |h: &mut HeroScreen, kind, xy| super::o_cartao_solto_no_canvas::mao(h, kind, xy);
+    let fora = (900.0, 20.0);
+    down(&mut h, ph2d_host::PointerKind::Down, fora);
+    down(&mut h, ph2d_host::PointerKind::Up, fora);
+    pinta(&mut h, 2);
+    assert!(h.hit_index.rect_for(primeira).is_none(), "o clique de fora tem de a fechar");
+    clica(&mut h, tl::TIMELINE_ADD_TRACK);
+    pinta(&mut h, 2);
+    assert!(h.hit_index.rect_for(primeira).is_some(), "volta a abrir à primeira");
+}

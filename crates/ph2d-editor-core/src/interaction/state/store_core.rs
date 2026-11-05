@@ -102,6 +102,8 @@ impl WidgetStore {
             scrollbar_drag: None,
             body_scroll_drag: None,
             dropdown_popover: None,
+            own_list: None,
+            own_list_dismissed: None,
             card_dropdown_open: false,
             radius_scale: 1.0,
             rail_button_size: crate::widget::RailButtonSize::default(),

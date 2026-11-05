@@ -263,6 +263,13 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
     let preview_dx = crate::key_drag::preview_dx(state);
 
     let header = Rect::new(g.region.x, g.region.y, g.label_w, ruler::RULER_H);
+    if ctx
+        .host
+        .store_mut()
+        .take_own_list_dismissed(ids::TIMELINE_ADD_TRACK)
+    {
+        state.add_track_open = false;
+    }
     paint_add_header(
         ctx,
         theme,

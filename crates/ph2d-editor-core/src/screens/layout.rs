@@ -646,6 +646,22 @@ impl HeroLayout {
         }
         self.draw_area = Rect::new(area.x, bar.y, area.w, area.h);
         self.tool_bar = Rect::new(bar.x, bar.y + area.h, bar.w, bar.h);
+        // A pílula do rodapé flutua sobre o DESENHO: no fundo da janela ela cobria a fila.
+        self.bottom_hud.y = self
+            .bottom_hud
+            .y
+            .min(self.tool_bar.y - HUD_BOTTOM_PAD - self.bottom_hud.h);
+    }
+
+    /// A fila ② quando ela atravessa a janela POR CIMA dos painéis; em baixo, altura zero: quem começa
+    /// «abaixo da barra» não tem nada de que se afastar (as listas saíam da janela).
+    #[must_use]
+    pub fn fila_que_cobre_o_topo(&self) -> Rect {
+        if self.tool_bar.y <= self.draw_area.y {
+            self.tool_bar
+        } else {
+            Rect::new(self.tool_bar.x, self.tool_bar.y, self.tool_bar.w, 0.0)
+        }
     }
 
     /// **A região em que um popover flutuante pode nascer** — a BANDA DE CHROME, e nunca a janela

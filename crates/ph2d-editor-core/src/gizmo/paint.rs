@@ -61,6 +61,20 @@ pub(crate) fn keyed_handle_id(target: GizmoTarget, canonical_id: NodeId) -> Node
 /// `gizmo_kind_for_id` for handles the legacy dispatcher knows about;
 /// callers pass an explicit kind for pivot / interior hits whose
 /// canonical ids aren't in that table.
+/// ⭐ Com um eixo a zero as duas pontas da caixa encostam, e a alça do meio de um lado cairia em cima dos
+/// cantos: registada depois, ela ganhava-lhes o clique, e nenhum gesto abria o eixo (o T/B só mexe em
+/// Y). Devolve `[largura colada, altura colada]`, em px de ecrã.
+fn alcas_de_lado_coladas(tl: [f32; 2], tr: [f32; 2], bl: [f32; 2]) -> [bool; 2] {
+    let dist = |a: [f32; 2], b: [f32; 2]| libm::hypotf(a[0] - b[0], a[1] - b[1]);
+    [dist(tl, tr) < HANDLE_SIZE_PX, dist(tl, bl) < HANDLE_SIZE_PX]
+}
+
+/// A alça do meio `id` cede aos cantos? T e B moram na largura; L e R, na altura.
+fn alca_de_lado_cede(id: NodeId, largura_colada: bool, altura_colada: bool) -> bool {
+    (largura_colada && (id == ids::GIZMO_HANDLE_T || id == ids::GIZMO_HANDLE_B))
+        || (altura_colada && (id == ids::GIZMO_HANDLE_L || id == ids::GIZMO_HANDLE_R))
+}
+
 pub(crate) fn register_keyed_handle(
     hit_index: &mut HitIndex,
     hit_map: &mut BTreeMap<NodeId, GizmoHit>,
@@ -343,7 +357,11 @@ fn paint_box(
         }
     }
     // Edge midpoints stay as squares (scale) — a diamond when the cursor is in their skew zone.
+    let [topo_cola, lado_cola] = alcas_de_lado_coladas(tl, tr, bl);
     for (id, skew_id, [cx, cy]) in edges {
+        if alca_de_lado_cede(id, topo_cola, lado_cola) {
+            continue;
+        }
         let r = Rect::new(cx - half, cy - half, HANDLE_SIZE_PX, HANDLE_SIZE_PX);
         hit_index.register(id, r);
         if over_skew == Some(skew_id) {
@@ -598,7 +616,11 @@ pub fn paint_sprite_gizmo_keyed(
             stroke_rounded_rect(scene, r, 2.0, 1.0, handle_stroke);
         }
     }
+    let [topo_cola, lado_cola] = alcas_de_lado_coladas(tl, tr, bl);
     for (id, cx, cy, kind) in edges.iter() {
+        if alca_de_lado_cede(*id, topo_cola, lado_cola) {
+            continue;
+        }
         let r = Rect::new(cx - half, cy - half, HANDLE_SIZE_PX, HANDLE_SIZE_PX);
         register_keyed_handle(hit_index, hit_map, target, *id, *kind, r);
         fill_rounded_rect(scene, r, 2.0, handle_fill);

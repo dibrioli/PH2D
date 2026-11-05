@@ -402,6 +402,10 @@ pub struct WidgetStore {
     /// keyed by the dropdown id, so the generic scrollbar drag works unchanged). Stale after close —
     /// consumers gate on the dropdown still being `open`.
     pub(in crate::interaction) dropdown_popover: Option<(NodeId, Rect)>,
+    /// A lista que um painel guarda no estado dele (`(chip, lista)`): ver `publish_own_list`.
+    pub(in crate::interaction) own_list: Option<(NodeId, Rect)>,
+    /// O chip cuja lista um clique de fora fechou, até o painel o ler.
+    pub(in crate::interaction) own_list_dismissed: Option<NodeId>,
     /// O `dropdown_popover` é a lista suspensa de um cartão, aberta (a caixa dela não tem `open`).
     pub(in crate::interaction) card_dropdown_open: bool,
     /// Editor-wide corner-radius scale. `1.0` = canonical, `0.0` =

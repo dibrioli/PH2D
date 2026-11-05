@@ -146,4 +146,11 @@ pub trait Panel: Sized + 'static {
     /// `WidgetStore` at construction time. Matches the existing
     /// `pub fn populate(&mut WidgetStore)` shape.
     fn populate(store: &mut WidgetStore);
+
+    /// ⭐ Este painel tem algo a pintar com a aba ATRÁS de outra? (A barra do módulo é a porta do que
+    /// ela abre, não a aba: o «Stroke ▾» do vetor abria nada com o Inspector à frente.) A passagem é
+    /// a dos soltos ([`crate::interaction::WidgetStore::loose_only_pass`]): a lista não se vê.
+    fn pinta_com_a_aba_atras(_store: &WidgetStore) -> bool {
+        false
+    }
 }

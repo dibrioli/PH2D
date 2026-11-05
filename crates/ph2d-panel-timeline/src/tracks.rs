@@ -113,18 +113,35 @@ pub(crate) fn paint_add_track(ctx: &mut PaintCtx, theme: Theme, header: Rect, ab
 /// e ela não foi construída aqui de propósito (a roda sobre esta região é consumida pela timeline
 /// ANTES de qualquer popover, então dar-lhe scroll é mexer na ordem do despachante — wave própria,
 /// com o seu próprio smoke).
+/// Por baixo do chip; sem lugar, por cima, em vez de o apanhar (a lista empurrada para dentro da janela
+/// tapava o «+ Track», e um 2.º clique nele carregava em «Max Length»).
+fn lista_y(chip: Rect, h: f32, janela: Rect) -> f32 {
+    let baixo = chip.y + chip.h;
+    if baixo + h > janela.y + janela.h && chip.y - h >= janela.y {
+        chip.y - h
+    } else {
+        baixo
+    }
+}
+
 pub(crate) fn paint_add_track_popover(ctx: &mut PaintCtx, theme: Theme, anchor: Rect, open: bool) {
     if !open {
+        ctx.host
+            .store_mut()
+            .publish_own_list(ids::TIMELINE_ADD_TRACK, None);
         return;
     }
     let n = ids::ADDPROP_BUTTONS.len() as f32;
     let list = clamp_menu_to_viewport(
         anchor.x,
-        anchor.y + anchor.h,
+        lista_y(anchor, ROW_H_PX * n, ctx.viewport),
         anchor.w,
         ROW_H_PX * n,
         ctx.viewport,
     );
+    ctx.host
+        .store_mut()
+        .publish_own_list(ids::TIMELINE_ADD_TRACK, Some(list));
     let viewport = ctx.viewport;
     let (host, text_system) = (&mut *ctx.host, &mut *ctx.text_system);
     // A lista desta tabela é pintada à mão: vai à camada das listas pela mesma porta das outras.

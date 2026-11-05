@@ -347,6 +347,36 @@ impl WidgetStore {
         }
     }
 
+    /// ⭐ A lista aberta de um painel que a guarda no estado dele (o «+ Track»), republicada a cada quadro:
+    /// o clique de fora fecha-a pela mesma lei das outras ([`Self::take_own_list_dismissed`]).
+    pub fn publish_own_list(&mut self, chip: NodeId, list: Option<Rect>) {
+        if let Some(r) = list {
+            self.own_list = Some((chip, r));
+        } else if self.own_list.is_some_and(|(c, _)| c == chip) {
+            self.own_list = None;
+        }
+    }
+
+    /// Um Down caiu em (`x`, `y`): fora da lista e do chip, ela fecha (`hit` = o que o Down acertou).
+    pub(crate) fn dismiss_own_list(&mut self, hit: Option<NodeId>, x: f32, y: f32) {
+        if let Some((chip, r)) = self.own_list
+            && hit != Some(chip)
+            && !r.contains(x, y)
+        {
+            self.own_list = None;
+            self.own_list_dismissed = Some(chip);
+        }
+    }
+
+    /// O painel lê (e consome) se a lista de `chip` foi fechada por um clique de fora.
+    pub fn take_own_list_dismissed(&mut self, chip: NodeId) -> bool {
+        let fechou = self.own_list_dismissed == Some(chip);
+        if fechou {
+            self.own_list_dismissed = None;
+        }
+        fechou
+    }
+
     /// The open dropdown popover `(id, rect)`, if any. Stale after close — callers gate on `open`.
     pub fn dropdown_popover(&self) -> Option<(NodeId, Rect)> {
         self.dropdown_popover

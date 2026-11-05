@@ -6,10 +6,15 @@
 
 use ph2d_pixel_core::{FrameId, Sprite, compose_rgba};
 
+pub mod abrir;
 pub mod ase;
 pub mod brush_file;
+pub mod gif_cores;
 pub mod msk;
 pub mod palette_file;
+pub mod render;
+pub mod saida;
+pub mod sheet;
 
 /// O RGBA (alfa reto) do frame `frame`, `width * height * 4` bytes.
 #[must_use]

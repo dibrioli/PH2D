@@ -408,3 +408,38 @@ fn encode_single_frame(buf: &ImageBuffer<SrgbRgba>) -> Result<Vec<u8>, Error> {
 
 #[cfg(test)]
 mod tests;
+
+/// **APNG animado**, para o Pixel Art: RGBA8 em quadros inteiros, cada um substitui o anterior
+/// (`blend = source`). `plays` 0 = para sempre. Um quadro só sai PNG simples.
+///
+/// # Errors
+/// [`Error`] do codificador.
+pub fn encode_animated(
+    width: u32,
+    height: u32,
+    frames: &[(Vec<u8>, u32)],
+    plays: u32,
+) -> Result<Vec<u8>, Error> {
+    let err = |e: png::EncodingError| Error::Decode(e.to_string());
+    let mut out = Vec::new();
+    {
+        let mut enc = png::Encoder::new(&mut out, width, height);
+        enc.set_color(png::ColorType::Rgba);
+        enc.set_depth(png::BitDepth::Eight);
+        if frames.len() > 1 {
+            enc.set_animated(frames.len() as u32, plays).map_err(err)?;
+            enc.set_blend_op(png::BlendOp::Source).map_err(err)?;
+            enc.set_dispose_op(png::DisposeOp::None).map_err(err)?;
+        }
+        let mut w = enc.write_header().map_err(err)?;
+        for (px, ms) in frames {
+            if frames.len() > 1 {
+                let ms = (*ms).clamp(1, u32::from(u16::MAX)) as u16;
+                w.set_frame_delay(ms, 1000).map_err(err)?;
+            }
+            w.write_image_data(px).map_err(err)?;
+        }
+        w.finish().map_err(err)?;
+    }
+    Ok(out)
+}

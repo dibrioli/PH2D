@@ -150,3 +150,145 @@ mod tests {
         );
     }
 }
+
+/// Um quadro do JSON de exportação do Pixel Art.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct JsonFrame {
+    pub filename: String,
+    pub frame: [u32; 4],
+    pub trimmed: bool,
+    pub source: [u32; 4],
+    pub source_size: [u32; 2],
+    pub duration_ms: u32,
+}
+
+/// Uma tag do JSON. `repeat` 0 = para sempre, e nesse caso o campo SOME (a convenção dos importadores).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct JsonTag {
+    pub name: String,
+    pub from: u32,
+    pub to: u32,
+    pub direction: &'static str,
+    pub repeat: u16,
+    pub color: [u8; 4],
+}
+
+/// Uma camada do JSON. `blend`/`opacity` `None` num grupo.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct JsonLayer {
+    pub name: String,
+    pub group: Option<String>,
+    pub opacity: Option<u8>,
+    pub blend: Option<&'static str>,
+}
+
+/// O par `.json` inteiro de uma folha exportada, na forma do Aseprite: chaves pela ordem dele, quadros
+/// pela ordem da linha do tempo. `array` = `json-array`, senão `json-hash`.
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct SheetJson {
+    pub frames: Vec<JsonFrame>,
+    pub array: bool,
+    pub image: String,
+    /// `RGBA8888` ou `I8`.
+    pub format: &'static str,
+    pub size: [u32; 2],
+    /// `None` = a lista não foi pedida, e a chave não sai (como `--list-tags`).
+    pub tags: Option<Vec<JsonTag>>,
+    pub layers: Option<Vec<JsonLayer>>,
+    pub slices: bool,
+}
+
+fn cadeia(t: &str) -> String {
+    serde_json::Value::from(t).to_string()
+}
+
+fn caixa(r: [u32; 4]) -> String {
+    format!(
+        "{{ \"x\": {}, \"y\": {}, \"w\": {}, \"h\": {} }}",
+        r[0], r[1], r[2], r[3]
+    )
+}
+
+/// Escreve o texto do JSON. À mão e com `serde_json` só nos textos: a ordem das chaves faz parte da
+/// forma que os importadores conhecem, e o `Map` dele ordena por nome.
+#[must_use]
+pub fn sheet_json(j: &SheetJson) -> String {
+    use std::fmt::Write as _;
+    let mut o = String::from(if j.array {
+        "{ \"frames\": [\n"
+    } else {
+        "{ \"frames\": {\n"
+    });
+    for (i, f) in j.frames.iter().enumerate() {
+        let sep = if i + 1 == j.frames.len() { "" } else { "," };
+        if j.array {
+            let _ = write!(o, "   {{\n    \"filename\": {},\n", cadeia(&f.filename));
+        } else {
+            let _ = write!(o, "   {}: {{\n", cadeia(&f.filename));
+        }
+        let _ = write!(
+            o,
+            "    \"frame\": {},\n    \"rotated\": false,\n    \"trimmed\": {},\n    \"spriteSourceSize\": {},\n    \"sourceSize\": {{ \"w\": {}, \"h\": {} }},\n    \"duration\": {}\n   }}{sep}\n",
+            caixa(f.frame),
+            f.trimmed,
+            caixa(f.source),
+            f.source_size[0],
+            f.source_size[1],
+            f.duration_ms,
+        );
+    }
+    o.push_str(if j.array { " ],\n" } else { " },\n" });
+    let _ = write!(
+        o,
+        " \"meta\": {{\n  \"app\": {},\n  \"version\": {},\n  \"image\": {},\n  \"format\": {},\n  \"size\": {{ \"w\": {}, \"h\": {} }},\n  \"scale\": \"1\"",
+        cadeia(APP),
+        cadeia(env!("CARGO_PKG_VERSION")),
+        cadeia(&j.image),
+        cadeia(j.format),
+        j.size[0],
+        j.size[1],
+    );
+    if let Some(tags) = &j.tags {
+        o.push_str(",\n  \"frameTags\": [\n");
+        for (i, t) in tags.iter().enumerate() {
+            let _ = write!(
+                o,
+                "   {{ \"name\": {}, \"from\": {}, \"to\": {}, \"direction\": {}",
+                cadeia(&t.name),
+                t.from,
+                t.to,
+                cadeia(t.direction)
+            );
+            if t.repeat != 0 {
+                let _ = write!(o, ", \"repeat\": \"{}\"", t.repeat);
+            }
+            let [r, g, b, a] = t.color;
+            let _ = write!(o, ", \"color\": \"#{r:02x}{g:02x}{b:02x}{a:02x}\" }}");
+            o.push_str(if i + 1 == tags.len() { "\n" } else { ",\n" });
+        }
+        o.push_str("  ]");
+    }
+    if let Some(layers) = &j.layers {
+        o.push_str(",\n  \"layers\": [\n");
+        for (i, l) in layers.iter().enumerate() {
+            let _ = write!(o, "   {{ \"name\": {}", cadeia(&l.name));
+            if let Some(g) = &l.group {
+                let _ = write!(o, ", \"group\": {}", cadeia(g));
+            }
+            if let Some(v) = l.opacity {
+                let _ = write!(o, ", \"opacity\": {v}");
+            }
+            if let Some(b) = l.blend {
+                let _ = write!(o, ", \"blendMode\": {}", cadeia(b));
+            }
+            o.push_str(" }");
+            o.push_str(if i + 1 == layers.len() { "\n" } else { ",\n" });
+        }
+        o.push_str("  ]");
+    }
+    if j.slices {
+        o.push_str(",\n  \"slices\": [ ]");
+    }
+    o.push_str("\n }\n}\n");
+    o
+}

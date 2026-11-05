@@ -293,3 +293,106 @@ mod tests {
         assert!(matches!(err, Error::HdrUnsupported));
     }
 }
+
+fn chunk(out: &mut Vec<u8>, id: &[u8; 4], body: &[u8]) {
+    out.extend_from_slice(id);
+    out.extend_from_slice(&(body.len() as u32).to_le_bytes());
+    out.extend_from_slice(body);
+    if body.len() % 2 == 1 {
+        out.push(0);
+    }
+}
+
+fn u24(out: &mut Vec<u8>, v: u32) {
+    out.extend_from_slice(&v.to_le_bytes()[..3]);
+}
+
+/// Um quadro em VP8L (o sem perda), só o conteúdo do chunk.
+fn vp8l(rgba: &[u8], w: u32, h: u32) -> Result<Vec<u8>, Error> {
+    let mut riff = Vec::new();
+    image_webp::WebPEncoder::new(&mut riff)
+        .encode(rgba, w, h, image_webp::ColorType::Rgba8)
+        .map_err(|e| Error::Decode(e.to_string()))?;
+    // RIFF(4) tamanho(4) WEBP(4) VP8L(4) tamanho(4) dados: o codificador sem metadados dá só isto.
+    let n = riff
+        .get(16..20)
+        .and_then(|b| <[u8; 4]>::try_from(b).ok())
+        .map(u32::from_le_bytes)
+        .ok_or(Error::Truncated)? as usize;
+    riff.get(20..20 + n).map(<[u8]>::to_vec).ok_or(Error::Truncated)
+}
+
+/// **WebP animado sem perda**, pela spec pública do contentor (`VP8X` + `ANIM` + `ANMF`): RGBA8 em quadros
+/// inteiros, cada um substitui o anterior. `loops` 0 = para sempre. Um quadro só sai WebP simples.
+///
+/// # Errors
+/// [`Error`] do codificador.
+pub fn encode_animated(
+    width: u32,
+    height: u32,
+    frames: &[(Vec<u8>, u32)],
+    loops: u16,
+) -> Result<Vec<u8>, Error> {
+    const VP8X_ALPHA: u8 = 0x10;
+    const VP8X_ANIM: u8 = 0x02;
+    const ANMF_NO_BLEND: u8 = 0x02;
+    const MAX_U24: u32 = 0xFF_FFFF;
+    if frames.len() == 1 {
+        let mut riff = Vec::new();
+        image_webp::WebPEncoder::new(&mut riff)
+            .encode(&frames[0].0, width, height, image_webp::ColorType::Rgba8)
+            .map_err(|e| Error::Decode(e.to_string()))?;
+        return Ok(riff);
+    }
+    let mut body = Vec::from(*b"WEBP");
+    let mut vp8x = vec![VP8X_ALPHA | VP8X_ANIM, 0, 0, 0];
+    u24(&mut vp8x, width - 1);
+    u24(&mut vp8x, height - 1);
+    chunk(&mut body, b"VP8X", &vp8x);
+    let mut anim = vec![0_u8; 4];
+    anim.extend_from_slice(&loops.to_le_bytes());
+    chunk(&mut body, b"ANIM", &anim);
+    for (px, ms) in frames {
+        let mut f = Vec::new();
+        u24(&mut f, 0);
+        u24(&mut f, 0);
+        u24(&mut f, width - 1);
+        u24(&mut f, height - 1);
+        u24(&mut f, (*ms).clamp(1, MAX_U24));
+        f.push(ANMF_NO_BLEND);
+        chunk(&mut f, b"VP8L", &vp8l(px, width, height)?);
+        chunk(&mut body, b"ANMF", &f);
+    }
+    let mut out = Vec::from(*b"RIFF");
+    out.extend_from_slice(&(body.len() as u32).to_le_bytes());
+    out.extend_from_slice(&body);
+    Ok(out)
+}
+
+/// Os quadros de um WebP, animado ou não: `(largura, altura, [(RGBA, ms)])`.
+///
+/// # Errors
+/// [`Error`] do leitor.
+pub fn decode_frames(src: &[u8]) -> Result<(u32, u32, Vec<(Vec<u8>, u32)>), Error> {
+    use image::AnimationDecoder as _;
+    let err = |e: image::ImageError| Error::Decode(e.to_string());
+    let dec = image::codecs::webp::WebPDecoder::new(std::io::Cursor::new(src)).map_err(err)?;
+    if !dec.has_animation() {
+        let img = image::load_from_memory_with_format(src, image::ImageFormat::WebP)
+            .map_err(err)?
+            .into_rgba8();
+        let (w, h) = img.dimensions();
+        return Ok((w, h, vec![(img.into_raw(), 100)]));
+    }
+    let mut out = Vec::new();
+    let (mut w, mut h) = (0, 0);
+    for f in dec.into_frames() {
+        let f = f.map_err(err)?;
+        let (num, den) = f.delay().numer_denom_ms();
+        let ms = num / den.max(1);
+        let b = f.into_buffer();
+        (w, h) = b.dimensions();
+        out.push((b.into_raw(), ms));
+    }
+    Ok((w, h, out))
+}

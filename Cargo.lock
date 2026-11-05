@@ -7654,6 +7654,7 @@ dependencies = [
 name = "ph2d-imageio-gif"
 version = "0.0.0"
 dependencies = [
+ "gif",
  "image",
  "ph2d-color",
  "ph2d-imageio",
@@ -7717,6 +7718,7 @@ dependencies = [
  "image",
  "ph2d-color",
  "ph2d-imageio",
+ "png",
 ]
 
 [[package]]
@@ -7806,6 +7808,7 @@ name = "ph2d-imageio-webp"
 version = "0.0.0"
 dependencies = [
  "image",
+ "image-webp",
  "ph2d-color",
  "ph2d-imageio",
 ]
@@ -10336,8 +10339,16 @@ name = "ph2d-pixel-io"
 version = "0.0.0"
 dependencies = [
  "ph2d-aseprite",
+ "ph2d-asset",
+ "ph2d-imageio",
+ "ph2d-imageio-apng",
+ "ph2d-imageio-gif",
+ "ph2d-imageio-png",
+ "ph2d-imageio-webp",
  "ph2d-pixel-core",
+ "ph2d-sprite-sheet",
  "serde_json",
+ "sha2 0.11.1",
 ]
 
 [[package]]

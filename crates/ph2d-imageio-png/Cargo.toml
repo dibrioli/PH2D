@@ -24,6 +24,8 @@ ph2d-color   = { path = "../ph2d-color" }
 # `default-features = false` + `features = ["png"]` keeps wasm-friendly
 # (no rayon, no jpeg-decoder pulls).
 image = { version = "0.25", default-features = false, features = ["png"] }
+# A paleta e os índices do Pixel Art: o `image` converte tudo para RGBA.
+png = { version = "0.18", default-features = false }
 
 [dev-dependencies]
 # W3 pre-gate (HR-9 cross-platform determinism).

@@ -104,6 +104,26 @@ def completo():
     return ase([(100, f0), (150, f1), (70, f2), (333, f3), (20, f4)])
 
 
+def folha():
+    """O `completo` so com Normal: as folhas comparam-se por hash, e a mistura sobre destino transparente
+    do LibreSprite e a recusa medida da P9."""
+    head = [
+        layer('fundo'),
+        layer('grp', kind=1, opacity=200),
+        layer('mult', opacity=128, level=1),
+        layer('tela', level=1),
+        layer('oculta', flags=2),
+        tags([('idle', 0, 1, 0, 0, (255, 0, 0)), ('walk', 2, 4, 2, 2, (0, 255, 0)), ('back', 1, 3, 1, 3, (0, 0, 255))]),
+    ]
+    f0 = head + [cel(0, 2, 3, 10, 8, ramp(10, 8, 1)), cel(2, 5, 4, 6, 6, ramp(6, 6, 2)), cel(3, 8, 5, 7, 7, ramp(7, 7, 3), opacity=128),
+                 cel(4, 0, 0, 3, 3, box(3, 3, (9, 9, 9, 255)))]
+    f1 = [cel(0, 3, 3, 12, 9, ramp(12, 9, 4))]
+    f2 = [linked(0, 1, 3, 3), cel(2, 14, 8, 8, 6, ramp(8, 6, 5))]
+    f3 = [linked(0, 1, 3, 3), linked(2, 2, 14, 8)]
+    f4 = []
+    return ase([(100, f0), (150, f1), (70, f2), (333, f3), (20, f4)])
+
+
 def plano():
     """O mesmo sem grupo: o LibreSprite ACHATA grupos ao ler (medido), logo o composto dele so se compara aqui."""
     head = [
@@ -165,6 +185,7 @@ def modos():
 
 ENTRADAS = {
     'modos': modos,
+    'folha': folha,
     'completo': completo, 'plano': plano, 'indexado': indexado, 'um_quadro_indexado': um_quadro_indexado, 'cinza': cinza,
     'muitas_cores': muitas_cores, 'alfa_parcial': alfa_parcial, 'duracoes': duracoes,
 }
@@ -356,7 +377,8 @@ def main():
         resaved[n] = {'exit': code, 'avisos': avisos, 'chunks': chunks_ase(p) if os.path.exists(p) else None}
         frames[n] = frames_of(work, f'{n}.ase', n)
 
-    folhas = [sheet_case(work, 'completo.ase', *c) for c in FOLHAS]  # M3, M4
+    folhas = [sheet_case(work, 'folha.ase', *c) for c in FOLHAS]  # M3, M4
+    folhas += [sheet_case(work, 'um_quadro_indexado.ase', 'um_quadro', [], [])]
     folhas += [sheet_case(work, 'modos.ase', 'modos', ['--list-layers'], [])]
     folhas += [sheet_case(work, 'indexado.ase', 'ix_' + c[0], *c[1:]) for c in FOLHAS if c[0] in ('rows_w50', 'trim')]
 
@@ -373,7 +395,7 @@ def main():
 
     escalas = {}
     for nome, args in (('scale2', ['--scale', '2']), ('scale05', ['--scale', '0.5']), ('shrink', ['--shrink-to', '10,10'])):  # M8
-        code, avisos = corre(work, 'completo.ase', *args, '--sheet', f'{nome}.png', '--data', f'{nome}.json')
+        code, avisos = corre(work, 'folha.ase', *args, '--sheet', f'{nome}.png', '--data', f'{nome}.json')
         escalas[nome] = {'exit': code, 'avisos': avisos, 'sheet': rgba_hash(os.path.join(work, f'{nome}.png')),
                          'json': open(os.path.join(work, f'{nome}.json')).read()}
 

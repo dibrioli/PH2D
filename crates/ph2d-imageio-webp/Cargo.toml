@@ -16,6 +16,7 @@ authors.workspace = true
 # this specific format).
 
 [dependencies]
+image-webp = "0.2"
 ph2d-imageio = { path = "../ph2d-imageio" }
 ph2d-color   = { path = "../ph2d-color" }
 image = { version = "0.25", default-features = false, features = ["webp"] }

@@ -479,3 +479,43 @@ mod tests {
         assert!(matches!(err, Error::HdrUnsupported));
     }
 }
+
+/// **GIF de paleta global**, para o Pixel Art: os quadros já vêm em índices. Cada um pinta o quadro todo e
+/// limpa ao sair (`dispose = background`), o único jeito de um transparente não acumular.
+///
+/// `repeat`: quantas passadas, 0 = para sempre (uma passada não leva o bloco de laço). A demora é em
+/// centésimos: arredonda, e nunca dá 0, que muitos leitores tratam como 100 ms (o LibreSprite trunca:
+/// 7 ms vira 0, medido na P9).
+///
+/// # Errors
+/// [`Error`] do codificador.
+pub fn encode_indexed(
+    width: u16,
+    height: u16,
+    palette: &[[u8; 3]],
+    transparent: Option<u8>,
+    frames: &[(Vec<u8>, u32)],
+    repeat: u16,
+) -> Result<Vec<u8>, Error> {
+    let flat: Vec<u8> = palette.iter().flatten().copied().collect();
+    let mut out = Vec::new();
+    {
+        let mut e = gif::Encoder::new(&mut out, width, height, &flat)
+            .map_err(|err| Error::Decode(err.to_string()))?;
+        let laco = match repeat {
+            0 => Some(gif::Repeat::Infinite),
+            1 => None,
+            n => Some(gif::Repeat::Finite(n - 1)),
+        };
+        if let Some(r) = laco {
+            e.set_repeat(r).map_err(|err| Error::Decode(err.to_string()))?;
+        }
+        for (px, ms) in frames {
+            let mut f = gif::Frame::from_indexed_pixels(width, height, px.as_slice(), transparent);
+            f.delay = ((ms + 5) / 10).clamp(1, u32::from(u16::MAX)) as u16;
+            f.dispose = gif::DisposalMethod::Background;
+            e.write_frame(&f).map_err(|err| Error::Decode(err.to_string()))?;
+        }
+    }
+    Ok(out)
+}

@@ -16,6 +16,16 @@ ph2d-pixel-core = { path = "../ph2d-pixel-core" }
 ph2d-aseprite = { path = "../ph2d-aseprite" }
 # O JSON da API do Lospec (Load Palette).
 serde_json = "1"
+ph2d-sprite-sheet = { path = "../ph2d-sprite-sheet" }
+ph2d-imageio = { path = "../ph2d-imageio" }
+ph2d-imageio-png = { path = "../ph2d-imageio-png" }
+ph2d-imageio-gif = { path = "../ph2d-imageio-gif" }
+ph2d-imageio-apng = { path = "../ph2d-imageio-apng" }
+ph2d-imageio-webp = { path = "../ph2d-imageio-webp" }
+
+[dev-dependencies]
+ph2d-asset = { path = "../ph2d-asset" }
+sha2 = "0.11"
 
 [lints]
 workspace = true

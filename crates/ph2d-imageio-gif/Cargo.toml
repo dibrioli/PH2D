@@ -15,6 +15,7 @@ authors.workspace = true
 # via image 0.25's gif feature (bundled image-gif backend).
 
 [dependencies]
+gif = "0.14"
 ph2d-imageio = { path = "../ph2d-imageio" }
 ph2d-color   = { path = "../ph2d-color" }
 image = { version = "0.25", default-features = false, features = ["gif"] }

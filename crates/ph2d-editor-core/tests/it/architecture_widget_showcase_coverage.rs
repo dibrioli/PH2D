@@ -28,6 +28,18 @@ use std::path::{Path, PathBuf};
 /// Each entry: (file slug under `widget/`, one-line reason).
 const WIDGET_OPT_OUT: &[(&str, &str)] = &[
     (
+        "camada_das_listas",
+        "not a widget: it is the per-frame SCENE that lifts open lists above every card, plus the door the list painters call (`abre`, `por_cima`). It has no look of its own and no control; the gallery shows what it carries, every `Dropdown` of a card, and it is proved by `panel::camada_das_listas` and `a_caixa_fica_por_cima`.",
+    ),
+    (
+        "card_censo",
+        "not a widget: it is the CENSUS of the compaction law. Painters report into it and it paints nothing and registers nothing; outside `grava` it costs one cell read. The gates `lei_da_compactacao` and `nenhum_texto_sai_do_botao` read it, and the gallery is one of the panels they measure.",
+    ),
+    (
+        "censo_cartao",
+        "not a widget: it is the CENSUS of the old layout pieces that a card body should no longer call. It paints nothing and has no state outside `grava`; only a gate reads it, so a gallery section would have nothing to show.",
+    ),
+    (
         "drag_ghost",
         "nao e' um widget: e' o FANTASMA de um cartao a ser arrastado (ordem do dono, 2026-09-30: *«permita ver o card sendo arrastado, menor e meio transparente»*) — ele so' existe enquanto o dedo segura uma pega, nao regista nada e nao tem estado. A galeria JA' o consome (as notas dela desenham-no ao arrastar a pega de uma nota), e a lei dele — escala a volta da PEGA, a pega sob o cursor — prova-se em `widget::drag_ghost::tests` e no gate de costura `ph2d-panel-inspector/tests/it/as_notas_tem_pega_e_menu.rs`, que medem a GEOMETRIA pintada.",
     ),

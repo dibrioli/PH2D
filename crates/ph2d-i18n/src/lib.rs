@@ -94,6 +94,7 @@ mod familias;
 mod flip;
 mod galeria;
 mod galeria_avancado;
+mod galeria_cromo;
 mod galeria_reais;
 mod galeria_rive;
 /// As strings do painel Grid Settings.
@@ -589,6 +590,7 @@ fn tabela(key: &str) -> &'static str {
             .or_else(|| cartoes::tr(k))
             .or_else(|| galeria::tr(k))
             .or_else(|| galeria_avancado::tr(k))
+            .or_else(|| galeria_cromo::tr(k))
             .or_else(|| galeria_reais::tr(k))
             .or_else(|| galeria_rive::tr(k))
             .or_else(|| timeline::tr(k))

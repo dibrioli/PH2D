@@ -192,10 +192,12 @@ pub use property_box::{
 // ⭐⭐ **A DECLARAÇÃO de uma secção** — ver `property_box::seccao`. Ela vive do lado do `widget`
 //    porque é a ENTRADA da repartição de uma linha, e pô-la no `property_row` faria o `widget`
 //    depender dele (um ciclo que o gate do DAG recusa).
+pub use cromo_barra::Barra;
 pub use curve_editor::{
     curve_a11y, curve_capacity, curve_drag, curve_from_screen, curve_grab_radius, curve_point_at,
     curve_press, curve_remove_at, curve_to_screen, paint_curve_editor,
 };
+pub use lista_flutuante::Superficie;
 /// ⭐⭐ O losango de animação na coluna do decorator (plano 34) — a shell publica, a linha lê.
 pub use property_box::arrasto;
 pub use property_box::key_mark;

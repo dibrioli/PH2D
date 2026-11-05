@@ -215,6 +215,8 @@ pub(super) const fn plain(id: NodeId, kind: Kind) -> Control {
 
 #[path = "controlos_avancado.rs"]
 pub(crate) mod avancado;
+#[path = "controlos_cromo.rs"]
+mod cromo;
 #[path = "controlos_forma.rs"]
 mod forma;
 #[path = "controlos_reais.rs"]
@@ -235,6 +237,7 @@ pub fn controls() -> impl Iterator<Item = &'static Control> {
         .chain(rive::linhas())
         .chain(avancado::AVANCADO)
         .chain(avancado::linhas())
+        .chain(cromo::CROMO)
 }
 
 /// A linha de `id`, se é um controlo da galeria.

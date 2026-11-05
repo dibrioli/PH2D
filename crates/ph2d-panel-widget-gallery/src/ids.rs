@@ -312,11 +312,14 @@ pub type Campo = (NodeId, f64, f64, f64);
 
 #[path = "ids_avancado.rs"]
 mod avancado;
+#[path = "ids_cromo.rs"]
+mod cromo;
 #[path = "ids_reais.rs"]
 mod reais;
 #[path = "ids_rive.rs"]
 mod rive;
 pub use avancado::*;
+pub use cromo::*;
 pub use reais::*;
 pub use rive::*;
 

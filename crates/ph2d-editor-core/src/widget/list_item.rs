@@ -175,7 +175,14 @@ pub fn paint_list_item(
         value_w = 0.0;
     }
     let label_w = label_room(value_w);
-    let label_y = rect.y + (rect.h - font_size) * 0.5;
+    // A porta do texto no meio; nome e atalho têm corpos diferentes, cada um centra-se pelo seu.
+    let superficie = super::lista_flutuante::Superficie::de(theme);
+    let label_y = rect.y + superficie.folga(rect.h, font_size);
+    let value_y = if superficie.tinta().is_some() {
+        rect.y + superficie.folga(rect.h, value_font)
+    } else {
+        label_y
+    };
     let label_color = if item.state == ListItemState::Disabled {
         ColorToken::TextDisabled
     } else {
@@ -204,7 +211,7 @@ pub fn paint_list_item(
             scene,
             value,
             value_x,
-            label_y,
+            value_y,
             value_font,
             value_w,
             resolve(ColorToken::Text2, theme),

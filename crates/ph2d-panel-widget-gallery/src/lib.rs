@@ -21,6 +21,7 @@
 
 mod cards;
 mod cards_avancado;
+pub mod cards_cromo;
 mod cards_layout;
 mod cards_objeto;
 mod cards_pintura;

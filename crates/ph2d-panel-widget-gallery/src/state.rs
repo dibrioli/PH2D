@@ -199,6 +199,9 @@ pub enum Pick {
     Solo,
     FillType,
     GradStop,
+    // As peças do cromo.
+    BarTool,
+    ListRow,
     // Os cartões Advanced e Render.
     Meta0,
     Meta1,

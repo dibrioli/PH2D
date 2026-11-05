@@ -213,6 +213,17 @@ fn a_legenda_em_cartoes_e_em_caixa_normal() {
     assert_eq!(f("Remove Background"), "Remove Background");
     assert_eq!(f("FK"), "FK", "a sigla que o artista conhece fica");
     assert_eq!(f("Corner round"), "Corner round");
+    // A sigla é só a chave: o texto visto é o nome inteiro.
+    for (sigla, nome) in [
+        ("LIQFY", "Liquify"),
+        ("XFORM", "Transform"),
+        ("INPNT", "Inpaint"),
+        ("SEL", "Select"),
+        ("ELLI", "Ellipse"),
+        ("POLY", "Polygon"),
+    ] {
+        assert_eq!(f(sigla), nome);
+    }
 }
 
 /// Em cartões o chip alarga até a legenda caber inteira no corpo do rótulo, nas três fontes; fora de

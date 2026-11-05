@@ -2,6 +2,7 @@
 //! fatias H3 e H4. Pelo gesto real, nos rects pintados, e o que chega ao barramento é o MESMO do painel de antes. O universo
 //! é derivado do próprio painel de antes: o que aparece quando estes cartões abrem. Nenhum motor, preset ou pincel muda.
 
+use super::censo_dos_controlos::em_paralelo;
 use super::h1_os_cartoes::{Mesa, esc, pincel, valor_enviado};
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::InteractiveState;
@@ -358,8 +359,8 @@ fn scrubbing_each_number_moves_only_it_and_escape_gives_it_back() {
 /// Cada caixa, botão e lista: o mesmo clique, a mesma acção.
 #[test]
 fn every_click_sends_the_same_action_as_the_old_panel() {
-    let mut vistos = 0;
-    // Só os estados que trazem controlos diferentes: cada clique são duas mesas.
+    let mut fila = Vec::new();
+    // Só os estados que trazem controlos diferentes: cada clique são duas mesas (978 ms; o clique, 0,1 ms).
     let medem = [
         "digital",
         "molhado",
@@ -388,14 +389,14 @@ fn every_click_sends_the_same_action_as_the_old_panel() {
                     )
             })
             .collect();
-        for id in cliques {
-            let velho = so(false, b, &[FORMA, TOM]).clica(id);
-            let novo = so(true, b, &[FORMA, TOM]).clica(id);
-            assert_eq!(velho, novo, "{nome}: {id:?}");
-            vistos += 1;
-        }
+        fila.extend(cliques.into_iter().map(|id| (nome, b, id)));
     }
-    assert!(vistos >= 40, "viu {vistos} cliques");
+    em_paralelo(&fila, |(nome, b, id)| {
+        let velho = so(false, *b, &[FORMA, TOM]).clica(*id);
+        let novo = so(true, *b, &[FORMA, TOM]).clica(*id);
+        assert_eq!(velho, novo, "{nome}: {id:?}");
+    });
+    assert!(fila.len() >= 40, "viu {} cliques", fila.len());
 }
 
 /// Cada lista abre debaixo da caixa, e a opção envia o mesmo.

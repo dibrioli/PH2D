@@ -3,7 +3,8 @@
 //! solto, e o pedido é de A e não se espalha, com a seleção em B, em B+C e em A+B.
 #![cfg(all(feature = "panel-inspector", feature = "panel-hierarchy"))]
 
-use super::cartoes_mao::{centro, clica, mao, pinta, solta};
+use super::cartoes_mao::{arrasta, centro, clica, mao, pinta, solta};
+use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::ids::{
@@ -18,6 +19,7 @@ use ph2d_editor_core::screens::hero::{
 use ph2d_host::PointerKind;
 use ph2d_panel_inspector as insp;
 use ph2d_panel_inspector::ids as pids;
+use std::collections::BTreeSet;
 
 const A: u64 = 31;
 const B: u64 = 32;
@@ -259,6 +261,109 @@ fn the_colour_picked_on_the_pinned_tint_swatch_goes_to_its_object_only() {
         assert_eq!(tinta, [A], "{sel:?}");
         assert_eq!(h.store.picker_subject(), Some(A), "fechou");
     }
+}
+
+/// Os controlos do solto que a mão apanha: o que responde ao clique no próprio centro.
+fn controlos_do_solto(h: &HeroScreen, sec: NodeId) -> Vec<NodeId> {
+    let s = h.store.panel_rect(loose_rect_of(sec)).expect("o solto");
+    let mut ids: Vec<NodeId> = h
+        .hit_index
+        .iter_registrations()
+        .filter(|(id, r)| {
+            let c = centro(*r);
+            s.contains(c.0, c.1) && h.hit_index.hit(c.0, c.1) == Some(*id)
+        })
+        .map(|(id, _)| id)
+        .collect();
+    ids.sort_by_key(|i| i.0);
+    ids.dedup();
+    ids
+}
+
+/// O gesto de `id`: scrub na pega, se é campo; clique, senão. Devolve os pedidos que ele deixou.
+fn gesto(h: &mut HeroScreen, sel: &[u64], id: NodeId) -> Vec<String> {
+    let r = h.hit_index.rect_for(id).expect("pintado");
+    let _: Vec<_> = h.bus.drain().collect();
+    if h.store.card_field(id).is_some() {
+        let y = r.y + r.h * 0.5;
+        arrasta(
+            h,
+            (r.x + m::ICON_CELL * 0.5, y),
+            (r.x + m::ICON_CELL * 0.5 + 40.0, y),
+        );
+    } else {
+        mao(h, PointerKind::Down, centro(r));
+        mao(h, PointerKind::Up, centro(r));
+    }
+    let antes: BTreeSet<NodeId> = h.hit_index.iter_registrations().map(|(i, _)| i).collect();
+    quadros(h, sel, 2);
+    let mut feitos: Vec<String> = h.bus.drain().map(|a| format!("{a:?}")).collect();
+    // Abriu uma lista: a última opção é a que difere da acesa em toda lista de duas ou mais.
+    let opcao = h
+        .hit_index
+        .iter_registrations()
+        .filter(|(i, r)| {
+            !antes.contains(i) && {
+                let c = centro(*r);
+                h.hit_index.hit(c.0, c.1) == Some(*i)
+            }
+        })
+        .last();
+    if let Some((_, r)) = opcao {
+        mao(h, PointerKind::Down, centro(r));
+        mao(h, PointerKind::Up, centro(r));
+        quadros(h, sel, 2);
+        feitos.extend(h.bus.drain().map(|a| format!("{a:?}")));
+    }
+    feitos
+}
+
+/// ⭐ A lei inteira (F11): cada controlo de um cartão de sprite preso. Nenhum pedido sai para a seleção,
+/// o seletor de cor aberto é o do preso, e `piso` é o censo medido dos que escrevem no gesto.
+/// *Mutações: `card_event_subject` sempre `None` · `open_picker_on` sem o sujeito.*
+fn todo_controlo_escreve_no_preso(sec: NodeId, piso: usize, amostras: usize) {
+    let sel: &[u64] = &[B, C];
+    let dele = format!("entity_bits: {A}");
+    let alheios = [format!("entity_bits: {B}"), format!("entity_bits: {C}")];
+    let ids = controlos_do_solto(&preso(sec, sel), sec);
+    let (mut escreveram, mut seletores) = (0, 0);
+    for id in &ids {
+        let mut h = preso(sec, sel);
+        let feitos = gesto(&mut h, sel, *id);
+        for a in &feitos {
+            assert!(
+                !alheios.iter().any(|x| a.contains(x.as_str())),
+                "{sec:?} {id:?} escreveu na seleção: {a}"
+            );
+        }
+        escreveram += usize::from(feitos.iter().any(|a| a.contains(dele.as_str())));
+        if h.store.picker_target().is_some() {
+            assert_eq!(h.store.picker_subject(), Some(A), "{sec:?} {id:?}");
+            seletores += 1;
+        }
+    }
+    assert!(escreveram >= piso, "{sec:?}: {escreveram} de {}", ids.len());
+    assert_eq!(seletores, amostras, "{sec:?}: seletores abertos");
+}
+
+#[test]
+fn todo_controlo_do_render_preso_escreve_no_preso() {
+    todo_controlo_escreve_no_preso(INSP_LIVE_RENDER_SECTION, 9, 0);
+}
+
+#[test]
+fn todo_controlo_do_color_preso_escreve_no_preso() {
+    todo_controlo_escreve_no_preso(INSP_LIVE_COLOR_SECTION, 3, 6);
+}
+
+#[test]
+fn todo_controlo_do_slice_preso_escreve_no_preso() {
+    todo_controlo_escreve_no_preso(INSP_LIVE_SLICE_SECTION, 21, 0);
+}
+
+#[test]
+fn todo_controlo_do_sampling_preso_escreve_no_preso() {
+    todo_controlo_escreve_no_preso(INSP_LIVE_SAMPLING_SECTION, 14, 0);
 }
 
 /// Os quatro cartões têm alfinete: a lei é ícone só com escrita certa, e a escrita é a provada acima.

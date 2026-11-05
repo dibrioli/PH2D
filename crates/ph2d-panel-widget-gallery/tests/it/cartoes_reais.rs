@@ -239,6 +239,17 @@ fn o_solo_e_exclusivo() {
         })
         .count();
     assert_eq!(vivos, 1, "o Solo não é exclusivo");
+    // Irmãos curtos dividem a linha, e cada um responde ao clique no próprio centro.
+    let rects: Vec<_> = g::SOLO
+        .iter()
+        .map(|id| gal.rect(*id).expect("pintado"))
+        .collect();
+    assert!(
+        rects
+            .windows(2)
+            .all(|p| p[0].y == p[1].y && p[0].x + p[0].w <= p[1].x),
+        "{rects:?}"
+    );
 }
 
 /// Rive: o campo do Cubic muda o que a pré-visualização pinta; a pega também. *Mutação: o quadro a

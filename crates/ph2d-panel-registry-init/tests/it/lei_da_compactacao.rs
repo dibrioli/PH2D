@@ -24,7 +24,9 @@ use super::a_marca_tem_a_altura_da_linha::{abre_as_gavetas, viewport};
 ///
 /// `painter_layers` saiu a 04/11 (H8): as 5 últimas linhas grudadas vinham de Mixing, Symmetry e Tiling, que corriam o
 /// corpo antigo só para saber se estavam à vista.
-const PENDENTES: &[(&str, usize, usize, usize)] = &[("widget_gallery", 4, 0, 0)];
+/// `widget_gallery` 4 -> 3 a 05/11 (F11): a 4.ª era o Solo (Idle, Walk, Jump). Sobram as três caixas de marcar que a
+/// 218 px cortavam o texto (F10); a lei 7 ganha da lei 1.
+const PENDENTES: &[(&str, usize, usize, usize)] = &[("widget_gallery", 3, 0, 0)];
 
 /// `(painel, fronteiras fora da lei do ritmo)`, medido em 04/11. Só desce: é o alvo de zero.
 const PENDENTES_RITMO: &[(&str, usize)] = &[

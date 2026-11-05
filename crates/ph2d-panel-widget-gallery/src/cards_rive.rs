@@ -327,11 +327,12 @@ pub(crate) fn solo(ch: Choices) -> CardDef<'static> {
                 tr("panel.widget_gallery.rive.solo.walk"),
                 tr("panel.widget_gallery.rive.solo.jump"),
             ];
-            let mut y = y;
-            for (i, nome) in nomes.into_iter().enumerate() {
-                let ativo = usize::from(ch.pick(Pick::Solo)) == i;
-                y = c.row(
-                    &[Cell::new(Widget::FieldFace {
+            let filhos: Vec<Cell<'_>> = nomes
+                .into_iter()
+                .enumerate()
+                .map(|(i, nome)| {
+                    let ativo = usize::from(ch.pick(Pick::Solo)) == i;
+                    Cell::new(Widget::FieldFace {
                         id: g::SOLO[i],
                         glyph: Glyph::Icon(if ativo {
                             IconId::Eye
@@ -339,9 +340,18 @@ pub(crate) fn solo(ch: Choices) -> CardDef<'static> {
                             IconId::EyeClosed
                         }),
                         text: nome,
-                    })],
-                    y,
-                );
+                    })
+                })
+                .collect();
+            // Irmãos curtos dividem a linha; onde o maior nome não coube, cada um na sua.
+            let maior = nomes.iter().fold(0.0_f32, |a, n| a.max(caixa_para(c, n)));
+            let n = filhos.len() as f32;
+            if c.w >= maior * n + m::FIELD_GAP * (n - 1.0) {
+                return c.row(&filhos, y);
+            }
+            let mut y = y;
+            for f in &filhos {
+                y = c.row(std::slice::from_ref(f), y);
             }
             y
         }),

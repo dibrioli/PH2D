@@ -2,6 +2,7 @@
 //! real, nos rects pintados, e o que chega ao barramento é o MESMO do painel de antes. O universo sai do próprio painel de antes:
 //! o que aparece entre os cabeçalhos destes cartões. Nenhum motor, preset ou pincel muda.
 
+use super::censo_dos_controlos::em_paralelo;
 use super::h1_os_cartoes::{Mesa, esc, pincel, valor_enviado};
 use super::h5_os_cartoes::{na_mesma_linha, sem_sobrepor};
 use ph2d_a11y::NodeId;
@@ -332,7 +333,7 @@ fn scrubbing_each_number_moves_only_it_and_escape_gives_it_back() {
 
 #[test]
 fn every_click_sends_the_same_action_as_the_old_panel() {
-    let mut vistos = 0;
+    let mut fila = Vec::new();
     let medem = [
         "digital",
         "grão",
@@ -358,14 +359,14 @@ fn every_click_sends_the_same_action_as_the_old_panel() {
                     )
             })
             .collect();
-        for id in cliques {
-            let velho = abre(false, b).clica(id);
-            let novo = abre(true, b).clica(id);
-            assert_eq!(velho, novo, "{nome}: {id:?}");
-            vistos += 1;
-        }
+        fila.extend(cliques.into_iter().map(|id| (nome, b, id)));
     }
-    assert!(vistos >= 25, "viu {vistos} cliques");
+    em_paralelo(&fila, |(nome, b, id)| {
+        let velho = abre(false, *b).clica(*id);
+        let novo = abre(true, *b).clica(*id);
+        assert_eq!(velho, novo, "{nome}: {id:?}");
+    });
+    assert!(fila.len() >= 25, "viu {} cliques", fila.len());
 }
 
 #[test]

@@ -352,9 +352,11 @@ fn sem_objecto_a_lista_diz_o_que_fazer() {
     assert_eq!(chaves, vec![ph2d_panel_inspector::CARD_EMPTY]);
 }
 
-/// Alfinete (plano 09): os cartões de sprite escrevem pela seleção e nascem sem ele; quem tinha, fica.
+/// Alfinete (plano 09, F4): Render e Color têm-no porque a escrita deles vai ao preso, gesto a gesto
+/// (`ph2d-panel-registry-init`, `o_alfinete_da_sprite::todo_controlo_do_*_preso_escreve_no_preso`).
+/// A Imagem continua sem ele: o corpo dela escreve pela seleção. Quem tinha, fica.
 #[test]
-fn os_cartoes_de_sprite_nascem_sem_alfinete() {
+fn so_tem_alfinete_o_cartao_de_sprite_que_escreve_no_preso() {
     limpa();
     set_cards_on(true);
     objeto();
@@ -370,7 +372,8 @@ fn os_cartoes_de_sprite_nascem_sem_alfinete() {
         store.is_card_pinnable(ph2d_panel_inspector::CARD_TRANSFORM),
     );
     limpa();
-    assert!(!render && !cor && !image, "{render} {cor} {image}");
+    assert!(render && cor, "render {render}, cor {cor}");
+    assert!(!image, "a Imagem escreve pela seleção: alfinete sem efeito");
     assert!(transform, "o Transform mantém o alfinete");
 }
 

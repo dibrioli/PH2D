@@ -272,6 +272,10 @@ fn a_divida_leva_a_caixa_da_imagem_descartada() {
 fn risca_da_margem(t: &mut PainterTool, abaixo: bool, tamanho: f32, oleo: bool, suave: f32) {
     t.preset_aplicar(&preset("Oil/Dabber/Dabber.ph2d-brush.png"))
         .expect("o preset");
+    risca_com_o_preset(t, abaixo, tamanho, oleo, suave);
+}
+
+fn risca_com_o_preset(t: &mut PainterTool, abaixo: bool, tamanho: f32, oleo: bool, suave: f32) {
     t.set_wet_oleo_real_ligado(oleo);
     t.set_brush_size_px(tamanho);
     t.set_brush_color_srgb8([200, 40, 40]);
@@ -387,6 +391,38 @@ fn a_imagem_velha_nao_esvazia_o_que_a_casa_ja_pintou() {
             &format!("a imagem velha (abaixo {abaixo}, óleo {oleo}, suave {suave})"),
         );
     }
+}
+
+/// Sem grão de papel há sombra sem grão: é este o caso em que só a sombra diz que a imagem velha esvazia.
+#[test]
+fn a_imagem_velha_nao_esvazia_a_sombra_sem_grao() {
+    let mut t = agua_sem_suave();
+    let velha = caixa_ate(5, false, usize::from(sess(&t).ratio));
+    let s = t.paint.wetpaint.session.as_mut().expect("sessao");
+    s.bring_home();
+    s.otica.divida = Some(velha);
+    tique(&mut t);
+    assert!(sess(&t).otica.pendente(), "premissa: o pedido saiu");
+    std::thread::sleep(Duration::from_millis(150));
+    t.preset_aplicar(&preset("Oil/Dabber/Dabber.ph2d-brush.png"))
+        .expect("o preset");
+    super::grao_no_filme::sem_grao::set(true);
+    risca_com_o_preset(&mut t, false, 16.0, true, 0.0);
+    congela(&mut t);
+    let a0 = sess(&t).otica.aplicadas;
+    assert!(!sess(&t).planos.sombra.is_empty(), "premissa: há sombra");
+    assert!(sess(&t).planos.grao.is_empty(), "premissa: não há grão");
+    tique(&mut t);
+    let s = sess(&t);
+    assert!(s.otica.uniao_local.is_none(), "premissa: a imagem chegou");
+    assert_eq!(s.otica.aplicadas, a0, "a imagem velha foi aplicada");
+    assert!(
+        !s.planos.sombra.is_empty(),
+        "a imagem velha apagou a sombra"
+    );
+    assenta(&mut t);
+    confere_com_casa(&mut t, "a imagem velha, sem papel");
+    super::grao_no_filme::sem_grao::set(false);
 }
 
 /// **A caixa dos degraus é maior que a do pigmento** (Bug #65 D1): a imagem pedida a `folga` células do traço não toca a

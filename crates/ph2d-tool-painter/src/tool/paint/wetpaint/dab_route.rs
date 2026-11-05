@@ -321,7 +321,6 @@ impl PainterTool {
             sem_grao,
         } = super::lote::regua_do_grao(
             brush,
-            &self.paint.brush,
             [
                 (grain_image.as_ref(), versao_de_agora),
                 (imagem_propria.as_ref(), self.paint.texture_image_version),

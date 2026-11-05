@@ -47,7 +47,10 @@ fn risca(t: &mut PainterTool, x0: f32, n: usize) {
 /// A tinta na tela e a Borracha na mão, `muda`da, a passar por cima: `(massa apagada, a ferramenta)`.
 fn apaga(muda: impl FnOnce(&mut PainterTool)) -> (f64, PainterTool) {
     let (antes, mut t) = traco(&de_fabrica_ou_candidato("Gouache Opaque"), false);
+    // Os limites abaixo foram medidos com a Hardness do Gouache; a Borracha agora tem a sua.
+    let gate = t.paint.wetpaint.knobs.get(Knob::PaperGate);
     t.set_paint_tool_mode("eraser");
+    t.paint.wetpaint.knobs.set(Knob::PaperGate, gate);
     t.set_brush_size_px(40.0);
     muda(&mut t);
     risca(&mut t, 100.0, 50);
@@ -161,9 +164,12 @@ fn o_preset_de_borracha_nao_apaga_a_receita_do_pincel() {
         let k = &t.paint.wetpaint.knobs;
         assert_eq!(k.get(Knob::PaperGate), 0.9, "a Hardness do preset");
         assert_eq!(k.erase, 0.3, "a força do preset");
-        // A Hardness é partilhada com o Pincel (à mão também): BUGS #65.
-        t.paint.wetpaint.knobs.set(Knob::PaperGate, gate_do_pincel);
         t.set_paint_tool_mode("brush");
+        assert_eq!(
+            t.paint.wetpaint.knobs.get(Knob::PaperGate),
+            gate_do_pincel,
+            "a Hardness da Borracha ficou no Pincel"
+        );
     });
     assert_eq!(t.paint.wetpaint.knobs.get(Knob::SmoothEdges), SUAVE);
     assert_eq!(difs(&base, &t), 0, "o Pincel voltou outro");

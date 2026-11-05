@@ -67,6 +67,9 @@ impl PainterTool {
                 // Da TELA, fora do preset (Q3 01/11, E10d2): sem elas a reprodução secava e bebia outra água.
                 "dry_speed": w.knobs.get(Knob::Evaporation),
                 "absorcao": w.absorcao,
+                // Cada ferramenta com a sua Hardness (dono 05/11); os slots da água levam a do corpo no preset dela.
+                "hardness_dos_modos": self.gate_do_slot(p.paint_mode.slot()),
+                "hardness_da_borracha": self.gate_do_slot(super::ERASER_SLOT),
             },
             "traco": {
                 "seed": p.seed,
@@ -78,6 +81,32 @@ impl PainterTool {
             },
         });
         (v.to_string(), texturas)
+    }
+
+    /// A Hardness dos modos e a da Borracha, com a ferramenta da gravação já na mão: uma macro de antes gravou uma só, a
+    /// do preset dela.
+    fn macro_hardness_aplica(&mut self, wet: &Value, engine: &Value) {
+        let gate = Knob::PaperGate as usize;
+        let chave = ph2d_wet_paint::tuning::KNOB_DEFS[gate].key;
+        let w = &mut self.paint.wetpaint;
+        let gravada = engine[chave].as_f64().unwrap_or(w.knobs.knobs[gate]);
+        for (campo, faixa) in [
+            ("hardness_dos_modos", 0..super::ERASER_SLOT),
+            (
+                "hardness_da_borracha",
+                super::ERASER_SLOT..super::WET_TOOL_SLOT0,
+            ),
+        ] {
+            w.knobs
+                .set(Knob::PaperGate, wet[campo].as_f64().unwrap_or(gravada));
+            let x = w.knobs.knobs[gate];
+            for slot in &mut w.knobs_por_slot[faixa] {
+                slot[gate] = x;
+            }
+        }
+        let na_mao = self.slot_atual();
+        let w = &mut self.paint.wetpaint;
+        w.knobs.knobs[gate] = w.knobs_por_slot[na_mao][gate];
     }
 
     /// Aplica as configurações de [`Self::macro_estado`] (num tool que já tem o documento).
@@ -197,6 +226,7 @@ impl PainterTool {
         if let Some(x) = tv["substrate_rough"].as_f64() {
             p.substrate_rough = x as f32;
         }
+        self.macro_hardness_aplica(wv, &v["preset"]["engine"]);
         Ok(())
     }
 }

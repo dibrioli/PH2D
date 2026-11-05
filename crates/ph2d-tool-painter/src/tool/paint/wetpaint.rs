@@ -474,6 +474,9 @@ mod grao_a_mao_tests;
 #[path = "wetpaint/grao_nos_slots_tests.rs"]
 mod grao_nos_slots_tests;
 #[cfg(test)]
+#[path = "wetpaint/hardness_por_ferramenta_tests.rs"]
+mod hardness_por_ferramenta_tests;
+#[cfg(test)]
 #[path = "wetpaint/manchas_liner_tests.rs"]
 mod manchas_liner_tests;
 #[cfg(test)]

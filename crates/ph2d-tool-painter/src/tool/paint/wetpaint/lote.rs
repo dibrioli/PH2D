@@ -341,10 +341,9 @@ pub(super) struct ReguaDoGrao {
 /// **Armar, trocar ou tirar um Grain não muda a quantidade de tinta** (Bug #61, dono 04/11: «consertar»). Aplicado sem
 /// Grain, a ponta fica e o grão desenha de média 1; aplicado com G, outro grão entra à média de G, e sem nenhum a ponta
 /// fica à média de G. Same as Paper é trocar.
-/// `flags` = `[grain_active, grao_e_o_papel, grao_e_cor]`; `brush` já traz o grão que pinta, `vivo` o próprio.
+/// `flags` = `[grain_active, grao_e_o_papel, grao_e_cor]`; `brush` é o pincel do lote e já traz o grão que pinta.
 pub(super) fn regua_do_grao(
     brush: &BrushSpec,
-    vivo: &BrushSpec,
     [de_agora, proprio]: [GraoComImagem<'_, '_>; 2],
     [grain_active, grao_e_o_papel, grao_e_cor]: [bool; 3],
     canvas_wh: [f32; 2],
@@ -352,7 +351,7 @@ pub(super) fn regua_do_grao(
     medias: &mut MediasDoGrao,
 ) -> ReguaDoGrao {
     let g = brush.grao_aplicado;
-    let mut do_aplicado = *vivo;
+    let mut do_aplicado = *brush;
     do_aplicado.texture = g.grao;
     let aplicado_amostra = g.media.is_some() || do_aplicado.grain_samples(proprio.0.is_some());
     let ponta_sob_o_grao = grain_active && !aplicado_amostra;

@@ -12,8 +12,19 @@
 //! settings into every mode's slot, so each tool keeps that as its starting point and then diverges.
 
 use crate::tool::PainterTool;
+use ph2d_wet_paint::tuning::Knob;
 
 impl PainterTool {
+    /// A Hardness (o `paperGate`) do slot: a viva, se ele está na mão.
+    pub(super) fn gate_do_slot(&self, slot: usize) -> f64 {
+        let w = &self.paint.wetpaint;
+        if self.slot_atual() == slot {
+            w.knobs.get(Knob::PaperGate)
+        } else {
+            w.knobs_por_slot[slot][Knob::PaperGate as usize]
+        }
+    }
+
     /// Swap the active brush settings to `new_mode`'s slot (the independent-tools model). No-op when the
     /// settings are LINKED (all modes share the live `brush`) or the mode is unchanged. Saves the current
     /// mode's live edits back to its slot first, then loads the target mode's saved settings.
@@ -44,6 +55,17 @@ impl PainterTool {
         w.paper_visual = w.textura_por_slot[new];
         for k in super::mao::knobs_da_mao() {
             w.knobs.knobs[k as usize] = w.knobs_por_slot[new][k as usize];
+        }
+        // …e a Hardness: a Borracha tem a sua (dono 05/11) e os modos partilham uma, que nenhum deles deixa velha.
+        let gate = Knob::PaperGate as usize;
+        if old < super::ERASER_SLOT {
+            let viva = w.knobs.knobs[gate];
+            for slot in &mut w.knobs_por_slot[..super::ERASER_SLOT] {
+                slot[gate] = viva;
+            }
+        }
+        if old == super::ERASER_SLOT || new == super::ERASER_SLOT {
+            w.knobs.knobs[gate] = w.knobs_por_slot[new][gate];
         }
         // …e o corpo de uma ferramenta da água, na ida e na volta (os outros slots partilham-no, como antes).
         if [old, new].iter().any(|s| *s >= super::WET_TOOL_SLOT0) {

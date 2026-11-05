@@ -53,6 +53,7 @@ fn cada_conta_partilhada_da_luz_e_definida_uma_vez() {
         ("fn luz_receber(", "receber.wgsl"),
         ("fn tonemap_mapear(", "tonemap_conta.wgsl"),
         ("fn c0_alvos(", "c0_dono.wgsl"),
+        ("fn recorte_uv(", "recorte_uv.wgsl"),
     ] {
         let definem: Vec<&PathBuf> = todos
             .iter()

@@ -13,6 +13,7 @@ pub(crate) const C0: &str = concat!(
 /// A C0 dos sprites por texel (W3): a MESMA lei do dono à frente.
 pub(crate) const C0_SPRITE: &str = concat!(
     include_str!("wgsl/c0_dono.wgsl"),
+    include_str!("../../ph2d-gpu/src/recorte_uv.wgsl"),
     include_str!("wgsl/c0_sprite.wgsl")
 );
 /// O texto da lei do dono — o censo (um texto, dois consumidores) lê-o.
@@ -28,7 +29,10 @@ pub(crate) const C3_MIOLO: &str = concat!(
 /// ⭐ W5o — a base da pirâmide do miolo num despacho só.
 pub(crate) const C3_MIOLO_BASE: &str = include_str!("wgsl/c3_miolo_base.wgsl");
 /// ⭐ W5b (F4): as máscaras dos sprites distantes.
-pub(crate) const C3_MASCARA: &str = include_str!("wgsl/c3_mascara.wgsl");
+pub(crate) const C3_MASCARA: &str = concat!(
+    include_str!("../../ph2d-gpu/src/recorte_uv.wgsl"),
+    include_str!("wgsl/c3_mascara.wgsl")
+);
 
 macro_rules! rc {
     ($real:literal, $saida:literal, $niveis:literal) => {

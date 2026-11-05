@@ -44,7 +44,8 @@ fn fs(e: Saida) -> @location(0) vec4<f32> {
     for (var j = 0u; j < SUB_MASCARA; j++) {
         for (var i = 0u; i < SUB_MASCARA; i++) {
             let st = (canto + (vec2<f32>(f32(i), f32(j)) + 0.5) / f32(SUB_MASCARA)) / m.janela.z;
-            soma += textureSampleLevel(textura, amostra, mix(m.uv.xy, m.uv.zw, st), 0.0).a;
+            let dentro = recorte_uv(mix(m.uv.xy, m.uv.zw, st), m.uv, vec2<f32>(textureDimensions(textura)), vec2<f32>(1.0), 0.0);
+            soma += textureSampleLevel(textura, amostra, dentro, 0.0).a;
         }
     }
     return vec4<f32>(soma / f32(SUB_MASCARA * SUB_MASCARA), 0.0, 0.0, 1.0);

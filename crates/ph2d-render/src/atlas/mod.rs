@@ -58,18 +58,11 @@
 //! individual-texture store got in Phase 1, now extended to the SHARED
 //! atlas where committed paint strokes and imported images live.
 //!
-//! Because the atlas packs many regions into ONE texture, a naïve
-//! whole-texture downsample would bleed neighbouring regions (and the
-//! never-written garbage between them) into each region's edge mips.
-//! Two guards bound that bleed to sub-pixel: (1) [`AtlasRegion::uv`]'s
-//! half-texel inset keeps level-0 sampling strictly inside each region,
-//! and (2) the texture is CLEARED to transparent at creation so edge
-//! bleed at higher mips fades toward transparent (correct for a
-//! premultiplied sprite edge) instead of pulling in stale garbage. Full
-//! gutter padding (needed only for tightly-packed tile-atlases zoomed
-//! out past mip ~4) is a documented follow-up; the painter case (large
-//! canvas + a few imports with soft/transparent borders) is the benign
-//! one.
+//! A whole-texture downsample holds neighbouring regions in each region's
+//! edge mips. [`AtlasRegion::uv`]'s half-texel inset keeps level 0 inside
+//! the region, and the sprite shader's `recorte_uv` does it at every level
+//! the filter reads (`docs/Sprite_projeto/22`), so no gutter is needed.
+//! The texture is CLEARED to transparent at creation.
 
 mod cresce;
 mod demo;

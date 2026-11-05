@@ -68,6 +68,7 @@ mod smoke_fixture_renderable;
 mod spatial_weights_parity;
 mod sprite_mesh_gpu;
 mod sprite_premul;
+mod sprite_sem_risco_gpu;
 mod sprite_versioned_postcard;
 mod sprite_wgsl_valid;
 mod the_gpu_extra_draw_binds_per_texture_run;

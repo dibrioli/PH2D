@@ -3,6 +3,7 @@
 
 mod bug7_por_placa;
 mod c0_o_que_fica_fora;
+mod c0_recorte_do_sprite;
 mod c3_grade_fina;
 mod cenas;
 mod comum;

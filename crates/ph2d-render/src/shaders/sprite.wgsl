@@ -230,15 +230,39 @@ fn wrap_uv(t: vec2<f32>, mode: u32) -> vec2<f32> {
 // coordinate turns over, the implicit derivative of the 2×2 quad jumps by a whole tile and the hardware
 // picks the smallest mip (the whole atlas averaged): a grey seam at every tile and along the sprite's edge
 // (helper lanes past the quad wrap too). A wrapping sprite therefore samples with the gradient of the
-// UNWRAPPED coordinate; one that does not wrap keeps the implicit `textureSample`, bit for bit.
+// UNWRAPPED coordinate; the whole texture keeps the implicit `textureSample`, bit for bit.
+//
+// ⭐ What does not wrap and is only PART of the texture (cell, region, atlas place) stays inside its rect at the
+// level the filter reads: the centre of the edge texel at level 0; when minified, a mip texel clear of the edge
+// by one texel of that level (two from level 3 on: the matrix on both boards asks for it); and past the level where
+// the rect still has a clean texel, the gradient is cut to it. Matrix: docs/Sprite_projeto/22_o_recorte_nao_le_o_vizinho.md
 fn sample_tiled(uv: vec2<f32>, quv: vec2<f32>, uv_xform: vec4<f32>, atlas_uv: vec4<f32>, mode: u32) -> vec4<f32> {
     let cont = quv * uv_xform.xy * (atlas_uv.zw - atlas_uv.xy);
     let ddx = dpdx(cont);
     let ddy = dpdy(cont);
     let implicit = textureSample(atlas_tex, atlas_sampler, uv);
-    let graded = textureSampleGrad(atlas_tex, atlas_sampler, uv, ddx, ddy);
     let wraps = mode == 2u || mode == 3u || any(uv_xform.zw != vec2<f32>(0.0));
-    return select(implicit, graded, wraps);
+    let inteira = all(atlas_uv == vec4<f32>(0.0, 0.0, 1.0, 1.0));
+
+    let dim = vec2<f32>(textureDimensions(atlas_tex));
+    let px_x = ddx * dim;
+    let px_y = ddy * dim;
+    // A soma dos eixos: o teto do que a especificação deixa a placa estimar (a 30° medimos o trilinear a ler além
+    // da norma); igual à norma num quad alinhado.
+    let lod = log2(max(max(abs(px_x.x) + abs(px_x.y), abs(px_y.x) + abs(px_y.y)), 1e-6));
+    let lados = abs(atlas_uv.zw - atlas_uv.xy) * dim;
+    let teto = min(
+        max(floor(log2(max(min(lados.x, lados.y), 1.0) * 0.25)), 0.0),
+        f32(textureNumLevels(atlas_tex) - 1u),
+    );
+    // `1/256`: abaixo do degrau de LOD da placa, 1:1 é o nível 0 (e a célula a 1:1 não perde arte).
+    let nivel = clamp(ceil(lod - 1.0 / 256.0), 0.0, teto);
+    let passo = dim / vec2<f32>(textureDimensions(atlas_tex, u32(nivel)));
+    let folga = select(0.0, pow(2.0, nivel) * select(1.0, 2.0, nivel >= 3.0), nivel > 0.0);
+    let poda = select(pow(2.0, min(nivel - lod, 0.0)), 1.0, wraps);
+    let onde = select(recorte_uv(uv, atlas_uv, dim, passo, folga), uv, wraps);
+    let graded = textureSampleGrad(atlas_tex, atlas_sampler, onde, ddx * poda, ddy * poda);
+    return select(graded, implicit, inteira && !wraps);
 }
 
 @vertex

@@ -69,7 +69,8 @@ fn fs(e: Saida) -> Alvos {
             let q = e.pos.xy - 0.5 + (vec2<f32>(f32(i), f32(j)) + 0.5) / f32(SUB);
             let st = vec2<f32>(dot(f.s_.xy, q) + f.s_.z, dot(f.t_.xy, q) + f.t_.z);
             if all(st >= vec2<f32>(0.0)) && all(st < vec2<f32>(1.0)) {
-                let c = textureSampleLevel(textura, amostra, mix(f.uv.xy, f.uv.zw, st), 0.0);
+                let dentro = recorte_uv(mix(f.uv.xy, f.uv.zw, st), f.uv, vec2<f32>(textureDimensions(textura)), vec2<f32>(1.0), 0.0);
+                let c = textureSampleLevel(textura, amostra, dentro, 0.0);
                 let reta = select(c.rgb, c.rgb / max(c.a, 1e-6), f.premultiplicada > 0.5);
                 soma_a += c.a;
                 soma_meio += select(0.0, 1.0, c.a >= 0.5);

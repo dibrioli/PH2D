@@ -138,6 +138,7 @@ pub fn blend_state_for(tag: u8) -> wgpu::BlendState {
 /// `#include` em WGSL, e duas cópias divergiriam em silêncio.
 pub const SPRITE_WGSL: &str = concat!(
     include_str!("shaders/receber.wgsl"),
+    include_str!("../../ph2d-gpu/src/recorte_uv.wgsl"),
     include_str!("shaders/sprite.wgsl")
 );
 

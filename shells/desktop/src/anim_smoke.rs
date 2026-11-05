@@ -75,11 +75,11 @@ pub(crate) fn enabled() -> bool {
     std::env::var_os("PH2D_ANIM_SMOKE").is_some()
 }
 
-/// Desenha a tira: em cada célula, um quadrado que sobe e muda de matiz.
+/// Desenha a tira: em cada célula, um quadrado que sobe, muda de matiz e ENCOSTA na borda direita: a célula
+/// seguinte não pode mostrá-lo em risco à esquerda (`docs/Sprite_projeto/22`).
 ///
-/// ⚠️ **As duas coisas ao mesmo tempo, de propósito.** Só a cor faria um piscar difícil de contar;
-/// só a posição faria oito quadrados iguais. Com as duas, o artista lê *qual* frame está no ecrã
-/// sem olhar para o número.
+/// ⚠️ **As duas coisas ao mesmo tempo:** só a cor faria um piscar difícil de contar; só a posição, oito
+/// quadrados iguais.
 fn strip_pixels() -> Vec<u8> {
     let w = (CELL_PX * CELLS) as usize;
     let h = CELL_PX as usize;
@@ -92,7 +92,7 @@ fn strip_pixels() -> Vec<u8> {
         let top = ((h - side) as f32 * (1.0 - t)) as usize;
         for y in top..(top + side).min(h) {
             for x in 0..side {
-                let px_x = c * CELL_PX as usize + (CELL_PX as usize - side) / 2 + x;
+                let px_x = c * CELL_PX as usize + CELL_PX as usize - side + x;
                 let i = (y * w + px_x) * 4;
                 px[i] = r;
                 px[i + 1] = g;

@@ -2,7 +2,7 @@
 //! reais: a forma de todo dia não tem camada nenhuma, e o cartão tem de mostrar a cor dela.
 #![cfg(feature = "panel-inspector")]
 
-use super::cartoes_mao::{InspectorPrivado, centro, clica, mao, pinta};
+use super::cartoes_mao::{InspectorNoHost, centro, clica, mao, pinta};
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
@@ -416,7 +416,7 @@ fn the_seed_does_not_step_on_the_focused_box() {
         vec![camada(true, VERDE, 0.25)],
         Vec::new(),
     );
-    let mut p = InspectorPrivado::novo();
+    let mut p = InspectorNoHost::novo();
     p.pinta();
     p.pinta();
     for (id, mundo) in [

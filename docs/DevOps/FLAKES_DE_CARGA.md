@@ -124,7 +124,7 @@ que o painel lê. Duas mesas em paralelo trocavam-no a cada quadro; a «troca de
 
 **Produto:** sem defeito. Só há uma `HeroScreen` a pintar na app (`init.rs`); uma segunda, no mesmo fio, voltaria a partilhar o
 estado. O mesmo acidente já tinha sido contornado duas vezes, com a mesma variável nomeada: `registo_privado`
-(`quantas_entradas_tem_cada_painel`) e `InspectorPrivado` (`cartoes_mao`). Ficam como estão; deixaram de ser necessários.
+(`quantas_entradas_tem_cada_painel`) e `InspectorPrivado` (`cartoes_mao`); saíram em 04/11 (fatia F4), com o censo a correr no registo do processo.
 
 ## A espécie da memória da placa (W5e, 2026-10-11)
 

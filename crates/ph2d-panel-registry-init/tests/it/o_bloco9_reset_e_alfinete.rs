@@ -3,7 +3,7 @@
 //! clique pede à app que reponha o componente principal dele no objecto do cartão.
 #![cfg(feature = "panel-inspector")]
 
-use super::cartoes_mao::{InspectorPrivado, centro, clica, mao, pinta};
+use super::cartoes_mao::{InspectorNoHost, centro, clica, mao, pinta};
 use super::o_bloco8_player_solto::{hero_com_aberto, solto_de};
 use super::o_inspector_armado::{arma_tudo, fisica_armada, player_armado};
 use ph2d_editor_core::NodeId;
@@ -182,14 +182,14 @@ fn a_pinned_component_card_shows_and_edits_its_own_object() {
 fn an_undo_on_a_component_field_reseeds_its_box() {
     use ph2d_editor_core::panel::PanelHostInternal;
     let hero = super::o_inspector_armado::BITS;
-    let caixa = |p: &InspectorPrivado| {
+    let caixa = |p: &InspectorNoHost| {
         p.host
             .store()
             .number_value(FLOAT)
             .expect("a caixa Float Height")
     };
     escolhe(hero, "Hero", 0.1);
-    let mut p = InspectorPrivado::novo();
+    let mut p = InspectorNoHost::novo();
     p.pinta();
     let antes = caixa(&p);
     escolhe(hero, "Hero", 0.4); // o Ctrl+Z devolveu outro Float ao mesmo objecto

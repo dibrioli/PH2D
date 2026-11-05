@@ -28,8 +28,7 @@
 //! ⛔ **E o `desarma` é obrigatório**: estas portas são `thread_local`, e uma régua que pinte o
 //! mesmo painel duas vezes NO MESMO teste (vazio e armado) mediria na segunda o que a primeira
 //! deixou. *O estado que uma fixtura deixa para trás é o estado que a régua seguinte mede.* (Entre
-//! testes não vaza: o libtest dá a cada um a sua thread; o que vazava entre testes era o registo de
-//! painéis do processo — ver `registo_privado` no censo.)
+//! testes não vaza: o libtest dá a cada um a sua thread, e o estado do painel é por fio.)
 
 use ph2d_editor_core::interaction::WidgetStore;
 

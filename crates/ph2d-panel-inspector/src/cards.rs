@@ -10,6 +10,7 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::panel::cards::{dropdown, estilos};
+use ph2d_editor_core::par_travado::ParTravado;
 use ph2d_editor_core::project::{DisplayAngle, DisplayUnit};
 use ph2d_editor_core::widget::card_field::CardFieldSpec;
 use ph2d_i18n::tr;
@@ -82,6 +83,9 @@ pub(crate) fn active() -> bool {
 thread_local! {
     static LIGADO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     static PROPORCAO: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// A proporção de cada objecto tocado com a corrente fechada; esvazia ao abri-la.
+    static TRAVAS: std::cell::RefCell<std::collections::BTreeMap<u64, ParTravado>> =
+        const { std::cell::RefCell::new(std::collections::BTreeMap::new()) };
     /// O hex digitado à espera de a forma o mostrar: `(camada, cor, quadros, objecto preso)`; depois o
     /// seletor fecha.
     static HEX_PENDENTE: std::cell::Cell<Option<(usize, [u8; 4], u8, Option<u64>)>> =
@@ -212,34 +216,55 @@ pub(crate) fn semeia_as_linhas(store: &mut WidgetStore) {
 
 /// A corrente do Scale está fechada?
 #[must_use]
-pub(crate) fn scale_locked() -> bool {
+pub fn scale_locked() -> bool {
     PROPORCAO.with(std::cell::Cell::get)
 }
 
 pub(crate) fn toggle_scale_lock() {
-    PROPORCAO.with(|c| c.set(!c.get()));
+    let fecha = !scale_locked();
+    PROPORCAO.with(|c| c.set(fecha));
+    TRAVAS.with_borrow_mut(|travas| {
+        travas.clear();
+        if let Some(t) = crate::state::current_inspector_transform().filter(|_| fecha) {
+            travas.insert(t.entity_bits, ParTravado::ao_ligar(t.scale.map(f64::from)));
+        }
+    });
 }
 
-/// Com a corrente fechada, mudar um eixo do Scale leva o outro na mesma proporção de antes.
+/// O espelho muda o sinal de um eixo sem levar o outro, e a proporção guardada muda com ele.
+pub(crate) fn scale_espelhado(entity_bits: u64, eixo: usize) {
+    TRAVAS.with_borrow_mut(|travas| {
+        if let Some(t) = travas.get_mut(&entity_bits) {
+            t.espelhou(eixo);
+        }
+    });
+}
+
+/// Com a corrente fechada, mudar um eixo do Scale leva o outro na proporção guardada.
 pub(crate) fn keep_proportion(
     host: &mut dyn ph2d_editor_core::panel::PanelHostInternal,
     id: NodeId,
     info: &ph2d_editor_core::screens::hero::InspectorTransformInfo,
 ) {
-    let (este, outro, i, j) = if id == ids::INSP_TRANSFORM_SCALE_X {
-        (id, ids::INSP_TRANSFORM_SCALE_Y, 0, 1)
+    let (este, outro, eixo) = if id == ids::INSP_TRANSFORM_SCALE_X {
+        (id, ids::INSP_TRANSFORM_SCALE_Y, 0)
     } else if id == ids::INSP_TRANSFORM_SCALE_Y {
-        (id, ids::INSP_TRANSFORM_SCALE_X, 1, 0)
+        (id, ids::INSP_TRANSFORM_SCALE_X, 1)
     } else {
         return;
     };
-    if !scale_locked() || info.scale[i].abs() <= f32::EPSILON {
+    let Some(v) = host.store().number_value(este).filter(|_| scale_locked()) else {
         return;
-    }
-    let razao = f64::from(info.scale[j] / info.scale[i]);
-    if let Some(v) = host.store().number_value(este) {
-        host.store_mut().set_number_value(outro, v * razao);
-    }
+    };
+    let vivo = info.scale.map(f64::from);
+    let seguiu = TRAVAS.with_borrow_mut(|travas| {
+        let t = travas
+            .entry(info.entity_bits)
+            .or_insert_with(|| ParTravado::ao_ligar(vivo));
+        t.rever(vivo);
+        t.segue(eixo, v)
+    });
+    host.store_mut().set_number_value(outro, seguiu);
 }
 
 fn pos_step() -> f64 {
@@ -410,7 +435,10 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
         ),
         (vids::VECTOR_ARRANGE_FLIP_H, "panel.vector.arrange.flip_h"),
         (vids::VECTOR_ARRANGE_FLIP_V, "panel.vector.arrange.flip_v"),
-        (ids::INSP_TRANSFORM_ROTATE_CW, "panel.vector.arrange.rotate_cw"),
+        (
+            ids::INSP_TRANSFORM_ROTATE_CW,
+            "panel.vector.arrange.rotate_cw",
+        ),
         (ids::INSP_TRANSFORM_FLIP_H, "panel.vector.arrange.flip_h"),
         (ids::INSP_TRANSFORM_FLIP_V, "panel.vector.arrange.flip_v"),
     ] {

@@ -310,6 +310,6 @@ pub(crate) fn format_value(v: f64) -> String {
     if v.fract() == 0.0 {
         format!("{}", v as i64)
     } else {
-        format!("{v:.2}")
+        ph2d_editor_core::widget::zero_sem_sinal(&format!("{v:.2}")).into_owned()
     }
 }

@@ -29,26 +29,42 @@ pub fn numero_que_cabe<'a>(
         ts.prefix_width_weighted(s, font_size, FontWeight::MEDIUM) <= largura
     };
     if cabe(text_system, texto) {
-        return Cow::Borrowed(texto);
+        return zero_sem_sinal(texto);
     }
     let Some((ini, fim, casas)) = decimal(texto) else {
-        return Cow::Borrowed(texto);
+        return zero_sem_sinal(texto);
     };
     let Ok(v) = texto[ini..fim].parse::<f64>() else {
-        return Cow::Borrowed(texto);
+        return zero_sem_sinal(texto);
     };
     for p in (0..casas).rev() {
-        let mut n = format!("{v:.p$}");
-        // `-0.4` a zero casas dá `-0`: um zero não tem sinal que se leia.
-        if n.parse::<f64>().is_ok_and(|x| x == 0.0) {
-            n = n.trim_start_matches('-').to_owned();
-        }
-        let s = format!("{}{n}{}", &texto[..ini], &texto[fim..]);
+        // `-0.4` a zero casas dá `-0`.
+        let n = format!("{v:.p$}");
+        let s = format!("{}{}{}", &texto[..ini], zero_sem_sinal(&n), &texto[fim..]);
         if cabe(text_system, &s) {
             return Cow::Owned(s);
         }
     }
-    Cow::Borrowed(texto)
+    zero_sem_sinal(texto)
+}
+
+/// ⭐ **Um zero não tem sinal que se leia**: `-0.00 px` lê-se `0.00 px`. A porta de todo número
+/// mostrado: as duas `format_number`, as casas fixas e, no pintor das caixas, o texto pronto que o
+/// painel entrega. Só o PRIMEIRO número conta; um texto em edição nunca passa por aqui.
+#[must_use]
+pub fn zero_sem_sinal(texto: &str) -> Cow<'_, str> {
+    let b = texto.as_bytes();
+    let Some(ini) = b.iter().position(u8::is_ascii_digit) else {
+        return Cow::Borrowed(texto);
+    };
+    let fim = b[ini..]
+        .iter()
+        .position(|c| !c.is_ascii_digit() && *c != b'.')
+        .map_or(b.len(), |n| ini + n);
+    if ini == 0 || b[ini - 1] != b'-' || b[ini..fim].iter().any(|c| !matches!(c, b'0' | b'.')) {
+        return Cow::Borrowed(texto);
+    }
+    Cow::Owned(format!("{}{}", &texto[..ini - 1], &texto[ini..]))
 }
 
 /// O primeiro número DECIMAL do texto: `(início, fim, casas)` em bytes, com o sinal incluído.
@@ -85,15 +101,7 @@ mod tests;
 #[must_use]
 pub fn format_number_com_casas(v: f64, casas: Option<usize>) -> String {
     match casas {
-        Some(n) if v.is_finite() => {
-            let s = format!("{v:.n$}");
-            // `-0.00` não tem sinal que se leia.
-            if s.parse::<f64>().is_ok_and(|x| x == 0.0) {
-                s.trim_start_matches('-').to_owned()
-            } else {
-                s
-            }
-        }
+        Some(n) if v.is_finite() => zero_sem_sinal(&format!("{v:.n$}")).into_owned(),
         _ => super::format_number(v),
     }
 }

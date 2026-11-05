@@ -39,6 +39,6 @@ pub fn format_number(v: f64) -> String {
     if (v - v.round()).abs() < 1e-6 {
         format!("{}", v as i64)
     } else {
-        format!("{v:.3}")
+        crate::widget::zero_sem_sinal(&format!("{v:.3}")).into_owned()
     }
 }

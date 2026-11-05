@@ -171,7 +171,7 @@ pub(super) fn forca(
     paint_text(
         text_system,
         scene,
-        &format!("{valor:.2}"),
+        &ph2d_editor_core::widget::zero_sem_sinal(&format!("{valor:.2}")),
         linha.control.x + Spacing::Sm.px(),
         linha.control.y + (linha.control.h - font) * 0.5,
         font,

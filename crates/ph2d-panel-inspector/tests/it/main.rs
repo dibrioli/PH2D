@@ -50,6 +50,7 @@ mod every_label_this_panel_paints_fits_its_column;
 mod every_painted_id_is_reachable;
 mod every_word_this_panel_shows_comes_from_the_string_table;
 mod girar_e_espelhar_todo_objecto;
+mod o_par_travado_do_scale;
 mod inspector_regression;
 mod inspector_regression_anchors;
 mod inspector_regression_sections;

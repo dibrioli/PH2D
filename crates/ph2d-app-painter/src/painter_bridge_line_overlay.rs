@@ -169,7 +169,8 @@ pub(super) fn draw_line_overlay(
                             (0.0, -1.0)
                         };
                         corner_labels.push((
-                            format!("{:.0}", g.amount),
+                            ph2d_editor_core::widget::zero_sem_sinal(&format!("{:.0}", g.amount))
+                                .into_owned(),
                             Point::new(hnd.x + ux * 13.0, hnd.y + uy * 13.0),
                         ));
                     }
@@ -261,14 +262,14 @@ fn dimension_geometry(
     if d.dx >= 0.5 {
         legs.push((prev, corner));
         labels.push((
-            format!("{:.0}", d.dx),
+            ph2d_editor_core::widget::zero_sem_sinal(&format!("{:.0}", d.dx)).into_owned(),
             leg_label_pos(prev, corner, cur, 12.0),
         ));
     }
     if d.dy >= 0.5 {
         legs.push((corner, cur));
         labels.push((
-            format!("{:.0}", d.dy),
+            ph2d_editor_core::widget::zero_sem_sinal(&format!("{:.0}", d.dy)).into_owned(),
             leg_label_pos(corner, cur, prev, 12.0),
         ));
     }

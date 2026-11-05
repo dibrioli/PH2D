@@ -178,8 +178,7 @@ pub fn decimals_for(resolution_display: f64) -> usize {
 /// carregava esta linha, e ela viaja junto com a regra que a produzia.
 #[must_use]
 pub fn format_value(v: f64, decimals: usize) -> String {
-    let v = if v == 0.0 { 0.0 } else { v };
-    format!("{v:.decimals$}")
+    crate::widget::format_number_com_casas(v, Some(decimals))
 }
 
 /// **O PIXEL DO DOCUMENTO** — a régua de toda medida de DESENHO que o artista autora em px: a

@@ -450,6 +450,14 @@ fn sprite_size_px_e_percentagem_e_o_lock_ratio() {
     assert_eq!(e.valor(ids::PIXEL_EDIT_SPRITE_WPCT), 200.0);
     assert_eq!(e.valor(ids::PIXEL_EDIT_SPRITE_HPCT), 200.0);
     assert_eq!(e.valor(ids::PIXEL_EDIT_SPRITE_H), 20.0);
+    // O «0» vai ao piso de 1 px e a proporção é a do tamanho original: subir devolve-a (04/11).
+    e.escreve(ids::PIXEL_EDIT_SPRITE_W, "0");
+    e.carrega(ids::PIXEL_EDIT_SPRITE_H);
+    assert_eq!(e.valor(ids::PIXEL_EDIT_SPRITE_W), 1.0);
+    assert_eq!(e.valor(ids::PIXEL_EDIT_SPRITE_H), 1.0);
+    e.escreve(ids::PIXEL_EDIT_SPRITE_W, "40");
+    e.carrega(ids::PIXEL_EDIT_SPRITE_H);
+    assert_eq!(e.valor(ids::PIXEL_EDIT_SPRITE_H), 20.0);
     // Sem lock: a percentagem da altura só mexe na altura.
     e.carrega(ids::PIXEL_EDIT_LOCK);
     assert!(!e.hero.store.pixel_edit_dialog().lock_ratio);

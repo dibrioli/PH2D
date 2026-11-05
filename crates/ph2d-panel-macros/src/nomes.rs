@@ -20,7 +20,8 @@ fn no(tipo: Option<&str>) -> String {
 
 fn valor(v: f64) -> String {
     let s = format!("{v:.3}");
-    s.trim_end_matches('0').trim_end_matches('.').to_owned()
+    ph2d_editor_core::widget::zero_sem_sinal(s.trim_end_matches('0').trim_end_matches('.'))
+        .into_owned()
 }
 
 /// O nome de `e` como o painel e a Timeline o mostram.

@@ -26,6 +26,7 @@ use ph2d_editor_core::zones::Rect;
 pub(crate) fn paint(state: &mut WidgetGalleryState, ctx: &mut PaintCtx) {
     smoke_opens_once(ctx);
     smoke_opens_the_side(state);
+    smoke_scale_com_zero(state, ctx);
     smoke_holds_the_render(state);
     if !ctx.host.panel_visible(WidgetGalleryPanel::ID) {
         // Stale-rect cleanup: without this, `panel_at` keeps returning
@@ -126,6 +127,21 @@ fn smoke_opens_the_side(state: &mut WidgetGalleryState) {
         && !FEITO.swap(true, Ordering::Relaxed)
     {
         state.choices.choose(crate::state::Pick::SideOpen, 0);
+    }
+}
+
+/// `PH2D_GALLERY_SMOKE_SCALE=1`: a foto do dono (04/11), corrente fechada com Scale X `-0.004` e Y `9`:
+/// a caixa do X tem de ler `0.00`, sem sinal.
+fn smoke_scale_com_zero(state: &mut WidgetGalleryState, ctx: &mut PaintCtx) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static FEITO: AtomicBool = AtomicBool::new(false);
+    if std::env::var("PH2D_GALLERY_SMOKE_SCALE").as_deref() == Ok("1")
+        && !FEITO.swap(true, Ordering::Relaxed)
+    {
+        let store = ctx.host.store_mut();
+        store.set_number_value(crate::ids::SCALE_X, -0.004); // LITERAL-PX-OK: dado do objeto fictício
+        store.set_number_value(crate::ids::SCALE_Y, 9.0); // LITERAL-PX-OK: dado do objeto fictício
+        state.choices.set(crate::state::Flag::ScaleLink, true);
     }
 }
 

@@ -132,7 +132,9 @@ pub(super) fn paint_barra(
     //    formatar como toda caixa do app.
     let texto = match numero {
         SliderNumber::Affine { integer: true, .. } => Some(format!("{}", valor.round())),
-        SliderNumber::Shown(v) => Some(format!("{v:.2}")),
+        SliderNumber::Shown(v) => {
+            Some(ph2d_editor_core::widget::zero_sem_sinal(&format!("{v:.2}")).into_owned())
+        }
         SliderNumber::Affine { .. } => None,
     };
     let scene = &mut *ctx.scene;

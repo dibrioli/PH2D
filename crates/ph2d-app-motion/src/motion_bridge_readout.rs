@@ -108,7 +108,9 @@ pub(super) fn reading_of(stream: &Stream, count: u32) -> Reading {
 /// ([[feedback_two_doors_to_the_same_question_diverge]]).
 fn readout_text(stream: &Stream, count: usize) -> String {
     let text = match reading_of(stream, count as u32) {
-        Reading::Value(v) => format!("{v:.3}"),
+        Reading::Value(v) => {
+            ph2d_editor_core::widget::zero_sem_sinal(&format!("{v:.3}")).into_owned()
+        }
         // A stream with no elements is not "0 instances" in the sense of a count — it is a
         // node that produced NOTHING, and saying so plainly beats a bare zero.
         Reading::Instances(0) => "empty".to_string(),

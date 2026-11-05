@@ -489,12 +489,12 @@ pub fn format_number(v: f64) -> String {
     if (v - v.round()).abs() < 1e-6 {
         format!("{}", v as i64)
     } else {
-        format!("{v:.3}")
+        zero_sem_sinal(&format!("{v:.3}")).into_owned()
     }
 }
 
 mod casas;
-pub use casas::{format_number_com_casas, numero_que_cabe};
+pub use casas::{format_number_com_casas, numero_que_cabe, zero_sem_sinal};
 
 #[cfg(test)]
 mod tests;

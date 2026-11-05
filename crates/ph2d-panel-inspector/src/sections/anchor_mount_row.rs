@@ -187,7 +187,16 @@ pub(crate) fn paint_mount_row(
         let [ox, oy] = info.mount_offset;
         let label = tr_with(
             "panel.inspector.anchors.off_anchor_by",
-            &[("ox", &format!("{ox:.0}")), ("oy", &format!("{oy:.0}"))],
+            &[
+                (
+                    "ox",
+                    &ph2d_editor_core::widget::zero_sem_sinal(&format!("{ox:.0}")),
+                ),
+                (
+                    "oy",
+                    &ph2d_editor_core::widget::zero_sem_sinal(&format!("{oy:.0}")),
+                ),
+            ],
         );
         paint_text(
             text_system,

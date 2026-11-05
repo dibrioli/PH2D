@@ -1,4 +1,4 @@
-//! A corrente do Scale (T18): fechada, mudar um eixo leva o outro na proporção de ANTES.
+//! A corrente do Scale (T18): fechada, mudar um eixo leva o outro na proporção guardada.
 
 use super::*;
 use ph2d_editor_core::panel::PanelHostInternal;
@@ -53,14 +53,14 @@ fn keep_proportion_carries_the_other_axis_only_when_locked() {
         .set_number_value(ids::INSP_TRANSFORM_SCALE_Y, 3.0);
     keep_proportion(&mut h, ids::INSP_TRANSFORM_SCALE_Y, &antes);
     assert_eq!(escala(&h), (6.0, 3.0));
-    // Um eixo a zero não tem proporção: nada muda (nem NaN).
+    // Um eixo a zero no objecto não apaga a proporção guardada (nem dá NaN).
     h.store_mut()
         .set_number_value(ids::INSP_TRANSFORM_SCALE_X, 5.0);
     keep_proportion(&mut h, ids::INSP_TRANSFORM_SCALE_X, &info([0.0, 1.0]));
-    assert_eq!(escala(&h), (5.0, 3.0));
+    assert_eq!(escala(&h), (5.0, 2.5));
     // Outro campo não é do Scale: nada muda.
     keep_proportion(&mut h, ids::INSP_TRANSFORM_POS_X, &antes);
-    assert_eq!(escala(&h), (5.0, 3.0));
+    assert_eq!(escala(&h), (5.0, 2.5));
     toggle_scale_lock();
 }
 

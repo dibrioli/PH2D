@@ -760,6 +760,32 @@ fn a_corrente_faz_o_y_seguir_o_x() {
     );
 }
 
+/// (15b) A mesma lei do Inspector (`ParTravado`): levar um eixo a zero e subir devolve o outro; um
+/// clique em qualquer outro controlo não apaga a proporção; o Flip a zero leva o sinal.
+/// *Mutação: o `sync_link` de antes (`lx != 0`, conta sobre os vistos), ou o `state.link = None`.*
+#[test]
+fn a_corrente_da_galeria_sobrevive_ao_zero() {
+    let mut gal = Galeria::aberta();
+    let escreve = |gal: &mut Galeria, id, texto| {
+        let _ = gal.host.type_into_number(id, texto);
+        gal.host.store_mut().set_focus(None);
+        gal.repinta();
+    };
+    let par = |gal: &Galeria| (gal.valor(g::SCALE_X), gal.valor(g::SCALE_Y));
+    escreve(&mut gal, g::SCALE_X, "2");
+    gal.clica(g::SCALE_LINK);
+    gal.repinta();
+    escreve(&mut gal, g::SCALE_X, "0");
+    assert_eq!(par(&gal), (0.0, 0.0));
+    gal.clica(g::ROTATE_90);
+    escreve(&mut gal, g::SCALE_X, "4");
+    assert_eq!(par(&gal), (4.0, 2.0), "o X subiu e o Y ficou em zero");
+    escreve(&mut gal, g::SCALE_Y, "0");
+    gal.clica(g::FLIP_H);
+    escreve(&mut gal, g::SCALE_Y, "3");
+    assert_eq!(par(&gal), (-6.0, 3.0), "o Flip a zero não levou o sinal");
+}
+
 /// (16) O ↺ do Transform repõe o transform, e só ele. *Mutação: `Act::TransformReset` só consumido.*
 #[test]
 fn o_reset_do_transform_repoe_so_o_transform() {

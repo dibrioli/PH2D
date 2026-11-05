@@ -158,7 +158,7 @@ pub(crate) fn text(v: f32) -> String {
     const ONE_DECIMAL_UP_TO: f32 = 10_000.0; // LITERAL-PX-OK: decade, not a screen measure
     let a = v.abs();
     if a < TWO_DECIMALS_UP_TO {
-        format!("{v:.2}")
+        ph2d_editor_core::widget::zero_sem_sinal(&format!("{v:.2}")).into_owned()
     } else if a < ONE_DECIMAL_UP_TO {
         format!("{v:.1}")
     } else {

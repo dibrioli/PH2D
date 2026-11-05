@@ -179,8 +179,10 @@ pub(crate) fn cards(snap: &PhysicsSnapshot) -> Vec<CardDef<'static>> {
 }
 
 fn cartao_de_tabela(s: &'static rows::Section, snap: PhysicsSnapshot) -> CardDef<'static> {
-    let resumo = (s.id == i::PHYSICS_SEC_WORLD)
-        .then(|| format!("{:.2} · {:.2}", snap.vivo.gravity_x, snap.vivo.gravity_y));
+    let resumo = (s.id == i::PHYSICS_SEC_WORLD).then(|| {
+        let n = |v: f32| ph2d_editor_core::widget::zero_sem_sinal(&format!("{v:.2}")).into_owned();
+        format!("{} · {}", n(snap.vivo.gravity_x), n(snap.vivo.gravity_y))
+    });
     cartao(s.id, s.title, resumo, move |c, y| {
         if s.id == i::PHYSICS_SEC_WORLD {
             return gravidade(c, y);

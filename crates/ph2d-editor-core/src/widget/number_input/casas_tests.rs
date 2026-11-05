@@ -96,3 +96,47 @@ fn no_piso_o_numero_sai_inteiro_e_arredondado() {
             .join("\n  ")
     );
 }
+
+/// ⭐ A foto do dono: `-0.00`. Nenhuma porta de número mostra zero com sinal; o sinal de um número
+/// que não é zero fica, e o `-` que não é sinal também.
+#[test]
+fn um_zero_nunca_le_com_sinal() {
+    for (texto, lido) in [
+        ("-0", "0"),
+        ("-0.00", "0.00"),
+        ("-0.000 px", "0.000 px"),
+        ("X -0.0 m", "X 0.0 m"),
+        ("-0.01", "-0.01"),
+        ("-10", "-10"),
+        ("-1.00", "-1.00"),
+        ("0.00", "0.00"),
+        ("3-0", "3-0"),
+        ("a-b", "a-b"),
+        ("", ""),
+    ] {
+        assert_eq!(zero_sem_sinal(texto), lido, "{texto:?}");
+    }
+    for porta in [
+        super::super::format_number(-0.0),
+        super::super::format_number(-0.0004),
+        crate::interaction::format_number(-0.0),
+        crate::interaction::format_number(-0.0004),
+        crate::length::format_value(-0.004, 2),
+        format_number_com_casas(-0.0, Some(2)),
+    ] {
+        assert!(!porta.starts_with('-'), "{porta:?}");
+    }
+    assert_eq!(super::super::format_number(-0.5), "-0.500");
+    assert_eq!(crate::interaction::format_number(-0.5), "-0.500");
+}
+
+/// A caixa e o chip, pintados: o texto pronto que o painel entrega (`display_override`) também passa
+/// pela porta, e o que não cabe e arredonda a zero idem.
+#[test]
+fn o_numero_que_cabe_tira_o_sinal_do_zero() {
+    let mut ts = TextSystem::without_system_fonts();
+    let f = TypeToken::Sm.px();
+    assert_eq!(numero_que_cabe(&mut ts, "-0.00", f, 500.0), "0.00");
+    assert_eq!(numero_que_cabe(&mut ts, "-0.00 dB", f, 500.0), "0.00 dB");
+    assert_eq!(numero_que_cabe(&mut ts, "-0.25", f, 500.0), "-0.25");
+}

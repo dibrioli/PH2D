@@ -114,8 +114,10 @@ pub(crate) fn giro_click(
             .set_number_value(INSP_TRANSFORM_ROT, ang.from_radians_f64(f64::from(novo)));
     } else if id == INSP_TRANSFORM_FLIP_H {
         troca_sinal(host, INSP_TRANSFORM_SCALE_X, info.scale[0]);
+        crate::cards::scale_espelhado(info.entity_bits, 0);
     } else if id == INSP_TRANSFORM_FLIP_V {
         troca_sinal(host, INSP_TRANSFORM_SCALE_Y, info.scale[1]);
+        crate::cards::scale_espelhado(info.entity_bits, 1);
     } else {
         return false;
     }

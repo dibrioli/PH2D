@@ -220,7 +220,7 @@ fn texto_do_valor(value: f64, step: f64) -> String {
     if value.is_infinite() || (decimals(step) == 0 && value.fract().abs() > 1e-6) {
         crate::widget::number_input::format_number(value)
     } else {
-        format!("{value:.*}", decimals(step))
+        crate::widget::number_input::format_number_com_casas(value, Some(decimals(step)))
     }
 }
 
@@ -231,6 +231,10 @@ fn um_valor_infinito_le_se_infinito() {
     assert!(texto_do_valor(f64::INFINITY, 0.2).contains('\u{221e}'));
     assert_eq!(texto_do_valor(4.0, 0.2), "4.00");
     assert!(texto_do_valor(0.5, 1.0).starts_with("0.5"));
+    // A foto do dono: a Scale X a `-0.00`.
+    assert_eq!(texto_do_valor(-0.0, 0.1), "0.00");
+    assert_eq!(texto_do_valor(-0.004, 0.1), "0.00");
+    assert_eq!(texto_do_valor(-0.04, 0.01), "-0.04");
 }
 
 /// A pega: o glifo, ou a letra, centrados na célula.

@@ -77,6 +77,8 @@ pub mod paint_flight;
 /// Fill primitives born after `paint.rs` hit its frozen LOC ceiling — see the module docs.
 pub mod paint_shapes;
 pub mod panel;
+/// O cadeado de um par de campos: a proporção é um dado dele, nunca derivada de um zero.
+pub mod par_travado;
 /// Long-operation pattern: off-thread work + a bar that can be painted while it runs.
 pub mod progress;
 pub mod project;

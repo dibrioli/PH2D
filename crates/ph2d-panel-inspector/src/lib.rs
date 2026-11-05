@@ -59,7 +59,8 @@ mod cards;
 /// Os cartões que levam a lista de estilos de cor (D28) — os testes do hero montado nomeiam-nos.
 pub use cards::{
     CARD_APPEARANCE, CARD_FILL, CARD_MATERIAL, CARD_OBJECT, CARD_ORDERING, CARD_STROKE,
-    CARD_TRANSFORM, DD_BLEND, hex_id as cards_hex_id, set_cards_on,
+    CARD_TRANSFORM, DD_BLEND, SCALE_LOCK, hex_id as cards_hex_id, scale_locked as scale_lock_on,
+    set_cards_on,
 };
 pub use cards_objeto::{CARD_EMPTY, CARD_IMAGE, CARD_INSTANCE, CARD_PROPERTIES, CARD_VISIBILITY};
 mod cards_componentes;

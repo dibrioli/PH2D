@@ -19,7 +19,8 @@ fn fmt_num(v: f64) -> String {
         format!("{}", v.round() as i64)
     } else {
         let t = format!("{v:.3}");
-        t.trim_end_matches('0').trim_end_matches('.').to_string()
+        ph2d_editor_core::widget::zero_sem_sinal(t.trim_end_matches('0').trim_end_matches('.'))
+            .into_owned()
     }
 }
 

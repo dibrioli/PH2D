@@ -86,7 +86,7 @@ fn n(v: f32) -> String {
         return format!("{v:.0}");
     }
     let s = format!("{v:.1}");
-    s.strip_suffix(".0").map_or(s.clone(), str::to_string)
+    ph2d_editor_core::widget::zero_sem_sinal(s.strip_suffix(".0").unwrap_or(&s)).into_owned()
 }
 
 /// Uma linha de readout, pronta para pintar.

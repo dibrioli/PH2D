@@ -184,7 +184,9 @@ pub fn all_default_norms() -> Vec<[f32; MAX_FX_PARAMS]> {
 fn format_value(s: &FxParamSpec, v: f32) -> String {
     // The number is formatted HERE (sign and decimals are the value's, not the language's); the
     // unit around it comes from the table.
-    let with = |key: &str, n: String| tr_with(key, &[("v", &n)]);
+    let with = |key: &str, n: String| {
+        tr_with(key, &[("v", &ph2d_editor_core::widget::zero_sem_sinal(&n))])
+    };
     match s.unit {
         FxUnit::Hz if v >= 1_000.0 => with("audio.fx.unit.khz", format!("{:.1}", v / 1_000.0)),
         FxUnit::Hz if v < 1.0 => with("audio.fx.unit.hz", format!("{v:.2}")),
@@ -199,8 +201,10 @@ fn format_value(s: &FxParamSpec, v: f32) -> String {
         FxUnit::St => with("audio.fx.unit.st", format!("{v:+.1}")),
         FxUnit::X if s.integral => with("audio.fx.unit.x", format!("{v:.0}")),
         FxUnit::X => with("audio.fx.unit.x", format!("{v:.2}")),
-        FxUnit::None if s.integral => format!("{v:.0}"),
-        FxUnit::None => format!("{v:.2}"),
+        FxUnit::None if s.integral => {
+            ph2d_editor_core::widget::zero_sem_sinal(&format!("{v:.0}")).into_owned()
+        }
+        FxUnit::None => ph2d_editor_core::widget::zero_sem_sinal(&format!("{v:.2}")).into_owned(),
     }
 }
 

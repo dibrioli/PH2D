@@ -159,7 +159,8 @@ pub(super) fn mesa(c: &mut CardCtx<'_>, faixas: &[Faixa], top: f32) -> f32 {
         let db = if f.valor[3] <= 0.0 {
             tr("card.audio_mixer.silent").to_string()
         } else {
-            format!("{:.0}", fader_db(f.valor[3]))
+            ph2d_editor_core::widget::zero_sem_sinal(&format!("{:.0}", fader_db(f.valor[3])))
+                .into_owned()
         };
         let r = Rect::new(x_de(i), y, coluna, m::LABEL_PX);
         centrado(c, &db, r, m::LABEL_PX, ColorToken::Text2);

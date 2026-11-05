@@ -12,6 +12,7 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetStore};
 use ph2d_editor_core::panel::PanelHostInternal;
+use ph2d_editor_core::par_travado::ParTravado;
 use ph2d_editor_core::widget::card_ink::CardInk;
 use ph2d_tokens::Theme;
 
@@ -73,31 +74,27 @@ pub(crate) fn sync_picked(state: &mut WidgetGalleryState, store: &WidgetStore, t
     }
 }
 
-/// ⭐ A corrente do Scale: com ela fechada, mudar um eixo leva o outro na proporção de antes. Corre
-/// por quadro, antes de pintar (o arrasto escreve no store). `state.link` é o `(X, Y)` já visto.
+/// ⭐ A corrente do Scale: com ela fechada, mudar um eixo leva o outro na proporção guardada (a lei é
+/// a do Inspector, [`ParTravado`]). Corre por quadro, antes de pintar: o arrasto escreve no store.
 pub(crate) fn sync_link(state: &mut WidgetGalleryState, store: &mut WidgetStore) {
     use crate::state::Flag;
     if !state.choices.on(Flag::ScaleLink) {
         state.link = None;
         return;
     }
-    let number = |id| store.number_value(id).unwrap_or(1.0);
-    let (x, y) = (number(g::SCALE_X), number(g::SCALE_Y));
+    let par = scale_vivo(store);
+    let trava = state.link.get_or_insert_with(|| ParTravado::ao_ligar(par));
     let mudou = |a: f64, b: f64| (a - b).abs() > f64::EPSILON;
-    let visto = match state.link {
-        Some((lx, ly)) if mudou(lx, x) && lx != 0.0 => {
-            let ny = ly * x / lx;
-            store.set_number_value(g::SCALE_Y, ny);
-            (x, ny)
-        }
-        Some((lx, ly)) if mudou(ly, y) && ly != 0.0 => {
-            let nx = lx * y / ly;
-            store.set_number_value(g::SCALE_X, nx);
-            (nx, y)
-        }
-        _ => (x, y),
-    };
-    state.link = Some(visto);
+    let visto = trava.visto();
+    if mudou(visto[0], par[0]) {
+        store.set_number_value(g::SCALE_Y, trava.segue(0, par[0]));
+    } else if mudou(visto[1], par[1]) {
+        store.set_number_value(g::SCALE_X, trava.segue(1, par[1]));
+    }
+}
+
+fn scale_vivo(store: &WidgetStore) -> [f64; 2] {
+    [g::SCALE_X, g::SCALE_Y].map(|id| store.number_value(id).unwrap_or(1.0))
 }
 
 /// Sem «Overheal», o `Start` não passa do `Max` (por quadro, antes de pintar).
@@ -172,8 +169,11 @@ pub(crate) fn on_click(
         Kind::Swatch(i) => toggle_picker(*ch, host, i),
         Kind::Act(a) => act(state, host, a),
     }
-    // Quem escreveu no Scale não arrasta o outro eixo: a corrente rearma no quadro seguinte.
-    state.link = None;
+    // Quem escreveu no Scale não arrasta o outro eixo: o que ele deixou passa a ser o visto.
+    let par = scale_vivo(host.store());
+    if let Some(trava) = &mut state.link {
+        trava.rever(par);
+    }
     true
 }
 
@@ -208,8 +208,17 @@ fn act(state: &mut WidgetGalleryState, host: &mut dyn PanelHostInternal, a: Act)
             let v = (number(store, g::ROTATION) + QUARTER_TURN) % FULL_TURN;
             store.set_number_value(g::ROTATION, v);
         }
-        Act::FlipH => store.set_number_value(g::SCALE_X, -number(store, g::SCALE_X)),
-        Act::FlipV => store.set_number_value(g::SCALE_Y, -number(store, g::SCALE_Y)),
+        Act::FlipH | Act::FlipV => {
+            let (campo, eixo) = if matches!(a, Act::FlipH) {
+                (g::SCALE_X, 0)
+            } else {
+                (g::SCALE_Y, 1)
+            };
+            store.set_number_value(campo, -number(store, campo));
+            if let Some(trava) = &mut state.link {
+                trava.espelhou(eixo);
+            }
+        }
         Act::Export => state.exported = true,
         Act::RenderStart => state.render.start(),
         Act::RenderCancel => state.render.cancel(),

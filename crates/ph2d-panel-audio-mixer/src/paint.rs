@@ -474,7 +474,13 @@ fn paint_strip(
         // decide de que lado da frase a unidade vive.
         ph2d_i18n::tr_with(
             "panel.audio_mixer.strip.db_value",
-            &[("db", &format!("{:.0}", fader_db(strip.gain_pos)))],
+            &[(
+                "db",
+                &ph2d_editor_core::widget::zero_sem_sinal(&format!(
+                    "{:.0}",
+                    fader_db(strip.gain_pos)
+                )),
+            )],
         )
     };
     let readout_rect = Rect::new(col_x, y, col_w, TypeToken::Xs.px());

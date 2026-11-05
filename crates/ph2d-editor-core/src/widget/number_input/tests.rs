@@ -322,6 +322,7 @@ fn format_number_com_casas_mostra_as_casas_pedidas() {
     assert_eq!(format_number_com_casas(37.5, Some(1)), "37.5");
     assert_eq!(format_number_com_casas(12.4, Some(0)), "12");
     assert_eq!(format_number_com_casas(-0.001, Some(2)), "0.00");
+    assert_eq!(format_number_com_casas(-0.0, Some(2)), "0.00");
     assert_eq!(format_number_com_casas(f64::INFINITY, Some(2)), "\u{221E}");
     assert_eq!(format_number_com_casas(0.7_f32.into(), None), "0.700");
 }

@@ -316,8 +316,8 @@ pub struct WidgetGalleryState {
     pub applied: Values,
     /// O Export correu (o texto de estado do cartão); não conta como mudança por aplicar.
     pub exported: bool,
-    /// A corrente do Scale: os `(X, Y)` vistos no último quadro (`None` = armar de novo).
-    pub link: Option<(f64, f64)>,
+    /// A corrente do Scale: a proporção guardada (`None` = aberta, ou fecha no próximo quadro).
+    pub link: Option<ph2d_editor_core::par_travado::ParTravado>,
     /// Os estilos de cor fictícios (nascem no 1.º quadro, das cores da tinta).
     pub estilos: Vec<Estilo>,
     /// A lista de estilos estava aberta no quadro anterior: os pedidos dela são desta galeria.

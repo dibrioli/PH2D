@@ -66,10 +66,14 @@ pub fn readout(
             let v = *values.get(i)?;
             let shown = match f.unit {
                 FieldUnit::Count => format!("{}", v.round()),
-                FieldUnit::Degrees => format!("{v:.0}\u{b0}"),
+                FieldUnit::Degrees => {
+                    ph2d_editor_core::widget::zero_sem_sinal(&format!("{v:.0}\u{b0}")).into_owned()
+                }
                 FieldUnit::Px => length(v),
                 FieldUnit::Choice(_) => name(shapes::choice_label(kind, i, v)?),
-                FieldUnit::Ratio => format!("{v:.2}"),
+                FieldUnit::Ratio => {
+                    ph2d_editor_core::widget::zero_sem_sinal(&format!("{v:.2}")).into_owned()
+                }
             };
             Some(format!("{}: {shown}", name(f.label)))
         })

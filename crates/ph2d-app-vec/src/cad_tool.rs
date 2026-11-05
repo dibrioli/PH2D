@@ -236,7 +236,7 @@ impl Unidades {
 
 /// Duas casas no máximo, sem zeros à direita.
 fn arredonda(v: f64) -> String {
-    let s = format!("{v:.2}");
+    let s = format!("{:.2}", (v * 100.0).round() / 100.0 + 0.0); // LITERAL-PX-OK: duas casas
     s.trim_end_matches('0').trim_end_matches('.').to_owned()
 }
 

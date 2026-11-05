@@ -242,7 +242,11 @@ pub(crate) fn prepare(store: &mut WidgetStore, layer: u64, p: &AdjustmentParams)
 /// Uma barra: o campo, ou, onde o número só se mostra (o Gamma do Levels), a pista nua com o valor no rótulo.
 fn barra(c: &mut CardCtx<'_>, b: &Barra, y: f32) -> f32 {
     if let SliderNumber::Shown(v) = b.numero {
-        let rotulo = format!("{} {v:.2}", tr(b.nome));
+        let rotulo = format!(
+            "{} {}",
+            tr(b.nome),
+            ph2d_editor_core::widget::zero_sem_sinal(&format!("{v:.2}"))
+        );
         let fim = c.full(Some(&rotulo), Widget::Readout { text: "" }, y);
         let r = Rect::new(c.x, fim - m::FIELD_H, c.w, m::FIELD_H);
         c.bar(

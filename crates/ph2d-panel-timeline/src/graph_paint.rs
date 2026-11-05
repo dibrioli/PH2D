@@ -241,7 +241,9 @@ fn paint_frame(
             ctx.scene,
             &grandeza
                 .and_then(|p| crate::tracks_value::com_unidade(p, v, u))
-                .unwrap_or_else(|| format!("{v:.2}")),
+                .unwrap_or_else(|| {
+                    ph2d_editor_core::widget::zero_sem_sinal(&format!("{v:.2}")).into_owned()
+                }),
             x,
             y,
             font,

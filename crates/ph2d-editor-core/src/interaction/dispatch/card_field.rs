@@ -101,7 +101,8 @@ pub(super) fn arrow(
     }) = store.get_mut(id)
     {
         *last_committed = v;
-        *buffer = format!("{v:.*}", crate::widget::card_field::decimals(spec.step));
+        let casas = crate::widget::card_field::decimals(spec.step);
+        *buffer = crate::widget::format_number_com_casas(v, Some(casas));
         *caret = buffer.len();
         *selection_anchor = Some(0);
     }

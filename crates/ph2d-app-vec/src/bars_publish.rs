@@ -70,7 +70,7 @@ fn readout(hero: &HeroScreen, snap_on: bool, px_to_world: f64) -> Vec<String> {
         && view.canvas.contains(p[0], p[1])
     {
         let w = view.screen_to_world(p);
-        let f = |v: f64| format!("{:.0} {}", display.value(v), display.suffix());
+        let f = |v: f64| format!("{:.0} {}", display.value(v).round() + 0.0, display.suffix());
         out.push(ph2d_i18n::tr_with(
             "panel.vector.bar.readout.xy",
             &[("x", &f(w[0])), ("y", &f(w[1]))],

@@ -706,6 +706,8 @@ Ordem do cartão do topo: Paint Mode, prévia, Preset + estrela, Save as New/Sav
 
 **Medido.** Chip: o maior nome de fábrica, `Compressed Charcoal`, pede `124,8`; o chip dá `175,2` com a estrela (`209,2` antes) na coluna do arnês, e o da foto real mede `217` de largura contra `224` no arnês. Com preset activo, o que vem depois do Preset sobe `34 px` (On switch `587 → 553`). A catraca de abertura mede sem preset publicado e fica em `1670`.
 
+**Testes:** `h12_preset_estrela`, 6 + 1 de foto, e `a_full_icon_…`, verdes; `h1`/`h2_os_cartoes` verdes. Contraprovas em `cards_topo.rs`: 6 de 6 sangram (ordem, apagada, sempre vazia, dica fixa, estrela à esquerda, outro id). Sem mutante em `ph2d-editor-core`. Portões pedidos verdes, salvo `the_shell_only_shrinks`: `ph2d-app-vec` `93970` contra `93637`, trabalho em curso do gizmo, fora desta fatia.
+
 **Fotos:** `maquete/z_painter_preset_estrela.png` (cena real, com patch temporário restaurado, porque a cena abre em `No preset`), `maquete/z_painter_preset_estrela_vazia_e_cheia.png` (as duas caras).
 
 **Decisões tomadas sem o dono.** Dois ícones em vez de só mudar a cor, e o aceso com o fundo dos ícones nus. Vista aberta, não corrigida: `Keep volume…` corta em `On switch` na coluna real, ao lado de Sync tools; já era assim e é outra lista.

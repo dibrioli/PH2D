@@ -103,6 +103,29 @@ verdes a `load` 35–48 contra ~40 % vermelhas a `load` 10 antes).
 
 Uma família entra por padrão e não por nome: `test(/orcamento::the_fit_/)` (`ph2d-app-flip`).
 
+## A espécie do estado do painel (04/11): nem era carga
+
+Assinatura enganadora: passa sozinho, reprova em grupo, passa «em fila». Oito scrubs de `o_alfinete` reprovavam em
+paralelo com o **mesmo** conjunto em 3 de 3 corridas (um flake de carga muda de conjunto). Não mediam recurso nenhum.
+
+**A variável:** `InspectorState::last_entity`, dentro do `ErasedPanel`, um só no processo, ao lado de ~70 `thread_local`
+que o painel lê. Duas mesas em paralelo trocavam-no a cada quadro; a «troca de objecto» (`sync.rs`) chama
+`end_number_input_drag`, e o gesto morria. Medido, o mesmo binário, intercalado, `load` ~30:
+
+| Estado do painel | `o_alfinete` a 8 fios | Arrastos largados pela troca |
+|---|---|---|
+| Por processo | 41 de 49, 3 de 3 corridas | 22, 22, 23 |
+| Por fio | 49 de 49, 3 de 3 corridas | 0, 0, 0 |
+
+**A cura está na origem:** `ErasedPanel` guarda estado e coluna do valor **por fio**. O libtest passa a ver o que o nextest vê
+(um estado por teste); a app pinta num fio só e tem uma entrada. `a_vez_da_mesa` saiu. O binário inteiro de
+`ph2d-panel-registry-init` a 8 fios ficou em 316 de 316, e três vermelhos que dependiam da companhia saíram com a cura:
+`dentro_de_um_troco_o_valor_arranca_numa_coluna_so` e dois de `os_estilos_de_cor`.
+
+**Produto:** sem defeito. Só há uma `HeroScreen` a pintar na app (`init.rs`); uma segunda, no mesmo fio, voltaria a partilhar o
+estado. O mesmo acidente já tinha sido contornado duas vezes, com a mesma variável nomeada: `registo_privado`
+(`quantas_entradas_tem_cada_painel`) e `InspectorPrivado` (`cartoes_mao`). Ficam como estão; deixaram de ser necessários.
+
 ## A espécie da memória da placa (W5e, 2026-10-11)
 
 Um gate de GPU que ALOCA muito (a luz 2D: 0,3–4 GB por teste) reprova no fan-out quando a soma dos

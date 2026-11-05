@@ -550,6 +550,8 @@ mod sonda_corte; // o corte vertical no início do traço (smoke do dono 16/10)
 #[cfg(test)]
 mod sonda_fios; // O3: os fios finos do Rebelle saem dos knobs que o motor já tem?
 #[cfg(test)]
+mod sonda_fotos_do_dono; // as duas fotos de 05/11: branco em papel de cor e Knife Stain pequeno
+#[cfg(test)]
 mod sonda_gota; // a varredura da lei da gota contra o Rebelle (W1e, F1+F5)
 #[cfg(test)]
 mod sonda_macro_tests; // as MACROS: reproduzir ao byte contando passos da sim, não segundos

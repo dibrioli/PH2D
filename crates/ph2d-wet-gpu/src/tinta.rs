@@ -63,9 +63,12 @@ pub(crate) struct TintaGpu {
     pub meio: wgpu::Buffer,
     pub dmeio: wgpu::Buffer,
     pub corpo: wgpu::Buffer,
-    /// Quantas células pediram o fecho na última cura.
+    /// `[células que pediram o fecho, 1.ª linha curada, última linha curada]` da última cura; vazio = `[0, MAX, 0]`.
     pub fecham: wgpu::Buffer,
 }
+
+/// O valor de partida de [`TintaGpu::fecham`] antes de cada cura.
+pub(crate) const FECHAM_ZERO: [u32; 3] = [0, u32::MAX, 0];
 
 fn seis(s: &Soma) -> [f32; 6] {
     [s.v, s.lab[0], s.lab[1], s.lab[2], s.t, s.m]
@@ -149,6 +152,16 @@ impl TintaGpu {
         w(&self.abertura, &op, 4);
         w(&self.meio, &me, 4);
         w(&self.corpo, &co, 4);
+    }
+
+    /// Desce SÓ a abertura das linhas `y0..=y1`: a cura escreve-a fora da caixa, onde mais nada mudou.
+    pub(crate) fn desce_abertura(&self, gpu: &GpuContext, g: &mut Grid, (y0, y1): (usize, usize)) {
+        let (a, n) = (y0 * g.s, (y1 + 1 - y0) * g.s);
+        let o: Vec<f32> = crate::read_at(gpu, &self.abertura, a as u64 * 4, n as u64 * 4);
+        garante(g);
+        for (c, o) in g.tinta[a..a + n].iter_mut().zip(o) {
+            c.o = o;
+        }
     }
 
     /// Desce as células de cada faixa de linhas, numa cópia e numa espera. O corpo e o resto da célula a placa não muda.

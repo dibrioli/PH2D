@@ -44,6 +44,7 @@ pub fn placa_sabe(sim: &Sim, g: &Grid, tuning: &Tuning) -> bool {
         && ext
 }
 
+mod desce;
 mod fatias;
 mod hashes;
 mod plano;
@@ -88,6 +89,8 @@ pub struct PassoPlaca {
     hash_fluxo: Vec<u64>,
     /// As linhas finas que a placa pode ter mudado desde a subida (a união das caixas): o `desce_suja` desce só elas.
     suja: Option<(i32, i32)>,
+    /// As linhas onde a `t_cura` escreveu a abertura desde a última descida: a cura não respeita a caixa.
+    curada: Option<(usize, usize)>,
     /// Carimbos por passada (`None` = a placa não tem `TIMESTAMP_QUERY`: sem guarda) e o destino resolvido.
     qs: Option<(wgpu::QuerySet, wgpu::Buffer)>,
     orcamento: u64,
@@ -229,6 +232,7 @@ impl PassoPlaca {
             hash_fina: Vec::new(),
             hash_fluxo: Vec::new(),
             suja: None,
+            curada: None,
             qs,
             orcamento: ORCAMENTO_GRUPOS,
             teto_ms: TETO_MS,
@@ -258,6 +262,7 @@ impl PassoPlaca {
         self.hash_fina = hashes(g.rows, &|y| hash_fina(g, y));
         self.hash_fluxo = hashes(g.flow.rows, &|y| hash_fluxo(g, y));
         self.suja = g.has_fluid.then_some((g.by0, g.by1));
+        self.curada = None;
     }
 
     /// A placa deixa de espelhar a CPU (a CPU vai andar o passo): a próxima subida é inteira.
@@ -315,6 +320,7 @@ impl PassoPlaca {
         if let Some(t) = &self.tinta {
             t.desce_faixas(gpu, g, &faixas);
         }
+        let fora = self.desce_o_curado(gpu, g, &faixas);
         for (y0, y1) in faixas {
             let (f0, f1) = fluxo_de(g, y0, y1);
             for y in y0..=y1 {
@@ -324,91 +330,14 @@ impl PassoPlaca {
                 self.hash_fluxo[f] = hash_fluxo(g, f);
             }
         }
+        let novos = hashes(fora.len(), &|k| hash_fina(g, fora[k]));
+        for (&y, h) in fora.iter().zip(novos) {
+            self.hash_fina[y] = h;
+        }
         let full = g.s as i32 - 1;
         g.row_lo.fill(0);
         g.row_hi.fill(full);
         self.suja = g.has_fluid.then_some((g.by0, g.by1));
-    }
-
-    /// Desce as linhas finas de cada faixa e as de fluxo que as cobrem: as 10 cópias de cada faixa num
-    /// codificador, num buffer, numa espera (antes: uma espera por cópia, 33 por descida suja).
-    fn desce_faixas(&self, gpu: &GpuContext, g: &mut Grid, faixas: &[(usize, usize)]) {
-        let a = &self.adv;
-        let fino: [(&wgpu::Buffer, u64); 6] = [
-            (&a.st, 8),
-            (&a.rgb, 12),
-            (&a.sett, 4),
-            (&self.seca.trgb, 12),
-            (&a.active, 4),
-            (&a.wet, 4),
-        ];
-        let fluxo = [&a.vel_x, &a.vel_y, &a.flow_x, &a.flow_y];
-        // (origem, offset na origem, bytes, offset no stage)
-        let mut copias: Vec<(&wgpu::Buffer, u64, u64, u64)> = Vec::new();
-        let mut tam = 0u64;
-        for &(y0, y1) in faixas {
-            let (ca, cb) = ((y0 * g.s) as u64, ((y1 + 1) * g.s) as u64);
-            for &(b, k) in &fino {
-                copias.push((b, ca * k, (cb - ca) * k, tam));
-                tam += (cb - ca) * k;
-            }
-            let (f0, f1) = fluxo_de(g, y0, y1);
-            let (fa, fb) = ((f0 * g.flow.s) as u64, ((f1 + 1) * g.flow.s) as u64);
-            for b in fluxo {
-                copias.push((b, fa * 4, (fb - fa) * 4, tam));
-                tam += (fb - fa) * 4;
-            }
-        }
-        if tam == 0 {
-            return;
-        }
-        let stage = gpu.device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("wet-gpu desce"),
-            size: tam,
-            usage: wgpu::BufferUsages::COPY_DST | wgpu::BufferUsages::MAP_READ,
-            mapped_at_creation: false,
-        });
-        let mut enc = gpu.device.create_command_encoder(&Default::default());
-        for &(b, o, n, d) in &copias {
-            enc.copy_buffer_to_buffer(b, o, &stage, d, n);
-        }
-        gpu.queue.submit([enc.finish()]);
-        let sl = stage.slice(..);
-        sl.map_async(wgpu::MapMode::Read, |r| r.expect("map"));
-        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
-        {
-            let d = sl.get_mapped_range().expect("mapped range");
-            let mut it = copias
-                .iter()
-                .map(|&(_, _, n, o)| &d[o as usize..(o + n) as usize]);
-            let mut prox = || it.next().expect("uma cópia por destino");
-            for &(y0, y1) in faixas {
-                let (ca, cb) = (y0 * g.s, (y1 + 1) * g.s);
-                let st: &[[f32; 2]] = bytemuck::cast_slice(prox());
-                for (k, v) in st.iter().enumerate() {
-                    g.film[ca + k] = v[0];
-                    g.susp[ca + k] = v[1];
-                }
-                g.susp_rgb[ca..cb].copy_from_slice(bytemuck::cast_slice(prox()));
-                g.sett[ca..cb].copy_from_slice(bytemuck::cast_slice(prox()));
-                g.sett_rgb[ca..cb].copy_from_slice(bytemuck::cast_slice(prox()));
-                let act: &[u32] = bytemuck::cast_slice(prox());
-                for (o, &v) in g.active[ca..cb].iter_mut().zip(act) {
-                    *o = v as u8;
-                }
-                let wet: &[u32] = bytemuck::cast_slice(prox());
-                for (o, &v) in g.wet[ca..cb].iter_mut().zip(wet) {
-                    *o = v as u8;
-                }
-                let (f0, f1) = fluxo_de(g, y0, y1);
-                let (fa, fb) = (f0 * g.flow.s, (f1 + 1) * g.flow.s);
-                g.vel_x[fa..fb].copy_from_slice(bytemuck::cast_slice(prox()));
-                g.vel_y[fa..fb].copy_from_slice(bytemuck::cast_slice(prox()));
-                g.flow_x[fa..fb].copy_from_slice(bytemuck::cast_slice(prox()));
-                g.flow_y[fa..fb].copy_from_slice(bytemuck::cast_slice(prox()));
-            }
-        }
-        stage.unmap();
     }
 
     /// Desce a grade INTEIRA para a CPU (film, susp, cores, sett, vel, flow, active, wet).
@@ -437,6 +366,7 @@ impl PassoPlaca {
         self.hash_fina = hashes(g.rows, &|y| hash_fina(g, y));
         self.hash_fluxo = hashes(g.flow.rows, &|y| hash_fluxo(g, y));
         self.suja = g.has_fluid.then_some((g.by0, g.by1));
+        self.curada = None;
     }
 
     /// A caixa entra na faixa suja (o que a placa pode mudar).
@@ -478,8 +408,11 @@ impl PassoPlaca {
         // As escritas da fila aplicam-se antes da PRÓXIMA submissão: todas antes da primeira (como num submit só).
         self.adv.zera_vmax(gpu);
         if let (true, Some(t)) = (cura, &self.tinta) {
-            gpu.queue
-                .write_buffer(&t.fecham, 0, bytemuck::bytes_of(&0u32));
+            gpu.queue.write_buffer(
+                &t.fecham,
+                0,
+                bytemuck::cast_slice(&crate::tinta::FECHAM_ZERO),
+            );
         }
         // Rebuild sem secagem no mesmo passo: o resto passa pela porta do `has_fluid` (indirecto).
         let porta = par && !seca;
@@ -550,11 +483,15 @@ impl PassoPlaca {
         let (c, ts) = self.le_stage(gpu, nq);
         self.carimba(&ts, &cortes, gpu);
         // O fecho da cura é da CPU (a óptica da camada fina): raro, e só quando a placa contou alguém para fechar.
-        let fecha = cura
-            && self
-                .tinta
-                .as_ref()
-                .is_some_and(|t| read::<u32>(gpu, &t.fecham, 4)[0] > 0);
+        let mut fecha = false;
+        if let (true, Some(t)) = (cura, &self.tinta) {
+            let v = read::<u32>(gpu, &t.fecham, 12);
+            fecha = v[0] > 0;
+            if v[1] <= v[2] {
+                let (a, b) = (v[1] as usize, v[2] as usize);
+                self.curada = Some(self.curada.map_or((a, b), |(x, y)| (x.min(a), y.max(b))));
+            }
+        }
         if fecha {
             self.desce(gpu, g);
             ph2d_wet_paint::drying::cura(g, 0.0);

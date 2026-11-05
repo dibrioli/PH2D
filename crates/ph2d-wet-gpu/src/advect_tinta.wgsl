@@ -165,7 +165,9 @@ fn campo_oleo(@builtin(global_invocation_id) g: vec3<u32>) {
 }
 
 // A cura na folha inteira (`drying::cura`): a abertura decai onde há aberto com meio. O FECHO é da CPU (a óptica da camada
-// fina); aqui só se conta quem o pede, e o passo desce, fecha e sobe.
+// fina); aqui só se conta quem o pede, e o passo desce, fecha e sobe. `fecham[1..=2]` = as linhas curadas (`min`, `max`): a
+// descida suja traz a abertura delas, que podem estar fora da caixa. Lê antes de escrever: a escrita atómica disputada custa, e
+// só as primeiras células de cada extremo a pagam.
 @compute @workgroup_size(16, 16, 1)
 fn t_cura(@builtin(global_invocation_id) g: vec3<u32>) {
     let x = i32(g.x);
@@ -179,6 +181,9 @@ fn t_cura(@builtin(global_invocation_id) g: vec3<u32>) {
     if m <= 0.0 { return; }
     let o = abertura[i] * exp(-DT_CURA / (TAU_OLEO_S / m));
     abertura[i] = o;
+    let linha = g.y;
+    if atomicLoad(&fecham[1]) > linha { atomicMin(&fecham[1], linha); }
+    if atomicLoad(&fecham[2]) < linha { atomicMax(&fecham[2], linha); }
     if o < O_FECHA && st[i].x <= 0.0 && filme[j] <= 0.0 {
         atomicAdd(&fecham[0], 1u);
     }

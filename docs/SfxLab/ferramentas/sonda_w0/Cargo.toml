@@ -1,0 +1,37 @@
+# Sonda W0 do SFX Lab: projeto à parte de propósito, para o FunDSP não entrar no Cargo.lock do app
+# antes da decisão do ADR do motor. Como correr: `corre.sh`, ao lado.
+[package]
+name = "sonda-w0"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[features]
+rack = ["dep:ph2d-audio", "dep:ph2d-audio-edit"]
+
+[dependencies]
+fundsp = { version = "=0.23.0", default-features = false, features = ["std"] }
+ph2d-det-math = { path = "../../../../crates/ph2d-det-math" }
+ph2d-audio = { path = "../../../../crates/ph2d-audio", optional = true }
+ph2d-audio-edit = { path = "../../../../crates/ph2d-audio-edit", optional = true }
+
+[[bin]]
+name = "sonda"
+required-features = ["rack"]
+
+[[bin]]
+name = "so_kernels"
+
+[[bin]]
+name = "so_fundsp"
+
+# O mesmo perfil `smoke` do repositório, sem incremental partilhado.
+[profile.smoke]
+inherits = "release"
+codegen-units = 16
+lto = "off"

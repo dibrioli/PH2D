@@ -33,3 +33,4 @@ metadata:
 - ⭐ [Animação (25/10): UM cartão Animation + editor próprio; depois LISTA DE REGRAS «quando → animação»](project_animation_one_card_owner_decision_2026_10_25.md)
 - ⭐ [Apagar camada animada (25/10): a linha da timeline SOME junto e o Desfazer devolve as duas](project_a_deleted_animated_layer_takes_its_timeline_row_2026_10_25.md)
 - ⭐ [Editor de scripts Luau (15/10): script no projeto · `luau-lsp` empacotado · IA só no FIM · Ctrl+clique na API = ajuda](project_code_editor_owner_decisions_2026_10_15.md)
+- Dono 05/11: File > Import abre janela Pixel Sprite × Image (Painter); arrastar fica como folha/imagem.

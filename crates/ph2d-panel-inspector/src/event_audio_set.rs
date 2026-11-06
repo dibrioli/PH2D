@@ -22,7 +22,7 @@ fn clique(
     id: NodeId,
 ) -> Option<AudioFieldEdit> {
     if let Some(i) = ids::INSP_AUDIO_SET_DEL.iter().position(|&o| o == id) {
-        return (i < set.rows.len()).then(|| AudioFieldEdit::SetRemove(i as u8));
+        return (i < set.rows.len()).then_some(AudioFieldEdit::SetRemove(i as u8));
     }
     if let Some(i) = ids::INSP_AUDIO_PICK_OPT.iter().position(|&o| o == id) {
         fecha(host, ids::INSP_AUDIO_PICK);

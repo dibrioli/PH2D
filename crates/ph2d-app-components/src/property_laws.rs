@@ -211,10 +211,6 @@ pub(crate) const LEIS: &[(&str, Lei)] = &[
         Some(|w, e| em(w, e, crate::parallax_inspector::sanitize_parallax_repeat)),
     ),
     (
-        "ph2d::ecs::SoundSet",
-        Some(|w, e| em(w, e, ph2d_ecs::SoundSet::sanitize)),
-    ),
-    (
         "ph2d::ecs::AudioSource2D",
         Some(|w, e| em(w, e, crate::audio_inspector::sanitize_audio_source)),
     ),

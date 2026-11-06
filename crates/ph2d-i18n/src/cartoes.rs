@@ -377,7 +377,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.audio.weight_tip" => "How often this sound comes up, compared to the others",
         "card.audio.pick" => "Pick",
         "card.audio.pick_placeholder" => "Add a sound\u{2026}",
-        "card.audio.pick_none" => "No sounds to add",
+        "card.audio.pick_none" => "\u{2014}",
         "card.audio.pick_empty_project" => {
             "This project has no sounds yet. Browse\u{2026} imports one, then it can be picked here."
         }

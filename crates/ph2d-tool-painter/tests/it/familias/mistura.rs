@@ -260,6 +260,16 @@ pub const MEIOS: &[ReceitaMeio] = &[
         ferramenta: Some("Eraser"),
         ..ReceitaMeio::digital("Eraser", "Texture", "Texture Eraser")
     },
+    // A Borracha do Wet que abre sem preset (dono 06/11: a melhor sobre traços com relevo): o slot de fábrica, tal qual.
+    ReceitaMeio {
+        ferramenta: Some("Eraser"),
+        ..ReceitaMeio::novo(
+            ph2d_tool_painter::PaintMedia::WetPaint,
+            "Eraser",
+            "Relief",
+            "Relief Eraser",
+        )
+    },
     // Os básicos do Blur, do Smear e do Clone (dono 24/10): o pincel de fábrica do slot de cada um (Spacing 0,05 —
     // estas ferramentas não leem o Continuous, `NAO_LE`), a borda macia; a pressão no tamanho.
     ReceitaMeio {
@@ -938,7 +948,12 @@ fn cada_ferramenta_tem_os_seus_presets_de_fabrica() {
     let esperado: [(F, &[&str]); 7] = [
         (
             F::Borracha,
-            &["Hard Eraser", "Kneaded Eraser", "Texture Eraser"],
+            &[
+                "Hard Eraser",
+                "Kneaded Eraser",
+                "Relief Eraser",
+                "Texture Eraser",
+            ],
         ),
         (F::Blur, &["Blur Basic"]),
         (F::Smear, &["Smear Basic"]),
@@ -991,7 +1006,9 @@ fn cada_ferramenta_tem_os_seus_presets_de_fabrica() {
                 "{}: a ferramenta na mão",
                 e.relativo
             );
-            let meio = if f.ferramenta_da_agua().is_some() {
+            let meio = if f.ferramenta_da_agua().is_some()
+                || e.preset.parametros.name == "Relief Eraser"
+            {
                 PaintMedia::WetPaint
             } else {
                 PaintMedia::Digital

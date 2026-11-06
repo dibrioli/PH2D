@@ -439,7 +439,7 @@ const CARIMBOS_ESPACADOS: [&str; 1] = ["Dabber 4"];
 /// ⭐ **A REGRA do Spacing** (dono 18/10, prompt 51): cada pincel de fábrica do WET PAINT — e o que nasce SEM preset —
 /// leva o Spacing [`SPACING_DA_FABRICA`] com o Continuous ligado. Os outros meios não: a regra é a da cápsula e do
 /// pigmento por comprimento do Wet (o lápis do Digital vive a 0,05).
-/// Fora dela, pelo NOME, só os [`CARIMBOS_ESPACADOS`].
+/// Fora dela, pelo NOME, só os [`CARIMBOS_ESPACADOS`]; a Borracha não pousa pigmento e não entra.
 #[test]
 fn a_regra_do_spacing_da_fabrica() {
     let cumpre = |b: &std::collections::BTreeMap<String, serde_json::Value>| {
@@ -453,6 +453,10 @@ fn a_regra_do_spacing_da_fabrica() {
         .into_iter()
         .filter(|e| e.preset.parametros.media == MEIO_DO_PRESET)
         .filter(|e| !CARIMBOS_ESPACADOS.contains(&e.preset.parametros.name.as_str()))
+        .filter(|e| {
+            ph2d_tool_painter::ferramenta_do_preset(&e.preset.parametros)
+                != ph2d_tool_painter::FerramentaDoPincel::Borracha
+        })
         .filter(|e| !cumpre(&e.preset.parametros.brush))
         .map(|e| e.relativo)
         .collect();

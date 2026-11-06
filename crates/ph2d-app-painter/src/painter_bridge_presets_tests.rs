@@ -382,7 +382,7 @@ fn escolher_um_preset_de_outro_modo_troca_o_modo_a_partir_de_cada_modo() {
     }
 }
 
-/// ⭐ **Cada ferramenta vê a SUA biblioteca** (dono 24/10, o Procreate): a Borracha as três borrachas, o Blur/Smear/Clone
+/// ⭐ **Cada ferramenta vê a SUA biblioteca** (dono 24/10, o Procreate): a Borracha as borrachas, o Blur/Smear/Clone
 /// o seu Basic, o Pincel nenhum deles; escolher na Borracha deixa-a na mão, e o activo é de cada gaveta.
 #[test]
 fn o_navegador_mostra_so_os_presets_da_ferramenta_na_mao() {
@@ -400,7 +400,12 @@ fn o_navegador_mostra_so_os_presets_da_ferramenta_na_mao() {
     ve(&mut p, &mut t, "eraser");
     assert_eq!(
         nomes(&p),
-        ["Hard Eraser", "Kneaded Eraser", "Texture Eraser"]
+        [
+            "Hard Eraser",
+            "Kneaded Eraser",
+            "Relief Eraser",
+            "Texture Eraser"
+        ]
     );
     for (fio, nome) in [
         ("blur", "Blur Basic"),

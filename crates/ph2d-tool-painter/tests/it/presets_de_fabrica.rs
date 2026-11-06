@@ -249,8 +249,9 @@ pub(super) fn relativo_do_meio(r: &ReceitaMeio) -> String {
 /// outros meios não a lê).
 pub(super) fn parametros_do_meio(r: &ReceitaMeio) -> (Parametros, BTreeMap<String, Vec<u8>>) {
     let m = r.meio;
+    // A Borracha do Wet não pinta: o preset dela é o slot de fábrica, sem a `Receita` de tinta.
     assert!(
-        m != PaintMedia::WetPaint,
+        m != PaintMedia::WetPaint || r.ferramenta == Some("Eraser"),
         "{}: um preset do Wet Paint é uma `Receita`",
         r.nome
     );

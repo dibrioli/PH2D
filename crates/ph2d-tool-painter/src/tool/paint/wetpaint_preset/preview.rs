@@ -376,10 +376,24 @@ pub(super) fn pintar_miniatura(
     t.set_paint_media(cena.meio);
     t.set_wet_relogio_fixo(true);
     t.instalar_cena(cena, false);
+    // A Borracha do Wet não pinta a faixa: apaga o S na tela cheia, como o preview vivo dela.
+    let borracha_do_wet = cena.borracha && cena.meio == PaintMedia::WetPaint;
+    let mut emite = |px: &[u8], w: u32, h: u32| {
+        if borracha_do_wet {
+            emite(&super::preview_borracha::sobre_o_branco(px), w, h);
+        } else {
+            emite(px, w, h);
+        }
+    };
+    if borracha_do_wet {
+        t.set_source(super::preview_borracha::tela_cheia(lado, lado), lado, lado);
+        t.set_paint_tool_mode("eraser");
+        t.instalar_cena(cena, true);
+    }
 
     let l = lado as f32;
     let (x0, x1, cy) = (MARGEM, l - MARGEM, l * 0.5);
-    if e_ferramenta(cena) {
+    if !borracha_do_wet && e_ferramenta(cena) {
         faixa_da_ferramenta(&mut t, cena, x0, x1, cy);
     }
     if let Some(fio) = fio_do_trilho(cena) {

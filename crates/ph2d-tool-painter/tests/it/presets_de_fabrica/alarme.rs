@@ -83,6 +83,11 @@ fn a_largura_de_fabrica_e_a_aprovada() {
     let presets: Vec<Preset> = ficheiros_do_wet()
         .into_iter()
         .map(|(_, b)| ler(&b).unwrap())
+        // A Borracha não deixa traço para medir.
+        .filter(|p| {
+            ph2d_tool_painter::ferramenta_do_preset(&p.parametros)
+                != ph2d_tool_painter::FerramentaDoPincel::Borracha
+        })
         .collect();
     // (preset, raio, crua): todos com a tabela do preset; o Wet Round também cru (o controlo).
     let casos: Vec<(usize, usize, bool)> = presets

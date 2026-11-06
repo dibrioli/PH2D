@@ -161,8 +161,11 @@ fn cada_preset_de_fabrica_mapeia_por_funcao() {
             k.body()
         );
 
-        // A ferramenta da água só escreve o corpo dela: a ida e volta é a dos pincéis de tinta.
-        if ferramenta_do_preset(&prm).ferramenta_da_agua().is_some() {
+        // A ferramenta da água e a Borracha só escrevem o corpo delas: a ida e volta é a dos pincéis de tinta.
+        let ferramenta = ferramenta_do_preset(&prm);
+        if ferramenta.ferramenta_da_agua().is_some()
+            || ferramenta == crate::FerramentaDoPincel::Borracha
+        {
             continue;
         }
         n_tinta += 1;
@@ -205,8 +208,8 @@ fn cada_preset_de_fabrica_mapeia_por_funcao() {
     );
     assert_eq!(
         (n, n_tinta),
-        (55, 45),
-        "contados: 55 Wet Paint, 45 de tinta"
+        (56, 45),
+        "contados: 56 Wet Paint, 45 de tinta"
     );
     assert!(falhas.is_empty(), "{} mudaram: {falhas:?}", falhas.len());
     assert!(presos.is_empty(), "presos pela faixa: {presos:?}");

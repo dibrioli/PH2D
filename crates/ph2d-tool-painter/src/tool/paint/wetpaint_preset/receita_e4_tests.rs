@@ -15,17 +15,21 @@ fn cada_preset_de_fabrica_pousa_o_mesmo_pigmento_e_agua_por_dab() {
     let mut n = 0;
     let mut falhas = Vec::new();
     let mut agua_fora = 0;
+    let mut borrachas_fora = 0;
     for e in bib
         .entradas
         .iter()
         .filter(|e| e.preset.parametros.media == MEIO_DO_PRESET)
     {
         // A ferramenta da água (Water Brush) não passa pelo depósito de tinta: só o corpo dela vai ao slot.
-        if ferramenta_do_preset(&e.preset.parametros)
-            .ferramenta_da_agua()
-            .is_some()
-        {
+        let ferramenta = ferramenta_do_preset(&e.preset.parametros);
+        if ferramenta.ferramenta_da_agua().is_some() {
             agua_fora += 1;
+            continue;
+        }
+        // A Borracha também não (Bug #65 A5): a receita do Pincel fica como está.
+        if ferramenta == crate::FerramentaDoPincel::Borracha {
+            borrachas_fora += 1;
             continue;
         }
         let prm = &e.preset.parametros;
@@ -71,9 +75,9 @@ fn cada_preset_de_fabrica_pousa_o_mesmo_pigmento_e_agua_por_dab() {
         n += 1;
     }
     assert_eq!(
-        (n, agua_fora),
-        (45, 10),
-        "os 55 pincéis Wet Paint de fábrica: 45 de tinta, 10 ferramentas da água"
+        (n, agua_fora, borrachas_fora),
+        (45, 10, 1),
+        "os 56 presets Wet Paint de fábrica: 45 de tinta, 10 ferramentas da água, 1 Borracha"
     );
     assert!(falhas.is_empty(), "{} mudaram: {falhas:?}", falhas.len());
 }

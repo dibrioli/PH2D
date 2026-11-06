@@ -215,6 +215,10 @@ const WET_FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ("armed", "o meio: o `set_paint_media` do tool do preview"),
     ("session", SESSAO),
     (
+        "adormecidas",
+        "a tinta adormecida da obra não vai ao preview",
+    ),
+    (
         "preparo",
         "cache de aquecimento do 1.º toque, não é ajuste do pincel (Bug #72)",
     ),

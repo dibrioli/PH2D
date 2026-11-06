@@ -66,7 +66,6 @@ impl Engine {
         // O traço NOVO (a lane 0 nasce primeiro; as cópias e as do Tiling são o mesmo traço).
         if lane == 0 {
             let oleo_na_mao = self.sim.oleo;
-            self.marca_tudo();
             crate::solver::fotografa_a_ladeira(
                 &mut self.layers[self.active_layer].grid,
                 oleo_na_mao,

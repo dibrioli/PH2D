@@ -1,14 +1,12 @@
 ---
 name: project_new_paint_law_for_all_brushes_2026_11_05
-description: "Dono 05/11 noite: testou a lei nova em todos os pincéis e mandou voltar: «problemas e mais problemas: melhor voltar para lei antiga e descartar a nova»"
+description: "Dono 05/11 noite: testou a lei nova em todos os pincéis, voltou à antiga e mandou ARQUIVAR a nova, sem jogar fora; relevo sem degrau e pen-down leve ficam ligados"
 metadata:
   type: project
 ---
 
-O dono pediu a lei nova (Pigmento) em todos os pincéis, testou e, no mesmo dia, revogou: «problemas e mais problemas: melhor voltar para lei antiga e descartar a nova». A ferramenta pinta com a lei velha. Tag `lei-antiga` e ramo `backup/lei-antiga-2026-11-05` existem, locais.
+O dono pediu a lei nova (Pigmento), testou e revogou no mesmo dia: «problemas e mais problemas»; depois «religue sim tudo; pode arquivar a lei nova. Não jogar fora.» O produto pinta com a lei velha; relevo sem degrau e pen-down sem copiar a grade ficam ligados.
 
 **Why:** o que ele aprova é o olho sobre os pincéis de hoje: [[project_brushes_as_they_are_are_the_reference_2026_11_05]]. Substitui o plano da [[project_e12_blocked_by_mother_gate_ruler_2026_11_05]].
 
-**How to apply:** não proponha de novo trocar a lei. O código da lei nova ainda existe: apagá-lo pede confirmação do alcance. Ele não disse quais problemas viu.
-
-Depois, no mesmo dia, mandou restaurar o backup: `crates/` e `assets/` = tag `lei-antiga`. O relevo sem degrau voltou a ser opcional (`PH2D_PAPEL_SEM_DEGRAU=1`) e o pen-down voltou a copiar a grade; não religar sem perguntar.
+**How to apply:** não proponha a troca de novo nem apague o código sem ordem. Arquivo: `docs/Painter/Arquitetura/LEI_NOVA_ARQUIVADA.md`, tag `lei-nova-arquivada`. Ele não disse quais problemas viu.

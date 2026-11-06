@@ -2,7 +2,6 @@
 //! cima à esquerda: o papel subido clareia em cima e escurece em baixo. `S` = luz da orla de baixo − luz da orla de cima,
 //! cada uma contra o papel nu do mesmo sítio, menos o mesmo `S` com o papel liso (a cor não entra). `S > 0` = afundada.
 //! `PH2D_SONDA_SO=a,b` restringe; `PH2D_SONDA_MEIO=WetPaint|Watercolor`; `PH2D_SONDA_FOTOS=dir` grava os PPM.
-//! `PH2D_PAPEL_SEM_DEGRAU=1` mede a lei à espera do dono.
 
 use super::offthread::otica::forca_no_teste;
 use super::sonda_bordas_longe::{H, W, ecra, grava_ppm, tiques, traco};
@@ -147,4 +146,16 @@ fn sonda_paper_press_continua_a_agir() {
             super::sonda_bordas_longe::dif(&a, &c, 0, H)
         );
     }
+}
+
+/// Bug #71 (dono 05/11: «melhorou quase 100%»): a tinta não fica afundada no papel de alto relevo. Com o degrau, +0,080.
+#[test]
+fn a_tinta_nao_fica_afundada_no_papel_de_alto_relevo() {
+    let raiz = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+    let lib = Biblioteca::carregar(&raiz, None);
+    let b = super::sonda_bordas_longe::por_nome(&lib, "Wet Liner");
+    let alto = s_da_orla(&tela(Some(b), 1.0, &|_| {}), &tela(None, 1.0, &|_| {})).expect("orla");
+    let liso = s_da_orla(&tela(Some(b), 0.0, &|_| {}), &tela(None, 0.0, &|_| {})).expect("orla");
+    let s = (alto.1 - alto.0) - (liso.1 - liso.0);
+    assert!(s.abs() < 0.03, "S = {s:+.3}");
 }

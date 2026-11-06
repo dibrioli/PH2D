@@ -71,3 +71,6 @@ Veredictos: Borracha OK; óleos OK; relevo «melhorou quase 100%». Decisões: r
 
 ## Restaurado o backup (dono 05/11: «pode restaurar para o backup que te pedi antes dessa mudança?»)
 `crates/` e `assets/` iguais à tag `lei-antiga` (`56f890198b`), por commit novo; o histórico guarda o que saiu. **Saíram:** o relevo sem degrau por omissão (volta a ser só `PH2D_PAPEL_SEM_DEGRAU=1`, desligado), o portão dele, o pen-down sem `marca_tudo` (Bug #72, 2.º traço volta a 53 ms no Wet Wash), a sonda do 1.º traço. **Ficam:** lei velha, bordas por traço, Borracha, 13 óleos e receitas. Atenção: o dono aprovara o relevo; perguntar se o quer de volta. Refazer: `git show db946aa38f` e `410076692a`.
+
+## Estado final desta janela (dono 05/11: «religue sim tudo; pode arquivar a lei nova, não jogar fora»)
+`crates/` e `assets/` = `db946aa38f`: lei velha, relevo sem degrau por omissão com portão, pen-down sem `marca_tudo`, bordas, Borracha, 13 óleos. Lei nova: [arquivada](../Arquitetura/LEI_NOVA_ARQUIVADA.md), tag `lei-nova-arquivada`. As secções anteriores «lei nova em tudo» e «restaurado» são história. Aberto: Bug #72 (1.º traço); provas de mutação e bateria da linha antes de integrar.

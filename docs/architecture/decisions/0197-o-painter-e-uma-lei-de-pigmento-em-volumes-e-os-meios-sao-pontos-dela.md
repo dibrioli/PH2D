@@ -1,5 +1,7 @@
 # ADR-0197 — O Painter é uma lei de pigmento em VOLUMES; os meios são pontos dela, não ramos
 
+> **ARQUIVADA pelo dono em 05/11/2026:** o produto fica na lei antiga e o código fica guardado. Ver [LEI_NOVA_ARQUIVADA](../../Painter/Arquitetura/LEI_NOVA_ARQUIVADA.md).
+
 - **Status:** Proposed — o desenho técnico é delegado (padrão-ouro); o PRODUTO é do dono: a refatoração
   (31/10, noite: *«profunda, completa, brutal … cada parâmetro plenamente funcional, estável, reprodutível,
   confiável»*), o fim do Rebelle como referência (31/10: *«nos tornar nós mesmos como nossa própria cara»*),

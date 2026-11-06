@@ -339,8 +339,17 @@ fn pinta_a_largura(
     st: &mut InspectorState,
     largura: f32,
 ) -> Vec<(NodeId, Rect)> {
+    pinta_na_janela(host, st, largura, 900.0)
+}
+
+fn pinta_na_janela(
+    host: &mut MockPanelHost,
+    st: &mut InspectorState,
+    largura: f32,
+    altura: f32,
+) -> Vec<(NodeId, Rect)> {
     use ph2d_editor_core::screens::layout::{CenterSplit, ChromeBands, DockSides, HeroLayout};
-    let janela = Rect::new(0.0, 0.0, 1600.0, 900.0);
+    let janela = Rect::new(0.0, 0.0, 1600.0, altura);
     let bandas = ChromeBands {
         right_dock_w: largura,
         ..ChromeBands::DEFAULT
@@ -660,4 +669,47 @@ fn o_flip_e_o_pivot_pintam_a_bolinha_de_chave() {
     set_key_marks(Default::default());
     let _ = rect_de(&r, key_mark_id(INSP_SPRITE_FLIP_X));
     let _ = rect_de(&r, key_mark_id(INSP_SPRITE_PIVOT_XY[0]));
+}
+
+/// ⭐ **Dono 05/11:** no mínimo real do painel (`DOCK_W_MIN`, 210 px; a barra de rolar come mais) nenhum texto do cartão
+/// da Sprite sai cortado: nem botão (`Reimport`: 157 > 146) nem nome de ponto do Pivot, em todos os pontos e em Custom.
+#[test]
+fn nada_do_cartao_da_sprite_e_cortado_no_minimo_do_painel() {
+    use ph2d_editor_core::text_elide::elisao;
+    use ph2d_editor_core::widget::card_censo;
+    let piso = ph2d_editor_core::interaction::WidgetStore::DOCK_W_MIN;
+    let pontos = (0..3_u8)
+        .flat_map(|l| (0..3_u8).map(move |c| Some([c, l])))
+        .chain([None]);
+    for ponto in pontos {
+        for largura in [piso, ph2d_tokens::PANEL_MIN_W_PX, 294.0] {
+            let (mut host, mut st) = cena(SpriteFacts {
+                pivot_ponto: ponto,
+                ..factos()
+            });
+            let _ = pinta_na_janela(&mut host, &mut st, largura, 2400.0);
+            let ((_, medidos), censo) = card_censo::grava(|| {
+                elisao::medindo(|| pinta_na_janela(&mut host, &mut st, largura, 2400.0))
+            });
+            let cortados: std::collections::BTreeSet<_> = medidos
+                .iter()
+                .filter(|m| !m.coube())
+                .map(|m| m.texto.clone())
+                .collect();
+            assert!(cortados.is_empty(), "{ponto:?} a {largura}: {cortados:?}");
+            assert_eq!(
+                censo.textos_cortados(),
+                Vec::<String>::new(),
+                "{ponto:?} a {largura}"
+            );
+        }
+    }
+    // Com a barra de rolar o corpo perde 8 px, e o Advanced fica fora da janela do censo: a 200 px sobram 146.
+    let (mut host, mut st) = cena(factos());
+    let (_, censo) = card_censo::grava(|| pinta_na_janela(&mut host, &mut st, 200.0, 2400.0));
+    let r = censo
+        .textos
+        .iter()
+        .find(|t| t.texto.starts_with("Reimport"));
+    assert!(r.expect("o censo viu o Reimport").pede <= 146.0, "{r:?}");
 }

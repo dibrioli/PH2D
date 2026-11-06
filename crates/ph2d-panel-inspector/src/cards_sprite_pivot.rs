@@ -106,21 +106,37 @@ fn grade_do_pivot(c: &mut CardCtx<'_>, y: f32, f: slot_image::SpriteFacts) -> f3
         c.hit_index.register(id, r);
     }
     let nome = aceso.map_or(tr("card.insp.pivot.custom"), |i| tr(NOMES_DO_PIVOT[i]));
-    let tx = c.x + lado + Spacing::Xs.px();
-    let tw = (c.w - lado - Spacing::Xs.px()).max(0.0);
+    let letra = TypeToken::Sm.px();
+    // O maior dos dez nomes decide, ou o lado do nome saltaria ao clicar noutro ponto.
+    let maior = NOMES_DO_PIVOT
+        .iter()
+        .map(|&k| tr(k))
+        .chain([tr("card.insp.pivot.custom")])
+        .map(|n| c.text_system.prefix_width(n, letra))
+        .fold(0.0, f32::max);
+    let ao_lado = (c.w - lado - Spacing::Xs.px()).max(0.0);
+    let (r, fim) = if maior <= ao_lado {
+        (
+            Rect::new(c.x + lado + Spacing::Xs.px(), y, ao_lado, lado),
+            y + lado,
+        )
+    } else {
+        // Painel estreito: o nome desce para debaixo da grade, na coluna inteira.
+        let abaixo = y + lado + m::FIELD_ROW_GAP;
+        (Rect::new(c.x, abaixo, c.w, letra), abaixo + letra)
+    };
     paint_text(
         c.text_system,
         c.scene,
         nome,
-        tx,
-        y + (lado - TypeToken::Sm.px()) * 0.5,
-        TypeToken::Sm.px(),
-        tw,
+        r.x,
+        r.y + (r.h - letra) * 0.5,
+        letra,
+        r.w,
         resolve(ColorToken::Text1, theme),
     );
-    c.hit_index
-        .register(ids::INSP_SPRITE_PIVOT_NOME, Rect::new(tx, y, tw, lado));
-    y + lado + m::FIELD_ROW_GAP
+    c.hit_index.register(ids::INSP_SPRITE_PIVOT_NOME, r);
+    fim + m::FIELD_ROW_GAP
 }
 
 /// Flip e Pivot lado a lado. Os ids do Flip continuam caixas de marcar: o clique emite o mesmo `Toggled`.

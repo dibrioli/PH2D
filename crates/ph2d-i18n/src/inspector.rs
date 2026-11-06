@@ -525,7 +525,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.animation.hold" => "Hold",
         "panel.inspector.animation.repeat_delay" => "Repeat delay",
         "panel.inspector.joint.swap_a_b" => "Swap A / B",
-        "panel.inspector.render_source.reimport_at_current_px_m" => "Reimport at current scale",
+        "panel.inspector.render_source.reimport_at_current_px_m" => "Reimport at scale",
         "panel.inspector.slice.corners_f_fixed_on_off" => {
             "Corners F fixed (on/off). Edges + centre: S stretch, R repeat, \
                              M mirror, - blank."

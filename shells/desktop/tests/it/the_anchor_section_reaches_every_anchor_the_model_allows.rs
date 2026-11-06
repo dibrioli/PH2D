@@ -288,6 +288,8 @@ fn the_panel_names_the_directions_the_engine_names() {
                 signal_on_loop: String::new(),
                 per_frame_ms: Vec::new(),
                 frames: Vec::new(),
+                markers: Vec::new(),
+                steps: 2,
             }
             .direction_tag,
             tag

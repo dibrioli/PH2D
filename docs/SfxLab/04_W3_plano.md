@@ -101,9 +101,20 @@ Cena nova `PH2D_SFX_SMOKE=3`: a aba aberta em «Metal Hit», com um objeto sem s
 
 **A medir antes da mensagem ao dono:** latência da edição até o som novo tocável, tempo por quadro da tela com 8 e com 64 camadas, custo do limitador e do pico/espectro por render. O teto de 30 ms continua proposto: o ouvido do dono o confirma aqui.
 
+## Decisões de construção (lidas no código, 06/11; valem sobre o §2)
+
+- **Cartões = painel de verdade.** Nenhuma `DocumentSurface` pinta `CardCtx` (exige `PaintCtx`: `panel/cards.rs:149`), e o hero pinta os painéis por cima da aba (`hero/paint.rs:446`). ⇒ `ph2d-panel-sfxlab`, `DEFAULT_VISIBLE=false`, ligado por `set_panel_visible` só com aba do SFX Lab ativa. A aba reserva a coluna direita da sua `area` e publica esse `Rect` (snapshot do painel), lido na mesma imagem porque a aba pinta antes do `panel_walk`. Sem método novo no contrato. **Conferir por teste quem recebe o clique na coluna: painel antes da aba.**
+- **Painel ↔ família:** como o mixer: snapshot `thread_local` na crate do painel (família publica antes de pintar) e fila de intenções que a família drena no `service`. O painel depende de `ph2d-sfx-recipe`; a família depende do painel.
+- **Tabela única de campos:** `Campo` (id, chave de rótulo, unidade, faixa, ler, escrever) gera `populate`, `prepare`, cartões e despacho. Campo que a tabela não tem não existe em lugar nenhum.
+- **Mundo e som:** a surface não recebe `World`. A shell chama `ph2d_app_sfxlab::service(hero, world, escuta)` uma vez por imagem, ao lado de `ph2d_app_kanban::service`. `escuta` é o trait `Escuta` da família (`toca(SampleData)`, `para()`), implementado para `AudioEngine` via `AudioSystem::scene_parts().1`; o teste usa um falso. A família guarda a cópia de trabalho e escreve na `SfxLibrary` do mundo no `service`; a receita do mundo que difere da última escrita (projeto aberto) é adotada e o histórico zera.
+- **`RenderJob`:** uma thread por aba aberta, dona do `RenderCache`; `AtomicU64` com o ticket mais novo é o `cancelado`; a fila drena até o pedido mais novo; `Drop` cancela e faz join. Devolve `Pcm`, onda fixa por camada e do mix (min/max por coluna; a tela só reamostra), pico e LUFS sem limitador. `RenderCache` ganha um leitor do buffer por camada. Material em `Arc<Takes>`.
+- **Onda:** própria, offline, sem `PeakCache` (o Audio Editor pede `SampleData`, e ela vai por camada com `start`). **Espectro:** pela porta FFT `ph2d-audio-spectral` (ADR-0115), na thread do render.
+- **Abrir de novo:** `family_commands` lista um «Open Sound ▸ <nome>» por receita da biblioteca sem aba, além de «New Sound».
+- **Desfazer:** instantâneos de `Recipe`, com um gesto contínuo (arrasto, scrub) coalescendo em um passo; teto de 1 000 passos, com a medição do tamanho ao lado.
+
 ## Ordem
 
-1. Porta do motor: cancelamento, limitador, blob v2, `muted`, `Approved` (sem tela; gates).
+1. **Feito** (`174859cd01`). Porta do motor: cancelamento, limitador, blob v2, `muted`, `Approved` (sem tela; gates).
 2. Família: aba, `RenderJob`, escuta, desfazer, cena 3.
 3. Tela: régua, ondas, pilha, gestos.
 4. Cartões e medidores.

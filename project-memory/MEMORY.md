@@ -131,3 +131,4 @@
 - ⭐ [Dono 05/11 noite: próxima fase Painter (redo · mescla aguada/óleo · travamento · Clip Studio); Watercolor Basic NÃO muda](project_next_phase_painter_2026_11_06.md)
 - ⭐⭐ [Dono 05/11: cartão da Sprite — sem Replace, miniatura 72 px, W×H na mesma linha, Transform do Vector = o do Object](project_sprite_card_owner_decisions_2026_11_05.md)
 - ⛔ [Janela passada de 300 mil/passo: uma rodada de smoke = um agente novo; a janela só decide e confere (05/11)](feedback_a_main_window_past_300k_delegates_each_round.md)
+- ⭐⭐ [Dono 06/11: tinta do Wet viva ao trocar de modo; opção ao salvar; Borracha real na viva, imita na morta](project_live_paint_survives_2026_11_06.md)

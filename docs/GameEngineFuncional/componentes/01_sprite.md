@@ -30,7 +30,7 @@ GameMaker e Unreal: pivô de 9 pontos. GDevelop, Construct e GameMaker: editar a
 3. `Add ▸ Sprite` abre a escolha da imagem; `Image…` passa a «Paint a new image…».
 4. **Edit in Pixel completo nesta rodada.**
 5. **Edit in Painter**, pedido do dono: mesma ida e volta.
-   Decisão de 05/11 (vai ao dono): quando um objecto com camadas do Painter recebe píxeis por fora (Edit in Pixel, ou a pintura de outro objecto que usa a mesma imagem), a imagem nova vence: as camadas dele saem, com o aviso «Layers flattened», e o Undo devolve-as. No objecto em que o próprio Painter pintou, as camadas continuam.
+   **Aprovado pelo dono em 06/11:** quando um objecto com camadas do Painter recebe píxeis por fora (Edit in Pixel, a pintura de outro objecto que usa a mesma imagem, ou o documento do Painter que morre com a edição aberta), a imagem nova vence: as camadas dele saem, com o aviso «Layers flattened», e o Undo devolve-as. No objecto em que o próprio Painter pintou, as camadas continuam.
 6. 9-Slice segue componente; não vira quinto uso (delegado ao agente).
 
 **Do smoke do dono (05/11, depois das fotos):**

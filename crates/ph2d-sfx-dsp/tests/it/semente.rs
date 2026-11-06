@@ -116,3 +116,16 @@ fn id_apagado_nao_volta() {
     let b = r.add(1.0, vizinho(100.0), Envelope::default());
     assert_ne!(a, b);
 }
+
+/// Receita aberta de arquivo com o contador atrás dos ids: a camada nova não pode herdar a semente de uma que existe.
+#[test]
+fn contador_atrasado_no_arquivo_nao_repete_um_id() {
+    let mut r = Recipe {
+        layers: vec![camada(7, 1.0, vizinho(100.0))],
+        next_layer: 1,
+        ..Recipe::new(1, 0.1)
+    };
+    r.sanitize();
+    let novo = r.add(1.0, vizinho(100.0), Envelope::default());
+    assert_eq!(novo, LayerId(8));
+}

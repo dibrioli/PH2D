@@ -24,7 +24,7 @@ O FunDSP 0.23 é a única biblioteca mantida e permissiva com grafo de verdade, 
    - «O som aprovado nunca muda»: vale em qualquer máquina, porque o áudio aprovado fica guardado.
    - «A mesma receita sem efeito dá os mesmos bytes em qualquer máquina»: provada só em AMD x86-64 de base, x86-64-v3 e wasm32. **Intel e ARM: NÃO PROVADO.**
    - Receita com efeito: não há garantia entre máquinas. Portar o rack exige antes `exp2`, `log2` e `tanh` em `ph2d-det-math`, e fica fora deste ADR.
-5. **Cache por camada antes de W3:** o pior caso medido (38,8 ms) passa do limite proposto de 30 ms.
+5. **Cache por camada antes de W3:** o pior caso medido (38,8 ms) passa do limite proposto de 30 ms. Feito em W2: os kernels do produto dão 23,9 ms sem cache e 3,97 ms editando uma camada ([medição](../../SfxLab/03_W2_medicao.md)).
 
 ## Alternativas recusadas (medidas)
 
@@ -42,5 +42,5 @@ O FunDSP 0.23 é a única biblioteca mantida e permissiva com grafo de verdade, 
 
 ## Reabrir quando
 
-- O hash de Intel ou ARM divergir de `e262c4b2a017544c`: a promessa passa a ser só por máquina, e o dono é avisado.
+- O hash de Intel ou ARM divergir: a promessa passa a ser só por máquina, e o dono é avisado. Referência hoje, com os kernels do produto: `conjunto ba8382438fc1089e` (`sonda_w2`, comando em [03_W2_medicao.md](../../SfxLab/03_W2_medicao.md)). `e262c4b2a017544c` era o hash da sonda de W0.
 - O ouvido do dono reprovar os kernels em W2.

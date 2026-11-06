@@ -2,7 +2,7 @@
 
 Módulo de criação de efeitos sonoros para games, **sem IA** (dono, 05/11). «SFX Lab» é nome provisório.
 Base: [crítica de design de áudio](pesquisa/critica.md) (recomendações aprovadas pelo dono em 05/11) e
-[pesquisa](pesquisa/relatorio.md). **Estado: W0 e W1 feitas, à espera do smoke do dono ([handoff](handoffs/HANDOFF_CONTINUACAO_W0_W1_2026-11-05.md)); W0 medida ([números](02_W0_medicao.md), [ADR-0198](../architecture/decisions/0198-o-motor-do-sfx-lab-e-kernels-proprios-sobre-det-math.md): kernels próprios, cache por camada antes de W3); nenhum som ouvido.**
+[pesquisa](pesquisa/relatorio.md). **Estado: W0 e W1 com smoke do dono aprovado ([handoff](handoffs/HANDOFF_CONTINUACAO_W0_W1_2026-11-05.md)); W2 feita, à espera do ouvido do dono ([handoff](handoffs/HANDOFF_CONTINUACAO_W2_2026-11-05.md), [números](03_W2_medicao.md)). Motor: [ADR-0198](../architecture/decisions/0198-o-motor-do-sfx-lab-e-kernels-proprios-sobre-det-math.md).**
 
 ## 1. Estado da arte
 

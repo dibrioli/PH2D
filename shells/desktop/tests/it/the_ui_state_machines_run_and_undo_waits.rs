@@ -84,11 +84,7 @@ fn the_machine_runs_on_the_frames_clock() {
 /// **O undo ESPERA a transição terminar.**
 #[test]
 fn the_undo_waits_for_a_live_transition() {
-    // ⚠️⚠️ **O PAR, não um ficheiro.** A `App` que opera a fila mudou-se para o irmão
-    // `undo_app.rs` na integração de 2026-09-04 (tecto de LOC estourado pela SOMA de duas
-    // linhas), e todo gate que lia só `undo.rs` ficou a afirmar sobre o ficheiro errado — em
-    // silêncio no dia seguinte, se a lei ainda lá estivesse. ⇒ *um gate que PARSEIA o fonte lê
-    // a família inteira, nunca um nome de ficheiro.*
+    // ⚠️ Um gate que PARSEIA o fonte lê a família inteira: os motivos moram em `undo_app_macros.rs`.
     let s = src("src/undo_app.rs");
     let at = s
         .find("fn post_frame_undo")
@@ -97,8 +93,14 @@ fn the_undo_waits_for_a_live_transition() {
     let guard = body
         .find("let Some(current) = self.capture_project()")
         .expect("o corpo do `post_frame_undo` ainda captura o estado");
+    let m = src("src/undo_app_macros.rs");
+    let motivos = &m[m
+        .find("fn motivo_da_supressao")
+        .expect("os motivos existem")..];
+    let fim = motivos.find("\n    }\n").expect("o fim dos motivos");
     assert!(
-        body[..guard].contains("self.ui_state_live"),
+        body[..guard].contains("self.motivo_da_supressao(")
+            && motivos[..fim].contains("self.ui_state_live"),
         "o `post_frame_undo` nao espera pela transicao viva — um Show de 150 ms vira nove passos \
          de undo, e o artista aperta Ctrl+Z nove vezes para desfazer um clique"
     );

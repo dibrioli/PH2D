@@ -40,7 +40,35 @@ Nível 1 e 3 do zstd dão o mesmo tamanho: use o 1. Não medido: gravar em disco
 - **Rebelle** ([manual](https://escapemotions.com/products/rebelle/manual/8.2/creating-opening-saving/): «REB contains all the information about the artwork and the layers»; nada sobre o molhado). O `.reb` é um ZIP com planos por camada (`layer0_structure.dat`, `layer0_flow.dat`, `canvas.png`). Lista de 4 de 21 arquivos locais: só o `AutoSave-2026-11-04 22-46-28.reb` traz `layer0_mida.dat`, `layer0_f_01..12.dat` e `layer0_drops.dat` (~7,8 MB crus, ~0,36 MB no ZIP, arquivo inteiro 5,7 MB, com 3,9 MB de papel no irmão medido). **Inferência:** é estado molhado, só presente quando há água. Não confirmado: o que cada plano é, a dimensão daquele autosave, e se a água continua ao reabrir. Sem teste: SAVE/LOAD não correm por WebSocket e o trial acaba ~06/11; `RebelleArtwork.reb` é 1920×1080. [Fórum](https://www.escapemotions.com/community/forum/t/442/rebelle-3-crashed): `.reb` com muitas camadas fica grande; fundir reduziu 30 %.
 - **Corel Painter** ([ajuda](https://product.corel.com/help/Painter/540232071/Main/EN/Doc/Corel-Painter-Importing-and-exporting-layers.html): RIFF guarda camadas «live»; [guia do Painter 12](https://www.painterartist.com/static/ptr/img/content/community/tutorials/p12/Painter12_Tour_PS_Users.pdf): camadas de Watercolor exigem RIFF «to retain the live "wet" capabilities»; [escolha de formato](https://product.corel.com/help/Painter/540235477/707000/EN/Doc/Choosing_a_file_format.html): compressão sem perda, o «Uncompressed» desligado). [Addon de terceiro](https://blenderartists.org/t/addon-import-corel-painter-riff-files-for-impasto-depth-3d-texture/647557): Watercolor e Liquid Ink levam imagens extra de umidade. Não testado; não instalado aqui.
 
-**Lição para o nosso:** os dois guardam o molhado por camada, no formato nativo. A nossa grade tem ~108 B por célula em `f32`; a do Rebelle parece muito menor (~3,8 B/px, se o autosave for 1920×1080). Antes de fixar o formato, MEDIR quantos planos são deriváveis ou quantizáveis (a tela cheia tem de cair de 41 MB; alvo a medir, sem número inventado).
+⛔ **Correções desta tabela:** os 40,6 MB acima não contam as fotografias do início do traço (`sett_do_traco`, `oleo_antes`, `chao`) nem o `paper`; a contagem completa dá **59,9 MB** (Dabber cheio, Full HD, 140 B/célula). E o «~3,8 B/px» do Rebelle estava errado: aquele autosave é 1000×640, 17 B/célula crus, 10,4 B por pixel PINTADO no ZIP.
+
+## O «segredo» do Rebelle: medido em 21 `.reb` locais (só dados, sem abrir o executável)
+- **Formato:** plano vazio = `ZERO` + contagem (8 bytes); não vazio = `BBOX` x0 y0 x1 y1 W H + tipo (`UCHA`, `UI_2`, `FL_2`) + linhas densas. `comprimento = 36 + bw·bh·elem` em 76 de 76. Sem tiles nem RLE. Grade 1:1 (W+8 × H+8): **não há resolução reduzida**. O tamanho segue a área pintada, não a tela.
+- **Quem gasta** (5 695 710 B, 11-04 22:46): papel 68 %, preview e assets 23 %, **tinta 8,4 %**. Planos: densos 11,1 MB → caixa 8,2 MB → não-zeros 0,60 MB → ZIP 0,37 MB. A tinta cobre só 5–23 % da tela.
+- **B por pixel pintado:** molhado 6,7–10,4; seco ~1,5. **Extrapolado, não medido:** tela inteira molhada em Full HD 14–21 MB; 4K 63–87 MB.
+- `FL_2` = float16 big-endian. As cores (`f_05..07`) são máscara + constante quando a cor é uma só.
+- **Só 4 de 21 têm planos molhados, todos autosaves.** O único `.reb` que não é autosave não os tem. **Não determinado:** se um Save manual os guarda e se a água volta ao reabrir (trial expirou; Painter parado no EULA por aceitar, nada acionado; dono desistira do Corel em 28/10).
+- Corel: nada público sobre o formato ou tamanhos do molhado.
+
+## Plano a plano: o nosso (Full HD, 1 camada, zstd -1, MB, sem a imagem composta)
+| Estado | Água | Hoje | Hoje, bytes separados | Sem o derivável | 24 bits massa, resto half* | Cor e relevo u8* |
+|---|---|---|---|---|---|---|
+| Dabber | não | 59,9 | 51,4 | **37,0** | 17,6 | 10,5 |
+| Wet Round, fim da cena | sim | 56,0 | 50,4 | 47,5 | 28,9 | 28,9 |
+| Wet Round, +10 s | sim | 95,3 | 79,3 | 76,5 | 38,4 | 32,4 |
+| Wet Round, Dry canvas | não | 49,6 | 24,2 | **21,4** | 9,9 | 6,3 |
+| Misto (Dabber + Wet Round) | sim | 107,3 | 93,1 | 90,3 | 51,2 | 42,4 |
+| Misto, Dry canvas | não | 83,2 | 62,6 | 47,0 | 21,5 | 14,7 |
+| Knife Smooth 3 | não | 53,7 | 42,7 | 27,8 | 13,1 | 7,9 |
+
+\* Nunca idênticos ao bit. Pixels mudados (de 518 400 a 960×540) / maior Δ de canal: 24 bits + half: Dabber 27k/2, Misto 25–45k/42; cor e relevo u8: Dabber 278k/3, Misto 240–252k/69.
+- **Derivável, testado sem mudar pixel:** `paper` (pela porta `reconcilia_o_papel`, ⛔ não por `Engine::rebake_paper`: muda até 197) em qualquer estado; `flow_x/y`, `active`/faixas e as fotografias só **sem água**. Com água as fotografias são reprovadas (240–265k px / 184), e `flow`/`active` mudam pixel.
+- ⭐ **Cura de graça:** `grid/canvas_ops.rs:71-73` zera `susp` e deixa `susp_rgb`: depois de Dry canvas, 19,4 MB de cor morta (Wet Round 49,6 → 24,2).
+- ⛔ **Recusas medidas:** massa half (Δ 69), massa log8 (Δ 146), pincel u8 (Δ 85), meia resolução de velocidade (Δ 96) e de relevo (Δ 164). A massa exige ≥ 16 bits de mantissa. Planos «constantes do pincel» deixam de o ser quando dois pincéis se misturam.
+- Esperar não encolhe: Wet Round +10 s cresce de 56 para 95 MB; só o Dry canvas tira a água.
+- **Não verificado:** nenhum restauro real correu (mutação no mesmo processo; `Sim.frame`, trilho e o passo em voo também iriam no arquivo). O combinado do derivável não foi medido com a porta certa do papel. Pixel a 540p, tamanho a 1080p. O olho do dono não viu.
+
+**Lição:** não há truque. O Rebelle ganha por cobertura pequena, caixa + zeros, 17 B/célula (float16) e só guardar água quando há água. **Ordem adotada:** sem perda primeiro (cor morta, derivável, caixa e máscara, bytes separados); quantizar só com a foto aprovada pelo dono.
 
 ## Plano (um bloco, §0.10)
 1. **Tinta adormecida:** sair do Wet (modo, ferramenta) não larga a sessão: adormece-a. Zero tique e zero custo nos outros modos, comprimida em RAM (zstd 1). Medir o custo ANTES de ligar: traço Digital/Watercolor com × sem sessão adormecida, intercalado no mesmo processo ([MEDIR_VELOCIDADE](../DevOps/MEDIR_VELOCIDADE.md)). **Kill-criterion:** diferença acima do ruído = não entrega.

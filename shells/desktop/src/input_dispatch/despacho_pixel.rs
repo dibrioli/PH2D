@@ -31,6 +31,11 @@ impl crate::App {
             Pointer::Done => {}
             Pointer::PanStart => self.pan_anchor = Some(p),
             Pointer::PanEnd => self.pan_anchor = None,
+            Pointer::Amostra(cor) => {
+                if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                    ph2d_app_pixel::conta_gotas::entrega(&mut h.store, cor);
+                }
+            }
         }
         true
     }

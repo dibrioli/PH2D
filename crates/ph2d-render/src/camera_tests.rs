@@ -152,6 +152,23 @@ fn zoom_clamps_to_min() {
     assert_eq!(cam.height_world, Camera2d::ZOOM_MIN_HEIGHT_WORLD);
 }
 
+/// Medido no app (06/11): saindo do Draw do Pixel a `0,105`, o 1.º entalhe para APROXIMAR saltava
+/// para `0,5`, afastando a imagem. Fora da faixa o gesto anda de volta, sem salto, nos dois lados.
+#[test]
+fn a_camera_left_past_the_limit_never_jumps() {
+    let (min, max) = (
+        Camera2d::ZOOM_MIN_HEIGHT_WORLD,
+        Camera2d::ZOOM_MAX_HEIGHT_WORLD,
+    );
+    let perto = min * 0.2;
+    assert_eq!(Camera2d::zoomed(perto, 0.9), perto, "aproximar não afasta");
+    assert_eq!(Camera2d::zoomed(perto, 1.25), perto * 1.25, "afastar anda");
+    assert_eq!(Camera2d::zoomed(min * 0.9, 2.0), min * 0.9 * 2.0, "e volta");
+    let longe = max * 1.2;
+    assert_eq!(Camera2d::zoomed(longe, 1.1), longe, "afastar não aproxima");
+    assert_eq!(Camera2d::zoomed(longe, 0.5), longe * 0.5, "aproximar anda");
+}
+
 #[test]
 fn zoom_clamps_to_max() {
     let mut cam = Camera2d::default();

@@ -25,6 +25,8 @@ pub struct View<'a> {
     pub editing: Option<u64>,
     /// Um campo de texto da interface tem o teclado (`HeroScreen::text_entry_focused`).
     pub typing: bool,
+    /// O conta-gotas do seletor de cor partilhado está armado: o próximo clique é dele.
+    pub conta_gotas: bool,
 }
 
 impl<'a> View<'a> {
@@ -47,6 +49,7 @@ impl<'a> View<'a> {
             ppm,
             editing,
             typing: hero.text_entry_focused(),
+            conta_gotas: hero.store.eyedropper_pending().is_some(),
         }
     }
 
@@ -70,6 +73,8 @@ pub enum Pointer {
     PanStart,
     /// Largou a mão (a câmera já realinhou as células): a shell larga a âncora.
     PanEnd,
+    /// O conta-gotas do seletor leu esta cor: a shell entrega-a ([`crate::conta_gotas::entrega`]).
+    Amostra([u8; 4]),
 }
 
 impl PixelApp {
@@ -104,6 +109,10 @@ impl PixelApp {
         };
         if kind != PointerKind::Down || !free {
             return Pointer::NotMine;
+        }
+        if v.conta_gotas {
+            return crate::conta_gotas::amostra(self, &v.canvas(), p)
+                .map_or(Pointer::NotMine, Pointer::Amostra);
         }
         let r = match input::press(self, &v.canvas(), p, button, mods) {
             Press::Pan => Pointer::PanStart,

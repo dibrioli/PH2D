@@ -121,7 +121,16 @@ impl Camera2d {
         if !factor.is_finite() || factor <= 0.0 {
             return height_world;
         }
-        Self::clamp_height(height_world * factor)
+        let next = height_world * factor;
+        // Uma câmera fora da faixa (o Draw do Pixel aproxima mais): o gesto nunca salta; afastá-la
+        // de volta anda, e empurrá-la para mais longe da faixa não faz nada.
+        if height_world < Self::ZOOM_MIN_HEIGHT_WORLD {
+            return next.clamp(height_world, Self::ZOOM_MAX_HEIGHT_WORLD);
+        }
+        if height_world > Self::ZOOM_MAX_HEIGHT_WORLD {
+            return next.clamp(Self::ZOOM_MIN_HEIGHT_WORLD, height_world);
+        }
+        Self::clamp_height(next)
     }
 
     /// Um entalhe da roda em pixels (`16 px` por linha).

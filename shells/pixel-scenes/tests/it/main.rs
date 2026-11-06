@@ -9,6 +9,7 @@ mod catalogo;
 mod cena18;
 mod cena19;
 mod comum;
+mod conta_gotas;
 mod convolucao;
 mod degrade;
 mod desenho;

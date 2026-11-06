@@ -85,7 +85,13 @@ pub fn key_of(world: &ph2d_ecs::World, bits: u64) -> Option<u32> {
     world.get::<ph2d_ecs::PixelSprite>(e).map(|p| p.0)
 }
 
-fn cell(app: &PixelApp, c: &Canvas<'_>, bits: u64, key: u32, p: (f32, f32)) -> Option<(i32, i32)> {
+pub(crate) fn cell(
+    app: &PixelApp,
+    c: &Canvas<'_>,
+    bits: u64,
+    key: u32,
+    p: (f32, f32),
+) -> Option<(i32, i32)> {
     let doc = app.docs.get(&key)?;
     let m = to_screen(c.world, bits, doc, c.camera, c.window, c.ppm)?;
     cell_at(m, (f64::from(p.0), f64::from(p.1)))

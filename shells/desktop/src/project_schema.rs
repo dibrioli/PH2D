@@ -19,7 +19,7 @@
 /// Versão do formato de arquivo de projeto. Bump ⇒ migração ou hard-break.
 ///
 /// ⚠️ **Os degraus de v2 a v168 estão ARQUIVADOS**, verbatim, em SETE arquivos por faixa:
-/// `171 → 172` (ARQUIVADO em `docs/archive/project-schema/escada_v171_a_v172.md`), `project_schema_history` (`v2`..`v82`, ARQUIVADO verbatim em `docs/archive/project-schema/escada_v2_a_v82.md`), `project_schema_history_v83` (ARQUIVADO em `docs/archive/project-schema/escada_v83_a_v98.md`)
+/// `project_schema_history` (`v2`..`v82`, ARQUIVADO verbatim em `docs/archive/project-schema/escada_v2_a_v82.md`), `project_schema_history_v83` (ARQUIVADO em `docs/archive/project-schema/escada_v83_a_v98.md`)
 /// (`v83`..`v98`), [`super::project_schema_history_v99`] (`v99`..`v111`),
 /// [`super::project_schema_history_v112`] (`v112`..`v128`),
 /// [`super::project_schema_history_v128`] (`v128`..`v144`) e
@@ -60,6 +60,8 @@
 /// `BlinkOff` é DERIVADO e NÃO registado, de propósito (o molde do `MasterPiece`).
 ///
 /// ⛔ **Sem degrau de migração**, pela mesma decisão — um v170 é recusado em voz alta.
+/// `171 → 172`: arquivado em `docs/archive/project-schema/escada_v171_a_v172.md`.
+///
 /// # `172 → 173` — O CATAVENTO: a malha que um sprite mantem VIVA, e a POSE 3D dela
 ///
 /// O `ph2d_ecs::Mesh3D` entra no registo (a rota B do

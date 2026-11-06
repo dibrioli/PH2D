@@ -380,6 +380,34 @@ fn custo() {
     }
     rodada(v, 5);
 
+    println!("\n=== o corpo harmônico na base mínima, com modos à vontade: 1 080 modos");
+    let harmonico = |seg: f32, t60: f32| {
+        let mut r = Recipe::new(1, seg);
+        r.add(
+            0.1,
+            Source::Body(Body {
+                law: ModeLaw::Stretched { stretch: 1.0 },
+                base_hz: 1.0,
+                modes: u32::MAX,
+                t60,
+                damping: 0.0,
+                rolloff: 0.0,
+                contact_ms: 1.0,
+                noise: 0.0,
+            }),
+            Envelope::default(),
+        );
+        r
+    };
+    for (seg, t60) in [(2.0f32, 4.0f32), (120.0, 120.0)] {
+        let r = harmonico(seg, t60);
+        let t = Takes::default();
+        let ms = mede(&mut || {
+            let _ = render(&r, 1, ENGINE_V1, &t);
+        });
+        println!("{seg} s, t60 {t60} s\t{ms:.0} ms");
+    }
+
     println!("\n=== a duração: a pior receita de W0, sem cache; a RAM do cache é a conta 4 B × 48 000 × s × camadas");
     for seg in [2.0f32, 30.0, 120.0] {
         let r = pior(seg);

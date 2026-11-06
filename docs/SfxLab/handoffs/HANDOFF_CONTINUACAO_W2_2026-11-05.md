@@ -77,7 +77,7 @@ Gates novos, por nome (em `crates/ph2d-sfx-dsp/tests/it/` salvo indicação): `h
 
 1. **Ouvido do dono no corpo vibrante: kill-criterion de W2.** Reprovou ⇒ volta ao desenho antes de W3. Nenhum teste diz se soa bem.
 2. **W3 (Tela).** Ler antes a receita de cartões. O render ainda não corre em thread de trabalho nem tem desfazer; o limitador é de W3 (o motor pode passar de 1,0 com ganho alto). Mover da shell antes de acrescentar (§3).
-3. **Provar Intel/ARM:** no Mac, `cd docs/SfxLab/ferramentas/sonda_w2 && cargo run --profile smoke --bin hashes` tem de terminar em `conjunto ba8382438fc1089e`. Receita com efeito: sem garantia entre máquinas, rack não portado.
+3. **Provar Intel/ARM:** no Mac, `cd docs/SfxLab/ferramentas/sonda_w2 && cargo run --profile smoke --bin hashes` tem de terminar em `conjunto 86ea4a05df14620b`. Receita com efeito: sem garantia entre máquinas, rack não portado.
 4. **Limitações sabidas:** gravação a +24 semitons ou mais passa de 30 ms ao editar (32 a 40 ms) · «Recording Down» usa `coin_noise.wav`, som sintético no papel de gravação (só prova o caminho) · o clique no Preview é rota lida e passada pela mesma função no teste, não clicada · o campo do hash do som aprovado (plano §2) ainda não existe no documento · mudar `start` refaz a camada quando o trecho muda de tamanho · fim de duração sem envelope pode estalar (as receitas de fábrica terminam quase em silêncio).
 5. **Pendências do dono:** biblioteca gravada e profissional para W4. A memória `project-memory/project_sfx_module_no_ai_2026_11_05.md` fica para a integração.
 

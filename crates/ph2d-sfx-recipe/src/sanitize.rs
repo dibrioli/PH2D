@@ -14,8 +14,11 @@ pub const MAX_SECONDS: f32 = 120.0;
 pub const MAX_HZ: f32 = SAMPLE_RATE as f32 * 0.45;
 /// A altura mínima: abaixo disto a fase de um segundo de som quase não anda.
 pub const MIN_HZ: f32 = 1.0;
-/// O produto de ganhos dentro do `f32`: não é faixa de tela, é o que mantém a soma finita.
+/// Com [`crate::MAX_SAMPLE`], mantém a soma dentro do `f32`. Não é faixa de tela.
 pub const MAX_GAIN: f32 = 1.0e6;
+/// A base mínima de um corpo, o começo do audível. Junto com [`MAX_HZ`], é ela que limita o número de modos: 1 080 num
+/// corpo harmônico (`03_W2_medicao.md`).
+pub const MIN_BODY_HZ: f32 = 20.0;
 /// O corte da leitura de material: cada oitava acima dobra os toques do filtro (`03_W2_medicao.md`).
 pub const MAX_SEMITONES: f32 = 48.0;
 
@@ -91,7 +94,7 @@ impl Body {
             // De corda ideal a além da barra: abaixo de 1 os modos se amontoam sem fim abaixo da banda.
             *stretch = faixa(*stretch, 1.0, 3.0, 1.0);
         }
-        self.base_hz = hz(self.base_hz, 220.0);
+        self.base_hz = faixa(self.base_hz, MIN_BODY_HZ, MAX_HZ, 220.0);
         self.t60 = faixa(self.t60, MIN_T60, MAX_SECONDS, 1.0);
         self.damping = faixa(self.damping, 0.0, 1_000.0, 0.0);
         self.rolloff = faixa(self.rolloff, 0.0, 8.0, 1.0);

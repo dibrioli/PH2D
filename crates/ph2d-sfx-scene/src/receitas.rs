@@ -82,7 +82,10 @@ pub fn veste(sim: &mut SimWorld, anexa: Anexa<'_>, raiz: Raiz, jogador: Entity) 
     anexa(sim, jogador.to_bits(), "ph2d::ecs::AudioListener2D")
         .unwrap_or_else(|m| panic!("Audio Listener 2D: {m}"));
 
-    let mut sons = ProjectSounds::default();
+    let mut sons = sim
+        .world_mut()
+        .remove_resource::<ProjectSounds>()
+        .unwrap_or_default();
     let mut primeiro = None;
     let mut nomes = Vec::new();
     for (nome, r) in &receitas {

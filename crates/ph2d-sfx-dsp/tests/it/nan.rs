@@ -269,3 +269,118 @@ fn receita_ruim_gravada_abre_dentro_da_lei() {
     assert_eq!(r.layers[0].gain, 1.0);
     assert!(finito(&soa(r, &Takes::default())));
 }
+
+fn gravacao(take: [u8; 32], semitones: f32, gain: f32, r: &mut Recipe) {
+    r.add(
+        gain,
+        Source::Recording(Recording {
+            take,
+            semitones,
+            offset: 0.0,
+        }),
+        Envelope::default(),
+    );
+}
+
+/// Material sem nenhum instante inteiro, nos dois caminhos de leitura: silêncio, nunca pânico.
+#[test]
+fn material_vazio_nao_quebra_o_render() {
+    for (rate, canais, amostras) in [
+        (44_100, 1, vec![]),
+        (44_100, 2, vec![0.5]),
+        (48_000, 1, vec![]),
+    ] {
+        for semitons in [0.0, 3.0] {
+            let mut takes = Takes::default();
+            let id = takes.add(Take::new(rate, canais, amostras.clone()));
+            let mut r = Recipe::new(3, 0.01);
+            gravacao(id, semitons, 1.0, &mut r);
+            assert!(soa(&r, &takes).iter().all(|s| *s == 0.0));
+        }
+    }
+}
+
+/// Material finito e enorme, com o ganho no teto e polaridades opostas: `inf − inf` seria NaN.
+#[test]
+fn material_enorme_nao_estoura_a_soma() {
+    let mut takes = Takes::default();
+    let mais = takes.add(Take::new(48_000, 1, vec![f32::MAX; 16]));
+    let menos = takes.add(Take::new(48_000, 1, vec![-f32::MAX; 16]));
+    let mut r = Recipe::new(3, 0.01);
+    gravacao(mais, 0.0, f32::MAX, &mut r);
+    gravacao(menos, 0.0, f32::MAX, &mut r);
+    gravacao(mais, 3.0, f32::MAX, &mut r);
+    assert!(finito(&soa(&r, &takes)));
+}
+
+/// Mil camadas de dois minutos são 23 GB: o motor recusa antes de pedir a memória.
+#[test]
+fn receita_grande_demais_e_recusada_antes_de_alocar() {
+    let mut r = Recipe::new(3, ph2d_sfx_recipe::MAX_SECONDS);
+    for _ in 0..1_000 {
+        r.add(1.0, Source::Noise(ruido()), Envelope::default());
+    }
+    let e = render(&r, r.seed, ENGINE_V1, &Takes::default());
+    assert!(
+        matches!(e, Err(ph2d_sfx_dsp::RenderError::TooLarge { .. })),
+        "{:?}",
+        e.map(|p| p.samples.len())
+    );
+}
+
+/// O número de modos é limitado pela banda, com a base dentro do audível: `u32::MAX` não vira milhares de passes.
+#[test]
+fn corpo_com_modos_absurdos_para_na_banda_audivel() {
+    let mut r = Recipe::new(3, 0.01);
+    r.add(
+        1.0,
+        Source::Body(Body {
+            law: ModeLaw::Stretched { stretch: 1.0 },
+            base_hz: 1.0,
+            modes: u32::MAX,
+            ..corpo()
+        }),
+        Envelope::default(),
+    );
+    r.sanitize();
+    let Source::Body(b) = &r.layers[0].source else {
+        panic!("corpo")
+    };
+    assert_eq!(b.base_hz, ph2d_sfx_recipe::MIN_BODY_HZ);
+}
+
+/// Uma curva longa termina no valor que declarou. Dois minutos de multiplicação em `f32` erram 19 %.
+#[test]
+fn curva_longa_chega_ao_valor_declarado() {
+    let segundos = ph2d_sfx_recipe::MAX_SECONDS;
+    let n = ph2d_sfx_recipe::frames_of(segundos);
+    let mut takes = Takes::default();
+    let id = takes.add(Take::new(48_000, 1, vec![1.0; n]));
+    let mut r = Recipe::new(3, segundos);
+    let alvo = 0.001f32;
+    r.add(
+        1.0,
+        Source::Recording(Recording {
+            take: id,
+            semitones: 0.0,
+            offset: 0.0,
+        }),
+        Envelope {
+            points: vec![
+                EnvPoint {
+                    t: 0.0,
+                    v: 1.0,
+                    exp: false,
+                },
+                EnvPoint {
+                    t: segundos,
+                    v: alvo,
+                    exp: true,
+                },
+            ],
+        },
+    );
+    let pcm = soa(&r, &takes);
+    let erro = (pcm[n - 1] / alvo - 1.0).abs();
+    assert!(erro < 1.0e-3, "erro relativo {erro}");
+}

@@ -5,16 +5,16 @@ use ph2d_sfx_dsp::{pcm_hash, render};
 use ph2d_sfx_recipe::{ENGINE_V1, Take, Takes, factory};
 
 const DOURADOS: [(&str, u64); 8] = [
-    ("Whoosh", 0x7040f32cf3a84a03),
-    ("Laser", 0x3824b38df643d294),
+    ("Whoosh", 0xc957152a932b89c3),
+    ("Laser", 0xa9457ea4a8069bd4),
     ("Metal Hit", 0x36659fb676bf5064),
     ("Wood Knock", 0x9c821bb160b510aa),
     ("Glass Ping", 0x4b4798b10ef15048),
     ("Drum Thump", 0x0b5aa9b796f46424),
-    ("FM Bell", 0x37c39ff241adacf1),
-    ("Impact", 0x33ecba068ec66193),
+    ("FM Bell", 0x788a42310ebe866f),
+    ("Impact", 0x1efe8b89a71a947b),
 ];
-const DOURADO_GRAVACAO: u64 = 0xac79d980833fb4af;
+const DOURADO_GRAVACAO: u64 = 0x33747b4769966370;
 
 /// Material de teste a 44,1 kHz, estéreo: exercita a troca de taxa e a mistura de canais.
 fn material() -> Take {

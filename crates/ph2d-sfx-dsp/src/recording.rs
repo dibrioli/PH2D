@@ -34,6 +34,9 @@ pub(crate) fn render(buf: &mut [f32], take: &Take, r: &Recording) {
     } else {
         Cow::Owned((0..take.frames()).map(|i| take.mono(i)).collect())
     };
+    if mono.is_empty() {
+        return;
+    }
     let razao = f64::from(take.rate) / f64::from(SAMPLE_RATE)
         * if r.semitones == 0.0 {
             1.0

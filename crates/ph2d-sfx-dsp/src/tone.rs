@@ -10,7 +10,9 @@ use crate::blep;
 /// O glissando: `inc` multiplica até o fim do `glide` e depois fica.
 struct Altura {
     inc: f32,
-    passo: f32,
+    /// A conta em `f64`: um glissando longo em `f32` não chega à nota declarada.
+    exato: f64,
+    passo: f64,
     resta: usize,
 }
 
@@ -19,13 +21,14 @@ impl Altura {
         let sr = SAMPLE_RATE as f32;
         let n = frames_of(t.glide);
         let passo = if n > 0 && t.hz != t.hz_end {
-            (t.hz_end / t.hz).det_powf(1.0 / n as f32)
+            f64::from(t.hz_end / t.hz).det_powf(1.0 / n as f64)
         } else {
             1.0
         };
         let inc = if n == 0 { t.hz_end } else { t.hz } / sr;
         Self {
             inc,
+            exato: f64::from(inc),
             passo,
             resta: n,
         }
@@ -33,7 +36,8 @@ impl Altura {
 
     fn anda(&mut self) {
         if self.resta > 0 {
-            self.inc *= self.passo;
+            self.exato *= self.passo;
+            self.inc = self.exato as f32;
             self.resta -= 1;
         }
     }

@@ -42,5 +42,5 @@ O FunDSP 0.23 é a única biblioteca mantida e permissiva com grafo de verdade, 
 
 ## Reabrir quando
 
-- O hash de Intel ou ARM divergir: a promessa passa a ser só por máquina, e o dono é avisado. Referência hoje, com os kernels do produto: `conjunto ba8382438fc1089e` (`sonda_w2`, comando em [03_W2_medicao.md](../../SfxLab/03_W2_medicao.md)). `e262c4b2a017544c` era o hash da sonda de W0.
+- O hash de Intel ou ARM divergir: a promessa passa a ser só por máquina, e o dono é avisado. Referência hoje, com os kernels do produto: `conjunto 86ea4a05df14620b` (`sonda_w2`, comando em [03_W2_medicao.md](../../SfxLab/03_W2_medicao.md)). `e262c4b2a017544c` era o hash da sonda de W0.
 - O ouvido do dono reprovar os kernels em W2.

@@ -20,10 +20,10 @@ pub(crate) fn render(buf: &mut [f32], semente: u64, n: &Noise) {
     let passo = if n.hz == n.hz_end || buf.len() < 2 {
         1.0
     } else {
-        (n.hz_end / n.hz).det_powf(1.0 / (buf.len() - 1) as f32)
+        f64::from(n.hz_end / n.hz).det_powf(1.0 / (buf.len() - 1) as f64)
     };
-    let mut hz = n.hz;
-    let mut g = (PI * hz / sr).det_tan();
+    let mut hz = f64::from(n.hz);
+    let mut g = (PI * hz as f32 / sr).det_tan();
     let (mut ic1, mut ic2) = (0.0f32, 0.0f32);
     for s in buf {
         let x = rng.bipolar();
@@ -41,7 +41,7 @@ pub(crate) fn render(buf: &mut [f32], semente: u64, n: &Noise) {
         };
         if passo != 1.0 {
             hz *= passo;
-            g = (PI * hz / sr).det_tan();
+            g = (PI * hz as f32 / sr).det_tan();
         }
     }
 }

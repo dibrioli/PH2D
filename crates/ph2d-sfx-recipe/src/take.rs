@@ -4,6 +4,9 @@
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
+/// O maior módulo de uma amostra guardada. Muito além de qualquer áudio: com [`crate::MAX_GAIN`], a soma fica finita.
+pub const MAX_SAMPLE: f32 = 1.0e6;
+
 /// O endereço do material pelo conteúdo: taxa, canais e os bits das amostras.
 pub type TakeId = [u8; 32];
 
@@ -17,13 +20,15 @@ pub struct Take {
 }
 
 impl Take {
-    /// Toda amostra que não é um número vira silêncio aqui: é a porta de entrada do material no motor.
+    /// A porta de entrada do material no motor: o que não é número vira silêncio, e o resto cabe em [`MAX_SAMPLE`].
     #[must_use]
     pub fn new(rate: u32, channels: u16, mut samples: Vec<f32>) -> Self {
         for s in &mut samples {
-            if !s.is_finite() {
-                *s = 0.0;
-            }
+            *s = if s.is_finite() {
+                s.clamp(-MAX_SAMPLE, MAX_SAMPLE)
+            } else {
+                0.0
+            };
         }
         let (rate, channels) = (rate.max(1), channels.max(1));
         Self {

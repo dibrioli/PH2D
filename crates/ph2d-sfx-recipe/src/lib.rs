@@ -12,8 +12,8 @@ pub use envelope::{EnvPoint, Envelope};
 #[cfg(feature = "component")]
 pub use library::project;
 pub use library::{LibraryBlobError, SfxLibrary};
-pub use sanitize::{MAX_GAIN, MAX_HZ, MAX_SECONDS, MAX_SEMITONES, MIN_HZ};
-pub use take::{Take, TakeId, Takes};
+pub use sanitize::{MAX_GAIN, MAX_HZ, MAX_SECONDS, MAX_SEMITONES, MIN_BODY_HZ, MIN_HZ};
+pub use take::{MAX_SAMPLE, Take, TakeId, Takes};
 
 use serde::{Deserialize, Serialize};
 
@@ -52,7 +52,7 @@ impl Recipe {
     /// Acrescenta uma camada com um id que nunca foi usado nesta receita.
     pub fn add(&mut self, gain: f32, source: Source, envelope: Envelope) -> LayerId {
         let id = LayerId(self.next_layer);
-        self.next_layer += 1;
+        self.next_layer = self.next_layer.saturating_add(1);
         self.layers.push(Layer {
             id,
             gain,

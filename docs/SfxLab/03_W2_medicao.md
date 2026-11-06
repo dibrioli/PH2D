@@ -62,6 +62,16 @@ Por que melhorou sem SIMD: o ressonador pára quando cala (2⁻²⁴, um passo d
 | Ruído, corte fixo · varrendo | 0,44 · 0,60 |
 | Serra de 15 kHz | 2,25 |
 
+### Corpo: de onde vem o limite de modos
+
+Sem teto próprio: o que limita é a banda. Base mínima `MIN_BODY_HZ` = 20 Hz, o começo do audível, e `MAX_HZ` em cima: um corpo harmônico tem no máximo 1 080 modos, com `modes` em `u32::MAX`.
+
+| O pior corpo: 1 080 modos, sem amortecer | 2 s, t60 4 s | 120 s, t60 120 s |
+|---|---|---|
+| ms | 158 | 9 370 |
+
+⚠️ Passa de 30 ms de longe, e é o caso extremo. W3 precisa do render fora da thread da tela.
+
 ### Gravação: de onde vem `MAX_SEMITONES = 48`
 
 2 s de saída, material de 10 s a 44,1 kHz. Cada oitava acima dobra os toques do filtro.
@@ -81,13 +91,13 @@ O recurso é a RAM do cache: 4 B × 48 000 × s × camadas.
 | ms | 25 | 51 | 98 |
 | MB no cache (8 camadas) | 3 | 46 | 184 |
 
-O tempo não é o que limita, e o teto não é do motor: é um som de jogo, e 184 MB por receita em memória é o que um artista notaria. Se W5 pedir som longo, reabra com esta tabela.
+Acima disso, `MAX_BYTES` = 1 GiB recusa o render antes de alocar (`RenderError::TooLarge`): o recurso é a RAM da menor máquina do projeto, 8 GiB. Sem ele, mil camadas de 120 s levaram 48 s e pediram 23 GB. O tempo não é o que limita, e o teto não é do motor: é um som de jogo, e 184 MB por receita em memória é o que um artista notaria. Se W5 pedir som longo, reabra com esta tabela.
 
 ## Bytes entre alvos
 
-Um hash do conjunto (as 8 receitas de fábrica e a de gravação), igual em x86-64 de base, x86-64-v3 (AVX2 e FMA no compilador) e wasm32 no `node`: `ba8382438fc1089e`. Binário dos hashes: nenhuma função de matemática da libm do sistema importada (`nm -D`).
+Um hash do conjunto (as 8 receitas de fábrica e a de gravação), igual em x86-64 de base, x86-64-v3 (AVX2 e FMA no compilador) e wasm32 no `node`: `86ea4a05df14620b`. Binário dos hashes: nenhuma função de matemática da libm do sistema importada (`nm -D`).
 
-⛔ **NÃO PROVADO: Intel e ARM.** Esta máquina é AMD. Para fechar, no Mac, depois da integração: `cd docs/SfxLab/ferramentas/sonda_w2 && cargo run --profile smoke --bin hashes` tem de terminar em `conjunto ba8382438fc1089e`.
+⛔ **NÃO PROVADO: Intel e ARM.** Esta máquina é AMD. Para fechar, no Mac, depois da integração: `cd docs/SfxLab/ferramentas/sonda_w2 && cargo run --profile smoke --bin hashes` tem de terminar em `conjunto 86ea4a05df14620b`.
 
 ## Sonda da cena do dono
 

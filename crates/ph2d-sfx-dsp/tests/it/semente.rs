@@ -129,3 +129,15 @@ fn contador_atrasado_no_arquivo_nao_repete_um_id() {
     let novo = r.add(1.0, vizinho(100.0), Envelope::default());
     assert_eq!(novo, LayerId(8));
 }
+
+/// O contador no último valor possível, vindo de arquivo, não derruba o `add`.
+#[test]
+fn contador_no_teto_nao_estoura() {
+    let mut r = Recipe {
+        next_layer: u64::MAX,
+        ..Recipe::new(1, 0.1)
+    };
+    let _ = r.add(1.0, vizinho(100.0), Envelope::default());
+    let _ = r.add(1.0, vizinho(100.0), Envelope::default());
+    assert_eq!(r.next_layer, u64::MAX);
+}

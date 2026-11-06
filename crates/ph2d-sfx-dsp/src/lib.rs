@@ -32,15 +32,22 @@ pub struct Pcm {
 pub enum RenderError {
     /// A receita pede um motor que esta árvore não toca: nunca se troca o som em silêncio.
     UnknownEngine(u32),
+    /// O cache pediria mais memória do que o motor admite.
+    TooLarge { bytes: u64 },
 }
 
 impl std::fmt::Display for RenderError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::UnknownEngine(v) => write!(f, "sound engine {v} is not available"),
+            Self::TooLarge { bytes } => write!(f, "this recipe needs {bytes} bytes of audio"),
         }
     }
 }
+
+/// O maior áudio que um render guarda, entre o resultado e o cache. O recurso é a RAM da menor máquina do projeto, 8 GiB
+/// (`hw-profile`); oito camadas no teto de duração pedem 184 MB (`03_W2_medicao.md`).
+pub const MAX_BYTES: u64 = 1 << 30;
 
 /// A semente de uma camada: da receita e do id estável, nunca da posição.
 #[must_use]
@@ -107,6 +114,10 @@ impl RenderCache {
             .retain(|id, _| r.layers.iter().any(|l| l.id == *id));
 
         let total = r.frames();
+        let bytes = (r.layers.len() as u64 + 1).saturating_mul(total as u64 * 4);
+        if bytes > MAX_BYTES {
+            return Err(RenderError::TooLarge { bytes });
+        }
         let mut mix = vec![0.0f32; total];
         let mut missing = Vec::new();
         for layer in &r.layers {

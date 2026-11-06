@@ -22,10 +22,11 @@ pub(crate) fn apply(env: &Envelope, buf: &mut [f32]) {
         let n = frames_of(b.t) - frames_of(a.t);
         let trecho = &mut buf[pos..fim];
         if b.exp && a.v > 0.0 && b.v > 0.0 {
-            let passo = (b.v / a.v).det_powf(1.0 / n as f32);
-            let mut v = a.v;
+            // Em `f64`: dois minutos de produtos em `f32` terminam 5 % longe do valor declarado.
+            let passo = f64::from(b.v / a.v).det_powf(1.0 / n as f64);
+            let mut v = f64::from(a.v);
             for s in trecho {
-                *s *= v;
+                *s *= v as f32;
                 v *= passo;
             }
         } else {

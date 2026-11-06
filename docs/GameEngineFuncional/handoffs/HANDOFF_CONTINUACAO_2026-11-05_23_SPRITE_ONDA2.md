@@ -1,3 +1,5 @@
+> **Fechada em 06/11:** o handoff de integração é [HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-06_SPRITE.md](HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-06_SPRITE.md) (auditoria, contadores, ABERTO atual).
+
 # Continuação — GEF 23, Sprite, onda 2 (05/11, smoke do dono OK)
 
 Leitor: a próxima janela da `line/GameEngineFuncional`. Substitui [o handoff anterior](HANDOFF_CONTINUACAO_2026-11-05_23_SPRITE.md). Ficha: [`componentes/01_sprite.md`](../componentes/01_sprite.md) · regras: [`README.md`](../README.md).

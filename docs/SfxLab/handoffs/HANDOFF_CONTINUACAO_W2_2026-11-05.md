@@ -26,10 +26,10 @@ SUPERFÍCIE DE COLISÃO — line/SfxLab contra main
 ▸ Cargo.lock — ⚠ 4 pacote(s) '+name' novo(s): "ph2d-sfx-dsp" "ph2d-sfx-recipe" "ph2d-sfx-scene" "ph2d-sound-set"
 ▸ MARCADORES DE CONFLITO: nenhum
 ▸ TETOS DE LOC
-  ✗   608 / 600   shells/desktop/src/project_schema.rs
+  (depois do corte) 586 / 600   shells/desktop/src/project_schema.rs
 ```
 
-**O ✗ de LOC (`project_schema.rs` 608/600) é do mapa, não confirmado como gate:** confira com `file_loc_cap` por nome no main do dia (a linha o deu verde por nome no fecho); se reprovar, cura é cortar o arquivo (tecto soma entre linhas), nunca isenção.
+**`project_schema.rs` passou de 600 (608) com o degrau, e o gate `shell_files_respect_hr18_loc_cap` reprovou de verdade.** Cura por corte: o degrau `171 → 172` foi arquivado verbatim em `docs/archive/project-schema/escada_v171_a_v172.md`; 586/600, gate verde por nome.
 
 ## 2. Delta para o integrador contar contra o main do dia
 
@@ -42,7 +42,7 @@ SUPERFÍCIE DE COLISÃO — line/SfxLab contra main
 
 ## 3. O que um merge pode partir
 
-- ⚠️ **A shell está EXATAMENTE no teto**: `the_shell_only_shrinks` 189041 de 189041, folga 0, medido na árvore. É número que soma entre linhas: o integrador reconta, e qualquer linha que cresça a shell reprova contra esta. Para caber, os testes de blob foram para a crate e o marcador do `PH2D_ANIM_SMOKE=2` saiu da shell para `ph2d_sfx_scene::marcadores_do_anim_smoke`. **W3 (aba) tem de MOVER antes de acrescentar.**
+- ⚠️ **A shell está quase no teto**: `the_shell_only_shrinks` 189019 de 189041, folga 22, medido na árvore. É número que soma entre linhas: o integrador reconta, e qualquer linha que cresça a shell reprova contra esta. Para caber, os testes de blob foram para a crate e o marcador do `PH2D_ANIM_SMOKE=2` saiu da shell para `ph2d_sfx_scene::marcadores_do_anim_smoke`. **W3 (aba) tem de MOVER antes de acrescentar.**
 - `ph2d-app-components` intocada em W2 (80866/80869).
 - `shells/desktop`: 18 arquivos, +99 −16 desde a base (W1 e W2 juntas). Mais provável de colidir: `project.rs` (save/load de `sfx_lab`), `project_schema.rs`, `project_geometria_v194_tests.rs`.
 - Load: blob de receitas ilegível **recusa o load** com o toast `shell.project_load.project_refused_its_recipes`; o gate `toda_chave_do_load_tem_texto` (`ph2d-i18n`) agora é censo de TODA a família `shell.project_load.*`: outra linha que adicione chave `project_load` sem texto reprova ali.

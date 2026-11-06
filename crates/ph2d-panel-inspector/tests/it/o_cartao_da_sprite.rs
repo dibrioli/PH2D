@@ -569,6 +569,71 @@ fn em_repeated_o_cartao_termina_em_width_e_height() {
     );
 }
 
+/// ⭐ Dono 05/11: Width e Height na mesma linha, em qualquer largura; o rótulo não cobre o vizinho nem o campo.
+/// *Mutações: `tudo_cabe` sem o par de eixos ⇒ empilham. `faixa` sem tirar a unidade ⇒ o rótulo quebra e a linha cresce.*
+#[test]
+fn width_e_height_ficam_lado_a_lado_em_qualquer_largura() {
+    use ph2d_editor_core::panel::cards::censo;
+    for largura in [
+        ph2d_tokens::chrome::PANEL_MIN_W_PX,
+        200.0,
+        240.0,
+        293.0,
+        400.0,
+    ] {
+        let (mut host, mut st) = cena(factos());
+        set_current_inspector_sprite(Some(InspectorSpriteInfo {
+            image_use: ph2d_editor_core::InspectorImageUse::Repeated,
+            draw: ph2d_editor_core::InspectorDraw::Tiled { copies: [3.0, 1.0] },
+            ..sprite()
+        }));
+        let _ = pinta_a_largura(&mut host, &mut st, largura);
+        let (r, c) = censo::grava(|| pinta_a_largura(&mut host, &mut st, largura));
+        let (a, b) = (
+            rect_de(&r, INSP_IMAGE_TILED_SIZE[0]),
+            rect_de(&r, INSP_IMAGE_TILED_SIZE[1]),
+        );
+        assert_eq!(a.y, b.y, "a {largura}: {a:?} {b:?}");
+        assert_eq!(a.w, b.w, "a {largura}: colunas iguais");
+        assert!(a.x + a.w <= b.x, "a {largura}: sobrepostos {a:?} {b:?}");
+        assert!(
+            a.w >= ph2d_card_stack::metrics::FIELD_VALUE_MIN_W,
+            "a {largura}: o número não cabe: {a:?}"
+        );
+        assert!(b.x + b.w <= 1600.0, "a {largura}: {b:?} fora");
+        let dica = ph2d_editor_core::panel::cards::dicas::field_hint(
+            host.store_mut(),
+            INSP_IMAGE_TILED_SIZE[0],
+        );
+        assert!(
+            dica.is_some_and(|d| d.contains("Width (tiles)")),
+            "a {largura}: a dica perdeu a unidade"
+        );
+        let cortados = c.textos_cortados();
+        assert!(
+            !cortados
+                .iter()
+                .any(|t| t.contains("Width") || t.contains("Height")),
+            "a {largura}: {cortados:?}"
+        );
+        let linha = c
+            .linhas
+            .iter()
+            .find(|l| l.celulas.iter().any(|m| m.nome.starts_with("Width")))
+            .expect("a linha de Width");
+        assert_eq!(linha.celulas.len(), 2, "a {largura}: {linha:?}");
+        assert_eq!(linha.fundo, a.y + a.h, "a {largura}: {linha:?}");
+        // Uma linha de rótulo: a mesma altura de cima a baixo, estreito ou largo.
+        let m = ph2d_card_stack::metrics::LABEL_PX
+            + ph2d_card_stack::metrics::LABEL_BOTTOM
+            + ph2d_card_stack::metrics::FIELD_H;
+        assert!(
+            (linha.fundo - linha.topo - m).abs() < 0.01,
+            "a {largura}: a faixa cresceu {linha:?}"
+        );
+    }
+}
+
 /// ⭐ Dono 05/11: em Repeated o tamanho do bloco vai entre parênteses na linha da miniatura; «Size (px)» já não existe.
 #[test]
 fn o_tamanho_do_repeated_vai_entre_parenteses() {

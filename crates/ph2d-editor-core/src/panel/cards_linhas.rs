@@ -165,6 +165,9 @@ impl<'s> CardCtx<'s> {
     }
 
     pub(super) fn tudo_cabe(&mut self, cells: &[Cell<'_>]) -> bool {
+        if rotulos::par_de_eixos(cells) {
+            return true;
+        }
         let cols = self.columns(cells);
         cells
             .iter()

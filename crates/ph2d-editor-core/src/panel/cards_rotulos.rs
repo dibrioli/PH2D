@@ -2,7 +2,7 @@
 //! linhas («Opacity» / «(%)», maquete F) em vez de virar «Opacity…»; a faixa cresce uma linha só
 //! quando algum rótulo da linha precisa, e os de uma linha centram-se nela.
 
-use super::{CardCtx, Cell};
+use super::{CardCtx, Cell, Widget};
 use crate::widget::card_field;
 use ph2d_card_stack::metrics as m;
 use ph2d_text::TextSystem;
@@ -27,6 +27,34 @@ pub(super) fn linhas<'l>(ts: &mut TextSystem, l: &'l str, w: f32) -> (&'l str, O
     }
 }
 
+/// `l` sem a unidade entre parênteses.
+fn sem_unidade(l: &str) -> &str {
+    l.split_once(" (").map_or(l, |(nome, _)| nome)
+}
+
+/// ⭐ **Dois campos da mesma grandeza em eixos** («Width (tiles)» e «Height (tiles)», «Offset X» e «Offset Y»):
+/// os nomes diferem numa palavra só, e ela é o eixo. Ficam lado a lado em qualquer largura (dono 05/11).
+pub(super) fn par_de_eixos(cells: &[Cell<'_>]) -> bool {
+    const EIXOS: [(&str, &str); 3] = [("x", "y"), ("width", "height"), ("w", "h")];
+    let [a, b] = cells else {
+        return false;
+    };
+    let campo = |c: &Cell<'_>| matches!(c.widget, Widget::Field { .. } | Widget::FieldFace { .. });
+    let (true, true, Some(la), Some(lb)) = (campo(a), campo(b), a.label, b.label) else {
+        return false;
+    };
+    let palavras = |l| sem_unidade(l).split_whitespace().collect::<Vec<_>>();
+    let (pa, pb) = (palavras(la), palavras(lb));
+    let difere: Vec<_> = pa.iter().zip(&pb).filter(|(p, q)| p != q).collect();
+    let [(p, q)] = difere.as_slice() else {
+        return false;
+    };
+    pa.len() == pb.len()
+        && EIXOS
+            .iter()
+            .any(|(e, f)| p.eq_ignore_ascii_case(e) && q.eq_ignore_ascii_case(f))
+}
+
 pub(super) fn reserva(c: &Cell<'_>) -> f32 {
     if c.key.is_some() {
         m::KEY_MARK_BOX
@@ -49,13 +77,21 @@ fn largura_do_rotulo(cells: &[Cell<'_>], cols: &[(f32, f32)], i: usize) -> f32 {
 /// Pinta os rótulos (e as marcas de animação) de uma linha a partir de `y`; devolve a altura da
 /// faixa, já com o `LABEL_BOTTOM`.
 pub(super) fn faixa(cx: &mut CardCtx<'_>, cells: &[Cell<'_>], cols: &[(f32, f32)], y: f32) -> f32 {
+    let de_eixos = par_de_eixos(cells);
     let larguras: Vec<f32> = (0..cells.len())
         .map(|i| largura_do_rotulo(cells, cols, i))
         .collect();
     let quebras: Vec<_> = cells
         .iter()
         .zip(&larguras)
-        .map(|(c, w)| c.label.map(|l| linhas(cx.text_system, l, *w)))
+        .map(|(c, w)| {
+            c.label.map(|l| {
+                // No par de eixos a unidade sai antes de o nome quebrar; a dica do campo continua a dizê-la.
+                let cabe = cx.text_system.prefix_width(l, m::LABEL_PX) <= *w;
+                let l = if de_eixos && !cabe { sem_unidade(l) } else { l };
+                linhas(cx.text_system, l, *w)
+            })
+        })
         .collect();
     let duas = quebras.iter().flatten().any(|(_, b)| b.is_some());
     let extra = if duas { PASSO } else { 0.0 };
@@ -130,6 +166,39 @@ mod tests {
         let cols = [(0.0, 40.0), (46.0, 40.0), (92.0, 40.0), (138.0, 40.0)];
         assert_eq!(largura_do_rotulo(&cells, &cols, 0), 86.0);
         assert_eq!(largura_do_rotulo(&cells, &cols, 2), 86.0);
+    }
+
+    /// ⭐ Só o eixo faz o par: o nome igual menos uma palavra, e ela é o eixo.
+    /// *Mutações: comparar só a primeira palavra · aceitar duas palavras diferentes.*
+    #[test]
+    fn an_axis_pair_differs_only_in_the_axis() {
+        use super::super::{Glyph, Widget};
+        let par = |a: &'static str, b: &'static str| {
+            let c = |l| {
+                Cell::new(Widget::Field {
+                    id: ph2d_a11y::NodeId(1),
+                    glyph: Glyph::Text("X"),
+                })
+                .label(l)
+            };
+            par_de_eixos(&[c(a), c(b)])
+        };
+        for (a, b) in [
+            ("Width (tiles)", "Height (tiles)"),
+            ("Reference Width (px)", "Reference Height (px)"),
+            ("Offset X (px)", "Offset Y (px)"),
+        ] {
+            assert!(par(a, b), "{a} × {b}");
+        }
+        for (a, b) in [
+            ("Width", "Hardness"),
+            ("Offset X", "Size Y"),
+            ("Min", "Max"),
+            ("X", "Y extra"),
+            ("Height", "Width"),
+        ] {
+            assert!(!par(a, b), "{a} × {b}");
+        }
     }
 
     /// ⭐ Maquete F: «Opacity (%)» numa coluna estreita quebra em «Opacity» / «(%)», inteiros.

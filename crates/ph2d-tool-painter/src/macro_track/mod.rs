@@ -100,6 +100,7 @@ impl PainterTool {
         // viva pela porta de sempre (o fim da sessão É o bake), como o desfazer e a troca de camada
         // fazem — e o estado inicial é o documento.
         self.wetpaint_end_session();
+        self.wet_esquece_as_adormecidas();
         // A irmã da aguada: a sessão molhada (o «Wet now», a lavagem ainda viva) seca pela porta de
         // sempre, a mesma do desfazer (`dry_session_now`) — os pixels ficam, a humidade não viaja.
         self.dry_session_now();

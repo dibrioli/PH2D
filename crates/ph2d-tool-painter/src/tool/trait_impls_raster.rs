@@ -17,6 +17,7 @@ impl RasterEditTool for PainterTool {
         // (open shape, pending Fill ColorDrop, Mask scratch, Drag-Dot restore, armed Eyedropper); abandon
         // them so nothing floods / corrupts the freshly-bound sprite. See `paint::lifecycle`.
         self.reset_transient_edit_state();
+        self.wet_esquece_as_adormecidas();
         self.replace_canvas(Arc::new(rgba));
         self.source_size = (width, height);
         self.preview_dirty = true;

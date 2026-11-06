@@ -139,6 +139,39 @@ pub fn settle_composite(
     }
 }
 
+/// Enterra a célula `i`: sem massa, água nem relevo (a tinta dela passou para a imagem por baixo). A aparência fica,
+/// por só valer com massa; os campos preguiçosos só se escrevem se existem.
+pub fn enterra_celula(g: &mut Grid, i: usize) {
+    g.film[i] = 0.0;
+    g.susp[i] = 0.0;
+    g.susp_rgb[i] = [0.0; 3];
+    g.sett[i] = 0.0;
+    g.sett_rgb[i] = [0.0; 3];
+    g.relevo[i] = 0.0;
+    g.vela[i] = 0.0;
+    g.wet[i] = 0;
+    g.active[i] = 0;
+    g.bloom[i] = 0;
+    for plano in [
+        &mut g.altura,
+        &mut g.espessura,
+        &mut g.crista,
+        &mut g.nivelado,
+        &mut g.oleo_antes,
+        &mut g.oleo_antes_assente,
+        &mut g.chao,
+        &mut g.sett_do_traco,
+    ] {
+        if let Some(v) = plano.get_mut(i) {
+            *v = 0.0;
+        }
+    }
+    // O lado espectral (lei arquivada) só se lê com volume: fica.
+    if let Some(c) = g.tinta.get_mut(i) {
+        *c = super::tinta::CelulaTinta::NEUTRA;
+    }
+}
+
 /// Clear: zero all dynamic state; the paper is untouched.
 pub fn clear_canvas(g: &mut Grid) {
     g.film.fill(0.0);

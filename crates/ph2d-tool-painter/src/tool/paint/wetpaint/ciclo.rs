@@ -122,7 +122,9 @@ impl PainterTool {
     pub(in crate::tool::paint) fn wetpaint_tick(&mut self, dt_s: f32) {
         // Doc 21 §F layer 2: the deposit flag must never survive into a tick.
         debug_assert!(!self.paint.wetpaint.deposit_pass);
-        if self.paint.wetpaint.session.is_none() {
+        if self.paint.wetpaint.session.is_none()
+            && !(matches!(self.paint.paint_mode, PaintMode::WetPaint) && self.wet_acorda())
+        {
             self.prepara_o_toque();
             return;
         }

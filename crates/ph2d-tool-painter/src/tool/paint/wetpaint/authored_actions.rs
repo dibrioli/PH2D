@@ -36,7 +36,7 @@ impl PainterTool {
     /// Wet-canvas button's door — wetting the sheet before the first stroke
     /// IS its use case). `false` when the canvas has no size.
     pub(super) fn ensure_wet_session(&mut self) -> bool {
-        if self.paint.wetpaint.session.is_some() {
+        if self.paint.wetpaint.session.is_some() || self.wet_acorda() {
             return true;
         }
         let (w, h) = self.source_size;
@@ -198,20 +198,7 @@ impl PainterTool {
     /// the overlay on and the canvas still ours, recomposite clean first.
     pub(crate) fn wetpaint_end_session(&mut self) {
         self.wetpaint_guard();
-        // Uma imagem no ar ou uma dívida levam o sujo que tiraram do motor: o fim recompõe tudo em casa.
-        let pendente = self
-            .paint
-            .wetpaint
-            .session
-            .as_ref()
-            .is_some_and(|s| s.otica.pendente());
-        if (self.paint.wetpaint.show_wet || pendente) && self.paint.wetpaint.session.is_some() {
-            if let Some(sess) = self.paint.wetpaint.session.as_mut() {
-                sess.bring_home();
-                sess.engine.mark_dirty_full();
-            }
-            self.wetpaint_composite_veiled(false);
-        }
+        self.wet_ultima_imagem();
         // A sessão nascida sem a marca (a da gravação) acaba com a marca posta: a imagem guarda a água
         // dela no estado da tela (W14 — a cauda do clipe pára aqui).
         if let Some(c) = self.paint.wetpaint.composta.take()
@@ -231,5 +218,23 @@ impl PainterTool {
         // it: a mid-authoring undo keeps authoring, and its later commit
         // still deposits — into a fresh session over the peeled canvas.)
         self.paint.wetpaint.pending_deposit.clear();
+    }
+
+    /// A tela fica com o que a sessão tem, ao acabar ou ao adormecer.
+    pub(super) fn wet_ultima_imagem(&mut self) {
+        // Uma imagem no ar ou uma dívida levam o sujo que tiraram do motor: o fim recompõe tudo em casa.
+        let pendente = self
+            .paint
+            .wetpaint
+            .session
+            .as_ref()
+            .is_some_and(|s| s.otica.pendente());
+        if (self.paint.wetpaint.show_wet || pendente) && self.paint.wetpaint.session.is_some() {
+            if let Some(sess) = self.paint.wetpaint.session.as_mut() {
+                sess.bring_home();
+                sess.engine.mark_dirty_full();
+            }
+            self.wetpaint_composite_veiled(false);
+        }
     }
 }

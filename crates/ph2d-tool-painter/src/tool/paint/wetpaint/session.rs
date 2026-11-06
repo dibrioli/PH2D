@@ -201,6 +201,26 @@ pub(super) struct PaperKey {
 }
 
 impl WetSession {
+    /// Os bytes que a sessão segura (ver [`PainterTool::wet_bytes_retidos`]).
+    pub(super) fn bytes_retidos(&self) -> usize {
+        use super::offthread::EngineSlot;
+        let motor = match &self.engine {
+            EngineSlot::Here(e) | EngineSlot::Roteiro(e) => e.bytes_retidos(),
+            EngineSlot::Away => 0,
+        };
+        let p = &self.planos;
+        motor
+            + p.pigment.len()
+            + p.sombra.len()
+            + p.grao.len()
+            + p.suave.len()
+            + self
+                .antes_do_passo
+                .iter()
+                .map(super::undo_vivo::PassoVivo::bytes)
+                .sum::<usize>()
+    }
+
     /// Há tinta molhada na tela? (algum pixel do plano de pigmento com alfa) — o que decide se trocar
     /// o modo de Blend fixa a sessão ou só lhe troca o modo (`set_brush_blend`).
     pub(in crate::tool::paint) fn ha_tinta(&self) -> bool {
@@ -400,22 +420,11 @@ impl PainterTool {
     /// e ninguém a escreve; o rascunho da autoria é um recorte do dab — não contam.
     pub(crate) fn wet_bytes_retidos(&self) -> usize {
         use super::offthread::EngineSlot;
-        self.paint.wetpaint.session.as_ref().map_or(0, |s| {
-            let motor = match &s.engine {
-                EngineSlot::Here(e) | EngineSlot::Roteiro(e) => e.bytes_retidos(),
-                EngineSlot::Away => 0,
-            };
-            let p = &s.planos;
-            motor
-                + p.pigment.len()
-                + p.sombra.len()
-                + p.grao.len()
-                + p.suave.len()
-                + s.antes_do_passo
-                    .iter()
-                    .map(super::undo_vivo::PassoVivo::bytes)
-                    .sum::<usize>()
-        })
+        self.paint
+            .wetpaint
+            .session
+            .as_ref()
+            .map_or(0, WetSession::bytes_retidos)
     }
 
     /// **O plano de pigmento da sessão molhada** (o que decide «há tinta?» ao trocar o Blend) — para as

@@ -232,6 +232,8 @@ impl PainterTool {
     /// `images` before a layer switch — so the layer we're leaving keeps its
     /// pixels. (The active layer is otherwise NOT stored in `images`.)
     pub(crate) fn flush_active_to_images(&mut self) {
+        // A tinta viva fica com a camada dela: o `Arc` novo da tela acabaria a sessão no guarda.
+        self.wet_adormece();
         if let Some(active) = self.layers.active() {
             let (w, h) = self.source_size;
             self.images.insert(
@@ -481,6 +483,7 @@ impl PainterTool {
         self.replace_canvas(Arc::new(buf));
         self.layers.set_active(id);
         self.commit_structural_edit(undo_before);
+        self.wet_acorda_da_camada();
         self.invalidate_composite();
     }
 

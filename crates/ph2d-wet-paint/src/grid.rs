@@ -613,7 +613,9 @@ mod live_span_tests;
 
 #[path = "grid/canvas_ops.rs"]
 mod canvas_ops; // as AÇÕES de folha inteira (molhar/secar/limpar) — filho por LOC
-pub use canvas_ops::{clear_canvas, dry_canvas, settle_composite, wet_byte_from_paper, wet_canvas};
+pub use canvas_ops::{
+    clear_canvas, dry_canvas, enterra_celula, settle_composite, wet_byte_from_paper, wet_canvas,
+};
 
 #[path = "grid/snapshot.rs"]
 mod snapshot; // as fotografias do histórico (SPEC §15) — filho por LOC

@@ -111,10 +111,10 @@ impl PainterTool {
         if self.paint.paint_mode == PaintMode::Sculpt && new_mode != PaintMode::Sculpt {
             self.end_sculpt_session();
         }
-        // Leaving Wet Paint ends the fluid session: the last composite already IS the canvas (ending
-        // is the bake), and the sim must stop moving paint the moment another tool owns the pixels.
+        // Leaving Wet Paint parks the fluid session (dono 06/11): the last composite IS the canvas, and
+        // the sim stops moving paint the moment another tool owns the pixels. The paint stays alive.
         if self.paint.paint_mode == PaintMode::WetPaint && new_mode != PaintMode::WetPaint {
-            self.wetpaint_end_session();
+            self.wet_adormece_ou_acaba();
         }
         self.paint.paint_mode = new_mode;
         // ⚠️ **Order is load-bearing:** entering Deform resets the temperament to NONE (a few lines up),
@@ -157,6 +157,10 @@ impl PainterTool {
         // it. (The slot round-trips the flag, but the LIVE brush is what `Stroke::new` reads.)
         self.sync_stroke_heading_need();
         self.arm_tool_falloff_defaults();
+        // O slot do pincel do Wet já está na mão: a tinta adormecida acorda com o Blend certo.
+        if new_mode == PaintMode::WetPaint && old_mode != PaintMode::WetPaint {
+            self.wet_acorda();
+        }
         // Leaving the Selection tool auto-hides its gizmos (the "Show Selection Gizmos" checkbox unchecks) —
         // the gizmos belong to Select and would otherwise linger over another tool (Enio 2026-07-03).
         if new_mode != PaintMode::Selection && self.paint.selection_edit_mode {

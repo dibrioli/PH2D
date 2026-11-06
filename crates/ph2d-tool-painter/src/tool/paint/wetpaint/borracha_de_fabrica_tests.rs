@@ -8,7 +8,7 @@ use ph2d_wet_paint::tuning::Knob;
 const RELIEF: &str = "Eraser/Relief/Relief Eraser.ph2d-brush.png";
 
 /// Uma passada de Borracha sobre o óleo, com a pressão a variar, e a imagem mostrada.
-fn apaga(t: &mut PainterTool) -> Vec<u8> {
+pub(super) fn apaga(t: &mut PainterTool) -> Vec<u8> {
     let ponto = |k: usize, phase| {
         let mut p = ponteiro(120.0 + 0.7 * k as f32, 60.0 + 2.0 * k as f32, phase);
         p.pressure = 0.3 + 0.7 * (k as f32 / 30.0);
@@ -24,7 +24,7 @@ fn apaga(t: &mut PainterTool) -> Vec<u8> {
     mostrada(t)
 }
 
-fn diferentes(a: &[u8], b: &[u8]) -> usize {
+pub(super) fn diferentes(a: &[u8], b: &[u8]) -> usize {
     assert_eq!(a.len(), b.len());
     a.chunks(4).zip(b.chunks(4)).filter(|(x, y)| x != y).count()
 }

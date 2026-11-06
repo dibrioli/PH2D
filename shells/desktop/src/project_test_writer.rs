@@ -70,6 +70,7 @@ pub(crate) fn bare_file(state: ProjectState) -> ProjectFile {
         kanbans: Vec::new(),
         pixel_sprites: Vec::new(),
         sounds: Vec::new(),
+        sfx_lab: Vec::new(),
     }
 }
 

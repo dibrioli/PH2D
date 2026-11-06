@@ -167,6 +167,9 @@ impl crate::App {
             sounds: (self.gfx.as_ref())
                 .map(|g| ph2d_app_components::sound_project::save(g.sim.world()))
                 .unwrap_or_default(),
+            sfx_lab: (self.gfx.as_ref())
+                .map(|g| ph2d_sfx_recipe::project::save(g.sim.world()))
+                .unwrap_or_default(),
             // ⚠️ **A taxonomia NÃO está aqui, e a ausência é a decisão** (v105): ela viaja dentro
             // do `state`, que é a unidade do undo — ver [`crate::project_library`]. Um campo aqui
             // seria a **segunda** resposta à mesma pergunta, e a que o load lesse ganharia sem

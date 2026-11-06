@@ -197,9 +197,12 @@ pub(crate) struct ProjectFile {
     /// `PixelSprite(u32)` de cada objecto. Fora do `ProjectState`: cada sprite tem desfazer próprio.
     pub(crate) pixel_sprites: Vec<u8>,
     /// **Os SONS do projeto** (v214, GEF 21 E2) — `ph2d_ecs::ProjectSounds`, blob `PH2DSONS` com versão
-    /// PRÓPRIA (vazio = sem sons); o `AudioSource2D.sound` nomeia-os. ⚠️ **O último campo** — o
-    /// `falta_no_fim` e os braços `189`..`192` do load acrescentam o `0` deste `Vec` vazio.
+    /// PRÓPRIA (vazio = sem sons); o `AudioSource2D.sound` nomeia-os. O `falta_no_fim` e os braços
+    /// `189`..`192` do load acrescentam o `0` deste `Vec` vazio.
     pub(crate) sounds: Vec<u8>,
+    /// **As RECEITAS DE SOM e o material** (v217, SFX Lab W2): `ph2d_sfx_recipe::SfxLibrary`, com versão PRÓPRIA.
+    /// ⚠️ **O último campo:** `falta_no_fim` e os braços `189`..`192` acrescentam o `0` deste `Vec` vazio.
+    pub(crate) sfx_lab: Vec<u8>,
 }
 
 /// Uma imagem de sprite embutida no projeto: os pixels RGBA + a célula de atlas que

@@ -108,6 +108,12 @@ impl crate::App {
                 return;
             }
         };
+        // **E AS RECEITAS DE SOM, pela mesma lei** (SFX Lab W2).
+        let Ok(sfx_lab) = ph2d_sfx_recipe::project::open(&file.sfx_lab).inspect_err(|e| {
+            self.toast_refused("shell.project_load.project_refused_its_recipes", e);
+        }) else {
+            return;
+        };
         // ---- Daqui pra baixo o arquivo foi ACEITO. ----
         //
         let abertos =
@@ -129,6 +135,7 @@ impl crate::App {
         if let Some(gfx) = self.gfx.as_mut() {
             ph2d_app_components::script_project::install(gfx.sim.world_mut(), scripts.lib);
             ph2d_app_components::sound_project::install(gfx.sim.world_mut(), sons.lib);
+            ph2d_sfx_recipe::project::install(gfx.sim.world_mut(), sfx_lab);
         }
         let marcas = std::mem::take(&mut file.marcas_do_artista);
         self.project_install_accepted(

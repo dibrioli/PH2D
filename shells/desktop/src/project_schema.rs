@@ -512,7 +512,15 @@
 ///
 /// A `VecScene` `28 → 29` (`estilos` no fim). ⭐ **COM leitura dos anteriores:** `fio_do_projeto` diz `28`
 /// até ao `215` e a cena abre sem estilos. Gate: `vec_v28_fixture`. Registos: `0`. ⚠️ **A tripla VÊ.**
-pub(crate) const PROJECT_SCHEMA: u32 = 216;
+///
+/// # `216 → 217` — **as receitas de som** (`line/SfxLab`, W2, 2026-11-05)
+///
+/// `sfx_lab: Vec<u8>` no FIM do `ProjectFile`: a `SfxLibrary`, blob `PH2DSFXL` com versão PRÓPRIA. ⭐ **COM leitura dos
+/// anteriores:** `falta_no_fim` e os quatro braços antigos levam mais um `0`. Gate: `project_sfx_tests`. Registos: `0`.
+pub(crate) const PROJECT_SCHEMA: u32 = 217;
+
+/// O último degrau sem as receitas de som — a mesma forma do actual, sem o `Vec` final.
+pub(crate) const PROJECT_SCHEMA_SEM_RECEITAS_DE_SOM: u32 = 216;
 
 /// O último degrau sem os estilos de cor (`VecScene` v28).
 pub(crate) const PROJECT_SCHEMA_SEM_ESTILOS: u32 = 215;

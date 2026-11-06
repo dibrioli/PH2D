@@ -3,7 +3,7 @@
 
 use super::*;
 
-fn written(name: &str, v: &impl serde::Serialize) -> std::path::PathBuf {
+pub(super) fn written(name: &str, v: &impl serde::Serialize) -> std::path::PathBuf {
     let path = tmp_path(name);
     std::fs::write(&path, postcard::to_allocvec(v).unwrap()).expect("grava");
     path

@@ -203,6 +203,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.project_load.project_refused_its_sounds" => {
             "Project refused: its sounds are unreadable ({e})"
         }
+        "shell.project_load.project_refused_its_recipes" => {
+            "Project refused: its sound recipes are unreadable ({e})"
+        }
         "shell.project_load.project_refused_format_189" => {
             "Project refused: format 189 or 190 file is unreadable ({e})"
         }

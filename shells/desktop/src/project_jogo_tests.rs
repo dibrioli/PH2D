@@ -28,6 +28,7 @@ fn arquivo(jogo: Vec<u8>) -> ProjectFile {
         kanbans: Vec::new(),
         pixel_sprites: Vec::new(),
         sounds: Vec::new(),
+        sfx_lab: Vec::new(),
     }
 }
 

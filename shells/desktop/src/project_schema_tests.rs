@@ -354,7 +354,8 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⚠️ **`215` em 2026-11-02** (`line/GameEngineFuncional`, GEF 21 E2) — os SONS do projeto:
         // `sounds: Vec<u8>` no fim do `ProjectFile`. A tripla NÃO vê este degrau.
         // ⚠️ **`216` em 2026-11-03** (`line/NovaUI-Inspector`, D28) — os ESTILOS DE COR: `VecScene` `28 → 29`.
-        (216, 13, 29),
+        // ⚠️ **`217` em 2026-11-05** (`line/SfxLab`, W2) — as RECEITAS DE SOM. A tripla NÃO vê este degrau.
+        (217, 13, 29),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

@@ -419,7 +419,6 @@ impl PainterTool {
     /// sombra, grão, degrau do Smooth Edges) e as fotografias dos passos do undo vivo. A `base` é partilhada
     /// e ninguém a escreve; o rascunho da autoria é um recorte do dab — não contam.
     pub(crate) fn wet_bytes_retidos(&self) -> usize {
-        use super::offthread::EngineSlot;
         self.paint
             .wetpaint
             .session

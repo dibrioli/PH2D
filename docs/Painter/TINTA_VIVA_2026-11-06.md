@@ -1,6 +1,6 @@
 # A tinta viva sobrevive (decisões do dono, 06/11)
 
-Estado: **plano aprovado no essencial, nada construído.** Commit de partida: `9aa112caec` (Relief Eraser).
+Estado: **itens 1, 2 e 3 do plano construídos** (`c542d4f3c6`), sem compressão; **faltam o resto do item 2, os itens 4, 5, 6 e a compressão** ([§ Construído](#construído-onda-1-0611)). Commit de partida: `9aa112caec` (Relief Eraser).
 
 ## Defeito reproduzido
 Dabber → trocar para Digital/Watercolor/Impasto (com ou sem traço) → voltar ao Wet → Relief Eraser: corte seco em vez da borracha que amassa. Sonda sobre `com_oleo()` + `apaga()` de `wetpaint/borracha_de_fabrica_tests.rs`:
@@ -77,5 +77,37 @@ Nível 1 e 3 do zstd dão o mesmo tamanho: use o 1. Não medido: gravar em disco
 4. **Borracha inteligente:** sem tinta viva, imitar. Referência a medir: `vivo` da tabela (orla macia, Δ baixa, amassa). Candidato: uma sessão que nasce da própria imagem, sobre o traço. Provar pelo olho do dono: foto vivo × imitado.
 5. **Opção ao salvar:** campo novo no `PaintedDocument`, **no FIM** (postcard é posicional), degrau de `PROJECT_SCHEMA` por `schema-recount.py`, e migração. Arquivo antigo ou sem a opção abre com a tinta morta e a Borracha imita. Ida e volta salva: a tinta reaberta igual ao bit.
 6. Reprovações a cobrir: o preço da compressão, 4K com várias camadas, redo (item 0 da [próxima fase](PROXIMA_FASE_2026-11-06.md); o mesmo código).
+
+## Construído (onda 1, 06/11)
+Código: `wetpaint/adormecida.rs`. Portões: `adormecida_tests` (8). Régua: `adormecida_regua_tests::sonda_tinta_adormecida_nos_outros_modos`.
+
+**Kill-criterion: passou.** Sonda intercalada, 9 rodadas, 4 telas no mesmo processo; mediana em ms (`sem` e `sem2` = o ruído):
+
+| 4096×2560 | sem | sem2 | dorme | dorme + tela presa |
+|---|---|---|---|---|
+| Digital, traço | 28,27 | 28,68 | 29,06 | 27,42 |
+| Watercolor, traço | 425,44 | 432,52 | 430,02 | 427,47 |
+| Impasto, traço | 59,38 | 58,81 | 58,83 | 56,77 |
+| Pen-down Digital | 10,82 | 10,86 | 10,77 | 10,72 |
+| Tique ocioso (µs) | 71,68 | 70,68 | 71,74 | 70,06 |
+
+1080p igual. Adormecer: 0,01–0,02 ms. Retém 164 MB (1080p) · 577 MB (4096×2560), 14 passadas de Dabber. Segurar a tela não custa: o pen-down já copiava. **Medido sem compressão.**
+
+**Desenho:**
+- Sair do Wet (`mode_switch`) ou da camada (`flush_active_to_images`, a porta de todas as trocas): a sessão pára, sem worker, com a tela de agora, por camada. Voltar: `set_paint_tool_mode`, `set_active_layer`, `ensure_wet_session`, o tique.
+- Não adormece (acaba como antes): macro a gravar ou tocar, traço aberto, rascunho. Não acorda: grade ou razão mudadas; Blend mudado com tinta.
+- Orçamento: 4× `history_budget_bytes`, a mais antiga vira tinta morta. A rever com a compressão.
+- **Decisão 2:** o que difere de `tela` enterra as células sob o traço (`enterra_celula`) e a imagem de agora vira a `base` delas; a Borracha leva os dois por `borracha_na_base`.
+
+⛔ **Medido e recusado:** recompor ao acordar. Com o traço por cima, 3 480 px mudam (Δ até 153) além do traço: as células enterradas re-iluminam a orla. Sem recompor, acordar muda **0 px**; a orla só se recalcula sob o pincel seguinte.
+
+**Sobra medida:** com aguada (Watercolor) na camada, a Borracha difere do `vivo` em 6 574 px (Δ máx 64, 229 com Δ ≥ 10) a y < 125, com traço longe. Grades e `base` iguais; o que muda é o vidro da camada (`composite.rs:253`, doc 48). **Inferência:** é a lei do vidro; não medido isolando-a. Recompor o óleo vivo sem outro meio dá 0 px. O olho do dono não viu.
+
+**Por fazer:**
+- Resto do item 2: **dentro do Wet, o guarda e o undo ainda matam** (fill sem trocar de modo, ajuste por menu, desfazer um traço de outro meio já acordado). `undo.rs:182` e `ciclo.rs:255` não foram tocados.
+- Depois de enterrar, o óleo sob o traço de outro meio não volta se esse traço for desfeito.
+- Item 4 (Borracha inteligente na tinta morta); item 5 (opção ao salvar: nada no formato ainda); item 6.
+- Compressão em RAM: nem medida, nem construída; a tinta adormecida fica crua.
+- Provas de mutação, e os testes em `tests/it` e nos painéis correm no fecho desta onda só por nome.
 
 **Fila depois disto:** itens 0–3 de [PROXIMA_FASE_2026-11-06.md](PROXIMA_FASE_2026-11-06.md). A foto 5 refeita pelo dono ainda não chegou (sem anexo; pasta sem alteração).

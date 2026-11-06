@@ -79,12 +79,11 @@ fn min_med(v: &mut [f64]) -> (f64, f64) {
 fn mede(w: usize, h: usize) {
     println!("\n== {w}×{h} · loadavg início: {}", loadavg().trim());
     let mut ts: Vec<PainterTool> = Vec::new();
-    for v in 0..NOMES.len() {
+    for (v, nome) in NOMES.iter().enumerate() {
         let t0 = Instant::now();
         let (t, ms, bytes) = tela_pintada(w, h, v);
         println!(
-            "{:>11}: pintar {:.1} s · adormecer {ms:.2} ms · retém {} MB",
-            NOMES[v],
+            "{nome:>11}: pintar {:.1} s · adormecer {ms:.2} ms · retém {} MB",
             t0.elapsed().as_secs_f64(),
             bytes / 1_000_000
         );

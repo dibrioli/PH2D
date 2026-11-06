@@ -388,6 +388,7 @@ fn o_flip_e_o_pivo_da_sprite_tem_canal_e_o_pivo_leva_a_posicao() {
         vec![
             ph2d_ecs::canal_componente::chave("ph2d::render::Sprite", 4, 0).unwrap(),
             ph2d_ecs::canal_componente::chave("ph2d::render::Sprite", 4, 1).unwrap(),
+            FieldKey::new(FISICA, fs::DESLOC_X, 0, 0),
         ]
     };
     let i = clique(
@@ -401,6 +402,8 @@ fn o_flip_e_o_pivo_da_sprite_tem_canal_e_o_pivo_leva_a_posicao() {
     );
     let g = gravados(&i);
     assert!(g.contains(&k(4, 0)) && g.contains(&k(4, 1)), "{g:?}");
+    // De quem publica o deslocamento do collider (dono 05/11); quem não tem collider não o publica.
+    assert!(g.contains(&fi(fs::DESLOC_X)), "{g:?}");
     assert!(
         g.contains(&PropKind::Position),
         "a posição na trajectória: {g:?}"
@@ -409,38 +412,4 @@ fn o_flip_e_o_pivo_da_sprite_tem_canal_e_o_pivo_leva_a_posicao() {
         !g.contains(&PropKind::TranslationX),
         "só um modo de posição: {g:?}"
     );
-}
-
-/// ⭐ O deslocamento do collider entra na chave do Pivot de quem tem collider (dono 05/11: o pivô não separa desenho e
-/// colisão); quem não tem não o grava.
-#[test]
-fn a_chave_do_pivo_leva_o_deslocamento_do_collider_so_de_quem_tem() {
-    let d = TimelineDoc::new();
-    let desl = |c| FieldKey::new(FISICA, c, 0, 0);
-    let com = clique(
-        &d,
-        &insp::INSP_SPRITE_PIVOT_XY,
-        &[E],
-        em(0.0),
-        |_| vec![desl(fs::DESLOC_X), desl(fs::DESLOC_Y)],
-        na_curva,
-        add,
-    );
-    let g = gravados(&com);
-    assert!(
-        g.contains(&PropKind::Field(desl(fs::DESLOC_X)))
-            && g.contains(&PropKind::Field(desl(fs::DESLOC_Y))),
-        "{g:?}"
-    );
-    let sem = clique(
-        &d,
-        &insp::INSP_SPRITE_PIVOT_XY,
-        &[E],
-        em(0.0),
-        |_| Vec::new(),
-        na_curva,
-        add,
-    );
-    let g = gravados(&sem);
-    assert!(!g.contains(&PropKind::Field(desl(fs::DESLOC_X))), "{g:?}");
 }

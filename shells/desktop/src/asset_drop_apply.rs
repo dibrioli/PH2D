@@ -299,7 +299,12 @@ impl crate::App {
         for (bits, asset) in plano.escolhas {
             self.choose_image(bits, asset);
         }
-        let pinta = plano.foto == ph2d_app_game::smoke::Foto::SpriteNoPainter;
+        let pinta = matches!(
+            plano.foto,
+            ph2d_app_game::smoke::Foto::SpriteNoPainter
+                | ph2d_app_game::smoke::Foto::SpritePainterVolta
+                | ph2d_app_game::smoke::Foto::SpritePainterAplica
+        );
         for (bits, edit) in plano.edicoes {
             self.image_use_edit(bits, edit);
         }

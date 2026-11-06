@@ -14,6 +14,8 @@ pub enum Mao {
     Sobe,
     /// O `Tab` que sai do Draw.
     SaiDoDraw,
+    /// O Apply do Painter, sem sair do Draw.
+    Aplica,
     /// O `Ctrl+Z`.
     Desfaz,
     /// Imprime as imagens das duas plataformas: `[sprite-pixel]`.
@@ -33,19 +35,35 @@ const CANTO: [f32; 2] = [-13.0 + 8.0 * 16.0 / 9.0, 7.0];
 pub fn mao(foto: Foto, quadro: u32) -> Option<Mao> {
     let (de, ate) = match foto {
         // Um traço na imagem aberta (o centro da Platform High da cena 4), sair do Draw e, na `desfaz`, Ctrl+Z.
-        Foto::SpritePixelVolta | Foto::SpritePixelDesfaz => {
+        Foto::SpritePixelVolta
+        | Foto::SpritePixelDesfaz
+        | Foto::SpritePainterVolta
+        | Foto::SpritePainterAplica => {
             if quadro == INICIO + PASSOS + 20 {
-                return Some(Mao::SaiDoDraw);
+                return Some(if foto == Foto::SpritePainterAplica {
+                    Mao::Aplica
+                } else {
+                    Mao::SaiDoDraw
+                });
             }
             if quadro == INICIO + PASSOS + 15 || quadro == INICIO + PASSOS + 50 {
                 return Some(Mao::Relata);
             }
-            if foto == Foto::SpritePixelDesfaz {
+            if foto != Foto::SpritePixelVolta {
                 if quadro == INICIO + PASSOS + 60 {
                     return Some(Mao::Desfaz);
                 }
                 if quadro == INICIO + PASSOS + 80 {
                     return Some(Mao::Relata);
+                }
+                // Pelo Apply ainda se está no Draw: o Ctrl+Z acima é do Painter. Sai-se, relata-se, e desfaz-se o resto.
+                if foto == Foto::SpritePainterAplica {
+                    match quadro.checked_sub(INICIO + PASSOS) {
+                        Some(90) => return Some(Mao::SaiDoDraw),
+                        Some(120 | 160) => return Some(Mao::Relata),
+                        Some(130) => return Some(Mao::Desfaz),
+                        _ => {}
+                    }
                 }
             }
             ([8.0, 2.0], [9.0, 2.0])

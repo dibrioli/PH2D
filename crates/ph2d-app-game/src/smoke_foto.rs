@@ -25,6 +25,10 @@ pub enum Foto {
     SpriteNoPixel,
     SpritePixelVolta,
     SpritePixelDesfaz,
+    /// Edit in Painter no app real: um traço, sair do Draw, `[sprite-pixel]` das duas plataformas, Ctrl+Z.
+    SpritePainterVolta,
+    /// O mesmo pelo Apply, sem sair do Draw.
+    SpritePainterAplica,
     SpriteNoPainter,
     Bloco,
     Bandeira,
@@ -90,6 +94,8 @@ pub fn foto() -> Option<Foto> {
         "sprite_no_pixel" => Some(Foto::SpriteNoPixel),
         "sprite_pixel_volta" => Some(Foto::SpritePixelVolta),
         "sprite_pixel_desfaz" => Some(Foto::SpritePixelDesfaz),
+        "sprite_painter_volta" => Some(Foto::SpritePainterVolta),
+        "sprite_painter_aplica" => Some(Foto::SpritePainterAplica),
         "sprite_no_painter" => Some(Foto::SpriteNoPainter),
         "trocado" => Some(Foto::Trocado),
         "bloco" => Some(Foto::Bloco),
@@ -191,6 +197,8 @@ impl Foto {
                 | Self::SpriteNoPixel
                 | Self::SpritePixelVolta
                 | Self::SpritePixelDesfaz
+                | Self::SpritePainterVolta
+                | Self::SpritePainterAplica
                 | Self::SpriteNoPainter
                 | Self::UsoParada
                 | Self::PlayerParado
@@ -339,7 +347,7 @@ pub fn plano_da_foto(
         Foto::SpriteNoPixel | Foto::SpritePixelVolta | Foto::SpritePixelDesfaz => {
             plano.edicoes = vec![(alta, ph2d_editor_core::ImageUseEdit::EditInPixel)];
         }
-        Foto::SpriteNoPainter => {
+        Foto::SpriteNoPainter | Foto::SpritePainterVolta | Foto::SpritePainterAplica => {
             plano.edicoes = vec![(alta, ph2d_editor_core::ImageUseEdit::EditInPainter)];
         }
         Foto::Trocado => {

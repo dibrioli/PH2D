@@ -244,8 +244,7 @@ fn mascara() -> &'static [(NodeId, Box<[PropKind]>)] {
                 .map(PropKind::Field)
         };
         let flip: Box<[PropKind]> = [chave(2, 0), chave(3, 0)].into_iter().flatten().collect();
-        // O pivô anda com a posição e o deslocamento do collider: sem eles, tocar a animação moveria o desenho e a
-        // colisão. Quem não tem collider não publica o deslocamento, e o clique não o grava.
+        // O pivô anda com a posição e o deslocamento do collider: sem eles, tocar a animação moveria desenho e colisão.
         let pivo: Box<[PropKind]> = [chave(4, 0), chave(4, 1)]
             .into_iter()
             .flatten()

@@ -131,3 +131,27 @@ fn sair_sem_pintar_nao_muda_ninguem_mesmo_com_a_cor_do_transparente_zerada() {
     assert!(!subiu, "nada sobe à placa");
     assert_eq!(w.get::<SpritePixels>(a).unwrap().0, antigo);
 }
+
+/// ⭐ **Editar não muda o nome da imagem** (dono 05/11: a «Platform» editada no Pixel não vira «Platform Low»).
+#[test]
+fn a_imagem_editada_herda_o_nome_da_de_onde_veio() {
+    let id = |n| AssetId::from_digest([n; 32]);
+    let (raiz, e1, e2) = (id(1), id(2), id(3));
+    let origens: BTreeMap<_, _> = [(e1, raiz), (e2, e1)].into_iter().collect();
+    let corre = |ids: &[(AssetId, &str)], live: &[AssetId]| {
+        let mut m: BTreeMap<AssetId, Option<String>> = ids
+            .iter()
+            .map(|(i, n)| (*i, Some((*n).to_owned())))
+            .collect();
+        let vivos: BTreeSet<AssetId> = live.iter().copied().collect();
+        herda(&mut m, &vivos, &|_: &AssetId| None, &origens);
+        m
+    };
+    let m = corre(&[(raiz, "Platform"), (e2, "Platform Low")], &[e2]);
+    assert_eq!(m[&e2].as_deref(), Some("Platform"), "duas edições depois");
+    assert!(!m.contains_key(&raiz), "a edição toma o lugar: {m:?}");
+    let m = corre(&[(raiz, "Platform"), (e1, "Platform Low")], &[raiz, e1]);
+    assert!(m.contains_key(&raiz), "a origem ainda em uso fica: {m:?}");
+    let m = corre(&[(raiz, "Platform")], &[raiz]);
+    assert_eq!(m.len(), 1, "desfeito, nada muda: {m:?}");
+}

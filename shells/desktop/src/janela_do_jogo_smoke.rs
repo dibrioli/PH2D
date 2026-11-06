@@ -44,6 +44,21 @@ impl crate::App {
                         ));
                 }
             }
+            Mao::Aplica => {
+                let alvo = self
+                    .gfx
+                    .as_mut()
+                    .and_then(|g| ph2d_app_game::smoke::por_nome(&mut g.sim, "Platform High"));
+                if let (Some(e), Some(h)) =
+                    (alvo, self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()))
+                {
+                    h.bus
+                        .push(ph2d_editor_core::action_bus::EditorAction::OneShotImageOp {
+                            tool_id: "painter",
+                            entity_bits: e.to_bits(),
+                        });
+                }
+            }
             _ => {
                 let Some(g) = self.gfx.as_mut() else { return };
                 for nome in ["Platform High", "Platform Low"] {

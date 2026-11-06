@@ -5,7 +5,7 @@ use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::{Entity, SpritePixels, World};
 use ph2d_render::{Sprite, SpriteSource, texture_of};
 use std::cell::{Cell, RefCell};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 /// Sobe RGBA8 à placa e devolve a textura (o `SpriteRenderer` no app).
 pub type Sobe<'a> = dyn FnMut(u32, u32, &[u8]) -> Result<u32, String> + 'a;
@@ -17,10 +17,40 @@ thread_local! {
     static ORIGENS: RefCell<BTreeMap<AssetId, AssetId>> = const { RefCell::new(BTreeMap::new()) };
 }
 
-/// Cada imagem editada nesta sessão e a de onde veio. Não viaja no projeto: o `.ph2dproj` não grava nomes de imagem.
-#[must_use]
-pub fn origens() -> BTreeMap<AssetId, AssetId> {
-    ORIGENS.with(|o| o.borrow().clone())
+/// ⭐ **A imagem editada continua a ser a mesma para o artista** (dono 05/11): herda o nome da de onde veio e toma-lhe o
+/// lugar, enquanto só ela estiver em uso. Sem nome conhecido na origem, fica o de quem a usa, como antes de editar.
+/// A origem só vive nesta sessão: o `.ph2dproj` não grava nomes de imagem.
+pub fn herda_o_nome(
+    ids: &mut BTreeMap<AssetId, Option<String>>,
+    live: &BTreeSet<AssetId>,
+    ficheiro: impl Fn(&AssetId) -> Option<String>,
+) {
+    ORIGENS.with(|o| herda(ids, live, &ficheiro, &o.borrow()));
+}
+
+fn herda(
+    ids: &mut BTreeMap<AssetId, Option<String>>,
+    live: &BTreeSet<AssetId>,
+    ficheiro: &impl Fn(&AssetId) -> Option<String>,
+    origens: &BTreeMap<AssetId, AssetId>,
+) {
+    for novo in origens.keys().filter(|n| live.contains(n)) {
+        let mut cadeia = vec![];
+        let mut a = *novo;
+        while let Some(&o) = origens.get(&a).filter(|o| !cadeia.contains(*o)) {
+            cadeia.push(o);
+            a = o;
+        }
+        let nome = cadeia
+            .last()
+            .and_then(|r| ficheiro(r).or_else(|| ids.get(r).cloned().flatten()));
+        if let Some(nome) = nome {
+            ids.insert(*novo, Some(nome));
+        }
+        for o in cadeia.iter().filter(|o| !live.contains(*o)) {
+            ids.remove(o);
+        }
+    }
 }
 
 fn veio_de(novo: AssetId, antigo: AssetId) {

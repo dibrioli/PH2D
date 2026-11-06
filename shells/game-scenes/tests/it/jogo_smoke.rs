@@ -612,3 +612,35 @@ fn o_personagem_do_menu_deriva_as_seis_regras() {
         ]
     );
 }
+
+/// O cartão mostra «Platform» depois de a imagem de fábrica ser editada, nunca o nome do 1.º objecto.
+#[test]
+fn a_platform_editada_nao_vira_platform_low() {
+    use ph2d_app_components::library_names::session_library;
+    use ph2d_ecs::{SpritePixels, StableId};
+    let db = ph2d_asset::AssetDb::default();
+    let raiz = db.insert_image_rgba8(1, 1, vec![9, 9, 9, 255]);
+    let chave = ph2d_render::PLATFORM_TILE_KEY;
+    let atlas = std::collections::BTreeMap::from([(chave, raiz)]);
+    let mut sim = SimWorld::new();
+    let w = sim.world_mut();
+    let sprite = || Sprite::atlas(chave, [1.0, 1.0], [1.0; 4]);
+    let a = w
+        .spawn((sprite(), StableId(1), Name::new("Platform Low")))
+        .id();
+    w.spawn((sprite(), StableId(2), Name::new("Platform High")));
+    assert_eq!(session_library(&mut sim, &db, &atlas)[&raiz], "Platform");
+    ph2d_sprite_edit::imagem::troca_os_pixeis(
+        sim.world_mut(),
+        &mut |_, _, _| Ok(77),
+        &db,
+        &atlas,
+        a,
+        (1, 1, vec![1, 2, 3, 255]),
+    )
+    .expect("troca");
+    let novo = sim.world().get::<SpritePixels>(a).expect("px").0;
+    let n = session_library(&mut sim, &db, &atlas);
+    assert_eq!(n[&novo], "Platform");
+    assert!(!n.contains_key(&raiz), "{n:?}");
+}

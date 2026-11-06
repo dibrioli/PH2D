@@ -244,7 +244,7 @@ pub fn resolve_texture_filter(
 
 /// ⭐ **A imagem aberta no Painter** (dono 06/11, *«ao abrir no painter a imagem deve abrir sem a repetição»*): esta
 /// entidade desenha-se como UMA cópia da imagem inteira, no quad `quad`, sem UV nem repetição. É uma VISTA: mora num
-/// recurso não registado, publicado a cada quadro por `ph2d_app_painter::imagem_aberta` — nenhum componente autorado
+/// recurso não registado, publicado a cada quadro por `ph2d_sprite_screen::imagem_aberta` — nenhum componente autorado
 /// muda, e por isso o save, o desfazer e as outras sprites não a veem.
 #[derive(Resource, Copy, Clone, Debug, PartialEq)]
 pub struct ImagemAberta {

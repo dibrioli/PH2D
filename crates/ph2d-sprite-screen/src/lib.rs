@@ -75,6 +75,7 @@ pub fn unfolded_quad(spr: &Sprite, grid: ph2d_ecs::SpriteGrid) -> Option<[f32; 2
 /// e pelo afim do quad onde não é.
 pub mod anel_do_pincel;
 pub mod gravacao_no_alvo;
+pub mod imagem_aberta;
 pub mod sheet_lattice;
 pub use anel_do_pincel::{LADOS_DO_ANEL, anel_do_pincel, anel_na_malha};
 pub mod uv_sob_o_ponteiro;

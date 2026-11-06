@@ -248,3 +248,84 @@ fn o_custom_nasce_com_os_lados_pedidos_ate_ao_tecto_do_dispositivo() {
     assert_eq!(wh, (lado, lado));
     assert_eq!(size[0], lado as f32 / 100.0);
 }
+
+impl Cena {
+    /// O que o save e o desfazer veem: o snapshot dos componentes registados.
+    fn gravado(&mut self) -> [u8; 32] {
+        let mut reg = ph2d_ecs::scene::ComponentRegistry::new();
+        ph2d_ecs::scene::register_ecs_components(&mut reg);
+        ph2d_render::register_render_components(&mut reg);
+        let mut prop = ph2d_ecs::TransformPropagationState::new(self.sim.world_mut());
+        let mut work = ph2d_ecs::WorklistBuf::default();
+        let mut out = ph2d_ecs::scene::WorldSnapshot::default();
+        let w = self.sim.world_mut();
+        ph2d_ecs::scene::world_to_snapshot(w, &mut prop, &mut work, &reg, &mut out)
+            .expect("o snapshot");
+        out.state_hash()
+    }
+}
+
+/// ⭐⭐ Dono 06/11: *«ao abrir no painter a imagem deve abrir sem a repetição»*: entrar mostra UMA cópia, sair devolve
+/// as mesmas repetições, e nem o save nem a outra plataforma com a mesma imagem chegam a ver a diferença.
+/// *Mutação: `resolve_uv_xform` sem a imagem aberta ⇒ as cópias continuam no Draw.*
+#[test]
+fn o_painter_abre_o_repetido_numa_copia_e_ao_sair_volta_o_mesmo() {
+    use ph2d_ecs::{
+        Entity, RepeatMode, TiledDraw, UvTransform, resolve_draw_repeat, resolve_uv_xform,
+    };
+    use ph2d_sprite_screen::sprite_mostrada;
+    let mut c = cena();
+    let bloco = |c: &mut Cena| {
+        let sprite = ph2d_render::Sprite::atlas(0, [6.0, 1.0], [1.0; 4]);
+        let uv = UvTransform {
+            offset: [0.25, 0.0],
+            ..Default::default()
+        };
+        let tile = TiledDraw { tile: [2.0, 1.0] };
+        c.sim
+            .world_mut()
+            .spawn((Transform::IDENTITY, sprite, tile, uv))
+            .id()
+    };
+    let (alta, baixa): (Entity, Entity) = (bloco(&mut c), bloco(&mut c));
+    let antes = c.gravado();
+    let uv_antes = resolve_uv_xform(c.sim.world(), alta, [6.0, 1.0]);
+    assert_eq!(
+        uv_antes,
+        [3.0, 1.0, 0.25, 0.0],
+        "o bloco nasce com 3 cópias"
+    );
+
+    c.hero.gizmo.replace_selection(Some(alta.to_bits()));
+    c.quadro(Some(ModeRequest::Enter(ObjectMode::Draw)));
+    painter(&mut c.tools).expect("painter").bind_document(
+        alta.to_bits(),
+        vec![255u8; 256 * 128 * 4],
+        256,
+        128,
+    );
+    crate::imagem_aberta::publica(c.sim.world_mut(), &mut c.tools);
+    let w = c.sim.world();
+    let uv = resolve_uv_xform(w, alta, [6.0, 1.0]);
+    assert_eq!(uv, [1.0, 1.0, 0.0, 0.0], "o Draw ainda desenha as cópias");
+    assert_eq!(
+        resolve_draw_repeat(w, alta, RepeatMode::Disabled),
+        RepeatMode::Disabled
+    );
+    let quad = sprite_mostrada(w, alta).expect("a sprite").size;
+    assert_eq!(quad, [2.0, 1.0], "o quad não é o de uma cópia");
+    // CONTROLO: a outra plataforma com a mesma imagem continua repetida.
+    assert_eq!(resolve_uv_xform(w, baixa, [6.0, 1.0]), uv_antes);
+    assert_eq!(c.gravado(), antes, "entrar no Draw mudou o que se grava");
+
+    c.quadro(Some(ModeRequest::Toggle));
+    crate::imagem_aberta::publica(c.sim.world_mut(), &mut c.tools);
+    let w = c.sim.world();
+    assert_eq!(resolve_uv_xform(w, alta, [6.0, 1.0]), uv_antes);
+    assert_eq!(
+        resolve_draw_repeat(w, alta, RepeatMode::Disabled),
+        RepeatMode::Enabled
+    );
+    assert_eq!(sprite_mostrada(w, alta).expect("a sprite").size, [6.0, 1.0]);
+    assert_eq!(c.gravado(), antes, "sair do Draw mudou o que se grava");
+}

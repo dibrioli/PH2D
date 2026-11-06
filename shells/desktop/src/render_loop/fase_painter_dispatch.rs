@@ -70,6 +70,8 @@ impl crate::App {
                 // no-edits path left it naming a sprite the painter had already torn down: the
                 // same stale-second-copy that made the canvas unreachable (Enio 2026-07-22).
                 self.last_painter_pushed_entity = None;
+                // Saiu do Draw, com tinta ou sem: a marca do botão Edit in Painter não fica para a pintura seguinte.
+                ph2d_sprite_edit::imagem::fim_da_edicao();
             }
         }
         Some(())

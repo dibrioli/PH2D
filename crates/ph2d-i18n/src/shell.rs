@@ -77,6 +77,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.asset_drop_apply.could_not_place_that" => "Could not place that asset",
         "shell.asset_drop_apply.image_placed" => "Image placed",
         "shell.asset_drop_apply.image" => "Image",
+        "shell.edit_in_pixel.layers_flattened" => "Layers flattened. Undo brings them back.",
+        "shell.edit_in_pixel.no_user" => {
+            "The object using this image is gone, so this edit could not be kept."
+        }
         "shell.edit_in_pixel.no_pixels" => "This image is not in memory, so it can't be opened.",
         "shell.asset_drop_apply.could_not_apply" => "Could not apply: {e}",
         "shell.asset_drop_apply.texture_applied" => "Texture applied",
@@ -418,6 +422,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.tokens_bridge_dtcg.dtcg_tokens" => "DTCG tokens",
         "shell.texture_pattern_pick.image" => "Image",
         "shell.undo_app.sem_entrada_neste" => "sem entrada neste quadro",
+        "shell.undo_app.edicao_de_imagem" => "imagem aberta no Pixel Art",
         "shell.undo_app.o_jogo_esta_a_correr" => "o jogo esta a correr",
         "shell.undo_jogo.stop_to_undo" => "Stop the game to undo",
         "shell.janela_do_jogo.title" => "PH2D \u{b7} Game",

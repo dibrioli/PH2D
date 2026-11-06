@@ -36,6 +36,15 @@ impl crate::App {
         self.any_input_this_frame = true;
         match m {
             Mao::Desfaz => self.smoke_undo(false),
+            Mao::AbreNoPixel => {
+                let alta = self
+                    .gfx
+                    .as_mut()
+                    .and_then(|g| ph2d_app_game::smoke::por_nome(&mut g.sim, "Platform High"));
+                if let Some(e) = alta {
+                    self.image_use_edit(e.to_bits(), ph2d_editor_core::ImageUseEdit::EditInPixel);
+                }
+            }
             Mao::SaiDoDraw => {
                 if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
                     h.bus
@@ -74,6 +83,12 @@ impl crate::App {
                     });
                     eprintln!("[sprite-pixel] {nome}: imagem {id:?}");
                 }
+                eprintln!(
+                    "[sprite-pixel] passos de desfazer: {} · Pixel Sprites: {} · marca do Painter: {}",
+                    self.undo.depth(),
+                    ph2d_app_pixel::mode::sprites(g.sim.world()).len(),
+                    ph2d_sprite_edit::imagem::edicao_marcada(),
+                );
             }
         }
     }

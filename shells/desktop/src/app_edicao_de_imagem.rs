@@ -1,6 +1,7 @@
 //! **Edit in Pixel**: a composição entre a imagem da sprite e o Pixel Art, duas famílias que não se conhecem. A lei mora
 //! em `ph2d_sprite_edit` e na porta `ph2d_app_pixel::imagem`.
 
+use ph2d_app_painter::documentos_no_projecto;
 use ph2d_ecs::Entity;
 use ph2d_i18n::tr;
 use ph2d_sprite_edit::{imagem, no_pixel};
@@ -15,8 +16,9 @@ pub(crate) fn abre_no_pixel(
     if no_pixel::aberta().is_some() {
         fecha_agora(gfx, pixel);
     }
-    let Some((w, h, rgba)) =
-        imagem::imagem_de(gfx.sim.world(), origem, &gfx.asset_db, &gfx.atlas_asset_map)
+    let (mundo, atlas) = (gfx.sim.world(), &gfx.atlas_asset_map);
+    let Some(((w, h, rgba), id)) = imagem::imagem_de(mundo, origem, &gfx.asset_db, atlas)
+        .zip(imagem::shown_id(mundo, origem, atlas))
     else {
         gfx.toasts.push(ph2d_editor_core::Toast::warning(tr(
             "shell.edit_in_pixel.no_pixels",
@@ -40,7 +42,7 @@ pub(crate) fn abre_no_pixel(
         gfx.sim.world_mut(),
         origem,
         Entity::from_bits(trabalho),
-        key,
+        (key, id),
         (w, h),
         ppm,
         (gfx.camera.center, gfx.camera.height_world),
@@ -71,9 +73,22 @@ pub(crate) fn fecha_agora(gfx: &mut crate::AppGfx, pixel: &mut ph2d_app_pixel::P
 
 fn devolve(gfx: &mut crate::AppGfx, pixel: &mut ph2d_app_pixel::PixelApp, a: no_pixel::Aberta) {
     (gfx.camera.center, gfx.camera.height_world) = a.vista;
-    let Some(img) = pixel.fecha_imagem(a.key) else {
-        return;
-    };
+    let viva = gfx.sim.world().get_entity(a.origem).is_ok();
+    let mut heir = viva.then_some(a.origem);
+    if let Some(img) = pixel.fecha_imagem(a.key) {
+        heir = heir.or(leva_a_imagem(gfx, &a, img));
+    }
+    if let Some(hero) = gfx.hero_screen.as_mut() {
+        hero.gizmo.replace_selection(heir.map(Entity::to_bits));
+    }
+}
+
+/// Os píxeis vão a quem usa a imagem. Devolve o primeiro que a mostra, se há.
+fn leva_a_imagem(
+    gfx: &mut crate::AppGfx,
+    a: &no_pixel::Aberta,
+    img: (u32, u32, Vec<u8>),
+) -> Option<Entity> {
     let renderer = &mut gfx.renderer;
     let r = imagem::troca_os_pixeis(
         gfx.sim.world_mut(),
@@ -84,13 +99,30 @@ fn devolve(gfx: &mut crate::AppGfx, pixel: &mut ph2d_app_pixel::PixelApp, a: no_
         },
         &gfx.asset_db,
         &gfx.atlas_asset_map,
-        a.origem,
+        a.imagem,
         img,
     );
-    if let Err(e) = r {
-        gfx.toasts.push(ph2d_editor_core::Toast::warning(e));
+    let t = match r {
+        Ok(t) => t,
+        Err(e) => {
+            gfx.toasts.push(ph2d_editor_core::Toast::warning(e));
+            return None;
+        }
+    };
+    if t.sem_dono() {
+        gfx.toasts.push(ph2d_editor_core::Toast::warning(tr(
+            "shell.edit_in_pixel.no_user",
+        )));
     }
-    if let Some(hero) = gfx.hero_screen.as_mut() {
-        hero.gizmo.replace_selection(Some(a.origem.to_bits()));
+    if t.novo != t.antigo
+        && let Some(p) = ph2d_app_painter::painter_bridge_queries::o_painter(&mut gfx.tools)
+    {
+        let sim = &mut gfx.sim;
+        if documentos_no_projecto::achata(sim, p, &t.quem, t.antigo, t.novo) {
+            gfx.toasts.push(ph2d_editor_core::Toast::warning(tr(
+                "shell.edit_in_pixel.layers_flattened",
+            )));
+        }
     }
+    t.quem.first().copied()
 }

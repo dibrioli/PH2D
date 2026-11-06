@@ -62,7 +62,8 @@ fn veio_de(novo: AssetId, antigo: AssetId) {
 }
 
 /// A imagem da biblioteca que `e` mostra.
-fn shown_id(world: &World, e: Entity, atlas: &BTreeMap<u32, AssetId>) -> Option<AssetId> {
+#[must_use]
+pub fn shown_id(world: &World, e: Entity, atlas: &BTreeMap<u32, AssetId>) -> Option<AssetId> {
     texture_of(world.get::<SpritePixels>(e), world.get::<Sprite>(e), atlas)
 }
 
@@ -115,35 +116,58 @@ fn mesmos_pixeis(a: &[u8], b: &[u8]) -> bool {
             .all(|(p, q)| p == q || (p[3] == 0 && q[3] == 0))
 }
 
-/// ⭐ **Os píxeis da imagem que `origem` mostra mudaram**: `rgba` (RGBA8 reto) vale para TODO objecto que usa a mesma
-/// imagem. A imagem é endereçada pelo conteúdo, e por isso editar dá um id novo. Devolve quantos objectos mudaram.
+/// Em que deu uma troca de píxeis.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Trocados {
+    /// Quem mostra a imagem agora (a editada ou, sem diferença, a mesma).
+    pub quem: Vec<Entity>,
+    /// A imagem de antes.
+    pub antigo: AssetId,
+    /// A imagem de agora: `antigo`, se nada mudou.
+    pub novo: AssetId,
+}
+
+impl Trocados {
+    /// Havia trabalho e nenhum objecto vivo para o receber.
+    #[must_use]
+    pub fn sem_dono(&self) -> bool {
+        self.quem.is_empty() && self.novo != self.antigo
+    }
+}
+
+/// ⭐ **Os píxeis da imagem `antigo` mudaram**: `rgba` (RGBA8 reto) vale para TODO objecto que a usa, sem depender de
+/// nenhum em particular continuar vivo. A imagem é endereçada pelo conteúdo, e por isso editar dá um id novo.
 pub fn troca_os_pixeis(
     world: &mut World,
     acquire: &mut Sobe<'_>,
     db: &AssetDb,
     atlas: &BTreeMap<u32, AssetId>,
-    origem: Entity,
+    antigo: AssetId,
     (w, h, rgba): (u32, u32, Vec<u8>),
-) -> Result<usize, String> {
-    let Some(antigo) = shown_id(world, origem, atlas) else {
-        return Err(ph2d_i18n::tr("object_add.not_born").to_owned());
-    };
+) -> Result<Trocados, String> {
+    let quem = usuarios(world, antigo, None, atlas);
     // Abrir e sair sem pintar não é editar: um píxel transparente não tem cor, e o caminho pode tê-la zerado.
     let igual = db.get(&antigo).is_some_and(|a| {
         a.image_rgba8()
             .is_some_and(|(aw, ah, px)| (aw, ah) == (w, h) && mesmos_pixeis(&px, &rgba))
     });
     if igual {
-        return Ok(0);
+        return Ok(Trocados {
+            quem,
+            antigo,
+            novo: antigo,
+        });
+    }
+    let novo = db.insert_image_rgba8(w, h, rgba.clone());
+    if quem.is_empty() {
+        return Ok(Trocados { quem, antigo, novo });
     }
     let texture_id = acquire(w, h, &rgba)?;
-    let novo = db.insert_image_rgba8(w, h, rgba);
     veio_de(novo, antigo);
-    let todos = usuarios(world, antigo, None, atlas);
-    for e in &todos {
+    for e in &quem {
         aponta(world, *e, texture_id, novo, false);
     }
-    Ok(todos.len())
+    Ok(Trocados { quem, antigo, novo })
 }
 
 /// O botão Edit in Painter foi carregado em `e`.
@@ -156,20 +180,22 @@ pub fn fim_da_edicao() {
     EDICAO.with(|c| c.set(None));
 }
 
+/// Há uma edição marcada pelo botão Edit in Painter? (o relato do smoke)
+#[must_use]
+pub fn edicao_marcada() -> bool {
+    EDICAO.with(Cell::get).is_some()
+}
+
 /// O Painter acabou de gravar a pintura em `e`, em `texture_id`: se `e` veio do botão, os outros objectos que usavam a
-/// imagem passam à pintura. Devolve quantos, além de `e`.
+/// imagem passam à pintura. Devolve-os, além de `e`.
 pub fn segue_a_pintura(
     world: &mut World,
     atlas: &BTreeMap<u32, AssetId>,
     e: Entity,
     texture_id: u32,
-) -> usize {
-    let Some((quem, antigo)) = EDICAO.with(Cell::get).filter(|(q, _)| *q == e) else {
-        return 0;
-    };
-    let Some(novo) = world.get::<SpritePixels>(e).map(|p| p.0) else {
-        return 0;
-    };
+) -> Option<Trocados> {
+    let (quem, antigo) = EDICAO.with(Cell::get).filter(|(q, _)| *q == e)?;
+    let novo = world.get::<SpritePixels>(e).map(|p| p.0)?;
     veio_de(novo, antigo);
     let premultiplied = world.get::<Sprite>(e).is_some_and(|s| s.premultiplied);
     let outros = usuarios(world, antigo, Some(e), atlas);
@@ -178,7 +204,11 @@ pub fn segue_a_pintura(
     }
     // A pintura seguinte parte da que agora se vê.
     EDICAO.with(|c| c.set(Some((quem, novo))));
-    outros.len()
+    Some(Trocados {
+        quem: outros,
+        antigo,
+        novo,
+    })
 }
 
 #[cfg(test)]

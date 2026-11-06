@@ -12,6 +12,8 @@ pub enum Mao {
     Desce([f32; 2]),
     Move([f32; 2]),
     Sobe,
+    /// O botão Edit in Pixel da Platform High: como o do artista, com a cena assente e o desfazer já com base.
+    AbreNoPixel,
     /// O `Tab` que sai do Draw.
     SaiDoDraw,
     /// O Apply do Painter, sem sair do Draw.
@@ -24,6 +26,8 @@ pub enum Mao {
 
 /// Quadros até a cena assentar (a seleção, a 1.ª moldura e o rebobinar já correram).
 const INICIO: u32 = 40;
+/// O quadro do botão Edit in Pixel, antes do traço.
+const ABRE: u32 = 20;
 /// Movimentos entre o `Down` e o `Up`, um por quadro.
 const PASSOS: u32 = 6;
 
@@ -33,7 +37,23 @@ const CANTO: [f32; 2] = [-13.0 + 8.0 * 16.0 / 9.0, 7.0];
 /// O gesto de `foto` no `quadro` (contado por [`proximo_quadro_da_mao`]).
 #[must_use]
 pub fn mao(foto: Foto, quadro: u32) -> Option<Mao> {
+    if quadro == ABRE
+        && matches!(
+            foto,
+            Foto::SpritePixelVolta | Foto::SpritePixelDesfaz | Foto::SpritePixelSemPintar
+        )
+    {
+        return Some(Mao::AbreNoPixel);
+    }
     let (de, ate) = match foto {
+        // Sem traço: entra, sai, e conta o que ficou.
+        Foto::SpritePixelSemPintar | Foto::SpritePainterSemPintar => {
+            return match quadro.checked_sub(INICIO + PASSOS) {
+                Some(20) => Some(Mao::SaiDoDraw),
+                Some(15 | 50) => Some(Mao::Relata),
+                _ => None,
+            };
+        }
         // Um traço na imagem aberta (o centro da Platform High da cena 4), sair do Draw e, na `desfaz`, Ctrl+Z.
         Foto::SpritePixelVolta
         | Foto::SpritePixelDesfaz

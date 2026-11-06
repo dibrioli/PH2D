@@ -304,6 +304,7 @@ impl crate::App {
             ph2d_app_game::smoke::Foto::SpriteNoPainter
                 | ph2d_app_game::smoke::Foto::SpritePainterVolta
                 | ph2d_app_game::smoke::Foto::SpritePainterAplica
+                | ph2d_app_game::smoke::Foto::SpritePainterSemPintar
         );
         for (bits, edit) in plano.edicoes {
             self.image_use_edit(bits, edit);

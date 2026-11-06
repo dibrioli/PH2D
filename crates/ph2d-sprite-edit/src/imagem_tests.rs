@@ -27,7 +27,7 @@ fn a_edicao_vale_para_todo_objecto_que_usa_a_mesma_imagem() {
     let (mut w, antigo, a, b, c) = mundo(&db);
     let atlas = BTreeMap::new();
     let mut pedido = None;
-    let n = troca_os_pixeis(
+    let t = troca_os_pixeis(
         &mut w,
         &mut |_, _, p| {
             pedido = Some(p.to_vec());
@@ -35,11 +35,11 @@ fn a_edicao_vale_para_todo_objecto_que_usa_a_mesma_imagem() {
         },
         &db,
         &atlas,
-        a,
+        antigo,
         (1, 1, px(99)),
     )
     .expect("troca");
-    assert_eq!(n, 2);
+    assert_eq!(t.quem.len(), 2);
     assert_eq!(pedido, Some(px(99)));
     let novo = w.get::<SpritePixels>(a).unwrap().0;
     assert_ne!(novo, antigo);
@@ -65,16 +65,18 @@ fn a_edicao_vale_para_todo_objecto_que_usa_a_mesma_imagem() {
 fn sair_sem_mudar_nada_nao_mexe_em_ninguem() {
     let db = AssetDb::default();
     let (mut w, antigo, a, b, _) = mundo(&db);
-    let n = troca_os_pixeis(
+    let t = troca_os_pixeis(
         &mut w,
         &mut |_, _, _| Ok(77),
         &db,
         &BTreeMap::new(),
-        a,
+        antigo,
         (1, 1, px(10)),
     )
     .expect("troca");
-    assert_eq!(n, 0);
+    assert_eq!(t.novo, antigo);
+    assert!(!t.sem_dono());
+    let _ = a;
     assert_eq!(w.get::<SpritePixels>(b).unwrap().0, antigo);
 }
 
@@ -85,7 +87,7 @@ fn sem_o_botao_a_pintura_fica_so_no_objecto() {
     EDICAO.with(|c| c.set(None));
     let novo = db.insert_image_rgba8(1, 1, px(99));
     w.entity_mut(a).insert(SpritePixels(novo));
-    assert_eq!(segue_a_pintura(&mut w, &BTreeMap::new(), a, 77), 0);
+    assert_eq!(segue_a_pintura(&mut w, &BTreeMap::new(), a, 77), None);
     assert_eq!(w.get::<SpritePixels>(b).unwrap().0, antigo);
 }
 
@@ -97,11 +99,17 @@ fn com_o_botao_a_pintura_chega_aos_outros_e_a_seguinte_tambem() {
     marca_edicao(&w, a, &atlas);
     let p1 = db.insert_image_rgba8(1, 1, px(50));
     w.entity_mut(a).insert(SpritePixels(p1));
-    assert_eq!(segue_a_pintura(&mut w, &atlas, a, 77), 1);
+    assert_eq!(
+        segue_a_pintura(&mut w, &atlas, a, 77).expect("segue").quem,
+        [b]
+    );
     assert_eq!(w.get::<SpritePixels>(b).unwrap().0, p1);
     let p2 = db.insert_image_rgba8(1, 1, px(60));
     w.entity_mut(a).insert(SpritePixels(p2));
-    assert_eq!(segue_a_pintura(&mut w, &atlas, a, 78), 1);
+    assert_eq!(
+        segue_a_pintura(&mut w, &atlas, a, 78).expect("segue").quem,
+        [b]
+    );
     assert_eq!(w.get::<SpritePixels>(b).unwrap().0, p2);
     assert_ne!(w.get::<SpritePixels>(c).unwrap().0, p2);
     EDICAO.with(|c| c.set(None));
@@ -124,10 +132,10 @@ fn sair_sem_pintar_nao_muda_ninguem_mesmo_com_a_cor_do_transparente_zerada() {
         },
         &db,
         &BTreeMap::new(),
-        a,
+        antigo,
         (2, 1, vec![9, 9, 9, 255, 0, 0, 0, 0]),
     );
-    assert_eq!(n, Ok(0));
+    assert_eq!(n.expect("troca").novo, antigo);
     assert!(!subiu, "nada sobe à placa");
     assert_eq!(w.get::<SpritePixels>(a).unwrap().0, antigo);
 }
@@ -154,4 +162,42 @@ fn a_imagem_editada_herda_o_nome_da_de_onde_veio() {
     assert!(m.contains_key(&raiz), "a origem ainda em uso fica: {m:?}");
     let m = corre(&[(raiz, "Platform")], &[raiz]);
     assert_eq!(m.len(), 1, "desfeito, nada muda: {m:?}");
+}
+
+/// *A origem morreu a meio da edição: quem usa a imagem recebe o trabalho, e nada se perde.*
+#[test]
+fn a_origem_apagada_a_meio_nao_perde_o_trabalho() {
+    let db = AssetDb::default();
+    let (mut w, antigo, a, b, _) = mundo(&db);
+    w.despawn(a);
+    let r = troca_os_pixeis(
+        &mut w,
+        &mut |_, _, _| Ok(77),
+        &db,
+        &BTreeMap::new(),
+        antigo,
+        (1, 1, px(99)),
+    );
+    assert_eq!(r.expect("troca").quem, [b]);
+    assert_ne!(w.get::<SpritePixels>(b).unwrap().0, antigo);
+}
+
+/// *Sem ninguém vivo: `sem_dono` diz a verdade, e a seleção/o aviso são da shell.*
+#[test]
+fn sem_nenhum_usuario_vivo_a_troca_diz_que_nao_tem_dono() {
+    let db = AssetDb::default();
+    let (mut w, antigo, a, b, _) = mundo(&db);
+    w.despawn(a);
+    w.despawn(b);
+    let t = troca_os_pixeis(
+        &mut w,
+        &mut |_, _, _| panic!("nada sobe à placa"),
+        &db,
+        &BTreeMap::new(),
+        antigo,
+        (1, 1, px(99)),
+    )
+    .expect("troca");
+    assert!(t.sem_dono());
+    assert!(t.quem.is_empty());
 }

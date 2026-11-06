@@ -181,7 +181,9 @@ impl crate::App {
         let antes = ph2d_host_presos::antes_do_restauro(gfx.sim.world());
         let reg = &gfx.component_registry;
         let (vec, map, flip, flip_map) =
-            (gfx.painter_reata).em_volta(&mut gfx.sim, &mut gfx.tools, |s| state.restore(s, reg));
+            (gfx.painter_reata).em_volta(&mut gfx.sim, &mut gfx.tools, &gfx.atlas_asset_map, |s| {
+                state.restore(s, reg)
+            });
         gfx.vec_scene = vec;
         gfx.flip = flip;
         gfx.guides = state.guides.clone();
@@ -298,6 +300,9 @@ impl crate::App {
     /// Desfaz (ou refaz) um passo da fila global: empurra o estado atual pro outro
     /// lado e aplica o restaurado.
     pub(crate) fn apply_undo(&mut self, redo: bool) {
+        if ph2d_sprite_edit::no_pixel::aberta().is_some() {
+            return; // o Ctrl+Z é do Pixel (`undo_or_redo`): o documento não anda com o objecto de trabalho
+        }
         // W14: sem nada por cima da edição de etapa que espera, o Ctrl+Z é dela — regista-se já.
         if self.undo.espera.antes_de_desfazer(redo)
             && let Some(atual) = self.capture_project()
@@ -402,24 +407,6 @@ impl crate::App {
         Some(&mut hero.undo_links)
     }
 
-    /// Porque este quadro NÃO regista passo (`None` = regista, se o documento mudou). O botão em
-    /// baixo é o que faz um arrasto inteiro — o gizmo, os interruptores pintados — ser UM passo.
-    pub(crate) fn motivo_da_supressao(&self, had_input: bool) -> Option<&'static str> {
-        if self.undo.jogo.a_correr() {
-            Some(tr("shell.undo_app.o_jogo_esta_a_correr"))
-        } else if self.held_button.is_some() {
-            Some(tr("shell.undo_app.botao_do_rato_em_baixo"))
-        } else if self.flip_state.colorize_busy() {
-            Some(tr("shell.undo_app.colorize_a_recalcular"))
-        } else if self.ui_state_live {
-            Some(tr("shell.undo_app.transicao_de_estado_de"))
-        } else if !had_input {
-            Some(tr("shell.undo_app.sem_entrada_neste"))
-        } else {
-            None
-        }
-    }
-
     fn post_frame_undo_steps(&mut self) {
         // ⚠️ **PRIMEIRO, e antes de qualquer captura:** o ledger da condução esquece quem os
         // motores não declararam neste quadro. Quem parou volta a ser documento **já nesta
@@ -444,8 +431,13 @@ impl crate::App {
             .undo
             .espera
             .quadro(&esperam, self.undo_baseline.as_ref());
-        let had_input =
-            std::mem::take(&mut self.any_input_this_frame) || self.reescrita_aterrou() || acabou;
+        // ⭐ A edição de imagem inteira é UM passo: nada se captura com ela aberta, e o quadro em que fecha compara.
+        let aberta = ph2d_sprite_edit::no_pixel::aberta().is_some();
+        let fechou = std::mem::replace(&mut self.undo.imagem_aberta, aberta) && !aberta;
+        let had_input = std::mem::take(&mut self.any_input_this_frame)
+            || self.reescrita_aterrou()
+            || acabou
+            || fechou;
         // O clique no botão Undo/Redo da barra entra pela MESMA porta do Ctrl+Z (que pode
         // rotear para o Áudio, o Painter, o global ou o image-edit). Ele arma o
         // `undo_request` logo abaixo, e o passo é aplicado ainda neste frame.
@@ -464,7 +456,7 @@ impl crate::App {
         }
         // O baseline no PRIMEIRO frame (gfx pronto), e de novo quando uma cena de smoke montou
         // sem entrada (`UndoLinks::tira_a_base`) — senão o 1.º gesto desfaria a cena.
-        if self.tira_a_base(!had_input) {
+        if !aberta && self.tira_a_base(!had_input) {
             self.settle_tree_before_capture();
             self.undo_baseline = self.capture_project();
             return;

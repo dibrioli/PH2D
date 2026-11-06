@@ -163,6 +163,12 @@ impl crate::App {
     /// ⚠️ Saiu do [`Self::project_load_from`] pelo tecto de 200 LOC por função (`fn_loc_caps`),
     /// verbatim e no MESMO instante: colada logo a seguir a o arquivo ser aceite.
     fn project_forget_previous(&mut self, file: &ProjectFile) {
+        // A edição de imagem fecha aqui, como no gravar: a chave dela não pode cair num Pixel Sprite do projecto novo.
+        if let Some(g) = self.gfx.as_mut() {
+            crate::app_edicao_de_imagem::fecha_agora(g, &mut self.pixel);
+        }
+        ph2d_sprite_edit::no_pixel::esquece();
+        ph2d_app_painter::documentos_no_projecto::esquece_achatados();
         // **A SESSÃO ESQUECE O DOCUMENTO ANTERIOR.** Este bloco fica colado na decisão de
         // aceitar, e não lá no fim: entre o aceite e o esquecimento não sobra nenhum passo que
         // dependa de `gfx`, então o que o gate headless observa é exatamente o que o app com

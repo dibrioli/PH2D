@@ -517,3 +517,31 @@ fn o_formato_do_jogo_e_um_passo_e_nao_muda_o_ficheiro() {
         ph2d_editor_core::GamePreset::GameBoy
     );
 }
+
+/// ⭐ *Com a edição aberta a captura não corre: o objecto de trabalho e a sprite escondida nunca entram num passo.*
+/// *Mutação: tirar o braço do `motivo_da_supressao` ⇒ o documento com a origem escondida vira um passo.*
+#[test]
+fn com_a_imagem_aberta_no_pixel_nada_entra_no_desfazer() {
+    use ph2d_sprite_edit::no_pixel;
+    let app = crate::App::new();
+    assert_eq!(app.motivo_da_supressao(true), None, "sem edição, regista");
+    let mut w = ph2d_ecs::World::new();
+    let origem = w.spawn(Transform::default()).id();
+    let trabalho = w.spawn(Transform::default()).id();
+    let imagem = ph2d_asset::AssetDb::default().insert_image_rgba8(1, 1, vec![0; 4]);
+    no_pixel::abre(
+        &mut w,
+        origem,
+        trabalho,
+        (1, imagem),
+        (1, 1),
+        100.0,
+        ([0.0, 0.0], 1.0),
+    );
+    let motivo = app.motivo_da_supressao(true);
+    no_pixel::esquece();
+    assert_eq!(
+        motivo,
+        Some(ph2d_i18n::tr("shell.undo_app.edicao_de_imagem"))
+    );
+}

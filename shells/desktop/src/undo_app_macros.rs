@@ -42,6 +42,26 @@ impl crate::App {
         })
     }
 
+    /// Porque este quadro NÃO regista passo (`None` = regista, se o documento mudou). O botão em
+    /// baixo é o que faz um arrasto inteiro — o gizmo, os interruptores pintados — ser UM passo.
+    pub(crate) fn motivo_da_supressao(&self, had_input: bool) -> Option<&'static str> {
+        if ph2d_sprite_edit::no_pixel::aberta().is_some() {
+            Some(ph2d_i18n::tr("shell.undo_app.edicao_de_imagem"))
+        } else if self.undo.jogo.a_correr() {
+            Some(ph2d_i18n::tr("shell.undo_app.o_jogo_esta_a_correr"))
+        } else if self.held_button.is_some() {
+            Some(ph2d_i18n::tr("shell.undo_app.botao_do_rato_em_baixo"))
+        } else if self.flip_state.colorize_busy() {
+            Some(ph2d_i18n::tr("shell.undo_app.colorize_a_recalcular"))
+        } else if self.ui_state_live {
+            Some(ph2d_i18n::tr("shell.undo_app.transicao_de_estado_de"))
+        } else if !had_input {
+            Some(ph2d_i18n::tr("shell.undo_app.sem_entrada_neste"))
+        } else {
+            None
+        }
+    }
+
     /// (Re)tira-se a base do undo agora? A porta é `UndoLinks::tira_a_base` (auditoria F31).
     pub(super) fn tira_a_base(&mut self, quieto: bool) -> bool {
         let sem_base = self.undo_baseline.is_none();

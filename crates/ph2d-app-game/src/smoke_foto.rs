@@ -29,6 +29,9 @@ pub enum Foto {
     SpritePainterVolta,
     /// O mesmo pelo Apply, sem sair do Draw.
     SpritePainterAplica,
+    /// Abre, não pinta, sai: `[sprite-pixel]` diz quantos passos ficaram e se a marca do botão saiu.
+    SpritePixelSemPintar,
+    SpritePainterSemPintar,
     SpriteNoPainter,
     Bloco,
     Bandeira,
@@ -96,6 +99,8 @@ pub fn foto() -> Option<Foto> {
         "sprite_pixel_desfaz" => Some(Foto::SpritePixelDesfaz),
         "sprite_painter_volta" => Some(Foto::SpritePainterVolta),
         "sprite_painter_aplica" => Some(Foto::SpritePainterAplica),
+        "sprite_pixel_sem_pintar" => Some(Foto::SpritePixelSemPintar),
+        "sprite_painter_sem_pintar" => Some(Foto::SpritePainterSemPintar),
         "sprite_no_painter" => Some(Foto::SpriteNoPainter),
         "trocado" => Some(Foto::Trocado),
         "bloco" => Some(Foto::Bloco),
@@ -199,6 +204,8 @@ impl Foto {
                 | Self::SpritePixelDesfaz
                 | Self::SpritePainterVolta
                 | Self::SpritePainterAplica
+                | Self::SpritePixelSemPintar
+                | Self::SpritePainterSemPintar
                 | Self::SpriteNoPainter
                 | Self::UsoParada
                 | Self::PlayerParado
@@ -344,17 +351,24 @@ pub fn plano_da_foto(
             )];
             plano.alvo = player;
         }
-        Foto::SpriteNoPixel | Foto::SpritePixelVolta | Foto::SpritePixelDesfaz => {
+        Foto::SpriteNoPixel => {
             plano.edicoes = vec![(alta, ph2d_editor_core::ImageUseEdit::EditInPixel)];
         }
-        Foto::SpriteNoPainter | Foto::SpritePainterVolta | Foto::SpritePainterAplica => {
+        Foto::SpriteNoPainter
+        | Foto::SpritePainterVolta
+        | Foto::SpritePainterAplica
+        | Foto::SpritePainterSemPintar => {
             plano.edicoes = vec![(alta, ph2d_editor_core::ImageUseEdit::EditInPainter)];
         }
         Foto::Trocado => {
             plano.escolhas = vec![(hills, *montes), (player, *heroi)];
             plano.alvo = hills;
         }
-        Foto::Bloco => {}
+        // A mão abre-as, com a cena já assente (`smoke_mao::Mao::AbreNoPixel`).
+        Foto::Bloco
+        | Foto::SpritePixelVolta
+        | Foto::SpritePixelDesfaz
+        | Foto::SpritePixelSemPintar => {}
         Foto::Bandeira => plano.escolhas = vec![(alta, bandeira)],
         Foto::Animada => {
             plano.escolhas = vec![(alta, bandeira)];

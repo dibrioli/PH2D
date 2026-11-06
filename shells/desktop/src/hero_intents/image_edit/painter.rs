@@ -60,17 +60,29 @@ pub(crate) fn auto_commit_painter(
         old_size_world,
         toasts,
     ) {
-        ph2d_sprite_edit::imagem::segue_a_pintura(
-            sim.world_mut(),
-            atlas_asset_map,
-            entity,
-            texture_id,
-        );
+        segue(sim, atlas_asset_map, entity, texture_id, painter, toasts);
         ph2d_sprite_edit::imagem::fim_da_edicao();
         painter.mark_baked();
         true
     } else {
         false
+    }
+}
+
+/// A pintura de `entity` vale para quem usa a imagem dela (Edit in Painter); nos outros, os píxeis vencem as camadas.
+fn segue(
+    sim: &mut SimWorld,
+    atlas: &BTreeMap<u32, AssetId>,
+    entity: ph2d_ecs::Entity,
+    texture_id: u32,
+    painter: &mut PainterTool,
+    toasts: &mut ToastQueue,
+) {
+    let world = sim.world_mut();
+    if let Some(t) = ph2d_sprite_edit::imagem::segue_a_pintura(world, atlas, entity, texture_id)
+        && ph2d_app_painter::documentos_no_projecto::achata(sim, painter, &t.quem, t.antigo, t.novo)
+    {
+        toasts.push(Toast::warning(tr("shell.edit_in_pixel.layers_flattened")));
     }
 }
 
@@ -145,12 +157,7 @@ pub(crate) fn drain_painter(
             true
         }
         Ok(texture_id) => {
-            ph2d_sprite_edit::imagem::segue_a_pintura(
-                sim.world_mut(),
-                atlas_asset_map,
-                entity,
-                texture_id,
-            );
+            segue(sim, atlas_asset_map, entity, texture_id, painter, toasts);
             pending_undo_entries.push(ImageEditSnapshot {
                 entity_bits,
                 pre_source: old_source,

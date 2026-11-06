@@ -182,6 +182,18 @@ impl PainterTool {
         }
     }
 
+    /// Tira o documento de `entity` (ligado ou guardado) e devolve-o, para que outra porta o guarde. A identidade fica
+    /// a zero: quem a dá é a coleta do save.
+    pub fn tira_documento(&mut self, entity: u64) -> Option<PaintedDocument> {
+        self.macro_recusa("tira_documento");
+        if self.bound_doc == Some(entity) {
+            let doc = self.documento_vivo(0);
+            self.bound_doc = None;
+            return Some(doc);
+        }
+        self.doc_cache.remove(&entity).map(|d| d.to_painted(0))
+    }
+
     /// **Os documentos mudam de chave** (`de → para`): o restauro do undo respawna o mundo e a mesma
     /// imagem volta com bits novos. Tudo sai antes de entrar: uma chave nova nunca pisa outra velha.
     pub fn reata_documentos(&mut self, de_para: &BTreeMap<u64, u64>) {

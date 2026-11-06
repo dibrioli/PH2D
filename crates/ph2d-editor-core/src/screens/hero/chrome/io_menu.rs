@@ -18,7 +18,7 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         hero.store.close_context_menu();
         return true;
     }
-    if let Some(a) = crate::pixel_panel::PixelFileAction::of_menu_row(id) {
+    if let Some(a) = crate::interaction::WidgetStore::pixel_file_action(id) {
         // O Repeat apagado não fecha o menu e não faz nada (`menu_row_is_unavailable`).
         if !hero.store.menu_row_is_unavailable(id) {
             hero.store.request_pixel_file(a);

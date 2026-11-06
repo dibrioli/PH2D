@@ -18,6 +18,7 @@ pub fn aviso_ase(a: Aviso) -> String {
         Aviso::PaletaPorQuadro => tr("pixel.io.warn.palette_per_frame").to_owned(),
         Aviso::ModoDesconhecido => tr("pixel.io.warn.unknown_blend").to_owned(),
         Aviso::DuracaoCortada => tr("pixel.io.warn.duration_cut").to_owned(),
+        Aviso::CelCorrompido => tr("pixel.io.warn.bad_cel").to_owned(),
     }
 }
 

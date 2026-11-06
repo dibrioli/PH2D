@@ -37,8 +37,8 @@ impl PixelApp {
             A::ExportAs => self.abre_janela(Tela::ExportAs),
             A::ExportSheet => self.abre_janela(Tela::Folha),
             A::RepeatExport => {
-                if let Some((k, d)) = self.chave.and_then(|k| Some((k, self.docs.get(&k)?)))
-                    && let Some(t) = self.exporta.gravacoes.repete(k, &d.sprite)
+                if let Some(d) = self.chave.and_then(|k| self.docs.get(&k))
+                    && let Some(t) = self.exporta.gravacoes.repete(&d.sprite)
                 {
                     self.avisos.push((true, t));
                 }
@@ -75,7 +75,11 @@ impl PixelApp {
             c.set_extension(ext);
         }
         let s = doc.sprite.clone();
-        self.exporta.gravacoes.comeca(key, s, e.clone(), c);
+        self.exporta.gravacoes.comeca(s, e.clone(), c.clone());
+        // Lembra já: o Repeat acende, e uma falha repete a mesma frase em vez de calar.
+        if let Some(d) = self.docs.get_mut(&key) {
+            exporta::lembrar(&mut d.sprite, e, &c);
+        }
         true
     }
 
@@ -107,12 +111,7 @@ impl PixelApp {
 
 /// O quadro: o que o menu mostra, o que a janela lê, e o verbo que ela pediu.
 pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
-    let docs = &mut app.docs;
-    let frases = app.exporta.gravacoes.colhe_em(|k, e, c| {
-        if let Some(d) = docs.get_mut(&k) {
-            exporta::lembrar(&mut d.sprite, e, c);
-        }
-    });
+    let frases = app.exporta.gravacoes.colhe();
     app.avisos.extend(frases);
     if let Some(c) = hero.store.take_import_asked() {
         app.exporta.pergunta(c);

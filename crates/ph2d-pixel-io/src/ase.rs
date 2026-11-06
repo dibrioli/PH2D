@@ -28,6 +28,8 @@ pub enum Aviso {
     ModoDesconhecido,
     /// Uma duração maior que o WORD do formato ficou em 65 535 ms.
     DuracaoCortada,
+    /// Uma imagem do ficheiro veio com o tamanho errado e ficou de fora.
+    CelCorrompido,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -304,7 +306,7 @@ pub fn ler(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>), AseErro> {
         })
         .collect();
 
-    let cels = cels_de(&file, &layers, &frames, mode);
+    let cels = cels_de(&file, &layers, &frames, mode, &mut avisos);
 
     let n = frames.len() as u32;
     let tags = file
@@ -367,6 +369,7 @@ fn cels_de(
     layers: &[Layer],
     frames: &[Frame],
     mode: ColorMode,
+    avisos: &mut Vec<Aviso>,
 ) -> Vec<((LayerId, FrameId), Cel)> {
     let bpp = mode.bpp();
     let mut out: BTreeMap<(LayerId, FrameId), Cel> = BTreeMap::new();
@@ -386,7 +389,13 @@ fn cels_de(
             let cel = match &c.body {
                 AseCelBody::Linked { frame } => ligado(file, layers, frames, c, *frame, bpp, &out),
                 _ => imagem(file, c)
-                    .filter(|(b, px)| px.len() == b.area() * bpp)
+                    .filter(|(b, px)| {
+                        let certo = px.len() == b.area() * bpp;
+                        if !certo && !avisos.contains(&Aviso::CelCorrompido) {
+                            avisos.push(Aviso::CelCorrompido);
+                        }
+                        certo
+                    })
                     .map(|(b, px)| Cel {
                         bbox: b,
                         data: px,

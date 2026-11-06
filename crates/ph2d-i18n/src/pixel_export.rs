@@ -148,6 +148,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "This file changes its palette between frames. The first palette was kept."
         }
         "pixel.io.warn.unknown_blend" => "A layer uses an unknown blend mode. It became Normal.",
+        "pixel.io.warn.bad_cel" => "A frame in this file is damaged and was left out.",
         "pixel.io.warn.duration_cut" => {
             "A frame was too long for this format. It became 65,535 ms."
         }

@@ -582,19 +582,3 @@ pub enum PixelFileAction {
     ExportSheet,
     RepeatExport,
 }
-
-impl PixelFileAction {
-    /// O comando da linha `id` do menu File, se é do Pixel.
-    #[must_use]
-    pub fn of_menu_row(id: ph2d_a11y::NodeId) -> Option<Self> {
-        [
-            (crate::ids::CTX_MENU_PIXEL_OPEN, Self::Open),
-            (crate::ids::CTX_MENU_PIXEL_IMPORT_SHEET, Self::ImportSheet),
-            (crate::ids::CTX_MENU_PIXEL_EXPORT_AS, Self::ExportAs),
-            (crate::ids::CTX_MENU_PIXEL_EXPORT_SHEET, Self::ExportSheet),
-            (crate::ids::CTX_MENU_PIXEL_REPEAT_EXPORT, Self::RepeatExport),
-        ]
-        .into_iter()
-        .find_map(|(r, a)| (r == id).then_some(a))
-    }
-}

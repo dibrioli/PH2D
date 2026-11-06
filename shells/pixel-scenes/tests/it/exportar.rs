@@ -567,3 +567,40 @@ fn a_janela_do_import_diz_porque_nao_le() {
     assert!(f.erro.is_some());
     assert_eq!(canal::imagem(), None);
 }
+
+/// A folha a montar quando o Import abre não troca a imagem dele.
+#[test]
+fn a_previa_atrasada_nao_troca_a_imagem_do_import() {
+    let mut p = Palco::novo("atrasada");
+    let c = p.pasta.join("w.png");
+    write_folha(&c);
+    p.app.pede(R::File(A::ExportSheet));
+    p.quadro();
+    canal::pede_folha(Some(OpcoesFolha::default()));
+    p.quadro();
+    assert!(p.app.exportando(), "a folha está a montar");
+    responde_o_proximo(c);
+    p.app.pede(R::File(A::ImportSheet));
+    p.quadro();
+    canal::pede_folha(None);
+    p.espera();
+    assert_eq!(canal::imagem().map(|i| (i.w, i.h)), Some((12, 8)));
+}
+
+/// O Repeat acende assim que o export começa.
+#[test]
+fn o_repeat_acende_quando_o_export_comeca() {
+    let mut p = Palco::novo("acende");
+    p.app.pede(R::File(A::ExportAs));
+    p.quadro();
+    responde_o_proximo(p.pasta.join("a.gif"));
+    canal::pede(Pedido::Exportar(gif()));
+    p.quadro();
+    p.quadro();
+    assert!(
+        !p.hero
+            .store
+            .menu_row_is_unavailable(ids::CTX_MENU_PIXEL_REPEAT_EXPORT)
+    );
+    p.espera();
+}

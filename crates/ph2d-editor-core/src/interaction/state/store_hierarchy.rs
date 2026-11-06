@@ -230,8 +230,7 @@ impl WidgetStore {
                         && !of.is_some_and(goes_to_kanban_background))
             }
             crate::interaction::ContextMenuKind::MenuBarFile => {
-                self.pixel_file_menu().is_none()
-                    && crate::pixel_panel::PixelFileAction::of_menu_row(id).is_some()
+                self.pixel_file_menu().is_none() && Self::pixel_file_action(id).is_some()
             }
             _ => false,
         }

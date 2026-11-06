@@ -452,10 +452,14 @@ fn cor_do_json(t: &str) -> Option<[u8; 4]> {
     Some([b(0)?, b(2)?, b(4)?, b(6)?])
 }
 
-/// O `.json` com o mesmo nome, ao lado da imagem, se existe.
+/// O `.json` com o mesmo nome, ao lado da imagem, se é desta imagem: `meta.size` tem de ser o dela,
+/// senão os tempos e as tags de outra folha entrariam sem aviso.
 #[must_use]
-pub fn dados_ao_lado(imagem: &std::path::Path) -> Option<String> {
-    std::fs::read_to_string(imagem.with_extension("json")).ok()
+pub fn dados_ao_lado(imagem: &std::path::Path, (w, h): (u32, u32)) -> Option<String> {
+    let t = std::fs::read_to_string(imagem.with_extension("json")).ok()?;
+    let v: serde_json::Value = serde_json::from_str(&t).ok()?;
+    let lado = |k: &str| v["meta"]["size"][k].as_u64();
+    (lado("w") == Some(u64::from(w)) && lado("h") == Some(u64::from(h))).then_some(t)
 }
 
 /// A grelha de partida do Import Sprite Sheet: a divisão que não parte figuras; `None` = a imagem não

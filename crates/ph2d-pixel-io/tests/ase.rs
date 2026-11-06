@@ -227,4 +227,20 @@ fn abrir_nao_perde_em_silencio() {
     let com_tilemap = com_chunk(&limpo, 0x2004, &camada);
     let (_, avisos) = abrir(&com_tilemap, "ase").unwrap();
     assert!(avisos.contains(&Aviso::Tilemap), "{avisos:?}");
+
+    // Um cel cru 2×2 RGBA com 4 bytes em vez de 16: recusa ou avisa, nunca some calado.
+    let mut cel = Vec::new();
+    cel.extend_from_slice(&0_u16.to_le_bytes());
+    cel.extend_from_slice(&[0; 4]);
+    cel.push(255);
+    cel.extend_from_slice(&0_u16.to_le_bytes());
+    cel.extend_from_slice(&0_i16.to_le_bytes());
+    cel.extend_from_slice(&[0; 5]);
+    cel.extend_from_slice(&2_u16.to_le_bytes());
+    cel.extend_from_slice(&2_u16.to_le_bytes());
+    cel.extend_from_slice(&[9; 4]);
+    match abrir(&com_chunk(&limpo, 0x2005, &cel), "ase") {
+        Ok((_, avisos)) => assert!(avisos.contains(&Aviso::CelCorrompido), "{avisos:?}"),
+        Err(_) => {}
+    }
 }

@@ -64,7 +64,15 @@ fn alvo_existe(s: &Sprite, c: Camadas, q: Quadros) -> bool {
 }
 
 fn escreve(c: &Path, bytes: &[u8]) -> Result<(), ErroGravar> {
-    std::fs::write(c, bytes).map_err(|e| ErroGravar::Disco(c.to_owned(), e.to_string()))
+    // Por um ficheiro ao lado: uma falha a meio nunca deixa o destino cortado.
+    let err = |e: std::io::Error| ErroGravar::Disco(c.to_owned(), e.to_string());
+    let mut tmp = c.as_os_str().to_owned();
+    tmp.push(".tmp");
+    std::fs::write(&tmp, bytes).map_err(err)?;
+    std::fs::rename(&tmp, c).map_err(|e| {
+        let _ = std::fs::remove_file(&tmp);
+        err(e)
+    })
 }
 
 /// O caminho de um ficheiro da sequência: `nome1.png` a partir de `nome.png`.
@@ -172,6 +180,31 @@ pub fn lembrar(s: &mut Sprite, e: &Export, caminho: &Path) {
     }));
 }
 
+/// Um nome numa linha do texto: um nome com quebra de linha não vira outro campo.
+fn esc(t: &str) -> String {
+    t.replace('\\', "\\\\")
+        .replace('\n', "\\n")
+        .replace('\r', "\\r")
+}
+
+fn sem_esc(t: &str) -> String {
+    let mut out = String::with_capacity(t.len());
+    let mut it = t.chars();
+    while let Some(c) = it.next() {
+        if c != '\\' {
+            out.push(c);
+            continue;
+        }
+        match it.next() {
+            Some('n') => out.push('\n'),
+            Some('r') => out.push('\r'),
+            Some(o) => out.push(o),
+            None => {}
+        }
+    }
+    out
+}
+
 fn formato_txt(f: Formato) -> &'static str {
     match f {
         Formato::Png => "png",
@@ -213,7 +246,10 @@ fn camadas_txt(c: Camadas) -> String {
 fn quadros_txt(s: &Sprite, q: Quadros) -> String {
     match q {
         Quadros::Todos => "all".to_owned(),
-        Quadros::Tag(i) => format!("tag {}", s.tags().get(i).map_or("", |t| t.name.as_str())),
+        Quadros::Tag(i) => format!(
+            "tag {}",
+            s.tags().get(i).map_or_else(String::new, |t| esc(&t.name))
+        ),
         Quadros::Intervalo { de, ate } => format!("range {de} {ate}"),
     }
 }
@@ -266,7 +302,7 @@ fn para_texto(s: &Sprite, e: &Export) -> String {
                 l.push(format!("{k}={v}"));
             }
             if let Some(n) = &o.nome {
-                l.push(format!("name={n}"));
+                l.push(format!("name={}", esc(n)));
             }
             if let Some(j) = x.json {
                 l.push(format!(
@@ -296,6 +332,7 @@ fn de_quadros(s: &Sprite, v: &str) -> Option<Quadros> {
     }
     if let Some(n) = v.strip_prefix("tag ") {
         // Tag apagada: um índice que não existe, e o `gravar` recusa.
+        let n = sem_esc(n);
         let i = s.tags().iter().position(|t| t.name == n);
         return Some(Quadros::Tag(i.unwrap_or(usize::MAX)));
     }
@@ -383,7 +420,7 @@ fn de_texto(s: &Sprite, t: &str) -> Option<Export> {
                     border: num("border")?,
                     shape: num("shape")?,
                     inner: num("inner")?,
-                    nome: campo("name").map(str::to_owned),
+                    nome: campo("name").map(sem_esc),
                 },
                 json,
             }))

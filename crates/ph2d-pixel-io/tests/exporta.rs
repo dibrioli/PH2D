@@ -322,3 +322,55 @@ fn diag_quanto_custa_a_folha_grande() {
         println!("montar {caso}: {melhor:.0} ms");
     }
 }
+
+/// Um nome de tag com quebra de linha não reescreve as opções do Repeat, e a tag continua achada.
+#[test]
+fn nome_com_quebra_de_linha_nao_vira_outro_campo() {
+    let d = pasta("quebra");
+    let mut s = sprite(ColorMode::Rgba);
+    let op = frames::new_tag(&s, "a\\b\nscale=0.5", 0, 1).expect("tag");
+    ph2d_pixel_core::apply(&mut s, op).expect("tag");
+    let e = Export::Ficheiro(ExportAs {
+        pedido: Pedido {
+            quadros: Quadros::Tag(0),
+            escala: 2.0,
+            ..Pedido::default()
+        },
+        formato: Formato::Gif,
+        repeat: 0,
+    });
+    let c = d.join("t.gif");
+    exporta::lembrar(&mut s, &e, &c);
+    let (lido, caminho) = exporta::o_ultimo(&s).expect("tem");
+    assert_eq!(caminho, c);
+    assert_eq!(lido, Some(e));
+}
+
+/// Gravar não deixa o ficheiro de passagem para trás.
+#[test]
+fn gravar_nao_deixa_ficheiro_de_passagem() {
+    let d = pasta("passagem");
+    exporta::gravar(
+        &sprite(ColorMode::Rgba),
+        &export_as(Formato::Gif),
+        &d.join("a.gif"),
+    )
+    .expect("grava");
+    let nomes: Vec<_> = std::fs::read_dir(&d)
+        .expect("lê")
+        .flatten()
+        .map(|e| e.file_name())
+        .collect();
+    assert_eq!(nomes, ["a.gif"]);
+}
+
+/// O `.json` de outra folha, com o mesmo nome, não entra.
+#[test]
+fn o_json_de_outra_folha_nao_entra() {
+    let d = pasta("outro_json");
+    let c = d.join("f.png");
+    std::fs::write(d.join("f.json"), r#"{"meta":{"size":{"w":16,"h":8}}}"#).expect("grava");
+    assert!(ph2d_pixel_io::abrir::dados_ao_lado(&c, (16, 8)).is_some());
+    assert!(ph2d_pixel_io::abrir::dados_ao_lado(&c, (32, 8)).is_none());
+    assert!(ph2d_pixel_io::abrir::dados_ao_lado(&d.join("sem.png"), (16, 8)).is_none());
+}

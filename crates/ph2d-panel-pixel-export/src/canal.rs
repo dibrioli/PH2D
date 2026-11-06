@@ -197,10 +197,12 @@ impl PreviaDaFolha {
         self.seq
     }
 
-    /// Esquece a última: a próxima pergunta remonta, e a foto do sprite sai da memória.
+    /// Esquece a última: a próxima pergunta remonta, a foto do sprite sai da memória, e a folha a
+    /// montar já não publica (traria a imagem de outra janela).
     pub fn esquece(&mut self) {
         self.feita = None;
         self.foto = None;
+        self.trabalho = None;
     }
 
     /// Há uma folha a montar?
@@ -259,40 +261,23 @@ fn monta_a_previa(s: &Sprite, o: &OpcoesFolha) -> Imagem {
     }
 }
 
-/// Um export a gravar: o documento, o pedido, o caminho e o trabalho.
-struct Gravacao {
-    doc: u32,
-    export: Export,
-    caminho: PathBuf,
-    job: Job<Result<Gravado, ErroGravar>>,
-}
-
 /// **Os exports em curso.** Gravar corre fora da linha da tela, com a barra da casa.
 #[derive(Default)]
 pub struct Gravacoes {
-    em_curso: Vec<Gravacao>,
+    em_curso: Vec<Job<Result<Gravado, ErroGravar>>>,
     barras: Vec<Progress>,
 }
 
-/// Um export acabado; `None` = o trabalho caiu.
-pub type Acabado = (u32, Export, PathBuf, Option<Result<Gravado, ErroGravar>>);
-
 impl Gravacoes {
     /// Começa a gravar uma foto do sprite: o artista pode continuar a desenhar.
-    pub fn comeca(&mut self, doc: u32, s: Sprite, export: Export, caminho: PathBuf) {
-        let (e, c) = (export.clone(), caminho.clone());
-        let nome = caminho.file_name().unwrap_or_default().to_string_lossy();
+    pub fn comeca(&mut self, s: Sprite, e: Export, c: PathBuf) {
+        let nome = c.file_name().unwrap_or_default().to_string_lossy();
         let nome = ph2d_i18n::tr_with("pixel.io.exporting", &[("name", &nome)]);
         let job = Job::spawn(nome, move |p| {
             exporta::gravar_com(&s, &e, &c, &|f| p.set(f))
         });
         self.barras.push(job.progress().clone());
-        self.em_curso.push(Gravacao {
-            doc,
-            export,
-            caminho,
-            job,
-        });
+        self.em_curso.push(job);
     }
 
     #[must_use]
@@ -308,47 +293,27 @@ impl Gravacoes {
     }
 
     /// **Repeat Last Export:** começa o último export do sprite. Devolve a recusa, se houver.
-    pub fn repete(&mut self, doc: u32, s: &Sprite) -> Option<String> {
+    pub fn repete(&mut self, s: &Sprite) -> Option<String> {
         match exporta::o_ultimo(s)? {
             (Some(e), c) => {
-                self.comeca(doc, s.clone(), e, c);
+                self.comeca(s.clone(), e, c);
                 None
             }
             (None, _) => Some(crate::textos::erro_gravar(&ErroGravar::Preset)),
         }
     }
 
-    /// Colhe os acabados: o que correu bem fica como o último daquele sprite. Devolve as frases
-    /// `(é erro, texto)`.
-    pub fn colhe_em(
-        &mut self,
-        mut lembra: impl FnMut(u32, &Export, &std::path::Path),
-    ) -> Vec<(bool, String)> {
-        let mut frases = Vec::new();
-        for (d, e, c, r) in self.colhe() {
-            let Some(r) = r else {
-                frases.push((true, ph2d_i18n::tr("pixel.io.err.stopped").to_owned()));
-                continue;
-            };
-            if r.is_ok() {
-                lembra(d, &e, &c);
-            }
-            frases.extend(crate::textos::do_gravado(r));
-        }
-        frases
-    }
-
-    /// Os que acabaram desde o último quadro.
-    pub fn colhe(&mut self) -> Vec<Acabado> {
-        let (prontos, resto): (Vec<Gravacao>, Vec<Gravacao>) = std::mem::take(&mut self.em_curso)
+    /// As frases `(é erro, texto)` dos que acabaram desde o último quadro.
+    pub fn colhe(&mut self) -> Vec<(bool, String)> {
+        let (prontos, resto): (Vec<_>, Vec<_>) = std::mem::take(&mut self.em_curso)
             .into_iter()
-            .partition(|g| g.job.is_finished());
+            .partition(Job::is_finished);
         self.em_curso = resto;
         prontos
             .into_iter()
-            .map(|mut g| {
-                let r = g.job.try_take();
-                (g.doc, g.export, g.caminho, r)
+            .flat_map(|mut j| match j.try_take() {
+                Some(r) => crate::textos::do_gravado(r),
+                None => vec![(true, ph2d_i18n::tr("pixel.io.err.stopped").to_owned())],
             })
             .collect()
     }
@@ -393,7 +358,7 @@ impl LadoDaFamilia {
         let (s, _, nome) =
             ph2d_pixel_io::abrir::abrir_caminhos(std::slice::from_ref(&c.to_owned()))
                 .map_err(|e| crate::textos::erro_abrir(&e))?;
-        let dados = ph2d_pixel_io::abrir::dados_ao_lado(c);
+        let dados = ph2d_pixel_io::abrir::dados_ao_lado(c, (s.width(), s.height()));
         let seq = self.previa.proximo_seq();
         let i = imagem_de_import(&s, seq, dados.is_some());
         publish_imagem(Some(i.clone()));
@@ -434,6 +399,7 @@ impl LadoDaFamilia {
         }
         publish_pergunta(Some(p));
         abrir(Tela::ImportComo);
+        self.previa.esquece();
         self.leva = caminhos;
         self.abrir = true;
     }

@@ -283,6 +283,21 @@ impl WidgetStore {
         self.close_context_menu();
     }
 
+    /// O comando da linha `id` do menu File, se é do Pixel.
+    #[must_use]
+    pub fn pixel_file_action(id: NodeId) -> Option<crate::pixel_panel::PixelFileAction> {
+        use crate::pixel_panel::PixelFileAction as A;
+        [
+            (crate::ids::CTX_MENU_PIXEL_OPEN, A::Open),
+            (crate::ids::CTX_MENU_PIXEL_IMPORT_SHEET, A::ImportSheet),
+            (crate::ids::CTX_MENU_PIXEL_EXPORT_AS, A::ExportAs),
+            (crate::ids::CTX_MENU_PIXEL_EXPORT_SHEET, A::ExportSheet),
+            (crate::ids::CTX_MENU_PIXEL_REPEAT_EXPORT, A::RepeatExport),
+        ]
+        .into_iter()
+        .find_map(|(r, a)| (r == id).then_some(a))
+    }
+
     /// As linhas do Pixel no menu File: `None` = sem Pixel Sprite em Draw, e elas não se pintam;
     /// `Some(pode_repetir)` = há e o Repeat Last Export tem o que repetir.
     #[must_use]

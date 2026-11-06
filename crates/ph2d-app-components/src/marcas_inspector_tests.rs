@@ -310,8 +310,13 @@ fn a_fisica_do_corpo_tem_um_losango_por_linha() {
 /// catálogo resolve (um `field_id` errado deixaria o losango mudo).
 #[test]
 fn a_mascara_da_camera_resolve_no_catalogo() {
-    assert_eq!(mascara().len(), 33, "controlo: 32 bits e o cabeçalho");
-    for (id, reps) in mascara() {
+    let camera: Vec<_> = (mascara().iter())
+        .filter(|(id, _)| {
+            *id == insp::INSP_CAMERA_CULL_HEADER || insp::INSP_CAMERA_CULL_BIT.contains(id)
+        })
+        .collect();
+    assert_eq!(camera.len(), 33, "controlo: 32 bits e o cabeçalho");
+    for (id, reps) in camera {
         let [PropKind::Field(k)] = &**reps else {
             panic!("{id:?}: a máscara é UM canal");
         };

@@ -61,6 +61,9 @@ pub(crate) struct SessaoNoRestauro {
 /// virar tinta morta.
 const ORCAMENTOS_DE_UNDO: usize = 4;
 
+/// A falta de cobertura que conta na orla do enterro: menos do que isto é o arredondar da tela.
+const ORLA_QUE_DESTAPA: f32 = 2.0 / 255.0;
+
 /// Uma sessão parada, com a tela de quando parou. O `Arc` deixa a cópia do estado (o tocador de uma macro) sem copiar a
 /// grade.
 #[derive(Clone)]
@@ -403,7 +406,48 @@ impl PainterTool {
                     || sombra.get(c).copied().unwrap_or(0) != p.sombra.get(c).copied().unwrap_or(0)
             })
             .collect();
+        self.wet_orla_vai_para_a_base(sess, &mudou, &tocada);
         self.wet_congela(sess, Some((&tocada, &mudou)));
+    }
+
+    /// Na orla do enterro a tinta perdeu cobertura que a tela ainda mostra: fica na `base`, ou a Borracha que refaz estes
+    /// píxeis destapa o papel de repente.
+    fn wet_orla_vai_para_a_base(&self, sess: &mut WetSession, mudou: &[bool], tocada: &[bool]) {
+        #[cfg(test)]
+        if super::borracha_fronteira_tests::com_degrau::get() {
+            return;
+        }
+        let nova = &self.canvas_rgba[..];
+        let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
+        let q = usize::from(sess.ratio);
+        let (gw, gh) = sess.grid;
+        let amostra = super::grid_map::SampleU::new(sess.ratio, gw, gh);
+        let (pigment, sombra) = (&sess.planos.pigment, &sess.planos.sombra);
+        let base = &mut sess.base;
+        for y in 0..h {
+            let linha = amostra.row(y);
+            let cy = (y / q).min(gh - 1);
+            for x in 0..w {
+                let c = cy * gw + (x / q).min(gw - 1);
+                if !mudou[c] || tocada[c] {
+                    continue;
+                }
+                let o = (y * w + x) * 4;
+                let (pa, s) = (
+                    linha.at(pigment, x)[3] as f32 / 255.0,
+                    f32::from(sombra.get(c).copied().unwrap_or(0)) / 255.0,
+                );
+                let ba = f32::from(base[o + 3]) / 255.0;
+                let ta = f32::from(nova[o + 3]) / 255.0;
+                let deixa = (1.0 - pa) * (1.0 - s);
+                if ta > 1.0 - deixa * (1.0 - ba) + ORLA_QUE_DESTAPA {
+                    // A `base` que, sob esta tinta, dá a cobertura da tela: sem degrau de píxel a píxel.
+                    let b = &mut Arc::make_mut(base)[o..o + 4];
+                    b[..3].copy_from_slice(&nova[o..o + 3]);
+                    b[3] = ((1.0 - (1.0 - ta) / deixa) * 255.0).round() as u8;
+                }
+            }
+        }
     }
 
     /// A tela de agora é a verdade das células cuja óptica não mudar.

@@ -542,6 +542,8 @@ mod borda_do_traco_tests; // o Edge Darkening é de cada traço (Bug #69)
 mod borracha_de_fabrica_tests; // a Relief Eraser é a Borracha que abre sem preset (dono 06/11)
 #[cfg(test)]
 mod borracha_defeitos_tests; // o relato do dono 06/11: rectângulos ao voltar, outros modos de uma vez
+#[cfg(test)]
+mod borracha_fronteira_tests; // o relato do dono 06/11: a fronteira viva × morta em degraus
 mod borracha_na_base; // a Borracha também apaga a tinta antiga (Bug #70)
 #[cfg(test)]
 mod borracha_na_base_tests;

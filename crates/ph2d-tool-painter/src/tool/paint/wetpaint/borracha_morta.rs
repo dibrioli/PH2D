@@ -28,21 +28,29 @@ const EXPOENTE_DA_PRESSAO: i32 = 8;
 /// O sulco do traço aberto: a imagem de antes dele e o que a Borracha já cobriu e tirou.
 #[derive(Clone)]
 pub(crate) struct Sulco {
-    antes: Arc<Vec<u8>>,
+    pub(super) antes: Arc<Vec<u8>>,
     cobriu: Vec<u8>,
     tirou: Vec<u8>,
-    /// Com sessão viva: as células que tinham tinta na grade no início do traço, às quais a lei não toca.
+    /// Com sessão viva: as células que tinham tinta na grade no início do traço.
     pub(super) com_tinta: Vec<bool>,
+    /// Com sessão viva: o plano de pigmento no início do traço, de que sai quanto a tinta viva cobre cada píxel.
+    pub(super) pigmento: Vec<u8>,
 }
 
 impl Sulco {
     /// O sulco de um traço novo, a partir da imagem `antes` de `n` píxeis.
-    pub(super) fn novo(antes: Arc<Vec<u8>>, n: usize, com_tinta: Vec<bool>) -> Self {
+    pub(super) fn novo(
+        antes: Arc<Vec<u8>>,
+        n: usize,
+        com_tinta: Vec<bool>,
+        pigmento: Vec<u8>,
+    ) -> Self {
         Self {
             antes,
             cobriu: vec![0; n],
             tirou: vec![0; n],
             com_tinta,
+            pigmento,
         }
     }
 
@@ -168,12 +176,9 @@ impl PainterTool {
             y1: (r.y + r.h) as usize,
         };
         let plano = self.mede_o_escudo(dabs, r);
-        let mut sulco = self
-            .paint
-            .wetpaint
-            .sulco
-            .take()
-            .unwrap_or_else(|| Sulco::novo(Arc::clone(&self.canvas_rgba), w * h, Vec::new()));
+        let mut sulco = self.paint.wetpaint.sulco.take().unwrap_or_else(|| {
+            Sulco::novo(Arc::clone(&self.canvas_rgba), w * h, Vec::new(), Vec::new())
+        });
         sulco.acumula(&plano, dabs, caixa, w);
         self.paint.pilha.escudo = plano;
         let parede = parede_dos_dabs(dabs);
@@ -209,7 +214,7 @@ impl PainterTool {
             self.source_size.0,
             Some(regiao),
         );
-        escreve_o_sulco(sulco, caixa, tam, parede, forca, tela, &|_| 1.0);
+        escreve_o_sulco(sulco, caixa, tam, parede, forca, tela, &|_| (1.0, 0.0));
         self.declare_wrote(Some(regiao));
         self.mark_dirty(regiao);
     }
@@ -220,8 +225,8 @@ pub(super) fn caixa_de_escrita(caixa: Caixa, parede: usize, tam: (usize, usize))
     caixa.cresce(2 * 2 * parede + 2, tam)
 }
 
-/// **A lei:** refaz os píxeis da caixa de escrita a partir da imagem de antes do traço. `peso(i)` é o quanto ela vale no
-/// píxel `i`: 0 não toca nele.
+/// **A lei:** refaz os píxeis da caixa de escrita a partir da imagem de antes do traço. `peso(i)` dá, no píxel `i`, o
+/// quanto a lei gradual vale e o quanto a cobertura corta o alfa de uma vez: `(0, 0)` não toca nele.
 pub(super) fn escreve_o_sulco(
     sulco: &Sulco,
     caixa: Caixa,
@@ -229,7 +234,7 @@ pub(super) fn escreve_o_sulco(
     parede: usize,
     forca: f32,
     tela: &mut [u8],
-    peso: &(dyn Fn(usize) -> f32 + Sync),
+    peso: &(dyn Fn(usize) -> (f32, f32) + Sync),
 ) {
     let w = tam.0;
     // A leitura vai até onde alisar a escrita alcança.
@@ -273,8 +278,8 @@ pub(super) fn escreve_o_sulco(
     let ganho = LUZ_DA_PAREDE * parede as f32;
     for y in esc.y0..esc.y1 {
         for x in esc.x0..esc.x1 {
-            let g = peso(y * w + x);
-            if g <= 0.0 {
+            let (g, corte) = peso(y * w + x);
+            if g <= 0.0 && corte <= 0.0 {
                 continue;
             }
             let (lx, ly) = (x - lei.x0, y - lei.y0);
@@ -309,7 +314,9 @@ pub(super) fn escreve_o_sulco(
                 let novo = (antes + (lisa - antes) * mistura) * luz;
                 tela[o + n] = (antes + (novo - antes) * g).round().clamp(0.0, 255.0) as u8;
             }
-            let alfa = a0 * (1.0 - (tir[k] * forca * g).clamp(0.0, 1.0));
+            // O corte segue a cobertura crua: alisada, passava do anel da Borracha.
+            let cortou = f32::from(sulco.cobriu[y * w + x]) / 255.0 * corte;
+            let alfa = a0 * (1.0 - (tir[k] * forca * g).clamp(0.0, 1.0)) * (1.0 - cortou);
             tela[o + 3] = (alfa * 255.0).floor() as u8;
         }
     }

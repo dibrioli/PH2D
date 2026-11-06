@@ -67,7 +67,7 @@ impl PainterTool {
     /// copia quando há tinta a apagar; cada passo copia-a uma vez, por o undo segurar a de antes.
     ///
     /// Sob tinta da grade a base sai logo: quem aparece é a tinta, que sai aos poucos. Sem ela, a base é o que se vê e
-    /// segue a [lei gradual aprovada](super::borracha_morta) (dono 06/11).
+    /// segue a [lei gradual aprovada](super::borracha_morta) (dono 06/11). Entre as duas, o [`PesoDaViva`] de cada píxel.
     pub(super) fn apaga_a_base_sob_os_dabs(&mut self, dabs: &[Dab]) {
         if self.paint.acumulando_no_plano {
             return;
@@ -122,23 +122,23 @@ impl PainterTool {
                     Arc::clone(&sess.base),
                     tam.0 * tam.1,
                     celulas_com_tinta(&sess),
+                    sess.planos.pigment.clone(),
                 )
             })
         });
         if let Some(s) = sulco.as_mut() {
             s.acumula(&plano, dabs, caixa, tam.0);
         }
-        // Só a tinta da grade corta seco; com a lei de sempre, a base toda.
-        let corta =
-            |p: usize, sulco: &Option<Sulco>| sulco.as_ref().is_none_or(|s| s.com_tinta[celula(p)]);
         if linhas().any(|i| sess.base[i + 3] > 0 && keep(i) < 1.0) {
             let forca = self.forca_do_sulco();
             let base = Arc::make_mut(&mut sess.base);
-            for i in linhas() {
-                let k = keep(i);
-                if k < 1.0 && corta(i / 4, &sulco) {
-                    // Para baixo: com alfa 1 e k > 0,5 o arredondar nunca chegava a 0.
-                    base[i + 3] = (f32::from(base[i + 3]) * k).floor() as u8;
+            if sulco.is_none() {
+                for i in linhas() {
+                    let k = keep(i);
+                    if k < 1.0 {
+                        // Para baixo: com alfa 1 e k > 0,5 o arredondar nunca chegava a 0.
+                        base[i + 3] = (f32::from(base[i + 3]) * k).floor() as u8;
+                    }
                 }
             }
             let (mut x0, mut y0, mut x1, mut y1) = (caixa.x0, caixa.y0, caixa.x1, caixa.y1);
@@ -146,8 +146,14 @@ impl PainterTool {
                 let parede = parede_dos_dabs(dabs);
                 let esc = caixa_de_escrita(caixa, parede, tam);
                 (x0, y0, x1, y1) = (esc.x0, esc.y0, esc.x1, esc.y1);
+                let viva = PesoDaViva::novo(s, esc, q, sess.grid);
                 escreve_o_sulco(s, caixa, tam, parede, forca, base, &|p| {
-                    if s.com_tinta[celula(p)] { 0.0 } else { gate(p) }
+                    // Sem nada na base sob a tinta, não há o que escrever: o óleo vivo sozinho fica ao bit.
+                    if s.com_tinta[celula(p)] && s.antes[p * 4 + 3] == 0 {
+                        return (0.0, 0.0);
+                    }
+                    let (g, v) = (gate(p), viva.em(p, tam.0));
+                    (g * (1.0 - v), g * v)
                 });
             }
             let q = q as i32;
@@ -161,6 +167,42 @@ impl PainterTool {
         self.paint.pilha.escudo = plano;
         self.paint.wetpaint.sulco = sulco;
         self.paint.wetpaint.session = Some(sess);
+    }
+}
+
+/// Quanto a tinta viva cobre cada píxel da caixa, sem degrau: o que ela esconde sai de uma vez, o que ela deixa ver segue
+/// a lei gradual.
+struct PesoDaViva {
+    caixa: Caixa,
+    plano: Vec<f32>,
+}
+
+impl PesoDaViva {
+    fn novo(s: &Sulco, caixa: Caixa, q: usize, (gw, gh): (usize, usize)) -> Self {
+        let mut plano = Vec::with_capacity((caixa.x1 - caixa.x0) * (caixa.y1 - caixa.y0));
+        let amostra = super::grid_map::SampleU::new(q as u8, gw, gh);
+        for y in caixa.y0..caixa.y1 {
+            let linha = amostra.row(y);
+            for x in caixa.x0..caixa.x1 {
+                #[cfg(test)]
+                if super::borracha_fronteira_tests::com_degrau::get() {
+                    let c = (y / q).min(gh - 1) * gw + (x / q).min(gw - 1);
+                    plano.push(f32::from(u8::from(s.com_tinta[c])));
+                    continue;
+                }
+                plano.push(if s.pigmento.len() == gw * gh * 4 {
+                    linha.at(&s.pigmento, x)[3] as f32 / 255.0
+                } else {
+                    0.0
+                });
+            }
+        }
+        Self { caixa, plano }
+    }
+
+    fn em(&self, p: usize, w: usize) -> f32 {
+        let (x, y) = (p % w, p / w);
+        self.plano[(y - self.caixa.y0) * (self.caixa.x1 - self.caixa.x0) + x - self.caixa.x0]
     }
 }
 

@@ -410,3 +410,37 @@ fn o_flip_e_o_pivo_da_sprite_tem_canal_e_o_pivo_leva_a_posicao() {
         "só um modo de posição: {g:?}"
     );
 }
+
+/// ⭐ O deslocamento do collider entra na chave do Pivot de quem tem collider (dono 05/11: o pivô não separa desenho e
+/// colisão); quem não tem não o grava.
+#[test]
+fn a_chave_do_pivo_leva_o_deslocamento_do_collider_so_de_quem_tem() {
+    let d = TimelineDoc::new();
+    let desl = |c| FieldKey::new(FISICA, c, 0, 0);
+    let com = clique(
+        &d,
+        &insp::INSP_SPRITE_PIVOT_XY,
+        &[E],
+        em(0.0),
+        |_| vec![desl(fs::DESLOC_X), desl(fs::DESLOC_Y)],
+        na_curva,
+        add,
+    );
+    let g = gravados(&com);
+    assert!(
+        g.contains(&PropKind::Field(desl(fs::DESLOC_X)))
+            && g.contains(&PropKind::Field(desl(fs::DESLOC_Y))),
+        "{g:?}"
+    );
+    let sem = clique(
+        &d,
+        &insp::INSP_SPRITE_PIVOT_XY,
+        &[E],
+        em(0.0),
+        |_| Vec::new(),
+        na_curva,
+        add,
+    );
+    let g = gravados(&sem);
+    assert!(!g.contains(&PropKind::Field(desl(fs::DESLOC_X))), "{g:?}");
+}

@@ -36,6 +36,7 @@ ph2d-render = { path = "../../crates/ph2d-render" }
 ph2d-runtime = { path = "../../crates/ph2d-runtime" }
 ph2d-tags = { path = "../../crates/ph2d-tags" }
 ph2d-script = { path = "../../crates/ph2d-script" }
+ph2d-sprite-edit = { path = "../../crates/ph2d-sprite-edit" }
 ph2d-text = { path = "../../crates/ph2d-text" }
 ph2d-tokens = { path = "../../crates/ph2d-tokens" }
 ph2d-vector = { path = "../../crates/ph2d-vector" }

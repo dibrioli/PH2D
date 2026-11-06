@@ -176,3 +176,60 @@ fn tocar_o_pivo_sem_a_posicao_move_o_desenho() {
         "o pivô e a posição tocados: o desenho volta"
     );
 }
+
+/// Onde o centro da colisão de `e` cai: a composição do collider (`offset ⊙ escala`, rodado, sem skew).
+fn centro_da_colisao(w: &World, e: Entity) -> Vec2 {
+    let t = *w.get::<Transform>(e).unwrap();
+    let o = w.get::<Collider>(e).unwrap().offset;
+    let mut sem_skew = t;
+    sem_skew.skew_x = 0.0;
+    sem_skew.skew_y = 0.0;
+    no_pai(sem_skew, o)
+}
+
+/// ⭐⭐ **Dono 05/11:** com o pivô no pé, o desenho E a colisão não andam: com rotação, escala, espelho e skew.
+#[test]
+fn mudar_o_pivo_nao_move_a_colisao() {
+    let casos = [
+        (0.0, Vec2::new(1.0, 1.0), 0.0),
+        (0.7, Vec2::new(2.0, 3.0), 0.0),
+        (-1.1, Vec2::new(-2.0, 1.5), 0.0),
+        (0.4, Vec2::new(1.5, -0.5), 0.3),
+    ];
+    for (rotation, scale, skew_x) in casos {
+        let t = Transform {
+            translation: Vec2::new(5.0, 7.0),
+            rotation,
+            scale,
+            skew_x,
+            ..Default::default()
+        };
+        let (mut w, e) = mundo_com(sprite_2x2(), t);
+        w.entity_mut(e).insert(Collider {
+            offset: [0.25, -0.5],
+            ..Default::default()
+        });
+        let antes = centro_da_colisao(&w, e);
+        assert!(pousa(&mut w, e, 100.0, [0.0, -1.0]));
+        let depois = centro_da_colisao(&w, e);
+        assert_ne!(w.get::<Transform>(e).unwrap().translation, t.translation);
+        assert!(
+            (antes - depois).length() < 1.0e-4,
+            "rot {rotation} escala {scale:?} skew {skew_x}: {antes:?} → {depois:?}"
+        );
+    }
+}
+
+/// Sem collider nada acontece, e o espelho numa escala nula não vira infinito.
+#[test]
+fn a_escala_nula_nao_envenena_o_offset() {
+    let t = Transform {
+        scale: Vec2::new(0.0, 1.0),
+        ..Default::default()
+    };
+    let (mut w, e) = mundo_com(sprite_2x2(), t);
+    w.entity_mut(e).insert(Collider::default());
+    assert!(pousa(&mut w, e, 100.0, [1.0, -1.0]));
+    let o = w.get::<Collider>(e).unwrap().offset;
+    assert!(o[0].is_finite() && o[1].is_finite(), "{o:?}");
+}

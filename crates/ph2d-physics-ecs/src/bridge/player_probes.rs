@@ -417,6 +417,21 @@ pub(super) fn crouch_shape(
     (b.handle, *rest, rest.shape.shrunk_from_top(s), offset)
 }
 
+/// ⭐ **A origem do corpo e o centro do collider**, de onde as sondas nascem. Os dois só diferem com um `offset` (o pivô
+/// no pé do boneco): medir da origem deixaria a perna medir a partir do pé.
+pub(super) fn origem_e_centro(
+    world: &ph2d_physics::PhysicsWorld,
+    b: &crate::bridge::BodyRef,
+) -> Option<([f32; 2], [f32; 2])> {
+    let pose = world.body_pose(b.handle)?;
+    let (at, [ox, oy]) = ([pose.translation.x, pose.translation.y], b.rest.offset);
+    let (sin, cos) = libm::sincosf(pose.rotation.angle());
+    Some((
+        at,
+        [at[0] + ox * cos - oy * sin, at[1] + ox * sin + oy * cos],
+    ))
+}
+
 /// **O perfil do teto acima da cabeça** (W10) — a metade do sensor que este
 /// módulo possui, e nada de política.
 ///

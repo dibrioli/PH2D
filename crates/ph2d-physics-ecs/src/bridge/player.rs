@@ -149,10 +149,9 @@ impl PhysicsBridge {
             let Some(cfg) = world.get::<PlatformPlayer>(entity) else {
                 continue;
             };
-            let Some(pose) = self.world.body_pose(b.handle) else {
+            let Some((at, origin)) = probes::origem_e_centro(&self.world, b) else {
                 continue;
             };
-            let origin = [pose.translation.x, pose.translation.y];
             let Some(solver_vel) = self.world.body_velocity(b.handle) else {
                 continue;
             };
@@ -455,7 +454,7 @@ impl PhysicsBridge {
                 ledge_asked.then_some(ledge.as_ref()),
             );
             self.player_probe_anchors
-                .push((b.handle, from, self.player_probes.len(), origin));
+                .push((b.handle, from, self.player_probes.len(), at));
 
             // ── O FLUIDO (W-Submerged) ───────────────────────────────────────
             // ⚠️ **Não há `*_wanted` aqui, e a assimetria é deliberada:** os três

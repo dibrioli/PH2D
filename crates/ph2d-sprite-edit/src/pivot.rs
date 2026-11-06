@@ -1,6 +1,6 @@
 //! ⭐ **O Pivot de 9 pontos** ([ficha da Sprite](../../../docs/GameEngineFuncional/componentes/01_sprite.md)): os pontos
 //! contam sobre o que está VISÍVEL (a caixa opaca do desenho), não sobre a borda da imagem. «Bottom» é o pé do boneco,
-//! mesmo com sobra transparente em volta. Mudar o pivô nunca move o desenho: a posição compensa, como na ferramenta.
+//! mesmo com sobra transparente em volta. Mudar o pivô nunca move o desenho nem a colisão: a posição compensa.
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_core::Vec2;
@@ -9,6 +9,7 @@ use ph2d_ecs::{
     TiledDraw, Transform, World,
 };
 use ph2d_editor_core::SpritePivot;
+use ph2d_physics_ecs::Collider;
 use ph2d_render::{Sprite, texture_of};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -151,6 +152,36 @@ fn no_pai(t: Transform, local: [f32; 2]) -> Vec2 {
     Transform::compose(t, filho).translation
 }
 
+/// ⭐ O pivô andou `d` (metros locais, a âncora de antes menos a de agora) e a origem de `e` foi atrás: os filhos e a
+/// colisão ficam onde estão no mundo (dono 05/11: o Pivot não separa desenho e colisão). O collider não sofre skew
+/// (`ph2d_physics_ecs`: `offset ⊙ escala`, rodado), logo o skew de `t` entra no passo dele e não no dos filhos.
+pub fn o_resto_fica(world: &mut World, e: Entity, t: Transform, d: [f32; 2]) {
+    let filhos: Vec<Entity> = world
+        .get::<ph2d_ecs::Children>(e)
+        .map(|c| c.iter().copied().collect())
+        .unwrap_or_default();
+    for f in filhos {
+        if let Some(mut tf) = world.get_mut::<Transform>(f) {
+            tf.translation.x -= d[0];
+            tf.translation.y -= d[1];
+        }
+    }
+    let mut sem_rotacao = t;
+    sem_rotacao.rotation = 0.0;
+    let passo = no_pai(sem_rotacao, d) - no_pai(sem_rotacao, [0.0, 0.0]);
+    let eixo = |p: f32, escala: f32, cru: f32| {
+        if escala.abs() < MESMO_PONTO_M {
+            cru
+        } else {
+            p / escala
+        }
+    };
+    if let Some(mut c) = world.get_mut::<Collider>(e) {
+        c.offset[0] -= eixo(passo.x, t.scale.x, d[0]);
+        c.offset[1] -= eixo(passo.y, t.scale.y, d[1]);
+    }
+}
+
 /// Põe o pivô de `e` em `alvo` (metros locais a partir do centro do quad), sem mover o desenho. `false` se nada mudou.
 fn pousa(world: &mut World, e: Entity, ppm: f32, alvo: [f32; 2]) -> bool {
     let Some(s) = world.get::<Sprite>(e).copied() else {
@@ -166,17 +197,7 @@ fn pousa(world: &mut World, e: Entity, ppm: f32, alvo: [f32; 2]) -> bool {
         return false;
     }
     let delta = no_pai(t, antes) - no_pai(t, depois);
-    // Os filhos também são desenho: ficam onde estão.
-    let filhos: Vec<Entity> = world
-        .get::<ph2d_ecs::Children>(e)
-        .map(|c| c.iter().copied().collect())
-        .unwrap_or_default();
-    for f in filhos {
-        if let Some(mut tf) = world.get_mut::<Transform>(f) {
-            tf.translation.x -= antes[0] - depois[0];
-            tf.translation.y -= antes[1] - depois[1];
-        }
-    }
+    o_resto_fica(world, e, t, [antes[0] - depois[0], antes[1] - depois[1]]);
     let mut ent = world.entity_mut(e);
     if let Some(mut tr) = ent.get_mut::<Transform>() {
         tr.translation += delta;
@@ -187,6 +208,22 @@ fn pousa(world: &mut World, e: Entity, ppm: f32, alvo: [f32; 2]) -> bool {
         sp.offset = [0.0, 0.0];
     }
     true
+}
+
+/// A ferramenta Pivot do canvas: a mesma lei, com a origem e a âncora que o arrasto calculou.
+pub fn arrasta(world: &mut World, e: Entity, origem: [f32; 2], anchor: [f32; 2]) {
+    let Some(t) = world.get::<Transform>(e).copied() else {
+        return;
+    };
+    if let Some(a) = world.get::<Sprite>(e).map(|s| s.anchor) {
+        o_resto_fica(world, e, t, [a[0] - anchor[0], a[1] - anchor[1]]);
+    }
+    if let Some(mut tr) = world.get_mut::<Transform>(e) {
+        tr.translation = Vec2::new(origem[0], origem[1]);
+    }
+    if let Some(mut s) = world.get_mut::<Sprite>(e) {
+        s.anchor = anchor;
+    }
 }
 
 /// ⭐ O campo Pivot do cartão Look. `false` se nada mudou.

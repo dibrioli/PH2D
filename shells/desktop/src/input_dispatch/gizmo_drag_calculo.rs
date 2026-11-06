@@ -359,12 +359,12 @@ impl crate::App {
                 drag.parent_world,
                 new_translation,
             );
-            if let Some(mut t) = gfx.sim.world_mut().get_mut::<Transform>(entity) {
-                t.translation = ph2d_core::Vec2::new(new_translation[0], new_translation[1]);
-            }
-            if let Some(mut s) = gfx.sim.world_mut().get_mut::<ph2d_render::Sprite>(entity) {
-                s.anchor = new_anchor;
-            }
+            ph2d_sprite_edit::pivot::arrasta(
+                gfx.sim.world_mut(),
+                entity,
+                new_translation,
+                new_anchor,
+            );
         }
     }
 }

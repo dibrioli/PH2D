@@ -329,6 +329,69 @@ fn o_nivel_2_anda_salta_cai_e_anima() {
     assert!(!flip, "a olhar para a direita não espelha");
 }
 
+/// ⭐⭐ **Dono 05/11: o Pivot não separa desenho e colisão.** Com o pivô no pé, o boneco corre, salta e acaba no MESMO
+/// sítio: o desenho pousa no chão e a colisão continua centrada nele. Sem compensar, a colisão desceria meio boneco.
+#[test]
+fn com_o_pivo_no_pe_o_boneco_pisa_e_salta_igual() {
+    let corre = |pe: bool| {
+        let mut sim = SimWorld::new();
+        let jogador = crate::comp::montar(&mut sim, 2);
+        if pe {
+            assert!(ph2d_sprite_edit::pivot::set_pivot(
+                sim.world_mut(),
+                jogador,
+                &Default::default(),
+                &Default::default(),
+                100.0,
+                ph2d_editor_core::SpritePivot::Ponto([1, 2]),
+            ));
+        }
+        let mut bridge = ph2d_physics_ecs::PhysicsBridge::new();
+        let mut alturas = Vec::new();
+        for tick in 1..=420_u32 {
+            let (drive, jump) = dedo_do_horario(tick + 60);
+            bridge.set_player_input(
+                jogador,
+                ph2d_physics_ecs::PlayerInput {
+                    drive,
+                    jump,
+                    ..Default::default()
+                },
+            );
+            bridge.dispatch(&mut sim, true, u64::from(tick));
+            let w = sim.world();
+            let t = *w.get::<Transform>(jogador).expect("pose");
+            let a = w.get::<Sprite>(jogador).expect("sprite").anchor;
+            let centro = Transform::compose(
+                t,
+                Transform {
+                    translation: Vec2::new(a[0], a[1]),
+                    ..Default::default()
+                },
+            )
+            .translation;
+            alturas.push(centro);
+        }
+        alturas
+    };
+    let (normal, no_pe) = (corre(false), corre(true));
+    let longe = normal
+        .iter()
+        .zip(&no_pe)
+        .map(|(a, b)| (*a - *b).length())
+        .fold(0.0_f32, f32::max);
+    assert!(
+        (normal[0] - no_pe[0]).length() < 0.01,
+        "a colisão desceu com o pivô: {:?} × {:?}",
+        normal[0],
+        no_pe[0]
+    );
+    assert!(
+        longe < 0.25,
+        "o desenho separou-se da corrida normal: {longe} m"
+    );
+}
+
 /// A andar para a ESQUERDA a imagem espelha (o boneco desenhado olha para a direita).
 #[test]
 fn a_andar_para_a_esquerda_o_boneco_espelha() {

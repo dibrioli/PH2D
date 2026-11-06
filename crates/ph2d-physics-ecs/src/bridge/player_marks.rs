@@ -17,7 +17,7 @@
 
 use super::probes::{
     corner_geom, ground_rays, headroom_offset, ledge_offset, ledge_origin_rise, ledge_rays,
-    wall_rays,
+    origem_e_centro, wall_rays,
 };
 use super::*;
 use crate::ProbeShape;
@@ -344,7 +344,7 @@ impl crate::PhysicsBridge {
             let Some(cfg) = world.get::<PlatformPlayer>(entity) else {
                 continue;
             };
-            let Some(pose) = self.world.body_pose(b.handle) else {
+            let Some((_, centro)) = origem_e_centro(&self.world, b) else {
                 continue;
             };
             record_marks(
@@ -353,7 +353,7 @@ impl crate::PhysicsBridge {
                 entity,
                 b.handle,
                 &cfg.config(),
-                [pose.translation.x, pose.translation.y],
+                centro,
                 // Sem relógio não há dedo: o flanco é publicado dos DOIS lados,
                 // que é o que `record_marks` já faz sem direção.
                 0.0,

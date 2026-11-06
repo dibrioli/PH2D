@@ -209,8 +209,7 @@ pub fn draw(
     }
     crate::tiles::desenha_grelha(
         app,
-        key,
-        bits,
+        (key, bits),
         (w, h),
         m,
         (LINE_PX, GRID_MIN_PX_PER_CELL),

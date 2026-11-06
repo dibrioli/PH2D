@@ -212,10 +212,12 @@ fn desenha(
     let passo = g.w as usize * linha;
     let mut viradas: BTreeMap<u32, Vec<u8>> = BTreeMap::new();
     for &t in &g.tiles {
-        if t.id() != t.0 && linhas(t.id()).is_some() && !viradas.contains_key(&t.0) {
-            if let Some(src) = set.tiles.get(t.id() as usize) {
-                viradas.insert(t.0, virada(src, t, tw, th, bpp));
-            }
+        if t.id() != t.0
+            && linhas(t.id()).is_some()
+            && !viradas.contains_key(&t.0)
+            && let Some(src) = set.tiles.get(t.id() as usize)
+        {
+            viradas.insert(t.0, virada(src, t, tw, th, bpp));
         }
     }
     let mut fontes: Vec<(usize, &[u8], u32, u32)> = Vec::with_capacity(g.w as usize);

@@ -81,6 +81,8 @@ mod the_palette_reaches_the_vector_bars;
 mod the_pixel_column_answers_a_real_pointer; // as ferramentas do Pixel na coluna da esquerda (25/10)
 #[cfg(feature = "panel-pixel-export")]
 mod the_pixel_export_answers_a_real_pointer;
+#[cfg(feature = "panel-pixel-tiles")]
+mod the_pixel_tiles_answers_a_real_pointer;
 mod the_properties_fold_into_an_icon_strip_on_small_tablets;
 mod the_tab_and_the_menu_call_a_panel_the_same_thing;
 mod the_tool_bar_never_grows_and_the_rest_is_behind_the_dots;

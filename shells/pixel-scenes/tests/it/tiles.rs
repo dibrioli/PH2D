@@ -298,7 +298,7 @@ fn os_cartoes_escrevem_no_documento() {
     assert_eq!(p.n_tiles(), 3);
     assert_eq!(p.tile_em(0, 1), TileRef::EMPTY, "as células dele esvaziam");
     assert_eq!(p.tile_em(4, 0).id(), 2, "o de cima desce um número");
-    assert_eq!(p.tile_em(4, 0).flip_x(), true, "com os flips");
+    assert!(p.tile_em(4, 0).flip_x(), "com os flips");
     assert!(derived_is_consistent(p.s()));
     assert!(p.app.undo(p.key));
     assert_eq!(p.s(), &antes);

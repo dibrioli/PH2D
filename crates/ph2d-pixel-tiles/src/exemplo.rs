@@ -19,8 +19,8 @@ const CORES: [(usize, usize); 3] = [(10, 11), (6, 3), (0, 22)];
 /// A marca de cada tile: textura na relva, juntas no tijolo, e uma seta para a direita.
 const fn marca(tile: usize, x: u16, y: u16) -> bool {
     match tile {
-        0 => (x * 3 + y * 5) % 7 == 0,
-        1 => y % 8 == 7 || (x + (y / 8) * 8) % 16 == 0,
+        0 => (x * 3 + y * 5).is_multiple_of(7),
+        1 => y % 8 == 7 || (x + (y / 8) * 8).is_multiple_of(16),
         _ => {
             let h = y.abs_diff(8);
             (h == 0 && x > 2 && x < 13) || (x > 7 && x < 13 && h <= 12 - x)

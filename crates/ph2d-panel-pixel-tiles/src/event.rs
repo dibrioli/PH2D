@@ -90,6 +90,11 @@ pub(crate) fn apply_event(
     host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> EventOutcome {
+    // Aqui nada distingue o duplo clique: dois cliques depressa são dois gestos.
+    let ev = match ev {
+        WidgetEvent::DoubleClick(id) => WidgetEvent::Click(id),
+        outro => outro,
+    };
     match ev {
         WidgetEvent::Click(id) if id == ids::TILES_CANCEL => fecha(st, Pedido::Fechou),
         WidgetEvent::Click(id) if id == ids::TILES_OK => {

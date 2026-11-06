@@ -15,13 +15,16 @@ use ph2d_pixel_tiles::{converte, tileset as lei};
 use crate::input::KeyAnswer;
 use crate::{Doc, PixelApp, Tool};
 
+/// As imagens publicadas ao painel, e de que documento e versão são.
+type Publicado = (u32, u64, Arc<Vec<Vec<u8>>>);
+
 #[derive(Default)]
 pub(crate) struct Estado {
     pub(crate) mao: Mao,
     pub(crate) carimbo: Option<(u64, u32, Carimbo)>,
     janela: bool,
     visto: Option<bool>,
-    publicado: Option<(u32, u64, Arc<Vec<Vec<u8>>>)>,
+    publicado: Option<Publicado>,
 }
 
 /// O tileset da camada activa.
@@ -283,8 +286,7 @@ pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
 /// A grelha da camada activa e, em Draw Tiles, a célula sob o cursor.
 pub(crate) fn desenha_grelha(
     app: &PixelApp,
-    key: u32,
-    bits: u64,
+    (key, bits): (u32, u64),
     (w, h): (u32, u32),
     m: ph2d_vector::Affine,
     (linha, minimo): (f64, f64),

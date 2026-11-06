@@ -26,8 +26,8 @@ pub fn stage(
     app.docs.get_mut(&key)?.layer = l;
     let op = exemplo::tiles(&app.docs.get(&key)?.sprite, set)?;
     app.commit(key, op).ok()?;
-    for r in 0..MAPA.len() {
-        for c in 0..MAPA[r].len() {
+    for (r, linha) in MAPA.iter().enumerate() {
+        for c in 0..linha.len() {
             let op = exemplo::celula(&app.docs.get(&key)?.sprite, l, f, (c, r));
             if let Some(op) = op {
                 app.commit(key, op).ok()?;

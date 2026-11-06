@@ -120,3 +120,5 @@ Handoff com o mecanismo, constantes e provas: [HANDOFF_CONTINUACAO_2026-11-06_ti
 - Provas de mutação de `adormecida_tests.rs` e `dentro_do_wet_tests.rs`; suíte completa só na integração.
 
 **Fila depois disto:** itens 0–3 de [PROXIMA_FASE_2026-11-06.md](PROXIMA_FASE_2026-11-06.md). A foto 5 refeita pelo dono ainda não chegou (sem anexo; pasta sem alteração).
+
+**Dono 06/11: a Borracha na tinta morta está APROVADA pela foto** (`material_2026-11-06/foto_borracha_morta.png`). As constantes de `borracha_morta.rs` ficam; os passos 2, 3 e 5 do smoke ainda sem veredito.

@@ -13,3 +13,5 @@ Dabber + trocar de modo mata a tinta e a Relief Eraser vira corte seco. Decisõe
 
 Onda 2 pronta (dentro do Wet, Borracha na morta, compressão zstd): [handoff](../docs/Painter/handoffs/HANDOFF_CONTINUACAO_2026-11-06_tinta_viva_onda2.md); aguarda o veredito do dono.
 Lição: `bytes_retidos` conta 0 com o motor no worker (`EngineSlot::Away`): mede-se depois de o trazer (577 MB eram 5 GB).
+
+**Dono 06/11: a Borracha na tinta morta está APROVADA pela foto** (`material_2026-11-06/foto_borracha_morta.png`). As constantes de `borracha_morta.rs` ficam; os passos 2, 3 e 5 do smoke ainda sem veredito.

@@ -79,3 +79,5 @@ fmt · clippy das 2 crates limpo · por nome, verdes: `dentro_do_wet` (10) · `a
 4. **Item 6:** preço da compressão com carga baixa, 4K com várias camadas, redo.
 5. **Provas de mutação** de `adormecida_tests.rs` e `dentro_do_wet_tests.rs`, e fecho.
 6. Depois: [PROXIMA_FASE_2026-11-06.md](../PROXIMA_FASE_2026-11-06.md), itens 0–3.
+
+**Dono 06/11: a Borracha na tinta morta está APROVADA pela foto** (`material_2026-11-06/foto_borracha_morta.png`). As constantes de `borracha_morta.rs` ficam; os passos 2, 3 e 5 do smoke ainda sem veredito.

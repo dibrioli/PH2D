@@ -148,10 +148,11 @@ pub fn advance_frames_marked(
         && dt_ticks > 0
         && animator.elapsed_ticks == 0
         && animator.repeat_count == 0;
-    if comeca && let Some((celula, passo)) = entry_cell(animator, tag, list, cells) {
-        if celula == *frame {
-            grita(passo);
-        }
+    if comeca
+        && let Some((celula, passo)) = entry_cell(animator, tag, list, cells)
+        && celula == *frame
+    {
+        grita(passo);
     }
     advance_frames_visiting(
         animator, tag, list, frame, step, cells, dt_ticks, &mut grita,

@@ -193,4 +193,19 @@ fn a_painted_image_is_an_image() {
         crate::component_attach::kind_of(sim.world(), e),
         ph2d_component_desc::ObjectKind::Image
     );
+    // A linha da Hierarquia, antes e depois de gravar o documento: o ícone da tela, sempre (dono 06/11).
+    use ph2d_editor_core::hier_types::ObjectType;
+    let registry = crate::component_registry_for_tests::registo();
+    let linha = crate::row_components::RowComponents::of(sim.world(), &registry);
+    assert_eq!(
+        linha.object_type(sim.world(), e.to_bits()),
+        ObjectType::Image
+    );
+    sim.world_mut()
+        .entity_mut(e)
+        .remove::<ph2d_ecs::PaintedDoc>();
+    assert_eq!(
+        linha.object_type(sim.world(), e.to_bits()),
+        ObjectType::Image
+    );
 }

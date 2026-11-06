@@ -21,7 +21,6 @@ todos; depois o `ObjectKind`; num vazio, o 1.º componente definidor.
 | Image | `Sprite` | `sprite` | `obj-image` | `0.740 0.140 245` | `0.422 0.107 245` |
 | Vector | `VecPathRef` | `vector` | `obj-vector` | `0.720 0.162 295` | `0.406 0.186 295` |
 | Flip | `FlipObjectRef` | `flip` | `obj-flip` | `0.680 0.190 25` | `0.375 0.154 25` |
-| Painted | `PaintedDoc` **ou** documento do Painter | `painter` | `obj-painted` | `0.800 0.136 350` | `0.468 0.156 350` |
 | Skeleton | `Skeleton` | `bone` | `obj-skeleton` | `0.900 0.050 80` | `0.455 0.050 80` |
 | Motion | `MotionGenerator` | `motion-nodes` | `obj-motion` | `0.780 0.130 185` | `0.452 0.079 185` |
 | Pixel Sprite | `PixelSprite` | `pixel-sprite` ★ | `obj-pixel-sprite` | `0.700 0.120 215` | `0.391 0.070 215` |
@@ -45,10 +44,7 @@ Leis:
   do tipo (identidade); escondido, `text-disabled`. Gate `o_icone_do_objecto_pinta_a_cor_do_tipo`.
 - **Componente com arte não muda o tipo**: um Sprite com corpo é Image (o corpo é o ícone de
   componente à direita). Body/Collider/Camera… só num vazio.
-- **Painted antes de gravar**: o `PaintedDoc` só nasce no save (`carimba_e_colhe`, sobre
-  `document_entities()`); o Painter declara Painted para essa MESMA lista por
-  `ModeFamily::object_types` → o ícone não muda ao gravar nem ao sair do Paint. Gate
-  `an_image_with_a_painter_document_is_painted_in_and_out_of_paint`.
+- **A imagem pintada é Image** (dono 06/11, revoga o tipo Painted): dois objectos, Image e Pixel Sprite; o ícone do Painter é da ferramenta. Gate `a_imagem_pintada_e_uma_imagem_e_o_pixel_sprite_e_outro`.
 - De passagem: um vazio com `ScrollFactor` (família Camera no catálogo) lia-se como câmera; agora só o
   `GameCamera` faz câmera.
 

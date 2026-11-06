@@ -90,9 +90,6 @@ pub trait ModeFamily {
     /// ⭐ **O CONTEÚDO dos objectos desta família** — as sub-linhas da Hierarquia (doc 01 §4.3). A
     /// família escreve em `out` por `Entity::to_bits`; nenhuma lista na shell.
     fn content(&mut self, _tools: &mut ToolRegistry, _out: &mut crate::hier_rows::ContentMap) {}
-    /// ⭐ **O TIPO que só esta família sabe** (F42) — o ícone e a cor da linha quando o marcador do
-    /// mundo ainda não o diz (o Painter: a imagem com documento é Painted antes de gravar).
-    fn object_types(&mut self, _tools: &mut ToolRegistry, _out: &mut crate::hier_types::TypeMap) {}
     /// Põe a peça `key` do conteúdo de `entity` em mãos — chamada com `mode` já aberto sobre ela.
     /// `false` = a peça já não existe.
     fn open_content(
@@ -418,13 +415,10 @@ pub fn drive(
     }
     // 4b. O conteúdo que cada família declara, para a Hierarquia.
     let mut content = crate::hier_rows::ContentMap::new();
-    let mut types = crate::hier_types::TypeMap::new();
     for f in families.iter_mut() {
         f.content(tools, &mut content);
-        f.object_types(tools, &mut types);
     }
     hero.gizmo.content = content;
-    hero.gizmo.types = types;
     // 4c. Em Object, o objecto activo mudou ou um modo acabou: o Inspector é o painel dele.
     let now_entity = hero.gizmo.mode.published_entity();
     if current.is_none() && now_entity.is_some() && (was_mode.is_some() || now_entity != was_entity)

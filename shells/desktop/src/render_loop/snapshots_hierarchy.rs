@@ -81,12 +81,8 @@ pub(super) fn publish_hierarchy(
                 entry.components = icons.of_entity(sim.world(), bits);
                 entry.has = icons.set_of(sim.world(), bits);
                 entry.content = hero.gizmo.content_of(bits).to_vec();
-                // O ícone do TIPO (F42): um glifo e uma cor por tipo; a cor sai do glifo. O que
-                // uma família declarou (o documento do Painter) vale antes do mundo.
-                let tipo = hero.gizmo.type_of(bits);
-                entry.icon = tipo
-                    .unwrap_or_else(|| icons.object_type(sim.world(), bits))
-                    .icon();
+                // O ícone do TIPO (F42): um glifo e uma cor por tipo; a cor sai do glifo.
+                entry.icon = icons.object_type(sim.world(), bits).icon();
                 ph2d_panel_timeline::hier::declare_in_row(timeline, bits, entry);
             }
         }

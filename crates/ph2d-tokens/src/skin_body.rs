@@ -193,7 +193,6 @@ impl ColorToken {
             | T::ObjImage
             | T::ObjVector
             | T::ObjFlip
-            | T::ObjPainted
             | T::ObjSkeleton
             | T::ObjMotion
             | T::ObjPixelSprite

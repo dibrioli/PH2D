@@ -168,9 +168,6 @@ pub struct GizmoStateGroup {
     /// ⭐ O CONTEÚDO que as famílias de modo declararam neste quadro (`mode_drive::drive`) — o que
     /// a Hierarquia desdobra sob cada objecto ([`crate::hier_rows`]).
     pub content: crate::hier_rows::ContentMap,
-    /// ⭐ O TIPO que as famílias de modo declararam neste quadro (F42) — o que só elas sabem (a
-    /// imagem com documento do Painter é Painted antes de gravar).
-    pub types: crate::hier_types::TypeMap,
     /// M14.7 B: per-frame projection input for the gizmo painter.
     /// Host computes from `selection_bbox_world(present, selection)`
     /// plus current camera/window and pushes here just before
@@ -293,12 +290,6 @@ impl GizmoStateGroup {
     #[must_use]
     pub fn content_of(&self, entity: u64) -> &[crate::hier_rows::ContentGroup] {
         self.content.get(&entity).map_or(&[], Vec::as_slice)
-    }
-
-    /// O tipo que uma família declarou para `entity` (`None` = o mundo responde sozinho).
-    #[must_use]
-    pub fn type_of(&self, entity: u64) -> Option<crate::hier_types::ObjectType> {
-        self.types.get(&entity).copied()
     }
 
     /// Iterates every selected sprite — primary first, then extras

@@ -99,10 +99,21 @@ fn o_tipo_vem_do_marcador() {
         ObjectType::of(ObjectKind::PixelSprite, com(&[])),
         ObjectType::PixelSprite
     );
-    // Cada tipo de ObjectKind tem o seu ObjectType, e só o vazio é Empty.
+    // Só o vazio é Empty.
     for k in ObjectKind::ALL {
         let t = ObjectType::of(k, com(&[]));
         assert_eq!(t == ObjectType::Empty, k == ObjectKind::Empty, "{k:?}");
         assert!(t.marker().is_none(), "{k:?}");
     }
+}
+
+/// ⭐ Dono 06/11: dois objectos de pintura, dois ícones. A imagem pintada é a imagem, com o ícone da tela; o do
+/// Painter é da ferramenta, nunca de um objecto. *Mutação: `ObjectKind::Painted` ler-se como outro tipo ⇒ RED.*
+#[test]
+fn a_imagem_pintada_e_uma_imagem_e_o_pixel_sprite_e_outro() {
+    let nada = |_: &'static str| false;
+    assert_eq!(ObjectType::of(ObjectKind::Painted, nada), ObjectType::Image);
+    assert_eq!(ObjectType::Image.icon(), IconId::Sprite);
+    assert_eq!(ObjectType::PixelSprite.icon(), IconId::PixelSprite);
+    assert_eq!(ObjectType::of_icon(IconId::Painter), None);
 }

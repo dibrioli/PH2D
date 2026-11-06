@@ -302,8 +302,6 @@ color_tokens! {
     ObjVector => "obj-vector",
     /// `obj-flip` — objecto Flip.
     ObjFlip => "obj-flip",
-    /// `obj-painted` — documento do Painter.
-    ObjPainted => "obj-painted",
     /// `obj-skeleton` — esqueleto.
     ObjSkeleton => "obj-skeleton",
     /// `obj-motion` — gerador do Motion Nodes.

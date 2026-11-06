@@ -10,7 +10,6 @@
 
 use ph2d_component_desc::ObjectKind;
 use ph2d_editor_core::hier_rows::{ContentGroup, ContentMap};
-use ph2d_editor_core::hier_types::{ObjectType, TypeMap};
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::object_mode::ObjectMode;
 use ph2d_editor_core::screens::hero::HeroScreen;
@@ -50,15 +49,6 @@ impl ModeFamily for Family {
                     opens: ph2d_editor_core::hier_rows::ContentOpens::Mode(ObjectMode::Draw),
                     items,
                 });
-            }
-        }
-    }
-    /// ⭐ Cada imagem de que o Painter tem documento é Painted (F42) — a mesma lista que o save
-    /// carimba com o `PaintedDoc`, então o ícone não muda ao gravar nem ao sair do Paint.
-    fn object_types(&mut self, tools: &mut ToolRegistry, out: &mut TypeMap) {
-        if let Some(painter) = painter(tools) {
-            for bits in painter.document_entities() {
-                out.insert(bits, ObjectType::Painted);
             }
         }
     }

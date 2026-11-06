@@ -2,26 +2,20 @@
 //! *«cada tipo de objeto na hierarchy tenha um ícone único, bem representativo de sua classe e com
 //! cores diferentes dos outros tipos»*).
 //!
-//! O tipo deriva-se por PRESENÇA de um marcador, como o [`ObjectKind`]: os oito dele, mais os que um
-//! COMPONENTE define (o jogador, e num vazio a câmera, a lâmpada, a macro…). A precedência é a ordem
+//! O tipo deriva-se por PRESENÇA de um marcador, como o [`ObjectKind`]: os dele, mais os que um
+//! COMPONENTE define (o jogador, e num vazio a câmera, a lâmpada, a macro…). A imagem pintada é uma
+//! imagem: pintar é a ferramenta dela, não outro tipo (dono 06/11). A precedência é a ordem
 //! de [`ObjectType::ALL`]. ⚠️ O ícone é exclusivo de cada tipo, e é isso que deixa o pintor da linha
 //! achar a cor pelo ícone ([`ObjectType::of_icon`]) sem um campo a mais em cada linha.
 //!
 //! Plano e paleta medida: `docs/UI_New_and_Simple/F42_icone_e_cor_por_tipo.md`.
-
-use std::collections::BTreeMap;
 
 use ph2d_component_desc::ObjectKind;
 use ph2d_tokens::ColorToken;
 
 use crate::icons::IconId;
 
-/// O tipo que uma família de modo declara por `Entity::to_bits` ([`ObjectType`] que só ela sabe:
-/// o [`ObjectKind::Painted`] vem do `PaintedDoc`, que só o save carimba em cada imagem de que o
-/// Painter tem documento — sem a declaração dele o ícone mudaria ao gravar).
-pub type TypeMap = BTreeMap<u64, ObjectType>;
-
-/// **Que tipo de objecto a linha mostra.** Os oito primeiros são os do [`ObjectKind`]; o
+/// **Que tipo de objecto a linha mostra.** Os sete primeiros são os do [`ObjectKind`]; o
 /// [`ObjectType::Player`] ganha a qualquer um; os restantes só valem num vazio.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ObjectType {
@@ -29,7 +23,6 @@ pub enum ObjectType {
     Image,
     Vector,
     Flip,
-    Painted,
     Skeleton,
     Motion,
     PixelSprite,
@@ -47,12 +40,11 @@ pub enum ObjectType {
 
 impl ObjectType {
     /// Todos, na ordem de PRECEDÊNCIA entre os definidos por componente.
-    pub const ALL: [Self; 18] = [
+    pub const ALL: [Self; 17] = [
         Self::Empty,
         Self::Image,
         Self::Vector,
         Self::Flip,
-        Self::Painted,
         Self::Skeleton,
         Self::Motion,
         Self::PixelSprite,
@@ -76,7 +68,6 @@ impl ObjectType {
             Self::Image => IconId::Sprite,
             Self::Vector => IconId::Vector,
             Self::Flip => IconId::Flip,
-            Self::Painted => IconId::Painter,
             Self::Skeleton => IconId::Bone,
             Self::Motion => IconId::MotionNodes,
             Self::PixelSprite => IconId::PixelSprite,
@@ -101,7 +92,6 @@ impl ObjectType {
             Self::Image => ColorToken::ObjImage,
             Self::Vector => ColorToken::ObjVector,
             Self::Flip => ColorToken::ObjFlip,
-            Self::Painted => ColorToken::ObjPainted,
             Self::Skeleton => ColorToken::ObjSkeleton,
             Self::Motion => ColorToken::ObjMotion,
             Self::PixelSprite => ColorToken::ObjPixelSprite,
@@ -136,7 +126,6 @@ impl ObjectType {
             | Self::Image
             | Self::Vector
             | Self::Flip
-            | Self::Painted
             | Self::Skeleton
             | Self::Motion
             | Self::PixelSprite => None,
@@ -155,7 +144,7 @@ impl ObjectType {
             ObjectKind::Image => Self::Image,
             ObjectKind::Vector => Self::Vector,
             ObjectKind::Flip => Self::Flip,
-            ObjectKind::Painted => Self::Painted,
+            ObjectKind::Painted => Self::Image,
             ObjectKind::Skeleton => Self::Skeleton,
             ObjectKind::Motion => Self::Motion,
             ObjectKind::PixelSprite => Self::PixelSprite,

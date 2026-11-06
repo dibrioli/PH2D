@@ -30,6 +30,42 @@ pub(super) fn paint_card(
     )
 }
 
+/// O que sobra à direita do título do cartão em curso: o corpo pode pôr ali um resumo.
+#[derive(Copy, Clone)]
+struct TituloLivre {
+    x0: f32,
+    x1: f32,
+    y: f32,
+}
+
+thread_local! {
+    static TITULO_LIVRE: std::cell::Cell<Option<TituloLivre>> = const { std::cell::Cell::new(None) };
+}
+
+impl CardCtx<'_> {
+    /// O corpo põe `texto` na linha do título, encostado à direita como o resumo do cartão dobrado,
+    /// inteiro ou nada. Devolve o rect, ou `None` se não coube.
+    pub fn resumo_no_titulo(&mut self, texto: &str) -> Option<Rect> {
+        let t = TITULO_LIVRE.with(std::cell::Cell::get)?;
+        let sw = self.text_system.prefix_width(texto, m::LABEL_PX).ceil();
+        let x = t.x1 - sw;
+        if x < t.x0 {
+            return None;
+        }
+        crate::paint::paint_text(
+            self.text_system,
+            self.scene,
+            texto,
+            x,
+            t.y,
+            m::LABEL_PX,
+            sw,
+            self.ink.color(ColorToken::Text3),
+        );
+        Some(Rect::new(x, t.y, sw, m::LABEL_PX))
+    }
+}
+
 /// [`paint_card`] com o [`Extra`] do solto.
 #[allow(clippy::too_many_arguments)]
 pub(super) fn paint_card_with(
@@ -196,6 +232,16 @@ pub(super) fn paint_card_with(
             ink.color(ColorToken::Text3),
         );
     }
+    TITULO_LIVRE.with(|t| {
+        let ocupado =
+            crate::text_elide::title_elided_width(text_system, card.title, m::CARD_TITLE_PX)
+                .min(titulo_w);
+        t.set((!sem_titulo).then_some(TituloLivre {
+            x0: tx + ocupado + m::FIELD_GAP,
+            x1: tx + titulo_w - m::FIELD_GAP,
+            y: hy + crate::paint::folga_do_texto(m::CARD_HEAD_H, m::LABEL_PX),
+        }));
+    });
     let mut fundo = if sem_titulo { hy } else { hy + m::CARD_HEAD_H };
 
     // ── O corpo (os campos e as notas, D6) ──

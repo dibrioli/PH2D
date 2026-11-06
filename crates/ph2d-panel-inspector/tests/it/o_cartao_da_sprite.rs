@@ -18,8 +18,8 @@ use ph2d_host::{PointerButton, PointerEvent, PointerKind};
 use ph2d_panel_inspector::ids::*;
 use ph2d_panel_inspector::slot_image::{self, Recibo, SpriteFacts};
 use ph2d_panel_inspector::{
-    CARD_ORDERING, InspectorPanel, InspectorState, set_cards_on, set_current_inspector_ordering,
-    set_current_inspector_sprite, set_current_inspector_transform,
+    CARD_ORDERING, CabecaPintada, InspectorPanel, InspectorState, cabeca_pintada, set_cards_on,
+    set_current_inspector_ordering, set_current_inspector_sprite, set_current_inspector_transform,
 };
 use ph2d_ui_testkit::MockPanelHost;
 
@@ -363,68 +363,116 @@ fn pinta_a_largura(
     r
 }
 
-/// O painel a `largura`: os dois botões, a miniatura, e o degrau que cada botão pintou.
-fn a_largura(largura: f32) -> (Rect, Rect, Rect, Vec<(NodeId, bool)>) {
+/// O painel a `largura`: os dois botões, a miniatura e o que a moldura pintou.
+fn a_largura(largura: f32) -> (Rect, Rect, Rect, CabecaPintada) {
     let (mut host, mut st) = cena(factos());
     let r = pinta_a_largura(&mut host, &mut st, largura);
     (
         rect_de(&r, INSP_IMAGE_EDIT_PIXEL),
         rect_de(&r, INSP_IMAGE_EDIT_PAINTER),
         rect_de(&r, INSP_RENDER_TEXTURE_SLOT),
-        ph2d_editor_core::panel::cards::verbos::degraus_pintados(),
+        cabeca_pintada().expect("a moldura pintou"),
     )
 }
 
 /// Os dois lados do degrau.
 const FOLGA: f32 = 1.0;
 
-/// O limite do degrau, em px de painel, medido: a menor largura em que os nomes aparecem.
+fn lado_a_lado(largura: f32) -> bool {
+    let (a, b, _, _) = a_largura(largura);
+    a.y == b.y
+}
+
+/// O limite do degrau, em px de painel, medido: a menor largura com os botões lado a lado.
 fn limite_do_degrau() -> f32 {
     (200..=400)
         .map(|w| w as f32)
-        .find(|w| a_largura(*w).3.iter().all(|(_, nome)| *nome))
+        .find(|w| lado_a_lado(*w))
         .expect("o degrau largo existe")
 }
 
-/// ⭐ Dono 05/11: sempre lado a lado, da mesma largura, sem sobrepor, na mesma linha; a miniatura é quadrada e maior.
-/// *Mutações: um botão só trocar de degrau · o degrau ao contrário · `w` só do primeiro.*
+fn dentro(q: Rect, m: Rect) -> bool {
+    q.x >= m.x && q.y >= m.y && q.x + q.w <= m.x + m.w + 0.01 && q.y + q.h <= m.y + m.h + 0.01
+}
+
+/// ⭐ Dono 05/11: largo = nome, tamanho e os dois botões lado a lado; estreito = o tamanho sobe ao título, os
+/// botões empilham-se na largura da coluna, tudo dentro da moldura, sem sobrepor.
+/// *Mutações: o degrau ao contrário · a pilha com a largura de meia coluna · o nome sem subir · o tamanho na moldura.*
 #[test]
-fn os_botoes_ficam_lado_a_lado_e_trocam_juntos_dos_dois_lados_do_degrau() {
+fn os_dois_lados_do_degrau_arrumam_o_tamanho_e_os_botoes() {
     let limite = limite_do_degrau();
     eprintln!("o degrau largo começa em {limite} px de painel");
-    for (largura, nomes) in [
+    for (largura, largo) in [
         (300.0, true),
         (limite + FOLGA, true),
-        (270.0, false),
+        (limite, true),
         (limite - FOLGA, false),
         (ph2d_tokens::chrome::PANEL_MIN_W_PX, false),
     ] {
-        let (a, b, foto, degraus) = a_largura(largura);
-        assert_eq!(
-            degraus,
-            [
-                (INSP_IMAGE_EDIT_PIXEL, nomes),
-                (INSP_IMAGE_EDIT_PAINTER, nomes)
-            ],
-            "a {largura}"
-        );
-        assert_eq!(a.y, b.y, "a {largura}: na mesma linha");
-        assert_eq!(a.h, b.h, "a {largura}");
-        assert!((a.w - b.w).abs() < 0.01, "a {largura}: {a:?} {b:?}");
-        assert!(a.x + a.w <= b.x, "a {largura}: sobrepostos {a:?} {b:?}");
+        let (a, b, foto, p) = a_largura(largura);
+        let m = p.moldura;
+        for q in [a, b, foto] {
+            assert!(dentro(q, m), "a {largura}: {q:?} fora de {m:?}");
+        }
+        assert_eq!(a.y == b.y, largo, "a {largura}: {a:?} {b:?}");
+        assert!((foto.w - foto.h).abs() < 0.01, "a {largura}: {foto:?}");
         assert!(foto.x + foto.w < a.x, "a {largura}: {foto:?} {a:?}");
-        assert!(
-            (foto.w - foto.h).abs() < 0.01,
-            "a {largura}: não é quadrada: {foto:?}"
-        );
-        assert!(foto.h > a.h, "a {largura}: {foto:?} × {a:?}");
-        assert!(b.x + b.w <= 1600.0, "a {largura}: {b:?} sai da janela");
+        assert!(a.y >= p.nome.y + p.nome.h, "a {largura}: nome sob o botão");
         assert!(foto.x > 1600.0 - largura, "a {largura}: {foto:?} fora");
+        if largo {
+            assert!((a.w - b.w).abs() < 0.01, "a {largura}: {a:?} {b:?}");
+            assert!(a.x + a.w <= b.x, "a {largura}: sobrepostos {a:?} {b:?}");
+            let t = p.tamanho.expect("o tamanho na moldura");
+            assert!(p.tamanho_no_titulo.is_none(), "a {largura}");
+            assert!(dentro(t, m), "a {largura}: {t:?}");
+            assert!(t.y + t.h <= a.y, "a {largura}: tamanho sob o botão");
+        } else {
+            assert_eq!((a.x, a.w), (b.x, b.w), "a {largura}: a mesma coluna");
+            assert!(
+                a.w >= p.nome.w - 0.01,
+                "a {largura}: na largura da coluna {a:?} {:?}",
+                p.nome
+            );
+            assert!(a.y + a.h <= b.y, "a {largura}: sobrepostos {a:?} {b:?}");
+            assert!(
+                p.tamanho.is_none(),
+                "a {largura}: o tamanho ficou na moldura"
+            );
+            let t = p.tamanho_no_titulo.expect("o tamanho no título, inteiro");
+            assert!(
+                t.y + t.h <= m.y,
+                "a {largura}: {t:?} não está acima de {m:?}"
+            );
+            assert!(t.x + t.w <= m.x + m.w, "a {largura}: {t:?} sai da moldura");
+        }
     }
     assert!(
         limite > 270.0 && limite <= 300.0,
-        "o painel de fábrica mostra os nomes; medido 286: {limite}"
+        "o painel de fábrica fica no largo: {limite}"
     );
+}
+
+/// O tamanho comprido do Repeated (`1024 × 1024 px (…)`) sobe inteiro onde cabe; onde nem o título o leva, sobe sem
+/// os parênteses, que os campos Width/Height já mostram. Nunca cortado.
+/// *Mutação: sem o recurso à linha curta ⇒ a 220 o tamanho some.*
+#[test]
+fn o_tamanho_comprido_do_repeated_sobe_inteiro_ou_sem_os_parenteses() {
+    let medida = |largura: f32| {
+        let (mut host, mut st) = cena(factos());
+        set_current_inspector_sprite(Some(InspectorSpriteInfo {
+            image_use: ph2d_editor_core::InspectorImageUse::Repeated,
+            draw: ph2d_editor_core::InspectorDraw::Tiled { copies: [3.0, 1.0] },
+            source_pixels: Some((1024, 1024)),
+            ..sprite()
+        }));
+        let _ = pinta_a_largura(&mut host, &mut st, largura);
+        cabeca_pintada()
+            .and_then(|p| p.tamanho_no_titulo)
+            .expect("o tamanho subiu ao título")
+    };
+    let curta = medida(ph2d_tokens::chrome::PANEL_MIN_W_PX);
+    let inteira = medida(260.0);
+    assert!(inteira.w > curta.w, "{inteira:?} × {curta:?}");
 }
 
 /// ⭐ A moldura não muda de altura com o degrau: o controlo abaixo dela fica no mesmo sítio.
@@ -432,38 +480,45 @@ fn os_botoes_ficam_lado_a_lado_e_trocam_juntos_dos_dois_lados_do_degrau() {
 #[test]
 fn a_moldura_tem_a_mesma_altura_nos_dois_degraus_e_os_dois_clicam() {
     let limite = limite_do_degrau();
-    // Do centro da miniatura ao fundo dos botões: é metade da altura da moldura, menos a margem.
-    let meia_moldura = |w: f32| {
-        let (a, _, foto, _) = a_largura(w);
-        a.y + a.h - (foto.y + foto.h * 0.5)
-    };
-    let d = meia_moldura(limite + FOLGA) - meia_moldura(limite - FOLGA);
+    let altura = |w: f32| a_largura(w).3.moldura.h;
+    let d = altura(limite) - altura(limite - FOLGA);
     assert!(d.abs() < 0.01, "a moldura mudou com o degrau: {d}");
-    // No degrau de ícones os dois continuam a pedir a ação deles.
-    let (mut host, mut st) = cena(factos());
-    let r = pinta_a_largura(&mut host, &mut st, limite - FOLGA);
-    for (id, pedido) in [
-        (INSP_IMAGE_EDIT_PIXEL, ImageUseEdit::EditInPixel),
-        (INSP_IMAGE_EDIT_PAINTER, ImageUseEdit::EditInPainter),
-    ] {
-        let q = rect_de(&r, id);
-        let _ = host.drained_actions();
-        let mut eventos = Vec::new();
-        for kind in [PointerKind::Move, PointerKind::Down, PointerKind::Up] {
-            eventos.extend(host.dispatch_pointer_event(PointerEvent {
-                x: q.x + q.w * 0.5,
-                y: q.y + q.h * 0.5,
-                pressure: 1.0,
-                kind,
-                source: ph2d_host::PointerSource::Mouse,
-                button: PointerButton::Primary,
-                timestamp_ns: 0,
-            }));
+    for largura in [limite, limite - FOLGA] {
+        let (mut host, mut st) = cena(factos());
+        let r = pinta_a_largura(&mut host, &mut st, largura);
+        for (id, pedido, draw) in [
+            (INSP_IMAGE_EDIT_PIXEL, ImageUseEdit::EditInPixel, false),
+            (INSP_IMAGE_EDIT_PAINTER, ImageUseEdit::EditInPainter, true),
+        ] {
+            let q = rect_de(&r, id);
+            let _ = host.drained_actions();
+            let mut eventos = Vec::new();
+            for kind in [PointerKind::Move, PointerKind::Down, PointerKind::Up] {
+                eventos.extend(host.dispatch_pointer_event(PointerEvent {
+                    x: q.x + q.w * 0.5,
+                    y: q.y + q.h * 0.5,
+                    pressure: 1.0,
+                    kind,
+                    source: ph2d_host::PointerSource::Mouse,
+                    button: PointerButton::Primary,
+                    timestamp_ns: 0,
+                }));
+            }
+            for ev in eventos {
+                let _ = host.apply_panel_event::<InspectorPanel>(&mut st, ev);
+            }
+            let a = host.drained_actions();
+            assert_eq!(edicoes(&a), [pedido], "a {largura}");
+            let entrou = a.iter().any(|x| {
+                matches!(
+                    x,
+                    EditorAction::ObjectMode(ph2d_editor_core::object_mode::ModeRequest::Enter(
+                        ph2d_editor_core::object_mode::ObjectMode::Draw
+                    ))
+                )
+            });
+            assert_eq!(entrou, draw, "a {largura}");
         }
-        for ev in eventos {
-            let _ = host.apply_panel_event::<InspectorPanel>(&mut st, ev);
-        }
-        assert_eq!(edicoes(&host.drained_actions()), [pedido]);
     }
 }
 

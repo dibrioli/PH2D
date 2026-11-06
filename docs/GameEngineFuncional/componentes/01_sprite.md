@@ -41,7 +41,7 @@ GameMaker e Unreal: pivô de 9 pontos. GDevelop, Construct e GameMaker: editar a
 11. O Transform dobrado da imagem tem alfinete, como todo Transform solto.
 12. Flip e Pivot têm bolinha de chave. O Flip grava os dois eixos; a chave do Pivot grava também a posição, ou tocar a animação moveria o desenho.
 
-Miniatura quadrada de 72 px com recorte pelo raio, moldura de altura fixa; os botões ficam sempre lado a lado: `[enviar] Pixel` · `[enviar] Painter` de 294 px de painel para cima (medido com o motivo no teste `os_botoes_ficam_lado_a_lado_e_trocam_juntos_dos_dois_lados_do_degrau`), e abaixo disso os dois em ícones. Nada é cortado.
+Miniatura quadrada de 72 px com recorte pelo raio, moldura de altura fixa, botões sempre `[enviar] Pixel` · `[enviar] Painter` (dois ícones: recusado pelo dono em 05/11): lado a lado com o tamanho na moldura de 294 px de painel para cima (medido no teste `os_dois_lados_do_degrau_arrumam_o_tamanho_e_os_botoes`); abaixo, o tamanho sobe ao título «Image» (o `1024 × 1024 px (300 × 50)` do Repeated só inteiro de ~250 px para cima; abaixo, sem os parênteses) e os botões empilham-se. Nada é cortado.
 
 ## O desenho aprovado
 

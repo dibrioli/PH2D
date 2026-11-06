@@ -31,6 +31,7 @@ const TAMANHO_PX: f32 = TypeToken::Sm.px();
 
 thread_local! {
     static TROCA_PINTADA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    static CABECA_PINTADA: std::cell::Cell<Option<CabecaPintada>> = const { std::cell::Cell::new(None) };
     static IMAGENS_PINTADAS: std::cell::RefCell<Vec<(u64, String)>> =
         const { std::cell::RefCell::new(Vec::new()) };
 }
@@ -40,6 +41,26 @@ thread_local! {
 #[must_use]
 pub fn imagens_pintadas() -> Vec<(u64, String)> {
     IMAGENS_PINTADAS.with(std::cell::RefCell::take)
+}
+
+/// O que a última moldura pintou. Para o teste dos degraus.
+#[doc(hidden)]
+#[derive(Copy, Clone, Debug)]
+pub struct CabecaPintada {
+    pub moldura: Rect,
+    /// A faixa do nome.
+    pub nome: Rect,
+    /// A linha do tamanho dentro da moldura (degrau largo).
+    pub tamanho: Option<Rect>,
+    /// A linha do tamanho no título do cartão (degrau estreito).
+    pub tamanho_no_titulo: Option<Rect>,
+}
+
+/// A última [`CabecaPintada`].
+#[doc(hidden)]
+#[must_use]
+pub fn cabeca_pintada() -> Option<CabecaPintada> {
+    CABECA_PINTADA.with(std::cell::Cell::get)
 }
 
 /// O ícone de troca pintou no último quadro? Para o teste do hover.
@@ -62,10 +83,14 @@ fn linha_do_tamanho(info: &InspectorSpriteInfo) -> Option<String> {
             ],
         ));
     }
-    Some(tr_with(
+    Some(tamanho_em_px((pw, ph)))
+}
+
+fn tamanho_em_px((pw, ph): (u32, u32)) -> String {
+    tr_with(
         "panel.inspector.render_source.size_px",
         &[("pw", &pw), ("ph", &ph)],
-    ))
+    )
 }
 
 fn nome_da_imagem(img: Option<&SlotImage>) -> String {
@@ -81,7 +106,10 @@ fn nome_da_imagem(img: Option<&SlotImage>) -> String {
     )
 }
 
-/// A superfície da miniatura: a altura é sempre a mesma, seja qual for o degrau dos botões. Devolve o fundo.
+/// A superfície da miniatura: a altura é sempre a mesma, seja qual for o degrau. Devolve o fundo.
+///
+/// Degrau largo (o tamanho e os dois botões inteiros, lado a lado, cabem ao lado da miniatura): nome, tamanho e
+/// botões. Degrau estreito: o tamanho sobe para o título do cartão e os botões empilham-se na coluna.
 pub(crate) fn cabeca(c: &mut CardCtx<'_>, y: f32, info: &InspectorSpriteInfo) -> f32 {
     let theme = c.ink.theme;
     let (x0, w0) = (c.x, c.w);
@@ -96,30 +124,51 @@ pub(crate) fn cabeca(c: &mut CardCtx<'_>, y: f32, info: &InspectorSpriteInfo) ->
             v.push((info.entity_bits, nome.clone()));
         }
     });
+    let verbos = [
+        Verbo {
+            id: ids::INSP_IMAGE_EDIT_PIXEL,
+            seta: IconId::Export,
+            nome: tr("card.insp.verb_pixel"),
+        },
+        Verbo {
+            id: ids::INSP_IMAGE_EDIT_PAINTER,
+            seta: IconId::Export,
+            nome: tr("card.insp.verb_painter"),
+        },
+    ];
     // A linha do tamanho mostra-se inteira: a miniatura cede o que ela pede, quadrada e até ao mínimo.
     let pede_tamanho = tamanho
         .as_deref()
         .map_or(0.0, |t| c.text_system.prefix_width(t, TAMANHO_PX).ceil());
     let util = w0 - pad * 2.0;
-    let lado = (util - gap - pede_tamanho).clamp(VERBO_H * LADOS_MINIMOS, VERBO_H * LADOS);
+    let lado_largo = (util - gap - pede_tamanho).clamp(VERBO_H * LADOS_MINIMOS, VERBO_H * LADOS);
+    let tw_largo = (util - lado_largo - gap).max(0.0);
+    let largo = pede_tamanho <= tw_largo && c.verbos_cabem_lado_a_lado(&verbos, tw_largo);
+    // Na pilha é a coluna dos botões que pede: a miniatura cede até ao mínimo, nunca os botões.
+    let pede_coluna = verbos
+        .iter()
+        .map(|v| c.verbo_pede(v))
+        .fold(0.0_f32, f32::max);
+    let lado = if largo {
+        lado_largo
+    } else {
+        (util - gap - pede_coluna).clamp(VERBO_H * LADOS_MINIMOS, VERBO_H * LADOS)
+    };
     let alto = VERBO_H * LADOS;
     let tx = x0 + pad + lado + gap;
     let tw = (util - lado - gap).max(0.0);
     let fundo = y + pad * 2.0 + alto;
     // Um degrau abaixo do cartão, e os botões um degrau acima dela (a referência do dono).
     let superficie = c.ink.color(ColorToken::CardField);
-    fill_rounded_rect(
-        c.scene,
-        Rect::new(x0, y, w0, fundo - y),
-        Radius::Sm.px(),
-        superficie,
-    );
+    let moldura = Rect::new(x0, y, w0, fundo - y);
+    fill_rounded_rect(c.scene, moldura, Radius::Sm.px(), superficie);
     let topo = y + pad;
     let foto = Rect::new(x0 + pad, topo + (alto - lado) * 0.5, lado, lado);
     miniatura(c, foto, img.as_ref());
     c.hit_index.register(ids::INSP_RENDER_TEXTURE_SLOT, foto);
     troca_em_hover(c, foto);
-    let nome_y = topo + pad;
+    // Na pilha os botões tomam o fundo da moldura e o nome sobe à margem dela.
+    let nome_y = if largo { topo + pad } else { topo };
     paint_text_title_elided(
         c.text_system,
         c.scene,
@@ -130,37 +179,42 @@ pub(crate) fn cabeca(c: &mut CardCtx<'_>, y: f32, info: &InspectorSpriteInfo) ->
         tw,
         resolve(ColorToken::Text1, theme),
     );
+    let mut pintada = CabecaPintada {
+        moldura,
+        nome: Rect::new(tx, nome_y, tw, NOME_PX),
+        tamanho: None,
+        tamanho_no_titulo: None,
+    };
     if let Some(t) = tamanho.as_deref() {
-        paint_text_elided(
-            c.text_system,
-            c.scene,
-            t,
-            tx,
-            nome_y + NOME_PX + m::FIELD_ROW_GAP,
-            TAMANHO_PX,
-            tw,
-            c.ink.color(ColorToken::CardLabel),
-        );
+        if largo {
+            let ty = nome_y + NOME_PX + m::FIELD_ROW_GAP;
+            paint_text_elided(
+                c.text_system,
+                c.scene,
+                t,
+                tx,
+                ty,
+                TAMANHO_PX,
+                tw,
+                c.ink.color(ColorToken::CardLabel),
+            );
+            pintada.tamanho = Some(Rect::new(tx, ty, pede_tamanho, TAMANHO_PX));
+        } else {
+            // Inteiro, ou sem os parênteses do Repeated (os campos Width/Height mostram-nos).
+            pintada.tamanho_no_titulo = c.resumo_no_titulo(t).or_else(|| {
+                info.source_pixels
+                    .and_then(|px| c.resumo_no_titulo(&tamanho_em_px(px)))
+            });
+        }
     }
     (c.x, c.w) = (tx, tw);
-    let _ = c.verbos(
-        &[
-            Verbo {
-                id: ids::INSP_IMAGE_EDIT_PIXEL,
-                seta: IconId::Export,
-                icone: IconId::PixelSprite,
-                nome: tr("card.insp.verb_pixel"),
-            },
-            Verbo {
-                id: ids::INSP_IMAGE_EDIT_PAINTER,
-                seta: IconId::Export,
-                icone: IconId::Painter,
-                nome: tr("card.insp.verb_painter"),
-            },
-        ],
-        topo + alto - pad - VERBO_H,
-    );
+    if largo {
+        c.verbos_lado_a_lado(&verbos, topo + alto - pad - VERBO_H);
+    } else {
+        c.verbos_em_pilha(&verbos, topo + alto);
+    }
     (c.x, c.w) = (x0, w0);
+    CABECA_PINTADA.with(|p| p.set(Some(pintada)));
     fundo
 }
 

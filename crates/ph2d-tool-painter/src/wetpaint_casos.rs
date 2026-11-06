@@ -5,6 +5,7 @@
 
 use crate::ids::{PAINTER_WETPAINT_DILUTION, PAINTER_WETPAINT_WATER};
 use crate::tool::PainterTool;
+use ph2d_det_math::DetMath as _;
 use ph2d_editor_core::Tool;
 use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PanelEvent, PointerPhase};
 
@@ -78,7 +79,7 @@ fn traco(t: &mut PainterTool, a: [f32; 2], z: [f32; 2], pressure: f32) {
         tilt: [0.0, 0.0],
         phase,
     };
-    let n = ((z[0] - a[0]).hypot(z[1] - a[1]) / 3.0).ceil() as u32;
+    let n = ((z[0] - a[0]).det_hypot(z[1] - a[1]) / 3.0).ceil() as u32;
     t.on_canvas_pointer(p(a, PointerPhase::Down));
     for k in 1..=n {
         let s = k as f32 / n as f32;

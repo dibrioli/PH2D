@@ -36,6 +36,7 @@ fn camada(id: u64, gain: f32, source: Source) -> Layer {
         id: LayerId(id),
         gain,
         start: 0.0,
+        muted: false,
         source,
         envelope: Envelope::default(),
     }

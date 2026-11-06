@@ -5,6 +5,7 @@
 mod blep;
 mod body;
 mod envelope;
+mod limitador;
 mod noise;
 mod recording;
 mod rng;
@@ -14,6 +15,8 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use ph2d_sfx_recipe::{ENGINE_V1, Layer, LayerId, Recipe, SAMPLE_RATE, Source, Takes, frames_of};
+
+pub use limitador::{TETO_DA_ESCUTA, limitar_escuta};
 
 /// O silêncio do motor: 2⁻²⁴, um passo de quantização de um `f32` perto de 1,0. Um ressonador abaixo disto pára,
 /// o que também impede números subnormais, lentos e dependentes do modo da thread.
@@ -34,6 +37,8 @@ pub enum RenderError {
     UnknownEngine(u32),
     /// O cache pediria mais memória do que o motor admite.
     TooLarge { bytes: u64 },
+    /// Quem pediu desistiu: uma edição mais nova já vale. O que ficou pronto continua no cache.
+    Cancelled,
 }
 
 impl std::fmt::Display for RenderError {
@@ -41,6 +46,7 @@ impl std::fmt::Display for RenderError {
         match self {
             Self::UnknownEngine(v) => write!(f, "sound engine {v} is not available"),
             Self::TooLarge { bytes } => write!(f, "this recipe needs {bytes} bytes of audio"),
+            Self::Cancelled => f.write_str("the sound was edited again"),
         }
     }
 }
@@ -101,6 +107,23 @@ impl RenderCache {
         engine: u32,
         takes: &Takes,
     ) -> Result<Pcm, RenderError> {
+        self.render_cancelavel(recipe, seed, engine, takes, &|| false)
+    }
+
+    /// A porta única: [`Self::render`] é ela sem desistência. `cancelado` nunca muda um byte: ou o som sai inteiro,
+    /// ou sai [`RenderError::Cancelled`]. Pergunta-se entre camadas, entre modos do corpo e a cada
+    /// [`recording::PERGUNTA_A_CADA`] amostras de gravação; tom e ruído levam no máximo ~140 ms em 120 s (`03_W2_medicao.md`).
+    ///
+    /// # Errors
+    /// `engine` não é um motor desta árvore, ou `cancelado` respondeu `true`.
+    pub fn render_cancelavel(
+        &mut self,
+        recipe: &Recipe,
+        seed: u64,
+        engine: u32,
+        takes: &Takes,
+        cancelado: &dyn Fn() -> bool,
+    ) -> Result<Pcm, RenderError> {
         if engine != ENGINE_V1 {
             return Err(RenderError::UnknownEngine(engine));
         }
@@ -121,13 +144,21 @@ impl RenderCache {
         let mut mix = vec![0.0f32; total];
         let mut missing = Vec::new();
         for layer in &r.layers {
+            if layer.muted {
+                continue;
+            }
+            if cancelado() {
+                return Err(RenderError::Cancelled);
+            }
             let start = frames_of(layer.start).min(total);
             let len = total - start;
             let semente = layer_seed(seed, layer.id);
             let key = key_of(layer, semente, engine, len, takes);
             let hit = self.layers.get(&layer.id).is_some_and(|c| c.key == key);
             if !hit {
-                let (pcm, falta) = render_layer(layer, semente, len, takes);
+                let Some((pcm, falta)) = render_layer(layer, semente, len, takes, cancelado) else {
+                    return Err(RenderError::Cancelled);
+                };
                 self.layers.insert(
                     layer.id,
                     Cached {
@@ -171,8 +202,15 @@ fn key_of(layer: &Layer, semente: u64, engine: u32, len: usize, takes: &Takes) -
     .unwrap_or_default()
 }
 
-/// O buffer de uma camada, sem ganho. `true` = o material dela não está no projeto.
-fn render_layer(layer: &Layer, semente: u64, len: usize, takes: &Takes) -> (Vec<f32>, bool) {
+/// O buffer de uma camada, sem ganho. `true` = o material dela não está no projeto. `None` = desistiu no meio, e o
+/// pedaço calculado não serve a ninguém.
+fn render_layer(
+    layer: &Layer,
+    semente: u64,
+    len: usize,
+    takes: &Takes,
+    cancelado: &dyn Fn() -> bool,
+) -> Option<(Vec<f32>, bool)> {
     let mut buf = vec![0.0f32; len];
     // Depois do silêncio garantido do envelope, o kernel nem corre.
     let audivel = layer.envelope.silent_from().map_or(len, |f| f.min(len));
@@ -181,12 +219,12 @@ fn render_layer(layer: &Layer, semente: u64, len: usize, takes: &Takes) -> (Vec<
     match &layer.source {
         Source::Noise(n) => noise::render(corpo, semente, n),
         Source::Tone(t) => tone::render(corpo, t),
-        Source::Body(b) => body::render(corpo, semente, b),
+        Source::Body(b) => body::render(corpo, semente, b, cancelado)?,
         Source::Recording(r) => match takes.get(&r.take) {
-            Some(take) => recording::render(corpo, take, r),
+            Some(take) => recording::render(corpo, take, r, cancelado)?,
             None => falta = true,
         },
     }
     envelope::apply(&layer.envelope, corpo);
-    (buf, falta)
+    Some((buf, falta))
 }

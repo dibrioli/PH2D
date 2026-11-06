@@ -1,14 +1,17 @@
 //! **As receitas e o material do projeto**, o campo `sfx_lab` do `ProjectFile` (blob `PH2DSFXL`, com versão
-//! própria; vazio = nada a gravar). Fora do `ProjectState`, como os kanbans: o desfazer chega com a aba, em W3.
+//! própria; vazio = nada a gravar). Fora do `ProjectState`, como os kanbans: o desfazer é da aba
+//! (`docs/SfxLab/04_W3_plano.md` §2).
 
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Recipe, Take, Takes};
+use crate::{Envelope, Layer, LayerId, Recipe, Source, Take, Takes};
 
 const MAGIC: &[u8; 8] = b"PH2DSFXL";
-const VERSAO: u8 = 1;
+const VERSAO: u8 = 2;
+/// W2, antes de `Layer::muted` e `Recipe::approved`.
+const VERSAO_SEM_MUDO: u8 = 1;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 #[cfg_attr(feature = "component", derive(bevy_ecs::resource::Resource))]
@@ -34,9 +37,67 @@ struct Escrita<'a> {
 }
 
 #[derive(Deserialize)]
-struct Lida {
-    recipes: Vec<(String, Recipe)>,
+struct Lida<R> {
+    recipes: Vec<(String, R)>,
     takes: Vec<(u32, u16, Vec<f32>)>,
+}
+
+/// O formato congelado da versão 1: postcard é posicional, e o campo novo não pode aparecer na leitura dele.
+#[derive(Deserialize)]
+struct RecipeV1 {
+    seed: u64,
+    engine: u32,
+    seconds: f32,
+    layers: Vec<LayerV1>,
+    next_layer: u64,
+}
+
+#[derive(Deserialize)]
+struct LayerV1 {
+    id: LayerId,
+    gain: f32,
+    start: f32,
+    source: Source,
+    envelope: Envelope,
+}
+
+impl From<RecipeV1> for Recipe {
+    fn from(r: RecipeV1) -> Self {
+        Self {
+            seed: r.seed,
+            engine: r.engine,
+            seconds: r.seconds,
+            layers: r
+                .layers
+                .into_iter()
+                .map(|l| Layer {
+                    id: l.id,
+                    gain: l.gain,
+                    start: l.start,
+                    muted: false,
+                    source: l.source,
+                    envelope: l.envelope,
+                })
+                .collect(),
+            next_layer: r.next_layer,
+            approved: None,
+        }
+    }
+}
+
+fn le_corpo<R>(corpo: &[u8]) -> Result<Lida<Recipe>, LibraryBlobError>
+where
+    R: for<'de> Deserialize<'de> + Into<Recipe>,
+{
+    let lida: Lida<R> = postcard::from_bytes(corpo).map_err(|e| LibraryBlobError(e.to_string()))?;
+    Ok(Lida {
+        recipes: lida
+            .recipes
+            .into_iter()
+            .map(|(n, r)| (n, r.into()))
+            .collect(),
+        takes: lida.takes,
+    })
 }
 
 impl SfxLibrary {
@@ -72,13 +133,15 @@ impl SfxLibrary {
         let (&versao, corpo) = corpo
             .split_first()
             .ok_or_else(|| LibraryBlobError("sound recipe library without a version".into()))?;
-        if versao != VERSAO {
-            return Err(LibraryBlobError(format!(
-                "sound recipe library version {versao}, this app reads {VERSAO}"
-            )));
-        }
-        let lida: Lida =
-            postcard::from_bytes(corpo).map_err(|e| LibraryBlobError(e.to_string()))?;
+        let lida = match versao {
+            VERSAO => le_corpo::<Recipe>(corpo)?,
+            VERSAO_SEM_MUDO => le_corpo::<RecipeV1>(corpo)?,
+            _ => {
+                return Err(LibraryBlobError(format!(
+                    "sound recipe library version {versao}, this app reads up to {VERSAO}"
+                )));
+            }
+        };
         let mut out = Self::default();
         for (nome, mut r) in lida.recipes {
             r.sanitize();
@@ -104,6 +167,52 @@ mod tests {
             lib.recipes.insert(n.into(), r);
         }
         lib
+    }
+
+    /// Bytes gravados pelo código de W2, antes de `muted` e `approved` existirem. Nunca se regrava.
+    #[test]
+    fn blob_v1_abre_na_v2() {
+        let lida = SfxLibrary::from_bytes(include_bytes!("fixtures/library_v1.bin")).unwrap();
+        let mut lib = SfxLibrary::default();
+        let id = lib
+            .takes
+            .add(Take::new(44_100, 2, vec![0.25, -0.25, 0.5, -0.5]));
+        let mut r = Recipe::new(7, 0.25);
+        r.add(
+            0.5,
+            crate::Source::Noise(crate::Noise {
+                filter: crate::NoiseFilter::Band,
+                hz: 800.0,
+                hz_end: 200.0,
+                q: 2.0,
+            }),
+            crate::Envelope::hit(0.01, 0.1, 0.01),
+        );
+        r.add(
+            0.75,
+            crate::Source::Recording(crate::Recording {
+                take: id,
+                semitones: -5.0,
+                offset: 0.0,
+            }),
+            crate::Envelope::default(),
+        );
+        r.layers[1].start = 0.05;
+        lib.recipes.insert("Saved Before W3".into(), r);
+        assert_eq!(lida, lib);
+    }
+
+    #[test]
+    fn mudo_e_aprovado_voltam_iguais_do_blob() {
+        let mut lib = cheia();
+        let r = lib.recipes.get_mut("Impact").unwrap();
+        r.layers[0].muted = true;
+        r.approved = Some(crate::Approved {
+            sound: "Impact.wav".into(),
+            blake3: [7; 32],
+            engine: crate::ENGINE_V1,
+        });
+        assert_eq!(SfxLibrary::from_bytes(&lib.to_bytes()).unwrap(), lib);
     }
 
     #[test]

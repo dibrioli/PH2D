@@ -59,7 +59,13 @@ fn contato(semente: u64, b: &Body) -> Vec<f32> {
     pulso
 }
 
-pub(crate) fn render(buf: &mut [f32], semente: u64, b: &Body) {
+/// `None` = `cancelado` respondeu `true` entre dois modos.
+pub(crate) fn render(
+    buf: &mut [f32],
+    semente: u64,
+    b: &Body,
+    cancelado: &dyn Fn() -> bool,
+) -> Option<()> {
     let golpe = contato(semente, b);
     let sr = SAMPLE_RATE as f32;
     let sigma = -LN_MILESIMO / b.t60;
@@ -78,10 +84,13 @@ pub(crate) fn render(buf: &mut [f32], semente: u64, b: &Body) {
         modos.push((f, sigma * (1.0 + b.damping * (r - 1.0)), ganho));
     }
     if soma <= 0.0 {
-        return;
+        return Some(());
     }
 
     for (f, s_k, ganho) in modos {
+        if cancelado() {
+            return None;
+        }
         let raio = (-s_k / sr).det_exp();
         let (sin, cos) = (2.0 * PI * f / sr).det_sin_cos();
         let (c, s) = (raio * cos, raio * sin);
@@ -99,4 +108,5 @@ pub(crate) fn render(buf: &mut [f32], semente: u64, b: &Body) {
             }
         }
     }
+    Some(())
 }

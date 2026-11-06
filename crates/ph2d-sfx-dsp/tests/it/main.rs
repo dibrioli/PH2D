@@ -2,6 +2,7 @@
 
 mod aliasing;
 mod cache;
+mod escuta;
 mod hash_dourado;
 mod nan;
 pub mod regua;

@@ -148,6 +148,7 @@ fn camada(id: u64, gain: f32, source: Source) -> Layer {
         id: LayerId(id),
         gain,
         start: 0.0,
+        muted: false,
         source,
         envelope: Envelope::default(),
     }
@@ -209,7 +210,13 @@ fn tipica(seg: f32) -> Recipe {
 fn pior(seg: f32) -> Recipe {
     Recipe {
         layers: (0..8u32)
-            .map(|i| camada(u64::from(i) + 1, 0.05, corpo(90.0 + 70.0 * i as f32, 128, 4.0)))
+            .map(|i| {
+                camada(
+                    u64::from(i) + 1,
+                    0.05,
+                    corpo(90.0 + 70.0 * i as f32, 128, 4.0),
+                )
+            })
             .collect(),
         next_layer: 9,
         ..Recipe::new(0x5F3, seg)
@@ -304,7 +311,10 @@ fn custo() {
     for (nome, s) in [
         ("corpo 32 modos t60 4 s", corpo(180.0, 32, 4.0)),
         ("corpo 128 modos t60 4 s", corpo(90.0, 128, 4.0)),
-        ("corpo 16 modos t60 0,2 s (cala cedo)", corpo(300.0, 16, 0.2)),
+        (
+            "corpo 16 modos t60 0,2 s (cala cedo)",
+            corpo(300.0, 16, 0.2),
+        ),
         (
             "ruído com corte fixo",
             Source::Noise(Noise {
@@ -345,7 +355,9 @@ fn custo() {
     }
     rodada(v, 7);
 
-    println!("\n=== gravação: 2 s de saída, material de 10 s a 44,1 kHz (mínimo); o teto de semitons");
+    println!(
+        "\n=== gravação: 2 s de saída, material de 10 s a 44,1 kHz (mínimo); o teto de semitons"
+    );
     let mut takes = Takes::default();
     let seno: Vec<f32> = (0..441_000)
         .map(|i| (f64::from(i) * 0.02).sin() as f32)
@@ -408,7 +420,9 @@ fn custo() {
         println!("{seg} s, t60 {t60} s\t{ms:.0} ms");
     }
 
-    println!("\n=== a duração: a pior receita de W0, sem cache; a RAM do cache é a conta 4 B × 48 000 × s × camadas");
+    println!(
+        "\n=== a duração: a pior receita de W0, sem cache; a RAM do cache é a conta 4 B × 48 000 × s × camadas"
+    );
     for seg in [2.0f32, 30.0, 120.0] {
         let r = pior(seg);
         let t = Takes::default();

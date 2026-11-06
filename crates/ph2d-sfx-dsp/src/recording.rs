@@ -10,6 +10,8 @@ use ph2d_sfx_recipe::{Recording, SAMPLE_RATE, Take};
 use crate::blep::{CORTE, RAIO, janela, sinc};
 
 const POR_ZERO: usize = 512;
+/// De quantas em quantas amostras a leitura pergunta se ainda vale: 85 ms de som, ~1,7 ms de conta no pior caso.
+pub(crate) const PERGUNTA_A_CADA: usize = 4_096;
 
 fn tabela() -> &'static [f32] {
     static T: OnceLock<Vec<f32>> = OnceLock::new();
@@ -28,14 +30,20 @@ fn tabela() -> &'static [f32] {
     })
 }
 
-pub(crate) fn render(buf: &mut [f32], take: &Take, r: &Recording) {
+/// `None` = `cancelado` respondeu `true` durante a leitura.
+pub(crate) fn render(
+    buf: &mut [f32],
+    take: &Take,
+    r: &Recording,
+    cancelado: &dyn Fn() -> bool,
+) -> Option<()> {
     let mono: Cow<[f32]> = if take.channels == 1 {
         Cow::Borrowed(&take.samples)
     } else {
         Cow::Owned((0..take.frames()).map(|i| take.mono(i)).collect())
     };
     if mono.is_empty() {
-        return;
+        return Some(());
     }
     let razao = f64::from(take.rate) / f64::from(SAMPLE_RATE)
         * if r.semitones == 0.0 {
@@ -51,7 +59,7 @@ pub(crate) fn render(buf: &mut [f32], take: &Take, r: &Recording) {
         for (o, s) in buf.iter_mut().zip(&mono[de..]) {
             *o = *s;
         }
-        return;
+        return Some(());
     }
 
     let tab = tabela();
@@ -59,6 +67,9 @@ pub(crate) fn render(buf: &mut [f32], take: &Take, r: &Recording) {
     let meia = RAIO as f64 / corte;
     let escala = corte as f32;
     for (i, o) in buf.iter_mut().enumerate() {
+        if i % PERGUNTA_A_CADA == 0 && cancelado() {
+            return None;
+        }
         let pos = inicio + i as f64 * razao;
         if pos - meia >= mono.len() as f64 {
             break;
@@ -77,4 +88,5 @@ pub(crate) fn render(buf: &mut [f32], take: &Take, r: &Recording) {
         }
         *o = soma * escala;
     }
+    Some(())
 }

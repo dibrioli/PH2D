@@ -35,6 +35,16 @@ pub struct Recipe {
     pub layers: Vec<Layer>,
     /// O próximo id livre: um id apagado não volta, senão a camada nova herdaria a semente da velha.
     pub next_layer: u64,
+    /// O som que o artista aprovou. Sobrevive a qualquer edição e a qualquer motor.
+    pub approved: Option<Approved>,
+}
+
+/// O áudio aprovado: um som do projeto, a impressão digital dele e o motor que o fez.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Approved {
+    pub sound: String,
+    pub blake3: [u8; 32],
+    pub engine: u32,
 }
 
 impl Recipe {
@@ -46,7 +56,18 @@ impl Recipe {
             seconds,
             layers: Vec::new(),
             next_layer: 1,
+            approved: None,
         }
+    }
+
+    /// Esta receita ouvindo só a camada `id`. Serve à escuta; o documento continua como está.
+    #[must_use]
+    pub fn solo(&self, id: LayerId) -> Self {
+        let mut r = self.clone();
+        for l in &mut r.layers {
+            l.muted = l.id != id;
+        }
+        r
     }
 
     /// Acrescenta uma camada com um id que nunca foi usado nesta receita.
@@ -57,6 +78,7 @@ impl Recipe {
             id,
             gain,
             start: 0.0,
+            muted: false,
             source,
             envelope,
         });
@@ -92,6 +114,8 @@ pub struct Layer {
     pub gain: f32,
     /// Onde a camada começa, em segundos.
     pub start: f32,
+    /// Fora da soma. A semente e o cache das outras camadas não sabem disto.
+    pub muted: bool,
     pub source: Source,
     pub envelope: Envelope,
 }

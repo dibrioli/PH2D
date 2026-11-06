@@ -10,7 +10,7 @@ Estudos lidos: crítica «Sprite» · estudo «Sprite» e «Transform» · 12 id
 - Image: ranhura de uma linha com ícone de 20 px; clicar abre o seletor; não existe botão Replace.
 - Trocar a imagem mantém a escala: o tamanho no mundo muda sem aviso (`crates/ph2d-app-sprite-anim/src/image_choice.rs:72-80`).
 - Pivot: só a ferramenta do canvas, que escreve `Transform.translation` + `Sprite.anchor` compensando (`crates/ph2d-editor-core/src/gizmo/transform.rs:373`).
-- Espelhar em dois lugares: botões do Transform (`INSP_TRANSFORM_FLIP_*`) e Flip H/V da sprite (decisão 14: ficam os dois).
+- Espelhar: os 4 botões vivem juntos no Look, `Flip image` (H, V) e `Mirror object` (H, V); na Sprite o Transform perdeu os dois espelhos, os outros objetos não mudam (decisão 14).
 - Nenhuma ponte Sprite → Painter que volte ao asset. Precedente de volta: `shells/desktop/src/hero_intents/image_edit/painter.rs`, `texture_edit.rs:279`.
 - Repeated: Width/Height são **cópias da imagem** (`InspectorDraw::Tiled { copies }`), sem unidade no rótulo. A chave `image.width_m` engana: o valor não é metro.
 
@@ -45,7 +45,9 @@ GameMaker e Unreal: pivô de 9 pontos. GDevelop, Construct e GameMaker: editar a
 **Do dono, 05/11, noite:**
 
 13. **O Pivot não separa desenho e colisão:** num objecto com colisão, mudar o pivô deixa o desenho E a colisão parados no mundo. Vale para o cartão e para a ferramenta do canvas (`ph2d_sprite_edit::pivot::o_resto_fica`: o `Collider.offset` compensa, os filhos ficam). A chave do Pivot leva também o deslocamento do collider, de quem o tem. As sondas do Player nascem do centro do collider (`origem_e_centro`); com o pivô no pé, medir da origem desviava 1,18 m. Teste: `com_o_pivo_no_pe_o_boneco_pisa_e_salta_igual`.
-14. **Espelhar a Sprite: só o Flip do Look, se derem o mesmo. MEDIDO: não dão** (`sprite_espelhar.rs`), e os botões do Transform ficam. Com o pivô no centro a imagem fica igual, mas o Transform leva os filhos e a colisão e o Flip deixa-os; com o pivô de lado, o Transform vira a imagem à volta do pivô (o desenho muda de sítio) e o Flip vira-a no mesmo sítio.
+14. **Espelhar a Sprite: não dão o mesmo** (`sprite_espelhar.rs`): o Transform leva os filhos e a colisão e o Flip deixa-os; com o pivô de lado, o Transform vira à volta do pivô e o Flip no mesmo sítio. **Dono, 06/11, depois do oráculo: os 4 botões juntos no Look**, linhas `Flip image` (H, V) e `Mirror object` (H, V); na Sprite o Transform perde os dois espelhos, os outros objetos não mudam. Oráculo ([`espelhar_oraculo.jsonl`](ferramentas/espelhar_oraculo.jsonl), 72 casos, Godot e Unity): escala −1 é igual nas duas (a imagem vira à volta do pivô, filho e colisão vão junto); o Flip nunca move filho nem colisão, e com pivô fora do centro o Godot vira no lugar e o Unity à volta do pivô. O nosso Flip = o do Godot, medido e mantido (o Player usa `flip_x`, `personagem.rs:192`).
+15. **Censo (dono, 06/11):** 12 campos à vista e 30 no total, aceito (a meta era 10 e 24). Numa sprite com filhos aparece também `Self Tint`, à vista.
+16. **A chave do Pivot leva os filhos diretos** (`ph2d_sprite_edit::pivot_chave`: `filhos_do_pivo`, população do Auto Key via `autokey_amostra.rs`; `clique_leva_os_filhos`, chamado em `shells/presos/src/losango.rs`). Medido na cena `sprite_pivot_chave`: a moeda presa fica em (8.5, 2.8) em t=1, t=2 e t=1,5; antes da cura o filho derivava até 1,5 m.
 
 Outros acertos da mesma noite: `Reimport at scale` e o nome do ponto do Pivot (desce para debaixo da grade quando o maior dos dez nomes não cabe ao lado) não se cortam no piso real do painel, `DOCK_W_MIN` = 210 px (`nada_do_cartao_da_sprite_e_cortado_no_minimo_do_painel`). A imagem editada herda o nome da de onde veio e toma-lhe o lugar enquanto só ela estiver em uso (`imagem::herda_o_nome`); ⚠️ só nesta sessão, porque o `.ph2dproj` não grava nomes de imagem: ao reabrir, volta o nome do 1.º objecto.
 
@@ -78,7 +80,7 @@ Por estado do painel: **vazio** = cartão Image inteiro é «Drop an image or cl
 ## Aceitação
 
 - **Poder:** pivô no painel, em 9 pontos sobre o desenho visível e Custom · editar a imagem no Painter a partir do cartão, voltando sozinha para **todo objeto que usa aquele asset**, com desfazer · um quadro da folha a um clique.
-- **Facilidade:** em uso, 10 campos à vista e 24 no total (hoje 12 a 37). Até ver a imagem pelo Add: 3 gestos (hoje 4). Virar e tingir com cartões fechados: 3 gestos (hoje 5).
+- **Facilidade:** em uso, 12 campos à vista e 30 no total (meta original 10 e 24; número real aceito pelo dono em 06/11, decisão 15; `o_censo_dos_campos_da_sprite_em_uso`). Até ver a imagem pelo Add: 3 gestos (`so_a_sprite_nasce_a_pedir_a_imagem`). Virar e tingir com cartões fechados: 3 gestos (`virar_e_tingir_com_os_cartoes_fechados_sao_tres_gestos`).
 - **Intuitividade:** nenhum número interno na tela · o salto de tamanho da folha e do Replace são explicados na hora · unidade no rótulo de todo campo.
 
 ## ⛔ Recusas
@@ -90,6 +92,7 @@ Por estado do painel: **vazio** = cartão Image inteiro é «Drop an image or cl
 | 9-Slice como uso «Panel» | quatro usos do dono; rever no item 9-Slice |
 | Colisão a partir da imagem neste item | pertence a Physics Body |
 | Botão Replace | supérfluo: a miniatura é o alvo (dono, 05/11) |
+| Flip no estilo Unity (vira à volta do pivô) | oráculo corrido (06/11, 72 casos): o nosso Flip = o do Godot, vira no lugar; quem quer à volta do pivô usa `Mirror object` |
 | Tira de prévia do Repeated | recusada pelo dono em 05/11; a miniatura basta |
 | Edit in Pixel num objecto imagem | dono 06/11: Pixel e Painter servem artes diferentes; a ida e volta saiu do código (`no_pixel`, `ph2d_app_pixel::imagem`) |
 | Um só objecto com modos Draw in Pixel e Draw in Painter | dono 06/11: as ferramentas servem artes diferentes; ficam dois objectos, cada um com o seu Draw |
@@ -100,7 +103,9 @@ Pivot: `a_caixa_opaca_ignora_a_sobra_transparente`, `mudar_o_pivo_nao_move_o_des
 
 Cartão: `a_miniatura_abre_o_seletor`, `a_miniatura_e_o_tamanho_nao_mudam_com_a_largura`, `nada_do_cartao_da_sprite_e_cortado_no_minimo_do_painel` (mesmo ficheiro) · Pixel Sprite: `o_pixel_sprite_selecionado_mostra_o_cartao_so_com_o_pixel`, `nada_do_cartao_do_pixel_e_cortado_no_minimo_do_painel` (`o_cartao_do_pixel_sprite.rs`).
 
-**Sem prova ainda:** clique em *Use one Region* (a chave `card.insp.sheet_use_region` existe, nenhum teste a cita) · Undo e Auto Key do Transform no Draw · chave do Pivot na timeline real · preset que sai do Custom em `set_new_image_size`. Ver [onda 3](../handoffs/HANDOFF_CONTINUACAO_2026-11-06_23_SPRITE_ONDA3.md).
+Onda 3 (06/11): `so_a_sprite_nasce_a_pedir_a_imagem` (E3 confirmado no ecrã) · `o_aviso_de_folha_da_as_duas_saidas` (clique) e `da_folha_parada_use_one_region_abre_o_editor_e_o_quadro_vira_a_area` (editor); `card.insp.sheet_use_region` é só a chave do rótulo · foto `sprite_transform_no_draw` (Auto Key grava Position, Ctrl+Z no Draw desfaz os dois) · `a_predefinicao_sai_do_custom_e_o_lado_para_no_dispositivo` · `o_mirror_do_look_espelha_o_objeto_e_saiu_do_transform` · `com_a_imagem_virada_o_ponto_segue_o_lado_que_se_ve` (a grade do Pivot segue o lado que se vê; em objeto com Mirror continua no referencial do objeto) · `enquanto_assenta_a_cola_leva_o_cartao_ao_lugar_deste_quadro` · os 4 de `pivot_chave_tests.rs` + cena `sprite_pivot_chave`. Cena nova `PH2D_GAME_SMOKE_FOTO=sprite_moeda` (prende a Coin 4 à Platform High). Ver [onda 3](../handoffs/HANDOFF_CONTINUACAO_2026-11-06_23_SPRITE_ONDA3.md).
+
+**Sem prova ainda:** o smoke do dono desta onda; a Sprite não está fechada.
 
 Imagem sem a repetição no Painter: `o_painter_abre_o_repetido_numa_copia_e_ao_sair_volta_o_mesmo` (`ph2d-app-painter`), `o_traco_cai_onde_o_cursor_esta_na_copia` e `a_region_abre_a_imagem_inteira_a_mesma_escala` (`ph2d-sprite-screen`) · censo `every_painter_map_reads_the_sprite_as_it_is_shown` · fotos `sprite_no_painter`, `sprite_no_painter_traco`, `sprite_painter_volta`.
 
@@ -112,6 +117,6 @@ Camadas fora da Hierarchy: `a_imagem_com_camadas_nao_tem_linhas_na_hierarchy` (P
 |---|---|---|
 | E1 | Cartões: Image, Look, Advanced, Ordering, Transform dobrado, cortes | feito |
 | E2 | Pivot de 9 pontos sobre o desenho visível | feito (`a_caixa_opaca_ignora_a_sobra_transparente`) |
-| E3 | Vazio, `Add ▸ Sprite` que pede imagem, «Paint a new image…» | a conferir no ecrã: `object_add.rs:158` ainda insere o quadrado branco |
-| E4 | Aviso de folha, *Use one Region*, Replace com recibo | feito, salvo o clique da Region, sem prova (Replace saiu: decisão 8) |
+| E3 | Vazio, `Add ▸ Sprite` que pede imagem, «Paint a new image…» | feito: Add ▸ Sprite nasce quadrado branco selecionado, abre Assets com «Choose the image for "Sprite"», convite no cartão e «Paint a new image…» (3 gestos; `so_a_sprite_nasce_a_pedir_a_imagem`) |
+| E4 | Aviso de folha, *Use one Region*, Replace com recibo | feito, com prova (Replace saiu: decisão 8) |
 | E5 | Edit in Painter: ida, volta, todos os objetos, desfazer | feito só no Painter; Pixel revogado (06/11) |

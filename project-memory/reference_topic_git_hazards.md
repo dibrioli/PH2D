@@ -68,3 +68,4 @@ sentidos (`ponteiros do MEMORY.md` contra `project-memory/*.md` **das DUAS árvo
 worktree o que a sessão escreveu; escrever a memória por caminho RELATIVO a partir da worktree
 (`cat >> project-memory/…`) aterra no sítio certo à primeira.
 Ver [[reference_topic_integration_discipline]] · [[feedback_the_ruler_is_the_merge_base_not_a_moving_main]].
+- ⛔ **Conflito em lista de tuplas/blocos: `git merge-file --union` cola dois blocos sem o fecho, e o resultado (tupla de 6) é sintaxe válida; `rerere.autoupdate=true` reaplica a resolução ruim e ela entra no commit sem parar o rebase (integração 06/11).** Refazer um rebase: `GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=rerere.enabled GIT_CONFIG_VALUE_0=false` e apagar a entrada em `.git/rr-cache`. Pegar só o `:2` perde os hunks limpos do `:3`: tire o bloco que conflita do lado «nosso», deixe `git merge-file` fundir limpo e devolva o bloco.

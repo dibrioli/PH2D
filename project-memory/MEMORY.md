@@ -73,7 +73,7 @@
 - 📚 [Comunicação & decisão: mais (90) lições, uma linha cada, verbatim](reference_topic_communication_and_decision_lessons.md)
 
 ## Git & colisão multi-agente
-- [Perigos de git/edição (15)](reference_topic_git_hazards.md)
+- [Perigos de git/edição (16)](reference_topic_git_hazards.md)
 - ⛔⛔ [`git commit -- <paths>` ignora ficheiros por RASTREAR: o commit «tem sucesso» e a árvore dele não compila](feedback_a_commit_with_paths_never_picks_up_an_untracked_file.md)
 - 📚 [Git & colisão multi-agente: mais (5) lições, uma linha cada, verbatim](reference_topic_git_lessons_loose.md)
 

@@ -30,6 +30,7 @@ pub mod palette;
 pub mod pattern;
 pub mod play;
 pub mod raster;
+mod rect;
 pub mod selection;
 mod sprite;
 mod stroke;

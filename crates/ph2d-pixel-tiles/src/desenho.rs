@@ -58,14 +58,12 @@ fn no_terreno(set: &Tileset, id: u32) -> bool {
         .any(|k| id >= k.first && id < k.first + TERRAIN_TILES)
 }
 
-/// As escritas agrupadas por célula do mapa, em píxeis relativos à célula; a última vence.
-fn por_celula(
-    s: &Sprite,
-    m: &Mapa,
-    set: &Tileset,
-    escritas: &[(i32, i32, u32)],
-) -> BTreeMap<(i32, i32), Vec<(u32, u32, u32)>> {
-    let mut out: BTreeMap<_, Vec<_>> = BTreeMap::new();
+/// Por célula do mapa, os píxeis relativos à célula e o valor.
+type PorCelula = BTreeMap<(i32, i32), Vec<(u32, u32, u32)>>;
+
+/// As escritas agrupadas por célula; a última vence.
+fn por_celula(s: &Sprite, m: &Mapa, set: &Tileset, escritas: &[(i32, i32, u32)]) -> PorCelula {
+    let mut out = PorCelula::new();
     let (tw, th) = (i32::from(set.tile_w), i32::from(set.tile_h));
     for &(x, y, v) in escritas.iter().filter(|e| s.bounds().contains(e.0, e.1)) {
         let (c, r) = m.celula(x, y);
@@ -206,15 +204,14 @@ fn com_flips(t: TileRef, id: u32) -> TileRef {
     TileRef::new(id, t.flip_x(), t.flip_y(), t.flip_d())
 }
 
-/// O op do gesto. Em Auto, os tiles largados fora de terreno saem do conjunto.
+/// O op do gesto. Em Auto, os tiles largados saem do conjunto; um de gabarito nunca é largado.
 fn fecha(s: &Sprite, key: CelKey, m: &Mapa, o: Obra, modo: Modo) -> Option<Op> {
     let set = o.set;
-    let saem: Vec<u32> = o
-        .largados
-        .iter()
-        .copied()
-        .filter(|&i| modo == Modo::Auto && !no_terreno(set, i) && o.usos[i as usize] == 0)
-        .collect();
+    let saem: Vec<u32> = if modo == Modo::Auto {
+        o.largados.iter().copied().collect()
+    } else {
+        Vec::new()
+    };
     let mudou = m.mudanca(s, key);
     if saem.is_empty() {
         let velhos = set.tiles.len() as u32;

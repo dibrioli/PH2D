@@ -92,6 +92,8 @@ ph2d-component-desc = { path = "../ph2d-component-desc" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-flip = { path = "../ph2d-flip" }
+# `tilemap_recusa`: o documento do Pixel para os comandos que recusam (a catraca da família conta `tests/`).
+ph2d-pixel-core = { path = "../ph2d-pixel-core" }
 
 [lints]
 workspace = true

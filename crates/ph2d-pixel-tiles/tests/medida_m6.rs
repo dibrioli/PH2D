@@ -60,7 +60,7 @@ fn monta(celulas: u32, quadros: u32) -> (Sprite, LayerId, FrameId, TilesetId) {
 
 fn mede(celulas: u32, quadros: u32, voltas: u32) {
     let px = u64::from(celulas) * u64::from(TILE);
-    let gb = px * px * BPP as u64 * u64::from(quadros) as u64;
+    let gb = px * px * BPP as u64 * u64::from(quadros);
     println!(
         "M6 {celulas}×{celulas} células, tile {TILE}, {quadros} quadros: {} MB de imagens",
         gb >> 20

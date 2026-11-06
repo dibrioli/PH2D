@@ -6193,6 +6193,7 @@ dependencies = [
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-flip",
+ "ph2d-pixel-core",
 ]
 
 [[package]]

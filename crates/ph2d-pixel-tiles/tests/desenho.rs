@@ -177,7 +177,8 @@ fn os_tres_modos_batem_com_o_pixelorama_corrido() {
         assert_eq!(set.tiles.len(), tiles.len(), "{tag} número de tiles");
         let n_usos = usos(&d.s, set);
         for (i, t) in tiles.iter().enumerate() {
-            let cheios = set.tiles[i].chunks_exact(4).filter(|p| p[3] != 0).count();
+            let (px4, _) = set.tiles[i].as_chunks::<4>();
+            let cheios = px4.iter().filter(|p| p[3] != 0).count();
             assert_eq!(cheios as i64, t["px"].as_i64().unwrap(), "{tag} tile {i}");
             if i != 0 {
                 assert_eq!(
@@ -542,6 +543,24 @@ fn tile_zero_e_vazio_sempre() {
         d.traco(&[px(3, 3, 2, 2, AZUL)], m);
         assert_eq!(d.s.tileset(d.set).unwrap().tiles[0], zero, "{m:?}");
     }
+}
+
+/// O tile que uma célula larga e a seguinte reutiliza no mesmo traço fica no conjunto.
+#[test]
+fn o_tile_largado_e_reutilizado_no_mesmo_traco_fica() {
+    let mut d = Doc::novo(32, T);
+    let tile = d.tile_com(&[(0, 0, AZUL)]);
+    let g = TileGrid {
+        x: 0,
+        y: 0,
+        w: 1,
+        h: 1,
+        tiles: vec![TileRef::new(1, false, false, false)],
+    };
+    d.com_tiles(vec![tile], d.f, g);
+    assert!(d.traco(&[px(0, 0, 0, 0, 0), px(1, 0, 0, 0, AZUL)], Modo::Auto));
+    assert_eq!((d.id(0, 0), d.id(1, 0), d.n_tiles()), (0, 1, 2));
+    assert_eq!(d.visto(8, 0), AZUL);
 }
 
 /// Fora de uma camada de tilemap, a porta recusa.

@@ -76,7 +76,7 @@ fn the_image_of_a_cel_is_its_map_expanded() {
     let c = s.cel((l, f)).expect("cel");
     assert_eq!(c.bbox, Rect::new(2, 0, 4, 2));
     // Primeira linha: as duas primeiras células de cada tile; segunda: as duas seguintes.
-    let cinzas: Vec<u8> = c.data.chunks_exact(4).map(|p| p[0]).collect();
+    let cinzas: Vec<u8> = c.data.as_chunks::<4>().0.iter().map(|p| p[0]).collect();
     assert_eq!(cinzas, [10, 11, 20, 21, 12, 13, 22, 23]);
 }
 
@@ -114,7 +114,9 @@ fn each_flip_combination_lands_each_cell_where_the_law_says() {
             .cel((l, f))
             .unwrap()
             .data
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|p| p[0] - 10)
             .collect();
         assert_eq!(got, esperado, "x={x} y={y} d={d}");

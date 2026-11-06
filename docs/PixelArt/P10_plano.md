@@ -3,7 +3,7 @@
 > Linha `line/PixelArt`, HEAD `286ce1ea95`, merge-base `bbfefaf393` (conta-gotas e zoom aprovados no smoke, por integrar).
 > Plano do módulo: [02_plano_modulo.md §P10](02_plano_modulo.md). Estudo: [01_estudo_aseprite.md §3](01_estudo_aseprite.md). Molde: [P9_plano.md](P9_plano.md).
 > Lei do módulo: [ADR-0196](../architecture/decisions/0196-o-pixel-art-e-um-modulo-proprio-com-documento-inteiro-e-desfazer-por-sprite.md).
-> **Estado: proposta. Nenhum código escrito; à espera das respostas do dono (§9).**
+> **Estado: P10a (motor) fechada na linha em 06/11, sem tela e sem smoke; próxima: P10b (tela).** Medido: §6.1. Lista de recusas para a tela: §5.1.
 
 ## 0. O que entra
 
@@ -81,9 +81,9 @@ São dois produtos, e o plano trata-os assim:
 
 1. **«Onde mora o tilemap?»** → `ph2d-pixel-core`: `LayerKind::Tilemap { tileset, grid }` (o compilador aponta cada `match` dos 52), `Sprite.tilesets`, e o mapa **dentro do cel** (`Cel.tiles`). ⚠️ Mudou do desenho inicial, um mapa ao lado de `cels`: dentro do cel, apagar camada, apagar quadro, duplicar, desfazer e o `Op::Layers`/`Frames` já o carregam, e um mapa ao lado teria de ser lembrado em cada um, em silêncio. Só 2 construtores e 2 literais mudaram; os outros usam `..c.clone()`.
 2. **«Como o resto do programa vê a camada?»** → **`Cel.data` continua a ser píxeis**, derivados do mapa e do tileset. Assim, compor, exportar, miniatura, onion e os 27 leitores de `.data` não ganham um ramo. Lei: `data == expande(mapa, tileset)`, com gate de propriedade. Grava-se só o mapa e o tileset; ao abrir, reexpande. O custo a medir (M6) é o de editar um tile usado por muitos quadros.
-3. **«Quem escreve numa camada tilemap?»** → um funil, `ph2d-pixel-tiles::aplica`, único chamador do `Op` novo (`Op::Tiles`, inverso com o mesmo tecto em bytes). Cada um dos outros escritores (filtro, moldura, Sprite Size, Rotate, Canvas Size, troca de modo de cor, Merge Down, Flatten) segue o que o Trial fizer (M5) ou recusa com mensagem. ⛔ Nenhum escreve no `data` derivado.
-4. **«O que faz cada modo?»** → `ph2d-pixel-tiles`, crate nova. Manual, Auto e Stack só decidem o destino dos píxeis do traço (mesmo tile, tile novo, ou deduplica). O traço continua a ser o funil `symmetry`/`stroke` de hoje. Deduplicação com flips.
-5. **«Que tile vai em cada célula do terreno?»** → `ph2d-pixel-tiles::terreno`: `reduce_mask`, `AUTOTILE_47`, `resolve` portados da spec §15, com inteiros; layout do gabarito 8×6. Slot por preencher não falha: deixa a célula no tile 0 e avisa uma vez.
+3. **«Quem escreve numa camada tilemap?»** → um funil, `ph2d-pixel-tiles::desenho::aplica` (mais `mapa::carimba` e `terreno::pinta`), sobre `Op::Tiles`. Os outros escritores recusam ou só andam a grelha: §5.1, gate `escritores.rs`. ⛔ Nenhum escreve no `data` derivado. O M5 não executou esses comandos no Trial: a recusa é escolha nossa, não paridade.
+4. **«O que faz cada modo?»** → `ph2d-pixel-tiles::desenho`. O traço continua a ser o funil `symmetry`/`stroke`; `Stroke::writes` entrega as células e `Stroke::op` recusa em tilemap. A lei, com o que é extrapolação, está em §6.1. Deduplicação exata, sem flips no traço; com flips só em Convert To, a pedido e com tile quadrado.
+5. **«Que tile vai em cada célula do terreno?»** → `ph2d-pixel-tiles::terreno`: `reduz`, `formas`, `casa`, `pinta`, com inteiros; 47 tiles seguidos a partir de `Terrain.first`. Slot por preencher não falha: a célula fica com o tile da casa dela, mesmo vazio (⛔ Recusas MEDIDAS, §6.2).
 6. **«Onde cai cada célula iso/hex?»** → conversão inteira em `ph2d-pixel-tiles` (o mesmo traço dá o mesmo byte em qualquer máquina), **com gate contra `ph2d-grid`**. Não se redefine a orientação; a arte do tile continua retangular.
 7. **«Como o `.ase` guarda isto?»** → `parse_doc`/`write` de `ph2d-aseprite` ganham tileset e cel tipo 3, e o bit 4 passa a ser lido. `abrir` deixa de achatar (`Aviso::Tilemap` só para tileset externo e grelha sem forma no formato). O `parse` antigo mantém a saída byte-idêntica para o Sprite Inspector. ⚠️ O `.ase` não tem campo de forma de grelha: iso e hex saem como imagem, com aviso.
 8. **«Que ficheiros saem?»** → `render::frames` e `sheet::layout` da P9, sem caminho próprio: tileset em PNG, mapa em JSON (índice e flips por célula, por quadro), `--split-grid`, `--trim-by-grid`.
@@ -105,6 +105,26 @@ São dois produtos, e o plano trata-os assim:
 
 Lei de UI: cartões compactos, rótulo em campo que não se explica sozinho, unidade no rótulo, zero hex e zero `f32` literal, só inglês em `ph2d-i18n`. `ph2d-app-pixel` só liga. Com folga 28, a P10a **move** o que for preciso antes de ligar; o número do tecto não sobe. `Space` já é mover a vista (`compose.rs:179`), ⇒ `Space+Tab` e `Space+1/2/3` não podem interromper esse gesto; gate próprio.
 
+### 5.1 O que recusa numa camada de tilemap (a P10b deixa cinzento, nunca mudo)
+
+Conferido com a camada ativa: `crates/ph2d-app-registry-init/tests/it/tilemap_recusa.rs` manda cada pedido real, com e sem seleção, e o documento fica igual, sem pânico. ⚠️ **Coluna «hoje»:** o que o artista vê agora, antes da tela.
+
+| Comando | Recusa | Hoje |
+|---|---|---|
+| Lápis, borracha, balde, formas, Text, Gradient (o traço de píxeis em si) | `Stroke::op` = `None` até a P10b ligar `desenho::aplica` | mensagem `pixel.layer.refuse.tilemap` |
+| Edit: Flip H/V, Rotate 90/180, Shift, Clear (Delete), Cut, Fill, Stroke, Transform/moldura, Paste | `transform::stamp` = `None` | mensagem |
+| Edit: Invert, Despeckle, Outline, Convolution, Brightness/Contrast, Hue/Saturation, Color Curve | `filter::patch` = `None` | mensagem; com «All» saltam só o tilemap |
+| Replace Color | recusa no chamador | mensagem |
+| Sprite: Rotate Canvas 90/180, Flip Canvas H/V, Sprite Size (todos os métodos) | `None` com qualquer camada de tilemap no sprite | ⚠️ **mudo** |
+| Sprite: Canvas Size, Crop com deslocamento fora de múltiplo do tile | `None` | ⚠️ **mudo** |
+| Sprite: Trim, idem | `None` | ⚠️ `pixel.sprite.refuse.trim`, mensagem que não diz o motivo certo |
+| Layer: Merge Down com tilemap em qualquer lado | `None` | mensagem `pixel.layer.refuse.action` |
+| Layer via Cut | `None` | mensagem `pixel.layer.refuse.action` |
+| Timeline: arrastar cel para camada de outro tileset ou de imagem | `None` | ⚠️ **mudo** |
+| Convert To Tilemap: grupo, referência, Background, já tilemap | `None` | sem tela |
+
+Continuam a valer: Layer via Copy, Copy, Copy Merged, seleção, Flatten, Duplicate, New/Delete/Move/Link/Unlink de quadros e cels, Color Mode, paleta (Remap).
+
 ## 6. Medição — UMA rodada (§0.10), antes de escrever lei
 
 Três scripts, `ferramentas/oraculo_godot_tiles.py`, `ferramentas/pixelorama_tiles/` e `ferramentas/trial_tiles.py`, sobre entradas NOSSAS. Fixturas com cabeçalho em `crates/ph2d-pixel-tiles/tests/fixtures/`.
@@ -122,6 +142,35 @@ Três scripts, `ferramentas/oraculo_godot_tiles.py`, `ferramentas/pixelorama_til
 
 **Kill-criterion do Pixelorama:** se a extensão não conduzir os modos em 2 tentativas, a lei dos modos fica só com as fotos do Trial e com propriedades, e o handoff diz que não há oráculo corrido para ela.
 
+### 6.1 O que M1–M7 deram (detalhe de M1–M5: [P10_oraculos.md](P10_oraculos.md))
+
+| # | Resultado | Vira |
+|---|---|---|
+| M1 | A extensão conduziu (5.ª corrida; os falhanços foram montagem minha). 42 estados | gate `os_tres_modos_batem_com_o_pixelorama_corrido`: 17 cenários batem em mapa, número de tiles, píxeis cheios e usos |
+| M2 | 256/256 e 376/376 iguais à regra; slots em falta o Godot troca de tile | gates `o_terreno_bate_com_o_godot_*`, lendo o JSON; recusa em §6.2 |
+| M3 | Godot e Pixelorama fecham a volta, com convenções iso/hex diferentes entre si | só P10c; ⚠️ comparação com `ph2d-grid` por fazer |
+| M4 | O Trial abre o nosso `.ase`; ordem D, depois X e Y | gates de flips; ordem de chunks tileset → layer → cel |
+| M5 | Modo inicial Auto (ini do dono copiado, não limpo). Filtros, Rotate, Sprite Size, moldura e Flatten **não foram executados**; Flip do Edit foi, sem interpretação | as recusas de §5.1 são escolha nossa |
+| M6 | Abaixo | ⚠️ acima de 100 ms |
+| M7 | Ver §4.9 | gate `a_minor_3_file_written_by_the_old_code_opens_the_same` |
+| M8 | Por fazer | P10c |
+
+**Lei dos modos: o que é medido e o que é extrapolação.** Medido (M1, um pixel por vez): os 17 cenários. **Extrapolado, sem oráculo:** um traço de vários píxeis e células (aplicado célula a célula, com a contagem de usos viva: um tile usado 2× com as duas células no mesmo traço dá tile novo à primeira e edita o original na segunda) · só sai do conjunto o tile que **este** gesto largou, nunca um que já estava sem uso · a célula com flip mantém os flips no tile novo ou deduplicado · escrita fora do canvas ignora-se · dedupe não entra em tile de gabarito (lei nossa: a célula viraria terreno no próximo `pinta`). **Contra o que a sonda viu, por decisão do briefing da onda:** Eraser em Manual edita o tile e em Stack dedupa com o tile 0; a sonda viu «nada muda», sem saber se é a lei ou o toque dela. ⚠️ A confirmar no smoke do dono.
+
+**M6, `--profile smoke`, load 1,5–1,9, tile 16×16, editar um tile em Manual, o MÍNIMO (`tests/medida_m6.rs`):**
+
+| Documento | Imagens | Gesto inteiro | Só aplicar | Desfazer | Amostras |
+|---|---|---|---|---|---|
+| 256×256 células × 64 quadros, sem ligados | 4 096 MB | **1 693 ms** | 1 687 ms | 1 687 ms | 5 |
+| 1024×1024 células × 1 quadro | 1 024 MB | **426 ms** | 423 ms | 422 ms | 3 |
+
+(Uma corrida anterior a load 13–16 deu 1 927 e 476 ms.) O pedido do §6 (1024×1024 × 256 quadros) são **256 GB**: não cabe em 24 GB, recurso = a memória da fatia; cabem ~23 quadros, e não os corri: o número é por quadro. O caso é o pior possível (todas as células do documento são cópia do tile editado, em todos os quadros); o custo escala por célula afetada (~0,40 µs por célula de 256 píxeis nos dois casos). Só o `desenho::aplica` e o `History` estão medidos, sem preview nem GPU. **Passa dos 100 ms, ⇒ proposta, por decidir com o Coordenador:** (a) `blit` por linha com a imagem de cada combinação de flips já pronta, em vez de `place` por píxel (barato, cá dentro; ganho por medir, ⚠️ não chega sozinho a 100 ms no 1.º caso se o ganho for menos de 17×); (b) os quadros em paralelo; (c) o desenho do §6: reexpandir só o que está à vista e o resto a pedido, o que parte a lei `data == expand` e os 27 leitores dela, logo só se (a) + (b) não chegarem.
+
+### 6.2 ⛔ Recusas MEDIDAS
+
+| Recusa | Medição | Porquê |
+|---|---|---|
+| Copiar o «tile mais próximo» do Godot num slot em falta | M2C: 4 corridas; sempre um vizinho a 1–4 bits, e 35 células com máscara existente receberam outra (a falta propaga-se) | Um mapa onde um tile em falta muda os vizinhos esconde o buraco. A célula fica com a casa dela, mesmo vazia, e o artista vê o que falta. Gate `slot_em_falta_nao_escolhe_outro_tile` |
 ## 7. Gates, red-first
 
 | Gate | O que prova | Base |

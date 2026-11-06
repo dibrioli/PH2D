@@ -147,7 +147,6 @@ impl Registo {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::painter::Engine;
 
     /// A ida e volta de um registo real é a mesma, medida pelo que ele restaura: o undo depois da volta dá a grade do

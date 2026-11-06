@@ -403,17 +403,15 @@ mod lote_do_dab; // o que a rota apura para o lote e cada dab lê — filho de p
 pub(super) use lote::media_do_grao;
 pub(crate) mod adormecida; // a tinta viva parada fora do Wet (dono 06/11)
 #[cfg(test)]
-mod dentro_do_wet_tests;
-mod dormente; // a tinta adormecida comprimida em RAM (dono 06/11)
+mod adormecida_regua_tests;
+#[cfg(test)]
+mod adormecida_tests;
 mod borracha_morta; // a Borracha na tinta morta imita a da viva (dono 06/11)
 #[cfg(test)]
 mod borracha_morta_tests;
 #[cfg(test)]
-mod sonda_borracha_morta;
-#[cfg(test)]
-mod adormecida_regua_tests;
-#[cfg(test)]
-mod adormecida_tests;
+mod dentro_do_wet_tests;
+mod dormente; // a tinta adormecida comprimida em RAM (dono 06/11)
 mod po; // o PÓ SOLTO pousado à parte do rasto (J4 pastel_carvao) — filho de dab_route por LOC
 mod ponta_das_cerdas; // a ponta RECTA e DESFIADA das cerdas (J2 §7 c) — filho de dab_route por LOC
 mod pousa_o_dab; // o corpo do laço da rota do dab: um dab entra na água — filho de dab_route por LOC
@@ -422,6 +420,8 @@ mod preparo; // o motor e o papel prontos antes do toque (Bug #72)
 mod preparo_tests;
 mod rota_da_lane; // a lane de cada dab, a tinta do motor e o b/opacidade — filho de dab_route por LOC
 mod session;
+#[cfg(test)]
+mod sonda_borracha_morta;
 mod tampa; // as PONTAS RECTAS do traço (J6) — filho de dab_route por LOC
 #[cfg(test)]
 mod tampa_tests; // what a wet SESSION is (data model) — child file (LOC cap)

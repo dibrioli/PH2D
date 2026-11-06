@@ -112,8 +112,12 @@ impl PainterTool {
     /// Os `dabs` da Borracha sobre a tinta morta: acumula a cobertura do traço e refaz a caixa a partir da imagem de antes.
     pub(in crate::tool::paint) fn borracha_na_tinta_morta(&mut self, dabs: &[Dab]) {
         let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
-        let Some(r) = dabs_bounds(dabs, self.source_size.0, self.source_size.1, self.paint.brush.tip_reach())
-        else {
+        let Some(r) = dabs_bounds(
+            dabs,
+            self.source_size.0,
+            self.source_size.1,
+            self.paint.brush.tip_reach(),
+        ) else {
             return;
         };
         if self.canvas_rgba.len() != w * h * 4 {
@@ -167,7 +171,11 @@ impl PainterTool {
         let plano_de = |fonte: &[u8]| {
             let mut v = Vec::with_capacity(lw * lh);
             for y in lei.y0..lei.y1 {
-                v.extend(fonte[y * w + lei.x0..y * w + lei.x1].iter().map(|b| f32::from(*b) / 255.0));
+                v.extend(
+                    fonte[y * w + lei.x0..y * w + lei.x1]
+                        .iter()
+                        .map(|b| f32::from(*b) / 255.0),
+                );
             }
             alisa_plano(&mut v, lw, parede);
             v
@@ -221,8 +229,16 @@ impl PainterTool {
                     let i = k as isize + d * passo as isize;
                     cob.get(i as usize).copied().unwrap_or(c)
                 };
-                let gx = if lx > 0 && lx + 1 < lw { (lado(1, 1) - lado(-1, 1)) * 0.5 } else { 0.0 };
-                let gy = if ly > 0 && ly + 1 < lh { (lado(1, lw) - lado(-1, lw)) * 0.5 } else { 0.0 };
+                let gx = if lx > 0 && lx + 1 < lw {
+                    (lado(1, 1) - lado(-1, 1)) * 0.5
+                } else {
+                    0.0
+                };
+                let gy = if ly > 0 && ly + 1 < lh {
+                    (lado(1, lw) - lado(-1, lw)) * 0.5
+                } else {
+                    0.0
+                };
                 let luz = (1.0 - ganho * (gx * LUZ[0] + gy * LUZ[1])).clamp(0.0, CLAREIA_NO_MAXIMO);
                 let a0 = f32::from(sulco.antes[o + 3]) / 255.0;
                 let am = canais[3][k].max(1e-4);
@@ -230,7 +246,9 @@ impl PainterTool {
                 for n in 0..3 {
                     let antes = f32::from(sulco.antes[o + n]);
                     let lisa = canais[n][k] / am;
-                    tela[o + n] = ((antes + (lisa - antes) * mistura) * luz).round().clamp(0.0, 255.0) as u8;
+                    tela[o + n] = ((antes + (lisa - antes) * mistura) * luz)
+                        .round()
+                        .clamp(0.0, 255.0) as u8;
                 }
                 let alfa = a0 * (1.0 - (tir[k] * forca).clamp(0.0, 1.0));
                 tela[o + 3] = (alfa * 255.0).floor() as u8;

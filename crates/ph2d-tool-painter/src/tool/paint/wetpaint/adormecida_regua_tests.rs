@@ -46,6 +46,8 @@ fn tela_pintada(w: usize, h: usize, variante: usize) -> (PainterTool, f64, usize
         let t0 = Instant::now();
         assert!(t.wet_adormece());
         ms = t0.elapsed().as_secs_f64() * 1e3;
+    } else {
+        t.wetpaint_end_session(); // `sem`: a tinta acabou, como antes de ela adormecer
     }
     t.set_paint_media(PaintMedia::Digital);
     assert_eq!(
@@ -143,20 +145,33 @@ fn mede(w: usize, h: usize) {
 fn sonda_compressao_adormecida() {
     for (w, h) in [(1920usize, 1080usize), (4096, 2560)] {
         let (mut t, _, _) = tela_pintada(w, h, 2);
-        let a = t.paint.wetpaint.adormecidas.first().expect("adormecida").clone();
+        let a = t
+            .paint
+            .wetpaint
+            .adormecidas
+            .first()
+            .expect("adormecida")
+            .clone();
         let (cru, grade, fotos, registos) = {
             let s = a.sess.lock().expect("trinco");
             let g: usize = s.engine.layers.iter().map(|l| l.grid.bytes_retidos()).sum();
             let m = s.engine.bytes_retidos();
-            let f: usize = s.bytes_retidos() - m - s.planos.pigment.len() - s.planos.sombra.len()
-                - s.planos.grao.len() - s.planos.suave.len();
+            let f: usize = s.bytes_retidos()
+                - m
+                - s.planos.pigment.len()
+                - s.planos.sombra.len()
+                - s.planos.grao.len()
+                - s.planos.suave.len();
             (s.bytes_retidos(), g, f, m - g)
         };
         let rss = || -> usize {
             std::fs::read_to_string("/proc/self/status")
                 .unwrap_or_default()
                 .lines()
-                .find_map(|l| l.strip_prefix("VmRSS:").map(|r| r.trim().trim_end_matches(" kB").trim().parse().unwrap_or(0)))
+                .find_map(|l| {
+                    l.strip_prefix("VmRSS:")
+                        .map(|r| r.trim().trim_end_matches(" kB").trim().parse().unwrap_or(0))
+                })
                 .unwrap_or(0)
                 / 1024
         };
@@ -172,7 +187,11 @@ fn sonda_compressao_adormecida() {
         let acordar = t0.elapsed().as_secs_f64() * 1e3;
         println!(
             "{w}x{h}: cru {} MB (grade {} · fotos {} · histórico e papel {}) → {} MB · comprimir {comprimir:.0} ms · acordar {acordar:.0} ms",
-            cru >> 20, grade >> 20, fotos >> 20, registos >> 20, z >> 20
+            cru >> 20,
+            grade >> 20,
+            fotos >> 20,
+            registos >> 20,
+            z >> 20
         );
     }
     println!("loadavg fim: {}", loadavg().trim());

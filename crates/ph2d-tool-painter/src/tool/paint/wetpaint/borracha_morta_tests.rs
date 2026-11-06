@@ -6,7 +6,10 @@ use super::sonda_borracha_morta::morta;
 use super::*;
 
 fn soma_delta(a: &[u8], b: &[u8]) -> u64 {
-    a.iter().zip(b).map(|(x, y)| u64::from(x.abs_diff(*y))).sum()
+    a.iter()
+        .zip(b)
+        .map(|(x, y)| u64::from(x.abs_diff(*y)))
+        .sum()
 }
 
 fn borracha(t: &mut PainterTool) {
@@ -26,10 +29,20 @@ fn uma_passada_amassa_e_nao_corta() {
     let antes = mostrada(&mut t);
     borracha(&mut t);
     let r = apaga(&mut t);
-    assert!(diferentes(&antes, &r) > 1036, "o rasto é mais largo que o corte");
-    assert!(soma_delta(&antes, &r) < 196_654 / 2, "metade da força do corte");
+    assert!(
+        diferentes(&antes, &r) > 1036,
+        "o rasto é mais largo que o corte"
+    );
+    assert!(
+        soma_delta(&antes, &r) < 196_654 / 2,
+        "metade da força do corte"
+    );
     let azul = |c: &[u8]| c[2] > c[0] + 40;
-    assert!(azul(no_rasto(&r, 75)), "a tinta fica: {:?}", no_rasto(&r, 75));
+    assert!(
+        azul(no_rasto(&r, 75)),
+        "a tinta fica: {:?}",
+        no_rasto(&r, 75)
+    );
     assert!(t.paint.wetpaint.session.is_none(), "nenhuma sessão nasce");
 }
 
@@ -49,7 +62,11 @@ fn varias_passadas_tiram_a_tinta() {
     assert!(a1 < a0, "uma passada tira alguma coisa");
     assert!(a2 < a1, "e continua a tirar");
     let o = (100 * W + 134) * 4;
-    assert!(t.canvas_rgba[o + 3] < 40, "ao fim, papel: α {}", t.canvas_rgba[o + 3]);
+    assert!(
+        t.canvas_rgba[o + 3] < 40,
+        "ao fim, papel: α {}",
+        t.canvas_rgba[o + 3]
+    );
 }
 
 /// O Erase Strength é um controlo vivo aqui também: mais força, menos tinta.

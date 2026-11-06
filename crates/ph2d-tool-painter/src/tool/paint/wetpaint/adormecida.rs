@@ -40,6 +40,7 @@ const COMPRIME_A_PARTIR_DE: usize = 64 << 20;
 
 impl TintaAdormecida {
     /// Comprime aqui e agora (o fio faz o mesmo).
+    #[cfg(test)]
     pub(super) fn encolhe_ja(&self) {
         let n = self.sess.lock().expect("o trinco da adormecida").encolhe();
         self.bytes.store(n, std::sync::atomic::Ordering::Relaxed);
@@ -60,11 +61,7 @@ impl TintaAdormecida {
 
     /// Acordar agora não espera ninguém: nenhum fio nela, nada por descomprimir.
     fn pronta(&self) -> bool {
-        Arc::weak_count(&self.sess) == 0
-            && self
-                .sess
-                .try_lock()
-                .is_ok_and(|s| s.dormente.is_none())
+        Arc::weak_count(&self.sess) == 0 && self.sess.try_lock().is_ok_and(|s| s.dormente.is_none())
     }
 
     /// Descomprime num fio à parte: a troca de modo não engasga, e o quadro acorda-a quando ficar pronta.

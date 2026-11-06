@@ -7,7 +7,10 @@ use super::borracha_de_fabrica_tests::{apaga, diferentes};
 use super::*;
 
 fn soma_delta(a: &[u8], b: &[u8]) -> u64 {
-    a.iter().zip(b).map(|(x, y)| u64::from(x.abs_diff(*y))).sum()
+    a.iter()
+        .zip(b)
+        .map(|(x, y)| u64::from(x.abs_diff(*y)))
+        .sum()
 }
 
 /// A tinta morta de verdade: a imagem fica, a sessão e as adormecidas acabam.

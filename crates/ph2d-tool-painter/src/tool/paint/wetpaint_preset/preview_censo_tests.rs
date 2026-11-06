@@ -218,7 +218,10 @@ const WET_FORA_DO_PREVIEW: &[(&str, &str)] = &[
         "adormecidas",
         "a tinta adormecida da obra não vai ao preview",
     ),
-    ("sulco", "o sulco da Borracha na tinta morta é do traço aberto"),
+    (
+        "sulco",
+        "o sulco da Borracha na tinta morta é do traço aberto",
+    ),
     (
         "medindo_o_escudo",
         "um instante dentro de um lote, nunca entre traços",

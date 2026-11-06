@@ -74,7 +74,10 @@ fn desfazer_o_preenchimento_devolve_a_tinta() {
     t.ticks_em_blocos(10);
     desfaz_o_fill(&mut t);
     assert_eq!(diferentes(&antes, &mostrada(&mut t)), 0, "a tela de antes");
-    assert!(t.paint.wetpaint.session.is_some(), "a sessão morreu no undo");
+    assert!(
+        t.paint.wetpaint.session.is_some(),
+        "a sessão morreu no undo"
+    );
     assert!(t.redo_last(), "o Fill refaz-se");
     assert_eq!(
         &mostrada(&mut t)[(140 * W + 60) * 4..(140 * W + 60) * 4 + 3],
@@ -83,7 +86,10 @@ fn desfazer_o_preenchimento_devolve_a_tinta() {
     );
     assert!(t.undo_last(), "o Fill desfaz-se de novo");
     assert!(t.paint.wetpaint.session.is_some(), "a sessão, de novo");
-    assert!(t.undo_last(), "a selecção desfaz-se: ela prenderia a Borracha");
+    assert!(
+        t.undo_last(),
+        "a selecção desfaz-se: ela prenderia a Borracha"
+    );
     t.set_paint_tool_mode("eraser");
     assert_eq!(diferentes(&borracha_viva(), &apaga(&mut t)), 0);
 }
@@ -95,7 +101,10 @@ fn desfazer_o_preenchimento_sobre_o_oleo_devolve_o_relevo() {
     preenche(&mut t, (100, 50, 60, 80));
     t.ticks_em_blocos(10);
     desfaz_o_fill(&mut t);
-    assert!(t.undo_last(), "a selecção desfaz-se: ela prenderia a Borracha");
+    assert!(
+        t.undo_last(),
+        "a selecção desfaz-se: ela prenderia a Borracha"
+    );
     t.set_paint_tool_mode("eraser");
     assert_eq!(diferentes(&borracha_viva(), &apaga(&mut t)), 0);
 }
@@ -186,11 +195,18 @@ fn o_balde_nao_mata_a_tinta() {
     t.on_canvas_pointer(ponteiro(10.0, 10.0, PointerPhase::Up));
     t.fill_commit();
     let cheia = mostrada(&mut t);
-    assert!(diferentes(&antes, &cheia) > 1000, "CONTROLO: o balde pintou");
+    assert!(
+        diferentes(&antes, &cheia) > 1000,
+        "CONTROLO: o balde pintou"
+    );
     t.set_paint_media(PaintMedia::WetPaint);
     t.ticks_em_blocos(10);
     assert!(t.paint.wetpaint.session.is_some(), "a sessão");
-    assert_eq!(diferentes(&cheia, &mostrada(&mut t)), 0, "acordar não apaga");
+    assert_eq!(
+        diferentes(&cheia, &mostrada(&mut t)),
+        0,
+        "acordar não apaga"
+    );
     assert!(t.undo_last(), "o balde desfaz-se");
     t.set_paint_tool_mode("eraser");
     assert_eq!(diferentes(&borracha_viva(), &apaga(&mut t)), 0);
@@ -252,7 +268,10 @@ fn o_traco_molhado_nao_retem_a_tela() {
             }
             t.on_canvas_pointer(ponteiro(190.0, y, PointerPhase::Up));
             t.ticks_em_blocos(3);
-            assert!(t.undo.write_state.tela_que_saiu().is_none(), "{meio}: no fim");
+            assert!(
+                t.undo.write_state.tela_que_saiu().is_none(),
+                "{meio}: no fim"
+            );
         }
     }
 }

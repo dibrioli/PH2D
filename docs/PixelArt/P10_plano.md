@@ -36,7 +36,7 @@
 | O `Tab` | `input_teclas.rs:179` ainda alterna a timeline. `828051653b` **não está no main**. ⚠️ `Space+Tab` mexe neste mesmo sítio: risco de conflito na integração, a anotar no handoff |
 | Censo de quem toca o modelo | `Cel {` 25 literais · `LayerKind::Image/Group` 52 · `.is_group()` 30 · `.data` em `src/` de core, io e app 27 |
 
-## 2. A fronteira com o projeto Tiling — decisão do dono em aberto
+## 2. A fronteira com o projeto Tiling — decidida pelo dono em 06/11 (§9.1)
 
 [`project_tilemap_belongs_to_the_tiling_project`](../../project-memory/project_tilemap_belongs_to_the_tiling_project.md): em 16/09 o dono mandou pular o tilemap da linha de componentes, porque ele tem projeto próprio em `docs/Tilling/Tiling/` (fora do git). O porte (Fase P: `ph2d-tilemap`, `TilemapRef`, render por chunk, `.ldtk`) está atrás da Fase R, **suspensa** em 31/07 e reafirmada em 19/08. A premissa do Tiling (`plan.md §0`) é: geometria vem de `ph2d-grid`, sem redefinir `Orientation`; `HashMap` proibido; undo próprio.
 

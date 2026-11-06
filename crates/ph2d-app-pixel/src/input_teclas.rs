@@ -187,7 +187,8 @@ pub fn key_with(
         (KeyCode::Digit3, false, false) if app.space => {
             crate::tiles::tecla(app, |m| m.modo = Modo::Stack)
         }
-        (KeyCode::Tab, false, false) => {
+        // O `Tab` sozinho é só do modo (dono, 06/11); a linha do tempo fica ao lado do papel vegetal.
+        (KeyCode::F4, false, false) => {
             app.alterna_timeline = true;
             KeyAnswer::Quiet
         }

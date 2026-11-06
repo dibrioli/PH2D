@@ -48,6 +48,33 @@ fn only_the_mode_owns_the_tab() {
     );
 }
 
+/// O território acima é a shell; a família trata as suas teclas ANTES dela. O Pixel prendia o `Tab`
+/// em Draw, invisível ao censo (dono, 06/11). Mutação: um braço `KeyCode::Tab` em qualquer crate.
+#[test]
+fn no_crate_takes_the_tab_before_the_mode() {
+    fn varre(dir: &std::path::Path, achados: &mut Vec<String>) {
+        for e in std::fs::read_dir(dir).expect("a pasta").flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                varre(&p, achados);
+            } else if p.extension().is_some_and(|x| x == "rs")
+                && std::fs::read_to_string(&p).is_ok_and(|s| s.contains("KeyCode::Tab"))
+            {
+                achados.push(p.display().to_string());
+            }
+        }
+    }
+    let crates = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../crates");
+    let mut achados = Vec::new();
+    for c in std::fs::read_dir(crates).expect("crates/").flatten() {
+        let src = c.path().join("src");
+        if src.is_dir() {
+            varre(&src, &mut achados);
+        }
+    }
+    assert!(achados.is_empty(), "o `Tab` tem outro dono: {achados:?}");
+}
+
 /// Mutação que tem de sangrar: o `Ctrl+Space` deixar de alternar o zen.
 #[test]
 fn ctrl_space_toggles_the_zen() {

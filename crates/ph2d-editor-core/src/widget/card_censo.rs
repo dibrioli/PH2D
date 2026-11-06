@@ -40,11 +40,20 @@ pub struct TextoMedido {
     pub largura: f32,
 }
 
+/// O cabeçalho de um cartão: onde o título acaba e onde o resumo começa (`None` = não pintado).
+#[derive(Clone, Debug, PartialEq)]
+pub struct TituloMedido {
+    pub titulo: String,
+    pub fim: f32,
+    pub resumo_x: Option<f32>,
+}
+
 /// O que uma pintura gravou.
 #[derive(Clone, Debug, Default)]
 pub struct Censo {
     pub linhas: Vec<LinhaMedida>,
     pub textos: Vec<TextoMedido>,
+    pub titulos: Vec<TituloMedido>,
     /// O que o corpo de cada cartão pintou, para a lei do ritmo ([`ritmo`]).
     pub pecas: Vec<ritmo::Peca>,
     /// As listas suspensas sem rótulo nem linha dona: `(secção, texto, altura)`.
@@ -248,6 +257,19 @@ pub(crate) fn texto(texto: &str, pede: f32, largura: f32) {
                 texto: texto.to_owned(),
                 pede,
                 largura,
+            });
+        }
+    });
+}
+
+/// Anota o cabeçalho de um cartão.
+pub(crate) fn titulo(titulo: &str, fim: f32, resumo_x: Option<f32>) {
+    GRAVACAO.with(|g| {
+        if let Some(c) = g.borrow_mut().as_mut() {
+            c.titulos.push(TituloMedido {
+                titulo: titulo.to_owned(),
+                fim,
+                resumo_x,
             });
         }
     });

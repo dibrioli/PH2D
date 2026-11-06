@@ -13,7 +13,7 @@ use crate::{PixelApp, Tool};
 
 /// O `Panel::ID` da `ph2d-panel-pixel-tools` (a família não vê o painel).
 pub const PANEL_ID: &str = ph2d_editor_core::screens::hero::PANEL_PIXEL;
-/// O `Panel::ID` da `ph2d-panel-pixel-timeline` (abre e fecha com o PIXEL; o `Tab` alterna-o).
+/// O `Panel::ID` da `ph2d-panel-pixel-timeline` (abre e fecha com o PIXEL; o `F4` alterna-o).
 pub const TIMELINE_ID: &str = ph2d_editor_core::screens::hero::PANEL_PIXEL_TIMELINE;
 
 impl PixelApp {

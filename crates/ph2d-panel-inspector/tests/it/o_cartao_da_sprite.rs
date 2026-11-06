@@ -714,6 +714,41 @@ fn nada_do_cartao_da_sprite_e_cortado_no_minimo_do_painel() {
     assert!(r.expect("o censo viu o Reimport").pede <= 146.0, "{r:?}");
 }
 
+/// Dono, 06/11: no painel estreito o resumo do cartão dobrado caía em cima do título. O título manda;
+/// o resumo vem inteiro ou não vem, e o controlo é que, largo, ele aparece.
+#[test]
+fn o_resumo_do_cartao_dobrado_nunca_cai_em_cima_do_titulo() {
+    use ph2d_editor_core::widget::card_censo;
+    let piso = ph2d_editor_core::interaction::WidgetStore::DOCK_W_MIN;
+    let mede = |largura: f32| {
+        let (mut host, mut st) = cena(factos());
+        for id in [core_ids::INSP_LIVE_RENDER_SECTION, CARD_ORDERING] {
+            host.store_mut().set_collapsed(id, true);
+        }
+        let (_, censo) = card_censo::grava(|| pinta_na_janela(&mut host, &mut st, largura, 2400.0));
+        censo.titulos
+    };
+    for largura in [piso, 230.0, 250.0, 270.0, 294.0, 340.0, 420.0] {
+        for t in mede(largura) {
+            if let Some(x) = t.resumo_x {
+                assert!(x >= t.fim, "{largura}: {t:?}");
+            }
+        }
+    }
+    let tem_resumo = |titulos: &[card_censo::TituloMedido], nome: &str| {
+        titulos
+            .iter()
+            .rev()
+            .find(|t| t.titulo == nome)
+            .is_some_and(|t| t.resumo_x.is_some())
+    };
+    let largo = mede(420.0);
+    assert!(tem_resumo(&largo, "Transform"), "largo mostra: {largo:?}");
+    assert!(tem_resumo(&largo, "Advanced"), "largo mostra: {largo:?}");
+    let estreito = mede(piso);
+    assert!(!tem_resumo(&estreito, "Transform"), "{estreito:?}");
+}
+
 /// ⭐ *Editar o X do Pivot não arredonda nem grava o Y: o outro eixo vem do valor exacto, não da caixa.*
 /// *Mutação: ler as duas caixas ⇒ o Y sai 21.*
 #[test]

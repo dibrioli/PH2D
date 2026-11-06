@@ -128,7 +128,7 @@ pub struct PixelApp {
     /// O papel vegetal (as opções do Trial por omissão) e se está ligado (F3).
     pub onion: ph2d_pixel_core::Onion,
     pub onion_on: bool,
-    /// O `Tab` pediu mostrar/esconder a linha do tempo (aplica-se no painel, que vê o `hero`).
+    /// O `F4` pediu mostrar/esconder a linha do tempo (aplica-se no painel, que vê o `hero`).
     pub(crate) alterna_timeline: bool,
     /// A linha do tempo da casa estava aberta antes do Draw (a banda de baixo volta-lhe ao sair).
     pub(crate) timeline_casa: Option<bool>,

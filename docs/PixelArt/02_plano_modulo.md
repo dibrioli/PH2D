@@ -119,7 +119,7 @@ contra uma tabela-fixtura (Pillow/oráculo), grupo pass-through vs isolado. **Sm
 > (import). A composição na GPU não entrou: na CPU por janela o traço custa 0,12 ms (512² × 20).
 
 ### P4 — Frames, cels e timeline (estudo §1 Frame, §3)
-Painel **timeline camadas × frames** (Tab mostra/esconde), New Frame / Empty / Duplicate Cels /
+Painel **timeline camadas × frames** (F4 mostra/esconde; o Tab é só do modo, dono 06/11), New Frame / Empty / Duplicate Cels /
 **Linked Cels**, Delete, **duração por frame**, Frame e Cel Properties (opacidade, z-index),
 camadas *continuous*, navegação (Home/End/←/→/Alt+G), **onion skin** (anteriores/seguintes,
 vermelho/azul), Playback (velocidades, Play Once, Rewind on Stop), Preview flutuante, Constant
@@ -127,7 +127,7 @@ Frame Rate, Reverse Frames. **Gates:** cel linkado editado muda todos; playback 
 (relógio do host passado ao core). **Smoke 5.**
 
 > **Feito na P4 (25/10, ADR-0196 §11):** frames com duração, cels com opacidade/z/ligação, a
-> linha do tempo (painel `pixel_timeline`, Tab), New/Empty/Duplicate Linked/Delete/mover/Reverse,
+> linha do tempo (painel `pixel_timeline`, F4 desde 06/11), New/Empty/Duplicate Linked/Delete/mover/Reverse,
 > continuous, navegação, papel vegetal (F3, vermelho/azul), Enter toca — e, a pedido do dono, as
 > tags com as 4 direcções e as passadas (a sequência medida no Trial). Ficam para a P5: subtags,
 > grupos de tags, *Play Subtags & Repetitions* como opção, Preview flutuante, velocidades.

@@ -38,6 +38,14 @@ struct TituloLivre {
     y: f32,
 }
 
+impl TituloLivre {
+    /// Onde começa um resumo de `largura`, encostado à direita: inteiro ou nada, nunca sobre o título.
+    fn x_do_resumo(self, largura: f32) -> Option<f32> {
+        let x = self.x1 - largura;
+        (x >= self.x0).then_some(x)
+    }
+}
+
 thread_local! {
     static TITULO_LIVRE: std::cell::Cell<Option<TituloLivre>> = const { std::cell::Cell::new(None) };
 }
@@ -48,10 +56,7 @@ impl CardCtx<'_> {
     pub fn resumo_no_titulo(&mut self, texto: &str) -> Option<Rect> {
         let t = TITULO_LIVRE.with(std::cell::Cell::get)?;
         let sw = self.text_system.prefix_width(texto, m::LABEL_PX).ceil();
-        let x = t.x1 - sw;
-        if x < t.x0 {
-            return None;
-        }
+        let x = t.x_do_resumo(sw)?;
         crate::paint::paint_text(
             self.text_system,
             self.scene,
@@ -219,29 +224,32 @@ pub(super) fn paint_card_with(
         ink.color(tinta),
         0.0,
     );
+    let ocupado = crate::text_elide::title_elided_width(text_system, card.title, m::CARD_TITLE_PX)
+        .min(titulo_w);
+    let livre = TituloLivre {
+        x0: tx + ocupado + m::FIELD_GAP,
+        x1: tx + titulo_w - m::FIELD_GAP,
+        y: hy + crate::paint::folga_do_texto(m::CARD_HEAD_H, m::LABEL_PX),
+    };
+    let mut resumo_x = None;
     if dobrado && let Some(s) = card.summary.as_deref() {
-        let sw = text_system.prefix_width(s, m::LABEL_PX);
-        crate::paint::paint_text(
-            text_system,
-            scene,
-            s,
-            ax - sw - m::FIELD_GAP,
-            hy + crate::paint::folga_do_texto(m::CARD_HEAD_H, m::LABEL_PX),
-            m::LABEL_PX,
-            sw,
-            ink.color(ColorToken::Text3),
-        );
+        let sw = text_system.prefix_width(s, m::LABEL_PX).ceil();
+        resumo_x = livre.x_do_resumo(sw);
+        if let Some(x) = resumo_x {
+            crate::paint::paint_text(
+                text_system,
+                scene,
+                s,
+                x,
+                livre.y,
+                m::LABEL_PX,
+                sw,
+                ink.color(ColorToken::Text3),
+            );
+        }
     }
-    TITULO_LIVRE.with(|t| {
-        let ocupado =
-            crate::text_elide::title_elided_width(text_system, card.title, m::CARD_TITLE_PX)
-                .min(titulo_w);
-        t.set((!sem_titulo).then_some(TituloLivre {
-            x0: tx + ocupado + m::FIELD_GAP,
-            x1: tx + titulo_w - m::FIELD_GAP,
-            y: hy + crate::paint::folga_do_texto(m::CARD_HEAD_H, m::LABEL_PX),
-        }));
-    });
+    crate::widget::card_censo::titulo(card.title, tx + ocupado, resumo_x);
+    TITULO_LIVRE.with(|t| t.set((!sem_titulo).then_some(livre)));
     let mut fundo = if sem_titulo { hy } else { hy + m::CARD_HEAD_H };
 
     // ── O corpo (os campos e as notas, D6) ──

@@ -248,7 +248,7 @@ fn frame_actions_are_one_undo_step_and_the_active_frame_stays_valid() {
 }
 
 #[test]
-fn f3_tab_and_the_draw_edge_drive_the_onion_and_the_timeline_panel() {
+fn f3_f4_and_the_draw_edge_drive_the_onion_and_the_timeline_panel() {
     let mut p = Palco::novo();
     let aberto = |p: &Palco| {
         p.hero
@@ -279,10 +279,19 @@ fn f3_tab_and_the_draw_edge_drive_the_onion_and_the_timeline_panel() {
     q.hero.gizmo.mode.leave();
     q.quadro();
     assert!(!aberto(&q) && casa(&q), "ao sair do Draw a da casa volta");
-    p.tecla(KeyCode::Tab);
-    assert!(!aberto(&p), "Tab esconde");
-    p.tecla(KeyCode::Tab);
-    assert!(aberto(&p), "Tab mostra");
+    p.tecla(KeyCode::F4);
+    assert!(!aberto(&p), "F4 esconde");
+    p.tecla(KeyCode::F4);
+    assert!(aberto(&p), "F4 mostra");
+    let tab = input::key(
+        &mut p.app,
+        p.sim.world(),
+        Some(p.bits),
+        KeyCode::Tab,
+        false,
+        false,
+    );
+    assert!(tab.is_none(), "o Tab segue para o modo");
     p.tecla(KeyCode::F3);
     assert!(!p.quadro().onion, "F3 desliga o papel vegetal");
     p.tecla(KeyCode::F3);

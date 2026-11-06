@@ -374,3 +374,30 @@ fn o_json_de_outra_folha_nao_entra() {
     assert!(ph2d_pixel_io::abrir::dados_ao_lado(&c, (32, 8)).is_none());
     assert!(ph2d_pixel_io::abrir::dados_ao_lado(&d.join("sem.png"), (16, 8)).is_none());
 }
+
+/// O Repeat acha a tag pelo NOME: a segunda continua a segunda, e inserir outra antes dela não muda
+/// o que ele exporta.
+#[test]
+fn o_repeat_acha_a_tag_pelo_nome() {
+    let mut s = sprite(ColorMode::Rgba);
+    for (nome, de, ate) in [("a", 0, 0), ("b", 1, 2)] {
+        let op = frames::new_tag(&s, nome, de, ate).expect("tag");
+        ph2d_pixel_core::apply(&mut s, op).expect("tag");
+    }
+    let quadros_de = |x: &Export| match x {
+        Export::Ficheiro(f) => f.pedido.quadros,
+        Export::Folha(f) => f.opcoes.quadros,
+    };
+    let e = Export::Ficheiro(ExportAs {
+        pedido: Pedido {
+            quadros: Quadros::Tag(1),
+            escala: 1.0,
+            ..Pedido::default()
+        },
+        formato: Formato::Gif,
+        repeat: 0,
+    });
+    exporta::lembrar(&mut s, &e, &pasta("nome").join("t.gif"));
+    let lido = exporta::o_ultimo(&s).expect("tem").0.expect("lê");
+    assert_eq!(quadros_de(&lido), Quadros::Tag(1));
+}

@@ -336,3 +336,16 @@ fn os_verbos_ficam_na_faixa_e_o_titulo_arrasta() {
     );
     assert!(m0.rect(ids::EXPORT_DRAG).is_some(), "sem alça");
 }
+
+/// Esquecer a prévia larga a folha a montar: ela não publica depois, por cima de outra janela.
+/// *Mutação: `esquece` sem limpar o `trabalho` ⇒ vermelho.*
+#[test]
+fn esquecer_a_previa_larga_a_folha_a_montar() {
+    let s = ph2d_pixel_core::Sprite::new(ph2d_pixel_core::NewSprite::default()).expect("sprite");
+    let mut p = canal::PreviaDaFolha::default();
+    canal::pede_folha(Some(ph2d_pixel_io::sheet::OpcoesFolha::default()));
+    p.publica(1, 1, &s);
+    assert!(p.montando(), "vácuo: a folha tem de estar a montar");
+    p.esquece();
+    assert!(!p.montando());
+}

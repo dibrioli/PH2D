@@ -423,15 +423,6 @@ impl<T: Copy + PartialEq + Send + Sync> StoredPlane<T> {
             Self::Whole { before, after } => (before.len() + after.len()) * size_of::<T>(),
         }
     }
-
-    /// Os bytes que CLONAR esta entrada aloca: só a janela (`Patch`); os buffers inteiros (`Whole`) são `Arc`
-    /// partilhados com o original, que os segura de qualquer forma.
-    pub(crate) fn copiado_bytes(&self) -> usize {
-        match self {
-            Self::Patch { before, after, .. } => (before.len() + after.len()) * size_of::<T>(),
-            Self::Unchanged | Self::Whole { .. } => 0,
-        }
-    }
 }
 
 /// Uma chave de um mapa por-camada, guardada como delta. A chave pode existir num lado só (o passo criou
@@ -441,22 +432,6 @@ pub(crate) enum StoredEntry<T> {
     Both(StoredPlane<T>),
     OnlyBefore(Arc<Vec<T>>),
     OnlyAfter(Arc<Vec<T>>),
-}
-
-impl<T: Copy + PartialEq + Send + Sync> StoredEntry<T> {
-    fn heap_bytes(&self) -> usize {
-        match self {
-            Self::Both(p) => p.heap_bytes(),
-            Self::OnlyBefore(v) | Self::OnlyAfter(v) => v.len() * size_of::<T>(),
-        }
-    }
-
-    fn copiado_bytes(&self) -> usize {
-        match self {
-            Self::Both(p) => p.copiado_bytes(),
-            Self::OnlyBefore(_) | Self::OnlyAfter(_) => 0,
-        }
-    }
 }
 
 /// Um mapa `LayerId -> plano` guardado como delta (os três planos de impasto: `heights`, `covers`,
@@ -528,11 +503,6 @@ impl<T: Copy + PartialEq + Send + Sync> StoredMap<T> {
 
     pub(crate) fn heap_bytes(&self) -> usize {
         self.entries.values().map(StoredEntry::heap_bytes).sum()
-    }
-
-    /// Ver [`StoredPlane::copiado_bytes`].
-    pub(crate) fn copiado_bytes(&self) -> usize {
-        self.entries.values().map(StoredEntry::copiado_bytes).sum()
     }
 }
 
@@ -670,17 +640,6 @@ impl StoredImages {
             })
             .sum()
     }
-
-    /// Ver [`StoredPlane::copiado_bytes`].
-    pub(crate) fn copiado_bytes(&self) -> usize {
-        self.entries
-            .values()
-            .map(|e| match e {
-                ImageEntry::Patch { before, after, .. } => before.len() + after.len(),
-                _ => 0,
-            })
-            .sum()
-    }
 }
 
 /// O stride (elementos por linha) de cada família de plano, derivado da largura do canvas que o
@@ -725,6 +684,9 @@ pub(crate) mod confine;
 /// **Re-partir um plano do topo sem materializar a tela** — filho pelo mesmo motivo (a janela).
 #[path = "undo_delta_absorb.rs"]
 mod absorb_route;
+
+#[path = "undo_delta_copiado.rs"]
+mod copiado;
 
 #[cfg(test)]
 #[path = "undo_delta_tests.rs"]

@@ -36,6 +36,9 @@ pub enum Op {
     /// O tamanho do sprite, todos os cels e a selecção de uma vez (Canvas/Sprite Size, Rotate e
     /// Flip Canvas, Crop, Trim). O inverso é o estado de antes.
     Canvas(Box<CanvasSet>),
+    /// O tileset e os mapas (traço em tile, Draw Tiles, novo tileset). O inverso repõe o que mudou;
+    /// `Cel.data` deriva e não entra nele.
+    Tiles(Box<crate::tiles::TilesSet>),
     /// Vários ops como UM passo (uma transformação assentada: as células e a selecção). Aplica-se
     /// em ordem; se um falha, os já aplicados desfazem-se e o documento fica intacto.
     Batch(Vec<Op>),
@@ -82,6 +85,7 @@ pub struct Whole {
     pub palette: Vec<[u8; 4]>,
     pub transparent: u8,
     pub cels: BTreeMap<CelKey, Cel>,
+    pub tilesets: Vec<crate::tiles::Tileset>,
 }
 
 /// «Põe o cel `(layer, frame)` com a caixa `bbox` (`None` = sem cel), guardando o que já estava
@@ -124,6 +128,10 @@ pub enum OpError {
     BadMask,
     /// Largura/altura fora de `1..=MAX_SIDE`.
     BadSize,
+    /// As leis do tilemap (a etiqueta diz qual).
+    BadTiles(&'static str),
+    /// Pintar píxeis direto numa camada de tilemap: o traço passa por [`Op::Tiles`].
+    TilemapLayer(LayerId),
 }
 
 impl Op {
@@ -152,6 +160,7 @@ impl Op {
             Op::Whole(w) => {
                 w.palette.len() * 4
                     + w.cels.values().map(|c| c.data.len() + 32).sum::<usize>()
+                    + w.tilesets.iter().map(crate::tiles::Tileset::bytes).sum::<usize>()
                     + std::mem::size_of::<Whole>()
             }
             Op::Mask(m) => mask_bytes(&m.mask) + mask_bytes(&m.last),
@@ -161,6 +170,7 @@ impl Op {
                     + mask_bytes(&c.last)
                     + std::mem::size_of::<CanvasSet>()
             }
+            Op::Tiles(t) => t.bytes(),
             Op::Batch(v) => v.iter().map(Op::bytes).sum::<usize>(),
         }
     }
@@ -195,6 +205,9 @@ pub fn apply(sprite: &mut Sprite, op: Op) -> Result<Op, OpError> {
         Op::Frames(f) => apply_frames(sprite, *f).map(|f| Op::Frames(Box::new(f))),
         Op::Mask(m) => apply_mask(sprite, *m).map(|m| Op::Mask(Box::new(m))),
         Op::Canvas(c) => apply_canvas(sprite, *c).map(|c| Op::Canvas(Box::new(c))),
+        Op::Tiles(t) => {
+            crate::tiles::apply_tiles(sprite, *t).map(|t| Op::Tiles(Box::new(t)))
+        }
         Op::Batch(ops) => apply_batch(sprite, ops).map(Op::Batch),
     }
 }
@@ -230,6 +243,7 @@ fn apply_canvas(s: &mut Sprite, c: CanvasSet) -> Result<CanvasSet, OpError> {
     let all: Vec<(CelKey, Option<Cel>)> =
         c.cels.iter().map(|(k, c)| (*k, Some(c.clone()))).collect();
     check_cels(s, &s.layers, &s.frames, &all, true, s.mode.bpp())?;
+    check_tile_cels(&s.layers, &s.tilesets, &all)?;
     Ok(CanvasSet {
         width: std::mem::replace(&mut s.width, w),
         height: std::mem::replace(&mut s.height, h),
@@ -306,6 +320,51 @@ pub(crate) fn check_cels(
     Ok(())
 }
 
+/// Toda camada de tilemap aponta para um tileset que existe.
+pub(crate) fn check_layer_sets(
+    layers: &[Layer],
+    sets: &[crate::tiles::Tileset],
+) -> Result<(), OpError> {
+    let ok = |id| sets.iter().any(|t| t.id == id);
+    if layers.iter().filter_map(Layer::tileset).all(ok) {
+        Ok(())
+    } else {
+        Err(OpError::BadLayers("layer.tileset"))
+    }
+}
+
+/// As leis do tilemap em cada cel que muda: quem não é ligado, numa camada de tilemap, tem mapa
+/// com a caixa que o mapa dá; numa camada de imagem, não tem mapa.
+pub(crate) fn check_tile_cels(
+    layers: &[Layer],
+    sets: &[crate::tiles::Tileset],
+    changes: &[(CelKey, Option<Cel>)],
+) -> Result<(), OpError> {
+    for (k, c) in changes {
+        let Some(c) = c else { continue };
+        let set = layers
+            .iter()
+            .find(|l| l.id == k.0)
+            .and_then(Layer::tileset)
+            .and_then(|id| sets.iter().find(|t| t.id == id));
+        let ok = match (set, &c.tiles) {
+            (None, None) => true,
+            (Some(_), None) => c.link.is_some(),
+            (None, Some(_)) => false,
+            (Some(t), Some(g)) => {
+                c.link.is_none()
+                    && c.bbox == g.rect(t.tile_w, t.tile_h)
+                    && crate::tiles::check_grid(g, (t.tile_w, t.tile_h, t.tiles.len() as u32))
+                        .is_ok()
+            }
+        };
+        if !ok {
+            return Err(OpError::BadCel(*k));
+        }
+    }
+    Ok(())
+}
+
 /// As leis da linha do tempo: pelo menos um frame; ids únicos e já emitidos; cada tag dentro dela.
 pub(crate) fn check_frames(frames: &[Frame], tags: &[Tag], next_id: u32) -> Result<(), OpError> {
     let bad = OpError::BadFrames;
@@ -341,6 +400,7 @@ fn put_cels(s: &mut Sprite, cels: Vec<(CelKey, Option<Cel>)>) -> Vec<(CelKey, Op
 fn apply_frames(s: &mut Sprite, set: FrameSet) -> Result<FrameSet, OpError> {
     check_frames(&set.frames, &set.tags, s.next_id)?;
     check_cels(s, &s.layers, &set.frames, &set.cels, false, s.mode.bpp())?;
+    check_tile_cels(&s.layers, &s.tilesets, &set.cels)?;
     let cels = put_cels(s, set.cels);
     Ok(FrameSet {
         frames: std::mem::replace(&mut s.frames, set.frames),
@@ -388,6 +448,8 @@ fn apply_layers(s: &mut Sprite, set: LayerSet) -> Result<LayerSet, OpError> {
     check_layers(&set.layers, s.next_id)?;
     // Nenhum cel pode ficar órfão: o de uma camada que sai (ou vira grupo) tem de vir em `cels`.
     check_cels(s, &set.layers, &s.frames, &set.cels, false, s.mode.bpp())?;
+    check_layer_sets(&set.layers, &s.tilesets)?;
+    check_tile_cels(&set.layers, &s.tilesets, &set.cels)?;
     let cels = put_cels(s, set.cels);
     Ok(LayerSet {
         layers: std::mem::replace(&mut s.layers, set.layers),
@@ -410,6 +472,11 @@ fn apply_remap(s: &mut Sprite, perm: &[usize]) -> Result<(), OpError> {
                 }
             }
         }
+        for v in s.tilesets.iter_mut().flat_map(|t| &mut t.tiles).flatten() {
+            if let Some(&n) = inv.get(usize::from(*v)) {
+                *v = n as u8;
+            }
+        }
     }
     Ok(())
 }
@@ -424,17 +491,22 @@ fn apply_whole(s: &mut Sprite, w: Whole) -> Result<Whole, OpError> {
     let all: Vec<(CelKey, Option<Cel>)> =
         w.cels.iter().map(|(k, c)| (*k, Some(c.clone()))).collect();
     check_cels(s, &s.layers, &s.frames, &all, true, w.mode.bpp())?;
+    check_tile_cels(&s.layers, &w.tilesets, &all)?;
     Ok(Whole {
         mode: std::mem::replace(&mut s.mode, w.mode),
         palette: std::mem::replace(&mut s.palette, w.palette),
         transparent: std::mem::replace(&mut s.transparent, w.transparent),
         cels: std::mem::replace(&mut s.cels, w.cels),
+        tilesets: std::mem::replace(&mut s.tilesets, w.tilesets),
     })
 }
 
 fn apply_patch(s: &mut Sprite, p: Patch) -> Result<Patch, OpError> {
-    if s.layer(p.layer).is_none() {
+    let Some(layer) = s.layer(p.layer) else {
         return Err(OpError::UnknownLayer(p.layer));
+    };
+    if layer.tileset().is_some() {
+        return Err(OpError::TilemapLayer(p.layer));
     }
     if !s.frames.iter().any(|f| f.id == p.frame) {
         return Err(OpError::UnknownFrame(p.frame));

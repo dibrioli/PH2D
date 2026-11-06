@@ -1,0 +1,18 @@
+[package]
+name = "ph2d-pixel-tiles"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# As leis de desenhar em tilemap do Pixel Art (`docs/PixelArt/P10_plano.md`): os modos Manual, Auto e
+# Stack, Draw Tiles e o terreno de 47. PURA: sem ECS, sem UI, sem SO. O documento é o `ph2d-pixel-core`.
+[dependencies]
+ph2d-pixel-core = { path = "../ph2d-pixel-core" }
+
+[lints]
+workspace = true

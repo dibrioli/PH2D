@@ -34,6 +34,7 @@ pub mod selection;
 mod sprite;
 mod stroke;
 pub mod symmetry;
+pub mod tiles;
 pub mod transform;
 
 pub use codec::{CodecError, MAJOR, MINOR};
@@ -48,3 +49,6 @@ pub use sprite::{
     Layer, LayerId, LayerKind, MAX_SIDE, NewSprite, Rect, Sprite, SpriteError, Tag,
 };
 pub use stroke::{Paint, Stroke};
+pub use tiles::{
+    TERRAIN_TILES, Terrain, TileGrid, TileRef, TilesSet, Tileset, TilesetId, derived_is_consistent,
+};

@@ -33,4 +33,5 @@ mod selection_laws;
 mod selection_oracle;
 mod selection_parity;
 mod stroke;
+mod tiles;
 mod transform_oracle;

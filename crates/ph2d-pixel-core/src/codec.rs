@@ -27,10 +27,11 @@ use crate::sprite::{
     Cel, ColorMode, Direction, Frame, FrameId, Layer, LayerId, LayerKind, MAX_SIDE, Rect, Sprite,
     Tag,
 };
+use crate::tiles::{Terrain, TileGrid, TileRef, Tileset, TilesetId};
 
 pub const MAGIC: &[u8; 9] = b"PH2DPIXEL";
 pub const MAJOR: u16 = 1;
-pub const MINOR: u16 = 3;
+pub const MINOR: u16 = 4;
 
 /// Ficheiro recusado; nunca um documento meio lido.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -127,7 +128,7 @@ fn sprite_record(s: &Sprite) -> Vec<u8> {
         put_uint(&mut b, 1, u64::from(l.id.0));
         put_field(&mut b, 2, l.name.as_bytes());
         let (group, collapsed) = match l.kind {
-            LayerKind::Image => (false, false),
+            LayerKind::Image | LayerKind::Tilemap { .. } => (false, false),
             LayerKind::Group { collapsed } => (true, collapsed),
         };
         put_uint(
@@ -149,6 +150,10 @@ fn sprite_record(s: &Sprite) -> Vec<u8> {
         }
         if let Some(p) = l.parent {
             put_uint(&mut b, 6, u64::from(p.0));
+        }
+        // MINOR 4. Um binário antigo salta o campo e vê uma camada de imagem com a mesma arte.
+        if let Some(t) = l.tileset() {
+            put_uint(&mut b, 7, u64::from(t.0));
         }
         b.push(0);
         put_field(&mut r, 6, &b);
@@ -178,6 +183,10 @@ fn sprite_record(s: &Sprite) -> Vec<u8> {
         if let Some(o) = c.link {
             put_uint(&mut b, 10, u64::from(o.0));
         }
+        // MINOR 4: `data` continua gravado, para o binário antigo; ao ler, deriva-se do mapa.
+        if let Some(g) = &c.tiles {
+            put_field(&mut b, 11, &grid_record(g));
+        }
         b.push(0);
         put_field(&mut r, 8, &b);
     }
@@ -192,6 +201,24 @@ fn sprite_record(s: &Sprite) -> Vec<u8> {
         put_field(&mut b, 6, &t.color);
         b.push(0);
         put_field(&mut r, 10, &b);
+    }
+    // MINOR 4: os tilesets.
+    for t in &s.tilesets {
+        let mut b = Vec::new();
+        put_uint(&mut b, 1, u64::from(t.id.0));
+        put_field(&mut b, 2, t.name.as_bytes());
+        put_uint(&mut b, 3, u64::from(t.tile_w));
+        put_uint(&mut b, 4, u64::from(t.tile_h));
+        put_field(&mut b, 5, &t.tiles.concat());
+        for k in &t.terrains {
+            let mut c = Vec::new();
+            put_field(&mut c, 1, k.name.as_bytes());
+            put_uint(&mut c, 2, u64::from(k.first));
+            c.push(0);
+            put_field(&mut b, 6, &c);
+        }
+        b.push(0);
+        put_field(&mut r, 12, &b);
     }
     // MINOR 3: o último export. Sem export, o registo fica como no MINOR 2.
     if let Some(p) = &s.export_preset {
@@ -215,6 +242,7 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
         layers: Vec::new(),
         frames: Vec::new(),
         cels: BTreeMap::new(),
+        tilesets: Vec::new(),
         tags: Vec::new(),
         next_id: 0,
         mask: None,
@@ -273,6 +301,11 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
                                 .ok_or(CodecError::Invalid("layer.blend"))?;
                         }
                         6 => l.parent = Some(LayerId(u32_of(v, "layer.parent")?)),
+                        7 => {
+                            l.kind = LayerKind::Tilemap {
+                                tileset: TilesetId(u32_of(v, "layer.tileset")?),
+                            };
+                        }
                         _ => {}
                     }
                 }
@@ -313,6 +346,7 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
                                 .map_err(|_| CodecError::Invalid("cel.z"))?;
                         }
                         10 => cel.link = Some(FrameId(u32_of(v, "cel.link")?)),
+                        11 => cel.tiles = Some(Box::new(read_grid(v)?)),
                         _ => {}
                     }
                 }
@@ -356,6 +390,40 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
                 }
                 s.tags.push(tag);
             }
+            12 => {
+                let mut t = Tileset::new(TilesetId(0), "", 0, 0, Vec::new());
+                for (tag, v) in Fields::new(b)? {
+                    match tag {
+                        1 => t.id = TilesetId(u32_of(v, "tileset.id")?),
+                        2 => {
+                            t.name = String::from_utf8(v.to_vec())
+                                .map_err(|_| CodecError::Invalid("tileset.name"))?;
+                        }
+                        3 => t.tile_w = u16_of(v, "tileset.w")?,
+                        4 => t.tile_h = u16_of(v, "tileset.h")?,
+                        5 => t.tiles = vec![v.to_vec()],
+                        6 => {
+                            let mut k = Terrain {
+                                name: String::new(),
+                                first: 0,
+                            };
+                            for (i, c) in Fields::new(v)? {
+                                match i {
+                                    1 => {
+                                        k.name = String::from_utf8(c.to_vec())
+                                            .map_err(|_| CodecError::Invalid("terrain.name"))?;
+                                    }
+                                    2 => k.first = u32_of(c, "terrain.first")?,
+                                    _ => {}
+                                }
+                            }
+                            t.terrains.push(k);
+                        }
+                        _ => {}
+                    }
+                }
+                s.tilesets.push(t);
+            }
             11 => {
                 let mut p = crate::sprite::ExportPreset {
                     path: String::new(),
@@ -377,6 +445,7 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
             _ => {}
         }
     }
+    split_tilesets(&mut s)?;
     validate(&mut s, raw_cels)?;
     Ok(s)
 }
@@ -393,6 +462,7 @@ pub struct SpriteParts {
     pub frames: Vec<Frame>,
     pub cels: Vec<((LayerId, FrameId), Cel)>,
     pub tags: Vec<Tag>,
+    pub tilesets: Vec<Tileset>,
 }
 
 impl Sprite {
@@ -406,6 +476,7 @@ impl Sprite {
             .iter()
             .map(|l| l.id.0)
             .chain(p.frames.iter().map(|f| f.id.0))
+            .chain(p.tilesets.iter().map(|t| t.id.0))
             .max();
         let mut s = Sprite {
             width: p.width,
@@ -417,6 +488,7 @@ impl Sprite {
             frames: p.frames,
             cels: BTreeMap::new(),
             tags: p.tags,
+            tilesets: p.tilesets,
             next_id: last.map_or(1, |n| n + 1),
             mask: None,
             last_mask: None,
@@ -440,7 +512,8 @@ fn validate(s: &mut Sprite, raw_cels: Vec<((LayerId, FrameId), Cel)>) -> Result<
     let mut ids = std::collections::BTreeSet::new();
     let layer_ids = s.layers.iter().map(|l| l.id.0);
     let frame_ids = s.frames.iter().map(|f| f.id.0);
-    for id in layer_ids.chain(frame_ids) {
+    let set_ids = s.tilesets.iter().map(|t| t.id.0);
+    for id in layer_ids.chain(frame_ids).chain(set_ids) {
         if id == 0 || id >= s.next_id || !ids.insert(id) {
             return Err(CodecError::Invalid("id"));
         }
@@ -451,12 +524,68 @@ fn validate(s: &mut Sprite, raw_cels: Vec<((LayerId, FrameId), Cel)>) -> Result<
     let all: Vec<_> = raw_cels.into_iter().map(|(k, c)| (k, Some(c))).collect();
     crate::op::check_cels(s, &s.layers, &s.frames, &all, true, s.mode.bpp())
         .map_err(|_| CodecError::Invalid("cel"))?;
+    for t in &s.tilesets {
+        t.check(s.mode.bpp())
+            .map_err(|_| CodecError::Invalid("tileset"))?;
+    }
+    crate::op::check_layer_sets(&s.layers, &s.tilesets)
+        .map_err(|_| CodecError::Invalid("layer.tileset"))?;
+    crate::op::check_tile_cels(&s.layers, &s.tilesets, &all)
+        .map_err(|_| CodecError::Invalid("cel.tiles"))?;
     for (key, cel) in all.into_iter().filter_map(|(k, c)| Some((k, c?))) {
         if s.cels.insert(key, cel).is_some() {
             return Err(CodecError::Invalid("cel.key repeated"));
         }
     }
+    crate::tiles::rederive_all(s);
     Ok(())
+}
+
+/// Parte a tira gravada em tiles, agora que o modo de cor é conhecido.
+fn split_tilesets(s: &mut Sprite) -> Result<(), CodecError> {
+    let bpp = s.mode.bpp();
+    for t in &mut s.tilesets {
+        let size = usize::from(t.tile_w) * usize::from(t.tile_h) * bpp;
+        let raw = t.tiles.concat();
+        if size == 0 || raw.is_empty() || raw.len() % size != 0 {
+            return Err(CodecError::Invalid("tileset.size"));
+        }
+        t.tiles = raw.chunks_exact(size).map(<[u8]>::to_vec).collect();
+    }
+    Ok(())
+}
+
+fn grid_record(g: &TileGrid) -> Vec<u8> {
+    let mut b = Vec::with_capacity(g.tiles.len() * 4 + 16);
+    put_uint(&mut b, 1, zigzag(g.x));
+    put_uint(&mut b, 2, zigzag(g.y));
+    put_uint(&mut b, 3, u64::from(g.w));
+    put_uint(&mut b, 4, u64::from(g.h));
+    let raw: Vec<u8> = g.tiles.iter().flat_map(|t| t.0.to_le_bytes()).collect();
+    put_field(&mut b, 5, &raw);
+    b.push(0);
+    b
+}
+
+fn read_grid(bytes: &[u8]) -> Result<TileGrid, CodecError> {
+    let mut g = TileGrid::default();
+    for (t, v) in Fields::new(bytes)? {
+        match t {
+            1 => g.x = unzigzag(uint(v)?)?,
+            2 => g.y = unzigzag(uint(v)?)?,
+            3 => g.w = u32_of(v, "grid.w")?,
+            4 => g.h = u32_of(v, "grid.h")?,
+            5 => {
+                let (cells, resto) = v.as_chunks::<4>();
+                if !resto.is_empty() {
+                    return Err(CodecError::Invalid("grid.tiles"));
+                }
+                g.tiles = cells.iter().map(|c| TileRef(u32::from_le_bytes(*c))).collect();
+            }
+            _ => {}
+        }
+    }
+    Ok(g)
 }
 
 // ── registos ──────────────────────────────────────────────────────────────────
@@ -510,6 +639,10 @@ fn read_varint(b: &[u8], at: &mut usize) -> Result<u64, CodecError> {
 fn uint(b: &[u8]) -> Result<u64, CodecError> {
     let mut at = 0;
     read_varint(b, &mut at)
+}
+
+fn u16_of(b: &[u8], what: &'static str) -> Result<u16, CodecError> {
+    u16::try_from(uint(b)?).map_err(|_| CodecError::Invalid(what))
 }
 
 fn u32_of(b: &[u8], what: &'static str) -> Result<u32, CodecError> {

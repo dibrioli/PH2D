@@ -10456,6 +10456,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-pixel-tiles"
+version = "0.0.0"
+dependencies = [
+ "ph2d-pixel-core",
+]
+
+[[package]]
 name = "ph2d-platformer"
 version = "0.0.0"
 dependencies = [

@@ -12,7 +12,8 @@ use std::collections::BTreeMap;
 
 use crate::color::ToGray;
 use crate::op::Whole;
-use crate::sprite::{Cel, ColorMode, Sprite};
+use crate::sprite::{Cel, ColorMode, Layer, Rect, Sprite};
+use crate::tiles::Tileset;
 
 /// A matriz de Bayer de um dither ordenado.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -81,29 +82,32 @@ pub fn convert(sprite: &Sprite, mode: ColorMode, opt: Convert) -> Option<Whole> 
     if sprite.mode == mode {
         return None;
     }
+    let tilesets: Vec<Tileset> = sprite
+        .tilesets
+        .iter()
+        .map(|t| convert_tileset(sprite, mode, opt, t))
+        .collect();
     let mut cels = BTreeMap::new();
     for (&key, cel) in &sprite.cels {
         if cel.link.is_some() {
             cels.insert(key, cel.clone());
             continue;
         }
+        let tile_set = sprite.layer(key.0).and_then(Layer::tileset);
+        if let (Some(g), Some(id)) = (&cel.tiles, tile_set) {
+            let set = tilesets.iter().find(|t| t.id == id)?;
+            let data = crate::tiles::expand(g, set, mode.bpp());
+            cels.insert(
+                key,
+                Cel {
+                    data,
+                    ..cel.clone()
+                },
+            );
+            continue;
+        }
         let background = sprite.layer(key.0).is_some_and(|l| l.background);
-        let rgba: Vec<[u8; 4]> = cel
-            .data
-            .chunks_exact(sprite.mode.bpp())
-            .map(|b| sprite.rgba_of_value(sprite.read_value(b)))
-            .collect();
-        let data = match mode {
-            ColorMode::Rgba => rgba.concat(),
-            ColorMode::Gray => rgba
-                .iter()
-                .flat_map(|&c| [opt.to_gray.of(c), c[3]])
-                .collect(),
-            ColorMode::Indexed => {
-                let mut m = Mapper::new(&sprite.palette, sprite.transparent, background);
-                to_indexed(&mut m, &rgba, cel, opt.dither)
-            }
-        };
+        let data = convert_cel(sprite, mode, opt, cel, background);
         cels.insert(
             key,
             Cel {
@@ -117,7 +121,39 @@ pub fn convert(sprite: &Sprite, mode: ColorMode, opt: Convert) -> Option<Whole> 
         palette: sprite.palette.clone(),
         transparent: sprite.transparent,
         cels,
+        tilesets,
     })
+}
+
+/// O tileset no modo `mode`, tile a tile. O tile vazio fica vazio em qualquer modo.
+fn convert_tileset(sprite: &Sprite, mode: ColorMode, opt: Convert, t: &Tileset) -> Tileset {
+    let caixa = Rect::new(0, 0, u32::from(t.tile_w), u32::from(t.tile_h));
+    let tiles = t
+        .tiles
+        .iter()
+        .map(|px| convert_cel(sprite, mode, opt, &Cel::image(caixa, px.clone()), false))
+        .collect();
+    Tileset { tiles, ..t.clone() }
+}
+
+/// Os píxeis de `cel` no modo `mode`.
+fn convert_cel(sprite: &Sprite, mode: ColorMode, opt: Convert, cel: &Cel, background: bool) -> Vec<u8> {
+    let rgba: Vec<[u8; 4]> = cel
+        .data
+        .chunks_exact(sprite.mode.bpp())
+        .map(|b| sprite.rgba_of_value(sprite.read_value(b)))
+        .collect();
+    match mode {
+        ColorMode::Rgba => rgba.concat(),
+        ColorMode::Gray => rgba
+            .iter()
+            .flat_map(|&c| [opt.to_gray.of(c), c[3]])
+            .collect(),
+        ColorMode::Indexed => {
+            let mut m = Mapper::new(&sprite.palette, sprite.transparent, background);
+            to_indexed(&mut m, &rgba, cel, opt.dither)
+        }
+    }
 }
 
 fn to_indexed(m: &mut Mapper, rgba: &[[u8; 4]], cel: &Cel, dither: Dither) -> Vec<u8> {

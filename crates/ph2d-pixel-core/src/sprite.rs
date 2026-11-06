@@ -165,6 +165,8 @@ pub enum LayerKind {
     Image,
     /// Não tem cels: compõe os filhos (`parent == Some(id)`) e mistura o resultado.
     Group { collapsed: bool },
+    /// Tem cels com um mapa de tiles; a imagem do cel deriva do mapa e deste tileset.
+    Tilemap { tileset: crate::tiles::TilesetId },
 }
 
 /// Uma camada. Ordem no `Vec` = z entre irmãos (0 = fundo); a árvore vem de `parent`.
@@ -211,6 +213,15 @@ impl Layer {
     pub fn is_group(&self) -> bool {
         matches!(self.kind, LayerKind::Group { .. })
     }
+
+    /// O tileset, se for camada de tilemap.
+    #[must_use]
+    pub fn tileset(&self) -> Option<crate::tiles::TilesetId> {
+        match self.kind {
+            LayerKind::Tilemap { tileset } => Some(tileset),
+            _ => None,
+        }
+    }
 }
 
 /// Um frame, com a duração própria em milissegundos (Aseprite: 100 ms por omissão).
@@ -236,6 +247,8 @@ pub struct Cel {
     /// Desloca o cel na ordem das camadas: a chave de desenho é `(índice + z, z)` (Trial `z_*.ase`).
     pub z: i16,
     pub link: Option<FrameId>,
+    /// Num cel de tilemap, a verdade; `data` e `bbox` derivam dele (`tiles::expand`).
+    pub tiles: Option<Box<crate::tiles::TileGrid>>,
 }
 
 impl Cel {
@@ -248,6 +261,16 @@ impl Cel {
             opacity: 255,
             z: 0,
             link: None,
+            tiles: None,
+        }
+    }
+
+    /// Um cel de tilemap; `data` e `bbox` escreve-os quem aplica o [`crate::Op::Tiles`].
+    #[must_use]
+    pub fn tilemap(grid: crate::tiles::TileGrid) -> Self {
+        Self {
+            tiles: Some(Box::new(grid)),
+            ..Self::image(Rect::default(), Vec::new())
         }
     }
 
@@ -260,6 +283,7 @@ impl Cel {
             opacity: 255,
             z,
             link: Some(owner),
+            tiles: None,
         }
     }
 }
@@ -334,6 +358,7 @@ pub struct Sprite {
     pub(crate) layers: Vec<Layer>,
     pub(crate) frames: Vec<Frame>,
     pub(crate) cels: BTreeMap<CelKey, Cel>,
+    pub(crate) tilesets: Vec<crate::tiles::Tileset>,
     pub(crate) tags: Vec<Tag>,
     pub(crate) next_id: u32,
     /// A selecção (Aseprite: estado do DOCUMENTO, desfaz-se; não se grava no `PH2DPIXEL`).
@@ -388,6 +413,7 @@ impl Sprite {
             layers: Vec::new(),
             frames: Vec::new(),
             cels: BTreeMap::new(),
+            tilesets: Vec::new(),
             tags: Vec::new(),
             next_id: 1,
             mask: None,
@@ -481,6 +507,16 @@ impl Sprite {
     #[must_use]
     pub fn entry(&self, key: CelKey) -> Option<&Cel> {
         self.cels.get(&key)
+    }
+    /// Os tilesets do sprite.
+    #[must_use]
+    pub fn tilesets(&self) -> &[crate::tiles::Tileset] {
+        &self.tilesets
+    }
+    /// O tileset `id`.
+    #[must_use]
+    pub fn tileset(&self, id: crate::tiles::TilesetId) -> Option<&crate::tiles::Tileset> {
+        self.tilesets.iter().find(|t| t.id == id)
     }
     /// Todos os cels guardados, por chave.
     pub fn entries(&self) -> impl Iterator<Item = (&CelKey, &Cel)> {

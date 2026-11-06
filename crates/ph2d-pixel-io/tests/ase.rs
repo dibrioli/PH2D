@@ -243,3 +243,95 @@ fn abrir_nao_perde_em_silencio() {
         assert!(avisos.contains(&Aviso::CelCorrompido), "{avisos:?}");
     }
 }
+
+/// Um sprite com camada de imagem e camada de tilemap: 2 tiles, flips e um quadro ligado.
+fn com_tilemap(mode: ColorMode) -> Sprite {
+    use ph2d_pixel_core::frames::{NewFrame, new_frame};
+    use ph2d_pixel_core::tiles::new_tilemap_layer;
+    use ph2d_pixel_core::{Background, Cel, History, NewSprite, Op, TileGrid, TileRef, TilesSet};
+    let mut s = Sprite::new(NewSprite {
+        width: 16,
+        height: 16,
+        mode,
+        background: Background::Transparent,
+    })
+    .unwrap();
+    let mut h = History::default();
+    let (acima, f) = (s.layers()[0].id, s.frames()[0].id);
+    let (op, l, set) = new_tilemap_layer(&mut s, acima, 2, 2).unwrap();
+    h.commit(&mut s, op).unwrap();
+    let bpp = s.mode().bpp();
+    let tile = |base: u8| -> Vec<u8> {
+        (0..4)
+            .flat_map(|i| {
+                let v = base + i;
+                match bpp {
+                    4 => vec![v, v / 2, 255 - v, 255],
+                    2 => vec![v, 255],
+                    _ => vec![v],
+                }
+            })
+            .collect()
+    };
+    let op = TilesSet {
+        counts: vec![(set, 3)],
+        tiles: vec![(set, 1, tile(10)), (set, 2, tile(20))],
+        cels: vec![(
+            (l, f),
+            Some(Cel::tilemap(TileGrid {
+                x: 4,
+                y: 2,
+                w: 3,
+                h: 2,
+                tiles: vec![
+                    TileRef::new(1, false, false, false),
+                    TileRef::EMPTY,
+                    TileRef::new(2, true, false, false),
+                    TileRef::new(1, false, true, false),
+                    TileRef::new(2, false, false, true),
+                    TileRef::new(1, true, true, true),
+                ],
+            })),
+        )],
+        ..TilesSet::default()
+    };
+    h.commit(&mut s, Op::Tiles(Box::new(op))).unwrap();
+    let (op, _) = new_frame(&mut s, f, NewFrame::Linked).unwrap();
+    h.commit(&mut s, op).unwrap();
+    s
+}
+
+/// O tilemap sobrevive ao `.ase` como tilemap: tileset, flips e ligados, sem aviso.
+#[test]
+fn a_tilemap_returns_from_the_ase_as_a_tilemap() {
+    for mode in [ColorMode::Rgba, ColorMode::Gray, ColorMode::Indexed] {
+        let s = com_tilemap(mode);
+        let (bytes, avisos) = ase::escrever(&s).unwrap();
+        assert!(avisos.is_empty(), "{avisos:?}");
+        let (volta, avisos) = ase::ler(&bytes).unwrap();
+        assert!(avisos.is_empty(), "{mode:?}: {avisos:?}");
+        assert!(ph2d_pixel_core::derived_is_consistent(&volta));
+        let camada = volta.layers().iter().find(|l| l.tileset().is_some()).expect("camada");
+        let set = volta.tileset(camada.tileset().unwrap()).unwrap();
+        let antes = &s.tilesets()[0];
+        assert_eq!(set.tiles, antes.tiles, "{mode:?}");
+        assert_eq!((set.tile_w, set.tile_h), (2, 2));
+        let (fa, fb) = (s.frames()[0].id, volta.frames()[0].id);
+        let la = s.layers().iter().find(|l| l.tileset().is_some()).unwrap().id;
+        assert_eq!(
+            s.cel((la, fa)).unwrap().tiles.as_deref(),
+            volta.cel((camada.id, fb)).unwrap().tiles.as_deref(),
+            "{mode:?}"
+        );
+        assert!(volta.entry((camada.id, volta.frames()[1].id)).unwrap().link.is_some());
+        for (a, b) in s.frames().iter().zip(volta.frames()) {
+            assert_eq!(composto(&s, a.id), composto(&volta, b.id), "{mode:?}");
+        }
+    }
+}
+
+fn composto(s: &Sprite, f: FrameId) -> Vec<u8> {
+    let mut out = Vec::new();
+    ph2d_pixel_core::compose_rgba(s, f, None, &mut out);
+    out
+}

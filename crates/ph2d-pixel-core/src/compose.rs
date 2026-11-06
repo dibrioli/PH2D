@@ -267,7 +267,7 @@ impl Ctx<'_> {
             let me =
                 shown && layer.visible && !(layer.reference && self.purpose == Purpose::Export);
             match layer.kind {
-                LayerKind::Image => out.push((layer, me)),
+                LayerKind::Image | LayerKind::Tilemap { .. } => out.push((layer, me)),
                 LayerKind::Group { .. } => self.flatten(Some(layer.id), me, out),
             }
         }

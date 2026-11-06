@@ -370,11 +370,16 @@ impl PixelApp {
                     (k, Cel { data, ..c.clone() })
                 })
                 .collect();
+            let mut tilesets = s.tilesets().to_vec();
+            for v in tilesets.iter_mut().flat_map(|t| &mut t.tiles).flatten() {
+                *v = mapa[usize::from(*v)];
+            }
             let w = Whole {
                 mode: ColorMode::Indexed,
                 palette: colors,
                 transparent: 0,
                 cels,
+                tilesets,
             };
             let n = w.palette.len();
             let _ = self.commit(key, Op::Whole(Box::new(w)));

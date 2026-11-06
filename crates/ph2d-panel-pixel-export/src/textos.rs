@@ -15,6 +15,7 @@ pub fn aviso_ase(a: Aviso) -> String {
     match a {
         Aviso::Slices(n) => tr_with("pixel.io.warn.slices", &[("n", &n.to_string())]),
         Aviso::Tilemap => tr("pixel.io.warn.tilemap").to_owned(),
+        Aviso::TerrenosFicam => tr("pixel.io.warn.terrains").to_owned(),
         Aviso::PaletaPorQuadro => tr("pixel.io.warn.palette_per_frame").to_owned(),
         Aviso::ModoDesconhecido => tr("pixel.io.warn.unknown_blend").to_owned(),
         Aviso::DuracaoCortada => tr("pixel.io.warn.duration_cut").to_owned(),

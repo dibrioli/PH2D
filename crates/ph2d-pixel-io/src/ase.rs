@@ -6,13 +6,15 @@ use ph2d_aseprite::file::{
     KIND_GROUP, KIND_IMAGE, KIND_TILEMAP, LAYER_BACKGROUND, LAYER_COLLAPSED, LAYER_EDITABLE,
     LAYER_PREFER_LINKED, LAYER_REFERENCE, LAYER_VISIBLE,
 };
-use ph2d_aseprite::{AseCel, AseCelBody, AseFile, AseFileFrame, AseLayer, AseTag};
+use ph2d_aseprite::{
+    AseCel, AseCelBody, AseFile, AseFileFrame, AseLayer, AseTag, AseTilemap, AseTileset,
+};
 use ph2d_pixel_core::blend::BlendMode;
 use ph2d_pixel_core::codec::SpriteParts;
 use ph2d_pixel_core::palette;
 use ph2d_pixel_core::{
     Cel, CodecError, ColorMode, Direction, Frame, FrameId, Layer, LayerId, LayerKind, Rect, Sprite,
-    Tag,
+    Tag, TileGrid, TileRef, Tileset, TilesetId,
 };
 
 /// O que o ficheiro trazia e o documento não guarda (o artista é avisado, nunca é perda muda).
@@ -20,7 +22,9 @@ use ph2d_pixel_core::{
 pub enum Aviso {
     /// Slices ficam de fora até a P11.
     Slices(usize),
-    /// Tilemap virou camada de imagem comum (P10).
+    /// O `.ase` não guarda os terrenos de gabarito: os tiles vão, a ligação entre eles fica no projeto.
+    TerrenosFicam,
+    /// Camada de tilemap sem tileset legível (externo, ou tira errada): virou camada de imagem.
     Tilemap,
     /// O ficheiro troca a paleta entre quadros: fica a do primeiro.
     PaletaPorQuadro,
@@ -114,14 +118,21 @@ pub fn escrever(s: &Sprite) -> Result<(Vec<u8>, Vec<Aviso>), AseErro> {
         .map(|&(l, nivel)| AseLayer {
             name: l.name.clone(),
             flags: bandeiras(l),
-            kind: if l.is_group() { KIND_GROUP } else { KIND_IMAGE },
+            kind: match l.kind {
+                LayerKind::Group { .. } => KIND_GROUP,
+                LayerKind::Tilemap { .. } => KIND_TILEMAP,
+                LayerKind::Image => KIND_IMAGE,
+            },
             child_level: nivel,
             blend: u16::from(l.blend.code()),
             opacity: l.opacity,
-            tileset: 0,
+            tileset: l.tileset().map_or(0, |t| t.0),
         })
         .collect();
     let mut avisos = Vec::new();
+    if s.tilesets().iter().any(|t| !t.terrains.is_empty()) {
+        avisos.push(Aviso::TerrenosFicam);
+    }
     let mut frames = Vec::with_capacity(s.frames().len());
     for f in s.frames() {
         let duration_ms = u16::try_from(f.duration_ms).unwrap_or_else(|_| {
@@ -168,10 +179,107 @@ pub fn escrever(s: &Sprite) -> Result<(Vec<u8>, Vec<Aviso>), AseErro> {
                 rgb: [t.color[0], t.color[1], t.color[2]],
             })
             .collect(),
+        tilesets: tilesets_saida(s),
         ..AseFile::default()
     };
     let bytes = ph2d_aseprite::write_file(&file).map_err(AseErro::Escrever)?;
     Ok((bytes, avisos))
+}
+
+/// O mapa de um cel, com as máscaras da spec.
+fn mapa_saida(c: &Cel) -> AseTilemap {
+    let g = c.tiles.as_deref().cloned().unwrap_or_default();
+    AseTilemap {
+        w: g.w as u16,
+        h: g.h as u16,
+        tile_mask: TileRef::ID_MASK,
+        x_flip: TileRef::FLIP_X,
+        y_flip: TileRef::FLIP_Y,
+        d_flip: TileRef::FLIP_D,
+        tiles: g.tiles.iter().map(|t| t.0).collect(),
+    }
+}
+
+/// Os tilesets do documento em tiras verticais.
+fn tilesets_saida(s: &Sprite) -> Vec<AseTileset> {
+    s.tilesets()
+        .iter()
+        .map(|t| AseTileset {
+            id: t.id.0,
+            name: t.name.clone(),
+            zero_is_empty: true,
+            tile_w: t.tile_w,
+            tile_h: t.tile_h,
+            count: t.tiles.len() as u32,
+            pixels: t.tiles.concat(),
+        })
+        .collect()
+}
+
+/// Lê um tileset do ficheiro, com o vazio no índice 0. `None`: externo ou com a tira errada; quem
+/// chama cai na imagem expandida, e avisa.
+fn tileset_de(t: &AseTileset, id: TilesetId, bpp: usize, transparent: u8) -> Option<Tileset> {
+    let size = usize::from(t.tile_w) * usize::from(t.tile_h) * bpp;
+    if size == 0 || t.count == 0 || t.pixels.len() != size * t.count as usize {
+        return None;
+    }
+    let mut tiles: Vec<Vec<u8>> = t.pixels.chunks_exact(size).map(<[u8]>::to_vec).collect();
+    if !t.zero_is_empty {
+        let vazio = if bpp == 1 {
+            vec![transparent; size]
+        } else {
+            vec![0; size]
+        };
+        tiles.insert(0, vazio);
+    }
+    Some(Tileset {
+        id,
+        name: t.name.clone(),
+        tile_w: t.tile_w,
+        tile_h: t.tile_h,
+        tiles,
+        terrains: Vec::new(),
+    })
+}
+
+/// O mapa do ficheiro nos nossos bits. Índice fora do tileset, e D em tile não quadrado, são
+/// corrupção: a célula fica vazia ou sem o flip, e devolve `true`.
+fn mapa_de(m: &AseTilemap, x: i32, y: i32, set: &Tileset, zero_is_empty: bool) -> (TileGrid, bool) {
+    let mut corrompido = false;
+    let n = set.tiles.len() as u64;
+    let tiles = m
+        .tiles
+        .iter()
+        .map(|&v| {
+            let cru = u64::from(v & m.tile_mask);
+            let id = if zero_is_empty {
+                cru
+            } else if v == u32::MAX {
+                0
+            } else {
+                cru + 1
+            };
+            let d = v & m.d_flip != 0;
+            if id >= n || (d && set.tile_w != set.tile_h) {
+                corrompido = true;
+            }
+            let id = if id < n { id as u32 } else { 0 };
+            TileRef::new(
+                id,
+                v & m.x_flip != 0,
+                v & m.y_flip != 0,
+                d && set.tile_w == set.tile_h,
+            )
+        })
+        .collect();
+    let g = TileGrid {
+        x,
+        y,
+        w: u32::from(m.w),
+        h: u32::from(m.h),
+        tiles,
+    };
+    (g, corrompido)
 }
 
 fn cel_saida(s: &Sprite, layer: u16, id: LayerId, c: &Cel) -> Result<AseCel, AseErro> {
@@ -207,6 +315,17 @@ fn cel_saida(s: &Sprite, layer: u16, id: LayerId, c: &Cel) -> Result<AseCel, Ase
                 opacity: c.opacity,
                 z: c.z,
                 body: AseCelBody::Image { w: 1, h: 1, pixels },
+            }
+        }
+        None if c.tiles.is_some() => {
+            let (x, y) = posicao(c.bbox)?;
+            AseCel {
+                layer,
+                x,
+                y,
+                opacity: c.opacity,
+                z: c.z,
+                body: AseCelBody::Tilemap(mapa_saida(c)),
             }
         }
         None => {
@@ -256,6 +375,13 @@ pub fn ler(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>), AseErro> {
         proximo += 1;
         v
     };
+    let mut sets: Vec<(u32, Tileset)> = Vec::new();
+    for t in &file.tilesets {
+        let id = TilesetId(novo_id());
+        if let Some(novo) = tileset_de(t, id, mode.bpp(), file.transparent_index) {
+            sets.push((t.id, novo));
+        }
+    }
     let mut layers: Vec<Layer> = Vec::with_capacity(file.layers.len());
     // O grupo aberto em cada nível: o pai de quem vem a seguir é o do nível de cima.
     let mut abertos: Vec<LayerId> = Vec::new();
@@ -287,8 +413,12 @@ pub fn ler(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>), AseErro> {
             };
             abertos.push(id);
         }
-        if l.kind == KIND_TILEMAP && !avisos.contains(&Aviso::Tilemap) {
-            avisos.push(Aviso::Tilemap);
+        if l.kind == KIND_TILEMAP {
+            match sets.iter().find(|(f, _)| *f == l.tileset) {
+                Some((_, t)) => c.kind = LayerKind::Tilemap { tileset: t.id },
+                None if !avisos.contains(&Aviso::Tilemap) => avisos.push(Aviso::Tilemap),
+                None => {}
+            }
         }
         layers.push(c);
     }
@@ -306,7 +436,8 @@ pub fn ler(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>), AseErro> {
         })
         .collect();
 
-    let cels = cels_de(&file, &layers, &frames, mode, &mut avisos);
+    let tilesets: Vec<Tileset> = sets.into_iter().map(|(_, t)| t).collect();
+    let cels = cels_de(&file, &layers, &frames, mode, &tilesets, &mut avisos);
 
     let n = frames.len() as u32;
     let tags = file
@@ -341,6 +472,7 @@ pub fn ler(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>), AseErro> {
         frames,
         cels,
         tags,
+        tilesets,
     })
     .map_err(AseErro::Documento)?;
     Ok((sprite, avisos))
@@ -364,11 +496,47 @@ fn imagem(file: &AseFile, c: &AseCel) -> Option<(Rect, Vec<u8>)> {
     })
 }
 
+fn cel_de_mapa(
+    file: &AseFile,
+    l: &Layer,
+    c: &AseCel,
+    m: &AseTilemap,
+    sets: &[Tileset],
+    bpp: usize,
+    avisos: &mut Vec<Aviso>,
+) -> Option<Cel> {
+    let set = sets.iter().find(|t| Some(t.id) == l.tileset())?;
+    if m.w == 0 || m.h == 0 || m.tiles.len() != usize::from(m.w) * usize::from(m.h) {
+        if !avisos.contains(&Aviso::CelCorrompido) {
+            avisos.push(Aviso::CelCorrompido);
+        }
+        return None;
+    }
+    let zero = file
+        .layers
+        .get(usize::from(c.layer))
+        .and_then(|f| file.tilesets.iter().find(|t| t.id == f.tileset))
+        .is_none_or(|t| t.zero_is_empty);
+    let (g, corrompido) = mapa_de(m, i32::from(c.x), i32::from(c.y), set, zero);
+    if corrompido && !avisos.contains(&Aviso::CelCorrompido) {
+        avisos.push(Aviso::CelCorrompido);
+    }
+    Some(Cel {
+        bbox: g.rect(set.tile_w, set.tile_h),
+        data: ph2d_pixel_core::tiles::expand(&g, set, bpp),
+        opacity: c.opacity,
+        z: c.z,
+        link: None,
+        tiles: Some(Box::new(g)),
+    })
+}
+
 fn cels_de(
     file: &AseFile,
     layers: &[Layer],
     frames: &[Frame],
     mode: ColorMode,
+    sets: &[Tileset],
     avisos: &mut Vec<Aviso>,
 ) -> Vec<((LayerId, FrameId), Cel)> {
     let bpp = mode.bpp();
@@ -388,6 +556,9 @@ fn cels_de(
             let key = (l.id, frames[fi].id);
             let cel = match &c.body {
                 AseCelBody::Linked { frame } => ligado(file, layers, frames, c, *frame, bpp, &out),
+                AseCelBody::Tilemap(m) if l.tileset().is_some() => {
+                    cel_de_mapa(file, l, c, m, sets, bpp, avisos)
+                }
                 _ => imagem(file, c)
                     .filter(|(b, px)| {
                         let certo = px.len() == b.area() * bpp;
@@ -402,6 +573,7 @@ fn cels_de(
                         opacity: c.opacity,
                         z: c.z,
                         link: None,
+                        tiles: None,
                     }),
             };
             if let Some(cel) = cel {
@@ -442,5 +614,73 @@ fn ligado(
         opacity: c.opacity,
         z: c.z,
         link: None,
+        tiles: dono.tiles.as_ref().map(|g| {
+            Box::new(TileGrid {
+                x,
+                y,
+                ..(**g).clone()
+            })
+        }),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// O formato antigo (bit 4 desligado): 0 é um tile de verdade, e o vazio é `0xffffffff`.
+    #[test]
+    fn without_the_zero_is_empty_bit_every_tile_stays_and_the_ids_shift() {
+        let t = AseTileset {
+            zero_is_empty: false,
+            tile_w: 1,
+            tile_h: 1,
+            count: 2,
+            pixels: vec![1, 2, 3, 255, 4, 5, 6, 255],
+            ..AseTileset::default()
+        };
+        let set = tileset_de(&t, TilesetId(1), 4, 0).expect("tileset");
+        assert_eq!(set.tiles.len(), 3, "o vazio entra no índice 0");
+        assert_eq!(set.tiles[1], [1, 2, 3, 255]);
+        let m = AseTilemap {
+            w: 3,
+            h: 1,
+            tile_mask: TileRef::ID_MASK,
+            x_flip: TileRef::FLIP_X,
+            y_flip: TileRef::FLIP_Y,
+            d_flip: TileRef::FLIP_D,
+            tiles: vec![0, 1, u32::MAX],
+        };
+        let (g, corrompido) = mapa_de(&m, 0, 0, &set, false);
+        assert!(!corrompido);
+        let ids: Vec<u32> = g.tiles.iter().map(|t| t.id()).collect();
+        assert_eq!(ids, [1, 2, 0]);
+    }
+
+    /// Índice fora do tileset e D em tile não quadrado: a célula sai sã, e o artista é avisado.
+    #[test]
+    fn a_bad_cell_stays_sane_and_says_so() {
+        let t = AseTileset {
+            zero_is_empty: true,
+            tile_w: 2,
+            tile_h: 1,
+            count: 2,
+            pixels: vec![0; 16],
+            ..AseTileset::default()
+        };
+        let set = tileset_de(&t, TilesetId(1), 4, 0).expect("tileset");
+        let m = AseTilemap {
+            w: 2,
+            h: 1,
+            tile_mask: TileRef::ID_MASK,
+            x_flip: TileRef::FLIP_X,
+            y_flip: TileRef::FLIP_Y,
+            d_flip: TileRef::FLIP_D,
+            tiles: vec![7, 1 | TileRef::FLIP_D],
+        };
+        let (g, corrompido) = mapa_de(&m, 0, 0, &set, true);
+        assert!(corrompido);
+        assert_eq!(g.tiles[0], TileRef::EMPTY);
+        assert_eq!(g.tiles[1], TileRef::new(1, false, false, false));
+    }
 }

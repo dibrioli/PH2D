@@ -108,6 +108,7 @@ fn documento(
         layers: vec![Layer::image(camada, "Layer 1")],
         frames,
         cels,
+        tilesets: Vec::new(),
         tags: Vec::new(),
     })
     .map_err(ErroAbrir::Documento)

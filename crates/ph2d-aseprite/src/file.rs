@@ -111,6 +111,9 @@ pub struct AseTilemap {
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct AseTileset {
     pub id: u32,
+    pub name: String,
+    /// O bit 4 da spec. Desligado (versões internas antigas): o vazio é `0xffffffff`, e 0 é um tile.
+    pub zero_is_empty: bool,
     pub tile_w: u16,
     pub tile_h: u16,
     pub count: u32,
@@ -478,7 +481,7 @@ impl Build {
             return Ok(());
         };
         let _ = r.skip(2 + 14); // índice base (só de UI) + reservados
-        let _ = r.string();
+        let name = r.string().unwrap_or_default();
         if flags & 1 != 0 {
             let _ = r.skip(8); // ficheiro externo
         }
@@ -492,6 +495,8 @@ impl Build {
         }
         self.file.tilesets.push(AseTileset {
             id,
+            name,
+            zero_is_empty: flags & 4 != 0,
             tile_w,
             tile_h,
             count,

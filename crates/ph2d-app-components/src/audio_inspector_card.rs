@@ -28,115 +28,15 @@
 
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{
-    AUDIO_MAX_POLYPHONY, AudioBus, AudioListener2D, AudioSource2D, Entity, Name, PickStrategy,
-    ProjectSounds, SignalActions, SignalVerb, SimWorld, SoundSet, World,
+    AUDIO_MAX_POLYPHONY, AudioBus, AudioListener2D, AudioSource2D, Entity, ProjectSounds, SimWorld,
+    SoundSet, World,
 };
-use ph2d_editor_core::{
-    AudioFieldEdit, InspectorAudioInfo, InspectorAudioSource, InspectorSoundRow, InspectorSoundSet,
-    Toast,
-};
+use ph2d_editor_core::{AudioFieldEdit, InspectorAudioInfo, InspectorAudioSource, Toast};
 use ph2d_i18n::{tr, tr_with};
 
 use ph2d_inspector_ordering::queue_set;
 
 const SOURCE: &str = "ph2d::ecs::AudioSource2D";
-const SET: &str = "ph2d::ecs::SoundSet";
-
-/// A lista de sons como o cartão a lê: o que ela decide e o que o Pick ainda oferece.
-fn sound_set_info(set: Option<&SoundSet>, sons: Option<&ProjectSounds>) -> InspectorSoundSet {
-    let padrao = SoundSet::default();
-    let s = set.unwrap_or(&padrao);
-    let tem = |n: &str| sons.is_some_and(|l| l.get(n).is_some());
-    InspectorSoundSet {
-        rows: s
-            .sounds
-            .iter()
-            .map(|e| InspectorSoundRow {
-                name: e.name.clone(),
-                weight: e.weight,
-                enabled: e.enabled,
-                missing: !tem(&e.name),
-            })
-            .collect(),
-        decides: s.has_sounds(),
-        strategy_tag: s.strategy.index(),
-        sequence_tag: PickStrategy::Sequence.index(),
-        no_repeat: s.no_repeat,
-        pitch_jitter_st: s.pitch_jitter_semitones,
-        gain_jitter_db: s.gain_jitter_db,
-        mode_labels: PickStrategy::ALL
-            .iter()
-            .map(|k| tr(k.label_key()).to_string())
-            .collect(),
-        offer: sons.map_or_else(Vec::new, |l| {
-            l.iter()
-                .map(|(n, _)| n)
-                .filter(|n| !s.sounds.iter().any(|e| e.name == *n))
-                .map(str::to_owned)
-                .collect()
-        }),
-        project_sounds: sons.map_or(0, ProjectSounds::len),
-    }
-}
-
-/// Aplica uma edição da lista de sons. ⚠️ Toda escrita passa pelo `sanitize`.
-fn apply_set_edit(
-    world: &World,
-    entity: Entity,
-    src: &AudioSource2D,
-    edit: &AudioFieldEdit,
-    queue: &EditorCommandQueue,
-    registry: &ComponentRegistry,
-) {
-    let mut set = world.get::<SoundSet>(entity).cloned().unwrap_or_default();
-    let mudou = match edit {
-        AudioFieldEdit::SetAdd(name) => set.add_keeping(&src.sound, name),
-        AudioFieldEdit::SetRemove(i) => set.remove_at(usize::from(*i)),
-        AudioFieldEdit::SetEnabled(i, on) => set.set_enabled(usize::from(*i), *on),
-        AudioFieldEdit::SetWeight(i, v) => set.set_weight(usize::from(*i), *v),
-        AudioFieldEdit::SetStrategy(tag) => set.set_strategy_at(usize::from(*tag)),
-        AudioFieldEdit::SetNoRepeat(on) => set.set_no_repeat(*on),
-        AudioFieldEdit::SetPitchJitter(v) => set.set_pitch_jitter(*v),
-        AudioFieldEdit::SetGainJitter(v) => set.set_gain_jitter(*v),
-        _ => false,
-    };
-    if mudou {
-        set.sanitize();
-        queue_set(queue, registry, entity.to_bits(), SET, &set);
-    }
-}
-
-/// **Alguma linha de `Signal Actions` da cena manda ISTO tocar?**
-///
-/// ⚠️ **Ela casa por NOME**, como a resolução da tabela: o alvo de uma acção é o `Name`, e uma
-/// linha com o alvo **vazio** aponta para o próprio objecto que a carrega.
-fn reachable_by_signal(world: &mut World, entity: Entity) -> bool {
-    let Some(nome) = world.get::<Name>(entity).map(|n| n.0.clone()) else {
-        // Sem nome, só uma linha do PRÓPRIO objecto (alvo vazio) o pode alcançar.
-        return world
-            .get::<SignalActions>(entity)
-            .is_some_and(|t| t.0.iter().any(|a| toca(a) && a.target.trim().is_empty()));
-    };
-    world
-        .query::<(Entity, &SignalActions)>()
-        .iter(world)
-        .any(|(dono, tabela)| {
-            tabela.0.iter().any(|a| {
-                toca(a)
-                    && if a.target.trim().is_empty() {
-                        dono == entity
-                    } else {
-                        a.target == nome
-                    }
-            })
-        })
-}
-
-/// Esta linha manda tocar? ⚠️ **Só o `PlaySound`** — `StopSound` cala, e contá-lo faria o painel
-/// dizer que um objecto que alguém só sabe CALAR chega a soar.
-fn toca(a: &ph2d_ecs::SignalAction) -> bool {
-    a.verb == SignalVerb::PlaySound && !a.on.trim().is_empty()
-}
 
 /// O snapshot da secção, ou `None` quando o objecto não tem nada de áudio.
 pub fn build_audio_info(
@@ -152,8 +52,8 @@ pub fn build_audio_info(
     }
     let listener_count = ph2d_ecs::listener_count(world);
     let is_active_listener = is_listener && ph2d_ecs::listener_of(world) == Some(entity);
-    let alcancavel = src.is_some() && reachable_by_signal(world, entity);
-    let set = sound_set_info(
+    let alcancavel = src.is_some() && ph2d_audio_card_facts::reachable_by_signal(world, entity);
+    let set = ph2d_audio_card_facts::sound_set_info(
         world.get::<SoundSet>(entity),
         world.get_resource::<ProjectSounds>(),
     );
@@ -227,22 +127,21 @@ pub fn apply_audio_edit(
         | AudioFieldEdit::SetNoRepeat(_)
         | AudioFieldEdit::SetPitchJitter(_)
         | AudioFieldEdit::SetGainJitter(_) => {
-            apply_set_edit(sim.world(), entity, &src, edit, queue, registry);
+            ph2d_audio_card_facts::apply_set_edit(
+                sim.world(),
+                entity,
+                &src.sound,
+                edit,
+                queue,
+                registry,
+            );
             return None;
         }
         AudioFieldEdit::Sound(text) => match sound_name(sim.world_mut(), text) {
             Ok(name) => {
-                // Com a lista a mandar, um som largado ou importado vai para ela: no campo ele não tocaria.
-                let world = sim.world();
-                let lista_manda = world
-                    .get::<SoundSet>(entity)
-                    .is_some_and(SoundSet::has_sounds);
-                let do_projeto = world
-                    .get_resource::<ProjectSounds>()
-                    .is_some_and(|l| l.get(&name).is_some());
-                if lista_manda && do_projeto {
-                    let add = AudioFieldEdit::SetAdd(name);
-                    apply_set_edit(world, entity, &src, &add, queue, registry);
+                let (world, atual) = (sim.world(), &src.sound);
+                if ph2d_audio_card_facts::send_to_list(world, entity, atual, &name, queue, registry)
+                {
                     return None;
                 }
                 src.sound = name;

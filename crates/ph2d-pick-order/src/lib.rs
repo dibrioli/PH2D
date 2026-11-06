@@ -39,7 +39,7 @@ use ph2d_ecs::{ChildOf, Entity};
 /// limite alto é indistinguível do infinito para uma cena real e é a diferença entre um bug e um
 /// congelamento.
 /// `h` está dentro da seleção (descendente dela) — o que a deixa ficar com o press.
-pub(crate) fn inside_selection(world: &ph2d_ecs::World, sel: Option<u64>, h: u64) -> bool {
+pub fn inside_selection(world: &ph2d_ecs::World, sel: Option<u64>, h: u64) -> bool {
     let e = |b| Entity::try_from_bits(b);
     sel.and_then(e)
         .zip(e(h))
@@ -66,7 +66,7 @@ fn is_ancestor_of(world: &ph2d_ecs::World, maybe_ancestor: Entity, entity: Entit
 /// Estável: a ordem relativa dentro de cada grupo (descendentes e ancestrais) é preservada, então
 /// a lei de camada que montou a lista continua a valer entre irmãos — esta regra só resolve o
 /// empate entre **pai e filho**, que é o único que a camada resolve mal.
-pub(crate) fn descendants_first(world: &ph2d_ecs::World, hits: &mut [u64]) {
+pub fn descendants_first(world: &ph2d_ecs::World, hits: &mut [u64]) {
     if hits.len() < 2 {
         return;
     }

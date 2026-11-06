@@ -1,0 +1,18 @@
+[package]
+name = "ph2d-pick-order"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ A ordem do clique-cíclico (um contêiner não rouba o clique dos filhos) como FOLHA: regra pura sobre a
+# hierarquia do ECS. Saiu da shell pela catraca `the_shell_only_shrinks`; a shell só a chama.
+[dependencies]
+ph2d-ecs = { path = "../ph2d-ecs" }
+
+[lints]
+workspace = true

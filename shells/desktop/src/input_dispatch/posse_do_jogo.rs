@@ -155,7 +155,7 @@ impl crate::App {
             &self.flip_state.entities,
             (x, y),
         );
-        crate::pick_order::descendants_first(gfx.sim.world(), &mut hits);
+        ph2d_pick_order::descendants_first(gfx.sim.world(), &mut hits);
         for bits in hits {
             let entity = ph2d_ecs::Entity::from_bits(bits);
             if !ph2d_ecs::is_locked_for_edit(gfx.sim.world(), entity)

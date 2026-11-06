@@ -7,22 +7,19 @@
 
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{
-    AnimDirection, Entity, SpriteAnimCursor, SpriteAnimFrames, SpriteAnimMarkers, SpriteAnimations,
-    SpriteAnimator, SpriteGrid, World,
+    AnimDirection, Entity, SpriteAnimCursor, SpriteAnimFrames, SpriteAnimations, SpriteAnimator,
+    SpriteGrid, World,
 };
 use ph2d_editor_core::{
     AnimCardInfo, AnimCharacterInfo, AnimChooser, AnimCycleMode, AnimFieldEdit, AnimRuleInfo,
-    AnimWhenInfo, InspectorAnimMarker,
+    AnimWhenInfo,
 };
 use ph2d_inspector_ordering::{queue_remove, queue_set};
 use ph2d_physics_ecs::{
-    AnimRule, AnimRules, AnimWhen, CharacterAnimations, CharacterPose, Health, LifeEvent,
-    PlatformPlayer, RaySignals, SignalOnHit, SignalOnLeave,
+    AnimRule, AnimRules, AnimWhen, CharacterAnimations, CharacterPose, LifeEvent, PlatformPlayer,
 };
-use std::collections::BTreeSet;
 
 pub(crate) const FRAMES: &str = "ph2d::ecs::SpriteAnimFrames";
-pub(crate) const MARKERS: &str = "ph2d::ecs::SpriteAnimMarkers";
 pub(crate) const CURSOR: &str = "ph2d::ecs::SpriteAnimCursor";
 const CHARACTER: &str = "ph2d::physics::CharacterAnimations";
 const RULES: &str = "ph2d::physics::AnimRules";
@@ -62,53 +59,6 @@ pub fn when_of(w: &AnimWhenInfo) -> Option<AnimWhen> {
 /// As regras que valem neste objecto (gravadas, ou as derivadas do personagem).
 fn rules_of(world: &World, entity: Entity) -> Option<AnimRules> {
     AnimRules::of_entity(world, entity)
-}
-
-/// Os nomes de sinal que o projecto já autorou (animações, vida, contactos, raios) e os das regras,
-/// ordenados — as opções «Signal» do menu.
-fn authored_signals(world: &World, rules: Option<&AnimRules>) -> Vec<String> {
-    let mut names = BTreeSet::new();
-    let mut put = |s: &str| {
-        if !s.is_empty() {
-            names.insert(s.to_owned());
-        }
-    };
-    if let Some(mut q) = world.try_query::<&SpriteAnimations>() {
-        for t in q.iter(world).flat_map(|lib| lib.iter()) {
-            put(&t.signal_on_finish);
-            put(&t.signal_on_loop);
-        }
-    }
-    if let Some(mut q) = world.try_query::<&SpriteAnimMarkers>() {
-        for m in q.iter(world).flat_map(|m| m.0.iter()) {
-            put(&m.signal);
-        }
-    }
-    if let Some(mut q) = world.try_query::<&Health>() {
-        for h in q.iter(world) {
-            put(&h.on_damage);
-            put(&h.on_heal);
-            put(&h.on_death);
-        }
-    }
-    if let Some(mut q) = world.try_query::<&SignalOnHit>() {
-        q.iter(world).for_each(|s| put(&s.0));
-    }
-    if let Some(mut q) = world.try_query::<&SignalOnLeave>() {
-        q.iter(world).for_each(|s| put(&s.0));
-    }
-    if let Some(mut q) = world.try_query::<&RaySignals>() {
-        for r in q.iter(world) {
-            put(&r.on_enter);
-            put(&r.on_exit);
-        }
-    }
-    for r in rules.iter().flat_map(|r| r.0.iter()) {
-        if let AnimWhen::Signal(n) = &r.when {
-            put(n);
-        }
-    }
-    names.into_iter().collect()
 }
 
 /// O que o cartão lê. `sheet` vem da [`crate::sheet::SheetCache`] (resolvida por quadro antes disto).
@@ -161,7 +111,7 @@ pub fn build_card_info(world: &World, entity: Entity) -> AnimCardInfo {
             run_from: a.run_from,
             flip: a.flip,
         }),
-        rule_signals: authored_signals(world, rules.as_ref()),
+        rule_signals: ph2d_anim_signals::authored_signals(world, rules.as_ref()),
         rules: rules
             .iter()
             .flat_map(|r| r.0.iter())
@@ -193,70 +143,6 @@ pub fn row_frames(world: &World, entity: Entity, name: &str) -> Vec<u32> {
         .unwrap_or_default()
 }
 
-/// Os marcadores de uma linha da biblioteca, na ordem da lista.
-#[must_use]
-pub fn row_markers(world: &World, entity: Entity, name: &str) -> Vec<InspectorAnimMarker> {
-    world
-        .get::<SpriteAnimMarkers>(entity)
-        .map(|m| {
-            m.of_tag(name)
-                .map(|m| InspectorAnimMarker {
-                    step: m.step,
-                    signal: m.signal.clone(),
-                })
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
-/// Uma edição dos marcadores da animação `row`. `None` = linha ou marcador fora (nada se grava).
-fn edit_markers(
-    world: &World,
-    entity_bits: u64,
-    edit: &AnimFieldEdit,
-    queue: &EditorCommandQueue,
-    registry: &ComponentRegistry,
-) -> Option<()> {
-    let entity = Entity::from_bits(entity_bits);
-    let row = match edit {
-        AnimFieldEdit::MarkerAdd(r)
-        | AnimFieldEdit::MarkerStep(r, ..)
-        | AnimFieldEdit::MarkerSignal(r, ..)
-        | AnimFieldEdit::MarkerRemove(r, _) => usize::from(*r),
-        _ => return None,
-    };
-    let name = world
-        .get::<SpriteAnimations>(entity)?
-        .iter()
-        .nth(row)?
-        .name
-        .clone();
-    let steps = ph2d_ecs::anim_steps(world, entity, &name);
-    let mut m = world
-        .get::<SpriteAnimMarkers>(entity)
-        .cloned()
-        .unwrap_or_default();
-    match edit {
-        AnimFieldEdit::MarkerAdd(_) => m.add(&name, steps),
-        AnimFieldEdit::MarkerStep(_, i, step) => m.set_step(&name, (*i).into(), *step, steps)?,
-        AnimFieldEdit::MarkerSignal(_, i, text) => {
-            m.set_signal(
-                &name,
-                (*i).into(),
-                crate::inspector::clean_signal_name(text),
-            )?;
-        }
-        AnimFieldEdit::MarkerRemove(_, i) => m.remove_at(&name, (*i).into())?,
-        _ => return None,
-    }
-    if m.0.is_empty() {
-        queue_remove(queue, registry, entity_bits, MARKERS);
-    } else {
-        queue_set(queue, registry, entity_bits, MARKERS, &m);
-    }
-    Some(())
-}
-
 /// Aplica uma edição do cartão. `None` = não é uma edição do cartão (a §11 de sempre trata-a).
 pub fn apply_card_edit(
     world: &World,
@@ -271,7 +157,7 @@ pub fn apply_card_edit(
         | AnimFieldEdit::MarkerStep(..)
         | AnimFieldEdit::MarkerSignal(..)
         | AnimFieldEdit::MarkerRemove(..) => {
-            edit_markers(world, entity_bits, edit, queue, registry)?;
+            ph2d_anim_signals::apply_marker_edit(world, entity_bits, edit, queue, registry)?;
         }
         AnimFieldEdit::Frames(row, cells) => {
             let lib = world.get::<SpriteAnimations>(entity)?;
@@ -487,16 +373,7 @@ pub(crate) fn follow_remove(
     registry: &ComponentRegistry,
 ) {
     let entity = Entity::from_bits(entity_bits);
-    // Os marcadores saem com a animação: inertes, voltariam sozinhos numa animação nova de mesmo nome.
-    if let Some(mut m) = world.get::<SpriteAnimMarkers>(entity).cloned()
-        && m.remove_tag(name)
-    {
-        if m.0.is_empty() {
-            queue_remove(queue, registry, entity_bits, MARKERS);
-        } else {
-            queue_set(queue, registry, entity_bits, MARKERS, &m);
-        }
-    }
+    ph2d_anim_signals::forget_tag(world, entity_bits, name, queue, registry);
     let Some(mut f) = world.get::<SpriteAnimFrames>(entity).cloned() else {
         return;
     };

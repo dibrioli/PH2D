@@ -109,7 +109,7 @@ pub(crate) fn icones_em(w: &PickWorld, pointer: (f32, f32)) -> Vec<u64> {
         janela,
     ));
     // O DISCO do objecto vazio (dono 01/11: «qualquer lugar dentro do círculo»); o filho dele sob
-    // o dedo ainda vem antes (`pick_order::descendants_first`).
+    // o dedo ainda vem antes (`ph2d_pick_order::descendants_first`).
     let world = cam.screen_to_world(pointer, janela);
     icones.extend(crate::group_gizmo_view::pick_empty_at_world(
         w.sim,
@@ -195,7 +195,7 @@ pub(crate) fn pick_objects_at(
     let mut vistos = std::collections::BTreeSet::new();
     icones.retain(|b| vistos.insert(*b));
     // O disco do vazio vai à frente, mas o filho dele sob o dedo ainda o precede.
-    crate::pick_order::descendants_first(w.sim.world(), &mut icones);
+    ph2d_pick_order::descendants_first(w.sim.world(), &mut icones);
     icones
 }
 

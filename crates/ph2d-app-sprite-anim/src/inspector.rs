@@ -172,7 +172,7 @@ pub fn build_anim_info(
                     signal_on_loop: t.signal_on_loop.clone(),
                     per_frame_ms: t.per_frame_ms.clone(),
                     frames: crate::card::row_frames(world, entity, &t.name),
-                    markers: crate::card::row_markers(world, entity, &t.name),
+                    markers: ph2d_anim_signals::row_markers(world, entity, &t.name),
                     steps: ph2d_ecs::anim_steps(world, entity, &t.name),
                 })
                 .collect()
@@ -383,12 +383,7 @@ pub fn apply_anim_edit(
             let mut player = world.get::<SpriteAnimator>(entity).cloned();
             let (frames_before, player_before) = (frames.clone(), player.clone());
             ph2d_ecs::rename_tag(&mut lib, frames.as_mut(), player.as_mut(), &old, new_name);
-            if let Some(mut m) = world.get::<ph2d_ecs::SpriteAnimMarkers>(entity).cloned()
-                && m.of_tag(&old).next().is_some()
-            {
-                m.rename_tag(&old, new_name);
-                queue_set(queue, registry, entity_bits, crate::card::MARKERS, &m);
-            }
+            ph2d_anim_signals::follow_rename(world, entity_bits, &old, new_name, queue, registry);
             if let Some(f) = frames.filter(|f| Some(f) != frames_before.as_ref()) {
                 queue_set(queue, registry, entity_bits, crate::card::FRAMES, &f);
             }
@@ -443,8 +438,12 @@ fn write_tag(t: &mut AnimationTag, edit: &AnimFieldEdit) {
         // ⚠️ **APARADO e CAPADO na porta**, e o cap é o mesmo do nome de uma tag: um nome de sinal
         // vem do teclado, viaja num componente registado e entra no ficheiro do projeto. Espaço à
         // volta é invisível no campo e faz o contrato **não casar** do outro lado.
-        AnimFieldEdit::SignalOnFinish(_, v) => t.signal_on_finish = clean_signal_name(v),
-        AnimFieldEdit::SignalOnLoop(_, v) => t.signal_on_loop = clean_signal_name(v),
+        AnimFieldEdit::SignalOnFinish(_, v) => {
+            t.signal_on_finish = ph2d_anim_signals::clean_signal_name(v)
+        }
+        AnimFieldEdit::SignalOnLoop(_, v) => {
+            t.signal_on_loop = ph2d_anim_signals::clean_signal_name(v)
+        }
         AnimFieldEdit::FrameMsAt(_, i, ms) => t.set_own_ms(*i as usize, *ms),
         _ => {}
     }
@@ -503,26 +502,3 @@ fn describe(e: ph2d_ecs::AnimTagError) -> String {
 #[cfg(test)]
 #[path = "inspector_tests.rs"]
 mod tests;
-
-/// **O nome de um sinal, como ele fica guardado.** Aparado e capado no mesmo teto do nome de uma
-/// tag (`ph2d_ecs::ANIM_NAME_MAX_BYTES`).
-///
-/// ⚠️ **Aparar não é higiene:** o contrato de um sinal é a **igualdade de string** (ADR-0143), e
-/// um espaço à direita é invisível no campo e faz o consumidor não casar — o pior tipo de defeito,
-/// porque tudo parece certo dos dois lados.
-///
-/// ⚠️ **O corte é por BYTES e respeita o caractere**: `String::truncate` entra em pânico a meio de
-/// um multibyte, e um nome com acento é normal.
-pub(crate) fn clean_signal_name(raw: &str) -> String {
-    let t = raw.trim();
-    match t.char_indices().nth_back(0) {
-        _ if t.len() <= ph2d_ecs::ANIM_NAME_MAX_BYTES => t.to_owned(),
-        _ => {
-            let mut end = ph2d_ecs::ANIM_NAME_MAX_BYTES;
-            while end > 0 && !t.is_char_boundary(end) {
-                end -= 1;
-            }
-            t[..end].to_owned()
-        }
-    }
-}

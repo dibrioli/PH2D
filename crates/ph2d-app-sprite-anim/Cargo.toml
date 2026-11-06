@@ -14,6 +14,8 @@ authors.workspace = true
 # (`render_loop/inspector_anim.rs` + `sprite_anim_tick.rs`), que só pode encolher.
 [dependencies]
 ph2d-ecs = { path = "../ph2d-ecs" }
+# Os marcadores em quadro e os nomes de sinal do cartão (folha).
+ph2d-anim-signals = { path = "../ph2d-anim-signals" }
 ph2d-render = { path = "../ph2d-render" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-i18n = { path = "../ph2d-i18n" }

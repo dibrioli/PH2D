@@ -32,24 +32,3 @@ fn the_sound_field_imports_a_file_and_keeps_its_name() {
     assert!(sound_name(&mut w, &texto).is_err());
     assert_eq!(w.resource::<ProjectSounds>().len(), 1);
 }
-
-// ── A lista de sons (SFX Lab W1). Pelo mundo: `shells/game-scenes/tests/it/a_lista_de_sons.rs` ──
-
-mod a_lista {
-    use super::*;
-
-    /// Sem mundo: o que o cartão oferece e quem manda saem só da lista e dos sons do projeto.
-    #[test]
-    fn the_list_info_offers_what_is_left() {
-        let mut l = ProjectSounds::default();
-        l.add("a.wav", vec![1]);
-        l.add("b.wav", vec![2]);
-        let set = SoundSet {
-            sounds: vec![ph2d_ecs::SoundEntry::new("a.wav")],
-            ..SoundSet::default()
-        };
-        let i = sound_set_info(Some(&set), Some(&l));
-        assert_eq!(i.offer, ["b.wav"]);
-        assert!(i.decides);
-    }
-}

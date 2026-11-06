@@ -208,7 +208,7 @@ impl crate::App {
             return true; // o clique no próprio ícone fica com a câmera
         }
         hits.retain(|b| *b != a.camera);
-        crate::pick_order::descendants_first(gfx.sim.world(), &mut hits);
+        ph2d_pick_order::descendants_first(gfx.sim.world(), &mut hits);
         if let Some(&b) = hits.first() {
             ph2d_editor_core::screens::hero::mode_drive::chosen(hero, Some(b), false);
             hero.gizmo.replace_selection(Some(b));

@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-anim-signals"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ Os SINAIS do cartão «Animation» como FOLHA: os marcadores em quadro (SFX Lab W1) e os nomes de
+# sinal que o projecto já autorou. Saiu de `ph2d-app-sprite-anim` pela catraca
+# `the_shell_only_shrinks_and_every_app_crate_too`; família não chama família, por isso é folha.
+[dependencies]
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-inspector-ordering = { path = "../ph2d-inspector-ordering" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+
+[lints]
+workspace = true

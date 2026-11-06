@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-audio-card-facts"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ O que o cartão «Audio» deriva do mundo e a edição da lista de sons (SFX Lab W1) como FOLHA: saiu de
+# `ph2d-app-components` pela catraca `the_shell_only_shrinks_and_every_app_crate_too`. Família não chama
+# família; o que o cartão decide sobre a importação do ficheiro fica na família.
+[dependencies]
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-inspector-ordering = { path = "../ph2d-inspector-ordering" }
+
+[lints]
+workspace = true

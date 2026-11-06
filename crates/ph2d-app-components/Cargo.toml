@@ -52,6 +52,8 @@ ph2d-component-desc = { path = "../ph2d-component-desc" }
 serde_json = "1"
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-inspector-ordering = { path = "../ph2d-inspector-ordering" }
+# O que o cartão «Audio» deriva do mundo e a edição da lista de sons (folha).
+ph2d-audio-card-facts = { path = "../ph2d-audio-card-facts" }
 ph2d-entity-visibility = { path = "../ph2d-entity-visibility" }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 # ⭐ A lei do IMPACTO (plano 28, W5) — a pausa no golpe e o piscar, lidos pela ponte do impacto.

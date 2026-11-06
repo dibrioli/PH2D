@@ -5541,6 +5541,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-anim-signals"
+version = "0.0.0"
+dependencies = [
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-inspector-ordering",
+ "ph2d-physics-ecs",
+]
+
+[[package]]
 name = "ph2d-app-audio"
 version = "0.0.0"
 dependencies = [
@@ -5656,6 +5666,7 @@ dependencies = [
  "ph2d-asset",
  "ph2d-asset-index",
  "ph2d-audio",
+ "ph2d-audio-card-facts",
  "ph2d-audio-decode",
  "ph2d-audio-encode",
  "ph2d-code-explain",
@@ -6220,6 +6231,7 @@ version = "0.0.0"
 dependencies = [
  "bevy_ecs",
  "ph2d-a11y",
+ "ph2d-anim-signals",
  "ph2d-app-host",
  "ph2d-asset",
  "ph2d-core",
@@ -6414,6 +6426,16 @@ dependencies = [
  "postcard",
  "serde",
  "thiserror 2.0.21",
+]
+
+[[package]]
+name = "ph2d-audio-card-facts"
+version = "0.0.0"
+dependencies = [
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-i18n",
+ "ph2d-inspector-ordering",
 ]
 
 [[package]]
@@ -7451,12 +7473,14 @@ dependencies = [
  "ph2d-panel-wet-tuning",
  "ph2d-pen",
  "ph2d-physics-ecs",
+ "ph2d-pick-order",
  "ph2d-poly2d",
  "ph2d-preview-drive",
  "ph2d-preview-slot",
  "ph2d-render",
  "ph2d-runtime",
  "ph2d-script",
+ "ph2d-sfx-recipe",
  "ph2d-sfx-scene",
  "ph2d-shake",
  "ph2d-sheet-bounds",
@@ -7545,6 +7569,8 @@ dependencies = [
  "ph2d-render",
  "ph2d-runtime",
  "ph2d-script",
+ "ph2d-sfx-dsp",
+ "ph2d-sfx-recipe",
  "ph2d-sfx-scene",
  "ph2d-sprite-edit",
  "ph2d-tags",
@@ -10366,6 +10392,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-pick-order"
+version = "0.0.0"
+dependencies = [
+ "ph2d-ecs",
+]
+
+[[package]]
 name = "ph2d-pigment"
 version = "0.0.0"
 dependencies = [
@@ -10571,8 +10604,13 @@ name = "ph2d-sfx-scene"
 version = "0.0.0"
 dependencies = [
  "ph2d-app-host",
+ "ph2d-audio",
+ "ph2d-audio-decode",
+ "ph2d-audio-encode",
  "ph2d-ecs",
  "ph2d-editor-core",
+ "ph2d-sfx-dsp",
+ "ph2d-sfx-recipe",
 ]
 
 [[package]]

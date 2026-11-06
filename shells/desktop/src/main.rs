@@ -313,7 +313,6 @@ mod physics;
 /// ganhou um componente, como a moldura.
 /// **Um contêiner não rouba o clique dos próprios filhos** — a lei que faz um filho de moldura
 /// (ou de folha) ser agarrável no canvas. Pura, e por isso testada.
-mod pick_order;
 /// As fronteiras da folha — confinar uma peça, e contar o que está mal.
 /// **A conversão de precisão dos pixels de uma sprite** — o que os botões `RGBA8 / RGBA16` do
 /// Inspector fazem (plano `docs/Sprite_projeto/18` W5).

@@ -413,7 +413,7 @@ impl crate::App {
             // folha de sprites — cobre por definição tudo o que tem dentro, então
             // ficava sempre no índice 0 e a peça de dentro era inalcançável. O
             // ancestral é ADIADO, não descartado: o segundo clique ainda o alcança.
-            crate::pick_order::descendants_first(gfx.sim.world(), &mut hits);
+            ph2d_pick_order::descendants_first(gfx.sim.world(), &mut hits);
             // O osso e o esqueleto dele vêm à frente: o osso desenha-se por cima da arte.
             for b in osso_objecto.iter().rev() {
                 hits.retain(|h| h != b);
@@ -450,7 +450,7 @@ impl crate::App {
                 &hits,
                 hero.gizmo.selection,
                 &icones,
-                |h| crate::pick_order::inside_selection(gfx.sim.world(), hero.gizmo.selection, h),
+                |h| ph2d_pick_order::inside_selection(gfx.sim.world(), hero.gizmo.selection, h),
             );
             if cicla {
                 ph2d_editor_core::screens::hero::pick_cycle::start_on_selection(

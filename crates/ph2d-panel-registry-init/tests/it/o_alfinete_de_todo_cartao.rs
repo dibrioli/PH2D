@@ -159,3 +159,63 @@ fn o_cartao_image_preso_mostra_a_imagem_dele_e_pede_para_ele() {
         "{feitos:?}"
     );
 }
+
+/// O Pixel Sprite A (sem `Sprite`, como a shell o publica) ou a imagem B.
+fn arma_pixel(b: u64) {
+    super::o_alfinete_da_sprite::arma(b);
+    if b == A {
+        insp::set_current_inspector_sprite(None);
+        insp::slot_image::set_current_slot_image(None);
+    }
+}
+
+/// ⭐ O cartão do Pixel Sprite preso a A, com B selecionado: o facto é por objecto, e o verbo entra no Draw de A.
+/// *Mutação: o `Enter` no lugar do `OpenContent` do preso ⇒ o Draw caía na seleção.*
+#[test]
+fn o_cartao_do_pixel_sprite_preso_e_o_dele_e_pede_o_draw_dele() {
+    let sec = insp::CARD_IMAGE;
+    let mut h = hero();
+    h.store
+        .set_pixel_sprite_cards(vec![ph2d_editor_core::pixel_panel::PixelSpriteCard {
+            entity_bits: A,
+            size: [96, 64],
+            rgba: std::sync::Arc::new(vec![255; 16]),
+            thumb: [2, 2],
+        }]);
+    h.gizmo.replace_selection(Some(A));
+    h.store
+        .set_card_subject(core_ids::INSP_PANEL, Some((A, "Hero".to_owned())));
+    let quadros_pixel = |h: &mut HeroScreen, sel: u64, n: usize| {
+        for _ in 0..n {
+            insp::com_cada_preso(&h.store.loose_pins_of(core_ids::INSP_PANEL), arma_pixel);
+            arma_pixel(sel);
+            insp::set_current_inspector_selecionados(1);
+            pinta(h, 1);
+        }
+    };
+    quadros_pixel(&mut h, A, 30);
+    solta(&mut h, sec);
+    clica(&mut h, loose_pin_of(sec));
+    assert_eq!(h.store.loose_card(sec).and_then(|c| c.pin), Some(A));
+    h.gizmo.replace_selection(Some(B));
+    quadros_pixel(&mut h, B, 6);
+    let _ = insp::imagens_pintadas();
+    quadros_pixel(&mut h, B, 2);
+    let pintadas = insp::imagens_pintadas();
+    assert!(
+        pintadas.iter().any(|(b, n)| *b == A && n == "Hero"),
+        "{pintadas:?}"
+    );
+    let feitos = no_solto(&mut h, sec, insp::ids::INSP_IMAGE_EDIT_PIXEL, &[B]);
+    assert!(
+        feitos.iter().any(|a| matches!(
+            a,
+            EditorAction::ObjectMode(ph2d_editor_core::object_mode::ModeRequest::OpenContent {
+                entity: A,
+                mode: ph2d_editor_core::object_mode::ObjectMode::Draw,
+                ..
+            })
+        )),
+        "{feitos:?}"
+    );
+}

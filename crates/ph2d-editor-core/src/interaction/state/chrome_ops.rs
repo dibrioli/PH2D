@@ -27,6 +27,8 @@ mod color_mode_ops;
 mod new_image_ops;
 #[path = "new_sprite_ops.rs"]
 mod new_sprite_ops;
+#[path = "pixel_card_ops.rs"]
+mod pixel_card_ops;
 #[path = "pixel_edit_ops.rs"]
 mod pixel_edit_ops;
 #[path = "pixel_filter_ops.rs"]

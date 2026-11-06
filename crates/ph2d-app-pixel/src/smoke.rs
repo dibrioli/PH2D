@@ -10,7 +10,7 @@ use ph2d_editor_core::pixel_panel::{
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_PIXEL_SMOKE",
-    max_level: 22,
+    max_level: 23,
 }];
 
 /// O nível armado em `PH2D_PIXEL_SMOKE`.
@@ -54,6 +54,21 @@ pub fn rosto_em_object(
     let bits = rosto(app, sim, spawn_root);
     app.wants_edit = None;
     bits
+}
+
+/// A cena 23 selecciona o objecto, uma vez: o artista chega ao cartão com um clique, e a cena poupa-o.
+pub(crate) fn conduz_o_cartao(
+    world: &ph2d_ecs::World,
+    hero: &mut ph2d_editor_core::screens::hero::HeroScreen,
+) {
+    static FEITO: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    if armed_level() != Some(23) || FEITO.load(std::sync::atomic::Ordering::Relaxed) {
+        return;
+    }
+    if let Some((bits, _)) = crate::mode::sprites(world).first() {
+        hero.gizmo.replace_selection(Some(*bits));
+        FEITO.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
 }
 
 /// Encena o nível `level`. `false` = nível que este roteador não conhece.
@@ -101,6 +116,10 @@ pub fn stage(
         20 => crate::smoke_quadros::stage(app, sim, spawn_root).is_some(),
         21 => crate::smoke_tiles::stage(app, sim, spawn_root).is_some(),
         22 => crate::smoke_tiles::stage_terreno(app, sim, spawn_root).is_some(),
+        23 => stage_gradient(app, sim, spawn_root).is_some_and(|_| {
+            app.wants_edit = None;
+            true
+        }),
         _ => false,
     }
 }

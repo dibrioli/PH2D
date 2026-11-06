@@ -4,7 +4,7 @@
 
 use crate::cards_componentes::Presente;
 use crate::cards_objeto::com_corpo;
-use crate::cards_sprite_cabeca::cabeca;
+use crate::cards_sprite_cabeca::{cabeca, cabeca_do_pixel};
 use crate::cards_sprite_pivot::{NOMES_DO_PIVOT, evento_do_pivot, flip_e_pivot};
 use crate::ids;
 use crate::sections;
@@ -17,6 +17,7 @@ use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent, WidgetStore};
 use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, HeadAction, Widget};
+use ph2d_editor_core::pixel_panel::PixelSpriteCard;
 use ph2d_editor_core::screens::hero::{
     InspectorSpriteInfo, InspectorSpriteSource, InspectorTransformInfo,
 };
@@ -51,6 +52,11 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
         store,
         ids::INSP_IMAGE_EDIT_PAINTER,
         "card.insp.edit_in_painter_tip",
+    );
+    botao(
+        store,
+        ids::INSP_IMAGE_EDIT_PIXEL,
+        "card.insp.edit_in_pixel_tip",
     );
     botao(store, ids::INSP_IMAGE_PAINT_NEW, "card.insp.paint_new_tip");
     for id in ids::INSP_IMAGE_RECENT {
@@ -143,6 +149,21 @@ pub(crate) fn imagem(info: InspectorSpriteInfo) -> CardDef<'static> {
             });
             let y = recibo_do_replace(c, y, &info);
             aviso_de_folha(c, y, info.entity_bits)
+        })),
+    }
+}
+
+/// O cartão Image de um Pixel Sprite: a mesma moldura; não há imagem a trocar nem Use nem Look.
+pub(crate) fn imagem_do_pixel(card: PixelSpriteCard) -> CardDef<'static> {
+    let nome = crate::state::current_inspector_name().map_or_else(String::new, |n| n.name);
+    CardDef {
+        section: crate::cards_objeto::CARD_IMAGE,
+        title: tr("panel.inspector.image"),
+        actions: Vec::new(),
+        add: None,
+        summary: (!nome.is_empty()).then(|| nome.clone()),
+        body: Some(Box::new(move |c: &mut CardCtx<'_>, y| {
+            cabeca_do_pixel(c, y, &card, &nome)
         })),
     }
 }
@@ -375,6 +396,21 @@ pub(crate) fn evento(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool 
             .push(EditorAction::ObjectMode(ModeRequest::Enter(
                 ObjectMode::Draw,
             )));
+        return true;
+    }
+    if id == ids::INSP_IMAGE_EDIT_PIXEL {
+        use ph2d_editor_core::object_mode::{ModeRequest, ObjectMode};
+        let mode = ObjectMode::Draw;
+        // O Enter é o do objecto activo; o do cartão preso selecciona o dono primeiro.
+        let pedido = match host.store().card_event_subject(ev) {
+            Some(entity) => ModeRequest::OpenContent {
+                entity,
+                mode,
+                key: 0,
+            },
+            None => ModeRequest::Enter(mode),
+        };
+        host.bus_mut().push(EditorAction::ObjectMode(pedido));
         return true;
     }
     if id == ids::INSP_IMAGE_KEEP_SIZE {

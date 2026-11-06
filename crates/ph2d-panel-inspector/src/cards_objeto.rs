@@ -42,7 +42,7 @@ pub(crate) fn animacao_em_cartao(s: &InspectorSpriteInfo) -> bool {
 
 /// ⭐ Os cartões logo abaixo do objecto, pela ordem de leitura do painel de antes: de quem é cópia, o
 /// que declara, a imagem e o uso dela, os controlos de visibilidade.
-pub(crate) fn do_topo() -> Vec<CardDef<'static>> {
+pub(crate) fn do_topo(store: &WidgetStore) -> Vec<CardDef<'static>> {
     let mut out = Vec::new();
     if let Some(info) = crate::state::current_inspector_instance() {
         out.push(sem_titulo(CARD_INSTANCE, move |c, y| {
@@ -64,6 +64,10 @@ pub(crate) fn do_topo() -> Vec<CardDef<'static>> {
     }
     if let Some(info) = crate::state::current_inspector_sprite() {
         out.push(crate::cards_sprite::imagem(info));
+    } else if let Some(card) = crate::state::current_inspector_transform()
+        .and_then(|t| store.pixel_sprite_card(t.entity_bits))
+    {
+        out.push(crate::cards_sprite::imagem_do_pixel(card.clone()));
     }
     if let Some(info) = crate::state::current_inspector_visibility_section() {
         out.push(visibilidade(info));

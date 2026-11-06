@@ -75,6 +75,16 @@ impl ModeFamily for Family<'_> {
     fn heir(&mut self, _: ObjectMode, _: u64, _: &mut ToolRegistry) -> Option<u64> {
         None
     }
+    /// O verbo Pixel de um cartão preso: o Draw daquele objecto (não há sub-linhas: a chave não conta).
+    fn open_content(
+        &mut self,
+        mode: ObjectMode,
+        entity: u64,
+        _: u64,
+        tools: &mut ToolRegistry,
+    ) -> bool {
+        self.holds(mode, entity, tools)
+    }
 }
 
 /// O objecto em Pixel Sprite ▸ Draw neste quadro, se há.

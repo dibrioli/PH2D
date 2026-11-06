@@ -11,6 +11,7 @@
 //! pede o desenho ([`draw`]).
 
 pub mod camadas;
+mod cartao;
 pub mod compose;
 pub mod conta_gotas;
 pub mod degrade;

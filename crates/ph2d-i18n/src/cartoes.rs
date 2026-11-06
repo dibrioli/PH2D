@@ -143,6 +143,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.edit_in_painter_tip" => {
             "Edit in Painter. Every object using this image updates when you leave Draw"
         }
+        "card.insp.verb_pixel" => "Pixel",
+        "card.insp.edit_in_pixel_tip" => "Edit in Pixel. The thumbnail updates when you leave Draw",
         "card.insp.replace_receipt" => "{aw} \u{00d7} {ah} \u{2192} {bw} \u{00d7} {bh} px",
         "card.insp.keep_old_size" => "Keep old size",
         "card.insp.keep_old_size_tip" => {
@@ -176,6 +178,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.flip" => "Flip",
         "card.insp.image_size_repeated" => "{pw} \u{00d7} {ph} px ({size})",
         "card.insp.image_size_bare" => "{pw} \u{00d7} {ph}",
+        "card.insp.image_size_tight" => "{pw}\u{00d7}{ph}",
         "card.insp.image_slot_tip" => {
             "Click to choose or replace the image, or drop one here from Assets"
         }

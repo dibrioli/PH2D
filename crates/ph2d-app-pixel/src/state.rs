@@ -121,6 +121,8 @@ pub struct PixelApp {
     pub(crate) sobre_eixo: bool,
     pub(crate) hover: Option<(u64, (i32, i32))>,
     pub(crate) next_stamp: u64,
+    /// As miniaturas dos cartões do Inspector ([`crate::cartao`]).
+    pub(crate) miniaturas: crate::cartao::Miniaturas,
     /// O objecto que nasceu e pede o modo Draw (uma vez).
     pub(crate) wants_edit: Option<u64>,
     /// O objecto em Draw no quadro anterior (para enquadrar à entrada).
@@ -254,6 +256,7 @@ impl Default for PixelApp {
             sobre_eixo: false,
             hover: None,
             next_stamp: 1,
+            miniaturas: crate::cartao::Miniaturas::new(),
             wants_edit: None,
             was_editing: None,
             onion: ph2d_pixel_core::Onion::default(),

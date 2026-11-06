@@ -309,6 +309,18 @@ pub struct ColorModeDialog {
     pub(crate) request: Option<ColorModeChoice>,
 }
 
+/// ⭐ O cartão de um Pixel Sprite no Inspector: a família publica o da seleção e o de cada objecto preso, a cada quadro.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PixelSpriteCard {
+    pub entity_bits: u64,
+    /// O tamanho do documento, em células.
+    pub size: [u32; 2],
+    /// A composição do quadro corrente (RGBA reto). O mesmo `Arc` enquanto o desenho não muda: é a chave da textura.
+    pub rgba: std::sync::Arc<Vec<u8>>,
+    /// O tamanho de [`Self::rgba`].
+    pub thumb: [u32; 2],
+}
+
 /// Os diálogos do Pixel Art no `WidgetStore`.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PixelDialogs {
@@ -320,6 +332,7 @@ pub struct PixelDialogs {
     /// Os ficheiros do File ▸ Import à espera da janela, e os que ela mandou importar como imagem.
     pub(crate) import_pendente: Option<Vec<std::path::PathBuf>>,
     pub(crate) import_imagem: Option<Vec<std::path::PathBuf>>,
+    pub(crate) sprite_cards: Vec<PixelSpriteCard>,
 }
 
 impl Default for PixelOptions {

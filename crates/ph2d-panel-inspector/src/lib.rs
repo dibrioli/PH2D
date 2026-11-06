@@ -76,7 +76,9 @@ mod cards_pilha;
 mod cards_sprite;
 mod cards_sprite_cabeca;
 #[doc(hidden)]
-pub use cards_sprite_cabeca::{CabecaPintada, cabeca_pintada, imagens_pintadas, troca_pintada};
+pub use cards_sprite_cabeca::{
+    CabecaPintada, cabeca_pintada, imagens_pintadas, miniatura_pintada, troca_pintada,
+};
 mod cards_sprite_pivot;
 pub use cards_componentes::reset_of as card_reset_of;
 mod cards_presos;

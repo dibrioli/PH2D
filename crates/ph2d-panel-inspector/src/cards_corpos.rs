@@ -28,7 +28,7 @@ pub(crate) fn cards(store: &WidgetStore) -> Vec<CardDef<'static>> {
     // O olho do objecto publicado: o de um preso não é a caixa da seleção.
     let visivel = crate::state::current_inspector_visibility().is_none_or(|v| v.mixed || v.visible);
     out.push(objeto(store, visivel));
-    out.extend(crate::cards_objeto::do_topo());
+    out.extend(crate::cards_objeto::do_topo(store));
     out.push(transform());
     if let Some(a) = appearance::current_appearance() {
         out.push(aparencia(&a, visivel));

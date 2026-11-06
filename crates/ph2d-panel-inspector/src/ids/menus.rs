@@ -27,6 +27,8 @@ pub const INSP_SPRITE_CORNERS_ON: NodeId = hash_node_id("insp_sprite_corners_on"
 
 /// **Edit in Painter** do cartão Image.
 pub const INSP_IMAGE_EDIT_PAINTER: NodeId = hash_node_id("insp_image_edit_painter");
+/// **Pixel** do cartão de um Pixel Sprite.
+pub const INSP_IMAGE_EDIT_PIXEL: NodeId = hash_node_id("insp_image_edit_pixel");
 
 /// **Keep old size** do recibo do Replace.
 pub const INSP_IMAGE_KEEP_SIZE: NodeId = hash_node_id("insp_image_keep_size");

@@ -296,6 +296,10 @@ pub fn stamp(
     mask: Option<Option<Mask>>,
     background: u32,
 ) -> Option<Op> {
+    // Os píxeis de um cel de tilemap derivam do mapa: nem Flip, nem Paste, nem moldura os escrevem.
+    if s.layer(key.0)?.tileset().is_some() {
+        return None;
+    }
     let bounds = s.bounds();
     let fr = f.rect().intersect(bounds);
     let cr = clear.and_then(Mask::bounds).unwrap_or_default();

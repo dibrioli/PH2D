@@ -55,12 +55,16 @@ fn with_map(mode: ColorMode, h: &mut History) -> (Sprite, LayerId, FrameId, Tile
                 y: 0,
                 w: 2,
                 h: 1,
-                tiles: vec![TileRef::new(1, false, false, false), TileRef::new(2, false, false, false)],
+                tiles: vec![
+                    TileRef::new(1, false, false, false),
+                    TileRef::new(2, false, false, false),
+                ],
             })),
         )],
         ..TilesSet::default()
     };
-    h.commit(&mut s, Op::Tiles(Box::new(op))).expect("commit mapa");
+    h.commit(&mut s, Op::Tiles(Box::new(op)))
+        .expect("commit mapa");
     (s, l, f, set)
 }
 
@@ -106,7 +110,13 @@ fn each_flip_combination_lands_each_cell_where_the_law_says() {
             ..TilesSet::default()
         };
         h.commit(&mut s, Op::Tiles(Box::new(op))).expect("commit");
-        let got: Vec<u8> = s.cel((l, f)).unwrap().data.chunks_exact(4).map(|p| p[0] - 10).collect();
+        let got: Vec<u8> = s
+            .cel((l, f))
+            .unwrap()
+            .data
+            .chunks_exact(4)
+            .map(|p| p[0] - 10)
+            .collect();
         assert_eq!(got, esperado, "x={x} y={y} d={d}");
     }
 }
@@ -117,7 +127,10 @@ fn editing_a_tile_changes_every_copy_in_every_frame_and_undo_returns_the_byte() 
     let (mut s, l, f, set) = with_map(ColorMode::Rgba, &mut h);
     let (op, f2) = new_frame(&mut s, f, NewFrame::Copy).expect("frame");
     h.commit(&mut s, op).expect("commit frame");
-    assert!(s.cel((l, f2)).expect("copiado").tiles.is_some(), "o quadro novo leva o mapa");
+    assert!(
+        s.cel((l, f2)).expect("copiado").tiles.is_some(),
+        "o quadro novo leva o mapa"
+    );
     let antes = s.clone();
     let novo = tile_px(&s, 100);
     let op = TilesSet {
@@ -179,7 +192,10 @@ fn the_empty_tile_cannot_be_edited_and_a_used_tile_cannot_vanish() {
         sets: vec![(set, None)],
         ..TilesSet::default()
     };
-    assert_eq!(apply_err(&mut s, sem_tileset_em_uso), OpError::BadTiles("sets.in_use"));
+    assert_eq!(
+        apply_err(&mut s, sem_tileset_em_uso),
+        OpError::BadTiles("sets.in_use")
+    );
     assert_eq!(s, antes, "recusa não muda nada");
 }
 
@@ -203,13 +219,15 @@ fn shrinking_restores_the_removed_tiles_on_undo() {
         tiles: vec![(set, 3, tile_px(&s, 60))],
         ..TilesSet::default()
     };
-    h.commit(&mut s, Op::Tiles(Box::new(cresce))).expect("cresce");
+    h.commit(&mut s, Op::Tiles(Box::new(cresce)))
+        .expect("cresce");
     let antes = s.clone();
     let encolhe = TilesSet {
         counts: vec![(set, 3)],
         ..TilesSet::default()
     };
-    h.commit(&mut s, Op::Tiles(Box::new(encolhe))).expect("encolhe");
+    h.commit(&mut s, Op::Tiles(Box::new(encolhe)))
+        .expect("encolhe");
     assert_eq!(s.tileset(set).unwrap().tiles.len(), 3);
     assert!(h.undo(&mut s));
     assert_eq!(s, antes);
@@ -260,7 +278,10 @@ fn opening_a_file_rederives_the_image_from_the_map() {
     lib.insert(5, s.clone());
     let bytes = write_library(&lib);
     let px = s.cel((l, f)).unwrap().data.clone();
-    let at = bytes.windows(px.len()).position(|w| w == px).expect("data gravado");
+    let at = bytes
+        .windows(px.len())
+        .position(|w| w == px)
+        .expect("data gravado");
     let mut torto = bytes.clone();
     torto[at] ^= 0xff;
     assert_eq!(read_library(&torto).expect("lê")[&5], s);
@@ -275,7 +296,10 @@ fn a_map_pointing_at_a_missing_tile_is_refused_on_open() {
     let bytes = write_library(&lib);
     // O id 2 do mapa grava-se como 02 00 00 00 logo depois do id 1.
     let alvo = [1, 0, 0, 0, 2, 0, 0, 0];
-    let at = bytes.windows(8).position(|w| w == alvo).expect("mapa gravado");
+    let at = bytes
+        .windows(8)
+        .position(|w| w == alvo)
+        .expect("mapa gravado");
     let mut torto = bytes;
     torto[at + 4] = 99;
     assert!(read_library(&torto).is_err());
@@ -300,8 +324,15 @@ fn color_mode_and_palette_remap_carry_the_tileset() {
     .expect("converte");
     h.commit(&mut s, Op::Whole(Box::new(w))).expect("commit");
     assert!(derived_is_consistent(&s));
-    assert_eq!(s.tileset(set).unwrap().tiles[1].len(), usize::from(T * T) * 4);
-    assert_eq!(self::visto(&s, f), visto, "trocar de modo não muda o desenho");
+    assert_eq!(
+        s.tileset(set).unwrap().tiles[1].len(),
+        usize::from(T * T) * 4
+    );
+    assert_eq!(
+        self::visto(&s, f),
+        visto,
+        "trocar de modo não muda o desenho"
+    );
     assert_eq!(s.cel((l, f)).unwrap().bbox, Rect::new(2, 0, 4, 2));
     assert!(h.undo(&mut s));
     assert!(derived_is_consistent(&s));

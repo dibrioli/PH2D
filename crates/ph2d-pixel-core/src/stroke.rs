@@ -352,16 +352,27 @@ impl Stroke {
             .fold(Rect::default(), |r, &(x, y)| r.union(Rect::new(x, y, 1, 1)))
     }
 
-    /// O op do gesto inteiro; `None` se não mudou nenhuma célula (um clique na mesma cor não
-    /// gasta um passo de desfazer).
+    /// O que o gesto escreve: cada célula tocada com o valor final, depois da tinta.
     #[must_use]
-    pub fn op(&self, sprite: &Sprite) -> Option<Op> {
-        let key = (self.layer, self.frame);
-        let values: Vec<(Cell, u32)> = self
-            .cells
+    pub fn writes(&self, sprite: &Sprite) -> Vec<(Cell, u32)> {
+        self.cells
             .keys()
             .map(|&(x, y)| ((x, y), self.ink_value(sprite, x, y)))
-            .collect();
+            .collect()
+    }
+
+    /// O op do gesto inteiro; `None` se não mudou nenhuma célula (um clique na mesma cor não
+    /// gasta um passo de desfazer).
+    ///
+    /// Numa camada de tilemap não há op de píxeis: o traço passa por [`Self::writes`] e pelo destino
+    /// do modo (`ph2d-pixel-tiles`).
+    #[must_use]
+    pub fn op(&self, sprite: &Sprite) -> Option<Op> {
+        if sprite.layer(self.layer)?.tileset().is_some() {
+            return None;
+        }
+        let key = (self.layer, self.frame);
+        let values = self.writes(sprite);
         if values
             .iter()
             .all(|&((x, y), v)| sprite.value_at(key, x, y) == v)

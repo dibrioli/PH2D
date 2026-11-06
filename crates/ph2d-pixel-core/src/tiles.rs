@@ -252,13 +252,17 @@ pub fn new_tilemap_layer(
     };
     set.layers.iter_mut().find(|l| l.id == layer)?.kind = LayerKind::Tilemap { tileset: id };
     let bpp = s.mode().bpp();
-    let vazio = s.transparent_value().to_le_bytes()[..bpp].repeat(usize::from(tile_w) * usize::from(tile_h));
+    let vazio = s.transparent_value().to_le_bytes()[..bpp]
+        .repeat(usize::from(tile_w) * usize::from(tile_h));
     let t = Tileset::new(id, "Tileset", tile_w, tile_h, vazio);
     let novo = TilesSet {
         sets: vec![(id, Some(t))],
         ..TilesSet::default()
     };
-    let op = crate::Op::Batch(vec![crate::Op::Tiles(Box::new(novo)), crate::Op::Layers(set)]);
+    let op = crate::Op::Batch(vec![
+        crate::Op::Tiles(Box::new(novo)),
+        crate::Op::Layers(set),
+    ]);
     Some((op, layer, id))
 }
 
@@ -402,7 +406,8 @@ pub(crate) fn apply_tiles(s: &mut Sprite, op: TilesSet) -> Result<TilesSet, OpEr
         let velho = set.tiles.len() as u32;
         inv.counts.push((id, velho));
         for i in n..velho {
-            inv.tiles.push((id, i, std::mem::take(&mut set.tiles[i as usize])));
+            inv.tiles
+                .push((id, i, std::mem::take(&mut set.tiles[i as usize])));
         }
         let vazio = set.tiles[0].clone();
         set.tiles.resize(n as usize, vazio);

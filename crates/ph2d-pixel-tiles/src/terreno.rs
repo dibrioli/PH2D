@@ -92,7 +92,11 @@ fn resolve(m: &mut Mapa, set: &Tileset, c: i32, r: i32) {
             mascara |= 1 << b;
         }
     }
-    m.set(c, r, TileRef::new(first + casa(mascara), false, false, false));
+    m.set(
+        c,
+        r,
+        TileRef::new(first + casa(mascara), false, false, false),
+    );
 }
 
 /// **Pintar área**: as células entram no terreno `qual` (`None` = apagar), e elas e as vizinhas

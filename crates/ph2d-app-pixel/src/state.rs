@@ -341,6 +341,12 @@ impl PixelApp {
         self.docs.get(&key)
     }
 
+    #[doc(hidden)]
+    pub fn foca(&mut self, key: u32) -> Option<&mut Doc> {
+        self.chave = Some(key);
+        self.docs.get_mut(&key)
+    }
+
     /// Os documentos por chave.
     pub fn docs(&self) -> impl Iterator<Item = (u32, &Doc)> {
         self.docs.iter().map(|(k, d)| (*k, d))

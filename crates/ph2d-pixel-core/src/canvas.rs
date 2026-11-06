@@ -9,6 +9,7 @@ use crate::compose::compose_rgba;
 use crate::edit::Rotation;
 use crate::op::{CanvasSet, Op};
 use crate::sprite::{Cel, CelKey, Rect, Sprite};
+use crate::tiles::TileGrid;
 use crate::transform::{
     Image, flip_h, flip_v, resize_bilinear, resize_nearest, rot90ccw, rot90cw, rot180,
 };
@@ -67,14 +68,43 @@ pub fn anchor_borders(w: u32, h: u32, nw: u32, nh: u32, a: Anchor) -> Borders {
 }
 
 /// Toda imagem de dono (cel não ligado) como canvas inteiro → `f(canvas, é Background)` → o cel
-/// novo com a caixa justa (Background: o canvas inteiro). O resto do sprite fica.
-fn remap(s: &Sprite, nw: u32, nh: u32, f: impl Fn(&Image, bool) -> Image) -> Option<Op> {
+/// novo com a caixa justa (Background: o canvas inteiro). O resto do sprite fica. Um cel de tilemap
+/// não passa por `f`: a grelha anda `desloca`, e `data` continua a ser o mapa expandido.
+fn remap(
+    s: &Sprite,
+    (nw, nh): (u32, u32),
+    desloca: (i32, i32),
+    f: impl Fn(&Image, bool) -> Image,
+) -> Option<Op> {
     let bpp = s.mode().bpp();
     let t = s.transparent_value();
     let mut cels: BTreeMap<CelKey, Cel> = BTreeMap::new();
     for (&key, cel) in s.entries() {
         if cel.link.is_some() {
             cels.insert(key, cel.clone());
+            continue;
+        }
+        if let Some(g) = &cel.tiles {
+            let g = TileGrid {
+                x: g.x + desloca.0,
+                y: g.y + desloca.1,
+                ..(**g).clone()
+            };
+            let bbox = Rect::new(
+                cel.bbox.x + desloca.0,
+                cel.bbox.y + desloca.1,
+                cel.bbox.w,
+                cel.bbox.h,
+            );
+            let tiles = Some(Box::new(g));
+            cels.insert(
+                key,
+                Cel {
+                    bbox,
+                    tiles,
+                    ..cel.clone()
+                },
+            );
             continue;
         }
         let canvas = Image::map(s.width(), s.height(), bpp, |x, y| {
@@ -131,18 +161,36 @@ fn remap(s: &Sprite, nw: u32, nh: u32, f: impl Fn(&Image, bool) -> Image) -> Opt
 /// anti-horário; nos de 90° largura e altura trocam.
 #[must_use]
 pub fn rotate_canvas(s: &Sprite, r: Rotation) -> Option<Op> {
+    if has_tilemap(s) {
+        return None;
+    }
     let (w, h) = (s.width(), s.height());
     match r {
-        Rotation::Cw90 => remap(s, h, w, |c, _| rot90cw(c)),
-        Rotation::Ccw90 => remap(s, h, w, |c, _| rot90ccw(c)),
-        Rotation::R180 => remap(s, w, h, |c, _| rot180(c)),
+        Rotation::Cw90 => remap(s, (h, w), (0, 0), |c, _| rot90cw(c)),
+        Rotation::Ccw90 => remap(s, (h, w), (0, 0), |c, _| rot90ccw(c)),
+        Rotation::R180 => remap(s, (w, h), (0, 0), |c, _| rot180(c)),
     }
+}
+
+/// Rotate, Flip e Sprite Size mudariam o mapa e os tiles: ainda recusam (`docs/PixelArt/P10_plano.md` §4.3).
+fn has_tilemap(s: &Sprite) -> bool {
+    s.layers().iter().any(|l| l.tileset().is_some())
+}
+
+/// Um deslocamento só serve se for múltiplo do tile de todas as camadas de tilemap.
+fn fits_the_grids(s: &Sprite, dx: i32, dy: i32) -> bool {
+    let sets = s.layers().iter().filter_map(|l| s.tileset(l.tileset()?));
+    sets.into_iter()
+        .all(|t| dx.rem_euclid(i32::from(t.tile_w)) == 0 && dy.rem_euclid(i32::from(t.tile_h)) == 0)
 }
 
 /// **Sprite ▸ Flip Canvas** Horizontal/Vertical.
 #[must_use]
 pub fn flip_canvas(s: &Sprite, horizontal: bool) -> Option<Op> {
-    remap(s, s.width(), s.height(), |c, _| {
+    if has_tilemap(s) {
+        return None;
+    }
+    remap(s, (s.width(), s.height()), (0, 0), |c, _| {
         if horizontal { flip_h(c) } else { flip_v(c) }
     })
 }
@@ -164,12 +212,12 @@ fn from_rgba(s: &Sprite, c: &Image) -> Image {
 /// outros, o RotSprite do MVP na escala (o Trial tem padrão próprio, não fixado).
 #[must_use]
 pub fn sprite_size(s: &Sprite, w: u32, h: u32, method: SizeMethod) -> Option<Op> {
-    if w == 0 || h == 0 {
+    if w == 0 || h == 0 || has_tilemap(s) {
         return None;
     }
     let (sw, sh) = (s.width(), s.height());
     let t = s.transparent_value();
-    remap(s, w, h, |c, _| match method {
+    remap(s, (w, h), (0, 0), |c, _| match method {
         SizeMethod::Nearest => resize_nearest(c, w, h),
         SizeMethod::Bilinear => from_rgba(s, &resize_bilinear(&to_rgba(s, c), w, h)),
         SizeMethod::RotSprite if w.is_multiple_of(sw) && h.is_multiple_of(sh) => {
@@ -207,9 +255,12 @@ pub fn canvas_size(s: &Sprite, b: Borders, bg: u32) -> Option<Op> {
     if nw < 1 || nh < 1 || nw > i64::from(crate::MAX_SIDE) || nh > i64::from(crate::MAX_SIDE) {
         return None;
     }
+    if !fits_the_grids(s, b.left, b.top) {
+        return None;
+    }
     let (nw, nh) = (nw as u32, nh as u32);
     let t = s.transparent_value();
-    remap(s, nw, nh, |c, is_bg| {
+    remap(s, (nw, nh), (b.left, b.top), |c, is_bg| {
         Image::map(nw, nh, c.bpp, |x, y| {
             let (ox, oy) = (x as i64 - i64::from(b.left), y as i64 - i64::from(b.top));
             if ox >= 0 && oy >= 0 && ox < i64::from(c.w) && oy < i64::from(c.h) {
@@ -227,10 +278,10 @@ pub fn canvas_size(s: &Sprite, b: Borders, bg: u32) -> Option<Op> {
 #[must_use]
 pub fn crop(s: &Sprite, r: Rect) -> Option<Op> {
     let r = r.intersect(s.bounds());
-    if r.is_empty() {
+    if r.is_empty() || !fits_the_grids(s, -r.x, -r.y) {
         return None;
     }
-    remap(s, r.w, r.h, |c, _| {
+    remap(s, (r.w, r.h), (-r.x, -r.y), |c, _| {
         Image::map(r.w, r.h, c.bpp, |x, y| {
             c.get(r.x as u32 + x, r.y as u32 + y)
         })

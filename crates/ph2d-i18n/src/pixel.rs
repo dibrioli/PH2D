@@ -290,6 +290,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.layer.refuse.group" => "A group has no pixels: pick a layer inside it",
         "pixel.layer.refuse.locked" => "This layer is locked: unlock it to paint",
         "pixel.layer.refuse.hidden" => "This layer is hidden: show it to paint",
+        "pixel.layer.refuse.tilemap" => {
+            "This is a tilemap layer: that command does not work on it yet"
+        }
         "pixel.layer.refuse.action" => "That layer action does not apply here",
         "pixel.layer.refuse.selection" => {
             "Select first (Select All, Ctrl+A): copying needs a selection"

@@ -160,7 +160,10 @@ impl Op {
             Op::Whole(w) => {
                 w.palette.len() * 4
                     + w.cels.values().map(|c| c.data.len() + 32).sum::<usize>()
-                    + w.tilesets.iter().map(crate::tiles::Tileset::bytes).sum::<usize>()
+                    + w.tilesets
+                        .iter()
+                        .map(crate::tiles::Tileset::bytes)
+                        .sum::<usize>()
                     + std::mem::size_of::<Whole>()
             }
             Op::Mask(m) => mask_bytes(&m.mask) + mask_bytes(&m.last),
@@ -205,9 +208,7 @@ pub fn apply(sprite: &mut Sprite, op: Op) -> Result<Op, OpError> {
         Op::Frames(f) => apply_frames(sprite, *f).map(|f| Op::Frames(Box::new(f))),
         Op::Mask(m) => apply_mask(sprite, *m).map(|m| Op::Mask(Box::new(m))),
         Op::Canvas(c) => apply_canvas(sprite, *c).map(|c| Op::Canvas(Box::new(c))),
-        Op::Tiles(t) => {
-            crate::tiles::apply_tiles(sprite, *t).map(|t| Op::Tiles(Box::new(t)))
-        }
+        Op::Tiles(t) => crate::tiles::apply_tiles(sprite, *t).map(|t| Op::Tiles(Box::new(t))),
         Op::Batch(ops) => apply_batch(sprite, ops).map(Op::Batch),
     }
 }

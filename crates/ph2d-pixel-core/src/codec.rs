@@ -580,7 +580,10 @@ fn read_grid(bytes: &[u8]) -> Result<TileGrid, CodecError> {
                 if !resto.is_empty() {
                     return Err(CodecError::Invalid("grid.tiles"));
                 }
-                g.tiles = cells.iter().map(|c| TileRef(u32::from_le_bytes(*c))).collect();
+                g.tiles = cells
+                    .iter()
+                    .map(|c| TileRef(u32::from_le_bytes(*c)))
+                    .collect();
             }
             _ => {}
         }

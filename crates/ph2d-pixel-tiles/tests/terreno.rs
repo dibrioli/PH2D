@@ -2,8 +2,8 @@
 
 use ph2d_pixel_core::tiles::new_tilemap_layer;
 use ph2d_pixel_core::{
-    Background, ColorMode, FrameId, History, LayerId, NewSprite, Op, Sprite, TERRAIN_TILES, TileRef,
-    derived_is_consistent,
+    Background, ColorMode, FrameId, History, LayerId, NewSprite, Op, Sprite, TERRAIN_TILES,
+    TileRef, derived_is_consistent,
 };
 use ph2d_pixel_tiles::mapa::{Mapa, carimba};
 use ph2d_pixel_tiles::terreno::{self, E, N, NE, NW, S, SE, SW, VIZINHOS, W};
@@ -95,7 +95,11 @@ fn a_real_map_resolves_cell_by_cell() {
                 mascara |= 1 << b;
             }
         }
-        assert_eq!(m.get(c, r).id(), first + terreno::casa(mascara), "({c},{r})");
+        assert_eq!(
+            m.get(c, r).id(),
+            first + terreno::casa(mascara),
+            "({c},{r})"
+        );
     }
 }
 

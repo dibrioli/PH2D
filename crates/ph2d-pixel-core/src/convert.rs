@@ -137,7 +137,13 @@ fn convert_tileset(sprite: &Sprite, mode: ColorMode, opt: Convert, t: &Tileset) 
 }
 
 /// Os píxeis de `cel` no modo `mode`.
-fn convert_cel(sprite: &Sprite, mode: ColorMode, opt: Convert, cel: &Cel, background: bool) -> Vec<u8> {
+fn convert_cel(
+    sprite: &Sprite,
+    mode: ColorMode,
+    opt: Convert,
+    cel: &Cel,
+    background: bool,
+) -> Vec<u8> {
     let rgba: Vec<[u8; 4]> = cel
         .data
         .chunks_exact(sprite.mode.bpp())

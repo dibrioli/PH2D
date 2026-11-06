@@ -257,6 +257,10 @@ pub fn merge_down(s: &Sprite, id: LayerId) -> Option<Op> {
     if top.is_group() || below.is_group() || top.reference || below.reference {
         return None;
     }
+    // Como o cinza do Trial: fundir escreveria píxeis soltos num mapa.
+    if top.tileset().is_some() || below.tileset().is_some() {
+        return None;
+    }
     let mut cels = cels_of(s, &[top.id]);
     for f in s.frames() {
         let (kt, kb) = ((top.id, f.id), (below.id, f.id));
@@ -383,7 +387,7 @@ pub fn via(
     cut: bool,
 ) -> Option<(Op, LayerId)> {
     let src = s.layer(id)?;
-    if src.is_group() {
+    if src.is_group() || (cut && src.tileset().is_some()) {
         return None;
     }
     let r = r.intersect(s.bounds());

@@ -6,7 +6,7 @@
 //! nomeia o TRECHO). Um cel dono que sai deixa a imagem ao primeiro ligado que fica.
 
 use crate::op::{FrameSet, Op};
-use crate::sprite::{Cel, CelKey, Direction, Frame, FrameId, LayerId, Sprite, Tag};
+use crate::sprite::{Cel, CelKey, Direction, Frame, FrameId, Layer, LayerId, Sprite, Tag};
 
 /// O teto da duração de um frame: o `WORD` do cabeçalho de frame do `.ase`.
 pub const MAX_FRAME_MS: u32 = u16::MAX as u32;
@@ -285,7 +285,7 @@ pub fn copy_block(s: &mut Sprite, ids: &[FrameId], before: usize) -> Option<(Op,
 /// são destino ficam vazios, salvo com `copy` (Ctrl). Os quadros e as durações não mexem.
 #[must_use]
 pub fn move_cels(s: &Sprite, pairs: &[(CelKey, CelKey)], copy: bool) -> Option<Op> {
-    if pairs.iter().all(|(a, b)| a == b) {
+    if pairs.iter().all(|(a, b)| a == b) || !same_kind(s, pairs.iter().map(|p| (p.0, p.1.0))) {
         return None;
     }
     Some(cels_op(s, s.frames().to_vec(), pairs, copy))
@@ -304,6 +304,10 @@ pub fn move_cels_grow(
     let Some(grow) = beyond.iter().map(|b| b.1.1 + 1).max() else {
         return move_cels(s, pairs, copy).map(|o| (o, Vec::new()));
     };
+    let todos_vao = pairs.iter().map(|p| (p.0, p.1.0));
+    if !same_kind(s, todos_vao.chain(beyond.iter().map(|b| (b.0, b.1.0)))) {
+        return None;
+    }
     let ms = s.frames().last()?.duration_ms;
     let novos: Vec<FrameId> = (0..grow).map(|_| FrameId(s.reserve_id())).collect();
     let mut frames = s.frames().to_vec();
@@ -314,6 +318,12 @@ pub fn move_cels_grow(
     let mut todos = pairs.to_vec();
     todos.extend(beyond.iter().map(|&(de, (l, k))| (de, (l, novos[k]))));
     Some((cels_op(s, frames, &todos, copy), novos))
+}
+
+/// Um cel só muda de camada para outra com o mesmo tileset (ou nenhum): a imagem deriva dele.
+fn same_kind(s: &Sprite, mut moves: impl Iterator<Item = (CelKey, LayerId)>) -> bool {
+    let set = |l: LayerId| s.layer(l).and_then(Layer::tileset);
+    moves.all(|(de, para)| set(de.0) == set(para))
 }
 
 fn cels_op(s: &Sprite, frames: Vec<Frame>, pairs: &[(CelKey, CelKey)], copy: bool) -> Op {

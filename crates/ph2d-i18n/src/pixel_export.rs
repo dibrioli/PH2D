@@ -143,8 +143,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.io.kind_webp" => "WebP image",
         "pixel.io.kind_ase" => "Aseprite file",
         "pixel.io.warn.slices" => "This file has {n} {n?slice|slices}. Slices are not kept yet.",
-        "pixel.io.warn.terrains" => "The .ase file keeps the tiles but not the terrains. Save the project to keep them.",
-        "pixel.io.warn.tilemap" => "A tilemap layer with an unreadable tileset became a normal image layer.",
+        "pixel.io.warn.terrains" => {
+            "The .ase file keeps the tiles but not the terrains. Save the project to keep them."
+        }
+        "pixel.io.warn.tilemap" => {
+            "A tilemap layer with an unreadable tileset became a normal image layer."
+        }
         "pixel.io.warn.palette_per_frame" => {
             "This file changes its palette between frames. The first palette was kept."
         }

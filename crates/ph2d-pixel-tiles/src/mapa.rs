@@ -1,7 +1,9 @@
 //! **O mapa de um cel como grelha do mundo**: lê-se e escreve-se por `(coluna, linha)` sem pensar
 //! em caixa; ao gravar, encolhe às células usadas, como o cel de imagem.
 
-use ph2d_pixel_core::{Cel, CelKey, LayerId, FrameId, Op, Sprite, TileGrid, TileRef, TilesSet, Tileset};
+use ph2d_pixel_core::{
+    Cel, CelKey, FrameId, LayerId, Op, Sprite, TileGrid, TileRef, TilesSet, Tileset,
+};
 
 /// A grelha em edição. A coluna `c` começa no píxel `fase_x + c * tile_w`.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -56,6 +58,12 @@ impl Mapa {
             (x - self.fase_x).div_euclid(self.tw),
             (y - self.fase_y).div_euclid(self.th),
         )
+    }
+
+    /// O píxel do sprite onde a célula `(c, r)` começa.
+    #[must_use]
+    pub const fn origem(&self, c: i32, r: i32) -> (i32, i32) {
+        (self.fase_x + c * self.tw, self.fase_y + r * self.th)
     }
 
     /// O tile em `(c, r)`; fora da caixa é o vazio.
@@ -141,7 +149,9 @@ impl Mapa {
             z: antes.map_or(0, |o| o.z),
             ..c
         };
-        let ligados = s.entries().any(|(k, c)| k.0 == key.0 && c.link == Some(key.1));
+        let ligados = s
+            .entries()
+            .any(|(k, c)| k.0 == key.0 && c.link == Some(key.1));
         match grade {
             Some(g) => Some((key, Some(mantem(Cel::tilemap(g))))),
             // Quem tem ligados não sai: fica com uma célula vazia, e eles continuam a apontar.

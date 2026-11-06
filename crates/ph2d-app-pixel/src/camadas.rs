@@ -32,6 +32,8 @@ pub fn recusa_pintar(doc: &Doc) -> Option<&'static str> {
         Some("pixel.layer.refuse.locked")
     } else if !doc.sprite.is_shown(l.id) {
         Some("pixel.layer.refuse.hidden")
+    } else if l.tileset().is_some() {
+        Some("pixel.layer.refuse.tilemap")
     } else {
         None
     }
@@ -330,7 +332,8 @@ fn via_selection(
     bg: u32,
 ) -> Option<(Op, LayerId)> {
     use ph2d_pixel_core::transform::{Floating, Image, lift, stamp};
-    if s.layer(active)?.is_group() {
+    let l = s.layer(active)?;
+    if l.is_group() || (cut && l.tileset().is_some()) {
         return None;
     }
     let key = (active, frame);

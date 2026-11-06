@@ -479,6 +479,13 @@ impl PixelApp {
     /// Indexed com tolerância 0 compara o ÍNDICE — a lei do balde).
     fn substitui(&mut self, key: u32) {
         let doc = &self.docs[&key];
+        if doc
+            .sprite
+            .layer(doc.layer)
+            .is_some_and(|l| l.tileset().is_some())
+        {
+            return self.recusa("pixel.layer.refuse.tilemap");
+        }
         let s = &doc.sprite;
         let ck = (doc.layer, doc.frame);
         let de = s.value_of_rgba(self.fg);

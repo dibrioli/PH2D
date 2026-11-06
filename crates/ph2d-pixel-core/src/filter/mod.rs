@@ -130,7 +130,9 @@ impl Default for Channels {
 #[must_use]
 pub fn patch(s: &Sprite, key: CelKey, channels: Channels, f: &dyn Filter) -> Option<Op> {
     let key = s.owner(key);
-    s.layer(key.0)?;
+    if s.layer(key.0)?.tileset().is_some() {
+        return None;
+    }
     let rect = reach(s)?;
     let src = Source::of(s, key);
     let bpp = s.mode().bpp();

@@ -102,7 +102,3 @@ fn compoe(sprite: &ph2d_pixel_core::Sprite, frame: FrameId) -> (Vec<u8>, [u32; 2
     }
     (out, [tw, th])
 }
-
-#[cfg(test)]
-#[path = "cartao_tests.rs"]
-mod tests;

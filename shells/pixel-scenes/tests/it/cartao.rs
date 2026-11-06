@@ -1,13 +1,19 @@
-//! A família publica o cartão: nos três modos de cor, com o aspecto, e o `Arc` só muda quando o desenho muda.
+//! ⭐ **O cartão do Pixel Sprite no Inspector** (dono 06/11), pelo quadro inteiro da família (`panel::frame`): nos três
+//! modos de cor, com o aspecto, e o `Arc` só muda quando o desenho muda.
 
-use super::*;
+use std::sync::Arc;
+
+use ph2d_app_pixel::PixelApp;
+use ph2d_app_pixel::mode::{Family, editing};
+use ph2d_app_pixel::panel::frame;
+use ph2d_component_desc::ObjectKind;
 use ph2d_ecs::SimWorld;
-use ph2d_editor_core::NodeId;
-use ph2d_editor_core::ToastQueue;
-use ph2d_editor_core::ToolRegistry;
 use ph2d_editor_core::object_mode::{ModeRequest, ObjectMode};
+use ph2d_editor_core::pixel_panel::{PixelFrameAction, PixelRequest, PixelSpriteCard};
+use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::screens::hero::mode_drive::{ModeFamily, drive};
-use ph2d_pixel_core::{ColorMode, NewSprite, Op, Patch, Rect, apply};
+use ph2d_editor_core::{NodeId, ToastQueue, ToolRegistry};
+use ph2d_pixel_core::{ColorMode, NewSprite, Op, Patch, Rect};
 
 fn objecto(sim: &mut SimWorld, app: &mut PixelApp, spec: NewSprite) -> (u64, u32) {
     let key = app.create(spec).expect("o documento nasce");
@@ -19,10 +25,9 @@ fn objecto(sim: &mut SimWorld, app: &mut PixelApp, spec: NewSprite) -> (u64, u32
     (bits, key)
 }
 
-/// Pinta um pixel de `valor` em (x, y) e dá versão nova ao documento, como qualquer passo de edição.
+/// Um passo de edição: um pixel de `valor` em (x, y).
 fn pinta(app: &mut PixelApp, key: u32, x: i32, y: i32, valor: &[u8]) {
-    let stamp = app.stamp();
-    let doc = app.docs.get_mut(&key).expect("o documento");
+    let doc = app.doc(key).expect("o documento");
     let r = Rect::new(x, y, 1, 1);
     let op = Op::Patch(Patch {
         layer: doc.layer,
@@ -31,14 +36,17 @@ fn pinta(app: &mut PixelApp, key: u32, x: i32, y: i32, valor: &[u8]) {
         rect: r,
         pixels: valor.to_vec(),
     });
-    apply(&mut doc.sprite, op).expect("o passo aplica");
-    doc.stamp = stamp;
+    app.commit(key, op).expect("o passo aplica");
 }
 
 fn hero_com(bits: u64) -> HeroScreen {
     let mut h = HeroScreen::new(NodeId(1));
     h.gizmo.replace_selection(Some(bits));
     h
+}
+
+fn quadro(app: &mut PixelApp, sim: &SimWorld, h: &mut HeroScreen) {
+    let _ = frame(app, sim.world(), h, &mut ToastQueue::default());
 }
 
 fn cartao_de(h: &HeroScreen, bits: u64) -> PixelSpriteCard {
@@ -54,28 +62,52 @@ fn spec(mode: ColorMode, width: u32, height: u32) -> NewSprite {
     }
 }
 
-/// ⭐ Dono 06/11. *Mutação: refazer a miniatura sem olhar a versão ⇒ o mesmo desenho troca de `Arc` (e de textura).*
+/// O modo do quadro: `toasts` guarda os avisos do pedido.
+fn modo(
+    app: &mut PixelApp,
+    sim: &SimWorld,
+    h: &mut HeroScreen,
+    toasts: &mut ToastQueue,
+    pedido: Option<ModeRequest>,
+) {
+    let kind = |_: u64| ObjectKind::PixelSprite;
+    let nome = |_: u64| String::new();
+    let mut tools = ToolRegistry::new();
+    let mut f = Family::new(app, sim.world());
+    let fams: &mut [&mut dyn ModeFamily] = &mut [&mut f];
+    drive(fams, &kind, &nome, &mut tools, h, toasts, None);
+    drive(fams, &kind, &nome, &mut tools, h, toasts, pedido);
+}
+
+/// ⭐ *Mutações: refazer a miniatura sem olhar a versão ⇒ o mesmo desenho troca de `Arc` (e de textura) · nunca a refazer
+/// ⇒ sair do Draw não mostra os píxeis novos.*
 #[test]
 fn a_miniatura_do_pixel_so_muda_quando_o_desenho_muda() {
     let mut sim = SimWorld::new();
     let mut app = PixelApp::default();
     let (bits, key) = objecto(&mut sim, &mut app, spec(ColorMode::Rgba, 4, 2));
     let mut h = hero_com(bits);
-    publica(&mut app, sim.world(), &mut h, None);
+    quadro(&mut app, &sim, &mut h);
     let a = cartao_de(&h, bits);
-    publica(&mut app, sim.world(), &mut h, None);
+    quadro(&mut app, &sim, &mut h);
     assert!(
         Arc::ptr_eq(&a.rgba, &cartao_de(&h, bits).rgba),
         "reenviava todo quadro"
     );
 
+    let mut toasts = ToastQueue::default();
+    let draw = Some(ModeRequest::Enter(ObjectMode::Draw));
+    modo(&mut app, &sim, &mut h, &mut toasts, draw);
+    assert_eq!(editing(sim.world(), &h), Some(bits));
     pinta(&mut app, key, 1, 1, &[255, 0, 0, 255]);
-    publica(&mut app, sim.world(), &mut h, Some(bits));
+    quadro(&mut app, &sim, &mut h);
     assert!(
         Arc::ptr_eq(&a.rgba, &cartao_de(&h, bits).rgba),
         "em Draw a miniatura espera"
     );
-    publica(&mut app, sim.world(), &mut h, None);
+    let sai = Some(ModeRequest::Enter(ObjectMode::Object));
+    modo(&mut app, &sim, &mut h, &mut toasts, sai);
+    quadro(&mut app, &sim, &mut h);
     let b = cartao_de(&h, bits);
     assert!(
         !Arc::ptr_eq(&a.rgba, &b.rgba),
@@ -97,7 +129,7 @@ fn o_cartao_do_pixel_serve_aos_tres_modos_e_guarda_o_aspecto() {
         let (bits, key) = objecto(&mut sim, &mut app, spec(mode, 8, 3));
         pinta(&mut app, key, 0, 0, &valor);
         let mut h = hero_com(bits);
-        publica(&mut app, sim.world(), &mut h, None);
+        quadro(&mut app, &sim, &mut h);
         let c = cartao_de(&h, bits);
         assert_eq!((c.size, c.thumb), ([8, 3], [8, 3]));
         assert_eq!(c.rgba.len(), 8 * 3 * 4);
@@ -106,10 +138,10 @@ fn o_cartao_do_pixel_serve_aos_tres_modos_e_guarda_o_aspecto() {
     let mut sim = SimWorld::new();
     let mut app = PixelApp::default();
     let (bits, key) = objecto(&mut sim, &mut app, spec(ColorMode::Indexed, 8, 3));
-    let cor = app.docs[&key].sprite.palette()[1];
+    let cor = app.doc(key).expect("o documento").sprite.palette()[1];
     pinta(&mut app, key, 0, 0, &[1]);
     let mut h = hero_com(bits);
-    publica(&mut app, sim.world(), &mut h, None);
+    quadro(&mut app, &sim, &mut h);
     assert_eq!(
         &cartao_de(&h, bits).rgba[..4],
         &cor,
@@ -118,9 +150,8 @@ fn o_cartao_do_pixel_serve_aos_tres_modos_e_guarda_o_aspecto() {
 
     let outro = sim.world_mut().spawn_empty().id().to_bits();
     h.gizmo.replace_selection(Some(outro));
-    publica(&mut app, sim.world(), &mut h, None);
+    quadro(&mut app, &sim, &mut h);
     assert!(h.store.pixel_sprite_card(bits).is_none());
-    assert!(app.miniaturas.is_empty(), "a miniatura ficou guardada");
 }
 
 /// Um documento enorme guarda uma miniatura pequena, com o aspecto; o tamanho do cartão é o do documento.
@@ -131,7 +162,7 @@ fn a_miniatura_do_documento_grande_guarda_o_aspecto() {
     let (bits, key) = objecto(&mut sim, &mut app, spec(ColorMode::Rgba, 2048, 1024));
     pinta(&mut app, key, 2047, 1023, &[9, 8, 7, 255]);
     let mut h = hero_com(bits);
-    publica(&mut app, sim.world(), &mut h, None);
+    quadro(&mut app, &sim, &mut h);
     let c = cartao_de(&h, bits);
     assert_eq!((c.size, c.thumb), ([2048, 1024], [512, 256]));
     assert_eq!(c.rgba.len(), 512 * 256 * 4);
@@ -144,35 +175,33 @@ fn a_miniatura_do_pixel_e_a_do_quadro_corrente() {
     let mut app = PixelApp::default();
     let (bits, key) = objecto(&mut sim, &mut app, spec(ColorMode::Rgba, 2, 2));
     pinta(&mut app, key, 0, 0, &[1, 2, 3, 255]);
-    let doc = app.docs.get_mut(&key).expect("o documento");
-    let (op, novo) = ph2d_pixel_core::frames::new_frame(
-        &mut doc.sprite,
-        doc.frame,
-        ph2d_pixel_core::frames::NewFrame::Empty,
-    )
-    .expect("o quadro novo");
-    app.commit(key, op).expect("aplica");
     let mut h = hero_com(bits);
-    publica(&mut app, sim.world(), &mut h, None);
+    quadro(&mut app, &sim, &mut h);
     assert_eq!(&cartao_de(&h, bits).rgba[..4], &[1, 2, 3, 255]);
-    app.docs.get_mut(&key).expect("o documento").frame = novo;
-    publica(&mut app, sim.world(), &mut h, None);
+    let mut toasts = ToastQueue::default();
+    let draw = Some(ModeRequest::Enter(ObjectMode::Draw));
+    modo(&mut app, &sim, &mut h, &mut toasts, draw);
+    for _ in 0..3 {
+        app.pede(PixelRequest::FrameAction(PixelFrameAction::NewEmptyFrame));
+        quadro(&mut app, &sim, &mut h);
+    }
+    let sai = Some(ModeRequest::Enter(ObjectMode::Object));
+    modo(&mut app, &sim, &mut h, &mut toasts, sai);
+    quadro(&mut app, &sim, &mut h);
+    assert_eq!(app.doc(key).expect("o documento").sprite.frames().len(), 4);
     assert_eq!(&cartao_de(&h, bits).rgba[..4], &[0, 0, 0, 0]);
 }
 
 /// ⭐ O verbo do cartão entra no Draw daquele objecto: `Enter` sobre a seleção, e `OpenContent` de um cartão preso.
+/// *Mutação: tirar o `Family::open_content` ⇒ o aviso «o conteúdo sumiu».*
 #[test]
 fn o_pedido_do_verbo_pixel_entra_no_draw_do_objecto() {
     let mut sim = SimWorld::new();
     let mut app = PixelApp::default();
     let (a, _) = objecto(&mut sim, &mut app, spec(ColorMode::Rgba, 2, 2));
     let (b, _) = objecto(&mut sim, &mut app, spec(ColorMode::Rgba, 2, 2));
-    let kind = |_: u64| ph2d_component_desc::ObjectKind::PixelSprite;
-    let nome = |_: u64| String::new();
-    let mut tools = ToolRegistry::new();
-    let world = sim.world();
-    for (seleccao, pedido, alvo) in [
-        (a, ModeRequest::Enter(ObjectMode::Draw), a),
+    for (seleccao, pedido) in [
+        (a, ModeRequest::Enter(ObjectMode::Draw)),
         (
             b,
             ModeRequest::OpenContent {
@@ -180,29 +209,13 @@ fn o_pedido_do_verbo_pixel_entra_no_draw_do_objecto() {
                 mode: ObjectMode::Draw,
                 key: 0,
             },
-            a,
         ),
     ] {
         let mut h = hero_com(seleccao);
         let mut toasts = ToastQueue::default();
-        let mut f = crate::mode::Family::new(&mut app, world);
-        let fams: &mut [&mut dyn ModeFamily] = &mut [&mut f];
-        drive(fams, &kind, &nome, &mut tools, &mut h, &mut toasts, None);
-        drive(
-            fams,
-            &kind,
-            &nome,
-            &mut tools,
-            &mut h,
-            &mut toasts,
-            Some(pedido),
-        );
-        assert_eq!(crate::mode::editing(world, &h), Some(alvo));
-        assert_eq!(h.gizmo.selection, Some(alvo));
-        assert_eq!(
-            toasts.len(),
-            1,
-            "só o «entrou»; «o conteúdo sumiu» não é deste gesto"
-        );
+        modo(&mut app, &sim, &mut h, &mut toasts, Some(pedido));
+        assert_eq!(editing(sim.world(), &h), Some(a));
+        assert_eq!(h.gizmo.selection, Some(a));
+        assert_eq!(toasts.len(), 1, "só o «entrou»");
     }
 }

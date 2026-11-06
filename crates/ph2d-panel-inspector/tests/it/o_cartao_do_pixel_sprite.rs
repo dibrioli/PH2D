@@ -1,5 +1,5 @@
 //! ⭐ **O cartão do Pixel Sprite** (dono 06/11: *«Criar um cartão com o botão Pixel: fica igual à imagem»*): por gesto
-//! real, no que está pintado. A publicação pela família prova-se em `ph2d-app-pixel` (`cartao_tests`); o cartão preso,
+//! real, no que está pintado. A publicação pela família prova-se em `shells/pixel-scenes` (`cartao`); o cartão preso,
 //! em `ph2d-panel-registry-init` (`o_alfinete_de_todo_cartao`).
 
 use crate::o_inspector_em_cartoes_por_tipo::pinta;

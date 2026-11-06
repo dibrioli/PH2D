@@ -5,6 +5,7 @@ mod ajustes;
 mod ajustes_app;
 mod alvo_todos;
 mod camadas;
+mod cartao;
 mod catalogo;
 mod cena18;
 mod cena19;

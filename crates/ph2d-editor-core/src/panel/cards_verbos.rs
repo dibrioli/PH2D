@@ -1,6 +1,5 @@
 //! ⭐ **Os verbos de um cartão**: botões baixos `[seta] Nome`, nunca com reticências (dono, 05/11, cartão
-//! da miniatura da Sprite): lado a lado, da mesma largura, ou empilhados na largura da coluna. Quem pinta
-//! escolhe o arranjo pela largura MEDIDA do texto ([`CardCtx::verbos_cabem_lado_a_lado`]).
+//! da miniatura da Sprite): lado a lado, da mesma largura.
 
 use super::{CardCtx, censo};
 use crate::icons::IconId;
@@ -34,13 +33,6 @@ impl CardCtx<'_> {
         VERBO_GLIFO + Spacing::Xs.px() + tw + m::BUTTON_TEXT_PAD * 2.0
     }
 
-    /// Os `verbos` inteiros cabem em colunas iguais na largura `w`?
-    pub fn verbos_cabem_lado_a_lado(&mut self, verbos: &[Verbo<'_>], w: f32) -> bool {
-        let n = verbos.len().max(1) as f32;
-        let coluna = (w - vao_entre() * (n - 1.0)) / n;
-        verbos.iter().all(|v| self.verbo_pede(v) <= coluna)
-    }
-
     /// A fila em colunas iguais a partir de `topo`, na largura do contexto.
     pub fn verbos_lado_a_lado(&mut self, verbos: &[Verbo<'_>], topo: f32) {
         self.first = false;
@@ -49,17 +41,6 @@ impl CardCtx<'_> {
         for (i, v) in verbos.iter().enumerate() {
             let r = Rect::new(self.x + (w + vao_entre()) * i as f32, topo, w, VERBO_H);
             self.verbo(r, v);
-        }
-    }
-
-    /// A pilha na largura do contexto, a acabar em `fundo`.
-    pub fn verbos_em_pilha(&mut self, verbos: &[Verbo<'_>], fundo: f32) {
-        self.first = false;
-        let n = verbos.len() as f32;
-        let topo = fundo - VERBO_H * n - vao_entre() * (n - 1.0).max(0.0);
-        for (i, v) in verbos.iter().enumerate() {
-            let y = topo + (VERBO_H + vao_entre()) * i as f32;
-            self.verbo(Rect::new(self.x, y, self.w, VERBO_H), v);
         }
     }
 

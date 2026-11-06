@@ -377,74 +377,45 @@ fn a_largura(largura: f32) -> (Rect, Rect, CabecaPintada) {
     )
 }
 
-/// Os dois lados do degrau.
-const FOLGA: f32 = 1.0;
-
-fn tamanho_na_moldura(largura: f32) -> bool {
-    a_largura(largura).2.tamanho.is_some()
-}
-
-/// O limite do degrau, em px de painel, medido: a menor largura com o tamanho na moldura.
-fn limite_do_degrau() -> f32 {
-    (120..=400)
-        .map(|w| w as f32)
-        .find(|w| tamanho_na_moldura(*w))
-        .expect("o degrau largo existe")
-}
-
 fn dentro(q: Rect, m: Rect) -> bool {
     q.x >= m.x && q.y >= m.y && q.x + q.w <= m.x + m.w + 0.01 && q.y + q.h <= m.y + m.h + 0.01
 }
 
-/// ⭐ Dono 05/11 e 06/11: largo = nome, tamanho e o botão; estreito = o tamanho sobe ao título e o botão fica na largura
-/// da coluna, tudo dentro da moldura, sem sobrepor.
-/// *Mutações: o degrau ao contrário · o nome sem subir · o tamanho na moldura.*
+/// As larguras do painel que o cartão tem de aguentar: do piso real a bem largo.
+fn larguras() -> [f32; 6] {
+    [
+        ph2d_editor_core::interaction::WidgetStore::DOCK_W_MIN,
+        ph2d_tokens::chrome::PANEL_MIN_W_PX,
+        240.0,
+        270.0,
+        300.0,
+        420.0,
+    ]
+}
+
+/// ⭐ Dono 06/11: com um botão só, o tamanho não sobe ao título e a miniatura não muda ao estreitar o
+/// painel. Nome, tamanho e botão ficam ao lado dela, dentro da moldura, sem sobrepor.
+/// *Mutações: a miniatura a ceder com a largura · o tamanho fora da moldura.*
 #[test]
-fn os_dois_lados_do_degrau_arrumam_o_tamanho_e_o_botao() {
-    let limite = limite_do_degrau();
-    eprintln!("o degrau largo começa em {limite} px de painel");
-    for (largura, largo) in [
-        (300.0, true),
-        (limite + FOLGA, true),
-        (limite, true),
-        (limite - FOLGA, false),
-    ] {
+fn a_miniatura_e_o_tamanho_nao_mudam_com_a_largura() {
+    let lado = a_largura(300.0).1.w;
+    for largura in larguras() {
         let (a, foto, p) = a_largura(largura);
         let m = p.moldura;
-        for q in [a, foto] {
-            assert!(dentro(q, m), "a {largura}: {q:?} fora de {m:?}");
-        }
-        assert!((foto.w - foto.h).abs() < 0.01, "a {largura}: {foto:?}");
+        assert!((foto.w - lado).abs() < 0.01, "a {largura}: {foto:?}");
+        assert!((foto.h - lado).abs() < 0.01, "a {largura}: {foto:?}");
         assert!(foto.x + foto.w < a.x, "a {largura}: {foto:?} {a:?}");
         assert!(a.y >= p.nome.y + p.nome.h, "a {largura}: nome sob o botão");
-        assert!(foto.x > 1600.0 - largura, "a {largura}: {foto:?} fora");
+        let t = p.tamanho.expect("o tamanho na moldura");
         assert!(
-            a.w >= p.nome.w - 0.01,
-            "a {largura}: na largura da coluna {a:?} {:?}",
-            p.nome
+            t.x >= foto.x + foto.w,
+            "a {largura}: {t:?} sobre a miniatura"
         );
-        if largo {
-            let t = p.tamanho.expect("o tamanho na moldura");
-            assert!(p.tamanho_no_titulo.is_none(), "a {largura}");
-            assert!(dentro(t, m), "a {largura}: {t:?}");
-            assert!(t.y + t.h <= a.y, "a {largura}: tamanho sob o botão");
-        } else {
-            assert!(
-                p.tamanho.is_none(),
-                "a {largura}: o tamanho ficou na moldura"
-            );
-            let t = p.tamanho_no_titulo.expect("o tamanho no título, inteiro");
-            assert!(
-                t.y + t.h <= m.y,
-                "a {largura}: {t:?} não está acima de {m:?}"
-            );
-            assert!(t.x + t.w <= m.x + m.w, "a {largura}: {t:?} sai da moldura");
+        assert!(t.y + t.h <= a.y, "a {largura}: tamanho sob o botão");
+        for q in [a, foto, t] {
+            assert!(dentro(q, m), "a {largura}: {q:?} fora de {m:?}");
         }
     }
-    assert!(
-        limite <= ph2d_tokens::chrome::PANEL_MIN_W_PX,
-        "no piso do painel, um só botão deixa o tamanho na moldura: {limite}"
-    );
 }
 
 /// ⭐ Dono 06/11: na moldura só a miniatura e UM botão, o da ferramenta da imagem.
@@ -467,11 +438,11 @@ fn a_moldura_tem_um_so_botao() {
     assert!(alvos.is_empty(), "{alvos:?}");
 }
 
-/// O tamanho comprido do Repeated (`1024 × 1024 px (…)`) sobe inteiro onde cabe; onde nem o título o leva, sobe sem
-/// os parênteses, que os campos Width/Height já mostram. Nunca cortado.
-/// *Mutação: sem o recurso à linha curta ⇒ a 220 o tamanho some.*
+/// O tamanho comprido do Repeated (`1024 × 1024 px (…)`) vem inteiro onde cabe; no estreito, sem os parênteses, que
+/// os campos Width/Height já mostram, e no piso sem a unidade. Nunca passa da coluna.
+/// *Mutação: sem o recurso à linha curta ⇒ no piso o tamanho passa da coluna.*
 #[test]
-fn o_tamanho_comprido_do_repeated_sobe_inteiro_ou_sem_os_parenteses() {
+fn o_tamanho_comprido_do_repeated_vem_inteiro_ou_sem_os_parenteses() {
     let medida = |largura: f32| {
         let (mut host, mut st) = cena(factos());
         set_current_inspector_sprite(Some(InspectorSpriteInfo {
@@ -481,24 +452,28 @@ fn o_tamanho_comprido_do_repeated_sobe_inteiro_ou_sem_os_parenteses() {
             ..sprite()
         }));
         let _ = pinta_a_largura(&mut host, &mut st, largura);
-        cabeca_pintada()
-            .and_then(|p| p.tamanho_no_titulo)
-            .expect("o tamanho subiu ao título")
+        let p = cabeca_pintada().expect("a moldura pintou");
+        let t = p.tamanho.expect("o tamanho na moldura");
+        assert!(
+            t.x + t.w <= p.nome.x + p.nome.w,
+            "a {largura}: {t:?} passa da coluna {:?}",
+            p.nome
+        );
+        t
     };
-    let curta = medida(ph2d_tokens::chrome::PANEL_MIN_W_PX);
-    let inteira = medida(260.0);
+    let curta = medida(ph2d_editor_core::interaction::WidgetStore::DOCK_W_MIN);
+    let inteira = medida(420.0);
     assert!(inteira.w > curta.w, "{inteira:?} × {curta:?}");
 }
 
-/// ⭐ A moldura não muda de altura com o degrau: o controlo abaixo dela fica no mesmo sítio.
-/// *Mutação: a altura a somar o degrau.*
+/// ⭐ A moldura não muda de altura com a largura, e o botão clica em todas.
+/// *Mutação: a altura a depender da largura.*
 #[test]
-fn a_moldura_tem_a_mesma_altura_nos_dois_degraus_e_os_dois_clicam() {
-    let limite = limite_do_degrau();
-    let altura = |w: f32| a_largura(w).2.moldura.h;
-    let d = altura(limite) - altura(limite - FOLGA);
-    assert!(d.abs() < 0.01, "a moldura mudou com o degrau: {d}");
-    for largura in [limite, limite - FOLGA] {
+fn a_moldura_tem_a_mesma_altura_em_toda_largura_e_o_botao_clica() {
+    let altura = a_largura(300.0).2.moldura.h;
+    for largura in larguras() {
+        let d = a_largura(largura).2.moldura.h - altura;
+        assert!(d.abs() < 0.01, "a {largura}: a moldura mudou {d}");
         let (mut host, mut st) = cena(factos());
         let r = pinta_a_largura(&mut host, &mut st, largura);
         for (id, pedido, draw) in [(INSP_IMAGE_EDIT_PAINTER, ImageUseEdit::EditInPainter, true)] {

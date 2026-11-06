@@ -30,7 +30,7 @@ pub(super) fn paint_card(
     )
 }
 
-/// O que sobra à direita do título do cartão em curso: o corpo pode pôr ali um resumo.
+/// O que sobra à direita do título do cartão: é onde cabe o resumo do dobrado.
 #[derive(Copy, Clone)]
 struct TituloLivre {
     x0: f32,
@@ -43,31 +43,6 @@ impl TituloLivre {
     fn x_do_resumo(self, largura: f32) -> Option<f32> {
         let x = self.x1 - largura;
         (x >= self.x0).then_some(x)
-    }
-}
-
-thread_local! {
-    static TITULO_LIVRE: std::cell::Cell<Option<TituloLivre>> = const { std::cell::Cell::new(None) };
-}
-
-impl CardCtx<'_> {
-    /// O corpo põe `texto` na linha do título, encostado à direita como o resumo do cartão dobrado,
-    /// inteiro ou nada. Devolve o rect, ou `None` se não coube.
-    pub fn resumo_no_titulo(&mut self, texto: &str) -> Option<Rect> {
-        let t = TITULO_LIVRE.with(std::cell::Cell::get)?;
-        let sw = self.text_system.prefix_width(texto, m::LABEL_PX).ceil();
-        let x = t.x_do_resumo(sw)?;
-        crate::paint::paint_text(
-            self.text_system,
-            self.scene,
-            texto,
-            x,
-            t.y,
-            m::LABEL_PX,
-            sw,
-            self.ink.color(ColorToken::Text3),
-        );
-        Some(Rect::new(x, t.y, sw, m::LABEL_PX))
     }
 }
 
@@ -249,7 +224,6 @@ pub(super) fn paint_card_with(
         }
     }
     crate::widget::card_censo::titulo(card.title, tx + ocupado, resumo_x);
-    TITULO_LIVRE.with(|t| t.set((!sem_titulo).then_some(livre)));
     let mut fundo = if sem_titulo { hy } else { hy + m::CARD_HEAD_H };
 
     // ── O corpo (os campos e as notas, D6) ──

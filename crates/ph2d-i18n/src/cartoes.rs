@@ -175,6 +175,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.advanced" => "Advanced",
         "card.insp.flip" => "Flip",
         "card.insp.image_size_repeated" => "{pw} \u{00d7} {ph} px ({size})",
+        "card.insp.image_size_bare" => "{pw} \u{00d7} {ph}",
         "card.insp.image_slot_tip" => {
             "Click to choose or replace the image, or drop one here from Assets"
         }

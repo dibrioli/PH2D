@@ -1,0 +1,36 @@
+[package]
+name = "ph2d-app-sfxlab"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A família do SFX Lab (docs/SfxLab/04_W3_plano.md): a aba, o render em thread e a escuta.
+[dependencies]
+bevy_ecs = "0.20"
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-app-host = { path = "../ph2d-app-host" }
+ph2d-audio = { path = "../ph2d-audio" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-host = { path = "../ph2d-host" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-sfx-dsp = { path = "../ph2d-sfx-dsp" }
+ph2d-sfx-recipe = { path = "../ph2d-sfx-recipe", features = ["component"] }
+# O nível do `PH2D_SFX_SMOKE`: um roteador só, o que monta o mundo da cena.
+ph2d-sfx-scene = { path = "../ph2d-sfx-scene" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+ph2d-vector = { path = "../ph2d-vector" }
+tracing = "0.1"
+
+[[test]]
+name = "it"
+path = "tests/it/main.rs"
+
+[lints]
+workspace = true

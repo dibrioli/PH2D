@@ -36,6 +36,8 @@ impl crate::App {
         {
             ph2d_app_board::io::service(h, Some(g.surface.gpu()), &mut g.text_system);
             ph2d_app_kanban::service(h);
+            let escuta = self.audio.as_mut().map(|a| a.scene_parts().1);
+            ph2d_app_sfxlab::service(h, g.sim.world_mut(), escuta.map(|e| e as _));
             // W23 — o que um BOTÃO copiou (o link do quadro, do cartão) sai a cada imagem, não só depois de uma tecla.
             ph2d_app_host::clipboard::hand_over(&mut h.store, g.clipboard.as_mut());
         }

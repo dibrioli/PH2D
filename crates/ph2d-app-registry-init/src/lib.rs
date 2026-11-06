@@ -88,6 +88,8 @@ pub fn register_all_app_families() -> AppFamilyRegistry {
     reg.push(ph2d_app_pixel::FAMILY);
     #[cfg(feature = "app-planner")]
     reg.push(ph2d_app_planner::FAMILY);
+    #[cfg(feature = "app-sfxlab")]
+    reg.push(ph2d_app_sfxlab::FAMILY);
     #[cfg(feature = "app-skeleton")]
     reg.push(ph2d_app_skeleton::FAMILY);
     #[cfg(feature = "app-sprite-anim")]
@@ -186,6 +188,8 @@ mod tests {
         ("sprite-anim", "PH2D_GAME_SMOKE"),
         // Add ▸ Text: o texto nasce filho do HUD da cena `PH2D_GAME_SMOKE=4` (handoff GEF 02/11 §3.1).
         ("text", "PH2D_GAME_SMOKE"),
+        // A aba do SFX Lab abre sobre o mundo que o jogo monta (`ph2d_sfx_scene::ROUTER`, nível 3).
+        ("sfxlab", "PH2D_SFX_SMOKE"),
     ];
 
     /// ⚠️ **Uma família registada tem de declarar pelo menos um roteador, e todo roteador tem de ter

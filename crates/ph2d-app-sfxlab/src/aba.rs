@@ -1,0 +1,232 @@
+//! Uma aba: a cópia de trabalho da receita, o desfazer, o render e o gesto em curso.
+
+use std::sync::Arc;
+
+use ph2d_editor_core::zones::Rect;
+use ph2d_sfx_recipe::{LayerId, Recipe, Takes};
+
+use crate::historia::Historia;
+use crate::job::{Feito, Pedido, RenderJob};
+use crate::novo::Fonte;
+
+/// O que a tela sabe receber. O id da camada é o da receita.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Alvo {
+    Play,
+    Stop,
+    PlayOnChange,
+    Regua,
+    Linha(LayerId),
+    Alca(LayerId),
+    Mudo(LayerId),
+    Solo(LayerId),
+    Onda(LayerId),
+    Add,
+    Item(Fonte),
+    /// O item sem efeito: o clique fica nele e o motivo está escrito.
+    ItemOff(Fonte),
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum Gesto {
+    Inicio { id: LayerId, x0: f32, start0: f32 },
+    Ordem { id: LayerId },
+}
+
+pub(crate) struct Aba {
+    pub id: u64,
+    pub nome: String,
+    pub receita: Recipe,
+    /// O que o mundo tem desta receita; `None` = ainda não foi escrita.
+    pub escrita: Option<Recipe>,
+    pub hist: Historia,
+    pub job: RenderJob,
+    pub takes: Arc<Takes>,
+    pub ticket: u64,
+    pub pronto: Option<Feito>,
+    pub erro: Option<String>,
+    pub sel: Option<LayerId>,
+    pub solo: Option<LayerId>,
+    pub play_on_change: bool,
+    pub quer_tocar: bool,
+    pub quer_parar: bool,
+    pub cursor: f32,
+    pub gesto: Option<Gesto>,
+    pub prensa: Option<Alvo>,
+    pub hover: Option<Alvo>,
+    pub menu_add: bool,
+    pub rolagem: f32,
+    pub rolagem_max: f32,
+    pub alvos: Vec<(Alvo, Rect)>,
+    /// A pista do tempo, da última pintura.
+    pub pista: Rect,
+    pub linhas: Rect,
+    pub coluna: Rect,
+    pub corpo: Rect,
+}
+
+impl Aba {
+    pub fn new(
+        id: u64,
+        nome: String,
+        receita: Recipe,
+        escrita: Option<Recipe>,
+        takes: Arc<Takes>,
+    ) -> Self {
+        let nada = Rect::new(0.0, 0.0, 0.0, 0.0);
+        let mut a = Self {
+            id,
+            nome,
+            sel: receita.layers.first().map(|l| l.id),
+            receita,
+            escrita,
+            hist: Historia::default(),
+            job: RenderJob::default(),
+            takes,
+            ticket: 0,
+            pronto: None,
+            erro: None,
+            solo: None,
+            play_on_change: false,
+            quer_tocar: false,
+            quer_parar: false,
+            cursor: 0.0,
+            gesto: None,
+            prensa: None,
+            hover: None,
+            menu_add: false,
+            rolagem: 0.0,
+            rolagem_max: 0.0,
+            alvos: Vec::new(),
+            pista: nada,
+            linhas: nada,
+            coluna: nada,
+            corpo: nada,
+        };
+        a.pede();
+        a
+    }
+
+    /// O documento ou o solo mudou: um render novo, sem esperar.
+    pub fn pede(&mut self) {
+        self.ticket += 1;
+        self.job.submit(
+            Pedido {
+                receita: self.receita.clone(),
+                solo: self.solo,
+                takes: self.takes.clone(),
+            },
+            self.ticket,
+        );
+    }
+
+    #[must_use]
+    pub fn em_voo(&self) -> bool {
+        let chegou = self
+            .pronto
+            .as_ref()
+            .is_some_and(|f| f.ticket == self.ticket);
+        !chegou && self.erro.is_none()
+    }
+
+    pub fn recebe(&mut self) {
+        match self.job.poll() {
+            Some(Ok(f)) => {
+                self.pronto = Some(f);
+                self.erro = None;
+            }
+            Some(Err(e)) => self.erro = Some(e.to_string()),
+            None => {}
+        }
+    }
+
+    /// Toda edição do documento passa aqui.
+    pub fn edita(&mut self, f: impl FnOnce(&mut Recipe)) {
+        let antes = self.receita.clone();
+        f(&mut self.receita);
+        if self.receita == antes {
+            return;
+        }
+        self.hist.anota(antes);
+        self.erro = None;
+        self.pede();
+        if self.play_on_change && !self.hist.em_gesto() {
+            self.quer_tocar = true;
+        }
+    }
+
+    /// Larga o gesto em curso: um passo de desfazer.
+    pub fn fecha_gesto(&mut self) {
+        self.gesto = None;
+        if self.hist.fecha_gesto(&self.receita) && self.play_on_change {
+            self.quer_tocar = true;
+        }
+    }
+
+    pub fn desfaz(&mut self, refazer: bool) -> bool {
+        self.gesto = None;
+        let r = if refazer {
+            self.hist.refaz(&self.receita)
+        } else {
+            self.hist.desfaz(&self.receita)
+        };
+        let Some(r) = r else {
+            return false;
+        };
+        self.receita = r;
+        self.sobreviventes();
+        self.erro = None;
+        self.pede();
+        true
+    }
+
+    /// A receita veio de fora (projeto aberto): vale ela, e o desfazer recomeça.
+    pub fn adota(&mut self, r: Recipe) {
+        self.escrita = Some(r.clone());
+        self.receita = r;
+        self.hist.zera();
+        self.gesto = None;
+        self.sobreviventes();
+        self.erro = None;
+        self.pede();
+    }
+
+    fn sobreviventes(&mut self) {
+        let existe = |id: Option<LayerId>, r: &Recipe| id.filter(|i| r.layer(*i).is_some());
+        self.sel = existe(self.sel, &self.receita);
+        self.solo = existe(self.solo, &self.receita);
+    }
+
+    pub fn acrescenta(&mut self, fonte: Fonte) {
+        let take = self.takes.iter().next().map(|t| t.id);
+        let mut novo = None;
+        self.edita(|r| novo = crate::novo::acrescenta(r, fonte, take));
+        if novo.is_some() {
+            self.sel = novo;
+        }
+    }
+
+    pub fn apaga(&mut self, id: LayerId) {
+        self.edita(|r| r.layers.retain(|l| l.id != id));
+        self.sobreviventes();
+    }
+
+    pub fn alterna_solo(&mut self, id: LayerId) {
+        self.solo = if self.solo == Some(id) {
+            None
+        } else {
+            Some(id)
+        };
+        self.pede();
+    }
+
+    /// Px por segundo na pista.
+    #[must_use]
+    pub fn px_por_s(&self) -> f32 {
+        if self.receita.seconds > 0.0 {
+            self.pista.w / self.receita.seconds
+        } else {
+            0.0
+        }
+    }
+}

@@ -27,6 +27,7 @@ ph2d-app-painter = { path = "../ph2d-app-painter", optional = true }
 ph2d-app-physics = { path = "../ph2d-app-physics", optional = true }
 ph2d-app-pixel = { path = "../ph2d-app-pixel", optional = true }
 ph2d-app-planner = { path = "../ph2d-app-planner", optional = true }
+ph2d-app-sfxlab = { path = "../ph2d-app-sfxlab", optional = true }
 ph2d-app-skeleton = { path = "../ph2d-app-skeleton", optional = true }
 ph2d-app-sprite-anim = { path = "../ph2d-app-sprite-anim", optional = true }
 ph2d-app-text = { path = "../ph2d-app-text", optional = true }
@@ -55,6 +56,7 @@ default = [
     "app-physics",
     "app-pixel",
     "app-planner",
+    "app-sfxlab",
     "app-skeleton",
     "app-sprite-anim",
     "app-text",
@@ -79,6 +81,7 @@ app-painter = ["dep:ph2d-app-painter"]
 app-physics = ["dep:ph2d-app-physics"]
 app-pixel = ["dep:ph2d-app-pixel"]
 app-planner = ["dep:ph2d-app-planner"]
+app-sfxlab = ["dep:ph2d-app-sfxlab"]
 app-skeleton = ["dep:ph2d-app-skeleton"]
 app-sprite-anim = ["dep:ph2d-app-sprite-anim"]
 app-text = ["dep:ph2d-app-text"]

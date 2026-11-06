@@ -6185,6 +6185,7 @@ dependencies = [
  "ph2d-app-physics",
  "ph2d-app-pixel",
  "ph2d-app-planner",
+ "ph2d-app-sfxlab",
  "ph2d-app-skeleton",
  "ph2d-app-sprite-anim",
  "ph2d-app-sync",
@@ -6195,6 +6196,27 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-flip",
  "ph2d-pixel-core",
+]
+
+[[package]]
+name = "ph2d-app-sfxlab"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "ph2d-a11y",
+ "ph2d-app-host",
+ "ph2d-audio",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-i18n",
+ "ph2d-sfx-dsp",
+ "ph2d-sfx-recipe",
+ "ph2d-sfx-scene",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-tool-registry",
+ "ph2d-vector",
+ "tracing",
 ]
 
 [[package]]
@@ -7396,6 +7418,7 @@ dependencies = [
  "ph2d-app-physics",
  "ph2d-app-pixel",
  "ph2d-app-planner",
+ "ph2d-app-sfxlab",
  "ph2d-app-skeleton",
  "ph2d-app-sprite-anim",
  "ph2d-app-text",

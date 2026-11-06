@@ -382,6 +382,7 @@ fn boot_hero_screen(
         ph2d_app_sprite_anim::editor::install(&mut hero);
         ph2d_app_kanban::install(&mut hero);
         ph2d_app_planner::install(&mut hero);
+        ph2d_app_sfxlab::install(&mut hero);
         Some(hero)
     } else {
         None

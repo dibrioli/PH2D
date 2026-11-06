@@ -96,6 +96,12 @@ pub struct RenderCache {
 }
 
 impl RenderCache {
+    /// O último buffer da camada, sem ganho e sem o início: o que a tela desenha. Uma camada muda guarda o de antes.
+    #[must_use]
+    pub fn camada(&self, id: LayerId) -> Option<&[f32]> {
+        self.layers.get(&id).map(|c| &*c.pcm)
+    }
+
     /// Dá os mesmos bytes de [`render`], cheio ou vazio: a soma é sempre sobre os buffers, em ordem de id.
     ///
     /// # Errors

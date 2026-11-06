@@ -113,6 +113,8 @@ mod motion_panels;
 mod object_add;
 /// O MODO de edição do objecto (o seletor *Mode*, o `Tab` e o cadeado).
 mod object_mode;
+/// O que o SFX LAB diz (W3).
+mod sfxlab;
 /// As strings da SHELL (avisos, diálogos, nomes por omissão).
 mod shell;
 /// As strings da SHELL sobre mídia (imagem, folhas, importar/exportar, áudio).
@@ -663,6 +665,7 @@ fn tabela(key: &str) -> &'static str {
             .or_else(|| board_block6::tr(k))
             .or_else(|| board_w24::tr(k))
             .or_else(|| board_kanban::tr(k))
+            .or_else(|| sfxlab::tr(k))
             .or_else(|| chrome_rail::tr(k))
             .or_else(|| chrome_panes::tr(k))
             .or_else(|| audio_fx::tr(k))

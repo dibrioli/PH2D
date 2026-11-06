@@ -3,5 +3,8 @@
 
 pub mod converte;
 pub mod desenho;
+pub mod exemplo;
+pub mod mao;
 pub mod mapa;
 pub mod terreno;
+pub mod tileset;

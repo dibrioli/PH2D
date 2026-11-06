@@ -188,48 +188,6 @@ pub(crate) fn previa(app: &PixelApp, key: u32) -> Option<Stroke> {
         .and_then(|c| c.traco.clone())
 }
 
-/// A cobertura `fl` (1 byte, já no sítio) pintada em `fg` e cortada ao sprite e à selecção: as células
-/// no modo do sprite, prontas a assentar.
-pub(crate) fn na_cor(s: &Sprite, fl: &Floating, fg: [u8; 4]) -> Floating {
-    let (w, h) = (fl.image.w, fl.image.h);
-    let mut image = Image::new(w, h, s.mode().bpp(), s.transparent_value());
-    let mut keep = vec![false; w as usize * h as usize];
-    for y in 0..h {
-        for x in 0..w {
-            let (cx, cy) = (fl.x + x as i32, fl.y + y as i32);
-            let i = (y * w + x) as usize;
-            let c = u8::try_from(fl.image.get(x, y)).unwrap_or(u8::MAX);
-            if fl.keep[i] && c > 0 && s.bounds().contains(cx, cy) && s.in_selection(cx, cy) {
-                image.set(x, y, s.value_of_rgba(fg));
-                keep[i] = true;
-            }
-        }
-    }
-    Floating {
-        x: fl.x,
-        y: fl.y,
-        image,
-        keep,
-    }
-}
-
-/// O texto da caixa como cobertura solta (1 byte por célula, sem cortar ao sprite).
-fn cobertura(c: &Caixa, f: &Fonte) -> Option<Floating> {
-    let (m, o) = f.place(&c.ed.text, c.at)?;
-    let keep: Vec<bool> = m.cover.iter().map(|&v| v > 0).collect();
-    keep.contains(&true).then(|| Floating {
-        x: o.0,
-        y: o.1,
-        image: Image::from_values(
-            m.w,
-            m.h,
-            1,
-            &m.cover.iter().map(|&v| u32::from(v)).collect::<Vec<_>>(),
-        ),
-        keep,
-    })
-}
-
 /// O 1.º `Enter` (P8b): o texto vira MOLDURA SOLTA (arrasta, roda, escala); o 2.º `Enter` ou um
 /// clique fora assenta UM passo, `Esc` larga. Texto vazio fecha sem nada.
 fn solta(app: &mut PixelApp) -> Option<KeyAnswer> {
@@ -278,4 +236,21 @@ pub(crate) fn tecla(
         refaz(app);
     }
     Some(KeyAnswer::Quiet)
+}
+
+/// O texto da caixa como cobertura solta (1 byte por célula, sem cortar ao sprite).
+fn cobertura(c: &Caixa, f: &Fonte) -> Option<Floating> {
+    let (m, o) = f.place(&c.ed.text, c.at)?;
+    let keep: Vec<bool> = m.cover.iter().map(|&v| v > 0).collect();
+    keep.contains(&true).then(|| Floating {
+        x: o.0,
+        y: o.1,
+        image: Image::from_values(
+            m.w,
+            m.h,
+            1,
+            &m.cover.iter().map(|&v| u32::from(v)).collect::<Vec<_>>(),
+        ),
+        keep,
+    })
 }

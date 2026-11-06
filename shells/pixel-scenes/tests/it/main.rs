@@ -30,5 +30,6 @@ mod selecao;
 mod sobreviventes;
 mod texto;
 mod texto_fontes;
+mod tiles;
 mod tocar;
 mod viva;

@@ -198,12 +198,18 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
         return Press::Done;
     }
     let tool = if m.alt { Tool::Eyedropper } else { app.tool };
+    if crate::tiles::press(app, bits, key, (x, y), tool, button == Button::Secondary) {
+        return Press::Done;
+    }
     let (fg, bg, options) = (app.fg, app.bg, app.options);
     let sel = app.sel.clone();
     let stamp = app.stamp();
     // O Aseprite recusa pintar numa camada trancada, escondida ou num grupo, e DIZ porquê.
     if tool.paints()
-        && let Some(motivo) = app.docs.get(&key).and_then(crate::camadas::recusa_pintar)
+        && let Some(motivo) = app
+            .docs
+            .get(&key)
+            .and_then(|d| crate::tiles::recusa_traco(d, tool))
     {
         app.avisos.push((true, ph2d_i18n::tr(motivo).to_owned()));
         return Press::Done;
@@ -369,6 +375,14 @@ fn erase_value(s: &ph2d_pixel_core::Sprite, layer: ph2d_pixel_core::LayerId, bg:
 
 /// Mover. Com um gesto em curso, ele continua (consumido); sem gesto, só a célula sob o cursor.
 pub fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), m: Mods) -> bool {
+    if let Some(bits) = app.tiles.carimbo.as_ref().map(|g| g.0) {
+        let xy = key_of(c.world, bits).and_then(|key| cell(app, c, bits, key, p));
+        if let Some(at) = xy {
+            app.hover = Some((bits, at));
+            crate::tiles::anda(app, at);
+        }
+        return true;
+    }
     if crate::solta::moved(app, c, p, m) || crate::viva::moved(app, c, p, m) {
         return true;
     }
@@ -499,6 +513,9 @@ pub fn release_pan(
 /// (passa ao controlo), o polígono (espera o próximo vértice) e as formas (P6d: ficam VIVAS até ao
 /// `Enter`).
 pub fn release(app: &mut PixelApp) -> bool {
+    if app.tiles.carimbo.take().is_some() {
+        return true;
+    }
     if crate::solta::release(app) || crate::selecao::release(app) || crate::viva::release(app) {
         return true;
     }
@@ -545,7 +562,11 @@ pub(crate) fn finish(app: &mut PixelApp) {
     }
     let free = matches!(g.kind, Kind::Free);
     let last = g.stroke.last();
-    let op = app.docs.get(&g.key).and_then(|d| g.stroke.op(&d.sprite));
+    let modo = app.tiles.mao.modo;
+    let op = app
+        .docs
+        .get(&g.key)
+        .and_then(|d| ph2d_pixel_tiles::mao::op_do_traco(&g.stroke, &d.sprite, modo));
     match op {
         Some(op) => {
             let _ = app.commit(g.key, op);
@@ -579,6 +600,9 @@ pub(crate) fn set_tool(app: &mut PixelApp, t: Tool) {
 
 /// Larga o gesto sem gravar (`Esc`).
 pub(crate) fn cancel(app: &mut PixelApp) -> bool {
+    if crate::tiles::cancela(app) {
+        return true;
+    }
     let Some(g) = app.gesture.take() else {
         return false;
     };

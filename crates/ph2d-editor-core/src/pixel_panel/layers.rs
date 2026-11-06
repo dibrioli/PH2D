@@ -135,4 +135,8 @@ pub enum PixelLayerAction {
     PasteAsReference,
     /// *Paste as New Sprite*: o recorte num objecto novo do tamanho dele (não muda este documento).
     PasteAsSprite,
+    /// P10b: abrem a janela de tile, ou convertem a camada activa de volta.
+    NewTilemap,
+    ConvertToTilemap,
+    ConvertToImage,
 }

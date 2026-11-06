@@ -136,6 +136,9 @@ impl PixelApp {
                     .docs
                     .get_mut(&key)
                     .and_then(|d| frames::move_cels_grow(&mut d.sprite, &pares, &alem, *copy));
+                if feito.is_none() {
+                    crate::tiles::recusou(self, key, None, "pixel.tiles.refuse.cel_drag");
+                }
                 if let Some((op, novos)) = feito
                     && self.commit(key, op).is_ok()
                     && let Some(doc) = self.docs.get_mut(&key)

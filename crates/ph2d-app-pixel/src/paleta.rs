@@ -6,17 +6,14 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_editor_core::interaction::WidgetStore;
-use ph2d_editor_core::pixel_panel::{
-    ColorModeChoice, NewSpriteMode, PixelDither, PixelRequest, PixelSelect, PixelSortKey,
-    PixelToGray,
-};
-use ph2d_pixel_core::color::ToGray;
-use ph2d_pixel_core::convert::{Bayer, Convert, Dither, convert};
-use ph2d_pixel_core::palette::{self, SortKey};
+use ph2d_editor_core::pixel_panel::{ColorModeChoice, NewSpriteMode, PixelRequest, PixelSelect};
+use ph2d_pixel_core::convert::convert;
+use ph2d_pixel_core::palette::{self};
 use ph2d_pixel_core::{Cel, ColorMode, Op, Patch, Rect, Sprite, Whole, compose_rgba};
 use ph2d_pixel_io::palette_file::{self, PaletteFormat};
 
 use crate::PixelApp;
+use ph2d_pixel_ponte::leis::{conversao, sort_key, usados};
 
 #[path = "paleta_predefinicoes.rs"]
 mod predefinicoes;
@@ -58,64 +55,11 @@ pub fn rampa(s: &Sprite, sel: &BTreeSet<usize>) -> Vec<u32> {
     sel.iter().filter_map(|&i| valor_da_amostra(s, i)).collect()
 }
 
-fn sort_key(k: PixelSortKey) -> SortKey {
-    match k {
-        PixelSortKey::Hue => SortKey::Hue,
-        PixelSortKey::Saturation => SortKey::Saturation,
-        PixelSortKey::Brightness => SortKey::Brightness,
-        PixelSortKey::Luminance => SortKey::Luminance,
-        PixelSortKey::Red => SortKey::Red,
-        PixelSortKey::Green => SortKey::Green,
-        PixelSortKey::Blue => SortKey::Blue,
-        PixelSortKey::Alpha => SortKey::Alpha,
-    }
-}
-
-/// As escolhas do diálogo *Color Mode* no vocabulário do núcleo.
-#[must_use]
-pub fn conversao(c: ColorModeChoice) -> (ColorMode, Convert) {
-    let mode = match c.target {
-        NewSpriteMode::Rgba => ColorMode::Rgba,
-        NewSpriteMode::Gray => ColorMode::Gray,
-        NewSpriteMode::Indexed => ColorMode::Indexed,
-    };
-    let dither = match c.dither {
-        PixelDither::None => Dither::None,
-        PixelDither::Ordered2 => Dither::Ordered(Bayer::M2),
-        PixelDither::Ordered4 => Dither::Ordered(Bayer::M4),
-        PixelDither::Ordered8 => Dither::Ordered(Bayer::M8),
-        PixelDither::Old2 => Dither::Old(Bayer::M2),
-        PixelDither::Old4 => Dither::Old(Bayer::M4),
-        PixelDither::Old8 => Dither::Old(Bayer::M8),
-        PixelDither::FloydSteinberg => Dither::FloydSteinberg,
-    };
-    let to_gray = match c.gray {
-        PixelToGray::Luminance => ToGray::Luminance,
-        PixelToGray::Hsv => ToGray::Hsv,
-        PixelToGray::Hsl => ToGray::Hsl,
-    };
-    (mode, Convert { dither, to_gray })
-}
-
 /// Os cels guardados do sprite (um ligado não tem bytes: a imagem é a do dono).
 fn cels(
     s: &Sprite,
 ) -> impl Iterator<Item = ((ph2d_pixel_core::LayerId, ph2d_pixel_core::FrameId), &Cel)> {
     s.entries().map(|(k, c)| (*k, c))
-}
-
-/// Os índices que alguma célula usa (Indexed), em ordem de primeira aparição.
-fn usados(s: &Sprite) -> Vec<usize> {
-    let mut vistos = [false; palette::MAX_COLORS];
-    let mut out = Vec::new();
-    for (_, c) in cels(s) {
-        for &v in &c.data {
-            if !std::mem::replace(&mut vistos[usize::from(v)], true) {
-                out.push(usize::from(v));
-            }
-        }
-    }
-    out
 }
 
 impl PixelApp {

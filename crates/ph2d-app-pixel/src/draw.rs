@@ -207,6 +207,19 @@ pub fn draw(
     if app.grid && px_per_cell(m) >= GRID_MIN_PX_PER_CELL {
         draw_pixel_grid(scene, w, h, m, resolve(ColorToken::Border, theme), LINE_PX);
     }
+    crate::tiles::desenha_grelha(
+        app,
+        key,
+        bits,
+        (w, h),
+        m,
+        (LINE_PX, GRID_MIN_PX_PER_CELL),
+        (
+            resolve(ColorToken::Border, theme),
+            resolve(ColorToken::Accent, theme),
+        ),
+        scene,
+    );
     draw_border(
         scene,
         w,

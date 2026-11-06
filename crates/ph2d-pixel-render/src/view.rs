@@ -304,6 +304,32 @@ fn line(path: &mut BezPath, to_screen: Affine, a: (f64, f64), b: (f64, f64)) {
     path.line_to(to_screen * Point::new(b.0, b.1));
 }
 
+/// A grelha dos tiles de uma camada de tilemap, alinhada à fase `(fx, fy)` do mapa.
+pub fn draw_tile_grid(
+    scene: &mut VectorScene,
+    (w, h): (u32, u32),
+    (tw, th): (u32, u32),
+    (fx, fy): (i32, i32),
+    to_screen: Affine,
+    color: Color,
+    width_px: f64,
+) {
+    let mut path = BezPath::new();
+    let (fw, fh) = (f64::from(w), f64::from(h));
+    let primeira = |f: i32, t: u32| f.rem_euclid(t.max(1) as i32) as u32;
+    for x in (primeira(fx, tw)..w).step_by(tw.max(1) as usize) {
+        let x = f64::from(x);
+        line(&mut path, to_screen, (x, 0.0), (x, fh));
+    }
+    for y in (primeira(fy, th)..h).step_by(th.max(1) as usize) {
+        let y = f64::from(y);
+        line(&mut path, to_screen, (0.0, y), (fw, y));
+    }
+    scene
+        .inner_mut()
+        .stroke(&Pen::new(width_px), Affine::IDENTITY, color, None, &path);
+}
+
 /// A grelha de pixels (linhas entre células) de um sprite `w × h`, `width_px` de espessura de ecrã.
 pub fn draw_pixel_grid(
     scene: &mut VectorScene,

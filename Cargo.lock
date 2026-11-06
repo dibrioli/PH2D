@@ -6120,14 +6120,17 @@ dependencies = [
  "ph2d-i18n",
  "ph2d-panel-pixel-export",
  "ph2d-panel-pixel-preview",
+ "ph2d-panel-pixel-tiles",
  "ph2d-panel-pixel-timeline",
  "ph2d-pen",
  "ph2d-pen-law",
  "ph2d-pixel-core",
  "ph2d-pixel-formas",
  "ph2d-pixel-io",
+ "ph2d-pixel-ponte",
  "ph2d-pixel-render",
  "ph2d-pixel-text",
+ "ph2d-pixel-tiles",
  "ph2d-render",
  "ph2d-text",
  "ph2d-tokens",
@@ -7595,11 +7598,13 @@ dependencies = [
  "ph2d-imageio-png",
  "ph2d-panel-pixel-export",
  "ph2d-panel-pixel-preview",
+ "ph2d-panel-pixel-tiles",
  "ph2d-pen",
  "ph2d-pixel-core",
  "ph2d-pixel-io",
  "ph2d-pixel-render",
  "ph2d-pixel-text",
+ "ph2d-pixel-tiles",
  "ph2d-render",
  "ph2d-tokens",
  "ph2d-tool-vector",
@@ -10000,6 +10005,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-panel-pixel-tiles"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-i18n",
+ "ph2d-pixel-core",
+ "ph2d-pixel-tiles",
+ "ph2d-tokens",
+ "ph2d-tool-registry",
+ "ph2d-ui-testkit",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-panel-pixel-timeline"
 version = "0.0.0"
 dependencies = [
@@ -10077,6 +10097,7 @@ dependencies = [
  "ph2d-panel-physics",
  "ph2d-panel-pixel-export",
  "ph2d-panel-pixel-preview",
+ "ph2d-panel-pixel-tiles",
  "ph2d-panel-pixel-timeline",
  "ph2d-panel-pixel-tools",
  "ph2d-panel-registry-init",
@@ -10437,6 +10458,17 @@ dependencies = [
  "ph2d-sprite-sheet",
  "serde_json",
  "sha2 0.11.1",
+]
+
+[[package]]
+name = "ph2d-pixel-ponte"
+version = "0.0.0"
+dependencies = [
+ "ph2d-editor-core",
+ "ph2d-pen",
+ "ph2d-pen-law",
+ "ph2d-pixel-core",
+ "ph2d-pixel-io",
 ]
 
 [[package]]

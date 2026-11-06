@@ -43,6 +43,8 @@ impl Corpo<'_> {
         y = self.botoes(&fila(4, 5), y);
         y = self.botoes(&fila(6, 7), y);
         y = self.botoes(&[(a[8].0, a[8].2)], y);
+        let converte = if info.active_tilemap { 16 } else { 15 };
+        y = self.botoes(&fila(14, converte), y);
         // *via Copy/Cut* pedem selecção (o Aseprite desliga-os sem ela): sem selecção os botões não
         // se pintam (nenhum controlo morto). O Copy e o Select vivem nas secções Edit e Select.
         if info.has_selection {

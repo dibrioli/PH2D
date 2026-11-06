@@ -3,6 +3,7 @@
 use ph2d_editor_core::pixel_panel::{
     PixelFileAction, PixelFrameAction, PixelLayerAction, PixelRequest, PixelSpriteAction,
 };
+use ph2d_pixel_tiles::desenho::Modo;
 use winit::keyboard::KeyCode;
 
 use crate::gesture::Mods;
@@ -176,6 +177,16 @@ pub fn key_with(
         (KeyCode::F7, false, false) => quadro(app, PixelFrameAction::Preview),
         (KeyCode::F2, false, false) => quadro(app, PixelFrameAction::LoopSection),
         (KeyCode::F3, false, false) => quadro(app, PixelFrameAction::Onion),
+        (KeyCode::Tab, false, false) if app.space => crate::tiles::tecla(app, |m| m.alterna_alvo()),
+        (KeyCode::Digit1, false, false) if app.space => {
+            crate::tiles::tecla(app, |m| m.modo = Modo::Manual)
+        }
+        (KeyCode::Digit2, false, false) if app.space => {
+            crate::tiles::tecla(app, |m| m.modo = Modo::Auto)
+        }
+        (KeyCode::Digit3, false, false) if app.space => {
+            crate::tiles::tecla(app, |m| m.modo = Modo::Stack)
+        }
         (KeyCode::Tab, false, false) => {
             app.alterna_timeline = true;
             KeyAnswer::Quiet

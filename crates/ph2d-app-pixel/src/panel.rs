@@ -28,7 +28,8 @@ impl PixelApp {
             self.assenta();
             crate::viva::assenta(self);
         }
-        if self.aplica_selecao(&r)
+        if crate::tiles::aplica_pedido(self, &r)
+            || self.aplica_selecao(&r)
             || self.aplica_edicao(&r)
             || self.aplica_camada(&r)
             || self.aplica_intervalo(&r)
@@ -123,6 +124,7 @@ pub fn frame(
         }
     }
     crate::exportar::frame(app, hero);
+    crate::tiles::frame(app, hero);
     if let Some(c) = hero.store.take_pixel_edit_request() {
         app.aplica_dialogo(c);
     }
@@ -251,6 +253,11 @@ pub fn frame(
         remap_pending: app.remap.as_ref().is_some_and(|r| Some(r.0) == app.chave),
         layers,
         active_layer,
+        active_tilemap: doc.is_some_and(|d| {
+            d.sprite
+                .layer(d.layer)
+                .is_some_and(|l| l.tileset().is_some())
+        }),
         has_clip: app.clip.is_some(),
         has_selection: doc.is_some_and(|d| d.sprite.mask().is_some()),
         text_font_name: if app.tool == Tool::Text {

@@ -100,6 +100,8 @@ pub const PANEL_Z_ORDER_FALLBACK: &[ph2d_a11y::NodeId] = &[
     ids::PIXEL_PREVIEW_PANEL,
     // A janela de Export e Import do Pixel (`ph2d-panel-pixel-export`, P9b): nasce fechada.
     ids::PIXEL_EXPORT_PANEL,
+    // A tela dos tilemaps do Pixel (`ph2d-panel-pixel-tiles`, P10b): nasce fechada.
+    ids::PIXEL_TILES_PANEL,
     // A bancada de widgets (`ph2d-panel-widget-lab`). ⚠️ **Sétima vez que este arquivo paga o
     // mesmo defeito** — o painel nasceu registado, visível ao clique do menu, e o passeio de
     // z-order nunca chegava a ele: nada quebra, nada avisa, e o menu abre um painel invisível.

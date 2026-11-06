@@ -6,14 +6,15 @@
 use std::path::{Path, PathBuf};
 
 use ph2d_editor_core::pixel_panel::{
-    PIXEL_BRUSH_THUMB_MAX, PixelBrushAction, PixelBrushShape, PixelBrushSlotInfo,
-    PixelBrushSlotKind, PixelBrushThumb, PixelPatternTurn, PixelRequest,
+    PixelBrushAction, PixelBrushShape, PixelBrushSlotInfo, PixelBrushSlotKind, PixelPatternTurn,
+    PixelRequest,
 };
 use ph2d_pixel_core::brush::BrushShape;
 use ph2d_pixel_core::pattern::PatternBrush;
 use ph2d_pixel_io::brush_file::{self, BrushKind, BrushParams, BrushSlot};
 
 use crate::PixelApp;
+use ph2d_pixel_ponte::leis::{funde, miniatura};
 
 /// O ficheiro da lista, dentro da pasta.
 pub const FILE: &str = "brushes.txt";
@@ -294,30 +295,6 @@ impl PixelApp {
     }
 }
 
-/// O padrão `w × h` amostrado por vizinho até [`PIXEL_BRUSH_THUMB_MAX`] de lado.
-fn miniatura((w, h): (u32, u32), cells: &[Option<Option<[u8; 4]>>]) -> PixelBrushThumb {
-    let lado = w.max(h).max(1);
-    let m = PIXEL_BRUSH_THUMB_MAX;
-    let (tw, th) = if lado <= m {
-        (w, h)
-    } else {
-        ((w * m).div_ceil(lado), (h * m).div_ceil(lado))
-    };
-    let cells = (0..th)
-        .flat_map(|y| (0..tw).map(move |x| (x, y)))
-        .map(|(x, y)| {
-            let (sx, sy) = (x * w / tw.max(1), y * h / th.max(1));
-            let i = usize::try_from(sy * w + sx).unwrap_or(usize::MAX);
-            cells.get(i).copied().flatten().flatten()
-        })
-        .collect();
-    PixelBrushThumb {
-        w: tw,
-        h: th,
-        cells,
-    }
-}
-
 /// Os PARÂMETROS do pincel na mão que um espaço destrancado acompanha, baratos de comparar a cada
 /// quadro. As cores (frente, fundo, *Image Color*) NÃO: escolher uma cor depois do Ctrl+B e voltar
 /// ao espaço devolve as cores da imagem no Trial (`rb2b`, teste
@@ -371,26 +348,4 @@ impl PixelApp {
             self.grava_espacos();
         }
     }
-}
-
-/// `guardado` com os parâmetros do pincel que ELE guarda tirados de `agora` (as cores ficam).
-fn funde(guardado: &BrushSlot, agora: &BrushSlot) -> BrushSlot {
-    let p = guardado.params;
-    let mut s = guardado.clone();
-    if p.kind {
-        s.kind = agora.kind.clone();
-    }
-    if p.size {
-        s.size = agora.size;
-    }
-    if p.angle {
-        s.angle = agora.angle;
-    }
-    if p.ink {
-        s.ink = agora.ink;
-    }
-    if p.pixel_perfect {
-        s.pixel_perfect = agora.pixel_perfect;
-    }
-    s
 }

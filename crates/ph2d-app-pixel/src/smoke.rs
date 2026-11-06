@@ -1,25 +1,4 @@
-//! **As cenas de smoke** (`PH2D_PIXEL_SMOKE=n`); o porquê de cada uma vive no handoff da onda.
-//!
-//! 1 — 32 × 32 em Draw, uma cara em QUATRO traços (quatro passos do desfazer).
-//! 2 — P1: 64 × 48, uma casa SÓ com as ferramentas de forma (cada forma um passo); as paredes FECHAM.
-//! 3 — P2: 64 × 48 INDEXED com a DB32, a bola sombreada pela rampa 4‥7 e a tinta Shading na mão.
-//! 4 — P2: 96 × 64 RGBA em degradês sobre a DB32 — o Color Mode e os dithers que SE VÊEM.
-//! 5 — a cena 4 com o diálogo Color Mode ABERTO (Indexed + Floyd–Steinberg).
-//! 6 — a cena 4 já em Indexed com Ordered 4×4 (um passo do desfazer).
-//! 7 — P3, as camadas ([`crate::smoke_camadas`]): 19 modos, opacidade, escondida, trancada, grupo.
-//! 8 — P4, os frames ([`crate::smoke_quadros`]): 16 frames, 4 tags, cel a 50 %, papel vegetal.
-//! 9 — P6, selecção e transformação ([`crate::smoke_selecao`]).
-//! 10 — P6b, as correcções do smoke da P6 ([`crate::smoke_formas`]): formas do Vector em células.
-//! 11 — P6c, as correcções do smoke da P6b ([`crate::smoke_ferramentas`]).
-//! 12 — P6d, a forma VIVA ([`crate::smoke_viva`]): estrela girada com o gizmo, à espera do `Enter`.
-//! 13 — P6e, o catálogo do Vector ([`crate::smoke_catalogo`]) e uma engrenagem viva.
-//! 14 — P6f, a forma viva até ao fim ([`crate::smoke_ajustes`]).
-//! 15 — P6g, as pontas soltas ([`crate::smoke_pontas`]).
-//! 16 — P6h–P6j, o intervalo da linha do tempo ([`crate::smoke_intervalo`]).
-//! 17 — P5, tags dentro de tags, o tocar e a Preview ([`crate::smoke_tocar`]).
-//! 18 — P7b, os pincéis e a dinâmica ([`crate::smoke_pincel`]).
-//! 19 — P8, gradiente, texto, filtros e ajustes ([`crate::smoke_efeitos`]).
-//! 20 — P9b, Export e Import, sobre os 16 quadros da cena 8 ([`crate::smoke_exporta`]).
+//! **As cenas de smoke** (`PH2D_PIXEL_SMOKE=n`): a lista está em `docs/PixelArt/README.md`.
 
 use ph2d_ecs::SimWorld;
 use ph2d_pixel_core::{NewSprite, Paint, Stroke};
@@ -31,7 +10,7 @@ use ph2d_editor_core::pixel_panel::{
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_PIXEL_SMOKE",
-    max_level: 20,
+    max_level: 21,
 }];
 
 /// O nível armado em `PH2D_PIXEL_SMOKE`.
@@ -120,6 +99,7 @@ pub fn stage(
         18 => crate::smoke_pincel::stage(app, sim, spawn_root).is_some(),
         19 => crate::smoke_efeitos::stage(app, sim, spawn_root).is_some(),
         20 => crate::smoke_quadros::stage(app, sim, spawn_root).is_some(),
+        21 => crate::smoke_tiles::stage(app, sim, spawn_root).is_some(),
         _ => false,
     }
 }

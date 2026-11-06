@@ -402,7 +402,10 @@ fn as_camadas_no_cartao_respondem() {
     let a = me.clica(opcao);
     assert!(!pede(&a).is_empty(), "a opção não chegou: {a:?}");
     for (id, _, chave) in &ids::LAYER_ACTIONS {
-        let mut m2 = mesa(info(PixelTool::Pencil));
+        // O Convert To troca com o tipo da camada activa.
+        let mut i = info(PixelTool::Pencil);
+        i.active_tilemap = *chave == "panel.pixel.layer.to_image";
+        let mut m2 = mesa(i);
         assert!(!pede(&m2.clica(*id)).is_empty(), "«{chave}»");
     }
 }

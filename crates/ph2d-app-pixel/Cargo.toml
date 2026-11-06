@@ -23,6 +23,7 @@ ph2d-pen-law = { path = "../ph2d-pen-law" }
 ph2d-pixel-render = { path = "../ph2d-pixel-render" }
 # Load/Save Palette (os formatos de ficheiro de paleta).
 ph2d-pixel-io = { path = "../ph2d-pixel-io" }
+ph2d-pixel-ponte = { path = "../ph2d-pixel-ponte" }
 ph2d-app-host = { path = "../ph2d-app-host" }
 ph2d-component-desc = { path = "../ph2d-component-desc" }
 ph2d-ecs = { path = "../ph2d-ecs" }
@@ -47,6 +48,9 @@ ph2d-panel-pixel-timeline = { path = "../ph2d-panel-pixel-timeline" }
 ph2d-panel-pixel-preview = { path = "../ph2d-panel-pixel-preview" }
 # Export e Import (P9b): as janelas e o canal das opções.
 ph2d-panel-pixel-export = { path = "../ph2d-panel-pixel-export" }
+# A tela dos tilemaps (P10b): o painel e as leis de desenhar.
+ph2d-panel-pixel-tiles = { path = "../ph2d-panel-pixel-tiles" }
+ph2d-pixel-tiles = { path = "../ph2d-pixel-tiles" }
 bumpalo = "3"
 # O diálogo de ficheiro do Load/Save Palette (pela porta `ph2d_app_host::modal`).
 rfd = "0.17"

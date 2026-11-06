@@ -14,6 +14,8 @@ pub const PIXEL_TIMELINE_PANEL: NodeId = hash_node_id("pixel_timeline.panel");
 pub const PIXEL_PREVIEW_PANEL: NodeId = hash_node_id("pixel_preview.panel");
 /// O rect da janela de Export e Import do Pixel (P9b).
 pub const PIXEL_EXPORT_PANEL: NodeId = hash_node_id("pixel_export.panel");
+/// O rect da tela dos tilemaps do Pixel (P10b).
+pub const PIXEL_TILES_PANEL: NodeId = hash_node_id("pixel_tiles.panel");
 
 /// As linhas do Pixel no menu *File*: só existem com um Pixel Sprite em Draw.
 pub const CTX_MENU_PIXEL_OPEN: NodeId = hash_node_id("ctx_menu_pixel_open");

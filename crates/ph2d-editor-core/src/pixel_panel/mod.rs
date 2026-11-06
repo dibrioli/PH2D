@@ -392,6 +392,8 @@ pub struct PixelPanelInfo {
     pub layers: Vec<PixelLayerRow>,
     /// A camada activa (a que as ferramentas pintam).
     pub active_layer: Option<u32>,
+    /// A camada activa é de tilemap (o menu Layer troca o Convert To).
+    pub active_tilemap: bool,
     /// Há uma imagem copiada (o *Paste as New Layer* acende).
     pub has_clip: bool,
     /// Há selecção (o *Copy* e o *Layer via Copy/Cut* acendem).

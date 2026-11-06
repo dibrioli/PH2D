@@ -7,7 +7,7 @@ use ph2d_pixel_core::filter::Filter;
 use ph2d_pixel_core::filter::adjust::{BrightnessContrast, Curve, HueMode, HueSaturation};
 
 /// O filtro de Adjustments do pedido `c` e os canais dele (`None` = não é um ajuste).
-pub(crate) fn filtro(c: PixelDialogChoice) -> Option<(Box<dyn Filter>, PixelChannels)> {
+pub fn filtro(c: PixelDialogChoice) -> Option<(Box<dyn Filter>, PixelChannels)> {
     Some(match c {
         PixelDialogChoice::BrightnessContrast {
             brightness,

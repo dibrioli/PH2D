@@ -14,10 +14,10 @@ use ph2d_pixel_core::filter::convolution::{Convolution, KERNELS};
 use ph2d_pixel_core::filter::median::Median;
 use ph2d_pixel_core::filter::outline::{self, Background, Outline, Place};
 use ph2d_pixel_core::filter::{self, Channels, Edge, Filter};
-use ph2d_pixel_core::selection::Mask;
-use ph2d_pixel_core::{Op, Patch, Stroke};
+use ph2d_pixel_core::{Op, Stroke};
 
 use crate::PixelApp;
+use ph2d_pixel_ponte::leis::{pinta, traco};
 
 /// A pré-visualização em curso: o documento, o pedido e as cores de que ele depende, e o traço.
 #[derive(Clone)]
@@ -58,28 +58,6 @@ pub(crate) fn menu(app: &mut PixelApp, key: u32, a: E) {
     let m = if a == E::Stroke { m.edge4() } else { m };
     let op = pinta(s, (doc.layer, doc.frame), &m, s.value_of_rgba(app.fg));
     app.passo(key, op);
-}
-
-/// As células de `m` no cel `ck` com o valor `v` (`None` = nada muda).
-fn pinta(s: &ph2d_pixel_core::Sprite, ck: ph2d_pixel_core::CelKey, m: &Mask, v: u32) -> Option<Op> {
-    let ck = s.owner(ck);
-    let rect = m.bounds()?;
-    let bpp = s.mode().bpp();
-    let before = s.read_rect(ck, rect);
-    let mut pixels = before.clone();
-    for (x, y) in m.cells() {
-        let i = ((y - rect.y) as usize * rect.w as usize + (x - rect.x) as usize) * bpp;
-        pixels[i..i + bpp].copy_from_slice(&v.to_le_bytes()[..bpp]);
-    }
-    (pixels != before).then(|| {
-        Op::Patch(Patch {
-            layer: ck.0,
-            frame: ck.1,
-            bbox: Some(s.cel(ck).map_or(rect, |c| c.bbox.union(rect))),
-            rect,
-            pixels,
-        })
-    })
 }
 
 /// Os cels do alvo: o activo, ou com «All» todos os quadros × as camadas que se pintam (nem grupo,
@@ -156,7 +134,7 @@ pub(crate) fn op(app: &PixelApp, key: u32, c: PixelDialogChoice, todas: bool) ->
             }),
             channels,
         ),
-        c => crate::ajustes::filtro(c)?,
+        c => ph2d_pixel_ponte::ajustes::filtro(c)?,
     };
     let [r, g, b, a] = ch;
     let channels = Channels { r, g, b, a };
@@ -172,7 +150,7 @@ pub(crate) fn aplica(app: &mut PixelApp, key: u32, c: PixelDialogChoice) -> bool
             | PixelDialogChoice::Despeckle { .. }
             | PixelDialogChoice::Outline { .. }
             | PixelDialogChoice::Convolution { .. }
-    ) && crate::ajustes::filtro(c).is_none()
+    ) && ph2d_pixel_ponte::ajustes::filtro(c).is_none()
     {
         return false;
     }
@@ -239,38 +217,6 @@ pub(crate) fn previa(app: &PixelApp, key: u32) -> Option<Stroke> {
         .as_ref()
         .filter(|p| p.key == key)
         .and_then(|p| p.traco.clone())
-}
-
-/// Os valores que o op escreve, como um traço de valores prontos.
-fn traco(o: &Op, cel: ph2d_pixel_core::CelKey) -> Stroke {
-    let mut values = Vec::new();
-    let mut alvo = None;
-    let mut patch = |p: &Patch| {
-        alvo.get_or_insert((p.layer, p.frame));
-        let bpp = p.pixels.len() / (p.rect.w as usize * p.rect.h as usize).max(1);
-        for y in 0..p.rect.h {
-            for x in 0..p.rect.w {
-                let i = (y as usize * p.rect.w as usize + x as usize) * bpp;
-                let mut b = [0u8; 4];
-                b[..bpp].copy_from_slice(&p.pixels[i..i + bpp]);
-                values.push((
-                    (p.rect.x + x as i32, p.rect.y + y as i32),
-                    u32::from_le_bytes(b),
-                ));
-            }
-        }
-    };
-    match o {
-        Op::Patch(p) => patch(p),
-        Op::Batch(ops) => ops.iter().for_each(|o| {
-            if let Op::Patch(p) = o {
-                patch(p);
-            }
-        }),
-        _ => {}
-    }
-    let (layer, frame) = alvo.unwrap_or(cel);
-    Stroke::with_values(layer, frame, values)
 }
 
 impl PixelApp {

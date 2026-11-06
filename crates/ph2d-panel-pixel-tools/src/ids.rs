@@ -355,7 +355,7 @@ pub fn blend_option_id(i: usize) -> NodeId {
 }
 
 /// Os botões do menu Layer: o id, a acção e o rótulo, nas filas em que se pintam.
-pub const LAYER_ACTIONS: [(NodeId, PixelLayerAction, &str); 14] = [
+pub const LAYER_ACTIONS: [(NodeId, PixelLayerAction, &str); 17] = [
     (
         hash_node_id("pixel.layer.new"),
         PixelLayerAction::NewLayer,
@@ -425,6 +425,21 @@ pub const LAYER_ACTIONS: [(NodeId, PixelLayerAction, &str); 14] = [
         hash_node_id("pixel.layer.paste_sprite"),
         PixelLayerAction::PasteAsSprite,
         "panel.pixel.layer.paste_sprite",
+    ),
+    (
+        hash_node_id("pixel.layer.new_tilemap"),
+        PixelLayerAction::NewTilemap,
+        "panel.pixel.layer.new_tilemap",
+    ),
+    (
+        hash_node_id("pixel.layer.to_tilemap"),
+        PixelLayerAction::ConvertToTilemap,
+        "panel.pixel.layer.to_tilemap",
+    ),
+    (
+        hash_node_id("pixel.layer.to_image"),
+        PixelLayerAction::ConvertToImage,
+        "panel.pixel.layer.to_image",
     ),
 ];
 

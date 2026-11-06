@@ -95,6 +95,13 @@ pub const TABELA: &[Armacao] = &[
         arma: |_| arma_o_export(),
         desarma: || ph2d_panel_pixel_export::canal::publish_contexto(Default::default()),
     },
+    // A tela dos tilemaps (P10b) com uma camada de tilemap activa e dois tiles.
+    #[cfg(feature = "panel-pixel-tiles")]
+    Armacao {
+        painel: "pixel_tiles",
+        arma: |_| arma_os_tiles(),
+        desarma: || ph2d_panel_pixel_tiles::canal::publish_contexto(Default::default()),
+    },
     // A linha do tempo do Pixel (P4) com duas camadas × três frames, um par ligado e uma tag.
     #[cfg(feature = "panel-pixel-timeline")]
     Armacao {
@@ -348,6 +355,19 @@ fn arma_o_export() {
         tags: vec!["walk".to_owned()],
     });
     canal::abrir(canal::Tela::ExportAs);
+}
+
+/// Uma camada de tilemap activa, com o tile vazio e dois desenhados.
+#[cfg(feature = "panel-pixel-tiles")]
+fn arma_os_tiles() {
+    use ph2d_panel_pixel_tiles::canal;
+    let tile = vec![255; 4 * 4 * 4];
+    canal::publish_contexto(canal::Contexto {
+        mao: Some(canal::Mao::default()),
+        tile_w: 4,
+        tile_h: 4,
+        imagens: std::sync::Arc::new(vec![vec![0; 4 * 4 * 4], tile.clone(), tile]),
+    });
 }
 
 /// Um Pixel Sprite em Draw com frames, cels ligados e uma tag (a linha do tempo armada).

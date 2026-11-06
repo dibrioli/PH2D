@@ -11,3 +11,27 @@ depende do Painter. A referência de etapas é o **Aseprite**; as leis numérica
 | [aseprite/](aseprite/) | Fotos do Trial e a ajuda do CLI |
 
 Estado: **P0 + P0b + P1 na `line/PixelArt`** — [ADR-0196](../architecture/decisions/0196-o-pixel-art-e-um-modulo-proprio-com-documento-inteiro-e-desfazer-por-sprite.md); o objecto Pixel Sprite (Draw), 14 ferramentas (lápis, spray, balde, linha, curva, retângulo, elipse, contorno, polígono…), pixel-perfect, simetria, Tiled Mode, zoom inteiro, desfazer por sprite, gravar no projecto. Smoke `PH2D_PIXEL_SMOKE=1|2`. Último: [handoff P1](handoffs/HANDOFF_CONTINUACAO_line_PixelArt_2026-10-25_P1.md).
+
+## As cenas de smoke (`PH2D_PIXEL_SMOKE=n`)
+
+- 1 — 32 × 32 em Draw, uma cara em QUATRO traços (quatro passos do desfazer).
+- 2 — P1: 64 × 48, uma casa SÓ com as ferramentas de forma (cada forma um passo); as paredes FECHAM.
+- 3 — P2: 64 × 48 INDEXED com a DB32, a bola sombreada pela rampa 4‥7 e a tinta Shading na mão.
+- 4 — P2: 96 × 64 RGBA em degradês sobre a DB32 — o Color Mode e os dithers que SE VÊEM.
+- 5 — a cena 4 com o diálogo Color Mode ABERTO (Indexed + Floyd–Steinberg).
+- 6 — a cena 4 já em Indexed com Ordered 4×4 (um passo do desfazer).
+- 7 — P3, as camadas (`smoke_camadas`): 19 modos, opacidade, escondida, trancada, grupo.
+- 8 — P4, os frames (`smoke_quadros`): 16 frames, 4 tags, cel a 50 %, papel vegetal.
+- 9 — P6, selecção e transformação (`smoke_selecao`).
+- 10 — P6b, as correcções do smoke da P6 (`smoke_formas`): formas do Vector em células.
+- 11 — P6c, as correcções do smoke da P6b (`smoke_ferramentas`).
+- 12 — P6d, a forma VIVA (`smoke_viva`): estrela girada com o gizmo, à espera do `Enter`.
+- 13 — P6e, o catálogo do Vector (`smoke_catalogo`) e uma engrenagem viva.
+- 14 — P6f, a forma viva até ao fim (`smoke_ajustes`).
+- 15 — P6g, as pontas soltas (`smoke_pontas`).
+- 16 — P6h–P6j, o intervalo da linha do tempo (`smoke_intervalo`).
+- 17 — P5, tags dentro de tags, o tocar e a Preview (`smoke_tocar`).
+- 18 — P7b, os pincéis e a dinâmica (`smoke_pincel`).
+- 19 — P8, gradiente, texto, filtros e ajustes (`smoke_efeitos`).
+- 20 — P9b, Export e Import, sobre os 16 quadros da cena 8 (`smoke_exporta`).
+- 21 — P10b, uma camada de tilemap já desenhada, com a janela Tilemap aberta (`smoke_tiles`).

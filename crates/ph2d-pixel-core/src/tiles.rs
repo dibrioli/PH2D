@@ -307,7 +307,9 @@ pub fn new_tilemap_layer(
     let crate::Op::Layers(mut set) = op else {
         return None;
     };
-    set.layers.iter_mut().find(|l| l.id == layer)?.kind = LayerKind::Tilemap { tileset: id };
+    let nova = set.layers.iter_mut().find(|l| l.id == layer)?;
+    nova.kind = LayerKind::Tilemap { tileset: id };
+    nova.name = nova.name.replacen("Layer", "Tilemap", 1);
     let bpp = s.mode().bpp();
     let vazio = s.transparent_value().to_le_bytes()[..bpp]
         .repeat(usize::from(tile_w) * usize::from(tile_h));

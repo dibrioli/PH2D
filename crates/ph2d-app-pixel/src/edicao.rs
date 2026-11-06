@@ -282,6 +282,9 @@ impl PixelApp {
                 None
             }
             Sp::SpriteSize => {
+                if s.layers().iter().any(|l| l.tileset().is_some()) {
+                    return self.recusa("pixel.tiles.refuse.sprite");
+                }
                 self.abre_dialogo = Some(PixelDialogKind::SpriteSize);
                 None
             }
@@ -296,14 +299,21 @@ impl PixelApp {
                 }
                 canvas::crop_to_selection(s)
             }
-            Sp::Trim => {
-                let op = canvas::trim(s);
-                if op.is_none() {
-                    self.recusa("pixel.sprite.refuse.trim");
-                }
-                op
-            }
+            Sp::Trim => canvas::trim(s),
         };
+        let motivo = match a {
+            Sp::Crop => "pixel.tiles.refuse.offset",
+            Sp::Trim => "pixel.tiles.refuse.trim",
+            _ => "pixel.tiles.refuse.sprite",
+        };
+        let abre = matches!(a, Sp::CanvasSize | Sp::SpriteSize);
+        if !abre
+            && !crate::tiles::recusou(self, key, op.as_ref(), motivo)
+            && a == Sp::Trim
+            && op.is_none()
+        {
+            self.recusa("pixel.sprite.refuse.trim");
+        }
         self.passo(key, op);
     }
 
@@ -364,6 +374,9 @@ impl PixelApp {
             | PixelDialogChoice::ColorCurve { .. }
             | PixelDialogChoice::Convolution { .. } => None,
         };
+        if matches!(c, PixelDialogChoice::CanvasSize { .. }) {
+            crate::tiles::recusou(self, key, op.as_ref(), "pixel.tiles.refuse.offset");
+        }
         self.passo(key, op);
     }
 }

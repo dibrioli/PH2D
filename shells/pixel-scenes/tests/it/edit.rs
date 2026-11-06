@@ -617,8 +617,8 @@ fn smoke_1_stages_a_face_in_four_undo_steps_and_asks_for_edit() {
         Some((bits, ObjectMode::Draw))
     );
     assert!(
-        !ph2d_app_pixel::smoke::stage(&mut app, &mut sim, 21, spawn_root),
-        "nível sem cena (a 20 é a do Export e Import, P9b)"
+        !ph2d_app_pixel::smoke::stage(&mut app, &mut sim, 22, spawn_root),
+        "nível sem cena (a 21 é a dos tilemaps, P10b)"
     );
 }
 

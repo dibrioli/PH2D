@@ -9,6 +9,7 @@ use ph2d_pixel_core::layers::{self, Place};
 use ph2d_pixel_core::{LayerId, LayerKind, Op, Sprite};
 
 use crate::{Doc, PixelApp};
+use ph2d_pixel_ponte::leis::via_selection;
 
 /// O modo do núcleo no vocabulário do chrome (os mesmos 19, na mesma ordem).
 #[must_use]
@@ -269,6 +270,10 @@ fn acao(
         None => (None, None),
     };
     match a {
+        // Saem antes, em `crate::tiles::aplica_pedido`.
+        PixelLayerAction::NewTilemap
+        | PixelLayerAction::ConvertToTilemap
+        | PixelLayerAction::ConvertToImage => (None, None),
         PixelLayerAction::NewLayer => par(layers::new_layer(s, active)),
         PixelLayerAction::NewGroup => par(layers::new_group(s, active)),
         PixelLayerAction::Delete => {
@@ -319,50 +324,6 @@ fn acao(
         }
         PixelLayerAction::PasteAsSprite => (None, None),
     }
-}
-
-/// *Layer via Copy/Cut* com a selecção de VERDADE (P6): só as células seleccionadas vão para a
-/// camada nova (as outras ficam transparentes nela); no Cut o original perde-as (Background: a cor
-/// de fundo). UM passo — o Cut é um lote (camada nova + buraco), os dois contra o estado de antes.
-fn via_selection(
-    s: &mut Sprite,
-    active: LayerId,
-    frame: ph2d_pixel_core::FrameId,
-    cut: bool,
-    bg: u32,
-) -> Option<(Op, LayerId)> {
-    use ph2d_pixel_core::transform::{Floating, Image, lift, stamp};
-    let l = s.layer(active)?;
-    if l.is_group() || (cut && l.tileset().is_some()) {
-        return None;
-    }
-    let key = (active, frame);
-    let m = s.mask()?.clone();
-    let f = lift(s, key, Some(&m))?;
-    let clip = layers::Clip {
-        mode: s.mode(),
-        palette: s.palette().to_vec(),
-        transparent: s.transparent_index(),
-        rect: f.rect(),
-        data: f.image.data,
-    };
-    let buraco = if cut {
-        let nada = Floating {
-            x: 0,
-            y: 0,
-            image: Image::new(0, 0, s.mode().bpp(), s.transparent_value()),
-            keep: Vec::new(),
-        };
-        stamp(s, key, &nada, Some(&m), None, bg)
-    } else {
-        None
-    };
-    let (op, id) = layers::paste_as_new(s, active, frame, &clip, false)?;
-    let op = match buraco {
-        Some(b) => Op::Batch(vec![b, op]),
-        None => op,
-    };
-    Some((op, id))
 }
 
 /// O *Auto Select Layer*: a camada activa passa a ser a de cima, visível e de imagem, com uma

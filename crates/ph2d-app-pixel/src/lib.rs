@@ -10,7 +10,6 @@
 //! [`frame`](PixelApp::frame) uma vez por quadro, encaminha o ponteiro/roda/teclado ([`input`]) e
 //! pede o desenho ([`draw`]).
 
-mod ajustes;
 pub mod camadas;
 pub mod compose;
 pub mod conta_gotas;
@@ -49,11 +48,13 @@ pub mod smoke_pincel;
 pub mod smoke_pontas;
 pub mod smoke_quadros;
 pub mod smoke_selecao;
+pub mod smoke_tiles;
 pub mod smoke_tocar;
 pub mod smoke_viva;
 pub mod solta;
 mod state;
 pub mod texto;
+mod tiles;
 pub mod viva;
 
 pub use state::{Doc, Options, PixelApp, Tool};

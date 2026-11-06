@@ -151,7 +151,7 @@ impl Solta {
             let bg_t = self.tinta.map_or(s.transparent_value(), |_| 0);
             let f = edit::transform_within(&self.src, &self.m.settle(), method, bg_t, s.bounds());
             let f = match self.tinta {
-                Some(fg) => f.map(|f| crate::texto::na_cor(s, &f, fg)),
+                Some(fg) => f.map(|f| ph2d_pixel_ponte::leis::na_cor(s, &f, fg)),
                 None => f,
             };
             let op = f.as_ref().and_then(|f| match (&self.original, self.tinta) {

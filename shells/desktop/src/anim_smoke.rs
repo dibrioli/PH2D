@@ -75,6 +75,11 @@ pub(crate) fn enabled() -> bool {
     std::env::var_os("PH2D_ANIM_SMOKE").is_some()
 }
 
+/// `PH2D_ANIM_SMOKE=2`: a mesma cena com um marcador na `walk` e «Advanced» aberto, onde «Frame markers» mora.
+pub(crate) fn with_marker() -> bool {
+    std::env::var("PH2D_ANIM_SMOKE").is_ok_and(|v| v.trim() == "2")
+}
+
 /// Desenha a tira: em cada célula, um quadrado que sobe, muda de matiz e ENCOSTA na borda direita: a célula
 /// seguinte não pode mostrá-lo em risco à esquerda (`docs/Sprite_projeto/22`).
 ///
@@ -168,6 +173,13 @@ pub(crate) fn spawn_if_enabled(
     player.autoplay = true;
     if let Ok(mut ent) = sim.world_mut().get_entity_mut(e) {
         ent.insert((lib, player));
+        if with_marker() {
+            ent.insert(ph2d_ecs::SpriteAnimMarkers(vec![ph2d_ecs::FrameMarker {
+                tag: "walk".into(),
+                step: 3,
+                signal: "footstep".into(),
+            }]));
+        }
     }
     Some(bits)
 }

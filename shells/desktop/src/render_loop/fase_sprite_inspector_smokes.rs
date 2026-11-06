@@ -128,6 +128,10 @@ impl crate::App {
             )
         {
             hero.gizmo.replace_selection(Some(bits));
+            if crate::anim_smoke::with_marker() {
+                hero.store
+                    .set_collapsed(ph2d_panel_inspector::ids::INSP_ANIM_ADVANCED, false);
+            }
             hero.bus
                 .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {
                     kind: ph2d_editor_core::ViewFocusKind::Selected,

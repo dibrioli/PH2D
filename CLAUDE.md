@@ -179,9 +179,8 @@ Multi-máquina: [MULTI_MACHINE_SETUP.md](docs/DevOps/MULTI_MACHINE_SETUP.md).
 > **Regra (com gate):** cada módulo tem **UMA entrada de no máximo 700 bytes**: o que é, o smoke
 > principal, onde ler, e o **último handoff de integração** — é lá que está o que fica ABERTO. Fechar
 > uma linha **troca o link desse handoff** e, se o módulo mudou de natureza, a frase do que ele é.
-> ⛔ Nada de narrativa aqui: ela vai para o handoff. A história até 2026-10-02 está verbatim em
-> [`estado-2026-10-02/`](docs/archive/estado-2026-10-02/README.md) (e a anterior em
-> [`estado-2026-08-18/`](docs/archive/estado-2026-08-18/README.md)).
+> ⛔ Narrativa vai para o handoff. História verbatim: [`estado-2026-10-02/`](docs/archive/estado-2026-10-02/README.md),
+> [`estado-2026-08-18/`](docs/archive/estado-2026-08-18/README.md).
 
 ### §5.0 — Leis que atravessam os módulos
 
@@ -202,18 +201,17 @@ Multi-máquina: [MULTI_MACHINE_SETUP.md](docs/DevOps/MULTI_MACHINE_SETUP.md).
 - **Cena de smoke que ensina o contrário do que acontece é pior que cena ausente.** O número da próxima
   cena conta-se no roteador de cada família.
 - **Relógio acima de `load ~5` não vale nada; flakes de carga são uma FAMÍLIA:**
-  [FLAKES_DE_CARGA.md](docs/DevOps/FLAKES_DE_CARGA.md) — confirme sozinho com o `loadavg` ao lado
-  antes de culpar o commit, e promover um membro são duas escritas (tabela + faixa do nextest).
+  [FLAKES_DE_CARGA.md](docs/DevOps/FLAKES_DE_CARGA.md).
 - **Sweep sobre ficheiro comprimido** só prova algo se descomprimir; a passagem que desfaz quebras de
   linha é uma função com dois chamadores.
-- **Integrar não é aprovar:** smoke é do Enio; integrar e shipar só por ordem dele.
+- **Integrar não é aprovar:** o smoke é do Enio.
 
 ### §5.1 — Módulos
 
 - **Motion Nodes** — dinâmica declarativa sobre `ph2d-nodegraph` (crate `ph2d-app-motion`), cook na GPU por omissão (`PH2D_GPU_COOK=0` volta à CPU); lente e filtros da camada (cada forma ou camada inteira, `ph2d-fx-cells`). Protocolo: [ciclos](docs/Motion%20Nodes/103_dinamica_dos_ciclos.md), smoke = tutorial em PDF. Smoke `PH2D_GPU_COOK_DEMO=<n>` (até 142). Último: [o passe de colisão ordena por peça, no main 22/10](docs/Motion%20Nodes/handoffs/HANDOFF_INTEGRACAO_line_motion_value_2026-10-22_PASSE_ORDENA.md) · [docs](docs/Motion%20Nodes/README.md) · [BUGS](docs/Motion%20Nodes/BUGS_motion_nodes.md) · [história](docs/archive/estado-2026-10-02/motion-nodes.md)
 - **Timeline** — dope-sheet, graph editor, clips, nesting, sinais e expressões (`ph2d-timeline`); o `TimelineDoc` viaja como blob com versão própria. Smoke `PH2D_NEST_SMOKE=1..3`. [docs](docs/Timeline/README.md) · [BUGS](docs/Timeline/BUGS_timeline.md) · [handoffs](docs/Timeline/handoffs/README.md) · [história](docs/archive/estado-2026-10-02/timeline.md)
 - **Áudio** — rack de efeitos (no-op byte-idêntico no ponto neutro), export Ogg/Opus, denoise ML (`audio-ml` OFF). Aberto: [`03_o_que_falta.md`](docs/Audio/03_o_que_falta.md). Smoke `PH2D_AUDIO_DELIVERY_SMOKE`. [docs](docs/Audio/README.md) · [handoffs](docs/Audio/handoffs/README.md) · [história](docs/archive/estado-2026-10-02/audio.md)
-- **SFX Lab** — criação de efeitos sonoros para jogos, sem IA (nome provisório): receita e motor determinístico (`ph2d-sfx-recipe`/`ph2d-sfx-dsp`, [ADR-0198](docs/architecture/decisions/0198-o-motor-do-sfx-lab-e-kernels-proprios-sobre-det-math.md)), conjuntos de som (`ph2d-sound-set`); ainda sem tela. Smoke `PH2D_SFX_SMOKE=1|2`. Último: [W0–W2](docs/SfxLab/handoffs/HANDOFF_INTEGRACAO_line_SfxLab_2026-11-05.md) · [plano](docs/SfxLab/01_plano.md)
+- **SFX Lab** — efeitos sonoros para jogos, sem IA; receita e motor (`ph2d-sfx-*`, ADR-0198); ainda sem tela. Smoke `PH2D_SFX_SMOKE=1|2`. Último: [W0–W2](docs/SfxLab/handoffs/HANDOFF_INTEGRACAO_line_SfxLab_2026-11-05.md) · [plano](docs/SfxLab/01_plano.md)
 - **Painter** — Layers + Efeitos e a pintura clean-room, crate `ph2d-app-painter`; Wet Paint na lei antiga; a de pigmento [arquivada](docs/Painter/Arquitetura/LEI_NOVA_ARQUIVADA.md); o Rebelle já não é a referência; teste de pincel: alarme barato, o dono aprova ([plano](docs/DevOps/PLANO_ACELERACAO_2026-11.md)). Smoke `PH2D_COMPOSITE_SMOKE=1`. 77 pincéis de fábrica. Último: [bordas, Borracha, relevo e 1.º traço, 05/11 noite](docs/Painter/handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-05_NOITE.md) · [docs](docs/Painter/00_INDEX.md) · [BUGS](docs/Painter/BUGS_painter.md) · [história](docs/archive/estado-2026-10-02/painter.md)
 - **Vector + Esqueleto** — motor vetorial nativo kurbo/Vello ([ADR-0108](docs/architecture/decisions/0108-vector-reposition-rive-referenced-native-editor-first.md)), crates `ph2d-app-vec`/`ph2d-app-skeleton`; o esqueleto é um objecto (Object·Edit·Pose); a pele mistura o MEIO ângulo; kerning por omissão (`PH2D_TEXT_KERNING=0` desliga). Smokes `PH2D_BUILD_SMOKE=<n>` · `PH2D_VEC_BONE_SMOKE=<n>`. Último: [prompt 49, no main 11/10](docs/Vector%20Module/handoffs/HANDOFF_INTEGRACAO_line_Vector_2026-10-11_prompt49.md) · [docs](docs/Vector%20Module/README.md) · [BUGS](docs/Vector%20Module/BUGS_vector.md) · [história](docs/archive/estado-2026-10-02/vector.md)
 - **Física** — runtime-truth sobre `rapier2d`, ponte `ph2d-physics-ecs` (`BTreeMap`, nunca `HashMap`), crate `ph2d-app-physics`. Smoke `PH2D_PHYSICS_SMOKE=<n>`. Último: [handoff Fase C](docs/Physics/handoffs/HANDOFF_INTEGRACAO_line_app-physics_FASE_C_2026-09-12.md) · [docs](docs/Physics/README.md) · [BUGS](docs/Physics/BUGS_physics.md) · [história](docs/archive/estado-2026-10-02/physics.md)

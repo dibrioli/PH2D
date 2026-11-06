@@ -1,6 +1,6 @@
 # HANDOFF DE INTEGRAÇÃO — line/SfxLab, W0 + W1 + W2 (2026-11-05)
 
-**⛔ O dono mandou escrever este handoff para integrar, mas integrar é ordem dele e AINDA NÃO foi dada nesta janela («Escreva handoff mas não integre»). O smoke da W2 NÃO foi feito: o dono ouve amanhã. W0 e W1 têm smoke OK; o kill-criterion do corpo vibrante está ABERTO. Se o integrador for acionado antes do smoke, a W2 entra no main sem ninguém a ter ouvido; quem decide é o dono. «Integrar não é aprovar» (CLAUDE.md §5.0).**
+**⛔ O dono mandou escrever este handoff para integrar, mas integrar é ordem dele e AINDA NÃO foi dada nesta janela («Escreva handoff mas não integre»). O smoke da W2 NÃO foi feito: o dono ouve amanhã. W0 e W1 têm smoke OK; o kill-criterion do corpo vibrante está ABERTO. Se o integrador for acionado antes do smoke, a W2 entra no main sem ninguém a ter ouvido; quem decide é o dono. «Integrar não é aprovar» (CLAUDE.md §0.7).**
 
 Leitor: o agente integrador. Nada integrado, nada enviado.
 
@@ -78,7 +78,7 @@ Comportamentos mudados de propósito (W0/W1 §2): Autoplay só dispara no Play; 
 ## 4. Contratos e tetos
 
 - §6 intocado; greps da §3 do plano: 0 e 0 no fecho; `node.rs` e `tool.rs` intocados.
-- **Tetos somam entre linhas (cura por corte/mover, nunca subir):** shell 189019 de 189041 (**folga 22**, remedir: `the_shell_only_shrinks`) · `project_schema.rs` 586/600 (o degrau `171 → 172` foi arquivado verbatim em `docs/archive/project-schema/escada_v171_a_v172.md`: o nosso degrau o levou a 608 e `shell_files_respect_hr18_loc_cap` reprovou) · `ph2d-app-components` 80866/80869 · `ph2d-app-audio` 10514/10547 · `ph2d-app-game` 2708/2728 · `ph2d-app-sprite-anim` 8345/8352.
+- **Tetos somam entre linhas (cura por corte/mover, nunca subir):** §5 do `CLAUDE.md` perto dos 14 000 bytes (`o_claude_md_cabe_no_orcamento` reprovou com a nossa entrada; a entrada foi encurtada e §5.0 perdeu o que repetia o §0 e o doc de flakes; com outra linha acrescentando, corte de novo) · shell 189019 de 189041 (**folga 22**, remedir: `the_shell_only_shrinks`) · `project_schema.rs` 586/600 (o degrau `171 → 172` foi arquivado verbatim em `docs/archive/project-schema/escada_v171_a_v172.md`: o nosso degrau o levou a 608 e `shell_files_respect_hr18_loc_cap` reprovou) · `ph2d-app-components` 80866/80869 · `ph2d-app-audio` 10514/10547 · `ph2d-app-game` 2708/2728 · `ph2d-app-sprite-anim` 8345/8352.
 
 ## 5. O que mudou depois do handoff de continuação W2
 

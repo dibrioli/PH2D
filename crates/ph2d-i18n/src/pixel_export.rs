@@ -168,7 +168,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.io.err.invalid" => "This file does not make a valid sprite.",
         "pixel.io.err.gif_size" => "This image is too large for a GIF (65,535 px at most).",
         "pixel.io.err.too_large" => "This scale is too large (65,535 px per side at most).",
-        "pixel.io.err.ase_frames" => "{n} frames do not fit an .ase file (65,535 at most).",
+        "pixel.io.err.ase_frames" => "Too many frames for an .ase file: {n} (65,535 at most).",
         "pixel.io.err.ase_cel" => "A frame has pixels too far away for an .ase file.",
         "pixel.io.err.target_gone" => {
             "The layer or tag of the last export no longer exists. Use Export As again."

@@ -15,7 +15,7 @@
 ## Perfil & referência
 - ⛔⛔⛔ [Dono 05/11: lei nova ARQUIVADA, não apagar; produto na antiga](project_new_paint_law_for_all_brushes_2026_11_05.md)
 - [Enio (dibrioli): dono/decisor; o dev é a LLM · ⛔ SEMPRE PT-BR](user_role.md)
-- 📚 [Decisões de produto do dono, por módulo (21) — Luau, Pixel Art, Kanban, macros, constraints, imagem, modos…](reference_topic_owner_product_decisions.md)
+- 📚 [Decisões de produto do dono, por módulo (22) — Luau, Pixel Art, Kanban, macros, constraints, imagem, modos…](reference_topic_owner_product_decisions.md)
 - ⭐⭐⭐ [Dono 05/11: Game Engine recomeça item a item a partir da Sprite; propostas nascem dos 2 estudos de 9 engines, junto com ele](project_game_engine_refounded_item_by_item_2026_11_05.md)
 - ⭐⭐ [Dono 02/11: UI em cartões — referência = os nossos painéis com smoke OK, depois Figma → Rive → Inkscape/Godot/Unity](project_card_ui_reference_order_2026_11_02.md)
 - ⭐⭐ [Dono 04/11: cartão compacto como o Figma — irmãos dividem a linha, nada grudado, uma grelha](feedback_card_layout_is_compact_like_figma_2026_11_04.md)
@@ -107,7 +107,7 @@
 - ⛔ [Vermelho bimodal: 6/6 no main era sorte e outro build; 12×12 intercalado decide](feedback_a_bimodal_red_needs_interleaved_samples_with_the_same_build.md)
 - ⛔⛔⛔ [Uma régua enviesada manda a wave seguinte para onde ela própria está errada](feedback_a_biased_ruler_sends_work_to_where_it_is_itself_wrong.md)
 - ⛔⛔⛔ [Régua que pára no MUNDO aprova um clique partido no ECRÃ (340 px: o chrome desenha numa BANDA)](feedback_a_ruler_that_stops_at_world_space_approves_a_broken_click.md)
-- [Costura de UI (26)](reference_topic_ui_seam_discipline.md) — ⭐ [o hit rect é também o DENOMINADOR](feedback_a_hit_rect_is_also_the_denominator_not_only_the_target.md)
+- [Costura de UI (27)](reference_topic_ui_seam_discipline.md) — ⭐ [o hit rect é também o DENOMINADOR](feedback_a_hit_rect_is_also_the_denominator_not_only_the_target.md)
 - [**Ofício de gate** — a família (141)](reference_topic_gate_discipline.md)
 - [Protocolo de auditoria (9) — ⛔ num artefacto ATESTADO toda linha nova é população nova](reference_topic_audit_protocol.md)
 - 📚 [Auditoria (famílias — 2 saltos): mais (56) lições](reference_topic_audit_lessons.md)

@@ -187,6 +187,11 @@ mod tests {
         {
             n += 1;
         }
+        // A janela Export do Pixel (P9).
+        #[cfg(feature = "panel-pixel-export")]
+        {
+            n += 1;
+        }
         // A janela Preview do Pixel (P5).
         #[cfg(feature = "panel-pixel-preview")]
         {

@@ -233,7 +233,7 @@ pub enum ContextMenuKind {
     },
     /// New-image modal (Cmd/Ctrl+N): a centered dialog with a row of square-size buttons
     /// (`CTX_MENU_NEW_IMAGE_SIZES`) + background choices (`CTX_MENU_NEW_IMAGE_BGS`) + a Create button
-    /// (`CTX_MENU_NEW_IMAGE_CREATE`). Create raises a `(size, bg)` request the shell services via
+    /// (`CTX_MENU_NEW_IMAGE_CREATE`). Create raises a `(w, h, bg)` request the shell services via
     /// `spawn_blank_canvas`; outside-click cancels. The selected size/bg live on the `WidgetStore`.
     NewImageDialog,
     /// **O modal de resolução da folha** (Enio 2026-08-19): abre ao escolher "Pack into Sheet" na

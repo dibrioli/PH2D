@@ -4,6 +4,16 @@
 use super::super::WidgetStore;
 use crate::interaction::ContextMenuRequest;
 
+/// O valor de um campo com o que se está a escrever nele: o segmento aceso responde a cada dígito.
+fn lado_vivo(store: &WidgetStore, id: ph2d_a11y::NodeId) -> f64 {
+    match store.get(id) {
+        Some(crate::interaction::InteractiveState::NumberInput { value, buffer, .. }) => {
+            buffer.trim().parse().unwrap_or(*value)
+        }
+        _ => 0.0,
+    }
+}
+
 impl WidgetStore {
     /// Abre o diálogo **New Sprite** (Add ▸ Pixel Sprite), semeado com a última escolha da sessão.
     /// Os widgets registam-se aqui: o diálogo só existe enquanto aberto.
@@ -32,8 +42,14 @@ impl WidgetStore {
         }
         let modes = crate::ids::NEW_SPRITE_MODES.iter().map(|(_, id, _)| *id);
         let bgs = crate::ids::NEW_SPRITE_BGS.iter().map(|(_, id, _)| *id);
-        let ends = [crate::ids::NEW_SPRITE_OK, crate::ids::NEW_SPRITE_CANCEL];
-        for id in modes.chain(bgs).chain(ends) {
+        let lados = crate::ids::NEW_SPRITE_SIZES.iter().map(|(_, id)| *id);
+        let ecras = crate::ids::NEW_SPRITE_SCREENS.iter().map(|(_, id)| *id);
+        let ends = [
+            crate::ids::NEW_SPRITE_CUSTOM,
+            crate::ids::NEW_SPRITE_OK,
+            crate::ids::NEW_SPRITE_CANCEL,
+        ];
+        for id in modes.chain(bgs).chain(lados).chain(ecras).chain(ends) {
             let state = crate::widget::ButtonState::Normal;
             self.register(id, S::Button { state });
         }
@@ -56,6 +72,31 @@ impl WidgetStore {
 
     pub fn set_new_sprite_background(&mut self, b: crate::pixel_panel::NewSpriteBackground) {
         self.pixel.new_sprite.choice.background = b;
+    }
+
+    /// Uma predefinição: enche Width e Height, que são a verdade do tamanho.
+    pub fn set_new_sprite_size(&mut self, [w, h]: [u32; 2]) {
+        self.set_number_value(crate::ids::NEW_SPRITE_WIDTH, f64::from(w));
+        self.set_number_value(crate::ids::NEW_SPRITE_HEIGHT, f64::from(h));
+    }
+
+    /// O segmento aceso: deriva de Width × Height, com o que se está a escrever; sem predefinição igual, Custom.
+    #[must_use]
+    pub fn new_sprite_size_lit(&self) -> ph2d_a11y::NodeId {
+        let lado = |id| crate::pixel_panel::side_of(lado_vivo(self, id));
+        let wh = [
+            lado(crate::ids::NEW_SPRITE_WIDTH),
+            lado(crate::ids::NEW_SPRITE_HEIGHT),
+        ];
+        let quadrado = crate::ids::NEW_SPRITE_SIZES
+            .iter()
+            .find(|(s, _)| [*s, *s] == wh)
+            .map(|(_, id)| *id);
+        let ecra = crate::ids::NEW_SPRITE_SCREENS
+            .iter()
+            .find(|(s, _)| *s == wh)
+            .map(|(_, id)| *id);
+        quadrado.or(ecra).unwrap_or(crate::ids::NEW_SPRITE_CUSTOM)
     }
 
     /// O OK: os lados escritos (presos a `1..=65535`) entram na escolha, que vira o pedido; fecha.

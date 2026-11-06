@@ -226,15 +226,20 @@ fn o_new_sprite_em_cartoes_regista_cada_controlo_e_leva_a_unidade_no_rotulo() {
     force_cromo_on_this_thread(None);
     let modos = ids::NEW_SPRITE_MODES.iter().map(|(_, id, _)| *id);
     let fundos = ids::NEW_SPRITE_BGS.iter().map(|(_, id, _)| *id);
+    let lados = ids::NEW_SPRITE_SIZES.iter().map(|(_, id)| *id);
+    let ecras = ids::NEW_SPRITE_SCREENS.iter().map(|(_, id)| *id);
     for id in modos
         .chain(fundos)
+        .chain(lados)
+        .chain(ecras)
+        .chain([ids::NEW_SPRITE_CUSTOM])
         .chain(ids::NEW_SPRITE_FIELDS)
         .chain([ids::NEW_SPRITE_OK, ids::NEW_SPRITE_CANCEL])
     {
         assert!(hits.rect_for(id).is_some(), "{id:?} sem alvo");
     }
-    // A caixa e os dois segmentos escolhidos: sem a moldura, os segmentos sozinhos davam verde.
-    assert_eq!(vezes_da_cor(&scene, ColorToken::KanbanCardRaised), 3);
+    // A caixa e os três segmentos escolhidos: sem a moldura, os segmentos sozinhos davam verde.
+    assert_eq!(vezes_da_cor(&scene, ColorToken::KanbanCardRaised), 4);
     let largura = hits.rect_for(ids::NEW_SPRITE_WIDTH).expect("Width");
     assert_eq!(largura.h, ph2d_card_stack::metrics::FIELD_H);
     for (id, nome) in [

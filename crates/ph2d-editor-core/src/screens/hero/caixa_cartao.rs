@@ -99,6 +99,29 @@ pub(super) fn centrada(
     true
 }
 
+/// A largura da caixa em que cada fila de `filas` cabe numa linha, nunca abaixo de `minimo`: derivada do texto medido.
+pub(super) fn largura_das_filas(
+    a: &mut Alvo<'_>,
+    ink: CardInk,
+    minimo: f32,
+    filas: &[&[Seg<'_>]],
+) -> f32 {
+    let (mut ensaio, mut alvos) = (VectorScene::new(), HitIndex::default());
+    let mut c = CardCtx::flutuante(
+        &mut ensaio,
+        &mut *a.text_system,
+        a.store,
+        &mut alvos,
+        ink,
+        0.0,
+        minimo,
+    );
+    filas
+        .iter()
+        .map(|f| c.escolha_pede(f).ceil() + m::CARD_PAD_X * 2.0)
+        .fold(minimo, f32::max)
+}
+
 /// As linhas `(id, texto, escolhida)` como segmentos.
 pub(super) fn segs<'t>(linhas: &[(NodeId, &'t str, bool)]) -> Vec<Seg<'t>> {
     linhas

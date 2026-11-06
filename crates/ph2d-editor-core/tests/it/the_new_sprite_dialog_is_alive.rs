@@ -246,3 +246,128 @@ fn enter_e_o_ok_com_o_que_se_escreveu_e_o_lado_tem_tecto_e_piso() {
         .expect("o Enter é o OK");
     assert_eq!(c.height, 1);
 }
+
+/// ⭐ Dono 06/11: a predefinição enche Width e Height, acende-se, e o OK nasce desse tamanho; quadrada ou ecrã.
+/// *Mutação: o clique não escrever os campos ⇒ o pedido sai 32 × 32.*
+#[test]
+fn a_predefinicao_enche_os_campos_acende_e_o_ok_nasce_desse_tamanho() {
+    for (id, [w, h]) in [
+        (ids::NEW_SPRITE_SIZES[0].1, [16, 16]),
+        (ids::NEW_SPRITE_SIZES[7].1, [256, 256]),
+        (ids::NEW_SPRITE_SCREENS[0].1, [160, 144]),
+        (ids::NEW_SPRITE_SCREENS[3].1, [640, 360]),
+    ] {
+        let mut e = Ecra::aberto();
+        e.carrega(id);
+        assert_eq!(
+            e.hero.store.number_value(ids::NEW_SPRITE_WIDTH),
+            Some(f64::from(w))
+        );
+        assert_eq!(
+            e.hero.store.number_value(ids::NEW_SPRITE_HEIGHT),
+            Some(f64::from(h))
+        );
+        assert_eq!(e.hero.store.new_sprite_size_lit(), id);
+        assert!(e.aberto_ainda(), "a predefinição não fecha o diálogo");
+        e.carrega(ids::NEW_SPRITE_OK);
+        let c = e.hero.store.take_new_sprite_request().expect("o OK arma");
+        assert_eq!([c.width, c.height], [w, h]);
+    }
+}
+
+/// ⭐ Dono 06/11: um valor sem predefinição acende o Custom, a cada dígito; voltar a uma igual apaga-o.
+/// *Mutação: `new_sprite_size_lit` não cair no Custom ⇒ RED.*
+#[test]
+fn escrever_um_valor_sem_predefinicao_acende_o_custom() {
+    let mut e = Ecra::aberto();
+    assert_eq!(
+        e.hero.store.new_sprite_size_lit(),
+        ids::NEW_SPRITE_SIZES[2].1,
+        "32 × 32"
+    );
+    e.escreve(ids::NEW_SPRITE_WIDTH, "33");
+    assert_eq!(e.hero.store.new_sprite_size_lit(), ids::NEW_SPRITE_CUSTOM);
+    e.carrega(ids::NEW_SPRITE_OK);
+    let c = e.hero.store.take_new_sprite_request().expect("o OK arma");
+    assert_eq!([c.width, c.height], [33, 32]);
+
+    e.hero.store.open_new_sprite_dialog();
+    e.pinta();
+    e.escreve(ids::NEW_SPRITE_WIDTH, "32");
+    assert_eq!(
+        e.hero.store.new_sprite_size_lit(),
+        ids::NEW_SPRITE_SIZES[2].1
+    );
+}
+
+/// O Custom aceso ou não, carregar nele leva ao Width: quem carrega quer escrever.
+#[test]
+fn o_custom_leva_ao_campo_width() {
+    let mut e = Ecra::aberto();
+    e.carrega(ids::NEW_SPRITE_CUSTOM);
+    assert_eq!(e.hero.store.focus_id(), Some(ids::NEW_SPRITE_WIDTH));
+    assert!(e.aberto_ainda());
+}
+
+impl Ecra {
+    fn new_image() -> Self {
+        let mut e = Self {
+            hero: HeroScreen::new(NodeId(1)),
+            text: TextSystem::without_system_fonts(),
+        };
+        e.hero.store.open_new_image_dialog();
+        e.pinta();
+        e
+    }
+}
+
+/// ⭐ Dono 06/11: o Custom do New Image revela Width e Height, e 300 × 200 pede 300 × 200, pelo rato e pelo Enter.
+/// *Mutação: `request_new_image` ignorar o Custom ⇒ sai 512 × 512.*
+#[test]
+fn o_custom_do_new_image_pede_os_lados_escritos() {
+    let mut e = Ecra::new_image();
+    assert!(
+        e.centro(ids::NEW_IMAGE_WIDTH).is_none(),
+        "fechado: sem campos"
+    );
+    e.carrega(ids::CTX_MENU_NEW_IMAGE_CUSTOM);
+    assert!(e.hero.store.new_image_is_custom());
+    e.escreve(ids::NEW_IMAGE_WIDTH, "300");
+    e.escreve(ids::NEW_IMAGE_HEIGHT, "200");
+    e.carrega(ids::CTX_MENU_NEW_IMAGE_CREATE);
+    assert_eq!(
+        e.hero.store.take_new_image_request(),
+        Some((300, 200, 0)),
+        "o Create leva o que se escreveu"
+    );
+
+    let mut e = Ecra::new_image();
+    e.carrega(ids::CTX_MENU_NEW_IMAGE_CUSTOM);
+    e.escreve(ids::NEW_IMAGE_WIDTH, "640");
+    e.tecla(KEY_ENTER, false);
+    assert_eq!(e.hero.store.take_new_image_request(), Some((640, 512, 0)));
+    assert!(e.hero.store.context_menu().is_none(), "o Enter fecha");
+}
+
+/// A predefinição sai do Custom e esconde os campos; o lado nunca passa do que o dispositivo publicou.
+/// *Mutação: tirar o `.min(max)` de `request_new_image` ⇒ o pedido passa do dispositivo.*
+#[test]
+fn a_predefinicao_sai_do_custom_e_o_lado_para_no_dispositivo() {
+    let mut e = Ecra::new_image();
+    e.carrega(ids::CTX_MENU_NEW_IMAGE_CUSTOM);
+    e.carrega(ids::CTX_MENU_NEW_IMAGE_SIZE_256);
+    assert!(!e.hero.store.new_image_is_custom());
+    assert!(e.centro(ids::NEW_IMAGE_WIDTH).is_none());
+    e.carrega(ids::CTX_MENU_NEW_IMAGE_CREATE);
+    assert_eq!(e.hero.store.take_new_image_request(), Some((256, 256, 0)));
+
+    let mut e = Ecra::new_image();
+    e.hero.store.set_new_image_max_side(1000);
+    e.carrega(ids::CTX_MENU_NEW_IMAGE_CUSTOM);
+    e.hero
+        .store
+        .set_number_range(ids::NEW_IMAGE_WIDTH, 1.0, 1e6, 1.0);
+    e.escreve(ids::NEW_IMAGE_WIDTH, "5000");
+    e.carrega(ids::CTX_MENU_NEW_IMAGE_CREATE);
+    assert_eq!(e.hero.store.take_new_image_request(), Some((1000, 512, 0)));
+}

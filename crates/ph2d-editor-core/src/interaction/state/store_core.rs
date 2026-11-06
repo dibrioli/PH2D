@@ -74,6 +74,10 @@ impl WidgetStore {
             context_menu: None,
             new_image_size: 512, // default square size highlighted when the modal opens
             new_image_bg: 0,     // default background = transparent
+            new_image_custom: None,
+            // O lado de textura do dispositivo antes de a shell o publicar: 8192 é o tier Default que o `GpuContext` pede
+            // (medido 06/11: dispositivo 8192, adaptador 32768; `o_custom_nasce_com_os_lados_pedidos_ate_ao_tecto_do_dispositivo`).
+            new_image_max_side: 8192,
             new_image_request: None,
             // ⚠️ Semeado no `open_sheet_size_dialog` com o que o empacotador SUGERE para aquelas
             // peças; este valor é só o que aparece antes de haver sugestão nenhuma.

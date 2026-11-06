@@ -302,9 +302,13 @@ pub struct WidgetStore {
     /// black / `2` white). The two radio groups in the modal write these; Create reads them.
     pub(in crate::interaction) new_image_size: u32,
     pub(in crate::interaction) new_image_bg: u8,
-    /// Set by the modal's Create button — `Some((size_px, bg))` the shell polls + clears to spawn a
+    /// O *Custom* do modal: `Some([w, h])` = escolhido, com os últimos lados confirmados.
+    pub(in crate::interaction) new_image_custom: Option<[u32; 2]>,
+    /// O lado máximo dos campos do *Custom*: `SpriteRenderer::max_texture_dimension_2d`, publicado pela shell.
+    pub(in crate::interaction) new_image_max_side: u32,
+    /// Set by the modal's Create button — `Some((w, h, bg))` the shell polls + clears to spawn a
     /// blank canvas. Decouples the editor-core modal from the shell's `spawn_blank_canvas` (no I/O here).
-    pub(in crate::interaction) new_image_request: Option<(u32, u8)>,
+    pub(in crate::interaction) new_image_request: Option<(u32, u32, u8)>,
     /// O modal da resolução da folha: a escolha e o pedido pendente (a shell drena-o).
     pub(in crate::interaction) sheet: chrome_ops::SheetModal,
     pub(in crate::interaction) pixel: crate::pixel_panel::PixelDialogs,

@@ -21,6 +21,18 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         hero.store.close_context_menu();
         return true;
     }
+    if let Some(&(s, _)) = ids::NEW_SPRITE_SIZES.iter().find(|(_, b)| *b == id) {
+        hero.store.set_new_sprite_size([s, s]);
+        return true;
+    }
+    if let Some(&(wh, _)) = ids::NEW_SPRITE_SCREENS.iter().find(|(_, b)| *b == id) {
+        hero.store.set_new_sprite_size(wh);
+        return true;
+    }
+    if id == ids::NEW_SPRITE_CUSTOM {
+        crate::interaction::dispatch::focus_number_field(&mut hero.store, ids::NEW_SPRITE_WIDTH);
+        return true;
+    }
     if let Some(&(m, ..)) = ids::NEW_SPRITE_MODES.iter().find(|(_, b, _)| *b == id) {
         hero.store.set_new_sprite_mode(m);
         return true;

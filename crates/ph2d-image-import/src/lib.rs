@@ -247,10 +247,36 @@ pub fn spawn_blank_canvas(
     pixels_per_meter: f32,
     atlas_asset_map: &mut BTreeMap<u32, AssetId>,
 ) -> Result<(String, u64), String> {
-    let px_count = (size_px as usize)
-        .checked_mul(size_px as usize)
+    spawn_blank_rect(
+        sim,
+        renderer,
+        asset_db,
+        cell_idx,
+        [size_px, size_px],
+        bg,
+        world_center,
+        pixels_per_meter,
+        atlas_asset_map,
+    )
+}
+
+/// [`spawn_blank_canvas`] com os dois lados: o *Custom* do New Image.
+#[allow(clippy::too_many_arguments)]
+pub fn spawn_blank_rect(
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    cell_idx: u32,
+    [w, h]: [u32; 2],
+    bg: u8,
+    world_center: Vec2,
+    pixels_per_meter: f32,
+    atlas_asset_map: &mut BTreeMap<u32, AssetId>,
+) -> Result<(String, u64), String> {
+    let px_count = (w as usize)
+        .checked_mul(h as usize)
         .and_then(|n| n.checked_mul(4))
-        .ok_or_else(|| format!("canvas {size_px}² overflows a pixel buffer"))?;
+        .ok_or_else(|| format!("canvas {w} x {h} overflows a pixel buffer"))?;
     // Background fill: 0 = transparent, 1 = black, 2 = white, 3 = textured paper — white, whose paper the
     // Painter gives when it opens it (the New-image modal's choices).
     let fill: [u8; 4] = match bg {
@@ -267,8 +293,8 @@ pub fn spawn_blank_canvas(
         renderer,
         asset_db,
         cell_idx,
-        size_px,
-        size_px,
+        w,
+        h,
         pixels,
         world_center,
         pixels_per_meter,
@@ -307,22 +333,25 @@ pub fn spawn_rgba(
         let asset = asset_db.get(aid)?;
         asset.image_rgba8().map(|(_, _, px)| px.into_owned())
     };
-    if let Err(e) =
-        renderer.insert_atlas_sprite_with_regrow(cell_idx, w_px, h_px, &pixels, fetch_pixels)
-    {
+    let no_atlas =
+        renderer.insert_atlas_sprite_with_regrow(cell_idx, w_px, h_px, &pixels, fetch_pixels);
+    // O que o atlas não leva (cheio, ou do tamanho dele) nasce numa textura sua: o tecto é o do dispositivo.
+    let source = if no_atlas.is_ok() {
+        PackedSource::Atlas { cell_idx }
+    } else {
         atlas_asset_map.remove(&cell_idx);
-        return Err(format!("atlas insert {label}: {e}"));
-    }
+        let texture_id = renderer
+            .acquire_individual(w_px, h_px, &pixels)
+            .map_err(|e| format!("individual {label}: {e}"))?;
+        PackedSource::Individual {
+            texture_id,
+            pixels_id: asset_id,
+        }
+    };
     let safe_px_per_m = pixels_per_meter.max(EPS_PIXELS_PER_METER);
     let ww = (w_px as f32 / safe_px_per_m).max(MIN_SPRITE_SIZE);
     let wh = (h_px as f32 / safe_px_per_m).max(MIN_SPRITE_SIZE);
-    Ok(spawn_sprite(
-        sim,
-        PackedSource::Atlas { cell_idx },
-        world_center,
-        [ww, wh],
-        label,
-    ))
+    Ok(spawn_sprite(sim, source, world_center, [ww, wh], label))
 }
 
 /// One packed-but-not-yet-spawned image, carried from the measure pass

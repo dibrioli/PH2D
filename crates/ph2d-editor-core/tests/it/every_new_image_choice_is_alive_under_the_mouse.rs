@@ -88,6 +88,10 @@ fn choosing_textured_paper_lands_in_the_create_request() {
     hero.store.request_new_image();
     assert_eq!(
         hero.store.take_new_image_request(),
-        Some((hero.store.new_image_size(), ids::NEW_IMAGE_BG_PAPER))
+        Some((
+            hero.store.new_image_size(),
+            hero.store.new_image_size(),
+            ids::NEW_IMAGE_BG_PAPER
+        ))
     );
 }

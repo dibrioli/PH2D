@@ -28,8 +28,13 @@ impl crate::App {
 
         // New-image modal (Cmd/Ctrl+N) → spawn the chosen blank canvas. The modal's Create button set
         // `new_image_request`; service it here where `gfx` is destructured (sim/renderer/atlas access).
+        if let Some(hero) = hero_screen.as_mut() {
+            // ⛔ O tecto do Custom é o lado de textura do dispositivo, nunca um número nosso (CLAUDE.md §0.0).
+            hero.store
+                .set_new_image_max_side(renderer.max_texture_dimension_2d());
+        }
         if let Some(hero) = hero_screen.as_mut()
-            && let Some((size, bg)) = hero.store.take_new_image_request()
+            && let Some((w, h, bg)) = hero.store.take_new_image_request()
         {
             let ppm = hero.project.pixels_per_meter;
             let cell = *next_import_cell;
@@ -39,7 +44,7 @@ impl crate::App {
                 renderer,
                 asset_db,
                 cell,
-                size,
+                [w, h],
                 bg,
                 ppm,
                 atlas_asset_map,
@@ -64,7 +69,7 @@ impl crate::App {
                         });
                     toasts.push(Toast::success(tr_with(
                         "shell.fase_new_image_modal.new_canvas",
-                        &[("label", &label), ("size", &size)],
+                        &[("label", &label), ("w", &w), ("h", &h)],
                     )));
                 }
                 Err(e) => {

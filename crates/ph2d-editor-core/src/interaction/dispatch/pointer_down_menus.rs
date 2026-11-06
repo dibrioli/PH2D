@@ -349,6 +349,8 @@ pub(super) fn click_belongs_to_the_open_menu(
         }
         ContextMenuKind::NewImageDialog => {
             id == crate::ids::CTX_MENU_NEW_IMAGE_CREATE
+                || id == crate::ids::CTX_MENU_NEW_IMAGE_CUSTOM
+                || crate::ids::NEW_IMAGE_FIELDS.contains(&id)
                 || crate::ids::CTX_MENU_NEW_IMAGE_SIZES
                     .iter()
                     .any(|(_, b)| *b == id)

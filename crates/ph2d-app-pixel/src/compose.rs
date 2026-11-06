@@ -266,6 +266,7 @@ pub fn dialog_open(store: &WidgetStore) -> bool {
         matches!(
             r.kind,
             ContextMenuKind::NewSpriteDialog
+                | ContextMenuKind::NewImageDialog
                 | ContextMenuKind::PixelColorModeDialog
                 | ContextMenuKind::PixelEditDialog
         )

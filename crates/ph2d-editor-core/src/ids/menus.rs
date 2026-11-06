@@ -138,6 +138,12 @@ pub const CTX_MENU_NEW_IMAGE_SIZE_4096: NodeId = hash_node_id("ctx_menu_new_imag
 /// lado dela: o `360.0` que ela tinha vinha com o comentário *"fits the 7 size buttons"*, então
 /// acrescentar o oitavo teria espremido cada botão de 45,7 para 39,5 px em silêncio — e o próximo
 /// tamanho espremeria de novo. Acrescentar uma linha aqui é a única edição necessária.
+pub const CTX_MENU_NEW_IMAGE_CUSTOM: NodeId = hash_node_id("ctx_menu_new_image_custom");
+/// Os campos Width e Height do *Custom* do New Image.
+pub const NEW_IMAGE_WIDTH: NodeId = hash_node_id("ctx_menu_new_image_width");
+pub const NEW_IMAGE_HEIGHT: NodeId = hash_node_id("ctx_menu_new_image_height");
+pub const NEW_IMAGE_FIELDS: [NodeId; 2] = [NEW_IMAGE_WIDTH, NEW_IMAGE_HEIGHT];
+
 pub const CTX_MENU_NEW_IMAGE_SIZES: [(u32, NodeId); 8] = [
     (32, CTX_MENU_NEW_IMAGE_SIZE_32),
     (64, CTX_MENU_NEW_IMAGE_SIZE_64),

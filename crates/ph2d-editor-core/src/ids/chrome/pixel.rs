@@ -81,6 +81,29 @@ pub const NEW_SPRITE_BGS: [(NewSpriteBackground, NodeId, &str); 3] = [
     ),
 ];
 
+/// Os lados quadrados comuns em pixel art: o lado e o botão; pintar, registar e despachar leem a MESMA tabela.
+pub const NEW_SPRITE_SIZES: [(u32, NodeId); 8] = [
+    (16, hash_node_id("pixel.new_sprite.size.16")),
+    (24, hash_node_id("pixel.new_sprite.size.24")),
+    (32, hash_node_id("pixel.new_sprite.size.32")),
+    (48, hash_node_id("pixel.new_sprite.size.48")),
+    (64, hash_node_id("pixel.new_sprite.size.64")),
+    (96, hash_node_id("pixel.new_sprite.size.96")),
+    (128, hash_node_id("pixel.new_sprite.size.128")),
+    (256, hash_node_id("pixel.new_sprite.size.256")),
+];
+
+/// Os ecrãs comuns em pixel art, na mesma forma.
+pub const NEW_SPRITE_SCREENS: [([u32; 2], NodeId); 4] = [
+    ([160, 144], hash_node_id("pixel.new_sprite.screen.160x144")),
+    ([320, 180], hash_node_id("pixel.new_sprite.screen.320x180")),
+    ([320, 240], hash_node_id("pixel.new_sprite.screen.320x240")),
+    ([640, 360], hash_node_id("pixel.new_sprite.screen.640x360")),
+];
+
+/// O *Custom*: acende quando Width × Height não é nenhuma predefinição; carregar leva ao campo Width.
+pub const NEW_SPRITE_CUSTOM: NodeId = hash_node_id("pixel.new_sprite.custom");
+
 /// Os dois campos numéricos.
 pub const NEW_SPRITE_FIELDS: [NodeId; 2] = [NEW_SPRITE_WIDTH, NEW_SPRITE_HEIGHT];
 
@@ -92,6 +115,9 @@ pub fn new_sprite_dialog_owns(id: NodeId) -> bool {
         || id == NEW_SPRITE_CANCEL
         || NEW_SPRITE_MODES.iter().any(|(_, b, _)| *b == id)
         || NEW_SPRITE_BGS.iter().any(|(_, b, _)| *b == id)
+        || NEW_SPRITE_SIZES.iter().any(|(_, b)| *b == id)
+        || NEW_SPRITE_SCREENS.iter().any(|(_, b)| *b == id)
+        || id == NEW_SPRITE_CUSTOM
 }
 
 /// A amostra do *Edit color* do painel PIXEL: um Down abre o seletor partilhado sobre a cor da

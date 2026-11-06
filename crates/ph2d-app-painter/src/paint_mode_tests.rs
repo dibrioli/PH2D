@@ -267,3 +267,59 @@ fn the_layer_asked_is_opened_when_its_image_binds() {
         .bind_document(a, px, 4, 4);
     assert_eq!(activa(&mut c, a), Some(baixo));
 }
+
+/// O canvas de um *New Image…* na placa: `(tamanho no mundo, dimensões do asset, nasceu no atlas?)`.
+fn nasce_na_placa(gpu: &ph2d_gpu::GpuContext, wh: [u32; 2]) -> ([f32; 2], (u32, u32), bool) {
+    let mut sim = SimWorld::new();
+    let mut r = ph2d_render::SpriteRenderer::new(
+        gpu.clone(),
+        wgpu::TextureFormat::Rgba16Float,
+        ph2d_render::TextureAtlas::new(gpu, 256),
+        16,
+    );
+    let (db, mut atlas) = (
+        ph2d_asset::AssetDb::default(),
+        std::collections::BTreeMap::new(),
+    );
+    let (_, bits) =
+        spawn_imagem_nova(&mut sim, &mut r, &db, 1, wh, 0, 100.0, &mut atlas).expect("nasce");
+    let e = ph2d_ecs::Entity::from_bits(bits);
+    let s = *sim.world().get::<ph2d_render::Sprite>(e).expect("sprite");
+    let id = ph2d_render::texture_of(
+        sim.world().get::<ph2d_ecs::SpritePixels>(e),
+        Some(&s),
+        &atlas,
+    )
+    .expect("a imagem");
+    let asset = db.get(&id).expect("no banco");
+    let (w, h, _) = asset.image_rgba8().expect("rgba8");
+    (
+        s.size,
+        (w, h),
+        matches!(s.source, ph2d_render::SpriteSource::Atlas { .. }),
+    )
+}
+
+/// ⭐ Dono 06/11: o Custom 300 × 200 chega ao documento: imagem de 300 × 200, 3 × 2 m a 100 px/m. E o tecto é o do
+/// dispositivo: o lado inteiro dele nasce, no atlas ou, se não couber, em textura própria.
+/// *Mutação: o `spawn_rgba` sem o caminho Individual ⇒ o que o atlas recusa falha.*
+#[test]
+fn o_custom_nasce_com_os_lados_pedidos_ate_ao_tecto_do_dispositivo() {
+    let Ok(gpu) = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None) else {
+        eprintln!("sem adaptador: a medição não corre");
+        return;
+    };
+    let (size, wh, atlas) = nasce_na_placa(&gpu, [300, 200]);
+    assert_eq!((size, wh), ([3.0, 2.0], (300, 200)));
+    assert!(atlas, "o caso comum continua no atlas");
+    let lado = gpu.device.limits().max_texture_dimension_2d;
+    let t = std::time::Instant::now();
+    let (size, wh, atlas) = nasce_na_placa(&gpu, [lado, lado]);
+    eprintln!(
+        "lado do dispositivo {lado} (adaptador {}): {:.1} s, no atlas: {atlas}",
+        gpu.adapter.limits().max_texture_dimension_2d,
+        t.elapsed().as_secs_f32()
+    );
+    assert_eq!(wh, (lado, lado));
+    assert_eq!(size[0], lado as f32 / 100.0);
+}

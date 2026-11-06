@@ -89,7 +89,7 @@ impl CardCtx<'_> {
     }
 
     /// A largura em que os segmentos cabem numa linha, sem ícones ao lado das palavras.
-    pub(super) fn escolha_pede(&mut self, segs: &[Seg<'_>]) -> f32 {
+    pub fn escolha_pede(&mut self, segs: &[Seg<'_>]) -> f32 {
         let soma: f32 = segs.iter().map(|s| self.seg_need(s, false).0).sum();
         soma + m::SEG_PAD * (segs.len() + 1) as f32
     }

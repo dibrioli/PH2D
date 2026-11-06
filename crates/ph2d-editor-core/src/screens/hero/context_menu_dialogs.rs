@@ -56,6 +56,21 @@ pub(super) const DIALOG_W: f32 = 320.0; // LITERAL-PX-OK: dialog width (long key
 /// antes (sete de `46` px, seis vãos, as duas bordas).
 const DIALOG_LARGO: f32 = 370.0; // LITERAL-PX-OK: cabe «Textured paper» num quarto da fila
 
+/// A largura do interior em que uma fila de botões iguais mostra todo rótulo inteiro, medida como o `paint_button` pinta.
+fn fila_de_botoes_pede(text_system: &mut TextSystem, rotulos: &[&str]) -> f32 {
+    let maior = rotulos
+        .iter()
+        .map(|t| {
+            text_system
+                .prefix_width(t, crate::widget::button_label_font())
+                .ceil()
+        })
+        .fold(0.0_f32, f32::max);
+    #[expect(clippy::cast_precision_loss, reason = "uma contagem de botoes, < 16")]
+    let n = rotulos.len() as f32;
+    (maior + Spacing::Lg.px() * 2.0) * n + Spacing::Xs.px() * (n - 1.0)
+}
+
 /// The text/ids that distinguish one centered input dialog from another.
 struct CenteredInputDialog {
     title: &'static str,
@@ -231,8 +246,8 @@ fn paint_choice_button(
     paint_button(&btn, rect, scene, text_system, theme);
 }
 
-/// Paint the **New-image** modal (Cmd/Ctrl+N): a centered dialog with a Size radio row (32..2048), a
-/// Background radio row (Transparent / Black / White), and a Create CTA. The selected size/bg (accent)
+/// Paint the **New-image** modal (Cmd/Ctrl+N): a centered dialog with a Size radio row (32..4096 + Custom, which
+/// reveals Width and Height), a Background radio row (Transparent / Black / White), and a Create CTA. The selected size/bg (accent)
 /// are read from the store; the `new_image` chrome handler updates them on click and Create raises the
 /// `(size, bg)` request the shell services.
 pub(super) fn paint_new_image_dialog(
@@ -247,14 +262,34 @@ pub(super) fn paint_new_image_dialog(
     let gap = Spacing::Xs.px();
     let cartao = crate::widget::lista_flutuante::Superficie::de(theme);
     if cartao.tinta().is_some() {
+        let custom = store.new_image_is_custom();
         let tamanhos: Vec<(NodeId, String, bool)> = ids::CTX_MENU_NEW_IMAGE_SIZES
             .iter()
-            .map(|(px, id)| (*id, px.to_string(), *px == store.new_image_size()))
+            .map(|(px, id)| {
+                (
+                    *id,
+                    px.to_string(),
+                    !custom && *px == store.new_image_size(),
+                )
+            })
             .collect();
-        let linhas: Vec<_> = tamanhos
+        let mut linhas: Vec<_> = tamanhos
             .iter()
             .map(|(i, t, o)| (*i, t.as_str(), *o))
             .collect();
+        linhas.push((
+            ids::CTX_MENU_NEW_IMAGE_CUSTOM,
+            tr("chrome.dialog.custom"),
+            custom,
+        ));
+        for id in ids::NEW_IMAGE_FIELDS {
+            let spec = crate::widget::card_field::CardFieldSpec {
+                step: 1.0,
+                scrub: 1.0, // LITERAL-PX-OK: px da imagem por px de arrasto
+                default: None,
+            };
+            store.mark_card_field_at_paint(id, spec);
+        }
         let sel_bg = store.new_image_bg();
         let bgs = [
             (
@@ -279,10 +314,6 @@ pub(super) fn paint_new_image_dialog(
             ),
         ];
         let (segs_t, segs_f) = (caixa::segs(&linhas), caixa::segs(&bgs));
-        let molde = caixa::Molde {
-            largura: DIALOG_LARGO,
-            titulo: tr("chrome.dialog.new_image"),
-        };
         let mut alvo = caixa::Alvo {
             scene: &mut *scene,
             text_system: &mut *text_system,
@@ -290,12 +321,36 @@ pub(super) fn paint_new_image_dialog(
             store,
             viewport,
         };
+        let largura = cartao.tinta().map_or(DIALOG_LARGO, |ink| {
+            caixa::largura_das_filas(&mut alvo, ink, DIALOG_LARGO, &[&segs_t, &segs_f])
+        });
+        let molde = caixa::Molde {
+            largura,
+            titulo: tr("chrome.dialog.new_image"),
+        };
         caixa::centrada(molde, cartao, &mut alvo, |c, y| {
             let y = c.full(
                 Some(tr("chrome.dialog.size_px")),
                 Widget::Choice(&segs_t),
                 y,
             );
+            let y = if custom {
+                c.row(
+                    &[
+                        crate::panel::cards::ferramenta::campo(
+                            ids::NEW_IMAGE_WIDTH,
+                            tr("chrome.dialog.width_px"),
+                        ),
+                        crate::panel::cards::ferramenta::campo(
+                            ids::NEW_IMAGE_HEIGHT,
+                            tr("chrome.dialog.height_px"),
+                        ),
+                    ],
+                    y,
+                )
+            } else {
+                y
+            };
             let y = c.full(
                 Some(tr("chrome.dialog.background")),
                 Widget::Choice(&segs_f),
@@ -310,16 +365,30 @@ pub(super) fn paint_new_image_dialog(
         });
         return;
     }
-    // ⚠️ A largura é DERIVADA da contagem de tamanhos, não um literal. Ela era `360.0` com o comentário
-    // *"fits the 7 size buttons in one row"* — uma cerca cuja razão é a CONTAGEM, então acrescentar o
-    // oitavo (4096) teria espremido cada botão de 45,7 para 39,5 px sem nada acender. Assim, a tabela em
+    // ⚠️ A largura é DERIVADA dos rótulos medidos das duas filas, não um literal: a tabela em
     // `ids::CTX_MENU_NEW_IMAGE_SIZES` é a única edição que um tamanho novo pede.
-    const SIZE_BTN_W: f32 = 46.0; // LITERAL-PX-OK: cabe "4096" no `TypeToken::Sm` com folga
     #[expect(clippy::cast_precision_loss, reason = "uma contagem de botoes, < 16")]
-    let n_sizes = ids::CTX_MENU_NEW_IMAGE_SIZES.len() as f32;
-    let menu_w = Spacing::Md.px() * 2.0 + n_sizes * SIZE_BTN_W + (n_sizes - 1.0) * gap;
-    // Six stacked rows: title · Size label · size buttons · Background label · bg buttons · Create.
-    let total_h = pad_y() * 2.0 + row_h * 6.0 + gap * 5.0; // LITERAL-PX-OK: 5 inter-row gaps
+    let n_sizes = ids::CTX_MENU_NEW_IMAGE_SIZES.len() as f32 + 1.0; // o Custom
+    let rotulos_t: Vec<String> = ids::CTX_MENU_NEW_IMAGE_SIZES
+        .iter()
+        .map(|(px, _)| px.to_string())
+        .chain([tr("chrome.dialog.custom").to_owned()])
+        .collect();
+    let rotulos_t: Vec<&str> = rotulos_t.iter().map(String::as_str).collect();
+    let pede = fila_de_botoes_pede(text_system, &rotulos_t).max(fila_de_botoes_pede(
+        text_system,
+        &[
+            tr("chrome.dialog.transparent"),
+            tr("chrome.dialog.black"),
+            tr("chrome.dialog.white"),
+            tr("chrome.dialog.textured_paper"),
+        ],
+    ));
+    let menu_w = Spacing::Md.px() * 2.0 + pede;
+    let custom = store.new_image_is_custom();
+    // Six stacked rows: title · Size label · size buttons · Background label · bg buttons · Create; Custom adds two.
+    let linhas: f32 = if custom { 8.0 } else { 6.0 }; // LITERAL-PX-OK: contagem de filas
+    let total_h = pad_y() * 2.0 + row_h * linhas + gap * (linhas - 1.0);
     let rect_x = (viewport.x + (viewport.w - menu_w) * 0.5).max(viewport.x);
     let rect_y = (viewport.y + (viewport.h - total_h) * 0.5).max(viewport.y);
     let rect = Rect::new(rect_x, rect_y, menu_w, total_h);
@@ -372,10 +441,51 @@ pub(super) fn paint_new_image_dialog(
             *id,
             &px.to_string(),
             r,
-            *px == sel_size,
+            !custom && *px == sel_size,
         );
     }
+    let r = Rect::new(inner_x + (n_sizes - 1.0) * (bw + gap), y, bw, row_h);
+    paint_choice_button(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        ids::CTX_MENU_NEW_IMAGE_CUSTOM,
+        tr("chrome.dialog.custom"),
+        r,
+        custom,
+    );
     y += row_h + gap;
+    if custom {
+        let mut r = crate::panel::rows::RowCtx {
+            scene: &mut *scene,
+            text_system: &mut *text_system,
+            store,
+            hit_index: &mut *hit_index,
+            theme,
+            inner_x,
+            inner_w,
+            row_h,
+            row_gap: gap,
+            font,
+            open_fold: None,
+        };
+        y = r.labeled_number_field_unit(
+            tr("chrome.dialog.width_px"),
+            ids::NEW_IMAGE_WIDTH,
+            1.0,
+            None,
+            y,
+        );
+        y = r.labeled_number_field_unit(
+            tr("chrome.dialog.height_px"),
+            ids::NEW_IMAGE_HEIGHT,
+            1.0,
+            None,
+            y,
+        );
+    }
 
     // ── Background label + radio row (Transparent / Black / White) ──
     paint_text(

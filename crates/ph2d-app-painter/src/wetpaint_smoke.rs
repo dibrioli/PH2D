@@ -46,7 +46,8 @@ pub const NIVEIS: u32 = 4;
 
 /// A cena do FPS (`=3`) — a ponte chama [`crate::wetpaint_fps::conduz`] a cada quadro.
 pub fn e_a_cena_do_fps() -> bool {
-    enabled() && nivel() == 3
+    static CENA: std::sync::LazyLock<bool> = std::sync::LazyLock::new(|| enabled() && nivel() == 3);
+    *CENA
 }
 
 /// O lado da tela da cena do FPS: `PH2D_FPS_TELA` (px), omissão 1024.

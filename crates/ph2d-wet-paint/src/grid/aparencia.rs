@@ -263,4 +263,38 @@ mod veste_tests {
         veste_virgens(&mut g, (4, 4, 6, 6), nova);
         assert_eq!(g.suave_teto, 0.5);
     }
+
+    fn params_com_borda(ed: f64) -> Params {
+        let mut e = crate::painter::Engine::with_flow_ratio(8, 8, 1);
+        e.tuning.set(Knob::EdgeDarkening, ed);
+        e.sim.gather_params(&e.tuning)
+    }
+
+    /// Bug #69: o fundo é o do 1.º pincel, e o 2.º guarda o dele na célula: a tinta de A não passa a secar pelo de B.
+    #[test]
+    fn o_segundo_pincel_nao_muda_o_fundo_da_borda() {
+        let mut g = Grid::new(16, 16);
+        let a = do_pincel(&mut g, &params_com_borda(12.0));
+        assert_eq!((a.borda, g.borda_fundo), (BORDA_DO_FUNDO, 12.0));
+        let b = do_pincel(&mut g, &params_com_borda(40.0));
+        assert_eq!((b.borda, g.borda_fundo), (40.0, 12.0));
+    }
+
+    /// A célula com tinta mistura a borda pela massa, e o lado sem borda própria entra pelo fundo.
+    #[test]
+    fn a_borda_mistura_pela_massa_em_celula_com_tinta() {
+        let mut g = Grid::new(16, 16);
+        g.borda_fundo = 10.0;
+        g.aparencia = crate::par::plano_cheio(AparenciaCelula::NEUTRA, g.cells);
+        let com = |borda| AparenciaCelula {
+            borda,
+            ..AparenciaCelula::NEUTRA
+        };
+        // Do fundo (10) com massa 3 para 30 com massa 1: (3·10 + 30) / 4.
+        pousa(&mut g, 7, 3.0, com(30.0), 1.0);
+        assert_eq!(g.aparencia[7].borda, 15.0);
+        // Dois valores próprios, massas iguais.
+        pousa(&mut g, 7, 1.0, com(25.0), 1.0);
+        assert_eq!(g.aparencia[7].borda, 20.0);
+    }
 }

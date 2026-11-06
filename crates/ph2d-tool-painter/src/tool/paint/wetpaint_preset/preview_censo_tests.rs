@@ -214,6 +214,10 @@ const FORA_DO_PREVIEW: &[(&str, &str)] = &[
 const WET_FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ("armed", "o meio: o `set_paint_media` do tool do preview"),
     ("session", SESSAO),
+    (
+        "preparo",
+        "cache de aquecimento do 1.º toque, não é ajuste do pincel (Bug #72)",
+    ),
     ("live_gesture", TRACO),
     ("pending_deposit", TRACO),
     ("deposit_pass", TRACO),

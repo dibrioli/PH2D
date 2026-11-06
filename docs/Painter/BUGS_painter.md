@@ -657,7 +657,7 @@ Antes desta cura: `marca_tudo()` saiu de `begin_direct_stroke` (undo copiava a g
 
 **⛔ Recusas MEDIDAS (uma corrida, carga alta, não prova definitiva):** (a) marcar `preview_dirty` com a mão parada para a 1.ª composição não cair no toque: Wet Wash a 3240² continuou 89 ms; saiu. (b) adiar a reconstrução da aguarela do pen-down para o tique: no app real a mediana do traço foi 24/20/17 contra 17, sem separar da carga; saiu sem conclusão.
 
-## Bug #71 (MEDIDO 05/11, cura DESLIGADA à espera do olho do dono; 9bd76cd02d) — em papel de alto relevo, a tinta parece afundada: relevo negativo na borda
+## Bug #71 (CURADO 05/11, o dono aprovou o relevo; a cura está ligada, 35520a7fd7; medido em 9bd76cd02d) — em papel de alto relevo, a tinta parece afundada: relevo negativo na borda
 
 Dono: «nos modos wet paint e watercolor, alguns pincéis aparentam aplicar a tinta com relevo negativo se o papel tem alto relevo». [Foto](handoffs/material_2026-11-05/relevo_negativo_foto_do_dono.png): mancha amarela com faixa clara na borda inferior direita e sombra na superior esquerda, ao contrário do relevo do papel em volta.
 
@@ -667,7 +667,44 @@ Dono: «nos modos wet paint e watercolor, alguns pincéis aparentam aplicar a ti
 
 **Cura (atrás de chave):** `papel + meio_do_dente×(1−v)`, `PH2D_PAPEL_SEM_DEGRAU=1`: média +0,005, máx +0,024, mín −0,017. Papel nu ao byte por construção. Alarme de miniatura verde com a chave ligada. Paper Press 0×1 com Real Oil: Knife Stain (15634, Δ44) → (15449, Δ42); Knife Oily (25783, Δ136) → (25647, Δ136): o controlo fica. [Prancha](handoffs/material_2026-11-05/relevo_antes_depois.png).
 
-**Custo visto:** o miolo de Soft Pastel e Graphite 8B perde grão em relevo (até Δ 78 / Δ 50). **Não medido:** só Cold; imagem de papel própria (`meio_do_dente` assume amp/2); alarme de largura com a chave. **Se o dono aprovar:** tirar a chave, portão com S, varrer papéis. Memória: `project_relief_step_awaits_owner_eye_2026_11_05`. Hipóteses antigas (Paper Press, grão no filme, ED) ficam descartadas pela medição acima.
+**Custo visto:** o miolo de Soft Pastel e Graphite 8B perde grão em relevo (até Δ 78 / Δ 50). **Não medido:** alarme de largura com a chave. **Se o dono aprovar:** tirar a chave, portão com S, varrer papéis. Memória: `project_relief_step_awaits_owner_eye_2026_11_05`. Hipóteses antigas (Paper Press, grão no filme, ED) ficam descartadas pela medição acima.
+
+**A meia amplitude só vale nos tipos centrados (medido 05/11, `sonda_media_do_dente_por_tipo`, 512² px, default do painel, média ÷ amplitude):** o `contrasta` satura, e a imagem clara ou o padrão assimétrico recriavam o degrau, às vezes de sinal trocado. Constante 0,8 a Roughness 1: dente 1,0 × meio 0,5.
+
+| Tipo | R 0 | R 0,25 | R 0,5 | R 1 | Lei |
+|---|---:|---:|---:|---:|---|
+| PaperCold | 0,500 | 0,500 | 0,501 | 0,500 | amp/2 |
+| PaperRough | 0,500 | 0,499 | 0,496 | 0,490 | amp/2 |
+| PaperHot | 0,500 | 0,500 | 0,500 | 0,499 | amp/2 |
+| Noise | 0,495 | 0,489 | 0,486 | 0,485 | amp/2 |
+| Checker | 0,500 | 0,500 | 0,500 | 0,500 | amp/2 |
+| Clouds | 0,497 | 0,494 | 0,490 | 0,485 | amp/2 |
+| DistortedNoise | 0,492 | 0,483 | 0,477 | 0,473 | amp/2 |
+| Magic | 0,500 | 0,500 | 0,501 | 0,501 | amp/2 |
+| Marble | 0,499 | 0,497 | 0,497 | 0,497 | amp/2 |
+| Wood | 0,499 | 0,498 | 0,498 | 0,498 | amp/2 |
+| Gradient | 0,500 | 0,500 | 0,500 | 0,500 | amp/2 |
+| Grain | 0,501 | 0,502 | 0,502 | 0,503 | amp/2 |
+| Diamonds | 0,500 | 0,500 | 0,500 | 0,500 | amp/2 |
+| Triangles | 0,498 | 0,496 | 0,496 | 0,496 | amp/2 |
+| Chevron | 0,461 | 0,422 | 0,423 | 0,423 | média real |
+| Voronoi | 0,463 | 0,416 | 0,384 | 0,362 | média real |
+| Stripes | 0,442 | 0,385 | 0,385 | 0,387 | média real |
+| Waves | 0,420 | 0,342 | 0,344 | 0,345 | média real |
+| Musgrave | 0,434 | 0,351 | 0,293 | 0,255 | média real |
+| Stucci | 0,385 | 0,256 | 0,228 | 0,216 | média real |
+| Crosshatch | 0,337 | 0,174 | 0,175 | 0,176 | média real |
+| Grid | 0,314 | 0,130 | 0,129 | 0,135 | média real |
+| Bristles | 0,333 | 0,138 | 0,115 | 0,106 | média real |
+| Dots | 0,308 | 0,110 | 0,101 | 0,098 | média real |
+| Flakes | 0,575 | 0,650 | 0,650 | 0,650 | média real |
+| Weave | 0,595 | 0,687 | 0,672 | 0,642 | média real |
+| Bricks | 0,603 | 0,707 | 0,704 | 0,705 | média real |
+| Hexagons | 0,601 | 0,716 | 0,739 | 0,748 | média real |
+| Scales | 0,638 | 0,783 | 0,798 | 0,804 | média real |
+| Image | conforme a imagem | | | | média real |
+
+**Lei:** `Substrate::meio_do_dente`: até 0,03 de 0,5 em toda a Roughness = amp/2 (o Cold aprovado, ao bit); fora disso, 1 024 amostras R2 1× por `Substrate`, só quando o relevo a pede. Portões `meio_do_dente_tests`. O hash do Clear glass (cena em Noise) foi regravado por causa do termo do relevo: tirar o termo devolve o de antes ao bit.
 
 ## Bug #70 (CURADO 05/11, a confirmar no smoke do dono; 26b119b58d) — depois de pintar no Wet Paint, a Borracha não apaga os traços dos outros meios
 

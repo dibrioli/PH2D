@@ -99,6 +99,68 @@ fn o_papel_de_outra_chave_nao_entra() {
     assert!(tela == referencia);
 }
 
+/// A grade muda entre o preparo e o toque: o motor preparado não entra, e o toque faz a conta dele.
+#[test]
+fn o_motor_de_outra_grade_nao_entra() {
+    liga_no_teste(false);
+    let mut r = tool("Wet Wash");
+    r.paint.wetpaint.grid_ratio = 2;
+    let referencia = pinta(&mut r);
+    liga_no_teste(true);
+    let mut t = tool("Wet Wash");
+    t.paint.wetpaint.grid_ratio = 1;
+    espera_o_preparo(&mut t);
+    t.paint.wetpaint.grid_ratio = 2;
+    let tela = pinta(&mut t);
+    assert_eq!(usados_no_teste(), (0, 0));
+    liga_no_teste(false);
+    assert!(tela == referencia);
+}
+
+/// O motor preparado de outra grade não fica a ocupar memória durante a sessão.
+#[test]
+fn o_toque_nao_deixa_motor_preparado_durante_a_sessao() {
+    liga_no_teste(true);
+    let mut t = tool("Wet Wash");
+    t.paint.wetpaint.grid_ratio = 1;
+    espera_o_preparo(&mut t);
+    t.paint.wetpaint.grid_ratio = 2;
+    let _ = pinta(&mut t);
+    let pronto = t.preparo_pronto();
+    liga_no_teste(false);
+    assert!(!pronto);
+}
+
+/// Papel com textura: o plano preparado tem de ser o que o toque calcularia, ao byte.
+#[test]
+fn o_papel_preparado_com_textura_pinta_os_mesmos_bytes() {
+    let com_papel = |nome: &str, dente: f32| {
+        let mut t = tool(nome);
+        t.set_brush_paper_kind(ph2d_painter_brush::TextureKind::PaperCold.to_u8());
+        t.set_substrate_depth(0.7);
+        t.paint.brush.paper_depth = dente;
+        t
+    };
+    let mut sentiram = 0;
+    for nome in ["Wet Wash", "Wet Round", "Wet Liner", "Marker Bullet"] {
+        liga_no_teste(false);
+        let referencia = pinta(&mut com_papel(nome, 0.8));
+        // Um pincel que não lê o dente é cego a esta prova.
+        sentiram += usize::from(pinta(&mut com_papel(nome, 0.4)) != referencia);
+        liga_no_teste(true);
+        let mut t = com_papel(nome, 0.8);
+        espera_o_preparo(&mut t);
+        let tela = pinta(&mut t);
+        assert_eq!(usados_no_teste(), (1, 1), "{nome}");
+        liga_no_teste(false);
+        assert!(
+            tela == referencia,
+            "{nome}: o papel preparado mudou a tinta"
+        );
+    }
+    assert!(sentiram > 0, "nenhum pincel leu o dente: a prova é cega");
+}
+
 #[test]
 fn fora_do_wet_o_preparo_larga_a_grade() {
     liga_no_teste(true);

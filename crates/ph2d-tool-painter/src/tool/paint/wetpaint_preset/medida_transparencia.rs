@@ -570,5 +570,7 @@ fn o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes() {
 /// 47ca63932e · 70869bf673 · 183d3d02e9 · ef3f836a86 · c77e40484c · 0f32fb6e75 · 5acb712ec6 · 7c8e08d16b (E10) ·
 /// 032cda64a5; a tabela dos hashes está no commit. Regravado 02/11c (era `0xd780_ee7b_c62b_9982` ·
 /// `0x65a9_16d3_3d87_ed2f`): o lobo da lâmpada passou ao microfacet físico (`oleo_real`, cura do Cycles).
-const CLEAR_GLASS_05: u64 = 0x92f6_8918_af19_c165;
-const CLEAR_GLASS_1: u64 = 0xfc73_0fc0_9f11_537a;
+/// Regravado 05/11 (era `0x92f6_8918_af19_c165` · `0xfc73_0fc0_9f11_537a`): o relevo sem degrau que o dono aprovou
+/// (Bug #71); tirar o `meio_do_dente` de `height_at` devolve os de antes ao bit.
+const CLEAR_GLASS_05: u64 = 0xa302_b939_db67_365e;
+const CLEAR_GLASS_1: u64 = 0x5180_1609_f93c_f777;

@@ -177,6 +177,176 @@ fn desfazer_a_borracha_no_wet_devolve_a_tinta_antiga() {
     );
 }
 
+fn base_de(m: &Mesa) -> Vec<u8> {
+    let s =
+        m.t.paint
+            .wetpaint
+            .session
+            .as_ref()
+            .expect("a água continua");
+    s.base.to_vec()
+}
+
+/// Recompõe a tela inteira a partir da base: é o que mostra uma base errada, que o journal do undo esconde.
+fn recomposta(m: &mut Mesa) -> Vec<u8> {
+    let s =
+        m.t.paint
+            .wetpaint
+            .session
+            .as_mut()
+            .expect("a água continua");
+    s.bring_home();
+    s.engine.mark_dirty_full();
+    m.t.wet_compoe_ou_adia();
+    m.t.wet_compoe_o_pendente();
+    m.t.canvas_rgba.to_vec()
+}
+
+fn regiao(c: &[u8], (x0, x1, y0, y1): (u32, u32, u32, u32)) -> Vec<u8> {
+    (y0..y1)
+        .flat_map(|y| {
+            let i = ((y * SIZE + x0) * 4) as usize;
+            c[i..i + ((x1 - x0) * 4) as usize].to_vec()
+        })
+        .collect()
+}
+
+/// O undo e o redo devolvem a própria base, passo a passo, com um traço de tinta entre duas Borrachas.
+#[test]
+fn desfazer_e_refazer_devolvem_a_base_de_cada_passo() {
+    let mut m = Mesa::nova();
+    m.meio(PaintMedia::Digital);
+    m.pinta(40.0);
+    m.meio(PaintMedia::WetPaint);
+    m.pinta(90.0);
+    m.quadros(20);
+    let inicial = base_de(&m);
+    let borracha = |m: &mut Mesa, x: f32| {
+        m.trilho("eraser");
+        m.t.paint.brush.radius_px = 10.0;
+        m.t.paint.brush.strength = 1.0;
+        m.risca([x, 20.0], [x, 60.0], 20);
+    };
+    borracha(&mut m, 64.0);
+    let uma = base_de(&m);
+    assert!(uma != inicial, "a 1.ª Borracha apagou a base");
+    m.trilho("brush");
+    m.pinta(70.0);
+    assert!(base_de(&m) == uma, "o pincel não mexe na base");
+    borracha(&mut m, 36.0);
+    let duas = base_de(&m);
+    assert!(duas != uma, "a 2.ª Borracha apagou a base");
+
+    // A tinta antiga na tela recomposta é a da base: nem o que o journal devolveu a tapa.
+    let confere = |m: &mut Mesa, esperada: &[u8], nome: &str| {
+        assert!(base_de(m) == esperada, "{nome}: a base");
+        let tela = recomposta(m);
+        for r in [VELHO, VELHO_FORA] {
+            assert!(
+                regiao(&tela, r) == regiao(esperada, r),
+                "{nome}: a tela recomposta em {r:?}"
+            );
+        }
+    };
+    assert!(m.t.undo_last(), "desfez a 2.ª Borracha");
+    confere(&mut m, &uma, "desfez a 2.ª");
+    assert!(m.t.undo_last(), "desfez o traço");
+    confere(&mut m, &uma, "desfez o traço");
+    assert!(m.t.undo_last(), "desfez a 1.ª Borracha");
+    confere(&mut m, &inicial, "desfez a 1.ª");
+    assert!(m.t.redo_last(), "refez a 1.ª Borracha");
+    confere(&mut m, &uma, "refez a 1.ª");
+    assert!(m.t.redo_last(), "refez o traço");
+    confere(&mut m, &uma, "refez o traço");
+    assert!(m.t.redo_last(), "refez a 2.ª Borracha");
+    confere(&mut m, &duas, "refez a 2.ª");
+}
+
+/// O ecrã, e não só a tela: a tinta antiga sem água por cima some do que `take_preview_arc` entrega, à razão de grade e à
+/// velocidade do traço que forem, e a orla inteira entra na composição.
+#[test]
+fn o_ecra_mostra_a_tinta_antiga_apagada_onde_nao_ha_agua() {
+    for (razao, passos) in [(1, 16), (1, 2), (2, 16), (2, 2), (4, 16), (4, 2)] {
+        let nome = format!("razão {razao}, {passos} passos");
+        let mut m = Mesa::nova();
+        m.meio(PaintMedia::Digital);
+        m.pinta(40.0);
+        m.t.paint.wetpaint.grid_ratio = razao;
+        m.meio(PaintMedia::WetPaint);
+        m.pinta(90.0);
+        m.quadros(20);
+        let velho = tinta_em(m.tela.as_ref().expect("ecrã"), VELHO);
+        assert!(velho > 10.0, "{nome}: a tinta antiga no ecrã: {velho:.1}");
+        m.trilho("eraser");
+        m.t.paint.brush.radius_px = 10.0;
+        m.t.paint.brush.strength = 1.0;
+        m.tela = None;
+        m.risca([64.0, 25.0], [64.0, 56.0], passos);
+        let ecra = m.tela.clone().expect("o ecrã mudou");
+        let depois = tinta_em(&ecra, VELHO);
+        assert!(
+            depois < velho * 0.8,
+            "{nome}: ecrã {velho:.1} → {depois:.1}"
+        );
+        assert!(
+            tinta_em(&ecra, VELHO_FORA) > 10.0,
+            "{nome}: fora do círculo"
+        );
+        let cheia = recomposta(&mut m);
+        let diferem = ecra
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(cheia.as_chunks::<4>().0)
+            .filter(|(a, b)| a != b)
+            .count();
+        assert_eq!(diferem, 0, "{nome}: píxeis por recompor no ecrã");
+    }
+}
+
+/// A base com este alfa, e `n` cliques da Borracha no mesmo sítio: os alfas que ficam.
+fn cliques_sobre_alfa(alfa: u8, n: usize) -> Vec<u8> {
+    let mut m = Mesa::nova();
+    m.meio(PaintMedia::WetPaint);
+    m.pinta(90.0);
+    m.quadros(2);
+    {
+        let s = m.t.paint.wetpaint.session.as_mut().expect("sessão viva");
+        for px in std::sync::Arc::make_mut(&mut s.base).as_chunks_mut::<4>().0 {
+            px[3] = alfa;
+        }
+    }
+    m.trilho("eraser");
+    m.t.paint.brush.radius_px = 10.0;
+    m.t.paint.brush.strength = 1.0;
+    m.t.paint.brush.hardness = 0.1;
+    for _ in 0..n {
+        m.risca([64.0, 40.0], [64.0, 40.0], 1);
+    }
+    base_de(&m)
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|p| p[3])
+        .collect()
+}
+
+/// Alfa baixo sob cobertura macia chega a 0: arredondar deixava-o em 1, com o filtro `> 0` a pedir trabalho para sempre.
+#[test]
+fn a_borracha_fraca_leva_o_alfa_baixo_a_zero() {
+    // O `k` de cada píxel, medido sobre alfa cheio. A orla com `k` em (0,5; 1) é o caso.
+    let k = cliques_sobre_alfa(255, 1);
+    let orla = k.iter().filter(|&&a| a > 128 && a < 255).count();
+    assert!(orla > 10, "a prova precisa de orla macia: {orla} píxeis");
+    let baixo = cliques_sobre_alfa(1, 1);
+    for (i, (&ka, &a)) in k.iter().zip(&baixo).enumerate() {
+        match ka {
+            255 => assert_eq!(a, 1, "píxel {i}: fora da borracha"),
+            _ => assert_eq!(a, 0, "píxel {i}: k {ka}/255"),
+        }
+    }
+}
+
 /// A selecção protege a tinta antiga como protege a molhada.
 #[test]
 fn a_selecao_protege_a_tinta_antiga_da_borracha() {

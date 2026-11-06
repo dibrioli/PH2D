@@ -514,6 +514,8 @@ mod agua_sobre_oleo_tests; // smoke do dono 30/10: o molhado sobre o óleo com p
 mod borda_do_traco_tests; // o Edge Darkening é de cada traço (Bug #69)
 mod borracha_na_base; // a Borracha também apaga a tinta antiga (Bug #70)
 #[cfg(test)]
+mod borracha_na_base_tests;
+#[cfg(test)]
 mod chao_forca_regua_tests; // J10: a aguada empoça, contorna e passa por cima com volume
 #[cfg(test)]
 mod chao_forca_tests; // sonda J10: o chão como força no momento

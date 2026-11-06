@@ -37,8 +37,12 @@ thread_local! {
 
 /// O pincel pedido; `None` = a cena não está pedida.
 pub fn pedido() -> Option<&'static str> {
-    let i: usize = std::env::var("PH2D_FPS_PRIMEIRO").ok()?.parse().ok()?;
-    PINCEIS.get(i).copied()
+    static I: std::sync::LazyLock<Option<usize>> = std::sync::LazyLock::new(|| {
+        std::env::var("PH2D_FPS_PRIMEIRO")
+            .ok()
+            .and_then(|s| s.parse().ok())
+    });
+    PINCEIS.get((*I)?).copied()
 }
 
 fn ponto(x: f32, y: f32, phase: PointerPhase) -> CanvasPointer {

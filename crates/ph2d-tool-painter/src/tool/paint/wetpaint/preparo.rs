@@ -227,6 +227,9 @@ impl PainterTool {
     ) -> Option<(Engine, Option<PapelPronto>)> {
         let preparo = &mut self.paint.wetpaint.preparo;
         preparo.recolhe();
+        // Com a sessão viva o preparo não corre: o que ficasse aqui segurava um motor inteiro até ela acabar. O fio ainda
+        // a correr larga-se: acaba sozinho e liberta o motor.
+        preparo.fio = None;
         let p = preparo.pronto.take()?;
         let pedida = Grade {
             gw,
@@ -235,7 +238,6 @@ impl PainterTool {
             ratio,
         };
         if p.grade != pedida {
-            preparo.pronto = Some(p);
             return None;
         }
         #[cfg(test)]

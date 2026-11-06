@@ -75,7 +75,8 @@ impl PainterTool {
             for i in linhas() {
                 let k = keep(i);
                 if k < 1.0 {
-                    base[i + 3] = (f32::from(base[i + 3]) * k).round() as u8;
+                    // Para baixo: com alfa 1 e k > 0,5 o arredondar nunca chegava a 0.
+                    base[i + 3] = (f32::from(base[i + 3]) * k).floor() as u8;
                 }
             }
             let q = i32::from(sess.ratio);

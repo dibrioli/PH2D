@@ -101,6 +101,34 @@ pub(super) struct Substrate<'a> {
     /// `watercolor_render` e o `dab_route` do Wet Paint) já passavam a imagem; este era o terceiro, e
     /// nasceu esquecido.
     image: Option<ImageMask<'a>>,
+    /// A média do dente de quem não é papel assado, nas cargas do [`Self::tooth_loads`]: medida uma vez
+    /// ([`Self::meio_do_dente`]).
+    media_do_dente: std::sync::OnceLock<f32>,
+}
+
+/// As amostras da média do dente, 1× por [`Substrate`], e só se o relevo a pedir: `.is_some()` não paga.
+const AMOSTRAS_DA_MEDIA: u32 = 1024;
+
+/// O tipo cuja média fica a menos de 0,03 da meia amplitude em toda a Roughness (medido, tabela do Bug #71).
+fn dente_centrado(kind: TextureKind) -> bool {
+    use TextureKind as K;
+    matches!(
+        kind,
+        K::Noise
+            | K::Checker
+            | K::Clouds
+            | K::DistortedNoise
+            | K::Magic
+            | K::Marble
+            | K::Wood
+            | K::Gradient
+            | K::Grain
+            | K::Diamonds
+            | K::Triangles
+            | K::PaperCold
+            | K::PaperRough
+            | K::PaperHot
+    )
 }
 
 impl<'a> Substrate<'a> {
@@ -138,6 +166,7 @@ impl<'a> Substrate<'a> {
             amp_px,
             rough: rough.clamp(0.0, 1.0),
             image,
+            media_do_dente: std::sync::OnceLock::new(),
         })
     }
 
@@ -171,9 +200,29 @@ impl<'a> Substrate<'a> {
         texture::contrasta(t, ganho_do_dente(self.rough)) * self.amp_px
     }
 
-    /// A meia altura do dente, nas cargas do [`Self::tooth_loads`] (Cold a Relief 1: média medida 0,0313 de 0..0,0625).
+    /// A altura média do dente, nas cargas do [`Self::tooth_loads`]: meia amplitude nos tipos centrados, a média real nos
+    /// outros e na imagem, que o `contrasta` satura (0,10..0,80; tabela no Bug #71 de `docs/Painter/BUGS_painter.md`).
     pub(super) fn meio_do_dente(&self) -> f32 {
-        self.amp_px * 0.5 / DEPTH_UNIT_PX
+        if dente_centrado(self.tex.kind) {
+            return self.amp_px * 0.5 / DEPTH_UNIT_PX;
+        }
+        *self.media_do_dente.get_or_init(|| {
+            // Dois ladrilhos (uma imagem ocupa dois) ou 1024 px, se o padrão é fino, numa sequência R2: uma grelha regular
+            // batia com o período do padrão.
+            let span = self.tex.size.map(|s| {
+                (2.0 * ph2d_painter_brush::TEX_TILE_BASE_PX / s.max(texture::TEX_SIZE_MIN))
+                    .max(1024.0)
+            });
+            let soma: f64 = (0..AMOSTRAS_DA_MEDIA)
+                .map(|n| {
+                    let f = f64::from(n);
+                    let x = (f * 0.754_877_666_246_693).fract() * f64::from(span[0]);
+                    let y = (f * 0.569_840_290_998_053).fract() * f64::from(span[1]);
+                    f64::from(self.tooth_px(x as i64, y as i64))
+                })
+                .sum();
+            (soma / f64::from(AMOSTRAS_DA_MEDIA)) as f32 / DEPTH_UNIT_PX
+        })
     }
 
     /// A altura do dente **na unidade do plano de relevo da TINTA** — cargas, não pixels.
@@ -436,3 +485,7 @@ pub(super) fn celula_ao_acaso(cx: i64, cy: i64, n: usize) -> usize {
     h ^= h >> 29;
     ((h >> 11) as f64 / (1u64 << 53) as f64 * n as f64).min((n - 1) as f64) as usize
 }
+
+#[cfg(test)]
+#[path = "meio_do_dente_tests.rs"]
+mod meio_do_dente_tests;

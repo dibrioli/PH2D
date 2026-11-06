@@ -501,13 +501,13 @@ fn undo_over_a_wet_apply_reinstates_the_editable_shape_over_still_water() {
     );
 }
 
-/// Doc 21 G13: the ERASER × a re-stamp method is a FLAT erase and the water
-/// dies — the flat EraseAlpha preview shows exactly what commits (an honest
-/// preview), and the erase write is foreign to the session (no re-arm for
-/// the eraser, W2.6 extended / the watercolor stance). Mutation that bleeds
-/// it: re-arming the guard for eraser writes.
+/// Doc 21 G13: the ERASER × a re-stamp method is a FLAT erase — the flat
+/// EraseAlpha preview shows exactly what commits, and the write is foreign to
+/// the session (no re-arm for the eraser). Dono 06/11: the water lives on and
+/// only what the erase wrote is buried. Mutation that bleeds it: re-arming the
+/// guard for eraser writes (the next composites paint the erased pixels back).
 #[test]
-fn a_re_stamp_eraser_bakes_through_and_ends_the_session() {
+fn a_re_stamp_eraser_bakes_through_and_keeps_the_session() {
     use ph2d_painter_brush::StrokeMethod;
     let mut t = wet_tool();
     t.on_canvas_pointer(cp([30.0, 60.0], PointerPhase::Down));
@@ -522,10 +522,21 @@ fn a_re_stamp_eraser_bakes_through_and_ends_the_session() {
     t.on_canvas_pointer(cp([60.0, 60.0], PointerPhase::Down));
     t.on_canvas_pointer(cp([80.0, 60.0], PointerPhase::Move));
     t.on_canvas_pointer(cp([80.0, 60.0], PointerPhase::Up));
+    let apagada = Arc::clone(&t.canvas_rgba);
     t.paint_tick(1.0 / 40.0); // the guard sees the foreign erase
     assert!(
-        t.paint.wetpaint.session.is_none(),
-        "the water survived a flat erase — the eraser write was re-armed as OURS"
+        t.paint.wetpaint.session.is_some(),
+        "the flat erase killed the water (dono 06/11: only what it wrote is buried)"
+    );
+    for _ in 0..30 {
+        t.paint_tick(1.0 / 40.0);
+    }
+    let w = t.source_size.0 as usize;
+    let i = (60 * w + 70) * 4;
+    assert_eq!(
+        apagada[i..i + 4],
+        t.canvas_rgba[i..i + 4],
+        "the water painted back what the flat eraser took — the write was composited over"
     );
     assert!(
         t.paint.wetpaint.pending_deposit.is_empty(),

@@ -180,6 +180,7 @@ pub(super) fn fork_canvas<'a>(
     area: Option<crate::compositor::Region>,
 ) -> &'a mut Vec<u8> {
     win.capture_canvas(arc, width_px as usize * 4, elems(area, 4));
+    win.a_tela_sai(arc);
     open_access(win);
     fork_par_raw(arc)
 }
@@ -226,6 +227,7 @@ impl crate::tool::PainterTool {
         self.undo
             .write_state
             .capture_canvas(&self.canvas_rgba, stride, None);
+        self.undo.write_state.a_tela_sai(&self.canvas_rgba);
         self.canvas_rgba = new;
     }
 }

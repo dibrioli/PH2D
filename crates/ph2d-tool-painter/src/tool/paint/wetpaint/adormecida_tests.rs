@@ -14,7 +14,7 @@ const OUTROS: [PaintMedia; 3] = [
 ];
 
 /// O traço de um outro meio, de `(x0, y0)` a `(x1, y1)`, a vermelho.
-fn traco_de_outro_meio(t: &mut PainterTool, a: (f32, f32), b: (f32, f32)) {
+pub(super) fn traco_de_outro_meio(t: &mut PainterTool, a: (f32, f32), b: (f32, f32)) {
     t.set_brush_size_px(16.0);
     t.set_brush_color_srgb8([220, 30, 30]);
     t.on_canvas_pointer(ponteiro(a.0, a.1, PointerPhase::Down));
@@ -31,7 +31,7 @@ fn traco_de_outro_meio(t: &mut PainterTool, a: (f32, f32), b: (f32, f32)) {
     t.on_tick(1000.0 / 60.0);
 }
 
-fn borracha_viva() -> Vec<u8> {
+pub(super) fn borracha_viva() -> Vec<u8> {
     let mut t = com_oleo();
     t.set_paint_tool_mode("eraser");
     apaga(&mut t)

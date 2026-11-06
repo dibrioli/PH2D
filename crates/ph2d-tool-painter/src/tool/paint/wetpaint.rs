@@ -394,6 +394,8 @@ mod lote_do_dab; // o que a rota apura para o lote e cada dab lê — filho de p
 pub(super) use lote::media_do_grao;
 pub(crate) mod adormecida; // a tinta viva parada fora do Wet (dono 06/11)
 #[cfg(test)]
+mod dentro_do_wet_tests;
+#[cfg(test)]
 mod adormecida_regua_tests;
 #[cfg(test)]
 mod adormecida_tests;

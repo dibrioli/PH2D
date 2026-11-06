@@ -170,6 +170,11 @@ pub struct WriteState {
     journal_since: std::cell::Cell<Option<u64>>,
     /// Os bytes velhos dos três planos de RELEVO — ver [`ReliefJournals`].
     relief: std::cell::RefCell<ReliefJournals>,
+    /// O endereço da tela que a sessão molhada viva pintou por último (0 = nenhuma).
+    tela_vigiada: std::cell::Cell<usize>,
+    /// Essa tela, retida quando alguém que não é a sessão a escreve ou troca: é com ela que o guarda sabe o que mudou
+    /// (`wetpaint/adormecida.rs`). A retenção faz o `fork_canvas` copiar, uma vez por operação.
+    tela_que_saiu: std::cell::RefCell<Option<std::sync::Arc<Vec<u8>>>>,
 }
 
 /// **Os journals dos três planos de relevo, mais de QUE camada eles falam.**
@@ -296,6 +301,30 @@ impl WriteState {
         } else {
             p.push(fora);
         }
+    }
+
+    /// A sessão molhada passa a vigiar `tela` (`None` = não vigia nada); o que estava retido larga-se.
+    pub(crate) fn vigia_a_tela(&self, tela: Option<&std::sync::Arc<Vec<u8>>>) {
+        self.tela_vigiada
+            .set(tela.map_or(0, |t| std::sync::Arc::as_ptr(t) as usize));
+        self.tela_que_saiu.borrow_mut().take();
+    }
+
+    /// `tela` vai ser escrita ou trocada por quem não é a sessão: se é a vigiada, fica retida (a primeira, a de antes
+    /// de tudo o que mudou desde a última composição).
+    #[inline]
+    pub(crate) fn a_tela_sai(&self, tela: &std::sync::Arc<Vec<u8>>) {
+        if std::sync::Arc::as_ptr(tela) as usize == self.tela_vigiada.get() {
+            let mut retida = self.tela_que_saiu.borrow_mut();
+            if retida.is_none() {
+                *retida = Some(std::sync::Arc::clone(tela));
+            }
+        }
+    }
+
+    /// A tela retida, se alguma saiu desde a última composição.
+    pub(crate) fn tela_que_saiu(&self) -> Option<std::sync::Arc<Vec<u8>>> {
+        self.tela_que_saiu.borrow().clone()
     }
 
     /// `true` enquanto o campo `canvas_rgba` hospeda um plano que não é a tela.

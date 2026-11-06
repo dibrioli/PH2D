@@ -138,7 +138,7 @@ impl PainterTool {
         // (`drag_preview` is the flat re-stamp record in this mode) — no
         // state, no release door; commit/cancel drop the record and the
         // next tick simply resumes.
-        if self.wet_authoring_hold() {
+        if self.wet_authoring_hold() || self.wet_tela_alheia() {
             // ⚠️ **TRAZER O MOTOR PARA CASA é o que torna a pausa REAL** — sem
             // isto o `return` congela só o DISPLAY (Enio 2026-08-03: *"uma pausa
             // falsa na simulação — pausa no visual mas está ocorrendo por
@@ -247,19 +247,28 @@ impl PainterTool {
         }
     }
 
-    /// The canvas-identity guard (module doc): a foreign `canvas_rgba` swap
-    /// ends the session before anything composites over restored pixels.
+    /// The canvas-identity guard (module doc): a foreign `canvas_rgba` write
+    /// never gets composited over. When the session knows what changed it lives on
+    /// ([`Self::wet_atravessa_a_troca`]: the changed cells are buried); otherwise it ends.
     ///
     /// The comparison is `Weak::as_ptr` against `Arc::as_ptr` — see
     /// [`WetSession::canvas`] for why the token is weak, and why comparing its
     /// address is sound *because* it is weak (the handle pins the allocation,
     /// so the address it names can never be re-issued to a different canvas).
-    pub(super) fn wetpaint_guard(&mut self) {
-        if let Some(sess) = &self.paint.wetpaint.session
-            && !std::ptr::eq(sess.canvas.as_ptr(), Arc::as_ptr(&self.canvas_rgba))
-        {
+    pub(in crate::tool::paint) fn wetpaint_guard(&mut self) {
+        if self.wet_tela_alheia() && !self.wet_atravessa_a_troca() {
             self.paint.wetpaint.session = None;
+            self.undo.write_state.vigia_a_tela(None);
             self.undo.marca.acaba_a_molhada();
         }
+    }
+
+    /// A sessão viva já não pintou a tela de agora.
+    pub(super) fn wet_tela_alheia(&self) -> bool {
+        self.paint
+            .wetpaint
+            .session
+            .as_ref()
+            .is_some_and(|s| !std::ptr::eq(s.canvas.as_ptr(), Arc::as_ptr(&self.canvas_rgba)))
     }
 }

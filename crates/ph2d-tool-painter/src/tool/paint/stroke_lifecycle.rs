@@ -61,6 +61,7 @@ impl PainterTool {
         if sozinho {
             self.begin_undo_step();
             if matches!(self.paint.paint_mode, PaintMode::WetPaint) {
+                self.wetpaint_guard(); // o que outra ferramenta escreveu desde o último quadro é um passo à parte
                 self.wet_guarda_o_passo(); // o undo deste passo devolve a tinta viva de agora
             }
         }

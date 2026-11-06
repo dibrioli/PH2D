@@ -95,6 +95,39 @@ impl Engine {
         self.marca_ret(r[0] - f, r[1] - f, r[2] + f, r[3] + f);
     }
 
+    /// Enterra as células marcadas em `tocada` (`gw` por linha, sem o pad): ver [`crate::grid::enterra_celula`]. O
+    /// histórico guarda o que o enterro apaga: o undo do passo devolve as células.
+    pub fn enterra_celulas(&mut self, tocada: &[bool], gw: usize) {
+        self.drain_step();
+        let Some(primeira) = tocada.iter().position(|t| *t) else {
+            return;
+        };
+        let ultima = tocada.iter().rposition(|t| *t).unwrap_or(primeira);
+        let (mut x0, mut x1) = (gw, 0);
+        for (k, _) in tocada.iter().enumerate().filter(|(_, t)| **t) {
+            x0 = x0.min(k % gw);
+            x1 = x1.max(k % gw);
+        }
+        self.marca_ret(
+            x0 as i64 + 1,
+            (primeira / gw) as i64 + 1,
+            x1 as i64 + 2,
+            (ultima / gw) as i64 + 2,
+        );
+        let g = self.active_grid_mut();
+        let s = g.s;
+        for (k, _) in tocada.iter().enumerate().filter(|(_, t)| **t) {
+            crate::grid::enterra_celula(g, (k / gw + 1) * s + k % gw + 1);
+        }
+    }
+
+    /// O motor esquece os registos de undo: o que eles guardam já não descreve a história.
+    pub fn esquece_a_historia(&mut self) {
+        let layer = &mut self.layers[self.active_layer];
+        layer.undo.clear();
+        layer.redo.clear();
+    }
+
     pub fn can_undo(&self) -> bool {
         !self.layers[self.active_layer].undo.is_empty()
     }

@@ -90,6 +90,11 @@ impl PainterTool {
         let confined = self.undo.peek_confined_region(false);
         // A tinta viva sai do caminho do restore (que acaba a sessão) e volta com as grades de antes do passo.
         let viva = self.wet_solta_para_o_undo(false);
+        let presa = if viva.is_none() {
+            self.wet_tira_para_o_restauro()
+        } else {
+            None
+        };
         let desfez = if let Some(model) = self.undo.undo(&live) {
             self.restore_model_confined(*model, confined);
             true
@@ -98,6 +103,9 @@ impl PainterTool {
         };
         if let Some(v) = viva {
             self.wet_volta_do_undo(v, desfez);
+        }
+        if let Some(p) = presa {
+            self.wet_volta_do_restauro(p, desfez, false);
         }
         desfez
     }
@@ -144,6 +152,11 @@ impl PainterTool {
         // `None` = não confinado, e aí o restore é o de sempre (doc 28 §5.62).
         let confined = self.undo.peek_confined_region(true);
         let viva = self.wet_solta_para_o_undo(true);
+        let presa = if viva.is_none() {
+            self.wet_tira_para_o_restauro()
+        } else {
+            None
+        };
         let refez = if let Some(model) = self.undo.redo(&live) {
             self.restore_model_confined(*model, confined);
             true
@@ -152,6 +165,9 @@ impl PainterTool {
         };
         if let Some(v) = viva {
             self.wet_volta_do_undo(v, refez);
+        }
+        if let Some(p) = presa {
+            self.wet_volta_do_restauro(p, refez, true);
         }
         refez
     }

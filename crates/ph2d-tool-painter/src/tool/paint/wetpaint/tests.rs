@@ -317,11 +317,12 @@ fn no_other_paint_mode_reaches_the_wet_engine() {
     );
 }
 
-/// The canvas-identity guard, at the TICK: a foreign `canvas_rgba` swap
-/// (undo, fill, layer switch) ends the session BEFORE the sim composites
-/// over the restored pixels. Mutation that bleeds it: dropping the
-/// `wetpaint_guard` call from `wetpaint_tick` (the restored canvas gets
-/// repainted by a zombie session).
+/// The canvas-identity guard, at the TICK: a swap that passed through no door
+/// (the session cannot know what changed) ends the session BEFORE the sim
+/// composites over the new pixels; the writes through the doors are buried
+/// (`dentro_do_wet_tests`). Mutation that bleeds it: dropping the
+/// `wetpaint_guard` call from `wetpaint_tick` (the canvas gets repainted by a
+/// zombie session).
 #[test]
 fn a_foreign_canvas_swap_ends_the_session_before_the_tick_composites() {
     let mut t = tool_in_mode("wetpaint");

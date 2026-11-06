@@ -175,6 +175,10 @@ pub(in crate::tool::paint) struct WetSession {
     pub(super) antes_do_passo: Vec<super::undo_vivo::PassoVivo>,
     /// O pedido de imagem no ar, a `uniao_local` e a dívida do compositor da óptica ([`super::otica_no_tique`]).
     pub(super) otica: super::otica_no_tique::OticaDoTique,
+    /// A camada da tinta: uma tela de outra camada não é uma mudança a enterrar ([`super::adormecida`]).
+    pub(super) camada: Option<crate::layers::LayerId>,
+    /// A sessão já enterrou células: recompor a tela inteira mudaria a orla delas.
+    pub(super) enterrou: bool,
 }
 
 /// Um lote de dabs adiado — tudo o que a rota do dab lê por LOTE.
@@ -367,6 +371,8 @@ impl Clone for WetSession {
             po,
             antes_do_passo,
             otica,
+            camada,
+            enterrou,
         } = self;
         assert!(
             worker.is_none(),
@@ -402,6 +408,8 @@ impl Clone for WetSession {
             po: po.clone(),
             antes_do_passo: antes_do_passo.clone(),
             otica: otica.clone(),
+            camada: *camada,
+            enterrou: *enterrou,
         }
     }
 }

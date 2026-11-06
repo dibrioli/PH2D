@@ -45,6 +45,7 @@ impl PainterTool {
             && let Some(sess) = self.paint.wetpaint.session.as_mut()
         {
             sess.canvas = Arc::downgrade(&self.canvas_rgba);
+            self.undo.write_state.vigia_a_tela(Some(&self.canvas_rgba));
         }
     }
 

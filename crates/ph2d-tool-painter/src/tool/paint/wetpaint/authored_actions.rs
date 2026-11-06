@@ -108,7 +108,10 @@ impl PainterTool {
             po: super::po::PoDoTraco::default(),
             antes_do_passo: Vec::new(),
             otica: super::otica_no_tique::OticaDoTique::default(),
+            camada: self.layers.active(),
+            enterrou: false,
         });
+        self.undo.write_state.vigia_a_tela(Some(&self.canvas_rgba));
         true
     }
 
@@ -212,6 +215,7 @@ impl PainterTool {
             self.undo.marca.agua_da_gravacao_parou(c);
         }
         self.paint.wetpaint.session = None;
+        self.undo.write_state.vigia_a_tela(None);
         self.undo.marca.acaba_a_molhada();
         // Doc 21: mode-leave hygiene — a stash must not survive into another
         // mode's commit. (The GUARD-kill branch deliberately does NOT clear

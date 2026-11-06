@@ -40,6 +40,9 @@ impl PainterTool {
     /// [`Self::wetpaint_composite`] with the show-wet veil explicit — the
     /// end-session door forces `false` so the veil never bakes.
     pub(super) fn wetpaint_composite_veiled(&mut self, veil: bool) {
+        if self.wet_tela_alheia() {
+            return; // uma operação de outra ferramenta ainda está aberta: a tela é dela
+        }
         #[cfg(test)]
         if super::otica_fora_porta::ligada() {
             self.wetpaint_composite_pelo_espelho(veil);
@@ -273,6 +276,8 @@ impl PainterTool {
                 .collect(),
             None => (py0..py1).map(|_| None).collect(),
         };
+        // A escrita é da própria sessão: a porta do canvas não a retém (reter copiaria a tela a cada composição).
+        self.undo.write_state.vigia_a_tela(None);
         let canvas = crate::tool::paint::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,
@@ -536,6 +541,7 @@ impl PainterTool {
         // Re-arm the guard with the allocation our own make_mut may have
         // re-seated (weak — [`WetSession::canvas`]).
         sess.canvas = Arc::downgrade(&self.canvas_rgba);
+        self.undo.write_state.vigia_a_tela(Some(&self.canvas_rgba));
         // A região é a de PIXELS que este composite de fato escreveu (o dirty
         // do motor é em células; publicar aquele retângulo verbatim sob razão
         // > 1 declararia sujo `ratio²` menos pixels do que mudaram).

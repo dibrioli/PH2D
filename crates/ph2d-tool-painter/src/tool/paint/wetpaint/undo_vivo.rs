@@ -42,6 +42,9 @@ pub(crate) struct PassoVivo {
     /// A tinta antiga: a Borracha muda-a ([`super::borracha_na_base`]). Passos sem Borracha partilham o mesmo `Arc`.
     base_antes: Arc<Vec<u8>>,
     base_depois: Option<Arc<Vec<u8>>>,
+    /// Só no passo de OUTRA ferramenta ([`super::adormecida`]): a tela antes do enterro. Vários traços de outro modo
+    /// enterram-se de uma vez ao acordar: desfeito só o último, o que ainda difere dela volta a enterrar-se.
+    tela_antes: Option<Arc<Vec<u8>>>,
 }
 
 /// A sessão tirada do caminho do restore, com a fotografia a devolver, o sentido (`true` = refazer) e a chave do
@@ -59,6 +62,48 @@ fn copia(de: &[f32]) -> Vec<f32> {
     let mut v = Vec::new();
     ph2d_wet_paint::par::copia_plano(de, &mut v);
     v
+}
+
+/// Abre o registo copy-on-write do passo `chave` no motor (em casa) e fotografa o resto, dentro do orçamento.
+fn abre_o_passo(sess: &mut WetSession, chave: usize, tela_antes: Option<Arc<Vec<u8>>>) {
+    sess.antes_do_passo.retain(|p| p.chave < chave);
+    let teto = orcamento_das_fotos(sess.engine.width, sess.engine.height);
+    if FotoDoMotor::bytes_de(&sess.engine) > teto {
+        sess.antes_do_passo.clear(); // não cabe UMA: o undo acaba a sessão, como antes
+        return;
+    }
+    // O registo copy-on-write do passo: daqui em diante toda escrita no grid marca os seus tiles nele.
+    sess.engine.capture_history();
+    let antes = FotoDoMotor::de(&sess.engine);
+    let mut soma = antes.bytes() + tela_antes.as_ref().map_or(0, |t| t.len());
+    let mut ultima = Arc::as_ptr(&sess.base);
+    // O motor guarda HISTORY_DEPTH registos: um passo mais velho já não tem as suas grades.
+    let mut corte = sess.antes_do_passo.len().saturating_sub(HISTORY_DEPTH - 1);
+    for (i, p) in sess.antes_do_passo.iter().enumerate().skip(corte).rev() {
+        soma += p.bytes() + p.tela_antes.as_ref().map_or(0, |t| t.len());
+        if Arc::as_ptr(&p.base_antes) != ultima {
+            ultima = Arc::as_ptr(&p.base_antes);
+            soma += p.base_antes.len();
+        }
+        if soma > teto {
+            corte = i + 1;
+            break;
+        }
+    }
+    sess.antes_do_passo.drain(..corte);
+    sess.antes_do_passo.push(PassoVivo {
+        chave,
+        antes,
+        depois: None,
+        base_antes: Arc::clone(&sess.base),
+        base_depois: None,
+        tela_antes,
+    });
+}
+
+fn esquece_os_passos(sess: &mut WetSession) {
+    sess.antes_do_passo.clear();
+    sess.engine.esquece_a_historia();
 }
 
 impl FotoDoMotor {
@@ -138,38 +183,29 @@ impl PainterTool {
             return;
         };
         sess.bring_home();
-        sess.antes_do_passo.retain(|p| p.chave < chave);
-        let teto = orcamento_das_fotos(sess.engine.width, sess.engine.height);
-        if FotoDoMotor::bytes_de(&sess.engine) > teto {
-            sess.antes_do_passo.clear(); // não cabe UMA: o undo acaba a sessão, como antes
-            return;
-        }
-        // O registo copy-on-write do passo: daqui em diante toda escrita no grid marca os seus tiles nele.
-        sess.engine.capture_history();
-        let antes = FotoDoMotor::de(&sess.engine);
-        let mut soma = antes.bytes();
-        let mut ultima = Arc::as_ptr(&sess.base);
-        // O motor guarda HISTORY_DEPTH registos: um passo mais velho já não tem as suas grades.
-        let mut corte = sess.antes_do_passo.len().saturating_sub(HISTORY_DEPTH - 1);
-        for (i, p) in sess.antes_do_passo.iter().enumerate().skip(corte).rev() {
-            soma += p.bytes();
-            if Arc::as_ptr(&p.base_antes) != ultima {
-                ultima = Arc::as_ptr(&p.base_antes);
-                soma += p.base_antes.len();
-            }
-            if soma > teto {
-                corte = i + 1;
-                break;
-            }
-        }
-        sess.antes_do_passo.drain(..corte);
-        sess.antes_do_passo.push(PassoVivo {
-            chave,
-            antes,
-            depois: None,
-            base_antes: Arc::clone(&sess.base),
-            base_depois: None,
+        abre_o_passo(sess, chave, None);
+    }
+
+    /// O enterro de `velha` × a tela de agora, como o passo do topo do undo: desfazê-lo devolve as células.
+    pub(super) fn wet_enterra_como_passo(&self, sess: &mut WetSession, velha: &Arc<Vec<u8>>) {
+        // Um registo mais novo que o motor não desfez (a história andou com a sessão parada): as pilhas já não casam.
+        let chave = self.undo.chave_do_topo().checked_sub(1).filter(|c| {
+            !sess
+                .antes_do_passo
+                .iter()
+                .any(|p| p.chave > *c && p.depois.is_none())
         });
+        if let Some(chave) = chave {
+            sess.antes_do_passo.retain(|p| p.chave <= chave);
+            // O passo já aberto no pen-down é este (a Borracha plana): o enterro entra no registo dele.
+            if sess.antes_do_passo.last().is_none_or(|p| p.chave != chave) {
+                abre_o_passo(sess, chave, Some(Arc::clone(velha)));
+            }
+        } else {
+            esquece_os_passos(sess);
+        }
+        sess.enterrou = true;
+        self.wet_enterra_o_que_mudou(sess, velha);
     }
 
     /// Antes de um undo (`refaz = false`) ou redo: se a sessão tem a fotografia do passo, sai do caminho do restore
@@ -238,10 +274,25 @@ impl PainterTool {
             );
             foto.repoe(&mut sess.engine);
             sess.canvas = Arc::downgrade(&self.canvas_rgba);
+            self.undo.write_state.vigia_a_tela(Some(&self.canvas_rgba));
             sess.stroke_open = false;
             sess.lanes.clear();
             sess.adiados.clear();
             sess.preview = None;
+            // Os traços de outro modo que ficaram na tela continuam por cima da tinta: voltam a enterrá-la.
+            let antes = (!refaz)
+                .then(|| sess.antes_do_passo.iter().find(|p| p.chave == chave))
+                .flatten()
+                .and_then(|p| p.tela_antes.clone());
+            if let Some(tela) = antes.filter(|t| **t != *self.canvas_rgba) {
+                self.wet_enterra_como_passo(&mut sess, &tela);
+            }
+            // A tela restaurada já é a verdade. ⛔ Medido: recompor a tela inteira com células enterradas re-ilumina a
+            // orla delas (3 862 px); a orla só se recalcula sob o pincel seguinte.
+            if sess.enterrou {
+                sess.engine.take_dirty();
+                sess.otica.toca_tudo(sess.grid);
+            }
         }
         // Uma sessão que o restore fez nascer (não devia: o restore acaba-as) perde para a que estava viva.
         self.paint.wetpaint.session = Some(sess);

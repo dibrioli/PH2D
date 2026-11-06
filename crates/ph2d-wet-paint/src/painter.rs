@@ -559,16 +559,6 @@ impl Engine {
         self.mark_dirty_full();
     }
 
-    /// Enterra as células marcadas em `tocada` (`gw` por linha, sem o pad): ver [`crate::grid::enterra_celula`].
-    pub fn enterra_celulas(&mut self, tocada: &[bool], gw: usize) {
-        self.drain_step();
-        let g = self.active_grid_mut();
-        let s = g.s;
-        for (k, _) in tocada.iter().enumerate().filter(|(_, t)| **t) {
-            crate::grid::enterra_celula(g, (k / gw + 1) * s + k % gw + 1);
-        }
-    }
-
     pub fn action_clear(&mut self) {
         self.drain_step();
         self.capture_history();

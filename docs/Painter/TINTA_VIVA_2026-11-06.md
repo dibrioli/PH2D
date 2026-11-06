@@ -19,7 +19,7 @@ Outros gatilhos de morte: `wetpaint_guard` (`ciclo.rs:255`, o `Arc` do canvas mu
 ## Decisões do dono
 1. **Manter a tinta viva** ao trocar de modo e de ferramenta, sem reduzir a velocidade dos outros modos.
 2. Traço de outro modo por cima do óleo: **a Borracha leva os dois juntos**.
-3. Ao **salvar o projeto, uma OPÇÃO** de manter a tinta viva (não sempre).
+3. Ao **salvar o projeto, uma OPÇÃO** de manter a tinta viva (não sempre), **ligada por omissão**.
 4. **Borracha inteligente:** age de verdade na tinta viva e **imita o comportamento certo na tinta morta** (arquivo antigo ou salvo sem a opção).
 
 ## Medições de custo (Dabber, 1 camada; zstd `-T0`, mínimo de 3, load ~10; `tinta` e `pigmento` vazias na lei antiga)

@@ -177,7 +177,12 @@ fn com_origem(o: &Value) -> Vec<Pincel> {
 #[test]
 fn o_traco_fino_pesa_por_area_o_que_o_largo_pesa() {
     let o = oraculo();
-    let todos = com_origem(&o);
+    // Mede o DEPÓSITO, com o Smooth Edges a 0 (o controlo): o 0,3 de fábrica dos 13 óleos (dono 05/11) amacia a imagem e
+    // tira cobertura ao fino — Dabber razão 0,85 → 0,73, Express Oil 0,95 → 0,84 (Bug #61/#62 do BUGS_painter).
+    let todos: Vec<Pincel> = com_origem(&o)
+        .into_iter()
+        .map(Pincel::sem_smooth_edges)
+        .collect();
     let medidas: Vec<(String, f64, f64)> = std::thread::scope(|s| {
         let hs: Vec<_> = todos
             .iter()

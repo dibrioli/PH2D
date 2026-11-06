@@ -105,6 +105,19 @@ impl Pincel {
         self
     }
 
+    /// O mesmo pincel com o Smooth Edges a 0 (a chave sai do preset): o portão que mede o DEPÓSITO (peso por área, fios)
+    /// e não o amaciar da imagem. Os 13 óleos levam 0,3 de fábrica (dono 05/11), que come o traço fino e sobe a textura.
+    #[must_use]
+    pub fn sem_smooth_edges(mut self) -> Self {
+        if let Fonte::Preset { preset, .. } = &mut self.fonte {
+            preset
+                .parametros
+                .engine
+                .insert("smoothEdges".to_owned(), 0.0);
+        }
+        self
+    }
+
     pub fn slug(&self) -> String {
         self.nome
             .chars()

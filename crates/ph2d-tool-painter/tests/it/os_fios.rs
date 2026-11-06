@@ -197,6 +197,15 @@ fn sem_oleo(nome: &str) -> ph2d_brush_presets::Preset {
     super::presets_de_fabrica::sem_real_oil(de_fabrica(nome))
 }
 
+/// O preset com o Smooth Edges a 0 (o controlo): os fios são do DEPÓSITO. O 0,3 de fábrica dos 13 óleos (dono 05/11)
+/// amacia a imagem e o relevo e sobe o LEVE do Express Oil (r 21 / r 20) de 9,85 / 9,97 para 12,18 / 12,33 (o Rebelle
+/// 10,16 ± 0,37 já não é o juiz, e o dono aprovou o 0,3 no smoke). O Smooth Edges mede-se nos portões dele
+/// (`oleo_borda_w3b_tests`).
+fn sem_suave(mut p: ph2d_brush_presets::Preset) -> ph2d_brush_presets::Preset {
+    p.parametros.engine.insert("smoothEdges".to_owned(), 0.0);
+    p
+}
+
 /// `n` do lado do Rebelle `r` do ponto médio entre ele e o controlo `c`, e o controlo longe dele (3× o ruído).
 fn no_vale(n: f64, r: f64, c: f64, ruido: f64) -> Result<(), String> {
     if (c - r).abs() <= 3.0 * ruido {
@@ -232,8 +241,13 @@ fn os_oleos_tem_fios_e_nao_carris() {
             .iter()
             .map(|&(n, r)| {
                 s.spawn(move || {
-                    let com = cena_seca_com_rampa(&sem_oleo(n), r, &format!("fios_{n}_{r}"));
-                    let sem = cena_seca_com_rampa(&sem_fios(n), r, &format!("fios_{n}@sem_{r}"));
+                    let com =
+                        cena_seca_com_rampa(&sem_suave(sem_oleo(n)), r, &format!("fios_{n}_{r}"));
+                    let sem = cena_seca_com_rampa(
+                        &sem_suave(sem_fios(n)),
+                        r,
+                        &format!("fios_{n}@sem_{r}"),
+                    );
                     (com, sem)
                 })
             })

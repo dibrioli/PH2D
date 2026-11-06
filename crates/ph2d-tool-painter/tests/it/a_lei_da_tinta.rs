@@ -35,7 +35,7 @@ const CENAS: [(&str, bool, u64); 20] = [
     ("Wet Drip", false, 0xc7525dce9eaaabad), // `167ba3db16` `02ff1d0f9a` `0170428784` `7c8e08d16b` `1f9e115c7e` `62e7fc8505` `4b74b57aaf`
     ("Wet Liner", false, 0x8b7537ded8abca24), // `167ba3db16` `02ff1d0f9a` `0170428784` `99d1d5806b` `0046ce2414` `7c8e08d16b` `1eecae9e4b` `b176807c40` `92ab6911f0` `62e7fc8505` `4b74b57aaf` `0cec47860d`
     ("Oil Bristle", false, 0x338f8bc28bd68a63), // `0170428784` `0275929512` `47ca63932e` `183d3d02e9` `c77e40484c` `0f32fb6e75` `5acb712ec6` `7c8e08d16b` `1f9e115c7e` `b5dc9a8dec` `032cda64a5` `e7e49f465b` `1eecae9e4b` `b176807c40` `62e7fc8505` `4b74b57aaf`
-    ("Express Oil", false, 0x8d2b3e14eac9f607), // `0170428784` `1f9e115c7e`
+    ("Express Oil", false, 0x9b6a69eb05d14e0a), // `0170428784` `1f9e115c7e` `1a2cc2cf9c` (Smooth Edges 0,3; com ele a 0 volta ao 0x8d2b3e14eac9f607)
     ("Graphite 8B", false, 0x950cfa693d7a867c), // `0170428784` `1f9e115c7e` `dc66557b6f` `4b74b57aaf`
     ("Charcoal", false, 0x04c6929ae4d368e3), // `0170428784` `89dfe6f5c2` `1f9e115c7e` `4b74b57aaf`
     ("Soft Pastel", false, 0x050b3b4dce1e4748), // `0170428784` `1f9e115c7e` `4b74b57aaf`

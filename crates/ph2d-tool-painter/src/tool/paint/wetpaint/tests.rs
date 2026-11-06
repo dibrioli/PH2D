@@ -676,8 +676,20 @@ fn the_wet_eraser_lifts_the_fluid_and_the_water_survives() {
     // CANVAS-side oracle: what the artist SEES must lighten too — a grid
     // that empties while the screen keeps the paint is the dropped
     // `merge_dirty` (a mutation that survived the grid-only oracle).
-    let canvas_dev =
-        |t: &PainterTool| -> u64 { t.canvas_rgba.iter().map(|&b| u64::from(255 - b)).sum() };
+    // O que se VÊ é o quadro sobre o papel branco: a Borracha agora apaga também a base (Bug #70), e o pixel apagado
+    // fica a alfa 0 (RGB 255) — somar o alfa cru contaria o apagado como tinta.
+    let canvas_dev = |t: &PainterTool| -> u64 {
+        t.canvas_rgba
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .map(|p| {
+                (0..3)
+                    .map(|k| u64::from(p[3]) * u64::from(255 - p[k]) / 255)
+                    .sum::<u64>()
+            })
+            .sum()
+    };
     let dev_before = canvas_dev(&t);
     // Erase over the same path — removal is MULTIPLICATIVE through the
     // bristle sieve (mostly near-zero felt), so it is gradual by the

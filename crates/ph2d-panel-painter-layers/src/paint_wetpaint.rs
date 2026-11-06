@@ -294,7 +294,9 @@ pub(crate) fn numeros_da_fisica(leis: &BrushSettings, valores: &BrushSettings) -
         ),
     ];
     for (chave, id, valor, min, max, passo, casas) in rows {
-        if pousa || !DO_DEPOSITO.contains(&id) {
+        // O Edge Darkening é da célula que o PINCEL pousa (Bug #69): a Borracha apaga a tinta, não a desenha com borda.
+        let borda_da_borracha = leis.eraser && id == ph2d_tool_painter::ids::PAINTER_WETPAINT_EDGE;
+        if (pousa || !DO_DEPOSITO.contains(&id)) && !borda_da_borracha {
             grupos[0].push(Numero {
                 chave,
                 id,

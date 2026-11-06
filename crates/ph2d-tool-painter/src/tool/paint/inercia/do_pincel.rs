@@ -193,12 +193,12 @@ impl PainterTool {
                 !b.taper.end_active() || self.plano_recusado().is_some(),
             ),
             (Dependente::PatamarSemFallOff, !b.taper.fall_active()),
-            // Na água a carga que acaba é o pigmento que o PINCEL pousa (`dab_route`): a borracha, Smear, Blend,
-            // Wet, Dry e Blow não pousam pigmento.
+            // Na água a carga que acaba é o pigmento que o PINCEL pousa (`dab_route`): Smear, Blend, Wet, Dry e Blow não
+            // pousam pigmento. A Borracha lê o fall-off: apaga a base pela cobertura da borracha normal (Bug #70).
             (
                 Dependente::FallOffDaAgua,
-                agua && (self.paint.eraser
-                    || self.paint.wetpaint.tool != super::super::WetTool::Paint),
+                agua && !self.paint.eraser
+                    && self.paint.wetpaint.tool != super::super::WetTool::Paint,
             ),
             (Dependente::VazioSemModoDeCor, !b.blend.e_de_cor()),
             (

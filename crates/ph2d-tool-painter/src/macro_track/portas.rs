@@ -147,6 +147,7 @@ pub const PORTAS: &[Porta] = &[
         "a marca do artista: quem mostra a macro em cena dá-a ao Painter; não muda a obra (W9)",
     ),
     r("install_document", OUTRO_DOCUMENTO),
+    r("tira_documento", OUTRO_DOCUMENTO), // «Edit in Painter» (GEF): solta o documento de um sprite para a shell o guardar noutro lugar
     r(
         "agenda_papel_texturizado",
         "o papel de uma imagem NOVA (New Image… «Textured Paper») nasce com o documento: a macro toca sobre UM",

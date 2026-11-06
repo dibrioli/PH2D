@@ -149,3 +149,5 @@ O que fica: o salto de 28 é a diferença de nível entre a tinta viva e a morta
 **Por medir.** Custo de `wet_orla_vai_para_a_base` a 4K: varre a tela a cada enterro, como os dois laços que já lá estão; não cronometrado. A cena do dono é a nossa reprodução, não o quadro dele: falta o olho dele.
 
 **Verificado, por nome:** `borracha` 62 verdes e 2 vermelhos (os conhecidos, `(38, 0)` e 5 px, sem piorar) · `dentro_do_wet` 10 · `adormecida_tests` só os mesmos 2 vermelhos · `macro_track` 86 · `undo_tinta_viva` 9 · os dois alarmes de pincel verdes · `seam_wetpaint` 33/33 · fmt · clippy das 2 crates limpo.
+
+**Dono 06/11: smoke da fronteira tinta viva × morta OK.**

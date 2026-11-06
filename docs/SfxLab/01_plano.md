@@ -2,7 +2,7 @@
 
 Módulo de criação de efeitos sonoros para games, **sem IA** (dono, 05/11). «SFX Lab» é nome provisório.
 Base: [crítica de design de áudio](pesquisa/critica.md) (recomendações aprovadas pelo dono em 05/11) e
-[pesquisa](pesquisa/relatorio.md). **Estado: W0 medida ([números](02_W0_medicao.md), [ADR-0198](../architecture/decisions/0198-o-motor-do-sfx-lab-e-kernels-proprios-sobre-det-math.md): kernels próprios, cache por camada antes de W3); nenhum som ouvido.**
+[pesquisa](pesquisa/relatorio.md). **Estado: W0 e W1 feitas, à espera do smoke do dono ([handoff](handoffs/HANDOFF_CONTINUACAO_W0_W1_2026-11-05.md)); W0 medida ([números](02_W0_medicao.md), [ADR-0198](../architecture/decisions/0198-o-motor-do-sfx-lab-e-kernels-proprios-sobre-det-math.md): kernels próprios, cache por camada antes de W3); nenhum som ouvido.**
 
 ## 1. Estado da arte
 
@@ -123,6 +123,6 @@ Integração a cada 1–2 waves, só por ordem do dono (W1 vale por si).
 
 ## 6. Smoke
 
-**Números medidos: nenhum ainda, porque não há código.** Regra: em cada wave a sonda headless corre antes da mensagem ao dono, e os números saem dela. Único número existente, só como ordem de grandeza: 32 ressonâncias a 0,066 % de um núcleo ([notas](pesquisa/notas/tecnicas_de_sintese.md)), Ryzen 9950X sob carga, sem efeitos.
+**Números medidos** ([handoff W0+W1](handoffs/HANDOFF_CONTINUACAO_W0_W1_2026-11-05.md)): W0 — receita típica de 2 s a 9,6 ms de kernels; pior caso 38,8 ms (> 30 ms propostos, cache por camada antes de W3); hash da típica `e262c4b2a017544c` igual em x86-64, x86-64-v3 e wasm32, Intel e ARM NÃO PROVADO. W1 — mil disparos, Shuffle + No repeat 334·333·333 (0 repetidos), Random + No repeat 327·340·333 (0), Random 327·341·332 (328 repetidos), Sequence 334·333·333 (0); cartão: 64 linhas 1557 µs, 32 marcadores 873 µs. Nenhum som ouvido. Regra: em cada wave a sonda headless corre antes da mensagem ao dono, e os números saem dela. Único número existente, só como ordem de grandeza: 32 ressonâncias a 0,066 % de um núcleo ([notas](pesquisa/notas/tecnicas_de_sintese.md)), Ryzen 9950X sob carga, sem efeitos.
 
 Não existe sonda offline de áudio; ela nasce em W0 (`PH2D_SFX_SMOKE` conta-se no roteador novo). Primeira cena, W1: objeto com três sons bem diferentes, moedas que disparam e Audio Listener já posto. A sonda conta qual amostra saiu em mil disparos; a mensagem traz essa contagem. O dono confere com o ouvido.

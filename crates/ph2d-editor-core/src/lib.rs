@@ -114,6 +114,7 @@ pub mod test_support;
 pub mod tool;
 pub mod tool_activation;
 pub mod undo_link;
+pub mod undo_route;
 pub mod widget;
 pub use widget::sheet_cell::SheetImage;
 pub mod zen;

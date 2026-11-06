@@ -367,3 +367,16 @@ mod tests {
         );
     }
 }
+
+/// *Ligado ou guardado, `tira_documento` tira-o; e o dono deixa de o contar.*
+#[test]
+fn tirar_um_documento_ligado_ou_guardado_tira_o_da_lista() {
+    let mut t = PainterTool::default();
+    t.bind_document(2, vec![255; 4], 1, 1);
+    t.install_document(1, t.documento_vivo(0));
+    assert_eq!(t.document_entities(), [1, 2]);
+    assert!(t.tira_documento(1).is_some(), "o guardado");
+    assert!(t.tira_documento(2).is_some(), "o ligado");
+    assert!(t.document_entities().is_empty());
+    assert!(t.tira_documento(2).is_none());
+}

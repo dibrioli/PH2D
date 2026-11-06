@@ -181,9 +181,8 @@ impl crate::App {
         let antes = ph2d_host_presos::antes_do_restauro(gfx.sim.world());
         let reg = &gfx.component_registry;
         let (vec, map, flip, flip_map) =
-            (gfx.painter_reata).em_volta(&mut gfx.sim, &mut gfx.tools, &gfx.atlas_asset_map, |s| {
-                state.restore(s, reg)
-            });
+            (gfx.painter_reata).em_volta(&mut gfx.sim, &mut gfx.tools, |s| state.restore(s, reg));
+        crate::app_edicao_de_imagem::reconcilia_achatados(gfx);
         gfx.vec_scene = vec;
         gfx.flip = flip;
         gfx.guides = state.guides.clone();

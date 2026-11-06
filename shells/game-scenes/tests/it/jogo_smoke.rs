@@ -635,7 +635,7 @@ fn a_platform_editada_nao_vira_platform_low() {
         &mut |_, _, _| Ok(77),
         &db,
         &atlas,
-        a,
+        raiz,
         (1, 1, vec![1, 2, 3, 255]),
     )
     .expect("troca");

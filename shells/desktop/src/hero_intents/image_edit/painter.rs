@@ -79,10 +79,8 @@ fn segue(
     toasts: &mut ToastQueue,
 ) {
     let world = sim.world_mut();
-    if let Some(t) = ph2d_sprite_edit::imagem::segue_a_pintura(world, atlas, entity, texture_id)
-        && ph2d_app_painter::documentos_no_projecto::achata(sim, painter, &t.quem, t.antigo, t.novo)
-    {
-        toasts.push(Toast::warning(tr("shell.edit_in_pixel.layers_flattened")));
+    if let Some(t) = ph2d_sprite_edit::imagem::segue_a_pintura(world, atlas, entity, texture_id) {
+        crate::app_edicao_de_imagem::achata(sim, painter, &t, toasts);
     }
 }
 

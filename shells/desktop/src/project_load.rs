@@ -167,8 +167,7 @@ impl crate::App {
         if let Some(g) = self.gfx.as_mut() {
             crate::app_edicao_de_imagem::fecha_agora(g, &mut self.pixel);
         }
-        ph2d_sprite_edit::no_pixel::esquece();
-        ph2d_app_painter::documentos_no_projecto::esquece_achatados();
+        crate::app_edicao_de_imagem::esquece_o_projecto_que_saiu();
         // **A SESSÃO ESQUECE O DOCUMENTO ANTERIOR.** Este bloco fica colado na decisão de
         // aceitar, e não lá no fim: entre o aceite e o esquecimento não sobra nenhum passo que
         // dependa de `gfx`, então o que o gate headless observa é exatamente o que o app com

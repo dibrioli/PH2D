@@ -115,3 +115,37 @@ Foto: [foto_relief_eraser_defeitos.png](material_2026-11-06/foto_relief_eraser_d
 **Por medir / aberto.** Resto visível na foto: manchas escuras curtas na orla junto ao rasto e um fio fino no traço colado (78 px, Δ 71). Custo de `wet_planos_em_dia` a 4K não cronometrado. A compressão pelo fio real acima de `COMPRIME_A_PARTIR_DE` não correu com a cura: o portão comprime à força (`encolhe_ja`, o mesmo código), a 2400×1400. O caminho do app corre em teste com a ponte simulada (`set_compor_por_quadro`, worker, compositor), não com a pré-visualização da placa. `wet_ultima_imagem` agora também passa pela `Congelada`, sem portão próprio.
 
 **Dono 06/11, smoke da rodada da Relief Eraser: OK.** Decisão: com pouca pressão a Borracha TAMBÉM chega ao papel, em mais passadas (hoje o expoente 8 só amassa); mexe na lei aprovada, logo foto nova ao dono. Isto decide `a_borracha_leva_o_traco_e_o_oleo_juntos`. Pergunta aberta do dono: «porque a tinta morre com UNDO?» Lido no código, não reproduzido: `HISTORY_DEPTH = 6` e o orçamento em `undo_vivo.rs` cortam a fotografia, e o undo sem fotografia acaba a sessão (`wet_volta_do_restauro`), como no 1.º traço da sessão.
+
+## Relato do dono 06/11, fronteira tinta viva × tinta morta
+
+> «A borracha está muito boa. Para a regra de matar a tinta continuar, precisamos melhorar o apagamento da área de transição entre uma tinta viva e uma morta. Na imagem o traço superior (tinta morta) e o inferior (tinta viva) ao serem apagados juntos forma uma fronteira pixelada ruim. Se possível, deve ser corrigida.»
+
+Foto antes × depois: [foto_fronteira_viva_morta.png](material_2026-11-06/foto_fronteira_viva_morta.png). Portões e sonda: `wetpaint/borracha_fronteira_tests.rs` (`com_degrau` é a lei de antes, no mesmo processo).
+
+**Causas medidas (são duas).**
+1. Tinta morta: `apaga_a_base_sob_os_dabs` decidia por célula, `sett > 0 || susp > 0`. Célula com um resto de tinta, invisível, cortava a `base` de uma vez; a vizinha seguia a gradual. O papel aparecia na orla: pontos a razão 1, blocos de `ratio` px a razão 2 e 4. **Cura:** `PesoDaViva` (`borracha_na_base.rs`): a cobertura de pigmento no início do traço, amostrada como o composite amostra (`SampleU`), dá o peso de cada píxel: o que a tinta esconde sai de uma vez, o que ela deixa ver segue a gradual (`escreve_o_sulco` recebe os dois pesos). O corte usa a cobertura crua: alisada, passava do anel (12 px, `o_clique_da_borracha_fica_dentro_do_anel`).
+2. Tinta enterrada: nas células não enterradas da orla, o enterro baixa o pigmento (pa 85) e a `Congelada` mantém a tela (alfa 254) com `base` 0. Ao refazer o píxel, a Borracha destapava o papel: pa 81, `base` 0, alfa 254 → 81 numa passada. Com o Digital da mesma cor há mais pontos (1 069 células vivas na faixa, 83 furos; vermelho: 794 e 3). **Cura:** `wet_orla_vai_para_a_base` (`adormecida.rs`): a cobertura que a tela mostra e a tinta perdeu vai para a `base`, em alfa contínuo. A 1.ª versão copiava o píxel inteiro e deixava contornos quadrados a razão 4 na foto; recusada.
+
+**Hipóteses do pedido.** (a) confirmada. (b) só escala o defeito: o salto é o mesmo em razão 1, 2 e 4 e muda o tamanho do degrau. (c) confirmada na forma acima, sem ser «blocos com tinta assada»: na razão 1 também acontece. (d) eliminada: as candidatas tiraram os pontos sem tocar no grão; o p99 dentro da viva fica em 37 antes e depois.
+
+**Candidatas, intercaladas no mesmo processo** (tinta morta, razão 1, 1 passada, salto p90 na fronteira; dentro da morta 5, da viva 19): lei de antes 65 · cobertura 28 · cobertura alisada 28, com a morta a subir para 8 · sem corte 28, muda a tinta por dentro. Escolhida a cobertura: a que menos muda.
+
+| cena, 1 passada | papel na fronteira (px) | salto p90 / máx |
+|---|---|---|
+| morta, razão 1 | 103 → 0 | 65/85 → 28/48 |
+| morta, razão 2 | 132 → 0 | 62/78 → 32/65 |
+| morta, razão 4 | 189 → 11 | 65/78 → 31/42 |
+| enterrada, razão 1 | 31 → 0 | 42/104 → 26/100 |
+| enterrada, razão 2 | 57 → 1 | 58/70 → 46/70 |
+| enterrada, razão 4 | 65 → 12 | 45/64 → 33/40 |
+| caminho do app (worker, por quadro), morta, razão 1 | 103 → 0 | não medido |
+
+O que fica: o salto de 28 é a diferença de nível entre a tinta viva e a morta, que saem em velocidades diferentes; igualá-las é mudar uma lei, decisão do dono. Os 11–12 px a razão 4 são buracos da própria tinta, visíveis antes da Borracha (lido na foto, não contado). Digital vermelho: 9 → 3 a razão 1, e **37 → 47 a razão 4**: a contagem mistura vermelho apagado com papel; não isolado. A orla exterior do traço vivo em blocos a razão 4, contra o papel, não é desta fronteira e não mudou.
+
+**Não mudou, medido.** As 7 imagens de `sonda_borracha_morta` (óleo vivo 1, 2 e 3 passadas; tinta morta 1, 2 e 3; a cena de antes) são iguais em `cmp` às do commit `f335fcf315`, com o patch retirado da árvore e a mesma sonda: **0 px**, viva e morta. Com sessão viva e a morta longe: `a_morta_longe_da_viva_nao_muda` 0 px contra `com_degrau`. Sem sessão contra com sessão a mesma lei já difere (3 240 px, Δ 14, cena do portão): não é desta cura, causa não procurada. Undo: `desfazer_na_fronteira_devolve_tudo`, tela e `base`, nas duas cenas. Miniatura e macros: `sulco` nulo, o caminho de sempre.
+
+**Provas de vermelho.** Sem a cura (`com_degrau` forçado): 3 portões vermelhos. Peso binário sobre o pigmento: os mesmos 3. O enterro sem guardar a orla: `a_fronteira_viva_morta_nao_destapa_o_papel` vermelho. Esta última correu na 1.ª versão da orla (píxel inteiro), não repetida na de alfa contínuo.
+
+**Por medir.** Custo de `wet_orla_vai_para_a_base` a 4K: varre a tela a cada enterro, como os dois laços que já lá estão; não cronometrado. A cena do dono é a nossa reprodução, não o quadro dele: falta o olho dele.
+
+**Verificado, por nome:** `borracha` 62 verdes e 2 vermelhos (os conhecidos, `(38, 0)` e 5 px, sem piorar) · `dentro_do_wet` 10 · `adormecida_tests` só os mesmos 2 vermelhos · `macro_track` 86 · `undo_tinta_viva` 9 · os dois alarmes de pincel verdes · `seam_wetpaint` 33/33 · fmt · clippy das 2 crates limpo.

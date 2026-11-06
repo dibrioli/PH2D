@@ -11,6 +11,7 @@ pub mod canal;
 mod cards_export;
 mod cards_folha;
 mod cards_import;
+mod cards_import_como;
 mod comum;
 mod event;
 pub mod ids;

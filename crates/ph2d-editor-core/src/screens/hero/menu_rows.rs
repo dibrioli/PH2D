@@ -53,7 +53,6 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [crate::ids::MenuRow] {
         ContextMenuKind::MenuBarWindow => menu_tables::MENU_BAR_WINDOW_ROWS,
         ContextMenuKind::MenuBarRun => menu_tables::MENU_BAR_RUN_ROWS,
         ContextMenuKind::SaveMenu => menu_tables::SAVE_MENU_ROWS,
-        ContextMenuKind::ImportAs => menu_tables::IMPORT_AS_ROWS,
         ContextMenuKind::OpenMenu => menu_tables::OPEN_MENU_ROWS,
         ContextMenuKind::SettingsMenu => menu_tables::SETTINGS_MENU_ROWS,
         ContextMenuKind::SettingsPpmSubmenu => menu_tables::SETTINGS_PPM_SUBMENU_ROWS,

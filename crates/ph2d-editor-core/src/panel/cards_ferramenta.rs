@@ -159,6 +159,11 @@ fn altura_da_faixa() -> f32 {
     m::LIST_PAD_BOTTOM * 2.0 + m::FIELD_H * 2.0 + m::FIELD_ROW_GAP
 }
 
+/// A faixa de uma janela sem nada a repor: só `Cancel | Apply`.
+fn altura_da_faixa_curta() -> f32 {
+    m::LIST_PAD_BOTTOM * 2.0 + m::FIELD_H
+}
+
 /// ⭐⭐ **A lista e, logo abaixo, a faixa dos verbos.** O «×» da lista é o `cancel`. Devolve o rect da
 /// lista mais a faixa: é também o rect flutuante do painel, senão o clique na faixa iria ao canvas.
 pub fn pinta_lista(
@@ -168,10 +173,44 @@ pub fn pinta_lista(
     cards: &[CardDef<'_>],
     verbos: &Verbos<'_>,
 ) -> Rect {
-    ctx.host
-        .store_mut()
-        .mark_card_list_close(panel, verbos.cancel.0);
-    let h = altura_da_faixa();
+    pinta(
+        ctx,
+        panel,
+        title,
+        cards,
+        Some(verbos.reset),
+        verbos.cancel,
+        verbos.apply,
+    )
+}
+
+/// [`pinta_lista`] de uma janela sem nada a repor: `Cancel | Apply`.
+pub fn pinta_lista_curta(
+    ctx: &mut PaintCtx,
+    panel: NodeId,
+    title: &str,
+    cards: &[CardDef<'_>],
+    cancel: (NodeId, &str),
+    apply: (NodeId, &str),
+) -> Rect {
+    pinta(ctx, panel, title, cards, None, cancel, apply)
+}
+
+fn pinta(
+    ctx: &mut PaintCtx,
+    panel: NodeId,
+    title: &str,
+    cards: &[CardDef<'_>],
+    reset: Option<(NodeId, &str)>,
+    cancel: (NodeId, &str),
+    apply: (NodeId, &str),
+) -> Rect {
+    ctx.host.store_mut().mark_card_list_close(panel, cancel.0);
+    let h = if reset.is_some() {
+        altura_da_faixa()
+    } else {
+        altura_da_faixa_curta()
+    };
     let slot = ctx.slot;
     ctx.slot.h = (slot.h - h - m::LIST_MARGIN).max(0.0);
     // A faixa pinta-se depois da lista, e a lista suspensa aberta tem de ficar por cima da faixa.
@@ -208,8 +247,11 @@ pub fn pinta_lista(
         r.x + m::LIST_PAD_X,
         (r.w - m::LIST_PAD_X * 2.0).max(0.0),
     );
-    let y = c.row(&[botao(verbos.reset, false)], r.y + m::LIST_PAD_BOTTOM);
-    c.row(&[botao(verbos.cancel, false), botao(verbos.apply, true)], y);
+    let mut y = r.y + m::LIST_PAD_BOTTOM;
+    if let Some(v) = reset {
+        y = c.row(&[botao(v, false)], y);
+    }
+    c.row(&[botao(cancel, false), botao(apply, true)], y);
     dropdown::paint_pending(ctx);
     let tudo = Rect::new(lista.x, lista.y, lista.w, r.y + r.h - lista.y);
     ctx.host.store_mut().set_floating_panel_rect(panel, tudo);

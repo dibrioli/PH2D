@@ -126,8 +126,6 @@ pub enum ContextMenuKind {
     ThemeSelector,
     /// Clicked the TOPBAR Save chip. Menu offers Save + Save As.
     SaveMenu,
-    /// A pergunta do *File ▸ Import…*, depois de escolher o ficheiro: imagem do Painter ou Pixel Sprite.
-    ImportAs,
     /// Clicked the TOPBAR Open chip. Menu offers Open Project +
     /// Import (and more later).
     OpenMenu,
@@ -470,7 +468,6 @@ impl ContextMenuKind {
         Self::MenuBarRun,
         Self::ThemeSelector,
         Self::SaveMenu,
-        Self::ImportAs,
         Self::OpenMenu,
         Self::SettingsMenu,
         Self::SettingsPpmSubmenu,

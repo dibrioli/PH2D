@@ -314,12 +314,6 @@ pub(super) const MENU_BAR_RUN_ROWS: &[MenuRow] = &[
     menu_row(ids::MENUBAR_RUN_EDITOR, "chrome.menu.play_in_editor"),
 ];
 
-/// As linhas de `ContextMenuKind::ImportAs`.
-pub(super) const IMPORT_AS_ROWS: &[MenuRow] = &[
-    menu_row(ids::CTX_MENU_IMPORT_AS_IMAGE, "chrome.menu.import_as_image"),
-    menu_row(ids::CTX_MENU_IMPORT_AS_PIXEL, "chrome.menu.import_as_pixel"),
-];
-
 /// As linhas de `ContextMenuKind::SaveMenu`.
 pub(super) const SAVE_MENU_ROWS: &[MenuRow] = &[
     menu_row(ids::CTX_MENU_SAVE, "chrome.menu.save_cmd_s"),

@@ -3,7 +3,9 @@
 
 use ph2d_editor_core::panel::cards::CardDef;
 use ph2d_editor_core::panel::cards::banda::metrics as m;
-use ph2d_editor_core::panel::cards::ferramenta::{Verbos, pinta_lista, prepara_numeros};
+use ph2d_editor_core::panel::cards::ferramenta::{
+    Verbos, pinta_lista, pinta_lista_curta, prepara_numeros,
+};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::panel_drag_handle_rect;
 use ph2d_editor_core::zones::Rect;
@@ -13,7 +15,8 @@ use ph2d_tokens::{PANEL_MIN_W_PX, Spacing};
 use crate::canal::{self, Imagem, Tela};
 use crate::comum::ImagemDoCartao;
 use crate::{
-    PixelExportPanel, PixelExportPanelState, cards_export, cards_folha, cards_import, event, ids,
+    PixelExportPanel, PixelExportPanelState, cards_export, cards_folha, cards_import,
+    cards_import_como, event, ids,
 };
 
 /// A largura da janela, em larguras mínimas de painel: cabe a folha e duas colunas de campos.
@@ -49,6 +52,9 @@ pub(crate) fn paint(st: &mut PixelExportPanelState, ctx: &mut PaintCtx) {
     }
     if let Some(t) = canal::take_abrir() {
         st.tela = t;
+        if let (Tela::ImportComo, Some(p)) = (t, canal::pergunta()) {
+            st.como_pixel = p.pixel_de_fabrica && p.erro.is_none();
+        }
     }
     let x = canal::contexto();
     let store = ctx.host.store_mut();
@@ -67,6 +73,7 @@ pub(crate) fn paint(st: &mut PixelExportPanelState, ctx: &mut PaintCtx) {
         Tela::ExportAs => cards_export::numeros(&st.as_, &x),
         Tela::Folha => cards_folha::numeros(&st.fo, &x),
         Tela::Import => cards_import::numeros(&st.grelha),
+        Tela::ImportComo => Vec::new(),
     };
     prepara_numeros(store, &numeros);
     canal::pede_folha((st.tela == Tela::Folha).then(|| st.fo.folha.clone()));
@@ -86,6 +93,15 @@ pub(crate) fn paint(st: &mut PixelExportPanelState, ctx: &mut PaintCtx) {
                 tr("panel.pixel.export.title_sheet"),
                 tr("panel.pixel.export.export"),
                 cards_folha::cards(&st.fo, &x, img),
+            )
+        }
+        Tela::ImportComo => {
+            let img = imagem_do_canal(st);
+            let p = canal::pergunta().unwrap_or_default();
+            (
+                tr("panel.pixel.export.title_import_as"),
+                tr("panel.pixel.export.import"),
+                cards_import_como::cards(p, st.como_pixel, img),
             )
         }
         Tela::Import => {
@@ -111,14 +127,20 @@ pub(crate) fn paint(st: &mut PixelExportPanelState, ctx: &mut PaintCtx) {
         w,
         (area.y + area.h - teto - Spacing::Sm.px()).max(0.0),
     );
-    let verbos = Verbos {
-        reset: (ids::EXPORT_RESET, tr("panel.pixel.export.reset")),
-        cancel: (ids::CANCEL, tr("panel.pixel.export.cancel")),
-        apply: (ids::OK, verbo),
-    };
+    let cancel = (ids::CANCEL, tr("panel.pixel.export.cancel"));
+    let apply = (ids::OK, verbo);
     let encaixe = ctx.slot;
     ctx.slot = slot;
-    let tudo = pinta_lista(ctx, node, titulo, &cartoes, &verbos);
+    let tudo = if st.tela == Tela::ImportComo {
+        pinta_lista_curta(ctx, node, titulo, &cartoes, cancel, apply)
+    } else {
+        let verbos = Verbos {
+            reset: (ids::EXPORT_RESET, tr("panel.pixel.export.reset")),
+            cancel,
+            apply,
+        };
+        pinta_lista(ctx, node, titulo, &cartoes, &verbos)
+    };
     ctx.slot = encaixe;
     let reserva = (m::HEAD_ICON_BOX + m::LIST_HEAD_PAD_X) * 2.0;
     ctx.host.hit_index_mut().register(

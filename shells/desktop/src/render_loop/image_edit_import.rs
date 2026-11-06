@@ -32,7 +32,7 @@ pub(super) fn drain_import(
     // (first cell's center = `camera.center`; grid grows right + down)
     // instead of stacking every sprite on one point.
     // O File ▸ Import pergunta o que os ficheiros viram (dono 05/11); a resposta volta por aqui.
-    let decidido = hero.store.take_import_as(false);
+    let decidido = hero.store.take_import_as_image();
     if hero.import_requested || decidido.is_some() {
         hero.import_requested = false;
         // ⚠️ **O filtro é DERIVADO, nunca escrito à mão** (`crate::import_router`, Enio

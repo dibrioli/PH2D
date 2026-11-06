@@ -18,6 +18,24 @@ pub enum Tela {
     ExportAs,
     Folha,
     Import,
+    /// O File ▸ Import: o ficheiro vira Pixel Sprite ou imagem do Painter?
+    ImportComo,
+}
+
+/// O que a janela do File ▸ Import mostra dos ficheiros escolhidos.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Pergunta {
+    /// O nome do primeiro ficheiro.
+    pub nome: String,
+    pub ficheiros: usize,
+    pub lados: (u32, u32),
+    pub quadros: usize,
+    pub camadas: usize,
+    pub tags: usize,
+    /// A escolha de partida: um `.ase` nasceu para ser editado em Pixel.
+    pub pixel_de_fabrica: bool,
+    /// Porque não se lê como Pixel Sprite, se não se lê.
+    pub erro: Option<String>,
 }
 
 /// O que as janelas precisam de saber do sprite em Draw.
@@ -52,6 +70,10 @@ pub struct Imagem {
 pub enum Pedido {
     Exportar(Export),
     Importar(Grelha),
+    /// A resposta do File ▸ Import.
+    ImportarComo {
+        pixel: bool,
+    },
 }
 
 #[derive(Default)]
@@ -61,6 +83,7 @@ struct Canal {
     imagem: Option<Imagem>,
     pedido: Option<Pedido>,
     folha_pedida: Option<OpcoesFolha>,
+    pergunta: Option<Pergunta>,
 }
 
 thread_local! {
@@ -73,7 +96,22 @@ fn com<R>(f: impl FnOnce(&mut Canal) -> R) -> R {
 
 /// A família pede esta janela.
 pub fn abrir(t: Tela) {
-    com(|c| c.abrir = Some(t));
+    com(|c| {
+        c.abrir = Some(t);
+        if t != Tela::ImportComo {
+            c.pergunta = None;
+        }
+    });
+}
+
+/// O que a janela do File ▸ Import mostra; `None` = ela não está aberta.
+#[must_use]
+pub fn pergunta() -> Option<Pergunta> {
+    com(|c| c.pergunta.clone())
+}
+
+pub fn publish_pergunta(p: Option<Pergunta>) {
+    com(|c| c.pergunta = p);
 }
 
 pub(crate) fn take_abrir() -> Option<Tela> {
@@ -342,4 +380,61 @@ pub struct LadoDaFamilia {
     pub imagem: Option<(Imagem, String, Option<String>)>,
     /// A janela a abrir no próximo quadro (lá há o `hero`).
     pub abrir: bool,
+    /// Os ficheiros do File ▸ Import à espera da resposta.
+    pub leva: Vec<PathBuf>,
+}
+
+impl LadoDaFamilia {
+    /// **Import Sprite Sheet:** lê o ficheiro e o `.json` ao lado e pede a janela.
+    ///
+    /// # Errors
+    /// A frase que diz porque não se lê.
+    pub fn prepara_folha(&mut self, c: &std::path::Path) -> Result<(), String> {
+        let (s, _, nome) =
+            ph2d_pixel_io::abrir::abrir_caminhos(std::slice::from_ref(&c.to_owned()))
+                .map_err(|e| crate::textos::erro_abrir(&e))?;
+        let dados = ph2d_pixel_io::abrir::dados_ao_lado(c);
+        let seq = self.previa.proximo_seq();
+        let i = imagem_de_import(&s, seq, dados.is_some());
+        publish_imagem(Some(i.clone()));
+        self.imagem = Some((i, nome, dados));
+        abrir(Tela::Import);
+        self.previa.esquece();
+        self.abrir = true;
+        Ok(())
+    }
+
+    /// **O File ▸ Import escolheu estes ficheiros:** lê o primeiro, para a prévia, e pede a janela.
+    pub fn pergunta(&mut self, caminhos: Vec<PathBuf>) {
+        let Some(primeiro) = caminhos.first() else {
+            return;
+        };
+        let nome = primeiro.file_name().unwrap_or_default();
+        let ext = primeiro.extension().unwrap_or_default();
+        let ext = ext.to_string_lossy().to_ascii_lowercase();
+        let mut p = Pergunta {
+            nome: nome.to_string_lossy().into_owned(),
+            ficheiros: caminhos.len(),
+            pixel_de_fabrica: ext == "ase" || ext == "aseprite",
+            ..Pergunta::default()
+        };
+        match ph2d_pixel_io::abrir::abrir_caminhos(std::slice::from_ref(primeiro)) {
+            Ok((s, _, _)) => {
+                p.lados = (s.width(), s.height());
+                p.quadros = s.frames().len();
+                p.camadas = s.layers().len();
+                p.tags = s.tags().len();
+                let seq = self.previa.proximo_seq();
+                publish_imagem(Some(imagem_de_import(&s, seq, false)));
+            }
+            Err(e) => {
+                p.erro = Some(crate::textos::erro_abrir(&e));
+                publish_imagem(None);
+            }
+        }
+        publish_pergunta(Some(p));
+        abrir(Tela::ImportComo);
+        self.leva = caminhos;
+        self.abrir = true;
+    }
 }

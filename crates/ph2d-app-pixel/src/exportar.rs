@@ -28,18 +28,10 @@ impl PixelApp {
                 }
             }
             A::ImportSheet => {
-                if let Some(c) = ph2d_app_host::modal::pick_file(dialogo()) {
-                    match abrir::abrir_caminhos(std::slice::from_ref(&c)) {
-                        Ok((s, _, nome)) => {
-                            let dados = abrir::dados_ao_lado(&c);
-                            let seq = self.exporta.previa.proximo_seq();
-                            let i = canal::imagem_de_import(&s, seq, dados.is_some());
-                            canal::publish_imagem(Some(i.clone()));
-                            self.exporta.imagem = Some((i, nome, dados));
-                            self.abre_janela(Tela::Import);
-                        }
-                        Err(e) => self.avisos.push((true, textos::erro_abrir(&e))),
-                    }
+                if let Some(c) = ph2d_app_host::modal::pick_file(dialogo())
+                    && let Err(t) = self.exporta.prepara_folha(&c)
+                {
+                    self.avisos.push((true, t));
                 }
             }
             A::ExportAs => self.abre_janela(Tela::ExportAs),
@@ -122,8 +114,8 @@ pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
         }
     });
     app.avisos.extend(frases);
-    if let Some(c) = hero.store.take_import_as(true) {
-        app.abre_leva(&c);
+    if let Some(c) = hero.store.take_import_asked() {
+        app.exporta.pergunta(c);
     }
     let doc = app.chave.and_then(|k| Some((k, app.docs.get(&k)?)));
     hero.store
@@ -132,7 +124,8 @@ pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
         hero.panel_visibility.insert(PANEL_PIXEL_EXPORT, true);
     }
     let aberta = hero.panel_visibility.get(PANEL_PIXEL_EXPORT).copied() == Some(true);
-    if !aberta || doc.is_none() {
+    if !aberta || (doc.is_none() && canal::pergunta().is_none()) {
+        canal::publish_pergunta(None);
         hero.panel_visibility.insert(PANEL_PIXEL_EXPORT, false);
         app.exporta.previa.esquece();
         return;
@@ -149,6 +142,15 @@ pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
                 let r = abrir::importar_folha_com(&i.rgba, i.w, i.h, &g, dados.as_deref());
                 app.abre(r.map(|s| (s, Vec::new(), nome)))
             })
+        }
+        Some(Pedido::ImportarComo { pixel }) => {
+            let c = std::mem::take(&mut app.exporta.leva);
+            if pixel {
+                app.abre_leva(&c);
+            } else {
+                hero.store.import_as_image(c);
+            }
+            true
         }
         None => false,
     };

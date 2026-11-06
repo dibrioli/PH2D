@@ -469,10 +469,20 @@ fn a_folha_importada_tem_os_tempos_da_exportada() {
     assert_eq!(tags(s), tags(&original));
 }
 
-/// **A pergunta do File ▸ Import:** «Pixel Sprite» nasce um por ficheiro (e os PNG viram uma sequência);
+/// O File ▸ Import até à janela, e a resposta dela.
+fn responde(p: &mut Palco, c: Vec<PathBuf>, pixel: bool) {
+    p.hero.store.ask_import_as(c);
+    p.quadro();
+    assert!(p.aberta(), "a janela abre");
+    canal::pede(Pedido::ImportarComo { pixel });
+    p.quadro();
+    assert!(!p.aberta(), "a resposta fecha a janela");
+}
+
+/// **A janela do File ▸ Import:** «Pixel Sprite» nasce um por ficheiro (e os PNG viram uma sequência);
 /// «Image» deixa os ficheiros para a shell importar como imagem do Painter, sem nascer sprite.
 #[test]
-fn a_pergunta_do_import_decide_o_tipo_do_objeto() {
+fn a_janela_do_import_decide_o_tipo_do_objeto() {
     let mut p = Palco::novo("pergunta");
     let s = p.app.doc(p.key).expect("doc").sprite.clone();
     let (ase, _) = ph2d_pixel_io::ase::escrever(&s).expect("grava");
@@ -492,36 +502,68 @@ fn a_pergunta_do_import_decide_o_tipo_do_objeto() {
         while object_add::born_from_paste(&mut p.sim, &mut p.app, spawn_root).is_some() {}
     };
     let antes = sprites(&p);
-    p.hero.store.ask_import_as(vec![a.clone(), b]);
-    assert_eq!(
-        p.hero.store.context_menu().map(|m| m.kind),
-        Some(ContextMenuKind::ImportAs)
-    );
-    assert!(
-        p.hero
-            .apply_event(WidgetEvent::Click(ids::CTX_MENU_IMPORT_AS_PIXEL))
-    );
-    assert!(p.hero.store.context_menu().is_none());
+    p.hero.store.ask_import_as(vec![a.clone()]);
     p.quadro();
+    let f = canal::pergunta().expect("o que a janela mostra");
+    assert_eq!(f.nome, "a.ase");
+    assert_eq!((f.lados, f.quadros), ((s.width(), s.height()), 16));
+    assert_eq!((f.camadas, f.tags), (s.layers().len(), s.tags().len()));
+    assert!(f.pixel_de_fabrica, "um .ase parte de Pixel Sprite");
+    assert_eq!(
+        canal::imagem().map(|i| (i.w, i.h)),
+        Some((s.width(), s.height()))
+    );
+    p.hero.panel_visibility.insert(PANEL_PIXEL_EXPORT, false);
+    p.quadro();
+    assert_eq!(canal::pergunta(), None, "Cancel não deixa nada para trás");
+    nasce(&mut p);
+    assert_eq!(sprites(&p), antes, "Cancel não importa");
+
+    responde(&mut p, vec![a.clone(), b], true);
     nasce(&mut p);
     assert_eq!(sprites(&p), antes + 2, "um por .ase");
 
-    p.hero.store.ask_import_as(vec![x, y]);
-    assert!(
-        p.hero
-            .apply_event(WidgetEvent::Click(ids::CTX_MENU_IMPORT_AS_PIXEL))
-    );
-    p.quadro();
+    responde(&mut p, vec![x.clone(), y], true);
     nasce(&mut p);
     assert_eq!(sprites(&p), antes + 3, "os PNG, uma sequência");
 
-    p.hero.store.ask_import_as(vec![a.clone()]);
+    p.hero.store.ask_import_as(vec![x]);
+    p.quadro();
     assert!(
-        p.hero
-            .apply_event(WidgetEvent::Click(ids::CTX_MENU_IMPORT_AS_IMAGE))
+        !canal::pergunta().expect("janela").pixel_de_fabrica,
+        "um PNG parte de imagem"
     );
+    canal::pede(Pedido::ImportarComo { pixel: false });
     p.quadro();
     nasce(&mut p);
     assert_eq!(sprites(&p), antes + 3, "a imagem não é da família");
-    assert_eq!(p.hero.store.take_import_as(false), Some(vec![a]));
+    assert!(
+        p.hero.store.take_import_as_image().is_some(),
+        "volta à shell"
+    );
+}
+
+/// A janela abre sem sprite em Draw (o 1.º ficheiro do projecto) e o Pixel Sprite nasce na mesma.
+#[test]
+fn a_janela_do_import_funciona_fora_do_draw() {
+    let mut p = Palco::novo("fora");
+    let c = p.pasta.join("w.png");
+    write_folha(&c);
+    let _ = p.hero.gizmo.mode.leave();
+    p.quadro();
+    responde(&mut p, vec![c], true);
+    assert!(object_add::born_from_paste(&mut p.sim, &mut p.app, spawn_root).is_some());
+}
+
+/// Um ficheiro que não se lê diz porquê na janela, e parte de imagem.
+#[test]
+fn a_janela_do_import_diz_porque_nao_le() {
+    let mut p = Palco::novo("ruim2");
+    let c = p.pasta.join("r.ase");
+    std::fs::write(&c, b"nao").expect("grava");
+    p.hero.store.ask_import_as(vec![c]);
+    p.quadro();
+    let f = canal::pergunta().expect("janela");
+    assert!(f.erro.is_some());
+    assert_eq!(canal::imagem(), None);
 }

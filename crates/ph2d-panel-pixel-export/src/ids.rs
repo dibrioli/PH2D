@@ -151,6 +151,8 @@ pub const CHECKS: [NodeId; 11] = [
 
 pub const JSON_HASH: NodeId = hash_node_id("pixel_export.json_hash");
 pub const JSON_ARRAY: NodeId = hash_node_id("pixel_export.json_array");
+pub const AS_PIXEL: NodeId = hash_node_id("pixel_export.as_pixel");
+pub const AS_IMAGE: NodeId = hash_node_id("pixel_export.as_image");
 pub const BY_ROWS: NodeId = hash_node_id("pixel_export.by_rows");
 pub const BY_COLUMNS: NodeId = hash_node_id("pixel_export.by_columns");
 /// O formato do nome de cada quadro no JSON.

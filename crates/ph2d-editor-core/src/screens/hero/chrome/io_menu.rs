@@ -18,12 +18,6 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         hero.store.close_context_menu();
         return true;
     }
-    if id == ids::CTX_MENU_IMPORT_AS_IMAGE || id == ids::CTX_MENU_IMPORT_AS_PIXEL {
-        hero.store
-            .choose_import_as(id == ids::CTX_MENU_IMPORT_AS_PIXEL);
-        hero.store.close_context_menu();
-        return true;
-    }
     if let Some(a) = crate::pixel_panel::PixelFileAction::of_menu_row(id) {
         // O Repeat apagado não fecha o menu e não faz nada (`menu_row_is_unavailable`).
         if !hero.store.menu_row_is_unavailable(id) {

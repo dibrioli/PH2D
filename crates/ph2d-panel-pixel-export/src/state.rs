@@ -111,6 +111,8 @@ pub struct PixelExportPanelState {
     pub(crate) grelha: Grelha,
     /// A imagem do Import de que a grelha partiu (uma imagem nova traz a sugestão dela).
     pub(crate) grelha_de: Option<u64>,
+    /// A resposta na janela do File ▸ Import.
+    pub(crate) como_pixel: bool,
     /// A imagem da GPU e o `seq` da publicação de que veio.
     pub(crate) imagem: Option<(u64, ph2d_vector::StableImage)>,
     pub(crate) xadrez: std::sync::Arc<std::sync::Mutex<ph2d_pixel_render::Checker>>,
@@ -124,6 +126,7 @@ impl Default for PixelExportPanelState {
             fo: OpcoesFo::default(),
             grelha: grelha_inicial(),
             grelha_de: None,
+            como_pixel: false,
             imagem: None,
             xadrez: std::sync::Arc::default(),
         }

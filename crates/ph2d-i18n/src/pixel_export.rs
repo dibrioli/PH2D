@@ -7,6 +7,23 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.export.title_as" => "Export As",
         "panel.pixel.export.title_sheet" => "Export Sprite Sheet",
         "panel.pixel.export.title_import" => "Import Sprite Sheet",
+        "panel.pixel.export.title_import_as" => "Import",
+        "panel.pixel.export.as_title" => "Import as",
+        "panel.pixel.export.as_pixel" => "Pixel Sprite",
+        "panel.pixel.export.as_image" => "Image (Painter)",
+        "panel.pixel.export.as_pixel_hint" => {
+            "Edit it pixel by pixel in Draw, with its layers, frames and tags. It stays crisp when zoomed."
+        }
+        "panel.pixel.export.as_pixel_seq" => {
+            "These PNG files become the frames of one Pixel Sprite, in name order."
+        }
+        "panel.pixel.export.as_image_hint" => {
+            "Place it in the scene and edit it in Painter. An .ase becomes an animated sheet."
+        }
+        "panel.pixel.export.as_many" => "{name} and {n} files in all",
+        "panel.pixel.export.as_facts" => {
+            "{w} x {h} px, {f} {f?frame|frames}, {l} {l?layer|layers}, {t} {t?tag|tags}"
+        }
         "panel.pixel.export.reset" => "Reset",
         "panel.pixel.export.cancel" => "Cancel",
         "panel.pixel.export.export" => "Export",

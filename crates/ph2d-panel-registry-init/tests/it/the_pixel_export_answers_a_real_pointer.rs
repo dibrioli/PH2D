@@ -202,22 +202,56 @@ fn as_listas_e_as_outras_janelas_respondem() {
     assert_eq!(hero.panel_visibility.get(PANEL_PIXEL_EXPORT), Some(&false));
 }
 
-/// As duas respostas da pergunta do File ▸ Import, pelo ponteiro.
+/// A janela do File ▸ Import pelo ponteiro: um `.ase` parte de Pixel Sprite, a outra escolha muda a
+/// resposta, e o Cancel não pede nada.
 #[test]
-fn a_pergunta_do_import_responde_ao_ponteiro() {
+fn a_janela_do_import_responde_ao_ponteiro() {
     let _ = ph2d_panel_registry_init::register_all_panels();
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
-    for (id, nome, pixel) in [
-        (ids::CTX_MENU_IMPORT_AS_IMAGE, "Image", false),
-        (ids::CTX_MENU_IMPORT_AS_PIXEL, "Pixel Sprite", true),
-    ] {
-        let mut hero = HeroScreen::new(NodeId(1));
-        pinta(&mut hero, &mut ts);
-        let c = vec![std::path::PathBuf::from("a.png")];
-        hero.store.ask_import_as(c.clone());
-        pinta(&mut hero, &mut ts);
-        clica(&mut hero, id, nome);
-        assert_eq!(hero.store.take_import_as(pixel), Some(c), "{nome}");
-        assert!(hero.store.context_menu().is_none(), "{nome}");
-    }
+    let mut hero = HeroScreen::new(NodeId(1));
+    pinta(&mut hero, &mut ts);
+    canal::publish_imagem(Some(canal::Imagem {
+        rgba: std::sync::Arc::new(vec![255; 16 * 8 * 4]),
+        w: 16,
+        h: 8,
+        seq: 1,
+        lados_reais: (16, 8),
+        entradas: 0,
+        sugestao: None,
+        com_dados: false,
+    }));
+    canal::publish_pergunta(Some(canal::Pergunta {
+        nome: "a.ase".to_owned(),
+        ficheiros: 1,
+        lados: (16, 8),
+        quadros: 3,
+        camadas: 2,
+        tags: 1,
+        pixel_de_fabrica: true,
+        erro: None,
+    }));
+    canal::abrir(Tela::ImportComo);
+    hero.panel_visibility.insert(PANEL_PIXEL_EXPORT, true);
+    assenta(&mut hero, &mut ts);
+    assert!(
+        hero.hit_index.rect_for(e::EXPORT_RESET).is_none(),
+        "nada a repor"
+    );
+    clica(&mut hero, e::OK, "Import");
+    assert_eq!(
+        canal::take_pedido(),
+        Some(Pedido::ImportarComo { pixel: true })
+    );
+    clica(&mut hero, e::AS_IMAGE, "Image");
+    assenta(&mut hero, &mut ts);
+    clica(&mut hero, e::OK, "Import");
+    assert_eq!(
+        canal::take_pedido(),
+        Some(Pedido::ImportarComo { pixel: false })
+    );
+    clica(&mut hero, e::AS_PIXEL, "Pixel Sprite");
+    assenta(&mut hero, &mut ts);
+    clica(&mut hero, e::CANCEL, "Cancel");
+    assert_eq!(canal::take_pedido(), None);
+    assert_eq!(hero.panel_visibility.get(PANEL_PIXEL_EXPORT), Some(&false));
 }

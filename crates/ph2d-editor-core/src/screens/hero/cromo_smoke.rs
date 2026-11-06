@@ -22,7 +22,6 @@ fn cena(n: u32) -> Option<(Option<K>, Option<NodeId>)> {
         14 => (Some(K::ConfirmDeleteBoard { board: 1 }), None),
         15 => (Some(K::SendToBoard { row: NodeId(1) }), None),
         17 => (Some(K::ToolBarOverflow), None),
-        18 => (Some(K::ImportAs), Some(ids::CTX_MENU_IMPORT_AS_PIXEL)),
         _ => return None,
     })
 }

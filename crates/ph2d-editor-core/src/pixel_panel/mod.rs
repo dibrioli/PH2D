@@ -317,9 +317,9 @@ pub struct PixelDialogs {
     pub(crate) edit: PixelEditDialog,
     pub(crate) file_menu: Option<bool>,
     pub(crate) file_request: Option<PixelFileAction>,
-    /// Os ficheiros do File ▸ Import à espera da pergunta, e a resposta.
+    /// Os ficheiros do File ▸ Import à espera da janela, e os que ela mandou importar como imagem.
     pub(crate) import_pendente: Option<Vec<std::path::PathBuf>>,
-    pub(crate) import_decidido: Option<(bool, Vec<std::path::PathBuf>)>,
+    pub(crate) import_imagem: Option<Vec<std::path::PathBuf>>,
 }
 
 impl Default for PixelOptions {

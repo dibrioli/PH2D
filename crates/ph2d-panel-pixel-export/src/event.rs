@@ -40,6 +40,8 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         ids::JSON_ARRAY,
         ids::BY_ROWS,
         ids::BY_COLUMNS,
+        ids::AS_PIXEL,
+        ids::AS_IMAGE,
     ])
     .chain(ids::FORMATS)
     .chain(ids::BOXES)
@@ -129,6 +131,9 @@ fn verbo(st: &PixelExportPanelState) -> Option<Pedido> {
             opcoes: st.fo.folha.clone(),
             json: st.fo.json_ligado.then_some(st.fo.json),
         }))),
+        Tela::ImportComo => Some(Pedido::ImportarComo {
+            pixel: st.como_pixel,
+        }),
         Tela::Import => {
             let i = canal::imagem()?;
             let (c, r) = celulas(&st.grelha, i.w, i.h);
@@ -177,6 +182,10 @@ fn clique(st: &mut PixelExportPanelState, id: NodeId) -> bool {
     }
     if id == ids::JSON_HASH || id == ids::JSON_ARRAY {
         st.fo.json.array = id == ids::JSON_ARRAY;
+        return true;
+    }
+    if id == ids::AS_PIXEL || id == ids::AS_IMAGE {
+        st.como_pixel = id == ids::AS_PIXEL;
         return true;
     }
     if id == ids::BY_ROWS || id == ids::BY_COLUMNS {
@@ -244,6 +253,7 @@ pub(crate) fn apply_event(
             match st.tela {
                 Tela::ExportAs => st.as_ = OpcoesAs::default(),
                 Tela::Folha => st.fo = OpcoesFo::default(),
+                Tela::ImportComo => {}
                 Tela::Import => {
                     st.grelha = canal::imagem()
                         .and_then(|i| i.sugestao)

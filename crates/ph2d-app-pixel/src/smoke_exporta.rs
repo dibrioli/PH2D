@@ -16,7 +16,12 @@ pub(crate) fn conduz(app: &mut PixelApp) {
     {
         return;
     }
-    let a = match std::env::var("PH2D_PIXEL_SMOKE_GESTO").as_deref() {
+    let g = std::env::var("PH2D_PIXEL_SMOKE_GESTO");
+    if g.as_deref() == Ok("pergunta") {
+        let c = std::env::var("PH2D_PIXEL_SMOKE_FOLHA").unwrap_or_default();
+        return app.exporta.pergunta(vec![c.into()]);
+    }
+    let a = match g.as_deref() {
         Ok("as") => A::ExportAs,
         Ok("folha") => A::ExportSheet,
         Ok("import") => A::ImportSheet,

@@ -14,6 +14,12 @@ authors.workspace = true
 # quem as tem é a composição. A família do jogo chama-a, e a composição lê o cartão que abre.
 [dependencies]
 ph2d-app-host = { path = "../ph2d-app-host" }
+# O nível 2 renderiza as receitas e entrega os WAV como sons do projeto.
+ph2d-audio = { path = "../ph2d-audio" }
+ph2d-audio-decode = { path = "../ph2d-audio-decode" }
+ph2d-audio-encode = { path = "../ph2d-audio-encode" }
+ph2d-sfx-dsp = { path = "../ph2d-sfx-dsp" }
+ph2d-sfx-recipe = { path = "../ph2d-sfx-recipe", features = ["component"] }
 ph2d-ecs = { path = "../ph2d-ecs" }
 # `cartao_que_abre` devolve um `NodeId` do Inspector.
 ph2d-editor-core = { path = "../ph2d-editor-core" }

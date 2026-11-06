@@ -15,6 +15,7 @@ mod jogo_moldura_ponteiro;
 mod jogo_object_add;
 mod jogo_smoke;
 mod sprite_espelhar;
+mod receitas;
 mod sound_set;
 mod sprite_image_choice_gate;
 mod sprite_image_use_gate;

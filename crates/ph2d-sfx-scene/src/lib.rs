@@ -2,6 +2,10 @@
 //! de três sons bem diferentes, o Audio Listener no jogador e um toque de Autoplay que só soa no Play.
 //!
 //! As moedas apontam para um objeto que fica: uma moeda sai da cena ao ser pega, e o sorteio dela sairia junto.
+//!
+//! `PH2D_SFX_SMOKE=2` — os sons renderizados pela receita: [`receitas`].
+
+pub mod receitas;
 
 use ph2d_ecs::{
     AudioSource2D, Entity, Name, PickStrategy, SignalActions, SignalVerb, SimWorld, SoundEntry,
@@ -18,11 +22,13 @@ pub type Raiz = fn(&mut SimWorld, &str) -> u64;
 /// A variável e os níveis.
 pub const ROUTER: ph2d_app_host::SmokeRouter = ph2d_app_host::SmokeRouter {
     env: "PH2D_SFX_SMOKE",
-    max_level: 1,
+    max_level: 2,
 };
 
 /// O nível do jogo de plataforma sobre o qual a cena monta.
 pub const NIVEL_DO_JOGO: u32 = 2;
+/// O nível da cena com os sons da receita.
+pub const NIVEL_RECEITAS: u32 = 2;
 /// O objeto dos três sons: o que se seleciona na Hierarchy.
 pub const CONJUNTO: &str = "Coin Sounds";
 /// O objeto do toque de Autoplay.
@@ -66,6 +72,20 @@ pub fn nivel() -> Option<u32> {
 #[must_use]
 pub fn ou_nivel(base: Option<u32>) -> Option<u32> {
     base.or(nivel().map(|_| NIVEL_DO_JOGO))
+}
+
+/// `PH2D_ANIM_SMOKE=2`: a cena de animação com um marcador na `walk` e «Advanced» aberto, onde «Frame markers» mora.
+#[must_use]
+pub fn marcadores_do_anim_smoke() -> Option<ph2d_ecs::SpriteAnimMarkers> {
+    std::env::var("PH2D_ANIM_SMOKE")
+        .is_ok_and(|v| v.trim() == "2")
+        .then(|| {
+            ph2d_ecs::SpriteAnimMarkers(vec![ph2d_ecs::FrameMarker {
+                tag: "walk".into(),
+                step: 3,
+                signal: "footstep".into(),
+            }])
+        })
 }
 
 /// O cartão do Inspector que abre sobre o objeto que o nível devolve.
@@ -125,11 +145,17 @@ pub fn veste(
         .entity_mut(jingle)
         .insert(fonte_do_nivel(nomes[1].clone(), true));
 
+    aponta_as_moedas(sim, CONJUNTO);
+    conjunto
+}
+
+/// Toda moeda deixa de tocar a si mesma e passa a tocar o objeto `alvo`.
+fn aponta_as_moedas(sim: &mut SimWorld, alvo: &str) {
     let w = sim.world_mut();
     let moedas: Vec<Entity> = w
         .query::<(Entity, &Name)>()
         .iter(w)
-        .filter(|(_, n)| n.as_str().starts_with("Coin ") && n.as_str() != CONJUNTO)
+        .filter(|(_, n)| n.as_str().starts_with("Coin ") && n.as_str() != alvo)
         .map(|(e, _)| e)
         .collect();
     for m in moedas {
@@ -138,12 +164,11 @@ pub fn veste(
         if let Some(mut t) = moeda.get_mut::<SignalActions>() {
             for a in &mut t.0 {
                 if a.verb == SignalVerb::PlaySound {
-                    a.target = CONJUNTO.into();
+                    a.target = alvo.into();
                 }
             }
         }
     }
-    conjunto
 }
 
 /// [`veste`] quando a cena foi pedida. Sem ela, o nível fica como está e o objeto é o jogador. Devolve o
@@ -155,10 +180,11 @@ pub fn veste_se_armada(
     raiz: Raiz,
     jogador: Entity,
 ) -> Entity {
-    if nivel().is_some() {
-        return veste(sim, importa_som, anexa, raiz, jogador);
+    match nivel() {
+        Some(NIVEL_RECEITAS) => receitas::veste(sim, anexa, raiz, jogador),
+        Some(_) => veste(sim, importa_som, anexa, raiz, jogador),
+        None => jogador,
     }
-    jogador
 }
 
 #[cfg(test)]
@@ -170,8 +196,9 @@ mod tests {
         let com = |v: &'static str| move |k: &str| (k == ROUTER.env).then(|| v.to_owned());
         assert_eq!(nivel_in(com("1")), Some(1));
         assert_eq!(nivel_in(com(" 1 ")), Some(1));
+        assert_eq!(nivel_in(com("2")), Some(2));
         assert_eq!(nivel_in(com("0")), None);
-        assert_eq!(nivel_in(com("2")), None);
+        assert_eq!(nivel_in(com("3")), None);
         assert_eq!(nivel_in(com("x")), None);
         assert_eq!(nivel_in(|_| None), None);
     }

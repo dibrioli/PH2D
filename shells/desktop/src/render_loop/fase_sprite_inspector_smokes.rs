@@ -128,7 +128,7 @@ impl crate::App {
             )
         {
             hero.gizmo.replace_selection(Some(bits));
-            if crate::anim_smoke::with_marker() {
+            if ph2d_sfx_scene::marcadores_do_anim_smoke().is_some() {
                 hero.store
                     .set_collapsed(ph2d_panel_inspector::ids::INSP_ANIM_ADVANCED, false);
             }

@@ -87,3 +87,22 @@ pub fn editing(
     (a.mode == ObjectMode::Draw && crate::input::key_of(world, a.entity).is_some())
         .then_some(a.entity)
 }
+
+#[cfg(test)]
+mod linhas_tests {
+    use super::*;
+
+    /// ⭐ Dono 06/11: *«vamos tirar os layers da hierarchy. Eles vivem apenas no painter/pixel»*: um Pixel Sprite, com as
+    /// suas camadas, não declara linha nenhuma.
+    #[test]
+    fn o_pixel_sprite_nao_tem_linhas_de_camadas() {
+        let mut world = ph2d_ecs::World::new();
+        world.spawn(ph2d_ecs::PixelSprite(1));
+        let mut app = PixelApp::default();
+        let mut family = Family::new(&mut app, &world);
+        assert_eq!(family.sprites.len(), 1, "CONTROLO: a família vê o objecto");
+        let mut linhas = ph2d_editor_core::hier_rows::ContentMap::default();
+        family.content(&mut ToolRegistry::new(), &mut linhas);
+        assert!(linhas.is_empty());
+    }
+}

@@ -38,7 +38,7 @@ pub enum RowRole {
 /// **Onde uma peça de conteúdo se edita.**
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ContentOpens {
-    /// Num modo do objecto — as camadas (Paint, Draw): o `drive` entra nele com a peça em mãos.
+    /// Num modo do objecto — as camadas do Flip (Draw): o `drive` entra nele com a peça em mãos.
     Mode(ObjectMode),
     /// Num painel — os clips da Animação abrem a Timeline (doc 01 §6); a `key` é o que ele abre.
     Panel(&'static str),

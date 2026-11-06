@@ -318,7 +318,6 @@ fn sair_do_paint_e_voltar_a_gravar_nao_recusa() {
     t.set_paint_media(ph2d_tool_painter::PaintMedia::WetPaint);
     let (inicial, _) = t.macro_grava().expect("arma");
     t.deactivate();
-    t.forget_pending_layer();
     t.bind_document(5, vec![255u8; 16 * 16 * 4], 16, 16);
     let cargas = t.macro_para();
     let mut toc =

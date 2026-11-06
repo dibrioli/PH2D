@@ -166,7 +166,6 @@ impl PainterTool {
         }
         // A marca do artista é da imagem: quem mostra a macro dá a desta (W9).
         self.undo.marca.poe(None);
-        self.serve_pending_layer(entity);
     }
 
     /// Does the painter need `entity`'s pixels pushed to it — is it NOT currently holding a usable

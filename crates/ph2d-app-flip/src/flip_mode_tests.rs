@@ -297,3 +297,15 @@ fn a_born_drawing_asks_for_draw_once_it_has_an_entity() {
     assert_eq!(f.wants(&mut tools), Some((B, ObjectMode::Draw)));
     assert_eq!(f.wants(&mut tools), None, "uma vez só");
 }
+
+/// CONTROLO do dono 06/11 (as camadas da imagem saíram da Hierarchy): o Flip mantém as suas, com a chave de sempre.
+#[test]
+fn o_flip_mantem_as_camadas_na_hierarchy() {
+    let (doc, mut state, mut tools) = dois_desenhos();
+    let mut f = Family::new(&mut state, &doc);
+    let mut linhas = ContentMap::default();
+    f.content(&mut tools, &mut linhas);
+    let grupo = &linhas.get(&A).expect("as camadas do desenho A")[0];
+    assert_eq!(grupo.label_key, "hier_rows.content.layers");
+    assert_eq!(grupo.items.len(), 1);
+}

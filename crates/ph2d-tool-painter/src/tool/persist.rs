@@ -207,9 +207,6 @@ impl PainterTool {
         let novo = |b: Option<u64>| b.map(|x| de_para.get(&x).copied().unwrap_or(x));
         self.bound_doc = novo(self.bound_doc);
         self.shape_source_doc = novo(self.shape_source_doc);
-        if let Some((b, _)) = self.pending_layer.as_mut() {
-            *b = de_para.get(b).copied().unwrap_or(*b);
-        }
     }
 
     /// Os pixels que o sprite deve mostrar depois de um load — o documento instalado, composto e (se

@@ -157,8 +157,6 @@ pub const PORTAS: &[Porta] = &[
         "o restauro do undo dá bits novos à MESMA imagem: troca a chave dos documentos, não muda a obra (W18)",
     ),
     r("baked_document_pixels", OUTRO_DOCUMENTO),
-    r("open_layer_of", OUTRO_DOCUMENTO),
-    a("forget_pending_layer", TROCA_DE_MODO),
     r("set_layer_name", CAMADAS_DE_FORA),
     r("handle_layer_reparent", CAMADAS_DE_FORA),
     r("add_raster_layer_with_pixels", CAMADAS_DE_FORA),

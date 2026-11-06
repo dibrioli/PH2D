@@ -80,8 +80,8 @@ falta é uma REGRA de interface, não um motor.**
 2. **COMPONENTE = algo que um objecto TEM ou FAZ.** Não existe sozinho e não tem posição própria (usa
    a do objecto). ⇒ **cartão no Inspector, e ícone na linha do objecto na Hierarchy.**
    - O teste: *«isto pode existir sem um dono?»* Se não pode ⇒ componente.
-3. **CONTEÚDO = o que se EDITA dentro de um objecto, num modo.** São as camadas da Imagem, os ossos
-   do Esqueleto, os quadros do Flip, os clipes da Animação e os nós do Motion. ⇒ **sub-linhas
+3. **CONTEÚDO = o que se EDITA dentro de um objecto, num modo.** São os ossos
+   do Esqueleto, os quadros do Flip, os clipes da Animação e os nós do Motion. ⛔ **Dono 06/11:** as camadas da Imagem e do Pixel Sprite saíram da Hierarchy: vivem só nos painéis do Painter e do Pixel (*«vamos tirar os layers da hierarchy»*). ⇒ **sub-linhas
    recolhidas sob o objecto** (o Outliner do Blender). Clicar nelas entra no modo ou editor certo.
 4. **LUGAR ÚNICO:** tudo o que o artista cria tem resposta para *«onde está?»*, que é *«na linha Y da
    Hierarchy»*. As duas únicas portas fora da árvore têm nome e ficam na barra de cima:
@@ -106,7 +106,7 @@ falta é uma REGRA de interface, não um motor.**
 |---|---|---|---|---|
 | **Cena** (raiz) | objecto (novo) | 1.ª linha, sempre | Animação da cena · Mundo físico · Mixer | — |
 | Vazio / Grupo | objecto | linha | Transform | — |
-| Imagem | objecto | linha ▸ *Camadas* (conteúdo) | Rendering · Ordering · (pixels) | Paint · Edit |
+| Imagem | objecto | linha | Rendering · Ordering · (pixels) | Paint · Edit |
 | Vetor (forma) | objecto | linha | Geometry · Rendering | Edit |
 | Flip | objecto | linha ▸ *Quadros* (conteúdo) | Rendering | Draw · Edit |
 | Esqueleto | objecto | linha ▸ *Ossos* (conteúdo) | — | Edit · Pose |
@@ -134,7 +134,6 @@ falta é uma REGRA de interface, não um motor.**
     ▸ 🎞 Animação da cena (2 clipes)
   ▾ 🧍 Herói                ⬢ ⚙ 🔊 🎞
       ▸ 🎞 Clipes (3)  — andar · pular · morrer
-      ▸ 🖼 Camadas (4)
     ▸ 🗡 Espada
   ▸ 📷 Câmara               🎥
 ```
@@ -157,7 +156,6 @@ falta é uma REGRA de interface, não um motor.**
 1. **Ícones de componente na linha da Hierarchy.** Num relance vê-se o que cada objecto faz; o clique
    no ícone leva ao cartão. O Godot só mostra script e sinais; o Unity não mostra nada.
 2. **Sub-linhas de conteúdo.** *«Onde estão as animações do Herói?»* ⇒ na linha 🎞 debaixo do Herói.
-   *«Onde estão as camadas desta imagem?»* ⇒ debaixo dela.
 3. **Add por PROPÓSITO, com busca por intenção.** O menu Add já está agrupado por tipo (spec/06). O
    *Add Component* passa a achar também por verbo: *«cair»* ⇒ Corpo físico, *«pular»* ⇒ Jogador
    plataforma, *«tocar som»* ⇒ Fonte de som. O Godot procura pelo nome da classe.

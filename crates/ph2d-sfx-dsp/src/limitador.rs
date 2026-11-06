@@ -45,7 +45,7 @@ pub fn limitar_escuta(amostras: &[f32], taxa: u32) -> Vec<f32> {
     let mut soma = 0.0f64;
     let mut saida = Vec::with_capacity(n);
     let mut proximo = 0;
-    for i in 0..n {
+    for (i, amostra) in amostras.iter().enumerate() {
         let ate = (i + janela).min(n - 1);
         while proximo <= ate {
             while minimos
@@ -67,7 +67,7 @@ pub fn limitar_escuta(amostras: &[f32], taxa: u32) -> Vec<f32> {
             soma -= f64::from(historia.pop_front().unwrap_or(1.0));
         }
         let media = soma / historia.len() as f64;
-        saida.push(limpo(amostras[i]) * media as f32);
+        saida.push(limpo(*amostra) * media as f32);
     }
     saida
 }

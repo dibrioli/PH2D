@@ -50,6 +50,12 @@ pub struct Mesa {
     pub agora: u128,
 }
 
+impl Default for Mesa {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Mesa {
     pub fn new() -> Self {
         let mut hero = HeroScreen::new(NodeId(1));

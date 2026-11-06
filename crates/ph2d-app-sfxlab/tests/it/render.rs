@@ -129,6 +129,11 @@ fn desfazer_devolve_a_receita_e_o_som() {
     assert_eq!((m.receita(id), m.hash(id)), (r0, h0), "o gesto é um passo");
     let agora = m.receita(id);
     assert_eq!(m.lib().recipes["Impact"], agora);
+    assert_eq!(
+        m.desfaz(false),
+        Some(false),
+        "não sobrou passo nenhum do gesto"
+    );
 
     assert_eq!(m.desfaz(true), Some(true));
     m.espera(id);

@@ -371,7 +371,7 @@ fn faixa(a: &mut Aba, p: &mut P<'_>, l: &Layer, x_pista: f32, w_pista: f32, y: f
     let bloco = Rect::new(x0, y, w, m::ROW_H);
     let silencio = a.solo.is_some_and(|s| s != l.id) || (l.muted && a.solo != Some(l.id));
     let selecionada = a.sel == Some(l.id);
-    p.caixa(bloco, if selecionada { T::AccentSoft } else { T::Bg3 });
+    p.caixa(bloco, if selecionada { T::AccentSoft } else { T::Bg2 });
     if let Some(o) = a.pronto.as_ref().and_then(|f| f.camadas.get(&l.id)) {
         let tinta = if silencio { T::Text3 } else { T::Accent };
         onda(p, o, bloco, l.gain, tinta);

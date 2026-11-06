@@ -84,3 +84,10 @@ File > Import abre janela Pixel Sprite × Image (Painter); arrastar não pergunt
 - `curve_a11y`/`range_a11y`: lacuna do app (ver P9a).
 - P10 a seguir em [02_plano_modulo.md](../02_plano_modulo.md).
 - Os «deixado de propósito» da §7.
+
+## Abertos do dono (05/11, para o dia seguinte; não corrigidos, causa não investigada)
+
+1. «O color picker do seletor de cor não funciona para Pixel.» Reproduzir antes de assumir qual controlo é: provavelmente o conta-gotas do seletor partilhado.
+2. «Depois de entrar e sair de Pixel, o zoom do canvas fica limitado até escolher outro objeto.» Suspeita a conferir, não medida: estado do Draw que sobrevive à saída (`PixelApp::fit`, `set_family_owns_canvas`, degrau de zoom da família).
+
+Não estão na P9 e não foram pedidos como bloqueio da integração: quem integra confirma com o dono se entram antes ou depois.

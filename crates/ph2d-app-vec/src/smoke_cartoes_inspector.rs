@@ -235,17 +235,6 @@ pub(crate) fn step(
 
 /// `PH2D_VEC_CARTOES_PRESO=1`: a 13 com o Transform solto no canvas e preso à forma.
 fn transform_preso(s: u8, hero: &mut HeroScreen) {
-    // `PH2D_VEC_CARTOES_POPOVER=1`: a lista de Blend aberta, para a foto da ordem de pintura.
-    if std::env::var_os("PH2D_VEC_CARTOES_POPOVER").is_some() && s == FIM - 6 {
-        use ph2d_editor_core::interaction::InteractiveState;
-        hero.store
-            .set_collapsed(ph2d_tool_vector::ids::VECTOR_SECTION_APPEARANCE, false);
-        if let Some(InteractiveState::Dropdown { open, .. }) =
-            hero.store.get_mut(ph2d_tool_vector::ids::VECTOR_OBJ_BLEND)
-        {
-            *open = true;
-        }
-    }
     let k = ph2d_editor_core::registry::hash_node_id("cards.insp.transform");
     if std::env::var_os("PH2D_VEC_CARTOES_PRESO").is_some() && s == FIM - 6 {
         hero.store

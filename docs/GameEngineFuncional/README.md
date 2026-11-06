@@ -128,4 +128,4 @@ Os numerados de `01` a `22` e os `handoffs/` são **histórico**. Valem as decis
 | `19` | ordem de desenho e clique |
 | `21` | moedas e som como asset |
 
-Último handoff de integração: [GEF 22, 04/11](handoffs/HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-04.md).
+Último handoff de integração: [GEF 23 Sprite, 06/11](handoffs/HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-06_SPRITE.md) (antes: [GEF 22, 04/11](handoffs/HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-04.md)).

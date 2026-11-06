@@ -55,7 +55,7 @@ Miniatura quadrada de 72 px com recorte pelo raio, moldura de altura fixa e um s
 
 **Dono 06/11: o Pixel Sprite tem cartão igual ao da imagem.** *«O obj pixel tem apenas o botão de editar no pixel»*, e perguntado: *«Criar um cartão com o botão Pixel: fica igual à imagem»*. Selecionado, ele mostra o cartão `Image` com a mesma moldura: miniatura de 72 px (o quadro corrente, achatado nas camadas visíveis, sobre o mesmo xadrez, nítida), o nome do objecto, `W × H px` e um só botão `[enviar] Pixel`, que entra no Draw daquele objecto. A miniatura dele não troca nada (nem clique, nem ícone em hover), e não há Use nem Look, que ele não tem. O Transform fica como estava. Tem alfinete: preso, mostra o seu objecto, e o botão selecciona-o e entra no Draw dele. A família publica o facto (`ph2d_app_pixel::cartao`, no store, para a seleção e para cada preso); a miniatura só se refaz quando o desenho muda, e em Draw espera até sair. No documento gigante guarda até 512 px de lado. Cena `PH2D_PIXEL_SMOKE=21`. Testes: `o_cartao_do_pixel_sprite` (Inspector), `cartao` (`shells/pixel-scenes`), `o_cartao_do_pixel_sprite_preso_e_o_dele_e_pede_o_draw_dele`.
 
-**Dono 06/11: a imagem abre no Painter sem a repetição.** No Draw, o objecto mostra UMA cópia da imagem inteira, no centro do bloco; o traço cai onde o cursor está. Ao sair, volta o Repeated com as mesmas cópias e os píxeis novos em todas. É só uma vista (`ph2d_ecs::ImagemAberta`, publicada por `ph2d_sprite_screen::imagem_aberta`): nada do objecto muda, o save grava o Repeated e a outra plataforma continua repetida. A Region abre igual (a imagem inteira à escala da área; antes ficava esmagada no quad da área), e o Animated já abria a folha inteira.
+**Dono 06/11: a imagem abre no Painter sem a repetição.** No Draw, o objecto mostra UMA cópia da imagem inteira, no centro do bloco; o traço cai onde o cursor está. Ao sair, volta o Repeated com as mesmas cópias e os píxeis novos em todas. É só uma vista (`ph2d_ecs::ImagemAberta`, publicada por `ph2d_sprite_screen::imagem_aberta`): nada do objecto muda, o save grava o Repeated e a outra plataforma continua repetida. A Region abre igual (a imagem inteira à escala da área; antes ficava esmagada no quad da área), e o Animated já abria a folha inteira. **Vista do Painter (dono):** o rectângulo verde fica da largura do objecto · a cópia abre centrada · a Region salta.
 
 **Dono 06/11: as camadas saem da Hierarchy.** *«vamos tirar os layers da hierarchy. Eles vivem apenas no painter/pixel»*: a imagem deixa de ter a sub-linha `Layers`; as camadas ficam nos painéis do Painter e do Pixel. As outras famílias mantêm o conteúdo delas.
 
@@ -96,7 +96,11 @@ Por estado do painel: **vazio** = cartão Image inteiro é «Drop an image or cl
 
 ## Provas
 
-Por escrever conforme cada etapa: teste por evento real em `crates/ph2d-panel-inspector/tests/it/`, foto `PH2D_GAME_SMOKE_FOTO`, smoke do dono com as plataformas e o Player do jogo.
+Pivot: `a_caixa_opaca_ignora_a_sobra_transparente`, `mudar_o_pivo_nao_move_o_desenho`, `mudar_o_pivo_nao_move_os_filhos`, `mudar_o_pivo_nao_move_a_colisao`, `arrastar_o_pivo_no_canvas_nao_move_a_colisao_nem_os_filhos` (`ph2d-sprite-edit`, `pivot_tests.rs`) · `cada_um_dos_nove_pontos_pede_o_seu_pivo`, `o_flip_e_o_pivot_pintam_a_bolinha_de_chave`, `editar_um_eixo_do_pivot_nao_mexe_no_outro` (`ph2d-panel-inspector/tests/it/o_cartao_da_sprite.rs`) · `com_o_pivo_no_pe_o_boneco_pisa_e_salta_igual` (`shells/game-scenes`).
+
+Cartão: `a_miniatura_abre_o_seletor`, `a_miniatura_e_o_tamanho_nao_mudam_com_a_largura`, `nada_do_cartao_da_sprite_e_cortado_no_minimo_do_painel` (mesmo ficheiro) · Pixel Sprite: `o_pixel_sprite_selecionado_mostra_o_cartao_so_com_o_pixel`, `nada_do_cartao_do_pixel_e_cortado_no_minimo_do_painel` (`o_cartao_do_pixel_sprite.rs`).
+
+**Sem prova ainda:** clique em *Use one Region* (a chave `card.insp.sheet_use_region` existe, nenhum teste a cita) · Undo e Auto Key do Transform no Draw · chave do Pivot na timeline real · preset que sai do Custom em `set_new_image_size`. Ver [onda 3](../handoffs/HANDOFF_CONTINUACAO_2026-11-06_23_SPRITE_ONDA3.md).
 
 Imagem sem a repetição no Painter: `o_painter_abre_o_repetido_numa_copia_e_ao_sair_volta_o_mesmo` (`ph2d-app-painter`), `o_traco_cai_onde_o_cursor_esta_na_copia` e `a_region_abre_a_imagem_inteira_a_mesma_escala` (`ph2d-sprite-screen`) · censo `every_painter_map_reads_the_sprite_as_it_is_shown` · fotos `sprite_no_painter`, `sprite_no_painter_traco`, `sprite_painter_volta`.
 
@@ -106,8 +110,8 @@ Camadas fora da Hierarchy: `a_imagem_com_camadas_nao_tem_linhas_na_hierarchy` (P
 
 | # | O quê | Estado |
 |---|---|---|
-| E1 | Cartões: Image, Look, Advanced, Ordering, Transform dobrado, cortes | por fazer |
-| E2 | Pivot de 9 pontos sobre o desenho visível | por fazer |
-| E3 | Vazio, `Add ▸ Sprite` que pede imagem, «Paint a new image…» | por fazer |
-| E4 | Aviso de folha, *Use one Region*, Replace com recibo | por fazer |
-| E5 | Edit in Painter: ida, volta, todos os objetos, desfazer | por fazer |
+| E1 | Cartões: Image, Look, Advanced, Ordering, Transform dobrado, cortes | feito |
+| E2 | Pivot de 9 pontos sobre o desenho visível | feito (`a_caixa_opaca_ignora_a_sobra_transparente`) |
+| E3 | Vazio, `Add ▸ Sprite` que pede imagem, «Paint a new image…» | a conferir no ecrã: `object_add.rs:158` ainda insere o quadrado branco |
+| E4 | Aviso de folha, *Use one Region*, Replace com recibo | feito, salvo o clique da Region, sem prova (Replace saiu: decisão 8) |
+| E5 | Edit in Painter: ida, volta, todos os objetos, desfazer | feito só no Painter; Pixel revogado (06/11) |

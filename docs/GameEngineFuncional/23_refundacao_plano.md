@@ -16,7 +16,7 @@ em 7 partes, ou peça ao dono que rode o lote (`fonte_critica/PROMPT_CONTINUACAO
 
 | Item | Crítica | Estudo | Estado |
 |---|---|---|---|
-| **Sprite** (com Transform e Ordering dela, e a porta Add ▸ Sprite / Image…) | Sprite | Sprite · Transform | `a revisar` |
+| **Sprite** (com Transform e Ordering dela, e a porta Add ▸ Sprite / Image…) | Sprite | Sprite · Transform | `no smoke` ([onda 3](handoffs/HANDOFF_CONTINUACAO_2026-11-06_23_SPRITE_ONDA3.md): faltam Espelhar, provas e Add ▸ Sprite) |
 
 **Ponto de partida, a conferir** (recomendação da crítica, ainda **não aprovada** pelo dono):
 

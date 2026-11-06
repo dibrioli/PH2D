@@ -35,6 +35,10 @@ pub(crate) fn apply_audio_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
         return false;
     };
 
+    if crate::event_audio_set::apply_set_event(host, bits, &src.set, ev) {
+        return true;
+    }
+
     if let WidgetEvent::Click(id) = ev {
         let edit = if id == ids::INSP_AUDIO_BROWSE {
             AudioFieldEdit::Browse

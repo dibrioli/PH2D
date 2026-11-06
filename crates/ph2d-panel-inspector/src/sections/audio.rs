@@ -141,6 +141,85 @@ fn bus_row(
     linha.fim(ph2d_tokens::row_pitch_px())
 }
 
+/// Os avisos da fonte: cada um responde a uma forma de «não ouço nada». Devolve o `y` seguinte.
+#[allow(clippy::too_many_arguments)]
+fn avisos(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+    src: &InspectorAudioSource,
+    info: &InspectorAudioInfo,
+) -> f32 {
+    let mut cur_y = y;
+    if src.no_sound_to_play() {
+        cur_y = super::rows::aviso(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            cur_y,
+            tr("panel.inspector.audio.no_sound_file_yet_use"),
+            ColorToken::Text3,
+        );
+    } else if src.file_missing && !src.set.decides {
+        cur_y = super::rows::aviso(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            cur_y,
+            tr("panel.inspector.audio.that_file_is_gone_pick"),
+            ColorToken::Danger,
+        );
+    }
+    let faltam: Vec<&str> = src.set.missing_names().collect();
+    if !faltam.is_empty() {
+        cur_y = super::rows::aviso(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            cur_y,
+            &tr_with(
+                "card.audio.not_in_project",
+                &[("names", &faltam.join(", "))],
+            ),
+            ColorToken::Danger,
+        );
+    }
+    if src.never_sounds() {
+        cur_y = super::rows::aviso(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            cur_y,
+            tr("panel.inspector.audio.nothing_plays_this_autoplay_is"),
+            ColorToken::Warn,
+        );
+    }
+    if info.listener_count == 0 {
+        cur_y = super::rows::aviso(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            cur_y,
+            tr("panel.inspector.audio.no_audio_listener_2d_in"),
+            ColorToken::Warn,
+        );
+    }
+    cur_y
+}
+
 /// O corpo da FONTE. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
 fn source_body(
@@ -208,11 +287,47 @@ fn source_body(
     //    arrancava `6 px` à esquerda das sete linhas de número por baixo dela. *Duas declarações
     //    para o mesmo corpo são duas colunas.*
     let nomes: Vec<&str> = std::iter::once(tr("component.field.source_fields.0"))
+        .chain(super::audio_set::NOMES.iter().map(|k| tr(k)))
         .chain(linhas.iter().map(|t| t.0.tr()))
         .chain(std::iter::once(tr("component.field.source_fields.10")))
         .collect();
     let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &nomes);
-    let mut cur_y = super::anim_rows::text_row(
+    // Com a lista a mandar o campo não decide nada: ele some, e a frase diz quem decide.
+    let mut cur_y = if src.set.decides {
+        super::rows::aviso(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            y,
+            tr("card.audio.list_decides"),
+            ColorToken::Text2,
+        )
+    } else {
+        super::anim_rows::text_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            y,
+            TextKey::new("component.field.source_fields.0"),
+            ids::INSP_AUDIO_SOUND,
+            TextInput::new(ids::INSP_AUDIO_SOUND, "")
+                .placeholder(tr("panel.inspector.audio.sound_file")),
+            seccao,
+        )
+    };
+    cur_y = buttons(scene, text_system, theme, hit_index, store, x, w, cur_y);
+
+    // ⚠️ **Os avisos vêm ANTES dos números**, e é deliberado: quem não ouve nada não quer afinar um
+    // expoente de atenuação — quer saber porquê.
+    cur_y = avisos(scene, text_system, theme, x, w, cur_y, src, info);
+
+    cur_y = super::audio_set::sound_set_body(
         scene,
         text_system,
         theme,
@@ -220,64 +335,10 @@ fn source_body(
         store,
         x,
         w,
-        y,
-        TextKey::new("component.field.source_fields.0"),
-        ids::INSP_AUDIO_SOUND,
-        TextInput::new(ids::INSP_AUDIO_SOUND, "")
-            .placeholder(tr("panel.inspector.audio.sound_file")),
+        cur_y,
+        &src.set,
         seccao,
     );
-    cur_y = buttons(scene, text_system, theme, hit_index, store, x, w, cur_y);
-
-    // ⚠️ **Os avisos vêm ANTES dos números**, e é deliberado: quem não ouve nada não quer afinar um
-    // expoente de atenuação — quer saber porquê.
-    if src.sound.trim().is_empty() {
-        cur_y = super::rows::aviso(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            tr("panel.inspector.audio.no_sound_file_yet_use"),
-            ColorToken::Text3,
-        );
-    } else if src.file_missing {
-        cur_y = super::rows::aviso(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            tr("panel.inspector.audio.that_file_is_gone_pick"),
-            ColorToken::Danger,
-        );
-    }
-    if src.never_sounds() {
-        cur_y = super::rows::aviso(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            tr("panel.inspector.audio.nothing_plays_this_autoplay_is"),
-            ColorToken::Warn,
-        );
-    }
-    if info.listener_count == 0 {
-        cur_y = super::rows::aviso(
-            scene,
-            text_system,
-            theme,
-            x,
-            w,
-            cur_y,
-            tr("panel.inspector.audio.no_audio_listener_2d_in"),
-            ColorToken::Warn,
-        );
-    }
 
     for (label, id, step, unit) in linhas {
         cur_y = super::rows::fields_row(

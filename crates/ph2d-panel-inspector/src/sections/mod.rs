@@ -61,11 +61,13 @@ pub(crate) mod anchors;
 pub(crate) mod anim;
 /// O cartão «Animation» (plano GameEngineFuncional 07): lista com ▶, «Who Picks».
 pub(crate) mod anim_card;
+pub(crate) mod anim_markers;
 pub(crate) mod anim_rows;
 /// A lista de regras do cartão «Animation» (plano GameEngineFuncional 08).
 pub(crate) mod anim_rules;
 /// ⭐⭐⭐ O SOM de um objecto (TOP-20 #4) — a fonte e as orelhas.
 pub(crate) mod audio;
+pub(crate) mod audio_set;
 pub(crate) mod camera;
 pub(crate) mod camera_format;
 mod canal_item;

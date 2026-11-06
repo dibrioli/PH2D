@@ -1121,7 +1121,9 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     // ⬆️ `100 → 101` em 2026-11-02 (`line/GameEngineFuncional`, GEF 20 C2, achado no fecho da GEF 21) —
     //    **capacidade nova**: o Eyedropper do Target do Follow da câmera (`INSP_CAMERA_TARGET_PICK`), aprovado no
     //    smoke do dono da GEF 20 (`docs/GameEngineFuncional/handoffs/HANDOFF_CONTINUACAO_2026-11-02_20_CAMERA_INTUITIVA.md`).
-    ("inspector", 101),
+    // ⬆️ `101 → 102` em 2026-11-05 (`line/SfxLab`, W1) — **capacidade nova**: o «+ Marker» da animação aberta
+    //    (`INSP_ANIM_MARKER_ADD`). A lista de sons não soma: a cena armada não tem sons nela.
+    ("inspector", 102),
     // ⛔⛔ `110` botões, **`4`** comandos: fechar · importar · exportar · e o *elo*, que é pintado
     //    uma vez por linha por decisão escrita no pintor. O painel é uma LISTA, não uma dívida.
     // ⬆️ `4 → 5` em 2026-11-04 (NovaUI D1, o painel em cartões), MEDIDO: a mais é só o «…» da lista (D21).

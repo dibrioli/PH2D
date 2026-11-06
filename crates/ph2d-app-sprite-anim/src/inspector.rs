@@ -172,6 +172,8 @@ pub fn build_anim_info(
                     signal_on_loop: t.signal_on_loop.clone(),
                     per_frame_ms: t.per_frame_ms.clone(),
                     frames: crate::card::row_frames(world, entity, &t.name),
+                    markers: crate::card::row_markers(world, entity, &t.name),
+                    steps: crate::card::row_steps(world, entity, &t.name),
                 })
                 .collect()
         })
@@ -511,7 +513,7 @@ mod tests;
 ///
 /// ⚠️ **O corte é por BYTES e respeita o caractere**: `String::truncate` entra em pânico a meio de
 /// um multibyte, e um nome com acento é normal.
-fn clean_signal_name(raw: &str) -> String {
+pub(crate) fn clean_signal_name(raw: &str) -> String {
     let t = raw.trim();
     match t.char_indices().nth_back(0) {
         _ if t.len() <= ph2d_ecs::ANIM_NAME_MAX_BYTES => t.to_owned(),

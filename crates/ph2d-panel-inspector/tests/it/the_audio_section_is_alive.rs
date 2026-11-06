@@ -55,6 +55,7 @@ pub(crate) fn fonte() -> InspectorAudioSource {
         bus_tag: 0,
         file_missing: false,
         reachable_by_signal: true,
+        set: Default::default(),
     }
 }
 

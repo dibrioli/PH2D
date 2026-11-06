@@ -370,6 +370,48 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.tags.pick_hint" => {
             "Choose a tag to rename, select or delete it. Drag a tag onto another to nest it."
         }
+        "card.audio.sounds" => "Sounds",
+        "card.audio.weight" => "Weight",
+        "card.audio.remove_sound" => "Remove this sound",
+        "card.audio.sound_on_tip" => "Off keeps the sound in the list but it never plays",
+        "card.audio.weight_tip" => "How often this sound comes up, compared to the others",
+        "card.audio.pick" => "Pick",
+        "card.audio.pick_placeholder" => "Add a sound\u{2026}",
+        "card.audio.pick_none" => "No sounds to add",
+        "card.audio.pick_empty_project" => {
+            "This project has no sounds yet. Browse\u{2026} imports one, then it can be picked here."
+        }
+        "card.audio.pick_all_in_list" => "Every sound of this project is already in the list.",
+        "card.audio.pick_full" => "This list is full: remove a sound before adding another.",
+        "card.audio.mode" => "Mode",
+        "card.audio.no_repeat" => "No repeat",
+        "card.audio.no_repeat_tip" => "Never the same sound twice in a row",
+        "card.audio.no_repeat_sequence" => {
+            "Sequence plays the list in order, so No repeat has no effect."
+        }
+        "card.audio.pitch_variation" => "Pitch variation (st)",
+        "card.audio.volume_variation" => "Volume variation (dB)",
+        "card.audio.list_decides" => {
+            "The Sounds list decides what plays. The Sound field comes back when no sound is on."
+        }
+        "card.audio.not_in_project" => "Not in this project, so it stays silent: {names}.",
+        "card.audio.rows_hidden" => {
+            "{n} more {n?sound|sounds} in this list {n?is|are} not shown here, and {n?it plays|they play} anyway."
+        }
+        "card.audio.offer_hidden" => "{n} more project {n?sound|sounds} cannot be offered here.",
+        "card.anim.markers" => "Frame markers",
+        "card.anim.marker_frame" => "Frame",
+        "card.anim.marker_signal" => "Signal",
+        "card.anim.marker_signal_placeholder" => "Signal name",
+        "card.anim.marker_add" => "+ Marker",
+        "card.anim.marker_del_tip" => "Remove this marker",
+        "card.anim.marker_tip" => "When the animation enters this frame, it sends this signal",
+        "card.anim.marker_past_end" => {
+            "Frame {frame} is past the end ({n} {n?frame|frames}): this marker stays silent."
+        }
+        "card.anim.markers_hidden" => {
+            "{n} more {n?marker|markers} on this animation {n?is|are} not shown here, and {n?it fires|they fire} anyway."
+        }
         "card.bones.along_out" => "Along out",
         "card.bones.min" => "Min (\u{b0})",
         "card.bones.max" => "Max (\u{b0})",

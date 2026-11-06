@@ -542,3 +542,21 @@ pub const INSP_ANIM_FLIP: NodeId = hash_node_id("insp_anim_flip");
 /// O cabeçalho do grupo «Advanced» (os campos finos da animação e as substituições do tocador) —
 /// nasce FECHADO.
 pub const INSP_ANIM_ADVANCED: NodeId = hash_node_id("insp_anim_advanced");
+
+/// **Quantos marcadores por animação têm linha.** O recurso é a tabela compilada, nunca o motor: o tique dispara
+/// todos, e o cartão avisa do que não mostra. Sobe mudando o número: nada mais depende dele.
+///
+/// Medido 05/11 (`diag_o_custo_dos_marcadores`, `--profile smoke`, mínimo de 30 pinturas): 0 linhas 313 µs ·
+/// 8 linhas 456 µs · 32 linhas 873 µs, com `1 088 px` de altura (passo 34).
+pub const MAX_ANIM_MARKER_ROWS: usize = 32;
+/// «+ Marker».
+pub const INSP_ANIM_MARKER_ADD: NodeId = hash_node_id("insp_anim_marker_add");
+/// O quadro (1-based na tela) do marcador `i`.
+pub const INSP_ANIM_MARKER_FRAME: [NodeId; MAX_ANIM_MARKER_ROWS] =
+    super::inspector_audio::tabela_de_linha(hash_node_id("insp_anim_marker_frame"));
+/// O sinal do marcador `i`.
+pub const INSP_ANIM_MARKER_SIGNAL: [NodeId; MAX_ANIM_MARKER_ROWS] =
+    super::inspector_audio::tabela_de_linha(hash_node_id("insp_anim_marker_signal"));
+/// Remover o marcador `i`.
+pub const INSP_ANIM_MARKER_DEL: [NodeId; MAX_ANIM_MARKER_ROWS] =
+    super::inspector_audio::tabela_de_linha(hash_node_id("insp_anim_marker_del"));

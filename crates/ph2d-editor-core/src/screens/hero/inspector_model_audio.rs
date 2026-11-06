@@ -44,6 +44,55 @@ pub struct InspectorAudioSource {
     /// ⚠️ **Derivado do MUNDO**, e é a metade que a lei pura declara não poder responder: ela sabe
     /// que a fonte não arranca sozinha, e não sabe se alguém a manda arrancar.
     pub reachable_by_signal: bool,
+    /// A lista de sons do objeto (`SoundSet`). Vazia quando ele não tem o componente.
+    pub set: InspectorSoundSet,
+}
+
+/// Uma linha da lista de sons.
+#[derive(Clone, Debug, PartialEq)]
+pub struct InspectorSoundRow {
+    pub name: String,
+    pub weight: f32,
+    pub enabled: bool,
+    /// O nome não é um som do projeto.
+    pub missing: bool,
+}
+
+/// **A lista de sons, como o cartão a lê.** Derivada no snapshot: este painel não conhece o `SoundSet`.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct InspectorSoundSet {
+    pub rows: Vec<InspectorSoundRow>,
+    /// `SoundSet::has_sounds`: há som ligado, então a lista manda em vez do `sound`.
+    pub decides: bool,
+    /// A posição em `PickStrategy::ALL`.
+    pub strategy_tag: u8,
+    /// A posição de `Sequence` em `PickStrategy::ALL`: lá o «No repeat» não decide nada.
+    pub sequence_tag: u8,
+    pub no_repeat: bool,
+    pub pitch_jitter_st: f32,
+    pub gain_jitter_db: f32,
+    /// Os rótulos do Mode, na ordem de `PickStrategy::ALL`.
+    pub mode_labels: Vec<String>,
+    /// Os sons do projeto que ainda não estão na lista: o que o Pick oferece.
+    pub offer: Vec<String>,
+    /// Quantos sons o projeto tem. Separa «projeto sem som» de «todos já na lista».
+    pub project_sounds: usize,
+}
+
+impl InspectorSoundSet {
+    /// Os nomes da lista que o projeto não tem, na ordem dela.
+    pub fn missing_names(&self) -> impl Iterator<Item = &str> {
+        self.rows
+            .iter()
+            .filter(|r| r.missing)
+            .map(|r| r.name.as_str())
+    }
+
+    /// O «No repeat» decide alguma coisa no modo atual?
+    #[must_use]
+    pub fn no_repeat_decides(&self) -> bool {
+        self.strategy_tag != self.sequence_tag
+    }
 }
 
 /// O piso do silêncio, em decibéis — **o mesmo do motor** (`ph2d_ecs::db_to_linear`).
@@ -56,7 +105,13 @@ impl InspectorAudioSource {
     /// ⛔ **Esta fonte nunca se vai ouvir** — as três maneiras, espelhadas da lei pura.
     #[must_use]
     pub fn is_mute(&self) -> bool {
-        self.sound.trim().is_empty() || self.max_distance <= 0.0 || self.volume_db <= SILENCE_DB
+        self.no_sound_to_play() || self.max_distance <= 0.0 || self.volume_db <= SILENCE_DB
+    }
+
+    /// Nem a lista tem som ligado nem o campo Sound nomeia um.
+    #[must_use]
+    pub fn no_sound_to_play(&self) -> bool {
+        !self.set.decides && self.sound.trim().is_empty()
     }
 
     /// ⛔ **Ninguém a vai fazer tocar** — nem sozinha, nem por sinal.
@@ -116,4 +171,15 @@ pub enum AudioFieldEdit {
     Preview,
     /// **Calar** o que este objecto tem a soar.
     StopPreview,
+    /// Põe um som do projeto na lista; o primeiro cria o `SoundSet`.
+    SetAdd(String),
+    /// Tira a linha `i` da lista.
+    SetRemove(u8),
+    SetEnabled(u8, bool),
+    SetWeight(u8, f32),
+    /// A posição em `PickStrategy::ALL`.
+    SetStrategy(u8),
+    SetNoRepeat(bool),
+    SetPitchJitter(f32),
+    SetGainJitter(f32),
 }

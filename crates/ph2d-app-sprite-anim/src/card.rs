@@ -7,12 +7,12 @@
 
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{
-    AnimDirection, Entity, SpriteAnimCursor, SpriteAnimFrames, SpriteAnimations, SpriteAnimator,
-    SpriteGrid, World,
+    AnimDirection, Entity, FrameMarker, SpriteAnimCursor, SpriteAnimFrames, SpriteAnimMarkers,
+    SpriteAnimations, SpriteAnimator, SpriteGrid, World,
 };
 use ph2d_editor_core::{
     AnimCardInfo, AnimCharacterInfo, AnimChooser, AnimCycleMode, AnimFieldEdit, AnimRuleInfo,
-    AnimWhenInfo,
+    AnimWhenInfo, InspectorAnimMarker,
 };
 use ph2d_inspector_ordering::{queue_remove, queue_set};
 use ph2d_physics_ecs::{
@@ -77,6 +77,11 @@ fn authored_signals(world: &World, rules: Option<&AnimRules>) -> Vec<String> {
         for t in q.iter(world).flat_map(|lib| lib.iter()) {
             put(&t.signal_on_finish);
             put(&t.signal_on_loop);
+        }
+    }
+    if let Some(mut q) = world.try_query::<&SpriteAnimMarkers>() {
+        for m in q.iter(world).flat_map(|m| m.0.iter()) {
+            put(&m.signal);
         }
     }
     if let Some(mut q) = world.try_query::<&Health>() {
@@ -188,6 +193,107 @@ pub fn row_frames(world: &World, entity: Entity, name: &str) -> Vec<u32> {
         .unwrap_or_default()
 }
 
+/// Quantos quadros esta animação toca na grelha de hoje (`0` = não resolve).
+#[must_use]
+pub fn row_steps(world: &World, entity: Entity, name: &str) -> u32 {
+    let cells = world
+        .get::<SpriteGrid>(entity)
+        .map_or(1, |g| g.cells().max(1));
+    world
+        .get::<SpriteAnimations>(entity)
+        .and_then(|l| l.get(name))
+        .and_then(|t| {
+            let frames = world.get::<SpriteAnimFrames>(entity);
+            ph2d_ecs::tag_cells(t, frames.and_then(|f| f.get(name)), cells)
+        })
+        .map_or(0, |seq| u32::try_from(seq.len()).unwrap_or(u32::MAX))
+}
+
+/// Os marcadores de uma linha da biblioteca, na ordem da lista.
+#[must_use]
+pub fn row_markers(world: &World, entity: Entity, name: &str) -> Vec<InspectorAnimMarker> {
+    world
+        .get::<SpriteAnimMarkers>(entity)
+        .map(|m| {
+            m.of_tag(name)
+                .map(|m| InspectorAnimMarker {
+                    step: m.step,
+                    signal: m.signal.clone(),
+                })
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Uma edição dos marcadores da animação `row`. `None` = linha ou marcador fora (nada se grava).
+fn edit_markers(
+    world: &World,
+    entity_bits: u64,
+    edit: &AnimFieldEdit,
+    queue: &EditorCommandQueue,
+    registry: &ComponentRegistry,
+) -> Option<()> {
+    let entity = Entity::from_bits(entity_bits);
+    let row = match edit {
+        AnimFieldEdit::MarkerAdd(r)
+        | AnimFieldEdit::MarkerStep(r, ..)
+        | AnimFieldEdit::MarkerSignal(r, ..)
+        | AnimFieldEdit::MarkerRemove(r, _) => usize::from(*r),
+        _ => return None,
+    };
+    let name = world
+        .get::<SpriteAnimations>(entity)?
+        .iter()
+        .nth(row)?
+        .name
+        .clone();
+    let steps = row_steps(world, entity, &name);
+    let mut m = world
+        .get::<SpriteAnimMarkers>(entity)
+        .cloned()
+        .unwrap_or_default();
+    // O marcador `i` DESTA animação, como posição na lista inteira.
+    let at = |m: &SpriteAnimMarkers, i: u8| {
+        m.0.iter()
+            .enumerate()
+            .filter(|(_, x)| x.tag == name)
+            .nth(usize::from(i))
+            .map(|(j, _)| j)
+    };
+    match edit {
+        AnimFieldEdit::MarkerAdd(_) => {
+            // O primeiro quadro ainda sem marcador: dois marcadores no mesmo quadro não são o que se quer.
+            let livre = (0..steps.max(1))
+                .find(|s| !m.of_tag(&name).any(|x| x.step == *s))
+                .unwrap_or(0);
+            m.0.push(FrameMarker {
+                tag: name.clone(),
+                step: livre,
+                signal: String::new(),
+            });
+        }
+        AnimFieldEdit::MarkerStep(_, i, step) => {
+            let j = at(&m, *i)?;
+            m.0[j].step = (*step).min(steps.saturating_sub(1));
+        }
+        AnimFieldEdit::MarkerSignal(_, i, text) => {
+            let j = at(&m, *i)?;
+            m.0[j].signal = crate::inspector::clean_signal_name(text);
+        }
+        AnimFieldEdit::MarkerRemove(_, i) => {
+            let j = at(&m, *i)?;
+            m.0.remove(j);
+        }
+        _ => return None,
+    }
+    if m.0.is_empty() {
+        queue_remove(queue, registry, entity_bits, MARKERS);
+    } else {
+        queue_set(queue, registry, entity_bits, MARKERS, &m);
+    }
+    Some(())
+}
+
 /// Aplica uma edição do cartão. `None` = não é uma edição do cartão (a §11 de sempre trata-a).
 pub fn apply_card_edit(
     world: &World,
@@ -198,6 +304,12 @@ pub fn apply_card_edit(
 ) -> Option<()> {
     let entity = Entity::from_bits(entity_bits);
     match edit {
+        AnimFieldEdit::MarkerAdd(_)
+        | AnimFieldEdit::MarkerStep(..)
+        | AnimFieldEdit::MarkerSignal(..)
+        | AnimFieldEdit::MarkerRemove(..) => {
+            edit_markers(world, entity_bits, edit, queue, registry)?;
+        }
         AnimFieldEdit::Frames(row, cells) => {
             let lib = world.get::<SpriteAnimations>(entity)?;
             let name = lib.iter().nth(usize::from(*row))?.name.clone();
@@ -412,6 +524,17 @@ pub(crate) fn follow_remove(
     registry: &ComponentRegistry,
 ) {
     let entity = Entity::from_bits(entity_bits);
+    // Os marcadores saem com a animação: inertes, voltariam sozinhos numa animação nova de mesmo nome.
+    if let Some(mut m) = world.get::<SpriteAnimMarkers>(entity).cloned()
+        && m.of_tag(name).next().is_some()
+    {
+        m.0.retain(|x| x.tag != name);
+        if m.0.is_empty() {
+            queue_remove(queue, registry, entity_bits, MARKERS);
+        } else {
+            queue_set(queue, registry, entity_bits, MARKERS, &m);
+        }
+    }
     let Some(mut f) = world.get::<SpriteAnimFrames>(entity).cloned() else {
         return;
     };

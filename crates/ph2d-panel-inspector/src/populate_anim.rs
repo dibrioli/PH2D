@@ -99,6 +99,38 @@ pub(crate) fn populate_anim(store: &mut WidgetStore) {
     // m/s relativos ao chão; o tecto 10 é a faixa da UI (o `speed` de partida é 6), não recurso.
     store.set_number_range(crate::ids::INSP_ANIM_RUN_FROM, 0.0, 10.0, 0.1); // LITERAL-PX-OK: m/s
     populate_anim_card(store);
+    populate_anim_markers(store);
+}
+
+/// As linhas dos marcadores em quadro. A faixa do «Frame» depende da animação: quem a põe é o `sync`.
+fn populate_anim_markers(store: &mut WidgetStore) {
+    use crate::ids;
+    register_button_ids(store, &[ids::INSP_ANIM_MARKER_ADD]);
+    register_button_ids(store, &ids::INSP_ANIM_MARKER_DEL);
+    store.set_tooltip(ids::INSP_ANIM_MARKER_ADD, tr("card.anim.marker_tip"));
+    for i in 0..ids::MAX_ANIM_MARKER_ROWS {
+        store.set_tooltip(ids::INSP_ANIM_MARKER_DEL[i], tr("card.anim.marker_del_tip"));
+        store.register(
+            ids::INSP_ANIM_MARKER_FRAME[i],
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: 1.0,
+                buffer: format_number(1.0),
+                caret: 0,
+                last_committed: 1.0,
+                selection_anchor: None,
+            },
+        );
+        store.register(
+            ids::INSP_ANIM_MARKER_SIGNAL[i],
+            InteractiveState::TextInput {
+                state: TextInputState::Normal,
+                text: String::new(),
+                caret: 0,
+                selection_anchor: None,
+            },
+        );
+    }
 }
 
 /// **Os balões do cartão** (plano 22): o que um nome curto não diz mora sob o rato (ordem do dono 21/09).

@@ -53,6 +53,45 @@ pub fn chip(
     );
 }
 
+/// O [`chip`], ou o que não abre quando `parado`.
+#[allow(clippy::too_many_arguments)]
+pub fn chip_ou_parado(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    ink: CardInk,
+    r: Rect,
+    texto: &str,
+    aceso: bool,
+    parado: bool,
+) {
+    if parado {
+        chip_parado(scene, text_system, ink, r, texto);
+    } else {
+        chip(scene, text_system, ink, r, texto, aceso);
+    }
+}
+
+/// O [`chip`] que não abre: a caixa do cartão com o texto apagado e sem a seta.
+fn chip_parado(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    ink: CardInk,
+    r: Rect,
+    texto: &str,
+) {
+    crate::paint::fill_rounded_rect(scene, r, m::FIELD_RADIUS, ink.color(ColorToken::CardField));
+    crate::paint::paint_text_elided(
+        text_system,
+        scene,
+        texto,
+        r.x + m::FIELD_PAD_R,
+        r.y + crate::paint::folga_do_texto(r.h, m::VALUE_PX),
+        m::VALUE_PX,
+        (r.w - m::FIELD_PAD_R * 2.0).max(0.0),
+        ink.color(ColorToken::Text3),
+    );
+}
+
 /// O raio do realce de uma linha da lista aberta de um cartão.
 pub(super) const RAIO_DA_LINHA: f32 = m::SEG_RADIUS;
 

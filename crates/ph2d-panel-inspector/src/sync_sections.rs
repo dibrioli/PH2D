@@ -187,6 +187,12 @@ fn assinatura_audio(au: &ph2d_editor_core::screens::hero::InspectorAudioInfo) ->
     if let Some(s) = au.source.as_ref() {
         s.sound.hash(&mut h);
         s.max_polyphony.hash(&mut h);
+        for r in &s.set.rows {
+            r.weight.to_bits().hash(&mut h);
+        }
+        s.set.rows.len().hash(&mut h);
+        s.set.pitch_jitter_st.to_bits().hash(&mut h);
+        s.set.gain_jitter_db.to_bits().hash(&mut h);
         for v in [
             s.volume_db,
             s.pitch,
@@ -239,7 +245,22 @@ fn sync_audio_fields(
             crate::ids::INSP_AUDIO_POLYPHONY,
             f64::from(src.max_polyphony),
         ),
-    ] {
+        (
+            crate::ids::INSP_AUDIO_PITCH_JITTER,
+            f64::from(src.set.pitch_jitter_st),
+        ),
+        (
+            crate::ids::INSP_AUDIO_GAIN_JITTER,
+            f64::from(src.set.gain_jitter_db),
+        ),
+    ]
+    .into_iter()
+    .chain(
+        crate::ids::INSP_AUDIO_SET_WEIGHT
+            .iter()
+            .zip(&src.set.rows)
+            .map(|(&id, r)| (id, f64::from(r.weight))),
+    ) {
         if focus != Some(id) && drag != Some(id) {
             crate::unidade_mundo::semeia(host, id, v);
         }
@@ -405,6 +426,7 @@ fn sync_anim_fields(
         crate::ids::INSP_ANIM_FRAME_MS_THIS,
         shown.is_some_and(|(_, own)| !own),
     );
+    crate::sections::anim_markers::sync_marker_fields(host, an, selected);
     if !seed {
         return;
     }

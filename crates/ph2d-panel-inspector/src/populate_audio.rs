@@ -24,7 +24,7 @@ use super::populate::register_button_ids;
 /// ⚠️ **Os valores de partida são os do `AudioSource2D::default()`**, e não zeros: um `Pitch` que
 /// nasce a `0` lê-se como um campo partido, e é o mesmo argumento que pôs a duração do timer a um
 /// segundo em vez de zero.
-const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 7] = [
+const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 9] = [
     (crate::ids::INSP_AUDIO_VOLUME, 0.0, -80.0, 24.0, 1.0), // LITERAL-PX-OK: decibéis, não pixels
     (crate::ids::INSP_AUDIO_PITCH, 1.0, 0.05, 8.0, 0.05), // LITERAL-PX-OK: factor de tom, não pixels
     (crate::ids::INSP_AUDIO_MAX_DIST, 10.0, 0.0, 1000.0, 0.5), // LITERAL-PX-OK: metros, não pixels
@@ -32,6 +32,8 @@ const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 7] = [
     (crate::ids::INSP_AUDIO_RADIUS, 0.0, 0.0, 1000.0, 0.1),   // LITERAL-PX-OK: metros, não pixels
     (crate::ids::INSP_AUDIO_PANNING, 1.0, 0.0, 1.0, 0.05), // LITERAL-PX-OK: fracção, adimensional
     (crate::ids::INSP_AUDIO_POLYPHONY, 1.0, 1.0, 16.0, 1.0), // LITERAL-PX-OK: contagem de vozes
+    (crate::ids::INSP_AUDIO_PITCH_JITTER, 0.0, 0.0, 24.0, 0.5), // LITERAL-PX-OK: semitons, `MAX_JITTER`
+    (crate::ids::INSP_AUDIO_GAIN_JITTER, 0.0, 0.0, 24.0, 0.5), // LITERAL-PX-OK: decibéis, `MAX_JITTER`
 ];
 
 pub(crate) fn populate_audio(store: &mut WidgetStore) {
@@ -54,6 +56,7 @@ pub(crate) fn populate_audio(store: &mut WidgetStore) {
             selected_index: None,
         },
     );
+    populate_sound_set(store);
     store.register(
         crate::ids::INSP_AUDIO_SOUND,
         InteractiveState::TextInput {
@@ -85,5 +88,61 @@ pub(crate) fn populate_audio(store: &mut WidgetStore) {
             },
         );
         store.set_number_range(id, lo, hi, step);
+    }
+}
+
+/// Os widgets da lista de sons. As faixas do peso são as de `ph2d_sound_set::WEIGHT_RANGE`.
+fn populate_sound_set(store: &mut WidgetStore) {
+    register_button_ids(store, &crate::ids::INSP_AUDIO_SET_DEL);
+    register_button_ids(store, &crate::ids::INSP_AUDIO_PICK_OPT);
+    register_button_ids(store, &crate::ids::INSP_AUDIO_MODE_OPT);
+    for id in [crate::ids::INSP_AUDIO_PICK, crate::ids::INSP_AUDIO_MODE] {
+        store.register(
+            id,
+            InteractiveState::Dropdown {
+                state: DropdownState::Normal,
+                open: false,
+                selected_index: None,
+            },
+        );
+    }
+    let caixa = |store: &mut WidgetStore, id| {
+        store.register(
+            id,
+            InteractiveState::Checkbox {
+                state: CheckboxState::Normal,
+                value: CheckboxValue::Unchecked,
+            },
+        );
+    };
+    caixa(store, crate::ids::INSP_AUDIO_NO_REPEAT);
+    store.set_tooltip(
+        crate::ids::INSP_AUDIO_NO_REPEAT,
+        ph2d_i18n::tr("card.audio.no_repeat_tip"),
+    );
+    for i in 0..crate::ids::MAX_SOUND_SET_ROWS {
+        caixa(store, crate::ids::INSP_AUDIO_SET_ON[i]);
+        store.set_tooltip(
+            crate::ids::INSP_AUDIO_SET_ON[i],
+            ph2d_i18n::tr("card.audio.sound_on_tip"),
+        );
+        store.set_tooltip(
+            crate::ids::INSP_AUDIO_SET_DEL[i],
+            ph2d_i18n::tr("card.audio.remove_sound"),
+        );
+        let id = crate::ids::INSP_AUDIO_SET_WEIGHT[i];
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: 1.0,
+                buffer: format_number(1.0),
+                caret: 0,
+                last_committed: 1.0,
+                selection_anchor: None,
+            },
+        );
+        store.set_number_range(id, 0.01, 16.0, 0.1); // LITERAL-PX-OK: a faixa do peso, adimensional
+        store.set_tooltip(id, ph2d_i18n::tr("card.audio.weight_tip"));
     }
 }

@@ -49,6 +49,17 @@ pub struct InspectorAnimRow {
     pub per_frame_ms: Vec<u32>,
     /// A lista de quadros (`SpriteAnimFrames`), na ordem tocada. Vazia = o intervalo `from..=to`.
     pub frames: Vec<u32>,
+    /// Os marcadores em quadro desta animação (`SpriteAnimMarkers`), na ordem da lista.
+    pub markers: Vec<InspectorAnimMarker>,
+    /// Quantos quadros a animação toca (`0` = não resolve na grelha de hoje). Teto do «Frame».
+    pub steps: u32,
+}
+
+/// Um marcador em quadro: ao entrar no passo `step` (`0`-based), a animação grita `signal`.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct InspectorAnimMarker {
+    pub step: u32,
+    pub signal: String,
 }
 
 impl InspectorAnimRow {
@@ -354,6 +365,13 @@ pub enum AnimFieldEdit {
     SignalOnFinish(u8, String),
     /// `(animação, nome do sinal ao fechar um CICLO)` — vazio cala a animação.
     SignalOnLoop(u8, String),
+    /// Um marcador novo na animação `row`; o primeiro cria o `SpriteAnimMarkers`.
+    MarkerAdd(u8),
+    /// O marcador `i` da animação `row` passa ao passo `step` (`0`-based).
+    MarkerStep(u8, u8, u32),
+    MarkerSignal(u8, u8, String),
+    /// Tira o marcador `i` da animação `row`; o último retira o componente.
+    MarkerRemove(u8, u8),
     /// **`(animação, índice DENTRO do intervalo, ms)`** — a duração de UMA célula (spec §8.12).
     ///
     /// ⚠️ O índice é relativo ao `from` da animação, e não à grelha: é assim que o vetor se
@@ -440,6 +458,8 @@ mod tests {
             signal_on_loop: String::new(),
             per_frame_ms: Vec::new(),
             frames: Vec::new(),
+            markers: Vec::new(),
+            steps: 4,
         }
     }
 

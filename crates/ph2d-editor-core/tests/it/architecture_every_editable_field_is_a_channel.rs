@@ -172,6 +172,16 @@ const POR_ID: &[(&str, Classe, &str)] = &[
         "estado de VISTA do cartão Look: abre os quatro cantos; o que se anima são os cantos, cada um com o seu canal",
     ),
     (
+        "INSP_AUDIO_SET_",
+        NaoAnimavel,
+        "a lista de sons é estrutura do objeto (`SoundSet`, `D::machinery`): sorteia por disparo, não muda no tempo",
+    ),
+    (
+        "INSP_AUDIO_NO_REPEAT",
+        NaoAnimavel,
+        "regra do sorteio do `SoundSet` (`D::machinery`), não uma propriedade que muda no tempo",
+    ),
+    (
         "INSP_CAMERA_CUSTOM_W",
         NaoAnimavel,
         "definição do PROJECTO (blob `jogo`, plano GEF 17/17b), não da cena: o formato do jogo, a moldura e o ícone no canvas não mudam no tempo",
@@ -299,6 +309,34 @@ const CANAL_DO_ITEM: &str = "canal_item::regista";
 /// canal). ⭐ `ficheiro.rs::fn` (F27 B2) nomeia UMA função e vale para todas as chamadas dela — o
 /// rótulo vem de uma tabela, mesmo com o id literal.
 const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
+    (
+        "ph2d-panel-inspector",
+        "sections/audio_set.rs::pick_row",
+        NaoAnimavel,
+        &["INSP_AUDIO_PICK"],
+        "o «Pick» acrescenta à lista: é um gesto, não uma propriedade",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/audio_set.rs::sound_row",
+        NaoAnimavel,
+        &["INSP_AUDIO_SET_ON", "INSP_AUDIO_SET_WEIGHT"],
+        "as linhas da lista de sons: estrutura do `SoundSet` (`D::machinery`)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/audio_set.rs::sound_set_body",
+        NaoAnimavel,
+        &["INSP_AUDIO_PITCH_JITTER", "INSP_AUDIO_GAIN_JITTER"],
+        "a faixa da variação por disparo do `SoundSet` (`D::machinery`)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/anim_markers.rs::marker_row",
+        NaoAnimavel,
+        &["INSP_ANIM_MARKER_FRAME", "INSP_ANIM_MARKER_SIGNAL"],
+        "o marcador é parâmetro da própria animação (`SpriteAnimMarkers`, `D::machinery`)",
+    ),
     (
         "ph2d-panel-skeleton",
         "section_campos.rs::linha_com_losango",

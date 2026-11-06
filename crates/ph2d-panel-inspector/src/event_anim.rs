@@ -32,6 +32,9 @@ pub(crate) fn apply_anim_event(
     if crate::event_anim_card::apply_card_event(panel, host, &info, ev) {
         return true;
     }
+    if crate::event_anim_markers::apply_markers_event(host, &info, sel_u8, ev) {
+        return true;
+    }
     if let WidgetEvent::Click(id) = ev {
         // Uma linha da lista: abre a ficha **e** escolhe o que toca.
         if let Some(i) = crate::ids::INSP_ANIM_ROW.iter().position(|&o| o == id)

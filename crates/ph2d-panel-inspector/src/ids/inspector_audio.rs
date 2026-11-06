@@ -84,3 +84,62 @@ pub const INSP_AUDIO_BUS_OPT: [NodeId; 4] = [
     hash_node_id("insp_audio_bus_voice"),
     hash_node_id("insp_audio_bus_master"),
 ];
+
+/// **A tabela de `N` ids de linha derivados de `base`**: uma fileira por posição.
+pub(crate) const fn tabela_de_linha<const N: usize>(base: NodeId) -> [NodeId; N] {
+    const PASSO: u64 = 0x9E37_79B9_7F4A_7C15;
+    let mut out = [NodeId(0); N];
+    let mut i = 0;
+    while i < N {
+        out[i] = NodeId(base.0 ^ (i as u64 + 1).wrapping_mul(PASSO));
+        i += 1;
+    }
+    out
+}
+
+/// **Quantas linhas de som têm id.** O recurso é a tabela compilada, nunca o motor: a lista guarda e sorteia
+/// mais do que isso, e o cartão avisa do que não mostra. Sobe mudando o número: nada mais depende dele.
+///
+/// Medido 05/11 (`diag_o_custo_da_lista_cheia`, `--profile smoke`, mínimo de 30 pinturas do Inspector):
+///
+/// | linhas | pintura | altura da lista |
+/// |---|---|---|
+/// | 0 | 201 µs | 0 |
+/// | 8 | 394 µs | 272 px |
+/// | 64 | 1 557 µs | 2 176 px, duas janelas de 1040 |
+///
+/// Registar o painel inteiro com as tabelas: 1,1 ms, uma vez.
+pub const MAX_SOUND_SET_ROWS: usize = 64;
+
+/// **Quantos sons do projeto o «Pick» oferece** (ids das linhas do popover, que rola). O recurso é a mesma tabela
+/// compilada, dentro do 1,1 ms de registo medido acima; o que passa disso o cartão avisa.
+pub const MAX_SOUND_OFFER: usize = 256;
+
+/// Ligar/desligar a linha `i`.
+pub const INSP_AUDIO_SET_ON: [NodeId; MAX_SOUND_SET_ROWS] =
+    tabela_de_linha(hash_node_id("insp_audio_set_on"));
+/// O peso da linha `i`.
+pub const INSP_AUDIO_SET_WEIGHT: [NodeId; MAX_SOUND_SET_ROWS] =
+    tabela_de_linha(hash_node_id("insp_audio_set_weight"));
+/// Remover a linha `i`.
+pub const INSP_AUDIO_SET_DEL: [NodeId; MAX_SOUND_SET_ROWS] =
+    tabela_de_linha(hash_node_id("insp_audio_set_del"));
+/// O CHIP do «Pick». O store guarda o `open`; as opções vêm do snapshot.
+pub const INSP_AUDIO_PICK: NodeId = hash_node_id("insp_audio_pick");
+/// As linhas do popover do «Pick», por posição em `InspectorSoundSet::offer`.
+pub const INSP_AUDIO_PICK_OPT: [NodeId; MAX_SOUND_OFFER] =
+    tabela_de_linha(hash_node_id("insp_audio_pick_opt"));
+/// O CHIP do «Mode».
+pub const INSP_AUDIO_MODE: NodeId = hash_node_id("insp_audio_mode");
+/// As linhas do «Mode», uma por `PickStrategy::ALL`. ⚠️ A posição é a tag.
+pub const INSP_AUDIO_MODE_OPT: [NodeId; 3] = [
+    hash_node_id("insp_audio_mode_random"),
+    hash_node_id("insp_audio_mode_sequence"),
+    hash_node_id("insp_audio_mode_shuffle"),
+];
+/// «No repeat».
+pub const INSP_AUDIO_NO_REPEAT: NodeId = hash_node_id("insp_audio_no_repeat");
+/// Variação de altura por disparo, em semitons.
+pub const INSP_AUDIO_PITCH_JITTER: NodeId = hash_node_id("insp_audio_pitch_jitter");
+/// Variação de volume por disparo, em dB.
+pub const INSP_AUDIO_GAIN_JITTER: NodeId = hash_node_id("insp_audio_gain_jitter");

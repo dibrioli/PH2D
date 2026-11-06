@@ -427,7 +427,7 @@ fn editor(
             .placeholder(tr("panel.inspector.animation.on_finish")),
         sec_texto,
     );
-    text_row(
+    cur_y = text_row(
         scene,
         text_system,
         theme,
@@ -440,6 +440,18 @@ fn editor(
         ids::INSP_ANIM_SIGNAL_LOOP,
         TextInput::new(ids::INSP_ANIM_SIGNAL_LOOP, "")
             .placeholder(tr("panel.inspector.animation.on_loop")),
+        sec_texto,
+    );
+    super::anim_markers::marker_rows(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        row,
         sec_texto,
     )
 }

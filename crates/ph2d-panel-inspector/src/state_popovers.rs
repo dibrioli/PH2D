@@ -248,6 +248,20 @@ pub(crate) fn take_pending_nav_tag_dd() -> Option<ph2d_editor_core::zones::Rect>
     PENDING_NAV_TAG_DD.with(|c| c.take())
 }
 
+thread_local! {
+    /// O chip aberto da lista de sons: `(é o Mode, escolha atual, rect)`. Um popover de cada vez.
+    static PENDING_SOUND_SET_DD: std::cell::Cell<Option<(bool, u8, ph2d_editor_core::zones::Rect)>> =
+        const { std::cell::Cell::new(None) };
+}
+
+pub(crate) fn set_pending_sound_set_dd(v: Option<(bool, u8, ph2d_editor_core::zones::Rect)>) {
+    PENDING_SOUND_SET_DD.with(|c| c.set(v));
+}
+
+pub(crate) fn take_pending_sound_set_dd() -> Option<(bool, u8, ph2d_editor_core::zones::Rect)> {
+    PENDING_SOUND_SET_DD.with(std::cell::Cell::take)
+}
+
 pub(crate) fn set_pending_audio_dd(chip: Option<(u8, ph2d_editor_core::zones::Rect)>) {
     PENDING_AUDIO_DD.with(|c| c.set(chip));
 }

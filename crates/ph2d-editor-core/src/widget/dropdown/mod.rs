@@ -371,7 +371,8 @@ pub fn paint_dropdown_chip<T: Clone + PartialEq>(
         if dd.open {
             crate::widget::card_ink::lembra_popover(dd.id, ink);
         }
-        return card_chip::chip(scene, text_system, ink, rect, texto, aceso);
+        let parado = dd.state == DropdownState::Disabled;
+        return card_chip::chip_ou_parado(scene, text_system, ink, rect, texto, aceso, parado);
     }
     // ⭐ Raio e moldura pela porta do TEMA: plano num tema moderno, moldura só no foco.
     let radius = crate::paint::frame_radius(theme, Radius::Sm.px());

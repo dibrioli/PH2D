@@ -9,8 +9,8 @@
 #[path = "cards_corpo_campos.rs"]
 mod campos;
 pub use campos::{
-    LABEL_PX, ROW_GAP, bar_field, caixa_ao_lado_do_rotulo, colunas_iguais, facts, fields_in,
-    swatch_grid, swatch_in, swatch_strip,
+    LABEL_PX, ROW_GAP, bar_field, caixa_ao_lado_do_rotulo, check_in, colunas_iguais, facts,
+    fields_in, swatch_grid, swatch_in, swatch_strip, text_in,
 };
 
 use super::{CardCtx, Cell, Seg, Widget, censo, compacta};

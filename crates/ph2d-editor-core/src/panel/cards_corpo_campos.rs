@@ -54,6 +54,57 @@ pub fn fields_in(
     let _ = c.row(&cells, r.y);
 }
 
+/// A caixa de marcar num rect já arrumado: o nome à direita, sem marca de animação e fora do fluxo (a
+/// linha do chamador é que divide a fileira). `parada` = não responde: pinta apagada e não regista alvo.
+#[allow(clippy::too_many_arguments)]
+pub fn check_in(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    ink: CardInk,
+    r: Rect,
+    id: NodeId,
+    nome: &str,
+    on: bool,
+    parada: bool,
+) {
+    let valor = if on {
+        crate::widget::CheckboxValue::Checked
+    } else {
+        crate::widget::CheckboxValue::Unchecked
+    };
+    let mut alvos = HitIndex::default();
+    super::check_em(
+        scene,
+        text_system,
+        store,
+        if parada { &mut alvos } else { hit_index },
+        ink,
+        r,
+        (id, crate::widget::key_mark::Rotulo::vista_de(nome)),
+        (valor, parada),
+        false,
+    );
+}
+
+/// Um campo de texto num rect já arrumado, sem rótulo (a linha do chamador traz o dela).
+#[allow(clippy::too_many_arguments)]
+pub fn text_in(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    store: &WidgetStore,
+    hit_index: &mut HitIndex,
+    ink: CardInk,
+    r: Rect,
+    id: NodeId,
+    placeholder: &str,
+) {
+    let mut c = ctx(scene, text_system, store, hit_index, ink, r.x, r.w);
+    c.first = true;
+    let _ = c.row(&[Cell::new(Widget::Text { id, placeholder })], r.y);
+}
+
 /// Uma amostra com o código num rect que o chamador já arrumou, sem rótulo nem marca.
 #[allow(clippy::too_many_arguments)]
 pub fn swatch_in(

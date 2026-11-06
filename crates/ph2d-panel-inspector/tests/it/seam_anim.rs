@@ -58,6 +58,8 @@ pub(crate) fn anim(playing: bool, autoplay: bool) -> InspectorAnimInfo {
                 signal_on_loop: String::new(),
                 per_frame_ms: Vec::new(),
                 frames: Vec::new(),
+                markers: Vec::new(),
+                steps: 4,
             },
             InspectorAnimRow {
                 name: "attack".into(),
@@ -72,6 +74,8 @@ pub(crate) fn anim(playing: bool, autoplay: bool) -> InspectorAnimInfo {
                 signal_on_loop: String::new(),
                 per_frame_ms: Vec::new(),
                 frames: Vec::new(),
+                markers: Vec::new(),
+                steps: 4,
             },
         ],
         player_present: true,
@@ -494,6 +498,10 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
         E::SetStep(0),
         E::OpenEditor,
         E::Grid(1, 1),
+        E::MarkerAdd(0),
+        E::MarkerStep(0, 0, 0),
+        E::MarkerSignal(0, 0, String::new()),
+        E::MarkerRemove(0, 0),
     ];
     fn sample(e: &AnimFieldEdit) -> u8 {
         match e {
@@ -532,6 +540,10 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
             E::SetStep(..) => 28,
             E::OpenEditor => 29,
             E::Grid(..) => 30,
+            E::MarkerAdd(..) => 101,
+            E::MarkerStep(..) => 102,
+            E::MarkerSignal(..) => 103,
+            E::MarkerRemove(..) => 104,
         }
     }
     let want: std::collections::BTreeSet<u8> = declared.iter().map(sample).collect();
@@ -618,6 +630,40 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
     let out = host.drained_actions();
     clear();
     note(out);
+
+    // Os marcadores em quadro (SFX Lab W1): sobre uma animação que já tem um.
+    let com_marca = || {
+        let mut a = anim(true, false);
+        a.rows[0].markers = vec![ph2d_editor_core::screens::hero::InspectorAnimMarker {
+            step: 1,
+            signal: "step".into(),
+        }];
+        a
+    };
+    note(click_fresh(
+        com_marca(),
+        ph2d_panel_inspector::ids::INSP_ANIM_MARKER_ADD,
+    ));
+    note(click_fresh(
+        com_marca(),
+        ph2d_panel_inspector::ids::INSP_ANIM_MARKER_DEL[0],
+    ));
+    note(commit(
+        com_marca(),
+        ph2d_panel_inspector::ids::INSP_ANIM_MARKER_FRAME[0],
+        3.0,
+    ));
+    let (mut h, mut s) = host_with(com_marca());
+    h.set_text(
+        ph2d_panel_inspector::ids::INSP_ANIM_MARKER_SIGNAL[0],
+        "thud",
+    );
+    let _ = h.apply_panel_event::<InspectorPanel>(
+        &mut s,
+        WidgetEvent::TextChanged(ph2d_panel_inspector::ids::INSP_ANIM_MARKER_SIGNAL[0]),
+    );
+    note(h.drained_actions());
+    clear();
 
     // ⭐ Os gestos do modo «Rules» (plano 08) e o arrasto de uma LISTA (plano GameEngineFuncional 07).
     for acts in crate::seam_anim_card::character_gestures() {

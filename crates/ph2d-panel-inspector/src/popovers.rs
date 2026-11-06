@@ -240,6 +240,8 @@ pub(crate) fn paint_deferred_popovers(
         );
     }
 
+    sound_set_popover(scene, text_system, theme, hit_index, store, region);
+
     // CAMERA — o seletor do FORMATO DO JOGO (plano GEF 17), no irmão, pelo tecto de 200 LOC.
     camera_format_popover(scene, text_system, theme, hit_index, store, region);
 
@@ -281,6 +283,62 @@ fn camera_format_popover(
         )
         .open(true);
         dd.select(sel);
+        paint_open_popover(
+            &dd,
+            chip,
+            region,
+            store,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
+    }
+}
+
+/// O «Pick» ou o «Mode» aberto da lista de sons, relidos do snapshot.
+fn sound_set_popover(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: ph2d_tokens::Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    region: Rect,
+) {
+    let Some((is_mode, sel, chip)) = state_popovers::take_pending_sound_set_dd() else {
+        return;
+    };
+    let Some(info) = crate::state_components::current_inspector_audio() else {
+        return;
+    };
+    let Some(set) = info.source.as_ref().map(|s| &s.set) else {
+        return;
+    };
+    if is_mode {
+        let mut dd = Dropdown::new(
+            crate::ids::INSP_AUDIO_MODE,
+            "",
+            sections::audio_set::mode_options(&set.mode_labels),
+        )
+        .open(true);
+        dd.select(sel);
+        paint_open_popover(
+            &dd,
+            chip,
+            region,
+            store,
+            scene,
+            text_system,
+            theme,
+            hit_index,
+        );
+    } else {
+        let dd = Dropdown::new(
+            crate::ids::INSP_AUDIO_PICK,
+            "",
+            sections::audio_set::pick_options(&set.offer),
+        )
+        .open(true);
         paint_open_popover(
             &dd,
             chip,

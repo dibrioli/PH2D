@@ -219,6 +219,8 @@ pub(crate) fn publish_the_whole_sprite_scene() {
             signal_on_loop: String::new(),
             per_frame_ms: Vec::new(),
             frames: Vec::new(),
+            markers: Vec::new(),
+            steps: 4,
         }],
         player_present: true,
         cells: 8,

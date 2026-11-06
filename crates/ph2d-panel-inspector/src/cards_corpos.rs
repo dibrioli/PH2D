@@ -187,7 +187,9 @@ fn transform() -> CardDef<'static> {
             ))
             .label(rot)
             .key(ROT);
-            let y = c.row(&[rotacao, Cell::new(Widget::Bare(&giros))], y);
+            // Na imagem os dois espelhos moram no Look, ao lado do Flip (ficha da Sprite, decisão 14).
+            let verbos = if imagem { &giros[..1] } else { &giros[..] };
+            let y = c.row(&[rotacao, Cell::new(Widget::Bare(verbos))], y);
             let corrente = [Seg {
                 id: SCALE_LOCK,
                 icon: Some(IconId::Link),

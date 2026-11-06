@@ -175,7 +175,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.pivot.bottom" => "Bottom",
         "card.insp.pivot.bottom_right" => "Bottom Right",
         "card.insp.advanced" => "Advanced",
-        "card.insp.flip" => "Flip",
+        "card.insp.flip" => "Flip image",
+        "card.insp.flip_tip" => "Flips the picture only. Attached objects and collision stay put.",
+        "card.insp.mirror_object" => "Mirror object",
+        "card.insp.mirror_object_tip" => {
+            "Mirrors the whole object around its pivot, with its attached objects and collision."
+        }
         "card.insp.image_size_repeated" => "{pw} \u{00d7} {ph} px ({size})",
         "card.insp.image_size_bare" => "{pw} \u{00d7} {ph}",
         "card.insp.image_size_tight" => "{pw}\u{00d7}{ph}",

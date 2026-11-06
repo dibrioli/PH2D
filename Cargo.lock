@@ -7657,6 +7657,7 @@ dependencies = [
  "ph2d-host",
  "ph2d-panel-inspector",
  "ph2d-panel-vector",
+ "ph2d-sprite-edit",
  "ph2d-timeline",
  "ph2d-tokens",
  "ph2d-tool-vector",
@@ -10928,12 +10929,14 @@ dependencies = [
 name = "ph2d-sprite-edit"
 version = "0.0.0"
 dependencies = [
+ "ph2d-anim",
  "ph2d-asset",
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-physics-ecs",
  "ph2d-render",
+ "ph2d-timeline",
 ]
 
 [[package]]

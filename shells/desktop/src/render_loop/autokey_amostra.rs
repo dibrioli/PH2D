@@ -54,12 +54,15 @@ pub(crate) fn populacao(
         .into_iter()
         .flat_map(ph2d_ecs::AlvosDasFamilias::todas);
     let pinos = ph2d_host_presos::losango::pinos(&hero.store);
+    let selecao = hero.gizmo.iter_selected();
+    let filhos = ph2d_sprite_edit::pivot_chave::filhos_do_pivo(sim.world(), selecao);
     for e in hero
         .gizmo
         .iter_selected()
         .chain(maos.iter().copied())
         .chain(alvos)
         .chain(pinos)
+        .chain(filhos)
     {
         if !preview.drives(e) && !fora.contains(&e) {
             fora.push(e);

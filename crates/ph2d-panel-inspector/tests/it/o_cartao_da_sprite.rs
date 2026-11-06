@@ -850,7 +850,7 @@ fn o_censo_dos_campos_da_sprite_em_uso() {
     for id in [core_ids::INSP_LIVE_RENDER_SECTION, CARD_ORDERING] {
         host.store_mut().set_collapsed(id, true);
     }
-    assert_eq!(conta(&pinta(&mut host, &mut st)), (10, 18), "à vista");
+    assert_eq!(conta(&pinta(&mut host, &mut st)), (12, 18), "à vista");
     for id in [
         core_ids::INSP_LIVE_RENDER_SECTION,
         CARD_ORDERING,

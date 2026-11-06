@@ -19,6 +19,10 @@ ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 ph2d-render = { path = "../ph2d-render" }
+ph2d-timeline = { path = "../ph2d-timeline" }
+
+[dev-dependencies]
+ph2d-anim = { path = "../ph2d-anim" }
 
 [lints]
 workspace = true

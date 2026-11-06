@@ -43,6 +43,15 @@ fn pivot_campos_abertos(f: &slot_image::SpriteFacts) -> bool {
 }
 
 pub(crate) fn prepara_campos_do_pivot(store: &mut WidgetStore) {
+    // A diferença entre os dois espelhos só se explica aqui, e na Sprite o Mirror não diz o mesmo que noutro objecto.
+    for (id, chave) in [
+        (ids::INSP_SPRITE_FLIP_X, "card.insp.flip_tip"),
+        (ids::INSP_SPRITE_FLIP_Y, "card.insp.flip_tip"),
+        (ids::INSP_TRANSFORM_FLIP_H, "card.insp.mirror_object_tip"),
+        (ids::INSP_TRANSFORM_FLIP_V, "card.insp.mirror_object_tip"),
+    ] {
+        store.set_tooltip(id, tr(chave));
+    }
     let f = slot_image::factos();
     let foco = store.focus_id();
     let mao = store.number_input_drag().map(|d| d.id);
@@ -139,7 +148,8 @@ fn grade_do_pivot(c: &mut CardCtx<'_>, y: f32, f: slot_image::SpriteFacts) -> f3
     fim + m::FIELD_ROW_GAP
 }
 
-/// Flip e Pivot lado a lado. Os ids do Flip continuam caixas de marcar: o clique emite o mesmo `Toggled`.
+/// Os dois espelhos e o Pivot lado a lado. Os ids do Flip continuam caixas de marcar: o clique emite o mesmo
+/// `Toggled`; o Mirror é o verbo do Transform (`event_transform::giro_click`), aceso se a escala é negativa.
 pub(crate) fn flip_e_pivot(c: &mut CardCtx<'_>, y: f32) -> f32 {
     let aceso = |store: &WidgetStore, id: NodeId| {
         matches!(
@@ -165,16 +175,35 @@ pub(crate) fn flip_e_pivot(c: &mut CardCtx<'_>, y: f32) -> f32 {
     let (x0, w0) = (c.x, c.w);
     (c.x, c.w) = (xa, wa);
     let fim_flip = c.row(
-        &[Cell::new(Widget::Icons(&segs))
+        &[Cell::new(Widget::Choice(&segs))
             .label(tr("card.insp.flip"))
             .key(&FLIP_KEY)],
         y,
+    );
+    let escala = crate::state::current_inspector_transform().map_or([1.0; 2], |t| t.scale);
+    let espelhos = [
+        Seg {
+            id: ids::INSP_TRANSFORM_FLIP_H,
+            icon: Some(IconId::FlipH),
+            text: "",
+            on: escala[0] < 0.0,
+        },
+        Seg {
+            id: ids::INSP_TRANSFORM_FLIP_V,
+            icon: Some(IconId::FlipV),
+            text: "",
+            on: escala[1] < 0.0,
+        },
+    ];
+    let fim_espelhos = c.row(
+        &[Cell::new(Widget::Choice(&espelhos)).label(tr("card.insp.mirror_object"))],
+        fim_flip,
     );
     let Some(f) = crate::state::current_inspector_sprite()
         .and_then(|i| slot_image::factos().filter(|f| f.entity_bits == i.entity_bits))
     else {
         (c.x, c.w) = (x0, w0);
-        return fim_flip;
+        return fim_espelhos;
     };
     (c.x, c.w) = (xb, wb);
     c.row(
@@ -187,7 +216,7 @@ pub(crate) fn flip_e_pivot(c: &mut CardCtx<'_>, y: f32) -> f32 {
     let topo = fim_flip - m::FIELD_H;
     let fim_grade = grade_do_pivot(c, topo, f);
     (c.x, c.w) = (x0, w0);
-    let fim = fim_flip.max(fim_grade);
+    let fim = fim_espelhos.max(fim_grade);
     if !pivot_campos_abertos(&f) {
         return fim;
     }

@@ -9,6 +9,7 @@ use ph2d_editor_core::NodeId;
 use ph2d_editor_core::ids::{INSP_PANEL, SKELETON_PANEL};
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::widget::key_mark::{self, KeyMark};
+use ph2d_panel_inspector::ids::INSP_SPRITE_PIVOT_XY;
 use ph2d_timeline::{Instante, PropKind, TimelineDoc, TimelineIntent};
 use ph2d_vec_scene::VecScene;
 use std::collections::BTreeMap;
@@ -115,6 +116,11 @@ pub fn clique(
     let mut i = ph2d_app_vec::marcas::clique(tl, ctx, campos, sel, inst, lidos, valor, k);
     if i.is_empty() {
         i = comp::clique(tl, campos, sel, inst, lidos, valor, k);
+        if campos.iter().any(|c| INSP_SPRITE_PIVOT_XY.contains(c)) {
+            use ph2d_sprite_edit::pivot_chave as pivo;
+            let filhos = pivo::filhos_do_pivo(sim.world(), sel.iter().copied());
+            i = pivo::clique_leva_os_filhos(i, tl, &filhos, inst, valor, k);
+        }
     }
     if i.is_empty() {
         i = cons::clique(tl, campos, sim, sel, inst, lidos, valor, k);

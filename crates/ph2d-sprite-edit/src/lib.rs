@@ -3,4 +3,5 @@
 pub mod achatados;
 pub mod imagem;
 pub mod pivot;
+pub mod pivot_chave;
 pub mod vazio;

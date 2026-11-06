@@ -18,6 +18,7 @@ path = "src/lib.rs"
 bumpalo = { version = "3", features = ["collections"] }
 ph2d-host = { path = "../../crates/ph2d-host" }
 ph2d-app-components = { path = "../../crates/ph2d-app-components" }
+ph2d-sprite-edit = { path = "../../crates/ph2d-sprite-edit" }
 ph2d-app-constraints = { path = "../../crates/ph2d-app-constraints" }
 ph2d-app-skeleton = { path = "../../crates/ph2d-app-skeleton" }
 ph2d-app-vec = { path = "../../crates/ph2d-app-vec" }

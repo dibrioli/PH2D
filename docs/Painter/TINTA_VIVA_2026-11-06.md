@@ -119,6 +119,8 @@ Handoff com o mecanismo, constantes e provas: [HANDOFF_CONTINUACAO_2026-11-06_ti
 - Bug #70 (candidato): tinta velha na `base` fora da grade.
 - Provas de mutação de `adormecida_tests.rs` e `dentro_do_wet_tests.rs`; suíte completa só na integração.
 
+**Dono 06/11, Relief Eraser:** sombras apagadas em rectângulos depois de voltar, e a tinta de outros modos a sair de uma vez. Causa A: com aguada na camada a caixa recomposta não lia a sombra (`composite.rs`), 5 246 px → 261; planos velhos e orla re-iluminada à volta do enterro, 3 091 px → 78. Causa B: a `base` cortava seco; agora, fora das células com tinta, segue a lei de `borracha_morta` (uma passada 255 → 166, 9 ao papel, óleo vivo 0 px). A «sobra medida» acima era a causa A. Detalhe e dois portões vermelhos: [handoff](handoffs/HANDOFF_CONTINUACAO_2026-11-06_tinta_viva_onda2.md).
+
 **Fila depois disto:** itens 0–3 de [PROXIMA_FASE_2026-11-06.md](PROXIMA_FASE_2026-11-06.md). A foto 5 refeita pelo dono ainda não chegou (sem anexo; pasta sem alteração).
 
 **Dono 06/11: a Borracha na tinta morta está APROVADA pela foto** (`material_2026-11-06/foto_borracha_morta.png`). As constantes de `borracha_morta.rs` ficam; os passos 2, 3 e 5 do smoke ainda sem veredito.

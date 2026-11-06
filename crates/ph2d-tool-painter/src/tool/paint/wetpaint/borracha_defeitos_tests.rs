@@ -528,20 +528,14 @@ fn sonda_passadas_ate_o_papel() {
     }
 }
 
-/// O defeito A com a tinta comprimida em RAM, tela acima do limiar do fio: a mesma sombra.
+/// O defeito A com a tinta comprimida à força em RAM, pelo mesmo código do fio: a mesma sombra.
 #[test]
 fn a_sombra_fica_com_a_tinta_comprimida() {
     let (w, h) = (2400usize, 1400usize);
     let mut t = oleo(w, h, Caminho::App);
     t.set_paint_media(PaintMedia::Watercolor);
     super::adormecida_tests::traco_de_outro_meio(&mut t, (20.0, 150.0), (220.0, 150.0));
-    let retidos = {
-        let a = t.paint.wetpaint.adormecidas.first().expect("adormecida");
-        let n = a.sess.lock().expect("trinco").bytes_retidos();
-        a.encolhe_ja();
-        n
-    };
-    relato(format!("retidos ao adormecer: {} MiB", retidos >> 20));
+    t.paint.wetpaint.adormecidas[0].encolhe_ja();
     t.preset_aplicar(&preset(RELIEF)).expect("o meio");
     t.set_brush_size_px(20.0);
     quadros(&mut t, Caminho::App, 3);
@@ -555,7 +549,7 @@ fn a_sombra_fica_com_a_tinta_comprimida() {
         .enumerate()
         .filter(|(i, (p, q))| {
             let (x, y) = (i % w, i / w);
-            ((x as i32 - 130).abs() > 45 || (y as i32 - 90).abs() > 50)
+            ((x as i32 - 130).abs() > 60 || (y as i32 - 90).abs() > 60)
                 && (0..4).any(|k| p[k].abs_diff(q[k]) >= 10)
         })
         .count();

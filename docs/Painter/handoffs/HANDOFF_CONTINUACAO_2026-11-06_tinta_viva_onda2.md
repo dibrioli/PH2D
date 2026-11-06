@@ -81,3 +81,35 @@ fmt · clippy das 2 crates limpo · por nome, verdes: `dentro_do_wet` (10) · `a
 6. Depois: [PROXIMA_FASE_2026-11-06.md](../PROXIMA_FASE_2026-11-06.md), itens 0–3.
 
 **Dono 06/11: a Borracha na tinta morta está APROVADA pela foto** (`material_2026-11-06/foto_borracha_morta.png`). As constantes de `borracha_morta.rs` ficam; os passos 2, 3 e 5 do smoke ainda sem veredito.
+
+## Relato do dono 06/11, Relief Eraser (depois da onda 2)
+
+> «Ao trocar de modo e voltar para Relief Eraser, a borracha destrói as sombras simuladas do relevo apagando-as em áreas retangulares.» «Relief Eraser retira a tinta que tem relevo corretamente, paulatinamente, em várias passadas, mas a tinta ao lado feita com os outros modos a borracha retira de vez.»
+
+Foto: [foto_relief_eraser_defeitos.png](material_2026-11-06/foto_relief_eraser_defeitos.png). Portões e sondas: `wetpaint/borracha_defeitos_tests.rs`. Provas de vermelho (cada cura retirada, gate vermelho): as cinco abaixo, medidas.
+
+**Reprodução.** Sair e voltar sem pintar: 0 px, nos dois caminhos (relógio fixo e worker/quadro), em 8 portas, a 240×160 e 1400×900 comprimido: **isto elimina** o worker, a compressão, `chave_do_grao`/`applied` e `toca_tudo`. O defeito precisa de um traço de outro modo na camada: px fora do rasto, antes → depois da cura, relógio fixo e app iguais:
+
+| cena | antes | depois |
+|---|---|---|
+| Aguada longe (a foto do dono) | 5 246 px, Δ 87, caixa (57,33)-(205,134) | 261 px, Δ 9 |
+| Digital colado ao óleo | 3 091 px, Δ 212 | 78 px, Δ 71 |
+| Digital e Impasto longe | 142 px, Δ 9 | igual (sem defeito) |
+
+**Causas medidas (defeito A, são três).**
+1. `composite.rs` lia `sombra` só com `vrow.is_none()`: com aguada na camada (o vidro, doc 48) a caixa recomposta escrevia a `base` sem a sombra, e a sombra assada na tela sumia num rectângulo. É também a «sobra medida» do doc (6 574 px). Cura: a sombra entra, e cobre o vidro por igual (`cobre`). Píxel que não muda não reescreve o selo.
+2. Enterrar não punha os planos da óptica em dia: a caixa de píxeis (com Smooth Edges) é maior do que a de células, e a margem lia o `pigment` velho: o óleo enterrado voltava em colunas. Cura: `wet_planos_em_dia` no enterro e no undo com enterro (com `campo_cache` limpo: o enterro não anda a `revisao`).
+3. A orla re-iluminada: a caixa do pincel seguinte refazia células cuja óptica o enterro mudou: uma linha e uma faixa escura que acabavam na borda da caixa (1 345 px com Δ ≥ 10). Cura: `Congelada` (`adormecida.rs`): a tela do enterro fica nas células cuja óptica o enterro mudou, enquanto a óptica e a `base` delas não mudarem. O undo devolve-a (`congelada_antes/depois`). Retém uma tela + 2 planos por sessão com enterro.
+- Achado de leitura, com portão: adormecer deixava `otica.no_ar` armado para um compositor que morre com o worker; o tique nunca mais pedia imagem. Agora zera.
+
+**Defeito B.** Causa confirmada: `apaga_a_base_sob_os_dabs` cortava a `base` pela cobertura; o enterro põe o traço de outro modo na `base`. Conserto: `Sulco` + `escreve_o_sulco` (`borracha_morta.rs`, extraído; constantes intactas) sobre a `base`, nas células sem tinta na grade no início do traço (`celulas_com_tinta`); nas com tinta segue o corte, que a tinta cobre. Miniatura e macros ficam com a lei de sempre (`base_na_lei_gradual`). Resolve o caso irmão do arquivo antigo (`a_tinta_velha_sai_aos_poucos_com_sessao_viva`).
+- Pressão plena: Digital 255 → 166 numa passada, Watercolor 181 → 119, Impasto 255 → 166; ao papel em 9 passadas.
+- Óleo vivo: `a_borracha_no_oleo_vivo_nao_muda`: **0 px** contra a lei antiga (foto, linha de baixo).
+- Undo: `desfazer_a_passada_devolve_a_tinta_da_base`, tela e `base` ao bit.
+
+**Portões mudados e reprovados.**
+- `a_borracha_no_wet_apaga_a_tinta_antiga_de_cada_meio` (Bug #70) MUDADO: pedia 3 passadas a 2 %. Agora uma passada deixa > 40 % e treze chegam a < 2 %. O relato manda nas passadas.
+- ⛔ `a_borracha_leva_o_traco_e_o_oleo_juntos` VERMELHO, não afrouxado: `(38, 0)` de 40 px depois de 3 passadas. Pressão variável (0,35–0,88), resto no rasto por passada: só óleo 40·40·18·5·0; traço por cima 40·40·38·35·33·31·30·27·24·21·19·17 (12 passadas). Causa: a pressão pesa à 8.ª (`EXPOENTE_DA_PRESSAO`): pouca pressão só amassa. **Decisão do dono:** a pouca pressão a tinta dos outros modos não chega ao papel na lei aprovada; a pressão plena chega em 9.
+- ⛔ `traco_longe_nao_muda_a_borracha_e_fica_na_tela` VERMELHO, não afrouxado: Watercolor, zona do traço longe: 5 px, todos Δ 1, coluna x = 146 (`[200,83,70] → [199,84,70]`). Causa não isolada; a tolerância da zona de cima (Δ ≥ 10 < 300) já não é precisa, com 261 px Δ 9.
+
+**Por medir / aberto.** Resto visível na foto: manchas escuras curtas na orla junto ao rasto e um fio fino no traço colado (78 px, Δ 71). Custo de `wet_planos_em_dia` a 4K não cronometrado. A compressão pelo fio real acima de `COMPRIME_A_PARTIR_DE` não correu com a cura: o portão comprime à força (`encolhe_ja`, o mesmo código), a 2400×1400. O caminho do app corre em teste com a ponte simulada (`set_compor_por_quadro`, worker, compositor), não com a pré-visualização da placa. `wet_ultima_imagem` agora também passa pela `Congelada`, sem portão próprio.

@@ -114,7 +114,7 @@ pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: OleoCelula, (v, agua): (f
         if nova == OleoCelula::NEUTRA {
             return;
         }
-        g.oleo = vec![OleoCelula::NEUTRA; g.cells];
+        g.oleo = crate::par::plano_cheio(OleoCelula::NEUTRA, g.cells);
     }
     g.oleo_real |= nova.e_real();
     let a = g.oleo[i];

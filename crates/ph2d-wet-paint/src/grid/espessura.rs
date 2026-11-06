@@ -64,7 +64,7 @@ pub fn fixa(g: &mut Grid, i: usize, t: f64) {
         if k <= 1.0 + 1e-4 {
             return;
         }
-        g.espessura = vec![1.0; g.cells];
+        g.espessura = crate::par::plano_cheio(1.0, g.cells);
     }
     g.espessura[i] = k as f32;
 }
@@ -82,7 +82,7 @@ pub fn nivela(g: &mut Grid, i: usize, t: f64) {
         if k == 1.0 {
             return;
         }
-        g.espessura = vec![1.0; g.cells];
+        g.espessura = crate::par::plano_cheio(1.0, g.cells);
     }
     g.espessura[i] = k as f32;
 }

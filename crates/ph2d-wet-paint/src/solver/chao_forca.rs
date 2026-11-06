@@ -102,14 +102,16 @@ pub(crate) fn fotografa(g: &mut Grid, oleo_na_mao: bool) {
     if g.oleo.is_empty() {
         g.sett_do_traco = Vec::new();
     } else {
-        g.sett_do_traco.clone_from(&g.sett);
+        crate::par::copia_plano(&g.sett, &mut g.sett_do_traco);
     }
     if !(ativo(oleo_na_mao) || CHAO_MEDE.load(Relaxed) != 0) || g.oleo.is_empty() {
         g.chao = Vec::new();
         return;
     }
     let fs = film_seco();
+    use rayon::prelude::*;
     let chao: Vec<f32> = (0..g.cells)
+        .into_par_iter()
         .map(|i| {
             let h = super::ladeira_do_oleo::altura(g, i, false);
             if h <= 0.0 {

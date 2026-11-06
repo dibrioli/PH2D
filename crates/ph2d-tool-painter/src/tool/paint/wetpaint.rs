@@ -196,6 +196,8 @@ pub(crate) struct WetPaintState {
     pub(super) composite_pendente: bool,
     /// A lei da tinta que cada sessão nova herda ([`PainterTool::set_wet_lei_da_tinta`]).
     pub(super) lei_da_tinta: ph2d_wet_paint::sim::LeiDaTinta,
+    /// O motor e o papel da próxima sessão, já prontos ([`preparo`]).
+    pub(super) preparo: preparo::PreparoDoToque,
 }
 
 /// A **Heavy Edge** no `1` do slider, em `Sim::sedimenta` (a fracção por passo por unidade de `|g|`).
@@ -250,6 +252,7 @@ impl Default for WetPaintState {
             varredura: oleo_no_quadro::Varredura::default(),
             composite_pendente: false,
             lei_da_tinta: ph2d_wet_paint::sim::LeiDaTinta::Velha,
+            preparo: Default::default(),
         }
     }
 }
@@ -388,6 +391,9 @@ pub(super) use lote::media_do_grao;
 mod po; // o PÓ SOLTO pousado à parte do rasto (J4 pastel_carvao) — filho de dab_route por LOC
 mod ponta_das_cerdas; // a ponta RECTA e DESFIADA das cerdas (J2 §7 c) — filho de dab_route por LOC
 mod pousa_o_dab; // o corpo do laço da rota do dab: um dab entra na água — filho de dab_route por LOC
+mod preparo; // o motor e o papel prontos antes do toque (Bug #72)
+#[cfg(test)]
+mod preparo_tests;
 mod rota_da_lane; // a lane de cada dab, a tinta do motor e o b/opacidade — filho de dab_route por LOC
 mod session;
 mod tampa; // as PONTAS RECTAS do traço (J6) — filho de dab_route por LOC

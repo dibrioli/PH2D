@@ -53,7 +53,9 @@ impl PainterTool {
         // e a pressão ficam `flow` vezes mais grossas que o pigmento.
         let flow =
             ph2d_wet_paint::flow::clamp_ratio(usize::from(self.paint.wetpaint.flow_ratio.max(1)));
-        let mut engine = Engine::with_flow_ratio(gw, gh, flow);
+        let (mut engine, papel_pronto) = self
+            .toma_o_preparo(gw, gh, flow, ratio)
+            .unwrap_or_else(|| (Engine::with_flow_ratio(gw, gh, flow), None));
         // O PRODUTO: o pigmento é transparente nas junções (a velatura medida no Rebelle, W1e F6) e o
         // filme molhado vela o seco no render (W1f) — a mistura vê-se a pintar, no pouso do dab. A água
         // corre só depois do Up (dono 10/10): a 4096² o quadro a pintar com ela a correr ia de 2–4 ms a
@@ -91,6 +93,7 @@ impl PainterTool {
             lanes: Vec::new(),
             stroke_open: false,
             paper_key: None,
+            papel_pronto,
             applied: WetEngineFacts::BOOT,
             preview: None,
             adiados: Vec::new(),

@@ -628,9 +628,34 @@ Medido (traço de 40 px; massa / ecrã ÷ fábrica; «antes» = o mesmo processo
 
 Portões `grao_a_mao_tests::casos_abertos_*` (com o braço «sem a cura», que sangra, em cada um). **Aberto:** uma macro gravada antes que arma um Grain toca agora a quantidade nova.
 
-## Bug #72 (ABERTO, smoke do dono 05/11) — travamento leve no começo do 1.º traço (Watercolor Basic, Wet Wash)
+## Bug #72 (PARCIAL 05/11: Wet curado a 1080p; Watercolor e telas grandes ABERTOS) — travamento leve no começo do 1.º traço (Watercolor Basic, Wet Wash)
 
-Sonda `sonda_primeiro_traco` (1920×1080, `--profile smoke`, compositor fora, ms do evento do pen-down; `PH2D_LEI_ANTIGA=1` × lei nova). **Curado o que era de todo traço:** `begin_direct_stroke` chamava `marca_tudo()`: o undo copiava a grade inteira a cada pen-down. Sem ele, 2.º traço, lei nova: Wet Wash 82→12, Wet Round 32→6, Wet Liner 44→15, Marker Bullet 29→10; lei antiga: 53→16, 18→7, 34→18, 18→12. `historia` e `desfazer` verdes. **ABERTO, o que o dono relatou:** o 1.º traço: Wet Wash ~65 + 71 no 3.º evento, Wet Round 51, Wet Liner 69, Marker 53, Watercolor Basic 28–44. Nascer a sessão só custa 10 ms; suspeita não medida: os planos preguiçosos que o 1.º dab aloca e preenche. Falta medir no app real (a placa não entra na sonda). O dono voltou à lei antiga (05/11): vale a coluna dela. **Custo medido da lei nova por evento, ao ser descartada:** mediana 2–3× a antiga (Wet Liner 1,5→4,2; Marker 2,7→8; Wet Wash 2→7).
+Antes desta cura: `marca_tudo()` saiu de `begin_direct_stroke` (undo copiava a grade a cada pen-down). Custo da lei nova, ao ser descartada: mediana por evento 2–3× a antiga.
+
+**Mecanismo no Wet (medido com relógios temporários, retirados):** o 1.º toque pagava, em série e no fio da tela: `Engine::with_flow_ratio` 6–13 ms; `alturas_do_papel_de_fabrica` (`OnceLock`, 1× por processo, 22 ms a 1080p e a 4K: não é a semeadura); `vec![NEUTRA; n]` de `aparencia` e `oleo`, 8 ms cada a 1080p, 57 cada a 4K (faltas de página). Todo traço: `FotoDoMotor::de` e as fotografias da ladeira e do chão. **Sonda enganava:** a «saída» de 7–13 ms era o 1.º dreno, que o app faz ao abrir a imagem; a sonda agora drena antes.
+
+**Cura, os mesmos bytes:** (1) `wetpaint/preparo.rs`: com o Wet armado e sem sessão, o tique põe num fio o motor e o plano do papel (`PaperKey`, uma só `lei_do_papel`); a sessão continua a nascer no toque, com a tela de então. Sem nada pronto, a conta de sempre. `PH2D_TOQUE_PREPARADO=0` desliga. Off com relógio fixo, fita ou ritmo. (2) `par::plano_cheio` e `par::copia_plano`: planos e fotografias pelos núcleos. Portões: `preparo_tests` (4 pincéis ao byte com e sem preparo, chave errada não entra, fora do Wet larga a grade).
+
+**Sonda (ms; CPU, sem placa; maior evento do início, 1.º / 2.º traço):**
+
+| 1920×1080 | antes | depois |
+|---|---|---|
+| Watercolor Basic | 19–31 / 14–17 | 22 / 14 (sem cura) |
+| Wet Wash | 35–47, 21–24 no 3.º evento / 12–13 | 2,5, 10,7 no 3.º evento / 6,4 |
+| Wet Round | 18 / 4 | 4,2 / 5,7 |
+| Wet Liner | 39–48 / 15 | 8,4 / 10,3 |
+| Marker Bullet | 15–23 / 8–9 | 3,5 / 8,7 |
+
+4096×2560, depois: Watercolor Basic 67 / 42; Wet Wash 3 + 57 no 3.º evento / 18 + 27 (antes 57 + 162 / 77 + 41); Wet Round 30 / 33; Wet Liner 56 / 44; Marker 35 / 36.
+
+**App real** (`PH2D_WETPAINT_SMOKE=3 PH2D_FPS_PRIMEIRO=<0..4> PH2D_FPS_TELA=<lado>`, kwin virtual, vsync, load 6–13, logo só ordem de grandeza; 1 corrida por variante; maior período à volta do toque, três traços). 1440² (a área de 1080p): Wet Wash 27/18/21 → 19/19/22; Wet Liner 36/21/34 → 22/19/25; Wet Round 18/19/22 → 18/18/21; Marker 17/19/23 → 18/18/20; Watercolor Basic 27/22/21 → 22/22/20. 3240² (a área de 4096×2560): Wet Wash 133/40/144 → 93/121/141; Wet Round 21/63/75 → 27/36/85; Watercolor 51/44/55 → 51/44/56.
+
+**ABERTO:**
+- Watercolor Basic: sem cura; 7–11 ms no pen-down + ~5 de reconstrução no tique, o quadro sai a 20–22 ms a 1080p. No toque: cópia da tela 2,4; fios 2; LUTs (`OnceLock`) ~3 só no 1.º.
+- Tela grande, piso do toque: a 1.ª composição de cada traço copia a tela (`fork_canvas`, 42 MB, 21–27 ms a 4096×2560; recurso: memória e faltas de página; o `stroke_undo` e a `base` seguram o `Arc`). `aparencia` + `oleo` ainda ~20 ms.
+- Wet Wash a 3240², fora da sonda: no 1.º traço o quadro do toque gastou 60 ms em `take_preview_arc` e 27 no resto (rastreado uma vez); nos traços seguintes fica ~100 ms, sem causa medida. Só a placa + app real o mostram.
+
+**⛔ Recusas MEDIDAS (uma corrida, carga alta, não prova definitiva):** (a) marcar `preview_dirty` com a mão parada para a 1.ª composição não cair no toque: Wet Wash a 3240² continuou 89 ms; saiu. (b) adiar a reconstrução da aguarela do pen-down para o tique: no app real a mediana do traço foi 24/20/17 contra 17, sem separar da carga; saiu sem conclusão.
 
 ## Bug #71 (MEDIDO 05/11, cura DESLIGADA à espera do olho do dono; 9bd76cd02d) — em papel de alto relevo, a tinta parece afundada: relevo negativo na borda
 

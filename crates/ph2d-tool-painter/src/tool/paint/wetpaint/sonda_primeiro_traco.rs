@@ -54,6 +54,7 @@ fn sonda_primeiro_traco() {
         })
         .unwrap_or((1920, 1080));
     forca_no_teste(Some(true));
+    super::preparo::liga_no_teste(std::env::var("PH2D_SONDA_PREPARO").is_ok());
     let so = std::env::var("PH2D_SONDA_SO").ok();
     let nomes = [
         "Watercolor Basic",
@@ -73,6 +74,15 @@ fn sonda_primeiro_traco() {
         t.set_brush_size_px(60.0);
         for _ in 0..3 {
             t.on_tick(1000.0 / 60.0);
+            let _ = t.take_preview_arc();
+        }
+        // O artista leva mais de um quadro a encostar a caneta.
+        if std::env::var("PH2D_SONDA_PREPARO").is_ok() {
+            for _ in 0..60 {
+                std::thread::sleep(std::time::Duration::from_millis(16));
+                t.on_tick(1000.0 / 60.0);
+                let _ = t.take_preview_arc();
+            }
         }
         if std::env::var("PH2D_SONDA_NASCE").is_ok() {
             let t0 = Instant::now();
@@ -115,5 +125,10 @@ fn sonda_primeiro_traco() {
         };
         println!("TRACO\t{n}\t1.º {}\t2.º {}", fmt(&um), fmt(&dois));
     }
+    println!(
+        "preparo usado (motores, papéis): {:?}",
+        super::preparo::usados_no_teste()
+    );
+    super::preparo::liga_no_teste(false);
     forca_no_teste(None);
 }

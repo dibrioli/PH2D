@@ -128,6 +128,8 @@ pub(in crate::tool::paint) struct WetSession {
     /// ignored until the bake (Enio 2026-07-21, "os ajustes ... não estão
     /// sendo levados em consideração").
     pub(super) paper_key: Option<PaperKey>,
+    /// O plano do papel que o preparo do toque deixou, até o primeiro lote o usar ([`super::preparo`]).
+    pub(super) papel_pronto: Option<(PaperKey, Vec<f32>)>,
     /// The [`WetEngineFacts`] last pushed into the engine — starts at the
     /// boot constant (the engine boots with exactly it, gate-pinned) and the
     /// reconcile pushes the authored values when they differ. Same law as
@@ -330,6 +332,7 @@ impl Clone for WetSession {
             lanes,
             stroke_open,
             paper_key,
+            papel_pronto: _,
             applied,
             preview,
             adiados,
@@ -364,6 +367,7 @@ impl Clone for WetSession {
             lanes: lanes.clone(),
             stroke_open: *stroke_open,
             paper_key: *paper_key,
+            papel_pronto: None,
             applied: *applied,
             preview: preview.clone(),
             adiados: adiados.clone(),

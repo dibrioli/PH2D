@@ -401,6 +401,25 @@ pub const MIN_CELLS_PAPER_BAKE: usize = 128 << 10;
 /// Ver [`MIN_CELLS_PAPER_BAKE`].
 pub const MIN_CELLS_PAPER_SEED: usize = 2 << 10;
 
+/// Um plano novo de `n` células `v`, pelos núcleos: o `vec![v; n]` de valor não nulo paga num fio só as faltas de
+/// página da grade inteira, no 1.º dab (Bug #72). Os mesmos bytes.
+pub fn plano_cheio<T: Copy + Send + Sync>(v: T, n: usize) -> Vec<T> {
+    use rayon::prelude::*;
+    (0..n).into_par_iter().map(|_| v).collect()
+}
+
+/// `para = de`, pelos núcleos, reaproveitando a alocação (Bug #72: a fotografia de cada pen-down).
+pub fn copia_plano<T: Copy + Send + Sync>(de: &[T], para: &mut Vec<T>) {
+    use rayon::prelude::*;
+    if para.len() == de.len() {
+        para.par_iter_mut()
+            .zip(de.par_iter())
+            .for_each(|(a, b)| *a = *b);
+    } else {
+        *para = de.par_iter().copied().collect();
+    }
+}
+
 /// [`walk_rows_reduce`] sobre **ITENS já fatiados** em vez de uma faixa com passo.
 ///
 /// O consumidor é o depósito de um dab (ADR-0175): cada linha dele escreve em DOIS buffers de

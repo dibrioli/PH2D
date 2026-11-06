@@ -317,9 +317,16 @@ pub(crate) fn fotografa(g: &mut Grid, oleo_na_mao: bool) {
         return;
     }
     let inteira = matches!(rota(), 3 | 6);
-    let h: Vec<f32> = (0..g.cells).map(|i| altura(g, i, inteira)).collect();
+    use rayon::prelude::*;
+    let h: Vec<f32> = (0..g.cells)
+        .into_par_iter()
+        .map(|i| altura(g, i, inteira))
+        .collect();
     g.oleo_antes = h;
-    g.oleo_antes_assente = (0..g.cells).map(|i| fraccao_assente(g, i)).collect();
+    g.oleo_antes_assente = (0..g.cells)
+        .into_par_iter()
+        .map(|i| fraccao_assente(g, i))
+        .collect();
 }
 
 /// `sett ÷ (sett + susp)` da célula `i` (`1` sem tinta em suspensão).

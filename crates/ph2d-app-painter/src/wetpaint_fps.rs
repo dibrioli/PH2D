@@ -75,6 +75,9 @@ pub fn conduz(painter: &mut PainterTool) {
     if !crate::wetpaint_smoke::e_a_cena_do_fps() {
         return;
     }
+    if let Some(rel) = ph2d_tool_painter::wetpaint_fps_primeiro::pedido() {
+        return ph2d_tool_painter::wetpaint_fps_primeiro::quadro(rel, painter);
+    }
     ESTADO.with(|e| quadro(&mut e.borrow_mut(), painter));
 }
 

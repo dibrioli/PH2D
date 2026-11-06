@@ -174,7 +174,7 @@ pub fn pousa(g: &mut Grid, i: usize, m_old: f64, nova: AparenciaCelula, v: f64) 
         if nova == AparenciaCelula::NEUTRA {
             return;
         }
-        g.aparencia = vec![AparenciaCelula::NEUTRA; g.cells];
+        g.aparencia = crate::par::plano_cheio(AparenciaCelula::NEUTRA, g.cells);
     }
     g.suave_teto = g.suave_teto.max(nova.suave);
     let fundo = g.borda_fundo as f32;
@@ -255,7 +255,7 @@ mod veste_tests {
     #[test]
     fn vestir_a_orla_virgem_sobe_o_tecto_do_suave() {
         let mut g = Grid::new(16, 16);
-        g.aparencia = vec![AparenciaCelula::NEUTRA; g.cells];
+        g.aparencia = crate::par::plano_cheio(AparenciaCelula::NEUTRA, g.cells);
         let nova = AparenciaCelula {
             suave: 0.5,
             ..AparenciaCelula::NEUTRA

@@ -74,3 +74,8 @@ Veredictos: Borracha OK; óleos OK; relevo «melhorou quase 100%». Decisões: r
 
 ## Estado final desta janela (dono 05/11: «religue sim tudo; pode arquivar a lei nova, não jogar fora»)
 `crates/` e `assets/` = `db946aa38f`: lei velha, relevo sem degrau por omissão com portão, pen-down sem `marca_tudo`, bordas, Borracha, 13 óleos. Lei nova: [arquivada](../Arquitetura/LEI_NOVA_ARQUIVADA.md), tag `lei-nova-arquivada`. As secções anteriores «lei nova em tudo» e «restaurado» são história. Aberto: Bug #72 (1.º traço); provas de mutação e bateria da linha antes de integrar.
+
+**Smoke final do dono desse estado: OK.**
+
+## Bug #72, depois do smoke (05/11)
+Wet a 1080p: 1.º toque abaixo de um quadro na sonda (motor e papel prontos noutro fio, planos pelos núcleos, os mesmos bytes). Aberto: Watercolor Basic, telas grandes, e o quadro de ~90 ms do Wet Wash a 3240². Tabelas e recusas em [BUGS #72](../BUGS_painter.md). Cena do app real: `PH2D_WETPAINT_SMOKE=3 PH2D_FPS_PRIMEIRO=<0..4> PH2D_FPS_TELA=<lado>`.

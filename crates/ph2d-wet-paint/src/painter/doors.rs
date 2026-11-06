@@ -437,6 +437,29 @@ impl Engine {
         });
     }
 
+    /// O plano que [`Self::seed_paper_with`] escreveria com o dente `k`, sem tocar o motor: o preparo do toque o semeia
+    /// noutro fio ([`Self::instala_papel`]).
+    pub fn papel_semeado(&self, k: f32, f: &(dyn Fn(i64, i64) -> f64 + Sync)) -> Vec<f32> {
+        let g = &self.layers[self.active_layer].grid;
+        let s = g.s;
+        let mut plano = g.paper.clone();
+        let mode = crate::par::Rows::pick(g.rows, s, crate::par::MIN_CELLS_PAPER_SEED);
+        crate::par::walk_rows(mode, &mut plano[..g.rows * s], s, |y, row| {
+            for (x, cell) in row.iter_mut().enumerate() {
+                let h = (f(x as i64 - 1, y as i64 - 1) as f32).clamp(0.0, 1.0);
+                *cell = crate::paper::dente(h, k);
+            }
+        });
+        plano
+    }
+
+    /// Troca o plano do papel pelo de [`Self::papel_semeado`]: o que [`Self::seed_paper_with`] faria, já pronto.
+    pub fn instala_papel(&mut self, plano: Vec<f32>) {
+        let g = &mut self.layers[self.active_layer].grid;
+        assert_eq!(plano.len(), g.paper.len());
+        g.paper = plano;
+    }
+
     /// ⭐ **A janela que sobra POUSA** nas `lanes` (as PONTAS RECTAS do anfitrião, J6): o traço cortado a direito
     /// acaba cheio até ao corte — com a janela caída, o último pedaço (até `window_size` dabs) esmaecia. Chama-se
     /// antes de [`Self::end_direct_stroke`]; quem não a chama vê o traço de sempre, ao bit.

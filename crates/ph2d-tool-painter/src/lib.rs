@@ -38,7 +38,8 @@ mod undo_delta;
 mod undo_planes;
 pub mod wash_diag; // o split do quadro da aquarela para o log do produto (PH2D_PAINT_PERF)
 pub mod wet_diag; // o split do tick da agua para o log do produto (PH2D_FLUID_PROFILE)
-pub mod wetpaint_casos; // a cena PH2D_WETPAINT_SMOKE=4
+pub mod wetpaint_casos;
+pub mod wetpaint_fps_primeiro; // a cena do 1.º traço no app real (Bug #72) // a cena PH2D_WETPAINT_SMOKE=4
 
 /// **O lote de carimbo publicado para um dispositivo** — dado simples, para o shell montar a ponte
 /// sem que `wgpu` entre nesta crate nem o Painter alcance o kernel (doc 33 §S3).

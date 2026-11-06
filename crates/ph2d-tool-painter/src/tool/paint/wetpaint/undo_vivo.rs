@@ -54,15 +54,22 @@ pub(crate) fn orcamento_das_fotos(w: usize, h: usize) -> usize {
     crate::undo::history_budget_bytes(w as u32, h as u32)
 }
 
+/// A cópia de um plano pelos núcleos: a fotografia corre a cada pen-down (Bug #72).
+fn copia(de: &[f32]) -> Vec<f32> {
+    let mut v = Vec::new();
+    ph2d_wet_paint::par::copia_plano(de, &mut v);
+    v
+}
+
 impl FotoDoMotor {
     fn de(e: &Engine) -> Self {
         let s = &e.sim;
         Self {
-            oleo_antes: e.layers.iter().map(|l| l.grid.oleo_antes.clone()).collect(),
+            oleo_antes: e.layers.iter().map(|l| copia(&l.grid.oleo_antes)).collect(),
             fluxo: e
                 .layers
                 .iter()
-                .map(|l| (l.grid.flow_x.clone(), l.grid.flow_y.clone()))
+                .map(|l| (copia(&l.grid.flow_x), copia(&l.grid.flow_y)))
                 .collect(),
             relogio: Relogio {
                 frame: s.frame,

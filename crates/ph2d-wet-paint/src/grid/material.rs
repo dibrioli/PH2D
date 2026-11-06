@@ -12,7 +12,7 @@ use crate::tuning::Knob;
 /// O campo, alocado a NEUTRO se ainda não existia.
 pub fn garante(g: &mut Grid) -> &mut [MaterialCelula] {
     if g.material.is_empty() {
-        g.material = vec![MaterialCelula::NEUTRO; g.cells];
+        g.material = crate::par::plano_cheio(MaterialCelula::NEUTRO, g.cells);
     }
     &mut g.material
 }

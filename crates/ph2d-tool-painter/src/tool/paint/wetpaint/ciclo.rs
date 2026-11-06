@@ -123,6 +123,7 @@ impl PainterTool {
         // Doc 21 §F layer 2: the deposit flag must never survive into a tick.
         debug_assert!(!self.paint.wetpaint.deposit_pass);
         if self.paint.wetpaint.session.is_none() {
+            self.prepara_o_toque();
             return;
         }
         self.wetpaint_guard();

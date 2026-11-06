@@ -394,3 +394,42 @@ fn composing_keeps_what_the_other_layouts_had() {
     );
     assert!(saved.per_layout.contains_key("vector"));
 }
+
+/// A aba do som não fecha o Inspector no que se grava, e reabrir sem ela não deixa o painel.
+#[test]
+fn o_layout_gravado_nao_perde_o_inspector() {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut hero = ph2d_editor_core::HeroScreen::new(ph2d_editor_core::NodeId(5));
+    ph2d_app_sfxlab::install(&mut hero);
+    let mut mundo = bevy_ecs::world::World::new();
+    let docs = hero
+        .documents
+        .surfaces_mut()
+        .find_mut::<ph2d_app_sfxlab::SfxLabDocs>();
+    docs.expect("família").novo();
+    for _ in 0..2 {
+        ph2d_app_sfxlab::service(&mut hero, &mut mundo, None);
+        ph2d_editor_core::screens::hero::document_tabs::follow_surfaces(&mut hero);
+    }
+    assert!(
+        hero.is_panel_visible("sfxlab"),
+        "controlo: a aba não está ativa"
+    );
+    let mut aberto = ph2d_editor_core::HeroScreen::new(ph2d_editor_core::NodeId(6));
+    ph2d_app_sfxlab::install(&mut aberto);
+    let gravado = current(&hero);
+    assert!(
+        !gravado.open.iter().any(|n| n == "inspector"),
+        "gravou o Inspector fechado"
+    );
+    install(&mut aberto, &gravado);
+    ph2d_app_sfxlab::service(&mut aberto, &mut mundo, None);
+    assert!(
+        aberto.is_panel_visible("inspector"),
+        "o Inspector voltou fechado"
+    );
+    assert!(
+        !aberto.is_panel_visible("sfxlab"),
+        "o painel voltou sem a aba"
+    );
+}

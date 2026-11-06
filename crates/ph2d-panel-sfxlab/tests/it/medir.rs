@@ -101,3 +101,54 @@ fn diag_custo_dos_medidores_por_render() {
         );
     }
 }
+
+/// Passo 5: da edição até o som novo tocável, e o que o limitador e a impressão digital custam por render.
+#[test]
+#[ignore = "medição, passo 5"]
+fn medir_latencia_e_limitador() {
+    use ph2d_app_sfxlab::Alvo;
+    use ph2d_sfx_dsp::{limitar_escuta, render};
+    use ph2d_sfx_lab::aprovar::impressao;
+    use ph2d_sfx_recipe::{ENGINE_V1, SAMPLE_RATE, Takes, factory};
+    use std::time::Instant;
+
+    const BLOCOS: usize = 7;
+    let receita = |s: f32| {
+        let (_, mut r) = factory::all().remove(0);
+        r.seconds = s;
+        r
+    };
+    for s in [2.0_f32, 120.0] {
+        let r = receita(s);
+        let mut pcm = render(&r, r.seed, ENGINE_V1, &Takes::default())
+            .unwrap()
+            .samples;
+        let pico = pcm.iter().fold(0.0_f32, |a, x| a.max(x.abs())).max(1e-6);
+        // Estourado, para o limitador trabalhar de verdade (abaixo do teto ele só copia).
+        pcm.iter_mut().for_each(|x| *x *= 2.0 / pico);
+        let (mut lim, mut imp) = (f64::MAX, f64::MAX);
+        for _ in 0..BLOCOS {
+            let t = Instant::now();
+            std::hint::black_box(limitar_escuta(&pcm, SAMPLE_RATE));
+            lim = lim.min(t.elapsed().as_secs_f64() * 1e3);
+            let t = Instant::now();
+            std::hint::black_box(impressao(&pcm));
+            imp = imp.min(t.elapsed().as_secs_f64() * 1e3);
+        }
+        println!("{s:>5} s | limitador {lim:.3} ms | impressão {imp:.3} ms");
+    }
+    let mut m = Mesa::nova();
+    let aba = m.abre("Medida", receita(2.0));
+    let camada = m.receita(aba).layers[0].id;
+    let mut melhor = f64::MAX;
+    for _ in 0..BLOCOS * 2 {
+        m.quadro();
+        let t = Instant::now();
+        m.clica_na_aba(aba, Alvo::Mudo(camada));
+        while m.docs().em_voo(aba) {
+            m.quadro();
+        }
+        melhor = melhor.min(t.elapsed().as_secs_f64() * 1e3);
+    }
+    println!("edição (M) até o som tocável, 2 s, com os quadros da tela: {melhor:.2} ms");
+}

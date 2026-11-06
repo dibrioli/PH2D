@@ -116,7 +116,10 @@ pub fn apply_audio_edit(
     let entity = Entity::from_bits(entity_bits);
     let mut src = sim.world().get::<AudioSource2D>(entity).cloned()?;
     match edit {
-        AudioFieldEdit::Preview | AudioFieldEdit::StopPreview | AudioFieldEdit::Browse => {
+        AudioFieldEdit::Preview
+        | AudioFieldEdit::StopPreview
+        | AudioFieldEdit::Browse
+        | AudioFieldEdit::CreateSound => {
             return None;
         }
         AudioFieldEdit::SetAdd(_)

@@ -2,12 +2,14 @@
 
 use std::sync::Arc;
 
+use ph2d_ecs::StableId;
 use ph2d_editor_core::zones::Rect;
+use ph2d_sfx_lab::aprovar::{EstadoDoAprovado, estado};
 use ph2d_sfx_recipe::{LayerId, Recipe, Takes};
 
-use crate::historia::Historia;
-use crate::novo::Fonte;
+use ph2d_sfx_lab::historia::Historia;
 use ph2d_sfx_lab::job::{Feito, Pedido, RenderJob};
+use ph2d_sfx_lab::novo::Fonte;
 
 /// O que a tela sabe receber. O id da camada é o da receita.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -15,6 +17,11 @@ pub enum Alvo {
     Play,
     Stop,
     PlayOnChange,
+    UseInGame,
+    /// Uma linha da lista de objetos, pelo `StableId`.
+    Objeto(u64),
+    /// A linha que só explica: o clique fica nela.
+    ObjetoOff,
     Regua,
     Linha(LayerId),
     Alca(LayerId),
@@ -57,6 +64,17 @@ pub(crate) struct Aba {
     pub prensa: Option<Alvo>,
     pub hover: Option<Alvo>,
     pub menu_add: bool,
+    /// O objeto a que este som se destina, pela identidade.
+    pub ligado: Option<StableId>,
+    pub quer_usar: bool,
+    pub objeto_sumiu: bool,
+    pub recusa: Option<String>,
+    pub menu_objetos: bool,
+    pub objetos: Vec<(u64, String)>,
+    pub menu_ini: usize,
+    pub menu_max: usize,
+    pub menu_caixa: Rect,
+    pub x_usar: f32,
     pub rolagem: f32,
     pub rolagem_max: f32,
     pub alvos: Vec<(Alvo, Rect)>,
@@ -97,6 +115,16 @@ impl Aba {
             prensa: None,
             hover: None,
             menu_add: false,
+            ligado: None,
+            quer_usar: false,
+            objeto_sumiu: false,
+            recusa: None,
+            menu_objetos: false,
+            objetos: Vec::new(),
+            menu_ini: 0,
+            menu_max: 0,
+            menu_caixa: nada,
+            x_usar: 0.0,
             rolagem: 0.0,
             rolagem_max: 0.0,
             alvos: Vec::new(),
@@ -171,9 +199,11 @@ impl Aba {
         } else {
             self.hist.desfaz(&self.receita)
         };
-        let Some(r) = r else {
+        let Some(mut r) = r else {
             return false;
         };
+        // O desfazer é da receita: o som aprovado está no projeto, e voltar atrás não o desaprova.
+        r.approved = self.receita.approved.clone();
         self.receita = r;
         self.sobreviventes();
         self.erro = None;
@@ -201,7 +231,7 @@ impl Aba {
     pub fn acrescenta(&mut self, fonte: Fonte) {
         let take = self.takes.iter().next().map(|t| t.id);
         let mut novo = None;
-        self.edita(|r| novo = crate::novo::acrescenta(r, fonte, take));
+        self.edita(|r| novo = ph2d_sfx_lab::novo::acrescenta(r, fonte, take));
         if novo.is_some() {
             self.sel = novo;
         }
@@ -219,6 +249,12 @@ impl Aba {
             Some(id)
         };
         self.pede();
+    }
+
+    /// O que a barra diz, pelo render mais novo que chegou.
+    #[must_use]
+    pub fn estado_do_aprovado(&self) -> EstadoDoAprovado {
+        estado(&self.receita, self.pronto.as_ref().map(|f| &f.impressao))
     }
 
     /// Px por segundo na pista.

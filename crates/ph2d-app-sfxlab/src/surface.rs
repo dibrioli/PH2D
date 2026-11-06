@@ -22,7 +22,7 @@ pub const CMD_NEW: NodeId = hash_node_id("sfxlab_cmd_new");
 /// «Open Sound ▸ <nome>»: o id é do nome.
 #[must_use]
 pub fn cmd_abrir(nome: &str) -> NodeId {
-    NodeId(crate::novo::semente_do_nome(nome) ^ crate::A11Y_SALT)
+    NodeId(ph2d_sfx_lab::novo::semente_do_nome(nome) ^ crate::A11Y_SALT)
 }
 
 impl DocumentSurface for SfxLabDocs {
@@ -160,7 +160,9 @@ impl DocumentSurface for SfxLabDocs {
     }
 
     fn wants_frame(&self) -> bool {
-        self.abas.iter().any(|a| a.em_voo() || a.quer_tocar)
+        self.abas
+            .iter()
+            .any(|a| a.em_voo() || a.quer_tocar || a.quer_usar)
     }
 
     fn as_any(&self) -> &dyn Any {

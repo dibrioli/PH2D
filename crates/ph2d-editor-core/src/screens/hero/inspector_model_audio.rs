@@ -171,6 +171,8 @@ pub enum AudioFieldEdit {
     Preview,
     /// **Calar** o que este objecto tem a soar.
     StopPreview,
+    /// Abre uma aba do SFX Lab ligada a este objeto.
+    CreateSound,
     /// Põe um som do projeto na lista; o primeiro cria o `SoundSet`.
     SetAdd(String),
     /// Tira a linha `i` da lista.

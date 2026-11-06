@@ -1,15 +1,12 @@
-//! A ponte com o painel dos cartões: a vaga do Inspector, as intenções e o instantâneo.
+//! A ponte com o painel dos cartões: a aba na vaga, as intenções e o instantâneo.
 
-use ph2d_editor_core::panel::Panel;
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_panel_sfxlab::tabela::{self, forma_nova};
-use ph2d_panel_sfxlab::{Instantaneo, Intencao, Material, SfxLabPanel, publica, tomar};
+use ph2d_panel_sfxlab::{Instantaneo, Intencao, Material, publica, tomar};
 use ph2d_sfx_recipe::{LayerId, Recipe, Source};
 
 use crate::aba::Aba;
 use crate::docs::SfxLabDocs;
-
-const INSPECTOR: &str = "inspector";
 
 pub(crate) fn aba_ativa(hero: &mut HeroScreen) -> Option<u64> {
     hero.documents
@@ -17,22 +14,10 @@ pub(crate) fn aba_ativa(hero: &mut HeroScreen) -> Option<u64> {
         .and_then(|(f, id)| f.as_any().is::<SfxLabDocs>().then_some(id))
 }
 
-/// Com a aba ativa o painel entra e o Inspector sai; ao sair, ele volta como estava, aberto ou fechado.
+/// O painel fica na vaga como ABA enquanto a aba do som está ativa: quem o põe à frente e quem o tira é o `slot_tabs`.
 pub(crate) fn vaga(hero: &mut HeroScreen, ativa: bool) {
-    hero.panel_visibility.insert(SfxLabPanel::ID, ativa);
-    match (ativa, hero.panel_emprestado.get(INSPECTOR).copied()) {
-        (true, None) => {
-            let aberto = hero.is_panel_visible(INSPECTOR);
-            hero.panel_emprestado.insert(INSPECTOR, aberto);
-            hero.panel_emprestado.insert(SfxLabPanel::ID, false);
-            hero.panel_visibility.insert(INSPECTOR, false);
-        }
-        (false, Some(estava)) => {
-            hero.panel_emprestado.clear();
-            hero.panel_visibility.insert(INSPECTOR, estava);
-        }
-        _ => {}
-    }
+    hero.panel_visibility
+        .insert(ph2d_panel_sfxlab::PANEL_ID, ativa);
 }
 
 /// As intenções do painel viram edição, num gesto só enquanto a mão arrasta um campo.

@@ -74,7 +74,20 @@ impl ProjectSounds {
         name
     }
 
-    fn free_name(&self, wanted: &str) -> String {
+    /// Este nome passa a ter estes bytes, substituindo o que lá estava: o nome é o que os objetos guardam.
+    pub fn set(&mut self, name: &str, bytes: Vec<u8>) {
+        self.by_name.insert(
+            name.to_owned(),
+            ProjectSound {
+                id: Self::id_of(&bytes),
+                bytes: bytes.into(),
+            },
+        );
+    }
+
+    /// O nome desejado, ou `stem N.ext` se ele já estiver ocupado.
+    #[must_use]
+    pub fn free_name(&self, wanted: &str) -> String {
         if !self.by_name.contains_key(wanted) {
             return wanted.to_owned();
         }

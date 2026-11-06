@@ -5,7 +5,7 @@
 //!
 //! `PH2D_SFX_SMOKE=2` — os sons renderizados pela receita: [`receitas`].
 //!
-//! `PH2D_SFX_SMOKE=3` — os mesmos sons, um objeto sem som e a aba do SFX Lab aberta em «Metal Hit».
+//! `PH2D_SFX_SMOKE=3` — os mesmos sons, «Crate» (com Audio Source 2D e sem som) e a aba do SFX Lab aberta em «Metal Hit».
 
 pub mod receitas;
 
@@ -190,7 +190,12 @@ pub fn veste_se_armada(
         Some(NIVEL_RECEITAS) => receitas::veste(sim, anexa, raiz, jogador),
         Some(NIVEL_ABA) => {
             receitas::veste(sim, anexa, raiz, jogador);
-            Entity::from_bits(raiz(sim, SEM_SOM))
+            // Tem o cartão de onde se cria o som, e nada a tocar ainda; ouve-se de qualquer ponto do nível.
+            let caixa = Entity::from_bits(raiz(sim, SEM_SOM));
+            sim.world_mut()
+                .entity_mut(caixa)
+                .insert(fonte_do_nivel(String::new(), true));
+            caixa
         }
         Some(_) => veste(sim, importa_som, anexa, raiz, jogador),
         None => jogador,

@@ -67,6 +67,8 @@ const BRIDGE_DIR_VEC: &str = "../../crates/ph2d-app-vec/src";
 /// esperava `8`, e o que faltava era o `painter_layers`. *Um censo que perde um sítio aprova tudo
 /// o que vivia nele*, e é essa a razão de o controlo positivo existir.
 const BRIDGE_DIR_PAINTER: &str = "../../crates/ph2d-app-painter/src";
+/// A ponte do SFX Lab: o painel dos cartões é aba só com a aba do som ativa.
+const BRIDGE_DIR_SFX: &str = "../../crates/ph2d-app-sfxlab/src";
 
 /// Como é que a ponte escreve a visibilidade.
 const WRITE: &str = "panel_visibility.insert(";
@@ -83,6 +85,7 @@ fn writes() -> BTreeMap<String, Vec<String>> {
         BRIDGE_DIR_FAM,
         BRIDGE_DIR_VEC,
         BRIDGE_DIR_PAINTER,
+        BRIDGE_DIR_SFX,
     ]
     .iter()
     .flat_map(|d| {
@@ -174,7 +177,7 @@ fn no_layout_opens_a_panel_that_a_tool_bridge_owns() {
         "controlo: o censo achou só {} painéis de ferramenta ({owned:?}) — a varredura partiu-se",
         owned.len()
     );
-    for known in ["motion_graph", "vector", "painter_layers"] {
+    for known in ["motion_graph", "vector", "painter_layers", "sfxlab"] {
         assert!(
             owned.iter().any(|o| o == known),
             "controlo: `{known}` é escrito por uma ponte a cada quadro e o censo não o vê: {owned:?}"
@@ -258,6 +261,7 @@ fn a_layout_names_the_inspector_exactly_when_its_canvas_owner_does_not_take_it_o
         BRIDGE_DIR_FAM,
         BRIDGE_DIR_VEC,
         BRIDGE_DIR_PAINTER,
+        BRIDGE_DIR_SFX,
     ]
     .iter()
     .flat_map(|d| {
@@ -338,6 +342,7 @@ fn tools_that_take_over_the_inspector() -> Vec<String> {
         BRIDGE_DIR_FAM,
         BRIDGE_DIR_VEC,
         BRIDGE_DIR_PAINTER,
+        BRIDGE_DIR_SFX,
     ]
     .iter()
     .flat_map(|d| {

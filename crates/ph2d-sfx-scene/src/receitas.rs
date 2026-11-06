@@ -2,11 +2,10 @@
 //! da cena: selecionar na Hierarchy e apertar Preview toca o buffer que `render` devolveu, por dentro do projeto.
 //! As moedas tocam os mesmos sons em sequência, no Play.
 
-use ph2d_audio::{AudioFormat, ChannelLayout, SampleData};
-use ph2d_audio_encode::{BitDepth, encode_wav};
 use ph2d_ecs::{Entity, PickStrategy, ProjectSounds, SimWorld, SoundEntry, SoundSet};
 use ph2d_sfx_dsp::render;
-use ph2d_sfx_recipe::{ENGINE_V1, Recipe, SAMPLE_RATE, SfxLibrary, Take, factory, frames_of};
+use ph2d_sfx_lab::aprovar::em_wav;
+use ph2d_sfx_recipe::{ENGINE_V1, Recipe, SfxLibrary, Take, factory, frames_of};
 
 use crate::{Anexa, Raiz};
 
@@ -60,19 +59,6 @@ pub fn biblioteca() -> (Vec<(String, Recipe)>, SfxLibrary) {
         lib.recipes.insert(n.clone(), r.clone());
     }
     (todas, lib)
-}
-
-/// O buffer da receita num WAV de `f32`: o caminho de qualquer som do projeto.
-#[must_use]
-pub fn em_wav(amostras: Vec<f32>) -> Vec<u8> {
-    let dados = SampleData::from_interleaved(
-        amostras,
-        AudioFormat {
-            sample_rate: SAMPLE_RATE,
-            channels: ChannelLayout::Mono,
-        },
-    );
-    encode_wav(&dados, BitDepth::Float32).unwrap_or_else(|e| panic!("wav: {e}"))
 }
 
 /// Veste o nível 2: renderiza cada receita, um objeto por som, e aponta as moedas. Devolve o primeiro objeto, em

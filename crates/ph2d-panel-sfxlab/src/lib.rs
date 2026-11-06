@@ -1,5 +1,5 @@
-//! **Os cartões do SFX Lab** (`docs/SfxLab/04_W3_plano.md`): o painel ocupa a vaga do Inspector enquanto a aba do som
-//! está ativa. Lê o instantâneo que a família publica e devolve intenções numa fila: quem edita o som é ela.
+//! **Os cartões do SFX Lab** (`docs/SfxLab/04_W3_plano.md`): o painel entra como ABA ao lado do Inspector enquanto a aba
+//! do som está ativa, e nunca o esconde. Lê o instantâneo que a família publica e devolve intenções numa fila: quem edita o som é ela.
 //! A tabela [`tabela::CAMPOS`] gera o `populate`, o `prepare`, os cartões e o despacho.
 
 #![forbid(unsafe_code)]
@@ -22,6 +22,9 @@ use ph2d_editor_core::panel::{
 use ph2d_editor_core::screens::slot::{Slot, SlotSet};
 use ph2d_editor_core::widget::{ButtonState, TextInputState};
 
+/// O id do painel, na forma que o censo de `a_layout_never_commands_a_panel_a_bridge_owns` lê.
+pub const PANEL_ID: &str = "sfxlab";
+
 #[derive(Clone, Debug, Default)]
 pub struct SfxLabPanelState;
 
@@ -30,7 +33,7 @@ pub struct SfxLabPanel;
 impl Panel for SfxLabPanel {
     type State = SfxLabPanelState;
 
-    const ID: &'static str = "sfxlab";
+    const ID: &'static str = PANEL_ID;
     const NODE_ID: NodeId = ph2d_editor_core::ids::SFX_PANEL;
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: TextKey = TextKey::new("panel.sfxlab.title");

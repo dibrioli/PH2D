@@ -8,6 +8,7 @@ use ph2d_editor_core::ruler::label_step;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_panel_sfxlab::{medidor, nome_da_camada};
+use ph2d_sfx_lab::aprovar::EstadoDoAprovado;
 use ph2d_sfx_recipe::{Layer, LayerId};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken as T, Theme};
@@ -15,8 +16,8 @@ use ph2d_vector::{Affine, BezPath, Brush, Color, VectorScene};
 
 use crate::aba::{Aba, Alvo, Gesto};
 use crate::metrics as m;
-use crate::novo::Fonte;
 use ph2d_sfx_lab::job::Onda;
+use ph2d_sfx_lab::novo::Fonte;
 
 struct P<'a> {
     scene: &'a mut VectorScene,
@@ -134,6 +135,9 @@ pub(crate) fn aba(
     if a.menu_add {
         menu_add(a, &mut p, add, fundo);
     }
+    if a.menu_objetos {
+        menu_objetos(a, &mut p, corpo, fundo);
+    }
 }
 
 fn botao(
@@ -189,7 +193,7 @@ fn barra(a: &mut Aba, p: &mut P<'_>, corpo: Rect) {
     x = botao(a, p, Alvo::Play, tr("sfxlab.play"), x, y, None);
     x = botao(a, p, Alvo::Stop, tr("sfxlab.stop"), x, y, None);
     let on = a.play_on_change;
-    botao(
+    x = botao(
         a,
         p,
         Alvo::PlayOnChange,
@@ -198,6 +202,100 @@ fn barra(a: &mut Aba, p: &mut P<'_>, corpo: Rect) {
         y,
         Some(on),
     );
+    let x_usar = x;
+    x = botao(a, p, Alvo::UseInGame, tr("sfxlab.use_in_game"), x, y, None);
+    a.x_usar = x_usar;
+    aviso_da_barra(a, p, x, corpo);
+}
+
+/// Uma linha só, a mais urgente: o que impede de usar, o que mudou, e o estado do aprovado.
+fn aviso_da_barra(a: &Aba, p: &mut P<'_>, x: f32, corpo: Rect) {
+    let estouro = a.pronto.as_ref().is_some_and(|f| f.medida.clip());
+    let (texto, tinta): (String, T) = if let Some(r) = &a.recusa {
+        (r.clone(), T::Danger)
+    } else if a.objeto_sumiu {
+        (tr("sfxlab.use.object_gone").to_owned(), T::Warn)
+    } else if estouro {
+        (tr("sfxlab.warn.peak").to_owned(), T::Warn)
+    } else {
+        match a.estado_do_aprovado() {
+            EstadoDoAprovado::Nenhum => return,
+            EstadoDoAprovado::Aprovado => (tr("sfxlab.state.approved").to_owned(), T::Text2),
+            EstadoDoAprovado::Mudou => (tr("sfxlab.state.changed").to_owned(), T::Warn),
+            EstadoDoAprovado::MotorVelho => (tr("sfxlab.state.older_engine").to_owned(), T::Warn),
+        }
+    };
+    let fim = corpo.x + corpo.w - m::PAD;
+    p.texto(
+        &texto,
+        x,
+        Rect::new(x, corpo.y, (fim - x).max(0.0), m::BAR_H),
+        m::TEXT_PX,
+        tinta,
+    );
+}
+
+/// A lista de objetos do Use in Game, debaixo do botão; a roda anda quando ela não cabe.
+fn menu_objetos(a: &mut Aba, p: &mut P<'_>, corpo: Rect, fundo: f32) {
+    let vazia = a.objetos.is_empty();
+    let titulo = tr("sfxlab.use.pick_object");
+    let mut largura = p.ts.prefix_width(titulo, m::TEXT_PX);
+    for (_, n) in &a.objetos {
+        largura = largura.max(p.ts.prefix_width(n, m::TEXT_PX));
+    }
+    if vazia {
+        largura = largura.max(p.ts.prefix_width(tr("sfxlab.use.no_objects"), m::TEXT_PX));
+    }
+    let largura = largura + 2.0 * m::BUTTON_PAD_X + 2.0 * m::MENU_PAD;
+    let y = corpo.y + m::BAR_H;
+    let linhas = a.objetos.len().max(1);
+    let cabem = (((fundo - y - 2.0 * m::MENU_PAD) / m::MENU_ROW_H).floor() as usize)
+        .saturating_sub(1)
+        .max(1);
+    let visiveis = linhas.min(cabem);
+    a.menu_max = linhas - visiveis;
+    a.menu_ini = a.menu_ini.min(a.menu_max);
+    let h = (visiveis + 1) as f32 * m::MENU_ROW_H + 2.0 * m::MENU_PAD;
+    let x = a.x_usar.min(corpo.x + corpo.w - largura).max(corpo.x);
+    let caixa = Rect::new(x, y, largura, h);
+    a.menu_caixa = caixa;
+    p.caixa(caixa, T::BgElev);
+    let cor = p.c(T::Border);
+    stroke_rounded_rect(p.scene, caixa, m::RADIUS, m::STROKE, cor);
+    let linha = |i: usize| {
+        Rect::new(
+            caixa.x + m::MENU_PAD,
+            caixa.y + m::MENU_PAD + i as f32 * m::MENU_ROW_H,
+            caixa.w - 2.0 * m::MENU_PAD,
+            m::MENU_ROW_H,
+        )
+    };
+    let r = linha(0);
+    p.texto(titulo, r.x + m::BUTTON_PAD_X, r, m::TEXT_PX, T::Text3);
+    a.alvos.push((Alvo::ObjetoOff, r));
+    if vazia {
+        let r = linha(1);
+        let t = tr("sfxlab.use.no_objects");
+        p.texto(t, r.x + m::BUTTON_PAD_X, r, m::TEXT_PX, T::TextDisabled);
+        a.alvos.push((Alvo::ObjetoOff, r));
+        return;
+    }
+    let vistos: Vec<(u64, String)> = a
+        .objetos
+        .iter()
+        .skip(a.menu_ini)
+        .take(visiveis)
+        .cloned()
+        .collect();
+    for (i, (id, nome)) in vistos.into_iter().enumerate() {
+        let r = linha(i + 1);
+        let alvo = Alvo::Objeto(id);
+        if a.hover == Some(alvo) {
+            p.caixa(r, T::Bg3);
+        }
+        p.texto(&nome, r.x + m::BUTTON_PAD_X, r, m::TEXT_PX, T::Text1);
+        a.alvos.push((alvo, r));
+    }
 }
 
 fn grade(a: &Aba, p: &mut P<'_>, r: Rect, y_fim: f32) {

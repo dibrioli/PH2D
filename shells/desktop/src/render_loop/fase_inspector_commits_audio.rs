@@ -21,7 +21,11 @@ pub(super) fn aplicar(
         let e = ph2d_ecs::Entity::from_bits(*bits);
         let edit = match edit {
             AudioFieldEdit::Preview => {
-                super::audio_2d::play_target(sim, audio.as_mut(), e);
+                super::audio_2d::preview_target(sim, audio.as_mut(), e);
+                continue;
+            }
+            AudioFieldEdit::CreateSound => {
+                ph2d_app_sfxlab::pede_som_para(sim.world_mut(), e);
                 continue;
             }
             AudioFieldEdit::StopPreview => {

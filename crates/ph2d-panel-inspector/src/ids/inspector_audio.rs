@@ -34,6 +34,7 @@ pub const INSP_AUDIO_SOUND: NodeId = hash_node_id("insp_audio_sound");
 /// ⚠️ **Ele existe porque não há `FieldKind::File`**: o campo ao lado é texto, e escrever um caminho
 /// à mão não é um gesto que um artista faça. *A afordância que falta ao tipo do campo mora no botão.*
 pub const INSP_AUDIO_BROWSE: NodeId = hash_node_id("insp_audio_browse");
+pub const INSP_AUDIO_CREATE_SOUND: NodeId = hash_node_id("insp_audio_create_sound");
 
 /// `Preview` — ouvir agora, sem esperar por um sinal.
 ///

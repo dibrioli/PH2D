@@ -15,6 +15,7 @@ bevy_ecs = "0.20"
 ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-app-host = { path = "../ph2d-app-host" }
 ph2d-audio = { path = "../ph2d-audio" }
+ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-host = { path = "../ph2d-host" }
 ph2d-i18n = { path = "../ph2d-i18n" }

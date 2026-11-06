@@ -245,6 +245,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.audio.browse" => "Browse\u{2026}",
         "panel.inspector.audio.preview" => "Preview",
         "panel.inspector.audio.stop" => "Stop",
+        "panel.inspector.audio.create_sound" => "Create sound",
         "panel.inspector.audio.sound_file" => "sound file\u{2026}",
         "panel.inspector.audio.no_sound_file_yet_use" => {
             "No sound file yet \u{2014} use Browse, or drag a sound here from Assets."

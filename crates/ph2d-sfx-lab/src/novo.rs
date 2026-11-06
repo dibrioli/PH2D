@@ -78,7 +78,7 @@ pub fn acrescenta(
                 contact_ms: 1.0,
                 noise: 0.2,
             }),
-            Envelope::default(),
+            queda,
         ),
         Fonte::Recording => r.add(
             0.8,

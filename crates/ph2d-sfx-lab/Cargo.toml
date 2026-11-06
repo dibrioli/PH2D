@@ -13,6 +13,9 @@ authors.workspace = true
 [dependencies]
 ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-audio = { path = "../ph2d-audio" }
+ph2d-audio-encode = { path = "../ph2d-audio-encode" }
+# O som aprovado vai para os sons do projeto (`ProjectSounds`).
+ph2d-ecs = { path = "../ph2d-ecs" }
 # O espectro (ADR-0115): a FFT mora só lá.
 ph2d-audio-spectral = { path = "../ph2d-audio-spectral" }
 ph2d-sfx-dsp = { path = "../ph2d-sfx-dsp" }

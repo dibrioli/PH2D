@@ -6206,6 +6206,7 @@ dependencies = [
  "ph2d-a11y",
  "ph2d-app-host",
  "ph2d-audio",
+ "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-i18n",
@@ -10165,11 +10166,15 @@ dependencies = [
  "bevy_ecs",
  "bumpalo",
  "ph2d-a11y",
+ "ph2d-app-audio",
  "ph2d-app-sfxlab",
  "ph2d-audio",
+ "ph2d-core",
+ "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-i18n",
+ "ph2d-panel-inspector",
  "ph2d-sfx-dsp",
  "ph2d-sfx-lab",
  "ph2d-sfx-recipe",
@@ -10687,7 +10692,9 @@ version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
  "ph2d-audio",
+ "ph2d-audio-encode",
  "ph2d-audio-spectral",
+ "ph2d-ecs",
  "ph2d-sfx-dsp",
  "ph2d-sfx-recipe",
  "ph2d-tool-registry",
@@ -10708,12 +10715,11 @@ name = "ph2d-sfx-scene"
 version = "0.0.0"
 dependencies = [
  "ph2d-app-host",
- "ph2d-audio",
  "ph2d-audio-decode",
- "ph2d-audio-encode",
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-sfx-dsp",
+ "ph2d-sfx-lab",
  "ph2d-sfx-recipe",
 ]
 

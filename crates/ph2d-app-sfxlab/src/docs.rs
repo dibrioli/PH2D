@@ -5,6 +5,7 @@ use std::sync::Arc;
 use bevy_ecs::world::World;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr_with;
+use ph2d_sfx_lab::aprovar::EstadoDoAprovado;
 use ph2d_sfx_lab::medida::Medida;
 use ph2d_sfx_recipe::{LayerId, Recipe, SfxLibrary, Takes};
 
@@ -30,7 +31,7 @@ impl SfxLabDocs {
     /// «New Sound»: nome único, e o som já toca.
     pub fn novo(&mut self) -> u64 {
         let nome = self.nome_livre();
-        let r = crate::novo::som_novo(&nome);
+        let r = ph2d_sfx_lab::novo::som_novo(&nome);
         self.abre_aba(nome, r, None)
     }
 
@@ -79,6 +80,7 @@ impl SfxLabDocs {
         self.abrir_pedidos(world);
         self.adota_do_mundo(world);
         self.escreve_no_mundo(world);
+        self.atende_o_jogo(world);
         for a in &mut self.abas {
             a.recebe();
             if a.quer_parar {
@@ -215,6 +217,18 @@ impl SfxLabDocs {
     #[must_use]
     pub fn area(&self) -> Option<Rect> {
         self.area
+    }
+
+    /// O Use in Game foi ao objeto ligado e ele não existe mais.
+    #[must_use]
+    pub fn objeto_sumiu(&self, id: u64) -> bool {
+        self.aba(id).is_some_and(|a| a.objeto_sumiu)
+    }
+
+    /// O que a barra diz do som aprovado.
+    #[must_use]
+    pub fn estado_do_aprovado(&self, id: u64) -> Option<EstadoDoAprovado> {
+        self.aba(id).map(Aba::estado_do_aprovado)
     }
 
     /// O som como se ouve, do render mais novo que chegou.

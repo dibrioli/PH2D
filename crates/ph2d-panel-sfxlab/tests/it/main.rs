@@ -2,6 +2,7 @@
 
 mod cartoes;
 mod faixas;
+mod jogo;
 mod medidores;
 mod medir;
 mod vaga;
@@ -62,6 +63,7 @@ pub struct Mesa {
 impl Mesa {
     pub fn nova() -> Self {
         let mut reg = PanelRegistry::new_empty();
+        reg.push(ErasedPanel::new::<ph2d_panel_inspector::InspectorPanel>());
         reg.push(ErasedPanel::new::<SfxLabPanel>());
         let _ = install_panel_registry(reg);
         let mut hero = HeroScreen::new(NodeId(1));

@@ -62,6 +62,8 @@ pub struct Feito {
     pub camadas: BTreeMap<LayerId, Onda>,
     /// O que os medidores mostram: o arquivo, sem limitador nem solo.
     pub medida: Medida,
+    /// A impressão digital do arquivo: é o que se compara com o som aprovado.
+    pub impressao: [u8; 32],
 }
 
 pub struct RenderJob {
@@ -162,6 +164,7 @@ fn rende(
         return Err(RenderError::Cancelled);
     }
     let medida = medidor::mede(&pcm.samples, pcm.rate);
+    let impressao = crate::aprovar::impressao(&pcm.samples);
     let camadas = r
         .layers
         .iter()
@@ -172,6 +175,7 @@ fn rende(
         mix: Onda::de(&pcm.samples),
         camadas,
         medida,
+        impressao,
         escuta,
         pcm,
     })

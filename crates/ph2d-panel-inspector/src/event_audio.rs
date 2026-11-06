@@ -46,6 +46,8 @@ pub(crate) fn apply_audio_event(host: &mut dyn PanelHostInternal, ev: WidgetEven
             AudioFieldEdit::Preview
         } else if id == ids::INSP_AUDIO_STOP {
             AudioFieldEdit::StopPreview
+        } else if id == ids::INSP_AUDIO_CREATE_SOUND {
+            AudioFieldEdit::CreateSound
         } else if let Some(i) = ids::INSP_AUDIO_BUS_OPT.iter().position(|&o| o == id) {
             close_bus_popover(host);
             AudioFieldEdit::Bus(u8::try_from(i).unwrap_or(0))

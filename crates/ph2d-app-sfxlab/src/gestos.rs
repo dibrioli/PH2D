@@ -1,5 +1,6 @@
 //! O rato e o teclado da aba. O que se clica foi registrado pela pintura em `Aba::alvos`.
 
+use ph2d_ecs::StableId;
 use ph2d_editor_core::doc_surface::{Key, KeyInput, KeyOutcome, PointerLook};
 use ph2d_host::PointerKind;
 use ph2d_sfx_recipe::LayerId;
@@ -30,6 +31,14 @@ fn desce(a: &mut Aba, x: f32, y: f32) -> bool {
     let no_menu = matches!(alvo, Some(Alvo::Item(_) | Alvo::ItemOff(_) | Alvo::Add));
     if a.menu_add && !no_menu {
         a.menu_add = false;
+        return no_corpo;
+    }
+    let na_lista = matches!(
+        alvo,
+        Some(Alvo::Objeto(_) | Alvo::ObjetoOff | Alvo::UseInGame)
+    );
+    if a.menu_objetos && !na_lista {
+        a.menu_objetos = false;
         return no_corpo;
     }
     match alvo {
@@ -111,6 +120,18 @@ fn clique(a: &mut Aba, alvo: Option<Alvo>) {
         Some(Alvo::Play) => a.quer_tocar = true,
         Some(Alvo::Stop) => para(a),
         Some(Alvo::PlayOnChange) => a.play_on_change = !a.play_on_change,
+        Some(Alvo::UseInGame) => {
+            if a.menu_objetos {
+                a.menu_objetos = false;
+            } else {
+                a.quer_usar = true;
+            }
+        }
+        Some(Alvo::Objeto(id)) => {
+            a.ligado = Some(StableId(id));
+            a.menu_objetos = false;
+            a.quer_usar = true;
+        }
         Some(Alvo::Mudo(id)) => a.edita(|r| {
             if let Some(l) = r.layer_mut(id) {
                 l.muted = !l.muted;
@@ -159,6 +180,8 @@ pub(crate) fn tecla(a: &mut Aba, k: &KeyInput<'_>) -> KeyOutcome {
             if k.pressed {
                 if a.menu_add {
                     a.menu_add = false;
+                } else if a.menu_objetos {
+                    a.menu_objetos = false;
                 } else {
                     para(a);
                 }
@@ -179,6 +202,14 @@ pub(crate) fn tecla(a: &mut Aba, k: &KeyInput<'_>) -> KeyOutcome {
 }
 
 pub(crate) fn roda(a: &mut Aba, x: f32, y: f32, dy: f32) -> bool {
+    if a.menu_objetos && a.menu_caixa.contains(x, y) {
+        a.menu_ini = if dy > 0.0 {
+            a.menu_ini.saturating_sub(1)
+        } else {
+            (a.menu_ini + 1).min(a.menu_max)
+        };
+        return true;
+    }
     if !a.linhas.contains(x, y) {
         return false;
     }
@@ -192,7 +223,7 @@ pub(crate) fn aparencia(a: &Aba, x: f32, y: f32) -> PointerLook {
     }
     match alvo_em(a, x, y) {
         Some(Alvo::Onda(_) | Alvo::Alca(_)) => PointerLook::Grab,
-        Some(Alvo::Linha(_) | Alvo::ItemOff(_)) | None => PointerLook::Arrow,
+        Some(Alvo::Linha(_) | Alvo::ItemOff(_) | Alvo::ObjetoOff) | None => PointerLook::Arrow,
         Some(_) => PointerLook::Hand,
     }
 }

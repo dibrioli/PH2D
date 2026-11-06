@@ -43,6 +43,7 @@ pub(crate) fn populate_audio(store: &mut WidgetStore) {
             crate::ids::INSP_AUDIO_BROWSE,
             crate::ids::INSP_AUDIO_PREVIEW,
             crate::ids::INSP_AUDIO_STOP,
+            crate::ids::INSP_AUDIO_CREATE_SOUND,
         ],
     );
     // ⚠️ **As entradas do seletor continuam BOTÕES** — elas são as linhas do popover. Só o CHIP é

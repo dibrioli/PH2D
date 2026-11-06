@@ -50,7 +50,7 @@ pub(crate) fn bus_options(labels: &[String]) -> Vec<DropdownOption<u8>> {
         .collect()
 }
 
-/// A fileira `Browse…` / `Preview` / `Stop`, **pela porta do grupo**.
+/// A fileira `Browse…` / `Preview` / `Stop`, **pela porta do grupo**, e `Create sound` na linha de baixo.
 #[allow(clippy::too_many_arguments)]
 fn buttons(
     scene: &mut VectorScene,
@@ -62,7 +62,7 @@ fn buttons(
     w: f32,
     y: f32,
 ) -> f32 {
-    super::rows::fila_de_botoes(
+    let y = super::rows::fila_de_botoes(
         scene,
         text_system,
         theme,
@@ -84,6 +84,21 @@ fn buttons(
             ),
             (true, ids::INSP_AUDIO_STOP, tr("panel.inspector.audio.stop")),
         ],
+    );
+    super::rows::fila_de_botoes(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        &[(
+            true,
+            ids::INSP_AUDIO_CREATE_SOUND,
+            tr("panel.inspector.audio.create_sound"),
+        )],
     )
 }
 

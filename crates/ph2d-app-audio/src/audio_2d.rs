@@ -175,6 +175,37 @@ pub fn play_target_with(
     livro.play(motor, id, &cfg, sp, set, sim.world().get_resource())
 }
 
+/// **Ouvir no Inspector:** com posição soa como no jogo; sem `Transform` toca sem espacialização, porque ouvir não depende
+/// de onde o objeto está. O disparo do jogo continua em [`play_target`].
+pub fn preview_target(sim: &mut SimWorld, audio: Option<&mut AudioSystem>, target: Entity) -> bool {
+    let Some(audio) = audio else {
+        return false;
+    };
+    let (livro, motor) = audio.scene_parts();
+    preview_target_with(sim, livro, motor, target)
+}
+
+/// A porta do [`preview_target`] que um gate alcança.
+pub fn preview_target_with(
+    sim: &mut SimWorld,
+    livro: &mut SceneAudio,
+    motor: &mut AudioEngine,
+    target: Entity,
+) -> bool {
+    if position_of(sim, target).is_some() {
+        return play_target_with(sim, livro, motor, target);
+    }
+    let Some(cfg) = sim.world().get::<AudioSource2D>(target).cloned() else {
+        return false;
+    };
+    let Some(id) = sim.world().get::<StableId>(target).map(|s| s.0) else {
+        return false;
+    };
+    let sp = ph2d_ecs::spatialize([0.0, 0.0], None, &cfg);
+    let set = sim.world().get::<SoundSet>(target);
+    livro.play(motor, id, &cfg, sp, set, sim.world().get_resource())
+}
+
 /// **CALA** o som de um alvo — o verbo `StopSound`.
 pub fn stop_target(sim: &mut SimWorld, audio: Option<&mut AudioSystem>, target: Entity) -> bool {
     let Some(audio) = audio else {

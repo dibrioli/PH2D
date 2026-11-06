@@ -47,21 +47,22 @@ struct Pintor<'a> {
 }
 
 impl Pintor<'_> {
-    fn texto(&mut self, s: &str, y: f32, h: f32, px: f32, t: T, x: f32, w: f32) {
+    fn texto(&mut self, s: &str, r: Rect, px: f32, t: T) {
         let alto = self.ts.layout("Ag", px, f32::INFINITY).height();
-        let ty = y + ((h - alto) / 2.0).max(0.0);
-        paint_text_elided(self.ts, self.scene, s, x, ty, px, w, resolve(t, self.theme));
+        let ty = r.y + ((r.h - alto) / 2.0).max(0.0);
+        let cor = resolve(t, self.theme);
+        paint_text_elided(self.ts, self.scene, s, r.x, ty, px, r.w, cor);
     }
 
     fn rotulo(&mut self, s: &str, y: f32) -> f32 {
-        let (x, w) = (self.x, self.w);
-        self.texto(s, y, ROTULO_H, TEXTO_PEQUENO, T::Text2, x, w);
+        let r = Rect::new(self.x, y, self.w, ROTULO_H);
+        self.texto(s, r, TEXTO_PEQUENO, T::Text2);
         y + ROTULO_H
     }
 
     fn valor(&mut self, s: &str, y: f32) -> f32 {
-        let (x, w) = (self.x, self.w);
-        self.texto(s, y, VALOR_H, TEXTO_VALOR, T::Text1, x, w);
+        let r = Rect::new(self.x, y, self.w, VALOR_H);
+        self.texto(s, r, TEXTO_VALOR, T::Text1);
         y + VALOR_H
     }
 
@@ -86,7 +87,7 @@ impl Pintor<'_> {
         let s = tr("sfxlab.meter.clip");
         let w = self.ts.prefix_width(s, TEXTO_PEQUENO);
         let x = r.x + ((r.w - w) / 2.0).max(0.0);
-        self.texto(s, y, CLIP_H, TEXTO_PEQUENO, tinta, x, r.w);
+        self.texto(s, Rect::new(x, y, r.w, CLIP_H), TEXTO_PEQUENO, tinta);
         y + CLIP_H
     }
 

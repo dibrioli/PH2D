@@ -114,10 +114,6 @@ fn estados() -> Vec<(Recipe, bool)> {
 fn prepara(r: Recipe, com_camada: bool) -> (Mesa, u64) {
     let (mut m, id) = mesa_com(r);
     if !com_camada {
-        let c = m.receita(id).layers[0].id;
-        m.docs()
-            .rect_de(id, ph2d_app_sfxlab::Alvo::Linha(c))
-            .expect("linha");
         let linha = m
             .docs()
             .rect_de(id, ph2d_app_sfxlab::Alvo::Regua)
@@ -307,7 +303,7 @@ fn clicar_de_novo_no_fm_nao_apaga_o_que_o_artista_ajustou() {
 
 #[test]
 fn ruido_branco_nao_oferece_hz_nem_q() {
-    let (mut m, id) = mesa_com(receita(ruido()));
+    let (mut m, _) = mesa_com(receita(ruido()));
     let hz = CAMPOS
         .iter()
         .find(|c| c.chave == "sfxlab.card.hz")

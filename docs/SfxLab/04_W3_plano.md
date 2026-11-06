@@ -1,6 +1,6 @@
 # W3 «Lab» — a tela do SFX Lab: plano
 
-Leitor: a LLM que implementa. Base: `bbfefaf393` + a aprovação de W2 (06/11). Plano geral: [01_plano.md](01_plano.md) · tela de referência: [crítica](pesquisa/critica.md) «Tela principal» · números do motor: [03_W2_medicao.md](03_W2_medicao.md). Estado: **à espera da aprovação do dono; nada implementado.**
+Leitor: a LLM que implementa. Base: `bbfefaf393` + a aprovação de W2 (06/11). Plano geral: [01_plano.md](01_plano.md) · tela de referência: [crítica](pesquisa/critica.md) «Tela principal» · números do motor: [03_W2_medicao.md](03_W2_medicao.md). Estado: **passos 1 a 4 prontos; falta o passo 5 e a medição do passo 6.**
 
 ## O que o artista consegue fazer ao fim
 
@@ -38,7 +38,7 @@ Sem pesquisa nova: vale a [tabela do plano §1](01_plano.md) e a [crítica](pesq
 
 **Por que não `ProjectState`:** o blob leva as gravações em PCM, e copiá-lo a cada arrasto paga pelo material que não mudou; a `Recipe` tem poucas centenas de bytes e o material é imutável, endereçado por blake3. Kanban e Code já têm a própria fila, e a shell não ganha sítios. `ProjectSounds` não está em `undo.rs`: desfazer o Use in Game devolve a ligação do objeto e deixa o som no projeto, sem efeito no jogo.
 
-**Crates:** `ph2d-panel-sfxlab` (pintura e cartões) · `ph2d-app-sfxlab` (`DocumentSurface`, serviço, `RenderJob`). A aba pinta a pilha; os cartões usam a `paint_card_list` no retângulo direito da área, como o `Tela` da receita de cartões. Custo na shell: dependência, `install`, um gancho por quadro, medidos contra a folga ~136 (`wc -l` do explorador; recontar pelo gate).
+**Crates:** `ph2d-panel-sfxlab` (cartões e pintura dos medidores) · `ph2d-app-sfxlab` (`DocumentSurface`, serviço) · `ph2d-sfx-lab` (tabela dos campos, medidas, `RenderJob`: sem tela, e fora do tecto da família). A aba pinta a pilha e os medidores; os cartões são um painel na vaga do Inspector (ver «Decisões de construção»). Custo na shell: dependência, `install`, um gancho por quadro, medidos contra a folga ~136 (`wc -l` do explorador; recontar pelo gate).
 
 **Limitador:** teto −1 dBFS, com antecipação, em `ph2d-sfx-dsp`, sobre `ph2d-det-math`. Como corre offline, não pode estourar por construção.
 
@@ -99,7 +99,24 @@ Cena nova `PH2D_SFX_SMOKE=3`: a aba aberta em «Metal Hit», com um objeto sem s
 
 **Medido em 06/11** (sonda W2, mínimo de 7 rodadas intercaladas, perfil `smoke`, load ~16, logo ordem de grandeza): típica 2 s 7,41 ms; pior 2 s 24,63 ms; editar um corpo 3,30 a 4,14 ms; só o ganho 0,10 ms. De W2: pior corpo de 120 s 9 370 ms e gravação a +24 semitons 32 ms, os dois casos que justificam a thread.
 
-**A medir antes da mensagem ao dono:** latência da edição até o som novo tocável, tempo por quadro da tela com 8 e com 64 camadas, custo do limitador e do pico/espectro por render. O teto de 30 ms continua proposto: o ouvido do dono o confirma aqui.
+**Medido em 06/11, passo 4** (sonda `ph2d-panel-sfxlab/tests/it/medir.rs`, `--ignored`: variantes no mesmo processo, intercaladas, mínimo de 7 blocos, perfil `smoke`, load ~4):
+
+| O quê | 2 s de som | 120 s de som |
+|---|---:|---:|
+| Pico | 0,009 ms | 0,604 ms |
+| LUFS | 0,404 ms | 23,9 ms |
+| Espectro (janela 2048, salto 512, 32 bandas) | 0,951 ms | 54,0 ms |
+
+Os três correm na thread do render, com o cancelamento antes. Espectro barato: não se reduz.
+
+| Quadro da tela, CPU (serviço + hero inteiro, sem a GPU e sem fontes do sistema) | ms |
+|---|---:|
+| 8 camadas | 0,449 |
+| 64 camadas | 0,871 |
+
+**Faixas dos campos:** são as do motor (`sanitize.rs`), na unidade da tela. Gate `os_extremos_de_cada_campo_soam_e_sao_finitos`: as duas pontas de cada campo ficam dentro da lei e soam sem não-número; a pior custa 30,9 ms (Duration em 120 s, sonda em perfil `test`, sem otimização). Duas faixas são escolha, com o recurso dito: Gain −60 a +24 dB (o motor vai a 1e6, a escuta limita) e Modes até 1 080 (o máximo de um corpo harmônico, `03_W2_medicao.md`). Attack + Decay + Close somam no máximo 120 s, senão a sanitização cortaria a curva ao abrir: defeito achado pelo gate.
+
+**A medir ainda:** latência da edição até o som novo tocável e custo do limitador por render. O teto de 30 ms continua proposto: o ouvido do dono o confirma aqui.
 
 ## Decisões de construção (lidas no código, 06/11; valem sobre o §2)
 
@@ -121,9 +138,9 @@ Cena nova `PH2D_SFX_SMOKE=3`: a aba aberta em «Metal Hit», com um objeto sem s
 ## Ordem
 
 1. **Feito** (`174859cd01`). Porta do motor: cancelamento, limitador, blob v2, `muted`, `Approved` (sem tela; gates).
-2. Família: aba, `RenderJob`, escuta, desfazer, cena 3.
-3. Tela: régua, ondas, pilha, gestos.
-4. Cartões e medidores.
+2. **Feito.** Família: aba, `RenderJob`, escuta, desfazer, cena 3.
+3. **Feito.** Tela: régua, ondas, pilha, gestos.
+4. **Feito.** Cartões e medidores.
 5. Use in Game, Create sound, Preview sem `Transform`.
 6. Medir, fotografar, smoke do dono, `/pd-onda-fechar`.
 

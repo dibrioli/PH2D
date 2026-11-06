@@ -68,7 +68,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "sfxlab.card.material" => "Material",
         "sfxlab.card.take_name" => "Recording {n} ({s} s)",
         "sfxlab.card.shape.flat" => "Full volume for the whole layer.",
-        "sfxlab.card.shape.custom" => "This curve has its own points. Attack, Decay and Close do not describe it.",
+        "sfxlab.card.shape.custom" => {
+            "This curve has its own points. Attack, Decay and Close do not describe it."
+        }
         "sfxlab.card.shape.use_hit" => "Use Attack, Decay and Close",
         "sfxlab.meter.peak" => "Peak (dB)",
         "sfxlab.meter.loudness" => "Loudness (LUFS)",

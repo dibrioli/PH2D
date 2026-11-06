@@ -576,6 +576,27 @@ fn palavra_da_cor(c: ph2d_vector::Color) -> u32 {
     s.inner().encoding().draw_data[0]
 }
 
+/// Nada escolhido na lista = a Cena: a linha dela pinta o tom da lei, não o do cartão elevado (dono,
+/// 06/11: «quase não é percebido»). *Mutação: `KanbanCardRaised` de volta em `fundo` ⇒ a cor some.*
+#[test]
+fn a_linha_escolhida_pinta_o_tom_da_lei() {
+    use ph2d_editor_core::panel::PanelHost;
+    use ph2d_editor_core::widget::card_ink::CardInk;
+    use ph2d_tokens::ColorToken;
+    let mut mesa = Mesa::nova(4);
+    let tinta = CardInk::of_card(None, mesa.host.theme());
+    let tom = palavra_da_cor(ph2d_editor_core::widget::tom_da_linha_escolhida(
+        tinta.color(ColorToken::Accent),
+    ));
+    let pintado = mesa
+        .host
+        .paint_draw_data::<HierarchyPanel>(&mut mesa.st, VIEW);
+    assert!(
+        pintado.contains(&tom),
+        "a linha escolhida não tem o tom da lei"
+    );
+}
+
 /// A lista aberta do filtro tem a superfície das do cartão, não a do Inspector de antes.
 /// *Mutação: sem o `card_ink::com` ⇒ sai `BgElev` e a moldura.*
 #[test]

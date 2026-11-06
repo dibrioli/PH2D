@@ -160,7 +160,7 @@ pub use icon_button::{
 pub use key_value_list::{KeyValueEntry, KeyValueList, paint_key_value_list};
 pub use level_meter::{LevelMeter, fraction_of_db, paint_level_channel_on_card, paint_level_meter};
 pub use list_item::{ListItem, ListItemState, paint_list_item};
-pub use list_rows::{RowHighlight, paint_row_highlight, paint_row_stripe};
+pub use list_rows::{RowHighlight, paint_row_highlight, paint_row_stripe, tom_da_linha_escolhida};
 pub use modal::{Modal, paint_modal, pop_modal_body_clip, push_modal_body_clip};
 pub use number_input::{
     MIN_W_PX as NUMBER_INPUT_MIN_W_PX, NumberInput, format_number, format_number_com_casas,

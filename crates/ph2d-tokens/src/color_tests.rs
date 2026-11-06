@@ -195,6 +195,29 @@ fn color_value_from_oklch_clamps_alpha() {
 
 /// ⭐ As cores das PESSOAS do quadro ao vivo: o índice viaja na rede, então a mesma pessoa tem a
 /// mesma cor em todo tema; o nome escrito por cima lê-se (AA, 4,5:1); a figura lê-se sobre o quadro
+/// A linha escolhida salta do cartão e o texto lê-se nela, em todo tema. Medido 06/11 (pior tema):
+/// alfa 0,25 = fundo 1,44 / texto 6,01 · **0,35 = 1,68 / 4,60** · 0,45 = 1,97 / 3,56 · 0,55 = 2,34 / 2,78.
+/// O tecto é o texto a 4,5 (`PlumberRed`). *Mutação: alfa 0,45 ⇒ o texto reprova; 0,25 ⇒ o fundo.*
+#[test]
+fn a_linha_escolhida_salta_do_cartao_e_o_texto_le_se() {
+    use crate::theme::Theme;
+    let alpha = f64::from(crate::ROW_SELECTED_ALPHA);
+    for theme in Theme::ALL {
+        let (a, c) = (
+            ColorToken::Accent.resolve(theme),
+            ColorToken::KanbanCard.resolve(theme),
+        );
+        let mix =
+            |x: u8, y: u8| (f64::from(x) * alpha + f64::from(y) * (1.0 - alpha)).round() as u8;
+        let mut linha = c;
+        (linha.r, linha.g, linha.b) = (mix(a.r, c.r), mix(a.g, c.g), mix(a.b, c.b));
+        let fundo = linha.contrast_ratio(&c);
+        let texto = linha.contrast_ratio(&ColorToken::KanbanCardFg.resolve(theme));
+        assert!(fundo >= 1.6, "{theme:?}: fundo {fundo:.2}");
+        assert!(texto >= 4.5, "{theme:?}: texto {texto:.2}");
+    }
+}
+
 /// de todo tema (3:1, um gráfico); e duas pessoas não se confundem (distância OKLab).
 #[test]
 fn person_colours_read_in_every_theme() {

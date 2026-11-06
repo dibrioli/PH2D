@@ -18,7 +18,8 @@
 //!
 //! # A lei, e de onde vem cada metade
 //!
-//! - **o tom**: `AccentSoft` (apontada: `Bg2`) — o *pressed* do modelo, nunca o repouso;
+//! - **o tom**: o acento a [`ph2d_tokens::ROW_SELECTED_ALPHA`] (apontada: `Bg2`), nunca o repouso de
+//!   um botão; o dono pediu destaque claro em 06/11;
 //! - **SANGRA** até fora do corpo (`content_margin_all(0)` do modelo): uma selecção de lista ocupa
 //!   a faixa inteira, ela não é uma caixa dentro da faixa;
 //! - ⛔ **sem QUINAS e sem MOLDURA** — e isto é veredito do dono, medido duas vezes: *«o nome de um
@@ -49,9 +50,16 @@ impl RowHighlight {
         match self {
             Self::None => None,
             Self::Hovered => Some(ColorToken::Bg2),
-            Self::Selected => Some(ColorToken::AccentSoft),
+            Self::Selected => Some(ColorToken::Accent),
         }
     }
+}
+
+/// O fundo da linha escolhida a partir do acento da tinta em uso: UMA lei em toda lista, solta ou em
+/// cartão (dono, 06/11).
+#[must_use]
+pub fn tom_da_linha_escolhida(acento: ph2d_vector::Color) -> ph2d_vector::Color {
+    acento.multiply_alpha(ph2d_tokens::ROW_SELECTED_ALPHA)
 }
 
 /// **Pinta o realce de uma linha de lista.**
@@ -72,12 +80,17 @@ pub fn paint_row_highlight(
     let Some(token) = highlight.token() else {
         return;
     };
+    let cor = crate::widget::card_ink::tinta(token, theme);
     crate::paint::fill_rounded_rect(
         scene,
         Rect::new(rect.x - bleed, rect.y, rect.w + bleed * 2.0, rect.h),
         // ⛔ ZERO, e é a lei: uma linha de lista não arredonda canto nenhum.
         0.0,
-        crate::widget::card_ink::tinta(token, theme),
+        if highlight == RowHighlight::Selected {
+            tom_da_linha_escolhida(cor)
+        } else {
+            cor
+        },
     );
 }
 
@@ -93,7 +106,7 @@ mod tests {
             Some(ColorToken::Bg3),
             "a linha escolhida voltou ao tom de um botao parado: ela le^-se como um botao"
         );
-        assert_eq!(RowHighlight::Selected.token(), Some(ColorToken::AccentSoft));
+        assert_eq!(RowHighlight::Selected.token(), Some(ColorToken::Accent));
         assert_eq!(RowHighlight::None.token(), None);
     }
 

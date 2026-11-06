@@ -315,14 +315,16 @@ impl CardCtx<'_> {
 
     fn list_row_face(&mut self, row: &ListRow<'_>, r: Rect) {
         let fundo = if row.selected {
-            Some(ColorToken::KanbanCardRaised)
+            Some(crate::widget::tom_da_linha_escolhida(
+                self.ink.color(ColorToken::Accent),
+            ))
         } else if self.store.hover_live(row.id) > 0.0 {
-            Some(ColorToken::CardFieldHover)
+            Some(self.ink.color(ColorToken::CardFieldHover))
         } else {
             None
         };
         if let Some(f) = fundo {
-            fill_rounded_rect(self.scene, r, m::SEG_RADIUS, self.ink.color(f));
+            fill_rounded_rect(self.scene, r, m::SEG_RADIUS, f);
         }
         if let Some(icon) = row.icon {
             let lado = m::SEG_TEXT_PX;

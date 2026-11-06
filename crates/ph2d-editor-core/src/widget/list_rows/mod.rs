@@ -14,7 +14,7 @@
 //! reportado como *«às vezes as listras somem»*. A porta recebe *quantas já foram pintadas*.
 
 pub mod selection;
-pub use selection::{RowHighlight, paint_row_highlight};
+pub use selection::{RowHighlight, paint_row_highlight, tom_da_linha_escolhida};
 
 use crate::zones::Rect;
 use ph2d_tokens::{ColorToken, Theme};

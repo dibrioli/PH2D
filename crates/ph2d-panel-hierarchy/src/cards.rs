@@ -325,12 +325,14 @@ fn fundo(c: &mut CardCtx<'_>, r: Rect, k: usize, e: &HierarchyEntity, id: NodeId
         RowHighlight::None
     };
     let cor = match tom {
-        RowHighlight::Selected => Some(ColorToken::KanbanCardRaised),
-        RowHighlight::Hovered => Some(ColorToken::CardFieldHover),
+        RowHighlight::Selected => Some(ph2d_editor_core::widget::tom_da_linha_escolhida(
+            c.ink.color(ColorToken::Accent),
+        )),
+        RowHighlight::Hovered => Some(c.ink.color(ColorToken::CardFieldHover)),
         RowHighlight::None => None,
     };
     if let Some(t) = cor {
-        fill_rounded_rect(c.scene, r, m::SEG_RADIUS, c.ink.color(t));
+        fill_rounded_rect(c.scene, r, m::SEG_RADIUS, t);
     }
 }
 

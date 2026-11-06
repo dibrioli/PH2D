@@ -84,6 +84,10 @@ pub const CHECKBOX_BOX_PX: f32 = crate::generated::CHROME_CHECKBOX_BOX;
 /// vai cair — menor que isto o texto do fantasma deixa de ser legível numa coluna de ~260 px.
 pub const DRAG_GHOST_SCALE: f32 = 0.75; // LITERAL-PX-OK: escala adimensional do fantasma
 
+/// **A linha escolhida de uma lista: o acento a esta opacidade** (dono, 06/11: o tom antigo diferia
+/// do cartão em 5 a 8 pontos de cor). `color_tests` mede o contraste em todo tema.
+pub const ROW_SELECTED_ALPHA: f32 = 0.35; // LITERAL-PX-OK: opacidade do realce
+
 /// ⭐ **O FANTASMA de um cartão arrastado — a opacidade dele.** Meio transparente: a marca da
 /// queda (a barra de acento entre dois cartões) tem de se ver através dele.
 pub const DRAG_GHOST_ALPHA: f32 = 0.55; // LITERAL-PX-OK: opacidade do fantasma

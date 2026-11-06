@@ -1,0 +1,28 @@
+# Sonda W2 do SFX Lab: aliasing por variante, custo, ganho do cache, duração e bytes por alvo. Projeto à parte para
+# compilar com qualquer alvo sem arrastar o app. Como correr: `corre.sh`, ao lado.
+[package]
+name = "sonda-w2"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[dependencies]
+ph2d-det-math = { path = "../../../../crates/ph2d-det-math" }
+ph2d-sfx-dsp = { path = "../../../../crates/ph2d-sfx-dsp" }
+ph2d-sfx-recipe = { path = "../../../../crates/ph2d-sfx-recipe" }
+
+[[bin]]
+name = "sonda"
+
+[[bin]]
+name = "hashes"
+
+[profile.smoke]
+inherits = "release"
+codegen-units = 16
+lto = "off"

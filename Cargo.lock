@@ -5810,8 +5810,8 @@ dependencies = [
  "ph2d-render",
  "ph2d-runtime",
  "ph2d-script",
+ "ph2d-sfx-scene",
  "ph2d-tokens",
- "ph2d-vec-svg",
  "ph2d-vector",
 ]
 
@@ -7457,6 +7457,7 @@ dependencies = [
  "ph2d-render",
  "ph2d-runtime",
  "ph2d-script",
+ "ph2d-sfx-scene",
  "ph2d-shake",
  "ph2d-sheet-bounds",
  "ph2d-skeleton",
@@ -7526,11 +7527,13 @@ name = "ph2d-host-game-scenes"
 version = "0.0.0"
 dependencies = [
  "ph2d-a11y",
+ "ph2d-app-audio",
  "ph2d-app-components",
  "ph2d-app-game",
  "ph2d-app-physics",
  "ph2d-app-sprite-anim",
  "ph2d-asset",
+ "ph2d-audio",
  "ph2d-camera-frame",
  "ph2d-core",
  "ph2d-ecs",
@@ -7542,10 +7545,12 @@ dependencies = [
  "ph2d-render",
  "ph2d-runtime",
  "ph2d-script",
+ "ph2d-sfx-scene",
  "ph2d-sprite-edit",
  "ph2d-tags",
  "ph2d-text",
  "ph2d-tokens",
+ "ph2d-vec-svg",
  "ph2d-vector",
 ]
 
@@ -10540,6 +10545,34 @@ version = "0.0.0"
 dependencies = [
  "ph2d-macro",
  "serde",
+]
+
+[[package]]
+name = "ph2d-sfx-dsp"
+version = "0.0.0"
+dependencies = [
+ "ph2d-det-math",
+ "ph2d-sfx-recipe",
+ "postcard",
+]
+
+[[package]]
+name = "ph2d-sfx-recipe"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "blake3",
+ "postcard",
+ "serde",
+]
+
+[[package]]
+name = "ph2d-sfx-scene"
+version = "0.0.0"
+dependencies = [
+ "ph2d-app-host",
+ "ph2d-ecs",
+ "ph2d-editor-core",
 ]
 
 [[package]]

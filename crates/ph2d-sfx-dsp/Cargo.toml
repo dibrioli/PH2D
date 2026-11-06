@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-sfx-dsp"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O motor do SFX Lab (ADR-0198): `f32`, escalar, e toda função transcendente vem de `ph2d-det-math`.
+[dependencies]
+ph2d-det-math = { path = "../ph2d-det-math" }
+ph2d-sfx-recipe = { path = "../ph2d-sfx-recipe" }
+postcard = { version = "1", features = ["alloc"] }
+
+[[test]]
+name = "it"
+path = "tests/it/main.rs"
+
+[lints]
+workspace = true

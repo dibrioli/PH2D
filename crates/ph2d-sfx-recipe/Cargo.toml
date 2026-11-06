@@ -1,0 +1,24 @@
+[package]
+name = "ph2d-sfx-recipe"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O documento do SFX Lab (docs/SfxLab/01_plano.md): folha sem FFT e sem o motor. Quem renderiza é `ph2d-sfx-dsp`.
+[features]
+# A biblioteca como recurso do mundo: quem a liga é quem grava e abre o projeto.
+component = ["dep:bevy_ecs"]
+
+[dependencies]
+bevy_ecs = { version = "0.20", optional = true }
+blake3 = "1"
+postcard = { version = "1", features = ["alloc"] }
+serde = { version = "1", features = ["derive"] }
+
+[lints]
+workspace = true

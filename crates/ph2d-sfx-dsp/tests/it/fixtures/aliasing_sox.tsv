@@ -1,0 +1,15 @@
+# Oráculo de aliasing: sox:      SoX_ng v14.8.0.1, executado por docs/SfxLab/ferramentas/sonda_w2/corre.sh em 2026-11-05.
+# Comando: sox entrada.wav saida.wav sinc -n 32767 20-<0,8×hz> trim 0.5 1 (vol 1000 quando o RMS é menor que 0,001); dB = 20·log10(RMS saída / RMS entrada).
+# O trim tira o estalo das pontas do arquivo, depois de o filtro esquecê-lo. O RMS de entrada tem o mesmo trim.
+# A linha «ingenua» é a serra do próprio sox: o controlo de que a medida enxerga o fenômeno.
+# onda	hz	dB
+serra	5000	-137.6
+serra	9000	-125.7
+serra	15000	-121.0
+quadrada	5000	-138.3
+quadrada	9000	-131.5
+quadrada	15000	-125.9
+triangulo	5000	-134.4
+triangulo	9000	-122.0
+triangulo	15000	-114.6
+ingenua	15000	-8.6

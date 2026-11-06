@@ -43,6 +43,8 @@ pub struct Imagem {
     pub entradas: usize,
     /// A grelha que a família sugere (só no Import).
     pub sugestao: Option<Grelha>,
+    /// Há um `.json` ao lado da imagem do Import: os tempos e as tags vêm dele.
+    pub com_dados: bool,
 }
 
 /// O verbo de uma janela.
@@ -215,6 +217,7 @@ fn monta_a_previa(s: &Sprite, o: &OpcoesFolha) -> Imagem {
         lados_reais: (f.w, f.h),
         entradas: f.entradas.len(),
         sugestao: None,
+        com_dados: false,
     }
 }
 
@@ -315,7 +318,7 @@ impl Gravacoes {
 
 /// A imagem do Import: a 1.ª do documento, com a grelha que ela mostra.
 #[must_use]
-pub fn imagem_de_import(s: &Sprite, seq: u64) -> Imagem {
+pub fn imagem_de_import(s: &Sprite, seq: u64, com_dados: bool) -> Imagem {
     let rgba = ph2d_pixel_io::frame_rgba(s, s.frames()[0].id);
     let (w, h) = (s.width(), s.height());
     Imagem {
@@ -326,5 +329,6 @@ pub fn imagem_de_import(s: &Sprite, seq: u64) -> Imagem {
         seq,
         lados_reais: (w, h),
         entradas: 0,
+        com_dados,
     }
 }

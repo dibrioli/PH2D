@@ -31,6 +31,7 @@ pub(crate) fn numeros(g: &Grelha) -> Vec<Numero> {
 
 pub(crate) fn cards(g: Grelha, img: Option<(ImagemDoCartao, Imagem)>) -> Vec<CardDef<'static>> {
     let lados = img.as_ref().map_or((0, 0), |(_, p)| (p.w, p.h));
+    let com_dados = img.as_ref().is_some_and(|(_, p)| p.com_dados);
     vec![
         cartao(
             ids::SEC_IMAGE,
@@ -85,7 +86,13 @@ pub(crate) fn cards(g: Grelha, img: Option<(ImagemDoCartao, Imagem)>) -> Vec<Car
                         ("n", &(cols * rows).to_string()),
                     ],
                 );
-                c.hint(&t, y)
+                let y = c.hint(&t, y);
+                let dica = if com_dados {
+                    "panel.pixel.export.import_json"
+                } else {
+                    "panel.pixel.export.import_no_json"
+                };
+                c.hint(tr(dica), y)
             },
         ),
     ]

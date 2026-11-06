@@ -187,6 +187,7 @@ fn as_listas_e_as_outras_janelas_respondem() {
         lados_reais: (64, 32),
         entradas: 0,
         sugestao: None,
+        com_dados: false,
     }));
     canal::abrir(Tela::Import);
     assenta(&mut hero, &mut ts);

@@ -101,6 +101,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.export.by_rows" => "By rows",
         "panel.pixel.export.by_columns" => "By columns",
         "panel.pixel.export.import_count" => "{c} x {r} cells, {n} {n?frame|frames}",
+        "panel.pixel.export.import_json" => {
+            "Frame times and tags come from the .json next to this image."
+        }
+        "panel.pixel.export.import_no_json" => {
+            "No .json next to this image: every frame starts at 100 ms."
+        }
         "panel.pixel.export.import_none" => {
             "No whole cell fits this image. Make the frame smaller."
         }

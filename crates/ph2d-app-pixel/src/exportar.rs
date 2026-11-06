@@ -18,8 +18,8 @@ const LIDOS: [&str; 6] = ["ase", "aseprite", "png", "apng", "gif", "webp"];
 pub struct Estado {
     previa: PreviaDaFolha,
     gravacoes: Gravacoes,
-    /// A imagem do Import e o nome do objecto que ela vai ser.
-    imagem: Option<(Imagem, String)>,
+    /// A imagem do Import, o nome do objecto e o `.json` ao lado.
+    imagem: Option<(Imagem, String, Option<String>)>,
     /// A janela a abrir no próximo quadro (lá há o `hero`).
     abrir: bool,
 }
@@ -41,9 +41,11 @@ impl PixelApp {
                 if let Some(c) = ph2d_app_host::modal::pick_file(dialogo()) {
                     match abrir::abrir_caminhos(std::slice::from_ref(&c)) {
                         Ok((s, _, nome)) => {
-                            let i = canal::imagem_de_import(&s, self.exporta.previa.proximo_seq());
+                            let dados = abrir::dados_ao_lado(&c);
+                            let seq = self.exporta.previa.proximo_seq();
+                            let i = canal::imagem_de_import(&s, seq, dados.is_some());
                             canal::publish_imagem(Some(i.clone()));
-                            self.exporta.imagem = Some((i, nome));
+                            self.exporta.imagem = Some((i, nome, dados));
                             self.abre_janela(Tela::Import);
                         }
                         Err(e) => self.avisos.push((true, textos::erro_abrir(&e))),
@@ -150,8 +152,8 @@ pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
         Some(Pedido::Exportar(e)) => app.exporta_para_o_disco(&e),
         Some(Pedido::Importar(g)) => {
             let de = app.exporta.imagem.clone();
-            de.is_some_and(|(i, nome)| {
-                let r = abrir::importar_folha(&i.rgba, i.w, i.h, &g);
+            de.is_some_and(|(i, nome, dados)| {
+                let r = abrir::importar_folha_com(&i.rgba, i.w, i.h, &g, dados.as_deref());
                 app.abre(r.map(|s| (s, Vec::new(), nome)))
             })
         }

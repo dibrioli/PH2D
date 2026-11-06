@@ -40,6 +40,7 @@ fn mesa(t: Tela) -> Mesa<PixelExportPanel> {
         lados_reais: (64, 32),
         entradas: 0,
         sugestao: None,
+        com_dados: false,
     }));
     let _ = canal::take_pedido();
     canal::abrir(t);
@@ -302,6 +303,7 @@ fn a_sugestao_entra_uma_vez() {
         lados_reais: (64, 32),
         entradas: 0,
         sugestao: Some(g),
+        com_dados: false,
     }));
     m0.assenta_em(JANELA);
     assert!(matches!(verbo(&mut m0), Pedido::Importar(x) if x == g));

@@ -315,6 +315,23 @@ pub fn celulas(g: &Grelha, iw: u32, ih: u32) -> (u32, u32) {
 /// # Errors
 /// [`ErroAbrir`].
 pub fn importar_folha(rgba: &[u8], iw: u32, ih: u32, g: &Grelha) -> Result<Sprite, ErroAbrir> {
+    importar_folha_com(rgba, iw, ih, g, None)
+}
+
+/// [`importar_folha`] com o `.json` da folha: cada célula leva a duração do quadro que cai nela e, se
+/// a grelha tem tantas células quantos quadros o JSON, as tags dele. Sem JSON (ou sem o campo), os
+/// quadros ficam com a duração de fábrica: a imagem sozinha não guarda tempo.
+///
+/// # Errors
+/// [`ErroAbrir`].
+pub fn importar_folha_com(
+    rgba: &[u8],
+    iw: u32,
+    ih: u32,
+    g: &Grelha,
+    json: Option<&str>,
+) -> Result<Sprite, ErroAbrir> {
+    let v: Option<serde_json::Value> = json.and_then(|t| serde_json::from_str(t).ok());
     let (cols, rows) = celulas(g, iw, ih);
     if cols == 0 || rows == 0 {
         return Err(ErroAbrir::Vazio);
@@ -338,10 +355,107 @@ pub fn importar_folha(rgba: &[u8], iw: u32, ih: u32, g: &Grelha) -> Result<Sprit
                 let i = (y as usize * iw as usize + x0 as usize) * 4;
                 d.extend_from_slice(&rgba[i..i + g.w as usize * 4]);
             }
-            (d, DEFAULT_FRAME_MS)
+            let ms = v
+                .as_ref()
+                .and_then(|j| duracao_da_celula(j, (x0, y0, g.w, g.h)));
+            (d, ms.unwrap_or(DEFAULT_FRAME_MS))
         })
         .collect();
-    documento(g.w, g.h, ColorMode::Rgba, Vec::new(), 0, &quadros)
+    let mut s = documento(g.w, g.h, ColorMode::Rgba, Vec::new(), 0, &quadros)?;
+    if let Some(j) = &v {
+        poe_tags(&mut s, j, quadros.len());
+    }
+    Ok(s)
+}
+
+/// Os quadros do JSON, em `array` ou em `hash`.
+fn quadros_do_json(j: &serde_json::Value) -> Vec<&serde_json::Value> {
+    match &j["frames"] {
+        serde_json::Value::Array(a) => a.iter().collect(),
+        serde_json::Value::Object(o) => o.values().collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// A duração do quadro cujo retângulo tem o centro nesta célula.
+fn duracao_da_celula(j: &serde_json::Value, (x, y, w, h): (u32, u32, u32, u32)) -> Option<u32> {
+    let num = |q: &serde_json::Value, k: &str| q["frame"][k].as_u64();
+    quadros_do_json(j).into_iter().find_map(|q| {
+        let cx = num(q, "x")? + num(q, "w")? / 2;
+        let cy = num(q, "y")? + num(q, "h")? / 2;
+        let dentro = (u64::from(x)..u64::from(x + w)).contains(&cx)
+            && (u64::from(y)..u64::from(y + h)).contains(&cy);
+        if !dentro {
+            return None;
+        }
+        u32::try_from(q["duration"].as_u64()?).ok()
+    })
+}
+
+/// As tags do JSON; só se a grelha tem um quadro para cada um dos dele, senão apontariam para outros.
+fn poe_tags(s: &mut Sprite, j: &serde_json::Value, celulas: usize) {
+    use ph2d_pixel_core::{Direction, apply, frames};
+    if quadros_do_json(j).len() != celulas {
+        return;
+    }
+    let Some(tags) = j["meta"]["frameTags"].as_array() else {
+        return;
+    };
+    for t in tags {
+        let (Some(nome), Some(de), Some(ate)) =
+            (t["name"].as_str(), t["from"].as_u64(), t["to"].as_u64())
+        else {
+            continue;
+        };
+        let (Ok(de), Ok(ate)) = (u32::try_from(de), u32::try_from(ate)) else {
+            continue;
+        };
+        let Some(op) = frames::new_tag(s, nome, de, ate) else {
+            continue;
+        };
+        if apply(s, op).is_err() {
+            continue;
+        }
+        let i = s.tags().len() - 1;
+        let direcao = match t["direction"].as_str() {
+            Some("reverse") => Direction::Reverse,
+            Some("pingpong") => Direction::PingPong,
+            Some("pingpong_reverse") => Direction::PingPongReverse,
+            _ => Direction::Forward,
+        };
+        // O formato escreve `repeat` em string; ausente = para sempre.
+        let repeat = t["repeat"]
+            .as_str()
+            .and_then(|r| r.parse().ok())
+            .unwrap_or(0);
+        let cor = t["color"].as_str().and_then(cor_do_json);
+        let op = frames::edit_tag(s, i, |x| {
+            x.direction = direcao;
+            x.repeat = repeat;
+            if let Some(c) = cor {
+                x.color = c;
+            }
+        });
+        if let Some(op) = op {
+            let _ = apply(s, op);
+        }
+    }
+}
+
+/// `#rrggbbaa`.
+fn cor_do_json(t: &str) -> Option<[u8; 4]> {
+    let h = t.strip_prefix('#')?;
+    if h.len() != 8 {
+        return None;
+    }
+    let b = |i: usize| u8::from_str_radix(h.get(i..i + 2)?, 16).ok();
+    Some([b(0)?, b(2)?, b(4)?, b(6)?])
+}
+
+/// O `.json` com o mesmo nome, ao lado da imagem, se existe.
+#[must_use]
+pub fn dados_ao_lado(imagem: &std::path::Path) -> Option<String> {
+    std::fs::read_to_string(imagem.with_extension("json")).ok()
 }
 
 /// A grelha de partida do Import Sprite Sheet: a divisão que não parte figuras; `None` = a imagem não

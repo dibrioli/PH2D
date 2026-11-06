@@ -406,3 +406,65 @@ fn o_aviso_de_abrir_chega_ao_artista() {
     assert_eq!(frases.len(), 2);
     assert!(frases[1].1.contains('2'), "{:?}", frases[1]);
 }
+
+/// **Exporta a folha e volta a importá-la: os tempos e as tags são os mesmos** (smoke do dono 05/11:
+/// «uma só tem keys de 100 ms»). A cena 20 tem quadros de 120 e de 480 ms. *Mutação: ignorar o `.json`
+/// ⇒ tudo 100 ms, vermelho.*
+#[test]
+fn a_folha_importada_tem_os_tempos_da_exportada() {
+    let mut p = Palco::novo("tempos");
+    let original = p.app.doc(p.key).expect("doc").sprite.clone();
+    assert!(
+        original.frames().iter().any(|f| f.duration_ms != 100),
+        "vácuo: a cena tem de ter tempos diferentes"
+    );
+    let c = p.pasta.join("bola.png");
+    p.app.pede(R::File(A::ExportSheet));
+    p.quadro();
+    responde_o_proximo(c.clone());
+    canal::pede(Pedido::Exportar(Export::Folha(ExportFolha {
+        opcoes: OpcoesFolha::default(),
+        json: Some(ph2d_pixel_io::sheet::OpcoesJson {
+            tags: true,
+            ..Default::default()
+        }),
+    })));
+    p.quadro();
+    p.espera();
+
+    responde_o_proximo(c);
+    p.app.pede(R::File(A::ImportSheet));
+    p.quadro();
+    let i = canal::imagem().expect("a imagem");
+    assert!(i.com_dados, "o .json ao lado");
+    canal::pede(Pedido::Importar(ph2d_pixel_io::abrir::Grelha {
+        x: 0,
+        y: 0,
+        w: 64,
+        h: 32,
+        gap_x: 0,
+        gap_y: 0,
+        por_colunas: false,
+    }));
+    p.quadro();
+    let bits = object_add::born_from_paste(&mut p.sim, &mut p.app, spawn_root)
+        .expect("há nascimento")
+        .expect("nasceu");
+    let novo = mode::sprites(p.sim.world())
+        .into_iter()
+        .find(|(b, _)| *b == bits)
+        .expect("objecto")
+        .1;
+    let s = &p.app.doc(novo).expect("doc").sprite;
+    let ms = |x: &ph2d_pixel_core::Sprite| -> Vec<u32> {
+        x.frames().iter().map(|f| f.duration_ms).collect()
+    };
+    assert_eq!(ms(s), ms(&original));
+    let tags = |x: &ph2d_pixel_core::Sprite| -> Vec<_> {
+        x.tags()
+            .iter()
+            .map(|t| (t.name.clone(), t.from, t.to, t.direction, t.repeat, t.color))
+            .collect()
+    };
+    assert_eq!(tags(s), tags(&original));
+}

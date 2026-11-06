@@ -327,7 +327,12 @@ pub(crate) fn import_ase(
     player.playing = true;
     player.autoplay = true;
     if let Ok(mut ent) = sim.world_mut().get_entity_mut(entity) {
-        ent.insert((lib, player));
+        // Um `.ase` é pixel art: ampliar não pode borrar (smoke do dono, 05/11).
+        ent.insert((
+            lib,
+            player,
+            ph2d_ecs::TextureFilter(ph2d_ecs::FilterMode::Nearest),
+        ));
     }
     AseImportResult::Ok {
         name,

@@ -2,8 +2,8 @@
 
 use ph2d_sfx_recipe::Recipe;
 
-/// O recurso é a RAM: o maior som de fábrica (Impact, 4 camadas) tem 212 bytes em `postcard` e ~1 KB em memória, logo
-/// 1 000 passos custam ~1 MB por aba (gate `mil_passos_cabem_num_mega`).
+/// O recurso é a RAM: 1 000 passos do maior som de fábrica (Impact, 4 camadas) cabem em 1 MiB por aba
+/// (gate `mil_passos_cabem_num_mega`).
 pub const MAX_PASSOS: usize = 1000;
 
 #[derive(Default)]

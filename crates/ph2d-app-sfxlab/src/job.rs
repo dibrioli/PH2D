@@ -10,8 +10,8 @@ use std::thread::JoinHandle;
 use ph2d_sfx_dsp::{Pcm, RenderCache, RenderError, limitar_escuta};
 use ph2d_sfx_recipe::{LayerId, Recipe, Takes};
 
-/// As colunas guardadas de uma onda; a tela só reamostra. O recurso é a RAM: 16 KB por camada, e passa da largura de
-/// uma tela 1080p inteira (medido na foto de 1930 px: a pista tem ~1 400 px).
+/// As colunas guardadas de uma onda; a tela só reamostra. O recurso é a RAM: 16 KB por camada. A pista mede 775 px numa
+/// janela de 1930 (foto de 06/11), logo sobra resolução mesmo com a coluna fechada.
 pub const COLUNAS_DA_ONDA: usize = 2048;
 const NINGUEM: u64 = u64::MAX;
 

@@ -507,3 +507,25 @@ fn a_roda_rola_a_coluna_com_um_campo_em_foco() {
         "o foco comeu a roda"
     );
 }
+
+/// A cena do quadro leva os cartões do Transform: dobrá-lo tira o corpo dele do que se pinta.
+/// *Mutação: a lista do anfitrião sem colar a cena do convidado ⇒ dobrar não muda nada, e o cartão não se vê.*
+#[test]
+fn o_cartao_do_transform_entra_na_cena_do_quadro() {
+    let caminhos = |h: &mut HeroScreen| {
+        let mut texto = ph2d_text::TextSystem::without_system_fonts();
+        let mut cena = ph2d_vector::VectorScene::new();
+        let janela = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 900.0);
+        ph2d_editor_core::aquecimento::com_passo_fixo(
+            ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
+            || ph2d_editor_core::screens::hero::paint_hero_screen(h, janela, &mut cena, &mut texto),
+        );
+        cena.inner().encoding().n_paths
+    };
+    let mut h = em_draw();
+    let aberto = caminhos(&mut h);
+    h.store.set_collapsed(CARD_TRANSFORM, true);
+    quadros(&mut h, 40);
+    let dobrado = caminhos(&mut h);
+    assert!(aberto > dobrado, "{aberto} × {dobrado}");
+}

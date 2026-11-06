@@ -229,8 +229,16 @@ pub(crate) fn evento_do_pivot(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
             SpritePivot::Ponto([(i % 3) as u8, (i / 3) as u8])
         }
         WidgetEvent::ValueChanged(id) if ids::INSP_SPRITE_PIVOT_XY.contains(&id) => {
-            let [a, b] = ids::INSP_SPRITE_PIVOT_XY.map(|n| host.store().number_value(n));
-            SpritePivot::Px([a.unwrap_or(0.0) as f32, b.unwrap_or(0.0) as f32])
+            // Só o eixo mexido muda: a caixa do outro está arredondada, e o exacto é o do objecto.
+            let mut px = slot_image::factos().map_or([0.0; 2], |f| f.pivot_px);
+            for (i, n) in ids::INSP_SPRITE_PIVOT_XY.into_iter().enumerate() {
+                if n == id
+                    && let Some(v) = host.store().number_value(n)
+                {
+                    px[i] = v as f32;
+                }
+            }
+            SpritePivot::Px(px)
         }
         _ => return false,
     };

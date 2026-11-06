@@ -713,3 +713,61 @@ fn nada_do_cartao_da_sprite_e_cortado_no_minimo_do_painel() {
         .find(|t| t.texto.starts_with("Reimport"));
     assert!(r.expect("o censo viu o Reimport").pede <= 146.0, "{r:?}");
 }
+
+/// ⭐ *Editar o X do Pivot não arredonda nem grava o Y: o outro eixo vem do valor exacto, não da caixa.*
+/// *Mutação: ler as duas caixas ⇒ o Y sai 21.*
+#[test]
+fn editar_um_eixo_do_pivot_nao_mexe_no_outro() {
+    let f = SpriteFacts {
+        pivot_ponto: None,
+        pivot_px: [10.4, 20.6],
+        ..factos()
+    };
+    let (mut host, mut st) = cena(f);
+    let _ = pinta(&mut host, &mut st);
+    let _ = host.drained_actions();
+    host.store_mut()
+        .set_number_value(INSP_SPRITE_PIVOT_XY[0], 5.0);
+    let _ = host.apply_panel_event::<InspectorPanel>(
+        &mut st,
+        WidgetEvent::ValueChanged(INSP_SPRITE_PIVOT_XY[0]),
+    );
+    let a = host.drained_actions();
+    assert_eq!(
+        edicoes(&a),
+        [ImageUseEdit::Pivot(SpritePivot::Px([5.0, 20.6]))]
+    );
+    let _ = pinta(&mut host, &mut st);
+    let _ = host.drained_actions();
+    host.store_mut()
+        .set_number_value(INSP_SPRITE_PIVOT_XY[1], 6.0);
+    let _ = host.apply_panel_event::<InspectorPanel>(
+        &mut st,
+        WidgetEvent::ValueChanged(INSP_SPRITE_PIVOT_XY[1]),
+    );
+    let a = host.drained_actions();
+    assert_eq!(
+        edicoes(&a),
+        [ImageUseEdit::Pivot(SpritePivot::Px([10.4, 6.0]))]
+    );
+}
+
+/// *«Tint each corner» aberto à mão é de um objecto: o outro continua fechado.*
+/// *Mutação: um interruptor global ⇒ o objecto 8 abre os quatro cantos.*
+#[test]
+fn tint_each_corner_aberto_e_de_um_objecto_so() {
+    let (mut host, mut st) = cena(factos());
+    let _ = clica(&mut host, &mut st, INSP_SPRITE_CORNERS_ON);
+    let pintado = |r: &[(NodeId, Rect)]| {
+        r.iter()
+            .any(|(i, q)| *i == INSP_SPRITE_CORNER_TL && q.w > 0.0)
+    };
+    assert!(pintado(&pinta(&mut host, &mut st)), "o objecto 7 abriu");
+    set_current_inspector_sprite(Some(InspectorSpriteInfo {
+        entity_bits: 8,
+        ..sprite()
+    }));
+    assert!(!pintado(&pinta(&mut host, &mut st)), "o 8 continua fechado");
+    set_current_inspector_sprite(Some(sprite()));
+    assert!(pintado(&pinta(&mut host, &mut st)), "o 7 lembra-se");
+}

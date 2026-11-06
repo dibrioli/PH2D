@@ -11,8 +11,9 @@ const BRANCO: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const OPACIDADE_CHEIA: f64 = 100.0; // LITERAL-PX-OK: neutro de um campo em %, não geometria
 
 thread_local! {
-    /// «Tint each corner» ligado à mão, ainda com os quatro cantos brancos.
-    static CANTOS_ABERTOS: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    /// Os objectos com «Tint each corner» ligado à mão, ainda com os quatro cantos brancos.
+    static CANTOS_ABERTOS: std::cell::RefCell<std::collections::BTreeSet<u64>> =
+        const { std::cell::RefCell::new(std::collections::BTreeSet::new()) };
 }
 
 /// Tint e Opacity lado a lado. Self Tint só existe para quem tem filhos, ou já a usa: sem filhos dá a mesma cor.
@@ -92,7 +93,7 @@ pub(crate) fn paint_cores(
 pub(crate) fn cantos_ligados(info: &InspectorSpriteInfo) -> bool {
     info.mixed.per_corner
         || info.per_corner_tint.iter().any(|c| *c != BRANCO)
-        || CANTOS_ABERTOS.with(std::cell::Cell::get)
+        || CANTOS_ABERTOS.with(|c| c.borrow().contains(&info.entity_bits))
 }
 
 /// A caixa «Tint each corner»: ligar abre os quatro; desligar devolve-os ao branco. `true` = consumido.
@@ -115,7 +116,14 @@ pub(crate) fn evento_dos_cantos(
         host.store().checkbox(id).map(|(_, v)| v),
         Some(CheckboxValue::Checked)
     );
-    CANTOS_ABERTOS.with(|c| c.set(ligado));
+    CANTOS_ABERTOS.with(|c| {
+        let mut c = c.borrow_mut();
+        if ligado {
+            c.insert(info.entity_bits);
+        } else {
+            c.remove(&info.entity_bits);
+        }
+    });
     if !ligado {
         for i in 0..4_u8 {
             host.bus_mut().push(EditorAction::InspectorSpriteEdit {

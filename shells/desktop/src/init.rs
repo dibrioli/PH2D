@@ -368,7 +368,7 @@ fn boot_hero_screen(
         // preferências — instalar depois faria o primeiro quadro desenhar a arrumação de omissão e
         // saltar para a do artista no seguinte.
         crate::layout_persist::install_saved(&mut hero, tools, &crate::layout_persist::load());
-        // O Look da Sprite abre: é o que se ajusta depois da imagem (ficha da Sprite). Só nos cartões, e a escolha salva manda.
+        // O Look da Sprite abre: é o que se ajusta depois da imagem (ficha da Sprite). Só nos cartões; dobrar não se grava, e cada arranque volta a abri-lo.
         if std::env::var("PH2D_CARDS").as_deref() != Ok("0") {
             hero.store
                 .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_COLOR_SECTION, false);

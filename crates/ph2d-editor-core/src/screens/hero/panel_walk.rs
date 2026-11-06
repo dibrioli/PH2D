@@ -88,10 +88,20 @@ pub(super) fn walk(
     for id in &hidden {
         hero.store.clear_panel_rect(*id);
     }
-    // ⭐ O convidado (`card_guest_ops`): só enquanto o anfitrião continua à frente e ele atrás, e com o
-    // assento que a coluna do anfitrião já ofereceu.
-    let convite = hero.store.take_card_guest_invite().filter(|(host, guest)| {
-        hidden.contains(guest) && !hidden.contains(host) && hero.store.card_guest_seat_of(*host)
+    // ⭐ O convidado (`card_guest_ops`): só enquanto o anfitrião continua à frente e ele atrás ou fechado (o
+    // anfitrião já largou os campos dele), e com o assento que a coluna do anfitrião já ofereceu.
+    let convidado = hero.store.take_card_guest_invite();
+    let fechado = |guest: ph2d_a11y::NodeId| {
+        crate::panel::with_registry_opt(|reg| {
+            reg.find_by_panel_node_id(guest)
+                .is_some_and(|i| !hero.is_panel_visible(reg.panels()[i].manifest.id))
+        })
+        .unwrap_or(false)
+    };
+    let convite = convidado.filter(|(host, guest)| {
+        (hidden.contains(guest) || fechado(*guest))
+            && !hidden.contains(host)
+            && hero.store.card_guest_seat_of(*host)
     });
     crate::panel::with_registry_opt(|reg| {
         for panel_id in z_order {

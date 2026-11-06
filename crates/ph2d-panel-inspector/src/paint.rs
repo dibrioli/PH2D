@@ -25,7 +25,9 @@ pub(crate) const BODY_PAD: f32 = 10.0; // LITERAL-PX-OK: inspector body inset
 const SECTION_HEAD_H: f32 = ROW_H_PX;
 
 pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut PaintCtx) {
-    if !ctx.host.panel_visible(InspectorPanel::ID) {
+    if !ctx.host.panel_visible(InspectorPanel::ID)
+        && !ctx.host.store().in_card_guest_pass(ids::INSP_PANEL)
+    {
         ctx.host.store_mut().clear_panel_rect(ids::INSP_PANEL);
         return;
     }

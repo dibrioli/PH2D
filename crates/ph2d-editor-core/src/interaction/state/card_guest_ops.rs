@@ -54,7 +54,7 @@ pub struct CardGuest {
 
 impl std::fmt::Debug for CardGuest {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("CardGuest")
+        f.debug_struct(std::any::type_name::<Self>())
             .field("invite", &self.invite)
             .field("pass", &self.pass)
             .field("served", &self.served)

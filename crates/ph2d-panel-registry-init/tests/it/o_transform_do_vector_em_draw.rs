@@ -756,3 +756,26 @@ fn o_cartao_do_transform_entra_na_cena_do_quadro() {
     let dobrado = caminhos(&mut h);
     assert!(aberto > dobrado, "{aberto} × {dobrado}");
 }
+
+/// ⭐ *Inspector fechado não tira a pose do Draw: `cards.rs` já removeu os campos do Vector, e o Transform continua a ser
+/// o convidado.* *Mutação: o convite só com o Inspector numa aba de trás ⇒ sem Position nem Rotation.*
+#[test]
+fn com_o_inspector_fechado_o_transform_continua_no_draw() {
+    let mut h = em_draw();
+    h.panel_visibility.insert("inspector", false);
+    quadros(&mut h, 40);
+    assert!(pintado(&h, insp::INSP_TRANSFORM_POS_X), "Position");
+    assert!(pintado(&h, insp::INSP_TRANSFORM_ROT), "Rotation");
+    assert!(
+        por_cima(&h, insp::INSP_TRANSFORM_POS_X, t::VECTOR_TRANSFORM_W),
+        "o primeiro cartão"
+    );
+    assert!(
+        h.store.panel_rect(core_ids::INSP_PANEL).is_none(),
+        "sem moldura própria"
+    );
+    assert!(
+        !pintado(&h, grip_de(ph2d_panel_inspector::CARD_OBJECT)),
+        "só o Transform"
+    );
+}

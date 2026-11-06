@@ -326,6 +326,85 @@ fn objeto_sem_fonte_ganha_uma_que_toca_no_play() {
     corre_e_ouve(&mut m);
 }
 
+/// Muito além dos dez metros do padrão da fonte.
+fn caixa_longe(w: &mut World) -> Entity {
+    let e = caixa(w);
+    w.entity_mut(e)
+        .insert(Transform::from_translation(Vec2::new(500.0, 0.0)));
+    e
+}
+
+/// A linha da shell depois do clique em Create sound; a aba nova, já assentada.
+fn cria_som_para(m: &mut Mesa, e: Entity) -> u64 {
+    ph2d_app_sfxlab::pede_som_para(&mut m.mundo, e);
+    m.quadro();
+    m.quadro();
+    let aba = m.activa();
+    m.espera(aba);
+    m.assenta();
+    aba
+}
+
+fn confere_o_alcance_e_ouve(m: &mut Mesa, e: Entity) {
+    let f = m.mundo.get::<AudioSource2D>(e).expect("sem fonte").clone();
+    corre_e_ouve(m);
+    assert_eq!(f.max_distance, ph2d_ecs::AUDIO_MAX_DISTANCE_M);
+    assert_eq!(f.attenuation, 0.0);
+}
+
+#[test]
+fn objeto_longe_do_ouvinte_ouve_o_som_criado() {
+    let mut m = Mesa::nova();
+    let e = caixa_longe(&mut m.mundo);
+    let id = m.abre("Hit", duas_camadas());
+    usa_pela_lista(&mut m, id, e);
+    confere_o_alcance_e_ouve(&mut m, e);
+
+    let mut m = Mesa::nova();
+    let e = caixa_longe(&mut m.mundo);
+    let aba = cria_som_para(&mut m, e);
+    m.clica_na_aba(aba, Alvo::UseInGame);
+    m.quadro();
+    confere_o_alcance_e_ouve(&mut m, e);
+}
+
+#[test]
+fn fonte_que_ja_existe_fica_com_o_alcance_dela() {
+    let mut m = Mesa::nova();
+    let e = caixa(&mut m.mundo);
+    m.mundo.entity_mut(e).insert(AudioSource2D {
+        max_distance: 7.0,
+        attenuation: 2.0,
+        ..AudioSource2D::default()
+    });
+    let id = m.abre("Hit", duas_camadas());
+    usa_pela_lista(&mut m, id, e);
+    let f = m.mundo.get::<AudioSource2D>(e).expect("sem fonte");
+    assert_eq!((f.max_distance, f.attenuation), (7.0, 2.0));
+    assert!(!f.autoplay, "mudou o Autoplay do artista");
+    assert!(!f.sound.is_empty(), "o som não chegou");
+}
+
+#[test]
+fn o_som_criado_leva_o_nome_do_objeto() {
+    let mut m = Mesa::nova();
+    let e = caixa(&mut m.mundo);
+    let aba = cria_som_para(&mut m, e);
+    assert_eq!(m.docs().nome(aba), Some("Crate Sound"));
+    m.clica_na_aba(aba, Alvo::UseInGame);
+    m.quadro();
+    assert_eq!(som_de(&m, e), "Crate Sound.wav");
+
+    let segunda = cria_som_para(&mut m, e);
+    assert_eq!(
+        m.docs().nome(segunda),
+        Some("Crate Sound 2"),
+        "nome repetido"
+    );
+    let solta = m.som_novo();
+    assert_eq!(m.docs().nome(solta), Some("Sound 1"), "o New Sound mudou");
+}
+
 /// O passo de desfazer guarda a receita de antes, sem o aprovado: voltar não pode apagá-lo.
 #[test]
 fn desfazer_depois_de_aprovar_nao_desaprova() {

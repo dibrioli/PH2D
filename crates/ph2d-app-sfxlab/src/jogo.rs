@@ -4,7 +4,8 @@
 use bevy_ecs::prelude::Resource;
 use bevy_ecs::world::World;
 use ph2d_ecs::{
-    Entity, ProjectSounds, StableId, assign_missing_stable_ids, entity_with_stable_id, stable_id_of,
+    Entity, Name, ProjectSounds, StableId, assign_missing_stable_ids, entity_with_stable_id,
+    stable_id_of,
 };
 use ph2d_i18n::tr_with;
 use ph2d_sfx_lab::aprovar::{AprovarErro, aprovar};
@@ -64,7 +65,14 @@ impl SfxLabDocs {
     pub(crate) fn atende_o_jogo(&mut self, world: &mut World) {
         if let Some(p) = world.remove_resource::<Pedidos>() {
             for id in p.0 {
-                let aba = self.novo();
+                let objeto = entity_with_stable_id(world, id)
+                    .and_then(|e| world.get::<Name>(e))
+                    .map(|n| n.as_str().trim())
+                    .filter(|n| !n.is_empty());
+                let aba = match objeto {
+                    Some(nome) => self.novo_para(nome),
+                    None => self.novo(),
+                };
                 if let Some(a) = self.aba_mut(aba) {
                     a.ligado = Some(id);
                 }

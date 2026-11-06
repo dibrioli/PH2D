@@ -6,6 +6,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "sfxlab.cmd.new" => "New Sound",
         "sfxlab.cmd.open" => "Open Sound \u{25B8} {name}",
         "sfxlab.default_name" => "Sound {n}",
+        "sfxlab.object_sound_name" => "{name} Sound",
         "sfxlab.play" => "Play",
         "sfxlab.stop" => "Stop",
         "sfxlab.play_on_change" => "Play on change",

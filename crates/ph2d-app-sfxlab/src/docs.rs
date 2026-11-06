@@ -35,13 +35,24 @@ impl SfxLabDocs {
         self.abre_aba(nome, r, None)
     }
 
+    /// O Create sound: o som leva o nome do objeto, único como o de qualquer som novo.
+    pub(crate) fn novo_para(&mut self, objeto: &str) -> u64 {
+        let base = tr_with("sfxlab.object_sound_name", &[("name", &objeto)]);
+        let nome = self.primeiro_livre(
+            std::iter::once(base.clone()).chain((2u32..).map(|n| format!("{base} {n}"))),
+        );
+        let r = ph2d_sfx_lab::novo::som_novo(&nome);
+        self.abre_aba(nome, r, None)
+    }
+
     fn nome_livre(&self) -> String {
+        self.primeiro_livre((1u32..).map(|n| tr_with("sfxlab.default_name", &[("n", &n)])))
+    }
+
+    fn primeiro_livre(&self, mut candidatos: impl Iterator<Item = String>) -> String {
         let usado =
             |n: &str| self.nomes.iter().any(|x| x == n) || self.abas.iter().any(|a| a.nome == n);
-        (1u32..)
-            .map(|n| tr_with("sfxlab.default_name", &[("n", &n)]))
-            .find(|n| !usado(n))
-            .unwrap_or_default()
+        candidatos.find(|n| !usado(n)).unwrap_or_default()
     }
 
     fn abre_aba(&mut self, nome: String, r: Recipe, escrita: Option<Recipe>) -> u64 {

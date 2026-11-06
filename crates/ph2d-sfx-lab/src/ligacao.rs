@@ -1,9 +1,22 @@
 //! **Quem liga o som ao objeto:** uma função só. A ligação é escrita no mundo, e a fila de desfazer da cena a vê pelo diff.
 
-use ph2d_ecs::{AudioSource2D, Entity, Name, SoundSet, StableId, World, assign_missing_stable_ids};
+use ph2d_ecs::{
+    AUDIO_MAX_DISTANCE_M, AudioSource2D, Entity, Name, SoundSet, StableId, World,
+    assign_missing_stable_ids,
+};
+
+/// Uma fonte que soa igual em qualquer distância, até o artista mudar o alcance.
+#[must_use]
+pub fn fonte_sem_queda() -> AudioSource2D {
+    AudioSource2D {
+        max_distance: AUDIO_MAX_DISTANCE_M,
+        attenuation: 0.0,
+        ..AudioSource2D::default()
+    }
+}
 
 /// Liga o som ao objeto: entrada do conjunto, se a lista é quem manda, ou o campo Sound. Objeto sem fonte ganha uma com
-/// Autoplay, senão nada a faria tocar; fonte que já existe fica com o Autoplay que o artista deixou.
+/// Autoplay, senão nada a faria tocar; fonte que já existe fica com o alcance e o Autoplay que o artista deixou.
 pub fn liga(world: &mut World, objeto: Entity, som: &str) {
     let lista_manda = world
         .get::<SoundSet>(objeto)
@@ -11,7 +24,7 @@ pub fn liga(world: &mut World, objeto: Entity, som: &str) {
     if world.get::<AudioSource2D>(objeto).is_none() {
         world.entity_mut(objeto).insert(AudioSource2D {
             autoplay: true,
-            ..AudioSource2D::default()
+            ..fonte_sem_queda()
         });
     }
     if lista_manda {

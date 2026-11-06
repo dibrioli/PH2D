@@ -109,11 +109,9 @@ fn fonte_do_nivel(sound: String, autoplay: bool) -> AudioSource2D {
     AudioSource2D {
         sound,
         autoplay,
-        max_distance: ph2d_ecs::AUDIO_MAX_DISTANCE_M,
-        attenuation: 0.0,
         panning_strength: 0.0,
         max_polyphony: 4,
-        ..AudioSource2D::default()
+        ..ph2d_sfx_lab::ligacao::fonte_sem_queda()
     }
 }
 

@@ -2,7 +2,7 @@
 
 Leitor: a próxima janela da `line/GameEngineFuncional`. Substitui [o handoff anterior](HANDOFF_CONTINUACAO_2026-11-05_23_SPRITE.md). Ficha: [`componentes/01_sprite.md`](../componentes/01_sprite.md) · regras: [`README.md`](../README.md).
 
-**Estado:** onda da Sprite FECHADA (HEAD `66907c388f`, base `c61f228b05`). Linha NÃO integrada (só por ordem do dono). Suíte completa não correu (é da integração). Crates novas: `ph2d-sprite-edit`, `ph2d-pixel-formas`, `ph2d-game-dicas`; `ph2d_render::sprite_emissive` saiu da shell. Tectos: ver `the_shell_only_shrinks`; `ph2d-app-vec` está no limite.
+**Estado:** onda da Sprite FECHADA e itens 2–5 do ABERTO fechados em 05/11 noite (base `c61f228b05`; HEAD: `git log`). Linha NÃO integrada (só por ordem do dono). Suíte completa não correu (é da integração). Crates novas: `ph2d-sprite-edit`, `ph2d-pixel-formas`, `ph2d-game-dicas`; `ph2d_render::sprite_emissive` saiu da shell. Tectos: ver `the_shell_only_shrinks`; `ph2d-app-vec` está no limite.
 
 ## Feito (E1–E5 da ficha)
 - Cartão da miniatura como a referência do dono (`d7fe0f477e`, `a12fa54c15`, `d918b343e2`): miniatura quadrada 72 px, quinas 6 px, sem Replace (clicar na miniatura troca; hover com borda Accent e `RotateCw` no canto). Botões sempre `[Export] Pixel` · `[Export] Painter`. Degrau medido em painel de 294 px: abaixo, o tamanho sobe à linha do título e os botões empilham; abaixo de ~250 px sem os parênteses. `(300 × 50)` do Repeated ao lado do tamanho. RECUSADOS pelo dono: tira de prévia do Repeated, botões de dois ícones.
@@ -18,11 +18,11 @@ Dois Transform presos não eram independentes. `commit_transform_edit` escreve s
 
 ## ABERTO, na ordem
 1. Roda do mouse «nem sempre rola»: curados grafo fechado e sub-região por baixo; (a) posição refutada na fonte do winit 0.30.13; sem causa nova. Falta relato do dono ou medição em Wayland nativo.
-2. `Reimport at current scale` cortado a 200 px (157 > 146).
-3. Pivot com colisão: a colisão anda com o pivô, o desenho não. Decisão do dono pedida.
-4. Espelhar em dois lugares (Transform × Flip do Look): medir se dão o mesmo; decisão do dono pedida.
-5. Nome da imagem depois de editar: fica o do 1.º objecto («Platform Low»).
-6. Não provados: volta do Edit in Painter no app (só a ida; a lei tem teste); `drain_painter` (Apply) segue a pintura mas o desfazer dos outros objectos não tem prova; Undo e Auto Key do Transform em Draw; chave do Pivot tocada na timeline real (filhos não entram na compensação); mutações M8/M9 do hóspede a meio da mola sobreviveram (posição em movimento sem prova); degrau estreito sem foto.
+2. FECHADO 05/11 noite: `Reimport at scale`; o piso real do painel é `DOCK_W_MIN` = 210 px; o nome do ponto do Pivot também saía cortado e desce para debaixo da grade.
+3. FECHADO 05/11 noite (decisão 13 da ficha): o pivô não move a colisão nem os filhos, no cartão e no canvas.
+4. FECHADO 05/11 noite (decisão 14 da ficha): medido, Transform e Flip diferem; os botões ficam.
+5. FECHADO 05/11 noite, só na sessão: o nome herdado não viaja no `.ph2dproj` (exigiria gravar o nome no formato).
+6. Não provados: Undo e Auto Key do Transform em Draw; chave do Pivot tocada na timeline real (filhos não entram na compensação nem na chave); mutações M8/M9 do hóspede a meio da mola sobreviveram (posição em movimento sem prova); degrau estreito sem foto. Volta do Edit in Painter provada no app (`sprite_painter_volta`, `sprite_painter_aplica`): as duas plataformas mudam e voltam; pelo Apply, o Ctrl+Z dentro do Draw é do Painter e não desfaz a imagem no mundo, e só o Ctrl+Z fora do Draw volta as duas.
 7. Cartão alto troca de lugar com pouco arrasto (`slot_index` pelo centro): comportamento antigo de todos; só se o dono pedir.
 
 Depois: próximo item da especificação `README.md`; a ficha diz o que vem.

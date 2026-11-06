@@ -10,7 +10,7 @@ Estudos lidos: crítica «Sprite» · estudo «Sprite» e «Transform» · 12 id
 - Image: ranhura de uma linha com ícone de 20 px; clicar abre o seletor; não existe botão Replace.
 - Trocar a imagem mantém a escala: o tamanho no mundo muda sem aviso (`crates/ph2d-app-sprite-anim/src/image_choice.rs:72-80`).
 - Pivot: só a ferramenta do canvas, que escreve `Transform.translation` + `Sprite.anchor` compensando (`crates/ph2d-editor-core/src/gizmo/transform.rs:373`).
-- Espelhar em dois lugares: botões do Transform (`INSP_TRANSFORM_FLIP_*`) e Flip H/V da sprite.
+- Espelhar em dois lugares: botões do Transform (`INSP_TRANSFORM_FLIP_*`) e Flip H/V da sprite (decisão 14: ficam os dois).
 - Nenhuma ponte Sprite → Pixel Art ou Painter que volte ao asset. Precedente de volta: `shells/desktop/src/hero_intents/image_edit/painter.rs`, `texture_edit.rs:279`.
 - Repeated: Width/Height são **cópias da imagem** (`InspectorDraw::Tiled { copies }`), sem unidade no rótulo. A chave `image.width_m` engana: o valor não é metro.
 
@@ -40,6 +40,13 @@ GameMaker e Unreal: pivô de 9 pontos. GDevelop, Construct e GameMaker: editar a
 10. A tira do Repeated: cópias coladas na largura do corpo, sem xadrez entre elas.
 11. O Transform dobrado da imagem tem alfinete, como todo Transform solto.
 12. Flip e Pivot têm bolinha de chave. O Flip grava os dois eixos; a chave do Pivot grava também a posição, ou tocar a animação moveria o desenho.
+
+**Do dono, 05/11, noite:**
+
+13. **O Pivot não separa desenho e colisão:** num objecto com colisão, mudar o pivô deixa o desenho E a colisão parados no mundo. Vale para o cartão e para a ferramenta do canvas (`ph2d_sprite_edit::pivot::o_resto_fica`: o `Collider.offset` compensa, os filhos ficam). A chave do Pivot leva também o deslocamento do collider, de quem o tem. As sondas do Player nascem do centro do collider (`origem_e_centro`); com o pivô no pé, medir da origem desviava 1,18 m. Teste: `com_o_pivo_no_pe_o_boneco_pisa_e_salta_igual`.
+14. **Espelhar a Sprite: só o Flip do Look, se derem o mesmo. MEDIDO: não dão** (`sprite_espelhar.rs`), e os botões do Transform ficam. Com o pivô no centro a imagem fica igual, mas o Transform leva os filhos e a colisão e o Flip deixa-os; com o pivô de lado, o Transform vira a imagem à volta do pivô (o desenho muda de sítio) e o Flip vira-a no mesmo sítio.
+
+Outros acertos da mesma noite: `Reimport at scale` e o nome do ponto do Pivot (desce para debaixo da grade quando o maior dos dez nomes não cabe ao lado) não se cortam no piso real do painel, `DOCK_W_MIN` = 210 px (`nada_do_cartao_da_sprite_e_cortado_no_minimo_do_painel`). A imagem editada herda o nome da de onde veio e toma-lhe o lugar enquanto só ela estiver em uso (`imagem::herda_o_nome`); ⚠️ só nesta sessão, porque o `.ph2dproj` não grava nomes de imagem: ao reabrir, volta o nome do 1.º objecto.
 
 Miniatura quadrada de 72 px com recorte pelo raio, moldura de altura fixa, botões sempre `[enviar] Pixel` · `[enviar] Painter` (dois ícones: recusado pelo dono em 05/11): lado a lado com o tamanho na moldura de 294 px de painel para cima (medido no teste `os_dois_lados_do_degrau_arrumam_o_tamanho_e_os_botoes`); abaixo, o tamanho sobe ao título «Image» (o `1024 × 1024 px (300 × 50)` do Repeated só inteiro de ~250 px para cima; abaixo, sem os parênteses) e os botões empilham-se. Nada é cortado.
 

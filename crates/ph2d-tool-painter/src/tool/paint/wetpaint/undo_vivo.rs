@@ -123,7 +123,8 @@ impl FotoDoMotor {
 }
 
 impl PassoVivo {
-    fn bytes(&self) -> usize {
+    /// O que a fotografia de um passo copia (a `base` é um `Arc` partilhado: não conta).
+    pub(super) fn bytes(&self) -> usize {
         self.antes.bytes() + self.depois.as_ref().map_or(0, FotoDoMotor::bytes)
     }
 }

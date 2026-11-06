@@ -334,6 +334,13 @@ impl UndoEntry {
         let marca = self.marca.as_ref().map_or(0, |d| d.heap_bytes());
         self.planes.heap_bytes() + patch(&self.before) + patch(&self.after) + marca
     }
+
+    /// Os bytes que clonar esta entrada aloca ([`PlaneDeltas::copiado_bytes`] + os pixels do preview).
+    fn copiado_bytes(&self) -> usize {
+        let patch = |m: &ModelSnapshot| m.preview_patch.as_ref().map_or(0, |p| p.pixels.len());
+        let marca = self.marca.as_ref().map_or(0, |d| d.heap_bytes());
+        self.planes.copiado_bytes() + patch(&self.before) + patch(&self.after) + marca
+    }
 }
 
 /// Snapshot-based undo/redo for the editable layer model.
@@ -590,6 +597,17 @@ impl UndoController {
     #[must_use]
     pub fn retained_bytes(&self) -> usize {
         self.bytes
+    }
+
+    /// **Os bytes que CLONAR o histórico aloca** (as duas pilhas): as janelas de pixels dos passos. Os planos
+    /// inteiros são `Arc` partilhados com o original — `retained_bytes` os conta (é o teto do cap), este não.
+    #[must_use]
+    pub fn bytes_copiados(&self) -> usize {
+        self.undo
+            .iter()
+            .chain(&self.redo)
+            .map(UndoEntry::copiado_bytes)
+            .sum()
     }
 
     /// Descarta a ramificação de redo, devolvendo os bytes dela ao orçamento.

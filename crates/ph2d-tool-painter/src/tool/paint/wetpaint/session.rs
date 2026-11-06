@@ -395,8 +395,9 @@ impl PainterTool {
         })
     }
 
-    /// **O que a água de uma cópia retém**: o motor (sem o rascunho do solver) e o plano de pigmento. A
-    /// `base` é partilhada e ninguém a escreve; o rascunho da autoria é um recorte do dab — não contam.
+    /// **O que a água de uma cópia retém**: o motor (sem o rascunho do solver), os planos da óptica (pigmento,
+    /// sombra, grão, degrau do Smooth Edges) e as fotografias dos passos do undo vivo. A `base` é partilhada
+    /// e ninguém a escreve; o rascunho da autoria é um recorte do dab — não contam.
     pub(crate) fn wet_bytes_retidos(&self) -> usize {
         use super::offthread::EngineSlot;
         self.paint.wetpaint.session.as_ref().map_or(0, |s| {
@@ -404,7 +405,16 @@ impl PainterTool {
                 EngineSlot::Here(e) | EngineSlot::Roteiro(e) => e.bytes_retidos(),
                 EngineSlot::Away => 0,
             };
-            motor + s.planos.pigment.len()
+            let p = &s.planos;
+            motor
+                + p.pigment.len()
+                + p.sombra.len()
+                + p.grao.len()
+                + p.suave.len()
+                + s.antes_do_passo
+                    .iter()
+                    .map(super::undo_vivo::PassoVivo::bytes)
+                    .sum::<usize>()
         })
     }
 

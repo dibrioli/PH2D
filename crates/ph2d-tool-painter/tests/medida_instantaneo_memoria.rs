@@ -1,6 +1,7 @@
 //! **Quanto um instantâneo do tocador de uma macro RETÉM** (W5c, `docs/Macros/02_plano_W5.md` §3) — o
 //! número que ele declara ao razão da RAM tem de ser este (gate: o retido fica entre `1,00×` e
-//! [`FOLGA`] do declarado; medido a 14/10: `1,05–1,09×`, o resto é o rasto do pincel e os rascunhos). Toca a trilha duas vezes no mesmo processo,
+//! [`FOLGA`] do declarado; medido a 14/10: `1,05–1,09×`, a 06/11 `1,01–1,03×` depois de declarar o undo, os journals e as
+//! fotografias do undo vivo — o resto é o rasto do pincel e os rascunhos). Toca a trilha duas vezes no mesmo processo,
 //! sem e com um instantâneo no início de cada etapa: a diferença do que fica vivo no fim, por instantâneo,
 //! é o que cada um retém (a cópia profunda da água e o que a escrita seguinte do tocador desdobrou da
 //! tela que partilhavam).
@@ -41,6 +42,14 @@ fn mede(nome: &str, doc: &MacroDoc, lado: u32) -> f64 {
         .iter()
         .map(|e| e.inicio)
         .collect();
+
+    // Uma corrida de aquecimento: a 1ª toca paga caches de processo que ficam (4 MB a 512², medido) e a conta
+    // `com − sem` as atribuiria ao tocador sem instantâneos — o retido sairia 4 MB abaixo do que é.
+    let mut quente = TocadorDoPainter::novo(&tr.initial, cargas()).expect("nasce");
+    for e in &tr.events {
+        quente.aplica(&e.payload).expect("toca");
+    }
+    drop(quente);
 
     let base = vivo();
     let mut toc = TocadorDoPainter::novo(&tr.initial, cargas()).expect("nasce");

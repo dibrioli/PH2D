@@ -128,8 +128,7 @@ impl<T: Copy + Send + Sync> TileJournal<T> {
         self.whole.is_none() && self.taken == 0
     }
 
-    /// Quantos bytes o journal retém. Consumidor: os gates deste módulo.
-    #[cfg(test)]
+    /// Quantos bytes o journal retém (os gates deste módulo e o que um instantâneo do tocador declara).
     pub(crate) fn heap_bytes(&self) -> usize {
         let tiles: usize = self.data.iter().flatten().map(|t| t.len()).sum();
         (tiles + self.whole.as_ref().map_or(0, |w| w.len())) * size_of::<T>()

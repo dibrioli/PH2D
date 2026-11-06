@@ -360,6 +360,19 @@ impl WriteState {
         self.canvas.borrow().get(i)
     }
 
+    /// **Os bytes que os journals retêm e uma cópia deste estado copia** — o do canvas só existe em debug/test
+    /// (a rede de verificação), então em release contam só os de relevo. É o que um instantâneo do tocador
+    /// de uma macro declara ao razão da RAM.
+    #[must_use]
+    pub(crate) fn journal_bytes_retidos(&self) -> usize {
+        let r = self.relief.borrow();
+        #[cfg(any(test, debug_assertions))]
+        let canvas = self.canvas.borrow().heap_bytes();
+        #[cfg(not(any(test, debug_assertions)))]
+        let canvas = 0;
+        canvas + r.heights.heap_bytes() + r.covers.heap_bytes() + r.mats.heap_bytes()
+    }
+
     /// O passo fechou: o journal esquece o que capturou.
     pub(crate) fn reset_journal(&self) {
         // O journal do CANVAS segue sendo rede de debug: o `before` do canvas não é elidido, então

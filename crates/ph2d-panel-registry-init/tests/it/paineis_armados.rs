@@ -367,6 +367,7 @@ fn arma_os_tiles() {
         tile_w: 4,
         tile_h: 4,
         imagens: std::sync::Arc::new(vec![vec![0; 4 * 4 * 4], tile.clone(), tile]),
+        ..canal::Contexto::default()
     });
 }
 

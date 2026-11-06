@@ -342,7 +342,11 @@ fn a_camada_nova_nao_mexe_na_antiga_e_o_cartao_segue_a_camada_activa() {
     assert_eq!(n, 4);
     p.app.pede(PixelRequest::LayerAction(A::NewTilemap));
     p.quadro();
-    p.pede(Pedido::NovaCamada { w: 16, h: 16 });
+    p.pede(Pedido::NovaCamada {
+        conjunto: None,
+        w: 16,
+        h: 16,
+    });
     p.desenha();
     assert_eq!(p.vista(0, 3), arte, "o desenho continua no canvas");
     assert_eq!(
@@ -357,6 +361,206 @@ fn a_camada_nova_nao_mexe_na_antiga_e_o_cartao_segue_a_camada_activa() {
         canal::contexto().imagens.len(),
         4,
         "os tiles voltam ao cartão"
+    );
+}
+
+/// O dono, 06/11: «os tiles devem estar disponíveis para qualquer camada desde sempre». Duas camadas
+/// sobre o mesmo tileset: uma mão só.
+fn duas_camadas() -> (Palco, ph2d_pixel_core::LayerId, ph2d_pixel_core::LayerId) {
+    let mut p = Palco::novo();
+    let velha = p.app.doc(p.key).expect("doc").layer;
+    let conjunto = canal::contexto().padrao;
+    assert!(conjunto.is_some(), "a janela traz o tileset da camada");
+    p.app.pede(PixelRequest::LayerAction(A::NewTilemap));
+    p.quadro();
+    p.pede(Pedido::NovaCamada {
+        conjunto,
+        w: 16,
+        h: 16,
+    });
+    let nova = p.app.doc(p.key).expect("doc").layer;
+    assert_ne!(nova, velha);
+    (p, velha, nova)
+}
+
+#[test]
+fn a_camada_nova_desenha_com_os_tiles_que_ja_existem() {
+    let (mut p, velha, nova) = duas_camadas();
+    let s = p.s();
+    assert_eq!(
+        s.layer(nova).unwrap().tileset(),
+        s.layer(velha).unwrap().tileset()
+    );
+    assert_eq!(
+        canal::contexto().imagens.len(),
+        4,
+        "o cartão traz os mesmos tiles"
+    );
+    assert_eq!(
+        p.tile_em(0, 0),
+        TileRef::EMPTY,
+        "a camada nasce sem nada desenhado"
+    );
+    let n = p.n_tiles();
+    p.pede(Pedido::Alvo(Alvo::Tiles));
+    p.pede(Pedido::Tile(2));
+    assert_eq!(p.prime(0, 0), Press::Done);
+    let _ = input::release(&mut p.app);
+    assert_eq!(p.tile_em(0, 0).id(), 2);
+    assert_eq!(p.n_tiles(), n, "carimbar não acrescenta tiles");
+    assert!(derived_is_consistent(p.s()));
+    let passos = p.passos();
+    assert!(p.app.undo(p.key));
+    assert!(p.app.undo(p.key));
+    assert!(p.s().layer(nova).is_none(), "um passo tira a camada");
+    assert!(p.s().layer(velha).is_some());
+    assert_eq!(p.passos() + 2, passos);
+    assert!(derived_is_consistent(p.s()));
+}
+
+#[test]
+fn editar_um_tile_repartido_muda_todas_as_camadas() {
+    let (mut p, _, nova) = duas_camadas();
+    p.pede(Pedido::Alvo(Alvo::Tiles));
+    p.pede(Pedido::Tile(1));
+    assert_eq!(p.prime(0, 0), Press::Done);
+    let _ = input::release(&mut p.app);
+    p.pede(Pedido::Alvo(Alvo::Pixels));
+    p.pede(Pedido::Modo(Modo::Manual));
+    p.app.fg = [1, 2, 3, 255];
+    p.desenha();
+    assert_eq!(p.prime(0, 0), Press::Done);
+    p.desenha();
+    assert_eq!(
+        p.vista(5, 3),
+        [1, 2, 3, 255],
+        "a relva da outra camada, a meio do traço"
+    );
+    let _ = input::release(&mut p.app);
+    p.desenha();
+    assert_eq!(p.vista(5, 3), [1, 2, 3, 255], "e depois de largar");
+    assert_eq!(p.app.doc(p.key).unwrap().layer, nova);
+    assert!(derived_is_consistent(p.s()));
+}
+
+#[test]
+fn os_modos_e_apagar_um_tile_contam_todas_as_camadas() {
+    let (mut p, velha, _) = duas_camadas();
+    // O tile 3 está só na linha de cima da camada antiga; aqui fica a seta usada por mais uma camada.
+    p.pede(Pedido::Alvo(Alvo::Tiles));
+    p.pede(Pedido::Tile(3));
+    assert_eq!(p.prime(2, 2), Press::Done);
+    let _ = input::release(&mut p.app);
+    p.pede(Pedido::Alvo(Alvo::Pixels));
+    p.pede(Pedido::Modo(Modo::Auto));
+    p.app.fg = [1, 2, 3, 255];
+    let n = p.n_tiles();
+    assert_eq!(p.prime(2, 2), Press::Done);
+    let _ = input::release(&mut p.app);
+    assert_eq!(
+        p.n_tiles(),
+        n + 1,
+        "repartido com a outra camada: o Auto faz um tile novo"
+    );
+    assert!(p.app.undo(p.key));
+
+    p.pede(Pedido::Tile(1));
+    p.pede(Pedido::ApagaTile);
+    assert!(derived_is_consistent(p.s()));
+    assert_eq!(
+        p.tile_em(2, 2).id(),
+        2,
+        "a seta desce um número nesta camada"
+    );
+    p.app.pede(PixelRequest::LayerSelect(velha.0));
+    p.quadro();
+    assert_eq!(
+        p.tile_em(0, 3),
+        TileRef::EMPTY,
+        "a relva sai da outra camada"
+    );
+    assert_eq!(p.tile_em(2, 0).id(), 2, "e a seta desce lá também");
+}
+
+#[test]
+fn a_camada_repartida_sobrevive_a_gravar_e_a_mover_o_cel() {
+    let (mut p, velha, nova) = duas_camadas();
+    p.pede(Pedido::Alvo(Alvo::Tiles));
+    p.pede(Pedido::Tile(2));
+    assert_eq!(p.prime(0, 0), Press::Done);
+    let _ = input::release(&mut p.app);
+    let s = p.s().clone();
+    let lib = std::collections::BTreeMap::from([(1_u64, s.clone())]);
+    let bytes = ph2d_pixel_core::codec::write_library(&lib);
+    let lido = ph2d_pixel_core::codec::read_library(&bytes).expect("lê");
+    let lido = &lido[&1];
+    assert_eq!(lido.tilesets().len(), 1, "o mesmo tileset, gravado uma vez");
+    assert_eq!(
+        lido.layer(nova).unwrap().tileset(),
+        lido.layer(velha).unwrap().tileset()
+    );
+    assert!(derived_is_consistent(lido));
+
+    let (ase, _) = ph2d_pixel_io::ase::escrever(&s).expect("grava o .ase");
+    let (lido, _) = ph2d_pixel_io::ase::ler(&ase).expect("lê o .ase");
+    assert_eq!(lido.tilesets().len(), 1, "no .ase também é um só");
+    let com_mapa: Vec<_> = lido.layers().iter().filter_map(|l| l.tileset()).collect();
+    assert_eq!(com_mapa.len(), 2);
+    assert_eq!(com_mapa[0], com_mapa[1]);
+    assert!(derived_is_consistent(&lido));
+
+    let f = s.frames()[0].id;
+    let mut m = s.clone();
+    let movido =
+        ph2d_pixel_core::frames::move_cels_grow(&mut m, &[((nova, f), (velha, f))], &[], true);
+    assert!(
+        movido.is_some(),
+        "mover entre camadas do mesmo tileset é permitido"
+    );
+}
+
+/// Converter sobre o tileset que já existe: o pedaço igual usa o tile, o composto fica igual.
+#[test]
+fn converter_reaproveita_os_tiles_e_so_acrescenta_os_novos() {
+    let converte = |flips: bool| {
+        let mut p = Palco::novo();
+        p.desenha();
+        let conjunto = canal::contexto().padrao;
+        let (arte, seta) = (p.vista(0, 3), p.vista(4, 0));
+        p.app.pede(PixelRequest::LayerAction(A::ConvertToImage));
+        p.quadro();
+        assert_eq!(
+            canal::contexto().padrao,
+            conjunto,
+            "o tileset fica oferecido"
+        );
+        p.app.pede(PixelRequest::LayerAction(A::ConvertToTilemap));
+        p.quadro();
+        p.pede(Pedido::Converte {
+            conjunto,
+            w: 16,
+            h: 16,
+            flips,
+        });
+        p.desenha();
+        assert_eq!((p.vista(0, 3), p.vista(4, 0)), (arte, seta));
+        assert!(derived_is_consistent(p.s()));
+        p
+    };
+    let p = converte(true);
+    assert_eq!(p.n_tiles(), 4, "com flips, a seta virada usa a seta");
+    assert_eq!(p.tile_em(0, 3).id(), 1);
+    assert!(p.tile_em(4, 0).flip_x());
+    let mut p = converte(false);
+    assert_eq!(p.n_tiles(), 5, "sem flips, a seta virada é um tile novo");
+    assert_eq!(p.tile_em(2, 0).id(), 3);
+    assert_eq!(p.tile_em(4, 0).id(), 4);
+    let antes = p.n_tiles();
+    assert!(p.app.undo(p.key));
+    assert_eq!(
+        p.s().tilesets()[0].tiles.len(),
+        antes - 1,
+        "o desfazer repõe o tileset"
     );
 }
 
@@ -428,7 +632,11 @@ fn a_camada_nova_e_o_convert_passam_pela_janela() {
     p.quadro();
     assert_eq!(p.hero.panel_visibility.get(PANEL_PIXEL_TILES), Some(&true));
     assert_eq!(p.s().layers().len(), camadas, "só abre a janela");
-    p.pede(Pedido::NovaCamada { w: 8, h: 12 });
+    p.pede(Pedido::NovaCamada {
+        conjunto: None,
+        w: 8,
+        h: 12,
+    });
     assert_eq!(p.s().layers().len(), camadas + 1);
     let d = p.app.doc(p.key).expect("doc");
     let set = tileset_de(&d.sprite, d.layer).expect("a camada nova fica activa");
@@ -454,6 +662,7 @@ fn a_camada_nova_e_o_convert_passam_pela_janela() {
     p.app.pede(PixelRequest::LayerAction(A::ConvertToTilemap));
     p.quadro();
     p.pede(Pedido::Converte {
+        conjunto: None,
         w: 16,
         h: 16,
         flips: false,

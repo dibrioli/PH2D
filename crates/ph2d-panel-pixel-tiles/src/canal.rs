@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::sync::Arc;
 
 use ph2d_pixel_tiles::desenho::Modo;
-pub use ph2d_pixel_tiles::mao::{Alvo, Mao};
+pub use ph2d_pixel_tiles::mao::{Alvo, Conjunto, Mao};
 
 /// O que o painel mostra do tileset da camada activa.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -14,6 +14,10 @@ pub struct Contexto {
     pub tile_h: u16,
     /// RGBA de cada tile, na ordem; o 0 é o vazio.
     pub imagens: Arc<Vec<Vec<u8>>>,
+    /// Os tilesets do sprite: qualquer camada pode usá-los.
+    pub conjuntos: Vec<Conjunto>,
+    /// O que a janela de criar ou converter traz escolhido.
+    pub padrao: Option<u32>,
 }
 
 /// A janela de criar ou converter.
@@ -42,11 +46,14 @@ pub enum Pedido {
     Flip(Eixo),
     NovoTile,
     ApagaTile,
+    /// `conjunto`: um tileset que já existe; `None`, um novo de `w × h`.
     NovaCamada {
+        conjunto: Option<u32>,
         w: u16,
         h: u16,
     },
     Converte {
+        conjunto: Option<u32>,
         w: u16,
         h: u16,
         flips: bool,

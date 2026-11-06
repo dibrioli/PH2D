@@ -20,6 +20,7 @@ fn contexto(lado_h: u16) -> Contexto {
         tile_w: LADO,
         tile_h: lado_h,
         imagens: Arc::new(vec![px.clone(), px.clone(), px]),
+        ..Contexto::default()
     }
 }
 
@@ -88,7 +89,11 @@ fn a_janela_escreve_os_lados_e_devolve_o_verbo() {
     m.assenta_em(JANELA);
     assert_eq!(
         clica(&mut m, ids::TILES_OK),
-        vec![Pedido::NovaCamada { w: 24, h: 8 }]
+        vec![Pedido::NovaCamada {
+            conjunto: None,
+            w: 24,
+            h: 8
+        }]
     );
     assert_eq!(m.st.tela(), Tela::Tileset);
 }
@@ -102,6 +107,7 @@ fn o_convert_so_oferece_flips_em_tile_quadrado_e_o_cancel_fecha() {
     assert_eq!(
         clica(&mut m, ids::TILES_OK),
         vec![Pedido::Converte {
+            conjunto: None,
             w: 16,
             h: 16,
             flips: true

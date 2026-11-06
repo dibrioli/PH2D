@@ -26,11 +26,12 @@ pub const DELETE_TILE: NodeId = hash_node_id("pixel_tiles.delete");
 pub const TILE_W: NodeId = hash_node_id("pixel_tiles.tile_w");
 pub const TILE_H: NodeId = hash_node_id("pixel_tiles.tile_h");
 pub const MATCH_FLIPS: NodeId = hash_node_id("pixel_tiles.match_flips");
+pub const NEW_SET: NodeId = hash_node_id("pixel_tiles.new_set");
 
 /// O lado máximo de um tile no diálogo. Recurso: o `.ase` e o nosso formato guardam-no em 16 bits.
 pub const TILE_SIDE_MAX: f64 = u16::MAX as f64;
 
-pub const BOTOES: [NodeId; 12] = [
+pub const BOTOES: [NodeId; 13] = [
     TILES_CANCEL,
     TILES_OK,
     TARGET_PIXELS,
@@ -43,7 +44,14 @@ pub const BOTOES: [NodeId; 12] = [
     FLIP_D,
     ADD_TILE,
     DELETE_TILE,
+    NEW_SET,
 ];
+
+/// A linha do tileset `i` na janela de criar ou converter.
+#[must_use]
+pub fn conjunto(i: usize) -> NodeId {
+    hash_node_id_runtime(&format!("pixel_tiles.set.{i}"))
+}
 
 /// A célula do tile `i` no cartão Tileset.
 #[must_use]

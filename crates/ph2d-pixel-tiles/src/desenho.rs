@@ -52,7 +52,7 @@ fn grelhas(s: &Sprite, id: TilesetId) -> impl Iterator<Item = (CelKey, &TileGrid
     })
 }
 
-fn no_terreno(set: &Tileset, id: u32) -> bool {
+pub(crate) fn no_terreno(set: &Tileset, id: u32) -> bool {
     set.terrains
         .iter()
         .any(|k| id >= k.first && id < k.first + TERRAIN_TILES)

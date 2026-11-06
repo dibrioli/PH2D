@@ -6,9 +6,9 @@ use std::sync::Arc;
 use ph2d_editor_core::pixel_panel::{PixelLayerAction as A, PixelRequest};
 use ph2d_editor_core::screens::hero::{HeroScreen, PANEL_PIXEL_TILES};
 use ph2d_panel_pixel_tiles::canal::{self, Alvo, Contexto, Eixo, Mao, Pedido, Tela};
-use ph2d_pixel_core::tiles::new_tilemap_layer;
+use ph2d_pixel_core::tiles::{new_tilemap_layer, tilemap_layer_using};
 use ph2d_pixel_core::{LayerId, Onion, Op, Sprite, Stroke, TileRef, Tileset, TilesetId, apply};
-use ph2d_pixel_tiles::mao::{Carimbo, imagens, op_do_traco, tileset_de};
+use ph2d_pixel_tiles::mao::{Carimbo, conjuntos, imagens, op_do_traco, tileset_de};
 use ph2d_pixel_tiles::mapa::Mapa;
 use ph2d_pixel_tiles::{converte, tileset as lei};
 
@@ -168,16 +168,27 @@ pub(crate) fn aplica_pedido(app: &mut PixelApp, r: &PixelRequest) -> bool {
     true
 }
 
-fn cria(app: &mut PixelApp, key: u32, w: u16, h: u16, converter: Option<bool>) {
+fn cria(
+    app: &mut PixelApp,
+    key: u32,
+    conjunto: Option<u32>,
+    (w, h): (u16, u16),
+    converter: Option<bool>,
+) {
     let Some(d) = app.docs.get_mut(&key) else {
         return;
     };
     let layer = d.layer;
-    let feito: Option<(Op, LayerId)> = match converter {
-        Some(flips) => {
-            converte::para_tilemap(&mut d.sprite, layer, w, h, flips).map(|(op, _)| (op, layer))
+    let s = &mut d.sprite;
+    let feito: Option<(Op, LayerId)> = match (converter, conjunto.map(TilesetId)) {
+        (Some(flips), Some(set)) => {
+            converte::para_tilemap_em(s, layer, set, flips).map(|op| (op, layer))
         }
-        None => new_tilemap_layer(&mut d.sprite, layer, w, h).map(|(op, l, _)| (op, l)),
+        (Some(flips), None) => {
+            converte::para_tilemap(s, layer, w, h, flips).map(|(op, _)| (op, layer))
+        }
+        (None, Some(set)) => tilemap_layer_using(s, layer, set),
+        (None, None) => new_tilemap_layer(s, layer, w, h).map(|(op, l, _)| (op, l)),
     };
     let Some((op, nova)) = feito else {
         return app.recusa("pixel.tiles.refuse.convert");
@@ -201,8 +212,13 @@ fn pedido(app: &mut PixelApp, key: u32, p: Pedido) {
         Pedido::Flip(Eixo::D) => mao.flip_d = !mao.flip_d,
         Pedido::NovoTile => novo(app, key, set),
         Pedido::ApagaTile => apaga(app, key, set),
-        Pedido::NovaCamada { w, h } => cria(app, key, w, h, None),
-        Pedido::Converte { w, h, flips } => cria(app, key, w, h, Some(flips)),
+        Pedido::NovaCamada { conjunto, w, h } => cria(app, key, conjunto, (w, h), None),
+        Pedido::Converte {
+            conjunto,
+            w,
+            h,
+            flips,
+        } => cria(app, key, conjunto, (w, h), Some(flips)),
         Pedido::Fechou => {}
     }
 }
@@ -279,6 +295,9 @@ pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
     let em_traco = app.gesture.is_some();
     let t = &mut app.tiles;
     let mut x = Contexto::default();
+    if let Some((_, d)) = doc {
+        (x.conjuntos, x.padrao) = conjuntos(&d.sprite, d.layer);
+    }
     if let Some((k, d, set)) = set {
         t.mao.tile = t.mao.tile.min(set.tiles.len() as u32 - 1);
         t.mao.flip_d &= set.tile_w == set.tile_h;

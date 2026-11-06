@@ -66,8 +66,9 @@ fn alca(ctx: &mut PaintCtx, tudo: Rect) {
     );
 }
 
-fn janela(st: &PixelTilesPanelState, ctx: &mut PaintCtx) {
+fn janela(st: &PixelTilesPanelState, x: &Contexto, ctx: &mut PaintCtx) {
     prepara_numeros(ctx.host.store_mut(), &cards::numeros(st));
+    event::regista_conjuntos(ctx.host.store_mut(), x.conjuntos.len());
     let (titulo, verbo) = if st.tela == Tela::Converter {
         (
             tr("panel.pixel.tiles.title_convert"),
@@ -80,7 +81,7 @@ fn janela(st: &PixelTilesPanelState, ctx: &mut PaintCtx) {
         )
     };
     let slot = solta(ctx, |a| a.x + (a.w - PANEL_MIN_W_PX) * 0.5);
-    let cartoes = cards::janela(st);
+    let cartoes = cards::janela(st, x);
     let encaixe = ctx.slot;
     ctx.slot = slot;
     let cancel = (ids::TILES_CANCEL, tr("panel.pixel.tiles.cancel"));
@@ -96,14 +97,15 @@ pub(crate) fn paint(st: &mut PixelTilesPanelState, ctx: &mut PaintCtx) {
         ctx.host.store_mut().clear_panel_rect(node);
         return;
     }
+    let x = canal::contexto();
     if let Some(t) = canal::take_abrir() {
         st.tela = t;
+        st.conjunto = x.padrao;
     }
     if st.tela != Tela::Tileset {
-        janela(st, ctx);
+        janela(st, &x, ctx);
         return;
     }
-    let x = canal::contexto();
     if x.mao.is_none() {
         ctx.host.store_mut().clear_panel_rect(node);
         event::sem_nada(ctx.host);

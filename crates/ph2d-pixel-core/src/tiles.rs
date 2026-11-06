@@ -327,6 +327,23 @@ pub fn new_tilemap_layer(
     Some((op, layer, id))
 }
 
+/// **Layer ▸ New Tilemap Layer sobre um tileset que já existe**: a camada desenha com os mesmos tiles.
+pub fn tilemap_layer_using(
+    s: &mut Sprite,
+    above: LayerId,
+    set: TilesetId,
+) -> Option<(crate::Op, LayerId)> {
+    s.tileset(set)?;
+    let (op, layer) = crate::layers::new_layer(s, above)?;
+    let crate::Op::Layers(mut camadas) = op else {
+        return None;
+    };
+    let nova = camadas.layers.iter_mut().find(|l| l.id == layer)?;
+    nova.kind = LayerKind::Tilemap { tileset: set };
+    nova.name = nova.name.replacen("Layer", "Tilemap", 1);
+    Some((crate::Op::Layers(camadas), layer))
+}
+
 /// O tileset de uma camada de tilemap.
 fn layer_set(s: &Sprite, id: LayerId) -> Option<TilesetId> {
     match s.layer(id)?.kind {

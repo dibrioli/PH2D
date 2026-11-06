@@ -12,7 +12,7 @@ use ph2d_editor_core::screens::hero::{
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{HeroScreen, NodeId, ids as nucleo};
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
-use ph2d_panel_pixel_tiles::canal::{self, Alvo, Contexto, Mao, Pedido, Tela};
+use ph2d_panel_pixel_tiles::canal::{self, Alvo, Conjunto, Contexto, Mao, Pedido, Tela};
 use ph2d_panel_pixel_tiles::ids;
 
 const TILE: u16 = 4;
@@ -83,6 +83,7 @@ fn com_tileset() -> Contexto {
         tile_w: TILE,
         tile_h: TILE,
         imagens: Arc::new(vec![px; 3]),
+        ..Contexto::default()
     }
 }
 
@@ -214,6 +215,58 @@ fn a_janela_de_criar_pede_a_camada() {
         let depois = centro(&hero, ids::TILES_OK, "o verbo");
         assert_eq!((depois.0 - antes.0, depois.1 - antes.1), (40.0, 20.0));
         clica(&mut hero, ids::TILES_OK, "o verbo");
-        assert_eq!(canal::take_pedidos(), [Pedido::NovaCamada { w: 16, h: 16 }]);
+        assert_eq!(
+            canal::take_pedidos(),
+            [Pedido::NovaCamada {
+                conjunto: None,
+                w: 16,
+                h: 16
+            }]
+        );
     }
+}
+
+/// O sprite já tem tilesets: a janela traz um escolhido, e o «novo» é que pede o tamanho.
+#[test]
+fn a_janela_oferece_os_tilesets_que_ja_existem() {
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let c = |id, tile_w, tile_h, tiles| Conjunto {
+        id,
+        tile_w,
+        tile_h,
+        tiles,
+    };
+    let x = Contexto {
+        conjuntos: vec![c(7, 16, 16, 3), c(9, 8, 8, 0)],
+        padrao: Some(7),
+        ..com_tileset()
+    };
+    let mut hero = hero_com_a_janela(&mut ts, x);
+    canal::abrir(Tela::NovaCamada);
+    assenta(&mut hero, &mut ts);
+    assert!(
+        hero.hit_index.rect_for(ids::TILE_W).is_none(),
+        "com um tileset escolhido, o tamanho é o dele"
+    );
+    clica(&mut hero, ids::TILES_OK, "o verbo");
+    let pedido = |conjunto, w, h| [Pedido::NovaCamada { conjunto, w, h }];
+    assert_eq!(canal::take_pedidos(), pedido(Some(7), 16, 16));
+
+    canal::abrir(Tela::NovaCamada);
+    assenta(&mut hero, &mut ts);
+    clica(&mut hero, ids::conjunto(1), "o outro tileset");
+    assenta(&mut hero, &mut ts);
+    clica(&mut hero, ids::TILES_OK, "o verbo");
+    assert_eq!(canal::take_pedidos(), pedido(Some(9), 8, 8));
+
+    canal::abrir(Tela::NovaCamada);
+    assenta(&mut hero, &mut ts);
+    clica(&mut hero, ids::NEW_SET, "New tileset");
+    assenta(&mut hero, &mut ts);
+    assert!(
+        hero.hit_index.rect_for(ids::TILE_W).is_some(),
+        "o novo pede o tamanho"
+    );
+    clica(&mut hero, ids::TILES_OK, "o verbo");
+    assert_eq!(canal::take_pedidos(), pedido(None, 16, 16));
 }

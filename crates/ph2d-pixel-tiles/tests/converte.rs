@@ -5,7 +5,7 @@ use ph2d_pixel_core::{
     Background, Cel, ColorMode, FrameId, History, LayerId, LayerKind, NewSprite, Op, Patch, Rect,
     Sprite, TileRef, compose_rgba, derived_is_consistent,
 };
-use ph2d_pixel_tiles::converte::{para_imagem, para_tilemap};
+use ph2d_pixel_tiles::converte::{para_imagem, para_tilemap, para_tilemap_em};
 
 /// Imagem 16×16 com tiles repetidos de 4×4 e um pedaço fora da grelha; `mode` à escolha.
 fn base(mode: ColorMode) -> (Sprite, History, LayerId, FrameId) {
@@ -229,4 +229,55 @@ fn a_background_recusa() {
     let l = s.layers()[0].id;
     assert!(s.layer(l).unwrap().background);
     assert!(para_tilemap(&mut s, l, 4, 4, false).is_none());
+}
+
+/// Sobre um tileset que já existe: o pedaço igual a um tile usa-o, o resto acrescenta-se, e um tile
+/// do gabarito nunca serve (quem entra nele vira terreno).
+#[test]
+fn o_tileset_existente_reaproveita_mas_nao_entra_no_gabarito() {
+    let (mut s, mut h, l, f) = base(ColorMode::Rgba);
+    let (op, _, set) = ph2d_pixel_core::tiles::new_tilemap_layer(&mut s, l, 4, 4).unwrap();
+    h.commit(&mut s, op).unwrap();
+    let px = s.read_rect((l, f), Rect::new(4, 4, 4, 4));
+    let terreno = ph2d_pixel_tiles::terreno::novo_terreno(&s, set, "T").unwrap();
+    h.commit(&mut s, terreno).unwrap();
+    let primeiro = s.tileset(set).unwrap().terrains[0].first;
+    let no_gabarito = ph2d_pixel_core::TilesSet {
+        tiles: vec![(set, primeiro, px.clone())],
+        ..Default::default()
+    };
+    h.commit(&mut s, Op::Tiles(Box::new(no_gabarito))).unwrap();
+    let a_rever = s.tileset(set).unwrap().tiles.len() as u32;
+    let antes = compostos(&s);
+    let op = para_tilemap_em(&s, l, set, false).unwrap();
+    h.commit(&mut s, op).unwrap();
+    assert_eq!(compostos(&s), antes);
+    assert!(derived_is_consistent(&s));
+    let g = s.entry((l, f)).unwrap().tiles.as_deref().unwrap();
+    let ids: Vec<u32> = g.tiles.iter().map(|t| t.id()).collect();
+    assert!(ids.iter().all(|&i| i == 0 || i >= a_rever), "{ids:?}");
+    let com_repetidos = ids.iter().filter(|&&i| i != 0).count();
+    let novos = s.tileset(set).unwrap().tiles.len() as u32 - a_rever;
+    assert!(
+        novos > 0 && (novos as usize) < com_repetidos,
+        "dedupe entre si"
+    );
+
+    // Sem o gabarito no caminho, o mesmo pedaço reaproveita o tile normal.
+    let (mut s2, mut h2, l2, f2) = base(ColorMode::Rgba);
+    let (op, _, set2) = ph2d_pixel_core::tiles::new_tilemap_layer(&mut s2, l2, 4, 4).unwrap();
+    h2.commit(&mut s2, op).unwrap();
+    let px = s2.read_rect((l2, f2), Rect::new(4, 4, 4, 4));
+    let mais = ph2d_pixel_core::TilesSet {
+        counts: vec![(set2, 2)],
+        tiles: vec![(set2, 1, px)],
+        ..Default::default()
+    };
+    h2.commit(&mut s2, Op::Tiles(Box::new(mais))).unwrap();
+    let op = para_tilemap_em(&s2, l2, set2, false).unwrap();
+    h2.commit(&mut s2, op).unwrap();
+    let g = s2.entry((l2, f2)).unwrap().tiles.as_deref().unwrap();
+    assert!(g.tiles.iter().any(|t| t.id() == 1));
+    assert!(h2.undo(&mut s2));
+    assert_eq!(s2.tileset(set2).unwrap().tiles.len(), 2);
 }

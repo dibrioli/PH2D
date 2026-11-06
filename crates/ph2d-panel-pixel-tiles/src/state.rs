@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use crate::canal::Tela;
+use crate::canal::{Conjunto, Contexto, Tela};
 
 /// O tile de um tilemap novo: o de omissão do Aseprite (`docs/PixelArt/P10_oraculos.md`).
 pub(crate) const TILE_INICIAL: u16 = 16;
@@ -13,6 +13,8 @@ pub struct PixelTilesPanelState {
     pub(crate) tile_w: u16,
     pub(crate) tile_h: u16,
     pub(crate) flips: bool,
+    /// O tileset escolhido na janela; `None`, um novo.
+    pub(crate) conjunto: Option<u32>,
     /// As imagens publicadas e as da placa: só se recria a do tile que mudou.
     pub(crate) fontes: Arc<Vec<Vec<u8>>>,
     pub(crate) imagens: Vec<Option<ph2d_vector::StableImage>>,
@@ -25,6 +27,7 @@ impl Default for PixelTilesPanelState {
             tile_w: TILE_INICIAL,
             tile_h: TILE_INICIAL,
             flips: false,
+            conjunto: None,
             fontes: Arc::default(),
             imagens: Vec::new(),
         }
@@ -36,5 +39,11 @@ impl PixelTilesPanelState {
     #[must_use]
     pub fn tela(&self) -> Tela {
         self.tela
+    }
+
+    /// O tileset escolhido, se ainda existir.
+    pub(crate) fn escolhido(&self, x: &Contexto) -> Option<Conjunto> {
+        let id = self.conjunto?;
+        x.conjuntos.iter().copied().find(|c| c.id == id)
     }
 }

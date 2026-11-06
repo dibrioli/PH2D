@@ -2,6 +2,7 @@
 
 use std::collections::BTreeMap;
 
+use crate::desenho::no_terreno;
 use ph2d_pixel_core::tiles::expand;
 use ph2d_pixel_core::{
     Cel, CelKey, LayerId, LayerKind, LayerSet, Op, Rect, Sprite, TileGrid, TileRef, TilesSet,
@@ -39,18 +40,23 @@ impl Dedupe {
             return *t;
         }
         let id = self.tiles.len() as u32;
-        let t = TileRef::new(id, false, false, false);
+        self.conhece(id, &px);
+        self.tiles.push(px);
+        TileRef::new(id, false, false, false)
+    }
+
+    /// O tile `id` passa a responder por `px`; quem já respondia fica.
+    fn conhece(&mut self, id: u32, px: &[u8]) {
         if self.flips {
             for b in 0_u8..8 {
                 let v = TileRef::new(id, b & 1 != 0, b & 2 != 0, b & 4 != 0);
-                let img = self.virado(&px, v);
+                let img = self.virado(px, v);
                 self.vistos.entry(img).or_insert(v);
             }
         } else {
-            self.vistos.insert(px.clone(), t);
+            let t = TileRef::new(id, false, false, false);
+            self.vistos.entry(px.to_vec()).or_insert(t);
         }
-        self.tiles.push(px);
-        t
     }
 }
 
@@ -87,19 +93,39 @@ pub fn para_tilemap(
     tile_h: u16,
     permitir_flips: bool,
 ) -> Option<(Op, TilesetId)> {
-    let l = s.layer(layer)?;
-    if !matches!(l.kind, LayerKind::Image)
-        || l.reference
-        || l.background
-        || tile_w == 0
-        || tile_h == 0
-    {
+    if !pode_converter(s, layer) || tile_w == 0 || tile_h == 0 {
         return None;
     }
     let id = TilesetId(s.reserve_id());
     let bpp = s.mode().bpp();
     let vazio = s.transparent_value().to_le_bytes()[..bpp]
         .repeat(usize::from(tile_w) * usize::from(tile_h));
+    let set = Tileset::new(id, "Tileset", tile_w, tile_h, vazio);
+    Some((corta(s, layer, set, permitir_flips)?, id))
+}
+
+/// **Imagem → tilemap sobre um tileset que já existe**: um pedaço igual a um tile dele usa esse tile,
+/// e o que for novo acrescenta-se ao fim. O gabarito fica de fora, como no traço.
+pub fn para_tilemap_em(
+    s: &Sprite,
+    layer: LayerId,
+    set: TilesetId,
+    permitir_flips: bool,
+) -> Option<Op> {
+    if !pode_converter(s, layer) {
+        return None;
+    }
+    corta(s, layer, s.tileset(set)?.clone(), permitir_flips)
+}
+
+fn pode_converter(s: &Sprite, layer: LayerId) -> bool {
+    s.layer(layer)
+        .is_some_and(|l| matches!(l.kind, LayerKind::Image) && !l.reference && !l.background)
+}
+
+fn corta(s: &Sprite, layer: LayerId, mut set: Tileset, permitir_flips: bool) -> Option<Op> {
+    let (id, tile_w, tile_h) = (set.id, set.tile_w, set.tile_h);
+    let bpp = s.mode().bpp();
     let mut d = Dedupe {
         vistos: BTreeMap::new(),
         tiles: Vec::new(),
@@ -109,8 +135,13 @@ pub fn para_tilemap(
         bpp,
     };
     // O tile 0 é o vazio, sem flips: nunca ganha uma imagem virada, que seria a mesma.
-    d.vistos.insert(vazio.clone(), TileRef::EMPTY);
-    d.tiles.push(vazio.clone());
+    d.vistos.insert(set.tiles[0].clone(), TileRef::EMPTY);
+    for (i, px) in set.tiles.iter().enumerate().skip(1) {
+        if !no_terreno(&set, i as u32) {
+            d.conhece(i as u32, px);
+        }
+    }
+    d.tiles = std::mem::take(&mut set.tiles);
     let mut grelhas = Vec::new();
     for (&key, cel) in s
         .entries()
@@ -129,7 +160,6 @@ pub fn para_tilemap(
         };
         grelhas.push((key, cel.clone(), g));
     }
-    let mut set = Tileset::new(id, "Tileset", tile_w, tile_h, vazio);
     set.tiles = d.tiles;
     let cels = grelhas
         .into_iter()
@@ -154,11 +184,10 @@ pub fn para_tilemap(
         sets: vec![(id, Some(set))],
         ..TilesSet::default()
     };
-    let op = Op::Batch(vec![
+    Some(Op::Batch(vec![
         Op::Tiles(Box::new(novo)),
         Op::Layers(Box::new(LayerSet { layers, cels })),
-    ]);
-    Some((op, id))
+    ]))
 }
 
 /// **Tilemap → imagem**: os mesmos píxeis, numa camada de imagem. O tileset fica no sprite.

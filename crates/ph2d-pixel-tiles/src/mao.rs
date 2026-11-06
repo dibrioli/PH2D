@@ -65,6 +65,34 @@ pub fn tileset_de(s: &Sprite, layer: LayerId) -> Option<&Tileset> {
     s.tileset(s.layer(layer)?.tileset()?)
 }
 
+/// Um tileset do sprite, como a janela de criar ou converter o oferece.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Conjunto {
+    pub id: u32,
+    pub tile_w: u16,
+    pub tile_h: u16,
+    /// Os tiles desenhados: o vazio não conta.
+    pub tiles: u32,
+}
+
+/// Os tilesets do sprite e o que a janela traz escolhido: o da camada activa, ou o último.
+#[must_use]
+pub fn conjuntos(s: &Sprite, layer: LayerId) -> (Vec<Conjunto>, Option<u32>) {
+    let lista: Vec<Conjunto> = s
+        .tilesets()
+        .iter()
+        .map(|t| Conjunto {
+            id: t.id.0,
+            tile_w: t.tile_w,
+            tile_h: t.tile_h,
+            tiles: t.tiles.len().saturating_sub(1) as u32,
+        })
+        .collect();
+    let activo = tileset_de(s, layer).map(|t| t.id.0);
+    let padrao = activo.or_else(|| lista.last().map(|c| c.id));
+    (lista, padrao)
+}
+
 /// O traço acabado: em tilemap vai ao funil dos modos; numa imagem, é o op de sempre.
 #[must_use]
 pub fn op_do_traco(st: &Stroke, s: &Sprite, modo: Modo) -> Option<Op> {

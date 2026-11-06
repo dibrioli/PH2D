@@ -1,5 +1,6 @@
 //! Os cartões: Draw e Tileset, e o da janela de criar ou converter.
 
+use ph2d_a11y::NodeId;
 use ph2d_editor_core::panel::cards::ferramenta::{
     Numero, aos_pares, caixa, caixas_aos_pares, campo, cartao, opcoes,
 };
@@ -26,37 +27,76 @@ pub(crate) fn numeros(st: &PixelTilesPanelState) -> Vec<Numero> {
     vec![n(ids::TILE_W, st.tile_w), n(ids::TILE_H, st.tile_h)]
 }
 
-/// O cartão da janela de criar ou converter.
-pub(crate) fn janela(st: &PixelTilesPanelState) -> Vec<CardDef<'static>> {
-    let (tela, flips, quadrado) = (st.tela, st.flips, st.tile_w == st.tile_h);
+/// A dica da janela: o que acontece com os tiles ao confirmar.
+const fn dica_da_janela(tela: Tela, existente: bool) -> &'static str {
+    match (tela, existente) {
+        (Tela::Converter, true) => "panel.pixel.tiles.convert_hint_shared",
+        (Tela::Converter, false) => "panel.pixel.tiles.convert_hint",
+        (_, true) => "panel.pixel.tiles.shared_hint",
+        (_, false) => "panel.pixel.tiles.new_hint",
+    }
+}
+
+/// O cartão da janela de criar ou converter: os tilesets do sprite, ou um novo com o tamanho dele.
+pub(crate) fn janela(st: &PixelTilesPanelState, x: &Contexto) -> Vec<CardDef<'static>> {
+    let escolhido = st.escolhido(x);
+    let (tela, flips) = (st.tela, st.flips);
+    let quadrado = escolhido.map_or(st.tile_w == st.tile_h, |c| c.tile_w == c.tile_h);
+    let lista: Vec<(NodeId, String, bool)> = x
+        .conjuntos
+        .iter()
+        .enumerate()
+        .map(|(i, c)| {
+            let rotulo = tr_with(
+                "panel.pixel.tiles.set_label",
+                &[
+                    ("i", &(i + 1).to_string()),
+                    ("n", &c.tiles.to_string()),
+                    ("w", &c.tile_w.to_string()),
+                    ("h", &c.tile_h.to_string()),
+                ],
+            );
+            (
+                ids::conjunto(i),
+                rotulo,
+                escolhido.is_some_and(|e| e.id == c.id),
+            )
+        })
+        .collect();
     vec![cartao(
         ids::TILES_SEC_GRID,
-        tr("panel.pixel.tiles.grid"),
+        tr("panel.pixel.tiles.tileset"),
         None,
-        move |c, y| {
-            let y = aos_pares(
-                c,
-                &[
-                    campo(ids::TILE_W, tr("panel.pixel.tiles.tile_w")),
-                    campo(ids::TILE_H, tr("panel.pixel.tiles.tile_h")),
-                ],
-                y,
-            );
-            if tela != Tela::Converter {
-                return c.hint(tr("panel.pixel.tiles.new_hint"), y);
+        move |c, mut y| {
+            for (id, rotulo, aceso) in &lista {
+                let o = opcoes(&[(*id, rotulo.as_str())], usize::from(!*aceso));
+                y = c.full(None, Widget::Choice(&o), y);
             }
-            let y = if quadrado {
-                caixa(
+            if !lista.is_empty() {
+                let novo = (ids::NEW_SET, tr("panel.pixel.tiles.new_set"));
+                let o = opcoes(&[novo], usize::from(escolhido.is_some()));
+                y = c.full(None, Widget::Choice(&o), y);
+            }
+            if escolhido.is_none() {
+                y = aos_pares(
+                    c,
+                    &[
+                        campo(ids::TILE_W, tr("panel.pixel.tiles.tile_w")),
+                        campo(ids::TILE_H, tr("panel.pixel.tiles.tile_h")),
+                    ],
+                    y,
+                );
+            }
+            if tela == Tela::Converter && quadrado {
+                y = caixa(
                     c,
                     ids::MATCH_FLIPS,
                     "panel.pixel.tiles.match_flips",
                     flips,
                     y,
-                )
-            } else {
-                y
-            };
-            c.hint(tr("panel.pixel.tiles.convert_hint"), y)
+                );
+            }
+            c.hint(tr(dica_da_janela(tela, escolhido.is_some())), y)
         },
     )]
 }

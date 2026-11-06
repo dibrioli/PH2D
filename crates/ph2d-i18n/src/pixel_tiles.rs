@@ -6,10 +6,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel_tiles.title" => "Tilemap",
         "panel.pixel.tiles.title_new" => "New Tilemap Layer",
         "panel.pixel.tiles.title_convert" => "Convert to Tilemap",
-        "panel.pixel.tiles.grid" => "Grid",
         "panel.pixel.tiles.tile_w" => "Tile width (px)",
         "panel.pixel.tiles.tile_h" => "Tile height (px)",
+        "panel.pixel.tiles.new_set" => "New tileset",
+        "panel.pixel.tiles.set_label" => "Tileset {i}: {n} {n?tile|tiles}, {w}×{h} px",
         "panel.pixel.tiles.new_hint" => "A new empty tileset is made for this layer.",
+        "panel.pixel.tiles.shared_hint" => {
+            "This layer draws with the same tiles: editing a tile changes it in every layer."
+        }
+        "panel.pixel.tiles.convert_hint_shared" => {
+            "The image is cut into tiles. Parts equal to a tile use it; the rest are added."
+        }
         "panel.pixel.tiles.convert_hint" => "The image is cut into tiles. Equal tiles become one.",
         "panel.pixel.tiles.match_flips" => "Match flipped tiles",
         "panel.pixel.tiles.create" => "Create",

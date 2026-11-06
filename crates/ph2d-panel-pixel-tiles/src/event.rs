@@ -52,6 +52,13 @@ pub(crate) fn regista_tiles(store: &mut WidgetStore, n: usize) {
     }
 }
 
+/// As linhas da janela: o sprite decide quantos tilesets há.
+pub(crate) fn regista_conjuntos(store: &mut WidgetStore, n: usize) {
+    for i in 0..n {
+        botao(store, ids::conjunto(i));
+    }
+}
+
 /// O pedido de um clique fixo.
 fn pedido_de(id: NodeId) -> Option<Pedido> {
     Some(match id {
@@ -98,23 +105,38 @@ pub(crate) fn apply_event(
     match ev {
         WidgetEvent::Click(id) if id == ids::TILES_CANCEL => fecha(st, Pedido::Fechou),
         WidgetEvent::Click(id) if id == ids::TILES_OK => {
-            let (w, h) = (st.tile_w, st.tile_h);
+            let escolhido = st.escolhido(&canal::contexto());
+            let conjunto = escolhido.map(|c| c.id);
+            let (w, h) = escolhido.map_or((st.tile_w, st.tile_h), |c| (c.tile_w, c.tile_h));
             let p = match st.tela {
                 Tela::Converter => Pedido::Converte {
+                    conjunto,
                     w,
                     h,
                     flips: st.flips && w == h,
                 },
-                _ => Pedido::NovaCamada { w, h },
+                _ => Pedido::NovaCamada { conjunto, w, h },
             };
             fecha(st, p)
+        }
+        WidgetEvent::Click(id) if id == ids::NEW_SET => {
+            st.conjunto = None;
+            EventOutcome::Consumed
         }
         WidgetEvent::Click(id) if id == ids::MATCH_FLIPS => {
             st.flips = !st.flips;
             EventOutcome::Consumed
         }
         WidgetEvent::Click(id) => {
-            let n = canal::contexto().imagens.len();
+            let x = canal::contexto();
+            if let Some(c) = (0..x.conjuntos.len())
+                .find(|&i| ids::conjunto(i) == id)
+                .map(|i| x.conjuntos[i])
+            {
+                st.conjunto = Some(c.id);
+                return EventOutcome::Consumed;
+            }
+            let n = x.imagens.len();
             let p = pedido_de(id).or_else(|| {
                 (0..n)
                     .find(|&i| ids::tile(i) == id)

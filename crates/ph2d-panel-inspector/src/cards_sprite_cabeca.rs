@@ -6,9 +6,10 @@ use crate::slot_image::{self, SlotImage};
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::IconId;
 use ph2d_editor_core::InspectorImageUse;
+use ph2d_editor_core::math::safe_clamp;
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_text_elided, paint_text_title_elided, push_rounded_clip, resolve,
-    stroke_rounded_rect,
+    fill_rounded_rect, frame_radius, paint_text_elided, paint_text_title_elided, push_rounded_clip,
+    resolve, stroke_frame,
 };
 use ph2d_editor_core::panel::cards::CardCtx;
 use ph2d_editor_core::panel::cards::verbos::{VERBO_H, Verbo};
@@ -16,6 +17,7 @@ use ph2d_editor_core::screens::hero::InspectorSpriteInfo;
 use ph2d_editor_core::widget::ButtonState;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
+use ph2d_tokens::visuals::Feel;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, TypeToken};
 
 /// A miniatura é quadrada e mede três botões: a imagem é o que se lê primeiro no cartão (referência do dono, 05/11).
@@ -141,7 +143,11 @@ pub(crate) fn cabeca(c: &mut CardCtx<'_>, y: f32, info: &InspectorSpriteInfo) ->
         .as_deref()
         .map_or(0.0, |t| c.text_system.prefix_width(t, TAMANHO_PX).ceil());
     let util = w0 - pad * 2.0;
-    let lado_largo = (util - gap - pede_tamanho).clamp(VERBO_H * LADOS_MINIMOS, VERBO_H * LADOS);
+    let lado_largo = safe_clamp(
+        util - gap - pede_tamanho,
+        VERBO_H * LADOS_MINIMOS,
+        VERBO_H * LADOS,
+    );
     let tw_largo = (util - lado_largo - gap).max(0.0);
     let largo = pede_tamanho <= tw_largo && c.verbos_cabem_lado_a_lado(&verbos, tw_largo);
     // Na pilha é a coluna dos botões que pede: a miniatura cede até ao mínimo, nunca os botões.
@@ -152,7 +158,11 @@ pub(crate) fn cabeca(c: &mut CardCtx<'_>, y: f32, info: &InspectorSpriteInfo) ->
     let lado = if largo {
         lado_largo
     } else {
-        (util - gap - pede_coluna).clamp(VERBO_H * LADOS_MINIMOS, VERBO_H * LADOS)
+        safe_clamp(
+            util - gap - pede_coluna,
+            VERBO_H * LADOS_MINIMOS,
+            VERBO_H * LADOS,
+        )
     };
     let alto = VERBO_H * LADOS;
     let tx = x0 + pad + lado + gap;
@@ -161,7 +171,8 @@ pub(crate) fn cabeca(c: &mut CardCtx<'_>, y: f32, info: &InspectorSpriteInfo) ->
     // Um degrau abaixo do cartão, e os botões um degrau acima dela (a referência do dono).
     let superficie = c.ink.color(ColorToken::CardField);
     let moldura = Rect::new(x0, y, w0, fundo - y);
-    fill_rounded_rect(c.scene, moldura, Radius::Sm.px(), superficie);
+    let raio = frame_radius(c.ink.theme, Radius::Sm.px());
+    fill_rounded_rect(c.scene, moldura, raio, superficie);
     let topo = y + pad;
     let foto = Rect::new(x0 + pad, topo + (alto - lado) * 0.5, lado, lado);
     miniatura(c, foto, img.as_ref());
@@ -227,10 +238,12 @@ fn troca_em_hover(c: &mut CardCtx<'_>, foto: Rect) {
         return;
     }
     let theme = c.ink.theme;
-    stroke_rounded_rect(
+    stroke_frame(
         c.scene,
         foto,
-        Radius::Sm.px(),
+        frame_radius(theme, Radius::Sm.px()),
+        theme,
+        Feel::Hovered,
         StrokeToken::Thick.px(),
         resolve(ColorToken::Accent, theme),
     );
@@ -257,7 +270,7 @@ fn troca_em_hover(c: &mut CardCtx<'_>, foto: Rect) {
 
 /// A imagem sobre o xadrez da transparência, com o aspecto dela, as duas recortadas pelo raio da miniatura.
 fn miniatura(c: &mut CardCtx<'_>, r: Rect, img: Option<&SlotImage>) {
-    push_rounded_clip(c.scene, r, Radius::Sm.px());
+    push_rounded_clip(c.scene, r, frame_radius(c.ink.theme, Radius::Sm.px()));
     ph2d_editor_core::widget::paint_checker(c.scene, r, 0.0);
     // O xadrez da referência é escuro: claro, ele brilha mais que o desenho.
     let veu = c

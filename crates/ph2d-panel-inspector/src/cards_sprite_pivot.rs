@@ -73,7 +73,7 @@ fn grade_do_pivot(c: &mut CardCtx<'_>, y: f32, f: slot_image::SpriteFacts) -> f3
     ph2d_editor_core::paint::fill_rounded_rect(
         c.scene,
         caixa,
-        ph2d_tokens::Radius::Sm.px(),
+        ph2d_editor_core::paint::frame_radius(theme, ph2d_tokens::Radius::Sm.px()),
         resolve(ColorToken::Bg2, theme),
     );
     let aceso = f

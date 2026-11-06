@@ -81,6 +81,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.edit_in_pixel.no_user" => {
             "The object using this image is gone, so this edit could not be kept."
         }
+        "shell.edit_in_pixel.upload_failed" => "The edited image could not be loaded: {e}",
         "shell.edit_in_pixel.no_pixels" => "This image is not in memory, so it can't be opened.",
         "shell.asset_drop_apply.could_not_apply" => "Could not apply: {e}",
         "shell.asset_drop_apply.texture_applied" => "Texture applied",

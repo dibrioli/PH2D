@@ -19,7 +19,7 @@ use ph2d_tool_vector::appearance;
 use ph2d_tool_vector::ids as vids;
 
 pub const CARD_OBJECT: NodeId = hash_node_id("cards.insp.object");
-pub const CARD_TRANSFORM: NodeId = hash_node_id("cards.insp.transform");
+pub const CARD_TRANSFORM: NodeId = ph2d_editor_core::ids::CARD_INSP_TRANSFORM;
 /// O Transform de uma imagem: a mesma coisa, com a dobra própria.
 pub const CARD_TRANSFORM_IMAGE: NodeId = hash_node_id("cards.insp.transform.image");
 pub const CARD_APPEARANCE: NodeId = hash_node_id("cards.insp.appearance");

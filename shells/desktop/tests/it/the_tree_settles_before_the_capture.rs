@@ -31,6 +31,7 @@
 //! controlos já verdes**.
 
 const UNDO: &str = include_str!("../../src/undo_app.rs");
+const MOTIVOS: &str = include_str!("../../src/undo_app_macros.rs");
 const MAIN: &str = include_str!("../../src/main.rs");
 
 /// A posição (em bytes) da 1ª ocorrência de `needle` em `src`, ou pânico com a razão.
@@ -49,8 +50,9 @@ fn at(src: &str, needle: &str, onde: &str) -> usize {
 fn the_tree_settles_before_the_capture() {
     // A cabeça do bloco da supressão (o 1.º motivo é hoje o jogo a correr, GEF 28/10 — e o do botão vem a seguir).
     // ⚠️ UIUX F41 (28d17458e4): os motivos moram na `motivo_da_supressao`, e o bloco é a chamada.
-    let funcao = at(UNDO, "fn motivo_da_supressao(", "undo_app.rs");
-    let corpo = &UNDO[funcao..];
+    // GEF 23 (dba76c53ae): a função desceu para `undo_app_macros.rs`; a chamada continua em `undo_app.rs`.
+    let funcao = at(MOTIVOS, "fn motivo_da_supressao(", "undo_app_macros.rs");
+    let corpo = &MOTIVOS[funcao..];
     let corpo = &corpo[..corpo.find("\n    }\n").expect("o fim da função")];
     assert!(
         corpo.contains("self.held_button.is_some()"),
@@ -92,7 +94,11 @@ fn the_tree_settles_before_the_capture() {
 /// o primeiro diff do artista carregaria a convergência dos sistemas dentro dele.
 #[test]
 fn the_first_baseline_is_settled_too() {
-    let baseline = at(UNDO, "if self.tira_a_base(!had_input) {", "undo_app.rs");
+    let baseline = at(
+        UNDO,
+        "if !aberta && self.tira_a_base(!had_input) {",
+        "undo_app.rs",
+    );
     let bloco = &UNDO[baseline..baseline + 240];
     assert!(
         bloco.contains("self.settle_tree_before_capture();"),

@@ -220,7 +220,7 @@ fn convite(c: &mut CardCtx<'_>, y: f32) -> f32 {
     ph2d_editor_core::paint::stroke_rounded_rect_dashed(
         c.scene,
         caixa,
-        ph2d_tokens::Radius::Md.px(),
+        ph2d_editor_core::paint::frame_radius(theme, ph2d_tokens::Radius::Md.px()),
         ph2d_tokens::StrokeToken::Default.px(),
         m::LOOSE_DASH,
         resolve(ColorToken::Border, theme),

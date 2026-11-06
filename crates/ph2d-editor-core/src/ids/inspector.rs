@@ -99,3 +99,6 @@ pub const GAL_CLOSE: NodeId = hash_node_id("gal_close");
 // selected joint object — kind, the two bodies it names, and the parameters
 // the chosen kind actually uses.
 // ---------------------------------------------------------------------------
+
+/// O cartão Transform do Inspector (a crate do painel e os smokes de baixo da cadeia nomeiam este).
+pub const CARD_INSP_TRANSFORM: NodeId = hash_node_id("cards.insp.transform");

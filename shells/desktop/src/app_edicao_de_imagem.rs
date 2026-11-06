@@ -2,7 +2,7 @@
 //! em `ph2d_sprite_edit` e na porta `ph2d_app_pixel::imagem`.
 
 use ph2d_ecs::Entity;
-use ph2d_i18n::tr;
+use ph2d_i18n::{tr, tr_with};
 use ph2d_sprite_edit::achatados::Achatados;
 use ph2d_sprite_edit::{imagem, no_pixel};
 use ph2d_tool_painter::PainterTool;
@@ -153,7 +153,10 @@ fn leva_a_imagem(
     let t = match r {
         Ok(t) => t,
         Err(e) => {
-            gfx.toasts.push(ph2d_editor_core::Toast::warning(e));
+            gfx.toasts.push(ph2d_editor_core::Toast::warning(tr_with(
+                "shell.edit_in_pixel.upload_failed",
+                &[("e", &e)],
+            )));
             return None;
         }
     };

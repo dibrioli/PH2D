@@ -79,3 +79,6 @@ Veredictos: Borracha OK; óleos OK; relevo «melhorou quase 100%». Decisões: r
 
 ## Bug #72, depois do smoke (05/11)
 Wet a 1080p: 1.º toque abaixo de um quadro na sonda (motor e papel prontos noutro fio, planos pelos núcleos, os mesmos bytes). Aberto: Watercolor Basic, telas grandes, e o quadro de ~90 ms do Wet Wash a 3240². Tabelas e recusas em [BUGS #72](../BUGS_painter.md). Cena do app real: `PH2D_WETPAINT_SMOKE=3 PH2D_FPS_PRIMEIRO=<0..4> PH2D_FPS_TELA=<lado>`.
+
+## Handoff de integração e próxima fase
+Fecho da linha: [HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-05_NOITE.md](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-05_NOITE.md). Ordem do dono para amanhã: [PROXIMA_FASE_2026-11-06.md](../PROXIMA_FASE_2026-11-06.md).

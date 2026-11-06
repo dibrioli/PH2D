@@ -125,3 +125,4 @@
 - 📚 [Arquitetura / norte / perf: mais (29) lições — caminho DERIVADO × do ARTISTA · ASSAR (7,7×)](reference_topic_architecture_north_perf_lessons.md)
 - [fixture (19)](reference_topic_fixture_discipline.md)
 - [Provas de mutação (43) — 4 controlos, pré-voo das âncoras · cercas em SEQUÊNCIA](reference_topic_mutation_proofs.md)
+- ⭐ [Dono 05/11 noite: próxima fase Painter (redo · mescla aguada/óleo · travamento · Clip Studio); Watercolor Basic NÃO muda](project_next_phase_painter_2026_11_06.md)

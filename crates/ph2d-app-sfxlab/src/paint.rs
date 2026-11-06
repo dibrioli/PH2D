@@ -7,15 +7,16 @@ use ph2d_editor_core::paint::{
 use ph2d_editor_core::ruler::label_step;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
-use ph2d_sfx_recipe::{Layer, LayerId, Source};
+use ph2d_panel_sfxlab::{medidor, nome_da_camada};
+use ph2d_sfx_recipe::{Layer, LayerId};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken as T, Theme};
 use ph2d_vector::{Affine, BezPath, Brush, Color, VectorScene};
 
 use crate::aba::{Aba, Alvo, Gesto};
-use crate::job::Onda;
 use crate::metrics as m;
 use crate::novo::Fonte;
+use ph2d_sfx_lab::job::Onda;
 
 struct P<'a> {
     scene: &'a mut VectorScene,
@@ -68,17 +69,12 @@ pub(crate) fn aba(
     a.alvos.clear();
 
     let fundo = over.map_or(area.y + area.h, |o| o.y.min(area.y + area.h));
-    a.coluna = Rect::new(
-        area.x + area.w - m::COLUMN_W,
-        area.y,
-        m::COLUMN_W,
-        fundo - area.y,
-    );
-    a.corpo = Rect::new(area.x, area.y, area.w - m::COLUMN_W, fundo - area.y);
+    a.corpo = Rect::new(area.x, area.y, area.w, fundo - area.y);
     let corpo = a.corpo;
     let esquerda = corpo.x + m::PAD;
     let x_pista = esquerda + m::STACK_W + m::GAP;
-    let w_pista = (corpo.x + corpo.w - m::PAD - x_pista).max(1.0);
+    let x_medidor = corpo.x + corpo.w - m::PAD - medidor::LARGURA;
+    let w_pista = (x_medidor - m::GAP - x_pista).max(1.0);
 
     barra(a, &mut p, corpo);
 
@@ -95,8 +91,20 @@ pub(crate) fn aba(
     let h_linhas = (base - topo_linhas).max(0.0);
     a.rolagem_max = (conteudo - h_linhas).max(0.0);
     a.rolagem = a.rolagem.min(a.rolagem_max);
-    a.linhas = Rect::new(esquerda, topo_linhas, corpo.w - 2.0 * m::PAD, h_linhas);
+    a.linhas = Rect::new(
+        esquerda,
+        topo_linhas,
+        x_pista + w_pista - esquerda,
+        h_linhas,
+    );
 
+    medidor::pinta(
+        a.pronto.as_ref().map(|f| &f.medida),
+        Rect::new(x_medidor, y_regua, medidor::LARGURA, fundo - y_regua),
+        p.scene,
+        p.ts,
+        theme,
+    );
     regua(a, &mut p, regua_r);
     mix(
         a,
@@ -245,7 +253,15 @@ fn regua(a: &Aba, p: &mut P<'_>, r: Rect) {
 
 fn mix(a: &Aba, p: &mut P<'_>, esquerda: f32, r: Rect) {
     let rotulo = Rect::new(esquerda, r.y, m::STACK_W, r.h);
-    p.caixa(rotulo, T::Bg2);
+    // Nenhuma camada escolhida: os cartões são os do som inteiro, e a linha do Mix mostra isso.
+    p.caixa(
+        rotulo,
+        if a.sel.is_none() {
+            T::Selection
+        } else {
+            T::Bg2
+        },
+    );
     p.texto(
         tr("sfxlab.mix"),
         esquerda + m::BUTTON_PAD_X,
@@ -279,15 +295,6 @@ fn pilha(a: &mut Aba, p: &mut P<'_>, esquerda: f32, x_pista: f32, w_pista: f32) 
     p.scene.pop_layer();
 }
 
-fn nome_da_fonte(s: &Source) -> &'static str {
-    match s {
-        Source::Noise(_) => tr("sfxlab.layer.noise"),
-        Source::Tone(_) => tr("sfxlab.layer.tone"),
-        Source::Body(_) => tr("sfxlab.layer.body"),
-        Source::Recording(_) => tr("sfxlab.layer.recording"),
-    }
-}
-
 fn linha(a: &mut Aba, p: &mut P<'_>, l: &Layer, x: f32, y: f32) {
     let r = Rect::new(x, y, m::STACK_W, m::ROW_H);
     let selecionada = a.sel == Some(l.id);
@@ -312,8 +319,9 @@ fn linha(a: &mut Aba, p: &mut P<'_>, l: &Layer, x: f32, y: f32) {
     let cor_nome = if l.muted { T::Text3 } else { T::Text1 };
     let x_nome = alca.x + alca.w + m::GAP;
     let ate = x + m::STACK_W - 2.0 * (m::TOGGLE + m::ROW_GAP) - m::GAP;
+    let nome = nome_da_camada(&a.receita, l);
     p.texto(
-        nome_da_fonte(&l.source),
+        &nome,
         x_nome,
         Rect::new(x_nome, y, ate - x_nome, m::ROW_H),
         m::TEXT_PX,

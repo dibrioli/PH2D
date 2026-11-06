@@ -18,7 +18,9 @@ ph2d-audio = { path = "../ph2d-audio" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-host = { path = "../ph2d-host" }
 ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-panel-sfxlab = { path = "../ph2d-panel-sfxlab" }
 ph2d-sfx-dsp = { path = "../ph2d-sfx-dsp" }
+ph2d-sfx-lab = { path = "../ph2d-sfx-lab" }
 ph2d-sfx-recipe = { path = "../ph2d-sfx-recipe", features = ["component"] }
 # O nível do `PH2D_SFX_SMOKE`: um roteador só, o que monta o mundo da cena.
 ph2d-sfx-scene = { path = "../ph2d-sfx-scene" }

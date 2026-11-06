@@ -47,6 +47,8 @@ fn desce(a: &mut Aba, x: f32, y: f32) -> bool {
         Some(Alvo::Linha(id)) => a.sel = Some(id),
         Some(Alvo::Regua) => a.cursor = tempo_em(a, x),
         Some(p) => a.prensa = Some(p),
+        // Fora de tudo (a faixa do Mix, por exemplo): os cartões passam a ser os do som inteiro.
+        None if no_corpo => a.sel = None,
         None => {}
     }
     no_corpo

@@ -256,6 +256,8 @@ pub struct HeroScreen {
     /// reads it to publish chrome rects. `BTreeMap` (not `HashMap`)
     /// per HR-5: bit-determinism rules out non-fixed hashers.
     pub panel_visibility: std::collections::BTreeMap<&'static str, bool>,
+    /// A vaga emprestada a uma aba: como cada painel estava antes, e é isso que o layout grava.
+    pub panel_emprestado: std::collections::BTreeMap<&'static str, bool>,
     /// ⭐⭐⭐ **O que cada fecho de coluna levou consigo** — `[esquerda, direita]`.
     ///
     /// ⚠️ **Sem isto, reabrir é uma re-derivação — e uma re-derivação é um SUPERCONJUNTO por
@@ -452,6 +454,7 @@ impl HeroScreen {
             // HUD + grid overlay visible; everything else off / None.
             view: ViewState::default(),
             panel_visibility: panel_ids::default_panel_visibility(),
+            panel_emprestado: std::collections::BTreeMap::new(),
             dock_closed: [None, None],
             image_edit: ImageEditState::default(),
             gizmo: GizmoStateGroup::default(),
@@ -476,10 +479,20 @@ impl HeroScreen {
         }
     }
 
+    /// Como o painel fica no arquivo de layout: uma vaga emprestada não muda o que o artista deixou.
+    #[must_use]
+    pub fn panel_no_arquivo(&self, id: &str) -> bool {
+        self.panel_emprestado
+            .get(id)
+            .copied()
+            .unwrap_or_else(|| self.is_panel_visible(id))
+    }
+
     /// ADR-0029 Phase C.1 panel-visibility accessor. Mirrors the
     /// `PanelHostInternal::panel_visible` impl below so editor-core
     /// code paths (orchestrator chrome publish, left-rail toggle)
     /// can read without dyn-dispatching through the trait.
+    #[must_use]
     pub fn is_panel_visible(&self, id: &str) -> bool {
         self.panel_visibility.get(id).copied().unwrap_or(false)
     }

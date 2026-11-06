@@ -42,6 +42,12 @@ pub struct Armacao {
 /// ⭐ **A população que a varredura sabe armar.** Uma entrada nova aqui é um painel que deixa de
 /// ser medido vazio.
 pub const TABELA: &[Armacao] = &[
+    // Os cartões do som: a camada de mais campos, o corpo vibrante.
+    Armacao {
+        painel: "sfxlab",
+        arma: |_| arma_o_som(),
+        desarma: || ph2d_panel_sfxlab::publica(None),
+    },
     Armacao {
         painel: "inspector",
         arma: |_| super::o_inspector_armado::arma_tudo(),
@@ -429,4 +435,28 @@ fn desarma_a_linha_do_tempo() {
     ph2d_panel_pixel_timeline::set_current_pixel(
         ph2d_editor_core::pixel_panel::PixelPanelInfo::default(),
     );
+}
+
+fn arma_o_som() {
+    use ph2d_sfx_recipe::{Body, Envelope, ModeLaw, Recipe, Source};
+    let mut receita = Recipe::new(1, 1.0);
+    let sel = receita.add(
+        1.0,
+        Source::Body(Body {
+            law: ModeLaw::Stretched { stretch: 1.5 },
+            base_hz: 420.0,
+            modes: 12,
+            t60: 0.8,
+            damping: 0.1,
+            rolloff: 0.8,
+            contact_ms: 1.0,
+            noise: 0.2,
+        }),
+        Envelope::hit(0.001, 0.4, 0.01),
+    );
+    ph2d_panel_sfxlab::publica(Some(ph2d_panel_sfxlab::Instantaneo {
+        receita,
+        sel: Some(sel),
+        materiais: Vec::new(),
+    }));
 }

@@ -22,6 +22,8 @@ pub const PANEL_Z_ORDER_FALLBACK: &[ph2d_a11y::NodeId] = &[
     ids::VGRAPH_PANEL,
     ids::BGR_PANEL,
     ids::PAD_PANEL,
+    // Os cartões do SFX Lab: na vaga do Inspector com a aba do som ativa.
+    ids::SFX_PANEL,
     ids::CEQ_PANEL,
     ids::EQS_PANEL,
     ids::UPS_PANEL,

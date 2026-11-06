@@ -5,6 +5,7 @@ use std::sync::Arc;
 use bevy_ecs::world::World;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr_with;
+use ph2d_sfx_lab::medida::Medida;
 use ph2d_sfx_recipe::{LayerId, Recipe, SfxLibrary, Takes};
 
 use crate::aba::{Aba, Alvo};
@@ -204,10 +205,22 @@ impl SfxLabDocs {
             .map(|(_, r)| *r)
     }
 
-    /// A coluna direita, que é do painel.
+    /// Os medidores do render mais novo que chegou.
     #[must_use]
-    pub fn coluna(&self, id: u64) -> Option<Rect> {
-        self.aba(id).map(|a| a.coluna)
+    pub fn medida(&self, id: u64) -> Option<&Medida> {
+        self.aba(id)?.pronto.as_ref().map(|f| &f.medida)
+    }
+
+    /// A área que a aba recebeu na última pintura.
+    #[must_use]
+    pub fn area(&self) -> Option<Rect> {
+        self.area
+    }
+
+    /// O som como se ouve, do render mais novo que chegou.
+    #[must_use]
+    pub fn escuta(&self, id: u64) -> Option<&[f32]> {
+        self.aba(id)?.pronto.as_ref().map(|f| f.escuta.as_slice())
     }
 }
 

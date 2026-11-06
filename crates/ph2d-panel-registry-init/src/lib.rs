@@ -94,6 +94,8 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     >());
     #[cfg(feature = "panel-pixel-tools")]
     reg.push(ErasedPanel::new::<ph2d_panel_pixel_tools::PixelToolsPanel>());
+    #[cfg(feature = "panel-sfxlab")]
+    reg.push(ErasedPanel::new::<ph2d_panel_sfxlab::SfxLabPanel>());
     #[cfg(feature = "panel-skeleton")]
     reg.push(ErasedPanel::new::<ph2d_panel_skeleton::SkeletonPanel>());
     #[cfg(feature = "panel-tags")]
@@ -155,6 +157,10 @@ mod tests {
             n += 1;
         }
         #[cfg(feature = "panel-padding")]
+        {
+            n += 1;
+        }
+        #[cfg(feature = "panel-sfxlab")]
         {
             n += 1;
         }

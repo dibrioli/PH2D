@@ -35,6 +35,7 @@ ph2d-panel-pixel-preview = { path = "../ph2d-panel-pixel-preview", optional = tr
 ph2d-panel-pixel-tiles = { path = "../ph2d-panel-pixel-tiles", optional = true }
 ph2d-panel-pixel-timeline = { path = "../ph2d-panel-pixel-timeline", optional = true }
 ph2d-panel-pixel-tools = { path = "../ph2d-panel-pixel-tools", optional = true }
+ph2d-panel-sfxlab = { path = "../ph2d-panel-sfxlab", optional = true }
 ph2d-panel-skeleton = { path = "../ph2d-panel-skeleton", optional = true }
 ph2d-panel-tags = { path = "../ph2d-panel-tags", optional = true }
 ph2d-panel-timeline = { path = "../ph2d-panel-timeline", optional = true }
@@ -53,6 +54,8 @@ default = [
     # nao tool-gated, DEFAULT_VISIBLE=false — registado sempre, pintado quando o pill Assets pede.
     "panel-asset-browser",
     "panel-bgremoval", "panel-padding", "panel-vector",
+    # Os cartões do SFX Lab: abrem e fecham com a aba do som.
+    "panel-sfxlab",
     # ⭐⭐⭐ O painel do ESQUELETO — era uma seccao do painel de vetor e saiu de la' por ordem do
     # dono (2026-09-09): medido, o cabecalho dela caia em `y = 1394 px` sobre uma faixa visivel de
     # `774`, com 785 px de seccoes acima a falar de coisas que um osso nao tem.
@@ -108,6 +111,7 @@ panel-pixel-preview = ["dep:ph2d-panel-pixel-preview"]
 panel-pixel-tiles = ["dep:ph2d-panel-pixel-tiles"]
 panel-pixel-timeline = ["dep:ph2d-panel-pixel-timeline"]
 panel-pixel-tools = ["dep:ph2d-panel-pixel-tools"]
+panel-sfxlab = ["dep:ph2d-panel-sfxlab"]
 panel-skeleton = ["dep:ph2d-panel-skeleton"]
 panel-tags = ["dep:ph2d-panel-tags"]
 panel-timeline = ["dep:ph2d-panel-timeline"]
@@ -120,6 +124,8 @@ panel-widget-lab = ["dep:ph2d-panel-widget-lab"]
 # <ph2d-panel-sync:features:end>
 
 [dev-dependencies]
+# A armação dos cartões do som (`paineis_armados`).
+ph2d-sfx-recipe = { path = "../ph2d-sfx-recipe" }
 ph2d-pixel-core = { path = "../ph2d-pixel-core" }
 ph2d-pixel-io = { path = "../ph2d-pixel-io" }
 # ⭐ Os censos daqui medem o APP — o `default` do shell, que liga os 25 painéis. Os quatro de baixo

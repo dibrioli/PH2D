@@ -25,6 +25,12 @@ impl Historia {
         self.gesto = Some(atual.clone());
     }
 
+    /// A receita de quando o gesto abriu.
+    #[must_use]
+    pub fn inicio_do_gesto(&self) -> Option<&Recipe> {
+        self.gesto.as_ref()
+    }
+
     #[must_use]
     pub fn em_gesto(&self) -> bool {
         self.gesto.is_some()

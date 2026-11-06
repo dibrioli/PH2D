@@ -6,8 +6,8 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_sfx_recipe::{LayerId, Recipe, Takes};
 
 use crate::historia::Historia;
-use crate::job::{Feito, Pedido, RenderJob};
 use crate::novo::Fonte;
+use ph2d_sfx_lab::job::{Feito, Pedido, RenderJob};
 
 /// O que a tela sabe receber. O id da camada é o da receita.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -52,6 +52,8 @@ pub(crate) struct Aba {
     pub quer_parar: bool,
     pub cursor: f32,
     pub gesto: Option<Gesto>,
+    /// O gesto de desfazer em curso é de um campo dos cartões.
+    pub gesto_do_cartao: bool,
     pub prensa: Option<Alvo>,
     pub hover: Option<Alvo>,
     pub menu_add: bool,
@@ -61,7 +63,6 @@ pub(crate) struct Aba {
     /// A pista do tempo, da última pintura.
     pub pista: Rect,
     pub linhas: Rect,
-    pub coluna: Rect,
     pub corpo: Rect,
 }
 
@@ -92,6 +93,7 @@ impl Aba {
             quer_parar: false,
             cursor: 0.0,
             gesto: None,
+            gesto_do_cartao: false,
             prensa: None,
             hover: None,
             menu_add: false,
@@ -100,7 +102,6 @@ impl Aba {
             alvos: Vec::new(),
             pista: nada,
             linhas: nada,
-            coluna: nada,
             corpo: nada,
         };
         a.pede();

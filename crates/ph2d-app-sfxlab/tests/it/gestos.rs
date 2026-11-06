@@ -283,16 +283,3 @@ fn a_regua_poe_o_cursor_e_o_play_comeca_ali() {
     let tocado = m.escuta.toques[0].len();
     assert!(tocado.abs_diff(tudo / 2) <= 2, "{tocado} de {tudo}");
 }
-
-#[test]
-fn a_coluna_direita_e_reservada_e_a_tela_nao_clica_nela() {
-    let mut m = Mesa::new();
-    let id = impact(&mut m);
-    let col = m.docs().coluna(id).expect("coluna");
-    assert!(col.w > 0.0);
-    assert_eq!(col.x + col.w, crate::AREA.x + crate::AREA.w);
-    assert!(
-        !m.carrega((col.x + col.w / 2.0, col.y + 100.0)),
-        "é do painel"
-    );
-}

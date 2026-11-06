@@ -17,8 +17,6 @@ pub(crate) const BUTTON_PAD_X: f32 = 12.0;
 pub(crate) const CHECK: f32 = 12.0;
 pub(crate) const CHECK_RADIUS: f32 = 3.0;
 
-/// A coluna direita: é do painel dos cartões (passo 4).
-pub(crate) const COLUMN_W: f32 = 280.0;
 pub(crate) const STACK_W: f32 = 232.0;
 
 pub(crate) const RULER_H: f32 = 24.0;

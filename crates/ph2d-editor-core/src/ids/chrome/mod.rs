@@ -48,6 +48,7 @@ mod rail;
 mod rail_painter;
 /// ⭐⭐⭐ **Os ids do painel TAGS** (TOP-20 #9) — o rect do painel e o abridor do menu, que são
 /// os dois que o CHROME lê. Os controlos vivem na crate do painel.
+mod sfxlab;
 mod tags;
 mod timeline;
 /// **Os ids do painel de TOKENS** (plano UI/UX W6) — a tabela de cor do design system,
@@ -79,6 +80,7 @@ pub use pixel_filter::*;
 pub use prefab::*;
 pub use rail::*;
 pub use rail_painter::*;
+pub use sfxlab::*;
 pub use tags::*;
 pub use timeline::*;
 pub use tokens::*;

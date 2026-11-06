@@ -7,6 +7,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::thread::JoinHandle;
 
+use crate::medida::{self as medidor, Medida};
 use ph2d_sfx_dsp::{Pcm, RenderCache, RenderError, limitar_escuta};
 use ph2d_sfx_recipe::{LayerId, Recipe, Takes};
 
@@ -59,6 +60,8 @@ pub struct Feito {
     pub escuta: Vec<f32>,
     pub mix: Onda,
     pub camadas: BTreeMap<LayerId, Onda>,
+    /// O que os medidores mostram: o arquivo, sem limitador nem solo.
+    pub medida: Medida,
 }
 
 pub struct RenderJob {
@@ -155,6 +158,10 @@ fn rende(
         None => pcm.clone(),
     };
     let escuta = limitar_escuta(&ouvida.samples, ouvida.rate);
+    if cancelado() {
+        return Err(RenderError::Cancelled);
+    }
+    let medida = medidor::mede(&pcm.samples, pcm.rate);
     let camadas = r
         .layers
         .iter()
@@ -164,6 +171,7 @@ fn rende(
         ticket,
         mix: Onda::de(&pcm.samples),
         camadas,
+        medida,
         escuta,
         pcm,
     })

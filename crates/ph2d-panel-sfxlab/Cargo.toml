@@ -1,0 +1,39 @@
+[package]
+name = "ph2d-panel-sfxlab"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Os cartões do SFX Lab (docs/SfxLab/04_W3_plano.md): ocupa a vaga do Inspector enquanto a aba do som está ativa.
+# A tabela `Campo` (`ph2d-sfx-lab`) gera o populate, o prepare, os cartões e o despacho.
+[dependencies]
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-sfx-lab = { path = "../ph2d-sfx-lab" }
+ph2d-sfx-recipe = { path = "../ph2d-sfx-recipe" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+ph2d-vector = { path = "../ph2d-vector" }
+
+[dev-dependencies]
+bevy_ecs = "0.20"
+ph2d-audio = { path = "../ph2d-audio" }
+bumpalo = "3"
+ph2d-app-sfxlab = { path = "../ph2d-app-sfxlab" }
+ph2d-host = { path = "../ph2d-host" }
+ph2d-sfx-dsp = { path = "../ph2d-sfx-dsp" }
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+
+[[test]]
+name = "it"
+path = "tests/it/main.rs"
+
+[lints]
+workspace = true

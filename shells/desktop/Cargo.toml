@@ -551,6 +551,7 @@ default = [
     "panel-flip",
     "panel-flip-frames",
     "panel-audio-mixer",
+    "panel-sfxlab",
     "panel-audio-editor",
     "panel-motion-graph",
     "panel-timeline",
@@ -617,6 +618,7 @@ panel-grid-snap      = ["ph2d-panel-registry-init/panel-grid-snap"]
 # Direct dep too: the render_loop bridge publishes live levels via
 # `set_snapshot` + reads `master_muted` to drive the engine's master gain.
 panel-audio-mixer    = ["ph2d-panel-registry-init/panel-audio-mixer"]
+panel-sfxlab         = ["ph2d-panel-registry-init/panel-sfxlab"]
 # General timeline docked panel. `ph2d-panel-timeline` is already a non-optional
 # direct dep (render_loop publishes its snapshot via `set_current_timeline`), so
 # this only needs to flip the registry-init feature that compiles in the

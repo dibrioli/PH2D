@@ -405,7 +405,7 @@ pub fn current(hero: &ph2d_editor_core::HeroScreen) -> Layout {
                 tab_order.push((i, m.id.to_string()));
             }
             // ⚠️ Só a DIFERENÇA do que o painel declara — ver `Layout::open`.
-            if hero.is_panel_visible(m.id) != m.default_visible {
+            if hero.panel_no_arquivo(m.id) != m.default_visible {
                 open.push(m.id.to_string());
             }
         }

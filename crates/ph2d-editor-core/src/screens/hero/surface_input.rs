@@ -15,6 +15,10 @@ impl HeroScreen {
     /// script» — não conta: o teclado e a composição seguem para o documento).
     #[must_use]
     pub fn text_entry_focused(&self) -> bool {
+        // O scrub de um campo não tem foco, e o Esc dele tem de chegar ao campo: é ele que devolve o valor.
+        if self.store.number_input_drag().is_some() {
+            return true;
+        }
         self.store.focus_id().is_some_and(|id| {
             matches!(
                 self.store.get(id),

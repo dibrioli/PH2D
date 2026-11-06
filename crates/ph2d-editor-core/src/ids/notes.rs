@@ -243,6 +243,7 @@ mod tests {
             crate::ids::AUDIO_MIXER_PANEL,
             crate::ids::HIER_PANEL,
             crate::ids::PAD_PANEL,
+            crate::ids::SFX_PANEL,
             crate::ids::TOKENS_PANEL,
         ];
         let mut todos: Vec<NodeId> = paineis

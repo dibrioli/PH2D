@@ -6209,7 +6209,9 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-i18n",
+ "ph2d-panel-sfxlab",
  "ph2d-sfx-dsp",
+ "ph2d-sfx-lab",
  "ph2d-sfx-recipe",
  "ph2d-sfx-scene",
  "ph2d-text",
@@ -10122,6 +10124,7 @@ dependencies = [
  "ph2d-panel-pixel-timeline",
  "ph2d-panel-pixel-tools",
  "ph2d-panel-registry-init",
+ "ph2d-panel-sfxlab",
  "ph2d-panel-skeleton",
  "ph2d-panel-sync",
  "ph2d-panel-tags",
@@ -10135,6 +10138,7 @@ dependencies = [
  "ph2d-pixel-core",
  "ph2d-pixel-io",
  "ph2d-render",
+ "ph2d-sfx-recipe",
  "ph2d-skeleton",
  "ph2d-skeleton-ecs",
  "ph2d-skeleton-live",
@@ -10151,6 +10155,28 @@ dependencies = [
  "ph2d-vec-pattern",
  "ph2d-vec-render",
  "ph2d-vec-scene",
+ "ph2d-vector",
+]
+
+[[package]]
+name = "ph2d-panel-sfxlab"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "bumpalo",
+ "ph2d-a11y",
+ "ph2d-app-sfxlab",
+ "ph2d-audio",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-i18n",
+ "ph2d-sfx-dsp",
+ "ph2d-sfx-lab",
+ "ph2d-sfx-recipe",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-tool-registry",
+ "ph2d-ui-testkit",
  "ph2d-vector",
 ]
 
@@ -10653,6 +10679,18 @@ dependencies = [
  "ph2d-det-math",
  "ph2d-sfx-recipe",
  "postcard",
+]
+
+[[package]]
+name = "ph2d-sfx-lab"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-audio",
+ "ph2d-audio-spectral",
+ "ph2d-sfx-dsp",
+ "ph2d-sfx-recipe",
+ "ph2d-tool-registry",
 ]
 
 [[package]]

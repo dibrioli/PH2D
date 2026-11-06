@@ -115,7 +115,44 @@ pub(crate) fn library(
             *n = Some(name);
         }
     }
-    unique(&paths_of(db), &ids)
+    let paths = paths_of(db);
+    herda_o_nome(
+        &mut ids,
+        &live,
+        &paths,
+        &ph2d_sprite_edit::imagem::origens(),
+    );
+    unique(&paths, &ids)
+}
+
+/// ⭐ **A imagem editada continua a ser a mesma para o artista** (dono 05/11): herda o nome da de onde veio e toma-lhe o
+/// lugar, enquanto só ela estiver em uso. Sem nome conhecido na origem, fica o de quem a usa, como antes de editar.
+fn herda_o_nome(
+    ids: &mut BTreeMap<AssetId, Option<String>>,
+    live: &BTreeSet<AssetId>,
+    paths: &BTreeMap<AssetId, PathBuf>,
+    origens: &BTreeMap<AssetId, AssetId>,
+) {
+    for novo in origens.keys().filter(|n| live.contains(n)) {
+        let mut cadeia = vec![];
+        let mut a = *novo;
+        while let Some(&o) = origens.get(&a).filter(|o| !cadeia.contains(*o)) {
+            cadeia.push(o);
+            a = o;
+        }
+        let nome_de = |id: &AssetId| {
+            paths
+                .get(id)
+                .and_then(|p| stem(p))
+                .or_else(|| ids.get(id).cloned().flatten())
+        };
+        if let Some(nome) = cadeia.last().and_then(nome_de) {
+            ids.insert(*novo, Some(nome));
+        }
+        for o in cadeia.iter().filter(|o| !live.contains(*o)) {
+            ids.remove(o);
+        }
+    }
 }
 
 /// A biblioteca da sessão, com nome — a porta do script ([`crate::script_image`]).

@@ -60,6 +60,7 @@ ph2d-health = { path = "../ph2d-health" }
 # escreve — a mesma porta do readout das juntas da física.
 ph2d-vector = { path = "../ph2d-vector" }
 ph2d-render = { path = "../ph2d-render" }
+ph2d-sprite-edit = { path = "../ph2d-sprite-edit" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }

@@ -5691,6 +5691,7 @@ dependencies = [
  "ph2d-script",
  "ph2d-shake",
  "ph2d-skeleton-ecs",
+ "ph2d-sprite-edit",
  "ph2d-tags",
  "ph2d-text",
  "ph2d-thumbnail",

@@ -4,7 +4,7 @@
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::{Entity, SpritePixels, World};
 use ph2d_render::{Sprite, SpriteSource, texture_of};
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 
 /// Sobe RGBA8 à placa e devolve a textura (o `SpriteRenderer` no app).
@@ -13,6 +13,22 @@ pub type Sobe<'a> = dyn FnMut(u32, u32, &[u8]) -> Result<u32, String> + 'a;
 thread_local! {
     /// A imagem aberta no Painter pelo botão: `(objecto, imagem)`. A próxima pintura dele vale para quem a usa.
     static EDICAO: Cell<Option<(Entity, AssetId)>> = const { Cell::new(None) };
+    /// De que imagem cada edição veio: a edição é a mesma imagem para o artista, e herda-lhe o nome.
+    static ORIGENS: RefCell<BTreeMap<AssetId, AssetId>> = const { RefCell::new(BTreeMap::new()) };
+}
+
+/// Cada imagem editada nesta sessão e a de onde veio. Não viaja no projeto: o `.ph2dproj` não grava nomes de imagem.
+#[must_use]
+pub fn origens() -> BTreeMap<AssetId, AssetId> {
+    ORIGENS.with(|o| o.borrow().clone())
+}
+
+fn veio_de(novo: AssetId, antigo: AssetId) {
+    if novo != antigo {
+        ORIGENS.with(|o| {
+            o.borrow_mut().entry(novo).or_insert(antigo);
+        });
+    }
 }
 
 /// A imagem da biblioteca que `e` mostra.
@@ -92,6 +108,7 @@ pub fn troca_os_pixeis(
     }
     let texture_id = acquire(w, h, &rgba)?;
     let novo = db.insert_image_rgba8(w, h, rgba);
+    veio_de(novo, antigo);
     let todos = usuarios(world, antigo, None, atlas);
     for e in &todos {
         aponta(world, *e, texture_id, novo, false);
@@ -123,6 +140,7 @@ pub fn segue_a_pintura(
     let Some(novo) = world.get::<SpritePixels>(e).map(|p| p.0) else {
         return 0;
     };
+    veio_de(novo, antigo);
     let premultiplied = world.get::<Sprite>(e).is_some_and(|s| s.premultiplied);
     let outros = usuarios(world, antigo, Some(e), atlas);
     for o in &outros {

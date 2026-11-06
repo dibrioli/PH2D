@@ -82,3 +82,7 @@ Shell desktop (`git diff --stat c61f228b05..HEAD -- shells/desktop`): 5 arquivos
 3. Provar Intel/ARM no Mac depois da integração.
 4. Limitações sabidas: `ImageUseMemory` não guarda marcadores (formato posicional; marcador cuja tag sumiu fica inerte); nenhum teste afirma o texto pintado dos avisos do cartão; a lista de 256 da oferta não foi pintada; Preview vai por `play_target`, rota lida e não clicada em teste; a crítica pergunta se o canal do objeto chega ao Mixer: não testado.
 5. Pendências do dono: biblioteca gravada e profissional para W4. A memória `project_sfx_module_no_ai_2026_11_05.md` fica para a integração.
+
+## Smoke do dono
+
+05/11: **smoke OK**, sem ressalva dita. Ele não comentou a ordem igual a cada Play nem a qualidade dos sons de teste. W1 não foi integrada: integrar é só por ordem dele. Próximo item: W2.

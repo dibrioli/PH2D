@@ -88,8 +88,10 @@ impl DocumentSurface for SfxLabDocs {
             .unwrap_or_default()
     }
 
-    fn compose(&mut self, _id: u64, _c: Compose<'_>) -> bool {
-        false
+    fn compose(&mut self, id: u64, c: Compose<'_>) -> bool {
+        self.aba_mut(id)
+            .and_then(|a| a.janela.as_mut())
+            .is_some_and(|j| j.compose(&c))
     }
 
     fn close(&mut self, id: u64) {
@@ -97,7 +99,9 @@ impl DocumentSurface for SfxLabDocs {
     }
 
     fn undo(&mut self, id: u64, redo: bool) -> bool {
-        self.aba_mut(id).is_some_and(|a| a.desfaz(redo))
+        // Com a janela aberta, o som por baixo não muda escondido.
+        self.aba_mut(id)
+            .is_some_and(|a| a.janela.is_some() || a.desfaz(redo))
     }
 
     fn a11y(&self, id: u64) -> Vec<(NodeId, ph2d_a11y::Node)> {
@@ -154,15 +158,18 @@ impl DocumentSurface for SfxLabDocs {
 
     fn pointer_look(&self, id: u64, x: f32, y: f32) -> Option<PointerLook> {
         let a = self.abas.iter().find(|a| a.id == id)?;
+        if a.conta_gotas() {
+            return Some(PointerLook::Pick);
+        }
         a.corpo
             .contains(x, y)
             .then(|| crate::gestos::aparencia(a, x, y))
     }
 
     fn wants_frame(&self) -> bool {
-        self.abas
-            .iter()
-            .any(|a| a.em_voo() || a.quer_tocar || a.quer_usar)
+        self.abas.iter().any(|a| {
+            a.em_voo() || a.quer_tocar || a.quer_usar || a.quer_escolher || a.conta_gotas()
+        })
     }
 
     fn as_any(&self) -> &dyn Any {

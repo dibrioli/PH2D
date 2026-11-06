@@ -18,10 +18,8 @@ pub enum Alvo {
     Stop,
     PlayOnChange,
     UseInGame,
-    /// Uma linha da lista de objetos, pelo `StableId`.
-    Objeto(u64),
-    /// A linha que só explica: o clique fica nela.
-    ObjetoOff,
+    /// O que a janela do Use in Game registrou, com a lista pelo `StableId`.
+    Janela(ph2d_object_picker::Alvo),
     Regua,
     Linha(LayerId),
     Alca(LayerId),
@@ -66,15 +64,11 @@ pub(crate) struct Aba {
     pub menu_add: bool,
     /// O objeto a que este som se destina, pela identidade.
     pub ligado: Option<StableId>,
+    pub quer_escolher: bool,
     pub quer_usar: bool,
     pub objeto_sumiu: bool,
     pub recusa: Option<String>,
-    pub menu_objetos: bool,
-    pub objetos: Vec<(u64, String)>,
-    pub menu_ini: usize,
-    pub menu_max: usize,
-    pub menu_caixa: Rect,
-    pub x_usar: f32,
+    pub janela: Option<ph2d_object_picker::ObjectPicker>,
     pub rolagem: f32,
     pub rolagem_max: f32,
     pub alvos: Vec<(Alvo, Rect)>,
@@ -116,15 +110,11 @@ impl Aba {
             hover: None,
             menu_add: false,
             ligado: None,
+            quer_escolher: false,
             quer_usar: false,
             objeto_sumiu: false,
             recusa: None,
-            menu_objetos: false,
-            objetos: Vec::new(),
-            menu_ini: 0,
-            menu_max: 0,
-            menu_caixa: nada,
-            x_usar: 0.0,
+            janela: None,
             rolagem: 0.0,
             rolagem_max: 0.0,
             alvos: Vec::new(),
@@ -249,6 +239,15 @@ impl Aba {
             Some(id)
         };
         self.pede();
+        // Toca o render do solo novo: `servir` espera o ticket que acabou de ser pedido.
+        if self.play_on_change {
+            self.quer_tocar = true;
+        }
+    }
+
+    #[must_use]
+    pub fn conta_gotas(&self) -> bool {
+        self.janela.as_ref().is_some_and(|j| j.armado())
     }
 
     /// O que a barra diz, pelo render mais novo que chegou.

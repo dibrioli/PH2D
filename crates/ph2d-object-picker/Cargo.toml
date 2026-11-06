@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-object-picker"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A janela que escolhe um objeto da cena: busca, lista e conta-gotas. O campo de texto é o `Field` do Kanban.
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-host = { path = "../ph2d-host" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-kanban-views = { path = "../ph2d-kanban-views" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-vector = { path = "../ph2d-vector" }
+
+[lints]
+workspace = true

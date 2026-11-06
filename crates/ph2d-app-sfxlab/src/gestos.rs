@@ -3,6 +3,7 @@
 use ph2d_ecs::StableId;
 use ph2d_editor_core::doc_surface::{Key, KeyInput, KeyOutcome, PointerLook};
 use ph2d_host::PointerKind;
+use ph2d_object_picker::Saida;
 use ph2d_sfx_recipe::LayerId;
 
 use crate::aba::{Aba, Alvo, Gesto};
@@ -18,10 +19,27 @@ fn alvo_em(a: &Aba, x: f32, y: f32) -> Option<Alvo> {
 }
 
 pub(crate) fn ponteiro(a: &mut Aba, kind: PointerKind, x: f32, y: f32) -> bool {
+    if let Some(j) = a.janela.as_mut() {
+        let saida = j.ponteiro(kind, x, y);
+        responde_a_janela(a, saida);
+        return a.corpo.contains(x, y);
+    }
     match kind {
         PointerKind::Down => desce(a, x, y),
         PointerKind::Up => sobe(a, x, y),
         PointerKind::Move => move_(a, x, y),
+    }
+}
+
+fn responde_a_janela(a: &mut Aba, saida: Saida) {
+    match saida {
+        Saida::Nada => {}
+        Saida::Fecha => a.janela = None,
+        Saida::Escolheu(id) => {
+            a.janela = None;
+            a.ligado = Some(StableId(id));
+            a.quer_usar = true;
+        }
     }
 }
 
@@ -31,14 +49,6 @@ fn desce(a: &mut Aba, x: f32, y: f32) -> bool {
     let no_menu = matches!(alvo, Some(Alvo::Item(_) | Alvo::ItemOff(_) | Alvo::Add));
     if a.menu_add && !no_menu {
         a.menu_add = false;
-        return no_corpo;
-    }
-    let na_lista = matches!(
-        alvo,
-        Some(Alvo::Objeto(_) | Alvo::ObjetoOff | Alvo::UseInGame)
-    );
-    if a.menu_objetos && !na_lista {
-        a.menu_objetos = false;
         return no_corpo;
     }
     match alvo {
@@ -120,18 +130,7 @@ fn clique(a: &mut Aba, alvo: Option<Alvo>) {
         Some(Alvo::Play) => a.quer_tocar = true,
         Some(Alvo::Stop) => para(a),
         Some(Alvo::PlayOnChange) => a.play_on_change = !a.play_on_change,
-        Some(Alvo::UseInGame) => {
-            if a.menu_objetos {
-                a.menu_objetos = false;
-            } else {
-                a.quer_usar = true;
-            }
-        }
-        Some(Alvo::Objeto(id)) => {
-            a.ligado = Some(StableId(id));
-            a.menu_objetos = false;
-            a.quer_usar = true;
-        }
+        Some(Alvo::UseInGame) => a.quer_escolher = true,
         Some(Alvo::Mudo(id)) => a.edita(|r| {
             if let Some(l) = r.layer_mut(id) {
                 l.muted = !l.muted;
@@ -166,6 +165,16 @@ pub(crate) fn tecla(a: &mut Aba, k: &KeyInput<'_>) -> KeyOutcome {
         consumed,
         copy: None,
     };
+    if let Some(j) = a.janela.as_mut() {
+        let Some((saida, copy)) = j.tecla(k) else {
+            return tomada(false);
+        };
+        responde_a_janela(a, saida);
+        return KeyOutcome {
+            consumed: true,
+            copy,
+        };
+    }
     if k.mods.ctrl || k.mods.alt {
         return tomada(false);
     }
@@ -180,8 +189,6 @@ pub(crate) fn tecla(a: &mut Aba, k: &KeyInput<'_>) -> KeyOutcome {
             if k.pressed {
                 if a.menu_add {
                     a.menu_add = false;
-                } else if a.menu_objetos {
-                    a.menu_objetos = false;
                 } else {
                     para(a);
                 }
@@ -202,13 +209,9 @@ pub(crate) fn tecla(a: &mut Aba, k: &KeyInput<'_>) -> KeyOutcome {
 }
 
 pub(crate) fn roda(a: &mut Aba, x: f32, y: f32, dy: f32) -> bool {
-    if a.menu_objetos && a.menu_caixa.contains(x, y) {
-        a.menu_ini = if dy > 0.0 {
-            a.menu_ini.saturating_sub(1)
-        } else {
-            (a.menu_ini + 1).min(a.menu_max)
-        };
-        return true;
+    if let Some(j) = a.janela.as_mut() {
+        j.roda(x, y, dy);
+        return a.corpo.contains(x, y);
     }
     if !a.linhas.contains(x, y) {
         return false;
@@ -221,9 +224,12 @@ pub(crate) fn aparencia(a: &Aba, x: f32, y: f32) -> PointerLook {
     if a.gesto.is_some() {
         return PointerLook::Grabbing;
     }
+    if let Some(j) = &a.janela {
+        return j.aparencia(x, y);
+    }
     match alvo_em(a, x, y) {
         Some(Alvo::Onda(_) | Alvo::Alca(_)) => PointerLook::Grab,
-        Some(Alvo::Linha(_) | Alvo::ItemOff(_) | Alvo::ObjetoOff) | None => PointerLook::Arrow,
+        Some(Alvo::Linha(_) | Alvo::ItemOff(_)) | None => PointerLook::Arrow,
         Some(_) => PointerLook::Hand,
     }
 }

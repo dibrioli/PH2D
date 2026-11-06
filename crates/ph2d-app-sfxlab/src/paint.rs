@@ -7,6 +7,7 @@ use ph2d_editor_core::paint::{
 use ph2d_editor_core::ruler::label_step;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
+use ph2d_object_picker::Textos;
 use ph2d_panel_sfxlab::{medidor, nome_da_camada};
 use ph2d_sfx_lab::aprovar::EstadoDoAprovado;
 use ph2d_sfx_recipe::{Layer, LayerId};
@@ -135,9 +136,27 @@ pub(crate) fn aba(
     if a.menu_add {
         menu_add(a, &mut p, add, fundo);
     }
-    if a.menu_objetos {
-        menu_objetos(a, &mut p, corpo, fundo);
+    if a.janela.is_some() {
+        janela(a, &mut p, corpo);
     }
+}
+
+/// A janela do Use in Game: o que está por baixo deixa de ser alvo.
+fn janela(a: &mut Aba, p: &mut P<'_>, corpo: Rect) {
+    let Some(mut j) = a.janela.take() else {
+        return;
+    };
+    let subtitulo = tr_with("sfxlab.use.pick_object", &[("name", &a.nome)]);
+    let textos = Textos {
+        titulo: tr("sfxlab.use_in_game"),
+        subtitulo: &subtitulo,
+        aviso: a.objeto_sumiu.then(|| tr("sfxlab.use.object_gone")),
+    };
+    j.paint(corpo, &textos, p.scene, p.ts, p.theme);
+    a.alvos.clear();
+    a.alvos
+        .extend(j.alvos().map(|(al, r)| (Alvo::Janela(al), r)));
+    a.janela = Some(j);
 }
 
 fn botao(
@@ -202,9 +221,7 @@ fn barra(a: &mut Aba, p: &mut P<'_>, corpo: Rect) {
         y,
         Some(on),
     );
-    let x_usar = x;
     x = botao(a, p, Alvo::UseInGame, tr("sfxlab.use_in_game"), x, y, None);
-    a.x_usar = x_usar;
     aviso_da_barra(a, p, x, corpo);
 }
 
@@ -233,69 +250,6 @@ fn aviso_da_barra(a: &Aba, p: &mut P<'_>, x: f32, corpo: Rect) {
         m::TEXT_PX,
         tinta,
     );
-}
-
-/// A lista de objetos do Use in Game, debaixo do botão; a roda anda quando ela não cabe.
-fn menu_objetos(a: &mut Aba, p: &mut P<'_>, corpo: Rect, fundo: f32) {
-    let vazia = a.objetos.is_empty();
-    let titulo = tr("sfxlab.use.pick_object");
-    let mut largura = p.ts.prefix_width(titulo, m::TEXT_PX);
-    for (_, n) in &a.objetos {
-        largura = largura.max(p.ts.prefix_width(n, m::TEXT_PX));
-    }
-    if vazia {
-        largura = largura.max(p.ts.prefix_width(tr("sfxlab.use.no_objects"), m::TEXT_PX));
-    }
-    let largura = largura + 2.0 * m::BUTTON_PAD_X + 2.0 * m::MENU_PAD;
-    let y = corpo.y + m::BAR_H;
-    let linhas = a.objetos.len().max(1);
-    let cabem = (((fundo - y - 2.0 * m::MENU_PAD) / m::MENU_ROW_H).floor() as usize)
-        .saturating_sub(1)
-        .max(1);
-    let visiveis = linhas.min(cabem);
-    a.menu_max = linhas - visiveis;
-    a.menu_ini = a.menu_ini.min(a.menu_max);
-    let h = (visiveis + 1) as f32 * m::MENU_ROW_H + 2.0 * m::MENU_PAD;
-    let x = a.x_usar.min(corpo.x + corpo.w - largura).max(corpo.x);
-    let caixa = Rect::new(x, y, largura, h);
-    a.menu_caixa = caixa;
-    p.caixa(caixa, T::BgElev);
-    let cor = p.c(T::Border);
-    stroke_rounded_rect(p.scene, caixa, m::RADIUS, m::STROKE, cor);
-    let linha = |i: usize| {
-        Rect::new(
-            caixa.x + m::MENU_PAD,
-            caixa.y + m::MENU_PAD + i as f32 * m::MENU_ROW_H,
-            caixa.w - 2.0 * m::MENU_PAD,
-            m::MENU_ROW_H,
-        )
-    };
-    let r = linha(0);
-    p.texto(titulo, r.x + m::BUTTON_PAD_X, r, m::TEXT_PX, T::Text3);
-    a.alvos.push((Alvo::ObjetoOff, r));
-    if vazia {
-        let r = linha(1);
-        let t = tr("sfxlab.use.no_objects");
-        p.texto(t, r.x + m::BUTTON_PAD_X, r, m::TEXT_PX, T::TextDisabled);
-        a.alvos.push((Alvo::ObjetoOff, r));
-        return;
-    }
-    let vistos: Vec<(u64, String)> = a
-        .objetos
-        .iter()
-        .skip(a.menu_ini)
-        .take(visiveis)
-        .cloned()
-        .collect();
-    for (i, (id, nome)) in vistos.into_iter().enumerate() {
-        let r = linha(i + 1);
-        let alvo = Alvo::Objeto(id);
-        if a.hover == Some(alvo) {
-            p.caixa(r, T::Bg3);
-        }
-        p.texto(&nome, r.x + m::BUTTON_PAD_X, r, m::TEXT_PX, T::Text1);
-        a.alvos.push((alvo, r));
-    }
 }
 
 fn grade(a: &Aba, p: &mut P<'_>, r: Rect, y_fim: f32) {

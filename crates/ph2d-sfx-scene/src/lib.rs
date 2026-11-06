@@ -24,7 +24,7 @@ pub type Raiz = fn(&mut SimWorld, &str) -> u64;
 /// A variável e os níveis.
 pub const ROUTER: ph2d_app_host::SmokeRouter = ph2d_app_host::SmokeRouter {
     env: "PH2D_SFX_SMOKE",
-    max_level: 3,
+    max_level: 4,
 };
 
 /// O nível do jogo de plataforma sobre o qual a cena monta.
@@ -33,6 +33,8 @@ pub const NIVEL_DO_JOGO: u32 = 2;
 pub const NIVEL_RECEITAS: u32 = 2;
 /// A cena da tela do SFX Lab: os sons da receita, a aba aberta (`ph2d-app-sfxlab`) e um objeto sem som.
 pub const NIVEL_ABA: u32 = 3;
+/// A mesma cena, com a janela do Use in Game aberta.
+pub const NIVEL_JANELA: u32 = 4;
 /// O objeto sem som da cena da aba, à espera do Use in Game.
 pub const SEM_SOM: &str = "Crate";
 /// O objeto dos três sons: o que se seleciona na Hierarchy.
@@ -186,7 +188,7 @@ pub fn veste_se_armada(
 ) -> Entity {
     match nivel() {
         Some(NIVEL_RECEITAS) => receitas::veste(sim, anexa, raiz, jogador),
-        Some(NIVEL_ABA) => {
+        Some(NIVEL_ABA | NIVEL_JANELA) => {
             receitas::veste(sim, anexa, raiz, jogador);
             // Tem o cartão de onde se cria o som, e nada a tocar ainda; ouve-se de qualquer ponto do nível.
             let caixa = Entity::from_bits(raiz(sim, SEM_SOM));
@@ -212,7 +214,8 @@ mod tests {
         assert_eq!(nivel_in(com("2")), Some(2));
         assert_eq!(nivel_in(com("3")), Some(3));
         assert_eq!(nivel_in(com("0")), None);
-        assert_eq!(nivel_in(com("4")), None);
+        assert_eq!(nivel_in(com("4")), Some(4));
+        assert_eq!(nivel_in(com("5")), None);
         assert_eq!(nivel_in(com("x")), None);
         assert_eq!(nivel_in(|_| None), None);
     }

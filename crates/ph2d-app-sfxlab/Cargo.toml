@@ -19,6 +19,8 @@ ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-host = { path = "../ph2d-host" }
 ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-object-picker = { path = "../ph2d-object-picker" }
+ph2d-panel-hierarchy = { path = "../ph2d-panel-hierarchy" }
 ph2d-panel-sfxlab = { path = "../ph2d-panel-sfxlab" }
 ph2d-sfx-dsp = { path = "../ph2d-sfx-dsp" }
 ph2d-sfx-lab = { path = "../ph2d-sfx-lab" }

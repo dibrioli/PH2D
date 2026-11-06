@@ -8,6 +8,7 @@ use ph2d_ecs::{
     stable_id_of,
 };
 use ph2d_i18n::tr_with;
+use ph2d_object_picker::ObjectPicker;
 use ph2d_sfx_lab::aprovar::{AprovarErro, aprovar};
 use ph2d_sfx_lab::ligacao::{liga, objetos_da_cena};
 use ph2d_sfx_recipe::SfxLibrary;
@@ -79,21 +80,19 @@ impl SfxLabDocs {
             }
         }
         for a in &mut self.abas {
-            if !std::mem::take(&mut a.quer_usar) {
-                continue;
-            }
             let vivo = a.ligado.and_then(|id| entity_with_stable_id(world, id));
-            match vivo {
-                Some(objeto) => {
-                    a.objeto_sumiu = false;
-                    usa(a, world, objeto);
+            let usar = std::mem::take(&mut a.quer_usar);
+            if let (true, Some(objeto)) = (usar, vivo) {
+                a.objeto_sumiu = false;
+                usa(a, world, objeto);
+            } else if usar || std::mem::take(&mut a.quer_escolher) {
+                a.objeto_sumiu = a.ligado.is_some() && vivo.is_none();
+                if a.objeto_sumiu {
+                    a.ligado = None;
                 }
-                None => {
-                    a.objeto_sumiu = a.ligado.take().is_some();
-                    a.objetos = objetos_da_cena(world);
-                    a.menu_objetos = true;
-                    a.menu_ini = 0;
-                }
+                let objetos = objetos_da_cena(world);
+                a.janela = Some(ObjectPicker::new(objetos, a.ligado.map(|i| i.0)));
+                a.hover = None;
             }
         }
     }

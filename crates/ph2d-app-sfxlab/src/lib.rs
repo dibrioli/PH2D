@@ -39,13 +39,18 @@ pub fn service(hero: &mut HeroScreen, world: &mut World, escuta: Option<&mut dyn
     let Some(docs) = hero.documents.surfaces_mut().find_mut::<SfxLabDocs>() else {
         return;
     };
-    if ph2d_sfx_scene::nivel() == Some(ph2d_sfx_scene::NIVEL_ABA) && docs.cena_por_abrir() {
+    let nivel = ph2d_sfx_scene::nivel();
+    if nivel >= Some(ph2d_sfx_scene::NIVEL_ABA) && docs.cena_por_abrir() {
         docs.abre_a_cena(world);
+    }
+    if nivel == Some(ph2d_sfx_scene::NIVEL_JANELA) {
+        docs.abre_a_janela_da_cena();
     }
     let ativa = ponte::aba_ativa(hero);
     ponte::vaga(hero, ativa.is_some());
     ponte::drena(hero, ativa);
     if let Some(docs) = hero.documents.surfaces_mut().find_mut::<SfxLabDocs>() {
+        ponte::conta_gotas(docs, ativa, world);
         docs.servir(world, escuta);
         ponte::publica_o_instantaneo(docs, ativa);
     }

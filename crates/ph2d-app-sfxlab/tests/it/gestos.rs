@@ -268,6 +268,32 @@ fn play_on_change_toca_depois_de_uma_edicao_e_de_um_gesto_nao_durante() {
     assert_eq!(m.escuta.toques.len(), 2);
 }
 
+/// Ligar o S toca só aquela faixa; desligar toca o som inteiro de novo.
+#[test]
+fn play_on_change_toca_a_faixa_quando_o_solo_muda() {
+    let mut m = Mesa::new();
+    let id = impact(&mut m);
+    let c = m.camada(id, 0);
+    let inteiro = m.docs().escuta(id).expect("escuta").to_vec();
+    m.clica(id, Alvo::Solo(c));
+    m.clica(id, Alvo::Solo(c));
+    m.espera(id);
+    assert!(m.escuta.toques.is_empty(), "desligado, o S não toca");
+
+    m.clica(id, Alvo::PlayOnChange);
+    m.clica(id, Alvo::Solo(c));
+    m.espera(id);
+    assert_eq!(m.escuta.toques.len(), 1, "o S não tocou");
+    let solo = m.docs().escuta(id).expect("escuta").to_vec();
+    assert_ne!(solo, inteiro, "a fixture não distingue o solo");
+    assert_eq!(m.escuta.toques[0], solo, "não tocou a faixa em solo");
+
+    m.clica(id, Alvo::Solo(c));
+    m.espera(id);
+    assert_eq!(m.escuta.toques.len(), 2, "tirar o S não tocou");
+    assert_eq!(m.escuta.toques[1], inteiro, "não voltou ao som inteiro");
+}
+
 #[test]
 fn a_regua_poe_o_cursor_e_o_play_comeca_ali() {
     let mut m = Mesa::new();

@@ -76,6 +76,35 @@ pub(crate) fn live_entries_shared()
     CURRENT_LIVE_ENTRIES.with(|c| c.borrow().clone())
 }
 
+thread_local! {
+    static ESCOLHA_ARMADA: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+    static ESCOLHA: std::cell::Cell<Option<u64>> = const { std::cell::Cell::new(None) };
+}
+
+/// Um conta-gotas fora do painel: enquanto `true`, o clique numa linha vai para [`toma_escolha`], sem selecionar.
+/// `false` esquece a escolha que ninguém tomou.
+pub fn arma_escolha(armada: bool) {
+    ESCOLHA_ARMADA.with(|c| c.set(armada));
+    if !armada {
+        ESCOLHA.with(|c| c.set(None));
+    }
+}
+
+/// O objeto (`Entity::to_bits`) da linha clicada desde a última pergunta.
+#[must_use]
+pub fn toma_escolha() -> Option<u64> {
+    ESCOLHA.with(std::cell::Cell::take)
+}
+
+pub(crate) fn guarda_escolha(id: NodeId) -> bool {
+    let armada = ESCOLHA_ARMADA.with(std::cell::Cell::get);
+    // A Cena e as sub-linhas de conteúdo não são objetos: o clique fica nelas e o conta-gotas continua à espera.
+    if armada && let Some(bits) = live_entry_for(id).and_then(|e| e.entity) {
+        ESCOLHA.with(|c| c.set(Some(bits)));
+    }
+    armada
+}
+
 pub(crate) fn live_entries_contains(id: NodeId) -> bool {
     CURRENT_LIVE_ENTRIES.with(|c| c.borrow().as_ref().is_some_and(|m| m.contains_key(&id)))
 }

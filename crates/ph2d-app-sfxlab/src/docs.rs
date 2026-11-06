@@ -25,6 +25,7 @@ pub struct SfxLabDocs {
     pub(crate) area: Option<Rect>,
     parar: bool,
     cena_aberta: bool,
+    pub(crate) janela_da_cena: bool,
 }
 
 impl SfxLabDocs {

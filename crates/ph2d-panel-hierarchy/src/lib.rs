@@ -32,8 +32,8 @@ mod search;
 pub mod state;
 
 pub use state::{
-    HierarchyState, current_live_entries, last_hierarchy_content_h, set_live_component_count,
-    set_live_entries,
+    HierarchyState, arma_escolha, current_live_entries, last_hierarchy_content_h,
+    set_live_component_count, set_live_entries, toma_escolha,
 };
 
 use ph2d_a11y::NodeId;

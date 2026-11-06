@@ -278,6 +278,7 @@ impl crate::App {
                         Some(PointerLook::Grab) => CursorIcon::Grab,
                         Some(PointerLook::Grabbing) => CursorIcon::Grabbing,
                         Some(PointerLook::ResizeEw) => CursorIcon::EwResize,
+                        Some(PointerLook::Pick) => CursorIcon::Crosshair,
                         Some(PointerLook::Arrow) | None => CursorIcon::Default,
                     }
                 }

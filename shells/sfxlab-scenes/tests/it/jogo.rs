@@ -7,6 +7,7 @@ use ph2d_app_audio::scene::SceneAudio;
 use ph2d_app_sfxlab::Alvo;
 use ph2d_app_sfxlab::aprovar::EstadoDoAprovado;
 use ph2d_audio::{AudioEngine, AudioFormat};
+use ph2d_component_desc::ComponentSet;
 use ph2d_core::Vec2;
 use ph2d_ecs::scene::registry::{ComponentRegistry, register_ecs_components};
 use ph2d_ecs::scene::save::{WorldSnapshot, snapshot_to_world, world_to_snapshot};
@@ -15,10 +16,21 @@ use ph2d_ecs::{
     StableId, Transform, TransformPropagationState, WorklistBuf, assign_missing_stable_ids,
     stable_id_of,
 };
+use ph2d_editor_core::IconId;
+use ph2d_editor_core::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
+use ph2d_editor_core::action_bus::HierRequest;
+use ph2d_editor_core::hier_rows::RowRole;
+use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::panel::PanelHostInternal;
+use ph2d_editor_core::screens::hero::board_keys::{self, BoardKey};
+use ph2d_editor_core::screens::hero::fixture::HierarchyEntity;
 use ph2d_editor_core::screens::hero::{AudioFieldEdit, InspectorAudioInfo, InspectorAudioSource};
 use ph2d_editor_core::zones::Rect;
+use ph2d_host::Modifiers;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
+use ph2d_object_picker::Alvo as Janela;
+use ph2d_panel_hierarchy::{HierarchyPanel, HierarchyState};
 use ph2d_panel_inspector::{InspectorPanel, InspectorState, set_current_inspector_audio};
 use ph2d_panel_sfxlab::tabela::CAMPOS;
 use ph2d_sfx_dsp::{TETO_DA_ESCUTA, limitar_escuta, render};
@@ -27,6 +39,7 @@ use ph2d_sfx_recipe::{
     Body, ENGINE_V1, Envelope, ModeLaw, Recipe, Source, Take, Takes, Tone, Wave,
 };
 use ph2d_ui_testkit::MockPanelHost;
+use std::collections::BTreeMap;
 
 fn caixa(w: &mut World) -> Entity {
     let e = w
@@ -80,12 +93,12 @@ fn duas_camadas() -> Recipe {
     r
 }
 
-/// Dois cliques: o botão, e a linha do objeto na lista.
+/// Dois cliques: o botão, e a linha do objeto na janela.
 fn usa_pela_lista(m: &mut Mesa, aba: u64, objeto: Entity) {
     m.clica_na_aba(aba, Alvo::UseInGame);
     m.quadro();
     let id = stable_id_of(&m.mundo, objeto).expect("id").0;
-    m.clica_na_aba(aba, Alvo::Objeto(id));
+    m.clica_na_aba(aba, Alvo::Janela(Janela::Objeto(id)));
     m.quadro();
 }
 
@@ -270,7 +283,7 @@ fn clica_create_sound(bits: u64) {
 }
 
 #[test]
-fn tres_cliques_ate_ouvir_no_jogo() {
+fn quatro_cliques_ate_ouvir_no_jogo() {
     let mut m = Mesa::nova();
     let e = caixa(&mut m.mundo);
     m.mundo.entity_mut(e).insert(AudioSource2D {
@@ -289,14 +302,13 @@ fn tres_cliques_ate_ouvir_no_jogo() {
     m.espera(aba);
     m.assenta();
 
-    m.clica_na_aba(aba, Alvo::UseInGame);
-    cliques += 1;
-    m.quadro();
+    usa_pela_lista(&mut m, aba, e);
+    cliques += 2;
     assert!(!som_de(&m, e).is_empty(), "o objeto não recebeu o som");
 
     cliques += 1;
     corre_e_ouve(&mut m);
-    assert_eq!(cliques, 3);
+    assert_eq!(cliques, 4);
 }
 
 /// O Play: o que a corrida faz com o mundo, e o que sai do mixer.
@@ -363,8 +375,7 @@ fn objeto_longe_do_ouvinte_ouve_o_som_criado() {
     let mut m = Mesa::nova();
     let e = caixa_longe(&mut m.mundo);
     let aba = cria_som_para(&mut m, e);
-    m.clica_na_aba(aba, Alvo::UseInGame);
-    m.quadro();
+    usa_pela_lista(&mut m, aba, e);
     confere_o_alcance_e_ouve(&mut m, e);
 }
 
@@ -391,8 +402,7 @@ fn o_som_criado_leva_o_nome_do_objeto() {
     let e = caixa(&mut m.mundo);
     let aba = cria_som_para(&mut m, e);
     assert_eq!(m.docs().nome(aba), Some("Crate Sound"));
-    m.clica_na_aba(aba, Alvo::UseInGame);
-    m.quadro();
+    usa_pela_lista(&mut m, aba, e);
     assert_eq!(som_de(&m, e), "Crate Sound.wav");
 
     let segunda = cria_som_para(&mut m, e);
@@ -447,7 +457,7 @@ fn com_conjunto_o_som_entra_na_lista() {
 }
 
 #[test]
-fn objeto_que_sumiu_cai_na_lista() {
+fn objeto_que_sumiu_avisa_na_janela() {
     let mut m = Mesa::nova();
     let e = caixa(&mut m.mundo);
     m.mundo.entity_mut(e).insert(AudioSource2D::default());
@@ -460,8 +470,8 @@ fn objeto_que_sumiu_cai_na_lista() {
     m.clica_na_aba(aba, Alvo::UseInGame);
     m.quadro();
     assert!(
-        m.docs().rect_de(aba, Alvo::ObjetoOff).is_some(),
-        "a lista não abriu"
+        m.docs().rect_de(aba, Alvo::Janela(Janela::Busca)).is_some(),
+        "a janela não abriu"
     );
     assert!(m.docs().objeto_sumiu(aba), "a tela não diz por quê");
     assert!(
@@ -505,8 +515,7 @@ fn re_aprovar_substitui_o_mesmo_som() {
         m.docs().estado_do_aprovado(id),
         Some(EstadoDoAprovado::Mudou)
     );
-    m.clica_na_aba(id, Alvo::UseInGame);
-    m.quadro();
+    usa_pela_lista(&mut m, id, e);
 
     assert_eq!(som_de(&m, e), som, "o nome mudou");
     assert_eq!(m.mundo.resource::<ProjectSounds>().len(), n, "som a mais");
@@ -705,5 +714,224 @@ fn projeto_salvo_e_aberto_mantem_o_aprovado() {
         aberta.docs().estado_do_aprovado(aba),
         Some(EstadoDoAprovado::Aprovado),
         "abrir o projeto mudou o estado"
+    );
+}
+
+// ── A janela do Use in Game ──
+
+fn abre_a_janela(m: &mut Mesa, aba: u64) {
+    m.clica_na_aba(aba, Alvo::UseInGame);
+    m.quadro();
+    assert!(
+        m.docs().rect_de(aba, Alvo::Janela(Janela::Busca)).is_some(),
+        "a janela não abriu"
+    );
+}
+
+fn tecla_da_janela(m: &mut Mesa, key: BoardKey, text: Option<&str>) -> bool {
+    let out = board_keys::key(
+        &mut m.hero,
+        &mut m.ts,
+        key,
+        Modifiers::default(),
+        true,
+        text,
+        None,
+    );
+    m.quadro();
+    out.consumed
+}
+
+/// O objeto ligado pelo Create sound continua a passar pela janela, já destacado: Enter confirma.
+#[test]
+fn use_in_game_sempre_abre_a_janela_e_enter_confirma_o_objeto_de_antes() {
+    let mut m = Mesa::nova();
+    let e = caixa(&mut m.mundo);
+    let aba = cria_som_para(&mut m, e);
+    abre_a_janela(&mut m, aba);
+    assert!(
+        som_de_opcional(&m, e).is_empty(),
+        "ligou antes de confirmar"
+    );
+    assert!(tecla_da_janela(&mut m, BoardKey::Enter, None));
+    m.quadro();
+    assert_eq!(som_de(&m, e), "Crate Sound.wav");
+    assert!(
+        m.docs().rect_de(aba, Alvo::Janela(Janela::Busca)).is_none(),
+        "ficou aberta"
+    );
+}
+
+fn som_de_opcional(m: &Mesa, e: Entity) -> String {
+    m.mundo
+        .get::<AudioSource2D>(e)
+        .map(|f| f.sound.clone())
+        .unwrap_or_default()
+}
+
+/// Com a janela aberta, Espaço escreve na busca: não toca o som, e o Delete não apaga a camada.
+#[test]
+fn escrever_na_busca_nao_chega_ao_som_por_baixo() {
+    let mut m = Mesa::nova();
+    let e = caixa(&mut m.mundo);
+    let id = m.abre("Hit", duas_camadas());
+    abre_a_janela(&mut m, id);
+    let antes = m.receita(id).clone();
+    assert!(tecla_da_janela(&mut m, BoardKey::Space, None));
+    assert!(tecla_da_janela(&mut m, BoardKey::Delete, None));
+    assert!(tecla_da_janela(&mut m, BoardKey::Char('e'), Some("e")));
+    assert_eq!(m.receita(id), antes, "a tecla mexeu no som");
+    assert_eq!(m.escuta.toques, 0, "a tecla tocou o som");
+    use ph2d_editor_core::doc_surface::DocumentSurface;
+    assert!(m.docs().undo(id, false), "o desfazer desceu para o som");
+    assert!(som_de_opcional(&m, e).is_empty());
+}
+
+/// Por baixo da janela nada é alvo: fora dela o clique só fecha, e não aprova nada.
+#[test]
+fn clicar_fora_fecha_sem_aprovar_e_nao_chega_ao_que_esta_por_baixo() {
+    let mut m = Mesa::nova();
+    let e = caixa(&mut m.mundo);
+    let id = m.abre("Hit", duas_camadas());
+    let play = m.docs().rect_de(id, Alvo::Play).expect("Play");
+    abre_a_janela(&mut m, id);
+    assert!(
+        m.docs().rect_de(id, Alvo::Play).is_none(),
+        "o Play continua alvo"
+    );
+    let (x, y) = (play.x + play.w / 2.0, play.y + play.h / 2.0);
+    assert!(m.ponteiro_da_shell(PointerKind::Down, x, y));
+    m.ponteiro_da_shell(PointerKind::Up, x, y);
+    m.quadro();
+    assert!(m.docs().rect_de(id, Alvo::Janela(Janela::Busca)).is_none());
+    assert_eq!(m.escuta.toques, 0, "o clique chegou ao Play");
+    assert!(som_de_opcional(&m, e).is_empty(), "aprovou ao fechar");
+    assert!(
+        !m.mundo
+            .get_resource::<ProjectSounds>()
+            .is_some_and(|s| !s.is_empty())
+    );
+}
+
+fn hierarquia_com(row: NodeId, bits: u64) -> (MockPanelHost, HierarchyState) {
+    ph2d_panel_hierarchy::cards::force_cards_on_this_thread(Some(false));
+    let mut h = MockPanelHost::with_panel::<HierarchyPanel>();
+    let mut linhas = BTreeMap::new();
+    linhas.insert(
+        row,
+        HierarchyEntity {
+            name: "Crate".into(),
+            icon: IconId::Eyedropper,
+            indent: 0,
+            badge: None,
+            swatch: None,
+            visible: true,
+            selected: false,
+            hovered: false,
+            muted: false,
+            locked: false,
+            group_locked: false,
+            role: RowRole::Object,
+            components: Vec::new(),
+            content: Vec::new(),
+            has: ComponentSet::default(),
+            entity: Some(bits),
+        },
+    );
+    ph2d_panel_hierarchy::sync_from_hierarchy(h.store_mut(), &[row], linhas);
+    let st = HierarchyState::default();
+    let _ = h.drained_actions();
+    (h, st)
+}
+
+/// O rato sobre a linha pintada, até o painel responder.
+fn clica_na_linha(h: &mut MockPanelHost, st: &mut HierarchyState, row: NodeId) {
+    let janela = Rect::new(0.0, 0.0, 1600.0, 900.0);
+    let rects = h.paint::<HierarchyPanel>(st, janela);
+    let (_, r) = rects
+        .iter()
+        .find(|(n, _)| *n == row)
+        .copied()
+        .expect("a linha não foi pintada");
+    let (x, y) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    let ev = |kind, t| PointerEvent {
+        kind,
+        x,
+        y,
+        button: PointerButton::Primary,
+        source: PointerSource::Mouse,
+        pressure: 1.0,
+        timestamp_ns: t,
+    };
+    let mut evs = h.dispatch_pointer_event(ev(PointerKind::Down, 1_000_000_000));
+    evs.extend(h.dispatch_pointer_event(ev(PointerKind::Up, 1_010_000_000)));
+    assert!(
+        evs.contains(&WidgetEvent::Click(row)),
+        "o rato não virou clique na linha: {evs:?}"
+    );
+    for ev in evs {
+        h.apply_panel_event::<HierarchyPanel>(st, ev);
+    }
+}
+
+/// O clique real na linha da Hierarchy, com o conta-gotas armado: o objeto recebe o som e a seleção da cena não muda.
+#[test]
+fn o_conta_gotas_escolhe_na_hierarchy_sem_selecionar() {
+    let mut m = Mesa::nova();
+    let e = caixa(&mut m.mundo);
+    let id = m.abre("Hit", duas_camadas());
+    abre_a_janela(&mut m, id);
+    m.clica_na_aba(id, Alvo::Janela(Janela::ContaGotas));
+    m.quadro();
+
+    let row = NodeId(0xC0DE);
+    let (mut h, mut st) = hierarquia_com(row, e.to_bits());
+    clica_na_linha(&mut h, &mut st, row);
+    let acoes = h.drained_actions();
+    assert!(
+        !acoes
+            .iter()
+            .any(|a| matches!(a, EditorAction::Hierarchy(_))),
+        "a linha selecionou: {acoes:?}"
+    );
+    m.quadro();
+    m.quadro();
+    assert_eq!(som_de(&m, e), "Hit.wav", "a escolha não chegou ao objeto");
+    assert!(
+        m.docs().rect_de(id, Alvo::Janela(Janela::Busca)).is_none(),
+        "ficou aberta"
+    );
+
+    // Desarmado de novo: a mesma linha volta a selecionar.
+    let (mut h, mut st) = hierarquia_com(row, e.to_bits());
+    clica_na_linha(&mut h, &mut st, row);
+    assert!(
+        h.drained_actions()
+            .iter()
+            .any(|a| matches!(a, EditorAction::Hierarchy(HierRequest::SelectRow { .. }))),
+        "o conta-gotas ficou armado"
+    );
+}
+
+/// Com a aba do som fora de vista, a Hierarchy volta a ser da cena.
+#[test]
+fn trocar_de_aba_desarma_o_conta_gotas() {
+    let mut m = Mesa::nova();
+    let e = caixa(&mut m.mundo);
+    let a = m.abre("A", duas_camadas());
+    abre_a_janela(&mut m, a);
+    m.clica_na_aba(a, Alvo::Janela(Janela::ContaGotas));
+    m.quadro();
+    let _b = m.abre("B", outra_receita());
+    m.quadro();
+    m.quadro();
+    let row = NodeId(0xC0DE);
+    let (mut h, mut st) = hierarquia_com(row, e.to_bits());
+    clica_na_linha(&mut h, &mut st, row);
+    assert!(
+        h.drained_actions()
+            .iter()
+            .any(|a| matches!(a, EditorAction::Hierarchy(HierRequest::SelectRow { .. }))),
+        "a Hierarchy continuou presa ao conta-gotas"
     );
 }

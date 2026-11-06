@@ -1,4 +1,4 @@
-//! `PH2D_SFX_SMOKE=3`: a aba aberta em «Metal Hit». O roteador é um só, da família do jogo (`ph2d_sfx_scene::ROUTER`):
+//! `PH2D_SFX_SMOKE=3`: a aba aberta em «Metal Hit»; `4`: com a janela do Use in Game. O roteador é um só, da família do jogo (`ph2d_sfx_scene::ROUTER`):
 //! é ela que monta o mundo, e aqui só se pergunta o nível.
 
 use bevy_ecs::world::World;
@@ -22,5 +22,15 @@ impl SfxLabDocs {
             lib.recipes.insert(SOM_DA_CENA.to_owned(), r);
         }
         self.pede_abrir(SOM_DA_CENA.to_owned());
+    }
+
+    /// `PH2D_SFX_SMOKE=4`: a mesma aba, com a janela do Use in Game aberta uma vez.
+    pub(crate) fn abre_a_janela_da_cena(&mut self) {
+        if !self.janela_da_cena
+            && let Some(a) = self.abas.first_mut()
+        {
+            a.quer_escolher = true;
+            self.janela_da_cena = true;
+        }
     }
 }

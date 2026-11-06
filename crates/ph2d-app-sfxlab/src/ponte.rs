@@ -1,5 +1,7 @@
 //! A ponte com o painel dos cartões: a aba na vaga, as intenções e o instantâneo.
 
+use bevy_ecs::world::World;
+use ph2d_ecs::{Entity, assign_missing_stable_ids, stable_id_of};
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_panel_sfxlab::tabela::{self, forma_nova};
 use ph2d_panel_sfxlab::{Instantaneo, Intencao, Material, publica, tomar};
@@ -18,6 +20,30 @@ pub(crate) fn aba_ativa(hero: &mut HeroScreen) -> Option<u64> {
 pub(crate) fn vaga(hero: &mut HeroScreen, ativa: bool) {
     hero.panel_visibility
         .insert(ph2d_panel_sfxlab::PANEL_ID, ativa);
+}
+
+/// O conta-gotas da janela: arma a Hierarchy só para a aba ativa, e a linha clicada é o objeto escolhido.
+pub(crate) fn conta_gotas(docs: &mut SfxLabDocs, ativa: Option<u64>, world: &mut World) {
+    for a in docs.abas.iter_mut().filter(|a| Some(a.id) != ativa) {
+        if let Some(j) = a.janela.as_mut() {
+            j.desarma();
+        }
+    }
+    let Some(a) = ativa.and_then(|id| docs.aba_mut(id)) else {
+        return ph2d_panel_hierarchy::arma_escolha(false);
+    };
+    let escolhida = ph2d_panel_hierarchy::toma_escolha();
+    if a.conta_gotas()
+        && let Some(bits) = escolhida
+    {
+        assign_missing_stable_ids(world);
+        if let Some(id) = stable_id_of(world, Entity::from_bits(bits)) {
+            a.janela = None;
+            a.ligado = Some(id);
+            a.quer_usar = true;
+        }
+    }
+    ph2d_panel_hierarchy::arma_escolha(a.conta_gotas());
 }
 
 /// As intenções do painel viram edição, num gesto só enquanto a mão arrasta um campo.

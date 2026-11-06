@@ -70,6 +70,7 @@ impl Mesa {
         ph2d_app_sfxlab::install(&mut hero);
         ph2d_panel_sfxlab::publica(None);
         let _ = ph2d_panel_sfxlab::tomar();
+        ph2d_panel_hierarchy::arma_escolha(false);
         Self {
             hero,
             ts: TextSystem::without_system_fonts(),

@@ -99,7 +99,7 @@ Cena nova `PH2D_SFX_SMOKE=3`: a aba aberta em «Metal Hit», com um objeto sem s
 
 **Medido em 06/11** (sonda W2, mínimo de 7 rodadas intercaladas, perfil `smoke`, load ~16, logo ordem de grandeza): típica 2 s 7,41 ms; pior 2 s 24,63 ms; editar um corpo 3,30 a 4,14 ms; só o ganho 0,10 ms. De W2: pior corpo de 120 s 9 370 ms e gravação a +24 semitons 32 ms, os dois casos que justificam a thread.
 
-**Medido em 06/11, passo 4** (sonda `ph2d-panel-sfxlab/tests/it/medir.rs`, `--ignored`: variantes no mesmo processo, intercaladas, mínimo de 7 blocos, perfil `smoke`, load ~4):
+**Medido em 06/11, passo 4** (sonda `shells/sfxlab-scenes/tests/it/medir.rs`, `--ignored`: variantes no mesmo processo, intercaladas, mínimo de 7 blocos, perfil `smoke`, load ~4):
 
 | O quê | 2 s de som | 120 s de som |
 |---|---:|---:|
@@ -127,7 +127,7 @@ Da edição (M, com a camada no cache) até o som tocável, em 2 s, com os quadr
 
 ## Decisões de construção (lidas no código, 06/11; valem sobre o §2)
 
-- **Cartões = painel de verdade, ABA ao lado do Inspector.** Nenhuma `DocumentSurface` pinta `CardCtx` (exige `PaintCtx`: `panel/cards.rs:149`). ⇒ `ph2d-panel-sfxlab`, `DEFAULT_SLOT` RightTop, `DEFAULT_VISIBLE=false`. Com a aba do som ativa o painel entra visível e o `slot_tabs::reconcile_z` o põe à frente; o Inspector continua na vaga, alcançável pela aba dele; ao sair, a poda devolve a frente (`ponte::vaga`). ⛔ **Recusado por ser lei do dono de 08/09:** o painel SUBSTITUIR o Inspector, como no passo 4 (`panel_emprestado`, apagado): o censo `no_family_crate_hides_the_inspector_to_take_its_slot` agora vê as crates de família. Gates em `ph2d-panel-sfxlab/tests/it/vaga.rs`.
+- **Cartões = painel de verdade, ABA ao lado do Inspector.** Nenhuma `DocumentSurface` pinta `CardCtx` (exige `PaintCtx`: `panel/cards.rs:149`). ⇒ `ph2d-panel-sfxlab`, `DEFAULT_SLOT` RightTop, `DEFAULT_VISIBLE=false`. Com a aba do som ativa o painel entra visível e o `slot_tabs::reconcile_z` o põe à frente; o Inspector continua na vaga, alcançável pela aba dele; ao sair, a poda devolve a frente (`ponte::vaga`). ⛔ **Recusado por ser lei do dono de 08/09:** o painel SUBSTITUIR o Inspector, como no passo 4 (`panel_emprestado`, apagado): o censo `no_family_crate_hides_the_inspector_to_take_its_slot` agora vê as crates de família. Gates em `shells/sfxlab-scenes/tests/it/vaga.rs`.
 - **Use in Game:** sem objeto ligado abre a lista dos objetos; ligado por Create sound (`StableId`) vai direto; objeto sumido cai na lista e a barra diz por quê. Objeto sem `AudioSource2D` ganha um com Autoplay, senão nada o tocaria; fonte que já existe fica com o Autoplay dela. **Estado na barra:** compara a impressão do render com a aprovada: mudar e voltar ao mesmo som é «Approved». O desfazer da aba não desaprova (`Aba::desfaz`).
 - **Create sound:** o cartão não tem as abas, então pede por um recurso do mundo (`pede_som_para`), drenado no `service`: uma linha na shell. Linha própria abaixo de Browse/Preview/Stop: com os quatro na mesma fila o texto sai do botão (`nenhum_texto_sai_do_botao`).
 - **Ctrl+Z com a aba ativa é da aba** (`surface_input::undo`): a ligação do Use in Game se desfaz na cena.
@@ -155,3 +155,15 @@ Da edição (M, com a camada no cache) até o som tocável, em 2 s, com os quadr
 6. Smoke do dono, `/pd-onda-fechar`.
 
 Cada passo muda o seguinte, por isso em série; as medições vão num lote só (§0.10). Janela nova entre passos se o contexto passar de 300 mil.
+
+## 7. Depois do smoke do dono (06/11)
+
+- **Smoke da tela aprovado.** Ctrl+Z fica como estava: na aba de som desfaz a receita; a ligação com o objeto, só na aba Scene.
+- **S com Play on change toca a faixa em solo**, depois do render do solo novo; tirar o S toca o som inteiro (`play_on_change_toca_a_faixa_quando_o_solo_muda`).
+- **Use in Game abre SEMPRE a janela** (`ph2d-object-picker`): busca, lista, conta-gotas. O objeto ligado nasce destacado, e Enter confirma: de três cliques até ouvir no jogo passa a quatro, por ordem do dono. Decisão minha: «sempre», porque é o que ele escreveu e é o único jeito de trocar o objeto de um som já ligado.
+- **A janela escurece só a aba:** os painéis ficam vivos, porque o conta-gotas escolhe na Hierarchy. Consequência: com ela aberta, os cartões do painel Sound continuam editáveis.
+- **O conta-gotas** arma `ph2d_panel_hierarchy::arma_escolha` por imagem, só para a aba ativa; a linha clicada entrega `HierarchyEntity::entity` e não seleciona. A Cena e as sub-linhas de conteúdo não são objetos: o clique fica nelas e o conta-gotas continua à espera. O cursor é a cruz do sistema (`PointerLook::Pick`).
+- **A busca usa o `Field` de `ph2d-kanban-views`** para não nascer um segundo editor de linha. A dependência é torta: o `Field` é genérico e devia morar no `ph2d-editor-core`; movê-lo toca a linha do Kanban.
+- **Os gates da tela saíram de `ph2d-panel-sfxlab/tests` para `shells/sfxlab-scenes`.** Painel → família em `[dev-dependencies]` reprova `no_dependency_climbs_a_layer`; o passo 5 deixou esse gate vermelho e só agora ele correu.
+- **`PH2D_SFX_SMOKE=4`:** a cena 3 com a janela aberta, para fotografar.
+- **Não fotografado:** o estado armado e a busca filtrando (a tela virtual não aceita clique). Provado por evento real nos gates; o olho é o do dono. A linha da shell `PointerLook::Pick → Crosshair` só compilou.

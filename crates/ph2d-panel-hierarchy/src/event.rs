@@ -281,6 +281,10 @@ pub(crate) fn apply_event(
         // toggle the single clicked row (canvas parity for solo
         // toggle). No modifier replaces the selection.
         let live_hit = state::live_entries_contains(id);
+        // Um conta-gotas está armado: a linha responde a ele, e a seleção da cena fica como estava.
+        if live_hit && state::guarda_escolha(id) {
+            return EventOutcome::Consumed;
+        }
         if live_hit {
             let store = host.store();
             let shift = store.shift_held();

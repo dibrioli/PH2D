@@ -22,22 +22,5 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-vector = { path = "../ph2d-vector" }
 
-[dev-dependencies]
-bevy_ecs = "0.20"
-ph2d-app-audio = { path = "../ph2d-app-audio" }
-ph2d-audio = { path = "../ph2d-audio" }
-ph2d-core = { path = "../ph2d-core" }
-ph2d-ecs = { path = "../ph2d-ecs" }
-bumpalo = "3"
-ph2d-app-sfxlab = { path = "../ph2d-app-sfxlab" }
-ph2d-host = { path = "../ph2d-host" }
-ph2d-panel-inspector = { path = "../ph2d-panel-inspector" }
-ph2d-sfx-dsp = { path = "../ph2d-sfx-dsp" }
-ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
-
-[[test]]
-name = "it"
-path = "tests/it/main.rs"
-
 [lints]
 workspace = true

@@ -6210,6 +6210,8 @@ dependencies = [
  "ph2d-editor-core",
  "ph2d-host",
  "ph2d-i18n",
+ "ph2d-object-picker",
+ "ph2d-panel-hierarchy",
  "ph2d-panel-sfxlab",
  "ph2d-sfx-dsp",
  "ph2d-sfx-lab",
@@ -7659,6 +7661,32 @@ dependencies = [
  "ph2d-vec-edit",
  "ph2d-vec-entities",
  "ph2d-vec-scene",
+]
+
+[[package]]
+name = "ph2d-host-sfxlab-scenes"
+version = "0.0.0"
+dependencies = [
+ "bevy_ecs",
+ "bumpalo",
+ "ph2d-app-audio",
+ "ph2d-app-sfxlab",
+ "ph2d-audio",
+ "ph2d-component-desc",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-object-picker",
+ "ph2d-panel-hierarchy",
+ "ph2d-panel-inspector",
+ "ph2d-panel-sfxlab",
+ "ph2d-sfx-dsp",
+ "ph2d-sfx-lab",
+ "ph2d-sfx-recipe",
+ "ph2d-text",
+ "ph2d-ui-testkit",
+ "ph2d-vector",
 ]
 
 [[package]]
@@ -9606,6 +9634,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-object-picker"
+version = "0.0.0"
+dependencies = [
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-i18n",
+ "ph2d-kanban-views",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-orca"
 version = "0.0.0"
 
@@ -10163,25 +10204,14 @@ dependencies = [
 name = "ph2d-panel-sfxlab"
 version = "0.0.0"
 dependencies = [
- "bevy_ecs",
- "bumpalo",
  "ph2d-a11y",
- "ph2d-app-audio",
- "ph2d-app-sfxlab",
- "ph2d-audio",
- "ph2d-core",
- "ph2d-ecs",
  "ph2d-editor-core",
- "ph2d-host",
  "ph2d-i18n",
- "ph2d-panel-inspector",
- "ph2d-sfx-dsp",
  "ph2d-sfx-lab",
  "ph2d-sfx-recipe",
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-tool-registry",
- "ph2d-ui-testkit",
  "ph2d-vector",
 ]
 

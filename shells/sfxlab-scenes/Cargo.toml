@@ -1,0 +1,44 @@
+[package]
+name = "ph2d-host-sfxlab-scenes"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# ⭐ Os gates conduzidos da tela do SFX Lab: precisam do painel, da família do som e da do áudio, e só a COMPOSIÇÃO
+# (`shells/`) as vê juntas. Moram aqui e não em `shells/desktop` porque `the_shell_only_shrinks` conta cada linha
+# de lá; o precedente é `shells/code-scenes`.
+
+[lib]
+path = "src/lib.rs"
+
+[dev-dependencies]
+bevy_ecs = "0.20"
+bumpalo = "3"
+ph2d-app-audio = { path = "../../crates/ph2d-app-audio" }
+ph2d-app-sfxlab = { path = "../../crates/ph2d-app-sfxlab" }
+ph2d-audio = { path = "../../crates/ph2d-audio" }
+ph2d-component-desc = { path = "../../crates/ph2d-component-desc" }
+ph2d-core = { path = "../../crates/ph2d-core" }
+ph2d-ecs = { path = "../../crates/ph2d-ecs" }
+ph2d-editor-core = { path = "../../crates/ph2d-editor-core" }
+ph2d-host = { path = "../../crates/ph2d-host" }
+ph2d-object-picker = { path = "../../crates/ph2d-object-picker" }
+ph2d-panel-hierarchy = { path = "../../crates/ph2d-panel-hierarchy" }
+ph2d-panel-inspector = { path = "../../crates/ph2d-panel-inspector" }
+ph2d-panel-sfxlab = { path = "../../crates/ph2d-panel-sfxlab" }
+ph2d-sfx-dsp = { path = "../../crates/ph2d-sfx-dsp" }
+ph2d-sfx-lab = { path = "../../crates/ph2d-sfx-lab" }
+ph2d-sfx-recipe = { path = "../../crates/ph2d-sfx-recipe" }
+ph2d-text = { path = "../../crates/ph2d-text" }
+ph2d-ui-testkit = { path = "../../crates/ph2d-ui-testkit" }
+ph2d-vector = { path = "../../crates/ph2d-vector" }
+
+[[test]]
+name = "it"
+path = "tests/it/main.rs"
+
+[lints]
+workspace = true

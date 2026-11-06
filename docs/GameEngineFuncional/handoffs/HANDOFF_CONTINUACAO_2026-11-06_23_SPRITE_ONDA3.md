@@ -46,7 +46,9 @@ Linha `line/GameEngineFuncional` reaberta em 06/11 de `bbfefaf393` (`git reset -
 - **Provas:** E3 no ecrã (`so_a_sprite_nasce_a_pedir_a_imagem`) · Use one Region (`o_aviso_de_folha_da_as_duas_saidas`, `da_folha_parada_use_one_region_abre_o_editor_e_o_quadro_vira_a_area`; `card.insp.sheet_use_region` é só a chave do rótulo) · Transform no Draw: foto `sprite_transform_no_draw`, Auto Key grava Position, Ctrl+Z desfaz os dois · `a_predefinicao_sai_do_custom_e_o_lado_para_no_dispositivo`. Testes novos: `o_censo_dos_campos_da_sprite_em_uso`, `virar_e_tingir_com_os_cartoes_fechados_sao_tres_gestos`, `enquanto_assenta_a_cola_leva_o_cartao_ao_lugar_deste_quadro`, `o_mirror_do_look_espelha_o_objeto_e_saiu_do_transform`, os 4 de `pivot_chave_tests.rs`. Mutações: todas sangraram (M1–M4 do pivot_chave e a do Transform, que escapava do censo e foi morta pelo teste do Mirror).
 - **Cena nova:** `PH2D_GAME_SMOKE_FOTO=sprite_moeda` prende a Coin 4 à Platform High.
 - **Achado fora da Sprite, para a Timeline, NÃO corrigido:** com Position animada, mudar a agulha (via `playhead.seek` + flag de entrada na cena, ainda não reproduzido com o mouse) cria passos de desfazer, e o Ctrl+Z final não muda nada na tela; acontece com Position simples, não com o Flip. Cena `sprite_pivot_chave`: `[sprite-prova]` mostra o desfazer subindo a cada ida.
-- **Ainda aberto:** smoke do dono; M8/M9 (reordenar o convidado a meio da mola) não referidos como feitos; dívidas "antes de integrar" acima seguem.
+- **M8/M9 (o hóspede a meio da mola):** `enquanto_assenta_a_cola_leva_o_cartao_ao_lugar_deste_quadro` prova a posição em movimento, e `let dy = 0.0` em `cards_lista.rs` sangra. A variante com rolagem continua sem prova.
+- **Junto com o achado da Timeline:** no fim da cena `sprite_pivot_chave`, depois do Ctrl+Z, a seleção foi para a linha Scene e o Inspector ficou vazio. Não investigado.
+- **Ainda aberto:** smoke do dono; dívidas "antes de integrar" acima seguem.
 
 ## Fora, não bloqueia
 

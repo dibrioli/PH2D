@@ -333,3 +333,18 @@ fn a_seccao_ordering_existe_em_todo_tipo_do_add() {
     // Controlo positivo: a varredura viu o menu inteiro (20 tipos em 01/11).
     assert!(vistos >= 20, "só {vistos} tipos do Add varridos");
 }
+
+/// `Add ▸ Sprite` abre a escolha da imagem daquele objecto; os outros objectos do jogo, não.
+#[test]
+fn so_a_sprite_nasce_a_pedir_a_imagem() {
+    use super::pede_a_imagem;
+    use ph2d_editor_core::action_bus::{ActionBus, EditorAction};
+    let mut bus = ActionBus::default();
+    pede_a_imagem(ph2d_app_game::object_add::SPRITE, 7, &mut bus);
+    assert!(matches!(
+        bus.drain().collect::<Vec<_>>().as_slice(),
+        [EditorAction::OpenImagePicker { entity_bits: 7 }]
+    ));
+    pede_a_imagem(ph2d_app_game::object_add::ANIMATED_SPRITE, 7, &mut bus);
+    assert_eq!(bus.drain().count(), 0);
+}

@@ -784,3 +784,105 @@ fn tint_each_corner_aberto_e_de_um_objecto_so() {
     set_current_inspector_sprite(Some(sprite()));
     assert!(pintado(&pinta(&mut host, &mut st)), "o 7 lembra-se");
 }
+
+/// Os campos do cartão: um grupo é um só campo (o seletor Use, a grade do Pivot, o par Strategy).
+fn campos_da_sprite() -> Vec<Vec<NodeId>> {
+    let um = |v: &[NodeId]| v.iter().map(|id| vec![*id]).collect::<Vec<_>>();
+    let mut c = um(&[
+        core_ids::INSP_ENTITY_NAME,
+        INSP_VISIBILITY_CHECK,
+        INSP_RENDER_TEXTURE_SLOT,
+        INSP_IMAGE_EDIT_PAINTER,
+        INSP_SPRITE_TINT_SWATCH,
+        INSP_SPRITE_OPACITY_CHIP,
+        INSP_SPRITE_FLIP_X,
+        INSP_SPRITE_FLIP_Y,
+        INSP_TRANSFORM_POS_X,
+        INSP_TRANSFORM_POS_Y,
+        INSP_TRANSFORM_ROT,
+        INSP_TRANSFORM_ROTATE_CW,
+        INSP_TRANSFORM_FLIP_H,
+        INSP_TRANSFORM_FLIP_V,
+        INSP_TRANSFORM_SCALE_X,
+        INSP_TRANSFORM_SCALE_Y,
+        ph2d_panel_inspector::SCALE_LOCK,
+        INSP_TRANSFORM_SKEW_X,
+        INSP_TRANSFORM_SKEW_Y,
+        INSP_ORDER_Z_INDEX,
+        INSP_ORDER_YSORT_ENABLED,
+        ph2d_tool_registry::hash_node_id("insp_order_options.dd"),
+        INSP_SPRITE_EMISSIVE_CHIP,
+        INSP_SPRITE_TINT_FILL,
+        INSP_SPRITE_CORNERS_ON,
+        INSP_RENDER_SOURCE_REIMPORT,
+    ]);
+    c.push(INSP_IMAGE_USE.to_vec());
+    c.push(
+        INSP_SPRITE_PIVOT
+            .iter()
+            .copied()
+            .chain([INSP_SPRITE_PIVOT_NOME])
+            .collect(),
+    );
+    c.push(vec![
+        core_ids::INSP_RENDER_STRATEGY_ATLAS,
+        INSP_RENDER_STRATEGY_INDIVIDUAL,
+    ]);
+    c.push(vec![INSP_RENDER_FORMAT_RGBA8, INSP_RENDER_FORMAT_RGBA16]);
+    c
+}
+
+/// A aceitação da ficha, contada no que está pintado: em uso, os campos à vista com o Look aberto e os outros dobrados, e
+/// o total com tudo aberto. O que pinta e não é campo é a moldura: quem acrescenta um campo muda o número da moldura.
+#[test]
+fn o_censo_dos_campos_da_sprite_em_uso() {
+    let (mut host, mut st) = cena(factos());
+    let conta = |r: &[(NodeId, Rect)]| {
+        let tem = |id: &NodeId| r.iter().any(|(i, q)| i == id && q.w > 0.0);
+        let campos = campos_da_sprite();
+        let vistos = campos.iter().filter(|g| g.iter().any(tem)).count();
+        let moldura = r
+            .iter()
+            .filter(|(i, q)| q.w > 0.0 && !campos.iter().flatten().any(|c| c == i))
+            .count();
+        (vistos, moldura)
+    };
+    for id in [core_ids::INSP_LIVE_RENDER_SECTION, CARD_ORDERING] {
+        host.store_mut().set_collapsed(id, true);
+    }
+    assert_eq!(conta(&pinta(&mut host, &mut st)), (10, 18), "à vista");
+    for id in [
+        core_ids::INSP_LIVE_RENDER_SECTION,
+        CARD_ORDERING,
+        ph2d_panel_inspector::CARD_TRANSFORM_IMAGE,
+    ] {
+        host.store_mut().set_collapsed(id, false);
+    }
+    assert_eq!(conta(&pinta(&mut host, &mut st)), (30, 18), "no total");
+}
+
+/// Virar e tingir com os outros cartões dobrados: Flip, a amostra do Tint e a cor no seletor, 3 gestos.
+#[test]
+fn virar_e_tingir_com_os_cartoes_fechados_sao_tres_gestos() {
+    let (mut host, mut st) = cena(factos());
+    for id in [core_ids::INSP_LIVE_RENDER_SECTION, CARD_ORDERING] {
+        host.store_mut().set_collapsed(id, true);
+    }
+    let (_, a) = clica(&mut host, &mut st, INSP_SPRITE_FLIP_X);
+    assert!(
+        a.iter().any(|x| matches!(
+            x,
+            EditorAction::InspectorSpriteEdit {
+                edit: SpriteFieldEdit::FlipX(_),
+                ..
+            }
+        )),
+        "{a:?}"
+    );
+    let _ = clica(&mut host, &mut st, INSP_SPRITE_TINT_SWATCH);
+    assert_eq!(
+        host.store().picker_target(),
+        Some(INSP_SPRITE_TINT_SWATCH),
+        "o 2.º gesto abre o seletor, e o 3.º é escolher a cor"
+    );
+}

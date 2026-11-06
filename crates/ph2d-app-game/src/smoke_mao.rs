@@ -20,6 +20,14 @@ pub enum Mao {
     Desfaz,
     /// Imprime as imagens das duas plataformas: `[sprite-pixel]`.
     Relata,
+    /// O campo Position X do Inspector, 1 m à direita, pela porta do clique.
+    Desloca,
+    /// Um dos 9 pontos do Pivot (coluna, linha), pela porta do clique.
+    Pivo([u8; 2]),
+    /// A agulha da timeline neste tempo (s).
+    Agulha(f64),
+    /// Imprime a pose e as chaves da Platform High: `[sprite-prova]`.
+    Prova,
 }
 
 /// Quadros até a cena assentar (a seleção, a 1.ª moldura e o rebobinar já correram).
@@ -34,6 +42,30 @@ const CANTO: [f32; 2] = [-13.0 + 8.0 * 16.0 / 9.0, 7.0];
 #[must_use]
 pub fn mao(foto: Foto, quadro: u32) -> Option<Mao> {
     let (de, ate) = match foto {
+        // Em Draw: mexe no Transform, Ctrl+Z aí dentro, sai, e Ctrl+Z fora.
+        Foto::SpriteTransformNoDraw => {
+            return match quadro.checked_sub(INICIO)? {
+                0 | 20 | 40 | 70 | 100 => Some(Mao::Prova),
+                10 => Some(Mao::Desloca),
+                30 | 80 => Some(Mao::Desfaz),
+                50 => Some(Mao::SaiDoDraw),
+                _ => None,
+            };
+        }
+        // Duas chaves: o pivô no pé em t = 1, à esquerda em t = 2. A timeline toca 1, 2 e o meio; depois Ctrl+Z.
+        Foto::SpritePivotChave => {
+            return match quadro.checked_sub(INICIO)? {
+                0 | 20 | 50 | 70 | 90 | 110 | 140 => Some(Mao::Prova),
+                10 => Some(Mao::Pivo([1, 2])),
+                30 => Some(Mao::Agulha(2.0)),
+                40 => Some(Mao::Pivo([0, 1])),
+                60 => Some(Mao::Agulha(1.0)),
+                80 => Some(Mao::Agulha(2.0)),
+                100 => Some(Mao::Agulha(1.5)),
+                120 => Some(Mao::Desfaz),
+                _ => None,
+            };
+        }
         // Um traço na cópia aberta, e fica no Draw: a foto mostra onde ele caiu.
         Foto::SpriteNoPainterTraco => ([8.0, 2.0], [9.0, 2.0]),
         // Sem traço: entra, sai, e conta o que ficou.

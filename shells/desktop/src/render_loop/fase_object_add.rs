@@ -30,6 +30,13 @@ enum Born {
     Dialog,
 }
 
+/// Uma Sprite nasce a pedir a imagem (ficha da Sprite, 05/11); fechar a escolha deixa o convite no cartão.
+fn pede_a_imagem(entry: AddEntry, bits: u64, bus: &mut ph2d_editor_core::action_bus::ActionBus) {
+    if entry == ph2d_app_game::object_add::SPRITE {
+        bus.push(ph2d_editor_core::action_bus::EditorAction::OpenImagePicker { entity_bits: bits });
+    }
+}
+
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_object_add(&mut self, open: bool) {
@@ -173,13 +180,8 @@ impl crate::App {
             return;
         };
         ph2d_app_macros::com(|m| m.nasceu(&mut gfx.sim, bits));
-        // Uma Sprite nasce a pedir a imagem (ficha da Sprite, 05/11); fechar a escolha deixa o convite no cartão.
-        if entry == ph2d_app_game::object_add::SPRITE
-            && let Some(hero) = gfx.hero_screen.as_mut()
-        {
-            hero.bus.push(
-                ph2d_editor_core::action_bus::EditorAction::OpenImagePicker { entity_bits: bits },
-            );
+        if let Some(hero) = gfx.hero_screen.as_mut() {
+            pede_a_imagem(entry, bits, &mut hero.bus);
         }
         let name = gfx
             .sim

@@ -36,6 +36,9 @@ impl crate::App {
         self.any_input_this_frame = true;
         match m {
             Mao::Desfaz => self.smoke_undo(false),
+            Mao::Agulha(t) => self.playhead.seek(t),
+            Mao::Desloca | Mao::Pivo(_) => self.mexe_na_sprite_do_smoke(m),
+            Mao::Prova => self.prova_da_sprite_do_smoke(),
             Mao::SaiDoDraw => {
                 if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
                     h.bus
@@ -82,6 +85,81 @@ impl crate::App {
                 );
             }
         }
+    }
+
+    /// O clique do Inspector sobre a Platform High: pela mesma ação do barramento.
+    fn mexe_na_sprite_do_smoke(&mut self, m: ph2d_app_game::smoke_mao::Mao) {
+        use ph2d_editor_core::action_bus::EditorAction;
+        let Some(g) = self.gfx.as_mut() else { return };
+        let Some(e) = ph2d_app_game::smoke::por_nome(&mut g.sim, "Platform High") else {
+            return;
+        };
+        let t = g.sim.world().get::<ph2d_ecs::Transform>(e).copied();
+        let (Some(t), Some(h)) = (t, g.hero_screen.as_mut()) else {
+            return;
+        };
+        if let ph2d_app_game::smoke_mao::Mao::Pivo(ponto) = m {
+            h.bus.push(EditorAction::ImageUseEdit {
+                entity_bits: e.to_bits(),
+                edit: ph2d_editor_core::ImageUseEdit::Pivot(ph2d_editor_core::SpritePivot::Ponto(
+                    ponto,
+                )),
+            });
+        } else {
+            h.bus.push(EditorAction::InspectorTransformEdit(
+                ph2d_editor_core::InspectorTransformInfo {
+                    entity_bits: e.to_bits(),
+                    translation: [t.translation.x + 1.0, t.translation.y],
+                    rotation_rad: t.rotation,
+                    scale: [t.scale.x, t.scale.y],
+                    skew_rad: [t.skew_x, t.skew_y],
+                },
+            ));
+        }
+    }
+
+    /// `[sprite-prova]`: a pose da Platform High, onde o desenho e a colisão caem no mundo, o filho, e as chaves.
+    fn prova_da_sprite_do_smoke(&mut self) {
+        let t = self.playhead.time();
+        let tl = &self.timeline;
+        let Some(g) = self.gfx.as_mut() else { return };
+        let Some(e) = ph2d_app_game::smoke::por_nome(&mut g.sim, "Platform High") else {
+            return;
+        };
+        let filho = ph2d_app_game::smoke::por_nome(&mut g.sim, "Filho");
+        let chaves: Vec<String> = tl
+            .doc
+            .bindings()
+            .iter()
+            .filter(|b| b.entity == e.to_bits())
+            .map(|b| {
+                let n = tl.doc.active_clip().track(b.target).map_or(0, |k| k.len());
+                match b.prop {
+                    ph2d_timeline::PropKind::Field(f) => format!("campo{}={n}", f.campo),
+                    p => format!("{p:?}={n}"),
+                }
+            })
+            .collect();
+        let w = g.sim.world();
+        let p = w
+            .get::<ph2d_ecs::Transform>(e)
+            .map_or(ph2d_core::Vec2::ZERO, |t| t.translation);
+        let s = w.get::<ph2d_render::Sprite>(e).copied();
+        let no_mundo = |o: [f32; 2]| [p.x + o[0], p.y + o[1]];
+        let desenho = s.map(|s| no_mundo(s.resolve_anchor(100.0)));
+        let col = w
+            .get::<ph2d_physics_ecs::Collider>(e)
+            .map(|c| no_mundo(c.offset));
+        let local = filho.and_then(|f| w.get::<ph2d_ecs::Transform>(f).map(|l| l.translation));
+        let filho = local.map(|l| no_mundo([l.x, l.y]));
+        eprintln!(
+            "[sprite-prova] t={t:.2} desfazer={} posicao=[{},{}] anchor={:?} desenho={desenho:?} colisao={col:?} filho={filho:?} chaves=[{}]",
+            self.undo.depth(),
+            p.x,
+            p.y,
+            s.map(|s| s.anchor),
+            chaves.join(" "),
+        );
     }
 
     pub(super) fn formato_desfaz_do_smoke(&mut self, quadro: u32) {

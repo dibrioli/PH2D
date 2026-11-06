@@ -30,6 +30,10 @@ pub enum Foto {
     SpritePainterSemPintar,
     SpriteNoPainter,
     SpriteNoPainterTraco,
+    /// O Transform do Inspector mexido em Draw, com Auto Key: `[sprite-prova]` antes, depois, e a cada Ctrl+Z.
+    SpriteTransformNoDraw,
+    /// O Pivot com Auto Key, num objecto com colisão e filho; a timeline real toca: `[sprite-prova]` em cada tempo.
+    SpritePivotChave,
     Bloco,
     Bandeira,
     Animada,
@@ -96,6 +100,8 @@ pub fn foto() -> Option<Foto> {
         "sprite_painter_sem_pintar" => Some(Foto::SpritePainterSemPintar),
         "sprite_no_painter" => Some(Foto::SpriteNoPainter),
         "sprite_no_painter_traco" => Some(Foto::SpriteNoPainterTraco),
+        "sprite_transform_no_draw" => Some(Foto::SpriteTransformNoDraw),
+        "sprite_pivot_chave" => Some(Foto::SpritePivotChave),
         "trocado" => Some(Foto::Trocado),
         "bloco" => Some(Foto::Bloco),
         "bandeira" => Some(Foto::Bandeira),
@@ -198,6 +204,8 @@ impl Foto {
                 | Self::SpritePainterSemPintar
                 | Self::SpriteNoPainter
                 | Self::SpriteNoPainterTraco
+                | Self::SpriteTransformNoDraw
+                | Self::SpritePivotChave
                 | Self::UsoParada
                 | Self::PlayerParado
                 | Self::RepetidaDaParada
@@ -346,8 +354,20 @@ pub fn plano_da_foto(
         | Foto::SpriteNoPainterTraco
         | Foto::SpritePainterVolta
         | Foto::SpritePainterAplica
+        | Foto::SpriteTransformNoDraw
         | Foto::SpritePainterSemPintar => {
             plano.edicoes = vec![(alta, ph2d_editor_core::ImageUseEdit::EditInPainter)];
+        }
+        Foto::SpritePivotChave => {
+            let local = ph2d_ecs::Transform {
+                translation: ph2d_core::Vec2::new(0.0, 2.0),
+                ..Default::default()
+            };
+            let pai = Entity::from_bits(alta);
+            let nome = ph2d_ecs::Name::new("Filho");
+            sim.world_mut().spawn((local, nome, ph2d_ecs::ChildOf(pai)));
+            ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+            plano.alvo = alta;
         }
         Foto::Trocado => {
             plano.escolhas = vec![(hills, *montes), (player, *heroi)];

@@ -38,6 +38,25 @@ fn perto(a: [f32; 2], b: [f32; 2]) -> bool {
 /// snap nasce do corte da imagem. A célula (1, 0) escolhida: a sprite mostra UMA célula do mesmo tamanho a que a
 /// animada a mostrava, o Inspector lê os píxeis dela, e o collider automático segue.
 #[test]
+fn da_folha_parada_use_one_region_abre_o_editor_e_o_quadro_vira_a_area() {
+    let mut sim = SimWorld::new();
+    crate::comp::montar(&mut sim, 4);
+    let e = por_nome(&mut sim, "Player");
+    assert!(usa(&mut sim, e, InspectorImageUse::Still));
+    pedidos(&mut sim);
+    assert_eq!(sim.world().get::<SpriteRegion>(e), None, "a folha inteira");
+    assert!(usa(&mut sim, e, InspectorImageUse::Region));
+    assert_eq!(pedidos(&mut sim), vec![e.to_bits()], "pede o editor");
+    let [pw, ph] = factos(&sim, e).px;
+    let quadro = [pw / 8, 0, pw / 8, ph / 4];
+    assert!(regiao(&mut sim, e, quadro, [8, 4]));
+    assert!(
+        sim.world().get::<SpriteRegion>(e).is_some(),
+        "o quadro escolhido vira a Region"
+    );
+}
+
+#[test]
 fn a_area_escolhida_mostra_so_a_celula_a_mesma_escala() {
     let mut sim = SimWorld::new();
     crate::comp::montar(&mut sim, 4);

@@ -231,8 +231,13 @@ impl crate::App {
         use ph2d_app_components::object_drag;
         use ph2d_app_game::smoke_mao::{Mao, mao, proximo_quadro_da_mao, relato};
         let foto = ph2d_app_game::smoke::foto();
-        let chave = foto == Some(ph2d_app_game::smoke::Foto::CameraChave);
-        if chave && !self.timeline.flags.auto_key {
+        use ph2d_app_game::smoke::Foto;
+        let chave = foto == Some(Foto::CameraChave);
+        let prova = matches!(
+            foto,
+            Some(Foto::SpriteTransformNoDraw | Foto::SpritePivotChave)
+        );
+        if (chave || prova) && !self.timeline.flags.auto_key {
             self.timeline.flags.auto_key = true;
             // O Auto Key só arma com o painel Timeline à vista — é lá que o botão mora.
             if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
@@ -273,7 +278,14 @@ impl crate::App {
                 let (x, y) = ecra(w);
                 self.smoke_pointer_move(x, y);
             }
-            Mao::SaiDoDraw | Mao::Aplica | Mao::Desfaz | Mao::Relata => {
+            Mao::SaiDoDraw
+            | Mao::Aplica
+            | Mao::Desfaz
+            | Mao::Relata
+            | Mao::Desloca
+            | Mao::Pivo(_)
+            | Mao::Agulha(_)
+            | Mao::Prova => {
                 self.fim_da_imagem_do_smoke(m);
             }
             Mao::Sobe => {

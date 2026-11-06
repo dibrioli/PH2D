@@ -83,4 +83,4 @@ Gates novos, por nome (em `crates/ph2d-sfx-dsp/tests/it/` salvo indicação): `h
 
 ## Smoke do dono
 
-Pendente.
+**Aprovado em 06/11** (kill-criterion do corpo vibrante fechado): «gostei dos resultados». Ressalva dele: o Drum Thump «quase não se ouve» nas caixas de som pequenas. O clique no Preview foi feito no app pela primeira vez neste smoke.

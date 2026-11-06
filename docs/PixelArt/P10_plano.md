@@ -107,7 +107,7 @@ Lei de UI: cartões compactos, rótulo em campo que não se explica sozinho, uni
 
 ### 5.1 O que recusa numa camada de tilemap (a P10b deixa cinzento, nunca mudo)
 
-Conferido com a camada ativa: `crates/ph2d-app-registry-init/tests/it/tilemap_recusa.rs` manda cada pedido real, com e sem seleção, e o documento fica igual, sem pânico. ⚠️ **Coluna «hoje»:** o que o artista vê agora, antes da tela.
+Conferido com a camada ativa: `crates/ph2d-app-registry-init/tests/it/tilemap_recusa.rs` manda cada pedido real, com e sem seleção, e o documento fica igual, sem pânico. ⚠️ **O teste do app não manda:** o gesto do rato (lápis, formas, balde, Gradient), Text, Despeckle, Outline, Convolution, Hue/Saturation, Color Curve, Trim, Crop nem arrastar cels; esses têm prova só no núcleo (`escritores.rs`) ou por leitura do chamador. **Coluna «hoje»:** o que o artista vê agora, antes da tela.
 
 | Comando | Recusa | Hoje |
 |---|---|---|

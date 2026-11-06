@@ -136,10 +136,19 @@ fn fracao_de(world: &World, e: Entity, db: &AssetDb, atlas: &BTreeMap<u32, Asset
 /// O ponto `[coluna, linha]` da grade (`0..=2`, a linha de cima é a 0), em metros locais a partir do centro do quad.
 fn ponto_local(s: &Sprite, f: [f32; 4], ponto: [u8; 2]) -> [f32; 2] {
     let meio = |a: f32, b: f32, i: u8| a + (b - a) * f32::from(i.min(2)) * 0.5;
-    let u = meio(f[0], f[2], ponto[0]);
-    let v = meio(f[1], f[3], ponto[1]);
-    let u = if s.flip_x { 1.0 - u } else { u };
-    let v = if s.flip_y { 1.0 - v } else { v };
+    // A caixa vira com a imagem; «Left» continua a ser o lado esquerdo do que se vê.
+    let (u0, u1) = if s.flip_x {
+        (1.0 - f[2], 1.0 - f[0])
+    } else {
+        (f[0], f[2])
+    };
+    let (v0, v1) = if s.flip_y {
+        (1.0 - f[3], 1.0 - f[1])
+    } else {
+        (f[1], f[3])
+    };
+    let u = meio(u0, u1, ponto[0]);
+    let v = meio(v0, v1, ponto[1]);
     [(u - 0.5) * s.size[0], (0.5 - v) * s.size[1]]
 }
 

@@ -119,9 +119,10 @@ pub(crate) fn com_corpo(
 pub(crate) fn tamanho(info: &InspectorSpriteInfo) -> String {
     let unit = crate::state::current_display_unit();
     let ppm = crate::state::current_pixels_per_meter();
+    // A escala negativa é o espelho (Mirror object), não um tamanho.
     let (w, h) = (
-        unit.from_meters(info.world_size[0], ppm),
-        unit.from_meters(info.world_size[1], ppm),
+        unit.from_meters(info.world_size[0].abs(), ppm),
+        unit.from_meters(info.world_size[1].abs(), ppm),
     );
     match unit {
         DisplayUnit::Meters => format!("{w:.3} × {h:.3}"),

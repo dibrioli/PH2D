@@ -126,7 +126,7 @@ impl crate::App {
         let Some(e) = ph2d_app_game::smoke::por_nome(&mut g.sim, "Platform High") else {
             return;
         };
-        let filho = ph2d_app_game::smoke::por_nome(&mut g.sim, "Filho");
+        let filho = ph2d_app_game::smoke::por_nome(&mut g.sim, "Coin 4");
         let chaves: Vec<String> = tl
             .doc
             .bindings()

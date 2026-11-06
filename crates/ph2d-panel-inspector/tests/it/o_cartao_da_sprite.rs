@@ -861,6 +861,29 @@ fn o_censo_dos_campos_da_sprite_em_uso() {
     assert_eq!(conta(&pinta(&mut host, &mut st)), (30, 18), "no total");
 }
 
+/// Na Sprite o `Mirror object` mora no Look, e clicá-lo troca o sinal da escala (dono 06/11).
+/// *Mutação: o Transform pintar os três verbos ⇒ o último botão pintado fica abaixo do Position.*
+#[test]
+fn o_mirror_do_look_espelha_o_objeto_e_saiu_do_transform() {
+    let (mut host, mut st) = cena(factos());
+    host.store_mut()
+        .set_collapsed(ph2d_panel_inspector::CARD_TRANSFORM_IMAGE, false);
+    let r = pinta(&mut host, &mut st);
+    let (botao, posicao) = (
+        rect_de(&r, INSP_TRANSFORM_FLIP_H),
+        rect_de(&r, INSP_TRANSFORM_POS_X),
+    );
+    assert!(botao.y < posicao.y, "{botao:?} × {posicao:?}");
+    let (_, a) = clica(&mut host, &mut st, INSP_TRANSFORM_FLIP_H);
+    assert!(
+        a.iter().any(|x| matches!(
+            x,
+            EditorAction::InspectorTransformEdit(t) if t.scale == [-1.0, 1.0]
+        )),
+        "{a:?}"
+    );
+}
+
 /// Virar e tingir com os outros cartões dobrados: Flip, a amostra do Tint e a cor no seletor, 3 gestos.
 #[test]
 fn virar_e_tingir_com_os_cartoes_fechados_sao_tres_gestos() {

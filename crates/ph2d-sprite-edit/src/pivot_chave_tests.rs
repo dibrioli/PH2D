@@ -39,7 +39,14 @@ fn gravados(i: &[TimelineIntent]) -> Vec<(u64, PropKind)> {
 #[test]
 fn a_bolinha_grava_a_posicao_do_filho_no_mesmo_passo() {
     let abre = vec![TimelineIntent::BeginEdit, TimelineIntent::EndEdit];
-    let i = clique_leva_os_filhos(abre, &TimelineDoc::new(), &[FILHO], agora(), na_curva, grava);
+    let i = clique_leva_os_filhos(
+        abre,
+        &TimelineDoc::new(),
+        &[FILHO],
+        agora(),
+        na_curva,
+        grava,
+    );
     assert_eq!(gravados(&i), vec![(FILHO, PropKind::Position)]);
     assert_eq!(i.first(), Some(&TimelineIntent::BeginEdit), "{i:?}");
     assert_eq!(i.last(), Some(&TimelineIntent::EndEdit), "{i:?}");

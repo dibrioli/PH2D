@@ -80,14 +80,17 @@ fn o_pe_e_o_do_desenho_nao_o_da_borda_da_imagem() {
 }
 
 #[test]
-fn a_imagem_espelhada_espelha_o_ponto() {
+fn com_a_imagem_virada_o_ponto_segue_o_lado_que_se_ve() {
     let mut s = sprite_2x2();
     s.flip_x = true;
     assert_eq!(
         ponto_local(&s, [0.0, 0.0, 1.0, 1.0], [0, 1]),
-        [1.0, 0.0],
-        "o lado esquerdo do desenho está à direita do quad"
+        [-1.0, 0.0],
+        "Left é o lado esquerdo do que se vê"
     );
+    // A caixa opaca vira com a imagem: desenho em u 0.25..0.5 fica em 0.5..0.75.
+    assert_eq!(ponto_local(&s, [0.25, 0.0, 0.5, 1.0], [0, 1]), [0.0, 0.0]);
+    assert_eq!(ponto_local(&s, [0.25, 0.0, 0.5, 1.0], [2, 1]), [0.5, 0.0]);
 }
 
 /// Um ficheiro antigo com Centered desligado e Offset: o pivô novo normaliza sem mover o desenho.

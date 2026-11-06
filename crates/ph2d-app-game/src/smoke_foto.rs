@@ -34,6 +34,8 @@ pub enum Foto {
     SpriteTransformNoDraw,
     /// O Pivot com Auto Key, num objecto com colisão e filho; a timeline real toca: `[sprite-prova]` em cada tempo.
     SpritePivotChave,
+    /// A Platform High com a Coin 4 presa: a cena do smoke do dono.
+    SpriteMoeda,
     Bloco,
     Bandeira,
     Animada,
@@ -102,6 +104,7 @@ pub fn foto() -> Option<Foto> {
         "sprite_no_painter_traco" => Some(Foto::SpriteNoPainterTraco),
         "sprite_transform_no_draw" => Some(Foto::SpriteTransformNoDraw),
         "sprite_pivot_chave" => Some(Foto::SpritePivotChave),
+        "sprite_moeda" => Some(Foto::SpriteMoeda),
         "trocado" => Some(Foto::Trocado),
         "bloco" => Some(Foto::Bloco),
         "bandeira" => Some(Foto::Bandeira),
@@ -206,6 +209,7 @@ impl Foto {
                 | Self::SpriteNoPainterTraco
                 | Self::SpriteTransformNoDraw
                 | Self::SpritePivotChave
+                | Self::SpriteMoeda
                 | Self::UsoParada
                 | Self::PlayerParado
                 | Self::RepetidaDaParada
@@ -358,15 +362,15 @@ pub fn plano_da_foto(
         | Foto::SpritePainterSemPintar => {
             plano.edicoes = vec![(alta, ph2d_editor_core::ImageUseEdit::EditInPainter)];
         }
-        Foto::SpritePivotChave => {
-            let local = ph2d_ecs::Transform {
-                translation: ph2d_core::Vec2::new(0.0, 2.0),
-                ..Default::default()
-            };
-            let pai = Entity::from_bits(alta);
-            let nome = ph2d_ecs::Name::new("Filho");
-            sim.world_mut().spawn((local, nome, ph2d_ecs::ChildOf(pai)));
-            ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+        Foto::SpritePivotChave | Foto::SpriteMoeda => {
+            let (pai, moeda) = (Entity::from_bits(alta), por_nome(sim, "Coin 4"));
+            if let Some(m) = moeda {
+                let mut e = sim.world_mut().entity_mut(m);
+                e.insert(ph2d_ecs::ChildOf(pai));
+                if let Some(mut t) = e.get_mut::<ph2d_ecs::Transform>() {
+                    t.translation = ph2d_core::Vec2::new(0.0, 0.8);
+                }
+            }
             plano.alvo = alta;
         }
         Foto::Trocado => {

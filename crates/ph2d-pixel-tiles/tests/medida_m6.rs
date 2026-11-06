@@ -71,7 +71,13 @@ fn mede(celulas: u32, quadros: u32, voltas: u32) {
     let mut h = History::default();
     let (mut melhor_gesto, mut melhor_aplica, mut melhor_desfaz) =
         (u128::MAX, u128::MAX, u128::MAX);
+    let mut melhor_antigo = u128::MAX;
     for i in 0..voltas {
+        let t = Instant::now();
+        px_a_px(&s, l, quadros);
+        let antigo = t.elapsed().as_micros();
+        println!("M6 volta {i}: píxel a píxel (o caminho de antes) {antigo} µs");
+        melhor_antigo = melhor_antigo.min(antigo);
         let v = u32::from_le_bytes([i as u8 + 1, 2, 3, 255]);
         let t = Instant::now();
         let op = aplica(&s, l, f, &[(3, 3, v)], Modo::Manual).unwrap();
@@ -91,11 +97,42 @@ fn mede(celulas: u32, quadros: u32, voltas: u32) {
         melhor_desfaz = melhor_desfaz.min(desfaz);
     }
     println!(
-        "M6 MÍNIMO de {voltas}: gesto {:.1} ms (aplicar {:.1} ms) · desfazer {:.1} ms",
+        "M6 MÍNIMO de {voltas}: gesto {:.1} ms (aplicar {:.1} ms) · desfazer {:.1} ms · píxel a píxel {:.1} ms",
         melhor_gesto as f64 / 1000.0,
         melhor_aplica as f64 / 1000.0,
-        melhor_desfaz as f64 / 1000.0
+        melhor_desfaz as f64 / 1000.0,
+        melhor_antigo as f64 / 1000.0
     );
+}
+
+/// O caminho de antes, no MESMO processo: refaz cada célula de cada quadro, píxel a píxel, num
+/// buffer à parte (o que só o favorece, por caber melhor na cache).
+fn px_a_px(s: &Sprite, l: LayerId, quadros: u32) {
+    let (tw, th) = (u32::from(TILE), u32::from(TILE));
+    let mut buf = Vec::new();
+    for (k, c) in s.entries() {
+        let Some(g) = c.tiles.as_deref().filter(|_| k.0 == l) else {
+            continue;
+        };
+        let w = g.w as usize * usize::from(TILE);
+        buf.resize(c.data.len(), 0u8);
+        let src = vec![7u8; usize::from(TILE) * usize::from(TILE) * BPP];
+        for (i, &t) in g.tiles.iter().enumerate() {
+            let (col, row) = (i % g.w as usize, i / g.w as usize);
+            for sy in 0..th {
+                for sx in 0..tw {
+                    let (dx, dy) = t.place(sx, sy, tw, th);
+                    let a = (sy * tw + sx) as usize * BPP;
+                    let d =
+                        ((row * th as usize + dy as usize) * w + col * tw as usize + dx as usize)
+                            * BPP;
+                    buf[d..d + BPP].copy_from_slice(&src[a..a + BPP]);
+                }
+            }
+        }
+        std::hint::black_box(&buf);
+    }
+    std::hint::black_box(quadros);
 }
 
 #[test]

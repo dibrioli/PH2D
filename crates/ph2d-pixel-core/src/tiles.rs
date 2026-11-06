@@ -169,18 +169,84 @@ impl TileGrid {
     }
 }
 
-/// Escreve o tile `t` na célula `(col, row)` da imagem `out` (`w` células de largura).
-fn blit(out: &mut [u8], w: usize, bpp: usize, set: &Tileset, t: TileRef, col: usize, row: usize) {
-    let (tw, th) = (u32::from(set.tile_w), u32::from(set.tile_h));
-    let Some(src) = set.tiles.get(t.id() as usize) else {
-        return;
-    };
+/// A imagem de um tile com os flips de `t` já aplicados.
+fn virada(src: &[u8], t: TileRef, tw: u32, th: u32, bpp: usize) -> Vec<u8> {
+    let mut out = vec![0; src.len()];
     for sy in 0..th {
         for sx in 0..tw {
             let (dx, dy) = t.place(sx, sy, tw, th);
             let s = (sy * tw + sx) as usize * bpp;
-            let d = ((row * th as usize + dy as usize) * w + col * tw as usize + dx as usize) * bpp;
+            let d = (dy * tw + dx) as usize * bpp;
             out[d..d + bpp].copy_from_slice(&src[s..s + bpp]);
+        }
+    }
+    out
+}
+
+/// As linhas `[a, b)` de um tile, depois dos flips de `t`: D torna linhas em colunas, logo são todas.
+fn linhas_viradas(t: TileRef, (a, b): (u32, u32), th: u32) -> (u32, u32) {
+    if t.flip_d() {
+        (0, th)
+    } else if t.flip_y() {
+        (th - b, th - a)
+    } else {
+        (a, b)
+    }
+}
+
+/// Escreve em `out` as células do mapa para as quais `linhas` diz que linhas do tile mudaram, por
+/// linha de píxeis. Cada combinação de flips usada vira uma imagem uma vez só (M6:
+/// `docs/PixelArt/P10_plano.md` §6.1).
+fn desenha(
+    out: &mut [u8],
+    g: &TileGrid,
+    set: &Tileset,
+    bpp: usize,
+    linhas: impl Fn(u32) -> Option<(u32, u32)>,
+) {
+    if g.w == 0 {
+        return;
+    }
+    let (tw, th) = (u32::from(set.tile_w), u32::from(set.tile_h));
+    let linha = tw as usize * bpp;
+    let passo = g.w as usize * linha;
+    let mut viradas: BTreeMap<u32, Vec<u8>> = BTreeMap::new();
+    for &t in &g.tiles {
+        if t.id() != t.0 && linhas(t.id()).is_some() && !viradas.contains_key(&t.0) {
+            if let Some(src) = set.tiles.get(t.id() as usize) {
+                viradas.insert(t.0, virada(src, t, tw, th, bpp));
+            }
+        }
+    }
+    let mut fontes: Vec<(usize, &[u8], u32, u32)> = Vec::with_capacity(g.w as usize);
+    for (row, banda) in g.tiles.chunks(g.w as usize).enumerate() {
+        fontes.clear();
+        let (mut de, mut ate) = (th, 0);
+        for (col, &t) in banda.iter().enumerate() {
+            let Some(sujas) = linhas(t.id()) else {
+                continue;
+            };
+            let src = if t.id() == t.0 {
+                set.tiles.get(t.id() as usize)
+            } else {
+                viradas.get(&t.0)
+            };
+            if let Some(src) = src {
+                let (a, b) = linhas_viradas(t, sujas, th);
+                fontes.push((col * linha, src, a, b));
+                de = de.min(a);
+                ate = ate.max(b);
+            }
+        }
+        for ly in de..ate {
+            let ini = (row * th as usize + ly as usize) * passo;
+            let destino = &mut out[ini..ini + passo];
+            let l = ly as usize;
+            for &(x, src, a, b) in &fontes {
+                if a <= ly && ly < b {
+                    destino[x..x + linha].copy_from_slice(&src[l * linha..(l + 1) * linha]);
+                }
+            }
         }
     }
 }
@@ -191,17 +257,8 @@ pub fn expand(grid: &TileGrid, set: &Tileset, bpp: usize) -> Vec<u8> {
     let w = grid.w as usize * usize::from(set.tile_w);
     let h = grid.h as usize * usize::from(set.tile_h);
     let mut out = vec![0; w * h * bpp];
-    for (i, &t) in grid.tiles.iter().enumerate() {
-        blit(
-            &mut out,
-            w,
-            bpp,
-            set,
-            t,
-            i % grid.w as usize,
-            i / grid.w as usize,
-        );
-    }
+    let tudo = Some((0, u32::from(set.tile_h)));
+    desenha(&mut out, grid, set, bpp, |_| tudo);
     out
 }
 
@@ -396,7 +453,7 @@ pub(crate) fn apply_tiles(s: &mut Sprite, op: TilesSet) -> Result<TilesSet, OpEr
         ));
         tudo.insert(id);
     }
-    let mut tocados: BTreeMap<TilesetId, BTreeSet<u32>> = BTreeMap::new();
+    let mut tocados: Tocados = BTreeMap::new();
     for (id, n) in op.counts {
         let set = s
             .tilesets
@@ -418,13 +475,18 @@ pub(crate) fn apply_tiles(s: &mut Sprite, op: TilesSet) -> Result<TilesSet, OpEr
             .iter_mut()
             .find(|t| t.id == id)
             .ok_or(OpError::BadTiles("tiles.id"))?;
+        let linha = usize::from(set.tile_w) * bpp;
+        let sujas = linhas_sujas(&set.tiles[i as usize], &px, linha);
         let velho = std::mem::replace(&mut set.tiles[i as usize], px);
         // Um tile que nasceu neste op some pelo `counts` do inverso.
         let nasceu = inv.counts.iter().any(|(a, n)| *a == id && i >= *n);
         if !nasceu && !inv.tiles.iter().any(|(a, b, _)| *a == id && *b == i) {
             inv.tiles.push((id, i, velho));
         }
-        tocados.entry(id).or_default().insert(i);
+        if let Some((a, b)) = sujas {
+            let e = tocados.entry(id).or_default().entry(i).or_insert((a, b));
+            *e = (e.0.min(a), e.1.max(b));
+        }
     }
     let mut novos = BTreeSet::new();
     for (key, cel) in op.cels {
@@ -449,13 +511,25 @@ pub(crate) fn apply_tiles(s: &mut Sprite, op: TilesSet) -> Result<TilesSet, OpEr
     Ok(inv)
 }
 
+/// As linhas `[a, b)` que mudaram, por tile, por tileset.
+type Tocados = BTreeMap<TilesetId, BTreeMap<u32, (u32, u32)>>;
+
+/// A primeira e a última linha em que dois tiles diferem, ou `None` se são iguais.
+fn linhas_sujas(velho: &[u8], novo: &[u8], linha: usize) -> Option<(u32, u32)> {
+    let difere = |(a, b): (&[u8], &[u8])| a != b;
+    let pares = || velho.chunks(linha).zip(novo.chunks(linha));
+    let de = pares().position(difere)?;
+    let ate = pares().rposition(difere)?;
+    Some((de as u32, ate as u32 + 1))
+}
+
 /// Refaz o `data` dos cels novos e dos que usam um tile mudado; os outros ficam como estão.
 fn rederive(
     s: &mut Sprite,
     bpp: usize,
     novos: &BTreeSet<CelKey>,
     tudo: &BTreeSet<TilesetId>,
-    tocados: &BTreeMap<TilesetId, BTreeSet<u32>>,
+    tocados: &Tocados,
 ) {
     let chaves: Vec<(CelKey, TilesetId)> = s
         .cels
@@ -476,14 +550,13 @@ fn rederive(
             c.bbox = g.rect(set.tile_w, set.tile_h);
             c.data = expand(g, set, bpp);
         } else if let Some(mudou) = tocados.get(&id) {
-            // Só as células com um tile mudado: um traço num tile não refaz o mapa inteiro.
-            let w = c.bbox.w as usize;
-            for (i, &t) in g.tiles.iter().enumerate() {
-                if mudou.contains(&t.id()) {
-                    let (col, row) = (i % g.w as usize, i / g.w as usize);
-                    blit(&mut c.data, w, bpp, set, t, col, row);
-                }
+            // Só as linhas mudadas: um traço num tile não refaz o mapa inteiro.
+            let mut marca = vec![None; set.tiles.len()];
+            for (&i, &sujas) in mudou {
+                marca[i as usize] = Some(sujas);
             }
+            let linhas = |id: u32| marca.get(id as usize).copied().flatten();
+            desenha(&mut c.data, g, set, bpp, linhas);
         }
     }
 }

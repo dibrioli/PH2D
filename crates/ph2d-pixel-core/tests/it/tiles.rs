@@ -150,6 +150,60 @@ fn editing_a_tile_changes_every_copy_in_every_frame_and_undo_returns_the_byte() 
     assert!(derived_is_consistent(&s));
 }
 
+/// Refazer só as linhas que mudaram tem de dar a imagem inteira, em cada flip e em cada linha do tile.
+#[test]
+fn editing_one_row_of_a_tile_redraws_every_flip_exactly() {
+    const LADO: u16 = 4;
+    let mut h = History::default();
+    let mut s = base(ColorMode::Rgba);
+    let (acima, f) = (s.layers()[0].id, s.frames()[0].id);
+    let (op, l, set) = new_tilemap_layer(&mut s, acima, LADO, LADO).expect("camada");
+    h.commit(&mut s, op).expect("commit camada");
+    let celulas = usize::from(LADO) * usize::from(LADO);
+    let tile: Vec<u8> = (0..celulas * 4).map(|i| i as u8).collect();
+    let flips = |i: u32| TileRef::new(1, i & 1 != 0, i & 2 != 0, i & 4 != 0);
+    let op = TilesSet {
+        counts: vec![(set, 2)],
+        tiles: vec![(set, 1, tile.clone())],
+        cels: vec![(
+            (l, f),
+            Some(Cel::tilemap(TileGrid {
+                x: 0,
+                y: 0,
+                w: 8,
+                h: 1,
+                tiles: (0..8).map(flips).collect(),
+            })),
+        )],
+        ..TilesSet::default()
+    };
+    h.commit(&mut s, Op::Tiles(Box::new(op))).expect("mapa");
+    for linha in 0..usize::from(LADO) {
+        let antes = s.clone();
+        let mut novo = tile.clone();
+        novo[linha * usize::from(LADO) * 4 + 4] ^= 0xff;
+        let op = TilesSet {
+            tiles: vec![(set, 1, novo)],
+            ..TilesSet::default()
+        };
+        h.commit(&mut s, Op::Tiles(Box::new(op))).expect("edita");
+        assert!(derived_is_consistent(&s), "linha {linha}");
+        assert_ne!(s.cel((l, f)).unwrap().data, antes.cel((l, f)).unwrap().data);
+        assert!(h.undo(&mut s));
+        assert_eq!(s, antes, "desfazer da linha {linha}");
+    }
+    let mut novo = tile.clone();
+    novo[4] ^= 0xff;
+    novo[(usize::from(LADO) - 1) * usize::from(LADO) * 4 + 4] ^= 0xff;
+    let op = TilesSet {
+        tiles: vec![(set, 1, novo)],
+        ..TilesSet::default()
+    };
+    h.commit(&mut s, Op::Tiles(Box::new(op)))
+        .expect("duas linhas");
+    assert!(derived_is_consistent(&s), "a primeira e a última linha");
+}
+
 #[test]
 fn undo_takes_back_a_new_layer_and_its_tileset_to_the_byte() {
     let mut h = History::default();

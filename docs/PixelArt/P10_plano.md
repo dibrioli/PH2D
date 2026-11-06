@@ -166,10 +166,20 @@ Três scripts, `ferramentas/oraculo_godot_tiles.py`, `ferramentas/pixelorama_til
 
 (Uma corrida anterior a load 13–16 deu 1 927 e 476 ms.) O pedido do §6 (1024×1024 × 256 quadros) são **256 GB**: não cabe em 24 GB, recurso = a memória da fatia; cabem ~23 quadros, e não os corri: o número é por quadro. O caso é o pior possível (todas as células do documento são cópia do tile editado, em todos os quadros); o custo escala por célula afetada (~0,40 µs por célula de 256 píxeis nos dois casos). Só o `desenho::aplica` e o `History` estão medidos, sem preview nem GPU. **Passa dos 100 ms, ⇒ proposta, por decidir com o Coordenador:** (a) `blit` por linha com a imagem de cada combinação de flips já pronta, em vez de `place` por píxel (barato, cá dentro; ganho por medir, ⚠️ não chega sozinho a 100 ms no 1.º caso se o ganho for menos de 17×); (b) os quadros em paralelo; (c) o desenho do §6: reexpandir só o que está à vista e o resto a pedido, o que parte a lei `data == expand` e os 27 leitores dela, logo só se (a) + (b) não chegarem.
 
+**M6 depois da cura (P10b, `--profile smoke`, load 0,7–1,1, o MÍNIMO; o caminho antigo corre no MESMO processo, intercalado: `px_a_px` em `tests/medida_m6.rs`):**
+
+| Documento | Píxel a píxel (antes) | Por linha + só as linhas que mudaram | Desfazer |
+|---|---|---|---|
+| 256×256 × 64 quadros, um píxel editado | 2 531 ms | **38 ms** | 33 ms |
+| 1024×1024 × 1 quadro, um píxel editado | 801 ms | **10 ms** | 7 ms |
+
+Por degrau, no pior caso (256×256 × 64): só por linha, 178 ms; com fios por quadro, 142 ms. A parada é a banda da memória (4 GiB escritos), não a CPU: 16 fios deram só 20 %. ⇒ Os fios saíram (o núcleo continua sem fios nem dependências) e entrou reescrever só as linhas sujas. ⚠️ Mudar TODAS as linhas de um tile nesse documento continua em ~178 ms (mesmo caminho, sem o ganho das linhas): só nesse caso extremo. ⚠️ Ainda não medido: preview e GPU.
+
 ### 6.2 ⛔ Recusas MEDIDAS
 
 | Recusa | Medição | Porquê |
 |---|---|---|
+| Quadros em paralelo para o M6 | 178 → 142 ms com 16 fios, ver acima | A banda da memória manda; só as linhas sujas chegam a 38 ms |
 | Copiar o «tile mais próximo» do Godot num slot em falta | M2C: 4 corridas; sempre um vizinho a 1–4 bits, e 35 células com máscara existente receberam outra (a falta propaga-se) | Um mapa onde um tile em falta muda os vizinhos esconde o buraco. A célula fica com a casa dela, mesmo vazia, e o artista vê o que falta. Gate `slot_em_falta_nao_escolhe_outro_tile` |
 ## 7. Gates, red-first
 

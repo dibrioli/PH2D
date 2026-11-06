@@ -132,16 +132,10 @@ fn art_of(
         let (w, h) = (doc.sprite.width(), doc.sprite.height());
         let edit = editing == Some(bits);
         let onion = app.onion_view(key, edit);
+        crate::tiles::compoe(app, key, pending.as_ref(), onion.as_ref());
         let Some(doc) = app.docs.get_mut(&key) else {
             continue;
         };
-        doc.view.refresh_with(
-            &doc.sprite,
-            doc.frame,
-            pending.as_ref(),
-            doc.stamp,
-            onion.as_ref(),
-        );
         let o = app.options;
         if edit && (o.tile_x || o.tile_y) {
             // O Tiled Mode mostra as vizinhas: o desenho que sai por um lado entra pelo outro.
@@ -207,18 +201,20 @@ pub fn draw(
     if app.grid && px_per_cell(m) >= GRID_MIN_PX_PER_CELL {
         draw_pixel_grid(scene, w, h, m, resolve(ColorToken::Border, theme), LINE_PX);
     }
-    crate::tiles::desenha_grelha(
-        app,
-        (key, bits),
-        (w, h),
-        m,
-        (LINE_PX, GRID_MIN_PX_PER_CELL),
-        (
-            resolve(ColorToken::Border, theme),
-            resolve(ColorToken::Accent, theme),
-        ),
-        scene,
-    );
+    if let Some(d) = app.docs.get(&key) {
+        ph2d_pixel_tiles::grelha::desenha(
+            &d.sprite,
+            (d.layer, d.frame),
+            crate::tiles::realce(app, bits),
+            m,
+            (LINE_PX, GRID_MIN_PX_PER_CELL),
+            (
+                resolve(ColorToken::Border, theme),
+                resolve(ColorToken::Accent, theme),
+            ),
+            scene,
+        );
+    }
     draw_border(
         scene,
         w,

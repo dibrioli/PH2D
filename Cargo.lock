@@ -10493,6 +10493,8 @@ name = "ph2d-pixel-tiles"
 version = "0.0.0"
 dependencies = [
  "ph2d-pixel-core",
+ "ph2d-pixel-render",
+ "ph2d-vector",
  "serde_json",
 ]
 

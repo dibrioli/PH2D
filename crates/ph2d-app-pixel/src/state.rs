@@ -344,6 +344,13 @@ impl PixelApp {
         self.docs.get(&key)
     }
 
+    /// A cor que a imagem do canvas tem na célula `(x, y)`, como o último quadro a compôs.
+    #[must_use]
+    pub fn canvas_rgba(&self, key: u32, x: u32, y: u32) -> Option<[u8; 4]> {
+        let d = self.docs.get(&key)?;
+        d.view.rgba_at(d.sprite.width(), x, y)
+    }
+
     #[doc(hidden)]
     pub fn foca(&mut self, key: u32) -> Option<&mut Doc> {
         self.chave = Some(key);

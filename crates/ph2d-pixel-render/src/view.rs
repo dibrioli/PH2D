@@ -54,6 +54,12 @@ impl SpriteImage {
         self.refresh_with(sprite, frame, pending, stamp, None);
     }
 
+    /// A imagem já é a desta versão, deste frame e deste papel vegetal: refazê-la não mudaria nada.
+    #[must_use]
+    pub fn is_current(&self, frame: FrameId, stamp: u64, onion: Option<&Onion>) -> bool {
+        self.image.is_some() && self.key == Some((stamp, frame, onion.copied()))
+    }
+
     /// O [`Self::refresh`] com o papel vegetal (`None` = desligado).
     pub fn refresh_with(
         &mut self,
@@ -117,6 +123,13 @@ impl SpriteImage {
     /// composição dessa versão só refaz a janela do traço. Qualquer outra versão recompõe tudo.
     pub fn settle(&mut self, stamp: u64) {
         self.settled = Some(stamp);
+    }
+
+    /// O RGBA da célula `(x, y)` na imagem composta, para `w` células de largura.
+    #[must_use]
+    pub fn rgba_at(&self, w: u32, x: u32, y: u32) -> Option<[u8; 4]> {
+        let i = (y as usize * w as usize + x as usize) * 4;
+        self.scratch.get(i..i + 4)?.try_into().ok()
     }
 
     /// Desenha o sprite (nearest).

@@ -70,6 +70,30 @@ impl Palco {
         self.quadro();
     }
 
+    /// Um quadro do canvas: a imagem composta como o artista a vê.
+    fn desenha(&mut self) {
+        let mut scene = ph2d_vector::VectorScene::new();
+        ph2d_app_pixel::draw::art(
+            &mut self.app,
+            self.sim.world(),
+            ph2d_vector::Affine::IDENTITY,
+            PPM,
+            Some(self.bits),
+            &[self.bits],
+            true,
+            &mut scene,
+        );
+        self.quadro();
+    }
+
+    /// A cor no canvas do píxel `(3, 3)` da célula `(c, r)`.
+    fn vista(&self, c: i32, r: i32) -> [u8; 4] {
+        let l = i32::from(LADO);
+        self.app
+            .canvas_rgba(self.key, (c * l + 3) as u32, (r * l + 3) as u32)
+            .expect("o canvas já foi composto")
+    }
+
     fn s(&self) -> &Sprite {
         &self.app.doc(self.key).expect("doc").sprite
     }
@@ -246,6 +270,94 @@ fn o_lapis_em_pixels_obedece_ao_modo_pelo_gesto_real() {
         assert_eq!(a.tile_em(0, 3).id(), 4, "{modo:?}");
         assert_eq!(a.tile_em(1, 3).id(), 1, "a vizinha fica, {modo:?}");
     }
+}
+
+/// O dono, 06/11: «as mudanças nos tiles acontecem com um delay de um traço». O canvas é a imagem
+/// composta, não o documento: é ela que se confere.
+#[test]
+fn o_traco_em_manual_aparece_em_todas_as_copias_durante_e_depois() {
+    let mut p = Palco::novo();
+    p.pede(Pedido::Modo(Modo::Manual));
+    p.app.fg = [1, 2, 3, 255];
+    p.desenha();
+    let (fica, copia) = ((0, 3), (5, 3));
+    let (l, antes) = (usize::from(LADO), p.vista(copia.0, copia.1));
+    assert_eq!(p.vista(fica.0, fica.1), antes, "a mesma relva");
+    let referencia = p.s().clone();
+
+    assert_eq!(p.prime(fica.0, fica.1), Press::Done);
+    p.desenha();
+    assert_eq!(p.vista(fica.0, fica.1), [1, 2, 3, 255]);
+    assert_eq!(p.vista(copia.0, copia.1), [1, 2, 3, 255], "a meio do traço");
+    assert_eq!(p.s(), &referencia, "o documento só muda ao largar");
+    p.quadro();
+    let img = &canal::contexto().imagens[1];
+    let i = (3 * l + 3) * 4;
+    assert_eq!(img[i..i + 4], [1, 2, 3, 255], "o cartão também acompanha");
+    p.move_para(1, 3);
+    p.quadro();
+    let img = &canal::contexto().imagens[1];
+    assert_eq!(
+        img[i..i + 4],
+        [1, 2, 3, 255],
+        "o cartão não volta atrás entre um quadro e outro do traço"
+    );
+
+    let _ = input::release(&mut p.app);
+    p.desenha();
+    assert_eq!(
+        p.vista(copia.0, copia.1),
+        [1, 2, 3, 255],
+        "depois de largar"
+    );
+    assert!(p.app.undo(p.key));
+    p.desenha();
+    assert_eq!(p.vista(copia.0, copia.1), antes, "o desfazer devolve");
+}
+
+/// Manual numa célula vazia não muda nada: o canvas não pode mostrar uma tinta que não vai ficar.
+#[test]
+fn a_tinta_que_nao_vai_ficar_nao_se_mostra() {
+    let mut p = Palco::novo();
+    p.pede(Pedido::Modo(Modo::Manual));
+    p.app.fg = [1, 2, 3, 255];
+    p.desenha();
+    let antes = p.vista(0, 0);
+    assert_eq!(p.prime(0, 0), Press::Done);
+    p.desenha();
+    assert_eq!(p.vista(0, 0), antes);
+    let _ = input::release(&mut p.app);
+    p.desenha();
+    assert_eq!(p.vista(0, 0), antes);
+}
+
+/// O dono, 06/11: «New Tilemap Layer apagou os tiles já existentes». A camada nova traz um tileset
+/// só dela; a antiga fica como estava, no canvas e no cartão ao voltar a ela.
+#[test]
+fn a_camada_nova_nao_mexe_na_antiga_e_o_cartao_segue_a_camada_activa() {
+    let mut p = Palco::novo();
+    p.desenha();
+    let velha = p.app.doc(p.key).expect("doc").layer;
+    let (arte, n) = (p.vista(0, 3), canal::contexto().imagens.len());
+    assert_eq!(n, 4);
+    p.app.pede(PixelRequest::LayerAction(A::NewTilemap));
+    p.quadro();
+    p.pede(Pedido::NovaCamada { w: 16, h: 16 });
+    p.desenha();
+    assert_eq!(p.vista(0, 3), arte, "o desenho continua no canvas");
+    assert_eq!(
+        canal::contexto().imagens.len(),
+        1,
+        "a camada nova está vazia"
+    );
+
+    p.app.pede(PixelRequest::LayerSelect(velha.0));
+    p.quadro();
+    assert_eq!(
+        canal::contexto().imagens.len(),
+        4,
+        "os tiles voltam ao cartão"
+    );
 }
 
 #[test]

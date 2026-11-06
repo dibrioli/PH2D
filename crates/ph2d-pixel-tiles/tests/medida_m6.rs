@@ -105,6 +105,46 @@ fn mede(celulas: u32, quadros: u32, voltas: u32) {
     );
 }
 
+/// **Um quadro de traço ao vivo**: decidir + aplicar + compor o sprite + repor, num núcleo.
+fn mede_quadro_ao_vivo(celulas: u32, quadros: u32, voltas: u32) {
+    let (mut s, l, f, _) = monta(celulas, quadros);
+    let lado = s.width();
+    let (mut melhor, mut compor) = (u128::MAX, u128::MAX);
+    for i in 0..voltas {
+        let v = u32::from_le_bytes([i as u8 + 1, 2, 3, 255]);
+        let t = Instant::now();
+        let op = aplica(&s, l, f, &[(3, 3, v)], Modo::Manual).unwrap();
+        let inverso = ph2d_pixel_core::apply(&mut s, op).unwrap();
+        let c = Instant::now();
+        let px = ph2d_pixel_core::compose_window(
+            &s,
+            f,
+            None,
+            ph2d_pixel_core::Rect::new(0, 0, lado, lado),
+            ph2d_pixel_core::Purpose::View,
+        );
+        let so_compor = c.elapsed().as_micros();
+        std::hint::black_box(&px);
+        ph2d_pixel_core::apply(&mut s, inverso).unwrap();
+        melhor = melhor.min(t.elapsed().as_micros());
+        compor = compor.min(so_compor);
+    }
+    println!(
+        "AO VIVO {celulas}×{celulas} células ({lado} px), {quadros} quadros: MÍNIMO de {voltas}: {:.1} ms por quadro, dos quais compor {:.1} ms",
+        melhor as f64 / 1000.0,
+        compor as f64 / 1000.0
+    );
+}
+
+#[test]
+#[ignore = "medição à mão"]
+fn m6_quadro_ao_vivo() {
+    mede_quadro_ao_vivo(6, 1, 9);
+    mede_quadro_ao_vivo(32, 1, 9);
+    mede_quadro_ao_vivo(64, 8, 9);
+    mede_quadro_ao_vivo(256, 64, 5);
+}
+
 /// O caminho de antes, no MESMO processo: refaz cada célula de cada quadro, píxel a píxel, num
 /// buffer à parte (o que só o favorece, por caber melhor na cache).
 fn px_a_px(s: &Sprite, l: LayerId, quadros: u32) {

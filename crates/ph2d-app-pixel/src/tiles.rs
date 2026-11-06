@@ -7,16 +7,16 @@ use ph2d_editor_core::pixel_panel::{PixelLayerAction as A, PixelRequest};
 use ph2d_editor_core::screens::hero::{HeroScreen, PANEL_PIXEL_TILES};
 use ph2d_panel_pixel_tiles::canal::{self, Alvo, Contexto, Eixo, Mao, Pedido, Tela};
 use ph2d_pixel_core::tiles::new_tilemap_layer;
-use ph2d_pixel_core::{LayerId, Op, Sprite, TileRef, Tileset, TilesetId};
-use ph2d_pixel_tiles::mao::{Carimbo, imagens, tileset_de};
+use ph2d_pixel_core::{LayerId, Onion, Op, Sprite, Stroke, TileRef, Tileset, TilesetId, apply};
+use ph2d_pixel_tiles::mao::{Carimbo, imagens, op_do_traco, tileset_de};
 use ph2d_pixel_tiles::mapa::Mapa;
 use ph2d_pixel_tiles::{converte, tileset as lei};
 
 use crate::input::KeyAnswer;
 use crate::{Doc, PixelApp, Tool};
 
-/// As imagens publicadas ao painel, e de que documento e versão são.
-type Publicado = (u32, u64, Arc<Vec<Vec<u8>>>);
+/// As imagens publicadas ao painel, e de que documento, tileset e versão são.
+type Publicado = (u32, TilesetId, u64, Arc<Vec<Vec<u8>>>);
 
 #[derive(Default)]
 pub(crate) struct Estado {
@@ -234,6 +234,29 @@ fn apaga(app: &mut PixelApp, key: u32, set: Option<TilesetId>) {
     app.passo(key, op);
 }
 
+/// Compõe a imagem do canvas. O traço em curso numa camada de tilemap mostra-se como o RESULTADO:
+/// o mesmo op que largar grava, aplicado só enquanto compõe; o cartão acompanha.
+pub(crate) fn compoe(app: &mut PixelApp, key: u32, st: Option<&Stroke>, onion: Option<&Onion>) {
+    let modo = app.tiles.mao.modo;
+    let Some(d) = app.docs.get_mut(&key) else {
+        return;
+    };
+    let em_tile = st.is_some_and(|st| tileset_de(&d.sprite, st.layer).is_some());
+    let inverso = st
+        .filter(|_| em_tile && !d.view.is_current(d.frame, d.stamp, onion))
+        .and_then(|st| op_do_traco(st, &d.sprite, modo))
+        .and_then(|op| apply(&mut d.sprite, op).ok());
+    let por_cima = st.filter(|_| !em_tile);
+    d.view
+        .refresh_with(&d.sprite, d.frame, por_cima, d.stamp, onion);
+    let Some(inverso) = inverso else { return };
+    if let Some(set) = activo(d) {
+        let img = Arc::new(imagens(&d.sprite, set));
+        app.tiles.publicado = Some((key, set.id, d.stamp, img));
+    }
+    let _ = apply(&mut d.sprite, inverso);
+}
+
 /// O quadro: os pedidos do painel, o que ele mostra e quando abre.
 pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
     let pedidos = canal::take_pedidos();
@@ -253,24 +276,27 @@ pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
     }
     let doc = app.chave.and_then(|k| Some((k, app.docs.get(&k)?)));
     let set = doc.and_then(|(k, d)| Some((k, d, activo(d)?)));
+    let em_traco = app.gesture.is_some();
     let t = &mut app.tiles;
     let mut x = Contexto::default();
     if let Some((k, d, set)) = set {
         t.mao.tile = t.mao.tile.min(set.tiles.len() as u32 - 1);
         t.mao.flip_d &= set.tile_w == set.tile_h;
+        // A meio do traço quem publica é a pré-visualização: o documento ainda não o tem.
+        let dele = |p: &Publicado| (p.0, p.1) == (k, set.id);
         let novo = !t
             .publicado
             .as_ref()
-            .is_some_and(|p| (p.0, p.1) == (k, d.stamp));
+            .is_some_and(|p| dele(p) && (em_traco || p.2 == d.stamp));
         if novo {
-            t.publicado = Some((k, d.stamp, Arc::new(imagens(&d.sprite, set))));
+            t.publicado = Some((k, set.id, d.stamp, Arc::new(imagens(&d.sprite, set))));
         }
         x.mao = Some(t.mao);
         (x.tile_w, x.tile_h) = (set.tile_w, set.tile_h);
         x.imagens = t
             .publicado
             .as_ref()
-            .map(|p| p.2.clone())
+            .map(|p| p.3.clone())
             .unwrap_or_default();
     }
     let tem = x.mao.is_some();
@@ -283,33 +309,8 @@ pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
     }
 }
 
-/// A grelha da camada activa e, em Draw Tiles, a célula sob o cursor.
-pub(crate) fn desenha_grelha(
-    app: &PixelApp,
-    (key, bits): (u32, u64),
-    (w, h): (u32, u32),
-    m: ph2d_vector::Affine,
-    (linha, minimo): (f64, f64),
-    (grelha, acento): (ph2d_vector::Color, ph2d_vector::Color),
-    scene: &mut ph2d_vector::VectorScene,
-) {
-    let Some(doc) = app.docs.get(&key) else {
-        return;
-    };
-    let Some(set) = activo(doc) else { return };
-    let (tw, th) = (u32::from(set.tile_w), u32::from(set.tile_h));
-    let mapa = Mapa::de(&doc.sprite, doc.layer, doc.frame, set);
-    let (fx, fy) = mapa.origem(0, 0);
-    if ph2d_pixel_render::px_per_cell(m) * f64::from(tw.min(th)) >= minimo {
-        ph2d_pixel_render::draw_tile_grid(scene, (w, h), (tw, th), (fx, fy), m, grelha, linha);
-    }
-    if app.tiles.mao.alvo == Alvo::Tiles
-        && let Some((hb, cell)) = app.hover
-        && hb == bits
-    {
-        let (c, r) = mapa.celula(cell.0, cell.1);
-        let (x, y) = mapa.origem(c, r);
-        let em = m * ph2d_vector::Affine::translate((f64::from(x), f64::from(y)));
-        ph2d_pixel_render::draw_border(scene, tw, th, em, acento, linha);
-    }
+/// A célula a contornar: a sob o cursor, em Draw Tiles.
+pub(crate) fn realce(app: &PixelApp, bits: u64) -> Option<(i32, i32)> {
+    let tiles = app.tiles.mao.alvo == Alvo::Tiles;
+    app.hover.filter(|h| tiles && h.0 == bits).map(|h| h.1)
 }

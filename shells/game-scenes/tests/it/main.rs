@@ -12,6 +12,7 @@ mod jogo_moldura_lei;
 mod jogo_moldura_ponteiro;
 mod jogo_object_add;
 mod jogo_smoke;
+mod sprite_espelhar;
 mod sprite_image_choice_gate;
 mod sprite_image_use_gate;
 // Carregado por `#[path]` para os dois filhos (`#[path]` também) se resolverem nesta pasta.

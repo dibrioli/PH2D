@@ -242,11 +242,9 @@ fn a_agua_comprimida_corre_igual() {
             t.paint.wetpaint.adormecidas[0].encolhe_ja();
         }
         t.set_paint_media(PaintMedia::WetPaint);
-        // Acorda antes de contar os quadros: a comprimida acorda uns quadros depois, e a água só corre acordada.
-        while t.paint.wetpaint.session.is_none() {
-            t.on_tick(1000.0 / 60.0);
-            std::thread::sleep(std::time::Duration::from_millis(1));
-        }
+        // Acorda pela porta do pen-down: pelo quadro, a comprimida ganharia um quadro de água a mais.
+        t.wet_acorda();
+        assert!(t.paint.wetpaint.session.is_some(), "acordada");
         t.ticks_em_blocos(30);
         mostrada(&mut t)
     };

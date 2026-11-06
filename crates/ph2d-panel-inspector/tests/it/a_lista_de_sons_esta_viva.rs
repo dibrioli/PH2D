@@ -156,6 +156,12 @@ fn name_weight_and_remove_share_one_row_on_a_card() {
         "{a:?} {b:?} {c:?}"
     );
     assert!(a.x + a.w <= b.x && b.x + b.w <= c.x, "{a:?} {b:?} {c:?}");
+    // E as duas variações dividem a linha.
+    let (p, v) = (
+        rect(&rects, i::INSP_AUDIO_PITCH_JITTER),
+        rect(&rects, i::INSP_AUDIO_GAIN_JITTER),
+    );
+    assert!((p.y - v.y).abs() < 0.5 && p.x + p.w <= v.x, "{p:?} {v:?}");
     let abaixo = rect(&rects, i::INSP_AUDIO_SET_ON[1]);
     assert!(abaixo.y >= a.y + a.h, "linhas grudadas: {a:?} {abaixo:?}");
     fim();

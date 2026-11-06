@@ -325,7 +325,7 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
-        "sections/audio_set.rs::sound_set_body",
+        "sections/audio_set.rs::variation_rows",
         NaoAnimavel,
         &["INSP_AUDIO_PITCH_JITTER", "INSP_AUDIO_GAIN_JITTER"],
         "a faixa da variação por disparo do `SoundSet` (`D::machinery`)",

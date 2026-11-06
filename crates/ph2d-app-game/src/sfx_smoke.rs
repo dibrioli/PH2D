@@ -70,8 +70,9 @@ fn fonte_do_nivel(sound: String, autoplay: bool) -> AudioSource2D {
     }
 }
 
-/// Veste o nível 2 já montado: importa os três sons, cria os dois objetos e aponta as moedas.
-pub fn veste(sim: &mut SimWorld, portas: Portas<'_>, jogador: Entity) {
+/// Veste o nível 2 já montado: importa os três sons, cria os dois objetos e aponta as moedas. Devolve o
+/// objeto dos sons.
+pub fn veste(sim: &mut SimWorld, portas: Portas<'_>, jogador: Entity) -> Entity {
     let nomes: Vec<String> = SONS
         .iter()
         .map(|p| {
@@ -118,4 +119,5 @@ pub fn veste(sim: &mut SimWorld, portas: Portas<'_>, jogador: Entity) {
             }
         }
     }
+    conjunto
 }

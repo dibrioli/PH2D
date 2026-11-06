@@ -220,8 +220,10 @@ fn pick_row(
         seccao,
     );
     let rect = linha.control;
-    // A lista não é animável: o ponto só reserva o MESMO `x` das outras linhas.
-    ph2d_editor_core::widget::paint_decorator_dot(scene, theme, linha.dot);
+    // A lista não é animável. Fora do cartão o ponto só reserva o MESMO `x` das outras linhas.
+    if card_body().is_none() {
+        ph2d_editor_core::widget::paint_decorator_dot(scene, theme, linha.dot);
+    }
     let id = ids::INSP_AUDIO_PICK;
     let opcoes = pick_options(&set.offer);
     if let Some(razao) = razao {
@@ -427,11 +429,81 @@ pub(super) fn sound_set_body(
         set,
         seccao,
     );
-    for (key, id) in [
-        ("card.audio.pitch_variation", ids::INSP_AUDIO_PITCH_JITTER),
-        ("card.audio.volume_variation", ids::INSP_AUDIO_GAIN_JITTER),
-    ] {
-        cur_y = super::rows::fields_row(
+    variation_rows(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        seccao,
+    )
+}
+
+/// As duas variações. Num cartão dividem a linha: elas não animam, então o nome tem a coluna inteira e cabe
+/// (05 §4); um dock estreito demais empilha, sem cortar.
+#[allow(clippy::too_many_arguments)]
+fn variation_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    seccao: Seccao,
+) -> f32 {
+    const PASSO: f64 = 0.5; // LITERAL-PX-OK: passo em semitons e em dB
+    let campos = [
+        (
+            "card.audio.pitch_variation",
+            "component.field.source_fields.2",
+            ids::INSP_AUDIO_PITCH_JITTER,
+        ),
+        (
+            "card.audio.volume_variation",
+            "component.field.source_fields.1",
+            ids::INSP_AUDIO_GAIN_JITTER,
+        ),
+    ];
+    let colunas = corpo::colunas_iguais(x, w);
+    let cabe = campos
+        .iter()
+        .all(|c| text_system.prefix_width(tr(c.0), m::LABEL_PX).ceil() <= colunas[0].1);
+    if let Some(ink) = card_body().filter(|_| cabe) {
+        let rotulo_y = y + m::LABEL_TOP;
+        let caixa_y = rotulo_y + m::LABEL_PX + m::LABEL_BOTTOM;
+        for (c, (cx, cw)) in campos.iter().zip(colunas) {
+            ph2d_editor_core::paint::paint_text(
+                text_system,
+                scene,
+                tr(c.0),
+                cx,
+                rotulo_y,
+                m::LABEL_PX,
+                cw,
+                ink.color(ColorToken::CardLabel),
+            );
+            // A letra de arrasto é a da grandeza: o nome inteiro daria «V» nas duas.
+            corpo::fields_in(
+                scene,
+                text_system,
+                store,
+                hit_index,
+                ink,
+                Rect::new(cx, caixa_y, cw, m::FIELD_H),
+                tr(c.1),
+                &[c.2],
+                PASSO,
+            );
+        }
+        return caixa_y + m::FIELD_H;
+    }
+    campos.iter().fold(y, |y, c| {
+        super::rows::fields_row(
             scene,
             text_system,
             theme,
@@ -439,13 +511,12 @@ pub(super) fn sound_set_body(
             store,
             x,
             w,
-            cur_y,
-            Rotulo::vista(TextKey::new(key)),
-            &[id],
-            0.5, // LITERAL-PX-OK: passo em semitons e em dB
+            y,
+            Rotulo::vista_de(tr(c.0)),
+            &[c.2],
+            PASSO,
             None,
             seccao,
-        );
-    }
-    cur_y
+        )
+    })
 }

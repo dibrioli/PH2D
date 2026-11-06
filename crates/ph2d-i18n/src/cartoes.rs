@@ -391,9 +391,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "card.audio.pitch_variation" => "Pitch variation (st)",
         "card.audio.volume_variation" => "Volume variation (dB)",
-        "card.audio.list_decides" => {
-            "The Sounds list decides what plays. The Sound field comes back when no sound is on."
-        }
+        "card.audio.list_decides" => "The Sounds list below decides what plays.",
         "card.audio.not_in_project" => "Not in this project, so it stays silent: {names}.",
         "card.audio.rows_hidden" => {
             "{n} more {n?sound|sounds} in this list {n?is|are} not shown here, and {n?it plays|they play} anyway."

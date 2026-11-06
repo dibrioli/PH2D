@@ -257,8 +257,8 @@ proprio doc-comment diz *«util em logs / debug overlays»*, e uma varredura pel
 e pela shell nao acha um chamador. Nome de DIAGNOSTICO, nao rotulo.",
     ),
     (
-        "ph2d-audio-edit",
-        "variation.rs",
+        "ph2d-sound-set",
+        "lib.rs",
         "⭐ e' o NOME DE SERIALIZACAO: o `PickStrategy::from_name` le'-o de volta a partir de um \
 MANIFESTO gravado, logo traduzi-lo partiria todo ficheiro que ja' existe — e em SILENCIO, porque o \
 `from_name` devolve `None` e o chamador cai no valor de omissao. A palavra que o artista le' no \

@@ -262,13 +262,24 @@ pub struct Portas<'a> {
     pub importa_som: fn(&mut SimWorld, &std::path::Path) -> Result<String, String>,
 }
 
-/// Monta o nível `nivel` no mundo. Devolve o jogador.
+/// O cartão do Inspector que abre sobre o objeto que [`montar`] devolve.
+#[must_use]
+pub fn cartao_que_abre() -> ph2d_editor_core::NodeId {
+    if crate::sfx_smoke::nivel().is_some() {
+        ph2d_editor_core::ids::INSP_LIVE_AUDIO_SECTION
+    } else {
+        ph2d_editor_core::ids::INSP_LIVE_PLAYER_SECTION
+    }
+}
+
+/// Monta o nível `nivel` no mundo. Devolve o jogador, ou o objeto dos sons no `PH2D_SFX_SMOKE`.
 pub fn montar(sim: &mut SimWorld, portas: Portas<'_>, nivel: u32) -> Entity {
     match nivel {
         2 => {
             let jogador = nivel_2(sim, portas);
             if crate::sfx_smoke::nivel().is_some() {
-                crate::sfx_smoke::veste(sim, portas, jogador);
+                // O Inspector abre no objeto dos sons, que é o assunto desta cena.
+                return crate::sfx_smoke::veste(sim, portas, jogador);
             }
             jogador
         }

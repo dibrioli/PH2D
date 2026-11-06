@@ -44,8 +44,9 @@ pub fn paint_card_list_top(
 ) -> Rect {
     let theme = ctx.host.theme();
     dicas::comeca(panel);
-    // A lista curta do convidado (`card_guest_ops`): sem título nem rolagem, por cima do anfitrião.
+    // A lista curta do convidado (`card_guest_ops`): só os cartões, no assento da coluna do anfitrião.
     let curta = ctx.host.store().in_card_guest_pass(panel);
+    let assento = ctx.host.store().card_guest_seat().filter(|_| curta);
     let footer = footer.filter(|_| !curta);
     let slot = ctx.slot;
     let area = ctx.host.content_area().filter(|c| c.h > 0.0);
@@ -60,6 +61,7 @@ pub fn paint_card_list_top(
     });
     let x = x0 + m::LIST_MARGIN;
     let w = (slot.x + slot.w - x - m::LIST_MARGIN).max(0.0);
+    let (x, w) = assento.map_or((x, w), |a| (a.x, a.w));
     // A barra de opções da ferramenta atravessa a janela por cima dos painéis: a lista começa abaixo.
     let barra = ctx.layout.fila_que_cobre_o_topo();
     let topo = if barra.h > 0.0 {
@@ -69,20 +71,17 @@ pub fn paint_card_list_top(
     };
     // D31: e abaixo da régua de cima (a lista flutua sobre a área de desenho, D24).
     let topo = area.map_or(topo, |c| topo.max(c.y));
+    // O convidado é o primeiro da coluna: os cartões do anfitrião começam depois dele e rolam com ele.
     let convidado_h = ctx.host.store().card_guest_h_over(panel);
-    let topo = if convidado_h > 0.0 {
-        topo + convidado_h + m::LIST_MARGIN
+    let acima = if convidado_h > 0.0 {
+        convidado_h + m::CARD_GAP
     } else {
-        topo
+        0.0
     };
     let top_list = topo + m::LIST_MARGIN;
     let preso_h = preso.map_or(0.0, |p| p.h + m::LIST_TOP_GAP);
-    let cabeca = if curta {
-        m::LIST_PAD_BOTTOM
-    } else {
-        m::LIST_HEAD_H
-    };
-    let body_top = top_list + cabeca + preso_h;
+    let cabeca = m::LIST_HEAD_H;
+    let body_top = assento.map_or(top_list + cabeca + preso_h, |a| a.body_top);
     let keys: Vec<NodeId> = cards.iter().map(|c| c.section).collect();
     let store = ctx.host.store_mut();
     // Na lista curta, só o que o convidado declarou; os soltos dos outros cartões continuam dele.
@@ -91,17 +90,15 @@ pub fn paint_card_list_top(
         .copied()
         .filter(|k| !curta || store.card_guest_only().contains(k))
         .collect();
-    let cw = if curta {
-        w - m::LIST_PAD_X * 2.0
-    } else {
-        rolagem::largura_dos_cartoes(store, panel, x, w)
-    };
+    let cw = assento.map_or_else(
+        || rolagem::largura_dos_cartoes(store, panel, x, w),
+        |a| a.cw,
+    );
     // A rolagem (a lista que passa da janela): a origem dos cartões sobe o que rolou.
-    let origem = if curta {
-        body_top
-    } else {
-        body_top - store.panel_scroll(panel).max(0.0)
-    };
+    let origem = assento.map_or_else(
+        || body_top - store.panel_scroll(panel).max(0.0) + acima,
+        |a| body_top - store.panel_scroll(a.host).max(0.0),
+    );
     for k in &keys {
         store.mark_card_section(*k);
     }
@@ -236,25 +233,23 @@ pub fn paint_card_list_top(
     } else {
         0.0
     };
-    let content_h = placed.content_h + soltas_h + pe;
+    let content_h = acima + placed.content_h + soltas_h + pe;
     let natural = cabeca + preso_h + content_h + m::LIST_PAD_BOTTOM;
     let tecto = slot.y + slot.h - top_list - m::LIST_MARGIN;
     let list_h = natural.min(tecto);
     let lista = Rect::new(x, top_list, w, list_h.max(cabeca));
-    // ⭐ D24: a lista FLUTUA — publica o rect DELA (o clique abaixo vai ao canvas) sem reservar a
-    // coluna; a costura de largura passa para a beirada dela (`DockSides::with_floating`).
-    ctx.host.store_mut().set_floating_panel_rect(panel, lista);
     if curta {
-        // Sem cartão na lista, ela não ocupa nada: nem fundo, nem vão, nem clique.
-        let vazia = placed.ys.is_empty();
-        let h = if vazia { 0.0 } else { lista.h };
+        // Sem cartão na lista, ela não ocupa nada: nem vão, nem clique.
+        let h = if placed.ys.is_empty() {
+            0.0
+        } else {
+            placed.content_h
+        };
         ctx.host.store_mut().set_card_guest_h(h);
-        if vazia {
-            ctx.host.store_mut().drop_card_guest_rect(panel);
-        }
-    }
-    let vazia_curta = curta && placed.ys.is_empty();
-    if !vazia_curta {
+    } else {
+        // ⭐ D24: a lista FLUTUA — publica o rect DELA (o clique abaixo vai ao canvas) sem reservar a
+        // coluna; a costura de largura passa para a beirada dela (`DockSides::with_floating`).
+        ctx.host.store_mut().set_floating_panel_rect(panel, lista);
         shadow(
             ctx.scene,
             lista,
@@ -322,12 +317,24 @@ pub fn paint_card_list_top(
     }
 
     // ── Os cartões ── (T43: o corpo, e com ele a pista da barra, pára acima da margem do fundo)
-    let clip = Rect::new(
-        x,
-        body_top,
-        w,
-        (lista.y + lista.h - m::LIST_PAD_BOTTOM - body_top).max(0.0),
+    let clip = assento.map_or_else(
+        || {
+            Rect::new(
+                x,
+                body_top,
+                w,
+                (lista.y + lista.h - m::LIST_PAD_BOTTOM - body_top).max(0.0),
+            )
+        },
+        |a| a.clip,
     );
+    let cena_recebida = if curta {
+        None
+    } else {
+        let store = ctx.host.store_mut();
+        store.offer_card_guest_seat(panel, x, w, cw, body_top, clip);
+        store.take_card_guest_scene(panel)
+    };
     let mut voltam = Vec::new();
     let mut alturas: Vec<Item<NodeId>> = Vec::with_capacity(cards.len());
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
@@ -341,6 +348,16 @@ pub fn paint_card_list_top(
             clip,
         )
     });
+    // O convidado entra aqui, como o primeiro cartão: no recorte da coluna e antes de tudo o que o
+    // anfitrião pinta por cima. Os cartões dele vão para uma cena à parte, os cliques ao mesmo recorte.
+    let mut cena_do_convidado = curta.then(VectorScene::new);
+    if let Some(s) = &mut cena_do_convidado {
+        std::mem::swap(&mut *ctx.scene, s);
+        hit_index.push_clip(clip);
+    }
+    if let Some(s) = &cena_recebida {
+        ctx.scene.append_scene(s);
+    }
     if let Some((sy, sh)) = placed.slot {
         let vao = Rect::new(cx, origem + sy, cw, sh);
         fill_rounded_rect(
@@ -445,18 +462,27 @@ pub fn paint_card_list_top(
             tinta,
         );
     }
+    if let Some(s) = &mut cena_do_convidado {
+        std::mem::swap(&mut *ctx.scene, s);
+        hit_index.pop_clip();
+    }
     let rolagem = area.map(|area| {
         crate::widget::scroll_area::close_parts(
             area,
             ctx.scene,
             hit_index,
             store,
-            rolagem::conteudo(placed.content_h + notas_h + pe, natural <= tecto),
+            rolagem::conteudo(acima + placed.content_h + notas_h + pe, natural <= tecto),
             theme,
         )
     });
 
     // ── O que voa: por cima de tudo, inclinado, sem registar cliques ──
+    // O voo do convidado sobe com o anfitrião: pintado aqui, o fundo da lista cobria-o.
+    let mut voo_do_convidado = curta.then(VectorScene::new);
+    if let Some(s) = &mut voo_do_convidado {
+        std::mem::swap(&mut *ctx.scene, s);
+    }
     if let Some(f) = voo
         && let Some(card) = cards.iter().find(|c| c.section == f.key)
     {
@@ -502,6 +528,15 @@ pub fn paint_card_list_top(
             key: card.section,
             h,
         });
+    }
+    if let Some(s) = cena_do_convidado {
+        ctx.host.store_mut().set_card_guest_scene(s);
+    }
+    if let Some(mut s) = voo_do_convidado {
+        std::mem::swap(&mut *ctx.scene, &mut s);
+        ctx.host.store_mut().set_card_guest_flight(s);
+    } else if let Some(s) = ctx.host.store_mut().take_card_guest_flight(panel) {
+        ctx.scene.append_scene(&s);
     }
     solto::pinta_os_soltos(ctx, panel, theme, canvas, cards, pinned);
     super::linhas_extra::voo::pinta_os_voos(ctx.scene);

@@ -88,31 +88,15 @@ pub(super) fn walk(
     for id in &hidden {
         hero.store.clear_panel_rect(*id);
     }
-    // ⭐ O convidado (`card_guest_ops`): pinta logo ANTES do anfitrião, que desce a altura dele e fica
-    // por cima (os popovers do anfitrião). Só enquanto este continua à frente e aquele atrás.
-    let convite = hero
-        .store
-        .take_card_guest_invite()
-        .filter(|(host, guest)| hidden.contains(guest) && !hidden.contains(host));
+    // ⭐ O convidado (`card_guest_ops`): só enquanto o anfitrião continua à frente e ele atrás, e com o
+    // assento que a coluna do anfitrião já ofereceu.
+    let convite = hero.store.take_card_guest_invite().filter(|(host, guest)| {
+        hidden.contains(guest) && !hidden.contains(host) && hero.store.card_guest_seat_of(*host)
+    });
     crate::panel::with_registry_opt(|reg| {
         for panel_id in z_order {
             if convite.is_some_and(|(_, guest)| guest == panel_id) {
                 continue;
-            }
-            if let Some((host, guest)) = convite.filter(|(host, _)| *host == panel_id)
-                && let Some(idx) = reg.find_by_panel_node_id(guest)
-            {
-                hero.store.begin_card_guest_pass(host, guest);
-                let mut typed_ctx = crate::panel::PaintCtx {
-                    host: hero,
-                    layout,
-                    slot: panel_slots.get(&guest).copied().unwrap_or(layout.draw_area),
-                    viewport,
-                    scene,
-                    text_system,
-                };
-                reg.panels_mut()[idx].paint(&mut typed_ctx);
-                hero.store.end_card_guest_pass(guest);
             }
             if hidden.contains(&panel_id) {
                 // ⭐ C5: a aba está atrás, mas os cartões SOLTOS dele continuam no canvas — o painel
@@ -151,6 +135,23 @@ pub(super) fn walk(
                 // através dos painéis. Isso não pode acontecer."
                 if let Some(panel_rect) = hero.store.panel_rect(panel_id) {
                     hero.hit_index.register(panel_id, panel_rect);
+                }
+                // O convidado depois da barreira (os cliques dele valem) e antes do anfitrião, que cola a
+                // cena dele no lugar do primeiro cartão e pinta os popovers por cima.
+                if let Some((host, guest)) = convite.filter(|(host, _)| *host == panel_id)
+                    && let Some(idx) = reg.find_by_panel_node_id(guest)
+                {
+                    hero.store.begin_card_guest_pass(host, guest);
+                    let mut typed_ctx = crate::panel::PaintCtx {
+                        host: hero,
+                        layout,
+                        slot: panel_slots.get(&guest).copied().unwrap_or(layout.draw_area),
+                        viewport,
+                        scene,
+                        text_system,
+                    };
+                    reg.panels_mut()[idx].paint(&mut typed_ctx);
+                    hero.store.end_card_guest_pass(guest);
                 }
                 let mut typed_ctx = crate::panel::PaintCtx {
                     host: hero,

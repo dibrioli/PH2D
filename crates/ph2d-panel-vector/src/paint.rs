@@ -390,7 +390,7 @@ pub(crate) fn paint(_state: &mut VectorPanelState, ctx: &mut PaintCtx) {
             crate::ids::VECTOR_SECTIONS,
         );
         crate::cards::prepare(ctx.host.store_mut());
-        if state::current_transform().is_some() {
+        if state::current_transform().is_some() && state::aba() == state::Aba::Drawing {
             use ph2d_editor_core::ids::{INSP_PANEL, VECTOR_PANEL};
             ctx.host
                 .store_mut()

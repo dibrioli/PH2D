@@ -1,6 +1,6 @@
-//! ⭐ **Dono 05/11: «faça o transform de vector no modo draw ser o mesmo do modo object»**. No hero real,
-//! com o Vector à frente e o Inspector na aba de trás: o cartão Transform É o do Inspector, por cima do
-//! cartão Shape (Size, Resize Box, Set Center), com o que o de Object tem.
+//! ⭐ **Dono 05/11: «faça o transform de vector no modo draw ser o mesmo do modo object»** e *«o transform
+//! dividiu o painel. Deveria ficar dentro do painel»*. No hero real, com o Vector à frente e o Inspector na
+//! aba de trás: o cartão Transform É o do Inspector, o primeiro do corpo da aba Drawing, na moldura do Vector.
 #![cfg(all(feature = "panel-inspector", feature = "panel-vector"))]
 
 use super::cartoes_mao::{centro, clica, mao, pinta, solta};
@@ -73,10 +73,16 @@ fn por_cima(h: &HeroScreen, a: NodeId, b: NodeId) -> bool {
     matches!((y(a), y(b)), (Some(a), Some(b)) if a < b)
 }
 
+/// O cabeçalho do Transform: o que sobra dele à vista no recorte da coluna.
+fn cabeca_do_transform(h: &HeroScreen) -> ph2d_editor_core::zones::Rect {
+    h.hit_index.rect_for(CARD_TRANSFORM).expect("o Transform")
+}
+
 /// *Mutações: sem o convite ⇒ o Transform não aparece. A lista curta com todas as secções ⇒ o Object vem junto.
-/// O anfitrião sem descer ⇒ os cartões sobrepõem-se.*
+/// O anfitrião sem descer ⇒ os cartões sobrepõem-se. A barreira depois do passo ⇒ os campos não clicam. O
+/// assento sem as abas ⇒ o cartão sobe por cima delas.*
 #[test]
-fn em_draw_o_transform_e_o_do_inspector_por_cima_do_shape() {
+fn em_draw_o_transform_e_o_primeiro_cartao_dentro_do_painel() {
     let h = em_draw();
     assert!(
         por_cima(&h, insp::INSP_TRANSFORM_POS_X, t::VECTOR_TRANSFORM_W),
@@ -99,11 +105,53 @@ fn em_draw_o_transform_e_o_do_inspector_por_cima_do_shape() {
     ] {
         assert!(!pintado(&h, id), "a segunda posição voltou: {id:?}");
     }
-    let lista_curta = h.store.panel_rect(core_ids::INSP_PANEL).expect("o rect");
-    let vector = h.store.panel_rect(core_ids::VECTOR_PANEL).expect("o rect");
     assert!(
-        lista_curta.y + lista_curta.h <= vector.y,
-        "as duas listas sobrepõem-se: {lista_curta:?} {vector:?}"
+        h.store.panel_rect(core_ids::INSP_PANEL).is_none(),
+        "o Transform não tem moldura própria"
+    );
+    let skew = h
+        .hit_index
+        .rect_for(insp::INSP_TRANSFORM_SKEW_X)
+        .expect("Skew");
+    let shape_y = h
+        .hit_index
+        .rect_for(t::VECTOR_SECTION_TRANSFORM)
+        .expect("o Shape")
+        .y;
+    assert!(
+        skew.y + skew.h <= shape_y,
+        "os cartões sobrepõem-se: {skew:?} × {shape_y}"
+    );
+    let vector = h.store.panel_rect(core_ids::VECTOR_PANEL).expect("o rect");
+    let cabeca = cabeca_do_transform(&h);
+    let abas = h
+        .hit_index
+        .rect_for(p::VECTOR_TAB_DRAWING)
+        .expect("as abas");
+    assert!(
+        cabeca.y >= abas.y + abas.h,
+        "abaixo das abas: {cabeca:?} {abas:?}"
+    );
+    assert!(
+        cabeca.x >= vector.x
+            && cabeca.x + cabeca.w <= vector.x + vector.w
+            && cabeca.y + cabeca.h <= vector.y + vector.h,
+        "dentro do painel: {cabeca:?} {vector:?}"
+    );
+    let outro = h
+        .hit_index
+        .rect_for(t::VECTOR_SECTION_TRANSFORM)
+        .expect("o cartão Shape");
+    assert_eq!(
+        (cabeca.x, cabeca.w),
+        (outro.x, outro.w),
+        "na mesma coluna dos cartões do Vector"
+    );
+    let campo = h.hit_index.rect_for(insp::INSP_TRANSFORM_POS_X).expect("X");
+    assert_eq!(
+        h.hit_index.hit(campo.x + 2.0, campo.y + campo.h * 0.5),
+        Some(insp::INSP_TRANSFORM_POS_X),
+        "o clique é do campo, não da barreira do painel"
     );
     assert!(
         !pintado(&h, grip_de(ph2d_panel_inspector::CARD_OBJECT)),
@@ -142,6 +190,65 @@ fn sem_forma_ou_com_o_inspector_a_frente_o_convite_nao_vale() {
     assert!(!pintado(&h, t::VECTOR_TRANSFORM_W));
 }
 
+/// Na aba Interface o Transform não aparece; de volta à Drawing, sim.
+/// *Mutação: o convite sem olhar a aba ⇒ ele fica na Interface.*
+#[test]
+fn na_aba_interface_o_transform_nao_aparece() {
+    let mut h = em_draw();
+    clica(&mut h, p::VECTOR_TAB_INTERFACE);
+    quadros(&mut h, 40);
+    assert!(!pintado(&h, insp::INSP_TRANSFORM_POS_X));
+    assert_eq!(h.store.card_guest_h_over(core_ids::VECTOR_PANEL), 0.0);
+    clica(&mut h, p::VECTOR_TAB_DRAWING);
+    quadros(&mut h, 40);
+    assert!(pintado(&h, insp::INSP_TRANSFORM_POS_X));
+}
+
+/// Um popover do Vector continua por cima do Transform: a lista de Blend, que passa da janela, sobe até o cobrir.
+/// *Mutação: o passo do convidado depois da pintura do anfitrião ⇒ o clique na zona comum vai ao Transform.*
+#[test]
+fn o_popover_do_vector_fica_por_cima_do_transform() {
+    state::set_current_appearance(Some(state::Appearance {
+        opacity: 1.0,
+        blend: ph2d_vec_scene::BlendMode::Normal,
+        layers: Vec::new(),
+        mixed_opacity: false,
+        mixed_blend: false,
+        layers_differ: false,
+        order: Vec::new(),
+    }));
+    let mut h = em_draw();
+    h.store.set_collapsed(p::VECTOR_SECTION_APPEARANCE, false);
+    quadros(&mut h, 40);
+    clica(&mut h, p::VECTOR_OBJ_BLEND);
+    quadros(&mut h, 5);
+    let linhas: Vec<_> = (0..64).map(p::vector_obj_blend_option_id).collect();
+    let campos = [
+        insp::INSP_TRANSFORM_POS_X,
+        insp::INSP_TRANSFORM_POS_Y,
+        insp::INSP_TRANSFORM_ROT,
+        insp::INSP_TRANSFORM_SCALE_X,
+        insp::INSP_TRANSFORM_SKEW_X,
+    ];
+    let mut cobertos = 0;
+    for id in campos {
+        let r = h.hit_index.rect_for(id).expect("o campo");
+        let (x, y) = centro(r);
+        let quem = h.hit_index.hit(x, y);
+        if quem != Some(id) {
+            cobertos += 1;
+            assert!(
+                quem.is_some_and(|q| linhas.contains(&q)),
+                "{quem:?} em cima de {id:?}"
+            );
+        }
+    }
+    assert!(
+        cobertos > 0,
+        "a lista não chegou ao Transform: a prova não vale"
+    );
+}
+
 /// O Inspector sem Transform a mostrar (nada com pose): a lista curta não ocupa a coluna.
 /// *Mutação: a altura = a do fundo vazio ⇒ o Vector desce por uma lista invisível.*
 #[test]
@@ -160,7 +267,22 @@ fn sem_cartao_a_lista_curta_nao_ocupa_nada() {
 fn solto_no_draw_tem_nome_reset_alfinete_e_o_arrasto_vai_so_ao_preso() {
     let mut h = em_draw();
     solta(&mut h, CARD_TRANSFORM);
-    quadros(&mut h, 5);
+    quadros(&mut h, 40);
+    // A faixa «on canvas» fica no lugar dele, sem moldura separada.
+    assert_eq!(
+        h.store.card_guest_h_over(core_ids::VECTOR_PANEL),
+        ph2d_card_stack::metrics::LOOSE_GHOST_H
+    );
+    assert!(h.store.panel_rect(core_ids::INSP_PANEL).is_none());
+    let vector = h.store.panel_rect(core_ids::VECTOR_PANEL).expect("o rect");
+    let shape = h
+        .hit_index
+        .rect_for(t::VECTOR_SECTION_TRANSFORM)
+        .expect("o Shape");
+    assert!(
+        shape.y > vector.y,
+        "o Vector continua: {shape:?} {vector:?}"
+    );
     assert!(
         pintado(&h, loose_pin_of(CARD_TRANSFORM)),
         "alfinete no solto"
@@ -209,12 +331,11 @@ fn solto_no_draw_tem_nome_reset_alfinete_e_o_arrasto_vai_so_ao_preso() {
 }
 
 /// Premir o Transform na coluna não muda a aba: quem está à frente continua a ser o Vector.
-/// *Mutação: `bump_panel_z(panel_id)` na pressão ⇒ o Inspector vem à frente e a coluna perde o Vector.*
+/// *Mutação: o passo a deixar o rect do Inspector ⇒ a pressão traz o Inspector à frente e a coluna perde o Vector.*
 #[test]
 fn premir_o_transform_na_coluna_nao_troca_a_aba() {
     let mut h = em_draw();
-    let r = h.store.panel_rect(core_ids::INSP_PANEL).expect("o rect");
-    let dentro = (r.x + r.w * 0.5, r.y + 2.0);
+    let dentro = centro(cabeca_do_transform(&h));
     mao(&mut h, PointerKind::Down, dentro);
     mao(&mut h, PointerKind::Up, dentro);
     quadros(&mut h, 3);
@@ -273,7 +394,8 @@ fn o_cartao_shape_pede_o_efeito_de_antes() {
     );
 }
 
-/// *Mutação: `column_owner` = o próprio painel ⇒ a roda sobre o Transform não rola o Vector.*
+/// A roda sobre o Transform rola a coluna do Vector, e ele sobe junto, o mesmo tanto que os cartões do Vector.
+/// *Mutação: o assento sem a rolagem do anfitrião ⇒ ele fica parado enquanto o resto sobe.*
 #[test]
 fn a_roda_sobre_o_transform_rola_a_coluna_do_vector() {
     let mut h = em_draw();
@@ -287,8 +409,13 @@ fn a_roda_sobre_o_transform_rola_a_coluna_do_vector() {
         c.zip(vista).is_some_and(|(c, vista)| c > vista),
         "o Vector tem de transbordar: {c:?} × {vista:?}"
     );
-    let (x, y) = centro(h.store.panel_rect(core_ids::INSP_PANEL).expect("o rect"));
+    let (x, y) = centro(cabeca_do_transform(&h));
     assert!(h.chrome_panel_at(x, y).is_some(), "a shell daria zoom");
+    let y_de = |h: &HeroScreen, id| h.hit_index.rect_for(id).map(|r| r.y).expect("o campo");
+    let (x0, w0) = (
+        y_de(&h, insp::INSP_TRANSFORM_SKEW_X),
+        y_de(&h, t::VECTOR_TRANSFORM_W),
+    );
     let arena = bumpalo::Bump::new();
     for _ in 0..5 {
         let _ = h.handle_wheel(
@@ -304,7 +431,43 @@ fn a_roda_sobre_o_transform_rola_a_coluna_do_vector() {
         );
         quadros(&mut h, 1);
     }
-    assert!(h.store.panel_scroll(v) > 0.0, "a roda foi a outro");
+    let rolou = h.store.panel_scroll(v);
+    assert!(rolou > 0.0, "a roda foi a outro");
+    let (x1, w1) = (
+        y_de(&h, insp::INSP_TRANSFORM_SKEW_X),
+        y_de(&h, t::VECTOR_TRANSFORM_W),
+    );
+    assert!(x1 < x0, "o Transform não subiu: {x0} → {x1}");
+    // O que rolou para cima das abas não se clica: o recorte do convidado é o da coluna.
+    let abas = h
+        .hit_index
+        .rect_for(p::VECTOR_TAB_DRAWING)
+        .expect("as abas");
+    for id in [
+        CARD_TRANSFORM,
+        insp::INSP_TRANSFORM_RESET,
+        insp::INSP_TRANSFORM_POS_X,
+        insp::INSP_TRANSFORM_SKEW_X,
+    ] {
+        if let Some(r) = h.hit_index.rect_for(id) {
+            assert!(r.y >= abas.y + abas.h, "{id:?} acima das abas: {r:?}");
+        }
+    }
+    // Com a barra de rolagem à vista, a largura é a dos cartões do Vector.
+    let (skew, largura) = (
+        h.hit_index
+            .rect_for(insp::INSP_TRANSFORM_SKEW_X)
+            .expect("Skew"),
+        h.hit_index.rect_for(t::VECTOR_TRANSFORM_W).expect("W"),
+    );
+    assert_eq!(skew.x, largura.x, "{skew:?} × {largura:?}");
+    assert_eq!(skew.w, largura.w, "{skew:?} × {largura:?}");
+    assert!(
+        (x0 - x1 - (w0 - w1)).abs() < 0.01,
+        "o Transform e o Shape subiram tanto: {} × {}",
+        x0 - x1,
+        w0 - w1
+    );
 }
 
 /// A roda continua a rolar depois de um clique num campo da coluna: o foco não reescreve o alvo da rolagem.

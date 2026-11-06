@@ -107,7 +107,6 @@ pub fn dispatch_wheel<'frame>(
         return events.into_bump_slice();
     }
     if let Some(panel) = store.panel_at(event.x, event.y) {
-        let panel = store.column_owner(panel);
         store.wheel_panel(panel, event.delta_y);
     }
     events.into_bump_slice()

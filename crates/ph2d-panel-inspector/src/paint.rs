@@ -46,7 +46,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
         crate::cards::prepare(ctx.host.store_mut());
         crate::cards_sprite::prepara(ctx.host.store_mut());
         crate::cards_componentes::prepara(ctx.host.store_mut());
-        // Convidado do Vector em Draw: o MESMO Transform, por cima dos cartões dele.
+        // Convidado do Vector em Draw: o MESMO Transform, primeiro cartão da coluna dele.
         ctx.host
             .store_mut()
             .set_card_guest_only(&[crate::cards::CARD_TRANSFORM]);

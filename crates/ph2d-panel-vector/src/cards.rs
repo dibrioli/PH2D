@@ -221,7 +221,7 @@ fn campo<'a>(id: NodeId, letra: &'a str) -> Widget<'a> {
     }
 }
 
-/// ⭐ O cartão **Shape**: o que só a forma tem. A pose é o Transform do Inspector, por cima deste cartão
+/// ⭐ O cartão **Shape**: o que só a forma tem. A pose é o Transform do Inspector, primeiro cartão da coluna
 /// (`WidgetStore::invite_card_guest`); `VECTOR_TRANSFORM_X/Y/R` só se pintam com `PH2D_CARDS=0`.
 fn shape(c: &mut CardCtx<'_>, y: f32) -> f32 {
     const TAM: &[NodeId] = &[vids::VECTOR_TRANSFORM_W, vids::VECTOR_TRANSFORM_H];

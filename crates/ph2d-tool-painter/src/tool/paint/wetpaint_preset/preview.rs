@@ -386,6 +386,7 @@ pub(super) fn pintar_miniatura(
         }
     };
     if borracha_do_wet {
+        t.paint.wetpaint.na_miniatura = true;
         t.set_source(super::preview_borracha::tela_cheia(lado, lado), lado, lado);
         t.set_paint_tool_mode("eraser");
         t.instalar_cena(cena, true);
@@ -546,6 +547,7 @@ pub fn pintar_preview(
     }
     // ⭐ A borracha: a tela cheia e ela por cima, no S do Pincel — o meio, o modo (pela porta do trilho) e o
     // pincel dela, como na tela.
+    t.paint.wetpaint.na_miniatura = true;
     t.set_source(b_::tela_cheia(lw, lh), lw, lh);
     t.set_paint_media(cena.meio);
     t.set_paint_tool_mode("eraser");

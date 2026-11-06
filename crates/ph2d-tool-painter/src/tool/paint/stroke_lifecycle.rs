@@ -76,6 +76,7 @@ impl PainterTool {
         self.paint.plano_do_traco = None; // o plano do traço (L8/L5) nasce no 1.º lote deste traço
         self.mancha_na_aguada = None; // a do gesto anterior é tinta (ou foi descascada)
         self.paint.wetpaint.pending_deposit.clear(); // doc 21: a new gesture invalidates the stash
+        self.paint.wetpaint.sulco = None; // cada traço da Borracha morta parte da imagem de agora
         self.paint.line_anchor = Some(ev.pos);
         // EDGE-1 wet session: while the paper is still WET and the canvas is untouched since OUR
         // last bake, consecutive watercolor strokes are ONE wash — keep the union buffers + cum
@@ -581,6 +582,7 @@ impl PainterTool {
         {
             self.mark_dirty(r);
         }
+        self.paint.wetpaint.sulco = None;
         if let Some(before) = self.paint.stroke_undo.take() {
             self.commit_structural_edit(before);
         }

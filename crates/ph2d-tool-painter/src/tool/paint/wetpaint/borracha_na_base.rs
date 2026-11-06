@@ -6,6 +6,45 @@ use super::*;
 use crate::tool::paint::region::dabs_bounds;
 
 impl PainterTool {
+    /// A cobertura da Borracha normal sobre `r`, num escudo opaco (alfa 255 − cobertura) que o chamador devolve à
+    /// `pilha`. Plano de medição, fora do journal do undo; sem sessão os dabs caem na Borracha normal.
+    pub(super) fn mede_o_escudo(
+        &mut self,
+        dabs: &[Dab],
+        r: crate::compositor::Region,
+    ) -> Arc<Vec<u8>> {
+        let (w, h) = self.source_size;
+        let stride = w as usize * 4;
+        let len = stride * h as usize;
+        if self.paint.pilha.escudo.len() != len {
+            self.paint.pilha.escudo = Arc::new(vec![255u8; len]);
+        }
+        {
+            let e = Arc::make_mut(&mut self.paint.pilha.escudo);
+            for row in 0..r.h as usize {
+                let o = (r.y as usize + row) * stride + r.x as usize * 4;
+                e[o..o + r.w as usize * 4].fill(255);
+            }
+        }
+        let mut plano = std::mem::take(&mut self.paint.pilha.escudo);
+        let rng = self.paint.tex_rng;
+        crate::tool::paint::plane_fork::swap_canvas_plane(
+            &mut self.canvas_rgba,
+            &mut plano,
+            &self.undo.write_state,
+        );
+        self.paint.wetpaint.medindo_o_escudo = true;
+        self.stamp_dabs_inner(dabs);
+        self.paint.wetpaint.medindo_o_escudo = false;
+        crate::tool::paint::plane_fork::swap_canvas_plane(
+            &mut self.canvas_rgba,
+            &mut plano,
+            &self.undo.write_state,
+        );
+        self.paint.tex_rng = rng;
+        plano
+    }
+
     /// Apaga da base o que os `dabs` cobrem, sob a selecção e a protecção. O alfa preso não deixa apagar. A base só se
     /// copia quando há tinta a apagar; cada passo copia-a uma vez, por o undo segurar a de antes.
     pub(super) fn apaga_a_base_sob_os_dabs(&mut self, dabs: &[Dab]) {
@@ -29,31 +68,7 @@ impl PainterTool {
             self.paint.wetpaint.session = Some(sess);
             return;
         }
-        if self.paint.pilha.escudo.len() != len {
-            self.paint.pilha.escudo = Arc::new(vec![255u8; len]);
-        }
-        {
-            let e = Arc::make_mut(&mut self.paint.pilha.escudo);
-            for row in 0..r.h as usize {
-                let o = (r.y as usize + row) * stride + r.x as usize * 4;
-                e[o..o + r.w as usize * 4].fill(255);
-            }
-        }
-        // Sem a sessão, os dabs caem na borracha normal; o escudo é um plano de medição, fora do journal do undo.
-        let mut plano = std::mem::take(&mut self.paint.pilha.escudo);
-        let rng = self.paint.tex_rng;
-        crate::tool::paint::plane_fork::swap_canvas_plane(
-            &mut self.canvas_rgba,
-            &mut plano,
-            &self.undo.write_state,
-        );
-        self.stamp_dabs_inner(dabs);
-        crate::tool::paint::plane_fork::swap_canvas_plane(
-            &mut self.canvas_rgba,
-            &mut plano,
-            &self.undo.write_state,
-        );
-        self.paint.tex_rng = rng;
+        let plano = self.mede_o_escudo(dabs, r);
         let linhas = || {
             (0..r.h as usize).flat_map(move |row| {
                 let o = (r.y as usize + row) * stride + r.x as usize * 4;

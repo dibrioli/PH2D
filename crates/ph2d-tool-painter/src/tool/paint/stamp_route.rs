@@ -446,6 +446,11 @@ impl PainterTool {
             self.stamp_dabs_wetpaint(dabs, &brush);
             return;
         }
+        // Com tinta morta, a Borracha do Wet imita a da tinta viva (dono 06/11).
+        if self.borracha_morta_assume() {
+            self.borracha_na_tinta_morta(dabs);
+            return;
+        }
         // ── IMPASTO: the dab pipeline's SECOND output ────────────────────────────────────────────
         // THE choke point. The list here is already mirrored (Symmetry, in the stroke engine) and
         // already replicated (Tiling, just above), and every colour route below is fed from it — so

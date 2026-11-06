@@ -82,6 +82,12 @@ pub(crate) struct WetPaintState {
     /// A tinta viva das sessões que saíram do Wet ou da camada ([`adormecida`]), a mais antiga primeiro. Sem tique
     /// nem worker.
     pub(super) adormecidas: Vec<adormecida::TintaAdormecida>,
+    /// O sulco do traço aberto da Borracha na tinta morta ([`borracha_morta`]).
+    pub(super) sulco: Option<borracha_morta::Sulco>,
+    /// Os dabs vão medir a cobertura num escudo, não pintar ([`PainterTool::mede_o_escudo`]).
+    pub(super) medindo_o_escudo: bool,
+    /// A miniatura da Borracha mostra a folha sob o S: ela apaga a direito, sem tinta para amassar.
+    pub(super) na_miniatura: bool,
     /// A live freehand paint GESTURE is open (`paint_begin` .. pen-up). This —
     /// not `paint.stroke` — is the deposit gate: the lifecycle `mem::take`s
     /// the stroke while stamping, and the shape editors' per-frame re-stamps
@@ -218,6 +224,9 @@ impl Default for WetPaintState {
             armed: false,
             session: None,
             adormecidas: Vec::new(),
+            sulco: None,
+            medindo_o_escudo: false,
+            na_miniatura: false,
             live_gesture: false,
             knobs: WetKnobs::default(),
             pending_deposit: Vec::new(),
@@ -395,6 +404,11 @@ pub(super) use lote::media_do_grao;
 pub(crate) mod adormecida; // a tinta viva parada fora do Wet (dono 06/11)
 #[cfg(test)]
 mod dentro_do_wet_tests;
+mod borracha_morta; // a Borracha na tinta morta imita a da viva (dono 06/11)
+#[cfg(test)]
+mod borracha_morta_tests;
+#[cfg(test)]
+mod sonda_borracha_morta;
 #[cfg(test)]
 mod adormecida_regua_tests;
 #[cfg(test)]

@@ -71,18 +71,17 @@ pub fn paint_card_list_top(
     };
     // D31: e abaixo da régua de cima (a lista flutua sobre a área de desenho, D24).
     let topo = area.map_or(topo, |c| topo.max(c.y));
-    // O convidado é o primeiro da coluna: os cartões do anfitrião começam depois dele e rolam com ele.
+    // O convidado ocupa uma entrada da lista do anfitrião: `lugar` é a chave dela, com a altura dele.
     let convidado_h = ctx.host.store().card_guest_h_over(panel);
-    let acima = if convidado_h > 0.0 {
-        convidado_h + m::CARD_GAP
-    } else {
-        0.0
-    };
+    let lugar = ctx.host.store_mut().card_guest_place_over(panel);
     let top_list = topo + m::LIST_MARGIN;
     let preso_h = preso.map_or(0.0, |p| p.h + m::LIST_TOP_GAP);
     let cabeca = m::LIST_HEAD_H;
     let body_top = assento.map_or(top_list + cabeca + preso_h, |a| a.body_top);
-    let keys: Vec<NodeId> = cards.iter().map(|c| c.section).collect();
+    let keys: Vec<NodeId> = lugar
+        .into_iter()
+        .chain(cards.iter().map(|c| c.section))
+        .collect();
     let store = ctx.host.store_mut();
     // Na lista curta, só o que o convidado declarou; os soltos dos outros cartões continuam dele.
     let da_lista: Vec<NodeId> = keys
@@ -96,18 +95,24 @@ pub fn paint_card_list_top(
     );
     // A rolagem (a lista que passa da janela): a origem dos cartões sobe o que rolou.
     let origem = assento.map_or_else(
-        || body_top - store.panel_scroll(panel).max(0.0) + acima,
-        |a| body_top - store.panel_scroll(a.host).max(0.0),
+        || body_top - store.panel_scroll(panel).max(0.0),
+        |a| body_top - store.panel_scroll(a.host).max(0.0) + a.y,
     );
+    if curta {
+        store.set_card_guest_origin(origem);
+    }
     for k in &keys {
         store.mark_card_section(*k);
     }
     // A ordem: a das secções (`sections.txt`), sobre a ordem natural do painel.
     let mut ordem = crate::widget::section_plan::ordem(&da_lista, store);
-    let drop = store.take_card_drop(panel, &keys);
+    let drop = store
+        .take_card_drop(panel, &keys)
+        .or_else(|| store.take_card_guest_drop(panel));
     let drag = store
         .card_drag()
-        .filter(|d| d.active && store.card_drag_is_of(d, panel, &keys));
+        .filter(|d| d.active && store.card_drag_is_of(d, panel, &keys))
+        .or_else(|| store.card_guest_hand(panel));
     // ⭐ C5: a mão fora da COLUNA leva o cartão ao canvas; o solto que volta a uma lista que o mostra
     // é levantado como voo dela. Aba atrás: a lista não se vê, só os soltos continuam no canvas.
     let escondida = store.loose_only_pass() == Some(panel);
@@ -168,7 +173,11 @@ pub fn paint_card_list_top(
     let mut nova_ordem = None;
     let mut solta = None;
     if let Some(d) = drop {
-        if d.cancelled || list.stack.flight().is_some_and(|f| soltos.contains(&f.key)) {
+        if curta && !d.loose {
+            // A mão levantou-o da coluna do anfitrião: quem assenta e reordena é a lista de lá.
+            let voo = list.stack.detach();
+            solta = voo.filter(|f| !d.cancelled && f.to.is_none() && !soltos.contains(&f.key));
+        } else if d.cancelled || list.stack.flight().is_some_and(|f| soltos.contains(&f.key)) {
             list.stack.cancel(origem);
         } else if list.stack.flight().is_some_and(|f| f.to.is_none()) {
             solta = list.stack.detach();
@@ -180,6 +189,12 @@ pub fn paint_card_list_top(
     // As alturas com mola (T41: dobrar, desdobrar, entrar e sair não saltam).
     let mut items = entra_sai::itens(panel, &mut list.stack, &list.items, &ordem, &soltos);
     let crescem = list.stack.smooth_heights(&mut items, dt, law);
+    // A altura do convidado já vem com a mola dele.
+    if let Some(it) = items.iter_mut().find(|i| Some(i.key) == lugar)
+        && convidado_h > 0.0
+    {
+        it.h = convidado_h;
+    }
     if let Some((d, (grab, size))) = reentra {
         let i = items.iter().position(|i| i.key == d.section).unwrap_or(0);
         list.stack.lift(d.section, d.at, grab, size, i);
@@ -216,8 +231,13 @@ pub fn paint_card_list_top(
         .collect();
     let voo = list.stack.flight().copied();
     let tilt = list.stack.tilt_deg();
+    let solta = solta.filter(|f| Some(f.key) != lugar);
     solto::larga(store, panel, drop, solta);
-    if let Some(o) = nova_ordem {
+    if curta && let Some(d) = drop.filter(|d| !d.loose) {
+        store.set_card_guest_drop(d);
+    }
+    // A ordem do convidado na lista do anfitrião mora na chave do lugar; a dele fica como está.
+    if let Some(o) = nova_ordem.filter(|_| !curta) {
         let atual = store.section_order().to_vec();
         let mut todas: Vec<NodeId> = atual
             .into_iter()
@@ -233,14 +253,14 @@ pub fn paint_card_list_top(
     } else {
         0.0
     };
-    let content_h = acima + placed.content_h + soltas_h + pe;
+    let content_h = placed.content_h + soltas_h + pe;
     let natural = cabeca + preso_h + content_h + m::LIST_PAD_BOTTOM;
     let tecto = slot.y + slot.h - top_list - m::LIST_MARGIN;
     let list_h = natural.min(tecto);
     let lista = Rect::new(x, top_list, w, list_h.max(cabeca));
     if curta {
         // Sem cartão na lista, ela não ocupa nada: nem vão, nem clique.
-        let h = if placed.ys.is_empty() {
+        let h = if placed.ys.is_empty() && placed.slot.is_none() {
             0.0
         } else {
             placed.content_h
@@ -328,11 +348,16 @@ pub fn paint_card_list_top(
         },
         |a| a.clip,
     );
+    // Onde o lugar do convidado está agora: entre os cartões, ou o vão enquanto a mão o leva.
+    let lugar_y = lugar.and_then(|l| {
+        let assente = placed.ys.iter().find(|(k, _)| *k == l).map(|(_, y)| *y);
+        assente.or_else(|| voo.filter(|f| f.key == l).and(placed.slot).map(|s| s.0))
+    });
     let cena_recebida = if curta {
         None
     } else {
         let store = ctx.host.store_mut();
-        store.offer_card_guest_seat(panel, x, w, cw, body_top, clip);
+        store.offer_card_guest_seat(panel, (x, w, cw), body_top, clip, lugar_y);
         store.take_card_guest_scene(panel)
     };
     let mut voltam = Vec::new();
@@ -348,17 +373,22 @@ pub fn paint_card_list_top(
             clip,
         )
     });
-    // O convidado entra aqui, como o primeiro cartão: no recorte da coluna e antes de tudo o que o
-    // anfitrião pinta por cima. Os cartões dele vão para uma cena à parte, os cliques ao mesmo recorte.
+    // O convidado entra aqui: no recorte da coluna e antes de tudo o que o anfitrião pinta por cima. Os
+    // cartões dele vão para uma cena à parte, os cliques ao mesmo recorte. Ele pintou-se no `y` do quadro
+    // anterior; a cola leva-o ao de agora, e o clique chega no quadro seguinte (a mola está em curso).
     let mut cena_do_convidado = curta.then(VectorScene::new);
     if let Some(s) = &mut cena_do_convidado {
         std::mem::swap(&mut *ctx.scene, s);
         hit_index.push_clip(clip);
     }
     if let Some(s) = &cena_recebida {
-        ctx.scene.append_scene(s);
+        let dy = lugar_y.map_or(0.0, |y| origem + y - store.card_guest_origin());
+        ctx.scene
+            .append_transformed(s, Affine::translate((0.0, f64::from(dy))));
     }
-    if let Some((sy, sh)) = placed.slot {
+    // A mão que levantou o convidado da coluna: o vão é o da lista do anfitrião.
+    let vao_de_fora = curta && drag.is_some_and(|d| !d.loose);
+    if let Some((sy, sh)) = placed.slot.filter(|_| !vao_de_fora) {
         let vao = Rect::new(cx, origem + sy, cw, sh);
         fill_rounded_rect(
             ctx.scene,
@@ -367,7 +397,20 @@ pub fn paint_card_list_top(
             resolve(ColorToken::KanbanSlot, theme),
         );
     }
+    if let Some(f) = voo.filter(|f| Some(f.key) == lugar) {
+        alturas.push(Item {
+            key: f.key,
+            h: f.size.1,
+        });
+    }
     for (k, y) in &placed.ys {
+        if Some(*k) == lugar {
+            alturas.push(Item {
+                key: *k,
+                h: convidado_h,
+            });
+            continue;
+        }
         let h_antes = items.iter().find(|i| i.key == *k).map_or(0.0, |i| i.h);
         let r = Rect::new(cx, origem + y, cw, h_antes.max(0.0));
         let Some(card) = cards.iter().find(|c| c.section == *k) else {
@@ -472,7 +515,7 @@ pub fn paint_card_list_top(
             ctx.scene,
             hit_index,
             store,
-            rolagem::conteudo(acima + placed.content_h + notas_h + pe, natural <= tecto),
+            rolagem::conteudo(placed.content_h + notas_h + pe, natural <= tecto),
             theme,
         )
     });

@@ -1,11 +1,14 @@
 //! ⭐ **O convidado da lista** (dono 05/11: *«o transform dividiu o painel. Deveria ficar dentro do
 //! painel»*): o painel à frente de um encaixe convida o de trás a mostrar os cartões que este declara
-//! como os primeiros da coluna dele. O convidado continua dono do cartão (soltar, alfinete, sujeito,
-//! pedidos); ninguém depende de ninguém. O anfitrião oferece o assento (a coluna do quadro anterior), a
-//! travessia (`panel_walk`) corre o passo e o anfitrião cola a cena do passo na lista dele, antes do que
-//! pinta por cima (os popovers).
+//! como dele. O convidado continua dono do cartão (soltar, alfinete, sujeito, pedidos); ninguém depende
+//! de ninguém. O anfitrião oferece o assento (a coluna do quadro anterior), a travessia (`panel_walk`)
+//! corre o passo e o anfitrião cola a cena do passo na lista dele, antes do que pinta por cima (os
+//! popovers). ⭐ O convidado é UMA ENTRADA da lista do anfitrião (dono 05/11: *«não aceita trocar de lugar
+//! com os outros cartões»*): a chave [`WidgetStore::card_guest_place_over`] entra na pilha e na ordem
+//! gravada como as outras; a mão que levanta o cartão dele conduz as duas pilhas, a do anfitrião decide o
+//! vão, o assentar e a ordem, a do convidado pinta o voo e solta para a tela.
 
-use super::WidgetStore;
+use super::{CardDrag, CardDrop, WidgetStore};
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
 use ph2d_vector::VectorScene;
@@ -20,6 +23,8 @@ pub struct GuestSeat {
     pub cw: f32,
     /// O topo do corpo, antes da rolagem.
     pub body_top: f32,
+    /// O `y` do lugar do convidado na lista do anfitrião, desde a origem dela.
+    pub y: f32,
     /// O recorte do corpo: o do que se vê e o do que se clica.
     pub clip: Rect,
 }
@@ -33,6 +38,12 @@ pub struct CardGuest {
     pass: Option<NodeId>,
     /// `(anfitrião, altura)` do passo deste quadro.
     served: Option<(NodeId, f32)>,
+    /// O convidado do passo deste quadro (já fechado).
+    served_guest: Option<NodeId>,
+    /// A origem em que o passo pintou (o anfitrião cola a cena no `y` de agora).
+    origin: f32,
+    /// A queda da mão que levantou o cartão da coluna, à espera do anfitrião.
+    dropped: Option<CardDrop>,
     /// As secções que o convidado mostra na lista dele durante o passo.
     only: Vec<NodeId>,
     seat: Option<GuestSeat>,
@@ -80,20 +91,21 @@ impl WidgetStore {
     pub(crate) fn offer_card_guest_seat(
         &mut self,
         panel: NodeId,
-        x: f32,
-        w: f32,
-        cw: f32,
+        (x, w, cw): (f32, f32, f32),
         body_top: f32,
         clip: Rect,
+        lugar_y: Option<f32>,
     ) {
         let g = &mut self.card_lists.guest;
         if g.invite.is_some_and(|(host, _)| host == panel) {
+            let y = lugar_y.or(g.seat.map(|s| s.y)).unwrap_or(0.0);
             g.seat = Some(GuestSeat {
                 host: panel,
                 x,
                 w,
                 cw,
                 body_top,
+                y,
                 clip,
             });
         }
@@ -115,6 +127,8 @@ impl WidgetStore {
     pub fn take_card_guest_invite(&mut self) -> Option<(NodeId, NodeId)> {
         let g = &mut self.card_lists.guest;
         g.served = None;
+        g.served_guest = None;
+        g.dropped = None;
         g.scene = None;
         g.flight = None;
         g.invite.take()
@@ -126,6 +140,7 @@ impl WidgetStore {
         let g = &mut self.card_lists.guest;
         g.pass = Some(guest);
         g.served = Some((host, 0.0));
+        g.served_guest = Some(guest);
         g.only.clear();
     }
 
@@ -169,6 +184,58 @@ impl WidgetStore {
             Some((h, altura)) if h == host => altura,
             _ => 0.0,
         }
+    }
+
+    /// A chave da entrada do convidado na lista de `host` neste quadro, enquanto ele ocupa ou voa. É estável
+    /// entre sessões, e a ordem gravada não se mistura com a dos cartões na lista do próprio convidado.
+    pub(crate) fn card_guest_place_over(&mut self, host: NodeId) -> Option<NodeId> {
+        let g = &self.card_lists.guest;
+        let (dono, h) = g.served?;
+        if dono != host {
+            return None;
+        }
+        let lugar = chave_curta(g.served_guest?);
+        let sem_mao = self.card_lists.drag.is_none() && g.dropped.is_none();
+        let lista = self.card_lists.lists.entry(host).or_default();
+        let voa = lista.stack.flight().is_some_and(|f| f.key == lugar);
+        if voa && sem_mao {
+            let _ = lista.stack.detach();
+        }
+        (h > 0.0 || (voa && !sem_mao)).then_some(lugar)
+    }
+
+    /// A mão que levou um cartão do convidado, como arrasto do lugar dele na lista de `host`.
+    pub(crate) fn card_guest_hand(&mut self, host: NodeId) -> Option<CardDrag> {
+        let d = self.card_lists.drag?;
+        let lugar = self.card_guest_place_over(host)?;
+        let leva = d.active && !d.loose && self.card_lists.guest.only.contains(&d.section);
+        leva.then_some(CardDrag {
+            section: lugar,
+            ..d
+        })
+    }
+
+    pub(crate) fn set_card_guest_drop(&mut self, d: CardDrop) {
+        self.card_lists.guest.dropped = Some(d);
+    }
+
+    /// A queda da mão, como queda do lugar do convidado na lista de `host`.
+    pub(crate) fn take_card_guest_drop(&mut self, host: NodeId) -> Option<CardDrop> {
+        self.card_lists.guest.dropped?;
+        let lugar = self.card_guest_place_over(host)?;
+        let d = self.card_lists.guest.dropped.take()?;
+        Some(CardDrop {
+            section: lugar,
+            ..d
+        })
+    }
+
+    pub(crate) fn set_card_guest_origin(&mut self, origin: f32) {
+        self.card_lists.guest.origin = origin;
+    }
+
+    pub(crate) fn card_guest_origin(&self) -> f32 {
+        self.card_lists.guest.origin
     }
 
     pub(crate) fn set_card_guest_scene(&mut self, scene: VectorScene) {

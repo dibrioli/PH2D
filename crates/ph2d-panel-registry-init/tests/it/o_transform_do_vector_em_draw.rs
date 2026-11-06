@@ -3,7 +3,7 @@
 //! aba de trás: o cartão Transform É o do Inspector, o primeiro do corpo da aba Drawing, na moldura do Vector.
 #![cfg(all(feature = "panel-inspector", feature = "panel-vector"))]
 
-use super::cartoes_mao::{centro, clica, mao, pinta, solta};
+use super::cartoes_mao::{arrasta, centro, clica, mao, pinta, solta};
 use super::o_bloco5_abertos::escolhe;
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
@@ -506,6 +506,233 @@ fn a_roda_rola_a_coluna_com_um_campo_em_foco() {
         h.store.panel_scroll(core_ids::VECTOR_PANEL) > 0.0,
         "o foco comeu a roda"
     );
+}
+
+/// O `y` do título de um cartão: o da pega, que é o que a mão agarra.
+fn pega(h: &HeroScreen, secao: NodeId) -> ph2d_editor_core::zones::Rect {
+    h.hit_index.rect_for(grip_de(secao)).expect("o título")
+}
+
+fn transform_abaixo_do_shape(h: &HeroScreen) -> bool {
+    pega(h, CARD_TRANSFORM).y > pega(h, t::VECTOR_SECTION_TRANSFORM).y
+}
+
+/// Agarra o título de `secao` e anda `dy` px na coluna.
+fn arrasta_na_coluna(h: &mut HeroScreen, secao: NodeId, dy: f32) {
+    let r = pega(h, secao);
+    let de = (r.x + 12.0, r.y + r.h * 0.5);
+    arrasta(h, de, (de.0, de.1 + dy));
+    quadros(h, 40);
+}
+
+/// A distância que leva o Transform para baixo do Shape: a altura dos dois.
+fn abaixo_do_shape(h: &HeroScreen) -> f32 {
+    let shape = pega(h, t::VECTOR_SECTION_TRANSFORM);
+    let lista = h.store.panel_rect(core_ids::VECTOR_PANEL).expect("o rect");
+    let seguinte = pega(h, t::VECTOR_SECTION_SNAP).y.min(lista.y + lista.h);
+    seguinte - shape.y
+}
+
+/// O dono troca o Transform com o Shape pelo título: o lugar muda, os campos clicam no lugar novo e a coluna
+/// não fica com dois vãos.
+/// *Mutações: o convidado fora da lista do anfitrião ⇒ não desce. `land` sem a ordem ⇒ volta ao topo. A mão que
+/// não conduz a pilha do anfitrião ⇒ não desce. O passo sem o `y` do lugar ⇒ o clique fica no topo.*
+#[test]
+fn arrastar_o_titulo_do_transform_troca_de_lugar_com_o_shape() {
+    let mut h = em_draw();
+    assert!(!transform_abaixo_do_shape(&h), "nasce o primeiro");
+    let dy = abaixo_do_shape(&h);
+    arrasta_na_coluna(&mut h, CARD_TRANSFORM, dy);
+    assert!(transform_abaixo_do_shape(&h), "não trocou de lugar");
+    assert!(h.store.loose_card(CARD_TRANSFORM).is_none(), "não soltou");
+
+    let cabeca = pega(&h, CARD_TRANSFORM);
+    let largura = h.hit_index.rect_for(t::VECTOR_TRANSFORM_W).expect("W");
+    assert!(
+        largura.y + largura.h <= cabeca.y,
+        "o Shape inteiro por cima: {largura:?} {cabeca:?}"
+    );
+    let (corpo, shape) = (
+        cabeca_do_transform(&h),
+        h.hit_index
+            .rect_for(t::VECTOR_SECTION_TRANSFORM)
+            .expect("o Shape"),
+    );
+    assert_eq!((corpo.x, corpo.w), (shape.x, shape.w), "a mesma coluna");
+    for id in [insp::INSP_TRANSFORM_POS_X, insp::INSP_TRANSFORM_SKEW_X] {
+        let r = h.hit_index.rect_for(id).expect("o campo");
+        assert!(r.y > cabeca.y, "{id:?} acima do título dele: {r:?}");
+        let (x, y) = centro(r);
+        assert_eq!(h.hit_index.hit(x, y), Some(id), "o campo não clica");
+    }
+    clica(&mut h, insp::INSP_TRANSFORM_RESET);
+    assert!(
+        h.bus
+            .drain()
+            .any(|a| matches!(a, EditorAction::InspectorTransformEdit(_))),
+        "o reset não pediu nada no lugar novo"
+    );
+}
+
+/// O vizinho passa por ele: o Shape arrastado para cima do Transform fica por cima.
+/// *Mutação: o lugar sem altura ⇒ o vizinho não o passa.*
+#[test]
+fn arrastar_o_shape_para_cima_do_transform_passa_por_ele() {
+    let mut h = em_draw();
+    let dy = pega(&h, CARD_TRANSFORM).y - pega(&h, t::VECTOR_SECTION_TRANSFORM).y;
+    arrasta_na_coluna(&mut h, t::VECTOR_SECTION_TRANSFORM, dy - 8.0);
+    assert!(transform_abaixo_do_shape(&h), "o Shape não passou");
+    let largura = h.hit_index.rect_for(t::VECTOR_TRANSFORM_W).expect("W");
+    let cabeca = pega(&h, CARD_TRANSFORM);
+    assert!(
+        largura.y + largura.h <= cabeca.y,
+        "sobrepostos: {largura:?} {cabeca:?}"
+    );
+}
+
+/// A ordem é a das secções, como a dos outros: ao reabrir, fica; e a lista do Inspector não muda.
+/// *Mutações: a nova ordem sem a chave do lugar ⇒ reabre no topo. A chave do lugar = a secção do Inspector ⇒ a
+/// ordem da lista do Inspector mexe.*
+#[test]
+fn ao_reabrir_a_ordem_do_transform_fica_e_a_do_inspector_nao_muda() {
+    let mut h = em_draw();
+    let dy = abaixo_do_shape(&h);
+    arrasta_na_coluna(&mut h, CARD_TRANSFORM, dy);
+    assert!(
+        !h.store.section_order().contains(&CARD_TRANSFORM),
+        "a ordem da lista do Inspector mexeu"
+    );
+    let disco = ph2d_editor_core::interaction::section_prefs_text(&h.store);
+
+    let mut nova = em_draw();
+    assert!(!transform_abaixo_do_shape(&nova), "o de fábrica é o topo");
+    ph2d_editor_core::interaction::restore_section_prefs_text(&mut nova.store, &disco);
+    quadros(&mut nova, 40);
+    assert!(transform_abaixo_do_shape(&nova), "a ordem não ficou");
+}
+
+/// Depois de trocar de lugar, soltar para fora continua a soltar para a tela, e a faixa fica no lugar novo. Solto,
+/// voltar à coluna repõe-no ali, sem mexer na ordem. O cancelar da queda dentro da coluna não troca nada.
+/// *Mutações: `larga` com a chave do lugar ⇒ `solta` falha. A queda de fora sem o `detach` do convidado ⇒ idem.*
+#[test]
+fn soltar_para_fora_continua_a_soltar_e_a_faixa_fica_no_lugar_novo() {
+    let mut h = em_draw();
+    let dy = abaixo_do_shape(&h);
+    arrasta_na_coluna(&mut h, CARD_TRANSFORM, dy);
+    solta(&mut h, CARD_TRANSFORM);
+    quadros(&mut h, 40);
+    assert_eq!(
+        h.store.card_guest_h_over(core_ids::VECTOR_PANEL),
+        ph2d_card_stack::metrics::LOOSE_GHOST_H
+    );
+    assert!(
+        pintado(&h, loose_pin_of(CARD_TRANSFORM)),
+        "alfinete no solto"
+    );
+    let shape = pega(&h, t::VECTOR_SECTION_TRANSFORM);
+    let snap = pega(&h, t::VECTOR_SECTION_SNAP);
+    assert!(shape.y < snap.y, "o Vector continua: {shape:?} {snap:?}");
+
+    assert!(
+        h.store.loose_cards_of(core_ids::VECTOR_PANEL).is_empty(),
+        "o lugar do convidado virou um solto do Vector"
+    );
+
+    // Solto, a mão trá-lo de volta à coluna: o lugar é o que ele tinha, e a lista dele não grava nada.
+    let rect = h
+        .store
+        .panel_rect(loose_rect_of(CARD_TRANSFORM))
+        .expect("o solto");
+    let fantasma = pega(&h, t::VECTOR_SECTION_TRANSFORM);
+    arrasta(
+        &mut h,
+        (rect.x + 40.0, rect.y + 10.0),
+        (fantasma.x + 40.0, fantasma.y + 60.0),
+    );
+    quadros(&mut h, 40);
+    assert!(h.store.loose_card(CARD_TRANSFORM).is_none(), "não voltou");
+    assert!(pintado(&h, insp::INSP_TRANSFORM_POS_X), "o cartão inteiro");
+    assert!(transform_abaixo_do_shape(&h), "voltou a outro lugar");
+    assert!(
+        !h.store.section_order().contains(&CARD_TRANSFORM),
+        "a volta gravou a secção do Inspector"
+    );
+}
+
+/// O menu do painel repõe as posições: o lugar do convidado é uma entrada da lista, e volta ao topo.
+/// *Mutação: as alturas da lista sem o lugar ⇒ a reposição não o vê.*
+#[test]
+fn repor_as_posicoes_devolve_o_transform_ao_topo() {
+    let mut h = em_draw();
+    let dy = abaixo_do_shape(&h);
+    arrasta_na_coluna(&mut h, CARD_TRANSFORM, dy);
+    assert!(transform_abaixo_do_shape(&h));
+    h.store
+        .reset_card_list(core_ids::VECTOR_PANEL, true, false, false);
+    quadros(&mut h, 40);
+    assert!(!transform_abaixo_do_shape(&h), "não voltou ao topo");
+    assert!(h.store.section_order().is_empty(), "a ordem ficou gravada");
+}
+
+/// Ao largar, quem assenta é a mola da lista do Vector, uma só: o cartão pinta-se sempre na origem do lugar.
+/// *Mutação: o convidado a assentar com a mola dele ⇒ o título afasta-se do lugar enquanto assenta.*
+#[test]
+fn ao_largar_o_cartao_assenta_com_uma_mola_so() {
+    let mut h = em_draw();
+    let v = core_ids::VECTOR_PANEL;
+    let base = |h: &HeroScreen, y: f32| {
+        let s = h.store.card_guest_seat().expect("o assento");
+        s.body_top - h.store.panel_scroll(v).max(0.0) + y
+    };
+    let y_do_lugar = |h: &HeroScreen| h.store.card_guest_seat().expect("o assento").y;
+    let folga = cabeca_do_transform(&h).y - base(&h, y_do_lugar(&h));
+    let dy = abaixo_do_shape(&h);
+    let r = pega(&h, CARD_TRANSFORM);
+    let de = (r.x + 12.0, r.y + r.h * 0.5);
+    mao(&mut h, PointerKind::Down, de);
+    quadros(&mut h, 2);
+    mao(&mut h, PointerKind::Move, (de.0, de.1 + dy));
+    quadros(&mut h, 20);
+    mao(&mut h, PointerKind::Up, (de.0, de.1 + dy));
+    let mut andou = 0.0_f32;
+    for _ in 0..20 {
+        let antes = y_do_lugar(&h);
+        quadros(&mut h, 1);
+        let y = cabeca_do_transform(&h).y;
+        assert!(
+            (y - base(&h, antes) - folga).abs() < 0.01,
+            "{y} × {} + {folga}",
+            base(&h, antes)
+        );
+        andou = andou.max((y_do_lugar(&h) - antes).abs());
+    }
+    assert!(andou > 1.0, "nada assentou: a prova não vale");
+}
+
+/// Esc a meio do arrasto: nada muda, nem a ordem gravada, e o cartão volta inteiro. Longe da coluna, Esc também não solta.
+/// *Mutações: o anfitrião a pousar a queda cancelada ⇒ a ordem muda. O convidado sem o `!d.cancelled` ⇒ solta.*
+#[test]
+fn esc_a_meio_do_arrasto_nao_troca_nem_solta() {
+    let mut h = em_draw();
+    let dy = abaixo_do_shape(&h);
+    let canvas = h.last_layout.expect("houve um quadro").canvas;
+    let r = pega(&h, CARD_TRANSFORM);
+    let de = (r.x + 12.0, r.y + r.h * 0.5);
+    for ate in [(de.0, de.1 + dy), (canvas.x + 50.0, canvas.y + 50.0)] {
+        mao(&mut h, PointerKind::Down, de);
+        quadros(&mut h, 2);
+        mao(&mut h, PointerKind::Move, ate);
+        quadros(&mut h, 4);
+        let _ = h.store.end_card_drag(true);
+        quadros(&mut h, 40);
+        assert!(!transform_abaixo_do_shape(&h), "trocou com Esc");
+        assert!(h.store.section_order().is_empty(), "gravou com Esc");
+        assert!(
+            h.store.loose_card(CARD_TRANSFORM).is_none(),
+            "soltou com Esc"
+        );
+        assert!(pintado(&h, insp::INSP_TRANSFORM_POS_X), "o cartão voltou");
+    }
 }
 
 /// A cena do quadro leva os cartões do Transform: dobrá-lo tira o corpo dele do que se pinta.

@@ -10,3 +10,6 @@ Dabber + trocar de modo mata a tinta e a Relief Eraser vira corte seco. Decisõe
 **Why:** a borracha viva é a que ele acha realista; arquivos sem a opção continuam a existir, por isso a imitação.
 
 **How to apply:** plano, custos medidos e pesquisa em `docs/Painter/TINTA_VIVA_2026-11-06.md`. Depois disto a fila volta a `docs/Painter/PROXIMA_FASE_2026-11-06.md`. Ver [[project_next_phase_painter_2026_11_06]].
+
+Onda 2 pronta (dentro do Wet, Borracha na morta, compressão zstd): [handoff](../docs/Painter/handoffs/HANDOFF_CONTINUACAO_2026-11-06_tinta_viva_onda2.md); aguarda o veredito do dono.
+Lição: `bytes_retidos` conta 0 com o motor no worker (`EngineSlot::Away`): mede-se depois de o trazer (577 MB eram 5 GB).

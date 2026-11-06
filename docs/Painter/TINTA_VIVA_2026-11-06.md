@@ -1,6 +1,6 @@
 # A tinta viva sobrevive (decisões do dono, 06/11)
 
-Estado: **itens 1, 2 e 3 do plano construídos** (`c542d4f3c6`), sem compressão; **faltam o resto do item 2, os itens 4, 5, 6 e a compressão** ([§ Construído](#construído-onda-1-0611)). Commit de partida: `9aa112caec` (Relief Eraser).
+Estado: **ondas 1 e 2 construídas** (itens 1, 2, 3, 4 e a compressão; ver [§ onda 2](#construído-onda-2-0611)); **faltam o item 5 (opção ao salvar), o item 6, o custo de adormecer logo após o traço, as provas de mutação e o veredito do dono**. Commit de partida: `9aa112caec` (Relief Eraser).
 
 ## Defeito reproduzido
 Dabber → trocar para Digital/Watercolor/Impasto (com ou sem traço) → voltar ao Wet → Relief Eraser: corte seco em vez da borracha que amassa. Sonda sobre `com_oleo()` + `apaga()` de `wetpaint/borracha_de_fabrica_tests.rs`:
@@ -91,7 +91,7 @@ Código: `wetpaint/adormecida.rs`. Portões: `adormecida_tests` (8). Régua: `ad
 | Pen-down Digital | 10,82 | 10,86 | 10,77 | 10,72 |
 | Tique ocioso (µs) | 71,68 | 70,68 | 71,74 | 70,06 |
 
-1080p igual. Adormecer: 0,01–0,02 ms. Retém 164 MB (1080p) · 577 MB (4096×2560), 14 passadas de Dabber. Segurar a tela não custa: o pen-down já copiava. **Medido sem compressão.**
+1080p igual. Segurar a tela não custa: o pen-down já copiava. ⛔ **Corrigido na onda 2:** «Adormecer: 0,01–0,02 ms» e «Retém 164 MB · 577 MB» estavam errados (`bytes_retidos` conta 0 com o motor no worker; adormecer logo após o traço custa 0,4–2,3 s). Números certos na §onda 2.
 
 **Desenho:**
 - Sair do Wet (`mode_switch`) ou da camada (`flush_active_to_images`, a porta de todas as trocas): a sessão pára, sem worker, com a tela de agora, por camada. Voltar: `set_paint_tool_mode`, `set_active_layer`, `ensure_wet_session`, o tique.
@@ -103,11 +103,20 @@ Código: `wetpaint/adormecida.rs`. Portões: `adormecida_tests` (8). Régua: `ad
 
 **Sobra medida:** com aguada (Watercolor) na camada, a Borracha difere do `vivo` em 6 574 px (Δ máx 64, 229 com Δ ≥ 10) a y < 125, com traço longe. Grades e `base` iguais; o que muda é o vidro da camada (`composite.rs:253`, doc 48). **Inferência:** é a lei do vidro; não medido isolando-a. Recompor o óleo vivo sem outro meio dá 0 px. O olho do dono não viu.
 
+## Construído (onda 2, 06/11)
+Handoff com o mecanismo, constantes e provas: [HANDOFF_CONTINUACAO_2026-11-06_tinta_viva_onda2.md](handoffs/HANDOFF_CONTINUACAO_2026-11-06_tinta_viva_onda2.md). Commits `7f060b58bf` · `45c9216b56` · `8a030e7f3c` + `0b2a4cb639` · `62fb674a33`.
+
+- **Dentro do Wet (resto do item 2):** o guarda e o undo já não matam a sessão; o que outro meio escreveu enterra-se como passo do undo. O balde nunca foi caso do guarda (é troca de modo). Recusado: recompor a tela inteira depois do undo com células enterradas.
+- **Borracha na tinta morta (item 4):** imita o sulco da viva nos pixels, sem sessão. Soma \|Δ\|: viva 67 398 · imitada 70 435 · corte seco 196 654. **Foto aguarda o dono.** Aberto: Bug #70 (tinta velha na `base` fora da grade ainda corta seco).
+- **Compressão em RAM:** bytes separados + zstd 1, ao bit. Conta real do Dabber cheio, 4096×2560: 5 081 MB retidos → 500 MB (10×); 1080p 1 385 → 190 MB. Comprimir/descomprimir num fio: 2,5 s / 1,0 s a 4K, por isso acorda-se em fio. Kill-criterion dos outros modos: passa de novo (Digital 29,85 · 29,70 · 28,91 · 27,65 ms).
+- ⛔ **Erros da onda 1 corrigidos:** o «577 MB» era 5 081 MB (a sonda perguntava com o motor no worker); o «adormecer 0,01–0,02 ms» era 0,4 s (1080p) a 2,0–2,3 s (4K) logo após o traço, tudo em `wet_ultima_imagem`; hipótese não isolada: só no mesmo quadro do soltar.
+
 **Por fazer:**
-- Resto do item 2: **dentro do Wet, o guarda e o undo ainda matam** (fill sem trocar de modo, ajuste por menu, desfazer um traço de outro meio já acordado). `undo.rs:182` e `ciclo.rs:255` não foram tocados.
-- Depois de enterrar, o óleo sob o traço de outro meio não volta se esse traço for desfeito.
-- Item 4 (Borracha inteligente na tinta morta); item 5 (opção ao salvar: nada no formato ainda); item 6.
-- Compressão em RAM: nem medida, nem construída; a tinta adormecida fica crua.
-- Provas de mutação, e os testes em `tests/it` e nos painéis correm no fecho desta onda só por nome.
+- Veredito do dono: foto da Borracha morta e smoke.
+- Medir o custo de adormecer logo após o traço (imagem assentada × no ar, e contra a base); com células enterradas essa recomposição re-iluminaria a orla.
+- Item 5 (opção ao salvar, ligada por omissão): mapa no handoff da onda 2; campo no FIM do `ProjectFile`, não no `PaintedDocument`; a sessão reconstrói-se no load; quantizar só com foto aprovada.
+- Item 6: preço da compressão com carga baixa, 4K com várias camadas, redo.
+- Bug #70 (candidato): tinta velha na `base` fora da grade.
+- Provas de mutação de `adormecida_tests.rs` e `dentro_do_wet_tests.rs`; suíte completa só na integração.
 
 **Fila depois disto:** itens 0–3 de [PROXIMA_FASE_2026-11-06.md](PROXIMA_FASE_2026-11-06.md). A foto 5 refeita pelo dono ainda não chegou (sem anexo; pasta sem alteração).

@@ -36,7 +36,9 @@ impl crate::App {
         self.any_input_this_frame = true;
         match m {
             Mao::Desfaz => self.smoke_undo(false),
-            Mao::Agulha(t) => self.playhead.seek(t),
+            Mao::Agulha(t) => self
+                .timeline_intents
+                .push(ph2d_timeline::TimelineIntent::Scrub(t)),
             Mao::Desloca | Mao::Pivo(_) => self.mexe_na_sprite_do_smoke(m),
             Mao::Prova => self.prova_da_sprite_do_smoke(),
             Mao::SaiDoDraw => {

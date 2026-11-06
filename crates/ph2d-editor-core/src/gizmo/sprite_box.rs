@@ -49,7 +49,13 @@ pub fn sprite_box(
     let half_w = half[0] * scale_x;
     let half_h = half[1] * scale_y;
     let ax = eff_anchor[0] * scale_x;
+    // Espelhada, a 2.ª coluna está do outro lado da que a rotação (lida da 1.ª) prevê.
     let ay = eff_anchor[1] * scale_y;
+    let ay = if col0_x * col1_y - col0_y * col1_x < 0.0 {
+        -ay
+    } else {
+        ay
+    };
     // T1.3.5 cross-OS bit-identical.
     let (sin_r, cos_r) = libm::sincosf(rotation);
     let cx = p[0] + ax * cos_r - ay * sin_r;

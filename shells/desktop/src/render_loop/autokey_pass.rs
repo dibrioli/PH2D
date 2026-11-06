@@ -365,6 +365,9 @@ pub(crate) fn apply_samples(
     ak: &mut AutokeyState,
     toasts: &mut ph2d_editor_core::ToastQueue,
 ) {
+    if std::mem::take(&mut ak.restaurado) {
+        return;
+    }
     // **Which scene the diff believes in** — the same split the manual K has
     // (`key_authoring_solo` vs `key_value_for`): in the KEYS view the apply solos
     // the active clip at the CLIP playhead, so the pass must author on that clock

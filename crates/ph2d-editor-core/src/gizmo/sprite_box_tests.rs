@@ -243,3 +243,24 @@ fn only_scale_and_move_pivot_read_the_cursor_through_the_skew() {
     d.target = GizmoTarget::PrimaryIndividual;
     assert_eq!(drag_skew_model(&d, [0.0, 0.0]), MODEL_IDENTITY);
 }
+
+/// ⛔ O dono, 06/11: com o Mirror object e o pivô na linha de cima, o gizmo ficava uma altura acima do
+/// desenho. A caixa tem de cair onde o motor desenha: `pivô + A·âncora`, nos três espelhos.
+#[test]
+fn a_caixa_cai_no_desenho_com_o_objeto_espelhado() {
+    let (anchor, half) = ([1.5, -0.25], [1.5, 0.25]);
+    for (sx, sy) in [(1.0_f32, 1.0_f32), (-1.0, 1.0), (1.0, -1.0), (-1.0, -1.0)] {
+        let a = [sx, 0.0, 0.0, sy, 7.0, 2.25];
+        let b = sprite_box(a, [0.0, 0.0], anchor, half);
+        let centro = [7.0 + sx * anchor[0], 2.25 + sy * anchor[1]];
+        // O sincosf de π deixa 1e-7 na caixa.
+        for i in 0..2 {
+            let c = (b.bbox_min_world[i] + b.bbox_max_world[i]) * 0.5;
+            assert!(
+                (c - centro[i]).abs() < 1e-5,
+                "escala ({sx}, {sy}), eixo {i}: {c} ≠ {}",
+                centro[i]
+            );
+        }
+    }
+}

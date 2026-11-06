@@ -38,3 +38,27 @@ fn o_quadro_depois_do_desfazer_nao_recria_a_chave() {
         "o Ctrl+Z não recria a chave que tirou"
     );
 }
+
+/// ⛔ Ctrl+Z e Stop do jogo: no quadro do restauro o mundo está fora da curva, o apply ainda não o
+/// alcançou. Não é a mão: nem chave (armado) nem pino (desarmado), e o quadro seguinte volta a valer.
+#[test]
+fn o_quadro_do_restauro_nao_cunha_nem_prende() {
+    for armado in [true, false] {
+        let (mut st, ph) = super::test_helpers::state_with_tx_track();
+        st.keys_mode = true;
+        let mut ak = AutokeyState::default();
+        let curva = [(E, pose(&[(super::test_helpers::TX, 5.0)]))];
+        let fora = [(E, pose(&[(super::test_helpers::TX, 9.0)]))];
+        frame(&mut st, &ph, &curva, false, armado, &mut ak);
+        let antes = st.doc.clone();
+        ak.esquece_o_quadro();
+        frame(&mut st, &ph, &fora, false, armado, &mut ak);
+        assert!(st.doc == antes, "armado={armado}: cunhou no restauro");
+        assert!(ak.displaced.is_empty(), "armado={armado}: prendeu a pose");
+        frame(&mut st, &ph, &fora, false, armado, &mut ak);
+        assert!(
+            st.doc != antes || !ak.displaced.is_empty(),
+            "armado={armado}: o aviso tem de durar um quadro só"
+        );
+    }
+}

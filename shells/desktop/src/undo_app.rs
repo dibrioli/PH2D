@@ -281,6 +281,7 @@ impl crate::App {
         // O Colorize ao vivo guarda a base congelada de um desenho que este restore acaba de
         // substituir — re-Aplicar sobre ela apagaria o estado restaurado. A sessão termina.
         self.flip_state.colorize.end_live();
+        self.autokey.esquece_o_quadro();
         self.undo_baseline = Some(state.clone());
         // ⚠️ **E a marca do baseline também** — ela é a selecção que pertence ao estado que acabou
         // de virar presente. Sem esta linha o passo SEGUINTE seria empurrado com a marca de antes
@@ -341,7 +342,6 @@ impl crate::App {
                 None => (state, None),
             };
             self.aplica_e_conta_as_macros(&aplica, &mark);
-            self.autokey.esquece_o_quadro();
             if base.is_some() {
                 self.undo_baseline = base;
             }

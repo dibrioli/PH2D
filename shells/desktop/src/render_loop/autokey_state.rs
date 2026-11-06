@@ -73,14 +73,21 @@ pub(crate) struct AutokeyState {
     /// Os mesmos, do quadro anterior — a `baseline` dos campos (sem curva, um campo só nasce canal
     /// se MUDOU).
     pub(crate) base_campos: BTreeMap<u64, BTreeMap<ph2d_ecs::FieldKey, f32>>,
+    /// O mundo acabou de ser restaurado: ver [`Self::esquece_o_quadro`].
+    pub(crate) restaurado: bool,
 }
 
 impl AutokeyState {
     /// ⛔ **Um desfazer/refazer não é a mão**: sem base, o quadro seguinte não lê o valor restaurado
     /// como «mudou» e não recria a chave que o mesmo Ctrl+Z acabou de tirar (o que ainda esvaziava
     /// a fila do refazer).
+    ///
+    /// ⛔ **Nem o quadro seguinte é a mão** (Ctrl+Z e Stop do jogo, GEF 23): o restauro dá bits novos, o
+    /// apply desse quadro não alcança a entidade (a cura das bindings corre depois dele) e o mundo fica
+    /// fora da curva: sem este aviso nasciam chaves com a pose restaurada, ou o pino a segurava.
     pub(crate) fn esquece_o_quadro(&mut self) {
         self.baseline.clear();
         self.base_campos.clear();
+        self.restaurado = true;
     }
 }

@@ -239,8 +239,7 @@ fn abrir_nao_perde_em_silencio() {
     cel.extend_from_slice(&2_u16.to_le_bytes());
     cel.extend_from_slice(&2_u16.to_le_bytes());
     cel.extend_from_slice(&[9; 4]);
-    match abrir(&com_chunk(&limpo, 0x2005, &cel), "ase") {
-        Ok((_, avisos)) => assert!(avisos.contains(&Aviso::CelCorrompido), "{avisos:?}"),
-        Err(_) => {}
+    if let Ok((_, avisos)) = abrir(&com_chunk(&limpo, 0x2005, &cel), "ase") {
+        assert!(avisos.contains(&Aviso::CelCorrompido), "{avisos:?}");
     }
 }

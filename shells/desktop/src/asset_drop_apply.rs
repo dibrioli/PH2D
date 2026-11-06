@@ -298,6 +298,7 @@ impl crate::App {
         let pinta = matches!(
             plano.foto,
             ph2d_app_game::smoke::Foto::SpriteNoPainter
+                | ph2d_app_game::smoke::Foto::SpriteNoPainterTraco
                 | ph2d_app_game::smoke::Foto::SpritePainterVolta
                 | ph2d_app_game::smoke::Foto::SpritePainterAplica
                 | ph2d_app_game::smoke::Foto::SpritePainterSemPintar

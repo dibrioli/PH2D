@@ -36,7 +36,7 @@ pub(super) fn draw_wetness_overlay(
     let entity = ph2d_ecs::Entity::from_bits(bits);
     let (Some(tr), Some(sprite)) = (
         ph2d_ecs::world_transform(sim.world(), entity),
-        sim.world().get::<ph2d_render::Sprite>(entity),
+        ph2d_sprite_screen::sprite_mostrada(sim.world(), entity),
     ) else {
         return;
     };

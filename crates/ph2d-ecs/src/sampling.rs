@@ -10,6 +10,7 @@
 use bevy_ecs::component::Component;
 use bevy_ecs::entity::Entity;
 use bevy_ecs::hierarchy::ChildOf;
+use bevy_ecs::resource::Resource;
 use bevy_ecs::world::World;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -241,10 +242,33 @@ pub fn resolve_texture_filter(
     project_default
 }
 
+/// ⭐ **A imagem aberta no Painter** (dono 06/11, *«ao abrir no painter a imagem deve abrir sem a repetição»*): esta
+/// entidade desenha-se como UMA cópia da imagem inteira, no quad `quad`, sem UV nem repetição. É uma VISTA: mora num
+/// recurso não registado, publicado a cada quadro por `ph2d_app_painter::imagem_aberta` — nenhum componente autorado
+/// muda, e por isso o save, o desfazer e as outras sprites não a veem.
+#[derive(Resource, Copy, Clone, Debug, PartialEq)]
+pub struct ImagemAberta {
+    pub entity: Entity,
+    /// O tamanho do quad, em metros locais (uma célula numa grelha: o extract e o afim desdobram-na).
+    pub quad: [f32; 2],
+}
+
+/// O quad de `entity`, se é ela a imagem aberta no Painter.
+#[must_use]
+pub fn imagem_aberta(world: &World, entity: Entity) -> Option<[f32; 2]> {
+    world
+        .get_resource::<ImagemAberta>()
+        .filter(|a| a.entity == entity)
+        .map(|a| a.quad)
+}
+
 /// ⭐ **O UV que o desenho usa** (`[scale.x, scale.y, offset.x, offset.y]`): o [`UvTransform`], ou — numa
 /// sprite [`TiledDraw`] — as repetições que cabem em `size`, com o offset do `UvTransform`.
 #[must_use]
 pub fn resolve_uv_xform(world: &World, entity: Entity, size: [f32; 2]) -> [f32; 4] {
+    if imagem_aberta(world, entity).is_some() {
+        return [1.0, 1.0, 0.0, 0.0];
+    }
     let uv = world
         .get::<UvTransform>(entity)
         .copied()
@@ -263,6 +287,9 @@ pub fn resolve_draw_repeat(
     entity: Entity,
     project_default: RepeatMode,
 ) -> RepeatMode {
+    if imagem_aberta(world, entity).is_some() {
+        return RepeatMode::Disabled;
+    }
     if world.get::<TiledDraw>(entity).is_none() {
         return resolve_texture_repeat(world, entity, project_default);
     }

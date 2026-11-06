@@ -258,8 +258,9 @@ pub use pixel_sprite::PixelSprite;
 pub use present::{PresentComponent, PresentWorld};
 pub use root_order::{RootOrder, assign_missing_root_order};
 pub use sampling::{
-    FilterMode, RepeatMode, TextureFilter, TextureRepeat, TiledDraw, UvTransform,
-    resolve_draw_repeat, resolve_texture_filter, resolve_texture_repeat, resolve_uv_xform,
+    FilterMode, ImagemAberta, RepeatMode, TextureFilter, TextureRepeat, TiledDraw, UvTransform,
+    imagem_aberta, resolve_draw_repeat, resolve_texture_filter, resolve_texture_repeat,
+    resolve_uv_xform,
 };
 pub use scroll_factor::ScrollFactor;
 pub use scroll_limits::{ScrollLimits, confina_eixo, meia_da_camada};

@@ -80,6 +80,17 @@ pub use anel_do_pincel::{LADOS_DO_ANEL, anel_do_pincel, anel_na_malha};
 pub mod uv_sob_o_ponteiro;
 pub use uv_sob_o_ponteiro::{UvSobOPonteiro, uv_sob_o_ponteiro};
 
+/// ⭐ **A sprite tal como está no ecrã** — a que quem aponta para a imagem aberta no Painter tem de ler: com o quad
+/// da imagem inteira ([`ph2d_ecs::ImagemAberta`]) no lugar do tamanho autorado. Fora do Painter, a própria sprite.
+#[must_use]
+pub fn sprite_mostrada(world: &ph2d_ecs::World, entity: ph2d_ecs::Entity) -> Option<Sprite> {
+    let mut sprite = *world.get::<Sprite>(entity)?;
+    if let Some(quad) = ph2d_ecs::imagem_aberta(world, entity) {
+        sprite.size = quad;
+    }
+    Some(sprite)
+}
+
 /// Build the affine that maps image-local pixel coords (0..image_w,
 /// 0..image_h, Y-down) to screen pixels (Y-down). Chains:
 ///   image-px → unit → sprite-local meters (Y-flip, size scale) →
@@ -104,12 +115,13 @@ pub fn sprite_image_to_screen_affine(
     image_w: u32,
     image_h: u32,
     world_tr: ph2d_ecs::Transform,
-    sprite: &Sprite,
+    sprite: impl std::borrow::Borrow<Sprite>,
     // A grelha da sprite; ausente = uma célula (ADR-0164 F1 passo 6).
     grid: Option<ph2d_ecs::SpriteGrid>,
     camera: &Camera2d,
     window_size: WindowSize,
 ) -> Affine {
+    let sprite: &Sprite = sprite.borrow();
     let tr = &world_tr;
     let image_w = image_w as f64;
     let image_h = image_h as f64;

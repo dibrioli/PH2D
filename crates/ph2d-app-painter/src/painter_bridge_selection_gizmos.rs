@@ -47,7 +47,7 @@ pub(super) fn draw_selection_gizmos(
     let entity = ph2d_ecs::Entity::from_bits(bits);
     let (Some(tr), Some(sprite)) = (
         ph2d_ecs::world_transform(sim.world(), entity),
-        sim.world().get::<Sprite>(entity),
+        ph2d_sprite_screen::sprite_mostrada(sim.world(), entity),
     ) else {
         return;
     };

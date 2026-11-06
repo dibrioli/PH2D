@@ -236,7 +236,7 @@ impl App {
         // ⚠️ Pose de MUNDO — vide o doc do `sprite_image_to_screen_affine`.
         let (Some(tr), Some(sprite)) = (
             ph2d_ecs::world_transform(gfx.sim.world(), entity),
-            gfx.sim.world().get::<ph2d_render::Sprite>(entity),
+            ph2d_sprite_screen::sprite_mostrada(gfx.sim.world(), entity),
         ) else {
             return;
         };
@@ -385,7 +385,7 @@ impl App {
         let entity = ph2d_ecs::Entity::from_bits(bits);
         let (Some(tr), Some(sprite)) = (
             ph2d_ecs::world_transform(gfx.sim.world(), entity),
-            gfx.sim.world().get::<ph2d_render::Sprite>(entity),
+            ph2d_sprite_screen::sprite_mostrada(gfx.sim.world(), entity),
         ) else {
             return false;
         };

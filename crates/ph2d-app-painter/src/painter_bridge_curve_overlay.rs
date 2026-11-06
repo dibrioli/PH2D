@@ -43,7 +43,7 @@ pub(super) fn draw_curve_overlay(
             && ih > 0
             && let (Some(tr), Some(sprite)) = (
                 ph2d_ecs::world_transform(sim.world(), entity),
-                sim.world().get::<ph2d_render::Sprite>(entity),
+                ph2d_sprite_screen::sprite_mostrada(sim.world(), entity),
             )
         {
             // image-px → screen via the FULL sprite affine, so the handles ride scale / AR / rotation. A

@@ -53,7 +53,7 @@ pub fn gravacao_no_alvo(
     texels: (u32, u32),
     gravado: (u32, u32),
 ) -> Option<Afim> {
-    let s = world.get::<ph2d_render::Sprite>(alvo)?;
+    let s = crate::sprite_mostrada(world, alvo)?;
     let (sw, sh) = (f64::from(s.size[0]), f64::from(s.size[1]));
     let (w, h) = (f64::from(texels.0), f64::from(texels.1));
     if sw <= 0.0 || sh <= 0.0 || w <= 0.0 || h <= 0.0 {

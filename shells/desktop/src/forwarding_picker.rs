@@ -116,7 +116,7 @@ pub(super) fn painter_eyedropper_sample(
     // ⚠️ Pose de MUNDO: um sprite filho tem a cadeia do pai por cima, e sem ela o afim mapeia o
     // ponteiro para fora da pegada dele.
     let tr = ph2d_ecs::world_transform(sim.world(), entity)?;
-    let sprite = sim.world().get::<ph2d_render::Sprite>(entity)?;
+    let sprite = ph2d_sprite_screen::sprite_mostrada(sim.world(), entity)?;
     // A grelha desta sprite (ADR-0164 F1 passo 6) — ausente = uma célula.
     let sprite_grid = sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
     let painter = tools

@@ -28,6 +28,9 @@ pub(super) fn sprite(
     sort_inputs: &mut Vec<SortInput>,
     sheet_preview: Option<Entity>,
 ) {
+    // A imagem aberta no Painter desenha-se inteira, uma cópia (`ph2d_ecs::ImagemAberta`): é este o quad dela.
+    let aberta = ph2d_ecs::imagem_aberta(sim, sim_entity).map(|size| Sprite { size, ..*spr });
+    let spr = aberta.as_ref().unwrap_or(spr);
     let p = gt.translation();
     // ADR-0070-amendment-4: the FULL 2x2 world basis (rotation + scale + skew, column-major:
     // col0 = basis.xy, col1 = basis.zw); `size`/`anchor` stay LOCAL.
@@ -128,7 +131,7 @@ pub(super) fn sprite(
     };
     // ADR-0164 F1 passo 6: janela e grelha são componentes; ausentes = a
     // textura inteira e uma célula, que é o que os campos v4 significavam.
-    let (region, grid) = (cut.region, cut.grid);
+    let (region, grid) = (cut.region.filter(|_| aberta.is_none()), cut.grid);
     let atlas_uv = region_uv(atlas_uv, region, override_for_entity, src_dims, spr, atlas);
     // Sprite-sheet sub-UV (anatomia §03 §3.4): divide the
     // (possibly region-narrowed) atlas_uv rect into an

@@ -74,6 +74,9 @@ pub mod painter_bridge_deform_gizmo;
 /// O cursor do conta-gotas: a mira e a caixa das duas cores (a nova e a do pincel).
 pub mod painter_bridge_eyedropper_cursor;
 pub use painter_bridge_eyedropper_cursor::mira_na_tela;
+/// ⭐⭐⭐ Pintar ACHATA a arte: a pele fica suspensa enquanto o Painter edita a textura
+/// (ordem do dono, 2026-09-15).
+pub mod imagem_aberta;
 /// The Fill (Bucket) ColorDrop cursor swatch overlay, split from `painter_bridge_overlays` for the
 /// HR-18 file-LOC cap.
 pub mod painter_bridge_fill_overlay;
@@ -137,8 +140,6 @@ mod painter_preview_pipeline_tests;
 mod painter_preview_undo_tests;
 /// A ponte do carimbo de pigmento para o dispositivo (doc 33 §S3) — a metade do lado do shell.
 pub mod painter_stamp_device;
-/// ⭐⭐⭐ Pintar ACHATA a arte: a pele fica suspensa enquanto o Painter edita a textura
-/// (ordem do dono, 2026-09-15).
 pub mod skin_suspend;
 pub mod substrate_smoke;
 pub mod taper_smoke;

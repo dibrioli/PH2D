@@ -29,6 +29,7 @@ pub enum Foto {
     /// Abre, não pinta, sai: `[sprite-pixel]` diz quantos passos ficaram e se a marca do botão saiu.
     SpritePainterSemPintar,
     SpriteNoPainter,
+    SpriteNoPainterTraco,
     Bloco,
     Bandeira,
     Animada,
@@ -94,6 +95,7 @@ pub fn foto() -> Option<Foto> {
         "sprite_painter_aplica" => Some(Foto::SpritePainterAplica),
         "sprite_painter_sem_pintar" => Some(Foto::SpritePainterSemPintar),
         "sprite_no_painter" => Some(Foto::SpriteNoPainter),
+        "sprite_no_painter_traco" => Some(Foto::SpriteNoPainterTraco),
         "trocado" => Some(Foto::Trocado),
         "bloco" => Some(Foto::Bloco),
         "bandeira" => Some(Foto::Bandeira),
@@ -195,6 +197,7 @@ impl Foto {
                 | Self::SpritePainterAplica
                 | Self::SpritePainterSemPintar
                 | Self::SpriteNoPainter
+                | Self::SpriteNoPainterTraco
                 | Self::UsoParada
                 | Self::PlayerParado
                 | Self::RepetidaDaParada
@@ -340,6 +343,7 @@ pub fn plano_da_foto(
             plano.alvo = player;
         }
         Foto::SpriteNoPainter
+        | Foto::SpriteNoPainterTraco
         | Foto::SpritePainterVolta
         | Foto::SpritePainterAplica
         | Foto::SpritePainterSemPintar => {

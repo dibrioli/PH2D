@@ -39,7 +39,7 @@ pub(super) fn draw_line_overlay(
             && ih > 0
             && let (Some(tr), Some(sprite)) = (
                 ph2d_ecs::world_transform(sim.world(), entity),
-                sim.world().get::<ph2d_render::Sprite>(entity),
+                ph2d_sprite_screen::sprite_mostrada(sim.world(), entity),
             )
         {
             let base_affine = ph2d_sprite_screen::sprite_image_to_screen_affine(

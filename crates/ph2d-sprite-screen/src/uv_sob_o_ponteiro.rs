@@ -60,7 +60,7 @@ pub fn uv_sob_o_ponteiro(
     // ⚠️ Pose de MUNDO, nunca a local — vide o doc do `sprite_image_to_screen_affine`.
     let (Some(tr), Some(sprite)) = (
         ph2d_ecs::world_transform(sim.world(), entity),
-        sim.world().get::<ph2d_render::Sprite>(entity),
+        crate::sprite_mostrada(sim.world(), entity),
     ) else {
         return UvSobOPonteiro::SemSujeito;
     };

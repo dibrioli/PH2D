@@ -39,6 +39,7 @@ impl crate::App {
             ..
         } = FrameGfx::of(gfx);
 
+        ph2d_app_painter::imagem_aberta::publica(sim.world_mut(), tools);
         sim_extract::run(
             dt,
             sim,

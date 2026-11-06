@@ -891,3 +891,53 @@ fn the_dormant_door_says_so_and_the_note_dies_with_the_flattening() {
          debaixo do pincel."
     );
 }
+
+/// ⭐ Dono 06/11: quem mapeia a imagem aberta no Painter lê a sprite MOSTRADA (`sprite_mostrada`), nunca a autorada,
+/// e o extract desenha o mesmo quad: senão o pincel pinta num sítio e a imagem vê-se noutro.
+#[test]
+fn every_painter_map_reads_the_sprite_as_it_is_shown() {
+    fn ficheiros(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
+        for e in std::fs::read_dir(dir).expect("a pasta").flatten() {
+            let p = e.path();
+            if p.is_dir() {
+                ficheiros(&p, out);
+            } else if p.extension().is_some_and(|x| x == "rs") {
+                out.push(p);
+            }
+        }
+    }
+    let raiz = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(Path::parent)
+        .expect("a raiz");
+    let mut todos = vec![raiz.join("shells/desktop/src/forwarding_picker.rs")];
+    for d in [
+        "crates/ph2d-app-painter/src",
+        "crates/ph2d-sprite-screen/src",
+        "shells/desktop/src/input_dispatch",
+    ] {
+        ficheiros(&raiz.join(d), &mut todos);
+    }
+    let mut mapas = 0;
+    let mut crus = Vec::new();
+    for f in &todos {
+        let rel = f.strip_prefix(raiz).expect("sob a raiz").to_string_lossy();
+        if rel.contains("_tests") || rel.ends_with("sprite-screen/src/lib.rs") {
+            continue;
+        }
+        let src = fonte(&rel);
+        if src.contains("sprite_image_to_screen_affine(") {
+            mapas += 1;
+            if src.contains("get::<ph2d_render::Sprite>") || src.contains("get::<Sprite>") {
+                crus.push(rel.to_string());
+            }
+        }
+    }
+    assert!(mapas >= 15, "o censo perdeu o sujeito: {mapas} mapas");
+    assert!(crus.is_empty(), "leem a sprite autorada: {crus:?}");
+    assert!(
+        fonte("shells/desktop/src/render_loop/sim_extract_emit.rs")
+            .contains("ph2d_ecs::imagem_aberta(sim, sim_entity)"),
+        "o extract deixou de desenhar o quad da imagem aberta"
+    );
+}

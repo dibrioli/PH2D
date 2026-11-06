@@ -34,6 +34,8 @@ const CANTO: [f32; 2] = [-13.0 + 8.0 * 16.0 / 9.0, 7.0];
 #[must_use]
 pub fn mao(foto: Foto, quadro: u32) -> Option<Mao> {
     let (de, ate) = match foto {
+        // Um traço na cópia aberta, e fica no Draw: a foto mostra onde ele caiu.
+        Foto::SpriteNoPainterTraco => ([8.0, 2.0], [9.0, 2.0]),
         // Sem traço: entra, sai, e conta o que ficou.
         Foto::SpritePainterSemPintar => {
             return match quadro.checked_sub(INICIO + PASSOS) {

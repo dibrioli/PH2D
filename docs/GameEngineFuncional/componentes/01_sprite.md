@@ -53,6 +53,8 @@ Miniatura quadrada de 72 px com recorte pelo raio, moldura de altura fixa e um s
 
 **Dono 06/11: dois objetos; cada um só com o botão da sua ferramenta; revoga a 4.** Pixel e Painter são ferramentas de artes diferentes: ficam Image (Painter) e Pixel Sprite, com um ícone cada (a tela e o pixel). O cartão da imagem tem só `[enviar] Painter`. Nenhum modo novo: cada objecto mantém o seu Draw, e o `Tab` não muda. ⚠️ O Pixel Sprite não tem `Sprite`, logo não tem este cartão: entra no Draw ao nascer, pelo `Tab` e pelo seletor de modo; o botão Pixel dele espera a decisão de que cartão o leva.
 
+**Dono 06/11: a imagem abre no Painter sem a repetição.** No Draw, o objecto mostra UMA cópia da imagem inteira, no centro do bloco; o traço cai onde o cursor está. Ao sair, volta o Repeated com as mesmas cópias e os píxeis novos em todas. É só uma vista (`ph2d_ecs::ImagemAberta`, publicada por `ph2d_app_painter::imagem_aberta`): nada do objecto muda, o save grava o Repeated e a outra plataforma continua repetida. A Region abre igual (a imagem inteira à escala da área; antes ficava esmagada no quad da área), e o Animated já abria a folha inteira.
+
 ## O desenho aprovado
 
 Por estado do painel: **vazio** = cartão Image inteiro é «Drop an image or click to choose» + recentes + «Paint a new image…» · **em uso** = cartões abaixo · **Repeated** = os mesmos, mudam só os campos do uso.
@@ -91,6 +93,8 @@ Por estado do painel: **vazio** = cartão Image inteiro é «Drop an image or cl
 ## Provas
 
 Por escrever conforme cada etapa: teste por evento real em `crates/ph2d-panel-inspector/tests/it/`, foto `PH2D_GAME_SMOKE_FOTO`, smoke do dono com as plataformas e o Player do jogo.
+
+Imagem sem a repetição no Painter: `crates/ph2d-app-painter/src/imagem_aberta_tests.rs` (`o_painter_abre_o_repetido_numa_copia_e_ao_sair_volta_o_mesmo`, `o_traco_cai_onde_o_cursor_esta_na_copia`, `a_region_abre_a_imagem_inteira_a_mesma_escala`) · censo `every_painter_map_reads_the_sprite_as_it_is_shown` · fotos `sprite_no_painter`, `sprite_no_painter_traco`, `sprite_painter_volta`.
 
 ## Etapas
 

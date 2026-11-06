@@ -73,7 +73,7 @@ pub fn anel_do_pincel(
     let (ru, rv) = raios(raio, origem)?;
     let entity = ph2d_ecs::Entity::from_bits(bits);
     let tr = ph2d_ecs::world_transform(sim.world(), entity)?;
-    let sprite = sim.world().get::<ph2d_render::Sprite>(entity)?;
+    let sprite = crate::sprite_mostrada(sim.world(), entity)?;
     let grid = sim.world().get::<ph2d_ecs::SpriteGrid>(entity).copied();
     // A UNIDADE, como na porta do ponteiro: `uv / 1` já é a fracção.
     let quad = crate::sprite_image_to_screen_affine(1, 1, tr, sprite, grid, camera, window);

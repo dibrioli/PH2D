@@ -230,7 +230,7 @@ pub fn ponto_da_tela(
 ) -> Option<(f32, f32)> {
     let e = Entity::from_bits(bits);
     let tr = ph2d_ecs::world_transform(world, e)?;
-    let sprite = world.get::<ph2d_render::Sprite>(e)?;
+    let sprite = ph2d_sprite_screen::sprite_mostrada(world, e)?;
     let grade = world.get::<ph2d_ecs::SpriteGrid>(e).copied();
     let affine = ph2d_sprite_screen::sprite_image_to_screen_affine(
         LADO, LADO, tr, sprite, grade, camera, janela,

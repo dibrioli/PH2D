@@ -723,7 +723,8 @@ fn the_wet_eraser_lifts_the_fluid_and_the_water_survives() {
 fn the_sessionless_wet_eraser_erases_the_baked_canvas() {
     let mut t = tool_in_mode("wetpaint");
     stroke_across(&mut t);
-    t.set_wetpaint_armed(false); // bake: unchecking exits and ends the session
+    t.set_wetpaint_armed(false); // unchecking exits: the paint sleeps
+    t.wet_esquece_as_adormecidas(); // dead paint (an old file, a macro about to record)
     t.set_wetpaint_armed(true); // back in wet, nothing wet yet
     assert!(t.paint.wetpaint.session.is_none(), "fixture: no session");
     t.set_paint_tool_mode("eraser"); // stays in Wet Paint (the W2.6 wire)

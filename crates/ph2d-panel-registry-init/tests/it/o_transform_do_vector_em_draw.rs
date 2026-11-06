@@ -709,6 +709,66 @@ fn ao_largar_o_cartao_assenta_com_uma_mola_so() {
     assert!(andou > 1.0, "nada assentou: a prova não vale");
 }
 
+/// Enquanto a mola anda, o que se VÊ está no lugar deste quadro: o convidado pintou-se no do anterior (é onde o clique
+/// está) e a cola, lida na cena do quadro, cobre a diferença.
+/// *Mutação: a cola sem o `dy` ⇒ o cartão pinta-se um quadro atrás do lugar.*
+#[test]
+fn enquanto_assenta_a_cola_leva_o_cartao_ao_lugar_deste_quadro() {
+    let mut h = em_draw();
+    let v = core_ids::VECTOR_PANEL;
+    let lugar = |h: &HeroScreen| {
+        let s = h.store.card_guest_seat().expect("o assento");
+        s.body_top - h.store.panel_scroll(v).max(0.0) + s.y
+    };
+    let folga = cabeca_do_transform(&h).y - lugar(&h);
+    let dy = abaixo_do_shape(&h);
+    let r = pega(&h, CARD_TRANSFORM);
+    let de = (r.x + 12.0, r.y + r.h * 0.5);
+    mao(&mut h, PointerKind::Down, de);
+    quadros(&mut h, 2);
+    mao(&mut h, PointerKind::Move, (de.0, de.1 + dy));
+    quadros(&mut h, 20);
+    mao(&mut h, PointerKind::Up, (de.0, de.1 + dy));
+    let mut texto = ph2d_text::TextSystem::without_system_fonts();
+    let janela = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1600.0, 900.0);
+    let mut atrasados = 0;
+    for _ in 0..20 {
+        publica(&h);
+        let mut cena = ph2d_vector::VectorScene::new();
+        ph2d_editor_core::aquecimento::com_passo_fixo(
+            ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
+            || {
+                ph2d_editor_core::screens::hero::paint_hero_screen(
+                    &mut h, janela, &mut cena, &mut texto,
+                )
+            },
+        );
+        let pintou_em = cabeca_do_transform(&h).y;
+        let agora = lugar(&h) + folga;
+        if (agora - pintou_em).abs() < 0.01 {
+            continue;
+        }
+        atrasados += 1;
+        let colas: Vec<f32> = cena
+            .inner()
+            .encoding()
+            .transforms
+            .iter()
+            .filter(|t| {
+                t.matrix == [1.0, 0.0, 0.0, 1.0]
+                    && t.translation[0] == 0.0
+                    && t.translation[1] != 0.0
+            })
+            .map(|t| t.translation[1])
+            .collect();
+        assert!(
+            colas.iter().any(|c| (pintou_em + c - agora).abs() < 0.01),
+            "pintou-se em {pintou_em}, o lugar é {agora}, as colas da cena: {colas:?}"
+        );
+    }
+    assert!(atrasados > 0, "o lugar não andou: a prova não vale");
+}
+
 /// Esc a meio do arrasto: nada muda, nem a ordem gravada, e o cartão volta inteiro. Longe da coluna, Esc também não solta.
 /// *Mutações: o anfitrião a pousar a queda cancelada ⇒ a ordem muda. O convidado sem o `!d.cancelled` ⇒ solta.*
 #[test]

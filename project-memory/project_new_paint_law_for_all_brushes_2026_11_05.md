@@ -10,3 +10,5 @@ O dono pediu a lei nova (Pigmento) em todos os pincéis, testou e, no mesmo dia,
 **Why:** o que ele aprova é o olho sobre os pincéis de hoje: [[project_brushes_as_they_are_are_the_reference_2026_11_05]]. Substitui o plano da [[project_e12_blocked_by_mother_gate_ruler_2026_11_05]].
 
 **How to apply:** não proponha de novo trocar a lei. O código da lei nova ainda existe: apagá-lo pede confirmação do alcance. Ele não disse quais problemas viu.
+
+Depois, no mesmo dia, mandou restaurar o backup: `crates/` e `assets/` = tag `lei-antiga`. O relevo sem degrau voltou a ser opcional (`PH2D_PAPEL_SEM_DEGRAU=1`) e o pen-down voltou a copiar a grade; não religar sem perguntar.

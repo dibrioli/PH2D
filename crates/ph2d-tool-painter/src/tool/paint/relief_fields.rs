@@ -62,6 +62,11 @@ pub(super) struct ReliefFields<'a> {
     pub(super) height: usize,
 }
 
+/// Bug #71, à espera do olho do dono: a tinta tapa o dente mas fica à altura média dele, sem o degrau que a faz parecer
+/// afundada. `PH2D_PAPEL_SEM_DEGRAU=1` liga; o papel nu não muda um byte.
+static PAPEL_SEM_DEGRAU: std::sync::LazyLock<bool> =
+    std::sync::LazyLock::new(|| std::env::var("PH2D_PAPEL_SEM_DEGRAU").is_ok_and(|v| v == "1"));
+
 impl ReliefFields<'_> {
     /// Height at a canvas pixel, clamped to the canvas (so the central difference can read across the
     /// dirty rect's edge exactly as a full recompose would) — and passed through the **glass ceiling**, so
@@ -106,9 +111,13 @@ impl ReliefFields<'_> {
             Some(s) => {
                 let cx = x.clamp(0, self.width as i64 - 1);
                 let cy = y.clamp(0, self.height as i64 - 1);
-                // A tinta tapa o dente mas fica à altura média dele: sem o degrau que a fazia parecer afundada (Bug #71).
                 let v = self.papel_a_vista(i);
-                h + s.tooth_loads(cx, cy) * v + s.meio_do_dente() * (1.0 - v)
+                let papel = h + s.tooth_loads(cx, cy) * v;
+                if *PAPEL_SEM_DEGRAU {
+                    papel + s.meio_do_dente() * (1.0 - v)
+                } else {
+                    papel
+                }
             }
             None => h,
         }

@@ -585,8 +585,6 @@ mod sonda_pastel_tempo; // o Soft Pastel no TEMPO contra o Rebelle Dry Thin (pro
 #[cfg(test)]
 mod sonda_presets;
 #[cfg(test)]
-mod sonda_primeiro_traco; // o travamento do começo do 1.º traço (dono 05/11)
-#[cfg(test)]
 mod sonda_relevo_negativo; // a tinta afundada no papel de alto relevo (Bug #71)
 #[cfg(test)]
 mod sonda_shape_casa; // W0 do plano 27: a tinta de cada tipo do Shape e as leis candidatas do #47 // o Wet Drip com as caixas K–M e a lei de antes (prompt 16, Fases B–E) // os 4 pincéis de fábrica na bancada do Rebelle (conferência do dono 10/10) // o pincel seco nos picos do papel (dono 09/10) // a barra da meia inclinação e a tela direita ao byte (W1e, F1)

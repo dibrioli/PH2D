@@ -87,8 +87,8 @@ pub fn update(sim: &mut SimWorld, audio: Option<&mut AudioSystem>) -> AudioScene
 /// `AudioEngine::new` devolve o par controlo/renderer sem tocar no `cpal`, então tudo o que este
 /// passe DECIDE — a aresta do nascimento, a polifonia, quem é calado ao sair da cena — é medível
 /// sem dispositivo nenhum. ⛔ Sem esta porta, a única forma de o testar seria reimplementá-lo no
-/// teste, que é a segunda resposta à mesma pergunta.
-pub(crate) fn update_with(
+/// teste, que é a segunda resposta à mesma pergunta. Pública para os gates em `shells/game-scenes`.
+pub fn update_with(
     sim: &mut SimWorld,
     livro: &mut SceneAudio,
     motor: &mut AudioEngine,
@@ -154,7 +154,7 @@ pub fn play_target(sim: &mut SimWorld, audio: Option<&mut AudioSystem>, target: 
 }
 
 /// A porta do [`play_target`] que um gate alcança — ver o doc do [`update_with`].
-pub(crate) fn play_target_with(
+pub fn play_target_with(
     sim: &mut SimWorld,
     livro: &mut SceneAudio,
     motor: &mut AudioEngine,
@@ -200,7 +200,3 @@ pub(crate) fn stop_target_with(
 #[cfg(test)]
 #[path = "audio_2d_tests.rs"]
 mod tests;
-
-#[cfg(test)]
-#[path = "sound_set_tests.rs"]
-mod sound_set_tests;

@@ -64,6 +64,7 @@ ph2d-app-code = { path = "../../crates/ph2d-app-code" }
 ph2d-app-game = { path = "../../crates/ph2d-app-game" }
 ph2d-camera-frame = { path = "../../crates/ph2d-camera-frame" }
 ph2d-sprite-edit = { path = "../../crates/ph2d-sprite-edit" }
+ph2d-sfx-scene = { path = "../../crates/ph2d-sfx-scene" }
 # ⭐ A família do KANBAN (TrelloClone): instalada no arranque, um `frame` por quadro.
 ph2d-app-kanban = { path = "../../crates/ph2d-app-kanban" }
 ph2d-app-planner = { path = "../../crates/ph2d-app-planner" }

@@ -8,7 +8,12 @@ use ph2d_ecs::{
     SoundSet,
 };
 
-use crate::smoke::Portas;
+/// O `Import…` de um som: o caminho vira o nome no projeto.
+pub type ImportaSom = fn(&mut SimWorld, &std::path::Path) -> Result<String, String>;
+/// O `+` do Inspector: anexa um componente pelo nome canónico aos bits do objeto.
+pub type Anexa<'a> = &'a dyn Fn(&mut SimWorld, u64, &str) -> Result<(), String>;
+/// Um vazio na raiz com o nome dado; os bits.
+pub type Raiz = fn(&mut SimWorld, &str) -> u64;
 
 /// A variável e os níveis.
 pub const ROUTER: ph2d_app_host::SmokeRouter = ph2d_app_host::SmokeRouter {
@@ -57,6 +62,22 @@ pub fn nivel() -> Option<u32> {
     *NIVEL.get_or_init(|| nivel_in(|k| std::env::var(k).ok()))
 }
 
+/// O nível `base`, ou o do jogo quando a cena do SFX Lab foi pedida.
+#[must_use]
+pub fn ou_nivel(base: Option<u32>) -> Option<u32> {
+    base.or(nivel().map(|_| NIVEL_DO_JOGO))
+}
+
+/// O cartão do Inspector que abre sobre o objeto que o nível devolve.
+#[must_use]
+pub fn cartao_que_abre() -> ph2d_editor_core::NodeId {
+    if nivel().is_some() {
+        ph2d_editor_core::ids::INSP_LIVE_AUDIO_SECTION
+    } else {
+        ph2d_editor_core::ids::INSP_LIVE_PLAYER_SECTION
+    }
+}
+
 /// Uma fonte que se ouve igual em todo o nível: as moedas ficam longe umas das outras.
 fn fonte_do_nivel(sound: String, autoplay: bool) -> AudioSource2D {
     AudioSource2D {
@@ -72,19 +93,22 @@ fn fonte_do_nivel(sound: String, autoplay: bool) -> AudioSource2D {
 
 /// Veste o nível 2 já montado: importa os três sons, cria os dois objetos e aponta as moedas. Devolve o
 /// objeto dos sons.
-pub fn veste(sim: &mut SimWorld, portas: Portas<'_>, jogador: Entity) -> Entity {
+pub fn veste(
+    sim: &mut SimWorld,
+    importa_som: ImportaSom,
+    anexa: Anexa<'_>,
+    raiz: Raiz,
+    jogador: Entity,
+) -> Entity {
     let nomes: Vec<String> = SONS
         .iter()
-        .map(|p| {
-            (portas.importa_som)(sim, std::path::Path::new(p))
-                .unwrap_or_else(|m| panic!("{p}: {m}"))
-        })
+        .map(|p| importa_som(sim, std::path::Path::new(p)).unwrap_or_else(|m| panic!("{p}: {m}")))
         .collect();
 
-    (portas.menu.anexa)(sim, jogador.to_bits(), "ph2d::ecs::AudioListener2D")
+    anexa(sim, jogador.to_bits(), "ph2d::ecs::AudioListener2D")
         .unwrap_or_else(|m| panic!("Audio Listener 2D: {m}"));
 
-    let conjunto = Entity::from_bits((portas.menu.raiz)(sim, CONJUNTO));
+    let conjunto = Entity::from_bits(raiz(sim, CONJUNTO));
     sim.world_mut().entity_mut(conjunto).insert((
         fonte_do_nivel(String::new(), false),
         SoundSet {
@@ -96,7 +120,7 @@ pub fn veste(sim: &mut SimWorld, portas: Portas<'_>, jogador: Entity) -> Entity 
         },
     ));
 
-    let jingle = Entity::from_bits((portas.menu.raiz)(sim, JINGLE));
+    let jingle = Entity::from_bits(raiz(sim, JINGLE));
     sim.world_mut()
         .entity_mut(jingle)
         .insert(fonte_do_nivel(nomes[1].clone(), true));
@@ -120,4 +144,35 @@ pub fn veste(sim: &mut SimWorld, portas: Portas<'_>, jogador: Entity) -> Entity 
         }
     }
     conjunto
+}
+
+/// [`veste`] quando a cena foi pedida. Sem ela, o nível fica como está e o objeto é o jogador. Devolve o
+/// objeto em que o Inspector abre.
+pub fn veste_se_armada(
+    sim: &mut SimWorld,
+    importa_som: ImportaSom,
+    anexa: Anexa<'_>,
+    raiz: Raiz,
+    jogador: Entity,
+) -> Entity {
+    if nivel().is_some() {
+        return veste(sim, importa_som, anexa, raiz, jogador);
+    }
+    jogador
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn o_nivel_le_se_pela_porta_e_fora_da_faixa_e_inerte() {
+        let com = |v: &'static str| move |k: &str| (k == ROUTER.env).then(|| v.to_owned());
+        assert_eq!(nivel_in(com("1")), Some(1));
+        assert_eq!(nivel_in(com(" 1 ")), Some(1));
+        assert_eq!(nivel_in(com("0")), None);
+        assert_eq!(nivel_in(com("2")), None);
+        assert_eq!(nivel_in(com("x")), None);
+        assert_eq!(nivel_in(|_| None), None);
+    }
 }

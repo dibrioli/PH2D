@@ -294,7 +294,7 @@ pub use sprite_anim_frames::{
     ANIM_FRAMES_MAX, SpriteAnimCursor, SpriteAnimFrames, TagFrames, advance_frames, entry_cell,
     fps_of_ms, ms_of_fps, rename_tag, tag_cells,
 };
-pub use sprite_anim_markers::{FrameMarker, SpriteAnimMarkers, advance_frames_marked};
+pub use sprite_anim_markers::{FrameMarker, SpriteAnimMarkers, advance_frames_marked, anim_steps};
 pub use sprite_corner_tint::{BOTTOM_LEFT, BOTTOM_RIGHT, SpriteCornerTint, TOP_LEFT, TOP_RIGHT};
 pub use sprite_grid::SpriteGrid;
 pub use sprite_pixels::SpritePixels;

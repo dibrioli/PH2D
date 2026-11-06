@@ -66,9 +66,8 @@ pub struct SceneAudio {
     pickers: BTreeMap<u64, Picker>,
     /// A corrida estava ligada no quadro anterior — a borda do Stop.
     em_corrida: bool,
-    /// O som e o desvio do último disparo — só a sonda os lê.
-    #[cfg(test)]
-    pub(crate) ultimo: Option<(String, Jitter)>,
+    /// O som e o desvio do último disparo.
+    ultimo: Option<(String, Jitter)>,
 }
 
 impl SceneAudio {
@@ -80,6 +79,12 @@ impl SceneAudio {
     /// Quantas vozes de cena estão vivas — o número que o smoke imprime.
     pub fn live_voices(&self) -> usize {
         self.voices.values().map(Vec::len).sum::<usize>() + self.tails.len()
+    }
+
+    /// O som e o desvio do último disparo: a porta da sonda em `shells/game-scenes`.
+    #[must_use]
+    pub fn last_pick(&self) -> Option<(&str, Jitter)> {
+        self.ultimo.as_ref().map(|(n, j)| (n.as_str(), *j))
     }
 
     /// Quantos sons distintos já foram descodificados com sucesso.
@@ -154,10 +159,7 @@ impl SceneAudio {
         let Some((nome, jitter)) = self.pick_sound(key, cfg, set) else {
             return false;
         };
-        #[cfg(test)]
-        {
-            self.ultimo = Some((nome.to_owned(), jitter));
-        }
+        self.ultimo = Some((nome.to_owned(), jitter));
         let Some(data) = sons.and_then(|l| self.sample(l, nome)) else {
             return false;
         };

@@ -676,13 +676,8 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     reg.register_default::<crate::Macro>("ph2d::ecs::Macro");
     // ADR-0196: o objecto Pixel Sprite — a chave do documento de pixels (blob próprio no projecto).
     reg.register_default::<crate::PixelSprite>("ph2d::ecs::PixelSprite");
-    reg.register_default::<crate::AudioSource2D>("ph2d::ecs::AudioSource2D");
-    // Os sons de um objeto (SFX Lab W1). Irmão e não campo, pelo postcard posicional: arquivo antigo não tem
-    // o blob e toca o `sound` de sempre.
-    reg.register_default::<crate::SoundSet>("ph2d::ecs::SoundSet");
-    // ⚠️ **Um MARCADOR ainda tem de se registar**: a presença É o valor, e sem ele um Ctrl+Z ou um
-    // reabrir devolveriam a cena SEM orelhas — que é a única maneira de tudo ficar mudo de uma vez.
-    reg.register_default::<crate::AudioListener2D>("ph2d::ecs::AudioListener2D");
+    // A família do SOM mora no irmão.
+    super::registry_audio::register_audio(reg);
     // ⭐⭐ **A família da CÂMERA mora no irmão** — ver o cabeçalho do [`super::registry_camera`].
     super::registry_camera::register_camera(reg);
     // O RECORTE, que deixou de ser um campo da moldura para valer em qualquer forma FECHADA

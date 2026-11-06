@@ -57,6 +57,16 @@ impl PickStrategy {
         PickStrategy::ALL.into_iter().find(|k| k.name() == s)
     }
 
+    /// A posição desta estratégia em [`PickStrategy::ALL`]: a etiqueta do seletor.
+    #[must_use]
+    pub fn index(self) -> u8 {
+        PickStrategy::ALL
+            .iter()
+            .position(|o| *o == self)
+            .and_then(|i| u8::try_from(i).ok())
+            .unwrap_or(0)
+    }
+
     /// A estratégia a `delta` passos desta em [`PickStrategy::ALL`], dando a volta.
     #[must_use]
     pub fn cycled(self, delta: i32) -> PickStrategy {
@@ -144,6 +154,66 @@ impl SoundSet {
     #[must_use]
     pub fn has_sounds(&self) -> bool {
         self.candidates().iter().any(|c| c.enabled)
+    }
+
+    /// Põe `name` na lista. Numa lista vazia o `antigo` (o `sound` de sempre) entra primeiro, para o objeto
+    /// não perder o som que já tinha. `false` = o nome é vazio ou já está na lista.
+    pub fn add_keeping(&mut self, antigo: &str, name: &str) -> bool {
+        let name = name.trim();
+        if name.is_empty() || self.sounds.iter().any(|e| e.name == name) {
+            return false;
+        }
+        let antigo = antigo.trim();
+        if self.sounds.is_empty() && !antigo.is_empty() && antigo != name {
+            self.sounds.push(SoundEntry::new(antigo));
+        }
+        self.sounds.push(SoundEntry::new(name));
+        true
+    }
+
+    /// Tira o som `i`. `false` = índice fora.
+    pub fn remove_at(&mut self, i: usize) -> bool {
+        let dentro = i < self.sounds.len();
+        if dentro {
+            self.sounds.remove(i);
+        }
+        dentro
+    }
+
+    /// Liga ou desliga o som `i`. `false` = índice fora.
+    pub fn set_enabled(&mut self, i: usize, on: bool) -> bool {
+        self.sounds.get_mut(i).map(|e| e.enabled = on).is_some()
+    }
+
+    /// O peso do som `i`. `false` = índice fora.
+    pub fn set_weight(&mut self, i: usize, v: f32) -> bool {
+        self.sounds.get_mut(i).map(|e| e.weight = v).is_some()
+    }
+
+    /// A estratégia na posição `tag` de [`PickStrategy::ALL`]. `false` = fora da tabela.
+    pub fn set_strategy_at(&mut self, tag: usize) -> bool {
+        PickStrategy::ALL
+            .get(tag)
+            .map(|k| self.strategy = *k)
+            .is_some()
+    }
+
+    /// Ao lado das outras edições, que dizem se mudaram algo. `true` sempre.
+    pub fn set_no_repeat(&mut self, on: bool) -> bool {
+        self.no_repeat = on;
+        true
+    }
+
+    /// A variação de altura. `true` sempre.
+    pub fn set_pitch_jitter(&mut self, semitones: f32) -> bool {
+        self.pitch_jitter_semitones = semitones;
+        true
+    }
+
+    /// A variação de volume. `true` sempre.
+    pub fn set_gain_jitter(&mut self, db: f32) -> bool {
+        self.gain_jitter_db = db;
+        true
     }
 
     /// A lei dos números: a mesma para o cartão, para o script e para arquivo adulterado.

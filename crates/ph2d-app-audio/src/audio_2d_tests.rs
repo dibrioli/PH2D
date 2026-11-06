@@ -97,36 +97,6 @@ fn com_autoplay(looping: bool) -> AudioSource2D {
     }
 }
 
-/// **O Autoplay espera o Play**: nada soa enquanto se edita, o Play arranca, o Stop cala e o Play seguinte
-/// arranca de novo. A voz é contada no mixer, e o som fica em ciclo para continuar vivo entre as bordas.
-#[test]
-fn autoplay_espera_o_play() {
-    let (mut sim, _) = cena(com_autoplay(true));
-    let mut livro = SceneAudio::default();
-    let (mut eng, mut mixer) = motor();
-
-    for _ in 0..3 {
-        let r = update_with(&mut sim, &mut livro, &mut eng);
-        assert_eq!(r.started, 0, "o Autoplay tocou sem Play");
-    }
-    assert_eq!(vozes_no_mixer(&mut mixer), 0, "há voz sem Play");
-
-    for rodada in ["primeiro", "segundo"] {
-        sim.world_mut().insert_resource(ph2d_ecs::RunOnCopy);
-        let r = update_with(&mut sim, &mut livro, &mut eng);
-        assert_eq!(r.started, 1, "o {rodada} Play não arrancou o Autoplay");
-        assert_eq!(vozes_no_mixer(&mut mixer), 1, "{rodada} Play sem voz");
-        assert_eq!(
-            update_with(&mut sim, &mut livro, &mut eng).started,
-            0,
-            "o Autoplay renasceu no quadro seguinte"
-        );
-        sim.world_mut().remove_resource::<ph2d_ecs::RunOnCopy>();
-        update_with(&mut sim, &mut livro, &mut eng);
-        assert_eq!(vozes_no_mixer(&mut mixer), 0, "o Stop não calou o som");
-    }
-}
-
 /// ⭐⭐⭐ **`autoplay` ARRANCA no nascimento — e NÃO renasce a cada quadro.**
 ///
 /// # ⚠️ Este gate existe porque a casa já pagou o defeito ao contrário

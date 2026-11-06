@@ -1,14 +1,13 @@
 //! O sorteio no caminho do produto: `play_target_with` → `SceneAudio::play` → mixer sem dispositivo.
 //! A [`sonda_mil_disparos`] é a sonda offline de W1 do SFX Lab; os números saem dela.
 
+use ph2d_app_audio::audio_2d::{play_target_with, update_with};
+use ph2d_app_audio::scene::SceneAudio;
 use ph2d_audio::{AudioEngine, AudioFormat, AudioRenderer};
 use ph2d_ecs::{
     AudioListener2D, AudioSource2D, Entity, Name, PickStrategy, ProjectSounds, SimWorld,
     SoundEntry, SoundSet, Transform, assign_missing_stable_ids,
 };
-
-use super::{play_target_with, update_with};
-use crate::scene::SceneAudio;
 
 /// Os três sons da cena de smoke — os mesmos bytes que o artista ouve.
 const SONS: [&str; 3] = ["coin_low.wav", "coin_high.wav", "coin_noise.wav"];
@@ -132,8 +131,8 @@ fn a_variacao_de_altura_e_volume_e_por_disparo() {
     for _ in 0..1000 {
         assert!(play_target_with(&mut sim, &mut livro, &mut eng, f));
         let _ = bloco(&mut mixer); // o mixer drena os comandos
-        let (nome, j) = livro.ultimo.clone().expect("tocou");
-        assert!(SONS.contains(&nome.as_str()));
+        let (nome, j) = livro.last_pick().expect("tocou");
+        assert!(SONS.contains(&nome));
         alturas.push(j.pitch);
         ganhos.push(j.gain);
     }
@@ -175,7 +174,7 @@ fn o_volume_do_disparo_sobrevive_ao_quadro_seguinte() {
         // A primeira sorte pode cair perto de 1: dispara até o ganho ser mensurável.
         let j = loop {
             assert!(play_target_with(&mut sim, &mut livro, &mut eng, f));
-            let j = livro.ultimo.clone().expect("tocou").1;
+            let j = livro.last_pick().expect("tocou").1;
             let _ = bloco(&mut mixer);
             if !set_tem_variacao || (j.gain - 1.0).abs() > 0.2 {
                 break j;
@@ -209,7 +208,7 @@ fn o_conjunto_manda_so_quando_tem_som_ligado() {
     let (mut sim, f) = cena(None);
     let (mut livro, (mut eng, _m)) = (SceneAudio::default(), motor());
     assert!(play_target_with(&mut sim, &mut livro, &mut eng, f));
-    assert_eq!(livro.ultimo.clone().expect("tocou").0, "coin_low.wav");
+    assert_eq!(livro.last_pick().expect("tocou").0, "coin_low.wav");
 
     let mut desligado = conjunto(PickStrategy::Random, false, 0.0, 0.0);
     for s in &mut desligado.sounds {
@@ -217,14 +216,14 @@ fn o_conjunto_manda_so_quando_tem_som_ligado() {
     }
     let (mut sim, f) = cena(Some(desligado));
     assert!(play_target_with(&mut sim, &mut livro, &mut eng, f));
-    assert_eq!(livro.ultimo.clone().expect("tocou").0, "coin_low.wav");
+    assert_eq!(livro.last_pick().expect("tocou").0, "coin_low.wav");
 
     let mut um = conjunto(PickStrategy::Random, false, 0.0, 0.0);
     um.sounds.remove(0);
     um.sounds.remove(0);
     let (mut sim, f) = cena(Some(um));
     assert!(play_target_with(&mut sim, &mut livro, &mut eng, f));
-    assert_eq!(livro.ultimo.clone().expect("tocou").0, "coin_noise.wav");
+    assert_eq!(livro.last_pick().expect("tocou").0, "coin_noise.wav");
 }
 
 /// O Autoplay arranca pelo sorteio também: uma porta só.
@@ -239,17 +238,63 @@ fn o_autoplay_passa_pelo_sorteio() {
     let (mut livro, (mut eng, _m)) = (SceneAudio::default(), motor());
     let r = update_with(&mut sim, &mut livro, &mut eng);
     assert_eq!(r.started, 1);
-    assert_eq!(livro.ultimo.clone().expect("tocou").0, SONS[0]);
+    assert_eq!(livro.last_pick().expect("tocou").0, SONS[0]);
 }
 
 /// ⛔ Uma porta só: fora de `SceneAudio::play`, nenhum código do produto chama o motor para tocar um som de
 /// cena, e ninguém além dele sorteia. Lê o fonte, porque a segunda porta compila.
 #[test]
 fn o_sorteio_tem_uma_porta_so() {
-    let audio_2d = include_str!("audio_2d.rs");
+    let fonte = |n: &str| {
+        let p = format!(
+            "{}/../../crates/ph2d-app-audio/src/{n}",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        std::fs::read_to_string(&p).unwrap_or_else(|e| panic!("{p}: {e}"))
+    };
+    let audio_2d = fonte("audio_2d.rs");
     assert!(!audio_2d.contains(".pick("));
     assert!(!audio_2d.contains("eng.play(") && !audio_2d.contains("motor.play("));
-    let cena = include_str!("scene.rs");
+    let cena = fonte("scene.rs");
     assert_eq!(cena.matches(".pick(").count(), 1);
     assert_eq!(cena.matches("eng.play(").count(), 1);
+}
+
+/// **O Autoplay espera o Play**: nada soa enquanto se edita, o Play arranca, o Stop cala e o Play seguinte
+/// arranca de novo. A voz é contada no mixer, e o som fica em ciclo para continuar vivo entre as bordas.
+#[test]
+fn autoplay_espera_o_play() {
+    let vozes = |mixer: &mut AudioRenderer| {
+        let _ = bloco(mixer);
+        mixer.active_voices()
+    };
+    let (mut sim, f) = cena(None);
+    {
+        let mut cfg = sim.world_mut().get_mut::<AudioSource2D>(f).expect("fonte");
+        cfg.autoplay = true;
+        cfg.looping = true;
+    }
+    let mut livro = SceneAudio::default();
+    let (mut eng, mut mixer) = motor();
+
+    for _ in 0..3 {
+        let r = update_with(&mut sim, &mut livro, &mut eng);
+        assert_eq!(r.started, 0, "o Autoplay tocou sem Play");
+    }
+    assert_eq!(vozes(&mut mixer), 0, "há voz sem Play");
+
+    for rodada in ["primeiro", "segundo"] {
+        sim.world_mut().insert_resource(ph2d_ecs::RunOnCopy);
+        let r = update_with(&mut sim, &mut livro, &mut eng);
+        assert_eq!(r.started, 1, "o {rodada} Play não arrancou o Autoplay");
+        assert_eq!(vozes(&mut mixer), 1, "{rodada} Play sem voz");
+        assert_eq!(
+            update_with(&mut sim, &mut livro, &mut eng).started,
+            0,
+            "o Autoplay renasceu no quadro seguinte"
+        );
+        sim.world_mut().remove_resource::<ph2d_ecs::RunOnCopy>();
+        update_with(&mut sim, &mut livro, &mut eng);
+        assert_eq!(vozes(&mut mixer), 0, "o Stop não calou o som");
+    }
 }

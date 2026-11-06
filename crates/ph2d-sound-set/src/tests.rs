@@ -187,3 +187,80 @@ fn nome_vazio_nao_conta_como_som() {
     s.sounds.push(SoundEntry::new("a.wav"));
     assert!(s.has_sounds());
 }
+
+// ── As edições da lista, as mesmas que o cartão Audio pede ──
+
+mod a_lista {
+    use super::*;
+
+    fn lista(nomes: &[&str]) -> SoundSet {
+        SoundSet {
+            sounds: nomes.iter().map(|n| SoundEntry::new(*n)).collect(),
+            ..SoundSet::default()
+        }
+    }
+
+    fn nomes(s: &SoundSet) -> Vec<&str> {
+        s.sounds.iter().map(|e| e.name.as_str()).collect()
+    }
+
+    /// *Mutação: tirar o `push(antigo)` do `add_keeping` ⇒ vermelho.*
+    #[test]
+    fn acrescentar_numa_lista_vazia_adota_o_som_antigo() {
+        let mut s = SoundSet::default();
+        assert!(s.add_keeping(" a.wav ", " b.wav "));
+        assert_eq!(nomes(&s), ["a.wav", "b.wav"]);
+        // O que já está na lista não entra duas vezes, e o vazio não entra.
+        assert!(!s.add_keeping("a.wav", "b.wav"));
+        assert!(!s.add_keeping("a.wav", "  "));
+        assert_eq!(nomes(&s), ["a.wav", "b.wav"]);
+        // Só a lista VAZIA adota.
+        assert!(s.add_keeping("z.wav", "c.wav"));
+        assert_eq!(nomes(&s), ["a.wav", "b.wav", "c.wav"]);
+        // Sem `sound`, ou com o próprio, só o escolhido.
+        let mut s = SoundSet::default();
+        assert!(s.add_keeping("", "c.wav"));
+        assert_eq!(nomes(&s), ["c.wav"]);
+        let mut s = SoundSet::default();
+        assert!(s.add_keeping("c.wav", "c.wav"));
+        assert_eq!(nomes(&s), ["c.wav"]);
+    }
+
+    #[test]
+    fn indice_fora_nao_muda_nada_e_diz_que_nao_mudou() {
+        let mut s = lista(&["a.wav"]);
+        let antes = s.clone();
+        assert!(!s.remove_at(9));
+        assert!(!s.set_enabled(9, false));
+        assert!(!s.set_weight(9, 2.0));
+        assert!(!s.set_strategy_at(200));
+        assert_eq!(s, antes);
+        assert!(s.remove_at(0));
+        assert!(s.sounds.is_empty());
+    }
+
+    #[test]
+    fn cada_edicao_escreve_o_seu_campo_e_o_sanitize_manda_na_faixa() {
+        let mut s = lista(&["a.wav", "b.wav"]);
+        assert!(s.set_strategy_at(usize::from(PickStrategy::Sequence.index())));
+        assert_eq!(s.strategy, PickStrategy::Sequence);
+        assert!(s.set_no_repeat(false));
+        assert!(!s.no_repeat);
+        assert!(s.set_pitch_jitter(3.0));
+        assert!(s.set_gain_jitter(99.0));
+        assert!(s.set_weight(0, 99.0));
+        assert!(s.set_enabled(1, false));
+        s.sanitize();
+        assert!((s.pitch_jitter_semitones - 3.0).abs() < 1e-6);
+        assert!((s.gain_jitter_db - MAX_JITTER).abs() < 1e-6);
+        assert!((s.sounds[0].weight - WEIGHT_RANGE.1).abs() < 1e-6);
+        assert!(s.sounds[0].enabled && !s.sounds[1].enabled);
+    }
+
+    #[test]
+    fn a_etiqueta_de_cada_estrategia_e_a_posicao_dela() {
+        for (i, k) in PickStrategy::ALL.iter().enumerate() {
+            assert_eq!(usize::from(k.index()), i);
+        }
+    }
+}

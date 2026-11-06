@@ -7,10 +7,15 @@
 //! Num ping-pong o passo do meio é atravessado duas vezes por ciclo, e o marcador grita nas duas.
 
 use bevy_ecs::component::Component;
+use bevy_ecs::entity::Entity;
+use bevy_ecs::world::World;
 use serde::{Deserialize, Serialize};
 
 use crate::sprite_anim_frames::advance_frames_visiting;
-use crate::{AnimOutcome, AnimationTag, SimComponent, SpriteAnimator, entry_cell};
+use crate::{
+    AnimOutcome, AnimationTag, SimComponent, SpriteAnimFrames, SpriteAnimations, SpriteAnimator,
+    SpriteGrid, entry_cell, tag_cells,
+};
 
 /// Um marcador.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -43,6 +48,73 @@ impl SpriteAnimMarkers {
     pub fn of_tag<'a>(&'a self, tag: &'a str) -> impl Iterator<Item = &'a FrameMarker> {
         self.0.iter().filter(move |m| m.tag == tag)
     }
+
+    /// O marcador `i` DESTA tag, como posição na lista inteira.
+    fn position(&self, tag: &str, i: usize) -> Option<usize> {
+        self.0
+            .iter()
+            .enumerate()
+            .filter(|(_, m)| m.tag == tag)
+            .nth(i)
+            .map(|(j, _)| j)
+    }
+
+    /// Acrescenta um marcador calado no primeiro dos `steps` quadros ainda sem marcador: dois marcadores no
+    /// mesmo quadro não são o que se quer.
+    pub fn add(&mut self, tag: &str, steps: u32) {
+        let livre = (0..steps.max(1))
+            .find(|s| !self.of_tag(tag).any(|m| m.step == *s))
+            .unwrap_or(0);
+        self.0.push(FrameMarker {
+            tag: tag.to_owned(),
+            step: livre,
+            signal: String::new(),
+        });
+    }
+
+    /// Muda o passo do marcador `i` desta tag, com teto no último dos `steps`. `None` = marcador fora.
+    pub fn set_step(&mut self, tag: &str, i: usize, step: u32, steps: u32) -> Option<()> {
+        let j = self.position(tag, i)?;
+        self.0[j].step = step.min(steps.saturating_sub(1));
+        Some(())
+    }
+
+    /// Muda o sinal do marcador `i` desta tag. `None` = marcador fora.
+    pub fn set_signal(&mut self, tag: &str, i: usize, signal: String) -> Option<()> {
+        let j = self.position(tag, i)?;
+        self.0[j].signal = signal;
+        Some(())
+    }
+
+    /// Tira o marcador `i` desta tag. `None` = marcador fora.
+    pub fn remove_at(&mut self, tag: &str, i: usize) -> Option<()> {
+        let j = self.position(tag, i)?;
+        self.0.remove(j);
+        Some(())
+    }
+
+    /// Tira todos os marcadores desta tag. `true` = havia algum.
+    pub fn remove_tag(&mut self, tag: &str) -> bool {
+        let antes = self.0.len();
+        self.0.retain(|m| m.tag != tag);
+        self.0.len() != antes
+    }
+}
+
+/// Quantos quadros a animação `name` toca na grelha de hoje (`0` = não resolve).
+#[must_use]
+pub fn anim_steps(world: &World, entity: Entity, name: &str) -> u32 {
+    let cells = world
+        .get::<SpriteGrid>(entity)
+        .map_or(1, |g| g.cells().max(1));
+    world
+        .get::<SpriteAnimations>(entity)
+        .and_then(|l| l.get(name))
+        .and_then(|t| {
+            let frames = world.get::<SpriteAnimFrames>(entity);
+            tag_cells(t, frames.and_then(|f| f.get(name)), cells)
+        })
+        .map_or(0, |seq| u32::try_from(seq.len()).unwrap_or(u32::MAX))
 }
 
 /// **[`crate::advance_frames`] dizendo os sinais dos marcadores atravessados**, na ordem em que aconteceram.

@@ -105,7 +105,7 @@ impl crate::App {
             if let Some(hero) = cx.hero_screen.filter(|_| matches!(nivel, 2 | 4)) {
                 hero.gizmo.replace_selection(Some(jogador)); // o Inspector abre no personagem
                 hero.store
-                    .set_collapsed(ph2d_app_game::smoke::cartao_que_abre(), false);
+                    .set_collapsed(ph2d_sfx_scene::cartao_que_abre(), false);
                 // GEF 20 C7: a vista abre sobre ele (antes abria na origem, com o jogador fora).
                 hero.bus
                     .push(ph2d_editor_core::action_bus::EditorAction::SetViewFocus {

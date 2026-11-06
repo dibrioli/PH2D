@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-sfx-scene"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ A cena do `PH2D_SFX_SMOKE` como FOLHA: saiu de `ph2d-app-game` pela catraca
+# `the_shell_only_shrinks_and_every_app_crate_too`. As portas chegam injectadas como funções simples, porque
+# quem as tem é a composição. A família do jogo chama-a, e a composição lê o cartão que abre.
+[dependencies]
+ph2d-app-host = { path = "../ph2d-app-host" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+# `cartao_que_abre` devolve um `NodeId` do Inspector.
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+
+[lints]
+workspace = true

@@ -10,7 +10,6 @@ pub mod object_add;
 pub mod ordem_smoke;
 pub mod personagem;
 pub mod sessao;
-pub mod sfx_smoke;
 pub mod smoke;
 pub mod smoke_mao;
 pub mod smoke_moedas;
@@ -22,7 +21,3 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
 };
 
 pub use sessao::{Passo, Sessao, marca_a_copia};
-
-#[cfg(test)]
-#[path = "arte_tests.rs"]
-mod arte_tests;

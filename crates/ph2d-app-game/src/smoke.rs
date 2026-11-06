@@ -75,7 +75,7 @@ pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[
         max_level: CENAS,
     },
     crate::ordem_smoke::ROUTER,
-    crate::sfx_smoke::ROUTER,
+    ph2d_sfx_scene::ROUTER,
 ];
 
 #[must_use]
@@ -90,10 +90,7 @@ pub fn armed_level_in(get: impl Fn(&str) -> Option<String>) -> Option<u32> {
 #[must_use]
 pub fn armed_level() -> Option<u32> {
     static LEVEL: OnceLock<Option<u32>> = OnceLock::new();
-    *LEVEL.get_or_init(|| {
-        armed_level_in(|k| std::env::var(k).ok())
-            .or(crate::sfx_smoke::nivel().map(|_| crate::sfx_smoke::NIVEL_DO_JOGO))
-    })
+    *LEVEL.get_or_init(|| ph2d_sfx_scene::ou_nivel(armed_level_in(|k| std::env::var(k).ok())))
 }
 
 static MONTADA: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
@@ -262,26 +259,12 @@ pub struct Portas<'a> {
     pub importa_som: fn(&mut SimWorld, &std::path::Path) -> Result<String, String>,
 }
 
-/// O cartão do Inspector que abre sobre o objeto que [`montar`] devolve.
-#[must_use]
-pub fn cartao_que_abre() -> ph2d_editor_core::NodeId {
-    if crate::sfx_smoke::nivel().is_some() {
-        ph2d_editor_core::ids::INSP_LIVE_AUDIO_SECTION
-    } else {
-        ph2d_editor_core::ids::INSP_LIVE_PLAYER_SECTION
-    }
-}
-
 /// Monta o nível `nivel` no mundo. Devolve o jogador, ou o objeto dos sons no `PH2D_SFX_SMOKE`.
 pub fn montar(sim: &mut SimWorld, portas: Portas<'_>, nivel: u32) -> Entity {
     match nivel {
         2 => {
-            let jogador = nivel_2(sim, portas);
-            if crate::sfx_smoke::nivel().is_some() {
-                // O Inspector abre no objeto dos sons, que é o assunto desta cena.
-                return crate::sfx_smoke::veste(sim, portas, jogador);
-            }
-            jogador
+            let (jogador, m) = (nivel_2(sim, portas), portas.menu);
+            ph2d_sfx_scene::veste_se_armada(sim, portas.importa_som, m.anexa, m.raiz, jogador)
         }
         3 => {
             let jogador = nivel_2(sim, portas);

@@ -37,10 +37,8 @@ ph2d-script = { path = "../ph2d-script" }
 ph2d-vector = { path = "../ph2d-vector" }
 ph2d-camera-frame = { path = "../ph2d-camera-frame" }
 ph2d-game-dicas = { path = "../ph2d-game-dicas" }
-
-[dev-dependencies]
-# A arte de fábrica abre como vetor editável (`arte_tests.rs`).
-ph2d-vec-svg = { path = "../ph2d-vec-svg" }
+# A cena do `PH2D_SFX_SMOKE`, por cima do nível 2.
+ph2d-sfx-scene = { path = "../ph2d-sfx-scene" }
 
 [lints]
 workspace = true

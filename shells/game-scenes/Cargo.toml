@@ -18,9 +18,13 @@ authors.workspace = true
 path = "src/lib.rs"
 
 [dev-dependencies]
+# O sorteio do som no caminho do produto: `sound_set.rs`.
+ph2d-app-audio = { path = "../../crates/ph2d-app-audio" }
+ph2d-audio = { path = "../../crates/ph2d-audio" }
 ph2d-app-components = { path = "../../crates/ph2d-app-components", features = ["test-support"] }
 ph2d-app-game = { path = "../../crates/ph2d-app-game" }
 ph2d-camera-frame = { path = "../../crates/ph2d-camera-frame" }
+ph2d-sfx-scene = { path = "../../crates/ph2d-sfx-scene" }
 ph2d-app-physics = { path = "../../crates/ph2d-app-physics" }
 ph2d-app-sprite-anim = { path = "../../crates/ph2d-app-sprite-anim" }
 ph2d-a11y = { path = "../../crates/ph2d-a11y" }
@@ -39,6 +43,8 @@ ph2d-script = { path = "../../crates/ph2d-script" }
 ph2d-sprite-edit = { path = "../../crates/ph2d-sprite-edit" }
 ph2d-text = { path = "../../crates/ph2d-text" }
 ph2d-tokens = { path = "../../crates/ph2d-tokens" }
+# A arte de fábrica abre como vetor editável (`jogo_arte.rs`).
+ph2d-vec-svg = { path = "../../crates/ph2d-vec-svg" }
 ph2d-vector = { path = "../../crates/ph2d-vector" }
 
 [lints]

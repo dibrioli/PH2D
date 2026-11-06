@@ -29,7 +29,7 @@
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{
     AUDIO_MAX_POLYPHONY, AudioBus, AudioListener2D, AudioSource2D, Entity, Name, PickStrategy,
-    ProjectSounds, SignalActions, SignalVerb, SimWorld, SoundEntry, SoundSet, World,
+    ProjectSounds, SignalActions, SignalVerb, SimWorld, SoundSet, World,
 };
 use ph2d_editor_core::{
     AudioFieldEdit, InspectorAudioInfo, InspectorAudioSource, InspectorSoundRow, InspectorSoundSet,
@@ -47,13 +47,6 @@ fn sound_set_info(set: Option<&SoundSet>, sons: Option<&ProjectSounds>) -> Inspe
     let padrao = SoundSet::default();
     let s = set.unwrap_or(&padrao);
     let tem = |n: &str| sons.is_some_and(|l| l.get(n).is_some());
-    let posicao = |k: PickStrategy| {
-        PickStrategy::ALL
-            .iter()
-            .position(|o| *o == k)
-            .and_then(|i| u8::try_from(i).ok())
-            .unwrap_or(0)
-    };
     InspectorSoundSet {
         rows: s
             .sounds
@@ -66,8 +59,8 @@ fn sound_set_info(set: Option<&SoundSet>, sons: Option<&ProjectSounds>) -> Inspe
             })
             .collect(),
         decides: s.has_sounds(),
-        strategy_tag: posicao(s.strategy),
-        sequence_tag: posicao(PickStrategy::Sequence),
+        strategy_tag: s.strategy.index(),
+        sequence_tag: PickStrategy::Sequence.index(),
         no_repeat: s.no_repeat,
         pitch_jitter_st: s.pitch_jitter_semitones,
         gain_jitter_db: s.gain_jitter_db,
@@ -97,64 +90,20 @@ fn apply_set_edit(
 ) {
     let mut set = world.get::<SoundSet>(entity).cloned().unwrap_or_default();
     let mudou = match edit {
-        AudioFieldEdit::SetAdd(name) => add_to_set(&mut set, src, name),
-        AudioFieldEdit::SetRemove(i) => {
-            let dentro = usize::from(*i) < set.sounds.len();
-            if dentro {
-                set.sounds.remove(usize::from(*i));
-            }
-            dentro
-        }
-        AudioFieldEdit::SetEnabled(i, on) => set
-            .sounds
-            .get_mut(usize::from(*i))
-            .map(|e| e.enabled = *on)
-            .is_some(),
-        AudioFieldEdit::SetWeight(i, v) => set
-            .sounds
-            .get_mut(usize::from(*i))
-            .map(|e| e.weight = *v)
-            .is_some(),
-        AudioFieldEdit::SetStrategy(tag) => match PickStrategy::ALL.get(usize::from(*tag)) {
-            Some(k) => {
-                set.strategy = *k;
-                true
-            }
-            None => false,
-        },
-        AudioFieldEdit::SetNoRepeat(on) => {
-            set.no_repeat = *on;
-            true
-        }
-        AudioFieldEdit::SetPitchJitter(v) => {
-            set.pitch_jitter_semitones = *v;
-            true
-        }
-        AudioFieldEdit::SetGainJitter(v) => {
-            set.gain_jitter_db = *v;
-            true
-        }
+        AudioFieldEdit::SetAdd(name) => set.add_keeping(&src.sound, name),
+        AudioFieldEdit::SetRemove(i) => set.remove_at(usize::from(*i)),
+        AudioFieldEdit::SetEnabled(i, on) => set.set_enabled(usize::from(*i), *on),
+        AudioFieldEdit::SetWeight(i, v) => set.set_weight(usize::from(*i), *v),
+        AudioFieldEdit::SetStrategy(tag) => set.set_strategy_at(usize::from(*tag)),
+        AudioFieldEdit::SetNoRepeat(on) => set.set_no_repeat(*on),
+        AudioFieldEdit::SetPitchJitter(v) => set.set_pitch_jitter(*v),
+        AudioFieldEdit::SetGainJitter(v) => set.set_gain_jitter(*v),
         _ => false,
     };
     if mudou {
         set.sanitize();
         queue_set(queue, registry, entity.to_bits(), SET, &set);
     }
-}
-
-/// Põe `name` na lista. Numa lista vazia o `sound` de sempre entra primeiro, para o objeto não perder o som
-/// que já tinha. `false` = o nome é vazio ou já está na lista.
-fn add_to_set(set: &mut SoundSet, src: &AudioSource2D, name: &str) -> bool {
-    let name = name.trim();
-    if name.is_empty() || set.sounds.iter().any(|e| e.name == name) {
-        return false;
-    }
-    let antigo = src.sound.trim();
-    if set.sounds.is_empty() && !antigo.is_empty() && antigo != name {
-        set.sounds.push(SoundEntry::new(antigo));
-    }
-    set.sounds.push(SoundEntry::new(name));
-    true
 }
 
 /// **Alguma linha de `Signal Actions` da cena manda ISTO tocar?**

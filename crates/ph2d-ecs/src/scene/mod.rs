@@ -15,6 +15,7 @@ pub mod property;
 pub mod property_ref;
 pub mod registry;
 /// ⭐ O registo da família da CÂMERA — irmão por CAP de LOC; ver o cabeçalho.
+mod registry_audio;
 mod registry_camera;
 /// O valor de um componente por nome de campo — irmão por CAP de LOC.
 mod registry_value;

@@ -173,7 +173,7 @@ pub fn build_anim_info(
                     per_frame_ms: t.per_frame_ms.clone(),
                     frames: crate::card::row_frames(world, entity, &t.name),
                     markers: crate::card::row_markers(world, entity, &t.name),
-                    steps: crate::card::row_steps(world, entity, &t.name),
+                    steps: ph2d_ecs::anim_steps(world, entity, &t.name),
                 })
                 .collect()
         })

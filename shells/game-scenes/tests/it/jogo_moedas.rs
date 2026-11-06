@@ -177,10 +177,12 @@ fn o_som_da_moeda_e_um_som_do_projeto() {
 /// para ele. A moeda não pode tocar a si mesma: ela sai da cena ao ser pega, e o sorteio sairia junto.
 #[test]
 fn a_cena_do_sfx_lab_liga_as_moedas_a_um_conjunto_que_fica() {
-    use ph2d_app_game::sfx_smoke as s;
+    use ph2d_sfx_scene as s;
     let mut sim = SimWorld::new();
     let jogador = crate::comp::montar(&mut sim, s::NIVEL_DO_JOGO);
-    crate::comp::com_portas(&crate::comp::registo(), |p| s::veste(&mut sim, p, jogador));
+    crate::comp::com_portas(&crate::comp::registo(), |p| {
+        s::veste(&mut sim, p.importa_som, p.menu.anexa, p.menu.raiz, jogador)
+    });
     assert!(
         sim.world()
             .get::<ph2d_ecs::AudioListener2D>(jogador)

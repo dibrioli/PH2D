@@ -263,7 +263,7 @@ fn arrastar_o_pivo_no_canvas_nao_move_a_colisao_nem_os_filhos() {
     let (c0, f0) = (centro_da_colisao(&w, e), filho(&w));
     // O mesmo que `pousa`: âncora nova `[0, 1]`, e a origem compensa para o quad não andar.
     let anchor = [0.0, 1.0];
-    let origem = no_pai(t, [0.0, 0.0]) - no_pai(t, anchor);
+    let origem = t.translation + no_pai(t, [0.0, 0.0]) - no_pai(t, anchor);
     arrasta(&mut w, e, [origem.x, origem.y], anchor);
     assert_eq!(w.get::<Sprite>(e).unwrap().anchor, anchor);
     assert!((c0 - centro_da_colisao(&w, e)).length() < 1.0e-4);

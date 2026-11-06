@@ -159,7 +159,7 @@ impl PainterTool {
         self.arm_tool_falloff_defaults();
         // O slot do pincel do Wet já está na mão: a tinta adormecida acorda com o Blend certo.
         if new_mode == PaintMode::WetPaint && old_mode != PaintMode::WetPaint {
-            self.wet_acorda();
+            self.wet_acorda_sem_esperar();
         }
         // Leaving the Selection tool auto-hides its gizmos (the "Show Selection Gizmos" checkbox unchecks) —
         // the gizmos belong to Select and would otherwise linger over another tool (Enio 2026-07-03).

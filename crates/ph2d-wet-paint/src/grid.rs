@@ -27,6 +27,7 @@ pub use scratch::{AdvCell, SolverScratch};
 pub mod altura;
 #[path = "grid/aparencia.rs"]
 pub mod aparencia;
+pub mod celula_bytes;
 #[path = "grid/crista.rs"]
 pub mod crista;
 #[path = "grid/espessura.rs"]

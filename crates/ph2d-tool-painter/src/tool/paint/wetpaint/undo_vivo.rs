@@ -167,7 +167,27 @@ impl FotoDoMotor {
     }
 }
 
+impl FotoDoMotor {
+    fn planos_mut(&mut self) -> Vec<&mut Vec<f32>> {
+        let mut v: Vec<&mut Vec<f32>> = self.oleo_antes.iter_mut().collect();
+        for (x, y) in &mut self.fluxo {
+            v.push(x);
+            v.push(y);
+        }
+        v
+    }
+}
+
 impl PassoVivo {
+    /// Os planos que a tinta adormecida comprime ([`super::dormente`]).
+    pub(super) fn planos_mut(&mut self) -> Vec<&mut Vec<f32>> {
+        let mut v = self.antes.planos_mut();
+        if let Some(d) = self.depois.as_mut() {
+            v.extend(d.planos_mut());
+        }
+        v
+    }
+
     /// O que a fotografia de um passo copia (a `base` é um `Arc` partilhado: não conta).
     pub(super) fn bytes(&self) -> usize {
         self.antes.bytes() + self.depois.as_ref().map_or(0, FotoDoMotor::bytes)

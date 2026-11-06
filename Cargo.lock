@@ -11133,6 +11133,7 @@ dependencies = [
  "serde",
  "serde_json",
  "wgpu",
+ "zstd",
 ]
 
 [[package]]

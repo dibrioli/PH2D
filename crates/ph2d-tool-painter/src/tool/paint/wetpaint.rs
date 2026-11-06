@@ -404,6 +404,7 @@ pub(super) use lote::media_do_grao;
 pub(crate) mod adormecida; // a tinta viva parada fora do Wet (dono 06/11)
 #[cfg(test)]
 mod dentro_do_wet_tests;
+mod dormente; // a tinta adormecida comprimida em RAM (dono 06/11)
 mod borracha_morta; // a Borracha na tinta morta imita a da viva (dono 06/11)
 #[cfg(test)]
 mod borracha_morta_tests;

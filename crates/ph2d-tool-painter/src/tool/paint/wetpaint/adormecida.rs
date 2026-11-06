@@ -27,7 +27,84 @@ pub(crate) struct TintaAdormecida {
     pub(super) sess: Arc<std::sync::Mutex<WetSession>>,
     pub(super) tela: Arc<Vec<u8>>,
     camada: Option<RtLayerId>,
-    bytes: usize,
+    /// O que ela retém agora: desce quando o fio da compressão acaba.
+    pub(super) bytes: Arc<std::sync::atomic::AtomicUsize>,
+    aquecendo: Arc<std::sync::atomic::AtomicBool>,
+}
+
+/// Quanto se conta para uma tinta ainda a comprimir: medido 7,3× a 1080p e 10× a 4096×2560 (Dabber cheio).
+const ENCOLHE_PELO_MENOS: usize = 7;
+
+/// Abaixo disto não vale um fio: uma camada pequena pesa menos do que o custo de a esperar ao acordar.
+const COMPRIME_A_PARTIR_DE: usize = 64 << 20;
+
+impl TintaAdormecida {
+    /// Comprime aqui e agora (o fio faz o mesmo).
+    pub(super) fn encolhe_ja(&self) {
+        let n = self.sess.lock().expect("o trinco da adormecida").encolhe();
+        self.bytes.store(n, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    fn encolhe_num_fio(&self) {
+        let (sess, bytes) = (Arc::downgrade(&self.sess), Arc::downgrade(&self.bytes));
+        std::thread::spawn(move || {
+            let Some(s) = sess.upgrade() else {
+                return;
+            };
+            let n = s.lock().expect("o trinco da adormecida").encolhe();
+            if let Some(b) = bytes.upgrade() {
+                b.store(n, std::sync::atomic::Ordering::Relaxed);
+            }
+        });
+    }
+
+    /// Acordar agora não espera ninguém: nenhum fio nela, nada por descomprimir.
+    fn pronta(&self) -> bool {
+        Arc::weak_count(&self.sess) == 0
+            && self
+                .sess
+                .try_lock()
+                .is_ok_and(|s| s.dormente.is_none())
+    }
+
+    /// Descomprime num fio à parte: a troca de modo não engasga, e o quadro acorda-a quando ficar pronta.
+    fn aquece(&self) {
+        use std::sync::atomic::Ordering::SeqCst;
+        if self.aquecendo.swap(true, SeqCst) {
+            return;
+        }
+        let (sess, aquecendo) = (Arc::downgrade(&self.sess), Arc::clone(&self.aquecendo));
+        std::thread::spawn(move || {
+            if let Some(s) = sess.upgrade() {
+                s.lock().expect("o trinco da adormecida").reidrata();
+            }
+            aquecendo.store(false, SeqCst);
+        });
+    }
+
+    /// A sessão de volta: espera o fio, leva-a sem copiar, e descomprime.
+    fn acorda(self) -> WetSession {
+        use std::sync::atomic::Ordering::Relaxed;
+        let _ = self.bytes.load(Relaxed);
+        let mut arc = self.sess;
+        let mut sess = loop {
+            // O fio solta o trinco e larga o `Arc` logo a seguir: esperar o trinco é esperar a compressão.
+            drop(arc.lock().expect("o trinco da adormecida"));
+            match Arc::try_unwrap(arc) {
+                Ok(m) => break m.into_inner().expect("o trinco da adormecida"),
+                Err(a) if Arc::weak_count(&a) == 0 && Arc::strong_count(&a) > 1 => {
+                    // Uma cópia do estado segura-a: copiar é o caminho certo.
+                    break a.lock().expect("o trinco da adormecida").clone();
+                }
+                Err(a) => {
+                    arc = a;
+                    std::thread::yield_now();
+                }
+            }
+        };
+        sess.reidrata();
+        sess
+    }
 }
 
 impl PainterTool {
@@ -154,17 +231,51 @@ impl PainterTool {
         let camada = sess.camada;
         let lista = &mut self.paint.wetpaint.adormecidas;
         lista.retain(|a| a.camada != camada);
-        lista.push(TintaAdormecida {
+        let tinta = TintaAdormecida {
             sess: Arc::new(std::sync::Mutex::new(sess)),
             tela,
             camada,
-            bytes,
-        });
+            bytes: Arc::new(std::sync::atomic::AtomicUsize::new(
+                if bytes >= COMPRIME_A_PARTIR_DE {
+                    bytes / ENCOLHE_PELO_MENOS
+                } else {
+                    bytes
+                },
+            )),
+            aquecendo: Arc::default(),
+        };
+        if bytes >= COMPRIME_A_PARTIR_DE {
+            tinta.encolhe_num_fio();
+        }
+        lista.push(tinta);
         let (w, h) = self.source_size;
         let teto = ORCAMENTOS_DE_UNDO * crate::undo::history_budget_bytes(w, h);
-        while lista.len() > 1 && lista.iter().map(|a| a.bytes).sum::<usize>() > teto {
+        let soma = |l: &[TintaAdormecida]| -> usize {
+            l.iter()
+                .map(|a| a.bytes.load(std::sync::atomic::Ordering::Relaxed))
+                .sum()
+        };
+        while lista.len() > 1 && soma(lista) > teto {
             lista.remove(0);
         }
+    }
+
+    /// [`Self::wet_acorda`] de quem não pode engasgar (a troca de modo, de camada, o quadro): se ainda há trabalho, ele
+    /// corre num fio e o quadro seguinte volta a tentar. O pen-down e o resto esperam, pela de sempre.
+    pub(in crate::tool::paint) fn wet_acorda_sem_esperar(&mut self) -> bool {
+        let camada = self.layers.active();
+        if let Some(a) = self
+            .paint
+            .wetpaint
+            .adormecidas
+            .iter()
+            .find(|a| a.camada == camada)
+            && !a.pronta()
+        {
+            a.aquece();
+            return false;
+        }
+        self.wet_acorda()
     }
 
     /// Acorda a tinta da camada activa. `false` se não há, ou se ela já não serve (a grade ou o Blend mudaram com tinta
@@ -179,11 +290,8 @@ impl PainterTool {
         if self.paint.wetpaint.session.is_some() || self.undo.marca.ativa() {
             return false;
         }
-        let tela = a.tela;
-        let mut sess = match Arc::try_unwrap(a.sess) {
-            Ok(m) => m.into_inner().expect("o trinco da adormecida"),
-            Err(arc) => arc.lock().expect("o trinco da adormecida").clone(),
-        };
+        let tela = Arc::clone(&a.tela);
+        let mut sess = a.acorda();
         let w = &self.paint.wetpaint;
         let grade_igual = sess.ratio == grid_map::clamp_ratio(w.grid_ratio)
             && sess.engine.flow_ratio
@@ -242,7 +350,7 @@ impl PainterTool {
     /// A troca de camada: no Wet, acorda a tinta da camada que entra.
     pub(crate) fn wet_acorda_da_camada(&mut self) {
         if matches!(self.paint.paint_mode, PaintMode::WetPaint) {
-            self.wet_acorda();
+            self.wet_acorda_sem_esperar();
         }
     }
 

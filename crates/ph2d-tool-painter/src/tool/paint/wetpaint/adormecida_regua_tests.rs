@@ -137,6 +137,47 @@ fn mede(w: usize, h: usize) {
     println!("loadavg fim: {}", loadavg().trim());
 }
 
+/// O peso e o tempo da compressão, ao vivo: Dabber cheio, e o Wet Round por cima.
+#[test]
+#[ignore = "sonda da tinta adormecida"]
+fn sonda_compressao_adormecida() {
+    for (w, h) in [(1920usize, 1080usize), (4096, 2560)] {
+        let (mut t, _, _) = tela_pintada(w, h, 2);
+        let a = t.paint.wetpaint.adormecidas.first().expect("adormecida").clone();
+        let (cru, grade, fotos, registos) = {
+            let s = a.sess.lock().expect("trinco");
+            let g: usize = s.engine.layers.iter().map(|l| l.grid.bytes_retidos()).sum();
+            let m = s.engine.bytes_retidos();
+            let f: usize = s.bytes_retidos() - m - s.planos.pigment.len() - s.planos.sombra.len()
+                - s.planos.grao.len() - s.planos.suave.len();
+            (s.bytes_retidos(), g, f, m - g)
+        };
+        let rss = || -> usize {
+            std::fs::read_to_string("/proc/self/status")
+                .unwrap_or_default()
+                .lines()
+                .find_map(|l| l.strip_prefix("VmRSS:").map(|r| r.trim().trim_end_matches(" kB").trim().parse().unwrap_or(0)))
+                .unwrap_or(0)
+                / 1024
+        };
+        println!("RSS antes de comprimir: {} MB", rss());
+        let t0 = Instant::now();
+        a.encolhe_ja();
+        let comprimir = t0.elapsed().as_secs_f64() * 1e3;
+        let z = a.bytes.load(std::sync::atomic::Ordering::Relaxed);
+        println!("RSS comprimida: {} MB", rss());
+        drop(a);
+        let t0 = Instant::now();
+        t.set_paint_media(PaintMedia::WetPaint);
+        let acordar = t0.elapsed().as_secs_f64() * 1e3;
+        println!(
+            "{w}x{h}: cru {} MB (grade {} · fotos {} · histórico e papel {}) → {} MB · comprimir {comprimir:.0} ms · acordar {acordar:.0} ms",
+            cru >> 20, grade >> 20, fotos >> 20, registos >> 20, z >> 20
+        );
+    }
+    println!("loadavg fim: {}", loadavg().trim());
+}
+
 #[test]
 #[ignore = "sonda da tinta adormecida"]
 fn sonda_tinta_adormecida_nos_outros_modos() {

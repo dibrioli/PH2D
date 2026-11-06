@@ -179,6 +179,8 @@ pub(in crate::tool::paint) struct WetSession {
     pub(super) camada: Option<crate::layers::LayerId>,
     /// A sessão já enterrou células: recompor a tela inteira mudaria a orla delas.
     pub(super) enterrou: bool,
+    /// Adormecida e comprimida ([`super::dormente`]): as grades estão aqui, e voltam ao acordar.
+    pub(super) dormente: Option<Arc<super::dormente::Dormente>>,
 }
 
 /// Um lote de dabs adiado — tudo o que a rota do dab lê por LOTE.
@@ -373,6 +375,7 @@ impl Clone for WetSession {
             otica,
             camada,
             enterrou,
+            dormente,
         } = self;
         assert!(
             worker.is_none(),
@@ -410,6 +413,7 @@ impl Clone for WetSession {
             otica: otica.clone(),
             camada: *camada,
             enterrou: *enterrou,
+            dormente: dormente.clone(),
         }
     }
 }

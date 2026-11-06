@@ -2,6 +2,9 @@
 
 use super::*;
 
+#[path = "snapshot/registo_bytes.rs"]
+mod registo_bytes;
+
 // ---------------------------------------------------------------------------
 // History snapshots (SPEC §15). The transient flow arrays are scratch rebuilt
 // every frame from the persistent field, so they are not captured.

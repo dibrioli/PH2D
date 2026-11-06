@@ -121,6 +121,14 @@ impl Engine {
         }
     }
 
+    /// Todos os registos de undo e redo, de todas as camadas, numa ordem que só muda com a história.
+    pub fn registos_mut(&mut self) -> Vec<&mut crate::grid::Registo> {
+        self.layers
+            .iter_mut()
+            .flat_map(|l| l.undo.iter_mut().chain(&mut l.redo).chain(&mut l.desde))
+            .collect()
+    }
+
     /// O motor esquece os registos de undo: o que eles guardam já não descreve a história.
     pub fn esquece_a_historia(&mut self) {
         let layer = &mut self.layers[self.active_layer];

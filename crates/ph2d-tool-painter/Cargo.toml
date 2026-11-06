@@ -101,6 +101,7 @@ postcard = { version = "1", features = ["alloc"] }
 # do aro, da cobertura e dos campos molhado/estilo, e as faixas verticais do `box_blur` — ADR-0173.
 # Todo uso novo exige ADR novo.
 rayon = "1"
+zstd = { version = "0.14", default-features = false }
 
 [dev-dependencies]
 # dhat-rs: a medição do HR-13 emendado pelo ADR-0117 — *quem declara budget possui um gate que MEDE*.

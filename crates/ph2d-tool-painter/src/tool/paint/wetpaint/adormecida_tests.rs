@@ -171,6 +171,88 @@ fn desfazer_o_traco_antes_de_voltar_mantem_a_tinta_viva() {
     assert_eq!(diferentes(&vivo, &r), 0);
 }
 
+/// ⭐ Comprimida na RAM: o mesmo, ao bit. A Borracha e a tela depois de acordar são as de quem nunca comprimiu.
+#[test]
+fn comprimir_a_tinta_adormecida_nao_muda_nada() {
+    let vivo = borracha_viva();
+    let mut t = com_oleo();
+    t.set_paint_media(PaintMedia::Digital);
+    let a = t.paint.wetpaint.adormecidas.first().expect("adormecida");
+    let cru = a.sess.lock().expect("trinco").bytes_retidos();
+    a.encolhe_ja();
+    let z = a.bytes.load(std::sync::atomic::Ordering::Relaxed);
+    assert!(z < cru / 4, "comprime: {cru} → {z}");
+    assert_eq!(diferentes(&vivo, &volta_e_apaga(&mut t)), 0);
+}
+
+/// ⭐ Voltar ao Wet com a tinta comprimida não espera: a troca de modo volta logo, e o quadro acorda-a quando pronta.
+#[test]
+fn voltar_com_a_tinta_comprimida_nao_engasga() {
+    let vivo = borracha_viva();
+    let mut t = com_oleo();
+    t.set_paint_media(PaintMedia::Digital);
+    t.paint.wetpaint.adormecidas[0].encolhe_ja();
+    t.set_paint_media(PaintMedia::WetPaint);
+    assert!(
+        t.paint.wetpaint.session.is_none(),
+        "a troca de modo não descomprime"
+    );
+    for _ in 0..5000 {
+        t.on_tick(1000.0 / 60.0);
+        if t.paint.wetpaint.session.is_some() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(1));
+    }
+    assert!(t.paint.wetpaint.session.is_some(), "o quadro acorda-a");
+    t.set_paint_tool_mode("eraser");
+    assert_eq!(diferentes(&vivo, &apaga(&mut t)), 0);
+}
+
+/// Pen-down logo a seguir: o traço espera a tinta, nunca cai na Borracha da tinta morta.
+#[test]
+fn o_pen_down_espera_a_tinta_comprimida() {
+    let vivo = borracha_viva();
+    let mut t = com_oleo();
+    t.set_paint_media(PaintMedia::Digital);
+    t.paint.wetpaint.adormecidas[0].encolhe_ja();
+    assert_eq!(diferentes(&vivo, &volta_e_apaga(&mut t)), 0);
+}
+
+/// Acordada depois de comprimir, a grade é a mesma ao bit, plano a plano, e a água continua a correr igual.
+#[test]
+fn a_agua_comprimida_corre_igual() {
+    let cena = |comprime: bool| -> Vec<u8> {
+        let mut t = PainterTool::default();
+        t.abre_a_sprite(vec![255u8; W * H * 4], W as u32, H as u32);
+        t.set_paint_tool_mode("wetpaint");
+        t.set_wet_relogio_fixo(true);
+        t.preset_aplicar(&preset("Watercolor/Fluid/Wet Round.ph2d-brush.png"))
+            .expect("o meio");
+        t.set_brush_size_px(30.0);
+        t.on_canvas_pointer(ponteiro(40.0, 80.0, PointerPhase::Down));
+        for k in 1..=30 {
+            t.on_canvas_pointer(ponteiro(40.0 + 5.0 * k as f32, 80.0, PointerPhase::Move));
+            t.on_tick(1000.0 / 60.0);
+        }
+        t.on_canvas_pointer(ponteiro(190.0, 80.0, PointerPhase::Up));
+        t.ticks_em_blocos(5);
+        t.set_paint_media(PaintMedia::Digital);
+        if comprime {
+            t.paint.wetpaint.adormecidas[0].encolhe_ja();
+        }
+        t.set_paint_media(PaintMedia::WetPaint);
+        // Acorda antes de contar os quadros: a comprimida acorda uns quadros depois, e a água só corre acordada.
+        while t.paint.wetpaint.session.is_none() {
+            t.on_tick(1000.0 / 60.0);
+            std::thread::sleep(std::time::Duration::from_millis(1));
+        }
+        t.ticks_em_blocos(30);
+        mostrada(&mut t)
+    };
+    assert_eq!(diferentes(&cena(false), &cena(true)), 0);
+}
+
 /// A água parada ao sair volta a correr ao voltar.
 #[test]
 fn a_agua_volta_a_correr() {

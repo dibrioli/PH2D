@@ -17,7 +17,6 @@ ph2d-asset = { path = "../ph2d-asset" }
 ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
-ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 ph2d-render = { path = "../ph2d-render" }
 

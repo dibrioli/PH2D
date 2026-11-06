@@ -10758,7 +10758,6 @@ dependencies = [
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor-core",
- "ph2d-i18n",
  "ph2d-physics-ecs",
  "ph2d-render",
 ]

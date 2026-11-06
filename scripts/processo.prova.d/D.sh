@@ -19,8 +19,7 @@ igual "--proximo dá o ADR livre" "$(python3 scripts/recontar.py --raiz "$tmp/D"
 python3 scripts/recontar.py --raiz "$tmp/D" --apenas adr >/dev/null; igual "ADR duplicado = vermelho" "$?" "1"
 
 # 3. Fixtura registo: as fontes reais copiadas, verde; o literal do ecs escrito errado = vermelho.
-for f in crates/ph2d-ecs/src/scene/registry.rs crates/ph2d-ecs/src/scene/registry_camera.rs \
-         crates/ph2d-ecs/src/scene/registry_tests.rs crates/ph2d-render/src/registry.rs \
+for f in crates/ph2d-ecs/src/scene/registry*.rs crates/ph2d-render/src/registry.rs \
          crates/ph2d-script/src/registry.rs; do
   mkdir -p "$tmp/D/$(dirname "$f")"; cp "$f" "$tmp/D/$f"
 done

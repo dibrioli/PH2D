@@ -1,6 +1,6 @@
 # W3 «Lab» — a tela do SFX Lab: plano
 
-Leitor: a LLM que implementa. Base: `bbfefaf393` + a aprovação de W2 (06/11). Plano geral: [01_plano.md](01_plano.md) · tela de referência: [crítica](pesquisa/critica.md) «Tela principal» · números do motor: [03_W2_medicao.md](03_W2_medicao.md). Estado: **passos 1 a 4 prontos; falta o passo 5 e a medição do passo 6.**
+Leitor: a LLM que implementa. Base: `bbfefaf393` + a aprovação de W2 (06/11). Plano geral: [01_plano.md](01_plano.md) · tela de referência: [crítica](pesquisa/critica.md) «Tela principal» · números do motor: [03_W2_medicao.md](03_W2_medicao.md). Estado: **passos 1 a 5 prontos; falta o smoke do dono.**
 
 ## O que o artista consegue fazer ao fim
 
@@ -32,13 +32,13 @@ Sem pesquisa nova: vale a [tabela do plano §1](01_plano.md) e a [crítica](pesq
 | Quando rende? | `RenderJob` em `ph2d-app-sfxlab`: UMA thread com o `RenderCache`, `submit(receita, ticket)` e `poll`, no modelo de `ph2d-code-format/src/worker.rs:25-73` | `Job` (`progress.rs:248`) recusado: uma thread por job e sem cancelamento |
 | O que se ouve? | `escuta(&Pcm) -> SampleData`: limitador offline sobre uma CÓPIA, e `AudioEngine::play_preview` | Sem tocar na thread de áudio. O arquivo nunca passa por aqui |
 | Quanto mede? | `integrated_lufs` (`ph2d-audio/src/dsp/loudness.rs:50`) e um pico, sobre o buffer SEM limitador | O medidor mostra a verdade do arquivo, inclusive CLIP |
-| Qual é o som aprovado? | `aprovar(lib, receita) -> nome`: grava em `ProjectSounds` e guarda `Approved { sound, blake3, engine }` na receita | Único escritor; motor diferente vira aviso |
-| Quem liga ao objeto? | `AudioSource2D.sound` ou uma entrada do `SoundSet`, por uma só função de `ph2d-app-sfxlab` | Com o desfazer da cena |
+| Qual é o som aprovado? | `ph2d_sfx_lab::aprovar::aprovar(lib, sons, nome) -> som`: grava em `ProjectSounds` e guarda `Approved { sound, blake3, engine }` na receita | Único escritor; motor diferente vira aviso. O nome é só desta receita: reaprovar uma não muda a outra, mesmo que soem igual |
+| Quem liga ao objeto? | `AudioSource2D.sound` ou uma entrada do `SoundSet`, por uma só função, `ph2d_sfx_lab::ligacao::liga` | Escrita no mundo; a fila da cena a vê pelo diff (`undo.rs`) |
 | Desfazer | Fila da família pela `DocumentSurface::undo`, como o Kanban (`ph2d-app-kanban/src/actions.rs:77`), com instantâneos de `Recipe` | Muda o plano §2: ver abaixo |
 
 **Por que não `ProjectState`:** o blob leva as gravações em PCM, e copiá-lo a cada arrasto paga pelo material que não mudou; a `Recipe` tem poucas centenas de bytes e o material é imutável, endereçado por blake3. Kanban e Code já têm a própria fila, e a shell não ganha sítios. `ProjectSounds` não está em `undo.rs`: desfazer o Use in Game devolve a ligação do objeto e deixa o som no projeto, sem efeito no jogo.
 
-**Crates:** `ph2d-panel-sfxlab` (cartões e pintura dos medidores) · `ph2d-app-sfxlab` (`DocumentSurface`, serviço) · `ph2d-sfx-lab` (tabela dos campos, medidas, `RenderJob`: sem tela, e fora do tecto da família). A aba pinta a pilha e os medidores; os cartões são um painel na vaga do Inspector (ver «Decisões de construção»). Custo na shell: dependência, `install`, um gancho por quadro, medidos contra a folga ~136 (`wc -l` do explorador; recontar pelo gate).
+**Crates:** `ph2d-panel-sfxlab` (cartões e pintura dos medidores) · `ph2d-app-sfxlab` (`DocumentSurface`, serviço) · `ph2d-sfx-lab` (tabela dos campos, medidas, `RenderJob`, histórico, som novo, aprovar e ligar: sem tela, e fora do tecto da família). A aba pinta a pilha e os medidores; os cartões são um painel que entra como aba ao lado do Inspector (ver «Decisões de construção»). Custo na shell: dependência, `install`, um gancho por quadro, medidos contra a folga ~136 (`wc -l` do explorador; recontar pelo gate).
 
 **Limitador:** teto −1 dBFS, com antecipação, em `ph2d-sfx-dsp`, sobre `ph2d-det-math`. Como corre offline, não pode estourar por construção.
 
@@ -116,11 +116,21 @@ Os três correm na thread do render, com o cancelamento antes. Espectro barato: 
 
 **Faixas dos campos:** são as do motor (`sanitize.rs`), na unidade da tela. Gate `os_extremos_de_cada_campo_soam_e_sao_finitos`: as duas pontas de cada campo ficam dentro da lei e soam sem não-número; a pior custa 30,9 ms (Duration em 120 s, sonda em perfil `test`, sem otimização). Duas faixas são escolha, com o recurso dito: Gain −60 a +24 dB (o motor vai a 1e6, a escuta limita) e Modes até 1 080 (o máximo de um corpo harmônico, `03_W2_medicao.md`). Attack + Decay + Close somam no máximo 120 s, senão a sanitização cortaria a curva ao abrir: defeito achado pelo gate.
 
-**A medir ainda:** latência da edição até o som novo tocável e custo do limitador por render. O teto de 30 ms continua proposto: o ouvido do dono o confirma aqui.
+**Medido em 06/11, passo 5** (`medir_latencia_e_limitador`, `--ignored`, mínimo de 7 blocos, perfil `smoke`, load ~4). Som estourado, para o limitador trabalhar: abaixo do teto ele só copia.
+
+| O quê, por render, na thread | 2 s de som | 120 s de som |
+|---|---:|---:|
+| Limitador | 0,954 ms | 52,6 ms |
+| Impressão digital (WAV + blake3, para «Changed since approved») | 0,219 ms | 17,8 ms |
+
+Da edição (M, com a camada no cache) até o som tocável, em 2 s, com os quadros da tela: **2,53 ms**, mínimo de 14. O teto de 30 ms continua proposto: o ouvido do dono o confirma no smoke.
 
 ## Decisões de construção (lidas no código, 06/11; valem sobre o §2)
 
-- **Cartões = painel de verdade, na VAGA DO INSPECTOR** (decisão da janela principal, passo 4; revoga a coluna reservada dentro da aba, recusada pela foto: Inspector aberto ao lado de uma faixa vazia). Nenhuma `DocumentSurface` pinta `CardCtx` (exige `PaintCtx`: `panel/cards.rs:149`). ⇒ `ph2d-panel-sfxlab`, `DEFAULT_SLOT` RightTop, `DEFAULT_VISIBLE=false`. Com aba do som ativa o Inspector sai e o painel entra; ao sair, o Inspector volta como estava, aberto ou fechado (`ponte::vaga`). Gates em `ph2d-panel-sfxlab/tests/it/vaga.rs`.
+- **Cartões = painel de verdade, ABA ao lado do Inspector.** Nenhuma `DocumentSurface` pinta `CardCtx` (exige `PaintCtx`: `panel/cards.rs:149`). ⇒ `ph2d-panel-sfxlab`, `DEFAULT_SLOT` RightTop, `DEFAULT_VISIBLE=false`. Com a aba do som ativa o painel entra visível e o `slot_tabs::reconcile_z` o põe à frente; o Inspector continua na vaga, alcançável pela aba dele; ao sair, a poda devolve a frente (`ponte::vaga`). ⛔ **Recusado por ser lei do dono de 08/09:** o painel SUBSTITUIR o Inspector, como no passo 4 (`panel_emprestado`, apagado): o censo `no_family_crate_hides_the_inspector_to_take_its_slot` agora vê as crates de família. Gates em `ph2d-panel-sfxlab/tests/it/vaga.rs`.
+- **Use in Game:** sem objeto ligado abre a lista dos objetos; ligado por Create sound (`StableId`) vai direto; objeto sumido cai na lista e a barra diz por quê. Objeto sem `AudioSource2D` ganha um com Autoplay, senão nada o tocaria; fonte que já existe fica com o Autoplay dela. **Estado na barra:** compara a impressão do render com a aprovada: mudar e voltar ao mesmo som é «Approved». O desfazer da aba não desaprova (`Aba::desfaz`).
+- **Create sound:** o cartão não tem as abas, então pede por um recurso do mundo (`pede_som_para`), drenado no `service`: uma linha na shell. Linha própria abaixo de Browse/Preview/Stop: com os quatro na mesma fila o texto sai do botão (`nenhum_texto_sai_do_botao`).
+- **Ctrl+Z com a aba ativa é da aba** (`surface_input::undo`): a ligação do Use in Game se desfaz na cena.
 - **Medidores:** coluna fina à direita da pilha, DENTRO da aba, pintada pela surface (`medidor::pinta`). Calculados no `RenderJob` sobre o buffer sem limitador: pico, `integrated_lufs` e espectro pela porta `ph2d-audio-spectral` (ADR-0115). O cálculo mora na crate do painel porque a da família está no tecto de LOC.
 - **Nome da camada:** o tipo, numerado quando repete, por ordem de id: reordenar não renomeia. Derivado na tela, sem campo no documento.
 - **Recording:** o cartão Source escolhe o material (`Widget::Dropdown`). O `Take` não tem nome: a tela diz «Recording 1 (1.00 s)». A Add layer continua pegando o primeiro.
@@ -141,7 +151,7 @@ Os três correm na thread do render, com o cancelamento antes. Espectro barato: 
 2. **Feito.** Família: aba, `RenderJob`, escuta, desfazer, cena 3.
 3. **Feito.** Tela: régua, ondas, pilha, gestos.
 4. **Feito.** Cartões e medidores.
-5. Use in Game, Create sound, Preview sem `Transform`.
-6. Medir, fotografar, smoke do dono, `/pd-onda-fechar`.
+5. **Feito.** Use in Game, Create sound, Preview sem `Transform`, medição, fotos.
+6. Smoke do dono, `/pd-onda-fechar`.
 
 Cada passo muda o seguinte, por isso em série; as medições vão num lote só (§0.10). Janela nova entre passos se o contexto passar de 300 mil.

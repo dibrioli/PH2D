@@ -183,7 +183,7 @@ fn the_liquify_ring_lies_where_the_kernel_deforms_on_bent_art() {
             CANVAS.0,
             CANVAS.1,
             pose(),
-            &Sprite::atlas(0, QUAD, [1.0; 4]),
+            Sprite::atlas(0, QUAD, [1.0; 4]),
             None,
             &camera,
             JANELA,

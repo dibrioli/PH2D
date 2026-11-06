@@ -117,7 +117,7 @@ fn mede_o_anel(graus: f32) {
     );
     let bits = e.to_bits();
     let quad = ph2d_sprite_screen::sprite_image_to_screen_affine(
-        origem.0, origem.1, tr, &sprite, None, &camera, janela,
+        origem.0, origem.1, tr, sprite, None, &camera, janela,
     )
     .as_coeffs();
     let escala = quad[0].hypot(quad[1]);

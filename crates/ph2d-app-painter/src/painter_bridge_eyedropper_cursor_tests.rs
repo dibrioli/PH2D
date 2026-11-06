@@ -41,7 +41,7 @@ fn cena() -> Cena {
     let camera = Camera2d::new([0.0, 0.0], 6.0);
     let tr = ph2d_ecs::world_transform(sim.world(), e).expect("pose");
     let afim =
-        ph2d_sprite_screen::sprite_image_to_screen_affine(N, N, tr, &sprite, None, &camera, JANELA);
+        ph2d_sprite_screen::sprite_image_to_screen_affine(N, N, tr, sprite, None, &camera, JANELA);
     Cena {
         sim,
         present: PresentWorld::new(),

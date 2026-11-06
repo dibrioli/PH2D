@@ -922,7 +922,11 @@ fn every_painter_map_reads_the_sprite_as_it_is_shown() {
     let mut crus = Vec::new();
     for f in &todos {
         let rel = f.strip_prefix(raiz).expect("sob a raiz").to_string_lossy();
-        if rel.contains("_tests") || rel.ends_with("sprite-screen/src/lib.rs") {
+        // A porta e a lei são quem lê o tamanho autorado.
+        if rel.contains("_tests")
+            || rel.ends_with("sprite-screen/src/lib.rs")
+            || rel.ends_with("sprite-screen/src/imagem_aberta.rs")
+        {
             continue;
         }
         let src = fonte(&rel);

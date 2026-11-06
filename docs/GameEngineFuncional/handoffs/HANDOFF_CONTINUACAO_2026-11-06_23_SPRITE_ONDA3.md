@@ -45,10 +45,21 @@ Linha `line/GameEngineFuncional` reaberta em 06/11 de `bbfefaf393` (`git reset -
 - **Defeitos curados no mesmo bloco:** a grade do Pivot lia «Right» para o ponto da esquerda do ecrã com a imagem virada (agora segue o lado que se vê; `a_imagem_espelhada_espelha_o_ponto` fixava o oposto e virou `com_a_imagem_virada_o_ponto_segue_o_lado_que_se_ve`; com Mirror a grade fica no referencial do objeto, como nas duas engines) · `(-1200 × 100)` no cartão após Mirror (`cards_objeto::tamanho` usa o valor absoluto) · rótulos quebrados em duas linhas (célula `Widget::Choice` em vez de `Icons`).
 - **Provas:** E3 no ecrã (`so_a_sprite_nasce_a_pedir_a_imagem`) · Use one Region (`o_aviso_de_folha_da_as_duas_saidas`, `da_folha_parada_use_one_region_abre_o_editor_e_o_quadro_vira_a_area`; `card.insp.sheet_use_region` é só a chave do rótulo) · Transform no Draw: foto `sprite_transform_no_draw`, Auto Key grava Position, Ctrl+Z desfaz os dois · `a_predefinicao_sai_do_custom_e_o_lado_para_no_dispositivo`. Testes novos: `o_censo_dos_campos_da_sprite_em_uso`, `virar_e_tingir_com_os_cartoes_fechados_sao_tres_gestos`, `enquanto_assenta_a_cola_leva_o_cartao_ao_lugar_deste_quadro`, `o_mirror_do_look_espelha_o_objeto_e_saiu_do_transform`, os 4 de `pivot_chave_tests.rs`. Mutações: todas sangraram (M1–M4 do pivot_chave e a do Transform, que escapava do censo e foi morta pelo teste do Mirror).
 - **Cena nova:** `PH2D_GAME_SMOKE_FOTO=sprite_moeda` prende a Coin 4 à Platform High.
-- **Achado fora da Sprite, para a Timeline, NÃO corrigido:** com Position animada, mudar a agulha (via `playhead.seek` + flag de entrada na cena, ainda não reproduzido com o mouse) cria passos de desfazer, e o Ctrl+Z final não muda nada na tela; acontece com Position simples, não com o Flip. Cena `sprite_pivot_chave`: `[sprite-prova]` mostra o desfazer subindo a cada ida.
+- **Achado fora da Sprite, para a Timeline, NÃO corrigido:** com Position animada, mudar a agulha cria passos de desfazer, e o Ctrl+Z final não muda nada na tela; acontece com Position simples, não com o Flip. **FOI reproduzido com cliques reais na régua** (`desfazer` 3→6 em três cliques). Mecanismo: o campo só é declarado conduzido quando muda (`ph2d-timeline-preview/src/lib.rs:163-166`), e `settle` (`undo_app.rs:414-417`) devolve a pose parada ao documento. **Decisão aberta:** tirar da fotografia de undo a pose de quem tem curva, mesmo parada, muda a lei «quem parou volta a ser documento». Cena `sprite_pivot_chave`: `[sprite-prova]` mostra o desfazer subindo a cada ida.
 - **M8/M9 (o hóspede a meio da mola):** `enquanto_assenta_a_cola_leva_o_cartao_ao_lugar_deste_quadro` prova a posição em movimento, e `let dy = 0.0` em `cards_lista.rs` sangra. A variante com rolagem continua sem prova.
-- **Junto com o achado da Timeline:** no fim da cena `sprite_pivot_chave`, depois do Ctrl+Z, a seleção foi para a linha Scene e o Inspector ficou vazio. Não investigado.
+- **Seleção que caía na Scene depois do Ctrl+Z:** curada (`plain_selection_ids`, decisão 19 da ficha).
 - **Ainda aberto:** smoke do dono; dívidas "antes de integrar" acima seguem.
+
+### Rodada 2 do smoke do dono
+
+- **Vai e vem:** a posição na trajetória é linear e o pivô/colisão eram suaves, coincidindo só em t=1,5. ⛔ a régua de só o meio aprovou o defeito; a cena mede 1,25 e 1,75. Cura: `pivot_chave::ritmo_da_chave`. Medido depois: desenho e colisão (8,5; 2) e moeda (8,5; 2,8) em todos os tempos.
+- **Chave de surpresa, `2627b6915d`:** o restauro dá bits novos; o apply marca as ligações `missing` (`ph2d-timeline/src/apply.rs:284`), a cura só corre no fim do `run` (`timeline_bridge.rs:259`) e o Auto Key do mesmo quadro compara e grava. Cura: `esquece_o_quadro` em `apply_project_with`, e `apply_samples` salta um quadro. Teste `o_quadro_do_restauro_nao_cunha_nem_prende`.
+- **Gizmo deslocado, `2627b6915d`:** `sprite_box.rs:47-52` tirava a rotação da 1.ª coluna e só o módulo da 2.ª, perdendo o espelho; basta Mirror object com pivô na linha de cima ou de baixo; sem Timeline nem Stop. Teste `a_caixa_cai_no_desenho_com_o_objeto_espelhado`. **Falta o dono confirmar que era o caso dele.**
+- **Abertos:**
+  - Um quadro de atraso do pivô com o jogo a correr (0,05 m a 3 m/s); segunda escrita de canal entre o dreno e o Auto Key, não localizada.
+  - `gizmo_anchor_half` (`despacho_vetor_alinhar_e_forma.rs:264-279`) ignora `centered`/`offset` no arrasto.
+  - Pose antiga por cerca de dois quadros após o restauro (por leitura, não fotografado).
+  - Ao mover a agulha entre chaves o pivô fica Custom e os campos X e Y aparecem, e o cartão muda de altura.
 
 ## Fora, não bloqueia
 

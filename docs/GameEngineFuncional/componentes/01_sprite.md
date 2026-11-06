@@ -46,8 +46,14 @@ GameMaker e Unreal: pivô de 9 pontos. GDevelop, Construct e GameMaker: editar a
 
 13. **O Pivot não separa desenho e colisão:** num objecto com colisão, mudar o pivô deixa o desenho E a colisão parados no mundo. Vale para o cartão e para a ferramenta do canvas (`ph2d_sprite_edit::pivot::o_resto_fica`: o `Collider.offset` compensa, os filhos ficam). A chave do Pivot leva também o deslocamento do collider, de quem o tem. As sondas do Player nascem do centro do collider (`origem_e_centro`); com o pivô no pé, medir da origem desviava 1,18 m. Teste: `com_o_pivo_no_pe_o_boneco_pisa_e_salta_igual`.
 14. **Espelhar a Sprite: não dão o mesmo** (`sprite_espelhar.rs`): o Transform leva os filhos e a colisão e o Flip deixa-os; com o pivô de lado, o Transform vira à volta do pivô e o Flip no mesmo sítio. **Dono, 06/11, depois do oráculo: os 4 botões juntos no Look**, linhas `Flip image` (H, V) e `Mirror object` (H, V); na Sprite o Transform perde os dois espelhos, os outros objetos não mudam. Oráculo ([`espelhar_oraculo.jsonl`](ferramentas/espelhar_oraculo.jsonl), 72 casos, Godot e Unity): escala −1 é igual nas duas (a imagem vira à volta do pivô, filho e colisão vão junto); o Flip nunca move filho nem colisão, e com pivô fora do centro o Godot vira no lugar e o Unity à volta do pivô. O nosso Flip = o do Godot, medido e mantido (o Player usa `flip_x`, `personagem.rs:192`).
-15. **Censo (dono, 06/11):** 12 campos à vista e 30 no total, aceito (a meta era 10 e 24). Numa sprite com filhos aparece também `Self Tint`, à vista.
+15. **Censo (dono, 06/11):** 13 campos à vista e 31 no total, aceito (a meta era 10 e 24; o 13.º e o 31.º são o Keep in place, pedido pelo dono). Numa sprite com filhos aparece também `Self Tint`, à vista.
 16. **A chave do Pivot leva os filhos diretos** (`ph2d_sprite_edit::pivot_chave`: `filhos_do_pivo`, população do Auto Key via `autokey_amostra.rs`; `clique_leva_os_filhos`, chamado em `shells/presos/src/losango.rs`). Medido na cena `sprite_pivot_chave`: a moeda presa fica em (8.5, 2.8) em t=1, t=2 e t=1,5; antes da cura o filho derivava até 1,5 m.
+
+**Do dono, smoke de 06/11:**
+
+17. **Keep in place no Look** (`ImageUseEdit::MirrorInPlace`, `pivot::espelha_no_lugar`): o Mirror espelha filhos e colisão, a imagem fica onde está e a posição compensa. Preferência de sessão, desligada por omissão.
+18. **Grade do Pivot sem o nome** (dono: desnecessário). O botão … abre X e Y; os nomes ficam na dica de cada ponto.
+19. **Ctrl+Z mantém selecionado o objeto comum que sobreviveu** (`plain_selection_ids`, dono 06/11). As famílias de `keeps_its_selection` seguem a marca do passo.
 
 Outros acertos da mesma noite: `Reimport at scale` e o nome do ponto do Pivot (desce para debaixo da grade quando o maior dos dez nomes não cabe ao lado) não se cortam no piso real do painel, `DOCK_W_MIN` = 210 px (`nada_do_cartao_da_sprite_e_cortado_no_minimo_do_painel`). A imagem editada herda o nome da de onde veio e toma-lhe o lugar enquanto só ela estiver em uso (`imagem::herda_o_nome`); ⚠️ só nesta sessão, porque o `.ph2dproj` não grava nomes de imagem: ao reabrir, volta o nome do 1.º objecto.
 
@@ -80,7 +86,7 @@ Por estado do painel: **vazio** = cartão Image inteiro é «Drop an image or cl
 ## Aceitação
 
 - **Poder:** pivô no painel, em 9 pontos sobre o desenho visível e Custom · editar a imagem no Painter a partir do cartão, voltando sozinha para **todo objeto que usa aquele asset**, com desfazer · um quadro da folha a um clique.
-- **Facilidade:** em uso, 12 campos à vista e 30 no total (meta original 10 e 24; número real aceito pelo dono em 06/11, decisão 15; `o_censo_dos_campos_da_sprite_em_uso`). Até ver a imagem pelo Add: 3 gestos (`so_a_sprite_nasce_a_pedir_a_imagem`). Virar e tingir com cartões fechados: 3 gestos (`virar_e_tingir_com_os_cartoes_fechados_sao_tres_gestos`).
+- **Facilidade:** em uso, 13 campos à vista e 31 no total (meta original 10 e 24; número real aceito pelo dono em 06/11, decisão 15; `o_censo_dos_campos_da_sprite_em_uso`). Até ver a imagem pelo Add: 3 gestos (`so_a_sprite_nasce_a_pedir_a_imagem`). Virar e tingir com cartões fechados: 3 gestos (`virar_e_tingir_com_os_cartoes_fechados_sao_tres_gestos`).
 - **Intuitividade:** nenhum número interno na tela · o salto de tamanho da folha e do Replace são explicados na hora · unidade no rótulo de todo campo.
 
 ## ⛔ Recusas

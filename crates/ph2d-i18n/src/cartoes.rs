@@ -178,6 +178,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.flip" => "Flip image",
         "card.insp.flip_tip" => "Flips the picture only. Attached objects and collision stay put.",
         "card.insp.mirror_object" => "Mirror object",
+        "card.insp.mirror_keep" => "Keep in place",
+        "card.insp.mirror_keep_tip" => {
+            "Mirror object also mirrors attached objects and collision, but the picture stays where it is."
+        }
         "card.insp.mirror_object_tip" => {
             "Mirrors the whole object around its pivot, with its attached objects and collision."
         }

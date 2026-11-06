@@ -57,8 +57,10 @@ pub const INSP_SPRITE_PIVOT: [NodeId; 9] = [
     hash_node_id("insp_sprite_pivot_7"),
     hash_node_id("insp_sprite_pivot_8"),
 ];
-/// O nome do ponto: o clique abre os campos X e Y.
+/// O botão ao lado da grade: abre os campos X e Y.
 pub const INSP_SPRITE_PIVOT_NOME: NodeId = hash_node_id("insp_sprite_pivot_nome");
+/// **Keep in place**: o Mirror object espelha tudo, e a imagem fica onde está.
+pub const INSP_SPRITE_MIRROR_KEEP: NodeId = hash_node_id("insp_sprite_mirror_keep");
 /// Os campos do Pivot em Custom.
 pub const INSP_SPRITE_PIVOT_XY: [NodeId; 2] = [
     hash_node_id("insp_sprite_pivot_x"),

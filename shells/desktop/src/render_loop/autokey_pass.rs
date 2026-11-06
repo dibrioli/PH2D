@@ -499,8 +499,16 @@ pub(crate) fn apply_samples(
         if discrete {
             timeline.history.begin(&timeline.doc);
         }
-        let interp = default_interp();
+        let padrao = default_interp();
+        let pivo = ph2d_sprite_edit::pivot_chave::com_pivo(to_key.iter().map(|k| (k.0, k.1)));
         for (entity, prop, v, t_e) in &to_key {
+            let interp = ph2d_sprite_edit::pivot_chave::ritmo_da_chave(
+                &timeline.doc,
+                *entity,
+                *prop,
+                &pivo,
+                padrao,
+            );
             timeline
                 .doc
                 .upsert_key(*entity, *prop, *t_e, AnimValue::Float(*v), interp);

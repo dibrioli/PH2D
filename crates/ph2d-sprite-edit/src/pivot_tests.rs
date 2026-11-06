@@ -80,6 +80,31 @@ fn o_pe_e_o_do_desenho_nao_o_da_borda_da_imagem() {
 }
 
 #[test]
+fn o_mirror_no_lugar_nao_move_o_desenho_e_espelha_o_filho() {
+    let mut s = sprite_2x2();
+    s.anchor = [1.0, 0.5];
+    let t = Transform {
+        translation: Vec2::new(3.0, 4.0),
+        rotation: 0.5,
+        scale: Vec2::new(2.0, 1.0),
+        ..Default::default()
+    };
+    let (mut w, e) = mundo_com(s, t);
+    let ppm = 100.0;
+    let centro = |w: &World| no_pai(*w.get::<Transform>(e).unwrap(), s.resolve_anchor(ppm));
+    let antes = centro(&w);
+    assert!(espelha_no_lugar(&mut w, e, ppm, 0));
+    let depois = centro(&w);
+    assert!((antes - depois).length() < 1.0e-4, "{antes:?} × {depois:?}");
+    let novo = w.get::<Transform>(e).unwrap();
+    assert_eq!((novo.scale.x, novo.scale.y), (-2.0, 1.0));
+    assert!(
+        (novo.translation - t.translation).length() > 1.0,
+        "a origem compensa"
+    );
+}
+
+#[test]
 fn com_a_imagem_virada_o_ponto_segue_o_lado_que_se_ve() {
     let mut s = sprite_2x2();
     s.flip_x = true;

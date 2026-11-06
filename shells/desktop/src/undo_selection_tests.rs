@@ -5,7 +5,7 @@
 //! (`tests/the_undo_preserves_the_vector_selection.rs`) prova que o `apply_project` a CHAMA — sem
 //! ele, alguém pode reintroduzir o `vec_pen.clear()` sozinho e estes ficam todos verdes.
 
-use super::{field_selection_back, field_selection_ids, surviving_selection};
+use super::{field_selection_back, field_selection_ids, plain_selection_ids, surviving_selection};
 use ph2d_vec_scene::{VecScene, rectangle};
 
 /// **O QUE AINDA EXISTE CONTINUA SELECIONADO.** É o que devolve o overlay do envelope depois do
@@ -51,6 +51,30 @@ fn nothing_selected_stays_nothing() {
     let a = scene.push_path(rectangle([0.0, 0.0], [1.0, 1.0]));
     assert!(surviving_selection(&[], &scene).is_empty());
     assert!(surviving_selection(&[a], &VecScene::new()).is_empty());
+}
+
+/// O Ctrl+Z não tira a seleção de um objeto comum que sobreviveu (dono 06/11), e quem morreu não volta.
+#[test]
+fn a_plain_object_stays_selected_through_the_undo() {
+    use ph2d_ecs::StableId;
+    let mut antes = bevy_ecs::world::World::new();
+    let a = antes.spawn(StableId(33)).id();
+    let morto = antes.spawn(StableId(44)).id();
+    let osso = antes
+        .spawn((ph2d_skeleton_ecs::Bone::default(), StableId(55)))
+        .id();
+    let ids = plain_selection_ids(&antes, &[a.to_bits(), morto.to_bits(), osso.to_bits()]);
+    assert_eq!(
+        ids,
+        vec![StableId(33), StableId(44)],
+        "o osso segue a marca"
+    );
+    let mut depois = bevy_ecs::world::World::new();
+    for _ in 0..5 {
+        depois.spawn_empty();
+    }
+    let a2 = depois.spawn(StableId(33)).id();
+    assert_eq!(field_selection_back(&mut depois, &ids), vec![a2.to_bits()]);
 }
 
 /// ⭐⭐⭐ **A SELEÇÃO QUE NÃO É UM CAMINHO SOBREVIVE AO RESPAWN** (W113) — a irmã da de cima, e o

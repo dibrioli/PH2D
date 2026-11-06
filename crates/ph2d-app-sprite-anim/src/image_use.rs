@@ -633,6 +633,9 @@ pub fn apply_edit(
         }
         ImageUseEdit::KeepSize(tamanho) => crate::sprite_card::keep_size(world, e, tamanho),
         ImageUseEdit::Pivot(p) => ph2d_sprite_edit::pivot::set_pivot(world, e, db, atlas, ppm, p),
+        ImageUseEdit::MirrorInPlace(eixo) => {
+            ph2d_sprite_edit::pivot::espelha_no_lugar(world, e, ppm, usize::from(eixo))
+        }
     }
 }
 

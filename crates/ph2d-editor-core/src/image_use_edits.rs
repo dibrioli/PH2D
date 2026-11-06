@@ -43,6 +43,8 @@ pub enum ImageUseEdit {
     KeepSize([f32; 2]),
     /// O **Pivot** do cartão Look.
     Pivot(SpritePivot),
+    /// **Mirror object** com **Keep in place**: 0 = horizontal, 1 = vertical.
+    MirrorInPlace(u8),
 }
 
 /// Onde pôr o pivô de uma sprite.

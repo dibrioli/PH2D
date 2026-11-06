@@ -55,14 +55,18 @@ pub fn mao(foto: Foto, quadro: u32) -> Option<Mao> {
         // Duas chaves: o pivô no pé em t = 1, à esquerda em t = 2. A timeline toca 1, 2 e o meio; depois Ctrl+Z.
         Foto::SpritePivotChave => {
             return match quadro.checked_sub(INICIO)? {
-                0 | 20 | 50 | 70 | 90 | 110 | 140 => Some(Mao::Prova),
+                0 | 20 | 50 | 70 | 90 | 110 | 165 => Some(Mao::Prova),
                 10 => Some(Mao::Pivo([1, 2])),
                 30 => Some(Mao::Agulha(2.0)),
                 40 => Some(Mao::Pivo([0, 1])),
                 60 => Some(Mao::Agulha(1.0)),
                 80 => Some(Mao::Agulha(2.0)),
                 100 => Some(Mao::Agulha(1.5)),
-                120 => Some(Mao::Desfaz),
+                115 => Some(Mao::Agulha(1.25)),
+                125 => Some(Mao::Prova),
+                130 => Some(Mao::Agulha(1.75)),
+                135 => Some(Mao::Prova),
+                145 => Some(Mao::Desfaz),
                 _ => None,
             };
         }

@@ -11,7 +11,8 @@
 //! fotografia, a reposição, e o passo que nasce por DIFF uma vez por quadro.
 
 use super::{
-    ProjectState, SelectionMark, field_selection_back, field_selection_ids, surviving_selection,
+    ProjectState, SelectionMark, field_selection_back, field_selection_ids, plain_selection_ids,
+    surviving_selection,
 };
 use ph2d_vec_scene::VecScene;
 
@@ -165,7 +166,14 @@ impl crate::App {
         // devolve o objecto, e a selecção de *agora* está vazia — transportá-la deixava a peça de
         // volta **sem gizmo, para sempre**. Quando o passo traz a sua, é ela.
         let was_field: Vec<ph2d_ecs::StableId> = match mark {
-            Some(m) => m.field.clone(),
+            Some(m) => {
+                let bits: Vec<u64> = gfx.hero_screen.as_ref().map_or_else(Vec::new, |h| {
+                    let extra = h.gizmo.extra_selection.iter().copied();
+                    h.gizmo.selection.iter().copied().chain(extra).collect()
+                });
+                let comuns = plain_selection_ids(gfx.sim.world(), &bits);
+                m.field.iter().copied().chain(comuns).collect()
+            }
             None => gfx.hero_screen.as_ref().map_or_else(Vec::new, |h| {
                 let bits: Vec<u64> = h
                     .gizmo

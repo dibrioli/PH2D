@@ -89,6 +89,20 @@ pub(crate) fn giro_click(
         INSP_TRANSFORM_FLIP_H, INSP_TRANSFORM_FLIP_V, INSP_TRANSFORM_ROT, INSP_TRANSFORM_ROTATE_CW,
         INSP_TRANSFORM_SCALE_X, INSP_TRANSFORM_SCALE_Y,
     };
+    // Keep in place: o espelho passa pela porta da imagem, que sabe compensar o pivô.
+    if crate::cards_sprite_pivot::mirror_no_lugar()
+        && crate::state::current_inspector_sprite().is_some()
+        && (id == INSP_TRANSFORM_FLIP_H || id == INSP_TRANSFORM_FLIP_V)
+    {
+        let eixo = u8::from(id == INSP_TRANSFORM_FLIP_V);
+        crate::cards::scale_espelhado(info.entity_bits, usize::from(eixo));
+        host.bus_mut()
+            .push(ph2d_editor_core::action_bus::EditorAction::ImageUseEdit {
+                entity_bits: info.entity_bits,
+                edit: ph2d_editor_core::ImageUseEdit::MirrorInPlace(eixo),
+            });
+        return true;
+    }
     let troca_sinal = |host: &mut dyn PanelHostInternal, campo, atual: f32| {
         host.store_mut().set_number_value(campo, -f64::from(atual));
     };

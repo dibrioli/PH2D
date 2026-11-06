@@ -235,6 +235,26 @@ pub fn arrasta(world: &mut World, e: Entity, origem: [f32; 2], anchor: [f32; 2])
     }
 }
 
+/// ⭐ **Mirror com a imagem no lugar** (dono 06/11): espelha o objeto inteiro, filhos e colisão, e a posição compensa o
+/// pivô, que foi para o outro lado. O desenho parece ter feito só um Flip. `eixo`: 0 = horizontal, 1 = vertical.
+pub fn espelha_no_lugar(world: &mut World, e: Entity, ppm: f32, eixo: usize) -> bool {
+    let Some(a) = world.get::<Sprite>(e).map(|s| s.resolve_anchor(ppm)) else {
+        return false;
+    };
+    let Some(t) = world.get::<Transform>(e).copied() else {
+        return false;
+    };
+    let mut novo = t;
+    if eixo == 0 {
+        novo.scale.x = -t.scale.x;
+    } else {
+        novo.scale.y = -t.scale.y;
+    }
+    novo.translation += no_pai(t, a) - no_pai(novo, a);
+    world.entity_mut(e).insert(novo);
+    true
+}
+
 /// ⭐ O campo Pivot do cartão Look. `false` se nada mudou.
 pub fn set_pivot(
     world: &mut World,

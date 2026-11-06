@@ -6,13 +6,14 @@ use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::paint::{paint_text, resolve};
+use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::panel::cards::{CardCtx, Cell, Seg, Widget};
+use ph2d_editor_core::widget::CheckboxValue;
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{IconId, ImageUseEdit, SpritePivot};
 use ph2d_i18n::tr;
-use ph2d_tokens::{ColorToken, Spacing, TypeToken};
+use ph2d_tokens::{ColorToken, Spacing};
 
 const CASAS_POR_LADO: f32 = 3.0; // LITERAL-PX-OK: a grade é 3 × 3, conta e não geometria
 /// A marca do Flip grava os dois eixos; a do Pivot, o pivô e a posição (`marcas_inspector::mascara`).
@@ -32,9 +33,16 @@ pub(crate) const NOMES_DO_PIVOT: [&str; 9] = [
 ];
 
 thread_local! {
+    /// **Keep in place** está marcado? Uma preferência da sessão, não do objecto.
+    static MIRROR_NO_LUGAR: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     /// Os objectos com os campos X e Y abertos à mão, com o pivô num dos nove pontos.
     static PIVOT_ABERTO: std::cell::RefCell<std::collections::BTreeSet<u64>> =
         const { std::cell::RefCell::new(std::collections::BTreeSet::new()) };
+}
+
+/// O Mirror object do Look mantém a imagem no lugar?
+pub(crate) fn mirror_no_lugar() -> bool {
+    MIRROR_NO_LUGAR.with(std::cell::Cell::get)
 }
 
 /// Os campos X e Y estão à vista? Sempre em Custom; nos nove pontos, só se a mão os abriu.
@@ -52,6 +60,17 @@ pub(crate) fn prepara_campos_do_pivot(store: &mut WidgetStore) {
     ] {
         store.set_tooltip(id, tr(chave));
     }
+    store.register_if_absent(
+        ids::INSP_SPRITE_MIRROR_KEEP,
+        ph2d_editor_core::interaction::InteractiveState::Checkbox {
+            state: ph2d_editor_core::widget::CheckboxState::Normal,
+            value: CheckboxValue::Unchecked,
+        },
+    );
+    store.set_tooltip(
+        ids::INSP_SPRITE_MIRROR_KEEP,
+        tr("card.insp.mirror_keep_tip"),
+    );
     let f = slot_image::factos();
     let foco = store.focus_id();
     let mao = store.number_input_drag().map(|d| d.id);
@@ -114,38 +133,37 @@ fn grade_do_pivot(c: &mut CardCtx<'_>, y: f32, f: slot_image::SpriteFacts) -> f3
         );
         c.hit_index.register(id, r);
     }
-    let nome = aceso.map_or(tr("card.insp.pivot.custom"), |i| tr(NOMES_DO_PIVOT[i]));
-    let letra = TypeToken::Sm.px();
-    // O maior dos dez nomes decide, ou o lado do nome saltaria ao clicar noutro ponto.
-    let maior = NOMES_DO_PIVOT
-        .iter()
-        .map(|&k| tr(k))
-        .chain([tr("card.insp.pivot.custom")])
-        .map(|n| c.text_system.prefix_width(n, letra))
-        .fold(0.0, f32::max);
-    let ao_lado = (c.w - lado - Spacing::Xs.px()).max(0.0);
-    let (r, fim) = if maior <= ao_lado {
-        (
-            Rect::new(c.x + lado + Spacing::Xs.px(), y, ao_lado, lado),
-            y + lado,
-        )
+    let botao = [Seg {
+        id: ids::INSP_SPRITE_PIVOT_NOME,
+        icon: Some(IconId::More),
+        text: "",
+        on: pivot_campos_abertos(&f),
+    }];
+    let (x0, w0) = (c.x, c.w);
+    (c.x, c.w) = (c.x + lado + Spacing::Xs.px(), m::FIELD_H);
+    c.row(&[Cell::new(Widget::Bare(&botao))], y);
+    (c.x, c.w) = (x0, w0);
+    y + lado + m::FIELD_ROW_GAP
+}
+
+/// A caixa `Keep in place`, na largura inteira do cartão: o texto não cabe ao lado do Pivot no painel mínimo.
+fn caixa_do_mirror(c: &mut CardCtx<'_>, y: f32) -> f32 {
+    let value = if mirror_no_lugar() {
+        CheckboxValue::Checked
     } else {
-        // Painel estreito: o nome desce para debaixo da grade, na coluna inteira.
-        let abaixo = y + lado + m::FIELD_ROW_GAP;
-        (Rect::new(c.x, abaixo, c.w, letra), abaixo + letra)
+        CheckboxValue::Unchecked
     };
-    paint_text(
-        c.text_system,
-        c.scene,
-        nome,
-        r.x,
-        r.y + (r.h - letra) * 0.5,
-        letra,
-        r.w,
-        resolve(ColorToken::Text1, theme),
-    );
-    c.hit_index.register(ids::INSP_SPRITE_PIVOT_NOME, r);
-    fim + m::FIELD_ROW_GAP
+    let id = ids::INSP_SPRITE_MIRROR_KEEP;
+    let label = tr("card.insp.mirror_keep").into();
+    c.row(
+        &[Cell::new(Widget::Check {
+            id,
+            label,
+            value,
+            off: false,
+        })],
+        y,
+    )
 }
 
 /// Os dois espelhos e o Pivot lado a lado. Os ids do Flip continuam caixas de marcar: o clique emite o mesmo
@@ -203,7 +221,7 @@ pub(crate) fn flip_e_pivot(c: &mut CardCtx<'_>, y: f32) -> f32 {
         .and_then(|i| slot_image::factos().filter(|f| f.entity_bits == i.entity_bits))
     else {
         (c.x, c.w) = (x0, w0);
-        return fim_espelhos;
+        return caixa_do_mirror(c, fim_espelhos);
     };
     (c.x, c.w) = (xb, wb);
     c.row(
@@ -216,7 +234,7 @@ pub(crate) fn flip_e_pivot(c: &mut CardCtx<'_>, y: f32) -> f32 {
     let topo = fim_flip - m::FIELD_H;
     let fim_grade = grade_do_pivot(c, topo, f);
     (c.x, c.w) = (x0, w0);
-    let fim = fim_espelhos.max(fim_grade);
+    let fim = caixa_do_mirror(c, fim_espelhos.max(fim_grade));
     if !pivot_campos_abertos(&f) {
         return fim;
     }
@@ -240,6 +258,10 @@ pub(crate) fn flip_e_pivot(c: &mut CardCtx<'_>, y: f32) -> f32 {
 /// Os cliques e os números do Pivot. `true` = consumido.
 pub(crate) fn evento_do_pivot(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     let pivot = match ev {
+        WidgetEvent::Toggled(id) if id == ids::INSP_SPRITE_MIRROR_KEEP => {
+            MIRROR_NO_LUGAR.with(|m| m.set(!m.get()));
+            return true;
+        }
         WidgetEvent::Click(id) if id == ids::INSP_SPRITE_PIVOT_NOME => {
             if let Some(s) = crate::state::current_inspector_sprite() {
                 PIVOT_ABERTO.with(|a| {

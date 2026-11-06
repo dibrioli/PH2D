@@ -330,7 +330,9 @@ impl ProjectState {
 /// [`undo_selection`](self::selection).
 #[path = "undo_selection.rs"]
 mod selection;
-pub(crate) use selection::{field_selection_back, field_selection_ids, surviving_selection};
+pub(crate) use selection::{
+    field_selection_back, field_selection_ids, plain_selection_ids, surviving_selection,
+};
 
 // ⭐ **`canonicalize` MORREU AQUI** (ADR-0164 F1, snapshot v2).
 //

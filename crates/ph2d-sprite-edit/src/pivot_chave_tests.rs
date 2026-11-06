@@ -1,5 +1,5 @@
 use super::*;
-use ph2d_anim::{AnimValue, Interp, RationalTime};
+use ph2d_anim::{AnimValue, RationalTime};
 use ph2d_ecs::{ChildOf, Transform};
 
 const FILHO: u64 = 99;
@@ -108,4 +108,34 @@ fn os_filhos_sao_os_diretos_de_quem_e_sprite() {
     let achados = filhos_do_pivo(&w, [sprite.to_bits(), vazio.to_bits()].into_iter());
     assert_eq!(achados, vec![filho.to_bits()]);
     assert!(!achados.contains(&neto.to_bits()) && !achados.contains(&do_vazio.to_bits()));
+}
+
+/// O vai e vem do dono: numa trajetória, o pivô e a colisão de quem grava o pivô andam em ritmo constante.
+/// *Mutação: devolver sempre `padrao` ⇒ o desenho desloca 0,28 m em t = 1,25 (cena `sprite_pivot_chave`).*
+#[test]
+fn na_trajetoria_o_pivo_e_a_colisao_andam_no_ritmo_da_posicao() {
+    let doc = TimelineDoc::new();
+    let ancora =
+        PropKind::Field(ph2d_ecs::canal_componente::chave("ph2d::render::Sprite", 4, 0).unwrap());
+    let colisao = PropKind::Field(ph2d_ecs::FieldKey::new(
+        ph2d_ecs::canal::familia::FISICA,
+        ph2d_ecs::canal_fisica::DESLOC_X,
+        0,
+        0,
+    ));
+    let suave = Interp::Hold;
+    let quem = com_pivo([(FILHO, ancora)].into_iter());
+    assert_eq!(
+        ritmo_da_chave(&doc, FILHO, ancora, &quem, suave),
+        Interp::Linear
+    );
+    assert_eq!(
+        ritmo_da_chave(&doc, FILHO, colisao, &quem, suave),
+        Interp::Linear
+    );
+    assert_eq!(
+        ritmo_da_chave(&doc, FILHO, colisao, &[], suave),
+        suave,
+        "quem só anima a colisão fica com o ritmo de sempre"
+    );
 }

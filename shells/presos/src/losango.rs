@@ -120,6 +120,7 @@ pub fn clique(
             use ph2d_sprite_edit::pivot_chave as pivo;
             let filhos = pivo::filhos_do_pivo(sim.world(), sel.iter().copied());
             i = pivo::clique_leva_os_filhos(i, tl, &filhos, inst, valor, k);
+            pivo::iguala_o_ritmo(&mut i, tl);
         }
     }
     if i.is_empty() {

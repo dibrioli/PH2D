@@ -150,7 +150,10 @@ fn os_campos_custom_so_aparecem_em_custom_ou_pela_mao() {
         "num dos nove pontos, fechados"
     );
     let _ = clica(&mut host, &mut st, INSP_SPRITE_PIVOT_NOME);
-    assert!(tem(&pinta(&mut host, &mut st)), "o nome do ponto abre-os");
+    assert!(
+        tem(&pinta(&mut host, &mut st)),
+        "o botão ao lado da grade abre-os"
+    );
     let _ = clica(&mut host, &mut st, INSP_SPRITE_PIVOT_NOME);
 
     let (mut host, mut st) = cena(SpriteFacts {
@@ -803,6 +806,7 @@ fn campos_da_sprite() -> Vec<Vec<NodeId>> {
         INSP_TRANSFORM_ROTATE_CW,
         INSP_TRANSFORM_FLIP_H,
         INSP_TRANSFORM_FLIP_V,
+        ph2d_panel_inspector::ids::INSP_SPRITE_MIRROR_KEEP,
         INSP_TRANSFORM_SCALE_X,
         INSP_TRANSFORM_SCALE_Y,
         ph2d_panel_inspector::SCALE_LOCK,
@@ -850,7 +854,7 @@ fn o_censo_dos_campos_da_sprite_em_uso() {
     for id in [core_ids::INSP_LIVE_RENDER_SECTION, CARD_ORDERING] {
         host.store_mut().set_collapsed(id, true);
     }
-    assert_eq!(conta(&pinta(&mut host, &mut st)), (12, 18), "à vista");
+    assert_eq!(conta(&pinta(&mut host, &mut st)), (13, 18), "à vista");
     for id in [
         core_ids::INSP_LIVE_RENDER_SECTION,
         CARD_ORDERING,
@@ -858,7 +862,7 @@ fn o_censo_dos_campos_da_sprite_em_uso() {
     ] {
         host.store_mut().set_collapsed(id, false);
     }
-    assert_eq!(conta(&pinta(&mut host, &mut st)), (30, 18), "no total");
+    assert_eq!(conta(&pinta(&mut host, &mut st)), (31, 18), "no total");
 }
 
 /// Na Sprite o `Mirror object` mora no Look, e clicá-lo troca o sinal da escala (dono 06/11).
@@ -879,6 +883,27 @@ fn o_mirror_do_look_espelha_o_objeto_e_saiu_do_transform() {
         a.iter().any(|x| matches!(
             x,
             EditorAction::InspectorTransformEdit(t) if t.scale == [-1.0, 1.0]
+        )),
+        "{a:?}"
+    );
+}
+
+/// Keep in place marcado: o Mirror passa a pedir o espelho que compensa o pivô (dono 06/11).
+/// *Mutação: tirar o desvio de `giro_click` ⇒ sai o espelho de sempre, e o desenho salta.*
+#[test]
+fn com_keep_in_place_o_mirror_pede_o_espelho_no_lugar() {
+    let (mut host, mut st) = cena(factos());
+    let keep = ph2d_panel_inspector::ids::INSP_SPRITE_MIRROR_KEEP;
+    let _ = clica(&mut host, &mut st, keep);
+    let (_, a) = clica(&mut host, &mut st, INSP_TRANSFORM_FLIP_H);
+    let _ = clica(&mut host, &mut st, keep);
+    assert!(
+        a.iter().any(|x| matches!(
+            x,
+            EditorAction::ImageUseEdit {
+                edit: ph2d_editor_core::ImageUseEdit::MirrorInPlace(0),
+                ..
+            }
         )),
         "{a:?}"
     );

@@ -78,6 +78,20 @@ fn keeps_its_selection(world: &bevy_ecs::world::World, e: bevy_ecs::entity::Enti
         || world.get::<ph2d_skeleton_ecs::IkTarget>(e).is_some()
 }
 
+/// ⭐ O objeto comum que está selecionado AGORA continua selecionado depois do Ctrl+Z, se sobreviver (dono 06/11:
+/// «ninguém desselecionou»). As famílias de [`keeps_its_selection`] seguem a marca do passo.
+pub(crate) fn plain_selection_ids(
+    world: &bevy_ecs::world::World,
+    bits: &[u64],
+) -> Vec<ph2d_ecs::StableId> {
+    bits.iter()
+        .map(|b| bevy_ecs::entity::Entity::from_bits(*b))
+        .filter(|e| !keeps_its_selection(world, *e))
+        .filter_map(|e| ph2d_ecs::stable_id_of(world, e))
+        .filter(|id| !id.is_none())
+        .collect()
+}
+
 /// E de volta: os bits **novos** de quem sobreviveu ao respawn. Quem morreu simplesmente não volta.
 pub(crate) fn field_selection_back(
     world: &mut bevy_ecs::world::World,

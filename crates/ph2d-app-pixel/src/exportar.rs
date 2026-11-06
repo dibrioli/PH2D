@@ -4,25 +4,14 @@
 use ph2d_editor_core::pixel_panel::{PixelFileAction as A, PixelRequest};
 use ph2d_editor_core::screens::hero::{HeroScreen, PANEL_PIXEL_EXPORT};
 use ph2d_i18n::tr;
-use ph2d_panel_pixel_export::canal::{self, Gravacoes, Imagem, Pedido, PreviaDaFolha, Tela};
+use ph2d_panel_pixel_export::canal::{self, Pedido, Tela};
 use ph2d_panel_pixel_export::textos;
 use ph2d_pixel_io::abrir;
 use ph2d_pixel_io::exporta::{self, Export};
 
 use crate::PixelApp;
 
-const LIDOS: [&str; 6] = ["ase", "aseprite", "png", "apng", "gif", "webp"];
-
-/// O lado da família da janela de Export e Import.
-#[derive(Default)]
-pub struct Estado {
-    previa: PreviaDaFolha,
-    gravacoes: Gravacoes,
-    /// A imagem do Import, o nome do objecto e o `.json` ao lado.
-    imagem: Option<(Imagem, String, Option<String>)>,
-    /// A janela a abrir no próximo quadro (lá há o `hero`).
-    abrir: bool,
-}
+pub use ph2d_pixel_io::abrir::le_todos;
 
 impl PixelApp {
     /// O menu File do Pixel; `false` = não é dele.
@@ -30,11 +19,12 @@ impl PixelApp {
         let PixelRequest::File(a) = r else {
             return false;
         };
-        let dialogo = || rfd::FileDialog::new().add_filter(tr("pixel.io.kind_images"), &LIDOS);
+        let dialogo =
+            || rfd::FileDialog::new().add_filter(tr("pixel.io.kind_images"), &abrir::LIDOS);
         match a {
             A::Open => {
                 if let Some(c) = ph2d_app_host::modal::pick_files(dialogo()) {
-                    self.abre(abrir::abrir_caminhos(&c));
+                    self.abre_leva(&c);
                 }
             }
             A::ImportSheet => {
@@ -108,18 +98,18 @@ impl PixelApp {
         self.exporta.gravacoes.drena_barras(q);
     }
 
-    fn abre(&mut self, r: Result<abrir::Aberto, abrir::ErroAbrir>) -> bool {
-        match r {
-            Ok((s, avisos, nome)) => {
-                self.avisos.extend(textos::do_aberto(&nome, avisos));
-                self.nasce_doc = Some((s, nome));
-                true
-            }
-            Err(e) => {
-                self.avisos.push((true, textos::erro_abrir(&e)));
-                false
-            }
+    fn abre_leva(&mut self, c: &[std::path::PathBuf]) {
+        for r in abrir::abrir_leva(c) {
+            self.abre(r);
         }
+    }
+
+    fn abre(&mut self, r: Result<abrir::Aberto, abrir::ErroAbrir>) -> bool {
+        let (frases, doc) = textos::do_abrir(r);
+        self.avisos.extend(frases);
+        let ok = doc.is_some();
+        self.nasce_doc.extend(doc);
+        ok
     }
 }
 
@@ -132,6 +122,9 @@ pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
         }
     });
     app.avisos.extend(frases);
+    if let Some(c) = hero.store.take_import_as(true) {
+        app.abre_leva(&c);
+    }
     let doc = app.chave.and_then(|k| Some((k, app.docs.get(&k)?)));
     hero.store
         .set_pixel_file_menu(doc.map(|(_, d)| d.sprite.export_preset().is_some()));

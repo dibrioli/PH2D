@@ -437,6 +437,8 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
         ids::CTX_MENU_PIXEL_EXPORT_AS,
         ids::CTX_MENU_PIXEL_EXPORT_SHEET,
         ids::CTX_MENU_PIXEL_REPEAT_EXPORT,
+        ids::CTX_MENU_IMPORT_AS_IMAGE,
+        ids::CTX_MENU_IMPORT_AS_PIXEL,
         ids::CTX_MENU_OPEN_PROJECT,
         ids::CTX_MENU_IMPORT,
         ids::CTX_MENU_SETTINGS_PPM,

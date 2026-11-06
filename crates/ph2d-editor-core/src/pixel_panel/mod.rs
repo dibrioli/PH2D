@@ -310,13 +310,16 @@ pub struct ColorModeDialog {
 }
 
 /// Os diálogos do Pixel Art no `WidgetStore`.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PixelDialogs {
     pub(crate) new_sprite: NewSpriteDialog,
     pub(crate) color_mode: ColorModeDialog,
     pub(crate) edit: PixelEditDialog,
     pub(crate) file_menu: Option<bool>,
     pub(crate) file_request: Option<PixelFileAction>,
+    /// Os ficheiros do File ▸ Import à espera da pergunta, e a resposta.
+    pub(crate) import_pendente: Option<Vec<std::path::PathBuf>>,
+    pub(crate) import_decidido: Option<(bool, Vec<std::path::PathBuf>)>,
 }
 
 impl Default for PixelOptions {
@@ -584,13 +587,12 @@ impl PixelFileAction {
     /// O comando da linha `id` do menu File, se é do Pixel.
     #[must_use]
     pub fn of_menu_row(id: ph2d_a11y::NodeId) -> Option<Self> {
-        use crate::ids as i;
         [
-            (i::CTX_MENU_PIXEL_OPEN, Self::Open),
-            (i::CTX_MENU_PIXEL_IMPORT_SHEET, Self::ImportSheet),
-            (i::CTX_MENU_PIXEL_EXPORT_AS, Self::ExportAs),
-            (i::CTX_MENU_PIXEL_EXPORT_SHEET, Self::ExportSheet),
-            (i::CTX_MENU_PIXEL_REPEAT_EXPORT, Self::RepeatExport),
+            (crate::ids::CTX_MENU_PIXEL_OPEN, Self::Open),
+            (crate::ids::CTX_MENU_PIXEL_IMPORT_SHEET, Self::ImportSheet),
+            (crate::ids::CTX_MENU_PIXEL_EXPORT_AS, Self::ExportAs),
+            (crate::ids::CTX_MENU_PIXEL_EXPORT_SHEET, Self::ExportSheet),
+            (crate::ids::CTX_MENU_PIXEL_REPEAT_EXPORT, Self::RepeatExport),
         ]
         .into_iter()
         .find_map(|(r, a)| (r == id).then_some(a))

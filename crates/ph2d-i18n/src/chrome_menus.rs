@@ -141,6 +141,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu.save_cmd_s" => "Save \u{00b7} Cmd+S",
         "chrome.menu.save_as_cmd_shift_s" => "Save As\u{2026} \u{00b7} Cmd+Shift+S",
         "chrome.menu.export_svg" => "Export SVG\u{2026}",
+        "chrome.menu.import_as_image" => "Import as Image (Painter)",
+        "chrome.menu.import_as_pixel" => "Import as Pixel Sprite",
         "chrome.menu.pixel_open" => "Open as Pixel Sprite\u{2026}",
         "chrome.menu.pixel_import_sheet" => "Import Sheet\u{2026} \u{00b7} Ctrl+I",
         "chrome.menu.pixel_export_as" => "Export As\u{2026}",

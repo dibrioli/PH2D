@@ -515,3 +515,32 @@ fn chave_natural(n: &str) -> (String, u64) {
     let raiz = n.trim_end_matches(|c: char| c.is_ascii_digit());
     (raiz.to_owned(), n[raiz.len()..].parse().unwrap_or(0))
 }
+
+/// As extensões que viram documento.
+pub const LIDOS: [&str; 6] = ["ase", "aseprite", "png", "apng", "gif", "webp"];
+
+fn extensao_de(c: &std::path::Path) -> String {
+    c.extension()
+        .map_or_else(String::new, |x| x.to_string_lossy().to_ascii_lowercase())
+}
+
+/// Todos estes ficheiros podem virar Pixel Sprite?
+#[must_use]
+pub fn le_todos(caminhos: &[std::path::PathBuf]) -> bool {
+    !caminhos.is_empty()
+        && caminhos
+            .iter()
+            .all(|c| LIDOS.contains(&extensao_de(c).as_str()))
+}
+
+/// Uma leva: vários PNG são uma sequência; o resto, um documento por ficheiro.
+#[must_use]
+pub fn abrir_leva(caminhos: &[std::path::PathBuf]) -> Vec<Result<Aberto, ErroAbrir>> {
+    if caminhos.iter().all(|c| extensao_de(c) == "png") {
+        return vec![abrir_caminhos(caminhos)];
+    }
+    caminhos
+        .iter()
+        .map(|c| abrir_caminhos(std::slice::from_ref(c)))
+        .collect()
+}

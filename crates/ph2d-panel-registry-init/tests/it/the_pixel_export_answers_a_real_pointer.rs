@@ -201,3 +201,23 @@ fn as_listas_e_as_outras_janelas_respondem() {
     clica(&mut hero, e::CANCEL, "Cancel");
     assert_eq!(hero.panel_visibility.get(PANEL_PIXEL_EXPORT), Some(&false));
 }
+
+/// As duas respostas da pergunta do File ▸ Import, pelo ponteiro.
+#[test]
+fn a_pergunta_do_import_responde_ao_ponteiro() {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    for (id, nome, pixel) in [
+        (ids::CTX_MENU_IMPORT_AS_IMAGE, "Image", false),
+        (ids::CTX_MENU_IMPORT_AS_PIXEL, "Pixel Sprite", true),
+    ] {
+        let mut hero = HeroScreen::new(NodeId(1));
+        pinta(&mut hero, &mut ts);
+        let c = vec![std::path::PathBuf::from("a.png")];
+        hero.store.ask_import_as(c.clone());
+        pinta(&mut hero, &mut ts);
+        clica(&mut hero, id, nome);
+        assert_eq!(hero.store.take_import_as(pixel), Some(c), "{nome}");
+        assert!(hero.store.context_menu().is_none(), "{nome}");
+    }
+}

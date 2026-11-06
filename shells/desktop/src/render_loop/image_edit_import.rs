@@ -31,7 +31,9 @@ pub(super) fn drain_import(
     // lays them out in a near-square grid anchored at the camera center
     // (first cell's center = `camera.center`; grid grows right + down)
     // instead of stacking every sprite on one point.
-    if hero.import_requested {
+    // O File ▸ Import pergunta o que os ficheiros viram (dono 05/11); a resposta volta por aqui.
+    let decidido = hero.store.take_import_as(false);
+    if hero.import_requested || decidido.is_some() {
         hero.import_requested = false;
         // ⚠️ **O filtro é DERIVADO, nunca escrito à mão** (`crate::import_router`, Enio
         // 2026-08-23: *«.ase não aparece no dialog de import»*). A lista que morava aqui tinha
@@ -43,7 +45,14 @@ pub(super) fn drain_import(
         for (label, exts) in crate::import_router::dialog_filters() {
             dialog = dialog.add_filter(label, &exts);
         }
-        let picked = dialog.pick_files();
+        let picked = decidido.or_else(|| {
+            let p = dialog.pick_files()?;
+            if ph2d_app_pixel::exportar::le_todos(&p) {
+                hero.store.ask_import_as(p);
+                return None;
+            }
+            Some(p)
+        });
         let pixels_per_meter = hero.project.pixels_per_meter;
         if let Some(paths) = picked {
             // A MESMA função que o drag & drop chama: a única diferença entre as duas portas é de

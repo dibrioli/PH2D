@@ -299,6 +299,32 @@ impl WidgetStore {
         self.pixel.file_request = Some(a);
     }
 
+    /// **File ▸ Import:** pergunta, onde o ponteiro está, o que estes ficheiros viram.
+    pub fn ask_import_as(&mut self, paths: Vec<std::path::PathBuf>) {
+        self.pixel.import_pendente = Some(paths);
+        let [x, y] = self.last_pointer().unwrap_or_default();
+        self.open_context_menu(crate::interaction::ContextMenuRequest {
+            x,
+            y,
+            kind: crate::interaction::ContextMenuKind::ImportAs,
+        });
+    }
+
+    /// A resposta: `pixel` = Pixel Sprite; senão, imagem do Painter.
+    pub fn choose_import_as(&mut self, pixel: bool) {
+        if let Some(p) = self.pixel.import_pendente.take() {
+            self.pixel.import_decidido = Some((pixel, p));
+        }
+    }
+
+    /// Toma os ficheiros decididos para `pixel`; os da outra resposta ficam para o outro leitor.
+    pub fn take_import_as(&mut self, pixel: bool) -> Option<Vec<std::path::PathBuf>> {
+        if self.pixel.import_decidido.as_ref()?.0 != pixel {
+            return None;
+        }
+        self.pixel.import_decidido.take().map(|d| d.1)
+    }
+
     /// Toma (e limpa) o comando do menu File.
     pub fn take_pixel_file_request(&mut self) -> Option<crate::pixel_panel::PixelFileAction> {
         self.pixel.file_request.take()

@@ -468,3 +468,60 @@ fn a_folha_importada_tem_os_tempos_da_exportada() {
     };
     assert_eq!(tags(s), tags(&original));
 }
+
+/// **A pergunta do File ▸ Import:** «Pixel Sprite» nasce um por ficheiro (e os PNG viram uma sequência);
+/// «Image» deixa os ficheiros para a shell importar como imagem do Painter, sem nascer sprite.
+#[test]
+fn a_pergunta_do_import_decide_o_tipo_do_objeto() {
+    let mut p = Palco::novo("pergunta");
+    let s = p.app.doc(p.key).expect("doc").sprite.clone();
+    let (ase, _) = ph2d_pixel_io::ase::escrever(&s).expect("grava");
+    let (a, b) = (p.pasta.join("a.ase"), p.pasta.join("b.ase"));
+    std::fs::write(&a, &ase).expect("grava");
+    std::fs::write(&b, &ase).expect("grava");
+    let (x, y) = (p.pasta.join("w1.png"), p.pasta.join("w2.png"));
+    write_folha(&x);
+    write_folha(&y);
+    assert!(ph2d_app_pixel::exportar::le_todos(&[a.clone(), x.clone()]));
+    assert!(!ph2d_app_pixel::exportar::le_todos(&[p
+        .pasta
+        .join("c.svg")]));
+
+    let sprites = |p: &Palco| mode::sprites(p.sim.world()).len();
+    let nasce = |p: &mut Palco| {
+        while object_add::born_from_paste(&mut p.sim, &mut p.app, spawn_root).is_some() {}
+    };
+    let antes = sprites(&p);
+    p.hero.store.ask_import_as(vec![a.clone(), b]);
+    assert_eq!(
+        p.hero.store.context_menu().map(|m| m.kind),
+        Some(ContextMenuKind::ImportAs)
+    );
+    assert!(
+        p.hero
+            .apply_event(WidgetEvent::Click(ids::CTX_MENU_IMPORT_AS_PIXEL))
+    );
+    assert!(p.hero.store.context_menu().is_none());
+    p.quadro();
+    nasce(&mut p);
+    assert_eq!(sprites(&p), antes + 2, "um por .ase");
+
+    p.hero.store.ask_import_as(vec![x, y]);
+    assert!(
+        p.hero
+            .apply_event(WidgetEvent::Click(ids::CTX_MENU_IMPORT_AS_PIXEL))
+    );
+    p.quadro();
+    nasce(&mut p);
+    assert_eq!(sprites(&p), antes + 3, "os PNG, uma sequência");
+
+    p.hero.store.ask_import_as(vec![a.clone()]);
+    assert!(
+        p.hero
+            .apply_event(WidgetEvent::Click(ids::CTX_MENU_IMPORT_AS_IMAGE))
+    );
+    p.quadro();
+    nasce(&mut p);
+    assert_eq!(sprites(&p), antes + 3, "a imagem não é da família");
+    assert_eq!(p.hero.store.take_import_as(false), Some(vec![a]));
+}

@@ -21,6 +21,9 @@ pub const CTX_MENU_PIXEL_IMPORT_SHEET: NodeId = hash_node_id("ctx_menu_pixel_imp
 pub const CTX_MENU_PIXEL_EXPORT_AS: NodeId = hash_node_id("ctx_menu_pixel_export_as");
 pub const CTX_MENU_PIXEL_EXPORT_SHEET: NodeId = hash_node_id("ctx_menu_pixel_export_sheet");
 pub const CTX_MENU_PIXEL_REPEAT_EXPORT: NodeId = hash_node_id("ctx_menu_pixel_repeat_export");
+/// A pergunta do File ▸ Import: o ficheiro vira imagem do Painter ou Pixel Sprite (dono 05/11).
+pub const CTX_MENU_IMPORT_AS_IMAGE: NodeId = hash_node_id("ctx_menu_import_as_image");
+pub const CTX_MENU_IMPORT_AS_PIXEL: NodeId = hash_node_id("ctx_menu_import_as_pixel");
 
 /// A linha *Pixel* do menu *Window*.
 pub const TOPBAR_PIXEL: NodeId = hash_node_id("topbar_pixel");

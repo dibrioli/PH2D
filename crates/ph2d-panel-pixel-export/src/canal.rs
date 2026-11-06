@@ -332,3 +332,14 @@ pub fn imagem_de_import(s: &Sprite, seq: u64, com_dados: bool) -> Imagem {
         com_dados,
     }
 }
+
+/// O que a família guarda da janela de Export e Import.
+#[derive(Default)]
+pub struct LadoDaFamilia {
+    pub previa: PreviaDaFolha,
+    pub gravacoes: Gravacoes,
+    /// A imagem do Import, o nome do objecto e o `.json` ao lado.
+    pub imagem: Option<(Imagem, String, Option<String>)>,
+    /// A janela a abrir no próximo quadro (lá há o `hero`).
+    pub abrir: bool,
+}

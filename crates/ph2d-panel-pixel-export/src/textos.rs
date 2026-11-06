@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use ph2d_i18n::{tr, tr_with};
 use ph2d_pixel_core::Sprite;
-use ph2d_pixel_io::abrir::ErroAbrir;
+use ph2d_pixel_io::abrir::{Aberto, ErroAbrir};
 use ph2d_pixel_io::ase::{AseErro, Aviso};
 use ph2d_pixel_io::exporta::{ErroGravar, Export, Gravado};
 use ph2d_pixel_io::saida::{AvisoSaida, ErroSaida, Formato};
@@ -94,6 +94,18 @@ pub fn do_aberto(nome: &str, avisos: Vec<Aviso>) -> Vec<(bool, String)> {
     let t = tr_with("pixel.io.opened", &[("name", &nome)]);
     let av = avisos.into_iter().map(|a| (false, aviso_ase(a)));
     std::iter::once((false, t)).chain(av).collect()
+}
+
+/// As frases `(é erro, texto)` e o documento com o nome, se abriu.
+type Abertura = (Vec<(bool, String)>, Option<(Sprite, String)>);
+
+/// As frases de um ficheiro aberto e o documento, se abriu.
+#[must_use]
+pub fn do_abrir(r: Result<Aberto, ErroAbrir>) -> Abertura {
+    match r {
+        Ok((s, avisos, nome)) => (do_aberto(&nome, avisos), Some((s, nome))),
+        Err(e) => (vec![(true, erro_abrir(&e))], None),
+    }
 }
 
 /// O nome de partida no diálogo de gravar e a pasta: os do último export deste sprite.

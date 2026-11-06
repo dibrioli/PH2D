@@ -13,7 +13,6 @@
 use super::{
     ProjectState, SelectionMark, field_selection_back, field_selection_ids, surviving_selection,
 };
-use ph2d_i18n::tr;
 use ph2d_vec_scene::VecScene;
 
 impl crate::App {

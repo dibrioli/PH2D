@@ -42,6 +42,9 @@ pub(crate) struct PassoVivo {
     /// A tinta antiga: a Borracha muda-a ([`super::borracha_na_base`]). Passos sem Borracha partilham o mesmo `Arc`.
     base_antes: Arc<Vec<u8>>,
     base_depois: Option<Arc<Vec<u8>>>,
+    /// A tela congelada de antes e de depois do passo: desfeito o enterro, a orla volta a ser recomposta.
+    congelada_antes: Option<Arc<super::adormecida::Congelada>>,
+    congelada_depois: Option<Arc<super::adormecida::Congelada>>,
     /// Só no passo de OUTRA ferramenta ([`super::adormecida`]): a tela antes do enterro. Vários traços de outro modo
     /// enterram-se de uma vez ao acordar: desfeito só o último, o que ainda difere dela volta a enterrar-se.
     tela_antes: Option<Arc<Vec<u8>>>,
@@ -97,6 +100,8 @@ fn abre_o_passo(sess: &mut WetSession, chave: usize, tela_antes: Option<Arc<Vec<
         depois: None,
         base_antes: Arc::clone(&sess.base),
         base_depois: None,
+        congelada_antes: sess.congelada.clone(),
+        congelada_depois: None,
         tela_antes,
     });
 }
@@ -274,14 +279,14 @@ impl PainterTool {
                     p.depois = Some(depois);
                     p.base_depois = Some(atual);
                     sess.base = Arc::clone(&p.base_antes);
+                    p.congelada_depois = sess.congelada.take();
+                    sess.congelada = p.congelada_antes.clone();
                 }
-            } else if let Some(b) = sess
-                .antes_do_passo
-                .iter_mut()
-                .find(|p| p.chave == chave)
-                .and_then(|p| p.base_depois.take())
-            {
-                sess.base = b;
+            } else if let Some(p) = sess.antes_do_passo.iter_mut().find(|p| p.chave == chave) {
+                if let Some(b) = p.base_depois.take() {
+                    sess.base = b;
+                }
+                sess.congelada = p.congelada_depois.take();
             }
             let feito = if refaz {
                 sess.engine.redo()
@@ -312,6 +317,11 @@ impl PainterTool {
             if sess.enterrou {
                 sess.engine.take_dirty();
                 sess.otica.toca_tudo(sess.grid);
+                let (gw, gh) = sess.grid;
+                self.wet_planos_em_dia(&mut sess, (1, 1, gw, gh));
+                if sess.congelada.is_some() {
+                    self.wet_congela(&mut sess, None);
+                }
             }
         }
         // Uma sessão que o restore fez nascer (não devia: o restore acaba-as) perde para a que estava viva.

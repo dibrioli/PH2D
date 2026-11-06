@@ -110,6 +110,7 @@ impl PainterTool {
             otica: super::otica_no_tique::OticaDoTique::default(),
             camada: self.layers.active(),
             enterrou: false,
+            congelada: None,
             dormente: None,
         });
         self.undo.write_state.vigia_a_tela(Some(&self.canvas_rgba));

@@ -118,7 +118,17 @@ fn a_borracha_no_wet_apaga_a_tinta_antiga_de_cada_meio() {
         m.quadros(20);
         assert!(m.t.paint.wetpaint.session.is_some(), "{x:?}: sessão viva");
         m.trilho("eraser");
-        m.apaga();
+        m.t.paint.brush.radius_px = 10.0;
+        m.risca([64.0, 20.0], [64.0, 108.0], 44);
+        let uma = tinta_em(&m.t.canvas_rgba, VELHO);
+        assert!(
+            uma > velho * 0.4,
+            "{x:?}: uma passada, {velho:.1} → {uma:.1}"
+        );
+        // Relato do dono 06/11: a antiga sai aos poucos, e várias passadas chegam ao papel.
+        for _ in 0..4 {
+            m.apaga();
+        }
         assert!(
             m.t.paint.wetpaint.session.is_some(),
             "{x:?}: a água continua"

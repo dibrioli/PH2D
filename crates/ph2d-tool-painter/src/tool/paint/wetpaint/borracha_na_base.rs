@@ -2,6 +2,7 @@
 //! tinta antiga, que mora na [`WetSession::base`] congelada. A cobertura sai da borracha normal, medida num escudo opaco
 //! como a do Composite ([`Self::aplica_borracha_do_traco`]); o undo devolve a base pela chave do passo (`undo_vivo`).
 
+use super::borracha_morta::{Caixa, Sulco, caixa_de_escrita, escreve_o_sulco, parede_dos_dabs};
 use super::*;
 use crate::tool::paint::region::dabs_bounds;
 
@@ -45,8 +46,28 @@ impl PainterTool {
         plano
     }
 
+    /// A Borracha sobre a `base` segue a lei gradual da tinta morta? As miniaturas e as macros ficam com a de sempre.
+    fn base_na_lei_gradual(&self, sess: &WetSession) -> bool {
+        let w = &self.paint.wetpaint;
+        #[cfg(test)]
+        if super::borracha_defeitos_tests::corte_seco::get() {
+            return false;
+        }
+        self.paint.brush.stroke_method.is_incremental()
+            && !w.na_miniatura
+            && !w.deposit_pass
+            && w.fita.is_none()
+            && w.ritmo.is_none()
+            && sess.fita.is_none()
+            && sess.ritmo.is_none()
+            && !self.undo.marca.ativa()
+    }
+
     /// Apaga da base o que os `dabs` cobrem, sob a selecção e a protecção. O alfa preso não deixa apagar. A base só se
     /// copia quando há tinta a apagar; cada passo copia-a uma vez, por o undo segurar a de antes.
+    ///
+    /// Sob tinta da grade a base sai logo: quem aparece é a tinta, que sai aos poucos. Sem ela, a base é o que se vê e
+    /// segue a [lei gradual aprovada](super::borracha_morta) (dono 06/11).
     pub(super) fn apaga_a_base_sob_os_dabs(&mut self, dabs: &[Dab]) {
         if self.paint.acumulando_no_plano {
             return;
@@ -75,34 +96,84 @@ impl PainterTool {
                 (0..r.w as usize).map(move |col| o + col * 4)
             })
         };
-        let keep = |i: usize| {
-            let c = 1.0 - f32::from(plano[i + 3]) / 255.0;
-            let g = watercolor_accum::splat_keep(
+        let gate = |p: usize| {
+            watercolor_accum::splat_keep(
                 sel.as_deref().map(Vec::as_slice),
                 prot.as_deref().map(Vec::as_slice),
                 None,
-                i / 4,
-            );
-            1.0 - c * g
+                p,
+            )
         };
+        let keep = |i: usize| 1.0 - (1.0 - f32::from(plano[i + 3]) / 255.0) * gate(i / 4);
+        let tam = (w as usize, h as usize);
+        let caixa = Caixa {
+            x0: r.x as usize,
+            y0: r.y as usize,
+            x1: (r.x + r.w) as usize,
+            y1: (r.y + r.h) as usize,
+        };
+        let q = usize::from(sess.ratio);
+        let (gw, gh) = sess.grid;
+        let celula = |p: usize| (p / tam.0 / q).min(gh - 1) * gw + (p % tam.0 / q).min(gw - 1);
+        let mut sulco = self.base_na_lei_gradual(&sess).then(|| {
+            sess.bring_home();
+            self.paint.wetpaint.sulco.take().unwrap_or_else(|| {
+                Sulco::novo(
+                    Arc::clone(&sess.base),
+                    tam.0 * tam.1,
+                    celulas_com_tinta(&sess),
+                )
+            })
+        });
+        if let Some(s) = sulco.as_mut() {
+            s.acumula(&plano, dabs, caixa, tam.0);
+        }
+        // Só a tinta da grade corta seco; com a lei de sempre, a base toda.
+        let corta =
+            |p: usize, sulco: &Option<Sulco>| sulco.as_ref().is_none_or(|s| s.com_tinta[celula(p)]);
         if linhas().any(|i| sess.base[i + 3] > 0 && keep(i) < 1.0) {
+            let forca = self.forca_do_sulco();
             let base = Arc::make_mut(&mut sess.base);
             for i in linhas() {
                 let k = keep(i);
-                if k < 1.0 {
+                if k < 1.0 && corta(i / 4, &sulco) {
                     // Para baixo: com alfa 1 e k > 0,5 o arredondar nunca chegava a 0.
                     base[i + 3] = (f32::from(base[i + 3]) * k).floor() as u8;
                 }
             }
-            let q = i32::from(sess.ratio);
+            let (mut x0, mut y0, mut x1, mut y1) = (caixa.x0, caixa.y0, caixa.x1, caixa.y1);
+            if let Some(s) = &sulco {
+                let parede = parede_dos_dabs(dabs);
+                let esc = caixa_de_escrita(caixa, parede, tam);
+                (x0, y0, x1, y1) = (esc.x0, esc.y0, esc.x1, esc.y1);
+                escreve_o_sulco(s, caixa, tam, parede, forca, base, &|p| {
+                    if s.com_tinta[celula(p)] { 0.0 } else { gate(p) }
+                });
+            }
+            let q = q as i32;
             sess.engine.merge_dirty_otica(
-                r.x as i32 / q + 1,
-                r.y as i32 / q + 1,
-                (r.x + r.w) as i32 / q + 2,
-                (r.y + r.h) as i32 / q + 2,
+                x0 as i32 / q + 1,
+                y0 as i32 / q + 1,
+                x1 as i32 / q + 2,
+                y1 as i32 / q + 2,
             );
         }
         self.paint.pilha.escudo = plano;
+        self.paint.wetpaint.sulco = sulco;
         self.paint.wetpaint.session = Some(sess);
     }
+}
+
+/// As células da grade activa com tinta agora, `gw × gh`.
+fn celulas_com_tinta(sess: &WetSession) -> Vec<bool> {
+    let g = sess.engine.active_grid();
+    let (gw, gh) = sess.grid;
+    let mut v = vec![false; gw * gh];
+    for cy in 0..gh {
+        for cx in 0..gw {
+            let i = (cy + 1) * g.s + cx + 1;
+            v[cy * gw + cx] = g.sett[i] > 0.0 || g.susp[i] > 0.0;
+        }
+    }
+    v
 }

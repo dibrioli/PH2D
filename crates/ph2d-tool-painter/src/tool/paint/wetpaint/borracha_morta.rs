@@ -31,15 +31,53 @@ pub(crate) struct Sulco {
     antes: Arc<Vec<u8>>,
     cobriu: Vec<u8>,
     tirou: Vec<u8>,
+    /// Com sessão viva: as células que tinham tinta na grade no início do traço, às quais a lei não toca.
+    pub(super) com_tinta: Vec<bool>,
+}
+
+impl Sulco {
+    /// O sulco de um traço novo, a partir da imagem `antes` de `n` píxeis.
+    pub(super) fn novo(antes: Arc<Vec<u8>>, n: usize, com_tinta: Vec<bool>) -> Self {
+        Self {
+            antes,
+            cobriu: vec![0; n],
+            tirou: vec![0; n],
+            com_tinta,
+        }
+    }
+
+    /// Acumula a cobertura dos `dabs`, medida no escudo `plano`, na caixa.
+    pub(super) fn acumula(&mut self, plano: &[u8], dabs: &[Dab], caixa: Caixa, w: usize) {
+        let contacto = dabs
+            .iter()
+            .map(|d| d.coverage * d.radius_px / d.stroke_radius_px.max(1e-3))
+            .sum::<f32>()
+            / dabs.len() as f32;
+        let tira = contacto.clamp(0.0, 1.0).powi(EXPOENTE_DA_PRESSAO);
+        for y in caixa.y0..caixa.y1 {
+            for x in caixa.x0..caixa.x1 {
+                let i = y * w + x;
+                let c = 255 - plano[i * 4 + 3];
+                self.cobriu[i] = self.cobriu[i].max(c);
+                self.tirou[i] = self.tirou[i].max((f32::from(c) * tira) as u8);
+            }
+        }
+    }
+}
+
+/// A largura da parede para os `dabs`.
+pub(super) fn parede_dos_dabs(dabs: &[Dab]) -> usize {
+    let raio = dabs.iter().map(|d| d.radius_px).fold(1.0f32, f32::max);
+    ((raio * PAREDE).round() as usize).max(1)
 }
 
 /// Uma caixa de pixels `[x0, x1) × [y0, y1)`.
 #[derive(Clone, Copy)]
-struct Caixa {
-    x0: usize,
-    y0: usize,
-    x1: usize,
-    y1: usize,
+pub(super) struct Caixa {
+    pub(super) x0: usize,
+    pub(super) y0: usize,
+    pub(super) x1: usize,
+    pub(super) y1: usize,
 }
 
 impl Caixa {
@@ -130,79 +168,35 @@ impl PainterTool {
             y1: (r.y + r.h) as usize,
         };
         let plano = self.mede_o_escudo(dabs, r);
-        let raio = dabs.iter().map(|d| d.radius_px).fold(1.0f32, f32::max);
-        let contacto = dabs
-            .iter()
-            .map(|d| d.coverage * d.radius_px / d.stroke_radius_px.max(1e-3))
-            .sum::<f32>()
-            / dabs.len() as f32;
-        let tira = contacto.clamp(0.0, 1.0).powi(EXPOENTE_DA_PRESSAO);
-        let mut sulco = self.paint.wetpaint.sulco.take().unwrap_or_else(|| Sulco {
-            antes: Arc::clone(&self.canvas_rgba),
-            cobriu: vec![0; w * h],
-            tirou: vec![0; w * h],
-        });
-        for y in caixa.y0..caixa.y1 {
-            for x in caixa.x0..caixa.x1 {
-                let i = y * w + x;
-                let c = 255 - plano[i * 4 + 3];
-                sulco.cobriu[i] = sulco.cobriu[i].max(c);
-                sulco.tirou[i] = sulco.tirou[i].max((f32::from(c) * tira) as u8);
-            }
-        }
+        let mut sulco = self
+            .paint
+            .wetpaint
+            .sulco
+            .take()
+            .unwrap_or_else(|| Sulco::novo(Arc::clone(&self.canvas_rgba), w * h, Vec::new()));
+        sulco.acumula(&plano, dabs, caixa, w);
         self.paint.pilha.escudo = plano;
-        let parede = ((raio * PAREDE).round() as usize).max(1);
-        let forca = (self.paint.wetpaint.knobs.erase as f32 / ERASE_DE_FABRICA)
-            * self.paint.brush.flow.clamp(0.0, 1.0)
-            * TIRA;
+        let parede = parede_dos_dabs(dabs);
         let alfa_preso = self.wet_splat_gates().2.is_some();
-        self.refaz_a_caixa(&sulco, caixa, parede, if alfa_preso { 0.0 } else { forca });
+        let forca = if alfa_preso {
+            0.0
+        } else {
+            self.forca_do_sulco()
+        };
+        self.refaz_a_caixa(&sulco, caixa, parede, forca);
         self.paint.wetpaint.sulco = Some(sulco);
+    }
+
+    /// O que uma passada de pressão cheia tira, com o Erase Strength e o Flow de agora.
+    pub(super) fn forca_do_sulco(&self) -> f32 {
+        (self.paint.wetpaint.knobs.erase as f32 / ERASE_DE_FABRICA)
+            * self.paint.brush.flow.clamp(0.0, 1.0)
+            * TIRA
     }
 
     fn refaz_a_caixa(&mut self, sulco: &Sulco, caixa: Caixa, parede: usize, forca: f32) {
         let tam = (self.source_size.0 as usize, self.source_size.1 as usize);
-        let w = tam.0;
-        // A escrita chega até onde a parede alcança; a leitura, até onde alisar a escrita alcança.
-        let alcance = 2 * 2 * parede + 2;
-        let esc = caixa.cresce(alcance, tam);
-        let lei = esc.cresce(alcance, tam);
-        let (lw, lh) = (lei.w(), lei.h());
-        let plano_de = |fonte: &[u8]| {
-            let mut v = Vec::with_capacity(lw * lh);
-            for y in lei.y0..lei.y1 {
-                v.extend(
-                    fonte[y * w + lei.x0..y * w + lei.x1]
-                        .iter()
-                        .map(|b| f32::from(*b) / 255.0),
-                );
-            }
-            alisa_plano(&mut v, lw, parede);
-            v
-        };
-        let cob = plano_de(&sulco.cobriu);
-        let tir = plano_de(&sulco.tirou);
-        // A imagem alisada, pré-multiplicada: um vizinho transparente não tinge a tinta.
-        let mut canais = [
-            vec![0.0f32; lw * lh],
-            vec![0.0f32; lw * lh],
-            vec![0.0f32; lw * lh],
-            vec![0.0f32; lw * lh],
-        ];
-        for y in 0..lh {
-            for x in 0..lw {
-                let (k, o) = (y * lw + x, ((y + lei.y0) * w + x + lei.x0) * 4);
-                let a = f32::from(sulco.antes[o + 3]) / 255.0;
-                for (c, canal) in canais.iter_mut().enumerate().take(3) {
-                    canal[k] = f32::from(sulco.antes[o + c]) * a;
-                }
-                canais[3][k] = a;
-            }
-        }
-        for canal in &mut canais {
-            alisa_plano(canal, lw, parede);
-        }
-        let ganho = LUZ_DA_PAREDE * parede as f32;
+        let esc = caixa_de_escrita(caixa, parede, tam);
         let regiao = crate::compositor::Region {
             x: esc.x0 as u32,
             y: esc.y0 as u32,
@@ -215,46 +209,108 @@ impl PainterTool {
             self.source_size.0,
             Some(regiao),
         );
-        for y in esc.y0..esc.y1 {
-            for x in esc.x0..esc.x1 {
-                let (lx, ly) = (x - lei.x0, y - lei.y0);
-                let k = ly * lw + lx;
-                let o = (y * w + x) * 4;
-                let c = cob[k];
-                if c <= 0.0 {
-                    tela[o..o + 4].copy_from_slice(&sulco.antes[o..o + 4]);
-                    continue;
-                }
-                let lado = |d: isize, passo: usize| -> f32 {
-                    let i = k as isize + d * passo as isize;
-                    cob.get(i as usize).copied().unwrap_or(c)
-                };
-                let gx = if lx > 0 && lx + 1 < lw {
-                    (lado(1, 1) - lado(-1, 1)) * 0.5
-                } else {
-                    0.0
-                };
-                let gy = if ly > 0 && ly + 1 < lh {
-                    (lado(1, lw) - lado(-1, lw)) * 0.5
-                } else {
-                    0.0
-                };
-                let luz = (1.0 - ganho * (gx * LUZ[0] + gy * LUZ[1])).clamp(0.0, CLAREIA_NO_MAXIMO);
-                let a0 = f32::from(sulco.antes[o + 3]) / 255.0;
-                let am = canais[3][k].max(1e-4);
-                let mistura = (c * ALISA).min(1.0);
-                for n in 0..3 {
-                    let antes = f32::from(sulco.antes[o + n]);
-                    let lisa = canais[n][k] / am;
-                    tela[o + n] = ((antes + (lisa - antes) * mistura) * luz)
-                        .round()
-                        .clamp(0.0, 255.0) as u8;
-                }
-                let alfa = a0 * (1.0 - (tir[k] * forca).clamp(0.0, 1.0));
-                tela[o + 3] = (alfa * 255.0).floor() as u8;
-            }
-        }
+        escreve_o_sulco(sulco, caixa, tam, parede, forca, tela, &|_| 1.0);
         self.declare_wrote(Some(regiao));
         self.mark_dirty(regiao);
+    }
+}
+
+/// A escrita chega até onde a parede alcança.
+pub(super) fn caixa_de_escrita(caixa: Caixa, parede: usize, tam: (usize, usize)) -> Caixa {
+    caixa.cresce(2 * 2 * parede + 2, tam)
+}
+
+/// **A lei:** refaz os píxeis da caixa de escrita a partir da imagem de antes do traço. `peso(i)` é o quanto ela vale no
+/// píxel `i`: 0 não toca nele.
+pub(super) fn escreve_o_sulco(
+    sulco: &Sulco,
+    caixa: Caixa,
+    tam: (usize, usize),
+    parede: usize,
+    forca: f32,
+    tela: &mut [u8],
+    peso: &(dyn Fn(usize) -> f32 + Sync),
+) {
+    let w = tam.0;
+    // A leitura vai até onde alisar a escrita alcança.
+    let esc = caixa_de_escrita(caixa, parede, tam);
+    let lei = caixa_de_escrita(esc, parede, tam);
+    let (lw, lh) = (lei.w(), lei.h());
+    let plano_de = |fonte: &[u8]| {
+        let mut v = Vec::with_capacity(lw * lh);
+        for y in lei.y0..lei.y1 {
+            v.extend(
+                fonte[y * w + lei.x0..y * w + lei.x1]
+                    .iter()
+                    .map(|b| f32::from(*b) / 255.0),
+            );
+        }
+        alisa_plano(&mut v, lw, parede);
+        v
+    };
+    let cob = plano_de(&sulco.cobriu);
+    let tir = plano_de(&sulco.tirou);
+    // A imagem alisada, pré-multiplicada: um vizinho transparente não tinge a tinta.
+    let mut canais = [
+        vec![0.0f32; lw * lh],
+        vec![0.0f32; lw * lh],
+        vec![0.0f32; lw * lh],
+        vec![0.0f32; lw * lh],
+    ];
+    for y in 0..lh {
+        for x in 0..lw {
+            let (k, o) = (y * lw + x, ((y + lei.y0) * w + x + lei.x0) * 4);
+            let a = f32::from(sulco.antes[o + 3]) / 255.0;
+            for (c, canal) in canais.iter_mut().enumerate().take(3) {
+                canal[k] = f32::from(sulco.antes[o + c]) * a;
+            }
+            canais[3][k] = a;
+        }
+    }
+    for canal in &mut canais {
+        alisa_plano(canal, lw, parede);
+    }
+    let ganho = LUZ_DA_PAREDE * parede as f32;
+    for y in esc.y0..esc.y1 {
+        for x in esc.x0..esc.x1 {
+            let g = peso(y * w + x);
+            if g <= 0.0 {
+                continue;
+            }
+            let (lx, ly) = (x - lei.x0, y - lei.y0);
+            let k = ly * lw + lx;
+            let o = (y * w + x) * 4;
+            let c = cob[k];
+            if c <= 0.0 {
+                tela[o..o + 4].copy_from_slice(&sulco.antes[o..o + 4]);
+                continue;
+            }
+            let lado = |d: isize, passo: usize| -> f32 {
+                let i = k as isize + d * passo as isize;
+                cob.get(i as usize).copied().unwrap_or(c)
+            };
+            let gx = if lx > 0 && lx + 1 < lw {
+                (lado(1, 1) - lado(-1, 1)) * 0.5
+            } else {
+                0.0
+            };
+            let gy = if ly > 0 && ly + 1 < lh {
+                (lado(1, lw) - lado(-1, lw)) * 0.5
+            } else {
+                0.0
+            };
+            let luz = (1.0 - ganho * (gx * LUZ[0] + gy * LUZ[1])).clamp(0.0, CLAREIA_NO_MAXIMO);
+            let a0 = f32::from(sulco.antes[o + 3]) / 255.0;
+            let am = canais[3][k].max(1e-4);
+            let mistura = (c * ALISA).min(1.0);
+            for n in 0..3 {
+                let antes = f32::from(sulco.antes[o + n]);
+                let lisa = canais[n][k] / am;
+                let novo = (antes + (lisa - antes) * mistura) * luz;
+                tela[o + n] = (antes + (novo - antes) * g).round().clamp(0.0, 255.0) as u8;
+            }
+            let alfa = a0 * (1.0 - (tir[k] * forca * g).clamp(0.0, 1.0));
+            tela[o + 3] = (alfa * 255.0).floor() as u8;
+        }
     }
 }

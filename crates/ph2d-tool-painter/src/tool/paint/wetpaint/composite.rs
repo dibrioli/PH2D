@@ -296,6 +296,7 @@ impl PainterTool {
         // A metade da SIM continua serial e assim fica: o engine é port 1:1 com fingerprint pinado e o
         // ADR-0134 declara o solver serial POR SEMÂNTICA — o ADR-0109 é inaplicável lá, de propósito.
         let (pigment, base, sombra) = (&sess.planos.pigment, &sess.base, &sess.planos.sombra);
+        let congelada = sess.congelada.as_deref().filter(|_| !veil);
         let grao_cel = &sess.planos.grao;
         let plano_suave: &[u8] = &sess.planos.suave;
         let rr = usize::from(ratio);
@@ -368,6 +369,12 @@ impl PainterTool {
                 for px in px0..px1 {
                     let lo = px * 4; // dentro da linha
                     let o = gb + lo; // global, para os planos e os gates
+                    if let Some(p) =
+                        congelada.and_then(|f| f.pixel((px, py, o), pigment, sombra, base))
+                    {
+                        row[lo..lo + 4].copy_from_slice(p);
+                        continue;
+                    }
                     // O pigmento, em premultiplicado normalizado (`pc * pa`) —
                     // a forma em que o `over` abaixo já o consumia.
                     let dele = if one_cell_per_pixel {
@@ -402,7 +409,7 @@ impl PainterTool {
                         }
                         _ => premul,
                     };
-                    let escuro = if !sombra.is_empty() && vrow.is_none() {
+                    let escuro = if !sombra.is_empty() {
                         // §BUG-bordas-W3b: sem o furo de uma célula (o pontinho escuro da orla).
                         ph2d_wet_paint::oleo_real::sombra_sem_furo(
                             sombra,
@@ -416,11 +423,13 @@ impl PainterTool {
                     // `escuro` — pelas mesmas gates que a tinta (selecção/protecção, alfa preso). Sob a orla
                     // da tinta ela é o papel sobre o qual o pigmento se compõe.
                     let sombreada: [u8; 4];
+                    let mut cobre_a_sombra = 0.0;
                     let base_px: &[u8] = if escuro > 0 {
                         let mut s = f32::from(escuro) / 255.0;
                         if gate_on {
                             s *= super::watercolor_accum::splat_keep(gsel, gprot, None, o / 4);
                         }
+                        cobre_a_sombra = s;
                         let ba = f32::from(base[o + 3]) / 255.0;
                         let oa = if alock_on { ba } else { s + ba * (1.0 - s) };
                         let mut b = [0u8; 4];
@@ -434,7 +443,22 @@ impl PainterTool {
                         }
                         b[3] = (oa * 255.0).round() as u8;
                         if pa <= 0.0 {
+                            let igual = row[lo..lo + 4] == b;
                             row[lo..lo + 4].copy_from_slice(&b);
+                            // O vidro da aguada por baixo: o preto da sombra cobre cada canal por igual.
+                            if let (Some(v), Some(vb), false) = (vrow.as_deref_mut(), vbase, igual)
+                            {
+                                let antes =
+                                    crate::compositor::vidro::alfas(&base[o..o + 4], &vb[o / 4]);
+                                v[px] = crate::compositor::vidro::sela(
+                                    b,
+                                    if alock_on {
+                                        antes
+                                    } else {
+                                        crate::compositor::vidro::cobre(antes, s)
+                                    },
+                                );
+                            }
                             continue;
                         }
                         sombreada = b;
@@ -445,8 +469,9 @@ impl PainterTool {
                     if pa <= 0.0 {
                         // Base verbatim — the gates keep-lerp TOWARD the base, so
                         // they are exact no-ops on this branch.
+                        let igual = row[lo..lo + 4] == base[o..o + 4];
                         row[lo..lo + 4].copy_from_slice(&base[o..o + 4]);
-                        if let (Some(v), Some(b)) = (vrow.as_deref_mut(), vbase) {
+                        if let (Some(v), Some(b), false) = (vrow.as_deref_mut(), vbase, igual) {
                             v[px] = b[o / 4];
                         }
                         continue;
@@ -516,7 +541,10 @@ impl PainterTool {
                         let px4 = [row[lo], row[lo + 1], row[lo + 2], row[lo + 3]];
                         v[px] = crate::compositor::vidro::sela(
                             px4,
-                            crate::compositor::vidro::cobre(antes, cobertura),
+                            crate::compositor::vidro::cobre(
+                                crate::compositor::vidro::cobre(antes, cobre_a_sombra),
+                                cobertura,
+                            ),
                         );
                     }
                 }

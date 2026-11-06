@@ -179,6 +179,8 @@ pub(in crate::tool::paint) struct WetSession {
     pub(super) camada: Option<crate::layers::LayerId>,
     /// A sessão já enterrou células: recompor a tela inteira mudaria a orla delas.
     pub(super) enterrou: bool,
+    /// O que estava na tela ao enterrar: o que a óptica não mudou desde então não se reescreve.
+    pub(super) congelada: Option<Arc<super::adormecida::Congelada>>,
     /// Adormecida e comprimida ([`super::dormente`]): as grades estão aqui, e voltam ao acordar.
     pub(super) dormente: Option<Arc<super::dormente::Dormente>>,
 }
@@ -225,6 +227,7 @@ impl WetSession {
                 .iter()
                 .map(super::undo_vivo::PassoVivo::bytes)
                 .sum::<usize>()
+            + self.congelada.as_ref().map_or(0, |c| c.bytes())
     }
 
     /// Há tinta molhada na tela? (algum pixel do plano de pigmento com alfa) — o que decide se trocar
@@ -375,6 +378,7 @@ impl Clone for WetSession {
             otica,
             camada,
             enterrou,
+            congelada,
             dormente,
         } = self;
         assert!(
@@ -413,6 +417,7 @@ impl Clone for WetSession {
             otica: otica.clone(),
             camada: *camada,
             enterrou: *enterrou,
+            congelada: congelada.clone(),
             dormente: dormente.clone(),
         }
     }

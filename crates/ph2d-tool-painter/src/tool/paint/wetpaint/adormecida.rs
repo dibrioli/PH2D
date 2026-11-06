@@ -9,6 +9,47 @@
 use super::*;
 use crate::layers::LayerId as RtLayerId;
 
+/// A tela no instante de um enterro, com os planos e a `base` de que ela saiu. ⛔ Medido: recompor uma caixa à volta de
+/// células enterradas re-ilumina a orla delas, numa linha que acaba na borda da caixa (1 345 px com Δ ≥ 10); a orla só
+/// muda onde a óptica mudou, sob o pincel.
+pub(crate) struct Congelada {
+    tela: Arc<Vec<u8>>,
+    base: Arc<Vec<u8>>,
+    pigment: Vec<u8>,
+    sombra: Vec<u8>,
+    /// As células enterradas: a `base` delas já tem a sombra assada, e uma mudança mínima não a põe outra vez por cima.
+    enterradas: Vec<bool>,
+    /// As células cuja óptica o enterro mudou: as enterradas e a orla delas. Só estas ficam: uma longe do enterro é a da
+    /// tinta viva, ao bit.
+    mudou: Vec<bool>,
+    gw: usize,
+    gh: usize,
+    rr: usize,
+}
+
+impl Congelada {
+    /// O píxel de quando enterrou, se nem a óptica da célula nem a `base` dele mudaram.
+    #[inline]
+    pub(super) fn pixel(
+        &self,
+        (px, py, o): (usize, usize, usize),
+        pigment: &[u8],
+        sombra: &[u8],
+        base: &[u8],
+    ) -> Option<&[u8]> {
+        let c = (py / self.rr).min(self.gh - 1) * self.gw + (px / self.rr).min(self.gw - 1);
+        (self.mudou[c]
+            && pigment[c * 4..c * 4 + 4] == self.pigment[c * 4..c * 4 + 4]
+            && (self.enterradas[c] || sombra.get(c) == self.sombra.get(c))
+            && base[o..o + 4] == self.base[o..o + 4])
+            .then(|| &self.tela[o..o + 4])
+    }
+
+    pub(super) fn bytes(&self) -> usize {
+        self.tela.len() + self.pigment.len() + self.sombra.len()
+    }
+}
+
 /// A sessão fora do caminho de um undo sem fotografia, com a tela e a camada de antes.
 pub(crate) struct SessaoNoRestauro {
     sess: WetSession,
@@ -219,6 +260,7 @@ impl PainterTool {
         sess.bring_home();
         sess.worker = None;
         sess.seen_steps = 0;
+        sess.otica = Default::default(); // o compositor acabou com o worker: nenhuma imagem está no ar
         sess.canvas = Weak::new();
         self.undo.write_state.vigia_a_tela(None);
         self.paint.wetpaint.composta = None;
@@ -342,6 +384,93 @@ impl PainterTool {
             }
         }
         sess.engine.enterra_celulas(&tocada, gw);
+        let (mut x0, mut y0, mut x1, mut y1) = (gw, gh, 0, 0);
+        for (k, _) in tocada.iter().enumerate().filter(|(_, t)| **t) {
+            x0 = x0.min(k % gw + 1);
+            y0 = y0.min(k / gw + 1);
+            x1 = x1.max(k % gw + 1);
+            y1 = y1.max(k / gw + 1);
+        }
+        let (pigmento, sombra) = (sess.planos.pigment.clone(), sess.planos.sombra.clone());
+        if x1 > 0 {
+            self.wet_planos_em_dia(sess, (x0, y0, x1, y1));
+        }
+        let p = &sess.planos;
+        let mudou: Vec<bool> = (0..gw * gh)
+            .map(|c| {
+                tocada[c]
+                    || pigmento[c * 4..c * 4 + 4] != p.pigment[c * 4..c * 4 + 4]
+                    || sombra.get(c).copied().unwrap_or(0) != p.sombra.get(c).copied().unwrap_or(0)
+            })
+            .collect();
+        self.wet_congela(sess, Some((&tocada, &mudou)));
+    }
+
+    /// A tela de agora é a verdade das células cuja óptica não mudar.
+    pub(super) fn wet_congela(&self, sess: &mut WetSession, agora: Option<(&[bool], &[bool])>) {
+        let n = sess.grid.0 * sess.grid.1;
+        let (mut enterradas, mut mudou) = match sess.congelada.take() {
+            Some(c) => (c.enterradas.clone(), c.mudou.clone()),
+            None => (vec![false; n], vec![false; n]),
+        };
+        if let Some((t, m)) = agora {
+            for (e, t) in enterradas.iter_mut().zip(t) {
+                *e |= *t;
+            }
+            for (e, m) in mudou.iter_mut().zip(m) {
+                *e |= *m;
+            }
+        }
+        sess.congelada = Some(Arc::new(Congelada {
+            mudou,
+            enterradas,
+            tela: Arc::clone(&self.canvas_rgba),
+            base: Arc::clone(&sess.base),
+            pigment: sess.planos.pigment.clone(),
+            sombra: sess.planos.sombra.clone(),
+            gw: sess.grid.0,
+            gh: sess.grid.1,
+            rr: usize::from(sess.ratio),
+        }));
+    }
+
+    /// Sem recompor a tela, os planos da óptica têm de seguir a grade: o laço de píxel de uma caixa seguinte lê-os para lá
+    /// das células que ela refaz, e um plano velho punha a tinta enterrada de volta.
+    pub(super) fn wet_planos_em_dia(
+        &self,
+        sess: &mut WetSession,
+        caixa: (usize, usize, usize, usize),
+    ) {
+        let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
+        if sess.base.len() != w * h * 4 {
+            return;
+        }
+        let factos = self.factos_da_otica();
+        sess.bring_home();
+        sess.planos.campo_cache = None; // a altura guardada é a de antes do enterro
+        let entrada = super::composite_otica::EntradaDaOtica {
+            factos,
+            marca: fita::MarcaDaAgua::de(&sess.engine),
+            trabalho: Some(super::composite_otica::TrabalhoDaOtica {
+                caixa,
+                params: sess.engine.sim.gather_params(&sess.engine.tuning),
+            }),
+            ratio: sess.ratio,
+            grade: sess.grid,
+            tela: (w, h),
+            revisao: sess.engine.revisao(),
+        };
+        let layers: Vec<ph2d_wet_paint::render::RenderLayer<'_>> = sess
+            .engine
+            .layers
+            .iter()
+            .map(|l| ph2d_wet_paint::render::RenderLayer {
+                grid: &l.grid,
+                opacity: l.opacity,
+                visible: l.visible,
+            })
+            .collect();
+        super::composite_otica::compoe_a_otica(&entrada, &layers, &mut sess.planos);
     }
 
     /// A troca de camada: no Wet, acorda a tinta da camada que entra.

@@ -5,7 +5,6 @@ impl crate::App {
     /// Depois do modo do objecto (o Draw deste quadro já está decidido) e antes de os painéis pintarem.
     pub(super) fn fase_pixel_panel(&mut self) {
         let Some(g) = self.gfx.as_mut() else { return };
-        crate::app_edicao_de_imagem::fecha_se_terminou(g, &mut self.pixel);
         let Some(hero) = g.hero_screen.as_mut() else {
             return;
         };

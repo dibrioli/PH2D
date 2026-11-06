@@ -1,14 +1,11 @@
 //! ⭐ **A imagem editada volta a todo objecto que a usa** ([ficha da Sprite](../../../docs/GameEngineFuncional/componentes/01_sprite.md)).
 //! A imagem é endereçada pelo conteúdo: editar dá um id novo, e quem usava o antigo passa ao novo.
 
-use ph2d_asset::{AssetDb, AssetId};
+use ph2d_asset::AssetId;
 use ph2d_ecs::{Entity, SpritePixels, World};
 use ph2d_render::{Sprite, SpriteSource, texture_of};
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, BTreeSet};
-
-/// Sobe RGBA8 à placa e devolve a textura (o `SpriteRenderer` no app).
-pub type Sobe<'a> = dyn FnMut(u32, u32, &[u8]) -> Result<u32, String> + 'a;
 
 thread_local! {
     /// A imagem aberta no Painter pelo botão: `(objecto, imagem)`. A próxima pintura dele vale para quem a usa.
@@ -67,19 +64,6 @@ pub fn shown_id(world: &World, e: Entity, atlas: &BTreeMap<u32, AssetId>) -> Opt
     texture_of(world.get::<SpritePixels>(e), world.get::<Sprite>(e), atlas)
 }
 
-/// Os píxeis da imagem que `e` mostra: `(w, h, RGBA8 reto)`.
-#[must_use]
-pub fn imagem_de(
-    world: &World,
-    e: Entity,
-    db: &AssetDb,
-    atlas: &BTreeMap<u32, AssetId>,
-) -> Option<(u32, u32, Vec<u8>)> {
-    let asset = db.get(&shown_id(world, e, atlas)?)?;
-    let (w, h, px) = asset.image_rgba8()?;
-    Some((w, h, px.into_owned()))
-}
-
 /// Os objectos que mostram a imagem `id`, salvo `fora`.
 fn usuarios(
     world: &mut World,
@@ -106,68 +90,15 @@ fn aponta(world: &mut World, e: Entity, texture_id: u32, novo: AssetId, premulti
     ent.remove::<ph2d_ecs::SpriteSheetRef>();
 }
 
-/// Dois RGBA8 retos dão o mesmo desenho?
-fn mesmos_pixeis(a: &[u8], b: &[u8]) -> bool {
-    a.len() == b.len()
-        && a.as_chunks::<4>()
-            .0
-            .iter()
-            .zip(b.as_chunks::<4>().0)
-            .all(|(p, q)| p == q || (p[3] == 0 && q[3] == 0))
-}
-
 /// Em que deu uma troca de píxeis.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Trocados {
-    /// Quem mostra a imagem agora (a editada ou, sem diferença, a mesma).
+    /// Quem passou a mostrar a imagem editada.
     pub quem: Vec<Entity>,
     /// A imagem de antes.
     pub antigo: AssetId,
-    /// A imagem de agora: `antigo`, se nada mudou.
+    /// A imagem de agora.
     pub novo: AssetId,
-}
-
-impl Trocados {
-    /// Havia trabalho e nenhum objecto vivo para o receber.
-    #[must_use]
-    pub fn sem_dono(&self) -> bool {
-        self.quem.is_empty() && self.novo != self.antigo
-    }
-}
-
-/// ⭐ **Os píxeis da imagem `antigo` mudaram**: `rgba` (RGBA8 reto) vale para TODO objecto que a usa, sem depender de
-/// nenhum em particular continuar vivo. A imagem é endereçada pelo conteúdo, e por isso editar dá um id novo.
-pub fn troca_os_pixeis(
-    world: &mut World,
-    acquire: &mut Sobe<'_>,
-    db: &AssetDb,
-    atlas: &BTreeMap<u32, AssetId>,
-    antigo: AssetId,
-    (w, h, rgba): (u32, u32, Vec<u8>),
-) -> Result<Trocados, String> {
-    let quem = usuarios(world, antigo, None, atlas);
-    // Abrir e sair sem pintar não é editar: um píxel transparente não tem cor, e o caminho pode tê-la zerado.
-    let igual = db.get(&antigo).is_some_and(|a| {
-        a.image_rgba8()
-            .is_some_and(|(aw, ah, px)| (aw, ah) == (w, h) && mesmos_pixeis(&px, &rgba))
-    });
-    if igual {
-        return Ok(Trocados {
-            quem,
-            antigo,
-            novo: antigo,
-        });
-    }
-    let novo = db.insert_image_rgba8(w, h, rgba.clone());
-    if quem.is_empty() {
-        return Ok(Trocados { quem, antigo, novo });
-    }
-    let texture_id = acquire(w, h, &rgba)?;
-    veio_de(novo, antigo);
-    for e in &quem {
-        aponta(world, *e, texture_id, novo, false);
-    }
-    Ok(Trocados { quem, antigo, novo })
 }
 
 /// O botão Edit in Painter foi carregado em `e`.

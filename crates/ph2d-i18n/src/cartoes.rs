@@ -139,10 +139,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.appearance" => "Appearance",
         "card.insp.opacity" => "Opacity (%)",
         "card.insp.look" => "Look",
-        "card.insp.verb_pixel" => "Pixel",
-        "card.insp.edit_in_pixel_tip" => {
-            "Edit in Pixel. Every object using this image updates when you leave Draw"
-        }
         "card.insp.verb_painter" => "Painter",
         "card.insp.edit_in_painter_tip" => {
             "Edit in Painter. Every object using this image updates when you leave Draw"

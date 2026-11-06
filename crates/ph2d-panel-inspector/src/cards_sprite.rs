@@ -49,11 +49,6 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
     );
     botao(
         store,
-        ids::INSP_IMAGE_EDIT_PIXEL,
-        "card.insp.edit_in_pixel_tip",
-    );
-    botao(
-        store,
         ids::INSP_IMAGE_EDIT_PAINTER,
         "card.insp.edit_in_painter_tip",
     );
@@ -367,26 +362,19 @@ pub(crate) fn evento(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool 
     let WidgetEvent::Click(id) = ev else {
         return false;
     };
-    if id == ids::INSP_IMAGE_EDIT_PIXEL || id == ids::INSP_IMAGE_EDIT_PAINTER {
+    if id == ids::INSP_IMAGE_EDIT_PAINTER {
         let Some(sprite) = crate::state::current_inspector_sprite() else {
             return true;
         };
-        let pintor = id == ids::INSP_IMAGE_EDIT_PAINTER;
         host.bus_mut().push(EditorAction::ImageUseEdit {
             entity_bits: sprite.entity_bits,
-            edit: if pintor {
-                ImageUseEdit::EditInPainter
-            } else {
-                ImageUseEdit::EditInPixel
-            },
+            edit: ImageUseEdit::EditInPainter,
         });
-        if pintor {
-            use ph2d_editor_core::object_mode::{ModeRequest, ObjectMode};
-            host.bus_mut()
-                .push(EditorAction::ObjectMode(ModeRequest::Enter(
-                    ObjectMode::Draw,
-                )));
-        }
+        use ph2d_editor_core::object_mode::{ModeRequest, ObjectMode};
+        host.bus_mut()
+            .push(EditorAction::ObjectMode(ModeRequest::Enter(
+                ObjectMode::Draw,
+            )));
         return true;
     }
     if id == ids::INSP_IMAGE_KEEP_SIZE {

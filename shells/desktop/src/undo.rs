@@ -421,8 +421,6 @@ pub(crate) struct ProjectUndo {
     pub(crate) janela_do_jogo: Option<crate::janela_do_jogo::JanelaDoJogo>,
     /// A câmera no canvas (plano GEF 17): as molduras do quadro e o arrasto em curso.
     pub(crate) camera_no_canvas: ph2d_camera_frame::CameraNoCanvas,
-    /// Havia uma imagem aberta no Pixel no quadro anterior: o quadro em que fecha regista o passo dela.
-    pub(crate) imagem_aberta: bool,
 }
 
 impl ProjectUndo {

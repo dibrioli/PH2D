@@ -110,8 +110,8 @@ fn nome_da_imagem(img: Option<&SlotImage>) -> String {
 
 /// A superfície da miniatura: a altura é sempre a mesma, seja qual for o degrau. Devolve o fundo.
 ///
-/// Degrau largo (o tamanho e os dois botões inteiros, lado a lado, cabem ao lado da miniatura): nome, tamanho e
-/// botões. Degrau estreito: o tamanho sobe para o título do cartão e os botões empilham-se na coluna.
+/// Degrau largo (o tamanho e o botão inteiros cabem ao lado da miniatura): nome, tamanho e botão. Degrau estreito: o
+/// tamanho sobe para o título do cartão. Uma imagem tem um só verbo, o do Painter (dono 06/11).
 pub(crate) fn cabeca(c: &mut CardCtx<'_>, y: f32, info: &InspectorSpriteInfo) -> f32 {
     let theme = c.ink.theme;
     let (x0, w0) = (c.x, c.w);
@@ -126,18 +126,11 @@ pub(crate) fn cabeca(c: &mut CardCtx<'_>, y: f32, info: &InspectorSpriteInfo) ->
             v.push((info.entity_bits, nome.clone()));
         }
     });
-    let verbos = [
-        Verbo {
-            id: ids::INSP_IMAGE_EDIT_PIXEL,
-            seta: IconId::Export,
-            nome: tr("card.insp.verb_pixel"),
-        },
-        Verbo {
-            id: ids::INSP_IMAGE_EDIT_PAINTER,
-            seta: IconId::Export,
-            nome: tr("card.insp.verb_painter"),
-        },
-    ];
+    let verbos = [Verbo {
+        id: ids::INSP_IMAGE_EDIT_PAINTER,
+        seta: IconId::Export,
+        nome: tr("card.insp.verb_painter"),
+    }];
     // A linha do tamanho mostra-se inteira: a miniatura cede o que ela pede, quadrada e até ao mínimo.
     let pede_tamanho = tamanho
         .as_deref()

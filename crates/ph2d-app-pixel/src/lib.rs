@@ -21,7 +21,6 @@ mod filtros;
 pub use ph2d_pixel_formas as formas;
 mod frame;
 mod gesture;
-pub mod imagem;
 pub mod input;
 mod input_teclas;
 mod intervalo;

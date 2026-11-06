@@ -11,7 +11,7 @@ Estudos lidos: crítica «Sprite» · estudo «Sprite» e «Transform» · 12 id
 - Trocar a imagem mantém a escala: o tamanho no mundo muda sem aviso (`crates/ph2d-app-sprite-anim/src/image_choice.rs:72-80`).
 - Pivot: só a ferramenta do canvas, que escreve `Transform.translation` + `Sprite.anchor` compensando (`crates/ph2d-editor-core/src/gizmo/transform.rs:373`).
 - Espelhar em dois lugares: botões do Transform (`INSP_TRANSFORM_FLIP_*`) e Flip H/V da sprite (decisão 14: ficam os dois).
-- Nenhuma ponte Sprite → Pixel Art ou Painter que volte ao asset. Precedente de volta: `shells/desktop/src/hero_intents/image_edit/painter.rs`, `texture_edit.rs:279`.
+- Nenhuma ponte Sprite → Painter que volte ao asset. Precedente de volta: `shells/desktop/src/hero_intents/image_edit/painter.rs`, `texture_edit.rs:279`.
 - Repeated: Width/Height são **cópias da imagem** (`InspectorDraw::Tiled { copies }`), sem unidade no rótulo. A chave `image.width_m` engana: o valor não é metro.
 
 ## O que as 9 ensinam
@@ -28,9 +28,9 @@ GameMaker e Unreal: pivô de 9 pontos. GDevelop, Construct e GameMaker: editar a
 1. **Versão B da crítica, sem nada da C.** Saem as miniaturas no seletor Use e o pivô arrastado na miniatura.
 2. Folha em Still: mantém 27/10 + aviso com *Make it Animated* e *Use one Region*; em *Use one Region*, clicar no quadro cria a Region (delegado ao agente).
 3. `Add ▸ Sprite` abre a escolha da imagem; `Image…` passa a «Paint a new image…».
-4. **Edit in Pixel completo nesta rodada.**
+4. ~~**Edit in Pixel completo nesta rodada.**~~ Revogada pelo dono em 06/11 (ver abaixo).
 5. **Edit in Painter**, pedido do dono: mesma ida e volta.
-   **Aprovado pelo dono em 06/11:** quando um objecto com camadas do Painter recebe píxeis por fora (Edit in Pixel, a pintura de outro objecto que usa a mesma imagem, ou o documento do Painter que morre com a edição aberta), a imagem nova vence: as camadas dele saem, com o aviso «Layers flattened», e o Undo devolve-as. No objecto em que o próprio Painter pintou, as camadas continuam.
+   **Aprovado pelo dono em 06/11:** quando um objecto com camadas do Painter recebe píxeis por fora (a pintura de outro objecto que usa a mesma imagem), a imagem nova vence: as camadas dele saem, com o aviso «Layers flattened», e o Undo devolve-as. No objecto em que o próprio Painter pintou, as camadas continuam.
 6. 9-Slice segue componente; não vira quinto uso (delegado ao agente).
 
 **Do smoke do dono (05/11, depois das fotos):**
@@ -49,7 +49,9 @@ GameMaker e Unreal: pivô de 9 pontos. GDevelop, Construct e GameMaker: editar a
 
 Outros acertos da mesma noite: `Reimport at scale` e o nome do ponto do Pivot (desce para debaixo da grade quando o maior dos dez nomes não cabe ao lado) não se cortam no piso real do painel, `DOCK_W_MIN` = 210 px (`nada_do_cartao_da_sprite_e_cortado_no_minimo_do_painel`). A imagem editada herda o nome da de onde veio e toma-lhe o lugar enquanto só ela estiver em uso (`imagem::herda_o_nome`); ⚠️ só nesta sessão, porque o `.ph2dproj` não grava nomes de imagem: ao reabrir, volta o nome do 1.º objecto.
 
-Miniatura quadrada de 72 px com recorte pelo raio, moldura de altura fixa, botões sempre `[enviar] Pixel` · `[enviar] Painter` (dois ícones: recusado pelo dono em 05/11): lado a lado com o tamanho na moldura de 294 px de painel para cima (medido no teste `os_dois_lados_do_degrau_arrumam_o_tamanho_e_os_botoes`); abaixo, o tamanho sobe ao título «Image» (o `1024 × 1024 px (300 × 50)` do Repeated só inteiro de ~250 px para cima; abaixo, sem os parênteses) e os botões empilham-se. Nada é cortado.
+Miniatura quadrada de 72 px com recorte pelo raio, moldura de altura fixa, botão `[enviar] Painter` (só ícones: recusado pelo dono em 05/11). O tamanho fica na moldura até ao piso do painel (teste `os_dois_lados_do_degrau_arrumam_o_tamanho_e_o_botao`); o `1024 × 1024 px (300 × 50)` do Repeated, que não cabe, sobe ao título «Image», inteiro de ~250 px para cima e abaixo sem os parênteses. Nada é cortado.
+
+**Dono 06/11: dois objetos; cada um só com o botão da sua ferramenta; revoga a 4.** Pixel e Painter são ferramentas de artes diferentes: ficam Image (Painter) e Pixel Sprite, com um ícone cada (a tela e o pixel). O cartão da imagem tem só `[enviar] Painter`. Nenhum modo novo: cada objecto mantém o seu Draw, e o `Tab` não muda. ⚠️ O Pixel Sprite não tem `Sprite`, logo não tem este cartão: entra no Draw ao nascer, pelo `Tab` e pelo seletor de modo; o botão Pixel dele espera a decisão de que cartão o leva.
 
 ## O desenho aprovado
 
@@ -57,7 +59,7 @@ Por estado do painel: **vazio** = cartão Image inteiro é «Drop an image or cl
 
 | Cartão | Conteúdo |
 |---|---|
-| Image | superfície com a miniatura (clicar troca), nome, tamanho em px, Edit in Pixel, Edit in Painter; Use; campos do uso |
+| Image | superfície com a miniatura (clicar troca), nome, tamanho em px, Edit in Painter; Use; campos do uso |
 | Look | Tint, Opacity, Flip em ícones, Pivot de 9 pontos (+ Custom X/Y); Self Tint só com filhos |
 | Transform (dobrado) | resumo `850, 200 · 0° · 1 × 1` |
 | Ordering (dobrado) | Z Index e Y-Sort; as outras 6 por «+ Order option…», e ficam à vista se em uso |
@@ -69,7 +71,7 @@ Por estado do painel: **vazio** = cartão Image inteiro é «Drop an image or cl
 
 ## Aceitação
 
-- **Poder:** pivô no painel, em 9 pontos sobre o desenho visível e Custom · editar a imagem no Pixel e no Painter a partir do cartão, voltando sozinha para **todo objeto que usa aquele asset**, com desfazer · um quadro da folha a um clique.
+- **Poder:** pivô no painel, em 9 pontos sobre o desenho visível e Custom · editar a imagem no Painter a partir do cartão, voltando sozinha para **todo objeto que usa aquele asset**, com desfazer · um quadro da folha a um clique.
 - **Facilidade:** em uso, 10 campos à vista e 24 no total (hoje 12 a 37). Até ver a imagem pelo Add: 3 gestos (hoje 4). Virar e tingir com cartões fechados: 3 gestos (hoje 5).
 - **Intuitividade:** nenhum número interno na tela · o salto de tamanho da folha e do Replace são explicados na hora · unidade no rótulo de todo campo.
 
@@ -83,6 +85,8 @@ Por estado do painel: **vazio** = cartão Image inteiro é «Drop an image or cl
 | Colisão a partir da imagem neste item | pertence a Physics Body |
 | Botão Replace | supérfluo: a miniatura é o alvo (dono, 05/11) |
 | Tira de prévia do Repeated | recusada pelo dono em 05/11; a miniatura basta |
+| Edit in Pixel num objecto imagem | dono 06/11: Pixel e Painter servem artes diferentes; a ida e volta saiu do código (`no_pixel`, `ph2d_app_pixel::imagem`) |
+| Um só objecto com modos Draw in Pixel e Draw in Painter | dono 06/11: as ferramentas servem artes diferentes; ficam dois objectos, cada um com o seu Draw |
 
 ## Provas
 
@@ -96,4 +100,4 @@ Por escrever conforme cada etapa: teste por evento real em `crates/ph2d-panel-in
 | E2 | Pivot de 9 pontos sobre o desenho visível | por fazer |
 | E3 | Vazio, `Add ▸ Sprite` que pede imagem, «Paint a new image…» | por fazer |
 | E4 | Aviso de folha, *Use one Region*, Replace com recibo | por fazer |
-| E5 | Edit in Pixel e Edit in Painter: ida, volta, todos os objetos, desfazer | por fazer |
+| E5 | Edit in Painter: ida, volta, todos os objetos, desfazer | por fazer |

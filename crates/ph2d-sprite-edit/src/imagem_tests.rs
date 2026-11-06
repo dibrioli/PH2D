@@ -1,4 +1,5 @@
 use super::*;
+use ph2d_asset::AssetDb;
 use ph2d_render::WHITE_TILE_KEY;
 
 fn px(cor: u8) -> Vec<u8> {
@@ -20,29 +21,18 @@ fn mundo(db: &AssetDb) -> (World, AssetId, Entity, Entity, Entity) {
     (w, antigo, a, b, c)
 }
 
-/// ⭐ A lei do dono: a imagem volta para TODO objecto que a usa, e só para esses.
+/// ⭐ A lei do dono: a imagem volta para TODO objecto que a usa, e só para esses, sem mudar de tamanho.
 #[test]
 fn a_edicao_vale_para_todo_objecto_que_usa_a_mesma_imagem() {
     let db = AssetDb::default();
     let (mut w, antigo, a, b, c) = mundo(&db);
     let atlas = BTreeMap::new();
-    let mut pedido = None;
-    let t = troca_os_pixeis(
-        &mut w,
-        &mut |_, _, p| {
-            pedido = Some(p.to_vec());
-            Ok(77)
-        },
-        &db,
-        &atlas,
-        antigo,
-        (1, 1, px(99)),
-    )
-    .expect("troca");
-    assert_eq!(t.quem.len(), 2);
-    assert_eq!(pedido, Some(px(99)));
-    let novo = w.get::<SpritePixels>(a).unwrap().0;
-    assert_ne!(novo, antigo);
+    marca_edicao(&w, a, &atlas);
+    let novo = db.insert_image_rgba8(1, 1, px(99));
+    w.entity_mut(a).insert(SpritePixels(novo));
+    let t = segue_a_pintura(&mut w, &atlas, a, 77).expect("segue");
+    EDICAO.with(|c| c.set(None));
+    assert_eq!((t.quem, t.antigo, t.novo), (vec![b], antigo, novo));
     assert_eq!(w.get::<SpritePixels>(b).unwrap().0, novo);
     assert_ne!(
         w.get::<SpritePixels>(c).unwrap().0,
@@ -58,26 +48,6 @@ fn a_edicao_vale_para_todo_objecto_que_usa_a_mesma_imagem() {
         [3.0, 3.0],
         "o tamanho fica"
     );
-}
-
-/// Sair sem pintar nada não troca coisa nenhuma: o id é o do conteúdo.
-#[test]
-fn sair_sem_mudar_nada_nao_mexe_em_ninguem() {
-    let db = AssetDb::default();
-    let (mut w, antigo, a, b, _) = mundo(&db);
-    let t = troca_os_pixeis(
-        &mut w,
-        &mut |_, _, _| Ok(77),
-        &db,
-        &BTreeMap::new(),
-        antigo,
-        (1, 1, px(10)),
-    )
-    .expect("troca");
-    assert_eq!(t.novo, antigo);
-    assert!(!t.sem_dono());
-    let _ = a;
-    assert_eq!(w.get::<SpritePixels>(b).unwrap().0, antigo);
 }
 
 #[test]
@@ -115,32 +85,7 @@ fn com_o_botao_a_pintura_chega_aos_outros_e_a_seguinte_tambem() {
     EDICAO.with(|c| c.set(None));
 }
 
-#[test]
-fn sair_sem_pintar_nao_muda_ninguem_mesmo_com_a_cor_do_transparente_zerada() {
-    let db = AssetDb::default();
-    let antigo = db.insert_image_rgba8(2, 1, vec![9, 9, 9, 255, 7, 7, 7, 0]);
-    let mut w = World::new();
-    let mut s = Sprite::atlas(WHITE_TILE_KEY, [3.0, 3.0], [1.0; 4]);
-    s.source = SpriteSource::Individual { texture_id: 1 };
-    let a = w.spawn((s, SpritePixels(antigo))).id();
-    let mut subiu = false;
-    let n = troca_os_pixeis(
-        &mut w,
-        &mut |_, _, _| {
-            subiu = true;
-            Ok(2)
-        },
-        &db,
-        &BTreeMap::new(),
-        antigo,
-        (2, 1, vec![9, 9, 9, 255, 0, 0, 0, 0]),
-    );
-    assert_eq!(n.expect("troca").novo, antigo);
-    assert!(!subiu, "nada sobe à placa");
-    assert_eq!(w.get::<SpritePixels>(a).unwrap().0, antigo);
-}
-
-/// ⭐ **Editar não muda o nome da imagem** (dono 05/11: a «Platform» editada no Pixel não vira «Platform Low»).
+/// ⭐ **Editar não muda o nome da imagem** (dono 05/11: a «Platform» editada não vira «Platform Low»).
 #[test]
 fn a_imagem_editada_herda_o_nome_da_de_onde_veio() {
     let id = |n| AssetId::from_digest([n; 32]);
@@ -162,42 +107,4 @@ fn a_imagem_editada_herda_o_nome_da_de_onde_veio() {
     assert!(m.contains_key(&raiz), "a origem ainda em uso fica: {m:?}");
     let m = corre(&[(raiz, "Platform")], &[raiz]);
     assert_eq!(m.len(), 1, "desfeito, nada muda: {m:?}");
-}
-
-/// *A origem morreu a meio da edição: quem usa a imagem recebe o trabalho, e nada se perde.*
-#[test]
-fn a_origem_apagada_a_meio_nao_perde_o_trabalho() {
-    let db = AssetDb::default();
-    let (mut w, antigo, a, b, _) = mundo(&db);
-    w.despawn(a);
-    let r = troca_os_pixeis(
-        &mut w,
-        &mut |_, _, _| Ok(77),
-        &db,
-        &BTreeMap::new(),
-        antigo,
-        (1, 1, px(99)),
-    );
-    assert_eq!(r.expect("troca").quem, [b]);
-    assert_ne!(w.get::<SpritePixels>(b).unwrap().0, antigo);
-}
-
-/// *Sem ninguém vivo: `sem_dono` diz a verdade, e a seleção/o aviso são da shell.*
-#[test]
-fn sem_nenhum_usuario_vivo_a_troca_diz_que_nao_tem_dono() {
-    let db = AssetDb::default();
-    let (mut w, antigo, a, b, _) = mundo(&db);
-    w.despawn(a);
-    w.despawn(b);
-    let t = troca_os_pixeis(
-        &mut w,
-        &mut |_, _, _| panic!("nada sobe à placa"),
-        &db,
-        &BTreeMap::new(),
-        antigo,
-        (1, 1, px(99)),
-    )
-    .expect("troca");
-    assert!(t.sem_dono());
-    assert!(t.quem.is_empty());
 }

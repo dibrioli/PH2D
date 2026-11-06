@@ -627,8 +627,6 @@ pub fn apply_edit(
         }
         ImageUseEdit::Width(n) => crate::tiled::set_tiled_side(world, e, 0, n),
         ImageUseEdit::Height(n) => crate::tiled::set_tiled_side(world, e, 1, n),
-        // O Pixel Art é outra família: a shell atende este antes de chegar aqui.
-        ImageUseEdit::EditInPixel => false,
         ImageUseEdit::EditInPainter => {
             ph2d_sprite_edit::imagem::marca_edicao(world, e, atlas);
             false

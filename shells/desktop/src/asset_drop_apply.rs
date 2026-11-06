@@ -124,10 +124,6 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        if edit == ph2d_editor_core::ImageUseEdit::EditInPixel {
-            crate::app_edicao_de_imagem::abre_no_pixel(gfx, &mut self.pixel, entity_bits);
-            return;
-        }
         let ppm = gfx
             .hero_screen
             .as_ref()

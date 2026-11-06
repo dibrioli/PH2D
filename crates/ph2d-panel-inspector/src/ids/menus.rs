@@ -25,8 +25,7 @@ pub const INSP_IMAGE_USE: [NodeId; 4] = [
 /// A caixa «Tint each corner» do cartão Advanced.
 pub const INSP_SPRITE_CORNERS_ON: NodeId = hash_node_id("insp_sprite_corners_on");
 
-/// **Edit in Pixel** e **Edit in Painter** do cartão Image.
-pub const INSP_IMAGE_EDIT_PIXEL: NodeId = hash_node_id("insp_image_edit_pixel");
+/// **Edit in Painter** do cartão Image.
 pub const INSP_IMAGE_EDIT_PAINTER: NodeId = hash_node_id("insp_image_edit_painter");
 
 /// **Keep old size** do recibo do Replace.

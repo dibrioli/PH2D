@@ -37,8 +37,6 @@ pub enum ImageUseEdit {
     Width(f32),
     /// **Height** de uma sprite que repete, em cópias da imagem.
     Height(f32),
-    /// **Edit in Pixel**: a imagem abre no Pixel Art e volta ao sair do Draw.
-    EditInPixel,
     /// **Edit in Painter**: as pinturas desta sessão passam a todo objecto que usa a mesma imagem.
     EditInPainter,
     /// **Keep old size**, depois de um Replace: o tamanho no mundo de antes, em metros.

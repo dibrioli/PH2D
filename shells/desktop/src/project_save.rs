@@ -22,9 +22,6 @@ impl crate::App {
     /// ficheiro; esta função só sabe escrever. É a mesma razão do `project_load_from`: uma decisão
     /// escondida dentro de quem executa não é alcançável nem por um gate nem por um diálogo.
     pub(crate) fn project_save_to(&mut self, path: &str) {
-        if let Some(g) = self.gfx.as_mut() {
-            crate::app_edicao_de_imagem::fecha_agora(g, &mut self.pixel);
-        }
         let assets = self.collect_assets();
         // Os documentos pintados carimbam a identidade estável no mundo, então isto tem de rodar ANTES
         // da captura — senão o `PaintedDoc` recém-inserido ficaria de fora do snapshot e o load não

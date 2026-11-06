@@ -161,7 +161,7 @@ fn os_campos_custom_so_aparecem_em_custom_ou_pela_mao() {
 }
 
 #[test]
-fn edit_in_pixel_pede_so_a_ida_e_edit_in_painter_entra_no_draw() {
+fn a_imagem_so_tem_o_verbo_do_painter_e_ele_entra_no_draw() {
     use ph2d_editor_core::object_mode::{ModeRequest, ObjectMode};
     let entra = |a: &[EditorAction]| {
         a.iter().any(|x| {
@@ -172,12 +172,6 @@ fn edit_in_pixel_pede_so_a_ida_e_edit_in_painter_entra_no_draw() {
         })
     };
     let (mut host, mut st) = cena(factos());
-    let (_, a) = clica(&mut host, &mut st, INSP_IMAGE_EDIT_PIXEL);
-    assert_eq!(edicoes(&a), [ImageUseEdit::EditInPixel]);
-    assert!(
-        !entra(&a),
-        "o Pixel entra no Draw do objecto de trabalho, não neste"
-    );
     let (_, a) = clica(&mut host, &mut st, INSP_IMAGE_EDIT_PAINTER);
     assert_eq!(edicoes(&a), [ImageUseEdit::EditInPainter]);
     assert!(entra(&a));
@@ -291,14 +285,14 @@ fn o_convite_so_existe_sem_imagem() {
     let tem = |r: &[(NodeId, Rect)], id| r.iter().any(|(i, q)| *i == id && q.w > 0.0);
     let (mut host, mut st) = cena(factos());
     let r = pinta(&mut host, &mut st);
-    assert!(!tem(&r, INSP_IMAGE_PAINT_NEW) && tem(&r, INSP_IMAGE_EDIT_PIXEL));
+    assert!(!tem(&r, INSP_IMAGE_PAINT_NEW) && tem(&r, INSP_IMAGE_EDIT_PAINTER));
 
     let (mut host, mut st) = cena(SpriteFacts {
         sem_imagem: true,
         ..factos()
     });
     let r = pinta(&mut host, &mut st);
-    assert!(tem(&r, INSP_IMAGE_PAINT_NEW) && !tem(&r, INSP_IMAGE_EDIT_PIXEL));
+    assert!(tem(&r, INSP_IMAGE_PAINT_NEW) && !tem(&r, INSP_IMAGE_EDIT_PAINTER));
     let (_, a) = clica(&mut host, &mut st, INSP_RENDER_TEXTURE_SLOT);
     assert!(
         a.iter()
@@ -372,12 +366,11 @@ fn pinta_na_janela(
     r
 }
 
-/// O painel a `largura`: os dois botões, a miniatura e o que a moldura pintou.
-fn a_largura(largura: f32) -> (Rect, Rect, Rect, CabecaPintada) {
+/// O painel a `largura`: o botão, a miniatura e o que a moldura pintou.
+fn a_largura(largura: f32) -> (Rect, Rect, CabecaPintada) {
     let (mut host, mut st) = cena(factos());
     let r = pinta_a_largura(&mut host, &mut st, largura);
     (
-        rect_de(&r, INSP_IMAGE_EDIT_PIXEL),
         rect_de(&r, INSP_IMAGE_EDIT_PAINTER),
         rect_de(&r, INSP_RENDER_TEXTURE_SLOT),
         cabeca_pintada().expect("a moldura pintou"),
@@ -387,16 +380,15 @@ fn a_largura(largura: f32) -> (Rect, Rect, Rect, CabecaPintada) {
 /// Os dois lados do degrau.
 const FOLGA: f32 = 1.0;
 
-fn lado_a_lado(largura: f32) -> bool {
-    let (a, b, _, _) = a_largura(largura);
-    a.y == b.y
+fn tamanho_na_moldura(largura: f32) -> bool {
+    a_largura(largura).2.tamanho.is_some()
 }
 
-/// O limite do degrau, em px de painel, medido: a menor largura com os botões lado a lado.
+/// O limite do degrau, em px de painel, medido: a menor largura com o tamanho na moldura.
 fn limite_do_degrau() -> f32 {
-    (200..=400)
+    (120..=400)
         .map(|w| w as f32)
-        .find(|w| lado_a_lado(*w))
+        .find(|w| tamanho_na_moldura(*w))
         .expect("o degrau largo existe")
 }
 
@@ -404,11 +396,11 @@ fn dentro(q: Rect, m: Rect) -> bool {
     q.x >= m.x && q.y >= m.y && q.x + q.w <= m.x + m.w + 0.01 && q.y + q.h <= m.y + m.h + 0.01
 }
 
-/// ⭐ Dono 05/11: largo = nome, tamanho e os dois botões lado a lado; estreito = o tamanho sobe ao título, os
-/// botões empilham-se na largura da coluna, tudo dentro da moldura, sem sobrepor.
-/// *Mutações: o degrau ao contrário · a pilha com a largura de meia coluna · o nome sem subir · o tamanho na moldura.*
+/// ⭐ Dono 05/11 e 06/11: largo = nome, tamanho e o botão; estreito = o tamanho sobe ao título e o botão fica na largura
+/// da coluna, tudo dentro da moldura, sem sobrepor.
+/// *Mutações: o degrau ao contrário · o nome sem subir · o tamanho na moldura.*
 #[test]
-fn os_dois_lados_do_degrau_arrumam_o_tamanho_e_os_botoes() {
+fn os_dois_lados_do_degrau_arrumam_o_tamanho_e_o_botao() {
     let limite = limite_do_degrau();
     eprintln!("o degrau largo começa em {limite} px de painel");
     for (largura, largo) in [
@@ -416,33 +408,27 @@ fn os_dois_lados_do_degrau_arrumam_o_tamanho_e_os_botoes() {
         (limite + FOLGA, true),
         (limite, true),
         (limite - FOLGA, false),
-        (ph2d_tokens::chrome::PANEL_MIN_W_PX, false),
     ] {
-        let (a, b, foto, p) = a_largura(largura);
+        let (a, foto, p) = a_largura(largura);
         let m = p.moldura;
-        for q in [a, b, foto] {
+        for q in [a, foto] {
             assert!(dentro(q, m), "a {largura}: {q:?} fora de {m:?}");
         }
-        assert_eq!(a.y == b.y, largo, "a {largura}: {a:?} {b:?}");
         assert!((foto.w - foto.h).abs() < 0.01, "a {largura}: {foto:?}");
         assert!(foto.x + foto.w < a.x, "a {largura}: {foto:?} {a:?}");
         assert!(a.y >= p.nome.y + p.nome.h, "a {largura}: nome sob o botão");
         assert!(foto.x > 1600.0 - largura, "a {largura}: {foto:?} fora");
+        assert!(
+            a.w >= p.nome.w - 0.01,
+            "a {largura}: na largura da coluna {a:?} {:?}",
+            p.nome
+        );
         if largo {
-            assert!((a.w - b.w).abs() < 0.01, "a {largura}: {a:?} {b:?}");
-            assert!(a.x + a.w <= b.x, "a {largura}: sobrepostos {a:?} {b:?}");
             let t = p.tamanho.expect("o tamanho na moldura");
             assert!(p.tamanho_no_titulo.is_none(), "a {largura}");
             assert!(dentro(t, m), "a {largura}: {t:?}");
             assert!(t.y + t.h <= a.y, "a {largura}: tamanho sob o botão");
         } else {
-            assert_eq!((a.x, a.w), (b.x, b.w), "a {largura}: a mesma coluna");
-            assert!(
-                a.w >= p.nome.w - 0.01,
-                "a {largura}: na largura da coluna {a:?} {:?}",
-                p.nome
-            );
-            assert!(a.y + a.h <= b.y, "a {largura}: sobrepostos {a:?} {b:?}");
             assert!(
                 p.tamanho.is_none(),
                 "a {largura}: o tamanho ficou na moldura"
@@ -456,9 +442,29 @@ fn os_dois_lados_do_degrau_arrumam_o_tamanho_e_os_botoes() {
         }
     }
     assert!(
-        limite > 270.0 && limite <= 300.0,
-        "o painel de fábrica fica no largo: {limite}"
+        limite <= ph2d_tokens::chrome::PANEL_MIN_W_PX,
+        "no piso do painel, um só botão deixa o tamanho na moldura: {limite}"
     );
+}
+
+/// ⭐ Dono 06/11: na moldura só a miniatura e UM botão, o da ferramenta da imagem.
+/// *Mutação: pôr um segundo `Verbo` em `cabeca` ⇒ RED.*
+#[test]
+fn a_moldura_tem_um_so_botao() {
+    let (mut host, mut st) = cena(factos());
+    let r = pinta(&mut host, &mut st);
+    let m = cabeca_pintada().expect("a moldura pintou").moldura;
+    let alvos: Vec<NodeId> = r
+        .iter()
+        .filter(|(i, q)| {
+            q.w > 0.0
+                && dentro(*q, m)
+                && *i != INSP_RENDER_TEXTURE_SLOT
+                && *i != INSP_IMAGE_EDIT_PAINTER
+        })
+        .map(|(i, _)| *i)
+        .collect();
+    assert!(alvos.is_empty(), "{alvos:?}");
 }
 
 /// O tamanho comprido do Repeated (`1024 × 1024 px (…)`) sobe inteiro onde cabe; onde nem o título o leva, sobe sem
@@ -489,16 +495,13 @@ fn o_tamanho_comprido_do_repeated_sobe_inteiro_ou_sem_os_parenteses() {
 #[test]
 fn a_moldura_tem_a_mesma_altura_nos_dois_degraus_e_os_dois_clicam() {
     let limite = limite_do_degrau();
-    let altura = |w: f32| a_largura(w).3.moldura.h;
+    let altura = |w: f32| a_largura(w).2.moldura.h;
     let d = altura(limite) - altura(limite - FOLGA);
     assert!(d.abs() < 0.01, "a moldura mudou com o degrau: {d}");
     for largura in [limite, limite - FOLGA] {
         let (mut host, mut st) = cena(factos());
         let r = pinta_a_largura(&mut host, &mut st, largura);
-        for (id, pedido, draw) in [
-            (INSP_IMAGE_EDIT_PIXEL, ImageUseEdit::EditInPixel, false),
-            (INSP_IMAGE_EDIT_PAINTER, ImageUseEdit::EditInPainter, true),
-        ] {
+        for (id, pedido, draw) in [(INSP_IMAGE_EDIT_PAINTER, ImageUseEdit::EditInPainter, true)] {
             let q = rect_de(&r, id);
             let _ = host.drained_actions();
             let mut eventos = Vec::new();

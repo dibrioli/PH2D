@@ -273,7 +273,7 @@ impl crate::App {
                 let (x, y) = ecra(w);
                 self.smoke_pointer_move(x, y);
             }
-            Mao::AbreNoPixel | Mao::SaiDoDraw | Mao::Aplica | Mao::Desfaz | Mao::Relata => {
+            Mao::SaiDoDraw | Mao::Aplica | Mao::Desfaz | Mao::Relata => {
                 self.fim_da_imagem_do_smoke(m);
             }
             Mao::Sobe => {

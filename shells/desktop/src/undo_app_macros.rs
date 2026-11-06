@@ -45,9 +45,7 @@ impl crate::App {
     /// Porque este quadro NÃO regista passo (`None` = regista, se o documento mudou). O botão em
     /// baixo é o que faz um arrasto inteiro — o gizmo, os interruptores pintados — ser UM passo.
     pub(crate) fn motivo_da_supressao(&self, had_input: bool) -> Option<&'static str> {
-        if ph2d_sprite_edit::no_pixel::aberta().is_some() {
-            Some(ph2d_i18n::tr("shell.undo_app.edicao_de_imagem"))
-        } else if self.undo.jogo.a_correr() {
+        if self.undo.jogo.a_correr() {
             Some(ph2d_i18n::tr("shell.undo_app.o_jogo_esta_a_correr"))
         } else if self.held_button.is_some() {
             Some(ph2d_i18n::tr("shell.undo_app.botao_do_rato_em_baixo"))

@@ -83,29 +83,3 @@ fn a_well_formed_pixel_blob_opens_and_installs_the_documents() {
     assert!(!app.undo.can_undo(), "o arquivo foi RECUSADO");
     assert!(app.pixel.doc(1).is_some(), "o documento não foi instalado");
 }
-
-/// ⭐ *Abrir um projecto com uma imagem aberta no Pixel: `ABERTA` não atravessa, senão o quadro seguinte faria `fecha_imagem`
-/// sobre o documento de mesma chave do projecto novo, e apagaria um Pixel Sprite dele.*
-/// *Mutação: tirar o `esquece` do `project_forget_previous` ⇒ a edição sobrevive ao load.*
-#[test]
-fn abrir_um_projecto_fecha_a_edicao_de_imagem_aberta() {
-    use ph2d_sprite_edit::no_pixel;
-    let mut w = ph2d_ecs::World::new();
-    let origem = w.spawn(ph2d_ecs::Transform::default()).id();
-    let trabalho = w.spawn(ph2d_ecs::Transform::default()).id();
-    let imagem = ph2d_asset::AssetDb::default().insert_image_rgba8(1, 1, vec![0; 4]);
-    no_pixel::abre(
-        &mut w,
-        origem,
-        trabalho,
-        (1, imagem),
-        (1, 1),
-        100.0,
-        ([0.0, 0.0], 1.0),
-    );
-    assert!(no_pixel::aberta().is_some());
-    let _app = load("load_com_edicao", pixel_blob());
-    let sobrou = no_pixel::aberta();
-    no_pixel::esquece();
-    assert_eq!(sobrou, None);
-}

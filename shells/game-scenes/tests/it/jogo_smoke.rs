@@ -630,16 +630,11 @@ fn a_platform_editada_nao_vira_platform_low() {
         .id();
     w.spawn((sprite(), StableId(2), Name::new("Platform High")));
     assert_eq!(session_library(&mut sim, &db, &atlas)[&raiz], "Platform");
-    ph2d_sprite_edit::imagem::troca_os_pixeis(
-        sim.world_mut(),
-        &mut |_, _, _| Ok(77),
-        &db,
-        &atlas,
-        raiz,
-        (1, 1, vec![1, 2, 3, 255]),
-    )
-    .expect("troca");
-    let novo = sim.world().get::<SpritePixels>(a).expect("px").0;
+    ph2d_sprite_edit::imagem::marca_edicao(sim.world(), a, &atlas);
+    let novo = db.insert_image_rgba8(1, 1, vec![1, 2, 3, 255]);
+    sim.world_mut().entity_mut(a).insert(SpritePixels(novo));
+    ph2d_sprite_edit::imagem::segue_a_pintura(sim.world_mut(), &atlas, a, 77).expect("segue");
+    ph2d_sprite_edit::imagem::fim_da_edicao();
     let n = session_library(&mut sim, &db, &atlas);
     assert_eq!(n[&novo], "Platform");
     assert!(!n.contains_key(&raiz), "{n:?}");

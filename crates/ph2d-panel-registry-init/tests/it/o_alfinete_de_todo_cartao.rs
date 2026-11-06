@@ -122,7 +122,7 @@ fn todo_cartao_de_um_objecto_tem_alfinete_salvo_a_lista() {
     desarma_tudo();
 }
 
-/// ⭐ O cartão Image preso a A, com B selecionado: a imagem é a de A, e o Edit in Pixel pede A.
+/// ⭐ O cartão Image preso a A, com B selecionado: a imagem é a de A, e o Edit in Painter pede A.
 /// *Mutações: tirar `slot` do `Retrato` · o `com_retrato` do gesto.*
 #[test]
 fn o_cartao_image_preso_mostra_a_imagem_dele_e_pede_para_ele() {
@@ -140,13 +140,13 @@ fn o_cartao_image_preso_mostra_a_imagem_dele_e_pede_para_ele() {
         !pintadas.iter().any(|(b, n)| *b == A && n != "Hero sheet"),
         "{pintadas:?}"
     );
-    let feitos = no_solto(&mut h, sec, insp::ids::INSP_IMAGE_EDIT_PIXEL, &[B]);
+    let feitos = no_solto(&mut h, sec, insp::ids::INSP_IMAGE_EDIT_PAINTER, &[B]);
     assert!(
         feitos.iter().any(|a| matches!(
             a,
             EditorAction::ImageUseEdit {
                 entity_bits: A,
-                edit: ph2d_editor_core::ImageUseEdit::EditInPixel
+                edit: ph2d_editor_core::ImageUseEdit::EditInPainter
             }
         )),
         "{feitos:?}"

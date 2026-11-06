@@ -58,15 +58,6 @@ impl crate::App {
     /// botão **Redo não despachava nada** (era pintado e órfão). Dois caminhos para a mesma
     /// pergunta divergem; um só, não.
     pub(crate) fn undo_or_redo(&mut self, redo: bool) {
-        // Com uma imagem aberta no Pixel, o desfazer é o do documento dela: o botão da barra responde como o Ctrl+Z.
-        if let Some(a) = ph2d_sprite_edit::no_pixel::aberta() {
-            let _ = if redo {
-                self.pixel.redo(a.key)
-            } else {
-                self.pixel.undo(a.key)
-            };
-            return;
-        }
         #[cfg(feature = "panel-audio-editor")]
         let audio_owns = self
             .gfx

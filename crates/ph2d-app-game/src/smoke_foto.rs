@@ -14,7 +14,7 @@ pub enum Foto {
     Seletor,
     Trocado,
     /// GEF 23, a ficha da Sprite: o cartão vazio, em uso, o Advanced aberto, Custom, o recibo do Replace, a folha,
-    /// o Repeated, o pivô no pé, e a imagem no Pixel Art (aberta, a voltar pintada, e desfeita) e no Painter.
+    /// o Repeated, o pivô no pé, e a imagem no Painter.
     SpriteVazio,
     SpriteUso,
     SpriteAdvanced,
@@ -22,15 +22,11 @@ pub enum Foto {
     SpriteRecibo,
     SpriteRepetida,
     SpritePivoPe,
-    SpriteNoPixel,
-    SpritePixelVolta,
-    SpritePixelDesfaz,
     /// Edit in Painter no app real: um traço, sair do Draw, `[sprite-pixel]` das duas plataformas, Ctrl+Z.
     SpritePainterVolta,
     /// O mesmo pelo Apply, sem sair do Draw.
     SpritePainterAplica,
     /// Abre, não pinta, sai: `[sprite-pixel]` diz quantos passos ficaram e se a marca do botão saiu.
-    SpritePixelSemPintar,
     SpritePainterSemPintar,
     SpriteNoPainter,
     Bloco,
@@ -94,12 +90,8 @@ pub fn foto() -> Option<Foto> {
         "sprite_recibo" => Some(Foto::SpriteRecibo),
         "sprite_repetida" => Some(Foto::SpriteRepetida),
         "sprite_pivo_pe" => Some(Foto::SpritePivoPe),
-        "sprite_no_pixel" => Some(Foto::SpriteNoPixel),
-        "sprite_pixel_volta" => Some(Foto::SpritePixelVolta),
-        "sprite_pixel_desfaz" => Some(Foto::SpritePixelDesfaz),
         "sprite_painter_volta" => Some(Foto::SpritePainterVolta),
         "sprite_painter_aplica" => Some(Foto::SpritePainterAplica),
-        "sprite_pixel_sem_pintar" => Some(Foto::SpritePixelSemPintar),
         "sprite_painter_sem_pintar" => Some(Foto::SpritePainterSemPintar),
         "sprite_no_painter" => Some(Foto::SpriteNoPainter),
         "trocado" => Some(Foto::Trocado),
@@ -199,12 +191,8 @@ impl Foto {
                 | Self::SpriteRecibo
                 | Self::SpriteRepetida
                 | Self::SpritePivoPe
-                | Self::SpriteNoPixel
-                | Self::SpritePixelVolta
-                | Self::SpritePixelDesfaz
                 | Self::SpritePainterVolta
                 | Self::SpritePainterAplica
-                | Self::SpritePixelSemPintar
                 | Self::SpritePainterSemPintar
                 | Self::SpriteNoPainter
                 | Self::UsoParada
@@ -351,9 +339,6 @@ pub fn plano_da_foto(
             )];
             plano.alvo = player;
         }
-        Foto::SpriteNoPixel => {
-            plano.edicoes = vec![(alta, ph2d_editor_core::ImageUseEdit::EditInPixel)];
-        }
         Foto::SpriteNoPainter
         | Foto::SpritePainterVolta
         | Foto::SpritePainterAplica
@@ -364,11 +349,7 @@ pub fn plano_da_foto(
             plano.escolhas = vec![(hills, *montes), (player, *heroi)];
             plano.alvo = hills;
         }
-        // A mão abre-as, com a cena já assente (`smoke_mao::Mao::AbreNoPixel`).
-        Foto::Bloco
-        | Foto::SpritePixelVolta
-        | Foto::SpritePixelDesfaz
-        | Foto::SpritePixelSemPintar => {}
+        Foto::Bloco => {}
         Foto::Bandeira => plano.escolhas = vec![(alta, bandeira)],
         Foto::Animada => {
             plano.escolhas = vec![(alta, bandeira)];

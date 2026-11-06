@@ -47,6 +47,8 @@
 - [HISTÓRICO: aquarela/wash e 3D (20)](reference_topic_watercolor_historical.md)
 - ⭐ [Dono 28/10: a tinta que AMASSA o relevo do papel é controlo do pincel (0 segue · 1 amassa), nunca apagar](project_paper_press_is_a_brush_control_2026_10_28.md)
 
+- ⭐⭐ [Dono 05/11: módulo de criação de efeitos sonoros sai SEM IA](project_sfx_module_no_ai_2026_11_05.md)
+
 ## Comunicação & decisão
 - ⭐⭐⭐ [Painter (31/10): Pigmento + Água = só a DILUIÇÃO; o VOLUME ao papel é outro controlo — um controlo, uma grandeza](project_painter_volume_is_independent_of_dilution_2026_10_31.md)
 - ⛔⛔⛔ [O APP é SÓ em inglês — toda string de UI, e a ajuda/tooltip em Plain English para qualquer país (31/10)](feedback_app_ui_english_only.md)

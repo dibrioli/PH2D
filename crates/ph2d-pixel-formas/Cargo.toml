@@ -15,3 +15,6 @@ authors.workspace = true
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-pixel-core = { path = "../ph2d-pixel-core" }
 ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+
+[lints]
+workspace = true

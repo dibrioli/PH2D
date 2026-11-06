@@ -128,7 +128,7 @@ mod tests {
         //   main (GEF). Quem integrar conta o DELTA, nunca o literal.
         // ⚠️ **2026-10-25: `116` -> `117`, delta +1** -- o `PixelSprite` (ADR-0196), registado no
         //   ECS (`ph2d-ecs` 115 -> 116). DELTA sobre o `116` do main. Quem integrar conta o DELTA, nunca o literal.
-        assert_eq!(reg.len(), 117);
+        assert_eq!(reg.len(), 119);
         assert!(reg.get_by_name("ph2d::render::Sprite").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SpriteEmissive").is_some());
         assert!(reg.get_by_name("ph2d::ecs::SliceNine").is_some());

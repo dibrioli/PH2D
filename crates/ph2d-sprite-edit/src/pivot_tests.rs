@@ -233,3 +233,39 @@ fn a_escala_nula_nao_envenena_o_offset() {
     let o = w.get::<Collider>(e).unwrap().offset;
     assert!(o[0].is_finite() && o[1].is_finite(), "{o:?}");
 }
+
+/// A ferramenta Pivot do canvas segue a mesma lei: a colisão e os filhos ficam, sobre a origem e a âncora do arrasto.
+#[test]
+fn arrastar_o_pivo_no_canvas_nao_move_a_colisao_nem_os_filhos() {
+    let t = Transform {
+        translation: Vec2::new(5.0, 7.0),
+        rotation: 0.7,
+        scale: Vec2::new(2.0, -3.0),
+        ..Default::default()
+    };
+    let (mut w, e) = mundo_com(sprite_2x2(), t);
+    w.entity_mut(e).insert(Collider {
+        offset: [0.25, -0.5],
+        ..Default::default()
+    });
+    let local = Transform {
+        translation: Vec2::new(3.0, 1.0),
+        ..Default::default()
+    };
+    let f = w.spawn((local, ph2d_ecs::ChildOf(e))).id();
+    let filho = |w: &World| {
+        Transform::compose(
+            *w.get::<Transform>(e).unwrap(),
+            *w.get::<Transform>(f).unwrap(),
+        )
+        .translation
+    };
+    let (c0, f0) = (centro_da_colisao(&w, e), filho(&w));
+    // O mesmo que `pousa`: âncora nova `[0, 1]`, e a origem compensa para o quad não andar.
+    let anchor = [0.0, 1.0];
+    let origem = no_pai(t, [0.0, 0.0]) - no_pai(t, anchor);
+    arrasta(&mut w, e, [origem.x, origem.y], anchor);
+    assert_eq!(w.get::<Sprite>(e).unwrap().anchor, anchor);
+    assert!((c0 - centro_da_colisao(&w, e)).length() < 1.0e-4);
+    assert!((f0 - filho(&w)).length() < 1.0e-4);
+}

@@ -261,7 +261,6 @@ checksum = "f8fadd59c855ef2080decdef8ff161eb6661b86933c9d82e5ba29dc602a55aba"
 name = "sonda-w2"
 version = "0.0.0"
 dependencies = [
- "ph2d-det-math",
  "ph2d-sfx-dsp",
  "ph2d-sfx-recipe",
 ]

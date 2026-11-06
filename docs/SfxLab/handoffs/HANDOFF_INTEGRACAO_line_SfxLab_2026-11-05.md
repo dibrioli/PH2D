@@ -101,7 +101,7 @@ Auditoria com duas lentes independentes (correção do motor; costura e formato)
 - Crates novas inteiras: `ph2d-sfx-dsp` 28, `ph2d-sfx-recipe` 3, `ph2d-sfx-scene` 1, `ph2d-sound-set` 17.
 - Mutação: 15 de 15 antes da auditoria. Os seis gates da auditoria viram vermelho pelo teste antes da cura; **sem nova rodada do agente de mutação depois**.
 - **`nextest-impacted` e suíte completa NÃO correram na linha** (regra do dono 23/10, CLAUDE.md §2): são do integrador. Nota: o `/pd-linha-fechar` ainda manda `nextest-impacted` no passo 1, o que contradiz o CLAUDE.md.
-- Não registados nesta janela: `censos-da-arvore-combinada.sh`, `cargo machete`, `check-standalone-optional.sh`, `check-workflow-packages.sh` (DIRETRIZ §1.5.9 itens 5 e 5-bis). O integrador os corre. A linha não usa `#[cfg(target_os`; confirme por grep.
+- Corridos no fecho (DIRETRIZ §1.5.9 itens 5 e 5-bis), verdes: `censos-da-arvore-combinada.sh` (132 testes, 12 de 12 censos), `cargo machete` nas crates novas, em `shells/game-scenes` e na sonda (achou uma dependência sem uso na sonda, retirada), `check-standalone-optional.sh`, `check-workflow-packages.sh`. Isto não substitui o portão de integração. A linha não usa `#[cfg(target_os`; confirme por grep.
 - Perfil do loop: paralelismo 1,85, `test:check` 5,6x (✗), contexto por passo 307 mil (✗).
 
 ## 7. Smokes (comando inteiro)
@@ -122,4 +122,10 @@ Auditoria com duas lentes independentes (correção do motor; costura e formato)
 
 ## Binário do smoke
 
-A PREENCHER
+Compilado por último, depois de `rm -rf target/*/incremental`. Comando: `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`. Segunda saída, sem nenhum `Compiling`:
+
+```
+    Finished `smoke` profile [optimized] target(s) in 0.20s
+```
+
+Os commits depois disso só tocam docs e a sonda à parte.

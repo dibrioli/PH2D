@@ -12,7 +12,6 @@ publish = false
 crate-type = ["rlib", "cdylib"]
 
 [dependencies]
-ph2d-det-math = { path = "../../../../crates/ph2d-det-math" }
 ph2d-sfx-dsp = { path = "../../../../crates/ph2d-sfx-dsp" }
 ph2d-sfx-recipe = { path = "../../../../crates/ph2d-sfx-recipe" }
 

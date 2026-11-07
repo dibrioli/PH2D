@@ -15,6 +15,7 @@ mod foundation_module_tree;
 #[path = "../common/hero_sources.rs"]
 mod hero_sources;
 
+mod a_tool_panel_never_hides_the_inspector;
 mod clicar_na_seta_nao_abre_a_escrita;
 
 mod a_barra_aberta_no_seletor_tem_o_anel;

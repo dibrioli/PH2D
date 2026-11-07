@@ -47,7 +47,7 @@ fn code_only(src: &str) -> String {
 
 #[test]
 fn no_bridge_hides_the_inspector_to_take_its_slot() {
-    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/render_loop");
+    let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../shells/desktop/src/render_loop");
     let mut scanned = 0usize;
     let mut guilty: Vec<String> = Vec::new();
     for e in fs::read_dir(&dir)

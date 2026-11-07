@@ -146,8 +146,15 @@ fn grade_do_pivot(c: &mut CardCtx<'_>, y: f32, f: slot_image::SpriteFacts) -> f3
     y + lado + m::FIELD_ROW_GAP
 }
 
-/// A caixa `Keep in place`, na largura inteira do cartão: o texto não cabe ao lado do Pivot no painel mínimo.
-fn caixa_do_mirror(c: &mut CardCtx<'_>, y: f32) -> f32 {
+/// A caixa `Keep in place`, à direita dos botões do Mirror. Onde o texto não cabe nessa coluna, ou a grade do Pivot
+/// ocupa a linha, desce para a largura inteira do cartão. Devolve o fundo.
+fn caixa_do_mirror(
+    c: &mut CardCtx<'_>,
+    coluna: (f32, f32),
+    linha_y: f32,
+    fim: f32,
+    fim_grade: f32,
+) -> f32 {
     let value = if mirror_no_lugar() {
         CheckboxValue::Checked
     } else {
@@ -155,15 +162,20 @@ fn caixa_do_mirror(c: &mut CardCtx<'_>, y: f32) -> f32 {
     };
     let id = ids::INSP_SPRITE_MIRROR_KEEP;
     let label = tr("card.insp.mirror_keep").into();
-    c.row(
-        &[Cell::new(Widget::Check {
-            id,
-            label,
-            value,
-            off: false,
-        })],
-        y,
-    )
+    let caixa = Cell::new(Widget::Check {
+        id,
+        label,
+        value,
+        off: false,
+    });
+    if fim_grade <= linha_y && c.largura_pedida(&caixa) <= coluna.1 {
+        let (x0, w0) = (c.x, c.w);
+        (c.x, c.w) = coluna;
+        c.row(&[caixa], linha_y);
+        (c.x, c.w) = (x0, w0);
+        return fim.max(fim_grade);
+    }
+    c.row(&[caixa], fim.max(fim_grade))
 }
 
 /// Os dois espelhos e o Pivot lado a lado. Os ids do Flip continuam caixas de marcar: o clique emite o mesmo
@@ -221,7 +233,7 @@ pub(crate) fn flip_e_pivot(c: &mut CardCtx<'_>, y: f32) -> f32 {
         .and_then(|i| slot_image::factos().filter(|f| f.entity_bits == i.entity_bits))
     else {
         (c.x, c.w) = (x0, w0);
-        return caixa_do_mirror(c, fim_espelhos);
+        return caixa_do_mirror(c, (xb, wb), fim_espelhos - m::FIELD_H, fim_espelhos, y);
     };
     (c.x, c.w) = (xb, wb);
     c.row(
@@ -234,7 +246,8 @@ pub(crate) fn flip_e_pivot(c: &mut CardCtx<'_>, y: f32) -> f32 {
     let topo = fim_flip - m::FIELD_H;
     let fim_grade = grade_do_pivot(c, topo, f);
     (c.x, c.w) = (x0, w0);
-    let fim = caixa_do_mirror(c, fim_espelhos.max(fim_grade));
+    let linha = fim_espelhos - m::FIELD_H;
+    let fim = caixa_do_mirror(c, (xb, wb), linha, fim_espelhos, fim_grade);
     if !pivot_campos_abertos(&f) {
         return fim;
     }

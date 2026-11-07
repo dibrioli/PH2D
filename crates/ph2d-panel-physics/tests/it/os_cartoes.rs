@@ -980,3 +980,60 @@ fn a_roda_de_lado_rola_as_colunas_e_a_simples_nao() {
     roda(&mut mesa, 0.0, 4000.0, true);
     assert_eq!(valor(&mesa), 0.0, "pára na ponta");
 }
+
+/// O par alternado pela porta do quadro decide no motor: duas bolas de camadas diferentes batem ou passam, nos dois
+/// sentidos, e o quadro da outra camada desfaz o mesmo par.
+#[test]
+fn o_quadro_decide_no_motor_se_as_bolas_de_camadas_diferentes_batem() {
+    let duas_bolas = |settings: PhysicsSettings, a: u8, b: u8| -> f32 {
+        use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, PhysicsBridge, RigidBody};
+        let mut sim = ph2d_ecs::SimWorld::new();
+        let bola = |raio: f32, camada: u8| Collider {
+            shape: ColliderShape::Ball { radius: raio },
+            layer: camada,
+            ..Collider::default()
+        };
+        sim.world_mut().spawn((
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            bola(1.0, a),
+            ph2d_ecs::Transform::from_translation(ph2d_core::Vec2::new(0.0, 0.0)),
+        ));
+        let cai = sim
+            .world_mut()
+            .spawn((
+                RigidBody {
+                    kind: BodyKind::Dynamic,
+                },
+                bola(0.25, b),
+                ph2d_ecs::Transform::from_translation(ph2d_core::Vec2::new(0.0, 2.0)),
+            ))
+            .id();
+        let mut ponte = PhysicsBridge::new();
+        ponte.set_settings(settings);
+        for tick in 1..=120 {
+            ponte.dispatch(&mut sim, true, tick);
+        }
+        sim.world()
+            .get::<ph2d_ecs::Transform>(cai)
+            .expect("a bola")
+            .translation
+            .y
+    };
+    let alterna = |s: PhysicsSettings, a: usize, b: usize| {
+        set_current_physics(Some(mundo(s, InteractionSettings::default())));
+        let _ = drain_intents();
+        ph2d_panel_physics::alterna_par(a, b);
+        ultimo_mundo(&drain_intents()).expect("o pedido")
+    };
+    let fabrica = PhysicsSettings::default();
+    assert!(duas_bolas(fabrica, 1, 3) > 0.5, "de fábrica batem");
+    let sem = alterna(fabrica, 3, 1);
+    assert!(duas_bolas(sem, 1, 3) < -2.0, "apagado, passa");
+    assert!(duas_bolas(sem, 3, 1) < -2.0, "e ao contrário");
+    assert!(duas_bolas(sem, 1, 2) > 0.5, "o controlo bate");
+    let de_volta = alterna(sem, 1, 3);
+    assert_eq!(de_volta.layer_matrix, fabrica.layer_matrix, "o mesmo par");
+    assert!(duas_bolas(de_volta, 1, 3) > 0.5, "aceso, bate");
+}

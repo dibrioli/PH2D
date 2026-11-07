@@ -1475,6 +1475,13 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
         "as linhas da tabela `rows::SECTIONS` — o mundo da física sobre a Cena (canal MUNDO, F30 §B)",
     ),
     (
+        "ph2d-panel-inspector",
+        "sections/physics_colide.rs::colide_com",
+        Canal,
+        &["INSP_PHYS_COLLIDES"],
+        "os quadros de «Collides with» são a matriz de camadas: o mesmo losango (`marcas_mundo::QUADROS`)",
+    ),
+    (
         "ph2d-panel-physics",
         "paint/matrix.rs::paint",
         Canal,

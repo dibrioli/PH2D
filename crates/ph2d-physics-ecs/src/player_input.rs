@@ -61,15 +61,15 @@ use ph2d_input::{
 #[must_use]
 pub fn resolve_player_input(
     actions: &mut ActionState,
-    hero: Option<&ph2d_editor_core::HeroScreen>,
+    mapa: Option<&ph2d_input::InputMap>,
     device: &ph2d_input::InputState,
-) -> ph2d_physics_ecs::PlayerInput {
-    let Some(hero) = hero else {
-        return ph2d_physics_ecs::PlayerInput::default();
+) -> crate::PlayerInput {
+    let Some(mapa) = mapa else {
+        return crate::PlayerInput::default();
     };
-    actions.tick(&hero.input_map, device);
-    let input = Input::new(&hero.input_map, actions);
-    ph2d_physics_ecs::PlayerInput {
+    actions.tick(mapa, device);
+    let input = Input::new(mapa, actions);
+    crate::PlayerInput {
         drive: input.axis(PLAYER_MOVE_LEFT, PLAYER_MOVE_RIGHT),
         // ⭐ **O eixo VERTICAL** (TOP-20 #13) — o mover de vista de cima precisa de
         // uma intenção 2D, e ela viaja na MESMA struct que a fita determinística

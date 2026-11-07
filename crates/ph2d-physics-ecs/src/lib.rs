@@ -26,6 +26,7 @@ pub mod joint_tool;
 /// partilham (a da shell e a da fita). Ver o cabeçalho do módulo.
 pub mod keyboard_driven;
 mod layer_names;
+pub mod player_input;
 pub use layer_names::{LayerNames, layers_in_use, visible_layers};
 pub mod name_refs;
 mod parts;

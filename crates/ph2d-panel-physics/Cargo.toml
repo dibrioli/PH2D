@@ -23,6 +23,9 @@ ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 
 [dev-dependencies]
+# As duas bolas do gate do quadro de «Collides with».
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
 # A régua do HR-15 — dev-dep só: o produto não conhece o censo dele.
 ph2d-label-census = { path = "../ph2d-label-census" }
 # `architecture_interactive_crate_has_behavioral_test`: a panel with an

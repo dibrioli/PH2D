@@ -18,6 +18,7 @@ name = "physics_ecs_c9"
 path = "src/bin/physics_ecs_c9/main.rs"
 
 [dependencies]
+ph2d-input = { path = "../ph2d-input" }
 # The ECS this bridge reads components from and writes Transform back to.
 ph2d-ecs = { path = "../ph2d-ecs" }
 # ⭐ A árvore de tags (TOP-20 #9, W3c) — o `SignalTagFilter` pergunta a pertença pela porta dela.

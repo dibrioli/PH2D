@@ -368,7 +368,17 @@ pub mod physics_state;
 pub mod physics_surface;
 
 // O input do player.
-pub mod player_input;
+/// O dedo do jogador, com o mapa do hero; a lei mora em [`ph2d_physics_ecs::player_input`].
+pub mod player_input {
+    pub fn resolve_player_input(
+        actions: &mut ph2d_input::ActionState,
+        hero: Option<&ph2d_editor_core::HeroScreen>,
+        device: &ph2d_input::InputState,
+    ) -> ph2d_physics_ecs::PlayerInput {
+        let mapa = hero.map(|h| &h.input_map);
+        ph2d_physics_ecs::player_input::resolve_player_input(actions, mapa, device)
+    }
+}
 
 // ⚠️ **`#[cfg(test)]` e MAIS NADA**: estes eram `#[cfg(test)] mod X;` no
 // `physics/mod.rs` e continuam a sê-lo. O `measure_player_tape` é um

@@ -14,23 +14,11 @@
 //! across the whole gesture; a discrete edit (Inspector field, Reset) is one step
 //! for the frame it lands on.
 //!
-//! While the transport is **playing**, ordinary auto-key stays inert: the pose
-//! is the animation driving the object, not a user edit, so there is nothing to
-//! key. The ONE exception is **performing / record** (W5): with `Record` armed,
-//! a live gizmo drag records the dragged pose along the playhead (mocap by
-//! hand). The guard is strict on purpose — `performing && drag_now` — so the
-//! passive pose the animation is driving can NEVER mint a key on its own; only
-//! an active manipulation gesture records. (That, plus the diff comparing at
-//! the apply's raw clock below, is why a plain Play — even with AutoKey armed —
-//! records nothing.)
-//!
-//! **Disarmed, the pass pins instead of keying.** Without the pin, posing a
-//! bound object for a manual K was impossible: the apply pass rewrote the pose
-//! from the curve the frame the gesture ended, snapping the object back before
-//! K could record it. So a bound pose the user displaced while paused joins
-//! [`AutokeyState::displaced`], and the apply skips those entities — the pose
-//! holds, Blender-style, until the playhead moves (scrub/play reclaims it for
-//! the animation) or it returns to its curve (a K keyed it, or an undo).
+//! While the transport is **playing** the pass is inert: the pose is the animation, not a user edit.
+//! The one exception is performing (W5): with `Record` armed, a live gizmo drag records along the
+//! playhead (`performing && drag_now`). Disarmed, the pass pins instead of keying: a bound pose the
+//! user displaced while paused joins [`AutokeyState::displaced`] so a manual K can record it, until
+//! the playhead moves or it returns to its curve.
 
 use std::collections::BTreeMap;
 
@@ -80,9 +68,7 @@ pub(crate) fn run(
     // Performing needs the panel open too (same gate as auto-key): record is a
     // timeline authoring mode, meaningless when its UI is hidden.
     let performing = panel_open && timeline.flags.performing;
-    // ⭐⭐⭐ **DUAS MÃOS ARRASTAM NESTE APP, e este passe só conhecia uma** — posar um osso é um
-    // gesto próprio (`bone_pose::pose`). Sem o somar aqui, cada quadro de um arrasto de osso é uma
-    // «edição discreta» e abre um passo de undo seu: quarenta passos para dobrar um braço.
+    // Duas mãos arrastam: o gizmo e a ferramenta Bone; sem esta, cada quadro de um osso era um passo de undo.
     let drag_now = hero.gizmo.drag.is_some()
         || skeleton.bone_pose.is_some()
         || sim
@@ -91,16 +77,7 @@ pub(crate) fn run(
             .is_some_and(ph2d_ecs::MaosDasFamilias::alguma);
     // Sample every selected sprite's live pose, in selection order.
     //
-    // ⛔⛔ **Menos quem um MOTOR está a conduzir** (auditoria de 2026-09-08). A invariante que o
-    // cabeçalho deste ficheiro declara — *«the apply pass has already written the document's value
-    // to the world … no feedback loop»* — exige que ninguém escreva pose **entre** o apply e este
-    // passe. Os passes do esqueleto (o osso inteligente, a âncora de IK) escrevem exactamente aí:
-    // com o objecto conduzido seleccionado e o AutoKey armado, a pose que se lê aqui é a que o
-    // MOTOR pôs, ela difere da curva do clip activo, e nasce uma chave feita da saída do motor.
-    //
-    // ⚠️ *Pré-visualização não é autoria*, e o ledger já sabia exactamente quem está sob condução —
-    // faltava alguém perguntar-lhe. ⛔ Não é o `dragging_entity`: aquele salta quem a MÃO segura,
-    // este salta quem um motor escreve, e as duas populações não se intersectam.
+    // ⛔ Menos quem um MOTOR conduz (`populacao`): pré-visualização não é autoria.
     let samples: Vec<(u64, PoseSample)> = populacao(hero, skeleton, sim, preview)
         .into_iter()
         .map(|e| {
@@ -112,6 +89,7 @@ pub(crate) fn run(
         .iter()
         .map(|&(e, _)| (e, campos_lidos(sim, e)))
         .collect();
+    ak.previa = ph2d_app_sprite_anim::previa::marcados(sim.world());
     propagar_topologia(timeline, ak);
     sonda(|| {
         let pop: Vec<u64> = samples.iter().map(|s| s.0).collect();
@@ -166,36 +144,13 @@ fn diff_each_sample(
     // not — one stack, one playhead).
     let mut refused_now: Option<ph2d_timeline::KeyRefusal> = None;
     for &(entity, pose) in samples {
-        // The entity's own clock: under a Time Remap its scene tracks are
-        // authored in SOURCE time — the diff must compare (and a key must
-        // land) at the exact time the apply pass sampled, or world == curve
-        // breaks: every pose edit would key at an invisible time and snap
-        // back. Identity (the common case, remapped == playhead) keeps the
-        // frame-snapped playhead time byte-identical to before. The remap
-        // composes ON TOP of the cut (`t_cut`), the apply's own order
-        // (cut first, then the entity's clock).
+        // The entity's own clock: under a Time Remap the key lands at the source time the apply sampled.
         let t_src = ph2d_timeline::remapped_time(&timeline.doc, entity, t_cut);
-        // Where a key lands — the active clip's OWN time. Without a stack that is
-        // the entity's clock (above); with one, the strip's map composes on top,
-        // and it can have **no answer**: a clip playing twice right now offers two
-        // homes for "here", and a clip playing zero times offers none. `key_time`
-        // says so rather than guessing (ADR-0115 R9), and a key with no home is
-        // simply not written. Moving the object silently is the one outcome that
-        // is never acceptable.
+        // Where a key lands — the active clip's OWN time; a clip playing twice or not at
+        // all has no answer (ADR-0115 R9), and a key with no home is not written.
         //
-        // Performing records in REAL (sub-frame) time: a mocap gesture is a
-        // continuous trajectory, and the simplify afterward places clean keys
-        // wherever the curve needs them — frame-snapping here would pin each key
-        // to a frame while its VALUE is the pose at the un-snapped instant, a
-        // mismatch of up to half a frame that the fit would chase (many spurious
-        // keys). Paused authoring still snaps (keys on whole frames); a Time Remap
-        // always keys at its source time.
-        //
-        // `key_home`, not `key_time`: the two differ only in that this one carries
-        // the REASON, and a refusal the animator cannot see is indistinguishable
-        // from a bug (they drag, the object snaps back, nothing says why).
-        // Soloed there is no strip map to compose and nothing to refuse — the key
-        // lands on the entity's own clip clock, which is `t_src` by construction.
+        // Performing records in real time (the simplify places clean keys afterwards); paused authoring
+        // snaps to whole frames. `key_home` carries the REASON of a refusal.
         let home = if solo {
             Ok(t_src)
         } else {
@@ -208,28 +163,28 @@ fn diff_each_sample(
                 t
             }
         });
-        // The diff's reference clock is the RAW `t_src`, the exact `f64` the apply sampled — never the
-        // frame-snapped `t_e` (2026-07-11: pausing mid-play read as "dragged") nor a `RationalTime`
-        // round-trip (2026-07-12: a key per scrubbed frame). Compare where you read.
-        // [[feedback_derived_coordinate_seed_must_match_sample]]
+        // The diff's clock is the RAW `t_src`, the exact `f64` the apply sampled: compare where you read.
         let t_diff = t_src;
         let base = ak
             .baseline
             .get(&entity)
             .copied()
             .unwrap_or([None; PropKind::AUTOKEYED.len()]);
-        // Os campos de família (plano 35): a mesma diferença, ao lado da pose.
-        let campos = ak.campos.get(&entity).cloned().unwrap_or_default();
+        // Os campos de família (plano 35): a mesma diferença, ao lado da pose; o ▶ é só prévia: não grava.
+        let todos = ak.campos.get(&entity).cloned().unwrap_or_default();
+        let em_previa = ak.previa.contains(&entity);
+        let campos: Vec<_> = todos
+            .iter()
+            .copied()
+            .filter(|(k, _)| !(em_previa && ph2d_app_sprite_anim::previa::e_campo_da_previa(*k)))
+            .collect();
         let base_c = ak.base_campos.get(&entity).cloned().unwrap_or_default();
         let doc = &timeline.doc;
         let campos_fora = |criar| {
             ph2d_timeline::autokey_campos(doc, entity, t_diff, &campos, &base_c, criar, solo)
         };
         if capturing {
-            // Performing (playing) records only what the DRAG pushed off the
-            // curve; under a plain Play the drag is the sole source of an
-            // off-curve pose, so this naturally captures just the dragged
-            // entity's trajectory, key per display frame.
+            // Performing records only what the DRAG pushed off the curve.
             let plan = if solo {
                 ph2d_timeline::autokey_props_solo(
                     &timeline.doc,
@@ -255,27 +210,14 @@ fn diff_each_sample(
             let pc = campos_fora(true);
             plan.keys.extend(pc.keys);
             plan.refused.extend(pc.refused);
-            // **A refusal is a result, not an absence.** The pose was moved and the
-            // clip being edited cannot express it (ADR-0115 R9) — so no key is
-            // written, the apply snaps the object back next frame, and the animator
-            // is owed a reason. `plan.refused` is non-empty exactly when something
-            // was wanted and could not be stored; `home` names WHY when the cause is
-            // the strip's map (the clip does not play here, or plays twice), and an
-            // Override lane above is what remains.
+            // A refusal is a result: no key is written and the animator is owed a reason (ADR-0115 R9).
             if !plan.refused.is_empty() {
                 refused_now = Some(home.err().unwrap_or(ph2d_timeline::KeyRefusal::Overridden));
             }
-            // A âncora de trajetória fora da aba Keys (Enio, 2026-07-31): o documento a
-            // recusou com o motivo pronto, e ele só entra se nada mais falou. ⚠️ Os dois
-            // são disjuntos na prática — em modo Path os eixos de translação nem entram no
-            // laço escalar, então `refused` descreveria OUTRO canal —, e quando coexistem o
-            // motivo estrutural (o clip não toca aqui) é o mais informativo dos dois.
+            // A âncora de trajetória recusada só fala se nada mais falou (o motivo estrutural informa mais).
             refused_now = refused_now.or(plan.path_refused).or(plan.scene_refused);
             if let Some(t_e) = t_e {
-                // The motion-path anchor (Path mode), authored at the same home time
-                // as the scalar keys. During a paused drag `t_e` is fixed, so
-                // `key_the_path` moves the single anchor at that instant; while
-                // performing, `t_e` advances and lays a trail (a motion sketch).
+                // The motion-path anchor (Path mode), at the same home time as the scalar keys.
                 if let Some(at) = plan.path_key {
                     to_path.push((entity, at, t_e));
                 }
@@ -294,16 +236,9 @@ fn diff_each_sample(
                 }
             }
         }
-        // Displaced-pose pin (paused only — while playing the apply drives the
-        // pose, and the bridge clears the set on the time change anyway).
-        // Disarmed with a bound prop off its curve = the user posed the object
-        // for a manual K: pin it so the apply stops snapping it back. Armed (the
-        // diff is keyed above) or back on-curve (K landed / undo) → heal out.
+        // Displaced-pose pin (paused only): disarmed and off its curve = posed for a manual K.
         if !playing {
-            // `allow_create = false`: only BOUND props matter here — an unbound
-            // one is never overwritten by the apply, so it needs no pin. Same
-            // solo split as the capture above: the pin must judge "off its
-            // curve" against the scene the apply is actually driving.
+            // `allow_create = false`: only BOUND props are overwritten by the apply.
             let off_curve = !(if solo {
                 ph2d_timeline::autokey_props_solo(
                     &timeline.doc,
@@ -327,7 +262,13 @@ fn diff_each_sample(
             })
             .is_empty()
                 || !campos_fora(false).is_empty();
-            if !capturing && off_curve {
+            // Sobre uma curva a prévia segura-se como uma pose posada à mão, armado ou não.
+            let previa_fora = em_previa
+                && !ph2d_timeline::autokey_campos(
+                    doc, entity, t_diff, &todos, &base_c, false, solo,
+                )
+                .is_empty();
+            if (!capturing && off_curve) || previa_fora {
                 ak.displaced.insert(entity);
             } else {
                 ak.displaced.remove(&entity);
@@ -368,40 +309,17 @@ pub(crate) fn apply_samples(
     if std::mem::take(&mut ak.restaurado) {
         return;
     }
-    // **Which scene the diff believes in** — the same split the manual K has
-    // (`key_authoring_solo` vs `key_value_for`): in the KEYS view the apply solos
-    // the active clip at the CLIP playhead, so the pass must author on that clock
-    // and against that curve. Before this split, ONE strip in a lane flipped every
-    // question here to the stack's blend at the TIMELINE clock — a clock the solo
-    // apply was not driving — and auto-key on the Keys tab died in a wall of
-    // "does not play here" toasts (Enio, 2026-07-22). The caller passes the
-    // matching playhead (clip in keys mode, timeline otherwise).
+    // Which scene the diff believes in: in the KEYS view, the active clip at the clip playhead.
     let solo = timeline.keys_mode;
-    // Inside a container the diff believes in the CONTAINER's blend, at the container
-    // clock (Enio, 2026-07-22) — the third view. The scratch is primed ROOTED there
-    // (`container_open`), so the root-aware `shown_value`/`key_home`/`key_value_in_active_clip`
-    // read the container's lanes, not the scene's. `None` primes the scene (root None),
-    // exactly as before.
+    // Inside a container: the container's blend, at its clock (2026-07-22).
     let root = timeline.container_open;
-    // The stack's scratch must describe THIS instant before anything asks it where
-    // a key lands or whether a pose is reachable. In production the apply built it
-    // a moment ago at this very playhead, so this costs a compare — but the pass no
-    // longer DEPENDS on that having happened, which is the difference between right
-    // and accidentally right. Solo never consults the scratch (there is no blend),
-    // and priming it with the CLIP clock would poison it for everyone else.
+    // The stack's scratch must describe THIS instant; solo never consults it.
     if !solo {
         timeline.doc.prime_rooted(root, playhead.time());
     }
 
-    // Whether this frame CAPTURES the pose into keys.
-    //  - Paused: ordinary auto-key (`armed`) — a UI edit off the curve keys.
-    //  - Playing: ONLY performing, and ONLY with a live gizmo drag. The pose
-    //    changes every played frame because the animation drives it, not the
-    //    user — so capturing the passive pose would mint a key per frame (the
-    //    "autoplay creates keyframes" bug). Requiring an active drag makes that
-    //    impossible: a plain Play, even with AutoKey armed, never records.
-    // The baseline still advances below regardless, so pausing mid-play never
-    // misreads the settled pose as a jump.
+    // Whether this frame CAPTURES the pose: paused, `armed`; playing, only a live drag while performing.
+    // The baseline advances regardless, so pausing mid-play is not a jump.
     let playing = playhead.is_playing();
     // ⛔ E o RELÓGIO A ANDAR SEM TOCAR é o mesmo caso (report do dono, 17/09): ver
     // [`AutokeyState::clock_t`].
@@ -415,19 +333,10 @@ pub(crate) fn apply_samples(
     };
     ak.clock_t = Some(playhead.time());
     let fps = timeline.doc.fps_display;
-    // **The author's clock is the apply's clock, CUT included** (seed == sample).
-    // The apply cuts every clock at the view's authored duration before anything
-    // else (`apply_active_clip` / the empty-stack lane of `apply_from_doc_except`
-    // cut by the clip; `stack_frames` cuts frame 0 by the scene/container and each
-    // strip by `cut_source`). Past the cut the pose is FROZEN at `curve(cut)`, so
-    // a diff that reads `curve(raw)` sees a phantom delta and mints a key per
-    // scrubbed frame, at a time the apply never samples (the 2026-07-23 superbug).
-    // THIS cut is the SOLE correctness boundary — and stays so now that the playhead
-    // clamp upstream is GONE (removed 2026-07-25: the playhead is free so the transport
-    // can drive physics past the authored end). The playhead routinely runs past the cut;
-    // the evaluator freezes the pose at `curve(cut)`, so the diff never sees a phantom
-    // delta. The autokey correctness never depended on the clamp — only on this cut.
-    // Which cut mirrors which apply:
+    // **The author's clock is the apply's clock, CUT included** (seed == sample): past the
+    // cut the pose is FROZEN at `curve(cut)`, and a diff reading `curve(raw)` sees a phantom
+    // delta, a key per scrubbed frame (2026-07-23). This cut is the SOLE boundary: the playhead
+    // runs free past the authored end. Which cut mirrors which apply:
     //  - Keys/solo, and Arrange with an EMPTY stack: the active clip's own cut.
     //  - A real stack / container: the view's frame-0 cut. The diff there reads
     //    the primed scratch (already cut per strip), and `key_home`'s stacked
@@ -442,15 +351,10 @@ pub(crate) fn apply_samples(
         timeline.flags.frame_snap,
     );
 
-    // The fresh-object default: Position is a motion path (the After Effects
-    // default). An object already in one mode keeps it — `position_key_mode`
-    // resolves that; this is only the fallback for one with no position animation
-    // yet, and the per-object toggle marks it otherwise (ADR-0141).
+    // The fresh-object default: Position is a motion path (ADR-0141).
     let default_path = true;
 
-    // Diff each sprite against its curve (bound) or last frame (unbound), and
-    // rebuild the baseline in one pass. The diff reads the document BEFORE any
-    // upsert, so the whole selection is judged against one consistent state.
+    // The diff reads the document BEFORE any upsert: one consistent state for the whole selection.
     let mut to_key: Vec<(u64, PropKind, f32, RationalTime)> = Vec::new();
     // Motion-path anchors to author (Path mode): `(entity, [x, y], key time)`.
     // Separate from `to_key` because an anchor is 2D geometry, keyed through
@@ -473,9 +377,7 @@ pub(crate) fn apply_samples(
     );
     ak.baseline = next_baseline;
 
-    // Say it once. On the rising edge, again if the REASON changes, and re-armed
-    // when the refusals stop — a drag against an overriding lane refuses on every
-    // frame, and sixty identical toasts a second is not information.
+    // Say it once: on the rising edge, and again if the REASON changes.
     if refused_now != ak.refusal {
         if let Some(r) = refused_now {
             toasts.push(ph2d_editor_core::Toast::warning(ph2d_i18n::tr(
@@ -486,17 +388,11 @@ pub(crate) fn apply_samples(
     }
 
     if capturing {
-        // A gizmo drag opens one step on its first frame; a discrete edit brackets
-        // just this frame. Guard on `is_open` so we never nest inside a panel edit
-        // bracket already in flight. A performing session is a drag, so it takes
-        // the drag branch — the whole record (across every played frame) commits
-        // as ONE undo step when the drag ends, below.
+        // A gizmo drag opens one step on its first frame; a discrete edit brackets just this frame.
         if drag_now && !ak.drag_active && !timeline.history.is_open() {
             timeline.history.begin(&timeline.doc);
         }
-        // A path anchor (`to_path`) is a discrete edit too — in Path mode there are
-        // no scalar keys, so bracketing on `to_key` alone would author the anchor
-        // outside any undo step.
+        // A path anchor is a discrete edit too.
         let discrete =
             !drag_now && (!to_key.is_empty() || !to_path.is_empty()) && !timeline.history.is_open();
         if discrete {
@@ -534,9 +430,7 @@ pub(crate) fn apply_samples(
     // Close the gizmo drag's step when the drag ends: one undo step if it changed
     // the document.
     if ak.drag_active && !drag_now {
-        // A performing session just ended: simplify the dense per-frame keys it
-        // recorded into clean minimal Bézier curves — WITHIN this same undo step,
-        // so one Ctrl+Z reverts the whole record + cleanup.
+        // A performing session just ended: simplify within this same undo step.
         simplify_recorded(timeline, &ak.record, REC_SMOOTH_PASSES, REC_SIMPLIFY_REL);
         ak.record.clear();
         let doc = timeline.doc.clone();
@@ -583,6 +477,9 @@ mod performing_tests;
 #[cfg(test)]
 #[path = "autokey_preso_tests.rs"]
 mod preso_tests;
+#[cfg(test)]
+#[path = "autokey_previa_tests.rs"]
+mod previa_tests;
 #[cfg(test)]
 #[path = "autokey_refusal_tests.rs"]
 mod refusal_tests;

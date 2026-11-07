@@ -20,48 +20,19 @@ pub(crate) struct AutokeyState {
     pub baseline: BTreeMap<u64, PoseSample>,
     /// A gizmo-drag undo bracket is open.
     pub drag_active: bool,
-    /// Entities whose bound pose the user displaced while PAUSED and disarmed.
-    /// The apply pass skips them so the pose holds for a manual K. Cleared by
-    /// the bridge when the playhead moves; an entity heals out here when its
-    /// pose returns to its curve.
+    /// Bound poses the user displaced while PAUSED: the apply skips them until the playhead moves.
     pub displaced: BTreeSet<u64>,
     /// The playhead time `displaced` was collected at (the bridge clears the
     /// set when the time changes).
     pub displaced_t: f64,
-    /// ⛔⛔⛔ **O instante que ESTE passe viu no quadro anterior** — a metade que faltava ao
-    /// guarda do `playing`.
-    ///
-    /// Report do dono (2026-09-17): *«ao arrastar o tempo na timeline cria keyframes em todos os
-    /// quadros»*. Reproduzido: **12 chaves em 30 quadros** de arrasto, com a mão parada e a pose
-    /// constante.
-    ///
-    /// ⚠️⚠️ **A razão do `playing` vale IGUAL para um arrasto, e o comentário dela já o dizia sem
-    /// dar por isso:** *«a pose muda em cada quadro tocado porque é a ANIMAÇÃO que a conduz, não o
-    /// utilizador»*. Arrastar o cursor conduz a pose exactamente da mesma maneira — só que
-    /// `is_playing()` responde `false`, logo o guarda não armava e `capturing = armed`.
-    ///
-    /// ⇒ *o gatilho do auto-key é a MÃO, nunca o relógio* — e um quadro em que a única coisa que
-    /// mudou foi o relógio não é uma edição, toque ou não toque o transporte.
-    ///
-    /// `None` no primeiro quadro: sem um instante anterior não há movimento que se afirme.
+    /// ⛔ **O instante que ESTE passe viu no quadro anterior.** O gatilho do auto-key é a MÃO, nunca o
+    /// relógio: um quadro em que só o relógio mudou não é uma edição (report do dono, 17/09: 12 chaves
+    /// em 30 quadros de arrasto). `None` no primeiro quadro.
     pub clock_t: Option<f64>,
-    /// ⛔⛔⛔ **A MÃO ESTÁ NO CURSOR DO TEMPO NESTE QUADRO** — escrito pelo dreno das intents
-    /// ([`super::fase_timeline_drain`]) a partir de um `Scrub`/`SeekFrame`.
-    ///
-    /// ⚠️⚠️ **Ele existe porque o [`Self::clock_t`] sozinho NÃO chegou** (2.º report do dono no
-    /// mesmo dia: *«criando keys de todo modo ao arrastar o tempo da timeline»*): com o **Snap**
-    /// ligado o instante salta de quadro em quadro e fica **parado** entre saltos, logo os quadros
-    /// de ecrã do meio liam *«o relógio não andou»* e voltavam a capturar.
-    ///
-    /// ⇒ *um gesto inferido de uma CONSEQUÊNCIA perde-se onde a consequência satura* — e este é o
-    /// gesto em si, como o `is_playing()` é para o transporte. Os dois guardas ficam: o `Scrub` é a
-    /// mão na régua, o `clock_t` apanha o que move o relógio sem ser ela (um passo de quadro por
-    /// botão, um `rewind`, uma volta de loop).
+    /// ⛔ **A mão está no cursor do tempo neste quadro** (o dreno das intents, `Scrub`/`SeekFrame`). Com o
+    /// Snap o instante fica parado entre saltos e o `clock_t` não vê; ficam os dois guardas.
     pub scrub_now: bool,
-    /// The refusal the animator has already been told about. A drag against an
-    /// overriding lane refuses on EVERY frame — sixty identical toasts a second is
-    /// not information, it is noise. The toast fires on the rising edge, again if
-    /// the REASON changes, and re-arms once the refusals stop.
+    /// The refusal the animator has already been told about (a toast on the rising edge only).
     pub refusal: Option<ph2d_timeline::KeyRefusal>,
     /// Per `(entity, prop)` recorded span of the in-flight performing session —
     /// what to simplify (and over what tolerance) when the record drag ends.
@@ -73,18 +44,15 @@ pub(crate) struct AutokeyState {
     /// Os mesmos, do quadro anterior — a `baseline` dos campos (sem curva, um campo só nasce canal
     /// se MUDOU).
     pub(crate) base_campos: BTreeMap<u64, BTreeMap<ph2d_ecs::FieldKey, f32>>,
+    /// Quem o ▶ deixou em prévia (`ph2d_app_sprite_anim::previa`): tocador fora do diff.
+    pub(crate) previa: BTreeSet<u64>,
     /// O mundo acabou de ser restaurado: ver [`Self::esquece_o_quadro`].
     pub(crate) restaurado: bool,
 }
 
 impl AutokeyState {
-    /// ⛔ **Um desfazer/refazer não é a mão**: sem base, o quadro seguinte não lê o valor restaurado
-    /// como «mudou» e não recria a chave que o mesmo Ctrl+Z acabou de tirar (o que ainda esvaziava
-    /// a fila do refazer).
-    ///
-    /// ⛔ **Nem o quadro seguinte é a mão** (Ctrl+Z e Stop do jogo, GEF 23): o restauro dá bits novos, o
-    /// apply desse quadro não alcança a entidade (a cura das bindings corre depois dele) e o mundo fica
-    /// fora da curva: sem este aviso nasciam chaves com a pose restaurada, ou o pino a segurava.
+    /// ⛔ **Um desfazer/refazer não é a mão, nem o quadro seguinte** (Ctrl+Z e Stop do jogo, GEF 23): sem base,
+    /// o valor restaurado não se lê como «mudou», e o apply desse quadro ainda não alcança os bits novos.
     pub(crate) fn esquece_o_quadro(&mut self) {
         self.baseline.clear();
         self.base_campos.clear();

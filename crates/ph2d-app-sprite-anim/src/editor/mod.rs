@@ -314,6 +314,7 @@ pub fn frame(
                     )
             });
             let queue = EditorCommandQueue::new();
+            crate::previa::nota_o_gesto(sim.world_mut(), d.entity, &edit);
             if let Some(t) =
                 crate::inspector::apply_anim_edit(sim, d.entity, &edit, &queue, registry)
             {

@@ -334,6 +334,7 @@ fn drain_section_edits(
         if ph2d_app_sprite_anim::editor::request_open(sim, *entity_bits, edit) {
             continue;
         }
+        ph2d_app_sprite_anim::previa::nota_o_gesto(sim.world_mut(), *entity_bits, edit);
         if let Some(t) = ph2d_app_sprite_anim::inspector::apply_anim_edit(
             sim,
             *entity_bits,

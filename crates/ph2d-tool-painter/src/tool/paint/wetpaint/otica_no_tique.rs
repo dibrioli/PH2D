@@ -67,6 +67,19 @@ impl WetSession {
             self.otica.deve(c);
         }
     }
+
+    /// O sujo que saiu do motor e a tela ainda não mostra (a dívida e a imagem no ar) volta ao motor. Motor em casa: a
+    /// composição seguinte leva só o que falta, nunca a tela inteira.
+    pub(super) fn o_sujo_por_mostrar_volta_ao_motor(&mut self) {
+        let no_ar = self
+            .otica
+            .no_ar
+            .map_or([None, None], |e| self.sujo_do_pedido(e));
+        for (x0, y0, x1, y1) in no_ar.into_iter().chain([self.otica.divida]).flatten() {
+            let i = |v: usize| i32::try_from(v).unwrap_or(i32::MAX);
+            self.engine.merge_dirty_otica(i(x0), i(y0), i(x1), i(y1));
+        }
+    }
 }
 
 impl PainterTool {

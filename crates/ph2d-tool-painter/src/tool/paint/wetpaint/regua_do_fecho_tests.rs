@@ -28,9 +28,9 @@ fn resumo(v: &mut [f64]) -> String {
     )
 }
 
+/// Um quadro da ponte do app: o tique e quem consome a imagem.
 fn quadro(t: &mut PainterTool) {
-    std::thread::sleep(Duration::from_millis(16));
-    t.on_tick(1000.0 / 60.0);
+    super::borracha_defeitos_tests::quadros(t, super::borracha_defeitos_tests::Caminho::App, 1);
 }
 
 fn traco_inteiro(t: &mut PainterTool, w: usize, y: f32) {
@@ -60,60 +60,95 @@ fn pintada(w: usize, h: usize, passadas: usize) -> PainterTool {
     t
 }
 
-/// Sai do Wet, à vez: `Dorme` é o de agora, `Acaba` é a base (o que o main faz: a sessão acaba).
+/// Sai do Wet, à vez. `Dorme` é o de agora, `DormeInteira` recompõe a tela inteira como antes da cura. `Acaba` é a base
+/// de antes: a sessão acaba, e a seguinte só tem o traço novo. `AcabaCheia` é a mesma porta com a tela toda pintada:
+/// quanto o main paga ao sair da 1.ª vez.
 #[derive(Clone, Copy, Debug)]
 enum Saida {
     Dorme,
+    DormeInteira,
     Acaba,
+    AcabaCheia,
 }
 
-/// ⭐ O engasgo do dono: trocar de modo logo depois de soltar × com a tinta assentada, contra a base.
+/// ⭐ O engasgo do dono: trocar de modo logo depois de soltar × com a tinta assentada, contra a base. `pend` = quantas
+/// amostras saíram com imagem no ar ou dívida.
 #[test]
 #[ignore = "régua: corre por nome com --ignored"]
 fn regua_do_fecho_engasgo_de_trocar_de_modo() {
+    use super::adormecer_so_o_que_falta_tests::SAI_INTEIRA;
+    const NOMES: [Saida; 4] = [
+        Saida::Dorme,
+        Saida::DormeInteira,
+        Saida::Acaba,
+        Saida::AcabaCheia,
+    ];
+    let nova = |w: usize, h: usize, nome: &str| {
+        let mut t = pintada(w, h, 10);
+        t.preset_aplicar(&preset(nome)).expect("o meio");
+        t.set_brush_size_px(60.0);
+        t
+    };
     for (w, h) in TAMANHOS {
         for preset_nome in [
             "Oil/Dabber/Dabber.ph2d-brush.png",
             "Watercolor/Fluid/Wet Round.ph2d-brush.png",
         ] {
-            let mut vs: Vec<(Saida, PainterTool)> = [Saida::Dorme, Saida::Acaba]
-                .into_iter()
-                .map(|s| {
-                    let mut t = pintada(w, h, 10);
-                    t.preset_aplicar(&preset(preset_nome)).expect("o meio");
-                    t.set_brush_size_px(60.0);
-                    (s, t)
-                })
-                .collect();
-            let mut res: [[Vec<f64>; 2]; 2] = Default::default();
+            let mut vs = [
+                nova(w, h, preset_nome),
+                nova(w, h, preset_nome),
+                nova(w, h, preset_nome),
+            ];
+            let mut res: [[Vec<f64>; 2]; 4] = Default::default();
+            let mut pend = [[0usize; 2]; 4];
             for r in 0..7usize {
-                for v in 0..2 {
+                for v in 0..4 {
+                    let i = (v + r) % 4;
+                    // A tela cheia custa uma pintura inteira por amostra: 3 rodadas chegam.
+                    if i == 3 && r >= 3 {
+                        continue;
+                    }
                     for (a, espera) in [(0usize, 0usize), (1, 90)] {
-                        let i = (v + r) % 2;
-                        let (saida, t) = &mut vs[i];
+                        let mut cheia = (i == 3).then(|| nova(w, h, preset_nome));
+                        let t = match cheia.as_mut() {
+                            Some(t) => t,
+                            None => &mut vs[i],
+                        };
                         traco_inteiro(t, w, 40.0 + 90.0 * (r + a) as f32);
                         for _ in 0..espera {
                             quadro(t);
                         }
+                        pend[i][a] += usize::from(
+                            t.paint
+                                .wetpaint
+                                .session
+                                .as_ref()
+                                .is_some_and(|s| s.otica.pendente()),
+                        );
+                        SAI_INTEIRA.set(i != 0);
                         let t0 = Instant::now();
-                        match saida {
-                            Saida::Dorme => {}
-                            Saida::Acaba => t.wetpaint_end_session(),
+                        if i >= 2 {
+                            t.wetpaint_end_session();
                         }
                         t.set_paint_media(PaintMedia::Digital);
                         res[i][a].push(t0.elapsed().as_secs_f64() * 1e3);
+                        SAI_INTEIRA.set(false);
                         t.set_paint_media(PaintMedia::WetPaint);
                         t.wet_acorda();
                         quadro(t);
                     }
                 }
             }
-            for (i, (s, _)) in vs.iter().enumerate() {
+            for (i, s) in NOMES.iter().enumerate() {
                 let [ref mut logo, ref mut assente] = res[i];
                 println!(
-                    "[engasgo] {w}×{h} {preset_nome:.14} {s:?}: logo depois de soltar {} ms | assentada {} ms",
+                    "[engasgo] {w}×{h} {preset_nome:.14} {s:?}: logo depois de soltar {} ms (pend {}/{}) | assentada {} ms (pend {}/{})",
                     resumo(logo),
-                    resumo(assente)
+                    pend[i][0],
+                    logo.len(),
+                    resumo(assente),
+                    pend[i][1],
+                    assente.len()
                 );
             }
         }
@@ -182,12 +217,29 @@ fn regua_do_fecho_custo_dos_consertos() {
     println!("[consertos] carga {}", carga());
 }
 
-/// O preço da compressão com várias camadas, a 4K, e os traços de Digital com elas a dormir.
+/// `VmRSS` e `VmHWM` do processo, em MB.
+fn memoria() -> String {
+    let s = std::fs::read_to_string("/proc/self/status").unwrap_or_default();
+    let campo = |n: &str| {
+        s.lines()
+            .find(|l| l.starts_with(n))
+            .and_then(|l| l.split_whitespace().nth(1))
+            .and_then(|v| v.parse::<usize>().ok())
+            .unwrap_or(0)
+            >> 10
+    };
+    format!("RSS {} MB, pico {} MB", campo("VmRSS"), campo("VmHWM"))
+}
+
+/// O preço da compressão com várias camadas, a 4K, e os traços de Digital com elas a dormir. Sem consumir a imagem o
+/// processo chegou aos 24 G da fatia e o kernel matou-o (06/11); com a ponte do app o pico é 8,4 G.
 #[test]
 #[ignore = "régua: corre por nome com --ignored"]
 fn regua_do_fecho_varias_camadas() {
+    const PASSADAS: usize = 6;
     let (w, h) = (4096usize, 2560usize);
-    let mut t = pintada(w, h, 6);
+    let mut t = pintada(w, h, PASSADAS);
+    println!("[camadas] camada 0 pintada: {}", memoria());
     let mut trocas = Vec::new();
     for c in 1..4 {
         t.add_raster_layer(&format!("camada {c}"))
@@ -195,11 +247,12 @@ fn regua_do_fecho_varias_camadas() {
         let t0 = Instant::now();
         t.on_tick(1000.0 / 60.0);
         trocas.push(t0.elapsed().as_secs_f64() * 1e3);
-        for p in 0..6 {
-            traco_inteiro(&mut t, w, (p as f32 + 0.5) * h as f32 / 6.0);
+        for p in 0..PASSADAS {
+            traco_inteiro(&mut t, w, (p as f32 + 0.5) * h as f32 / PASSADAS as f32);
         }
         println!(
-            "[camadas] camada {c} pintada: {} adormecidas, somam {} MB",
+            "[camadas] camada {c} pintada: {} · {} adormecidas, somam {} MB",
+            memoria(),
             t.paint.wetpaint.adormecidas.len(),
             t.paint
                 .wetpaint
@@ -313,4 +366,34 @@ fn regua_do_fecho_desfazer_e_refazer() {
         );
     }
     println!("[redo] carga {}", carga());
+}
+
+/// Porque é que a imagem continua no ar 90 quadros depois de soltar: quadro a quadro, antes e depois de ir e voltar.
+#[test]
+#[ignore = "sonda: corre por nome com --ignored"]
+fn sonda_do_fecho_pendente_depois_de_assentar() {
+    let (w, h) = (1280usize, 800usize);
+    let mut t = pintada(w, h, 4);
+    for vida in ["1.ª vida", "depois de ir e voltar"] {
+        traco_inteiro(&mut t, w, 60.0);
+        let mut linha = String::new();
+        for q in 0..240 {
+            quadro(&mut t);
+            if q % 30 == 29 {
+                let s = t.paint.wetpaint.session.as_ref().expect("a sessão");
+                linha += &format!(
+                    " q{q}: pend {} dív {:?} passos {}/{};",
+                    s.otica.pendente(),
+                    s.otica.divida,
+                    s.sim_steps(),
+                    s.seen_steps
+                );
+            }
+        }
+        println!("[pendente] {vida}:{linha}");
+        t.set_paint_media(PaintMedia::Digital);
+        t.set_paint_media(PaintMedia::WetPaint);
+        t.wet_acorda();
+        quadro(&mut t);
+    }
 }

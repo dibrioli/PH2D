@@ -159,9 +159,17 @@ struct Trabalho {
     veu: Option<usize>,
 }
 
+/// A caixa de correio entre o fio principal e o worker.
+#[derive(Default)]
+struct Correio {
+    pedido: Option<PedidoDeImagem>,
+    /// `(época, caixa)` do último pedido servido: o sujo saiu do motor e a imagem dele vem a caminho.
+    servido: Option<(u64, CaixaCel)>,
+}
+
 /// A ponta do fio principal.
 pub(in crate::tool::paint::wetpaint) struct DoFioPrincipal {
-    correio: Arc<Mutex<Option<PedidoDeImagem>>>,
+    correio: Arc<Mutex<Correio>>,
     imagens: Receiver<RespostaDaOtica>,
     /// O fio do compositor, para os `leak_tests` verem que acabou (a thread é solta de propósito).
     #[cfg(test)]
@@ -174,7 +182,20 @@ impl DoFioPrincipal {
         &self,
         p: PedidoDeImagem,
     ) -> Option<PedidoDeImagem> {
-        trava(&self.correio).replace(p)
+        trava(&self.correio).pedido.replace(p)
+    }
+
+    /// O sujo que o pedido `epoca` levou do motor: a dívida dele por servir e a caixa já servida. Só vale com o motor em
+    /// casa: o worker não está a meio de um `serve`.
+    pub(in crate::tool::paint::wetpaint) fn sujo_do_pedido(
+        &self,
+        epoca: u64,
+    ) -> [Option<CaixaCel>; 2] {
+        let c = trava(&self.correio);
+        [
+            c.pedido.filter(|p| p.epoca == epoca).and_then(|p| p.divida),
+            c.servido.filter(|s| s.0 == epoca).map(|s| s.1),
+        ]
     }
 
     /// A próxima resposta, sem esperar.
@@ -185,7 +206,7 @@ impl DoFioPrincipal {
 
 /// A ponta do worker: a caixa de correio, o espelho (quando está com ele) e a previsão da cópia.
 pub(super) struct DoWorker {
-    correio: Arc<Mutex<Option<PedidoDeImagem>>>,
+    correio: Arc<Mutex<Correio>>,
     para_o_compositor: Sender<Trabalho>,
     volta: Receiver<Box<Espelho>>,
     ui: Sender<RespostaDaOtica>,
@@ -221,7 +242,7 @@ pub(in crate::tool::paint::wetpaint) fn ligada() -> bool {
 
 /// Sobe o compositor e devolve as duas pontas.
 pub(super) fn par() -> (DoWorker, DoFioPrincipal) {
-    let correio = Arc::new(Mutex::new(None));
+    let correio = Arc::new(Mutex::new(Correio::default()));
     let (para_o_compositor, rx) = channel::<Trabalho>();
     let (de_volta, volta) = channel::<Box<Espelho>>();
     let (ui, imagens) = channel::<RespostaDaOtica>();
@@ -289,7 +310,7 @@ impl DoWorker {
             }
             return;
         }
-        let Some(p) = trava(&self.correio).take() else {
+        let Some(p) = trava(&self.correio).pedido.take() else {
             return;
         };
         if let Some((x0, y0, x1, y1)) = p.divida {
@@ -305,6 +326,7 @@ impl DoWorker {
             });
             return;
         };
+        trava(&self.correio).servido = Some((p.epoca, caixa));
         let Some(mut espelho) = self.espelho.take() else {
             unreachable!("conferido acima")
         };
@@ -475,6 +497,17 @@ impl super::super::WetSession {
     /// Esta sessão tem compositor (o worker ao relógio subiu-o)?
     pub(in crate::tool::paint::wetpaint) fn tem_compositor(&self) -> bool {
         self.worker.as_ref().is_some_and(|w| w.otica.is_some())
+    }
+
+    /// [`DoFioPrincipal::sujo_do_pedido`] desta sessão.
+    pub(in crate::tool::paint::wetpaint) fn sujo_do_pedido(
+        &self,
+        epoca: u64,
+    ) -> [Option<CaixaCel>; 2] {
+        self.worker
+            .as_ref()
+            .and_then(|w| w.otica.as_ref())
+            .map_or([None, None], |o| o.sujo_do_pedido(epoca))
     }
 
     /// A próxima resposta do compositor, sem esperar.

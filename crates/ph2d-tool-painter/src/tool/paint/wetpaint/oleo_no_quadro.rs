@@ -25,7 +25,7 @@ pub(crate) struct Varredura {
     /// A próxima linha a recompor.
     cursor: usize,
     /// Quantas linhas faltam para a tela inteira mostrar o último valor (`0` = nada pendente).
-    faltam: usize,
+    pub(super) faltam: usize,
     /// O custo medido da última faixa, por linha PINTADA (`0` = por medir).
     ms_por_linha: f64,
 }

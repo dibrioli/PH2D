@@ -233,19 +233,25 @@ impl PainterTool {
 
     /// A tela fica com o que a sessão tem, ao acabar ou ao adormecer.
     pub(super) fn wet_ultima_imagem(&mut self) {
-        // Uma imagem no ar ou uma dívida levam o sujo que tiraram do motor: o fim recompõe tudo em casa.
-        let pendente = self
-            .paint
-            .wetpaint
-            .session
-            .as_ref()
-            .is_some_and(|s| s.otica.pendente());
-        if (self.paint.wetpaint.show_wet || pendente) && self.paint.wetpaint.session.is_some() {
-            if let Some(sess) = self.paint.wetpaint.session.as_mut() {
-                sess.bring_home();
-                sess.engine.mark_dirty_full();
-            }
-            self.wetpaint_composite_veiled(false);
+        let w = &mut self.paint.wetpaint;
+        // O véu pinta a tela inteira e a varredura do Real Oil ainda não chegou a toda ela: só estes recompõem tudo.
+        let inteira = w.show_wet || w.varredura.faltam > 0;
+        #[cfg(test)]
+        let inteira = inteira || super::adormecer_so_o_que_falta_tests::SAI_INTEIRA.get();
+        let (show_wet, Some(sess)) = (w.show_wet, w.session.as_mut()) else {
+            return;
+        };
+        // Uma imagem no ar ou uma dívida levam o sujo que tiraram do motor: ele volta e compõe-se em casa.
+        let pendente = sess.otica.pendente();
+        if !(show_wet || pendente) {
+            return;
         }
+        sess.bring_home();
+        if inteira {
+            sess.engine.mark_dirty_full();
+        } else {
+            sess.o_sujo_por_mostrar_volta_ao_motor();
+        }
+        self.wetpaint_composite_veiled(false);
     }
 }

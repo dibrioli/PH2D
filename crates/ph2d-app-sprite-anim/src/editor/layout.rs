@@ -3,7 +3,7 @@
 //! aqui onde cada coisa fica. A lista ocupa a esquerda; à direita, a folha em cima e a animação aberta
 //! embaixo ([estudo](../../../../docs/GameEngineFuncional/estudo_editor_de_animacoes_2026-11-07.md) §4).
 
-use super::doc::{AnimDoc, Field, format_factor, format_fps};
+use super::doc::{AnimDoc, format_factor, format_fps};
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::paint::{label_column_width, rect_for_label};
 use ph2d_editor_core::zones::Rect;
@@ -27,8 +27,8 @@ const SIGNAL_ROWS: f32 = 4.5; // LITERAL-PX-OK: múltiplo do token de linha
 /// O tecto da miniatura: a fração da altura que ela e a folha repartem. A folha guarda sempre a outra
 /// metade, porque é nela que se escolhem as células.
 const THUMB_MAX_FRAC: f32 = 0.5; // LITERAL-PX-OK: fração de layout
-/// As colunas da fila dos campos: Frames/s e This frame.
-const FIELD_COLUMNS: f32 = 2.0; // LITERAL-PX-OK: contagem de colunas
+/// As colunas da fila dos campos: Frames/s, This frame, Cols e Rows.
+const FIELD_COLUMNS: f32 = 4.0; // LITERAL-PX-OK: contagem de colunas
 /// O que a tira rola por pintura com a mão na borda, em alturas de linha.
 const EDGE_SCROLL_ROWS: f32 = 0.25; // LITERAL-PX-OK: múltiplo do token de linha
 
@@ -154,14 +154,6 @@ impl AnimDoc {
         by_cell.min(shared_h * THUMB_MAX_FRAC).max(min_side)
     }
 
-    /// O rótulo de um campo, ou o texto a ser escrito nele (com o cursor).
-    fn shown(&self, f: &Field, label: String) -> String {
-        match &self.editing {
-            Some((g, buf)) if g == f => ph2d_i18n::tr_with("anim_editor.caret", &[("text", buf)]),
-            _ => label,
-        }
-    }
-
     /// Calcula a disposição para `area` (e guarda-a: o rato lê a do último quadro pintado). Tudo fica
     /// acima da pílula de estado da janela (`HUD_H_PX + HUD_BOTTOM_PAD_PX`), que se pinta por cima da área.
     pub fn lay_out(&mut self, area: Rect, text: &mut TextSystem) -> &Layout {
@@ -180,8 +172,6 @@ impl AnimDoc {
         let mut fit = |labels: &[&str]| {
             rect_for_label(label_column_width(text, font, labels.iter().copied())).max(row)
         };
-        let cols_w = fit(&[&self.shown(&Field::Cols, self.cols_label())]);
-        let rows_w = fit(&[&self.shown(&Field::Rows, self.rows_label())]);
         let button_w = fit(&[
             ph2d_i18n::tr("anim_editor.add"),
             ph2d_i18n::tr("anim_editor.remove"),
@@ -250,7 +240,12 @@ impl AnimDoc {
         let signal_w = row * SIGNAL_ROWS;
         let inline = title_w + total_w + mark_w + signal_w + 3.0 * gap <= card_w; // LITERAL-PX-OK: três vãos
         let mark_line = if inline { 0.0 } else { row + gap };
-        let frames_fixed = 2.0 * inner + row + gap + mark_line + gap + line + row + gap + row; // LITERAL-PX-OK: as margens
+        // Quatro campos numa fila; se os rótulos não couberem, dois a dois.
+        let label_need = fit(&[ph2d_i18n::tr("anim_editor.this_frame")]);
+        let four = (card_w - (FIELD_COLUMNS - 1.0) * gap) / FIELD_COLUMNS >= label_need;
+        let field_line = if four { 0.0 } else { line + row + gap };
+        let frames_fixed =
+            2.0 * inner + row + gap + mark_line + gap + line + row + field_line + gap + row; // LITERAL-PX-OK: as margens
         let banner_h = if self.proposal().is_some() {
             row + gap
         } else {
@@ -296,10 +291,21 @@ impl AnimDoc {
         y += row + gap + mark_line;
         l.strip = Rect::new(cx, y, card_w, thumb);
         y += thumb + gap + line;
-        let col_w = ((card_w - (FIELD_COLUMNS - 1.0) * gap) / FIELD_COLUMNS).max(0.0);
-        l.fps = Rect::new(cx, y, col_w, row);
-        l.this_frame = Rect::new(cx + col_w + gap, y, col_w, row);
-        y += row + gap;
+        let columns = if four { FIELD_COLUMNS } else { 2.0 }; // LITERAL-PX-OK: dois a dois
+        let col_w = ((card_w - (columns - 1.0) * gap) / columns).max(0.0);
+        let at = |k: f32| {
+            let (c, y) = if k < columns {
+                (k, y)
+            } else {
+                (k - columns, y + row + gap + line)
+            };
+            Rect::new(cx + c * (col_w + gap), y, col_w, row)
+        };
+        l.fps = at(0.0);
+        l.this_frame = at(1.0);
+        l.cols = at(2.0);
+        l.rows = at(3.0);
+        y = l.rows.y + row + gap;
         // Partes iguais, como na maquete; se o maior não couber, cada um mede o seu texto e reparte a sobra.
         let needs = [
             "anim_editor.repeat",
@@ -320,10 +326,7 @@ impl AnimDoc {
         // ── A folha, em cima ──
         l.sheet_card = Rect::new(mid_x, top, mid_w, (l.frames_card.y - pad - top).max(0.0));
         let mut y = top + inner;
-        let rows_x = cx + card_w - rows_w;
-        l.rows = Rect::new(rows_x, y, rows_w, row);
-        l.cols = Rect::new(rows_x - gap - cols_w, y, cols_w, row);
-        l.sheet_title = Rect::new(cx, y, (l.cols.x - gap - cx).max(0.0), row);
+        l.sheet_title = Rect::new(cx, y, card_w, row);
         y += row + gap;
         if self.proposal().is_some() {
             let use_w = fit(&[ph2d_i18n::tr("anim_editor.use_grid")]);
@@ -375,16 +378,16 @@ impl AnimDoc {
         &self.layout
     }
 
-    /// O rótulo do campo das colunas da grelha.
+    /// O valor do campo das colunas da grelha.
     #[must_use]
     pub fn cols_label(&self) -> String {
-        ph2d_i18n::tr_with("anim_editor.cols", &[("n", &self.snap.hframes)])
+        self.snap.hframes.to_string()
     }
 
-    /// O rótulo do campo das linhas da grelha.
+    /// O valor do campo das linhas da grelha.
     #[must_use]
     pub fn rows_label(&self) -> String {
-        ph2d_i18n::tr_with("anim_editor.rows", &[("n", &self.snap.vframes)])
+        self.snap.vframes.to_string()
     }
 
     /// O multiplicador do quadro `i`, como a miniatura o mostra quando ele não é `1`.

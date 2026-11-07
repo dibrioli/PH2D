@@ -236,26 +236,6 @@ pub fn paint_doc(
         hint = tr("anim_editor.sheet");
     }
     label(scene, text, theme, l.sheet_title, hint, ColorToken::Text2);
-    let cols = doc.cols_label();
-    field_sized(
-        scene,
-        text,
-        theme,
-        l.cols,
-        &cols,
-        editing(doc, &Field::Cols),
-        FONT_TOKEN.px(),
-    );
-    let rows = doc.rows_label();
-    field_sized(
-        scene,
-        text,
-        theme,
-        l.rows,
-        &rows,
-        editing(doc, &Field::Rows),
-        FONT_TOKEN.px(),
-    );
     if let (Some((t, use_)), Some(g)) = (l.banner, doc.proposal()) {
         fill_rounded_rect(
             scene,
@@ -343,6 +323,25 @@ fn paint_fields(
         .marked_frame()
         .and_then(|f| editing(doc, &Field::FrameMs(f)));
     glyph_field(scene, text, theme, l.this_frame, glyph, &shown, open);
+    for (r, key, glyph, shown, f) in [
+        (
+            l.cols,
+            "anim_editor.cols_title",
+            "anim_editor.glyph_cols",
+            doc.cols_label(),
+            Field::Cols,
+        ),
+        (
+            l.rows,
+            "anim_editor.rows_title",
+            "anim_editor.glyph_rows",
+            doc.rows_label(),
+            Field::Rows,
+        ),
+    ] {
+        label(scene, text, theme, over(r), tr(key), ColorToken::Text2);
+        glyph_field(scene, text, theme, r, tr(glyph), &shown, editing(doc, &f));
+    }
     let mode = doc.mode();
     if let (Some(a), Some(b)) = (l.modes.first(), l.modes.last()) {
         let track = Rect::new(a.x, a.y, b.x + b.w - a.x, a.h);

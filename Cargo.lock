@@ -6122,8 +6122,6 @@ dependencies = [
  "ph2d-panel-pixel-preview",
  "ph2d-panel-pixel-tiles",
  "ph2d-panel-pixel-timeline",
- "ph2d-pen",
- "ph2d-pen-law",
  "ph2d-pixel-core",
  "ph2d-pixel-formas",
  "ph2d-pixel-io",

@@ -1,7 +1,7 @@
 //! **Os gates do cartão «Animation»** (plano GameEngineFuncional 07): cada edição nova, do clique à
 //! cena, e o que o snapshot devolve.
 
-use crate::inspector::{apply_anim_edit, build_anim_info};
+use ph2d_app_sprite_anim::inspector::{apply_anim_edit, build_anim_info};
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue, apply_editor_commands};
 use ph2d_ecs::{
     AnimDirection, AnimationTag, Entity, SimWorld, SpriteAnimCursor, SpriteAnimFrames,
@@ -273,7 +273,10 @@ fn a_grelha_confirmada_e_o_passo_escolhido() {
     assert_eq!((card.hframes, card.vframes), (4, 2));
     edit(&mut sim, e, &reg, AnimFieldEdit::Grid(0, 9999));
     let g = *sim.world().get::<SpriteGrid>(e).unwrap();
-    assert_eq!((g.hframes, g.vframes), (1, crate::card::GRID_SIDE_MAX));
+    assert_eq!(
+        (g.hframes, g.vframes),
+        (1, ph2d_app_sprite_anim::card::GRID_SIDE_MAX)
+    );
 
     edit(&mut sim, e, &reg, AnimFieldEdit::Grid(8, 4));
     edit(&mut sim, e, &reg, AnimFieldEdit::Frames(0, vec![3, 1, 3]));
@@ -299,7 +302,13 @@ fn o_tique_toca_a_lista_na_ordem_clicada() {
     let mut seen = vec![sim.world().get::<SpriteGrid>(e).unwrap().frame];
     for _ in 0..3 {
         // `frame_ms` 100 = seis tiques de 1/60 s.
-        crate::tick::tick_sprite_animations(&mut sim, 6, 1.0 / 60.0, &[], &mut drive);
+        ph2d_app_sprite_anim::tick::tick_sprite_animations(
+            &mut sim,
+            6,
+            1.0 / 60.0,
+            &[],
+            &mut drive,
+        );
         seen.push(sim.world().get::<SpriteGrid>(e).unwrap().frame);
     }
     assert_eq!(seen, [5, 2, 7, 5]);
@@ -344,6 +353,9 @@ fn the_rule_mirrors_are_the_physics() {
         .into_iter()
         .chain(LifeEvent::ALL.map(AnimWhen::Life));
     for w in todas {
-        assert_eq!(crate::card::when_of(&crate::card::when_info(&w)), Some(w));
+        assert_eq!(
+            ph2d_app_sprite_anim::card::when_of(&ph2d_app_sprite_anim::card::when_info(&w)),
+            Some(w)
+        );
     }
 }

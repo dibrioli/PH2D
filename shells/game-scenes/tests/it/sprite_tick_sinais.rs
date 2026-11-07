@@ -3,7 +3,7 @@
 //! ⚠️ Eles correm o tique REAL, que é o produtor do produto: o que a shell publica no outbox é
 //! exactamente o que estas funções devolvem. Um gate que encenasse a produção mediria a encenação.
 
-use super::tick_sprite_animations;
+use ph2d_app_sprite_anim::tick::tick_sprite_animations;
 use ph2d_ecs::{AnimationTag, Entity, SimWorld, SpriteAnimations, SpriteAnimator, Transform};
 use ph2d_preview_drive::PreviewDrive;
 use ph2d_render::Sprite;

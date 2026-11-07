@@ -529,9 +529,6 @@ fn catching_up_in_one_call_is_the_same_as_catching_up_step_by_step() {
 /// AUTORIA (a biblioteca, os nomes, os intervalos) e o snapshot. São as duas metades que a própria
 /// seção separa com dois rótulos.
 ///
-/// As ferramentas (`registry`, `sprite`, `edit`, `info`) vêm do pai por `use super::*`.
-#[path = "inspector_transport_tests.rs"]
-mod transport;
 
 /// **O MOTOR e o PAINEL dão a mesma resposta a «esta reprodução está pendurada?»**
 ///

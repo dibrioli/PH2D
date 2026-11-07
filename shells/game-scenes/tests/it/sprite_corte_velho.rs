@@ -1,4 +1,12 @@
-use super::*;
+//! A costura da ficha do cartão da Sprite e do Animated: Keep old size, o vazio, o herói e o aviso de imagem trocada.
+
+use ph2d_app_sprite_anim::sprite_card::{cut_notice, keep_size, try_sample_hero};
+use ph2d_asset::{AssetDb, AssetId};
+use ph2d_ecs::{Entity, SpriteAnimations, SpriteCutNotice, SpriteGrid, World};
+use ph2d_editor_core::ImageCutNotice;
+use ph2d_render::Sprite;
+use ph2d_sprite_edit::vazio::sem_imagem;
+use std::collections::BTreeMap;
 
 #[test]
 fn keep_size_devolve_o_tamanho_de_antes() {
@@ -31,7 +39,7 @@ fn folha(db: &AssetDb, w: u32, h: u32, cw: u32, ch: u32) -> AssetId {
 }
 
 fn escolhe(sim: &mut ph2d_ecs::SimWorld, db: &AssetDb, e: Entity, id: AssetId) {
-    crate::image_choice::choose_library_image(
+    ph2d_app_sprite_anim::image_choice::choose_library_image(
         sim,
         &mut |_, _, _| Ok(9),
         db,
@@ -71,10 +79,12 @@ fn escolher_a_imagem_no_vazio_ja_entra_em_animated() {
     let w = sim.world();
     assert_eq!(grade(w, e), [4, 2]);
     let lib = w.get::<SpriteAnimations>(e).expect("a lista");
-    let t = lib.get(crate::image_use::LOOP_TAG).expect("o laço");
+    let t = lib
+        .get(ph2d_app_sprite_anim::image_use::LOOP_TAG)
+        .expect("o laço");
     assert_eq!((t.from, t.to), (0, 7));
     let a = w.get::<ph2d_ecs::SpriteAnimator>(e).expect("o tocador");
-    assert_eq!(a.current, crate::image_use::LOOP_TAG);
+    assert_eq!(a.current, ph2d_app_sprite_anim::image_use::LOOP_TAG);
     assert!(a.autoplay);
     assert!(!sem_imagem(w, e), "deixou de ser o convite");
     assert!(w.get::<SpriteCutNotice>(e).is_none(), "nada a avisar");
@@ -170,7 +180,7 @@ fn imagem_que_traz_corte_nao_avisa() {
 /// ⭐ **Cut again** aplica a grade proposta da imagem nova; **Keep the cut** fica com a velha. Os dois fecham o aviso.
 #[test]
 fn as_duas_saidas_do_aviso() {
-    use crate::image_use::apply_edit;
+    use ph2d_app_sprite_anim::image_use::apply_edit;
     use ph2d_editor_core::ImageUseEdit as V;
     let atlas = BTreeMap::new();
     for (verbo, esperada) in [(V::CutAgain, [4, 2]), (V::KeepCut, [8, 4])] {
@@ -192,7 +202,7 @@ fn as_duas_saidas_do_aviso() {
 /// Imagem sem grade a propor: o Cut again abre o editor, onde o corte se faz à mão.
 #[test]
 fn cut_again_sem_proposta_abre_o_editor() {
-    use crate::image_use::apply_edit;
+    use ph2d_app_sprite_anim::image_use::apply_edit;
     let atlas = BTreeMap::new();
     let (mut sim, db) = (ph2d_ecs::SimWorld::new(), AssetDb::new());
     let a = folha(&db, 800, 400, 100, 100);
@@ -209,6 +219,6 @@ fn cut_again_sem_proposta_abre_o_editor() {
         ph2d_editor_core::ImageUseEdit::CutAgain
     ));
     assert_eq!(grade(w, e), [8, 4], "nada a propor, o corte fica");
-    let pedidos = w.get_resource::<crate::editor::AnimEditorRequests>();
+    let pedidos = w.get_resource::<ph2d_app_sprite_anim::editor::AnimEditorRequests>();
     assert_eq!(pedidos.map(|r| r.0.clone()), Some(vec![e.to_bits()]));
 }

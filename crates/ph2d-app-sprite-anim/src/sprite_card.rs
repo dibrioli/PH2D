@@ -144,7 +144,3 @@ pub fn keep_cut(world: &mut World, e: Entity) -> bool {
     world.entity_mut(e).remove::<SpriteCutNotice>();
     tinha
 }
-
-#[cfg(test)]
-#[path = "sprite_card_tests.rs"]
-mod tests;

@@ -8,7 +8,52 @@
 //! uma vez para checar Playing»*). A caixa era só a porta pela qual o defeito aparecia: por baixo
 //! dela, *rebobinar* não movia a imagem e *ligar* uma animação já terminada era um gesto morto.
 
-use super::*;
+use ph2d_app_sprite_anim::inspector::{apply_anim_edit, build_anim_info};
+use ph2d_ecs::scene::{
+    ComponentRegistry, EditorCommandQueue, apply_editor_commands, register_ecs_components,
+};
+use ph2d_ecs::{
+    AnimDirection, AnimationTag, Entity, SimWorld, SpriteAnimations, SpriteAnimator, Transform,
+};
+use ph2d_editor_core::{AnimFieldEdit, InspectorAnimInfo, Toast};
+
+fn registry() -> ComponentRegistry {
+    let mut r = ComponentRegistry::new();
+    register_ecs_components(&mut r);
+    ph2d_render::register_render_components(&mut r);
+    r
+}
+
+/// Uma sprite com uma grelha de `cells` células.
+fn sprite(sim: &mut SimWorld, cells: u32) -> Entity {
+    sim.world_mut()
+        .spawn((
+            Transform::default(),
+            ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+            ph2d_ecs::SpriteGrid {
+                hframes: cells,
+                vframes: 1,
+                frame: 0,
+            },
+        ))
+        .id()
+}
+
+fn edit(
+    sim: &mut SimWorld,
+    e: Entity,
+    reg: &ComponentRegistry,
+    ed: AnimFieldEdit,
+) -> Option<Toast> {
+    let queue = EditorCommandQueue::new();
+    let t = apply_anim_edit(sim, e.to_bits(), &ed, &queue, reg);
+    apply_editor_commands(sim.world_mut(), &queue, reg).expect("o commit aplica");
+    t
+}
+
+fn info(sim: &SimWorld, e: Entity) -> InspectorAnimInfo {
+    build_anim_info(sim.world(), e.to_bits(), 1).expect("e' uma sprite")
+}
 
 /// A tag `name` da biblioteca desta sprite — o que o mundo de facto guarda depois da edição.
 fn tag_of(sim: &SimWorld, e: Entity, name: &str) -> AnimationTag {
@@ -125,7 +170,7 @@ fn turning_playing_back_on_replays_an_animation_that_had_finished() {
 
     // Corre ate' ela se parar sozinha, na ULTIMA celula.
     for _ in 0..40 {
-        crate::tick::tick_sprite_animations(
+        ph2d_app_sprite_anim::tick::tick_sprite_animations(
             &mut sim,
             1,
             0.016,
@@ -144,7 +189,7 @@ fn turning_playing_back_on_replays_an_animation_that_had_finished() {
         4,
         "ligar de novo devolve a imagem ao inicio"
     );
-    crate::tick::tick_sprite_animations(
+    ph2d_app_sprite_anim::tick::tick_sprite_animations(
         &mut sim,
         1,
         0.016,
@@ -217,7 +262,7 @@ fn choosing_another_animation_resumes_one_that_had_run_itself_out_but_not_a_paus
     );
     edit(&mut sim, e, &reg, AnimFieldEdit::Playing(true));
     for _ in 0..40 {
-        crate::tick::tick_sprite_animations(
+        ph2d_app_sprite_anim::tick::tick_sprite_animations(
             &mut sim,
             1,
             0.016,
@@ -235,7 +280,7 @@ fn choosing_another_animation_resumes_one_that_had_run_itself_out_but_not_a_paus
     );
     let start = info(&sim, e).frame;
     for _ in 0..3 {
-        crate::tick::tick_sprite_animations(
+        ph2d_app_sprite_anim::tick::tick_sprite_animations(
             &mut sim,
             1,
             0.016,
@@ -305,7 +350,7 @@ fn dragging_the_frame_bar_sets_the_cell_pauses_and_stays_inside_the_range() {
 
     // ⚠️ E o relogio tem de deixar a celula quieta. Sem a pausa, isto anda.
     for _ in 0..20 {
-        crate::tick::tick_sprite_animations(
+        ph2d_app_sprite_anim::tick::tick_sprite_animations(
             &mut sim,
             1,
             0.016,
@@ -361,7 +406,7 @@ fn a_sheet_under_a_tool_preview_plays_even_when_the_transport_is_paused() {
     // 1. Sem ferramenta a pintar, uma cena pausada não anda.
     let before = info(&sim, e).frame;
     for _ in 0..20 {
-        crate::tick::tick_sprite_animations(
+        ph2d_app_sprite_anim::tick::tick_sprite_animations(
             &mut sim,
             1,
             0.016,
@@ -384,7 +429,7 @@ fn a_sheet_under_a_tool_preview_plays_even_when_the_transport_is_paused() {
     let painted = [Some(e.to_bits())];
     let mut seen = std::collections::BTreeSet::new();
     for _ in 0..20 {
-        crate::tick::tick_sprite_animations(
+        ph2d_app_sprite_anim::tick::tick_sprite_animations(
             &mut sim,
             1,
             0.016,
@@ -411,7 +456,7 @@ fn a_sheet_under_a_tool_preview_plays_even_when_the_transport_is_paused() {
     let other = [Some(e.to_bits() ^ 0xFFFF)];
     let held = info(&sim, e).frame;
     for _ in 0..20 {
-        crate::tick::tick_sprite_animations(
+        ph2d_app_sprite_anim::tick::tick_sprite_animations(
             &mut sim,
             1,
             0.016,
@@ -546,7 +591,7 @@ fn writing_a_frames_duration_pauses_like_dragging_the_bar_does() {
     edit(&mut sim, e, &reg, AnimFieldEdit::SetCurrent("walk".into()));
     edit(&mut sim, e, &reg, AnimFieldEdit::Playing(true));
     // Deixa o relógio andar um pouco, para o acumulador ter conteúdo.
-    crate::tick::tick_sprite_animations(
+    ph2d_app_sprite_anim::tick::tick_sprite_animations(
         &mut sim,
         2,
         0.016,

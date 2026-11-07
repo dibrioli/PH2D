@@ -306,10 +306,6 @@ fn vai_para_o_inicio(world: &mut ph2d_ecs::World, e: ph2d_ecs::Entity, nome: &st
     }
 }
 
-#[cfg(test)]
-#[path = "tick_signal_tests.rs"]
-mod signal_tests;
-
 /// A entidade está a ser pintada por uma ferramenta (o preview toca a animação sem a gravar).
 fn is_tool_previewed(tool_preview_bits: &[Option<u64>], entity: ph2d_ecs::Entity) -> bool {
     tool_preview_bits

@@ -7,7 +7,6 @@
 //! É: a paleta *Add Component* fazia, à letra, `desc.display_name.to_string()` e só depois
 //! concatenava `tr(…)`. ⇒ *um censo cuja crate não é DONA do texto que ela pinta fica verde sobre
 //! texto cru*, e eram **291** palavras.
-//!
 //! # ⭐ A CHAVE é derivada do ID; o TEXTO é que vive aqui
 //!
 //! Medido antes de escrever a primeira linha: `display_name` coincide com a derivação do

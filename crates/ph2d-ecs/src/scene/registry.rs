@@ -569,7 +569,6 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     reg.register_default::<crate::SpriteAnimMarkers>("ph2d::ecs::SpriteAnimMarkers");
     // Com qual animação começa (GEF 24 E2). Irmão pelo mesmo motivo.
     reg.register_default::<crate::SpriteAnimStart>("ph2d::ecs::SpriteAnimStart");
-    // O aviso de imagem trocada (GEF 24 E4): entra e sai pelo desfazer.
     reg.register_default::<crate::SpriteCutNotice>("ph2d::ecs::SpriteCutNotice");
     // O que cada uso da imagem guarda enquanto o objecto usa outro (plano GEF 15, dono 27/10): sem o registo o
     // Desfazer e o projecto reaberto perdiam a configuração do uso que o artista deixou.

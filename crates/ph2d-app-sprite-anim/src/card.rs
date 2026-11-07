@@ -400,7 +400,3 @@ pub(crate) fn follow_remove(
         queue_set(queue, registry, entity_bits, FRAMES, &f);
     }
 }
-
-#[cfg(test)]
-#[path = "card_tests.rs"]
-mod tests;

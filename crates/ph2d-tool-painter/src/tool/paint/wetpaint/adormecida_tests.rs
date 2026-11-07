@@ -117,6 +117,8 @@ fn traco_longe_nao_muda_a_borracha_e_fica_na_tela() {
     }
 }
 
+const PASSADAS_ATE_O_PAPEL: usize = 8;
+
 /// ⭐ Decisão 2 do dono: um traço por cima do óleo vai-se com o óleo. Sem resto vermelho nem azul no rasto.
 #[test]
 fn a_borracha_leva_o_traco_e_o_oleo_juntos() {
@@ -138,9 +140,9 @@ fn a_borracha_leva_o_traco_e_o_oleo_juntos() {
             diferentes(&antes, &acordada)
         );
         t.set_paint_tool_mode("eraser");
-        // Três passadas no mesmo lugar: o rasto fica sem tinta nenhuma.
+        // Passadas no mesmo lugar, aos poucos: o rasto fica sem tinta nenhuma.
         let mut r = Vec::new();
-        for _ in 0..3 {
+        for _ in 0..PASSADAS_ATE_O_PAPEL {
             r = apaga(&mut t);
         }
         let rasto = |p: &[u8]| -> Vec<[u8; 4]> {

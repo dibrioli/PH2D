@@ -410,6 +410,8 @@ mod borracha_morta; // a Borracha na tinta morta imita a da viva (dono 06/11)
 #[cfg(test)]
 mod borracha_morta_tests;
 #[cfg(test)]
+mod borracha_pressao_tests;
+#[cfg(test)]
 mod dentro_do_wet_tests;
 mod dormente; // a tinta adormecida comprimida em RAM (dono 06/11)
 mod po; // o PÓ SOLTO pousado à parte do rasto (J4 pastel_carvao) — filho de dab_route por LOC

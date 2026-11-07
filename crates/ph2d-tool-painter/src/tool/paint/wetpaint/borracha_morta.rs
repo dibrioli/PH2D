@@ -22,8 +22,23 @@ const CLAREIA_NO_MAXIMO: f32 = 1.1;
 /// O que uma passada de pressão cheia tira, com o Erase Strength de fábrica ([`ERASE_DE_FABRICA`]).
 const TIRA: f32 = 0.35;
 const ERASE_DE_FABRICA: f32 = 0.4;
-/// A pressão (o contacto da ponta com o papel) pesa assim: pouca pressão quase não tira, só amassa.
+/// A pressão (o contacto da ponta com o papel) pesa assim, acima do [`PISO`].
 const EXPOENTE_DA_PRESSAO: i32 = 8;
+/// O que a pressão mais leve ainda tira, em fracção de uma passada plena (dono 06/11: também chega ao papel). Medido, mão
+/// leve (0,35): 0 nunca chega e queima a parede · 0,15 em ~30 passadas · 0,30 em ~20. A pressão plena não muda.
+const PISO: f32 = 0.3;
+
+/// O que sai com o contacto `p`: `PISO` é o que a pressão mais leve ainda leva, e a plena é a de sempre.
+fn tira_com_o_contacto(p: f32) -> f32 {
+    #[cfg(test)]
+    let piso = super::borracha_pressao_tests::piso::get().unwrap_or(PISO);
+    #[cfg(not(test))]
+    let piso = PISO;
+    piso + (1.0 - piso) * p.powi(EXPOENTE_DA_PRESSAO)
+}
+
+/// Abaixo disto o alisar só deixou um rasto numérico: não custa um ponto de alfa.
+const NADA_SAI: f32 = 1e-3;
 
 /// O sulco do traço aberto: a imagem de antes dele e o que a Borracha já cobriu e tirou.
 #[derive(Clone)]
@@ -61,7 +76,7 @@ impl Sulco {
             .map(|d| d.coverage * d.radius_px / d.stroke_radius_px.max(1e-3))
             .sum::<f32>()
             / dabs.len() as f32;
-        let tira = contacto.clamp(0.0, 1.0).powi(EXPOENTE_DA_PRESSAO);
+        let tira = tira_com_o_contacto(contacto.clamp(0.0, 1.0));
         for y in caixa.y0..caixa.y1 {
             for x in caixa.x0..caixa.x1 {
                 let i = y * w + x;
@@ -305,7 +320,6 @@ pub(super) fn escreve_o_sulco(
                 0.0
             };
             let luz = (1.0 - ganho * (gx * LUZ[0] + gy * LUZ[1])).clamp(0.0, CLAREIA_NO_MAXIMO);
-            let a0 = f32::from(sulco.antes[o + 3]) / 255.0;
             let am = canais[3][k].max(1e-4);
             let mistura = (c * ALISA).min(1.0);
             for n in 0..3 {
@@ -316,8 +330,13 @@ pub(super) fn escreve_o_sulco(
             }
             // O corte segue a cobertura crua: alisada, passava do anel da Borracha.
             let cortou = f32::from(sulco.cobriu[y * w + x]) / 255.0 * corte;
-            let alfa = a0 * (1.0 - (tir[k] * forca * g).clamp(0.0, 1.0)) * (1.0 - cortou);
-            tela[o + 3] = (alfa * 255.0).floor() as u8;
+            let fica = (1.0 - (tir[k] * forca * g).clamp(0.0, 1.0)) * (1.0 - cortou);
+            // Conta sobre o alfa inteiro: em f32, 164/255·255 < 164, e ele perdia um ponto onde não se tirou nada.
+            if fica < 1.0 - NADA_SAI {
+                tela[o + 3] = (f32::from(sulco.antes[o + 3]) * fica).floor() as u8;
+            } else {
+                tela[o + 3] = sulco.antes[o + 3];
+            }
         }
     }
 }

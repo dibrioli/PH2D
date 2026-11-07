@@ -1,0 +1,21 @@
+[package]
+name = "ph2d-pixel-slices"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O gesto da ferramenta Slice do Pixel Art (`docs/PixelArt/P11_plano.md` §5): premir, arrastar e largar
+# em células, sem tocar no documento até ao largar. PURA: sem ECS, sem UI. O documento é o `ph2d-pixel-core`.
+[dependencies]
+ph2d-pixel-core = { path = "../ph2d-pixel-core" }
+
+[dev-dependencies]
+serde_json = "1"
+
+[lints]
+workspace = true

@@ -6165,11 +6165,13 @@ dependencies = [
  "ph2d-panel-pixel-preview",
  "ph2d-panel-pixel-tiles",
  "ph2d-panel-pixel-timeline",
+ "ph2d-pixel-cenas",
  "ph2d-pixel-core",
  "ph2d-pixel-formas",
  "ph2d-pixel-io",
  "ph2d-pixel-ponte",
  "ph2d-pixel-render",
+ "ph2d-pixel-slices",
  "ph2d-pixel-text",
  "ph2d-pixel-tiles",
  "ph2d-render",
@@ -7687,6 +7689,7 @@ dependencies = [
  "ph2d-pixel-text",
  "ph2d-pixel-tiles",
  "ph2d-render",
+ "ph2d-text",
  "ph2d-tokens",
  "ph2d-tool-vector",
  "ph2d-vec-scene",
@@ -10586,6 +10589,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-pixel-cenas"
+version = "0.0.0"
+dependencies = [
+ "ph2d-pixel-core",
+]
+
+[[package]]
 name = "ph2d-pixel-core"
 version = "0.0.0"
 dependencies = [
@@ -10636,6 +10646,14 @@ version = "0.0.0"
 dependencies = [
  "ph2d-pixel-core",
  "ph2d-vector",
+]
+
+[[package]]
+name = "ph2d-pixel-slices"
+version = "0.0.0"
+dependencies = [
+ "ph2d-pixel-core",
+ "serde_json",
 ]
 
 [[package]]

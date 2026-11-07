@@ -33,6 +33,7 @@ ph2d-panel-pixel-preview = { path = "../../crates/ph2d-panel-pixel-preview" }
 ph2d-panel-pixel-export = { path = "../../crates/ph2d-panel-pixel-export" }
 ph2d-panel-pixel-tiles = { path = "../../crates/ph2d-panel-pixel-tiles" }
 ph2d-pixel-tiles = { path = "../../crates/ph2d-pixel-tiles" }
+ph2d-text = { path = "../../crates/ph2d-text" }
 ph2d-imageio-png = { path = "../../crates/ph2d-imageio-png" }
 ph2d-render = { path = "../../crates/ph2d-render" }
 ph2d-tokens = { path = "../../crates/ph2d-tokens" }

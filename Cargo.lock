@@ -6213,7 +6213,6 @@ dependencies = [
  "ph2d-object-picker",
  "ph2d-panel-hierarchy",
  "ph2d-panel-sfxlab",
- "ph2d-sfx-dsp",
  "ph2d-sfx-explore",
  "ph2d-sfx-explore-tela",
  "ph2d-sfx-lab",

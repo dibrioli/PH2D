@@ -160,7 +160,7 @@ def le(a):
     return out, (int(ins.shape[1]), int(ins.shape[0]))
 
 def pedacos(im, g):
-    """As hipoteses: pedacos da grelha g, por linha, cortados pelo canvas."""
+    """As candidatas: pedacos da grelha g, por linha, cortados pelo canvas."""
     ox, oy, gw, gh = g
     xs = list(range(ox % gw - gw if ox % gw else 0, W, gw)); ys = list(range(oy % gh - gh if oy % gh else 0, H, gh))
     return [im[max(y, 0):min(y + gh, H), max(x, 0):min(x + gw, W)] for y in ys for x in xs]
@@ -173,7 +173,7 @@ def faixa(pcs):
         o[:p.shape[0], x:x + p.shape[1]] = p; x += p.shape[1]
     return o
 
-def hipoteses(im, sg, cel):
+def candidatas(im, sg, cel):
     H_ = {}
     tg = (cel[0], cel[1], TW, TH)
     for nome, g in (('sprite', sg), ('tile', tg)):
@@ -230,7 +230,7 @@ def lote(D, filt, par):
         tipo, args, g = ARQ[arq]
         g = PRE.get(k, ('', None))[1] or g
         cel = args[2] if tipo == 't' else (0, 0)
-        cas = [n for n, e in hipoteses(verd[arq], g, cel).items() if e.shape == out.shape and (e == out).all()]
+        cas = [n for n, e in candidatas(verd[arq], g, cel).items() if e.shape == out.shape and (e == out).all()]
         res[k] = {'arq': arq, 'grelha_sprite': g, 'tela': tela, 'folha': [out.shape[1], out.shape[0]], 'opacos': int(len(xs)),
                   'bbox_opacos': [int(xs.min()), int(ys.min()), int(xs.max()), int(ys.max())] if len(xs) else None, 'casa_com': cas}
     def op(disp):
@@ -257,7 +257,7 @@ def rele(D):
         tipo, args, g = ARQ[arq]
         g = PRE.get(k, ('', None))[1] or g
         cel = args[2] if tipo == 't' else (0, 0)
-        cas = [n for n, e in hipoteses(verd[arq], g, cel).items() if e.shape == out.shape and (e == out).all()]
+        cas = [n for n, e in candidatas(verd[arq], g, cel).items() if e.shape == out.shape and (e == out).all()]
         print(k, 'grelha', g, 'folha', out.shape[1], 'x', out.shape[0], 'opacos', len(xs), 'bbox', (xs.min(), ys.min(), xs.max(), ys.max()) if len(xs) else None, 'casa', cas)
 
 if __name__ == '__main__':

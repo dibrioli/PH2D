@@ -24,16 +24,18 @@ const PLAYER: u8 = 1;
 const PROPS: u8 = 2;
 const ZONES: u8 = 3;
 pub const CAMADAS: [&str; 4] = ["Ground", "Player", "Props", "Zones"];
-/// Quem toca quem: cada camada com um «Hits» diferente. O Player só o chão; a zona só os adereços.
+/// As camadas 4 a 7 ficam no padrão de fábrica: sem objecto nem nome, não aparecem nos quadros.
+const POR_USAR: u8 = 0xF0;
+/// Quem toca quem: cada camada com os seus quadros acesos. O Player só o chão; a zona só os adereços.
 pub const MATRIZ: [u8; 8] = [
-    1 << PLAYER | 1 << PROPS,
-    1 << GROUND,
-    1 << GROUND | 1 << PROPS | 1 << ZONES,
-    1 << PROPS,
-    0,
-    0,
-    0,
-    0,
+    1 << PLAYER | 1 << PROPS | POR_USAR,
+    1 << GROUND | POR_USAR,
+    1 << GROUND | 1 << PROPS | 1 << ZONES | POR_USAR,
+    1 << PROPS | POR_USAR,
+    u8::MAX,
+    u8::MAX,
+    u8::MAX,
+    u8::MAX,
 ];
 
 pub const FLOOR_HALF: [f32; 2] = [7.0, 0.5];

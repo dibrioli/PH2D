@@ -87,6 +87,10 @@ pub(crate) fn prepare(store: &mut WidgetStore, snap: &PhysicsSnapshot) {
     // a linha de antes) e o que menos se abre, com o Reset lá dentro.
     store.set_collapsed_if_unchosen(i::PHYSICS_SEC_DEBUG, true);
     semeia_os_nomes_das_camadas(store);
+    // As fotos: a matriz rolada até ao fim (a roda e o rato não se conduzem na tela virtual).
+    if std::env::var_os("PH2D_PHYSICS_SMOKE_ROLA").is_some() {
+        store.set_slider_value(i::PHYSICS_LAYER_SCROLL, 1.0);
+    }
     let fabrica = PhysicsSettings::default();
     let arrastado = store.number_input_drag().map(|d| d.id);
     for row in rows::rows() {

@@ -200,6 +200,16 @@ pub fn monta(world: &mut World) {
     ph2d_ecs::assign_missing_root_order(world);
 }
 
+/// As fotos da matriz: `PH2D_PHYSICS_SMOKE_CAMADAS=<n>` camadas nomeadas, além das quatro da cena.
+pub fn nomeia_para_as_fotos(world: &mut World) {
+    let nomeadas = std::env::var("PH2D_PHYSICS_SMOKE_CAMADAS")
+        .ok()
+        .and_then(|v| v.trim().parse::<u8>().ok());
+    for i in 4..nomeadas.unwrap_or(0) {
+        LayerNames::rename(world, i, &format!("Layer {i}"));
+    }
+}
+
 /// As regras do mundo da cena: a matriz das quatro camadas.
 #[must_use]
 pub fn regras(base: PhysicsSettings) -> PhysicsSettings {

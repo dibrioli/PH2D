@@ -333,3 +333,18 @@ fn a_matriz_vai_e_volta_em_32_linhas_e_a_de_8_bytes_e_alargada() {
         "CONTROLO: sem a guarda, o fio antigo não abre igual"
     );
 }
+
+/// Sonda (`--ignored --nocapture`): os bits de uma cena nas oito camadas de sempre, para comparar com o filtro de 8 bits.
+#[test]
+#[ignore = "mede: corre à mão"]
+fn sonda_bits_das_oito_camadas() {
+    for (a, b, s) in [
+        (0, 3, PhysicsSettings::default()),
+        (0, 3, matrix_without(0, 3)),
+        (7, 7, PhysicsSettings::default()),
+        (2, 5, matrix_without(1, 5)),
+    ] {
+        println!("[bits] {a} {b} {:08x}", drop_for(s, a, b).to_bits());
+        println!("[bits] bolas {a} {b} {:08x}", duas_bolas(s, a, b).to_bits());
+    }
+}

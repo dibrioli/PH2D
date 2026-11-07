@@ -167,6 +167,11 @@ const LINHAS: &[(&str, &str)] = &[
 /// A classe de uma chamada por um dos seus ids — exacto, ou PREFIXO quando acaba em `_`.
 const POR_ID: &[(&str, Classe, &str)] = &[
     (
+        "INSP_PHYS_LAYER_NAME",
+        NaoAnimavel,
+        "o nome da camada no «Rename…»: fiação por nome (§8)",
+    ),
+    (
         "INSP_SPRITE_CORNERS_ON",
         NaoAnimavel,
         "estado de VISTA do cartão Look: abre os quatro cantos; o que se anima são os cantos, cada um com o seu canal",
@@ -1474,7 +1479,7 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
         "paint/matrix.rs::paint",
         Canal,
         &["PHYSICS_LAYER_CELL"],
-        "a matriz de camadas é UM losango sobre as 36 células (canal MUNDO `CAMADAS`, F41)",
+        "a matriz de camadas é UM losango sobre as células (canal MUNDO `CAMADAS`, F41)",
     ),
     (
         "ph2d-panel-physics",

@@ -10,14 +10,11 @@
 
 use ph2d_ecs::{
     Entity, RepeatMode, ScrollFactor, ScrollRepeat, SimWorld, SpriteAnimations, SpriteAnimator,
-    SpriteGrid, TextureRepeat, UvTransform, ZIndexOverride,
+    TextureRepeat, UvTransform, ZIndexOverride,
 };
 use ph2d_editor_core::object_add::{AddEntry, AddGroup};
 use ph2d_physics_ecs::{BodyKind, CharacterAnimations, Collider, ColliderShape, RigidBody};
-use ph2d_render::{
-    FactoryArt, HERO_SHEET_COLS, HERO_SHEET_KEY, HERO_SHEET_ROWS, HERO_SHEET_SOLE_BELOW_CENTRE,
-    HERO_SHEET_TAGS, HILLS_TILE, Sprite, WHITE_TILE_KEY,
-};
+use ph2d_render::{FactoryArt, HERO_SHEET_SOLE_BELOW_CENTRE, HILLS_TILE, Sprite, WHITE_TILE_KEY};
 
 /// Uma imagem.
 pub const SPRITE: AddEntry = AddEntry::new("object_add.game.sprite", AddGroup::Game)
@@ -106,34 +103,6 @@ pub fn veste_camada(
     ));
 }
 
-/// A folha do boneco de fábrica, as suas animações e o animador a tocar `idle`.
-fn anima(world: &mut ph2d_ecs::World, e: Entity) -> Result<(), String> {
-    let mut tags = SpriteAnimations::new();
-    for t in HERO_SHEET_TAGS {
-        let mut tag = ph2d_ecs::AnimationTag::new(t.name, t.from, t.to);
-        tag.frame_ms = t.per_frame_ms[0];
-        // Só o que difere do ritmo é tempo próprio — senão o Frames/s não move a animação.
-        for (i, ms) in t.per_frame_ms.iter().enumerate() {
-            tag.set_own_ms(i, *ms);
-        }
-        tag.repeat = t.once.then_some(1);
-        tags.insert(tag).map_err(|e| format!("{e:?}"))?;
-    }
-    let mut animator = SpriteAnimator::new(HERO_SHEET_TAGS[0].name);
-    animator.autoplay = true;
-    world.entity_mut(e).insert((
-        Sprite::atlas(HERO_SHEET_KEY, [1.0, 1.0], BRANCO),
-        SpriteGrid {
-            hframes: HERO_SHEET_COLS,
-            vframes: HERO_SHEET_ROWS,
-            frame: 0,
-        },
-        tags,
-        animator,
-    ));
-    Ok(())
-}
-
 /// As portas de OUTRA família que o menu usa, entregues pela composição.
 #[derive(Clone, Copy)]
 pub struct Portas<'a> {
@@ -160,7 +129,15 @@ pub fn add(entry: AddEntry, sim: &mut SimWorld, portas: Portas<'_>) -> Option<Re
                 .entity_mut(e)
                 .insert(Sprite::atlas(WHITE_TILE_KEY, [1.0, 1.0], BRANCO));
         } else if entry == ANIMATED_SPRITE {
-            anima(world, e)?;
+            // Nasce vazio: o cartão Image pede a folha e oferece o herói (ficha 02, decisão 3).
+            let mut animator = SpriteAnimator::new("");
+            animator.autoplay = true;
+            world.entity_mut(e).insert((
+                Sprite::atlas(WHITE_TILE_KEY, [1.0, 1.0], BRANCO),
+                ph2d_ecs::SpriteGrid::SINGLE,
+                SpriteAnimations::new(),
+                animator,
+            ));
         } else if entry == STATIC_BODY {
             world.entity_mut(e).insert((
                 Sprite::atlas(WHITE_TILE_KEY, BLOCO, PEDRA),
@@ -173,7 +150,7 @@ pub fn add(entry: AddEntry, sim: &mut SimWorld, portas: Portas<'_>) -> Option<Re
             veste_camada(world, e, HILLS_TILE, CAMADA_LADRILHOS, CAMADA_K);
             world.entity_mut(e).insert(ZIndexOverride(-1));
         } else if entry == CHARACTER {
-            anima(world, e)?;
+            ph2d_render::veste_o_heroi(world, e)?;
             world.entity_mut(e).insert((
                 ph2d_physics_ecs::MaterialCombine::sem_atrito(CAPSULA),
                 CharacterAnimations::default(),

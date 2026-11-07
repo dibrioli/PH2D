@@ -197,6 +197,18 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "card.insp.image_unnamed" => "Untitled image",
         "card.insp.image_drop" => "Drop an image",
+        "card.insp.sheet_drop" => "Drop a sprite sheet",
+        "card.insp.sample_hero" => "Try with the sample hero",
+        "card.insp.sample_hero_tip" => {
+            "Use the sample hero sheet, with its animations, on this object"
+        }
+        "card.insp.new_image_old_cut" => {
+            "New image, old cut: {c} × {r} makes cells of {w} × {h} px, and {n?this|these} {n} {n?animation|animations} {n?was|were} made for another image."
+        }
+        "card.insp.cut_again" => "Cut again",
+        "card.insp.cut_again_tip" => "Cut the new image into the grid its transparency suggests",
+        "card.insp.keep_cut" => "Keep the cut",
+        "card.insp.keep_cut_tip" => "Leave the cut as it is and close this notice",
         "card.insp.image_drop_hint" => "or click to choose",
         "card.insp.silhouette" => "Silhouette (Tint Fill)",
         "card.insp.tint_each_corner" => "Tint each corner",
@@ -415,6 +427,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.anim.marker_signal" => "Signal",
         "card.anim.marker_signal_placeholder" => "Signal name",
         "card.anim.marker_add" => "+ Marker",
+        "card.anim.marker_add_open" => "Add marker",
+        "card.anim.markers_open" => "{n} {n?marker|markers}",
         "card.anim.marker_del_tip" => "Remove this marker",
         "card.anim.marker_tip" => "When the animation enters this frame, it sends this signal",
         "card.anim.marker_past_end" => {

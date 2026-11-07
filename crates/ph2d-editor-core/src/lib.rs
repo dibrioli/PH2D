@@ -169,7 +169,7 @@ pub mod factory_edits;
 pub mod hud_edits;
 /// ⭐ O vocabulário do USO DA IMAGEM (GEF 13–16) — abaixo do `action_bus` (catraca do DAG).
 pub mod image_use_edits;
-pub use image_use_edits::{ImageUseEdit, InspectorImageUse, SpritePivot};
+pub use image_use_edits::{ImageCutNotice, ImageUseEdit, InspectorImageUse, SpritePivot};
 /// ⭐ **O vocabulário da secção LUZ** (Luz 2D, W4) — ver o cabeçalho dele.
 pub mod luz_edits;
 /// O vocabulário da secção MACRO e do painel MACROS (ADR-0186).

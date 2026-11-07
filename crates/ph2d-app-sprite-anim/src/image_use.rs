@@ -65,6 +65,23 @@ pub fn cells(facts: ImageFacts) -> u32 {
 /// O nome da animação que [`make_animated`] cria.
 pub const LOOP_TAG: &str = "loop";
 
+/// A lista de quem entra a animar uma imagem de `n` células: uma animação em laço com todas, e o tocador nela.
+fn loop_over_all(n: u32) -> Option<(SpriteAnimations, SpriteAnimator)> {
+    let mut tags = SpriteAnimations::new();
+    tags.insert(AnimationTag::new(LOOP_TAG, 0, n.max(1) - 1))
+        .ok()?;
+    let mut animator = SpriteAnimator::new(LOOP_TAG);
+    animator.autoplay = true;
+    Some((tags, animator))
+}
+
+/// O Animated Sprite vazio acabou de receber a imagem `facts`: toca todas as células dela.
+pub(crate) fn enter_animated(world: &mut World, e: Entity, facts: ImageFacts) {
+    if let Some(comps) = loop_over_all(cells(facts)) {
+        world.entity_mut(e).insert(comps);
+    }
+}
+
 /// ⭐ **Passar a animada uma imagem com corte** (planos GEF 13 D5 e 15 D3): o objecto deixa de repetir e toca
 /// todas as células da imagem em laço; o tamanho é UMA célula à [`display_scale`] de antes (nada cresce nem
 /// encolhe). `false` se a imagem tem uma célula só, ou o objecto já anima.
@@ -77,15 +94,12 @@ pub fn make_animated(world: &mut World, e: Entity, facts: ImageFacts) -> bool {
         return false;
     }
     let k = display_scale(world, e, facts);
-    let mut tags = SpriteAnimations::new();
-    if tags.insert(AnimationTag::new(LOOP_TAG, 0, n - 1)).is_err() {
+    let Some(comps) = loop_over_all(n) else {
         return false;
-    }
-    let mut animator = SpriteAnimator::new(LOOP_TAG);
-    animator.autoplay = true;
+    };
     let grid = [slicing.grid[0].max(1), slicing.grid[1].max(1)];
     show(world, e, facts, grid, k);
-    world.entity_mut(e).insert((tags, animator));
+    world.entity_mut(e).insert(comps);
     true
 }
 
@@ -138,7 +152,7 @@ fn area_fraction(world: &World, e: Entity, facts: ImageFacts) -> [f32; 2] {
 }
 
 /// `e` passa a mostrar a grelha `grid` da imagem `facts`, uma célula à escala `k`, sem repetir.
-fn show(world: &mut World, e: Entity, facts: ImageFacts, grid: [u32; 2], k: [f32; 2]) {
+pub(crate) fn show(world: &mut World, e: Entity, facts: ImageFacts, grid: [u32; 2], k: [f32; 2]) {
     let celula = [
         facts.native_m[0] / grid[0] as f32 * k[0],
         facts.native_m[1] / grid[1] as f32 * k[1],
@@ -636,6 +650,9 @@ pub fn apply_edit(
         ImageUseEdit::MirrorInPlace(eixo) => {
             ph2d_sprite_edit::pivot::espelha_no_lugar(world, e, ppm, usize::from(eixo))
         }
+        ImageUseEdit::SampleHero => crate::sprite_card::try_sample_hero(world, e),
+        ImageUseEdit::CutAgain => crate::sprite_card::cut_again(world, e, db, atlas, facts),
+        ImageUseEdit::KeepCut => crate::sprite_card::keep_cut(world, e),
     }
 }
 

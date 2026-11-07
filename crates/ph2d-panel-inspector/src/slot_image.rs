@@ -33,6 +33,8 @@ pub struct SpriteFacts {
     pub pivot_px: [f32; 2],
     /// Em Still, a grelha da imagem que é folha (colunas, linhas): o aviso de folha.
     pub folha: Option<[u32; 2]>,
+    /// Em Animated, a imagem trocada sem corte próprio: o aviso.
+    pub corte_velho: Option<ph2d_editor_core::ImageCutNotice>,
 }
 
 /// O que o Replace acabou de mudar: os píxeis de antes e de agora, e o tamanho no mundo de antes.

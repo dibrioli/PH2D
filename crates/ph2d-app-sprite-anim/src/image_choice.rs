@@ -260,8 +260,23 @@ pub fn choose_library_image(
     id: AssetId,
 ) -> Result<(), String> {
     let no_image = || ph2d_i18n::tr("app.sprite_anim.image_choice.not_an_image").to_owned();
-    let new = library_facts(sim.world(), id, db, atlas, ppm).ok_or_else(no_image)?;
+    let mut new = library_facts(sim.world(), id, db, atlas, ppm).ok_or_else(no_image)?;
     let w = sim.world();
+    let animada = crate::image_use::image_use(w, e) == Some(crate::image_use::ImageUse::Animated);
+    let vazia = animada && ph2d_sprite_edit::vazio::sem_imagem(w, e);
+    // O Animated Sprite vazio entra já cortado: pelo corte da imagem, senão pelo que a transparência propõe.
+    if vazia && new.slicing.is_none() {
+        new.slicing = db
+            .get(&id)
+            .and_then(|a| {
+                let (iw, ih, px) = a.image_rgba8()?;
+                crate::image_use::proposed_grid(&px, iw, ih)
+            })
+            .map(|grid| Slicing {
+                grid,
+                still_frame: 0,
+            });
+    }
     let old = ph2d_render::texture_of(w.get::<SpritePixels>(e), w.get::<Sprite>(e), atlas)
         .and_then(|old| image_facts(old, db, atlas, ppm));
     let source = match atlas.iter().find(|(_, a)| **a == id) {
@@ -277,9 +292,31 @@ pub fn choose_library_image(
         }
     };
     if choose_image(sim.world_mut(), e, old, source, new) {
+        let w = sim.world_mut();
+        if vazia {
+            crate::image_use::enter_animated(w, e, new);
+        }
+        notice_of_the_swap(w, e, animada && !vazia && new.slicing.is_none());
         Ok(())
     } else {
         Err(ph2d_i18n::tr("app.sprite_anim.image_choice.not_a_sprite").to_owned())
+    }
+}
+
+/// A imagem nova deixou o corte velho a mandar nas animações: o cartão Image avisa. Trazendo corte, nada a dizer.
+fn notice_of_the_swap(world: &mut World, e: Entity, corte_velho: bool) {
+    let com_animacoes = world
+        .get::<SpriteAnimations>(e)
+        .is_some_and(|l| l.iter().next().is_some());
+    match world.get::<SpriteGrid>(e).copied() {
+        Some(g) if corte_velho && com_animacoes => {
+            world.entity_mut(e).insert(ph2d_ecs::SpriteCutNotice {
+                grid: [g.hframes, g.vframes],
+            });
+        }
+        _ => {
+            world.entity_mut(e).remove::<ph2d_ecs::SpriteCutNotice>();
+        }
     }
 }
 

@@ -62,6 +62,13 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
         "card.insp.edit_in_pixel_tip",
     );
     botao(store, ids::INSP_IMAGE_PAINT_NEW, "card.insp.paint_new_tip");
+    botao(
+        store,
+        ids::INSP_IMAGE_SAMPLE_HERO,
+        "card.insp.sample_hero_tip",
+    );
+    botao(store, ids::INSP_IMAGE_CUT_AGAIN, "card.insp.cut_again_tip");
+    botao(store, ids::INSP_IMAGE_KEEP_CUT, "card.insp.keep_cut_tip");
     for id in ids::INSP_IMAGE_RECENT {
         botao(store, id, "card.insp.recent_tip");
     }
@@ -147,7 +154,7 @@ pub(crate) fn imagem(info: InspectorSpriteInfo) -> CardDef<'static> {
         summary: slot_image::current_slot_image(info.entity_bits).map(|i| i.name),
         body: Some(Box::new(move |c: &mut CardCtx<'_>, y| {
             if slot_image::sem_imagem(info.entity_bits) {
-                return convite(c, y);
+                return convite(c, y, info.image_use == InspectorImageUse::Animated);
             }
             let y = cabeca(c, y, &info);
             let y = com_corpo(c, y, |t, theme, store, x, w, y| {
@@ -156,6 +163,7 @@ pub(crate) fn imagem(info: InspectorSpriteInfo) -> CardDef<'static> {
                 )
             });
             let y = recibo_do_replace(c, y, &info);
+            let y = aviso_de_corte(c, y, info.entity_bits);
             aviso_de_folha(c, y, info.entity_bits)
         })),
     }
@@ -237,8 +245,47 @@ fn aviso_de_folha(c: &mut CardCtx<'_>, y: f32, bits: u64) -> f32 {
     )
 }
 
-/// O objecto sem imagem: o cartão inteiro é o alvo. Um só convite (GDevelop).
-fn convite(c: &mut CardCtx<'_>, y: f32) -> f32 {
+/// A imagem trocada deixou o corte velho (ficha 02): o problema, com os números de verdade, e as duas saídas.
+fn aviso_de_corte(c: &mut CardCtx<'_>, y: f32, bits: u64) -> f32 {
+    let Some(a) = slot_image::factos()
+        .filter(|f| f.entity_bits == bits)
+        .and_then(|f| f.corte_velho)
+    else {
+        return y;
+    };
+    let frase = tr_with(
+        "card.insp.new_image_old_cut",
+        &[
+            ("c", &a.grid[0]),
+            ("r", &a.grid[1]),
+            ("w", &a.cell_px[0]),
+            ("h", &a.cell_px[1]),
+            ("n", &a.animations),
+        ],
+    );
+    let y = com_corpo(c, y, |t, theme, _, x, w, y| {
+        sections::rows::aviso(t.scene, t.text, theme, x, w, y, &frase, ColorToken::Warn)
+    });
+    c.row(
+        &[
+            Cell::new(Widget::Button {
+                id: ids::INSP_IMAGE_CUT_AGAIN,
+                text: tr("card.insp.cut_again"),
+                primary: false,
+            }),
+            Cell::new(Widget::Button {
+                id: ids::INSP_IMAGE_KEEP_CUT,
+                text: tr("card.insp.keep_cut"),
+                primary: false,
+            }),
+        ],
+        y,
+    )
+}
+
+/// O objecto sem imagem: o cartão inteiro é o alvo. Um só convite (GDevelop). O vazio do Animated pede uma folha
+/// e, no lugar de pintar uma imagem, oferece o herói de fábrica.
+fn convite(c: &mut CardCtx<'_>, y: f32, animada: bool) -> f32 {
     let caixa = Rect::new(c.x, y, c.w, m::FIELD_H * LINHAS_DO_CONVITE);
     let theme = c.ink.theme;
     ph2d_editor_core::paint::stroke_rounded_rect_dashed(
@@ -254,7 +301,11 @@ fn convite(c: &mut CardCtx<'_>, y: f32) -> f32 {
     ph2d_editor_core::paint::paint_text_centered(
         c.text_system,
         c.scene,
-        tr("card.insp.image_drop"),
+        tr(if animada {
+            "card.insp.sheet_drop"
+        } else {
+            "card.insp.image_drop"
+        }),
         Rect::new(caixa.x, meio, caixa.w, linha),
         TypeToken::Md.px(),
         resolve(ColorToken::Text1, theme),
@@ -284,10 +335,15 @@ fn convite(c: &mut CardCtx<'_>, y: f32) -> f32 {
             .collect();
         y = c.compact(&celulas, y);
     }
+    let (id, text) = if animada {
+        (ids::INSP_IMAGE_SAMPLE_HERO, tr("card.insp.sample_hero"))
+    } else {
+        (ids::INSP_IMAGE_PAINT_NEW, tr("object_add.image"))
+    };
     c.row(
         &[Cell::new(Widget::Button {
-            id: ids::INSP_IMAGE_PAINT_NEW,
-            text: tr("object_add.image"),
+            id,
+            text,
             primary: false,
         })],
         y,
@@ -457,6 +513,24 @@ pub(crate) fn evento(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool 
             entity_bits: sprite.entity_bits,
             asset,
         });
+        return true;
+    }
+    let verbo = if id == ids::INSP_IMAGE_SAMPLE_HERO {
+        Some(ImageUseEdit::SampleHero)
+    } else if id == ids::INSP_IMAGE_CUT_AGAIN {
+        Some(ImageUseEdit::CutAgain)
+    } else if id == ids::INSP_IMAGE_KEEP_CUT {
+        Some(ImageUseEdit::KeepCut)
+    } else {
+        None
+    };
+    if let Some(edit) = verbo {
+        if let Some(sprite) = crate::state::current_inspector_sprite() {
+            host.bus_mut().push(EditorAction::ImageUseEdit {
+                entity_bits: sprite.entity_bits,
+                edit,
+            });
+        }
         return true;
     }
     let uso = if id == ids::INSP_IMAGE_SHEET_ANIMATED {

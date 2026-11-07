@@ -45,6 +45,22 @@ pub enum ImageUseEdit {
     Pivot(SpritePivot),
     /// **Mirror object** com **Keep in place**: 0 = horizontal, 1 = vertical.
     MirrorInPlace(u8),
+    /// **Try with the sample hero**, no Animated Sprite vazio.
+    SampleHero,
+    /// **Cut again**, no aviso de imagem trocada: a grade que a imagem nova propõe.
+    CutAgain,
+    /// **Keep the cut**, no aviso de imagem trocada: fecha o aviso.
+    KeepCut,
+}
+
+/// O aviso de imagem trocada, como o cartão Image o escreve.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct ImageCutNotice {
+    /// O corte de agora: `[colunas, linhas]`.
+    pub grid: [u32; 2],
+    /// A célula que esse corte dá na imagem nova, em px.
+    pub cell_px: [u32; 2],
+    pub animations: u32,
 }
 
 /// Onde pôr o pivô de uma sprite.

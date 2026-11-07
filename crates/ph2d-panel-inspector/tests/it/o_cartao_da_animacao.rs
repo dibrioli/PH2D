@@ -439,3 +439,137 @@ fn so_o_auto_tem_o_menu() {
     }
     limpa();
 }
+
+fn com_more_aberto(host: &mut MockPanelHost) {
+    host.store_mut().set_collapsed(INSP_ANIM_ADVANCED, false);
+}
+
+/// Os textos que a pintura mandou para o censo.
+fn textos(host: &mut MockPanelHost, st: &mut InspectorState) -> Vec<String> {
+    use ph2d_editor_core::panel::cards::censo;
+    censo::grava(|| pinta(host, st))
+        .1
+        .pecas
+        .iter()
+        .map(|p| p.nome.clone())
+        .collect()
+}
+
+/// ⭐ Os campos do marcador saíram de More: sobra o botão, e o clique abre o editor, com ou sem marcador; o texto conta.
+/// *Mutação: tirar o `cards::active()` de `apply_markers_event` ⇒ o clique volta a criar marcador no cartão.*
+#[test]
+fn o_marcador_no_cartao_e_o_resumo_que_abre_o_editor() {
+    let (mut host, mut st) = cena();
+    com_more_aberto(&mut host);
+    let r = pinta(&mut host, &mut st);
+    assert!(pintou(&r, INSP_ANIM_MARKER_ADD));
+    assert!(!pintou(&r, INSP_ANIM_MARKER_FRAME[0]));
+    assert!(textos(&mut host, &mut st).iter().any(|t| t == "Add marker"));
+    assert_eq!(
+        clica(&mut host, &mut st, INSP_ANIM_MARKER_ADD),
+        [AnimFieldEdit::OpenEditor]
+    );
+    limpa();
+
+    let mut a = fixa();
+    for step in [1, 3] {
+        a.rows[0]
+            .markers
+            .push(ph2d_editor_core::screens::hero::InspectorAnimMarker {
+                step,
+                signal: "step".into(),
+            });
+    }
+    let (mut host, mut st) = cena_com(a);
+    com_more_aberto(&mut host);
+    let r = pinta(&mut host, &mut st);
+    assert!(!pintou(&r, INSP_ANIM_MARKER_FRAME[0]));
+    assert!(!pintou(&r, INSP_ANIM_MARKER_SIGNAL[0]));
+    assert!(!pintou(&r, INSP_ANIM_MARKER_DEL[0]));
+    assert!(textos(&mut host, &mut st).iter().any(|t| t == "2 markers"));
+    assert_eq!(
+        clica(&mut host, &mut st, INSP_ANIM_MARKER_ADD),
+        [AnimFieldEdit::OpenEditor]
+    );
+    limpa();
+}
+
+fn facts(f: ph2d_panel_inspector::slot_image::SpriteFacts) {
+    ph2d_panel_inspector::slot_image::set_current_sprite_facts(Some(
+        ph2d_panel_inspector::slot_image::SpriteFacts {
+            entity_bits: BITS,
+            ..f
+        },
+    ));
+}
+
+fn verbo_da_imagem(a: &[EditorAction]) -> Vec<ph2d_editor_core::ImageUseEdit> {
+    a.iter()
+        .filter_map(|x| match x {
+            EditorAction::ImageUseEdit { edit, .. } => Some(*edit),
+            _ => None,
+        })
+        .collect()
+}
+
+/// ⭐ O Animated vazio: o convite pede a folha, oferece o herói e não há cartão Animation; o herói sai como edição.
+/// *Mutação: tirar o `continue` de `presentes` ⇒ a lista da animação pinta no vazio.*
+#[test]
+fn o_vazio_do_animated_pede_a_folha_e_oferece_o_heroi() {
+    let (mut host, mut st) = cena();
+    facts(ph2d_panel_inspector::slot_image::SpriteFacts {
+        sem_imagem: true,
+        ..Default::default()
+    });
+    let r = pinta(&mut host, &mut st);
+    assert!(pintou(&r, INSP_IMAGE_SAMPLE_HERO));
+    assert!(!pintou(&r, INSP_IMAGE_PAINT_NEW), "pintar é da Sprite");
+    assert!(pintou(&r, INSP_RENDER_TEXTURE_SLOT), "o alvo da escolha");
+    assert!(!pintou(&r, INSP_ANIM_ROW[0]), "sem Animation");
+    assert!(!pintou(&r, INSP_ANIM_ADD));
+    let caixa = rect_de(&r, INSP_IMAGE_SAMPLE_HERO);
+    let _ = host.drained_actions();
+    let (_, a) = ponteiro(&mut host, &mut st, caixa);
+    assert_eq!(
+        verbo_da_imagem(&a),
+        [ph2d_editor_core::ImageUseEdit::SampleHero]
+    );
+    limpa();
+}
+
+/// ⭐ O aviso de imagem trocada: o texto da ficha, com os números que chegam, e as duas saídas pelo ponteiro.
+#[test]
+fn o_aviso_de_imagem_trocada_diz_os_numeros_e_da_as_duas_saidas() {
+    let (mut host, mut st) = cena();
+    let r = pinta(&mut host, &mut st);
+    assert!(!pintou(&r, INSP_IMAGE_CUT_AGAIN), "sem aviso, sem botões");
+    facts(ph2d_panel_inspector::slot_image::SpriteFacts {
+        corte_velho: Some(ph2d_editor_core::ImageCutNotice {
+            grid: [8, 4],
+            cell_px: [32, 32],
+            animations: 6,
+        }),
+        ..Default::default()
+    });
+    assert_eq!(
+        ph2d_i18n::tr_with(
+            "card.insp.new_image_old_cut",
+            &[("c", &8), ("r", &4), ("w", &32), ("h", &32), ("n", &6)]
+        ),
+        "New image, old cut: 8 × 4 makes cells of 32 × 32 px, and these 6 animations were made for another image."
+    );
+    for (id, verbo) in [
+        (
+            INSP_IMAGE_CUT_AGAIN,
+            ph2d_editor_core::ImageUseEdit::CutAgain,
+        ),
+        (INSP_IMAGE_KEEP_CUT, ph2d_editor_core::ImageUseEdit::KeepCut),
+    ] {
+        let r = pinta(&mut host, &mut st);
+        let caixa = rect_de(&r, id);
+        let _ = host.drained_actions();
+        let (_, a) = ponteiro(&mut host, &mut st, caixa);
+        assert_eq!(verbo_da_imagem(&a), [verbo]);
+    }
+    limpa();
+}

@@ -27,3 +27,4 @@ mod sprite_region_pela_aba;
 #[path = "sprite_starts_with.rs"]
 mod sprite_starts_with;
 mod sprite_tiled;
+mod sprite_vazio_e_marcador;

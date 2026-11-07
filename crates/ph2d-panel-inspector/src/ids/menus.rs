@@ -44,6 +44,12 @@ pub const INSP_IMAGE_RECENT: [NodeId; 3] = [
 /// Os dois verbos do aviso de folha.
 pub const INSP_IMAGE_SHEET_ANIMATED: NodeId = hash_node_id("insp_image_sheet_animated");
 pub const INSP_IMAGE_SHEET_REGION: NodeId = hash_node_id("insp_image_sheet_region");
+/// «Try with the sample hero», no Animated Sprite vazio.
+pub const INSP_IMAGE_SAMPLE_HERO: NodeId = hash_node_id("insp_image_sample_hero");
+/// «Cut again», no aviso de imagem trocada.
+pub const INSP_IMAGE_CUT_AGAIN: NodeId = hash_node_id("insp_image_cut_again");
+/// «Keep the cut», no aviso de imagem trocada.
+pub const INSP_IMAGE_KEEP_CUT: NodeId = hash_node_id("insp_image_keep_cut");
 
 /// Os nove pontos do Pivot, por linhas, a de cima primeiro.
 pub const INSP_SPRITE_PIVOT: [NodeId; 9] = [

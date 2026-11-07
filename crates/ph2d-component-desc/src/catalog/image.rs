@@ -273,6 +273,12 @@ pub const DESCS: &[D] = &[
     )
     .coded("corner_tint")
     .row_of("ph2d::render::Sprite"),
+    // O aviso de imagem trocada (GEF 24 E4): o cartão Image lê-o e os dois botões dele o tiram.
+    D::machinery(
+        "ph2d::ecs::SpriteCutNotice",
+        "component.sprite_cut_notice.name",
+        C::Animation,
+    ),
     // ⚠️ Categoria `Image` e não `Animation`: a grelha é um FATO da textura (como ela se
     // divide), e é a `SpriteAnimations` que a percorre. Pô-la em Animation faria um sprite com
     // folha estática — o caso comum — procurar a grelha na secção errada.

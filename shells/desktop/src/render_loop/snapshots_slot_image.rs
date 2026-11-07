@@ -36,6 +36,7 @@ pub(super) fn publish_slot_image(
             pivot_ponto,
             pivot_px,
             folha: card::folha_em_still(w, e, asset_db, atlas_asset_map, ppm),
+            corte_velho: card::cut_notice(w, e, asset_db, atlas_asset_map, ppm),
         })
     }));
     ph2d_panel_inspector::slot_image::set_current_slot_image(alvo.bits.and_then(|b| {

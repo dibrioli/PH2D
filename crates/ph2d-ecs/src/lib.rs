@@ -158,6 +158,7 @@ mod sprite_anim_timing;
 /// componente que pode estar AUSENTE (é isso que os deixa fora do Inspector até o artista os
 /// pedir). Módulos irmãos, append-only.
 pub mod sprite_corner_tint;
+mod sprite_cut_notice;
 pub mod sprite_grid;
 pub mod sprite_pixels;
 pub mod sprite_region;
@@ -299,6 +300,7 @@ pub use sprite_anim_frames::{
 pub use sprite_anim_markers::{FrameMarker, SpriteAnimMarkers, advance_frames_marked, anim_steps};
 pub use sprite_anim_start::SpriteAnimStart;
 pub use sprite_corner_tint::{BOTTOM_LEFT, BOTTOM_RIGHT, SpriteCornerTint, TOP_LEFT, TOP_RIGHT};
+pub use sprite_cut_notice::SpriteCutNotice;
 pub use sprite_grid::SpriteGrid;
 pub use sprite_pixels::SpritePixels;
 pub use sprite_region::SpriteRegion;

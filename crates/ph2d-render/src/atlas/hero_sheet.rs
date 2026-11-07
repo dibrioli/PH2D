@@ -92,6 +92,38 @@ pub fn hero_sheet_pixels() -> Vec<SrgbRgba> {
         .collect()
 }
 
+/// ⭐ `e` passa a mostrar o boneco de fábrica: a folha, as animações e o tocador em `idle`. É o *Add ▸ Character* e o
+/// «Try with the sample hero» do Animated Sprite vazio.
+///
+/// # Errors
+/// Uma animação da tabela recusada pela biblioteca.
+pub fn veste_o_heroi(world: &mut ph2d_ecs::World, e: ph2d_ecs::Entity) -> Result<(), String> {
+    let mut tags = ph2d_ecs::SpriteAnimations::new();
+    for t in HERO_SHEET_TAGS {
+        let mut tag = ph2d_ecs::AnimationTag::new(t.name, t.from, t.to);
+        tag.frame_ms = t.per_frame_ms[0];
+        // Só o que difere do ritmo é tempo próprio: senão o Frames/s não move a animação.
+        for (i, ms) in t.per_frame_ms.iter().enumerate() {
+            tag.set_own_ms(i, *ms);
+        }
+        tag.repeat = t.once.then_some(1);
+        tags.insert(tag).map_err(|e| format!("{e:?}"))?;
+    }
+    let mut animator = ph2d_ecs::SpriteAnimator::new(HERO_SHEET_TAGS[0].name);
+    animator.autoplay = true;
+    world.entity_mut(e).insert((
+        crate::Sprite::atlas(HERO_SHEET_KEY, [1.0, 1.0], [1.0; 4]),
+        ph2d_ecs::SpriteGrid {
+            hframes: HERO_SHEET_COLS,
+            vframes: HERO_SHEET_ROWS,
+            frame: 0,
+        },
+        tags,
+        animator,
+    ));
+    Ok(())
+}
+
 #[cfg(test)]
 #[path = "hero_sheet_tests.rs"]
 mod tests;

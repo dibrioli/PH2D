@@ -1,12 +1,13 @@
-//! **O recibo do Remove da física** (ficha f1): «Physics Body removed · Undo». Vive enquanto o Desfazer
-//! ainda é o do Remove: mudar de objecto, mover o objecto ou mexer de novo na física apaga-o. O «Undo» é
-//! o Desfazer global (`EditorAction::UndoStep`), o mesmo do Ctrl+Z, e o diff repõe corpo e forma.
+//! **O recibo do Remove da física** (ficha f1): «Physics Body removed · Undo». Vive enquanto o próximo
+//! Desfazer é o do Remove, e a shell publica o topo da fila a cada quadro ([`publica_o_topo`]): qualquer
+//! edição depois dele, ou um Desfazer de outra fila, apaga-o. O «Undo» é o Desfazer global
+//! (`EditorAction::UndoStep`), o mesmo do Ctrl+Z, e o diff repõe corpo e forma.
 
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::InspectorTransformInfo;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 
 /// O que foi removido e o objecto como estava.
 #[derive(Clone, PartialEq)]
@@ -14,14 +15,37 @@ struct Recibo {
     entity_bits: u64,
     forma: bool,
     pose: Option<InspectorTransformInfo>,
+    /// O topo da fila quando se clicou: o 1.º topo diferente é o passo do Remove.
+    topo_antes: Option<u64>,
+    /// O passo do Remove, quando já chegou à fila.
+    passo: Option<Option<u64>>,
 }
 
 thread_local! {
     static RECIBO: RefCell<Option<Recibo>> = const { RefCell::new(None) };
+    static TOPO: Cell<Option<u64>> = const { Cell::new(None) };
 }
 
 fn limpa() {
     RECIBO.with(|r| *r.borrow_mut() = None);
+}
+
+/// Uma vez por quadro, depois da fila andar: o degrau que o próximo Desfazer tiraria, e se é a fila global
+/// quem responde. O recibo só sobrevive enquanto esse degrau é o do Remove.
+pub fn publica_o_topo(topo: Option<u64>, global_responde: bool) {
+    TOPO.with(|t| t.set(topo));
+    RECIBO.with(|r| {
+        let mut r = r.borrow_mut();
+        let vale = r.as_mut().is_some_and(|c| {
+            if c.passo.is_none() && topo != c.topo_antes {
+                c.passo = Some(topo);
+            }
+            global_responde && c.passo.is_none_or(|p| p == topo)
+        });
+        if !vale {
+            *r = None;
+        }
+    });
 }
 
 /// A chave da frase do recibo à vista neste objecto (`true` = era só a forma), se houver.
@@ -91,6 +115,8 @@ pub(crate) fn click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                 forma: !f.has_body,
                 pose: crate::state::current_inspector_transform()
                     .filter(|p| p.entity_bits == f.entity_bits),
+                topo_antes: TOPO.with(Cell::get),
+                passo: None,
             });
         });
     }

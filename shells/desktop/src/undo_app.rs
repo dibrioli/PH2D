@@ -398,6 +398,8 @@ impl crate::App {
     ///    cada ação.
     pub(crate) fn post_frame_undo(&mut self) {
         self.post_frame_undo_steps();
+        #[cfg(feature = "panel-inspector")]
+        self.publica_o_topo_do_desfazer();
         // A família lê no quadro seguinte o que a fila guarda AGORA (todo caminho acima acaba aqui).
         let top = [self.undo.top_link(false), self.undo.top_link(true)];
         let alive: Vec<_> = self.undo.links().collect();

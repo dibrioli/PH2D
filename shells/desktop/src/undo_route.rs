@@ -58,62 +58,18 @@ impl crate::App {
     /// botão **Redo não despachava nada** (era pintado e órfão). Dois caminhos para a mesma
     /// pergunta divergem; um só, não.
     pub(crate) fn undo_or_redo(&mut self, redo: bool) {
-        #[cfg(feature = "panel-audio-editor")]
-        let audio_owns = self
-            .gfx
-            .as_ref()
-            .and_then(|g| g.hero_screen.as_ref())
-            .is_some_and(|h| h.is_panel_visible("audio_editor"))
-            && self.audio.as_ref().is_some_and(|a| a.editor_loaded());
-        #[cfg(not(feature = "panel-audio-editor"))]
-        let audio_owns = false;
-
-        // O Colorize só é dono enquanto tem o que responder NESTA direção: rabisco
-        // pendente pro undo, rabisco removido pro redo. Vazio dos dois lados, o atalho
-        // passa direto ao Global (que é quem desfaz/refaz o Apply).
-        let colorize_owns = self.flip_wants_colorize()
-            && if redo {
-                self.flip_state.colorize.can_redo_scribble()
-            } else {
-                self.flip_state.colorize.can_undo_scribble()
-            };
-        let Some(gfx) = self.gfx.as_mut() else { return };
         // Uma aba de FAMÍLIA activa (o editor de scripts) desfaz o texto dela, nunca a cena.
-        if let Some(h) = gfx.hero_screen.as_mut()
+        if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut())
             && ph2d_editor_core::screens::hero::surface_input::undo(h, redo).is_some()
         {
             return;
         }
-        let painter_active = gfx
-            .tools
-            .active()
-            .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("painter"));
-        let global_has = if redo {
-            self.undo.can_redo()
-        } else {
-            self.undo.can_undo()
+        let Some((dono, audio_owns, painter_active, colorize_owns, global_has)) =
+            self.dono_do_desfazer(redo)
+        else {
+            return;
         };
-        let board_active = gfx
-            .hero_screen
-            .as_ref()
-            .is_some_and(|h| h.documents.active().is_some());
-        // B5(4) — a operação de abas mais recente que o último passo da cena é a que a cena desfaz.
-        let tabs_newer = gfx.hero_screen.as_ref().is_some_and(|h| {
-            let tab = if redo {
-                h.documents.tab_redo_at()
-            } else {
-                h.documents.tab_undo_at()
-            };
-            tab > self.undo.top_at(redo)
-        });
-        let dono = undo_owner(
-            board_active,
-            audio_owns,
-            painter_active,
-            colorize_owns,
-            tabs_newer,
-            global_has,
-        );
+        let Some(gfx) = self.gfx.as_mut() else { return };
         // ⭐ **O log diz QUEM respondeu** (2026-09-04) — sem esta linha um Ctrl+Z que vai parar ao
         // Painter ou ao image-edit é indistinguível, no log, de um que nunca chegou: nenhum dos
         // dois imprime nada, e a fila global lê-se como «não fez nada».
@@ -190,5 +146,81 @@ impl crate::App {
                 }
             }
         }
+    }
+
+    /// O recibo do Remove da física só diz «Undo» enquanto o próximo Desfazer é o passo dele: publica o
+    /// degrau do topo e se a fila global é quem responderia, pela mesma política do [`Self::undo_or_redo`].
+    #[cfg(feature = "panel-inspector")]
+    pub(crate) fn publica_o_topo_do_desfazer(&mut self) {
+        let aba = self
+            .gfx
+            .as_mut()
+            .and_then(|g| g.hero_screen.as_mut())
+            .is_some_and(|h| {
+                !h.text_entry_focused()
+                    && h.documents
+                        .active_surface_mut()
+                        .is_some_and(|(f, _)| !f.undo_is_the_projects())
+            });
+        let global = !aba
+            && self
+                .dono_do_desfazer(false)
+                .is_some_and(|d| d.0 == UndoOwner::Global);
+        ph2d_panel_inspector::recibo_fisica::publica_o_topo(self.undo.top_at(false), global);
+    }
+
+    /// Quem responderia agora, e os factos que o decidiram: audio, painter, colorize e o global tem passo.
+    fn dono_do_desfazer(&self, redo: bool) -> Option<(UndoOwner, bool, bool, bool, bool)> {
+        #[cfg(feature = "panel-audio-editor")]
+        let audio_owns = self
+            .gfx
+            .as_ref()
+            .and_then(|g| g.hero_screen.as_ref())
+            .is_some_and(|h| h.is_panel_visible("audio_editor"))
+            && self.audio.as_ref().is_some_and(|a| a.editor_loaded());
+        #[cfg(not(feature = "panel-audio-editor"))]
+        let audio_owns = false;
+
+        // O Colorize só é dono enquanto tem o que responder NESTA direção: rabisco
+        // pendente pro undo, rabisco removido pro redo. Vazio dos dois lados, o atalho
+        // passa direto ao Global (que é quem desfaz/refaz o Apply).
+        let colorize_owns = self.flip_wants_colorize()
+            && if redo {
+                self.flip_state.colorize.can_redo_scribble()
+            } else {
+                self.flip_state.colorize.can_undo_scribble()
+            };
+        let gfx = self.gfx.as_ref()?;
+        let painter_active = gfx
+            .tools
+            .active()
+            .is_some_and(|t| t.id() == ph2d_editor_core::ToolId::new("painter"));
+        let global_has = if redo {
+            self.undo.can_redo()
+        } else {
+            self.undo.can_undo()
+        };
+        let board_active = gfx
+            .hero_screen
+            .as_ref()
+            .is_some_and(|h| h.documents.active().is_some());
+        // B5(4) — a operação de abas mais recente que o último passo da cena é a que a cena desfaz.
+        let tabs_newer = gfx.hero_screen.as_ref().is_some_and(|h| {
+            let tab = if redo {
+                h.documents.tab_redo_at()
+            } else {
+                h.documents.tab_undo_at()
+            };
+            tab > self.undo.top_at(redo)
+        });
+        let dono = undo_owner(
+            board_active,
+            audio_owns,
+            painter_active,
+            colorize_owns,
+            tabs_newer,
+            global_has,
+        );
+        Some((dono, audio_owns, painter_active, colorize_owns, global_has))
     }
 }

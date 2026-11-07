@@ -599,6 +599,50 @@ fn o_recibo_cai_se_o_objecto_mudou_ou_a_selecao_trocou() {
     sai();
 }
 
+/// O recibo promete desfazer a remoção: outra edição por cima, ou outra fila a responder, tiram-lhe a validade.
+#[test]
+fn o_recibo_so_vale_enquanto_o_topo_da_fila_e_a_remocao() {
+    use ph2d_panel_inspector::recibo_fisica::publica_o_topo;
+    let (mut host, mut st) = cena(with_body(), [1.0, 1.0]);
+    publica_o_topo(Some(10), true);
+    let r = pinta(&mut host, &mut st);
+    let _ = clica(&mut host, &mut st, achado(&r, INSP_PHYS_REMOVE).unwrap());
+    set_current_inspector_physics(None);
+    publica_o_topo(Some(10), true);
+    assert!(
+        achado(&pinta(&mut host, &mut st), INSP_PHYS_REMOVED_UNDO).is_some(),
+        "o passo ainda não chegou à fila"
+    );
+    publica_o_topo(Some(11), true);
+    let r = pinta(&mut host, &mut st);
+    let undo = achado(&r, INSP_PHYS_REMOVED_UNDO).expect("o topo é a remoção");
+    publica_o_topo(Some(12), true);
+    assert!(
+        achado(&pinta(&mut host, &mut st), INSP_PHYS_REMOVED_UNDO).is_none(),
+        "um componente novo por cima: o Undo já não desfaz a remoção"
+    );
+    assert!(
+        clica(&mut host, &mut st, undo).is_empty(),
+        "o id que ficou no store não despacha"
+    );
+    publica_o_topo(Some(11), true);
+    assert!(
+        achado(&pinta(&mut host, &mut st), INSP_PHYS_REMOVED_UNDO).is_none(),
+        "desfazer a edição de cima não ressuscita o recibo"
+    );
+    // Outra fila a responder (o Painter, um quadro, uma aba): o clique desfaria outra coisa.
+    set_current_inspector_physics(Some(with_body()));
+    publica_o_topo(Some(20), true);
+    let r = pinta(&mut host, &mut st);
+    let _ = clica(&mut host, &mut st, achado(&r, INSP_PHYS_REMOVE).unwrap());
+    set_current_inspector_physics(None);
+    publica_o_topo(Some(21), true);
+    assert!(achado(&pinta(&mut host, &mut st), INSP_PHYS_REMOVED_UNDO).is_some());
+    publica_o_topo(Some(21), false);
+    assert!(achado(&pinta(&mut host, &mut st), INSP_PHYS_REMOVED_UNDO).is_none());
+    sai();
+}
+
 /// O nome diz o que a coisa É; o aviso cabe inteiro.
 #[test]
 fn os_textos_do_cartao_estao_na_tabela() {

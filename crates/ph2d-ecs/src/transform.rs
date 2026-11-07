@@ -71,12 +71,6 @@ pub struct Transform {
     /// range `[-π/4, +π/4]`; setters clamp to [`Transform::SKEW_LIMIT`]
     /// so `tan()` never blows toward ±∞ (ADR-0025-amendment-1 §2.5).
     ///
-    /// `#[serde(default)]` is documentary defense-in-depth only —
-    /// under postcard (positional, non-self-describing) it is *dead*
-    /// on trailing-missing payloads; the load-bearing back-compat path
-    /// is the [`crate::transform_versioned::TransformVersioned`]
-    /// wrapper enum + `migrate_v1_to_v2` (ADR-0025-amendment-1 §2.3,
-    /// mirrors ADR-0070-amendment-2 for `Sprite`).
     #[serde(default)]
     pub skew_x: f32,
     /// Skew Y in radians — shear that mixes the local X axis into Y
@@ -174,7 +168,7 @@ impl Transform {
     /// We therefore route through `libm::sincosf` / `libm::tanf`
     /// (pure-Rust, `default-features = false` so the `arch` feature is
     /// OFF) for ONE implementation across all targets — required by
-    /// the `transform_determinism` + `transform_versioned_postcard`
+    /// the `transform_determinism` + `transform_skew_compose`
     /// gates' pinned blake3 hashes (T1.3.5 + ADR-0025-amendment-1 §2.4).
     ///
     /// # Skew (T·R·Sk·S ordering, ADR-0025-amendment-1 §2.2)

@@ -183,7 +183,6 @@ pub mod tags;
 pub mod timer;
 pub mod transform;
 pub mod transform_inverse;
-pub mod transform_versioned;
 pub mod tween;
 /// ⭐⭐⭐ **A ARMA DO JOGADOR** (`WeaponFire`, §6 do levantamento) — o RITMO, o PENTE e a recarga.
 /// Ver o cabeçalho do módulo: a MIRA e o ESPALHAMENTO não moram aqui, e as duas ausências são leis.
@@ -321,9 +320,6 @@ pub use transform::{
     GlobalTransform, GroupedChildren, Locked, SimRef, Transform, TransformPropagationState,
     WorklistBuf, is_locked_for_edit, pick_target, propagate_transforms,
     propagate_transforms_into_present,
-};
-pub use transform_versioned::{
-    TransformV1, TransformVersioned, load_transform, migrate_v1_to_v2, save_transform,
 };
 pub use tween::{Escrita, TWEENS_MAX, Tweens};
 pub use vec_path_ref::VecPathRef;

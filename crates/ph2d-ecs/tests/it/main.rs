@@ -10,7 +10,6 @@
 
 mod anchor_mount_hierarchy;
 mod end_to_end_m14;
-mod generate_transform_v1_fixtures;
 mod measure_incremental_capture;
 mod measure_restore;
 mod measure_spawn_and_death;
@@ -34,5 +33,5 @@ mod the_run_never_enters_the_document;
 mod transform_determinism;
 mod transform_hierarchy;
 mod transform_inverse;
-mod transform_versioned_postcard;
+mod transform_skew_compose;
 mod ysort_direction_and_root_repro;

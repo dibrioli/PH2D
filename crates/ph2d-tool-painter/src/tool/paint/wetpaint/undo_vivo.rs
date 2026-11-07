@@ -174,13 +174,16 @@ fn esquece_os_passos(sess: &mut WetSession) {
 /// mudou (`sonda_alcance_da_orla`: Wet Flat de 20 a 160 px, até 3000 quadros de água). 32 é a folga sobre o medido.
 const ALCANCE_DA_ORLA: usize = 32;
 
-/// As células a até `r` (Chebyshev) de uma marcada, e a caixa delas (1-based, inclusiva).
+/// Uma caixa de células: `(x0, y0, x1, y1)`, 1-based e inclusiva.
+type CaixaDeCelulas = (usize, usize, usize, usize);
+
+/// As células a até `r` (Chebyshev) de uma marcada, e a caixa delas.
 fn perto_de(
     marcadas: &[bool],
     gw: usize,
     gh: usize,
     r: usize,
-) -> (Vec<bool>, Option<(usize, usize, usize, usize)>) {
+) -> (Vec<bool>, Option<CaixaDeCelulas>) {
     let mut fora = vec![false; gw * gh];
     let (Some(a), Some(b)) = (
         marcadas.iter().position(|m| *m),

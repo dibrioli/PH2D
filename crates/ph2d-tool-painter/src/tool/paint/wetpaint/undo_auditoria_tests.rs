@@ -204,7 +204,13 @@ fn refazer_para_la_do_tecto_recusa_a_imagem_no_ar() {
             if s.otica.no_ar != epoca {
                 if s.otica.aplicadas > antes {
                     aplicadas += 1;
-                    for (a, b) in t.canvas_rgba.chunks_exact(4).zip(refeita.chunks_exact(4)) {
+                    for (a, b) in t
+                        .canvas_rgba
+                        .as_chunks::<4>()
+                        .0
+                        .iter()
+                        .zip(refeita.as_chunks::<4>().0)
+                    {
                         px += usize::from(a.iter().zip(b).any(|(p, q)| p.abs_diff(*q) > 3));
                     }
                 }

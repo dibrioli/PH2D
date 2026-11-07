@@ -111,6 +111,14 @@ fn traco(t: &mut PainterTool, i: usize, w: f32, h: f32) {
     }
 }
 
+/// Nome, tamanho da tela, o pincel de cada traço e se a tinta assenta entre eles.
+type CenaDeTeste = (
+    &'static str,
+    (usize, usize),
+    Vec<fn(&mut PainterTool)>,
+    bool,
+);
+
 /// `passos`: o pincel de cada traço. Devolve os passos em que a cor, o relevo ou a imagem não são do estado pedido.
 fn cena(
     nome: &str,
@@ -168,7 +176,7 @@ fn cena(
 fn cada_passo_devolve_cor_relevo_e_imagem_do_mesmo_estado() {
     let wet: fn(&mut PainterTool) = pincel_wet;
     let imp: fn(&mut PainterTool) = pincel_impasto;
-    let cenas: [(&str, (usize, usize), Vec<fn(&mut PainterTool)>, bool); 6] = [
+    let cenas: [CenaDeTeste; 6] = [
         ("wet", (W, H), vec![wet; 5], true),
         ("wet sem assentar", (W, H), vec![wet; 5], false),
         ("impasto", (W, H), vec![imp; 5], false),
@@ -216,7 +224,6 @@ fn assenta_real(t: &mut PainterTool, visto: &mut Vec<u8>) {
 /// Com o relógio do app: em cada comando, a sequência de estados originais que a tela mostra quadro a quadro.
 /// `seguidos`: aperta o comando sem quadro nenhum entre dois.
 fn cena_real(
-    nome: &str,
     (w, h): (usize, usize),
     tamanho: f32,
     pincel: fn(&mut PainterTool),
@@ -311,7 +318,7 @@ fn refazer_o_primeiro_traco_nao_perde_o_relevo() {
         assenta_real(&mut t, &mut visto);
         let (original, cor) = (visto.clone(), t.canvas_rgba.to_vec());
         assert!(
-            original.chunks_exact(4).any(|p| p[3] > 0),
+            original.as_chunks::<4>().0.iter().any(|p| p[3] > 0),
             "{nome}: a fixture não pintou"
         );
         assert!(t.undo_last(), "{nome}: desfazer");
@@ -349,10 +356,10 @@ fn refazer_o_primeiro_traco_nao_perde_o_relevo() {
 #[test]
 #[ignore = "sonda: corre por nome com --ignored"]
 fn a_mao_real_com_os_comandos_seguidos_acaba_no_estado_certo() {
-    for (nome, tam, s, n) in [("tela", (W, H), 24.0, 5), ("1024", (1024, 768), 80.0, 8)] {
+    for (tam, s, n) in [((W, H), 24.0, 5), ((1024, 768), 80.0, 8)] {
         for pincel in [pincel_wet as fn(&mut PainterTool), pincel_impasto] {
             for seguidos in [false, true] {
-                let erros = cena_real(nome, tam, s, pincel, n, seguidos);
+                let erros = cena_real(tam, s, pincel, n, seguidos);
                 assert!(erros.is_empty(), "{erros:#?}");
             }
         }

@@ -691,6 +691,9 @@ mod foto_em_tiles;
 #[path = "wetpaint/redo_relevo_tests.rs"]
 mod redo_relevo_tests;
 #[cfg(test)]
+#[path = "wetpaint/sonda_lote_tests.rs"]
+mod sonda_lote_tests;
+#[cfg(test)]
 mod undo_auditoria_tests;
 #[cfg(test)]
 #[path = "wetpaint/undo_matriz_tests.rs"]

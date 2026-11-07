@@ -3,7 +3,6 @@
 //! `s` da grade fina). Cada célula da matriz corre-os outra vez, com as razões postas em [`razoes`].
 
 use super::undo_tinta_morre_tests::{AGUADA, razoes, tela, traco};
-use super::*;
 
 type Teste = (&'static str, fn());
 

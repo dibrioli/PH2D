@@ -434,7 +434,7 @@ fn tiles(p: &[f32], antes: &[f32], s: usize) -> (usize, usize, usize) {
 /// O que UM passo do desfazer custa em memória e no pen-down, traço a traço: os registos e as fotografias.
 #[test]
 #[ignore = "sonda: corre por nome com --ignored --nocapture"]
-fn sonda_o_preco_de_um_passo() {
+pub(super) fn sonda_o_preco_de_um_passo() {
     let cenas: [(usize, usize, &str, f32, f32); 6] = [
         (1920, 1080, DABBER, 60.0, 0.25),
         (1920, 1080, DABBER, 120.0, 1.0),

@@ -39,7 +39,7 @@ Também: `docs/Sprite_projeto/` e os docs `12`–`16` desta pasta.
 
 | Item | Crítica | Estudo | Estado |
 |---|---|---|---|
-| Animated Sprite | Animated Sprite | AnimatedSprite | `em obra` ([ficha](componentes/02_animated_sprite.md), aprovada pelo dono em 06/11) |
+| Animated Sprite | Animated Sprite | AnimatedSprite | `no smoke` ([ficha](componentes/02_animated_sprite.md), cena `PH2D_GAME_SMOKE=5`; [handoff](handoffs/HANDOFF_CONTINUACAO_2026-11-07_24_ANIMATED_SPRITE.md)) |
 | Add Object | Add Object | Objeto e Inspector | `a revisar` |
 | Add Component | Add Component | Objeto e Inspector | `a revisar` |
 | Inspector e Hierarchy | pendente | Objeto e Inspector | `a revisar` |

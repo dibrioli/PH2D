@@ -11,6 +11,8 @@ enquete, estudo de uso ou contagem de erros:** «mais bem aceito» aqui é opini
   matriz no painel. O motor permite 32. Subir mexe em ids fixos (36 células, 8 slots), `[u8; N]` gravado, canais e testes.
 - Camada única por objeto; sem máscara por objeto. `groups_for` traduz para `InteractionGroups` (AND).
 
+**Depois desta pesquisa (07/11):** o dono decidiu matriz global + fila no objeto e 32 camadas; `MAX_LAYERS` subiu para 32 (ficha f1, onda 5). A secção acima descreve o estado de antes.
+
 ## Os modelos [F]
 
 | Motor | Modelo | Interface | Entre A e B | Teto |

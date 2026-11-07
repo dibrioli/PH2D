@@ -164,8 +164,10 @@ fn sha(partes: &[&[u8]]) -> String {
     h.finalize().iter().map(|b| format!("{b:02x}")).collect()
 }
 
+type Saida = (String, (u32, u32, Vec<u8>), Vec<Vec<u8>>);
+
 /// O que o Godot leu: o JSON, a imagem dos tiles e o composto de cada quadro.
-fn saida(forma: Forma) -> (String, (u32, u32, Vec<u8>), Vec<Vec<u8>>) {
+fn saida(forma: Forma) -> Saida {
     let s = obra(forma);
     let set = s.tilesets()[0].clone();
     let j = json_do_mapa(&s, &set, "tiles.png", COLUNAS);

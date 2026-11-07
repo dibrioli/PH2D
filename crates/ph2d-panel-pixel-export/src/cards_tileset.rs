@@ -65,7 +65,7 @@ pub(crate) fn cards(
         },
     );
     let conteudo = cartao(
-        ids::SEC_TILESET,
+        ids::SEC_TILES_OUT,
         tr("panel.pixel.tiles.tileset"),
         None,
         move |c, mut y| {

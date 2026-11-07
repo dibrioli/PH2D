@@ -92,7 +92,8 @@ fn a_janela_escreve_os_lados_e_devolve_o_verbo() {
         vec![Pedido::NovaCamada {
             conjunto: None,
             w: 24,
-            h: 8
+            h: 8,
+            forma: ph2d_pixel_core::Forma::Square,
         }]
     );
     assert_eq!(m.st.tela(), Tela::Tileset);

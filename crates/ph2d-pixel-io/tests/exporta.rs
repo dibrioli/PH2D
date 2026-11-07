@@ -166,6 +166,8 @@ fn o_repeat_grava_os_mesmos_bytes_depois_de_passar_pelo_projeto() {
                 quadros: Quadros::Intervalo { de: 0, ate: 2 },
                 split_layers: false,
                 split_tags: true,
+                split_grid: true,
+                trim_by_grid: true,
                 trim_cels: true,
                 trim_sprite: false,
                 extrude: 1,
@@ -387,6 +389,7 @@ fn o_repeat_acha_a_tag_pelo_nome() {
     let quadros_de = |x: &Export| match x {
         Export::Ficheiro(f) => f.pedido.quadros,
         Export::Folha(f) => f.opcoes.quadros,
+        Export::Tiles(_) => Quadros::Todos,
     };
     let e = Export::Ficheiro(ExportAs {
         pedido: Pedido {

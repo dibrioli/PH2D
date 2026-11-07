@@ -7,7 +7,9 @@
 //! lugar do Inspector: as fotos, numa tela onde a mão não chega.
 
 use ph2d_core::Vec2;
-use ph2d_ecs::{ChildOf, Entity, Name, SpriteRegion, TiledDraw, Transform, World, ZIndexOverride};
+use ph2d_ecs::{
+    ChildOf, Entity, ImageRegion, Name, SpriteRegion, TiledDraw, Transform, World, ZIndexOverride,
+};
 use ph2d_physics_ecs::{
     AreaEffector, BodyKind, CharacterAnimations, Collider, ColliderShape, LayerNames, LockRotation,
     MaterialCombine, OneWayPlatform, PhysicsSettings, PlatformPlayer, RigidBody,
@@ -164,6 +166,9 @@ pub fn monta(world: &mut World) {
         bola,
         Sprite::atlas(COIN_SHEET.key, [1.0, 1.0], [1.0; 4]),
         SpriteRegion::for_atlas(COIN_CELL),
+        ImageRegion {
+            grid: COIN_SHEET.grid,
+        },
         corpo(BodyKind::Dynamic),
         Collider {
             shape: ColliderShape::Ball { radius: 0.5 },

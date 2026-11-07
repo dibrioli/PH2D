@@ -161,6 +161,11 @@ impl App {
         // DroppedFile carries no position, so we project the most-
         // recently-seen cursor to world.
         self.last_cursor = self.last_pointer;
+        // No palco só os botões do jogo reagem ao ponteiro.
+        if self.no_palco() {
+            let _ = forward_to_hero(self.gfx.as_mut(), evt);
+            return;
+        }
         // Um arrasto da vista de um QUADRO (MiroClone) em curso é dono do movimento.
         let mods = Self::convert_modifiers(self.modifiers);
         if let Some(g) = self.gfx.as_mut()
@@ -424,6 +429,12 @@ impl App {
         // cena é SÓ dele (`posse_do_jogo`).
         if self.rato_do_jogo(mapped_button, state == ElementState::Pressed) {
             self.clique_so_do_jogo(mapped_button, state == ElementState::Pressed);
+            return;
+        }
+        // ⭐ No palco não há editor: o que não é do jogo só pode ser dos botões do jogo (dono 07/11). Os ramos abaixo são
+        // do editor, e tomavam o clique antes de ele chegar aos botões.
+        if self.no_palco() {
+            let _ = forward_to_hero(self.gfx.as_mut(), evt);
             return;
         }
         if self.ramo_alca_da_ancora(state, button) {

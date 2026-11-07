@@ -65,6 +65,7 @@ mod joint_draw_gesture;
 mod motion_gpu_kernel_budgets;
 mod moving_a_piece_of_a_copy_goes_through_the_recipe_door;
 mod no_open_panel_leaves_its_column_blank;
+mod no_palco_o_clique_vai_aos_botoes_do_jogo;
 mod no_two_object_smoke_modes_claim_the_same_number;
 mod no_two_smoke_scenes_claim_the_same_level;
 mod o_cerebro_fala_antes_de_a_tabela_ouvir;

@@ -1,6 +1,7 @@
 //! Os botões do jogo: no centro, sem pisar nos vizinhos, e acesos pelo estado da corrida.
 
 use super::*;
+use crate::interaction::{HitIndex, WidgetStore};
 
 const BARRA: Rect = Rect::new(0.0, 0.0, 1000.0, 24.0);
 
@@ -66,4 +67,39 @@ fn a_tela_cheia_tem_jogar_pausar_e_parar_no_topo_ao_centro() {
     );
     let (inicio, fim) = (r[0].2.x, r[2].2.x + r[2].2.w);
     assert!(((inicio + fim) * 0.5 - 500.0).abs() < 0.01);
+}
+
+/// ⭐ Dono 07/11: a área clicável é o desenho. Cada botão responde até a borda do seu quadrado, com o ícone no centro,
+/// e um ponto fora não é de ninguém. Mutação: registar o `glifo` em vez de `r` ⇒ a borda deixa de responder.
+#[test]
+fn a_area_clicavel_e_o_quadrado_que_o_botao_desenha() {
+    for (botoes, run) in [
+        (rects(BARRA, 100.0, 800.0), GameRun::default()),
+        (
+            rects_palco(BARRA),
+            GameRun {
+                stage: Some(GameStage::Fullscreen),
+                playing: false,
+            },
+        ),
+    ] {
+        let (mut scene, mut hits) = (VectorScene::new(), HitIndex::default());
+        paint(
+            &botoes,
+            run,
+            &mut scene,
+            Theme::Dark,
+            &mut hits,
+            &WidgetStore::default(),
+        );
+        for (id, _, r) in &botoes {
+            let meio = r.y + r.h * 0.5;
+            assert_eq!(hits.hit(r.x + r.w * 0.5, meio), Some(*id), "centro");
+            assert_eq!(hits.hit(r.x + 0.5, meio), Some(*id), "borda esquerda");
+            assert_eq!(hits.hit(r.x + r.w - 0.5, meio), Some(*id), "borda direita");
+            assert_eq!(hits.hit(r.x + 0.5, r.y + 0.5), Some(*id), "canto");
+        }
+        let ultimo = botoes[botoes.len() - 1].2;
+        assert_eq!(hits.hit(ultimo.x + ultimo.w + 1.0, ultimo.y + 1.0), None);
+    }
 }

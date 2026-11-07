@@ -285,6 +285,12 @@ impl crate::App {
                     .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_RENDER_SECTION, false);
             }
         }
+        if matches!(plano.foto, ph2d_app_game::smoke::Foto::Fisica(_))
+            && let Some(hero) = gfx.hero_screen.as_mut()
+        {
+            hero.store
+                .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_PHYSICS_SECTION, false);
+        }
         if plano.foto == ph2d_app_game::smoke::Foto::Seletor
             && let Some(hero) = gfx.hero_screen.as_mut()
         {

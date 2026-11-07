@@ -44,11 +44,14 @@ pub fn imagens_da_cena(nivel: u32) -> &'static [&'static str] {
 // As fotos do dono (`PH2D_GAME_SMOKE_FOTO`), irmãs pelo tecto de LOC.
 #[path = "smoke_foto.rs"]
 mod foto;
+#[path = "smoke_foto_fisica.rs"]
+mod smoke_foto_fisica;
 pub use foto::{
     CENTRO_DAS_FOTOS_13, CENTRO_DOS_USOS, Foto, FotoDaCamera, ONDE_LARGA, PassoDoDono, PlanoDaFoto,
     QUADROS_POR_USO, estado_do_player, foto, plano_da_foto, tempo_da_chave, uso_no_quadro,
     usos_do_dono,
 };
+pub use smoke_foto_fisica::CasoFisica;
 
 /// O herói das cenas de smoke — nome de objecto da cena, não texto da interface.
 #[must_use]

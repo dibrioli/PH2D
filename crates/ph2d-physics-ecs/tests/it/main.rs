@@ -26,6 +26,7 @@ mod contact_normal;
 mod contacts;
 mod controllers_one_door;
 mod damping;
+mod density_sem_efeito;
 mod deterministic;
 mod dominance;
 mod effector;

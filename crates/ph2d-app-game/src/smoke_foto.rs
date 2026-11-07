@@ -77,11 +77,17 @@ pub enum Foto {
     /// GEF 19: o ponteiro pousado sobre o «Swarm» da cena da ordem (`PH2D_ORDEM_SMOKE=1`), a mexer a cada quadro —
     /// o realce lê o Motion em todos; com `PH2D_SONDA` é a mão da medida intercalada.
     OrdemSonda,
+    /// GEF02: uma face do cartão de física.
+    Fisica(super::smoke_foto_fisica::CasoFisica),
 }
 
 #[must_use]
 pub fn foto() -> Option<Foto> {
-    match std::env::var("PH2D_GAME_SMOKE_FOTO").ok()?.trim() {
+    let pedida = std::env::var("PH2D_GAME_SMOKE_FOTO").ok()?;
+    if let Some(c) = super::smoke_foto_fisica::caso(pedida.trim()) {
+        return Some(Foto::Fisica(c));
+    }
+    match pedida.trim() {
         "seletor" => Some(Foto::Seletor),
         "sprite_vazio" => Some(Foto::SpriteVazio),
         "sprite_uso" => Some(Foto::SpriteUso),
@@ -188,7 +194,8 @@ impl Foto {
     pub const fn do_plano_15(self) -> bool {
         matches!(
             self,
-            Self::UsoAnimada
+            Self::Fisica(_)
+                | Self::UsoAnimada
                 | Self::SpriteVazio
                 | Self::SpriteUso
                 | Self::SpriteCustom
@@ -306,6 +313,12 @@ pub fn plano_da_foto(
     match foto {
         // A mão da sonda é da cena da ordem, não do nível do jogo.
         Foto::OrdemSonda => return None,
+        Foto::Fisica(c) => {
+            plano.alvo = super::smoke_foto_fisica::prepara(sim, c)?;
+            if c == super::smoke_foto_fisica::CasoFisica::Larga {
+                plano.edicoes = vec![(plano.alvo, ph2d_editor_core::ImageUseEdit::Width(4.0))];
+            }
+        }
         Foto::Seletor => plano.alvo = hills,
         Foto::SpriteVazio => {
             let t = ph2d_ecs::Transform {

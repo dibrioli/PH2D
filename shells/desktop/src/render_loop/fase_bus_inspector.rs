@@ -414,14 +414,14 @@ impl crate::App {
                 // que a outra tinha acabado de dizer.
                 pd.signal_leave_edit = Some(info);
             }
-            EditorAction::LayerRename { layer, name } => {
-                if let Some(g) = self.gfx.as_mut() {
-                    ph2d_physics_ecs::LayerNames::rename(g.sim.world_mut(), layer, &name);
-                }
+            EditorAction::LayerPairToggle { a, b } => {
+                ph2d_panel_physics::alterna_par(usize::from(a), usize::from(b));
             }
-            EditorAction::LayerShow { layer } => {
+            acao @ (EditorAction::LayerRename { .. }
+            | EditorAction::LayerShow { .. }
+            | EditorAction::LayerMatrixOpen { .. }) => {
                 if let Some(g) = self.gfx.as_mut() {
-                    ph2d_physics_ecs::LayerNames::show(g.sim.world_mut(), layer);
+                    ph2d_app_physics::panel_bridge::acao_das_camadas(&mut g.sim, &mut g.hero_screen, acao);
                 }
             }
             other => return Some(other),

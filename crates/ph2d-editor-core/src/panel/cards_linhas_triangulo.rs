@@ -20,14 +20,26 @@ pub struct ToggleTriangle<'a> {
     pub linhas: &'a [usize],
     /// O rótulo de uma linha (à esquerda); a coluna leva a identidade em número.
     pub rotulo_de: &'a dyn Fn(usize) -> String,
-    /// A barra que rola as colunas quando não cabem (um `Slider` registado).
-    pub rola: Option<NodeId>,
+    /// A barra que rola as colunas quando não cabem (um `Slider` registado) e o painel dela.
+    pub rola: Option<(NodeId, NodeId)>,
+    /// A linha em destaque, pela identidade.
+    pub destaque: Option<usize>,
     /// O grupo do arrasto que pinta (`toggle_paint`): cada célula declara o que mostra.
     pub group: &'static str,
     /// A marca de animação da grelha inteira (um controlo, uma marca).
     pub key: Option<&'a [NodeId]>,
     pub id_of: &'a dyn Fn(usize, usize) -> NodeId,
     pub on_of: &'a dyn Fn(usize, usize) -> bool,
+}
+
+thread_local! {
+    static LINHA_EM_DESTAQUE: std::cell::Cell<Option<Rect>> = const { std::cell::Cell::new(None) };
+}
+
+/// A caixa da linha em destaque no último quadro, para o painel a trazer à vista.
+#[must_use]
+pub fn linha_em_destaque() -> Option<Rect> {
+    LINHA_EM_DESTAQUE.get()
 }
 
 impl CardCtx<'_> {
@@ -44,6 +56,8 @@ impl CardCtx<'_> {
         titulo.key = t.key;
         y += rotulos::faixa(self, &[titulo], &[(self.x, self.w)], y);
         toggle_paint::limpa_grupo(t.group);
+        LINHA_EM_DESTAQUE.set(None);
+        let topo = y;
         let n = t.linhas.len();
         let lado = m::GRID_CELL;
         let passo = lado + m::GRID_GAP;
@@ -56,13 +70,13 @@ impl CardCtx<'_> {
         let cabem = (((self.w - calha) / passo).floor() as usize).max(1);
         let mut primeira = 0;
         if n > cabem {
-            let v = match t.rola.and_then(|id| self.store.get(id)) {
+            let v = match t.rola.and_then(|(id, _)| self.store.get(id)) {
                 Some(crate::interaction::InteractiveState::Slider { value, .. }) => *value,
                 _ => 0.0,
             };
             let escondidas = n - cabem;
             primeira = ((v * escondidas as f32).round() as usize).min(escondidas);
-            if let Some(id) = t.rola {
+            if let Some((id, _)) = t.rola {
                 let trilha = Rect::new(
                     self.x + calha + m::GRID_GAP,
                     y,
@@ -103,6 +117,17 @@ impl CardCtx<'_> {
         y += m::LABEL_PX + m::LABEL_BOTTOM;
         let mut pares = Vec::new();
         for (i, rotulo) in rotulos.iter().enumerate().skip(primeira) {
+            let destacada = t.destaque == Some(t.linhas[i]);
+            if destacada {
+                let faixa = Rect::new(self.x, y, self.w, lado);
+                fill_rounded_rect(
+                    self.scene,
+                    faixa,
+                    m::SEG_RADIUS,
+                    self.ink.color(ColorToken::AccentSoft),
+                );
+                LINHA_EM_DESTAQUE.set(Some(faixa));
+            }
             paint_text_elided(
                 self.text_system,
                 self.scene,
@@ -111,7 +136,11 @@ impl CardCtx<'_> {
                 y + crate::paint::folga_do_texto(lado, m::LABEL_PX),
                 m::LABEL_PX,
                 calha,
-                legenda,
+                if destacada {
+                    self.ink.color(ColorToken::KanbanCardFg)
+                } else {
+                    legenda
+                },
             );
             for j in primeira..=i.min(fim_das_colunas - 1) {
                 let (a, b) = (t.linhas[i], t.linhas[j]);
@@ -143,6 +172,18 @@ impl CardCtx<'_> {
             y += passo;
         }
         crate::widget::composto::grupo(pares);
+        if let Some((barra, painel)) = t.rola {
+            if n > cabem {
+                crate::interaction::roda_lateral::publica(crate::interaction::roda_lateral::Regiao {
+                    barra,
+                    painel,
+                    rect: Rect::new(self.x, topo, self.w, y - topo),
+                    curso_px: passo * (n - cabem) as f32,
+                });
+            } else {
+                crate::interaction::roda_lateral::limpa(barra);
+            }
+        }
         y - m::GRID_GAP
     }
 

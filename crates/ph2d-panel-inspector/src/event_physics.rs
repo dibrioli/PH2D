@@ -12,7 +12,9 @@ use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::{InspectorPhysicsInfo, PhysicsFieldEdit};
 
 pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    if crate::recibo_fisica::click(host, ev) {
+    if crate::recibo_fisica::click(host, ev)
+        || crate::sections::physics_colide::clique(host, ev)
+    {
         return true;
     }
     if ev == WidgetEvent::Click(crate::ids::INSP_PHYS_LAYER_RENAME) {

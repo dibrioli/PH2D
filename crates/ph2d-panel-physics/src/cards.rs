@@ -87,6 +87,8 @@ pub(crate) fn prepare(store: &mut WidgetStore, snap: &PhysicsSnapshot) {
     // a linha de antes) e o que menos se abre, com o Reset lá dentro.
     store.set_collapsed_if_unchosen(i::PHYSICS_SEC_DEBUG, true);
     semeia_os_nomes_das_camadas(store);
+    // A grelha republica a região da roda ao pintar; dobrada ou com tudo a caber, não há região.
+    ph2d_editor_core::interaction::roda_lateral::limpa(i::PHYSICS_LAYER_SCROLL);
     // As fotos: a matriz rolada até ao fim (a roda e o rato não se conduzem na tela virtual).
     if std::env::var_os("PH2D_PHYSICS_SMOKE_ROLA").is_some() {
         store.set_slider_value(i::PHYSICS_LAYER_SCROLL, 1.0);
@@ -364,7 +366,8 @@ fn cartao_das_camadas(snap: PhysicsSnapshot) -> CardDef<'static> {
                     label: tr("card.physics.layers"),
                     linhas: &visiveis,
                     rotulo_de: &rotulo_de,
-                    rola: Some(i::PHYSICS_LAYER_SCROLL),
+                    rola: Some((i::PHYSICS_LAYER_SCROLL, ph2d_editor_core::ids::PHYSICS_PANEL)),
+                    destaque: crate::state::destaque(),
                     group: i::PHYSICS_LAYER_PAINT_GROUP,
                     key: Some(&i::PHYSICS_LAYER_CELL),
                     id_of: &|a, b| i::PHYSICS_LAYER_CELL[i::physics_layer_cell_index(a, b)],

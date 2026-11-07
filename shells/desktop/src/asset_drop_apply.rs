@@ -289,32 +289,16 @@ impl crate::App {
             && let Some(hero) = gfx.hero_screen.as_mut()
         {
             use ph2d_app_game::smoke::CasoFisica as C;
-            use ph2d_panel_inspector::camadas_fisica as camadas;
-            match c {
-                C::PlayerCartoes | C::FormaPlayer => {
-                    camadas::dobra_os_cartoes_de_cima(&mut hero.store)
-                }
-                C::Camadas => camadas::abre_a_lista(&mut hero.store),
-                C::CamadaSozinha => {
-                    let mut s = gfx.physics.settings();
-                    s.layer_matrix = [0; ph2d_physics_ecs::MAX_LAYERS];
-                    gfx.physics.set_settings(s);
-                }
-                C::CamadaComPares | C::CamadasNoPainel => {
-                    let mut m =
-                        ph2d_physics_ecs::LayerMatrix::from_rows([0; ph2d_physics_ecs::MAX_LAYERS]);
-                    m.set(1, 0, true);
-                    m.set(1, 2, true);
-                    let mut s = gfx.physics.settings();
-                    s.layer_matrix = m.rows();
-                    gfx.physics.set_settings(s);
-                    camadas::abre_o_rename(&mut hero.store);
-                    if c == C::CamadasNoPainel {
-                        hero.panel_visibility.insert("physics", true);
-                    }
-                }
-                _ => {}
-            }
+            use ph2d_app_physics::panel_bridge::{FotoCamadas as F, arruma_a_foto};
+            let foto = match c {
+                C::PlayerCartoes | C::FormaPlayer => F::CartoesDobrados,
+                C::Camadas => F::ListaAberta,
+                C::CamadaSozinha => F::Sozinha,
+                C::CamadaComPares => F::ComPares,
+                C::CamadasNoPainel => F::NoPainel,
+                _ => F::Nada,
+            };
+            arruma_a_foto(foto, hero, &mut gfx.physics);
         }
         if plano.foto == ph2d_app_game::smoke::Foto::Seletor
             && let Some(hero) = gfx.hero_screen.as_mut()

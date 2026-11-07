@@ -134,7 +134,7 @@ fn every_row_reaches_the_world_settings() {
         // neighbour's setter — a copy-paste that an "an intent came out"
         // oracle cannot see.
         assert_eq!(
-            *got, want,
+            **got, want,
             "row `{}` changed a setting it does not own",
             row.label
         );
@@ -287,11 +287,11 @@ fn reset_restores_the_engine_defaults() {
     assert_eq!(
         drain_intents(),
         vec![PhysicsIntent::SetSettings(
-            PhysicsSettings::default(),
-            ph2d_panel_physics::Toque {
+            Box::new(PhysicsSettings::default()),
+            Box::new(ph2d_panel_physics::Toque {
                 visto: edited,
                 pedido: PhysicsSettings::default(),
-            }
+            })
         )],
         "Reset to Defaults did not publish the defaults"
     );
@@ -696,7 +696,7 @@ fn o_clique_no_adormecer_vira_o_que_se_ve_sob_a_curva() {
         panic!("a caixa não pediu nada: {intents:?}");
     };
     assert!(got.sleep_enabled(), "via-se desligado; o clique LIGA");
-    assert_eq!(*got, autorado, "o resto do autorado fica");
+    assert_eq!(**got, autorado, "o resto do autorado fica");
     assert_eq!(toque.visto, vivo, "o toque parte do que se via");
     assert_eq!(
         toque.pedido,
@@ -723,7 +723,7 @@ fn cada_controlo_toca_no_que_se_via_so_no_seu_campo() {
         mostrar(autorado, vivo);
         host.apply_panel_event::<PhysicsPanel>(&mut state, ev);
         match drain_intents().first() {
-            Some(PhysicsIntent::SetSettings(_, t)) => *t,
+            Some(PhysicsIntent::SetSettings(_, t)) => **t,
             other => panic!("{ev:?} não pediu settings: {other:?}"),
         }
     };
@@ -1421,7 +1421,7 @@ fn the_sleep_switch_writes_the_sign_the_solver_reads() {
         let got = drain_intents()
             .iter()
             .find_map(|it| match it {
-                PhysicsIntent::SetSettings(s, _) => Some(*s),
+                PhysicsIntent::SetSettings(s, _) => Some(**s),
                 _ => None,
             })
             .expect("o clique no interruptor de adormecer nao levantou intent nenhum");

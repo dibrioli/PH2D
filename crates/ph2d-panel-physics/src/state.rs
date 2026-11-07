@@ -64,6 +64,44 @@ pub(crate) fn visible_bits() -> u32 {
     VISIVEIS.get()
 }
 
+thread_local! {
+    /// A linha da matriz em destaque depois do «Edit matrix…»; dura enquanto o painel estiver aberto.
+    static DESTAQUE: Cell<Option<usize>> = const { Cell::new(None) };
+    /// Quadros que ainda trazem a linha à vista: a dobra abre em mola, e a altura muda enquanto abre.
+    static A_REVELAR: Cell<u8> = const { Cell::new(0) };
+}
+
+const QUADROS_A_REVELAR: u8 = 45;
+
+pub(crate) fn destaca_a_linha(layer: usize) {
+    DESTAQUE.set(Some(layer));
+    A_REVELAR.set(QUADROS_A_REVELAR);
+}
+
+pub(crate) fn apaga_o_destaque() {
+    DESTAQUE.set(None);
+    A_REVELAR.set(0);
+}
+
+/// Com o painel fechado: sem destaque para o reabrir pelo menu, e sem região da roda.
+pub fn painel_fechado() {
+    apaga_o_destaque();
+    ph2d_editor_core::interaction::roda_lateral::limpa(crate::ids::PHYSICS_LAYER_SCROLL);
+}
+
+/// A linha da matriz em destaque.
+#[must_use]
+pub fn destaque() -> Option<usize> {
+    DESTAQUE.get()
+}
+
+/// Este quadro ainda traz a linha à vista?
+pub(crate) fn gasta_um_quadro_a_revelar() -> bool {
+    let n = A_REVELAR.get();
+    A_REVELAR.set(n.saturating_sub(1));
+    n > 0
+}
+
 /// Uma vez por quadro: a tabela de nomes das camadas do projeto.
 pub fn set_layer_names(nomes: ph2d_physics_ecs::LayerNames) {
     LAYER_NAMES.with(|n| *n.borrow_mut() = nomes);
@@ -149,11 +187,7 @@ pub struct Toque {
 }
 
 /// An edit the artist made, for the shell to apply.
-#[derive(Copy, Clone, Debug, PartialEq)]
-#[expect(
-    clippy::large_enum_variant,
-    reason = "cresceu com as 32 linhas da matriz; a fila leva poucas edições por quadro, e caixa perderia o `Copy`"
-)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum PhysicsIntent {
     /// Replace the world settings wholesale.
     ///
@@ -164,7 +198,7 @@ pub enum PhysicsIntent {
     ///
     /// ⭐ O [`Toque`] diz o que o artista mexeu NO QUE VIA (F41): sob a curva da Cena o autorado
     /// pode não mudar e mesmo assim o clique é a mão.
-    SetSettings(PhysicsSettings, Toque),
+    SetSettings(Box<PhysicsSettings>, Box<Toque>),
     /// Flip the collider overlay — routed to the shell's `App.show_colliders`,
     /// the flag the `B` key owns.
     ToggleColliders,
@@ -211,8 +245,8 @@ pub(crate) fn push_intent(intent: PhysicsIntent) {
 /// O último `SetSettings` ainda na fila (as edições do mesmo quadro somam-se sobre ele).
 pub(crate) fn ultimo_set_settings() -> Option<(PhysicsSettings, Toque)> {
     INTENTS.with(|c| {
-        c.borrow().iter().rev().find_map(|i| match *i {
-            PhysicsIntent::SetSettings(s, t) => Some((s, t)),
+        c.borrow().iter().rev().find_map(|i| match i {
+            PhysicsIntent::SetSettings(s, t) => Some((**s, **t)),
             _ => None,
         })
     })

@@ -29,8 +29,24 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.phys.fit" => "Fit to picture",
         "card.insp.phys.edit_shape" => "Edit shape on canvas",
         "card.insp.phys.editing_shape" => "Editing shape · Esc to finish",
-        "card.insp.phys.hits" => "Hits: {names}",
-        "card.insp.phys.hits_nothing" => "Hits: nothing",
+        "card.insp.phys.collides_with" => "Collides with",
+        "card.insp.phys.collides_applies" => "Applies to everything on {layer}",
+        "card.insp.phys.collides_on" => {
+            "Things on {this} bump into things on {other}. Click to let them pass through."
+        }
+        "card.insp.phys.collides_off" => {
+            "Things on {this} pass through things on {other}. Click to make them bump."
+        }
+        "card.insp.phys.collides_self_on" => {
+            "Things on {this} bump into each other. Click to let them pass through."
+        }
+        "card.insp.phys.collides_self_off" => {
+            "Things on {this} pass through each other. Click to make them bump."
+        }
+        "card.insp.phys.collides_add" => "+",
+        "card.insp.phys.collides_add_tip" => "Show one more layer here and in the matrix.",
+        "card.insp.phys.edit_matrix" => "Edit matrix…",
+        "card.insp.phys.edit_matrix_tip" => "Open the Physics panel at this layer's row.",
         "card.insp.phys.layer_rename" => "Rename…",
         "card.insp.phys.layer_name" => "Layer name",
         "card.insp.phys.stretched" => "Scale stretches this round shape into an oval.",

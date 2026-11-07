@@ -216,3 +216,40 @@ fn a_pinned_card_edit_lands_on_its_object_only_and_the_undo_step_restores_it() {
     );
     assert_eq!(v2.path(pa).expect("a forma").blend, BlendMode::Normal);
 }
+
+/// ⭐ O quadro de «Collides with»: a ação pelo braço real do dreno, um passo de desfazer, Ctrl+Z devolve.
+#[test]
+fn o_quadro_da_fila_e_um_passo_de_desfazer() {
+    use crate::undo::{ProjectUndo, SelectionMark};
+    let mut reg = ComponentRegistry::new();
+    register_ecs_components(&mut reg);
+    register_render_components(&mut reg);
+    let (mut sim, vec) = (SimWorld::new(), VecScene::new());
+    let mut app = crate::App::new();
+    let mut fila = ProjectUndo::default();
+    let mut ponte = ph2d_physics_ecs::PhysicsBridge::new();
+    let mut mundo = ph2d_app_physics::canais_mundo::ConducaoMundo::default();
+    ph2d_panel_physics::set_current_physics(Some(ph2d_panel_physics::PhysicsSnapshot::default()));
+    let _ = ph2d_panel_physics::drain_intents();
+    let mut foto = |f: ph2d_physics_ecs::PhysicsSettings| {
+        let mut s = captura(&mut sim, &vec, &reg);
+        s.regras.physics = f;
+        s
+    };
+    let antes = foto(ponte.settings());
+    let acao = EditorAction::LayerPairToggle { a: 3, b: 1 };
+    let resto = app.fase_bus_inspector_identity(acao, &mut DrainOut::default());
+    assert!(resto.is_none(), "o dreno consome");
+    for pedido in ph2d_panel_physics::drain_intents() {
+        let ph2d_panel_physics::PhysicsIntent::SetSettings(s, t) = pedido else {
+            panic!("o quadro só pede settings");
+        };
+        ph2d_app_physics::panel_bridge::settings_do_painel(&mut ponte, &mut mundo, *s, *t);
+    }
+    let depois = foto(ponte.settings());
+    assert_ne!(depois, antes, "a matriz mudou");
+    fila.push_undo(antes.clone(), SelectionMark::default());
+    assert_eq!(fila.depth(), 1);
+    let (volta, _) = fila.undo(depois, SelectionMark::default()).expect("o passo");
+    assert_eq!(volta.regras.physics, antes.regras.physics, "Ctrl+Z devolve");
+}

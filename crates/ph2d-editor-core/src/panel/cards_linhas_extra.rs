@@ -15,7 +15,7 @@ use ph2d_tokens::{ColorToken, StrokeToken};
 
 #[path = "cards_linhas_triangulo.rs"]
 mod triangulo;
-pub use triangulo::ToggleTriangle;
+pub use triangulo::{ToggleTriangle, linha_em_destaque};
 
 #[path = "cards_linhas_voo.rs"]
 pub(super) mod voo;
@@ -448,6 +448,7 @@ mod tests {
                     linhas: &[0, 1, 2, 3, 4, 5, 6, 7],
                     rotulo_de: &|l| l.to_string(),
                     rola: None,
+                    destaque: None,
                     group: "teste.triangulo",
                     key: None,
                     id_of: &id_of,

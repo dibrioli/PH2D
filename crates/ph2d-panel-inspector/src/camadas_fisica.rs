@@ -1,7 +1,6 @@
 //! **O que as camadas de colisão se chamam e em quem tocam** (ficha f1, onda 2): a app publica a tabela do projeto e as
 //! linhas da matriz do mundo a cada quadro; o cartão Shape e quem mais mostra uma camada leem-nas daqui.
 
-use ph2d_i18n::{tr, tr_with};
 use std::cell::RefCell;
 
 const CAMADAS: usize = crate::ids::INSP_PHYS_LAYERS;
@@ -77,18 +76,17 @@ pub(crate) fn rotulo(i: usize) -> String {
     if n.is_empty() { i.to_string() } else { n }
 }
 
-/// «Hits: Ground, Enemy», pela matriz do mundo; «Hits: nothing» sem nenhuma.
+/// A linha de `a` da matriz do mundo inclui `b`?
 #[must_use]
-pub fn hits(camada: usize) -> String {
-    let linha = AGORA.with(|a| a.borrow().linhas.get(camada).copied().unwrap_or(0));
-    // Só as visíveis: as de fábrica, por usar, batem em tudo e não dizem nada a ninguém.
-    let nomes: Vec<String> = (0..CAMADAS)
-        .filter(|&j| linha & (1 << j) != 0 && visivel(j))
-        .map(rotulo)
-        .collect();
-    if nomes.is_empty() {
-        tr("card.insp.phys.hits_nothing").to_owned()
-    } else {
-        tr_with("card.insp.phys.hits", &[("names", &nomes.join(", "))])
-    }
+pub(crate) fn colide(a: usize, b: usize) -> bool {
+    AGORA.with(|c| c.borrow().linhas.get(a).copied().unwrap_or(0)) & (1 << b) != 0
+}
+
+/// A próxima camada por mostrar, a mesma conta de `LayerNames::next_free`; `None` nas 32.
+#[must_use]
+pub fn proxima_livre() -> Option<u8> {
+    let livre = (!AGORA.with(|c| c.borrow().visiveis)).trailing_zeros();
+    u8::try_from(livre)
+        .ok()
+        .filter(|&l| usize::from(l) < CAMADAS)
 }

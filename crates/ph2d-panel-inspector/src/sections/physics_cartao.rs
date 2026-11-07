@@ -39,6 +39,26 @@ impl Tinta<'_> {
         self.botao_de(id, texto, ButtonKind::Default, y)
     }
 
+    /// Dois irmãos na mesma linha, meio a meio; ambos registados. Devolve o `y` de baixo.
+    pub(super) fn dois_botoes(
+        &mut self,
+        y: f32,
+        um: (NodeId, &str),
+        outro: (NodeId, &str),
+    ) -> f32 {
+        let gap = ph2d_tokens::Spacing::Xs.px();
+        let meia = (self.w - gap) * 0.5;
+        let mut fim = y;
+        for (x, (id, texto)) in [(self.x, um), (self.x + meia + gap, outro)] {
+            let rect = ph2d_editor_core::property_row::caixa_do_botao(self.text, x, meia, y, texto);
+            let btn = Button::new(id, texto).visual(self.store.button_visual(id));
+            paint_button(&btn, rect, self.scene, self.text, self.theme);
+            self.hit.register(id, rect);
+            fim = ph2d_editor_core::property_row::abaixo_do_botao(rect);
+        }
+        fim
+    }
+
     /// O mesmo botão, de outro tipo (o aceso).
     pub(super) fn botao_de(
         &mut self,
@@ -93,6 +113,8 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
     }
     store.set_collapsed_if_unchosen(ids::INSP_PHYS_LAYER_RENAMING, true);
     semeia_o_nome_da_camada(store);
+    let camada = crate::state::current_inspector_physics().map_or(0, |f| usize::from(f.layer));
+    super::physics_colide::prepara_as_dicas(store, camada);
     // O cartão Body nasce aberto como o Shape (maquete: travar a rotação é um clique), uma vez: depois
     // manda o que o artista dobrou. As secções de componente nascem dobradas no `populate`, daí a marca.
     if store.collapsed_choice(ids::INSP_PHYS_BODY_OPENED).is_none() {

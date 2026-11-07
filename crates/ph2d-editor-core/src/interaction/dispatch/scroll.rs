@@ -106,6 +106,15 @@ pub fn dispatch_wheel<'frame>(
         store.wheel_panel(sub, event.delta_y);
         return events.into_bump_slice();
     }
+    // A grelha larga: Shift+roda ou a roda horizontal andam as colunas; a roda simples rola o painel.
+    let lateral = crate::interaction::roda_lateral::delta_lateral(&event);
+    if lateral != 0.0
+        && let Some(r) = crate::interaction::roda_lateral::em(event.x, event.y, por_cima)
+        && let Some((_, v)) = store.slider(r.barra)
+    {
+        store.set_slider_value(r.barra, (v - lateral / r.curso_px).clamp(0.0, 1.0));
+        return events.into_bump_slice();
+    }
     if let Some(panel) = store.panel_at(event.x, event.y) {
         store.wheel_panel(panel, event.delta_y);
     }

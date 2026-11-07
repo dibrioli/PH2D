@@ -20,6 +20,12 @@ use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 /// enough to hit — the grid is 8 × this wide, and the dock is ~300 px.
 const CELL_PX: f32 = 22.0; // LITERAL-PX-OK: panel grid metric (matrix cell edge)
 
+/// O passo da face clássica: a célula cheia enquanto as colunas cabem; depois encolhem todas, para
+/// nenhuma ficar fora de alcance (esta face não tem barra).
+fn passo_das_colunas(largura: f32, colunas: usize, cheio: f32) -> f32 {
+    (largura / colunas.max(1) as f32).min(cheio)
+}
+
 /// Paint the triangular matrix. Returns the y it ended at.
 pub(super) fn paint(
     ctx: &mut PaintCtx,
@@ -29,7 +35,6 @@ pub(super) fn paint(
     y_in: f32,
 ) -> f32 {
     let gap = Spacing::Xs.px();
-    let step = CELL_PX + gap;
     let label_w = CELL_PX; // the row's own layer number, same width as a cell
     let font = TypeToken::Sm.px();
 
@@ -47,18 +52,24 @@ pub(super) fn paint(
         ctx.host.hit_index_mut().register(alvo, canto);
     }
 
-    // Column headers, offset by the label gutter. Only as many as the widest
-    // row needs — the last row is the only one with all eight.
-    // A face clássica mostra as visíveis e as colunas que cabem; quem rola é a face em cartões.
+    // Column headers, offset by the label gutter.
     let visiveis = crate::state::visible_layers();
-    let cabem = (((ctx.slot.w - x + ctx.slot.x - label_w) / step).floor() as usize).max(1);
-    for (pos, &j) in visiveis.iter().take(cabem).enumerate() {
+    let step = passo_das_colunas(
+        ctx.slot.w - x + ctx.slot.x - label_w - gap,
+        visiveis.len(),
+        CELL_PX + gap,
+    );
+    // O vão encolhe com o passo: nas 32, o que sobra é da célula, que é o que a mão aponta.
+    let cell_px = step - gap.min(step / 4.0);
+    // Com as células pequenas as legendas não cabem todas: uma em cada tantas, sem se atropelarem.
+    let legenda_a_cada = ((font + gap) / step).ceil().max(1.0) as usize;
+    for (pos, &j) in visiveis.iter().enumerate().step_by(legenda_a_cada) {
         let cx = x + label_w + gap + pos as f32 * step;
         paint_text(
             ctx.text_system,
             ctx.scene,
             &j.to_string(),
-            cx + (CELL_PX - font) * 0.5,
+            cx + (cell_px - font) * 0.5,
             y,
             font,
             CELL_PX,
@@ -69,18 +80,28 @@ pub(super) fn paint(
 
     for (linha, &i) in visiveis.iter().enumerate() {
         // Row label.
-        paint_text(
-            ctx.text_system,
-            ctx.scene,
-            &i.to_string(),
-            x + (label_w - font) * 0.5,
-            y + (CELL_PX - font) * 0.5,
-            font,
-            label_w,
-            resolve(ColorToken::Text2, theme),
-        );
-        for (pos, &j) in visiveis.iter().take((linha + 1).min(cabem)).enumerate() {
-            let cell = Rect::new(x + label_w + gap + pos as f32 * step, y, CELL_PX, CELL_PX);
+        let destacada = crate::state::destaque() == Some(i);
+        if linha % legenda_a_cada == 0 || destacada {
+            paint_text(
+                ctx.text_system,
+                ctx.scene,
+                &i.to_string(),
+                x + (label_w - font) * 0.5,
+                y + (cell_px - font) * 0.5,
+                font,
+                label_w,
+                resolve(
+                    if destacada {
+                        ColorToken::Accent
+                    } else {
+                        ColorToken::Text2
+                    },
+                    theme,
+                ),
+            );
+        }
+        for (pos, &j) in visiveis.iter().take(linha + 1).enumerate() {
+            let cell = Rect::new(x + label_w + gap + pos as f32 * step, y, cell_px, cell_px);
             let on = matrix.collides(i, j);
             // On = accent fill, off = the panel's recessed surface. A checkmark
             // glyph at this size would be mud; the fill IS the state.

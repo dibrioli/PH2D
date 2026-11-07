@@ -58,6 +58,65 @@ pub fn publica_as_camadas(world: &ph2d_ecs::World, physics: &PhysicsBridge) {
     ph2d_panel_inspector::camadas_fisica::set_current(nomes.0, vivo, visiveis);
 }
 
+/// O que uma foto da camada pede antes de pintar.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum FotoCamadas {
+    Nada,
+    CartoesDobrados,
+    ListaAberta,
+    Sozinha,
+    ComPares,
+    NoPainel,
+}
+
+/// Arruma o Inspector e a matriz para a foto da camada.
+pub fn arruma_a_foto(foto: FotoCamadas, hero: &mut HeroScreen, physics: &mut PhysicsBridge) {
+    use ph2d_panel_inspector::camadas_fisica as camadas;
+    let matriz = |m: LayerMatrix, physics: &mut PhysicsBridge| {
+        let mut s = physics.settings();
+        s.layer_matrix = m.rows();
+        physics.set_settings(s);
+    };
+    let nenhum = LayerMatrix::from_rows([0; ph2d_physics_ecs::MAX_LAYERS]);
+    match foto {
+        FotoCamadas::Nada => {}
+        FotoCamadas::CartoesDobrados => camadas::dobra_os_cartoes_de_cima(&mut hero.store),
+        FotoCamadas::ListaAberta => camadas::abre_a_lista(&mut hero.store),
+        FotoCamadas::Sozinha => matriz(nenhum, physics),
+        FotoCamadas::ComPares | FotoCamadas::NoPainel => {
+            let mut m = nenhum;
+            m.set(1, 0, true);
+            m.set(1, 2, true);
+            matriz(m, physics);
+            camadas::abre_o_rename(&mut hero.store);
+            if foto == FotoCamadas::NoPainel {
+                hero.panel_visibility.insert("physics", true);
+            }
+        }
+    }
+}
+
+/// As ações do bus sobre as camadas que precisam do mundo ou do painel: nome, «+ Layer» e «Edit matrix…».
+pub fn acao_das_camadas(
+    sim: &mut ph2d_ecs::SimWorld,
+    hero: &mut Option<HeroScreen>,
+    acao: ph2d_editor_core::action_bus::EditorAction,
+) {
+    use ph2d_editor_core::action_bus::EditorAction as A;
+    match acao {
+        A::LayerRename { layer, name } => {
+            ph2d_physics_ecs::LayerNames::rename(sim.world_mut(), layer, &name);
+        }
+        A::LayerShow { layer } => ph2d_physics_ecs::LayerNames::show(sim.world_mut(), layer),
+        A::LayerMatrixOpen { layer } => {
+            if let Some(h) = hero.as_mut() {
+                ph2d_panel_physics::abre_a_matriz(h, layer);
+            }
+        }
+        _ => {}
+    }
+}
+
 /// Publish the world state for `paint`, then apply whatever the artist did.
 ///
 /// Returns the new value for `App.show_colliders` — the panel does not own that
@@ -92,6 +151,10 @@ pub fn dispatch(
         discarded_run_seconds: (run.stash.len() as f64 * run.fixed_dt) as f32,
     }));
 
+    if !hero.panel_visibility.get("physics").copied().unwrap_or(false) {
+        ph2d_panel_physics::painel_fechado();
+    }
+
     // ── 2. Apply. The panel queued intents during event dispatch. ──
     let mut colliders = show_colliders;
     for intent in ph2d_panel_physics::drain_intents() {
@@ -99,7 +162,9 @@ pub fn dispatch(
             // `set_settings` clamps, pushes into rapier, and drops the scrub
             // cache — and is a no-op when nothing changed, which matters here
             // because this runs every frame.
-            PhysicsIntent::SetSettings(s, toque) => settings_do_painel(physics, mundo, s, toque),
+            PhysicsIntent::SetSettings(s, toque) => {
+                settings_do_painel(physics, mundo, *s, *toque);
+            }
             PhysicsIntent::ToggleColliders => colliders = !colliders,
             // Clamped on the way in, by the same door the model uses: a NaN
             // stiffness would reach the solver and poison the pose, the

@@ -31,12 +31,45 @@ fn editar(f: impl Fn(PhysicsSettings) -> PhysicsSettings) {
     let (autorado, pedido) =
         state::ultimo_set_settings().map_or((snap.settings, snap.vivo), |(s, t)| (s, t.pedido));
     state::push_intent(PhysicsIntent::SetSettings(
-        f(autorado),
-        state::Toque {
+        Box::new(f(autorado)),
+        Box::new(state::Toque {
             visto: snap.vivo,
             pedido: f(pedido),
-        },
+        }),
     ));
+}
+
+/// ⭐ **Alterna um par de camadas**: a célula da matriz e o quadro do objecto são esta mesma edição.
+/// A matriz MOSTRA o vivo (a curva da Cena, F41): vira o que se vê, e só esse par.
+pub fn alterna_par(a: usize, b: usize) {
+    let on = !ph2d_physics_ecs::LayerMatrix::from_rows(state::current().vivo.layer_matrix)
+        .collides(a, b);
+    editar(|s| {
+        let mut m = ph2d_physics_ecs::LayerMatrix::from_rows(s.layer_matrix);
+        m.set(a, b, on);
+        PhysicsSettings {
+            layer_matrix: m.rows(),
+            ..s
+        }
+    });
+}
+
+/// O valor da barra da grelha que deixa a linha `layer` à vista, com as visíveis `bits`.
+fn barra_para(bits: u32, layer: u8) -> f32 {
+    let antes = (bits & ((1u32 << layer) - 1)).count_ones() as f32;
+    antes / (bits.count_ones() - 1).max(1) as f32
+}
+
+/// «Edit matrix…»: o painel aberto, a secção das camadas aberta e a linha em destaque, à vista.
+pub fn abre_a_matriz(host: &mut dyn PanelHostInternal, layer: u8) {
+    host.set_panel_visible(crate::PhysicsPanel::ID, true);
+    let store = host.store_mut();
+    store.set_collapsed(crate::ids::PHYSICS_SEC_LAYERS, false);
+    store.set_slider_value(
+        crate::ids::PHYSICS_LAYER_SCROLL,
+        barra_para(state::visible_bits(), layer),
+    );
+    state::destaca_a_linha(usize::from(layer));
 }
 
 pub(crate) fn apply_event(
@@ -155,11 +188,11 @@ pub(crate) fn apply_event(
                 host.bus_mut()
                     .push(ph2d_editor_core::action_bus::EditorAction::LayerShow { layer });
                 // A coluna nova à vista, e o nome pronto a escrever.
-                let depois = visiveis | 1 << layer;
-                let antes = (depois & ((1u32 << layer) - 1)).count_ones() as f32;
-                let total = (depois.count_ones() - 1).max(1) as f32;
                 let store = host.store_mut();
-                store.set_slider_value(crate::ids::PHYSICS_LAYER_SCROLL, antes / total);
+                store.set_slider_value(
+                    crate::ids::PHYSICS_LAYER_SCROLL,
+                    barra_para(visiveis | 1 << layer, layer),
+                );
                 ph2d_editor_core::interaction::dispatch::focus_text_field(
                     store,
                     crate::ids::PHYSICS_LAYER_NAME[usize::from(layer)],
@@ -176,18 +209,7 @@ pub(crate) fn apply_event(
                 .position(|&c| c == id)
                 .expect("guard matched");
             let (a, b) = cell_pair(idx);
-            // ⭐ A matriz MOSTRA o vivo (a curva da Cena, F41): o clique vira o par que se vê, e só
-            // esse par — as outras células do autorado ficam como estavam.
-            let on = !ph2d_physics_ecs::LayerMatrix::from_rows(state::current().vivo.layer_matrix)
-                .collides(a, b);
-            editar(|s| {
-                let mut m = ph2d_physics_ecs::LayerMatrix::from_rows(s.layer_matrix);
-                m.set(a, b, on);
-                PhysicsSettings {
-                    layer_matrix: m.rows(),
-                    ..s
-                }
-            });
+            alterna_par(a, b);
             true
         }
         // ⭐ **O interruptor de adormecer** (2026-08-30). Era um slider sobre
@@ -226,6 +248,7 @@ pub(crate) fn apply_event(
         WidgetEvent::Click(id) if id == crate::ids::PHYSICS_CLOSE => {
             seam_reset_button(host, id);
             host.set_panel_visible(crate::PhysicsPanel::ID, false);
+            state::painel_fechado();
             true
         }
         _ => false,

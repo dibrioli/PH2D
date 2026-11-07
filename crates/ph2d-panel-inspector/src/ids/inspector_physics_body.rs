@@ -189,30 +189,38 @@ pub const INSP_LIVE_PHYSICS_LAYER: NodeId = hash_node_id("insp_live_physics_laye
 /// compila se divergirem.
 pub const INSP_PHYS_LAYERS: usize = 32;
 
-pub static INSP_PHYS_LAYER: [NodeId; INSP_PHYS_LAYERS] = {
-    const fn opcao(n: usize) -> NodeId {
-        const P: &[u8] = b"insp_phys_layer_";
-        let mut buf = [0u8; 32];
-        let mut k = 0;
-        while k < P.len() {
-            buf[k] = P[k];
-            k += 1;
-        }
-        if n >= 10 {
-            buf[k] = b'0' + (n / 10) as u8;
-            k += 1;
-        }
-        buf[k] = b'0' + (n % 10) as u8;
-        ph2d_tool_registry::hash_node_id_bytes(buf.split_at(k + 1).0)
+const fn por_camada(prefixo: &[u8], n: usize) -> NodeId {
+    let mut buf = [0u8; 32];
+    let mut k = 0;
+    while k < prefixo.len() {
+        buf[k] = prefixo[k];
+        k += 1;
     }
+    if n >= 10 {
+        buf[k] = b'0' + (n / 10) as u8;
+        k += 1;
+    }
+    buf[k] = b'0' + (n % 10) as u8;
+    ph2d_tool_registry::hash_node_id_bytes(buf.split_at(k + 1).0)
+}
+
+const fn tabela_por_camada(prefixo: &[u8]) -> [NodeId; INSP_PHYS_LAYERS] {
     let mut t = [NodeId(0); INSP_PHYS_LAYERS];
     let mut n = 0;
     while n < t.len() {
-        t[n] = opcao(n);
+        t[n] = por_camada(prefixo, n);
         n += 1;
     }
     t
-};
+}
+
+pub static INSP_PHYS_LAYER: [NodeId; INSP_PHYS_LAYERS] = tabela_por_camada(b"insp_phys_layer_");
+
+/// «Collides with»: um quadro por camada, o «+» no fim da fila e o «Edit matrix…».
+pub static INSP_PHYS_COLLIDES: [NodeId; INSP_PHYS_LAYERS] =
+    tabela_por_camada(b"insp_phys_collides_");
+pub const INSP_PHYS_COLLIDES_ADD: NodeId = hash_node_id("insp_phys_collides_add");
+pub const INSP_PHYS_EDIT_MATRIX: NodeId = hash_node_id("insp_phys_edit_matrix");
 
 /// §11 Sensor (trigger) toggle — group id + the two options. A sensor passes
 /// through but reports its overlaps (W7); the overlay lights it up. Modelled as

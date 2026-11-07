@@ -128,7 +128,7 @@ fn mundo(settings: PhysicsSettings, interaction: InteractionSettings) -> Physics
 
 fn ultimo_mundo(intents: &[PhysicsIntent]) -> Option<PhysicsSettings> {
     intents.iter().rev().find_map(|i| match i {
-        PhysicsIntent::SetSettings(s, _) => Some(*s),
+        PhysicsIntent::SetSettings(s, _) => Some(**s),
         _ => None,
     })
 }
@@ -840,4 +840,136 @@ fn mede_o_painel_com_8_e_32() {
         size_of::<ph2d_editor_core::interaction::InteractiveState>(),
         ids::PHYSICS_LAYER_CELLS,
     );
+}
+
+/// ⭐ O par alternado pela porta do quadro do Inspector é a MESMA edição da célula: o mesmo intent, e os dois lados.
+#[test]
+fn o_par_alternado_e_a_mesma_edicao_da_celula_nos_dois_sentidos() {
+    ph2d_panel_physics::set_visible_layers(bits(&[0, 1, 3]));
+    let mut mesa = Mesa::nova(mundo(
+        PhysicsSettings::default(),
+        InteractionSettings::default(),
+    ));
+    let da_celula = mesa.clica(ids::PHYSICS_LAYER_CELL[ids::physics_layer_cell_index(3, 1)]);
+    for (a, b) in [(3, 1), (1, 3)] {
+        ph2d_panel_physics::alterna_par(a, b);
+        assert_eq!(drain_intents(), da_celula, "({a},{b})");
+    }
+    let got = ultimo_mundo(&da_celula).expect("a edição");
+    let linhas = got.layer_matrix;
+    assert_eq!(linhas[3] & 1 << 1, 0, "o lado 3→1");
+    assert_eq!(linhas[1] & 1 << 3, 0, "o lado 1→3");
+    assert_eq!(linhas[3].count_zeros() + linhas[1].count_zeros(), 2, "só o par");
+    // De volta: com a matriz sem o par, alternar acende-o.
+    set_current_physics(Some(mundo(got, InteractionSettings::default())));
+    ph2d_panel_physics::alterna_par(3, 1);
+    let volta = ultimo_mundo(&drain_intents()).expect("a edição");
+    assert_eq!(volta.layer_matrix, PhysicsSettings::default().layer_matrix);
+}
+
+/// «Edit matrix…» abre o painel e a secção, destaca a linha e traz-a à vista, mesmo com a barra das colunas no outro lado.
+#[test]
+fn edit_matrix_abre_a_seccao_e_traz_a_linha_a_vista() {
+    ph2d_panel_physics::set_visible_layers(u32::MAX);
+    let mut mesa = Mesa::nova(mundo(
+        PhysicsSettings::default(),
+        InteractionSettings::default(),
+    ));
+    let store = mesa.host.store_mut();
+    store.set_collapsed(ids::PHYSICS_SEC_LAYERS, true);
+    store.set_slider_value(ids::PHYSICS_LAYER_SCROLL, 0.0);
+    mesa.host.set_panel_visible("physics", false);
+    mesa.assenta();
+    assert_eq!(ph2d_panel_physics::destaque(), None);
+
+    ph2d_panel_physics::abre_a_matriz(&mut mesa.host, 25);
+    assert!(mesa.host.panel_visible("physics"), "o painel abriu");
+    assert!(
+        !mesa.host.store().is_collapsed(ids::PHYSICS_SEC_LAYERS),
+        "a secção abriu"
+    );
+    assert_eq!(ph2d_panel_physics::destaque(), Some(25));
+    mesa.assenta();
+    let celula = mesa
+        .rect(ids::PHYSICS_LAYER_CELL[ids::physics_layer_cell_index(25, 25)])
+        .expect("a diagonal da linha está à vista");
+    assert!(celula.y >= COLUNA.y && celula.y + celula.h <= COLUNA.y + COLUNA.h);
+    // Fechar o painel apaga o destaque: reaberto pelo menu, nada aponta para uma linha antiga.
+    let _ = mesa.aplica(vec![WidgetEvent::Click(ids::PHYSICS_CLOSE)]);
+    assert_eq!(ph2d_panel_physics::destaque(), None);
+}
+
+/// A face clássica não tem barra: com as 32, as colunas encolhem e toda célula continua alcançável, dentro do painel.
+#[test]
+fn a_face_classica_alcanca_as_32() {
+    ph2d_panel_physics::set_visible_layers(u32::MAX);
+    let mut mesa = Mesa::nova(mundo(
+        PhysicsSettings::default(),
+        InteractionSettings::default(),
+    ));
+    cards::force_cards_on_this_thread(Some(false));
+    mesa.host.set_collapsed(ids::PHYSICS_SEC_LAYERS, false);
+    mesa.assenta();
+    let painel = mesa
+        .host
+        .store()
+        .panel_rect(ph2d_editor_core::ids::PHYSICS_PANEL)
+        .expect("o painel publicou a caixa");
+    for (i, id) in ids::PHYSICS_LAYER_CELL.iter().enumerate() {
+        let r = mesa
+            .rect(*id)
+            .unwrap_or_else(|| panic!("a célula {i} não se alcança"));
+        assert!(r.x + r.w <= painel.x + painel.w, "a célula {i} sai: {r:?} de {painel:?}");
+    }
+    cards::force_cards_on_this_thread(Some(true));
+}
+
+/// Shift+roda e a roda horizontal andam as colunas; a roda simples rola o painel e não mexe nelas.
+#[test]
+fn a_roda_de_lado_rola_as_colunas_e_a_simples_nao() {
+    ph2d_panel_physics::set_visible_layers(u32::MAX);
+    let mut mesa = Mesa::nova(mundo(
+        PhysicsSettings::default(),
+        InteractionSettings::default(),
+    ));
+    let store = mesa.host.store_mut();
+    store.set_slider_value(ids::PHYSICS_LAYER_SCROLL, 0.0);
+    mesa.assenta();
+    let c = mesa
+        .rect(ids::PHYSICS_LAYER_CELL[0])
+        .expect("a primeira célula");
+    let arena = bumpalo::Bump::new();
+    let valor = |m: &Mesa| {
+        m.host
+            .store()
+            .slider(ids::PHYSICS_LAYER_SCROLL)
+            .expect("a barra")
+            .1
+    };
+    let roda = |m: &mut Mesa, dx: f32, dy: f32, shift: bool| {
+        let _ = ph2d_editor_core::interaction::dispatch_wheel(
+            m.host.store_mut(),
+            ph2d_host::WheelEvent {
+                x: c.x + 1.0,
+                y: c.y + 1.0,
+                delta_x: dx,
+                delta_y: dy,
+                modifiers: ph2d_host::Modifiers {
+                    shift,
+                    ..Default::default()
+                },
+                timestamp_ns: 0,
+            },
+            &arena,
+        );
+    };
+    roda(&mut mesa, 0.0, -40.0, false);
+    assert_eq!(valor(&mesa), 0.0, "a roda simples não anda as colunas");
+    roda(&mut mesa, 0.0, -40.0, true);
+    let depois_de_shift = valor(&mesa);
+    assert!(depois_de_shift > 0.0, "Shift+roda anda para a direita");
+    roda(&mut mesa, -40.0, 0.0, false);
+    assert!(valor(&mesa) > depois_de_shift, "a roda horizontal também");
+    roda(&mut mesa, 0.0, 4000.0, true);
+    assert_eq!(valor(&mesa), 0.0, "pára na ponta");
 }

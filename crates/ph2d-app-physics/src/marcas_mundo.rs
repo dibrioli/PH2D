@@ -71,6 +71,9 @@ pub const CAMPOS: &[(u16, &[NodeId])] = &[
     (m::CAMADAS, &painel::PHYSICS_LAYER_CELL),
 ];
 
+/// Os quadros de «Collides with» no Inspector são a mesma matriz: o mesmo grupo, o mesmo losango.
+const QUADROS: &[NodeId] = &ph2d_panel_inspector::ids::INSP_PHYS_COLLIDES;
+
 fn marca(f: Forca) -> KeyMark {
     match f {
         Forca::Livre => KeyMark::Livre,
@@ -83,6 +86,9 @@ fn marca(f: Forca) -> KeyMark {
 /// O GRUPO que o controlo `id` mostra (a gravidade são os dois eixos).
 #[must_use]
 pub fn canal_do_campo(id: NodeId) -> Vec<PropKind> {
+    if QUADROS.contains(&id) {
+        return canal_do_campo(painel::PHYSICS_LAYER_CELL[0]);
+    }
     let Some(&(campo, _)) = CAMPOS.iter().find(|(_, ids)| ids.contains(&id)) else {
         return Vec::new();
     };
@@ -119,6 +125,9 @@ pub fn marcas(
         for &id in ids {
             out.insert(id, mk);
         }
+    }
+    if let Some(&mk) = out.get(&painel::PHYSICS_LAYER_CELL[0]) {
+        out.extend(QUADROS.iter().map(|&q| (q, mk)));
     }
     out
 }

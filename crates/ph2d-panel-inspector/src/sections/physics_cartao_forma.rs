@@ -203,7 +203,7 @@ pub(super) fn uma_via(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) ->
     )
 }
 
-/// Layer em lista com os nomes (os ids e a edição são os de sempre), «Hits» lido da matriz (só com corpo acima) e o «Rename…».
+/// Layer em lista com os nomes (os ids e a edição são os de sempre), os quadros de «Collides with» (só com corpo acima), o «Rename…» e o «Edit matrix…».
 pub(super) fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
     let rotulo = tr("component.field.collider.4");
     let seccao = ph2d_editor_core::property_row::Seccao::medida(t.text, 1, &[rotulo]);
@@ -240,19 +240,27 @@ pub(super) fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> 
     }
     let y = linha.fim(ph2d_tokens::row_pitch_px());
     let camada = usize::from(info.layer);
-    // Sem corpo acima nada bate na forma: «Hits» desmentiria a frase de cima.
-    let solta = !info.has_body && info.part_owner.is_empty();
+    let solta = super::physics_colide::solta(info);
     let y = if solta {
         y
     } else {
-        t.frase(y, &crate::camadas_fisica::hits(camada), ColorToken::Text3)
+        super::physics_colide::colide_com(t, y, info)
     };
-    let (r, y) = t.botao(
-        ids::INSP_PHYS_LAYER_RENAME,
-        tr("card.insp.phys.layer_rename"),
-        y,
-    );
-    t.hit.register(ids::INSP_PHYS_LAYER_RENAME, r);
+    let y = if solta {
+        let (r, y) = t.botao(
+            ids::INSP_PHYS_LAYER_RENAME,
+            tr("card.insp.phys.layer_rename"),
+            y,
+        );
+        t.hit.register(ids::INSP_PHYS_LAYER_RENAME, r);
+        y
+    } else {
+        t.dois_botoes(
+            y,
+            (ids::INSP_PHYS_LAYER_RENAME, tr("card.insp.phys.layer_rename")),
+            (ids::INSP_PHYS_EDIT_MATRIX, tr("card.insp.phys.edit_matrix")),
+        )
+    };
     if t.store.is_collapsed(ids::INSP_PHYS_LAYER_RENAMING) {
         return y;
     }

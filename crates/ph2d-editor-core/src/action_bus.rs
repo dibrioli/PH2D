@@ -603,6 +603,15 @@ pub enum EditorAction {
     LayerShow {
         layer: u8,
     },
+    /// O quadro de «Collides with»: alterna o par, a mesma edição da célula da matriz.
+    LayerPairToggle {
+        a: u8,
+        b: u8,
+    },
+    /// «Edit matrix…»: abre o painel Physics na secção das camadas, com esta linha em destaque.
+    LayerMatrixOpen {
+        layer: u8,
+    },
 
     /// Transport control from the TopBar Play/Pause/Reset chips
     /// (`chrome::transport`). The shell owns the ONE clock

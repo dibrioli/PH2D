@@ -35,7 +35,7 @@ fn pose(scale: [f32; 2]) -> InspectorTransformInfo {
 }
 
 /// O Inspector em cartões, em metros, com os dois cartões e todas as dobras abertos.
-fn cena(info: InspectorPhysicsInfo, scale: [f32; 2]) -> (MockPanelHost, InspectorState) {
+pub(crate) fn cena(info: InspectorPhysicsInfo, scale: [f32; 2]) -> (MockPanelHost, InspectorState) {
     set_cards_on(true);
     set_current_inspector_sprite(None);
     set_current_inspector_physics(Some(info));
@@ -50,13 +50,13 @@ fn cena(info: InspectorPhysicsInfo, scale: [f32; 2]) -> (MockPanelHost, Inspecto
     (host, InspectorState::default())
 }
 
-fn sai() {
+pub(crate) fn sai() {
     set_cards_on(false);
     set_current_inspector_physics(None);
     set_current_inspector_transform(None);
 }
 
-fn pinta(host: &mut MockPanelHost, st: &mut InspectorState) -> Vec<(NodeId, Rect)> {
+pub(crate) fn pinta(host: &mut MockPanelHost, st: &mut InspectorState) -> Vec<(NodeId, Rect)> {
     use ph2d_editor_core::screens::layout::{CenterSplit, ChromeBands, DockSides, HeroLayout};
     let janela = Rect::new(0.0, 0.0, 1600.0, 3200.0);
     // O 1.º quadro semeia as dobras (`cards::prepare`); só depois há o que assentar.
@@ -89,14 +89,14 @@ fn pinta(host: &mut MockPanelHost, st: &mut InspectorState) -> Vec<(NodeId, Rect
     r
 }
 
-fn achado(r: &[(NodeId, Rect)], id: NodeId) -> Option<Rect> {
+pub(crate) fn achado(r: &[(NodeId, Rect)], id: NodeId) -> Option<Rect> {
     r.iter()
         .rev()
         .find(|(i, q)| *i == id && q.w > 0.0)
         .map(|(_, q)| *q)
 }
 
-fn clica(host: &mut MockPanelHost, st: &mut InspectorState, r: Rect) -> Vec<EditorAction> {
+pub(crate) fn clica(host: &mut MockPanelHost, st: &mut InspectorState, r: Rect) -> Vec<EditorAction> {
     let (x, y) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
     let _ = host.drained_actions();
     let mut eventos = Vec::new();
@@ -673,31 +673,10 @@ fn a_lista_da_camada_escolhe_cada_camada_pela_mesma_edicao() {
     }
 }
 
-/// Sem nomes, os números; com nomes, os nomes. «Hits» lê a matriz e muda quando ela muda.
+/// Sem corpo acima nada bate na forma: os quadros contradiriam «Nothing bumps into it yet» e saem; a lista e o
+/// «Rename…» ficam. Com dono ou com corpo, a fila continua entre os dois.
 #[test]
-fn hits_le_a_matriz_com_os_nomes_e_acompanha_a_mudanca() {
-    use ph2d_panel_inspector::camadas_fisica::{hits, set_current};
-    set_current(Default::default(), [0b0000_0101; 32], 0xFF);
-    assert_eq!(hits(0), "Hits: 0, 2", "sem nomes, os números");
-    let mut nomes: [String; 32] = Default::default();
-    nomes[0] = "Ground".into();
-    nomes[2] = "Enemy".into();
-    set_current(nomes.clone(), [0b0000_0101; 32], 0xFF);
-    assert_eq!(hits(0), "Hits: Ground, Enemy");
-    set_current(nomes.clone(), [0b0000_0100; 32], 0xFF);
-    assert_eq!(hits(0), "Hits: Enemy", "a matriz mudou");
-    set_current(nomes, [0; 32], 0xFF);
-    assert_eq!(hits(0), "Hits: nothing");
-    // A camada escondida não entra na frase: de fábrica bate em todas as 32, e não diz nada.
-    set_current(Default::default(), [u32::MAX; 32], 0b101);
-    assert_eq!(hits(0), "Hits: 0, 2");
-    set_current(Default::default(), [u32::MAX; 32], 0xFF);
-}
-
-/// Sem corpo acima nada bate na forma: «Hits» contradiria «Nothing bumps into it yet» e sai; a lista e o «Rename…»
-/// ficam. Com dono ou com corpo, a linha continua entre os dois. A distância mede a linha: a frase não tem id.
-#[test]
-fn a_forma_solta_nao_mostra_hits_mas_mantem_a_camada_e_o_rename() {
+fn a_forma_solta_nao_mostra_os_quadros_mas_mantem_a_camada_e_o_rename() {
     let vao = |info: InspectorPhysicsInfo| {
         let (mut host, mut st) = cena(info, [1.0, 1.0]);
         let r = pinta(&mut host, &mut st);
@@ -714,7 +693,7 @@ fn a_forma_solta_nao_mostra_hits_mas_mantem_a_camada_e_o_rename() {
     assert_eq!(peca, corpo, "peça e corpo mostram a mesma linha");
     assert!(
         sem < peca,
-        "a solta ainda reserva a linha Hits: {sem} × {peca}"
+        "a solta ainda reserva a fila: {sem} × {peca}"
     );
 }
 

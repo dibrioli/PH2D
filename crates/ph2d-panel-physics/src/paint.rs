@@ -23,11 +23,32 @@ mod joint;
 mod matrix;
 mod plano;
 
+/// Depois do «Edit matrix…», rola o painel até a linha em destaque ficar no terço de cima.
+fn traz_a_linha_a_vista(ctx: &mut PaintCtx) {
+    if !state::gasta_um_quadro_a_revelar() {
+        return;
+    }
+    let Some(linha) = ph2d_editor_core::panel::cards::linhas_extra::linha_em_destaque() else {
+        return;
+    };
+    let store = ctx.host.store_mut();
+    let (Some(conteudo), Some(visivel)) = (
+        store.panel_content_h(ids::PHYSICS_PANEL),
+        store.panel_visible_h(ids::PHYSICS_PANEL),
+    ) else {
+        return;
+    };
+    let topo = ctx.slot.y + ctx.slot.h - visivel + visivel / 3.0;
+    let alvo = store.panel_scroll(ids::PHYSICS_PANEL) + linha.y - topo;
+    store.set_panel_scroll(ids::PHYSICS_PANEL, alvo.clamp(0.0, (conteudo - visivel).max(0.0)));
+}
+
 pub(crate) fn paint(_state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(PhysicsPanel::ID) {
         // Symmetric stale-rect cleanup, so `panel_at` stops returning
         // PHYSICS_PANEL the moment the panel is closed.
         ctx.host.store_mut().clear_panel_rect(ids::PHYSICS_PANEL);
+        state::painel_fechado();
         return;
     }
 
@@ -51,6 +72,7 @@ pub(crate) fn paint(_state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {
             PhysicsPanel::TITLE.tr(),
             &cartoes,
         );
+        traz_a_linha_a_vista(ctx);
         let store = ctx.host.store();
         set_last_content_h(store.panel_content_h(ids::PHYSICS_PANEL).unwrap_or(0.0));
         set_last_visible_h(store.panel_visible_h(ids::PHYSICS_PANEL).unwrap_or(0.0));

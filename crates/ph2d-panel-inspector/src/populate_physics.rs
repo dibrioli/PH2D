@@ -213,6 +213,7 @@ pub(super) fn populate_physics(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_PHYS_KIND);
     register_button_ids(store, &ids::INSP_PHYS_SHAPE);
     register_button_ids(store, &ids::INSP_PHYS_LAYER);
+    register_button_ids(store, &ids::INSP_PHYS_COLLIDES);
     register_button_ids(store, &ids::INSP_PHYS_SENSOR);
     register_button_ids(store, &ids::INSP_PHYS_CCD);
     register_button_ids(store, &ids::INSP_PHYS_LOCKROT);
@@ -238,7 +239,17 @@ pub(super) fn populate_physics(store: &mut WidgetStore) {
             ids::INSP_PHYS_USE_BOX,
             ids::INSP_PHYS_REMOVED_UNDO,
             ids::INSP_PHYS_LAYER_RENAME,
+            ids::INSP_PHYS_COLLIDES_ADD,
+            ids::INSP_PHYS_EDIT_MATRIX,
         ],
+    );
+    store.set_tooltip(
+        ids::INSP_PHYS_COLLIDES_ADD,
+        ph2d_i18n::tr("card.insp.phys.collides_add_tip"),
+    );
+    store.set_tooltip(
+        ids::INSP_PHYS_EDIT_MATRIX,
+        ph2d_i18n::tr("card.insp.phys.edit_matrix_tip"),
     );
     store.register(
         ids::INSP_PHYS_LAYER_PICK,

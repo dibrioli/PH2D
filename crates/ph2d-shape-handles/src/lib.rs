@@ -8,7 +8,10 @@ mod ponteiro;
 mod roteiro;
 pub mod tinta;
 
-pub use ponteiro::{FormaNoCanvas, Porta, alterna, ativo, editando, quadro};
+pub use ponteiro::{
+    CursorDaAlca, FormaNoCanvas, Porta, a_meio, alterna, ativo, clique_parado, cursor_em, editando,
+    quadro,
+};
 pub use roteiro::{PassoDaMao, Plano, passo_da_mao};
 
 use bevy_ecs::world::World;

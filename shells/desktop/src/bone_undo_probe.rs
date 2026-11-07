@@ -1,19 +1,6 @@
-//! ⭐⭐⭐ **A SONDA DO UNDO DA ÂNCORA** (`PH2D_BONE_UNDO_PROBE=1`) — o aparelho que o report
-//! *«Undo não funciona para add IK»* (Enio, 2026-09-07) pede.
+//! **A SONDA DO UNDO DA ÂNCORA** (`PH2D_BONE_UNDO_PROBE=1`): o report *«Undo não funciona para add IK»* (07/09).
 //!
-//! # Por que ela existe, e por que a leitura do código não bastou
-//!
-//! Entre o clique e o passo há uma **máquina** com cinco motivos de supressão
-//! ([`crate::App::post_frame_undo`]), e eles suprimem **igual**. Duas medições já foram feitas por
-//! outro caminho e **ilibaram** a metade fácil:
-//!
-//! | medido | resultado |
-//! |---|---|
-//! | a fotografia do undo VÊ a âncora? | **sim** (`parts_that_differ` devolve `["world"]`) |
-//! | o restauro leva-a embora? | **sim** (alvo despawnado, item IK fora) |
-//!
-//! ⇒ a máquina do snapshot está sã, e o que falta saber é se o **passo chega a nascer**. Isso
-//! nenhum teste responde: `post_frame_undo` vive na `App`, que segura uma surface de janela real.
+//! `post_frame_undo` vive na `App`, que segura uma surface real: nenhum teste responde se o passo nasce.
 //!
 //! # ⚠️ O gesto é REAL, e é o que separa esta sonda de um palpite
 //!
@@ -35,36 +22,13 @@
 //!
 //! # ⛔⛔ O QUE ELA MEDIU (2026-09-07) — e o report NÃO reproduz
 //!
-//! ```text
-//! f=49 undo=1 ancoras=1        <- antes
-//! Down em Add IK em (696, 717)
-//! f=50..52  held=Some(Primary) <- o botao segurado por TRES quadros, como uma mao humana
-//! f=53 Up
-//! f=54 undo=2 ancoras=2        <- o passo NASCEU e a ancora foi criada
-//! f=70 Ctrl+Z
-//! f=71 undo=1 redo=1 ancoras=1 <- a ancora do botao FOI EMBORA
-//! ```
+//! Pelo caminho completo do artista (rolar, `Down`, `Up` três quadros depois, `Ctrl+Z`) o *Add IK* é desfeito:
+//! a fotografia vê a âncora, o passo nasce e o restauro leva-a embora.
 //!
-//! ⇒ pelo caminho completo do artista — **rolar o painel**, `Down` num quadro, `Up` três quadros
-//! depois, `Ctrl+Z` — o *Add IK* **é** desfeito. As três metades estão ilibadas por medição: a
-//! fotografia vê a âncora, o passo nasce, e o restauro leva-a embora.
+//! ⚠️ Não cobre a sequência exacta do dono: arrastar a âncora é um passo próprio, e o `Ctrl+Z` pode ir a outro dono.
+//! ⛔ *Uma corrida sem a linha `Down em Add IK` não mediu o botão*: o índice de acerto depende de onde o painel rola.
 //!
-//! ⚠️ **O que a sonda NÃO cobre, e é onde a próxima medição começa:** a sequência exacta do dono.
-//! Duas hipóteses baratas de eliminar, as duas com o mesmo sintoma (*«o Ctrl+Z não fez nada»*):
-//! **(a)** ele arrastou a âncora depois de a criar — o arrasto é um passo PRÓPRIO, e desfazê-lo
-//! move o losango de volta uns píxeis, o que se lê como *nada*; **(b)** o `Ctrl+Z` foi roteado para
-//! outro dono (o `undo_or_redo` escolhe entre o Áudio, o Painter, o global e o image-edit).
-//!
-//! ⚠️⚠️ **O ROTEIRO É FRÁGIL, e o sinal está no ecrã.** Ele acha os controlos por varredura do
-//! índice de acerto, e o índice depende de **onde o painel está rolado** — se o clique no pill
-//! falhar, a secção nem é pintada e nada a jusante acontece. ⛔ *Uma corrida sem a linha
-//! `Down em Add IK` não mediu o botão*, por mais verde que pareça: leia-a antes de acreditar no
-//! resto.
-//!
-//! ⛔ **E há uma armadilha estrutural nesta cena, medida aqui:** a cena de smoke monta-se **sem
-//! entrada nenhuma**, então o primeiro clique do dono — seja ele qual for — regista um passo cujo
-//! *antes* é a **cena vazia**. Um `Ctrl+Z` a mais apaga o desenho inteiro, e isso não é um defeito
-//! da âncora.
+//! ⛔ A cena monta-se sem entrada: o 1.º clique regista um passo cujo *antes* é a cena vazia (um `Ctrl+Z` a mais apaga tudo).
 
 use std::sync::atomic::{AtomicU32, Ordering};
 

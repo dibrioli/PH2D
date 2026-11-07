@@ -58,4 +58,15 @@ impl AutokeyState {
         self.base_campos.clear();
         self.restaurado = true;
     }
+
+    /// ⛔ O `Esc` a meio do arrasto de uma família: as chaves do gesto voltam ao `begin`, sem passo, e o valor
+    /// devolvido ao mundo não se lê como a mão.
+    pub(crate) fn desiste_do_gesto(&mut self, tl: &mut ph2d_timeline::TimelineState) {
+        if let Some(pre) = tl.history.desiste() {
+            tl.doc = pre;
+        }
+        self.drag_active = false;
+        self.record.clear();
+        self.esquece_o_quadro();
+    }
 }

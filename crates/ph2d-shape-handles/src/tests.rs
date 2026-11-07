@@ -20,8 +20,11 @@ const CAPSULA: ColliderShape = ColliderShape::Capsule {
     radius: 0.2,
 };
 
+/// Nome, posição, rotação, escala, com pai.
+type PoseDoTeste = (&'static str, [f32; 2], f32, [f32; 2], bool);
+
 /// As poses da ficha. A última é filha de um pai rodado, fora da origem.
-fn poses() -> Vec<(&'static str, [f32; 2], f32, [f32; 2], bool)> {
+fn poses() -> Vec<PoseDoTeste> {
     vec![
         ("identidade", [0.0, 0.0], 0.0, [1.0, 1.0], false),
         (
@@ -63,7 +66,7 @@ struct Cena {
 }
 
 impl Cena {
-    fn nova(pose: (&str, [f32; 2], f32, [f32; 2], bool), shape: ColliderShape, zoom: f32) -> Self {
+    fn nova(pose: PoseDoTeste, shape: ColliderShape, zoom: f32) -> Self {
         let (_, t, rot, s, com_pai) = pose;
         let mut world = World::new();
         let mut tr = Transform::from_translation(Vec2::new(t[0], t[1]));
@@ -504,6 +507,56 @@ fn clicar_sem_mexer_nao_escreve() {
     assert!(c.porta().move_((s.0 + 0.5, s.1), Teclas::default()));
     assert!(c.porta().sobe());
     assert_eq!(c.bus.drain().count(), 0);
+}
+
+/// O miolo sem mexer é um clique; arrastado, ou numa alça, não.
+#[test]
+fn so_o_miolo_parado_e_um_clique() {
+    let mut c = Cena::nova(poses()[0], CAIXA, 15.0);
+    let s = c.ecra(Alca::Miolo);
+    assert!(c.desce(s));
+    assert!(c.porta().move_((s.0 + 0.5, s.1), Teclas::default()));
+    assert_eq!(crate::clique_parado(&c.world), Some(s));
+    assert!(!crate::a_meio(&c.world));
+    c.move_((s.0 + 10.0, s.1), Teclas::default());
+    assert_eq!(crate::clique_parado(&c.world), None, "arrastou");
+    assert!(crate::a_meio(&c.world));
+    assert!(c.porta().sobe());
+    let lado = c.ecra(Alca::Lado(1, 0));
+    assert!(c.desce(lado));
+    assert_eq!(crate::clique_parado(&c.world), None, "numa alça fica");
+}
+
+/// O cursor segue a alça no ecrã: com a forma a 90°, o lado direito sobe e o gesto é vertical.
+#[test]
+fn o_cursor_da_alca_segue_a_rodacao() {
+    use crate::CursorDaAlca as K;
+    let reta = Cena::nova(("reta", [0.0, 0.0], 0.0, [1.0, 1.0], false), CAIXA, 15.0);
+    let de = |c: &Cena, a| crate::cursor_em(&c.world, &c.cam, WIN, c.ecra(a));
+    assert_eq!(de(&reta, Alca::Lado(1, 0)), Some(K::Horizontal));
+    assert_eq!(de(&reta, Alca::Lado(0, 1)), Some(K::Vertical));
+    assert_eq!(de(&reta, Alca::Lado(1, 1)), Some(K::Sobe));
+    assert_eq!(de(&reta, Alca::Lado(-1, 1)), Some(K::Desce));
+    let longe = reta.ecra(Alca::Lado(1, 1));
+    let fora = crate::cursor_em(&reta.world, &reta.cam, WIN, (longe.0 + 200.0, longe.1));
+    assert_eq!(fora, None, "fora da forma, o cursor é de quem o pedir");
+    let rodada = Cena::nova(
+        (
+            "rodada",
+            [0.0, 0.0],
+            std::f32::consts::FRAC_PI_2,
+            [1.0, 1.0],
+            false,
+        ),
+        CAIXA,
+        15.0,
+    );
+    assert_eq!(de(&rodada, Alca::Lado(1, 0)), Some(K::Vertical));
+    let s = reta.ecra(Alca::Miolo);
+    assert_eq!(
+        crate::cursor_em(&reta.world, &reta.cam, WIN, s),
+        Some(K::Mover)
+    );
 }
 
 /// Fora da forma e das alças o `Down` segue para o canvas.

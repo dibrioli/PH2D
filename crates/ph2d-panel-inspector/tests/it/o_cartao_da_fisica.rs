@@ -246,7 +246,7 @@ fn varre(nome: &str, info: InspectorPhysicsInfo, mapa: Vec<(NodeId, G)>) {
                     a,
                     [EditorAction::InspectorPhysicsEdit {
                         entity_bits: ENTIDADE,
-                        edit: edit.clone(),
+                        edit,
                     }],
                     "{nome}: o clique em {id:?} não pediu {edit:?}"
                 );
@@ -260,7 +260,7 @@ fn varre(nome: &str, info: InspectorPhysicsInfo, mapa: Vec<(NodeId, G)>) {
                 assert!(
                     a.contains(&EditorAction::InspectorPhysicsEdit {
                         entity_bits: ENTIDADE,
-                        edit: edit.clone(),
+                        edit,
                     }),
                     "{nome}: digitar {texto} em {id:?} deu {a:?}, não {edit:?}"
                 );
@@ -412,7 +412,7 @@ fn as_medidas_de_bola_capsula_e_a_massa_manual_chegam() {
         }
         let a = host.drained_actions();
         let saiu = a.iter().find_map(|x| match x {
-            EditorAction::InspectorPhysicsEdit { edit, .. } => Some(edit.clone()),
+            EditorAction::InspectorPhysicsEdit { edit, .. } => Some(*edit),
             _ => None,
         });
         match (saiu, &edit) {

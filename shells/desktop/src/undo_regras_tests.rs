@@ -75,7 +75,11 @@ fn cada_passo_novo_muda_o_topo_da_fila_e_o_refazer_nao_volta_ao_de_antes() {
     let por_cima = fila.top_at(false);
     assert_ne!(por_cima, remocao, "a edição por cima mudou o topo");
     let _ = fila.undo(s.clone(), m());
-    assert_eq!(fila.top_at(false), remocao, "o passo de baixo volta ao topo");
+    assert_eq!(
+        fila.top_at(false),
+        remocao,
+        "o passo de baixo volta ao topo"
+    );
     let _ = fila.redo(s.clone(), m());
     assert_ne!(fila.top_at(false), remocao);
 }

@@ -72,6 +72,8 @@ pub enum CasoFisica {
     FormaPeca,
     FormaSensor,
     FormaSolta,
+    /// O clique parado no miolo: a forma por cima da Platform High, que fica selecionada (17b A1).
+    FormaClique,
 }
 
 /// O gesto de cada foto das alças.
@@ -134,6 +136,10 @@ pub fn plano_da_forma(caso: CasoFisica) -> Option<ph2d_shape_handles::Plano> {
             ..canto
         },
         CasoFisica::FormaPeca | CasoFisica::FormaSensor | CasoFisica::FormaSolta => lado,
+        CasoFisica::FormaClique => Plano {
+            alca: Some(ph2d_shape_handles::Alca::Miolo),
+            ..Plano::default()
+        },
         _ => return None,
     })
 }
@@ -177,6 +183,7 @@ pub fn caso(nome: &str) -> Option<CasoFisica> {
         "forma_peca" => CasoFisica::FormaPeca,
         "forma_sensor" => CasoFisica::FormaSensor,
         "forma_solta" => CasoFisica::FormaSolta,
+        "forma_clique" => CasoFisica::FormaClique,
         _ => return None,
     })
 }
@@ -315,6 +322,18 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
             let junto = Transform::from_translation(Vec2::new(0.0, 1.0));
             let nome = Name::new("Collision Shape");
             w.spawn((junto, nome, col, ChildOf(pai))).id()
+        }
+        CasoFisica::FormaClique => {
+            let sobre = w.get::<Transform>(pai).copied()?;
+            let nome = Name::new("Zone");
+            // O miolo fora do anel do próprio objecto, sobre a plataforma: o clique no anel fica com ele.
+            let col = Collider {
+                shape: CAIXA,
+                offset: [0.5, 0.0],
+                is_sensor: true,
+                ..Collider::default()
+            };
+            w.spawn((sobre, nome, corpo(BodyKind::Static), col)).id()
         }
         CasoFisica::Dynamic | CasoFisica::Kinematic | CasoFisica::Bola | CasoFisica::Esticada => {
             let kind = if caso == CasoFisica::Kinematic {

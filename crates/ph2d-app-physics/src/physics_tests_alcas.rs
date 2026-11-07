@@ -43,7 +43,6 @@ fn arrasta(sim: &mut SimWorld, e: Entity, cam: Camera2d, a: Alca, para: (f32, f3
     assert!(porta.desce(de), "o dedo não acertou {a:?}");
     assert!(porta.move_(para, t));
     assert!(porta.sobe());
-    drop(porta);
     for acao in bus.drain() {
         let EditorAction::InspectorPhysicsEdit { edit, entity_bits } = acao else {
             panic!("{acao:?}");

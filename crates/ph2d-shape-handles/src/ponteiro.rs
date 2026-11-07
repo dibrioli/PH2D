@@ -1,7 +1,7 @@
 //! **O gesto:** quem está em edição e o arrasto em curso, num recurso do mundo (o cartão lê-o pelo retrato), e a
 //! porta que o shell chama com o ponteiro real, em píxeis de ecrã.
 
-use crate::{ARMA_PX, Alca, Medida, Pose, Teclas, alca_em, ponto_local, puxa};
+use crate::{ARMA_PX, Alca, Medida, Pose, Teclas, alca_em, no_ecra, ponto_local, puxa};
 use bevy_ecs::prelude::Resource;
 use bevy_ecs::world::World;
 use ph2d_ecs::canal::familia::FISICA;
@@ -97,6 +97,68 @@ fn publica_a_mao(world: &mut World, alvo: Option<u64>) {
     world
         .get_resource_or_insert_with(MaosDasFamilias::default)
         .publicar(FISICA, alvo.into_iter().collect());
+}
+
+/// Um arrasto armado está a meio: o `Esc` tem o que desfazer.
+#[must_use]
+pub fn a_meio(world: &World) -> bool {
+    arrasto(world).is_some_and(|a| a.armado)
+}
+
+fn arrasto(world: &World) -> Option<Arrasto> {
+    world.get_resource::<FormaNoCanvas>()?.arrasto
+}
+
+/// Onde foi o clique, se o miolo nunca armou: é um clique, volta à seleção normal (17b A1).
+#[must_use]
+pub fn clique_parado(world: &World) -> Option<(f32, f32)> {
+    arrasto(world)
+        .filter(|a| a.alca == Alca::Miolo && !a.armado)
+        .map(|a| a.ecra0)
+}
+
+/// O que a alça promete, para o cursor.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CursorDaAlca {
+    Mover,
+    Horizontal,
+    Vertical,
+    /// `/` no ecrã.
+    Sobe,
+    /// `\\` no ecrã.
+    Desce,
+}
+
+/// O cursor da alça agarrada ou sob o ponteiro, na direcção em que ela está NO ECRÃ (a forma pode estar rodada).
+#[must_use]
+pub fn cursor_em(
+    world: &World,
+    cam: &Camera2d,
+    win: WindowSize,
+    s: (f32, f32),
+) -> Option<CursorDaAlca> {
+    let alvo = editando(world)?;
+    let e = Entity::from_bits(alvo);
+    let (pose, m) = (Pose::de(world, e)?, Medida::de(world.get::<Collider>(e)?));
+    let alca = match arrasto(world) {
+        Some(a) => a.alca,
+        None => alca_em(&pose, &m, cam, win, s)?,
+    };
+    if alca == Alca::Miolo {
+        return Some(CursorDaAlca::Mover);
+    }
+    let (a, c) = (
+        no_ecra(&pose, &m, alca, cam, win),
+        no_ecra(&pose, &m, Alca::Miolo, cam, win),
+    );
+    // O ecrã desce em `y`: `\` é o ângulo positivo. Quatro setores de 45° em torno de cada eixo.
+    let oitavo = ((a.1 - c.1).atan2(a.0 - c.0) / std::f32::consts::FRAC_PI_4).round();
+    Some(match oitavo.rem_euclid(4.0) as u8 {
+        0 => CursorDaAlca::Horizontal,
+        1 => CursorDaAlca::Desce,
+        2 => CursorDaAlca::Vertical,
+        _ => CursorDaAlca::Sobe,
+    })
 }
 
 /// O ponteiro do shell: o mundo, a vista desenhada neste quadro e o barramento do Inspector.

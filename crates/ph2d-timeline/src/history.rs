@@ -109,6 +109,12 @@ impl TimelineHistory {
         self.moved.clear();
     }
 
+    /// O `Esc` a meio de um gesto: fecha-o sem passo e devolve o documento do [`Self::begin`].
+    pub fn desiste(&mut self) -> Option<TimelineDoc> {
+        self.moved.clear();
+        self.pending.take()
+    }
+
     /// Whether a gesture is currently bracketed (a `begin` awaits its commit).
     /// Atomic edits check this so an edit *inside* a gesture does not close it —
     /// a handle drag emits one edit per frame and must undo as a single step.

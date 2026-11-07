@@ -170,14 +170,20 @@ impl crate::App {
         let Some(a) = self.undo.camera_no_canvas.arrasto.take() else {
             return false;
         };
-        if !a.era_um_clique() {
-            return true;
+        if a.era_um_clique() {
+            self.clique_para_a_selecao(a.camera, a.ecra0());
         }
+        true
+    }
+
+    /// O clique que uma edição no canvas não usou: o objecto de cima sob ele que não é o `dono`; o clique no
+    /// próprio dono, ou sem ninguém, deixa-o ficar.
+    pub(crate) fn clique_para_a_selecao(&mut self, dono: u64, ecra: (f32, f32)) {
         let Some(gfx) = self.gfx.as_mut() else {
-            return true;
+            return;
         };
         let Some(hero) = gfx.hero_screen.as_mut() else {
-            return true;
+            return;
         };
         let mut pw = crate::hover_highlight::PickWorld {
             window_size: crate::scene_mapping::janela(hero.view.center_split, gfx.surface.size()),
@@ -202,17 +208,16 @@ impl crate::App {
             &self.vec.view_derived,
             &self.vec.live_drawn,
             &self.flip_state.entities,
-            a.ecra0(),
+            ecra,
         );
-        if hits.first() == Some(&a.camera) {
-            return true; // o clique no próprio ícone fica com a câmera
+        if hits.first() == Some(&dono) {
+            return;
         }
-        hits.retain(|b| *b != a.camera);
+        hits.retain(|b| *b != dono);
         ph2d_pick_order::descendants_first(gfx.sim.world(), &mut hits);
         if let Some(&b) = hits.first() {
             ph2d_editor_core::screens::hero::mode_drive::chosen(hero, Some(b), false);
             hero.gizmo.replace_selection(Some(b));
         }
-        true
     }
 }

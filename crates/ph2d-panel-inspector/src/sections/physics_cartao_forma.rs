@@ -228,7 +228,7 @@ pub(super) fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> 
         .visual(t.store.dropdown_visual(ids::INSP_PHYS_LAYER_PICK));
     paint_dropdown_chip(&dd, linha.control, t.scene, t.text, t.theme);
     if aberta {
-        crate::state_popovers::set_pending_phys_layer_dd(Some(linha.control));
+        crate::state_popovers::set_pending_phys_layer_dd(Some((info.layer, linha.control)));
     }
     if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_for(
         t.scene,
@@ -279,7 +279,8 @@ pub(crate) fn layer_options() -> Vec<DropdownOption<u8>> {
 }
 
 /// A lista da camada, com a camada do objecto escolhida: o que o chip mostra.
-fn lista_da_camada(camada: u8) -> Dropdown<u8> {
+#[must_use]
+pub(crate) fn lista_da_camada(camada: u8) -> Dropdown<u8> {
     let mut dd = Dropdown::new(ids::INSP_PHYS_LAYER_PICK, "", layer_options());
     dd.select(camada);
     dd
@@ -489,7 +490,11 @@ mod lista_tests {
         crate::camadas_fisica::set_current(nomes, [u8::MAX; 8]);
         for i in 0..8u8 {
             let dd = lista_da_camada(i);
-            let esperado = if i == 2 { "Enemy".to_owned() } else { i.to_string() };
+            let esperado = if i == 2 {
+                "Enemy".to_owned()
+            } else {
+                i.to_string()
+            };
             assert_eq!(dd.selected_label(), Some(esperado.as_str()), "camada {i}");
         }
         crate::camadas_fisica::set_current(Default::default(), [u8::MAX; 8]);

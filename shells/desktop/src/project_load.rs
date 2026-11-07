@@ -115,8 +115,8 @@ impl crate::App {
             return;
         };
         // **E OS NOMES DAS CAMADAS, pela mesma lei** (v218).
-        let Ok(camadas) =
-            ph2d_physics_ecs::LayerNames::from_bytes(&file.physics_layers).inspect_err(|e| {
+        let Ok(camadas) = ph2d_physics_ecs::LayerNames::from_bytes(&file.physics_layers)
+            .inspect_err(|e| {
                 self.toast_refused("shell.project_load.project_refused_its_layer_names", e);
             })
         else {

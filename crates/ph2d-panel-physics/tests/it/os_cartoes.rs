@@ -682,3 +682,38 @@ fn world_channels_keep_a_clickable_mark_and_session_settings_have_none() {
         assert!(!marca_de(id), "{id:?} não é canal e ganhou marca");
     }
 }
+
+/// O nome de cada camada mostra-se no campo dela, e escrever pede a renomeação pela porta do projeto.
+#[test]
+fn cada_camada_tem_o_seu_nome_no_cartao_da_matriz() {
+    let mut nomes = ph2d_physics_ecs::LayerNames::default();
+    nomes.0[2] = "Ground".into();
+    ph2d_panel_physics::set_layer_names(nomes);
+    let mut mesa = Mesa::nova(PhysicsSnapshot::default());
+    for (i, &id) in ids::PHYSICS_LAYER_NAME.iter().enumerate() {
+        assert!(
+            mesa.rects.iter().any(|(n, r)| *n == id && r.w > 0.0),
+            "o campo {i}"
+        );
+        let esperado = if i == 2 { "Ground" } else { "" };
+        assert_eq!(
+            mesa.host.store().text(id),
+            Some(esperado),
+            "o texto do campo {i}"
+        );
+        mesa.host.set_text(id, "Enemy");
+        let _ = mesa.host.drained_actions();
+        let (h, st) = (&mut mesa.host, &mut mesa.st);
+        let _ = h.apply_panel_event::<PhysicsPanel>(st, WidgetEvent::TextChanged(id));
+        assert_eq!(
+            mesa.host.drained_actions(),
+            [ph2d_editor_core::action_bus::EditorAction::LayerRename {
+                layer: i as u8,
+                name: "Enemy".into(),
+            }],
+            "o campo {i}"
+        );
+    }
+    ph2d_panel_physics::set_layer_names(Default::default());
+    cards::force_cards_on_this_thread(None);
+}

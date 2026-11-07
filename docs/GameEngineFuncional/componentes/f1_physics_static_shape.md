@@ -54,7 +54,7 @@ Toda a tabela de destino está na maquete, secção «Mapa dos campos». Resumo:
 - **Forma sem corpo próprio:** cartão «Collision Shape», aviso inteiro e em destaque, Make Independent Body, dica de
   arrastar. Dentro de um corpo: «Part of: X». Density em dobra.
 - **Density** some de corpo Static ou Kinematic e **o valor fica guardado**. Numa Zona Dynamic continua à vista.
-- **Estado da forma:** «Follows the picture», ou «Custom size» com o botão Fit to picture.
+- **Estado da forma:** só a caixa automática diz «Follows the picture»; as outras dizem «Custom size» com o botão Fit to picture, que mantém o tipo e ajusta uma vez.
 - **Aviso de escala:** bola ou cápsula esticada avisa, com as saídas Set Scale to 1 e Use Box.
 - **Camadas com nome:** o nome mora no projeto; o número continua a ser a identidade. «Hits» lê a regra do mundo.
 - **Dica do Static Body:** «Set Use to Repeated and give it a Width».
@@ -75,7 +75,7 @@ Capsule: Height = 2 × (Half Height + Radius). Os ids `INSP_PHYS_*` ficam, para 
 | Onda | O quê | Estado |
 |---|---|---|
 | 1 | Os dois cartões, dobras, Width e Height, Touch, Density, nomes dos cartões, avisos, estado da forma, Fit to picture, recibo do Remove, dica | feita, à espera do smoke do dono |
-| 2 | Camadas com nome e «Hits» (mexe no formato salvo: `python3 scripts/schema-recount.py`) | a fazer |
+| 2 | Camadas com nome e «Hits» (schema `217 → 218`) | feita, à espera do smoke do dono |
 | 3 | Alças no canvas, no molde da câmera (`ph2d-app-game/src/smoke_mao.rs`, doc 17b), com undo e Auto Key | a fazer |
 | 4 | Cena de smoke do item + uso no jogo, fotos, smoke do dono | a fazer |
 | depois | Polígono pelo contorno: item próprio | fila |
@@ -98,6 +98,8 @@ Capsule: Height = 2 × (Half Height + Radius). Os ids `INSP_PHYS_*` ficam, para 
   `ph2d-app-physics fit_to_picture` · `density_fica` · `undoing_remove` (o Undo é real: a captura do undo repõe corpo e
   forma) · `canais`. Fotos: [`../handoffs/fotos_fisica/onda1/`](../handoffs/fotos_fisica/onda1/); `PH2D_FISICA_DOBRAS=1` abre as dobras.
 - **Regras da onda 1:** «Follows the picture» = caixa do tamanho da `Sprite`, a mesma pergunta de `follow_auto_collider`
-  (`Collider::box_fits_picture`); bola e cápsula são sempre «Custom size». Fit to picture = caixa da imagem, centrada
-  (offset 0), e troca bola ou cápsula por caixa. O recibo cai ao mudar de objecto, mover o objecto ou editar outro número.
+  (`Collider::follows_picture`); bola e cápsula são sempre «Custom size». O recibo cai ao mudar de objecto ou mover o objecto, e pela regra do topo da fila, abaixo.
+- **Curas depois da onda 1 (07/11):** o recibo só vale enquanto o topo da fila de undo é a remoção, e a fila global é quem responde (`o_recibo_so_vale`; a shell publica em `post_frame_undo`). Fit to picture mantém o tipo: Box = a caixa da imagem; Ball = metade do menor lado; Capsule: radius = metade da largura, half_height = max(0, metade da altura − radius); offset 0 (`Collider::shape_fitted_to`, `fit_to_picture_mantem`). `Collider::follows_picture` é a mesma pergunta de `follow_auto_collider`, só de caixa. A regra anterior «troca bola ou cápsula por caixa» fica revogada. Fotos e `estado_do_player` moraram para `ph2d-physics-scene::fotos_dos_cartoes`; o teste de largura para `ph2d-panel-registry-init` (família não leva aresta de dev de folha).
+- **Onda 2:** o nome mora em `ph2d_physics_ecs::LayerNames` (recurso do mundo, blob `PH2DLAYN` no fim do `ProjectFile`, vazio sem nomes; `Regras` leva-o, undo cobre). Bus `EditorAction::LayerRename`. Cartão Shape: lista suspensa `INSP_PHYS_LAYER_PICK` cujas opções são os `INSP_PHYS_LAYER` de sempre, «Hits» (`camadas_fisica::hits`), «Rename…» abre o campo ali mesmo. Painel Physics: um campo de nome por camada debaixo da matriz. Nav mostra os nomes. Testes: `layer_names` (ecs e shell: ida e volta + `um_v217`) · `as_regras_do_mundo` · `a_lista_da_camada` · `hits_le_a_matriz` · `rename_abre_o_campo` · `cada_camada_tem_o_seu_nome`. Fotos: [`../handoffs/fotos_fisica/onda2/`](../handoffs/fotos_fisica/onda2/): `fisica_{camadas,camada_sozinha,camada_com_pares,camadas_no_painel,player_cartoes,static}`.
+- **Fica com o número, de propósito:** o campo Layer do Ray Sensor (índice 0–31, outra faixa) e os chips da face clássica (`PH2D_CARDS=0`).
 - A preencher: smoke do dono.

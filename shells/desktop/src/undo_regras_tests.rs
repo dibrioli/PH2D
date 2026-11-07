@@ -23,7 +23,10 @@ fn as_regras_do_mundo_e_da_mesa_voltam_com_o_desfazer() {
     ph2d_app_audio::mesa_doc::instalar(&mut sim, m);
     ph2d_physics_ecs::LayerNames::rename(sim.world_mut(), 2, "Enemy");
     let depois = Regras::de(&ponte, &sim);
-    assert_ne!(depois.camadas, antes.camadas, "controlo: renomear muda as regras");
+    assert_ne!(
+        depois.camadas, antes.camadas,
+        "controlo: renomear muda as regras"
+    );
     assert_ne!(depois.physics, antes.physics, "controlo: a gravidade mudou");
     assert_ne!(depois.mesa, antes.mesa, "controlo: a mesa mudou");
 
@@ -56,4 +59,23 @@ fn as_regras_do_mundo_e_da_mesa_voltam_com_o_desfazer() {
     );
     assert!(b.regras.repor(&mut ponte, &mut sim));
     assert_eq!(Regras::de(&ponte, &sim), depois, "e o Refazer também");
+}
+
+/// O recibo do Remove compara o degrau do topo: outro passo por cima, ou o desfazer dele, têm de o mudar.
+#[test]
+fn cada_passo_novo_muda_o_topo_da_fila_e_o_refazer_nao_volta_ao_de_antes() {
+    let s = capture(&mut SimWorld::new(), &VecScene::new(), &registry());
+    let m = crate::undo::SelectionMark::default;
+    let mut fila = ProjectUndo::default();
+    assert_eq!(fila.top_at(false), None);
+    fila.push_undo(s.clone(), m());
+    let remocao = fila.top_at(false);
+    assert!(remocao.is_some());
+    fila.push_undo(s.clone(), m());
+    let por_cima = fila.top_at(false);
+    assert_ne!(por_cima, remocao, "a edição por cima mudou o topo");
+    let _ = fila.undo(s.clone(), m());
+    assert_eq!(fila.top_at(false), remocao, "o passo de baixo volta ao topo");
+    let _ = fila.redo(s.clone(), m());
+    assert_ne!(fila.top_at(false), remocao);
 }

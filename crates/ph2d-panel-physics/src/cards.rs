@@ -3,14 +3,14 @@
 //! (`event.rs`) não muda. O campo do cartão é o CHIP (ligado à barra, que continua a avisar o painel);
 //! a barra deixa de se pintar: o scrub no ícone faz o que ela fazia.
 
-use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::widget::TextInputState;
 use ph2d_a11y::NodeId;
+use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::panel::TextKey;
 use ph2d_editor_core::panel::cards::corpo::letra_da_grandeza;
 use ph2d_editor_core::panel::cards::linhas_extra::ToggleTriangle;
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, Seg, Widget};
+use ph2d_editor_core::widget::TextInputState;
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
 use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_i18n::{tr, tr_with};

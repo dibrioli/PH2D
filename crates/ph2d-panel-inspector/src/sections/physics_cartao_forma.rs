@@ -9,8 +9,8 @@ use super::physics_rows::{
 use super::rows::{Campo, par_row, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
-use ph2d_editor_core::widget::{Dropdown, DropdownOption, SectionFold, paint_dropdown_chip};
 use ph2d_editor_core::widget::key_mark::Eixos;
+use ph2d_editor_core::widget::{Dropdown, DropdownOption, SectionFold, paint_dropdown_chip};
 use ph2d_i18n::{TextKey, tr, tr_with};
 
 const KIND_STATIC: u8 = 1;
@@ -229,7 +229,11 @@ pub(super) fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> 
     let y = linha.fim(ph2d_tokens::row_pitch_px());
     let camada = usize::from(info.layer);
     let y = t.frase(y, &crate::camadas_fisica::hits(camada), ColorToken::Text3);
-    let (r, y) = t.botao(ids::INSP_PHYS_LAYER_RENAME, tr("card.insp.phys.layer_rename"), y);
+    let (r, y) = t.botao(
+        ids::INSP_PHYS_LAYER_RENAME,
+        tr("card.insp.phys.layer_rename"),
+        y,
+    );
     t.hit.register(ids::INSP_PHYS_LAYER_RENAME, r);
     if t.store.is_collapsed(ids::INSP_PHYS_LAYER_RENAMING) {
         return y;

@@ -155,13 +155,7 @@ pub(crate) fn paint_nav_region_section(
     let segmentos: Vec<(&str, bool, NodeId)> = crate::ids::INSP_NAV_LAYERS
         .iter()
         .enumerate()
-        .map(|(i, &id)| {
-            (
-                rotulos[i].as_str(),
-                r.obstacle_layers & (1 << i) != 0,
-                id,
-            )
-        })
+        .map(|(i, &id)| (rotulos[i].as_str(), r.obstacle_layers & (1 << i) != 0, id))
         .collect();
     cur_y = paint_choice_row(
         scene,

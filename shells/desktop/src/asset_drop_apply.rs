@@ -285,6 +285,34 @@ impl crate::App {
                     .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_RENDER_SECTION, false);
             }
         }
+        if let ph2d_app_game::smoke::Foto::Fisica(c) = plano.foto
+            && let Some(hero) = gfx.hero_screen.as_mut()
+        {
+            use ph2d_app_game::smoke::CasoFisica as C;
+            use ph2d_panel_inspector::camadas_fisica as camadas;
+            match c {
+                C::PlayerCartoes => camadas::dobra_os_cartoes_de_cima(&mut hero.store),
+                C::Camadas => camadas::abre_a_lista(&mut hero.store),
+                C::CamadaSozinha => {
+                    let mut s = gfx.physics.settings();
+                    s.layer_matrix = [0, 0, 0, 0, 0, 0, 0, 0];
+                    gfx.physics.set_settings(s);
+                }
+                C::CamadaComPares | C::CamadasNoPainel => {
+                    let mut m = ph2d_physics_ecs::LayerMatrix::from_rows([0; 8]);
+                    m.set(1, 0, true);
+                    m.set(1, 2, true);
+                    let mut s = gfx.physics.settings();
+                    s.layer_matrix = m.rows();
+                    gfx.physics.set_settings(s);
+                    camadas::abre_o_rename(&mut hero.store);
+                    if c == C::CamadasNoPainel {
+                        hero.panel_visibility.insert("physics".into(), true);
+                    }
+                }
+                _ => {}
+            }
+        }
         if plano.foto == ph2d_app_game::smoke::Foto::Seletor
             && let Some(hero) = gfx.hero_screen.as_mut()
         {

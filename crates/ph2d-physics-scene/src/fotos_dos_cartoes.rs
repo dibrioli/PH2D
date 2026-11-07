@@ -6,7 +6,7 @@ use ph2d_ecs::{
     ChildOf, Entity, Name, SimWorld, Transform, assign_missing_root_order,
     assign_missing_stable_ids,
 };
-use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
+use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, LayerNames, RigidBody};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
 fn por_nome(sim: &mut SimWorld, nome: &str) -> Option<Entity> {
@@ -39,6 +39,14 @@ pub enum CasoFisica {
     Peca,
     /// Uma imagem sem física: a face que oferece o corpo.
     Vazia,
+    /// A caixa com camadas com nome, a matriz a separar duas e a lista aberta (onda 2).
+    Camadas,
+    /// O mesmo, com a camada sem par: «Hits: nothing».
+    CamadaSozinha,
+    /// A camada Player toca Ground e Enemy: «Hits» com os nomes e o Rename aberto.
+    CamadaComPares,
+    /// O mesmo, com o painel Physics à vista: a matriz e os campos dos nomes.
+    CamadasNoPainel,
 }
 
 /// O caso do nome pedido em `PH2D_GAME_SMOKE_FOTO`.
@@ -58,9 +66,16 @@ pub fn caso(nome: &str) -> Option<CasoFisica> {
         "solta" => CasoFisica::Solta,
         "peca" => CasoFisica::Peca,
         "vazia" => CasoFisica::Vazia,
+        "camadas" => CasoFisica::Camadas,
+        "camada_sozinha" => CasoFisica::CamadaSozinha,
+        "camada_com_pares" => CasoFisica::CamadaComPares,
+        "camadas_no_painel" => CasoFisica::CamadasNoPainel,
         _ => return None,
     })
 }
+
+/// Os nomes da foto das camadas; as outras ficam com o número.
+const NOMES_DA_FOTO: [&str; 3] = ["Ground", "Player", "Enemy"];
 
 const CAIXA: ColliderShape = ColliderShape::Cuboid {
     half_x: 0.5,
@@ -91,6 +106,27 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
         | CasoFisica::Baixa
         | CasoFisica::Larga => {
             unreachable!("voltam acima")
+        }
+        CasoFisica::Camadas
+        | CasoFisica::CamadaSozinha
+        | CasoFisica::CamadaComPares
+        | CasoFisica::CamadasNoPainel => {
+            for (i, n) in NOMES_DA_FOTO.iter().enumerate() {
+                LayerNames::rename(w, i as u8, n);
+            }
+            let col = Collider {
+                shape: CAIXA,
+                layer: 1,
+                ..Collider::default()
+            };
+            w.spawn((
+                onde,
+                Name::new("Crate"),
+                imagem,
+                corpo(BodyKind::Dynamic),
+                col,
+            ))
+            .id()
         }
         CasoFisica::Dynamic | CasoFisica::Kinematic | CasoFisica::Bola | CasoFisica::Esticada => {
             let kind = if caso == CasoFisica::Kinematic {

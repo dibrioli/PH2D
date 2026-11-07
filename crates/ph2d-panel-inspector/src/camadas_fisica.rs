@@ -18,6 +18,32 @@ thread_local! {
     });
 }
 
+/// As fotos: o Player com os cartões de cima dobrados, para Body e Shape caberem.
+pub fn dobra_os_cartoes_de_cima(store: &mut ph2d_editor_core::interaction::WidgetStore) {
+    for id in [
+        crate::CARD_IMAGE,
+        crate::CARD_LOOK_ANIMADA,
+        ph2d_editor_core::ids::INSP_LIVE_ANIM_SECTION,
+    ] {
+        store.set_collapsed(id, true);
+    }
+}
+
+/// As fotos: o campo do «Rename…» aberto, como depois do clique.
+pub fn abre_o_rename(store: &mut ph2d_editor_core::interaction::WidgetStore) {
+    store.set_collapsed(crate::ids::INSP_PHYS_LAYER_RENAMING, false);
+}
+
+/// As fotos: a lista da camada aberta, como depois do clique.
+pub fn abre_a_lista(store: &mut ph2d_editor_core::interaction::WidgetStore) {
+    use ph2d_editor_core::interaction::InteractiveState;
+    if let Some(InteractiveState::Dropdown { open, .. }) =
+        store.get_mut(crate::ids::INSP_PHYS_LAYER_PICK)
+    {
+        *open = true;
+    }
+}
+
 /// Uma vez por quadro: os nomes dados (vazio = sem nome) e a matriz do mundo.
 pub fn set_current(nomes: [String; CAMADAS], linhas: [u8; CAMADAS]) {
     AGORA.with(|a| *a.borrow_mut() = Camadas { nomes, linhas });

@@ -697,8 +697,15 @@ fn rename_abre_o_campo_e_escrever_renomeia_a_camada_do_objecto() {
     info.layer = 3;
     let (mut host, mut st) = cena(info, [1.0, 1.0]);
     let r = pinta(&mut host, &mut st);
-    assert!(achado(&r, INSP_PHYS_LAYER_NAME).is_none(), "fechado por omissão");
-    let _ = clica(&mut host, &mut st, achado(&r, INSP_PHYS_LAYER_RENAME).unwrap());
+    assert!(
+        achado(&r, INSP_PHYS_LAYER_NAME).is_none(),
+        "fechado por omissão"
+    );
+    let _ = clica(
+        &mut host,
+        &mut st,
+        achado(&r, INSP_PHYS_LAYER_RENAME).unwrap(),
+    );
     let r = pinta(&mut host, &mut st);
     assert!(achado(&r, INSP_PHYS_LAYER_NAME).is_some());
     let _ = host.drained_actions();

@@ -45,7 +45,10 @@ pub struct RunTapes<'a> {
 pub fn publica_as_camadas(world: &ph2d_ecs::World, physics: &PhysicsBridge) {
     let nomes = ph2d_physics_ecs::LayerNames::of(world);
     ph2d_panel_physics::set_layer_names(nomes.clone());
-    ph2d_panel_inspector::camadas_fisica::set_current(nomes.0, physics.settings_vivos().layer_matrix);
+    ph2d_panel_inspector::camadas_fisica::set_current(
+        nomes.0,
+        physics.settings_vivos().layer_matrix,
+    );
 }
 
 /// Publish the world state for `paint`, then apply whatever the artist did.

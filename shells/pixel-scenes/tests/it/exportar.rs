@@ -401,8 +401,10 @@ fn import_sprite_sheet_recorta_pela_grelha() {
 /// O que o `.ase` traz e o documento não guarda chega ao artista em aviso, junto do «abriu».
 #[test]
 fn o_aviso_de_abrir_chega_ao_artista() {
-    let frases =
-        ph2d_panel_pixel_export::textos::do_aberto("x", vec![ph2d_pixel_io::ase::Aviso::Slices(2)]);
+    let frases = ph2d_panel_pixel_export::textos::do_aberto(
+        "x",
+        vec![ph2d_pixel_io::ase::Aviso::PropriedadesDeSlices(2)],
+    );
     assert_eq!(frases.len(), 2);
     assert!(frases[1].1.contains('2'), "{:?}", frases[1]);
 }

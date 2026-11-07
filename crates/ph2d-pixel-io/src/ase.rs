@@ -196,7 +196,6 @@ pub fn escrever(s: &Sprite) -> Result<(Vec<u8>, Vec<Aviso>), AseErro> {
             .collect(),
         tilesets: tilesets_saida(s),
         slices: slices_saida(s),
-        ..AseFile::default()
     };
     let bytes = ph2d_aseprite::write_file(&file).map_err(AseErro::Escrever)?;
     Ok((bytes, avisos))

@@ -14,6 +14,7 @@ mod jogo_moldura_lei;
 mod jogo_moldura_ponteiro;
 mod jogo_object_add;
 mod jogo_smoke;
+mod plataforma_alargada;
 mod receitas;
 mod sound_set;
 mod sprite_espelhar;

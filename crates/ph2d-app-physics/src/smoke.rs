@@ -44,7 +44,15 @@ pub const PAUSED_SCENES: &[&str] = &[
     // tinha o teclado — o bake gravaria um personagem parado antes de gravar o
     // que o artista fez.
     "95",
+    // A 120 (ficha f1) espera o Play do artista: o Crate e a bola têm de cair à vista.
+    "120",
 ];
+
+/// A cena nasce parada? `PH2D_PHYSICS_SMOKE_TOCA=1` é a foto do Play, numa tela onde a mão não chega.
+#[must_use]
+pub fn nasce_parada(which: &str) -> bool {
+    PAUSED_SCENES.contains(&which) && std::env::var_os("PH2D_PHYSICS_SMOKE_TOCA").is_none()
+}
 
 /// **O maior nível a que o roteador de facto responde** (`PH2D_PHYSICS_SMOKE=1..CENAS`).
 ///
@@ -55,7 +63,7 @@ pub const PAUSED_SCENES: &[&str] = &[
 ///
 /// ⚠️ Esta nota do `CLAUDE.md` já esteve parada em `97` com cenas até `102` noutro módulo —
 /// é exactamente por isso que o número vive ao lado do `match` e tem gate.
-pub const CENAS: u32 = 119;
+pub const CENAS: u32 = 120;
 
 /// **O nível que o dono pediu, lido DENTRO da crate.**
 ///
@@ -210,6 +218,7 @@ pub fn scene(which: &str, ctx: &mut crate::SceneCtx<'_>) {
         "118" => crate::physics_smoke_leave::physics_smoke_leave(ctx),
         // ⚠️ **O NUMERO E' CONTADO, nunca escolhido** — lido deste `match`.
         "119" => crate::physics_smoke_brink::physics_smoke_brink(ctx),
+        "120" => crate::physics_smoke_ficha::physics_smoke_ficha(ctx),
         _ => crate::physics_smoke_base::physics_smoke_drop(ctx),
     }
 }

@@ -134,6 +134,7 @@ pub mod physics_smoke_compound;
 pub mod physics_smoke_contacts;
 pub mod physics_smoke_damping;
 pub mod physics_smoke_events;
+pub mod physics_smoke_ficha;
 pub mod physics_smoke_fk;
 pub mod physics_smoke_foot;
 pub mod physics_smoke_foot_fan;

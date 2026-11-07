@@ -39,7 +39,7 @@ Também: `docs/Sprite_projeto/` e os docs `12`–`16` desta pasta.
 
 | Item | Crítica | Estudo | Estado |
 |---|---|---|---|
-| Animated Sprite | Animated Sprite | AnimatedSprite | `a revisar` |
+| Animated Sprite | Animated Sprite | AnimatedSprite | `em obra` ([ficha](componentes/02_animated_sprite.md), aprovada pelo dono em 06/11) |
 | Add Object | Add Object | Objeto e Inspector | `a revisar` |
 | Add Component | Add Component | Objeto e Inspector | `a revisar` |
 | Inspector e Hierarchy | pendente | Objeto e Inspector | `a revisar` |

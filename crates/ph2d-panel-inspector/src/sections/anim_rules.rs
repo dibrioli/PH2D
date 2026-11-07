@@ -72,6 +72,38 @@ pub(crate) fn play_options(info: &InspectorAnimInfo) -> Vec<DropdownOption<usize
         .collect()
 }
 
+thread_local! {
+    /// A regra que a pintura deste quadro acendeu e onde: a costura lê o que foi pintado, não o modelo.
+    static ACESA_PINTADA: std::cell::Cell<Option<(usize, Rect)>> = const { std::cell::Cell::new(None) };
+}
+
+/// A regra acesa na última pintura do cartão.
+#[must_use]
+pub fn regra_acesa_pintada() -> Option<(usize, Rect)> {
+    ACESA_PINTADA.get()
+}
+
+pub(crate) fn esquece_a_acesa() {
+    ACESA_PINTADA.set(None);
+}
+
+/// O índice da regra acesa, se ela tem linha no cartão.
+fn acesa(info: &InspectorAnimInfo) -> Option<usize> {
+    info.card
+        .live_rule
+        .map(usize::from)
+        .filter(|i| *i < shown_rules(info))
+}
+
+/// O rótulo da fila Who Picks: com uma regra acesa, leva a etiqueta LIVE.
+pub(crate) fn rotulo_de_quem_escolhe(info: &InspectorAnimInfo) -> &'static str {
+    if acesa(info).is_some() {
+        "panel.inspector.anim_card.who_picks_live"
+    } else {
+        "panel.inspector.anim_card.who_picks"
+    }
+}
+
 /// Quantas regras têm linha (e pega arrastável) no cartão.
 pub(crate) fn shown_rules(info: &InspectorAnimInfo) -> usize {
     if info.card.chooser == AnimChooser::Rules && !info.rows.is_empty() {
@@ -141,6 +173,11 @@ fn rule_rects(x: f32, control_w: f32, y: f32, stacked: bool) -> RuleRects {
     }
 }
 
+/// O que sobra entre o fim das peças de uma regra e a regra seguinte.
+fn gap_da_fila() -> f32 {
+    ph2d_tokens::row_pitch_px() - ROW_H
+}
+
 /// O texto do chip «Play» de uma regra.
 fn play_label(info: &InspectorAnimInfo, play: &str) -> String {
     if info.rows.iter().any(|r| r.name == play) {
@@ -208,20 +245,27 @@ pub(crate) fn rule_rows(
     {
         let rects = rule_rects(x, control_w, cur_y, stacked);
         let grip = rects.grip;
+        let acesa = acesa(info) == Some(i);
+        let raio = ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px());
+        if acesa {
+            let fila = Rect::new(x, cur_y, control_w, rects.next_y - cur_y - gap_da_fila());
+            fill_rounded_rect(scene, fila, raio, resolve(ColorToken::AccentSoft, theme));
+            ACESA_PINTADA.set(Some((i, fila)));
+        }
         hit_index.register(ids::INSP_ANIM_RULE_GRIP[i], grip);
-        fill_rounded_rect(
-            scene,
-            grip,
-            ph2d_editor_core::paint::frame_radius(theme, Radius::Sm.px()),
-            resolve(ColorToken::Bg2, theme),
-        );
+        let (fundo, tinta) = if acesa {
+            (ColorToken::Accent, ColorToken::AccentFg)
+        } else {
+            (ColorToken::Bg2, ColorToken::Text2)
+        };
+        fill_rounded_rect(scene, grip, raio, resolve(fundo, theme));
         ph2d_editor_core::paint::paint_text_centered(
             text_system,
             scene,
             &(i + 1).to_string(),
             grip,
             font,
-            resolve(ColorToken::Text2, theme),
+            resolve(tinta, theme),
         );
         grips.push(grip);
 

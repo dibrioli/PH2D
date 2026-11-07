@@ -130,7 +130,8 @@ pub(crate) fn paint_list(
         } else {
             resolve(ColorToken::Text2, theme)
         };
-        let nome_w = rect.w * SUMMARY_COL_FRAC - (text_x - x);
+        // O vão deixa o nome cortado longe do resumo: no piso do painel, «crouc…4 frames» lia-se como uma palavra.
+        let nome_w = rect.w * SUMMARY_COL_FRAC - (text_x - x) - Spacing::Sm.px();
         match &mut renomeia {
             Some((j, campo)) if *j == i => {
                 **campo = Some(Rect::new(text_x, cur_y, nome_w, ROW_H));
@@ -322,6 +323,7 @@ pub(crate) fn paint_chooser(
     sec: ph2d_editor_core::property_row::Seccao,
 ) -> f32 {
     let chosen = info.card.chooser;
+    super::anim_rules::esquece_a_acesa();
     let labels = [
         tr("panel.inspector.anim_card.me"),
         tr("panel.inspector.anim_card.script"),
@@ -343,7 +345,7 @@ pub(crate) fn paint_chooser(
         x,
         w,
         y,
-        tr("panel.inspector.anim_card.who_picks"),
+        tr(super::anim_rules::rotulo_de_quem_escolhe(info)),
         &segments,
         sec,
     );

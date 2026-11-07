@@ -243,6 +243,7 @@ mod sync_weapon;
 /// The §11 Bake button's label — exported so a gate can hold the claim that
 /// the button shows the range it would cover.
 pub use sections::FILTER_LABELS;
+pub use sections::anim_rules::regra_acesa_pintada;
 pub use sections::bake_label;
 /// ⭐ **O SINAL de cada comparação da VIGIA** — exportado para um gate poder afirmar que o CHIP e a
 /// linha FECHADA da lista dizem a mesma coisa, que é exactamente o que elas não diziam até 17/09.

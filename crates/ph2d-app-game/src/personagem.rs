@@ -79,6 +79,18 @@ pub(crate) struct Segura {
 pub struct RegrasEmCurso {
     seguras: BTreeMap<Entity, Segura>,
     ouvido: Option<SignalReader>,
+    /// A regra que manda neste quadro, por objecto: só o cartão a lê (a regra acesa, ficha 02 E5).
+    acesas: BTreeMap<Entity, u8>,
+}
+
+/// A regra acesa no cartão de `bits`: só com o jogo a correr, e só a deste objecto.
+#[must_use]
+pub fn regra_acesa(world: &World, bits: u64, a_correr: bool) -> Option<u8> {
+    let acesas = &world.get_resource::<RegrasEmCurso>()?.acesas;
+    acesas
+        .get(&Entity::from_bits(bits))
+        .copied()
+        .filter(|_| a_correr)
 }
 
 /// O que o animador deve fazer neste quadro.
@@ -160,6 +172,7 @@ pub fn anima_personagens(
         .collect();
     let vivos: BTreeSet<Entity> = objectos.iter().map(|(e, ..)| *e).collect();
     em_curso.seguras.retain(|e, _| vivos.contains(e));
+    em_curso.acesas.clear();
     for (e, rules, character) in objectos {
         let view = physics.player_view(e);
         let Some(alvo) = alvo(world, e) else {
@@ -180,6 +193,14 @@ pub fn anima_personagens(
                 Passo::Fica => {}
                 Passo::Toca(tag) if a.current == tag => {}
                 Passo::Toca(tag) | Passo::Recomeca(tag) => troca(&mut a, tag),
+            }
+            // O seguro vivo manda mesmo sem a condição valer; sem ele, a 1.ª que vale é a que `decide` escolheu.
+            let manda = seguro
+                .as_ref()
+                .map(|s| s.regra)
+                .or_else(|| rules.0.iter().position(|r| vale(&r.when, &f)));
+            if let Some(i) = manda.and_then(|i| u8::try_from(i).ok()) {
+                em_curso.acesas.insert(e, i);
             }
         }
         if let Some(s) = seguro {

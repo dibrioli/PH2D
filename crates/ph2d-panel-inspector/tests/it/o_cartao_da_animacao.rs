@@ -573,3 +573,46 @@ fn o_aviso_de_imagem_trocada_diz_os_numeros_e_da_as_duas_saidas() {
     }
     limpa();
 }
+
+fn com_regras(acesa: Option<u8>) -> InspectorAnimInfo {
+    use ph2d_editor_core::screens::hero::{AnimChooser, AnimRuleInfo, AnimWhenInfo};
+    let mut a = fixa();
+    a.card.chooser = AnimChooser::Rules;
+    a.card.rules = (0..3)
+        .map(|i| AnimRuleInfo {
+            when: AnimWhenInfo::Pose(i),
+            play: "walk".into(),
+        })
+        .collect();
+    a.card.live_rule = acesa;
+    a
+}
+
+/// ⭐ Com o jogo a correr, a regra que ganhou fica acesa na fila dela e o Who Picks leva LIVE; sem nada, nada aceso;
+/// em Auto, onde a lista não aparece, também não. *Mutação: pintar a acesa fora do índice dela ⇒ vermelho.*
+#[test]
+fn a_regra_acesa_pinta_a_fila_dela_e_a_etiqueta_live() {
+    let live = ph2d_i18n::tr("panel.inspector.anim_card.who_picks_live");
+    let (mut host, mut st) = cena_com(com_regras(Some(1)));
+    let r = pinta(&mut host, &mut st);
+    let (i, fila) = ph2d_panel_inspector::regra_acesa_pintada().expect("a regra acesa pintou");
+    assert_eq!(i, 1);
+    let pega = rect_de(&r, INSP_ANIM_RULE_GRIP[1]);
+    assert!(
+        fila.y <= pega.y && fila.y + fila.h >= pega.y + pega.h,
+        "a fila acesa contém a pega da regra 2"
+    );
+    assert!(textos(&mut host, &mut st).iter().any(|t| t == live));
+
+    set_current_inspector_anim(Some(com_regras(None)));
+    pinta(&mut host, &mut st);
+    assert_eq!(ph2d_panel_inspector::regra_acesa_pintada(), None);
+    assert!(!textos(&mut host, &mut st).iter().any(|t| t == live));
+
+    let mut auto = com_regras(Some(1));
+    auto.card.chooser = ph2d_editor_core::screens::hero::AnimChooser::Me;
+    set_current_inspector_anim(Some(auto));
+    pinta(&mut host, &mut st);
+    assert_eq!(ph2d_panel_inspector::regra_acesa_pintada(), None);
+    limpa();
+}

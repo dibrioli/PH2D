@@ -116,7 +116,12 @@ fn o_projeto_antigo_abre_igual() {
     let (mut sim, e) = cena();
     edita(&mut sim, e, AnimFieldEdit::SetCurrent("run".into()));
     sim.world_mut().entity_mut(e).remove::<SpriteAnimStart>();
-    let (mut velho, v) = aberto(&foto(&mut sim));
+    let gravado = foto(&mut sim);
+    let (mut velho, v) = aberto(&gravado);
+    // Abrir não inventa os componentes novos, e gravar de novo dá os mesmos bytes.
+    assert!(velho.world().get::<SpriteAnimStart>(v).is_none());
+    assert!(velho.world().get::<ph2d_ecs::SpriteCutNotice>(v).is_none());
+    assert_eq!(foto(&mut velho), gravado);
     start_autoplay_animations(&mut velho);
     assert_eq!(atual(&velho, v), "run");
 }

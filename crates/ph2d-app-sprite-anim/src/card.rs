@@ -127,6 +127,7 @@ pub fn build_card_info(world: &World, entity: Entity) -> AnimCardInfo {
                 play: r.play.clone(),
             })
             .collect(),
+        live_rule: None,
         // As ações moram no mapa do projecto (fora do mundo): quem monta o retrato acrescenta-as.
         rule_actions: Vec::new(),
         hframes: grid.hframes,

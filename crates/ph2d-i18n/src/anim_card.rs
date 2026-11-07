@@ -21,6 +21,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.anim_card.frames" => "{n} {n?frame|frames}",
         "panel.inspector.anim_card.who_picks" => "Who Picks",
+        "panel.inspector.anim_card.who_picks_live" => "Who Picks · LIVE",
         "panel.inspector.anim_card.me" => "Auto",
         "panel.inspector.anim_card.script" => "Script",
         "panel.inspector.anim_card.rules" => "Rules",

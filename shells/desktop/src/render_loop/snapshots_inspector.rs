@@ -320,6 +320,8 @@ fn late(
         for x in hero.input_map.actions() {
             a.card.rule_actions.push(x.name.clone());
         }
+        a.card.live_rule =
+            ph2d_app_game::personagem::regra_acesa(sim.world(), a.entity_bits, clock_playing);
     }
     // ⭐ A secção TIMERS — `None` para quem não tem o componente (ADR-0166).
     let inspector_timer = alvo.bits.and_then(|b| {

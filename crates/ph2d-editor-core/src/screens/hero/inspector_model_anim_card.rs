@@ -115,6 +115,8 @@ pub struct AnimCardInfo {
     pub character: Option<AnimCharacterInfo>,
     /// As regras que valem, pela ordem (a de cima ganha) — as gravadas ou as 4 do personagem.
     pub rules: Vec<AnimRuleInfo>,
+    /// A regra que ganhou neste quadro, com o jogo a correr (a shell preenche; não é documento).
+    pub live_rule: Option<u8>,
     /// As ações do mapa de teclas, pelo nome (as opções «Key held»).
     pub rule_actions: Vec<String>,
     /// Os nomes de sinal que o projecto já autorou (as opções «Signal»).
@@ -137,6 +139,7 @@ impl Default for AnimCardInfo {
             can_crouch: false,
             character: None,
             rules: Vec::new(),
+            live_rule: None,
             rule_actions: Vec::new(),
             rule_signals: Vec::new(),
             hframes: 1,

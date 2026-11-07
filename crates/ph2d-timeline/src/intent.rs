@@ -1,13 +1,7 @@
 //! [`TimelineIntent`] — the panel→runtime command channel: **what the panel is
 //! allowed to ask for**, and nothing about what happens next.
-//!
-//! Its interpreter lives in the sibling [`crate::intent_apply`], for the same
-//! reason `stack.rs` (the data) and `stack_edit.rs` (the authoring) are two
-//! files: the vocabulary is read by everyone who drives the panel, and the
-//! router is read by whoever changes what an edit does. Keeping them in one file
-//! meant every reader of either paid for both — and the file grew past the LOC
-//! cap, which is the gate noticing exactly this.
-//!
+//! Its interpreter lives in the sibling [`crate::intent_apply`]: everyone who drives the panel reads
+//! the vocabulary, and only whoever changes what an edit does reads the router.
 //! The panel never mutates the document directly: it emits intents, the bridge
 //! drains them through [`crate::apply_intent`], and re-reads a snapshot. This
 //! keeps the panel free of document/undo semantics (mirrors the vector/motion

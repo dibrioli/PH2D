@@ -104,6 +104,21 @@ pub(crate) enum Passo {
     Recomeca(String),
 }
 
+/// A lista pode mudar com o jogo a correr (reordenar, apagar): o seguro vai atrás da regra dele, ou solta-se.
+fn segue_a_regra(rules: &[AnimRule], seguro: &mut Option<Segura>) {
+    let Some(s) = seguro.as_mut() else {
+        return;
+    };
+    let e_ela = |r: &AnimRule| r.when.is_instant() && r.play == s.tag;
+    if rules.get(s.regra).is_some_and(e_ela) {
+        return;
+    }
+    match rules.iter().position(e_ela) {
+        Some(i) => s.regra = i,
+        None => *seguro = None,
+    }
+}
+
 /// ⭐ **A lei**: o seguro solta-se quando a animação dele acabou uma volta ou foi trocada por fora; a
 /// 1.ª regra que vale ganha — com um seguro vivo, só uma ACIMA dele o interrompe; nenhuma = fica.
 pub(crate) fn decide(
@@ -117,6 +132,7 @@ pub(crate) fn decide(
     }) {
         *seguro = None;
     }
+    segue_a_regra(rules, seguro);
     let limite = seguro
         .as_ref()
         .map_or(rules.len(), |s| s.regra.min(rules.len()));

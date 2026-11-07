@@ -227,3 +227,65 @@ fn o_aviso_reabre_so_enquanto_ninguem_respondeu() {
     ));
     assert_eq!(abre(&foto(&mut sim)), None, "respondida, não volta");
 }
+
+/// Reordenar no Play leva o seguro junto: a regra que segura continua a ser ela, no lugar novo.
+/// *Mutação: tirar `segue_a_regra` ⇒ acende a outra, e a de baixo interrompe o seguro.*
+#[test]
+fn reordenar_no_play_leva_o_seguro_junto() {
+    use ph2d_app_sprite_anim::inspector::apply_anim_edit;
+    use ph2d_ecs::scene::{EditorCommandQueue, apply_editor_commands};
+    let mut sim = SimWorld::new();
+    let e = objeto(
+        &mut sim,
+        vec![
+            regra(tecla("go"), "run"),
+            regra(AnimWhen::Signal("s".into()), "hit"),
+        ],
+    );
+    let mut out = SignalOutbox::new();
+    quadro(&mut sim, &[], &out);
+    out.publish(Signal::from_animation("s", e.to_bits(), 0));
+    quadro(&mut sim, &[], &out);
+    assert_eq!(acesa(&sim, e), Some(1));
+    let (q, r) = (EditorCommandQueue::new(), registo());
+    let edit = ph2d_editor_core::AnimFieldEdit::RuleMove(1, 0);
+    let _ = apply_anim_edit(&sim, e.to_bits(), &edit, &q, &r);
+    apply_editor_commands(sim.world_mut(), &q, &r).expect("o commit aplica");
+    quadro(&mut sim, &[], &out);
+    assert_eq!(acesa(&sim, e), Some(0), "a regra que segura mudou de lugar");
+    quadro(&mut sim, &["go"], &out);
+    assert_eq!(acesa(&sim, e), Some(0), "a de baixo não interrompe");
+    let w = sim.world();
+    assert_eq!(w.get::<SpriteAnimator>(e).expect("tocador").current, "hit");
+}
+
+/// Suspeita descartada: regras no pai, tocador no filho. O filho parte do início dele, e no 1.º quadro a regra manda;
+/// sem regra a valer, o início fica.
+#[test]
+fn regras_no_pai_mandam_no_tocador_do_filho_depois_do_inicio() {
+    let mut sim = SimWorld::new();
+    let filho = objeto(&mut sim, Vec::new());
+    let w = sim.world_mut();
+    let mut a = w.get_mut::<SpriteAnimator>(filho).expect("tocador");
+    a.autoplay = true;
+    w.entity_mut(filho)
+        .insert(ph2d_ecs::SpriteAnimStart("run".into()));
+    let pai = w
+        .spawn((
+            ph2d_ecs::Transform::default(),
+            AnimRules(vec![regra(tecla("go"), "hit")]),
+        ))
+        .id();
+    w.entity_mut(filho).insert(ph2d_ecs::ChildOf(pai));
+    ph2d_app_sprite_anim::tick::start_autoplay_animations(&mut sim);
+    let toca = |s: &SimWorld| {
+        let a = s.world().get::<SpriteAnimator>(filho).expect("tocador");
+        a.current.clone()
+    };
+    assert_eq!(toca(&sim), "run", "o filho é Auto: começa no início dele");
+    let out = SignalOutbox::new();
+    quadro(&mut sim, &[], &out);
+    assert_eq!(toca(&sim), "run", "nenhuma regra vale: fica");
+    quadro(&mut sim, &["go"], &out);
+    assert_eq!(toca(&sim), "hit", "a regra do pai manda");
+}

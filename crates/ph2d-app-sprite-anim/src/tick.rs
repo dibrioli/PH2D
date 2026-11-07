@@ -240,14 +240,20 @@ pub fn tick_sprite_animations(
 /// para a detetar ali seria preciso um bit a mais que diz «já comecei», e um bit desses fica
 /// dessincronizado no primeiro `Ctrl+Z`.
 ///
-/// Em «Auto» começa pela animação do «Starts with», mesmo que o ▶ tenha deixado outra no ecrã. Script e Rules
-/// escolhem sozinhos: ficam como estão.
+/// Em «Auto» começa do 1.º quadro da animação do «Starts with», mesmo que o ▶ tenha deixado outra no ecrã, ou ela
+/// já a tocar a meio do ciclo. Script e Rules escolhem sozinhos: ficam como estão.
 pub fn start_autoplay_animations(sim: &mut SimWorld) {
     let world = sim.world_mut();
-    let mut escolhidas = world.query::<(ph2d_ecs::Entity, &ph2d_ecs::SpriteAnimStart)>();
-    let inicios: Vec<(ph2d_ecs::Entity, String)> = escolhidas
+    let mut q = world.query::<(
+        ph2d_ecs::Entity,
+        &SpriteAnimator,
+        &SpriteAnimations,
+        Option<&ph2d_ecs::SpriteAnimStart>,
+    )>();
+    let inicios: Vec<(ph2d_ecs::Entity, String)> = q
         .iter(world)
-        .map(|(e, s)| (e, s.0.clone()))
+        .filter(|(_, a, ..)| a.autoplay)
+        .map(|(e, a, l, s)| (e, ph2d_ecs::SpriteAnimStart::ou_current(s, a, l).to_owned()))
         .collect();
     for (e, nome) in inicios {
         vai_para_o_inicio(world, e, &nome);
@@ -280,7 +286,7 @@ fn vai_para_o_inicio(world: &mut ph2d_ecs::World, e: ph2d_ecs::Entity, nome: &st
     else {
         return;
     };
-    if regras || !a.autoplay || a.current == nome {
+    if regras || !a.autoplay {
         return;
     }
     a.current = nome.to_owned();

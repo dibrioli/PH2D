@@ -125,3 +125,84 @@ fn o_projeto_antigo_abre_igual() {
     start_autoplay_animations(&mut velho);
     assert_eq!(atual(&velho, v), "run");
 }
+
+/// O Play sempre começa no 1.º quadro do início, mesmo com o tocador já nele e a tocar: nada de meio de ciclo.
+/// *Mutação: voltar o `a.current == nome` em `vai_para_o_inicio` ⇒ o relógio fica onde estava.*
+#[test]
+fn o_play_comeca_no_primeiro_quadro_mesmo_ja_a_tocar_o_inicio() {
+    for com_inicio in [true, false] {
+        let (mut sim, e) = cena();
+        if com_inicio {
+            edita(&mut sim, e, AnimFieldEdit::StartsWith("idle".into()));
+        }
+        let w = sim.world_mut();
+        let mut a = w.get_mut::<SpriteAnimator>(e).expect("tocador");
+        a.playing = true;
+        a.elapsed_ticks = 12_345;
+        a.repeat_count = 2;
+        w.get_mut::<SpriteGrid>(e).expect("grelha").frame = 2;
+        start_autoplay_animations(&mut sim);
+        let w = sim.world();
+        let a = w.get::<SpriteAnimator>(e).expect("tocador");
+        assert_eq!((a.elapsed_ticks, a.repeat_count, a.playing), (0, 0, true));
+        assert_eq!(w.get::<SpriteGrid>(e).expect("grelha").frame, 0);
+    }
+}
+
+/// ⭐ `PH2D_CARDS=0` não tem menu: a linha muda com o que começa (a lei antiga), e nada fica preso.
+#[test]
+fn sem_cartoes_clicar_na_linha_muda_com_o_que_comeca() {
+    let (mut sim, e) = cena();
+    for nome in ["run", "idle", "run"] {
+        edita(&mut sim, e, AnimFieldEdit::SetCurrent(nome.into()));
+        edita(&mut sim, e, AnimFieldEdit::StartsWith(nome.into()));
+        start_autoplay_animations(&mut sim);
+        assert_eq!(atual(&sim, e), nome);
+    }
+    assert_eq!(
+        sim.world().get::<SpriteAnimStart>(e).map(|s| s.0.as_str()),
+        Some("run")
+    );
+}
+
+/// Suspeita descartada: o início e o aviso são componentes registados: duplicar e instanciar levam os dois, e a
+/// instância recebe a mudança do início no mestre.
+#[test]
+fn inicio_e_aviso_viajam_no_duplicar_e_na_instancia() {
+    use ph2d_app_components::{instance_docs, instantiate, test_support as ts};
+    let r = registo();
+    let mut sim = SimWorld::new();
+    let m = ts::plain_master(&mut sim);
+    let w = sim.world_mut();
+    let mut lib = SpriteAnimations::new();
+    lib.insert(AnimationTag::new("idle", 0, 1)).expect("idle");
+    lib.insert(AnimationTag::new("run", 2, 3)).expect("run");
+    let mut a = SpriteAnimator::new("idle");
+    a.autoplay = true;
+    let aviso = ph2d_ecs::SpriteCutNotice { grid: [4, 1] };
+    w.entity_mut(m)
+        .insert((lib, a, SpriteAnimStart("idle".into()), aviso));
+    let inst = ts::instantiate(&mut sim, &r, m, None).expect("instancia");
+    let (mut sc, mut mp) = instance_docs::empty_docs();
+    let mut docs = instance_docs::OwnedDocs {
+        vec_scene: &mut sc,
+        vec_entities: &mut mp,
+    };
+    let dup =
+        instantiate::duplicate_subtree(&mut sim, &r, m, &mut docs, [1.0, 0.0]).expect("copia");
+    let inicio = |s: &SimWorld, e| s.world().get::<SpriteAnimStart>(e).map(|i| i.0.clone());
+    for e in [inst, dup] {
+        assert_eq!(inicio(&sim, e).as_deref(), Some("idle"));
+        let n = sim.world().get::<ph2d_ecs::SpriteCutNotice>(e);
+        assert_eq!(n.map(|n| n.grid), Some([4, 1]));
+    }
+    let ponte = ph2d_physics_ecs::PhysicsBridge::new();
+    let mut eco = ph2d_app_components::instance_sync::MasterEcho::default();
+    ts::pass(&mut sim, &r, &ponte, &mut eco);
+    ts::pass(&mut sim, &r, &ponte, &mut eco);
+    sim.world_mut()
+        .entity_mut(m)
+        .insert(SpriteAnimStart("run".into()));
+    ts::pass(&mut sim, &r, &ponte, &mut eco);
+    assert_eq!(inicio(&sim, inst).as_deref(), Some("run"), "o mestre manda");
+}

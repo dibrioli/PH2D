@@ -27,6 +27,7 @@ fn the_project_sounds_cross_the_file_byte_for_byte() {
 /// vivo, senão o teste provaria o braço com a hipótese dele.
 #[test]
 fn a_v214_opens_without_sounds() {
+    let _fio = ph2d_physics_ecs::LayerRowsV218::enter();
     let f = bare_file(empty_state());
     let v214 = (
         (&f.state, &f.assets, &f.painted, &f.motion),

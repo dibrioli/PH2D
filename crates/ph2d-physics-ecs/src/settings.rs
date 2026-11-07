@@ -173,18 +173,17 @@ thread_local! {
 /// Enquanto vive, `PhysicsSettings` lê a matriz na forma do fio até o schema 218 (`[u8; 8]`), e a
 /// alarga por [`LayerMatrix::rows_from_legacy`]. O postcard é posicional e não tem versão por campo.
 #[must_use]
-pub struct LayerRowsV218(());
+pub struct LayerRowsV218(bool);
 
 impl LayerRowsV218 {
     pub fn enter() -> Self {
-        LINHAS_V218.set(true);
-        Self(())
+        Self(LINHAS_V218.replace(true))
     }
 }
 
 impl Drop for LayerRowsV218 {
     fn drop(&mut self) {
-        LINHAS_V218.set(false);
+        LINHAS_V218.set(self.0);
     }
 }
 

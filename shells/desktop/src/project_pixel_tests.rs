@@ -54,6 +54,7 @@ fn the_pixel_sprites_cross_the_file_byte_for_byte() {
 /// partir do tipo vivo, senão o teste provaria o braço com a hipótese dele.
 #[test]
 fn a_v208_opens_without_pixel_sprites() {
+    let _fio = ph2d_physics_ecs::LayerRowsV218::enter();
     let f = bare_file(empty_state());
     let v208 = (
         (&f.state, &f.assets, &f.painted, &f.motion),

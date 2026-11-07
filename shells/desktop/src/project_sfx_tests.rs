@@ -18,6 +18,7 @@ fn as_receitas_atravessam_o_arquivo_byte_a_byte() {
 /// ⚠️ Os bytes do v216 são escritos campo a campo: a partir do tipo vivo, o teste provaria o braço com a hipótese dele.
 #[test]
 fn um_v216_abre_sem_receitas() {
+    let _fio = ph2d_physics_ecs::LayerRowsV218::enter();
     let f = bare_file(empty_state());
     let v216 = (
         (&f.state, &f.assets, &f.painted, &f.motion),

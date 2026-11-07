@@ -46,6 +46,7 @@ fn pele_v210() -> Vec<u8> {
 /// ⭐ **Um v210 com a pele antiga abre na forma viva, com `comprimento = 0`.**
 #[test]
 fn um_v210_abre_a_pele_sem_comprimento() {
+    let _fio = ph2d_physics_ecs::LayerRowsV218::enter();
     let antiga = pele_v210();
     // ⛔ CONTROLO: o tipo vivo não lê a forma antiga — sem o degrau, o blob ficava ilegível.
     assert!(postcard::from_bytes::<SkinBind>(&antiga).is_err());

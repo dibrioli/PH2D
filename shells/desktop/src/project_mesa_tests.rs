@@ -32,6 +32,7 @@ fn a_mesa_viaja_no_projecto() {
 /// forma de então) — não a partir do tipo vivo, senão o teste provaria o braço com a hipótese dele.
 #[test]
 fn um_projecto_antigo_abre_com_a_mesa_no_padrao() {
+    let _fio = ph2d_physics_ecs::LayerRowsV218::enter();
     for ver in [193u32, 192] {
         let f = bare_file(empty_state());
         let ate_aos_scripts = (

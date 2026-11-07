@@ -39,6 +39,7 @@ fn componente<T: serde::de::DeserializeOwned>(f: &ProjectFile, k: usize) -> T {
 /// então, campo a campo (não pelo tipo vivo, senão o teste provaria o braço com a hipótese dele).
 #[test]
 fn um_projecto_v194_abre_com_os_itens_na_forma_nova() {
+    let _fio = ph2d_physics_ecs::LayerRowsV218::enter();
     let v194: Vec<(String, u64, bool, bool, String)> = vec![
         ("a".into(), 1_000_000, false, true, String::new()),
         ("b".into(), 3_000_000, true, false, "s".into()),
@@ -65,6 +66,7 @@ fn um_projecto_v194_abre_com_os_itens_na_forma_nova() {
 /// de então (só os degraus, pelo `FxOp` da folha), abrem com os mesmos degraus e ids por atribuir.
 #[test]
 fn o_projeto_195_le_o_vec_filter_sem_ids() {
+    let _fio = ph2d_physics_ecs::LayerRowsV218::enter();
     use ph2d_ecs::FxOp;
     let mut sombra = FxOp::new(FxOp::DROP_SHADOW);
     sombra.radius = 0.25;
@@ -93,6 +95,7 @@ fn o_projeto_195_le_o_vec_filter_sem_ids() {
 /// tintas e efeitos e os ids por atribuir. Sem o âmbito `PilhaLayoutV23` o ficheiro não se lê igual.
 #[test]
 fn o_projeto_199_le_a_pilha_do_vetor_sem_ids() {
+    let _fio = ph2d_physics_ecs::LayerRowsV218::enter();
     const V23: &[u8] =
         include_bytes!("../../../crates/ph2d-vec-scene/tests/it/fixtures/vec_scene_v23_pilha.bin");
     let cena = ph2d_vec_scene::VecScene::from_bytes(V23).expect("a fixtura v23 abre");
@@ -129,6 +132,7 @@ fn o_projeto_199_le_a_pilha_do_vetor_sem_ids() {
 /// cena vai na forma do fio do `206` (`VecScene` v25, a fixtura real), costurada como no `199`.
 #[test]
 fn o_projeto_196_le_os_relogios_e_as_poses_sem_ids() {
+    let _fio = ph2d_physics_ecs::LayerRowsV218::enter();
     let tw = ph2d_ecs::Tweens(vec![Default::default()]);
     let pf = ph2d_ecs::PathFollow {
         relogio: 1,

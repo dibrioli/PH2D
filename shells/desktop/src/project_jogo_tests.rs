@@ -55,6 +55,7 @@ fn o_formato_do_jogo_atravessa_o_arquivo() {
 /// ⭐ **Um v197 abre, com 16:9**. ⚠️ Os bytes são escritos campo a campo (a forma de então, sem o campo).
 #[test]
 fn um_v197_abre_com_o_formato_de_fabrica() {
+    let _fio = ph2d_physics_ecs::LayerRowsV218::enter();
     let f = arquivo(Vec::new());
     let v197 = (
         &f.assets,

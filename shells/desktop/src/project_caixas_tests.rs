@@ -41,6 +41,7 @@ fn abre(ver: u32) -> Constraints {
 /// ⭐ **Um v209 abre com as faixas sobre caixas viradas; um v210 abre igual.**
 #[test]
 fn um_v209_vira_o_follow_value_sobre_caixas_e_um_v210_nao() {
+    let _fio = ph2d_physics_ecs::LayerRowsV218::enter();
     let antes: Constraints = postcard::from_bytes(PILHA_V209).expect("a fixture");
     assert_eq!(abre(PROJECT_SCHEMA), antes, "v210: nada muda");
     let mut esperada = antes.clone();

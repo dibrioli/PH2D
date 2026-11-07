@@ -339,7 +339,7 @@ pub(super) fn escreve_o_sulco(
             // O corte segue a cobertura crua: alisada, passava do anel da Borracha.
             let cortou = f32::from(sulco.cobriu[y * w + x]) / 255.0 * corte;
             let fica = (1.0 - (tir[k] * forca * g).clamp(0.0, 1.0)) * (1.0 - cortou);
-            // Conta sobre o alfa inteiro: em f32, 164/255·255 < 164, e ele perdia um ponto onde não se tirou nada.
+            // O alisar deixa `fica` um nada abaixo de 1: com o floor, o alfa perdia um ponto onde não se tirou nada.
             if fica < 1.0 - NADA_SAI {
                 tela[o + 3] = (f32::from(sulco.antes[o + 3]) * fica).floor() as u8;
             } else {

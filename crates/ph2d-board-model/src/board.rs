@@ -5,26 +5,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::{BoardDoc, Files, Team};
 
-/// Versão do formato de [`BoardSet::to_bytes`]. postcard é posicional: qualquer campo novo sobe-a,
-/// e as anteriores continuam a ler-se (`legacy.rs`). 2 = formas com estilo, texto e rotação (W1);
-/// 3 = o texto das formas com estilo por trecho (W3); 4 = o rascunho (`Style::sketch`,
-/// `Board::sketch`) e os traços da caneta (W4); 5 = organizar — frames, grupos, travar, links e
-/// etiquetas (W5); 6 = o nó de mapa mental (`Org::mind`, W6); 7 = os votos e os carimbos
-/// (`Org::votes`, `Org::stamps`, W7); 8 = a equipa (`Board::team`: comentários, versões, frames fora da
-/// apresentação, W8); 9 = o aspecto que vem do Excalidraw (`Style::look`: preenchimento, rugosidade 2,
-/// alinhamento e letra do texto; `Org::seed`: a semente do tremor, W9); 10 = a identidade das
-/// mensagens e das versões da equipa (`Message::id`, `Version::id`, W11 — ADR-0181); 11 = o histórico
-/// das votações (`Team::polls`, `Team::shown`) e o elemento sem `Org::votes` (W13 — ADR-0183); 12 = as
-/// imagens (`Board::files`, `Version::files`, `ElementKind::Image`, W14); 13 = o filtro da imagem
-/// (`Image::filter`, W15); 14 = o segmento do meio do cotovelo (`Connector::mids`, W23 — doc 13);
-/// 15 = os textos ao longo da linha da seta (`Connector::captions`, `Connector::turn`, W23 — doc 14);
-/// 16 = as menções das mensagens (`Message::mentions`, W23 B14 — doc 17); 17 = a escala de nascença
-/// do traço (`Style::birth`) e a tinta limpa (`Ink::clean`) — auditoria do Sketch, doc 17 §9; 18 = o
-/// Kanban no quadro (`ElementKind::Kanban`, ADR-0195 §3). Os bytes do 17 são os do 18 sem a variante
-/// nova: lê-os o mesmo leitor; o degrau existe para um build do 17 recusar o ficheiro PELO NOME em vez
-/// de tropeçar num discriminante que não conhece. 19 = a rolagem de cada lista na vista do Kanban
-/// (`KanbanBoardView::scroll_y`, W4 V2); o 17 e o 18 leem-se pelo mesmo leitor, a vista pela forma do
-/// 18 (`kanban::reading`).
+/// Versão do formato de [`BoardSet::to_bytes`]. postcard é posicional: qualquer campo novo sobe-a;
+/// só a atual se lê, qualquer outra recusa-se com uma mensagem (sem arquivo antigo, dono 07/11).
 pub const FORMAT_VERSION: u32 = 19;
 
 /// Identidade de um quadro no projecto. Nunca reusada.
@@ -84,6 +66,7 @@ impl Default for BoardSet {
 }
 
 impl BoardSet {
+    #[cfg(test)]
     pub(crate) fn from_parts(boards: Vec<Board>, next_id: u64) -> Self {
         Self {
             version: FORMAT_VERSION,
@@ -313,33 +296,15 @@ impl BoardSet {
         // A versão é o 1.º campo: lê-se sozinha, e decide com que structs ler o resto.
         let (version, _) = postcard::take_from_bytes::<u32>(bytes).map_err(|e| e.to_string())?;
         match version {
-            17 | 18 | FORMAT_VERSION => {
-                crate::kanban::reading(version, || postcard::from_bytes(bytes))
-                    .map(|mut set: Self| {
-                        set.version = FORMAT_VERSION;
-                        for b in &mut set.boards {
-                            b.doc.reindex();
-                        }
-                        set
-                    })
-                    .map_err(|e| e.to_string())
-            }
-            1 => crate::legacy::read_v1(bytes),
-            2 => crate::legacy::read_v2(bytes),
-            3 => crate::legacy::read_v3(bytes),
-            4 => crate::legacy::read_v4(bytes),
-            5 => crate::legacy::read_v5(bytes),
-            6 => crate::legacy::read_v6(bytes),
-            7 => crate::legacy::read_v7(bytes),
-            8 => crate::legacy::read_v8(bytes),
-            9 => crate::legacy::read_v9(bytes),
-            10 => crate::legacy::read_v10(bytes),
-            11 => crate::legacy::read_v11(bytes),
-            12 => crate::legacy::read_v12(bytes),
-            13 => crate::legacy::read_v13(bytes),
-            14 => crate::legacy::read_v14(bytes),
-            15 => crate::legacy::read_v15(bytes),
-            16 => crate::legacy::read_v16(bytes),
+            FORMAT_VERSION => postcard::from_bytes(bytes)
+                .map(|mut set: Self| {
+                    set.version = FORMAT_VERSION;
+                    for b in &mut set.boards {
+                        b.doc.reindex();
+                    }
+                    set
+                })
+                .map_err(|e| e.to_string()),
             v => Err(format!("board format version {v} != {FORMAT_VERSION}")),
         }
     }

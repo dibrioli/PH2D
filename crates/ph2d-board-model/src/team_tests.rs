@@ -344,41 +344,6 @@ fn the_team_round_trips_and_travels_with_a_duplicated_board() {
     assert_eq!(set.get(d).unwrap().team, set.get(a).unwrap().team);
 }
 
-/// ⭐ Um ficheiro do formato 7 (W7) continua a abrir — gravado pelo build de `74e5b7163` (o último do
-/// formato 7, um teste temporário que escreveu `to_bytes`): um frame «Ideas», uma nota dentro dele com
-/// 3 votos, um carimbo e uma etiqueta, um rectângulo e uma seta entre os dois. Sem equipa.
-#[test]
-fn a_format_7_file_still_opens_with_no_team() {
-    let set = BoardSet::from_bytes(V7_BYTES).expect("o formato 7 lê-se");
-    let b = &set.boards()[0];
-    assert_eq!(b.name, "Retro7");
-    assert_eq!(b.camera.zoom, 0.75);
-    let els = b.doc.live_in_z_order();
-    assert_eq!(els.len(), 4);
-    assert_eq!(els[0].as_frame().unwrap().name, "Ideas");
-    let note = els[1];
-    assert_eq!(note.frame, Some(els[0].id));
-    assert_eq!(note.stamps().len(), 1);
-    // W13 (ADR-0183): os 3 votos da nota viram a única sessão do histórico, mostrada.
-    let [p] = &b.team.polls[..] else {
-        panic!("uma sessão: os votos do ficheiro");
-    };
-    assert_eq!(p.totals.iter().collect::<Vec<_>>(), [(&note.id, &3)]);
-    assert_eq!(b.team.shown, Some(p.id));
-    assert!(b.team.threads.is_empty() && b.team.versions.is_empty());
-    assert_eq!(note.tags()[0].name, "urgente");
-    assert!(els[3].connector().is_some());
-    assert_eq!(b.doc.frames_in_panel_order()[0].id, els[0].id);
-    let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
-    assert_eq!(
-        back, set,
-        "relido e regravado no formato actual, fica igual"
-    );
-}
-
-/// Gravados pelo build do formato 7 (`74e5b7163`).
-const V7_BYTES: &[u8] = include_bytes!("../fixtures/format_v7.bin");
-
 /// ⭐ R4/P1 — «não apresentar» é documento: a versão leva-o (a auditoria W8 viu a restaurada voltar a
 /// apresentar o frame escondido).
 #[test]
@@ -455,35 +420,6 @@ fn a_team_step_of_a_gone_thread_is_spent() {
     assert!(team.delete(t, first, "Ana"));
     assert!(h.undo_team(&mut team));
     assert!(!h.can_undo() && !h.can_redo());
-}
-
-/// Gravados pelo build do formato 15 (`401153313a`): um fio do Rui («@Enio look at this») e a resposta
-/// do Enio («ok @Rui») — o texto tinha as letras, não a menção.
-const V15_BYTES: &[u8] = include_bytes!("../fixtures/format_v15.bin");
-
-/// ⭐ W23 B14 — o ficheiro do formato 15 lê-se, as mensagens SEM menções (as letras «@Enio» de um
-/// ficheiro antigo não chamam ninguém: ninguém as escolheu), e o 16 vai e volta com elas.
-#[test]
-fn format_15_reads_with_no_mentions_and_16_keeps_them() {
-    assert_eq!(postcard::take_from_bytes::<u32>(V15_BYTES).unwrap().0, 15);
-    let mut set = crate::BoardSet::from_bytes(V15_BYTES).unwrap();
-    let b = set.boards()[0].id;
-    let board = set.get_mut(b).unwrap();
-    let t = &board.team.threads[0];
-    assert_eq!(t.messages[0].text, "@Enio look at this");
-    assert!(t.messages.iter().all(|m| m.mentions.is_empty()));
-    let id = t.id;
-    assert!(board.team.reply_calling(
-        id,
-        "Rui",
-        "@Enio and @everyone",
-        &[crate::Who::Person("Enio".into()), crate::Who::Everyone],
-        1_760_000_200,
-    ));
-    let back = crate::BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
-    assert_eq!(back, set);
-    let m = back.boards()[0].team.threads[0].messages.last().unwrap();
-    assert_eq!(m.mentions.len(), 2);
 }
 
 /// Só fica chamado quem o texto mostra — à nascença e depois de editar.

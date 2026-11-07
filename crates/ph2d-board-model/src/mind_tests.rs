@@ -344,35 +344,6 @@ fn a_cycle_does_not_hang_the_layout() {
     let _ = m.doc.mind_depth(b);
 }
 
-/// ⭐ Um ficheiro do formato 5 (W5) continua a abrir — gravado pelo build de `ca8f35143` (o último do
-/// formato 5): um frame, uma nota dentro dele num grupo, travada, com link e etiqueta, e um
-/// rectângulo com texto. Nada é nó de mapa.
-#[test]
-fn a_format_5_file_still_opens_and_nothing_in_it_is_a_mind_node() {
-    let set = crate::BoardSet::from_bytes(V5_BYTES).expect("o formato 5 lê-se");
-    let b = &set.boards()[0];
-    assert_eq!(b.name, "Org5");
-    assert_eq!(b.camera.zoom, 0.5);
-    let els = b.doc.live_in_z_order();
-    assert_eq!(els.len(), 3);
-    assert!(els[0].as_frame().is_some());
-    assert!(b.doc.has_frames(), "o índice dos frames refaz-se");
-    let note = els[1];
-    assert_eq!(note.frame, Some(els[0].id));
-    assert!(note.locked() && note.groups().len() == 1 && note.link() == Some(els[0].id));
-    assert_eq!(note.tags()[0].name, "urgente");
-    assert_eq!(els[2].shape().unwrap().text.as_str(), "caixa");
-    assert!(els.iter().all(|e| e.mind().is_none()));
-    let back = crate::BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
-    assert_eq!(
-        back, set,
-        "relido e regravado no formato actual, fica igual"
-    );
-}
-
-/// Gravados pelo build do formato 5 (`ca8f35143`, um teste temporário que escreveu `to_bytes`).
-const V5_BYTES: &[u8] = include_bytes!("../fixtures/format_v5.bin");
-
 /// ⭐ M13: o ramo é a curva medida do Miro — da borda de fora do pai à de dentro do filho, a meia
 /// altura, tangentes horizontais, braço 0,39 do vão (40,5 em 104, cinco ramos da imagem, rms ≤ 0,97).
 #[test]

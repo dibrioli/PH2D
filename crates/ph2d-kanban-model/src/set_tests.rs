@@ -162,30 +162,6 @@ fn remove_and_insert_put_a_kanban_back_whole() {
     assert_eq!(set.get(id), Some(&k));
 }
 
-/// A fixture gravada pelo código v1 (cabeçalho `#`, depois hex).
-fn v1_fixture() -> Vec<u8> {
-    let text = include_str!("../tests/fixtures/kanban_set_v1_full.hex");
-    let hex: String = text.lines().filter(|l| !l.starts_with('#')).collect();
-    (0..hex.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
-        .collect()
-}
-
-#[test]
-fn v1_bytes_read_as_v2_equal() {
-    let bytes = v1_fixture();
-    assert_eq!(postcard::take_from_bytes::<u32>(&bytes).unwrap().0, 1);
-    let back = KanbanSet::from_bytes(&bytes).unwrap();
-    assert_eq!(
-        back,
-        full(),
-        "o degrau v1 → v2 dá o mesmo conjunto que o código de hoje monta"
-    );
-    let again = KanbanSet::from_bytes(&back.to_bytes().unwrap()).unwrap();
-    assert_eq!(again, back, "e, regravado em v2, continua igual");
-}
-
 /// `full()` mais tudo o que o v2 trouxe: seguir (três níveis), origem, atividade, ficheiros.
 fn full_v2() -> (KanbanSet, crate::FileId, crate::FileId) {
     let mut set = full();
@@ -275,32 +251,6 @@ fn orphan_files_are_not_saved_and_the_same_bytes_are_one_file() {
     );
 }
 
-/// A fixture gravada pelo código v2 (cabeçalho `#`, depois hex).
-fn v2_fixture() -> Vec<u8> {
-    let text = include_str!("../tests/fixtures/kanban_set_v2_full.hex");
-    let hex: String = text.lines().filter(|l| !l.starts_with('#')).collect();
-    (0..hex.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
-        .collect()
-}
-
-#[test]
-fn v2_bytes_read_as_v3_equal() {
-    let bytes = v2_fixture();
-    assert_eq!(postcard::take_from_bytes::<u32>(&bytes).unwrap().0, 2);
-    let back = KanbanSet::from_bytes(&bytes).unwrap();
-    let (today, cover, _) = full_v2();
-    assert_eq!(
-        back.iter().collect::<Vec<_>>(),
-        today.iter().collect::<Vec<_>>(),
-        "o degrau v2 → v3 dá os mesmos Kanbans que o código de hoje monta"
-    );
-    assert_eq!(back.file(cover), today.file(cover));
-    let again = KanbanSet::from_bytes(&back.to_bytes().unwrap()).unwrap();
-    assert_eq!(again, back, "e, regravado em v3, continua igual");
-}
-
 /// O v2 cheio mais o que o v3 trouxe: um modelo, o envelhecimento e um espelho noutro Kanban.
 fn full_v3() -> (KanbanSet, crate::CardRef) {
     let (mut set, _, _) = full_v2();
@@ -348,31 +298,6 @@ fn the_v3_bytes_round_trip_templates_aging_and_mirrors() {
         Some(crate::Aging::Pirate)
     );
     assert!(back.card(of).unwrap().template);
-}
-
-/// A fixture gravada pelo código v3 (cabeçalho `#`, depois hex).
-fn v3_fixture() -> Vec<u8> {
-    let text = include_str!("../tests/fixtures/kanban_set_v3_full.hex");
-    let hex: String = text.lines().filter(|l| !l.starts_with('#')).collect();
-    (0..hex.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
-        .collect()
-}
-
-#[test]
-fn v3_bytes_read_as_v4_equal() {
-    let bytes = v3_fixture();
-    assert_eq!(postcard::take_from_bytes::<u32>(&bytes).unwrap().0, 3);
-    let back = KanbanSet::from_bytes(&bytes).unwrap();
-    let (today, _) = full_v3();
-    assert!(
-        back.iter().eq(today.iter()),
-        "o degrau v3 → v4 dá os mesmos Kanbans que o código de hoje monta"
-    );
-    assert!(back.iter().all(|k| k.automations.is_empty()));
-    let again = KanbanSet::from_bytes(&back.to_bytes().unwrap()).unwrap();
-    assert_eq!(again, back, "e, regravado em v4, continua igual");
 }
 
 /// O v3 cheio mais uma automação (o que o v4 trouxe).

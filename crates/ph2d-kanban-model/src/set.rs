@@ -11,13 +11,8 @@ use crate::kanban::{Background, Kanban};
 use crate::ops::{KanbanOp, apply_batch};
 use crate::records::{CoverFill, KanbanId, Link};
 
-/// A versão dos bytes de [`KanbanSet::to_bytes`]. v2 (W3): seguir, atividade, origem do cartão,
-/// ficheiros por conteúdo. v3 (W6): modelos de cartão, envelhecimento, espelhos. v4 (W8): as
-/// automações. v5 (W9): a agenda do projecto (eventos, Inbox, Planner, lidas). v6 (W11): as ligações
-/// dos cartões ao projecto. v7 (W9 P2): as excepções das séries de eventos. v8 (D11): o fundo com cor
-/// livre e com padrão ([`crate::Background`] ganhou variantes no FIM). As antigas leem-se pelos
-/// degraus de [`crate::v1`]..[`crate::v6`]; a v7 pelos tipos de hoje (gate
-/// `v7_bytes_read_as_v8_equal`).
+/// A versão dos bytes de [`KanbanSet::to_bytes`]; só a atual se lê, qualquer outra recusa-se com uma
+/// mensagem (sem arquivo antigo, dono 07/11).
 pub const FORMAT_VERSION: u32 = 8;
 
 /// Os Kanbans de um projecto, pela ordem em que nasceram.
@@ -209,49 +204,8 @@ impl KanbanSet {
         }
         let (version, _) = postcard::take_from_bytes::<u32>(bytes).map_err(|e| e.to_string())?;
         match version {
-            // O v8 só acrescentou variantes no fim do `Background`: os bytes v7 são bytes v8.
-            FORMAT_VERSION | 7 => postcard::from_bytes::<(u32, Self)>(bytes)
+            FORMAT_VERSION => postcard::from_bytes::<(u32, Self)>(bytes)
                 .map(|(_, set)| set)
-                .map_err(|e| e.to_string()),
-            6 => postcard::from_bytes::<(u32, crate::v6::SetV6)>(bytes)
-                .map(|(_, old)| {
-                    let (kanbans, next_id, files, agenda) = old.upgrade();
-                    let mut set = Self::with_kanbans(kanbans, next_id, files);
-                    set.agenda = agenda;
-                    set
-                })
-                .map_err(|e| e.to_string()),
-            5 => postcard::from_bytes::<(u32, crate::v5::SetV5)>(bytes)
-                .map(|(_, old)| {
-                    let (kanbans, next_id, files, agenda) = old.upgrade();
-                    let mut set = Self::with_kanbans(kanbans, next_id, files);
-                    set.agenda = agenda;
-                    set
-                })
-                .map_err(|e| e.to_string()),
-            4 => postcard::from_bytes::<(u32, crate::v4::SetV4)>(bytes)
-                .map(|(_, old)| {
-                    let (kanbans, next_id, files) = old.upgrade();
-                    Self::with_kanbans(kanbans, next_id, files)
-                })
-                .map_err(|e| e.to_string()),
-            3 => postcard::from_bytes::<(u32, crate::v3::SetV3)>(bytes)
-                .map(|(_, old)| {
-                    let (kanbans, next_id, files) = old.upgrade();
-                    Self::with_kanbans(kanbans, next_id, files)
-                })
-                .map_err(|e| e.to_string()),
-            2 => postcard::from_bytes::<(u32, crate::v2::SetV2)>(bytes)
-                .map(|(_, old)| {
-                    let (kanbans, next_id, files) = old.upgrade();
-                    Self::with_kanbans(kanbans, next_id, files)
-                })
-                .map_err(|e| e.to_string()),
-            1 => postcard::from_bytes::<(u32, crate::v1::SetV1)>(bytes)
-                .map(|(_, old)| {
-                    let (kanbans, next_id) = old.upgrade();
-                    Self::with_kanbans(kanbans, next_id, BTreeMap::new())
-                })
                 .map_err(|e| e.to_string()),
             v => Err(format!("kanban format version {v} != {FORMAT_VERSION}")),
         }

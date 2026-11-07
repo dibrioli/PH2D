@@ -142,7 +142,7 @@ pub struct Thread {
 }
 
 /// Uma versão nomeada (R1): os bytes de um [`crate::BoardSet`] de UM quadro (com a versão de formato
-/// dentro — o leitor dos formatos antigos abre-a), comprimidos com deflate 1 (§4.1: 2,1 MB e 14,5 ms
+/// dentro), comprimidos com deflate 1 (§4.1: 2,1 MB e 14,5 ms
 /// para 100 mil elementos).
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Version {
@@ -277,22 +277,6 @@ impl Team {
     /// [`Board::set_session`] liga o documento e a equipa juntos.
     pub fn set_session(&mut self, seed: Option<u64>) {
         self.session = crate::session::Lottery::new(seed);
-    }
-
-    /// A equipa do formato 10 (sem votações): o leitor dele (`legacy_v10.rs`) não vê os campos privados.
-    pub(crate) fn from_v10(
-        threads: Vec<Thread>,
-        versions: Vec<Version>,
-        hidden_slides: BTreeSet<ElementId>,
-        next_id: u64,
-    ) -> Self {
-        Self {
-            threads,
-            versions,
-            hidden_slides,
-            next_id,
-            ..Self::default()
-        }
     }
 
     /// Abre um fio novo com a 1.ª mensagem; quem o escreve já o leu. Texto vazio (só espaços) não abre.

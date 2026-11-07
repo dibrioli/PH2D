@@ -1,14 +1,6 @@
 use super::*;
 use crate::{KanbanOp, Record, RecordId};
 
-fn hex_fixture(text: &str) -> Vec<u8> {
-    let hex: String = text.lines().filter(|l| !l.starts_with('#')).collect();
-    (0..hex.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
-        .collect()
-}
-
 /// O primeiro cartão do primeiro Kanban.
 fn first(set: &KanbanSet) -> CardRef {
     let k = set.iter().next().unwrap();
@@ -63,22 +55,6 @@ pub(crate) fn full_v6() -> (KanbanSet, CardRef) {
         link(&mut set, at, t, n);
     }
     (set, at)
-}
-
-#[test]
-fn v5_bytes_read_as_v6_equal() {
-    let bytes = hex_fixture(include_str!("../tests/fixtures/kanban_set_v5_full.hex"));
-    assert_eq!(postcard::take_from_bytes::<u32>(&bytes).unwrap().0, 5);
-    let back = KanbanSet::from_bytes(&bytes).unwrap();
-    let today = crate::agenda::tests::full_v5();
-    assert!(
-        back.iter().eq(today.iter()),
-        "o degrau v5 → v6 dá os mesmos Kanbans"
-    );
-    assert_eq!(back.agenda(), today.agenda(), "e a mesma agenda");
-    assert!(back.iter().all(|k| k.project_links.is_empty()));
-    let again = KanbanSet::from_bytes(&back.to_bytes().unwrap()).unwrap();
-    assert_eq!(again, back, "e, regravado em v6, continua igual");
 }
 
 #[test]

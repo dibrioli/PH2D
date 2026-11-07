@@ -30,12 +30,6 @@ mod set;
 #[cfg(test)]
 mod test_support;
 mod transfer;
-mod v1;
-mod v2;
-mod v3;
-mod v4;
-mod v5;
-mod v6;
 mod view;
 
 pub use activity::{Activity, Actor, Happened, Snapshot, Subject, activity_for, apply_logged};

@@ -1,9 +1,9 @@
 //! W23 B5(1) — o segmento do meio do cotovelo no modelo: alinhado com os pontos de ajuste, gravado
-//! (formato 14, o 13 lê-se) e no registo ao vivo dos pontos; W23 B5(2) — os textos ao longo da linha
-//! (formato 15, o 14 lê-se) e os registos deles.
+//! (formato 14) e no registo ao vivo dos pontos; W23 B5(2) — os textos ao longo da linha
+//! (formato 15) e os registos deles.
 
 use super::*;
-use crate::{BoardSet, ElementKind, FORMAT_VERSION, Field, Rgba};
+use crate::{Field, Rgba};
 
 fn arrow(waypoints: Vec<[f64; 2]>) -> Connector {
     let ink = Rgba([0, 0, 0, 255]);
@@ -47,54 +47,6 @@ fn a_waypoint_split_keeps_each_other_leg_its_own_middle() {
     );
 }
 
-/// ⭐ Um ficheiro do formato 13 continua a abrir — gravado pelo build de `10c11f8be2` (teste
-/// temporário que escreveu `to_bytes`, apagado): «Setas13» com duas caixas e uma seta cotovelo presa
-/// às duas, pontas `Circle`/`Arrow`, rótulo «sim» e um ponto de ajuste em (250, 200). Lê-se sem meios
-/// fixos, e grava-se no formato de hoje.
-#[test]
-fn a_format_13_file_still_opens_with_its_elbow_unpinned() {
-    let set = BoardSet::from_bytes(V13_BYTES).expect("o formato 13 lê-se");
-    let b = &set.boards()[0];
-    assert_eq!(b.name, "Setas13");
-    let c = b
-        .doc
-        .live()
-        .find_map(|e| match &e.kind {
-            ElementKind::Connector(c) => Some(&**c),
-            _ => None,
-        })
-        .expect("a seta");
-    assert_eq!(c.route, Route::Elbow);
-    assert_eq!(c.heads, [Head::Circle, Head::Arrow]);
-    assert_eq!(c.captions, vec![Caption::new("sim", Caption::MIDDLE)]);
-    assert_eq!(c.turn, TextTurn::Level);
-    assert_eq!(c.waypoints, vec![[250.0, 200.0]]);
-    assert!(c.mids.is_empty());
-    let mut set = set;
-    let id = set.boards()[0].id;
-    let doc = &mut set.get_mut(id).unwrap().doc;
-    let mut el = doc
-        .live()
-        .find(|e| e.connector().is_some())
-        .unwrap()
-        .clone();
-    el.connector_mut().unwrap().set_mid(1, Some(0.3));
-    crate::BoardOp::Put(el).apply(doc);
-    let bytes = set.to_bytes().unwrap();
-    assert_eq!(
-        postcard::take_from_bytes::<u32>(&bytes).unwrap().0,
-        FORMAT_VERSION
-    );
-    assert_eq!(
-        BoardSet::from_bytes(&bytes).unwrap(),
-        set,
-        "o de hoje vai e volta"
-    );
-}
-
-/// Gravados pelo build do formato 13 (`10c11f8be2`).
-const V13_BYTES: &[u8] = include_bytes!("../fixtures/format_v13.bin");
-
 /// ⭐ Os pontos de ajuste e os meios viajam no MESMO registo: dois colegas não os desalinham.
 #[test]
 fn the_waypoints_field_carries_the_middles() {
@@ -108,40 +60,6 @@ fn the_waypoints_field_carries_the_middles() {
     assert_eq!(b.connector().unwrap().waypoints, vec![[200.0, 0.0]]);
     assert_eq!(b.connector().unwrap().mids, vec![None, Some(0.8)]);
 }
-
-/// ⭐ W23 B5(2) — um ficheiro do formato 14 continua a abrir — gravado pelo build de `0353869e6d`
-/// (teste temporário que escreveu `to_bytes`, apagado): o «Setas13» acima renomeado «Setas14», com o
-/// segmento do meio do trecho 1 fixo a 0,3. O rótulo «sim» volta como UM texto a meio, deitado na
-/// horizontal como o artista o via, e o meio fixo fica.
-#[test]
-fn a_format_14_file_opens_with_its_label_as_one_level_caption() {
-    let set = BoardSet::from_bytes(V14_BYTES).expect("o formato 14 lê-se");
-    let b = &set.boards()[0];
-    assert_eq!(b.name, "Setas14");
-    let c = b
-        .doc
-        .live()
-        .find_map(|e| e.connector())
-        .expect("a seta")
-        .clone();
-    assert_eq!(c.captions, vec![Caption::new("sim", Caption::MIDDLE)]);
-    assert_eq!(c.turn, TextTurn::Level);
-    assert_eq!(c.mids, vec![None, Some(0.3)]);
-    assert_eq!(c.waypoints, vec![[250.0, 200.0]]);
-    let bytes = set.to_bytes().unwrap();
-    assert_eq!(
-        postcard::take_from_bytes::<u32>(&bytes).unwrap().0,
-        FORMAT_VERSION
-    );
-    assert_eq!(
-        BoardSet::from_bytes(&bytes).unwrap(),
-        set,
-        "o 15 vai e volta"
-    );
-}
-
-/// Gravados pelo build do formato 14 (`0353869e6d`).
-const V14_BYTES: &[u8] = include_bytes!("../fixtures/format_v14.bin");
 
 /// ⭐ Os textos e o modo de os deitar são DOIS registos: um colega que deita os textos e outro que
 /// escreve num deles ficam os dois.

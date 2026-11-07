@@ -62,37 +62,6 @@ fn stamps_round_trip_through_the_bytes() {
     assert_eq!(back, set);
 }
 
-/// ⭐ Um ficheiro do formato 6 (W6) continua a abrir — gravado pelo build de `6a9b47240` (o último do
-/// formato 6, um teste temporário que escreveu `to_bytes`): um frame, uma nota dentro dele com
-/// etiqueta, e um mapa (a raiz e um filho recolhido). Nada tem votos nem carimbos.
-#[test]
-fn a_format_6_file_still_opens_with_no_votes_or_stamps() {
-    let set = BoardSet::from_bytes(V6_BYTES).expect("o formato 6 lê-se");
-    let b = &set.boards()[0];
-    assert_eq!(b.name, "Mind6");
-    assert_eq!(b.camera.zoom, 0.5);
-    let els = b.doc.live_in_z_order();
-    assert_eq!(els.len(), 4);
-    assert!(els[0].as_frame().is_some());
-    let note = els[1];
-    assert_eq!(note.frame, Some(els[0].id));
-    assert_eq!(note.tags()[0].name, "urgente");
-    assert_eq!(els[2].shape().unwrap().text.as_str(), "Plan");
-    assert!(els[2].mind().is_some_and(|m| m.parent.is_none()));
-    let child = els[3].mind().expect("o filho é nó");
-    assert!(child.collapsed && child.parent == Some(els[2].id));
-    assert!(els.iter().all(|e| e.stamps().is_empty()));
-    assert!(b.team.polls.is_empty(), "sem votos, sem sessão");
-    let back = BoardSet::from_bytes(&set.to_bytes().unwrap()).unwrap();
-    assert_eq!(
-        back, set,
-        "relido e regravado no formato actual, fica igual"
-    );
-}
-
-/// Gravados pelo build do formato 6 (`6a9b47240`).
-const V6_BYTES: &[u8] = include_bytes!("../fixtures/format_v6.bin");
-
 /// ⭐ V2/V5: o `+` e o selo são os medidos do Miro — o `+` 0,21 do lado com o centro NO canto; o selo
 /// de 0,22 (o menor total) a 0,34 (o maior), a 0,03 do canto para fora; um só total = o maior.
 #[test]

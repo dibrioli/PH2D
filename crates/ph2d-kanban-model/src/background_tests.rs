@@ -48,25 +48,6 @@ pub(crate) fn full_v7() -> KanbanSet {
     set
 }
 
-#[test]
-fn v7_bytes_read_as_v8_equal() {
-    let bytes = hex_fixture(include_str!("../tests/fixtures/kanban_set_v7_full.hex"));
-    assert_eq!(postcard::take_from_bytes::<u32>(&bytes).unwrap().0, 7);
-    let back = KanbanSet::from_bytes(&bytes).unwrap();
-    let today = full_v7();
-    assert!(
-        back.iter().eq(today.iter()),
-        "o degrau v7 → v8 dá os mesmos Kanbans"
-    );
-    assert_eq!(back.agenda(), today.agenda(), "e a mesma agenda");
-    let bgs: Vec<_> = back.iter().map(|k| k.header.background).collect();
-    assert!(bgs.contains(&Background::Color(Hue::Pink)));
-    assert!(bgs.contains(&Background::Gradient(4)));
-    assert!(bgs.iter().any(|b| matches!(b, Background::Image(_))));
-    let again = KanbanSet::from_bytes(&back.to_bytes().unwrap()).unwrap();
-    assert_eq!(again, back, "e, regravado em v8, continua igual");
-}
-
 /// O conjunto v8: o v7 e um Kanban por fundo novo (cor livre, cada padrão).
 pub(crate) fn full_v8() -> KanbanSet {
     let mut set = full_v7();

@@ -184,7 +184,7 @@ impl Connector {
         }
     }
 
-    /// Os textos de um rótulo dos formatos antigos (um só, a meio).
+    /// Os textos de um rótulo simples (um só, a meio).
     #[must_use]
     pub fn captions_of(label: String) -> Vec<Caption> {
         if label.is_empty() {

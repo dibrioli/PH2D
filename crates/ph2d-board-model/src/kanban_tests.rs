@@ -42,48 +42,6 @@ fn a_kanban_element_round_trips_with_its_view() {
     );
 }
 
-/// Os bytes do formato 17 (sem Kanbans) leem-se pelo mesmo leitor e regravam-se no de hoje.
-#[test]
-fn format_17_bytes_open_today_and_resave_as_today() {
-    let mut set = BoardSet::default();
-    set.create("Velho".into());
-    // A versão é um varint de UM byte à cabeça: o 17 é o 18 com esse byte trocado.
-    let mut old = set.to_bytes().unwrap();
-    assert_eq!(old[0], 19);
-    old[0] = 17;
-    assert_eq!(postcard::take_from_bytes::<u32>(&old).unwrap().0, 17);
-    let back = BoardSet::from_bytes(&old).unwrap();
-    assert_eq!(back.boards(), set.boards());
-    let again = back.to_bytes().unwrap();
-    assert_eq!(
-        postcard::take_from_bytes::<u32>(&again).unwrap().0,
-        FORMAT_VERSION
-    );
-}
-
-/// Gravados pelo build do formato 18 (`e8eb96649e`, o [`set_with_kanban`] de então com a vista
-/// `scroll: [12.5, -3.0]`, zoom 0,75, a lista 4 recolhida): abrem no 19 com a rolagem horizontal, sem
-/// rolagem de listas, e regravam-se no 19.
-const V18_BYTES: &[u8] = include_bytes!("../fixtures/format_v18.bin");
-
-#[test]
-fn format_18_bytes_open_in_19_with_the_view_and_resave_as_19() {
-    assert_eq!(postcard::take_from_bytes::<u32>(V18_BYTES).unwrap().0, 18);
-    let back = BoardSet::from_bytes(V18_BYTES).unwrap();
-    let (mut want, id) = set_with_kanban();
-    want.get_mut(crate::BoardId(1))
-        .unwrap()
-        .doc
-        .kanban_view_mut(id)
-        .unwrap()
-        .scroll_y
-        .clear();
-    assert_eq!(back, want);
-    let again = back.to_bytes().unwrap();
-    assert_eq!(postcard::take_from_bytes::<u32>(&again).unwrap().0, 19);
-    assert_eq!(BoardSet::from_bytes(&again).unwrap(), want);
-}
-
 /// Só a REFERÊNCIA é um registo (viaja e desfaz-se); a vista não.
 #[test]
 fn the_kanban_reference_is_a_field_and_the_view_is_not() {

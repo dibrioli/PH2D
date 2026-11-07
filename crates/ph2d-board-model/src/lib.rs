@@ -18,7 +18,6 @@ mod history;
 mod image;
 mod ink;
 mod kanban;
-mod legacy;
 mod mind;
 mod ops;
 mod organize;

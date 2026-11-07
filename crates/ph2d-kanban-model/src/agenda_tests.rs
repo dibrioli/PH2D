@@ -2,14 +2,6 @@ use super::*;
 use crate::records::Meta;
 use crate::{History, KanbanOp, KanbanSet, Record};
 
-fn hex_fixture(text: &str) -> Vec<u8> {
-    let hex: String = text.lines().filter(|l| !l.starts_with('#')).collect();
-    (0..hex.len())
-        .step_by(2)
-        .map(|i| u8::from_str_radix(&hex[i..i + 2], 16).unwrap())
-        .collect()
-}
-
 fn me() -> Member {
     Member("Ana".into())
 }
@@ -62,25 +54,6 @@ pub(crate) fn full_v5() -> KanbanSet {
     ];
     assert_eq!(set.apply(KanbanId::AGENDA, ops).len(), 4);
     set
-}
-
-#[test]
-fn v4_bytes_read_as_v5_equal() {
-    let bytes = hex_fixture(include_str!("../tests/fixtures/kanban_set_v4_full.hex"));
-    assert_eq!(postcard::take_from_bytes::<u32>(&bytes).unwrap().0, 4);
-    let back = KanbanSet::from_bytes(&bytes).unwrap();
-    let (today, _, _) = crate::set::tests::full_v4();
-    assert!(
-        back.iter().eq(today.iter()),
-        "o degrau v4 → v5 dá os mesmos Kanbans"
-    );
-    assert_eq!(back.agenda(), today.agenda(), "e a agenda vazia");
-    assert!(
-        back.iter()
-            .all(|k| k.events.is_empty() && k.inbox.is_empty())
-    );
-    let again = KanbanSet::from_bytes(&back.to_bytes().unwrap()).unwrap();
-    assert_eq!(again, back, "e, regravado em v5, continua igual");
 }
 
 #[test]

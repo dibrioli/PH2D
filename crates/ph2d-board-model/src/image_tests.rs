@@ -4,7 +4,7 @@
 use std::collections::BTreeSet;
 
 use super::*;
-use crate::{BoardOp, BoardSet, Element, FORMAT_VERSION, Field, Rgba};
+use crate::{BoardOp, BoardSet, Element, Field, Rgba};
 
 fn style() -> Style {
     Style::new(None, None, Rgba([0, 0, 0, 255]))
@@ -198,99 +198,6 @@ fn the_source_rect_is_the_crop_or_the_whole_image() {
     });
     assert_eq!(i.source([4, 2]), [2.0, 0.0, 2.0, 2.0]);
 }
-
-/// ⭐ Um ficheiro do formato 11 (W13) continua a abrir — gravado pelo build de `72b26c071` (o último
-/// do formato 11; teste temporário num checkout à parte que escreveu `to_bytes`, apagado): «Retro11»
-/// com duas notas («ideia A», «ideia B»), um fio de 2 mensagens na A, a versão «v1» e uma votação
-/// (3 + 1 votos, mostrada); «Outro» vazio. Regrava-se no formato actual, igual.
-#[test]
-fn a_format_11_file_still_opens_and_rewrites_in_the_current_format() {
-    let set = BoardSet::from_bytes(V11_BYTES).expect("o formato 11 lê-se");
-    let b = &set.boards()[0];
-    assert_eq!(b.name, "Retro11");
-    let texts: Vec<String> = b
-        .doc
-        .live_in_z_order()
-        .iter()
-        .map(|e| e.shape().unwrap().text.as_str().to_owned())
-        .collect();
-    assert_eq!(texts, ["ideia A", "ideia B"]);
-    assert_eq!(b.team.threads[0].messages.len(), 2);
-    assert_eq!(b.team.versions.len(), 1);
-    assert!(b.team.versions[0].files.is_empty());
-    assert_eq!(b.team.versions[0].read().unwrap().name, "Retro11");
-    assert_eq!(b.team.polls.len(), 1);
-    assert_eq!(b.team.shown, Some(b.team.polls[0].id));
-    assert!(b.files.is_empty());
-    assert_eq!(set.boards()[1].name, "Outro");
-    let bytes = set.to_bytes().unwrap();
-    assert_eq!(
-        postcard::take_from_bytes::<u32>(&bytes).unwrap().0,
-        FORMAT_VERSION
-    );
-    assert_eq!(BoardSet::from_bytes(&bytes).unwrap(), set);
-}
-
-/// Gravados pelo build do formato 11 (`72b26c071`).
-const V11_BYTES: &[u8] = include_bytes!("../fixtures/format_v11.bin");
-
-/// ⭐ Um ficheiro do formato 12 (W14) continua a abrir, com as imagens sem filtro — gravado pelo build
-/// de `3e45504e5b` (o último do formato 12; teste temporário que escreveu `to_bytes`, apagado):
-/// «Fotos12» com duas imagens (a 1.ª do ficheiro 7, recortada `1,0 4×2`, espelhada na horizontal,
-/// cantos redondos, opacidade 60; a 2.ª do ficheiro 9) e a versão «v1»; «Vazio».
-#[test]
-fn a_format_12_file_still_opens_with_its_images_unfiltered() {
-    let set = BoardSet::from_bytes(V12_BYTES).expect("o formato 12 lê-se");
-    let b = &set.boards()[0];
-    assert_eq!(b.name, "Fotos12");
-    let imgs: Vec<&Image> = b
-        .doc
-        .live_in_z_order()
-        .iter()
-        .map(|e| match &e.kind {
-            ElementKind::Image(i) => &**i,
-            _ => panic!("só imagens"),
-        })
-        .collect();
-    assert_eq!(imgs.len(), 2);
-    let a = imgs[0];
-    assert_eq!(a.file, file(7).id());
-    assert_eq!(
-        a.crop,
-        Some(Crop {
-            x: 1.0,
-            y: 0.0,
-            w: 4.0,
-            h: 2.0
-        })
-    );
-    assert_eq!(a.flip, [true, false]);
-    assert!(a.style.round);
-    assert_eq!(a.style.opacity, 60);
-    assert_eq!(imgs[1].file, file(9).id());
-    assert!(imgs.iter().all(|i| i.filter == ImageFilter::Original));
-    assert_eq!(b.files.len(), 2);
-    assert_eq!(b.team.versions.len(), 1);
-    assert_eq!(
-        b.team.versions[0]
-            .read()
-            .unwrap()
-            .doc
-            .live_in_z_order()
-            .len(),
-        2
-    );
-    assert_eq!(set.boards()[1].name, "Vazio");
-    let bytes = set.to_bytes().unwrap();
-    assert_eq!(
-        postcard::take_from_bytes::<u32>(&bytes).unwrap().0,
-        FORMAT_VERSION
-    );
-    assert_eq!(BoardSet::from_bytes(&bytes).unwrap(), set);
-}
-
-/// Gravados pelo build do formato 12 (`3e45504e5b`).
-const V12_BYTES: &[u8] = include_bytes!("../fixtures/format_v12.bin");
 
 /// O filtro viaja no registo da imagem (o par ao vivo): ler e escrever `Field::Image` leva-o.
 #[test]

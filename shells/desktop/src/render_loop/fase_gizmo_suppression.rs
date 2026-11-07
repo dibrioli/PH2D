@@ -30,14 +30,8 @@ impl crate::App {
         // in `on_mouse_input`). Painting them inside `paint_hero_screen`
         // (before the floating panels) keeps gizmos BELOW the panels
         // both visually and in hit-test (z-order fix 2026-05-31).
-        // ADR-0076: the vertex-edit / authoring vector tools (Direct / Pen /
-        // Pencil / Shape) must NOT show the object-transform gizmo. Its painted
-        // box + handles overlay the shape, and those tools' `vector_*_world`
-        // reject any click over a `hit_index` widget — so the gizmo's hit-rects
-        // would block EVERY vertex/handle grab + canvas click (Enio: "Direct
-        // não move pontos/handles"). The gizmo belongs to object selection
-        // (Select) + the arrow/Move tools. Suppress the painted view here; the
-        // selection stays armed (hierarchy highlight) — just no box/handles.
+        // ADR-0076: as tools de vetor e as alças da forma querem o clique: as caixas do gizmo o roubariam.
+        // A seleção fica armada; só somem a caixa e as alças.
         // The Deform Transform temperament shows its OWN whole-region gizmo (drawn in the painter
         // overlays). The object-transform gizmo would sit ON TOP (paint_hero_screen draws after those
         // overlays) and fight it, so suppress it while Deform Transform is active — the deform box IS the

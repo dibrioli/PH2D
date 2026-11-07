@@ -82,12 +82,14 @@ fn a_alca_da_caixa_e_um_vertice_do_contorno_pintado_e_vai_ao_ponteiro() {
             let vertice = |sim: &mut SimWorld, a| {
                 let s = ecra(sim, e, cam, a);
                 let v = pintado(sim, cam);
-                v.iter().any(|p| {
-                    (p.0 - f64::from(s.0)).hypot(p.1 - f64::from(s.1)) < 0.05
-                })
+                v.iter()
+                    .any(|p| (p.0 - f64::from(s.0)).hypot(p.1 - f64::from(s.1)) < 0.05)
             };
             for a in [(1, 1), (-1, 1), (1, -1), (-1, -1)] {
-                assert!(vertice(&mut sim, Alca::Lado(a.0, a.1)), "{sx} {zoom}: {a:?}");
+                assert!(
+                    vertice(&mut sim, Alca::Lado(a.0, a.1)),
+                    "{sx} {zoom}: {a:?}"
+                );
             }
             let a = Alca::Lado(1, 1);
             let parado = ecra(&sim, e, cam, Alca::Lado(-1, -1));
@@ -96,9 +98,15 @@ fn a_alca_da_caixa_e_um_vertice_do_contorno_pintado_e_vai_ao_ponteiro() {
             let para = (s.0 + (s.0 - cx) * 0.5, s.1 + (s.1 - cy) * 0.5);
             arrasta(&mut sim, e, cam, a, para, Teclas::default());
             let d = ecra(&sim, e, cam, a);
-            assert!((d.0 - para.0).hypot(d.1 - para.1) < 0.05, "{d:?} × {para:?}");
+            assert!(
+                (d.0 - para.0).hypot(d.1 - para.1) < 0.05,
+                "{d:?} × {para:?}"
+            );
             let p = ecra(&sim, e, cam, Alca::Lado(-1, -1));
-            assert!((p.0 - parado.0).hypot(p.1 - parado.1) < 0.05, "o oposto andou");
+            assert!(
+                (p.0 - parado.0).hypot(p.1 - parado.1) < 0.05,
+                "o oposto andou"
+            );
             assert!(vertice(&mut sim, a), "depois: a alça saiu do contorno");
         }
     }
@@ -112,7 +120,12 @@ fn a_peca_com_pai_fora_da_origem_vai_ao_ponteiro() {
     p.translation = Vec2::new(-3.0, 4.0);
     let pai = sim
         .world_mut()
-        .spawn((p, RigidBody { kind: BodyKind::Static }))
+        .spawn((
+            p,
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+        ))
         .id();
     let col = Collider {
         shape: ColliderShape::Cuboid {
@@ -136,9 +149,16 @@ fn a_peca_com_pai_fora_da_origem_vai_ao_ponteiro() {
     let para = (s.0 + (s.0 - c.0), s.1 + (s.1 - c.1));
     arrasta(&mut sim, peca, cam, a, para, Teclas::default());
     let d = ecra(&sim, peca, cam, a);
-    assert!((d.0 - para.0).hypot(d.1 - para.1) < 0.05, "{d:?} × {para:?}");
+    assert!(
+        (d.0 - para.0).hypot(d.1 - para.1) < 0.05,
+        "{d:?} × {para:?}"
+    );
     let col = sim.world().get::<Collider>(peca).expect("peça");
-    assert_ne!(col.offset, [0.0, 0.0], "o lado oposto ficou: o Offset compensa");
+    assert_ne!(
+        col.offset,
+        [0.0, 0.0],
+        "o lado oposto ficou: o Offset compensa"
+    );
 }
 
 /// Forma e Offset saem da mesma edição: nenhum dos dois se perde na fila diferida (doc 17b A3).
@@ -163,8 +183,15 @@ fn forma_e_offset_chegam_juntos_e_os_canais_do_auto_key_veem_os_dois() {
     let depois = crate::canais_corpo::retrato(&sim, e.to_bits()).expect("retrato");
     let ler = crate::canais_corpo::ler;
     assert!(ler(&depois, f::MEIO_X) > ler(&antes, f::MEIO_X), "Half X");
-    assert!(ler(&depois, f::DESLOC_X) > ler(&antes, f::DESLOC_X), "Offset X");
-    assert_eq!(ler(&depois, f::MEIO_Y), ler(&antes, f::MEIO_Y), "o outro eixo não é chave");
+    assert!(
+        ler(&depois, f::DESLOC_X) > ler(&antes, f::DESLOC_X),
+        "Offset X"
+    );
+    assert_eq!(
+        ler(&depois, f::MEIO_Y),
+        ler(&antes, f::MEIO_Y),
+        "o outro eixo não é chave"
+    );
     assert_eq!(ler(&depois, f::DESLOC_Y), ler(&antes, f::DESLOC_Y));
 }
 
@@ -211,7 +238,10 @@ fn a_bola_pousa_onde_a_forma_puxada_passou_a_estar() {
             chao.scale = Vec2::new(-1.0, 2.0);
         }
         let e = corpo(&mut sim, chao, caixa, BodyKind::Static);
-        sim.world_mut().get_mut::<Collider>(e).expect("forma").offset = [0.0, 0.0];
+        sim.world_mut()
+            .get_mut::<Collider>(e)
+            .expect("forma")
+            .offset = [0.0, 0.0];
         if puxa {
             alterna(sim.world_mut(), e.to_bits());
             let cam = Camera2d::new([0.0, 0.0], 20.0);
@@ -243,10 +273,17 @@ fn a_bola_pousa_onde_a_forma_puxada_passou_a_estar() {
         for tick in 1..=240 {
             bridge.dispatch(&mut sim, true, tick);
         }
-        sim.world().get::<Transform>(bola).expect("bola").translation.y
+        sim.world()
+            .get::<Transform>(bola)
+            .expect("bola")
+            .translation
+            .y
     };
     let (sem, com) = (pousa(false, false), pousa(true, false));
-    assert!((sem - 1.0).abs() < 0.05, "o controlo: pousa no topo de partida, {sem}");
+    assert!(
+        (sem - 1.0).abs() < 0.05,
+        "o controlo: pousa no topo de partida, {sem}"
+    );
     assert!((com - 2.0).abs() < 0.05, "pousa no topo puxado, {com}");
     // Com espelho e Scale Y 2: topo de partida a 1, puxado a 2; a bola a 2,5.
     let esp = pousa(true, true);
@@ -277,5 +314,8 @@ fn o_valor_do_down_devolve_forma_e_offset_juntos() {
     );
     assert_eq!(depois.offset, [0.5, -0.5]);
     apply(&mut sim, e, antes.edicao());
-    assert_eq!(Medida::de(sim.world().get::<Collider>(e).expect("forma")), antes);
+    assert_eq!(
+        Medida::de(sim.world().get::<Collider>(e).expect("forma")),
+        antes
+    );
 }

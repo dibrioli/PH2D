@@ -65,7 +65,9 @@ impl crate::App {
                 }
             }
             Some(P::Esc) => {
-                use winit::{event::ElementState::Pressed, keyboard::KeyCode, keyboard::PhysicalKey};
+                use winit::{
+                    event::ElementState::Pressed, keyboard::KeyCode, keyboard::PhysicalKey,
+                };
                 self.escape_key(PhysicalKey::Code(KeyCode::Escape), Pressed, false);
             }
             Some(P::Desce(x, y)) => self.smoke_pointer_down(x, y),
@@ -80,7 +82,10 @@ impl crate::App {
             Some(P::Relata(s)) => {
                 let chaves = self.timeline.doc.bindings().iter();
                 let chaves = chaves.filter(|b| b.entity == alvo).count();
-                eprintln!("[forma-mao] {s} · curvas={chaves} · passos={}", self.undo.depth());
+                eprintln!(
+                    "[forma-mao] {s} · curvas={chaves} · passos={}",
+                    self.undo.depth()
+                );
             }
             None => {}
         }

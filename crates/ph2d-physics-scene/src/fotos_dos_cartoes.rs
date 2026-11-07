@@ -281,8 +281,14 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
                 offset: [0.2, 0.1],
                 ..Collider::default()
             };
-            w.spawn((pose, Name::new("Crate"), imagem, corpo(BodyKind::Static), col))
-                .id()
+            w.spawn((
+                pose,
+                Name::new("Crate"),
+                imagem,
+                corpo(BodyKind::Static),
+                col,
+            ))
+            .id()
         }
         CasoFisica::FormaSensor => {
             let col = Collider {

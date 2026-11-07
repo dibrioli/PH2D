@@ -100,7 +100,7 @@ pub fn passo_da_mao(
                 u.0,
                 u.1,
                 (s.0 - u.0).hypot(s.1 - u.1),
-                motor_de_prova(world, alvo),
+                format_args!("editando={}", crate::editando(world) == Some(alvo)),
             )))
         }
         k if k == PASSOS + 3 && plano.esc => Some(PassoDaMao::Esc),
@@ -111,8 +111,4 @@ pub fn passo_da_mao(
         k if k == PASSOS + 20 && plano.desfaz => Some(PassoDaMao::Desfaz),
         _ => None,
     }
-}
-
-fn motor_de_prova(world: &World, alvo: u64) -> String {
-    format!("editando={}", crate::editando(world) == Some(alvo))
 }

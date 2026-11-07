@@ -25,10 +25,12 @@ pub fn contorno(pose: &Pose, m: &Medida, cam: &Camera2d, win: WindowSize) -> Bez
             vec![[-h[0], -h[1]], [h[0], -h[1]], [h[0], h[1]], [-h[0], h[1]]]
         }
         ColliderShape::Ball { .. } => ellipse_vertices(h[0], h[1]).to_vec(),
-        ColliderShape::Capsule { half_height, .. } => {
-            capsule_vertices(half_height * pose.s[1].abs(), h[0], h[1] - half_height * pose.s[1].abs())
-                .to_vec()
-        }
+        ColliderShape::Capsule { half_height, .. } => capsule_vertices(
+            half_height * pose.s[1].abs(),
+            h[0],
+            h[1] - half_height * pose.s[1].abs(),
+        )
+        .to_vec(),
     };
     let mut path = BezPath::new();
     for (i, [x, y]) in local.iter().enumerate() {
@@ -69,19 +71,43 @@ pub fn desenhar(
     } else {
         Stroke::new(TRACO_PX)
     };
-    s.stroke(&traco, Affine::IDENTITY, &Brush::Solid(cor), None, &contorno(&pose, &m, cam, win));
+    s.stroke(
+        &traco,
+        Affine::IDENTITY,
+        &Brush::Solid(cor),
+        None,
+        &contorno(&pose, &m, cam, win),
+    );
     for a in alcas(m.shape) {
         let (x, y) = no_ecra(&pose, &m, a, cam, win);
         let (px, py) = (f64::from(x), f64::from(y));
         if a == Alca::Miolo {
             let c = ph2d_vector::Circle::new((px, py), MIOLO_PX);
-            s.fill(Fill::NonZero, Affine::IDENTITY, &Brush::Solid(cor), None, &c);
+            s.fill(
+                Fill::NonZero,
+                Affine::IDENTITY,
+                &Brush::Solid(cor),
+                None,
+                &c,
+            );
             continue;
         }
         let sob = (x - ponteiro.0).hypot(y - ponteiro.1) <= crate::AGARRE_PX;
         let m = if sob { ALCA_SOB_PX } else { ALCA_PX };
         let r = Rect::new(px - m, py - m, px + m, py + m);
-        s.fill(Fill::NonZero, Affine::IDENTITY, &Brush::Solid(fundo), None, &r);
-        s.stroke(&Stroke::new(TRACO_PX), Affine::IDENTITY, &Brush::Solid(cor), None, &r);
+        s.fill(
+            Fill::NonZero,
+            Affine::IDENTITY,
+            &Brush::Solid(fundo),
+            None,
+            &r,
+        );
+        s.stroke(
+            &Stroke::new(TRACO_PX),
+            Affine::IDENTITY,
+            &Brush::Solid(cor),
+            None,
+            &r,
+        );
     }
 }

@@ -11,8 +11,6 @@ use ph2d_host::WindowSize;
 use ph2d_physics_ecs::Collider;
 use ph2d_render::Camera2d;
 
-pub type Mods = Teclas;
-
 /// Um arrasto: tudo parte do `Down`, nada lê a forma já mexida.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Arrasto {
@@ -51,7 +49,11 @@ pub fn alterna(world: &mut World, bits: u64) {
         .copied();
     let mut f = world.get_resource_or_insert_with(FormaNoCanvas::default);
     f.arrasto = None;
-    f.alvo = if f.alvo == Some(bits) { None } else { Some(bits) };
+    f.alvo = if f.alvo == Some(bits) {
+        None
+    } else {
+        Some(bits)
+    };
     f.id = id;
 }
 
@@ -62,8 +64,16 @@ pub fn quadro(world: &mut World, selecao: Option<u64>, jogando: bool) -> bool {
     };
     // O mesmo objecto depois de um Ctrl+Z que o refez: a edição continua nele.
     if let Some(s) = selecao.filter(|s| *s != alvo) {
-        let f = world.get_resource::<FormaNoCanvas>().copied().unwrap_or_default();
-        if f.id.is_some() && world.get::<ph2d_ecs::StableId>(Entity::from_bits(s)).copied() == f.id {
+        let f = world
+            .get_resource::<FormaNoCanvas>()
+            .copied()
+            .unwrap_or_default();
+        if f.id.is_some()
+            && world
+                .get::<ph2d_ecs::StableId>(Entity::from_bits(s))
+                .copied()
+                == f.id
+        {
             alvo = s;
             if let Some(mut f) = world.get_resource_mut::<FormaNoCanvas>() {
                 f.alvo = Some(s);

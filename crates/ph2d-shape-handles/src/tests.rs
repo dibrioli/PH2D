@@ -24,10 +24,34 @@ const CAPSULA: ColliderShape = ColliderShape::Capsule {
 fn poses() -> Vec<(&'static str, [f32; 2], f32, [f32; 2], bool)> {
     vec![
         ("identidade", [0.0, 0.0], 0.0, [1.0, 1.0], false),
-        ("escala 2×1 a 30°", [0.3, -0.2], 30f32.to_radians(), [2.0, 1.0], false),
-        ("espelho x", [0.3, -0.2], 30f32.to_radians(), [-2.0, 1.0], false),
-        ("espelho y", [-0.4, 0.1], -70f32.to_radians(), [1.5, -0.5], false),
-        ("filho de pai fora da origem", [0.5, 0.25], 15f32.to_radians(), [1.0, 1.0], true),
+        (
+            "escala 2×1 a 30°",
+            [0.3, -0.2],
+            30f32.to_radians(),
+            [2.0, 1.0],
+            false,
+        ),
+        (
+            "espelho x",
+            [0.3, -0.2],
+            30f32.to_radians(),
+            [-2.0, 1.0],
+            false,
+        ),
+        (
+            "espelho y",
+            [-0.4, 0.1],
+            -70f32.to_radians(),
+            [1.5, -0.5],
+            false,
+        ),
+        (
+            "filho de pai fora da origem",
+            [0.5, 0.25],
+            15f32.to_radians(),
+            [1.0, 1.0],
+            true,
+        ),
     ]
 }
 
@@ -173,12 +197,22 @@ fn cada_alca_da_caixa_vai_para_debaixo_do_ponteiro_em_toda_pose_e_zoom() {
                 c.move_(alvo, Teclas::default());
                 let quem = format!("{} zoom {zoom} {a:?}", pose.0);
                 perto(c.ecra(a), alvo, &quem);
-                perto(c.ecra(oposta(a)), parada, &format!("{quem}: a oposta andou"));
+                perto(
+                    c.ecra(oposta(a)),
+                    parada,
+                    &format!("{quem}: a oposta andou"),
+                );
                 // A figura desenhada passa pela alça: nunca uma alça deslocada da forma.
-                let bb = ph2d_vector::Shape::bounding_box(&contorno(&c.pose(), &c.medida(), &c.cam, WIN));
+                let bb = ph2d_vector::Shape::bounding_box(&contorno(
+                    &c.pose(),
+                    &c.medida(),
+                    &c.cam,
+                    WIN,
+                ));
                 let s = c.ecra(a);
                 assert!(
-                    bb.inflate(0.1, 0.1).contains((f64::from(s.0), f64::from(s.1))),
+                    bb.inflate(0.1, 0.1)
+                        .contains((f64::from(s.0), f64::from(s.1))),
                     "{quem}: a alça fora do contorno"
                 );
             }
@@ -198,10 +232,22 @@ fn a_alca_da_bola_e_da_capsula_vao_para_debaixo_do_ponteiro_e_o_oposto_fica() {
                     let mut c = Cena::nova(pose, shape, zoom);
                     let de = c.ecra(a);
                     // A alça lateral da cápsula tem curso até à soma: 8 px ficam dentro dela em qualquer zoom?
-                    let alvo = para_fora(&c, a, if matches!(a, Alca::Lado(0, _)) { 40.0 } else { -3.0 });
+                    let alvo = para_fora(
+                        &c,
+                        a,
+                        if matches!(a, Alca::Lado(0, _)) {
+                            40.0
+                        } else {
+                            -3.0
+                        },
+                    );
                     assert!(c.desce(de));
                     c.move_(alvo, Teclas::default());
-                    perto(c.ecra(a), alvo, &format!("{} zoom {zoom} {shape:?} {a:?}", pose.0));
+                    perto(
+                        c.ecra(a),
+                        alvo,
+                        &format!("{} zoom {zoom} {shape:?} {a:?}", pose.0),
+                    );
                 }
             }
         }
@@ -219,7 +265,11 @@ fn o_topo_da_capsula_mexe_so_na_altura_e_a_base_fica() {
         assert!(c.desce(c.ecra(topo)));
         c.move_(alvo, Teclas::default());
         perto(c.ecra(Alca::Lado(0, -1)), base, "a base andou");
-        let ColliderShape::Capsule { radius, half_height } = c.medida().shape else {
+        let ColliderShape::Capsule {
+            radius,
+            half_height,
+        } = c.medida().shape
+        else {
             panic!("deixou de ser cápsula");
         };
         assert_eq!(radius, 0.2, "o Radius não é desta alça");
@@ -231,7 +281,10 @@ fn o_topo_da_capsula_mexe_so_na_altura_e_a_base_fica() {
 #[test]
 fn o_radius_da_capsula_mantem_a_height_e_o_piso_e_a_bola() {
     let total = |m: &Medida| match m.shape {
-        ColliderShape::Capsule { half_height, radius } => half_height + radius,
+        ColliderShape::Capsule {
+            half_height,
+            radius,
+        } => half_height + radius,
         _ => panic!("deixou de ser cápsula"),
     };
     let mut c = Cena::nova(poses()[0], CAPSULA, 15.0);
@@ -242,7 +295,10 @@ fn o_radius_da_capsula_mantem_a_height_e_o_piso_e_a_bola() {
     assert!((total(&c.medida()) - antes).abs() < 1e-5);
     assert_eq!(
         c.medida().shape,
-        ColliderShape::Capsule { half_height: 0.0, radius: antes },
+        ColliderShape::Capsule {
+            half_height: 0.0,
+            radius: antes
+        },
         "o piso: uma bola"
     );
     // A base puxada para lá do topo pára na cápsula sem segmento.
@@ -252,7 +308,10 @@ fn o_radius_da_capsula_mantem_a_height_e_o_piso_e_a_bola() {
     c.move_(para_fora(&c, a, -5000.0), Teclas::default());
     assert_eq!(
         c.medida().shape,
-        ColliderShape::Capsule { half_height: 0.0, radius: 0.2 }
+        ColliderShape::Capsule {
+            half_height: 0.0,
+            radius: 0.2
+        }
     );
 }
 
@@ -308,7 +367,13 @@ fn alt_puxa_simetrico_e_o_offset_fica() {
         let offset = c.medida().offset;
         let alvo = para_fora(&c, a, 25.0);
         assert!(c.desce(c.ecra(a)));
-        c.move_(alvo, Teclas { alt: true, shift: false });
+        c.move_(
+            alvo,
+            Teclas {
+                alt: true,
+                shift: false,
+            },
+        );
         assert_eq!(c.medida().offset, offset, "{}", pose.0);
         perto(c.ecra(a), alvo, pose.0);
         perto(c.ecra(Alca::Miolo), centro, pose.0);
@@ -322,7 +387,13 @@ fn alt_puxa_simetrico_e_o_offset_fica() {
     let offset = c.medida().offset;
     let alvo = para_fora(&c, a, 25.0);
     assert!(c.desce(c.ecra(a)));
-    c.move_(alvo, Teclas { alt: true, shift: false });
+    c.move_(
+        alvo,
+        Teclas {
+            alt: true,
+            shift: false,
+        },
+    );
     assert_eq!(c.medida().offset, offset);
 }
 
@@ -345,7 +416,11 @@ fn shift_no_canto_mantem_a_proporcao() {
                 panic!();
             };
             assert!(half_x > 0.5, "{}: cresceu", pose.0);
-            assert!((half_x / half_y - 2.0).abs() < 1e-4, "{}: {half_x}/{half_y}", pose.0);
+            assert!(
+                (half_x / half_y - 2.0).abs() < 1e-4,
+                "{}: {half_x}/{half_y}",
+                pose.0
+            );
             if alt {
                 perto(c.ecra(Alca::Miolo), centro, "Alt+Shift: o centro");
             } else {
@@ -362,7 +437,13 @@ fn shift_no_lado_e_o_lado_normal() {
     let a = Alca::Lado(1, 0);
     let alvo = para_fora(&c, a, 25.0);
     assert!(c.desce(c.ecra(a)));
-    c.move_(alvo, Teclas { alt: false, shift: true });
+    c.move_(
+        alvo,
+        Teclas {
+            alt: false,
+            shift: true,
+        },
+    );
     perto(c.ecra(a), alvo, "o lado");
     let ColliderShape::Cuboid { half_y, .. } = c.medida().shape else {
         panic!();
@@ -380,8 +461,16 @@ fn o_dedo_tem_o_mesmo_tamanho_em_ecra_em_qualquer_zoom() {
         let (p, m) = (c.pose(), c.medida());
         let s = c.ecra(a);
         let (dentro_px, fora_px) = (AGARRE_PX - 0.5, AGARRE_PX + 0.5);
-        assert_eq!(alca_em(&p, &m, &c.cam, WIN, (s.0 + dentro_px, s.1)), Some(a), "zoom {zoom}");
-        assert_eq!(alca_em(&p, &m, &c.cam, WIN, (s.0 + fora_px, s.1)), None, "zoom {zoom}");
+        assert_eq!(
+            alca_em(&p, &m, &c.cam, WIN, (s.0 + dentro_px, s.1)),
+            Some(a),
+            "zoom {zoom}"
+        );
+        assert_eq!(
+            alca_em(&p, &m, &c.cam, WIN, (s.0 + fora_px, s.1)),
+            None,
+            "zoom {zoom}"
+        );
     }
 }
 
@@ -451,7 +540,11 @@ fn pai_que_anda_a_meio_do_arrasto_nao_tira_a_alca_do_ponteiro() {
     let a = Alca::Lado(1, 1);
     assert!(c.desce(c.ecra(a)));
     let pai = c.world.get::<ChildOf>(c.e).expect("pai").0;
-    c.world.get_mut::<Transform>(pai).expect("pai").translation.x += 0.5;
+    c.world
+        .get_mut::<Transform>(pai)
+        .expect("pai")
+        .translation
+        .x += 0.5;
     // O ponteiro segue a alça de onde ela ficou com o pai novo, e puxa o resto ao longo do eixo.
     let alvo = para_fora(&c, a, 40.0);
     c.move_(alvo, Teclas::default());

@@ -8,7 +8,7 @@ mod ponteiro;
 mod roteiro;
 pub mod tinta;
 
-pub use ponteiro::{FormaNoCanvas, Mods, Porta, alterna, ativo, editando, quadro};
+pub use ponteiro::{FormaNoCanvas, Porta, alterna, ativo, editando, quadro};
 pub use roteiro::{PassoDaMao, Plano, passo_da_mao};
 
 use bevy_ecs::world::World;
@@ -119,7 +119,9 @@ pub fn alcas(shape: ColliderShape) -> Vec<Alca> {
             Alca::Lado(-1, 0),
         ],
         ColliderShape::Ball { .. } => vec![Alca::Lado(1, 0)],
-        ColliderShape::Capsule { .. } => vec![Alca::Lado(1, 0), Alca::Lado(0, 1), Alca::Lado(0, -1)],
+        ColliderShape::Capsule { .. } => {
+            vec![Alca::Lado(1, 0), Alca::Lado(0, 1), Alca::Lado(0, -1)]
+        }
     };
     v.push(Alca::Miolo);
     v

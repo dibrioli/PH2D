@@ -99,7 +99,7 @@ pub(super) fn resumo(info: &InspectorPhysicsInfo) -> String {
     format!("{nome} \u{b7} {alvo}")
 }
 
-/// Layer em lista com os nomes (os ids e a edição são os de sempre), os quadros de «Collides with» (só com corpo acima), o «Rename…» e o «Edit matrix…».
+/// Layer em lista com os nomes (os ids e a edição são os de sempre), os quadros de «Collides with» (só com corpo acima), o «Rename…» e o «Open in tab…».
 fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
     let rotulo = tr("component.field.collider.4");
     let seccao = ph2d_editor_core::property_row::Seccao::medida(t.text, 1, &[rotulo]);
@@ -255,7 +255,7 @@ fn pinta(t: &mut Tinta<'_>, r: Rect, texto: &str, id: ph2d_a11y::NodeId, aceso: 
     t.hit.register(id, r);
 }
 
-/// O rótulo com a marca, os quadros quebrando pelo tamanho do nome, a frase e o «Edit matrix…».
+/// O rótulo com a marca, os quadros quebrando pelo tamanho do nome, a frase e o «Open in tab…».
 pub(super) fn colide_com(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
     let camada = usize::from(info.layer);
     let rotulo = tr("card.insp.phys.collides_with");

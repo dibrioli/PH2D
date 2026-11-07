@@ -69,16 +69,19 @@ pub(crate) fn nome(i: usize) -> String {
     AGORA.with(|a| a.borrow().nomes.get(i).cloned().unwrap_or_default())
 }
 
-/// O que se lê: o nome, ou «Layer n» sem nome dado (dono 07/11; o projeto não grava o «Layer n»).
+/// O que se lê: o nome, ou o padrão («Default», «Layer n») sem nome dado (dono 07/11; o projeto não grava o «Layer n»).
 #[must_use]
 pub(crate) fn rotulo(i: usize) -> String {
     let n = nome(i);
     if n.is_empty() { rotulo_padrao(i) } else { n }
 }
 
-/// «Layer n»: o que mostra a camada sem nome.
+/// O que mostra a camada sem nome: a 0 é «Default» (onda 9a, maquete B), as outras «Layer n».
 #[must_use]
 pub(crate) fn rotulo_padrao(i: usize) -> String {
+    if i == 0 {
+        return ph2d_i18n::tr("card.physics.layer_zero").to_owned();
+    }
     ph2d_i18n::tr_with("card.physics.layer_default", &[("n", &i.to_string())])
 }
 

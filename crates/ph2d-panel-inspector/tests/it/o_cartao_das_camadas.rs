@@ -307,7 +307,7 @@ fn o_resumo_diz_a_camada_e_os_quadros_acesos_dela() {
     );
     assert_eq!(
         caso(na(0, with_body())).as_deref(),
-        Some("Layer 0 \u{b7} None")
+        Some("Default \u{b7} None")
     );
     fim();
 }

@@ -298,6 +298,11 @@ fn o_ase_de_aceitacao_volta_igual_e_iso_hex_saem_como_imagem() {
 
 /// Um sprite 44 × 24 de tile 16 × 8 com um só píxel; `fase` desloca a grelha por píxeis.
 fn folha_de_um_pixel(fase: i32) -> Sprite {
+    folha_com_pixel(fase, 4, (1, 1))
+}
+
+/// O píxel no `lx` da linha 2 do tile, e o tile na célula dada.
+fn folha_com_pixel(fase: i32, lx: usize, celula: (i32, i32)) -> Sprite {
     let mut s = Sprite::new(NewSprite {
         width: 40,
         height: 24,
@@ -309,16 +314,16 @@ fn folha_de_um_pixel(fase: i32) -> Sprite {
     let (acima, f) = (s.layers()[0].id, s.frames()[0].id);
     let (op, l, set) = new_tilemap_layer_forma(&mut s, acima, 16, 8, Forma::Square).unwrap();
     h.commit(&mut s, op).unwrap();
-    // O píxel em (4, 2) do tile: em (20, 10) do sprite, longe das linhas da grelha.
+    // Com `lx` 4 e a célula (1, 1): em (20, 10) do sprite, longe das linhas da grelha.
     let mut px = vec![0; 16 * 8 * 4];
-    px[(2 * 16 + 4) * 4..(2 * 16 + 4) * 4 + 4].copy_from_slice(&VERDE.to_le_bytes());
+    px[(2 * 16 + lx) * 4..(2 * 16 + lx) * 4 + 4].copy_from_slice(&VERDE.to_le_bytes());
     let op = TilesSet {
         counts: vec![(set, 2)],
         tiles: vec![(set, 1, px)],
         ..TilesSet::default()
     };
     h.commit(&mut s, Op::Tiles(Box::new(op))).unwrap();
-    let op = carimba(&s, l, f, &[(1, 1)], TileRef::new(1, false, false, false)).unwrap();
+    let op = carimba(&s, l, f, &[celula], TileRef::new(1, false, false, false)).unwrap();
     h.commit(&mut s, op).unwrap();
     if fase != 0 {
         let b = Borders {
@@ -375,6 +380,19 @@ fn split_grid_segue_o_trial() {
     assert_eq!(fo.entradas.len(), 9, "{:?}", fo.entradas);
     assert_eq!(fo.entradas[0].origem[2..], [16, 8]);
     assert_eq!(fo.entradas[1].origem, [4, 0, 16, 8]);
+    // Tinta na coluna 0 do canvas: o que sai do canvas fica transparente, não copia a borda.
+    let s = folha_com_pixel(4, 12, (-1, 1));
+    let ver = OpcoesFolha {
+        ignore_empty: true,
+        ..base.clone()
+    };
+    let fo = montar(&s, &ver, "t", "png");
+    assert_eq!(fo.entradas.len(), 1, "{:?}", fo.entradas);
+    let [fx, fy, ..] = fo.entradas[0].frame;
+    let alfa =
+        |x: u32, y: u32| fo.rgba[((fy + y) as usize * fo.w as usize + (fx + x) as usize) * 4 + 3];
+    assert_eq!(alfa(12, 2), 255, "a tinta na coluna 0 do canvas");
+    assert_eq!(alfa(11, 2), 0, "fora do canvas não se copia a borda");
     // Sem camada de tilemap não há grelha: a folha fica como sem a opção.
     let sem = Sprite::new(NewSprite {
         width: 20,

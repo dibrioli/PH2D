@@ -68,10 +68,15 @@ Detalhe relativo ao Size 60 (1 = igual), ao reduzir à mesma altura, a Size 200:
 - **Grandeza que quebra:** detalhe preso a px, resolvido por célula. `G` é a que mais aproxima o detalhe, e **custa 3× menos** (Flat a 200: 19,1 → 6,8 s, intercalado). Mas a Thick Impasto com `G` fica lisa demais (0,35), sem o empaste do 60; e `G` em `round` salta em Size 90. O relevo `E` não muda nada visível. `T` estria o Wet Round, recusar.
 - **Nenhuma variante reproduz a cara do 60.** Por isso a lei NÃO foi proposta como pronta: pergunta ao dono na mensagem final. Lei candidata, a confirmar depois da escolha: grade da água contínua em função do Size, só acima de 60 (idêntica ao byte até 60 por construção: razão 1). `SUAVE_RAIO_MAX_PX = 6` não tem override em execução e não foi separado dentro de `G`.
 
+## Vereditos do dono (07/11)
+Smoke A, B e C: **OK**. Item 4: **as duas leis no painel, «agua/alisar» por padrão**, acima de Size 60; até 60 ao byte.
+
+⛔ **Trava do item 4 (lida no código, não testada):** a sonda pôs `grid_ratio` por tela, com um só tamanho. No produto a razão é da SESSÃO: `set_wet_grid_ratio` chama `wetpaint_end_session` (`wetpaint_settings.rs:523`) e o acordar recusa grade diferente (`adormecida.rs:351`). Trocar o Size entre traços acabaria a tinta viva, contra a decisão de 06/11. Não ligue `grid_ratio` ao Size.
+
 ## Próximos, por ordem
-1. Vereditos do dono: smoke abaixo e as folhas (item 4).
-2. Item 2: até 3 protótipos com ganho medido e pixels iguais. Primeiro: separar o compositor do pool da simulação (medir a hipótese; a imagem não muda). Respeitar J13 §5 e a recusa de compor por linhas.
-3. Item 4: construir a lei escolhida, com foto antes × depois e os dois alarmes; regravar só com aprovação.
+1. Item 4, protótipo por override, sem mudar produto: separar DENTRO de `G` o que dá a cara (o carimbo do pincel em resolução menor, a água, o alisar `SUAVE_RAIO_MAX_PX`) e achar a mesma cara com a grade da sessão fixa, a tinta de outros tamanhos viva. Medir o que sobra do ganho de 3–4×. Corrigir os saltos (Size 90, 150). Foto antes × depois, com zoom 100 %, e PARE.
+2. Item 4, depois da foto aprovada: o controle no painel em cartões (seletor, inglês, HR-15, todas as pontas e teste de costura), padrão «agua/alisar»; definir onde mora (por pincel ou da ferramenta), macro e preset sem mudar os de fábrica; «tex+fios» sem as estrias do Wet Round. Alarmes: só regravam com aprovação.
+3. Item 2: até 3 protótipos com ganho medido e pixels iguais. Primeiro: separar o compositor do pool da simulação (medir a hipótese; a imagem não muda). Respeitar J13 §5 e a recusa de compor por linhas.
 4. ABERTO 1 do handoff de 07/11 (corrigido acima), se o dono quiser.
 
 Fora deste pedido, seguem pendentes: redução de memória do 1.º traço, «manter a tinta viva» ao salvar, `PROXIMA_FASE_2026-11-06.md`.

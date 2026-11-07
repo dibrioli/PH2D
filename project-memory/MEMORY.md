@@ -53,6 +53,8 @@
 
 - ⭐⭐ [Dono 07/11: depois do CI, a linha Painter reduz a memória do 1.º traço (undo só na caixa do traço) e baixa o tecto](project_first_stroke_undo_memory_cut_next_round_2026_11_07.md)
 
+- ⭐⭐ [Dono 07/11: acima de Size 60, duas leis no painel, «agua/alisar» padrão; a grade é da sessão](project_large_brush_look_both_in_panel_2026_11_07.md)
+
 ## Comunicação & decisão
 - ⭐⭐⭐ [Painter (31/10): Pigmento + Água = só a DILUIÇÃO; o VOLUME ao papel é outro controlo — um controlo, uma grandeza](project_painter_volume_is_independent_of_dilution_2026_10_31.md)
 - ⛔⛔⛔ [O APP é SÓ em inglês — toda string de UI, e a ajuda/tooltip em Plain English para qualquer país (31/10)](feedback_app_ui_english_only.md)

@@ -1,0 +1,235 @@
+//! Um plano da grade numa fotografia do undo vivo, em tiles: um tile igual ao da fotografia anterior é o mesmo `Arc`.
+//! Medido (dono 06/11, `sonda_o_preco_de_um_passo`): a 4096×2560, com óleo, 97 % dos tiles repetem-se de um passo ao outro.
+
+use ph2d_wet_paint::grid::TILE;
+use rayon::prelude::*;
+use std::collections::BTreeMap;
+use std::sync::Arc;
+
+#[derive(Clone, Default)]
+pub(crate) struct PlanoEmTiles {
+    s: usize,
+    rows: usize,
+    tiles: Vec<Arc<[f32]>>,
+    /// As células dos tiles que esta fotografia não partilha com a anterior.
+    novas: usize,
+}
+
+/// Por plano: início e comprimento de cada tile nas células distintas.
+pub(super) type MapaDosTiles = Vec<Vec<(u32, u32)>>;
+
+impl PlanoEmTiles {
+    fn tiles_por_linha(s: usize) -> usize {
+        s.div_ceil(TILE)
+    }
+
+    /// As linhas da grelha do tile `i`: `(x0, x1, y0, y1)`.
+    fn caixa(s: usize, rows: usize, i: usize) -> (usize, usize, usize, usize) {
+        let n = Self::tiles_por_linha(s);
+        let (tx, ty) = (i % n, i / n);
+        (
+            tx * TILE,
+            ((tx + 1) * TILE).min(s),
+            ty * TILE,
+            ((ty + 1) * TILE).min(rows),
+        )
+    }
+
+    /// Fotografa `v` (`s` células por linha), partilhando com `anterior` os tiles iguais ao bit.
+    pub(crate) fn de(v: &[f32], s: usize, anterior: Option<&Self>) -> Self {
+        if v.is_empty() || s == 0 {
+            return Self::default();
+        }
+        let rows = v.len() / s;
+        let anterior = anterior.filter(|a| a.s == s && a.rows == rows && !a.tiles.is_empty());
+        let total = Self::tiles_por_linha(s) * rows.div_ceil(TILE);
+        let feitos: Vec<(Arc<[f32]>, usize)> = (0..total)
+            .into_par_iter()
+            .map(|i| {
+                let (x0, x1, y0, y1) = Self::caixa(s, rows, i);
+                let w = x1 - x0;
+                if let Some(a) = anterior {
+                    let velho = &a.tiles[i];
+                    let igual = (y0..y1).zip(velho.chunks_exact(w)).all(|(y, l)| {
+                        let o = y * s + x0;
+                        v[o..o + w]
+                            .iter()
+                            .zip(l)
+                            .all(|(p, q)| p.to_bits() == q.to_bits())
+                    });
+                    if igual {
+                        return (Arc::clone(velho), 0);
+                    }
+                }
+                let mut novo = Vec::with_capacity(w * (y1 - y0));
+                for y in y0..y1 {
+                    let o = y * s + x0;
+                    novo.extend_from_slice(&v[o..o + w]);
+                }
+                let n = novo.len();
+                (Arc::from(novo), n)
+            })
+            .collect();
+        let novas = feitos.iter().map(|f| f.1).sum();
+        Self {
+            s,
+            rows,
+            tiles: feitos.into_iter().map(|f| f.0).collect(),
+            novas,
+        }
+    }
+
+    /// Devolve o plano ao bit.
+    pub(crate) fn repoe(&self, v: &mut Vec<f32>) {
+        if self.tiles.is_empty() {
+            v.clear();
+            return;
+        }
+        v.resize(self.s * self.rows, 0.0);
+        let n = Self::tiles_por_linha(self.s);
+        v.par_chunks_mut(self.s).enumerate().for_each(|(y, linha)| {
+            let ty = y / TILE;
+            for tx in 0..n {
+                let i = ty * n + tx;
+                let (x0, x1, y0, _) = Self::caixa(self.s, self.rows, i);
+                let w = x1 - x0;
+                let o = (y - y0) * w;
+                linha[x0..x1].copy_from_slice(&self.tiles[i][o..o + w]);
+            }
+        });
+    }
+
+    /// Os bytes da fotografia inteira, sozinha.
+    pub(crate) fn bytes(&self) -> usize {
+        self.tiles.iter().map(|t| t.len() * 4).sum()
+    }
+
+    /// Os bytes que ela acrescenta a quem está antes dela na mesma pilha.
+    pub(crate) fn bytes_novos(&self) -> usize {
+        if self.tiles.is_empty() {
+            0
+        } else {
+            self.novas * 4
+        }
+    }
+}
+
+/// Tira os tiles dos `planos`, cada `Arc` uma vez: a partilha sobrevive ao vai e volta.
+pub(super) fn tira_os_tiles(planos: Vec<&mut PlanoEmTiles>) -> (Vec<f32>, MapaDosTiles) {
+    let mut vistos: BTreeMap<*const f32, (u32, u32)> = BTreeMap::new();
+    let mut celulas = Vec::new();
+    let mapa = planos
+        .into_iter()
+        .map(|p| {
+            std::mem::take(&mut p.tiles)
+                .iter()
+                .map(|t| {
+                    *vistos.entry(t.as_ptr()).or_insert_with(|| {
+                        let inicio = celulas.len() as u32;
+                        celulas.extend_from_slice(t);
+                        (inicio, t.len() as u32)
+                    })
+                })
+                .collect()
+        })
+        .collect();
+    (celulas, mapa)
+}
+
+/// Devolve aos `planos` (os mesmos, na mesma ordem) o que [`tira_os_tiles`] tirou.
+pub(super) fn poe_os_tiles(planos: Vec<&mut PlanoEmTiles>, celulas: &[f32], mapa: &MapaDosTiles) {
+    let mut feitos: BTreeMap<u32, Arc<[f32]>> = BTreeMap::new();
+    for (p, m) in planos.into_iter().zip(mapa) {
+        p.tiles = m
+            .iter()
+            .map(|&(inicio, n)| {
+                let (a, b) = (inicio as usize, (inicio + n) as usize);
+                Arc::clone(
+                    feitos
+                        .entry(inicio)
+                        .or_insert_with(|| Arc::from(&celulas[a..b])),
+                )
+            })
+            .collect();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn plano(s: usize, rows: usize) -> Vec<f32> {
+        (0..s * rows).map(|i| (i as f32).sin()).collect()
+    }
+
+    #[test]
+    fn a_foto_volta_ao_bit_e_partilha_o_que_nao_mudou() {
+        let (s, rows) = (150, 70);
+        let mut v = plano(s, rows);
+        let a = PlanoEmTiles::de(&v, s, None);
+        assert_eq!(a.bytes_novos(), a.bytes());
+        let velho = v[0];
+        v[0] = -velho;
+        let b = PlanoEmTiles::de(&v, s, Some(&a));
+        assert_eq!(b.bytes(), a.bytes());
+        assert_eq!(b.bytes_novos(), 64 * 64 * 4, "só o tile do canto mudou");
+        let mut volta = Vec::new();
+        b.repoe(&mut volta);
+        assert!(
+            volta
+                .iter()
+                .zip(&v)
+                .all(|(p, q)| p.to_bits() == q.to_bits())
+        );
+        let mut volta = vec![9.0; 3];
+        a.repoe(&mut volta);
+        assert!(
+            volta
+                .iter()
+                .zip(&plano(s, rows))
+                .all(|(p, q)| p.to_bits() == q.to_bits())
+        );
+    }
+
+    #[test]
+    fn menos_zero_nao_passa_por_zero() {
+        let (s, rows) = (64, 64);
+        let v = vec![0.0f32; s * rows];
+        let a = PlanoEmTiles::de(&v, s, None);
+        let mut w = v.clone();
+        w[3] = -0.0;
+        let b = PlanoEmTiles::de(&w, s, Some(&a));
+        assert_eq!(b.bytes_novos(), b.bytes());
+    }
+
+    #[test]
+    fn o_plano_vazio_continua_vazio() {
+        let a = PlanoEmTiles::de(&[], 100, None);
+        let mut v = vec![1.0];
+        a.repoe(&mut v);
+        assert!(v.is_empty());
+        assert_eq!(a.bytes(), 0);
+    }
+
+    #[test]
+    fn a_partilha_sobrevive_ao_vai_e_volta() {
+        let (s, rows) = (150, 70);
+        let v = plano(s, rows);
+        let mut a = PlanoEmTiles::de(&v, s, None);
+        let mut b = PlanoEmTiles::de(&v, s, Some(&a));
+        let (celulas, mapa) = tira_os_tiles(vec![&mut a, &mut b]);
+        assert_eq!(celulas.len(), v.len(), "cada tile uma vez");
+        assert_eq!(a.bytes(), 0);
+        assert_eq!(a.bytes_novos(), 0, "sem tiles nada retém");
+        poe_os_tiles(vec![&mut a, &mut b], &celulas, &mapa);
+        assert!(Arc::ptr_eq(&a.tiles[1], &b.tiles[1]));
+        let mut volta = Vec::new();
+        b.repoe(&mut volta);
+        assert!(
+            volta
+                .iter()
+                .zip(&v)
+                .all(|(p, q)| p.to_bits() == q.to_bits())
+        );
+    }
+}

@@ -210,8 +210,8 @@ impl PainterTool {
     }
 
     /// Depois do undo/redo: a mesma tela (um passo sem pixels), outra camada (a tinta adormece com a dela), um redo (a
-    /// tela nova enterra-se como qualquer escrita). Num undo de um traço molhado sem fotografia a sessão acaba: células
-    /// com tinta invisível na tela reapareceriam a correr.
+    /// tela nova enterra-se como qualquer escrita), ou um undo de um passo que já saiu do histórico (o que voltou atrás
+    /// enterra-se fora da história).
     pub(crate) fn wet_volta_do_restauro(
         &mut self,
         p: SessaoNoRestauro,
@@ -226,10 +226,14 @@ impl PainterTool {
             return;
         }
         if !mesma_tela {
-            if !refaz || tela.len() != self.canvas_rgba.len() {
+            if tela.len() != self.canvas_rgba.len() {
                 return;
             }
-            self.wet_enterra_como_passo(&mut sess, &tela);
+            if refaz {
+                self.wet_enterra_como_passo(&mut sess, &tela);
+            } else {
+                self.wet_enterra_sem_passo(&mut sess, &tela);
+            }
         }
         sess.canvas = Arc::downgrade(&self.canvas_rgba);
         self.undo.write_state.vigia_a_tela(Some(&self.canvas_rgba));

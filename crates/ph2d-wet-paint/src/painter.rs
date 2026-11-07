@@ -116,6 +116,8 @@ pub struct Engine {
     prev_dab_x: f64,
     prev_dab_y: f64,
     stroke_tool_backup: Option<Tool>,
+    /// Quantos registos de undo o motor guarda por camada; quem usa um tecto de bytes abre-o.
+    pub fundo_da_historia: usize,
     /// Product LANES: one trail per symmetry copy / tile offset of the host's
     /// stroke. The engine's own `trail` is ONE window anchored at its first dab
     /// — feed it an interleaved multi-copy dab list and every copy outside the
@@ -192,6 +194,7 @@ impl Engine {
             prev_dab_x: 0.0,
             prev_dab_y: 0.0,
             stroke_tool_backup: None,
+            fundo_da_historia: HISTORY_DEPTH,
             on_dab: None,
             dirty: Dirty::Clean,
             revisao: nova_revisao(),

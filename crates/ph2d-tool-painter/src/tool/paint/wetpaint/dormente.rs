@@ -205,8 +205,9 @@ pub(super) struct Dormente {
     otica: [Bloco; 4],
     /// Os tiles do histórico do motor, registo a registo (`None`: ficou lá).
     registos: Vec<Option<Bloco>>,
-    /// As fotografias dos passos do undo vivo, plano a plano.
-    fotos: Vec<Bloco>,
+    /// As fotografias dos passos do undo vivo: cada tile distinto uma vez.
+    fotos: Bloco,
+    mapa_das_fotos: super::foto_em_tiles::MapaDosTiles,
 }
 
 impl Dormente {
@@ -215,7 +216,7 @@ impl Dormente {
         self.grades.iter().flatten().map(z).sum::<usize>()
             + self.otica.iter().map(z).sum::<usize>()
             + self.registos.iter().flatten().map(z).sum::<usize>()
-            + self.fotos.iter().map(z).sum::<usize>()
+            + z(&self.fotos)
     }
 }
 
@@ -243,19 +244,19 @@ impl WetSession {
                 .into_par_iter()
                 .map(|r| r.em_bytes().map(|b| Bloco::de_bytes(&b, b.len())))
                 .collect();
-            let fotos = self
-                .antes_do_passo
-                .iter_mut()
-                .flat_map(super::undo_vivo::PassoVivo::planos_mut)
-                .collect::<Vec<_>>()
-                .into_par_iter()
-                .map(encolhe)
-                .collect();
+            let (mut celulas, mapa_das_fotos) = super::foto_em_tiles::tira_os_tiles(
+                self.antes_do_passo
+                    .iter_mut()
+                    .flat_map(super::undo_vivo::PassoVivo::planos_mut)
+                    .collect(),
+            );
+            let fotos = encolhe(&mut celulas);
             self.dormente = Some(Arc::new(Dormente {
                 grades,
                 otica,
                 registos,
                 fotos,
+                mapa_das_fotos,
             }));
         }
         self.bytes_retidos() + self.dormente.as_ref().map_or(0, |d| d.bytes())
@@ -283,12 +284,15 @@ impl WetSession {
                     r.de_bytes(&b.bytes(b.n));
                 }
             });
-        self.antes_do_passo
-            .iter_mut()
-            .flat_map(super::undo_vivo::PassoVivo::planos_mut)
-            .collect::<Vec<_>>()
-            .into_par_iter()
-            .zip(&d.fotos)
-            .for_each(|(p, b)| volta(b, p));
+        let mut celulas = Vec::new();
+        volta(&d.fotos, &mut celulas);
+        super::foto_em_tiles::poe_os_tiles(
+            self.antes_do_passo
+                .iter_mut()
+                .flat_map(super::undo_vivo::PassoVivo::planos_mut)
+                .collect(),
+            &celulas,
+            &d.mapa_das_fotos,
+        );
     }
 }

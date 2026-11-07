@@ -680,6 +680,9 @@ pub(in crate::tool::paint) fn composite_for_measure(t: &mut PainterTool) {
 }
 
 // O undo devolve a tinta viva de antes do passo (smoke do dono 30/10).
+mod foto_em_tiles;
+#[cfg(test)]
+mod undo_tinta_morre_tests;
 #[cfg(test)]
 mod undo_tinta_viva_tests;
 mod undo_vivo;

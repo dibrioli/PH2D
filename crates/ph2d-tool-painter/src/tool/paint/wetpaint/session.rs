@@ -222,11 +222,7 @@ impl WetSession {
             + p.sombra.len()
             + p.grao.len()
             + p.suave.len()
-            + self
-                .antes_do_passo
-                .iter()
-                .map(super::undo_vivo::PassoVivo::bytes)
-                .sum::<usize>()
+            + super::undo_vivo::bytes_das_fotos(&self.antes_do_passo)
             + self.congelada.as_ref().map_or(0, |c| c.bytes())
     }
 

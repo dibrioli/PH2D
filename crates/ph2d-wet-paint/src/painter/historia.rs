@@ -25,11 +25,12 @@ impl Engine {
     /// o undo repõe-no — quem chama não precisa saber.
     pub fn capture_history(&mut self) {
         let passo = self.passo_em_voo();
+        let fundo = self.fundo_da_historia;
         let layer = &mut self.layers[self.active_layer];
         let mut reg = Registo::abre(&layer.grid);
         reg.passo = passo;
         layer.undo.push(reg);
-        if layer.undo.len() > HISTORY_DEPTH {
+        if layer.undo.len() > fundo {
             layer.undo.remove(0);
         }
         layer.redo.clear();
@@ -129,6 +130,15 @@ impl Engine {
             .collect()
     }
 
+    /// Larga o registo de undo mais velho da camada activa e devolve os bytes que ele retinha.
+    pub fn solta_o_registo_mais_velho(&mut self) -> usize {
+        let undo = &mut self.layers[self.active_layer].undo;
+        if undo.is_empty() {
+            return 0;
+        }
+        undo.remove(0).bytes_retidos()
+    }
+
     /// O motor esquece os registos de undo: o que eles guardam já não descreve a história.
     pub fn esquece_a_historia(&mut self) {
         let layer = &mut self.layers[self.active_layer];
@@ -182,6 +192,7 @@ impl Engine {
     /// Refaz; o passo em voo de agora entra no registo inverso (um undo devolve-o) e o do registo é reposto.
     pub fn redo(&mut self) -> bool {
         let agora = self.passo_em_voo();
+        let fundo = self.fundo_da_historia;
         let layer = &mut self.layers[self.active_layer];
         let Some(reg) = layer.redo.pop() else {
             return false;
@@ -193,7 +204,7 @@ impl Engine {
         inv.passo = agora;
         let paper_changed = reg.restaura(&mut layer.grid, desde.as_ref());
         layer.undo.push(inv);
-        if layer.undo.len() > HISTORY_DEPTH {
+        if layer.undo.len() > fundo {
             layer.undo.remove(0);
         }
         layer.desde = (!layer.redo.is_empty()).then(|| Registo::abre(&layer.grid));

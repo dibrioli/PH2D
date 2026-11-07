@@ -72,6 +72,7 @@ impl PainterTool {
         engine.sim.lei = ph2d_wet_paint::assenta::Lei::Cobre;
         engine.sim.esconde = ph2d_wet_paint::colorops::TINTA_ESCONDE;
         engine.set_lei_da_tinta(self.paint.wetpaint.lei_da_tinta);
+        engine.fundo_da_historia = usize::MAX; // o tecto é de bytes (`undo_vivo::teto_da_historia`)
         let marca = self.undo.marca.nasce_a_molhada(self.papel);
         self.paint.wetpaint.composta = None;
         self.paint.wetpaint.session = Some(WetSession {
@@ -114,6 +115,10 @@ impl PainterTool {
             dormente: None,
         });
         self.undo.write_state.vigia_a_tela(Some(&self.canvas_rgba));
+        // Nasceu a meio de um traço: é o 1.º, e o undo dele também devolve a tinta viva (vazia).
+        if self.paint.stroke_undo.is_some() {
+            self.wet_guarda_o_passo();
+        }
         true
     }
 

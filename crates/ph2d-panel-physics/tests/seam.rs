@@ -652,6 +652,8 @@ fn sem_par(i: usize, j: usize) -> PhysicsSettings {
 #[test]
 fn a_matriz_pinta_o_vivo_e_nao_o_autorado() {
     let (mut host, mut state) = arrange(PhysicsSettings::default());
+    // A matriz mora no modal (onda 8).
+    ph2d_panel_physics::modal::abre(None);
     let mut pinta = |settings, vivo| {
         mostrar(settings, vivo);
         host.paint_draw_data::<PhysicsPanel>(&mut state, VIEWPORT)
@@ -770,8 +772,10 @@ fn host_slider(
 #[test]
 fn every_matrix_cell_answers_a_real_click() {
     let (mut host, mut state) = arrange(PhysicsSettings::default());
+    // A matriz mora no modal (onda 8): as 32, todas.
+    ph2d_panel_physics::modal::abre(None);
     let painted = host.paint::<PhysicsPanel>(&mut state, VIEWPORT);
-    for i in 0..ph2d_physics_ecs::LEGACY_LAYERS {
+    for i in 0..ph2d_physics_ecs::MAX_LAYERS {
         for j in 0..=i {
             let id = ids::PHYSICS_LAYER_CELL[ids::physics_layer_cell_index(i, j)];
             let rect = painted
@@ -1463,6 +1467,7 @@ fn arrastar_na_matriz_pinta_cada_celula_atravessada_com_o_estado_do_primeiro_cli
     let (mut host, mut state) = arrange(PhysicsSettings::default());
     let vivo = sem_par(7, 3);
     mostrar(PhysicsSettings::default(), vivo);
+    ph2d_panel_physics::modal::abre(None);
     let painted = host.paint::<PhysicsPanel>(&mut state, VIEWPORT);
     let (x0, y0) = centro_da_celula(&painted, 7, 0);
     let (x1, y1) = centro_da_celula(&painted, 7, 7);

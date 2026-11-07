@@ -261,8 +261,14 @@ pub fn dispatch_key<'frame>(
             }
         }
         KEY_ESCAPE if store.cancel_grid_row_drag() => {}
-        // Um modal aberto sem campo em foco: Esc é o clique no X dele (`esc_fecha`).
-        KEY_ESCAPE if store.focus_id().is_none() && esc_fecha_atual().is_some() => {
+        // Um modal aberto sem campo de texto em foco: Esc é o clique no X dele (`esc_fecha`).
+        KEY_ESCAPE
+            if esc_fecha_atual().is_some()
+                && !store
+                    .focus_id()
+                    .is_some_and(|f| matches!(store.get(f), Some(InteractiveState::TextInput { .. }))) =>
+        {
+            store.set_focus(None);
             if let Some(id) = esc_fecha_atual() {
                 events.push(WidgetEvent::Click(id));
             }

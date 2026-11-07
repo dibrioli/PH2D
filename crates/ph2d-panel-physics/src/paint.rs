@@ -45,9 +45,14 @@ pub(crate) fn paint_hint_text(
     y + (ROW_H_PX - font).mul_add(0.5, used).max(ROW_H_PX) + ph2d_tokens::control_gap_px()
 }
 
-pub(crate) fn paint(_state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {
-    // ⭐ O modal das camadas pinta-se com o painel aberto OU fechado: o Inspector também o abre.
+pub(crate) fn paint(state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {
+    paint_corpo(state, ctx);
+    // ⭐ O modal das camadas pinta-se DEPOIS do corpo (os alvos dele ganham) e com o painel aberto OU
+    //    fechado: o Inspector também o abre.
     crate::modal::paint(ctx);
+}
+
+fn paint_corpo(_state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(PhysicsPanel::ID) {
         // Symmetric stale-rect cleanup, so `panel_at` stops returning
         // PHYSICS_PANEL the moment the panel is closed.

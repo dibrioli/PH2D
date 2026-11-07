@@ -163,8 +163,8 @@ fn inventario() -> Vec<NodeId> {
     v.extend(ids::PHYSICS_HOLD_MODE_OPT);
     v.extend(ids::PHYSICS_IK_ANGLE_OPT);
     v.extend(ids::PHYSICS_JOINT_TOOL_OPT);
-    // As oito camadas que a mesa publica; as outras têm prova própria (`as_32_rolam_...`).
-    v.extend(&ids::PHYSICS_LAYER_CELL[..36]);
+    // A matriz mora no modal (onda 8): no painel, a porta dele. As células têm prova própria (`o_modal_das_camadas`).
+    v.push(ids::PHYSICS_MATRIX_OPEN);
     v.extend(rows::section_header_ids());
     v.extend([
         ids::PHYSICS_SHOW_COLLIDERS,
@@ -336,15 +336,10 @@ fn every_choice_check_verb_and_cell_answers_a_real_click() {
         "a caixa vira o que se via"
     );
 
-    let matriz = LayerMatrix::from_rows(base.vivo.layer_matrix);
-    for a in 0..ph2d_physics_ecs::LEGACY_LAYERS {
-        for b in 0..=a {
-            let id = ids::PHYSICS_LAYER_CELL[ids::physics_layer_cell_index(a, b)];
-            let got = ultimo_mundo(&mesa.clica(id)).expect("a célula escreve");
-            let got = LayerMatrix::from_rows(got.layer_matrix);
-            assert_eq!(got.collides(a, b), !matriz.collides(a, b), "par ({a},{b})");
-        }
-    }
+    // As células: no modal (`o_modal_das_camadas`); aqui, a porta dele abre-o.
+    let _ = mesa.clica(ids::PHYSICS_MATRIX_OPEN);
+    assert!(ph2d_panel_physics::modal::aberto());
+    ph2d_panel_physics::modal::fecha();
     let i = mesa.clica(ids::PHYSICS_RESET_DEFAULTS);
     assert_eq!(ultimo_mundo(&i), Some(PhysicsSettings::default()));
 
@@ -367,30 +362,6 @@ fn every_choice_check_verb_and_cell_answers_a_real_click() {
         !m2.host.panel_visible("physics"),
         "o «×» da lista fecha o painel"
     );
-}
-
-/// O arrasto que pinta a matriz continua a funcionar dentro do cartão.
-#[test]
-fn dragging_across_the_matrix_paints_each_crossed_cell() {
-    let mut mesa = Mesa::nova(mundo(
-        PhysicsSettings::default(),
-        InteractionSettings::default(),
-    ));
-    let centro = |mesa: &Mesa, a, b| {
-        let r = mesa
-            .rect(ids::PHYSICS_LAYER_CELL[ids::physics_layer_cell_index(a, b)])
-            .expect("célula pintada");
-        (r.x + r.w * 0.5, r.y + r.h * 0.5)
-    };
-    let (x0, y0) = centro(&mesa, 7, 0);
-    let (x1, y1) = centro(&mesa, 7, 7);
-    let ev = mesa.host.drag_at(x0, y0, x1, y1);
-    let got = ultimo_mundo(&mesa.aplica(ev)).expect("o arrasto escreve");
-    let got = LayerMatrix::from_rows(got.layer_matrix);
-    for j in 0..8 {
-        assert!(!got.collides(7, j), "o par (7,{j}) ficou por pintar");
-    }
-    assert!(got.collides(6, 0), "uma célula fora do caminho não muda");
 }
 
 /// O cabeçalho dobra pelo despacho da casa; dobrado o corpo sai, e o mundo não se mexe.
@@ -456,7 +427,6 @@ fn every_mute_control_in_the_cards_has_a_tooltip() {
     let panel = ph2d_editor_core::ids::PHYSICS_PANEL;
     let mudos: Vec<NodeId> = dicas::icon_only_ids(panel)
         .into_iter()
-        .chain(ids::PHYSICS_LAYER_CELL[..36].iter().copied())
         .chain([
             ids::PHYSICS_CLOSE,
             ph2d_editor_core::panel::cards::list_menu_of(panel),
@@ -675,7 +645,7 @@ fn world_channels_keep_a_clickable_mark_and_session_settings_have_none() {
     };
     let canais = rows::rows()
         .map(|r| r.chip)
-        .chain([ids::PHYSICS_SLEEP_SPIN, ids::PHYSICS_LAYER_CELL[0]]);
+        .chain([ids::PHYSICS_SLEEP_SPIN]);
     for id in canais {
         assert!(marca_de(id), "{id:?} perdeu a marca de animação no cartão");
     }
@@ -684,162 +654,8 @@ fn world_channels_keep_a_clickable_mark_and_session_settings_have_none() {
     }
 }
 
-/// O nome de cada camada mostra-se no campo dela, e escrever pede a renomeação pela porta do projeto.
-#[test]
-fn cada_camada_tem_o_seu_nome_no_cartao_da_matriz() {
-    let mut nomes = ph2d_physics_ecs::LayerNames::default();
-    nomes.0[2] = "Ground".into();
-    ph2d_panel_physics::set_layer_names(nomes);
-    let mut mesa = Mesa::nova(PhysicsSnapshot::default());
-    for (i, &id) in ids::PHYSICS_LAYER_NAME.iter().enumerate().take(8) {
-        assert!(
-            mesa.rects.iter().any(|(n, r)| *n == id && r.w > 0.0),
-            "o campo {i}"
-        );
-        let esperado = if i == 2 { "Ground" } else { "" };
-        assert_eq!(
-            mesa.host.store().text(id),
-            Some(esperado),
-            "o texto do campo {i}"
-        );
-        mesa.host.set_text(id, "Enemy");
-        let _ = mesa.host.drained_actions();
-        let (h, st) = (&mut mesa.host, &mut mesa.st);
-        let _ = h.apply_panel_event::<PhysicsPanel>(st, WidgetEvent::TextChanged(id));
-        assert_eq!(
-            mesa.host.drained_actions(),
-            [ph2d_editor_core::action_bus::EditorAction::LayerRename {
-                layer: i as u8,
-                name: "Enemy".into(),
-            }],
-            "o campo {i}"
-        );
-    }
-    ph2d_panel_physics::set_layer_names(Default::default());
-    cards::force_cards_on_this_thread(None);
-}
-
 fn bits(camadas: &[usize]) -> u32 {
     camadas.iter().fold(0, |b, &l| b | 1 << l)
-}
-
-/// O clique REAL (ponteiro no rect pintado) na célula alta (25, 20) escreve esse par e só ele.
-#[test]
-fn o_clique_na_celula_alta_escreve_o_par_dela() {
-    ph2d_panel_physics::set_visible_layers(bits(&[0, 20, 25]));
-    let mut mesa = Mesa::nova(mundo(
-        PhysicsSettings::default(),
-        InteractionSettings::default(),
-    ));
-    let id = ids::PHYSICS_LAYER_CELL[ids::physics_layer_cell_index(25, 20)];
-    let got = ultimo_mundo(&mesa.clica(id)).expect("a célula escreve");
-    let m = LayerMatrix::from_rows(got.layer_matrix);
-    assert!(!m.collides(25, 20) && !m.collides(20, 25));
-    for a in 0..ph2d_physics_ecs::MAX_LAYERS {
-        for b in 0..ph2d_physics_ecs::MAX_LAYERS {
-            if (a, b) != (25, 20) && (a, b) != (20, 25) {
-                assert!(m.collides(a, b), "({a},{b}) não devia mudar");
-            }
-        }
-    }
-    assert!(
-        mesa.rect(ids::PHYSICS_LAYER_CELL[ids::physics_layer_cell_index(7, 0)])
-            .is_none(),
-        "a camada escondida não tem célula"
-    );
-}
-
-/// Um projeto novo mostra a 0 e o botão; o clique pede a próxima livre e põe o foco no nome dela.
-#[test]
-fn o_mais_layer_da_a_proxima_livre_com_o_nome_em_foco() {
-    ph2d_panel_physics::set_visible_layers(bits(&[0, 1, 3]));
-    let mut mesa = Mesa::nova(mundo(
-        PhysicsSettings::default(),
-        InteractionSettings::default(),
-    ));
-    let _ = mesa.host.drained_actions();
-    let _ = mesa.clica(ids::PHYSICS_LAYER_ADD);
-    assert_eq!(
-        mesa.host.drained_actions(),
-        [ph2d_editor_core::action_bus::EditorAction::LayerShow { layer: 2 }],
-    );
-    assert_eq!(
-        mesa.host.store().focus_id(),
-        Some(ids::PHYSICS_LAYER_NAME[2])
-    );
-}
-
-/// Com as 32, o botão apaga-se e diz porquê; as colunas rolam dentro do cartão, sem sair dele, e toda
-/// célula é alcançável por um valor da barra.
-#[test]
-fn as_32_rolam_dentro_do_cartao_e_o_botao_fica_desligado() {
-    ph2d_panel_physics::set_visible_layers(u32::MAX);
-    let mut mesa = Mesa::nova(mundo(
-        PhysicsSettings::default(),
-        InteractionSettings::default(),
-    ));
-    assert!(
-        mesa.rect(ids::PHYSICS_LAYER_ADD).is_none(),
-        "o botão não aceita clique"
-    );
-    assert!(
-        mesa.rect(ids::PHYSICS_LAYER_SCROLL).is_some(),
-        "a barra aparece"
-    );
-    let mut alcancadas = std::collections::BTreeSet::new();
-    let barra = mesa.rect(ids::PHYSICS_LAYER_SCROLL).unwrap();
-    for passo in 0..=40 {
-        mesa.host
-            .store_mut()
-            .set_slider_value(ids::PHYSICS_LAYER_SCROLL, passo as f32 / 40.0);
-        mesa.assenta();
-        for (i, id) in ids::PHYSICS_LAYER_CELL.iter().enumerate() {
-            if let Some(r) = mesa.rect(*id) {
-                assert!(
-                    r.x + r.w <= barra.x + barra.w + 0.5,
-                    "a célula {i} sai do cartão: {r:?} além de {barra:?}"
-                );
-                assert_eq!(
-                    r.w,
-                    ph2d_card_stack::metrics::GRID_CELL,
-                    "o toque não encolhe"
-                );
-                alcancadas.insert(i);
-            }
-        }
-    }
-    assert_eq!(
-        alcancadas.len(),
-        ids::PHYSICS_LAYER_CELLS,
-        "nada inalcançável"
-    );
-}
-
-/// Sonda (`--ignored --nocapture`): o quadro do painel com 8 e 32 camadas visíveis, e o peso do store.
-#[test]
-#[ignore = "mede: corre à mão"]
-fn mede_o_painel_com_8_e_32() {
-    use std::time::Instant;
-    let mut melhor = [f64::MAX; 2];
-    for _ in 0..40 {
-        for (v, bits) in [0xFFu32, u32::MAX].into_iter().enumerate() {
-            ph2d_panel_physics::set_visible_layers(bits);
-            let mut mesa = Mesa::nova(mundo(
-                PhysicsSettings::default(),
-                InteractionSettings::default(),
-            ));
-            let t = Instant::now();
-            mesa.assenta();
-            melhor[v] = melhor[v].min(t.elapsed().as_secs_f64());
-        }
-    }
-    println!(
-        "[painel] pintar 8 = {:.0} us · 32 = {:.0} us · InteractiveState = {} B x {} células",
-        melhor[0] * 1e6,
-        melhor[1] * 1e6,
-        size_of::<ph2d_editor_core::interaction::InteractiveState>(),
-        ids::PHYSICS_LAYER_CELLS,
-    );
 }
 
 /// ⭐ O par alternado pela porta do quadro do Inspector é a MESMA edição da célula: o mesmo intent, e os dois lados.
@@ -850,7 +666,10 @@ fn o_par_alternado_e_a_mesma_edicao_da_celula_nos_dois_sentidos() {
         PhysicsSettings::default(),
         InteractionSettings::default(),
     ));
-    let da_celula = mesa.clica(ids::PHYSICS_LAYER_CELL[ids::physics_layer_cell_index(3, 1)]);
+    // O clique real na célula do modal tem prova própria (`o_modal_das_camadas`): aqui, o evento dela.
+    let da_celula = mesa.aplica(vec![WidgetEvent::Click(
+        ids::PHYSICS_LAYER_CELL[ids::physics_layer_cell_index(3, 1)],
+    )]);
     for (a, b) in [(3, 1), (1, 3)] {
         ph2d_panel_physics::alterna_par(a, b);
         assert_eq!(drain_intents(), da_celula, "({a},{b})");
@@ -869,117 +688,6 @@ fn o_par_alternado_e_a_mesma_edicao_da_celula_nos_dois_sentidos() {
     ph2d_panel_physics::alterna_par(3, 1);
     let volta = ultimo_mundo(&drain_intents()).expect("a edição");
     assert_eq!(volta.layer_matrix, PhysicsSettings::default().layer_matrix);
-}
-
-/// «Edit matrix…» abre o painel e a secção, destaca a linha e traz-a à vista, mesmo com a barra das colunas no outro lado.
-#[test]
-fn edit_matrix_abre_a_seccao_e_traz_a_linha_a_vista() {
-    ph2d_panel_physics::set_visible_layers(u32::MAX);
-    let mut mesa = Mesa::nova(mundo(
-        PhysicsSettings::default(),
-        InteractionSettings::default(),
-    ));
-    let store = mesa.host.store_mut();
-    store.set_collapsed(ids::PHYSICS_SEC_LAYERS, true);
-    store.set_slider_value(ids::PHYSICS_LAYER_SCROLL, 0.0);
-    mesa.assenta();
-    assert_eq!(ph2d_panel_physics::destaque(), None);
-    // Depois de pintar: o `MockPanelHost` força o painel visível para o pintar.
-    mesa.host.set_panel_visible("physics", false);
-
-    ph2d_panel_physics::abre_a_matriz(&mut mesa.host, 25);
-    assert!(mesa.host.panel_visible("physics"), "o painel abriu");
-    assert!(
-        !mesa.host.store().is_collapsed(ids::PHYSICS_SEC_LAYERS),
-        "a secção abriu"
-    );
-    assert_eq!(ph2d_panel_physics::destaque(), Some(25));
-    mesa.assenta();
-    let celula = mesa
-        .rect(ids::PHYSICS_LAYER_CELL[ids::physics_layer_cell_index(25, 25)])
-        .expect("a diagonal da linha está à vista");
-    assert!(celula.y >= COLUNA.y && celula.y + celula.h <= COLUNA.y + COLUNA.h);
-    // Fechar o painel apaga o destaque: reaberto pelo menu, nada aponta para uma linha antiga.
-    let _ = mesa.aplica(vec![WidgetEvent::Click(ids::PHYSICS_CLOSE)]);
-    assert_eq!(ph2d_panel_physics::destaque(), None);
-}
-
-/// A face clássica não tem barra: com as 32, as colunas encolhem e toda célula continua alcançável, dentro do painel.
-#[test]
-fn a_face_classica_alcanca_as_32() {
-    ph2d_panel_physics::set_visible_layers(u32::MAX);
-    let mut mesa = Mesa::nova(mundo(
-        PhysicsSettings::default(),
-        InteractionSettings::default(),
-    ));
-    cards::force_cards_on_this_thread(Some(false));
-    mesa.host.set_collapsed(ids::PHYSICS_SEC_LAYERS, false);
-    mesa.assenta();
-    let painel = mesa
-        .host
-        .store()
-        .panel_rect(ph2d_editor_core::ids::PHYSICS_PANEL)
-        .expect("o painel publicou a caixa");
-    for (i, id) in ids::PHYSICS_LAYER_CELL.iter().enumerate() {
-        let r = mesa
-            .rect(*id)
-            .unwrap_or_else(|| panic!("a célula {i} não se alcança"));
-        assert!(
-            r.x + r.w <= painel.x + painel.w,
-            "a célula {i} sai: {r:?} de {painel:?}"
-        );
-    }
-    cards::force_cards_on_this_thread(Some(true));
-}
-
-/// Shift+roda e a roda horizontal andam as colunas; a roda simples rola o painel e não mexe nelas.
-#[test]
-fn a_roda_de_lado_rola_as_colunas_e_a_simples_nao() {
-    ph2d_panel_physics::set_visible_layers(u32::MAX);
-    let mut mesa = Mesa::nova(mundo(
-        PhysicsSettings::default(),
-        InteractionSettings::default(),
-    ));
-    let store = mesa.host.store_mut();
-    store.set_slider_value(ids::PHYSICS_LAYER_SCROLL, 0.0);
-    mesa.assenta();
-    let c = mesa
-        .rect(ids::PHYSICS_LAYER_CELL[0])
-        .expect("a primeira célula");
-    let arena = bumpalo::Bump::new();
-    let valor = |m: &Mesa| {
-        m.host
-            .store()
-            .slider(ids::PHYSICS_LAYER_SCROLL)
-            .expect("a barra")
-            .1
-    };
-    let roda = |m: &mut Mesa, dx: f32, dy: f32, shift: bool| {
-        let _ = ph2d_editor_core::interaction::dispatch_wheel(
-            m.host.store_mut(),
-            ph2d_host::WheelEvent {
-                x: c.x + 1.0,
-                y: c.y + 1.0,
-                delta_x: dx,
-                delta_y: dy,
-                modifiers: ph2d_host::Modifiers {
-                    shift,
-                    ..Default::default()
-                },
-                timestamp_ns: 0,
-            },
-            &arena,
-        );
-    };
-    roda(&mut mesa, 0.0, -40.0, false);
-    assert_eq!(valor(&mesa), 0.0, "a roda simples não anda as colunas");
-    roda(&mut mesa, 0.0, -40.0, true);
-    let depois_de_shift = valor(&mesa);
-    assert!(depois_de_shift > 0.0, "Shift+roda anda para a direita");
-    roda(&mut mesa, -40.0, 0.0, false);
-    assert!(valor(&mesa) > depois_de_shift, "a roda horizontal também");
-    roda(&mut mesa, 0.0, 4000.0, true);
-    assert_eq!(valor(&mesa), 0.0, "pára na ponta");
 }
 
 /// O par alternado pela porta do quadro decide no motor: duas bolas de camadas diferentes batem ou passam, nos dois

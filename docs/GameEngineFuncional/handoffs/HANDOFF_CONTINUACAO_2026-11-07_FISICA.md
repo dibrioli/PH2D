@@ -30,7 +30,7 @@ Bola 2 × 1 com `ZONE_FORCE = 40`: oscila entre y ≈ 3 e 7 m, sem nunca chegar 
 
 1. Smoke do dono (rascunho no relatório desta onda).
 2. **Polígono pelo contorno:** item próprio, a seguir. Mexe no motor e no formato salvo.
-3. Decisão de produto: a forma solta mostra «Hits: Player, Props» junto de «Nothing bumps into it yet». Pode esconder-se o «Hits» sem corpo; não foi decidido.
+3. Decisão de produto: a forma solta não tem contorno no canvas (só o anel; com a edição acesa, sim). O «Hits» dela já saiu: ver a ficha.
 
 ## Não provado
 

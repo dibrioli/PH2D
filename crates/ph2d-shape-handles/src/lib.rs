@@ -12,7 +12,7 @@ pub use ponteiro::{
     CursorDaAlca, FormaNoCanvas, Porta, a_meio, alterna, ativo, clique_parado, cursor_em, editando,
     quadro,
 };
-pub use roteiro::{PassoDaMao, Plano, passo_da_mao};
+pub use roteiro::{Botao, PassoDaMao, Plano, passo_da_mao};
 
 use bevy_ecs::world::World;
 use ph2d_ecs::Entity;

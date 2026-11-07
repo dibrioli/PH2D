@@ -690,6 +690,30 @@ fn hits_le_a_matriz_com_os_nomes_e_acompanha_a_mudanca() {
     set_current(Default::default(), [u8::MAX; 8]);
 }
 
+/// Sem corpo acima nada bate na forma: «Hits» contradiria «Nothing bumps into it yet» e sai; a lista e o «Rename…»
+/// ficam. Com dono ou com corpo, a linha continua entre os dois. A distância mede a linha: a frase não tem id.
+#[test]
+fn a_forma_solta_nao_mostra_hits_mas_mantem_a_camada_e_o_rename() {
+    let vao = |info: InspectorPhysicsInfo| {
+        let (mut host, mut st) = cena(info, [1.0, 1.0]);
+        let r = pinta(&mut host, &mut st);
+        let lista = achado(&r, INSP_PHYS_LAYER_PICK).expect("a lista da camada");
+        let rename = achado(&r, INSP_PHYS_LAYER_RENAME).expect("o Rename…");
+        sai();
+        rename.y - lista.y
+    };
+    let solta = InspectorPhysicsInfo {
+        part_owner: String::new(),
+        ..as_part()
+    };
+    let (sem, peca, corpo) = (vao(solta), vao(as_part()), vao(with_body()));
+    assert_eq!(peca, corpo, "peça e corpo mostram a mesma linha");
+    assert!(
+        sem < peca,
+        "a solta ainda reserva a linha Hits: {sem} × {peca}"
+    );
+}
+
 /// «Rename…» abre o campo ali mesmo; escrever pede o novo nome da camada do objecto.
 #[test]
 fn rename_abre_o_campo_e_escrever_renomeia_a_camada_do_objecto() {

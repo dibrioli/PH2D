@@ -203,7 +203,7 @@ pub(super) fn uma_via(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) ->
     )
 }
 
-/// Layer em lista com os nomes (os ids e a edição são os de sempre), «Hits» lido da matriz do mundo e o «Rename…».
+/// Layer em lista com os nomes (os ids e a edição são os de sempre), «Hits» lido da matriz (só com corpo acima) e o «Rename…».
 pub(super) fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
     let rotulo = tr("component.field.collider.4");
     let seccao = ph2d_editor_core::property_row::Seccao::medida(t.text, 1, &[rotulo]);
@@ -240,7 +240,13 @@ pub(super) fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> 
     }
     let y = linha.fim(ph2d_tokens::row_pitch_px());
     let camada = usize::from(info.layer);
-    let y = t.frase(y, &crate::camadas_fisica::hits(camada), ColorToken::Text3);
+    // Sem corpo acima nada bate na forma: «Hits» desmentiria a frase de cima.
+    let solta = !info.has_body && info.part_owner.is_empty();
+    let y = if solta {
+        y
+    } else {
+        t.frase(y, &crate::camadas_fisica::hits(camada), ColorToken::Text3)
+    };
     let (r, y) = t.botao(
         ids::INSP_PHYS_LAYER_RENAME,
         tr("card.insp.phys.layer_rename"),

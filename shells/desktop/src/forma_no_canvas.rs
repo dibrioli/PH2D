@@ -89,16 +89,25 @@ impl crate::App {
         };
         let win = crate::scene_mapping::janela(hero.view.center_split, g.surface.size());
         match passo_da_mao(plano, g.sim.world(), alvo, &g.camera, win) {
-            Some(P::Clica) => {
-                // A foto mostra a forma no meio da vista; o botão é o do cartão, pelo ponteiro.
+            Some(P::Clica(b)) => {
+                use ph2d_panel_inspector::ids as i;
+                use ph2d_shape_handles::Botao as B;
                 let e = ph2d_ecs::Entity::from_bits(alvo);
                 let pose = ph2d_shape_handles::Pose::de(g.sim.world(), e);
                 g.camera.center = pose.map_or(g.camera.center, |p| p.t);
-                let id = ph2d_panel_inspector::ids::INSP_PHYS_EDIT_SHAPE;
+                let id = match b {
+                    B::EditShape => i::INSP_PHYS_EDIT_SHAPE,
+                    B::FitToPicture => i::INSP_PHYS_FIT_PICTURE,
+                    B::Largura => i::INSP_PHYS_HALF_X,
+                };
                 if let Some((x, y)) = self.smoke_find_widget(id) {
                     self.smoke_pointer_down(x, y);
                     self.smoke_pointer_up();
                 }
+            }
+            Some(P::Escreve(t)) => {
+                self.smoke_type(t);
+                self.smoke_key_enter();
             }
             Some(P::Esc) => {
                 use winit::{

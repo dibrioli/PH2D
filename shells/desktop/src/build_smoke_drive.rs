@@ -10,18 +10,8 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_ref() else { return };
         let win = gfx.scene_window();
         let s = gfx.camera.world_to_screen([w[0] as f32, w[1] as f32], win);
-        self.on_cursor_moved(winit::dpi::PhysicalPosition::new(
-            f64::from(s.0),
-            f64::from(s.1),
-        ));
-        self.on_mouse_input(
-            winit::event::ElementState::Pressed,
-            winit::event::MouseButton::Left,
-        );
-        self.on_mouse_input(
-            winit::event::ElementState::Released,
-            winit::event::MouseButton::Left,
-        );
+        self.smoke_pointer_down(s.0, s.1);
+        self.smoke_pointer_up();
     }
 
     /// Ctrl+Z (ou Ctrl+Shift+Z) pelo roteamento REAL do teclado — **inclusive o RELEASE**.
@@ -52,21 +42,7 @@ impl crate::App {
         }
     }
 
-    /// ⭐⭐⭐ **Escreve num campo focado — pelo `key_input` INTEIRO**, não pelo `WidgetStore` nem
-    /// pelo atalho do carácter.
-    ///
-    /// ⚠️ Escrever no buffer directamente mediria o pintor: um campo que nasce sem foco aceitaria o
-    /// texto na mesma e o roteiro passaria.
-    ///
-    /// ⛔⛔ **E a 1.ª versão parava a meio caminho** (auditoria de 2026-08-30): ela chamava o
-    /// `forward_text_to_hero` — a porta certa para o carácter, mas **só ela** —, e por isso saltava
-    /// o `handle_editor_key` que corre a SEGUIR no mesmo evento. Ou seja: ela não media que
-    /// escrever *«Heroes»* num campo **não dispara também os atalhos** de `H`/`e`/`r`/`o`/`s`. E é
-    /// precisamente essa costura (`text_entry_focused`) de que o doc daquele id se gaba. ⇒ hoje
-    /// cada tecla entra pelo `key_input`, com o `text` que o `winit` entregaria.
-    ///
-    /// ⚠️ Só letras minúsculas e maiúsculas — é o que os nomes dos roteiros precisam, e inventar
-    /// um mapa de teclado inteiro aqui seria construir o que não se usa.
+    /// Escreve num campo focado pelo `key_input` inteiro: mede o foco e que as teclas não disparam atalhos. Letras e dígitos.
     pub(crate) fn smoke_type(&mut self, text: &str) {
         for ch in text.chars() {
             let Some(code) = Self::smoke_letter_key(ch) else {
@@ -91,9 +67,24 @@ impl crate::App {
         }
     }
 
-    /// A tecla física de uma letra. ⛔ `None` para tudo o resto — o chamador salta.
+    /// A tecla física de uma letra ou dígito. ⛔ `None` para tudo o resto — o chamador salta.
     fn smoke_letter_key(ch: char) -> Option<winit::keyboard::KeyCode> {
         use winit::keyboard::KeyCode as K;
+        const DIGITS: [winit::keyboard::KeyCode; 10] = [
+            K::Digit0,
+            K::Digit1,
+            K::Digit2,
+            K::Digit3,
+            K::Digit4,
+            K::Digit5,
+            K::Digit6,
+            K::Digit7,
+            K::Digit8,
+            K::Digit9,
+        ];
+        if let Some(d) = ch.to_digit(10) {
+            return Some(DIGITS[d as usize]);
+        }
         const LETTERS: [winit::keyboard::KeyCode; 26] = [
             K::KeyA,
             K::KeyB,
@@ -168,18 +159,8 @@ impl crate::App {
             return;
         };
         eprintln!("[build-smoke] clicando no botão {label} em ({x}, {y})");
-        self.on_cursor_moved(winit::dpi::PhysicalPosition::new(
-            f64::from(x),
-            f64::from(y),
-        ));
-        self.on_mouse_input(
-            winit::event::ElementState::Pressed,
-            winit::event::MouseButton::Left,
-        );
-        self.on_mouse_input(
-            winit::event::ElementState::Released,
-            winit::event::MouseButton::Left,
-        );
+        self.smoke_pointer_down(x, y);
+        self.smoke_pointer_up();
     }
 
     /// Onde um widget está na TELA — varre o hit-index inteiro. `None` = não pintado/clicável.

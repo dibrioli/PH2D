@@ -74,6 +74,11 @@ pub enum CasoFisica {
     FormaSolta,
     /// O clique parado no miolo: a forma por cima da Platform High, que fica selecionada (17b A1).
     FormaClique,
+    /// Só na cena 120: Width 800 e o clique parado na ponta da forma, sobre a zona.
+    FormaPonta,
+    /// Só na cena 120: o Player, Fit to picture e Ctrl+Z; e sem o Ctrl+Z, para o cartão na foto.
+    FormaFit,
+    FormaFitFica,
 }
 
 /// O gesto de cada foto das alças.
@@ -140,6 +145,17 @@ pub fn plano_da_forma(caso: CasoFisica) -> Option<ph2d_shape_handles::Plano> {
             alca: Some(ph2d_shape_handles::Alca::Miolo),
             ..Plano::default()
         },
+        CasoFisica::FormaPonta => Plano {
+            largura: Some("800"),
+            na_ponta: true,
+            ..lado
+        },
+        CasoFisica::FormaFit | CasoFisica::FormaFitFica => Plano {
+            botao: ph2d_shape_handles::Botao::FitToPicture,
+            sem_arrasto: true,
+            desfaz: caso == CasoFisica::FormaFit,
+            ..lado
+        },
         _ => return None,
     })
 }
@@ -184,6 +200,9 @@ pub fn caso(nome: &str) -> Option<CasoFisica> {
         "forma_sensor" => CasoFisica::FormaSensor,
         "forma_solta" => CasoFisica::FormaSolta,
         "forma_clique" => CasoFisica::FormaClique,
+        "forma_ponta" => CasoFisica::FormaPonta,
+        "forma_fit" => CasoFisica::FormaFit,
+        "forma_fit_fica" => CasoFisica::FormaFitFica,
         _ => return None,
     })
 }
@@ -204,6 +223,7 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
     let pai = por_nome(sim, "Platform High")?;
     match caso {
         CasoFisica::Static => return Some(pai.to_bits()),
+        CasoFisica::FormaPonta | CasoFisica::FormaFit | CasoFisica::FormaFitFica => return None,
         CasoFisica::Player | CasoFisica::PlayerCartoes | CasoFisica::FormaPlayer => {
             return por_nome(sim, "Player").map(|e| e.to_bits());
         }
@@ -215,6 +235,9 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
     let w = sim.world_mut();
     let alvo = match caso {
         CasoFisica::Static
+        | CasoFisica::FormaPonta
+        | CasoFisica::FormaFit
+        | CasoFisica::FormaFitFica
         | CasoFisica::Player
         | CasoFisica::PlayerCartoes
         | CasoFisica::FormaPlayer

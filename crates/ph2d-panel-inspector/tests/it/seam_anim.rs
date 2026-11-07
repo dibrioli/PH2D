@@ -365,11 +365,11 @@ fn clicking_a_row_picks_what_plays_and_moves_the_editor_with_it() {
         &mut state,
         ph2d_panel_inspector::ids::INSP_ANIM_ROW[1],
     );
-    expect(
-        &out,
-        AnimFieldEdit::SetCurrent("attack".into()),
-        "clicar na segunda linha",
-    );
+    // `PH2D_CARDS=0`: a linha também muda com o que começa (ficha 02, F3).
+    assert!(out.iter().any(|a| matches!(
+        a,
+        EditorAction::InspectorAnimEdit { edit: AnimFieldEdit::SetCurrent(n), .. } if n == "attack"
+    )));
     // E agora o editor edita a SEGUNDA.
     host.set_number_value(ph2d_panel_inspector::ids::INSP_ANIM_FPS, 10.0);
     let _ = host.apply_panel_event::<InspectorPanel>(

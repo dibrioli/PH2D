@@ -616,3 +616,112 @@ fn a_regra_acesa_pinta_a_fila_dela_e_a_etiqueta_live() {
     assert_eq!(ph2d_panel_inspector::regra_acesa_pintada(), None);
     limpa();
 }
+
+/// Só o cartão do objecto do renomear abre o campo: o mesmo id pinta em todo cartão Animation à vista.
+/// *Mutação: tirar o filtro do dono em `corpo` ⇒ o campo abre no cartão doutro objecto.*
+#[test]
+fn o_campo_do_nome_so_abre_no_cartao_do_dono() {
+    let (mut host, mut st) = cena();
+    let linha = rect_de(&pinta(&mut host, &mut st), INSP_ANIM_ROW[1]);
+    let _ = ponteiro(&mut host, &mut st, linha);
+    let _ = ponteiro(&mut host, &mut st, linha);
+    assert!(pintou(&pinta(&mut host, &mut st), INSP_ANIM_NAME), "o dono");
+    st.anim_renomeando.as_mut().expect("aberto").entity_bits = BITS + 1;
+    assert!(
+        !pintou(&pinta(&mut host, &mut st), INSP_ANIM_NAME),
+        "outro objecto não abre o campo"
+    );
+    limpa();
+}
+
+/// ⭐ `PH2D_CARDS=0`: sem o menu «Starts with», a linha e o ▶ doutra linha mudam com o que começa; o balão não cita o menu.
+/// *Mutação: tirar `segue_o_inicio_sem_cartoes` ⇒ o 1.º clique fixa o início e não há saída no painel.*
+#[test]
+fn sem_cartoes_a_linha_muda_com_o_que_comeca() {
+    let (_, mut st) = cena();
+    set_cards_on(false);
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    let esperado = [
+        AnimFieldEdit::SetCurrent("attack".into()),
+        AnimFieldEdit::StartsWith("attack".into()),
+    ];
+    let r = rect_de(&pinta(&mut host, &mut st), INSP_ANIM_ROW[1]);
+    let _ = host.drained_actions();
+    assert_eq!(edits(&ponteiro(&mut host, &mut st, r).1), esperado);
+    let balao = host.store().tooltip_for(INSP_ANIM_CHOOSER[0]).unwrap_or("");
+    assert!(
+        !balao.contains("Starts with"),
+        "o balão cita um controlo ausente: {balao}"
+    );
+    set_cards_on(true);
+    let host = MockPanelHost::with_panel::<InspectorPanel>();
+    let balao = host.store().tooltip_for(INSP_ANIM_CHOOSER[0]).unwrap_or("");
+    assert!(balao.contains("Starts with"), "{balao}");
+    limpa();
+}
+
+/// Suspeita: o rótulo com LIVE na coluna medida de `PH2D_CARDS=0`, no piso do painel.
+#[test]
+fn sem_cartoes_o_live_cabe_na_coluna() {
+    use ph2d_editor_core::text_elide::elisao;
+    let live = ph2d_i18n::tr("panel.inspector.anim_card.who_picks_live");
+    let piso = ph2d_editor_core::interaction::WidgetStore::DOCK_W_MIN;
+    let (mut host, mut st) = cena_com(com_regras(Some(0)));
+    set_cards_on(false);
+    let _ = pinta_a_largura(&mut host, &mut st, piso);
+    let (_, medidos) = elisao::medindo(|| pinta_a_largura(&mut host, &mut st, piso));
+    let visto: Vec<_> = medidos.iter().filter(|m| m.texto == live).collect();
+    assert!(!visto.is_empty(), "o LIVE pintou");
+    assert!(visto.iter().all(|m| m.coube()), "{visto:?}");
+    limpa();
+}
+
+/// Suspeita descartada: Sample hero, Keep the cut e Starts with não cortam texto no piso do painel.
+#[test]
+fn os_botoes_novos_nao_cortam_no_piso_do_painel() {
+    use ph2d_editor_core::text_elide::elisao;
+    let piso = ph2d_editor_core::interaction::WidgetStore::DOCK_W_MIN;
+    let pede = |sem_imagem: bool| {
+        let (mut host, mut st) = cena_com(com_inicio());
+        facts(ph2d_panel_inspector::slot_image::SpriteFacts {
+            sem_imagem,
+            corte_velho: (!sem_imagem).then_some(ph2d_editor_core::ImageCutNotice {
+                grid: [8, 4],
+                cell_px: [32, 32],
+                animations: 6,
+            }),
+            ..Default::default()
+        });
+        let _ = pinta_a_largura(&mut host, &mut st, piso);
+        let (_, medidos) = elisao::medindo(|| pinta_a_largura(&mut host, &mut st, piso));
+        let cortados: Vec<_> = medidos
+            .iter()
+            .filter(|m| !m.coube())
+            .map(|m| m.texto.clone())
+            .collect();
+        limpa();
+        (
+            medidos.iter().map(|m| m.texto.clone()).collect::<Vec<_>>(),
+            cortados,
+        )
+    };
+    for (sem_imagem, deve_ver) in [
+        (true, vec!["card.insp.sample_hero"]),
+        (
+            false,
+            vec![
+                "card.insp.keep_cut",
+                "panel.inspector.anim_card.starts_with",
+            ],
+        ),
+    ] {
+        let (vistos, cortados) = pede(sem_imagem);
+        assert!(cortados.is_empty(), "{cortados:?}");
+        for k in deve_ver {
+            assert!(
+                vistos.iter().any(|t| t == ph2d_i18n::tr(k)),
+                "{k}: {vistos:?}"
+            );
+        }
+    }
+}

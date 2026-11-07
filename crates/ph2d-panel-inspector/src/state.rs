@@ -21,6 +21,14 @@ use ph2d_editor_core::screens::hero::{
 /// Inspector panel retained state. Held inside `ErasedPanel<InspectorPanel>`
 /// after Phase C.1; mutated by the panel's `paint` / `apply_event` and
 /// by `sync_inspector_from_snapshots` (also panel-owned).
+/// O renomear de uma linha da lista: o objecto do cartão onde abriu (o preso, ou a seleção), a linha e o nome de antes.
+#[derive(Clone, Debug)]
+pub struct AnimRenomeando {
+    pub entity_bits: u64,
+    pub row: usize,
+    pub nome: String,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct InspectorState {
     /// Entity bits of the last selection whose snapshot seeded the 5
@@ -60,8 +68,8 @@ pub struct InspectorState {
     pub last_anchor_row: Option<usize>,
     /// §11 — a animação aberta no cartão. **Estado do painel**, saturado contra a biblioteca.
     pub anim_selected: usize,
-    /// §11 — a linha da lista cujo nome está a ser escrito (dois cliques nela, só nos cartões).
-    pub anim_renomeando: Option<usize>,
+    /// §11 — o renomear em curso (dois cliques na linha, só nos cartões): guarda de quem é.
+    pub anim_renomeando: Option<AnimRenomeando>,
     /// Irmão do [`Self::last_anchor_row`]: os campos semeiam-se numa ARESTA (entidade ou linha).
     pub last_anim_row: Option<usize>,
     /// §11 — a (entidade, animação no ecrã) da última pintura: quando muda, a aberta vai para ela.
@@ -405,7 +413,7 @@ pub fn set_current_inspector_anim(info: Option<InspectorAnimInfo>) {
     CURRENT_INSPECTOR_ANIM.with(|c| *c.borrow_mut() = info);
 }
 
-pub(crate) fn current_inspector_anim() -> Option<InspectorAnimInfo> {
+pub fn current_inspector_anim() -> Option<InspectorAnimInfo> {
     CURRENT_INSPECTOR_ANIM.with(|c| c.borrow().clone())
 }
 

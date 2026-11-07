@@ -79,7 +79,10 @@ fn corpo(c: &mut CardCtx<'_>, y: f32, info: &InspectorAnimInfo, a: Abertas) -> f
             y,
             info,
             selected,
-            a.renomeando().map(|i| (i, &mut campo_do_nome)),
+            // Só no cartão do objecto do renomear: o mesmo id pinta em todo cartão Animation à vista.
+            a.renomeando()
+                .filter(|(dono, _)| *dono == info.entity_bits)
+                .map(|(_, i)| (i, &mut campo_do_nome)),
         )
     });
     // Por cima da linha já registada: o clique no campo é do campo.
@@ -155,12 +158,16 @@ pub(crate) fn evento_do_nome(
                 return false;
             };
             panel.anim_selected = i;
-            panel.anim_renomeando = Some(i);
+            panel.anim_renomeando = Some(crate::state::AnimRenomeando {
+                entity_bits: info.entity_bits,
+                row: i,
+                nome: row.name.clone(),
+            });
             abre_o_nome(host.store_mut(), &row.name);
             true
         }
         WidgetEvent::Submit(id) if id == ids::INSP_ANIM_NAME => {
-            grava_o_nome(panel, host, info);
+            grava_o_nome(panel, host);
             host.store_mut().set_focus(None);
             true
         }
@@ -176,33 +183,25 @@ pub(crate) fn evento_do_nome(
     }
 }
 
-fn grava_o_nome(
-    panel: &mut crate::state::InspectorState,
-    host: &mut dyn PanelHostInternal,
-    info: &InspectorAnimInfo,
-) {
-    let Some(i) = panel.anim_renomeando.take() else {
+fn grava_o_nome(panel: &mut crate::state::InspectorState, host: &mut dyn PanelHostInternal) {
+    let Some(r) = panel.anim_renomeando.take() else {
         return;
     };
-    let texto = host.store().text(ids::INSP_ANIM_NAME).unwrap_or("").trim();
-    let novo = texto.to_owned();
-    if novo.is_empty() || info.rows.get(i).is_none_or(|r| r.name == novo) {
+    let novo = host.store().text(ids::INSP_ANIM_NAME).unwrap_or("").trim();
+    if novo.is_empty() || r.nome == novo {
         return;
     }
-    crate::event_anim::push(
-        host,
-        info.entity_bits,
-        AnimFieldEdit::Rename(u8::try_from(i).unwrap_or(u8::MAX), novo),
-    );
+    let edit = AnimFieldEdit::Rename(u8::try_from(r.row).unwrap_or(u8::MAX), novo.to_owned());
+    crate::event_anim::push(host, r.entity_bits, edit);
 }
 
-/// Clicar fora do campo grava, como no editor: o foco saiu e o campo não pode ficar aberto.
+/// Clicar fora do campo grava, como no editor: o foco saiu e o campo não pode ficar aberto. Vale com a seleção em
+/// qualquer objecto, ou sem tocador: quem manda é o dono do renomear.
 pub(crate) fn fecha_ao_perder_o_foco(
     panel: &mut crate::state::InspectorState,
     host: &mut dyn PanelHostInternal,
-    info: &InspectorAnimInfo,
 ) {
     if panel.anim_renomeando.is_some() && host.store().focus_id() != Some(ids::INSP_ANIM_NAME) {
-        grava_o_nome(panel, host, info);
+        grava_o_nome(panel, host);
     }
 }

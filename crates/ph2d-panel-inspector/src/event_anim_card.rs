@@ -93,6 +93,7 @@ fn apply_card_click(
         } else {
             push(host, bits, AnimFieldEdit::SetCurrent(row.name.clone()));
             push(host, bits, AnimFieldEdit::Playing(true));
+            crate::event_anim::segue_o_inicio_sem_cartoes(host, bits, &row.name);
         }
         demote(host, id);
         return true;

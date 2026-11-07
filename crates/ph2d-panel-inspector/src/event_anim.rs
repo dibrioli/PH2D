@@ -49,6 +49,7 @@ pub(crate) fn apply_anim_event(
                 info.entity_bits,
                 AnimFieldEdit::SetCurrent(row.name.clone()),
             );
+            segue_o_inicio_sem_cartoes(host, info.entity_bits, &row.name);
             demote(host, id);
             return true;
         }
@@ -212,6 +213,21 @@ pub(crate) fn apply_anim_event(
         }
     }
     false
+}
+
+/// `PH2D_CARDS=0` não tem o menu «Starts with»: lá vale a lei antiga, a linha muda com o que o jogo começa.
+pub(crate) fn segue_o_inicio_sem_cartoes(
+    host: &mut dyn PanelHostInternal,
+    entity_bits: u64,
+    nome: &str,
+) {
+    if !crate::cards::active() {
+        push(
+            host,
+            entity_bits,
+            AnimFieldEdit::StartsWith(nome.to_owned()),
+        );
+    }
 }
 
 pub(crate) fn push(host: &mut dyn PanelHostInternal, entity_bits: u64, edit: AnimFieldEdit) {

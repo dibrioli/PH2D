@@ -44,8 +44,8 @@ pub(crate) fn sync_new_sections(
         inspector_state.last_anchor_row = Some(row);
         sync_anchor_fields(host, &an, row, semeia || row_changed);
     }
+    crate::cards_anim::fecha_ao_perder_o_foco(inspector_state, host);
     if let Some(an) = crate::state::current_inspector_anim() {
-        crate::cards_anim::fecha_ao_perder_o_foco(inspector_state, host, &an);
         // ⚠️ **A mesma ARESTA da §12**, e pelo mesmo defeito medido: os campos do editor
         // semeiam-se quando a ENTIDADE **ou** a linha aberta muda, nunca por quadro. Reescrever
         // sempre desfaria o número que o artista acabou de digitar antes de o commit chegar.

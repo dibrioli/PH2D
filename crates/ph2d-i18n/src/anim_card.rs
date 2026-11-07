@@ -28,6 +28,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.anim_card.me_hint" => {
             "It starts by itself when the game runs, with the animation in Starts with."
         }
+        "panel.inspector.anim_card.me_hint_sem_menu" => {
+            "It starts by itself when the game runs, with the animation you clicked last in the list."
+        }
         "panel.inspector.anim_card.script_hint" => {
             "Nothing starts by itself: a script picks with ph2d.set(self.id, \"animator.animation\", \"run\") and starts it with ph2d.set(self.id, \"animator.playing\", true)."
         }

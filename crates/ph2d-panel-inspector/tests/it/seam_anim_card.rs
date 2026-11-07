@@ -117,7 +117,8 @@ fn o_play_de_uma_linha_escolhe_e_poe_a_tocar() {
         edits(&click_fresh(anim(false, false), ids::INSP_ANIM_PLAY_ROW[1])),
         [
             AnimFieldEdit::SetCurrent("attack".into()),
-            AnimFieldEdit::Playing(true)
+            AnimFieldEdit::Playing(true),
+            AnimFieldEdit::StartsWith("attack".into()), // sem cartões, a lei antiga (ficha 02, F3)
         ]
     );
 }
@@ -362,7 +363,8 @@ fn o_pause_mora_na_linha_que_toca_e_pausa_sem_rebobinar() {
         edits(&click_fresh(anim(true, false), ids::INSP_ANIM_PLAY_ROW[1])),
         [
             AnimFieldEdit::SetCurrent("attack".into()),
-            AnimFieldEdit::Playing(true)
+            AnimFieldEdit::Playing(true),
+            AnimFieldEdit::StartsWith("attack".into()), // sem cartões, a lei antiga (ficha 02, F3)
         ]
     );
     // E o ▶/⏸ da fileira «Playback» pergunta à cena.
@@ -729,7 +731,8 @@ fn o_que_saiu_do_cartao_mora_no_balao() {
     clear();
     assert!(tip(ids::INSP_ANIM_SPEED).contains("negative"));
     assert!(
-        tip(ids::INSP_ANIM_CHOOSER[0]).contains(ph2d_i18n::tr("panel.inspector.anim_card.me_hint"))
+        tip(ids::INSP_ANIM_CHOOSER[0])
+            .contains(ph2d_i18n::tr("panel.inspector.anim_card.me_hint_sem_menu"))
     );
     assert_eq!(
         tip(ids::INSP_ANIM_CHOOSER[1]),

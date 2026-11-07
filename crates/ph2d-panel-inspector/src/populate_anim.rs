@@ -188,7 +188,11 @@ fn populate_anim_tips(store: &mut WidgetStore) {
         format!(
             "{} · {}",
             tr("component.field.sprite_animator.2"),
-            tr("panel.inspector.anim_card.me_hint")
+            tr(if crate::cards::active() {
+                "panel.inspector.anim_card.me_hint"
+            } else {
+                "panel.inspector.anim_card.me_hint_sem_menu"
+            })
         ),
     );
     for (grupo, key) in [

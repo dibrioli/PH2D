@@ -23,7 +23,7 @@ use std::cell::Cell;
 pub(crate) struct Abertas {
     anchor: usize,
     anim: usize,
-    anim_renomeando: Option<usize>,
+    anim_renomeando: Option<(u64, usize)>,
     timer: usize,
     action: usize,
     watch: usize,
@@ -42,8 +42,8 @@ impl Abertas {
         self.anim
     }
 
-    /// A linha da lista cujo nome está a ser escrito.
-    pub(crate) fn renomeando(&self) -> Option<usize> {
+    /// O objecto e a linha cujo nome está a ser escrito.
+    pub(crate) fn renomeando(&self) -> Option<(u64, usize)> {
         self.anim_renomeando
     }
 
@@ -51,7 +51,7 @@ impl Abertas {
         Self {
             anchor: s.anchor_selected,
             anim: s.anim_selected,
-            anim_renomeando: s.anim_renomeando,
+            anim_renomeando: s.anim_renomeando.as_ref().map(|r| (r.entity_bits, r.row)),
             timer: s.timer_selected,
             action: s.action_selected,
             watch: s.watch_selected,

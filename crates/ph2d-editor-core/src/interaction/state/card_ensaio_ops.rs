@@ -139,12 +139,15 @@ impl WidgetStore {
         }
     }
 
-    /// A pressão caiu no solto preso `section`: o gesto parte dos estados do preso.
+    /// A pressão caiu no solto preso `section`: o gesto parte dos estados do preso. O campo em foco fica:
+    /// o que nele se escreveu ainda vai ao commit de quem o abriu.
     pub(super) fn poe_estados_presos(&mut self, section: NodeId) {
         let Some(e) = self.card_lists.pinned_states.get(&section).cloned() else {
             return;
         };
-        self.states.extend(e.estados);
+        let foco = self.focus_id;
+        self.states
+            .extend(e.estados.into_iter().filter(|(id, _)| Some(*id) != foco));
         self.widget_colors.extend(e.cores);
     }
 }

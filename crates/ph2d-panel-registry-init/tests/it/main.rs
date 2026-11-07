@@ -53,6 +53,7 @@ mod o_inspector_armado;
 mod o_painter_armado;
 mod o_preso_do_bones_r3;
 mod o_que_o_artista_nao_alcanca;
+mod o_renomear_no_cartao_preso;
 mod o_scrub_dos_componentes;
 mod o_smart_bone_em_cartoes;
 mod o_transform_do_vector_em_draw;

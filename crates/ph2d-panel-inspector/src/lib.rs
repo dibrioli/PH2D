@@ -317,6 +317,7 @@ pub fn player_row_labels() -> Vec<&'static str> {
 pub use sections::slice_grid::{
     CORNER_LETTERS, MIXED_LETTER, REGION_CELLS, REGION_LETTERS, is_corner_cell,
 };
+pub use state::current_inspector_anim;
 pub use state::{
     InspectorState, last_inspector_content_h, last_inspector_visible_h, open_anchor_row,
     set_current_display_unit, set_current_inspector_anchor, set_current_inspector_anim,

@@ -122,18 +122,17 @@ pub fn populate(store: &mut WidgetStore) {
         store.set_tooltip(grip, ph2d_i18n::tr("chrome.section.grip_hint"));
     }
 
-    // O modal das camadas (onda 8): a porta, o X, o cartão, o fundo e os rótulos que renomeiam.
+    // A aba das camadas (onda 9a): a porta, o «+ Add», a lista e os rótulos que renomeiam.
     for id in [
         crate::ids::PHYSICS_MATRIX_OPEN,
-        crate::ids::PHYSICS_MATRIX_CLOSE,
-        crate::ids::PHYSICS_MATRIX_CARD,
-        crate::ids::PHYSICS_MATRIX_SCRIM,
+        crate::ids::PHYSICS_LAYER_ADD,
     ] {
         button(store, id);
     }
     for &id in crate::ids::PHYSICS_LAYER_ROW_LABEL
         .iter()
         .chain(&crate::ids::PHYSICS_LAYER_COL_LABEL)
+        .chain(&crate::ids::PHYSICS_LAYER_LIST)
     {
         button(store, id);
     }

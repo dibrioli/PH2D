@@ -190,19 +190,17 @@ const fn tabela_de(prefixo: &[u8]) -> [NodeId; MAX_LAYERS] {
     t
 }
 
-/// O rótulo à esquerda de cada linha do modal (duplo clique renomeia).
+/// O rótulo à esquerda de cada linha da grade da aba (duplo clique renomeia).
 pub static PHYSICS_LAYER_ROW_LABEL: [NodeId; MAX_LAYERS] = tabela_de(b"physics.matrix.row_");
-/// O rótulo de cima de cada coluna do modal (duplo clique renomeia).
+/// O rótulo de cima de cada coluna da grade da aba (duplo clique renomeia).
 pub static PHYSICS_LAYER_COL_LABEL: [NodeId; MAX_LAYERS] = tabela_de(b"physics.matrix.col_");
+/// Cada linha da lista «Layers» da aba: clique abre a camada, duplo clique renomeia.
+pub static PHYSICS_LAYER_LIST: [NodeId; MAX_LAYERS] = tabela_de(b"physics.layers.row_");
 
-/// «Edit matrix…» do painel: abre o modal das camadas.
+/// A porta do painel: abre a aba «Collision Layers».
 pub const PHYSICS_MATRIX_OPEN: NodeId = hash_node_id("physics.matrix.open");
-/// O X do modal.
-pub const PHYSICS_MATRIX_CLOSE: NodeId = hash_node_id("physics.matrix.close");
-/// O cartão do modal: engole o clique que não acerta num controlo.
-pub const PHYSICS_MATRIX_CARD: NodeId = hash_node_id("physics.matrix.card");
-/// O fundo escurecido: clicar fora fecha.
-pub const PHYSICS_MATRIX_SCRIM: NodeId = hash_node_id("physics.matrix.scrim");
+/// «+ Add» da lista da aba: mostra a primeira camada escondida e abre-a.
+pub const PHYSICS_LAYER_ADD: NodeId = hash_node_id("physics.layers.add");
 
 /// Index of cell `(a, b)` in [`PHYSICS_LAYER_CELL`], order-independent.
 pub const fn physics_layer_cell_index(a: usize, b: usize) -> usize {
@@ -389,12 +387,8 @@ mod tabela_tests {
             .chain(&PHYSICS_LAYER_NAME)
             .chain(&PHYSICS_LAYER_ROW_LABEL)
             .chain(&PHYSICS_LAYER_COL_LABEL)
-            .chain(&[
-                PHYSICS_MATRIX_OPEN,
-                PHYSICS_MATRIX_CLOSE,
-                PHYSICS_MATRIX_CARD,
-                PHYSICS_MATRIX_SCRIM,
-            ])
+            .chain(&PHYSICS_LAYER_LIST)
+            .chain(&[PHYSICS_MATRIX_OPEN, PHYSICS_LAYER_ADD])
             .map(|n| n.0)
             .collect();
         let n = v.len();

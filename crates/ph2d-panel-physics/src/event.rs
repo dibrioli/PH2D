@@ -54,12 +54,12 @@ pub fn alterna_par(a: usize, b: usize) {
     });
 }
 
-/// «Edit matrix…» do Inspector: o modal das camadas, com a linha da camada do objeto acesa.
+/// «Open in tab…» do Inspector: a aba «Collision Layers», já na camada do objeto.
 pub fn abre_a_matriz(_host: &mut dyn PanelHostInternal, layer: u8) {
-    crate::modal::abre(Some(usize::from(layer)));
+    crate::aba::abre(Some(usize::from(layer)));
 }
 
-/// O nome em edição no modal: grava UM passo (Enter) ou desiste (Esc). Vazio volta a «Layer n».
+/// O nome em edição na aba: grava UM passo (Enter) ou desiste (Esc). Vazio volta ao padrão.
 fn evento_do_nome(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<bool> {
     let camada = |id| crate::ids::PHYSICS_LAYER_NAME.iter().position(|&c| c == id);
     let rotulo = |id| {
@@ -69,9 +69,13 @@ fn evento_do_nome(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<b
             .position(|&c| c == id)
             .map(|p| p % ph2d_physics_ecs::MAX_LAYERS)
     };
+    let da_lista = |id| crate::ids::PHYSICS_LAYER_LIST.iter().position(|&c| c == id);
     match ev {
-        WidgetEvent::DoubleClick(id) if rotulo(id).is_some() => {
-            let n = rotulo(id).expect("guard matched");
+        WidgetEvent::DoubleClick(id) if rotulo(id).or(da_lista(id)).is_some() => {
+            let (n, onde) = match da_lista(id) {
+                Some(n) => (n, crate::aba::Onde::Lista),
+                None => (rotulo(id).expect("guard matched"), crate::aba::Onde::Grade),
+            };
             let campo = crate::ids::PHYSICS_LAYER_NAME[n];
             let nome = state::layer_names().0[n].clone();
             let store = host.store_mut();
@@ -85,15 +89,32 @@ fn evento_do_nome(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<b
                 nome.clone_into(text);
             }
             ph2d_editor_core::interaction::dispatch::focus_text_field(store, campo);
-            crate::modal::comeca_a_renomear(n);
+            crate::aba::comeca_a_renomear(n, onde);
             Some(true)
         }
-        // Um clique simples no rótulo é do cartão: não fecha, não pinta.
+        // Um clique simples no rótulo da grade não pinta; na lista, abre a camada.
         WidgetEvent::Click(id) if rotulo(id).is_some() => Some(true),
+        WidgetEvent::Click(id) if da_lista(id).is_some() => {
+            seam_reset_button(host, id);
+            crate::aba::abre_camada(da_lista(id).expect("guard matched"));
+            Some(true)
+        }
+        WidgetEvent::Click(id) if id == crate::ids::PHYSICS_LAYER_ADD => {
+            seam_reset_button(host, id);
+            let visiveis = state::visible_layers();
+            if let Some(layer) = (0..ph2d_physics_ecs::MAX_LAYERS).find(|n| !visiveis.contains(n)) {
+                crate::aba::nova_camada(layer);
+                host.bus_mut()
+                    .push(ph2d_editor_core::action_bus::EditorAction::LayerShow {
+                        layer: layer as u8,
+                    });
+            }
+            Some(true)
+        }
         WidgetEvent::Submit(id) if camada(id).is_some() => {
             let layer = camada(id).expect("guard matched") as u8;
             let name = host.store().text(id).unwrap_or("").trim().to_string();
-            crate::modal::acaba_de_renomear();
+            crate::aba::acaba_de_renomear();
             if name != state::layer_names().0[usize::from(layer)] {
                 host.bus_mut()
                     .push(ph2d_editor_core::action_bus::EditorAction::LayerRename { layer, name });
@@ -101,34 +122,21 @@ fn evento_do_nome(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<b
             Some(true)
         }
         WidgetEvent::Cancel(id) if camada(id).is_some() => {
-            crate::modal::acaba_de_renomear();
+            crate::aba::acaba_de_renomear();
             Some(true)
         }
         // O foco saiu sem Enter nem Esc (um clique noutro sítio): desiste, como o Esc.
         WidgetEvent::Blur(id) if camada(id).is_some() => {
-            crate::modal::acaba_de_renomear();
+            crate::aba::acaba_de_renomear();
             Some(true)
         }
         // Escrever não grava: um nome = um passo de undo, no Enter.
         WidgetEvent::TextChanged(id) if camada(id).is_some() => Some(true),
         WidgetEvent::Click(id) if id == crate::ids::PHYSICS_MATRIX_OPEN => {
             seam_reset_button(host, id);
-            crate::modal::abre(None);
+            crate::aba::abre(None);
             Some(true)
         }
-        WidgetEvent::Click(id)
-            if id == crate::ids::PHYSICS_MATRIX_CLOSE || id == crate::ids::PHYSICS_MATRIX_SCRIM =>
-        {
-            seam_reset_button(host, id);
-            if crate::modal::editando().is_none() {
-                crate::modal::fecha();
-            } else {
-                crate::modal::acaba_de_renomear();
-                host.store_mut().set_focus(None);
-            }
-            Some(true)
-        }
-        WidgetEvent::Click(id) if id == crate::ids::PHYSICS_MATRIX_CARD => Some(true),
         _ => None,
     }
 }

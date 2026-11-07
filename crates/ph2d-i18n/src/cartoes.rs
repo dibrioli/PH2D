@@ -46,8 +46,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "card.insp.phys.collides_add" => "+",
         "card.insp.phys.collides_add_tip" => "Show one more layer here and in the matrix.",
-        "card.insp.phys.edit_matrix" => "Edit matrix…",
-        "card.insp.phys.edit_matrix_tip" => "Open the collision matrix with this layer's row lit.",
+        "card.insp.phys.edit_matrix" => "Open in tab…",
+        "card.insp.phys.edit_matrix_tip" => "Open the Collision Layers tab at this layer.",
         "card.insp.phys.layer_rename" => "Rename…",
         "card.insp.phys.layer_name" => "Layer name",
         "card.insp.phys.stretched" => "Scale stretches this round shape into an oval.",
@@ -364,11 +364,35 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.physics.layer_add_full" => {
             "All 32 layers are in use: 32 is the most the physics engine has."
         }
-        "card.physics.layer_cell" => "{a} × {b}: click or drag to switch their collision",
         "card.physics.layer_default" => "Layer {n}",
         "card.physics.matrix_title" => "Collision Layers",
         "card.physics.matrix_summary" => "{n} layers shown · {off} pairs that do not collide",
         "card.physics.layer_label_tip" => "Double-click to rename",
+        "card.physics.layer_zero" => "Default",
+        "card.physics.tab_layers" => "Layers",
+        "card.physics.tab_add" => "+ Add",
+        "card.physics.tab_add_tip" => {
+            "Make a new layer. It bumps into everything until you switch pairs off."
+        }
+        "card.physics.tab_grid_title" => "Who bumps into whom",
+        "card.physics.tab_pairs" => "{n} {n?pair|pairs}",
+        "card.physics.tab_pair_bump" => {
+            "{a} × {b}: they bump into each other. Click to make them pass through."
+        }
+        "card.physics.tab_pair_pass" => {
+            "{a} × {b}: they pass through each other. Click to make them bump."
+        }
+        "card.physics.tab_summary" => {
+            "{n} {n?pair|pairs} · {off} pass through. Double-click a name to rename it."
+        }
+        "card.physics.tab_new_layer" => {
+            "New layers bump into everything. Drag along the row to switch many cells at once."
+        }
+        "card.physics.tab_only_default" => {
+            "Everything is on Default, so everything bumps into everything. Press + Add to make a layer, then switch off the pairs that should pass through."
+        }
+        "card.physics.tab_layer_title" => "{name} · {n} {n?object|objects}",
+        "card.physics.tab_layer_pairs" => "{bump} bump · {pass} pass through",
         "card.physics.scale" => "Scale (px/m)",
         "card.physics.bodies" => "Bodies",
         "card.menu.reset_order" => "Reset Positions",

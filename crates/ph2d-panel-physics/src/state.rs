@@ -60,13 +60,13 @@ pub fn visible_layers() -> Vec<usize> {
         .collect()
 }
 
-/// Com o painel fechado: o modal das camadas segue aberto se o Inspector o abriu (ele não é do painel).
+/// Com o painel fechado: a aba das camadas segue aberta se o Inspector a abriu (ela não é do painel).
 pub fn painel_fechado() {}
 
-/// A linha da matriz em destaque: a do modal (onda 8).
+/// A linha da matriz em destaque: a camada aberta na aba (onda 9a).
 #[must_use]
 pub fn destaque() -> Option<usize> {
-    crate::modal::linha_em_destaque()
+    crate::aba::linha_em_destaque()
 }
 
 /// Uma vez por quadro: a tabela de nomes das camadas do projeto.
@@ -76,6 +76,22 @@ pub fn set_layer_names(nomes: ph2d_physics_ecs::LayerNames) {
 
 pub(crate) fn layer_names() -> ph2d_physics_ecs::LayerNames {
     LAYER_NAMES.with(|n| n.borrow().clone())
+}
+
+thread_local! {
+    static CONTAGENS: Cell<[u32; ph2d_physics_ecs::MAX_LAYERS]> =
+        const { Cell::new([0; ph2d_physics_ecs::MAX_LAYERS]) };
+}
+
+/// Uma vez por quadro: quantos objetos há em cada camada (`ph2d_physics_ecs::objects_per_layer`).
+pub fn set_layer_counts(n: [u32; ph2d_physics_ecs::MAX_LAYERS]) {
+    CONTAGENS.set(n);
+}
+
+/// Quantos objetos há na camada `n`.
+#[must_use]
+pub fn layer_count(n: usize) -> u32 {
+    CONTAGENS.get().get(n).copied().unwrap_or(0)
 }
 
 /// What the panel needs to know about the world this frame.

@@ -148,6 +148,27 @@ pub fn layers_in_use(world: &World) -> u32 {
     uso
 }
 
+/// ⭐ **Quantos objetos há em cada camada** (a lista da aba «Collision Layers», onda 9a): um objeto conta
+/// uma vez, na camada do seu `Collider`; o que só tem `RaySensor` conta na camada do sensor.
+#[must_use]
+pub fn objects_per_layer(world: &World) -> [u32; MAX_LAYERS] {
+    let mut n = [0u32; MAX_LAYERS];
+    let at = |l: u8| usize::from(l).min(MAX_LAYERS - 1);
+    if let Some(mut q) = world.try_query::<&Collider>() {
+        for c in q.iter(world) {
+            n[at(c.layer)] += 1;
+        }
+    }
+    if let Some(mut q) =
+        world.try_query_filtered::<&RaySensor, bevy_ecs::query::Without<Collider>>()
+    {
+        for r in q.iter(world) {
+            n[at(r.layer)] += 1;
+        }
+    }
+    n
+}
+
 /// ⭐ **As camadas visíveis deste projeto** (a porta para o painel, o Inspector e a fila «Collides with»).
 #[must_use]
 pub fn visible_layers(world: &World, matriz: &LayerMatrix) -> u32 {

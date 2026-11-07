@@ -310,6 +310,7 @@ pub mod overlay;
 // ─────────────────────────────────────────────────────────────────────────
 
 // O assador e a ponte.
+pub mod aba_das_camadas;
 pub mod bake;
 pub mod panel_bridge;
 

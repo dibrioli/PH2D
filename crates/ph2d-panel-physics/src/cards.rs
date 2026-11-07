@@ -327,7 +327,7 @@ fn cartao_das_juntas(it: InteractionSettings) -> CardDef<'static> {
 
 fn cartao_das_camadas(_snap: PhysicsSnapshot) -> CardDef<'static> {
     // A matriz inteira mora no modal (onda 8): aqui, o resumo e a porta dele.
-    let resumo = crate::modal::resumo();
+    let resumo = crate::aba::resumo();
     cartao(
         i::PHYSICS_SEC_LAYERS,
         "panel.physics.section.layers",
@@ -343,7 +343,7 @@ fn cartao_das_camadas(_snap: PhysicsSnapshot) -> CardDef<'static> {
                 },
                 y,
             );
-            crate::modal::declara_a_porta();
+            crate::aba::declara_a_porta();
             y
         },
     )

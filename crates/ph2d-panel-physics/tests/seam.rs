@@ -35,6 +35,13 @@ use ph2d_ui_testkit::MockPanelHost;
 /// `1200` de viewport o corpo visível era `1074` — o *Show Colliders* e os verbos da fita ficavam
 /// FORA, e só passavam porque o registo não era recortado. `1600` cabe o painel inteiro com folga
 /// (o verbo da fita acrescenta uma linha).
+/// A aba das camadas aberta, com as 32 visíveis e a área da janela (a barra de abas não existe aqui).
+fn abre_a_aba() {
+    ph2d_panel_physics::aba::abre(None);
+    ph2d_panel_physics::set_visible_layers(u32::MAX);
+    ph2d_panel_physics::aba::poe_area_fixa(VIEWPORT);
+}
+
 const VIEWPORT: Rect = Rect {
     x: 0.0,
     y: 0.0,
@@ -652,8 +659,8 @@ fn sem_par(i: usize, j: usize) -> PhysicsSettings {
 #[test]
 fn a_matriz_pinta_o_vivo_e_nao_o_autorado() {
     let (mut host, mut state) = arrange(PhysicsSettings::default());
-    // A matriz mora no modal (onda 8).
-    ph2d_panel_physics::modal::abre(None);
+    // A matriz mora na aba (onda 9a).
+    abre_a_aba();
     let mut pinta = |settings, vivo| {
         mostrar(settings, vivo);
         host.paint_draw_data::<PhysicsPanel>(&mut state, VIEWPORT)
@@ -772,8 +779,8 @@ fn host_slider(
 #[test]
 fn every_matrix_cell_answers_a_real_click() {
     let (mut host, mut state) = arrange(PhysicsSettings::default());
-    // A matriz mora no modal (onda 8): as 32, todas.
-    ph2d_panel_physics::modal::abre(None);
+    // A matriz mora na aba (onda 9a): as 32 visíveis, todas.
+    abre_a_aba();
     let painted = host.paint::<PhysicsPanel>(&mut state, VIEWPORT);
     for i in 0..ph2d_physics_ecs::MAX_LAYERS {
         for j in 0..=i {
@@ -1467,7 +1474,7 @@ fn arrastar_na_matriz_pinta_cada_celula_atravessada_com_o_estado_do_primeiro_cli
     let (mut host, mut state) = arrange(PhysicsSettings::default());
     let vivo = sem_par(7, 3);
     mostrar(PhysicsSettings::default(), vivo);
-    ph2d_panel_physics::modal::abre(None);
+    abre_a_aba();
     let painted = host.paint::<PhysicsPanel>(&mut state, VIEWPORT);
     let (x0, y0) = centro_da_celula(&painted, 7, 0);
     let (x1, y1) = centro_da_celula(&painted, 7, 7);

@@ -27,7 +27,7 @@ pub mod joint_tool;
 pub mod keyboard_driven;
 mod layer_names;
 pub mod player_input;
-pub use layer_names::{LayerNames, layers_in_use, visible_layers};
+pub use layer_names::{LayerNames, layers_in_use, objects_per_layer, visible_layers};
 pub mod name_refs;
 mod parts;
 /// ⭐ **O REMAP identidade → identidade** (ADR-0164 / F4.2) — o que faz a junta de uma

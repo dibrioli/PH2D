@@ -32,14 +32,14 @@ mod populate;
 pub mod rows;
 pub mod state;
 
+pub mod aba;
 mod event;
-pub mod modal;
 
 pub use event::{abre_a_matriz, alterna_par};
 pub use state::{
     PhysicsIntent, PhysicsPanelState, PhysicsSnapshot, Toque, destaque, drain_intents,
-    last_content_h, last_visible_h, painel_fechado, set_current_physics, set_layer_names,
-    set_visible_layers, visible_layers,
+    last_content_h, last_visible_h, painel_fechado, set_current_physics, set_layer_counts,
+    set_layer_names, set_visible_layers, visible_layers,
 };
 
 use ph2d_a11y::NodeId;
@@ -71,9 +71,9 @@ impl Panel for PhysicsPanel {
     const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
         ph2d_editor_core::screens::slot::Slot::RightTop;
 
-    /// O modal das camadas pinta-se mesmo com a aba do painel atrás.
+    /// A aba central das camadas pinta-se mesmo com a aba do painel atrás.
     fn pinta_com_a_aba_atras(_store: &ph2d_editor_core::interaction::WidgetStore) -> bool {
-        modal::aberto()
+        aba::aberta()
     }
 
     fn paint(state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {

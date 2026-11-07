@@ -47,9 +47,9 @@ pub(crate) fn paint_hint_text(
 
 pub(crate) fn paint(state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {
     paint_corpo(state, ctx);
-    // ⭐ O modal das camadas pinta-se DEPOIS do corpo (os alvos dele ganham) e com o painel aberto OU
-    //    fechado: o Inspector também o abre.
-    crate::modal::paint(ctx);
+    // ⭐ A aba das camadas pinta-se DEPOIS do corpo (os alvos dela ganham) e com o painel aberto OU
+    //    fechado: o Inspector também a abre.
+    crate::aba::paint(ctx);
 }
 
 fn paint_corpo(_state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {

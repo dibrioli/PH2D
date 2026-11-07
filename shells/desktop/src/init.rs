@@ -374,8 +374,7 @@ fn boot_hero_screen(
                 .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_COLOR_SECTION, false);
         }
         crate::layout_persist::load_sections(&mut hero.store);
-        // A cena de smoke dos QUADROS (`PH2D_BOARD_SMOKE`), inerte sem a env.
-        ph2d_app_board::smoke::stage_armed_smokes(&mut hero);
+        ph2d_app_board::smoke::stage_armed_smokes(&mut hero); // `PH2D_BOARD_SMOKE`; inerte sem a env.
         hero.documents
             .install_surface(Box::new(ph2d_app_code::CodeDocs::default()));
         // Os editores de animações e de Region (GameEngineFuncional planos 07 e 16): uma aba por sprite.
@@ -383,6 +382,7 @@ fn boot_hero_screen(
         ph2d_app_kanban::install(&mut hero);
         ph2d_app_planner::install(&mut hero);
         ph2d_app_sfxlab::install(&mut hero);
+        ph2d_app_physics::aba_das_camadas::install(&mut hero); // A aba «Collision Layers» (GEF02 9a).
         Some(hero)
     } else {
         None

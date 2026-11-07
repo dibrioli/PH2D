@@ -336,10 +336,10 @@ fn every_choice_check_verb_and_cell_answers_a_real_click() {
         "a caixa vira o que se via"
     );
 
-    // As células: no modal (`o_modal_das_camadas`); aqui, a porta dele abre-o.
+    // As células: na aba (`a_aba_das_camadas`); aqui, a porta dela abre-a.
     let _ = mesa.clica(ids::PHYSICS_MATRIX_OPEN);
-    assert!(ph2d_panel_physics::modal::aberto());
-    ph2d_panel_physics::modal::fecha();
+    assert!(ph2d_panel_physics::aba::aberta());
+    ph2d_panel_physics::aba::fecha();
     let i = mesa.clica(ids::PHYSICS_RESET_DEFAULTS);
     assert_eq!(ultimo_mundo(&i), Some(PhysicsSettings::default()));
 

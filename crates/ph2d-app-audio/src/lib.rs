@@ -63,6 +63,8 @@ use ph2d_audio::signals::{self, blip_loop, pluck_loop, swell_loop};
 /// Dropping it closes the stream and stops audio.
 pub struct AudioSystem {
     engine: AudioEngine,
+    /// O Pause do jogo já chegou ao motor?
+    voices_paused: bool,
     /// ⭐⭐⭐ **O livro das vozes da CENA** (TOP-20 #4) — ver [`scene::SceneAudio`]. Ele mora aqui
     /// pela mesma razão dos outros caches deste struct: é estado do DISPOSITIVO, e o dispositivo é
     /// deste módulo.
@@ -268,6 +270,7 @@ impl AudioSystem {
         println!("audio: {name} @ {rate} Hz, {dev_channels} ch, {sample_format:?}");
         Some(AudioSystem {
             engine,
+            voices_paused: false,
             scene: scene::SceneAudio::default(),
             #[cfg(feature = "panel-audio-editor")]
             delivery: Default::default(),
@@ -320,9 +323,11 @@ impl AudioSystem {
         self.engine.levels()
     }
 
-    /// O Pause do jogo: as vozes da cena calam e guardam a posição.
-    pub fn pause_voices(&self, paused: bool) -> Result<(), ph2d_audio::AudioError> {
-        self.engine.pause_voices(paused)
+    /// O Pause do jogo: as vozes da cena calam e guardam a posição. Chamado por quadro; fala uma vez por mudança.
+    pub fn pause_voices(&mut self, paused: bool) {
+        if paused != self.voices_paused && self.engine.pause_voices(paused).is_ok() {
+            self.voices_paused = paused;
+        }
     }
 
     /// Current post-fader peak levels per sub-bus, for the strip meters.

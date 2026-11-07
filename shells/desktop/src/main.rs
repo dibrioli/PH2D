@@ -694,7 +694,6 @@ impl App {
             signals: ph2d_runtime::SignalOutbox::new(),
             signal_readers: crate::app_state::app_state_signal_readers::SignalReaders::new(),
             last_audio_report: Default::default(),
-            vozes_pausadas: false,
             last_camera_report: Default::default(),
             timeline_insert_key: false,
             autokey: Default::default(),

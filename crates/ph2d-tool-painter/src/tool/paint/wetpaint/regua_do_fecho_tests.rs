@@ -231,8 +231,8 @@ fn memoria() -> String {
     format!("RSS {} MB, pico {} MB", campo("VmRSS"), campo("VmHWM"))
 }
 
-/// O preço da compressão com várias camadas, a 4K, e os traços de Digital com elas a dormir. Sem consumir a imagem o
-/// processo chegou aos 24 G da fatia e o kernel matou-o (06/11); com a ponte do app o pico é 8,4 G.
+/// O preço da compressão com várias camadas, a 4K, e os traços de Digital com elas a dormir. Pico medido: 8,4 G;
+/// consumir ou não a imagem não muda a memória (`regua_do_fecho_memoria_*`).
 #[test]
 #[ignore = "régua: corre por nome com --ignored"]
 fn regua_do_fecho_varias_camadas() {
@@ -396,4 +396,97 @@ fn sonda_do_fecho_pendente_depois_de_assentar() {
         t.wet_acorda();
         quadro(&mut t);
     }
+}
+
+/// Wet Round a 4K, só ele (a régua geral estourou 1200 s): 4 passadas em vez de 10, 3 amostras em vez de 7, a água sem os
+/// 90 quadros de espera. `caixa` = a parte da grade que a saída compõe.
+#[test]
+#[ignore = "régua: corre por nome com --ignored"]
+fn regua_do_fecho_wet_round_a_4k() {
+    use super::composite_contagem as contagem;
+    let nome = "Watercolor/Fluid/Wet Round.ph2d-brush.png";
+    for (w, h) in TAMANHOS {
+        let nova = || {
+            let mut t = pintada(w, h, 4);
+            t.preset_aplicar(&preset(nome)).expect("o meio");
+            t.set_brush_size_px(60.0);
+            t
+        };
+        let mut viva = nova();
+        let (mut dorme, mut acaba, mut caixa) = (Vec::new(), Vec::new(), Vec::new());
+        let (gw, gh) = viva.paint.wetpaint.session.as_ref().expect("sessão").grid;
+        for r in 0..3usize {
+            traco_inteiro(&mut viva, w, 40.0 + 90.0 * r as f32);
+            let antes = Arc::clone(&viva.canvas_rgba);
+            let _ = contagem::take();
+            let t0 = Instant::now();
+            viva.set_paint_media(PaintMedia::Digital);
+            dorme.push(t0.elapsed().as_secs_f64() * 1e3);
+            let (mudou, delta) = antes.chunks(4).zip(viva.canvas_rgba.chunks(4)).fold(
+                (0usize, 0u8),
+                |(n, d), (p, q)| {
+                    let m = (0..4).map(|k| p[k].abs_diff(q[k])).max().unwrap_or(0);
+                    (n + usize::from(m > 0), d.max(m))
+                },
+            );
+            println!("[wet round] {w}×{h} r{r}: a saída mudou {mudou} px, Δ máx {delta}");
+            caixa.push(contagem::take().2 as f64 * 100.0 / (gw * gh) as f64);
+            viva.set_paint_media(PaintMedia::WetPaint);
+            viva.wet_acorda();
+            quadro(&mut viva);
+            if r < 2 {
+                let mut cheia = nova();
+                traco_inteiro(&mut cheia, w, 40.0 + 90.0 * r as f32);
+                let t0 = Instant::now();
+                cheia.wetpaint_end_session();
+                cheia.set_paint_media(PaintMedia::Digital);
+                acaba.push(t0.elapsed().as_secs_f64() * 1e3);
+            }
+        }
+        println!(
+            "[wet round] {w}×{h}: Dorme {} ms (caixa {caixa:.0?} % da grade) | AcabaCheia {} ms · carga {}",
+            resumo(&mut dorme),
+            resumo(&mut acaba),
+            carga()
+        );
+    }
+}
+
+/// O controlo: sem ninguém consumir a imagem (só `on_tick`), a memória sobe? `consome` = a ponte do app, a régua de cá.
+fn memoria_por_traco(consome: bool) {
+    let (w, h) = (4096usize, 2560usize);
+    let mut t = PainterTool::default();
+    t.abre_a_sprite(vec![255u8; w * h * 4], w as u32, h as u32);
+    t.set_paint_tool_mode("wetpaint");
+    t.set_compor_por_quadro(true);
+    t.preset_aplicar(&preset("Oil/Dabber/Dabber.ph2d-brush.png"))
+        .expect("o meio");
+    t.set_brush_size_px(60.0);
+    for p in 0..12 {
+        let y = (p as f32 + 0.5) * h as f32 / 12.0;
+        t.on_canvas_pointer(ponteiro(20.0, y, PointerPhase::Down));
+        for k in 1..=30 {
+            let x = 20.0 + k as f32 * (w as f32 - 40.0) / 30.0;
+            t.on_canvas_pointer(ponteiro(x, y, PointerPhase::Move));
+            std::thread::sleep(Duration::from_millis(16));
+            t.on_tick(1000.0 / 60.0);
+            if consome {
+                let _ = t.take_preview_arc();
+            }
+        }
+        t.on_canvas_pointer(ponteiro(w as f32 - 20.0, y, PointerPhase::Up));
+        println!("[memória] consome {consome}, traço {p}: {}", memoria());
+    }
+}
+
+#[test]
+#[ignore = "régua: corre por nome com --ignored"]
+fn regua_do_fecho_memoria_sem_consumir() {
+    memoria_por_traco(false);
+}
+
+#[test]
+#[ignore = "régua: corre por nome com --ignored"]
+fn regua_do_fecho_memoria_consumindo() {
+    memoria_por_traco(true);
 }

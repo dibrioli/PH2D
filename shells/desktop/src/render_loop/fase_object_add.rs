@@ -30,9 +30,10 @@ enum Born {
     Dialog,
 }
 
-/// Uma Sprite nasce a pedir a imagem (ficha da Sprite, 05/11); fechar a escolha deixa o convite no cartão.
+/// Sprite e Animated Sprite nascem a pedir a imagem (fichas 01 e 02); fechar a escolha deixa o convite no cartão.
 fn pede_a_imagem(entry: AddEntry, bits: u64, bus: &mut ph2d_editor_core::action_bus::ActionBus) {
-    if entry == ph2d_app_game::object_add::SPRITE {
+    use ph2d_app_game::object_add::{ANIMATED_SPRITE, SPRITE};
+    if entry == SPRITE || entry == ANIMATED_SPRITE {
         bus.push(ph2d_editor_core::action_bus::EditorAction::OpenImagePicker { entity_bits: bits });
     }
 }

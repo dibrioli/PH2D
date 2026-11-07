@@ -657,9 +657,8 @@ pub fn apply_edit(
     }
 }
 
-/// ⭐ **O corte é da IMAGEM** (plano GEF 13 D3, o *importer* da Unity): depois de editar colunas/linhas em `e`,
-/// todo objecto que mostra a MESMA imagem (a mesma célula do atlas, ou os mesmos píxeis próprios) passa ao
-/// mesmo corte; a célula de cada um fica dentro da grelha. Devolve quantos mudaram.
+/// ⭐ **O corte é da IMAGEM** (plano GEF 13 D3): todo objecto que mostra a MESMA imagem de `e` passa ao corte dele;
+/// a célula de cada um fica dentro da grelha. Devolve quantos mudaram.
 pub fn recut_users(world: &mut World, e: Entity) -> usize {
     let Some(s) = world.get::<Sprite>(e).copied() else {
         return 0;

@@ -1,7 +1,4 @@
-//! **A mão da câmera** (onda 17b): as fotos `camera_arrasta`, `camera_clique`, `camera_borda` e `camera_canto` são
-//! GESTOS — o shell aperta, arrasta e solta pelas portas reais do ponteiro (`App::pointer_button`), com o céu por
-//! baixo e o passe da câmera a correr com `follow` e limites. A tela virtual não recebe cliques do sistema; estes
-//! entram pela mesma porta que o rato do winit.
+//! **A mão da câmera** (onda 17b): as fotos `camera_*` são GESTOS, pelas portas reais do ponteiro.
 
 use crate::smoke::Foto;
 use ph2d_ecs::{CameraFollow, CameraLimits, GameCamera, SimWorld};

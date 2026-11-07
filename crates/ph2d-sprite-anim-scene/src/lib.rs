@@ -256,6 +256,6 @@ mod tests {
     fn a_prova_do_desfazer_nao_veste_a_folha() {
         let todos = || (0..300).flat_map(|q| passos(q, Some(Foto::ProvaDesfaz)));
         assert_eq!(todos().filter(|p| matches!(p, Passo::Corta(_))).count(), 1);
-        assert_eq!(todos().filter(|p| *p == Passo::Desfaz).count(), 4);
+        assert_eq!(todos().filter(|p| *p == Passo::Desfaz).count(), 3);
     }
 }

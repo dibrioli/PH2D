@@ -110,12 +110,11 @@ fn segue_a_regra(rules: &[AnimRule], seguro: &mut Option<Segura>) {
         return;
     };
     let e_ela = |r: &AnimRule| r.when.is_instant() && r.play == s.tag;
-    if rules.get(s.regra).is_some_and(e_ela) {
-        return;
-    }
-    match rules.iter().position(e_ela) {
-        Some(i) => s.regra = i,
-        None => *seguro = None,
+    if !rules.get(s.regra).is_some_and(e_ela) {
+        match rules.iter().position(e_ela) {
+            Some(i) => s.regra = i,
+            None => *seguro = None,
+        }
     }
 }
 

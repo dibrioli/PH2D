@@ -1,14 +1,9 @@
 //! ⭐ **O JOGO DE PLATAFORMA do smoke** (`PH2D_GAME_SMOKE`, plano 03): o nível que cresce a cada onda.
 //!
-//! - **1** (J1): um nível — chão com um vão, duas plataformas, paredes, a meta — e o jogador de
-//!   plataforma (setas/A-D andam, ↑/Z salta), a câmara a segui-lo, e cinco moedas com o
-//!   `moeda.luau`, que somem quando o jogador lhes toca. A cena nasce PARADA: o Play abre o jogo e o
-//!   Stop devolve tudo, moedas incluídas.
-//! - **2** (J2 + J3, `05_N1_plano.md` §5): o mesmo desenho de nível montado SÓ com os objectos do menu
-//!   Add ([`crate::object_add`]) — chão e plataformas são *Static Body*, a parede do fim é uma *Collision
-//!   Shape* dentro do chão, o jogador é um *Character* (o boneco anima-se pelo estado: parado, correr,
-//!   saltar, cair), as moedas e a bandeira são *Animated Sprite* e o céu é um *Sprite*. A arte é a de
-//!   fábrica (`ph2d_render::FACTORY_ART`, plano 06): os blocos repetem o azulejo pelo `UvTransform`.
+//! - **1** (J1): um nível — chão com um vão, plataformas, paredes, a meta —, o jogador de plataforma, a câmara e
+//!   cinco moedas com o `moeda.luau`. A cena nasce PARADA: o Play abre o jogo e o Stop devolve tudo.
+//! - **2** (J2 + J3, `05_N1_plano.md` §5): o mesmo nível montado SÓ com os objectos do menu Add
+//!   ([`crate::object_add`]), com a arte de fábrica (`ph2d_render::FACTORY_ART`, plano 06).
 //! - **3** (plano 09): o nível 2 com a regra «Crouching → fall» no topo e o condutor a agachar sob o
 //!   «Low Ceiling» (← e ↓), a soltar ↓ lá debaixo e a sair para a direita.
 

@@ -1,13 +1,6 @@
-//! `PH2D_ORDEM_SMOKE=1|2` — **a Hierarchy manda no desenho e no clique, em TODA família** (GEF 19,
-//! dono 01/11). Sete objectos de sete tipos, sobrepostos: uma imagem, as formas do Motion que caem
-//! numa simulação («Pile»), um traço do Flip, um Pixel Sprite pintado, as cópias do Motion puxadas por
-//! campos («Swarm»), uma Macro e a câmera. `=1`: a ordem desta tabela (o de cima na Hierarchy desenha
-//! por BAIXO); `=2`: a mesma tabela INVERTIDA — o que estava por baixo passa por cima, e o clique
-//! acompanha.
-//!
-//! A cena junta-se ao smoke dos objectos Motion (`motion_objeto_smoke`, que também arma com esta env):
-//! é ele que cria a «Pile» e o «Swarm». As outras famílias nascem pela shell (cada uma pela porta
-//! dela) e chegam aqui pelos bits, para a pose e a ordem.
+//! `PH2D_ORDEM_SMOKE=1|2` — a Hierarchy manda no desenho e no clique, em TODA família (GEF 19): sete objectos de
+//! sete tipos, sobrepostos; `=1` a ordem da tabela, `=2` invertida. Junta-se a `motion_objeto_smoke`, que cria a
+//! «Pile» e o «Swarm»; as outras famílias nascem pela shell.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name, RootOrder, SimWorld, Transform, World};

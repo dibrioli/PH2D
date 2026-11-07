@@ -36,19 +36,9 @@ pub struct AnimSignal {
 
 /// Avança toda sprite animada em `ticks` passos fixos.
 ///
-/// ⚠️ **`ticks × dt` numa chamada só, e a razão é uma MEDIÇÃO.** A primeira versão disto corria um
-/// laço de `ticks` chamadas, com a justificação de que «um passo grande atravessaria o fim de um
-/// ciclo sem o fechar». **Era falso**, e foi uma mutação que o disse: a própria
-/// [`ph2d_ecs::advance`] tem um laço de recuperação que avança **um frame de cada vez** até gastar
-/// o acumulado, por isso os dois caminhos fecham exatamente os mesmos ciclos. O gate
-/// `catching_up_in_one_call_is_the_same_as_catching_up_step_by_step` prende a equivalência.
-///
-/// ⇒ Fica a forma simples. *Um laço a mais que a mutação não distingue é uma justificação que
-/// ninguém voltou a verificar.*
-/// ⚠️ **O `drive` é a metade que o undo lê.** Tudo o que este tique escreve — os três campos do
-/// relógio e o `Sprite::frame` — é **pré-visualização**, nunca autoria: declará-lo aqui é o que
-/// impede que cada clique dado enquanto a animação toca empilhe um passo de Ctrl+Z vazio
-/// ([`crate::preview_drive`], e a auditoria 21 §4).
+/// `ticks × dt` numa chamada só: a [`ph2d_ecs::advance`] já recupera frame a frame (gate
+/// `catching_up_in_one_call_is_the_same_as_catching_up_step_by_step`).
+/// O `drive` é a metade que o undo lê: o que este tique escreve é pré-visualização, nunca autoria.
 pub fn tick_sprite_animations(
     sim: &mut SimWorld,
     ticks: u32,

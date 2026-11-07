@@ -148,8 +148,8 @@ impl PainterTool {
         Ok(copia)
     }
 
-    /// **O que um instantâneo deste tool RETÉM** enquanto o original continua: a água copiada (com as
-    /// fotografias do undo vivo), a tela da camada ativa e a composição (partilhadas na cópia, desdobradas na
+    /// **O que um instantâneo deste tool RETÉM** enquanto o original continua: a água copiada (o motor e os planos; as
+    /// fotografias do undo vivo são `Arc` em tiles, partilhadas com o original, e não contam), a tela da camada ativa e a composição (partilhadas na cópia, desdobradas na
     /// primeira escrita do original) e o histórico de undo (as janelas de pixels e os journals que a cópia
     /// duplica). As outras camadas ninguém as escreve a tocar uma macro. O gate `medida_instantaneo_memoria`
     /// compara este número com o que o alocador vê.
@@ -157,7 +157,7 @@ impl PainterTool {
     pub fn bytes_do_instantaneo(&self) -> usize {
         self.canvas_rgba.len()
             + self.composited.as_ref().map_or(0, |c| c.len())
-            + self.wet_bytes_retidos()
+            + self.wet_bytes_copiados()
             + self.undo.bytes_copiados()
             + self.undo.write_state.journal_bytes_retidos()
     }

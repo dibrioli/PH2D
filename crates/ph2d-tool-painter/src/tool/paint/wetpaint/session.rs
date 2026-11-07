@@ -230,6 +230,19 @@ impl WetSession {
             + self.congelada.as_ref().map_or(0, |c| c.bytes())
     }
 
+    /// O que uma CÓPIA da sessão retém além do original: o motor e os planos, copiados fundo. As fotografias dos passos, as
+    /// telas, a `base` e a congelada são `Arc` (a cópia partilha-as com o original, e as fotografias em tiles repetem 97 %
+    /// de um passo ao outro): só passam a ser da cópia quando o original as larga, o que não se sabe ao copiar.
+    pub(super) fn bytes_copiados(&self) -> usize {
+        use super::offthread::EngineSlot;
+        let motor = match &self.engine {
+            EngineSlot::Here(e) | EngineSlot::Roteiro(e) => e.bytes_retidos(),
+            EngineSlot::Away => 0,
+        };
+        let p = &self.planos;
+        motor + p.pigment.len() + p.sombra.len() + p.grao.len() + p.suave.len()
+    }
+
     /// Há tinta molhada na tela? (algum pixel do plano de pigmento com alfa) — o que decide se trocar
     /// o modo de Blend fixa a sessão ou só lhe troca o modo (`set_brush_blend`).
     pub(in crate::tool::paint) fn ha_tinta(&self) -> bool {
@@ -441,6 +454,16 @@ impl PainterTool {
             .session
             .as_ref()
             .map_or(0, WetSession::bytes_retidos)
+    }
+
+    /// **O que a água de uma cópia retém ALÉM do original** ([`WetSession::bytes_copiados`]): o que o instantâneo de uma
+    /// macro declara.
+    pub(crate) fn wet_bytes_copiados(&self) -> usize {
+        self.paint
+            .wetpaint
+            .session
+            .as_ref()
+            .map_or(0, WetSession::bytes_copiados)
     }
 
     /// **O plano de pigmento da sessão molhada** (o que decide «há tinta?» ao trocar o Blend) — para as

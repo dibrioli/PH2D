@@ -337,7 +337,16 @@ fn memoria_num_filho(raio: f32) -> (f64, usize) {
 ///
 /// Dono 05/11: o Smooth Edges 0,3 de fábrica do Dabber aloca o campo da aparência e o plano do alisamento. Remedido 3×,
 /// load 10–13: 367–368 MiB (era 305–306) e 1 801–1 802 (era 1 607–1 610). O tecto é esse + 5 %.
-const TECTO_DA_MEMORIA_MIB: [(f32, f64); 2] = [(300.0, 386.0), (1000.0, 1892.0)];
+///
+/// 07/11 (integração da tinta viva): o pico do gesto passou a 490 MiB a raio 300 (2 corridas, +1 na suíte: 490–492) e
+/// 2 071 a raio 1000 (2 corridas, idênticas), `MALLOC_ARENA_MAX=1`, load 3–8, `--ignored` pelo binário `it` do `ci-test`.
+/// Causa (o registo medido; que a base não o abria é leitura do código, a base não foi remedida): o 1.º traço de uma sessão
+/// passou a abrir o registo do undo no pen-down (`wet_acorda` antes de `wet_guarda_o_passo`, `stroke_lifecycle.rs`; antes
+/// não havia sessão nesse instante e o passo não guardava nada). O registo do gesto retém 117 MiB a raio 300
+/// (`bytes_do_historico` depois do gesto; a grade tem 1 000 × 1 880 células × ~63 B = 118 MiB). É o preço de o desfazer do
+/// 1.º traço não matar a tinta. O recurso é a RAM do processo (`VmHWM`). O tecto é o medido + 5 % (515 e 2 175); se o custo
+/// se cura (marcar só a caixa do que o traço escreve) o tecto desce — decisão do dono.
+const TECTO_DA_MEMORIA_MIB: [(f32, f64); 2] = [(300.0, 515.0), (1000.0, 2175.0)];
 
 /// ⭐ **A MEMÓRIA do Dabber cabe** (L13, EXAME §3.6): o Jitter espalha UMA ponta — o traço inteiro numa lane — e o
 /// pico do gesto a raio 300 e 1000 fica abaixo do tecto medido. Mutação: o limiar da lane sem o Jitter

@@ -33,7 +33,7 @@ const INERTES_COM_MOTIVO: [(&str, NodeId, &str); 2] = [
     (
         "eraser",
         PAINTER_BRUSH_MEDIA,
-        "as riscas deste censo são SECAS, onde os três meios apagam ao byte; sobre tinta viva o meio decide: a prova é \
+        "as riscas deste censo são SECAS, onde só o Wet Paint (a Borracha da tinta morta) difere; sobre tinta viva o meio decide: a prova é \
          `o_meio_da_borracha_so_age_sobre_tinta_viva`. Não esmaece: o que a faz agir é a tela, não o pincel",
     ),
 ];
@@ -448,8 +448,9 @@ fn a_borracha_em_cada_meio_so_ve_o_que_o_meio_lhe_muda() {
     assert!(falhas.is_empty(), "{falhas:#?}");
 }
 
-/// O motivo da Paint Mode em [`INERTES_COM_MOTIVO`]: nas riscas secas os três meios da Borracha apagam ao byte (o mesmo
-/// raio, o do anel); sobre tinta VIVA o meio decide: o Wet Paint levanta do fluido, sair dele encerra a sessão e apaga por
+/// O motivo da Paint Mode em [`INERTES_COM_MOTIVO`]: nas riscas secas o Digital, a Watercolor e o Impasto da Borracha apagam
+/// ao byte (o mesmo raio, o do anel); a do Wet Paint sem sessão é a da tinta morta (`wetpaint/borracha_morta.rs`, dono
+/// 06/11: amassa um sulco e tira aos poucos), por isso difere do Digital — e o portão exige que difira; sobre tinta VIVA o meio decide: o Wet Paint levanta do fluido, sair dele encerra a sessão e apaga por
 /// inteiro (`sonda_borracha_por_meio`, Wet vivo: fica 27,8 de tinta × 0,0).
 #[test]
 fn o_meio_da_borracha_so_age_sobre_tinta_viva() {
@@ -470,11 +471,18 @@ fn o_meio_da_borracha_so_age_sobre_tinta_viva() {
     for g in &gs {
         let px = ensaio("eraser", &Gesto::Nenhum, g);
         let (meio, px_viva) = viva(g);
-        assert_eq!(
-            diferenca(&seca, &px).0,
-            0,
-            "{meio:?}: o meio mudou o apagado nas riscas secas"
-        );
+        let secas = diferenca(&seca, &px).0;
+        if meio == PaintMedia::WetPaint {
+            assert!(
+                secas > 0,
+                "{meio:?}: a Borracha do Wet na tinta morta apagou ao byte do Digital (a lei de `borracha_morta` não agiu)"
+            );
+        } else {
+            assert_eq!(
+                secas, 0,
+                "{meio:?}: o meio mudou o apagado nas riscas secas"
+            );
+        }
         let n = diferenca(&base_viva, &px_viva).0;
         assert_eq!(
             n > 0,
@@ -519,10 +527,21 @@ const DA_AGUA: [(&str, FerramentaDoPincel); 5] = [
     ("wet_blow", FerramentaDoPincel::Soprar),
 ];
 
+/// Encerra a sessão viva pela porta pública que a encerra sem mexer em mais nada (a razão da grade troca e volta:
+/// `wetpaint_end_session`, o mesmo fim do Blend com tinta). Sair do Wet Paint já NÃO a encerra: adormece-a (dono
+/// 06/11, a tinta fica viva) e o regresso acorda-a — a base «encerrada» que `blur` + `wet_paint` fazia era viva.
+fn encerra_a_sessao(t: &mut ph2d_tool_painter::PainterTool) {
+    let r = t.brush_settings().wet_grid_ratio;
+    t.set_wet_grid_ratio(if r == 1 { 2.0 } else { 1.0 });
+    t.set_wet_grid_ratio(f64::from(r));
+    assert_eq!(t.brush_settings().wet_grid_ratio, r, "a razão não voltou");
+    assert!(t.wet_pigmento().is_none(), "a sessão não acabou");
+}
+
 /// O Pincel da água na mão, as riscas MOLHADAS com ele, `no_pincel` ainda com ele — DEPOIS das riscas: mexe nos
 /// ajustes, não na tinta que a ferramenta `fio` vai encontrar — e então a ferramenta. `bake`: a sessão encerrada
-/// antes da ferramenta (sair do Wet Paint é o bake), a base de um gesto que a encerra por lei (o Blend com tinta
-/// viva, `set_blend`).
+/// antes da ferramenta ([`encerra_a_sessao`]), a base de um gesto que a encerra por lei (o Blend com tinta viva,
+/// `set_brush_blend`).
 fn bancada_da_agua(fio: &str, no_pincel: &Gesto, bake: bool) -> Bancada {
     bancada_da_agua_com(&ARMAR, fio, no_pincel, bake)
 }
@@ -544,8 +563,7 @@ fn bancada_da_agua_com(armar: &[Gesto], fio: &str, no_pincel: &Gesto, bake: bool
         &mut super::censo_dos_controlos::Entrega::default(),
     );
     if bake {
-        b.no_modo("blur");
-        b.no_modo("wet_paint");
+        encerra_a_sessao(&mut b.tool);
     }
     b.no_modo(fio);
     b

@@ -18,7 +18,7 @@ Fotos de 06/11 pelas cenas `PH2D_GAME_SMOKE=4` + `PH2D_GAME_SMOKE_FOTO=uso_anima
 - Pivot: Look aparece em Animated; os 9 pontos medem a **união das células**, de propósito, para o pivô não saltar quando o quadro troca (`ph2d-sprite-edit/src/pivot.rs:51-84`). Sem pivô por quadro.
 - Player com Flip escreve `flip_x` a cada quadro por cima de uma chave de Flip (`personagem.rs:188-194`).
 - Add ▸ Animated Sprite: herói de fábrica, 6 tags, autoplay em idle (`object_add.rs:110-135`). Add ▸ Character: o mesmo + `CharacterAnimations`, `PlatformPlayer`.
-- Editor (aba, `editor/`): lista sem reordenar; folha com clicar e arrastar, células repetidas e não contíguas; fila com reordenar, apagar, tempo por quadro; só Cols×Rows. Não tem: Split by rows, Size/Separation/Offset, marcador, ida ao Pixel/Painter. A tira não rola durante o arrasto (`mod.rs:146-158`). `propose_after_drop` (`editor/mod.rs:48`) não tem chamador.
+- Editor (aba, `editor/`): lista sem reordenar; folha com clicar e arrastar, células repetidas e não contíguas; fila com reordenar, apagar, tempo por quadro; só Cols×Rows. Não tem: Split by rows, Size/Separation/Offset, marcador, ida ao Pixel/Painter. A tira não rola durante o arrasto (`mod.rs:146-158`). `propose_after_drop` (`editor/mod.rs:48`) tem dois chamadores, em `shells/desktop/src/asset_drop_apply.rs:97,188` (a nota de 06/11 errou): continua a abrir o editor numa troca que propõe outra grade; o de `:188` nunca dispara, a sprite nova é Still.
 - Leitores: Hold, Repeat delay, Repeat count, Speed, Frames/s, Cycle, This frame e os sinais estão vivos. `AnimFieldEdit::Autoplay` não tem gesto. Speed negativa em Once a partir do quadro 0 acaba logo, como na Godot.
 - `.ase`: tags com `frame_ms`, direção e `per_frame_ms` (`shells/desktop/src/ase_import.rs:123-198`).
 - A Timeline por `SpriteAnimation` só escreve `Transform` (`ph2d-timeline/src/sprite.rs:95`). O que grava chave está em **E0**, abaixo.
@@ -96,13 +96,19 @@ Godot: fatiar vendo a folha, tempo relativo por quadro; evitar o painel que some
 
 ## Provas
 
-- **Censo** `o_censo_dos_campos_do_animated_em_uso`: **17 à vista e 48 no total, moldura 22**, sem regras. Meta do papel: 15 e 47. Conta os três verbos do cabeçalho e os marcadores, que saem em E3; Starts with entrou em E2.
+- **Censo** `o_censo_dos_campos_do_animated_em_uso`: **17 à vista e 48 no total, moldura 22**, sem regras, medido depois de E4. Meta do papel: 15 e 47. Conta os três verbos do cabeçalho e o botão dos marcadores; os campos do marcador já não contavam (a fixa não tem marcador). A diferença para a meta fica para E6.
 - **Cartão** (`ph2d-panel-inspector`, `tests/it/o_cartao_da_animacao.rs`): `o_corte_e_o_nome_sairam_do_cartao` · `os_verbos_moram_no_cabecalho` · `sem_animacoes_nao_ha_remove` · `frames_por_segundo_e_speed_na_mesma_linha` · `dois_cliques_renomeiam_e_o_enter_grava` · `esc_desiste_e_clicar_fora_grava` · `a_moldura_diz_o_corte_sem_cortar_no_piso` · `o_look_nasce_dobrado_so_em_animated` · `o_menu_starts_with_abre_e_escolhe_pelo_ponteiro` · `o_play_da_linha_nao_escreve_o_inicio` · `so_o_auto_tem_o_menu`.
 - **Editor** (`ph2d-app-sprite-anim`): `um_intervalo_como_o_do_ase_continua_editavel_no_editor`.
 - **Início** (`ph2d-app-sprite-anim`, `inspector_tests.rs`): `o_play_da_prevista_nao_muda_com_qual_o_jogo_comeca` · `escolher_o_inicio_vale_no_jogo_e_nao_mexe_na_previa` · `o_inicio_segue_o_renomear_e_cai_na_primeira_ao_apagar` · `projeto_antigo_script_e_regras_ficam_como_estao`.
 - **Foto, desfazer, abrir** (`ph2d-host-game-scenes`, `sprite_starts_with.rs`): `o_starts_with_viaja_na_foto_e_o_desfazer_repoe` · `a_foto_tirada_antes_de_comecar_guarda_a_previa` · `o_projeto_antigo_abre_igual`.
 - **Limites destas provas:** as opções do menu pinta-as o hero por cima de tudo; o teste clica a caixa com o ponteiro e entrega o clique da opção como evento, como o do Ordering. O Play real da janela não foi corrido: vale a ordem fotografia → início do `undo_jogo_tests`. Falta a cena de smoke e o item em uso no jogo (E6).
-- **Vermelho fora deste item:** `lei_do_ritmo` (`ph2d-panel-registry-init`) acusa `Desalinhado 4.0` de `insp_transform_flip_h`/`flip_v` contra `insp_sprite_mirror_keep`, no Transform. E1 e E2 não tocam nesse código; não foi corrido sobre o commit de antes.
+- **`lei_do_ritmo`, curado:** `row_inteira` (`cards_linhas.rs:40`) soma `FIELD_ROW_GAP` à linha sem rótulo, e `caixa_do_mirror` (`cards_sprite_pivot.rs`) passava-lhe o topo da fila do Mirror: a caixa nascia 6 px abaixo, e o censo media 4 contra o segmento de `SEG_PAD`. A caixa continua à direita dos botões, agora na mesma fila (decisão 23 da Sprite).
+- **Editor** (`editor/tests_marks.rs`): `a_transparencia_decide_quais_fileiras_tem_desenho` · `split_by_rows_cria_uma_por_fileira_ocupada_num_so_gesto` · `fileira_ja_coberta_nao_se_duplica` · `o_marcador_poe_nomeia_pinta_e_tira_no_quadro_escolhido` · `clicar_no_campo_renomeia_o_sinal` · `o_marcador_anda_com_o_quadro` · `um_marcador_passado_do_fim_mostra_se_no_ultimo_e_tira_se` · `a_tira_rola_com_a_mao_na_borda`.
+- **Sinal, menu, desfazer** (`shells/game-scenes`, `sprite_vazio_e_marcador.rs`): `o_marcador_do_editor_chega_a_regra_e_a_tabela_sem_script` (gesto do editor → tique real → regra Signal e `resolve_signal_actions`) · `o_add_nasce_vazio_e_o_character_com_o_heroi` · `o_heroi_de_amostra_tem_um_passo_de_desfazer` · `as_saidas_do_aviso_voltam_pelo_desfazer`. O desfazer aqui é a foto de antes, a porta que o undo usa; o Ctrl+Z da janela não foi corrido.
+- **Aviso e vazio** (`sprite_corte_velho.rs`): `escolher_a_imagem_no_vazio_ja_entra_em_animated` · `o_heroi_de_amostra_entra_no_vazio_e_so_no_vazio` · `trocar_por_imagem_sem_corte_acende_o_aviso_com_os_numeros` · `imagem_que_traz_corte_nao_avisa` · `as_duas_saidas_do_aviso` · `cut_again_sem_proposta_abre_o_editor`.
+- **Cartão** (`o_cartao_da_animacao.rs`): `o_marcador_no_cartao_e_o_resumo_que_abre_o_editor` · `o_vazio_do_animated_pede_a_folha_e_oferece_o_heroi` · `o_aviso_de_imagem_trocada_diz_os_numeros_e_da_as_duas_saidas`. O convite é o mesmo desenho do da Sprite: não foi fotografado (E6).
+- **Decisões técnicas de E3 e E4, para o smoke:** o Split junta e não apaga: o «loop» da folha inteira fica, e não conta como cobertura. Nomes `row N` em sequência, saltando os ocupados, sem olhar o número da fileira. Add ▸ Animated Sprite não abre a escolha sozinho, ao contrário do Add ▸ Sprite: o convite é o que pede, e `so_a_sprite_nasce_a_pedir_a_imagem` continua. Sem grade a propor, Cut again abre o editor. O texto com uma animação diz «this 1 animation was».
+- **Catraca de `ph2d-app-sprite-anim`:** E1 e E2 já a tinham passado (8542 contra 8352); E3 e E4 chegaram a 9578. Cura por mudança: quatro ficheiros de teste foram para `shells/game-scenes` (`sprite_card_edits`, `sprite_corte_velho`, `sprite_tick_sinais`, `sprite_transport`). Fica 8227.
 
 **Modelo do início:** componente irmão `SpriteAnimStart`, e não campo do `SpriteAnimator`. O postcard é posicional e o tocador grava-se em blob: um campo novo tornaria ilegível todo blob antigo; irmão não precisa de degrau no `PROJECT_SCHEMA` (o molde de `SpriteAnimFrames` e `SpriteAnimMarkers`, `registry.rs`). Registo `118 → 119`.
 
@@ -113,7 +119,7 @@ Godot: fatiar vendo a folha, tempo relativo por quadro; evitar o painel que some
 | E0 | Medir o que grava chave no Animated | feito 06/11 (tabela acima) |
 | E1 | Cartão: cortes, cabeçalho de ícones, Frames/s e Speed numa linha, More, Look dobrado, nome em dois cliques, resumo de grade | feito 06/11; os campos de marcador ficam em More até E3, e o resumo «N markers» nasce com eles |
 | E2 | Who Picks: Auto, «Starts with»; ▶ só prévia | feito 06/11 |
-| E3 | Editor: Split by rows, ◆ marcador, tira rola | a fazer |
-| E4 | Add vazio, «Try with the sample hero», aviso de imagem trocada | a fazer |
+| E3 | Editor: Split by rows, ◆ marcador, tira rola | feito 06/11; More só resume os marcadores e abre o editor |
+| E4 | Add vazio, «Try with the sample hero», aviso de imagem trocada | feito 06/11; aviso em `SpriteCutNotice`, registo `119 → 120` |
 | E5 | Regra acesa no Play | a fazer |
 | E6 | Censo, cena de smoke, fotos, item em uso no jogo | a fazer |

@@ -76,7 +76,53 @@ pub fn antes_do_replace(
 
 /// **Try with the sample hero**: o herói de fábrica entra no lugar do vazio.
 pub fn try_sample_hero(world: &mut World, e: Entity) -> bool {
-    sem_imagem(world, e) && ph2d_render::veste_o_heroi(world, e).is_ok()
+    veste_com(world, e, ph2d_render::veste_o_heroi)
+}
+
+/// O gesto, com o vestir à parte: a recusa não some, fica em [`RecusaDoHeroi`] para a shell dizer ao artista.
+pub fn veste_com(
+    world: &mut World,
+    e: Entity,
+    veste: impl FnOnce(&mut World, Entity) -> Result<(), String>,
+) -> bool {
+    if !sem_imagem(world, e) {
+        return false;
+    }
+    match veste(world, e) {
+        Ok(()) => true,
+        Err(motivo) => {
+            world.insert_resource(RecusaDoHeroi(motivo));
+            false
+        }
+    }
+}
+
+/// O herói de amostra não entrou, e porquê: lê-se uma vez, com [`toma_a_recusa`].
+#[derive(ph2d_ecs::Resource, Debug)]
+pub struct RecusaDoHeroi(pub String);
+
+/// A recusa do último gesto, em palavras para o aviso; `None` = nenhuma.
+pub fn toma_a_recusa(world: &mut World) -> Option<String> {
+    world
+        .remove_resource::<RecusaDoHeroi>()
+        .map(|r| ph2d_i18n::tr_with("card.insp.sample_hero_failed", &[("why", &r.0)]))
+}
+
+/// A grade de `e` mudou: o aviso sobre a grade de antes morre com ela, e voltar a essa grade não o ressuscita.
+pub(crate) fn aviso_segue_a_grade(world: &mut World, e: Entity) {
+    if let Some(g) = world.get::<SpriteGrid>(e).copied() {
+        aviso_perante_a_grade(world, e, [g.hframes, g.vframes]);
+    }
+}
+
+/// A mesma lei, com a grade que está a chegar (quem a põe na fila de comandos).
+pub fn aviso_perante_a_grade(world: &mut World, e: Entity, grade: [u32; 2]) {
+    if world
+        .get::<SpriteCutNotice>(e)
+        .is_some_and(|n| n.grid != grade)
+    {
+        world.entity_mut(e).remove::<SpriteCutNotice>();
+    }
 }
 
 /// **O aviso de imagem trocada** de `e`: só em Animated, com animações, e enquanto a grelha é a que ficou.
@@ -105,7 +151,8 @@ pub fn cut_notice(
     })
 }
 
-/// **Cut again**: a grade que a transparência da imagem nova propõe. Sem proposta, o corte à mão: o editor abre.
+/// **Cut again**: a grade que a transparência da imagem nova propõe. Sem proposta, o corte à mão: o editor abre, e
+/// o aviso fica até a grade mudar.
 pub fn cut_again(
     world: &mut World,
     e: Entity,
@@ -116,7 +163,6 @@ pub fn cut_again(
     if world.get::<SpriteCutNotice>(e).is_none() {
         return false;
     }
-    world.entity_mut(e).remove::<SpriteCutNotice>();
     let proposta = shown_id(world, e, atlas)
         .and_then(|id| db.get(&id))
         .and_then(|a| {
@@ -125,6 +171,7 @@ pub fn cut_again(
         });
     match (proposta, facts) {
         (Some(grid), Some(f)) => {
+            world.entity_mut(e).remove::<SpriteCutNotice>();
             // A grelha ainda é a velha: a escala lê-se antes de `show` a trocar.
             let k = display_scale(world, e, f);
             crate::image_use::show(world, e, f, grid, k);

@@ -221,4 +221,51 @@ fn cut_again_sem_proposta_abre_o_editor() {
     assert_eq!(grade(w, e), [8, 4], "nada a propor, o corte fica");
     let pedidos = w.get_resource::<ph2d_app_sprite_anim::editor::AnimEditorRequests>();
     assert_eq!(pedidos.map(|r| r.0.clone()), Some(vec![e.to_bits()]));
+    assert!(
+        cut_notice(w, e, &db, &atlas, PPM).is_some(),
+        "fechar o editor sem cortar não perde o aviso"
+    );
+    corta(&mut sim, e, 4, 2);
+    assert!(sim.world().get::<SpriteCutNotice>(e).is_none(), "cortou");
+}
+
+fn corta(sim: &mut ph2d_ecs::SimWorld, e: Entity, h: u32, v: u32) {
+    use ph2d_ecs::scene::{EditorCommandQueue, apply_editor_commands};
+    let (q, r) = (
+        EditorCommandQueue::new(),
+        ph2d_app_components::test_support::registo(),
+    );
+    let edit = ph2d_editor_core::AnimFieldEdit::Grid(h, v);
+    let _ = ph2d_app_sprite_anim::inspector::apply_anim_edit(sim, e.to_bits(), &edit, &q, &r);
+    apply_editor_commands(sim.world_mut(), &q, &r).expect("o commit aplica");
+}
+
+/// ⭐ A grade mudou = aviso removido: voltar à grade antiga não o ressuscita.
+/// *Mutação: só esconder pelo `aviso.grid != grade` ⇒ o aviso volta com o 8 × 4.*
+#[test]
+fn voltar_a_grade_antiga_nao_ressuscita_o_aviso() {
+    let atlas = BTreeMap::new();
+    let (mut sim, db) = (ph2d_ecs::SimWorld::new(), AssetDb::new());
+    let a = folha(&db, 800, 400, 100, 100);
+    let e = animada(&mut sim, &db, a);
+    escolhe(&mut sim, &db, e, folha(&db, 256, 128, 64, 64));
+    assert!(cut_notice(sim.world(), e, &db, &atlas, PPM).is_some());
+    corta(&mut sim, e, 4, 2);
+    corta(&mut sim, e, 8, 4);
+    assert_eq!(grade(sim.world(), e), [8, 4]);
+    assert!(sim.world().get::<SpriteCutNotice>(e).is_none());
+    assert!(cut_notice(sim.world(), e, &db, &atlas, PPM).is_none());
+}
+
+/// O herói recusado não some em silêncio: a shell lê a recusa, uma vez, e diz ao artista.
+/// *Mutação: engolir o `Err` ⇒ não há o que ler.*
+#[test]
+fn a_recusa_do_heroi_vira_aviso() {
+    use ph2d_app_sprite_anim::sprite_card::{toma_a_recusa, veste_com};
+    let mut w = World::new();
+    let e = vazio_no(&mut w);
+    assert!(!veste_com(&mut w, e, |_, _| Err("tabela".to_owned())));
+    assert!(toma_a_recusa(&mut w).is_some_and(|m| m.contains("tabela")));
+    assert_eq!(toma_a_recusa(&mut w), None, "lê-se uma vez");
+    assert!(sem_imagem(&w, e), "o vazio fica");
 }

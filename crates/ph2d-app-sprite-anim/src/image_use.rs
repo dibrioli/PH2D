@@ -167,6 +167,7 @@ pub(crate) fn show(world: &mut World, e: Entity, facts: ImageFacts, grid: [u32; 
         vframes: grid[1],
         frame: 0,
     });
+    crate::sprite_card::aviso_segue_a_grade(world, e);
 }
 
 /// Tira a animação de `e` (a lista, o animador e o estado de corrida). As regras «quando → animação» ficam:
@@ -694,6 +695,7 @@ pub fn recut_users(world: &mut World, e: Entity) -> usize {
             vframes: g.vframes,
             frame: (*frame).min(n - 1),
         });
+        crate::sprite_card::aviso_segue_a_grade(world, *o);
     }
     outros.len()
 }

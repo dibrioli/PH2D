@@ -182,7 +182,7 @@ fn prova_do_play(q: u32) -> Vec<Passo> {
 }
 
 /// Cada gesto, a entrada do artista que fecha o passo, um Ctrl+Z, e o estado a comparar com o de antes. Split by rows
-/// corre com a aba à frente; Cut again sem proposta abre outra, e Keep the cut corre com ela à frente.
+/// corre com a aba à frente, e Keep the cut também. Cut again sem proposta só abre o editor: não é um passo.
 fn prova_do_desfazer(q: u32) -> Vec<Passo> {
     const INTERVALO: u32 = 40;
     const COMECO: u32 = 40;
@@ -201,11 +201,6 @@ fn prova_do_desfazer(q: u32) -> Vec<Passo> {
             vec![Passo::Verbo(VAZIO, Verbo::SampleHero)],
         ),
         2 => (
-            "Cut again, sem proposta",
-            TROCADA,
-            vec![Passo::Verbo(TROCADA, Verbo::CutAgain)],
-        ),
-        3 => (
             "Keep the cut",
             TROCADA,
             vec![Passo::Verbo(TROCADA, Verbo::KeepCut)],

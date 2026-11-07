@@ -138,6 +138,9 @@ impl crate::App {
             ppm,
             edit,
         );
+        if let Some(m) = ph2d_app_sprite_anim::sprite_card::toma_a_recusa(gfx.sim.world_mut()) {
+            gfx.toasts.push(ph2d_editor_core::Toast::warning(m));
+        }
     }
 
     /// **Nasce uma sprite nova, com esta imagem, no ponto.**

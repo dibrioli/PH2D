@@ -261,6 +261,12 @@ pub(super) fn apply_sprite_edits(
                 postcard::to_allocvec(&editables.sprite).map(|d| (SPRITE_TYPE, d))
             }
             SpriteEditTarget::Grid => {
+                let g = [editables.grid.hframes, editables.grid.vframes];
+                ph2d_app_sprite_anim::sprite_card::aviso_perante_a_grade(
+                    sim.world_mut(),
+                    entity,
+                    g,
+                );
                 postcard::to_allocvec(&editables.grid).map(|d| (GRID_TYPE, d))
             }
             SpriteEditTarget::Region => {

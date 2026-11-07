@@ -27,6 +27,7 @@ const ANIMATIONS: &str = "ph2d::ecs::SpriteAnimations";
 const ANIMATOR: &str = "ph2d::ecs::SpriteAnimator";
 const GRID: &str = "ph2d::ecs::SpriteGrid";
 pub(crate) const START: &str = "ph2d::ecs::SpriteAnimStart";
+const NOTICE: &str = "ph2d::ecs::SpriteCutNotice";
 
 /// Maior lado de uma grelha que o cartão aceita (o `SpriteGrid` guarda `u32`; isto é o que cabe a
 /// clicar numa folha: 256 × 256 células).
@@ -314,6 +315,13 @@ pub fn apply_card_edit(
             g.vframes = (*v).clamp(1, GRID_SIDE_MAX);
             g.frame = g.frame.min(g.cells().saturating_sub(1));
             queue_set(queue, registry, entity_bits, GRID, &g);
+            // A grade mudou = o aviso sobre a de antes morre, e voltar a ela não o ressuscita.
+            if world
+                .get::<ph2d_ecs::SpriteCutNotice>(entity)
+                .is_some_and(|n| n.grid != [g.hframes, g.vframes])
+            {
+                queue_remove(queue, registry, entity_bits, NOTICE);
+            }
         }
         _ => return None,
     }

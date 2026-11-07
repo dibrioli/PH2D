@@ -206,7 +206,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "New image, old cut: {c} × {r} makes cells of {w} × {h} px, and {n?this|these} {n} {n?animation|animations} {n?was|were} made for another image."
         }
         "card.insp.cut_again" => "Cut again",
-        "card.insp.cut_again_tip" => "Cut the new image into the grid its transparency suggests",
+        "card.insp.cut_again_tip" => {
+            "Cut the new image into the grid its transparency suggests. If it suggests none, the editor opens, and this notice stays until the cut changes"
+        }
+        "card.insp.sample_hero_failed" => "The sample hero could not be added: {why}",
         "card.insp.keep_cut" => "Keep the cut",
         "card.insp.keep_cut_tip" => "Leave the cut as it is and close this notice",
         "card.insp.image_drop_hint" => "or click to choose",

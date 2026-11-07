@@ -49,6 +49,9 @@ pub struct Documents {
     active: Option<BoardId>,
     /// Âncora do arrasto da vista do quadro (px de ecrã), enquanto ele dura.
     pub(crate) pan_from: Option<[f64; 2]>,
+    /// O botão premido sobre o chrome, até largar: o gesto é dele, e a área do documento não o ouve
+    /// mesmo com o ponteiro por cima (ver `board_view::pointer`).
+    pub(crate) chrome_press: Option<ph2d_host::PointerButton>,
     /// O quadro cuja aba é, agora, o campo de renomear.
     pub(crate) renaming: Option<BoardId>,
     /// Uma aba de quadro com o dedo em cima — ver `document_tabs_menu::pointer`.

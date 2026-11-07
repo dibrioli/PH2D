@@ -137,7 +137,10 @@ pub use ph2d_board_edit::BoardCursor;
 /// dela ou a de rodar. A janela traduz para o cursor do sistema.
 #[must_use]
 pub fn cursor(hero: &HeroScreen, x: f32, y: f32) -> Option<BoardCursor> {
-    if hero.documents.surface_active().is_some() || !inside(hero.last_canvas, x, y) {
+    if hero.documents.chrome_press.is_some()
+        || hero.documents.surface_active().is_some()
+        || !inside(hero.last_canvas, x, y)
+    {
         return None;
     }
     let board = hero.documents.active_board()?;
@@ -153,6 +156,9 @@ pub fn cursor(hero: &HeroScreen, x: f32, y: f32) -> Option<BoardCursor> {
 pub fn pointer_look(hero: &HeroScreen, x: f32, y: f32) -> Option<crate::doc_surface::PointerLook> {
     if let Some(look) = hero.store.pixel_timeline_look(hero.chrome_hit(x, y)) {
         return Some(look);
+    }
+    if hero.documents.chrome_press.is_some() {
+        return None;
     }
     if hero.documents.surface_active().is_some() {
         return hero.documents.surface_pointer_look(x, y);
@@ -325,9 +331,36 @@ fn canvas_down(
 }
 
 /// Um botão sobre a área de um quadro activo. `on_canvas` = nenhum painel nem controlo por baixo.
-/// `true` = consumido.
+/// `true` = consumido. ⛔ O gesto é de quem recebeu a descida: premido no chrome, nem o largar nem o
+/// movimento são do documento, onde quer que o ponteiro esteja (senão o scrub de um campo nunca acaba).
 #[allow(clippy::too_many_arguments)]
 pub fn pointer(
+    hero: &mut HeroScreen,
+    input: Input<'_>,
+    kind: PointerKind,
+    button: PointerButton,
+    x: f32,
+    y: f32,
+    on_canvas: bool,
+) -> bool {
+    if kind == PointerKind::Up && hero.documents.chrome_press == Some(button) {
+        hero.documents.chrome_press = None;
+        return false;
+    }
+    let taken = route_pointer(hero, input, kind, button, x, y, on_canvas);
+    if kind == PointerKind::Down
+        && hero
+            .documents
+            .chrome_press
+            .is_none_or(|held| held == button)
+    {
+        hero.documents.chrome_press = (!on_canvas && !taken).then_some(button);
+    }
+    taken
+}
+
+#[allow(clippy::too_many_arguments)]
+fn route_pointer(
     hero: &mut HeroScreen,
     input: Input<'_>,
     kind: PointerKind,
@@ -429,6 +462,9 @@ pub fn pointer(
 
 /// O cursor mexeu-se. `true` = um arrasto do quadro (vista ou gesto) está em curso e consumiu-o.
 pub fn pointer_move(hero: &mut HeroScreen, input: Input<'_>, x: f32, y: f32) -> bool {
+    if hero.documents.chrome_press.is_some() {
+        return false;
+    }
     if hero.documents.surface_active().is_some() {
         return super::surface_input::pointer_move(hero, input, x, y).unwrap_or(false);
     }

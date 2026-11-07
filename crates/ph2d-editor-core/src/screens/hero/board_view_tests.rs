@@ -122,6 +122,161 @@ fn a_press_on_chrome_over_the_area_is_not_the_boards() {
     assert!(hero.documents.pan_from.is_none());
 }
 
+/// Uma aba de família que toma tudo e conta o que lhe chegou: a lei é da porta, vale para toda família.
+#[derive(Default)]
+struct Greedy(std::rc::Rc<std::cell::Cell<u32>>);
+
+impl crate::doc_surface::DocumentSurface for Greedy {
+    fn tabs(&self) -> Vec<crate::doc_surface::DocTab> {
+        vec![crate::doc_surface::DocTab {
+            id: 1,
+            title: String::new(),
+            dirty: false,
+        }]
+    }
+    fn paint(
+        &mut self,
+        _: u64,
+        _: Rect,
+        _: &mut ph2d_vector::VectorScene,
+        _: &mut TextSystem,
+        _: &Theme,
+    ) {
+    }
+    fn pointer(
+        &mut self,
+        _: u64,
+        _: crate::doc_surface::PointerInput<'_>,
+        kind: PointerKind,
+        button: PointerButton,
+        _: f32,
+        _: f32,
+    ) -> bool {
+        self.0.set(self.0.get() + 1);
+        // O carregar do meio cai fora do documento dela, como o canto de uma área vazia.
+        !(kind == PointerKind::Down && button == PointerButton::Middle)
+    }
+    fn pointer_move(
+        &mut self,
+        _: u64,
+        _: crate::doc_surface::PointerInput<'_>,
+        _: f32,
+        _: f32,
+    ) -> bool {
+        self.0.set(self.0.get() + 1);
+        true
+    }
+    fn wheel(&mut self, _: u64, _: f32, _: f32, _: f32, _: bool) -> bool {
+        false
+    }
+    fn key(
+        &mut self,
+        _: u64,
+        _: &mut TextSystem,
+        _: crate::doc_surface::KeyInput<'_>,
+    ) -> crate::doc_surface::KeyOutcome {
+        crate::doc_surface::KeyOutcome::default()
+    }
+    fn compose(&mut self, _: u64, _: crate::doc_surface::Compose<'_>) -> bool {
+        false
+    }
+    fn close(&mut self, _: u64) {}
+    fn undo(&mut self, _: u64, _: bool) -> bool {
+        false
+    }
+    fn pointer_look(&self, _: u64, _: f32, _: f32) -> Option<crate::doc_surface::PointerLook> {
+        Some(crate::doc_surface::PointerLook::Hand)
+    }
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
+        self
+    }
+}
+
+fn moved(hero: &mut HeroScreen, x: f32, y: f32) -> bool {
+    TS.with_borrow_mut(|ts| {
+        let input = Input {
+            text: ts,
+            mods: Modifiers::default(),
+            now_ns: 0,
+        };
+        pointer_move(hero, input, x, y)
+    })
+}
+
+/// ⭐ Premido no chrome e largado sobre uma aba que toma tudo: a aba não ouve nada do gesto, e volta a
+/// ouvir depois dele. É a porta de TODAS as famílias (Kanban, Code, Planner, Som).
+#[test]
+fn a_press_on_chrome_stays_chrome_over_any_family_tab() {
+    use PointerButton::{Primary, Secondary};
+    use PointerKind::{Down, Up};
+    crate::test_support::ensure_panel_registry();
+    let mut hero = HeroScreen::new(NodeId(1));
+    let calls = std::rc::Rc::new(std::cell::Cell::new(0));
+    hero.documents
+        .install_surface(Box::new(Greedy(calls.clone())));
+    hero.documents
+        .activate_surface(crate::doc_surface::SurfaceTab { family: 0, id: 1 });
+    let (x, y) = (500.0, 300.0);
+
+    assert!(!press(&mut hero, Down, Primary, x, y, false));
+    assert!(!moved(&mut hero, x, y), "o movimento é do chrome");
+    assert!(pointer_look(&hero, x, y).is_none(), "o ponteiro da aba");
+    // Outro botão, premido e largado a meio, não solta o gesto do primeiro.
+    assert!(press(&mut hero, Down, Secondary, x, y, true));
+    assert!(press(&mut hero, Up, Secondary, x, y, true));
+    assert_eq!(calls.get(), 2, "só os do outro botão");
+    assert!(!moved(&mut hero, x, y), "o primeiro continua premido");
+    assert!(
+        !press(&mut hero, Up, Primary, x, y, true),
+        "o largar é do chrome"
+    );
+    assert_eq!(calls.get(), 2, "a aba ouviu o gesto do chrome");
+
+    assert!(
+        moved(&mut hero, x, y),
+        "acabado o gesto, a aba volta a ouvir"
+    );
+    assert!(press(&mut hero, Down, Primary, x, y, true));
+    assert!(
+        press(&mut hero, Up, Primary, x, y, true),
+        "o gesto dela é dela"
+    );
+    assert_eq!(calls.get(), 5);
+
+    // Carregar sobre a área livre que ela não tomou não é chrome: o largar continua a ir-lhe.
+    assert!(!press(&mut hero, Down, PointerButton::Middle, x, y, true));
+    assert!(press(&mut hero, Up, PointerButton::Middle, x, y, true));
+    assert_eq!(calls.get(), 7);
+}
+
+/// O quadro segue a mesma porta: a vista não anda sob o arrasto de um controlo.
+#[test]
+fn a_press_on_chrome_stays_chrome_over_a_board() {
+    let mut hero = with_board();
+    let (x, y) = (500.0, 300.0);
+    assert!(!press(
+        &mut hero,
+        PointerKind::Down,
+        PointerButton::Middle,
+        x,
+        y,
+        false
+    ));
+    assert!(!moved(&mut hero, x + 40.0, y));
+    assert!(!press(
+        &mut hero,
+        PointerKind::Up,
+        PointerButton::Middle,
+        x,
+        y,
+        true
+    ));
+    assert_eq!(hero.documents.chrome_press, None);
+}
+
 /// O estilo de nascença grava a TINTA DO DOCUMENTO (nunca a do tema em que a forma nasceu): uma cena
 /// aberta num tema escuro tem de se ler no claro (smoke do dono, 07/10).
 #[test]

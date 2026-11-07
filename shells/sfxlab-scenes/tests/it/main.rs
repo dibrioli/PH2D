@@ -4,6 +4,7 @@ mod cartoes;
 mod explorar;
 mod faixas;
 mod jogo;
+mod largar;
 mod medidores;
 mod medir;
 mod vaga;
@@ -180,7 +181,7 @@ impl Mesa {
             kind,
             source: PointerSource::Mouse,
             button: PointerButton::Primary,
-            timestamp_ns: 0,
+            timestamp_ns: self.agora,
         };
         let evs: Vec<_> =
             dispatch_pointer(&mut self.hero.store, &self.hero.hit_index, ev, &arena).to_vec();
@@ -252,6 +253,26 @@ impl Mesa {
             y,
             no_canvas,
         )
+    }
+
+    /// Um evento na ordem de `App::pointer_button` e `App::pointer_moved`: a aba pergunta primeiro e
+    /// o store só ouve o que ela não tomou. `true` = a aba tomou.
+    pub fn mao_da_shell(&mut self, kind: PointerKind, x: f32, y: f32) -> bool {
+        let tomou = if kind == PointerKind::Move {
+            let input = Input {
+                text: &mut self.ts,
+                mods: Modifiers::default(),
+                now_ns: self.agora,
+            };
+            board_view::pointer_move(&mut self.hero, input, x, y)
+        } else {
+            self.ponteiro_da_shell(kind, x, y)
+        };
+        if !tomou {
+            self.mao(kind, x, y);
+        }
+        self.quadro();
+        tomou
     }
 
     fn tecla(&mut self, keycode: u32) {

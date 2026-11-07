@@ -141,20 +141,13 @@ pub struct ComponentTypeEntry {
 pub struct ComponentRegistry {
     by_id: BTreeMap<ComponentTypeId, ComponentTypeEntry>,
     by_name: BTreeMap<&'static str, ComponentTypeId>,
-    /// As conversões das caixas gravadas na convenção antiga ([`caixas`]).
-    caixas_v209: BTreeMap<ComponentTypeId, caixas::DesviraFn>,
 }
-
-#[path = "registry_caixas.rs"]
-mod caixas;
-pub use caixas::DesviraFn;
 
 impl ComponentRegistry {
     pub fn new() -> Self {
         Self {
             by_id: BTreeMap::new(),
             by_name: BTreeMap::new(),
-            caixas_v209: BTreeMap::new(),
         }
     }
 

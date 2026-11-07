@@ -4,7 +4,7 @@
 
 use super::*;
 use ph2d_app_components::test_support::scripts::{ANDA, open_and_tick, snapshot};
-use ph2d_script::{LuauScript, ProjectScripts, ScriptLibrary, ScriptSource};
+use ph2d_script::{LuauScript, ScriptLibrary, ScriptSource};
 
 fn estado(cfg: LuauScript) -> ProjectState {
     ProjectState {

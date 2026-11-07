@@ -464,8 +464,3 @@ mod tests;
 #[cfg(test)]
 #[path = "envelope_sondas_tests.rs"]
 mod sondas_tests;
-
-/// Resto de compatibilidade com o shell (`project_load_read.rs`): não faz nada e sai com a chamada dele.
-pub fn migra_fio(_mundo: &mut ph2d_ecs::scene::WorldSnapshot, _fio: u32) -> usize {
-    0
-}

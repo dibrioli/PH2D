@@ -20,7 +20,6 @@ mod registry_camera;
 /// O valor de um componente por nome de campo — irmão por CAP de LOC.
 mod registry_value;
 pub mod save;
-pub mod save_v1;
 pub mod snapshot;
 pub mod spawn;
 
@@ -29,13 +28,10 @@ pub use commands::{
 };
 pub use diff::{LinhaMudada, linhas_que_mudam};
 pub use registry::{
-    ComponentRegistry, ComponentTypeEntry, ComponentTypeId, DesviraFn, RegistryError,
-    register_ecs_components, stable_type_id,
+    ComponentRegistry, ComponentTypeEntry, ComponentTypeId, RegistryError, register_ecs_components,
+    stable_type_id,
 };
 pub use save::{EntitySnapshotRow, SaveError, WorldSnapshot, snapshot_to_world, world_to_snapshot};
-pub use save_v1::{
-    EntitySnapshotRowV1, WorldSnapshotV1, migrate_v1_to_v2, next_free_after_migration,
-};
 pub use snapshot::{
     ComponentEntry, ComponentSnapshot, HierarchyEntry, HierarchySnapshot, HierarchyWalkState,
     build_hierarchy_snapshot, extract_component_snapshot,

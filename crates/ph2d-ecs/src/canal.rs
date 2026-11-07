@@ -12,7 +12,7 @@
 use std::collections::BTreeMap;
 
 use bevy_ecs::resource::Resource;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::ItemId;
 
@@ -23,8 +23,7 @@ use crate::ItemId;
 /// `NONE` em quem não a usa): com ela `i` é 0 e `j` continua a dizer o membro.
 ///
 /// A ordem dos campos é a da `Ord`: `item` antes de `j` junta os membros de uma entrada.
-/// O `Deserialize` lê a forma v23 dentro de [`crate::canal_chave_v23::with_field_key_layout_v23`].
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct FieldKey {
     pub familia: u16,
     pub campo: u16,

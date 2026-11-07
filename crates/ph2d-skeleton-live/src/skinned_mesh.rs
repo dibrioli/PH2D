@@ -169,11 +169,6 @@ impl SkinnedPath {
     }
 }
 
-/// Resto de compatibilidade com o shell (`project_load_read.rs`): não faz nada e sai com a chamada dele.
-pub fn migra_fio(_mundo: &mut ph2d_ecs::scene::WorldSnapshot, _fio: u32) -> usize {
-    0
-}
-
 /// ⭐⭐⭐ **A PORTA do formato guardado** — o `SkinBind::source` lê-se por aqui, e só por aqui.
 ///
 /// ⛔⛔ **Ela existe porque o formato era descodificado À MÃO em SETE sítios** (medido 2026-09-19),

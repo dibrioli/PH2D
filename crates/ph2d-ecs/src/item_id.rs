@@ -21,8 +21,10 @@ use bevy_ecs::prelude::{Entity, World};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use crate::scene::registry::stable_type_id;
-use crate::{ItemId, StableIdCounter};
+use crate::{
+    CounterWatch, ItemId, NamedAnchorList, ShakeEmitter, SignalActions, SignalOnAction,
+    StableIdCounter, StateMachine, Timers, Tweens,
+};
 
 /// Um componente com itens identificados, por ordem (as listas dele em sequência).
 pub trait ComItens: Component<Mutability = Mutable> + Serialize + DeserializeOwned {
@@ -60,40 +62,18 @@ pub struct Passe {
     pub canonical: &'static str,
     ler: fn(&mut World) -> ItensPorEntidade,
     escrever: fn(&mut World, Entity, &[ItemId]),
-    /// Os bytes da forma sem ids, na forma de agora.
-    legado: fn(&[u8]) -> Legado,
-    /// Os bytes já estão na forma de agora (lidos até ao último byte)?
-    atual: fn(&[u8]) -> bool,
-    /// O último `PROJECT_SCHEMA` gravado na forma sem ids.
-    pub ate: u32,
 }
 
 impl Passe {
-    /// O passe de `T`, com `L` = a forma gravada até ao `PROJECT_SCHEMA` 204 (o degrau dos itens da UIUX, F30 §A1).
+    /// O passe de `T`.
     #[must_use]
-    pub fn de<T: ComItens, L: DeserializeOwned + Into<T>>(canonical: &'static str) -> Self {
-        Self::de_ate::<T, L>(canonical, 204)
-    }
-
-    /// O passe de `T`, com `L` = a forma gravada até ao `PROJECT_SCHEMA` `ate`.
-    #[must_use]
-    pub fn de_ate<T: ComItens, L: DeserializeOwned + Into<T>>(
-        canonical: &'static str,
-        ate: u32,
-    ) -> Self {
+    pub fn de<T: ComItens>(canonical: &'static str) -> Self {
         Self {
             canonical,
             ler: ler::<T>,
             escrever: escrever::<T>,
-            legado: legado::<T, L>,
-            atual: atual::<T>,
-            ate,
         }
     }
-}
-
-fn atual<T: DeserializeOwned>(b: &[u8]) -> bool {
-    inteiro::<T>(b).is_some()
 }
 
 fn ler<T: ComItens>(w: &mut World) -> Vec<(Entity, Vec<ItemId>)> {
@@ -107,125 +87,28 @@ fn escrever<T: ComItens>(w: &mut World, e: Entity, ids: &[ItemId]) {
     }
 }
 
-/// Um degrau de FORMA de um componente: a forma gravada até ao `PROJECT_SCHEMA` `ate` e a conversão
-/// para a de agora. Os [`Passe`] trazem o deles; [`degraus`] junta os que não dão ids (F32 §4).
-#[derive(Clone, Copy)]
-pub struct Degrau {
-    pub canonical: &'static str,
-    legado: fn(&[u8]) -> Legado,
-    atual: fn(&[u8]) -> bool,
-    pub ate: u32,
-}
-
-impl Degrau {
-    /// O degrau de `T`, com `L` = a forma gravada até ao `PROJECT_SCHEMA` `ate`.
-    #[must_use]
-    pub fn de<T: Serialize + DeserializeOwned, L: DeserializeOwned + Into<T>>(
-        canonical: &'static str,
-        ate: u32,
-    ) -> Self {
-        Self {
-            canonical,
-            legado: legado::<T, L>,
-            atual: atual::<T>,
-            ate,
-        }
-    }
-}
-
-/// Todos os degraus de forma, por ordem de `ate` (um componente pode subir vários seguidos).
-#[must_use]
-pub fn degraus() -> Vec<Degrau> {
-    use crate::item_id_v196 as v;
-    let mut d: Vec<Degrau> = (passes().into_iter())
-        .map(|p| Degrau {
-            canonical: p.canonical,
-            legado: p.legado,
-            atual: p.atual,
-            ate: p.ate,
-        })
-        .chain([
-            Degrau::de::<crate::Tweens, v::TweensV196>("ph2d::ecs::Tweens", 206),
-            Degrau::de::<crate::PathFollow, v::PathFollowV196>("ph2d::ecs::PathFollow", 206),
-        ])
-        .chain(
-            DEGRAUS_DE_FORA
-                .lock()
-                .unwrap_or_else(std::sync::PoisonError::into_inner)
-                .iter()
-                .copied(),
-        )
-        .collect();
-    d.sort_by_key(|x| x.ate);
-    d
-}
-
-/// ⭐ **Os bytes de um componente gravado noutra forma, na forma de agora** — sem versão: cada forma
-/// reconhece-se a si própria (lê-se até ao último byte). `None` = já na de agora, ou ilegível. A
-/// porta das macros (`.ph2dmacro` gravado antes de um degrau, F32 §5).
-#[must_use]
-pub fn migra_blob(canonical: &str, bytes: &[u8]) -> Option<Vec<u8>> {
-    let ds: Vec<Degrau> = (degraus().into_iter())
-        .filter(|d| d.canonical == canonical)
-        .collect();
-    // Sem versão, a forma de agora tem precedência: um blob em dia nunca se relê como antigo.
-    if ds.first().is_none_or(|d| (d.atual)(bytes)) {
-        return None;
-    }
-    ds.iter().find_map(|d| match (d.legado)(bytes) {
-        Legado::Migrado(b) => Some(b),
-        _ => None,
-    })
-}
-
-/// O que um blob é para um degrau de forma.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Legado {
-    /// Lido na forma v194 (até ao último byte), e aqui na de agora.
-    Migrado(Vec<u8>),
-    /// Já na forma de agora: uma migração mais antiga (a do `v128`) reescreveu-o com o tipo vivo.
-    JaNovo,
-    Ilegivel,
-}
-
-/// `Some` só se `b` se lê como `X` até ao último byte (o postcard ignora a cauda: sem isto um blob
-/// de uma forma passaria por outra).
-fn inteiro<X: DeserializeOwned>(b: &[u8]) -> Option<X> {
-    match postcard::take_from_bytes::<X>(b) {
-        Ok((x, [])) => Some(x),
-        _ => None,
-    }
-}
-
-fn legado<T: Serialize + DeserializeOwned, L: DeserializeOwned + Into<T>>(b: &[u8]) -> Legado {
-    if let Some(l) = inteiro::<L>(b) {
-        let t: T = l.into();
-        return postcard::to_allocvec(&t).map_or(Legado::Ilegivel, Legado::Migrado);
-    }
-    if inteiro::<T>(b).is_some() {
-        Legado::JaNovo
-    } else {
-        Legado::Ilegivel
-    }
-}
+crate::com_itens!(Timers: 0);
+crate::com_itens!(Tweens: 0);
+crate::com_itens!(StateMachine: states, transitions);
+crate::com_itens!(CounterWatch: 0);
+crate::com_itens!(SignalActions: 0);
+crate::com_itens!(SignalOnAction: 0);
+crate::com_itens!(ShakeEmitter: 0);
+crate::com_itens!(NamedAnchorList: 0);
 
 /// Os componentes do `ph2d-ecs` com itens.
 #[must_use]
 pub fn desta_crate() -> [Passe; DESTA_CRATE] {
-    use crate::item_id_v194 as v;
     [
-        Passe::de::<crate::Timers, v::TimersV194>("ph2d::ecs::Timers"),
-        Passe::de::<crate::Tweens, v::TweensV194>("ph2d::ecs::Tweens"),
-        Passe::de::<crate::StateMachine, v::StateMachineV194>("ph2d::ecs::StateMachine"),
-        Passe::de::<crate::CounterWatch, v::CounterWatchV194>("ph2d::ecs::CounterWatch"),
-        Passe::de::<crate::SignalActions, v::SignalActionsV194>("ph2d::ecs::SignalActions"),
-        Passe::de::<crate::SignalOnAction, v::SignalOnActionV194>("ph2d::ecs::SignalOnAction"),
-        Passe::de::<crate::ShakeEmitter, v::ShakeEmitterV194>("ph2d::ecs::ShakeEmitter"),
-        Passe::de::<crate::NamedAnchorList, v::NamedAnchorListV194>("ph2d::ecs::NamedAnchorList"),
-        Passe::de_ate::<crate::VecFilter, crate::vec_filter_v195::VecFilterV195>(
-            "ph2d::ecs::VecFilter",
-            205,
-        ),
+        Passe::de::<crate::Timers>("ph2d::ecs::Timers"),
+        Passe::de::<crate::Tweens>("ph2d::ecs::Tweens"),
+        Passe::de::<crate::StateMachine>("ph2d::ecs::StateMachine"),
+        Passe::de::<crate::CounterWatch>("ph2d::ecs::CounterWatch"),
+        Passe::de::<crate::SignalActions>("ph2d::ecs::SignalActions"),
+        Passe::de::<crate::SignalOnAction>("ph2d::ecs::SignalOnAction"),
+        Passe::de::<crate::ShakeEmitter>("ph2d::ecs::ShakeEmitter"),
+        Passe::de::<crate::NamedAnchorList>("ph2d::ecs::NamedAnchorList"),
+        Passe::de::<crate::VecFilter>("ph2d::ecs::VecFilter"),
     ]
 }
 
@@ -241,22 +124,6 @@ pub fn regista(p: Passe) {
         .unwrap_or_else(std::sync::PoisonError::into_inner);
     if !v.iter().any(|x| x.canonical == p.canonical) {
         v.push(p);
-    }
-}
-
-static DEGRAUS_DE_FORA: Mutex<Vec<Degrau>> = Mutex::new(Vec::new());
-
-/// Regista um degrau de FORMA de um componente de outra crate, sem itens (idempotente, pelo nome
-/// canónico e `ate`) — ex.: a `SkinBind` `210 → 211`.
-pub fn regista_degrau(d: Degrau) {
-    let mut v = DEGRAUS_DE_FORA
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    if !v
-        .iter()
-        .any(|x| x.canonical == d.canonical && x.ate == d.ate)
-    {
-        v.push(d);
     }
 }
 
@@ -317,54 +184,6 @@ pub fn assign_missing_item_ids(world: &mut World) -> bool {
     // Os ids que acabaram de nascer fixam o relógio dos tweens no mesmo passe (F32 §4).
     let tweens = crate::tween::adopta_relogios(world);
     crate::path_follow::adopta_relogios(world) || tweens || mudou
-}
-
-/// O que a migração dos itens fez.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct MigracaoV194 {
-    pub migrados: usize,
-    pub ilegiveis: usize,
-}
-
-/// ⭐ **O degrau `204 → 205`**: os blobs dos componentes com itens passam à forma com `item`
-/// (`0`); o passe dá-lhes ids na ordem da lista no primeiro quadro (ou no `stable_id_for_name`).
-pub fn migra_v194(world: &mut crate::scene::WorldSnapshot) -> MigracaoV194 {
-    migra(world, 204)
-}
-
-/// ⭐ **Os degraus dos itens para um ficheiro `ver`**: cada componente cuja forma sem ids vai até
-/// `ver` ou além (`ver <= Passe::ate`) passa os blobs à forma com ids (`NONE`) — o `204 → 205`
-/// das listas da F30 e o `205 → 206` do `VecFilter` (F31 §B2).
-pub fn migra(world: &mut crate::scene::WorldSnapshot, ver: u32) -> MigracaoV194 {
-    let degraus: Vec<(u64, Degrau)> = (degraus().into_iter())
-        .filter(|d| ver <= d.ate)
-        .map(|d| (stable_type_id(d.canonical), d))
-        .collect();
-    let mut m = MigracaoV194::default();
-    for row in &mut world.entities {
-        for slot in 0..row.components.len() {
-            let id = row.components[slot].type_id;
-            // Do degrau mais antigo: cada forma converte direto para a de agora, e a 1.ª que lê serve.
-            let mut ilegivel = false;
-            for (_, d) in degraus.iter().filter(|(t, _)| *t == id) {
-                match (d.legado)(&row.components[slot].data) {
-                    Legado::Migrado(novo) => {
-                        std::sync::Arc::make_mut(row).components[slot].data = novo;
-                        m.migrados += 1;
-                        ilegivel = false;
-                        break;
-                    }
-                    Legado::JaNovo => {
-                        ilegivel = false;
-                        break;
-                    }
-                    Legado::Ilegivel => ilegivel = true,
-                }
-            }
-            m.ilegiveis += usize::from(ilegivel);
-        }
-    }
-    m
 }
 
 #[cfg(test)]

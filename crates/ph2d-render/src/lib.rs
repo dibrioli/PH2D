@@ -113,13 +113,6 @@ pub use sprite_mesh_warp::MeshWarp;
 /// Repor no presente os donos movidos depois do extract — ver o cabeçalho.
 mod sprite_repoe;
 pub use sprite_repoe::repoe_no_presente;
-/// Sprite Inspector v2 — W0 frozen (schema v3 baseline). The W1
-/// schema bump v3→v4 + ABI changes live behind this module. See
-/// [`docs/HANDOFF_sprite_inspector_v2.md`](../../../docs/HANDOFF_sprite_inspector_v2.md)
-/// for the read order, [`docs/Sprite_projeto/`](../../../docs/Sprite_projeto/)
-/// for the ratified spec, and ADR-0070 + ADR-0070-amendment-2 for
-/// the wrapper-enum back-compat contract.
-pub mod sprite_versioned;
 mod texture_clear;
 pub mod tonemap;
 mod vello_fundo;
@@ -197,14 +190,9 @@ pub use sprite::{
 pub use sprite_collect::sort_render_order;
 pub use sprite_mesh::{LiftedInstances, SpriteMesh};
 pub use sprite_mesh_skin::{OSSOS_POR_VERTICE, SEM_PELE, SpriteMeshSkin};
-pub use world_rt::WorldRt;
-// The wrapper enum + the canonical load path (`load_sprite` +
-// `LoadError`, ADR-0070-amendment-2 §4) are re-exported at crate root —
-// `SpriteV3` stays internal migrator machinery (`#[doc(hidden)]` on the
-// struct). Tests reach it via `ph2d_render::sprite_versioned::SpriteV3`.
-pub use sprite_versioned::{LoadError, MigratedSprite, SpriteV4, SpriteVersioned, load_sprite};
 pub use tonemap::Tonemap;
 pub use vello_pass::VelloPass;
+pub use world_rt::WorldRt;
 
 #[cfg(test)]
 #[path = "tiling_seam_gpu_tests.rs"]

@@ -121,47 +121,6 @@ fn copiar_um_objecto_guarda_os_ids_dos_itens() {
     assert_eq!(ids(&w, e), antes, "o original não muda");
 }
 
-/// ⭐⭐ **Um projecto antigo abre com ids nos itens**: os bytes v194 (sem `item`) passam à forma
-/// nova com `0`, e o passe dá-lhes ids na ordem da lista.
-#[test]
-fn um_projecto_antigo_abre_com_ids_nos_itens() {
-    let mut reg = ComponentRegistry::new();
-    register_ecs_components(&mut reg);
-    let v194: Vec<(String, u64, bool, bool, String)> = vec![
-        ("a".into(), 1_000_000, false, true, String::new()),
-        ("b".into(), 2_000_000, true, false, "s".into()),
-    ];
-    let bytes = postcard::to_allocvec(&v194).expect("grava");
-    let tid = stable_type_id("ph2d::ecs::Timers");
-    let mut snap = crate::scene::WorldSnapshot {
-        version: crate::scene::WorldSnapshot::VERSION,
-        entities: vec![std::sync::Arc::new(crate::scene::EntitySnapshotRow {
-            id: crate::StableId(7),
-            components: vec![ph2d_asset::ComponentBlob {
-                type_id: tid,
-                data: bytes,
-            }],
-            parent: None,
-        })],
-    };
-    let m = migra_v194(&mut snap);
-    assert_eq!(
-        m,
-        MigracaoV194 {
-            migrados: 1,
-            ilegiveis: 0
-        }
-    );
-    let t: Timers = postcard::from_bytes(&snap.entities[0].components[0].data).expect("lê");
-    assert_eq!(t.0[1].duration_us, 2_000_000);
-    assert_eq!(t.0[1].signal, "s");
-    let mut w = World::new();
-    let e = w.spawn((Transform::IDENTITY, t)).id();
-    assign_missing_stable_ids(&mut w);
-    let v = ids(&w, e);
-    assert!(v[0] != 0 && v[0] < v[1], "na ordem da lista: {v:?}");
-}
-
 /// O registo conhece os nove componentes do `ph2d-ecs` com itens, e cada um está no registo de
 /// componentes (senão a migração não o acha).
 #[test]
@@ -171,64 +130,6 @@ fn os_passes_desta_crate_sao_componentes_registados() {
     for p in desta_crate() {
         assert!(reg.get_by_name(p.canonical).is_some(), "{}", p.canonical);
     }
-}
-
-/// ⚠️ Um blob JÁ na forma nova (a migração do `v128` reescreve a tabela de acções com o tipo vivo)
-/// passa intacto: a leitura v194 exige o último byte, senão duas acções sairiam desalinhadas.
-#[test]
-fn um_blob_ja_na_forma_nova_passa_intacto() {
-    let acoes = crate::SignalActions(vec![
-        crate::SignalAction {
-            on: "a".into(),
-            target: "x".into(),
-            ..Default::default()
-        },
-        crate::SignalAction {
-            on: "b".into(),
-            target: "y".into(),
-            ..Default::default()
-        },
-    ]);
-    let bytes = postcard::to_allocvec(&acoes).expect("grava");
-    let mut snap = crate::scene::WorldSnapshot {
-        version: crate::scene::WorldSnapshot::VERSION,
-        entities: vec![std::sync::Arc::new(crate::scene::EntitySnapshotRow {
-            id: crate::StableId(3),
-            components: vec![ph2d_asset::ComponentBlob {
-                type_id: stable_type_id("ph2d::ecs::SignalActions"),
-                data: bytes.clone(),
-            }],
-            parent: None,
-        })],
-    };
-    assert_eq!(migra_v194(&mut snap), MigracaoV194::default());
-    assert_eq!(snap.entities[0].components[0].data, bytes);
-}
-
-/// ⚠️ A lista de UM item na forma nova é a v194 com o `item` por CAUDA (o id vai no fim do item):
-/// lida sem exigir o último byte passaria por legada e perderia o id. Os dois caminhos reais: a
-/// acção que a migração `v128` reescreve (id `0`) e um timer já com id.
-#[test]
-fn um_item_na_forma_nova_nao_se_le_como_v194_com_cauda() {
-    let acao = crate::SignalActions(vec![crate::SignalAction {
-        on: "a".into(),
-        target: "x".into(),
-        ..Default::default()
-    }]);
-    let b = postcard::to_allocvec(&acao).expect("grava");
-    let v194: Result<(crate::item_id_v194::SignalActionsV194, &[u8]), _> =
-        postcard::take_from_bytes(&b);
-    assert!(
-        v194.is_ok_and(|(_, resto)| !resto.is_empty()),
-        "o fixture tem a forma do furo"
-    );
-    let pa = Passe::de::<crate::SignalActions, crate::item_id_v194::SignalActionsV194>("a");
-    assert_eq!((pa.legado)(&b), Legado::JaNovo);
-    let mut t = timer("a");
-    t.item = ItemId(7);
-    let b = postcard::to_allocvec(&Timers(vec![t])).expect("grava");
-    let pt = Passe::de::<Timers, crate::item_id_v194::TimersV194>("t");
-    assert_eq!((pt.legado)(&b), Legado::JaNovo);
 }
 
 fn filtro(kinds: &[u8]) -> crate::VecFilter {
@@ -280,64 +181,4 @@ fn o_contador_reconcilia_com_os_ids_dos_filtros() {
     let v = ids_do_filtro(&w, e);
     assert!(v[1] > 900, "o novo passa o maior vivo: {v:?}");
     assert!(w.resource::<StableIdCounter>().next_free() > u64::from(v[1]));
-}
-
-/// O degrau `195 → 196`: um `VecFilter` gravado sem ids passa à forma com ids `NONE`, e só para
-/// ficheiros até ao 195 (um 196 lê-se com o tipo vivo).
-#[test]
-fn o_vec_filter_195_migra_para_a_forma_com_ids() {
-    use crate::FxOp;
-    let ops = vec![FxOp::new(FxOp::BLUR), FxOp::new(FxOp::GLOW)];
-    let v195 = postcard::to_allocvec(&(&ops,)).expect("grava");
-    let snap = |data: Vec<u8>| crate::scene::WorldSnapshot {
-        version: crate::scene::WorldSnapshot::VERSION,
-        entities: vec![std::sync::Arc::new(crate::scene::EntitySnapshotRow {
-            id: crate::StableId(9),
-            components: vec![ph2d_asset::ComponentBlob {
-                type_id: stable_type_id("ph2d::ecs::VecFilter"),
-                data,
-            }],
-            parent: None,
-        })],
-    };
-    let mut s = snap(v195.clone());
-    assert_eq!(migra(&mut s, 206).migrados, 0, "o 206 não migra");
-    assert_eq!(migra(&mut s, 205).migrados, 1);
-    let f: crate::VecFilter =
-        postcard::from_bytes(&s.entities[0].components[0].data).expect("forma nova");
-    assert_eq!(f.ops(), ops.as_slice());
-    assert!(f.ids().iter().all(|i| i.is_none()));
-    let mut s = snap(v195);
-    assert_eq!(
-        migra(&mut s, 120).migrados,
-        1,
-        "e um ficheiro mais antigo também"
-    );
-}
-
-/// F32 §5: sem versão (a macro), um blob que já está na forma de agora nunca se relê como antigo —
-/// medido: estes dois timers de agora também se lêem até ao último byte na forma 194 (o `item` 2
-/// do primeiro vira o comprimento do nome do segundo), e a «migração» trocar-lhes-ia os dados.
-#[test]
-fn sem_versao_a_forma_de_agora_tem_precedencia() {
-    let agora = crate::Timers(vec![
-        crate::Timer {
-            item: ItemId(2),
-            ..crate::Timer::default()
-        },
-        crate::Timer {
-            name: String::new(),
-            duration_us: 0,
-            repeat: false,
-            autostart: false,
-            signal: String::new(),
-            item: ItemId::NONE,
-        },
-    ]);
-    let b = postcard::to_allocvec(&agora).expect("grava");
-    assert!(
-        inteiro::<crate::item_id_v194::TimersV194>(&b).is_some(),
-        "a colisão existe (senão este gate não mede nada)"
-    );
-    assert_eq!(migra_blob("ph2d::ecs::Timers", &b), None);
 }

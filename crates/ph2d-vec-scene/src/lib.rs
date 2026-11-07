@@ -313,12 +313,8 @@ mod dash_pattern;
 /// de 700 LOC deste arquivo, e coeso: é o vocabulário de uma caneta, com os seus defaults e
 /// as suas conversões ao lado dos seus tipos.
 mod stroke_style;
-pub use dash_pattern::{DashLengths, DashPattern, MAX_DASH_PAIRS};
-/// A leitura das entradas da pilha por versão — o âmbito v23 (F31).
-/// A leitura por versão — o âmbito do fio (F16c, W4.2).
-mod stroke_wire;
 pub use brush_stroke::{brush_along_path, brush_copies, brush_height, brush_spans};
-pub use stroke_wire::{PilhaLayoutV23, WireLayout, with_wire_layout};
+pub use dash_pattern::{DashLengths, DashPattern, MAX_DASH_PAIRS};
 
 pub use stroke_style::{
     BrushStroke, LineCap, LineJoin, MIN_DASH_FRACTION, MITER_LIMIT, OffsetSide, StrokeAlign,

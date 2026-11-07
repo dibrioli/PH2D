@@ -69,8 +69,6 @@ pub mod image_use_memory;
 /// e o elo `InstanceOf`. ⛔ Ela copia bytes; quem remapeia referências é a porta da shell.
 pub mod instantiate;
 pub mod item_id;
-mod item_id_v194;
-mod item_id_v196;
 /// ⭐⭐⭐ **O CICLO DE VIDA** — os itens #12 do TOP-20 (`Lifetime`, `DestroyOutside`) e o marcador
 /// [`lifetime::Spawned`], que é a lei *«o que nasce numa corrida não é documento»*.
 pub mod lifetime;
@@ -98,7 +96,6 @@ pub use particle_emitter::{EmissionShape, ParticleEmitter, ParticleSpace};
 /// ⭐⭐⭐ **O canal de qualquer propriedade** (plano 35) — o endereço e os dois quadros de dados.
 pub mod canal;
 pub mod canal_cad;
-pub mod canal_chave_v23;
 pub mod canal_componente;
 pub mod canal_componente_donos;
 pub mod canal_conducao;
@@ -350,7 +347,6 @@ mod vec_contour;
 mod vec_cut_path;
 mod vec_driven_style;
 mod vec_filter;
-mod vec_filter_v195;
 mod vec_frame;
 mod vec_layout;
 mod vec_offset;

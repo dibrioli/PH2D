@@ -1,6 +1,6 @@
 //! Os gates do colisor de um objecto da cena (doc 115 W4 → §33): a lei da caixa (agora no
 //! `Collide` do `source.object`), a membrana que deixou de declarar, o passe que se arma sozinho, e
-//! a migração dos documentos que ligavam o `Collide` no `Output`.
+//! (sem leitor de documento antigo: §0.11).
 //!
 //! ⚠️⚠️ **Toda fixtura da lei tem `size ≠ 1`, e isso é a lei do ficheiro e não um gosto.** A lei
 //! errada que a §10.1 do doc 115 escreveu — declarar `size / 2` em vez do quadrado unitário — dá
@@ -14,7 +14,7 @@ use ph2d_nodegraph::attr::{
     BOUNCE_COLUMN, COLLIDER_BOX_COLUMN, COLLIDER_COLUMN, COLLIDER_OFFSET_COLUMN, Column,
     FRICTION_COLUMN, INV_INERTIA_COLUMN, Stream,
 };
-use ph2d_nodegraph::graph::{Edge, Graph, NodeId};
+use ph2d_nodegraph::graph::{Edge, NodeId};
 
 const BRANCO: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const UV: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
@@ -306,129 +306,5 @@ fn o_collide_do_objecto_separa_as_copias_sozinho() {
     assert!(
         (depois[1] - depois[0]).abs() > 1.9,
         "duas caixas de lado 2 tem de ficar a ~2 de distancia: {antes:?} -> {depois:?}"
-    );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// doc 115 §33 — A MIGRAÇÃO do `Collide` do Output
-// ─────────────────────────────────────────────────────────────────────────────
-
-/// `objecto → dup ← grelha`, `dup → saída`, mais uma forma a montante e um objecto SOLTO (que não
-/// chega à saída). Devolve `(grafo, saída, objecto ligado, objecto solto, forma)`.
-fn documento_antigo(collide_da_saida: Option<f32>) -> (Graph, NodeId, NodeId, NodeId, NodeId) {
-    let mut g = Graph::new();
-    let obj = g.add_node("source.object");
-    let solto = g.add_node("source.object");
-    let forma = g.add_node("source.shape");
-    let dup = g.add_node("motion.duplicator");
-    let mistura = g.add_node("motion.combine");
-    let out = g.add_node("motion.output");
-    for (de, para) in [
-        (obj, (dup, 0)),
-        (dup, (mistura, 0)),
-        (forma, (mistura, 1)),
-        (mistura, (out, 0)),
-    ] {
-        g.connect(Edge {
-            from: (de, 0),
-            to: para,
-            delayed: false,
-        })
-        .expect("liga");
-    }
-    if let Some(v) = collide_da_saida {
-        g.set_param(out, "collide", v);
-    }
-    (g, out, obj, solto, forma)
-}
-
-fn collide_de(g: &Graph, n: NodeId) -> Option<f32> {
-    g.node_param_overrides(n)
-        .and_then(|p| p.get(ph2d_node_source_object::COLLIDE_PARAM))
-        .copied()
-}
-
-/// ⭐⭐⭐ **O documento que ligava o `Collide` no Output abre com os OBJECTOS a montante ligados, e o
-/// override legado some** — os objectos soltos e as formas ficam como estavam (as formas já tinham
-/// o botão delas, e era ele que as fazia declarar).
-#[test]
-fn a_migracao_liga_os_objectos_a_montante_e_apaga_o_legado() {
-    let (mut g, out, obj, solto, forma) = documento_antigo(Some(1.0));
-    assert_eq!(crate::migra_o_collide_da_saida(&mut g), 1);
-    assert_eq!(collide_de(&g, obj), Some(1.0), "o objecto a montante liga");
-    assert_eq!(
-        collide_de(&g, solto),
-        None,
-        "o objecto solto nao chega a saida"
-    );
-    assert_eq!(collide_de(&g, forma), None, "a forma tem o botao dela");
-    assert!(
-        g.node_param_overrides(out)
-            .and_then(|p| p.get("collide"))
-            .is_none(),
-        "o override legado tem de sair — o Output ja nao o declara"
-    );
-    // ⭐ O documento migrado VALIDA: o legado era um `UnknownParam`.
-    let reg = crate::motion_state::MotionState::new().registry;
-    let violacoes = g.validate(&reg).err().unwrap_or_default();
-    assert!(
-        !violacoes
-            .iter()
-            .any(|v| matches!(v, ph2d_nodegraph::graph::Violation::UnknownParam { .. })),
-        "{violacoes:?}"
-    );
-}
-
-/// ⚠️ **Desligado, nenhum objecto muda — mas o legado sai na mesma** (ele é um param que o nó já
-/// não declara).
-#[test]
-fn a_migracao_com_o_legado_desligado_so_apaga_o_override() {
-    let (mut g, out, obj, _, _) = documento_antigo(Some(0.0));
-    assert_eq!(crate::migra_o_collide_da_saida(&mut g), 0);
-    assert_eq!(collide_de(&g, obj), None);
-    assert!(g.node_param_overrides(out).is_none(), "o override saiu");
-}
-
-/// ⚠️ **IDEMPOTENTE**, e um documento novo (sem legado) passa intacto, ao bit.
-#[test]
-fn a_migracao_e_idempotente_e_nao_toca_num_documento_novo() {
-    let (mut g, _, obj, _, _) = documento_antigo(Some(1.0));
-    assert_eq!(crate::migra_o_collide_da_saida(&mut g), 1);
-    let depois = g.clone();
-    assert_eq!(crate::migra_o_collide_da_saida(&mut g), 0, "a 2.a corrida");
-    assert_eq!(g, depois);
-    assert_eq!(collide_de(&g, obj), Some(1.0));
-
-    let (mut novo, ..) = documento_antigo(None);
-    let antes = novo.clone();
-    assert_eq!(crate::migra_o_collide_da_saida(&mut novo), 0);
-    assert_eq!(novo, antes, "um documento sem legado nao muda um bit");
-}
-
-/// ⭐⭐ **A PORTA DE CARREGAMENTO migra** — o `MotionState::load_text` (o Ctrl+O do projecto) entrega
-/// o documento já migrado. Um gate que chamasse só a função afirmaria a lei, nunca que o produto a
-/// usa.
-#[test]
-fn o_carregamento_do_projecto_migra_o_collide_da_saida() {
-    let (g, _, obj, _, _) = documento_antigo(Some(1.0));
-    let mut doc = ph2d_motion_doc::MotionDoc::new();
-    doc.graph = g;
-    let texto = doc.to_text();
-    let mut m = crate::motion_state::MotionState::new();
-    m.load_text(&texto).expect("o documento antigo abre");
-    assert_eq!(collide_de(&m.doc.graph, obj), Some(1.0));
-    assert!(
-        m.doc
-            .graph
-            .nodes()
-            .iter()
-            .filter(|n| n.type_name == "motion.output")
-            .all(|n| m
-                .doc
-                .graph
-                .node_param_overrides(n.id)
-                .and_then(|p| p.get("collide"))
-                .is_none()),
-        "o legado nao pode sobreviver ao carregamento"
     );
 }

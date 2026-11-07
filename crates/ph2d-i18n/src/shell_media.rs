@@ -209,41 +209,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.project_load.project_refused_its_recipes" => {
             "Project refused: its sound recipes are unreadable ({e})"
         }
-        "shell.project_load.project_refused_format_189" => {
-            "Project refused: format 189 or 190 file is unreadable ({e})"
-        }
-        "shell.project_load.project_refused_format_191" => {
-            "Project refused: format 191 file is unreadable ({e})"
-        }
         "shell.project_load.macro_marks_unreadable" => {
             "Macro marks unreadable \u{2014} the clip plays over what you painted after recording"
-        }
-        "shell.project_load.project_migrated_from_189" => {
-            "Project migrated from format {ver} to {PROJECT_SCHEMA} \u{2014} its scripts now live inside the project"
         }
         "shell.project_load.project_refused_its" => {
             "Project refused: its animation is from another version ({e})"
         }
         "shell.project_load.project_refused_file" => {
             "Project refused: file format {ver}, this build reads {PROJECT_SCHEMA}"
-        }
-        "shell.project_load.project_refused_format" => {
-            "Project refused: format 95 file is unreadable ({e})"
-        }
-        "shell.project_load.project_migrated_from" => {
-            "Project migrated from format 95 to {PROJECT_SCHEMA}"
-        }
-        "shell.project_load.project_migrated_from_without_sculpture" => {
-            "Project migrated from format 95 to {PROJECT_SCHEMA} \u{00b7} its 3D sculpture was left out (3D is no longer part of PH2D)"
-        }
-        "shell.project_load.project_refused_format_128" => {
-            "Project refused: format 128 file is unreadable ({e})"
-        }
-        "shell.project_load.project_migrated_from_128" => {
-            "Project migrated from format 128 to {PROJECT_SCHEMA}"
-        }
-        "shell.project_load.project_migrated_from_128_without_sculpture" => {
-            "Project migrated from format 128 to {PROJECT_SCHEMA} \u{00b7} its 3D sculpture was left out (3D is no longer part of PH2D)"
         }
         "shell.project_save.project_save_failed" => "Project save FAILED: {e}",
         "shell.project_save.project_saved_kb" => {

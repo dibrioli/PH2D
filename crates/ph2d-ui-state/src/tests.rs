@@ -754,30 +754,3 @@ fn reordenar_os_filtros_entre_estados_nao_troca_o_tipo_de_um_degrau() {
         vec![ItemId(1), ItemId(3), ItemId(2)]
     );
 }
-
-/// F32 §2: uma pose gravada até ao `PROJECT_SCHEMA` 196 (sem `filter_ids`, o último campo) lê-se no
-/// âmbito `PoseLayoutV196` sem comer os bytes de quem vem a seguir.
-#[test]
-fn a_pose_196_le_se_no_ambito_sem_os_ids() {
-    use ph2d_fx_op::FxOp;
-    let p = ObjectPose {
-        filters: vec![FxOp::new(FxOp::BLUR)],
-        ..ObjectPose::new(3)
-    };
-    let mut v196 = postcard::to_allocvec(&p).expect("grava");
-    assert_eq!(v196.pop(), Some(0), "o vec vazio de ids é um byte 0 no fim");
-    {
-        let _v = crate::PoseLayoutV196::enter();
-        assert_eq!(
-            postcard::to_allocvec(&p).expect("grava"),
-            v196,
-            "no âmbito grava-se a 196"
-        );
-    }
-    v196.extend(postcard::to_allocvec(&7u32).expect("cauda"));
-    let lido = {
-        let _v = crate::PoseLayoutV196::enter();
-        postcard::from_bytes::<(ObjectPose, u32)>(&v196).expect("lê no âmbito")
-    };
-    assert_eq!(lido, (p, 7));
-}

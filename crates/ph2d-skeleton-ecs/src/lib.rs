@@ -52,7 +52,6 @@ use ph2d_skeleton::bend::{Bend, BoneSpec, Handles};
 // `ph2d_skeleton_ecs::SkinBind` continua a escrevê-lo, que é a mesma lei do `bend_live`.
 mod skin_bind;
 pub use skin_bind::{CorreccaoDePeso, SkinBind, SkinLaw};
-pub mod skin_bind_v210;
 
 // ⭐⭐⭐ **A POSE DE REPOUSO** — componente próprio, pela mesma lei do [`BoneLimit`]: *a ausência é
 // uma resposta*. Ver o cabeçalho de [`bone_rest`], que tem o defeito medido que ela cura.
@@ -569,11 +568,6 @@ pub fn register_skeleton_components(reg: &mut ComponentRegistry) {
     // `register`: uma pele sem a fonte autorada dentro não é uma pele, é uma forma prestes a sumir
     // — ela chega pelo GESTO (*Bind*) e nunca por um botão de "acrescentar componente".
     reg.register::<SkinBind>(SKIN_TYPE_NAME);
-    // O degrau de forma `210 → 211` (o tendão ganhou o comprimento do bind): projecto e macro.
-    ph2d_ecs::item_id::regista_degrau(ph2d_ecs::item_id::Degrau::de::<
-        SkinBind,
-        skin_bind_v210::SkinBindV210,
-    >(SKIN_TYPE_NAME, skin_bind_v210::ATE));
     // `register` pela MESMA razão: uma âncora sem alvo não governa nada. Ela chega pelo gesto
     // (*Add IK*), que cria o alvo no mesmo passo — pendurá-la por paleta daria uma restrição inerte
     // que o artista não teria como completar.

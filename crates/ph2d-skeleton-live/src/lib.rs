@@ -64,10 +64,6 @@ pub mod recusa_do_osso;
 /// ⭐ O ORÇAMENTO de peças do quadro — irmão do `skin_image` pelo tecto de LOC, cortado por assunto.
 pub mod skin_bake;
 pub mod skin_bake_cache;
-/// O degrau `210 → 211` da pele: bytes da forma antiga (tendão sem comprimento) abrem sem esticar.
-#[cfg(test)]
-#[path = "skin_bind_v210_tests.rs"]
-mod skin_bind_v210_tests;
 pub mod skin_budget;
 /// ⭐⭐⭐ **O DESENHO DA FORMA PRESA** — a gaveta por bind e o bake que se VÊ (2026-09-29).
 pub mod skin_desenho;

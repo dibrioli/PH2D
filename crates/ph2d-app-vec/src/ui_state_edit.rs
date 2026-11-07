@@ -427,27 +427,6 @@ pub fn signal_name_row(id: ph2d_editor_core::NodeId) -> Option<usize> {
         .find(|&i| ph2d_panel_vector::ids::vector_state_signal_name_id(i) == id)
 }
 
-/// ⭐ **A migração dos ficheiros anteriores ao degrau `192`** (F22b): até lá o `capture` não gravava
-/// a opacidade (toda pose dizia `1`) e o `install` não a escrevia — o Show nunca a mexia. Cada pose
-/// passa a ter a opacidade que a forma tem no documento, o que reproduz esse comportamento exato.
-/// Devolve quantas poses foram escritas.
-pub fn opacity_from_scene(states: &mut StateSets, scene: &VecScene) -> usize {
-    let mut n = 0;
-    let hosts: Vec<VecPathId> = states.hosts().collect();
-    for host in hosts {
-        for mut st in states.get(host).to_vec() {
-            for p in &mut st.objects {
-                if let Some(path) = scene.path(p.id) {
-                    p.opacity = path.opacity.get();
-                    n += 1;
-                }
-            }
-            states.set(host, st);
-        }
-    }
-    n
-}
-
 /// **O HOSPEDEIRO e a PROJEÇÃO** — irmão por LOC (HR-18), cortado por responsabilidade.
 #[path = "ui_state_host.rs"]
 mod host;

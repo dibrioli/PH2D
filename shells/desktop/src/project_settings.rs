@@ -163,19 +163,12 @@ pub(crate) fn collect_jogo(p: ProjectSettings) -> Vec<u8> {
     .unwrap_or_default()
 }
 
-/// Instala o formato do jogo do arquivo. Vazio (um projecto `<= 197`) ou ilegível = o de fábrica; a v1 (sem o
-/// ícone) abre com o ícone de fábrica.
+/// Instala o formato do jogo do arquivo. Vazio ou ilegível = o de fábrica.
 pub(crate) fn install_jogo(dst: &mut ProjectSettings, bytes: &[u8]) {
     let fabrica = ProjectSettings::default();
     let lido = postcard::from_bytes::<(u8, u8, [u32; 2], u8, f32)>(bytes)
         .ok()
-        .filter(|(v, ..)| *v == JOGO_VERSAO)
-        .or_else(|| {
-            postcard::from_bytes::<(u8, u8, [u32; 2], u8)>(bytes)
-                .ok()
-                .filter(|(v, ..)| *v == 1)
-                .map(|(v, p, c, m)| (v, p, c, m, fabrica.camera_icon_px))
-        });
+        .filter(|(v, ..)| *v == JOGO_VERSAO);
     let Some((_, preset, custom, moldura, icone)) = lido else {
         dst.game_format = fabrica.game_format;
         dst.camera_frame = fabrica.camera_frame;

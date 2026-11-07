@@ -142,24 +142,3 @@ fn quem_sai_acaba_em_zero_exato() {
         "quem volta não reapareceu"
     );
 }
-
-/// ⭐ A migração dos ficheiros anteriores ao degrau: as poses gravadas sem a opacidade (todas a
-/// `1`) passam a ter a da forma — o Show desses projetos continua a não a mexer.
-#[test]
-fn a_migracao_poe_em_cada_pose_a_opacidade_da_forma() {
-    let (mut m, filho) = mesa(true);
-    let filho = filho.unwrap();
-    crate::appearance::set_opacity(&mut m.scene, &[m.host, filho], 0.4);
-    let n = crate::ui_state_edit::opacity_from_scene(&mut m.states, &m.scene);
-    assert_eq!(n, 3, "três poses (host ×2, filho ×1)");
-    for st in m.states.get(m.host) {
-        for p in &st.objects {
-            assert!(
-                (p.opacity - 0.4).abs() < 1e-6,
-                "pose {} ficou a {}",
-                p.id,
-                p.opacity
-            );
-        }
-    }
-}

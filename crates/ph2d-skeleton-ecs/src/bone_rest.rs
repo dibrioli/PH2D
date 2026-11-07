@@ -25,12 +25,10 @@
 //!
 //! # ⚠️ Porque ele guarda os SEIS números e não um [`ph2d_ecs::Transform`]
 //!
-//! Porque o `Transform` tem um **invólucro versionado** para gravar (`TransformVersioned` +
-//! `migrate_v1_to_v2`), e o doc dele diz por escrito que é esse o caminho que aguenta ler bytes
-//! antigos. Um `Transform` aninhado aqui dentro viajaria **posicionalmente**, fora do invólucro:
-//! no dia em que ele ganhasse um campo, todo repouso já gravado seria lido errado — em silêncio,
-//! porque o postcard não tem nome de campo para reclamar. ⇒ os números são nossos, e um campo novo
-//! aqui é um degrau NOSSO.
+//! Porque o `Transform` tem um **invólucro versionado** para gravar (`TransformVersioned`). Um
+//! `Transform` aninhado aqui dentro viajaria **posicionalmente**, fora do invólucro: no dia em que
+//! ele ganhasse um campo, o repouso gravado seria lido errado — em silêncio, porque o postcard não
+//! tem nome de campo para reclamar. ⇒ os números são nossos, e um campo novo aqui é um degrau NOSSO.
 //!
 //! ⚠️ **`f32` e não `f64`**, ao contrário do resto da geometria do documento: o que se guarda é uma
 //! **pose**, e a pose desta casa é `f32`. Repor é então uma cópia **ao bit**, e não uma conversão

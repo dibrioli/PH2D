@@ -358,3 +358,5 @@ pub struct HealthNow {
     /// Morreu (um morto é final na casa).
     pub morta: bool,
 }
+
+ph2d_ecs::com_itens!(Health: resistances);

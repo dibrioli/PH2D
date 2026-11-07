@@ -4,7 +4,6 @@ use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components, snapshot_to_wo
 use ph2d_ecs::{SimWorld, StableId, Transform};
 
 use super::*;
-use crate::props::ScriptValue;
 use crate::register_script_components;
 
 fn reg() -> ComponentRegistry {
@@ -45,49 +44,6 @@ fn pasta(ficheiros: &[(&str, &str)]) -> PathBuf {
         std::fs::write(dir.join(n), t).expect("escreve");
     }
     dir
-}
-
-/// ⭐ O blob v2 (o caminho) vira v3: caminho → por importar, vazio → sem script, números intactos.
-#[test]
-fn v2_blobs_become_v3_and_keep_the_artists_numbers() {
-    let mut sim = SimWorld::new();
-    let w = sim.world_mut();
-    w.spawn((Transform::IDENTITY, StableId(1), LuauScript::default()));
-    w.spawn((Transform::IDENTITY, StableId(2), LuauScript::default()));
-    let mut snap = snapshot(&mut sim);
-    let id = stable_type_id(CANONICAL_NAME);
-    let mut own = BTreeMap::new();
-    own.insert("speed".to_owned(), ScriptValue::Number(6.0));
-    for (row, v2) in snap.entities.iter_mut().zip([
-        LuauScriptV2 {
-            source: "scripts/bob.luau".into(),
-            own: own.clone(),
-        },
-        LuauScriptV2::default(),
-    ]) {
-        let row = std::sync::Arc::make_mut(row);
-        let b = row
-            .components
-            .iter_mut()
-            .find(|b| b.type_id == id)
-            .expect("blob");
-        b.data = postcard::to_allocvec(&v2).expect("v2");
-    }
-    let m = migrate_v2_blobs(&mut snap);
-    assert_eq!(
-        m,
-        V2Migration {
-            migrated: 2,
-            unreadable: 0
-        }
-    );
-    let s = scripts(&snap);
-    assert_eq!(
-        s[0].source,
-        ScriptSource::Unimported("scripts/bob.luau".into())
-    );
-    assert_eq!(s[0].own, own);
-    assert_eq!(s[1].source, ScriptSource::None);
 }
 
 /// ⭐⭐ Um caminho relativo resolve-se na pasta do PROJETO; dois objectos no mesmo ficheiro partilham

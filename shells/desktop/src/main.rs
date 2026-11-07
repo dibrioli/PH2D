@@ -348,10 +348,6 @@ mod project_catalogs;
 /// (Enio, 2026-08-23). Até aqui o `Ctrl+S` escrevia sempre no mesmo caminho.
 mod project_io;
 mod project_library;
-mod project_migrate;
-/// A migração v97 → v98 (o corte da `Sprite`) — irmã por assunto, não por cap: ela é uma
-/// travessia do snapshot, e a v95 é um espelho do ficheiro.
-mod project_migrate_sprite;
 mod project_painter;
 mod project_schema;
 mod project_schema_history_v112;
@@ -939,7 +935,9 @@ impl ApplicationHandler for App {
         // there — `docs/Migracao/2026-05-convention-by-discovery.md`.
         match event {
             // Com o jogo no palco, fechar pára o jogo; o app só fecha depois (dono 07/11).
-            WindowEvent::CloseRequested if self.undo.janela_do_jogo.is_some() || self.no_palco() => {
+            WindowEvent::CloseRequested
+                if self.undo.janela_do_jogo.is_some() || self.no_palco() =>
+            {
                 self.jogo_para()
             }
             WindowEvent::CloseRequested => self.on_close_request(event_loop),

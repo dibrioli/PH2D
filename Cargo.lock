@@ -10685,7 +10685,6 @@ dependencies = [
  "ph2d-tool-painter",
  "ph2d-vec-scene",
  "ph2d-vector",
- "postcard",
  "rect_packer",
  "serde",
  "serde_json",

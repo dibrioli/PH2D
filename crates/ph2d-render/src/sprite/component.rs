@@ -136,11 +136,7 @@ pub struct Sprite {
     // ─── NEW in v4 (Sprite Inspector v2; ADR-0069..0074) ──────────────
     //
     // Every `#[serde(default = ...)]` below is DOCUMENTARY under postcard
-    // (positional, non-self-describing): the attribute never fires because
-    // a V4 blob carries every field positionally. The sole back-compat
-    // path is the `SpriteVersioned` wrapper enum + `migrate_v3_to_v4`
-    // (W1.T1.6), per ADR-0070-amendment-2. The attributes are kept as a
-    // faithful mirror for a hypothetical self-describing format swap.
+    // (positional, non-self-describing): the attribute never fires.
     /// Self tint — does NOT cascade to children (Godot `self_modulate`).
     /// Multiplies [`Sprite::tint`] for this sprite only. Default WHITE
     /// (identity, zero visual effect).
@@ -254,121 +250,6 @@ impl Sprite {
         let mut s = Self::atlas(0, size, tint);
         s.source = SpriteSource::CookedTexture { logical_id };
         s
-    }
-
-    /// Pure v3 → v4 schema migrator (spec
-    /// [`Sprite_projeto/10_schema_versionamento.md §10.2`], HR-14
-    /// mandatory). Maps every frozen v3 field forward verbatim and
-    /// initializes the 14 new v4 intrinsic-appearance fields to their
-    /// benign identity defaults (no visual change for a sprite that was
-    /// authored under v3). It is the SOLE working back-compat path —
-    /// `#[serde(default)]` on the v4 fields is documentary-only under
-    /// postcard (positional, non-self-describing; empirically pinned by
-    /// `tests/sprite_versioned_postcard.rs`), so loading a v3 blob
-    /// REQUIRES routing the deserialized [`SpriteV3`] through here
-    /// (ADR-0070-amendment-2). [`crate::sprite_versioned::load_sprite`]
-    /// is the wrapper-enum dispatch entry point that calls this.
-    ///
-    /// ## `region_filter_clip` is the one conditional field
-    ///
-    /// Atlas sprites share a 4096² texture, so the sampler must clamp to
-    /// the region rect or neighboring atlas tiles bleed across the edge
-    /// → `true`. Individual sprites own a native-resolution texture with
-    /// no neighbor to bleed → `false`. The `#[serde(default = ...)]`
-    /// helper on the field returns the Atlas value unconditionally and
-    /// is the WRONG value for Individual (anatomia §1.4 critical note),
-    /// which is exactly why the migrator — not a serde default — owns
-    /// this branch. Mirrors [`Sprite::atlas`]/[`Sprite::individual`].
-    ///
-    /// ## `premultiplied` is a verbatim value copy, NOT rebuilt here
-    ///
-    /// `premultiplied` is `#[serde(skip)]` in both [`SpriteV3`] and
-    /// [`Sprite`], so a wire-loaded `SpriteV3` always carries `false`
-    /// and this migrator faithfully copies that. Rebuilding the runtime
-    /// flag from [`crate::individual::IndividualTextureStore`] context
-    /// (only BG-Removal-Apply'd individuals are premultiplied — the
-    /// naive `matches!(source, Individual)` over-triggers) is the
-    /// CALLER's concern at the load/extract boundary, not this pure
-    /// transform's. Keeping it a value copy preserves
-    /// `migrate(in-memory v3 with premultiplied=true)` round-tripping —
-    /// the migrator never silently drops a field a caller set in memory.
-    pub fn migrate_v3_to_v4(v3: crate::sprite_versioned::SpriteV3) -> crate::SpriteV4 {
-        crate::SpriteV4 {
-            // ⚠️ **`4` literal, não `Self::VERSION`.** O `VERSION` é o do `Sprite` VIVO e já
-            // vale 5; um migrador que o lesse carimbaria a versão errada no espelho congelado
-            // no dia em que a escada crescesse — e o degrau seguinte leria 5 onde há 4.
-            version: 4,
-            source: v3.source,
-            size: v3.size,
-            tint: v3.tint,
-            anchor: v3.anchor,
-            premultiplied: v3.premultiplied,
-            // New v4 intrinsic-appearance fields — benign identity
-            // defaults (shared with the constructors' helper fns so the
-            // v4 default surface stays single-sourced).
-            self_tint: default_white(),
-            per_corner_tint: [[1.0; 4]; 4],
-            tint_fill: false,
-            opacity: default_one(),
-            flip_x: false,
-            flip_y: false,
-            centered: default_true(),
-            offset: [0.0, 0.0],
-            hframes: 1,
-            vframes: 1,
-            frame: 0,
-            region_enabled: false,
-            region_rect: [0.0, 0.0, 0.0, 0.0],
-            region_filter_clip: matches!(v3.source, SpriteSource::Atlas { .. }),
-        }
-    }
-
-    /// ⭐ **v4 → v5: os três grupos saem da `Sprite` e viram componentes**
-    /// (ADR-0164 F1 passo 6 / ADR-0166). Pura — não toca no mundo; quem insere é quem chama.
-    ///
-    /// ⚠️ **Um componente só nasce se o campo foi AUTORADO.** Grelha de uma célula, cantos
-    /// brancos e `region_enabled = false` são indistinguíveis da ausência, e materializá-los
-    /// encheria toda cena antiga de seções que o artista nunca pediu — o oposto do ADR-0166.
-    ///
-    /// ⚠️ **A REGIÃO segue o `region_enabled`, e leva o `filter_clip` GRAVADO — não o derivado
-    /// da fonte.** O bool em disco pode divergir do que os construtores escolheriam (o artista
-    /// pôde tê-lo mudado, e o `#[serde(default)]` v4 estava documentado como *errado* para
-    /// Individual). Migrar é preservar bytes, não recalcular a escolha.
-    ///
-    /// ⚠️ **Um `region_rect` autorado com `enabled = false` é DESCARTADO**, e é a decisão certa:
-    /// era o estado que ninguém conseguia ler (§ do [`ph2d_ecs::SpriteRegion`]). Guardá-lo
-    /// anexaria uma região desligada — e uma região desligada deixou de existir.
-    #[must_use]
-    pub fn migrate_v4_to_v5(v4: crate::SpriteV4) -> crate::sprite_versioned::MigratedSprite {
-        let grid = ph2d_ecs::SpriteGrid {
-            hframes: v4.hframes.max(1),
-            vframes: v4.vframes.max(1),
-            frame: v4.frame,
-        };
-        let corner_tint = ph2d_ecs::SpriteCornerTint(v4.per_corner_tint);
-        crate::sprite_versioned::MigratedSprite {
-            sprite: Sprite {
-                version: Self::VERSION,
-                source: v4.source,
-                size: v4.size,
-                tint: v4.tint,
-                anchor: v4.anchor,
-                premultiplied: v4.premultiplied,
-                self_tint: v4.self_tint,
-                tint_fill: v4.tint_fill,
-                opacity: v4.opacity,
-                flip_x: v4.flip_x,
-                flip_y: v4.flip_y,
-                centered: v4.centered,
-                offset: v4.offset,
-            },
-            grid: (!grid.is_single()).then_some(grid),
-            region: v4.region_enabled.then_some(ph2d_ecs::SpriteRegion {
-                rect: v4.region_rect,
-                filter_clip: v4.region_filter_clip,
-            }),
-            corner_tint: (!corner_tint.is_identity()).then_some(corner_tint),
-        }
     }
 
     /// CPU-side tint cascade collapse for `RenderInstance.tint`

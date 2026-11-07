@@ -159,23 +159,6 @@ pub mod scripts {
         snap
     }
 
-    /// Troca o blob do `LuauScript` do 1.º objecto pelo v2 (o CAMINHO de um ficheiro) — a forma que
-    /// um ficheiro v189 tem, escrita campo a campo e não a partir do tipo vivo.
-    pub fn as_v2(world: &mut WorldSnapshot, path: &str) {
-        let tid = ph2d_ecs::scene::stable_type_id(ph2d_script::project_scripts::CANONICAL_NAME);
-        let row = std::sync::Arc::make_mut(&mut world.entities[0]);
-        let blob = row
-            .components
-            .iter_mut()
-            .find(|b| b.type_id == tid)
-            .expect("blob");
-        blob.data = postcard::to_allocvec(&ph2d_script::component::LuauScriptV2 {
-            source: path.to_owned(),
-            own: Default::default(),
-        })
-        .expect("v2");
-    }
-
     /// O caminho do Ctrl+O depois de o ficheiro ser aceite: abrir os scripts (importar os caminhos
     /// antigos), restaurar o mundo, instalar a biblioteca e correr um tique. Devolve a biblioteca, o
     /// `LuauScript` do objecto e o `x` dele.

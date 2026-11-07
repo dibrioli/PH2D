@@ -157,8 +157,7 @@ pub const SORT_LABELS: [&str; 2] = [
 /// cozimento: as peças que DECLARAM uma forma — a `source.shape` e o `source.object` com o
 /// `Collide` deles ligado — deixam de se sobrepor. Sem declaração o passe não faz nada, ao bit.
 ///
-/// ⚠️ **Não há interruptor neste cartão** (o `collide` que aqui esteve saiu; um documento antigo
-/// migra-o para os objectos a montante — `ph2d_app_motion::migra_o_collide_da_saida`). Fica só o
+/// ⚠️ **Não há interruptor neste cartão** (o `collide` que aqui esteve saiu). Fica só o
 /// QUANTO: as varreduras, lidas no fim por quem baixa a corrente e nunca pelo `eval` (este nó é
 /// `GpuKernel::PASSTHROUGH`). Elas mudam POSIÇÕES e por isso **não** entram no `SinkStyle`: a porta
 /// é `ph2d_eval_motion::sink_collide_sweeps`, e a cerca do shell recusa o dispositivo enquanto

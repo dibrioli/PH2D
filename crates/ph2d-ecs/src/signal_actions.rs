@@ -320,7 +320,7 @@ impl SignalVerb {
 ///
 /// ⚠️ **Ele é APENDADO ao fim do [`SignalAction`]** e o default é o de sempre, então uma linha que
 /// nunca escolheu tag resolve exactamente como antes. O postcard é posicional, e é por isso que o
-/// campo custa o degrau `128 -> 129` do `PROJECT_SCHEMA` e a migração em `signal_actions_v1.rs`.
+/// campo custa o degrau `128 -> 129` do `PROJECT_SCHEMA`.
 ///
 /// ⛔ **Não é um segundo campo de texto ao lado do `target`**: com os dois, *«a quem?»* teria duas
 /// respostas escritas ao mesmo tempo e o painel teria de escolher uma. Aqui a variante escolhe, e o
@@ -657,11 +657,6 @@ pub fn alvo_nomeado(world: &World, source: Entity, name: &str) -> Option<Entity>
 pub fn name_of(world: &World, entity: Entity) -> Option<String> {
     world.get::<Name>(entity).map(|n| n.as_str().to_string())
 }
-
-/// O `SignalAction` como o `PROJECT_SCHEMA` 128 o gravava, congelado para a migração.
-#[path = "signal_actions_v1.rs"]
-mod v1;
-pub use v1::migrate_v1_blob;
 
 #[cfg(test)]
 #[path = "signal_actions_tests.rs"]

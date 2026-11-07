@@ -331,7 +331,6 @@ mod character_anim;
 /// ⭐⭐⭐ **VIDA e DANO** (plano 28, W2) — ver o cabeçalho dele.
 mod health;
 mod health_bar;
-pub(crate) mod health_v194;
 /// ⭐⭐⭐ **A NAVEGAÇÃO** (plano 30, W3) — a região e o agente; ver o cabeçalho dele.
 mod nav;
 mod overrides;

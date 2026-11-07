@@ -54,7 +54,7 @@ pub struct LuauScript {
 
 impl LuauScript {
     /// Schema version. **3** (ADR-0188): `source` aponta a biblioteca do projeto; o v2 guardava o
-    /// caminho do ficheiro ([`LuauScriptV2`], migrado pelo load do projeto).
+    /// caminho do ficheiro.
     pub const VERSION: u32 = 3;
 
     /// Um script da biblioteca, sem números próprios.
@@ -87,28 +87,6 @@ impl LuauScript {
 }
 
 impl SimComponent for LuauScript {}
-
-/// ⛔ **Congelado** — a forma v2 (`source` = caminho; vazio = sem script), lida só pelo degrau
-/// [`crate::project_scripts::migrate_v2_blobs`].
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-pub struct LuauScriptV2 {
-    pub source: String,
-    pub own: BTreeMap<String, ScriptValue>,
-}
-
-impl From<LuauScriptV2> for LuauScript {
-    fn from(v2: LuauScriptV2) -> Self {
-        let source = if v2.source.trim().is_empty() {
-            ScriptSource::None
-        } else {
-            ScriptSource::Unimported(v2.source)
-        };
-        Self {
-            source,
-            own: v2.own,
-        }
-    }
-}
 
 /// ⭐ **Os scripts do projeto, como recurso do mundo** — a ponte, o Inspector e o save leem-nos daqui
 /// (ADR-0075: desacoplar por recursos). ⚠️ Não é componente: o `WorldSnapshot` (undo, save do
@@ -199,23 +177,5 @@ mod tests {
     fn o_default_e_sem_script() {
         let s = LuauScript::default();
         assert!(s.source == ScriptSource::None && s.own.is_empty());
-    }
-
-    /// O v2: caminho vazio = sem script; caminho = por importar. Os números ficam.
-    #[test]
-    fn um_v2_vira_v3_sem_perder_os_numeros() {
-        let mut own = BTreeMap::new();
-        own.insert("speed".to_owned(), ScriptValue::Number(2.0));
-        let v3 = LuauScript::from(LuauScriptV2 {
-            source: "/a/bob.luau".into(),
-            own: own.clone(),
-        });
-        assert_eq!(v3.source, ScriptSource::Unimported("/a/bob.luau".into()));
-        assert_eq!(v3.own, own);
-        let vazio = LuauScript::from(LuauScriptV2 {
-            source: "  ".into(),
-            own: BTreeMap::new(),
-        });
-        assert_eq!(vazio.source, ScriptSource::None);
     }
 }

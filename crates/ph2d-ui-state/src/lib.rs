@@ -119,7 +119,6 @@
 mod binding;
 mod machine;
 mod pose;
-mod pose_wire;
 mod role;
 mod sets;
 mod transition;
@@ -127,7 +126,6 @@ mod transition;
 pub use binding::SignalBinding;
 pub use machine::Machine;
 pub use pose::{ObjectPose, UiState};
-pub use pose_wire::PoseLayoutV196;
 pub use role::StateRole;
 pub use sets::{DEFAULT_DURATION_S, DEFAULT_EASING, HostStates, MAX_DURATION_S, StateSets};
 // ⚠️ **A mola mudou-se para uma crate-folha** (`ph2d-spring`, 2026-08-12) e é **re-exportada

@@ -132,10 +132,6 @@ pub struct ObjectPose {
     /// **O id de cada degrau de [`Self::filters`]** (F32 §2), na mesma ordem: o install põe-nos na
     /// forma com os valores, e a chave de animação de um filtro só deste estado sobrevive a sair e
     /// voltar. Mais curto (pose gravada até ao `PROJECT_SCHEMA` 196) ⇒ a posição manda nesse degrau.
-    #[serde(
-        serialize_with = "crate::pose_wire::grava_filter_ids",
-        deserialize_with = "crate::pose_wire::filter_ids"
-    )]
     pub filter_ids: Vec<ItemId>,
 }
 

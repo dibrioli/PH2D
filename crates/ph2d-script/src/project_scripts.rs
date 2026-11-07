@@ -1,10 +1,7 @@
 //! **O load de um projeto e os scripts** (ADR-0188 §2) — os dois passos que correm sobre o
 //! `WorldSnapshot` ANTES de ele virar mundo:
 //!
-//! 1. [`migrate_v2_blobs`] — só num ficheiro de schema antigo: o blob v2 do `LuauScript` (o caminho)
-//!    passa a v3 (`Unimported(caminho)`). O blob não leva versão (é postcard posicional): quem sabe a
-//!    forma é o schema do ficheiro.
-//! 2. [`import_unimported`] — em todo load: cada `Unimported(caminho)` cujo ficheiro se lê entra na
+//! [`import_unimported`] — em todo load: cada `Unimported(caminho)` cujo ficheiro se lê entra na
 //!    biblioteca e passa a `Library(id)`. O que não se lê FICA `Unimported` — o cartão recusa-o.
 //!
 //! Ambos correm no snapshot e não no mundo vivo: o load é o ponto de partida do undo, e uma
@@ -16,44 +13,10 @@ use std::path::{Path, PathBuf};
 use ph2d_ecs::scene::{WorldSnapshot, stable_type_id};
 use ph2d_script_doc::{ScriptId, ScriptLibrary};
 
-use crate::component::{LuauScript, LuauScriptV2, ScriptSource};
+use crate::component::{LuauScript, ScriptSource};
 
 /// O nome canónico com que o `LuauScript` é registado — a chave do blob.
 pub const CANONICAL_NAME: &str = "ph2d::script::LuauScript";
-
-/// O que o degrau v2 → v3 fez.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct V2Migration {
-    pub migrated: usize,
-    pub unreadable: usize,
-}
-
-/// Reescreve cada blob v2 do `LuauScript` como v3. Um blob ilegível fica como estava (o restauro do
-/// mundo recusa-o em voz alta).
-pub fn migrate_v2_blobs(world: &mut WorldSnapshot) -> V2Migration {
-    let id = stable_type_id(CANONICAL_NAME);
-    let mut out = V2Migration::default();
-    for row in &mut world.entities {
-        let Some(slot) = row.components.iter().position(|b| b.type_id == id) else {
-            continue;
-        };
-        let v3 = match postcard::from_bytes::<LuauScriptV2>(&row.components[slot].data) {
-            Ok(v2) => LuauScript::from(v2),
-            Err(_) => {
-                out.unreadable += 1;
-                continue;
-            }
-        };
-        match postcard::to_allocvec(&v3) {
-            Ok(bytes) => {
-                std::sync::Arc::make_mut(row).components[slot].data = bytes;
-                out.migrated += 1;
-            }
-            Err(_) => out.unreadable += 1,
-        }
-    }
-    out
-}
 
 /// Onde um caminho relativo se resolveu.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

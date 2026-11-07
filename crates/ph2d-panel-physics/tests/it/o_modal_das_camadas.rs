@@ -160,8 +160,20 @@ fn abre_pelo_painel_mostra_as_32_e_a_celula_alta_escreve_o_par() {
         assert!(mesa.rect(ids::PHYSICS_LAYER_ROW_LABEL[a]).is_some());
         assert!(mesa.rect(ids::PHYSICS_LAYER_COL_LABEL[a]).is_some());
     }
-    let m = mundo_de(&mesa.clica(celula(25, 20)));
+    let intents = mesa.clica(celula(25, 20));
+    let m = mundo_de(&intents);
     assert!(!m.collides(25, 20) && !m.collides(20, 25), "os dois lados");
+    // As linhas CRUAS: `from_rows` faz o E das duas metades e esconderia uma meia-escrita.
+    let cru = intents
+        .iter()
+        .rev()
+        .find_map(|i| match i {
+            PhysicsIntent::SetSettings(s, _) => Some(s.layer_matrix),
+            _ => None,
+        })
+        .expect("a célula escreve");
+    assert_eq!(cru[25] & 1 << 20, 0, "a metade 25→20");
+    assert_eq!(cru[20] & 1 << 25, 0, "a metade espelho 20→25");
     for a in 0..MAX_LAYERS {
         for b in 0..MAX_LAYERS {
             if (a, b) != (25, 20) && (a, b) != (20, 25) {

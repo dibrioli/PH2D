@@ -206,11 +206,60 @@ fn pairada(ctx: &PaintCtx) -> Option<(usize, usize)> {
         })
 }
 
+/// As fotos do smoke (`PH2D_PHYSICS_SMOKE_MODAL`, a tela virtual não recebe rato): `abre` abre-o na linha 1;
+/// `nomes` dá nome às 32; `nome` abre o nome da 20 em edição; `pairar` põe o ponteiro sobre (25, 20).
+pub(crate) fn fotos(ctx: &mut PaintCtx) {
+    thread_local! { static FEITO: Cell<bool> = const { Cell::new(false) }; }
+    let Ok(caso) = std::env::var("PH2D_PHYSICS_SMOKE_MODAL") else {
+        return;
+    };
+    if FEITO.get() || crate::state::current() == crate::state::PhysicsSnapshot::default() {
+        return;
+    }
+    FEITO.set(true);
+    abre(Some(1));
+    match caso.as_str() {
+        "nomes" => {
+            for n in 4..MAX_LAYERS as u8 {
+                // Um nome mais comprido que «Layer n»: a foto mede a largura dos rótulos.
+                let name = tr_with("card.physics.layer_name", &[("n", &n.to_string())]);
+                ctx.host
+                    .bus_mut()
+                    .push(ph2d_editor_core::action_bus::EditorAction::LayerRename { layer: n, name });
+            }
+        }
+        "nome" => {
+            let campo = i::PHYSICS_LAYER_NAME[20];
+            let store = ctx.host.store_mut();
+            if let Some(InteractiveState::TextInput { text, caret, .. }) = store.get_mut(campo) {
+                "Enemy".clone_into(text);
+                *caret = text.len();
+            }
+            ph2d_editor_core::interaction::dispatch::focus_text_field(store, campo);
+            comeca_a_renomear(20);
+        }
+        _ => {}
+    }
+}
+
+/// O caso `pairar` das fotos: a célula (25, 20) sob o ponteiro, a cada quadro.
+fn pairar_da_foto(ctx: &mut PaintCtx) {
+    if std::env::var("PH2D_PHYSICS_SMOKE_MODAL").as_deref() != Ok("pairar") {
+        return;
+    }
+    let id = i::PHYSICS_LAYER_CELL[i::physics_layer_cell_index(25, 20)];
+    if let Some(InteractiveState::Button { state, .. }) = ctx.host.store_mut().get_mut(id) {
+        *state = ButtonState::Hovered;
+    }
+}
+
 /// Pinta o modal, se aberto. Corre no início do `paint` do painel, aberto ou fechado.
 pub(crate) fn paint(ctx: &mut PaintCtx) {
+    fotos(ctx);
     if !aberto() {
         return;
     }
+    pairar_da_foto(ctx);
     let theme = ctx.host.theme();
     let nomes = crate::state::layer_names();
     let rotulos: Vec<String> = (0..MAX_LAYERS).map(|n| rotulo(&nomes, n)).collect();

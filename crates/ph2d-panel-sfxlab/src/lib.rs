@@ -37,7 +37,7 @@ impl Panel for SfxLabPanel {
     const NODE_ID: NodeId = ph2d_editor_core::ids::SFX_PANEL;
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: TextKey = TextKey::new("panel.sfxlab.title");
-    const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Mixer;
+    const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Bolt;
     const ALLOWED_SLOTS: SlotSet = SlotSet::SIDES;
     const DEFAULT_SLOT: Slot = Slot::RightTop;
 

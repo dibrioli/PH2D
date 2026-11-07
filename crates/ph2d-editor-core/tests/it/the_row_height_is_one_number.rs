@@ -51,6 +51,11 @@ const OWN_RULER: &[(&str, &str, &str)] = &[
         "a fileira de selos da frente do cartao: medida do Trello na maquete aprovada (27/10)",
     ),
     (
+        "crates/ph2d-app-sfxlab/src/metrics.rs",
+        "ROW_H",
+        "a FAIXA de uma camada na mesa do SFX Lab (alca, interruptor de 24 px, nome e pista da camada): geometria de canvas, o dobro da linha de formulario, de proposito",
+    ),
+    (
         "crates/ph2d-app-planner/src/metrics.rs",
         "ROW_H",
         "a linha-cartao da coluna do Planner e de My cards: o cartao do Kanban (maquete aprovada), nao uma linha de formulario",

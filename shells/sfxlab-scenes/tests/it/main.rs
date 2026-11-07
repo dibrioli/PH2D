@@ -10,7 +10,7 @@ mod medir;
 mod vaga;
 
 use bevy_ecs::world::World;
-use ph2d_app_sfxlab::{Alvo, CMD_NEW, Escuta, SfxLabDocs, cmd_abrir};
+use ph2d_app_sfxlab::{Alvo, CMD_NEW_SOUND, Escuta, SfxLabDocs, cmd_abrir};
 use ph2d_audio::SampleData;
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::interaction::{
@@ -131,7 +131,7 @@ impl Mesa {
     }
 
     pub fn som_novo(&mut self) -> u64 {
-        assert!(self.hero.apply_event(WidgetEvent::Click(CMD_NEW)));
+        assert!(self.hero.apply_event(WidgetEvent::Click(CMD_NEW_SOUND)));
         self.quadro();
         self.quadro();
         self.activa()

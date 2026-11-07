@@ -17,7 +17,7 @@ use ph2d_vector::VectorScene;
 
 use crate::docs::SfxLabDocs;
 
-pub const CMD_NEW: NodeId = hash_node_id("sfxlab_cmd_new");
+pub const CMD_NEW_SOUND: NodeId = hash_node_id("sfxlab_cmd_new");
 
 /// «Open Sound ▸ <nome>»: o id é do nome.
 #[must_use]
@@ -128,7 +128,7 @@ impl DocumentSurface for SfxLabDocs {
 
     fn family_commands(&self) -> Vec<DocCommand> {
         let mut out = vec![DocCommand {
-            id: CMD_NEW,
+            id: CMD_NEW_SOUND,
             label: tr("sfxlab.cmd.new").to_owned(),
             menu: DocMenu::File,
         }];
@@ -146,7 +146,7 @@ impl DocumentSurface for SfxLabDocs {
     }
 
     fn family_command(&mut self, cmd: NodeId) -> bool {
-        if cmd == CMD_NEW {
+        if cmd == CMD_NEW_SOUND {
             self.novo();
             return true;
         }

@@ -6,7 +6,7 @@ mod gestos;
 mod render;
 
 use bevy_ecs::world::World;
-use ph2d_app_sfxlab::{Alvo, CMD_NEW, Escuta, SfxLabDocs, cmd_abrir};
+use ph2d_app_sfxlab::{Alvo, CMD_NEW_SOUND, Escuta, SfxLabDocs, cmd_abrir};
 use ph2d_audio::SampleData;
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::interaction::WidgetEvent;
@@ -106,7 +106,7 @@ impl Mesa {
 
     /// «New Sound», pela porta do menu File. O id da aba activa.
     pub fn som_novo(&mut self) -> u64 {
-        assert!(self.hero.apply_event(WidgetEvent::Click(CMD_NEW)));
+        assert!(self.hero.apply_event(WidgetEvent::Click(CMD_NEW_SOUND)));
         self.quadro();
         self.quadro();
         self.activa()

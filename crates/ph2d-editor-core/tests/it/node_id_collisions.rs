@@ -190,6 +190,18 @@ const FORMAS_NAO_LITERAIS: &[(&str, &str, Especie, &str)] = &[
         "ids por-elemento do grafo (portas, fios, divisória) — cópia da lei sem o `0 → 1`; o espaço é o do grafo",
     ),
     (
+        "crates/ph2d-sfx-lab/src/tabela_campos.rs",
+        "?",
+        Especie::HashDeExpressao,
+        "id de campo do SFX Lab = hash do slug `sfxlab_*` que o macro `camada!` recebe como literal; a unicidade dos ids da tabela é nenhum_id_se_repete_nas_tabelas_de_campos_e_de_opcoes (ph2d-sfx-lab/tests)",
+    ),
+    (
+        "crates/ph2d-sfx-lab/src/tabela_opcoes.rs",
+        "opcao",
+        Especie::HashDeExpressao,
+        "id de opção segmentada do SFX Lab = hash do slug `sfxlab_*` dos macros `filtro!`/`onda!`; mesma cobertura de unicidade, no mesmo teste",
+    ),
+    (
         "crates/ph2d-param-editors/src/lib.rs",
         "fnv_id",
         Especie::FnvAMao,

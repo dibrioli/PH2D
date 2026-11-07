@@ -30,19 +30,27 @@ pub enum Lei {
     Soma(f64),
 }
 
+/// Os três pares início/fim, nomeados UMA vez: a lista de leis e a dos pares leem os mesmos.
+const LEI_NOISE_HZ: NodeId = hash_node_id("sfxlab_noise_hz");
+const LEI_NOISE_HZ_END: NodeId = hash_node_id("sfxlab_noise_hz_end");
+const LEI_TONE_HZ: NodeId = hash_node_id("sfxlab_tone_hz");
+const LEI_TONE_HZ_END: NodeId = hash_node_id("sfxlab_tone_hz_end");
+const LEI_FM_INDEX: NodeId = hash_node_id("sfxlab_fm_index");
+const LEI_FM_INDEX_END: NodeId = hash_node_id("sfxlab_fm_index_end");
+
 /// A lei de cada campo de camada. O gate `todo_campo_de_camada_tem_lei` reprova campo novo sem linha aqui.
 pub const LEIS: &[(NodeId, Lei)] = &[
     (hash_node_id("sfxlab_gain"), Lei::Soma(4.0)),
     (hash_node_id("sfxlab_start"), Lei::Soma(10.0)),
-    (hash_node_id("sfxlab_noise_hz"), Lei::Fator),
-    (hash_node_id("sfxlab_noise_hz_end"), Lei::Fator),
+    (LEI_NOISE_HZ, Lei::Fator),
+    (LEI_NOISE_HZ_END, Lei::Fator),
     (hash_node_id("sfxlab_noise_q"), Lei::Fator),
-    (hash_node_id("sfxlab_tone_hz"), Lei::Fator),
-    (hash_node_id("sfxlab_tone_hz_end"), Lei::Fator),
+    (LEI_TONE_HZ, Lei::Fator),
+    (LEI_TONE_HZ_END, Lei::Fator),
     (hash_node_id("sfxlab_tone_glide"), Lei::Fator),
     (hash_node_id("sfxlab_fm_ratio"), Lei::Fator),
-    (hash_node_id("sfxlab_fm_index"), Lei::Fator),
-    (hash_node_id("sfxlab_fm_index_end"), Lei::Fator),
+    (LEI_FM_INDEX, Lei::Fator),
+    (LEI_FM_INDEX_END, Lei::Fator),
     (hash_node_id("sfxlab_body_stretch"), Lei::Soma(0.1)),
     (hash_node_id("sfxlab_body_base"), Lei::Fator),
     (hash_node_id("sfxlab_body_modes"), Lei::Fator),
@@ -60,18 +68,9 @@ pub const LEIS: &[(NodeId, Lei)] = &[
 
 /// Início e fim que nascem iguais continuam iguais: senão todo tom parado ganharia um deslize.
 const PARES: &[(NodeId, NodeId)] = &[
-    (
-        hash_node_id("sfxlab_noise_hz"),
-        hash_node_id("sfxlab_noise_hz_end"),
-    ),
-    (
-        hash_node_id("sfxlab_tone_hz"),
-        hash_node_id("sfxlab_tone_hz_end"),
-    ),
-    (
-        hash_node_id("sfxlab_fm_index"),
-        hash_node_id("sfxlab_fm_index_end"),
-    ),
+    (LEI_NOISE_HZ, LEI_NOISE_HZ_END),
+    (LEI_TONE_HZ, LEI_TONE_HZ_END),
+    (LEI_FM_INDEX, LEI_FM_INDEX_END),
 ];
 
 #[must_use]

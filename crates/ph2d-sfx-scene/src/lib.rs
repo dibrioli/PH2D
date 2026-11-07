@@ -219,7 +219,9 @@ mod tests {
         assert_eq!(nivel_in(com("3")), Some(3));
         assert_eq!(nivel_in(com("0")), None);
         assert_eq!(nivel_in(com("4")), Some(4));
-        assert_eq!(nivel_in(com("5")), None);
+        assert_eq!(nivel_in(com("5")), Some(5));
+        assert_eq!(nivel_in(com("6")), Some(6));
+        assert_eq!(nivel_in(com("7")), None);
         assert_eq!(nivel_in(com("x")), None);
         assert_eq!(nivel_in(|_| None), None);
     }

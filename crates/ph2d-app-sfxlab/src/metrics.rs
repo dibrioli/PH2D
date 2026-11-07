@@ -34,7 +34,8 @@ pub(crate) const HANDLE_STEP: f32 = 4.0;
 pub(crate) const TOGGLE: f32 = 24.0;
 
 pub(crate) const ADD_H: f32 = 32.0;
-pub(crate) const MENU_ROW_H: f32 = 28.0;
+/// A linha de uma lista é a do design: o token, não um número daqui.
+pub(crate) const MENU_ROW_H: f32 = ph2d_tokens::ROW_H_PX;
 pub(crate) const MENU_PAD: f32 = 4.0;
 
 /// Px que a janela dá por linha de roda (o espelho do `on_mouse_wheel` da shell).

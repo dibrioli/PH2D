@@ -26,7 +26,7 @@ pub use ph2d_sfx_lab::historia::MAX_PASSOS;
 pub use ph2d_sfx_lab::job::{COLUNAS_DA_ONDA, Feito, Onda, Pedido, RenderJob};
 pub use ph2d_sfx_lab::novo::{Fonte, semente_do_nome};
 pub use smoke::SOM_DA_CENA;
-pub use surface::{CMD_NEW, cmd_abrir};
+pub use surface::{CMD_NEW_SOUND, cmd_abrir};
 
 use bevy_ecs::world::World;
 use ph2d_editor_core::screens::hero::HeroScreen;

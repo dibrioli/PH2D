@@ -628,3 +628,7 @@ fn the_area_buoyancy_is_its_own_component_and_leaves_the_siblings_alone() {
 #[cfg(test)]
 #[path = "physics_tests_f1.rs"]
 mod f1;
+
+#[cfg(test)]
+#[path = "physics_tests_alcas.rs"]
+mod alcas;

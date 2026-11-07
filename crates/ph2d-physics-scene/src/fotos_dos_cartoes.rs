@@ -55,6 +55,8 @@ pub enum CasoFisica {
     /// Scale 2 × 1, rodada 30°; e o mesmo com espelho.
     FormaRodado,
     FormaEspelho,
+    /// O mesmo com o Pivot da imagem no canto, pelo gesto do Inspector.
+    FormaPivo,
     /// O canto puxado e Ctrl+Z.
     FormaDesfaz,
     /// O canto puxado com Auto Key.
@@ -75,7 +77,10 @@ pub fn plano_da_forma(caso: CasoFisica) -> Option<ph2d_shape_handles::Plano> {
         CasoFisica::FormaArrasto => (canto, [1.0, 0.5], true, false),
         CasoFisica::FormaBola => (Some(Alca::Lado(1, 0)), [0.5, 0.0], true, false),
         CasoFisica::FormaPlayer => (Some(Alca::Lado(0, 1)), [0.0, 0.4], true, false),
-        CasoFisica::FormaRodado | CasoFisica::FormaEspelho | CasoFisica::FormaChave => {
+        CasoFisica::FormaRodado
+        | CasoFisica::FormaEspelho
+        | CasoFisica::FormaPivo
+        | CasoFisica::FormaChave => {
             (canto, [0.8, 0.9], false, false)
         }
         CasoFisica::FormaDesfaz => (canto, [0.8, 0.9], false, true),
@@ -119,6 +124,7 @@ pub fn caso(nome: &str) -> Option<CasoFisica> {
         "forma_player" => CasoFisica::FormaPlayer,
         "forma_rodado" => CasoFisica::FormaRodado,
         "forma_espelho" => CasoFisica::FormaEspelho,
+        "forma_pivo" => CasoFisica::FormaPivo,
         "forma_desfaz" => CasoFisica::FormaDesfaz,
         "forma_chave" => CasoFisica::FormaChave,
         "forma_peca" => CasoFisica::FormaPeca,
@@ -188,6 +194,7 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
         | CasoFisica::FormaBola
         | CasoFisica::FormaRodado
         | CasoFisica::FormaEspelho
+        | CasoFisica::FormaPivo
         | CasoFisica::FormaDesfaz
         | CasoFisica::FormaChave => {
             let shape = if caso == CasoFisica::FormaBola {
@@ -198,7 +205,10 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
             let mut pose = onde;
             if matches!(
                 caso,
-                CasoFisica::FormaRodado | CasoFisica::FormaDesfaz | CasoFisica::FormaChave
+                CasoFisica::FormaRodado
+                    | CasoFisica::FormaPivo
+                    | CasoFisica::FormaDesfaz
+                    | CasoFisica::FormaChave
             ) {
                 pose.scale = Vec2::new(2.0, 1.0);
                 pose.rotation = 30f32.to_radians();

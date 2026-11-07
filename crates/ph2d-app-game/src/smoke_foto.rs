@@ -319,6 +319,10 @@ pub fn plano_da_foto(
             if c == fisica::CasoFisica::Larga {
                 plano.edicoes = vec![(plano.alvo, ph2d_editor_core::ImageUseEdit::Width(4.0))];
             }
+            if c == fisica::CasoFisica::FormaPivo {
+                let canto = ph2d_editor_core::SpritePivot::Ponto([0, 2]);
+                plano.edicoes = vec![(plano.alvo, ph2d_editor_core::ImageUseEdit::Pivot(canto))];
+            }
         }
         Foto::Seletor => plano.alvo = hills,
         Foto::SpriteVazio => {

@@ -724,6 +724,55 @@ fn rename_abre_o_campo_e_escrever_renomeia_a_camada_do_objecto() {
     sai();
 }
 
+/// «Edit shape on canvas», pelo clique real: Shape e Collision Shape têm o botão, e ele pede a mesma edição.
+#[test]
+fn o_botao_das_alcas_liga_pelo_clique_em_shape_e_em_collision_shape() {
+    for info in [
+        with_body(),
+        InspectorPhysicsInfo {
+            has_body: false,
+            ..with_body()
+        },
+    ] {
+        let (mut host, mut st) = cena(info, [1.0, 1.0]);
+        let r = pinta(&mut host, &mut st);
+        let b = achado(&r, INSP_PHYS_EDIT_SHAPE).expect("o botão no cartão");
+        assert_eq!(
+            clica(&mut host, &mut st, b),
+            [EditorAction::InspectorPhysicsEdit {
+                entity_bits: ENTIDADE,
+                edit: E::EditShapeOnCanvas,
+            }]
+        );
+        sai();
+    }
+}
+
+/// Aceso, diz como se sai, e o clique é o mesmo: o segundo clique encerra.
+#[test]
+fn o_botao_aceso_diz_como_sair_e_o_segundo_clique_pede_o_mesmo() {
+    let info = InspectorPhysicsInfo {
+        shape_edit_on: true,
+        ..with_body()
+    };
+    let (mut host, mut st) = cena(info, [1.0, 1.0]);
+    let r = pinta(&mut host, &mut st);
+    let b = achado(&r, INSP_PHYS_EDIT_SHAPE).expect("o botão aceso");
+    assert_eq!(
+        clica(&mut host, &mut st, b),
+        [EditorAction::InspectorPhysicsEdit {
+            entity_bits: ENTIDADE,
+            edit: E::EditShapeOnCanvas,
+        }]
+    );
+    assert_eq!(tr("card.insp.phys.edit_shape"), "Edit shape on canvas");
+    assert_eq!(
+        tr("card.insp.phys.editing_shape"),
+        "Editing shape · Esc to finish"
+    );
+    sai();
+}
+
 /// O nome diz o que a coisa É; o aviso cabe inteiro.
 #[test]
 fn os_textos_do_cartao_estao_na_tabela() {

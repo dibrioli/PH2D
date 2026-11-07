@@ -335,8 +335,12 @@ fn shift_no_canto_mantem_a_proporcao() {
             let a = Alca::Lado(1, 1);
             let parada = c.ecra(oposta(a));
             let centro = c.ecra(Alca::Miolo);
-            assert!(c.desce(c.ecra(a)));
-            c.move_(para_fora(&c, a, 60.0), Teclas { alt, shift: true });
+            // Só ao longo do eixo X local: sem a lei do Shift, a altura ficava e a proporção mudava.
+            let (de, lado) = (c.ecra(a), para_fora(&c, Alca::Lado(1, 0), 60.0));
+            let borda = c.ecra(Alca::Lado(1, 0));
+            let alvo = (de.0 + lado.0 - borda.0, de.1 + lado.1 - borda.1);
+            assert!(c.desce(de));
+            c.move_(alvo, Teclas { alt, shift: true });
             let ColliderShape::Cuboid { half_x, half_y } = c.medida().shape else {
                 panic!();
             };

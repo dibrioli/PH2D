@@ -2,6 +2,7 @@
 
 use super::agua_sobre_oleo_tests::{H, W, mostrada};
 use super::borracha_de_fabrica_tests::{apaga, diferentes};
+use super::borracha_morta::{Caixa, Sulco, escreve_o_sulco};
 use super::sonda_borracha_morta::morta;
 use super::*;
 
@@ -124,4 +125,47 @@ fn a_selecao_prende_a_borracha() {
 fn a_tinta_viva_nao_passa_por_aqui() {
     let t = super::agua_sobre_oleo_tests::com_oleo();
     assert!(!t.borracha_morta_assume(), "há sessão: a Borracha é a viva");
+}
+
+/// ⭐ O alfa de onde NADA se tira não perde um ponto (commit 325d15de9b). A causa não é `164/255·255` (em f32, com
+/// `fica == 1.0`, nenhum dos 256 valores de u8 perde): é `fica` um pouco abaixo de 1 (o rasto do alisar, aqui 1 − 1e-4),
+/// com o `floor` — aí TODOS os alfas de 1 a 255 perdem um ponto. Alfas 0..=255 todos presentes, e um controlo.
+#[test]
+fn o_alfa_de_onde_nada_se_tira_fica_igual() {
+    let (w, h) = (40usize, 40usize);
+    let antes: Vec<u8> = (0..w * h)
+        .flat_map(|k| [90, 120, 200, (k % 256) as u8])
+        .collect();
+    let caixa = Caixa {
+        x0: 0,
+        y0: 0,
+        x1: w,
+        y1: h,
+    };
+    let corre = |g: f32| {
+        let sulco = Sulco::novo(Arc::new(antes.clone()), w * h, Vec::new(), Vec::new())
+            .com_cobertura(255, 255);
+        let mut tela = antes.clone();
+        escreve_o_sulco(&sulco, caixa, (w, h), 1, 1.0, &mut tela, &|_| (g, 0.0));
+        tela
+    };
+    let alfa = |p: &[u8]| p.chunks(4).map(|c| c[3]).collect::<Vec<u8>>();
+    let a0 = alfa(&antes);
+    assert!(
+        (0..=255u8).all(|v| a0.contains(&v)),
+        "CONTROLO: os 256 alfas"
+    );
+    let fraco = alfa(&corre(1e-4));
+    let mudou: Vec<u8> = a0
+        .iter()
+        .zip(&fraco)
+        .filter(|(a, b)| a != b)
+        .map(|(a, _)| *a)
+        .collect();
+    assert!(mudou.is_empty(), "alfas que perderam um ponto: {mudou:?}");
+    let cheio = alfa(&corre(1.0));
+    assert!(
+        cheio.iter().all(|a| *a == 0),
+        "CONTROLO: com g = 1 tira-se tudo"
+    );
 }

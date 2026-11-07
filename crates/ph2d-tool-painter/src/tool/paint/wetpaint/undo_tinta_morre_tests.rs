@@ -452,3 +452,69 @@ fn sonda_o_preco_de_um_passo() {
         }
     }
 }
+
+/// A fotografia mais velha da pilha conta inteira, as outras só o que não partilham com a de antes: valores exactos.
+/// Depois de o tecto largar as mais velhas, a que ficou à frente ainda partilha tiles com a largada — contá-la só pelos
+/// «novos» subconta a pilha.
+#[test]
+fn a_foto_mais_velha_conta_inteira() {
+    let mut t = tela(600, 400, DABBER, 20.0);
+    for i in 0..3 {
+        traco(&mut t, 40.0, 560.0, linha_y(i));
+    }
+    t.wet_bring_home();
+    let s = t.paint.wetpaint.session.as_ref().expect("a sessão");
+    let todos = &s.antes_do_passo;
+    assert!(todos.len() >= 3, "{} passos", todos.len());
+    let fotos = super::undo_vivo::bytes_das_fotos;
+    // A 1.ª, sozinha, não partilha com ninguém: é a fotografia inteira (a grade é a mesma, o tamanho também).
+    let inteira = fotos(&todos[..1]);
+    assert!(inteira > 0);
+    // A 2.ª e a 3.ª à frente da pilha (as de trás largadas): inteiras, e não o que acrescentavam às largadas.
+    assert_eq!(fotos(&todos[1..2]), inteira, "a 2.ª, à frente");
+    // A 3.ª já tem o fluxo (as fotografias de antes dos dois primeiros traços ainda não): é a do motor inteiro.
+    let do_motor = super::undo_vivo::FotoDoMotor::bytes_de_para_sonda(&s.engine);
+    assert_eq!(fotos(&todos[2..3]), do_motor, "a 3.ª, à frente");
+    // CONTROLO: com a 1.ª por baixo, a 2.ª só acrescenta o que mudou.
+    let a_mais = fotos(&todos[..2]) - fotos(&todos[..1]);
+    assert!(
+        a_mais > 0 && a_mais < inteira,
+        "CONTROLO: {a_mais} de {inteira}"
+    );
+}
+
+/// Desfazer um passo que o tecto já largou: os passos que restam e os registos do motor já não descrevem a história, e
+/// ficam esquecidos — senão o redo/undo seguinte devolve ao motor tinta de um passo que a tela já não tem.
+#[test]
+fn para_la_do_tecto_os_passos_que_restam_ficam_esquecidos() {
+    teto::set(Some(1));
+    let mut t = tela(600, 400, DABBER, 20.0);
+    for i in 0..4 {
+        traco(&mut t, 40.0, 560.0, linha_y(i));
+    }
+    t.wet_bring_home();
+    let antes = t.paint.wetpaint.session.as_ref().expect("a sessão");
+    assert!(
+        !antes.antes_do_passo.is_empty() && antes.engine.can_undo(),
+        "CONTROLO: o último passo tem registo"
+    );
+    // O último passo ainda está no histórico: desfaz-se com a fotografia, e o redo dele fica à espera no motor.
+    assert!(t.undo_last());
+    t.wet_bring_home();
+    let s = t.paint.wetpaint.session.as_ref().expect("a sessão");
+    assert!(s.engine.can_redo(), "CONTROLO: o redo do último passo");
+    // O seguinte já saiu do histórico (tecto = 1): acaba só o dele, e o resto esquece-se.
+    assert!(t.undo_last());
+    teto::set(None);
+    t.wet_bring_home();
+    let s = t.paint.wetpaint.session.as_ref().expect("a sessão");
+    assert!(
+        s.antes_do_passo.is_empty(),
+        "{} passos",
+        s.antes_do_passo.len()
+    );
+    assert!(
+        !s.engine.can_undo() && !s.engine.can_redo(),
+        "os registos do motor sobreviveram ao esquecimento"
+    );
+}

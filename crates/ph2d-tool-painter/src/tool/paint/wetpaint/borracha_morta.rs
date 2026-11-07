@@ -69,6 +69,14 @@ impl Sulco {
         }
     }
 
+    /// Só nos testes: o sulco com a cobertura e o que se tirou iguais em todo o lado, sem passar pelos `dabs`.
+    #[cfg(test)]
+    pub(super) fn com_cobertura(mut self, cobriu: u8, tirou: u8) -> Self {
+        self.cobriu.fill(cobriu);
+        self.tirou.fill(tirou);
+        self
+    }
+
     /// Acumula a cobertura dos `dabs`, medida no escudo `plano`, na caixa.
     pub(super) fn acumula(&mut self, plano: &[u8], dabs: &[Dab], caixa: Caixa, w: usize) {
         let contacto = dabs

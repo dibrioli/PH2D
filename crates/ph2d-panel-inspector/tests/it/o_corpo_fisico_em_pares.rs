@@ -5,28 +5,36 @@ use crate::seam_physics::with_body;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
+use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::ids::{
-    INSP_PHYS_DENSITY, INSP_PHYS_MASSMODE, INSP_PHYS_ONEWAY, INSP_PHYS_SENSOR, INSP_PHYS_WALLMAT,
+    INSP_PHYS_DENSITY, INSP_PHYS_FOLD_SURFACE, INSP_PHYS_MASSMODE, INSP_PHYS_ONEWAY,
+    INSP_PHYS_SENSOR, INSP_PHYS_WALLMAT,
 };
 use ph2d_panel_inspector::{
     InspectorPanel, InspectorState, set_cards_on, set_current_inspector_physics,
 };
 
-fn palco() -> (
+/// One-Way ao lado de Touch é a face Static (ficha f1); em Dynamic ele mora na dobra Surface.
+fn palco(
+    kind_tag: u8,
+) -> (
     ph2d_ui_testkit::MockPanelHost,
     InspectorState,
     Vec<(NodeId, Rect)>,
 ) {
     set_cards_on(true);
     let mut info = with_body();
-    info.mass_is_read = true;
+    info.kind_tag = kind_tag;
+    info.mass_is_read = kind_tag == 0;
     set_current_inspector_physics(Some(info));
     let mut host = crate::host_em_metros();
     let mut st = InspectorState::default();
     crate::o_inspector_em_cartoes_por_tipo::abre_tudo(&mut host);
     let _ = crate::o_inspector_em_cartoes_por_tipo::pinta(&mut host, &mut st);
     crate::o_inspector_em_cartoes_por_tipo::abre_tudo(&mut host);
+    host.store_mut()
+        .set_collapsed(INSP_PHYS_FOLD_SURFACE, false);
     let rects = crate::o_inspector_em_cartoes_por_tipo::pinta(&mut host, &mut st);
     (host, st, rects)
 }
@@ -49,12 +57,13 @@ fn lado_a_lado(a: Rect, b: Rect, nomes: &str) {
 /// Foto `r5_physics_body`. *Mutação: `corpo::choices` sem o pedido ao fluxo ⇒ vermelho.*
 #[test]
 fn mass_density_and_trigger_one_way_share_the_line() {
-    let (_, _, rects) = palco();
+    let (_, _, rects) = palco(0);
     lado_a_lado(
         r(&rects, INSP_PHYS_MASSMODE[1]),
         r(&rects, INSP_PHYS_DENSITY),
         "Mass + Density",
     );
+    let (_, _, rects) = palco(1);
     lado_a_lado(
         r(&rects, INSP_PHYS_SENSOR[1]),
         r(&rects, INSP_PHYS_ONEWAY[0]),
@@ -68,13 +77,14 @@ fn mass_density_and_trigger_one_way_share_the_line() {
 /// *Mutação: o `Curto::Escolha` trocar os ids das opções ⇒ vermelho.*
 #[test]
 fn each_short_choice_still_asks_what_it_asked() {
-    for id in [
-        INSP_PHYS_MASSMODE[1],
-        INSP_PHYS_SENSOR[1],
-        INSP_PHYS_ONEWAY[1],
-        INSP_PHYS_WALLMAT[1],
+    for (kind, id) in [
+        (0, INSP_PHYS_MASSMODE[1]),
+        (1, INSP_PHYS_SENSOR[1]),
+        (1, INSP_PHYS_ONEWAY[1]),
+        (0, INSP_PHYS_ONEWAY[1]),
+        (0, INSP_PHYS_WALLMAT[1]),
     ] {
-        let (mut host, mut st, rects) = palco();
+        let (mut host, mut st, rects) = palco(kind);
         let caixa = r(&rects, id);
         let eventos = host.click_at(caixa.x + caixa.w * 0.5, caixa.y + caixa.h * 0.5);
         assert!(

@@ -426,6 +426,35 @@ fn as_medidas_de_bola_capsula_e_a_massa_manual_chegam() {
     }
 }
 
+/// A conta do dono: quem quer 200 px digita 200, e o `Collider` guarda a metade em metros.
+#[test]
+fn digitar_200_na_largura_em_px_da_200_px() {
+    set_cards_on(true);
+    set_current_inspector_sprite(None);
+    set_current_inspector_physics(Some(with_body()));
+    set_current_inspector_transform(Some(pose([1.0, 1.0])));
+    let mut host = MockPanelHost::with_panel::<InspectorPanel>();
+    host.project_mut().display_unit = ph2d_editor_core::project::DisplayUnit::Pixels;
+    let ppm = host.project_mut().pixels_per_meter;
+    host.store_mut().set_collapsed(CARD_PHYS_SHAPE, false);
+    let mut st = InspectorState::default();
+    assert!(achado(&pinta(&mut host, &mut st), INSP_PHYS_HALF_X).is_some());
+    let _ = host.drained_actions();
+    for ev in host.type_into_number(INSP_PHYS_HALF_X, "200") {
+        let _ = host.apply_panel_event::<InspectorPanel>(&mut st, ev);
+    }
+    let a = host.drained_actions();
+    let metade = a.iter().find_map(|x| match x {
+        EditorAction::InspectorPhysicsEdit {
+            edit: E::HalfX(v), ..
+        } => Some(*v),
+        _ => None,
+    });
+    let metade = metade.expect("o número não chegou");
+    assert!((metade * ppm - 100.0).abs() < 1e-3, "{metade} m × {ppm}");
+    sai();
+}
+
 /// Density some de quem a massa ninguém lê; o player cinemático que a transmite segue com ela.
 #[test]
 fn density_some_de_static_e_kinematic_e_fica_onde_e_lida() {

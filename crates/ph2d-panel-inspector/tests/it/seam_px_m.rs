@@ -434,6 +434,17 @@ fn todo_numero_de_mundo_obedece_a_px_metros_do_projecto() {
                 let r = escreve_e_procura(&mut h, &mut st, *id, "0.37", 37.0);
                 pinta(&mut h, &mut st, DisplayUnit::Pixels);
                 r
+            } else if [
+                ph2d_panel_inspector::ids::INSP_PHYS_HALF_X,
+                ph2d_panel_inspector::ids::INSP_PHYS_HALF_Y,
+            ]
+            .contains(id)
+            {
+                // Width e Height no ecrã; o `Collider` guarda metades.
+                escreve_e_procura(&mut h, &mut st, *id, "37", 0.185)
+            } else if *id == ph2d_panel_inspector::ids::INSP_PHYS_CAP_HALF_H {
+                // Height = 2 × (Half Height + Radius); o `corpo` tem Radius 0,4.
+                escreve_e_procura(&mut h, &mut st, *id, "300", 1.1)
             } else {
                 escreve_e_procura(&mut h, &mut st, *id, "37", 0.37)
             };
@@ -505,7 +516,7 @@ fn a_faixa_de_um_numero_de_mundo_segue_o_seletor() {
 /// As secções que declaram uma unidade de mundo (`m`, `m/s`, `m/s2`) e que a varredura acima
 /// cobre com uma fixtura — mais as duas que passam pela porta do cartão Constraints
 /// (`sync_constraint::unidade_e_passo`): o Transform e o HUD.
-const SECCOES_DE_MUNDO: [&str; 32] = [
+const SECCOES_DE_MUNDO: [&str; 34] = [
     "anim_rules.rs",
     "audio.rs",
     "camera.rs",
@@ -523,6 +534,8 @@ const SECCOES_DE_MUNDO: [&str; 32] = [
     "path_follow.rs",
     "physics.rs",
     "physics_body.rs",
+    "physics_cartao.rs",
+    "physics_cartao_forma.rs",
     "physics_part.rs",
     "physics_rows.rs",
     "player_rows.rs",

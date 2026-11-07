@@ -6,7 +6,7 @@ use super::physics_rows::{
     ONEWAY_LABELS, SENSOR_LABELS, paint_bounce_friction, paint_combine_rows, paint_signal_rows,
     paint_surface_rows,
 };
-use super::rows::Campo;
+use super::rows::{Campo, par_row, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
 use ph2d_editor_core::widget::SectionFold;
@@ -91,7 +91,14 @@ fn forma(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
 
 /// Shape, as medidas, o estado da forma e o aviso de escala: a abertura das duas faces da forma.
 pub(super) fn medidas_e_estado(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
-    let y = t.seg(
+    let y = seg_row(
+        t.scene,
+        t.text,
+        t.theme,
+        t.hit,
+        t.store,
+        t.x,
+        t.w,
         y,
         TextKey::new("component.field.collider.0"),
         core_ids::INSP_LIVE_PHYSICS_GRIP,
@@ -148,7 +155,14 @@ fn aviso_de_escala(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f3
 }
 
 pub(super) fn toque(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
-    t.seg(
+    seg_row(
+        t.scene,
+        t.text,
+        t.theme,
+        t.hit,
+        t.store,
+        t.x,
+        t.w,
         y,
         tr("card.insp.phys.touch"),
         ids::INSP_LIVE_PHYSICS_SENSOR,
@@ -159,7 +173,14 @@ pub(super) fn toque(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f
 }
 
 pub(super) fn uma_via(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
-    t.seg(
+    seg_row(
+        t.scene,
+        t.text,
+        t.theme,
+        t.hit,
+        t.store,
+        t.x,
+        t.w,
         y,
         tr("panel.inspector.physics.one_way"),
         ids::INSP_LIVE_PHYSICS_ONEWAY,
@@ -170,7 +191,14 @@ pub(super) fn uma_via(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) ->
 }
 
 pub(super) fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
-    t.seg(
+    seg_row(
+        t.scene,
+        t.text,
+        t.theme,
+        t.hit,
+        t.store,
+        t.x,
+        t.w,
         y,
         TextKey::new("component.field.collider.4"),
         ids::INSP_LIVE_PHYSICS_LAYER,
@@ -238,7 +266,14 @@ pub(super) fn dobra_offset(t: &mut Tinta<'_>, y: f32) -> f32 {
             tr_with("panel.inspector.label_y", &[("label", &rotulo)]),
         );
         let m = Some(ph2d_editor_core::widget::Unit::Meters);
-        t.par(
+        par_row(
+            t.scene,
+            t.text,
+            t.theme,
+            t.hit,
+            t.store,
+            t.x,
+            t.w,
             y,
             Some((rotulo, Eixos::Xyzw)),
             [

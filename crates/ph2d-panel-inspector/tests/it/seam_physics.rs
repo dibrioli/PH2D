@@ -375,14 +375,14 @@ fn every_dimension_field_reaches_the_bus() {
         (
             ph2d_panel_inspector::ids::INSP_PHYS_HALF_X,
             0.25,
-            PhysicsFieldEdit::HalfX(0.25),
-            "Half Width",
+            PhysicsFieldEdit::HalfX(0.125),
+            "Width",
         ),
         (
             ph2d_panel_inspector::ids::INSP_PHYS_HALF_Y,
             0.125,
-            PhysicsFieldEdit::HalfY(0.125),
-            "Half Height",
+            PhysicsFieldEdit::HalfY(0.0625),
+            "Height",
         ),
         (
             ph2d_panel_inspector::ids::INSP_PHYS_DENSITY,
@@ -419,9 +419,9 @@ fn every_dimension_field_reaches_the_bus() {
         ),
         (
             ph2d_panel_inspector::ids::INSP_PHYS_CAP_HALF_H,
-            0.625,
-            PhysicsFieldEdit::CapHalfHeight(0.625),
-            "Capsule Half Height",
+            2.0,
+            PhysicsFieldEdit::CapHalfHeight(1.0 - 0.4),
+            "Capsule Height",
         ),
         (
             ph2d_panel_inspector::ids::INSP_PHYS_OFFSET_X,
@@ -2327,8 +2327,8 @@ fn every_part_face_control_reaches_the_bus() {
     );
     expect(
         &commit(as_part(), ph2d_panel_inspector::ids::INSP_PHYS_HALF_X, 0.42),
-        PhysicsFieldEdit::HalfX(0.42),
-        "a meia-largura de uma peça",
+        PhysicsFieldEdit::HalfX(0.21),
+        "a largura de uma peça",
     );
     expect(
         &commit(
@@ -2701,7 +2701,7 @@ fn os_campos_da_fisica_pintam_o_losango() {
     let linhas = [
         (insp::INSP_PHYS_KIND[0], "Body"),
         (insp::INSP_PHYS_SHAPE[0], "Collider"),
-        (insp::INSP_PHYS_HALF_X, "Half Width"),
+        (insp::INSP_PHYS_HALF_X, "Width"),
         (insp::INSP_PHYS_OFFSET_X, "Offset X"),
         (insp::INSP_PHYS_DENSITY, "Density"),
         (insp::INSP_PHYS_RESTITUTION, "Bounce"),

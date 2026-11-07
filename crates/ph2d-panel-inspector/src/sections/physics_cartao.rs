@@ -11,7 +11,7 @@ use super::*;
 use ph2d_editor_core::interaction::format_number;
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
 use ph2d_editor_core::widget::SectionFold;
-use ph2d_editor_core::widget::key_mark::{Eixos, Rotulo};
+use ph2d_editor_core::widget::key_mark::Eixos;
 use ph2d_i18n::{TextKey, tr, tr_with};
 
 pub(crate) use crate::ids::CARD_PHYS_SHAPE;
@@ -28,33 +28,6 @@ pub(super) struct Tinta<'a> {
 }
 
 impl Tinta<'_> {
-    pub(super) fn seg<'r>(
-        &mut self,
-        y: f32,
-        rotulo: impl Into<Rotulo<'r>>,
-        group: NodeId,
-        opcoes: &[NodeId],
-        labels: &[&str],
-        sel: u8,
-    ) -> f32 {
-        seg_row(
-            self.scene, self.text, self.theme, self.hit, self.store, self.x, self.w, y, rotulo,
-            group, opcoes, labels, sel,
-        )
-    }
-
-    pub(super) fn par(
-        &mut self,
-        y: f32,
-        titulo: Option<(&str, Eixos)>,
-        campos: [Campo<'_>; 2],
-    ) -> f32 {
-        par_row(
-            self.scene, self.text, self.theme, self.hit, self.store, self.x, self.w, y, titulo,
-            campos,
-        )
-    }
-
     pub(super) fn frase(&mut self, y: f32, texto: &str, token: ColorToken) -> f32 {
         rows::aviso(
             self.scene, self.text, self.theme, self.x, self.w, y, texto, token,
@@ -112,7 +85,14 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
 /// O cartão **Body** de um corpo.
 pub(super) fn corpo(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
     let dinamico = info.kind_tag == KIND_DYNAMIC;
-    let mut y = t.seg(
+    let mut y = seg_row(
+        t.scene,
+        t.text,
+        t.theme,
+        t.hit,
+        t.store,
+        t.x,
+        t.w,
         y,
         TextKey::new("component.field.rigid_body.0"),
         core_ids::INSP_LIVE_PHYSICS_SECTION,
@@ -135,7 +115,14 @@ pub(super) fn corpo(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f
             None,
             None,
         );
-        y = t.seg(
+        y = seg_row(
+            t.scene,
+            t.text,
+            t.theme,
+            t.hit,
+            t.store,
+            t.x,
+            t.w,
             y,
             tr("panel.inspector.physics.rotation"),
             ids::INSP_LIVE_PHYSICS_LOCKROT,
@@ -191,7 +178,14 @@ fn dobra_start(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
             tr_with("panel.inspector.label_x", &[("label", &rotulo)]),
             tr_with("panel.inspector.label_y", &[("label", &rotulo)]),
         );
-        let y = t.par(
+        let y = par_row(
+            t.scene,
+            t.text,
+            t.theme,
+            t.hit,
+            t.store,
+            t.x,
+            t.w,
             y,
             Some((tr("panel.inspector.physics.init_velocity"), Eixos::Xyzw)),
             [
@@ -222,7 +216,14 @@ fn dobra_advanced(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32
     let resumo = format!("{colisao} \u{b7} {dominancia}");
     let titulo = tr("card.insp.phys.advanced");
     t.dobra(y, ids::INSP_PHYS_FOLD_ADVANCED, titulo, &resumo, |t, y| {
-        let y = t.seg(
+        let y = seg_row(
+            t.scene,
+            t.text,
+            t.theme,
+            t.hit,
+            t.store,
+            t.x,
+            t.w,
             y,
             tr("panel.inspector.physics.collision"),
             ids::INSP_LIVE_PHYSICS_CCD,
@@ -312,7 +313,14 @@ fn dobra_bake(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
         .map_or("", |k| k.tr());
     let titulo = tr("card.insp.phys.bake");
     t.dobra(y, ids::INSP_PHYS_FOLD_BAKE, titulo, resumo, |t, y| {
-        let y = t.seg(
+        let y = seg_row(
+            t.scene,
+            t.text,
+            t.theme,
+            t.hit,
+            t.store,
+            t.x,
+            t.w,
             y,
             tr("panel.inspector.physics.bake"),
             ids::INSP_PHYS_BAKE_CH_GROUP,

@@ -85,6 +85,15 @@ fn hero_com_a_fisica_aberta() -> HeroScreen {
         h.store.set_section_open_live(seccao, 1.0);
         pinta(&mut h);
     }
+    // Os dois cartões (ficha f1) e as dobras abertas: estes gates medem as caixas, não a dobra.
+    let shape = ph2d_panel_inspector::ids::CARD_PHYS_SHAPE;
+    h.store.set_collapsed(shape, false);
+    h.store.set_section_open_live(shape, 1.0);
+    for id in ph2d_panel_inspector::ids::INSP_PHYS_FOLDS {
+        h.store.set_collapsed(id, false);
+        h.store.set_section_open_live(id, 1.0);
+    }
+    pinta(&mut h);
     h
 }
 
@@ -112,14 +121,18 @@ fn a_component_number_in_a_card_has_its_label_above_with_the_unit() {
         b.x + b.w - a.x > titulo.w * 0.75,
         "o rótulo ainda come a coluna da esquerda: caixas {a:?} {b:?} no cartão {titulo:?}"
     );
-    // O rótulo EM CIMA: entre duas linhas seguidas (Half Size → Offset) cabe a linha do rótulo.
+    // O rótulo EM CIMA: entre duas linhas seguidas (Height → Bounce) cabe a linha do rótulo.
     let meia = h
         .hit_index
         .rect_for(ph2d_panel_inspector::ids::INSP_PHYS_HALF_Y)
-        .expect("Half Height no cartão");
+        .expect("Height no cartão");
+    let abaixo = h
+        .hit_index
+        .rect_for(ph2d_panel_inspector::ids::INSP_PHYS_RESTITUTION)
+        .expect("Bounce no cartão");
     assert!(
-        a.y - meia.y >= m::FIELD_H + m::LABEL_PX,
-        "sem linha de rótulo entre as linhas: {meia:?} → {a:?}"
+        abaixo.y - meia.y >= m::FIELD_H + m::LABEL_PX,
+        "sem linha de rótulo entre as linhas: {meia:?} → {abaixo:?}"
     );
     // A unidade no RÓTULO (a dica do arrasto leva o rótulo inteiro).
     let dica = ph2d_editor_core::panel::cards::dicas::field_hint(&h.store, oy)
@@ -252,8 +265,26 @@ fn outside_a_card_the_same_row_keeps_its_label_on_the_left() {
     );
 }
 
+/// Rola o painel até `id` ter caixa: com as dobras abertas, os dois cartões passam da janela do teste.
+fn rola_ate(h: &mut HeroScreen, id: NodeId) {
+    let painel = ph2d_editor_core::ids::INSP_PANEL;
+    for passo in 0..12 {
+        let s = passo as f32 * 300.0;
+        h.store.set_panel_scroll(painel, s);
+        h.store.set_panel_scroll_live(painel, s);
+        pinta(h);
+        if h.hit_index
+            .rect_for(id)
+            .is_some_and(|r| r.y + r.h < 1700.0 && r.y > 0.0)
+        {
+            return;
+        }
+    }
+}
+
 /// Duas caixas na MESMA linha, lado a lado, com estas letras na pega.
-fn lado_a_lado(h: &HeroScreen, a: NodeId, b: NodeId, letras: [&str; 2], o_que: &str) {
+fn lado_a_lado(h: &mut HeroScreen, a: NodeId, b: NodeId, letras: [&str; 2], o_que: &str) {
+    rola_ate(h, a);
     let ra = h
         .hit_index
         .rect_for(a)
@@ -275,7 +306,7 @@ fn lado_a_lado(h: &HeroScreen, a: NodeId, b: NodeId, letras: [&str; 2], o_que: &
 }
 
 /// ⭐ **T56 (ordem do dono 02/11): no cartão do Physics Body, dois campos por linha sempre que
-/// fizer sentido** — Half Size W · H (não o «H» de «Half»), Offset X · Y, Init Velocity X · Y,
+/// fizer sentido** — Width W · Height H, Offset X · Y, Init Velocity X · Y,
 /// Bounce | Friction, Linear | Angular Damping, Freeze X | Freeze Y.
 #[test]
 fn the_physics_body_card_puts_two_fields_per_row() {
@@ -286,45 +317,41 @@ fn the_physics_body_card_puts_two_fields_per_row() {
     ph2d_panel_inspector::set_current_inspector_physics(Some(info));
     let mut h = hero_com_a_fisica_aberta();
     lado_a_lado(
-        &h,
+        &mut h,
         i::INSP_PHYS_HALF_X,
         i::INSP_PHYS_HALF_Y,
         ["W", "H"],
-        "Half Size",
+        "Width | Height",
     );
     lado_a_lado(
-        &h,
+        &mut h,
         i::INSP_PHYS_OFFSET_X,
         i::INSP_PHYS_OFFSET_Y,
         ["X", "Y"],
         "Offset",
     );
     lado_a_lado(
-        &h,
+        &mut h,
         i::INSP_PHYS_LINVEL_X,
         i::INSP_PHYS_LINVEL_Y,
         ["X", "Y"],
         "Init Velocity",
     );
     lado_a_lado(
-        &h,
+        &mut h,
         i::INSP_PHYS_RESTITUTION,
         i::INSP_PHYS_FRICTION,
         ["B", "F"],
         "Bounce | Friction",
     );
-    // A janela do teste mede 1800 px e a fixtura tem tudo armado: o resto do cartão vem rolado.
-    let painel = ph2d_editor_core::ids::INSP_PANEL;
-    h.store.set_panel_scroll(painel, 500.0);
-    h.store.set_panel_scroll_live(painel, 500.0);
-    pinta(&mut h);
     lado_a_lado(
-        &h,
+        &mut h,
         i::INSP_PHYS_LINEAR_DAMPING,
         i::INSP_PHYS_ANGULAR_DAMPING,
         ["D", "A"],
         "Damping",
     );
+    rola_ate(&mut h, i::INSP_PHYS_LOCKX[0]);
     let (fx, fy) = (
         h.hit_index
             .rect_for(i::INSP_PHYS_LOCKX[0])
@@ -339,7 +366,7 @@ fn the_physics_body_card_puts_two_fields_per_row() {
     );
     // A dica do arrasto leva o rótulo da linha com a unidade (D13).
     let dica = ph2d_editor_core::panel::cards::dicas::field_hint(&h.store, i::INSP_PHYS_HALF_Y)
-        .expect("Half Height não é campo de cartão");
-    assert!(dica.contains("Half Size ("), "o rótulo da linha: {dica:?}");
+        .expect("Height não é campo de cartão");
+    assert!(dica.contains("Height ("), "o rótulo da linha: {dica:?}");
     super::o_inspector_armado::desarma_tudo();
 }

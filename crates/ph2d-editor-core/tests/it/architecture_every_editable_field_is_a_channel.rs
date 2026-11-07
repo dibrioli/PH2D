@@ -1372,6 +1372,13 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
+        "paint_signal_rows",
+        NaoAnimavel,
+        &[],
+        "os dois nomes de sinal, em laço: fiação por nome (§8)",
+    ),
+    (
+        "ph2d-panel-inspector",
         "signal_row",
         NaoAnimavel,
         &[],

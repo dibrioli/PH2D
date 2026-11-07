@@ -389,7 +389,7 @@ fn the_slices_reach_the_scene_with_any_tool_and_selected_adds_outline_handles_an
     t.arrasta(px(6, 6), px(6, 6), NADA);
     let selecionada = caminhos(&mut t);
     assert!(
-        selecionada >= uma + 1 + 16 + 1,
+        selecionada > uma + 1 + 16,
         "contorno duplo, 8 alças com anel, ficha: {uma} -> {selecionada}"
     );
     assert!(t.tecla(KeyCode::KeyB, NADA));

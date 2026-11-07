@@ -429,3 +429,25 @@ fn slice_properties_traz_o_cartao_para_a_vista() {
         hero.hit_index.rect_for(ids::BOUNDS_X)
     );
 }
+
+/// `Esc` limpa a seleção: o menu aberto fecha com ela.
+#[test]
+fn sem_selecao_o_menu_fecha() {
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let mut hero = hero_com(&mut ts, uma_selecionada());
+    canal::abrir_menu(Menu {
+        x: 300.0,
+        y: 300.0,
+        remover: false,
+    });
+    assenta(&mut hero, &mut ts);
+    assert!(
+        hero.hit_index.rect_for(ids::MENU_DELETE).is_some(),
+        "o controlo"
+    );
+    let mut x = uma_selecionada();
+    x.vista = None;
+    canal::publish_contexto(x);
+    assenta(&mut hero, &mut ts);
+    assert!(hero.hit_index.rect_for(ids::MENU_DELETE).is_none());
+}

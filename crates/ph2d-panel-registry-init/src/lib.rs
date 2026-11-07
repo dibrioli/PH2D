@@ -86,10 +86,10 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     reg.push(ErasedPanel::new::<
         ph2d_panel_pixel_preview::PixelPreviewPanel,
     >());
-    #[cfg(feature = "panel-pixel-tiles")]
-    reg.push(ErasedPanel::new::<ph2d_panel_pixel_tiles::PixelTilesPanel>());
     #[cfg(feature = "panel-pixel-slices")]
     reg.push(ErasedPanel::new::<ph2d_panel_pixel_slices::PixelSlicesPanel>());
+    #[cfg(feature = "panel-pixel-tiles")]
+    reg.push(ErasedPanel::new::<ph2d_panel_pixel_tiles::PixelTilesPanel>());
     #[cfg(feature = "panel-pixel-timeline")]
     reg.push(ErasedPanel::new::<
         ph2d_panel_pixel_timeline::PixelTimelinePanel,

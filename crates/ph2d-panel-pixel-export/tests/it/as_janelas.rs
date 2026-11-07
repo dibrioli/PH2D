@@ -32,6 +32,7 @@ fn mesa(t: Tela) -> Mesa<PixelExportPanel> {
         ],
         tags: vec!["walk".to_owned(), "jump".to_owned()],
         tilesets: Vec::new(),
+        slices: Vec::new(),
     });
     canal::publish_imagem(Some(Imagem {
         rgba: Arc::new(vec![255; 64 * 32 * 4]),

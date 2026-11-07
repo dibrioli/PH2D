@@ -1,7 +1,7 @@
 //! Os cartões: a lista e as propriedades da slice.
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::panel::cards::ferramenta::{caixa, cartao, opcoes};
+use ph2d_editor_core::panel::cards::ferramenta::{caixa, caixas_aos_pares, cartao, opcoes};
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, Widget};
 use ph2d_editor_core::widget::CheckboxValue;
 use ph2d_i18n::tr;
@@ -115,15 +115,25 @@ fn propriedades(c: &mut CardCtx<'_>, v: &Vista, y: f32) -> f32 {
         [ids::BOUNDS_X, ids::BOUNDS_Y, ids::BOUNDS_W, ids::BOUNDS_H],
         y,
     );
-    y = caixa(c, ids::NINE, "panel.pixel.slices.nine", v.nove, y);
+    // Sem campos no meio, as duas caixas dividem a linha.
     if v.algum_nove {
+        y = caixa(c, ids::NINE, "panel.pixel.slices.nine", v.nove, y);
         y = linha_xywh(
             c,
             [ids::CENTER_X, ids::CENTER_Y, ids::CENTER_W, ids::CENTER_H],
             y,
         );
+        y = caixa(c, ids::PIVOT, "panel.pixel.slices.pivot", v.pivot, y);
+    } else {
+        y = caixas_aos_pares(
+            c,
+            &[
+                (ids::NINE, "panel.pixel.slices.nine", v.nove),
+                (ids::PIVOT, "panel.pixel.slices.pivot", v.pivot),
+            ],
+            y,
+        );
     }
-    y = caixa(c, ids::PIVOT, "panel.pixel.slices.pivot", v.pivot, y);
     if v.algum_pivot {
         y = c.row(
             &[

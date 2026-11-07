@@ -181,15 +181,15 @@ pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
     }
     let menu = app.slices.menu.take();
     let mut x = Contexto::default();
-    if let Some((k, d)) = app.chave.and_then(|k| Some((k, app.docs.get(&k)?))) {
-        if app.tool == Tool::Slice {
-            let (f, sel) = (no_quadro(&d.sprite, d.frame), app.slices_selected(k));
-            x = familia::contexto(&d.sprite, f, sel, app.slices.transform);
-            if let Some(m) = menu.and_then(|(cel, p)| {
-                familia::menu_em(&d.sprite, f, sel, cel, hero.escala().to_logical(p))
-            }) {
-                canal::abrir_menu(m);
-            }
+    if let Some((k, d)) = app.chave.and_then(|k| Some((k, app.docs.get(&k)?)))
+        && app.tool == Tool::Slice
+    {
+        let (f, sel) = (no_quadro(&d.sprite, d.frame), app.slices_selected(k));
+        x = familia::contexto(&d.sprite, f, sel, app.slices.transform);
+        if let Some(m) = menu.and_then(|(cel, p)| {
+            familia::menu_em(&d.sprite, f, sel, cel, hero.escala().to_logical(p))
+        }) {
+            canal::abrir_menu(m);
         }
     }
     let tem = x.na_mao;

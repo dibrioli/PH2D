@@ -250,7 +250,7 @@ fn as_marcas_de_slice_pintam_so_nos_quadros_com_key() {
     m.assenta_em(JANELA);
     let pintadas = quadros(&m) - antes;
     assert!(
-        pintadas >= 2 && pintadas % 2 == 0,
+        pintadas >= 2 && pintadas.is_multiple_of(2),
         "duas por quadro: {pintadas}"
     );
 }

@@ -153,7 +153,7 @@ fn creating_clips_to_the_canvas_and_names_never_reuse_a_deleted_top_gap() {
         None,
         "fora do canvas"
     );
-    let mut novo = |s: &mut Sprite, r| {
+    let novo = |s: &mut Sprite, r| {
         let (op, id) = slice::create(s, 0, r).expect("cria");
         apply(s, op).unwrap();
         id
@@ -397,7 +397,8 @@ fn marcas_batem(s: &Sprite, id: SliceId, canto: (bool, bool)) {
 fn flip_and_rotate_keep_box_center_and_pivot_on_the_same_pixels() {
     let (s, id) = marcado();
     marcas_batem(&s, id, (false, false));
-    let casos: [(Op, (bool, bool), (u32, u32)); 5] = [
+    type Caso = (Op, (bool, bool), (u32, u32));
+    let casos: [Caso; 5] = [
         (
             canvas::flip_canvas(&s, true).unwrap(),
             (true, false),

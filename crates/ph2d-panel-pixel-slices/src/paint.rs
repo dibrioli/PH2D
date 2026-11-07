@@ -93,6 +93,12 @@ pub(crate) fn paint(st: &mut PixelSlicesPanelState, ctx: &mut PaintCtx) {
         }
     }
     let store = ctx.host.store_mut();
+    // `Esc` limpou a seleção: o menu ficaria a oferecer verbos sem alvo.
+    if x.vista.is_none()
+        && let Some(InteractiveState::Dropdown { open, .. }) = store.get_mut(ids::MENU)
+    {
+        *open = false;
+    }
     if canal::take_mostrar() {
         store.set_collapsed(ids::SEC_PROPS, false);
         // É o último cartão: a rolagem vai ao fim, e a lista corta o que passar. O alvo tem folga de

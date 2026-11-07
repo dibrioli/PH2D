@@ -145,3 +145,4 @@
 - ⭐⭐ [Dono 06/11: Pixel e Painter = 2 tipos de objeto, 2 ícones (canvas, pixel), cada um só com o botão da sua ferramenta; sem modos novos](project_two_image_objects_pixel_and_painter_2026_11_06.md)
 - ⭐⭐ [Dono 06/11: tiles para qualquer camada; leis de borda de tilemap a LLM decide medindo os melhores apps](project_tiles_any_layer_oracle_decides_2026_11_06.md)
 - ⭐⭐ [Dono 06/11: tiles do Pixel = carimbo + gabarito de 47; descoberta por área pintada (MVP Tiling) não](project_tilemap_rule_discovery_not_intuitive_2026_11_06.md)
+- ⭐⭐ [Dono 07/11: editor de animações reconstruído no layout da Crítica; sem prévia própria, sem ◆, faixas empilhadas](project_animation_editor_rebuild_owner_decisions_2026_11_07.md)

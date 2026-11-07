@@ -594,3 +594,65 @@ fn a_bad_list_is_refused_and_nothing_changes() {
     assert!(apply(&mut s, Op::Slices(gemeas)).is_err());
     assert_eq!(s, antes);
 }
+
+// --- Fixtures que separam hipóteses (prova de mutação P11) ---
+
+/// O quadro novo herda o ANTERIOR (não a primeira key), e a primeira key fica no quadro 0.
+#[test]
+fn a_new_frame_after_a_later_key_inherits_that_key_and_the_first_key_stays_at_zero() {
+    let (s, id) = moves();
+    let f2 = s.frames()[2].id;
+    let mut c = s.clone();
+    let (op, novo) = frames::new_frame(&mut c, f2, NewFrame::Empty).unwrap();
+    let d = segue_a_arte(&c, id, op);
+    let at = d.frame_index(novo).unwrap() as u32;
+    assert_eq!(so_a(&d, id).shape_at(at).unwrap().bounds.x, 24);
+
+    let mut z = s.clone();
+    let f0 = z.frames()[0].id;
+    let (op, _) = frames::insert(&mut z, 0, f0, NewFrame::Empty, 100).unwrap();
+    let d = segue_a_arte(&z, id, op);
+    assert_eq!(so_a(&d, id).keys[0].frame, 0, "a key do quadro novo existe");
+}
+
+/// Canvas Size com `dx != dy`: cada eixo anda pelo seu.
+#[test]
+fn canvas_size_translates_each_axis_by_its_own_border() {
+    let mut s = sprite(64, 64, 1);
+    let id = com_keys(&mut s, &[(0, caixa(4, 4, 8, 8))]);
+    let b = Borders {
+        left: 3,
+        top: 7,
+        right: 0,
+        bottom: 0,
+    };
+    let op = canvas::canvas_size(&s, b, 0).unwrap();
+    apply(&mut s, op).unwrap();
+    assert_eq!(so_a(&s, id).keys[0].shape.bounds, Rect::new(7, 11, 8, 8));
+}
+
+/// Uma caixa de 1 px que encolhe não some: mínimo 1.
+#[test]
+fn sprite_size_never_shrinks_a_box_to_nothing() {
+    let mut s = sprite(64, 64, 1);
+    let id = com_keys(&mut s, &[(0, caixa(10, 10, 1, 1))]);
+    let op = canvas::sprite_size(&s, 32, 32, SizeMethod::Nearest).unwrap();
+    apply(&mut s, op).unwrap();
+    let b = so_a(&s, id).keys[0].shape.bounds;
+    assert_eq!((b.w, b.h), (1, 1));
+}
+
+/// `Slice N` é o maior N em uso mais um, não o da última criada.
+#[test]
+fn the_next_name_follows_the_largest_number_not_the_last_created() {
+    let mut s = sprite(32, 32, 1);
+    let (op, a) = slice::create(&mut s, 0, Rect::new(0, 0, 4, 4)).unwrap();
+    apply(&mut s, op).unwrap();
+    let (op, _) = slice::create(&mut s, 0, Rect::new(0, 0, 4, 4)).unwrap();
+    apply(&mut s, op).unwrap();
+    let op = slice::set_info(&s, a, "Slice 9", [0, 0, 255, 255], "").unwrap();
+    apply(&mut s, op).unwrap();
+    let (op, n) = slice::create(&mut s, 0, Rect::new(0, 0, 4, 4)).unwrap();
+    apply(&mut s, op).unwrap();
+    assert_eq!(so_a(&s, n).name, "Slice 10");
+}

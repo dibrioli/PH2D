@@ -169,6 +169,39 @@ pub fn objects_per_layer(world: &World) -> [u32; MAX_LAYERS] {
     n
 }
 
+/// ⭐ **Os objetos de cada camada** (a camada aberta da aba, onda 9b): (camada, bits da entidade, nome),
+/// pela MESMA regra de [`objects_per_layer`] (o `Collider` manda; o sensor sozinho conta), em ordem de
+/// nome e depois de bits, para a fila de botões não saltar entre quadros.
+#[must_use]
+pub fn objects_on_layers(world: &World) -> Vec<(usize, u64, String)> {
+    let at = |l: u8| usize::from(l).min(MAX_LAYERS - 1);
+    let nome = |world: &World, e: bevy_ecs::entity::Entity| {
+        world
+            .get::<ph2d_ecs::Name>(e)
+            .map(|n| n.0.clone())
+            .unwrap_or_default()
+    };
+    let mut v = Vec::new();
+    if let Some(mut q) = world.try_query::<(bevy_ecs::entity::Entity, &Collider)>() {
+        for (e, c) in q.iter(world) {
+            v.push((at(c.layer), e.to_bits(), String::new()));
+        }
+    }
+    if let Some(mut q) = world.try_query_filtered::<
+        (bevy_ecs::entity::Entity, &RaySensor),
+        bevy_ecs::query::Without<Collider>,
+    >() {
+        for (e, r) in q.iter(world) {
+            v.push((at(r.layer), e.to_bits(), String::new()));
+        }
+    }
+    for o in &mut v {
+        o.2 = nome(world, bevy_ecs::entity::Entity::from_bits(o.1));
+    }
+    v.sort_by(|a, b| (a.0, &a.2, a.1).cmp(&(b.0, &b.2, b.1)));
+    v
+}
+
 /// ⭐ **As camadas visíveis deste projeto** (a porta para o painel, o Inspector e a fila «Collides with»).
 #[must_use]
 pub fn visible_layers(world: &World, matriz: &LayerMatrix) -> u32 {

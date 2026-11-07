@@ -13,29 +13,6 @@ use super::quadro::{Quadro, fotos, pairar_da_foto};
 use super::{AREA, Onde, aberta};
 use crate::ids as i;
 
-/// A cor da aba: em cartões, o tom da lista (como o editor de animações); `PH2D_CARDS=0`, o de antes.
-/// Macro: o tipo da cor é da `ph2d-vector`, que este painel não nomeia.
-macro_rules! tom {
-    ($t:expr, $theme:expr $(,)?) => {{
-        let t: ColorToken = $t;
-        let cartao = match t {
-            ColorToken::PanelBg => Some(ColorToken::KanbanList),
-            ColorToken::Bg1 => Some(ColorToken::KanbanCard),
-            ColorToken::Bg2 => Some(ColorToken::CardField),
-            ColorToken::Bg3 => Some(ColorToken::KanbanCardRaised),
-            ColorToken::Text1 => Some(ColorToken::KanbanCardFg),
-            ColorToken::Text2 | ColorToken::Text3 => Some(ColorToken::CardLabel),
-            _ => None,
-        };
-        match cartao.filter(|_| ph2d_editor_core::panel::cards::ferramenta::cards_on()) {
-            Some(c) => ph2d_editor_core::widget::card_ink::CardInk::of_list($theme)
-                .color(c)
-                .with_alpha(1.0),
-            None => resolve(t, $theme),
-        }
-    }};
-}
-
 /// Pinta a aba, se à frente neste quadro. Corre no fim do `paint` do painel, aberto ou fechado.
 pub(crate) fn paint(ctx: &mut PaintCtx) {
     fotos(ctx);
@@ -62,6 +39,8 @@ pub(crate) fn paint(ctx: &mut PaintCtx) {
     pinta_lista(ctx, &q);
     pinta_grade(ctx, &q);
     pinta_pe(ctx, &q);
+    super::camada::pinta(ctx, &q);
+    super::camada::alvos(ctx, &q.camada);
     alvos(ctx, &q, losango, canto);
 }
 
@@ -116,14 +95,22 @@ fn pinta_lista(ctx: &mut PaintCtx, q: &Quadro) {
             } else {
                 ColorToken::Text2
             };
+            // A bolinha da cor da camada (paleta por número, nada gravado).
+            let lado = font - Spacing::Xs.px();
+            fill_rounded_rect(
+                cena,
+                Rect::new(r.x + Spacing::Sm.px(), r.y + (r.h - lado) * 0.5, lado, lado),
+                raio * 0.5,
+                resolve(super::cor_da_camada(n), theme),
+            );
             paint_text(
                 texto,
                 cena,
                 &rotulos[n],
-                r.x + Spacing::Sm.px(),
+                r.x + Spacing::Sm.px() * 2.0 + lado,
                 r.y + (r.h - font) * 0.5,
                 font,
-                r.w - contagem_w,
+                r.w - contagem_w - lado - Spacing::Sm.px(),
                 tom!(cor, theme),
             );
             let c = &contagens[p];
@@ -180,7 +167,7 @@ fn pinta_grade(ctx: &mut PaintCtx, q: &Quadro) {
     camada_das_listas::por_cima(ctx.scene, |cena| {
         // A grade «Who bumps into whom · N pairs».
         let ty = g.grade.y + pad;
-        paint_text(
+        ph2d_editor_core::paint::paint_text_title(
             texto,
             cena,
             tr("card.physics.tab_grid_title"),
@@ -200,28 +187,13 @@ fn pinta_grade(ctx: &mut PaintCtx, q: &Quadro) {
             cabeca_dir_w + Spacing::Xs.px(),
             tom!(ColorToken::Text3, theme),
         );
-        // ⭐ As faixas acesas vão de ponta a ponta (a da linha até à última coluna): na onda 8 a da
-        //    linha parava na diagonal e as células a escondiam.
-        let faixa = resolve(ColorToken::AccentSoft, theme);
-        let fim = g.celula(g.k.saturating_sub(1), g.k.saturating_sub(1));
+        // ⭐ A linha acesa tem o nome numa pílula (maquete B); a coluna acesa, o nome em negrito.
+        let pilula = resolve(ColorToken::AccentSoft, theme);
         for (p, &n) in visiveis.iter().enumerate() {
             if linha_acesa(n) {
                 let r = g.rotulo_da_linha(p);
-                fill_rounded_rect(
-                    cena,
-                    Rect::new(r.x, r.y, fim.x + fim.w - r.x, r.h),
-                    raio,
-                    faixa,
-                );
-            }
-            if coluna_acesa(n) {
-                let r = g.rotulo_da_coluna(p);
-                fill_rounded_rect(
-                    cena,
-                    Rect::new(r.x, r.y, r.w, fim.y + fim.h - r.y),
-                    raio,
-                    faixa,
-                );
+                let r = Rect::new(r.x - Spacing::Xs.px(), r.y, r.w, r.h - Spacing::Xs.px());
+                fill_rounded_rect(cena, r, raio, pilula);
             }
         }
         let tinta = |aceso: bool| {
@@ -237,7 +209,12 @@ fn pinta_grade(ctx: &mut PaintCtx, q: &Quadro) {
         for (p, &n) in visiveis.iter().enumerate() {
             let r = g.rotulo_da_linha(p);
             if !editando.is_some_and(|(e, onde)| e == n && onde == Onde::Grade) {
-                paint_text(
+                let pinta = if linha_acesa(n) {
+                    ph2d_editor_core::paint::paint_text_title
+                } else {
+                    paint_text
+                };
+                pinta(
                     texto,
                     cena,
                     &rotulos[n],
@@ -249,6 +226,19 @@ fn pinta_grade(ctx: &mut PaintCtx, q: &Quadro) {
                 );
             }
             let c = g.rotulo_da_coluna(p);
+            // A coluna acesa em negrito: a mesma letra, desenhada duas vezes com meio traço de vão.
+            if coluna_acesa(n) {
+                paint_text_rotated_ccw(
+                    texto,
+                    cena,
+                    &rotulos[n],
+                    c.x + (c.w - font) * 0.5 + StrokeToken::Hairline.px(),
+                    c.y + c.h - Spacing::Xs.px(),
+                    font,
+                    c.h,
+                    tinta(true),
+                );
+            }
             paint_text_rotated_ccw(
                 texto,
                 cena,
@@ -263,26 +253,39 @@ fn pinta_grade(ctx: &mut PaintCtx, q: &Quadro) {
         for (p, &a) in visiveis.iter().enumerate() {
             for (q, &b) in visiveis[..=p].iter().enumerate() {
                 let cel = g.celula(p, q);
-                let cor = if matriz.collides(a, b) {
-                    ColorToken::Accent
-                } else {
-                    ColorToken::Bg3
-                };
-                fill_rounded_rect(cena, cel, raio, resolve(cor, theme));
+                let liga = matriz.collides(a, b);
                 let pairada = sob == Some((a, b));
-                if a == b || pairada {
-                    let cor = if pairada {
-                        ColorToken::Text1
-                    } else {
-                        ColorToken::Text2
-                    };
-                    // FRAME-RAW-OK: a diagonal da grade (o eixo de simetria) e a célula sob o ponteiro
+                if liga {
+                    fill_rounded_rect(cena, cel, raio, resolve(ColorToken::Accent, theme));
+                } else if a != b {
+                    // ⭐ Desligada: escura com contorno (maquete B), para não sumir no fundo.
+                    fill_rounded_rect(cena, cel, raio, tom!(ColorToken::PanelBg, theme));
+                }
+                let contorno = if pairada {
+                    ColorToken::Text1
+                } else if liga {
+                    ColorToken::Text2
+                } else {
+                    ColorToken::Text3
+                };
+                if a == b && !pairada {
+                    // ⭐ A diagonal (a camada consigo mesma) é tracejada, ligada ou não.
+                    ph2d_editor_core::paint::stroke_rounded_rect_dashed(
+                        cena,
+                        cel,
+                        raio,
+                        StrokeToken::Default.px(),
+                        (f64::from(Spacing::Xs.px()), f64::from(Spacing::Xs.px())),
+                        tom!(contorno, theme),
+                    );
+                } else if pairada || !liga {
+                    // FRAME-RAW-OK: a célula desligada e a sob o ponteiro levam contorno
                     ph2d_editor_core::paint::stroke_rounded_rect(
                         cena,
                         cel,
                         raio,
                         StrokeToken::Default.px(),
-                        resolve(cor, theme),
+                        tom!(contorno, theme),
                     );
                 }
             }
@@ -302,6 +305,7 @@ fn pinta_pe(ctx: &mut PaintCtx, q: &Quadro) {
     } = q;
     let rotulos = &q.rotulos;
     let pe = &q.pe;
+    let par = q.par.as_deref();
     let titulo = &q.titulo;
     let pares_da_camada = &q.pares_da_camada;
     let campo = &q.campo;
@@ -311,20 +315,38 @@ fn pinta_pe(ctx: &mut PaintCtx, q: &Quadro) {
         // O pé: a frase fixa, numa faixa própria (nunca sai da aba nem cobre uma linha).
         let r = g.pe();
         fill_rounded_rect(cena, r, raio, tom!(ColorToken::Bg2, theme));
+        let (mut x, y) = (r.x + Spacing::Sm.px(), r.y + (r.h - font) * 0.5);
+        let resto = match par {
+            Some(par) => {
+                ph2d_editor_core::paint::paint_text_title(
+                    texto,
+                    cena,
+                    par,
+                    x,
+                    y,
+                    font,
+                    r.w,
+                    tom!(ColorToken::Text1, theme),
+                );
+                x += texto.prefix_width(par, font) + texto.prefix_width(" ", font);
+                pe.get(par.len()..).unwrap_or("").trim_start()
+            }
+            None => pe.as_str(),
+        };
         paint_text(
             texto,
             cena,
-            pe,
-            r.x + Spacing::Sm.px(),
-            r.y + (r.h - font) * 0.5,
+            resto,
+            x,
+            y,
             font,
-            r.w - Spacing::Sm.px() * 2.0,
-            tom!(ColorToken::Text1, theme),
+            (r.x + r.w - Spacing::Sm.px() - x).max(0.0),
+            tom!(ColorToken::Text2, theme),
         );
 
         // A camada aberta: a linha de título (o resto é a onda 9b).
         let cy = g.camada.y + pad;
-        paint_text(
+        ph2d_editor_core::paint::paint_text_title(
             texto,
             cena,
             titulo,

@@ -88,6 +88,27 @@ pub fn set_layer_counts(n: [u32; ph2d_physics_ecs::MAX_LAYERS]) {
     CONTAGENS.set(n);
 }
 
+thread_local! {
+    static OBJETOS: RefCell<Vec<(usize, u64, String)>> = const { RefCell::new(Vec::new()) };
+}
+
+/// Uma vez por quadro: (camada, bits, nome) de cada objeto (`ph2d_physics_ecs::objects_on_layers`).
+pub fn set_layer_objects(v: Vec<(usize, u64, String)>) {
+    OBJETOS.with(|o| *o.borrow_mut() = v);
+}
+
+/// Os objetos da camada `n`: (bits, nome).
+#[must_use]
+pub fn layer_objects(n: usize) -> Vec<(u64, String)> {
+    OBJETOS.with(|o| {
+        o.borrow()
+            .iter()
+            .filter(|x| x.0 == n)
+            .map(|x| (x.1, x.2.clone()))
+            .collect()
+    })
+}
+
 /// Quantos objetos há na camada `n`.
 #[must_use]
 pub fn layer_count(n: usize) -> u32 {

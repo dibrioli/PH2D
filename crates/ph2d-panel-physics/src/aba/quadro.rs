@@ -171,10 +171,12 @@ pub(super) struct Quadro {
     pub(super) matriz: LayerMatrix,
     pub(super) add_rotulo: &'static str,
     pub(super) pe: String,
+    pub(super) par: Option<String>,
     pub(super) titulo: String,
     pub(super) pares_da_camada: String,
     pub(super) cabeca_dir: String,
     pub(super) campo: Option<Campo>,
+    pub(super) camada: super::camada::Camada,
 }
 
 impl Quadro {
@@ -198,12 +200,26 @@ impl Quadro {
         let lista_w = (rotulo_w + contagem_w + Spacing::Lg.px() * 2.0)
             .max(largura(ctx, tr("card.physics.tab_layers")) + Spacing::Lg.px() * 2.0)
             .max(ROW_H_PX * 6.0); // LITERAL-PX-OK: a lista tem pelo menos seis linhas de largura
-        let g = Geometria::de(area, rotulo_w, lista_w, visiveis.len());
+        let aberta_n = camada_aberta();
+        let nomes_dos_objetos: Vec<String> = crate::state::layer_objects(aberta_n)
+            .into_iter()
+            .map(|(_, n)| n)
+            .collect();
+        let camada = super::camada::Camada::monta(
+            Geometria::largura_direita(area, lista_w),
+            &visiveis,
+            &rotulos,
+            &nomes_dos_objetos,
+            super::MAIS.get(),
+            &mut |s| ctx.text_system.prefix_width(s, font),
+        );
+        let g = Geometria::de(area, rotulo_w, lista_w, visiveis.len(), camada.altura);
+        let camada = camada.desloca(g.camada.x, g.camada.y);
         let matriz = LayerMatrix::from_rows(crate::state::current().vivo.layer_matrix);
         let sob = pairada(ctx, &visiveis);
-        let aberta_n = camada_aberta();
         let editando = EDITANDO.get();
         let raio = frame_radius(theme, Radius::Sm.px());
+        let par = super::par_do_pe(sob, &nomes);
         let pe = frase_do_pe(sob, &nomes, &matriz, &visiveis, NOVA.get());
         let (titulo, pares_da_camada) = titulo_da_camada(
             aberta_n,
@@ -247,10 +263,12 @@ impl Quadro {
             matriz,
             add_rotulo,
             pe,
+            par,
             titulo,
             pares_da_camada,
             cabeca_dir,
             campo,
+            camada,
         }
     }
 

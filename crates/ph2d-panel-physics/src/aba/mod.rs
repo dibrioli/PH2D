@@ -38,6 +38,8 @@ thread_local! {
     pub(crate) static LENTE: std::cell::RefCell<Lente> = std::cell::RefCell::default();
     /// A camada acabada de criar no «+ Add»: o pé diz que ela nasce batendo em tudo.
     pub(crate) static NOVA: Cell<Option<usize>> = const { Cell::new(None) };
+    /// «+N more» aberto: a fila inteira dos objetos da camada aberta.
+    pub(crate) static MAIS: Cell<bool> = const { Cell::new(false) };
 }
 
 /// A aba existe (à frente ou atrás de Scene)?
@@ -123,6 +125,40 @@ pub fn lente() -> Lente {
 
 pub(crate) fn abre_camada(n: usize) {
     CAMADA.set(n.min(MAX_LAYERS - 1));
+    MAIS.set(false);
+}
+
+pub(crate) fn mostra_todos() {
+    MAIS.set(true);
+}
+
+/// A cor de uma camada: uma paleta de tokens indexada pelo número (nada se grava).
+#[must_use]
+pub fn cor_da_camada(n: usize) -> ph2d_tokens::ColorToken {
+    use ph2d_tokens::ColorToken as C;
+    const PALETA: [C; 9] = [
+        C::KanbanGreen,
+        C::KanbanSky,
+        C::KanbanPink,
+        C::KanbanYellow,
+        C::KanbanPurple,
+        C::KanbanOrange,
+        C::KanbanBlue,
+        C::KanbanLime,
+        C::KanbanRed,
+    ];
+    PALETA[n % PALETA.len()]
+}
+
+/// O par da frase do pé, em negrito: «Player Shots × Player:».
+#[must_use]
+pub fn par_do_pe(sob: Option<(usize, usize)>, nomes: &LayerNames) -> Option<String> {
+    sob.map(|(a, b)| {
+        tr_with(
+            "card.physics.tab_pair",
+            &[("a", &rotulo(nomes, a)), ("b", &rotulo(nomes, b))],
+        )
+    })
 }
 
 pub(crate) fn nova_camada(n: usize) {
@@ -194,7 +230,8 @@ pub fn frase_do_pe(
         } else {
             "card.physics.tab_pair_pass"
         };
-        return tr_with(chave, &[("a", &rotulo(nomes, a)), ("b", &rotulo(nomes, b))]);
+        let par = par_do_pe(Some((a, b)), nomes).unwrap_or_default();
+        return format!("{par} {}", tr(chave));
     }
     if nova.is_some_and(|n| visiveis.contains(&n)) {
         return tr("card.physics.tab_new_layer").to_owned();
@@ -240,6 +277,30 @@ pub(crate) fn declara_a_porta() {
     );
 }
 
+/// A cor da aba: em cartões, o tom da lista (como o editor de animações); `PH2D_CARDS=0`, o de antes.
+/// Macro: o tipo da cor é da `ph2d-vector`, que este painel não nomeia.
+macro_rules! tom {
+    ($t:expr, $theme:expr $(,)?) => {{
+        let t: ColorToken = $t;
+        let cartao = match t {
+            ColorToken::PanelBg => Some(ColorToken::KanbanList),
+            ColorToken::Bg1 => Some(ColorToken::KanbanCard),
+            ColorToken::Bg2 => Some(ColorToken::CardField),
+            ColorToken::Bg3 => Some(ColorToken::KanbanCardRaised),
+            ColorToken::Text1 => Some(ColorToken::KanbanCardFg),
+            ColorToken::Text2 | ColorToken::Text3 => Some(ColorToken::CardLabel),
+            _ => None,
+        };
+        match cartao.filter(|_| ph2d_editor_core::panel::cards::ferramenta::cards_on()) {
+            Some(c) => ph2d_editor_core::widget::card_ink::CardInk::of_list($theme)
+                .color(c)
+                .with_alpha(1.0),
+            None => resolve(t, $theme),
+        }
+    }};
+}
+
+mod camada;
 pub mod familia;
 mod geometria;
 mod pinta;

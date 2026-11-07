@@ -19,30 +19,39 @@ pub struct Geometria {
 }
 
 impl Geometria {
+    /// A largura da coluna da direita (a grade e a camada aberta), antes de saber as alturas.
     #[must_use]
-    pub fn de(area: Rect, rotulo_w: f32, lista_w: f32, k: usize) -> Self {
+    pub fn largura_direita(area: Rect, lista_w: f32) -> f32 {
+        let pad = Spacing::Md.px();
+        (area.w - (pad + pad + pad) - lista_w).max(0.0)
+    }
+
+    /// ⭐ Os dois cartões da direita têm o tamanho do conteúdo (maquete B): a grade com quadrados de uma
+    /// linha e um vão, e a camada aberta com `camada_h`. Sem altura, os quadrados encolhem até caber.
+    #[must_use]
+    pub fn de(area: Rect, rotulo_w: f32, lista_w: f32, k: usize, camada_h: f32) -> Self {
         let pad = Spacing::Md.px();
         let row = ROW_H_PX;
-        let lista = Rect::new(
-            area.x + pad,
-            area.y + pad,
-            lista_w,
-            (area.h - pad * 2.0).max(0.0),
-        );
-        let dx = lista.x + lista.w + pad;
-        let dw = (area.x + area.w - pad - dx).max(0.0);
-        let camada_h = row * 4.0; // LITERAL-PX-OK: título + duas filas da 9b + folga, em linhas
-        let grade_h = (lista.h - camada_h - pad).max(0.0);
-        let grade = Rect::new(dx, lista.y, dw, grade_h);
-        let camada = Rect::new(dx, grade.y + grade.h + pad, dw, camada_h);
+        let dx = area.x + pad * 2.0 + lista_w;
+        let dw = Self::largura_direita(area, lista_w);
         let n = k.max(1) as f32;
-        // Título (uma linha), rótulos de cima, as células e o pé (uma linha).
-        let livre_h = grade.h - (pad * 2.0 + Spacing::Lg.px()) - row * 2.0 - rotulo_w;
-        let livre_w = grade.w - pad * 2.0 - rotulo_w;
+        // Título (uma linha), rótulos de cima, as células e o pé (uma linha), com os vãos.
+        let fixo_h = pad + pad + pad + row * 2.0 + rotulo_w;
+        let livre_h = area.h - (pad + pad + pad) - camada_h - fixo_h;
+        let livre_w = dw - pad * 2.0 - rotulo_w;
         let passo = (livre_h / n)
             .min(livre_w / n)
             .min(row + Spacing::Sm.px())
             .max(Spacing::Md.px());
+        let grade = Rect::new(dx, area.y + pad, dw, fixo_h + passo * n);
+        let camada = Rect::new(dx, grade.y + grade.h + pad, dw, camada_h);
+        let lista_h = Spacing::Md.px() + Spacing::Sm.px() + row * (k + 2) as f32;
+        let lista = Rect::new(
+            area.x + pad,
+            area.y + pad,
+            lista_w,
+            (grade.h + pad + camada_h).max(lista_h),
+        );
         Self {
             lista,
             grade,
@@ -117,4 +126,27 @@ impl Geometria {
         let r = self.linha_da_lista(self.k);
         Rect::new(r.x, r.y + Spacing::Sm.px(), w, ROW_H_PX)
     }
+}
+
+/// Uma fila que quebra: um retângulo de uma linha por largura, da esquerda para a direita a partir de
+/// `(x, y)` dentro de `w`. Devolve os retângulos e quantas linhas ocupou.
+#[must_use]
+pub fn fila(x: f32, y: f32, w: f32, larguras: &[f32]) -> (Vec<Rect>, usize) {
+    let (vao, vao_v) = (Spacing::Sm.px(), Spacing::Xs.px());
+    let mut v = Vec::with_capacity(larguras.len());
+    let (mut cx, mut linha) = (x, 0usize);
+    for &lw in larguras {
+        if cx > x && cx + lw > x + w {
+            cx = x;
+            linha += 1;
+        }
+        v.push(Rect::new(
+            cx,
+            y + linha as f32 * (ROW_H_PX + vao_v),
+            lw,
+            ROW_H_PX,
+        ));
+        cx += lw + vao;
+    }
+    (v, if larguras.is_empty() { 0 } else { linha + 1 })
 }

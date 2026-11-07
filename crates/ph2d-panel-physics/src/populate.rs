@@ -126,6 +126,8 @@ pub fn populate(store: &mut WidgetStore) {
     for id in [
         crate::ids::PHYSICS_MATRIX_OPEN,
         crate::ids::PHYSICS_LAYER_ADD,
+        crate::ids::PHYSICS_LAYER_SELECT_ALL,
+        crate::ids::PHYSICS_LAYER_MORE,
     ] {
         button(store, id);
     }
@@ -133,6 +135,8 @@ pub fn populate(store: &mut WidgetStore) {
         .iter()
         .chain(&crate::ids::PHYSICS_LAYER_COL_LABEL)
         .chain(&crate::ids::PHYSICS_LAYER_LIST)
+        .chain(&crate::ids::PHYSICS_LAYER_BUMPS)
+        .chain(&crate::ids::PHYSICS_LAYER_OBJECT)
     {
         button(store, id);
     }

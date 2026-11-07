@@ -379,12 +379,24 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "card.physics.tab_grid_title" => "Who bumps into whom",
         "card.physics.tab_pairs" => "{n} {n?pair|pairs}",
+        // O par vai em negrito: a frase do pé é «{a} × {b}:» + o resto.
+        "card.physics.tab_pair" => "{a} × {b}:",
         "card.physics.tab_pair_bump" => {
-            "{a} × {b}: they bump into each other. Click to make them pass through."
+            "they bump into each other. Click to make them pass through."
         }
-        "card.physics.tab_pair_pass" => {
-            "{a} × {b}: they pass through each other. Click to make them bump."
+        "card.physics.tab_pair_pass" => "they pass through each other. Click to make them bump.",
+        "card.physics.tab_bumps_into" => "Bumps into",
+        "card.physics.tab_check" => "✓",
+        "card.physics.tab_bump_tip" => {
+            "Tick to make these two layers bump; untick to let them pass through."
         }
+        "card.physics.tab_objects" => "Objects on this layer",
+        "card.physics.tab_no_objects" => "Nothing is on this layer yet.",
+        "card.physics.tab_object_tip" => "Select this object in the scene and the Inspector",
+        "card.physics.tab_select_all" => "Select all",
+        "card.physics.tab_select_all_tip" => "Select every object on this layer",
+        "card.physics.tab_more" => "+{n} more",
+        "card.physics.tab_more_tip" => "Show every object on this layer",
         "card.physics.tab_summary" => {
             "{n} {n?pair|pairs} · {off} pass through. Double-click a name to rename it."
         }

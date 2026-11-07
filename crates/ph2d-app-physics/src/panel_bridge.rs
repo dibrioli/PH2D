@@ -56,6 +56,7 @@ pub fn publica_as_camadas(world: &ph2d_ecs::World, physics: &PhysicsBridge) {
     );
     ph2d_panel_physics::set_visible_layers(visiveis);
     ph2d_panel_physics::set_layer_counts(ph2d_physics_ecs::objects_per_layer(world));
+    ph2d_panel_physics::set_layer_objects(ph2d_physics_ecs::objects_on_layers(world));
     ph2d_panel_inspector::camadas_fisica::set_current(nomes.0, vivo, visiveis);
 }
 

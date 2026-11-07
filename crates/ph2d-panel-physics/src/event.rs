@@ -132,6 +132,50 @@ fn evento_do_nome(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<b
         }
         // Escrever não grava: um nome = um passo de undo, no Enter.
         WidgetEvent::TextChanged(id) if camada(id).is_some() => Some(true),
+        // «Bumps into»: a caixinha da camada `b` é a célula (aberta, b) — a mesma porta.
+        WidgetEvent::Click(id) if crate::ids::PHYSICS_LAYER_BUMPS.contains(&id) => {
+            seam_reset_button(host, id);
+            let b = crate::ids::PHYSICS_LAYER_BUMPS
+                .iter()
+                .position(|&c| c == id)
+                .expect("guard matched");
+            alterna_par(crate::aba::camada_aberta(), b);
+            Some(true)
+        }
+        // «Objects on this layer»: o botão seleciona o objeto; «Select all», todos (o primeiro troca a
+        // seleção, os outros juntam-se). A ordem é a da fila pintada (`layer_objects`).
+        WidgetEvent::Click(id)
+            if id == crate::ids::PHYSICS_LAYER_SELECT_ALL
+                || crate::ids::PHYSICS_LAYER_OBJECT.contains(&id) =>
+        {
+            seam_reset_button(host, id);
+            let objetos = state::layer_objects(crate::aba::camada_aberta());
+            let escolhidos: Vec<u64> = match crate::ids::PHYSICS_LAYER_OBJECT
+                .iter()
+                .position(|&c| c == id)
+            {
+                Some(k) => objetos.get(k).map(|o| o.0).into_iter().collect(),
+                None => objetos.iter().map(|o| o.0).collect(),
+            };
+            use ph2d_editor_core::action_bus::{EditorAction, SelectModifier};
+            for (k, entity_bits) in escolhidos.into_iter().enumerate() {
+                let modifier = if k == 0 {
+                    SelectModifier::Replace
+                } else {
+                    SelectModifier::Add
+                };
+                host.bus_mut().push(EditorAction::SelectSprite {
+                    entity_bits,
+                    modifier,
+                });
+            }
+            Some(true)
+        }
+        WidgetEvent::Click(id) if id == crate::ids::PHYSICS_LAYER_MORE => {
+            seam_reset_button(host, id);
+            crate::aba::mostra_todos();
+            Some(true)
+        }
         WidgetEvent::Click(id) if id == crate::ids::PHYSICS_MATRIX_OPEN => {
             seam_reset_button(host, id);
             crate::aba::abre(None);

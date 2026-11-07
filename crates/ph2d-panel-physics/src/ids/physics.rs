@@ -208,6 +208,29 @@ pub const fn physics_layer_cell_index(a: usize, b: usize) -> usize {
     hi * (hi + 1) / 2 + lo
 }
 
+/// «Bumps into» da camada aberta: a caixinha da camada `b` (a mesma edição da célula (aberta, b)).
+pub static PHYSICS_LAYER_BUMPS: [NodeId; MAX_LAYERS] = tabela_de(b"physics.layers.bumps_");
+/// Quantos botões de objeto a camada aberta tem (um id por botão; o resto fica em «+N more»).
+pub const PHYSICS_LAYER_OBJECTS: usize = MAX_LAYERS * 4;
+/// «Objects on this layer»: o botão do objeto `n` da fila (seleciona-o na cena e no Inspector).
+pub static PHYSICS_LAYER_OBJECT: [NodeId; PHYSICS_LAYER_OBJECTS] = tabela_dos_objetos();
+/// «Select all»: seleciona todos os objetos da camada aberta.
+pub const PHYSICS_LAYER_SELECT_ALL: NodeId = hash_node_id("physics.layers.select_all");
+/// «+N more»: abre a fila inteira dos objetos.
+pub const PHYSICS_LAYER_MORE: NodeId = hash_node_id("physics.layers.more");
+
+const fn tabela_dos_objetos() -> [NodeId; PHYSICS_LAYER_OBJECTS] {
+    let mut t = [NodeId(0); PHYSICS_LAYER_OBJECTS];
+    let mut n = 0;
+    while n < PHYSICS_LAYER_OBJECTS {
+        let (mut buf, at) = com_prefixo(b"physics.layers.object_");
+        let at = escreve_numero(&mut buf, at, n);
+        t[n] = hash_node_id_bytes(buf.split_at(at).0);
+        n += 1;
+    }
+    t
+}
+
 /// O grupo de arrasto das células (`interaction::toggle_paint`): arrastar pinta só a matriz.
 pub const PHYSICS_LAYER_PAINT_GROUP: &str = "physics.layers";
 
@@ -388,7 +411,14 @@ mod tabela_tests {
             .chain(&PHYSICS_LAYER_ROW_LABEL)
             .chain(&PHYSICS_LAYER_COL_LABEL)
             .chain(&PHYSICS_LAYER_LIST)
-            .chain(&[PHYSICS_MATRIX_OPEN, PHYSICS_LAYER_ADD])
+            .chain(&PHYSICS_LAYER_BUMPS)
+            .chain(&PHYSICS_LAYER_OBJECT)
+            .chain(&[
+                PHYSICS_MATRIX_OPEN,
+                PHYSICS_LAYER_ADD,
+                PHYSICS_LAYER_SELECT_ALL,
+                PHYSICS_LAYER_MORE,
+            ])
             .map(|n| n.0)
             .collect();
         let n = v.len();

@@ -158,6 +158,11 @@ impl AudioEngine {
         self.send(AudioCommand::PausePreview { paused })
     }
 
+    /// Pause (`true`) or resume (`false`) every scene voice, holding its position (the game's Pause).
+    pub fn pause_voices(&self, paused: bool) -> Result<(), AudioError> {
+        self.send(AudioCommand::PauseVoices { paused })
+    }
+
     /// Stop the preview and free its sample.
     pub fn stop_preview(&self) -> Result<(), AudioError> {
         self.send(AudioCommand::StopPreview)
@@ -428,6 +433,8 @@ pub struct AudioRenderer {
     preview_active: bool,
     /// Whether the preview is paused (holds position, renders silence).
     preview_paused: bool,
+    /// Whether scene voices are held (the game's Pause): position kept, silence rendered.
+    voices_paused: bool,
     format: AudioFormat,
 }
 
@@ -449,6 +456,7 @@ impl AudioRenderer {
             preview: Voice::silent(),
             preview_active: false,
             preview_paused: false,
+            voices_paused: false,
             format,
         }
     }
@@ -468,6 +476,7 @@ impl AudioRenderer {
             preview,
             preview_active,
             preview_paused,
+            voices_paused,
             format,
         } = self;
 
@@ -503,6 +512,7 @@ impl AudioRenderer {
                 AudioCommand::SetPreviewLooping { looping } => preview.set_looping(looping),
                 AudioCommand::SetPreviewLoopRegion { region } => preview.set_loop_region(region),
                 AudioCommand::PausePreview { paused } => *preview_paused = paused,
+                AudioCommand::PauseVoices { paused } => *voices_paused = paused,
                 AudioCommand::StopPreview => {
                     if let Some(old) = preview.free() {
                         on_finished(old);
@@ -522,16 +532,19 @@ impl AudioRenderer {
         //    `delay_send` accumulate the per-bus reverb / delay aux-sends.
         let mut bus_peaks = [[0.0f32; 2]; SUB_BUS_COUNT];
         let mut bus_rms = [[0.0f32; 2]; SUB_BUS_COUNT];
-        mixer.render(
-            master,
-            bus_scratch,
-            send,
-            delay_send,
-            &mut bus_peaks,
-            &mut bus_rms,
-            frames,
-            &mut on_finished,
-        );
+        // The game's Pause: voices keep their position, the block stays silent.
+        if !*voices_paused {
+            mixer.render(
+                master,
+                bus_scratch,
+                send,
+                delay_send,
+                &mut bus_peaks,
+                &mut bus_rms,
+                frames,
+                &mut on_finished,
+            );
+        }
 
         // 3b. Mix the editor preview voice into the master (so it is heard and
         //     metered). Paused → hold position, render nothing. Publish the

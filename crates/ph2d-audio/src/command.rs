@@ -235,6 +235,10 @@ pub(crate) enum AudioCommand {
     SetPreviewLooping {
         looping: bool,
     },
+    /// Hold every scene voice (the game's Pause).
+    PauseVoices {
+        paused: bool,
+    },
     /// Pause (`true`) or resume (`false`) the preview without losing its position.
     PausePreview {
         paused: bool,

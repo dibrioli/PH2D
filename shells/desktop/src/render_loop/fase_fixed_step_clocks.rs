@@ -88,6 +88,7 @@ impl crate::App {
         // `ph2d_app_components::impacto`.
         let a_correr = self.playhead.is_playing();
         let wall_dt = health_bars.impacto.retem(wall_dt, a_correr);
+        let wall_dt = ph2d_transport::world_dt(wall_dt, self.timeline.runtime, a_correr);
         let report = self.fixed_step.advance(wall_dt);
         if report.dropped_secs > 0.0 {
             // ⚠️⚠️ **UMA vez por corrida** (ordem do dono, 2026-09-19: *«podemos tirar os logs»*).

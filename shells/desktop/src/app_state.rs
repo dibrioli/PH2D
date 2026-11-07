@@ -151,6 +151,8 @@ pub(crate) struct App {
     /// **por quadro**. ⚠️ Um relatório impresso a 60 Hz não é diagnóstico, é ruído que
     /// esconde o que interessa; ele fala uma vez por MUDANÇA.
     pub(crate) last_audio_report: crate::render_loop::AudioSceneReport,
+    /// As vozes da cena estão retidas pelo Pause do jogo?
+    pub(crate) vozes_pausadas: bool,
     /// O último relatório da CÂMERA DE JOGO — a linha só fala quando ele MUDA.
     pub(crate) last_camera_report: crate::render_loop::CameraSceneReport,
     /// Set by the `K` key: on the next frame, insert a keyframe at the playhead

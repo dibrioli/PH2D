@@ -25,6 +25,14 @@ pub fn apply(cmd: TransportCmd, playhead: &mut Playhead) {
     }
 }
 
+/// ⭐ **O tempo que o mundo do jogo recebe** (dono 07/11: Godot e Unity congelam tudo). Com a corrida pausada, zero:
+/// física, animação, timers e o resto do passo fixo param juntos, e retomar não dá salto. Fora da corrida o editor
+/// segue com o tempo inteiro: a prévia de um sprite toca com o relógio parado.
+#[must_use]
+pub fn world_dt(wall_dt: f64, em_corrida: bool, a_tocar: bool) -> f64 {
+    if em_corrida && !a_tocar { 0.0 } else { wall_dt }
+}
+
 /// ⭐ **E o que o comando faz à CENA** (onda 4, item 1 — dono, 3.º smoke de 09/10: *«na Godot os
 /// marcados com Autoplay tocam no Play do runtime, o Play da barra superior»*): o Play de cima põe a
 /// cena a CORRER — cada objecto a Animação dele, em qualquer aba; o Reset de cima sai; o Pause só
@@ -44,6 +52,14 @@ mod tests {
 
     fn ph() -> Playhead {
         Playhead::new(1.0 / 60.0)
+    }
+
+    /// Mutação: devolver `wall_dt` sempre ⇒ o sprite continua a animar com o jogo pausado.
+    #[test]
+    fn a_corrida_pausada_congela_o_mundo_e_o_editor_nao() {
+        assert_eq!(world_dt(0.5, true, false), 0.0);
+        assert_eq!(world_dt(0.5, true, true), 0.5);
+        assert_eq!(world_dt(0.5, false, false), 0.5);
     }
 
     /// O Play de cima corre a cena, o Reset sai, o Pause não mexe na corrida.

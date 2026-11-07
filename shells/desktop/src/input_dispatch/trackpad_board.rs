@@ -10,6 +10,10 @@ impl App {
     /// W23 — dois dedos no trackpad (píxeis, sem Ctrl) MOVEM um quadro activo (o Miro); o resto é a
     /// roda de sempre. A pinça do toque passa pela roda (`touch_input`), não por aqui.
     pub(crate) fn on_wheel_event(&mut self, delta: MouseScrollDelta) {
+        // No palco a câmera é a do jogo: a roda não dá zoom na vista do editor.
+        if self.no_palco() {
+            return;
+        }
         use ph2d_editor_core::screens::hero::board_view::{BoardScroll, scroll};
         let (x, y) = self.last_pointer;
         if self.roda_pixel(delta) {

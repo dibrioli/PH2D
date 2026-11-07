@@ -53,6 +53,14 @@ pub struct FocoDoJogo {
     do_jogo: u8,
 }
 
+impl Cena {
+    /// O jogo está parado a meio, no palco: nada do editor, que está atrás, pode reagir.
+    #[must_use]
+    pub fn pausada_no_palco(self) -> bool {
+        self.palco && !self.a_correr
+    }
+}
+
 impl FocoDoJogo {
     /// O jogo tem o teclado: a cena corre, está à vista e o foco é dele.
     #[must_use]
@@ -84,7 +92,9 @@ impl FocoDoJogo {
         previa: bool,
         nome: &dyn std::fmt::Debug,
     ) -> Destino {
-        let d = destino(t, self.tem_o_teclado(cena), previa);
+        let mut d = destino(t, self.tem_o_teclado(cena), previa);
+        // ⭐ Jogo pausado no palco: a tecla nua não chega ao editor, que está atrás e não se vê (Delete, G, Tab…).
+        d.consumida |= cena.pausada_no_palco() && t.desceu && !t.acorde;
         if d.jogo
             && let Some(k) = chave
         {
@@ -111,7 +121,7 @@ impl FocoDoJogo {
         na_cena: bool,
     ) -> bool {
         let na_cena = desceu && na_cena && cena.a_vista;
-        crate::script_input::game_mouse(input, botao, desceu, na_cena);
+        crate::script_input::game_mouse(input, botao, desceu, na_cena && cena.a_correr);
         let bit = 1 << (botao as u8);
         if !desceu {
             let so = self.do_jogo & bit != 0;
@@ -120,7 +130,8 @@ impl FocoDoJogo {
         }
         // O botão do meio é a navegação da vista (o pan): o jogo vê-o, mas ele nunca é SÓ do jogo
         // (report do dono 27/10 — com o Play o pan morria).
-        let so = self.premido(input, cena, na_cena) && botao != ph2d_host::PointerButton::Middle;
+        let so = self.premido(input, cena, na_cena)
+            && (botao != ph2d_host::PointerButton::Middle || cena.palco);
         if so {
             self.do_jogo |= bit;
         } else {
@@ -133,9 +144,10 @@ impl FocoDoJogo {
     /// Um botão do rato premido: na cena dá o foco ao jogo, fora tira-o. `true` = o clique é SÓ do jogo (nenhum ramo
     /// do editor age, salvo os que são do jogo: o HUD e o laboratório de física).
     pub fn premido(&mut self, input: &mut InputState, cena: Cena, na_cena: bool) -> bool {
-        self.focado = na_cena;
+        // ⭐ No palco não há editor a quem dar o foco: um clique nos botões do jogo não tira o teclado ao jogo.
+        self.focado = na_cena || cena.palco;
         self.assenta(input, cena);
-        cena.a_correr && cena.a_vista && na_cena
+        (cena.a_correr || cena.palco) && cena.a_vista && na_cena
     }
 
     /// ⛔ Perder a posse LARGA tudo: uma seta presa ao pausar ou ao clicar num painel deixava o personagem a andar.
@@ -279,6 +291,65 @@ mod tests {
         palco: false,
     };
     const SETA: Key = Key(0x25);
+
+    const NO_PALCO: Cena = Cena {
+        a_correr: true,
+        a_vista: true,
+        palco: true,
+    };
+    const PAUSADA_NO_PALCO: Cena = Cena {
+        a_correr: false,
+        a_vista: true,
+        palco: true,
+    };
+
+    /// ⭐ Pausado em tela cheia, Delete e G não mexem no editor escondido.
+    /// Mutação: tirar o `|=` de `tecla` ⇒ a tecla chega aos atalhos do editor.
+    #[test]
+    fn pausado_no_palco_a_tecla_nao_chega_ao_editor_nem_ao_jogo() {
+        let mut input = InputState::default();
+        let f = FocoDoJogo::default();
+        let t = Tecla {
+            desceu: true,
+            acorde: false,
+            shift: false,
+            f5: false,
+            repete: false,
+        };
+        let d = f.tecla(&mut input, PAUSADA_NO_PALCO, t, Some(SETA), false, &"G");
+        assert!(d.consumida);
+        assert!(!d.jogo);
+    }
+
+    /// ⭐ Pausado em tela cheia, o clique no jogo não seleciona nem abre nada no editor.
+    #[test]
+    fn pausado_no_palco_o_clique_nao_chega_ao_editor() {
+        use ph2d_host::PointerButton as B;
+        for botao in [B::Primary, B::Secondary, B::Middle] {
+            let (mut input, mut f) = (InputState::default(), FocoDoJogo::default());
+            assert!(
+                f.clique(&mut input, PAUSADA_NO_PALCO, botao, true, true),
+                "{botao:?}"
+            );
+        }
+    }
+
+    /// ⭐ Clicar um botão do jogo com o jogo a correr não tira o teclado ao jogo.
+    /// Mutação: voltar a `self.focado = na_cena` ⇒ o personagem deixa de responder depois do clique.
+    #[test]
+    fn um_clique_nos_botoes_do_palco_nao_tira_o_teclado() {
+        let (mut input, mut f) = (InputState::default(), FocoDoJogo::default());
+        f.quadro(&mut input, NO_PALCO);
+        assert!(f.tem_o_teclado(NO_PALCO));
+        assert!(!f.clique(
+            &mut input,
+            NO_PALCO,
+            ph2d_host::PointerButton::Primary,
+            true,
+            false
+        ));
+        assert!(f.tem_o_teclado(NO_PALCO));
+    }
 
     fn nua(desceu: bool) -> Tecla {
         Tecla {

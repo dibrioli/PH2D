@@ -9,6 +9,14 @@ use super::*;
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_scene_audio(&mut self) {
+        // O Pause do jogo cala as vozes e guarda a posição; uma vez por mudança.
+        let parado = self.timeline.runtime && !self.playhead.is_playing();
+        if parado != self.vozes_pausadas {
+            self.vozes_pausadas = parado;
+            if let Some(a) = self.audio.as_ref() {
+                let _ = a.pause_voices(parado);
+            }
+        }
         // O `gfx` re-derivado; os guardas do quadro já correram na `fase_chrome_clock`.
         let Some(gfx) = self.gfx.as_mut() else {
             return;

@@ -320,6 +320,11 @@ impl AudioSystem {
         self.engine.levels()
     }
 
+    /// O Pause do jogo: as vozes da cena calam e guardam a posição.
+    pub fn pause_voices(&self, paused: bool) -> Result<(), ph2d_audio::AudioError> {
+        self.engine.pause_voices(paused)
+    }
+
     /// Current post-fader peak levels per sub-bus, for the strip meters.
     pub fn bus_levels(&self) -> [[f32; 2]; SUB_BUS_COUNT] {
         self.engine.bus_levels()

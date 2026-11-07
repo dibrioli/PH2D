@@ -238,6 +238,7 @@ impl Mixer {
             | AudioCommand::SetPreviewLooping { .. }
             | AudioCommand::SetPreviewLoopRegion { .. }
             | AudioCommand::PausePreview { .. }
+            | AudioCommand::PauseVoices { .. }
             | AudioCommand::StopPreview => {}
         }
     }

@@ -27,7 +27,12 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     let cmd = if id == ids::TOPBAR_PLAY_BUTTON {
         TransportCmd::Play
     } else if id == ids::TOPBAR_PAUSE {
-        TransportCmd::Pause
+        // ⭐ O Pause alterna, como na Godot e na Unity: pausado, ele retoma.
+        if hero.view.game_run.paused() {
+            TransportCmd::Play
+        } else {
+            TransportCmd::Pause
+        }
     } else if id == ids::TOPBAR_RESET {
         TransportCmd::Reset
     } else {
@@ -42,6 +47,21 @@ mod tests {
     use super::*;
     use crate::screens::hero::HeroScreen;
     use ph2d_a11y::NodeId;
+
+    /// Mutação: tirar o `paused()` ⇒ o segundo clique no Pause não faz nada.
+    #[test]
+    fn o_pause_com_o_jogo_pausado_retoma() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.view.game_run = crate::game_stage::GameRun {
+            stage: Some(crate::game_stage::GameStage::Fullscreen),
+            playing: false,
+        };
+        assert!(apply(&mut hero, WidgetEvent::Click(ids::TOPBAR_PAUSE)));
+        assert!(matches!(
+            hero.bus.drain().collect::<Vec<_>>().as_slice(),
+            [EditorAction::Transport(TransportCmd::Play)]
+        ));
+    }
 
     /// The seam gate: clicking each transport chip, driven through the WHOLE
     /// `dispatch_all` chain (not this handler in isolation), raises exactly

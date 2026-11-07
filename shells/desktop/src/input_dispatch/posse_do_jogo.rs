@@ -61,6 +61,10 @@ impl crate::App {
                     hero.bus.push(EditorAction::Transport(TransportCmd::Play));
                 }
             }
+            // No palco não há onde mostrar o aviso: ele apareceria só depois de parar.
+            (Some(Transporte::Alterna), Some(_)) if cena.palco => {
+                self.playhead.toggle_play();
+            }
             (Some(Transporte::Alterna), Some(gfx)) => {
                 alterna_o_relogio(
                     self.timeline.containers_list,

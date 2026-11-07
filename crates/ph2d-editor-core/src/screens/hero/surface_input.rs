@@ -195,6 +195,16 @@ pub fn undo(hero: &mut HeroScreen, redo: bool) -> Option<bool> {
     Some(f.undo(id, redo))
 }
 
+/// A aba de família activa responde ela própria ao desfazer ([`undo`] devolveria `Some`)?
+#[must_use]
+pub fn owns_undo(hero: &mut HeroScreen) -> bool {
+    !hero.text_entry_focused()
+        && hero
+            .documents
+            .active_surface_mut()
+            .is_some_and(|(f, _)| !f.undo_is_the_projects())
+}
+
 /// O nó `Window` do ecrã; com uma aba de família activa, o `Document` dela é o filho.
 #[must_use]
 pub(super) fn window_node(hero: &HeroScreen, viewport: crate::zones::Rect) -> ph2d_a11y::Node {

@@ -1,14 +1,19 @@
-//! **As fotos dos cartões de física** (`PH2D_GAME_SMOKE=4`, `PH2D_GAME_SMOKE_FOTO=fisica_*`, GEF02): um objecto por
-//! face do cartão, selecionado e com a secção aberta. Irmão de [`super`] para duas linhas não colidirem na lista.
+//! **As fotos dos cartões de física** (`PH2D_GAME_SMOKE=4`, `PH2D_GAME_SMOKE_FOTO=fisica_*`, ficha f1): um objecto por
+//! face do cartão, sobre o nível do jogo. Folha: `ph2d-app-game` (pela catraca da crate) só as pede.
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{
-    ChildOf, Name, SimWorld, Transform, assign_missing_root_order, assign_missing_stable_ids,
+    ChildOf, Entity, Name, SimWorld, Transform, assign_missing_root_order,
+    assign_missing_stable_ids,
 };
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, RigidBody};
 use ph2d_render::{Sprite, WHITE_TILE_KEY};
 
-use super::por_nome;
+fn por_nome(sim: &mut SimWorld, nome: &str) -> Option<Entity> {
+    let w = sim.world_mut();
+    let mut q = w.query::<(Entity, &Name)>();
+    q.iter(w).find(|(_, n)| n.0 == nome).map(|(e, _)| e)
+}
 
 /// Que face do cartão a foto mostra.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -26,6 +31,8 @@ pub enum CasoFisica {
     Esticada,
     /// O Player do nível: cápsula, com o cartão do jogador ao lado.
     Player,
+    /// O Player com os cartões de cima dobrados, para Body e Shape caberem na foto.
+    PlayerCartoes,
     /// Uma forma sem corpo acima: a «Collision Shape» acabada de nascer do menu Add.
     Solta,
     /// Uma forma dentro de um corpo.
@@ -47,6 +54,7 @@ pub fn caso(nome: &str) -> Option<CasoFisica> {
         "bola" => CasoFisica::Bola,
         "esticada" => CasoFisica::Esticada,
         "player" => CasoFisica::Player,
+        "player_cartoes" => CasoFisica::PlayerCartoes,
         "solta" => CasoFisica::Solta,
         "peca" => CasoFisica::Peca,
         "vazia" => CasoFisica::Vazia,
@@ -60,14 +68,16 @@ const CAIXA: ColliderShape = ColliderShape::Cuboid {
 };
 
 /// Monta o caso no mundo e devolve quem fica selecionado.
-pub fn prepara(sim: &mut SimWorld, caso: CasoFisica) -> Option<u64> {
-    let onde = Transform::from_translation(Vec2::new(super::ONDE_LARGA[0], super::ONDE_LARGA[1]));
+pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u64> {
+    let onde = Transform::from_translation(Vec2::new(onde[0], onde[1]));
     let imagem = Sprite::atlas(WHITE_TILE_KEY, [1.0, 1.0], [1.0; 4]);
     let corpo = |kind| RigidBody { kind };
     let pai = por_nome(sim, "Platform High")?;
     match caso {
         CasoFisica::Static => return Some(pai.to_bits()),
-        CasoFisica::Player => return por_nome(sim, "Player").map(|e| e.to_bits()),
+        CasoFisica::Player | CasoFisica::PlayerCartoes => {
+            return por_nome(sim, "Player").map(|e| e.to_bits());
+        }
         CasoFisica::Baixa | CasoFisica::Larga => {
             return por_nome(sim, "Platform Low").map(|e| e.to_bits());
         }
@@ -75,7 +85,11 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica) -> Option<u64> {
     }
     let w = sim.world_mut();
     let alvo = match caso {
-        CasoFisica::Static | CasoFisica::Player | CasoFisica::Baixa | CasoFisica::Larga => {
+        CasoFisica::Static
+        | CasoFisica::Player
+        | CasoFisica::PlayerCartoes
+        | CasoFisica::Baixa
+        | CasoFisica::Larga => {
             unreachable!("voltam acima")
         }
         CasoFisica::Dynamic | CasoFisica::Kinematic | CasoFisica::Bola | CasoFisica::Esticada => {
@@ -130,4 +144,26 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica) -> Option<u64> {
     assign_missing_stable_ids(w);
     assign_missing_root_order(w);
     Some(alvo.to_bits())
+}
+
+/// O que o Player tem agora, numa linha (o tamanho, o ladrilho, o corte e a memória por uso).
+#[must_use]
+pub fn estado_do_player(sim: &mut SimWorld) -> String {
+    let Some(e) = por_nome(sim, "Player") else {
+        return "sem Player".into();
+    };
+    let w = sim.world();
+    format!(
+        "size={:?} tiled={:?} grid={:?} area={:?} anims={} memoria={:?}",
+        w.get::<ph2d_render::Sprite>(e).map(|s| s.size),
+        w.get::<ph2d_ecs::TiledDraw>(e).map(|t| t.tile),
+        w.get::<ph2d_ecs::SpriteGrid>(e)
+            .map(|g| (g.hframes, g.vframes)),
+        w.get::<ph2d_ecs::SpriteRegion>(e).map(|r| r.rect),
+        w.get::<ph2d_ecs::SpriteAnimations>(e).is_some(),
+        w.get::<ph2d_ecs::ImageUseMemory>(e)
+            .map(|m| [&m.still, &m.repeated, &m.animated].map(|s| s
+                .as_ref()
+                .and_then(|s| s.look.map(|l| (l.size, l.tiled.map(|t| t.tile)))))),
+    )
 }

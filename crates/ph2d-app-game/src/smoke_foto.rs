@@ -78,13 +78,13 @@ pub enum Foto {
     /// o realce lê o Motion em todos; com `PH2D_SONDA` é a mão da medida intercalada.
     OrdemSonda,
     /// GEF02: uma face do cartão de física.
-    Fisica(super::smoke_foto_fisica::CasoFisica),
+    Fisica(ph2d_physics_scene::fotos_dos_cartoes::CasoFisica),
 }
 
 #[must_use]
 pub fn foto() -> Option<Foto> {
     let pedida = std::env::var("PH2D_GAME_SMOKE_FOTO").ok()?;
-    if let Some(c) = super::smoke_foto_fisica::caso(pedida.trim()) {
+    if let Some(c) = ph2d_physics_scene::fotos_dos_cartoes::caso(pedida.trim()) {
         return Some(Foto::Fisica(c));
     }
     match pedida.trim() {
@@ -314,8 +314,9 @@ pub fn plano_da_foto(
         // A mão da sonda é da cena da ordem, não do nível do jogo.
         Foto::OrdemSonda => return None,
         Foto::Fisica(c) => {
-            plano.alvo = super::smoke_foto_fisica::prepara(sim, c)?;
-            if c == super::smoke_foto_fisica::CasoFisica::Larga {
+            use ph2d_physics_scene::fotos_dos_cartoes as fisica;
+            plano.alvo = fisica::prepara(sim, c, ONDE_LARGA)?;
+            if c == fisica::CasoFisica::Larga {
                 plano.edicoes = vec![(plano.alvo, ph2d_editor_core::ImageUseEdit::Width(4.0))];
             }
         }
@@ -529,26 +530,4 @@ pub fn uso_no_quadro(n: usize) -> Option<usize> {
     let q = QUADRO_DOS_USOS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     let i = (q / QUADROS_POR_USO) as usize;
     (q % QUADROS_POR_USO == QUADROS_POR_USO / 2 && i >= 1 && i <= n).then(|| i - 1)
-}
-
-/// O que o Player tem agora, numa linha (o tamanho, o ladrilho, o corte e a memória por uso).
-#[must_use]
-pub fn estado_do_player(sim: &mut SimWorld) -> String {
-    let Some(e) = por_nome(sim, "Player") else {
-        return "sem Player".into();
-    };
-    let w = sim.world();
-    format!(
-        "size={:?} tiled={:?} grid={:?} area={:?} anims={} memoria={:?}",
-        w.get::<ph2d_render::Sprite>(e).map(|s| s.size),
-        w.get::<ph2d_ecs::TiledDraw>(e).map(|t| t.tile),
-        w.get::<ph2d_ecs::SpriteGrid>(e)
-            .map(|g| (g.hframes, g.vframes)),
-        w.get::<ph2d_ecs::SpriteRegion>(e).map(|r| r.rect),
-        w.get::<ph2d_ecs::SpriteAnimations>(e).is_some(),
-        w.get::<ph2d_ecs::ImageUseMemory>(e)
-            .map(|m| [&m.still, &m.repeated, &m.animated].map(|s| s
-                .as_ref()
-                .and_then(|s| s.look.map(|l| (l.size, l.tiled.map(|t| t.tile)))))),
-    )
 }

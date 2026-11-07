@@ -92,7 +92,7 @@ Capsule: Height = 2 × (Half Height + Radius). Os ids `INSP_PHYS_*` ficam, para 
 
 - `PH2D_GAME_SMOKE=4` + `PH2D_GAME_SMOKE_FOTO=fisica_{dynamic,static,kinematic,sensor,bola,player,solta,peca,vazia,baixa,larga}`,
   com `docs/Components/ferramentas/fotografa_cena.sh` em 1930 × 2700.
-- `cargo-test-narrow.sh ph2d-physics-ecs density_sem_efeito` · `ph2d-app-sprite-anim colisao_segue`.
+- `cargo-test-narrow.sh ph2d-physics-ecs density_sem_efeito` · `ph2d-panel-registry-init colisao_segue`.
 - **Onda 1:** `cargo-test-narrow.sh ph2d-panel-inspector o_cartao_da_fisica` (varredura do mapa por tipo, com as dobras
   abertas: gesto real → edição certa; Density, Fit, escala, recibo, 200 px) · `seam_physics` · `seam_px_m` ·
   `ph2d-app-physics fit_to_picture` · `density_fica` · `undoing_remove` (o Undo é real: a captura do undo repõe corpo e

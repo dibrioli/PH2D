@@ -22,6 +22,7 @@ mod a_tab_dragged_to_another_dock_moves_the_panel;
 mod a_tinta_de_base_no_cartao;
 mod cartoes_mao;
 mod censo_estados;
+mod colisao_segue_a_largura;
 mod diag_os_comandos_do_vector;
 mod f7_fotos;
 mod global_palette_catalog;

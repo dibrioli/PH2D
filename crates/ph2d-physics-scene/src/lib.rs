@@ -13,6 +13,8 @@
 //! do jogo (`ph2d_app_game::smoke`) põe os MESMOS blocos e o MESMO jogador, e uma família não chama
 //! outra (gate `architecture_no_dependency_climbs_a_layer`).
 
+pub mod fotos_dos_cartoes;
+
 use bevy_ecs::world::World;
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name, Transform};

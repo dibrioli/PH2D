@@ -192,6 +192,9 @@ ph2d-vec-scene = { path = "../ph2d-vec-scene" }
 ph2d-gpu = { path = "../ph2d-gpu" }
 ph2d-render = { path = "../ph2d-render" }
 image = { version = "0.25", default-features = false, features = ["png"] }
+# Só para `colisao_segue_a_largura`: o Width da imagem repetida e a física de verdade (a família não leva o teste, pela catraca).
+ph2d-app-sprite-anim = { path = "../ph2d-app-sprite-anim" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 
 [lints]
 workspace = true

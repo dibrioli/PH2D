@@ -23,7 +23,6 @@ struct Mesa {
     host: MockPanelHost,
     st: PhysicsPanelState,
     rects: Vec<(NodeId, Rect)>,
-    relogio: u64,
 }
 
 impl Mesa {
@@ -38,7 +37,6 @@ impl Mesa {
             host: MockPanelHost::with_panel::<PhysicsPanel>(),
             st: PhysicsPanelState,
             rects: Vec::new(),
-            relogio: 0,
         };
         m.host.set_collapsed(ids::PHYSICS_SEC_LAYERS, false);
         m.pinta();
@@ -72,9 +70,7 @@ impl Mesa {
 
     fn aplica(&mut self, ev: Vec<WidgetEvent>) -> Vec<PhysicsIntent> {
         for e in ev {
-            let _ = self
-                .host
-                .apply_panel_event::<PhysicsPanel>(&mut self.st, e);
+            let _ = self.host.apply_panel_event::<PhysicsPanel>(&mut self.st, e);
         }
         drain_intents()
     }
@@ -140,10 +136,7 @@ fn mundo_de(intents: &[PhysicsIntent]) -> LayerMatrix {
 #[test]
 fn abre_pelo_painel_mostra_as_32_e_a_celula_alta_escreve_o_par() {
     let mut mesa = Mesa::nova(LayerNames::default(), false);
-    assert!(
-        mesa.rect(celula(0, 0)).is_none(),
-        "a grelha saiu do painel"
-    );
+    assert!(mesa.rect(celula(0, 0)).is_none(), "a grelha saiu do painel");
     let _ = mesa.clica(ids::PHYSICS_MATRIX_OPEN);
     mesa.pinta();
     assert!(modal::aberto());
@@ -153,7 +146,10 @@ fn abre_pelo_painel_mostra_as_32_e_a_celula_alta_escreve_o_par() {
                 .rect(celula(a, b))
                 .unwrap_or_else(|| panic!("({a},{b}) não pintada"));
             assert!(
-                r.x >= JANELA.x && r.y >= JANELA.y && r.x + r.w <= JANELA.w && r.y + r.h <= JANELA.h,
+                r.x >= JANELA.x
+                    && r.y >= JANELA.y
+                    && r.x + r.w <= JANELA.w
+                    && r.y + r.h <= JANELA.h,
                 "({a},{b}) fora da janela: {r:?}"
             );
         }
@@ -319,7 +315,10 @@ fn projeto_sem_nomes_mostra_layer_n_e_nao_grava_nomes() {
     for n in 0..MAX_LAYERS {
         assert_eq!(modal::rotulo(&sem, n), format!("Layer {n}"));
     }
-    assert!(sem.to_bytes().is_empty(), "o «Layer n» nunca vai ao ficheiro");
+    assert!(
+        sem.to_bytes().is_empty(),
+        "o «Layer n» nunca vai ao ficheiro"
+    );
 }
 
 /// A face clássica (`PH2D_CARDS=0`) mostra o resumo e o mesmo «Edit matrix…», que abre o MESMO modal.

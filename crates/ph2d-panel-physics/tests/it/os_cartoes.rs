@@ -14,7 +14,7 @@ use ph2d_panel_physics::{
     PhysicsIntent, PhysicsPanel, cards, drain_intents, ids, interact, rows, set_current_physics,
 };
 use ph2d_physics_ecs::{
-    HoldMode, InteractionSettings, InteractionTool, JointTool, LayerMatrix, PhysicsSettings,
+    HoldMode, InteractionSettings, InteractionTool, JointTool, PhysicsSettings,
 };
 use ph2d_ui_testkit::MockPanelHost;
 

@@ -10,11 +10,11 @@
 use std::cell::Cell;
 
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::panel::camada_das_listas;
 use ph2d_editor_core::paint::{
     fill_rounded_rect, frame_radius, paint_text, paint_text_rotated_ccw, resolve,
 };
+use ph2d_editor_core::panel::PaintCtx;
+use ph2d_editor_core::panel::camada_das_listas;
 use ph2d_editor_core::widget::{
     Button, ButtonState, Modal, TextInput, paint_modal, paint_text_input_with_buffer,
 };
@@ -95,7 +95,12 @@ pub fn resumo() -> String {
     let visiveis = crate::state::visible_layers();
     let desligados = visiveis
         .iter()
-        .flat_map(|&a| visiveis.iter().filter(move |&&b| b <= a).map(move |&b| (a, b)))
+        .flat_map(|&a| {
+            visiveis
+                .iter()
+                .filter(move |&&b| b <= a)
+                .map(move |&b| (a, b))
+        })
         .filter(|&(a, b)| !m.collides(a, b))
         .count();
     tr_with(
@@ -225,7 +230,10 @@ pub(crate) fn fotos(ctx: &mut PaintCtx) {
                 let name = tr_with("card.physics.layer_name", &[("n", &n.to_string())]);
                 ctx.host
                     .bus_mut()
-                    .push(ph2d_editor_core::action_bus::EditorAction::LayerRename { layer: n, name });
+                    .push(ph2d_editor_core::action_bus::EditorAction::LayerRename {
+                        layer: n,
+                        name,
+                    });
             }
         }
         "nome" => {

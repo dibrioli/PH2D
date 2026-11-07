@@ -28,8 +28,6 @@ use bumpalo::Bump;
 use bumpalo::collections::Vec as BumpVec;
 use ph2d_host::{KeyEvent, KeyKind};
 
-/// Entry point for key events. Tab / Shift+Tab traverse the focus
-/// chain; Enter / Space activate the focused widget; Escape blurs.
 thread_local! {
     static ESC_FECHA: std::cell::Cell<Option<ph2d_a11y::NodeId>> = const { std::cell::Cell::new(None) };
 }
@@ -43,6 +41,8 @@ fn esc_fecha_atual() -> Option<ph2d_a11y::NodeId> {
     ESC_FECHA.get()
 }
 
+/// Entry point for key events. Tab / Shift+Tab traverse the focus
+/// chain; Enter / Space activate the focused widget; Escape blurs.
 pub fn dispatch_key<'frame>(
     store: &mut WidgetStore,
     event: KeyEvent,
@@ -264,9 +264,9 @@ pub fn dispatch_key<'frame>(
         // Um modal aberto sem campo de texto em foco: Esc é o clique no X dele (`esc_fecha`).
         KEY_ESCAPE
             if esc_fecha_atual().is_some()
-                && !store
-                    .focus_id()
-                    .is_some_and(|f| matches!(store.get(f), Some(InteractiveState::TextInput { .. }))) =>
+                && !store.focus_id().is_some_and(|f| {
+                    matches!(store.get(f), Some(InteractiveState::TextInput { .. }))
+                }) =>
         {
             store.set_focus(None);
             if let Some(id) = esc_fecha_atual() {

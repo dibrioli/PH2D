@@ -19,8 +19,9 @@ fn nome_da_camada(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     match ev {
         WidgetEvent::DoubleClick(id) if id == crate::ids::INSP_PHYS_LAYER_PICK => {
             let store = host.store_mut();
-            if let Some(ph2d_editor_core::interaction::InteractiveState::Dropdown { open, .. }) =
-                store.get_mut(id)
+            if let Some(ph2d_editor_core::interaction::InteractiveState::Dropdown {
+                open, ..
+            }) = store.get_mut(id)
             {
                 *open = false;
             }

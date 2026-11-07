@@ -60,45 +60,13 @@ pub fn visible_layers() -> Vec<usize> {
         .collect()
 }
 
-pub(crate) fn visible_bits() -> u32 {
-    VISIVEIS.get()
-}
+/// Com o painel fechado: o modal das camadas segue aberto se o Inspector o abriu (ele não é do painel).
+pub fn painel_fechado() {}
 
-thread_local! {
-    /// A linha da matriz em destaque depois do «Edit matrix…»; dura enquanto o painel estiver aberto.
-    static DESTAQUE: Cell<Option<usize>> = const { Cell::new(None) };
-    /// Quadros que ainda trazem a linha à vista: a dobra abre em mola, e a altura muda enquanto abre.
-    static A_REVELAR: Cell<u8> = const { Cell::new(0) };
-}
-
-const QUADROS_A_REVELAR: u8 = 45;
-
-pub(crate) fn destaca_a_linha(layer: usize) {
-    DESTAQUE.set(Some(layer));
-    A_REVELAR.set(QUADROS_A_REVELAR);
-}
-
-pub(crate) fn apaga_o_destaque() {
-    DESTAQUE.set(None);
-    A_REVELAR.set(0);
-}
-
-/// Com o painel fechado: sem destaque para o reabrir pelo menu, e sem região da roda.
-pub fn painel_fechado() {
-    apaga_o_destaque();
-}
-
-/// A linha da matriz em destaque.
+/// A linha da matriz em destaque: a do modal (onda 8).
 #[must_use]
 pub fn destaque() -> Option<usize> {
-    DESTAQUE.get()
-}
-
-/// Este quadro ainda traz a linha à vista?
-pub(crate) fn gasta_um_quadro_a_revelar() -> bool {
-    let n = A_REVELAR.get();
-    A_REVELAR.set(n.saturating_sub(1));
-    n > 0
+    crate::modal::linha_em_destaque()
 }
 
 /// Uma vez por quadro: a tabela de nomes das camadas do projeto.

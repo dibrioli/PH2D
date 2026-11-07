@@ -54,8 +54,6 @@ pub fn alterna_par(a: usize, b: usize) {
     });
 }
 
-/// O valor da barra da grelha que deixa a linha `layer` à vista, com as visíveis `bits`.
-
 /// «Edit matrix…» do Inspector: o modal das camadas, com a linha da camada do objeto acesa.
 pub fn abre_a_matriz(_host: &mut dyn PanelHostInternal, layer: u8) {
     crate::modal::abre(Some(usize::from(layer)));
@@ -78,7 +76,9 @@ fn evento_do_nome(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<b
             let nome = state::layer_names().0[n].clone();
             let store = host.store_mut();
             if let Some(ph2d_editor_core::interaction::InteractiveState::TextInput {
-                text, caret, ..
+                text,
+                caret,
+                ..
             }) = store.get_mut(campo)
             {
                 *caret = nome.len();

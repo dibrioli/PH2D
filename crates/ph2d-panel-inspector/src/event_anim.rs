@@ -29,6 +29,9 @@ pub(crate) fn apply_anim_event(
     let sel = panel.anim_selected.min(info.rows.len().saturating_sub(1));
     let sel_u8 = u8::try_from(sel).unwrap_or(0);
 
+    if crate::cards_anim::evento_do_nome(panel, host, &info, ev) {
+        return true;
+    }
     if crate::event_anim_card::apply_card_event(panel, host, &info, ev) {
         return true;
     }

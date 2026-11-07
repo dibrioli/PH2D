@@ -96,6 +96,25 @@ fn linha_do_tamanho(info: &InspectorSpriteInfo) -> Option<String> {
     Some(tamanho_em_px((pw, ph)))
 }
 
+/// Em Animated a linha diz o corte (`1536 × 768 px · 8 × 4`): a grade mora no editor. A forma mais curta é só o corte.
+fn formas_com_o_corte(info: &InspectorSpriteInfo) -> Vec<String> {
+    let (c, l) = (info.hframes, info.vframes);
+    let mut formas: Vec<String> = info
+        .source_pixels
+        .into_iter()
+        .flat_map(|(pw, ph)| {
+            [
+                "card.insp.image_size_cut",
+                "card.insp.image_size_cut_bare",
+                "card.insp.image_size_cut_tight",
+            ]
+            .map(|k| tr_with(k, &[("pw", &pw), ("ph", &ph), ("c", &c), ("l", &l)]))
+        })
+        .collect();
+    formas.push(tamanho_nu((c, l)));
+    formas
+}
+
 fn tamanho_em_px((pw, ph): (u32, u32)) -> String {
     tr_with(
         "panel.inspector.render_source.size_px",
@@ -141,14 +160,18 @@ struct Moldura<'a> {
 pub(crate) fn cabeca(c: &mut CardCtx<'_>, y: f32, info: &InspectorSpriteInfo) -> f32 {
     let img = slot_image::current_slot_image(info.entity_bits);
     let nome = nome_da_imagem(img.as_ref());
-    let tamanhos = linha_do_tamanho(info)
-        .into_iter()
-        .chain(
-            info.source_pixels
-                .into_iter()
-                .flat_map(|px| [tamanho_em_px(px), tamanho_nu(px)]),
-        )
-        .collect();
+    let tamanhos = if info.image_use == InspectorImageUse::Animated {
+        formas_com_o_corte(info)
+    } else {
+        linha_do_tamanho(info)
+            .into_iter()
+            .chain(
+                info.source_pixels
+                    .into_iter()
+                    .flat_map(|px| [tamanho_em_px(px), tamanho_nu(px)]),
+            )
+            .collect()
+    };
     let verbos = [Verbo {
         id: ids::INSP_IMAGE_EDIT_PAINTER,
         seta: IconId::Export,

@@ -54,7 +54,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.anchors.kind_riding" => "{kind} \u{b7} {n} riding",
         "panel.inspector.anchors.title_count" => "Sockets / Anchors  ({n})",
         "panel.inspector.animation.frame_of" => "Frame {n} / {span}",
-        "panel.inspector.animation.title_count" => "Animation  ({n})",
+        "panel.inspector.animation.title_count" => "Animation ({n})",
         "panel.inspector.audio.listeners_this_one" => {
             "The scene has {n} listeners \u{b7} this is the one in use."
         }

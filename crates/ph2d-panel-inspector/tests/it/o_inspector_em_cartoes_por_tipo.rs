@@ -33,7 +33,7 @@ use ph2d_panel_inspector::{
 use ph2d_tool_vector::ids as vids;
 use ph2d_ui_testkit::MockPanelHost;
 
-const BITS: u64 = 0x00AB_CD12;
+pub(crate) const BITS: u64 = 0x00AB_CD12;
 const JANELA: Rect = Rect {
     x: 0.0,
     y: 0.0,
@@ -41,7 +41,7 @@ const JANELA: Rect = Rect {
     h: 8000.0,
 };
 
-fn limpa() {
+pub(crate) fn limpa() {
     set_cards_on(false);
     set_current_inspector_sprite(None);
     set_current_inspector_transform(None);
@@ -53,7 +53,7 @@ fn limpa() {
     set_current_inspector_anim(None);
 }
 
-fn objeto() {
+pub(crate) fn objeto() {
     set_current_inspector_transform(Some(InspectorTransformInfo {
         entity_bits: BITS,
         translation: [0.0, 0.0],
@@ -84,7 +84,7 @@ fn objeto() {
     }));
 }
 
-fn sprite(uso: InspectorImageUse) -> InspectorSpriteInfo {
+pub(crate) fn sprite(uso: InspectorImageUse) -> InspectorSpriteInfo {
     InspectorSpriteInfo {
         entity_bits: BITS,
         image_use: uso,

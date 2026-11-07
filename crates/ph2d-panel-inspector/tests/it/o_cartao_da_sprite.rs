@@ -789,7 +789,7 @@ fn tint_each_corner_aberto_e_de_um_objecto_so() {
 }
 
 /// Os campos do cartão: um grupo é um só campo (o seletor Use, a grade do Pivot, o par Strategy).
-fn campos_da_sprite() -> Vec<Vec<NodeId>> {
+pub(crate) fn campos_da_sprite() -> Vec<Vec<NodeId>> {
     let um = |v: &[NodeId]| v.iter().map(|id| vec![*id]).collect::<Vec<_>>();
     let mut c = um(&[
         core_ids::INSP_ENTITY_NAME,

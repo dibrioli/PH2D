@@ -450,7 +450,7 @@ pub(crate) fn aviso_em(
     }
 }
 
-pub(crate) use super::grupo_dobravel::{Grupo, grupo_dobravel};
+pub(crate) use super::grupo_dobravel::{Grupo, grupo_dobravel, resumo_do_grupo};
 
 #[cfg(test)]
 mod aviso_tests {

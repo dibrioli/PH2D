@@ -187,6 +187,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "card.insp.image_size_repeated" => "{pw} \u{00d7} {ph} px ({size})",
         "card.insp.image_size_bare" => "{pw} \u{00d7} {ph}",
+        "card.insp.image_size_cut" => "{pw} \u{00d7} {ph} px \u{00b7} {c} \u{00d7} {l}",
+        "card.insp.image_size_cut_bare" => "{pw} \u{00d7} {ph} \u{00b7} {c} \u{00d7} {l}",
+        "card.insp.image_size_cut_tight" => "{pw}\u{00d7}{ph} \u{00b7} {c}\u{00d7}{l}",
+        "card.insp.look_summary" => "Opacity {opacity}%",
         "card.insp.image_size_tight" => "{pw}\u{00d7}{ph}",
         "card.insp.image_slot_tip" => {
             "Click to choose or replace the image, or drop one here from Assets"

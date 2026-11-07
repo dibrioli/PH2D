@@ -28,14 +28,6 @@ use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 use ph2d_i18n::tr_with;
 
-/// Espessura da barra de frames.
-///
-/// ⚠️ **Subiu de 6 para 10 px quando ela passou a arrastar-se**, e o número não é gosto: o
-/// retângulo de acerto **é** a trilha (o despachante deriva o valor de `rect.x`/`rect.w`), então a
-/// altura da trilha é o alvo do dedo. Seis pixels é uma linha de leitura, não um alvo — e uma
-/// barra que se agarra tem de **parecer** que se agarra.
-const BAR_H: f32 = 10.0; // LITERAL-PX-OK: altura de trilha de slider, é o alvo do ponteiro
-
 /// Um segmentado de N botões com o índice `sel` aceso. Devolve o `y` seguinte.
 ///
 /// ⛔⛔ **O nome estava POR CIMA e o grupo a toda a largura** (`row_y = y + font + Xs`) — a forma
@@ -229,7 +221,6 @@ fn player_block(
 ) -> f32 {
     let font = TypeToken::Sm.px();
     let gap = ph2d_tokens::control_gap_px();
-    let row_h = ph2d_tokens::ROW_H_PX;
     let sec = super::anim_rows::seccao_da_animacao(text_system);
     let mut cur_y = subtitle(
         scene,
@@ -240,70 +231,18 @@ fn player_block(
         y,
         tr("panel.inspector.anim_card.playback"),
     );
-    icon_button(
+    cur_y = super::anim_card::transport_row(
         scene,
         text_system,
         theme,
         hit_index,
         store,
-        Rect::new(x, cur_y, row_h, row_h),
-        ids::INSP_ANIM_REWIND,
-        IconId::SkipBack,
-        tr("panel.inspector.animation.rewind"),
+        x,
+        w,
+        cur_y,
+        info,
+        true,
     );
-    let (icon, label) = if info.playing {
-        (IconId::Pause, tr("panel.inspector.anim_card.pause"))
-    } else {
-        (IconId::Play, tr("panel.inspector.anim_card.play"))
-    };
-    icon_button(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        Rect::new(x + row_h + gap, cur_y, row_h, row_h),
-        ids::INSP_ANIM_PLAYING,
-        icon,
-        label,
-    );
-    if let Some((step, span)) = info.progress() {
-        let text = tr_with(
-            "panel.inspector.animation.frame_of",
-            &[("n", &(step + 1)), ("span", &span)],
-        );
-        // O rótulo mede-se (nunca se elide); a barra fica com o que sobra entre os botões e ele.
-        let text_w =
-            ph2d_editor_core::paint::label_column_width(text_system, font, [text.as_str()]);
-        let text_x = x + w - text_w;
-        paint_text(
-            text_system,
-            scene,
-            &text,
-            text_x,
-            cur_y + (row_h - font) * 0.5,
-            font,
-            text_w + 1.0, // LITERAL-PX-OK: folga de arredondamento da medida
-            resolve(ColorToken::Text2, theme),
-        );
-        let bar_x = x + 2.0 * (row_h + gap);
-        let track = Rect::new(
-            bar_x,
-            cur_y + (row_h - BAR_H) * 0.5,
-            (text_x - gap - bar_x).max(0.0),
-            BAR_H,
-        );
-        hit_index.register(ids::INSP_ANIM_FRAME_SCRUB, track);
-        ph2d_editor_core::widget::paint_slider_track(
-            track,
-            info.scrub_position().unwrap_or(0.0),
-            ph2d_editor_core::widget::SliderOrientation::Horizontal,
-            store.slider_visual(ids::INSP_ANIM_FRAME_SCRUB),
-            scene,
-            theme,
-        );
-    }
-    cur_y += row_h + gap;
     cur_y = super::rows::fields_row(
         scene,
         text_system,
@@ -358,7 +297,7 @@ fn player_block(
 /// **«Advanced»** — nasce FECHADO: os campos finos da animação escolhida e as substituições do
 /// tocador. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
-fn advanced_group(
+pub(crate) fn advanced_group(
     scene: &mut VectorScene,
     text_system: &mut TextSystem,
     theme: Theme,
@@ -369,6 +308,8 @@ fn advanced_group(
     y: f32,
     info: &InspectorAnimInfo,
     selected: usize,
+    titulo: &str,
+    resumo: Option<&str>,
 ) -> f32 {
     let mut cur_y = y;
     let adv = super::rows::grupo_dobravel(
@@ -381,8 +322,11 @@ fn advanced_group(
         w,
         cur_y,
         ids::INSP_ANIM_ADVANCED,
-        tr("panel.inspector.anim_card.advanced"),
+        titulo,
     );
+    if let Some(r) = resumo.filter(|_| !adv.aberto()) {
+        super::rows::resumo_do_grupo(scene, text_system, theme, x, w, adv.y, titulo, r);
+    }
     if adv.aberto() {
         cur_y = super::anim_rows::paint_advanced(
             scene,
@@ -520,6 +464,7 @@ pub(crate) fn paint_anim_section(
         cur_y,
         info,
         selected,
+        None,
     );
     cur_y = super::anim_rows::paint_add_remove(
         scene,
@@ -579,6 +524,8 @@ pub(crate) fn paint_anim_section(
         cur_y,
         info,
         selected,
+        tr("panel.inspector.anim_card.advanced"),
+        None,
     );
     fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX)
 }

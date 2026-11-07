@@ -273,6 +273,27 @@ fn arrastar_um_quadro_na_faixa_reordena() {
     assert_eq!(m.world_frames("idle"), Some(vec![2, 7, 5]));
 }
 
+/// From e To saíram do cartão (ficha 02, decisão 1), e isto é o que os cobre: uma animação por intervalo, como a que o
+/// `.ase` importa, mostra as células na fila do editor, encolhe pelo × e cresce pela folha; a grade edita-se aqui.
+/// *Mutação: a fila pedir `row.frames` em vez de `row_cells` ⇒ o intervalo aparece vazio.*
+#[test]
+fn um_intervalo_como_o_do_ase_continua_editavel_no_editor() {
+    let mut m = Mesa::new();
+    assert_eq!(m.doc().authored_frames(), [0, 1, 2, 3, 4, 5]);
+    let x = centre(m.doc().layout.frames[0].2);
+    m.click(x);
+    assert_eq!(m.pending(), [AnimFieldEdit::Frames(0, vec![1, 2, 3, 4, 5])]);
+    m.frame();
+    assert_eq!(m.world_frames("idle"), Some(vec![1, 2, 3, 4, 5]));
+    let at = m.cell(20);
+    m.click(at);
+    m.frame();
+    assert_eq!(m.world_frames("idle"), Some(vec![1, 2, 3, 4, 5, 20]));
+    let cols = centre(m.doc().layout.cols);
+    m.click(cols);
+    assert!(matches!(m.doc().editing, Some((doc::Field::Cols, _))));
+}
+
 #[test]
 fn clicar_um_quadro_mostra_o_e_o_x_e_o_delete_tiram_no() {
     let mut m = Mesa::new();

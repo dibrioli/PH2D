@@ -63,12 +63,14 @@ pub use cards::{
     CARD_TRANSFORM, DD_BLEND, SCALE_LOCK, hex_id as cards_hex_id, scale_locked as scale_lock_on,
     set_cards_on,
 };
+pub use cards_sprite::CARD_LOOK_ANIMADA;
 mod travas;
 pub use cards_objeto::{CARD_EMPTY, CARD_IMAGE, CARD_INSTANCE, CARD_PROPERTIES, CARD_VISIBILITY};
 pub use travas::{
     ChaveDaTrava, anota_chaves_de_trava, devolve_travas, reata_travas_de_escala, travas_de_escala,
     travas_fora_do_mundo,
 };
+mod cards_anim;
 mod cards_componentes;
 mod cards_corpos;
 mod cards_objeto;

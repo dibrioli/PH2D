@@ -112,6 +112,8 @@ pub(crate) fn paint_image_use(
                 _ => y,
             }
         }
+        // Nos cartões a grade mora no editor e o resumo dela na moldura (ficha 02, decisão 1).
+        InspectorImageUse::Animated if crate::cards::active() => y,
         InspectorImageUse::Animated => {
             let sec = super::sprite_pose::seccao(text_system);
             y = super::sprite_pose::paint_sheet_grid_rows(

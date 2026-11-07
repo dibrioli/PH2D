@@ -61,6 +61,7 @@ pub(crate) mod anchors;
 pub(crate) mod anim;
 /// O cartão «Animation» (plano GameEngineFuncional 07): lista com ▶, «Who Picks».
 pub(crate) mod anim_card;
+pub(crate) mod anim_cartao;
 pub(crate) mod anim_markers;
 pub(crate) mod anim_rows;
 /// A lista de regras do cartão «Animation» (plano GameEngineFuncional 08).

@@ -69,3 +69,37 @@ pub(crate) fn grupo_dobravel(
         y: body_top,
     }
 }
+
+/// O resumo de um grupo dobrado, à direita no cabeçalho dele: vem inteiro ou não vem. `corpo_y` é o
+/// [`Grupo::y`]. O nome manda: sem folga para os dois, fica só o nome.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn resumo_do_grupo(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    corpo_y: f32,
+    titulo: &str,
+    resumo: &str,
+) {
+    use ph2d_editor_core::widget::group_header_h;
+    let h = group_header_h();
+    let font = TypeToken::Sm.px();
+    let ocupado = h + text_system.prefix_width(titulo, font).ceil() + Spacing::Sm.px();
+    let pede = text_system.prefix_width(resumo, font).ceil();
+    if ocupado + pede > w {
+        return;
+    }
+    let y = corpo_y - ph2d_tokens::control_gap_px() - h;
+    ph2d_editor_core::paint::paint_text(
+        text_system,
+        scene,
+        resumo,
+        x + w - pede,
+        y + (h - font) * 0.5,
+        font,
+        pede + 1.0, // LITERAL-PX-OK: folga de arredondamento da medida
+        resolve(ColorToken::Text3, theme),
+    );
+}

@@ -60,6 +60,8 @@ pub struct InspectorState {
     pub last_anchor_row: Option<usize>,
     /// §11 — a animação aberta no cartão. **Estado do painel**, saturado contra a biblioteca.
     pub anim_selected: usize,
+    /// §11 — a linha da lista cujo nome está a ser escrito (dois cliques nela, só nos cartões).
+    pub anim_renomeando: Option<usize>,
     /// Irmão do [`Self::last_anchor_row`]: os campos semeiam-se numa ARESTA (entidade ou linha).
     pub last_anim_row: Option<usize>,
     /// §11 — a (entidade, animação no ecrã) da última pintura: quando muda, a aberta vai para ela.

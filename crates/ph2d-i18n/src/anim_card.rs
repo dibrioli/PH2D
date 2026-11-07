@@ -21,11 +21,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.inspector.anim_card.frames" => "{n} {n?frame|frames}",
         "panel.inspector.anim_card.who_picks" => "Who Picks",
-        "panel.inspector.anim_card.me" => "Me",
+        "panel.inspector.anim_card.me" => "Auto",
         "panel.inspector.anim_card.script" => "Script",
         "panel.inspector.anim_card.rules" => "Rules",
         "panel.inspector.anim_card.me_hint" => {
-            "The animation you play here starts by itself when the game runs."
+            "It starts by itself when the game runs, with the animation in Starts with."
         }
         "panel.inspector.anim_card.script_hint" => {
             "Nothing starts by itself: a script picks with ph2d.set(self.id, \"animator.animation\", \"run\") and starts it with ph2d.set(self.id, \"animator.playing\", true)."
@@ -73,6 +73,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.anim_card.own_times" => "\u{2022} some frames have their own time",
         "panel.inspector.anim_card.repeat_count" => "Repeat count",
         "panel.inspector.anim_card.advanced" => "Advanced",
+        "panel.inspector.anim_card.more" => "More",
+        "panel.inspector.anim_card.more_summary" => "Hold \u{00b7} signals",
         "panel.inspector.anim_card.selected" => "Selected Animation",
         "panel.inspector.anim_card.add_tip" => "Add a new animation to the list.",
         "panel.inspector.anim_card.remove_tip" => "Remove the selected animation from the list.",

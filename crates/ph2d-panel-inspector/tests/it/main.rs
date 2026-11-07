@@ -63,6 +63,7 @@ mod nenhuma_linha_pinta_o_nome_numa_coluna_propria;
 mod nenhuma_seccao_declara_a_propria_altura;
 mod nenhuma_seccao_pinta_o_proprio_aviso;
 mod no_row_paints_its_name_above_its_control;
+mod o_cartao_da_animacao;
 mod o_cartao_da_sprite;
 mod o_cartao_do_pixel_sprite;
 mod o_chip_da_vigia_mostra_um_sinal;

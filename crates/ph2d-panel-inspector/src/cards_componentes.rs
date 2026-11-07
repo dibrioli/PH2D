@@ -23,6 +23,7 @@ use std::cell::Cell;
 pub(crate) struct Abertas {
     anchor: usize,
     anim: usize,
+    anim_renomeando: Option<usize>,
     timer: usize,
     action: usize,
     watch: usize,
@@ -36,10 +37,21 @@ pub(crate) struct Abertas {
 }
 
 impl Abertas {
+    /// A animação aberta no cartão.
+    pub(crate) fn anim(&self) -> usize {
+        self.anim
+    }
+
+    /// A linha da lista cujo nome está a ser escrito.
+    pub(crate) fn renomeando(&self) -> Option<usize> {
+        self.anim_renomeando
+    }
+
     pub(crate) fn de(s: &InspectorState) -> Self {
         Self {
             anchor: s.anchor_selected,
             anim: s.anim_selected,
+            anim_renomeando: s.anim_renomeando,
             timer: s.timer_selected,
             action: s.action_selected,
             watch: s.watch_selected,
@@ -137,6 +149,9 @@ pub(crate) struct Presente {
     pub id: NodeId,
     pub titulo: String,
     pub cab_h: f32,
+    /// A largura do corpo e a que o título pede: o cartão Animation cede no cabeçalho estreito.
+    pub largura: f32,
+    pub titulo_w: f32,
 }
 
 /// Que secções de componente este objecto tem: pinta-as numa cena à parte (sem cliques) e guarda
@@ -174,7 +189,18 @@ pub(crate) fn presentes(
         });
         if fim > 0.0 {
             let (titulo, cab_h) = cab.unwrap_or_default();
-            out.push(Presente { id, titulo, cab_h });
+            let titulo_w = ph2d_editor_core::text_elide::title_elided_width(
+                text,
+                &titulo,
+                ph2d_card_stack::metrics::CARD_TITLE_PX,
+            );
+            out.push(Presente {
+                id,
+                titulo,
+                cab_h,
+                largura: w,
+                titulo_w,
+            });
         }
     }
     out
@@ -253,6 +279,9 @@ pub(crate) fn cartao<'a>(
         .into_iter()
         .collect();
     if let Some(proprio) = crate::cards_sprite::proprio(p, actions.clone()) {
+        return proprio;
+    }
+    if let Some(proprio) = crate::cards_anim::proprio(p, actions.clone(), abertas) {
         return proprio;
     }
     CardDef {

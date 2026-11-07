@@ -13,6 +13,9 @@ use ph2d_i18n::{tr, tr_with};
 const ROW_H: f32 = ph2d_tokens::ROW_H_PX;
 /// Quantas linhas de lista a pré-visualização ocupa (um número de linhas, não pixels).
 const PREVIEW_ROWS: f32 = 4.0; // LITERAL-PX-OK: contagem de linhas da grelha do painel
+/// Espessura da barra de frames: o rectângulo de acerto É a trilha (o despacho deriva o valor de
+/// `rect.x`/`rect.w`), logo é o alvo do ponteiro. Em 6 px era uma linha de leitura, não um alvo.
+const BAR_H: f32 = 10.0; // LITERAL-PX-OK: altura de trilha de slider, é o alvo do ponteiro
 /// Onde o resumo de uma linha da lista começa, como fração da largura.
 const SUMMARY_COL_FRAC: f32 = 0.55; // LITERAL-PX-OK: fração de layout
 
@@ -39,6 +42,9 @@ pub(crate) fn paint_preview(
     y + h + ph2d_tokens::control_gap_px()
 }
 
+/// A linha cujo nome está a ser renomeado (dois cliques) e onde devolver o rect do nome dela.
+pub(crate) type Renomeia<'a> = Option<(usize, &'a mut Option<Rect>)>;
+
 /// **A lista**: miniatura (a 1.ª célula da animação), nome, resumo e ▶. Clicar na linha escolhe o
 /// que toca (a lei da §11); o ▶ escolhe E põe a tocar. Devolve o `y` seguinte.
 #[allow(clippy::too_many_arguments)]
@@ -53,6 +59,7 @@ pub(crate) fn paint_list(
     y: f32,
     info: &InspectorAnimInfo,
     selected: usize,
+    mut renomeia: Renomeia<'_>,
 ) -> f32 {
     let font = TypeToken::Sm.px();
     let mut cur_y = y;
@@ -123,16 +130,22 @@ pub(crate) fn paint_list(
         } else {
             resolve(ColorToken::Text2, theme)
         };
-        paint_text(
-            text_system,
-            scene,
-            &row.name,
-            text_x,
-            cur_y + super::rows::folga_da_linha(ROW_H, font),
-            font,
-            rect.w * SUMMARY_COL_FRAC - (text_x - x),
-            color,
-        );
+        let nome_w = rect.w * SUMMARY_COL_FRAC - (text_x - x);
+        match &mut renomeia {
+            Some((j, campo)) if *j == i => {
+                **campo = Some(Rect::new(text_x, cur_y, nome_w, ROW_H));
+            }
+            _ => paint_text(
+                text_system,
+                scene,
+                &row.name,
+                text_x,
+                cur_y + super::rows::folga_da_linha(ROW_H, font),
+                font,
+                nome_w,
+                color,
+            ),
+        }
         let plays = row.plays_on(info.cells);
         let summary = if plays {
             tr_with("panel.inspector.anim_card.frames", &[("n", &cells.len())])
@@ -177,6 +190,93 @@ pub(crate) fn paint_list(
         cur_y += ROW_H + ph2d_tokens::list_row_gap_px();
     }
     cur_y + ph2d_tokens::control_gap_px()
+}
+
+/// A fileira do tocador: (⏮ só em `rewind`) · ▶/⏸ · a barra · «Frame 3 / 5». A posição da barra vem do
+/// SNAPSHOT (`scrub_position`), nunca do store. Devolve o `y` seguinte.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn transport_row(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorAnimInfo,
+    rewind: bool,
+) -> f32 {
+    let font = TypeToken::Sm.px();
+    let gap = ph2d_tokens::control_gap_px();
+    let mut bx = x;
+    if rewind {
+        super::anim::icon_button(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            Rect::new(bx, y, ROW_H, ROW_H),
+            ids::INSP_ANIM_REWIND,
+            IconId::SkipBack,
+            tr("panel.inspector.animation.rewind"),
+        );
+        bx += ROW_H + gap;
+    }
+    let (icon, label) = if info.playing {
+        (IconId::Pause, tr("panel.inspector.anim_card.pause"))
+    } else {
+        (IconId::Play, tr("panel.inspector.anim_card.play"))
+    };
+    super::anim::icon_button(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        Rect::new(bx, y, ROW_H, ROW_H),
+        ids::INSP_ANIM_PLAYING,
+        icon,
+        label,
+    );
+    if let Some((step, span)) = info.progress() {
+        let text = tr_with(
+            "panel.inspector.animation.frame_of",
+            &[("n", &(step + 1)), ("span", &span)],
+        );
+        // O rótulo mede-se (nunca se elide); a barra fica com o que sobra entre os botões e ele.
+        let text_w =
+            ph2d_editor_core::paint::label_column_width(text_system, font, [text.as_str()]);
+        let text_x = x + w - text_w;
+        paint_text(
+            text_system,
+            scene,
+            &text,
+            text_x,
+            y + (ROW_H - font) * 0.5,
+            font,
+            text_w + 1.0, // LITERAL-PX-OK: folga de arredondamento da medida
+            resolve(ColorToken::Text2, theme),
+        );
+        let bar_x = bx + ROW_H + gap;
+        let track = Rect::new(
+            bar_x,
+            y + (ROW_H - BAR_H) * 0.5,
+            (text_x - gap - bar_x).max(0.0),
+            BAR_H,
+        );
+        hit_index.register(ids::INSP_ANIM_FRAME_SCRUB, track);
+        ph2d_editor_core::widget::paint_slider_track(
+            track,
+            info.scrub_position().unwrap_or(0.0),
+            ph2d_editor_core::widget::SliderOrientation::Horizontal,
+            store.slider_visual(ids::INSP_ANIM_FRAME_SCRUB),
+            scene,
+            theme,
+        );
+    }
+    y + ROW_H + gap
 }
 
 /// Um botão de linha inteira (o padrão `caixa_do_botao`). Devolve o `y` seguinte.

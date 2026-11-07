@@ -199,6 +199,104 @@ fn range_and_timing_rows(
         None,
         seccao,
     );
+    cur_y = cycle_rows(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        row,
+        seccao,
+    );
+    // O vão entre grupos: «Who Picks» começa outro assunto.
+    cur_y + ph2d_tokens::control_gap_px()
+}
+
+/// **Frames/s e Speed na mesma linha** (irmãos, lei de 04/11: o `fluir` do cartão junta os dois pedidos) e o
+/// Cycle por baixo: o que o cartão Animation mostra da animação escolhida. Devolve o `y` seguinte.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn ritmo_e_ciclo(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorAnimInfo,
+    selected: usize,
+) -> f32 {
+    let seccao = seccao_da_animacao(text_system);
+    let row = selected_row(info, selected);
+    let mut cur_y = y;
+    if row.is_some() {
+        cur_y = super::rows::fields_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            tr("panel.inspector.anim_card.fps"),
+            &[ids::INSP_ANIM_FPS],
+            1.0,
+            None,
+            seccao,
+        );
+    }
+    cur_y = super::rows::fields_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
+        ph2d_i18n::TextKey::new("component.field.sprite_animator.3"),
+        &[ids::INSP_ANIM_SPEED],
+        0.1, // LITERAL-PX-OK: passo de scrub em MÚLTIPLOS de velocidade, não em pixels
+        None,
+        seccao,
+    );
+    match row {
+        Some(row) => cycle_rows(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            row,
+            seccao,
+        ),
+        None => cur_y,
+    }
+}
+
+/// O Cycle da animação e o aviso de que algum quadro tem tempo próprio. Devolve o `y` seguinte.
+#[allow(clippy::too_many_arguments)]
+fn cycle_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    row: &ph2d_editor_core::screens::hero::InspectorAnimRow,
+    seccao: ph2d_editor_core::property_row::Seccao,
+) -> f32 {
+    let mut cur_y = y;
     let mode = AnimCycleMode::of_row(row.direction_tag, row.repeat);
     let rotulos = [
         tr("panel.inspector.anim_card.cycle_repeat"),
@@ -238,8 +336,7 @@ fn range_and_timing_rows(
             ColorToken::Warn,
         );
     }
-    // O vão entre grupos: «Who Picks» começa outro assunto.
-    cur_y + ph2d_tokens::control_gap_px()
+    cur_y
 }
 
 // ⚠️ **O passo é em MILISSEGUNDOS ou em CÉLULAS, nunca em pixels** — daí o marcador.
@@ -349,7 +446,12 @@ fn editor(
     //    (report do dono), logo ela mede-se sobre eles.
     let sec_texto = seccao_da_animacao(text_system);
     let mut cur_y = y;
-    let range: &[_] = if row.frames.is_empty() { &RANGE } else { &[] };
+    // No cartão o intervalo edita-se na folha do editor (ficha 02, decisão 1).
+    let range: &[_] = if row.frames.is_empty() && !crate::cards::active() {
+        &RANGE
+    } else {
+        &[]
+    };
     for &(chave, id, passo, unidade) in range.iter().chain(FINE.iter()) {
         cur_y = super::rows::fields_row(
             scene,

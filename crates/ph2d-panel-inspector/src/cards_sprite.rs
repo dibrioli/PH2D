@@ -26,6 +26,9 @@ use ph2d_editor_core::{ImageUseEdit, InspectorImageUse};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_tokens::{ColorToken, Spacing, TypeToken};
 
+/// O Look em Animated: a mesma coisa, com a dobra própria (como o Transform de uma imagem).
+pub const CARD_LOOK_ANIMADA: NodeId = ph2d_tool_registry::hash_node_id("cards.insp.look.animated");
+
 /// O convite do cartão vazio mede cinco campos: é o único alvo do cartão.
 const LINHAS_DO_CONVITE: f32 = 5.0; // LITERAL-PX-OK: conta de campos, não geometria
 
@@ -82,6 +85,10 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
         "card.insp.sheet_use_region_tip",
     );
     store.set_collapsed_if_unchosen(crate::cards::CARD_TRANSFORM_IMAGE, true);
+    // O Look de uma folha animada nasce dobrado (ficha 02, decisão 6), com a dobra dele: a Still não muda, e
+    // quem já escolheu a do Look fica com a escolha que fez.
+    let escolha = store.collapsed_choice(core_ids::INSP_LIVE_COLOR_SECTION);
+    store.set_collapsed_if_unchosen(CARD_LOOK_ANIMADA, escolha.unwrap_or(true));
     botao(
         store,
         ids::INSP_SPRITE_PIVOT_NOME,
@@ -313,6 +320,12 @@ fn curto(v: f32) -> String {
     s.trim_end_matches('0').trim_end_matches('.').to_owned()
 }
 
+/// O resumo do Look dobrado: `Opacity 100%`.
+fn resumo_do_look(info: &InspectorSpriteInfo) -> String {
+    let pct = format!("{:.0}", info.opacity * 100.0); // LITERAL-PX-OK: fração → %
+    tr_with("card.insp.look_summary", &[("opacity", &pct)])
+}
+
 /// O resumo do Advanced dobrado: a estratégia e o formato.
 fn resumo_do_advanced(info: &InspectorSpriteInfo) -> String {
     let estrategia = match info.source_kind {
@@ -337,12 +350,13 @@ fn resumo_do_advanced(info: &InspectorSpriteInfo) -> String {
 pub(crate) fn proprio<'a>(p: &'a Presente, actions: Vec<HeadAction>) -> Option<CardDef<'a>> {
     let info = crate::state::current_inspector_sprite()?;
     if p.id == core_ids::INSP_LIVE_COLOR_SECTION {
+        let animada = info.image_use == InspectorImageUse::Animated;
         return Some(CardDef {
-            section: p.id,
+            section: if animada { CARD_LOOK_ANIMADA } else { p.id },
             title: tr("card.insp.look"),
             actions,
             add: None,
-            summary: None,
+            summary: animada.then(|| resumo_do_look(&info)),
             body: Some(Box::new(move |c: &mut CardCtx<'_>, y| {
                 let y = com_corpo(c, y, |t, theme, store, x, w, y| {
                     sections::look::paint_cores(

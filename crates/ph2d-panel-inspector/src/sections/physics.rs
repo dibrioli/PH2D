@@ -14,7 +14,6 @@ use super::rows::{Campo, num_row_unit, par_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
 use ph2d_editor_core::widget::SectionFold;
-use ph2d_editor_core::widget::key_mark::Eixos;
 use ph2d_i18n::TextKey;
 use ph2d_i18n::tr;
 use ph2d_i18n::tr_with;
@@ -86,7 +85,15 @@ pub(crate) fn paint_physics_section(
     let header = section_header(
         store,
         core_ids::INSP_LIVE_PHYSICS_SECTION,
-        tr("component.rigid_body.name"),
+        if !crate::cards::active() {
+            tr("component.rigid_body.name")
+        } else if info.has_body {
+            tr("card.insp.phys.body")
+        } else if info.has_collider {
+            tr("card.insp.phys.collision_shape")
+        } else {
+            tr("component.rigid_body.name")
+        },
     );
     let header_rect = Rect::new(x, y, w, header_h);
     paint_section_header(&header, header_rect, scene, text_system, theme);
@@ -114,7 +121,21 @@ pub(crate) fn paint_physics_section(
     // mandá-la para a face vazia era o §11 dizendo *"Not simulated"* sobre algo
     // que o solver está de fato integrando, com a forma autorada invisível e a
     // porta que a criou re-oferecida.
-    let out = if info.has_collider && !info.has_body {
+    let em_cartao = crate::cards::active();
+    let mut tinta = super::physics_cartao::Tinta {
+        scene: &mut *scene,
+        text: &mut *text_system,
+        theme,
+        hit: &mut *hit_index,
+        store,
+        x,
+        w,
+    };
+    let out = if em_cartao && info.has_body {
+        super::physics_cartao::corpo(&mut tinta, yy, info)
+    } else if em_cartao && info.has_collider {
+        super::physics_cartao_peca::peca(&mut tinta, yy, info)
+    } else if info.has_collider && !info.has_body {
         super::physics_part::paint_part_face(
             scene,
             text_system,
@@ -127,6 +148,7 @@ pub(crate) fn paint_physics_section(
             yy,
         )
     } else if !info.has_body {
+        let yy = super::physics_cartao::recibo(&mut tinta, yy);
         super::physics_doors::paint_empty_face(
             scene,
             text_system,
@@ -206,25 +228,13 @@ pub(super) fn paint_shape_dims(
                 ids::INSP_PHYS_RADIUS,
                 m,
             ),
-            Campo::new(
-                tr("panel.inspector.physics.half_height_m"),
-                ids::INSP_PHYS_CAP_HALF_H,
-                m,
-            ),
+            Campo::new(tr("card.insp.phys.height"), ids::INSP_PHYS_CAP_HALF_H, m),
         ),
-        // T56: um TAMANHO — «Half Size (px)» W · H, como o Size do Figma.
+        // Width e Height inteiros, um rótulo sobre cada caixa: quem quer 200 px digita 200.
         _ => par(
-            Some((tr("panel.inspector.physics.half_size"), Eixos::Tamanho)),
-            Campo::new(
-                tr("panel.inspector.physics.half_width_m"),
-                ids::INSP_PHYS_HALF_X,
-                m,
-            ),
-            Campo::new(
-                tr("panel.inspector.physics.half_height_m"),
-                ids::INSP_PHYS_HALF_Y,
-                m,
-            ),
+            None,
+            Campo::new(tr("card.insp.phys.width"), ids::INSP_PHYS_HALF_X, m),
+            Campo::new(tr("card.insp.phys.height"), ids::INSP_PHYS_HALF_Y, m),
         ),
     };
     par_row(

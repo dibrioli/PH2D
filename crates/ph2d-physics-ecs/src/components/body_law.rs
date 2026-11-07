@@ -14,6 +14,15 @@ use crate::{Collider, ColliderShape, MAX_LAYERS};
 const MIN_EXTENT: f32 = 1e-3;
 
 impl Collider {
+    /// A caixa mede o desenho `picture` (lados em m)? É a pergunta que decide se a forma acompanha a
+    /// imagem: à precisão de um `f32` que passou por um campo de texto. Bola e cápsula nunca medem.
+    #[must_use]
+    pub fn box_fits_picture(&self, picture: [f32; 2]) -> bool {
+        let same = |a: f32, b: f32| (a - b).abs() <= 1e-4 * b.abs().max(1.0);
+        matches!(self.shape, ColliderShape::Cuboid { half_x, half_y }
+            if same(half_x, picture[0] * 0.5) && same(half_y, picture[1] * 0.5))
+    }
+
     /// Tamanhos positivos (a meia-altura da cápsula pode ser 0 = uma bola), densidade e atrito
     /// ≥ 0, quique em `[0, 1]`, camada `< MAX_LAYERS`. O desvio do colisor é uma posição: sem lei.
     pub fn sanitize(&mut self) {

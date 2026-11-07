@@ -53,6 +53,8 @@ mod event_parallax;
 mod event_particles;
 mod event_path_follow;
 mod event_physics;
+/// O recibo do Remove da física.
+pub mod recibo_fisica;
 pub mod unidade_mundo;
 pub use event_physics::physics_edit_for;
 mod cards;

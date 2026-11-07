@@ -232,19 +232,25 @@ pub(super) fn populate_physics(store: &mut WidgetStore) {
             ids::INSP_PHYS_ADD,
             ids::INSP_PHYS_BAKE,
             ids::INSP_PHYS_REMOVE,
+            ids::INSP_PHYS_FIT_PICTURE,
+            ids::INSP_PHYS_SCALE_ONE,
+            ids::INSP_PHYS_USE_BOX,
+            ids::INSP_PHYS_REMOVED_UNDO,
         ],
     );
+    for id in ids::INSP_PHYS_FOLDS {
+        store.mark_collapsible_section(id);
+    }
     // Every literal below is a PHYSICAL quantity — meters, kg/m², or a
     // dimensionless coefficient — not a design measurement, so none of them
     // has a token to come from.
     for (id, value, min, max, step) in [
         (ids::INSP_PHYS_RADIUS, 0.5, 0.001, 1000.0, 0.01), // LITERAL-PX-OK: meters
-        (ids::INSP_PHYS_HALF_X, 0.5, 0.001, 1000.0, 0.01), // LITERAL-PX-OK: meters
-        (ids::INSP_PHYS_HALF_Y, 0.5, 0.001, 1000.0, 0.01), // LITERAL-PX-OK: meters
-        // The capsule's STRAIGHT segment: min 0.0, not 0.001 — a zero-segment
-        // capsule is exactly a ball, which is the honest bottom of the range
-        // (and what Ball -> Capsule converts to).
-        (ids::INSP_PHYS_CAP_HALF_H, 0.25, 0.0, 1000.0, 0.01), // LITERAL-PX-OK: meters
+        // Width e Height: o dobro da faixa de sempre, nas metades do `Collider`.
+        (ids::INSP_PHYS_HALF_X, 1.0, 0.002, 2000.0, 0.01), // LITERAL-PX-OK: meters
+        (ids::INSP_PHYS_HALF_Y, 1.0, 0.002, 2000.0, 0.01), // LITERAL-PX-OK: meters
+        // A altura INTEIRA da cápsula. Abaixo de 2 × Radius ela é uma bola: o evento pára aí.
+        (ids::INSP_PHYS_CAP_HALF_H, 1.5, 0.0, 2000.0, 0.01), // LITERAL-PX-OK: meters
         // Collider offset (signed — the offset is a POSITION, can go either way).
         // Bounds the drag only; the component/BodyDesc take any f32.
         (ids::INSP_PHYS_OFFSET_X, 0.0, -1000.0, 1000.0, 0.01), // LITERAL-PX-OK: meters

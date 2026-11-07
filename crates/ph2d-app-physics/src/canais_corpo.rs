@@ -157,10 +157,12 @@ pub fn edicao(info: &InspectorPhysicsInfo, campo: u16, v: f32) -> Option<Physics
     match porta(campo)? {
         Porta::Numero(id) => {
             // O painel fala graus na rotação inicial; o componente, radianos.
-            let ui = if campo == f::VEL_ANGULAR {
-                v.to_degrees()
-            } else {
-                v
+            // E as medidas inteiras: o canal guarda metades, como o `Collider`; o painel, Width e Height.
+            let ui = match campo {
+                f::VEL_ANGULAR => v.to_degrees(),
+                f::MEIO_X | f::MEIO_Y => v * 2.0,
+                f::CAPSULA => (v + info.radius) * 2.0,
+                _ => v,
             };
             ph2d_panel_inspector::physics_edit_for(id, Some(ui), info)
         }

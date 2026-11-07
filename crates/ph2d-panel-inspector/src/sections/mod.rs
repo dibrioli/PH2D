@@ -125,6 +125,10 @@ pub(crate) mod particles;
 pub(crate) mod path_follow;
 mod physics;
 mod physics_area_rows;
+/// Os cartões Body e Shape da física (ficha f1, opção B).
+pub(crate) mod physics_cartao;
+pub(crate) mod physics_cartao_forma;
+mod physics_cartao_peca;
 /// A face de CORPO do §11 — as rows de quem tem `RigidBody` + `Collider`.
 /// Irmã do `physics.rs` pelos caps de painel: com TRÊS faces, `physics.rs` fica
 /// sendo o cabeçalho e o roteador.

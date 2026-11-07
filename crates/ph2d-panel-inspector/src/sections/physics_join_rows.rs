@@ -24,7 +24,7 @@ use ph2d_i18n::tr_with;
 /// `KIND_LABELS`, and it must list every kind that one does: this is the selector
 /// that decides what gets CREATED, so a kind missing here is a kind the artist
 /// cannot reach at all.
-const JOIN_KIND_LABELS: [TextKey; 9] = [
+pub(super) const JOIN_KIND_LABELS: [TextKey; 9] = [
     TextKey::new("panel.inspector.physics.pin"),
     TextKey::new("panel.inspector.physics.spring"),
     TextKey::new("panel.inspector.physics.rope"),

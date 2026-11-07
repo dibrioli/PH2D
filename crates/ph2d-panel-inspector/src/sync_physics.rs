@@ -79,9 +79,13 @@ pub(crate) fn sync_physics_fields(host: &mut dyn PanelHostInternal) {
     }
     for (id, v) in [
         (crate::ids::INSP_PHYS_RADIUS, info.radius),
-        (crate::ids::INSP_PHYS_HALF_X, info.half_x),
-        (crate::ids::INSP_PHYS_HALF_Y, info.half_y),
-        (crate::ids::INSP_PHYS_CAP_HALF_H, info.cap_half_height),
+        // Width e Height no ecrã; o `Collider` guarda metades. Cápsula: o segmento e as duas tampas.
+        (crate::ids::INSP_PHYS_HALF_X, info.half_x * 2.0),
+        (crate::ids::INSP_PHYS_HALF_Y, info.half_y * 2.0),
+        (
+            crate::ids::INSP_PHYS_CAP_HALF_H,
+            (info.cap_half_height + info.radius) * 2.0,
+        ),
         (crate::ids::INSP_PHYS_OFFSET_X, info.offset[0]),
         // ⚠️ Sem estas duas as rows seriam WRITE-ONLY — o defeito que a família
         // das zonas shipou inteira (W-AreaTorque) e que custou um report.

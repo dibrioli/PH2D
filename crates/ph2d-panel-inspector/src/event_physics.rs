@@ -12,6 +12,9 @@ use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::{InspectorPhysicsInfo, PhysicsFieldEdit};
 
 pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    if crate::recibo_fisica::click(host, ev) {
+        return true;
+    }
     // A metade do CLIQUE: um chip, um botao. Resolvida por uma fn pura
     // (`click_edit`) e nao inline, pelo cap de 200 LOC das fns de painel — o
     // corte e o que as duas metades JA eram, *que controle foi apertado* contra
@@ -82,9 +85,12 @@ fn value_edit(
     );
     match id {
         crate::ids::INSP_PHYS_RADIUS if bola || capsula => Some(PhysicsFieldEdit::Radius(v)),
-        crate::ids::INSP_PHYS_HALF_X if caixa => Some(PhysicsFieldEdit::HalfX(v)),
-        crate::ids::INSP_PHYS_HALF_Y if caixa => Some(PhysicsFieldEdit::HalfY(v)),
-        crate::ids::INSP_PHYS_CAP_HALF_H if capsula => Some(PhysicsFieldEdit::CapHalfHeight(v)),
+        // O ecrã fala Width e Height; o `Collider` guarda metades (ficha f1), e o ficheiro não muda.
+        crate::ids::INSP_PHYS_HALF_X if caixa => Some(PhysicsFieldEdit::HalfX(v * 0.5)),
+        crate::ids::INSP_PHYS_HALF_Y if caixa => Some(PhysicsFieldEdit::HalfY(v * 0.5)),
+        crate::ids::INSP_PHYS_CAP_HALF_H if capsula => Some(PhysicsFieldEdit::CapHalfHeight(
+            (v * 0.5 - info.radius).max(0.0),
+        )),
         // Collider offset — a collider property, honoured for any body (not
         // Dynamic-gated like velocity/gravity).
         crate::ids::INSP_PHYS_OFFSET_X => Some(PhysicsFieldEdit::OffsetX(v)),
@@ -172,6 +178,12 @@ fn click_edit(
             .get(i + 1)
             .filter(|_| info.has_collider)
             .map(|o| PhysicsFieldEdit::SignalTagFilter(o.value));
+    }
+    if id == crate::ids::INSP_PHYS_FIT_PICTURE {
+        return (info.shape_follows == Some(false)).then_some(PhysicsFieldEdit::FitToPicture);
+    }
+    if id == crate::ids::INSP_PHYS_USE_BOX {
+        return info.has_collider.then_some(PhysicsFieldEdit::Shape(1));
     }
     if id == crate::ids::INSP_PHYS_ADD && !info.has_body {
         Some(PhysicsFieldEdit::Add)

@@ -77,6 +77,7 @@ pub(crate) fn with_body() -> InspectorPhysicsInfo {
         bake_channels_tag: 0,
         gravity_scale: 1.0,
         cap_half_height: 0.25,
+        shape_follows: None,
         linvel: [0.0, 0.0],
         angvel: 0.0,
         ccd: false,

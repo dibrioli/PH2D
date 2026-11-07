@@ -115,6 +115,23 @@ pub fn apply_physics_edit(
         );
         return;
     }
+    if matches!(edit, PhysicsFieldEdit::FitToPicture) {
+        if let Some(cur) = world.get::<Collider>(entity).copied()
+            && world.get::<ph2d_render::Sprite>(entity).is_some()
+        {
+            let half = sprite_half_extents(world, entity);
+            let next = Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: half[0],
+                    half_y: half[1],
+                },
+                offset: [0.0, 0.0],
+                ..cur
+            };
+            queue_set(queue, registry, entity_bits, COLLIDER, &next);
+        }
+        return;
+    }
     if matches!(edit, PhysicsFieldEdit::Remove) {
         queue_remove(queue, registry, entity_bits, RIGID_BODY);
         queue_remove(queue, registry, entity_bits, COLLIDER);
@@ -548,6 +565,7 @@ pub fn apply_physics_edit(
         PhysicsFieldEdit::Add
         | PhysicsFieldEdit::AddShape
         | PhysicsFieldEdit::Remove
+        | PhysicsFieldEdit::FitToPicture
         | PhysicsFieldEdit::Kind(_)
         | PhysicsFieldEdit::GravityScale(_)
         | PhysicsFieldEdit::LinvelX(_)

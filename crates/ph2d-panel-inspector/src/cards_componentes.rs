@@ -296,7 +296,7 @@ pub(crate) fn cartao<'a>(
         title: &p.titulo,
         actions,
         add: None,
-        summary: None,
+        summary: crate::sections::physics_cartao::resumo_do_cartao(id),
         body: Some(Box::new(move |c: &mut CardCtx<'_>, y| {
             ph2d_editor_core::panel::cards::compacta::fluir(c, |c| {
                 let store = c.store;

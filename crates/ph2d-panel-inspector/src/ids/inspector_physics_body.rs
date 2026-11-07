@@ -59,6 +59,43 @@ pub const INSP_PHYS_SHAPE: [NodeId; 3] = [
     hash_node_id("insp_phys_shape_capsule"),
 ];
 
+/// O segundo cartão da física de um corpo (ficha f1): a forma.
+pub const CARD_PHYS_SHAPE: NodeId = hash_node_id("cards.insp.phys_shape");
+
+/// Os botões do cartão Shape: voltar à caixa da imagem e as duas saídas da forma redonda esticada.
+pub const INSP_PHYS_FIT_PICTURE: NodeId = hash_node_id("insp_phys_fit_picture");
+pub const INSP_PHYS_SCALE_ONE: NodeId = hash_node_id("insp_phys_scale_one");
+pub const INSP_PHYS_USE_BOX: NodeId = hash_node_id("insp_phys_use_box");
+/// O «Undo» do recibo de Remove.
+pub const INSP_PHYS_REMOVED_UNDO: NodeId = hash_node_id("insp_phys_removed_undo");
+
+/// As dobras com nome dos cartões Body e Shape.
+pub const INSP_PHYS_FOLD_START: NodeId = hash_node_id("insp_phys_fold_start");
+pub const INSP_PHYS_FOLD_ADVANCED: NodeId = hash_node_id("insp_phys_fold_advanced");
+pub const INSP_PHYS_FOLD_JOINT: NodeId = hash_node_id("insp_phys_fold_joint");
+pub const INSP_PHYS_FOLD_BAKE: NodeId = hash_node_id("insp_phys_fold_bake");
+pub const INSP_PHYS_FOLD_OFFSET: NodeId = hash_node_id("insp_phys_fold_offset");
+pub const INSP_PHYS_FOLD_MATERIAL: NodeId = hash_node_id("insp_phys_fold_material");
+pub const INSP_PHYS_FOLD_SURFACE: NodeId = hash_node_id("insp_phys_fold_surface");
+pub const INSP_PHYS_FOLD_SIGNALS: NodeId = hash_node_id("insp_phys_fold_signals");
+pub const INSP_PHYS_FOLD_ZONE: NodeId = hash_node_id("insp_phys_fold_zone");
+pub const INSP_PHYS_FOLD_BOUNCE: NodeId = hash_node_id("insp_phys_fold_bounce");
+pub const INSP_PHYS_FOLD_DENSITY: NodeId = hash_node_id("insp_phys_fold_density");
+/// Todas: nascem dobradas, só nos cartões (`cards::prepare`).
+pub const INSP_PHYS_FOLDS: [NodeId; 11] = [
+    INSP_PHYS_FOLD_START,
+    INSP_PHYS_FOLD_ADVANCED,
+    INSP_PHYS_FOLD_JOINT,
+    INSP_PHYS_FOLD_BAKE,
+    INSP_PHYS_FOLD_OFFSET,
+    INSP_PHYS_FOLD_MATERIAL,
+    INSP_PHYS_FOLD_SURFACE,
+    INSP_PHYS_FOLD_SIGNALS,
+    INSP_PHYS_FOLD_ZONE,
+    INSP_PHYS_FOLD_BOUNCE,
+    INSP_PHYS_FOLD_DENSITY,
+];
+
 /// §11 Ball radius, meters (shown only for the Ball shape).
 pub const INSP_PHYS_RADIUS: NodeId = hash_node_id("insp_phys_radius");
 

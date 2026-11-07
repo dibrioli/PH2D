@@ -237,6 +237,7 @@ pub fn build_physics_info(
             bake_channels_tag,
             gravity_scale: GravityScale::NEUTRAL,
             cap_half_height: 0.25,
+            shape_follows: None,
             linvel: InitialVelocity::REST.linvel,
             angvel: InitialVelocity::REST.angvel,
             ccd: false,
@@ -345,6 +346,9 @@ pub fn build_physics_info(
         bake_channels_tag,
         gravity_scale,
         cap_half_height,
+        shape_follows: world
+            .get::<ph2d_render::Sprite>(entity)
+            .map(|s| col.box_fits_picture(s.size)),
         linvel: iv.linvel,
         angvel: iv.angvel,
         ccd,

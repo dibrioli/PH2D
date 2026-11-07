@@ -24,7 +24,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "A picture that plays animations from a sprite sheet. Each animation is a range of frames on the sheet (idle, run, jump\u{2026}), chosen in the Inspector. It comes with a little ready-made character, so you see it move as soon as the game runs."
         }
         "object_add.game.static_body.tip" => {
-            "A solid block that never moves: floors, platforms and walls. Characters and falling bodies stop on it. Scale it to make it longer or taller \u{2014} the collision follows the picture."
+            "A solid block that never moves: floors, platforms and walls. Characters and falling bodies stop on it. To make it longer, set Use to Repeated and give it a Width \u{2014} the collision follows the picture."
         }
         "object_add.game.character.tip" => {
             "The hero the player controls. The arrow keys (or A and D) walk, Up or Z jumps, with gravity built in. Its animation changes by itself between idle, run, jump and fall \u{2014} choose which animation plays in each case in the Inspector."

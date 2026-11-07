@@ -97,6 +97,36 @@ pub(crate) fn push_physics_sections<'a>(
                 )
             },
         );
+        if crate::cards::active() && phys.has_body {
+            emoldurada(
+                plano,
+                crate::sections::physics_cartao::CARD_PHYS_SHAPE,
+                store,
+                inner_x,
+                inner_w,
+                header_h,
+                move |c, t, y| {
+                    crate::sections::physics_cartao_forma::secao_da_forma(
+                        c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, phys,
+                    )
+                },
+            );
+        }
+    } else if crate::cards::active() && crate::recibo_fisica::a_vista().is_some() {
+        // O corpo saiu e o objecto ficou sem secção de física: o recibo segura o lugar dela.
+        emoldurada(
+            plano,
+            ids::INSP_LIVE_PHYSICS_SECTION,
+            store,
+            inner_x,
+            inner_w,
+            header_h,
+            move |c, t, y| {
+                crate::sections::physics_cartao::secao_do_recibo(
+                    c.scene, c.text, t, c.hit, store, inner_x, inner_w, y,
+                )
+            },
+        );
     }
     // §12 Physics Joint — only for an entity that IS a joint (no empty face: the gesture that
     // creates one lives in §11).

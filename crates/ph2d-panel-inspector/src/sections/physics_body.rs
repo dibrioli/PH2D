@@ -26,40 +26,40 @@ use super::physics::{SHAPE_LABELS, bake_label, paint_shape_dims};
 /// Body-kind labels, indexed by `BodyKind` tag. Hardcoded (not read from
 /// `ph2d-physics-ecs`) so the panel stays loose-coupled — the snapshot
 /// carries only the tag. English per HR-15, like every sibling section.
-const KIND_LABELS: [TextKey; 3] = [
+pub(super) const KIND_LABELS: [TextKey; 3] = [
     TextKey::new("panel.inspector.physics.dynamic"),
     TextKey::new("panel.inspector.physics.static"),
     TextKey::new("panel.inspector.physics.kinematic"),
 ];
 
 /// Tag for the Dynamic body kind — the only kind with simulated motion to bake.
-const KIND_DYNAMIC: u8 = 0;
+pub(super) const KIND_DYNAMIC: u8 = 0;
 
 /// CCD toggle labels, indexed by `ccd as u8`: `0` discrete (rapier's default),
 /// `1` continuous (sweeps the motion so a fast body does not tunnel). Unity's own
 /// vocabulary for the same control.
-const CCD_LABELS: [TextKey; 2] = [
+pub(super) const CCD_LABELS: [TextKey; 2] = [
     TextKey::new("panel.inspector.physics.discrete"),
     TextKey::new("panel.inspector.physics.continuous"),
 ];
 
 /// Lock-rotation toggle labels, indexed by `lock_rotation as u8`: `0` free
 /// (rapier's default), `1` locked (the orientation is pinned — Freeze Rotation).
-const LOCKROT_LABELS: [TextKey; 2] = [
+pub(super) const LOCKROT_LABELS: [TextKey; 2] = [
     TextKey::new("panel.inspector.physics.free"),
     TextKey::new("panel.inspector.physics.locked"),
 ];
 
 /// Freeze-Position (X and Y) toggle labels, indexed by the flag: `0` free
 /// (rapier's default), `1` locked (that translation axis is pinned).
-const FREEZE_POS_LABELS: [TextKey; 2] = [
+pub(super) const FREEZE_POS_LABELS: [TextKey; 2] = [
     TextKey::new("panel.inspector.physics.free"),
     TextKey::new("panel.inspector.physics.locked"),
 ];
 
 /// Bake channel selector labels, indexed by the tag: `0` the whole pose,
 /// `1` position only, `2` rotation only.
-const BAKE_CH_LABELS: [TextKey; 3] = [
+pub(super) const BAKE_CH_LABELS: [TextKey; 3] = [
     TextKey::new("panel.inspector.physics.all"),
     TextKey::new("panel.inspector.physics.position"),
     TextKey::new("panel.inspector.physics.rotation"),

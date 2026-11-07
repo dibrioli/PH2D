@@ -19,12 +19,12 @@ use ph2d_i18n::tr;
 /// com juros.
 #[path = "physics_tag_row.rs"]
 mod tag_row;
+pub(in crate::sections) use tag_row::paint_signal_rows;
 pub(crate) use tag_row::phys_tag_options;
-use tag_row::{signal_row, signal_tag_row};
 
 /// Mass-source toggle labels, indexed by `mass_manual as u8`: `0` Auto (mass is
 /// density×area, the Density row) · `1` Manual (an explicit mass in kg, the Mass row).
-const MASS_MODE_LABELS: [TextKey; 2] = [
+pub(super) const MASS_MODE_LABELS: [TextKey; 2] = [
     TextKey::new("panel.inspector.physics.auto"),
     TextKey::new("panel.inspector.physics.manual"),
 ];
@@ -32,7 +32,7 @@ const MASS_MODE_LABELS: [TextKey; 2] = [
 /// Combine-rule labels, indexed by `CombineRule` tag: how two colliders'
 /// friction/restitution merge on contact (Unity's `PhysicMaterial` combine).
 /// `Max` makes a superball bounce off any floor; `Average` (tag 0) is the default.
-const COMBINE_LABELS: [TextKey; 4] = [
+pub(super) const COMBINE_LABELS: [TextKey; 4] = [
     TextKey::new("panel.inspector.physics.average"),
     TextKey::new("panel.inspector.physics.min"),
     TextKey::new("panel.inspector.physics.multiply"),
@@ -41,7 +41,7 @@ const COMBINE_LABELS: [TextKey; 4] = [
 
 /// Damping-mode toggle labels, indexed by `DampMode` tag: `0` Combine (adds to the
 /// world default drag) · `1` Replace (ignores it — Unity's absolute per-body drag).
-const DAMP_MODE_LABELS: [TextKey; 2] = [
+pub(super) const DAMP_MODE_LABELS: [TextKey; 2] = [
     TextKey::new("panel.inspector.physics.combine"),
     TextKey::new("panel.inspector.physics.replace"),
 ];
@@ -129,9 +129,34 @@ pub(super) fn paint_material_rows(
     restitution_combine_tag: u8,
     friction_combine_tag: u8,
 ) -> f32 {
-    // T56: no cartão, Bounce | Friction numa linha (o par do material, como o Physics Material
-    // 2D da Unity) e, por baixo, as duas regras de combinar — lado a lado quando cabem.
-    let yy = par_row(
+    let yy = paint_bounce_friction(scene, text_system, theme, hit_index, store, x, w, y);
+    paint_combine_rows(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        restitution_combine_tag,
+        friction_combine_tag,
+    )
+}
+
+/// T56: no cartão, Bounce | Friction numa linha (o par do material, como o Physics Material 2D da Unity).
+#[allow(clippy::too_many_arguments)]
+pub(super) fn paint_bounce_friction(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    par_row(
         scene,
         text_system,
         theme,
@@ -153,7 +178,23 @@ pub(super) fn paint_material_rows(
                 None,
             ),
         ],
-    );
+    )
+}
+
+/// As duas regras de combinar — lado a lado quando cabem.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn paint_combine_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    restitution_combine_tag: u8,
+    friction_combine_tag: u8,
+) -> f32 {
     let combine = COMBINE_LABELS.map(TextKey::tr);
     seg_par_row(
         scene,
@@ -163,7 +204,7 @@ pub(super) fn paint_material_rows(
         store,
         x,
         w,
-        yy,
+        y,
         Escolha {
             rotulo: TextKey::new("component.field.material_combine.0").into(),
             group: ids::INSP_LIVE_PHYSICS_REST_COMBINE,
@@ -275,21 +316,21 @@ pub(crate) const LAYER_LABELS: [&str; 8] = ["0", "1", "2", "3", "4", "5", "6", "
 
 /// Sensor toggle labels, indexed by `is_sensor as u8`: `0` a solid collider,
 /// `1` a sensor (trigger).
-const SENSOR_LABELS: [TextKey; 2] = [
+pub(super) const SENSOR_LABELS: [TextKey; 2] = [
     TextKey::new("panel.inspector.physics.solid"),
     TextKey::new("panel.inspector.physics.sensor"),
 ];
 
 /// One-way toggle labels, indexed by `one_way as u8`: `0` an ordinary solid collider,
 /// `1` a jump-through platform (solid only from its local +Y side).
-const ONEWAY_LABELS: [TextKey; 2] = [
+pub(super) const ONEWAY_LABELS: [TextKey; 2] = [
     TextKey::new("panel.inspector.physics.off"),
     TextKey::new("panel.inspector.physics.on"),
 ];
 
 /// Wall-material labels, indexed by `no_wall_cling as u8`: `0` — a ausência do
 /// marcador, o caso comum — é PAREDE; `1` a mão não a segura (`W-WallMaterial`).
-const WALLMAT_LABELS: [TextKey; 2] = [
+pub(super) const WALLMAT_LABELS: [TextKey; 2] = [
     TextKey::new("panel.inspector.physics.on"),
     TextKey::new("panel.inspector.physics.off"),
 ];
@@ -393,6 +434,44 @@ pub(super) fn paint_collision_rows(
             u8::from(one_way),
         );
     }
+    yy = paint_surface_rows(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        no_wall_cling,
+    );
+    paint_signal_rows(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        signal_tag,
+        signal_tag_path,
+    )
+}
+
+/// Wall Cling, Grip e Belt.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn paint_surface_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    no_wall_cling: bool,
+) -> f32 {
     // **De que este chão é feito para quem ANDA sobre ele** (`W-Surface`).
     //
     // ⚠️ **Aqui, e oferecidas em TODO collider — sólido ou sensor, qualquer
@@ -405,7 +484,7 @@ pub(super) fn paint_collision_rows(
     // descuido: um caixote sobre a esteira não é levado por ela. O
     // `SurfaceEffector2D` da Unity leva qualquer rigidbody; aqui o alcance é o
     // que o nome diz.
-    yy = seg_row(
+    let yy = seg_row(
         scene,
         text_system,
         theme,
@@ -413,7 +492,7 @@ pub(super) fn paint_collision_rows(
         store,
         x,
         w,
-        yy,
+        y,
         tr("panel.inspector.physics.wall_cling"),
         ids::INSP_LIVE_PHYSICS_WALLMAT,
         &ids::INSP_PHYS_WALLMAT,
@@ -421,7 +500,7 @@ pub(super) fn paint_collision_rows(
         u8::from(no_wall_cling),
     );
     // T56: no cartão, Grip | Belt numa linha — as duas metades da superfície de andar.
-    yy = par_row(
+    par_row(
         scene,
         text_system,
         theme,
@@ -443,74 +522,5 @@ pub(super) fn paint_collision_rows(
                 Some(ph2d_editor_core::widget::Unit::MetersPerSecond),
             ),
         ],
-    );
-    // **O que este objeto GRITA quando algo chega nele — e quando algo sai**
-    // (W-Signal · W-SignalLeave).
-    //
-    // ⚠️ Aqui e não num card próprio: elas respondem *"e daí?"* à pergunta que as
-    // rows acima fazem — um Trigger sem sinal detecta e não acorda nada —, e um
-    // controle que só faz sentido junto de outros tem de estar onde eles estão
-    // (o argumento do `INSP_JOINT_ANCHOR_B_GROUP`, palavra por palavra).
-    //
-    // ⚠️ **Oferecidas em TODO collider**, sólido ou sensor: as fontes de cada
-    // extremo são um contato que começa/termina e uma entrada/saída de sensor, e
-    // restringir a row a um dos dois deixaria metade dos casos sem porta. Uma
-    // entidade é uma coisa ou a outra, então um nome por extremo responde às duas.
-    //
-    // ⚠️ **DUAS rows, e não uma com seletor:** os dois extremos são dois
-    // CONTRATOS que o artista quer autorar ao mesmo tempo (`door_open` /
-    // `door_close`), e um campo que trocasse de significado tornaria o caso de
-    // uso inteiro inexprimível.
-    let sec_sinais = ph2d_editor_core::property_row::Seccao::medida(
-        text_system,
-        1,
-        &[
-            tr("component.field.signal_on_hit.0"),
-            tr("component.field.signal_on_leave.0"),
-        ],
-    );
-    for (id, rotulo, placeholder) in [
-        (
-            ids::INSP_PHYS_SIGNAL,
-            TextKey::new("component.field.signal_on_hit.0"),
-            tr("panel.inspector.physics.signal_on_hit"),
-        ),
-        (
-            ids::INSP_PHYS_SIGNAL_LEAVE,
-            TextKey::new("component.field.signal_on_leave.0"),
-            tr("panel.inspector.physics.signal_on_leave"),
-        ),
-    ] {
-        yy = signal_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            id,
-            rotulo,
-            placeholder,
-            sec_sinais,
-        );
-    }
-    // ⭐⭐⭐ **E o FILTRO dos dois** (TOP-20 #9, W3c) — *só quem tem esta tag dispara isto*.
-    //
-    // ⚠️ **UMA row para os DOIS nomes**, ao contrário dos nomes em si: *«só o jogador dispara esta
-    // armadilha»* é uma frase sobre QUEM toca, não sobre a fase do toque, e um filtro por extremo
-    // obrigaria a escrever a mesma tag duas vezes para dizer uma coisa.
-    signal_tag_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w,
-        yy,
-        signal_tag,
-        signal_tag_path,
     )
 }

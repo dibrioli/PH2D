@@ -53,6 +53,9 @@ pub struct InspectorPhysicsInfo {
     ///
     /// [`half_y`]: InspectorPhysicsInfo::half_y
     pub cap_half_height: f32,
+    /// A forma em relação à imagem do objecto: `None` sem imagem · `Some(true)` a caixa mede o desenho e
+    /// o acompanha (`Collider::box_fits_picture`) · `Some(false)` não acompanha (mudada à mão, bola, cápsula).
+    pub shape_follows: Option<bool>,
     pub density: f32,
     pub restitution: f32,
     pub friction: f32,
@@ -345,6 +348,8 @@ pub enum PhysicsFieldEdit {
     AddShape,
     /// Detach both components — the entity goes back to being plain art.
     Remove,
+    /// A forma volta à caixa da imagem, centrada: o estado «Follows the picture».
+    FitToPicture,
     /// `BodyKind` tag: `0` Dynamic · `1` Static · `2` Kinematic.
     Kind(u8),
     /// `ColliderShape` tag: `0` Ball · `1` Box · `2` Capsule. Switching

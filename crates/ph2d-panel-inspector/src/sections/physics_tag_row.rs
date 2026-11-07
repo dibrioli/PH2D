@@ -141,3 +141,89 @@ pub(super) fn signal_row<'a>(
         seccao,
     )
 }
+
+/// On Hit, On Leave e Only for tag.
+#[allow(clippy::too_many_arguments)]
+pub(in crate::sections) fn paint_signal_rows(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    signal_tag: Option<u64>,
+    signal_tag_path: &str,
+) -> f32 {
+    let mut yy = y;
+    // **O que este objeto GRITA quando algo chega nele — e quando algo sai**
+    // (W-Signal · W-SignalLeave).
+    //
+    // ⚠️ Aqui e não num card próprio: elas respondem *"e daí?"* à pergunta que as
+    // rows acima fazem — um Trigger sem sinal detecta e não acorda nada —, e um
+    // controle que só faz sentido junto de outros tem de estar onde eles estão
+    // (o argumento do `INSP_JOINT_ANCHOR_B_GROUP`, palavra por palavra).
+    //
+    // ⚠️ **Oferecidas em TODO collider**, sólido ou sensor: as fontes de cada
+    // extremo são um contato que começa/termina e uma entrada/saída de sensor, e
+    // restringir a row a um dos dois deixaria metade dos casos sem porta. Uma
+    // entidade é uma coisa ou a outra, então um nome por extremo responde às duas.
+    //
+    // ⚠️ **DUAS rows, e não uma com seletor:** os dois extremos são dois
+    // CONTRATOS que o artista quer autorar ao mesmo tempo (`door_open` /
+    // `door_close`), e um campo que trocasse de significado tornaria o caso de
+    // uso inteiro inexprimível.
+    let sec_sinais = ph2d_editor_core::property_row::Seccao::medida(
+        text_system,
+        1,
+        &[
+            tr("component.field.signal_on_hit.0"),
+            tr("component.field.signal_on_leave.0"),
+        ],
+    );
+    for (id, rotulo, placeholder) in [
+        (
+            ids::INSP_PHYS_SIGNAL,
+            TextKey::new("component.field.signal_on_hit.0"),
+            tr("panel.inspector.physics.signal_on_hit"),
+        ),
+        (
+            ids::INSP_PHYS_SIGNAL_LEAVE,
+            TextKey::new("component.field.signal_on_leave.0"),
+            tr("panel.inspector.physics.signal_on_leave"),
+        ),
+    ] {
+        yy = signal_row(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            yy,
+            id,
+            rotulo,
+            placeholder,
+            sec_sinais,
+        );
+    }
+    // ⭐⭐⭐ **E o FILTRO dos dois** (TOP-20 #9, W3c) — *só quem tem esta tag dispara isto*.
+    //
+    // ⚠️ **UMA row para os DOIS nomes**, ao contrário dos nomes em si: *«só o jogador dispara esta
+    // armadilha»* é uma frase sobre QUEM toca, não sobre a fase do toque, e um filtro por extremo
+    // obrigaria a escrever a mesma tag duas vezes para dizer uma coisa.
+    signal_tag_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        signal_tag,
+        signal_tag_path,
+    )
+}

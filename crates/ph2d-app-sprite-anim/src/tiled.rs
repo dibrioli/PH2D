@@ -67,9 +67,7 @@ pub(crate) fn follow_auto_collider(
     depois: [f32; 2],
 ) {
     if let Some(mut c) = world.get_mut::<Collider>(e)
-        && let ColliderShape::Cuboid { half_x, half_y } = c.shape
-        && same(half_x, antes[0] * 0.5)
-        && same(half_y, antes[1] * 0.5)
+        && c.box_fits_picture(antes)
         && antes != depois
     {
         c.shape = ColliderShape::Cuboid {
@@ -77,9 +75,4 @@ pub(crate) fn follow_auto_collider(
             half_y: depois[1] * 0.5,
         };
     }
-}
-
-/// Iguais à precisão de um `f32` que passou por um campo de texto.
-fn same(a: f32, b: f32) -> bool {
-    (a - b).abs() <= 1e-4 * b.abs().max(1.0)
 }

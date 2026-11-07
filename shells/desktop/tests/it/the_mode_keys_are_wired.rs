@@ -48,8 +48,17 @@ fn only_the_mode_owns_the_tab() {
     );
 }
 
+/// O `Tab` que NÃO é do modo: o acorde `Space+Tab` do Pixel (alterna o alvo dos tilemaps, P10b). Só
+/// com o `Space` seguro o `Tab` sozinho continua do modo; a guarda tem de estar NA linha do braço.
+fn e_acorde_com_espaco(linha: &str) -> bool {
+    linha.contains("KeyCode::Tab") && linha.contains(" if app.space =>")
+}
+
 /// O território acima é a shell; a família trata as suas teclas ANTES dela. O Pixel prendia o `Tab`
 /// em Draw, invisível ao censo (dono, 06/11). Mutação: um braço `KeyCode::Tab` em qualquer crate.
+///
+/// ⚠️ O que se proíbe é tomar o `Tab` SOZINHO: o acorde `Space+Tab` (guarda `if app.space` na linha do
+/// braço) não toma nada do modo, e o censo textual não o distinguia (a fusão P10 × GEF 23, 07/11).
 #[test]
 fn no_crate_takes_the_tab_before_the_mode() {
     fn varre(dir: &std::path::Path, achados: &mut Vec<String>) {
@@ -58,12 +67,25 @@ fn no_crate_takes_the_tab_before_the_mode() {
             if p.is_dir() {
                 varre(&p, achados);
             } else if p.extension().is_some_and(|x| x == "rs")
-                && std::fs::read_to_string(&p).is_ok_and(|s| s.contains("KeyCode::Tab"))
+                && std::fs::read_to_string(&p).is_ok_and(|s| {
+                    s.lines()
+                        .any(|l| l.contains("KeyCode::Tab") && !e_acorde_com_espaco(l))
+                })
             {
                 achados.push(p.display().to_string());
             }
         }
     }
+    // O controlo do filtro: o braço do `Tab` sozinho, ou com outra guarda, continua a sangrar.
+    assert!(e_acorde_com_espaco(
+        "(KeyCode::Tab, false, false) if app.space => f(app),"
+    ));
+    assert!(!e_acorde_com_espaco(
+        "(KeyCode::Tab, false, false) => f(app),"
+    ));
+    assert!(!e_acorde_com_espaco(
+        "(KeyCode::Tab, false, false) if app.stroking() => f(app),"
+    ));
     let crates = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../crates");
     let mut achados = Vec::new();
     for c in std::fs::read_dir(crates).expect("crates/").flatten() {

@@ -101,7 +101,7 @@ fn numero(host: &dyn PanelHostInternal, id: NodeId) -> Option<u16> {
         clippy::cast_sign_loss,
         reason = "a faixa do campo cabe em 16 bits"
     )]
-    Some(v.round().clamp(1.0, ids::TILE_SIDE_MAX) as u16)
+    Some(ph2d_editor_core::math::safe_clamp_f64(v.round(), 1.0, ids::TILE_SIDE_MAX) as u16)
 }
 
 pub(crate) fn apply_event(

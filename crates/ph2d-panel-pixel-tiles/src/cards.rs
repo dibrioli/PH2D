@@ -221,6 +221,7 @@ fn grelha(
         }
         let quente = c.store.button_visual(id).0 != ph2d_editor_core::widget::ButtonState::Normal;
         if i as u32 == escolhido || quente {
+            // FRAME-RAW-OK: o contorno de acento diz qual tile está escolhido ou sob o cursor — é a mensagem
             stroke_rounded_rect(
                 c.scene,
                 q,

@@ -122,7 +122,7 @@ pub(crate) fn paint(st: &mut PixelTilesPanelState, ctx: &mut PaintCtx) {
     });
     let encaixe = ctx.slot;
     ctx.slot = slot;
-    let lista = paint_card_list(ctx, node, tr("panel.pixel_tiles.title"), &cartoes);
+    let lista = paint_card_list(ctx, node, PixelTilesPanel::TITLE.tr(), &cartoes);
     ctx.slot = encaixe;
     ctx.host.store_mut().set_panel_rect(node, lista);
     alca(ctx, lista);

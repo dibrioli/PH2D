@@ -617,8 +617,13 @@ fn smoke_1_stages_a_face_in_four_undo_steps_and_asks_for_edit() {
         Some((bits, ObjectMode::Draw))
     );
     assert!(
-        !ph2d_app_pixel::smoke::stage(&mut app, &mut sim, 22, spawn_root),
-        "nível sem cena (a 21 é a dos tilemaps, P10b)"
+        !ph2d_app_pixel::smoke::stage(
+            &mut app,
+            &mut sim,
+            ph2d_app_pixel::smoke::ROUTERS[0].max_level + 1,
+            spawn_root
+        ),
+        "o nível logo acima do último roteado não tem cena"
     );
 }
 

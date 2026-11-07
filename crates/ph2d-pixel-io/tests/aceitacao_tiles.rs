@@ -234,7 +234,7 @@ fn escreve_a_entrada_do_oraculo() {
         std::fs::write(d.join("json_sha.txt"), sha(&[j.as_bytes()])).unwrap();
         std::fs::write(d.join("tiles_sha.txt"), sha(&[&img])).unwrap();
     }
-    // O `.ase` da aceitação, para o Trial abrir (`trial_tiles_p10c.py`).
+    // O `.ase` da aceitação, para o Trial abrir (`trial_tiles_p10c_folha.py`).
     let (bytes, _) = ase::escrever(&obra(Forma::Square)).unwrap();
     std::fs::write(Path::new(&pasta).join("aceitacao.ase"), bytes).unwrap();
 }

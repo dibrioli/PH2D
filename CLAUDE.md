@@ -11,7 +11,7 @@
 > Com mais de 200 mil tokens nenhum subagente de modelo menor conseguia sequer começar. A história
 > que aqui esteve vive **verbatim** em [`docs/archive/estado-2026-10-02/`](docs/archive/estado-2026-10-02/README.md).
 
-## §0 — Inegociáveis (memorize os 11)
+## §0 — Inegociáveis (memorize os 12)
 
 0. **O alvo é o EXTRAORDINÁRIO e o teto é o do HARDWARE, nunca o do caminho lento.** Antes de escrever
    qualquer limite (`MAX_*`, faixa de slider, «por ora»), **MEÇA** e escreva o número da medição com a
@@ -54,6 +54,11 @@
     UMA rodada de medição intercalada, um gate batched. Série só quando o resultado de um passo muda o
     seguinte — e diga-o. Medido em 04/10: quatro rodadas em série custaram `~2 h` de espera
     ([feedback](project-memory/feedback_plan_every_measurement_upfront_and_batch_it.md)).
+11. **Sem compatibilidade com projeto antigo até o app ser funcional** (dono 07/11: *«não existem projetos
+    antigos»*). Nada de migração, leitor de formato velho, fixture de versão antiga, nem peça separada ou campo
+    torto para não quebrar arquivo: mude o tipo do jeito certo e suba o `PROJECT_SCHEMA`, que continua contado.
+    Teste de fixture antiga que reprovar por isso, apague-o. Só o dono revoga. Não confunda com os contratos de
+    código do §6 nem com determinismo, que continuam valendo.
 
 ## §1 — Roteador leia-por-tarefa (leia SÓ o que sua tarefa exige)
 

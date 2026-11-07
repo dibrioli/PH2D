@@ -48,7 +48,7 @@ description: Onboarding completo para a PH2D — Power House Game Engine, uma en
 > - **HR-11** — Mutações destrutivas via MCP exigem confirmação
 > - **HR-12** — UI custom popula árvore de acessibilidade
 > - **HR-13** — Subsistemas declaram memory budget **e MEDEM o que gastam**
-> - **HR-14** — Save format é versionado e migrável
+> - **HR-14** — ⏸️ SUSPENSA até o app ser funcional (dono 07/11, CLAUDE §0.11): sem migração
 > - **HR-15** — Strings de UI passam por i18n
 > - **HR-16** — Storage lateral é serializável e determinístico, ou não existe
 > - **HR-17** — Examples canônicos compilam em CI
@@ -328,7 +328,7 @@ Cargo features são explosivas em combinação. Esta é a lista canônica; combi
 > disciplina e de revisão: **HR-1** (`no_os_in_core.rs`) · **HR-2** (a crate `ph2d-clippy` e a
 > lint `undocumented-unsafe` **não existem**) · **HR-4** (não há job `frame-budget-bench` no
 > CI) · **HR-7** (`editor_feature_isolation.rs`) · **HR-8** (`SAFE_TYPES.md`) · **HR-9**
-> (`luau_gc.rs`) · **HR-14** (`migration_chain.rs`) · **HR-17** (`examples_compile.rs`).
+> (`luau_gc.rs`) · **HR-17** (`examples_compile.rs`).
 >
 > **E uma tem gate e a seção não o nomeia:** **HR-12** é cobrada por
 > [`hr12_widgets_a11y.rs`](crates/ph2d-editor-core/tests/it/hr12_widgets_a11y.rs).
@@ -458,7 +458,8 @@ Toda mutação destrutiva grava em `audit.log` (JSON Lines, append-only): timest
 **Rationale:** OOM em iOS é jetsam silencioso; descobrir budget total no produto distribuído é cedo demais. E `check_budget` soma **intenções no boot** — ele nunca observa uma alocação. **Um budget que só é declarado não pode ser violado, só excedido em silêncio:** o Audio Editor chegou a **4351 MB de pico** (64 edições num clipe de 3 min, contra um teto de 3500 MB para o app INTEIRO) sem que a regra piscasse, porque a regra não estava olhando. O número declarado estava certo; ninguém o estava conferindo.
 **Enforced by:** unit test em `ph2d-core::budget::test_total_under_platform_min` simula a matriz §4 (a soma **declarada**) · gates dhat por subsistema medem o **real** — os do Audio Editor são `ph2d-audio-edit/tests/measure_*.rs` (ADR-0117 §4) e os do **Painter** são `ph2d-tool-painter/tests/measure_undo_{memory,capacity}.rs` (o 1º nasceu VERMELHO em 1.627 MB, exatamente como o do áudio: *o número declarado estava certo; ninguém o estava conferindo*).
 
-### HR-14 — Save format é versionado e migrável
+### HR-14 — Save format é versionado e migrável — ⏸️ SUSPENSA
+**Dono 07/11 (CLAUDE §0.11):** não existem projetos antigos. Até o dono declarar o app funcional, não se escreve migração, leitor de formato velho nem fixture de versão antiga; o formato muda e o `PROJECT_SCHEMA` sobe. O texto abaixo é o que volta a valer nesse dia.
 **Rule:** todo struct que vai a save game tem campo `version: u32` no início. Migração de versão N → N+1 é função pura `fn migrate_v{N}_to_v{N+1}(old: VN) -> Result<V{N+1}>`. Sem migração, build de release não compila para um diff que muda schema.
 **Rationale:** save corruption é uma das piores classes de bug em jogo distribuído; jogador perde progresso, review tanka.
 **Enforced by:** macro `#[derive(Saveable)]` exige campo version; teste `tests/save/migration_chain.rs` carrega saves de N=1 até atual.
@@ -1152,7 +1153,6 @@ Cada uma dessas regras já queimou ≥1× na slot 1 do Color Equalization (commi
 - ❌ Reimplementar algo que `kurbo`/`glam`/`bevy_ecs` já fazem bem.
 - ❌ Performance otimização sem profile. Measure first; `tracing` + `puffin` ou `tracy`.
 - ❌ Hardcoded string em UI (HR-15).
-- ❌ Save sem migração (HR-14).
 - ❌ MCP destructive sem token (HR-11).
 - ❌ Widget sem `Accessible` (HR-12).
 - ❌ `unwrap()` em código não-test. Em prototipagem, `expect("razão clara")`; em produção, propaga.
@@ -1202,7 +1202,7 @@ Toda mudança não-trivial precisa:
 - [ ] Determinism replay passa se mexe em estado simulado.
 - [ ] Documentação `///` em novos `pub`.
 - [ ] Schema MCP regenerado se adicionou `#[lua_export]` (HR-10).
-- [ ] Migration script se mudou save format (HR-14).
+- [ ] Subiu o `PROJECT_SCHEMA` se mudou save format (sem migração: CLAUDE §0.11).
 - [ ] Strings novas em UI passam por Fluent (HR-15).
 - [ ] Widget novo implementa `Accessible` (HR-12).
 - [ ] Memory budget atualizado se subsistema muda footprint (HR-13).

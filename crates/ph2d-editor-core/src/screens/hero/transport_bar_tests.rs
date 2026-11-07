@@ -50,3 +50,20 @@ fn a_corrida_acende_o_botao_certo() {
             .any(|(id, _)| *id == ids::TOPBAR_RESET && aceso(*id, janela))
     );
 }
+
+/// Sem estes botões, a tela cheia não tinha como parar. Mutação: tirar o Stop da lista ⇒ reprova.
+#[test]
+fn a_tela_cheia_tem_jogar_pausar_e_parar_no_topo_ao_centro() {
+    let r = rects_palco(BARRA);
+    let ids: Vec<_> = r.iter().map(|(id, ..)| *id).collect();
+    assert_eq!(
+        ids,
+        [
+            ids::MENUBAR_RUN_FULLSCREEN,
+            ids::TOPBAR_PAUSE,
+            ids::TOPBAR_RESET
+        ]
+    );
+    let (inicio, fim) = (r[0].2.x, r[2].2.x + r[2].2.w);
+    assert!(((inicio + fim) * 0.5 - 500.0).abs() < 0.01);
+}

@@ -55,6 +55,44 @@ pub fn rects(bar: Rect, start_x: f32, end_x: f32) -> Vec<(NodeId, IconId, Rect)>
         .collect()
 }
 
+/// ⭐ Os botões da tela cheia (dono 07/11: sem eles não havia como parar): no topo do jogo, centrados. Jogar é o da tela
+/// cheia, a volta do Pause.
+#[must_use]
+pub fn rects_palco(area: Rect) -> Vec<(NodeId, IconId, Rect)> {
+    let lado = super::menu_bar::MENU_BAR_H;
+    let botoes = [BOTOES[1], BOTOES[3], BOTOES[4]];
+    let inicio = area.x + (area.w - lado * botoes.len() as f32) * 0.5;
+    let y = area.y + Spacing::Sm.px();
+    botoes
+        .iter()
+        .enumerate()
+        .map(|(i, (id, icon))| {
+            (
+                *id,
+                *icon,
+                Rect::new(inicio + lado * i as f32, y, lado, lado),
+            )
+        })
+        .collect()
+}
+
+/// Pinta os botões da tela cheia, com um fundo que os separa do jogo.
+pub fn paint_palco(
+    area: Rect,
+    run: GameRun,
+    scene: &mut VectorScene,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+) {
+    let botoes = rects_palco(area);
+    if let Some(u) = crate::widget::cromo_barra::uniao(botoes.iter().map(|(_, _, r)| *r)) {
+        let raio = crate::paint::frame_radius(theme, Radius::Sm.px());
+        fill_rounded_rect(scene, u, raio, resolve(ColorToken::Bg1, theme));
+    }
+    paint(&botoes, run, scene, theme, hit_index, store);
+}
+
 /// Este botão está aceso? O Play do palco que corre, ou o Pause com o jogo parado a meio.
 #[must_use]
 pub fn aceso(id: NodeId, run: GameRun) -> bool {

@@ -351,7 +351,7 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     reg.register_default::<crate::TiledDraw>("ph2d::ecs::TiledDraw");
     reg.register_default::<crate::BlendMode>("ph2d::ecs::BlendMode");
     // A sprite como FONTE DE LUZ (plano `docs/Sprite_projeto/18` W8). Opcional: sem o componente o
-    // quadro é byte-idêntico, e um projeto antigo carrega sem ele — mas quem o autorou tem de o
+    // quadro é byte-idêntico — mas quem o autorou tem de o
     // reencontrar depois de gravar, e sem esta linha o `world_to_snapshot` descartava-o em silêncio.
     reg.register_default::<crate::SpriteEmissive>("ph2d::ecs::SpriteEmissive");
     // ADR-0164 F1 passo 6 / ADR-0166 — os três grupos que saíram do `Sprite` v4. Cada um é

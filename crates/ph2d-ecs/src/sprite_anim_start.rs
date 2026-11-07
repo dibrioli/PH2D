@@ -1,7 +1,7 @@
 //! **Com qual animação o objecto começa** ([ficha](../../../docs/GameEngineFuncional/componentes/02_animated_sprite.md),
 //! decisão 2). Separado do `current`: o ▶ do cartão é prévia e muda o `current`, nunca isto.
 //!
-//! Irmão de [`crate::SpriteAnimator`] pelo postcard posicional: projeto antigo não tem o blob e começa no `current`.
+//! Sem este componente, o objecto começa no `current`.
 
 use bevy_ecs::component::Component;
 use serde::{Deserialize, Serialize};

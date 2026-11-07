@@ -5,6 +5,8 @@ metadata:
   type: feedback
 ---
 
+⏸️ Suspensa até o app ser funcional: não se escreve fixture de formato antigo ([[feedback_no_old_projects_no_compatibility_until_the_app_works]]).
+
 Na W3 do Quadro (06/10) o formato subiu de 2 para 3 e o teste do leitor do formato 2 precisava dos
 bytes de um ficheiro antigo. Imprimi-os com `eprintln!("{:?}")` e colei a lista no teste — e
 reparti-a em linhas à mão. Duas vezes: 253 e 257 números, contra 251 reais. Na 1.ª o teste até

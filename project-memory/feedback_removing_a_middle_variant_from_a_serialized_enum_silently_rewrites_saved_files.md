@@ -5,6 +5,8 @@ metadata:
   type: feedback
 ---
 
+⏸️ Suspensa até o app ser funcional: não há arquivo antigo a proteger ([[feedback_no_old_projects_no_compatibility_until_the_app_works]]).
+
 Retirar uma variante **morta** de um enum parece higiene. Se o enum for serializado, é uma
 migração de formato disfarçada.
 

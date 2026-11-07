@@ -937,7 +937,10 @@ impl ApplicationHandler for App {
         // A pure dispatch table (PR 9b): one arm here + one `input_dispatch::App::on_<arm>` method
         // there — `docs/Migracao/2026-05-convention-by-discovery.md`.
         match event {
-            WindowEvent::CloseRequested if self.undo.janela_do_jogo.is_some() => self.jogo_para(),
+            // Com o jogo no palco, fechar pára o jogo; o app só fecha depois (dono 07/11).
+            WindowEvent::CloseRequested if self.undo.janela_do_jogo.is_some() || self.no_palco() => {
+                self.jogo_para()
+            }
             WindowEvent::CloseRequested => self.on_close_request(event_loop),
             WindowEvent::Resized(size) => self.on_resized(size),
             WindowEvent::HoveredFile(path) => self.on_hovered_file(path),

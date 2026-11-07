@@ -217,6 +217,17 @@ pub fn paint_hero_screen(
     // ⭐ O PALCO DO JOGO (GameEngineFuncional R0b): só o mundo — nem chrome, nem auxiliares do
     // editor; e sem pintor não há alvo de clique no `hit_index`.
     if hero.view.palco_do_jogo {
+        // Na janela própria quem pára é o fechar dela; a tela cheia precisa destes botões.
+        if hero.view.game_run.stage == Some(crate::game_stage::GameStage::Fullscreen) {
+            super::transport_bar::paint_palco(
+                layout.draw_area,
+                hero.view.game_run,
+                scene,
+                hero.theme,
+                &mut hero.hit_index,
+                &hero.store,
+            );
+        }
         hero.last_canvas = layout.draw_area;
         hero.store.end_scroll_frame();
         return;

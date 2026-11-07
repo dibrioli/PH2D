@@ -16,7 +16,7 @@
 //! colisão passa **muda** quando duas linhas escrevem o MESMO número, porque o
 //! git não sabe o que ele significa.
 
-/// Versão do formato de arquivo de projeto. Bump ⇒ migração ou hard-break.
+/// Versão do formato de arquivo de projeto. Bump ⇒ hard-break, sem migração, até o app ser funcional (CLAUDE §0.11).
 ///
 /// ⚠️ **Os degraus de v2 a v168 estão ARQUIVADOS**, verbatim, em SETE arquivos por faixa:
 /// `project_schema_history` (`v2`..`v82`, ARQUIVADO verbatim em `docs/archive/project-schema/escada_v2_a_v82.md`), `project_schema_history_v83` (ARQUIVADO em `docs/archive/project-schema/escada_v83_a_v98.md`)

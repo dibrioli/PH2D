@@ -290,6 +290,7 @@ fn the_panel_names_the_directions_the_engine_names() {
                 frames: Vec::new(),
                 markers: Vec::new(),
                 steps: 2,
+                color: 0,
             }
             .direction_tag,
             tag

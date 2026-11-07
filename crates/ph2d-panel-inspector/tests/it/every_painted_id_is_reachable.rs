@@ -221,6 +221,7 @@ pub(crate) fn publish_the_whole_sprite_scene() {
             frames: Vec::new(),
             markers: Vec::new(),
             steps: 4,
+            color: 0,
         }],
         player_present: true,
         cells: 8,

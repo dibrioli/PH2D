@@ -53,6 +53,8 @@ pub struct InspectorAnimRow {
     pub markers: Vec<InspectorAnimMarker>,
     /// Quantos quadros a animação toca (`0` = não resolve na grelha de hoje). Teto do «Frame».
     pub steps: u32,
+    /// O índice da cor dela na paleta do editor (`ph2d_ecs::AnimationTag::color`).
+    pub color: u8,
 }
 
 /// Um marcador em quadro: ao entrar no passo `step` (`0`-based), a animação grita `signal`.
@@ -464,6 +466,7 @@ mod tests {
             frames: Vec::new(),
             markers: Vec::new(),
             steps: 4,
+            color: 0,
         }
     }
 

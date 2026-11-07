@@ -60,6 +60,7 @@ pub(crate) fn anim(playing: bool, autoplay: bool) -> InspectorAnimInfo {
                 frames: Vec::new(),
                 markers: Vec::new(),
                 steps: 4,
+                color: 0,
             },
             InspectorAnimRow {
                 name: "attack".into(),
@@ -76,6 +77,7 @@ pub(crate) fn anim(playing: bool, autoplay: bool) -> InspectorAnimInfo {
                 frames: Vec::new(),
                 markers: Vec::new(),
                 steps: 4,
+                color: 0,
             },
         ],
         player_present: true,

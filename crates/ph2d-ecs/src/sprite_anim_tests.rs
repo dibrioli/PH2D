@@ -203,22 +203,28 @@ fn zero_speed_pauses_without_losing_the_position() {
     assert_eq!(a.elapsed_ticks, elapsed, "e nao acumula por baixo");
 }
 
-/// **Um intervalo de UMA célula não avança e não conta ciclos.**
-///
-/// ⚠️ Sem esta guarda, um `repeat: Some(3)` sobre uma célula terminaria no primeiro tique — os
-/// ciclos correriam à velocidade do relógio em vez da do frame.
+/// **Uma célula sem fim marcado não conta ciclos; com fim marcado dura o tempo dela e acaba.**
+/// Godot 4.7.2 mede o mesmo (`tests/it/the_anim_ends_match_godot.rs`). Sem isto o On Finish do Once nunca saía.
+/// *Mutação: voltar ao `if lo == hi { return out; }`, ou tirar a guarda.*
 #[test]
-fn a_single_cell_range_never_advances_and_never_loops() {
-    let t = AnimationTag {
-        repeat: Some(3),
+fn a_single_cell_loops_never_and_finishes_when_it_has_an_end() {
+    let sem_fim = tag_dir("still", 1, 1, AnimDirection::Forward);
+    let mut a = playing(&sem_fim);
+    let mut frame = u32::MAX;
+    advance(&mut a, &sem_fim, &mut frame, 4, 10_000 * MS);
+    assert_eq!((frame, a.repeat_count, a.playing), (1, 0, true));
+
+    let once = AnimationTag {
+        repeat: Some(1),
         ..tag_dir("still", 1, 1, AnimDirection::Forward)
     };
-    let mut a = playing(&t);
+    let dura = u64::from(once.frame_ms) * MS;
+    let mut a = playing(&once);
     let mut frame = u32::MAX;
-    advance(&mut a, &t, &mut frame, 4, 10_000 * MS);
-    assert_eq!(frame, 1);
-    assert_eq!(a.repeat_count, 0);
-    assert!(a.playing);
+    assert!(!advance(&mut a, &once, &mut frame, 4, dura - 1).finished);
+    assert!(a.playing, "ainda não durou o quadro");
+    assert!(advance(&mut a, &once, &mut frame, 4, 1).finished);
+    assert_eq!((frame, a.playing), (1, false));
 }
 
 /// **O intervalo é DERIVADO contra a grelha de hoje** — encolher `hframes` não deixa uma tag a
@@ -402,6 +408,30 @@ fn a_zero_frame_ms_from_disk_runs_at_the_one_millisecond_floor() {
     assert_eq!(
         a.repeat_count, 0,
         "sem o clamp isto seriam 256 ciclos num unico tique"
+    );
+}
+
+/// A cor mora na animação: a menos usada ao nascer, e apagar uma não troca as outras.
+/// *Mutação: `next_color` devolver sempre `0`, ou `insert` não a escrever.*
+#[test]
+fn cada_animacao_nasce_com_a_cor_menos_usada() {
+    let mut lib = SpriteAnimations::new();
+    for i in 0..=crate::ANIM_COLORS {
+        lib.insert(AnimationTag::new(format!("a{i}"), 0, 1))
+            .unwrap();
+    }
+    let cores: Vec<u8> = lib.iter().map(|t| t.color).collect();
+    assert_eq!(cores, [0, 1, 2, 3, 4, 5, 6, 7, 0], "a nona dá a volta");
+    assert!(lib.remove("a2"));
+    assert_eq!(lib.get("a3").unwrap().color, 3, "as outras ficam");
+    lib.insert(AnimationTag::new("nova", 0, 1)).unwrap();
+    assert_eq!(lib.get("nova").unwrap().color, 2, "herda a cor que vagou");
+    let bytes = postcard::to_allocvec(&lib).unwrap();
+    let volta = postcard::from_bytes::<SpriteAnimations>(&bytes).unwrap();
+    assert_eq!(
+        volta.get("nova").unwrap().color,
+        2,
+        "a cor viaja no arquivo"
     );
 }
 

@@ -103,6 +103,10 @@ pub struct AnimDoc {
     pub painted: DragPaint,
     /// Os quadros com ◆ na última pintura.
     pub painted_marks: Vec<usize>,
+    /// As células usadas na última pintura, com as faixas delas.
+    pub painted_cells: Vec<super::paint_sheet::PaintedCell>,
+    /// Onde o rato está, para a lista de quem usa a célula.
+    pub hover: Option<(f32, f32)>,
     drag: Drag,
     /// A seleção ainda não leu o snapshot (abre na animação que toca).
     seeded: bool,
@@ -243,17 +247,6 @@ impl AnimDoc {
         Some(AnimCycleMode::of_row(r.direction_tag, r.repeat))
     }
 
-    /// A animação aberta está a tocar?
-    #[must_use]
-    pub fn playing(&self) -> bool {
-        self.snap.info.as_ref().is_some_and(|i| {
-            i.playing
-                && i.rows
-                    .get(self.selected)
-                    .is_some_and(|r| r.name == i.current)
-        })
-    }
-
     /// A grelha proposta, quando difere da que a sprite tem e divide de facto a folha.
     #[must_use]
     pub fn proposal(&self) -> Option<GridGuess> {
@@ -313,7 +306,7 @@ impl AnimDoc {
     }
 
     /// A faixa rolou por baixo da mão: o intervalo do arrasto é o que ela aponta agora.
-    pub(super) fn drag_points_at(&mut self, frames: &[(Rect, Rect, Rect)]) {
+    pub(super) fn drag_points_at(&mut self, frames: &[(Rect, Rect)]) {
         if let Drag::Frame {
             moved: true,
             gap,
@@ -429,10 +422,12 @@ impl AnimDoc {
         if !hit(l.area, x, y) {
             return false;
         }
-        if hit(l.play, x, y) {
-            self.toggle_play();
-        } else if hit(l.fps, x, y) && self.row().is_some() {
+        if hit(l.fps, x, y) && self.row().is_some() {
             self.open_field(Field::Fps);
+        } else if hit(l.this_frame, x, y)
+            && let Some(f) = self.marked_frame()
+        {
+            self.open_field(Field::FrameMs(f));
         } else if let Some(i) = l.modes.iter().position(|r| hit(*r, x, y)) {
             if let Some(row) = self.row() {
                 self.pending
@@ -465,7 +460,7 @@ impl AnimDoc {
             if let Some(row) = self.row() {
                 self.pending.push(AnimFieldEdit::Remove(row));
             }
-        } else if let Some(i) = l.frames.iter().position(|f| hit(f.2, x, y))
+        } else if let Some(i) = l.frames.iter().position(|f| hit(f.1, x, y))
             && self.authored_frames().len() > 1
         {
             let mut frames = self.authored_frames();
@@ -473,8 +468,6 @@ impl AnimDoc {
             self.frame_selected = None;
             self.push_frames(frames);
             self.markers_follow_delete(i);
-        } else if let Some(i) = l.frames.iter().position(|f| hit(f.1, x, y)) {
-            self.open_field(Field::FrameMs(i));
         } else if let Some(i) = l.frames.iter().position(|f| hit(f.0, x, y)) {
             self.drag = Drag::Frame {
                 from: i,
@@ -497,6 +490,7 @@ impl AnimDoc {
 
     /// O rato moveu-se (com ou sem botão).
     pub fn motion(&mut self, x: f32, y: f32) -> bool {
+        self.hover = hit(self.layout.area, x, y).then_some((x, y));
         let cell = self.cell_at(x, y);
         let slot = self.drop_gap(x);
         match &mut self.drag {
@@ -567,26 +561,6 @@ impl AnimDoc {
         self.frame_selected = None;
         if let Some(r) = self.snap.info.as_ref().and_then(|x| x.rows.get(i)) {
             self.pending.push(AnimFieldEdit::SetCurrent(r.name.clone()));
-        }
-    }
-
-    fn toggle_play(&mut self) {
-        let Some(name) = self
-            .snap
-            .info
-            .as_ref()
-            .and_then(|i| i.rows.get(self.selected))
-            .map(|r| r.name.clone())
-        else {
-            return;
-        };
-        if self.playing() {
-            self.pending.push(AnimFieldEdit::Playing(false));
-        } else {
-            if self.snap.info.as_ref().is_some_and(|i| i.current != name) {
-                self.pending.push(AnimFieldEdit::SetCurrent(name));
-            }
-            self.pending.push(AnimFieldEdit::Playing(true));
         }
     }
 

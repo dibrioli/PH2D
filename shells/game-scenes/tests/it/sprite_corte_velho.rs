@@ -87,7 +87,10 @@ fn escolher_a_imagem_no_vazio_ja_entra_em_animated() {
     assert_eq!(a.current, ph2d_app_sprite_anim::image_use::LOOP_TAG);
     assert!(a.autoplay);
     assert!(!sem_imagem(w, e), "deixou de ser o convite");
-    assert!(w.get::<SpriteAnimations>(e).is_none_or(|l| l.1.is_none()), "nada a avisar");
+    assert!(
+        w.get::<SpriteAnimations>(e).is_none_or(|l| l.1.is_none()),
+        "nada a avisar"
+    );
 }
 
 /// Uma animada de 8 × 4 com 6 animações, a mostrar `id`.
@@ -142,7 +145,11 @@ fn imagem_que_traz_corte_nao_avisa() {
     escolhe(&mut sim, &db, outro, cortada);
     let e = animada(&mut sim, &db, a);
     escolhe(&mut sim, &db, e, folha(&db, 300, 100, 100, 100));
-    assert!(sim.world().get::<SpriteAnimations>(e).is_some_and(|l| l.1.is_some()));
+    assert!(
+        sim.world()
+            .get::<SpriteAnimations>(e)
+            .is_some_and(|l| l.1.is_some())
+    );
     escolhe(&mut sim, &db, e, cortada);
     let w = sim.world();
     assert_eq!(grade(w, e), [4, 2], "o corte veio com a imagem");
@@ -198,7 +205,12 @@ fn cut_again_sem_proposta_abre_o_editor() {
         "fechar o editor sem cortar não perde o aviso"
     );
     corta(&mut sim, e, 4, 2);
-    assert!(sim.world().get::<SpriteAnimations>(e).is_none_or(|l| l.1.is_none()), "cortou");
+    assert!(
+        sim.world()
+            .get::<SpriteAnimations>(e)
+            .is_none_or(|l| l.1.is_none()),
+        "cortou"
+    );
 }
 
 fn corta(sim: &mut ph2d_ecs::SimWorld, e: Entity, h: u32, v: u32) {
@@ -225,6 +237,10 @@ fn voltar_a_grade_antiga_nao_ressuscita_o_aviso() {
     corta(&mut sim, e, 4, 2);
     corta(&mut sim, e, 8, 4);
     assert_eq!(grade(sim.world(), e), [8, 4]);
-    assert!(sim.world().get::<SpriteAnimations>(e).is_none_or(|l| l.1.is_none()));
+    assert!(
+        sim.world()
+            .get::<SpriteAnimations>(e)
+            .is_none_or(|l| l.1.is_none())
+    );
     assert!(cut_notice(sim.world(), e, &db, &atlas, PPM).is_none());
 }

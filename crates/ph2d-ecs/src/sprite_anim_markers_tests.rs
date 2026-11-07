@@ -17,6 +17,7 @@ fn tag(direction: AnimDirection, repeat: Option<u32>) -> AnimationTag {
         signal_on_finish: String::new(),
         per_frame_ms: Vec::new(),
         signal_on_loop: String::new(),
+        color: 0,
     }
 }
 

@@ -128,22 +128,34 @@ fn as_saidas_do_aviso_voltam_pelo_desfazer() {
     assert_eq!(grelha(&sim, e), [8, 4]);
     let antes_da_troca = foto(&mut sim);
     escolhe(&mut sim, &db, e, folha(&db, 256, 128, 64));
-    assert!(sim.world().get::<SpriteAnimations>(e).is_some_and(|l| l.1.is_some()));
+    assert!(
+        sim.world()
+            .get::<SpriteAnimations>(e)
+            .is_some_and(|l| l.1.is_some())
+    );
     let com_aviso = foto(&mut sim);
     for verbo in [ImageUseEdit::CutAgain, ImageUseEdit::KeepCut] {
         let (mut s, e) = repoe(&com_aviso);
         assert!(apply_edit(s.world_mut(), e, &db, &atlas, PPM, verbo));
-        assert!(s.world().get::<SpriteAnimations>(e).is_none_or(|l| l.1.is_none()));
+        assert!(
+            s.world()
+                .get::<SpriteAnimations>(e)
+                .is_none_or(|l| l.1.is_none())
+        );
         let (s2, e2) = repoe(&com_aviso);
         assert!(
-            s2.world().get::<SpriteAnimations>(e2).is_some_and(|l| l.1.is_some()),
+            s2.world()
+                .get::<SpriteAnimations>(e2)
+                .is_some_and(|l| l.1.is_some()),
             "volta o aviso"
         );
         assert_eq!(grelha(&s2, e2), [8, 4], "volta o corte velho");
     }
     let (s, e) = repoe(&antes_da_troca);
     assert!(
-        s.world().get::<SpriteAnimations>(e).is_none_or(|l| l.1.is_none()),
+        s.world()
+            .get::<SpriteAnimations>(e)
+            .is_none_or(|l| l.1.is_none()),
         "a troca desfeita não avisa"
     );
 }

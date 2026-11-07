@@ -234,11 +234,7 @@ pub fn tick_sprite_animations(
 /// já a tocar a meio do ciclo. Script e Rules escolhem sozinhos: ficam como estão.
 pub fn start_autoplay_animations(sim: &mut SimWorld) {
     let world = sim.world_mut();
-    let mut q = world.query::<(
-        ph2d_ecs::Entity,
-        &SpriteAnimator,
-        &SpriteAnimations,
-    )>();
+    let mut q = world.query::<(ph2d_ecs::Entity, &SpriteAnimator, &SpriteAnimations)>();
     let inicios: Vec<(ph2d_ecs::Entity, String)> = q
         .iter(world)
         .filter(|(_, a, ..)| a.autoplay)

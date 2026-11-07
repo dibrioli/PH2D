@@ -4,10 +4,12 @@
 //! [`AnimDocs`] uma vez e chama [`frame`] uma vez por quadro, ANTES dos snapshots. O «Editar animações…»
 //! do cartão chega como `AnimFieldEdit::OpenEditor`, que a shell entrega a [`request_open`].
 
+pub mod bands;
 pub mod doc;
 pub mod layout;
 mod marks;
 pub mod paint;
+pub mod paint_sheet;
 pub mod split;
 
 use std::collections::BTreeMap;
@@ -369,6 +371,3 @@ fn follow_identity(w: &ph2d_ecs::World, docs: &mut Vec<AnimDoc>) -> Vec<(u64, u6
     docs.retain(|d| on_copy || has_sprite(w, d.entity));
     moved
 }
-
-#[cfg(test)]
-mod tests;

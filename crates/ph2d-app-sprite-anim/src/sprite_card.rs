@@ -103,9 +103,7 @@ pub fn cut_notice(
     let aviso = lib.1?;
     let g = world.get::<SpriteGrid>(e)?;
     let n = lib.iter().count();
-    if n == 0
-        || aviso != [g.hframes, g.vframes]
-        || image_use(world, e) != Some(ImageUse::Animated)
+    if n == 0 || aviso != [g.hframes, g.vframes] || image_use(world, e) != Some(ImageUse::Animated)
     {
         return None;
     }
@@ -126,7 +124,10 @@ pub fn cut_again(
     atlas: &BTreeMap<u32, AssetId>,
     facts: Option<ImageFacts>,
 ) -> bool {
-    if world.get::<SpriteAnimations>(e).is_none_or(|l| l.1.is_none()) {
+    if world
+        .get::<SpriteAnimations>(e)
+        .is_none_or(|l| l.1.is_none())
+    {
         return false;
     }
     let proposta = shown_id(world, e, atlas)

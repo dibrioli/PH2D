@@ -174,6 +174,7 @@ pub fn build_anim_info(
                     frames: crate::card::row_frames(world, entity, &t.name),
                     markers: ph2d_anim_signals::row_markers(world, entity, &t.name),
                     steps: ph2d_ecs::anim_steps(world, entity, &t.name),
+                    color: t.color,
                 })
                 .collect()
         })

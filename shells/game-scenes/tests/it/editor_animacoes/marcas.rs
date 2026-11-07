@@ -65,7 +65,7 @@ fn marcas(m: &Mesa) -> Vec<(String, u32, String)> {
 fn a_transparencia_decide_quais_fileiras_tem_desenho() {
     let s = folha_com_fileira_vazia();
     assert_eq!(
-        split::drawn_by_row(&s.rgba, s.w, s.h, 4, 3),
+        ph2d_app_sprite_anim::editor::split::drawn_by_row(&s.rgba, s.w, s.h, 4, 3),
         vec![vec![0, 1, 2, 3], vec![9, 10]]
     );
 }
@@ -203,7 +203,7 @@ fn o_marcador_anda_com_o_quadro() {
         0,
         "o quadro foi para o começo, o ◆ com ele"
     );
-    let fechar = m.doc().layout.frames[0].2;
+    let fechar = m.doc().layout.frames[0].1;
     m.click(centre(fechar));
     m.frame();
     assert!(marcas(&m).is_empty(), "o quadro saiu, o ◆ com ele");
@@ -212,7 +212,7 @@ fn o_marcador_anda_com_o_quadro() {
     carrega_no_marcador(&mut m);
     m.key(Key::Enter, None);
     m.frame();
-    let fechar = m.doc().layout.frames[0].2;
+    let fechar = m.doc().layout.frames[0].1;
     m.click(centre(fechar));
     m.frame();
     assert_eq!(marcas(&m)[0].1, 1, "um quadro antes dele saiu: desce um");

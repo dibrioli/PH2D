@@ -201,7 +201,13 @@ pub struct AnimationTag {
     /// dentro (`SignalOrigin::Animation::cycles`) — uma rajada de passos que ninguém deu é ruído,
     /// não um efeito.
     pub signal_on_loop: String,
+    /// A cor desta animação no editor: índice da paleta, `0..ANIM_COLORS`. Mora na animação para não mudar ao
+    /// reordenar nem ao apagar outra; quem a escolhe é [`SpriteAnimations::insert`].
+    pub color: u8,
 }
+
+/// Quantas cores a paleta das animações tem; o editor dá um token a cada índice.
+pub const ANIM_COLORS: u8 = 8;
 
 impl AnimationTag {
     /// Uma tag nova sobre o intervalo dado, a 10 fps (o placeholder da spec §8.3).
@@ -218,6 +224,7 @@ impl AnimationTag {
             signal_on_finish: String::new(),
             signal_on_loop: String::new(),
             per_frame_ms: Vec::new(),
+            color: 0,
         }
     }
 
@@ -277,7 +284,7 @@ impl SpriteAnimations {
     }
 
     /// Insere, impondo nome, unicidade e contagem. **A porta ÚNICA de crescimento.**
-    pub fn insert(&mut self, tag: AnimationTag) -> Result<(), AnimTagError> {
+    pub fn insert(&mut self, mut tag: AnimationTag) -> Result<(), AnimTagError> {
         validate_tag_name(&tag.name)?;
         if self.0.iter().any(|t| t.name == tag.name) {
             return Err(AnimTagError::Duplicate);
@@ -285,8 +292,16 @@ impl SpriteAnimations {
         if self.0.len() >= ANIM_TAGS_MAX {
             return Err(AnimTagError::ListFull);
         }
+        tag.color = self.next_color();
         self.0.push(tag);
         Ok(())
+    }
+
+    /// A cor menos usada, a de menor índice no empate.
+    fn next_color(&self) -> u8 {
+        (0..ANIM_COLORS)
+            .min_by_key(|c| self.0.iter().filter(|t| t.color == *c).count())
+            .unwrap_or(0)
     }
 
     pub fn remove(&mut self, name: &str) -> bool {
@@ -535,9 +550,9 @@ pub(crate) fn advance_span_visiting(
     if !animator.playing || animator.speed_q16 == 0 || dt_ticks == 0 {
         return out;
     }
-    // Um intervalo de UMA célula não tem para onde avançar; deixá-lo entrar no laço faria os
-    // ciclos contarem à velocidade do relógio, e um `repeat` finito terminaria num instante.
-    if lo == hi {
+    // UMA célula sem fim marcado não tem o que fazer: ciclos sem imagem que muda só gritariam On Loop.
+    // Com fim marcado (Once) ela dura o tempo dela e acaba, como no Godot: senão o On Finish nunca sai.
+    if lo == hi && (animator.cycles_allowed(tag).is_none() || animator.direction(tag).bounces()) {
         return out;
     }
 

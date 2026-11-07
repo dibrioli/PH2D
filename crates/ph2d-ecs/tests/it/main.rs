@@ -25,6 +25,7 @@ mod only_the_door_reads_tags;
 mod rewind_runtime;
 mod sim_present_flow;
 mod sorting_pipeline_determinism;
+mod the_anim_ends_match_godot;
 mod the_frame_ritm_is_per_cell;
 mod the_hierarchy_is_the_one_blender_measures;
 mod the_morph_graph_survives_the_snapshot;

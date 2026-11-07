@@ -270,6 +270,7 @@ mod tests {
             frames: Vec::new(),
             markers: Vec::new(),
             steps: 4,
+            color: 0,
         }
     }
 

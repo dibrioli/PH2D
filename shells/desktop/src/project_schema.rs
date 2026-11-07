@@ -357,7 +357,12 @@
 /// `SpriteAnimator.start: Option<String>` e `SpriteAnimations.1: Option<[u32; 2]>` (o aviso do corte velho) no FIM;
 /// os componentes `SpriteAnimStart` e `SpriteCutNotice` saem do registo (`120 → 118`). SEM leitura dos anteriores.
 /// Registos de componentes: `-2`. ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 222;
+///
+/// # `222 → 223` — **a cor da animação** (`line/GameEngineFuncional`, editor de animações, onda 1)
+///
+/// `AnimationTag.color: u8` no FIM: o índice da paleta do editor, escolhido ao inserir. SEM leitura dos anteriores
+/// (§0.11). ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 223;
 
 /// O último degrau com a forma de colisão no próprio corpo.
 pub(crate) const PROJECT_SCHEMA_FORMA_NO_CORPO: u32 = 219;

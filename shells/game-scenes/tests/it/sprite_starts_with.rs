@@ -7,9 +7,7 @@ use ph2d_app_sprite_anim::tick::start_autoplay_animations;
 use ph2d_ecs::scene::{
     EditorCommandQueue, WorldSnapshot, apply_editor_commands, snapshot_to_world, world_to_snapshot,
 };
-use ph2d_ecs::{
-    AnimationTag, Entity, SimWorld, SpriteAnimations, SpriteAnimator, SpriteGrid,
-};
+use ph2d_ecs::{AnimationTag, Entity, SimWorld, SpriteAnimations, SpriteAnimator, SpriteGrid};
 use ph2d_editor_core::AnimFieldEdit;
 
 fn cena() -> (SimWorld, Entity) {
@@ -94,7 +92,14 @@ fn o_starts_with_viaja_na_foto_e_o_desfazer_repoe() {
     assert_eq!(atual(&reaberto, r), "idle");
 
     let (desfeito, d) = aberto(&antes);
-    assert!(desfeito.world().get::<SpriteAnimator>(d).unwrap().start.is_none());
+    assert!(
+        desfeito
+            .world()
+            .get::<SpriteAnimator>(d)
+            .unwrap()
+            .start
+            .is_none()
+    );
     assert_eq!(atual(&desfeito, d), "idle");
 }
 
@@ -144,7 +149,9 @@ fn sem_cartoes_clicar_na_linha_muda_com_o_que_comeca() {
         assert_eq!(atual(&sim, e), nome);
     }
     assert_eq!(
-        sim.world().get::<SpriteAnimator>(e).and_then(|a| a.start.as_deref()),
+        sim.world()
+            .get::<SpriteAnimator>(e)
+            .and_then(|a| a.start.as_deref()),
         Some("run")
     );
 }
@@ -174,7 +181,11 @@ fn inicio_e_aviso_viajam_no_duplicar_e_na_instancia() {
     };
     let dup =
         instantiate::duplicate_subtree(&mut sim, &r, m, &mut docs, [1.0, 0.0]).expect("copia");
-    let inicio = |s: &SimWorld, e| s.world().get::<SpriteAnimator>(e).and_then(|a| a.start.clone());
+    let inicio = |s: &SimWorld, e| {
+        s.world()
+            .get::<SpriteAnimator>(e)
+            .and_then(|a| a.start.clone())
+    };
     for e in [inst, dup] {
         assert_eq!(inicio(&sim, e).as_deref(), Some("idle"));
         let n = sim.world().get::<SpriteAnimations>(e).and_then(|l| l.1);
@@ -184,10 +195,7 @@ fn inicio_e_aviso_viajam_no_duplicar_e_na_instancia() {
     let mut eco = ph2d_app_components::instance_sync::MasterEcho::default();
     ts::pass(&mut sim, &r, &ponte, &mut eco);
     ts::pass(&mut sim, &r, &ponte, &mut eco);
-    sim.world_mut()
-        .get_mut::<SpriteAnimator>(m)
-        .unwrap()
-        .start = Some("run".into());
+    sim.world_mut().get_mut::<SpriteAnimator>(m).unwrap().start = Some("run".into());
     ts::pass(&mut sim, &r, &ponte, &mut eco);
     assert_eq!(inicio(&sim, inst).as_deref(), Some("run"), "o mestre manda");
 }

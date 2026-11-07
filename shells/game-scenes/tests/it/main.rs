@@ -4,6 +4,7 @@
 mod a_lista_de_sons;
 mod comp;
 mod fisica_b4_inspector;
+mod editor_animacoes;
 mod jogo_arte;
 mod jogo_camara;
 mod jogo_camera_intuitiva;

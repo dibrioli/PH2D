@@ -1,13 +1,27 @@
 //! **Os gates do editor de animações**: cada gesto dirigido pelas portas reais da aba (`pointer`,
 //! `pointer_move`, `key`), conferido na edição que ele emite e, depois do [`super::frame`], na cena.
 
-use super::*;
 use ph2d_a11y::NodeId;
+use ph2d_app_sprite_anim::editor::doc::{self, AnimDoc};
+use ph2d_app_sprite_anim::editor::{
+    AnimDocs, AnimEditorRequests, frame, propose_after_drop, request_open,
+};
+use ph2d_asset::AssetDb;
+use ph2d_ecs::scene::ComponentRegistry;
 use ph2d_ecs::{
     AnimationTag, SpriteAnimFrames, SpriteAnimations, SpriteAnimator, SpriteGrid, Transform,
 };
+use ph2d_ecs::{Entity, SimWorld};
 use ph2d_editor_core::AnimCycleMode;
+use ph2d_editor_core::doc_surface::{DocumentSurface, Key, KeyInput, PointerInput};
+use ph2d_editor_core::zones::Rect;
+use ph2d_editor_core::{AnimFieldEdit, HeroScreen, ToastQueue};
 use ph2d_host::Modifiers;
+use ph2d_host::{PointerButton, PointerKind};
+use ph2d_text::TextSystem;
+use ph2d_tokens::Theme;
+use ph2d_vector::VectorScene;
+use std::collections::BTreeMap;
 
 struct Mesa {
     sim: SimWorld,
@@ -280,7 +294,7 @@ fn arrastar_um_quadro_na_faixa_reordena() {
 fn um_intervalo_como_o_do_ase_continua_editavel_no_editor() {
     let mut m = Mesa::new();
     assert_eq!(m.doc().authored_frames(), [0, 1, 2, 3, 4, 5]);
-    let x = centre(m.doc().layout.frames[0].2);
+    let x = centre(m.doc().layout.frames[0].1);
     m.click(x);
     assert_eq!(m.pending(), [AnimFieldEdit::Frames(0, vec![1, 2, 3, 4, 5])]);
     m.frame();
@@ -308,11 +322,11 @@ fn clicar_um_quadro_mostra_o_e_o_x_e_o_delete_tiram_no() {
     m.key(Key::Delete, None);
     assert_eq!(m.pending(), [AnimFieldEdit::Frames(0, vec![5, 7])]);
     m.frame();
-    let x = centre(m.doc().layout.frames[0].2);
+    let x = centre(m.doc().layout.frames[0].1);
     m.click(x);
     assert_eq!(m.pending(), [AnimFieldEdit::Frames(0, vec![7])]);
     m.frame();
-    let x = centre(m.doc().layout.frames[0].2);
+    let x = centre(m.doc().layout.frames[0].1);
     m.click(x);
     assert_eq!(
         m.pending(),
@@ -324,10 +338,12 @@ fn clicar_um_quadro_mostra_o_e_o_x_e_o_delete_tiram_no() {
 #[test]
 fn o_tempo_de_um_quadro_escreve_se_no_campo_dele() {
     let mut m = Mesa::new();
-    let ms = centre(m.doc().layout.frames[2].1);
+    let quadro = centre(m.doc().layout.frames[2].0);
+    m.click(quadro);
+    m.frame();
+    m.pending();
+    let ms = centre(m.doc().layout.this_frame);
     m.click(ms);
-    m.key(Key::Backspace, None);
-    m.key(Key::Backspace, None);
     m.key(Key::Backspace, None);
     // O campo é o MULTIPLICADOR do ritmo (lei do Godot): 2,5 × 100 ms.
     m.key(Key::Char('2'), Some("2,5"));
@@ -343,8 +359,11 @@ fn o_tempo_de_um_quadro_escreve_se_no_campo_dele() {
 #[test]
 fn mudar_os_quadros_por_segundo_leva_o_tempo_proprio_junto() {
     let mut m = Mesa::new();
-    let quadro = centre(m.doc().layout.frames[2].1);
+    let quadro = centre(m.doc().layout.frames[2].0);
     m.click(quadro);
+    m.frame();
+    let campo = centre(m.doc().layout.this_frame);
+    m.click(campo);
     m.key(Key::Backspace, None);
     m.key(Key::Char('2'), Some("2"));
     m.key(Key::Enter, None);
@@ -402,29 +421,6 @@ fn o_modo_do_ciclo_e_um_botao_por_modo() {
     );
     m.frame();
     assert_eq!(m.doc().mode(), Some(AnimCycleMode::Once));
-}
-
-#[test]
-fn o_play_toca_a_animacao_aberta_e_o_segundo_clique_pausa() {
-    let mut m = Mesa::new();
-    let run = centre(m.doc().layout.list_rows[1]);
-    m.click(run);
-    assert_eq!(m.pending(), [AnimFieldEdit::SetCurrent("run".into())]);
-    m.frame();
-    let play = centre(m.doc().layout.play);
-    m.click(play);
-    assert_eq!(m.pending(), [AnimFieldEdit::Playing(true)]);
-    m.frame();
-    let p = m
-        .sim
-        .world()
-        .get::<SpriteAnimator>(Entity::from_bits(m.e))
-        .unwrap()
-        .clone();
-    assert!(p.playing && p.current == "run");
-    assert!(m.doc().playing());
-    m.click(play);
-    assert_eq!(m.pending(), [AnimFieldEdit::Playing(false)]);
 }
 
 #[test]
@@ -634,38 +630,31 @@ impl Mesa {
     }
 }
 
-/// Os seis controlos da barra de cima.
-fn bar(l: &doc::Layout) -> [Rect; 7] {
+/// Os controlos fixos da tela.
+fn controlos(l: &doc::Layout) -> [Rect; 7] {
     [
-        l.play, l.fps, l.modes[0], l.modes[1], l.modes[2], l.cols, l.rows,
+        l.fps,
+        l.this_frame,
+        l.modes[0],
+        l.modes[1],
+        l.modes[2],
+        l.cols,
+        l.rows,
     ]
 }
 
-/// ⭐ Report do dono (foto 03): depois do «6 fps», Repeat · Once · Ping-pong e as colunas/linhas
-/// saíam «…». Cada controlo mede o seu texto; numa aba estreita a barra QUEBRA em vez de cortar.
+/// ⭐ Report do dono (foto 03): Repeat · Once · Ping-pong e as colunas/linhas saíam «…». Cada controlo cabe, e
+/// nenhum pisa outro nem sai da aba, até numa aba estreita.
 #[test]
-fn a_barra_de_cima_mede_o_texto_e_quebra_na_largura() {
-    for w in [1200.0, 420.0, 240.0] {
+fn os_controlos_cabem_e_nenhum_pisa_outro() {
+    for w in [1200.0, 700.0, 420.0] {
         // LITERAL-PX-OK: a janela do teste
         let mut m = Mesa::new();
         let area = Rect::new(0.0, 0.0, w, AREA.h);
         let cut = m.paint_in(area);
         let d = m.doc();
-        let labels = [
-            d.fps_label(),
-            "Repeat".into(),
-            "Once".into(),
-            "Ping-pong".into(),
-            d.cols_label(),
-            d.rows_label(),
-        ];
-        for t in &labels {
-            assert!(!cut.contains(t), "«{t}» saiu cortado a {w} px: {cut:?}");
-        }
-        if w > 300.0 {
-            assert!(cut.is_empty(), "nada da aba se corta a {w} px: {cut:?}");
-        }
-        let rects = bar(&d.layout);
+        assert!(cut.is_empty(), "nada da aba se corta a {w} px: {cut:?}");
+        let rects = controlos(&d.layout);
         for (i, r) in rects.iter().enumerate() {
             assert!(
                 r.x >= area.x && r.x + r.w <= area.x + area.w,
@@ -677,38 +666,25 @@ fn a_barra_de_cima_mede_o_texto_e_quebra_na_largura() {
                 assert!(apart, "{r:?} pisa {o:?} a {w} px");
             }
         }
-        if w < 300.0 {
-            assert!(
-                d.layout.rows.y > d.layout.play.y,
-                "a {w} px a barra tinha de quebrar"
-            );
-        }
     }
 }
 
 /// ⭐ Report do dono (foto 03): a faixa de quadros ficava debaixo da pílula de estado (EDIT · fps…)
-/// e os tempos liam «10:…». A faixa inteira fica acima da pílula, e cada «N ms» cabe.
+/// e os tempos liam «10:…». O cartão da animação, com a faixa e os campos, fica inteiro acima da pílula.
 #[test]
-fn a_faixa_fica_acima_da_pilula_e_os_tempos_cabem() {
+fn a_faixa_fica_acima_da_pilula() {
     let mut m = Mesa::new();
     let cut = m.paint_in(AREA);
     let d = m.doc();
-    let s = d.layout.strip;
+    let s = d.layout.frames_card;
     let pill_top = AREA.y + AREA.h - ph2d_tokens::HUD_BOTTOM_PAD_PX - ph2d_tokens::HUD_H_PX;
     assert!(
         s.y + s.h <= pill_top,
-        "a faixa acaba em {} e a pílula começa em {pill_top}",
+        "o cartão acaba em {} e a pílula começa em {pill_top}",
         s.y + s.h
     );
     assert_eq!(d.layout.frames.len(), 6, "a idle tem seis quadros");
-    for (i, f) in d.layout.frames.iter().enumerate() {
-        assert!(
-            f.1.y + f.1.h <= s.y + s.h,
-            "o tempo do quadro {i} sai da faixa"
-        );
-        let ms = d.ms_label(i);
-        assert!(!cut.contains(&ms), "«{ms}» saiu cortado: {cut:?}");
-    }
+    assert!(cut.is_empty(), "nada se corta: {cut:?}");
 }
 
 /// ⭐ Report do dono: depois do «+ Add» do editor o cartão continuava a realçar «idle». O «+» escolhe
@@ -766,8 +742,11 @@ fn o_cabecalho_da_hierarquia_conta_so_o_jogo_e_nao_cresce_com_os_gestos() {
     let add = centre(m.doc().layout.add);
     m.click(add);
     m.frame();
-    // O «+» põe a nova no ecrã, e o 1.º ▶ guarda com qual o jogo começa (ficha 02, `SpriteAnimStart`), uma vez.
-    assert_eq!(m.sim.component_count(), 7, "o «+» só junta o início");
+    assert_eq!(
+        m.sim.component_count(),
+        6,
+        "o início é campo do tocador: o «+» não junta nada"
+    );
     let mut after_first = None;
     for c in [3u32, 4, 5, 9, 10] {
         let at = m.cell(c);
@@ -783,24 +762,23 @@ fn o_cabecalho_da_hierarquia_conta_so_o_jogo_e_nao_cresce_com_os_gestos() {
     }
     assert_eq!(
         after_first,
-        Some(9),
+        Some(8),
         "a lista de quadros e o cursor, uma vez"
     );
     m.click(add);
     m.frame();
-    assert_eq!(m.sim.component_count(), 9, "o 2.º «+» não junta nada");
+    assert_eq!(m.sim.component_count(), 8, "o 2.º «+» não junta nada");
 }
 
-#[path = "tests_strip.rs"]
-mod strip;
+mod tira;
 
-#[path = "tests_marks.rs"]
-mod marks;
+mod cores;
+mod marcas;
 
 /// Em cartões o editor lê os tons da lista; `PH2D_CARDS=0`, os de antes.
 #[test]
 fn o_editor_veste_os_tons_da_lista_em_cartoes() {
-    use super::paint::tom;
+    use ph2d_app_sprite_anim::editor::paint::tom;
     use ph2d_editor_core::paint::resolve;
     use ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread as forca;
     use ph2d_tokens::{ColorToken as C, Theme};

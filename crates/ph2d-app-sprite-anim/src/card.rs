@@ -7,8 +7,8 @@
 
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{
-    AnimDirection, Entity, SpriteAnimCursor, SpriteAnimFrames, SpriteAnimations,
-    SpriteAnimator, SpriteGrid, World,
+    AnimDirection, Entity, SpriteAnimCursor, SpriteAnimFrames, SpriteAnimations, SpriteAnimator,
+    SpriteGrid, World,
 };
 use ph2d_editor_core::{
     AnimCardInfo, AnimCharacterInfo, AnimChooser, AnimCycleMode, AnimFieldEdit, AnimRuleInfo,

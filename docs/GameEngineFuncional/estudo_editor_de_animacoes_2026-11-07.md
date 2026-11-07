@@ -1,7 +1,7 @@
 # Estudo: reconstruir o editor de animações (07/11/2026)
 
 Pedido do dono: reconstruir e melhorar o editor, partindo do layout «5 · O editor próprio» da Crítica. Este é um estudo:
-nenhum código mudou. O dono decidiu em 07/11 (§5); a §4 é o plano aprovado.
+onda 1 feita em 07/11, ver [handoff](handoffs/HANDOFF_CONTINUACAO_2026-11-07_EDITOR_ANIMACOES_ONDA1.md). O dono decidiu em 07/11 (§5); a §4 é o plano aprovado.
 
 ## 1. De onde vem o layout
 
@@ -35,6 +35,16 @@ se `per_frame_ms` é por USO ou por CÉLULA (decide o item 4 da §3).
 Consumidores a varrer antes de mudar o modelo: `ph2d-render` (`atlas/hero_sheet.rs`), `ph2d-app-game`, `ph2d-timeline`,
 `ph2d-app-macros`, shell (`janela_do_jogo_animado.rs`, `ase_import.rs`, `asset_drop_apply.rs`). Smokes `PH2D_ANIM_SMOKE`,
 `PH2D_GAME_SMOKE`.
+
+### Conferido na onda 1 (07/11, sobre `7f56e2ae30`)
+
+- **Prévia no editor:** nunca houve imagem própria. Havia um botão ▶ que escrevia `Playing` na sprite; saiu, a maquete não o tem e o ▶ do cartão faz o mesmo.
+- **Tira no arrasto:** rola com a mão na borda ao arrastar um quadro DELA (`scroll_at_edge`). Ao arrastar pela FOLHA não rola: `frame_drag()` é `None` em `Drag::Cells`. Fica para a onda 2, a do arrasto.
+- **`per_frame_ms`:** é por USO, indexado pelo passo dentro da animação (`set_own_ms`, `frame_ticks_at`). Logo o item 4 da §3 já vale. ⚠️ Defeito achado: `AnimFieldEdit::Frames` (`card.rs:167`) só troca a lista; reordenar ou apagar na tira não leva o tempo próprio junto, embora os marcadores andem. Onda 2.
+- **`cards.rs:64 cor_de`:** é a cor das camadas do Vector; nada a ver com animação.
+- **Repeat · Once · Ping-pong:** já existia como três botões; a tabela acima dizia que faltava.
+- **A prévia do painel acompanha.** Sonda temporária, cena `PH2D_GAME_SMOKE=5`, cliques por `AnimDoc::press` com a aba à frente, amostra a cada 5 quadros de `build_anim_info`, foto em rajada. Clicar noutra linha troca na hora (células 0..=5 → 8..=15). Ritmo em passos a cada 500 ms: 100 ms → 5 · 2 fps → 1 · 24 fps → 12. A foto confirma o painel ao lado.
+- **Limites para o dono:** selecionar outro objeto com o editor aberto põe esse objeto no painel, e o editor segue no anterior. Digitar `24` lê `23.8`: `frame_ms` é inteiro (42 ms).
 
 ## 3. O que o layout da Crítica não resolve
 

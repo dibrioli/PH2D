@@ -53,20 +53,28 @@ impl crate::App {
         };
         let win = crate::scene_mapping::janela(hero.view.center_split, g.surface.size());
         match passo_da_mao(plano, g.sim.world(), alvo, &g.camera, win) {
-            Some(P::Liga) => {
-                // A foto mostra a forma no meio da vista.
+            Some(P::Clica) => {
+                // A foto mostra a forma no meio da vista; o botão é o do cartão, pelo ponteiro.
                 let e = ph2d_ecs::Entity::from_bits(alvo);
                 let pose = ph2d_shape_handles::Pose::de(g.sim.world(), e);
                 g.camera.center = pose.map_or(g.camera.center, |p| p.t);
-                hero.bus.push(
-                    ph2d_editor_core::action_bus::EditorAction::InspectorPhysicsEdit {
-                        entity_bits: alvo,
-                        edit: ph2d_editor_core::PhysicsFieldEdit::EditShapeOnCanvas,
-                    },
-                );
+                let id = ph2d_panel_inspector::ids::INSP_PHYS_EDIT_SHAPE;
+                if let Some((x, y)) = self.smoke_find_widget(id) {
+                    self.smoke_pointer_down(x, y);
+                    self.smoke_pointer_up();
+                }
+            }
+            Some(P::Esc) => {
+                use winit::{event::ElementState::Pressed, keyboard::KeyCode, keyboard::PhysicalKey};
+                self.escape_key(PhysicalKey::Code(KeyCode::Escape), Pressed, false);
             }
             Some(P::Desce(x, y)) => self.smoke_pointer_down(x, y),
-            Some(P::Move(x, y)) => self.smoke_pointer_move(x, y),
+            Some(P::Move(x, y, t)) => {
+                use winit::keyboard::ModifiersState as M;
+                let alt = if t.alt { M::ALT } else { M::empty() };
+                self.modifiers = alt | if t.shift { M::SHIFT } else { M::empty() };
+                self.smoke_pointer_move(x, y);
+            }
             Some(P::Sobe) => self.smoke_pointer_up(),
             Some(P::Desfaz) => self.undo_request = Some(false),
             Some(P::Relata(s)) => {

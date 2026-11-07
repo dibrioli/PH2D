@@ -238,7 +238,11 @@ impl crate::App {
             Some(
                 Foto::SpriteTransformNoDraw
                     | Foto::SpritePivotChave
-                    | Foto::Fisica(ph2d_app_game::smoke::CasoFisica::FormaChave)
+                    | Foto::Fisica(
+                        ph2d_app_game::smoke::CasoFisica::FormaChave
+                            | ph2d_app_game::smoke::CasoFisica::FormaChaveDesfaz
+                            | ph2d_app_game::smoke::CasoFisica::FormaEscChave
+                    )
             )
         );
         if (chave || prova) && !self.timeline.flags.auto_key {

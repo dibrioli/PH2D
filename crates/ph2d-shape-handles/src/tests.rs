@@ -482,3 +482,28 @@ fn o_mesmo_objeto_refeito_pelo_undo_continua_em_edicao() {
         .id();
     assert!(!quadro(&mut w, Some(outro.to_bits()), false));
 }
+
+/// Durante o arrasto a mão da família segura o objecto (a timeline não o conduz, o Auto Key espera o soltar).
+#[test]
+fn a_mao_da_familia_segura_so_durante_o_arrasto() {
+    let segura = |c: &Cena| {
+        c.world
+            .get_resource::<MaosDasFamilias>()
+            .is_some_and(MaosDasFamilias::alguma)
+    };
+    use ph2d_ecs::MaosDasFamilias;
+    for esc in [false, true] {
+        let mut c = Cena::nova(poses()[1], CAIXA, 15.0);
+        let a = Alca::Lado(1, 1);
+        assert!(c.desce(c.ecra(a)));
+        assert!(!segura(&c), "um clique parado não é gesto");
+        c.move_(para_fora(&c, a, 40.0), Teclas::default());
+        assert!(segura(&c), "o arrasto segura");
+        if esc {
+            assert!(c.porta().esc());
+        } else {
+            assert!(c.porta().sobe());
+        }
+        assert!(!segura(&c), "acabou");
+    }
+}

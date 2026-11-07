@@ -61,6 +61,13 @@ pub enum CasoFisica {
     FormaDesfaz,
     /// O canto puxado com Auto Key.
     FormaChave,
+    /// As mesmas com Ctrl+Z, com Esc, com Alt, com Shift e com o segundo clique no botão.
+    FormaChaveDesfaz,
+    FormaEsc,
+    FormaEscChave,
+    FormaAlt,
+    FormaShift,
+    FormaDesliga,
     /// Uma peça dentro da plataforma (pai fora da origem), um Sensor e uma forma solta.
     FormaPeca,
     FormaSensor,
@@ -70,30 +77,64 @@ pub enum CasoFisica {
 /// O gesto de cada foto das alças.
 #[must_use]
 pub fn plano_da_forma(caso: CasoFisica) -> Option<ph2d_shape_handles::Plano> {
-    use ph2d_shape_handles::{Alca, Plano};
-    let canto = Some(Alca::Lado(1, 1));
-    let (alca, delta, segura, desfaz) = match caso {
-        CasoFisica::FormaCaixa => (None, [0.0, 0.0], false, false),
-        CasoFisica::FormaArrasto => (canto, [1.0, 0.5], true, false),
-        CasoFisica::FormaBola => (Some(Alca::Lado(1, 0)), [0.5, 0.0], true, false),
-        CasoFisica::FormaPlayer => (Some(Alca::Lado(0, 1)), [0.0, 0.4], true, false),
+    use ph2d_shape_handles::{Alca, Plano, Teclas};
+    let canto = Plano {
+        alca: Some(Alca::Lado(1, 1)),
+        delta: [0.8, 0.9],
+        ..Plano::default()
+    };
+    let lado = Plano {
+        alca: Some(Alca::Lado(1, 0)),
+        delta: [0.7, 0.0],
+        ..Plano::default()
+    };
+    Some(match caso {
+        CasoFisica::FormaCaixa => Plano::default(),
+        CasoFisica::FormaArrasto => Plano {
+            delta: [1.0, 0.5],
+            segura: true,
+            ..canto
+        },
+        CasoFisica::FormaBola => Plano {
+            delta: [0.5, 0.0],
+            segura: true,
+            ..lado
+        },
+        CasoFisica::FormaPlayer => Plano {
+            alca: Some(Alca::Lado(0, 1)),
+            delta: [0.0, 0.4],
+            segura: true,
+            ..lado
+        },
         CasoFisica::FormaRodado
         | CasoFisica::FormaEspelho
         | CasoFisica::FormaPivo
-        | CasoFisica::FormaChave => {
-            (canto, [0.8, 0.9], false, false)
-        }
-        CasoFisica::FormaDesfaz => (canto, [0.8, 0.9], false, true),
-        CasoFisica::FormaPeca | CasoFisica::FormaSensor | CasoFisica::FormaSolta => {
-            (Some(Alca::Lado(1, 0)), [0.7, 0.0], false, false)
-        }
+        | CasoFisica::FormaChave => canto,
+        CasoFisica::FormaDesfaz | CasoFisica::FormaChaveDesfaz => Plano {
+            desfaz: true,
+            ..canto
+        },
+        CasoFisica::FormaEsc | CasoFisica::FormaEscChave => Plano { esc: true, ..canto },
+        CasoFisica::FormaDesliga => Plano {
+            desliga: true,
+            ..canto
+        },
+        CasoFisica::FormaAlt => Plano {
+            teclas: Teclas {
+                alt: true,
+                shift: false,
+            },
+            ..canto
+        },
+        CasoFisica::FormaShift => Plano {
+            teclas: Teclas {
+                alt: false,
+                shift: true,
+            },
+            ..canto
+        },
+        CasoFisica::FormaPeca | CasoFisica::FormaSensor | CasoFisica::FormaSolta => lado,
         _ => return None,
-    };
-    Some(Plano {
-        alca,
-        delta,
-        segura,
-        desfaz,
     })
 }
 
@@ -127,6 +168,12 @@ pub fn caso(nome: &str) -> Option<CasoFisica> {
         "forma_pivo" => CasoFisica::FormaPivo,
         "forma_desfaz" => CasoFisica::FormaDesfaz,
         "forma_chave" => CasoFisica::FormaChave,
+        "forma_chave_desfaz" => CasoFisica::FormaChaveDesfaz,
+        "forma_esc" => CasoFisica::FormaEsc,
+        "forma_esc_chave" => CasoFisica::FormaEscChave,
+        "forma_alt" => CasoFisica::FormaAlt,
+        "forma_shift" => CasoFisica::FormaShift,
+        "forma_desliga" => CasoFisica::FormaDesliga,
         "forma_peca" => CasoFisica::FormaPeca,
         "forma_sensor" => CasoFisica::FormaSensor,
         "forma_solta" => CasoFisica::FormaSolta,
@@ -196,6 +243,12 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
         | CasoFisica::FormaEspelho
         | CasoFisica::FormaPivo
         | CasoFisica::FormaDesfaz
+        | CasoFisica::FormaChaveDesfaz
+        | CasoFisica::FormaEsc
+        | CasoFisica::FormaEscChave
+        | CasoFisica::FormaAlt
+        | CasoFisica::FormaShift
+        | CasoFisica::FormaDesliga
         | CasoFisica::FormaChave => {
             let shape = if caso == CasoFisica::FormaBola {
                 ColliderShape::Ball { radius: 0.5 }
@@ -208,6 +261,12 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
                 CasoFisica::FormaRodado
                     | CasoFisica::FormaPivo
                     | CasoFisica::FormaDesfaz
+                    | CasoFisica::FormaChaveDesfaz
+                    | CasoFisica::FormaEsc
+                    | CasoFisica::FormaEscChave
+                    | CasoFisica::FormaAlt
+                    | CasoFisica::FormaShift
+                    | CasoFisica::FormaDesliga
                     | CasoFisica::FormaChave
             ) {
                 pose.scale = Vec2::new(2.0, 1.0);

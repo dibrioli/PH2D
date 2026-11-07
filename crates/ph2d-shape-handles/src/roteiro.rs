@@ -11,7 +11,7 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
 
 /// Um roteiro: a alça, para onde ela vai (m, no referencial do mundo) e o que vem depois.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Plano {
     pub alca: Option<Alca>,
     pub delta: [f32; 2],
@@ -19,13 +19,20 @@ pub struct Plano {
     pub segura: bool,
     /// Depois de soltar, Ctrl+Z.
     pub desfaz: bool,
+    /// O `Esc` a meio do arrasto e, depois de soltar, o segundo `Esc`.
+    pub esc: bool,
+    /// Depois de soltar, o segundo clique no botão.
+    pub desliga: bool,
+    pub teclas: crate::Teclas,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum PassoDaMao {
-    Liga,
+    /// O clique no botão do cartão.
+    Clica,
+    Esc,
     Desce(f32, f32),
-    Move(f32, f32),
+    Move(f32, f32, crate::Teclas),
     Sobe,
     Desfaz,
     Relata(String),
@@ -58,7 +65,7 @@ pub fn passo_da_mao(
 ) -> Option<PassoDaMao> {
     let quadro = QUADRO.fetch_add(1, Ordering::Relaxed);
     if quadro == INICIO - 5 {
-        return Some(PassoDaMao::Liga);
+        return Some(PassoDaMao::Clica);
     }
     let k = quadro.checked_sub(INICIO)?;
     let alca = plano.alca?;
@@ -79,7 +86,7 @@ pub fn passo_da_mao(
             #[allow(clippy::cast_precision_loss)]
             let t = k as f32 / PASSOS as f32;
             let p = [w[0] + plano.delta[0] * t, w[1] + plano.delta[1] * t];
-            anda(p).map(|s| PassoDaMao::Move(s.0, s.1))
+            anda(p).map(|s| PassoDaMao::Move(s.0, s.1, plano.teclas))
         }
         k if k == PASSOS + 2 || k == PASSOS + 14 || k == PASSOS + 30 => {
             let s = no_ecra(&pose, &m, alca, cam, win);
@@ -96,7 +103,11 @@ pub fn passo_da_mao(
                 motor_de_prova(world, alvo),
             )))
         }
+        k if k == PASSOS + 3 && plano.esc => Some(PassoDaMao::Esc),
+        k if k == PASSOS + 4 && plano.esc => Some(PassoDaMao::Sobe),
         k if k == PASSOS + 3 && !plano.segura => Some(PassoDaMao::Sobe),
+        k if k == PASSOS + 16 && plano.esc => Some(PassoDaMao::Esc),
+        k if k == PASSOS + 16 && plano.desliga => Some(PassoDaMao::Clica),
         k if k == PASSOS + 20 && plano.desfaz => Some(PassoDaMao::Desfaz),
         _ => None,
     }

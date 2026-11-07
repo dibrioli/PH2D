@@ -4,7 +4,8 @@
 use crate::{ARMA_PX, Alca, Medida, Pose, Teclas, alca_em, ponto_local, puxa};
 use bevy_ecs::prelude::Resource;
 use bevy_ecs::world::World;
-use ph2d_ecs::Entity;
+use ph2d_ecs::canal::familia::FISICA;
+use ph2d_ecs::{Entity, MaosDasFamilias};
 use ph2d_editor_core::action_bus::{ActionBus, EditorAction};
 use ph2d_host::WindowSize;
 use ph2d_physics_ecs::Collider;
@@ -72,10 +73,20 @@ pub fn quadro(world: &mut World, selecao: Option<u64>, jogando: bool) -> bool {
     let vivo = selecao == Some(alvo)
         && !jogando
         && world.get::<Collider>(Entity::from_bits(alvo)).is_some();
-    if !vivo && let Some(mut f) = world.get_resource_mut::<FormaNoCanvas>() {
-        *f = FormaNoCanvas::default();
+    if !vivo {
+        if let Some(mut f) = world.get_resource_mut::<FormaNoCanvas>() {
+            *f = FormaNoCanvas::default();
+        }
+        publica_a_mao(world, None);
     }
     vivo
+}
+
+/// A mão da família: quem ela segura não é conduzido pela timeline, e o Auto Key grava ao soltar, num passo só.
+fn publica_a_mao(world: &mut World, alvo: Option<u64>) {
+    world
+        .get_resource_or_insert_with(MaosDasFamilias::default)
+        .publicar(FISICA, alvo.into_iter().collect());
 }
 
 /// O ponteiro do shell: o mundo, a vista desenhada neste quadro e o barramento do Inspector.
@@ -131,6 +142,7 @@ impl Porta<'_> {
             return true;
         }
         a.armado = true;
+        publica_a_mao(self.world, Some(alvo));
         let Some((pose, _)) = self.forma(alvo) else {
             return true;
         };
@@ -146,10 +158,15 @@ impl Porta<'_> {
 
     /// `true` = havia um arrasto. O desfazer pós-quadro fecha o gesto num passo.
     pub fn sobe(&mut self) -> bool {
-        self.world
+        let havia = self
+            .world
             .get_resource_mut::<FormaNoCanvas>()
             .and_then(|mut f| f.arrasto.take())
-            .is_some()
+            .is_some();
+        if havia {
+            publica_a_mao(self.world, None);
+        }
+        havia
     }
 
     /// O `Esc`: a meio do arrasto devolve a forma do `Down`; parado, encerra a edição. `true` = consumido.
@@ -167,6 +184,7 @@ impl Porta<'_> {
             if let Some(mut f) = self.world.get_resource_mut::<FormaNoCanvas>() {
                 f.arrasto = None;
             }
+            publica_a_mao(self.world, None);
         } else if let Some(mut f) = self.world.get_resource_mut::<FormaNoCanvas>() {
             f.alvo = None;
         }

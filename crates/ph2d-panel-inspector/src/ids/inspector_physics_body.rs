@@ -62,6 +62,9 @@ pub const INSP_PHYS_SHAPE: [NodeId; 3] = [
 /// O segundo cartão da física de um corpo (ficha f1): a forma.
 pub const CARD_PHYS_SHAPE: NodeId = hash_node_id("cards.insp.phys_shape");
 
+/// Marca: o cartão Body já recebeu a abertura de fábrica.
+pub const INSP_PHYS_BODY_OPENED: NodeId = hash_node_id("insp_phys_body_opened");
+
 /// Os botões do cartão Shape: voltar à caixa da imagem e as duas saídas da forma redonda esticada.
 pub const INSP_PHYS_FIT_PICTURE: NodeId = hash_node_id("insp_phys_fit_picture");
 pub const INSP_PHYS_SCALE_ONE: NodeId = hash_node_id("insp_phys_scale_one");

@@ -74,7 +74,7 @@ Capsule: Height = 2 × (Half Height + Radius). Os ids `INSP_PHYS_*` ficam, para 
 
 | Onda | O quê | Estado |
 |---|---|---|
-| 1 | Os dois cartões, dobras, Width e Height, Touch, Density, nomes dos cartões, avisos, estado da forma, Fit to picture, recibo do Remove, dica | a fazer |
+| 1 | Os dois cartões, dobras, Width e Height, Touch, Density, nomes dos cartões, avisos, estado da forma, Fit to picture, recibo do Remove, dica | feita, à espera do smoke do dono |
 | 2 | Camadas com nome e «Hits» (mexe no formato salvo: `python3 scripts/schema-recount.py`) | a fazer |
 | 3 | Alças no canvas, no molde da câmera (`ph2d-app-game/src/smoke_mao.rs`, doc 17b), com undo e Auto Key | a fazer |
 | 4 | Cena de smoke do item + uso no jogo, fotos, smoke do dono | a fazer |
@@ -93,4 +93,11 @@ Capsule: Height = 2 × (Half Height + Radius). Os ids `INSP_PHYS_*` ficam, para 
 - `PH2D_GAME_SMOKE=4` + `PH2D_GAME_SMOKE_FOTO=fisica_{dynamic,static,kinematic,sensor,bola,player,solta,peca,vazia,baixa,larga}`,
   com `docs/Components/ferramentas/fotografa_cena.sh` em 1930 × 2700.
 - `cargo-test-narrow.sh ph2d-physics-ecs density_sem_efeito` · `ph2d-app-sprite-anim colisao_segue`.
-- A preencher por onda: testes que dirigem o clique real (`seam_physics.rs`), smoke do dono.
+- **Onda 1:** `cargo-test-narrow.sh ph2d-panel-inspector o_cartao_da_fisica` (varredura do mapa por tipo, com as dobras
+  abertas: gesto real → edição certa; Density, Fit, escala, recibo, 200 px) · `seam_physics` · `seam_px_m` ·
+  `ph2d-app-physics fit_to_picture` · `density_fica` · `undoing_remove` (o Undo é real: a captura do undo repõe corpo e
+  forma) · `canais`. Fotos: [`../handoffs/fotos_fisica/onda1/`](../handoffs/fotos_fisica/onda1/); `PH2D_FISICA_DOBRAS=1` abre as dobras.
+- **Regras da onda 1:** «Follows the picture» = caixa do tamanho da `Sprite`, a mesma pergunta de `follow_auto_collider`
+  (`Collider::box_fits_picture`); bola e cápsula são sempre «Custom size». Fit to picture = caixa da imagem, centrada
+  (offset 0), e troca bola ou cápsula por caixa. O recibo cai ao mudar de objecto, mover o objecto ou editar outro número.
+- A preencher: smoke do dono.

@@ -80,6 +80,12 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
     for id in ids::INSP_PHYS_FOLDS {
         store.set_collapsed_if_unchosen(id, !abertas);
     }
+    // O cartão Body nasce aberto como o Shape (maquete: travar a rotação é um clique), uma vez: depois
+    // manda o que o artista dobrou. As secções de componente nascem dobradas no `populate`, daí a marca.
+    if store.collapsed_choice(ids::INSP_PHYS_BODY_OPENED).is_none() {
+        store.set_collapsed(core_ids::INSP_LIVE_PHYSICS_SECTION, false);
+        store.set_collapsed(ids::INSP_PHYS_BODY_OPENED, false);
+    }
 }
 
 /// O cartão **Body** de um corpo.

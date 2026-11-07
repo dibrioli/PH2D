@@ -41,6 +41,13 @@ pub struct RunTapes<'a> {
     pub fixed_dt: f64,
 }
 
+/// Os nomes das camadas do projeto e a matriz do mundo, para os painéis que mostram uma camada.
+pub fn publica_as_camadas(world: &ph2d_ecs::World, physics: &PhysicsBridge) {
+    let nomes = ph2d_physics_ecs::LayerNames::of(world);
+    ph2d_panel_physics::set_layer_names(nomes.clone());
+    ph2d_panel_inspector::camadas_fisica::set_current(nomes.0, physics.settings_vivos().layer_matrix);
+}
+
 /// Publish the world state for `paint`, then apply whatever the artist did.
 ///
 /// Returns the new value for `App.show_colliders` — the panel does not own that

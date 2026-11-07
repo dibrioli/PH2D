@@ -9,7 +9,7 @@ use super::physics_rows::{
 use super::rows::{Campo, par_row, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
-use ph2d_editor_core::widget::SectionFold;
+use ph2d_editor_core::widget::{Dropdown, DropdownOption, SectionFold, paint_dropdown_chip};
 use ph2d_editor_core::widget::key_mark::Eixos;
 use ph2d_i18n::{TextKey, tr, tr_with};
 
@@ -190,8 +190,54 @@ pub(super) fn uma_via(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) ->
     )
 }
 
+/// Layer em lista com os nomes (os ids e a edição são os de sempre), «Hits» lido da matriz do mundo e o «Rename…».
 pub(super) fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
-    seg_row(
+    let rotulo = tr("component.field.collider.4");
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(t.text, 1, &[rotulo]);
+    let linha = ph2d_editor_core::property_row::paint_label_row(
+        t.scene,
+        t.text,
+        t.theme,
+        t.x,
+        t.w,
+        y,
+        ph2d_tokens::ROW_H_PX,
+        rotulo,
+        seccao,
+    );
+    t.hit.register(ids::INSP_PHYS_LAYER_PICK, linha.control);
+    let aberta = matches!(
+        t.store.get(ids::INSP_PHYS_LAYER_PICK),
+        Some(InteractiveState::Dropdown { open: true, .. })
+    );
+    let mut dd = Dropdown::new(ids::INSP_PHYS_LAYER_PICK, "", layer_options())
+        .open(aberta)
+        .visual(t.store.dropdown_visual(ids::INSP_PHYS_LAYER_PICK));
+    dd.select(info.layer);
+    paint_dropdown_chip(&dd, linha.control, t.scene, t.text, t.theme);
+    if aberta {
+        crate::state_popovers::set_pending_phys_layer_dd(Some(linha.control));
+    }
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_for(
+        t.scene,
+        t.theme,
+        linha.dot,
+        &ids::INSP_PHYS_LAYER,
+    ) {
+        t.hit.register(alvo, linha.dot);
+    }
+    let y = linha.fim(ph2d_tokens::row_pitch_px());
+    let camada = usize::from(info.layer);
+    let y = t.frase(y, &crate::camadas_fisica::hits(camada), ColorToken::Text3);
+    let (r, y) = t.botao(ids::INSP_PHYS_LAYER_RENAME, tr("card.insp.phys.layer_rename"), y);
+    t.hit.register(ids::INSP_PHYS_LAYER_RENAME, r);
+    if t.store.is_collapsed(ids::INSP_PHYS_LAYER_RENAMING) {
+        return y;
+    }
+    let dica = camada.to_string();
+    let rotulo = tr("card.insp.phys.layer_name");
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(t.text, 1, &[rotulo]);
+    ph2d_editor_core::property_row::paint_text_row(
         t.scene,
         t.text,
         t.theme,
@@ -200,12 +246,20 @@ pub(super) fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> 
         t.x,
         t.w,
         y,
-        TextKey::new("component.field.collider.4"),
-        ids::INSP_LIVE_PHYSICS_LAYER,
-        &ids::INSP_PHYS_LAYER,
-        &super::physics_rows::LAYER_LABELS,
-        info.layer,
+        rotulo,
+        ids::INSP_PHYS_LAYER_NAME,
+        TextInput::new(ids::INSP_PHYS_LAYER_NAME, "").placeholder(&dica),
+        seccao,
     )
+}
+
+/// As opções da lista: os nomes, ou 0..7 sem nomes. ⚠️ `pub(crate)`: o passe diferido re-deriva-as.
+pub(crate) fn layer_options() -> Vec<DropdownOption<u8>> {
+    ids::INSP_PHYS_LAYER
+        .iter()
+        .enumerate()
+        .map(|(i, &id)| DropdownOption::new(id, i as u8, crate::camadas_fisica::rotulo(i)))
+        .collect()
 }
 
 fn sinais(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {

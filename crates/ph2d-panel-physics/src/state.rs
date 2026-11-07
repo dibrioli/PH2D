@@ -40,6 +40,19 @@ thread_local! {
         const { RefCell::new(Vec::new()) };
 }
 
+thread_local! {
+    static LAYER_NAMES: RefCell<ph2d_physics_ecs::LayerNames> = RefCell::default();
+}
+
+/// Uma vez por quadro: a tabela de nomes das camadas do projeto.
+pub fn set_layer_names(nomes: ph2d_physics_ecs::LayerNames) {
+    LAYER_NAMES.with(|n| *n.borrow_mut() = nomes);
+}
+
+pub(crate) fn layer_names() -> ph2d_physics_ecs::LayerNames {
+    LAYER_NAMES.with(|n| n.borrow().clone())
+}
+
 /// What the panel needs to know about the world this frame.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct PhysicsSnapshot {

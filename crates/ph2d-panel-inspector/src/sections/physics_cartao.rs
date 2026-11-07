@@ -80,11 +80,28 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
     for id in ids::INSP_PHYS_FOLDS {
         store.set_collapsed_if_unchosen(id, !abertas);
     }
+    store.set_collapsed_if_unchosen(ids::INSP_PHYS_LAYER_RENAMING, true);
+    semeia_o_nome_da_camada(store);
     // O cartão Body nasce aberto como o Shape (maquete: travar a rotação é um clique), uma vez: depois
     // manda o que o artista dobrou. As secções de componente nascem dobradas no `populate`, daí a marca.
     if store.collapsed_choice(ids::INSP_PHYS_BODY_OPENED).is_none() {
         store.set_collapsed(core_ids::INSP_LIVE_PHYSICS_SECTION, false);
         store.set_collapsed(ids::INSP_PHYS_BODY_OPENED, false);
+    }
+}
+
+/// O campo do nome mostra a camada escolhida, salvo enquanto se escreve nele.
+fn semeia_o_nome_da_camada(store: &mut WidgetStore) {
+    let camada = crate::state::current_inspector_physics().map_or(0, |f| usize::from(f.layer));
+    let nome = crate::camadas_fisica::nome(camada);
+    if let Some(InteractiveState::TextInput {
+        state, text, caret, ..
+    }) = store.get_mut(ids::INSP_PHYS_LAYER_NAME)
+        && *state != TextInputState::Focused
+        && *text != nome
+    {
+        *caret = nome.len();
+        *text = nome;
     }
 }
 

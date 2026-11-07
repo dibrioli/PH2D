@@ -114,6 +114,15 @@ impl crate::App {
         }) else {
             return;
         };
+        // **E OS NOMES DAS CAMADAS, pela mesma lei** (v218).
+        let Ok(camadas) =
+            ph2d_physics_ecs::LayerNames::from_bytes(&file.physics_layers).inspect_err(|e| {
+                self.toast_refused("shell.project_load.project_refused_its_layer_names", e);
+            })
+        else {
+            return;
+        };
+        file.state.regras.camadas = camadas;
         // ---- Daqui pra baixo o arquivo foi ACEITO. ----
         //
         let abertos =
@@ -274,10 +283,8 @@ impl crate::App {
         self.undo.jogo.esquece();
         // As regras do ficheiro, que o estado não grava (`ProjectState::regras`): sem elas o
         // `apply_project` repunha as de fábrica por cima das que o load acabou de instalar.
-        file.state.regras = crate::undo::Regras {
-            physics: file.physics,
-            mesa: ph2d_audio::Mesa::from_bytes(&file.mesa).unwrap_or_default(),
-        };
+        file.state.regras.physics = file.physics;
+        file.state.regras.mesa = ph2d_audio::Mesa::from_bytes(&file.mesa).unwrap_or_default();
         self.apply_project(&file.state);
         // ⚠️ **A semente do contador entra AQUI, logo depois de o mundo existir** (ADR-0164
         // F1). Antes do `apply_project` não haveria mundo onde a pôr; muito depois, uma

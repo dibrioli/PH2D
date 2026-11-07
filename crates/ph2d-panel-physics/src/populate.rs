@@ -128,6 +128,17 @@ pub fn populate(store: &mut WidgetStore) {
     for &cell in crate::ids::PHYSICS_LAYER_CELL.iter() {
         button(store, cell);
     }
+    for id in crate::ids::PHYSICS_LAYER_NAME {
+        store.register(
+            id,
+            InteractiveState::TextInput {
+                state: TextInputState::Normal,
+                text: String::new(),
+                caret: 0,
+                selection_anchor: None,
+            },
+        );
+    }
 
     // ⭐⭐ **«Show Colliders» e o «Enabled» do sono são CAIXAS DE MARCAR** (ordem do dono,
     // 2026-09-24: *«Caixas de marcar na Física»*). Eram botões acesos — e o doc que aqui estava

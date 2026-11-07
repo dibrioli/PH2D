@@ -20,7 +20,7 @@
 ///
 /// ⚠️ **Os degraus de v2 a v168 estão ARQUIVADOS**, verbatim, em SETE arquivos por faixa:
 /// `project_schema_history` (`v2`..`v82`, ARQUIVADO verbatim em `docs/archive/project-schema/escada_v2_a_v82.md`), `project_schema_history_v83` (ARQUIVADO em `docs/archive/project-schema/escada_v83_a_v98.md`)
-/// (`v83`..`v98`), [`super::project_schema_history_v99`] (`v99`..`v111`),
+/// (`v83`..`v98`), `project_schema_history_v99` (`v99`..`v111`, ARQUIVADO em `docs/archive/project-schema/escada_v99_resto.md`),
 /// [`super::project_schema_history_v112`] (`v112`..`v128`),
 /// [`super::project_schema_history_v128`] (`v128`..`v144`) e
 /// [`super::project_schema_history_v144`] (`v144`..`v160`) e
@@ -497,7 +497,16 @@
 ///
 /// `sfx_lab: Vec<u8>` no FIM do `ProjectFile`: a `SfxLibrary`, blob `PH2DSFXL` com versão PRÓPRIA. ⭐ **COM leitura dos
 /// anteriores:** `falta_no_fim` e os quatro braços antigos levam mais um `0`. Gate: `project_sfx_tests`. Registos: `0`.
-pub(crate) const PROJECT_SCHEMA: u32 = 217;
+///
+/// # `217 → 218` — **os nomes das camadas de colisão** (`line/GameEngineFuncional02`, ficha f1, onda 2, 2026-11-07)
+///
+/// `physics_layers: Vec<u8>` no FIM do `ProjectFile`: a `LayerNames`, blob `PH2DLAYN` com versão PRÓPRIA (vazio = sem
+/// nomes). ⭐ **COM leitura dos anteriores:** `falta_no_fim` e os braços antigos levam mais um `0`. O número da camada
+/// continua a identidade. Gate: `project_layer_names_tests`. Registos: `0`. ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 218;
+
+/// O último degrau sem os nomes das camadas — a mesma forma do actual, sem o `Vec` final.
+pub(crate) const PROJECT_SCHEMA_SEM_NOMES_DE_CAMADA: u32 = 217;
 
 /// O último degrau sem as receitas de som — a mesma forma do actual, sem o `Vec` final.
 pub(crate) const PROJECT_SCHEMA_SEM_RECEITAS_DE_SOM: u32 = 216;

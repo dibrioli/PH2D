@@ -236,7 +236,25 @@ pub(super) fn populate_physics(store: &mut WidgetStore) {
             ids::INSP_PHYS_SCALE_ONE,
             ids::INSP_PHYS_USE_BOX,
             ids::INSP_PHYS_REMOVED_UNDO,
+            ids::INSP_PHYS_LAYER_RENAME,
         ],
+    );
+    store.register(
+        ids::INSP_PHYS_LAYER_PICK,
+        InteractiveState::Dropdown {
+            state: ph2d_editor_core::widget::DropdownState::Normal,
+            open: false,
+            selected_index: None,
+        },
+    );
+    store.register(
+        ids::INSP_PHYS_LAYER_NAME,
+        InteractiveState::TextInput {
+            state: TextInputState::Normal,
+            text: String::new(),
+            caret: 0,
+            selection_anchor: None,
+        },
     );
     for id in ids::INSP_PHYS_FOLDS {
         store.mark_collapsible_section(id);

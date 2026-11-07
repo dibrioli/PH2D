@@ -594,6 +594,8 @@ pub enum EditorAction {
     /// esquecesse de o ler, o nome de saída pousaria no componente de chegada e
     /// a porta abriria ao fechar.
     InspectorSignalLeaveEdit(crate::screens::hero::InspectorNameInfo),
+    /// O nome de uma camada de colisão (`layer` 0–7 é a identidade); vazio volta a mostrar o número.
+    LayerRename { layer: u8, name: String },
 
     /// Transport control from the TopBar Play/Pause/Reset chips
     /// (`chrome::transport`). The shell owns the ONE clock

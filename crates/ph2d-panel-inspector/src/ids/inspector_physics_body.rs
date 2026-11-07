@@ -69,6 +69,11 @@ pub const INSP_PHYS_BODY_OPENED: NodeId = hash_node_id("insp_phys_body_opened");
 pub const INSP_PHYS_FIT_PICTURE: NodeId = hash_node_id("insp_phys_fit_picture");
 pub const INSP_PHYS_SCALE_ONE: NodeId = hash_node_id("insp_phys_scale_one");
 pub const INSP_PHYS_USE_BOX: NodeId = hash_node_id("insp_phys_use_box");
+/// A lista suspensa da camada (as opções são os `INSP_PHYS_LAYER`), o «Rename…», a marca de que está aberto e o campo.
+pub const INSP_PHYS_LAYER_PICK: NodeId = hash_node_id("insp_phys_layer_pick");
+pub const INSP_PHYS_LAYER_RENAME: NodeId = hash_node_id("insp_phys_layer_rename");
+pub const INSP_PHYS_LAYER_RENAMING: NodeId = hash_node_id("insp_phys_layer_renaming");
+pub const INSP_PHYS_LAYER_NAME: NodeId = hash_node_id("insp_phys_layer_name");
 /// O «Undo» do recibo de Remove.
 pub const INSP_PHYS_REMOVED_UNDO: NodeId = hash_node_id("insp_phys_removed_undo");
 

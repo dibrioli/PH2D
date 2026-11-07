@@ -308,10 +308,8 @@ pub(super) fn paint_mass_source(
     yy
 }
 
-/// Collision-layer chip labels. Bare numbers because a layer has no meaning of
-/// its own — what it MEANS is the row it occupies in the world matrix, and that
-/// is where the naming belongs. Naming them here would be a second place to
-/// keep names in sync with a matrix that does not know about them.
+/// Collision-layer chip labels of the classic face (`PH2D_CARDS=0`): bare numbers, the layer's identity.
+/// The card shows the project's names (`crate::camadas_fisica`).
 pub(crate) const LAYER_LABELS: [&str; 8] = ["0", "1", "2", "3", "4", "5", "6", "7"];
 
 /// Sensor toggle labels, indexed by `is_sensor as u8`: `0` a solid collider,

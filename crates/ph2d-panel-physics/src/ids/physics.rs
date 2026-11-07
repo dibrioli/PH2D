@@ -156,6 +156,18 @@ pub const PHYSICS_LAYER_CELL: [NodeId; 36] = [
     hash_node_id("physics.layer_7_7"),
 ];
 
+/// O campo do nome de cada camada, ao lado da matriz.
+pub const PHYSICS_LAYER_NAME: [NodeId; 8] = [
+    hash_node_id("physics_layer_name_0"),
+    hash_node_id("physics_layer_name_1"),
+    hash_node_id("physics_layer_name_2"),
+    hash_node_id("physics_layer_name_3"),
+    hash_node_id("physics_layer_name_4"),
+    hash_node_id("physics_layer_name_5"),
+    hash_node_id("physics_layer_name_6"),
+    hash_node_id("physics_layer_name_7"),
+];
+
 /// Index of cell `(a, b)` in [`PHYSICS_LAYER_CELL`], order-independent.
 pub const fn physics_layer_cell_index(a: usize, b: usize) -> usize {
     let (hi, lo) = if a >= b { (a, b) } else { (b, a) };

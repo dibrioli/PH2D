@@ -147,14 +147,17 @@ pub(crate) fn paint_nav_region_section(
         Some(Unit::Meters),
         seccao,
     );
-    // ⚠️ **Escolha MÚLTIPLA** — cada camada acesa é um bit da máscara; os rótulos são os números
-    // nus da secção de física (a camada não tem nome próprio: o nome é a linha dela na matriz).
+    // ⚠️ **Escolha MÚLTIPLA** — cada camada acesa é um bit da máscara; os rótulos são os nomes do
+    // projeto, ou os números sem nome dado.
+    let rotulos: Vec<String> = (0..crate::ids::INSP_NAV_LAYERS.len())
+        .map(crate::camadas_fisica::rotulo)
+        .collect();
     let segmentos: Vec<(&str, bool, NodeId)> = crate::ids::INSP_NAV_LAYERS
         .iter()
         .enumerate()
         .map(|(i, &id)| {
             (
-                super::physics_rows::LAYER_LABELS[i],
+                rotulos[i].as_str(),
                 r.obstacle_layers & (1 << i) != 0,
                 id,
             )

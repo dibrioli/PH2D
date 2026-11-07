@@ -136,7 +136,6 @@ fn opcoes(ids: &[NodeId], edit: impl Fn(usize) -> E) -> Vec<(NodeId, G)> {
 fn da_forma() -> Vec<(NodeId, G)> {
     let mut m = opcoes(&INSP_PHYS_SHAPE, |i| E::Shape(i as u8));
     m.extend(opcoes(&INSP_PHYS_SENSOR, |i| E::Sensor(i == 1)));
-    m.extend(opcoes(&INSP_PHYS_LAYER, |i| E::Layer(i as u8)));
     m.extend(opcoes(&INSP_PHYS_REST_COMBINE, |i| {
         E::RestitutionCombine(i as u8)
     }));
@@ -640,6 +639,81 @@ fn o_recibo_so_vale_enquanto_o_topo_da_fila_e_a_remocao() {
     assert!(achado(&pinta(&mut host, &mut st), INSP_PHYS_REMOVED_UNDO).is_some());
     publica_o_topo(Some(21), false);
     assert!(achado(&pinta(&mut host, &mut st), INSP_PHYS_REMOVED_UNDO).is_none());
+    sai();
+}
+
+/// Abre a lista da camada pelo clique real e devolve o que se pinta com ela aberta.
+fn abre_a_lista_da_camada(
+    host: &mut MockPanelHost,
+    st: &mut InspectorState,
+) -> Vec<(NodeId, Rect)> {
+    let r = pinta(host, st);
+    let chip = achado(&r, INSP_PHYS_LAYER_PICK).expect("a lista da camada");
+    let _ = clica(host, st, chip);
+    pinta(host, st)
+}
+
+/// A lista usa os mesmos ids e a mesma edição dos chips de antes: cada opção escolhe a sua camada.
+#[test]
+fn a_lista_da_camada_escolhe_cada_camada_pela_mesma_edicao() {
+    for (i, &id) in INSP_PHYS_LAYER.iter().enumerate() {
+        let (mut host, mut st) = cena(with_body(), [1.0, 1.0]);
+        let abertas = abre_a_lista_da_camada(&mut host, &mut st);
+        let op = achado(&abertas, id).unwrap_or_else(|| panic!("a opção {i} não apareceu"));
+        assert_eq!(
+            clica(&mut host, &mut st, op),
+            [EditorAction::InspectorPhysicsEdit {
+                entity_bits: ENTIDADE,
+                edit: E::Layer(i as u8),
+            }],
+            "a opção {i}"
+        );
+        sai();
+    }
+}
+
+/// Sem nomes, os números; com nomes, os nomes. «Hits» lê a matriz e muda quando ela muda.
+#[test]
+fn hits_le_a_matriz_com_os_nomes_e_acompanha_a_mudanca() {
+    use ph2d_panel_inspector::camadas_fisica::{hits, set_current};
+    set_current(Default::default(), [0b0000_0101; 8]);
+    assert_eq!(hits(0), "Hits: 0, 2", "sem nomes, os números");
+    let mut nomes: [String; 8] = Default::default();
+    nomes[0] = "Ground".into();
+    nomes[2] = "Enemy".into();
+    set_current(nomes.clone(), [0b0000_0101; 8]);
+    assert_eq!(hits(0), "Hits: Ground, Enemy");
+    set_current(nomes.clone(), [0b0000_0100; 8]);
+    assert_eq!(hits(0), "Hits: Enemy", "a matriz mudou");
+    set_current(nomes, [0; 8]);
+    assert_eq!(hits(0), "Hits: nothing");
+    set_current(Default::default(), [u8::MAX; 8]);
+}
+
+/// «Rename…» abre o campo ali mesmo; escrever pede o novo nome da camada do objecto.
+#[test]
+fn rename_abre_o_campo_e_escrever_renomeia_a_camada_do_objecto() {
+    let mut info = with_body();
+    info.layer = 3;
+    let (mut host, mut st) = cena(info, [1.0, 1.0]);
+    let r = pinta(&mut host, &mut st);
+    assert!(achado(&r, INSP_PHYS_LAYER_NAME).is_none(), "fechado por omissão");
+    let _ = clica(&mut host, &mut st, achado(&r, INSP_PHYS_LAYER_RENAME).unwrap());
+    let r = pinta(&mut host, &mut st);
+    assert!(achado(&r, INSP_PHYS_LAYER_NAME).is_some());
+    let _ = host.drained_actions();
+    host.set_text(INSP_PHYS_LAYER_NAME, "Enemy");
+    let _ = host.apply_panel_event::<InspectorPanel>(
+        &mut st,
+        ph2d_editor_core::interaction::WidgetEvent::TextChanged(INSP_PHYS_LAYER_NAME),
+    );
+    assert_eq!(
+        host.drained_actions().last(),
+        Some(&EditorAction::LayerRename {
+            layer: 3,
+            name: "Enemy".into(),
+        })
+    );
     sai();
 }
 

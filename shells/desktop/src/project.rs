@@ -201,8 +201,10 @@ pub(crate) struct ProjectFile {
     /// `189`..`192` do load acrescentam o `0` deste `Vec` vazio.
     pub(crate) sounds: Vec<u8>,
     /// **As RECEITAS DE SOM e o material** (v217, SFX Lab W2): `ph2d_sfx_recipe::SfxLibrary`, com versão PRÓPRIA.
-    /// ⚠️ **O último campo:** `falta_no_fim` e os braços `189`..`192` acrescentam o `0` deste `Vec` vazio.
     pub(crate) sfx_lab: Vec<u8>,
+    /// **Os nomes das camadas de colisão** (v218, ficha f1): `ph2d_physics_ecs::LayerNames`, com versão PRÓPRIA.
+    /// ⚠️ **O último campo:** `falta_no_fim` e os braços `189`..`192` acrescentam o `0` deste `Vec` vazio.
+    pub(crate) physics_layers: Vec<u8>,
 }
 
 /// Uma imagem de sprite embutida no projeto: os pixels RGBA + a célula de atlas que

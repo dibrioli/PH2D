@@ -21,7 +21,9 @@ fn as_regras_do_mundo_e_da_mesa_voltam_com_o_desfazer() {
     let mut m = ph2d_audio::Mesa::default();
     m.bus[1].ganho = 0.4;
     ph2d_app_audio::mesa_doc::instalar(&mut sim, m);
+    ph2d_physics_ecs::LayerNames::rename(sim.world_mut(), 2, "Enemy");
     let depois = Regras::de(&ponte, &sim);
+    assert_ne!(depois.camadas, antes.camadas, "controlo: renomear muda as regras");
     assert_ne!(depois.physics, antes.physics, "controlo: a gravidade mudou");
     assert_ne!(depois.mesa, antes.mesa, "controlo: a mesa mudou");
 
@@ -30,7 +32,7 @@ fn as_regras_do_mundo_e_da_mesa_voltam_com_o_desfazer() {
         regras: r,
         ..base.clone()
     };
-    let (a, b) = (estado(antes), estado(depois));
+    let (a, b) = (estado(antes.clone()), estado(depois.clone()));
     assert_eq!(
         a.parts_that_differ(&b),
         ["regras"],

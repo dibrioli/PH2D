@@ -25,6 +25,8 @@ pub mod joint_tool;
 /// ⭐⭐⭐ **Quem lê o teclado** — a porta ÚNICA que as duas metades da entrega do dedo
 /// partilham (a da shell e a da fita). Ver o cabeçalho do módulo.
 pub mod keyboard_driven;
+mod layer_names;
+pub use layer_names::LayerNames;
 pub mod name_refs;
 mod parts;
 /// ⭐ **O REMAP identidade → identidade** (ADR-0164 / F4.2) — o que faz a junta de uma

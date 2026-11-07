@@ -111,10 +111,12 @@ pub(crate) struct ProjectState {
 
 /// O AUTORADO das regras do mundo (`PhysicsBridge::settings`) e da mesa (`mesa_doc::autorado`) — a
 /// curva que as conduz é pré-visualização.
-#[derive(Clone, Copy, PartialEq, Debug, Default)]
+#[derive(Clone, PartialEq, Debug, Default)]
 pub(crate) struct Regras {
     pub(crate) physics: ph2d_physics_ecs::PhysicsSettings,
     pub(crate) mesa: ph2d_audio::Mesa,
+    /// Os nomes das camadas (v218): renomear é autoria e desfaz-se.
+    pub(crate) camadas: ph2d_physics_ecs::LayerNames,
 }
 
 impl Regras {
@@ -123,6 +125,7 @@ impl Regras {
         Self {
             physics: ponte.settings(),
             mesa: ph2d_app_audio::mesa_doc::autorado(sim),
+            camadas: ph2d_physics_ecs::LayerNames::of(sim.world()),
         }
     }
 
@@ -136,6 +139,7 @@ impl Regras {
         if ph2d_app_audio::mesa_doc::autorado(sim) != self.mesa {
             ph2d_app_audio::mesa_doc::instalar(sim, self.mesa);
         }
+        self.camadas.install(sim.world_mut());
         let fisica = ponte.settings() != self.physics;
         if fisica {
             ponte.set_settings(self.physics);

@@ -167,6 +167,9 @@ impl crate::App {
             sfx_lab: (self.gfx.as_ref())
                 .map(|g| ph2d_sfx_recipe::project::save(g.sim.world()))
                 .unwrap_or_default(),
+            physics_layers: self.gfx.as_ref().map_or_else(Vec::new, |g| {
+                ph2d_physics_ecs::LayerNames::of(g.sim.world()).to_bytes()
+            }),
             // ⚠️ **A taxonomia NÃO está aqui, e a ausência é a decisão** (v105): ela viaja dentro
             // do `state`, que é a unidade do undo — ver [`crate::project_library`]. Um campo aqui
             // seria a **segunda** resposta à mesma pergunta, e a que o load lesse ganharia sem

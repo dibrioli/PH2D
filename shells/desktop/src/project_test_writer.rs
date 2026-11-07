@@ -71,6 +71,7 @@ pub(crate) fn bare_file(state: ProjectState) -> ProjectFile {
         pixel_sprites: Vec::new(),
         sounds: Vec::new(),
         sfx_lab: Vec::new(),
+        physics_layers: Vec::new(),
     }
 }
 

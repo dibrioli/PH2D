@@ -568,6 +568,8 @@ mod pattern_art;
 mod pixel;
 #[path = "project_scripts_tests.rs"]
 mod scripts;
+#[path = "project_layer_names_tests.rs"]
+mod layer_names;
 #[path = "project_sfx_tests.rs"]
 mod sfx;
 #[path = "project_sounds_tests.rs"]

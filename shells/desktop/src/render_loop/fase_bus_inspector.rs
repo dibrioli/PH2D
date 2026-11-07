@@ -414,6 +414,11 @@ impl crate::App {
                 // que a outra tinha acabado de dizer.
                 pd.signal_leave_edit = Some(info);
             }
+            EditorAction::LayerRename { layer, name } => {
+                if let Some(g) = self.gfx.as_mut() {
+                    ph2d_physics_ecs::LayerNames::rename(g.sim.world_mut(), layer, &name);
+                }
+            }
             other => return Some(other),
         }
         None

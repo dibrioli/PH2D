@@ -29,6 +29,7 @@ fn arquivo(jogo: Vec<u8>) -> ProjectFile {
         pixel_sprites: Vec::new(),
         sounds: Vec::new(),
         sfx_lab: Vec::new(),
+        physics_layers: Vec::new(),
     }
 }
 

@@ -69,6 +69,9 @@ thread_local! {
     /// §11 PHYSICS: o chip do filtro *Only for tag* (TOP-20 #9, W3c). ⚠️ Terceiro slot, pela mesma
     /// razão dos outros dois: as opções de cada selector têm ids próprios, e partilhar o slot faria
     /// o passe diferido pintar a lista de outra secção.
+    pub(crate) static PENDING_PHYS_LAYER_DD:
+        std::cell::Cell<Option<ph2d_editor_core::zones::Rect>> = const { std::cell::Cell::new(None) };
+
     pub(crate) static PENDING_PHYS_TAG_DD:
         std::cell::Cell<Option<ph2d_editor_core::zones::Rect>> = const { std::cell::Cell::new(None) };
 
@@ -230,6 +233,14 @@ pub(crate) fn set_pending_action_tag_dd(chip: Option<ph2d_editor_core::zones::Re
 
 pub(crate) fn take_pending_action_tag_dd() -> Option<ph2d_editor_core::zones::Rect> {
     PENDING_ACTION_TAG_DD.with(|c| c.take())
+}
+
+pub(crate) fn set_pending_phys_layer_dd(chip: Option<ph2d_editor_core::zones::Rect>) {
+    PENDING_PHYS_LAYER_DD.with(|c| c.set(chip));
+}
+
+pub(crate) fn take_pending_phys_layer_dd() -> Option<ph2d_editor_core::zones::Rect> {
+    PENDING_PHYS_LAYER_DD.with(|c| c.take())
 }
 
 pub(crate) fn set_pending_phys_tag_dd(chip: Option<ph2d_editor_core::zones::Rect>) {

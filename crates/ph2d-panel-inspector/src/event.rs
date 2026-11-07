@@ -511,6 +511,16 @@ fn section_text_changed(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bo
     // CHEGA nele e quando algo SAI. Duas rows, dois contratos, duas ações: um
     // `leave` enfiado na mesma ação com um bool tornaria impossível ler o
     // barramento sem perguntar duas coisas para saber uma.
+    if id == ids::INSP_PHYS_LAYER_NAME
+        && let Some(info) = state::current_inspector_physics()
+    {
+        let name = host.store().text(id).unwrap_or("").to_string();
+        host.bus_mut().push(EditorAction::LayerRename {
+            layer: info.layer,
+            name,
+        });
+        return true;
+    }
     if id == ids::INSP_PHYS_SIGNAL
         && let Some(info) = state::current_inspector_physics()
     {

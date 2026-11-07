@@ -3,6 +3,8 @@
 //! (`event.rs`) não muda. O campo do cartão é o CHIP (ligado à barra, que continua a avisar o painel);
 //! a barra deixa de se pintar: o scrub no ícone faz o que ela fazia.
 
+use ph2d_editor_core::interaction::InteractiveState;
+use ph2d_editor_core::widget::TextInputState;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::panel::TextKey;
@@ -63,11 +65,28 @@ fn rotulo(chip: NodeId, plano: &'static str) -> &'static str {
 /// Antes de pintar, com o store MUTÁVEL: os campos marcados, os números do mundo nas caixas e o
 /// nome de cada célula muda da matriz. O campo que a mão arrasta não se semeia: sob a curva da Cena
 /// o vivo puxaria o valor debaixo do gesto.
+/// Cada campo mostra o nome do projeto, salvo enquanto se escreve nele.
+fn semeia_os_nomes_das_camadas(store: &mut WidgetStore) {
+    let nomes = crate::state::layer_names();
+    for (nome, &id) in nomes.0.iter().zip(&i::PHYSICS_LAYER_NAME) {
+        if let Some(InteractiveState::TextInput {
+            state, text, caret, ..
+        }) = store.get_mut(id)
+            && *state != TextInputState::Focused
+            && text != nome
+        {
+            *caret = nome.len();
+            nome.clone_into(text);
+        }
+    }
+}
+
 pub(crate) fn prepare(store: &mut WidgetStore, snap: &PhysicsSnapshot) {
     store.mark_card_list_close(ph2d_editor_core::ids::PHYSICS_PANEL, i::PHYSICS_CLOSE);
     // O Debug nasce dobrado: é o que paga a catraca da altura de abertura (o cartão custa mais do que
     // a linha de antes) e o que menos se abre, com o Reset lá dentro.
     store.set_collapsed_if_unchosen(i::PHYSICS_SEC_DEBUG, true);
+    semeia_os_nomes_das_camadas(store);
     let fabrica = PhysicsSettings::default();
     let arrastado = store.number_input_drag().map(|d| d.id);
     for row in rows::rows() {
@@ -329,7 +348,7 @@ fn cartao_das_camadas(snap: PhysicsSnapshot) -> CardDef<'static> {
         None,
         move |c, y| {
             let matriz = LayerMatrix::from_rows(snap.vivo.layer_matrix);
-            c.toggle_triangle(
+            let mut y = c.toggle_triangle(
                 &ToggleTriangle {
                     label: tr("card.physics.layers"),
                     n: MAX_LAYERS,
@@ -339,7 +358,21 @@ fn cartao_das_camadas(snap: PhysicsSnapshot) -> CardDef<'static> {
                     on_of: &|a, b| matriz.collides(a, b),
                 },
                 y,
-            )
+            );
+            // O nome da cabeça de cada linha; o número continua a ser a identidade.
+            for (n, &id) in i::PHYSICS_LAYER_NAME.iter().enumerate() {
+                let rotulo = tr_with("card.physics.layer_name", &[("n", &n.to_string())]);
+                let placeholder = n.to_string();
+                y = c.full(
+                    Some(&rotulo),
+                    Widget::Text {
+                        id,
+                        placeholder: &placeholder,
+                    },
+                    y,
+                );
+            }
+            y
         },
     )
 }

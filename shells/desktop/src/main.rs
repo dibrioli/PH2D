@@ -358,7 +358,6 @@ mod project_schema_history_v128;
 /// A escada arquivada de `v144` a `v160` — a sexta faixa (integração de 2026-09-25).
 mod project_schema_history_v144;
 mod project_schema_history_v160;
-mod project_schema_history_v99;
 /// A metade ARQUIVADA da escada do `PROJECT_SCHEMA` (v2..v79) — irmã por LOC (HR-18).
 /// A escada arquivada de `v83` a `v98` — o corte por idade, a 2.ª vez (ver o cabeçalho dela).
 /// **As settings do PROJETO viajam no arquivo** (doc 88, D3) — a escala do mundo e a

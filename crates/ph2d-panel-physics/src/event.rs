@@ -139,6 +139,16 @@ pub(crate) fn apply_event(
         //    ANTES de emitir este `Click`. ⛔ Dobrar outra vez aqui desfazia o clique — o braço fica
         //    só para CONSUMIR o evento, que senão cairia no `_ => false`.
         WidgetEvent::Click(id) if rows::is_section_header(id) => true,
+        WidgetEvent::TextChanged(id) if crate::ids::PHYSICS_LAYER_NAME.contains(&id) => {
+            let layer = crate::ids::PHYSICS_LAYER_NAME
+                .iter()
+                .position(|&c| c == id)
+                .expect("guard matched") as u8;
+            let name = host.store().text(id).unwrap_or("").to_string();
+            host.bus_mut()
+                .push(ph2d_editor_core::action_bus::EditorAction::LayerRename { layer, name });
+            true
+        }
         // A matrix cell toggles ONE pair. `LayerMatrix::set` writes both halves,
         // so the asymmetric state the panel could otherwise author does not exist.
         WidgetEvent::Click(id) if crate::ids::PHYSICS_LAYER_CELL.contains(&id) => {

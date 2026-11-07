@@ -15,6 +15,12 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
     if crate::recibo_fisica::click(host, ev) {
         return true;
     }
+    if ev == WidgetEvent::Click(crate::ids::INSP_PHYS_LAYER_RENAME) {
+        let id = crate::ids::INSP_PHYS_LAYER_RENAMING;
+        let fechado = host.store().is_collapsed(id);
+        host.store_mut().set_collapsed(id, !fechado);
+        return true;
+    }
     // A metade do CLIQUE: um chip, um botao. Resolvida por uma fn pura
     // (`click_edit`) e nao inline, pelo cap de 200 LOC das fns de painel — o
     // corte e o que as duas metades JA eram, *que controle foi apertado* contra

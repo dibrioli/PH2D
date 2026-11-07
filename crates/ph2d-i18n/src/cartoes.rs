@@ -27,6 +27,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.phys.follows" => "Follows the picture",
         "card.insp.phys.custom" => "Custom size",
         "card.insp.phys.fit" => "Fit to picture",
+        "card.insp.phys.hits" => "Hits: {names}",
+        "card.insp.phys.hits_nothing" => "Hits: nothing",
+        "card.insp.phys.layer_rename" => "Rename…",
+        "card.insp.phys.layer_name" => "Layer name",
         "card.insp.phys.stretched" => "Scale stretches this round shape into an oval.",
         "card.insp.phys.scale_one" => "Set Scale to 1",
         "card.insp.phys.use_box" => "Use Box",
@@ -336,6 +340,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.physics.blast_impulse" => "Impulse (N\u{b7}s)",
         "card.physics.pull_force" => "Force (N)",
         "card.physics.layers" => "Layers that collide",
+        "card.physics.layer_name" => "Layer {n} name",
         "card.physics.layer_cell" => {
             "Layer {a} and layer {b}: click or drag to switch their collision"
         }

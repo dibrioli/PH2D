@@ -40,3 +40,9 @@ Deu errado se: faixas invisíveis ou lidas como «…»; campo de tempo por mini
 - **Onda 3:** grade com margem, células vazias, aviso, passo a passo.
 - **A levar ao dono:** selecionar outro objeto com o editor aberto troca o painel; digitar 24 lê 23.8 (`frame_ms` inteiro).
 - Link do CLAUDE.md §5 e o «`PH2D_GAME_SMOKE=1..5`»: do fecho da linha.
+
+## Acabamento pedido pelo dono, depois do 1.º smoke visual (07/11)
+
+Dono, olhando a tela ao lado da maquete: «faltou capricho». A tela passou a usar as medidas dos cartões (`ph2d_card_stack::metrics`: `FIELD_H` 28, `FIELD_RADIUS`, `FIELD_GAP`) e o corpo `TypeToken::Base`. Sem grade nem contorno na folha, fundo cinza neutro, folha alinhada ao topo e à esquerda, e os cartões abraçam a folha. A aberta é a faixa de baixo e mais grossa. A ordem só se numera durante o arrasto. Tira baixa: `THUMB_OVER_CELL` 1.25 → 0.77 revê a decisão de 25/10 («um pouco maior») por ordem da maquete; `a_miniatura_da_faixa_e_mais_baixa_que_a_celula_da_folha`. O × só aparece com o rato no quadro. O marcador mora na fila do título (`inline`), ou numa fila própria se não couber. Paleta na ordem da maquete. Região continua com `button`/`field` em `Sm`. Dependência nova: `ph2d-card-stack`.
+
+⚠️ As mutações foram corridas ANTES deste acabamento: `one_line` já não existe (agora `inline`), e a da fila estreita não foi repetida.

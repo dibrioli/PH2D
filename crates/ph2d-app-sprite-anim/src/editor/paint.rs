@@ -4,9 +4,10 @@
 use super::bands::anim_color;
 use super::doc::{AnimDoc, DragPaint, Field};
 use super::paint_sheet::{paint_hover_list, paint_sheet};
+use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, frame_radius, label_column_width, paint_text, paint_text_centered, resolve,
-    stroke_rect,
+    fill_rounded_rect, frame_radius, label_column_width, paint_text, paint_text_centered,
+    paint_text_title, resolve, stroke_rect, stroke_rounded_rect,
 };
 use ph2d_editor_core::paint_shapes::fill_diamond;
 use ph2d_editor_core::widget::paint_card_ghost;
@@ -17,6 +18,11 @@ use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::{Color, VectorScene};
+
+/// A amostra de cor da lista, em relação à letra (a maquete, 9 de 11).
+const SWATCH_OVER_FONT: f32 = 0.8; // LITERAL-PX-OK: razão adimensional
+/// O corpo do texto do editor: o dos campos dos cartões.
+const FONT_TOKEN: TypeToken = TypeToken::Base;
 
 /// A cor do editor: em cartões, o tom da lista; `PH2D_CARDS=0`, o de antes.
 pub fn tom(t: ColorToken, theme: Theme) -> Color {
@@ -45,6 +51,18 @@ pub(crate) fn button(
     label: &str,
     on: bool,
 ) {
+    button_sized(scene, text, theme, r, label, on, TypeToken::Sm.px());
+}
+
+fn button_sized(
+    scene: &mut VectorScene,
+    text: &mut TextSystem,
+    theme: Theme,
+    r: Rect,
+    label: &str,
+    on: bool,
+    font: f32,
+) {
     // Em cartões o ligado é o segmento levantado, como «Keys» na Timeline; o acento fica para a seleção.
     let cartao = ph2d_editor_core::panel::cards::ferramenta::cards_on();
     let bg = match (on, cartao) {
@@ -63,7 +81,7 @@ pub(crate) fn button(
         frame_radius(theme, Radius::Sm.px()),
         tom(bg, theme),
     );
-    paint_text_centered(text, scene, label, r, TypeToken::Sm.px(), tom(fg, theme));
+    paint_text_centered(text, scene, label, r, font, tom(fg, theme));
 }
 
 pub(crate) fn field(
@@ -74,10 +92,22 @@ pub(crate) fn field(
     shown: &str,
     editing: Option<&str>,
 ) {
+    field_sized(scene, text, theme, r, shown, editing, TypeToken::Sm.px());
+}
+
+fn field_sized(
+    scene: &mut VectorScene,
+    text: &mut TextSystem,
+    theme: Theme,
+    r: Rect,
+    shown: &str,
+    editing: Option<&str>,
+    font: f32,
+) {
     fill_rounded_rect(
         scene,
         r,
-        frame_radius(theme, Radius::Sm.px()),
+        frame_radius(theme, m::FIELD_RADIUS),
         tom(ColorToken::Bg2, theme),
     );
     match editing {
@@ -89,23 +119,9 @@ pub(crate) fn field(
                 tom(ColorToken::Accent, theme),
             );
             let s = tr_with("anim_editor.caret", &[("text", &buf)]);
-            paint_text_centered(
-                text,
-                scene,
-                &s,
-                r,
-                TypeToken::Sm.px(),
-                tom(ColorToken::Text1, theme),
-            );
+            paint_text_centered(text, scene, &s, r, font, tom(ColorToken::Text1, theme));
         }
-        None => paint_text_centered(
-            text,
-            scene,
-            shown,
-            r,
-            TypeToken::Sm.px(),
-            tom(ColorToken::Text1, theme),
-        ),
+        None => paint_text_centered(text, scene, shown, r, font, tom(ColorToken::Text1, theme)),
     }
 }
 
@@ -121,9 +137,21 @@ fn card(scene: &mut VectorScene, theme: Theme, r: Rect) {
     fill_rounded_rect(
         scene,
         r,
-        frame_radius(theme, Radius::Sm.px()),
+        frame_radius(theme, Radius::Lg.px()),
         tom(ColorToken::Bg1, theme),
     );
+}
+
+/// Um verbo da lista: o botão claro, que se lê como botão e não como campo.
+fn verb(scene: &mut VectorScene, text: &mut TextSystem, theme: Theme, r: Rect, label: &str) {
+    fill_rounded_rect(
+        scene,
+        r,
+        frame_radius(theme, m::FIELD_RADIUS),
+        tom(ColorToken::Bg3, theme),
+    );
+    let c = tom(ColorToken::Text1, theme);
+    paint_text_centered(text, scene, label, r, FONT_TOKEN.px(), c);
 }
 
 /// Um título ou rótulo do cartão.
@@ -135,8 +163,53 @@ fn label(
     s: &str,
     c: ColorToken,
 ) {
-    let font = TypeToken::Sm.px();
-    paint_text(text, scene, s, r.x, r.y, font, r.w, tom(c, theme));
+    let font = FONT_TOKEN.px();
+    let y = r.y + (r.h - ROW_H_PX).max(0.0) / 2.0;
+    paint_text(text, scene, s, r.x, y, font, r.w, tom(c, theme));
+}
+
+/// Um campo dos cartões: a letra apagada à esquerda e o valor junto dela.
+fn glyph_field(
+    scene: &mut VectorScene,
+    text: &mut TextSystem,
+    theme: Theme,
+    r: Rect,
+    glyph: &str,
+    shown: &str,
+    open: Option<&str>,
+) {
+    fill_rounded_rect(
+        scene,
+        r,
+        frame_radius(theme, m::FIELD_RADIUS),
+        tom(ColorToken::Bg2, theme),
+    );
+    if open.is_some() {
+        stroke_rect(
+            scene,
+            r,
+            StrokeToken::Thin.px(),
+            tom(ColorToken::Accent, theme),
+        );
+    }
+    let font = FONT_TOKEN.px();
+    let x = r.x + Spacing::Md.px();
+    let glyph_w = label_column_width(text, font, [glyph]);
+    let apagado = tom(ColorToken::Text3, theme);
+    let y = r.y + (r.h - ROW_H_PX) / 2.0;
+    paint_text(text, scene, glyph, x, y, font, glyph_w, apagado);
+    let value_x = x + glyph_w + Spacing::Md.px();
+    let caret;
+    let value = match open {
+        Some(buf) => {
+            caret = tr_with("anim_editor.caret", &[("text", &buf)]);
+            caret.as_str()
+        }
+        None => shown,
+    };
+    let w = (r.x + r.w - value_x).max(0.0);
+    let c = tom(ColorToken::Text1, theme);
+    paint_text(text, scene, value, value_x, y, font, w, c);
 }
 
 /// Pinta a aba inteira em `area`.
@@ -159,33 +232,35 @@ pub fn paint_doc(
 
     // ── A folha ──
     let mut hint = tr("anim_editor.sheet_hint");
-    if label_column_width(text, TypeToken::Sm.px(), [hint]) > l.sheet_title.w {
+    if label_column_width(text, FONT_TOKEN.px(), [hint]) > l.sheet_title.w {
         hint = tr("anim_editor.sheet");
     }
     label(scene, text, theme, l.sheet_title, hint, ColorToken::Text2);
     let cols = doc.cols_label();
-    field(
+    field_sized(
         scene,
         text,
         theme,
         l.cols,
         &cols,
         editing(doc, &Field::Cols),
+        FONT_TOKEN.px(),
     );
     let rows = doc.rows_label();
-    field(
+    field_sized(
         scene,
         text,
         theme,
         l.rows,
         &rows,
         editing(doc, &Field::Rows),
+        FONT_TOKEN.px(),
     );
     if let (Some((t, use_)), Some(g)) = (l.banner, doc.proposal()) {
         fill_rounded_rect(
             scene,
             t,
-            frame_radius(theme, Radius::Sm.px()),
+            frame_radius(theme, m::FIELD_RADIUS),
             tom(ColorToken::Bg2, theme),
         );
         let msg = tr_with(
@@ -194,7 +269,15 @@ pub fn paint_doc(
         );
         let at = Rect::new(t.x + Spacing::Sm.px(), t.y, t.w, t.h);
         label(scene, text, theme, at, &msg, ColorToken::Text1);
-        button(scene, text, theme, use_, tr("anim_editor.use_grid"), true);
+        button_sized(
+            scene,
+            text,
+            theme,
+            use_,
+            tr("anim_editor.use_grid"),
+            true,
+            FONT_TOKEN.px(),
+        );
     }
     let users = doc.cell_users();
     doc.painted_cells = paint_sheet(doc, &l, &users, scene, text, theme);
@@ -222,25 +305,17 @@ fn paint_frames_title(
     text: &mut TextSystem,
     theme: Theme,
 ) {
-    let Some(row) = info.and_then(|i| i.rows.get(doc.selected)) else {
+    if info.and_then(|i| i.rows.get(doc.selected)).is_none() {
         return;
-    };
-    let n = doc.shown_frames().len();
-    let title = tr_with(
-        "anim_editor.frames_title",
-        &[("name", &row.name), ("n", &n)],
-    );
-    label(
-        scene,
-        text,
-        theme,
-        l.frames_title,
-        &title,
-        ColorToken::Text1,
-    );
-    let total = tr_with("anim_editor.total_ms", &[("ms", &doc.total_ms())]);
-    let w = label_column_width(text, TypeToken::Sm.px(), [total.as_str()]);
+    }
+    let font = FONT_TOKEN.px();
     let r = l.frames_title;
+    let c = tom(ColorToken::Text1, theme);
+    let title = doc.frames_title_text();
+    let y = r.y + (r.h - ROW_H_PX) / 2.0;
+    paint_text_title(text, scene, &title, r.x, y, font, r.w, c);
+    let total = doc.total_text();
+    let w = label_column_width(text, font, [total.as_str()]);
     let at = Rect::new(r.x + r.w - w, r.y, w, r.h);
     label(scene, text, theme, at, &total, ColorToken::Text2);
 }
@@ -257,37 +332,24 @@ fn paint_fields(
     let fps_key = tr("panel.inspector.anim_card.fps");
     label(scene, text, theme, over(l.fps), fps_key, ColorToken::Text2);
     let fps = doc.fps_label();
-    field(scene, text, theme, l.fps, &fps, editing(doc, &Field::Fps));
+    let glyph = tr("anim_editor.glyph_factor");
+    let open = editing(doc, &Field::Fps);
+    glyph_field(scene, text, theme, l.fps, glyph, &fps, open);
     let this = tr("anim_editor.this_frame");
-    label(
-        scene,
-        text,
-        theme,
-        over(l.this_frame),
-        this,
-        ColorToken::Text2,
-    );
+    let this_label = over(l.this_frame);
+    label(scene, text, theme, this_label, this, ColorToken::Text2);
     let shown = doc.this_frame_label();
     let open = doc
         .marked_frame()
         .and_then(|f| editing(doc, &Field::FrameMs(f)));
-    field(scene, text, theme, l.this_frame, &shown, open);
-    let marker = tr("anim_editor.marker");
-    label(
-        scene,
-        text,
-        theme,
-        over(l.mark_bar),
-        marker,
-        ColorToken::Text2,
-    );
+    glyph_field(scene, text, theme, l.this_frame, glyph, &shown, open);
     let mode = doc.mode();
     if let (Some(a), Some(b)) = (l.modes.first(), l.modes.last()) {
         let track = Rect::new(a.x, a.y, b.x + b.w - a.x, a.h);
         fill_rounded_rect(
             scene,
             track,
-            frame_radius(theme, Radius::Sm.px()),
+            frame_radius(theme, m::FIELD_RADIUS),
             tom(ColorToken::Bg2, theme),
         );
     }
@@ -297,14 +359,19 @@ fn paint_fields(
         "anim_editor.ping_pong",
     ];
     for (i, (r, key)) in l.modes.iter().zip(keys).enumerate() {
-        button(
-            scene,
-            text,
-            theme,
-            *r,
-            tr(key),
-            mode == Some(AnimCycleMode::ALL[i]),
-        );
+        if mode == Some(AnimCycleMode::ALL[i]) {
+            let inset = Spacing::Xxs.px();
+            let raised = Rect::new(
+                r.x + inset,
+                r.y + inset,
+                r.w - 2.0 * inset, // LITERAL-PX-OK: as duas margens
+                r.h - 2.0 * inset, // LITERAL-PX-OK: as duas margens
+            );
+            button_sized(scene, text, theme, raised, tr(key), true, FONT_TOKEN.px());
+        } else {
+            let c = tom(ColorToken::Text1, theme);
+            paint_text_centered(text, scene, tr(key), *r, FONT_TOKEN.px(), c);
+        }
     }
 }
 
@@ -316,14 +383,15 @@ fn paint_mark_bar(
     text: &mut TextSystem,
     theme: Theme,
 ) {
-    let font = TypeToken::Sm.px();
+    let font = FONT_TOKEN.px();
     let Some(frame) = doc.marked_frame() else {
+        let hint_w = label_column_width(text, font, [tr("anim_editor.marker_hint")]);
         paint_text(
             text,
             scene,
             tr("anim_editor.marker_hint"),
-            l.mark_bar.x,
-            l.mark_bar.y,
+            (l.mark_bar.x + l.mark_bar.w - hint_w).max(l.mark_bar.x),
+            l.mark_bar.y + (l.mark_bar.h - ROW_H_PX) / 2.0,
             font,
             l.mark_bar.w,
             tom(ColorToken::Text3, theme),
@@ -336,23 +404,32 @@ fn paint_mark_bar(
     } else {
         "anim_editor.marker_add"
     });
-    button(scene, text, theme, l.mark_toggle, rotulo, tem);
+    button_sized(
+        scene,
+        text,
+        theme,
+        l.mark_toggle,
+        rotulo,
+        tem,
+        FONT_TOKEN.px(),
+    );
     let gravado = doc.marker_signal(frame);
     let shown = if gravado.is_empty() {
         tr("card.anim.marker_signal_placeholder")
     } else {
         gravado.as_str()
     };
-    field(
+    field_sized(
         scene,
         text,
         theme,
         l.mark_signal,
         shown,
         editing(doc, &Field::Signal(frame)),
+        FONT_TOKEN.px(),
     );
     if let Some(step) = doc.marker_past_end(frame) {
-        let x = l.mark_signal.x;
+        let x = l.this_frame.x + l.this_frame.w / 2.0;
         let n = doc.authored_frames().len();
         paint_text(
             text,
@@ -362,9 +439,9 @@ fn paint_mark_bar(
                 &[("frame", &(step + 1)), ("n", &n)],
             ),
             x,
-            l.mark_bar.y - ROW_H_PX,
+            l.this_frame.y - ROW_H_PX,
             font,
-            (l.mark_bar.x + l.mark_bar.w - x).max(0.0),
+            (l.this_frame.x + l.this_frame.w - x).max(0.0),
             tom(ColorToken::Warn, theme),
         );
     }
@@ -378,7 +455,7 @@ fn paint_list(
     text: &mut TextSystem,
     theme: Theme,
 ) {
-    let font = TypeToken::Sm.px();
+    let font = FONT_TOKEN.px();
     let title = tr("anim_editor.animations");
     label(scene, text, theme, l.list_title, title, ColorToken::Text2);
     let rows = info.map(|i| i.rows.as_slice()).unwrap_or_default();
@@ -399,12 +476,12 @@ fn paint_list(
             fill_rounded_rect(
                 scene,
                 *r,
-                frame_radius(theme, Radius::Sm.px()),
+                frame_radius(theme, m::FIELD_RADIUS),
                 tom(ColorToken::Bg3, theme),
             );
         }
         if let Some(buf) = editing(doc, &Field::Name(i)) {
-            field(scene, text, theme, *r, "", Some(buf));
+            field_sized(scene, text, theme, *r, "", Some(buf), FONT_TOKEN.px());
             continue;
         }
         let playing = info.is_some_and(|x| x.playing && x.current == row.name);
@@ -420,12 +497,12 @@ fn paint_list(
         };
         // A amostra é a mesma cor das faixas da folha, e o número é quantos quadros a animação toca.
         let inset = Spacing::Sm.px();
-        let side = Spacing::Md.px();
+        let side = font * SWATCH_OVER_FONT;
         let swatch = Rect::new(r.x + inset, r.y + (r.h - side) / 2.0, side, side);
         fill_rounded_rect(
             scene,
             swatch,
-            frame_radius(theme, Radius::Sm.px()),
+            Spacing::Xxs.px(),
             tom(anim_color(row.color), theme),
         );
         let count = row.steps.to_string();
@@ -452,26 +529,12 @@ fn paint_list(
             tom(ColorToken::Text2, theme),
         );
     }
-    button(scene, text, theme, l.add, tr("anim_editor.add"), false);
+    verb(scene, text, theme, l.add, tr("anim_editor.add"));
     if l.split.w > 0.0 {
-        button(
-            scene,
-            text,
-            theme,
-            l.split,
-            tr("anim_editor.split_by_rows"),
-            false,
-        );
+        verb(scene, text, theme, l.split, tr("anim_editor.split_by_rows"));
     }
     if !rows.is_empty() {
-        button(
-            scene,
-            text,
-            theme,
-            l.remove,
-            tr("anim_editor.remove"),
-            false,
-        );
+        verb(scene, text, theme, l.remove, tr("anim_editor.remove"));
     }
 }
 
@@ -484,7 +547,7 @@ fn paint_strip(
     text: &mut TextSystem,
     theme: Theme,
 ) -> DragPaint {
-    let font = TypeToken::Sm.px();
+    let font = FONT_TOKEN.px();
     if frames.is_empty() {
         paint_text(
             text,
@@ -515,7 +578,7 @@ fn paint_strip(
         fill_rounded_rect(
             scene,
             *thumb,
-            frame_radius(theme, Radius::Sm.px()),
+            frame_radius(theme, m::FIELD_RADIUS),
             tom(ColorToken::Bg2, theme),
         );
         if let Some(sheet) = &doc.snap.sheet {
@@ -533,29 +596,19 @@ fn paint_strip(
             fill_rounded_rect(
                 scene,
                 *thumb,
-                frame_radius(theme, Radius::Sm.px()),
+                frame_radius(theme, m::FIELD_RADIUS),
                 tom(ColorToken::BgScrim, theme),
             );
         }
         if doc.frame_selected == Some(i) || (on_screen && step == Some(i)) {
-            stroke_rect(
-                scene,
-                *thumb,
-                StrokeToken::Thick.px(),
-                tom(ColorToken::Accent, theme),
-            );
+            let radius = frame_radius(theme, m::FIELD_RADIUS);
+            let c = tom(ColorToken::Accent, theme);
+            stroke_rounded_rect(scene, *thumb, radius, StrokeToken::Thick.px(), c);
         }
-        paint_text(
-            text,
-            scene,
-            &(i + 1).to_string(),
-            thumb.x + Spacing::Sm.px(),
-            thumb.y,
-            font,
-            thumb.w,
-            tom(ColorToken::Text2, theme),
-        );
-        if frames.len() > 1 {
+        let hovered = doc.hover.is_some_and(|(x, y)| {
+            x >= thumb.x && x < thumb.x + thumb.w && y >= thumb.y && y < thumb.y + thumb.h
+        });
+        if frames.len() > 1 && hovered {
             paint_text_centered(
                 text,
                 scene,
@@ -599,7 +652,7 @@ fn paint_strip(
         fill_rounded_rect(
             scene,
             bar,
-            frame_radius(theme, Radius::Sm.px()),
+            frame_radius(theme, m::FIELD_RADIUS),
             tom(ColorToken::Accent, theme),
         );
         painted.marker = Some(gap);
@@ -630,7 +683,7 @@ fn paint_strip(
             scene,
             &content,
             thumb,
-            frame_radius(theme, Radius::Sm.px()),
+            frame_radius(theme, m::FIELD_RADIUS),
             Some(tom(ColorToken::Bg2, theme)),
             d.grab,
             d.at,

@@ -13,7 +13,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "anim_editor.total_ms" => "{ms} ms total",
         "anim_editor.this_frame" => "This frame (x)",
         "anim_editor.no_frame" => "\u{2014}",
-        "anim_editor.marker" => "Marker",
+        "anim_editor.glyph_factor" => "F",
         "anim_editor.more_bands" => "+{n}",
         "anim_editor.repeat" => "Repeat",
         "anim_editor.once" => "Once",

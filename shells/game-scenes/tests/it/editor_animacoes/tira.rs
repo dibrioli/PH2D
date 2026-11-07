@@ -3,24 +3,23 @@
 
 use super::*;
 
-/// ⭐ Report do dono (25/10): a miniatura da faixa tem de ser um pouco MAIOR que a célula da folha
-/// pintada logo acima — na janela de fábrica do teste e na folha do herói (8 × 4).
+/// A maquete que o dono escolheu em 07/11 (revê o «um pouco maior» de 25/10): a miniatura é mais baixa que a
+/// célula da folha, para a folha ganhar a tela, e nunca mais alta que larga.
 #[test]
-fn a_miniatura_da_faixa_e_maior_que_a_celula_da_folha() {
+fn a_miniatura_da_faixa_e_mais_baixa_que_a_celula_da_folha() {
     let mut m = Mesa::new();
     m.paint();
     let d = m.doc();
     let thumb = d.layout.frames[0].0;
     let cell = d.cell_rect(0);
     assert!(
-        thumb.w > cell.w && thumb.h > cell.h,
-        "miniatura {}×{} ≤ célula {}×{}",
+        thumb.h < cell.h && thumb.w >= thumb.h,
+        "miniatura {}×{} contra célula {}×{}",
         thumb.w,
         thumb.h,
         cell.w,
         cell.h
     );
-    assert!((thumb.w - thumb.h).abs() < 1e-3, "a miniatura é quadrada");
 }
 
 /// O arrasto de `from` pousado em `x`: devolve (o intervalo do marcador PINTADO, o que a largada

@@ -10,13 +10,13 @@ pub const BANDS_MAX: usize = 3;
 
 /// A paleta das animações, de `ph2d_ecs::ANIM_COLORS` cores.
 const PALETTE: [ColorToken; ph2d_ecs::ANIM_COLORS as usize] = [
-    ColorToken::KanbanBlueBold,
-    ColorToken::KanbanOrangeBold,
     ColorToken::KanbanGreenBold,
-    ColorToken::KanbanPinkBold,
     ColorToken::KanbanYellowBold,
-    ColorToken::KanbanPurpleBold,
+    ColorToken::KanbanPinkBold,
     ColorToken::KanbanSkyBold,
+    ColorToken::KanbanPurpleBold,
+    ColorToken::KanbanOrangeBold,
+    ColorToken::KanbanBlueBold,
     ColorToken::KanbanRedBold,
 ];
 

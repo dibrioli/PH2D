@@ -6,16 +6,18 @@ use super::doc::{AnimDoc, Layout};
 use super::paint::tom;
 use ph2d_editor_core::paint::{
     fill_rounded_rect, frame_radius, label_column_width, paint_text, paint_text_centered,
-    rect_for_label, stroke_rect,
+    rect_for_label,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, Theme, TypeToken};
 use ph2d_vector::{ImageQuality, VectorScene};
 
 /// A opacidade das faixas das animações que não estão abertas.
-const OTHER_BAND_ALPHA: f32 = 0.7; // LITERAL-PX-OK: opacidade
+const OTHER_BAND_ALPHA: f32 = 0.85; // LITERAL-PX-OK: opacidade
+/// O cinza neutro atrás da folha (o da maquete): solta os desenhos do fundo azulado do cartão.
+const SHEET_BACK_ALPHA: f32 = 0.3; // LITERAL-PX-OK: opacidade
 
 /// O que a última pintura pôs numa célula (os gates leem-no).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -36,7 +38,7 @@ pub(super) fn paint_sheet(
     text: &mut TextSystem,
     theme: Theme,
 ) -> Vec<PaintedCell> {
-    let font = TypeToken::Sm.px();
+    let font = TypeToken::Base.px();
     let Some(sheet) = doc.snap.sheet.clone() else {
         paint_text(
             text,
@@ -50,7 +52,12 @@ pub(super) fn paint_sheet(
         );
         return Vec::new();
     };
-    fill_rounded_rect(scene, l.sheet, 0.0, tom(ColorToken::Bg0, theme));
+    fill_rounded_rect(
+        scene,
+        l.sheet,
+        frame_radius(theme, Radius::Sm.px()),
+        tom(ColorToken::Text3, theme).with_alpha(SHEET_BACK_ALPHA),
+    );
     scene.draw_stable_image(
         &sheet.image,
         (
@@ -61,14 +68,6 @@ pub(super) fn paint_sheet(
         ),
         ImageQuality::Medium,
     );
-    for c in 0..users.len() as u32 {
-        stroke_rect(
-            scene,
-            doc.cell_rect(c),
-            StrokeToken::Hairline.px(),
-            tom(ColorToken::Border, theme),
-        );
-    }
     let rows = doc.snap.info.as_ref().map_or(&[][..], |i| &i.rows);
     let color_of = |i: usize| anim_color(rows.get(i).map_or(0, |r| r.color));
     let frames = doc.shown_frames();
@@ -79,27 +78,31 @@ pub(super) fn paint_sheet(
         }
         let r = doc.cell_rect(c as u32);
         let (bands, extra) = shown_bands(u);
-        let h = Spacing::Sm.px();
-        for (k, i) in bands.iter().enumerate() {
-            let y = r.y + r.h - (k + 1) as f32 * h;
+        // A aberta é a faixa de baixo, e mais grossa: é assim que se vê quais células são dela.
+        let (thin, thick) = (Spacing::Xs.px(), Spacing::Sm.px());
+        let inset = Spacing::Xxs.px();
+        let mut top = r.y + r.h;
+        for i in bands {
+            let open = *i == doc.selected;
+            let h = if open { thick } else { thin };
+            top -= h + inset;
             let color = tom(color_of(*i), theme);
-            let color = if *i == doc.selected {
+            let color = if open {
                 color
             } else {
                 color.with_alpha(OTHER_BAND_ALPHA)
             };
-            fill_rounded_rect(scene, Rect::new(r.x, y, r.w, h), 0.0, color);
+            let band = Rect::new(r.x + inset, top, r.w - 2.0 * inset, h); // LITERAL-PX-OK: as duas margens
+            fill_rounded_rect(scene, band, 0.0, color);
         }
         if extra > 0 {
-            let top = r.y + r.h - bands.len() as f32 * h;
             let plus = tr_with("anim_editor.more_bands", &[("n", &extra)]);
             let w = rect_for_label(label_column_width(text, font, [plus.as_str()]));
             let n = Rect::new(r.x + r.w - w, top - ROW_H_PX, w, ROW_H_PX);
             paint_text_centered(text, scene, &plus, n, font, tom(ColorToken::Text1, theme));
         }
-        if u.first() == Some(&doc.selected) && frames.contains(&(c as u32)) {
-            let color = tom(color_of(doc.selected), theme);
-            stroke_rect(scene, r, StrokeToken::Thick.px(), color);
+        // A ordem numera-se só enquanto a mão escolhe: em repouso quem a mostra é a tira.
+        if doc.dragging_cells() && u.first() == Some(&doc.selected) {
             let order: Vec<String> = frames
                 .iter()
                 .enumerate()
@@ -138,7 +141,7 @@ pub(super) fn paint_hover_list(
     let Some((x, y)) = doc.hover.filter(|_| !names.is_empty()) else {
         return;
     };
-    let font = TypeToken::Sm.px();
+    let font = TypeToken::Base.px();
     let pad = Spacing::Sm.px();
     let w = rect_for_label(label_column_width(
         text,

@@ -13,6 +13,7 @@ authors.workspace = true
 # snapshot e as edições do cartão «Animation» do Inspector e o editor de animações. Saiu da shell
 # (`render_loop/inspector_anim.rs` + `sprite_anim_tick.rs`), que só pode encolher.
 [dependencies]
+ph2d-card-stack = { path = "../ph2d-card-stack" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 # Os marcadores em quadro e os nomes de sinal do cartão (folha).
 ph2d-anim-signals = { path = "../ph2d-anim-signals" }

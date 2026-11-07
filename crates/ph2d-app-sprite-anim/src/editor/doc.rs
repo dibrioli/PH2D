@@ -321,6 +321,12 @@ impl AnimDoc {
         }
     }
 
+    /// A mão está a escolher células na folha? É quando a ordem delas se numera.
+    #[must_use]
+    pub fn dragging_cells(&self) -> bool {
+        matches!(self.drag, Drag::Cells { .. })
+    }
+
     /// O arrasto de quadro em curso, se já passou o limiar.
     #[must_use]
     pub fn frame_drag(&self) -> Option<FrameDrag> {
@@ -417,6 +423,7 @@ impl AnimDoc {
 
     /// Botão premido em `(x, y)`. Devolve se a aba o tomou.
     pub fn press(&mut self, x: f32, y: f32) -> bool {
+        self.hover = Some((x, y));
         self.close_field(true);
         let l = self.layout.clone();
         if !hit(l.area, x, y) {

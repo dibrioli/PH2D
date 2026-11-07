@@ -6266,6 +6266,7 @@ dependencies = [
  "ph2d-anim-signals",
  "ph2d-app-host",
  "ph2d-asset",
+ "ph2d-card-stack",
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor-core",

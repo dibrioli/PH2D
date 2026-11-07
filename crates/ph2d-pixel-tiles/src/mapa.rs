@@ -2,12 +2,13 @@
 //! em caixa; ao gravar, encolhe às células usadas, como o cel de imagem.
 
 use ph2d_pixel_core::{
-    Cel, CelKey, FrameId, LayerId, Op, Sprite, TileGrid, TileRef, TilesSet, Tileset,
+    Cel, CelKey, Forma, FrameId, LayerId, Op, Sprite, TileGrid, TileRef, TilesSet, Tileset,
 };
 
-/// A grelha em edição. A coluna `c` começa no píxel `fase_x + c * tile_w`.
+/// A grelha em edição. A célula `(c, r)` começa no píxel `fase + forma.origem(c, r)`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Mapa {
+    forma: Forma,
     tw: i32,
     th: i32,
     fase_x: i32,
@@ -24,30 +25,36 @@ impl Mapa {
     #[must_use]
     pub fn de(s: &Sprite, layer: LayerId, frame: FrameId, set: &Tileset) -> Self {
         let (tw, th) = (i32::from(set.tile_w), i32::from(set.tile_h));
+        let forma = set.forma;
         let dono = s.owner((layer, frame));
         // Um quadro ainda sem mapa segue a grelha da camada: o canvas pode tê-la deslocado.
         let fase = s
             .entries()
             .filter(|(k, _)| k.0 == layer)
             .find_map(|(_, c)| c.tiles.as_deref())
-            .map_or((0, 0), |g| (g.x, g.y));
+            .map_or((0, 0), |g| g.ancora(forma, tw, th).1);
         match s.entry(dono).and_then(|c| c.tiles.as_deref()) {
-            Some(g) => Self {
-                tw,
-                th,
-                fase_x: g.x.rem_euclid(tw),
-                fase_y: g.y.rem_euclid(th),
-                col0: g.x.div_euclid(tw),
-                row0: g.y.div_euclid(th),
-                w: g.w as i32,
-                h: g.h as i32,
-                cells: g.tiles.clone(),
-            },
+            Some(g) => {
+                let ((col0, row0), (fase_x, fase_y)) = g.ancora(forma, tw, th);
+                Self {
+                    forma,
+                    tw,
+                    th,
+                    fase_x,
+                    fase_y,
+                    col0,
+                    row0,
+                    w: g.w as i32,
+                    h: g.h as i32,
+                    cells: g.tiles.clone(),
+                }
+            }
             None => Self {
+                forma,
                 tw,
                 th,
-                fase_x: fase.0.rem_euclid(tw),
-                fase_y: fase.1.rem_euclid(th),
+                fase_x: fase.0,
+                fase_y: fase.1,
                 col0: 0,
                 row0: 0,
                 w: 0,
@@ -60,16 +67,38 @@ impl Mapa {
     /// A célula sob o píxel `(x, y)` do sprite.
     #[must_use]
     pub const fn celula(&self, x: i32, y: i32) -> (i32, i32) {
-        (
-            (x - self.fase_x).div_euclid(self.tw),
-            (y - self.fase_y).div_euclid(self.th),
-        )
+        self.forma
+            .celula(x - self.fase_x, y - self.fase_y, self.tw, self.th)
     }
 
-    /// O píxel do sprite onde a célula `(c, r)` começa.
+    /// O píxel do sprite onde a caixa da célula `(c, r)` começa.
     #[must_use]
     pub const fn origem(&self, c: i32, r: i32) -> (i32, i32) {
-        (self.fase_x + c * self.tw, self.fase_y + r * self.th)
+        let (x, y) = self.forma.origem(c, r, self.tw, self.th);
+        (self.fase_x + x, self.fase_y + y)
+    }
+
+    /// A forma da grelha.
+    #[must_use]
+    pub const fn forma(&self) -> Forma {
+        self.forma
+    }
+
+    /// A caixa das células ocupadas: `(c0, r0, c1, r1)`, com o fim de fora.
+    #[must_use]
+    pub const fn caixa(&self) -> (i32, i32, i32, i32) {
+        (self.col0, self.row0, self.col0 + self.w, self.row0 + self.h)
+    }
+
+    fn grade_de(&self, col: i32, row: i32, w: u32, h: u32, tiles: Vec<TileRef>) -> TileGrid {
+        TileGrid::com_ancora(
+            self.forma,
+            (self.tw, self.th),
+            (col, row),
+            (self.fase_x, self.fase_y),
+            (w, h),
+            tiles,
+        )
     }
 
     /// O tile em `(c, r)`; fora da caixa é o vazio.
@@ -133,13 +162,13 @@ impl Mapa {
                 tiles.push(self.cells[(y * self.w + x) as usize]);
             }
         }
-        Some(TileGrid {
-            x: (self.col0 + x0) * self.tw + self.fase_x,
-            y: (self.row0 + y0) * self.th + self.fase_y,
-            w: (x1 - x0 + 1) as u32,
-            h: (y1 - y0 + 1) as u32,
+        Some(self.grade_de(
+            self.col0 + x0,
+            self.row0 + y0,
+            (x1 - x0 + 1) as u32,
+            (y1 - y0 + 1) as u32,
             tiles,
-        })
+        ))
     }
 
     /// O que grava este mapa no cel `key`, sem mudar a opacidade nem o `z` dele. `None`: nada mudou.
@@ -162,13 +191,7 @@ impl Mapa {
             Some(g) => Some((key, Some(mantem(Cel::tilemap(g))))),
             // Quem tem ligados não sai: fica com uma célula vazia, e eles continuam a apontar.
             None if ligados => {
-                let g = TileGrid {
-                    x: self.col0 * self.tw + self.fase_x,
-                    y: self.row0 * self.th + self.fase_y,
-                    w: 1,
-                    h: 1,
-                    tiles: vec![TileRef::EMPTY],
-                };
+                let g = self.grade_de(self.col0, self.row0, 1, 1, vec![TileRef::EMPTY]);
                 Some((key, Some(mantem(Cel::tilemap(g)))))
             }
             None => antes.map(|_| (key, None)),

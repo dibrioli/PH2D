@@ -32,6 +32,7 @@ fn app_com_tilemap() -> (PixelApp, u32) {
         w: 1,
         h: 1,
         tiles,
+        ..TileGrid::default()
     };
     let t = TilesSet {
         counts: vec![(set, 2)],

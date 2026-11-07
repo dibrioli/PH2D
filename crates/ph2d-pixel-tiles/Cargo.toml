@@ -17,6 +17,7 @@ ph2d-pixel-render = { path = "../ph2d-pixel-render" }
 ph2d-vector = { path = "../ph2d-vector" }
 
 [dev-dependencies]
+ph2d-grid = { path = "../ph2d-grid" }
 serde_json = "1"
 
 [lints]

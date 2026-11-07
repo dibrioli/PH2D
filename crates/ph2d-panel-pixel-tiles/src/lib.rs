@@ -8,6 +8,7 @@
 pub mod canal;
 mod cards;
 mod event;
+pub mod familia;
 pub mod ids;
 mod paint;
 mod state;

@@ -5,12 +5,12 @@ use std::sync::Arc;
 
 use ph2d_editor_core::pixel_panel::{PixelLayerAction as A, PixelRequest};
 use ph2d_editor_core::screens::hero::{HeroScreen, PANEL_PIXEL_TILES};
-use ph2d_panel_pixel_tiles::canal::{self, Alvo, Contexto, Eixo, Mao, Pedido, Tela};
-use ph2d_pixel_core::tiles::{new_tilemap_layer, tilemap_layer_using};
-use ph2d_pixel_core::{LayerId, Onion, Op, Sprite, Stroke, TileRef, Tileset, TilesetId, apply};
-use ph2d_pixel_tiles::mao::{Carimbo, conjuntos, imagens, op_do_traco, tileset_de};
+use ph2d_panel_pixel_tiles::canal::{self, Alvo, Contexto, Mao, Pedido, Tela};
+use ph2d_panel_pixel_tiles::familia;
+use ph2d_pixel_core::{Onion, Op, Sprite, Stroke, Tileset, TilesetId, apply};
+use ph2d_pixel_tiles::converte;
+use ph2d_pixel_tiles::mao::{self, Carimbo, conjuntos, imagens, op_do_traco, tileset_de};
 use ph2d_pixel_tiles::mapa::Mapa;
-use ph2d_pixel_tiles::{converte, tileset as lei};
 
 use crate::input::KeyAnswer;
 use crate::{Doc, PixelApp, Tool};
@@ -68,14 +68,14 @@ pub(crate) fn press(
     let Some(doc) = app.docs.get(&key) else {
         return false;
     };
-    let Some(set) = activo(doc).filter(|_| app.tiles.mao.alvo == Alvo::Tiles) else {
+    let Some(set) = activo(doc).filter(|_| app.tiles.mao.alvo != Alvo::Pixels) else {
         return false;
     };
     let (layer, frame) = (doc.layer, doc.frame);
     let m = Mapa::de(&doc.sprite, layer, frame, set);
     let (c, r) = m.celula(at.0, at.1);
     if tool == Tool::Eyedropper {
-        app.tiles.mao.pega(m.get(c, r));
+        mao::pega(&mut app.tiles.mao, set, m.get(c, r));
         return true;
     }
     if !matches!(tool, Tool::Pencil | Tool::Eraser) {
@@ -86,15 +86,17 @@ pub(crate) fn press(
         app.recusa(motivo);
         return true;
     }
-    let tile = if tool == Tool::Eraser || secundario {
-        TileRef::EMPTY
-    } else {
-        app.tiles.mao.tile_ref()
+    let marca = match mao::marca_de(&app.tiles.mao, set, tool == Tool::Eraser || secundario) {
+        Ok(marca) => marca,
+        Err(motivo) => {
+            app.recusa(motivo);
+            return true;
+        }
     };
     let g = Carimbo {
         layer,
         frame,
-        tile,
+        marca,
         celulas: Vec::new(),
         passo: false,
     };
@@ -168,86 +170,25 @@ pub(crate) fn aplica_pedido(app: &mut PixelApp, r: &PixelRequest) -> bool {
     true
 }
 
-fn cria(
-    app: &mut PixelApp,
-    key: u32,
-    conjunto: Option<u32>,
-    (w, h): (u16, u16),
-    converter: Option<bool>,
-) {
+fn pedido(app: &mut PixelApp, key: u32, p: Pedido) {
+    let fg = app.fg;
     let Some(d) = app.docs.get_mut(&key) else {
         return;
     };
-    let layer = d.layer;
-    let s = &mut d.sprite;
-    let feito: Option<(Op, LayerId)> = match (converter, conjunto.map(TilesetId)) {
-        (Some(flips), Some(set)) => {
-            converte::para_tilemap_em(s, layer, set, flips).map(|op| (op, layer))
+    let onde = (d.layer, d.frame);
+    let cor = d.sprite.value_of_rgba(fg);
+    let r = familia::responde(p, &mut d.sprite, onde, &mut app.tiles.mao, cor);
+    if let Some(motivo) = r.recusa {
+        app.recusa(motivo);
+    }
+    if r.op.is_some_and(|op| app.commit(key, op).is_ok()) {
+        let mao = &mut app.tiles.mao;
+        mao.tile = r.tile.unwrap_or(mao.tile);
+        mao.terreno = r.terreno.unwrap_or(mao.terreno);
+        if let (Some(l), Some(d)) = (r.camada, app.docs.get_mut(&key)) {
+            d.layer = l;
         }
-        (Some(flips), None) => {
-            converte::para_tilemap(s, layer, w, h, flips).map(|(op, _)| (op, layer))
-        }
-        (None, Some(set)) => tilemap_layer_using(s, layer, set),
-        (None, None) => new_tilemap_layer(s, layer, w, h).map(|(op, l, _)| (op, l)),
-    };
-    let Some((op, nova)) = feito else {
-        return app.recusa("pixel.tiles.refuse.convert");
-    };
-    if app.commit(key, op).is_ok()
-        && let Some(d) = app.docs.get_mut(&key)
-    {
-        d.layer = nova;
     }
-}
-
-fn pedido(app: &mut PixelApp, key: u32, p: Pedido) {
-    let set = app.docs.get(&key).and_then(activo).map(|t| t.id);
-    let mao = &mut app.tiles.mao;
-    match p {
-        Pedido::Alvo(a) => mao.alvo = a,
-        Pedido::Modo(m) => mao.modo = m,
-        Pedido::Tile(i) => mao.tile = i,
-        Pedido::Flip(Eixo::X) => mao.flip_x = !mao.flip_x,
-        Pedido::Flip(Eixo::Y) => mao.flip_y = !mao.flip_y,
-        Pedido::Flip(Eixo::D) => mao.flip_d = !mao.flip_d,
-        Pedido::NovoTile => novo(app, key, set),
-        Pedido::ApagaTile => apaga(app, key, set),
-        Pedido::NovaCamada { conjunto, w, h } => cria(app, key, conjunto, (w, h), None),
-        Pedido::Converte {
-            conjunto,
-            w,
-            h,
-            flips,
-        } => cria(app, key, conjunto, (w, h), Some(flips)),
-        Pedido::Fechou => {}
-    }
-}
-
-fn novo(app: &mut PixelApp, key: u32, set: Option<TilesetId>) {
-    let Some((op, n)) = app.docs.get(&key).and_then(|d| {
-        let id = set?;
-        Some((
-            lei::novo_tile(&d.sprite, id)?,
-            d.sprite.tileset(id)?.tiles.len(),
-        ))
-    }) else {
-        return;
-    };
-    if app.commit(key, op).is_ok() {
-        app.tiles.mao.tile = n as u32;
-    }
-}
-
-fn apaga(app: &mut PixelApp, key: u32, set: Option<TilesetId>) {
-    let tile = app.tiles.mao.tile;
-    let op = app
-        .docs
-        .get(&key)
-        .and_then(|d| lei::apaga_tile(&d.sprite, set?, tile));
-    if op.is_none() {
-        app.recusa("pixel.tiles.refuse.delete");
-    }
-    app.passo(key, op);
 }
 
 /// Compõe a imagem do canvas. O traço em curso numa camada de tilemap mostra-se como o RESULTADO:
@@ -299,8 +240,7 @@ pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
         (x.conjuntos, x.padrao) = conjuntos(&d.sprite, d.layer);
     }
     if let Some((k, d, set)) = set {
-        t.mao.tile = t.mao.tile.min(set.tiles.len() as u32 - 1);
-        t.mao.flip_d &= set.tile_w == set.tile_h;
+        familia::acerta_mao(&mut t.mao, set);
         // A meio do traço quem publica é a pré-visualização: o documento ainda não o tem.
         let dele = |p: &Publicado| (p.0, p.1) == (k, set.id);
         let novo = !t
@@ -311,7 +251,8 @@ pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
             t.publicado = Some((k, set.id, d.stamp, Arc::new(imagens(&d.sprite, set))));
         }
         x.mao = Some(t.mao);
-        (x.tile_w, x.tile_h) = (set.tile_w, set.tile_h);
+        (x.tile_w, x.tile_h, x.forma) = (set.tile_w, set.tile_h, set.forma);
+        x.terrenos = set.terrains.iter().map(|k| k.name.clone()).collect();
         x.imagens = t
             .publicado
             .as_ref()
@@ -330,6 +271,6 @@ pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
 
 /// A célula a contornar: a sob o cursor, em Draw Tiles.
 pub(crate) fn realce(app: &PixelApp, bits: u64) -> Option<(i32, i32)> {
-    let tiles = app.tiles.mao.alvo == Alvo::Tiles;
+    let tiles = app.tiles.mao.alvo != Alvo::Pixels;
     app.hover.filter(|h| tiles && h.0 == bits).map(|h| h.1)
 }

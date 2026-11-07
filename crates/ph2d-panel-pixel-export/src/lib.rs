@@ -12,6 +12,7 @@ mod cards_export;
 mod cards_folha;
 mod cards_import;
 mod cards_import_como;
+mod cards_tileset;
 mod comum;
 mod event;
 pub mod ids;

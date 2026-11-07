@@ -4,6 +4,7 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState, WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_editor_core::widget::{ButtonState, TextInputState};
+use ph2d_pixel_core::Forma;
 use ph2d_pixel_tiles::desenho::Modo;
 
 use crate::canal::{self, Alvo, Eixo, Pedido, Tela};
@@ -52,6 +53,13 @@ pub(crate) fn regista_tiles(store: &mut WidgetStore, n: usize) {
     }
 }
 
+/// As linhas do cartão Terrain: o tileset decide quantos terrenos há.
+pub(crate) fn regista_terrenos(store: &mut WidgetStore, n: usize) {
+    for i in 0..n {
+        botao(store, ids::terreno(i));
+    }
+}
+
 /// As linhas da janela: o sprite decide quantos tilesets há.
 pub(crate) fn regista_conjuntos(store: &mut WidgetStore, n: usize) {
     for i in 0..n {
@@ -64,6 +72,10 @@ fn pedido_de(id: NodeId) -> Option<Pedido> {
     Some(match id {
         i if i == ids::TARGET_PIXELS => Pedido::Alvo(Alvo::Pixels),
         i if i == ids::TARGET_TILES => Pedido::Alvo(Alvo::Tiles),
+        i if i == ids::TARGET_TERRAIN => Pedido::Alvo(Alvo::Terreno),
+        i if i == ids::NEW_TERRAIN => Pedido::NovoTerreno,
+        i if i == ids::DELETE_TERRAIN => Pedido::ApagaTerreno,
+        i if i == ids::TERRAIN_TEMPLATE => Pedido::Gabarito,
         i if i == ids::MODE_MANUAL => Pedido::Modo(Modo::Manual),
         i if i == ids::MODE_AUTO => Pedido::Modo(Modo::Auto),
         i if i == ids::MODE_STACK => Pedido::Modo(Modo::Stack),
@@ -115,7 +127,12 @@ pub(crate) fn apply_event(
                     h,
                     flips: st.flips && w == h,
                 },
-                _ => Pedido::NovaCamada { conjunto, w, h },
+                _ => Pedido::NovaCamada {
+                    conjunto,
+                    w,
+                    h,
+                    forma: st.forma,
+                },
             };
             fecha(st, p)
         }
@@ -125,6 +142,16 @@ pub(crate) fn apply_event(
         }
         WidgetEvent::Click(id) if id == ids::MATCH_FLIPS => {
             st.flips = !st.flips;
+            EventOutcome::Consumed
+        }
+        WidgetEvent::Click(id) if ids::SHAPES.contains(&id) => {
+            let i = ids::SHAPES.iter().position(|s| *s == id).unwrap_or(0);
+            let forma = Forma::TODAS[i];
+            if st.tela == Tela::Tileset {
+                canal::pede(Pedido::Forma(forma));
+            } else {
+                st.forma = forma;
+            }
             EventOutcome::Consumed
         }
         WidgetEvent::Click(id) => {
@@ -137,11 +164,17 @@ pub(crate) fn apply_event(
                 return EventOutcome::Consumed;
             }
             let n = x.imagens.len();
-            let p = pedido_de(id).or_else(|| {
-                (0..n)
-                    .find(|&i| ids::tile(i) == id)
-                    .map(|i| Pedido::Tile(i as u32))
-            });
+            let p = pedido_de(id)
+                .or_else(|| {
+                    (0..n)
+                        .find(|&i| ids::tile(i) == id)
+                        .map(|i| Pedido::Tile(i as u32))
+                })
+                .or_else(|| {
+                    (0..x.terrenos.len())
+                        .find(|&i| ids::terreno(i) == id)
+                        .map(|i| Pedido::Terreno(i as u32))
+                });
             match p {
                 Some(p) => {
                     canal::pede(p);

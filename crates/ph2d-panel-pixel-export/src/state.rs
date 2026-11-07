@@ -5,7 +5,10 @@ use ph2d_pixel_io::render::{Camadas, Direcao, Pedido, Quadros};
 use ph2d_pixel_io::saida::Formato;
 use ph2d_pixel_io::sheet::{Limite, OpcoesFolha, OpcoesJson};
 
-use crate::canal::Tela;
+use ph2d_pixel_core::TilesetId;
+use ph2d_pixel_io::tiles_saida::{COLUNAS_INICIAIS, ExportTiles};
+
+use crate::canal::{Contexto, Tela};
 
 /// O Export As.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -88,6 +91,39 @@ impl OpcoesFo {
     }
 }
 
+/// O Export Tileset.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct OpcoesTi {
+    pub conjunto: Option<u32>,
+    pub colunas: u32,
+}
+
+impl Default for OpcoesTi {
+    fn default() -> Self {
+        Self {
+            conjunto: None,
+            colunas: COLUNAS_INICIAIS,
+        }
+    }
+}
+
+impl OpcoesTi {
+    /// O tileset escolhido, ou o último do sprite.
+    pub(crate) fn escolhido(&self, x: &Contexto) -> Option<u32> {
+        let existe = |id: &u32| x.tilesets.iter().any(|t| t.0 == *id);
+        self.conjunto
+            .filter(existe)
+            .or_else(|| x.tilesets.last().map(|t| t.0))
+    }
+
+    pub(crate) fn pedido(&self, x: &Contexto) -> Option<ExportTiles> {
+        Some(ExportTiles {
+            conjunto: TilesetId(self.escolhido(x)?),
+            colunas: self.colunas,
+        })
+    }
+}
+
 /// O tamanho de partida da grelha do Import, sem sugestão: 16 × 16.
 pub(crate) const GRELHA_INICIAL: u32 = 16;
 
@@ -108,6 +144,7 @@ pub struct PixelExportPanelState {
     pub(crate) tela: Tela,
     pub(crate) as_: OpcoesAs,
     pub(crate) fo: OpcoesFo,
+    pub(crate) tiles: OpcoesTi,
     pub(crate) grelha: Grelha,
     /// A imagem do Import de que a grelha partiu (uma imagem nova traz a sugestão dela).
     pub(crate) grelha_de: Option<u64>,
@@ -124,6 +161,7 @@ impl Default for PixelExportPanelState {
             tela: Tela::default(),
             as_: OpcoesAs::default(),
             fo: OpcoesFo::default(),
+            tiles: OpcoesTi::default(),
             grelha: grelha_inicial(),
             grelha_de: None,
             como_pixel: false,

@@ -10,6 +10,7 @@ use ph2d_pixel_core::{LayerId, Sprite};
 use ph2d_pixel_io::abrir::Grelha;
 use ph2d_pixel_io::exporta::{self, ErroGravar, Export, Gravado};
 use ph2d_pixel_io::sheet::OpcoesFolha;
+use ph2d_pixel_io::tiles_saida::{self, ExportTiles};
 
 /// A janela aberta.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -20,6 +21,8 @@ pub enum Tela {
     Import,
     /// O File ▸ Import: o ficheiro vira Pixel Sprite ou imagem do Painter?
     ImportComo,
+    /// File ▸ Export ▸ Export Tileset.
+    Tileset,
 }
 
 /// O que a janela do File ▸ Import mostra dos ficheiros escolhidos.
@@ -45,6 +48,8 @@ pub struct Contexto {
     pub quadros: u32,
     pub camadas: Vec<(LayerId, String)>,
     pub tags: Vec<String>,
+    /// `(id, tiles desenhados, largura, altura)` de cada tileset do sprite.
+    pub tilesets: Vec<(u32, u32, u16, u16)>,
 }
 
 /// Uma imagem para um cartão (RGBA de alfa reto): a folha ao vivo ou a do Import.
@@ -83,6 +88,7 @@ struct Canal {
     imagem: Option<Imagem>,
     pedido: Option<Pedido>,
     folha_pedida: Option<OpcoesFolha>,
+    tiles_pedidos: Option<ExportTiles>,
     pergunta: Option<Pergunta>,
 }
 
@@ -157,6 +163,11 @@ pub fn folha_pedida() -> Option<OpcoesFolha> {
     com(|c| c.folha_pedida.clone())
 }
 
+/// A prévia da janela Export Tileset.
+pub fn pede_tiles(o: Option<ExportTiles>) {
+    com(|c| c.tiles_pedidos = o);
+}
+
 /// O que as janelas leem do sprite: as camadas de cima para baixo, como na linha do tempo.
 pub fn publish_contexto_de(s: &Sprite) {
     publish_contexto(Contexto {
@@ -169,6 +180,14 @@ pub fn publish_contexto_de(s: &Sprite) {
             .map(|l| (l.id, l.name.clone()))
             .collect(),
         tags: s.tags().iter().map(|t| t.name.clone()).collect(),
+        tilesets: s
+            .tilesets()
+            .iter()
+            .map(|t| {
+                let n = t.tiles.len().saturating_sub(1) as u32;
+                (t.id.0, n, t.tile_w, t.tile_h)
+            })
+            .collect(),
     });
 }
 
@@ -187,6 +206,8 @@ pub struct PreviaDaFolha {
     /// A foto do sprite de `(doc, stamp)`.
     foto: Option<(u32, u64, Arc<Sprite>)>,
     trabalho: Option<(ChaveDaFolha, Job<Imagem>)>,
+    /// A imagem de tiles publicada, e de que documento e pedido é.
+    tiles_feita: Option<(u32, u64, ExportTiles)>,
     seq: u64,
 }
 
@@ -203,6 +224,7 @@ impl PreviaDaFolha {
         self.feita = None;
         self.foto = None;
         self.trabalho = None;
+        self.tiles_feita = None;
     }
 
     /// Há uma folha a montar?
@@ -213,6 +235,7 @@ impl PreviaDaFolha {
 
     /// Colhe a folha pronta e começa a pedida pela janela, se mudou.
     pub fn publica(&mut self, doc: u32, stamp: u64, s: &Sprite) {
+        self.publica_tiles(doc, stamp, s);
         let pronto = self.trabalho.as_ref().is_some_and(|(_, j)| j.is_finished());
         if pronto && let Some((chave, mut j)) = self.trabalho.take() {
             // A janela já mudou para o Import? A imagem dele fica.
@@ -237,6 +260,34 @@ impl PreviaDaFolha {
         let opcoes = chave.2.clone();
         let job = Job::spawn(String::new(), move |_| monta_a_previa(&foto, &opcoes));
         self.trabalho = Some((chave, job));
+    }
+}
+
+impl PreviaDaFolha {
+    /// Os tiles são poucos: a imagem monta-se aqui mesmo, só quando o pedido ou o sprite mudam.
+    fn publica_tiles(&mut self, doc: u32, stamp: u64, s: &Sprite) {
+        let Some(o) = com(|c| c.tiles_pedidos) else {
+            return;
+        };
+        if self.tiles_feita == Some((doc, stamp, o)) {
+            return;
+        }
+        self.tiles_feita = Some((doc, stamp, o));
+        let Some(set) = s.tileset(o.conjunto) else {
+            publish_imagem(None);
+            return;
+        };
+        let (w, h, rgba) = tiles_saida::atlas(s, set, o.colunas);
+        publish_imagem(Some(Imagem {
+            rgba: Arc::new(rgba),
+            w,
+            h,
+            seq: self.proximo_seq(),
+            lados_reais: (w, h),
+            entradas: set.tiles.len(),
+            sugestao: None,
+            com_dados: false,
+        }));
     }
 }
 

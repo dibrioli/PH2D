@@ -353,6 +353,7 @@ fn arma_o_export() {
         quadros: 3,
         camadas: vec![(ph2d_pixel_core::LayerId(1), "Layer 1".to_owned())],
         tags: vec!["walk".to_owned()],
+        tilesets: Vec::new(),
     });
     canal::abrir(canal::Tela::ExportAs);
 }

@@ -375,6 +375,29 @@ pub fn draw_pixel_grid(
         .stroke(&Pen::new(width_px), Affine::IDENTITY, color, None, &path);
 }
 
+/// Polígonos fechados em coordenadas do sprite: a grelha e o realce de iso e hex.
+pub fn draw_polygons(
+    scene: &mut VectorScene,
+    poligonos: &[Vec<(f64, f64)>],
+    to_screen: Affine,
+    color: Color,
+    width_px: f64,
+) {
+    let mut path = BezPath::new();
+    for p in poligonos {
+        let mut pontos = p.iter().map(|&(x, y)| to_screen * Point::new(x, y));
+        let Some(a) = pontos.next() else { continue };
+        path.move_to(a);
+        for b in pontos {
+            path.line_to(b);
+        }
+        path.close_path();
+    }
+    scene
+        .inner_mut()
+        .stroke(&Pen::new(width_px), Affine::IDENTITY, color, None, &path);
+}
+
 /// A borda do canvas.
 pub fn draw_border(
     scene: &mut VectorScene,

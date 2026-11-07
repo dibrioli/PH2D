@@ -69,7 +69,10 @@ fn por_celula(s: &Sprite, m: &Mapa, set: &Tileset, escritas: &[(i32, i32, u32)])
     for &(x, y, v) in escritas.iter().filter(|e| s.bounds().contains(e.0, e.1)) {
         let (c, r) = m.celula(x, y);
         let (ox, oy) = m.origem(c, r);
-        debug_assert!(x >= ox && y >= oy && x < ox + tw && y < oy + th);
+        // Em tile ímpar, a aresta exata de iso e hex pode cair um píxel fora da caixa arredondada.
+        if x < ox || y < oy || x >= ox + tw || y >= oy + th {
+            continue;
+        }
         out.entry((r, c))
             .or_default()
             .push(((x - ox) as u32, (y - oy) as u32, v));

@@ -13,7 +13,7 @@ use crate::canal::{self, Pedido, Tela};
 use crate::cards_export::DIRECOES;
 use crate::cards_folha::{TIPOS, id_do_limite, limite_de, limites_do_tipo};
 use crate::comum::{FORMATOS, camada_de, quadro_de};
-use crate::state::{OpcoesAs, OpcoesFo, grelha_inicial};
+use crate::state::{OpcoesAs, OpcoesFo, OpcoesTi, grelha_inicial};
 use crate::{PixelExportPanel, PixelExportPanelState, ids};
 
 fn botao(store: &mut WidgetStore, id: NodeId) {
@@ -92,6 +92,9 @@ pub(crate) fn regista_linhas(store: &mut WidgetStore, x: &canal::Contexto) {
     for i in 0..x.tags.len() {
         botao(store, ids::tag_option(i));
     }
+    for i in 0..x.tilesets.len() {
+        botao(store, ids::tileset_option(i));
+    }
 }
 
 fn fecha(host: &mut dyn PanelHostInternal) -> EventOutcome {
@@ -131,6 +134,10 @@ fn verbo(st: &PixelExportPanelState) -> Option<Pedido> {
             opcoes: st.fo.folha.clone(),
             json: st.fo.json_ligado.then_some(st.fo.json),
         }))),
+        Tela::Tileset => st
+            .tiles
+            .pedido(&canal::contexto())
+            .map(|t| Pedido::Exportar(Export::Tiles(t))),
         Tela::ImportComo => Some(Pedido::ImportarComo {
             pixel: st.como_pixel,
         }),
@@ -144,6 +151,10 @@ fn verbo(st: &PixelExportPanelState) -> Option<Pedido> {
 
 fn clique(st: &mut PixelExportPanelState, id: NodeId) -> bool {
     let x = canal::contexto();
+    if let Some(i) = (0..x.tilesets.len()).find(|&i| ids::tileset_option(i) == id) {
+        st.tiles.conjunto = Some(x.tilesets[i].0);
+        return true;
+    }
     if let Some(i) = ids::FORMATS.iter().position(|f| *f == id) {
         st.as_.formato = FORMATOS[i];
         return true;
@@ -200,6 +211,8 @@ fn clique(st: &mut PixelExportPanelState, id: NodeId) -> bool {
         i if i == ids::POW2 => &mut f.potencia_de_2,
         i if i == ids::SPLIT_LAYERS => &mut f.split_layers,
         i if i == ids::SPLIT_TAGS => &mut f.split_tags,
+        i if i == ids::SPLIT_GRID => &mut f.split_grid,
+        i if i == ids::TRIM_BY_GRID => &mut f.trim_by_grid,
         i if i == ids::TRIM_CELS => &mut f.trim_cels,
         i if i == ids::TRIM_SPRITE => &mut f.trim_sprite,
         i if i == ids::JSON => &mut st.fo.json_ligado,
@@ -227,6 +240,7 @@ fn valor(st: &mut PixelExportPanelState, host: &dyn PanelHostInternal, id: NodeI
         i if i == ids::SCALE => st.as_.escala = n,
         i if i == ids::LOOPS => st.as_.lacos = u16::try_from(n).unwrap_or(u16::MAX),
         i if i == ids::LIMIT_N => st.fo.acerta_limite(n),
+        i if i == ids::COLUMNS => st.tiles.colunas = n.max(1),
         i if i == ids::BORDER => f.border = n,
         i if i == ids::SHAPE => f.shape = n,
         i if i == ids::INNER => f.inner = n,
@@ -253,6 +267,7 @@ pub(crate) fn apply_event(
             match st.tela {
                 Tela::ExportAs => st.as_ = OpcoesAs::default(),
                 Tela::Folha => st.fo = OpcoesFo::default(),
+                Tela::Tileset => st.tiles = OpcoesTi::default(),
                 Tela::ImportComo => {}
                 Tela::Import => {
                     st.grelha = canal::imagem()

@@ -113,6 +113,7 @@ pub(crate) fn paint(st: &mut PixelTilesPanelState, ctx: &mut PaintCtx) {
     }
     imagens(st, &x);
     event::regista_tiles(ctx.host.store_mut(), x.imagens.len());
+    event::regista_terrenos(ctx.host.store_mut(), x.terrenos.len());
     let cartoes = cards::tileset(st, &x);
     // Ao lado do encaixe do painel PIXEL, como a Preview: a área do desenho passa por baixo da coluna.
     let coluna = ctx.slot.x;

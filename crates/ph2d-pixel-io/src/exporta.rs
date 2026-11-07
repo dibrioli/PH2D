@@ -9,6 +9,7 @@ use ph2d_pixel_core::{ExportPreset, LayerId, Sprite};
 use crate::render::{Camadas, Direcao, Pedido, Quadros};
 use crate::saida::{self, AvisoSaida, ErroSaida, Formato};
 use crate::sheet::{self, Limite, OpcoesFolha, OpcoesJson, Tipo};
+use crate::tiles_saida::{self, ExportTiles};
 
 /// Export As.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -30,6 +31,8 @@ pub struct ExportFolha {
 pub enum Export {
     Ficheiro(ExportAs),
     Folha(ExportFolha),
+    /// Os tiles em PNG e o mapa em JSON, ao lado.
+    Tiles(ExportTiles),
 }
 
 /// O que ficou no disco.
@@ -145,6 +148,23 @@ pub fn gravar_com(
             }
             Ok(Gravado {
                 ficheiros,
+                avisos: Vec::new(),
+            })
+        }
+        Export::Tiles(x) => {
+            let set = s.tileset(x.conjunto).ok_or(ErroGravar::AlvoSumiu)?;
+            let (w, h, rgba) = tiles_saida::atlas(s, set, x.colunas);
+            let (modo, dados) = saida::png_do_documento(s, &rgba);
+            let png = ph2d_imageio_png::encode_pixel(w, h, &modo, &dados)
+                .map_err(|e| ErroGravar::Saida(ErroSaida::Formato(e.to_string())))?;
+            escreve(caminho, &png)?;
+            let imagem = caminho.file_name().unwrap_or_default().to_string_lossy();
+            let t = tiles_saida::json_do_mapa(s, set, &imagem, x.colunas);
+            let c = caminho.with_extension("json");
+            escreve(&c, t.as_bytes())?;
+            feito(1.0);
+            Ok(Gravado {
+                ficheiros: vec![caminho.to_owned(), c],
                 avisos: Vec::new(),
             })
         }
@@ -288,6 +308,8 @@ fn para_texto(s: &Sprite, e: &Export) -> String {
                 ("ignore_empty", o.ignore_empty),
                 ("split_layers", o.split_layers),
                 ("split_tags", o.split_tags),
+                ("split_grid", o.split_grid),
+                ("trim_by_grid", o.trim_by_grid),
                 ("trim_cels", o.trim_cels),
                 ("trim_sprite", o.trim_sprite),
             ] {
@@ -313,6 +335,11 @@ fn para_texto(s: &Sprite, e: &Export) -> String {
                     u8::from(j.slices)
                 ));
             }
+        }
+        Export::Tiles(x) => {
+            l.push("kind=tiles".to_owned());
+            l.push(format!("tileset={}", x.conjunto.0));
+            l.push(format!("columns={}", x.colunas));
         }
     }
     l.join("\n")
@@ -366,6 +393,10 @@ fn de_texto(s: &Sprite, t: &str) -> Option<Export> {
     let num = |k: &str| campo(k)?.parse::<u32>().ok();
     let sim = |k: &str| campo(k) == Some("1");
     match campo("kind")? {
+        "tiles" => Some(Export::Tiles(ExportTiles {
+            conjunto: ph2d_pixel_core::TilesetId(num("tileset")?),
+            colunas: num("columns")?,
+        })),
         "file" => Some(Export::Ficheiro(ExportAs {
             pedido: Pedido {
                 camadas: de_camadas(campo("layers")?)?,
@@ -414,6 +445,8 @@ fn de_texto(s: &Sprite, t: &str) -> Option<Export> {
                     quadros: de_quadros(s, campo("frames")?)?,
                     split_layers: sim("split_layers"),
                     split_tags: sim("split_tags"),
+                    split_grid: sim("split_grid"),
+                    trim_by_grid: sim("trim_by_grid"),
                     trim_cels: sim("trim_cels"),
                     trim_sprite: sim("trim_sprite"),
                     extrude: num("extrude")?,

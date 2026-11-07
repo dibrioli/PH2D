@@ -3,6 +3,7 @@
 use std::cell::RefCell;
 use std::sync::Arc;
 
+use ph2d_pixel_core::Forma;
 use ph2d_pixel_tiles::desenho::Modo;
 pub use ph2d_pixel_tiles::mao::{Alvo, Conjunto, Mao};
 
@@ -18,6 +19,9 @@ pub struct Contexto {
     pub conjuntos: Vec<Conjunto>,
     /// O que a janela de criar ou converter traz escolhido.
     pub padrao: Option<u32>,
+    /// A forma da grelha e os terrenos do tileset activo.
+    pub forma: Forma,
+    pub terrenos: Vec<String>,
 }
 
 /// A janela de criar ou converter.
@@ -46,11 +50,19 @@ pub enum Pedido {
     Flip(Eixo),
     NovoTile,
     ApagaTile,
-    /// `conjunto`: um tileset que já existe; `None`, um novo de `w × h`.
+    Terreno(u32),
+    NovoTerreno,
+    ApagaTerreno,
+    /// As 47 formas do terreno da mão, numa camada para pintar.
+    Gabarito,
+    /// A forma da grelha do tileset activo.
+    Forma(Forma),
+    /// `conjunto`: um tileset que já existe; `None`, um novo de `w × h` nesta forma.
     NovaCamada {
         conjunto: Option<u32>,
         w: u16,
         h: u16,
+        forma: Forma,
     },
     Converte {
         conjunto: Option<u32>,

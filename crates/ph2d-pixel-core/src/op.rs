@@ -354,7 +354,7 @@ pub(crate) fn check_tile_cels(
             (None, Some(_)) => false,
             (Some(t), Some(g)) => {
                 c.link.is_none()
-                    && c.bbox == g.rect(t.tile_w, t.tile_h)
+                    && c.bbox == g.caixa(t)
                     && crate::tiles::check_grid(g, (t.tile_w, t.tile_h, t.tiles.len() as u32))
                         .is_ok()
             }

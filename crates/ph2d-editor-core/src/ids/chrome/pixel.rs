@@ -22,6 +22,7 @@ pub const CTX_MENU_PIXEL_OPEN: NodeId = hash_node_id("ctx_menu_pixel_open");
 pub const CTX_MENU_PIXEL_IMPORT_SHEET: NodeId = hash_node_id("ctx_menu_pixel_import_sheet");
 pub const CTX_MENU_PIXEL_EXPORT_AS: NodeId = hash_node_id("ctx_menu_pixel_export_as");
 pub const CTX_MENU_PIXEL_EXPORT_SHEET: NodeId = hash_node_id("ctx_menu_pixel_export_sheet");
+pub const CTX_MENU_PIXEL_EXPORT_TILESET: NodeId = hash_node_id("ctx_menu_pixel_export_tileset");
 pub const CTX_MENU_PIXEL_REPEAT_EXPORT: NodeId = hash_node_id("ctx_menu_pixel_repeat_export");
 
 /// A linha *Pixel* do menu *Window*.

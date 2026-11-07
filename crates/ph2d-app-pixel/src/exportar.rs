@@ -36,6 +36,7 @@ impl PixelApp {
             }
             A::ExportAs => self.abre_janela(Tela::ExportAs),
             A::ExportSheet => self.abre_janela(Tela::Folha),
+            A::ExportTileset => self.abre_janela(Tela::Tileset),
             A::RepeatExport => {
                 if let Some(d) = self.chave.and_then(|k| self.docs.get(&k))
                     && let Some(t) = self.exporta.gravacoes.repete(&d.sprite)

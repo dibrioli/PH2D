@@ -582,5 +582,6 @@ pub enum PixelFileAction {
     ImportSheet,
     ExportAs,
     ExportSheet,
+    ExportTileset,
     RepeatExport,
 }

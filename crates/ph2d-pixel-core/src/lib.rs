@@ -20,6 +20,7 @@ pub mod dynamics;
 pub mod edit;
 pub mod fill;
 pub mod filter;
+pub mod forma;
 pub mod frames;
 pub mod gradient;
 mod history;
@@ -43,6 +44,7 @@ pub use compose::{
     Ghost, Onion, Purpose, Sample, compose_picked, compose_region, compose_rgba, compose_window,
     compose_with_onion, ghosts, onion_tint, pick,
 };
+pub use forma::Forma;
 pub use history::{DEFAULT_CAP_BYTES, History};
 pub use op::{CanvasSet, FrameSet, LayerSet, MaskSet, Op, OpError, Patch, Whole, apply};
 pub use sprite::{

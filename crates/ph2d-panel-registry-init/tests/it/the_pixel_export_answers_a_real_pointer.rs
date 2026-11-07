@@ -90,6 +90,11 @@ fn a_linha_do_menu_file_pede_o_comando() {
             PixelFileAction::ExportSheet,
         ),
         (
+            ids::CTX_MENU_PIXEL_EXPORT_TILESET,
+            "Export Tileset",
+            PixelFileAction::ExportTileset,
+        ),
+        (
             ids::CTX_MENU_PIXEL_REPEAT_EXPORT,
             "Repeat",
             PixelFileAction::RepeatExport,
@@ -153,6 +158,7 @@ fn as_listas_e_as_outras_janelas_respondem() {
         quadros: 3,
         camadas: Vec::new(),
         tags: Vec::new(),
+        ..canal::Contexto::default()
     });
     canal::abrir(Tela::ExportAs);
     hero.panel_visibility.insert(PANEL_PIXEL_EXPORT, true);
@@ -254,4 +260,52 @@ fn a_janela_do_import_responde_ao_ponteiro() {
     clica(&mut hero, e::CANCEL, "Cancel");
     assert_eq!(canal::take_pedido(), None);
     assert_eq!(hero.panel_visibility.get(PANEL_PIXEL_EXPORT), Some(&false));
+}
+
+/// A janela Export Tileset e as caixas da grelha na folha, por ponteiro real, até ao verbo.
+#[test]
+fn o_export_tileset_e_as_caixas_da_grelha_respondem() {
+    use ph2d_pixel_core::TilesetId;
+    use ph2d_pixel_io::exporta::Export;
+    use ph2d_pixel_io::tiles_saida::{COLUNAS_INICIAIS, ExportTiles};
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let mut hero = HeroScreen::new(NodeId(1));
+    pinta(&mut hero, &mut ts);
+    canal::publish_contexto(canal::Contexto {
+        lados: (16, 8),
+        quadros: 1,
+        tilesets: vec![(7, 3, 16, 16), (9, 5, 32, 16)],
+        ..canal::Contexto::default()
+    });
+    canal::abrir(Tela::Tileset);
+    hero.panel_visibility.insert(PANEL_PIXEL_EXPORT, true);
+    assenta(&mut hero, &mut ts);
+    clica(&mut hero, e::tileset_option(0), "o tileset 1");
+    assenta(&mut hero, &mut ts);
+    clica(&mut hero, e::OK, "Export");
+    assert_eq!(
+        canal::take_pedido(),
+        Some(Pedido::Exportar(Export::Tiles(ExportTiles {
+            conjunto: TilesetId(7),
+            colunas: COLUNAS_INICIAIS,
+        })))
+    );
+    canal::abrir(Tela::Folha);
+    assenta(&mut hero, &mut ts);
+    clica(&mut hero, e::SPLIT_GRID, "Split grid");
+    assenta(&mut hero, &mut ts);
+    clica(&mut hero, e::TRIM_BY_GRID, "Trim by grid");
+    assenta(&mut hero, &mut ts);
+    clica(&mut hero, e::OK, "Export");
+    match canal::take_pedido() {
+        Some(Pedido::Exportar(Export::Folha(x))) => {
+            assert!(x.opcoes.split_grid && x.opcoes.trim_by_grid);
+        }
+        o => panic!("{o:?}"),
+    }
+    // Sem tileset no sprite, as caixas da grelha não se oferecem.
+    canal::publish_contexto(canal::Contexto::default());
+    assenta(&mut hero, &mut ts);
+    assert!(hero.hit_index.rect_for(e::SPLIT_GRID).is_none());
 }

@@ -75,6 +75,7 @@ impl Doc {
             w: 3,
             h: 2,
             tiles: vec![r(1), r(1), r(1), r(2), r(0), r(0)],
+            ..TileGrid::default()
         };
         d.com_tiles(vec![a, b], d.f, g);
         d
@@ -230,6 +231,7 @@ fn o_traco_cai_onde_a_celula_mostra_em_todos_os_flips() {
                 w: 1,
                 h: 1,
                 tiles: vec![TileRef::new(1, b & 1 != 0, b & 2 != 0, b & 4 != 0)],
+                ..TileGrid::default()
             };
             d.com_tiles(vec![tile], d.f, g);
             for (x, y) in [(4, 4), (5, 4), (7, 6), (6, 7)] {
@@ -329,6 +331,7 @@ fn apagar_o_ultimo_tile_tira_o_cel_e_desfazer_o_repoe() {
         w: 1,
         h: 1,
         tiles: vec![TileRef::new(1, false, false, false)],
+        ..TileGrid::default()
     };
     d.com_tiles(vec![t], d.f, g);
     assert!(d.traco(&[(0, 0, 0)], Modo::Auto));
@@ -399,6 +402,7 @@ fn o_tile_de_terreno_comporta_se_como_manual() {
             w: 2,
             h: 1,
             tiles: vec![r, r],
+            ..TileGrid::default()
         };
         let t = TilesSet {
             cels: vec![((d.l, d.f), Some(Cel::tilemap(g)))],
@@ -437,6 +441,7 @@ fn o_dedupe_nao_entra_num_gabarito() {
         w: 1,
         h: 1,
         tiles: vec![r],
+        ..TileGrid::default()
     };
     let t = TilesSet {
         cels: vec![((d.l, d.f), Some(Cel::tilemap(g)))],
@@ -475,6 +480,7 @@ fn a_renumeracao_alcanca_todos_os_cels_no_mesmo_op() {
             TileRef::new(1, false, false, false),
             TileRef::new(3, false, true, false),
         ],
+        ..TileGrid::default()
     };
     d.com_tiles(vec![c], d.f, g);
     let (op, f2) = new_frame(&mut d.s, d.f, NewFrame::Empty).unwrap();
@@ -485,6 +491,7 @@ fn a_renumeracao_alcanca_todos_os_cels_no_mesmo_op() {
         w: 2,
         h: 1,
         tiles: vec![TileRef::new(3, true, false, false), flip],
+        ..TileGrid::default()
     };
     let t = TilesSet {
         cels: vec![((d.l, f2), Some(Cel::tilemap(g2)))],
@@ -556,6 +563,7 @@ fn o_tile_largado_e_reutilizado_no_mesmo_traco_fica() {
         w: 1,
         h: 1,
         tiles: vec![TileRef::new(1, false, false, false)],
+        ..TileGrid::default()
     };
     d.com_tiles(vec![tile], d.f, g);
     assert!(d.traco(&[px(0, 0, 0, 0, 0), px(1, 0, 0, 0, AZUL)], Modo::Auto));
@@ -606,6 +614,7 @@ fn m9_doc(e: &serde_json::Value) -> Doc {
         w: 4,
         h: 4,
         tiles: grelha,
+        ..TileGrid::default()
     };
     let f = d.f;
     d.com_tiles(tiles, f, mapa);
@@ -708,6 +717,7 @@ fn onde_os_oraculos_discordam_vale_o_trial() {
             w: 4,
             h: 4,
             tiles: g,
+            ..TileGrid::default()
         };
         let f = d.f;
         d.com_tiles(vec![tile], f, mapa);
@@ -763,6 +773,7 @@ fn a_lista_e_a_copia_que_fica_batem_com_o_m9b() {
             w: 4,
             h: 4,
             tiles: g,
+            ..TileGrid::default()
         };
         let f = d.f;
         d.com_tiles(tiles, f, mapa);

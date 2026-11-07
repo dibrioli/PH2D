@@ -10,7 +10,7 @@ use ph2d_editor_core::pixel_panel::{
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_PIXEL_SMOKE",
-    max_level: 21,
+    max_level: 22,
 }];
 
 /// O nível armado em `PH2D_PIXEL_SMOKE`.
@@ -100,6 +100,7 @@ pub fn stage(
         19 => crate::smoke_efeitos::stage(app, sim, spawn_root).is_some(),
         20 => crate::smoke_quadros::stage(app, sim, spawn_root).is_some(),
         21 => crate::smoke_tiles::stage(app, sim, spawn_root).is_some(),
+        22 => crate::smoke_tiles::stage_terreno(app, sim, spawn_root).is_some(),
         _ => false,
     }
 }

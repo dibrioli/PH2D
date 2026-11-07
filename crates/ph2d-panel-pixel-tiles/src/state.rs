@@ -13,6 +13,8 @@ pub struct PixelTilesPanelState {
     pub(crate) tile_w: u16,
     pub(crate) tile_h: u16,
     pub(crate) flips: bool,
+    /// A forma de um tileset novo.
+    pub(crate) forma: ph2d_pixel_core::Forma,
     /// O tileset escolhido na janela; `None`, um novo.
     pub(crate) conjunto: Option<u32>,
     /// As imagens publicadas e as da placa: só se recria a do tile que mudou.
@@ -27,6 +29,7 @@ impl Default for PixelTilesPanelState {
             tile_w: TILE_INICIAL,
             tile_h: TILE_INICIAL,
             flips: false,
+            forma: ph2d_pixel_core::Forma::Square,
             conjunto: None,
             fontes: Arc::default(),
             imagens: Vec::new(),

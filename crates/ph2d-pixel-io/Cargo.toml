@@ -24,6 +24,7 @@ ph2d-imageio-apng = { path = "../ph2d-imageio-apng" }
 ph2d-imageio-webp = { path = "../ph2d-imageio-webp" }
 
 [dev-dependencies]
+ph2d-pixel-tiles = { path = "../ph2d-pixel-tiles" }
 ph2d-asset = { path = "../ph2d-asset" }
 sha2 = "0.11"
 

@@ -6,6 +6,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel_export.title" => "Pixel Export",
         "panel.pixel.export.title_as" => "Export As",
         "panel.pixel.export.title_sheet" => "Export Sprite Sheet",
+        "panel.pixel.export.title_tileset" => "Export Tileset",
+        "panel.pixel.export.tileset_none" => "This sprite has no tileset yet.",
+        "panel.pixel.export.tileset_size" => "{w}×{h} px · {n} {n?tile|tiles}, with the empty one",
+        "panel.pixel.export.tileset_hint" => {
+            "Saves the tiles as a PNG and, next to it, a JSON with the map of every layer and frame."
+        }
+        "panel.pixel.export.columns" => "Tiles per row",
+        "panel.pixel.export.split_grid" => "Split grid",
+        "panel.pixel.export.trim_by_grid" => "Trim by grid",
         "panel.pixel.export.title_import" => "Import Sprite Sheet",
         "panel.pixel.export.title_import_as" => "Import",
         "panel.pixel.export.as_title" => "Import as",
@@ -143,6 +152,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.io.kind_webp" => "WebP image",
         "pixel.io.kind_ase" => "Aseprite file",
         "pixel.io.warn.slices" => "This file has {n} {n?slice|slices}. Slices are not kept yet.",
+        "pixel.io.warn.grid_shape" => {
+            "The .ase format has no Iso or Hex grid: those tilemap layers were saved as images."
+        }
         "pixel.io.warn.terrains" => {
             "The .ase file keeps the tiles but not the terrains. Save the project to keep them."
         }

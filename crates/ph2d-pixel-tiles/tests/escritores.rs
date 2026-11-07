@@ -58,6 +58,7 @@ fn doc() -> Doc {
         w: 2,
         h: 1,
         tiles: vec![r, r],
+        ..TileGrid::default()
     };
     let t = TilesSet {
         counts: vec![(set, 2)],

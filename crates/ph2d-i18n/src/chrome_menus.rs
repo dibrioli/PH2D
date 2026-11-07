@@ -145,6 +145,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu.pixel_import_sheet" => "Import Sheet\u{2026} \u{00b7} Ctrl+I",
         "chrome.menu.pixel_export_as" => "Export As\u{2026}",
         "chrome.menu.pixel_export_sheet" => "Export Sheet\u{2026} \u{00b7} Ctrl+E",
+        "chrome.menu.pixel_export_tileset" => "Export Tileset\u{2026}",
         "chrome.menu.pixel_repeat_export" => "Repeat Last Export",
         "chrome.menu.undo_cmd_z" => "Undo \u{00b7} Cmd+Z",
         "chrome.menu.redo_cmd_shift_z" => "Redo \u{00b7} Cmd+Shift+Z",

@@ -217,6 +217,9 @@ fn sprite_record(s: &Sprite) -> Vec<u8> {
             c.push(0);
             put_field(&mut b, 6, &c);
         }
+        if t.forma != crate::forma::Forma::Square {
+            put_uint(&mut b, 7, u64::from(t.forma.code()));
+        }
         b.push(0);
         put_field(&mut r, 12, &b);
     }
@@ -419,6 +422,12 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
                             }
                             t.terrains.push(k);
                         }
+                        7 => {
+                            t.forma = u8::try_from(uint(v)?)
+                                .ok()
+                                .and_then(crate::forma::Forma::from_code)
+                                .ok_or(CodecError::Invalid("tileset.forma"))?;
+                        }
                         _ => {}
                     }
                 }
@@ -563,6 +572,10 @@ fn grid_record(g: &TileGrid) -> Vec<u8> {
     put_uint(&mut b, 4, u64::from(g.h));
     let raw: Vec<u8> = g.tiles.iter().flat_map(|t| t.0.to_le_bytes()).collect();
     put_field(&mut b, 5, &raw);
+    if (g.col, g.row) != (0, 0) {
+        put_uint(&mut b, 6, zigzag(g.col));
+        put_uint(&mut b, 7, zigzag(g.row));
+    }
     b.push(0);
     b
 }
@@ -585,6 +598,8 @@ fn read_grid(bytes: &[u8]) -> Result<TileGrid, CodecError> {
                     .map(|c| TileRef(u32::from_le_bytes(*c)))
                     .collect();
             }
+            6 => g.col = unzigzag(uint(v)?)?,
+            7 => g.row = unzigzag(uint(v)?)?,
             _ => {}
         }
     }

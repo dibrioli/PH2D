@@ -10,11 +10,12 @@ use ph2d_editor_core::object_mode::ObjectMode;
 use ph2d_editor_core::pixel_panel::{PixelLayerAction as A, PixelRequest, PixelSpriteAction as Sp};
 use ph2d_editor_core::screens::hero::{HeroScreen, PANEL_PIXEL_TILES};
 use ph2d_panel_pixel_tiles::canal::{self, Alvo, Mao, Pedido};
-use ph2d_pixel_core::{Sprite, TileRef, derived_is_consistent};
+use ph2d_pixel_core::{Forma, Sprite, TERRAIN_TILES, TileRef, derived_is_consistent};
 use ph2d_pixel_tiles::desenho::Modo;
-use ph2d_pixel_tiles::exemplo::{LADO, MAPA};
+use ph2d_pixel_tiles::exemplo::{LADO, MAPA, celulas_reais};
 use ph2d_pixel_tiles::mao::tileset_de;
 use ph2d_pixel_tiles::mapa::Mapa;
+use ph2d_pixel_tiles::terreno;
 use ph2d_render::Camera2d;
 use winit::keyboard::KeyCode;
 
@@ -32,11 +33,15 @@ struct Palco {
 
 impl Palco {
     fn novo() -> Self {
+        Self::cena(21)
+    }
+
+    fn cena(n: u32) -> Self {
         let _ = canal::take_pedidos();
         let mut app = PixelApp::default();
         let mut sim = SimWorld::new();
         assert!(ph2d_app_pixel::smoke::stage(
-            &mut app, &mut sim, 21, spawn_root
+            &mut app, &mut sim, n, spawn_root
         ));
         let (bits, key) = mode::sprites(sim.world())[0];
         let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
@@ -127,6 +132,27 @@ impl Palco {
             c * l + 3,
             r * l + 3,
         )
+    }
+
+    /// O clique no píxel do meio da célula, pela forma da grelha.
+    fn meio(&self, c: i32, r: i32) -> (f32, f32) {
+        let d = self.app.doc(self.key).expect("doc");
+        let set = tileset_de(&d.sprite, d.layer).expect("tileset");
+        let (x, y) = Mapa::de(&d.sprite, d.layer, d.frame, set).origem(c, r);
+        let (mx, my) = (i32::from(set.tile_w) / 2, i32::from(set.tile_h) / 2);
+        at(&self.app, &self.sim, &self.cam, self.bits, x + mx, y + my)
+    }
+
+    fn prime_meio(&mut self, c: i32, r: i32, b: Button, m: Mods) -> Press {
+        let p = self.meio(c, r);
+        let cv = canvas(&self.sim, &self.cam, self.bits);
+        input::press(&mut self.app, &cv, p, b, m)
+    }
+
+    fn move_meio(&mut self, c: i32, r: i32) {
+        let p = self.meio(c, r);
+        let cv = canvas(&self.sim, &self.cam, self.bits);
+        input::moved(&mut self.app, &cv, p, Mods::default());
     }
 
     fn prime(&mut self, c: i32, r: i32) -> Press {
@@ -346,6 +372,7 @@ fn a_camada_nova_nao_mexe_na_antiga_e_o_cartao_segue_a_camada_activa() {
         conjunto: None,
         w: 16,
         h: 16,
+        forma: Forma::Square,
     });
     p.desenha();
     assert_eq!(p.vista(0, 3), arte, "o desenho continua no canvas");
@@ -377,6 +404,7 @@ fn duas_camadas() -> (Palco, ph2d_pixel_core::LayerId, ph2d_pixel_core::LayerId)
         conjunto,
         w: 16,
         h: 16,
+        forma: Forma::Square,
     });
     let nova = p.app.doc(p.key).expect("doc").layer;
     assert_ne!(nova, velha);
@@ -636,6 +664,7 @@ fn a_camada_nova_e_o_convert_passam_pela_janela() {
         conjunto: None,
         w: 8,
         h: 12,
+        forma: Forma::Square,
     });
     assert_eq!(p.s().layers().len(), camadas + 1);
     let d = p.app.doc(p.key).expect("doc");
@@ -724,4 +753,190 @@ fn nenhum_comando_do_menu_sprite_recusa_calado() {
         assert_eq!(p.avisos(), 1, "{a:?}");
         assert_eq!(p.s(), &antes, "{a:?}");
     }
+}
+
+/// A casa de terreno da célula, ou `None` se ela não é de terreno.
+fn casa_em(p: &Palco, c: i32, r: i32) -> Option<u32> {
+    let d = p.app.doc(p.key).expect("doc");
+    let set = tileset_de(&d.sprite, d.layer).expect("tileset");
+    let id = p.tile_em(c, r).id();
+    let k = set.terrains.first()?;
+    (id >= k.first && id < k.first + TERRAIN_TILES).then(|| id - k.first)
+}
+
+#[test]
+fn a_cena_22_abre_com_o_mapa_real_e_o_pincel_de_terreno() {
+    let p = Palco::cena(22);
+    let x = canal::contexto();
+    assert_eq!(p.mao().alvo, Alvo::Terreno);
+    assert_eq!(x.terrenos, ["Terrain 1"]);
+    assert_eq!(x.forma, Forma::Square);
+    assert!(p.hero.panel_visibility.get(PANEL_PIXEL_TILES).copied() == Some(true));
+    assert!(derived_is_consistent(p.s()));
+    for (c, r) in celulas_reais() {
+        assert!(casa_em(&p, c, r).is_some(), "({c},{r}) sem terreno");
+    }
+    assert_eq!(casa_em(&p, 0, 0), None);
+}
+
+/// O gesto real: arrastar o lápis em Terrain resolve as células e as vizinhas, num só desfazer; o botão
+/// de trás e a borracha tiram a área.
+#[test]
+fn pintar_terreno_arrastando_resolve_as_vizinhas_e_vale_um_passo() {
+    let mut p = Palco::cena(22);
+    let (antes, s0) = (p.passos(), p.s().clone());
+    assert_eq!(casa_em(&p, 1, 7), None);
+    assert_eq!(
+        p.prime_meio(1, 7, Button::Primary, Mods::default()),
+        Press::Done
+    );
+    p.move_meio(1, 9);
+    let _ = input::release(&mut p.app);
+    assert_eq!(p.passos(), antes + 1, "um arrasto é um passo");
+    for r in 7..=9 {
+        assert!(casa_em(&p, 1, r).is_some(), "a célula (1,{r}) do arrasto");
+    }
+    // Só sul: a primeira célula do corredor tem o braço de baixo.
+    let k = terreno::casa(terreno::S);
+    assert_eq!(casa_em(&p, 1, 7), Some(k));
+    assert!(derived_is_consistent(p.s()));
+    assert_eq!(
+        p.prime_meio(1, 8, Button::Secondary, Mods::default()),
+        Press::Done
+    );
+    let _ = input::release(&mut p.app);
+    assert_eq!(casa_em(&p, 1, 8), None);
+    assert_eq!(
+        casa_em(&p, 1, 7),
+        Some(terreno::casa(0)),
+        "a vizinha resolve-se de novo"
+    );
+    p.app.tool = Tool::Eraser;
+    p.prime_meio(1, 9, Button::Primary, Mods::default());
+    let _ = input::release(&mut p.app);
+    assert_eq!(casa_em(&p, 1, 9), None);
+    assert!(p.app.undo(p.key) && p.app.undo(p.key) && p.app.undo(p.key));
+    assert_eq!(p.s(), &s0, "desfazer volta ao byte");
+}
+
+#[test]
+fn novo_terreno_nasce_com_o_guia_e_o_gabarito_abre_numa_camada() {
+    let mut p = Palco::novo();
+    assert_eq!(canal::contexto().terrenos.len(), 0);
+    p.pede(Pedido::Alvo(Alvo::Terreno));
+    p.app.tool = Tool::Pencil;
+    assert_eq!(
+        p.prime_meio(0, 0, Button::Primary, Mods::default()),
+        Press::Done
+    );
+    assert_eq!(p.avisos(), 1, "sem terreno, diz porquê");
+    let (n0, passos) = (p.n_tiles(), p.passos());
+    p.pede(Pedido::NovoTerreno);
+    assert_eq!(canal::contexto().terrenos, ["Terrain 1"]);
+    assert_eq!(p.n_tiles(), n0 + TERRAIN_TILES as usize);
+    assert_eq!(p.passos(), passos + 1);
+    let img = canal::contexto().imagens;
+    assert!(
+        img[n0 + 46].iter().any(|b| *b != 0),
+        "o miolo tem o guia pintado"
+    );
+    let camada = p.app.doc(p.key).unwrap().layer;
+    let w = p.s().width();
+    p.pede(Pedido::Gabarito);
+    let d = p.app.doc(p.key).unwrap();
+    assert_ne!(d.layer, camada, "a camada nova fica activa");
+    assert_eq!(p.passos(), passos + 2);
+    assert!(
+        p.s().width() >= 8 * u32::from(LADO).max(w / 8),
+        "o canvas cresceu para caber"
+    );
+    assert!(casa_em(&p, 7, 5).is_some() || p.tile_em(6, 5).id() != 0);
+    assert!(
+        p.app.undo(p.key),
+        "um passo tira a camada e devolve o canvas"
+    );
+    assert_eq!(p.s().width(), w);
+    assert_eq!(
+        p.app.doc(p.key).unwrap().layer,
+        camada,
+        "volta à camada de tilemap"
+    );
+    p.pede(Pedido::ApagaTerreno);
+    assert_eq!(p.n_tiles(), n0);
+    assert_eq!(canal::contexto().terrenos.len(), 0);
+}
+
+#[test]
+fn o_conta_gotas_em_terrain_fica_com_o_terreno_da_celula() {
+    let mut p = Palco::cena(22);
+    p.pede(Pedido::NovoTerreno);
+    assert_eq!(p.mao().terreno, 1, "o terreno novo fica na mão");
+    let alt = Mods {
+        alt: true,
+        ..Mods::default()
+    };
+    let (c, r) = celulas_reais()[0];
+    let antes = p.s().clone();
+    assert_eq!(p.prime_meio(c, r, Button::Primary, alt), Press::Done);
+    let _ = input::release(&mut p.app);
+    p.quadro();
+    assert_eq!(p.mao().terreno, 0);
+    assert_eq!(p.s(), &antes, "o conta-gotas não escreve");
+}
+
+/// Mudar a forma pelo cartão: em iso o clique acerta a célula do losango; em hex um tileset com terreno
+/// recusa, com a frase, e a mão não fica num alvo que a forma não tem.
+#[test]
+fn a_forma_da_grelha_muda_o_clique_e_o_terreno() {
+    let mut p = Palco::novo();
+    let (s0, passos) = (p.s().clone(), p.passos());
+    p.pede(Pedido::Forma(Forma::Iso));
+    assert_eq!(canal::contexto().forma, Forma::Iso);
+    assert_eq!(p.passos(), passos + 1);
+    assert!(derived_is_consistent(p.s()));
+    p.pede(Pedido::Alvo(Alvo::Tiles));
+    p.pede(Pedido::Tile(2));
+    p.prime_meio(8, 2, Button::Primary, Mods::default());
+    let _ = input::release(&mut p.app);
+    assert_eq!(p.tile_em(8, 2).id(), 2, "o clique acerta o losango");
+    assert!(p.app.undo(p.key) && p.app.undo(p.key));
+    assert_eq!(p.s(), &s0, "desfazer volta à grelha quadrada, ao byte");
+    p.quadro();
+    p.pede(Pedido::Forma(Forma::Hex));
+    p.pede(Pedido::Alvo(Alvo::Terreno));
+    assert_eq!(
+        p.mao().alvo,
+        Alvo::Tiles,
+        "a mão não fica num alvo que a forma não tem"
+    );
+    let n = p.n_tiles();
+    p.pede(Pedido::NovoTerreno);
+    assert_eq!(p.n_tiles(), n, "hex não tem gabarito");
+    assert_eq!(p.avisos(), 1);
+    assert!(p.app.undo(p.key));
+    p.quadro();
+    p.pede(Pedido::NovoTerreno);
+    p.pede(Pedido::Forma(Forma::Hex));
+    assert_eq!(
+        canal::contexto().forma,
+        Forma::Square,
+        "com terreno, hex recusa"
+    );
+    assert_eq!(p.avisos(), 1);
+}
+
+/// A janela New Tilemap Layer cria a camada na forma pedida, com um tileset novo.
+#[test]
+fn a_camada_nova_nasce_na_forma_pedida() {
+    let mut p = Palco::novo();
+    let conjuntos = p.s().tilesets().len();
+    p.pede(Pedido::NovaCamada {
+        conjunto: None,
+        w: 32,
+        h: 16,
+        forma: Forma::Iso,
+    });
+    assert_eq!(p.s().tilesets().len(), conjuntos + 1);
+    assert_eq!(canal::contexto().forma, Forma::Iso);
+    assert_eq!(p.mao().alvo, Alvo::Pixels);
 }

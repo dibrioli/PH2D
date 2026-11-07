@@ -9,6 +9,7 @@ use ph2d_aseprite::file::{
 use ph2d_aseprite::{
     AseCel, AseCelBody, AseFile, AseFileFrame, AseLayer, AseTag, AseTilemap, AseTileset,
 };
+use ph2d_pixel_core::Forma;
 use ph2d_pixel_core::blend::BlendMode;
 use ph2d_pixel_core::codec::SpriteParts;
 use ph2d_pixel_core::palette;
@@ -24,6 +25,8 @@ pub enum Aviso {
     Slices(usize),
     /// O `.ase` não guarda os terrenos de gabarito: os tiles vão, a ligação entre eles fica no projeto.
     TerrenosFicam,
+    /// O `.ase` não tem forma de grelha: uma camada iso ou hex sai como imagem.
+    FormaVaiComoImagem,
     /// Camada de tilemap sem tileset legível (externo, ou tira errada): virou camada de imagem.
     Tilemap,
     /// O ficheiro troca a paleta entre quadros: fica a do primeiro.
@@ -104,6 +107,13 @@ fn posicao(b: Rect) -> Result<(i16, i16), AseErro> {
     }
 }
 
+/// Só a grelha quadrada cabe no formato.
+fn vai_em_tiles(s: &Sprite, l: &Layer) -> bool {
+    l.tileset()
+        .and_then(|t| s.tileset(t))
+        .is_some_and(|t| t.forma == Forma::Square)
+}
+
 /// O documento em `.ase`.
 ///
 /// # Errors
@@ -120,18 +130,25 @@ pub fn escrever(s: &Sprite) -> Result<(Vec<u8>, Vec<Aviso>), AseErro> {
             flags: bandeiras(l),
             kind: match l.kind {
                 LayerKind::Group { .. } => KIND_GROUP,
-                LayerKind::Tilemap { .. } => KIND_TILEMAP,
-                LayerKind::Image => KIND_IMAGE,
+                LayerKind::Tilemap { .. } if vai_em_tiles(s, l) => KIND_TILEMAP,
+                LayerKind::Tilemap { .. } | LayerKind::Image => KIND_IMAGE,
             },
             child_level: nivel,
             blend: u16::from(l.blend.code()),
             opacity: l.opacity,
-            tileset: l.tileset().map_or(0, |t| t.0),
+            tileset: if vai_em_tiles(s, l) {
+                l.tileset().map_or(0, |t| t.0)
+            } else {
+                0
+            },
         })
         .collect();
     let mut avisos = Vec::new();
     if s.tilesets().iter().any(|t| !t.terrains.is_empty()) {
         avisos.push(Aviso::TerrenosFicam);
+    }
+    if s.tilesets().iter().any(|t| t.forma != Forma::Square) {
+        avisos.push(Aviso::FormaVaiComoImagem);
     }
     let mut frames = Vec::with_capacity(s.frames().len());
     for f in s.frames() {
@@ -204,6 +221,7 @@ fn mapa_saida(c: &Cel) -> AseTilemap {
 fn tilesets_saida(s: &Sprite) -> Vec<AseTileset> {
     s.tilesets()
         .iter()
+        .filter(|t| t.forma == Forma::Square)
         .map(|t| AseTileset {
             id: t.id.0,
             name: t.name.clone(),
@@ -239,6 +257,7 @@ fn tileset_de(t: &AseTileset, id: TilesetId, bpp: usize, transparent: u8) -> Opt
         tile_h: t.tile_h,
         tiles,
         terrains: Vec::new(),
+        forma: ph2d_pixel_core::Forma::Square,
     })
 }
 
@@ -278,6 +297,7 @@ fn mapa_de(m: &AseTilemap, x: i32, y: i32, set: &Tileset, zero_is_empty: bool) -
         w: u32::from(m.w),
         h: u32::from(m.h),
         tiles,
+        ..TileGrid::default()
     };
     (g, corrompido)
 }
@@ -317,7 +337,7 @@ fn cel_saida(s: &Sprite, layer: u16, id: LayerId, c: &Cel) -> Result<AseCel, Ase
                 body: AseCelBody::Image { w: 1, h: 1, pixels },
             }
         }
-        None if c.tiles.is_some() => {
+        None if c.tiles.is_some() && s.layer(id).is_some_and(|l| vai_em_tiles(s, l)) => {
             let (x, y) = posicao(c.bbox)?;
             AseCel {
                 layer,
@@ -522,7 +542,7 @@ fn cel_de_mapa(
         avisos.push(Aviso::CelCorrompido);
     }
     Some(Cel {
-        bbox: g.rect(set.tile_w, set.tile_h),
+        bbox: g.caixa(set),
         data: ph2d_pixel_core::tiles::expand(&g, set, bpp),
         opacity: c.opacity,
         z: c.z,

@@ -1,6 +1,6 @@
 //! **A mão do artista num tilemap**: destino do traço, modo, carimbo em curso, e o funil do traço.
 
-use ph2d_pixel_core::{FrameId, LayerId, Op, Sprite, Stroke, TileRef, Tileset};
+use ph2d_pixel_core::{Forma, FrameId, LayerId, Op, Sprite, Stroke, TileRef, Tileset};
 
 use crate::desenho::{self, Modo};
 use crate::mapa::{Mapa, carimba};
@@ -11,6 +11,8 @@ pub enum Alvo {
     #[default]
     Pixels,
     Tiles,
+    /// O traço pinta a área do terreno escolhido.
+    Terreno,
 }
 
 /// Destino, modo, o tile do carimbo e os flips dele. O modo inicial é o medido no Trial (M5).
@@ -22,6 +24,8 @@ pub struct Mao {
     pub flip_x: bool,
     pub flip_y: bool,
     pub flip_d: bool,
+    /// O terreno de [`Alvo::Terreno`], pela ordem do tileset.
+    pub terreno: u32,
 }
 
 impl Default for Mao {
@@ -33,6 +37,7 @@ impl Default for Mao {
             flip_x: false,
             flip_y: false,
             flip_d: false,
+            terreno: 0,
         }
     }
 }
@@ -54,8 +59,31 @@ impl Mao {
     pub const fn alterna_alvo(&mut self) {
         self.alvo = match self.alvo {
             Alvo::Pixels => Alvo::Tiles,
-            Alvo::Tiles => Alvo::Pixels,
+            Alvo::Tiles | Alvo::Terreno => Alvo::Pixels,
         };
+    }
+}
+
+/// A mão agora: o que um arrasto escreve, ou a chave da recusa. `apaga`: borracha ou botão direito.
+pub fn marca_de(m: &Mao, set: &Tileset, apaga: bool) -> Result<Marca, &'static str> {
+    if m.alvo != Alvo::Terreno {
+        let t = if apaga { TileRef::EMPTY } else { m.tile_ref() };
+        return Ok(Marca::Tile(t));
+    }
+    if !set.forma.tem_terreno() {
+        return Err("pixel.tiles.refuse.terrain_shape");
+    }
+    if m.terreno as usize >= set.terrains.len() {
+        return Err("pixel.tiles.no_terrain");
+    }
+    Ok(Marca::Terreno((!apaga).then_some(m.terreno as usize)))
+}
+
+/// O conta-gotas: em terreno, fica com o terreno da célula; senão, com o tile dela.
+pub fn pega(m: &mut Mao, set: &Tileset, t: TileRef) {
+    match terreno_do_tile(set, t.id()) {
+        Some(q) if m.alvo == Alvo::Terreno => m.terreno = q,
+        _ => m.pega(t),
     }
 }
 
@@ -93,6 +121,15 @@ pub fn conjuntos(s: &Sprite, layer: LayerId) -> (Vec<Conjunto>, Option<u32>) {
     (lista, padrao)
 }
 
+/// O terreno a que um tile pertence, pela ordem do tileset.
+#[must_use]
+pub fn terreno_do_tile(set: &Tileset, id: u32) -> Option<u32> {
+    set.terrains
+        .iter()
+        .position(|t| id >= t.first && id < t.first + ph2d_pixel_core::TERRAIN_TILES)
+        .map(|i| i as u32)
+}
+
 /// O traço acabado: em tilemap vai ao funil dos modos; numa imagem, é o op de sempre.
 #[must_use]
 pub fn op_do_traco(st: &Stroke, s: &Sprite, modo: Modo) -> Option<Op> {
@@ -121,12 +158,21 @@ pub fn imagens(s: &Sprite, set: &Tileset) -> Vec<Vec<u8>> {
         .collect()
 }
 
+/// O que o arrasto escreve.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Marca {
+    /// Este tile; o vazio apaga.
+    Tile(TileRef),
+    /// A área entra neste terreno; `None` apaga.
+    Terreno(Option<usize>),
+}
+
 /// Um arrasto de Draw Tiles: as células andadas; a família reescreve um passo do desfazer com elas.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Carimbo {
     pub layer: LayerId,
     pub frame: FrameId,
-    pub tile: TileRef,
+    pub marca: Marca,
     pub celulas: Vec<(i32, i32)>,
     /// O gesto já tem um passo no desfazer.
     pub passo: bool,
@@ -138,20 +184,45 @@ impl Carimbo {
     #[must_use]
     pub fn ate(&self, s: &Sprite, at: (i32, i32)) -> Option<Vec<(i32, i32)>> {
         let set = tileset_de(s, self.layer)?;
-        let alvo = Mapa::de(s, self.layer, self.frame, set).celula(at.0, at.1);
+        let m = Mapa::de(s, self.layer, self.frame, set);
+        let alvo = m.celula(at.0, at.1);
         if self.celulas.last() == Some(&alvo) {
             return None;
         }
-        let (c0, r0) = self.celulas.last().copied().unwrap_or(alvo);
-        let n = (alvo.0 - c0).abs().max((alvo.1 - r0).abs()).max(1);
         let mut out = self.celulas.clone();
-        out.extend((1..=n).map(|i| (c0 + (alvo.0 - c0) * i / n, r0 + (alvo.1 - r0) * i / n)));
+        let Some(&(c0, r0)) = self.celulas.last() else {
+            out.push(alvo);
+            return Some(out);
+        };
+        if m.forma() == Forma::Square {
+            let n = (alvo.0 - c0).abs().max((alvo.1 - r0).abs()).max(1);
+            out.extend((1..=n).map(|i| (c0 + (alvo.0 - c0) * i / n, r0 + (alvo.1 - r0) * i / n)));
+            return Some(out);
+        }
+        // Em iso e hex anda-se em píxeis: índices lineares saltariam vizinhas.
+        let (x0, y0) = m.origem(c0, r0);
+        let (x0, y0) = (
+            x0 + i32::from(set.tile_w) / 2,
+            y0 + i32::from(set.tile_h) / 2,
+        );
+        let (dx, dy) = (at.0 - x0, at.1 - y0);
+        let passo = i32::from(set.tile_w.min(set.tile_h)).max(2) / 2;
+        let n = (dx.abs().max(dy.abs()) / passo).max(1);
+        for i in 1..=n {
+            let c = m.celula(x0 + dx * i / n, y0 + dy * i / n);
+            if out.last() != Some(&c) {
+                out.push(c);
+            }
+        }
         Some(out)
     }
 
     /// O op com estas células.
     #[must_use]
     pub fn op(&self, s: &Sprite, celulas: &[(i32, i32)]) -> Option<Op> {
-        carimba(s, self.layer, self.frame, celulas, self.tile)
+        match self.marca {
+            Marca::Tile(t) => carimba(s, self.layer, self.frame, celulas, t),
+            Marca::Terreno(q) => crate::terreno::pinta(s, self.layer, self.frame, celulas, q),
+        }
     }
 }

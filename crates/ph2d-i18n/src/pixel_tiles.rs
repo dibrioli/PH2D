@@ -45,6 +45,30 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.tiles.flip_d" => "Flip diagonal",
         "panel.pixel.tiles.add" => "Add tile",
         "panel.pixel.tiles.delete" => "Delete tile",
+        "panel.pixel.tiles.shape" => "Grid shape",
+        "panel.pixel.tiles.shape_square" => "Square",
+        "panel.pixel.tiles.shape_iso" => "Iso",
+        "panel.pixel.tiles.shape_hex" => "Hex",
+        "panel.pixel.tiles.shape_hex_flat" => "Hex Flat",
+        "panel.pixel.tiles.terrain" => "Terrain",
+        "panel.pixel.tiles.new_terrain" => "New",
+        "panel.pixel.tiles.terrain_template" => "Template",
+        "panel.pixel.tiles.delete_terrain" => "Delete",
+        "panel.pixel.tiles.terrain_help" => {
+            "A terrain has 47 tiles, one for each shape of its neighbours. Template opens a layer with them all, to paint over."
+        }
+        "panel.pixel.tiles.hint_terrain" => {
+            "Pencil paints an area: each cell gets the tile that fits its neighbours. Eraser removes it."
+        }
+        "pixel.tiles.terrain_name" => "Terrain {n}",
+        "pixel.tiles.template_layer" => "{name} template",
+        "pixel.tiles.no_terrain" => "Make a terrain first: New, in the Terrain card",
+        "pixel.tiles.refuse.terrain_shape" => {
+            "Terrains work on Square and Iso grids: a hex cell has 6 neighbours, not 8"
+        }
+        "pixel.tiles.refuse.shape_terrain" => {
+            "This tileset has terrains, and they do not work on a Hex grid"
+        }
         "panel.pixel.layer.new_tilemap" => "New Tilemap Layer",
         "panel.pixel.layer.to_tilemap" => "Convert to Tilemap",
         "panel.pixel.layer.to_image" => "Convert to Image",

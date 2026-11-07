@@ -160,6 +160,7 @@ pub(crate) fn cards(
     let intervalo = matches!(f.quadros, Quadros::Intervalo { .. });
     let tem_limite = f.limite != Limite::Nenhum;
     let tem_lista_de_limite = limites.len() > 1;
+    let tem_tiles = !x.tilesets.is_empty();
     let (json_ligado, json) = (o.json_ligado, o.json);
     vec![
         cartao_da_previa(img),
@@ -219,22 +220,26 @@ pub(crate) fn cards(
                 } else {
                     y
                 };
-                caixas_aos_pares(
-                    c,
-                    &[
-                        (
-                            ids::SPLIT_LAYERS,
-                            "panel.pixel.export.split_layers",
-                            f.split_layers,
-                        ),
-                        (
-                            ids::SPLIT_TAGS,
-                            "panel.pixel.export.split_tags",
-                            f.split_tags,
-                        ),
-                    ],
-                    y,
-                )
+                let mut caixas = vec![
+                    (
+                        ids::SPLIT_LAYERS,
+                        "panel.pixel.export.split_layers",
+                        f.split_layers,
+                    ),
+                    (
+                        ids::SPLIT_TAGS,
+                        "panel.pixel.export.split_tags",
+                        f.split_tags,
+                    ),
+                ];
+                if tem_tiles {
+                    caixas.push((
+                        ids::SPLIT_GRID,
+                        "panel.pixel.export.split_grid",
+                        f.split_grid,
+                    ));
+                }
+                caixas_aos_pares(c, &caixas, y)
             },
         ),
         cartao(
@@ -252,18 +257,22 @@ pub(crate) fn cards(
                     campo(ids::EXTRUDE, tr("panel.pixel.export.extrude")),
                     y,
                 );
-                caixas_aos_pares(
-                    c,
-                    &[
-                        (ids::TRIM_CELS, "panel.pixel.export.trim_cels", f.trim_cels),
-                        (
-                            ids::TRIM_SPRITE,
-                            "panel.pixel.export.trim_sprite",
-                            f.trim_sprite,
-                        ),
-                    ],
-                    y,
-                )
+                let mut caixas = vec![
+                    (ids::TRIM_CELS, "panel.pixel.export.trim_cels", f.trim_cels),
+                    (
+                        ids::TRIM_SPRITE,
+                        "panel.pixel.export.trim_sprite",
+                        f.trim_sprite,
+                    ),
+                ];
+                if tem_tiles {
+                    caixas.push((
+                        ids::TRIM_BY_GRID,
+                        "panel.pixel.export.trim_by_grid",
+                        f.trim_by_grid,
+                    ));
+                }
+                caixas_aos_pares(c, &caixas, y)
             },
         ),
         cartao(

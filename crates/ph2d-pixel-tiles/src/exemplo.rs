@@ -58,3 +58,38 @@ pub fn celula(s: &Sprite, l: LayerId, f: FrameId, (c, r): (usize, usize)) -> Opt
     let tile = TileRef::new(t.unsigned_abs(), t < 0, false, false);
     (t != 0).then(|| carimba(s, l, f, &[(c as i32, r as i32)], tile))?
 }
+
+/// O mapa real da aceitação e da cena 22: `#` é terreno. Mais de 200 células, buracos e corredores de
+/// uma célula (`docs/PixelArt/P10_plano.md` §7).
+pub const MAPA_REAL: [&str; 16] = [
+    "........................",
+    "..#########....#######..",
+    "..#########....#######..",
+    "..###...###....##...##..",
+    "..###...###....##...##..",
+    "..#########....#######..",
+    "..#########.#..#######..",
+    ".....#......#......#....",
+    ".....#......#......#....",
+    "..####################..",
+    "..############.########.",
+    "..############.########.",
+    "..###..#######.##...###.",
+    "..###..#######.##...###.",
+    "..############.########.",
+    "........................",
+];
+
+/// As células de terreno de [`MAPA_REAL`].
+#[must_use]
+pub fn celulas_reais() -> Vec<(i32, i32)> {
+    let mut out = Vec::new();
+    for (r, linha) in MAPA_REAL.iter().enumerate() {
+        for (c, b) in linha.bytes().enumerate() {
+            if b == b'#' {
+                out.push((c as i32, r as i32));
+            }
+        }
+    }
+    out
+}

@@ -44,6 +44,10 @@ pub struct OpcoesFolha {
     pub quadros: Quadros,
     pub split_layers: bool,
     pub split_tags: bool,
+    /// `--split-grid`: cada célula da grelha é uma peça da folha.
+    pub split_grid: bool,
+    /// `--trim-by-grid`: apara, com o recorte alargado às linhas da grelha.
+    pub trim_by_grid: bool,
     /// `--trim`: cada quadro ao seu conteúdo.
     pub trim_cels: bool,
     /// `--trim-sprite`: todos ao retângulo que une os conteúdos.
@@ -87,6 +91,68 @@ struct Peca {
     duration_ms: u32,
     /// O dono do cel ligado, em `split`: quem aponta para o mesmo partilha retângulo (medido).
     dono: Option<(LayerId, FrameId)>,
+}
+
+/// A grelha de `--split-grid` e `--trim-by-grid`: a da primeira camada de tilemap que entra na saída,
+/// lida como retângulos: `(tile_w, tile_h, fase_x, fase_y)`. O formato de folha não tem outra forma.
+fn grelha_da_saida(s: &Sprite, o: &OpcoesFolha) -> Option<(u32, u32, i32, i32)> {
+    let (l, set) = s.layers().iter().find_map(|l| {
+        let set = s.tileset(l.tileset()?)?;
+        entra(s, l, o.camadas).then_some((l, set))
+    })?;
+    let (tw, th) = (i32::from(set.tile_w), i32::from(set.tile_h));
+    let fase = s
+        .entries()
+        .filter(|(k, _)| k.0 == l.id)
+        .find_map(|(_, c)| c.tiles.as_deref())
+        .map_or((0, 0), |g| g.ancora(set.forma, tw, th).1);
+    Some((
+        tw as u32,
+        th as u32,
+        fase.0.rem_euclid(tw),
+        fase.1.rem_euclid(th),
+    ))
+}
+
+/// As caixas da grelha que tocam o canvas, linha a linha, cortadas por ele.
+fn caixas_da_grelha((tw, th, fx, fy): (u32, u32, i32, i32), w: u32, h: u32) -> Vec<[u32; 4]> {
+    let corte = |fase: i32, lado: u32, total: u32| -> Vec<(u32, u32)> {
+        let mut v = Vec::new();
+        let mut a = fase as u32;
+        if a > 0 {
+            v.push((0, a.min(total)));
+        }
+        while a < total {
+            v.push((a, lado.min(total - a)));
+            a += lado;
+        }
+        v
+    };
+    let (xs, ys) = (corte(fx, tw, w), corte(fy, th, h));
+    let mut out = Vec::with_capacity(xs.len() * ys.len());
+    for &(y, ch) in &ys {
+        for &(x, cw) in &xs {
+            out.push([x, y, cw, ch]);
+        }
+    }
+    out
+}
+
+/// Alarga `r` às linhas da grelha, sem sair de `dentro`.
+fn ao_multiplo(r: [u32; 4], (tw, th, fx, fy): (u32, u32, i32, i32), dentro: [u32; 4]) -> [u32; 4] {
+    let baixo = |v: u32, lado: u32, fase: i32| {
+        let (v, lado) = (i64::from(v), i64::from(lado));
+        (v - i64::from(fase)).div_euclid(lado) * lado + i64::from(fase)
+    };
+    let cima = |v: u32, lado: u32, fase: i32| {
+        let (b, l) = (baixo(v, lado, fase), i64::from(lado));
+        if b == i64::from(v) { b } else { b + l }
+    };
+    let x0 = baixo(r[0], tw, fx).max(i64::from(dentro[0]));
+    let y0 = baixo(r[1], th, fy).max(i64::from(dentro[1]));
+    let x1 = cima(r[0] + r[2], tw, fx).min(i64::from(dentro[0] + dentro[2]));
+    let y1 = cima(r[1] + r[3], th, fy).min(i64::from(dentro[1] + dentro[3]));
+    [x0 as u32, y0 as u32, (x1 - x0) as u32, (y1 - y0) as u32]
 }
 
 fn limites_do_conteudo(px: &[u8], w: u32, h: u32) -> Option<[u32; 4]> {
@@ -209,6 +275,9 @@ fn pecas(s: &Sprite, o: &OpcoesFolha, titulo: &str, ext: &str, feito: &dyn Fn(f3
         vec![(nome, ordem(s, o.quadros, Direcao::Forward))]
     };
     let total: usize = camadas.len() * listas.iter().map(|(_, l)| l.len()).sum::<usize>();
+    let cortes = grelha_da_saida(s, o)
+        .filter(|_| o.split_grid)
+        .map(|g| caixas_da_grelha(g, w, h));
     let mut out = Vec::new();
     let mut grupo = 0;
     for camada in &camadas {
@@ -223,13 +292,30 @@ fn pecas(s: &Sprite, o: &OpcoesFolha, titulo: &str, ext: &str, feito: &dyn Fn(f3
         };
         let so_uma = camada.is_some() || matches!(o.camadas, Camadas::Uma(_));
         for (tag, lista) in &listas {
-            let fmt = padrao(o, so_uma, tag.is_some(), lista.len() > 1);
-            for (n, &i) in lista.iter().enumerate() {
+            let varios = lista.len() > 1 || cortes.is_some();
+            let fmt = padrao(o, so_uma, tag.is_some(), varios);
+            let mut item = 0;
+            for &i in lista {
                 feito(out.len() as f32 / total.max(1) as f32);
                 let fr = s.frames()[i];
                 let px = composto(s, fr.id, so);
                 let t = tag.map_or_else(|| tag_de(s, i), str::to_owned);
-                let nome = nome_do_quadro(&fmt, titulo, &nome_camada, &t, n, ext);
+                if let Some(caixas) = &cortes {
+                    for &rect in caixas {
+                        out.push(Peca {
+                            nome: nome_do_quadro(&fmt, titulo, &nome_camada, &t, item, ext),
+                            grupo,
+                            rect,
+                            px: recorte(&px, w, rect),
+                            duration_ms: fr.duration_ms,
+                            dono: None,
+                        });
+                        item += 1;
+                    }
+                    continue;
+                }
+                let nome = nome_do_quadro(&fmt, titulo, &nome_camada, &t, item, ext);
+                item += 1;
                 // Só partilha quem tem o dono na saída (medido: `tag_split`, o dono fora da tag não une).
                 let dono = camada.and_then(|l| {
                     let c = s.entry((l.id, fr.id))?;
@@ -251,11 +337,17 @@ fn pecas(s: &Sprite, o: &OpcoesFolha, titulo: &str, ext: &str, feito: &dyn Fn(f3
     out
 }
 
+/// O conteúdo da peça, em coordenadas do sprite.
+fn conteudo(p: &Peca) -> Option<[u32; 4]> {
+    let c = limites_do_conteudo(&p.px, p.rect[2], p.rect[3])?;
+    Some([c[0] + p.rect[0], c[1] + p.rect[1], c[2], c[3]])
+}
+
 /// O recorte e os vazios (medido: `--trim` larga os vazios mesmo sem `--ignore-empty`).
-fn apara(mut v: Vec<Peca>, o: &OpcoesFolha, w: u32, h: u32) -> Vec<Peca> {
+fn apara(mut v: Vec<Peca>, o: &OpcoesFolha, grade: Option<(u32, u32, i32, i32)>) -> Vec<Peca> {
     let uniao = o.trim_sprite.then(|| {
         v.iter()
-            .filter_map(|p| limites_do_conteudo(&p.px, w, h))
+            .filter_map(conteudo)
             .fold(None, |a: Option<[u32; 4]>, r| {
                 Some(a.map_or(r, |a| {
                     let (x0, y0) = (a[0].min(r[0]), a[1].min(r[1]));
@@ -267,18 +359,25 @@ fn apara(mut v: Vec<Peca>, o: &OpcoesFolha, w: u32, h: u32) -> Vec<Peca> {
                 }))
             })
     });
+    let por_grelha = grade.filter(|_| o.trim_by_grid);
+    let cada = o.trim_cels || por_grelha.is_some();
     v.retain_mut(|p| {
-        let c = limites_do_conteudo(&p.px, w, h);
-        if c.is_none() && (o.ignore_empty || o.trim_cels || o.trim_sprite) {
+        let c = conteudo(p);
+        if c.is_none() && (o.ignore_empty || cada || o.trim_sprite) {
             return false;
         }
-        let r = match (uniao, o.trim_cels) {
+        let r = match (uniao, cada) {
             (Some(Some(u)), _) => Some(u),
             (_, true) => c,
             _ => None,
         };
+        let r = match (r, por_grelha) {
+            (Some(r), Some(g)) => Some(ao_multiplo(r, g, p.rect)),
+            (r, _) => r,
+        };
         if let Some(r) = r {
-            p.px = recorte(&p.px, w, r);
+            let dentro = [r[0] - p.rect[0], r[1] - p.rect[1], r[2], r[3]];
+            p.px = recorte(&p.px, p.rect[2], dentro);
             p.rect = r;
         }
         true
@@ -384,7 +483,7 @@ pub fn montar_com(
     feito: &dyn Fn(f32),
 ) -> Folha {
     let (w, h) = (s.width(), s.height());
-    let v = apara(pecas(s, o, titulo, ext, feito), o, w, h);
+    let v = apara(pecas(s, o, titulo, ext, feito), o, grelha_da_saida(s, o));
     let pad = o.inner + o.extrude;
 
     // Quem partilha retângulo: `unico[i]` é o índice da peça que pinta a i-ésima.
@@ -439,7 +538,7 @@ pub fn montar_com(
                     p.rect[2] + 2 * o.inner,
                     p.rect[3] + 2 * o.inner,
                 ],
-                trimmed: o.trim_cels || o.trim_sprite,
+                trimmed: o.trim_cels || o.trim_sprite || o.trim_by_grid,
                 origem: p.rect,
                 tamanho: [w, h],
                 duration_ms: p.duration_ms,

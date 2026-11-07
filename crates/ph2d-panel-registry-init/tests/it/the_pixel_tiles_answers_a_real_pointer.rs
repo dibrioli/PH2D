@@ -14,6 +14,7 @@ use ph2d_editor_core::{HeroScreen, NodeId, ids as nucleo};
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_panel_pixel_tiles::canal::{self, Alvo, Conjunto, Contexto, Mao, Pedido, Tela};
 use ph2d_panel_pixel_tiles::ids;
+use ph2d_pixel_core::Forma;
 
 const TILE: u16 = 4;
 const JANELA: NodeId = nucleo::PIXEL_TILES_PANEL;
@@ -220,7 +221,8 @@ fn a_janela_de_criar_pede_a_camada() {
             [Pedido::NovaCamada {
                 conjunto: None,
                 w: 16,
-                h: 16
+                h: 16,
+                forma: Forma::Square,
             }]
         );
     }
@@ -249,7 +251,14 @@ fn a_janela_oferece_os_tilesets_que_ja_existem() {
         "com um tileset escolhido, o tamanho é o dele"
     );
     clica(&mut hero, ids::TILES_OK, "o verbo");
-    let pedido = |conjunto, w, h| [Pedido::NovaCamada { conjunto, w, h }];
+    let pedido = |conjunto, w, h| {
+        [Pedido::NovaCamada {
+            conjunto,
+            w,
+            h,
+            forma: Forma::Square,
+        }]
+    };
     assert_eq!(canal::take_pedidos(), pedido(Some(7), 16, 16));
 
     canal::abrir(Tela::NovaCamada);
@@ -269,4 +278,63 @@ fn a_janela_oferece_os_tilesets_que_ja_existem() {
     );
     clica(&mut hero, ids::TILES_OK, "o verbo");
     assert_eq!(canal::take_pedidos(), pedido(None, 16, 16));
+}
+
+/// O cartão Terrain e a forma da grelha, por ponteiro real, até ao pedido que a família recebe.
+#[test]
+fn o_terreno_e_a_forma_chegam_a_familia() {
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let x = Contexto {
+        terrenos: vec!["Terrain 1".to_owned(), "Terrain 2".to_owned()],
+        ..com_tileset()
+    };
+    let mut hero = hero_com_a_janela(&mut ts, x);
+    clica(&mut hero, ids::TARGET_TERRAIN, "Terrain");
+    assert_eq!(canal::take_pedidos(), [Pedido::Alvo(Alvo::Terreno)]);
+    clica(&mut hero, ids::terreno(1), "o terreno 2");
+    assert_eq!(canal::take_pedidos(), [Pedido::Terreno(1)]);
+    clica(&mut hero, ids::NEW_TERRAIN, "New Terrain");
+    assert_eq!(canal::take_pedidos(), [Pedido::NovoTerreno]);
+    clica(&mut hero, ids::TERRAIN_TEMPLATE, "Template Layer");
+    assert_eq!(canal::take_pedidos(), [Pedido::Gabarito]);
+    clica(&mut hero, ids::DELETE_TERRAIN, "Delete Terrain");
+    assert_eq!(canal::take_pedidos(), [Pedido::ApagaTerreno]);
+    clica(&mut hero, ids::SHAPE_ISO, "Iso");
+    assert_eq!(canal::take_pedidos(), [Pedido::Forma(Forma::Iso)]);
+}
+
+/// Em hex não há gabarito: a tela nem o oferece, e o terreno não aparece como destino.
+#[test]
+fn em_hex_o_cartao_terrain_nao_aparece() {
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let x = Contexto {
+        forma: Forma::Hex,
+        ..com_tileset()
+    };
+    let hero = hero_com_a_janela(&mut ts, x);
+    assert!(hero.hit_index.rect_for(ids::TARGET_TERRAIN).is_none());
+    assert!(hero.hit_index.rect_for(ids::NEW_TERRAIN).is_none());
+    assert!(hero.hit_index.rect_for(ids::SHAPE_HEX).is_some());
+}
+
+/// A janela New Tilemap Layer leva a forma escolhida; a de converter não a oferece.
+#[test]
+fn a_janela_de_criar_escolhe_a_forma() {
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let mut hero = hero_com_a_janela(&mut ts, Contexto::default());
+    hero.panel_visibility.insert(PANEL_PIXEL_TILES, true);
+    canal::abrir(Tela::NovaCamada);
+    assenta(&mut hero, &mut ts);
+    clica(&mut hero, ids::SHAPE_HEX, "Hex");
+    assenta(&mut hero, &mut ts);
+    clica(&mut hero, ids::TILES_OK, "Create");
+    let [Pedido::NovaCamada { forma, .. }] = canal::take_pedidos()[..] else {
+        panic!("sem o pedido da camada nova");
+    };
+    assert_eq!(forma, Forma::Hex);
+    hero.panel_visibility.insert(PANEL_PIXEL_TILES, true);
+    canal::abrir(Tela::Converter);
+    assenta(&mut hero, &mut ts);
+    assert!(hero.hit_index.rect_for(ids::TILES_OK).is_some());
+    assert!(hero.hit_index.rect_for(ids::SHAPE_HEX).is_none());
 }

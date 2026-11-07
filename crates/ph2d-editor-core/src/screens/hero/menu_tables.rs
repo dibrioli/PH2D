@@ -184,6 +184,10 @@ pub(super) const MENU_BAR_FILE_ROWS: &[MenuRow] = &[
         "chrome.menu.pixel_export_sheet",
     ),
     menu_row(
+        ids::CTX_MENU_PIXEL_EXPORT_TILESET,
+        "chrome.menu.pixel_export_tileset",
+    ),
+    menu_row(
         ids::CTX_MENU_PIXEL_REPEAT_EXPORT,
         "chrome.menu.pixel_repeat_export",
     ),

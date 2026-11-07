@@ -59,6 +59,7 @@ fn with_map(mode: ColorMode, h: &mut History) -> (Sprite, LayerId, FrameId, Tile
                     TileRef::new(1, false, false, false),
                     TileRef::new(2, false, false, false),
                 ],
+                ..TileGrid::default()
             })),
         )],
         ..TilesSet::default()
@@ -105,6 +106,7 @@ fn each_flip_combination_lands_each_cell_where_the_law_says() {
                     w: 1,
                     h: 1,
                     tiles: vec![TileRef::new(1, x, y, d)],
+                    ..TileGrid::default()
                 })),
             )],
             ..TilesSet::default()
@@ -173,6 +175,7 @@ fn editing_one_row_of_a_tile_redraws_every_flip_exactly() {
                 w: 8,
                 h: 1,
                 tiles: (0..8).map(flips).collect(),
+                ..TileGrid::default()
             })),
         )],
         ..TilesSet::default()

@@ -43,6 +43,7 @@ fn monta(celulas: u32, quadros: u32) -> (Sprite, LayerId, FrameId, TilesetId) {
         w: celulas,
         h: celulas,
         tiles: vec![TileRef::new(1, false, false, false); (celulas * celulas) as usize],
+        ..TileGrid::default()
     };
     let tile = vec![9; usize::from(TILE) * usize::from(TILE) * BPP];
     let t = TilesSet {

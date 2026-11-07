@@ -16,7 +16,7 @@ use crate::canal::{self, Imagem, Tela};
 use crate::comum::ImagemDoCartao;
 use crate::{
     PixelExportPanel, PixelExportPanelState, cards_export, cards_folha, cards_import,
-    cards_import_como, event, ids,
+    cards_import_como, cards_tileset, event, ids,
 };
 
 /// A largura da janela, em larguras mínimas de painel: cabe a folha e duas colunas de campos.
@@ -48,6 +48,7 @@ pub(crate) fn paint(st: &mut PixelExportPanelState, ctx: &mut PaintCtx) {
     if !ctx.host.panel_visible(PixelExportPanel::ID) {
         ctx.host.store_mut().clear_panel_rect(node);
         canal::pede_folha(None);
+        canal::pede_tiles(None);
         return;
     }
     if let Some(t) = canal::take_abrir() {
@@ -74,9 +75,15 @@ pub(crate) fn paint(st: &mut PixelExportPanelState, ctx: &mut PaintCtx) {
         Tela::Folha => cards_folha::numeros(&st.fo, &x),
         Tela::Import => cards_import::numeros(&st.grelha),
         Tela::ImportComo => Vec::new(),
+        Tela::Tileset => cards_tileset::numeros(st.tiles),
     };
     prepara_numeros(store, &numeros);
     canal::pede_folha((st.tela == Tela::Folha).then(|| st.fo.folha.clone()));
+    canal::pede_tiles(if st.tela == Tela::Tileset {
+        st.tiles.pedido(&x)
+    } else {
+        None
+    });
     let (titulo, verbo, cartoes): (_, _, Vec<CardDef<'static>>) = match st.tela {
         Tela::ExportAs => {
             cards_export::prepare();
@@ -93,6 +100,14 @@ pub(crate) fn paint(st: &mut PixelExportPanelState, ctx: &mut PaintCtx) {
                 tr("panel.pixel.export.title_sheet"),
                 tr("panel.pixel.export.export"),
                 cards_folha::cards(&st.fo, &x, img),
+            )
+        }
+        Tela::Tileset => {
+            let img = imagem_do_canal(st);
+            (
+                tr("panel.pixel.export.title_tileset"),
+                tr("panel.pixel.export.export"),
+                cards_tileset::cards(st.tiles, &x, img),
             )
         }
         Tela::ImportComo => {

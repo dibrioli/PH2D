@@ -417,6 +417,7 @@ impl PixelApp {
             }
             doc.stamp = stamp;
             doc.sane_frame(was);
+            crate::camadas::sane_active(doc);
         }
         done
     }

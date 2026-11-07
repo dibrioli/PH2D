@@ -104,7 +104,8 @@ const LADO: f64 = ph2d_pixel_core::MAX_SIDE as f64;
 const ESCALA_MAX: f64 = LADO * 100.0; // LITERAL-PX-OK: de razão para %, não píxeis
 
 /// `(id, mínimo, máximo)`. O passo é 1.
-pub const NUMEROS: [(NodeId, f64, f64); 15] = [
+pub const NUMEROS: [(NodeId, f64, f64); 16] = [
+    (COLUMNS, 1.0, LADO),
     (FROM, 1.0, LADO),
     (TO, 1.0, LADO),
     (SCALE, 1.0, ESCALA_MAX),
@@ -135,7 +136,14 @@ pub const JSON: NodeId = hash_node_id("pixel_export.json");
 pub const JSON_TAGS: NodeId = hash_node_id("pixel_export.json_tags");
 pub const JSON_LAYERS: NodeId = hash_node_id("pixel_export.json_layers");
 pub const JSON_SLICES: NodeId = hash_node_id("pixel_export.json_slices");
-pub const CHECKS: [NodeId; 11] = [
+pub const SEC_TILESET: NodeId = hash_node_id("pixel_export.sec.tileset");
+pub const SPLIT_GRID: NodeId = hash_node_id("pixel_export.split_grid");
+pub const TRIM_BY_GRID: NodeId = hash_node_id("pixel_export.trim_by_grid");
+pub const COLUMNS: NodeId = hash_node_id("pixel_export.columns");
+
+pub const CHECKS: [NodeId; 13] = [
+    SPLIT_GRID,
+    TRIM_BY_GRID,
     MERGE,
     IGNORE_EMPTY,
     POW2,
@@ -157,3 +165,9 @@ pub const BY_ROWS: NodeId = hash_node_id("pixel_export.by_rows");
 pub const BY_COLUMNS: NodeId = hash_node_id("pixel_export.by_columns");
 /// O formato do nome de cada quadro no JSON.
 pub const ITEM_NAME: NodeId = hash_node_id("pixel_export.item_name");
+
+/// A linha do tileset `i` na janela Export Tileset.
+#[must_use]
+pub fn tileset_option(i: usize) -> NodeId {
+    ph2d_tool_registry::hash_node_id_runtime(&format!("pixel_export.tileset.{i}"))
+}

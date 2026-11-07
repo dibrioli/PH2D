@@ -6,6 +6,7 @@ use ph2d_editor_core::panel::cards::ferramenta::{
 };
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, Widget};
 use ph2d_i18n::{tr, tr_with};
+use ph2d_pixel_core::Forma;
 use ph2d_pixel_tiles::desenho::Modo;
 use ph2d_tokens::{ColorToken, StrokeToken};
 
@@ -37,10 +38,28 @@ const fn dica_da_janela(tela: Tela, existente: bool) -> &'static str {
     }
 }
 
+/// A linha da forma da grelha.
+fn linha_da_forma(c: &mut CardCtx<'_>, forma: Forma, y: f32) -> f32 {
+    let nome = |f: Forma| match f {
+        Forma::Square => tr("panel.pixel.tiles.shape_square"),
+        Forma::Iso => tr("panel.pixel.tiles.shape_iso"),
+        Forma::Hex => tr("panel.pixel.tiles.shape_hex"),
+        Forma::HexFlat => tr("panel.pixel.tiles.shape_hex_flat"),
+    };
+    let lista: Vec<_> = ids::SHAPES
+        .iter()
+        .zip(Forma::TODAS)
+        .map(|(id, f)| (*id, nome(f)))
+        .collect();
+    let aceso = Forma::TODAS.iter().position(|f| *f == forma).unwrap_or(0);
+    let o = opcoes(&lista, aceso);
+    c.full(Some(tr("panel.pixel.tiles.shape")), Widget::Choice(&o), y)
+}
+
 /// O cartão da janela de criar ou converter: os tilesets do sprite, ou um novo com o tamanho dele.
 pub(crate) fn janela(st: &PixelTilesPanelState, x: &Contexto) -> Vec<CardDef<'static>> {
     let escolhido = st.escolhido(x);
-    let (tela, flips) = (st.tela, st.flips);
+    let (tela, flips, forma) = (st.tela, st.flips, st.forma);
     let quadrado = escolhido.map_or(st.tile_w == st.tile_h, |c| c.tile_w == c.tile_h);
     let lista: Vec<(NodeId, String, bool)> = x
         .conjuntos
@@ -86,6 +105,9 @@ pub(crate) fn janela(st: &PixelTilesPanelState, x: &Contexto) -> Vec<CardDef<'st
                     ],
                     y,
                 );
+                if tela != Tela::Converter {
+                    y = linha_da_forma(c, forma, y);
+                }
             }
             if tela == Tela::Converter && quadrado {
                 y = caixa(
@@ -104,25 +126,32 @@ pub(crate) fn janela(st: &PixelTilesPanelState, x: &Contexto) -> Vec<CardDef<'st
 fn dica_do_modo(m: Mao) -> &'static str {
     match (m.alvo, m.modo) {
         (Alvo::Tiles, _) => "panel.pixel.tiles.hint_tiles",
+        (Alvo::Terreno, _) => "panel.pixel.tiles.hint_terrain",
         (Alvo::Pixels, Modo::Manual) => "panel.pixel.tiles.hint_manual",
         (Alvo::Pixels, Modo::Auto) => "panel.pixel.tiles.hint_auto",
         (Alvo::Pixels, Modo::Stack) => "panel.pixel.tiles.hint_stack",
     }
 }
 
-fn cartao_draw(m: Mao) -> CardDef<'static> {
+fn cartao_draw(m: Mao, forma: Forma) -> CardDef<'static> {
     cartao(
         ids::SEC_DRAW,
         tr("panel.pixel.tiles.draw"),
         None,
         move |c, y| {
-            let alvos = opcoes(
-                &[
-                    (ids::TARGET_PIXELS, tr("panel.pixel.tiles.pixels")),
-                    (ids::TARGET_TILES, tr("panel.pixel.tiles.tiles")),
-                ],
-                usize::from(m.alvo == Alvo::Tiles),
-            );
+            let mut lista = vec![
+                (ids::TARGET_PIXELS, tr("panel.pixel.tiles.pixels")),
+                (ids::TARGET_TILES, tr("panel.pixel.tiles.tiles")),
+            ];
+            if forma.tem_terreno() {
+                lista.push((ids::TARGET_TERRAIN, tr("panel.pixel.tiles.terrain")));
+            }
+            let aceso = match m.alvo {
+                Alvo::Pixels => 0,
+                Alvo::Tiles => 1,
+                Alvo::Terreno => 2,
+            };
+            let alvos = opcoes(&lista, aceso);
             let y = c.full(None, Widget::Choice(&alvos), y);
             let y = if m.alvo == Alvo::Pixels {
                 let aceso = match m.modo {
@@ -208,6 +237,7 @@ fn grelha(
 fn cartao_tileset(m: Mao, st: &PixelTilesPanelState, x: &Contexto) -> CardDef<'static> {
     let imagens = st.imagens.clone();
     let lados = (x.tile_w, x.tile_h);
+    let forma = x.forma;
     let resumo = tr_with(
         "panel.pixel.tiles.summary",
         &[
@@ -221,6 +251,7 @@ fn cartao_tileset(m: Mao, st: &PixelTilesPanelState, x: &Contexto) -> CardDef<'s
         tr("panel.pixel.tiles.tileset"),
         None,
         move |c, y| {
+            let y = linha_da_forma(c, forma, y);
             let y = grelha(c, &imagens, lados, m.tile, y) + m_gap();
             let mut caixas = vec![
                 (ids::FLIP_X, "panel.pixel.tiles.flip_x", m.flip_x),
@@ -251,8 +282,54 @@ fn m_gap() -> f32 {
     ph2d_editor_core::panel::cards::banda::metrics::FIELD_ROW_GAP
 }
 
+/// O cartão Terrain: os terrenos do tileset, criar um, pintar as formas dele e apagar.
+fn cartao_terreno(m: Mao, x: &Contexto) -> CardDef<'static> {
+    let nomes = x.terrenos.clone();
+    cartao(
+        ids::SEC_TERRAIN,
+        tr("panel.pixel.tiles.terrain"),
+        None,
+        move |c, mut y| {
+            for (i, nome) in nomes.iter().enumerate() {
+                let o = opcoes(
+                    &[(ids::terreno(i), nome.as_str())],
+                    usize::from(i as u32 != m.terreno),
+                );
+                y = c.full(None, Widget::Choice(&o), y);
+            }
+            let botao = |id, chave| {
+                Cell::new(Widget::Button {
+                    id,
+                    text: tr(chave),
+                    primary: false,
+                })
+            };
+            let mut linha = vec![botao(ids::NEW_TERRAIN, "panel.pixel.tiles.new_terrain")];
+            if !nomes.is_empty() {
+                linha.push(botao(
+                    ids::TERRAIN_TEMPLATE,
+                    "panel.pixel.tiles.terrain_template",
+                ));
+            }
+            if !nomes.is_empty() {
+                linha.push(botao(
+                    ids::DELETE_TERRAIN,
+                    "panel.pixel.tiles.delete_terrain",
+                ));
+            }
+            y = c.row(&linha, y);
+            c.hint(tr("panel.pixel.tiles.terrain_help"), y)
+        },
+    )
+}
+
 /// Os cartões do painel, com a camada de tilemap activa.
 pub(crate) fn tileset(st: &PixelTilesPanelState, x: &Contexto) -> Vec<CardDef<'static>> {
     let Some(m) = x.mao else { return Vec::new() };
-    vec![cartao_draw(m), cartao_tileset(m, st, x)]
+    let mut v = vec![cartao_draw(m, x.forma)];
+    if x.forma.tem_terreno() {
+        v.push(cartao_terreno(m, x));
+    }
+    v.push(cartao_tileset(m, st, x));
+    v
 }

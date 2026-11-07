@@ -16,6 +16,7 @@ pub mod palette_file;
 pub mod render;
 pub mod saida;
 pub mod sheet;
+pub mod tiles_saida;
 
 /// O RGBA (alfa reto) do frame `frame`, `width * height * 4` bytes.
 #[must_use]

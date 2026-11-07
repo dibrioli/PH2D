@@ -291,6 +291,7 @@ fn com_tilemap(mode: ColorMode) -> Sprite {
                     TileRef::new(2, false, false, true),
                     TileRef::new(1, true, true, true),
                 ],
+                ..TileGrid::default()
             })),
         )],
         ..TilesSet::default()

@@ -80,6 +80,7 @@ fn parte(s: &Sprite, key: CelKey, bbox: Rect, d: &mut Dedupe) -> TileGrid {
         w: (c1 - c0 + 1) as u32,
         h: (r1 - r0 + 1) as u32,
         tiles,
+        ..TileGrid::default()
     }
 }
 
@@ -115,7 +116,12 @@ pub fn para_tilemap_em(
     if !pode_converter(s, layer) {
         return None;
     }
-    corta(s, layer, s.tileset(set)?.clone(), permitir_flips)
+    let conjunto = s.tileset(set)?.clone();
+    // Cortar uma imagem só tem sentido em caixas que não se sobrepõem.
+    if conjunto.forma != ph2d_pixel_core::Forma::Square {
+        return None;
+    }
+    corta(s, layer, conjunto, permitir_flips)
 }
 
 fn pode_converter(s: &Sprite, layer: LayerId) -> bool {
@@ -165,7 +171,7 @@ fn corta(s: &Sprite, layer: LayerId, mut set: Tileset, permitir_flips: bool) -> 
         .into_iter()
         .map(|(k, c, g)| {
             let data = expand(&g, &set, bpp);
-            let bbox = g.rect(tile_w, tile_h);
+            let bbox = g.caixa(&set);
             let tiles = Some(Box::new(g));
             (
                 k,

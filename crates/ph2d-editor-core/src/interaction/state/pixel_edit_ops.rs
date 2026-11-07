@@ -292,6 +292,7 @@ impl WidgetStore {
             (crate::ids::CTX_MENU_PIXEL_IMPORT_SHEET, A::ImportSheet),
             (crate::ids::CTX_MENU_PIXEL_EXPORT_AS, A::ExportAs),
             (crate::ids::CTX_MENU_PIXEL_EXPORT_SHEET, A::ExportSheet),
+            (crate::ids::CTX_MENU_PIXEL_EXPORT_TILESET, A::ExportTileset),
             (crate::ids::CTX_MENU_PIXEL_REPEAT_EXPORT, A::RepeatExport),
         ]
         .into_iter()

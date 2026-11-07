@@ -63,7 +63,7 @@ pub fn passo_da_mao(
     let k = quadro.checked_sub(INICIO)?;
     let alca = plano.alca?;
     let (pose, m) = forma(world, alvo)?;
-    let mut anda = |p: [f32; 2]| {
+    let anda = |p: [f32; 2]| {
         let s = cam.world_to_screen(p, win);
         *ULTIMO.lock().ok()? = s;
         Some(s)

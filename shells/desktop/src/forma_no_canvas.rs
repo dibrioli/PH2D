@@ -53,12 +53,18 @@ impl crate::App {
         };
         let win = crate::scene_mapping::janela(hero.view.center_split, g.surface.size());
         match passo_da_mao(plano, g.sim.world(), alvo, &g.camera, win) {
-            Some(P::Liga) => hero.bus.push(
-                ph2d_editor_core::action_bus::EditorAction::InspectorPhysicsEdit {
-                    entity_bits: alvo,
-                    edit: ph2d_editor_core::PhysicsFieldEdit::EditShapeOnCanvas,
-                },
-            ),
+            Some(P::Liga) => {
+                // A foto mostra a forma no meio da vista.
+                let e = ph2d_ecs::Entity::from_bits(alvo);
+                let pose = ph2d_shape_handles::Pose::de(g.sim.world(), e);
+                g.camera.center = pose.map_or(g.camera.center, |p| p.t);
+                hero.bus.push(
+                    ph2d_editor_core::action_bus::EditorAction::InspectorPhysicsEdit {
+                        entity_bits: alvo,
+                        edit: ph2d_editor_core::PhysicsFieldEdit::EditShapeOnCanvas,
+                    },
+                );
+            }
             Some(P::Desce(x, y)) => self.smoke_pointer_down(x, y),
             Some(P::Move(x, y)) => self.smoke_pointer_move(x, y),
             Some(P::Sobe) => self.smoke_pointer_up(),

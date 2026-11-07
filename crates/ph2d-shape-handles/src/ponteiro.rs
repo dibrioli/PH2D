@@ -26,6 +26,8 @@ pub struct Arrasto {
 #[derive(Resource, Clone, Copy, Debug, Default, PartialEq)]
 pub struct FormaNoCanvas {
     pub alvo: Option<u64>,
+    /// A identidade durável do alvo: o undo pode devolver o mesmo objecto com outros bits.
+    id: Option<ph2d_ecs::StableId>,
     pub arrasto: Option<Arrasto>,
 }
 
@@ -43,16 +45,30 @@ pub fn ativo(world: &World) -> bool {
 
 /// O botão do cartão: liga neste objecto; carregar de novo desliga.
 pub fn alterna(world: &mut World, bits: u64) {
+    let id = world
+        .get::<ph2d_ecs::StableId>(Entity::from_bits(bits))
+        .copied();
     let mut f = world.get_resource_or_insert_with(FormaNoCanvas::default);
     f.arrasto = None;
     f.alvo = if f.alvo == Some(bits) { None } else { Some(bits) };
+    f.id = id;
 }
 
 /// Uma vez por quadro: trocar de objecto, dar Play ou ficar sem forma encerram. Devolve se continua aceso.
 pub fn quadro(world: &mut World, selecao: Option<u64>, jogando: bool) -> bool {
-    let Some(alvo) = editando(world) else {
+    let Some(mut alvo) = editando(world) else {
         return false;
     };
+    // O mesmo objecto depois de um Ctrl+Z que o refez: a edição continua nele.
+    if let Some(s) = selecao.filter(|s| *s != alvo) {
+        let f = world.get_resource::<FormaNoCanvas>().copied().unwrap_or_default();
+        if f.id.is_some() && world.get::<ph2d_ecs::StableId>(Entity::from_bits(s)).copied() == f.id {
+            alvo = s;
+            if let Some(mut f) = world.get_resource_mut::<FormaNoCanvas>() {
+                f.alvo = Some(s);
+            }
+        }
+    }
     let vivo = selecao == Some(alvo)
         && !jogando
         && world.get::<Collider>(Entity::from_bits(alvo)).is_some();

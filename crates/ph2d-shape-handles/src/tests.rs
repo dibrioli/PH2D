@@ -465,3 +465,20 @@ fn escala_nula_nao_oferece_alcas() {
     c.world.get_mut::<Transform>(c.e).expect("t").scale = Vec2::new(0.0, 1.0);
     assert!(!c.desce((800.0, 500.0)));
 }
+
+/// Ctrl+Z que refaz o objecto com outros bits: a mesma identidade durável, a edição continua; outro objecto encerra.
+#[test]
+fn o_mesmo_objeto_refeito_pelo_undo_continua_em_edicao() {
+    let mut w = World::new();
+    let id = ph2d_ecs::StableId(7);
+    let col = Collider::default();
+    let e = w.spawn((Transform::default(), col, id)).id();
+    alterna(&mut w, e.to_bits());
+    let refeito = w.spawn((Transform::default(), col, id)).id();
+    assert!(quadro(&mut w, Some(refeito.to_bits()), false));
+    assert_eq!(editando(&w), Some(refeito.to_bits()));
+    let outro = w
+        .spawn((Transform::default(), col, ph2d_ecs::StableId(8)))
+        .id();
+    assert!(!quadro(&mut w, Some(outro.to_bits()), false));
+}

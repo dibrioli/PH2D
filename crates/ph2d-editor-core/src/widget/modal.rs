@@ -32,6 +32,8 @@ pub struct Modal {
     /// icon highlights on hover, matching every other interactive
     /// chip in the editor.
     pub close_state: ButtonState,
+    /// `false` = sem os dois botões do rodapé: um editor que grava cada clique fecha só pelo X, Esc ou fora.
+    pub rodape: bool,
 }
 
 impl Modal {
@@ -42,7 +44,27 @@ impl Modal {
             cancel: cancel.on_elevated(),
             confirm: confirm.on_elevated(),
             close_state: ButtonState::Normal,
+            rodape: true,
         }
+    }
+
+    /// Sem rodapé: o corpo desce até ao fundo do cartão.
+    #[must_use]
+    pub fn sem_rodape(mut self) -> Self {
+        self.rodape = false;
+        self
+    }
+
+    /// A altura do rodapé deste modal.
+    #[must_use]
+    pub fn altura_do_rodape(&self) -> f32 {
+        if self.rodape { footer_h() } else { 0.0 }
+    }
+
+    /// A altura do cabeçalho de todo modal.
+    #[must_use]
+    pub fn altura_do_cabecalho() -> f32 {
+        HEADER_H
     }
 
     pub fn close_state(mut self, state: ButtonState) -> Self {
@@ -79,7 +101,7 @@ impl Modal {
             host.x + pad,
             host.y + HEADER_H + pad,
             (host.w - pad * 2.0).max(0.0),
-            (host.h - HEADER_H - footer_h() - pad * 2.0).max(0.0),
+            (host.h - HEADER_H - self.altura_do_rodape() - pad * 2.0).max(0.0),
         )
     }
 
@@ -193,9 +215,11 @@ pub fn paint_modal(
         StrokeToken::Default.px(),
     );
 
-    let (cancel, confirm) = modal.button_rects(dialog_rect);
-    paint_button(&modal.cancel, cancel, scene, text_system, theme);
-    paint_button(&modal.confirm, confirm, scene, text_system, theme);
+    if modal.rodape {
+        let (cancel, confirm) = modal.button_rects(dialog_rect);
+        paint_button(&modal.cancel, cancel, scene, text_system, theme);
+        paint_button(&modal.confirm, confirm, scene, text_system, theme);
+    }
 }
 
 /// Push a clip layer matching `modal.body_rect(host)` so consumer

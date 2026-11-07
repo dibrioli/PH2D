@@ -364,9 +364,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.physics.layer_add_full" => {
             "All 32 layers are in use: 32 is the most the physics engine has."
         }
-        "card.physics.layer_cell" => {
-            "Layer {a} and layer {b}: click or drag to switch their collision"
-        }
+        "card.physics.layer_cell" => "{a} × {b}: click or drag to switch their collision",
+        "card.physics.layer_default" => "Layer {n}",
+        "card.physics.matrix_title" => "Collision Layers",
+        "card.physics.matrix_summary" => "{n} layers shown · {off} pairs that do not collide",
+        "card.physics.layer_label_tip" => "Double-click to rename",
         "card.physics.scale" => "Scale (px/m)",
         "card.physics.bodies" => "Bodies",
         "card.menu.reset_order" => "Reset Positions",

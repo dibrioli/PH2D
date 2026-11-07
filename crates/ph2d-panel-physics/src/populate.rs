@@ -122,15 +122,21 @@ pub fn populate(store: &mut WidgetStore) {
         store.set_tooltip(grip, ph2d_i18n::tr("chrome.section.grip_hint"));
     }
 
-    button(store, crate::ids::PHYSICS_LAYER_ADD);
-    store.register(
-        crate::ids::PHYSICS_LAYER_SCROLL,
-        InteractiveState::Slider {
-            state: SliderState::Normal,
-            value: 0.0,
-            orientation: SliderOrientation::Horizontal,
-        },
-    );
+    // O modal das camadas (onda 8): a porta, o X, o cartão, o fundo e os rótulos que renomeiam.
+    for id in [
+        crate::ids::PHYSICS_MATRIX_OPEN,
+        crate::ids::PHYSICS_MATRIX_CLOSE,
+        crate::ids::PHYSICS_MATRIX_CARD,
+        crate::ids::PHYSICS_MATRIX_SCRIM,
+    ] {
+        button(store, id);
+    }
+    for &id in crate::ids::PHYSICS_LAYER_ROW_LABEL
+        .iter()
+        .chain(&crate::ids::PHYSICS_LAYER_COL_LABEL)
+    {
+        button(store, id);
+    }
     // The matrix cells. Registered in a loop, which is exactly why the seam
     // test clicks every one of them: `architecture_panel_wiring_parity` cannot
     // see loop registrations, so nothing else would notice these going dead.
@@ -147,6 +153,7 @@ pub fn populate(store: &mut WidgetStore) {
                 selection_anchor: None,
             },
         );
+        store.mark_cancel_on_escape(id);
     }
 
     // ⭐⭐ **«Show Colliders» e o «Enabled» do sono são CAIXAS DE MARCAR** (ordem do dono,

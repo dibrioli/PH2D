@@ -20,33 +20,34 @@ use crate::{PhysicsPanel, rows};
 mod body;
 mod interact;
 mod joint;
-mod matrix;
 mod plano;
 
-/// Depois do «Edit matrix…», rola o painel até a linha em destaque ficar no terço de cima.
-fn traz_a_linha_a_vista(ctx: &mut PaintCtx) {
-    if !state::gasta_um_quadro_a_revelar() {
-        return;
-    }
-    let Some(linha) = ph2d_editor_core::panel::cards::linhas_extra::linha_em_destaque() else {
-        return;
-    };
-    let store = ctx.host.store_mut();
-    let (Some(conteudo), Some(visivel)) = (
-        store.panel_content_h(ids::PHYSICS_PANEL),
-        store.panel_visible_h(ids::PHYSICS_PANEL),
-    ) else {
-        return;
-    };
-    let topo = ctx.slot.y + ctx.slot.h - visivel + visivel / 3.0;
-    let alvo = store.panel_scroll(ids::PHYSICS_PANEL) + linha.y - topo;
-    store.set_panel_scroll(
-        ids::PHYSICS_PANEL,
-        alvo.clamp(0.0, (conteudo - visivel).max(0.0)),
+/// Uma frase de texto com o avanço medido (a face clássica do resumo das camadas).
+pub(crate) fn paint_hint_text(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    texto: &str,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    let font = TypeToken::Sm.px();
+    let used = paint_text_block(
+        ctx.text_system,
+        ctx.scene,
+        texto,
+        x,
+        y + (ROW_H_PX - font) * 0.5,
+        font,
+        w,
+        resolve(ColorToken::Text2, theme),
     );
+    y + (ROW_H_PX - font).mul_add(0.5, used).max(ROW_H_PX) + ph2d_tokens::control_gap_px()
 }
 
 pub(crate) fn paint(_state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {
+    // ⭐ O modal das camadas pinta-se com o painel aberto OU fechado: o Inspector também o abre.
+    crate::modal::paint(ctx);
     if !ctx.host.panel_visible(PhysicsPanel::ID) {
         // Symmetric stale-rect cleanup, so `panel_at` stops returning
         // PHYSICS_PANEL the moment the panel is closed.
@@ -75,7 +76,6 @@ pub(crate) fn paint(_state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {
             PhysicsPanel::TITLE.tr(),
             &cartoes,
         );
-        traz_a_linha_a_vista(ctx);
         let store = ctx.host.store();
         set_last_content_h(store.panel_content_h(ids::PHYSICS_PANEL).unwrap_or(0.0));
         set_last_visible_h(store.panel_visible_h(ids::PHYSICS_PANEL).unwrap_or(0.0));

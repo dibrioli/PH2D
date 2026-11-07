@@ -86,7 +86,6 @@ pub(crate) fn apaga_o_destaque() {
 /// Com o painel fechado: sem destaque para o reabrir pelo menu, e sem região da roda.
 pub fn painel_fechado() {
     apaga_o_destaque();
-    ph2d_editor_core::interaction::roda_lateral::limpa(crate::ids::PHYSICS_LAYER_SCROLL);
 }
 
 /// A linha da matriz em destaque.

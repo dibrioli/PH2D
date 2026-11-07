@@ -33,6 +33,7 @@ pub mod rows;
 pub mod state;
 
 mod event;
+pub mod modal;
 
 pub use event::{abre_a_matriz, alterna_par};
 pub use state::{
@@ -69,6 +70,11 @@ impl Panel for PhysicsPanel {
         ph2d_editor_core::screens::slot::SlotSet::SIDES;
     const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =
         ph2d_editor_core::screens::slot::Slot::RightTop;
+
+    /// O modal das camadas pinta-se mesmo com a aba do painel atrás.
+    fn pinta_com_a_aba_atras(_store: &ph2d_editor_core::interaction::WidgetStore) -> bool {
+        modal::aberto()
+    }
 
     fn paint(state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {
         paint::paint(state, ctx);

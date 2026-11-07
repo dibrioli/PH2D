@@ -152,15 +152,20 @@ pub(super) fn layers_section(
     let Some(fold) = fold else {
         return y;
     };
-    let inner = super::matrix::paint(
+    // A matriz inteira mora no modal (onda 8); aqui, o resumo e a porta dele, como nos cartões.
+    let _ = snapshot;
+    let y = super::paint_hint_text(ctx, theme, &crate::modal::resumo(), x, w, y);
+    let y = command(
         ctx,
         theme,
-        // O vivo, como as linhas: com a curva da Cena a matriz anima (F41).
-        ph2d_physics_ecs::LayerMatrix::from_rows(snapshot.vivo.layer_matrix),
+        crate::ids::PHYSICS_MATRIX_OPEN,
+        tr("card.insp.phys.edit_matrix"),
         x,
+        w,
         y,
     );
-    end_fold(ctx, fold, inner + Spacing::Md.px())
+    crate::modal::declara_a_porta();
+    end_fold(ctx, fold, y + Spacing::Md.px())
 }
 
 /// Debug: the collider overlay, the two read-only facts, the recorded-run verbs and Reset.

@@ -8,15 +8,13 @@ use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::panel::TextKey;
 use ph2d_editor_core::panel::cards::corpo::letra_da_grandeza;
-use ph2d_editor_core::panel::cards::linhas_extra::ToggleTriangle;
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, Seg, Widget};
 use ph2d_editor_core::widget::TextInputState;
 use ph2d_editor_core::widget::card_field::{CardFieldSpec, Glyph};
 use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_physics_ecs::{
-    HoldMode, InteractionSettings, InteractionTool, JointTool, LayerMatrix, MAX_LAYERS,
-    PhysicsSettings,
+    HoldMode, InteractionSettings, InteractionTool, JointTool, PhysicsSettings,
 };
 
 use crate::ids as i;
@@ -87,12 +85,6 @@ pub(crate) fn prepare(store: &mut WidgetStore, snap: &PhysicsSnapshot) {
     // a linha de antes) e o que menos se abre, com o Reset lá dentro.
     store.set_collapsed_if_unchosen(i::PHYSICS_SEC_DEBUG, true);
     semeia_os_nomes_das_camadas(store);
-    // A grelha republica a região da roda ao pintar; dobrada ou com tudo a caber, não há região.
-    ph2d_editor_core::interaction::roda_lateral::limpa(i::PHYSICS_LAYER_SCROLL);
-    // As fotos: a matriz rolada até ao fim (a roda e o rato não se conduzem na tela virtual).
-    if std::env::var_os("PH2D_PHYSICS_SMOKE_ROLA").is_some() {
-        store.set_slider_value(i::PHYSICS_LAYER_SCROLL, 1.0);
-    }
     let fabrica = PhysicsSettings::default();
     let arrastado = store.number_input_drag().map(|d| d.id);
     for row in rows::rows() {
@@ -120,21 +112,6 @@ pub(crate) fn prepare(store: &mut WidgetStore, snap: &PhysicsSnapshot) {
         );
         if arrastado != Some(row.chip) {
             store.set_number_value(row.chip, f64::from((row.get)(&snap.interaction)));
-        }
-    }
-    let visiveis = crate::state::visible_layers();
-    for &a in &visiveis {
-        for &b in visiveis.iter().filter(|&&b| b <= a) {
-            let id = i::PHYSICS_LAYER_CELL[i::physics_layer_cell_index(a, b)];
-            if store.tooltip_for(id).is_none() {
-                store.set_tooltip(
-                    id,
-                    tr_with(
-                        "card.physics.layer_cell",
-                        &[("a", &a.to_string()), ("b", &b.to_string())],
-                    ),
-                );
-            }
         }
     }
 }
@@ -348,65 +325,25 @@ fn cartao_das_juntas(it: InteractionSettings) -> CardDef<'static> {
     )
 }
 
-fn cartao_das_camadas(snap: PhysicsSnapshot) -> CardDef<'static> {
+fn cartao_das_camadas(_snap: PhysicsSnapshot) -> CardDef<'static> {
+    // A matriz inteira mora no modal (onda 8): aqui, o resumo e a porta dele.
+    let resumo = crate::modal::resumo();
     cartao(
         i::PHYSICS_SEC_LAYERS,
         "panel.physics.section.layers",
-        None,
+        Some(resumo.clone()),
         move |c, y| {
-            let matriz = LayerMatrix::from_rows(snap.vivo.layer_matrix);
-            let visiveis = crate::state::visible_layers();
-            let nomes = crate::state::layer_names();
-            let rotulo_de = |l: usize| match nomes.0[l].as_str() {
-                "" => l.to_string(),
-                n => format!("{l} {n}"),
-            };
-            let mut y = c.toggle_triangle(
-                &ToggleTriangle {
-                    label: tr("card.physics.layers"),
-                    linhas: &visiveis,
-                    rotulo_de: &rotulo_de,
-                    rola: Some((
-                        i::PHYSICS_LAYER_SCROLL,
-                        ph2d_editor_core::ids::PHYSICS_PANEL,
-                    )),
-                    destaque: crate::state::destaque(),
-                    group: i::PHYSICS_LAYER_PAINT_GROUP,
-                    key: Some(&i::PHYSICS_LAYER_CELL),
-                    id_of: &|a, b| i::PHYSICS_LAYER_CELL[i::physics_layer_cell_index(a, b)],
-                    on_of: &|a, b| matriz.collides(a, b),
+            let y = c.hint(&resumo, y);
+            let y = c.full(
+                None,
+                Widget::Button {
+                    id: i::PHYSICS_MATRIX_OPEN,
+                    text: tr("card.insp.phys.edit_matrix"),
+                    primary: false,
                 },
                 y,
             );
-            // «+ Layer»; nas 32 fica desligado, com o motivo.
-            let cheia = visiveis.len() >= MAX_LAYERS;
-            let texto = tr("card.physics.layer_add");
-            let botao = if cheia {
-                Widget::ButtonOff { text: texto }
-            } else {
-                Widget::Button {
-                    id: i::PHYSICS_LAYER_ADD,
-                    text: texto,
-                    primary: false,
-                }
-            };
-            y = c.full(None, botao, y);
-            if cheia {
-                y = c.hint(tr("card.physics.layer_add_full"), y);
-            }
-            // O nome da cabeça de cada linha; o número continua a ser a identidade.
-            for &n in &visiveis {
-                let rotulo = tr_with("card.physics.layer_name", &[("n", &n.to_string())]);
-                let placeholder = n.to_string();
-                y = c.full(
-                    Some(&rotulo),
-                    Widget::Text {
-                        id: i::PHYSICS_LAYER_NAME[n],
-                        placeholder: &placeholder,
-                    },
-                    y,
-                );
-            }
+            crate::modal::declara_a_porta();
             y
         },
     )

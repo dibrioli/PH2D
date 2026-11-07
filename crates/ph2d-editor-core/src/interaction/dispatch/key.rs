@@ -30,6 +30,19 @@ use ph2d_host::{KeyEvent, KeyKind};
 
 /// Entry point for key events. Tab / Shift+Tab traverse the focus
 /// chain; Enter / Space activate the focused widget; Escape blurs.
+thread_local! {
+    static ESC_FECHA: std::cell::Cell<Option<ph2d_a11y::NodeId>> = const { std::cell::Cell::new(None) };
+}
+
+/// O modal aberto diz o X dele (`Some`) enquanto está aberto, e `None` ao fechar: Esc sem foco clica-o.
+pub fn esc_fecha(id: Option<ph2d_a11y::NodeId>) {
+    ESC_FECHA.set(id);
+}
+
+fn esc_fecha_atual() -> Option<ph2d_a11y::NodeId> {
+    ESC_FECHA.get()
+}
+
 pub fn dispatch_key<'frame>(
     store: &mut WidgetStore,
     event: KeyEvent,
@@ -248,6 +261,12 @@ pub fn dispatch_key<'frame>(
             }
         }
         KEY_ESCAPE if store.cancel_grid_row_drag() => {}
+        // Um modal aberto sem campo em foco: Esc é o clique no X dele (`esc_fecha`).
+        KEY_ESCAPE if store.focus_id().is_none() && esc_fecha_atual().is_some() => {
+            if let Some(id) = esc_fecha_atual() {
+                events.push(WidgetEvent::Click(id));
+            }
+        }
         KEY_ESCAPE if super::card_field::escape_scrub(store, &mut events) => {}
         KEY_ESCAPE if store.end_card_drag(true).is_some() => {}
         KEY_ESCAPE => {

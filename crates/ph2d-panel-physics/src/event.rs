@@ -55,21 +55,82 @@ pub fn alterna_par(a: usize, b: usize) {
 }
 
 /// O valor da barra da grelha que deixa a linha `layer` à vista, com as visíveis `bits`.
-fn barra_para(bits: u32, layer: u8) -> f32 {
-    let antes = (bits & ((1u32 << layer) - 1)).count_ones() as f32;
-    antes / (bits.count_ones() - 1).max(1) as f32
+
+/// «Edit matrix…» do Inspector: o modal das camadas, com a linha da camada do objeto acesa.
+pub fn abre_a_matriz(_host: &mut dyn PanelHostInternal, layer: u8) {
+    crate::modal::abre(Some(usize::from(layer)));
 }
 
-/// «Edit matrix…»: o painel aberto, a secção das camadas aberta e a linha em destaque, à vista.
-pub fn abre_a_matriz(host: &mut dyn PanelHostInternal, layer: u8) {
-    host.set_panel_visible(crate::PhysicsPanel::ID, true);
-    let store = host.store_mut();
-    store.set_collapsed(crate::ids::PHYSICS_SEC_LAYERS, false);
-    store.set_slider_value(
-        crate::ids::PHYSICS_LAYER_SCROLL,
-        barra_para(state::visible_bits(), layer),
-    );
-    state::destaca_a_linha(usize::from(layer));
+/// O nome em edição no modal: grava UM passo (Enter) ou desiste (Esc). Vazio volta a «Layer n».
+fn evento_do_nome(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<bool> {
+    let camada = |id| crate::ids::PHYSICS_LAYER_NAME.iter().position(|&c| c == id);
+    let rotulo = |id| {
+        crate::ids::PHYSICS_LAYER_ROW_LABEL
+            .iter()
+            .chain(&crate::ids::PHYSICS_LAYER_COL_LABEL)
+            .position(|&c| c == id)
+            .map(|p| p % ph2d_physics_ecs::MAX_LAYERS)
+    };
+    match ev {
+        WidgetEvent::DoubleClick(id) if rotulo(id).is_some() => {
+            let n = rotulo(id).expect("guard matched");
+            let campo = crate::ids::PHYSICS_LAYER_NAME[n];
+            let nome = state::layer_names().0[n].clone();
+            let store = host.store_mut();
+            if let Some(ph2d_editor_core::interaction::InteractiveState::TextInput {
+                text, caret, ..
+            }) = store.get_mut(campo)
+            {
+                *caret = nome.len();
+                nome.clone_into(text);
+            }
+            ph2d_editor_core::interaction::dispatch::focus_text_field(store, campo);
+            crate::modal::comeca_a_renomear(n);
+            Some(true)
+        }
+        // Um clique simples no rótulo é do cartão: não fecha, não pinta.
+        WidgetEvent::Click(id) if rotulo(id).is_some() => Some(true),
+        WidgetEvent::Submit(id) if camada(id).is_some() => {
+            let layer = camada(id).expect("guard matched") as u8;
+            let name = host.store().text(id).unwrap_or("").trim().to_string();
+            crate::modal::acaba_de_renomear();
+            if name != state::layer_names().0[usize::from(layer)] {
+                host.bus_mut()
+                    .push(ph2d_editor_core::action_bus::EditorAction::LayerRename { layer, name });
+            }
+            Some(true)
+        }
+        WidgetEvent::Cancel(id) if camada(id).is_some() => {
+            crate::modal::acaba_de_renomear();
+            Some(true)
+        }
+        // O foco saiu sem Enter nem Esc (um clique noutro sítio): desiste, como o Esc.
+        WidgetEvent::Blur(id) if camada(id).is_some() => {
+            crate::modal::acaba_de_renomear();
+            Some(true)
+        }
+        // Escrever não grava: um nome = um passo de undo, no Enter.
+        WidgetEvent::TextChanged(id) if camada(id).is_some() => Some(true),
+        WidgetEvent::Click(id) if id == crate::ids::PHYSICS_MATRIX_OPEN => {
+            seam_reset_button(host, id);
+            crate::modal::abre(None);
+            Some(true)
+        }
+        WidgetEvent::Click(id)
+            if id == crate::ids::PHYSICS_MATRIX_CLOSE || id == crate::ids::PHYSICS_MATRIX_SCRIM =>
+        {
+            seam_reset_button(host, id);
+            if crate::modal::editando().is_none() {
+                crate::modal::fecha();
+            } else {
+                crate::modal::acaba_de_renomear();
+                host.store_mut().set_focus(None);
+            }
+            Some(true)
+        }
+        WidgetEvent::Click(id) if id == crate::ids::PHYSICS_MATRIX_CARD => Some(true),
+        _ => None,
+    }
 }
 
 pub(crate) fn apply_event(
@@ -77,6 +138,9 @@ pub(crate) fn apply_event(
     host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> EventOutcome {
+    if let Some(c) = evento_do_nome(host, ev) {
+        return EventOutcome::from_bool(c);
+    }
     let consumed = match ev {
         // A slider moved: read the track the drag left behind, turn it into
         // this row's value, and emit the WHOLE settings struct with that one
@@ -172,34 +236,6 @@ pub(crate) fn apply_event(
         //    ANTES de emitir este `Click`. ⛔ Dobrar outra vez aqui desfazia o clique — o braço fica
         //    só para CONSUMIR o evento, que senão cairia no `_ => false`.
         WidgetEvent::Click(id) if rows::is_section_header(id) => true,
-        WidgetEvent::TextChanged(id) if crate::ids::PHYSICS_LAYER_NAME.contains(&id) => {
-            let layer = crate::ids::PHYSICS_LAYER_NAME
-                .iter()
-                .position(|&c| c == id)
-                .expect("guard matched") as u8;
-            let name = host.store().text(id).unwrap_or("").to_string();
-            host.bus_mut()
-                .push(ph2d_editor_core::action_bus::EditorAction::LayerRename { layer, name });
-            true
-        }
-        WidgetEvent::Click(id) if id == crate::ids::PHYSICS_LAYER_ADD => {
-            let visiveis = state::visible_bits();
-            if let Some(layer) = ph2d_physics_ecs::LayerNames::next_free(visiveis) {
-                host.bus_mut()
-                    .push(ph2d_editor_core::action_bus::EditorAction::LayerShow { layer });
-                // A coluna nova à vista, e o nome pronto a escrever.
-                let store = host.store_mut();
-                store.set_slider_value(
-                    crate::ids::PHYSICS_LAYER_SCROLL,
-                    barra_para(visiveis | 1 << layer, layer),
-                );
-                ph2d_editor_core::interaction::dispatch::focus_text_field(
-                    store,
-                    crate::ids::PHYSICS_LAYER_NAME[usize::from(layer)],
-                );
-            }
-            true
-        }
         // A matrix cell toggles ONE pair. `LayerMatrix::set` writes both halves,
         // so the asymmetric state the panel could otherwise author does not exist.
         WidgetEvent::Click(id) if crate::ids::PHYSICS_LAYER_CELL.contains(&id) => {

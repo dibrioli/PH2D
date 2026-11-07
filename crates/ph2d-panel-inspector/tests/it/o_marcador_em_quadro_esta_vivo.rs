@@ -70,7 +70,9 @@ fn edicoes(h: &mut MockPanelHost) -> Vec<AnimFieldEdit> {
 /// *Mutação: não pintar `marker_rows` no editor ⇒ vermelho.*
 #[test]
 fn the_rows_show_the_frame_counted_from_one_and_the_signal() {
-    for cartoes in [true, false] {
+    // Em cartões os marcadores moram no editor (`o_marcador_no_cartao_e_o_resumo_que_abre_o_editor`).
+    {
+        let cartoes = false;
         let (h, _st, rects) = palco(cartoes, com_marcas());
         for k in 0..2 {
             assert!(
@@ -103,7 +105,7 @@ fn the_rows_show_the_frame_counted_from_one_and_the_signal() {
 
 #[test]
 fn plus_frame_signal_and_remove_reach_the_bus() {
-    let (mut h, mut st, _) = palco(true, com_marcas());
+    let (mut h, mut st, _) = palco(false, com_marcas());
     let _ = h.drained_actions();
     h.apply_panel_event::<InspectorPanel>(&mut st, WidgetEvent::Click(i::INSP_ANIM_MARKER_ADD));
     h.store_mut()
@@ -135,12 +137,13 @@ fn plus_frame_signal_and_remove_reach_the_bus() {
     fim();
 }
 
-/// Um marcador além do fim continua com a linha, e o quadro que ele guarda continua à vista.
+/// Fora dos cartões, um marcador além do fim continua com a linha e o quadro que ele guarda à vista. Em cartões ele
+/// aparece no editor (`um_marcador_passado_do_fim_mostra_se_no_ultimo_e_tira_se`).
 #[test]
 fn a_marker_past_the_end_keeps_its_row_and_its_number() {
     let mut a = com_marcas();
     a.rows[0].steps = 2;
-    let (h, _st, rects) = palco(true, a);
+    let (h, _st, rects) = palco(false, a);
     assert!(tem(&rects, i::INSP_ANIM_MARKER_FRAME[1]));
     assert_eq!(
         h.store().number_value(i::INSP_ANIM_MARKER_FRAME[1]),

@@ -34,6 +34,8 @@ pub enum Field {
     Cols,
     Rows,
     Name(usize),
+    /// O nome do sinal do marcador do quadro.
+    Signal(usize),
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -99,6 +101,8 @@ pub struct AnimDoc {
     pub strip_scroll: f32,
     /// O que a última pintura desenhou do arrasto.
     pub painted: DragPaint,
+    /// Os quadros com ◆ na última pintura.
+    pub painted_marks: Vec<usize>,
     drag: Drag,
     /// A seleção ainda não leu o snapshot (abre na animação que toca).
     seeded: bool,
@@ -139,7 +143,7 @@ impl AnimDoc {
         self.snap = snap;
     }
 
-    fn row(&self) -> Option<u8> {
+    pub(super) fn row(&self) -> Option<u8> {
         let info = self.snap.info.as_ref()?;
         if self.selected < info.rows.len() {
             u8::try_from(self.selected).ok()
@@ -296,6 +300,34 @@ impl AnimDoc {
             .count()
     }
 
+    /// A tira rola por um tique, se a mão de um arrasto de quadro está na borda dela.
+    pub(super) fn scroll_at_edge(&mut self, strip: Rect, step: f32, margin: f32) {
+        if let Some(d) = self.frame_drag() {
+            let x = d.at.0;
+            if x > strip.x + strip.w - margin {
+                self.strip_scroll += step;
+            } else if x < strip.x + margin {
+                self.strip_scroll -= step;
+            }
+        }
+    }
+
+    /// A faixa rolou por baixo da mão: o intervalo do arrasto é o que ela aponta agora.
+    pub(super) fn drag_points_at(&mut self, frames: &[(Rect, Rect, Rect)]) {
+        if let Drag::Frame {
+            moved: true,
+            gap,
+            at,
+            ..
+        } = &mut self.drag
+        {
+            *gap = frames
+                .iter()
+                .filter(|f| f.0.x + f.0.w / 2.0 <= at.0)
+                .count();
+        }
+    }
+
     /// O arrasto de quadro em curso, se já passou o limiar.
     #[must_use]
     pub fn frame_drag(&self) -> Option<FrameDrag> {
@@ -361,6 +393,7 @@ impl AnimDoc {
                 .ok()
                 .filter(|_| !t.is_empty())
                 .map(|i| AnimFieldEdit::Rename(i, t.to_owned())),
+            Field::Signal(f) => self.signal_edit(f, t),
         };
         self.pending.extend(edit);
     }
@@ -384,6 +417,7 @@ impl AnimDoc {
                 .and_then(|x| x.rows.get(*i))
                 .map(|r| r.name.clone())
                 .unwrap_or_default(),
+            Field::Signal(f) => self.marker_signal(*f),
         };
         self.editing = Some((field, text));
     }
@@ -414,6 +448,14 @@ impl AnimDoc {
             if let Some(g) = self.proposal() {
                 self.pending.push(AnimFieldEdit::Grid(g.cols, g.rows));
             }
+        } else if hit(l.mark_toggle, x, y) {
+            self.toggle_marker();
+        } else if hit(l.mark_signal, x, y)
+            && let Some(f) = self.marked_frame()
+        {
+            self.open_field(Field::Signal(f));
+        } else if hit(l.split, x, y) {
+            self.split_by_rows();
         } else if let Some(i) = l.list_rows.iter().position(|r| hit(*r, x, y)) {
             self.pick_row(i);
         } else if hit(l.add, x, y) {
@@ -430,6 +472,7 @@ impl AnimDoc {
             frames.remove(i);
             self.frame_selected = None;
             self.push_frames(frames);
+            self.markers_follow_delete(i);
         } else if let Some(i) = l.frames.iter().position(|f| hit(f.1, x, y)) {
             self.open_field(Field::FrameMs(i));
         } else if let Some(i) = l.frames.iter().position(|f| hit(f.0, x, y)) {
@@ -503,6 +546,7 @@ impl AnimDoc {
                     if to != from {
                         self.frame_selected = Some(to);
                         self.push_frames(reorder(&self.authored_frames(), from, to));
+                        self.markers_follow_move(from, to);
                     }
                 } else {
                     self.frame_selected = Some(from);
@@ -553,7 +597,7 @@ impl AnimDoc {
         };
         for c in text.chars() {
             let ok = match field {
-                Field::Name(_) => !c.is_control(),
+                Field::Name(_) | Field::Signal(_) => !c.is_control(),
                 Field::Fps | Field::FrameMs(_) => c.is_ascii_digit() || c == '.' || c == ',',
                 _ => c.is_ascii_digit(),
             };
@@ -580,6 +624,7 @@ impl AnimDoc {
         frames.remove(i);
         self.frame_selected = None;
         self.push_frames(frames);
+        self.markers_follow_delete(i);
         true
     }
 }

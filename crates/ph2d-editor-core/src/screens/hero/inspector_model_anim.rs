@@ -372,6 +372,8 @@ pub enum AnimFieldEdit {
     MarkerSignal(u8, u8, String),
     /// Tira o marcador `i` da animação `row`; o último retira o componente.
     MarkerRemove(u8, u8),
+    /// **Split by rows**: as células com desenho de cada fileira ocupada; cada fileira ainda sem animação ganha uma.
+    SplitByRows(Vec<Vec<u32>>),
     /// **`(animação, índice DENTRO do intervalo, ms)`** — a duração de UMA célula (spec §8.12).
     ///
     /// ⚠️ O índice é relativo ao `from` da animação, e não à grelha: é assim que o vetor se

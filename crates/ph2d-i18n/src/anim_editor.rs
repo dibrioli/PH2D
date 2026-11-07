@@ -28,6 +28,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "anim_editor.row_playing" => "\u{25b6} {name}",
         "anim_editor.add" => "+ Add",
         "anim_editor.remove" => "Remove",
+        "anim_editor.split_by_rows" => "Split by rows",
+        "anim_editor.split_nothing" => "Every row with a drawing already has its animation.",
+        "anim_editor.row_name" => "row {n}",
+        "anim_editor.marker_add" => "Add marker",
+        "anim_editor.marker_remove" => "Remove marker",
+        "anim_editor.marker_hint" => "Click a frame to mark it",
         "anim_editor.strip_hint" => {
             "Click cells on the sheet, or drag across them, to add frames in that order."
         }

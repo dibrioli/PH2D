@@ -17,6 +17,11 @@ pub(crate) fn apply_markers_event(
     let edit = match ev {
         WidgetEvent::Click(id) if id == ids::INSP_ANIM_MARKER_ADD => {
             demote(host, id);
+            // Em cartões os marcadores moram no editor: o botão é a porta dele.
+            if crate::cards::active() {
+                push(host, info.entity_bits, AnimFieldEdit::OpenEditor);
+                return true;
+            }
             AnimFieldEdit::MarkerAdd(row)
         }
         WidgetEvent::Click(id) => {

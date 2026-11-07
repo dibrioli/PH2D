@@ -359,6 +359,37 @@ pub fn apply_anim_edit(
                 )));
             }
         }
+        AnimFieldEdit::SplitByRows(rows) => {
+            let grid = world.get::<ph2d_ecs::SpriteGrid>(entity);
+            let hf = grid.map_or(1, |g| g.hframes);
+            let frames = world.get::<ph2d_ecs::SpriteAnimFrames>(entity);
+            match crate::editor::split::add_rows(
+                &mut lib,
+                frames,
+                rows,
+                hf,
+                cells_of(world, entity),
+            ) {
+                Err(e) => {
+                    return Some(Toast::error(tr_with(
+                        "shell.inspector_anim.animation_not_added",
+                        &[("e", &(describe(e)))],
+                    )));
+                }
+                Ok(0) => {
+                    return Some(Toast::warning(ph2d_i18n::tr("anim_editor.split_nothing")));
+                }
+                Ok(_) => {}
+            }
+            // Numa lista que estava vazia, a primeira nova é a que está no ecrã.
+            if let (Some(p), Some(first)) = (world.get::<SpriteAnimator>(entity), lib.iter().next())
+                && lib.get(&p.current).is_none()
+            {
+                let mut p = p.clone();
+                p.current.clone_from(&first.name);
+                queue_set(queue, registry, entity_bits, ANIMATOR, &p);
+            }
+        }
         AnimFieldEdit::Remove(i) => {
             let name = lib.iter().nth(usize::from(*i)).map(|t| t.name.clone())?;
             lib.remove(&name);

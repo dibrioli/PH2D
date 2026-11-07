@@ -5,6 +5,7 @@ use super::doc::{AnimDoc, DragPaint, Field};
 use ph2d_editor_core::paint::{
     fill_rounded_rect, frame_radius, paint_text, paint_text_centered, resolve, stroke_rect,
 };
+use ph2d_editor_core::paint_shapes::fill_diamond;
 use ph2d_editor_core::widget::paint_card_ghost;
 use ph2d_editor_core::widget::sheet_cell::paint_sheet_cell;
 use ph2d_editor_core::zones::Rect;
@@ -266,7 +267,73 @@ pub fn paint_doc(
     }
 
     // ── A faixa de quadros ──
+    paint_mark_bar(doc, &l, scene, text, theme);
     doc.painted = paint_strip(doc, &l, &frames, info.as_ref(), scene, text, theme);
+    doc.painted_marks = (0..l.frames.len())
+        .filter(|i| doc.marker_at(*i).is_some())
+        .collect();
+}
+
+/// A barra do ◆: sem quadro escolhido, a dica; com ele, pôr ou tirar, o nome do sinal e o aviso de marcador mudo.
+fn paint_mark_bar(
+    doc: &AnimDoc,
+    l: &super::doc::Layout,
+    scene: &mut VectorScene,
+    text: &mut TextSystem,
+    theme: Theme,
+) {
+    let font = TypeToken::Sm.px();
+    let Some(frame) = doc.marked_frame() else {
+        paint_text(
+            text,
+            scene,
+            tr("anim_editor.marker_hint"),
+            l.mark_bar.x + Spacing::Sm.px(),
+            l.mark_bar.y,
+            font,
+            l.mark_bar.w,
+            tom(ColorToken::Text3, theme),
+        );
+        return;
+    };
+    let tem = doc.marker_at(frame).is_some();
+    let rotulo = tr(if tem {
+        "anim_editor.marker_remove"
+    } else {
+        "anim_editor.marker_add"
+    });
+    button(scene, text, theme, l.mark_toggle, rotulo, tem);
+    let gravado = doc.marker_signal(frame);
+    let shown = if gravado.is_empty() {
+        tr("card.anim.marker_signal_placeholder")
+    } else {
+        gravado.as_str()
+    };
+    field(
+        scene,
+        text,
+        theme,
+        l.mark_signal,
+        shown,
+        editing(doc, &Field::Signal(frame)),
+    );
+    if let Some(step) = doc.marker_past_end(frame) {
+        let x = l.mark_signal.x + l.mark_signal.w + Spacing::Sm.px();
+        let n = doc.authored_frames().len();
+        paint_text(
+            text,
+            scene,
+            &tr_with(
+                "card.anim.marker_past_end",
+                &[("frame", &(step + 1)), ("n", &n)],
+            ),
+            x,
+            l.mark_bar.y,
+            font,
+            (l.mark_bar.x + l.mark_bar.w - x).max(0.0),
+            tom(ColorToken::Warn, theme),
+        );
+    }
 }
 
 fn paint_list(
@@ -333,6 +400,16 @@ fn paint_list(
         );
     }
     button(scene, text, theme, l.add, tr("anim_editor.add"), false);
+    if l.split.w > 0.0 {
+        button(
+            scene,
+            text,
+            theme,
+            l.split,
+            tr("anim_editor.split_by_rows"),
+            false,
+        );
+    }
     if !rows.is_empty() {
         button(
             scene,
@@ -439,6 +516,21 @@ fn paint_strip(
                 *close,
                 font,
                 tom(ColorToken::Text2, theme),
+            );
+        }
+        if doc.marker_at(i).is_some() {
+            let cor = if doc.marker_past_end(i).is_some() {
+                ColorToken::Warn
+            } else {
+                ColorToken::Accent
+            };
+            let r = font * 0.5; // LITERAL-PX-OK: o ◆ tem a altura da letra
+            fill_diamond(
+                scene,
+                thumb.x + Spacing::Sm.px() + r,
+                thumb.y + thumb.h - Spacing::Sm.px() - r,
+                r,
+                tom(cor, theme),
             );
         }
         let shown = doc.ms_label(i);

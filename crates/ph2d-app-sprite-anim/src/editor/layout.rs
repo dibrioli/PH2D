@@ -19,6 +19,10 @@ const THUMB_OVER_CELL: f32 = 1.25; // LITERAL-PX-OK: razão adimensional
 /// O tecto da miniatura: a fração da altura que ela e a folha repartem. A folha guarda sempre a outra
 /// metade, porque é nela que se escolhem as células.
 const THUMB_MAX_FRAC: f32 = 0.5; // LITERAL-PX-OK: fração de layout
+/// A largura do campo do sinal, como fração do que sobra na barra do marcador; o resto é a nota.
+const MARK_FIELD_FRAC: f32 = 0.5; // LITERAL-PX-OK: fração de layout
+/// O que a tira rola por pintura com a mão na borda, em alturas de linha.
+const EDGE_SCROLL_ROWS: f32 = 0.25; // LITERAL-PX-OK: múltiplo do token de linha
 /// A disposição de um quadro pintado.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Layout {
@@ -34,6 +38,12 @@ pub struct Layout {
     pub list_rows: Vec<Rect>,
     pub add: Rect,
     pub remove: Rect,
+    /// **Split by rows**; vazio sem folha.
+    pub split: Rect,
+    /// A barra do ◆, entre a folha e a faixa, e, com um quadro escolhido, o botão e o campo do sinal.
+    pub mark_bar: Rect,
+    pub mark_toggle: Rect,
+    pub mark_signal: Rect,
     /// A folha encaixada (a imagem inteira), dentro da área do meio.
     pub sheet: Rect,
     pub strip: Rect,
@@ -59,6 +69,10 @@ impl Default for Layout {
             list_rows: Vec::new(),
             add: z,
             remove: z,
+            split: z,
+            mark_bar: z,
+            mark_toggle: z,
+            mark_signal: z,
             sheet: z,
             strip: z,
             frames: Vec::new(),
@@ -206,26 +220,47 @@ impl AnimDoc {
             ph2d_i18n::tr("anim_editor.add"),
             ph2d_i18n::tr("anim_editor.remove"),
         ]);
+        let split_w = fit(&[ph2d_i18n::tr("anim_editor.split_by_rows")]);
+        let mark_w = fit(&[
+            ph2d_i18n::tr("anim_editor.marker_add"),
+            ph2d_i18n::tr("anim_editor.marker_remove"),
+        ]);
         let list_w = (area.w * LIST_FRAC)
             .max(row * FIELD_ROWS)
+            .max(split_w)
             .max(2.0 * button_w + gap); // LITERAL-PX-OK: dois botões
         let mid_x = left + list_w + pad;
         let mid_w = (right - mid_x).max(0.0);
         // A altura que a folha e as miniaturas repartem (o resto da faixa é a linha do tempo).
-        let shared_h = (bottom - y - row - gap).max(0.0);
+        let shared_h = (bottom - y - 2.0 * (row + gap)).max(0.0); // LITERAL-PX-OK: o tempo e o ◆
         let thumb = self.strip_thumb_side(mid_w, shared_h, (row * THUMB_ROWS).max(ms_w));
         let strip_h = thumb + row;
         l.strip = Rect::new(left, bottom - strip_h, right - left, strip_h);
-        let mid_bottom = l.strip.y - gap;
+        l.mark_bar = Rect::new(left, l.strip.y - gap - row, right - left, row);
+        if self.marked_frame().is_some() {
+            let b = l.mark_bar;
+            l.mark_toggle = Rect::new(b.x, b.y, mark_w, row);
+            let field_w = ((b.w - mark_w - gap) * MARK_FIELD_FRAC).max(0.0);
+            l.mark_signal = Rect::new(b.x + mark_w + gap, b.y, field_w, row);
+        }
+        let mid_bottom = l.mark_bar.y - gap;
         l.list = Rect::new(left, y, list_w, (mid_bottom - y).max(0.0));
         let n = self.snap.info.as_ref().map_or(0, |i| i.rows.len());
         l.list_rows = (0..n)
             .map(|i| Rect::new(l.list.x, l.list.y + i as f32 * row, l.list.w, row))
             .collect();
-        let buttons_y = (l.list.y + n as f32 * row + gap).min(mid_bottom - row);
+        let split_h = if self.snap.sheet.is_some() {
+            row + gap
+        } else {
+            0.0
+        };
+        let buttons_y = (l.list.y + n as f32 * row + gap).min(mid_bottom - row - split_h);
         let half = (l.list.w - gap) / 2.0; // LITERAL-PX-OK: dois botões iguais
         l.add = Rect::new(l.list.x, buttons_y, half, row);
         l.remove = Rect::new(l.list.x + half + gap, buttons_y, half, row);
+        if split_h > 0.0 {
+            l.split = Rect::new(l.list.x, buttons_y + split_h, l.list.w, row);
+        }
         let mid = Rect::new(mid_x, y, mid_w, (mid_bottom - y).max(0.0));
         l.sheet = match &self.snap.sheet {
             Some(s) if s.w > 0 && s.h > 0 && mid.w > 0.0 && mid.h > 0.0 => {
@@ -235,6 +270,7 @@ impl AnimDoc {
             }
             _ => mid,
         };
+        self.scroll_at_edge(l.strip, row * EDGE_SCROLL_ROWS, row);
         let max_scroll = (ms.len() as f32 * (thumb + gap) - gap - l.strip.w).max(0.0);
         self.strip_scroll = self.strip_scroll.clamp(0.0, max_scroll);
         l.frames = (0..ms.len())
@@ -248,6 +284,7 @@ impl AnimDoc {
                 )
             })
             .collect();
+        self.drag_points_at(&l.frames);
         l.marker = self.frame_drag().and_then(|d| {
             let centre = match (l.frames.get(d.gap), l.frames.last()) {
                 (Some(f), _) => f.0.x - gap / 2.0,

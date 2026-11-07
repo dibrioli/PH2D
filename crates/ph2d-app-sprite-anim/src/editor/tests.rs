@@ -766,7 +766,8 @@ fn o_cabecalho_da_hierarquia_conta_so_o_jogo_e_nao_cresce_com_os_gestos() {
     let add = centre(m.doc().layout.add);
     m.click(add);
     m.frame();
-    assert_eq!(m.sim.component_count(), 6, "o «+» não junta componentes");
+    // O «+» põe a nova no ecrã, e o 1.º ▶ guarda com qual o jogo começa (ficha 02, `SpriteAnimStart`), uma vez.
+    assert_eq!(m.sim.component_count(), 7, "o «+» só junta o início");
     let mut after_first = None;
     for c in [3u32, 4, 5, 9, 10] {
         let at = m.cell(c);
@@ -782,16 +783,19 @@ fn o_cabecalho_da_hierarquia_conta_so_o_jogo_e_nao_cresce_com_os_gestos() {
     }
     assert_eq!(
         after_first,
-        Some(8),
+        Some(9),
         "a lista de quadros e o cursor, uma vez"
     );
     m.click(add);
     m.frame();
-    assert_eq!(m.sim.component_count(), 8, "o 2.º «+» não junta nada");
+    assert_eq!(m.sim.component_count(), 9, "o 2.º «+» não junta nada");
 }
 
 #[path = "tests_strip.rs"]
 mod strip;
+
+#[path = "tests_marks.rs"]
+mod marks;
 
 /// Em cartões o editor lê os tons da lista; `PH2D_CARDS=0`, os de antes.
 #[test]

@@ -228,6 +228,39 @@ pub(super) fn marker_rows(
     )
 }
 
+/// O resumo do cartão: os marcadores moram no editor (ficha 02, decisão 4), e este botão abre-o.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn marker_summary(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    row: &InspectorAnimRow,
+) -> f32 {
+    let n = row.markers.len();
+    let texto = if n == 0 {
+        tr("card.anim.marker_add_open").to_owned()
+    } else {
+        tr_with("card.anim.markers_open", &[("n", &n)])
+    };
+    super::anim_card::button_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        y,
+        ids::INSP_ANIM_MARKER_ADD,
+        &texto,
+    )
+}
+
 /// Semeia as linhas todo quadro, menos o campo sob o dedo: uma linha removida desloca as de baixo.
 pub(crate) fn sync_marker_fields(
     host: &mut dyn PanelHostInternal,

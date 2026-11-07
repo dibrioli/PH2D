@@ -6,7 +6,9 @@
 
 pub mod doc;
 pub mod layout;
+mod marks;
 pub mod paint;
+pub mod split;
 
 use std::collections::BTreeMap;
 

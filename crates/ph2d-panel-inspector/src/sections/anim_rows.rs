@@ -419,6 +419,19 @@ fn editor(
             .placeholder(tr("panel.inspector.animation.on_loop")),
         sec_texto,
     );
+    if crate::cards::active() {
+        return super::anim_markers::marker_summary(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            row,
+        );
+    }
     super::anim_markers::marker_rows(
         scene,
         text_system,

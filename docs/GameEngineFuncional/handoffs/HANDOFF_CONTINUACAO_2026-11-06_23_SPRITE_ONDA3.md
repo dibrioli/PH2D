@@ -12,7 +12,7 @@ Linha `line/GameEngineFuncional` reaberta em 06/11 de `bbfefaf393` (`git reset -
 - Miniatura fixa em 72 px; o tamanho nunca sobe ao título; escada completa → sem parênteses → sem unidade.
 - O Painter abre Repeated/Region sem repetição (`ImagemAberta`, só vista, `ph2d_sprite_screen::sprite_mostrada`). Decisões do dono: o rectângulo verde fica da largura do objecto; a cópia abre centrada; a Region salta.
 - Linhas `Layers` saem da Hierarchy no Painter e no Pixel (o `Layers (n)` do Flip fica, não foi pedido).
-- Cartão do Pixel Sprite com o botão Pixel: smoke `PH2D_PIXEL_SMOKE=21`.
+- Cartão do Pixel Sprite com o botão Pixel: smoke `PH2D_PIXEL_SMOKE=23`.
 - Memória: `project_two_image_objects_pixel_and_painter_2026_11_06`.
 
 ## ⛔ Recusas

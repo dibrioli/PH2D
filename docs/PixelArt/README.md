@@ -36,3 +36,4 @@ Estado: **P0 + P0b + P1 na `line/PixelArt`** — [ADR-0196](../architecture/deci
 - 20 — P9b, Export e Import, sobre os 16 quadros da cena 8 (`smoke_exporta`).
 - 21 — P10b, uma camada de tilemap já desenhada, com a janela Tilemap aberta (`smoke_tiles`).
 - 22 — P10c, um mapa real pintado com um terreno, com o pincel de terreno na mão (`smoke_tiles`).
+- 23 — GEF 23, o cartão do Pixel Sprite: os degradês 96 × 64 seleccionados, em Object.

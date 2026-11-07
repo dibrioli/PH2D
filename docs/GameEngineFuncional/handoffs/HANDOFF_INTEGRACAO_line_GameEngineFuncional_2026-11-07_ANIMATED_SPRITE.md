@@ -6,7 +6,7 @@ Leitor: o agente integrador. HEAD `59ad2121e3`, **55 commits** sobre a base `bbf
 
 ## 1. O que entra (GEF 24; o mecanismo de cada etapa está na ficha)
 
-**E0** medir o que grava chave · **E1** cartão Animation (verbos no cabeçalho, More e Look dobrados) · **E2** Who Picks Auto · Script · Rules com menu **Starts with**, ▶ só prévia · **E3** editor: **Split by rows**, ◆ marcador, tira que rola · **E4** Add ▸ Animated Sprite vazio + «Try with the sample hero» + aviso de imagem trocada (**Cut again** / **Keep the cut**); Add pede a imagem sozinho · **E5** regra que ganhou acesa no Play, «Who Picks · LIVE» (campo novo `RegrasEmCurso::acesas`, `personagem.rs`; a física não foi tocada) · **E6** cena `PH2D_GAME_SMOKE=5`, censo, fotos, provas reais de Play e Ctrl+Z (a prova achou e curou: com a aba do editor à frente o Ctrl+Z não chegava à fila do projecto, `c283350cfb`). Também no intervalo: `PH2D_PIXEL_SMOKE=21` (cartão do Pixel Sprite).
+**E0** medir o que grava chave · **E1** cartão Animation (verbos no cabeçalho, More e Look dobrados) · **E2** Who Picks Auto · Script · Rules com menu **Starts with**, ▶ só prévia · **E3** editor: **Split by rows**, ◆ marcador, tira que rola · **E4** Add ▸ Animated Sprite vazio + «Try with the sample hero» + aviso de imagem trocada (**Cut again** / **Keep the cut**); Add pede a imagem sozinho · **E5** regra que ganhou acesa no Play, «Who Picks · LIVE» (campo novo `RegrasEmCurso::acesas`, `personagem.rs`; a física não foi tocada) · **E6** cena `PH2D_GAME_SMOKE=5`, censo, fotos, provas reais de Play e Ctrl+Z (a prova achou e curou: com a aba do editor à frente o Ctrl+Z não chegava à fila do projecto, `c283350cfb`). Também no intervalo: `PH2D_PIXEL_SMOKE=23` (cartão do Pixel Sprite).
 
 ## 2. Superfície de colisão (foundational) — por que é aditiva
 
@@ -33,7 +33,7 @@ git diff -U0 bbfefaf393..HEAD -- '*.rs' | grep -cE '^[+-].*PROJECT_SCHEMA'      
 
 **§6 intocado; `PROJECT_SCHEMA` sem degrau.** `.ph2dproj` v191–193 verdes; `o_projeto_antigo_abre_igual` (sem os dois componentes: abre, não os inventa, regrava os mesmos bytes). **Números que SOMAM entre linhas, o integrador reconta:**
 - **Registo de componentes** (`ph2d-ecs`, `registry_tests.rs`): **DELTA +2** (`SpriteAnimStart`, `SpriteCutNotice`; aqui 118→120, o `main` já tem 118 do SFX Lab). Os espelhos `registers_sprite_alongside_ecs` e `registers_luau_script_alongside_ecs` estavam vermelhos (literal 121) e agora **derivam** (`ph2d-ecs` + 1); a varredura não achou outro espelho.
-- **Cenas de smoke:** `PH2D_GAME_SMOKE=5` e `PH2D_PIXEL_SMOKE=21` são novas (outra linha com o mesmo número colide).
+- **Cenas de smoke:** `PH2D_GAME_SMOKE=5` e `PH2D_PIXEL_SMOKE=23` são novas (outra linha com o mesmo número colide).
 - **Catracas** (`crates/ph2d-editor-core/tests/it/architecture_the_shell_only_shrinks.rs`; tectos NÃO subidos). Medido por `cat | wc -l` (o gate reconta, difere por poucas linhas): shell 189 036 (tecto 189 041, folga 5) · `ph2d-app-game` 2 728 (2 728, **folga 0**) · `ph2d-app-sprite-anim` 8 348 (8 352, folga 4) · `ph2d-app-pixel` 11 360 (11 415) · `ph2d-app-components` 80 860 (80 869, folga 9) · `ph2d-app-vec` 93 635 (93 637, folga 2). A folga soma entre linhas; cura = MOVER, nunca subir.
 
 ## 4. Medido e provado

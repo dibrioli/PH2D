@@ -33,7 +33,7 @@ pub const FRAMES: NodeId = hash_node_id("pixel_export.frames");
 pub const DIRECTION: NodeId = hash_node_id("pixel_export.direction");
 pub const SHEET_TYPE: NodeId = hash_node_id("pixel_export.sheet_type");
 pub const LIMIT: NodeId = hash_node_id("pixel_export.limit");
-pub const BOXES: [NodeId; 5] = [LAYERS, FRAMES, DIRECTION, SHEET_TYPE, LIMIT];
+pub const BOXES: [NodeId; 6] = [LAYERS, FRAMES, DIRECTION, SHEET_TYPE, LIMIT, AREA];
 
 // As linhas fixas das listas.
 pub const LAYERS_VISIBLE: NodeId = hash_node_id("pixel_export.layers.visible");
@@ -141,8 +141,13 @@ pub const SPLIT_GRID: NodeId = hash_node_id("pixel_export.split_grid");
 pub const TRIM_BY_GRID: NodeId = hash_node_id("pixel_export.trim_by_grid");
 pub const COLUMNS: NodeId = hash_node_id("pixel_export.columns");
 
-pub const CHECKS: [NodeId; 13] = [
+pub const SPLIT_SLICES: NodeId = hash_node_id("pixel_export.split_slices");
+pub const AREA: NodeId = hash_node_id("pixel_export.area");
+pub const AREA_CANVAS: NodeId = hash_node_id("pixel_export.area.canvas");
+
+pub const CHECKS: [NodeId; 14] = [
     SPLIT_GRID,
+    SPLIT_SLICES,
     TRIM_BY_GRID,
     MERGE,
     IGNORE_EMPTY,
@@ -165,6 +170,12 @@ pub const BY_ROWS: NodeId = hash_node_id("pixel_export.by_rows");
 pub const BY_COLUMNS: NodeId = hash_node_id("pixel_export.by_columns");
 /// O formato do nome de cada quadro no JSON.
 pub const ITEM_NAME: NodeId = hash_node_id("pixel_export.item_name");
+
+/// A linha da slice `i` na lista Area, na ordem por nome.
+#[must_use]
+pub fn area_option(i: usize) -> NodeId {
+    ph2d_tool_registry::hash_node_id_runtime(&format!("pixel_export.area.{i}"))
+}
 
 /// A linha do tileset `i` na janela Export Tileset.
 #[must_use]

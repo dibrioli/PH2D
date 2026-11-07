@@ -40,7 +40,8 @@ fn visiveis(s: &Sprite, frame: u32) -> impl Iterator<Item = (&Slice, SliceShape)
 
 /// A slice cujo INTERIOR tem a célula `at`, a de cima primeiro. Uma slice que passa do canvas só se
 /// vê dentro dele, mas a caixa é a dela (F3).
-fn interior(s: &Sprite, frame: u32, at: (i32, i32)) -> Option<SliceId> {
+#[must_use]
+pub fn interior(s: &Sprite, frame: u32, at: (i32, i32)) -> Option<SliceId> {
     visiveis(s, frame)
         .find(|(_, k)| k.bounds.contains(at.0, at.1))
         .map(|(c, _)| c.id)

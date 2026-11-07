@@ -29,6 +29,7 @@ mod preview;
 mod quadros;
 mod selecao;
 mod slices;
+mod slices_janela;
 mod sobreviventes;
 mod texto;
 mod texto_fontes;

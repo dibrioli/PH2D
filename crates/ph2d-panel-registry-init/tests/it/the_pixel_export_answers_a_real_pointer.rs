@@ -315,3 +315,74 @@ fn o_export_tileset_e_as_caixas_da_grelha_respondem() {
     assenta(&mut hero, &mut ts);
     assert!(hero.hit_index.rect_for(e::SPLIT_GRID).is_none());
 }
+
+/// `Split slices` e `Area` só com slices; `Area` lista o canvas e as slices com gémeas, e a escolha
+/// chega ao pedido. A slice que some volta a área ao canvas.
+#[test]
+fn split_slices_e_area_so_com_slices_e_chegam_ao_pedido() {
+    use ph2d_pixel_core::SliceId;
+    use ph2d_pixel_io::exporta::Export;
+    use ph2d_pixel_io::render::Area;
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let mut hero = HeroScreen::new(NodeId(1));
+    pinta(&mut hero, &mut ts);
+    let contexto = |slices: Vec<(SliceId, String)>| canal::Contexto {
+        lados: (16, 8),
+        quadros: 3,
+        slices,
+        ..canal::Contexto::default()
+    };
+    canal::publish_contexto(contexto(Vec::new()));
+    canal::abrir(Tela::ExportAs);
+    hero.panel_visibility.insert(PANEL_PIXEL_EXPORT, true);
+    assenta(&mut hero, &mut ts);
+    assert!(
+        hero.hit_index.rect_for(e::AREA).is_none(),
+        "sem slices, sem Area"
+    );
+    canal::abrir(Tela::Folha);
+    assenta(&mut hero, &mut ts);
+    assert!(hero.hit_index.rect_for(e::SPLIT_SLICES).is_none());
+
+    let gemeas = vec![
+        (SliceId(5), "a".to_owned()),
+        (SliceId(7), "a".to_owned()),
+        (SliceId(6), "b".to_owned()),
+    ];
+    canal::publish_contexto(contexto(gemeas));
+    assenta(&mut hero, &mut ts);
+    clica(&mut hero, e::SPLIT_SLICES, "Split slices");
+    assenta(&mut hero, &mut ts);
+    clica(&mut hero, e::OK, "Export da folha");
+    match canal::take_pedido() {
+        Some(Pedido::Exportar(Export::Folha(x))) => assert!(x.opcoes.split_slices),
+        o => panic!("{o:?}"),
+    }
+
+    canal::abrir(Tela::ExportAs);
+    assenta(&mut hero, &mut ts);
+    clica(&mut hero, e::AREA, "a caixa Area");
+    assenta(&mut hero, &mut ts);
+    clica(&mut hero, e::area_option(1), "a segunda gémea");
+    assenta(&mut hero, &mut ts);
+    clica(&mut hero, e::OK, "Export");
+    match canal::take_pedido() {
+        Some(Pedido::Exportar(Export::Ficheiro(x))) => {
+            assert_eq!(x.pedido.area, Area::Slice(SliceId(7)));
+        }
+        o => panic!("{o:?}"),
+    }
+
+    canal::abrir(Tela::ExportAs);
+    canal::publish_contexto(contexto(vec![(SliceId(5), "a".to_owned())]));
+    assenta(&mut hero, &mut ts);
+    // Outro controlo no meio: dois cliques seguidos no mesmo botão seriam um duplo clique.
+    clica(&mut hero, e::FORMATS[0], "PNG");
+    assenta(&mut hero, &mut ts);
+    clica(&mut hero, e::OK, "Export");
+    match canal::take_pedido() {
+        Some(Pedido::Exportar(Export::Ficheiro(x))) => assert_eq!(x.pedido.area, Area::Canvas),
+        o => panic!("{o:?}"),
+    }
+}

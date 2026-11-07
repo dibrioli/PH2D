@@ -10,31 +10,12 @@ use ph2d_pixel_core::{Background, ColorMode, NewSprite, Op, Patch, Rect};
 
 use crate::{PixelApp, Tool};
 
-/// O tamanho da cena 18.
-pub const SIZE: (u32, u32) = (96, 64);
-/// Onde o desenho está (o canto de cima à esquerda).
-pub const AT: (i32, i32) = (6, 6);
-/// O desenho: 6 × 4, uma cor por coluna.
-pub const DRAWING: [[Option<[u8; 4]>; 6]; 4] = {
-    const R: Option<[u8; 4]> = Some([230, 40, 40, 255]);
-    const O: Option<[u8; 4]> = Some([245, 150, 30, 255]);
-    const Y: Option<[u8; 4]> = Some([240, 220, 40, 255]);
-    const G: Option<[u8; 4]> = Some([40, 170, 70, 255]);
-    const B: Option<[u8; 4]> = Some([40, 90, 220, 255]);
-    const P: Option<[u8; 4]> = Some([150, 50, 190, 255]);
-    [
-        [R, O, Y, G, B, P],
-        [R, O, Y, G, B, P],
-        [R, O, Y, G, B, P],
-        [R, O, Y, G, B, P],
-    ]
-};
+pub use ph2d_pixel_cenas::pincel::*;
+
 /// As pegas da velocidade da cena, em ‰: as de fábrica (100/890 = 5,6 e 57,7 px de ecrã por evento)
 /// pedem um rato muito rápido; com 0/300 (−1 e 18,8 px por evento) um gesto normal já mostra o fino
 /// e o grosso — e a barra fica a ensinar-se a si mesma.
 pub const VELOCITY: PixelThreshold = PixelThreshold { lo: 0, hi: 300 };
-/// O Size da barra (o máximo da dinâmica).
-pub const BRUSH_SIZE: u32 = 16;
 
 pub(crate) fn stage(
     app: &mut PixelApp,

@@ -7,7 +7,9 @@
 #![forbid(unsafe_code)]
 
 pub mod alcas;
+pub mod campos;
 pub mod gesto;
+pub mod transforma;
 
 pub use alcas::{Grab, Lados, aplica, hit};
-pub use gesto::{Gesto, Marca, marcas, no_quadro};
+pub use gesto::{Gesto, Marca, interior, marcas, no_quadro};

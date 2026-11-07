@@ -78,6 +78,7 @@ pub(crate) fn paint(st: &mut PixelExportPanelState, ctx: &mut PaintCtx) {
         Tela::Tileset => cards_tileset::numeros(st.tiles),
     };
     prepara_numeros(store, &numeros);
+    st.as_.acerta_area(&x);
     canal::pede_folha((st.tela == Tela::Folha).then(|| st.fo.folha.clone()));
     canal::pede_tiles(if st.tela == Tela::Tileset {
         st.tiles.pedido(&x)

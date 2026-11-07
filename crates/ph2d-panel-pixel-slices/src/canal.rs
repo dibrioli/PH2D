@@ -1,0 +1,110 @@
+//! O canal entre a família e o painel: o que ela sabe, o que ele pede.
+
+use std::cell::RefCell;
+
+use ph2d_pixel_core::SliceId;
+pub use ph2d_pixel_slices::campos::{Campo, Vista};
+
+/// Uma linha da lista, já na ordem por nome (T1).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Linha {
+    pub id: SliceId,
+    pub nome: String,
+    pub selecionada: bool,
+}
+
+/// O que o painel mostra.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Contexto {
+    /// A Slice Tool está na mão, com um sprite em edição.
+    pub na_mao: bool,
+    pub linhas: Vec<Linha>,
+    /// `None`: nada selecionado.
+    pub vista: Option<Vista>,
+    pub transform: bool,
+}
+
+/// O menu do botão direito: onde abre, em píxeis da interface, e se há mudança para remover aqui.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Menu {
+    pub x: f32,
+    pub y: f32,
+    pub remover: bool,
+}
+
+/// Um gesto do painel.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Pedido {
+    Seleciona(SliceId),
+    Todas,
+    Nenhuma,
+    Transform,
+    Nome(String),
+    Dados(String),
+    /// O seletor de cor está nesta cor: reescreve o mesmo passo do desfazer enquanto estiver aberto.
+    Cor([u8; 4]),
+    /// O seletor fechou: a próxima cor é outro passo.
+    CorFechou,
+    /// O texto como foi escrito: a lei G6 é que diz o número.
+    Campo(Campo, String),
+    Nove(bool),
+    Pivot(bool),
+    Apaga,
+    Duplica,
+    RemoveMudanca,
+}
+
+#[derive(Default)]
+struct Canal {
+    contexto: Contexto,
+    menu: Option<Menu>,
+    mostrar: bool,
+    pedidos: Vec<Pedido>,
+}
+
+thread_local! {
+    static CANAL: RefCell<Canal> = RefCell::new(Canal::default());
+}
+
+fn com<R>(f: impl FnOnce(&mut Canal) -> R) -> R {
+    CANAL.with(|c| f(&mut c.borrow_mut()))
+}
+
+pub fn publish_contexto(x: Contexto) {
+    com(|c| c.contexto = x);
+}
+
+#[must_use]
+pub fn contexto() -> Contexto {
+    com(|c| c.contexto.clone())
+}
+
+/// A família pede o menu do botão direito.
+pub fn abrir_menu(m: Menu) {
+    com(|c| c.menu = Some(m));
+}
+
+#[must_use]
+pub fn take_menu() -> Option<Menu> {
+    com(|c| c.menu.take())
+}
+
+/// `Slice Properties...` e o duplo clique: o cartão à vista, aberto.
+pub fn mostrar_propriedades() {
+    com(|c| c.mostrar = true);
+}
+
+#[must_use]
+pub fn take_mostrar() -> bool {
+    com(|c| std::mem::take(&mut c.mostrar))
+}
+
+pub fn pede(p: Pedido) {
+    com(|c| c.pedidos.push(p));
+}
+
+/// Toma (e limpa) os gestos deste quadro.
+#[must_use]
+pub fn take_pedidos() -> Vec<Pedido> {
+    com(|c| std::mem::take(&mut c.pedidos))
+}

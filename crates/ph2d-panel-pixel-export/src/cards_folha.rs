@@ -161,6 +161,7 @@ pub(crate) fn cards(
     let tem_limite = f.limite != Limite::Nenhum;
     let tem_lista_de_limite = limites.len() > 1;
     let tem_tiles = !x.tilesets.is_empty();
+    let tem_slices = !x.slices.is_empty();
     let (json_ligado, json) = (o.json_ligado, o.json);
     vec![
         cartao_da_previa(img),
@@ -237,6 +238,13 @@ pub(crate) fn cards(
                         ids::SPLIT_GRID,
                         "panel.pixel.export.split_grid",
                         f.split_grid,
+                    ));
+                }
+                if tem_slices {
+                    caixas.push((
+                        ids::SPLIT_SLICES,
+                        "panel.pixel.export.split_slices",
+                        f.split_slices,
                     ));
                 }
                 caixas_aos_pares(c, &caixas, y)

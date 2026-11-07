@@ -6163,6 +6163,7 @@ dependencies = [
  "ph2d-i18n",
  "ph2d-panel-pixel-export",
  "ph2d-panel-pixel-preview",
+ "ph2d-panel-pixel-slices",
  "ph2d-panel-pixel-tiles",
  "ph2d-panel-pixel-timeline",
  "ph2d-pixel-cenas",
@@ -7681,6 +7682,7 @@ dependencies = [
  "ph2d-imageio-png",
  "ph2d-panel-pixel-export",
  "ph2d-panel-pixel-preview",
+ "ph2d-panel-pixel-slices",
  "ph2d-panel-pixel-tiles",
  "ph2d-pen",
  "ph2d-pixel-core",
@@ -10144,6 +10146,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-panel-pixel-slices"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-i18n",
+ "ph2d-pixel-core",
+ "ph2d-pixel-slices",
+ "ph2d-tokens",
+ "ph2d-tool-registry",
+ "ph2d-ui-testkit",
+]
+
+[[package]]
 name = "ph2d-panel-pixel-tiles"
 version = "0.0.0"
 dependencies = [
@@ -10237,6 +10253,7 @@ dependencies = [
  "ph2d-panel-physics",
  "ph2d-panel-pixel-export",
  "ph2d-panel-pixel-preview",
+ "ph2d-panel-pixel-slices",
  "ph2d-panel-pixel-tiles",
  "ph2d-panel-pixel-timeline",
  "ph2d-panel-pixel-tools",

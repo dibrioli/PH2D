@@ -3,13 +3,20 @@
 //! mudar de quadro (T5), não vai ao documento nem ao desfazer.
 
 use std::collections::BTreeMap;
+use std::time::Instant;
 
+use ph2d_editor_core::interaction::DOUBLE_CLICK_WINDOW_NS;
 use ph2d_editor_core::readout::{CHIP_H_PX, chip_width, paint_chip};
+use ph2d_editor_core::screens::hero::{HeroScreen, PANEL_PIXEL_SLICES};
 use ph2d_editor_core::zones::Rect as Zona;
+use ph2d_panel_pixel_slices::canal::{self, Contexto, Pedido};
+use ph2d_panel_pixel_slices::familia;
 use ph2d_pixel_core::slice::delete;
 use ph2d_pixel_core::{SliceId, Sprite};
 use ph2d_pixel_render::{SliceMark, draw_marching_ants, draw_slice, px_per_cell, rect_edges};
-use ph2d_pixel_slices::{Gesto, Marca, no_quadro};
+use ph2d_pixel_slices::campos::quadros_com_key;
+use ph2d_pixel_slices::transforma::{caixas_que_mudam, com_pixels};
+use ph2d_pixel_slices::{Gesto, Marca, interior, no_quadro};
 use ph2d_tokens::Theme;
 use ph2d_vector::{Affine, Point, VectorScene};
 use winit::keyboard::KeyCode;
@@ -27,6 +34,14 @@ const GRAB_MIN_CELLS: f64 = 0.5;
 pub(crate) struct Estado {
     sel: BTreeMap<u32, Vec<SliceId>>,
     gesto: Option<(u32, Gesto)>,
+    transform: bool,
+    /// O último clique: o segundo, depressa e na mesma célula, mostra o cartão (T2).
+    clique: Option<(Instant, (i32, i32))>,
+    /// O botão direito premido: a célula e o ponto; o quadro abre o menu.
+    menu: Option<((i32, i32), (f32, f32))>,
+    visto: Option<bool>,
+    /// O documento e o desfazer depois da última cor: o seletor aberto reescreve o mesmo passo.
+    cor: Option<(u32, usize)>,
 }
 
 impl Estado {
@@ -43,7 +58,7 @@ impl PixelApp {
     }
 }
 
-/// Premir com a ferramenta na mão. O botão direito é do menu da slice (por vir), nunca do gesto.
+/// Premir com a ferramenta na mão. O botão direito é do menu da slice, nunca do gesto.
 pub(crate) fn press(
     app: &mut PixelApp,
     c: &Canvas<'_>,
@@ -53,9 +68,6 @@ pub(crate) fn press(
     button: Button,
     m: Mods,
 ) -> Press {
-    if button != Button::Primary {
-        return Press::Done;
-    }
     let Some(doc) = app.docs.get(&key) else {
         return Press::NotMine;
     };
@@ -65,6 +77,19 @@ pub(crate) fn press(
     let q = image_point(screen, p);
     let tol = (GRAB_PX / px_per_cell(screen)).max(GRAB_MIN_CELLS);
     let frame = no_quadro(&doc.sprite, doc.frame);
+    let cel = (q.x.floor() as i32, q.y.floor() as i32);
+    if button != Button::Primary {
+        app.slices.menu = Some((cel, p));
+        return Press::Done;
+    }
+    let agora = Instant::now();
+    let antes = app.slices.clique.replace((agora, cel));
+    if antes.is_some_and(|(t, at)| {
+        at == cel && agora.duration_since(t).as_nanos() < DOUBLE_CLICK_WINDOW_NS
+    }) && interior(&doc.sprite, frame, cel).is_some()
+    {
+        canal::mostrar_propriedades();
+    }
     let sel = app.slices.sel.entry(key).or_default();
     let g = Gesto::press(&doc.sprite, frame, sel, (q.x, q.y), tol, m.shift);
     app.slices.gesto = Some((key, g));
@@ -88,7 +113,7 @@ pub(crate) fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32)) -> bool {
     true
 }
 
-/// Largar: o gesto inteiro vira UM passo, se o documento muda.
+/// Largar: o gesto inteiro vira UM passo, se o documento muda; com `Transform`, os píxeis vão no mesmo.
 pub(crate) fn release(app: &mut PixelApp) -> bool {
     let Some((key, g)) = app.slices.gesto.take() else {
         return false;
@@ -97,11 +122,94 @@ pub(crate) fn release(app: &mut PixelApp) -> bool {
         return true;
     };
     let frame = no_quadro(&doc.sprite, doc.frame);
+    let caixas = if app.slices.transform {
+        caixas_que_mudam(&doc.sprite, frame, &g.previa())
+    } else {
+        Vec::new()
+    };
+    if let Some(motivo) = crate::camadas::recusa_pintar(doc).filter(|_| !caixas.is_empty()) {
+        app.recusa(motivo);
+        return true;
+    }
+    let fundo = doc.sprite.value_of_rgba(app.bg);
     let sel = app.slices.sel.entry(key).or_default();
     if let Some(op) = g.release(&mut doc.sprite, frame, sel) {
+        let cel = (doc.layer, doc.frame);
+        let op = if caixas.is_empty() {
+            op
+        } else {
+            com_pixels(&doc.sprite, op, cel, &caixas, fundo)
+        };
         let _ = app.commit(key, op);
     }
     true
+}
+
+fn pedido(app: &mut PixelApp, key: u32, p: &Pedido) {
+    if *p == Pedido::CorFechou {
+        app.slices.cor = None;
+        return;
+    }
+    let cor = matches!(p, Pedido::Cor(_));
+    if cor && app.slices.cor == app.docs.get(&key).map(|d| (key, d.history.undo_len())) {
+        app.undo(key);
+    }
+    let Some(d) = app.docs.get_mut(&key) else {
+        return;
+    };
+    let frame = no_quadro(&d.sprite, d.frame);
+    let sel = app.slices.sel.get(&key).cloned().unwrap_or_default();
+    let t = &mut app.slices.transform;
+    let r = familia::responde(p, &mut d.sprite, frame, &sel, t);
+    let feito = r.op.is_some_and(|op| app.commit(key, op).is_ok());
+    if let Some(nova) = r.sel {
+        app.slices.sel.insert(key, nova);
+    }
+    if cor && feito {
+        app.slices.cor = app.docs.get(&key).map(|d| (key, d.history.undo_len()));
+    }
+}
+
+/// O quadro: os pedidos do painel, o que ele mostra, o menu, e quando abre (a ferramenta na mão).
+pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
+    for p in canal::take_pedidos() {
+        if let Some(key) = app.chave {
+            app.assenta();
+            crate::viva::assenta(app);
+            pedido(app, key, &p);
+        }
+    }
+    let menu = app.slices.menu.take();
+    let mut x = Contexto::default();
+    if let Some((k, d)) = app.chave.and_then(|k| Some((k, app.docs.get(&k)?))) {
+        if app.tool == Tool::Slice {
+            let (f, sel) = (no_quadro(&d.sprite, d.frame), app.slices_selected(k));
+            x = familia::contexto(&d.sprite, f, sel, app.slices.transform);
+            if let Some(m) = menu.and_then(|(cel, p)| {
+                familia::menu_em(&d.sprite, f, sel, cel, hero.escala().to_logical(p))
+            }) {
+                canal::abrir_menu(m);
+            }
+        }
+    }
+    let tem = x.na_mao;
+    canal::publish_contexto(x);
+    if app.slices.visto != Some(tem) {
+        hero.panel_visibility.insert(PANEL_PIXEL_SLICES, tem);
+        app.slices.visto = Some(tem);
+    }
+}
+
+/// Os quadros com key das selecionadas, para a linha do tempo (§9.2): só com a ferramenta na mão.
+pub(crate) fn marcas_de_quadro(app: &PixelApp, key: u32) -> Vec<u32> {
+    let sel = if app.tool == Tool::Slice {
+        app.slices_selected(key)
+    } else {
+        &[]
+    };
+    app.docs
+        .get(&key)
+        .map_or_else(Vec::new, |d| quadros_com_key(&d.sprite, sel))
 }
 
 /// `Esc` a meio: o gesto cai sem passo nenhum.

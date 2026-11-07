@@ -14,6 +14,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "panel.pixel.export.columns" => "Tiles per row",
         "panel.pixel.export.split_grid" => "Split grid",
+        "panel.pixel.export.split_slices" => "Split slices",
+        "panel.pixel.export.area" => "Area",
+        "panel.pixel.export.area_canvas" => "Canvas",
         "panel.pixel.export.trim_by_grid" => "Trim by grid",
         "panel.pixel.export.title_import" => "Import Sprite Sheet",
         "panel.pixel.export.title_import_as" => "Import",

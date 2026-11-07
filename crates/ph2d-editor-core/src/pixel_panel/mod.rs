@@ -407,6 +407,8 @@ pub struct PixelPanelInfo {
     pub active_layer: Option<u32>,
     /// A camada activa é de tilemap (o menu Layer troca o Convert To).
     pub active_tilemap: bool,
+    /// P11: os índices dos quadros onde as slices selecionadas têm key, em ordem (a marca no cabeçalho).
+    pub slice_keys: Vec<u32>,
     /// Há uma imagem copiada (o *Paste as New Layer* acende).
     pub has_clip: bool,
     /// Há selecção (o *Copy* e o *Layer via Copy/Cut* acendem).

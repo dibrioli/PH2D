@@ -76,6 +76,14 @@ impl Sprite {
     pub fn slice(&self, id: SliceId) -> Option<&Slice> {
         self.slices.iter().find(|s| s.id == id)
     }
+
+    /// As slices por nome, sem distinguir maiúsculas; as gémeas ficam todas, pela ordem de criação (T1, F4).
+    #[must_use]
+    pub fn slices_by_name(&self) -> Vec<&Slice> {
+        let mut v: Vec<&Slice> = self.slices.iter().collect();
+        v.sort_by_cached_key(|c| (c.name.to_lowercase(), c.id));
+        v
+    }
 }
 
 /// As leis de uma lista de slices: ids únicos e já emitidos, keys em ordem estrita.

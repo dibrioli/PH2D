@@ -127,6 +127,7 @@ pub fn frame(
     }
     crate::exportar::frame(app, hero);
     crate::tiles::frame(app, hero);
+    crate::slices::frame(app, hero);
     if let Some(c) = hero.store.take_pixel_edit_request() {
         app.aplica_dialogo(c);
     }
@@ -255,6 +256,9 @@ pub fn frame(
         remap_pending: app.remap.as_ref().is_some_and(|r| Some(r.0) == app.chave),
         layers,
         active_layer,
+        slice_keys: app
+            .chave
+            .map_or_else(Vec::new, |k| crate::slices::marcas_de_quadro(app, k)),
         active_tilemap: doc.is_some_and(|d| {
             d.sprite
                 .layer(d.layer)

@@ -42,6 +42,13 @@ impl PixelTimelinePanelState {
         MARCAS.with(std::cell::Cell::get)
     }
 
+    /// Quantas marcas de key de slice foram PINTADAS nesta thread (para os gates).
+    #[doc(hidden)]
+    #[must_use]
+    pub fn marcas_de_slice_pintadas(&self) -> u32 {
+        MARCAS_DE_SLICE.with(std::cell::Cell::get)
+    }
+
     /// A primeira coluna à vista (para os gates).
     #[doc(hidden)]
     #[must_use]
@@ -52,6 +59,7 @@ impl PixelTimelinePanelState {
 
 thread_local! {
     static MARCAS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    static MARCAS_DE_SLICE: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
     static CURRENT: std::cell::RefCell<PixelPanelInfo> =
         std::cell::RefCell::new(PixelPanelInfo::default());
 }
@@ -69,6 +77,10 @@ pub fn current_pixel() -> PixelPanelInfo {
 
 pub(crate) fn conta_marca() {
     MARCAS.with(|c| c.set(c.get() + 1));
+}
+
+pub(crate) fn conta_marca_de_slice() {
+    MARCAS_DE_SLICE.with(|c| c.set(c.get() + 1));
 }
 
 pub(crate) fn with_current<R>(f: impl FnOnce(&PixelPanelInfo) -> R) -> R {

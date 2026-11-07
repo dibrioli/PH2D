@@ -4,10 +4,16 @@
 
 #![forbid(unsafe_code)]
 
+pub mod ajustes;
 pub mod camadas;
+pub mod catalogo;
 pub mod efeitos;
 pub mod formas;
+pub mod gradiente;
 pub mod intervalo;
+pub mod pincel;
 pub mod pontas;
 pub mod quadros;
 pub mod selecao;
+pub mod tocar;
+pub mod viva;

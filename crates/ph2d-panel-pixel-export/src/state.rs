@@ -1,7 +1,7 @@
 //! As opções de cada janela: ficam de uma abertura para a outra, como no Aseprite.
 
 use ph2d_pixel_io::abrir::Grelha;
-use ph2d_pixel_io::render::{Camadas, Direcao, Pedido, Quadros};
+use ph2d_pixel_io::render::{Area, Camadas, Direcao, Pedido, Quadros};
 use ph2d_pixel_io::saida::Formato;
 use ph2d_pixel_io::sheet::{Limite, OpcoesFolha, OpcoesJson};
 
@@ -21,6 +21,7 @@ pub(crate) struct OpcoesAs {
     pub escala: u32,
     /// 0 = para sempre.
     pub lacos: u16,
+    pub area: Area,
 }
 
 impl Default for OpcoesAs {
@@ -32,6 +33,7 @@ impl Default for OpcoesAs {
             direcao: Direcao::Forward,
             escala: PCT,
             lacos: 0,
+            area: Area::Canvas,
         }
     }
 }
@@ -39,13 +41,22 @@ impl Default for OpcoesAs {
 const PCT: u32 = 100;
 
 impl OpcoesAs {
+    /// A slice escolhida saiu do sprite: a área volta ao canvas, em vez de falhar ao gravar.
+    pub(crate) fn acerta_area(&mut self, x: &Contexto) {
+        if let Area::Slice(id) = self.area
+            && !x.slices.iter().any(|(s, _)| *s == id)
+        {
+            self.area = Area::Canvas;
+        }
+    }
+
     pub(crate) fn pedido(&self) -> Pedido {
         Pedido {
             camadas: self.camadas,
             quadros: self.quadros,
             direcao: self.direcao,
             escala: f64::from(self.escala) / f64::from(PCT),
-            area: Default::default(),
+            area: self.area,
         }
     }
 }

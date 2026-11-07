@@ -49,6 +49,7 @@ ph2d-panel-pixel-preview = { path = "../ph2d-panel-pixel-preview" }
 ph2d-panel-pixel-export = { path = "../ph2d-panel-pixel-export" }
 # A tela dos tilemaps (P10b): o painel e as leis de desenhar.
 ph2d-panel-pixel-tiles = { path = "../ph2d-panel-pixel-tiles" }
+ph2d-panel-pixel-slices = { path = "../ph2d-panel-pixel-slices" }
 ph2d-pixel-tiles = { path = "../ph2d-pixel-tiles" }
 # Os números e a arte das cenas de smoke; a ferramenta Slice (P11b).
 ph2d-pixel-cenas = { path = "../ph2d-pixel-cenas" }

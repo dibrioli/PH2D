@@ -10,6 +10,7 @@ const TABLES: &[&str] = &[
     "crates/ph2d-i18n/src/pixel_dialogos.rs",
     "crates/ph2d-i18n/src/pixel_export.rs",
     "crates/ph2d-i18n/src/pixel_tiles.rs",
+    "crates/ph2d-i18n/src/pixel_slices.rs",
 ];
 
 /// ⭐ As excepções, **com o mecanismo** — nunca uma lista aberta.

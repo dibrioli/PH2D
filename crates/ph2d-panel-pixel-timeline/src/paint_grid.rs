@@ -205,6 +205,9 @@ fn cabecalhos(ctx: &mut PaintCtx, info: &PixelPanelInfo, g: &Grelha, duracoes: &
         if info.active_frame == Some(f.id) || no_intervalo {
             fill_rounded_rect(ctx.scene, r, radius, resolve(ColorToken::AccentSoft, theme));
         }
+        if info.slice_keys.binary_search(&(c as u32)).is_ok() {
+            marca_de_slice(ctx, r);
+        }
         let numero = (c + 1).to_string();
         centrado(
             ctx,
@@ -230,6 +233,16 @@ fn cabecalhos(ctx: &mut PaintCtx, info: &PixelPanelInfo, g: &Grelha, duracoes: &
         );
         ctx.host.hit_index_mut().register(ids::header_id(f.id), r);
     }
+}
+
+/// A marca de um quadro onde uma slice selecionada tem key (decisão do dono, P11 §9.2): um quadradinho
+/// no canto do cabeçalho, por baixo do número.
+fn marca_de_slice(ctx: &mut PaintCtx, r: Rect) {
+    crate::state::conta_marca_de_slice();
+    let lado = Spacing::Xs.px();
+    let q = Rect::new(r.x + r.w - lado, r.y, lado, lado);
+    let cor = resolve(ColorToken::Accent, ctx.host.theme());
+    fill_rounded_rect(ctx.scene, q, lado * 0.5, cor);
 }
 
 #[expect(clippy::too_many_arguments, reason = "um texto centrado numa caixa")]

@@ -33,6 +33,7 @@ ph2d-panel-physics = { path = "../ph2d-panel-physics", optional = true }
 ph2d-panel-pixel-export = { path = "../ph2d-panel-pixel-export", optional = true }
 ph2d-panel-pixel-preview = { path = "../ph2d-panel-pixel-preview", optional = true }
 ph2d-panel-pixel-tiles = { path = "../ph2d-panel-pixel-tiles", optional = true }
+ph2d-panel-pixel-slices = { path = "../ph2d-panel-pixel-slices", optional = true }
 ph2d-panel-pixel-timeline = { path = "../ph2d-panel-pixel-timeline", optional = true }
 ph2d-panel-pixel-tools = { path = "../ph2d-panel-pixel-tools", optional = true }
 ph2d-panel-sfxlab = { path = "../ph2d-panel-sfxlab", optional = true }
@@ -69,6 +70,7 @@ default = [
     # A janela Preview do Pixel (P5): flutuante, Shift+Enter ou F7.
     "panel-pixel-export",
     "panel-pixel-tiles",
+    "panel-pixel-slices",
     "panel-pixel-preview",
     "panel-color-equalization", "panel-equalize-sizes", "panel-upscale",
     "panel-audio-mixer", "panel-audio-editor",
@@ -109,6 +111,7 @@ panel-physics = ["dep:ph2d-panel-physics"]
 panel-pixel-export = ["dep:ph2d-panel-pixel-export"]
 panel-pixel-preview = ["dep:ph2d-panel-pixel-preview"]
 panel-pixel-tiles = ["dep:ph2d-panel-pixel-tiles"]
+panel-pixel-slices = ["dep:ph2d-panel-pixel-slices"]
 panel-pixel-timeline = ["dep:ph2d-panel-pixel-timeline"]
 panel-pixel-tools = ["dep:ph2d-panel-pixel-tools"]
 panel-sfxlab = ["dep:ph2d-panel-sfxlab"]

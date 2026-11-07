@@ -12,7 +12,7 @@ use ph2d_pixel_io::sheet::Limite;
 use crate::canal::{self, Pedido, Tela};
 use crate::cards_export::DIRECOES;
 use crate::cards_folha::{TIPOS, id_do_limite, limite_de, limites_do_tipo};
-use crate::comum::{FORMATOS, camada_de, quadro_de};
+use crate::comum::{FORMATOS, area_de, camada_de, quadro_de};
 use crate::state::{OpcoesAs, OpcoesFo, OpcoesTi, grelha_inicial};
 use crate::{PixelExportPanel, PixelExportPanelState, ids};
 
@@ -34,7 +34,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         ids::LAYERS_ALL,
     ]
     .into_iter()
-    .chain([ids::FRAMES_ALL, ids::FRAMES_RANGE])
+    .chain([ids::FRAMES_ALL, ids::FRAMES_RANGE, ids::AREA_CANVAS])
     .chain([
         ids::JSON_HASH,
         ids::JSON_ARRAY,
@@ -94,6 +94,9 @@ pub(crate) fn regista_linhas(store: &mut WidgetStore, x: &canal::Contexto) {
     }
     for i in 0..x.tilesets.len() {
         botao(store, ids::tileset_option(i));
+    }
+    for i in 0..x.slices.len() {
+        botao(store, ids::area_option(i));
     }
 }
 
@@ -177,6 +180,10 @@ fn clique(st: &mut PixelExportPanelState, id: NodeId) -> bool {
         st.fo.folha.limite = l;
         return true;
     }
+    if let Some(a) = area_de(&x, id) {
+        st.as_.area = a;
+        return true;
+    }
     if let Some(c) = camada_de(&x, id) {
         match st.tela {
             Tela::Folha => st.fo.folha.camadas = c,
@@ -212,6 +219,7 @@ fn clique(st: &mut PixelExportPanelState, id: NodeId) -> bool {
         i if i == ids::SPLIT_LAYERS => &mut f.split_layers,
         i if i == ids::SPLIT_TAGS => &mut f.split_tags,
         i if i == ids::SPLIT_GRID => &mut f.split_grid,
+        i if i == ids::SPLIT_SLICES => &mut f.split_slices,
         i if i == ids::TRIM_BY_GRID => &mut f.trim_by_grid,
         i if i == ids::TRIM_CELS => &mut f.trim_cels,
         i if i == ids::TRIM_SPRITE => &mut f.trim_sprite,

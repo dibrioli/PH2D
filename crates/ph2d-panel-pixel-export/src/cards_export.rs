@@ -7,7 +7,9 @@ use ph2d_pixel_io::render::{Direcao, Quadros};
 use ph2d_pixel_io::saida::Formato;
 
 use crate::canal::Contexto;
-use crate::comum::{FORMATOS, Linhas, linhas_de_camadas, linhas_de_quadros, listas};
+use crate::comum::{
+    FORMATOS, Linhas, linhas_de_area, linhas_de_camadas, linhas_de_quadros, listas,
+};
 use crate::ids;
 use crate::state::OpcoesAs;
 
@@ -64,7 +66,7 @@ pub(crate) fn numeros(o: &OpcoesAs, x: &Contexto) -> Vec<Numero> {
 }
 
 pub(crate) fn prepare() {
-    for caixa in [ids::LAYERS, ids::FRAMES, ids::DIRECTION] {
+    for caixa in [ids::LAYERS, ids::FRAMES, ids::DIRECTION, ids::AREA] {
         dropdown::declare(caixa);
     }
 }
@@ -107,6 +109,7 @@ pub(crate) fn cards(o: OpcoesAs, x: &Contexto) -> Vec<CardDef<'static>> {
         let camadas = linhas_de_camadas(x, o.camadas);
         let quadros = linhas_de_quadros(x, o.quadros);
         let direcao = linhas_de_direcao(o.direcao);
+        let area = (!x.slices.is_empty()).then(|| linhas_de_area(x, o.area));
         let intervalo = matches!(o.quadros, Quadros::Intervalo { .. });
         v.push(cartao(
             ids::SEC_CONTENT,
@@ -131,7 +134,8 @@ pub(crate) fn cards(o: OpcoesAs, x: &Contexto) -> Vec<CardDef<'static>> {
                 let y = listas(
                     c,
                     (ids::DIRECTION, tr("panel.pixel.export.direction"), &direcao),
-                    None,
+                    area.as_ref()
+                        .map(|a| (ids::AREA, tr("panel.pixel.export.area"), a)),
                     y,
                 );
                 let escala = campo(ids::SCALE, tr("panel.pixel.export.scale"));

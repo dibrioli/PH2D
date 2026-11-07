@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use ph2d_editor_core::progress::{Job, JobQueue, Progress};
-use ph2d_pixel_core::{LayerId, Sprite};
+use ph2d_pixel_core::{LayerId, SliceId, Sprite};
 use ph2d_pixel_io::abrir::Grelha;
 use ph2d_pixel_io::exporta::{self, ErroGravar, Export, Gravado};
 use ph2d_pixel_io::sheet::OpcoesFolha;
@@ -50,6 +50,8 @@ pub struct Contexto {
     pub tags: Vec<String>,
     /// `(id, tiles desenhados, largura, altura)` de cada tileset do sprite.
     pub tilesets: Vec<(u32, u32, u16, u16)>,
+    /// As slices do sprite, por nome, gémeas incluídas (F4).
+    pub slices: Vec<(SliceId, String)>,
 }
 
 /// Uma imagem para um cartão (RGBA de alfa reto): a folha ao vivo ou a do Import.
@@ -187,6 +189,11 @@ pub fn publish_contexto_de(s: &Sprite) {
                 let n = t.tiles.len().saturating_sub(1) as u32;
                 (t.id.0, n, t.tile_w, t.tile_h)
             })
+            .collect(),
+        slices: s
+            .slices_by_name()
+            .into_iter()
+            .map(|c| (c.id, c.name.clone()))
             .collect(),
     });
 }

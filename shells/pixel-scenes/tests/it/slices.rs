@@ -17,18 +17,18 @@ use winit::keyboard::{KeyCode, PhysicalKey};
 
 use crate::comum::{PPM, WINDOW, born};
 
-struct Mesa {
-    app: PixelApp,
-    sim: SimWorld,
-    cam: Camera2d,
-    toasts: ToastQueue,
-    hero: HeroScreen,
-    bits: u64,
-    key: u32,
+pub(super) struct Mesa {
+    pub(super) app: PixelApp,
+    pub(super) sim: SimWorld,
+    pub(super) cam: Camera2d,
+    pub(super) toasts: ToastQueue,
+    pub(super) hero: HeroScreen,
+    pub(super) bits: u64,
+    pub(super) key: u32,
 }
 
 impl Mesa {
-    fn nova() -> Self {
+    pub(super) fn nova() -> Self {
         let (app, sim, cam, bits) = born();
         let key = input::key_of(sim.world(), bits).expect("marcador");
         let mut hero = HeroScreen::new(ph2d_editor_core::NodeId(1));
@@ -44,7 +44,7 @@ impl Mesa {
         }
     }
 
-    fn ecra(&self, x: f64, y: f64) -> (f32, f32) {
+    pub(super) fn ecra(&self, x: f64, y: f64) -> (f32, f32) {
         let m = input::to_screen(
             self.sim.world(),
             self.bits,
@@ -59,7 +59,7 @@ impl Mesa {
     }
 
     /// Um evento de ponteiro pela porta da shell.
-    fn ponteiro(&mut self, kind: PointerKind, c: (f64, f64), mods: Mods) {
+    pub(super) fn ponteiro(&mut self, kind: PointerKind, c: (f64, f64), mods: Mods) {
         let p = self.ecra(c.0, c.1);
         let mut v = View {
             world: self.sim.world(),
@@ -76,7 +76,27 @@ impl Mesa {
             .pointer(&mut v, kind, PointerButton::Primary, p, mods, true);
     }
 
-    fn arrasta(&mut self, a: (f64, f64), b: (f64, f64), mods: Mods) {
+    /// O botão direito, premido e largado.
+    pub(super) fn direito(&mut self, c: (f64, f64)) {
+        let p = self.ecra(c.0, c.1);
+        let mut v = View {
+            world: self.sim.world(),
+            camera: &mut self.cam,
+            toasts: &mut self.toasts,
+            window: WINDOW,
+            ppm: PPM,
+            editing: Some(self.bits),
+            typing: false,
+            conta_gotas: false,
+        };
+        for kind in [PointerKind::Down, PointerKind::Up] {
+            let _ = self
+                .app
+                .pointer(&mut v, kind, PointerButton::Secondary, p, NADA, true);
+        }
+    }
+
+    pub(super) fn arrasta(&mut self, a: (f64, f64), b: (f64, f64), mods: Mods) {
         self.ponteiro(PointerKind::Down, a, mods);
         let q = self.ecra(b.0, b.1);
         let v = View {
@@ -93,7 +113,7 @@ impl Mesa {
         self.ponteiro(PointerKind::Up, b, mods);
     }
 
-    fn tecla(&mut self, code: KeyCode, m: Mods) -> bool {
+    pub(super) fn tecla(&mut self, code: KeyCode, m: Mods) -> bool {
         let mut v = View {
             world: self.sim.world(),
             camera: &mut self.cam,
@@ -109,7 +129,7 @@ impl Mesa {
     }
 
     /// O quadro da família: os pedidos das teclas aplicam-se.
-    fn quadro(&mut self) {
+    pub(super) fn quadro(&mut self) {
         panel::frame(
             &mut self.app,
             self.sim.world(),
@@ -118,16 +138,16 @@ impl Mesa {
         );
     }
 
-    fn sprite(&self) -> &Sprite {
+    pub(super) fn sprite(&self) -> &Sprite {
         &self.app.doc(self.key).expect("doc").sprite
     }
 
-    fn frame(&self) -> u32 {
+    pub(super) fn frame(&self) -> u32 {
         let d = self.app.doc(self.key).expect("doc");
         d.sprite.frame_index(d.frame).expect("quadro") as u32
     }
 
-    fn forma(&self, id: SliceId) -> SliceShape {
+    pub(super) fn forma(&self, id: SliceId) -> SliceShape {
         self.sprite()
             .slice(id)
             .expect("slice")
@@ -136,7 +156,7 @@ impl Mesa {
     }
 
     /// Passos que a família faz sem ponteiro: o centro e o pivot ligam-se no cartão (por vir).
-    fn liga(&mut self, id: SliceId, center: Rect, pivot: (i32, i32)) {
+    pub(super) fn liga(&mut self, id: SliceId, center: Rect, pivot: (i32, i32)) {
         let mut k = self.forma(id);
         k.center = Some(center);
         k.pivot = Some(pivot);
@@ -145,12 +165,12 @@ impl Mesa {
     }
 }
 
-const NADA: Mods = Mods {
+pub(super) const NADA: Mods = Mods {
     alt: false,
     shift: false,
     ctrl: false,
 };
-const SHIFT: Mods = Mods {
+pub(super) const SHIFT: Mods = Mods {
     alt: false,
     shift: true,
     ctrl: false,
@@ -162,7 +182,7 @@ const CTRL: Mods = Mods {
 };
 
 /// O centro do píxel.
-fn px(x: i32, y: i32) -> (f64, f64) {
+pub(super) fn px(x: i32, y: i32) -> (f64, f64) {
     (f64::from(x) + 0.5, f64::from(y) + 0.5)
 }
 

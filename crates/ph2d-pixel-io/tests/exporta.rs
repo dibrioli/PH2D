@@ -144,7 +144,22 @@ fn o_repeat_grava_os_mesmos_bytes_depois_de_passar_pelo_projeto() {
     let mut s = sprite(ColorMode::Rgba);
     let op = frames::new_tag(&s, "walk", 1, 2).expect("tag");
     ph2d_pixel_core::apply(&mut s, op).expect("tag");
+    let (op, recorte) =
+        ph2d_pixel_core::slice::create(&mut s, 0, ph2d_pixel_core::Rect::new(1, 1, 2, 2))
+            .expect("a slice");
+    ph2d_pixel_core::apply(&mut s, op).expect("a slice");
     let casos = [
+        Export::Ficheiro(ExportAs {
+            pedido: Pedido {
+                camadas: Camadas::Visiveis,
+                quadros: Quadros::Todos,
+                direcao: ph2d_pixel_io::render::Direcao::Forward,
+                escala: 1.0,
+                area: ph2d_pixel_io::render::Area::Slice(recorte),
+            },
+            formato: Formato::Png,
+            repeat: 0,
+        }),
         Export::Ficheiro(ExportAs {
             pedido: Pedido {
                 camadas: Camadas::Todas,

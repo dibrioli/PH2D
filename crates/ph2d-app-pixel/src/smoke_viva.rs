@@ -17,8 +17,7 @@ use crate::state::Gesture;
 use crate::viva::Viva;
 use crate::{PixelApp, Tool};
 
-/// O tamanho da cena 12.
-pub const SIZE: (u32, u32) = (128, 80);
+pub use ph2d_pixel_cenas::viva::*;
 /// As duas formas assentadas.
 pub const SETTLED: [crate::smoke_formas::Forma; 2] = [
     (
@@ -30,11 +29,6 @@ pub const SETTLED: [crate::smoke_formas::Forma; 2] = [
     ),
     (Tool::ELLIPSE, (6, 42), (35, 73), [240, 200, 60, 255], true),
 ];
-/// O raio do canto do retângulo assentado, em células.
-pub const CORNER: f64 = 6.0;
-/// A estrela viva: a caixa (cantos inclusivos), a cor e o giro (graus, horário na tela).
-pub const STAR: ((i32, i32), (i32, i32), [u8; 4], f64) =
-    ((58, 8), (117, 67), [220, 60, 60, 255], 18.0);
 
 pub(crate) fn stage(
     app: &mut PixelApp,

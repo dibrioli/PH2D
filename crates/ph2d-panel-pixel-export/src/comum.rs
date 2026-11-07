@@ -6,7 +6,7 @@ use ph2d_editor_core::panel::cards::{CardCtx, Cell, Seg, Widget};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_pixel_io::abrir::Grelha;
-use ph2d_pixel_io::render::{Camadas, Quadros};
+use ph2d_pixel_io::render::{Area, Camadas, Quadros};
 use ph2d_pixel_io::saida::Formato;
 use ph2d_tokens::ColorToken;
 use std::sync::{Arc, Mutex};
@@ -110,6 +110,28 @@ pub(crate) fn linhas_de_quadros(x: &Contexto, q: Quadros) -> Linhas {
         matches!(q, Quadros::Intervalo { .. }),
     ));
     v
+}
+
+/// A lista Area: o canvas e as slices por nome, gémeas incluídas (F4).
+pub(crate) fn linhas_de_area(x: &Contexto, a: Area) -> Linhas {
+    let mut v = vec![(
+        ids::AREA_CANVAS,
+        tr("panel.pixel.export.area_canvas").to_owned(),
+        a == Area::Canvas,
+    )];
+    for (i, (id, nome)) in x.slices.iter().enumerate() {
+        v.push((ids::area_option(i), nome.clone(), a == Area::Slice(*id)));
+    }
+    v
+}
+
+/// O que um clique na lista Area escolheu.
+pub(crate) fn area_de(x: &Contexto, id: NodeId) -> Option<Area> {
+    if id == ids::AREA_CANVAS {
+        return Some(Area::Canvas);
+    }
+    let i = (0..x.slices.len()).find(|&i| ids::area_option(i) == id)?;
+    Some(Area::Slice(x.slices[i].0))
 }
 
 /// O que um clique numa lista de camadas escolheu.

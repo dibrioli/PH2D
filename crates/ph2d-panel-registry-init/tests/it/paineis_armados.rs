@@ -108,6 +108,13 @@ pub const TABELA: &[Armacao] = &[
         arma: |_| arma_os_tiles(),
         desarma: || ph2d_panel_pixel_tiles::canal::publish_contexto(Default::default()),
     },
+    // A janela SLICES (P11b) com a ferramenta na mão e uma slice selecionada.
+    #[cfg(feature = "panel-pixel-slices")]
+    Armacao {
+        painel: "pixel_slices",
+        arma: |_| arma_as_slices(),
+        desarma: || ph2d_panel_pixel_slices::canal::publish_contexto(Default::default()),
+    },
     // A linha do tempo do Pixel (P4) com duas camadas × três frames, um par ligado e uma tag.
     #[cfg(feature = "panel-pixel-timeline")]
     Armacao {
@@ -360,6 +367,7 @@ fn arma_o_export() {
         camadas: vec![(ph2d_pixel_core::LayerId(1), "Layer 1".to_owned())],
         tags: vec!["walk".to_owned()],
         tilesets: Vec::new(),
+        slices: vec![(ph2d_pixel_core::SliceId(1), "button".to_owned())],
     });
     canal::abrir(canal::Tela::ExportAs);
 }
@@ -375,6 +383,27 @@ fn arma_os_tiles() {
         tile_h: 4,
         imagens: std::sync::Arc::new(vec![vec![0; 4 * 4 * 4], tile.clone(), tile]),
         ..canal::Contexto::default()
+    });
+}
+
+/// A Slice Tool na mão, com uma slice selecionada.
+#[cfg(feature = "panel-pixel-slices")]
+fn arma_as_slices() {
+    use ph2d_panel_pixel_slices::canal;
+    canal::publish_contexto(canal::Contexto {
+        na_mao: true,
+        linhas: vec![canal::Linha {
+            id: ph2d_pixel_core::SliceId(1),
+            nome: "button".to_owned(),
+            selecionada: true,
+        }],
+        vista: Some(canal::Vista {
+            nome: Some("button".to_owned()),
+            cor: Some([0, 0, 255, 255]),
+            bounds: [Some(1), Some(2), Some(3), Some(4)],
+            ..canal::Vista::default()
+        }),
+        transform: false,
     });
 }
 

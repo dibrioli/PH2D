@@ -234,3 +234,23 @@ fn numa_janela_estreita_a_barra_quebra_e_nada_cobre_a_grelha() {
     }
     assert!(pintados >= 15, "vácuo: {pintados}");
 }
+
+/// As marcas de key de slice: só nos quadros pedidos, e sem nenhuma, a grelha não pinta nenhuma (P11).
+#[test]
+fn as_marcas_de_slice_pintam_so_nos_quadros_com_key() {
+    let mut m = mesa(true);
+    let antes = m.st.marcas_de_slice_pintadas();
+    m.assenta_em(JANELA);
+    assert_eq!(m.st.marcas_de_slice_pintadas(), antes, "sem seleção, nada");
+    let quadros = |m: &Mesa<PixelTimelinePanel>| m.st.marcas_de_slice_pintadas();
+    set_current_pixel(PixelPanelInfo {
+        slice_keys: vec![0, 2],
+        ..documento()
+    });
+    m.assenta_em(JANELA);
+    let pintadas = quadros(&m) - antes;
+    assert!(
+        pintadas >= 2 && pintadas % 2 == 0,
+        "duas por quadro: {pintadas}"
+    );
+}

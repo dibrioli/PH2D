@@ -88,6 +88,8 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     >());
     #[cfg(feature = "panel-pixel-tiles")]
     reg.push(ErasedPanel::new::<ph2d_panel_pixel_tiles::PixelTilesPanel>());
+    #[cfg(feature = "panel-pixel-slices")]
+    reg.push(ErasedPanel::new::<ph2d_panel_pixel_slices::PixelSlicesPanel>());
     #[cfg(feature = "panel-pixel-timeline")]
     reg.push(ErasedPanel::new::<
         ph2d_panel_pixel_timeline::PixelTimelinePanel,
@@ -202,6 +204,11 @@ mod tests {
         }
         // A tela dos tilemaps do Pixel (P10b).
         #[cfg(feature = "panel-pixel-tiles")]
+        {
+            n += 1;
+        }
+        // A janela SLICES do Pixel (P11b).
+        #[cfg(feature = "panel-pixel-slices")]
         {
             n += 1;
         }

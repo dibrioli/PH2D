@@ -340,6 +340,32 @@ fn folha_com_pixel(fase: i32, lx: usize, celula: (i32, i32)) -> Sprite {
     s
 }
 
+/// `--split-grid` ganha a `--split-slices`: com os dois ligados e uma slice no documento, os nomes
+/// e as peças são os da grelha sozinha (prova de mutação P11).
+#[test]
+fn split_grid_wins_over_split_slices() {
+    use ph2d_pixel_core::{Rect, apply, slice};
+    let mut s = folha_de_um_pixel(0);
+    let (op, _) = slice::create(&mut s, 0, Rect::new(0, 0, 4, 4)).unwrap();
+    apply(&mut s, op).unwrap();
+    let so_grelha = OpcoesFolha {
+        split_grid: true,
+        ..OpcoesFolha::default()
+    };
+    let ambos = OpcoesFolha {
+        split_slices: true,
+        ..so_grelha.clone()
+    };
+    let nomes = |o: &OpcoesFolha| {
+        montar(&s, o, "t", "png")
+            .entradas
+            .iter()
+            .map(|e| (e.nome.clone(), e.origem))
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(nomes(&ambos), nomes(&so_grelha));
+}
+
 /// `--split-grid`, medido no Trial (M10): linha a linha; as parciais à direita e em baixo saem, as à
 /// esquerda e em cima ficam inteiras; os recortes não mudam nada.
 #[test]

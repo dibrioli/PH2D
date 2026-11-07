@@ -7,8 +7,8 @@
 
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{
-    AnimDirection, Entity, SpriteAnimCursor, SpriteAnimFrames, SpriteAnimations, SpriteAnimator,
-    SpriteGrid, World,
+    AnimDirection, Entity, SpriteAnimCursor, SpriteAnimFrames, SpriteAnimStart, SpriteAnimations,
+    SpriteAnimator, SpriteGrid, World,
 };
 use ph2d_editor_core::{
     AnimCardInfo, AnimCharacterInfo, AnimChooser, AnimCycleMode, AnimFieldEdit, AnimRuleInfo,
@@ -26,6 +26,7 @@ const RULES: &str = "ph2d::physics::AnimRules";
 const ANIMATIONS: &str = "ph2d::ecs::SpriteAnimations";
 const ANIMATOR: &str = "ph2d::ecs::SpriteAnimator";
 const GRID: &str = "ph2d::ecs::SpriteGrid";
+pub(crate) const START: &str = "ph2d::ecs::SpriteAnimStart";
 
 /// Maior lado de uma grelha que o cartão aceita (o `SpriteGrid` guarda `u32`; isto é o que cabe a
 /// clicar numa folha: 256 × 256 células).
@@ -101,8 +102,14 @@ pub fn build_card_info(world: &World, entity: Entity) -> AnimCardInfo {
                 .map_or(0, |(lo, _)| lo);
             grid.frame.saturating_sub(lo)
         });
+    let starts_with = player
+        .zip(world.get::<SpriteAnimations>(entity))
+        .map_or_else(String::new, |(p, lib)| {
+            SpriteAnimStart::ou_current(world.get(entity), p, lib).to_owned()
+        });
     AnimCardInfo {
         chooser,
+        starts_with,
         has_character_body: world.get::<PlatformPlayer>(entity).is_some(),
         can_crouch: world
             .get::<PlatformPlayer>(entity)
@@ -238,6 +245,11 @@ pub fn apply_card_edit(
                     queue_set(queue, registry, entity_bits, ANIMATOR, &p);
                 }
             }
+        }
+        AnimFieldEdit::StartsWith(name) => {
+            world.get::<SpriteAnimations>(entity)?.get(name)?;
+            let start = SpriteAnimStart(name.clone());
+            queue_set(queue, registry, entity_bits, START, &start);
         }
         AnimFieldEdit::RuleWhen(..)
         | AnimFieldEdit::RulePlay(..)

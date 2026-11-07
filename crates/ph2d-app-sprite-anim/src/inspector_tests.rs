@@ -346,6 +346,122 @@ fn autoplay_starts_only_at_load_time() {
     assert!(info(&sim, e).playing, "o load tem de comecar");
 }
 
+/// `idle` e `run` numa sprite «Auto», como o Add ▸ Animated Sprite deixa um projeto antigo.
+fn auto(sim: &mut SimWorld, reg: &ComponentRegistry) -> Entity {
+    let e = sprite(sim, 8);
+    edit(sim, e, reg, AnimFieldEdit::AddPlayer);
+    for (nome, de, ate) in [("idle", 0, 3), ("run", 4, 7)] {
+        edit(sim, e, reg, AnimFieldEdit::Add);
+        let i = (info(sim, e).rows.len() - 1) as u8;
+        edit(sim, e, reg, AnimFieldEdit::Rename(i, nome.into()));
+        edit(sim, e, reg, AnimFieldEdit::From(i, de));
+        edit(sim, e, reg, AnimFieldEdit::To(i, ate));
+    }
+    let mut a = sim.world().get::<SpriteAnimator>(e).unwrap().clone();
+    a.current = "idle".into();
+    a.autoplay = true;
+    sim.world_mut().entity_mut(e).insert(a);
+    e
+}
+
+fn tocando(sim: &SimWorld, e: Entity) -> (String, bool, u32) {
+    let a = sim.world().get::<SpriteAnimator>(e).unwrap();
+    let g = sim.world().get::<ph2d_ecs::SpriteGrid>(e).unwrap();
+    (a.current.clone(), a.playing, g.frame)
+}
+
+/// ⭐ **O ▶ é prévia** (ficha 02, decisão 2): num projeto que nunca escolheu, o primeiro ▶ grava antes o `current` antigo
+/// como início, e o jogo começa nele, na 1.ª célula dele, por cima do que o ▶ deixou no ecrã.
+/// *Mutação: tirar o `vai_para_o_inicio` do `start_autoplay_animations` ⇒ o jogo começa em `run`.*
+#[test]
+fn o_play_da_prevista_nao_muda_com_qual_o_jogo_comeca() {
+    let mut sim = SimWorld::new();
+    let reg = registry();
+    let e = auto(&mut sim, &reg);
+    edit(&mut sim, e, &reg, AnimFieldEdit::SetCurrent("run".into()));
+    edit(&mut sim, e, &reg, AnimFieldEdit::Playing(true));
+    assert_eq!(tocando(&sim, e), ("run".into(), true, 4), "a prévia toca");
+    assert_eq!(info(&sim, e).card.starts_with, "idle");
+    crate::tick::start_autoplay_animations(&mut sim);
+    assert_eq!(tocando(&sim, e), ("idle".into(), true, 0));
+}
+
+/// Escolher no menu vale, e o `current` não se mexe até o jogo começar.
+/// *Mutação: o `StartsWith` escrever também o `current` ⇒ a 1.ª afirmação cai.*
+#[test]
+fn escolher_o_inicio_vale_no_jogo_e_nao_mexe_na_previa() {
+    let mut sim = SimWorld::new();
+    let reg = registry();
+    let e = auto(&mut sim, &reg);
+    edit(&mut sim, e, &reg, AnimFieldEdit::StartsWith("run".into()));
+    assert_eq!(tocando(&sim, e).0, "idle");
+    assert_eq!(info(&sim, e).card.starts_with, "run");
+    crate::tick::start_autoplay_animations(&mut sim);
+    assert_eq!(tocando(&sim, e), ("run".into(), true, 4));
+}
+
+/// Renomear segue; apagar cai na primeira; um nome que a lista não tem não se aceita.
+/// *Mutação: tirar o braço do renomear ⇒ o início fica com o nome velho e o menu cai no `current`.*
+#[test]
+fn o_inicio_segue_o_renomear_e_cai_na_primeira_ao_apagar() {
+    let mut sim = SimWorld::new();
+    let reg = registry();
+    let e = auto(&mut sim, &reg);
+    edit(&mut sim, e, &reg, AnimFieldEdit::StartsWith("run".into()));
+    edit(&mut sim, e, &reg, AnimFieldEdit::Rename(1, "corre".into()));
+    assert_eq!(
+        sim.world().get::<ph2d_ecs::SpriteAnimStart>(e).unwrap().0,
+        "corre"
+    );
+    edit(
+        &mut sim,
+        e,
+        &reg,
+        AnimFieldEdit::StartsWith("nao existe".into()),
+    );
+    assert_eq!(
+        sim.world().get::<ph2d_ecs::SpriteAnimStart>(e).unwrap().0,
+        "corre"
+    );
+    edit(&mut sim, e, &reg, AnimFieldEdit::Remove(1));
+    assert_eq!(
+        sim.world().get::<ph2d_ecs::SpriteAnimStart>(e).unwrap().0,
+        "idle"
+    );
+}
+
+/// Projeto antigo (sem o componente) começa no `current`; Script não arranca e Rules não muda de animação.
+/// *Mutação: tirar a pergunta `regras` ⇒ o objecto com regras salta para o início.*
+#[test]
+fn projeto_antigo_script_e_regras_ficam_como_estao() {
+    let mut sim = SimWorld::new();
+    let reg = registry();
+    let e = auto(&mut sim, &reg);
+    let mut a = sim.world().get::<SpriteAnimator>(e).unwrap().clone();
+    a.current = "run".into();
+    sim.world_mut().entity_mut(e).insert(a);
+    crate::tick::start_autoplay_animations(&mut sim);
+    assert_eq!(
+        tocando(&sim, e).0,
+        "run",
+        "sem início: o `current` de sempre"
+    );
+
+    let e = auto(&mut sim, &reg);
+    edit(&mut sim, e, &reg, AnimFieldEdit::StartsWith("run".into()));
+    edit(&mut sim, e, &reg, AnimFieldEdit::Autoplay(false));
+    crate::tick::start_autoplay_animations(&mut sim);
+    assert_eq!(tocando(&sim, e), ("idle".into(), false, 0), "Script");
+
+    let e = auto(&mut sim, &reg);
+    edit(&mut sim, e, &reg, AnimFieldEdit::StartsWith("run".into()));
+    sim.world_mut()
+        .entity_mut(e)
+        .insert(ph2d_physics_ecs::AnimRules::default());
+    crate::tick::start_autoplay_animations(&mut sim);
+    assert_eq!(tocando(&sim, e).0, "idle", "Rules");
+}
+
 /// **Recuperar um engasgo numa chamada dá o MESMO que recuperar passo a passo.**
 ///
 /// ⚠️ **Este gate existe porque uma mutação derrubou uma afirmação minha.** O tique corria um laço

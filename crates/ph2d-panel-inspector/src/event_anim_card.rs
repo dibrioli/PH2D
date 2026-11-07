@@ -97,6 +97,15 @@ fn apply_card_click(
         demote(host, id);
         return true;
     }
+    if let Some(i) = crate::ids::INSP_ANIM_START_OPT
+        .iter()
+        .position(|&o| o == id)
+        && let Some(row) = info.rows.get(i)
+    {
+        push(host, bits, AnimFieldEdit::StartsWith(row.name.clone()));
+        demote(host, id);
+        return true;
+    }
     if id == crate::ids::INSP_ANIM_OPEN_EDITOR {
         push(host, bits, AnimFieldEdit::OpenEditor);
         demote(host, id);

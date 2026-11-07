@@ -232,6 +232,12 @@ pub const DESCS: &[D] = &[
         "component.sprite_anim_markers.name",
         C::Animation,
     ),
+    // Com qual animação começa (GEF 24 E2): o menu «Starts with» do cartão escreve-a.
+    D::machinery(
+        "ph2d::ecs::SpriteAnimStart",
+        "component.sprite_anim_start.name",
+        C::Animation,
+    ),
     D::authored(
         "ph2d::ecs::SpriteAnimations",
         "component.sprite_animations.name",

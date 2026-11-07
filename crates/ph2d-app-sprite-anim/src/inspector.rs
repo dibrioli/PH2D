@@ -248,6 +248,15 @@ pub fn apply_anim_edit(
                 // ⚠️ **Uma PAUSA explícita não é tocada por isto**: `is_finished` é falso a meio de
                 // um ciclo, então quem desmarcou `Playing` continua a poder folhear a lista em
                 // silêncio. *Escolher uma animação nunca PÁRA nada, e só retoma o que se esgotou.*
+                // O ▶ é prévia (ficha 02, decisão 2): num projeto que nunca escolheu, o `current` de antes
+                // fica gravado como o início, para o jogo não passar a começar noutra.
+                if world.get::<ph2d_ecs::SpriteAnimStart>(entity).is_none()
+                    && p.current != *name
+                    && current_tag(world, entity, &p.current).is_some()
+                {
+                    let start = ph2d_ecs::SpriteAnimStart(p.current.clone());
+                    queue_set(queue, registry, entity_bits, crate::card::START, &start);
+                }
                 if !p.playing
                     && current_tag(world, entity, &p.current).is_some_and(|t| p.is_finished(&t))
                 {
@@ -354,6 +363,24 @@ pub fn apply_anim_edit(
             let name = lib.iter().nth(usize::from(*i)).map(|t| t.name.clone())?;
             lib.remove(&name);
             crate::card::follow_remove(world, entity_bits, &name, queue, registry);
+            // O início apagado cai na primeira.
+            if world
+                .get::<ph2d_ecs::SpriteAnimStart>(entity)
+                .is_some_and(|s| s.0 == name)
+            {
+                match lib.iter().next() {
+                    Some(t) => {
+                        let start = ph2d_ecs::SpriteAnimStart(t.name.clone());
+                        queue_set(queue, registry, entity_bits, crate::card::START, &start);
+                    }
+                    None => ph2d_inspector_ordering::queue_remove(
+                        queue,
+                        registry,
+                        entity_bits,
+                        crate::card::START,
+                    ),
+                }
+            }
         }
         AnimFieldEdit::Rename(i, new_name) => {
             let idx = usize::from(*i);
@@ -384,6 +411,13 @@ pub fn apply_anim_edit(
             let (frames_before, player_before) = (frames.clone(), player.clone());
             ph2d_ecs::rename_tag(&mut lib, frames.as_mut(), player.as_mut(), &old, new_name);
             ph2d_anim_signals::follow_rename(world, entity_bits, &old, new_name, queue, registry);
+            if world
+                .get::<ph2d_ecs::SpriteAnimStart>(entity)
+                .is_some_and(|s| s.0 == old)
+            {
+                let start = ph2d_ecs::SpriteAnimStart(new_name.clone());
+                queue_set(queue, registry, entity_bits, crate::card::START, &start);
+            }
             if let Some(f) = frames.filter(|f| Some(f) != frames_before.as_ref()) {
                 queue_set(queue, registry, entity_bits, crate::card::FRAMES, &f);
             }

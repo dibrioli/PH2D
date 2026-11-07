@@ -151,6 +151,7 @@ pub mod sorting;
 pub mod sprite_anim;
 pub mod sprite_anim_frames;
 mod sprite_anim_markers;
+mod sprite_anim_start;
 /// O tempo de uma `AnimationTag` (ritmo, tempos próprios por passo) — `impl` irmão.
 mod sprite_anim_timing;
 /// **ADR-0164 F1 passo 6 / ADR-0166** — os três grupos que saíram do `Sprite`, cada um um
@@ -296,6 +297,7 @@ pub use sprite_anim_frames::{
     fps_of_ms, ms_of_fps, rename_tag, tag_cells,
 };
 pub use sprite_anim_markers::{FrameMarker, SpriteAnimMarkers, advance_frames_marked, anim_steps};
+pub use sprite_anim_start::SpriteAnimStart;
 pub use sprite_corner_tint::{BOTTOM_LEFT, BOTTOM_RIGHT, SpriteCornerTint, TOP_LEFT, TOP_RIGHT};
 pub use sprite_grid::SpriteGrid;
 pub use sprite_pixels::SpritePixels;

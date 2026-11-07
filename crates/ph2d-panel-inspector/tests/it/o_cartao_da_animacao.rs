@@ -324,6 +324,7 @@ fn campos_do_animated() -> Vec<Vec<NodeId>> {
         INSP_ANIM_SIGNAL_FINISH,
         INSP_ANIM_SIGNAL_LOOP,
         INSP_ANIM_MARKER_ADD,
+        INSP_ANIM_START_DD,
     ]));
     c.push(INSP_ANIM_ROW.to_vec());
     c.push(INSP_ANIM_PLAY_ROW.to_vec());
@@ -351,7 +352,7 @@ fn o_censo_dos_campos_do_animated_em_uso() {
     for id in [core_ids::INSP_LIVE_RENDER_SECTION, CARD_ORDERING] {
         host.store_mut().set_collapsed(id, true);
     }
-    assert_eq!(conta(&pinta(&mut host, &mut st)), (16, 22), "à vista");
+    assert_eq!(conta(&pinta(&mut host, &mut st)), (17, 22), "à vista");
     for id in [
         core_ids::INSP_LIVE_RENDER_SECTION,
         CARD_ORDERING,
@@ -361,6 +362,80 @@ fn o_censo_dos_campos_do_animated_em_uso() {
     ] {
         host.store_mut().set_collapsed(id, false);
     }
-    assert_eq!(conta(&pinta(&mut host, &mut st)), (47, 22), "no total");
+    assert_eq!(conta(&pinta(&mut host, &mut st)), (48, 22), "no total");
+    limpa();
+}
+
+fn com_inicio() -> InspectorAnimInfo {
+    let mut a = fixa();
+    a.card.starts_with = "walk".into();
+    a
+}
+
+/// ⭐ O menu: a caixa está abaixo do Auto e o ponteiro real a clica; a lista abre pela porta do hero (`on_click`) com a
+/// animação da caixa, e a linha dela escreve só o início. As opções pinta-as o hero por cima de tudo (a mesa não tem
+/// esse trecho): aqui entra o clique dela, como no Ordering.
+/// *Mutação: tirar o braço de `INSP_ANIM_START_OPT` no despacho ⇒ o clique não sai como edição.*
+#[test]
+fn o_menu_starts_with_abre_e_escolhe_pelo_ponteiro() {
+    use ph2d_editor_core::panel::cards::dropdown;
+    let (mut host, mut st) = cena_com(com_inicio());
+    let r = pinta(&mut host, &mut st);
+    let caixa = rect_de(&r, INSP_ANIM_START_DD);
+    assert!(
+        caixa.y > rect_de(&r, INSP_ANIM_CHOOSER[0]).y,
+        "abaixo do Auto"
+    );
+    let (ev, _) = ponteiro(&mut host, &mut st, caixa);
+    assert!(
+        ev.contains(&WidgetEvent::Click(INSP_ANIM_START_DD)),
+        "{ev:?}"
+    );
+    assert!(
+        dropdown::on_click(INSP_ANIM_START_DD),
+        "a caixa é uma lista declarada"
+    );
+    assert_eq!(dropdown::open(), Some(INSP_ANIM_START_DD));
+    let _ = pinta(&mut host, &mut st);
+    let _ = host.drained_actions();
+    let _ = host
+        .apply_panel_event::<InspectorPanel>(&mut st, WidgetEvent::Click(INSP_ANIM_START_OPT[1]));
+    assert_eq!(
+        edits(&host.drained_actions()),
+        [AnimFieldEdit::StartsWith("attack".into())]
+    );
+    limpa();
+}
+
+/// O ▶ noutra linha é prévia: muda o que toca e não pede para mudar o início.
+/// *Mutação: o ▶ emitir `StartsWith` ⇒ vermelho.*
+#[test]
+fn o_play_da_linha_nao_escreve_o_inicio() {
+    let (mut host, mut st) = cena_com(com_inicio());
+    let e = clica(&mut host, &mut st, INSP_ANIM_PLAY_ROW[1]);
+    assert_eq!(
+        e,
+        [
+            AnimFieldEdit::SetCurrent("attack".into()),
+            AnimFieldEdit::Playing(true)
+        ]
+    );
+    limpa();
+}
+
+/// Script e Rules não têm o menu; os três botões dizem Auto · Script · Rules.
+#[test]
+fn so_o_auto_tem_o_menu() {
+    use ph2d_editor_core::screens::hero::AnimChooser;
+    assert_eq!(ph2d_i18n::tr("panel.inspector.anim_card.me"), "Auto");
+    for quem in [AnimChooser::Script, AnimChooser::Rules] {
+        let mut a = com_inicio();
+        a.card.chooser = quem;
+        let (mut host, mut st) = cena_com(a);
+        assert!(
+            !pintou(&pinta(&mut host, &mut st), INSP_ANIM_START_DD),
+            "{quem:?}"
+        );
+    }
     limpa();
 }

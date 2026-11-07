@@ -282,6 +282,21 @@ const fn build_insp_anim_play_row() -> [NodeId; 64] {
 /// «Edit animations…» — abre o editor de animações desta sprite numa aba (`AnimFieldEdit::OpenEditor`).
 pub const INSP_ANIM_OPEN_EDITOR: NodeId = hash_node_id("insp_anim_open_editor");
 
+/// «Starts with»: a caixa da lista suspensa do «Auto».
+pub const INSP_ANIM_START_DD: NodeId = hash_node_id("insp_anim_start_dd");
+
+/// As linhas do «Starts with», uma por animação (a mesma tabela de 64 da lista).
+pub const INSP_ANIM_START_OPT: [NodeId; 64] = {
+    let base = hash_node_id("insp_anim_start_opt");
+    let mut t = [base; 64];
+    let mut i = 0;
+    while i < 64 {
+        t[i] = NodeId(base.0.wrapping_add(i as u64));
+        i += 1;
+    }
+    t
+};
+
 /// «Who picks»: Me · Script · Rules. ⚠️ A POSIÇÃO é o `AnimChooser::tag`.
 pub const INSP_ANIM_CHOOSER: [NodeId; 3] = [
     hash_node_id("insp_anim_chooser_me"),

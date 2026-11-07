@@ -544,6 +544,7 @@ fn every_edit_the_model_declares_is_reachable_by_a_gesture() {
             E::MarkerStep(..) => 102,
             E::MarkerSignal(..) => 103,
             E::MarkerRemove(..) => 104,
+            E::StartsWith(_) => 105,
         }
     }
     let want: std::collections::BTreeSet<u8> = declared.iter().map(sample).collect();

@@ -74,6 +74,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.anim_card.repeat_count" => "Repeat count",
         "panel.inspector.anim_card.advanced" => "Advanced",
         "panel.inspector.anim_card.more" => "More",
+        "panel.inspector.anim_card.starts_with" => "Starts with",
+        "panel.inspector.anim_card.starts_with_tip" => {
+            "The animation this object starts with when the game runs. Playing one here is only a preview."
+        }
         "panel.inspector.anim_card.more_summary" => "Hold \u{00b7} signals",
         "panel.inspector.anim_card.selected" => "Selected Animation",
         "panel.inspector.anim_card.add_tip" => "Add a new animation to the list.",

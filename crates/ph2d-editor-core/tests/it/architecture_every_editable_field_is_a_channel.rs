@@ -934,14 +934,14 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
-        "sections/anim_rows.rs::ritmo_e_ciclo",
+        "sections/anim_cartao.rs::ritmo_e_ciclo",
         NaoAnimavel,
         &[],
         "os quadros por segundo do clip: o parâmetro da própria animação (§8); a Speed ao lado é canal pelo rótulo",
     ),
     (
         "ph2d-panel-inspector",
-        "sections/anim_rows.rs::cycle_rows",
+        "sections/anim_cartao.rs::cycle_rows",
         NaoAnimavel,
         &[],
         "o ciclo do clip: o parâmetro da própria animação (§8)",

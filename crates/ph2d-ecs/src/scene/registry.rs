@@ -567,6 +567,8 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     reg.register_default::<crate::SpriteAnimCursor>("ph2d::ecs::SpriteAnimCursor");
     // Os sinais em quadro (SFX Lab W1). Irmão pelo mesmo motivo.
     reg.register_default::<crate::SpriteAnimMarkers>("ph2d::ecs::SpriteAnimMarkers");
+    // Com qual animação começa (GEF 24 E2). Irmão pelo mesmo motivo.
+    reg.register_default::<crate::SpriteAnimStart>("ph2d::ecs::SpriteAnimStart");
     // O que cada uso da imagem guarda enquanto o objecto usa outro (plano GEF 15, dono 27/10): sem o registo o
     // Desfazer e o projecto reaberto perdiam a configuração do uso que o artista deixou.
     reg.register_default::<crate::ImageUseMemory>("ph2d::ecs::ImageUseMemory");

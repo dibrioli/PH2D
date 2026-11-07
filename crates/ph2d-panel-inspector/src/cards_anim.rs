@@ -11,8 +11,10 @@ use ph2d_editor_core::IconId;
 use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::PanelHostInternal;
-use ph2d_editor_core::panel::cards::{CardCtx, CardDef, HeadAction};
-use ph2d_editor_core::screens::hero::{AnimFieldEdit, InspectorAnimInfo};
+use ph2d_editor_core::panel::cards::{
+    CardCtx, CardDef, Cell as Celula, HeadAction, Seg, Widget, dropdown,
+};
+use ph2d_editor_core::screens::hero::{AnimChooser, AnimFieldEdit, InspectorAnimInfo};
 use ph2d_editor_core::widget::TextInputState;
 use ph2d_i18n::tr;
 use std::cell::Cell;
@@ -84,9 +86,42 @@ fn corpo(c: &mut CardCtx<'_>, y: f32, info: &InspectorAnimInfo, a: Abertas) -> f
     if let Some(r) = campo_do_nome {
         c.text_box(r, ids::INSP_ANIM_NAME, "");
     }
-    com_corpo(c, y, |t, theme, store, x, w, y| {
+    let y = com_corpo(c, y, |t, theme, store, x, w, y| {
         sections::anim_cartao::resto(t, theme, store, x, w, y, info, selected)
-    })
+    });
+    if info.card.chooser == AnimChooser::Me && !info.rows.is_empty() {
+        return comeca_com(c, y, info);
+    }
+    y
+}
+
+/// O menu «Starts with» do «Auto»: as opções são as animações da lista.
+fn comeca_com(c: &mut CardCtx<'_>, y: f32, info: &InspectorAnimInfo) -> f32 {
+    let linhas: Vec<Seg<'_>> = info
+        .rows
+        .iter()
+        .zip(ids::INSP_ANIM_START_OPT)
+        .map(|(row, id)| Seg {
+            id,
+            icon: None,
+            text: &row.name,
+            on: row.name == info.card.starts_with,
+        })
+        .collect();
+    c.row(
+        &[Celula::new(Widget::Dropdown {
+            id: ids::INSP_ANIM_START_DD,
+            text: &info.card.starts_with,
+            options: &linhas,
+        })
+        .label(tr("panel.inspector.anim_card.starts_with"))],
+        y + m::FIELD_ROW_GAP,
+    )
+}
+
+/// Uma vez por quadro, antes da pintura.
+pub(crate) fn prepara() {
+    dropdown::declare(ids::INSP_ANIM_START_DD);
 }
 
 /// Abre o campo do nome sobre a linha (o gesto do editor e da árvore de tags).

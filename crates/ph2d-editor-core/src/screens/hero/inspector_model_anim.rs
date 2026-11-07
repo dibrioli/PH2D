@@ -415,6 +415,8 @@ pub enum AnimFieldEdit {
     CycleMode(u8, u8),
     /// Quem escolhe a animação (`AnimChooser::tag`).
     Chooser(u8),
+    /// Com qual animação o objecto começa em «Auto» (o menu «Starts with»).
+    StartsWith(String),
     /// A condição da regra `i` (plano 08). A 1.ª edição de uma regra grava as `AnimRules` (antes disso
     /// as 4 do personagem são derivadas).
     RuleWhen(u8, AnimWhenInfo),

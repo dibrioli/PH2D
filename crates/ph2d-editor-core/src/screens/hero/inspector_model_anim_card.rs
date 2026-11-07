@@ -7,7 +7,7 @@
 use crate::widget::sheet_cell::SheetImage;
 
 /// **Quem escolhe a animação que toca.** Derivado, nunca guardado: `Rules` = o objecto tem regras
-/// (`AnimRules`, ou as 4 do `CharacterAnimations`); senão `Me` = o tocador arranca sozinho (autoplay) e
+/// (`AnimRules`, ou as 4 do `CharacterAnimations`); senão `Me` («Auto» na tela) = o tocador arranca sozinho (autoplay) e
 /// `Script` = não arranca.
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub enum AnimChooser {
@@ -106,6 +106,8 @@ pub struct AnimRuleInfo {
 #[derive(Clone, Debug, PartialEq)]
 pub struct AnimCardInfo {
     pub chooser: AnimChooser,
+    /// Com qual animação começa (a escolhida, ou o `current` num projeto que nunca escolheu).
+    pub starts_with: String,
     /// O objecto tem Platform Player? Sem ele «O personagem» não se oferece (não há estados).
     pub has_character_body: bool,
     /// O Platform Player sabe agachar (altura agachada autorada)? Sem isso «Crouching» não se oferece.
@@ -130,6 +132,7 @@ impl Default for AnimCardInfo {
     fn default() -> Self {
         Self {
             chooser: AnimChooser::Me,
+            starts_with: String::new(),
             has_character_body: false,
             can_crouch: false,
             character: None,

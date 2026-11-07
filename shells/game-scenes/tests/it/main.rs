@@ -24,4 +24,6 @@ mod sprite_marcadores;
 #[path = "sprite_image_use_15.rs"]
 mod sprite_image_use_15;
 mod sprite_region_pela_aba;
+#[path = "sprite_starts_with.rs"]
+mod sprite_starts_with;
 mod sprite_tiled;

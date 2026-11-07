@@ -116,6 +116,7 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
         );
     }
     crate::sections::ordering::prepara_opcoes(store);
+    crate::cards_anim::prepara();
     semeia_do_objeto(store);
 }
 

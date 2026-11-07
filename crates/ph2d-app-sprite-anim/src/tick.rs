@@ -239,8 +239,19 @@ pub fn tick_sprite_animations(
 /// ⚠️ Ele **não** pode viver no tique: «começar a tocar» é uma aresta, e o tique só vê estados —
 /// para a detetar ali seria preciso um bit a mais que diz «já comecei», e um bit desses fica
 /// dessincronizado no primeiro `Ctrl+Z`.
+///
+/// Em «Auto» começa pela animação do «Starts with», mesmo que o ▶ tenha deixado outra no ecrã. Script e Rules
+/// escolhem sozinhos: ficam como estão.
 pub fn start_autoplay_animations(sim: &mut SimWorld) {
     let world = sim.world_mut();
+    let mut escolhidas = world.query::<(ph2d_ecs::Entity, &ph2d_ecs::SpriteAnimStart)>();
+    let inicios: Vec<(ph2d_ecs::Entity, String)> = escolhidas
+        .iter(world)
+        .map(|(e, s)| (e, s.0.clone()))
+        .collect();
+    for (e, nome) in inicios {
+        vai_para_o_inicio(world, e, &nome);
+    }
     let mut q = world.query::<(&mut SpriteAnimator, &SpriteAnimations)>();
     for (mut animator, tags) in q.iter_mut(world) {
         if !animator.autoplay || animator.playing {
@@ -249,6 +260,49 @@ pub fn start_autoplay_animations(sim: &mut SimWorld) {
         let tag = tags.get(&animator.current).cloned();
         animator.playing = true;
         animator.rewind(tag.as_ref());
+    }
+}
+
+/// Põe `e` no início de `nome`: o tocador rebobinado e a célula de entrada. Nada muda fora de «Auto», ou se a
+/// lista já não tem a animação (quem a apagou cai no `current`).
+fn vai_para_o_inicio(world: &mut ph2d_ecs::World, e: ph2d_ecs::Entity, nome: &str) {
+    let regras = world.get::<ph2d_physics_ecs::AnimRules>(e).is_some()
+        || world
+            .get::<ph2d_physics_ecs::CharacterAnimations>(e)
+            .is_some();
+    let Some(mut a) = world.get::<SpriteAnimator>(e).cloned() else {
+        return;
+    };
+    let Some(tag) = world
+        .get::<SpriteAnimations>(e)
+        .and_then(|l| l.get(nome))
+        .cloned()
+    else {
+        return;
+    };
+    if regras || !a.autoplay || a.current == nome {
+        return;
+    }
+    a.current = nome.to_owned();
+    a.rewind(Some(&tag));
+    let list = world
+        .get::<ph2d_ecs::SpriteAnimFrames>(e)
+        .and_then(|f| f.get(nome))
+        .map(<[u32]>::to_vec);
+    let cells = world
+        .get::<ph2d_ecs::SpriteGrid>(e)
+        .map_or(1, |g| g.cells().max(1));
+    let entrada = ph2d_ecs::entry_cell(&a, &tag, list.as_deref(), cells);
+    if let Some((frame, step)) = entrada {
+        if let Some(mut g) = world.get_mut::<ph2d_ecs::SpriteGrid>(e) {
+            g.frame = frame;
+        }
+        if let Some(mut c) = world.get_mut::<ph2d_ecs::SpriteAnimCursor>(e) {
+            c.step = step;
+        }
+    }
+    if let Some(mut vivo) = world.get_mut::<SpriteAnimator>(e) {
+        *vivo = a;
     }
 }
 

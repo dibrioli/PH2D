@@ -217,6 +217,12 @@ fn populate_anim_card(store: &mut WidgetStore) {
     register_button_ids(store, &crate::ids::INSP_ANIM_PLAY_ROW);
     register_button_ids(store, &[crate::ids::INSP_ANIM_OPEN_EDITOR]);
     register_button_ids(store, &crate::ids::INSP_ANIM_CHOOSER);
+    register_button_ids(store, &[crate::ids::INSP_ANIM_START_DD]);
+    register_button_ids(store, &crate::ids::INSP_ANIM_START_OPT);
+    store.set_tooltip(
+        crate::ids::INSP_ANIM_START_DD,
+        tr("panel.inspector.anim_card.starts_with_tip"),
+    );
     // A lista de regras (plano 08): pega, ×, «+ Rule» e as linhas dos dois popovers são BOTÕES; os
     // menus «When» e «Play» de cada regra são `Dropdown`.
     register_button_ids(store, &crate::ids::INSP_ANIM_RULE_GRIP);

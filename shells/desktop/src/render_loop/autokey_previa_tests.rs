@@ -116,7 +116,7 @@ fn o_play_armado_nao_grava_chave_e_o_jogo_entra_no_inicio() {
     assert_eq!(chaves(&c), 0);
     gesto(&mut c, &[Ed::Playing(false)]);
     gesto(&mut c, &[]);
-    assert_eq!(chaves(&c), 0, "nem o ⏸");
+    assert_eq!(chaves(&c), 0, "nem a pausa");
     tick::start_autoplay_animations(&mut c.sim);
     assert_eq!(toca(&c), "idle");
 }

@@ -1123,7 +1123,12 @@ const CARGA_DE_COMANDOS: &[(&str, usize)] = &[
     //    smoke do dono da GEF 20 (`docs/GameEngineFuncional/handoffs/HANDOFF_CONTINUACAO_2026-11-02_20_CAMERA_INTUITIVA.md`).
     // ⬆️ `101 → 102` em 2026-11-05 (`line/SfxLab`, W1) — **capacidade nova**: o «+ Marker» da animação aberta
     //    (`INSP_ANIM_MARKER_ADD`). A lista de sons não soma: a cena armada não tem sons nela.
-    ("inspector", 102),
+    // ⬆️ `102 → 103` em 2026-11-07 (integração; `line/SfxLab` W3, `02c27ae538`) — **capacidade nova**: o «Create
+    //    sound» da secção Audio (`INSP_AUDIO_CREATE_SOUND`), um comando a sério (`AudioFieldEdit::CreateSound`);
+    //    aprovado no smoke do dono de 06/11 (`docs/SfxLab/handoffs/HANDOFF_INTEGRACAO_line_SfxLab_2026-11-06.md`).
+    //    Medido pela sonda `diag_de_quem_sao_as_entradas_do_inspector`: a secção `audio` conta 4 comandos (Browse ·
+    //    Preview · Stop · Create sound) e nenhum composto deixou de se declarar (`anim` segue nos 8 de sempre).
+    ("inspector", 103),
     // ⛔⛔ `110` botões, **`4`** comandos: fechar · importar · exportar · e o *elo*, que é pintado
     //    uma vez por linha por decisão escrita no pintor. O painel é uma LISTA, não uma dívida.
     // ⬆️ `4 → 5` em 2026-11-04 (NovaUI D1, o painel em cartões), MEDIDO: a mais é só o «…» da lista (D21).

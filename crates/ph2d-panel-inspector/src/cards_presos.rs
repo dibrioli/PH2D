@@ -136,6 +136,7 @@ pub(crate) fn monta(
     for p in presentes {
         store.mark_card_pinnable(p.id);
     }
+    store.mark_card_pinnable(crate::cards_sprite::CARD_LOOK_ANIMADA);
     let mut out = Vec::new();
     for (k, solto) in store.loose_cards_of(ids::INSP_PANEL) {
         let Some(pin) = solto.pin else { continue };
@@ -163,7 +164,7 @@ pub(crate) fn monta(
                     w,
                     abertas,
                     &snaps,
-                    Some(secao),
+                    Some(crate::cards_sprite::componente_do_cartao(secao)),
                 )
                 .pop();
                 MONTADOS.with(|m| m.borrow_mut().insert(k, (r, w.to_bits(), p.clone())));

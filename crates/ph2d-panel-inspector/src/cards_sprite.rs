@@ -29,6 +29,15 @@ use ph2d_tokens::{ColorToken, Spacing, TypeToken};
 /// O Look em Animated: a mesma coisa, com a dobra própria (como o Transform de uma imagem).
 pub const CARD_LOOK_ANIMADA: NodeId = ph2d_tool_registry::hash_node_id("cards.insp.look.animated");
 
+/// O componente que pinta o cartão de `secao`: o Look em Animated é o mesmo componente do Look.
+pub(crate) fn componente_do_cartao(secao: NodeId) -> NodeId {
+    if secao == CARD_LOOK_ANIMADA {
+        core_ids::INSP_LIVE_COLOR_SECTION
+    } else {
+        secao
+    }
+}
+
 /// O convite do cartão vazio mede cinco campos: é o único alvo do cartão.
 const LINHAS_DO_CONVITE: f32 = 5.0; // LITERAL-PX-OK: conta de campos, não geometria
 

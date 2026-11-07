@@ -8,11 +8,11 @@ use super::tests::{empty_state, headless_app};
 fn o_quadro_depois_do_restauro_refaz_a_base_sem_criar_passo() {
     let mut app = headless_app();
     app.undo_baseline = Some(empty_state());
-    app.assenta_o_restauro = 2;
+    app.undo.assenta_o_restauro = 2;
     let passos = app.undo.depth();
     app.post_frame_undo();
     assert!(app.undo_baseline.is_none());
-    assert_eq!(app.assenta_o_restauro, 1);
+    assert_eq!(app.undo.assenta_o_restauro, 1);
     assert_eq!(app.undo.depth(), passos);
 }
 

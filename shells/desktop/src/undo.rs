@@ -423,6 +423,8 @@ pub(crate) struct ProjectUndo {
     pub(crate) janela_do_jogo: Option<crate::janela_do_jogo::JanelaDoJogo>,
     /// A câmera no canvas (plano GEF 17): as molduras do quadro e o arrasto em curso.
     pub(crate) camera_no_canvas: ph2d_camera_frame::CameraNoCanvas,
+    /// Quadros que ainda faltam para a curva assentar depois de um restauro (`undo_app`).
+    pub(crate) assenta_o_restauro: u8,
 }
 
 impl ProjectUndo {

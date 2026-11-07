@@ -16,7 +16,7 @@ const PREVIEW_ROWS: f32 = 4.0; // LITERAL-PX-OK: contagem de linhas da grelha do
 /// Espessura da barra de frames: o rectângulo de acerto É a trilha (o despacho deriva o valor de
 /// `rect.x`/`rect.w`), logo é o alvo do ponteiro. Em 6 px era uma linha de leitura, não um alvo.
 const BAR_H: f32 = 10.0; // LITERAL-PX-OK: altura de trilha de slider, é o alvo do ponteiro
-/// Onde o resumo de uma linha da lista começa, como fração da largura.
+/// A parte da largura da lista que o resumo de uma linha pode ocupar, no máximo (1 menos isto).
 const SUMMARY_COL_FRAC: f32 = 0.55; // LITERAL-PX-OK: fração de layout
 
 /// A pré-visualização da célula no ecrã — só quando a sprite tem pixels em memória.
@@ -77,6 +77,30 @@ pub(crate) fn paint_list(
         return cur_y + font + ph2d_tokens::control_gap_px();
     }
     let gap = ph2d_tokens::control_gap_px();
+    // O resumo manda na coluna da direita: mede-se (nunca se elide) até no máximo `1 - SUMMARY_COL_FRAC`
+    // da linha; o nome fica com o que sobra, e o vão o deixa cortado longe do resumo.
+    let resumos: Vec<(String, bool)> = info
+        .rows
+        .iter()
+        .map(|row| {
+            let plays = row.plays_on(info.cells);
+            let texto = if plays {
+                tr_with(
+                    "panel.inspector.anim_card.frames",
+                    &[("n", &row_cells(row, info.cells).len())],
+                )
+            } else {
+                tr("panel.inspector.animation.out_of_grid").to_owned()
+            };
+            (texto, plays)
+        })
+        .collect();
+    let resumo_w = ph2d_editor_core::paint::label_column_width(
+        text_system,
+        font,
+        resumos.iter().map(|(t, _)| t.as_str()),
+    )
+    .min((w - ROW_H - gap) * (1.0 - SUMMARY_COL_FRAC));
     for (i, ((row, &row_id), &play_id)) in info
         .rows
         .iter()
@@ -131,10 +155,11 @@ pub(crate) fn paint_list(
             resolve(ColorToken::Text2, theme)
         };
         // O vão deixa o nome cortado longe do resumo: no piso do painel, «crouc…4 frames» lia-se como uma palavra.
-        let nome_w = rect.w * SUMMARY_COL_FRAC - (text_x - x) - Spacing::Sm.px();
+        let resumo_x = x + rect.w - resumo_w;
+        let ate_o_resumo = (resumo_x - text_x - Spacing::Sm.px()).max(0.0);
         match &mut renomeia {
             Some((j, campo)) if *j == i => {
-                **campo = Some(Rect::new(text_x, cur_y, nome_w, ROW_H));
+                **campo = Some(Rect::new(text_x, cur_y, ate_o_resumo, ROW_H));
             }
             _ => paint_text(
                 text_system,
@@ -143,26 +168,21 @@ pub(crate) fn paint_list(
                 text_x,
                 cur_y + super::rows::folga_da_linha(ROW_H, font),
                 font,
-                nome_w,
+                ate_o_resumo,
                 color,
             ),
         }
-        let plays = row.plays_on(info.cells);
-        let summary = if plays {
-            tr_with("panel.inspector.anim_card.frames", &[("n", &cells.len())])
-        } else {
-            tr("panel.inspector.animation.out_of_grid").to_owned()
-        };
+        let (summary, plays) = &resumos[i];
         paint_text(
             text_system,
             scene,
-            &summary,
-            x + rect.w * SUMMARY_COL_FRAC,
+            summary,
+            resumo_x,
             cur_y + super::rows::folga_da_linha(ROW_H, font),
             font,
-            rect.w * (1.0 - SUMMARY_COL_FRAC),
+            resumo_w + 1.0, // LITERAL-PX-OK: folga de arredondamento da medida
             resolve(
-                if plays {
+                if *plays {
                     ColorToken::Text3
                 } else {
                     ColorToken::Danger

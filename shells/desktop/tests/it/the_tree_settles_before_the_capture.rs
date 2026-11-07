@@ -94,11 +94,7 @@ fn the_tree_settles_before_the_capture() {
 /// o primeiro diff do artista carregaria a convergência dos sistemas dentro dele.
 #[test]
 fn the_first_baseline_is_settled_too() {
-    let baseline = at(
-        UNDO,
-        "if !aberta && self.tira_a_base(!had_input) {",
-        "undo_app.rs",
-    );
+    let baseline = at(UNDO, "if self.tira_a_base(!had_input) {", "undo_app.rs");
     let bloco = &UNDO[baseline..baseline + 240];
     assert!(
         bloco.contains("self.settle_tree_before_capture();"),

@@ -64,16 +64,16 @@ impl crate::App {
     }
 
     pub(super) fn arma_o_restauro(&mut self) {
-        self.assenta_o_restauro = QUADROS_DO_RESTAURO;
+        self.undo.assenta_o_restauro = QUADROS_DO_RESTAURO;
     }
 
     /// A curva repõe a pose do tempo atual depois de um restauro: isso não é passo, ou o Ctrl+Z seguinte só desfaz a si
     /// mesmo e o passo de baixo nunca chega (dono 06/11: a moeda presa sob a plataforma).
     pub(super) fn restauro_assenta(&mut self) -> bool {
-        if self.assenta_o_restauro == 0 {
+        if self.undo.assenta_o_restauro == 0 {
             return false;
         }
-        self.assenta_o_restauro -= 1;
+        self.undo.assenta_o_restauro -= 1;
         self.settle_tree_before_capture();
         self.undo_baseline = self.capture_project();
         true

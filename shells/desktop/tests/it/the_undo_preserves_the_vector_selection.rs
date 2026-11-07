@@ -132,9 +132,16 @@ fn the_step_carries_the_selection_and_the_restore_prefers_it() {
         .split("\n    pub(crate) fn ")
         .next()
         .expect("corpo de apply_project_with");
+    // Desde GEF 23 (dono 06/11, «ninguém desselecionou») a marca do passo manda nas famílias de
+    // `keeps_its_selection` (`m.field`) e o objecto comum selecionado AGORA soma-se a ela.
     assert!(
-        corpo.contains("Some(m) => m.field.clone()"),
+        corpo.contains("Some(m) => {") && corpo.contains("m.field.iter().copied().chain(comuns)"),
         "o `apply_project_with` recebe a marca do passo e não a usa — o argumento fica decorativo"
+    );
+    assert!(
+        corpo.contains("plain_selection_ids(gfx.sim.world(), &bits)"),
+        "o `apply_project_with` deixou de transportar o objecto comum selecionado — todo Ctrl+Z o \
+         desseleciona (dono 06/11)"
     );
 
     // ⚠️ **E a marca do baseline é re-armada no restauro, como o próprio baseline** — sem isto o

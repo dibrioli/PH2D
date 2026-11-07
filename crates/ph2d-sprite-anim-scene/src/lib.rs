@@ -16,7 +16,7 @@ pub const INICIO: &str = "Starts With";
 pub const TROCADA: &str = "Swapped Image";
 pub const PLAYER: &str = "Player";
 /// O sinal que o marcador da folha grita e a regra de [`OUVE`] ouve.
-pub const SINAL: &str = "step";
+pub const SINAL: &str = "footstep";
 /// O índice de «row 1» na lista: a folha entra com o «loop» e o Split junta depois dele.
 const ROW_1: u8 = 1;
 /// O quadro da animação onde o marcador grita.
@@ -34,7 +34,7 @@ pub const OBJETOS: [(&str, [f32; 2]); 5] = [
 pub const VISTA: ([f32; 2], f32) = ([-3.5, 2.5], 9.0);
 
 pub const MENSAGEM: &str = "[game-smoke] =5 o Animated Sprite peça a peça: «Empty Sheet» vazio; «Split Sheet» cortada por \
-    Split by rows com um marcador «step»; «Hears Step» salta quando o marcador grita; «Starts With» com outra animação \
+    Split by rows com um marcador «footstep»; «Hears Step» salta quando o marcador grita; «Starts With» com outra animação \
     em prévia; «Swapped Image» com o aviso; e o Player com regras, a que ganha acesa no Play.";
 
 /// O instante que a foto do item quer (`PH2D_GAME_SMOKE_FOTO`), ou a prova que o guião corre e relata.

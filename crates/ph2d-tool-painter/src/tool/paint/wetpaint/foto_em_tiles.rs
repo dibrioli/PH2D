@@ -36,10 +36,17 @@ impl PlanoEmTiles {
     }
 
     /// Fotografa `v` (`s` células por linha), partilhando com `anterior` os tiles iguais ao bit.
+    ///
+    /// Um comprimento que não é múltiplo de `s` é outra grade: truncá-lo devolvia um plano mais curto ao motor.
     pub(crate) fn de(v: &[f32], s: usize, anterior: Option<&Self>) -> Self {
         if v.is_empty() || s == 0 {
             return Self::default();
         }
+        assert!(
+            v.len().is_multiple_of(s),
+            "plano de {} células não tem linhas de {s}: é de outra grade",
+            v.len()
+        );
         let rows = v.len() / s;
         let anterior = anterior.filter(|a| a.s == s && a.rows == rows && !a.tiles.is_empty());
         let total = Self::tiles_por_linha(s) * rows.div_ceil(TILE);
@@ -197,6 +204,13 @@ mod tests {
                 .zip(&plano(s, rows))
                 .all(|(p, q)| p.to_bits() == q.to_bits())
         );
+    }
+
+    #[test]
+    #[should_panic(expected = "é de outra grade")]
+    fn um_plano_de_outra_grade_e_recusado() {
+        // 1026² células lidas com as linhas de 2050: o erro do smoke do dono (07/11).
+        let _ = PlanoEmTiles::de(&vec![0.0; 1026 * 1026], 2050, None);
     }
 
     #[test]

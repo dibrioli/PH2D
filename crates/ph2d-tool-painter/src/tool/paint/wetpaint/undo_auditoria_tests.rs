@@ -37,7 +37,7 @@ fn px_diferentes(a: &[u8], b: &[u8]) -> usize {
 /// ⭐ Compor os planos só na caixa do que mudou dá a mesma tela e os mesmos planos que a grade inteira, com a água a
 /// correr: para lá do tecto e com fotografia depois de um enterro.
 #[test]
-fn a_caixa_da_os_mesmos_planos_que_a_grade_inteira() {
+pub(super) fn a_caixa_da_os_mesmos_planos_que_a_grade_inteira() {
     let corrida = |meio: &str, teto_um: bool, inteira: bool| {
         grade_inteira::set(inteira);
         teto::set(teto_um.then_some(1));
@@ -90,7 +90,7 @@ fn a_caixa_da_os_mesmos_planos_que_a_grade_inteira() {
 
 /// Dry Canvas e Wet Canvas depois de um traço: o desfazer dele devolve a grade de antes dele, longe dele inclusive.
 #[test]
-fn a_acao_de_tela_inteira_entra_no_registo_do_traco() {
+pub(super) fn a_acao_de_tela_inteira_entra_no_registo_do_traco() {
     for (nome, acao) in [
         (
             "seca",
@@ -131,7 +131,7 @@ fn retidos(t: &mut PainterTool) -> (usize, usize) {
 
 /// Fills dentro do Wet: cada enterro retém tela, `base` e planos. O tecto conta-os, senão o undo vivo cresce sem fim.
 #[test]
-fn o_tecto_conta_o_que_cada_enterro_retem() {
+pub(super) fn o_tecto_conta_o_que_cada_enterro_retem() {
     let mut t = tela(600, 400, DABBER, 20.0);
     traco(&mut t, 40.0, 560.0, 20.0);
     preenche(&mut t, 0);
@@ -157,7 +157,7 @@ fn o_tecto_conta_o_que_cada_enterro_retem() {
 
 /// Uma imagem pedida antes de refazer para lá do tecto é de antes do enterro: não se aplica, vai pela dívida.
 #[test]
-fn refazer_para_la_do_tecto_recusa_a_imagem_no_ar() {
+pub(super) fn refazer_para_la_do_tecto_recusa_a_imagem_no_ar() {
     let mut aplicadas = 0;
     let mut px = 0;
     let mut no_ar = 0;
@@ -228,7 +228,7 @@ fn refazer_para_la_do_tecto_recusa_a_imagem_no_ar() {
 
 /// Passos que o undo do documento já descartou não seguem no tecto do undo vivo.
 #[test]
-fn o_passo_que_o_documento_ja_largou_sai_do_tecto() {
+pub(super) fn o_passo_que_o_documento_ja_largou_sai_do_tecto() {
     let mut t = tela(600, 400, DABBER, 20.0);
     t.undo.set_max_bytes(1);
     for i in 0..8 {
@@ -267,7 +267,7 @@ fn invisiveis(t: &mut PainterTool, y0: usize, y1: usize) -> usize {
 
 /// Só a orla do traço desfeito acaba: a da aguada longe dele continua viva, ao bit.
 #[test]
-fn para_la_do_tecto_a_tinta_longe_fica_ao_bit() {
+pub(super) fn para_la_do_tecto_a_tinta_longe_fica_ao_bit() {
     teto::set(Some(1));
     let mut t = tela(900, 700, AGUADA, 40.0);
     traco(&mut t, 60.0, 840.0, 80.0);

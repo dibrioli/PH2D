@@ -163,7 +163,7 @@ fn a_borracha_leva_o_traco_e_o_oleo_juntos() {
 
 /// O traço por cima desfeito antes de voltar: nenhum sinal dele.
 #[test]
-fn desfazer_o_traco_antes_de_voltar_mantem_a_tinta_viva() {
+pub(super) fn desfazer_o_traco_antes_de_voltar_mantem_a_tinta_viva() {
     let vivo = borracha_viva();
     let mut t = com_oleo();
     t.set_paint_media(PaintMedia::Digital);
@@ -175,7 +175,7 @@ fn desfazer_o_traco_antes_de_voltar_mantem_a_tinta_viva() {
 
 /// ⭐ Comprimida na RAM: o mesmo, ao bit. A Borracha e a tela depois de acordar são as de quem nunca comprimiu.
 #[test]
-fn comprimir_a_tinta_adormecida_nao_muda_nada() {
+pub(super) fn comprimir_a_tinta_adormecida_nao_muda_nada() {
     let vivo = borracha_viva();
     let mut t = com_oleo();
     t.set_paint_media(PaintMedia::Digital);
@@ -183,7 +183,11 @@ fn comprimir_a_tinta_adormecida_nao_muda_nada() {
     let cru = a.sess.lock().expect("trinco").bytes_retidos();
     a.encolhe_ja();
     let z = a.bytes.load(std::sync::atomic::Ordering::Relaxed);
-    assert!(z < cru / 4, "comprime: {cru} → {z}");
+    // Na grade 1: numa grade menor pesa mais a `base`, do tamanho da tela e mal comprimida.
+    assert!(
+        super::undo_tinta_morre_tests::razoes::grade() > 1 || z < cru / 4,
+        "comprime: {cru} → {z}"
+    );
     assert_eq!(diferentes(&vivo, &volta_e_apaga(&mut t)), 0);
 }
 
@@ -223,7 +227,7 @@ fn o_pen_down_espera_a_tinta_comprimida() {
 
 /// Acordada depois de comprimir, a grade é a mesma ao bit, plano a plano, e a água continua a correr igual.
 #[test]
-fn a_agua_comprimida_corre_igual() {
+pub(super) fn a_agua_comprimida_corre_igual() {
     let cena = |comprime: bool| -> Vec<u8> {
         let mut t = PainterTool::default();
         t.abre_a_sprite(vec![255u8; W * H * 4], W as u32, H as u32);
@@ -255,7 +259,7 @@ fn a_agua_comprimida_corre_igual() {
 
 /// A água parada ao sair volta a correr ao voltar.
 #[test]
-fn a_agua_volta_a_correr() {
+pub(super) fn a_agua_volta_a_correr() {
     let mut t = PainterTool::default();
     t.abre_a_sprite(vec![255u8; W * H * 4], W as u32, H as u32);
     t.set_paint_tool_mode("wetpaint");

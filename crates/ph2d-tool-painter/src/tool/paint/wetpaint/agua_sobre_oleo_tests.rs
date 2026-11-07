@@ -48,6 +48,7 @@ pub(super) fn com_oleo_sobre(vertical: bool, papel: [u8; 3]) -> PainterTool {
         .expect("o meio");
     t.set_brush_size_px(30.0);
     t.set_brush_color_srgb8([40, 90, 220]);
+    super::undo_tinta_morre_tests::razoes::aplica(&mut t);
     let ponto = |k: usize| {
         if vertical {
             (120.0, 20.0 + 3.0 * k as f32)

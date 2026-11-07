@@ -278,8 +278,9 @@ impl FotoDoMotor {
                 .enumerate()
                 .map(|(i, l)| {
                     (
-                        PlanoEmTiles::de(&l.grid.flow_x, l.grid.s, fluxo(i).map(|f| &f.0)),
-                        PlanoEmTiles::de(&l.grid.flow_y, l.grid.s, fluxo(i).map(|f| &f.1)),
+                        // O fluxo mora na grade de FLUXO: outra largura que a fina, se `flow_ratio` > 1.
+                        PlanoEmTiles::de(&l.grid.flow_x, l.grid.flow.s, fluxo(i).map(|f| &f.0)),
+                        PlanoEmTiles::de(&l.grid.flow_y, l.grid.flow.s, fluxo(i).map(|f| &f.1)),
                     )
                 })
                 .collect(),
@@ -539,6 +540,10 @@ pub(super) fn bytes_reais_dos_passos(sess: &WetSession) -> usize {
 impl FotoDoMotor {
     pub(crate) fn de_para_sonda(e: &ph2d_wet_paint::painter::Engine) -> Self {
         Self::de(e, None)
+    }
+
+    pub(crate) fn repoe_para_sonda(&self, e: &mut ph2d_wet_paint::painter::Engine) {
+        self.repoe(e);
     }
 
     /// Os bytes que a fotografia do motor `e` seguraria, sem a tirar.

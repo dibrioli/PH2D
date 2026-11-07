@@ -690,6 +690,9 @@ mod foto_em_tiles;
 #[cfg(test)]
 mod undo_auditoria_tests;
 #[cfg(test)]
+#[path = "wetpaint/undo_matriz_tests.rs"]
+mod undo_matriz_tests;
+#[cfg(test)]
 mod undo_tinta_morre_tests;
 #[cfg(test)]
 mod undo_tinta_viva_tests;

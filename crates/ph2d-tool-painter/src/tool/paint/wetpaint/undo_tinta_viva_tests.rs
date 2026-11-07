@@ -37,6 +37,7 @@ fn base(meio: &str, cor: [u8; 3]) -> PainterTool {
     t.paint.wetpaint.knobs.set(Knob::Solubility, 1.0);
     t.set_brush_size_px(30.0);
     t.set_brush_color_srgb8(cor);
+    super::undo_tinta_morre_tests::razoes::aplica(&mut t);
     t
 }
 
@@ -118,7 +119,7 @@ fn compara(meio1: &str, cor1: [u8; 3], meio2: &str, cor2: [u8; 3], assenta: usiz
 
 /// ⭐ Óleo solúvel (Dabber, Solubility 1) + undo de outro traço + aguada (Re-wet 0,35, Drag 0,15) = sem o undo.
 #[test]
-fn undo_de_outro_traco_nao_mata_o_oleo_soluvel() {
+pub(super) fn undo_de_outro_traco_nao_mata_o_oleo_soluvel() {
     compara(
         "Oil/Dabber/Dabber.ph2d-brush.png",
         [40, 90, 220],
@@ -130,7 +131,7 @@ fn undo_de_outro_traco_nao_mata_o_oleo_soluvel() {
 
 /// ⭐ Aguarela × aguarela: Wet Flat azul, undo de outro traço, Wet Flat amarelo por cima ainda molhado.
 #[test]
-fn undo_de_outro_traco_nao_seca_a_aguarela_molhada() {
+pub(super) fn undo_de_outro_traco_nao_seca_a_aguarela_molhada() {
     compara(
         "Watercolor/Fluid/Wet Flat.ph2d-brush.png",
         [40, 90, 220],
@@ -156,7 +157,7 @@ fn depois_do_redo(refaz: bool) -> (PainterTool, Option<Grade>) {
 
 /// ⭐ O REDO não mata a tinta viva: A, B, undo, redo e a aguada por cima = A, B e a aguada.
 #[test]
-fn redo_nao_mata_a_tinta_viva() {
+pub(super) fn redo_nao_mata_a_tinta_viva() {
     let (mut b, gb) = depois_do_redo(false);
     let (mut a, ga) = depois_do_redo(true);
     assert!(gb.is_some(), "a fixture não tem a tinta viva");
@@ -202,7 +203,7 @@ fn ladeira_depois(extra: bool) -> Option<Vec<f32>> {
 
 /// ⭐ O undo devolve a ladeira do óleo de ANTES do passo (`Grid::oleo_antes`), não a do traço desfeito.
 #[test]
-fn undo_devolve_a_ladeira_do_oleo_de_antes() {
+pub(super) fn undo_devolve_a_ladeira_do_oleo_de_antes() {
     let b = ladeira_depois(false);
     let a = ladeira_depois(true);
     assert!(b.is_some() && a.is_some(), "a sessão morreu");
@@ -365,7 +366,7 @@ fn estado(t: &mut PainterTool) -> (Option<Grade>, bool) {
 /// ⭐ Depois de desfazer/refazer a tinta molhada continua VIVA: a sessão sobrevive, ainda tem fluido, a água
 /// continua a andar nos quadros seguintes, e tela e grade são as da linha do tempo sem o par desfaz/refaz.
 #[test]
-fn undo_redo_deixa_a_tinta_viva_a_andar() {
+pub(super) fn undo_redo_deixa_a_tinta_viva_a_andar() {
     for quadro in [false, true] {
         let mut sem = viva_depois(0, quadro);
         let mut com = viva_depois(2, quadro);
@@ -417,7 +418,7 @@ fn undo_redo_deixa_a_tinta_viva_a_andar() {
 
 /// O mesmo com a água no WORKER (relógio do app, não o fixo): a tinta continua viva depois de desfazer/refazer.
 #[test]
-fn undo_redo_com_o_worker_deixa_a_tinta_viva() {
+pub(super) fn undo_redo_com_o_worker_deixa_a_tinta_viva() {
     fn real(t: &mut PainterTool, n: usize) {
         for _ in 0..n {
             std::thread::sleep(std::time::Duration::from_millis(16));
@@ -486,7 +487,7 @@ fn a_foto_do_passo_cabe_ate_4096() {
 /// **Um undo que não se aplica não mexe no ritmo da água**: soltar a sessão para o undo e voltar com
 /// `aplicou = false` deixa o passo em voo onde estava (antes, o soltar drenava-o à cabeça).
 #[test]
-fn undo_que_nao_se_aplica_nao_drena_o_passo_em_voo() {
+pub(super) fn undo_que_nao_se_aplica_nao_drena_o_passo_em_voo() {
     let mut t = base("Watercolor/Fluid/Wet Flat.ph2d-brush.png", [40, 60, 160]);
     traco(&mut t, 40.0, 90.0);
     tick(&mut t, 20);

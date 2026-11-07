@@ -37,6 +37,7 @@ fn dripping(w: u32, h: u32) -> PainterTool {
     t.paint.brush = b;
     t.paint.brush_by_mode.fill(b);
     t.set_paint_media(PaintMedia::WetPaint);
+    super::undo_tinta_morre_tests::razoes::aplica(&mut t);
     t
 }
 
@@ -50,7 +51,7 @@ fn dripping(w: u32, h: u32) -> PainterTool {
 /// ao byte. Sem isso, o Ctrl+Z deixa marcas que ninguém consegue apagar com Ctrl+Z (o próximo Ctrl+Z
 /// desfaz outra coisa).
 #[test]
-fn undoing_a_wet_stroke_takes_the_drip_the_sim_painted_after_the_pen_up() {
+pub(super) fn undoing_a_wet_stroke_takes_the_drip_the_sim_painted_after_the_pen_up() {
     let mut t = dripping(160, 220);
     // Gravidade no talo: o escorrido tem de existir para o gate poder medi-lo.
     use ph2d_wet_paint::tuning::{KNOB_DEFS, Knob};
@@ -108,7 +109,7 @@ fn undoing_a_wet_stroke_takes_the_drip_the_sim_painted_after_the_pen_up() {
 /// do passo desfeito. Não há repro conhecido … fica escrito porque é a diferença que um smoke poderia
 /// encontrar."* O smoke do Enio encontrou.
 #[test]
-fn undoing_back_through_a_drip_that_was_painted_between_two_strokes() {
+pub(super) fn undoing_back_through_a_drip_that_was_painted_between_two_strokes() {
     let mut t = dripping(160, 220);
     use ph2d_wet_paint::tuning::{KNOB_DEFS, Knob};
     t.paint

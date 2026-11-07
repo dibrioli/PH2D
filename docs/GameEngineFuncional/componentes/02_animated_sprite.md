@@ -38,7 +38,7 @@ Sonda temporária em `ph2d-app-components` (já retirada): `canais_componente::{
 | Who Picks | só Auto ↔ Script (`sprite_animator.2`, `autoplay`); Rules é componente que entra e sai: não | não medido | não (isenção no gate) |
 | Frames/s, Cycle | **não**: `SpriteAnimations` não tem campos no catálogo | não | não (isenção no gate) |
 
-Logo: «qual animação toca» já grava, nada a construir. Cuidado: a curva escreve o `current` sem rebobinar, e com Auto Key armado o ▶ da lista grava chave de `current` e `playing` (efeito no quadro não medido).
+Logo: «qual animação toca» já grava, nada a construir, e pelo clique na LINHA da lista. Cuidado: a curva escreve o `current` sem rebobinar. O ▶ deixou de gravar (decisão delegada A2, abaixo).
 
 ## O que as 9 ensinam
 
@@ -57,6 +57,13 @@ Godot: fatiar vendo a folha, tempo relativo por quadro; evitar o painel que some
 5. **Regra acesa no Play agora; ensaio com teclas depois.**
 6. **Look nasce dobrado em Animated** (nova, trazida pelo levantamento).
 7. Versão B + aviso de imagem trocada (da A) + botão **Split by rows** no editor.
+
+**Delegadas (07/11), a confirmar no smoke do dono:**
+
+- **A2, ▶ com Auto Key armado:** o ▶ é só prévia, então não grava chave de `current`, de `playing`, nem da célula do rebobinar (`sprite_grid.frame`, medido pela prova: sem ela nascia uma chave). Clicar na LINHA da lista continua a gravar `current`: é o único gesto que grava qual animação toca. Sobre uma curva, a prévia segura-se como uma pose posada à mão, até o relógio andar.
+- **A chave do artista vence o Starts with enquanto existir a curva:** o Play entra no início, e o quadro seguinte da curva escreve o que a chave diz.
+- **`PH2D_CARDS=0`, a lei antiga:** sem menu Starts with, a linha e o ▶ doutra linha mudam com o que começa, e o balão de Auto diz isso.
+- **Cut again sem proposta só abre o editor:** não é um passo de desfazer, e o aviso fica até a grade mudar.
 
 ## O desenho aprovado
 
@@ -121,7 +128,18 @@ Godot: fatiar vendo a folha, tempo relativo por quadro; evitar o painel que some
 - **Censo final:** **17 à vista e 48 no total, moldura 22** (`o_censo_dos_campos_do_animated_em_uso`, verde sobre o binário final). A meta do papel, 15 e 47, não foi atingida por 2 e 1: os três verbos do cabeçalho contam como campos e o papel os tratava como moldura. Nada a cortar sem perder poder; o dono julga no smoke.
 - **Mutações:** 16 mutações, por nome de teste; **16 sangraram, 0 sobreviveram**: início não usado · ▶ escreve o início · Split sem filtrar fileira vazia · Split sem transparência · aviso com corte novo · aviso nunca · acesa sempre a 1.ª · acesa sem limpar · acesa ignora o Play · acesa esquece o seguro · uma acesa por mundo · fila errada · LIVE sem acesa · aba engole o Ctrl+Z · aviso fora do registo · Add sem pedir. Não correu a crate inteira por mutante: não confere que só o gate certo sangra.
 
-**Modelo do início:** componente irmão `SpriteAnimStart`, e não campo do `SpriteAnimator`. O postcard é posicional e o tocador grava-se em blob: um campo novo tornaria ilegível todo blob antigo; irmão não precisa de degrau no `PROJECT_SCHEMA` (o molde de `SpriteAnimFrames` e `SpriteAnimMarkers`, `registry.rs`). Registo `118 → 119`.
+- **Auditorias de 07/11**, cada cura com o evento real:
+  - **Espelhos do registo:** `registers_sprite_alongside_ecs` e `registers_luau_script_alongside_ecs` estavam vermelhos (121 contra 119). Agora contam: `ph2d-ecs` + 1, sem literal. A varredura não achou outro espelho.
+  - **Renomear preso** (`ph2d-panel-registry-init`, `o_renomear_no_cartao_preso.rs`): `clicar_fora_grava_no_objecto_do_cartao_preso` (a seleção com e sem tocador) · `a_pressao_no_proprio_cartao_nao_apaga_o_que_se_digitou`: defeito extra, `poe_estados_presos` repunha o nome de antes por cima do campo em foco. `o_campo_do_nome_so_abre_no_cartao_do_dono`. Sangram: o nome ia à seleção, ou voltava a `idle`.
+  - **▶ armado** (`autokey_previa_tests.rs`, o quadro com curva, gesto, publicar e `apply_samples`): `o_play_armado_nao_grava_chave_e_o_jogo_entra_no_inicio` · `a_linha_armada_grava_chave_de_qual_toca` · `a_chave_do_artista_vence_o_starts_with`. O passe é chamado por `apply_samples`, como os irmãos: a linha `ak.previa` de `run` não corre neste teste, nem foi medida na janela.
+  - **`PH2D_CARDS=0`:** `sem_cartoes_a_linha_muda_com_o_que_comeca` · `sem_cartoes_clicar_na_linha_muda_com_o_que_comeca`.
+  - **Aviso:** `voltar_a_grade_antiga_nao_ressuscita_o_aviso` · `cut_again_sem_proposta_abre_o_editor`. A prova na janela `animado_prova_desfaz` perdeu o passo do Cut again sem proposta e não foi corrida de novo.
+  - **Herói recusado:** `a_recusa_do_heroi_vira_aviso`, com a recusa injetada: a tabela de fábrica não falha, e a toast na shell não tem prova própria.
+  - **Reordenar no Play:** o cartão aceita (nenhuma guarda no caminho de `RuleMove`, lido). `reordenar_no_play_leva_o_seguro_junto`.
+  - **Play no 1.º quadro:** `o_play_comeca_no_primeiro_quadro_mesmo_ja_a_tocar_o_inicio`, com e sem `SpriteAnimStart`. Vale também ao abrir o projeto, a mesma porta: `o_projeto_antigo_abre_igual` continua verde.
+  - **Suspeitas descartadas:** regras no pai com tocador no filho, a regra manda no quadro seguinte (`regras_no_pai_mandam_no_tocador_do_filho_depois_do_inicio`) · LIVE com `PH2D_CARDS=0`, cabe no piso (`sem_cartoes_o_live_cabe_na_coluna`) · nada corta no piso (`os_botoes_novos_nao_cortam_no_piso_do_painel`) · início e aviso em instância e duplicar (`inicio_e_aviso_viajam_no_duplicar_e_na_instancia`) · desfazer do herói: já provado em E6.
+
+**Modelo do início:** componente irmão `SpriteAnimStart`, e não campo do `SpriteAnimator`. O postcard é posicional e o tocador grava-se em blob: um campo novo tornaria ilegível todo blob antigo; irmão não precisa de degrau no `PROJECT_SCHEMA` (o molde de `SpriteAnimFrames` e `SpriteAnimMarkers`, `registry.rs`). Registo `118 → 119` em `ph2d-ecs`.
 
 ## Etapas
 

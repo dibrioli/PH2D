@@ -35,7 +35,7 @@ fn pairada(ctx: &PaintCtx, visiveis: &[usize]) -> Option<(usize, usize)> {
 
 /// As fotos do smoke (`PH2D_PHYSICS_SMOKE_ABA`; a tela virtual não recebe rato): `abre` dá os nomes da
 /// maquete às camadas 0..4 e abre a aba na 1; `pairar` põe também o ponteiro em (4, 1); `nome` abre o
-/// nome da 2 em edição na lista; `default` abre a aba sem dar nome nenhum (a 0 lê-se «Default»).
+/// nome da 2 em edição na lista; `default` tira o nome à 0 (lê-se «Default»).
 pub(super) fn fotos(ctx: &mut PaintCtx) {
     thread_local! { static FEITO: Cell<bool> = const { Cell::new(false) }; }
     let Ok(caso) = std::env::var("PH2D_PHYSICS_SMOKE_ABA") else {
@@ -46,15 +46,19 @@ pub(super) fn fotos(ctx: &mut PaintCtx) {
     }
     FEITO.set(true);
     abre(Some(1));
-    if caso != "default" {
-        for (n, nome) in tr("card.physics.smoke_layer_names").split('|').enumerate() {
-            ctx.host
-                .bus_mut()
-                .push(ph2d_editor_core::action_bus::EditorAction::LayerRename {
-                    layer: n as u8,
-                    name: nome.to_owned(),
-                });
-        }
+    // `default`: a camada 0 perde o nome (lê-se «Default»); os outros casos dão os nomes da maquete B.
+    let nomes: Vec<&str> = if caso == "default" {
+        vec![""]
+    } else {
+        tr("card.physics.smoke_layer_names").split('|').collect()
+    };
+    for (n, nome) in nomes.into_iter().enumerate() {
+        ctx.host
+            .bus_mut()
+            .push(ph2d_editor_core::action_bus::EditorAction::LayerRename {
+                layer: n as u8,
+                name: nome.to_owned(),
+            });
     }
     if caso == "nome" {
         let campo = i::PHYSICS_LAYER_NAME[2];

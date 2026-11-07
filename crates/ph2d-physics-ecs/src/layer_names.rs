@@ -258,6 +258,28 @@ mod tests {
         assert_eq!(visible_layers(&w, &LayerMatrix::all()), 1);
     }
 
+    /// A contagem da lista da aba: um objeto conta UMA vez (o `Collider` manda; o sensor sozinho conta
+    /// na camada dele).
+    #[test]
+    fn cada_objeto_conta_uma_vez_na_sua_camada() {
+        let mut w = World::new();
+        let sensor = |layer| RaySensor {
+            layer,
+            ..RaySensor::default()
+        };
+        let col = |layer| Collider {
+            layer,
+            ..Collider::default()
+        };
+        w.spawn(col(2));
+        w.spawn((col(2), sensor(2)));
+        w.spawn((col(3), sensor(4)));
+        w.spawn(sensor(5));
+        let n = objects_per_layer(&w);
+        assert_eq!((n[2], n[3], n[4], n[5]), (2, 1, 0, 1));
+        assert_eq!(n.iter().sum::<u32>(), 4, "quatro objetos");
+    }
+
     #[test]
     fn renomear_apara_e_vazio_volta_ao_numero() {
         let mut w = World::new();

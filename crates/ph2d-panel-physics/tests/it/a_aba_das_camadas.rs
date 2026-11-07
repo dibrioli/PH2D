@@ -155,6 +155,90 @@ fn nomes_b() -> LayerNames {
 
 /// A porta do painel abre a aba (e pede para vir à frente); as células das cinco camadas visíveis cabem na
 /// área, e só elas; a célula alta (4, 1) escreve os dois lados do par e só ele; fechar tira as células.
+/// ⭐ Onda 9b — a camada aberta, pelo clique real: a caixinha «Bumps into» de Enemy (na camada
+/// Player) escreve os DOIS lados do par (1, 2) e só ele; o botão do objeto seleciona ESSE objeto; «Select
+/// all» seleciona todos (o 1.º troca, os outros juntam-se); com muitos objetos, «+N more» abre a fila.
+#[test]
+fn a_camada_aberta_marca_o_par_e_seleciona_os_objetos() {
+    use ph2d_editor_core::action_bus::SelectModifier;
+    let mut mesa = Mesa::nova(nomes_b(), false);
+    ph2d_panel_physics::set_layer_objects(vec![
+        (1, 0xA1, "Hero".into()),
+        (1, 0xA2, "Hero 2".into()),
+        (2, 0xB1, "Slime".into()),
+    ]);
+    aba::abre(Some(1));
+    aba::poe_area_fixa(AREA);
+    mesa.pinta();
+    // A caixinha da Enemy na camada Player.
+    let antes = LayerMatrix::from_rows(PhysicsSettings::default().layer_matrix);
+    let depois = mundo_de(&mesa.clica(ids::PHYSICS_LAYER_BUMPS[2]));
+    for a in 0..MAX_LAYERS {
+        for b in 0..MAX_LAYERS {
+            let par = (a, b) == (1, 2) || (a, b) == (2, 1);
+            assert_eq!(
+                depois.collides(a, b) != antes.collides(a, b),
+                par,
+                "a caixinha muda só o par (1, 2), nos dois lados: ({a}, {b})"
+            );
+        }
+    }
+    // A caixinha da camada que não é visível não existe.
+    assert!(mesa.rect(ids::PHYSICS_LAYER_BUMPS[5]).is_none());
+    let _ = mesa.host.drained_actions();
+    // O 2.º botão é o «Hero 2».
+    let _ = mesa.clica(ids::PHYSICS_LAYER_OBJECT[1]);
+    assert_eq!(
+        mesa.host.drained_actions(),
+        [EditorAction::SelectSprite {
+            entity_bits: 0xA2,
+            modifier: SelectModifier::Replace
+        }],
+        "o botão seleciona o seu objeto"
+    );
+    assert!(
+        mesa.rect(ids::PHYSICS_LAYER_OBJECT[2]).is_none(),
+        "só os da camada"
+    );
+    let _ = mesa.clica(ids::PHYSICS_LAYER_SELECT_ALL);
+    assert_eq!(
+        mesa.host.drained_actions(),
+        [
+            EditorAction::SelectSprite {
+                entity_bits: 0xA1,
+                modifier: SelectModifier::Replace
+            },
+            EditorAction::SelectSprite {
+                entity_bits: 0xA2,
+                modifier: SelectModifier::Add
+            }
+        ],
+        "Select all seleciona todos"
+    );
+    // Muitos objetos: «+N more» depois de três linhas, e o clique mostra a fila inteira.
+    let muitos: Vec<(usize, u64, String)> = (0..60)
+        .map(|k| (1, 0x1000 + k as u64, format!("Coin {k:02}")))
+        .collect();
+    ph2d_panel_physics::set_layer_objects(muitos);
+    mesa.pinta();
+    assert!(mesa.rect(ids::PHYSICS_LAYER_MORE).is_some(), "+N more");
+    assert!(mesa.rect(ids::PHYSICS_LAYER_OBJECT[59]).is_none());
+    let _ = mesa.clica(ids::PHYSICS_LAYER_MORE);
+    mesa.pinta();
+    assert!(
+        mesa.rect(ids::PHYSICS_LAYER_OBJECT[59]).is_some(),
+        "a fila inteira"
+    );
+    assert!(mesa.rect(ids::PHYSICS_LAYER_MORE).is_none());
+    // Os cartões da direita têm o tamanho do conteúdo: a camada aberta acaba antes do fim da área.
+    let todos = mesa
+        .rect(ids::PHYSICS_LAYER_SELECT_ALL)
+        .expect("Select all");
+    assert!(todos.y + todos.h < AREA.y + AREA.h, "dentro da área");
+    ph2d_panel_physics::set_layer_objects(Vec::new());
+    aba::fecha();
+}
+
 #[test]
 fn a_porta_abre_a_aba_so_com_as_visiveis_e_a_celula_alta_escreve_o_par() {
     let mut mesa = Mesa::nova(nomes_b(), false);

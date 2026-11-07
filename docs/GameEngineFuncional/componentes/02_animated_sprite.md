@@ -139,7 +139,7 @@ Godot: fatiar vendo a folha, tempo relativo por quadro; evitar o painel que some
   - **Play no 1.º quadro:** `o_play_comeca_no_primeiro_quadro_mesmo_ja_a_tocar_o_inicio`, com e sem `SpriteAnimStart`. Vale também ao abrir o projeto, a mesma porta: `o_projeto_antigo_abre_igual` continua verde.
   - **Suspeitas descartadas:** regras no pai com tocador no filho, a regra manda no quadro seguinte (`regras_no_pai_mandam_no_tocador_do_filho_depois_do_inicio`) · LIVE com `PH2D_CARDS=0`, cabe no piso (`sem_cartoes_o_live_cabe_na_coluna`) · nada corta no piso (`os_botoes_novos_nao_cortam_no_piso_do_painel`) · início e aviso em instância e duplicar (`inicio_e_aviso_viajam_no_duplicar_e_na_instancia`) · desfazer do herói: já provado em E6.
 
-**Modelo do início:** componente `SpriteAnimStart`. Nasceu separado do `SpriteAnimator` por um motivo que caiu em 07/11 (arquivo antigo; CLAUDE §0.11).
+**Modelo do início:** campo `SpriteAnimator.start`; o aviso de imagem trocada é campo de `SpriteAnimations` (dobrados em 07/11, CLAUDE §0.11; schema 218, registro 118). Citações abaixo a `SpriteAnimStart` e `SpriteCutNotice` são história.
 
 ## Etapas
 

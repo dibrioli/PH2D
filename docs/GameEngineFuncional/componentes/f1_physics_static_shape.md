@@ -187,3 +187,7 @@ Capsule: Height = 2 × (Half Height + Radius). Os ids `INSP_PHYS_*` ficam, para 
 - **Nome padrão:** camada 0 sem nome = «Default», as outras «Layer n» (Inspector e aba); nada se grava.
 - **Portas:** «Open in tab…» do cartão do Inspector (dica nova: «Open the Collision Layers tab at this layer.») abre já na camada do objeto; a porta do painel Physics abre-a também. Fecha pelo × da aba; voltar a Scene não a fecha.
 - **Cura:** o campo de nome na grade tem a largura da lista («Enemy» já não vira «nemy»).
+
+## Onda 9b (07/11) — camada aberta, «Remove», a aba como a maquete B
+
+A aba ganhou «Bumps into» (a mesma edição da célula e da fila do Inspector), «Objects on this layer» com botões que selecionam, «Select all» e «+N more»; «Remove» (Default desligado; vazia sai; com objetos pergunta o destino; «Move and remove» / «Cancel»); cartões do tamanho do conteúdo, célula desligada com contorno, diagonal tracejada, par em negrito, pílula na linha, cor por camada. Detalhe, provas, mutações, fotos e diferenças que restam: [handoff, «Onda 9b»](../handoffs/HANDOFF_CONTINUACAO_2026-11-07_FISICA.md).

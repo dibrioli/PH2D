@@ -1,49 +1,11 @@
-//! ⭐⭐ O DONO de cada clip (v19, doc ObjectsAndComponents 01 §6): a migração v18 sem perda e as
+//! ⭐⭐ O DONO de cada clip (v19, doc ObjectsAndComponents 01 §6): as
 //! leis da Animação por objecto.
 
 use ph2d_anim::{AnimValue, Interp, RationalTime};
-use ph2d_timeline::{DOC_VERSION, MAX_CLIPS, PropKind, SCENE, StripSource, TimelineDoc};
-
-const V18_BIN: &[u8] = include_bytes!("../fixtures/timeline_doc_v18.bin");
-const V18_JSON: &str = include_str!("../fixtures/timeline_doc_v18.json");
+use ph2d_timeline::{MAX_CLIPS, PropKind, SCENE, StripSource, TimelineDoc};
 
 fn s(t: f64) -> RationalTime {
     RationalTime::from_seconds(t)
-}
-
-/// Tira o que veio DEPOIS da v18 em cada clip — o `owner` (v19) e o `autoplay` (v20) —, a tabela de
-/// textos (v22) e a versão.
-fn sem_o_que_a_v19_acrescentou(mut v: serde_json::Value) -> serde_json::Value {
-    v.as_object_mut().unwrap().remove("version");
-    v.as_object_mut().unwrap().remove("textos");
-    for c in v["clips"].as_array_mut().unwrap() {
-        c.as_object_mut().unwrap().remove("owner");
-        c.as_object_mut().unwrap().remove("autoplay");
-    }
-    v
-}
-
-#[test]
-fn um_ficheiro_v18_abre_com_tudo_na_animacao_da_cena() {
-    let doc = TimelineDoc::from_bytes(V18_BIN).expect("o v18 tem de abrir");
-    assert_eq!(doc.version, DOC_VERSION);
-    assert!(
-        doc.clips().iter().all(|c| c.owner.is_none()),
-        "todo clip antigo é da Cena"
-    );
-    assert_eq!(doc.clips_of(SCENE).collect::<Vec<_>>(), vec![0, 1]);
-
-    // ZERO perda: o documento migrado, sem o que a v19 acrescentou, é o v18 campo a campo.
-    let antes: serde_json::Value = serde_json::from_str(V18_JSON).unwrap();
-    let depois = serde_json::to_value(&doc).unwrap();
-    assert_eq!(
-        sem_o_que_a_v19_acrescentou(depois),
-        sem_o_que_a_v19_acrescentou(antes)
-    );
-
-    // E volta a gravar como v19 e a abrir igual.
-    let de_novo = TimelineDoc::from_bytes(&doc.to_bytes().unwrap()).unwrap();
-    assert_eq!(de_novo, doc);
 }
 
 #[test]

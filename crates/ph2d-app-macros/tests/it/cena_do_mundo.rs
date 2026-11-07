@@ -107,7 +107,7 @@ fn trilha_do_mundo(b: &Banca, dono: u64) -> Lida {
         .iter()
         .find(|t| t.family == FAMILIA)
         .expect("a trilha do mundo");
-    Lida::de(t, &ph2d_ecs::scene::ComponentRegistry::new()).expect("lê o mundo")
+    Lida::de(t).expect("lê o mundo")
 }
 
 fn pose_de(b: &Banca, bits: u64) -> [f32; 3] {

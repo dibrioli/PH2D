@@ -18,7 +18,6 @@ mod auto_orient;
 mod bone_bend_channels;
 mod caixa_ordem;
 mod canal_field;
-mod canal_item;
 mod canal_textos;
 mod clearing_a_formula_hands_the_pose_back;
 mod clip_clock;

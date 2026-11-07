@@ -159,33 +159,6 @@ fn um_documento_com_campos_vai_e_volta_pelo_formato() {
     );
 }
 
-/// ⭐ v20 → v21 (→ v22) sem perda: o documento migrado é o v20 campo a campo, menos a versão.
-#[test]
-fn um_ficheiro_v20_abre_sem_perda() {
-    const V20_BIN: &[u8] = include_bytes!("../fixtures/timeline_doc_v20.bin");
-    const V20_JSON: &str = include_str!("../fixtures/timeline_doc_v20.json");
-    let doc = TimelineDoc::from_bytes(V20_BIN).expect("o v20 tem de abrir");
-    assert_eq!(doc.version, ph2d_timeline::DOC_VERSION);
-    let sem_versao = |mut j: serde_json::Value| {
-        j.as_object_mut().unwrap().remove("version");
-        j.as_object_mut().unwrap().remove("textos"); // v22
-        j
-    };
-    let antes: serde_json::Value = serde_json::from_str(V20_JSON).unwrap();
-    assert_eq!(
-        sem_versao(serde_json::to_value(&doc).unwrap()),
-        sem_versao(antes)
-    );
-    assert!(
-        doc.clips()[0].autoplay,
-        "o que só a v20 tinha atravessa a migração"
-    );
-    assert_eq!(
-        TimelineDoc::from_bytes(&doc.to_bytes().unwrap()).unwrap(),
-        doc
-    );
-}
-
 /// ⭐ **A chave de um discreto guarda uma escolha que existe** (F28; F25 §6 item 7): arrastar a chave do
 /// alinhamento para 7,4 no gráfico guardava 7,4, e a palavra da chave mentia. O contínuo passa intacto.
 ///

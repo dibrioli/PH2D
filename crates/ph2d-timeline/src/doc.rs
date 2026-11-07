@@ -108,42 +108,21 @@ mod clip_paths;
 /// todo bump deste documento desde o ADR-0133.
 ///
 /// v19: **cada clip tem DONO** (`NamedClip.owner`, doc ObjectsAndComponents 01 §6): `None` = a
-/// Cena, `Some` = o objecto cujo componente Animação o contém. ⭐ O PRIMEIRO degrau que
-/// **migra** em vez de recusar: um v18 abre com todos os clips da Cena, zero perda
-/// (`doc_v18.rs`, provado contra `tests/fixtures/timeline_doc_v18.bin`).
+/// Cena, `Some` = o objecto cujo componente Animação o contém.
 ///
-/// v20: **o clipe de ENTRADA** (`NamedClip.autoplay`, doc ObjectsAndComponents 01 §14, item 1 — o
-/// *Autoplay* do Godot): o clipe que a Animação de um objecto toca sozinha no Play. Migra
-/// (`doc_v19.rs`, provado contra `tests/fixtures/timeline_doc_v19.bin`): nenhum marcado ⇒ o 1.º.
+/// v20: **o clipe de ENTRADA** (`NamedClip.autoplay`): o clipe que a Animação de um objecto toca
+/// sozinha no Play.
 ///
-/// v21: **o canal de QUALQUER propriedade** (`PropKind::Field`, plano 35 §3.0 da UI/UX — *«o auto
-/// key grava absolutamente tudo»*). A variante é apendada, então os bytes de um v20 são um v21 sem
-/// campos: a migração (`doc_v20.rs`, provada contra `tests/fixtures/timeline_doc_v20.bin`) só
-/// re-carimba a versão. O bump existe porque um v21 COM campos não pode abrir numa build v20.
+/// v21: **o canal de QUALQUER propriedade** (`PropKind::Field`, apendada).
 ///
-/// v22: **a tabela dos TEXTOS** (`TimelineDoc.textos`, apendada) — um campo de texto
-/// (`CampoInfo::texto`: a família da fonte, o conteúdo) guarda na chave um índice em
-/// `ph2d_ecs::TextosDosCanais`, e o ficheiro leva a tabela COMPACTADA às chaves que a usam (o
-/// porquê e as duas portas em `doc_textos.rs`). Migra (`doc_v21.rs`, provada contra
-/// `tests/fixtures/timeline_doc_v21.bin`): tabela vazia — nenhuma build v21 publicava texto.
+/// v22: **a tabela dos TEXTOS** (`TimelineDoc.textos`, apendada; as duas portas em `doc_textos.rs`).
 ///
-/// v23: **o NOME de uma propriedade de script na chave** (`ph2d_ecs::canal_script`: `i:j` = o índice
-/// do nome na tabela dos textos), remapeada com ela ao gravar e ao abrir. Os bytes são os da v22;
-/// o bump existe porque uma build v22 compactaria a tabela sem remapear estas chaves (o nome de
-/// cada uma passaria a ser outro, calado). A v22 lê-se pela forma actual (provada contra
-/// `tests/fixtures/timeline_doc_v22.bin`): quem apender um campo congela-a num `doc_v22.rs`.
+/// v23: **o NOME de uma propriedade de script na chave** (`ph2d_ecs::canal_script`).
 ///
-/// v24: **a IDENTIDADE na chave** (`FieldKey.item`, F31 §A — `docs/UI_New_and_Simple/F31_plano.md`):
-/// a tinta/efeito da pilha e o filtro do Vetor endereçam-se pelo `ItemId`, nunca pela posição. O
-/// campo entra NO MEIO da chave, então os bytes mudam: a v23 (e abaixo) lê-se dentro de
-/// `ph2d_ecs::canal_chave_v23::with_field_key_layout_v23` (item `NONE`, provada contra
-/// `tests/fixtures/timeline_doc_v23.bin`); a troca `i` → id é semântica e corre no `upkeep` do
-/// `ph2d-timeline-persist`, que tem o mundo.
+/// v24: **a IDENTIDADE na chave** (`FieldKey.item`, F31 §A): a tinta/efeito da pilha e o filtro do
+/// Vetor endereçam-se pelo `ItemId`, nunca pela posição.
 ///
-/// v25: **a caixa do cartão (`View::Toggle`) no canal é `0` = desligada, `1` = ligada**, como um
-/// `Bool`; até à v24 era a ordem da declaração (`1.ª opção` = ligada = `0`, e a timeline dizia
-/// «Off» numa caixa marcada). Os bytes não mudam: a migração (`doc_v24.rs`, provada contra
-/// `tests/fixtures/timeline_doc_v24.bin`) troca `v → 1 − v` nas trilhas de caixa.
+/// v25: **a caixa do cartão (`View::Toggle`) no canal é `0` = desligada, `1` = ligada**.
 ///
 /// [ADR-0133]: ../../../docs/architecture/decisions/0133-timeline-nesting-a-container-instance-is-a-strip-and-the-parent-owns-the-clock.md
 /// [ADR-0141]: ../../../docs/architecture/decisions/0141-timeline-position-is-one-2d-channel-and-separate-axes-are-a-mode.md
@@ -420,7 +399,7 @@ impl TimelineDoc {
     }
 
     /// Serialize the document to the versioned on-disk format (postcard). The
-    /// schema `version` is the first field, so a loader can reject or migrate an
+    /// schema `version` is the first field, so a loader can reject an
     /// older file before trusting the rest (W4 save; HR-14).
     ///
     /// Bindings serialize by `wire_id`; the live `entity` bits are `#[serde(skip)]`
@@ -436,25 +415,8 @@ impl TimelineDoc {
     /// this build does not understand. The loaded bindings have null `entity`
     /// bits — resolve them with [`crate::resolve_entities`].
     pub fn from_bytes(bytes: &[u8]) -> Result<Self, String> {
-        let versao = postcard::take_from_bytes::<u32>(bytes).map(|(v, _)| v);
-        // Abaixo da v24 a `FieldKey` tem 4 campos (o âmbito vale para toda a leitura).
-        let _v23 = matches!(versao, Ok(v) if v < 24)
-            .then(ph2d_ecs::canal_chave_v23::FieldKeyLayoutV23::enter);
-        let mut doc: TimelineDoc = match versao {
-            Ok(v18::VERSION) => v18::migrate(bytes)?,
-            Ok(v19::VERSION) => v19::migrate(bytes)?,
-            Ok(v20::VERSION) => v20::migrate(bytes)?,
-            Ok(v21::VERSION) => v21::migrate(bytes)?,
-            Ok(22..=24) => TimelineDoc {
-                version: DOC_VERSION,
-                ..postcard::from_bytes(bytes).map_err(|e| e.to_string())?
-            },
-            _ => postcard::from_bytes(bytes).map_err(|e| e.to_string())?,
-        };
+        let mut doc: TimelineDoc = postcard::from_bytes(bytes).map_err(|e| e.to_string())?;
         doc.normaliza_textos();
-        if matches!(versao, Ok(v) if v < 25) {
-            doc.desvira_caixas();
-        }
         if doc.version != DOC_VERSION {
             return Err(format!(
                 "timeline schema version {} != {DOC_VERSION}",
@@ -627,19 +589,6 @@ pub use owner::{ClipOwner, SCENE};
 
 #[path = "doc_entry.rs"]
 mod entry;
-#[path = "doc_rechave.rs"]
-mod rechave;
 /// **Os textos das chaves de texto** (v22) — filho: lê o campo privado `textos`.
 #[path = "doc_textos.rs"]
 mod textos;
-/// **A migração v18 → v19** — o único leitor de bytes antigos deste documento.
-#[path = "doc_v18.rs"]
-mod v18;
-#[path = "doc_v19.rs"]
-mod v19;
-#[path = "doc_v20.rs"]
-mod v20;
-#[path = "doc_v21.rs"]
-mod v21;
-#[path = "doc_v24.rs"]
-mod v24;

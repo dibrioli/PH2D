@@ -145,22 +145,11 @@ fn schema_version_is_nineteen() {
     //      (`Quad InOut` dá 0,125 onde ele dá 0,15625): guardar um preset reescreveria a
     //      forma de todo fade já autorado. `None` é byte-idêntico ao v17 — o
     //      `fade_fingerprint` é quem afirma isso.
-    // v19 = cada clip tem DONO (`NamedClip.owner`, doc ObjectsAndComponents 01 §6) — o
-    //      PRIMEIRO degrau que MIGRA: um v18 abre com todos os clips na Cena (`doc_v18.rs`,
-    //      provado contra a fixtura em `clip_owner.rs`).
-    // Postcard is positional: an older blob must be REJECTED by the version gate,
-    // not misread field-for-field (v18 is the one exception, read by a frozen image).
-    // v21 = o canal de QUALQUER propriedade (`PropKind::Field`, plano 35 da UI/UX): variante
-    //      APENDADA, então um v20 é um v21 sem campos e só re-carimba (`doc_v20.rs`, provado
-    //      contra a fixtura em `canal_field.rs`).
-    // v22 = a tabela dos TEXTOS (`TimelineDoc.textos`, apendada): o ficheiro leva os textos que as
-    //      chaves de texto indexam (`doc_v21.rs`, provado contra a fixtura em `canal_textos.rs`).
-    // v23 = o NOME de uma propriedade de script na chave (`canal_script`), remapeado com a tabela:
-    //      os bytes da v22, re-carimbados (provado contra a fixtura em `canal_textos.rs`).
-    // v24 = a IDENTIDADE na chave (`FieldKey.item`, F31 §A): a v23 lê-se pelo âmbito da chave
-    //      antiga (provado contra a fixtura em `canal_item.rs`).
-    // v25 = a caixa (`View::Toggle`) no canal é 0 = desligada, 1 = ligada: as trilhas de caixa de
-    //      uma v24 viram `1 − v` (`doc_v24.rs`, provado contra a fixtura em `caixa_ordem.rs`).
+    // v19 = cada clip tem DONO (`NamedClip.owner`); v20 = o clipe de ENTRADA (autoplay);
+    // v21 = o canal de QUALQUER propriedade (`PropKind::Field`); v22 = a tabela dos TEXTOS;
+    // v23 = o NOME de uma propriedade de script na chave; v24 = a IDENTIDADE na chave
+    // (`FieldKey.item`); v25 = a caixa (`View::Toggle`) no canal é 0 = desligada, 1 = ligada.
+    // Postcard is positional: an older blob is REJECTED by the version gate, never misread.
     assert_eq!(DOC_VERSION, 25);
     assert_eq!(TimelineDoc::new().version, 25);
 }

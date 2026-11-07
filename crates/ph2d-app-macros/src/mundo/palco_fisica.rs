@@ -357,7 +357,7 @@ pub(crate) fn fim_no_destino(
     registo: &ph2d_ecs::scene::ComponentRegistry,
     dono: Entity,
 ) {
-    let Ok(lida) = super::estado::Lida::de(t, registo) else {
+    let Ok(lida) = super::estado::Lida::de(t) else {
         return;
     };
     if lida.simulas().next().is_none() {

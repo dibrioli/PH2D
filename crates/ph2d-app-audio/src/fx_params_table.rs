@@ -126,8 +126,7 @@ pub static KINDS: [FxKind; 42] = [
     },
     FxKind {
         // One knob (Ratio) spans gentle downward expander → hard noise gate — the effect is
-        // literally both, so the label says both (`gate()` doc in `ph2d-audio-edit`). Presets
-        // saved as "Gate" still resolve via the legacy alias in `kind_by_name`.
+        // literally both, so the label says both (`gate()` doc in `ph2d-audio-edit`).
         id: "gate_expander",
         name: TextKey::new("audio.fx.kind.gate_expander"),
         params: &GATE,

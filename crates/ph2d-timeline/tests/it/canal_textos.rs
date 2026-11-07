@@ -7,9 +7,7 @@ use ph2d_core::Playhead;
 use ph2d_ecs::canal::familia;
 use ph2d_ecs::canal_vetor as v;
 use ph2d_ecs::{FieldKey, TextosDosCanais};
-use ph2d_timeline::{
-    DOC_VERSION, PropKind, TimelineDoc, TimelineIntent as I, TimelineState, apply_intent,
-};
+use ph2d_timeline::{PropKind, TimelineDoc, TimelineIntent as I, TimelineState, apply_intent};
 
 const FAMILIA: FieldKey = FieldKey::new(familia::VETOR, v::TEXTO_FAMILIA, 0, 0);
 const CONTEUDO: FieldKey = FieldKey::new(familia::VETOR, v::TEXTO_CONTEUDO, 0, 0);
@@ -46,23 +44,6 @@ fn rest(doc: &TimelineDoc, k: FieldKey) -> Option<f32> {
         .and_then(|b| b.rest)
 }
 
-/// ⭐ A v22 abre na v23 sem perda (os mesmos bytes, re-carimbados), com o texto de cada chave.
-#[test]
-fn o_doc_v22_migra_para_v23() {
-    const V22_BIN: &[u8] = include_bytes!("../fixtures/timeline_doc_v22.bin");
-    const V22_JSON: &str = include_str!("../fixtures/timeline_doc_v22.json");
-    let doc = TimelineDoc::from_bytes(V22_BIN).expect("o v22 tem de abrir");
-    assert_eq!(doc.version, DOC_VERSION);
-    assert_eq!(doc.textos(), ["Inter"]);
-    let sem = |mut j: serde_json::Value| {
-        j.as_object_mut().unwrap().remove("version");
-        crate::canal_item::sem_item(&mut j);
-        j
-    };
-    let antes: serde_json::Value = serde_json::from_str(V22_JSON).unwrap();
-    assert_eq!(sem(serde_json::to_value(&doc).unwrap()), sem(antes));
-}
-
 /// ⭐⭐ **O NOME de uma propriedade de script viaja com a chave** (v23): gravar compacta a tabela e
 /// remapeia a chave; reabrir interna o nome na sessão — a chave volta a nomear «speed», não o
 /// índice que tinha. (Mutação: tirar o laço dos nomes da `retabela` ⇒ a chave nomeia outro texto.)
@@ -91,37 +72,6 @@ fn o_nome_da_propriedade_de_script_viaja_com_a_chave() {
     };
     assert_eq!(cs::nome(kk, &outra), Some("speed"));
     assert_eq!(cs::tipo(kk), Some((Tipo::Number, 0)));
-}
-
-/// ⭐ A v21 abre na v22 sem perda: tabela vazia, todo o resto campo a campo.
-#[test]
-fn o_doc_v21_migra_para_v22() {
-    const V21_BIN: &[u8] = include_bytes!("../fixtures/timeline_doc_v21.bin");
-    const V21_JSON: &str = include_str!("../fixtures/timeline_doc_v21.json");
-    assert_eq!(DOC_VERSION, 25);
-    let doc = TimelineDoc::from_bytes(V21_BIN).expect("o v21 tem de abrir");
-    assert_eq!(doc.version, DOC_VERSION);
-    assert!(doc.textos().is_empty(), "nenhuma build v21 publicava texto");
-    let sem = |mut j: serde_json::Value| {
-        j.as_object_mut().unwrap().remove("version");
-        j.as_object_mut().unwrap().remove("textos");
-        crate::canal_item::sem_item(&mut j);
-        j
-    };
-    let antes: serde_json::Value = serde_json::from_str(V21_JSON).unwrap();
-    assert_eq!(sem(serde_json::to_value(&doc).unwrap()), sem(antes));
-    assert_eq!(
-        doc.bindings()
-            .iter()
-            .filter(|b| matches!(b.prop, PropKind::Field(_)))
-            .count(),
-        2,
-        "o que só a v21 tinha (os campos) atravessa a migração"
-    );
-    assert_eq!(
-        TimelineDoc::from_bytes(&doc.to_bytes().unwrap()).unwrap(),
-        doc
-    );
 }
 
 /// ⭐ Gravar → reabrir devolve o MESMO texto em cada chave (chaves, `default`, `rest`); o ficheiro

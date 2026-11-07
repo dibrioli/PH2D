@@ -71,9 +71,7 @@ fn ilegivel() -> ErroDaMacroView {
 /// # Errors
 /// [`m::MACRO_LIB_ILEGIVEL`].
 pub fn confere(t: &Track) -> Result<(), ErroDaMacroView> {
-    Lida::de(t, &ComponentRegistry::new())
-        .map(|_| ())
-        .map_err(|_| ilegivel())
+    Lida::de(t).map(|_| ()).map_err(|_| ilegivel())
 }
 
 /// Um mundo de rascunho onde os blobs entram para o remapeador os reescrever.
@@ -131,7 +129,7 @@ pub(crate) fn aplica(
         if fam != FamiliaDaMacro::Mundo {
             continue;
         }
-        let lida = Lida::de(&doc.tracks[k], portas.registo).map_err(|_| ilegivel())?;
+        let lida = Lida::de(&doc.tracks[k]).map_err(|_| ilegivel())?;
         let mut r = Rascunho {
             w: World::new(),
             registo: portas.registo,

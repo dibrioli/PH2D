@@ -1,37 +1,10 @@
-//! ⭐⭐ O clipe de ENTRADA (v20, doc ObjectsAndComponents 01 §14, item 1): a migração v19 sem perda e
-//! a Animação de cada objecto a tocar sozinha no Play, no relógio dele.
+//! ⭐⭐ O clipe de ENTRADA (v20, doc ObjectsAndComponents 01 §14, item 1): a Animação de cada objecto a tocar sozinha no Play, no relógio dele.
 
 use ph2d_anim::{AnimValue, Interp, RationalTime};
-use ph2d_timeline::{DOC_VERSION, PropKind, SCENE, TimelineDoc};
-
-const V19_BIN: &[u8] = include_bytes!("../fixtures/timeline_doc_v19.bin");
-const V19_JSON: &str = include_str!("../fixtures/timeline_doc_v19.json");
+use ph2d_timeline::{PropKind, SCENE, TimelineDoc};
 
 fn s(t: f64) -> RationalTime {
     RationalTime::from_seconds(t)
-}
-
-fn sem_o_que_a_v20_acrescentou(mut v: serde_json::Value) -> serde_json::Value {
-    v.as_object_mut().unwrap().remove("version");
-    v.as_object_mut().unwrap().remove("textos"); // v22
-    for c in v["clips"].as_array_mut().unwrap() {
-        c.as_object_mut().unwrap().remove("autoplay");
-    }
-    v
-}
-
-#[test]
-fn um_ficheiro_v19_abre_sem_entrada_marcada_e_sem_perda() {
-    let doc = TimelineDoc::from_bytes(V19_BIN).expect("o v19 tem de abrir");
-    assert_eq!(doc.version, DOC_VERSION);
-    assert!(doc.clips().iter().all(|c| !c.autoplay));
-    let antes: serde_json::Value = serde_json::from_str(V19_JSON).unwrap();
-    assert_eq!(
-        sem_o_que_a_v20_acrescentou(serde_json::to_value(&doc).unwrap()),
-        sem_o_que_a_v20_acrescentou(antes)
-    );
-    let de_novo = TimelineDoc::from_bytes(&doc.to_bytes().unwrap()).unwrap();
-    assert_eq!(de_novo, doc);
 }
 
 /// ⭐ **O Autoplay do Godot** (dono, 10/10): por omissão NENHUM clipe toca sozinho; ligar um desliga os

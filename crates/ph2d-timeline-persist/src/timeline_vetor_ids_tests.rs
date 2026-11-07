@@ -1,5 +1,5 @@
-//! ⭐ F31 §A: a chave posicional do Vetor (v23) passa ao id no `upkeep`, pelo espelho
-//! [`IdsDoVetor`], e o nome da linha continua a dizer a POSIÇÃO.
+//! ⭐ F31 §A: o nome da linha de uma chave de item do Vetor diz a POSIÇÃO, pelo espelho
+//! [`IdsDoVetor`].
 
 use super::*;
 use ph2d_ecs::canal::familia::VETOR;
@@ -8,7 +8,6 @@ use ph2d_ecs::canal_vetor_ids::{IdsDaForma, IdsDoVetor};
 use ph2d_ecs::{FieldKey, ItemId, SimWorld};
 use ph2d_timeline::PropKind;
 
-const V23_BIN: &[u8] = include_bytes!("../../ph2d-timeline/tests/fixtures/timeline_doc_v23.bin");
 const VERMELHO: u16 = v::TINTA_PREENCH + v::OFF_SOLIDA;
 
 fn ids(tintas: &[u32], efeitos: &[u32], filtros: &[u32]) -> IdsDaForma {
@@ -33,93 +32,6 @@ fn mundo() -> (SimWorld, u64) {
         .id()
         .to_bits();
     (sim, e)
-}
-
-fn chaves(tl: &TimelineState) -> Vec<FieldKey> {
-    tl.doc
-        .bindings()
-        .iter()
-        .filter_map(|b| match b.prop {
-            PropKind::Field(k) => Some(k),
-            _ => None,
-        })
-        .collect()
-}
-
-/// As duas chaves (valores em 0 s e 1 s) da trilha de `k`.
-fn valores(tl: &TimelineState, k: FieldKey) -> Vec<ph2d_anim::AnimValue> {
-    let b = tl
-        .doc
-        .bindings()
-        .iter()
-        .find(|b| b.prop == PropKind::Field(k));
-    let t = tl
-        .doc
-        .active_clip()
-        .track(b.expect("ligada").target)
-        .expect("trilha");
-    t.keys().iter().map(|k| k.value).collect()
-}
-
-/// ⭐ O v23 lê-se, cura-se no dono e — com o espelho — cada chave de entrada/efeito/filtro passa ao
-/// id da posição que endereçava, com a MESMA trilha; a base, o contorno e o índice fora da lista
-/// ficam. (Mutação: a migração mantém a posição ⇒ as chaves de item não aparecem.)
-#[test]
-fn o_doc_v23_le_e_migra_para_o_id() {
-    let (mut sim, e) = mundo();
-    let mut tl = install_from_project(V23_BIN).expect("o v23 abre");
-    // Sem espelho: espera.
-    assert!(!upkeep(&mut tl, sim.world_mut()));
-    assert!(chaves(&tl).iter().all(|k| k.item.is_none()));
-    let f = |x: f32| ph2d_anim::AnimValue::Float(x);
-    let antes = valores(&tl, FieldKey::new(VETOR, v::EFEITO_PARAM, 1, 2));
-
-    let espelho = IdsDoVetor([(e, ids(&[10, 20], &[30, 31], &[40]))].into());
-    sim.world_mut().insert_resource(espelho);
-    assert!(!upkeep(&mut tl, sim.world_mut()));
-    let ks = chaves(&tl);
-    let item = |campo, id, j| FieldKey::do_item(VETOR, campo, ItemId(id), j);
-    for esperada in [
-        item(VERMELHO, 10, 0),
-        item(v::PILHA_OPACIDADE, 20, 0),
-        item(v::EFEITO_PARAM, 31, 2),
-        item(v::FILTRO_RAIO, 40, 0),
-        // Ficam: a base, o contorno, e a tinta do traço da entrada 2 (a lista só tem 2: órfã).
-        FieldKey::new(VETOR, VERMELHO, 0, 0),
-        FieldKey::new(VETOR, v::ANCORA_X, 1, 3),
-        FieldKey::new(VETOR, v::TINTA_TRACO + v::OFF_SOLIDA, 3, 0),
-    ] {
-        assert!(ks.contains(&esperada), "{esperada:?} em {ks:?}");
-    }
-    assert_eq!(ks.len(), 7);
-    assert_eq!(valores(&tl, item(v::EFEITO_PARAM, 31, 2)), antes);
-    assert_eq!(valores(&tl, item(VERMELHO, 10, 0)), [f(10.0), f(20.0)]);
-    // Idempotente.
-    let doc = tl.doc.clone();
-    upkeep(&mut tl, sim.world_mut());
-    assert_eq!(tl.doc, doc);
-}
-
-/// A chave nova já ligada não FUNDE: a antiga fica como está, e a nova com a trilha dela.
-#[test]
-fn a_chave_nova_ja_ligada_nao_funde() {
-    let (mut sim, e) = mundo();
-    let mut tl = TimelineState::new();
-    let (antiga, nova) = (
-        PropKind::Field(FieldKey::new(VETOR, v::FILTRO_RAIO, 0, 0)),
-        PropKind::Field(FieldKey::do_item(VETOR, v::FILTRO_RAIO, ItemId(40), 0)),
-    );
-    let s = ph2d_anim::RationalTime::from_seconds;
-    let f = ph2d_anim::AnimValue::Float;
-    tl.doc
-        .insert_key(e, antiga, s(0.0), f(1.0), ph2d_anim::Interp::Linear);
-    tl.doc
-        .insert_key(e, nova, s(0.0), f(2.0), ph2d_anim::Interp::Linear);
-    sim.world_mut()
-        .insert_resource(IdsDoVetor([(e, ids(&[], &[], &[40]))].into()));
-    upkeep(&mut tl, sim.world_mut());
-    let props: Vec<_> = tl.doc.bindings().iter().map(|b| b.prop).collect();
-    assert_eq!(props, [antiga, nova]);
 }
 
 /// ⭐ O nome da linha de uma chave de item é o que o dope-sheet dava com o `i` antigo: a tinta da

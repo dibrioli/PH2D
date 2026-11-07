@@ -18,19 +18,13 @@
 //!
 //! - ⚠️ **Dois objetos com o MESMO nome faziam a animação DESAPARECER.** O nome deixa de ser
 //!   uma resposta (o gate antigo chamava-se `an_ambiguous_name_refuses_to_heal_and_refuses_to`
-//!   `_purge`; hoje o par é `two_homonyms_no_longer_hide_the_animation` + a metade legada), a
+//!   `_purge`; hoje é `two_homonyms_no_longer_hide_the_animation`), a
 //!   binding fica
 //!   dormente e as rows saem da vista — sem badge, sem erro, sem caminho de volta enquanto o
 //!   empate durar. Dois `StableId` nunca empatam: a pergunta *"qual deles?"* deixa de existir.
 //! - **Uma pergunta, uma resposta.** A física (F1 passo 5a) e o cache do undo incremental (F2)
 //!   respondem *"que objeto é este?"* com o `StableId`. Um terceiro mecanismo para a mesma
 //!   pergunta é o que esta fase existe para colapsar.
-//!
-//! ⚠️ **O LEGADO cura-se sozinho, e tem de o fazer.** Um documento gravado antes desta wave
-//! guarda hashes de nome; se o heal só olhasse ids, a binding não resolveria e a **purga** — que
-//! corre no mesmo `upkeep` — apagaria a animação do artista. Por isso o mapa do [`upkeep`] leva
-//! as DUAS chaves (ver lá), e o re-carimbo escreve o `StableId` por cima: o documento sobe de
-//! substrato no primeiro frame depois do load, sem degrau de schema e sem migração escrita.
 //!
 //! É o mesmo mecanismo em três situações, e é por isso que ele é UM só:
 //!
@@ -101,20 +95,8 @@ fn wire_of(world: &World, entity_bits: u64) -> WireId {
 /// recolá-las — uma purga que rodasse antes (ou que ignorasse o resultado do
 /// heal) apagaria o documento inteiro um frame depois de todo Ctrl+O.
 ///
-/// ⭐ **Duas chaves no mapa, e a ordem entre elas é lei.** O mapa leva a identidade
-/// ([`StableId`]) de todo objeto vivo **e** — só para o LEGADO — o hash do nome dele. Um
-/// documento gravado antes do ADR-0164 F1 guarda hashes; sem esta segunda chave a binding
-/// não resolveria e a purga abaixo apagaria a animação no primeiro frame depois do load.
-/// Os hashes entram primeiro e os ids **por cima**, porque só a chave nova é uma resposta:
-/// ids são pequenos e sequenciais, hashes FNV-1a são grandes, mas a precedência não é
-/// deixada à aritmética — é escrita.
-///
-/// **Um nome AMBÍGUO não cura NEM purga — recusa** (⚠️ e só a chave LEGADA pode ficar
-/// ambígua: dois objetos nunca partilham um `StableId`, que é precisamente o defeito de
-/// produto que a troca de substrato curou — ver o cabeçalho do módulo). Se DOIS objetos
-/// vivos dividem o nome, "qual deles é o dono desta track?" não tem resposta — curar num
-/// deles seria dirigir a pose do objeto errado, e purgar seria destruir trabalho por causa
-/// de um empate transitório. A binding fica dormente até o empate acabar.
+/// ⭐ O mapa leva a identidade ([`StableId`]) de todo objeto vivo; dois objetos nunca partilham
+/// uma, então nenhuma binding fica ambígua.
 ///
 /// Steady state (nothing missing) touches no allocation (HR-3: the bridge's
 /// paused path is gated zero-alloc): the map is only built when a missing
@@ -166,19 +148,9 @@ pub fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
             .clips()
             .iter()
             .any(|c| c.owner.is_some_and(|o| o.missing));
-    // `None` no valor = chave AMBÍGUA — só possível na chave legada (o nome).
     let by_wire: std::collections::BTreeMap<u64, Option<u64>> = if any_missing {
         let mut m: std::collections::BTreeMap<u64, Option<u64>> = std::collections::BTreeMap::new();
-        // 1. LEGADO: o hash do nome, para documentos gravados antes do ADR-0164 F1.
-        {
-            let mut q = world.query::<(Entity, &Name)>();
-            for (e, name) in q.iter(world) {
-                m.entry(ph2d_ecs::stable_name_id(name.as_str()))
-                    .and_modify(|slot| *slot = None) // já havia um: empate
-                    .or_insert(Some(e.to_bits()));
-            }
-        }
-        // 2. A identidade, POR CIMA — ver o doc desta função.
+        // A identidade ([`StableId`]) de todo objeto vivo.
         {
             let mut q = world.query::<(Entity, &StableId)>();
             for (e, id) in q.iter(world) {
@@ -210,9 +182,6 @@ pub fn upkeep(timeline: &mut TimelineState, world: &mut World) -> bool {
             },
         );
     }
-    // ⭐ F31 §A: depois da cura (a entidade de cada binding é a deste quadro), a chave posicional
-    // do Vetor passa ao id da entrada.
-    migra_vetor::migra_chaves_do_vetor(&mut timeline.doc, &*world);
     // ⭐ Quem AINDA depende de um clip pelo nome — hoje, os ossos inteligentes. A varredura corre
     // sobre o mundo que já está na mão; o nome resolve-se no `purge`, depois da purga dos donos.
     let ossos: Vec<(Entity, String)> = world

@@ -188,6 +188,8 @@ Slice tool, **9-slice** e **pivot** arrastáveis (pedido da comunidade), keys po
 ### P12 — Ergonomia (estudo §6)
 Atalhos por omissão **iguais aos do Aseprite** (e editáveis), Run Command, Undo History, autosave
 e recuperação, user data/propriedades, preferências do módulo (grade, onion, xadrez). **Smoke 13.**
+⛔ Exceção do dono (07/11): o balde é `P` e o Gradient `Shift+P`, nunca o `G` do Aseprite; o `G` é da
+grade do canvas em todo o app.
 
 ### P13 — O que só a PH2D tem
 Do MVP: **rampas OKLCH**, pincel de sombreamento na rampa, **luz na rampa**, pincel de dither,

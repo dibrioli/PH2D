@@ -149,14 +149,18 @@ fn a_forma_solta_nao_tem_quadros_nem_edit_matrix() {
     };
     let (mut host, mut st) = cena(solta, [1.0, 1.0]);
     let r = pinta(&mut host, &mut st);
-    for id in INSP_PHYS_COLLIDES.iter().copied().chain([
-        INSP_PHYS_COLLIDES_ADD,
-        INSP_PHYS_EDIT_MATRIX,
-    ]) {
+    for id in INSP_PHYS_COLLIDES
+        .iter()
+        .copied()
+        .chain([INSP_PHYS_COLLIDES_ADD, INSP_PHYS_EDIT_MATRIX])
+    {
         assert!(achado(&r, id).is_none(), "{id:?} pintado na solta");
     }
     assert!(achado(&r, INSP_PHYS_LAYER_PICK).is_some(), "a Layer fica");
-    assert!(achado(&r, INSP_PHYS_LAYER_RENAME).is_some(), "o Rename fica");
+    assert!(
+        achado(&r, INSP_PHYS_LAYER_RENAME).is_some(),
+        "o Rename fica"
+    );
     fim();
 }
 

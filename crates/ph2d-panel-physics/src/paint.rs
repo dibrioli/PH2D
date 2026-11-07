@@ -40,7 +40,10 @@ fn traz_a_linha_a_vista(ctx: &mut PaintCtx) {
     };
     let topo = ctx.slot.y + ctx.slot.h - visivel + visivel / 3.0;
     let alvo = store.panel_scroll(ids::PHYSICS_PANEL) + linha.y - topo;
-    store.set_panel_scroll(ids::PHYSICS_PANEL, alvo.clamp(0.0, (conteudo - visivel).max(0.0)));
+    store.set_panel_scroll(
+        ids::PHYSICS_PANEL,
+        alvo.clamp(0.0, (conteudo - visivel).max(0.0)),
+    );
 }
 
 pub(crate) fn paint(_state: &mut PhysicsPanelState, ctx: &mut PaintCtx) {

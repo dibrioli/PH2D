@@ -6,10 +6,10 @@ use crate::camadas_fisica as camadas;
 use crate::ids;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::panel::{PanelHostInternal, seam_reset_button};
 use ph2d_editor_core::paint::{
     fill_rounded_rect, folga_do_texto, frame_radius, paint_text_elided, resolve,
 };
+use ph2d_editor_core::panel::{PanelHostInternal, seam_reset_button};
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
 use ph2d_editor_core::widget::card_ink::tinta;
 use ph2d_editor_core::zones::Rect;
@@ -180,10 +180,8 @@ pub(crate) fn clique(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool 
     if let Some(b) = ids::INSP_PHYS_COLLIDES.iter().position(|&o| o == id) {
         seam_reset_button(host, id);
         if !solta(&info) {
-            host.bus_mut().push(EditorAction::LayerPairToggle {
-                a,
-                b: b as u8,
-            });
+            host.bus_mut()
+                .push(EditorAction::LayerPairToggle { a, b: b as u8 });
         }
         return true;
     }
@@ -196,7 +194,8 @@ pub(crate) fn clique(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool 
     }
     if id == ids::INSP_PHYS_EDIT_MATRIX {
         seam_reset_button(host, id);
-        host.bus_mut().push(EditorAction::LayerMatrixOpen { layer: a });
+        host.bus_mut()
+            .push(EditorAction::LayerMatrixOpen { layer: a });
         return true;
     }
     false

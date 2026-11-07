@@ -66,7 +66,11 @@ fn duas_bolas(settings: PhysicsSettings, a: u8, b: u8) -> f32 {
     for tick in 1..=120 {
         bridge.dispatch(&mut sim, true, tick);
     }
-    sim.world().get::<Transform>(bola).expect("bola").translation.y
+    sim.world()
+        .get::<Transform>(bola)
+        .expect("bola")
+        .translation
+        .y
 }
 
 #[test]
@@ -117,7 +121,12 @@ fn o_auto_key_le_o_quadro_como_le_a_celula() {
         LayerMatrix::from_rows(ponte.settings_vivos().layer_matrix).collides(3, 1),
         "a mão ganha à curva no quadro do clique"
     );
-    let _ = sim.world().resource::<CanaisLidos>();
+    canais_mundo::publicar(&mut sim, &ponte);
+    assert_eq!(
+        sim.world().resource::<CanaisLidos>().valor(c, chave),
+        Some(1.0),
+        "o Auto Key lê o que a mão pediu"
+    );
 }
 
 /// O losango da fila é o da matriz: o mesmo grupo de canais, quadro a quadro.
@@ -139,4 +148,92 @@ fn o_mais_da_fila_escolhe_a_camada_do_mais_da_matriz() {
         assert_eq!(proxima_livre(), LayerNames::next_free(bits), "{bits:#x}");
     }
     set_current(Default::default(), [u32::MAX; 32], 0xFF);
+}
+
+/// Sonda (`--ignored --nocapture`, ficha f1): o documento depois do losango da matriz, com 1, 36 e 528 curvas,
+/// intercaladas, o mínimo de 200: bytes do blob, salvar, abrir, clonar (o passo de desfazer) e um quadro.
+#[test]
+#[ignore = "mede: corre à mão"]
+fn mede_o_losango_da_matriz() {
+    use ph2d_timeline::{Instante, PropKind, TimelineIntent, TimelineState, apply_intent};
+    use std::time::Instant as T;
+    let monta = |n: u16| {
+        let mut sim = SimWorld::new();
+        ph2d_ecs::garante_cena(sim.world_mut());
+        let c = ph2d_ecs::bits_da_cena(sim.world()).expect("cena");
+        let mut tl = TimelineState::default();
+        let mut relogio = ph2d_core::Playhead::default();
+        for i in 0..n {
+            apply_intent(
+                &mut tl,
+                &mut relogio,
+                TimelineIntent::AddKey {
+                    entity: c,
+                    prop: PropKind::Field(kc(i)),
+                    t: ph2d_anim::RationalTime::ZERO,
+                    value: ph2d_anim::AnimValue::Float(1.0),
+                    interp: ph2d_anim::Interp::Eased(ph2d_anim::Easing::new(
+                        ph2d_anim::EasingFamily::Cubic,
+                        ph2d_anim::EasingMode::InOut,
+                    )),
+                },
+            );
+        }
+        (sim, tl)
+    };
+    let casos = [1u16, 36, m::CELULAS];
+    let mut clique = [f64::MAX; 3];
+    for _ in 0..20 {
+        for (v, &n) in casos.iter().enumerate() {
+            let t = T::now();
+            std::hint::black_box(monta(n));
+            clique[v] = clique[v].min(t.elapsed().as_secs_f64() * 1e6);
+        }
+    }
+    println!("o clique (monta o doc), µs: {clique:.0?}");
+    let mut mundos: Vec<_> = casos.iter().map(|&n| monta(n)).collect();
+    let mut ponte = PhysicsBridge::new();
+    let mut cond = ConducaoMundo::default();
+    let mut min = [[f64::MAX; 5]; 3];
+    let us = |t: T| t.elapsed().as_secs_f64() * 1e6;
+    for _ in 0..200 {
+        for (v, (sim, tl)) in mundos.iter_mut().enumerate() {
+            let t = T::now();
+            let bytes = tl.doc.to_bytes().expect("salva");
+            min[v][0] = min[v][0].min(us(t));
+            let t = T::now();
+            let lido = ph2d_timeline::TimelineDoc::from_bytes(&bytes).expect("abre");
+            min[v][1] = min[v][1].min(us(t));
+            assert_eq!(lido.bindings().len(), tl.doc.bindings().len());
+            let t = T::now();
+            let copia = tl.doc.clone();
+            min[v][2] = min[v][2].min(us(t));
+            std::hint::black_box(copia);
+            let t = T::now();
+            ph2d_timeline::apply_active_clip(sim.world_mut(), &mut tl.doc, 0.5, |_| false);
+            canais_mundo::publicar(sim, &ponte);
+            canais_mundo::aplicar(sim, &mut ponte, &mut cond);
+            min[v][3] = min[v][3].min(us(t));
+            let t = T::now();
+            let inst = Instante {
+                t_cut: 0.5,
+                solo: false,
+            };
+            let marcas = marcas_mundo::marcas(&tl.doc, sim.world(), inst, |_, _| Some(1.0));
+            min[v][4] = min[v][4].min(us(t));
+            std::hint::black_box(marcas);
+        }
+    }
+    for (v, (_, tl)) in mundos.iter().enumerate() {
+        println!(
+            "curvas {:>3}: blob {:>6} B · salvar {:>7.1} µs · abrir {:>7.1} µs · clonar {:>7.1} µs · quadro {:>7.1} µs · marcas {:>7.1} µs",
+            casos[v],
+            tl.doc.to_bytes().expect("salva").len(),
+            min[v][0],
+            min[v][1],
+            min[v][2],
+            min[v][3],
+            min[v][4]
+        );
+    }
 }

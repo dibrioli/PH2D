@@ -37,8 +37,8 @@ mod event;
 pub use event::{abre_a_matriz, alterna_par};
 pub use state::{
     PhysicsIntent, PhysicsPanelState, PhysicsSnapshot, Toque, destaque, drain_intents,
-    last_content_h,
-    last_visible_h, painel_fechado, set_current_physics, set_layer_names, set_visible_layers, visible_layers,
+    last_content_h, last_visible_h, painel_fechado, set_current_physics, set_layer_names,
+    set_visible_layers, visible_layers,
 };
 
 use ph2d_a11y::NodeId;

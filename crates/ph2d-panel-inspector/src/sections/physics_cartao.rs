@@ -40,12 +40,7 @@ impl Tinta<'_> {
     }
 
     /// Dois irmãos na mesma linha, meio a meio; ambos registados. Devolve o `y` de baixo.
-    pub(super) fn dois_botoes(
-        &mut self,
-        y: f32,
-        um: (NodeId, &str),
-        outro: (NodeId, &str),
-    ) -> f32 {
+    pub(super) fn dois_botoes(&mut self, y: f32, um: (NodeId, &str), outro: (NodeId, &str)) -> f32 {
         let gap = ph2d_tokens::Spacing::Xs.px();
         let meia = (self.w - gap) * 0.5;
         let mut fim = y;

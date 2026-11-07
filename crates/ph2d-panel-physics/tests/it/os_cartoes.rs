@@ -859,7 +859,11 @@ fn o_par_alternado_e_a_mesma_edicao_da_celula_nos_dois_sentidos() {
     let linhas = got.layer_matrix;
     assert_eq!(linhas[3] & 1 << 1, 0, "o lado 3→1");
     assert_eq!(linhas[1] & 1 << 3, 0, "o lado 1→3");
-    assert_eq!(linhas[3].count_zeros() + linhas[1].count_zeros(), 2, "só o par");
+    assert_eq!(
+        linhas[3].count_zeros() + linhas[1].count_zeros(),
+        2,
+        "só o par"
+    );
     // De volta: com a matriz sem o par, alternar acende-o.
     set_current_physics(Some(mundo(got, InteractionSettings::default())));
     ph2d_panel_physics::alterna_par(3, 1);
@@ -919,7 +923,10 @@ fn a_face_classica_alcanca_as_32() {
         let r = mesa
             .rect(*id)
             .unwrap_or_else(|| panic!("a célula {i} não se alcança"));
-        assert!(r.x + r.w <= painel.x + painel.w, "a célula {i} sai: {r:?} de {painel:?}");
+        assert!(
+            r.x + r.w <= painel.x + painel.w,
+            "a célula {i} sai: {r:?} de {painel:?}"
+        );
     }
     cards::force_cards_on_this_thread(Some(true));
 }

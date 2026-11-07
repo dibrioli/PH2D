@@ -421,7 +421,11 @@ impl crate::App {
             | EditorAction::LayerShow { .. }
             | EditorAction::LayerMatrixOpen { .. }) => {
                 if let Some(g) = self.gfx.as_mut() {
-                    ph2d_app_physics::panel_bridge::acao_das_camadas(&mut g.sim, &mut g.hero_screen, acao);
+                    ph2d_app_physics::panel_bridge::acao_das_camadas(
+                        &mut g.sim,
+                        &mut g.hero_screen,
+                        acao,
+                    );
                 }
             }
             other => return Some(other),

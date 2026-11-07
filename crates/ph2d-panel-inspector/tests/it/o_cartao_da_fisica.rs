@@ -96,7 +96,11 @@ pub(crate) fn achado(r: &[(NodeId, Rect)], id: NodeId) -> Option<Rect> {
         .map(|(_, q)| *q)
 }
 
-pub(crate) fn clica(host: &mut MockPanelHost, st: &mut InspectorState, r: Rect) -> Vec<EditorAction> {
+pub(crate) fn clica(
+    host: &mut MockPanelHost,
+    st: &mut InspectorState,
+    r: Rect,
+) -> Vec<EditorAction> {
     let (x, y) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
     let _ = host.drained_actions();
     let mut eventos = Vec::new();
@@ -691,10 +695,7 @@ fn a_forma_solta_nao_mostra_os_quadros_mas_mantem_a_camada_e_o_rename() {
     };
     let (sem, peca, corpo) = (vao(solta), vao(as_part()), vao(with_body()));
     assert_eq!(peca, corpo, "peça e corpo mostram a mesma linha");
-    assert!(
-        sem < peca,
-        "a solta ainda reserva a fila: {sem} × {peca}"
-    );
+    assert!(sem < peca, "a solta ainda reserva a fila: {sem} × {peca}");
 }
 
 /// «Rename…» abre o campo ali mesmo; escrever pede o novo nome da camada do objecto.

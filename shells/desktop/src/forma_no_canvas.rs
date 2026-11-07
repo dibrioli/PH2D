@@ -73,7 +73,18 @@ impl crate::App {
 
     /// A mão das fotos `fisica_forma_*`: cada passo pelas portas reais do botão e do ponteiro; `[forma-mao]` no `stderr`.
     pub(crate) fn mao_da_forma_do_smoke(&mut self) {
+        use ph2d_app_physics::panel_bridge::{PassoDaFila as F, passo_da_fila};
         use ph2d_shape_handles::{PassoDaMao as P, passo_da_mao};
+        match self.gfx.as_ref().and_then(|g| passo_da_fila(&g.physics)) {
+            Some(F::Clica(id)) => {
+                if let Some((x, y)) = self.smoke_find_widget(id) {
+                    self.smoke_pointer_down(x, y);
+                    self.smoke_pointer_up();
+                }
+            }
+            Some(F::Desfaz) => self.undo_request = Some(false),
+            None => {}
+        }
         let Some(ph2d_app_game::smoke::Foto::Fisica(c)) = ph2d_app_game::smoke::foto() else {
             return;
         };

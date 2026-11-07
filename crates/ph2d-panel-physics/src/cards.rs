@@ -366,7 +366,10 @@ fn cartao_das_camadas(snap: PhysicsSnapshot) -> CardDef<'static> {
                     label: tr("card.physics.layers"),
                     linhas: &visiveis,
                     rotulo_de: &rotulo_de,
-                    rola: Some((i::PHYSICS_LAYER_SCROLL, ph2d_editor_core::ids::PHYSICS_PANEL)),
+                    rola: Some((
+                        i::PHYSICS_LAYER_SCROLL,
+                        ph2d_editor_core::ids::PHYSICS_PANEL,
+                    )),
                     destaque: crate::state::destaque(),
                     group: i::PHYSICS_LAYER_PAINT_GROUP,
                     key: Some(&i::PHYSICS_LAYER_CELL),

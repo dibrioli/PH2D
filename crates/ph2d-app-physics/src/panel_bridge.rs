@@ -58,6 +58,45 @@ pub fn publica_as_camadas(world: &ph2d_ecs::World, physics: &PhysicsBridge) {
     ph2d_panel_inspector::camadas_fisica::set_current(nomes.0, vivo, visiveis);
 }
 
+/// Um passo de `PH2D_PHYSICS_SMOKE_CLIQUE` (`quadro:<camada>`, `matriz`, `desfaz`, separados por vírgula).
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum PassoDaFila {
+    Clica(ph2d_editor_core::NodeId),
+    Desfaz,
+}
+
+/// A mão das fotos da fila: um passo a cada 60 quadros, pelo ponteiro real; `[fila-mao]` no `stderr`
+/// diz a matriz antes de cada passo e depois do último. A tela virtual não recebe rato.
+pub fn passo_da_fila(physics: &PhysicsBridge) -> Option<PassoDaFila> {
+    use ph2d_panel_inspector::ids as i;
+    const CADA: usize = 60;
+    thread_local! { static QUADRO: std::cell::Cell<usize> = const { std::cell::Cell::new(0) }; }
+    let plano = std::env::var("PH2D_PHYSICS_SMOKE_CLIQUE").ok()?;
+    let k = QUADRO.get() + 1;
+    QUADRO.set(k);
+    if k % CADA != 0 {
+        return None;
+    }
+    let passos: Vec<&str> = plano.split(',').collect();
+    let n = k / CADA - 1;
+    if n <= passos.len() {
+        let linhas = physics.settings_vivos().layer_matrix;
+        let pedaco = passos.get(n).copied().unwrap_or("fim");
+        eprintln!(
+            "[fila-mao] antes de {pedaco}: linhas 0..4 = {:x?}",
+            &linhas[..4]
+        );
+    }
+    match passos.get(n)?.trim() {
+        "matriz" => Some(PassoDaFila::Clica(i::INSP_PHYS_EDIT_MATRIX)),
+        "desfaz" => Some(PassoDaFila::Desfaz),
+        p => {
+            let j: usize = p.strip_prefix("quadro:")?.parse().ok()?;
+            Some(PassoDaFila::Clica(*i::INSP_PHYS_COLLIDES.get(j)?))
+        }
+    }
+}
+
 /// O que uma foto da camada pede antes de pintar.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum FotoCamadas {
@@ -151,7 +190,12 @@ pub fn dispatch(
         discarded_run_seconds: (run.stash.len() as f64 * run.fixed_dt) as f32,
     }));
 
-    if !hero.panel_visibility.get("physics").copied().unwrap_or(false) {
+    if !hero
+        .panel_visibility
+        .get("physics")
+        .copied()
+        .unwrap_or(false)
+    {
         ph2d_panel_physics::painel_fechado();
     }
 

@@ -257,7 +257,10 @@ pub(super) fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> 
     } else {
         t.dois_botoes(
             y,
-            (ids::INSP_PHYS_LAYER_RENAME, tr("card.insp.phys.layer_rename")),
+            (
+                ids::INSP_PHYS_LAYER_RENAME,
+                tr("card.insp.phys.layer_rename"),
+            ),
             (ids::INSP_PHYS_EDIT_MATRIX, tr("card.insp.phys.edit_matrix")),
         )
     };

@@ -174,12 +174,14 @@ impl CardCtx<'_> {
         crate::widget::composto::grupo(pares);
         if let Some((barra, painel)) = t.rola {
             if n > cabem {
-                crate::interaction::roda_lateral::publica(crate::interaction::roda_lateral::Regiao {
-                    barra,
-                    painel,
-                    rect: Rect::new(self.x, topo, self.w, y - topo),
-                    curso_px: passo * (n - cabem) as f32,
-                });
+                crate::interaction::roda_lateral::publica(
+                    crate::interaction::roda_lateral::Regiao {
+                        barra,
+                        painel,
+                        rect: Rect::new(self.x, topo, self.w, y - topo),
+                        curso_px: passo * (n - cabem) as f32,
+                    },
+                );
             } else {
                 crate::interaction::roda_lateral::limpa(barra);
             }

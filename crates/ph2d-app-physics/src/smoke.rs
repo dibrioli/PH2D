@@ -223,6 +223,46 @@ pub fn scene(which: &str, ctx: &mut crate::SceneCtx<'_>) {
     }
 }
 
+/// O que a cena pediu ao mundo e ao hero: as regras, os painéis e a seleção.
+pub fn aplica_o_pedido(
+    want: &crate::SceneSetup,
+    camera: &mut ph2d_render::Camera2d,
+    physics: &mut ph2d_physics_ecs::PhysicsBridge,
+    hero: Option<&mut ph2d_editor_core::screens::hero::HeroScreen>,
+) {
+    if let Some(c) = want.camera_center {
+        camera.center = c;
+    }
+    if let Some(h) = want.camera_height_world {
+        camera.height_world = h;
+    }
+    if let Some(s) = want.settings {
+        physics.set_settings(s);
+    }
+    if let Some(hero) = hero {
+        // A régua é o instrumento de toda cena (smoke da cena 67: «que régua?»).
+        hero.panel_visibility.insert("timeline", true);
+        for k in &want.panels {
+            hero.panel_visibility.insert(k, true);
+        }
+        if let Some(bits) = want.select {
+            hero.gizmo.selection = Some(bits);
+            hero.gizmo.extra_selection.clear();
+        }
+    }
+}
+
+/// Nome → identidade, uma vez, para toda cena: a ponte resolve juntas por `StableId` (ADR-0164 F1).
+pub fn resolve_os_nomes(world: &mut ph2d_ecs::World) {
+    let n = ph2d_physics_ecs::resolve_body_names(world);
+    if n.total() > 0 {
+        eprintln!(
+            "[physics-smoke] {} junta(s) e {} roldana(s) passaram a apontar por identidade",
+            n.joints, n.wheels
+        );
+    }
+}
+
 #[cfg(test)]
 #[path = "smoke_tests.rs"]
 mod smoke_tests;

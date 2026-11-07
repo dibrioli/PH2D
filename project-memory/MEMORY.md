@@ -133,5 +133,6 @@
 - ⭐⭐ [Dono 05/11: cartão da Sprite — sem Replace, miniatura 72 px, W×H na mesma linha, Transform do Vector = o do Object](project_sprite_card_owner_decisions_2026_11_05.md)
 - ⭐⭐ [Dono 06/11: Animated Sprite versão B; folha no editor, Auto + Starts with, ▶ só prévia, nasce vazio, regra acesa](project_animated_sprite_card_owner_decisions_2026_11_06.md)
 - ⭐⭐ [Dono 06/11: Sprite FECHADA, «aceitar como está»; Mirror vira a imagem, Pivot animado sem cura, undo da agulha → Timeline](project_sprite_closed_accept_as_is_2026_11_06.md)
+- ⭐ [07/11: GEF entregue ao integrador SEM smoke do dono do Animated; smoke dele depois da integração](project_gef_animated_sprite_delivered_without_owner_smoke_2026_11_07.md)
 - ⛔ [Janela passada de 300 mil/passo: uma rodada de smoke = um agente novo; a janela só decide e confere (05/11)](feedback_a_main_window_past_300k_delegates_each_round.md)
 - ⭐⭐ [Dono 06/11: tinta do Wet viva ao trocar de modo; opção ao salvar; Borracha real na viva, imita na morta](project_live_paint_survives_2026_11_06.md)

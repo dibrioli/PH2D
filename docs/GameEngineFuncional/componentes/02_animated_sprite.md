@@ -1,6 +1,6 @@
 # Animated Sprite
 
-**Estado: `no smoke`.** Desenho aprovado pelo dono em 06/11: «OK às recomendações». Falta o smoke dele.
+**Estado: `no smoke`.** Desenho aprovado pelo dono em 06/11: «OK às recomendações». Falta o smoke dele (depois da integração). Handoff de integração: [HANDOFF_INTEGRACAO 07/11](../handoffs/HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-07_ANIMATED_SPRITE.md).
 
 Estudos lidos: crítica «Animated Sprite», «Suas perguntas», «Lista consolidada» · estudo «AnimatedSprite», «12 ideias». Código conferido em 06/11/2026, sobre `19436b23ce`.
 

@@ -311,19 +311,34 @@ fn a_tilemap_returns_from_the_ase_as_a_tilemap() {
         let (volta, avisos) = ase::ler(&bytes).unwrap();
         assert!(avisos.is_empty(), "{mode:?}: {avisos:?}");
         assert!(ph2d_pixel_core::derived_is_consistent(&volta));
-        let camada = volta.layers().iter().find(|l| l.tileset().is_some()).expect("camada");
+        let camada = volta
+            .layers()
+            .iter()
+            .find(|l| l.tileset().is_some())
+            .expect("camada");
         let set = volta.tileset(camada.tileset().unwrap()).unwrap();
         let antes = &s.tilesets()[0];
         assert_eq!(set.tiles, antes.tiles, "{mode:?}");
         assert_eq!((set.tile_w, set.tile_h), (2, 2));
         let (fa, fb) = (s.frames()[0].id, volta.frames()[0].id);
-        let la = s.layers().iter().find(|l| l.tileset().is_some()).unwrap().id;
+        let la = s
+            .layers()
+            .iter()
+            .find(|l| l.tileset().is_some())
+            .unwrap()
+            .id;
         assert_eq!(
             s.cel((la, fa)).unwrap().tiles.as_deref(),
             volta.cel((camada.id, fb)).unwrap().tiles.as_deref(),
             "{mode:?}"
         );
-        assert!(volta.entry((camada.id, volta.frames()[1].id)).unwrap().link.is_some());
+        assert!(
+            volta
+                .entry((camada.id, volta.frames()[1].id))
+                .unwrap()
+                .link
+                .is_some()
+        );
         for (a, b) in s.frames().iter().zip(volta.frames()) {
             assert_eq!(composto(&s, a.id), composto(&volta, b.id), "{mode:?}");
         }

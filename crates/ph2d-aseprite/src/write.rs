@@ -235,12 +235,10 @@ pub fn write_file(file: &AseFile) -> Result<Vec<u8>, WriteError> {
         for c in &frame.cels {
             if let AseCelBody::Linked { frame: owner } = c.body {
                 let has = file.frames.get(usize::from(owner)).is_some_and(|f| {
-                    f.cels
-                        .iter()
-                        .any(|o| {
-                            o.layer == c.layer
-                                && matches!(o.body, AseCelBody::Image { .. } | AseCelBody::Tilemap(_))
-                        })
+                    f.cels.iter().any(|o| {
+                        o.layer == c.layer
+                            && matches!(o.body, AseCelBody::Image { .. } | AseCelBody::Tilemap(_))
+                    })
                 });
                 if !has {
                     return Err(WriteError::DanglingLink {

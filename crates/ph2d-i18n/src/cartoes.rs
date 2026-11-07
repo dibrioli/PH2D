@@ -27,6 +27,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.phys.follows" => "Follows the picture",
         "card.insp.phys.custom" => "Custom size",
         "card.insp.phys.fit" => "Fit to picture",
+        "card.insp.phys.edit_shape" => "Edit shape on canvas",
+        "card.insp.phys.editing_shape" => "Editing shape · Esc to finish",
         "card.insp.phys.hits" => "Hits: {names}",
         "card.insp.phys.hits_nothing" => "Hits: nothing",
         "card.insp.phys.layer_rename" => "Rename…",

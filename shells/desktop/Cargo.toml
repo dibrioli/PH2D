@@ -63,6 +63,7 @@ ph2d-app-code = { path = "../../crates/ph2d-app-code" }
 # ⭐ A família do JOGO a correr (GameEngineFuncional R0): a sessão de Play sobre uma cópia.
 ph2d-app-game = { path = "../../crates/ph2d-app-game" }
 ph2d-camera-frame = { path = "../../crates/ph2d-camera-frame" }
+ph2d-shape-handles = { path = "../../crates/ph2d-shape-handles" }
 ph2d-sprite-edit = { path = "../../crates/ph2d-sprite-edit" }
 ph2d-pick-order = { path = "../../crates/ph2d-pick-order" }
 ph2d-sfx-scene = { path = "../../crates/ph2d-sfx-scene" }

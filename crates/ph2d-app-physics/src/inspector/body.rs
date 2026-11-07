@@ -238,6 +238,7 @@ pub fn build_physics_info(
             gravity_scale: GravityScale::NEUTRAL,
             cap_half_height: 0.25,
             shape_follows: None,
+            shape_edit_on: false,
             linvel: InitialVelocity::REST.linvel,
             angvel: InitialVelocity::REST.angvel,
             ccd: false,
@@ -349,6 +350,7 @@ pub fn build_physics_info(
         shape_follows: world
             .get::<ph2d_render::Sprite>(entity)
             .map(|s| col.follows_picture(s.size)),
+        shape_edit_on: ph2d_shape_handles::editando(world) == Some(entity_bits),
         linvel: iv.linvel,
         angvel: iv.angvel,
         ccd,

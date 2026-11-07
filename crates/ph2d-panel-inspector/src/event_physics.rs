@@ -188,6 +188,11 @@ fn click_edit(
     if id == crate::ids::INSP_PHYS_FIT_PICTURE {
         return (info.shape_follows == Some(false)).then_some(PhysicsFieldEdit::FitToPicture);
     }
+    if id == crate::ids::INSP_PHYS_EDIT_SHAPE {
+        return info
+            .has_collider
+            .then_some(PhysicsFieldEdit::EditShapeOnCanvas);
+    }
     if id == crate::ids::INSP_PHYS_USE_BOX {
         return info.has_collider.then_some(PhysicsFieldEdit::Shape(1));
     }

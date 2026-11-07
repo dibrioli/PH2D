@@ -67,6 +67,8 @@ pub const INSP_PHYS_BODY_OPENED: NodeId = hash_node_id("insp_phys_body_opened");
 
 /// Os botões do cartão Shape: voltar à caixa da imagem e as duas saídas da forma redonda esticada.
 pub const INSP_PHYS_FIT_PICTURE: NodeId = hash_node_id("insp_phys_fit_picture");
+/// «Edit shape on canvas» (ficha f1, onda 3): acende as alças da forma.
+pub const INSP_PHYS_EDIT_SHAPE: NodeId = hash_node_id("insp_phys_edit_shape");
 pub const INSP_PHYS_SCALE_ONE: NodeId = hash_node_id("insp_phys_scale_one");
 pub const INSP_PHYS_USE_BOX: NodeId = hash_node_id("insp_phys_use_box");
 /// A lista suspensa da camada (as opções são os `INSP_PHYS_LAYER`), o «Rename…», a marca de que está aberto e o campo.

@@ -47,6 +47,49 @@ pub enum CasoFisica {
     CamadaComPares,
     /// O mesmo, com o painel Physics à vista: a matriz e os campos dos nomes.
     CamadasNoPainel,
+    /// Onda 3, as alças da forma: a caixa em edição; o canto a meio do arrasto; bola; a cápsula do Player.
+    FormaCaixa,
+    FormaArrasto,
+    FormaBola,
+    FormaPlayer,
+    /// Scale 2 × 1, rodada 30°; e o mesmo com espelho.
+    FormaRodado,
+    FormaEspelho,
+    /// O canto puxado e Ctrl+Z.
+    FormaDesfaz,
+    /// O canto puxado com Auto Key.
+    FormaChave,
+    /// Uma peça dentro da plataforma (pai fora da origem), um Sensor e uma forma solta.
+    FormaPeca,
+    FormaSensor,
+    FormaSolta,
+}
+
+/// O gesto de cada foto das alças.
+#[must_use]
+pub fn plano_da_forma(caso: CasoFisica) -> Option<ph2d_shape_handles::Plano> {
+    use ph2d_shape_handles::{Alca, Plano};
+    let canto = Some(Alca::Lado(1, 1));
+    let (alca, delta, segura, desfaz) = match caso {
+        CasoFisica::FormaCaixa => (None, [0.0, 0.0], false, false),
+        CasoFisica::FormaArrasto => (canto, [1.0, 0.5], true, false),
+        CasoFisica::FormaBola => (Some(Alca::Lado(1, 0)), [0.5, 0.0], true, false),
+        CasoFisica::FormaPlayer => (Some(Alca::Lado(0, 1)), [0.0, 0.4], true, false),
+        CasoFisica::FormaRodado | CasoFisica::FormaEspelho | CasoFisica::FormaChave => {
+            (canto, [0.8, 0.9], false, false)
+        }
+        CasoFisica::FormaDesfaz => (canto, [0.8, 0.9], false, true),
+        CasoFisica::FormaPeca | CasoFisica::FormaSensor | CasoFisica::FormaSolta => {
+            (Some(Alca::Lado(1, 0)), [0.7, 0.0], false, false)
+        }
+        _ => return None,
+    };
+    Some(Plano {
+        alca,
+        delta,
+        segura,
+        desfaz,
+    })
 }
 
 /// O caso do nome pedido em `PH2D_GAME_SMOKE_FOTO`.
@@ -70,6 +113,17 @@ pub fn caso(nome: &str) -> Option<CasoFisica> {
         "camada_sozinha" => CasoFisica::CamadaSozinha,
         "camada_com_pares" => CasoFisica::CamadaComPares,
         "camadas_no_painel" => CasoFisica::CamadasNoPainel,
+        "forma_caixa" => CasoFisica::FormaCaixa,
+        "forma_arrasto" => CasoFisica::FormaArrasto,
+        "forma_bola" => CasoFisica::FormaBola,
+        "forma_player" => CasoFisica::FormaPlayer,
+        "forma_rodado" => CasoFisica::FormaRodado,
+        "forma_espelho" => CasoFisica::FormaEspelho,
+        "forma_desfaz" => CasoFisica::FormaDesfaz,
+        "forma_chave" => CasoFisica::FormaChave,
+        "forma_peca" => CasoFisica::FormaPeca,
+        "forma_sensor" => CasoFisica::FormaSensor,
+        "forma_solta" => CasoFisica::FormaSolta,
         _ => return None,
     })
 }
@@ -90,7 +144,7 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
     let pai = por_nome(sim, "Platform High")?;
     match caso {
         CasoFisica::Static => return Some(pai.to_bits()),
-        CasoFisica::Player | CasoFisica::PlayerCartoes => {
+        CasoFisica::Player | CasoFisica::PlayerCartoes | CasoFisica::FormaPlayer => {
             return por_nome(sim, "Player").map(|e| e.to_bits());
         }
         CasoFisica::Baixa | CasoFisica::Larga => {
@@ -103,6 +157,7 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
         CasoFisica::Static
         | CasoFisica::Player
         | CasoFisica::PlayerCartoes
+        | CasoFisica::FormaPlayer
         | CasoFisica::Baixa
         | CasoFisica::Larga => {
             unreachable!("voltam acima")
@@ -127,6 +182,64 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
                 col,
             ))
             .id()
+        }
+        CasoFisica::FormaCaixa
+        | CasoFisica::FormaArrasto
+        | CasoFisica::FormaBola
+        | CasoFisica::FormaRodado
+        | CasoFisica::FormaEspelho
+        | CasoFisica::FormaDesfaz
+        | CasoFisica::FormaChave => {
+            let shape = if caso == CasoFisica::FormaBola {
+                ColliderShape::Ball { radius: 0.5 }
+            } else {
+                CAIXA
+            };
+            let mut pose = onde;
+            if matches!(
+                caso,
+                CasoFisica::FormaRodado | CasoFisica::FormaDesfaz | CasoFisica::FormaChave
+            ) {
+                pose.scale = Vec2::new(2.0, 1.0);
+                pose.rotation = 30f32.to_radians();
+            }
+            if caso == CasoFisica::FormaEspelho {
+                pose.scale = Vec2::new(-2.0, 1.0);
+                pose.rotation = 30f32.to_radians();
+            }
+            let col = Collider {
+                shape,
+                offset: [0.2, 0.1],
+                ..Collider::default()
+            };
+            w.spawn((pose, Name::new("Crate"), imagem, corpo(BodyKind::Static), col))
+                .id()
+        }
+        CasoFisica::FormaSensor => {
+            let col = Collider {
+                shape: CAIXA,
+                is_sensor: true,
+                ..Collider::default()
+            };
+            let nome = Name::new("Zone");
+            w.spawn((onde, nome, corpo(BodyKind::Static), col)).id()
+        }
+        CasoFisica::FormaSolta => {
+            let col = Collider {
+                shape: CAIXA,
+                ..Collider::default()
+            };
+            w.spawn((onde, Name::new("Collision Shape"), col)).id()
+        }
+        CasoFisica::FormaPeca => {
+            let col = Collider {
+                shape: CAIXA,
+                offset: [0.1, 0.0],
+                ..Collider::default()
+            };
+            let junto = Transform::from_translation(Vec2::new(0.0, 1.0));
+            let nome = Name::new("Collision Shape");
+            w.spawn((junto, nome, col, ChildOf(pai))).id()
         }
         CasoFisica::Dynamic | CasoFisica::Kinematic | CasoFisica::Bola | CasoFisica::Esticada => {
             let kind = if caso == CasoFisica::Kinematic {

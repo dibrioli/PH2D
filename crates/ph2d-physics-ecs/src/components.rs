@@ -248,6 +248,7 @@ mod anim_rules;
 mod area;
 /// A lei do valor das linhas da §11 (`Collider::sanitize`, `MassOverride::sanitize`…).
 mod body_law;
+pub use body_law::MIN_EXTENT;
 /// As animações do personagem por estado (GameEngineFuncional N1).
 mod character_anim;
 /// ⭐⭐⭐ **VIDA e DANO** (plano 28, W2) — ver o cabeçalho dele.

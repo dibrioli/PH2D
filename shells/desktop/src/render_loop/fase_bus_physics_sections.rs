@@ -21,29 +21,14 @@ impl crate::App {
             // siblings — "make all of these physical" is the gesture
             // an artist actually performs.
             EditorAction::InspectorPhysicsEdit { entity_bits, edit } => {
-                // ⚠️ **Join does NOT fan out.** Every other §11 edit is
-                // per-entity ("make all of these static"), but joining
-                // is one gesture over a PAIR — fanned out it would
-                // create one joint per selected body, i.e. two joints
-                // between the same two objects, on the very click that
-                // is supposed to make one.
+                // ⚠️ Join é UM gesto sobre o PAR: espalhado, faria dois joints entre os mesmos dois.
                 if matches!(edit, ph2d_editor_core::PhysicsFieldEdit::Join) {
-                    // ⚠️ **2 ou MAIS** (W-J4): três corpos marcados
-                    // fazem uma CORRENTE de N−1 joints, na ordem da
-                    // seleção. Não é fan-out (isso criaria um joint por
-                    // corpo, entre os mesmos dois) — é UMA operação
-                    // sobre a sequência, que a `join_selected_chain`
-                    // executa depois do laço.
+                    // ⚠️ 2 ou MAIS (W-J4): uma corrente de N−1 joints, depois do laço.
                     if pd.inspector_selection.len() >= 2 {
                         pd.join_chain = true;
                     }
                 } else if matches!(edit, ph2d_editor_core::PhysicsFieldEdit::Rig) {
-                    // ⚠️ **Nem o Rig faz fan-out** (W-Rig), e a razão é a
-                    // do Bake mais que a do Join: cada corrida do gerador
-                    // percorre a MESMA subárvore, então espalhado ele
-                    // rodaria N vezes sobre o mesmo trabalho — a 2ª em
-                    // diante achariam tudo já ligado e não fariam nada,
-                    // mas o toast contaria a 1ª N vezes.
+                    // ⚠️ Nem o Rig se espalha (W-Rig): percorre a mesma subárvore N vezes.
                     pd.rig_now = true;
                 } else if matches!(edit, ph2d_editor_core::PhysicsFieldEdit::JoinDraw) {
                     // ARMA o gesto de canvas (sem operando, como os
@@ -52,15 +37,7 @@ impl crate::App {
                     // honrado no `input_dispatch`.
                     pd.join_draw_arm = true;
                 } else if matches!(edit, ph2d_editor_core::PhysicsFieldEdit::Bake) {
-                    // WARNING: **Bake does not fan out either**, and the
-                    // cost of getting it wrong is bigger than Join's:
-                    // ONE bake runs the whole simulation once and writes
-                    // every selected body's curves from that single run.
-                    // Fanned out it would re-simulate the entire scene
-                    // once per selected body - same numbers, N times the
-                    // work - and file a separate undo step for each, so
-                    // undoing "the bake" would take as many Ctrl+Z
-                    // presses as there were objects.
+                    // ⚠️ Nem o Bake: simula a cena uma vez e escreve as curvas de todos num passo só.
                     pd.bake_request = Some(if pd.inspector_selection.is_empty() {
                         vec![entity_bits]
                     } else {
@@ -77,7 +54,14 @@ impl crate::App {
                     // an app-state option the Join gesture reads, not a
                     // per-body edit. No fan-out, no Collider write.
                     self.physics.join_kind = tag;
-                } else if pd.inspector_selection.is_empty() {
+                } else if matches!(edit, ph2d_editor_core::PhysicsFieldEdit::EditShapeOnCanvas) {
+                    if let Some(g) = self.gfx.as_mut() {
+                        ph2d_shape_handles::alterna(g.sim.world_mut(), entity_bits);
+                    }
+                } else if matches!(edit, ph2d_editor_core::PhysicsFieldEdit::ShapeDrag { .. })
+                    || pd.inspector_selection.is_empty()
+                {
+                    // O arrasto das alças é do objecto agarrado, nunca da seleção inteira.
                     pd.physics_edits.push((entity_bits, edit));
                 } else {
                     for &t in &pd.inspector_selection {

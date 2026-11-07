@@ -233,6 +233,7 @@ pub(super) fn populate_physics(store: &mut WidgetStore) {
             ids::INSP_PHYS_BAKE,
             ids::INSP_PHYS_REMOVE,
             ids::INSP_PHYS_FIT_PICTURE,
+            ids::INSP_PHYS_EDIT_SHAPE,
             ids::INSP_PHYS_SCALE_ONE,
             ids::INSP_PHYS_USE_BOX,
             ids::INSP_PHYS_REMOVED_UNDO,

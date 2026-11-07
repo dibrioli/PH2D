@@ -13,7 +13,10 @@ impl crate::App {
             return;
         };
         let FrameGfx {
-            tools, hero_screen, ..
+            tools,
+            hero_screen,
+            sim,
+            ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
         let Some(hero) = hero_screen.as_mut() else {
@@ -53,7 +56,10 @@ impl crate::App {
         // fica armada; só a caixa/alças somem).
         let flip_pairs_active =
             self.flip_state.active && self.flip_state.strip.tween_correct.is_some();
-        let suppress_gizmo = painter_deform_transform
+        let jogando = self.playhead.is_playing() || hero.view.palco_do_jogo;
+        let forma = ph2d_shape_handles::quadro(sim.world_mut(), hero.gizmo.selection, jogando);
+        let suppress_gizmo = forma
+            || painter_deform_transform
             || flip_pairs_active
             || !ph2d_editor_core::screens::hero::mode_drive::object_gizmo_shows(hero)
             || tools

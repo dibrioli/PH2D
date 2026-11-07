@@ -48,7 +48,7 @@ pub use foto::{
     CENTRO_DAS_FOTOS_13, CENTRO_DOS_USOS, Foto, FotoDaCamera, ONDE_LARGA, PassoDoDono, PlanoDaFoto,
     QUADROS_POR_USO, foto, plano_da_foto, tempo_da_chave, uso_no_quadro, usos_do_dono,
 };
-pub use ph2d_physics_scene::fotos_dos_cartoes::{CasoFisica, estado_do_player};
+pub use ph2d_physics_scene::fotos_dos_cartoes::{CasoFisica, estado_do_player, plano_da_forma};
 
 /// O herói das cenas de smoke — nome de objecto da cena, não texto da interface.
 #[must_use]

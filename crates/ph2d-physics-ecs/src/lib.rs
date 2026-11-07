@@ -80,6 +80,7 @@ pub use bridge::views::JointView;
 pub use bridge::{
     FrozenScene, HeldInput, InputTape, PhysicsBridge, PlayerInputAtTick, SceneAtTick, TapeWire,
 };
+pub use components::MIN_EXTENT;
 pub use components::{
     AnimRule, AnimRules, AnimWhen, AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff,
     AreaForceWorldAxes, AreaFormDrag, AreaTorque, BodyKind, Ccd, CharacterAnimations,

@@ -451,7 +451,9 @@ pub fn apply_physics_edit(
         // W-Rig entra na mesma lista pelo mesmo motivo: um rig é UM gesto sobre a
         // subárvore, e espalhado ele rodaria o gerador inteiro uma vez por
         // entidade selecionada.
-        | PhysicsFieldEdit::Rig => {}
+        | PhysicsFieldEdit::Rig
+        // O botão das alças é estado do canvas: a composição consome-o, como a `JoinDraw`.
+        | PhysicsFieldEdit::EditShapeOnCanvas => {}
         // Switching shape PRESERVES the footprint: a box becomes the ball
         // that fits inside it and back, so the object does not jump size.
         PhysicsFieldEdit::Shape(0) => {
@@ -550,6 +552,20 @@ pub fn apply_physics_edit(
         }
         // Collider offset — a signed position, so no clamp (either direction is
         // legal). Writes the ONE axis the edit names; the other is left as it was.
+        PhysicsFieldEdit::ShapeDrag { medidas, offset } => {
+            next.offset = offset;
+            next.shape = match cur.shape {
+                ColliderShape::Cuboid { .. } => ColliderShape::Cuboid {
+                    half_x: medidas[0],
+                    half_y: medidas[1],
+                },
+                ColliderShape::Ball { .. } => ColliderShape::Ball { radius: medidas[0] },
+                ColliderShape::Capsule { .. } => ColliderShape::Capsule {
+                    half_height: medidas[1],
+                    radius: medidas[0],
+                },
+            };
+        }
         PhysicsFieldEdit::OffsetX(v) => next.offset[0] = v,
         PhysicsFieldEdit::OffsetY(v) => next.offset[1] = v,
         PhysicsFieldEdit::Density(v) => next.density = v,

@@ -291,7 +291,7 @@ impl crate::App {
             use ph2d_app_game::smoke::CasoFisica as C;
             use ph2d_panel_inspector::camadas_fisica as camadas;
             match c {
-                C::PlayerCartoes => camadas::dobra_os_cartoes_de_cima(&mut hero.store),
+                C::PlayerCartoes | C::FormaPlayer => camadas::dobra_os_cartoes_de_cima(&mut hero.store),
                 C::Camadas => camadas::abre_a_lista(&mut hero.store),
                 C::CamadaSozinha => {
                     let mut s = gfx.physics.settings();

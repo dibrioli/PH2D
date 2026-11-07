@@ -11,7 +11,7 @@ use super::{
 use crate::{Collider, ColliderShape, MAX_LAYERS};
 
 /// O menor raio / meia-extensão que o solver aceita.
-const MIN_EXTENT: f32 = 1e-3;
+pub const MIN_EXTENT: f32 = 1e-3;
 
 impl Collider {
     /// A forma do MESMO tipo que cabe no desenho `picture` (lados em m), a do Fit to picture. Caixa: o

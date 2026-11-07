@@ -118,7 +118,20 @@ pub(super) fn medidas_e_estado(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysic
         info.shape_tag,
     );
     let y = estado_da_forma(t, y, info);
-    aviso_de_escala(t, y, info)
+    let y = aviso_de_escala(t, y, info);
+    botao_das_alcas(t, y, info)
+}
+
+/// Aceso enquanto as alças da forma estão no canvas, e diz como se sai.
+fn botao_das_alcas(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
+    let (texto, tipo) = if info.shape_edit_on {
+        (tr("card.insp.phys.editing_shape"), ButtonKind::Accent)
+    } else {
+        (tr("card.insp.phys.edit_shape"), ButtonKind::Default)
+    };
+    let (r, y) = t.botao_de(ids::INSP_PHYS_EDIT_SHAPE, texto, tipo, y);
+    t.hit.register(ids::INSP_PHYS_EDIT_SHAPE, r);
+    y
 }
 
 fn estado_da_forma(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
@@ -210,10 +223,9 @@ pub(super) fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> 
         t.store.get(ids::INSP_PHYS_LAYER_PICK),
         Some(InteractiveState::Dropdown { open: true, .. })
     );
-    let mut dd = Dropdown::new(ids::INSP_PHYS_LAYER_PICK, "", layer_options())
+    let dd = lista_da_camada(info.layer)
         .open(aberta)
         .visual(t.store.dropdown_visual(ids::INSP_PHYS_LAYER_PICK));
-    dd.select(info.layer);
     paint_dropdown_chip(&dd, linha.control, t.scene, t.text, t.theme);
     if aberta {
         crate::state_popovers::set_pending_phys_layer_dd(Some(linha.control));
@@ -264,6 +276,13 @@ pub(crate) fn layer_options() -> Vec<DropdownOption<u8>> {
         .enumerate()
         .map(|(i, &id)| DropdownOption::new(id, i as u8, crate::camadas_fisica::rotulo(i)))
         .collect()
+}
+
+/// A lista da camada, com a camada do objecto escolhida: o que o chip mostra.
+fn lista_da_camada(camada: u8) -> Dropdown<u8> {
+    let mut dd = Dropdown::new(ids::INSP_PHYS_LAYER_PICK, "", layer_options());
+    dd.select(camada);
+    dd
 }
 
 fn sinais(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
@@ -456,4 +475,23 @@ pub(super) fn dobra_sinais(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInf
     t.dobra(y, ids::INSP_PHYS_FOLD_SIGNALS, titulo, &resumo, |t, y| {
         sinais(t, y, info)
     })
+}
+
+#[cfg(test)]
+mod lista_tests {
+    use super::*;
+
+    /// O chip mostra a camada do objecto, com número ou com nome: cada opção carrega o seu próprio valor.
+    #[test]
+    fn a_lista_da_camada_mostra_a_camada_do_objecto_como_escolhida() {
+        let mut nomes: [String; 8] = Default::default();
+        nomes[2] = "Enemy".into();
+        crate::camadas_fisica::set_current(nomes, [u8::MAX; 8]);
+        for i in 0..8u8 {
+            let dd = lista_da_camada(i);
+            let esperado = if i == 2 { "Enemy".to_owned() } else { i.to_string() };
+            assert_eq!(dd.selected_label(), Some(esperado.as_str()), "camada {i}");
+        }
+        crate::camadas_fisica::set_current(Default::default(), [u8::MAX; 8]);
+    }
 }

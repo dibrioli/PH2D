@@ -29,6 +29,8 @@ ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 # O chão, o personagem e a laje das cenas (`common.rs` desceu para esta folha, partilhada com o jogo).
 ph2d-physics-scene = { path = "../ph2d-physics-scene" }
+# As alças da forma no canvas: o cartão pergunta quem está em edição.
+ph2d-shape-handles = { path = "../ph2d-shape-handles" }
 # ⭐ A árvore de tags (TOP-20 #9, W3c) — o caminho do filtro na row *Only for tag*.
 ph2d-tags = { path = "../ph2d-tags" }
 ph2d-render = { path = "../ph2d-render" }

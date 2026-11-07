@@ -155,6 +155,14 @@ impl crate::App {
                 vector_scene,
                 paint_ctx.text,
             );
+            ph2d_shape_handles::tinta::desenhar(
+                sim.world(),
+                camera,
+                crate::scene_mapping::janela(hero.view.center_split, surface.size()),
+                self.last_pointer,
+                hero.theme,
+                vector_scene,
+            );
             // ⭐ E a miniatura do que a câmera seleccionada vê (A6), no canto, por cima das molduras.
             if let Some((retrato, caixa)) = miniatura.retrato() {
                 let ponteiro = self.last_pointer;

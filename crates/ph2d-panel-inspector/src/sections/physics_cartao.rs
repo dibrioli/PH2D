@@ -36,10 +36,21 @@ impl Tinta<'_> {
 
     /// Pinta o botão e devolve a caixa e o `y` de baixo; o chamador regista o id literal.
     pub(super) fn botao(&mut self, id: NodeId, texto: &str, y: f32) -> (Rect, f32) {
+        self.botao_de(id, texto, ButtonKind::Default, y)
+    }
+
+    /// O mesmo botão, de outro tipo (o aceso).
+    pub(super) fn botao_de(
+        &mut self,
+        id: NodeId,
+        texto: &str,
+        tipo: ButtonKind,
+        y: f32,
+    ) -> (Rect, f32) {
         let rect =
             ph2d_editor_core::property_row::caixa_do_botao(self.text, self.x, self.w, y, texto);
         let btn = Button::new(id, texto)
-            .kind(ButtonKind::Default)
+            .kind(tipo)
             .visual(self.store.button_visual(id));
         paint_button(&btn, rect, self.scene, self.text, self.theme);
         (rect, ph2d_editor_core::property_row::abaixo_do_botao(rect))

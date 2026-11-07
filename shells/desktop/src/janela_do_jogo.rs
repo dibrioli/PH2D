@@ -235,7 +235,11 @@ impl crate::App {
         let chave = foto == Some(Foto::CameraChave);
         let prova = matches!(
             foto,
-            Some(Foto::SpriteTransformNoDraw | Foto::SpritePivotChave)
+            Some(
+                Foto::SpriteTransformNoDraw
+                    | Foto::SpritePivotChave
+                    | Foto::Fisica(ph2d_app_game::smoke::CasoFisica::FormaChave)
+            )
         );
         if (chave || prova) && !self.timeline.flags.auto_key {
             self.timeline.flags.auto_key = true;

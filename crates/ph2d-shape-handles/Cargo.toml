@@ -1,0 +1,29 @@
+[package]
+name = "ph2d-shape-handles"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ As alças da forma de colisão no canvas (ficha f1, onda 3) como FOLHA: a lei em coordenadas, o ponteiro em
+# ecrã e a tinta. Folha pelo tecto de `ph2d-app-physics`, no molde de `ph2d-camera-frame`: a composição liga o
+# ponteiro, a família da física lê o estado para o cartão.
+[dependencies]
+bevy_ecs = "0.20"
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-host = { path = "../ph2d-host" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+ph2d-render = { path = "../ph2d-render" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-vector = { path = "../ph2d-vector" }
+
+[dev-dependencies]
+ph2d-core = { path = "../ph2d-core" }
+
+[lints]
+workspace = true

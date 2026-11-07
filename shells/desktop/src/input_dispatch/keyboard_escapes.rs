@@ -102,7 +102,7 @@ impl App {
         if state == ElementState::Pressed
             && !repeat
             && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
-            && self.camera_frame_escape()
+            && (self.forma_esc() || self.camera_frame_escape())
         {
             return true;
         }

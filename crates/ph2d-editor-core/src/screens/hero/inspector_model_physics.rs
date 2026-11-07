@@ -56,6 +56,8 @@ pub struct InspectorPhysicsInfo {
     /// A forma em relação à imagem do objecto: `None` sem imagem · `Some(true)` a caixa mede o desenho e
     /// o acompanha (`Collider::follows_picture`) · `Some(false)` não acompanha (mudada à mão, bola, cápsula).
     pub shape_follows: Option<bool>,
+    /// As alças da forma estão acesas neste objecto (`ph2d_shape_handles`).
+    pub shape_edit_on: bool,
     pub density: f32,
     pub restitution: f32,
     pub friction: f32,
@@ -350,6 +352,15 @@ pub enum PhysicsFieldEdit {
     Remove,
     /// A forma volta à caixa da imagem, centrada: o estado «Follows the picture».
     FitToPicture,
+    /// O botão «Edit shape on canvas»: acende ou apaga as alças da forma. Não é escrita de componente.
+    EditShapeOnCanvas,
+    /// **Um passo do arrasto das alças:** medidas e Offset juntos, UM valor, porque dois campos no mesmo quadro
+    /// perderiam o primeiro (a fila é diferida, doc 17b A3). `medidas`: caixa `[half_x, half_y]`, bola `[radius, _]`,
+    /// cápsula `[radius, half_height]`. Só para o objecto agarrado: não se espalha pela seleção.
+    ShapeDrag {
+        medidas: [f32; 2],
+        offset: [f32; 2],
+    },
     /// `BodyKind` tag: `0` Dynamic · `1` Static · `2` Kinematic.
     Kind(u8),
     /// `ColliderShape` tag: `0` Ball · `1` Box · `2` Capsule. Switching

@@ -147,7 +147,8 @@ impl crate::App {
             && mapped_button == ph2d_host::PointerButton::Primary
             && !menu_open_before
             && on_canvas
-            && self.camera_frame_down(self.last_pointer.0, self.last_pointer.1)
+            && (self.forma_down(self.last_pointer.0, self.last_pointer.1)
+                || self.camera_frame_down(self.last_pointer.0, self.last_pointer.1))
         {
             return true;
         }
@@ -345,7 +346,8 @@ impl crate::App {
             && (self.warp_gizmo_up()
                 || self.collider_gizmo_up()
                 || self.field_gizmo_up()
-                || self.camera_frame_up())
+                || self.camera_frame_up()
+                || self.forma_up())
         {
             return true;
         }

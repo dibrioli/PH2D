@@ -37,6 +37,7 @@ impl crate::App {
         self.ordem_smoke();
         self.game_smoke_drive();
         self.mao_da_camera_do_smoke();
+        self.mao_da_forma_do_smoke();
         self.animado_do_smoke();
         self.game_smoke_usos();
         self.projectile_smoke();

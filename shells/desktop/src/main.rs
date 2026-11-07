@@ -210,6 +210,7 @@ pub(crate) use ph2d_app_vec::group_gizmo_view;
 // família é o que o `architecture_no_dependency_climbs_a_layer` proíbe. *O sujeito é do vector; a
 // pergunta que os testes fazem é de COMPOSIÇÃO, e composição mora na shell.*
 mod camera_no_canvas;
+mod forma_no_canvas;
 #[cfg(test)]
 #[path = "group_gizmo_view_tests.rs"]
 mod group_gizmo_view_tests;

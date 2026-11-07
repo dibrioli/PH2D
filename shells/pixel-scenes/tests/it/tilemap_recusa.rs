@@ -1,5 +1,5 @@
 //! Pixel Art: com a camada de tilemap ativa, cada comando que recusa chega ao chamador sem pânico e
-//! o documento fica igual (`docs/PixelArt/P10_plano.md` §5.1). Mora aqui porque a catraca da família conta `tests/`.
+//! o documento fica igual (`docs/PixelArt/P10_plano.md` §5.1).
 
 use ph2d_app_pixel::PixelApp;
 use ph2d_editor_core::pixel_panel::{

@@ -31,6 +31,7 @@ mod selecao;
 mod sobreviventes;
 mod texto;
 mod texto_fontes;
+mod tilemap_recusa;
 mod tiles;
 mod tocar;
 mod viva;

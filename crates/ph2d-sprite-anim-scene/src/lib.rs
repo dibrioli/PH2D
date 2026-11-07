@@ -90,6 +90,8 @@ impl Foto {
 pub enum Passo {
     Anim(&'static str, Ed),
     Verbo(&'static str, Verbo),
+    /// Veste o objecto com o herói de fábrica: é a cena que o faz, o artista não tem este botão.
+    Heroi(&'static str),
     /// Escolhe a imagem da biblioteca da cena (pela ordem em que a cena as traz).
     Imagem(&'static str, usize),
     /// O botão Split by rows sobre a folha que `nome` mostra.
@@ -133,9 +135,9 @@ pub fn passos(q: u32, foto: Option<Foto>) -> Vec<Passo> {
     let desfaz = foto == Some(Foto::ProvaDesfaz);
     let mut v = match q {
         0 => vec![
-            P::Verbo(OUVE, Verbo::SampleHero),
-            P::Verbo(INICIO, Verbo::SampleHero),
-            P::Verbo(TROCADA, Verbo::SampleHero),
+            P::Heroi(OUVE),
+            P::Heroi(INICIO),
+            P::Heroi(TROCADA),
             P::Imagem(FOLHA, 0),
             P::Imagem(TROCADA, 1),
             P::Ouve(OUVE),
@@ -196,11 +198,6 @@ fn prova_do_desfazer(q: u32) -> Vec<Passo> {
             vec![Passo::Anim(FOLHA, Ed::OpenEditor), Passo::Corta(FOLHA)],
         ),
         1 => (
-            "Try with the sample hero",
-            VAZIO,
-            vec![Passo::Verbo(VAZIO, Verbo::SampleHero)],
-        ),
-        2 => (
             "Keep the cut",
             TROCADA,
             vec![Passo::Verbo(TROCADA, Verbo::KeepCut)],
@@ -256,6 +253,6 @@ mod tests {
     fn a_prova_do_desfazer_nao_veste_a_folha() {
         let todos = || (0..300).flat_map(|q| passos(q, Some(Foto::ProvaDesfaz)));
         assert_eq!(todos().filter(|p| matches!(p, Passo::Corta(_))).count(), 1);
-        assert_eq!(todos().filter(|p| *p == Passo::Desfaz).count(), 3);
+        assert_eq!(todos().filter(|p| *p == Passo::Desfaz).count(), 2);
     }
 }

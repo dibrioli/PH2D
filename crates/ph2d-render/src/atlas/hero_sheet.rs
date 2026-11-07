@@ -92,8 +92,7 @@ pub fn hero_sheet_pixels() -> Vec<SrgbRgba> {
         .collect()
 }
 
-/// ⭐ `e` passa a mostrar o boneco de fábrica: a folha, as animações e o tocador em `idle`. É o *Add ▸ Character* e o
-/// «Try with the sample hero» do Animated Sprite vazio.
+/// ⭐ `e` passa a mostrar o boneco de fábrica: a folha, as animações e o tocador em `idle`. É o *Add ▸ Character*.
 ///
 /// # Errors
 /// Uma animação da tabela recusada pela biblioteca.

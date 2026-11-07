@@ -651,7 +651,6 @@ pub fn apply_edit(
         ImageUseEdit::MirrorInPlace(eixo) => {
             ph2d_sprite_edit::pivot::espelha_no_lugar(world, e, ppm, usize::from(eixo))
         }
-        ImageUseEdit::SampleHero => crate::sprite_card::try_sample_hero(world, e),
         ImageUseEdit::CutAgain => crate::sprite_card::cut_again(world, e, db, atlas, facts),
         ImageUseEdit::KeepCut => crate::sprite_card::keep_cut(world, e),
     }

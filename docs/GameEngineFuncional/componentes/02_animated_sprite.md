@@ -52,7 +52,7 @@ Godot: fatiar vendo a folha, tempo relativo por quadro; evitar o painel que some
 
 1. **A folha fica no editor.** H/V Frames, From, To e This frame saem do cartão.
 2. **Who Picks: Auto · Script · Rules.** «Me» vira «Auto», com o menu «Starts with» ao lado (revê em parte 25/10). O ▶ passa a ser só prévia: não muda com que o jogo começa.
-3. **Add ▸ Animated Sprite nasce vazio**, com «Try with the sample hero». O Character continua com o herói.
+3. **Add ▸ Animated Sprite nasce vazio**. O Character continua com o herói. ~~«Try with the sample hero»~~: Dono 07/11, no smoke: imagens recentes e herói de amostra «não fazem sentido nenhum na engine»; saíram.
 4. **Marcador só no editor:** ◆ no quadro da tira; no cartão só o resumo «2 markers».
 5. **Regra acesa no Play agora; ensaio com teclas depois.**
 6. **Look nasce dobrado em Animated** (nova, trazida pelo levantamento).
@@ -67,7 +67,7 @@ Godot: fatiar vendo a folha, tempo relativo por quadro; evitar o painel que some
 
 ## O desenho aprovado
 
-**Vazio:** cartão Image = «Drop a sprite sheet or click to choose» + recentes + «Try with the sample hero». Sem Animation.
+**Vazio:** cartão Image = só «Drop a sprite sheet or click to choose» (07/11). Sem Animation.
 
 **Em uso:**
 
@@ -149,6 +149,6 @@ Godot: fatiar vendo a folha, tempo relativo por quadro; evitar o painel que some
 | E1 | Cartão: cortes, cabeçalho de ícones, Frames/s e Speed numa linha, More, Look dobrado, nome em dois cliques, resumo de grade | feito 06/11; os campos de marcador ficam em More até E3, e o resumo «N markers» nasce com eles |
 | E2 | Who Picks: Auto, «Starts with»; ▶ só prévia | feito 06/11 |
 | E3 | Editor: Split by rows, ◆ marcador, tira rola | feito 06/11; More só resume os marcadores e abre o editor |
-| E4 | Add vazio, «Try with the sample hero», aviso de imagem trocada | feito 06/11; aviso em `SpriteCutNotice`, registo `119 → 120` |
+| E4 | Add vazio, aviso de imagem trocada (o botão do herói saiu em 07/11) | feito 06/11; aviso em `SpriteCutNotice`, registo `119 → 120` |
 | E5 | Regra acesa no Play | feito 07/11; um campo, sem tocar a física |
 | E6 | Censo, cena de smoke, fotos, item em uso no jogo | feito 07/11: `PH2D_GAME_SMOKE=5`, `=4` em uso; falta o smoke do dono |

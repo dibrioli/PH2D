@@ -48,7 +48,6 @@ pub struct Recibo {
 
 thread_local! {
     static RECIBO: std::cell::Cell<Option<Recibo>> = const { std::cell::Cell::new(None) };
-    static RECENTES: RefCell<Vec<(String, [u8; 32])>> = const { RefCell::new(Vec::new()) };
     static PINTAR_NO_LUGAR_DE: std::cell::Cell<Option<u64>> = const { std::cell::Cell::new(None) };
     static FACTS: std::cell::Cell<Option<SpriteFacts>> = const { std::cell::Cell::new(None) };
     static CURRENT: RefCell<Option<SlotImage>> = const { RefCell::new(None) };
@@ -67,15 +66,6 @@ pub fn set_recibo(r: Option<Recibo>) {
 
 pub(crate) fn recibo() -> Option<Recibo> {
     RECIBO.with(std::cell::Cell::get)
-}
-
-/// O shell publica as imagens recentes: o nome e o id.
-pub fn set_recentes(r: Vec<(String, [u8; 32])>) {
-    RECENTES.with(|c| *c.borrow_mut() = r);
-}
-
-pub(crate) fn recentes() -> Vec<(String, [u8; 32])> {
-    RECENTES.with(|c| c.borrow().clone())
 }
 
 pub(crate) fn set_pintar_no_lugar_de(bits: Option<u64>) {

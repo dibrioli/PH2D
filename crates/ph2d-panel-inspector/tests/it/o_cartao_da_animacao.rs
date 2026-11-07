@@ -512,28 +512,20 @@ fn verbo_da_imagem(a: &[EditorAction]) -> Vec<ph2d_editor_core::ImageUseEdit> {
         .collect()
 }
 
-/// ⭐ O Animated vazio: o convite pede a folha, oferece o herói e não há cartão Animation; o herói sai como edição.
+/// ⭐ O Animated vazio (dono 07/11): o convite pede a folha, sem nenhum botão, e não há cartão Animation.
 /// *Mutação: tirar o `continue` de `presentes` ⇒ a lista da animação pinta no vazio.*
 #[test]
-fn o_vazio_do_animated_pede_a_folha_e_oferece_o_heroi() {
+fn o_vazio_do_animated_so_pede_a_folha() {
     let (mut host, mut st) = cena();
     facts(ph2d_panel_inspector::slot_image::SpriteFacts {
         sem_imagem: true,
         ..Default::default()
     });
     let r = pinta(&mut host, &mut st);
-    assert!(pintou(&r, INSP_IMAGE_SAMPLE_HERO));
     assert!(!pintou(&r, INSP_IMAGE_PAINT_NEW), "pintar é da Sprite");
     assert!(pintou(&r, INSP_RENDER_TEXTURE_SLOT), "o alvo da escolha");
     assert!(!pintou(&r, INSP_ANIM_ROW[0]), "sem Animation");
     assert!(!pintou(&r, INSP_ANIM_ADD));
-    let caixa = rect_de(&r, INSP_IMAGE_SAMPLE_HERO);
-    let _ = host.drained_actions();
-    let (_, a) = ponteiro(&mut host, &mut st, caixa);
-    assert_eq!(
-        verbo_da_imagem(&a),
-        [ph2d_editor_core::ImageUseEdit::SampleHero]
-    );
     limpa();
 }
 
@@ -706,7 +698,7 @@ fn os_botoes_novos_nao_cortam_no_piso_do_painel() {
         )
     };
     for (sem_imagem, deve_ver) in [
-        (true, vec!["card.insp.sample_hero"]),
+        (true, vec!["card.insp.sheet_drop"]),
         (
             false,
             vec![

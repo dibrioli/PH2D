@@ -1,33 +1,7 @@
-//! O cartão vazio da Sprite: quem ainda não escolheu imagem, o que o convite oferece, e a imagem pintada no lugar dele.
+//! O cartão vazio da Sprite: quem ainda não escolheu imagem e a imagem pintada no lugar dele.
 
-use ph2d_asset::AssetId;
 use ph2d_ecs::{Children, Entity, SpritePixels, World};
 use ph2d_render::{Sprite, SpriteSource, WHITE_TILE_KEY};
-use std::cell::RefCell;
-
-/// Quantas imagens o convite do cartão vazio oferece.
-const QUANTOS_RECENTES: usize = 3;
-
-thread_local! {
-    /// As imagens escolhidas nesta sessão, a última primeiro.
-    static RECENTES: RefCell<Vec<AssetId>> = const { RefCell::new(Vec::new()) };
-}
-
-/// A imagem `id` acabou de ser escolhida para um objecto.
-pub fn lembra(id: AssetId) {
-    RECENTES.with(|r| {
-        let mut r = r.borrow_mut();
-        r.retain(|o| *o != id);
-        r.insert(0, id);
-        r.truncate(QUANTOS_RECENTES);
-    });
-}
-
-/// As imagens recentes, a última primeiro.
-#[must_use]
-pub fn recentes() -> Vec<AssetId> {
-    RECENTES.with(|r| r.borrow().clone())
-}
 
 /// O quadrado branco de quem ainda não escolheu imagem (`Add ▸ Sprite`, `Static Body`)?
 #[must_use]

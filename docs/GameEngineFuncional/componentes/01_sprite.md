@@ -78,7 +78,7 @@ Miniatura quadrada de 72 px com recorte pelo raio, moldura de altura fixa e um s
 
 ## O desenho aprovado
 
-Por estado do painel: **vazio** = cartão Image inteiro é «Drop an image or click to choose» + recentes + «Paint a new image…» · **em uso** = cartões abaixo · **Repeated** = os mesmos, mudam só os campos do uso.
+Por estado do painel: **vazio** = cartão Image inteiro é «Drop an image or click to choose» + «Paint a new image…» (recentes fora: Dono 07/11 07/11) · **em uso** = cartões abaixo · **Repeated** = os mesmos, mudam só os campos do uso.
 
 | Cartão | Conteúdo |
 |---|---|

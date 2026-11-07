@@ -1,6 +1,6 @@
 //! A costura da ficha do cartão da Sprite e do Animated: Keep old size, o vazio, o herói e o aviso de imagem trocada.
 
-use ph2d_app_sprite_anim::sprite_card::{cut_notice, keep_size, try_sample_hero};
+use ph2d_app_sprite_anim::sprite_card::{cut_notice, keep_size};
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::{Entity, SpriteAnimations, SpriteCutNotice, SpriteGrid, World};
 use ph2d_editor_core::ImageCutNotice;
@@ -88,34 +88,6 @@ fn escolher_a_imagem_no_vazio_ja_entra_em_animated() {
     assert!(a.autoplay);
     assert!(!sem_imagem(w, e), "deixou de ser o convite");
     assert!(w.get::<SpriteCutNotice>(e).is_none(), "nada a avisar");
-}
-
-#[test]
-fn o_heroi_de_amostra_entra_no_vazio_e_so_no_vazio() {
-    let mut w = World::new();
-    let e = vazio_no(&mut w);
-    assert!(try_sample_hero(&mut w, e));
-    assert_eq!(
-        grade(&w, e),
-        [ph2d_render::HERO_SHEET_COLS, ph2d_render::HERO_SHEET_ROWS]
-    );
-    assert_eq!(
-        w.get::<SpriteAnimations>(e)
-            .expect("a lista")
-            .iter()
-            .count(),
-        ph2d_render::HERO_SHEET_TAGS.len()
-    );
-    assert!(!try_sample_hero(&mut w, e), "só o vazio o recebe");
-}
-
-fn vazio_no(w: &mut World) -> Entity {
-    w.spawn((
-        Sprite::atlas(ph2d_render::WHITE_TILE_KEY, [1.0, 1.0], [1.0; 4]),
-        SpriteAnimations::new(),
-        ph2d_ecs::SpriteAnimator::new(""),
-    ))
-    .id()
 }
 
 /// Uma animada de 8 × 4 com 6 animações, a mostrar `id`.
@@ -255,17 +227,4 @@ fn voltar_a_grade_antiga_nao_ressuscita_o_aviso() {
     assert_eq!(grade(sim.world(), e), [8, 4]);
     assert!(sim.world().get::<SpriteCutNotice>(e).is_none());
     assert!(cut_notice(sim.world(), e, &db, &atlas, PPM).is_none());
-}
-
-/// O herói recusado não some em silêncio: a shell lê a recusa, uma vez, e diz ao artista.
-/// *Mutação: engolir o `Err` ⇒ não há o que ler.*
-#[test]
-fn a_recusa_do_heroi_vira_aviso() {
-    use ph2d_app_sprite_anim::sprite_card::{toma_a_recusa, veste_com};
-    let mut w = World::new();
-    let e = vazio_no(&mut w);
-    assert!(!veste_com(&mut w, e, |_, _| Err("tabela".to_owned())));
-    assert!(toma_a_recusa(&mut w).is_some_and(|m| m.contains("tabela")));
-    assert_eq!(toma_a_recusa(&mut w), None, "lê-se uma vez");
-    assert!(sem_imagem(&w, e), "o vazio fica");
 }

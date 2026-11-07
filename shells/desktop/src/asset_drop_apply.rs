@@ -78,7 +78,6 @@ impl crate::App {
         );
         match r {
             Ok(()) => {
-                ph2d_sprite_edit::vazio::lembra(AssetId::from_digest(asset));
                 #[cfg(feature = "panel-inspector")]
                 ph2d_panel_inspector::slot_image::set_recibo(antes.zip(img.as_ref()).and_then(
                     |((de, tamanho), i)| {
@@ -138,9 +137,6 @@ impl crate::App {
             ppm,
             edit,
         );
-        if let Some(m) = ph2d_app_sprite_anim::sprite_card::toma_a_recusa(gfx.sim.world_mut()) {
-            gfx.toasts.push(ph2d_editor_core::Toast::warning(m));
-        }
     }
 
     /// **Nasce uma sprite nova, com esta imagem, no ponto.**
@@ -183,7 +179,6 @@ impl crate::App {
             self.toast_drop_failed();
             return;
         };
-        ph2d_sprite_edit::vazio::lembra(AssetId::from_digest(asset));
         let bits = e.to_bits();
         if let Some(hero) = gfx.hero_screen.as_mut() {
             hero.gizmo.replace_selection(Some(bits));

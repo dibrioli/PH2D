@@ -45,8 +45,6 @@ pub enum ImageUseEdit {
     Pivot(SpritePivot),
     /// **Mirror object** com **Keep in place**: 0 = horizontal, 1 = vertical.
     MirrorInPlace(u8),
-    /// **Try with the sample hero**, no Animated Sprite vazio.
-    SampleHero,
     /// **Cut again**, no aviso de imagem trocada: a grade que a imagem nova propõe.
     CutAgain,
     /// **Keep the cut**, no aviso de imagem trocada: fecha o aviso.

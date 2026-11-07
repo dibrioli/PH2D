@@ -71,16 +71,8 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
         "card.insp.edit_in_pixel_tip",
     );
     botao(store, ids::INSP_IMAGE_PAINT_NEW, "card.insp.paint_new_tip");
-    botao(
-        store,
-        ids::INSP_IMAGE_SAMPLE_HERO,
-        "card.insp.sample_hero_tip",
-    );
     botao(store, ids::INSP_IMAGE_CUT_AGAIN, "card.insp.cut_again_tip");
     botao(store, ids::INSP_IMAGE_KEEP_CUT, "card.insp.keep_cut_tip");
-    for id in ids::INSP_IMAGE_RECENT {
-        botao(store, id, "card.insp.recent_tip");
-    }
     // O convite e o recibo valem enquanto o objecto deles está à vista: selecionado ou preso num cartão.
     let selecionada = crate::state::current_inspector_sprite().map(|s| s.entity_bits);
     let presos = store.loose_pins_of(core_ids::INSP_PANEL);
@@ -292,8 +284,8 @@ fn aviso_de_corte(c: &mut CardCtx<'_>, y: f32, bits: u64) -> f32 {
     )
 }
 
-/// O objecto sem imagem: o cartão inteiro é o alvo. Um só convite (GDevelop). O vazio do Animated pede uma folha
-/// e, no lugar de pintar uma imagem, oferece o herói de fábrica.
+/// O objecto sem imagem: o cartão inteiro é o alvo. Um só convite (GDevelop). O vazio do Animated pede uma folha e
+/// não oferece mais nada; o da Sprite também pinta uma imagem nova. Dono 07/11: imagem recente e herói de amostra saíram.
 fn convite(c: &mut CardCtx<'_>, y: f32, animada: bool) -> f32 {
     let caixa = Rect::new(c.x, y, c.w, m::FIELD_H * LINHAS_DO_CONVITE);
     let theme = c.ink.theme;
@@ -328,31 +320,14 @@ fn convite(c: &mut CardCtx<'_>, y: f32, animada: bool) -> f32 {
         resolve(ColorToken::Text2, theme),
     );
     c.hit_index.register(ids::INSP_RENDER_TEXTURE_SLOT, caixa);
-    let mut y = caixa.y + caixa.h + m::FIELD_ROW_GAP;
-    let recentes = slot_image::recentes();
-    if !recentes.is_empty() {
-        let celulas: Vec<Cell<'_>> = recentes
-            .iter()
-            .zip(ids::INSP_IMAGE_RECENT)
-            .map(|((nome, _), id)| {
-                Cell::new(Widget::Button {
-                    id,
-                    text: nome,
-                    primary: false,
-                })
-            })
-            .collect();
-        y = c.compact(&celulas, y);
+    let y = caixa.y + caixa.h + m::FIELD_ROW_GAP;
+    if animada {
+        return y;
     }
-    let (id, text) = if animada {
-        (ids::INSP_IMAGE_SAMPLE_HERO, tr("card.insp.sample_hero"))
-    } else {
-        (ids::INSP_IMAGE_PAINT_NEW, tr("object_add.image"))
-    };
     c.row(
         &[Cell::new(Widget::Button {
-            id,
-            text,
+            id: ids::INSP_IMAGE_PAINT_NEW,
+            text: tr("object_add.image"),
             primary: false,
         })],
         y,
@@ -511,22 +486,7 @@ pub(crate) fn evento(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool 
         host.store_mut().open_new_image_dialog();
         return true;
     }
-    if let Some(i) = ids::INSP_IMAGE_RECENT.iter().position(|o| *o == id) {
-        let (Some(sprite), Some((_, asset))) = (
-            crate::state::current_inspector_sprite(),
-            slot_image::recentes().get(i).cloned(),
-        ) else {
-            return true;
-        };
-        host.bus_mut().push(EditorAction::ChooseImage {
-            entity_bits: sprite.entity_bits,
-            asset,
-        });
-        return true;
-    }
-    let verbo = if id == ids::INSP_IMAGE_SAMPLE_HERO {
-        Some(ImageUseEdit::SampleHero)
-    } else if id == ids::INSP_IMAGE_CUT_AGAIN {
+    let verbo = if id == ids::INSP_IMAGE_CUT_AGAIN {
         Some(ImageUseEdit::CutAgain)
     } else if id == ids::INSP_IMAGE_KEEP_CUT {
         Some(ImageUseEdit::KeepCut)

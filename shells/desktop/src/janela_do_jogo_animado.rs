@@ -32,6 +32,7 @@ impl crate::App {
         let nome = match &p {
             P::Anim(n, _)
             | P::Verbo(n, _)
+            | P::Heroi(n)
             | P::Imagem(n, _)
             | P::Corta(n)
             | P::Ouve(n)
@@ -44,6 +45,14 @@ impl crate::App {
         match (p, bits) {
             (P::Anim(_, edit), Some(b)) => bus(self, b, edit),
             (P::Verbo(_, v), Some(b)) => self.image_use_edit(b, v),
+            (P::Heroi(_), Some(b)) => {
+                if let Some(g) = self.gfx.as_mut() {
+                    let e = ph2d_ecs::Entity::from_bits(b);
+                    if let Err(motivo) = ph2d_render::veste_o_heroi(g.sim.world_mut(), e) {
+                        eprintln!("[animado] o herói não entrou: {motivo}");
+                    }
+                }
+            }
             (P::Imagem(_, i), Some(b)) => {
                 if let Some(id) = a::imagem(i) {
                     self.choose_image(b, id);

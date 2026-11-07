@@ -10,19 +10,6 @@ pub(super) fn publish_slot_image(
     atlas_asset_map: &BTreeMap<u32, AssetId>,
     ppm: f32,
 ) {
-    let vazio = alvo.bits.is_some_and(|b| {
-        ph2d_sprite_edit::vazio::sem_imagem(sim.world(), ph2d_ecs::Entity::from_bits(b))
-    });
-    ph2d_panel_inspector::slot_image::set_recentes(if vazio {
-        ph2d_app_components::library_names::names_of(
-            sim,
-            asset_db,
-            atlas_asset_map,
-            &ph2d_sprite_edit::vazio::recentes(),
-        )
-    } else {
-        Vec::new()
-    });
     ph2d_panel_inspector::slot_image::set_current_sprite_facts(alvo.bits.and_then(|b| {
         let e = ph2d_ecs::Entity::from_bits(b);
         use ph2d_app_sprite_anim::sprite_card as card;

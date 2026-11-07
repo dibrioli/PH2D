@@ -74,40 +74,6 @@ pub fn antes_do_replace(
     Some((f.px, world.get::<Sprite>(e)?.size))
 }
 
-/// **Try with the sample hero**: o herói de fábrica entra no lugar do vazio.
-pub fn try_sample_hero(world: &mut World, e: Entity) -> bool {
-    veste_com(world, e, ph2d_render::veste_o_heroi)
-}
-
-/// O gesto, com o vestir à parte: a recusa não some, fica em [`RecusaDoHeroi`] para a shell dizer ao artista.
-pub fn veste_com(
-    world: &mut World,
-    e: Entity,
-    veste: impl FnOnce(&mut World, Entity) -> Result<(), String>,
-) -> bool {
-    if !sem_imagem(world, e) {
-        return false;
-    }
-    match veste(world, e) {
-        Ok(()) => true,
-        Err(motivo) => {
-            world.insert_resource(RecusaDoHeroi(motivo));
-            false
-        }
-    }
-}
-
-/// O herói de amostra não entrou, e porquê: lê-se uma vez, com [`toma_a_recusa`].
-#[derive(ph2d_ecs::Resource, Debug)]
-pub struct RecusaDoHeroi(pub String);
-
-/// A recusa do último gesto, em palavras para o aviso; `None` = nenhuma.
-pub fn toma_a_recusa(world: &mut World) -> Option<String> {
-    world
-        .remove_resource::<RecusaDoHeroi>()
-        .map(|r| ph2d_i18n::tr_with("card.insp.sample_hero_failed", &[("why", &r.0)]))
-}
-
 /// A grade de `e` mudou: o aviso sobre a grade de antes morre com ela, e voltar a essa grade não o ressuscita.
 pub(crate) fn aviso_segue_a_grade(world: &mut World, e: Entity) {
     if let Some(g) = world.get::<SpriteGrid>(e).copied() {

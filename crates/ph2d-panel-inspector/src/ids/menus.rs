@@ -34,18 +34,10 @@ pub const INSP_IMAGE_EDIT_PIXEL: NodeId = hash_node_id("insp_image_edit_pixel");
 pub const INSP_IMAGE_KEEP_SIZE: NodeId = hash_node_id("insp_image_keep_size");
 /// **Paint a new image…** do convite do cartão vazio.
 pub const INSP_IMAGE_PAINT_NEW: NodeId = hash_node_id("insp_image_paint_new");
-/// As imagens recentes do convite.
-pub const INSP_IMAGE_RECENT: [NodeId; 3] = [
-    hash_node_id("insp_image_recent_0"),
-    hash_node_id("insp_image_recent_1"),
-    hash_node_id("insp_image_recent_2"),
-];
 
 /// Os dois verbos do aviso de folha.
 pub const INSP_IMAGE_SHEET_ANIMATED: NodeId = hash_node_id("insp_image_sheet_animated");
 pub const INSP_IMAGE_SHEET_REGION: NodeId = hash_node_id("insp_image_sheet_region");
-/// «Try with the sample hero», no Animated Sprite vazio.
-pub const INSP_IMAGE_SAMPLE_HERO: NodeId = hash_node_id("insp_image_sample_hero");
 /// «Cut again», no aviso de imagem trocada.
 pub const INSP_IMAGE_CUT_AGAIN: NodeId = hash_node_id("insp_image_cut_again");
 /// «Keep the cut», no aviso de imagem trocada.

@@ -218,7 +218,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "The new image takes the size the old one had in the scene"
         }
         "card.insp.paint_new_tip" => "Start from a blank image and paint it",
-        "card.insp.recent_tip" => "Use this image, chosen recently in this project",
         "card.insp.sheet_warning" => {
             "This image looks like a sheet of {c} \u{00d7} {l} cells. Still shows all of it."
         }
@@ -265,10 +264,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.image_unnamed" => "Untitled image",
         "card.insp.image_drop" => "Drop an image",
         "card.insp.sheet_drop" => "Drop a sprite sheet",
-        "card.insp.sample_hero" => "Try with the sample hero",
-        "card.insp.sample_hero_tip" => {
-            "Use the sample hero sheet, with its animations, on this object"
-        }
         "card.insp.new_image_old_cut" => {
             "New image, old cut: {c} × {r} makes cells of {w} × {h} px, and {n?this|these} {n} {n?animation|animations} {n?was|were} made for another image."
         }
@@ -276,7 +271,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.cut_again_tip" => {
             "Cut the new image into the grid its transparency suggests. If it suggests none, the editor opens, and this notice stays until the cut changes"
         }
-        "card.insp.sample_hero_failed" => "The sample hero could not be added: {why}",
         "card.insp.keep_cut" => "Keep the cut",
         "card.insp.keep_cut_tip" => "Leave the cut as it is and close this notice",
         "card.insp.image_drop_hint" => "or click to choose",

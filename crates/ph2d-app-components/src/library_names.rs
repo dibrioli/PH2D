@@ -134,34 +134,3 @@ pub fn session_library(
 #[cfg(test)]
 #[path = "library_names_tests.rs"]
 mod tests;
-
-thread_local! {
-    /// Os nomes de `ids`: a biblioteca inteira ordena-se para os achar, e só vale refazer se a lista muda.
-    static NOMES: std::cell::RefCell<Option<NamesCache>> = const { std::cell::RefCell::new(None) };
-}
-
-type NamesCache = (Vec<AssetId>, Vec<(String, [u8; 32])>);
-
-/// Os nomes e ids de `ids` na biblioteca, pela ordem de `ids`; quem saiu da biblioteca não entra.
-pub fn names_of(
-    sim: &mut SimWorld,
-    db: &AssetDb,
-    atlas_assets: &BTreeMap<u32, AssetId>,
-    ids: &[AssetId],
-) -> Vec<(String, [u8; 32])> {
-    NOMES.with(|c| {
-        let mut c = c.borrow_mut();
-        if let Some((k, v)) = c.as_ref()
-            && k == ids
-        {
-            return v.clone();
-        }
-        let biblioteca = session_library(sim, db, atlas_assets);
-        let v: Vec<_> = ids
-            .iter()
-            .filter_map(|id| biblioteca.get(id).map(|n| (n.clone(), *id.as_bytes())))
-            .collect();
-        *c = Some((ids.to_vec(), v.clone()));
-        v
-    })
-}

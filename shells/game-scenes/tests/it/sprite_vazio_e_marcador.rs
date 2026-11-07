@@ -86,36 +86,6 @@ fn o_add_nasce_vazio_e_o_character_com_o_heroi() {
     );
 }
 
-/// ⭐ Um só passo: «Try with the sample hero» e repor a foto de antes volta ao vazio.
-#[test]
-fn o_heroi_de_amostra_tem_um_passo_de_desfazer() {
-    let mut sim = SimWorld::new();
-    let e = sprite_do_menu(ph2d_app_game::object_add::ANIMATED_SPRITE, &mut sim);
-    let antes = foto(&mut sim);
-    let (db, atlas) = (AssetDb::new(), BTreeMap::new());
-    assert!(apply_edit(
-        sim.world_mut(),
-        e,
-        &db,
-        &atlas,
-        PPM,
-        ImageUseEdit::SampleHero
-    ));
-    assert!(!sem_imagem(sim.world(), e));
-    let (mut volta, e2) = repoe(&antes);
-    assert!(
-        sem_imagem(volta.world(), e2),
-        "o desfazer devolve o convite"
-    );
-    assert_eq!(
-        volta
-            .world_mut()
-            .get::<SpriteAnimations>(e2)
-            .map(|l| l.iter().count()),
-        Some(0)
-    );
-}
-
 /// Uma folha de `w × h` px em células de `c` px, com margem transparente: a grade propõe-se.
 fn folha(db: &AssetDb, w: u32, h: u32, c: u32) -> AssetId {
     let mut px = vec![0u8; (w * h * 4) as usize];

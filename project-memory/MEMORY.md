@@ -48,6 +48,7 @@
 - ⭐ [Dono 28/10: a tinta que AMASSA o relevo é controlo do pincel (0 segue · 1 amassa)](project_paper_press_is_a_brush_control_2026_10_28.md)
 
 - ⭐⭐ [Dono 05/11: módulo de criação de efeitos sonoros sai SEM IA](project_sfx_module_no_ai_2026_11_05.md)
+- ⭐ [Dono 06/11: W4 do SFX Lab, 4 decisões delegadas: nivelado só nos sorteios, N, Heard salvo, W5 pode seguir sem o profissional](project_sfx_w4_owner_delegated_decisions_2026_11_06.md)
 
 ## Comunicação & decisão
 - ⭐⭐⭐ [Painter (31/10): Pigmento + Água = só a DILUIÇÃO; o VOLUME ao papel é outro controlo — um controlo, uma grandeza](project_painter_volume_is_independent_of_dilution_2026_10_31.md)
@@ -136,3 +137,6 @@
 - ⭐ [07/11: GEF entregue ao integrador SEM smoke do dono do Animated; smoke dele depois da integração](project_gef_animated_sprite_delivered_without_owner_smoke_2026_11_07.md)
 - ⛔ [Janela passada de 300 mil/passo: uma rodada de smoke = um agente novo; a janela só decide e confere (05/11)](feedback_a_main_window_past_300k_delegates_each_round.md)
 - ⭐⭐ [Dono 06/11: tinta do Wet viva ao trocar de modo; opção ao salvar; Borracha real na viva, imita na morta](project_live_paint_survives_2026_11_06.md)
+- ⭐⭐ [Dono 06/11: Pixel e Painter = 2 tipos de objeto, 2 ícones (canvas, pixel), cada um só com o botão da sua ferramenta; sem modos novos](project_two_image_objects_pixel_and_painter_2026_11_06.md)
+- ⭐⭐ [Dono 06/11: tiles para qualquer camada; leis de borda de tilemap a LLM decide medindo os melhores apps](project_tiles_any_layer_oracle_decides_2026_11_06.md)
+- ⭐⭐ [Dono 06/11: tiles do Pixel = carimbo + gabarito de 47; descoberta por área pintada (MVP Tiling) não](project_tilemap_rule_discovery_not_intuitive_2026_11_06.md)

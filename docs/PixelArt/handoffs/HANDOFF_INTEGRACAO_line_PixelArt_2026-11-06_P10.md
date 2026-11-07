@@ -16,7 +16,7 @@
 ## 1. Identidade
 
 - Branch `line/PixelArt`; worktree `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PixelArt`.
-- Merge-base `bbfefaf393` (= `main` hoje, 0 commits atrás); HEAD `2dc8479b90`. `git diff --stat bbfefaf393..HEAD`: **19 commits, 192 ficheiros, +47 007 / −641** (docs, fotos e fixturas incluídas: 102 `A`, 89 `M`, 1 `R`).
+- Merge-base `bbfefaf393` (= `main` hoje, 0 commits atrás); último commit de código `89c0cc3a19` (só tira 2 dependências de `app-pixel`), e por cima só este handoff. Os números a seguir são de `2dc8479b90`: `git diff --stat bbfefaf393..2dc8479b90`: **19 commits, 192 ficheiros, +47 007 / −641** (docs, fotos e fixturas incluídas: 102 `A`, 89 `M`, 1 `R`).
 - Ondas: conta-gotas/zoom `4b83b84fd7`,`286ce1ea95` · P10a `4952bcf0ee`,`4d0258915a`,`84e720b958`,`940c8a07e5`,`b8060437f8`,`c30817c2a6` · P10b `94941afa39`,`cd67695794`,`5b67ad67ed`,`88fc4ffc60`,`46a80e6788`,`31e98054d9`,`0e6595ecfe` · P10c `0177ec637e`,`66a695f114`,`8f17478063`,`2dc8479b90`.
 - Sem rebase (ordem: não integrar). Como o `main` não andou, o rebase é nulo hoje; a árvore combinada é do integrador.
 

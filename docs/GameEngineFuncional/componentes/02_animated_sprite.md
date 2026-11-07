@@ -21,9 +21,24 @@ Fotos de 06/11 pelas cenas `PH2D_GAME_SMOKE=4` + `PH2D_GAME_SMOKE_FOTO=uso_anima
 - Editor (aba, `editor/`): lista sem reordenar; folha com clicar e arrastar, células repetidas e não contíguas; fila com reordenar, apagar, tempo por quadro; só Cols×Rows. Não tem: Split by rows, Size/Separation/Offset, marcador, ida ao Pixel/Painter. A tira não rola durante o arrasto (`mod.rs:146-158`). `propose_after_drop` (`editor/mod.rs:48`) não tem chamador.
 - Leitores: Hold, Repeat delay, Repeat count, Speed, Frames/s, Cycle, This frame e os sinais estão vivos. `AnimFieldEdit::Autoplay` não tem gesto. Speed negativa em Once a partir do quadro 0 acaba logo, como na Godot.
 - `.ase`: tags com `frame_ms`, direção e `per_frame_ms` (`shells/desktop/src/ase_import.rs:123-198`).
-- A Timeline por `SpriteAnimation` só escreve `Transform` (`ph2d-timeline/src/sprite.rs:95`). Speed e a grade têm rótulo do catálogo (`sprite_animator.3`, `sprite_grid.1|2`). **Por medir (E0):** o que grava chave de verdade.
+- A Timeline por `SpriteAnimation` só escreve `Transform` (`ph2d-timeline/src/sprite.rs:95`). O que grava chave está em **E0**, abaixo.
 
 **Da crítica já não vale:** «sem marcador» · regras cortadas · Direction/overrides à vista · contagem 10/29 da versão B (a Sprite fechada tem 13/31 sozinha).
+
+### E0: o que grava chave (medido em 06/11)
+
+Sonda temporária em `ph2d-app-components` (já retirada): `canais_componente::{campos, ler, escrever}` sobre `SpriteAnimator` + `SpriteGrid` + `SpriteAnimations` reais, e `ph2d_timeline::autokey_campos` sobre cada edição. O caminho: o pintor regista o rótulo `component.field.*` (`key_mark::paint_decorator_campo`), `marcas_inspector::do_rotulo` acha o canal, `shells/presos/src/losango.rs` grava o clique, `fase_autokey.rs` publica e `autokey_pass.rs` compara. Não corrido na janela real; o Auto Key exige o painel Timeline aberto.
+
+| Campo | Auto Key pede chave? | A curva escreve de volta? | Losango no cartão? |
+|---|---|---|---|
+| Speed | sim (`speed_q16`) | sim | sim, pelo rótulo `sprite_animator.3` |
+| H/V Frames | sim (`sprite_grid.1\|2`) | não medido | saíram do cartão: no editor gravam pelo Auto Key, sem losango |
+| Quadro | sim (`sprite_grid.3`, só a célula; `SpriteAnimCursor` fora da sonda) | não medido | não |
+| Qual animação toca | **sim** (`sprite_animator.0`, texto, por índice) | sim | não |
+| Who Picks | só Auto ↔ Script (`sprite_animator.2`, `autoplay`); Rules é componente que entra e sai: não | não medido | não (isenção no gate) |
+| Frames/s, Cycle | **não**: `SpriteAnimations` não tem campos no catálogo | não | não (isenção no gate) |
+
+Logo: «qual animação toca» já grava, nada a construir. Cuidado: a curva escreve o `current` sem rebobinar, e com Auto Key armado o ▶ da lista grava chave de `current` e `playing` (efeito no quadro não medido).
 
 ## O que as 9 ensinam
 
@@ -54,7 +69,7 @@ Godot: fatiar vendo a folha, tempo relativo por quadro; evitar o painel que some
 | Image | miniatura, nome, `1536 × 768 px · 8 × 4`, botão Painter; Use; recibo «Keep old size» e aviso de imagem trocada quando couber |
 | Animation (N) | ícones no cabeçalho: Add · Remove · Edit Animations; prévia; lista (miniatura, nome, N frames, ▶; dois cliques renomeiam); Playback (▶, barra, Frame n / N); Frames/s e Speed na mesma linha; Cycle; **More** dobrado; **Who Picks** |
 | More (dobrado) | resumo `Hold · signals`; Hold, Repeat delay, Repeat count, On Finish, On Loop; «N markers» (abre o editor); Direction e overrides só com valor |
-| Who Picks | Auto + «Starts with» / Script / Rules; em Rules, as regras, + Rule, Run From, Flip; no Play a regra que ganhou fica acesa |
+| Who Picks | Auto + «Starts with» (abaixo dos botões) / Script / Rules; em Rules, as regras, + Rule, Run From, Flip; no Play a regra que ganhou fica acesa |
 | Look, Transform, Ordering, Advanced | os da Sprite; Look dobrado com resumo |
 
 **Editor:** a lista · a folha · a fila. Novos: **Split by rows** (uma animação por fileira ocupada) · ◆ marcador no quadro da fila, com o nome do sinal · a tira rola ao arrastar · Cols×Rows moram só aqui. This frame já está aqui.
@@ -81,15 +96,23 @@ Godot: fatiar vendo a folha, tempo relativo por quadro; evitar o painel que some
 
 ## Provas
 
-A preencher. Censo novo `o_censo_dos_campos_do_animated_em_uso`; cena de smoke própria e o item em uso no jogo.
+- **Censo** `o_censo_dos_campos_do_animated_em_uso`: **17 à vista e 48 no total, moldura 22**, sem regras. Meta do papel: 15 e 47. Conta os três verbos do cabeçalho e os marcadores, que saem em E3; Starts with entrou em E2.
+- **Cartão** (`ph2d-panel-inspector`, `tests/it/o_cartao_da_animacao.rs`): `o_corte_e_o_nome_sairam_do_cartao` · `os_verbos_moram_no_cabecalho` · `sem_animacoes_nao_ha_remove` · `frames_por_segundo_e_speed_na_mesma_linha` · `dois_cliques_renomeiam_e_o_enter_grava` · `esc_desiste_e_clicar_fora_grava` · `a_moldura_diz_o_corte_sem_cortar_no_piso` · `o_look_nasce_dobrado_so_em_animated` · `o_menu_starts_with_abre_e_escolhe_pelo_ponteiro` · `o_play_da_linha_nao_escreve_o_inicio` · `so_o_auto_tem_o_menu`.
+- **Editor** (`ph2d-app-sprite-anim`): `um_intervalo_como_o_do_ase_continua_editavel_no_editor`.
+- **Início** (`ph2d-app-sprite-anim`, `inspector_tests.rs`): `o_play_da_prevista_nao_muda_com_qual_o_jogo_comeca` · `escolher_o_inicio_vale_no_jogo_e_nao_mexe_na_previa` · `o_inicio_segue_o_renomear_e_cai_na_primeira_ao_apagar` · `projeto_antigo_script_e_regras_ficam_como_estao`.
+- **Foto, desfazer, abrir** (`ph2d-host-game-scenes`, `sprite_starts_with.rs`): `o_starts_with_viaja_na_foto_e_o_desfazer_repoe` · `a_foto_tirada_antes_de_comecar_guarda_a_previa` · `o_projeto_antigo_abre_igual`.
+- **Limites destas provas:** as opções do menu pinta-as o hero por cima de tudo; o teste clica a caixa com o ponteiro e entrega o clique da opção como evento, como o do Ordering. O Play real da janela não foi corrido: vale a ordem fotografia → início do `undo_jogo_tests`. Falta a cena de smoke e o item em uso no jogo (E6).
+- **Vermelho fora deste item:** `lei_do_ritmo` (`ph2d-panel-registry-init`) acusa `Desalinhado 4.0` de `insp_transform_flip_h`/`flip_v` contra `insp_sprite_mirror_keep`, no Transform. E1 e E2 não tocam nesse código; não foi corrido sobre o commit de antes.
+
+**Modelo do início:** componente irmão `SpriteAnimStart`, e não campo do `SpriteAnimator`. O postcard é posicional e o tocador grava-se em blob: um campo novo tornaria ilegível todo blob antigo; irmão não precisa de degrau no `PROJECT_SCHEMA` (o molde de `SpriteAnimFrames` e `SpriteAnimMarkers`, `registry.rs`). Registo `118 → 119`.
 
 ## Etapas
 
 | # | O quê | Estado |
 |---|---|---|
-| E0 | Medir o que grava chave no Animated | a fazer |
-| E1 | Cartão: cortes, cabeçalho de ícones, Frames/s e Speed numa linha, More, Look dobrado, nome em dois cliques, resumo de grade | a fazer |
-| E2 | Who Picks: Auto, «Starts with»; ▶ só prévia | a fazer |
+| E0 | Medir o que grava chave no Animated | feito 06/11 (tabela acima) |
+| E1 | Cartão: cortes, cabeçalho de ícones, Frames/s e Speed numa linha, More, Look dobrado, nome em dois cliques, resumo de grade | feito 06/11; os campos de marcador ficam em More até E3, e o resumo «N markers» nasce com eles |
+| E2 | Who Picks: Auto, «Starts with»; ▶ só prévia | feito 06/11 |
 | E3 | Editor: Split by rows, ◆ marcador, tira rola | a fazer |
 | E4 | Add vazio, «Try with the sample hero», aviso de imagem trocada | a fazer |
 | E5 | Regra acesa no Play | a fazer |

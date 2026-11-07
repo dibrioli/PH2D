@@ -844,6 +844,7 @@ impl App {
             undo_request: None,
             undo_button: None,
             any_input_this_frame: false,
+            assenta_o_restauro: 0,
             preview_drive: ph2d_preview_drive::PreviewDrive::default(),
             project_path: crate::App::initial_project_path(),
             // ⭐ O cadeado do padrão nasce LIGADO — o comportamento que a secção tinha antes de os

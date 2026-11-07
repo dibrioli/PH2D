@@ -245,6 +245,10 @@ mod assets;
 #[path = "project_tests.rs"]
 mod tests;
 
+#[cfg(test)]
+#[path = "undo_app_restauro_tests.rs"]
+mod restauro_tests;
+
 /// O que a BIBLIOTECA deve ao arquivo — irmão pelo tecto de LOC (HR-18).
 #[cfg(test)]
 #[path = "project_library_file_tests.rs"]

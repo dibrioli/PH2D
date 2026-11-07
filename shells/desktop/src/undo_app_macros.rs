@@ -1,6 +1,9 @@
 //! O que o `undo_app` pede às macros (W8/W14): a transação da reescrita, as edições que esperam, o
 //! passo que o baseline vira. Irmão de [`super::app`] por RESPONSABILIDADE (o tecto de 600 do HR-18).
 
+/// Quadros até a curva repor a pose depois de um restauro (a pose antiga dura dois, medido 06/11).
+const QUADROS_DO_RESTAURO: u8 = 3;
+
 impl crate::App {
     /// **A ordem das raízes AGORA**, em `(StableId, RootOrder)` — o dedo do diagnóstico da ordem.
     ///
@@ -58,6 +61,22 @@ impl crate::App {
         } else {
             None
         }
+    }
+
+    pub(super) fn arma_o_restauro(&mut self) {
+        self.assenta_o_restauro = QUADROS_DO_RESTAURO;
+    }
+
+    /// A curva repõe a pose do tempo atual depois de um restauro: isso não é passo, ou o Ctrl+Z seguinte só desfaz a si
+    /// mesmo e o passo de baixo nunca chega (dono 06/11: a moeda presa sob a plataforma).
+    pub(super) fn restauro_assenta(&mut self) -> bool {
+        if self.assenta_o_restauro == 0 {
+            return false;
+        }
+        self.assenta_o_restauro -= 1;
+        self.settle_tree_before_capture();
+        self.undo_baseline = self.capture_project();
+        true
     }
 
     /// (Re)tira-se a base do undo agora? A porta é `UndoLinks::tira_a_base` (auditoria F31).

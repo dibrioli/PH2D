@@ -790,6 +790,8 @@ pub(crate) struct App {
     /// em andamento — barato (frames de input são esparsos), e cobre toda ação
     /// (gesto, tecla, botão) por um só ponto.
     pub(crate) any_input_this_frame: bool,
+    /// Quadros que ainda faltam para a curva assentar depois de um restauro (`undo_app`).
+    pub(crate) assenta_o_restauro: u8,
     /// **O que um motor está a escrever AGORA** — o ledger que separa pré-visualização de
     /// documento (`crate::preview_drive`). Declarado pelos motores (o tique da §11, o solver) e
     /// consumido por um sítio só: a captura do projeto, que é a unidade do undo e do save.

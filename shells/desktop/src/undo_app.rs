@@ -333,6 +333,7 @@ impl crate::App {
             self.undo.undo(current, agora)
         };
         if let Some((state, mark)) = restored {
+            self.arma_o_restauro();
             // A edição que espera fica como está; o baseline fica sem ela.
             let (aplica, base) = match &antes {
                 Some(a) => {
@@ -450,6 +451,9 @@ impl crate::App {
             if !self.jogo_recusa_o_undo() {
                 self.apply_undo(redo);
             }
+            return;
+        }
+        if self.restauro_assenta() {
             return;
         }
         // O baseline no PRIMEIRO frame (gfx pronto), e de novo quando uma cena de smoke montou

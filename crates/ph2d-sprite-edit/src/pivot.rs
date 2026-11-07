@@ -304,3 +304,7 @@ pub fn pivot_de(
 #[cfg(test)]
 #[path = "pivot_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "pivot_espelho_tests.rs"]
+mod espelho_tests;

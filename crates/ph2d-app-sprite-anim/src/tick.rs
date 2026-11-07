@@ -1,31 +1,12 @@
 //! **A §11 Animation a correr** — a costura entre a lei pura ([`ph2d_ecs::sprite_anim`]) e o
-//! relógio do app.
-//!
-//! # ⚠️ Corre no PASSO FIXO, e não no relógio de parede
-//!
-//! A spec §8.4 exige que o `SpriteAnimator` seja `SimComponent` reproduzível pelo replay, e um
-//! replay só reproduz o que anda em passos **iguais e contados**. O `wall_dt` mede quanto o último
-//! quadro demorou — ele muda com a carga da máquina, e uma animação presa a ele avançaria
-//! diferente em duas corridas do mesmo ficheiro.
-//!
-//! ⚠️ **A conversão para inteiro acontece AQUI, uma vez.** A lei pura nunca vê um float
-//! (`vfmadd` em x86_64 e não em aarch64 ⇒ divergência de um ULP ⇒ o frame avança noutro tique ⇒
-//! o UV do atlas diverge ⇒ o hash de replay quebra). O `fixed_dt` é uma **constante**, por isso
-//! `dt_ticks` é a mesma em toda máquina.
-//!
-//! # ⚠️ UM sink: `Sprite::frame`
-//!
-//! O índice que a lei produz é escrito no `Sprite::frame` e em mais nada. A folha autorada
-//! (`SpriteSheetRef`) é *proveniência de autoria* e não um índice vivo — a razão está no doc de
-//! [`ph2d_ecs::sprite_anim`].
+//! relógio do app. ⚠️ Corre no PASSO FIXO (o replay só reproduz passos iguais e contados, spec §8.4),
+//! e a conversão para inteiro acontece AQUI, uma vez: a lei pura nunca vê um float. ⚠️ Um sink só: o
+//! índice vai para a grelha (`SpriteGrid::frame`); a razão está em [`ph2d_ecs::sprite_anim`].
 
 use ph2d_ecs::{SimWorld, SpriteAnimations, SpriteAnimator};
 
-/// **Um sinal que uma animação produziu neste quadro** — o que a shell publica no outbox.
-///
-/// ⚠️ Um tipo do SHELL e não do `ph2d-ecs`: a lei pura não conhece o `ph2d-runtime`, e não pode —
-/// ela é o que o replay reproduz, e o outbox é o que o app faz com isso. O tique devolve fatos; o
-/// chamador é que os transforma em eventos.
+/// **Um sinal que uma animação produziu neste quadro** — o que a shell publica no outbox. Não é do
+/// `ph2d-ecs`: a lei pura não conhece o `ph2d-runtime`; o tique devolve fatos, o chamador faz eventos.
 pub struct AnimSignal {
     pub entity: ph2d_ecs::Entity,
     /// O nome AUTORADO na tag. Vazio nunca chega aqui — uma animação calada não produz sinal.
@@ -54,14 +35,8 @@ pub fn tick_sprite_animations(
     if dt == 0 {
         return out;
     }
-    // ⭐⭐ **O `OnScreenEnabler` a PAUSAR de facto** (2026-08-30) — *«só corre quando está no
-    // ecrã»*, que é metade do que aqueles cinco campos da §8 prometem. A outra metade (o
-    // `HideVisible`) mora no extract.
-    //
-    // ⚠️ **Colhido ANTES do laço mutável, e não dentro dele**: a decisão precisa de ler a
-    // hierarquia inteira (`world_transform` + os ancestrais) enquanto o laço já tem `&mut` sobre o
-    // mundo. ⚠️ **E a lista sai vazia numa cena sem um único enabler**, então o caminho comum é
-    // uma varredura de componente e o quadro é byte-idêntico ao de antes desta cura.
+    // O `OnScreenEnabler` pausa («só corre no ecrã»; o `HideVisible` mora no extract). Colhido ANTES do
+    // laço mutável (lê a hierarquia inteira); sem nenhum enabler na cena a lista sai vazia.
     let paused: Vec<ph2d_ecs::Entity> = {
         let w = sim.world_mut();
         let mut carriers = w.query::<&ph2d_ecs::OnScreenEnabler>();
@@ -77,10 +52,7 @@ pub fn tick_sprite_animations(
         }
     };
     let world = sim.world_mut();
-    // ⭐ **`&mut SpriteGrid` e já não `&mut Sprite`** (ADR-0164 F1 passo 6): o índice de célula
-    // mudou-se para a grelha. E o filtro passa a ser uma LEI — uma sprite sem grelha não tem
-    // células que uma animação possa percorrer, então ela nem entra no laço, em vez de ser
-    // tiquetaqueada sobre um pool de uma célula só.
+    // O índice mora na grelha (ADR-0164 F1): sprite sem grelha não tem células e nem entra no laço.
     let mut q = world.query::<(
         ph2d_ecs::Entity,
         &mut SpriteAnimator,
@@ -92,23 +64,9 @@ pub fn tick_sprite_animations(
     )>();
     let mut gritos = Vec::new();
     for (entity, mut animator, tags, mut grid, lists, cursor, markers) in q.iter_mut(world) {
-        // ⚠️ **UMA FOLHA EM PINTURA TOCA, mesmo com o transporte parado** (Enio, 2026-08-23:
-        // *«o preview não está animado»*).
-        //
-        // Enquanto uma ferramenta pré-visualiza um sprite com grelha, o quad dele **desdobra-se** e
-        // passa a mostrar a imagem inteira — o `Sprite::frame` deixa de ter efeito no que se pinta,
-        // e o único sítio onde ele ainda se vê é a célula de pré-visualização ao lado. Se ela
-        // dependesse do `playing`, bastaria o artista ter pausado uma vez (arrastar a barra de
-        // frames pausa, por desenho) para a pré-visualização nascer **parada** — e ela existe
-        // exactamente para mostrar o movimento.
-        //
-        // ⚠️ Isto **não** liga o transporte: o `playing` fica como estava, e ao sair da ferramenta
-        // a sprite volta a obedecer-lhe. O que corre aqui é a pré-visualização.
+        // Uma folha em pintura toca mesmo com o transporte parado (Enio 23/08, «o preview não está
+        // animado»), sem ligar o `playing`. A pausa do enabler vem antes, sem excepção.
         let painted = is_tool_previewed(tool_preview_bits, entity);
-        // ⚠️ **A pausa do enabler vem ANTES da pré-visualização**, e é deliberado: uma sprite que
-        // saiu do rect que ela própria declara não corre — nem sequer para a célula que a
-        // ferramenta mostra ao lado —, senão o «só corre quando está no ecrã» teria uma excepção
-        // que ninguém escreveu em lado nenhum.
         if paused.contains(&entity) {
             continue;
         }
@@ -118,26 +76,15 @@ pub fn tick_sprite_animations(
         let Some(tag) = tags.get(&animator.current) else {
             continue;
         };
-        // ⚠️ **A pré-visualização corre sobre uma CÓPIA, e a lei pura é a razão:** a
-        // [`ph2d_ecs::advance`] também desiste quando `playing` é falso (é ela que define o que
-        // «tocar» quer dizer), então bastava-me abrir o guarda acima e o frame continuava parado.
-        //
-        // ⚠️ **A cópia leva `loop_override = Some(true)`**: uma animação de uma volta já esgotada
-        // congelaria a pré-visualização na última célula — e uma pré-visualização que existe para
-        // mostrar o movimento não pode acabar. *Ela repete porque é uma pré-visualização, não
-        // porque a cena o pede.*
-        //
-        // ⇒ Do que a cópia produz volta o **relógio** (é ele que faz o tempo passar entre tiques)
-        // e o frame; o `playing` e os overrides do documento ficam intactos, e sair da ferramenta
-        // devolve a cena exactamente como ela estava.
+        // A pré-visualização corre sobre uma CÓPIA que toca e repete (a lei pura pára sem `playing`);
+        // dela volta só o relógio e o frame, e o documento fica intacto.
         let preview_only = painted && !animator.playing;
         let mut run = animator.clone();
         if preview_only {
             run.playing = true;
             run.loop_override = Some(true);
         }
-        // O pool é a grelha desta sprite, lida **agora** — mexer em `hframes` a meio de uma
-        // animação encolhe o intervalo no mesmo quadro, sem estado intermédio a envelhecer.
+        // O pool é a grelha lida agora: mudar `hframes` encolhe o intervalo no mesmo quadro.
         let cells = grid.cells().max(1);
         let mut frame = grid.frame;
         // O que o artista tem no documento, ANTES de este tique lhe tocar (`crate::preview_drive`).
@@ -174,30 +121,22 @@ pub fn tick_sprite_animations(
         } else {
             *animator = run;
         }
-        // ⚠️ **Escreve só quando MUDA.** O `Sprite` é `SimComponent` e o undo regista por DIFF:
-        // tocar-lhe todo o quadro faria uma sprite pausada num frame só produzir um passo de
-        // undo por quadro. `bevy` marca a mudança no `deref_mut`, não na atribuição.
+        // Escreve só quando MUDA: o `bevy` marca a mudança no `deref_mut` e o undo regista por diff.
         if grid.frame != frame {
             grid.frame = frame;
         }
-        // **A DECLARAÇÃO**, com o depois lido do que ficou de facto escrito (o `preview_only`
-        // devolve só o relógio, então `run` sozinho mentiria sobre o animador).
+        // A declaração lê o que ficou escrito (no `preview_only`, `run` mentiria sobre o animador).
         let after = ph2d_preview_drive::Driven::SpriteAnim {
             elapsed_ticks: animator.elapsed_ticks,
             pingpong_reverse: animator.pingpong_reverse,
             repeat_count: animator.repeat_count,
             frame,
         };
-        // ⚠️ **Só quando este tique de facto escreveu.** Um animador que está a tocar e não andou
-        // nada (`dt·ticks` engolido por uma velocidade zero) não está a conduzir ninguém, e
-        // declará-lo manteria viva uma condução que a `settle` precisa de ver morrer.
+        // Só quando o tique escreveu: quem não andou não conduz (a `settle` precisa de o ver morrer).
         if before != after {
             drive.driven(entity, before, after);
         }
-        // **OS SINAIS** (spec §8.10). ⚠️ **A pré-visualização é MUDA**: uma folha em pintura corre
-        // sobre uma cópia do animador, e ela existe para mostrar o movimento — não para fazer
-        // acontecer coisas na cena. Publicar dali faria um som tocar porque alguém pegou no
-        // pincel.
+        // Os sinais (spec §8.10). A pré-visualização é MUDA: pegar no pincel não toca um som.
         if !preview_only {
             out.extend(gritos.drain(..).map(|name| AnimSignal {
                 entity,
@@ -223,14 +162,8 @@ pub fn tick_sprite_animations(
     out
 }
 
-/// **O `autoplay` a fazer o que promete**, no único momento em que ele tem significado no editor:
-/// o projeto acabou de abrir.
-///
-/// ⚠️ Ele **não** pode viver no tique: «começar a tocar» é uma aresta, e o tique só vê estados —
-/// para a detetar ali seria preciso um bit a mais que diz «já comecei», e um bit desses fica
-/// dessincronizado no primeiro `Ctrl+Z`.
-///
-/// Em «Auto» começa do 1.º quadro da animação do «Starts with», mesmo que o ▶ tenha deixado outra no ecrã, ou ela
+/// **O `autoplay` ao abrir o projeto.** Não vive no tique: «começar» é uma aresta, e o bit «já comecei»
+/// dessincronizava no primeiro `Ctrl+Z`. Em «Auto» começa do 1.º quadro da animação do «Starts with», mesmo que o ▶ tenha deixado outra no ecrã, ou ela
 /// já a tocar a meio do ciclo. Script e Rules escolhem sozinhos: ficam como estão.
 pub fn start_autoplay_animations(sim: &mut SimWorld) {
     let world = sim.world_mut();

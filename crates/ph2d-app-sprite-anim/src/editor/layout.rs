@@ -115,6 +115,12 @@ impl Layout {
             .first()
             .map_or(0.0, |f| f.0.w + ph2d_tokens::control_gap_px())
     }
+
+    /// A pega do scrub de um campo com letra: a célula da letra, como no cartão.
+    #[must_use]
+    pub fn handle(r: Rect) -> Rect {
+        Rect::new(r.x, r.y, m::ICON_CELL.min(r.w), r.h)
+    }
 }
 
 impl AnimDoc {

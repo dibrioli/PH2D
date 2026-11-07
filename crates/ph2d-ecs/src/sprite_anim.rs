@@ -31,15 +31,6 @@
 //! Quem converte é a shell, **uma vez**, a partir do `fixed_dt` do passo fixo — que é uma
 //! constante. ⚠️ O passo fixo tem teto de 8 sub-passos, por isso [`advance`] é chamada com um `dt`
 //! **constante e pequeno**: o laço de recuperação dentro dela é limitado por construção.
-//!
-//! # O que ficou de FORA, e porquê
-//!
-//! ⛔ **Duração por-FRAME arbitrária** (spec §8.3, `SpriteFrame::duration_ms`). Ela existe na spec
-//! por paridade com o Aseprite, e **não há importador de `.ase`** — ninguém a produziria, e a
-//! própria spec §8.8 diz que editá-la é do editor de timeline futuro, não do Inspector. O caso de
-//! uso que ela nomeia — *anticipation hold*, o último frame parado mais tempo — é servido pelo
-//! [`AnimationTag::hold_ms`], que a spec §8.6 já especifica. *Uma duração por frame sem quem a
-//! escreva seria autoria sem consumidor, que é a dívida que este módulo passou o dia a pagar.*
 
 use bevy_ecs::component::Component;
 use serde::{Deserialize, Serialize};
@@ -47,17 +38,8 @@ use smallvec::SmallVec;
 
 use crate::SimComponent;
 
-/// Máximo de tags por sprite.
-///
-/// ⚠️ **A spec §8.11 escreve 256, e este é 64 — de propósito, e a razão é a dela.** O motivo que
-/// ela dá para o 256 é *«a contagem típica de animações é < 50»*; o que ela não pesa é que o
-/// painel tem de **alcançar** cada uma, e um modelo que aceita o que o painel não mostra produz
-/// estado inalcançável por gesto nenhum. Este módulo já pagou essa classe duas vezes (os quatro
-/// modos mudos da §9 Sampling, e o cap de âncoras que o gate
-/// `the_model_stops_exactly_where_the_panel_runs_out_of_rows` passou a prender).
-///
-/// 64 é o que a lista da §11 mostra, é o mesmo teto das âncoras, e está acima do «típico < 50»
-/// que a própria spec usa para justificar o número maior.
+/// Máximo de tags por sprite. A spec §8.11 diz 256 («típico < 50»); 64 é o que a lista da §11 alcança
+/// (o modelo não aceita o que o painel não mostra), o mesmo teto das âncoras.
 pub const ANIM_TAGS_MAX: usize = 64;
 /// Comprimento máximo do nome de uma tag, **em bytes UTF-8** — mesma lei (e mesma razão) do
 /// [`crate::ANCHOR_NAME_MAX_BYTES`]: contar o que o postcard conta é o que mantém o hash estável.

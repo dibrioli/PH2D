@@ -214,10 +214,7 @@ pub fn paint_doc(
     for r in [l.list, l.sheet_card, l.frames_card] {
         card(scene, theme, r);
     }
-
-    // ── A lista ──
     paint_list(doc, &l, info.as_ref(), scene, text, theme);
-
     // ── A folha ──
     let mut hint = tr("anim_editor.sheet_hint");
     if label_column_width(text, FONT_TOKEN.px(), [hint]) > l.sheet_title.w {

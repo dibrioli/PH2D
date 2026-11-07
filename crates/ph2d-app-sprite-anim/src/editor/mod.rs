@@ -124,7 +124,7 @@ impl DocumentSurface for AnimDocs {
     fn pointer(
         &mut self,
         id: u64,
-        _input: PointerInput<'_>,
+        input: PointerInput<'_>,
         kind: PointerKind,
         button: PointerButton,
         x: f32,
@@ -133,6 +133,7 @@ impl DocumentSurface for AnimDocs {
         let Some(d) = self.doc_mut(id) else {
             return false;
         };
+        d.mods = input.mods;
         if button != PointerButton::Primary {
             return false;
         }
@@ -143,8 +144,11 @@ impl DocumentSurface for AnimDocs {
         }
     }
 
-    fn pointer_move(&mut self, id: u64, _input: PointerInput<'_>, x: f32, y: f32) -> bool {
-        self.doc_mut(id).is_some_and(|d| d.motion(x, y))
+    fn pointer_move(&mut self, id: u64, input: PointerInput<'_>, x: f32, y: f32) -> bool {
+        self.doc_mut(id).is_some_and(|d| {
+            d.mods = input.mods;
+            d.motion(x, y)
+        })
     }
 
     fn wheel(&mut self, id: u64, x: f32, y: f32, dy: f32, _shift: bool) -> bool {
@@ -173,6 +177,7 @@ impl DocumentSurface for AnimDocs {
             return consumed(d.editing.is_some());
         }
         match input.key {
+            Key::Escape if d.cancel_scrub() => consumed(true),
             Key::Enter if d.editing.is_some() => {
                 d.close_field(true);
                 consumed(true)

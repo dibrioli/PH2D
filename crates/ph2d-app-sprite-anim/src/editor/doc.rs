@@ -5,8 +5,10 @@
 //! então o undo regista por diff como lá. A disposição ([`Layout`]) é função pura da área e do snapshot;
 //! a pintura e o rato leem a mesma, guardada no último `paint`.
 
+use ph2d_editor_core::interaction::field_scrub::FieldScrub;
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{AnimCycleMode, AnimFieldEdit, InspectorAnimInfo, SheetImage, row_cells};
+use ph2d_host::Modifiers;
 use ph2d_sprite_sheet::GridGuess;
 use ph2d_tokens::ROW_H_PX;
 
@@ -14,6 +16,9 @@ pub use super::layout::Layout;
 
 /// Um arrasto na faixa só conta depois deste caminho (um clique trémulo não reordena).
 const DRAG_SLOP_ROWS: f32 = 0.25; // LITERAL-PX-OK: fração do token de linha
+
+#[path = "doc_scrub.rs"]
+mod scrub;
 
 /// O que a aba mostra: o snapshot da §11 (com o cartão) e a folha.
 #[derive(Clone, Debug, Default)]
@@ -53,6 +58,8 @@ enum Drag {
         gap: usize,
         at: (f32, f32),
     },
+    /// O arrasto sobre a letra de um campo; a última edição enviada.
+    Scrub(Field, FieldScrub, Option<AnimFieldEdit>),
 }
 
 /// Um arrasto de quadro já em curso (passou o limiar), como a pintura o lê.
@@ -107,6 +114,8 @@ pub struct AnimDoc {
     pub painted_cells: Vec<super::paint_sheet::PaintedCell>,
     /// Onde o rato está, para a lista de quem usa a célula.
     pub hover: Option<(f32, f32)>,
+    /// As teclas do último evento do rato (Shift e Alt mudam o passo do scrub).
+    pub mods: Modifiers,
     drag: Drag,
     /// A seleção ainda não leu o snapshot (abre na animação que toca).
     seeded: bool,
@@ -359,34 +368,18 @@ impl AnimDoc {
             return;
         }
         let t = text.trim();
-        let row = self.row();
+        let number = t.trim_end_matches(['x', 'X', '×']).replace(',', ".");
+        let number = number.parse::<f64>().ok();
         let edit = match field {
-            Field::Fps => t
-                .replace(',', ".")
-                .parse::<f32>()
-                .ok()
-                .filter(|v| *v > 0.0)
-                .and_then(|v| Some(AnimFieldEdit::FrameMs(row?, ph2d_ecs::ms_of_fps(v)))),
-            Field::FrameMs(i) => t
-                .trim_end_matches(['x', 'X', '×'])
-                .replace(',', ".")
-                .parse::<f32>()
-                .ok()
-                .and_then(|f| self.ms_of_factor(f))
-                .and_then(|ms| Some(AnimFieldEdit::FrameMsAt(row?, i as u32, ms))),
-            Field::Cols => t
-                .parse::<u32>()
-                .ok()
-                .map(|c| AnimFieldEdit::Grid(c, self.snap.vframes)),
-            Field::Rows => t
-                .parse::<u32>()
-                .ok()
-                .map(|r| AnimFieldEdit::Grid(self.snap.hframes, r)),
             Field::Name(i) => u8::try_from(i)
                 .ok()
                 .filter(|_| !t.is_empty())
                 .map(|i| AnimFieldEdit::Rename(i, t.to_owned())),
             Field::Signal(f) => self.signal_edit(f, t),
+            Field::Fps => number
+                .filter(|v| *v > 0.0)
+                .and_then(|v| self.number_edit(&field, v)),
+            _ => number.and_then(|v| self.number_edit(&field, v)),
         };
         self.pending.extend(edit);
     }
@@ -423,7 +416,12 @@ impl AnimDoc {
         if !hit(l.area, x, y) {
             return false;
         }
-        if hit(l.fps, x, y) && self.row().is_some() {
+        if let Some(f) = self.scrub_target(x, y)
+            && let Some((v, step, bounds)) = self.scrub_law(&f)
+        {
+            let now = self.number_edit(&f, v);
+            self.drag = Drag::Scrub(f, FieldScrub::new(x, v, step, bounds), now);
+        } else if hit(l.fps, x, y) && self.row().is_some() {
             self.open_field(Field::Fps);
         } else if hit(l.this_frame, x, y)
             && let Some(f) = self.marked_frame()
@@ -492,6 +490,20 @@ impl AnimDoc {
     /// O rato moveu-se (com ou sem botão).
     pub fn motion(&mut self, x: f32, y: f32) -> bool {
         self.hover = hit(self.layout.area, x, y).then_some((x, y));
+        if matches!(self.drag, Drag::Scrub(..))
+            && let Drag::Scrub(f, mut s, last) = std::mem::take(&mut self.drag)
+        {
+            let edit = s.motion(x, self.mods).and_then(|v| self.number_edit(&f, v));
+            let last = match edit {
+                Some(e) if last.as_ref() != Some(&e) => {
+                    self.pending.push(e.clone());
+                    Some(e)
+                }
+                _ => last,
+            };
+            self.drag = Drag::Scrub(f, s, last);
+            return true;
+        }
         let cell = self.cell_at(x, y);
         let slot = self.drop_gap(x);
         match &mut self.drag {
@@ -521,7 +533,7 @@ impl AnimDoc {
                 }
                 true
             }
-            Drag::None => false,
+            Drag::Scrub(..) | Drag::None => false,
         }
     }
 
@@ -546,6 +558,13 @@ impl AnimDoc {
                 } else {
                     self.frame_selected = Some(from);
                     self.pending.push(AnimFieldEdit::SetStep(from as u32));
+                }
+                true
+            }
+            // Sem passar o limiar, a letra é um clique: abre a escrita, como no cartão.
+            Drag::Scrub(f, s, _) => {
+                if !s.moved() {
+                    self.open_field(f);
                 }
                 true
             }

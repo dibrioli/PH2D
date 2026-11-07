@@ -33,21 +33,9 @@ fn current_tag(world: &World, entity: Entity, name: &str) -> Option<AnimationTag
         .cloned()
 }
 
-/// **REBOBINAR é repor o ciclo E pôr a IMAGEM no princípio** — as duas coisas, sempre.
-///
-/// ⚠️ Enquanto isto era só o [`SpriteAnimator::rewind`], o botão *Rewind* repunha contadores que
-/// ninguém vê e deixava a sprite na célula onde tinha parado: o artista carregava em «rebobinar» e
-/// **nada se mexia**. E com um `repeat` finito o gesto era pior que inerte — a imagem ficava na
-/// ponta do intervalo, então o primeiro passo de [`ph2d_ecs::advance`] fechava logo o ciclo e
-/// parava outra vez.
-///
-/// ⚠️ **Trocar de animação passa por aqui pela MESMA razão, e ela não é teórica:** as animações
-/// desta engine partilham o pool de células (é a tese do modelo), então uma `walk` a correr na
-/// célula 2 e uma `idle` de 0-3 **sobrepõem-se** — o `advance` só reposiciona o que cai FORA do
-/// intervalo, e por isso escolher a `idle` começava-a a meio.
-///
-/// ⚠️ Escreve o `Sprite` **só quando o índice muda**: ele é `SimComponent` e o undo regista por
-/// diff.
+/// **REBOBINAR é repor o ciclo E pôr a IMAGEM no princípio**: só o [`SpriteAnimator::rewind`] deixava a
+/// imagem onde parou. Trocar de animação passa por aqui (o pool é partilhado: a nova começava a meio).
+/// Escreve a grelha só quando o índice muda (o undo regista por diff).
 fn rewind_to_start(
     world: &World,
     entity_bits: u64,
@@ -123,30 +111,17 @@ fn cells_of(world: &World, entity: Entity) -> u32 {
         .map_or(1, |g| g.cells().max(1))
 }
 
-/// Constrói o snapshot da §11, ou `None` quando a entidade não é uma sprite.
-///
-/// ⚠️ **Não há campo `mixed`, e a ausência é MEDIDA (2026-08-23).** Ele existia, era calculado a
-/// cada quadro — clonando a biblioteca da primária **e** a de cada entidade selecionada — e
-/// **nenhum pintor o lia**. O que a seleção múltipla precisa de dizer não é *«elas discordam»* e
-/// sim *«isto pega só na ativa»*, que é sempre verdade aqui e se responde com o `selected_count`.
-/// *Um facto caro que ninguém lê é pior que um facto ausente: ele parece cobertura.*
+/// Constrói o snapshot da §11, ou `None` quando a entidade não é uma sprite. Sem campo `mixed` (medido
+/// 23/08: ninguém o lia); a seleção múltipla diz «só a ativa» pelo `selected_count`.
 pub fn build_anim_info(
     world: &World,
     entity_bits: u64,
     selected_count: usize,
 ) -> Option<InspectorAnimInfo> {
     let entity = Entity::from_bits(entity_bits);
-    // ⚠️ **Só uma SPRITE tem animação de frames**, porque o pool é a grelha dela. Numa entidade
-    // sem `Sprite`, a seção inteira não se pinta — em vez de oferecer knobs sobre um pool vazio.
+    // Só uma SPRITE tem animação de frames (o pool é a grelha dela).
     world.get::<ph2d_render::Sprite>(entity)?;
-    // ⭐ **E a §11 aparece com UM DOS SEUS DOIS componentes** (ADR-0166 / F3) — ver a nota gémea na
-    // [`super::inspector_slice::build_slice_info`]. O «+ Add Animation» era a única rota; hoje é o
-    // `+` do cabeçalho.
-    //
-    // ⚠️ **O `SpriteAnimator` conta, e um gate foi quem o disse.** A seção tem duas metades e elas
-    // são coisas diferentes: a **biblioteca** (`SpriteAnimations`, os intervalos nomeados) e o
-    // **transporte** (`SpriteAnimator`, a cabeça de leitura). Gatear só na biblioteca esconderia a
-    // seção de uma sprite que já tem tocador — e o «Add Player» vive lá dentro.
+    // A §11 aparece com QUALQUER dos dois componentes (ADR-0166 F3): a biblioteca ou o tocador.
     if world.get::<SpriteAnimations>(entity).is_none()
         && world.get::<SpriteAnimator>(entity).is_none()
     {
@@ -238,18 +213,8 @@ pub fn apply_anim_edit(
         match player_edit {
             PlayerEdit::Add => {}
             PlayerEdit::SetCurrent(name) => {
-                // ⚠️ **A reprodução que ACABOU volta a tocar quando alguém lhe toca — e escolher
-                // outra animação é tocar-lhe.** É a MESMA lei do braço `Playing` logo abaixo, pela
-                // outra porta: quem parou foi o fim do ciclo, não o artista, e ele nunca pediu
-                // silêncio. Sem isto, a sequência que a cena de smoke descreve — *tocar `attack`
-                // uma vez, depois clicar em `walk` para voltar ao ciclo* — deixava a sprite parada,
-                // e o artista ia procurar a caixa de `Playing` para reparar um estado que ele não
-                // criou (Enio, 2026-08-23).
-                //
-                // ⚠️ **Uma PAUSA explícita não é tocada por isto**: `is_finished` é falso a meio de
-                // um ciclo, então quem desmarcou `Playing` continua a poder folhear a lista em
-                // silêncio. *Escolher uma animação nunca PÁRA nada, e só retoma o que se esgotou.*
-                // O ▶ é prévia (ficha 02, decisão 2): num projeto que nunca escolheu, o `current` de antes
+                // Escolher outra retoma a reprodução que ACABOU (Enio 23/08), nunca uma pausa a meio
+                // (a lei do braço `Playing`). O ▶ é prévia (ficha 02, decisão 2): num projeto que nunca escolheu, o `current` de antes
                 // fica gravado como o início, para o jogo não passar a começar noutra.
                 if p.start.is_none()
                     && p.current != *name
@@ -264,20 +229,11 @@ pub fn apply_anim_edit(
                 }
                 p.current = name.clone();
                 let tag = current_tag(world, entity, name);
-                // ⚠️ **Trocar de animação REBOBINA.** O `repeat_count` e o ping-pong são do ciclo
-                // que estava a correr; carregá-los para a nova faria a primeira volta dela
-                // começar a meio, ou nem acontecer.
+                // Trocar REBOBINA: o `repeat_count` e o ping-pong eram do ciclo de antes.
                 rewind_to_start(world, entity_bits, &mut p, tag.as_ref(), queue, registry);
             }
-            // ⚠️ **LIGAR uma animação que já ACABOU é pedir para a rever, e sem isto o gesto é
-            // MORTO.** «Pausado» e «terminado» leem-se igual no `playing == false`, e são coisas
-            // diferentes: numa que já gastou os ciclos, pôr `playing = true` deixa a imagem na
-            // ponta do intervalo com o contador cheio, e o primeiro passo de `advance` fecha o
-            // ciclo outra vez e volta a parar — no MESMO tique. O artista marca a caixa, ela fica
-            // marcada por um quadro, e nada toca.
-            //
-            // ⇒ Ligar sobre uma reprodução terminada rebobina-a. Quem pausou a meio continua de
-            // onde estava, que é a outra metade da promessa.
+            // Ligar uma que ACABOU rebobina-a (senão o `advance` fechava o ciclo no mesmo tique e
+            // nada tocava); quem pausou a meio continua de onde estava.
             PlayerEdit::Playing(on) => {
                 p.playing = *on;
                 if *on {
@@ -306,18 +262,10 @@ pub fn apply_anim_edit(
                 let tag = current_tag(world, entity, &p.current);
                 rewind_to_start(world, entity_bits, &mut p, tag.as_ref(), queue, registry);
             }
-            // ⚠️ **AGARRAR A BARRA PAUSA**, e a pausa é o gesto, não um efeito colateral: enquanto
-            // a reprodução corre, o tique também escreve o `Sprite::frame`, e o dedo e o relógio
-            // disputariam o mesmo campo — a imagem piscaria entre a célula arrastada e a que o
-            // relógio acabou de pôr. *Quem pega no volante conduz*, e a caixa `Playing` di-lo.
-            //
-            // ⚠️ **Não rebobina o ciclo.** O `repeat_count` e o ping-pong são de onde a reprodução
-            // ia; largar a barra e voltar a `Playing` continua a volta em curso a partir da célula
-            // escolhida, que é o que «arrastar até ali e seguir» quer dizer.
+            // Agarrar a barra PAUSA (o dedo e o relógio disputariam a célula) e não rebobina o ciclo.
             PlayerEdit::SetFrame(cell) => {
                 p.playing = false;
-                // O acumulador do frame anterior não pertence a este; deixá-lo faria a primeira
-                // célula depois do arrasto durar menos do que as outras.
+                // O acumulador do frame anterior não pertence a este.
                 p.elapsed_ticks = 0;
                 set_frame(world, entity_bits, &p, *cell, queue, registry);
             }
@@ -326,13 +274,7 @@ pub fn apply_anim_edit(
         return None;
     }
 
-    // ⚠️ **ESCREVER A DURAÇÃO DE UM QUADRO PAUSA, e é a MESMA lei da barra de frames** (F12): o
-    // campo mostra o tempo *da célula que está no ecrã*, e enquanto a reprodução corre essa célula
-    // muda dez vezes por segundo — o dedo e o relógio leem o mesmo sítio, e o artista acabaria a
-    // escrever num quadro que já não é o que ele vê. *Quem pega no volante conduz.*
-    //
-    // ⚠️ Ao contrário do `SetFrame`, o acumulador **não** se zera: não se mudou de célula, mudou-se
-    // quanto ela dura.
+    // Escrever a duração de um quadro PAUSA, a lei da barra (F12); o acumulador fica (a célula é a mesma).
     if let AnimFieldEdit::FrameMsAt(..) = edit
         && let Some(mut p) = world.get::<SpriteAnimator>(entity).cloned()
         && p.playing

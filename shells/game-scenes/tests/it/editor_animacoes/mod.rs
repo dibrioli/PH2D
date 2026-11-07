@@ -774,6 +774,7 @@ mod tira;
 
 mod cores;
 mod marcas;
+mod scrub;
 
 /// Em cartões o editor lê os tons da lista; `PH2D_CARDS=0`, os de antes.
 #[test]

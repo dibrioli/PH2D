@@ -656,7 +656,8 @@ fn abre_a_lista_da_camada(
 /// A lista usa os mesmos ids e a mesma edição dos chips de antes: cada opção escolhe a sua camada.
 #[test]
 fn a_lista_da_camada_escolhe_cada_camada_pela_mesma_edicao() {
-    for (i, &id) in INSP_PHYS_LAYER.iter().enumerate() {
+    // As oito que se veem sem nada publicado; a lista das visíveis tem a sua prova em `lista_tests`.
+    for (i, &id) in INSP_PHYS_LAYER.iter().enumerate().take(8) {
         let (mut host, mut st) = cena(with_body(), [1.0, 1.0]);
         let abertas = abre_a_lista_da_camada(&mut host, &mut st);
         let op = achado(&abertas, id).unwrap_or_else(|| panic!("a opção {i} não apareceu"));
@@ -676,18 +677,21 @@ fn a_lista_da_camada_escolhe_cada_camada_pela_mesma_edicao() {
 #[test]
 fn hits_le_a_matriz_com_os_nomes_e_acompanha_a_mudanca() {
     use ph2d_panel_inspector::camadas_fisica::{hits, set_current};
-    set_current(Default::default(), [0b0000_0101; 8]);
+    set_current(Default::default(), [0b0000_0101; 32], 0xFF);
     assert_eq!(hits(0), "Hits: 0, 2", "sem nomes, os números");
-    let mut nomes: [String; 8] = Default::default();
+    let mut nomes: [String; 32] = Default::default();
     nomes[0] = "Ground".into();
     nomes[2] = "Enemy".into();
-    set_current(nomes.clone(), [0b0000_0101; 8]);
+    set_current(nomes.clone(), [0b0000_0101; 32], 0xFF);
     assert_eq!(hits(0), "Hits: Ground, Enemy");
-    set_current(nomes.clone(), [0b0000_0100; 8]);
+    set_current(nomes.clone(), [0b0000_0100; 32], 0xFF);
     assert_eq!(hits(0), "Hits: Enemy", "a matriz mudou");
-    set_current(nomes, [0; 8]);
+    set_current(nomes, [0; 32], 0xFF);
     assert_eq!(hits(0), "Hits: nothing");
-    set_current(Default::default(), [u8::MAX; 8]);
+    // A camada escondida não entra na frase: de fábrica bate em todas as 32, e não diz nada.
+    set_current(Default::default(), [u32::MAX; 32], 0b101);
+    assert_eq!(hits(0), "Hits: 0, 2");
+    set_current(Default::default(), [u32::MAX; 32], 0xFF);
 }
 
 /// Sem corpo acima nada bate na forma: «Hits» contradiria «Nothing bumps into it yet» e sai; a lista e o «Rename…»

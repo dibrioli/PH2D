@@ -163,7 +163,8 @@ fn inventario() -> Vec<NodeId> {
     v.extend(ids::PHYSICS_HOLD_MODE_OPT);
     v.extend(ids::PHYSICS_IK_ANGLE_OPT);
     v.extend(ids::PHYSICS_JOINT_TOOL_OPT);
-    v.extend(ids::PHYSICS_LAYER_CELL);
+    // As oito camadas que a mesa publica; as outras têm prova própria (`as_32_rolam_...`).
+    v.extend(&ids::PHYSICS_LAYER_CELL[..36]);
     v.extend(rows::section_header_ids());
     v.extend([
         ids::PHYSICS_SHOW_COLLIDERS,
@@ -455,7 +456,7 @@ fn every_mute_control_in_the_cards_has_a_tooltip() {
     let panel = ph2d_editor_core::ids::PHYSICS_PANEL;
     let mudos: Vec<NodeId> = dicas::icon_only_ids(panel)
         .into_iter()
-        .chain(ids::PHYSICS_LAYER_CELL)
+        .chain(ids::PHYSICS_LAYER_CELL[..36].iter().copied())
         .chain([
             ids::PHYSICS_CLOSE,
             ph2d_editor_core::panel::cards::list_menu_of(panel),
@@ -811,5 +812,32 @@ fn as_32_rolam_dentro_do_cartao_e_o_botao_fica_desligado() {
         alcancadas.len(),
         ids::PHYSICS_LAYER_CELLS,
         "nada inalcançável"
+    );
+}
+
+/// Sonda (`--ignored --nocapture`): o quadro do painel com 8 e 32 camadas visíveis, e o peso do store.
+#[test]
+#[ignore = "mede: corre à mão"]
+fn mede_o_painel_com_8_e_32() {
+    use std::time::Instant;
+    let mut melhor = [f64::MAX; 2];
+    for _ in 0..40 {
+        for (v, bits) in [0xFFu32, u32::MAX].into_iter().enumerate() {
+            ph2d_panel_physics::set_visible_layers(bits);
+            let mut mesa = Mesa::nova(mundo(
+                PhysicsSettings::default(),
+                InteractionSettings::default(),
+            ));
+            let t = Instant::now();
+            mesa.assenta();
+            melhor[v] = melhor[v].min(t.elapsed().as_secs_f64());
+        }
+    }
+    println!(
+        "[painel] pintar 8 = {:.0} us · 32 = {:.0} us · InteractiveState = {} B x {} células",
+        melhor[0] * 1e6,
+        melhor[1] * 1e6,
+        size_of::<ph2d_editor_core::interaction::InteractiveState>(),
+        ids::PHYSICS_LAYER_CELLS,
     );
 }

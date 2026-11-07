@@ -275,18 +275,12 @@ pub(super) fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> 
     )
 }
 
-/// As opções da lista: as camadas visíveis, pelo nome ou pelo número. ⚠️ `pub(crate)`: o passe diferido re-deriva-as.
-pub(crate) fn layer_options() -> Vec<DropdownOption<u8>> {
-    opcoes(None)
-}
-
-fn opcoes(tambem: Option<u8>) -> Vec<DropdownOption<u8>> {
+/// As opções da lista: as camadas visíveis e a do objecto, pelo nome ou pelo número.
+fn opcoes(camada: u8) -> Vec<DropdownOption<u8>> {
     ids::INSP_PHYS_LAYER
         .iter()
         .enumerate()
-        .filter(|&(i, _)| {
-            crate::camadas_fisica::visivel(i) || tambem.is_some_and(|c| usize::from(c) == i)
-        })
+        .filter(|&(i, _)| crate::camadas_fisica::visivel(i) || usize::from(camada) == i)
         .map(|(i, &id)| DropdownOption::new(id, i as u8, crate::camadas_fisica::rotulo(i)))
         .collect()
 }
@@ -294,7 +288,7 @@ fn opcoes(tambem: Option<u8>) -> Vec<DropdownOption<u8>> {
 /// A lista da camada, com a camada do objecto escolhida: o que o chip mostra.
 #[must_use]
 pub(crate) fn lista_da_camada(camada: u8) -> Dropdown<u8> {
-    let mut dd = Dropdown::new(ids::INSP_PHYS_LAYER_PICK, "", opcoes(Some(camada)));
+    let mut dd = Dropdown::new(ids::INSP_PHYS_LAYER_PICK, "", opcoes(camada));
     dd.select(camada);
     dd
 }
@@ -498,9 +492,9 @@ mod lista_tests {
     /// O chip mostra a camada do objecto, com número ou com nome: cada opção carrega o seu próprio valor.
     #[test]
     fn a_lista_da_camada_mostra_a_camada_do_objecto_como_escolhida() {
-        let mut nomes: [String; 8] = Default::default();
+        let mut nomes: [String; 32] = Default::default();
         nomes[2] = "Enemy".into();
-        crate::camadas_fisica::set_current(nomes, [u8::MAX; 8]);
+        crate::camadas_fisica::set_current(nomes, [u32::MAX; 32], 0xFF);
         for i in 0..8u8 {
             let dd = lista_da_camada(i);
             let esperado = if i == 2 {
@@ -510,6 +504,17 @@ mod lista_tests {
             };
             assert_eq!(dd.selected_label(), Some(esperado.as_str()), "camada {i}");
         }
-        crate::camadas_fisica::set_current(Default::default(), [u8::MAX; 8]);
+        crate::camadas_fisica::set_current(Default::default(), [u32::MAX; 32], 0xFF);
+    }
+
+    /// A lista só traz as visíveis; a camada do objecto, mesmo fora delas, nunca falta.
+    #[test]
+    fn a_lista_da_camada_so_traz_as_visiveis_e_a_do_objecto() {
+        crate::camadas_fisica::set_current(Default::default(), [u32::MAX; 32], 1 | 1 << 20);
+        assert_eq!(opcoes(0).len(), 2);
+        assert_eq!(lista_da_camada(20).selected_label(), Some("20"));
+        assert_eq!(opcoes(25).len(), 3, "a do objecto entra");
+        assert_eq!(lista_da_camada(25).selected_label(), Some("25"));
+        crate::camadas_fisica::set_current(Default::default(), [u32::MAX; 32], 0xFF);
     }
 }

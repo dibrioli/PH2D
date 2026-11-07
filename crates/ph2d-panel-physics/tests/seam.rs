@@ -771,7 +771,7 @@ fn host_slider(
 fn every_matrix_cell_answers_a_real_click() {
     let (mut host, mut state) = arrange(PhysicsSettings::default());
     let painted = host.paint::<PhysicsPanel>(&mut state, VIEWPORT);
-    for i in 0..ph2d_physics_ecs::MAX_LAYERS {
+    for i in 0..ph2d_physics_ecs::LEGACY_LAYERS {
         for j in 0..=i {
             let id = ids::PHYSICS_LAYER_CELL[ids::physics_layer_cell_index(i, j)];
             let rect = painted

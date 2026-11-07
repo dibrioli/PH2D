@@ -181,7 +181,7 @@ fn a_curva_conduz_uma_celula_da_matriz_e_a_mao_lhe_ganha() {
         (0..m::CELULAS)
             .filter(|&j| lidos.valor(c, kc(j)) == Some(1.0))
             .count(),
-        36
+        usize::from(m::CELULAS)
     );
     aplicar(&mut sim, &mut ponte, &mut cond);
     celula(&mut sim, 0.0);

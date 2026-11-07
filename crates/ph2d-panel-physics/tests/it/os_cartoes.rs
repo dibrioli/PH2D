@@ -882,9 +882,10 @@ fn edit_matrix_abre_a_seccao_e_traz_a_linha_a_vista() {
     let store = mesa.host.store_mut();
     store.set_collapsed(ids::PHYSICS_SEC_LAYERS, true);
     store.set_slider_value(ids::PHYSICS_LAYER_SCROLL, 0.0);
-    mesa.host.set_panel_visible("physics", false);
     mesa.assenta();
     assert_eq!(ph2d_panel_physics::destaque(), None);
+    // Depois de pintar: o `MockPanelHost` força o painel visível para o pintar.
+    mesa.host.set_panel_visible("physics", false);
 
     ph2d_panel_physics::abre_a_matriz(&mut mesa.host, 25);
     assert!(mesa.host.panel_visible("physics"), "o painel abriu");

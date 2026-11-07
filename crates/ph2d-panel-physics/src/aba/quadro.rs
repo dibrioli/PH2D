@@ -196,7 +196,7 @@ impl Quadro {
         let add_rotulo = tr("card.physics.tab_add");
         let contagem_w = largura(ctx, &MAX_LAYERS.to_string().repeat(2));
         let lista_w = (rotulo_w + contagem_w + Spacing::Lg.px() * 2.0)
-            .max(largura(ctx, &tr("card.physics.tab_layers")) + Spacing::Lg.px() * 2.0)
+            .max(largura(ctx, tr("card.physics.tab_layers")) + Spacing::Lg.px() * 2.0)
             .max(ROW_H_PX * 6.0); // LITERAL-PX-OK: a lista tem pelo menos seis linhas de largura
         let g = Geometria::de(area, rotulo_w, lista_w, visiveis.len());
         let matriz = LayerMatrix::from_rows(crate::state::current().vivo.layer_matrix);
@@ -216,7 +216,7 @@ impl Quadro {
         let cabeca_dir = tr_with("card.physics.tab_pairs", &[("n", &n_pares.to_string())]);
         let cabeca_dir_w = largura(ctx, &cabeca_dir);
         let pares_w = largura(ctx, &pares_da_camada);
-        let add_w = largura(ctx, &add_rotulo) + Spacing::Lg.px() * 2.0;
+        let add_w = largura(ctx, add_rotulo) + Spacing::Lg.px() * 2.0;
         let cheia = visiveis.len() >= MAX_LAYERS;
         let add_aceso =
             ctx.host.store().button_state(i::PHYSICS_LAYER_ADD) == Some(ButtonState::Hovered);

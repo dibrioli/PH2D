@@ -95,7 +95,7 @@ fn pinta_lista(ctx: &mut PaintCtx, q: &Quadro) {
         paint_text(
             texto,
             cena,
-            &tr("card.physics.tab_layers"),
+            tr("card.physics.tab_layers"),
             t.x + Spacing::Sm.px(),
             t.y - ROW_H_PX + (ROW_H_PX - font) * 0.5,
             font,
@@ -183,7 +183,7 @@ fn pinta_grade(ctx: &mut PaintCtx, q: &Quadro) {
         paint_text(
             texto,
             cena,
-            &tr("card.physics.tab_grid_title"),
+            tr("card.physics.tab_grid_title"),
             g.grade.x + pad,
             ty,
             TypeToken::Base.px(),
@@ -193,7 +193,7 @@ fn pinta_grade(ctx: &mut PaintCtx, q: &Quadro) {
         paint_text(
             texto,
             cena,
-            &cabeca_dir,
+            cabeca_dir,
             g.grade.x + g.grade.w - pad - cabeca_dir_w,
             ty,
             font,
@@ -314,7 +314,7 @@ fn pinta_pe(ctx: &mut PaintCtx, q: &Quadro) {
         paint_text(
             texto,
             cena,
-            &pe,
+            pe,
             r.x + Spacing::Sm.px(),
             r.y + (r.h - font) * 0.5,
             font,
@@ -327,7 +327,7 @@ fn pinta_pe(ctx: &mut PaintCtx, q: &Quadro) {
         paint_text(
             texto,
             cena,
-            &titulo,
+            titulo,
             g.camada.x + pad,
             cy,
             TypeToken::Base.px(),
@@ -337,7 +337,7 @@ fn pinta_pe(ctx: &mut PaintCtx, q: &Quadro) {
         paint_text(
             texto,
             cena,
-            &pares_da_camada,
+            pares_da_camada,
             g.camada.x + g.camada.w - pad - pares_w,
             cy,
             font,

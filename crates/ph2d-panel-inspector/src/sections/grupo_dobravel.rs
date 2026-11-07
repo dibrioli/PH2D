@@ -97,7 +97,7 @@ pub(crate) fn resumo_do_grupo(
         scene,
         resumo,
         x + w - pede,
-        y + (h - font) * 0.5,
+        y + ph2d_editor_core::paint::folga_do_texto(h, font),
         font,
         pede + 1.0, // LITERAL-PX-OK: folga de arredondamento da medida
         resolve(ColorToken::Text3, theme),

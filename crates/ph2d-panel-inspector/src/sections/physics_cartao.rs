@@ -100,6 +100,15 @@ impl Tinta<'_> {
     }
 }
 
+/// As dobras nascem fechadas, só aqui: `PH2D_CARDS=0` não as tem. `PH2D_FISICA_DOBRAS=1` abre-as para a foto.
+pub(crate) fn prepara(store: &mut WidgetStore) {
+    static ABERTAS: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    let abertas = *ABERTAS.get_or_init(|| std::env::var_os("PH2D_FISICA_DOBRAS").is_some());
+    for id in ids::INSP_PHYS_FOLDS {
+        store.set_collapsed_if_unchosen(id, !abertas);
+    }
+}
+
 /// O cartão **Body** de um corpo.
 pub(super) fn corpo(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
     let dinamico = info.kind_tag == KIND_DYNAMIC;

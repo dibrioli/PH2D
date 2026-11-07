@@ -22,6 +22,8 @@ pub enum CasoFisica {
     Larga,
     Sensor,
     Bola,
+    /// A bola com Scale 2 × 1: o aviso e as duas saídas.
+    Esticada,
     /// O Player do nível: cápsula, com o cartão do jogador ao lado.
     Player,
     /// Uma forma sem corpo acima: a «Collision Shape» acabada de nascer do menu Add.
@@ -43,6 +45,7 @@ pub fn caso(nome: &str) -> Option<CasoFisica> {
         "larga" => CasoFisica::Larga,
         "sensor" => CasoFisica::Sensor,
         "bola" => CasoFisica::Bola,
+        "esticada" => CasoFisica::Esticada,
         "player" => CasoFisica::Player,
         "solta" => CasoFisica::Solta,
         "peca" => CasoFisica::Peca,
@@ -75,13 +78,13 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica) -> Option<u64> {
         CasoFisica::Static | CasoFisica::Player | CasoFisica::Baixa | CasoFisica::Larga => {
             unreachable!("voltam acima")
         }
-        CasoFisica::Dynamic | CasoFisica::Kinematic | CasoFisica::Bola => {
+        CasoFisica::Dynamic | CasoFisica::Kinematic | CasoFisica::Bola | CasoFisica::Esticada => {
             let kind = if caso == CasoFisica::Kinematic {
                 BodyKind::Kinematic
             } else {
                 BodyKind::Dynamic
             };
-            let shape = if caso == CasoFisica::Bola {
+            let shape = if matches!(caso, CasoFisica::Bola | CasoFisica::Esticada) {
                 ColliderShape::Ball { radius: 0.5 }
             } else {
                 CAIXA
@@ -91,7 +94,11 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica) -> Option<u64> {
                 ..Collider::default()
             };
             let nome = Name::new("Crate");
-            w.spawn((onde, nome, imagem, corpo(kind), col)).id()
+            let mut pose = onde;
+            if caso == CasoFisica::Esticada {
+                pose.scale = Vec2::new(2.0, 1.0);
+            }
+            w.spawn((pose, nome, imagem, corpo(kind), col)).id()
         }
         CasoFisica::Sensor => {
             let col = Collider {

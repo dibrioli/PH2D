@@ -416,9 +416,7 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
     }
     semeia_as_linhas(store);
     store.set_collapsed_if_unchosen(CARD_ORDERING, true);
-    for id in ids::INSP_PHYS_FOLDS {
-        store.set_collapsed_if_unchosen(id, true);
-    }
+    crate::sections::physics_cartao::prepara(store);
     crate::recibo_fisica::valida();
     store.set_collapsed_if_unchosen(CARD_MATERIAL, true);
     for (id, chave) in [

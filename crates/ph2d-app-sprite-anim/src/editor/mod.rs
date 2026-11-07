@@ -19,7 +19,7 @@ use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue, apply_editor_commands};
 use ph2d_ecs::{Entity, Resource, SimWorld};
 use ph2d_editor_core::doc_surface::{
-    Compose, DocTab, DocumentSurface, Key, KeyInput, KeyOutcome, PointerInput,
+    Compose, DocTab, DocumentSurface, Key, KeyInput, KeyOutcome, PointerInput, PointerLook,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{AnimFieldEdit, HeroScreen, Toast, ToastQueue};
@@ -149,6 +149,10 @@ impl DocumentSurface for AnimDocs {
             d.mods = input.mods;
             d.motion(x, y)
         })
+    }
+
+    fn pointer_look(&self, id: u64, x: f32, y: f32) -> Option<PointerLook> {
+        self.doc(id)?.pointer_look(x, y)
     }
 
     fn wheel(&mut self, id: u64, x: f32, y: f32, dy: f32, _shift: bool) -> bool {

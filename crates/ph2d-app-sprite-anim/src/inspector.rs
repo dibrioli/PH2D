@@ -20,9 +20,7 @@ use ph2d_inspector_ordering::queue_set;
 
 const ANIMATIONS: &str = "ph2d::ecs::SpriteAnimations";
 const ANIMATOR: &str = "ph2d::ecs::SpriteAnimator";
-/// ⚠️ **O único sink do índice de célula** — ver o doc de [`ph2d_ecs::sprite_anim`].
-/// Desde o ADR-0164 F1 passo 6 ele é o `SpriteGrid`, não a `Sprite`: a célula viva mudou-se
-/// para o componente da grelha que lhe dá sentido.
+/// ⚠️ O único sink do índice de célula: o `SpriteGrid` (ADR-0164 F1; ver [`ph2d_ecs::sprite_anim`]).
 const GRID: &str = "ph2d::ecs::SpriteGrid";
 
 /// A tag que este tocador aponta, se ela existir na biblioteca de hoje.
@@ -71,12 +69,8 @@ fn rewind_to_start(
     queue_set(queue, registry, entity_bits, GRID, &grid);
 }
 
-/// **Põe a cabeça de leitura numa célula**, fixando-a ao intervalo da animação em curso.
-///
-/// ⚠️ **O clamp é do COMMIT, e não do painel.** O painel deriva a célula do curso do slider contra
-/// o `progress()` do snapshot — que é de um quadro atrás. Entre o gesto e o commit alguém pode ter
-/// encolhido a grelha ou estreitado o intervalo, e uma célula fora dele fica **inalcançável** pelo
-/// `advance` (que só reposiciona o que já está fora, e à ponta de entrada — desfazendo o arrasto).
+/// **Põe a cabeça de leitura numa célula**, fixando-a ao intervalo da animação em curso. O clamp é do
+/// COMMIT: o snapshot do painel é de um quadro atrás, e a grelha pode ter encolhido entretanto.
 fn set_frame(
     world: &World,
     entity_bits: u64,
@@ -291,8 +285,7 @@ pub fn apply_anim_edit(
     match edit {
         AnimFieldEdit::Add => {
             let name = lib.next_free_name();
-            // A animação nova cobre a grelha inteira: é o que o artista vê e o que ele quase
-            // sempre quer estreitar depois. Um intervalo de uma célula não mostraria nada.
+            // A animação nova cobre a grelha inteira (uma célula só não mostraria nada).
             let cells = cells_of(world, entity);
             if let Err(e) = lib.insert(AnimationTag::new(name, 0, cells.saturating_sub(1))) {
                 return Some(Toast::error(tr_with(
@@ -363,10 +356,7 @@ pub fn apply_anim_edit(
                     &[("new_name", &new_name)],
                 )));
             }
-            // ⚠️ **Renomear leva junto tudo o que aponta pelo nome** — o tocador, a lista de quadros
-            // e os estados do personagem. Sem isto o `current` (ou o «Correr») apontaria para uma
-            // animação que já não existe, e a sprite pararia sem o artista ligar as duas coisas.
-            // Uma porta só: `ph2d_ecs::rename_tag` (biblioteca + lista + tocador).
+            // Renomear leva junto tudo o que aponta pelo nome, por uma porta só (`ph2d_ecs::rename_tag`).
             let old = lib.0.get(idx).map(|t| t.name.clone())?;
             let mut frames = world.get::<ph2d_ecs::SpriteAnimFrames>(entity).cloned();
             let mut player = world.get::<SpriteAnimator>(entity).cloned();
@@ -400,8 +390,7 @@ pub fn apply_anim_edit(
                 | AnimFieldEdit::SignalOnFinish(i, _)
                 | AnimFieldEdit::SignalOnLoop(i, _)
                 | AnimFieldEdit::FrameMsAt(i, _, _) => usize::from(*i),
-                // Tratados acima; o braço existe para o `match` não precisar de curinga, que
-                // engoliria em silêncio a próxima variante.
+                // Tratados acima; sem curinga, que engoliria a próxima variante.
                 _ => return None,
             };
             write_tag(lib.0.get_mut(idx)?, other);
@@ -424,9 +413,7 @@ fn write_tag(t: &mut AnimationTag, edit: &AnimFieldEdit) {
         // `0` no campo = repetir para sempre. O rótulo do campo di-lo.
         AnimFieldEdit::Repeat(_, v) => t.repeat = (*v > 0).then_some(*v),
         AnimFieldEdit::Direction(_, tag) => t.direction = AnimDirection::from_tag(*tag),
-        // ⚠️ **APARADO e CAPADO na porta**, e o cap é o mesmo do nome de uma tag: um nome de sinal
-        // vem do teclado, viaja num componente registado e entra no ficheiro do projeto. Espaço à
-        // volta é invisível no campo e faz o contrato **não casar** do outro lado.
+        // Aparado e capado na porta (o cap do nome de tag): espaço invisível não casaria do outro lado.
         AnimFieldEdit::SignalOnFinish(_, v) => {
             t.signal_on_finish = ph2d_anim_signals::clean_signal_name(v)
         }

@@ -4,6 +4,7 @@
 use super::{AnimDoc, Drag, Field, Layout, hit};
 use ph2d_ecs::{FRAME_MS_MAX, FRAME_MS_MIN, fps_of_ms};
 use ph2d_editor_core::AnimFieldEdit;
+use ph2d_editor_core::doc_surface::PointerLook;
 use ph2d_editor_core::zones::Rect;
 
 /// O multiplicador do quadro anda isto por pixel de scrub (os inteiros andam 1).
@@ -74,6 +75,13 @@ impl AnimDoc {
             return None;
         };
         Some(field)
+    }
+
+    /// A seta ↔ sobre uma letra que arrasta, e durante o arrasto (`None` = a shell decide).
+    #[must_use]
+    pub fn pointer_look(&self, x: f32, y: f32) -> Option<PointerLook> {
+        let pega = self.scrub_target(x, y).and_then(|f| self.scrub_law(&f));
+        (matches!(self.drag, Drag::Scrub(..)) || pega.is_some()).then_some(PointerLook::ResizeEw)
     }
 
     /// O Esc a meio do scrub: o valor do Down volta. `false` = não havia scrub.

@@ -103,3 +103,33 @@ fn o_multiplicador_do_quadro_anda_pela_letra() {
     mover(&mut m, (x + 5.0, y), Modifiers::default()); // LITERAL-PX-OK: cinco pixels
     assert_eq!(m.pending(), [AnimFieldEdit::FrameMsAt(0, 1, 150)]);
 }
+
+/// Dono, 07/11: «a seta do hover não apareceu». A ↔ sobre a letra e durante o arrasto, nunca no valor.
+/// *Mutação: `pointer_look` devolver sempre `None`.*
+#[test]
+fn a_letra_mostra_a_seta_de_arrastar() {
+    use ph2d_editor_core::doc_surface::PointerLook;
+    let mut m = Mesa::new();
+    let e = m.e;
+    let l = m.doc().layout.clone();
+    for r in [l.fps, l.cols, l.rows] {
+        let (x, y) = letra(r);
+        assert_eq!(m.docs().pointer_look(e, x, y), Some(PointerLook::ResizeEw));
+        let valor = (r.x + r.w - 2.0, y); // LITERAL-PX-OK: dentro da borda direita
+        assert_eq!(m.docs().pointer_look(e, valor.0, valor.1), None);
+    }
+    let (x, y) = letra(l.this_frame);
+    assert_eq!(
+        m.docs().pointer_look(e, x, y),
+        None,
+        "sem quadro escolhido não arrasta"
+    );
+    let (x, y) = pega(&mut m, l.cols);
+    let longe = (x + 200.0, y + 200.0); // LITERAL-PX-OK: a mão saiu da letra
+    mover(&mut m, longe, Modifiers::default());
+    assert_eq!(
+        m.docs().pointer_look(e, longe.0, longe.1),
+        Some(PointerLook::ResizeEw),
+        "a seta segue durante o arrasto"
+    );
+}

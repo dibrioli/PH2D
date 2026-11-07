@@ -102,7 +102,7 @@ impl crate::App {
                 importa_som: ph2d_app_components::sound_project::import_for_scene,
             };
             let jogador = ph2d_app_game::smoke::montar(cx.sim, portas, nivel).to_bits();
-            if let Some(hero) = cx.hero_screen.filter(|_| matches!(nivel, 2 | 4)) {
+            if let Some(hero) = cx.hero_screen.filter(|_| matches!(nivel, 2 | 4 | 5)) {
                 hero.gizmo.replace_selection(Some(jogador)); // o Inspector abre no personagem
                 hero.store
                     .set_collapsed(ph2d_sfx_scene::cartao_que_abre(), false);
@@ -437,6 +437,8 @@ impl crate::App {
     }
 }
 
+#[path = "janela_do_jogo_animado.rs"]
+mod animado_do_smoke;
 #[path = "janela_do_jogo_smoke.rs"]
 mod smoke;
 pub(crate) use smoke::chaves_da_camera;

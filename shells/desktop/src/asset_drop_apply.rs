@@ -255,6 +255,9 @@ impl crate::App {
                 Err(e) => eprintln!("[game-smoke] {path}: {e}"),
             }
         }
+        if nivel == ph2d_app_game::smoke::animado::CENA {
+            return self.veste_o_animado_do_smoke(&ids);
+        }
         let ids: Vec<[u8; 32]> = ids.iter().map(|i| *i.as_bytes()).collect();
         let mapa = gfx.atlas_asset_map.clone();
         let fabrica = |k: u32| mapa.get(&k).map(|a| *a.as_bytes());

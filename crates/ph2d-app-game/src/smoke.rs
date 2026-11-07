@@ -25,7 +25,7 @@ use ph2d_render::{
 use ph2d_script::{LuauScript, ProjectScripts};
 use std::sync::OnceLock;
 
-pub const CENAS: u32 = 4;
+pub const CENAS: u32 = 5;
 
 /// A cena 4 (plano 12): o nível 2 com duas imagens na biblioteca do projecto para trocar pelo Inspector — a
 /// folha do herói azul e os montes ao pôr do sol (`docs/GameEngineFuncional/ferramentas/arte_trocar.py`).
@@ -43,8 +43,16 @@ pub const IMAGENS_4: [&str; 2] = [
 /// As imagens que a cena `nivel` traz para a biblioteca.
 #[must_use]
 pub fn imagens_da_cena(nivel: u32) -> &'static [&'static str] {
-    if nivel == 4 { &IMAGENS_4 } else { &[] }
+    if matches!(nivel, 4 | 5) {
+        &IMAGENS_4
+    } else {
+        &[]
+    }
 }
+
+// A cena 5, a do Animated Sprite (ficha 02).
+#[path = "smoke_animado.rs"]
+pub mod animado;
 
 // As fotos do dono (`PH2D_GAME_SMOKE_FOTO`), irmãs pelo tecto de LOC.
 #[path = "smoke_foto.rs"]
@@ -162,6 +170,9 @@ pub fn conducao() -> Option<GameStage> {
 /// corre, salta para a plataforma baixa, sai a cair, aterra e pára — as quatro animações por esta ordem.
 #[must_use]
 pub fn gesto_no_quadro(nivel: u32, stage: GameStage, quadro: u32) -> Option<Gesto> {
+    if nivel == animado::CENA && quadro != 60 {
+        return animado::gesto_do_nivel_5(quadro);
+    }
     let horario: &[(u32, Gesto)] = match nivel {
         2 | 4 => &HORARIO_2,
         3 => &HORARIO_3,
@@ -283,6 +294,7 @@ pub fn montar(sim: &mut SimWorld, portas: Portas<'_>, nivel: u32) -> Entity {
             );
             jogador
         }
+        animado::CENA => animado::nivel_5(sim, portas),
         _ => nivel_1(sim.world_mut()),
     }
 }

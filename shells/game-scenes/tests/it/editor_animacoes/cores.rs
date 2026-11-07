@@ -148,3 +148,22 @@ fn o_tempo_e_o_corte_tem_molduras_separadas() {
         assert!(l.modes[0].y >= b.y + b.h, "o segmentado fica abaixo a {w}");
     }
 }
+
+/// Dono, 07/11: os números dos quadros ficam à vista em repouso, na tira e nas células da animação aberta.
+/// *Mutação: tirar o número de `paint_strip` ou de `paint_sheet`.*
+#[test]
+fn os_numeros_dos_quadros_ficam_na_tira_e_na_folha() {
+    let mut m = Mesa::new();
+    com_folha(&mut m);
+    let e = m.e;
+    let mut ts = TextSystem::without_system_fonts();
+    let mut scene = VectorScene::new();
+    let ((), medidos) = ph2d_editor_core::text_elide::elisao::medindo(|| {
+        m.docs()
+            .paint(e, AREA, &mut scene, &mut ts, &Theme::default());
+    });
+    for n in 1..=6 {
+        let vezes = medidos.iter().filter(|t| t.texto == n.to_string()).count();
+        assert!(vezes >= 2, "o {n} aparece na tira e na folha, leu {vezes}");
+    }
+}

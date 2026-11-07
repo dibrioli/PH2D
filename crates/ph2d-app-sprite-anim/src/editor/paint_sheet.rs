@@ -101,8 +101,7 @@ pub(super) fn paint_sheet(
             let n = Rect::new(r.x + r.w - w, top - ROW_H_PX, w, ROW_H_PX);
             paint_text_centered(text, scene, &plus, n, font, tom(ColorToken::Text1, theme));
         }
-        // A ordem numera-se só enquanto a mão escolhe: em repouso quem a mostra é a tira.
-        if doc.dragging_cells() && u.first() == Some(&doc.selected) {
+        if u.first() == Some(&doc.selected) {
             let order: Vec<String> = frames
                 .iter()
                 .enumerate()

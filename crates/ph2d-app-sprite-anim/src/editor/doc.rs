@@ -321,12 +321,6 @@ impl AnimDoc {
         }
     }
 
-    /// A mão está a escolher células na folha? É quando a ordem delas se numera.
-    #[must_use]
-    pub fn dragging_cells(&self) -> bool {
-        matches!(self.drag, Drag::Cells { .. })
-    }
-
     /// O arrasto de quadro em curso, se já passou o limiar.
     #[must_use]
     pub fn frame_drag(&self) -> Option<FrameDrag> {

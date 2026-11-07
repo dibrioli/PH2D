@@ -491,7 +491,6 @@ fn paint_list(
         } else {
             ColorToken::Text1
         };
-        // A amostra é a mesma cor das faixas da folha, e o número é quantos quadros a animação toca.
         let inset = Spacing::Sm.px();
         let side = font * SWATCH_OVER_FONT;
         let swatch = Rect::new(r.x + inset, r.y + (r.h - side) / 2.0, side, side);
@@ -525,7 +524,6 @@ fn paint_list(
             tom(ColorToken::Text2, theme),
         );
     }
-    // O botão claro, que se lê como botão e não como campo.
     for (r, key, visible) in [
         (l.add, "anim_editor.add", true),
         (l.split, "anim_editor.split_by_rows", l.split.w > 0.0),
@@ -604,6 +602,18 @@ fn paint_strip(
             let c = tom(ColorToken::Accent, theme);
             stroke_rounded_rect(scene, *thumb, radius, StrokeToken::Thick.px(), c);
         }
+        let n = (i + 1).to_string();
+        let c = tom(ColorToken::Text2, theme);
+        paint_text(
+            text,
+            scene,
+            &n,
+            thumb.x + Spacing::Sm.px(),
+            thumb.y,
+            font,
+            thumb.w,
+            c,
+        );
         let hovered = doc.hover.is_some_and(|(x, y)| {
             x >= thumb.x && x < thumb.x + thumb.w && y >= thumb.y && y < thumb.y + thumb.h
         });
@@ -632,7 +642,6 @@ fn paint_strip(
                 tom(cor, theme),
             );
         }
-        // O tempo próprio só se mostra quando existe: este quadro dura outra coisa que os irmãos.
         if (doc.frame_factor_at(i) - 1.0).abs() > f32::EPSILON {
             let badge = Rect::new(thumb.x, thumb.y + thumb.h - ROW_H_PX, thumb.w, ROW_H_PX);
             paint_text_centered(

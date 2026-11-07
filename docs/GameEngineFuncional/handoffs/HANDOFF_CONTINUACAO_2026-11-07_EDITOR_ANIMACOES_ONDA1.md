@@ -50,3 +50,5 @@ Dono, olhando a tela ao lado da maquete: «faltou capricho». A tela passou a us
 Dono, 07/11: Cols e Rows descem para a fila de campos do cartão de baixo (`four`; em aba estreita, dois a dois); a folha fica só com o título.
 
 Dono, 07/11: molduras separam o tempo (Frames/s, This frame) do corte (Cols, Rows), na lei do cartão Image: moldura em `Bg2`, campo em `Bg3`. Aba estreita: uma sobre a outra.
+
+Dono, 07/11: os números dos quadros voltam em repouso, na tira e nas células da animação aberta (revê o «só durante o arrasto» do acabamento). `os_numeros_dos_quadros_ficam_na_tira_e_na_folha`; as duas mutações sangraram.

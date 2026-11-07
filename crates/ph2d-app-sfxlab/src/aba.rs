@@ -4,6 +4,8 @@ use std::sync::Arc;
 
 use ph2d_ecs::StableId;
 use ph2d_editor_core::zones::Rect;
+use ph2d_sfx_explore::Exploracao;
+use ph2d_sfx_explore_tela::AlvoE;
 use ph2d_sfx_lab::aprovar::{EstadoDoAprovado, estado};
 use ph2d_sfx_recipe::{LayerId, Recipe, Takes};
 
@@ -30,12 +32,31 @@ pub enum Alvo {
     Item(Fonte),
     /// O item sem efeito: o clique fica nele e o motivo está escrito.
     ItemOff(Fonte),
+    /// O L da linha da camada.
+    Trava(LayerId),
+    /// A barra, a faixa Heard e a grade do Explore.
+    Ex(AlvoE),
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Gesto {
-    Inicio { id: LayerId, x0: f32, start0: f32 },
-    Ordem { id: LayerId },
+    Inicio {
+        id: LayerId,
+        x0: f32,
+        start0: f32,
+    },
+    Ordem {
+        id: LayerId,
+    },
+    /// Arrastando uma variação no Explore. `andou` = já não é um clique.
+    Filho {
+        i: usize,
+        x0: f32,
+        y0: f32,
+        t0: f64,
+        andou: bool,
+    },
+    Mudanca,
 }
 
 pub(crate) struct Aba {
@@ -76,6 +97,16 @@ pub(crate) struct Aba {
     pub pista: Rect,
     pub linhas: Rect,
     pub corpo: Rect,
+    pub ex: Exploracao,
+    /// O próximo toque é de um gesto de exploração: sai no mesmo volume.
+    pub quer_nivelado: bool,
+    pub so_kept: bool,
+    pub rolagem_heard: f32,
+    pub rolagem_heard_max: f32,
+    pub heard: Rect,
+    pub clique_anterior: Option<(u32, u128)>,
+    pub agora_ns: u128,
+    pub mao: (f32, f32),
 }
 
 impl Aba {
@@ -121,6 +152,15 @@ impl Aba {
             pista: nada,
             linhas: nada,
             corpo: nada,
+            ex: Exploracao::default(),
+            quer_nivelado: false,
+            so_kept: false,
+            rolagem_heard: 0.0,
+            rolagem_heard_max: 0.0,
+            heard: nada,
+            clique_anterior: None,
+            agora_ns: 0,
+            mao: (0.0, 0.0),
         };
         a.pede();
         a
@@ -212,7 +252,7 @@ impl Aba {
         self.pede();
     }
 
-    fn sobreviventes(&mut self) {
+    pub(crate) fn sobreviventes(&mut self) {
         let existe = |id: Option<LayerId>, r: &Recipe| id.filter(|i| r.layer(*i).is_some());
         self.sel = existe(self.sel, &self.receita);
         self.solo = existe(self.solo, &self.receita);
@@ -254,6 +294,14 @@ impl Aba {
     #[must_use]
     pub fn estado_do_aprovado(&self) -> EstadoDoAprovado {
         estado(&self.receita, self.pronto.as_ref().map(|f| &f.impressao))
+    }
+
+    #[must_use]
+    pub(crate) fn rect_de_ex(&self, alvo: AlvoE) -> Option<Rect> {
+        self.alvos
+            .iter()
+            .find(|(a, _)| *a == Alvo::Ex(alvo))
+            .map(|(_, r)| *r)
     }
 
     /// Px por segundo na pista.

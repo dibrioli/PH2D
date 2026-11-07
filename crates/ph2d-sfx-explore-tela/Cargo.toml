@@ -1,0 +1,24 @@
+[package]
+name = "ph2d-sfx-explore-tela"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O que a aba do som pinta da exploração: a barra, a faixa Heard e a grade do Explore.
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-sfx-explore = { path = "../ph2d-sfx-explore" }
+ph2d-sfx-lab = { path = "../ph2d-sfx-lab" }
+ph2d-sfx-recipe = { path = "../ph2d-sfx-recipe" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-vector = { path = "../ph2d-vector" }
+
+[lints]
+workspace = true

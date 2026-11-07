@@ -1,0 +1,30 @@
+[package]
+name = "ph2d-sfx-explore"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A exploração do SFX Lab, sem tela (`docs/SfxLab/05_W4_plano.md`).
+[dependencies]
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-det-math = { path = "../ph2d-det-math" }
+ph2d-sfx-dsp = { path = "../ph2d-sfx-dsp" }
+ph2d-sfx-lab = { path = "../ph2d-sfx-lab" }
+ph2d-sfx-recipe = { path = "../ph2d-sfx-recipe" }
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+tracing = "0.1"
+
+[dev-dependencies]
+ph2d-audio = { path = "../ph2d-audio" }
+
+[[test]]
+name = "it"
+path = "tests/it/main.rs"
+
+[lints]
+workspace = true

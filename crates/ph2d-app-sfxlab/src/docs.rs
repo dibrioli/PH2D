@@ -104,9 +104,21 @@ impl SfxLabDocs {
                 && let Some(f) = &a.pronto
             {
                 a.quer_tocar = false;
+                let nivelado = std::mem::take(&mut a.quer_nivelado) || a.ex.aberta();
+                let buffer = if nivelado { &f.nivelada } else { &f.escuta };
                 if let Some(e) = escuta.as_deref_mut() {
-                    e.toca(crate::escuta::som(&f.escuta, a.cursor));
+                    e.toca(crate::escuta::som(buffer, a.cursor));
+                    if a.solo.is_none() {
+                        let como = a.ex.sessao.como(&a.receita);
+                        a.ex.sessao.ouviu(&a.receita, como);
+                    }
                 }
+            }
+            let (em_gesto, takes) = (a.hist.em_gesto(), a.takes.clone());
+            if let Some(som) = a.ex.serve(&a.receita, em_gesto, &takes)
+                && let Some(e) = escuta.as_deref_mut()
+            {
+                e.toca(crate::escuta::som(&som, 0.0));
             }
         }
         if std::mem::take(&mut self.parar)
@@ -150,6 +162,10 @@ impl SfxLabDocs {
                 (Some(e), Some(w)) if e != w => a.adota(w.clone()),
                 _ => {}
             }
+            let do_mundo = lib.ouvidos.get(&a.nome).map_or(&[][..], Vec::as_slice);
+            if !a.ex.sessao.sujo && a.ex.sessao.difere_de(do_mundo) {
+                a.ex.sessao.adota(do_mundo.to_vec());
+            }
         }
         for id in sumiram {
             self.fecha(id);
@@ -169,9 +185,31 @@ impl SfxLabDocs {
             }
             a.escrita = Some(a.receita.clone());
         }
+        for a in self.abas.iter_mut().filter(|a| a.ex.sessao.sujo) {
+            if !world.contains_resource::<SfxLibrary>() {
+                world.insert_resource(SfxLibrary::default());
+            }
+            if let Some(mut lib) = world.get_resource_mut::<SfxLibrary>() {
+                lib.ouvidos
+                    .insert(a.nome.clone(), a.ex.sessao.ouvidos.clone());
+            }
+            a.ex.sessao.sujo = false;
+        }
     }
 
     // ── O que os testes e a tela do passo 4 leem ──
+
+    /// A exploração da aba.
+    #[must_use]
+    pub fn exploracao(&self, id: u64) -> Option<&ph2d_sfx_explore::Exploracao> {
+        self.aba(id).map(|a| &a.ex)
+    }
+
+    /// O filtro «Kept» da faixa Heard.
+    #[must_use]
+    pub fn so_kept(&self, id: u64) -> bool {
+        self.aba(id).is_some_and(|a| a.so_kept)
+    }
 
     #[must_use]
     pub fn ids(&self) -> Vec<u64> {

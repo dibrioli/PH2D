@@ -687,7 +687,7 @@ fn projeto_salvo_e_aberto_mantem_o_aprovado() {
 
     let blob_lab = ph2d_sfx_recipe::project::save(&m.mundo);
     let blob_sons = m.mundo.resource::<ProjectSounds>().to_bytes();
-    assert_eq!(blob_lab[8], 2, "o blob não é o v2");
+    assert_eq!(blob_lab[8], 3, "o blob não é o v3");
 
     let mut aberta = Mesa::nova();
     let lib = ph2d_sfx_recipe::project::open(&blob_lab).expect("blob");

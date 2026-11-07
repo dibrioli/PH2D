@@ -6214,6 +6214,8 @@ dependencies = [
  "ph2d-panel-hierarchy",
  "ph2d-panel-sfxlab",
  "ph2d-sfx-dsp",
+ "ph2d-sfx-explore",
+ "ph2d-sfx-explore-tela",
  "ph2d-sfx-lab",
  "ph2d-sfx-recipe",
  "ph2d-sfx-scene",
@@ -7682,9 +7684,11 @@ dependencies = [
  "ph2d-panel-inspector",
  "ph2d-panel-sfxlab",
  "ph2d-sfx-dsp",
+ "ph2d-sfx-explore",
  "ph2d-sfx-lab",
  "ph2d-sfx-recipe",
  "ph2d-text",
+ "ph2d-tool-registry",
  "ph2d-ui-testkit",
  "ph2d-vector",
 ]
@@ -10717,6 +10721,34 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-sfx-explore"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-audio",
+ "ph2d-det-math",
+ "ph2d-sfx-dsp",
+ "ph2d-sfx-lab",
+ "ph2d-sfx-recipe",
+ "ph2d-tool-registry",
+ "tracing",
+]
+
+[[package]]
+name = "ph2d-sfx-explore-tela"
+version = "0.0.0"
+dependencies = [
+ "ph2d-editor-core",
+ "ph2d-i18n",
+ "ph2d-sfx-explore",
+ "ph2d-sfx-lab",
+ "ph2d-sfx-recipe",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-sfx-lab"
 version = "0.0.0"
 dependencies = [
@@ -10724,6 +10756,7 @@ dependencies = [
  "ph2d-audio",
  "ph2d-audio-encode",
  "ph2d-audio-spectral",
+ "ph2d-det-math",
  "ph2d-ecs",
  "ph2d-sfx-dsp",
  "ph2d-sfx-recipe",

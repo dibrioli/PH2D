@@ -18,6 +18,8 @@ pub use compressor::Compressor;
 pub use delay::Delay;
 pub use envelope::{Adsr, AdsrParams, AdsrStage};
 pub use gain::SmoothGain;
-pub use loudness::{LoudnessMeter, SILENCE_LUFS, integrated_lufs, lufs_from_mean_square};
+pub use loudness::{
+    LoudnessMeter, SILENCE_LUFS, integrated_lufs, lufs_from_mean_square, maior_momento,
+};
 pub use pan::equal_power_pan;
 pub use reverb::Reverb;

@@ -24,7 +24,7 @@ pub type Raiz = fn(&mut SimWorld, &str) -> u64;
 /// A variável e os níveis.
 pub const ROUTER: ph2d_app_host::SmokeRouter = ph2d_app_host::SmokeRouter {
     env: "PH2D_SFX_SMOKE",
-    max_level: 4,
+    max_level: 6,
 };
 
 /// O nível do jogo de plataforma sobre o qual a cena monta.
@@ -35,6 +35,10 @@ pub const NIVEL_RECEITAS: u32 = 2;
 pub const NIVEL_ABA: u32 = 3;
 /// A mesma cena, com a janela do Use in Game aberta.
 pub const NIVEL_JANELA: u32 = 4;
+/// A aba em «Impact», com a primeira camada travada: Roll, Mutate, Keep, Next, Heard.
+pub const NIVEL_EXPLORA: u32 = 5;
+/// A mesma, com o Explore aberto.
+pub const NIVEL_GRADE: u32 = 6;
 /// O objeto sem som da cena da aba, à espera do Use in Game.
 pub const SEM_SOM: &str = "Crate";
 /// O objeto dos três sons: o que se seleciona na Hierarchy.

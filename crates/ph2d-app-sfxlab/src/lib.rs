@@ -6,6 +6,7 @@
 mod aba;
 mod docs;
 mod escuta;
+mod explorar;
 mod gestos;
 mod jogo;
 mod metrics;
@@ -18,6 +19,8 @@ pub use aba::Alvo;
 pub use docs::SfxLabDocs;
 pub use escuta::Escuta;
 pub use jogo::pede_som_para;
+pub use ph2d_sfx_explore::{FILHOS, TAMANHO_MUTATE, TAMANHO_ROLL};
+pub use ph2d_sfx_explore_tela::AlvoE;
 pub use ph2d_sfx_lab::aprovar;
 pub use ph2d_sfx_lab::historia::MAX_PASSOS;
 pub use ph2d_sfx_lab::job::{COLUNAS_DA_ONDA, Feito, Onda, Pedido, RenderJob};
@@ -45,6 +48,9 @@ pub fn service(hero: &mut HeroScreen, world: &mut World, escuta: Option<&mut dyn
     }
     if nivel == Some(ph2d_sfx_scene::NIVEL_JANELA) {
         docs.abre_a_janela_da_cena();
+    }
+    if nivel == Some(ph2d_sfx_scene::NIVEL_GRADE) {
+        docs.abre_a_grade_da_cena();
     }
     let ativa = ponte::aba_ativa(hero);
     ponte::vaga(hero, ativa.is_some());

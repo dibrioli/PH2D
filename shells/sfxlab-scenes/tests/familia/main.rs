@@ -1,6 +1,7 @@
 //! A COSTURA hero → aba do SFX Lab, sem placa: o menu pelo `apply_event`, o rato pelo `board_view`, o teclado pelo
 //! `board_keys`, o desfazer pelo `surface_input::undo`. Cada quadro corre como a shell: `service`, `follow_surfaces`, pintar.
 
+mod explorar;
 mod gestos;
 mod render;
 

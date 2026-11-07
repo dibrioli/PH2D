@@ -58,6 +58,8 @@ pub struct Feito {
     pub pcm: Pcm,
     /// O som como se ouve: com o solo e o limitador.
     pub escuta: Vec<f32>,
+    /// O mesmo som, no volume em que todo sorteio se ouve.
+    pub nivelada: Vec<f32>,
     pub mix: Onda,
     pub camadas: BTreeMap<LayerId, Onda>,
     /// O que os medidores mostram: o arquivo, sem limitador nem solo.
@@ -160,6 +162,7 @@ fn rende(
         None => pcm.clone(),
     };
     let escuta = limitar_escuta(&ouvida.samples, ouvida.rate);
+    let nivelada = medidor::escuta_nivelada(&ouvida.samples, ouvida.rate);
     if cancelado() {
         return Err(RenderError::Cancelled);
     }
@@ -177,6 +180,7 @@ fn rende(
         medida,
         impressao,
         escuta,
+        nivelada,
         pcm,
     })
 }

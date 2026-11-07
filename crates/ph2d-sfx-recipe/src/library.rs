@@ -9,7 +9,9 @@ use serde::{Deserialize, Serialize};
 use crate::{Envelope, Layer, LayerId, Recipe, Source, Take, Takes};
 
 const MAGIC: &[u8; 8] = b"PH2DSFXL";
-const VERSAO: u8 = 2;
+const VERSAO: u8 = 3;
+/// W3, antes das travas, de `Layer::variacao` e da lista dos ouvidos.
+const VERSAO_SEM_TRAVAS: u8 = 2;
 /// W2, antes de `Layer::muted` e `Recipe::approved`.
 const VERSAO_SEM_MUDO: u8 = 1;
 
@@ -18,6 +20,26 @@ const VERSAO_SEM_MUDO: u8 = 1;
 pub struct SfxLibrary {
     pub recipes: BTreeMap<String, Recipe>,
     pub takes: Takes,
+    /// O que o artista ouviu em cada som, do mais velho ao mais novo. A lista não entra no desfazer: desfazer não apaga o que se ouviu.
+    pub ouvidos: BTreeMap<String, Vec<Ouvido>>,
+}
+
+/// Como um som ouvido nasceu: é o que a lista mostra, no lugar de uma semente.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Como {
+    Mao,
+    Roll(u64),
+    Mutate(u64),
+    Variacao(u64),
+}
+
+/// Uma linha da lista Heard. A receita não guarda áudio: uma gravação é só o endereço do material, que é imutável.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct Ouvido {
+    pub receita: Recipe,
+    pub como: Como,
+    /// O artista apertou Keep.
+    pub estrela: bool,
 }
 
 /// O blob não é uma biblioteca legível.
@@ -34,12 +56,68 @@ impl std::fmt::Display for LibraryBlobError {
 struct Escrita<'a> {
     recipes: Vec<(&'a str, &'a Recipe)>,
     takes: Vec<(u32, u16, &'a [f32])>,
+    ouvidos: Vec<(&'a str, &'a [Ouvido])>,
 }
 
 #[derive(Deserialize)]
 struct Lida<R> {
     recipes: Vec<(String, R)>,
     takes: Vec<(u32, u16, Vec<f32>)>,
+}
+
+#[derive(Deserialize)]
+struct LidaAtual {
+    recipes: Vec<(String, Recipe)>,
+    takes: Vec<(u32, u16, Vec<f32>)>,
+    ouvidos: Vec<(String, Vec<Ouvido>)>,
+}
+
+/// O formato congelado da versão 2.
+#[derive(Deserialize)]
+struct RecipeV2 {
+    seed: u64,
+    engine: u32,
+    seconds: f32,
+    layers: Vec<LayerV2>,
+    next_layer: u64,
+    approved: Option<crate::Approved>,
+}
+
+#[derive(Deserialize)]
+struct LayerV2 {
+    id: LayerId,
+    gain: f32,
+    start: f32,
+    muted: bool,
+    source: Source,
+    envelope: Envelope,
+}
+
+impl From<RecipeV2> for Recipe {
+    fn from(r: RecipeV2) -> Self {
+        Self {
+            seed: r.seed,
+            engine: r.engine,
+            seconds: r.seconds,
+            layers: r
+                .layers
+                .into_iter()
+                .map(|l| Layer {
+                    id: l.id,
+                    gain: l.gain,
+                    start: l.start,
+                    muted: l.muted,
+                    source: l.source,
+                    envelope: l.envelope,
+                    variacao: 0,
+                    travada: false,
+                    travas: Vec::new(),
+                })
+                .collect(),
+            next_layer: r.next_layer,
+            approved: r.approved,
+        }
+    }
 }
 
 /// O formato congelado da versão 1: postcard é posicional, e o campo novo não pode aparecer na leitura dele.
@@ -77,6 +155,9 @@ impl From<RecipeV1> for Recipe {
                     muted: false,
                     source: l.source,
                     envelope: l.envelope,
+                    variacao: 0,
+                    travada: false,
+                    travas: Vec::new(),
                 })
                 .collect(),
             next_layer: r.next_layer,
@@ -85,18 +166,19 @@ impl From<RecipeV1> for Recipe {
     }
 }
 
-fn le_corpo<R>(corpo: &[u8]) -> Result<Lida<Recipe>, LibraryBlobError>
+fn le_antigo<R>(corpo: &[u8]) -> Result<LidaAtual, LibraryBlobError>
 where
     R: for<'de> Deserialize<'de> + Into<Recipe>,
 {
     let lida: Lida<R> = postcard::from_bytes(corpo).map_err(|e| LibraryBlobError(e.to_string()))?;
-    Ok(Lida {
+    Ok(LidaAtual {
         recipes: lida
             .recipes
             .into_iter()
             .map(|(n, r)| (n, r.into()))
             .collect(),
         takes: lida.takes,
+        ouvidos: Vec::new(),
     })
 }
 
@@ -111,6 +193,9 @@ impl SfxLibrary {
             recipes: self.recipes.iter().map(|(n, r)| (n.as_str(), r)).collect(),
             takes: (self.takes.iter())
                 .map(|t| (t.rate, t.channels, &*t.samples))
+                .collect(),
+            ouvidos: (self.ouvidos.iter())
+                .map(|(n, v)| (n.as_str(), v.as_slice()))
                 .collect(),
         };
         let mut out = MAGIC.to_vec();
@@ -134,8 +219,9 @@ impl SfxLibrary {
             .split_first()
             .ok_or_else(|| LibraryBlobError("sound recipe library without a version".into()))?;
         let lida = match versao {
-            VERSAO => le_corpo::<Recipe>(corpo)?,
-            VERSAO_SEM_MUDO => le_corpo::<RecipeV1>(corpo)?,
+            VERSAO => postcard::from_bytes(corpo).map_err(|e| LibraryBlobError(e.to_string()))?,
+            VERSAO_SEM_TRAVAS => le_antigo::<RecipeV2>(corpo)?,
+            VERSAO_SEM_MUDO => le_antigo::<RecipeV1>(corpo)?,
             _ => {
                 return Err(LibraryBlobError(format!(
                     "sound recipe library version {versao}, this app reads up to {VERSAO}"
@@ -149,6 +235,12 @@ impl SfxLibrary {
         }
         for (rate, channels, samples) in lida.takes {
             out.takes.add(Take::new(rate, channels, samples));
+        }
+        for (nome, mut lista) in lida.ouvidos {
+            for o in &mut lista {
+                o.receita.sanitize();
+            }
+            out.ouvidos.insert(nome, lista);
         }
         Ok(out)
     }
@@ -167,6 +259,42 @@ mod tests {
             lib.recipes.insert(n.into(), r);
         }
         lib
+    }
+
+    /// Bytes gravados pelo código de W3, antes das travas e dos ouvidos. Nunca se regrava.
+    #[test]
+    fn blob_v2_abre_na_v3() {
+        let lida = SfxLibrary::from_bytes(include_bytes!("fixtures/library_v2.bin")).unwrap();
+        assert_eq!(lida.recipes.len(), crate::factory::all().len() + 1);
+        assert!(lida.ouvidos.is_empty());
+        let impact = &lida.recipes["Impact"];
+        assert!(impact.layers[0].muted, "o mudo da v2 sobrevive");
+        assert_eq!(impact.approved.as_ref().map(|a| a.blake3), Some([7; 32]));
+        let de_fabrica = crate::factory::all()
+            .into_iter()
+            .find(|(n, _)| *n == "Metal Hit")
+            .unwrap()
+            .1;
+        assert_eq!(lida.recipes["Metal Hit"], de_fabrica);
+    }
+
+    #[test]
+    fn travas_e_ouvidos_voltam_iguais_do_arquivo() {
+        let mut lib = cheia();
+        let mut r = lib.recipes["Impact"].clone();
+        r.layers[0].travada = true;
+        r.layers[1].travas = vec![42, 43];
+        r.layers[1].variacao = 9;
+        lib.recipes.insert("Impact".into(), r.clone());
+        lib.ouvidos.insert(
+            "Impact".into(),
+            vec![Ouvido {
+                receita: r,
+                como: Como::Roll(12),
+                estrela: true,
+            }],
+        );
+        assert_eq!(SfxLibrary::from_bytes(&lib.to_bytes()).unwrap(), lib);
     }
 
     /// Bytes gravados pelo código de W2, antes de `muted` e `approved` existirem. Nunca se regrava.

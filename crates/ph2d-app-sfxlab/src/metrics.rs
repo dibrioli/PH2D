@@ -32,7 +32,6 @@ pub(crate) const HANDLE_W: f32 = 14.0;
 pub(crate) const HANDLE_LINE: f32 = 1.5;
 pub(crate) const HANDLE_STEP: f32 = 4.0;
 pub(crate) const TOGGLE: f32 = 24.0;
-pub(crate) const WAVE_PAD: f32 = 3.0;
 
 pub(crate) const ADD_H: f32 = 32.0;
 pub(crate) const MENU_ROW_H: f32 = 28.0;

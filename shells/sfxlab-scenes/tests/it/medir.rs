@@ -152,3 +152,161 @@ fn medir_latencia_e_limitador() {
     }
     println!("edição (M) até o som tocável, 2 s, com os quadros da tela: {melhor:.2} ms");
 }
+
+/// O lote da W4 (`docs/SfxLab/05_W4_plano.md` §6), com o sorteio de verdade.
+/// `cargo test --profile smoke -p ph2d-host-sfxlab-scenes --test it medir_exploracao -- --ignored --nocapture --test-threads=1`
+#[test]
+#[ignore = "sonda: mede, não reprova"]
+fn medir_exploracao() {
+    use ph2d_sfx_explore::{Exploracao, FILHOS, Sessao, TAMANHO_MUTATE, TAMANHO_ROLL, varia};
+    use ph2d_sfx_recipe::{Body, Como, ModeLaw, Source, Takes, factory};
+    use std::sync::Arc;
+
+    let takes = Arc::new(Takes::default());
+    let ms = |t: Instant| t.elapsed().as_secs_f64() * 1e3;
+    let minimo = |v: &[f64]| v.iter().copied().fold(f64::INFINITY, f64::min);
+    let oito = |base: &Recipe, tamanho: f64| {
+        let mut x = Exploracao::default();
+        let t = Instant::now();
+        x.semeia(base, tamanho, &takes);
+        loop {
+            let _ = x.serve(base, false, &takes);
+            if x.grade
+                .as_ref()
+                .is_some_and(|g| g.filhos.iter().all(Option::is_some))
+            {
+                return ms(t);
+            }
+            std::thread::yield_now();
+        }
+    };
+    println!(
+        "== oito variações, do pedido à última pronta, ms (mínimo de {BLOCOS} intercalado; varia real, com medida e limitador)"
+    );
+    for (nome, base) in factory::all() {
+        let (mut a, mut b) = (vec![], vec![]);
+        for bloco in 0..BLOCOS {
+            if bloco % 2 == 0 {
+                a.push(oito(&base, TAMANHO_MUTATE));
+                b.push(oito(&base, TAMANHO_ROLL));
+            } else {
+                b.push(oito(&base, TAMANHO_ROLL));
+                a.push(oito(&base, TAMANHO_MUTATE));
+            }
+        }
+        println!(
+            "{nome:<14} Mutate {:>7.2}   Roll {:>7.2}",
+            minimo(&a),
+            minimo(&b)
+        );
+    }
+
+    let mut pior = Recipe::new(1, 120.0);
+    pior.add(
+        1.0,
+        Source::Body(Body {
+            law: ModeLaw::Bar,
+            base_hz: 20.0,
+            modes: 1080,
+            t60: 60.0,
+            damping: 0.0,
+            rolloff: 0.5,
+            contact_ms: 1.0,
+            noise: 0.5,
+        }),
+        Envelope::default(),
+    );
+    let t = oito(&pior, TAMANHO_MUTATE);
+    println!("pior corpo de 120 s: {t:.0} ms até a oitava");
+
+    let pico = || {
+        std::fs::read_to_string("/proc/self/status")
+            .ok()
+            .and_then(|s| {
+                s.lines()
+                    .find(|l| l.starts_with("VmHWM"))
+                    .and_then(|l| l.split_whitespace().nth(1)?.parse::<u64>().ok())
+            })
+            .unwrap_or(0)
+    };
+    let antes = pico();
+    let mut oito_camadas = Recipe::new(1, 120.0);
+    for _ in 0..8 {
+        oito_camadas.add(
+            0.1,
+            Source::Noise(ph2d_sfx_recipe::Noise {
+                filter: NoiseFilter::Band,
+                hz: 800.0,
+                hz_end: 800.0,
+                q: 1.0,
+            }),
+            Envelope::default(),
+        );
+    }
+    let t = oito(&oito_camadas, TAMANHO_MUTATE);
+    println!(
+        "8 camadas × 120 s: {t:.0} ms; memória de pico do processo subiu {} MB (a sonda já tinha {} MB)",
+        (pico() - antes) / 1024,
+        antes / 1024
+    );
+
+    let impact = factory::all()
+        .into_iter()
+        .find(|(n, _)| *n == "Impact")
+        .expect("Impact")
+        .1;
+    for n in [1_000usize, 10_000] {
+        let mut s = Sessao::default();
+        for i in 0..n as u64 {
+            s.ouvidos.push(ph2d_sfx_recipe::Ouvido {
+                receita: varia(&impact, i + 1, TAMANHO_MUTATE),
+                como: Como::Roll(i + 1),
+                estrela: false,
+            });
+        }
+        let (mut novo, mut copia) = (vec![], vec![]);
+        for i in 0..BLOCOS as u64 {
+            let t = Instant::now();
+            s.ouviu(&varia(&impact, 1_000_000 + i, TAMANHO_MUTATE), Como::Mao);
+            novo.push(ms(t));
+            let t = Instant::now();
+            black_box(s.ouvidos.clone());
+            copia.push(ms(t));
+        }
+        println!(
+            "Heard {n}: entrar uma linha {:.3} ms · copiar para o mundo {:.3} ms",
+            minimo(&novo),
+            minimo(&copia)
+        );
+    }
+
+    let mut m = Mesa::nova();
+    let id = m.abre("Impact", impact);
+    let quadros = |m: &mut Mesa| {
+        let t = Instant::now();
+        for _ in 0..QUADROS_POR_BLOCO {
+            m.quadro();
+        }
+        ms(t) / QUADROS_POR_BLOCO as f64
+    };
+    let (mut normal, mut grade) = (vec![], vec![]);
+    for _ in 0..BLOCOS {
+        normal.push(quadros(&mut m));
+        assert_eq!(FILHOS, 8);
+        let k = ph2d_editor_core::screens::hero::board_keys::BoardKey::Tab;
+        let mods = ph2d_host::Modifiers::default();
+        let (h, ts) = (&mut m.hero, &mut m.ts);
+        let _ = ph2d_editor_core::screens::hero::board_keys::key(h, ts, k, mods, true, None, None);
+        while m.docs().exploracao(id).expect("aba").em_voo() {
+            m.quadro();
+        }
+        grade.push(quadros(&mut m));
+        let (h, ts) = (&mut m.hero, &mut m.ts);
+        let _ = ph2d_editor_core::screens::hero::board_keys::key(h, ts, k, mods, true, None, None);
+    }
+    println!(
+        "quadro da tela, CPU: normal {:.3} ms · Explore {:.3} ms",
+        minimo(&normal),
+        minimo(&grade)
+    );
+}

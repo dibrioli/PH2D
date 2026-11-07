@@ -9,11 +9,12 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_object_picker::Textos;
 use ph2d_panel_sfxlab::{medidor, nome_da_camada};
+use ph2d_sfx_explore_tela::AlvoE;
 use ph2d_sfx_lab::aprovar::EstadoDoAprovado;
 use ph2d_sfx_recipe::{Layer, LayerId};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken as T, Theme};
-use ph2d_vector::{Affine, BezPath, Brush, Color, VectorScene};
+use ph2d_vector::{Color, VectorScene};
 
 use crate::aba::{Aba, Alvo, Gesto};
 use crate::metrics as m;
@@ -74,15 +75,58 @@ pub(crate) fn aba(
     a.corpo = Rect::new(area.x, area.y, area.w, fundo - area.y);
     let corpo = a.corpo;
     let esquerda = corpo.x + m::PAD;
+    let fundo_todo = fundo;
+    let fundo = (fundo - ph2d_sfx_explore_tela::HEARD_H - m::GAP).max(corpo.y);
     let x_pista = esquerda + m::STACK_W + m::GAP;
     let x_medidor = corpo.x + corpo.w - m::PAD - medidor::LARGURA;
     let w_pista = (x_medidor - m::GAP - x_pista).max(1.0);
 
     barra(a, &mut p, corpo);
 
-    let y_regua = corpo.y + m::BAR_H;
+    exploracao(
+        a,
+        &mut p,
+        Rect::new(
+            corpo.x,
+            corpo.y + m::BAR_H,
+            corpo.w,
+            ph2d_sfx_explore_tela::BARRA_H,
+        ),
+    );
+    a.heard = Rect::new(
+        esquerda,
+        fundo + m::GAP,
+        corpo.w - 2.0 * m::PAD,
+        (fundo_todo - fundo - m::GAP - m::PAD).max(0.0),
+    );
+    faixa_heard(a, &mut p);
+    let y_regua = corpo.y + m::BAR_H + ph2d_sfx_explore_tela::BARRA_H;
     let regua_r = Rect::new(x_pista, y_regua, w_pista, m::RULER_H);
     a.pista = Rect::new(x_pista, y_regua, w_pista, fundo - y_regua);
+    medidor::pinta(
+        a.pronto.as_ref().map(|f| &f.medida),
+        Rect::new(x_medidor, y_regua, medidor::LARGURA, fundo - y_regua),
+        p.scene,
+        p.ts,
+        theme,
+    );
+    if a.ex.aberta() {
+        a.pista = Rect::new(x_pista, y_regua, w_pista, fundo - y_regua);
+        grade_do_explore(
+            a,
+            &mut p,
+            Rect::new(
+                esquerda,
+                y_regua,
+                x_medidor - m::GAP - esquerda,
+                fundo - y_regua,
+            ),
+        );
+        if a.janela.is_some() {
+            janela(a, &mut p, corpo);
+        }
+        return;
+    }
     a.alvos.push((Alvo::Regua, regua_r));
 
     let y_mix = y_regua + m::RULER_H + m::ROW_GAP;
@@ -100,13 +144,6 @@ pub(crate) fn aba(
         h_linhas,
     );
 
-    medidor::pinta(
-        a.pronto.as_ref().map(|f| &f.medida),
-        Rect::new(x_medidor, y_regua, medidor::LARGURA, fundo - y_regua),
-        p.scene,
-        p.ts,
-        theme,
-    );
     regua(a, &mut p, regua_r);
     mix(
         a,
@@ -139,6 +176,65 @@ pub(crate) fn aba(
     if a.janela.is_some() {
         janela(a, &mut p, corpo);
     }
+}
+
+fn hover_ex(a: &Aba) -> Option<AlvoE> {
+    match a.hover {
+        Some(Alvo::Ex(e)) => Some(e),
+        _ => None,
+    }
+}
+
+fn poe_alvos(a: &mut Aba, novos: ph2d_sfx_explore_tela::Alvos) {
+    a.alvos
+        .extend(novos.into_iter().map(|(e, r)| (Alvo::Ex(e), r)));
+}
+
+fn exploracao(a: &mut Aba, p: &mut P<'_>, r: Rect) {
+    let b = ph2d_sfx_explore_tela::Barra {
+        como: a.ex.sessao.como(&a.receita),
+        lock_ativo: a.sel.is_some(),
+        nivelado: a.ex.aberta() || a.ex.sessao.como(&a.receita) != ph2d_sfx_recipe::Como::Mao,
+    };
+    let mut novos = Vec::new();
+    ph2d_sfx_explore_tela::barra(&b, r, hover_ex(a), &mut novos, p.scene, p.ts, p.theme);
+    poe_alvos(a, novos);
+}
+
+fn faixa_heard(a: &mut Aba, p: &mut P<'_>) {
+    let f = ph2d_sfx_explore_tela::Faixa {
+        so_kept: a.so_kept,
+        rolagem: a.rolagem_heard,
+    };
+    let mut novos = Vec::new();
+    a.rolagem_heard_max = ph2d_sfx_explore_tela::heard(
+        &a.ex,
+        &f,
+        a.heard,
+        hover_ex(a),
+        &mut novos,
+        p.scene,
+        p.ts,
+        p.theme,
+    );
+    a.rolagem_heard = a.rolagem_heard.min(a.rolagem_heard_max);
+    poe_alvos(a, novos);
+}
+
+fn grade_do_explore(a: &mut Aba, p: &mut P<'_>, r: Rect) {
+    let arrasto = match a.gesto {
+        Some(Gesto::Filho { i, andou: true, .. }) => Some((i, a.mao.0, a.mao.1)),
+        _ => None,
+    };
+    let v = ph2d_sfx_explore_tela::VistaGrade {
+        atual: a.pronto.as_ref().map(|f| &f.mix),
+        arrasto,
+    };
+    let mut novos = Vec::new();
+    if let Some(g) = a.ex.grade.as_ref() {
+        ph2d_sfx_explore_tela::grade(g, &v, r, hover_ex(a), &mut novos, p.scene, p.ts, p.theme);
+    }
+    poe_alvos(a, novos);
 }
 
 /// A janela do Use in Game: o que está por baixo deixa de ser alvo.
@@ -370,7 +466,7 @@ fn linha(a: &mut Aba, p: &mut P<'_>, l: &Layer, x: f32, y: f32) {
 
     let cor_nome = if l.muted { T::Text3 } else { T::Text1 };
     let x_nome = alca.x + alca.w + m::GAP;
-    let ate = x + m::STACK_W - 2.0 * (m::TOGGLE + m::ROW_GAP) - m::GAP;
+    let ate = x + m::STACK_W - 3.0 * (m::TOGGLE + m::ROW_GAP) - m::GAP;
     let nome = nome_da_camada(&a.receita, l);
     p.texto(
         &nome,
@@ -388,6 +484,16 @@ fn linha(a: &mut Aba, p: &mut P<'_>, l: &Layer, x: f32, y: f32) {
         m::TOGGLE,
     );
     let mu = Rect::new(s.x - m::ROW_GAP - m::TOGGLE, y_t, m::TOGGLE, m::TOGGLE);
+    let tr_l = Rect::new(mu.x - m::ROW_GAP - m::TOGGLE, y_t, m::TOGGLE, m::TOGGLE);
+    alterna(
+        a,
+        p,
+        Alvo::Trava(l.id),
+        tr("sfxlab.layer.lock"),
+        tr_l,
+        l.travada,
+        T::Accent,
+    );
     alterna(
         a,
         p,
@@ -459,39 +565,9 @@ fn arrastando(a: &Aba, id: LayerId) -> bool {
     matches!(a.gesto, Some(Gesto::Inicio { id: g, .. }) if g == id)
 }
 
-/// A onda fixa reamostrada para o retângulo: um par mínimo-máximo por px.
 fn onda(p: &mut P<'_>, o: &Onda, r: Rect, ganho: f32, t: T) {
-    let n = o.colunas.len();
-    let px = r.w.floor() as usize;
-    if n == 0 || px == 0 {
-        return;
-    }
-    let meio = r.y + r.h / 2.0;
-    let meia = (r.h / 2.0 - m::WAVE_PAD).max(0.0);
-    let nos: Vec<[f32; 2]> = (0..px)
-        .map(|i| {
-            let (de, ate) = (i * n / px, ((i + 1) * n / px).max(i * n / px + 1).min(n));
-            o.colunas[de.min(n - 1)..ate]
-                .iter()
-                .fold([f32::INFINITY, f32::NEG_INFINITY], |[a, b], c| {
-                    [a.min(c[0]), b.max(c[1])]
-                })
-        })
-        .collect();
-    let y = |v: f32| f64::from(meio - (v * ganho).clamp(-1.0, 1.0) * meia);
-    let mut path = BezPath::new();
-    let x = |i: usize| f64::from(r.x) + i as f64;
-    path.move_to((x(0), y(nos[0][1])));
-    for (i, c) in nos.iter().enumerate() {
-        path.line_to((x(i), y(c[1]) - f64::from(m::STROKE) / 2.0));
-    }
-    for (i, c) in nos.iter().enumerate().rev() {
-        path.line_to((x(i), y(c[0]) + f64::from(m::STROKE) / 2.0));
-    }
-    path.close_path();
     let cor = p.c(t);
-    p.scene
-        .fill_path(&path, &Brush::Solid(cor), Affine::IDENTITY);
+    ph2d_sfx_explore_tela::onda(p.scene, o, r, ganho, cor);
 }
 
 fn botao_add(a: &mut Aba, p: &mut P<'_>, r: Rect) {

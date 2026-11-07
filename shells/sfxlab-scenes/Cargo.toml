@@ -30,15 +30,21 @@ ph2d-panel-hierarchy = { path = "../../crates/ph2d-panel-hierarchy" }
 ph2d-panel-inspector = { path = "../../crates/ph2d-panel-inspector" }
 ph2d-panel-sfxlab = { path = "../../crates/ph2d-panel-sfxlab" }
 ph2d-sfx-dsp = { path = "../../crates/ph2d-sfx-dsp" }
+ph2d-sfx-explore = { path = "../../crates/ph2d-sfx-explore" }
 ph2d-sfx-lab = { path = "../../crates/ph2d-sfx-lab" }
 ph2d-sfx-recipe = { path = "../../crates/ph2d-sfx-recipe" }
 ph2d-text = { path = "../../crates/ph2d-text" }
+ph2d-tool-registry = { path = "../../crates/ph2d-tool-registry" }
 ph2d-ui-testkit = { path = "../../crates/ph2d-ui-testkit" }
 ph2d-vector = { path = "../../crates/ph2d-vector" }
 
 [[test]]
 name = "it"
 path = "tests/it/main.rs"
+
+[[test]]
+name = "familia"
+path = "tests/familia/main.rs"
 
 [lints]
 workspace = true

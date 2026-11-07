@@ -18,6 +18,7 @@ ph2d-audio-encode = { path = "../ph2d-audio-encode" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 # O espectro (ADR-0115): a FFT mora só lá.
 ph2d-audio-spectral = { path = "../ph2d-audio-spectral" }
+ph2d-det-math = { path = "../ph2d-det-math" }
 ph2d-sfx-dsp = { path = "../ph2d-sfx-dsp" }
 ph2d-sfx-recipe = { path = "../ph2d-sfx-recipe" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }

@@ -17,6 +17,7 @@ use std::sync::Arc;
 use ph2d_sfx_recipe::{ENGINE_V1, Layer, LayerId, Recipe, SAMPLE_RATE, Source, Takes, frames_of};
 
 pub use limitador::{TETO_DA_ESCUTA, limitar_escuta};
+pub use rng::Rng;
 
 /// O silêncio do motor: 2⁻²⁴, um passo de quantização de um `f32` perto de 1,0. Um ressonador abaixo disto pára,
 /// o que também impede números subnormais, lentos e dependentes do modo da thread.
@@ -158,7 +159,7 @@ impl RenderCache {
             }
             let start = frames_of(layer.start).min(total);
             let len = total - start;
-            let semente = layer_seed(seed, layer.id);
+            let semente = layer_seed(seed ^ layer.variacao, layer.id);
             let key = key_of(layer, semente, engine, len, takes);
             let hit = self.layers.get(&layer.id).is_some_and(|c| c.key == key);
             if !hit {

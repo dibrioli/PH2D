@@ -1,6 +1,7 @@
 //! O hero montado com a aba do som e o painel: evento real nos rects pintados, efeito lido no documento e no PCM.
 
 mod cartoes;
+mod explorar;
 mod faixas;
 mod jogo;
 mod medidores;

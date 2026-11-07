@@ -59,7 +59,7 @@ impl DocumentSurface for SfxLabDocs {
     fn pointer(
         &mut self,
         id: u64,
-        _input: PointerInput<'_>,
+        input: PointerInput<'_>,
         kind: PointerKind,
         button: PointerButton,
         x: f32,
@@ -68,8 +68,10 @@ impl DocumentSurface for SfxLabDocs {
         if button != PointerButton::Primary {
             return false;
         }
-        self.aba_mut(id)
-            .is_some_and(|a| crate::gestos::ponteiro(a, kind, x, y))
+        self.aba_mut(id).is_some_and(|a| {
+            a.agora_ns = input.now_ns;
+            crate::gestos::ponteiro(a, kind, x, y)
+        })
     }
 
     fn pointer_move(&mut self, id: u64, _input: PointerInput<'_>, x: f32, y: f32) -> bool {
@@ -168,7 +170,12 @@ impl DocumentSurface for SfxLabDocs {
 
     fn wants_frame(&self) -> bool {
         self.abas.iter().any(|a| {
-            a.em_voo() || a.quer_tocar || a.quer_usar || a.quer_escolher || a.conta_gotas()
+            a.em_voo()
+                || a.quer_tocar
+                || a.quer_usar
+                || a.quer_escolher
+                || a.conta_gotas()
+                || a.ex.em_voo()
         })
     }
 

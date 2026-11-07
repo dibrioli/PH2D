@@ -40,6 +40,7 @@ pub enum Intencao {
 thread_local! {
     static ATUAL: RefCell<Option<Rc<Instantaneo>>> = const { RefCell::new(None) };
     static FILA: RefCell<Vec<Intencao>> = const { RefCell::new(Vec::new()) };
+    static SOB_O_MOUSE: std::cell::Cell<Option<NodeId>> = const { std::cell::Cell::new(None) };
 }
 
 /// A família, uma vez por imagem; `None` = não há aba do som ativa.
@@ -53,6 +54,16 @@ pub(crate) fn atual() -> Option<Rc<Instantaneo>> {
 
 pub(crate) fn pede(i: Intencao) {
     FILA.with(|f| f.borrow_mut().push(i));
+}
+
+pub(crate) fn poe_sob_o_mouse(id: Option<NodeId>) {
+    SOB_O_MOUSE.with(|s| s.set(id));
+}
+
+/// O campo ou a escolha dos cartões sob o mouse: é o que a tecla `L` trava.
+#[must_use]
+pub fn campo_sob_o_mouse() -> Option<NodeId> {
+    SOB_O_MOUSE.with(std::cell::Cell::get)
 }
 
 /// A família drena a fila, na ordem em que a mão pediu.

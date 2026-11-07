@@ -11,7 +11,7 @@ mod take;
 pub use envelope::{EnvPoint, Envelope};
 #[cfg(feature = "component")]
 pub use library::project;
-pub use library::{LibraryBlobError, SfxLibrary};
+pub use library::{Como, LibraryBlobError, Ouvido, SfxLibrary};
 pub use sanitize::{MAX_GAIN, MAX_HZ, MAX_SECONDS, MAX_SEMITONES, MIN_BODY_HZ, MIN_HZ};
 pub use take::{MAX_SAMPLE, Take, TakeId, Takes};
 
@@ -81,6 +81,9 @@ impl Recipe {
             muted: false,
             source,
             envelope,
+            variacao: 0,
+            travada: false,
+            travas: Vec::new(),
         });
         id
     }
@@ -118,6 +121,12 @@ pub struct Layer {
     pub muted: bool,
     pub source: Source,
     pub envelope: Envelope,
+    /// Mistura-se à semente só nesta camada: o sorteio troca o ruído dela sem tocar no da travada. `0` = sem mistura.
+    pub variacao: u64,
+    /// Nenhum sorteio muda esta camada, nem por um bit.
+    pub travada: bool,
+    /// Os campos que nenhum sorteio muda, pelo id da tabela de campos.
+    pub travas: Vec<u64>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

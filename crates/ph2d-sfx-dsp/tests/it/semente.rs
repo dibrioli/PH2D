@@ -39,6 +39,9 @@ fn camada(id: u64, gain: f32, source: Source) -> Layer {
         muted: false,
         source,
         envelope: Envelope::default(),
+        variacao: 0,
+        travada: false,
+        travas: Vec::new(),
     }
 }
 

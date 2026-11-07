@@ -80,23 +80,35 @@ pub(crate) fn cards(snap: Option<Rc<Instantaneo>>) -> Vec<CardDef<'static>> {
 /// Lei da compactação: os números curtos dividem a linha.
 fn campos_do_cartao(c: &mut CardCtx<'_>, s: &Instantaneo, cartao: Cartao, y: f32) -> f32 {
     let l = s.camada();
-    let cells: Vec<Cell<'_>> = CAMPOS
+    let dele: Vec<_> = CAMPOS
         .iter()
         .filter(|f| f.cartao == cartao && f.le(&s.receita, l).is_some())
-        .map(|f| campo(f.id, tr(f.chave)))
+        .map(|f| (f.id, rotulo(l, f.id.0, tr(f.chave))))
         .collect();
+    let cells: Vec<Cell<'_>> = dele.iter().map(|(id, t)| campo(*id, t)).collect();
     c.compact(&cells, y)
 }
 
-fn escolha(c: &mut CardCtx<'_>, l: &Layer, grupo: Grupo, rotulo: &str, y: f32) -> f32 {
+/// Um campo travado diz que está: é o único sinal de que o sorteio não passa por ele.
+fn rotulo(l: Option<&Layer>, id: u64, nome: &str) -> String {
+    if l.is_some_and(|l| l.travas.contains(&id)) {
+        tr_with("sfxlab.card.locked", &[("name", &nome)])
+    } else {
+        nome.to_owned()
+    }
+}
+
+fn escolha(c: &mut CardCtx<'_>, l: &Layer, grupo: Grupo, nome: &str, y: f32) -> f32 {
     let dela: Vec<_> = OPCOES.iter().filter(|o| o.grupo == grupo).collect();
+    let travada = dela.iter().find(|o| l.travas.contains(&o.id.0));
+    let dito = rotulo(Some(l), travada.map_or(0, |o| o.id.0), nome);
     let pares: Vec<_> = dela.iter().map(|o| (o.id, tr(o.chave))).collect();
     let aceso = dela
         .iter()
         .position(|o| (o.aceso)(l) == Some(true))
         .unwrap_or(0);
     let segs: Vec<Seg<'_>> = opcoes(&pares, aceso);
-    c.full(Some(rotulo), Widget::Choice(&segs), y)
+    c.full(Some(&dito), Widget::Choice(&segs), y)
 }
 
 fn fonte(c: &mut CardCtx<'_>, s: &Instantaneo, y: f32) -> f32 {

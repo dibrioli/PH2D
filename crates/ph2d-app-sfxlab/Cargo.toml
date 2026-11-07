@@ -23,6 +23,8 @@ ph2d-object-picker = { path = "../ph2d-object-picker" }
 ph2d-panel-hierarchy = { path = "../ph2d-panel-hierarchy" }
 ph2d-panel-sfxlab = { path = "../ph2d-panel-sfxlab" }
 ph2d-sfx-dsp = { path = "../ph2d-sfx-dsp" }
+ph2d-sfx-explore = { path = "../ph2d-sfx-explore" }
+ph2d-sfx-explore-tela = { path = "../ph2d-sfx-explore-tela" }
 ph2d-sfx-lab = { path = "../ph2d-sfx-lab" }
 ph2d-sfx-recipe = { path = "../ph2d-sfx-recipe", features = ["component"] }
 # O nível do `PH2D_SFX_SMOKE`: um roteador só, o que monta o mundo da cena.
@@ -32,10 +34,6 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 ph2d-vector = { path = "../ph2d-vector" }
 tracing = "0.1"
-
-[[test]]
-name = "it"
-path = "tests/it/main.rs"
 
 [lints]
 workspace = true

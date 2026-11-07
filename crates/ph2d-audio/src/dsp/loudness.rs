@@ -71,6 +71,31 @@ pub fn integrated_lufs(samples: &[f32], channels: usize, sample_rate: u32) -> f3
     lufs_from_mean_square((sum / frames as f64) as f32)
 }
 
+/// O **maior momento** de um som curto: o trecho de 400 ms mais forte (BS.1770 momentâneo), com silêncio antes e depois.
+/// Sobrar silêncio no fim do arquivo não muda nada, ao contrário de [`integrated_lufs`] (`docs/SfxLab/05_W4_plano.md` §6).
+pub fn maior_momento(samples: &[f32], sample_rate: u32) -> f32 {
+    let sr = sample_rate as f32;
+    let mut pre = Biquad::new(BiquadCoeffs::highshelf(
+        sr,
+        PREFILTER_HZ,
+        PREFILTER_Q,
+        PREFILTER_GAIN_DB,
+    ));
+    let mut rlb = Biquad::new(BiquadCoeffs::highpass(sr, RLB_HZ, RLB_Q));
+    let janela = ((sr * WINDOW_SECS) as usize).max(1);
+    let mut anel = vec![0.0f64; janela];
+    let (mut soma, mut topo) = (0.0f64, 0.0f64);
+    for (i, x) in samples.iter().enumerate() {
+        let k = f64::from(rlb.process(pre.process(*x)));
+        // O mono conta como os dois canais iguais, a mesma calibração de `integrated_lufs`.
+        let e = 2.0 * k * k;
+        soma += e - anel[i % janela];
+        anel[i % janela] = e;
+        topo = topo.max(soma);
+    }
+    lufs_from_mean_square((topo / janela as f64) as f32)
+}
+
 /// Momentary-loudness meter over the final master output. Feed every stereo
 /// sample with [`LoudnessMeter::process`]; read the window mean-square with
 /// [`LoudnessMeter::mean_square`] and convert with [`lufs_from_mean_square`].
@@ -140,6 +165,21 @@ impl LoudnessMeter {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn maior_momento_nao_muda_com_silencio_no_fim() {
+        let golpe: Vec<f32> = (0..24_000)
+            .map(|i| (i as f32 * 0.05).sin() * (-(i as f32) / 4_000.0).exp())
+            .collect();
+        let um = maior_momento(&golpe, 48_000);
+        for vezes in [2usize, 4] {
+            let mut longo = golpe.clone();
+            longo.resize(golpe.len() * vezes, 0.0);
+            assert_eq!(maior_momento(&longo, 48_000), um, "×{vezes}");
+            assert!(integrated_lufs(&longo, 1, 48_000) < integrated_lufs(&golpe, 1, 48_000) - 2.5);
+        }
+        assert_eq!(maior_momento(&[0.0; 100], 48_000), SILENCE_LUFS);
+    }
 
     #[test]
     fn silence_reads_the_floor() {

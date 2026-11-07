@@ -1,7 +1,9 @@
 //! **As medidas do som:** o que o arquivo tem, sem limitador. Corre na thread do render; a pintura é de `ph2d-panel-sfxlab`.
 
-use ph2d_audio::dsp::integrated_lufs;
+use ph2d_audio::dsp::{integrated_lufs, maior_momento};
 use ph2d_audio_spectral::stft::{Stft, magnitude};
+use ph2d_det_math::DetMath;
+use ph2d_sfx_dsp::limitar_escuta;
 
 /// Bandas do espectro, em escala logarítmica. A coluna tem ~100 px: 32 bandas são ~3 px cada.
 pub const BANDAS: usize = 32;
@@ -94,4 +96,22 @@ pub fn mede(amostras: &[f32], taxa: u32) -> Medida {
         lufs: integrated_lufs(amostras, 1, taxa),
         espectro: espectro(amostras, taxa),
     }
+}
+
+/// O nível a que tudo o que nasce de gesto se ouve. −23: nenhum de 64 filhos bate no limitador; em −18, 8 batem, e o limitador
+/// mudaria o timbre do que se compara (`docs/SfxLab/05_W4_plano.md` §6).
+pub const ALVO_DA_ESCUTA: f32 = -23.0;
+/// Abaixo disto não há som a nivelar: subir o ruído do piso até o alvo não é comparar nada.
+pub const VOLUME_MUDO: f32 = -70.0;
+
+/// **O que se ouve nivelado:** o ganho entra numa cópia, ANTES do limitador, para o teto continuar valendo. O arquivo e os medidores não mudam.
+#[must_use]
+pub fn escuta_nivelada(amostras: &[f32], taxa: u32) -> Vec<f32> {
+    let volume = maior_momento(amostras, taxa);
+    if volume < VOLUME_MUDO {
+        return limitar_escuta(amostras, taxa);
+    }
+    let ganho = 10.0f32.det_powf((ALVO_DA_ESCUTA - volume) / 20.0);
+    let copia: Vec<f32> = amostras.iter().map(|s| s * ganho).collect();
+    limitar_escuta(&copia, taxa)
 }

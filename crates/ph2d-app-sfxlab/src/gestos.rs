@@ -52,6 +52,7 @@ fn desce(a: &mut Aba, x: f32, y: f32) -> bool {
         return no_corpo;
     }
     match alvo {
+        Some(Alvo::Ex(e)) if crate::explorar::desce(a, e, x, y) => {}
         Some(Alvo::Onda(id)) => {
             let start0 = a.receita.layer(id).map_or(0.0, |l| l.start);
             a.sel = Some(id);
@@ -74,6 +75,10 @@ fn desce(a: &mut Aba, x: f32, y: f32) -> bool {
 }
 
 fn sobe(a: &mut Aba, x: f32, y: f32) -> bool {
+    if let Some(g @ (Gesto::Filho { .. } | Gesto::Mudanca)) = a.gesto {
+        crate::explorar::sobe(a, g);
+        return true;
+    }
     if a.gesto.is_some() {
         a.fecha_gesto();
         return true;
@@ -87,6 +92,10 @@ fn sobe(a: &mut Aba, x: f32, y: f32) -> bool {
 
 fn move_(a: &mut Aba, x: f32, y: f32) -> bool {
     match a.gesto {
+        Some(g @ (Gesto::Filho { .. } | Gesto::Mudanca)) => {
+            crate::explorar::move_(a, g, x, y);
+            true
+        }
         Some(Gesto::Inicio { id, x0, start0 }) => {
             let pps = a.px_por_s();
             if pps > 0.0 {
@@ -137,6 +146,8 @@ fn clique(a: &mut Aba, alvo: Option<Alvo>) {
             }
         }),
         Some(Alvo::Solo(id)) => a.alterna_solo(id),
+        Some(Alvo::Trava(id)) => crate::explorar::trava(a, id),
+        Some(Alvo::Ex(e)) => crate::explorar::clique(a, e),
         Some(Alvo::Add) => a.menu_add = !a.menu_add,
         Some(Alvo::Item(f)) => {
             a.menu_add = false;
@@ -178,6 +189,9 @@ pub(crate) fn tecla(a: &mut Aba, k: &KeyInput<'_>) -> KeyOutcome {
     if k.mods.ctrl || k.mods.alt {
         return tomada(false);
     }
+    if let Some(saida) = crate::explorar::tecla(a, k) {
+        return saida;
+    }
     match k.key {
         Key::Space => {
             if k.pressed {
@@ -209,6 +223,10 @@ pub(crate) fn tecla(a: &mut Aba, k: &KeyInput<'_>) -> KeyOutcome {
 }
 
 pub(crate) fn roda(a: &mut Aba, x: f32, y: f32, dy: f32) -> bool {
+    if a.janela.is_none() && a.heard.contains(x, y) {
+        a.rolagem_heard = (a.rolagem_heard - dy * m::WHEEL_LINE_PX).clamp(0.0, a.rolagem_heard_max);
+        return true;
+    }
     if let Some(j) = a.janela.as_mut() {
         j.roda(x, y, dy);
         return a.corpo.contains(x, y);

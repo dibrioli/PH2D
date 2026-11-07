@@ -10,7 +10,7 @@ pub mod ids;
 pub mod medidor;
 mod nomes;
 
-pub use estado::{Instantaneo, Intencao, Material, publica, tomar};
+pub use estado::{Instantaneo, Intencao, Material, campo_sob_o_mouse, publica, tomar};
 pub use nomes::nome_da_camada;
 pub use ph2d_sfx_lab::tabela;
 
@@ -48,6 +48,7 @@ impl Panel for SfxLabPanel {
         }
         let rect = ctx.slot;
         ctx.host.store_mut().set_panel_rect(Self::NODE_ID, rect);
+        estado::poe_sob_o_mouse(sob_o_mouse(ctx.host.store()));
         let snap = estado::atual();
         cards::prepare(ctx.host.store_mut(), snap.as_deref());
         let cartoes = cards::cards(snap);
@@ -90,6 +91,29 @@ impl Panel for SfxLabPanel {
             registra_botao(store, id);
         }
     }
+}
+
+/// Só `Hovered`: um botão focado pelo teclado também acende, mas a mão não está nele.
+fn sob_o_mouse(store: &WidgetStore) -> Option<NodeId> {
+    let campo = tabela::CAMPOS.iter().map(|c| c.id).find(|id| {
+        matches!(
+            store.get(*id),
+            Some(InteractiveState::NumberInput {
+                state: TextInputState::Hovered,
+                ..
+            })
+        )
+    });
+    campo.or_else(|| {
+        tabela::OPCOES.iter().map(|o| o.id).find(|id| {
+            matches!(
+                store.get(*id),
+                Some(InteractiveState::Button {
+                    state: ButtonState::Hovered
+                })
+            )
+        })
+    })
 }
 
 pub(crate) fn registra_botao(store: &mut WidgetStore, id: NodeId) {

@@ -508,3 +508,31 @@ fn som_novo_vazio_soa_no_primeiro_roll() {
     assert!(!m.receita(id).layers.is_empty());
     assert!(!m.escuta.toques.is_empty());
 }
+
+/// A lista guarda a receita sem o aprovado: trazer um som dela não pode desaprovar o que está no jogo.
+#[test]
+fn trazer_do_heard_nao_desaprova_o_som_do_jogo() {
+    let mut m = Mesa::new();
+    let mut r = fabrica("Metal Hit");
+    let aprovado = Approved {
+        sound: "Metal Hit".into(),
+        blake3: [9; 32],
+        engine: r.engine,
+    };
+    r.approved = Some(aprovado.clone());
+    m.poe("Metal Hit", r);
+    let id = m.abre("Metal Hit");
+    m.espera(id);
+    assert!(m.tecla(char_('r')));
+    assenta(&mut m, id);
+    assert!(m.tecla(char_('r')));
+    assenta(&mut m, id);
+    let linha = m.docs().exploracao(id).expect("aba").sessao.ouvidos[0].clone();
+    assert_eq!(linha.receita.approved, None, "a fixture contém o fenômeno");
+    m.clica(id, Alvo::Ex(AlvoE::Ouvido(0)));
+    m.clica(id, Alvo::Ex(AlvoE::Ouvido(0)));
+    assenta(&mut m, id);
+    let atual = m.receita(id);
+    assert_eq!(atual.layers, linha.receita.layers, "o som voltou");
+    assert_eq!(atual.approved, Some(aprovado));
+}

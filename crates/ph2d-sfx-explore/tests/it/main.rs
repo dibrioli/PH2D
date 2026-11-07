@@ -449,3 +449,25 @@ fn desfazer_fora_da_grade_refaz_as_oito_em_volta_do_som_novo() {
     let _ = x.serve(&b, false, &takes);
     assert_eq!(x.grade.as_ref().unwrap().base, b);
 }
+
+/// A corrida que o cancelamento não cobre: o velho terminou e já está no canal quando o novo é pedido.
+#[test]
+fn render_velho_que_ja_terminou_tambem_nao_entra() {
+    let takes = sem_nada();
+    let (velho, novo) = (fabrica("Wood Knock"), fabrica("Laser"));
+    let mut n = Ninhada::default();
+    n.pede(0, velho, takes.clone());
+    let fim = Instant::now() + Duration::from_secs(60);
+    while n.em_voo() {
+        assert!(Instant::now() < fim, "o velho não terminou");
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    n.pede(0, novo.clone(), takes);
+    while n.em_voo() {
+        assert!(Instant::now() < fim, "o novo não terminou");
+        std::thread::sleep(Duration::from_millis(1));
+    }
+    let chegou = n.recebe();
+    assert_eq!(chegou.len(), 1, "só o novo passa");
+    assert_eq!(chegou[0].1.as_ref().expect("render").receita, novo);
+}

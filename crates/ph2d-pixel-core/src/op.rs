@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 
 use crate::palette::{MAX_COLORS, invert_permutation, is_permutation};
 use crate::selection::Mask;
+use crate::slice::{Slice, SliceKey, check_slices};
 use crate::sprite::{
     Cel, CelKey, ColorMode, Frame, FrameId, Layer, LayerId, MAX_SIDE, Rect, Sprite, Tag,
 };
@@ -39,6 +40,8 @@ pub enum Op {
     /// O tileset e os mapas (traço em tile, Draw Tiles, novo tileset). O inverso repõe o que mudou;
     /// `Cel.data` deriva e não entra nele.
     Tiles(Box<crate::tiles::TilesSet>),
+    /// A lista de slices inteira (criar, editar uma key, apagar). O inverso é a lista de antes.
+    Slices(Vec<Slice>),
     /// Vários ops como UM passo (uma transformação assentada: as células e a selecção). Aplica-se
     /// em ordem; se um falha, os já aplicados desfazem-se e o documento fica intacto.
     Batch(Vec<Op>),
@@ -59,15 +62,17 @@ pub struct CanvasSet {
     pub cels: BTreeMap<CelKey, Cel>,
     pub mask: Option<Mask>,
     pub last: Option<Mask>,
+    pub slices: Vec<Slice>,
 }
 
-/// O que [`Op::Frames`] põe no sprite: `frames` e `tags` substituem as listas; cada `(chave, cel)`
-/// de `cels` põe (`Some`) ou tira (`None`) esse cel.
+/// O que [`Op::Frames`] põe no sprite: `frames`, `tags` e `slices` substituem as listas; cada
+/// `(chave, cel)` de `cels` põe (`Some`) ou tira (`None`) esse cel.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FrameSet {
     pub frames: Vec<Frame>,
     pub cels: Vec<(CelKey, Option<Cel>)>,
     pub tags: Vec<Tag>,
+    pub slices: Vec<Slice>,
 }
 
 /// O que [`Op::Layers`] põe no sprite: `layers` substitui a lista; cada `(chave, cel)` de `cels`
@@ -130,6 +135,8 @@ pub enum OpError {
     BadSize,
     /// As leis do tilemap (a etiqueta diz qual).
     BadTiles(&'static str),
+    /// As leis das slices (a etiqueta diz qual).
+    BadSlices(&'static str),
     /// Pintar píxeis direto numa camada de tilemap: o traço passa por [`Op::Tiles`].
     TilemapLayer(LayerId),
 }
@@ -152,6 +159,7 @@ impl Op {
             Op::Frames(f) => {
                 f.frames.len() * std::mem::size_of::<Frame>()
                     + f.tags.len() * std::mem::size_of::<Tag>()
+                    + slices_bytes(&f.slices)
                     + f.cels
                         .iter()
                         .map(|(_, c)| c.as_ref().map_or(0, |c| c.data.len()) + 32)
@@ -171,9 +179,11 @@ impl Op {
                 c.cels.values().map(|c| c.data.len() + 32).sum::<usize>()
                     + mask_bytes(&c.mask)
                     + mask_bytes(&c.last)
+                    + slices_bytes(&c.slices)
                     + std::mem::size_of::<CanvasSet>()
             }
             Op::Tiles(t) => t.bytes(),
+            Op::Slices(v) => slices_bytes(v),
             Op::Batch(v) => v.iter().map(Op::bytes).sum::<usize>(),
         }
     }
@@ -209,8 +219,23 @@ pub fn apply(sprite: &mut Sprite, op: Op) -> Result<Op, OpError> {
         Op::Mask(m) => apply_mask(sprite, *m).map(|m| Op::Mask(Box::new(m))),
         Op::Canvas(c) => apply_canvas(sprite, *c).map(|c| Op::Canvas(Box::new(c))),
         Op::Tiles(t) => crate::tiles::apply_tiles(sprite, *t).map(|t| Op::Tiles(Box::new(t))),
+        Op::Slices(v) => {
+            check_slices(&v, sprite.next_id)?;
+            Ok(Op::Slices(std::mem::replace(&mut sprite.slices, v)))
+        }
         Op::Batch(ops) => apply_batch(sprite, ops).map(Op::Batch),
     }
+}
+
+fn slices_bytes(v: &[Slice]) -> usize {
+    v.iter()
+        .map(|s| {
+            std::mem::size_of::<Slice>()
+                + s.name.len()
+                + s.data.len()
+                + s.keys.len() * std::mem::size_of::<SliceKey>()
+        })
+        .sum()
 }
 
 fn mask_bytes(m: &Option<Mask>) -> usize {
@@ -245,12 +270,14 @@ fn apply_canvas(s: &mut Sprite, c: CanvasSet) -> Result<CanvasSet, OpError> {
         c.cels.iter().map(|(k, c)| (*k, Some(c.clone()))).collect();
     check_cels(s, &s.layers, &s.frames, &all, true, s.mode.bpp())?;
     check_tile_cels(&s.layers, &s.tilesets, &all)?;
+    check_slices(&c.slices, s.next_id)?;
     Ok(CanvasSet {
         width: std::mem::replace(&mut s.width, w),
         height: std::mem::replace(&mut s.height, h),
         cels: std::mem::replace(&mut s.cels, c.cels),
         mask: std::mem::replace(&mut s.mask, c.mask),
         last: std::mem::replace(&mut s.last_mask, c.last),
+        slices: std::mem::replace(&mut s.slices, c.slices),
     })
 }
 
@@ -400,6 +427,7 @@ fn put_cels(s: &mut Sprite, cels: Vec<(CelKey, Option<Cel>)>) -> Vec<(CelKey, Op
 
 fn apply_frames(s: &mut Sprite, set: FrameSet) -> Result<FrameSet, OpError> {
     check_frames(&set.frames, &set.tags, s.next_id)?;
+    check_slices(&set.slices, s.next_id)?;
     check_cels(s, &s.layers, &set.frames, &set.cels, false, s.mode.bpp())?;
     check_tile_cels(&s.layers, &s.tilesets, &set.cels)?;
     let cels = put_cels(s, set.cels);
@@ -407,6 +435,7 @@ fn apply_frames(s: &mut Sprite, set: FrameSet) -> Result<FrameSet, OpError> {
         frames: std::mem::replace(&mut s.frames, set.frames),
         cels,
         tags: std::mem::replace(&mut s.tags, set.tags),
+        slices: std::mem::replace(&mut s.slices, set.slices),
     })
 }
 

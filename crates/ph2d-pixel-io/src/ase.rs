@@ -21,8 +21,8 @@ use ph2d_pixel_core::{
 /// O que o ficheiro trazia e o documento não guarda (o artista é avisado, nunca é perda muda).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Aviso {
-    /// Slices ficam de fora até a P11.
-    Slices(usize),
+    /// Propriedades tipadas de slices ficam de fora até a P12; a slice, a cor e o texto ficam.
+    PropriedadesDeSlices(usize),
     /// O `.ase` não guarda os terrenos de gabarito: os tiles vão, a ligação entre eles fica no projeto.
     TerrenosFicam,
     /// O `.ase` não tem forma de grelha: uma camada iso ou hex sai como imagem.
@@ -107,6 +107,8 @@ fn posicao(b: Rect) -> Result<(i16, i16), AseErro> {
     }
 }
 
+mod slices;
+use slices::{slices_de, slices_saida};
 mod saida_tiles;
 use saida_tiles::{mapa_saida, tilesets_saida, vai_em_tiles};
 
@@ -193,6 +195,7 @@ pub fn escrever(s: &Sprite) -> Result<(Vec<u8>, Vec<Aviso>), AseErro> {
             })
             .collect(),
         tilesets: tilesets_saida(s),
+        slices: slices_saida(s),
         ..AseFile::default()
     };
     let bytes = ph2d_aseprite::write_file(&file).map_err(AseErro::Escrever)?;
@@ -346,8 +349,9 @@ fn modo_de(depth: u16) -> ColorMode {
 pub fn ler(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>), AseErro> {
     let file = ph2d_aseprite::parse_file(bytes).map_err(AseErro::Ler)?;
     let mut avisos = Vec::new();
-    if file.slices > 0 {
-        avisos.push(Aviso::Slices(file.slices));
+    let com_propriedades = file.slices.iter().filter(|s| s.has_properties).count();
+    if com_propriedades > 0 {
+        avisos.push(Aviso::PropriedadesDeSlices(com_propriedades));
     }
     if file.frames.iter().any(|f| f.palette.is_some()) {
         avisos.push(Aviso::PaletaPorQuadro);
@@ -447,6 +451,13 @@ pub fn ler(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>), AseErro> {
     if mode == ColorMode::Indexed && usize::from(file.transparent_index) >= pal.len() {
         pal.resize(usize::from(file.transparent_index) + 1, [0, 0, 0, 0]);
     }
+    let proximo_id = layers
+        .iter()
+        .map(|l| l.id.0)
+        .chain(frames.iter().map(|f| f.id.0))
+        .chain(tilesets.iter().map(|t| t.id.0))
+        .max()
+        .map_or(1, |n| n + 1);
     let sprite = Sprite::from_parts(SpriteParts {
         width: u32::from(file.width),
         height: u32::from(file.height),
@@ -457,6 +468,7 @@ pub fn ler(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>), AseErro> {
         frames,
         cels,
         tags,
+        slices: slices_de(&file, proximo_id),
         tilesets,
     })
     .map_err(AseErro::Documento)?;

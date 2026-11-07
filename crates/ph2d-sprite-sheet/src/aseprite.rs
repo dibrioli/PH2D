@@ -195,7 +195,63 @@ pub struct SheetJson {
     /// `None` = a lista não foi pedida, e a chave não sai (como `--list-tags`).
     pub tags: Option<Vec<JsonTag>>,
     pub layers: Option<Vec<JsonLayer>>,
-    pub slices: bool,
+    pub slices: Option<Vec<JsonSlice>>,
+}
+
+/// Uma slice em `meta.slices`. Cor ausente e texto vazio não saem (medido, `P11_oraculos_arquivo.md` F5).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct JsonSlice {
+    pub name: String,
+    pub color: Option<[u8; 4]>,
+    pub data: String,
+    pub keys: Vec<JsonSliceKey>,
+}
+
+/// `(x, y, w, h)` em `bounds` e `center`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct JsonSliceKey {
+    pub frame: u32,
+    pub bounds: (i32, i32, u32, u32),
+    pub center: Option<(i32, i32, u32, u32)>,
+    pub pivot: Option<(i32, i32)>,
+}
+
+/// Uma slice, com os espaços que o Aseprite escreve.
+fn json_slice(o: &mut String, s: &JsonSlice) {
+    use std::fmt::Write as _;
+    let caixa = |(x, y, w, h): (i32, i32, u32, u32)| {
+        format!("{{\"x\": {x}, \"y\": {y}, \"w\": {w}, \"h\": {h} }}")
+    };
+    let _ = write!(o, "   {{ \"name\": {}", cadeia(&s.name));
+    if let Some([r, g, b, a]) = s.color {
+        let _ = write!(o, ", \"color\": \"#{r:02x}{g:02x}{b:02x}{a:02x}\"");
+    }
+    if !s.data.is_empty() {
+        let _ = write!(o, ", \"data\": {}", cadeia(&s.data));
+    }
+    if !s.keys.is_empty() {
+        o.push_str(", \"keys\": [");
+        for (i, k) in s.keys.iter().enumerate() {
+            if i > 0 {
+                o.push_str(", ");
+            }
+            let _ = write!(
+                o,
+                "{{ \"frame\": {}, \"bounds\": {}",
+                k.frame,
+                caixa(k.bounds)
+            );
+            if let Some(c) = k.center {
+                let _ = write!(o, ", \"center\": {}", caixa(c));
+            }
+            if let Some((x, y)) = k.pivot {
+                let _ = write!(o, ", \"pivot\": {{\"x\": {x}, \"y\": {y} }}");
+            }
+            o.push_str(" }");
+        }
+        o.push(']');
+    }
+    o.push_str(" }");
 }
 
 fn cadeia(t: &str) -> String {
@@ -286,8 +342,13 @@ pub fn sheet_json(j: &SheetJson) -> String {
         }
         o.push_str("  ]");
     }
-    if j.slices {
-        o.push_str(",\n  \"slices\": [ ]");
+    if let Some(slices) = &j.slices {
+        o.push_str(",\n  \"slices\": [\n");
+        for (i, s) in slices.iter().enumerate() {
+            json_slice(&mut o, s);
+            o.push_str(if i + 1 == slices.len() { "\n" } else { ",\n" });
+        }
+        o.push_str("  ]");
     }
     o.push_str("\n }\n}\n");
     o

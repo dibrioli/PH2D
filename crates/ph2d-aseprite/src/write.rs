@@ -2,7 +2,7 @@
 //! §5): o cel ligado repete posição e opacidade do dono (sem isso ele o lê em 0,0, e o Trial separa-o);
 //! os dois contadores de chunks levam o número (com `0xFFFF` no velho o Trial desalinha).
 
-use crate::file::{AseCelBody, AseFile, AseTilemap, AseTileset, KIND_TILEMAP};
+use crate::file::{AseCelBody, AseFile, AseSlice, AseTilemap, AseTileset, KIND_TILEMAP};
 
 const FILE_MAGIC: u16 = 0xA5E0;
 const FRAME_MAGIC: u16 = 0xF1FA;
@@ -19,6 +19,10 @@ const CHUNK_COLOR_PROFILE: u16 = 0x2007;
 const CHUNK_TAGS: u16 = 0x2018;
 const CHUNK_PALETTE: u16 = 0x2019;
 const CHUNK_TILESET: u16 = 0x2023;
+const CHUNK_SLICE: u16 = 0x2022;
+const CHUNK_USER_DATA: u16 = 0x2020;
+/// A cor de uma slice sem cor no documento (Trial: `#0000FF`).
+const DEFAULT_SLICE_COLOR: [u8; 4] = [0, 0, 255, 255];
 /// Tileset com os píxeis dentro do ficheiro, e o tile 0 é o vazio (spec).
 const TILESET_EMBEDDED_ZERO_EMPTY: u32 = 2 | 4;
 /// O índice que a tela mostra para o tile 1 (spec: 1 por omissão).
@@ -120,6 +124,53 @@ fn tilemap_body(b: &mut Vec<u8>, m: &AseTilemap) {
     b.extend_from_slice(&miniz_oxide::deflate::compress_to_vec_zlib(
         &raw, ZLIB_LEVEL,
     ));
+}
+
+fn i32s(b: &mut Vec<u8>, v: &[i32]) {
+    for n in v {
+        b.extend_from_slice(&n.to_le_bytes());
+    }
+}
+
+/// O chunk 0x2022. As flags valem para a slice inteira: key sem centro grava centro zero (lê-se como
+/// sem centro) e key sem pivot grava `0,0`.
+fn slice_chunk(s: &AseSlice) -> Vec<u8> {
+    let has_center = s.keys.iter().any(|k| k.center.is_some());
+    let has_pivot = s.keys.iter().any(|k| k.pivot.is_some());
+    let flags = u32::from(has_center) | u32::from(has_pivot) << 1;
+    let mut b = Vec::new();
+    b.extend_from_slice(&(s.keys.len() as u32).to_le_bytes());
+    b.extend_from_slice(&flags.to_le_bytes());
+    b.extend_from_slice(&0_u32.to_le_bytes());
+    string(&mut b, &s.name);
+    for k in &s.keys {
+        b.extend_from_slice(&k.frame.to_le_bytes());
+        i32s(&mut b, &[k.x, k.y]);
+        b.extend_from_slice(&k.w.to_le_bytes());
+        b.extend_from_slice(&k.h.to_le_bytes());
+        if has_center {
+            let (x, y, w, h) = k.center.unwrap_or_default();
+            i32s(&mut b, &[x, y]);
+            b.extend_from_slice(&w.to_le_bytes());
+            b.extend_from_slice(&h.to_le_bytes());
+        }
+        if has_pivot {
+            let (x, y) = k.pivot.unwrap_or_default();
+            i32s(&mut b, &[x, y]);
+        }
+    }
+    b
+}
+
+/// O user data de uma slice: sem cor o Trial não a desenha (F3), por isso sai sempre a cor.
+fn slice_user_data(s: &AseSlice) -> Vec<u8> {
+    let flags = u32::from(!s.text.is_empty()) | 2;
+    let mut b = flags.to_le_bytes().to_vec();
+    if !s.text.is_empty() {
+        string(&mut b, &s.text);
+    }
+    b.extend_from_slice(&s.color.unwrap_or(DEFAULT_SLICE_COLOR));
+    b
 }
 
 fn tags_chunk(file: &AseFile) -> Vec<u8> {
@@ -230,6 +281,11 @@ pub fn write_file(file: &AseFile) -> Result<Vec<u8>, WriteError> {
             if !file.tags.is_empty() {
                 chunk(&mut chunks, CHUNK_TAGS, &tags_chunk(file));
                 n += 1;
+            }
+            for s in &file.slices {
+                chunk(&mut chunks, CHUNK_SLICE, &slice_chunk(s));
+                chunk(&mut chunks, CHUNK_USER_DATA, &slice_user_data(s));
+                n += 2;
             }
         }
         for c in &frame.cels {

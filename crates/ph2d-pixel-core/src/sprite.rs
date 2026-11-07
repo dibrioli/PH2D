@@ -292,6 +292,7 @@ pub struct Sprite {
     pub(crate) cels: BTreeMap<CelKey, Cel>,
     pub(crate) tilesets: Vec<crate::tiles::Tileset>,
     pub(crate) tags: Vec<Tag>,
+    pub(crate) slices: Vec<crate::slice::Slice>,
     pub(crate) next_id: u32,
     /// A selecção (Aseprite: estado do DOCUMENTO, desfaz-se; não se grava no `PH2DPIXEL`).
     pub(crate) mask: Option<Mask>,
@@ -347,6 +348,7 @@ impl Sprite {
             cels: BTreeMap::new(),
             tilesets: Vec::new(),
             tags: Vec::new(),
+            slices: Vec::new(),
             next_id: 1,
             mask: None,
             last_mask: None,

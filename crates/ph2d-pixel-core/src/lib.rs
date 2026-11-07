@@ -33,6 +33,7 @@ pub mod play;
 pub mod raster;
 mod rect;
 pub mod selection;
+pub mod slice;
 mod sprite;
 mod stroke;
 pub mod symmetry;
@@ -47,6 +48,7 @@ pub use compose::{
 pub use forma::Forma;
 pub use history::{DEFAULT_CAP_BYTES, History};
 pub use op::{CanvasSet, FrameSet, LayerSet, MaskSet, Op, OpError, Patch, Whole, apply};
+pub use slice::{DEFAULT_SLICE_COLOR, Slice, SliceId, SliceKey, SliceShape};
 pub use sprite::{
     Background, Cel, CelKey, ColorMode, DEFAULT_FRAME_MS, Direction, ExportPreset, Frame, FrameId,
     Layer, LayerId, LayerKind, MAX_SIDE, NewSprite, Rect, Sprite, SpriteError, Tag,

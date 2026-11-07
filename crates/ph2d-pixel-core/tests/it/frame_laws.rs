@@ -256,7 +256,14 @@ fn the_document_refuses_broken_links_empty_timelines_and_tags_out_of_range() {
     dot(&mut s, l, f0, 0, RED);
     let (op, f1) = frames::new_frame(&mut s, f0, NewFrame::Empty).expect("novo");
     apply(&mut s, op).expect("novo");
-    let set = |frames: Vec<_>, cels, tags| Op::Frames(Box::new(FrameSet { frames, cels, tags }));
+    let set = |frames: Vec<_>, cels, tags| {
+        Op::Frames(Box::new(FrameSet {
+            frames,
+            cels,
+            tags,
+            slices: Vec::new(),
+        }))
+    };
     let fr = s.frames().to_vec();
     let before = s.clone();
     let bad = [

@@ -177,8 +177,7 @@ fn com_chunk(ase: &[u8], tipo: u16, corpo: &[u8]) -> Vec<u8> {
     v
 }
 
-/// **Abrir não perde em silêncio:** o que o documento não guarda vira aviso. *Mutação: tirar o
-/// `avisos.push(Aviso::Slices…)` ⇒ vermelho.*
+/// **Abrir não perde em silêncio:** o que o documento não guarda vira aviso.
 #[test]
 fn abrir_nao_perde_em_silencio() {
     use ph2d_pixel_core::{ColorMode, NewSprite, Sprite};
@@ -209,8 +208,9 @@ fn abrir_nao_perde_em_silencio() {
         fatia.extend_from_slice(&campo.to_le_bytes());
     }
     let com_fatia = com_chunk(&limpo, 0x2022, &fatia);
-    let (_, avisos) = abrir(&com_fatia, "aseprite").unwrap();
-    assert_eq!(avisos, vec![Aviso::Slices(1)]);
+    let (doc, avisos) = abrir(&com_fatia, "aseprite").unwrap();
+    assert_eq!(avisos, Vec::new(), "a slice agora fica no documento");
+    assert_eq!(doc.slices().len(), 1);
 
     // Uma camada de tilemap: flags, tipo 2, filho, largura/altura, modo, opacidade, nome, tileset.
     let mut camada = Vec::new();

@@ -151,7 +151,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.io.kind_apng" => "Animated PNG",
         "pixel.io.kind_webp" => "WebP image",
         "pixel.io.kind_ase" => "Aseprite file",
-        "pixel.io.warn.slices" => "This file has {n} {n?slice|slices}. Slices are not kept yet.",
+        "pixel.io.warn.slice_properties" => {
+            "{n} {n?slice has|slices have} custom properties. The slices are kept, the properties are not."
+        }
         "pixel.io.warn.grid_shape" => {
             "The .ase format has no Iso or Hex grid: those tilemap layers were saved as images."
         }

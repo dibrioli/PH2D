@@ -22,8 +22,15 @@ pub enum NewFrame {
     Linked,
 }
 
-fn op(frames: Vec<Frame>, cels: Vec<(CelKey, Option<Cel>)>, tags: Vec<Tag>) -> Op {
-    Op::Frames(Box::new(FrameSet { frames, cels, tags }))
+/// O passo de frames: as slices acompanham a ordem nova aqui, para nenhum chamador as esquecer.
+fn op(s: &Sprite, frames: Vec<Frame>, cels: Vec<(CelKey, Option<Cel>)>, tags: Vec<Tag>) -> Op {
+    let slices = crate::slice::after_frames(s.slices(), s.frames(), &frames);
+    Op::Frames(Box::new(FrameSet {
+        frames,
+        cels,
+        tags,
+        slices,
+    }))
 }
 
 /// As tags depois de um frame novo na posição `i`.
@@ -107,7 +114,7 @@ pub fn insert(
         }
     }
     let tags = tags_after_insert(s.tags(), at as u32);
-    Some((op(frames, cels, tags), id))
+    Some((op(s, frames, cels, tags), id))
 }
 
 /// Os cels a pôr para que nenhum ligado fique a apontar para um dono que SAI: o primeiro ligado
@@ -177,7 +184,7 @@ pub fn delete(s: &Sprite, ids: &[FrameId]) -> Option<Op> {
     for &i in positions.iter().rev() {
         tags = tags_after_delete(&tags, i);
     }
-    Some(op(frames, cels, tags))
+    Some(op(s, frames, cels, tags))
 }
 
 /// Arrastar o frame `id` para a posição `to` (0 = primeiro).
@@ -191,7 +198,7 @@ pub fn move_to(s: &Sprite, id: FrameId, to: usize) -> Option<Op> {
     }
     let f = frames.remove(from);
     frames.insert(to, f);
-    Some(op(frames, Vec::new(), s.tags().to_vec()))
+    Some(op(s, frames, Vec::new(), s.tags().to_vec()))
 }
 
 /// Largar o bloco `ids` (na ordem da linha do tempo) na fronteira `before` (posição de agora,
@@ -204,7 +211,7 @@ pub fn move_block(s: &Sprite, ids: &[FrameId], before: usize) -> Option<Op> {
         return None;
     }
     let frames = block_order(all, |f| ids.contains(&f.id), before);
-    (frames != all).then(|| op(frames, Vec::new(), s.tags().to_vec()))
+    (frames != all).then(|| op(s, frames, Vec::new(), s.tags().to_vec()))
 }
 
 /// A ordem depois de largar os de `em` (na ordem de `all`) na fronteira `before` (`0..=n`): a lei
@@ -277,7 +284,7 @@ pub fn copy_block(s: &mut Sprite, ids: &[FrameId], before: usize) -> Option<(Op,
         }
         novos.push(id);
     }
-    Some((op(frames, cels, tags), novos))
+    Some((op(s, frames, cels, tags), novos))
 }
 
 /// Largar um intervalo de CELS (Trial 01/11, `mover_cels*`): cada par `(de, para)` leva o cel de
@@ -342,7 +349,7 @@ fn cels_op(s: &Sprite, frames: Vec<Frame>, pairs: &[(CelKey, CelKey)], copy: boo
         });
         cels.push((para, cel));
     }
-    op(frames, cels, s.tags().to_vec())
+    op(s, frames, cels, s.tags().to_vec())
 }
 
 /// A tecla Delete sobre um intervalo de cels: os cels saem, os quadros ficam.
@@ -358,7 +365,7 @@ pub fn clear(s: &Sprite, keys: &[CelKey]) -> Option<Op> {
     }
     let order: Vec<FrameId> = s.frames().iter().map(|f| f.id).collect();
     cels.extend(rehome(s, &|k: CelKey| keys.contains(&k), &order));
-    Some(op(s.frames().to_vec(), cels, s.tags().to_vec()))
+    Some(op(s, s.frames().to_vec(), cels, s.tags().to_vec()))
 }
 
 /// Frame ▸ Reverse Frames: as posições `from..=to` ao contrário.
@@ -369,7 +376,7 @@ pub fn reverse(s: &Sprite, from: usize, to: usize) -> Option<Op> {
     }
     let mut frames = s.frames().to_vec();
     frames[from..=to].reverse();
-    Some(op(frames, Vec::new(), s.tags().to_vec()))
+    Some(op(s, frames, Vec::new(), s.tags().to_vec()))
 }
 
 /// Frame Properties ▸ Duration (e *Constant Frame Rate* com todos os ids): `ms` cravado a
@@ -383,7 +390,7 @@ pub fn set_duration(s: &Sprite, ids: &[FrameId], ms: u32) -> Option<Op> {
         changed |= f.duration_ms != ms;
         f.duration_ms = ms;
     }
-    changed.then(|| op(frames, Vec::new(), s.tags().to_vec()))
+    changed.then(|| op(s, frames, Vec::new(), s.tags().to_vec()))
 }
 
 /// Cel Properties: a opacidade (da imagem — muda em todos os ligados) e o z (só deste cel).
@@ -414,7 +421,7 @@ pub fn set_cel(s: &Sprite, key: CelKey, opacity: Option<u8>, z: Option<i16>) -> 
             cels.push((key, Some(Cel { z, ..me })));
         }
     }
-    (!cels.is_empty()).then(|| op(s.frames().to_vec(), cels, s.tags().to_vec()))
+    (!cels.is_empty()).then(|| op(s, s.frames().to_vec(), cels, s.tags().to_vec()))
 }
 
 /// Cel ▸ Links Cels: os cels da camada nos `frames` passam a partilhar a imagem do primeiro deles
@@ -437,7 +444,7 @@ pub fn link(s: &Sprite, layer: LayerId, frames: &[FrameId]) -> Option<Op> {
             cels.push((k, Some(Cel::linked(owner.1, e.z))));
         }
     }
-    (!cels.is_empty()).then(|| op(s.frames().to_vec(), cels, s.tags().to_vec()))
+    (!cels.is_empty()).then(|| op(s, s.frames().to_vec(), cels, s.tags().to_vec()))
 }
 
 /// Cel ▸ Unlink Cel: o cel `key` fica com uma cópia própria da imagem.
@@ -462,7 +469,7 @@ pub fn unlink(s: &Sprite, key: CelKey) -> Option<Op> {
         v.push((key, Some(e.clone())));
         v
     };
-    Some(op(s.frames().to_vec(), cels, s.tags().to_vec()))
+    Some(op(s, s.frames().to_vec(), cels, s.tags().to_vec()))
 }
 
 /// Frame ▸ Tags ▸ New Tag sobre `from..=to` (posições).
@@ -481,7 +488,7 @@ pub fn new_tag(s: &Sprite, name: &str, from: u32, to: u32) -> Option<Op> {
         repeat: 0,
         color: [0, 0, 0, 255],
     });
-    Some(op(s.frames().to_vec(), Vec::new(), tags))
+    Some(op(s, s.frames().to_vec(), Vec::new(), tags))
 }
 
 /// Tag Properties: muda a tag `i` (o intervalo crava-se à linha do tempo).
@@ -493,7 +500,7 @@ pub fn edit_tag(s: &Sprite, i: usize, f: impl FnOnce(&mut Tag)) -> Option<Op> {
     f(t);
     let last = s.frames().len() as u32 - 1;
     (t.from, t.to) = (t.from.min(t.to).min(last), t.from.max(t.to).min(last));
-    (*t != before).then(|| op(s.frames().to_vec(), Vec::new(), tags))
+    (*t != before).then(|| op(s, s.frames().to_vec(), Vec::new(), tags))
 }
 
 /// Frame ▸ Tags ▸ Delete Tag.
@@ -502,6 +509,6 @@ pub fn delete_tag(s: &Sprite, i: usize) -> Option<Op> {
     let mut tags = s.tags().to_vec();
     (i < tags.len()).then(|| {
         tags.remove(i);
-        op(s.frames().to_vec(), Vec::new(), tags)
+        op(s, s.frames().to_vec(), Vec::new(), tags)
     })
 }

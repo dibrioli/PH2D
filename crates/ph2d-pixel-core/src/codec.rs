@@ -7,6 +7,7 @@
 //! Entry    : 1 chave (varint) · 2 Sprite (registo)
 //! Sprite   : 1 largura · 2 altura · 3 modo · 4 paleta (n×4 bytes) · 5 transparente · 6 Layer*
 //!            · 7 Frame* · 8 Cel* · 9 próximo id · 10 Tag*                (inteiros em varint)
+//!            · 13 Slice* (`codec/slices.rs`)                                         [1.5]
 //! Layer    : 1 id · 2 nome (utf8) · 3 bandeiras (bit0 visível, bit1 background, bit2 trancada,
 //!            bit3 referência, bit4 grupo, bit5 grupo recolhido, bit6 continuous [1.2]) · 4 opacidade (sem = 255)
 //!            · 5 modo de mistura (id do `.ase`, sem = Normal) · 6 pai (id; sem = raiz)   [1.1]
@@ -31,7 +32,7 @@ use crate::tiles::{Terrain, Tileset, TilesetId};
 
 pub const MAGIC: &[u8; 9] = b"PH2DPIXEL";
 pub const MAJOR: u16 = 1;
-pub const MINOR: u16 = 4;
+pub const MINOR: u16 = 5;
 
 /// Ficheiro recusado; nunca um documento meio lido.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -202,6 +203,10 @@ fn sprite_record(s: &Sprite) -> Vec<u8> {
         b.push(0);
         put_field(&mut r, 10, &b);
     }
+    // MINOR 5: as slices.
+    for c in &s.slices {
+        put_field(&mut r, 13, &slices::slice_record(c));
+    }
     // MINOR 4: os tilesets.
     for t in &s.tilesets {
         let mut b = Vec::new();
@@ -247,6 +252,7 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
         cels: BTreeMap::new(),
         tilesets: Vec::new(),
         tags: Vec::new(),
+        slices: Vec::new(),
         next_id: 0,
         mask: None,
         last_mask: None,
@@ -393,6 +399,7 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
                 }
                 s.tags.push(tag);
             }
+            13 => s.slices.push(slices::read_slice(b)?),
             12 => {
                 let mut t = Tileset::new(TilesetId(0), "", 0, 0, Vec::new());
                 for (tag, v) in Fields::new(b)? {
@@ -472,6 +479,7 @@ pub struct SpriteParts {
     pub cels: Vec<((LayerId, FrameId), Cel)>,
     pub tags: Vec<Tag>,
     pub tilesets: Vec<Tileset>,
+    pub slices: Vec<crate::slice::Slice>,
 }
 
 impl Sprite {
@@ -486,6 +494,7 @@ impl Sprite {
             .map(|l| l.id.0)
             .chain(p.frames.iter().map(|f| f.id.0))
             .chain(p.tilesets.iter().map(|t| t.id.0))
+            .chain(p.slices.iter().map(|c| c.id.0))
             .max();
         let mut s = Sprite {
             width: p.width,
@@ -497,6 +506,7 @@ impl Sprite {
             frames: p.frames,
             cels: BTreeMap::new(),
             tags: p.tags,
+            slices: p.slices,
             tilesets: p.tilesets,
             next_id: last.map_or(1, |n| n + 1),
             mask: None,
@@ -530,6 +540,7 @@ fn validate(s: &mut Sprite, raw_cels: Vec<((LayerId, FrameId), Cel)>) -> Result<
     crate::op::check_layers(&s.layers, s.next_id).map_err(|_| CodecError::Invalid("layers"))?;
     crate::op::check_frames(&s.frames, &s.tags, s.next_id)
         .map_err(|_| CodecError::Invalid("frames/tags"))?;
+    crate::slice::check_slices(&s.slices, s.next_id).map_err(|_| CodecError::Invalid("slices"))?;
     let all: Vec<_> = raw_cels.into_iter().map(|(k, c)| (k, Some(c))).collect();
     crate::op::check_cels(s, &s.layers, &s.frames, &all, true, s.mode.bpp())
         .map_err(|_| CodecError::Invalid("cel"))?;
@@ -565,6 +576,7 @@ fn split_tilesets(s: &mut Sprite) -> Result<(), CodecError> {
 }
 
 mod grade;
+mod slices;
 use grade::{grid_record, read_grid};
 
 // ── registos ──────────────────────────────────────────────────────────────────

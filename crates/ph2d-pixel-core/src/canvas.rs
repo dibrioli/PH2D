@@ -1,6 +1,6 @@
 //! **O tamanho do sprite** (onda P6): Rotate/Flip Canvas, Sprite Size, Canvas Size, Crop e Trim —
 //! cada um é UM [`Op::Canvas`] (todos os cels de todos os frames e camadas, com inverso exacto). As
-//! tags e os frames não mudam; a selecção sai.
+//! tags e os frames não mudam; a selecção sai; as slices seguem a arte.
 
 use std::collections::BTreeMap;
 
@@ -8,6 +8,7 @@ use crate::affine::{Affine, Resample, transform_image};
 use crate::compose::compose_rgba;
 use crate::edit::Rotation;
 use crate::op::{CanvasSet, Op};
+use crate::slice::{self, Slice};
 use crate::sprite::{Cel, CelKey, Rect, Sprite};
 use crate::tiles::TileGrid;
 use crate::transform::{
@@ -74,6 +75,7 @@ fn remap(
     s: &Sprite,
     (nw, nh): (u32, u32),
     desloca: (i32, i32),
+    slices: Vec<Slice>,
     f: impl Fn(&Image, bool) -> Image,
 ) -> Option<Op> {
     let bpp = s.mode().bpp();
@@ -145,7 +147,8 @@ fn remap(
             },
         );
     }
-    let same = nw == s.width() && nh == s.height() && s.entries().eq(cels.iter());
+    let same =
+        nw == s.width() && nh == s.height() && s.entries().eq(cels.iter()) && slices == s.slices();
     (!same || s.mask().is_some()).then(|| {
         Op::Canvas(Box::new(CanvasSet {
             width: nw,
@@ -153,6 +156,7 @@ fn remap(
             cels,
             mask: None,
             last: None,
+            slices,
         }))
     })
 }
@@ -165,10 +169,11 @@ pub fn rotate_canvas(s: &Sprite, r: Rotation) -> Option<Op> {
         return None;
     }
     let (w, h) = (s.width(), s.height());
+    let slices = slice::rotated(s.slices(), w, h, r);
     match r {
-        Rotation::Cw90 => remap(s, (h, w), (0, 0), |c, _| rot90cw(c)),
-        Rotation::Ccw90 => remap(s, (h, w), (0, 0), |c, _| rot90ccw(c)),
-        Rotation::R180 => remap(s, (w, h), (0, 0), |c, _| rot180(c)),
+        Rotation::Cw90 => remap(s, (h, w), (0, 0), slices, |c, _| rot90cw(c)),
+        Rotation::Ccw90 => remap(s, (h, w), (0, 0), slices, |c, _| rot90ccw(c)),
+        Rotation::R180 => remap(s, (w, h), (0, 0), slices, |c, _| rot180(c)),
     }
 }
 
@@ -183,7 +188,9 @@ pub fn flip_canvas(s: &Sprite, horizontal: bool) -> Option<Op> {
     if has_tilemap(s) {
         return None;
     }
-    remap(s, (s.width(), s.height()), (0, 0), |c, _| {
+    let (w, h) = (s.width(), s.height());
+    let slices = slice::flipped(s.slices(), w, h, horizontal);
+    remap(s, (w, h), (0, 0), slices, |c, _| {
         if horizontal { flip_h(c) } else { flip_v(c) }
     })
 }
@@ -210,7 +217,8 @@ pub fn sprite_size(s: &Sprite, w: u32, h: u32, method: SizeMethod) -> Option<Op>
     }
     let (sw, sh) = (s.width(), s.height());
     let t = s.transparent_value();
-    remap(s, (w, h), (0, 0), |c, _| match method {
+    let slices = slice::scaled(s.slices(), (sw, sh), (w, h));
+    remap(s, (w, h), (0, 0), slices, |c, _| match method {
         SizeMethod::Nearest => resize_nearest(c, w, h),
         SizeMethod::Bilinear => from_rgba(s, &resize_bilinear(&to_rgba(s, c), w, h)),
         SizeMethod::RotSprite if w.is_multiple_of(sw) && h.is_multiple_of(sh) => {
@@ -250,7 +258,8 @@ pub fn canvas_size(s: &Sprite, b: Borders, bg: u32) -> Option<Op> {
     }
     let (nw, nh) = (nw as u32, nh as u32);
     let t = s.transparent_value();
-    remap(s, (nw, nh), (b.left, b.top), |c, is_bg| {
+    let slices = slice::translated(s.slices(), b.left, b.top);
+    remap(s, (nw, nh), (b.left, b.top), slices, |c, is_bg| {
         Image::map(nw, nh, c.bpp, |x, y| {
             let (ox, oy) = (x as i64 - i64::from(b.left), y as i64 - i64::from(b.top));
             if ox >= 0 && oy >= 0 && ox < i64::from(c.w) && oy < i64::from(c.h) {
@@ -271,7 +280,8 @@ pub fn crop(s: &Sprite, r: Rect) -> Option<Op> {
     if r.is_empty() {
         return None;
     }
-    remap(s, (r.w, r.h), (-r.x, -r.y), |c, _| {
+    let slices = slice::translated(s.slices(), -r.x, -r.y);
+    remap(s, (r.w, r.h), (-r.x, -r.y), slices, |c, _| {
         Image::map(r.w, r.h, c.bpp, |x, y| {
             c.get(r.x as u32 + x, r.y as u32 + y)
         })

@@ -44,7 +44,8 @@ mod write;
 
 pub use blend::BlendMode;
 pub use file::{
-    AseCel, AseCelBody, AseFile, AseFileFrame, AseLayer, AseTilemap, AseTileset, parse_file,
+    AseCel, AseCelBody, AseFile, AseFileFrame, AseLayer, AseSlice, AseSliceKey, AseTilemap,
+    AseTileset, parse_file,
 };
 pub use write::{WriteError, write_file};
 

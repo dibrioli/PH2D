@@ -17,6 +17,7 @@ const CHUNK_CEL: u16 = 0x2005;
 const CHUNK_TAGS: u16 = 0x2018;
 const CHUNK_PALETTE: u16 = 0x2019;
 const CHUNK_SLICE: u16 = 0x2022;
+const CHUNK_USER_DATA: u16 = 0x2020;
 const CHUNK_TILESET: u16 = 0x2023;
 
 /// Flags de camada da spec.
@@ -46,8 +47,32 @@ pub struct AseFile {
     pub frames: Vec<AseFileFrame>,
     pub tags: Vec<AseTag>,
     pub tilesets: Vec<AseTileset>,
-    /// Quantas slices o ficheiro traz (o Pixel ainda não as guarda).
-    pub slices: usize,
+    /// Pela ordem do ficheiro.
+    pub slices: Vec<AseSlice>,
+}
+
+/// Uma slice como está no ficheiro, com o user data que a segue.
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct AseSlice {
+    pub name: String,
+    pub color: Option<[u8; 4]>,
+    pub text: String,
+    /// O user data trazia propriedades tipadas (a P12 é que as guarda).
+    pub has_properties: bool,
+    /// Em ordem de quadro, seja qual for a do ficheiro (F3).
+    pub keys: Vec<AseSliceKey>,
+}
+
+/// Uma key. `center` e `pivot` relativos à caixa; centro com largura e altura 0 é sem centro (F3).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub struct AseSliceKey {
+    pub frame: u32,
+    pub x: i32,
+    pub y: i32,
+    pub w: u32,
+    pub h: u32,
+    pub center: Option<(i32, i32, u32, u32)>,
+    pub pivot: Option<(i32, i32)>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
@@ -212,6 +237,7 @@ pub fn parse_file(bytes: &[u8]) -> Result<AseFile, AseError> {
         },
         modern_palette: false,
         layer_opacity_valid: flags & FLAG_LAYER_OPACITY_VALID != 0,
+        after_slice: false,
     };
     for index in 0..usize::from(frame_count) {
         let frame_start = r.pos();
@@ -275,16 +301,40 @@ fn tilemap(r: &mut Reader<'_>) -> Option<AseTilemap> {
     })
 }
 
+/// Uma key do chunk 0x2022, com as flags da slice (1 = 9-slice, 2 = pivot).
+fn slice_key(r: &mut Reader<'_>, flags: u32) -> Option<AseSliceKey> {
+    let i32_of = |v: u32| v as i32;
+    let mut k = AseSliceKey {
+        frame: r.u32()?,
+        x: i32_of(r.u32()?),
+        y: i32_of(r.u32()?),
+        w: r.u32()?,
+        h: r.u32()?,
+        ..AseSliceKey::default()
+    };
+    if flags & 1 != 0 {
+        let c = (i32_of(r.u32()?), i32_of(r.u32()?), r.u32()?, r.u32()?);
+        k.center = ((c.2, c.3) != (0, 0)).then_some(c);
+    }
+    if flags & 2 != 0 {
+        k.pivot = Some((i32_of(r.u32()?), i32_of(r.u32()?)));
+    }
+    Some(k)
+}
+
 struct Build {
     file: AseFile,
     /// Viu-se um 0x2019: os chunks antigos de paleta deixam de contar (spec).
     modern_palette: bool,
     /// Bit 1 do cabeçalho: sem ele, a opacidade da camada não vale (spec).
     layer_opacity_valid: bool,
+    /// O chunk anterior era uma slice: o user data a seguir é dela (spec: «last read chunk»).
+    after_slice: bool,
 }
 
 impl Build {
     fn chunk(&mut self, ctype: u16, r: &mut Reader<'_>, frame: usize) -> Result<(), AseError> {
+        let after_slice = std::mem::replace(&mut self.after_slice, ctype == CHUNK_SLICE);
         match ctype {
             CHUNK_LAYER => self.layer(r),
             CHUNK_CEL => self.cel(r, frame)?,
@@ -292,7 +342,8 @@ impl Build {
             CHUNK_OLD_PALETTE_8 if !self.modern_palette => self.old_palette(r, false),
             CHUNK_OLD_PALETTE_6 if !self.modern_palette => self.old_palette(r, true),
             CHUNK_TAGS => self.tags(r),
-            CHUNK_SLICE => self.file.slices += 1,
+            CHUNK_SLICE => self.slice(r),
+            CHUNK_USER_DATA if after_slice => self.slice_user_data(r),
             CHUNK_TILESET => self.tileset(r, frame)?,
             _ => {}
         }
@@ -397,6 +448,44 @@ impl Build {
                 at += 1;
             }
         }
+    }
+
+    fn slice(&mut self, r: &mut Reader<'_>) {
+        let (Some(n), Some(flags)) = (r.u32(), r.u32()) else {
+            return;
+        };
+        let _ = r.skip(4);
+        let mut slice = AseSlice {
+            name: r.string().unwrap_or_default(),
+            ..AseSlice::default()
+        };
+        for _ in 0..n {
+            let Some(key) = slice_key(r, flags) else {
+                break;
+            };
+            match slice.keys.binary_search_by_key(&key.frame, |k| k.frame) {
+                Ok(i) => slice.keys[i] = key,
+                Err(i) => slice.keys.insert(i, key),
+            }
+        }
+        self.file.slices.push(slice);
+    }
+
+    fn slice_user_data(&mut self, r: &mut Reader<'_>) {
+        let Some(slice) = self.file.slices.last_mut() else {
+            return;
+        };
+        let Some(flags) = r.u32() else { return };
+        if flags & 1 != 0 {
+            slice.text = r.string().unwrap_or_default();
+        }
+        if flags & 2 != 0 {
+            let (Some(cr), Some(g), Some(b), Some(a)) = (r.u8(), r.u8(), r.u8(), r.u8()) else {
+                return;
+            };
+            slice.color = Some([cr, g, b, a]);
+        }
+        slice.has_properties = flags & 4 != 0;
     }
 
     fn tags(&mut self, r: &mut Reader<'_>) {

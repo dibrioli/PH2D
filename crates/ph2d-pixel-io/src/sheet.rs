@@ -3,6 +3,8 @@
 //! encolhe ao que usou; `--trim` larga os vazios; em `split` os ligados partilham retângulo.
 //! Sem oráculo (ausentes dele), definidos pelo CLI do Aseprite: 2ⁿ, merge, extrude, split de tags.
 
+mod fatias;
+
 use std::collections::BTreeMap;
 
 use ph2d_pixel_core::{FrameId, Layer, LayerId, LayerKind, Sprite};
@@ -676,6 +678,6 @@ pub fn json_da_folha(
         size: [f.w, f.h],
         tags,
         layers,
-        slices: o.slices,
+        slices: o.slices.then(|| fatias::json_slices(s)),
     })
 }

@@ -109,6 +109,7 @@ fn documento(
         frames,
         cels,
         tilesets: Vec::new(),
+        slices: Vec::new(),
         tags: Vec::new(),
     })
     .map_err(ErroAbrir::Documento)

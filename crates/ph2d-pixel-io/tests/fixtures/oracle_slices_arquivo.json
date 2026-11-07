@@ -1,0 +1,6909 @@
+{
+ "o_que_e": "P11, medicao de oraculo de Slices: ficheiro, linha de comando e exportacao. So numeros e nomes das nossas fixturas; arte e nomes de terceiros ficam de fora.",
+ "fonte": "Aseprite Trial 1.3.18.6-x64-trial, corrido como caixa preta (EULA: nada copiado, nenhum codigo lido). Entradas: .ase nossos, docs/PixelArt/ferramentas/trial_slices.py + trial_slices_arquivo.py (spec publica).",
+ "data": "2026-11-07",
+ "versao_da_ferramenta": "1.3.18.6-x64-trial",
+ "comando": "python3 -I docs/PixelArt/ferramentas/trial_slices_arquivo.py correr <dir_ase> <saida>",
+ "corridas_batch": 2,
+ "corridas_iguais": true,
+ "recusa_do_trial": "stdout: «Save operation is not supported in trial version.» + link; exit 0; PNG e .ase nao saem; o JSON de --data sai.",
+ "leis_confirmadas_por_assert": [
+  "meta.slices = inverso da ordem no ficheiro",
+  "--split-slices nao muda frames da folha em nenhuma fixtura",
+  "--slice nao muda frames da folha",
+  "parse nosso = JSON do Trial nos 3 ficheiros reais"
+ ],
+ "por_fixtura": {
+  "plain": {
+   "slices_no_ficheiro": [],
+   "meta_slices_do_trial": []
+  },
+  "keys": {
+   "slices_no_ficheiro": [
+    "moves"
+   ],
+   "meta_slices_do_trial": [
+    {
+     "name": "moves",
+     "color": "#ff0000ff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 8,
+        "y": 8,
+        "w": 16,
+        "h": 16
+       }
+      },
+      {
+       "frame": 2,
+       "bounds": {
+        "x": 24,
+        "y": 8,
+        "w": 16,
+        "h": 16
+       }
+      },
+      {
+       "frame": 4,
+       "bounds": {
+        "x": 24,
+        "y": 24,
+        "w": 32,
+        "h": 16
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "full": {
+   "slices_no_ficheiro": [
+    "nine",
+    "pivot",
+    "both"
+   ],
+   "meta_slices_do_trial": [
+    {
+     "name": "both",
+     "color": "#ff800080",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 4,
+        "y": 36,
+        "w": 24,
+        "h": 20
+       },
+       "center": {
+        "x": 4,
+        "y": 4,
+        "w": 16,
+        "h": 12
+       },
+       "pivot": {
+        "x": 0,
+        "y": 0
+       }
+      },
+      {
+       "frame": 3,
+       "bounds": {
+        "x": 36,
+        "y": 36,
+        "w": 16,
+        "h": 20
+       },
+       "center": {
+        "x": 2,
+        "y": 6,
+        "w": 12,
+        "h": 8
+       },
+       "pivot": {
+        "x": 8,
+        "y": 10
+       }
+      }
+     ]
+    },
+    {
+     "name": "pivot",
+     "color": "#0000ffff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 36,
+        "y": 4,
+        "w": 24,
+        "h": 24
+       },
+       "pivot": {
+        "x": 12,
+        "y": 24
+       }
+      }
+     ]
+    },
+    {
+     "name": "nine",
+     "color": "#00c800ff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 4,
+        "y": 4,
+        "w": 24,
+        "h": 24
+       },
+       "center": {
+        "x": 8,
+        "y": 8,
+        "w": 8,
+        "h": 8
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "hidden": {
+   "slices_no_ficheiro": [
+    "blinks"
+   ],
+   "meta_slices_do_trial": [
+    {
+     "name": "blinks",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 8,
+        "y": 8,
+        "w": 16,
+        "h": 16
+       }
+      },
+      {
+       "frame": 2,
+       "bounds": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0
+       }
+      },
+      {
+       "frame": 4,
+       "bounds": {
+        "x": 32,
+        "y": 32,
+        "w": 16,
+        "h": 16
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "late": {
+   "slices_no_ficheiro": [
+    "late"
+   ],
+   "meta_slices_do_trial": [
+    {
+     "name": "late",
+     "keys": [
+      {
+       "frame": 2,
+       "bounds": {
+        "x": 8,
+        "y": 8,
+        "w": 16,
+        "h": 16
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "weird": {
+   "slices_no_ficheiro": [
+    "out",
+    "past",
+    "twin",
+    "twin",
+    "badcenter",
+    "badpivot",
+    "farframe",
+    "unsorted"
+   ],
+   "meta_slices_do_trial": [
+    {
+     "name": "unsorted",
+     "keys": [
+      {
+       "frame": 1,
+       "bounds": {
+        "x": 4,
+        "y": 44,
+        "w": 8,
+        "h": 8
+       }
+      },
+      {
+       "frame": 3,
+       "bounds": {
+        "x": 44,
+        "y": 44,
+        "w": 8,
+        "h": 8
+       }
+      }
+     ]
+    },
+    {
+     "name": "farframe",
+     "keys": [
+      {
+       "frame": 99,
+       "bounds": {
+        "x": 40,
+        "y": 8,
+        "w": 8,
+        "h": 8
+       }
+      }
+     ]
+    },
+    {
+     "name": "badpivot",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 32,
+        "y": 32,
+        "w": 16,
+        "h": 16
+       },
+       "pivot": {
+        "x": -5,
+        "y": 99
+       }
+      }
+     ]
+    },
+    {
+     "name": "badcenter",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 8,
+        "y": 32,
+        "w": 16,
+        "h": 16
+       },
+       "center": {
+        "x": 12,
+        "y": 12,
+        "w": 20,
+        "h": 20
+       }
+      }
+     ]
+    },
+    {
+     "name": "twin",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 30,
+        "y": 20,
+        "w": 8,
+        "h": 8
+       }
+      }
+     ]
+    },
+    {
+     "name": "twin",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 20,
+        "y": 20,
+        "w": 8,
+        "h": 8
+       }
+      }
+     ]
+    },
+    {
+     "name": "past",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 56,
+        "y": 56,
+        "w": 24,
+        "h": 24
+       }
+      }
+     ]
+    },
+    {
+     "name": "out",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": -8,
+        "y": -8,
+        "w": 24,
+        "h": 24
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "tarde": {
+   "slices_no_ficheiro": [
+    "chunk_in_frame_3"
+   ],
+   "meta_slices_do_trial": [
+    {
+     "name": "chunk_in_frame_3",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 8,
+        "y": 8,
+        "w": 16,
+        "h": 16
+       }
+      },
+      {
+       "frame": 3,
+       "bounds": {
+        "x": 32,
+        "y": 8,
+        "w": 16,
+        "h": 16
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "ud": {
+   "slices_no_ficheiro": [
+    "color_text",
+    "text_only",
+    "no_ud",
+    "alpha",
+    "açã ο/x",
+    "",
+    "quo\"te\\"
+   ],
+   "meta_slices_do_trial": [
+    {
+     "name": "quo\"te\\",
+     "data": "a\"b\\c",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 48,
+        "y": 0,
+        "w": 8,
+        "h": 8
+       }
+      }
+     ]
+    },
+    {
+     "name": "",
+     "color": "#040506ff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 40,
+        "y": 0,
+        "w": 8,
+        "h": 8
+       }
+      }
+     ]
+    },
+    {
+     "name": "açã ο/x",
+     "color": "#010203ff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 32,
+        "y": 0,
+        "w": 8,
+        "h": 8
+       }
+      }
+     ]
+    },
+    {
+     "name": "alpha",
+     "color": "#ff800080",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 24,
+        "y": 0,
+        "w": 8,
+        "h": 8
+       }
+      }
+     ]
+    },
+    {
+     "name": "no_ud",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 16,
+        "y": 0,
+        "w": 8,
+        "h": 8
+       }
+      }
+     ]
+    },
+    {
+     "name": "text_only",
+     "data": "só texto",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 8,
+        "y": 0,
+        "w": 8,
+        "h": 8
+       }
+      }
+     ]
+    },
+    {
+     "name": "color_text",
+     "color": "#0a141e28",
+     "data": "hello",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 0,
+        "y": 0,
+        "w": 8,
+        "h": 8
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "tags": {
+   "slices_no_ficheiro": [
+    "moves",
+    "still"
+   ],
+   "meta_slices_do_trial": [
+    {
+     "name": "still",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 40,
+        "y": 40,
+        "w": 8,
+        "h": 8
+       }
+      }
+     ]
+    },
+    {
+     "name": "moves",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 8,
+        "y": 8,
+        "w": 16,
+        "h": 16
+       }
+      },
+      {
+       "frame": 2,
+       "bounds": {
+        "x": 24,
+        "y": 8,
+        "w": 16,
+        "h": 16
+       }
+      },
+      {
+       "frame": 4,
+       "bounds": {
+        "x": 24,
+        "y": 24,
+        "w": 32,
+        "h": 16
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "transp": {
+   "slices_no_ficheiro": [
+    "a",
+    "b"
+   ],
+   "meta_slices_do_trial": [
+    {
+     "name": "b",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 40,
+        "y": 40,
+        "w": 16,
+        "h": 16
+       }
+      }
+     ]
+    },
+    {
+     "name": "a",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 8,
+        "y": 8,
+        "w": 16,
+        "h": 16
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "zeros": {
+   "slices_no_ficheiro": [
+    "w0_first",
+    "w0_only",
+    "h0_only",
+    "w0_xy",
+    "no_keys"
+   ],
+   "meta_slices_do_trial": [
+    {
+     "name": "no_keys"
+    },
+    {
+     "name": "w0_xy",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 8,
+        "y": 8,
+        "w": 16,
+        "h": 16
+       }
+      },
+      {
+       "frame": 3,
+       "bounds": {
+        "x": 30,
+        "y": 30,
+        "w": 0,
+        "h": 16
+       }
+      }
+     ]
+    },
+    {
+     "name": "h0_only",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 8,
+        "y": 8,
+        "w": 16,
+        "h": 0
+       }
+      }
+     ]
+    },
+    {
+     "name": "w0_only",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 8,
+        "y": 8,
+        "w": 0,
+        "h": 16
+       }
+      }
+     ]
+    },
+    {
+     "name": "w0_first",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0
+       }
+      },
+      {
+       "frame": 2,
+       "bounds": {
+        "x": 8,
+        "y": 8,
+        "w": 16,
+        "h": 16
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "realorder": {
+   "slices_no_ficheiro": [
+    "first",
+    "pivonly",
+    "cen0"
+   ],
+   "meta_slices_do_trial": [
+    {
+     "name": "cen0",
+     "color": "#0000ffff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 8,
+        "y": 30,
+        "w": 16,
+        "h": 16
+       },
+       "center": {
+        "x": 0,
+        "y": 0,
+        "w": 16,
+        "h": 16
+       }
+      }
+     ]
+    },
+    {
+     "name": "pivonly",
+     "color": "#0000ffff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 30,
+        "y": 8,
+        "w": 16,
+        "h": 16
+       },
+       "pivot": {
+        "x": 0,
+        "y": 0
+       }
+      }
+     ]
+    },
+    {
+     "name": "first",
+     "color": "#0000ffff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 8,
+        "y": 8,
+        "w": 16,
+        "h": 16
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "c_late": {
+   "slices_no_ficheiro": [
+    "late"
+   ],
+   "meta_slices_do_trial": [
+    {
+     "name": "late",
+     "color": "#ff00ffff",
+     "keys": [
+      {
+       "frame": 2,
+       "bounds": {
+        "x": 8,
+        "y": 8,
+        "w": 16,
+        "h": 16
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "c_hidden": {
+   "slices_no_ficheiro": [
+    "blinks"
+   ],
+   "meta_slices_do_trial": [
+    {
+     "name": "blinks",
+     "color": "#ff00ffff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 8,
+        "y": 8,
+        "w": 16,
+        "h": 16
+       }
+      },
+      {
+       "frame": 2,
+       "bounds": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0
+       }
+      },
+      {
+       "frame": 4,
+       "bounds": {
+        "x": 32,
+        "y": 32,
+        "w": 16,
+        "h": 16
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "c_tarde": {
+   "slices_no_ficheiro": [
+    "chunk_in_frame_3"
+   ],
+   "meta_slices_do_trial": [
+    {
+     "name": "chunk_in_frame_3",
+     "color": "#ff00ffff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 8,
+        "y": 8,
+        "w": 16,
+        "h": 16
+       }
+      },
+      {
+       "frame": 3,
+       "bounds": {
+        "x": 32,
+        "y": 8,
+        "w": 16,
+        "h": 16
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "c_weird": {
+   "slices_no_ficheiro": [
+    "out",
+    "past",
+    "twin",
+    "twin",
+    "badcenter",
+    "badpivot",
+    "farframe",
+    "unsorted"
+   ],
+   "meta_slices_do_trial": [
+    {
+     "name": "unsorted",
+     "color": "#ff00ffff",
+     "keys": [
+      {
+       "frame": 1,
+       "bounds": {
+        "x": 4,
+        "y": 44,
+        "w": 8,
+        "h": 8
+       }
+      },
+      {
+       "frame": 3,
+       "bounds": {
+        "x": 44,
+        "y": 44,
+        "w": 8,
+        "h": 8
+       }
+      }
+     ]
+    },
+    {
+     "name": "farframe",
+     "color": "#ff00ffff",
+     "keys": [
+      {
+       "frame": 99,
+       "bounds": {
+        "x": 40,
+        "y": 8,
+        "w": 8,
+        "h": 8
+       }
+      }
+     ]
+    },
+    {
+     "name": "badpivot",
+     "color": "#ff00ffff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 32,
+        "y": 32,
+        "w": 16,
+        "h": 16
+       },
+       "pivot": {
+        "x": -5,
+        "y": 99
+       }
+      }
+     ]
+    },
+    {
+     "name": "badcenter",
+     "color": "#ff00ffff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 8,
+        "y": 32,
+        "w": 16,
+        "h": 16
+       },
+       "center": {
+        "x": 12,
+        "y": 12,
+        "w": 20,
+        "h": 20
+       }
+      }
+     ]
+    },
+    {
+     "name": "twin",
+     "color": "#ff00ffff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 30,
+        "y": 20,
+        "w": 8,
+        "h": 8
+       }
+      }
+     ]
+    },
+    {
+     "name": "twin",
+     "color": "#ff00ffff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 20,
+        "y": 20,
+        "w": 8,
+        "h": 8
+       }
+      }
+     ]
+    },
+    {
+     "name": "past",
+     "color": "#ff00ffff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 56,
+        "y": 56,
+        "w": 24,
+        "h": 24
+       }
+      }
+     ]
+    },
+    {
+     "name": "out",
+     "color": "#ff00ffff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": -8,
+        "y": -8,
+        "w": 24,
+        "h": 24
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "c_zeros": {
+   "slices_no_ficheiro": [
+    "w0_first",
+    "w0_only",
+    "h0_only",
+    "w0_xy",
+    "no_keys"
+   ],
+   "meta_slices_do_trial": [
+    {
+     "name": "no_keys",
+     "color": "#ff00ffff"
+    },
+    {
+     "name": "w0_xy",
+     "color": "#ff00ffff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 8,
+        "y": 8,
+        "w": 16,
+        "h": 16
+       }
+      },
+      {
+       "frame": 3,
+       "bounds": {
+        "x": 30,
+        "y": 30,
+        "w": 0,
+        "h": 16
+       }
+      }
+     ]
+    },
+    {
+     "name": "h0_only",
+     "color": "#ff00ffff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 8,
+        "y": 8,
+        "w": 16,
+        "h": 0
+       }
+      }
+     ]
+    },
+    {
+     "name": "w0_only",
+     "color": "#ff00ffff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 8,
+        "y": 8,
+        "w": 0,
+        "h": 16
+       }
+      }
+     ]
+    },
+    {
+     "name": "w0_first",
+     "color": "#ff00ffff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0
+       }
+      },
+      {
+       "frame": 2,
+       "bounds": {
+        "x": 8,
+        "y": 8,
+        "w": 16,
+        "h": 16
+       }
+      }
+     ]
+    }
+   ]
+  },
+  "c_zero2": {
+   "slices_no_ficheiro": [
+    "w0_only",
+    "h0_only",
+    "w0_later",
+    "one_px",
+    "center_zero"
+   ],
+   "meta_slices_do_trial": [
+    {
+     "name": "center_zero",
+     "color": "#ff00ffff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 16,
+        "y": 16,
+        "w": 16,
+        "h": 16
+       }
+      }
+     ]
+    },
+    {
+     "name": "one_px",
+     "color": "#ff00ffff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 8,
+        "y": 8,
+        "w": 1,
+        "h": 1
+       }
+      }
+     ]
+    },
+    {
+     "name": "w0_later",
+     "color": "#ff00ffff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 40,
+        "y": 40,
+        "w": 16,
+        "h": 16
+       }
+      },
+      {
+       "frame": 3,
+       "bounds": {
+        "x": 50,
+        "y": 50,
+        "w": 0,
+        "h": 8
+       }
+      }
+     ]
+    },
+    {
+     "name": "h0_only",
+     "color": "#ff00ffff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 8,
+        "y": 40,
+        "w": 16,
+        "h": 0
+       }
+      }
+     ]
+    },
+    {
+     "name": "w0_only",
+     "color": "#ff00ffff",
+     "keys": [
+      {
+       "frame": 0,
+       "bounds": {
+        "x": 40,
+        "y": 8,
+        "w": 0,
+        "h": 16
+       }
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "casos_batch": {
+  "meta_plain": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "plain.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "plain 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "plain 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "plain 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "split_plain": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "plain.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "plain 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "plain 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "plain 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "meta_keys": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "keys.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "split_keys": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "keys.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "meta_full": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "full.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "full 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "full 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "full 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "split_full": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "full.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "full 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "full 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "full 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "meta_hidden": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "hidden.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "hidden 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "hidden 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "hidden 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "split_hidden": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "hidden.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "hidden 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "hidden 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "hidden 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "meta_late": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "late.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "late 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "late 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "late 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "split_late": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "late.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "late 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "late 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "late 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "meta_weird": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "weird.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "weird 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "weird 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "weird 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "split_weird": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "weird.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "weird 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "weird 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "weird 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "meta_tarde": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "tarde.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "tarde 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tarde 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tarde 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "split_tarde": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "tarde.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "tarde 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tarde 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tarde 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "meta_ud": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "ud.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 1,
+   "frames_amostra": [
+    {
+     "nome": "ud.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 64,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "split_ud": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "ud.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 1,
+   "frames_amostra": [
+    {
+     "nome": "ud.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 64,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "meta_tags": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "tags.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "tags 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tags 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tags 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "split_tags": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "tags.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "tags 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tags 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tags 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "meta_transp": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "transp.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 3,
+   "frames_amostra": [
+    {
+     "nome": "transp 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "transp 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "transp 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 192,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "split_transp": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "transp.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 3,
+   "frames_amostra": [
+    {
+     "nome": "transp 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "transp 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "transp 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 192,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "meta_zeros": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "zeros.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "zeros 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "zeros 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "zeros 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "split_zeros": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "zeros.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "zeros 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "zeros 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "zeros 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "split_realorder": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "realorder.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "realorder 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "realorder 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "realorder 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "ordem_lista_depois": {
+   "argv": [
+    "-b",
+    "keys.ase",
+    "--list-slices",
+    "--data",
+    "d.json",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "ordem_lista_antes_sem_data": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "keys.ase"
+   ],
+   "exit": 0,
+   "recusas": 1,
+   "stdout": "moves",
+   "ficheiros": [],
+   "n_frames": null,
+   "frames_amostra": null,
+   "meta_size": null,
+   "meta_keys": null
+  },
+  "ordem_lista_depois_sem_data": {
+   "argv": [
+    "-b",
+    "keys.ase",
+    "--list-slices"
+   ],
+   "exit": 0,
+   "recusas": 1,
+   "stdout": "",
+   "ficheiros": [],
+   "n_frames": null,
+   "frames_amostra": null,
+   "meta_size": null,
+   "meta_keys": null
+  },
+  "lista_sem_list": {
+   "argv": [
+    "-b",
+    "keys.ase",
+    "--data",
+    "d.json",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "hash_default": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "keys.ase",
+    "--data",
+    "d.json",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "split_depois": {
+   "argv": [
+    "-b",
+    "keys.ase",
+    "--split-slices",
+    "--data",
+    "d.json",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "saveas_split_v": {
+   "argv": [
+    "-b",
+    "-v",
+    "--split-slices",
+    "keys.ase",
+    "--save-as",
+    "x_{slice}.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [],
+   "n_frames": null,
+   "frames_amostra": null,
+   "meta_size": null,
+   "meta_keys": null
+  },
+  "saveas_doc_v": {
+   "argv": [
+    "-b",
+    "-v",
+    "keys.ase",
+    "--save-as",
+    "x-{slice}.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [],
+   "n_frames": null,
+   "frames_amostra": null,
+   "meta_size": null,
+   "meta_keys": null
+  },
+  "saveas_slice_v": {
+   "argv": [
+    "-b",
+    "-v",
+    "--slice",
+    "moves",
+    "keys.ase",
+    "--save-as",
+    "x.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [],
+   "n_frames": null,
+   "frames_amostra": null,
+   "meta_size": null,
+   "meta_keys": null
+  },
+  "split_data_saveas": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "keys.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--save-as",
+    "x_{slice}.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "slice_moves": {
+   "argv": [
+    "-b",
+    "--slice",
+    "moves",
+    "keys.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "slice_moves_list": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "--slice",
+    "moves",
+    "keys.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "slice_inexistente": {
+   "argv": [
+    "-b",
+    "--slice",
+    "nope",
+    "keys.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "slice_gemeo": {
+   "argv": [
+    "-b",
+    "--slice",
+    "twin",
+    "weird.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "weird 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "weird 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "weird 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "slice_escondido": {
+   "argv": [
+    "-b",
+    "--slice",
+    "blinks",
+    "hidden.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "hidden 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "hidden 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "hidden 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "slice_late": {
+   "argv": [
+    "-b",
+    "--slice",
+    "late",
+    "late.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "late 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "late 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "late 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "slice_fora": {
+   "argv": [
+    "-b",
+    "--slice",
+    "out",
+    "weird.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "weird 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "weird 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "weird 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "split_fmt_slice": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "--filename-format",
+    "{title}|{slice}|{frame}|{tag}|{layer}|{extension}",
+    "tags.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "tags||0|idle||ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tags||1|idle||ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tags||2|idle||ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "fmt_slice_sem_split": {
+   "argv": [
+    "-b",
+    "--filename-format",
+    "{title}|{slice}|{frame}",
+    "keys.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "keys||0",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys||1",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys||2",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "split_layers": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "--split-layers",
+    "tags.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 12,
+   "frames_amostra": [
+    {
+     "nome": "tags (bottom) 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tags (bottom) 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tags (bottom) 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 128
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "split_tudo": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "--split-tags",
+    "--split-layers",
+    "tags.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 12,
+   "frames_amostra": [
+    {
+     "nome": "tags (bottom) #idle 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tags (bottom) #idle 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tags (bottom) #idle 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 192,
+    "h": 256
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "split_tag_idle": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "--tag",
+    "idle",
+    "tags.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 3,
+   "frames_amostra": [
+    {
+     "nome": "tags #idle 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tags #idle 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tags #idle 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 192,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "split_range": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "--frame-range",
+    "1,3",
+    "keys.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 3,
+   "frames_amostra": [
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 192,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "meta_range": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "--frame-range",
+    "1,3",
+    "keys.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 3,
+   "frames_amostra": [
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 192,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "split_trim": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "--trim",
+    "transp.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 3,
+   "frames_amostra": [
+    {
+     "nome": "transp 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 8,
+      "h": 8
+     },
+     "sss": {
+      "x": 10,
+      "y": 10,
+      "w": 8,
+      "h": 8
+     },
+     "trimmed": true
+    },
+    {
+     "nome": "transp 1.ase",
+     "frame": {
+      "x": 8,
+      "y": 0,
+      "w": 4,
+      "h": 4
+     },
+     "sss": {
+      "x": 42,
+      "y": 42,
+      "w": 4,
+      "h": 4
+     },
+     "trimmed": true
+    },
+    {
+     "nome": "transp 2.ase",
+     "frame": {
+      "x": 12,
+      "y": 0,
+      "w": 1,
+      "h": 1
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 1,
+      "h": 1
+     },
+     "trimmed": true
+    }
+   ],
+   "meta_size": {
+    "w": 13,
+    "h": 8
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "split_trimsprite": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "--trim-sprite",
+    "transp.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 3,
+   "frames_amostra": [
+    {
+     "nome": "transp 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 36,
+      "h": 36
+     },
+     "sss": {
+      "x": 10,
+      "y": 10,
+      "w": 36,
+      "h": 36
+     },
+     "trimmed": true
+    },
+    {
+     "nome": "transp 1.ase",
+     "frame": {
+      "x": 36,
+      "y": 0,
+      "w": 36,
+      "h": 36
+     },
+     "sss": {
+      "x": 10,
+      "y": 10,
+      "w": 36,
+      "h": 36
+     },
+     "trimmed": true
+    },
+    {
+     "nome": "transp 2.ase",
+     "frame": {
+      "x": 72,
+      "y": 0,
+      "w": 36,
+      "h": 36
+     },
+     "sss": {
+      "x": 10,
+      "y": 10,
+      "w": 36,
+      "h": 36
+     },
+     "trimmed": true
+    }
+   ],
+   "meta_size": {
+    "w": 108,
+    "h": 36
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "split_ignore": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "--ignore-empty",
+    "transp.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 2,
+   "frames_amostra": [
+    {
+     "nome": "transp 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "transp 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 128,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "split_dup": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "--merge-duplicates",
+    "transp.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 3,
+   "frames_amostra": [
+    {
+     "nome": "transp 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "transp 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "transp 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 192,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "split_grid_junto": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "--split-grid",
+    "keys.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 96,
+   "frames_amostra": [
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 16,
+      "h": 16
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 16,
+      "h": 16
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 16,
+      "y": 0,
+      "w": 16,
+      "h": 16
+     },
+     "sss": {
+      "x": 16,
+      "y": 0,
+      "w": 16,
+      "h": 16
+     },
+     "trimmed": true
+    },
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 32,
+      "y": 0,
+      "w": 16,
+      "h": 16
+     },
+     "sss": {
+      "x": 32,
+      "y": 0,
+      "w": 16,
+      "h": 16
+     },
+     "trimmed": true
+    }
+   ],
+   "meta_size": {
+    "w": 1536,
+    "h": 16
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "split_scale": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "--scale",
+    "2",
+    "keys.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "meta_scale": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "--scale",
+    "2",
+    "keys.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "sem_sheet": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "keys.ase",
+    "--data",
+    "d.json"
+   ],
+   "exit": 0,
+   "recusas": 1,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "meta_tags_layers": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "--list-tags",
+    "--list-layers",
+    "tags.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "tags 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tags 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tags 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "frameTags",
+    "layers",
+    "slices"
+   ]
+  },
+  "x_lista_weird": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "weird.ase"
+   ],
+   "exit": 0,
+   "recusas": 1,
+   "stdout": "unsorted\nfarframe\nbadpivot\nbadcenter\ntwin\ntwin\npast\nout",
+   "ficheiros": [],
+   "n_frames": null,
+   "frames_amostra": null,
+   "meta_size": null,
+   "meta_keys": null
+  },
+  "x_lista_hidden": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "hidden.ase"
+   ],
+   "exit": 0,
+   "recusas": 1,
+   "stdout": "blinks",
+   "ficheiros": [],
+   "n_frames": null,
+   "frames_amostra": null,
+   "meta_size": null,
+   "meta_keys": null
+  },
+  "x_lista_ud": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "ud.ase"
+   ],
+   "exit": 0,
+   "recusas": 1,
+   "stdout": "quo\"te\\\n\naçã ο/x\nalpha\nno_ud\ntext_only\ncolor_text",
+   "ficheiros": [],
+   "n_frames": null,
+   "frames_amostra": null,
+   "meta_size": null,
+   "meta_keys": null
+  },
+  "x_lista_zeros": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "zeros.ase"
+   ],
+   "exit": 0,
+   "recusas": 1,
+   "stdout": "no_keys\nw0_xy\nh0_only\nw0_only\nw0_first",
+   "ficheiros": [],
+   "n_frames": null,
+   "frames_amostra": null,
+   "meta_size": null,
+   "meta_keys": null
+  },
+  "x_slice_depois": {
+   "argv": [
+    "-b",
+    "keys.ase",
+    "--slice",
+    "moves",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "x_slice_data_saveas": {
+   "argv": [
+    "-b",
+    "--slice",
+    "moves",
+    "keys.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--save-as",
+    "x.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "format",
+    "size",
+    "scale"
+   ]
+  },
+  "x_split_depois_saveas": {
+   "argv": [
+    "-b",
+    "keys.ase",
+    "--split-slices",
+    "--save-as",
+    "x_{slice}.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [],
+   "n_frames": null,
+   "frames_amostra": null,
+   "meta_size": null,
+   "meta_keys": null
+  },
+  "x_meta_trim": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "--trim",
+    "transp.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 3,
+   "frames_amostra": [
+    {
+     "nome": "transp 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 8,
+      "h": 8
+     },
+     "sss": {
+      "x": 10,
+      "y": 10,
+      "w": 8,
+      "h": 8
+     },
+     "trimmed": true
+    },
+    {
+     "nome": "transp 1.ase",
+     "frame": {
+      "x": 8,
+      "y": 0,
+      "w": 4,
+      "h": 4
+     },
+     "sss": {
+      "x": 42,
+      "y": 42,
+      "w": 4,
+      "h": 4
+     },
+     "trimmed": true
+    },
+    {
+     "nome": "transp 2.ase",
+     "frame": {
+      "x": 12,
+      "y": 0,
+      "w": 1,
+      "h": 1
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 1,
+      "h": 1
+     },
+     "trimmed": true
+    }
+   ],
+   "meta_size": {
+    "w": 13,
+    "h": 8
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "x_meta_tag": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "--tag",
+    "walk",
+    "tags.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 3,
+   "frames_amostra": [
+    {
+     "nome": "tags #walk 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tags #walk 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tags #walk 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 192,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "x_meta_split_tags": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "--split-tags",
+    "tags.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "tags #idle 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tags #idle 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tags #idle 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 192,
+    "h": 128
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "x_meta_split_layers": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "--split-layers",
+    "tags.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 12,
+   "frames_amostra": [
+    {
+     "nome": "tags (bottom) 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tags (bottom) 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tags (bottom) 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 128
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "x_meta_split_slices": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "--split-slices",
+    "keys.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "x_meta_pack": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "--sheet-pack",
+    "keys.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 192,
+    "h": 128
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "x_meta_hash": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "keys.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-hash",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 64
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "x_meta_dois_ficheiros": {
+   "argv": [
+    "-b",
+    "--list-slices",
+    "keys.ase",
+    "--list-slices",
+    "late.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 12,
+   "frames_amostra": [
+    {
+     "nome": "keys 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "keys 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 384,
+    "h": 128
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale",
+    "slices"
+   ]
+  },
+  "ss_split_tags": {
+   "argv": [
+    "-b",
+    "--split-slices",
+    "--split-tags",
+    "tags.ase",
+    "--data",
+    "d.json",
+    "--format",
+    "json-array",
+    "--sheet",
+    "s.png"
+   ],
+   "exit": 0,
+   "recusas": 2,
+   "stdout": "",
+   "ficheiros": [
+    "d.json"
+   ],
+   "n_frames": 6,
+   "frames_amostra": [
+    {
+     "nome": "tags #idle 0.ase",
+     "frame": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tags #idle 1.ase",
+     "frame": {
+      "x": 64,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    },
+    {
+     "nome": "tags #idle 2.ase",
+     "frame": {
+      "x": 128,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "sss": {
+      "x": 0,
+      "y": 0,
+      "w": 64,
+      "h": 64
+     },
+     "trimmed": false
+    }
+   ],
+   "meta_size": {
+    "w": 192,
+    "h": 128
+   },
+   "meta_keys": [
+    "version",
+    "image",
+    "format",
+    "size",
+    "scale"
+   ]
+  }
+ },
+ "tela": {
+  "_como": "rect = x,y,w,h do contorno lido na foto a 8 px de tela por pixel; quadro = barra vermelha da arte. 2 corridas de fotos: 0 pixeis diferentes em c_late, c_hidden, c_tarde, c_weird, c_zeros, full (6 quadros cada), c_zero2 (Q0, Q3) e 7 dialogos/listas comparados.",
+  "keys": {
+   "0": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "1": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "2": [
+    24,
+    8,
+    16,
+    16
+   ],
+   "3": [
+    24,
+    8,
+    16,
+    16
+   ],
+   "4": [
+    24,
+    24,
+    32,
+    16
+   ],
+   "5": [
+    24,
+    24,
+    32,
+    16
+   ]
+  },
+  "c_late": {
+   "0": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "1": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "2": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "3": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "4": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "5": [
+    8,
+    8,
+    16,
+    16
+   ]
+  },
+  "c_hidden": {
+   "0": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "1": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "2": null,
+   "3": null,
+   "4": [
+    32,
+    32,
+    16,
+    16
+   ],
+   "5": [
+    32,
+    32,
+    16,
+    16
+   ]
+  },
+  "c_tarde": {
+   "0": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "1": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "2": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "3": [
+    32,
+    8,
+    16,
+    16
+   ],
+   "4": [
+    32,
+    8,
+    16,
+    16
+   ],
+   "5": [
+    32,
+    8,
+    16,
+    16
+   ]
+  },
+  "c_weird_unsorted": {
+   "0": [
+    4,
+    44,
+    8,
+    8
+   ],
+   "1": [
+    4,
+    44,
+    8,
+    8
+   ],
+   "2": [
+    4,
+    44,
+    8,
+    8
+   ],
+   "3": [
+    44,
+    44,
+    8,
+    8
+   ],
+   "4": [
+    44,
+    44,
+    8,
+    8
+   ],
+   "5": [
+    44,
+    44,
+    8,
+    8
+   ]
+  },
+  "c_weird_farframe_key_99": {
+   "0": [
+    40,
+    8,
+    8,
+    8
+   ],
+   "1": [
+    40,
+    8,
+    8,
+    8
+   ],
+   "2": [
+    40,
+    8,
+    8,
+    8
+   ],
+   "3": [
+    40,
+    8,
+    8,
+    8
+   ],
+   "4": [
+    40,
+    8,
+    8,
+    8
+   ],
+   "5": [
+    40,
+    8,
+    8,
+    8
+   ]
+  },
+  "c_zero2_q0_desenhados": [
+   "one_px",
+   "center_zero",
+   "w0_later"
+  ],
+  "c_zero2_q3_desenhados": [
+   "one_px",
+   "center_zero"
+  ],
+  "sem_cor_nao_desenhados": [
+   "late",
+   "hidden",
+   "tarde",
+   "weird",
+   "zeros",
+   "ud.text_only",
+   "ud.no_ud",
+   "ud.quo\"te\\"
+  ],
+  "fora_do_canvas": "contorno cortado no canvas: nada desenhado fora (out, past)",
+  "propriedades_lidas": {
+   "full.nine.q0": {
+    "bounds": [
+     4,
+     4,
+     24,
+     24
+    ],
+    "nine": [
+     8,
+     8,
+     8,
+     8
+    ],
+    "pivot": null
+   },
+   "full.pivot.q0": {
+    "bounds": [
+     36,
+     4,
+     24,
+     24
+    ],
+    "nine": null,
+    "pivot": [
+     12,
+     24
+    ]
+   },
+   "full.both.q0": {
+    "bounds": [
+     4,
+     36,
+     24,
+     20
+    ],
+    "nine": [
+     4,
+     4,
+     16,
+     12
+    ],
+    "pivot": [
+     0,
+     0
+    ]
+   },
+   "full.both.q3": {
+    "bounds": [
+     36,
+     36,
+     16,
+     20
+    ],
+    "nine": [
+     2,
+     6,
+     12,
+     8
+    ],
+    "pivot": [
+     8,
+     10
+    ]
+   },
+   "c_late.q0": {
+    "bounds": [
+     8,
+     8,
+     16,
+     16
+    ]
+   },
+   "c_weird.badcenter": {
+    "bounds": [
+     8,
+     32,
+     16,
+     16
+    ],
+    "nine": [
+     12,
+     12,
+     20,
+     20
+    ]
+   },
+   "c_weird.badpivot": {
+    "bounds": [
+     32,
+     32,
+     16,
+     16
+    ],
+    "pivot": [
+     -5,
+     99
+    ]
+   },
+   "c_weird.out": {
+    "bounds": [
+     -8,
+     -8,
+     24,
+     24
+    ]
+   },
+   "c_weird.farframe": {
+    "bounds": [
+     40,
+     8,
+     8,
+     8
+    ]
+   }
+  },
+  "listas_ordenadas_por_nome": {
+   "barra_da_ferramenta": [
+    "badcenter",
+    "badpivot",
+    "farframe",
+    "out",
+    "past",
+    "twin",
+    "twin",
+    "unsorted"
+   ],
+   "export_area": [
+    "Canvas",
+    "Selection",
+    "Slice: badcenter",
+    "Slice: badpivot",
+    "Slice: farframe",
+    "Slice: out",
+    "Slice: past",
+    "Slice: twin",
+    "Slice: twin",
+    "Slice: unsorted"
+   ]
+  }
+ },
+ "dialogos": {
+  "export_sprite_sheet": {
+   "abas": {
+    "Layout": [
+     "Sheet Type",
+     "Constraints",
+     "Merge Duplicates",
+     "Ignore Empty",
+     "Size=x²"
+    ],
+    "Sprite": [
+     "Source: Sprite|Sprite Grid|Tilesets",
+     "Layers + Split Layers",
+     "Frames + Split Tags"
+    ],
+    "Borders": [
+     "Border Padding",
+     "Spacing",
+     "Inner Padding",
+     "Trim Sprite",
+     "Trim Cels",
+     "Extrude"
+    ],
+    "Output": [
+     "Output File",
+     "JSON Data",
+     "Hash|Array",
+     "Meta: Layers Tags Slices",
+     "Item Filename {title} {frame}.{extension}",
+     "Item Tagname {tag}"
+    ]
+   },
+   "split_slices": "nao existe",
+   "dropdown_de_slice": "nao existe",
+   "meta_slices": "aba Output, so aparece com JSON Data ligado; ligado por omissao em HOME isolado",
+   "botao_export": "cinzento com Output File e JSON Data desligados",
+   "json_data_export": "escreve o .json (o Trial nao bloqueia); status «Sprite Sheet Generated»",
+   "output_file_export": "status «Sprite Sheet Generated», nenhum ficheiro no disco"
+  },
+  "export_file": {
+   "campos": [
+    "Output File",
+    "Resize",
+    "Area",
+    "Layers",
+    "Frames",
+    "Animation Direction",
+    "Export for Twitter",
+    "Ignore empty frames"
+   ],
+   "area": "Canvas, Selection, Slice: <nome>...",
+   "png_com_slice": "aviso «Do you want to export the animation in 6 files? x1.png, x2.png...»; Agree: Console «Save operation is not supported in trial version.»"
+  }
+ },
+ "ficheiros_reais_forma": {
+  "file-tests-props.aseprite": {
+   "frames": 6,
+   "canvas": [
+    64,
+    64
+   ],
+   "depth": 8,
+   "n_slices": 2,
+   "chunk_em_quadro": {
+    "0": 2
+   },
+   "flags": {
+    "0": 1,
+    "1": 1
+   },
+   "keys_por_slice": {
+    "1": 2
+   },
+   "quadro_das_keys": {
+    "0": 2
+   },
+   "keys_escondidas": 0,
+   "user_data_logo_a_seguir": 2,
+   "user_data_flags": {
+    "6": 1,
+    "2": 1
+   },
+   "com_cor": 2,
+   "com_texto": 0,
+   "nomes_padrao_slice_n": 2,
+   "nomes_repetidos": 0,
+   "ordem_no_quadro": [
+    "cel",
+    "color_profile",
+    "ext_files",
+    "layer",
+    "pal_old",
+    "slice",
+    "tags",
+    "tileset",
+    "user"
+   ],
+   "slices_antes_dos_cels": true,
+   "slices_depois_das_camadas": true,
+   "parse_igual_ao_json_do_trial": true
+  },
+  "appElements.aseprite": {
+   "frames": 1,
+   "canvas": [
+    512,
+    340
+   ],
+   "depth": 32,
+   "n_slices": 4,
+   "chunk_em_quadro": {
+    "0": 4
+   },
+   "flags": {
+    "0": 4
+   },
+   "keys_por_slice": {
+    "1": 4
+   },
+   "quadro_das_keys": {
+    "0": 4
+   },
+   "keys_escondidas": 0,
+   "user_data_logo_a_seguir": 4,
+   "user_data_flags": {
+    "2": 4
+   },
+   "com_cor": 4,
+   "com_texto": 0,
+   "nomes_padrao_slice_n": 0,
+   "nomes_repetidos": 0,
+   "ordem_no_quadro": [
+    "cel",
+    "color_profile",
+    "layer",
+    "pal_old",
+    "palette",
+    "slice",
+    "user"
+   ],
+   "slices_antes_dos_cels": true,
+   "slices_depois_das_camadas": true,
+   "parse_igual_ao_json_do_trial": true
+  },
+  "icons.aseprite": {
+   "frames": 1,
+   "canvas": [
+    512,
+    230
+   ],
+   "depth": 32,
+   "n_slices": 48,
+   "chunk_em_quadro": {
+    "0": 48
+   },
+   "flags": {
+    "0": 48
+   },
+   "keys_por_slice": {
+    "1": 48
+   },
+   "quadro_das_keys": {
+    "0": 48
+   },
+   "keys_escondidas": 0,
+   "user_data_logo_a_seguir": 48,
+   "user_data_flags": {
+    "2": 48
+   },
+   "com_cor": 48,
+   "com_texto": 0,
+   "nomes_padrao_slice_n": 0,
+   "nomes_repetidos": 0,
+   "ordem_no_quadro": [
+    "cel",
+    "layer",
+    "pal_old",
+    "palette",
+    "slice",
+    "user"
+   ],
+   "slices_antes_dos_cels": true,
+   "slices_depois_das_camadas": true,
+   "parse_igual_ao_json_do_trial": true
+  }
+ }
+}

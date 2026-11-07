@@ -521,6 +521,9 @@ pub(crate) fn apply_samples(
         // hold — the same door the manual `K` uses.
         for (entity, at, t_e) in &to_path {
             timeline.doc.key_the_path(*entity, *t_e, *at);
+            if !pivo.is_empty() {
+                timeline.doc.path_key_corner(*entity, *t_e);
+            }
         }
         if discrete {
             let doc = timeline.doc.clone();

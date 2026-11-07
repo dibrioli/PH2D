@@ -290,6 +290,26 @@ impl TimelineDoc {
         self.add_path_key(target, t, at)
     }
 
+    /// A âncora de `entity` no tempo `t` vira canto, sem alças. `false` se não há chave de trajetória em `t`.
+    pub fn path_key_corner(&mut self, entity: u64, t: RationalTime) -> bool {
+        let Some(target) = self
+            .bindings()
+            .iter()
+            .find(|b| b.entity == entity && b.prop == PropKind::Position)
+            .map(|b| b.target)
+        else {
+            return false;
+        };
+        let i = self
+            .active_clip()
+            .track(target)
+            .and_then(|tr| tr.keys().iter().position(|k| k.t == t));
+        let Some(a) = i.and_then(|i| self.path_anchor(target, i)) else {
+            return false;
+        };
+        i.is_some_and(|i| self.move_path_anchor(target, i, PathAnchor::corner(a.anchor)))
+    }
+
     /// **Insere uma âncora onde o artista clicou no CAMINHO** — o "adicionar ponto" da
     /// trajetória ([ADR-0141]). `d` é a distância de arco do ponto clicado
     /// ([`crate::MotionPath::project`]).

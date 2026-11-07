@@ -109,6 +109,13 @@ pub enum TimelineIntent {
         /// Onde o objeto está, em MUNDO.
         at: [f32; 2],
     },
+    /// A âncora da trajetória de `entity` no tempo `t` vira canto: os segmentos entre cantos são retas.
+    PathKeyCorner {
+        /// Live entity bits.
+        entity: u64,
+        /// Key time.
+        t: RationalTime,
+    },
     /// **Liga/desliga o auto-orient** do binding Position de `entity` (ADR-0141 §6).
     ///
     /// Toggle e não um valor: quem clica está a alternar o que vê, e o estado

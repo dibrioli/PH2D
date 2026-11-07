@@ -139,3 +139,94 @@ fn na_trajetoria_o_pivo_e_a_colisao_andam_no_ritmo_da_posicao() {
         "quem só anima a colisão fica com o ritmo de sempre"
     );
 }
+
+fn ancora(i: u16) -> PropKind {
+    PropKind::Field(ph2d_ecs::canal_componente::chave("ph2d::render::Sprite", 4, i).unwrap())
+}
+
+/// ⭐ «Pivot animado faz a imagem tremer» (dono 06/11): com três chaves o desenho fica parado, e a curva lê-se por
+/// `apply_from_doc`, a mesma porta do transporte.
+/// *Mutação: `path_key_corner` não faz nada ⇒ a trajetória curva e o desenho desvia até 0,2 m.*
+#[test]
+fn com_tres_chaves_de_pivo_o_desenho_nao_anda() {
+    let mut w = World::new();
+    let imagem = Sprite::individual(1, [3.0, 0.5], [1.0; 4]);
+    let e = w.spawn((Transform::default(), imagem)).id();
+    let bits = e.to_bits();
+    let mut doc = TimelineDoc::new();
+    doc.fps_display = 60.0;
+    let chaves = [
+        (1.0, [8.5, 1.75], [0.0, 0.25]),
+        (2.0, [7.0, 2.0], [1.5, 0.0]),
+        (3.0, [10.0, 2.25], [-1.5, -0.25]),
+    ];
+    for (t, pos, a) in chaves {
+        let t = RationalTime::from_seconds(t);
+        assert!(doc.key_the_path(bits, t, pos));
+        assert!(doc.path_key_corner(bits, t));
+        for i in 0..2_u16 {
+            let v = AnimValue::Float(a[usize::from(i)]);
+            doc.upsert_key(bits, ancora(i), t, v, Interp::Linear);
+        }
+    }
+    for k in 60..=180 {
+        ph2d_timeline::apply_from_doc(&mut w, &mut doc, f64::from(k) / 60.0);
+        let p = w.get::<Transform>(e).unwrap().translation;
+        let canal = |w: &World, i: u16| {
+            let PropKind::Field(c) = ancora(i) else {
+                unreachable!()
+            };
+            w.resource::<ph2d_ecs::CanaisEscritos>()
+                .valor(bits, c)
+                .unwrap()
+        };
+        let desvio = (p.x + canal(&w, 0) - 8.5).hypot(p.y + canal(&w, 1) - 2.0);
+        assert!(desvio < 0.01, "quadro {k}: {desvio} m");
+    }
+}
+
+/// A bolinha leva a mesma reta, para o pai e o filho, no passo aberto.
+/// *Mutação: tirar o ramo ⇒ este teste fica sem `PathKeyCorner`.*
+#[test]
+fn a_bolinha_grava_a_trajetoria_reta() {
+    let t = RationalTime::from_seconds(1.0);
+    let mut i = vec![
+        TimelineIntent::BeginEdit,
+        TimelineIntent::AddKey {
+            entity: 7,
+            prop: ancora(0),
+            t,
+            value: AnimValue::Float(1.0),
+            interp: Interp::Hold,
+        },
+        TimelineIntent::AddPathKey {
+            entity: 7,
+            t,
+            at: [1.0, 2.0],
+        },
+        TimelineIntent::AddPathKey {
+            entity: FILHO,
+            t,
+            at: [3.0, 4.0],
+        },
+        TimelineIntent::EndEdit,
+    ];
+    iguala_o_ritmo(&mut i, &TimelineDoc::new());
+    let cantos: Vec<u64> = i
+        .iter()
+        .filter_map(|x| match x {
+            TimelineIntent::PathKeyCorner { entity, .. } => Some(*entity),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(cantos, vec![7, FILHO], "{i:?}");
+    assert_eq!(i.last(), Some(&TimelineIntent::EndEdit), "{i:?}");
+    // Sem pivô no lote, a curva fica a do artista.
+    let mut so_posicao = vec![TimelineIntent::AddPathKey {
+        entity: 7,
+        t,
+        at: [1.0, 2.0],
+    }];
+    iguala_o_ritmo(&mut so_posicao, &TimelineDoc::new());
+    assert_eq!(so_posicao.len(), 1);
+}

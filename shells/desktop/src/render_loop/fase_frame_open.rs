@@ -73,6 +73,7 @@ impl crate::App {
         // quadro atrasado, auditoria 26 §3) e ANTES do extract.
         self.fase_paralaxe(camera_rect);
         self.fase_physics_step(player_input);
+        self.drena_os_canais();
         self.fase_signal_outbox(
             anim_signals,
             timer_signals,

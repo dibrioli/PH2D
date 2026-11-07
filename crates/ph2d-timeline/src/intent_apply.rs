@@ -143,6 +143,9 @@ pub fn apply_intent(state: &mut TimelineState, playhead: &mut Playhead, intent: 
             });
         }
         I::AddPathKey { entity, t, at } => intent_apply_path::add_key(state, entity, t, at, fps),
+        I::PathKeyCorner { entity, t } => {
+            state.doc.path_key_corner(entity, t);
+        }
         I::ToggleAutoOrient { entity } => intent_apply_path::toggle_orient(state, entity),
         I::ConvertPositionMode { entity, to_path } => {
             intent_apply_path::convert_mode(state, entity, to_path);

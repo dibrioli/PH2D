@@ -8,6 +8,38 @@
 use super::*;
 
 impl crate::App {
+    /// Os campos de família que a curva mandou. Corre outra vez depois do passo da física: o `TimelineScene` dela aplica
+    /// a curva ali, e o pivô ficaria um quadro atrás da posição (2,5 px a 1,5 m/s, jogo a correr).
+    pub(super) fn drena_os_canais(&mut self) {
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        let FrameGfx {
+            sim,
+            vec_scene,
+            flip,
+            component_registry,
+            physics,
+            ..
+        } = FrameGfx::of(gfx);
+        let feito = ph2d_app_vec::canais::aplicar(sim, vec_scene, &mut self.vec.conducao);
+        for (id, e) in feito.textos {
+            crate::vec_text_ride::recook(sim, vec_scene, &self.vec.entities, id, e);
+        }
+        ph2d_app_components::canais_objeto::aplicar(sim, &mut self.preview_drive);
+        ph2d_app_components::canais_componente::aplicar(
+            sim,
+            component_registry,
+            &mut self.preview_drive,
+        );
+        let dd = (&mut self.preview_drive, &self.timeline.doc);
+        let st = &mut self.physics;
+        ph2d_app_physics::aplicar_canais(sim, component_registry, physics, st, dd);
+        ph2d_app_audio::canais_mesa::aplicar(sim);
+        ph2d_app_skeleton::canais_osso::aplicar(sim, &mut self.preview_drive);
+        ph2d_app_flip::canais_camada::aplicar(sim, flip, &mut self.flip_state.conducao);
+    }
+
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_timeline_drain(
         &mut self,
@@ -20,15 +52,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
-        let FrameGfx {
-            sim,
-            toasts,
-            vec_scene,
-            flip,
-            component_registry,
-            physics,
-            ..
-        } = FrameGfx::of(gfx);
+        let FrameGfx { sim, .. } = FrameGfx::of(gfx);
 
         // General timeline (W1): drain the panel/K intents into the document, then apply it to
         // the scene, on the clock of the view (`ViewClock`, ADR-0115 R8 emenda 3: Keys rules the
@@ -101,23 +125,16 @@ impl crate::App {
         self.vec.conducao.a_tocar(tocando);
         self.flip_state.conducao.a_tocar(tocando);
         self.physics.conducao.a_tocar(tocando);
-        // ⭐ Os campos de família que a curva mandou (plano 35): o vetor drena-os para o documento.
-        let feito = ph2d_app_vec::canais::aplicar(sim, vec_scene, &mut self.vec.conducao);
-        for (id, e) in feito.textos {
-            crate::vec_text_ride::recook(sim, vec_scene, &self.vec.entities, id, e);
-        }
-        ph2d_app_components::canais_objeto::aplicar(sim, &mut self.preview_drive);
-        ph2d_app_components::canais_componente::aplicar(
+        self.drena_os_canais();
+        let Some(gfx) = self.gfx.as_mut() else {
+            return;
+        };
+        let FrameGfx {
             sim,
-            component_registry,
-            &mut self.preview_drive,
-        );
-        let dd = (&mut self.preview_drive, &self.timeline.doc);
-        let st = &mut self.physics;
-        ph2d_app_physics::aplicar_canais(sim, component_registry, physics, st, dd);
-        ph2d_app_audio::canais_mesa::aplicar(sim);
-        ph2d_app_skeleton::canais_osso::aplicar(sim, &mut self.preview_drive);
-        ph2d_app_flip::canais_camada::aplicar(sim, flip, &mut self.flip_state.conducao);
+            toasts,
+            vec_scene,
+            ..
+        } = FrameGfx::of(gfx);
         // Sob pilha, o relógio do EDITOR segue o da Keys onde o clip toca uma vez (emenda 3).
         if vista == ph2d_timeline::ViewClock::Clip {
             let (doc, scrub) = (&self.timeline.doc, self.autokey.scrub_now);

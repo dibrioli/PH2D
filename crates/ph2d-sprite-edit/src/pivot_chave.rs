@@ -105,12 +105,22 @@ pub fn com_pivo(lote: impl Iterator<Item = (u64, PropKind)>) -> Vec<u64> {
     lote.filter(|(_, p)| e_ancora(*p)).map(|(e, _)| e).collect()
 }
 
-/// O mesmo ritmo para as chaves que a bolinha do Pivot grava.
-pub fn iguala_o_ritmo(i: &mut [TimelineIntent], doc: &TimelineDoc) {
+/// O mesmo ritmo para as chaves que a bolinha do Pivot grava, e a trajetória reta entre as chaves do pivô: uma curva
+/// por três chaves afastaria a posição da reta que o pivô percorre (dono 06/11, «tremer»: 0,2 m com três chaves).
+pub fn iguala_o_ritmo(i: &mut Vec<TimelineIntent>, doc: &TimelineDoc) {
     let quem = com_pivo(i.iter().filter_map(|x| match x {
         TimelineIntent::AddKey { entity, prop, .. } => Some((*entity, *prop)),
         _ => None,
     }));
+    if !quem.is_empty() {
+        let mut k = 0;
+        while k < i.len() {
+            if let TimelineIntent::AddPathKey { entity, t, .. } = i[k] {
+                i.insert(k + 1, TimelineIntent::PathKeyCorner { entity, t });
+            }
+            k += 1;
+        }
+    }
     for x in i {
         if let TimelineIntent::AddKey {
             entity,

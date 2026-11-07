@@ -567,3 +567,24 @@ fn a_real_pose_edit_while_scrubbed_off_grid_still_keys() {
         "an ACTUAL pose edit must still key — the fix tightens the clock, not the ear"
     );
 }
+
+/// ⭐ O Auto Key do Pivot grava a trajetória reta (dono 06/11, «tremer»). Um lote sem pivô deixa a curva do artista.
+/// *Mutação: tirar `path_key_corner` do laço ⇒ a âncora fica `auto` e o desenho desvia entre três chaves.*
+#[test]
+fn a_chave_do_pivo_grava_a_trajetoria_reta() {
+    let ancora = ph2d_ecs::canal_componente::chave("ph2d::render::Sprite", 4, 0).unwrap();
+    for (com_pivo, canto) in [(true, true), (false, false)] {
+        let (mut st, ph) = state_with_path();
+        st.keys_mode = true;
+        let mut ak = AutokeyState::default();
+        let lugar = |y| pose(&[(TX, 5.0), (TY, y)]);
+        ak.campos.insert(E, vec![(ancora, 0.0)]);
+        frame(&mut st, &ph, &[(E, lugar(0.0))], false, true, &mut ak);
+        ak.campos
+            .insert(E, vec![(ancora, if com_pivo { 1.0 } else { 0.0 })]);
+        frame(&mut st, &ph, &[(E, lugar(3.0))], false, true, &mut ak);
+        let target = st.doc.binding_for(E, PropKind::Position).unwrap().target;
+        let a = st.doc.path_anchor(target, 1).expect("a âncora de t = 0,5");
+        assert_eq!(a.auto, !canto, "{a:?}");
+    }
+}

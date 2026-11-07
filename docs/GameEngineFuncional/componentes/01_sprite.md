@@ -1,5 +1,7 @@
 # Sprite
 
+**Estado: `fechado`** (smoke do dono, 06/11: «Parece que tudo está funcionando perfeitamente. Vamos aceitar como está. Smoke OK»). Nada integrado; ver o [handoff de fecho](../handoffs/HANDOFF_CONTINUACAO_2026-11-06_23_SPRITE_FECHADA.md).
+
 Estudos lidos: crítica «Sprite» · estudo «Sprite» e «Transform» · 12 ideias. Código conferido em 05/11/2026, sobre `c61f228b05`.
 
 ## Como está (conferido)
@@ -54,6 +56,13 @@ GameMaker e Unreal: pivô de 9 pontos. GDevelop, Construct e GameMaker: editar a
 17. **Keep in place no Look** (`ImageUseEdit::MirrorInPlace`, `pivot::espelha_no_lugar`): o Mirror espelha filhos e colisão, a imagem fica onde está e a posição compensa. Preferência de sessão, desligada por omissão.
 18. **Grade do Pivot sem o nome** (dono: desnecessário). O botão … abre X e Y; os nomes ficam na dica de cada ponto.
 19. **Ctrl+Z mantém selecionado o objeto comum que sobreviveu** (`plain_selection_ids`, dono 06/11). As famílias de `keeps_its_selection` seguem a marca do passo.
+
+**Decisões finais, smoke de 06/11 (aceitas como estão):**
+
+20. **Mirror object vira a imagem**, como nas duas engines (escala −1 à volta do pivô); com *Keep in place* vira sem sair do lugar (decisão 17). Aceito.
+21. **Mirror num objeto com o Pivot já animado vale dali em diante:** ao tocar, a imagem se desloca. Aceito como está, **sem cura**; está medido: Mirror V em t=1,5 → desenho y 1,5..2,0; Mirror H → o desenho salta de x 8,5 para 11,5 entre t=1,5 e t=1.
+22. **Moeda abaixo da plataforma: só o Mirror vertical, por lei** (`so_o_mirror_v_leva_a_moeda_para_baixo`).
+23. **Keep in place fica na linha dos botões do Mirror** e desce à largura inteira onde não cabe (`cards_sprite_pivot.rs`).
 
 Outros acertos da mesma noite: `Reimport at scale` e o nome do ponto do Pivot (desce para debaixo da grade quando o maior dos dez nomes não cabe ao lado) não se cortam no piso real do painel, `DOCK_W_MIN` = 210 px (`nada_do_cartao_da_sprite_e_cortado_no_minimo_do_painel`). A imagem editada herda o nome da de onde veio e toma-lhe o lugar enquanto só ela estiver em uso (`imagem::herda_o_nome`); ⚠️ só nesta sessão, porque o `.ph2dproj` não grava nomes de imagem: ao reabrir, volta o nome do 1.º objecto.
 
@@ -111,7 +120,9 @@ Cartão: `a_miniatura_abre_o_seletor`, `a_miniatura_e_o_tamanho_nao_mudam_com_a_
 
 Onda 3 (06/11): `so_a_sprite_nasce_a_pedir_a_imagem` (E3 confirmado no ecrã) · `o_aviso_de_folha_da_as_duas_saidas` (clique) e `da_folha_parada_use_one_region_abre_o_editor_e_o_quadro_vira_a_area` (editor); `card.insp.sheet_use_region` é só a chave do rótulo · foto `sprite_transform_no_draw` (Auto Key grava Position, Ctrl+Z no Draw desfaz os dois) · `a_predefinicao_sai_do_custom_e_o_lado_para_no_dispositivo` · `o_mirror_do_look_espelha_o_objeto_e_saiu_do_transform` · `com_a_imagem_virada_o_ponto_segue_o_lado_que_se_ve` (a grade do Pivot segue o lado que se vê; em objeto com Mirror continua no referencial do objeto) · `enquanto_assenta_a_cola_leva_o_cartao_ao_lugar_deste_quadro` · os 4 de `pivot_chave_tests.rs` + cena `sprite_pivot_chave`. Cena nova `PH2D_GAME_SMOKE_FOTO=sprite_moeda` (prende a Coin 4 à Platform High). Ver [onda 3](../handoffs/HANDOFF_CONTINUACAO_2026-11-06_23_SPRITE_ONDA3.md).
 
-**Sem prova ainda:** o smoke do dono desta onda; a Sprite não está fechada.
+Rodadas 2 e 3 (06/11): `pivot_espelho_tests.rs` (144 células, 60 linhas do oráculo; as 12 linhas de Flip com pivô de lado da Unity ficam fora pela decisão 14) · `so_o_mirror_v_leva_a_moeda_para_baixo` (mesmo ficheiro) · `com_tres_chaves_de_pivo_o_desenho_nao_anda` e `a_bolinha_grava_a_trajetoria_reta` (`pivot_chave_tests.rs`) · `a_chave_do_pivo_grava_a_trajetoria_reta` (`autokey_pass_tests.rs`) · `o_restauro_arma_e_o_jogo_drena_os_canais_depois_da_fisica` e `o_quadro_depois_do_restauro_refaz_a_base_sem_criar_passo` (`undo_app_restauro_tests.rs`) · censo `o_censo_dos_campos_da_sprite_em_uso` (13 à vista, 31 no total, conferido).
+
+**Smoke do dono: feito em 06/11, OK. A Sprite está `fechado`.** Abertos que não bloqueiam: no [handoff de fecho](../handoffs/HANDOFF_CONTINUACAO_2026-11-06_23_SPRITE_FECHADA.md).
 
 Imagem sem a repetição no Painter: `o_painter_abre_o_repetido_numa_copia_e_ao_sair_volta_o_mesmo` (`ph2d-app-painter`), `o_traco_cai_onde_o_cursor_esta_na_copia` e `a_region_abre_a_imagem_inteira_a_mesma_escala` (`ph2d-sprite-screen`) · censo `every_painter_map_reads_the_sprite_as_it_is_shown` · fotos `sprite_no_painter`, `sprite_no_painter_traco`, `sprite_painter_volta`.
 

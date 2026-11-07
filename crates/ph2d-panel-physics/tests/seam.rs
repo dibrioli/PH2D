@@ -287,7 +287,7 @@ fn reset_restores_the_engine_defaults() {
     assert_eq!(
         drain_intents(),
         vec![PhysicsIntent::SetSettings(
-            Box::new(PhysicsSettings::default()),
+            Box::default(),
             Box::new(ph2d_panel_physics::Toque {
                 visto: edited,
                 pedido: PhysicsSettings::default(),

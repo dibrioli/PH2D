@@ -74,7 +74,7 @@ pub fn passo_da_fila(physics: &PhysicsBridge) -> Option<PassoDaFila> {
     let plano = std::env::var("PH2D_PHYSICS_SMOKE_CLIQUE").ok()?;
     let k = QUADRO.get() + 1;
     QUADRO.set(k);
-    if k % CADA != 0 {
+    if !k.is_multiple_of(CADA) {
         return None;
     }
     let passos: Vec<&str> = plano.split(',').collect();

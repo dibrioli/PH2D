@@ -1,6 +1,6 @@
 # A tinta viva sobrevive (decisões do dono, 06/11)
 
-Estado: **ondas 1 e 2 construídas** (itens 1, 2, 3, 4 e a compressão; ver [§ onda 2](#construído-onda-2-0611)); **o undo, a mão leve da Borracha e o custo de adormecer no Dabber estão feitos (noite de 06/11; ver [§ undo](#construído-onda-do-undo-da-mão-leve-e-do-fecho-0611-noite)); faltam o item 5 (opção ao salvar), o Wet Round, as provas de mutação e os vereditos do dono**. Commit de partida: `9aa112caec` (Relief Eraser).
+Estado: **ondas 1 e 2 construídas** (itens 1, 2, 3, 4 e a compressão; ver [§ onda 2](#construído-onda-2-0611)); **o undo, a mão leve da Borracha e o custo de adormecer no Dabber estão feitos (noite de 06/11; ver [§ undo](#construído-onda-do-undo-da-mão-leve-e-do-fecho-0611-noite)); faltam o item 5 (opção ao salvar), o Wet Round e os vereditos do dono; as provas de mutação e a auditoria do undo fecharam em 07/11 ([handoff de integração](handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-07_TINTA_VIVA.md))**. Commit de partida: `9aa112caec` (Relief Eraser).
 
 ## Defeito reproduzido
 Dabber → trocar para Digital/Watercolor/Impasto (com ou sem traço) → voltar ao Wet → Relief Eraser: corte seco em vez da borracha que amassa. Sonda sobre `com_oleo()` + `apaga()` de `wetpaint/borracha_de_fabrica_tests.rs`:
@@ -117,7 +117,7 @@ Handoff com o mecanismo, constantes e provas: [HANDOFF_CONTINUACAO_2026-11-06_ti
 - Item 5 (opção ao salvar, ligada por omissão): mapa no handoff da onda 2; campo no FIM do `ProjectFile`, não no `PaintedDocument`; a sessão reconstrói-se no load; quantizar só com foto aprovada.
 - Item 6: só falta repetir a compressão com carga baixa (4K com várias camadas e redo já medidos, ver o handoff).
 - Bug #70 (candidato): tinta velha na `base` fora da grade.
-- Provas de mutação de `adormecida_tests.rs`, `dentro_do_wet_tests.rs` e dos portões novos (outro agente a correr; não dadas como feitas); suíte completa só na integração.
+- Provas de mutação: feitas em 07/11, 32 de 34 com prova (F7/F8 sobrevivem); ver [handoff de integração](handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-07_TINTA_VIVA.md). Suíte completa só na integração.
 - Achado não tratado: `Engine::action_*` (wet/dry/clear) abrem registo sem passo no undo vivo se chamadas na sessão.
 
 **Dono 06/11, Relief Eraser:** sombras apagadas em rectângulos depois de voltar, e a tinta de outros modos a sair de uma vez. Causa A: com aguada na camada a caixa recomposta não lia a sombra (`composite.rs`), 5 246 px → 261; planos velhos e orla re-iluminada à volta do enterro, 3 091 px → 78. Causa B: a `base` cortava seco; agora, fora das células com tinta, segue a lei de `borracha_morta` (uma passada 255 → 166, 9 ao papel, óleo vivo 0 px). A «sobra medida» acima era a causa A. Detalhe e dois portões vermelhos: [handoff](handoffs/HANDOFF_CONTINUACAO_2026-11-06_tinta_viva_onda2.md).

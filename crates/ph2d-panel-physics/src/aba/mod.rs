@@ -240,6 +240,7 @@ pub(crate) fn declara_a_porta() {
     );
 }
 
+pub mod familia;
 mod geometria;
 mod pinta;
 mod quadro;

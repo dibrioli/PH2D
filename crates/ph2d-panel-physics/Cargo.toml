@@ -21,6 +21,10 @@ ph2d-i18n = { path = "../ph2d-i18n" }
 # authored settings and emits a whole new one as an intent — it does not
 # keep a second copy of any of these numbers.
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+# A família da aba central «Collision Layers» (`aba::familia`, onda 9a): os tipos do `DocumentSurface`.
+ph2d-host = { path = "../ph2d-host" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-vector = { path = "../ph2d-vector" }
 
 [dev-dependencies]
 # As duas bolas do gate do quadro de «Collides with».
@@ -32,8 +36,6 @@ ph2d-label-census = { path = "../ph2d-label-census" }
 # `event.rs` must ship a test that drives a REAL WidgetEvent and asserts the
 # observable effect. The debt list is empty; there is no exemption.
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
-# Os eventos de ponteiro REAIS (botão direito, arrasto da pega) do gate de costura das secções.
-ph2d-host = { path = "../ph2d-host" }
 # O Esc real a meio do scrub (`dispatch_key` pede a arena do quadro).
 bumpalo = { version = "3", features = ["collections"] }
 # A geometria do cartão (a pega do campo), nos testes do gesto.

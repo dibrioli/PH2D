@@ -1,18 +1,18 @@
-//! ⭐ **A aba «Collision Layers» no centro** (onda 9a, versão B do dono 07/11): a família de UMA aba ao
+//! ⭐ **A família da aba «Collision Layers» no centro** (onda 9a, versão B do dono 07/11): a família de UMA aba ao
 //! lado de Scene, pelo mesmo mecanismo das abas do Kanban, do Code e do editor de animações. A família só
 //! dá o título, o fecho, o pedido de vir à frente e a ÁREA; a grade, a lista e os alvos pinta-os o painel
-//! Physics ([`ph2d_panel_physics::aba`]) por cima, para as células continuarem os ids de sempre (undo,
+//! ([`super`]) por cima, para as células continuarem os ids de sempre (undo,
 //! Auto Key, arrasto, losango).
 
 use std::any::Any;
 
+use crate::aba;
 use ph2d_editor_core::doc_surface::{
     Compose, DocTab, DocumentSurface, KeyInput, KeyOutcome, PointerInput,
 };
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerKind};
-use ph2d_panel_physics::aba;
 use ph2d_text::TextSystem;
 use ph2d_tokens::Theme;
 use ph2d_vector::VectorScene;

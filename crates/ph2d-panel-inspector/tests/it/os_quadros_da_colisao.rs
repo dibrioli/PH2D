@@ -204,7 +204,7 @@ fn os_quadros_acompanham_a_matriz_e_o_nome() {
     let _ = pinta(&mut host, &mut st);
     assert_eq!(
         host.store().tooltip_for(INSP_PHYS_COLLIDES[1]),
-        Some("Things on 3 pass through things on Crates. Click to make them bump."),
+        Some("Things on Layer 3 pass through things on Crates. Click to make them bump."),
     );
     fim();
 }

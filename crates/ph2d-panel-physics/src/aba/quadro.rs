@@ -33,8 +33,6 @@ fn pairada(ctx: &PaintCtx, visiveis: &[usize]) -> Option<(usize, usize)> {
         })
 }
 
-const NOMES_DA_FOTO: [&str; 5] = ["Ground", "Player", "Enemy", "Pickup", "Player Shots"]; // LITERAL-STR-OK: nomes de projeto das fotos (maquete B), não UI
-
 /// As fotos do smoke (`PH2D_PHYSICS_SMOKE_ABA`; a tela virtual não recebe rato): `abre` dá os nomes da
 /// maquete às camadas 0..4 e abre a aba na 1; `pairar` põe também o ponteiro em (4, 1); `nome` abre o
 /// nome da 2 em edição na lista; `default` abre a aba sem dar nome nenhum (a 0 lê-se «Default»).
@@ -49,12 +47,12 @@ pub(super) fn fotos(ctx: &mut PaintCtx) {
     FEITO.set(true);
     abre(Some(1));
     if caso != "default" {
-        for (n, nome) in NOMES_DA_FOTO.iter().enumerate() {
+        for (n, nome) in tr("card.physics.smoke_layer_names").split('|').enumerate() {
             ctx.host
                 .bus_mut()
                 .push(ph2d_editor_core::action_bus::EditorAction::LayerRename {
                     layer: n as u8,
-                    name: (*nome).to_owned(),
+                    name: nome.to_owned(),
                 });
         }
     }
@@ -62,7 +60,7 @@ pub(super) fn fotos(ctx: &mut PaintCtx) {
         let campo = i::PHYSICS_LAYER_NAME[2];
         let store = ctx.host.store_mut();
         if let Some(InteractiveState::TextInput { text, caret, .. }) = store.get_mut(campo) {
-            "Enemy Bats".clone_into(text);
+            tr("card.physics.smoke_layer_rename").clone_into(text);
             *caret = text.len();
         }
         ph2d_editor_core::interaction::dispatch::focus_text_field(store, campo);

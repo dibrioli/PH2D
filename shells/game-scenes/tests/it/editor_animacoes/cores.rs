@@ -122,3 +122,29 @@ fn o_segmentado_e_o_total_do_ciclo() {
     }
     assert_eq!(m.doc().total_ms(), 600, "seis quadros de 100 ms");
 }
+
+/// Dono, 07/11: o tempo da animação e o corte da folha têm cada um a sua moldura, com os seus dois campos dentro.
+#[test]
+fn o_tempo_e_o_corte_tem_molduras_separadas() {
+    for w in [1200.0, 420.0] {
+        // LITERAL-PX-OK: a janela do teste
+        let mut m = Mesa::new();
+        m.paint_in(Rect::new(0.0, 0.0, w, AREA.h));
+        let l = m.doc().layout.clone();
+        let dentro = |g: Rect, r: Rect| {
+            r.x >= g.x && r.y >= g.y && r.x + r.w <= g.x + g.w && r.y + r.h <= g.y + g.h
+        };
+        assert!(
+            dentro(l.time_group, l.fps) && dentro(l.time_group, l.this_frame),
+            "{w}"
+        );
+        assert!(
+            dentro(l.grid_group, l.cols) && dentro(l.grid_group, l.rows),
+            "{w}"
+        );
+        let (a, b) = (l.time_group, l.grid_group);
+        let apart = a.x + a.w <= b.x || a.y + a.h <= b.y;
+        assert!(apart, "as molduras não se pisam a {w}: {a:?} {b:?}");
+        assert!(l.modes[0].y >= b.y + b.h, "o segmentado fica abaixo a {w}");
+    }
+}

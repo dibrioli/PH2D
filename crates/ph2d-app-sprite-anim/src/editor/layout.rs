@@ -27,8 +27,8 @@ const SIGNAL_ROWS: f32 = 4.5; // LITERAL-PX-OK: múltiplo do token de linha
 /// O tecto da miniatura: a fração da altura que ela e a folha repartem. A folha guarda sempre a outra
 /// metade, porque é nela que se escolhem as células.
 const THUMB_MAX_FRAC: f32 = 0.5; // LITERAL-PX-OK: fração de layout
-/// As colunas da fila dos campos: Frames/s, This frame, Cols e Rows.
-const FIELD_COLUMNS: f32 = 4.0; // LITERAL-PX-OK: contagem de colunas
+/// Quantos campos cabem numa moldura, e quantas molduras há: o tempo da animação e o corte da folha.
+const PER_GROUP: f32 = 2.0; // LITERAL-PX-OK: contagem de colunas
 /// O que a tira rola por pintura com a mão na borda, em alturas de linha.
 const EDGE_SCROLL_ROWS: f32 = 0.25; // LITERAL-PX-OK: múltiplo do token de linha
 
@@ -60,6 +60,9 @@ pub struct Layout {
     pub frames: Vec<(Rect, Rect)>,
     /// Durante o arrasto de um quadro: (o intervalo `0..=n`, a barra de inserção).
     pub marker: Option<(usize, Rect)>,
+    /// As molduras: o tempo da animação aberta e o corte da folha, que vale para todas.
+    pub time_group: Rect,
+    pub grid_group: Rect,
     pub fps: Rect,
     pub this_frame: Rect,
     /// O lugar do marcador, e, com um quadro escolhido, o botão e o campo do sinal.
@@ -92,6 +95,8 @@ impl Default for Layout {
             strip: z,
             frames: Vec::new(),
             marker: None,
+            time_group: z,
+            grid_group: z,
             fps: z,
             this_frame: z,
             mark_bar: z,
@@ -240,12 +245,16 @@ impl AnimDoc {
         let signal_w = row * SIGNAL_ROWS;
         let inline = title_w + total_w + mark_w + signal_w + 3.0 * gap <= card_w; // LITERAL-PX-OK: três vãos
         let mark_line = if inline { 0.0 } else { row + gap };
-        // Quatro campos numa fila; se os rótulos não couberem, dois a dois.
+        // As duas molduras lado a lado; se os rótulos não couberem, uma sobre a outra.
+        let group_pad = Spacing::Sm.px();
+        let group_h = group_pad + line + row + group_pad;
         let label_need = fit(&[ph2d_i18n::tr("anim_editor.this_frame")]);
-        let four = (card_w - (FIELD_COLUMNS - 1.0) * gap) / FIELD_COLUMNS >= label_need;
-        let field_line = if four { 0.0 } else { line + row + gap };
+        let side_w = (card_w - gap) / PER_GROUP;
+        let side_field = (side_w - PER_GROUP * group_pad - gap) / PER_GROUP;
+        let side_by_side = side_field >= label_need;
+        let group_line = if side_by_side { 0.0 } else { group_h + gap };
         let frames_fixed =
-            2.0 * inner + row + gap + mark_line + gap + line + row + field_line + gap + row; // LITERAL-PX-OK: as margens
+            2.0 * inner + row + gap + mark_line + gap + group_h + group_line + gap + row; // LITERAL-PX-OK: as margens
         let banner_h = if self.proposal().is_some() {
             row + gap
         } else {
@@ -290,22 +299,25 @@ impl AnimDoc {
         }
         y += row + gap + mark_line;
         l.strip = Rect::new(cx, y, card_w, thumb);
-        y += thumb + gap + line;
-        let columns = if four { FIELD_COLUMNS } else { 2.0 }; // LITERAL-PX-OK: dois a dois
-        let col_w = ((card_w - (columns - 1.0) * gap) / columns).max(0.0);
-        let at = |k: f32| {
-            let (c, y) = if k < columns {
-                (k, y)
-            } else {
-                (k - columns, y + row + gap + line)
-            };
-            Rect::new(cx + c * (col_w + gap), y, col_w, row)
+        y += thumb + gap;
+        let group_w = if side_by_side { side_w } else { card_w };
+        l.time_group = Rect::new(cx, y, group_w, group_h);
+        l.grid_group = if side_by_side {
+            Rect::new(cx + group_w + gap, y, group_w, group_h)
+        } else {
+            Rect::new(cx, y + group_h + gap, group_w, group_h)
         };
-        l.fps = at(0.0);
-        l.this_frame = at(1.0);
-        l.cols = at(2.0);
-        l.rows = at(3.0);
-        y = l.rows.y + row + gap;
+        let pair = |g: Rect| {
+            let w = ((g.w - PER_GROUP * group_pad - gap) / PER_GROUP).max(0.0);
+            let fy = g.y + group_pad + line;
+            (
+                Rect::new(g.x + group_pad, fy, w, row),
+                Rect::new(g.x + group_pad + w + gap, fy, w, row),
+            )
+        };
+        (l.fps, l.this_frame) = pair(l.time_group);
+        (l.cols, l.rows) = pair(l.grid_group);
+        y = l.grid_group.y + group_h + gap;
         // Partes iguais, como na maquete; se o maior não couber, cada um mede o seu texto e reparte a sobra.
         let needs = [
             "anim_editor.repeat",

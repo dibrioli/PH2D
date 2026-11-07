@@ -168,7 +168,7 @@ fn label(
     paint_text(text, scene, s, r.x, y, font, r.w, tom(c, theme));
 }
 
-/// Um campo dos cartões: a letra apagada à esquerda e o valor junto dela.
+/// Um campo dentro da moldura, um degrau acima dela: a letra apagada à esquerda e o valor junto.
 fn glyph_field(
     scene: &mut VectorScene,
     text: &mut TextSystem,
@@ -182,7 +182,7 @@ fn glyph_field(
         scene,
         r,
         frame_radius(theme, m::FIELD_RADIUS),
-        tom(ColorToken::Bg2, theme),
+        tom(ColorToken::Bg3, theme),
     );
     if open.is_some() {
         stroke_rect(
@@ -309,6 +309,15 @@ fn paint_fields(
     theme: Theme,
 ) {
     let over = |r: Rect| Rect::new(r.x, r.y - ROW_H_PX, r.w, ROW_H_PX);
+    // A moldura como a do cartão Image: um degrau abaixo do cartão.
+    for g in [l.time_group, l.grid_group] {
+        fill_rounded_rect(
+            scene,
+            g,
+            frame_radius(theme, Radius::Sm.px()),
+            tom(ColorToken::Bg2, theme),
+        );
+    }
     let fps_key = tr("panel.inspector.anim_card.fps");
     label(scene, text, theme, over(l.fps), fps_key, ColorToken::Text2);
     let fps = doc.fps_label();

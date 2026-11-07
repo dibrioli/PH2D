@@ -328,7 +328,7 @@ fn pinta_pe(ctx: &mut PaintCtx, q: &Quadro) {
                     r.w,
                     tom!(ColorToken::Text1, theme),
                 );
-                x += texto.prefix_width(par, font) + texto.prefix_width(" ", font);
+                x += texto.prefix_width(par, font) + Spacing::Xs.px();
                 pe.get(par.len()..).unwrap_or("").trim_start()
             }
             None => pe.as_str(),

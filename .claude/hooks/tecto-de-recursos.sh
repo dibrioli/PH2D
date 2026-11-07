@@ -253,8 +253,31 @@ fi
 # Um `until …; do sleep 60; done` em segundo plano nunca termina sozinho: se a
 # condição não chegar, ele fica a girar para sempre e a sua ausência de saída
 # lê-se exactamente como «ainda a trabalhar».
+#
+# ⛔ R10 · laço que espera por `pgrep -f`/`ps | grep` acha-se a si mesmo: o padrão está na linha de
+# comando do próprio shell, logo a condição nunca muda. 07/11: 5 h paradas à frente da suíte da
+# integração, sem um teste a correr (31 laços destes nos transcritos). Com prazo só se perde menos.
+laco="$exe"   # o corpo de `bash -c '…'` CORRE: as aspas dele não fazem do laço uma simples menção
+if printf '%s\n' "$exe" | grep -qE '(bash|sh|zsh)[[:space:]]+-c'; then laco="$(printf '%s\n' "$exe" | tr "'\"" '  ')"; fi
+if printf '%s\n' "$laco" | grep -qE '(^|[;&|({[:space:]])(while|until)[[:space:]]' \
+  && printf '%s\n' "$laco" | grep -qE '(^|[;&|[:space:]])done([;&|)[:space:]]|$)' \
+  && printf '%s\n' "$laco" | grep -qE 'pgrep[[:space:]]+(-[a-zA-Z]+[[:space:]]+)*-[a-zA-Z]*f|[[:space:]]ps[[:space:]].*\|[[:space:]]*grep'; then
+  recusa "⛔ Laço que espera por \`pgrep -f\` ou \`ps | grep\` nunca acaba.
+
+O texto procurado está na linha de comando do próprio shell, e ele acha-se a si mesmo. Em
+07/11 isto segurou a suíte da integração 5 horas, com a máquina parada, sem nenhum aviso." \
+"Comece o trabalho já, sem esperar à frente dele; o arnês avisa quando um comando de fundo termina.
+Se tiver mesmo de esperar outro processo, espere pelo PID e com prazo:
+
+  timeout 900 tail --pid=<PID> -f /dev/null
+
+ou procure o nome exato do programa, que não casa com o shell: \`pgrep -x cargo\`."
+fi
+
 if [ "$fundo" = "true" ]; then
-  if printf '%s' "$cmd" | grep -qE '(while[[:space:]]+(true|:)|until[[:space:]]|for[[:space:]]*\(\(;;)'; then
+  # Qualquer `while … sleep` (não só `while true`) e as esperas sem laço (`tail --pid`, `inotifywait`).
+  if printf '%s' "$cmd" | grep -qE '(while[[:space:]]+(true|:)|until[[:space:]]|for[[:space:]]*\(\(;;|tail[[:space:]]+--pid|inotifywait)' \
+    || { printf '%s\n' "$exe" | grep -qE '(^|[;&|({[:space:]])while[[:space:]]' && printf '%s\n' "$exe" | grep -qE '(^|[;&|[:space:]])sleep[[:space:]]'; }; then
     if ! printf '%s' "$cmd" | grep -qE '(^|[;&|[:space:]])timeout([[:space:]]|$)'; then
       recusa "⛔ Vigia de fundo sem prazo.
 

@@ -191,7 +191,10 @@ Ele recusa **quatro** formas e dá a linha corrigida:
 - **R2 — vigia de fundo sem prazo.** Um `until …; do sleep 45; done` em segundo
   plano nunca termina sozinho, e **o silêncio dele lê-se igual a «ainda a
   trabalhar»**. Em 14/09 nove destes ficaram a girar e um deles escondeu a sonda
-  pendurada durante quase uma hora.
+  pendurada durante quase uma hora. Vale para qualquer `while … sleep`, `tail --pid` e `inotifywait`.
+- **R10 — laço sobre `pgrep -f` ou `ps | grep`.** O padrão está na linha de comando do próprio shell, que se
+  acha a si mesmo e nunca sai, com ou sem prazo. Em 07/11 isto segurou a suíte da integração 5 h, com a máquina
+  parada. Comece o pesado direto; esperar um processo é `timeout 900 tail --pid=<PID> -f /dev/null`.
 - **R3 — o fonte de um alvo amuralhado** (Unreal `Engine/Source|Shaders`, os `.py` do
   Blender): oráculos que se CORREM, nunca fontes que se leem (CLAUDE.md §0.9).
 - **R4 — um `kill` que fecha a SESSÃO do dono** (2026-10-05). Um agente correu

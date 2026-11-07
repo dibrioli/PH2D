@@ -125,7 +125,7 @@ contexto*. As alavancas, por ordem:
   mais que `check` (alvo ≤ 1), e é a maior parte do relógio de ferramentas.
 - ⛔ **Comando pesado vai por `bash scripts/ph2d-run.sh <cmd>`** (fatia da LINHA: CPU ≤ 50 %, RAM ≤ 24G,
   prazo 30 min; a placa: a VEZ pede-se sozinha, `PH2D_GPU=1` só para medir —
-  [A_VEZ_DA_PLACA.md](docs/DevOps/A_VEZ_DA_PLACA.md)). O guarda recusa vigia de fundo sem prazo.
+  [A_VEZ_DA_PLACA.md](docs/DevOps/A_VEZ_DA_PLACA.md)). O guarda recusa vigia de fundo sem prazo e laço sobre `pgrep -f` (acha-se a si mesmo: 5 h paradas, 07/11). Pesado começa DIRETO, nunca atrás de uma espera, e confere-se logo que começou.
   Tectos e porquê: [TETOS_DE_RECURSO_POR_LINHA.md](docs/DevOps/TETOS_DE_RECURSO_POR_LINHA.md).
 - ⛔⛔ **Dono 23/10: a suíte COMPLETA e o `nextest-impacted` só correm na INTEGRAÇÃO** (o integrador) — na
   linha, até no fecho, testes do item e portões tocados por NOME, provas de mutação, fmt/clippy das crates

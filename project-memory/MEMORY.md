@@ -79,6 +79,7 @@
 - 📚 [Git & colisão multi-agente: mais (5) lições, uma linha cada, verbatim](reference_topic_git_lessons_loose.md)
 
 ## Ship / CI / integração
+- ⛔⛔⛔ [Laço sobre `pgrep -f` acha-se a si mesmo: 5 h paradas (07/11). Pesado começa DIRETO e confere-se que começou](feedback_a_wait_loop_on_pgrep_finds_itself.md)
 - ⛔⛔ [Regra de BRIEFING sem medição é «confirmada» por quem a segue](feedback_an_unmeasured_rule_in_a_briefing_is_confirmed_by_the_agents_who_follow_it.md)
 - ⭐ [CI 04/11: 27–30 min com cache · semente `gh workflow run spike.yml --ref main` após o push · teto de CPU 50 vs 100 é do DONO](project_ci_acceleration_2026_11_04.md)
 - ⛔ [A régua de uma linha é o MERGE-BASE, nunca o main a andar](feedback_the_ruler_is_the_merge_base_not_a_moving_main.md)

@@ -24,6 +24,24 @@ t "smoke cru"             'cargo run -p ph2d-host-desktop --profile smoke'  fals
 t "gate de GPU cru"       'cargo test -p ph2d-field-gpu -- --ignored'       false deny
 t "vigia sem prazo"       'until grep -q ok /tmp/x; do sleep 45; done'      true  deny
 t "while true de fundo"   'while true; do sleep 30; done'                   true  deny
+# ⭐ R10 — o comando EXACTO de 07/11 (5 h paradas à frente da suíte), e os irmãos.
+t "O INCIDENTE: pgrep -f"  "sleep 1; while pgrep -f 'cargo check -p ph2d-app-sfxlab' >/dev/null; do sleep 2; done; bash scripts/integrar-rodada.sh suite > /tmp/l 2>&1" true deny
+t "pgrep -f em 1.º plano"  'until ! pgrep -f "node prova" >/dev/null; do sleep 15; done' false deny
+t "pgrep -af com prazo"    "timeout 900 bash -c 'while pgrep -af x; do sleep 5; done'" true deny
+t "ps | grep num laço"     'while ps aux | grep -q cargo; do sleep 5; done' false deny
+t "while cond de fundo"    'while test -f /tmp/x; do sleep 30; done'        true  deny
+t "tail --pid sem prazo"   'tail --pid=123 -f /dev/null; bash scripts/x.sh' true  deny
+t "inotifywait sem prazo"  'inotifywait -e create /tmp/d'                   true  deny
+t "pgrep -x num laço, prazo" "timeout 900 bash -c 'while pgrep -x cargo; do sleep 5; done'" true passa
+t "tail --pid com prazo"   'timeout 900 tail --pid=123 -f /dev/null'        true  passa
+t "while read de fundo"    'git log | while read l; do echo "$l"; done'     true  passa
+t "for finito com sleep"   'for i in 1 2 3; do echo $i; sleep 1; done'      true  passa
+t "pgrep -f sem laço"      'pgrep -af nextest'                              false passa
+t "grep que MENCIONA o laço" 'grep -rn "while pgrep -f x; do sleep 2; done" docs/' false passa
+t "commit que MENCIONA"    'git commit -m "o laço while pgrep -f até done"' false passa
+t "heredoc MENCIONA o laço" "python3 - <<'PY'
+print('while pgrep -f x; do sleep 2; done')
+PY"                                                                         false passa
 t "fonte da Unreal"       'cat /home/enio/Documentos/Projetos/UnrealEngine/Engine/Source/Runtime/X.cpp' false deny
 t "shader da Unreal"      'grep -rn Burley /home/enio/Documentos/Projetos/UnrealEngine/Engine/Shaders/' false deny
 t "python do Blender"     'sed -n 1,40p /usr/share/blender/5.2/scripts/startup/x.py' false deny

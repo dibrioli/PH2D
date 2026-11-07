@@ -329,7 +329,7 @@ fn a_matriz_vai_e_volta_em_32_linhas_e_a_de_8_bytes_e_alargada() {
         "os pares antigos no sítio e o campo seguinte (air_drag) também"
     );
     assert!(
-        postcard::from_bytes::<PhysicsSettings>(&oito).map_or(true, |s| s != velha),
+        !postcard::from_bytes::<PhysicsSettings>(&oito).is_ok_and(|s| s == velha),
         "CONTROLO: sem a guarda, o fio antigo não abre igual"
     );
 }

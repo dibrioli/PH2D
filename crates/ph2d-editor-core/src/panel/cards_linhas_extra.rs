@@ -2,9 +2,8 @@
 //! de marcar pelo [`CardCtx`] e a grelha triangular de ligar/desligar (o mapa de colisão da Unity e
 //! da Godot). Não cabem em [`Widget`], cuja linha tem a altura de um campo.
 
-use super::{CardCtx, Cell, Widget, corpo, rotulos};
+use super::{CardCtx, corpo};
 use crate::icons::IconId;
-use crate::interaction::toggle_paint;
 use crate::paint::{
     fill_rounded_rect, paint_icon, paint_text, paint_text_block, paint_text_elided,
 };
@@ -471,7 +470,10 @@ mod tests {
     fn a_readout_takes_no_click_and_a_hint_grows_when_it_wraps() {
         let mut f = mesa();
         let fim = ctx(&mut f, 200.0).row(
-            &[Cell::new(Widget::Readout { text: "120" }).label("Scale")],
+            &[
+                super::super::Cell::new(super::super::Widget::Readout { text: "120" })
+                    .label("Scale"),
+            ],
             0.0,
         );
         assert!(fim > m::FIELD_H);

@@ -150,6 +150,10 @@ pub struct Toque {
 
 /// An edit the artist made, for the shell to apply.
 #[derive(Copy, Clone, Debug, PartialEq)]
+#[expect(
+    clippy::large_enum_variant,
+    reason = "cresceu com as 32 linhas da matriz; a fila leva poucas edições por quadro, e caixa perderia o `Copy`"
+)]
 pub enum PhysicsIntent {
     /// Replace the world settings wholesale.
     ///

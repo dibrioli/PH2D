@@ -102,11 +102,11 @@ impl CardCtx<'_> {
         }
         y += m::LABEL_PX + m::LABEL_BOTTOM;
         let mut pares = Vec::new();
-        for i in primeira..n {
+        for (i, rotulo) in rotulos.iter().enumerate().skip(primeira) {
             paint_text_elided(
                 self.text_system,
                 self.scene,
-                &rotulos[i],
+                rotulo,
                 self.x,
                 y + crate::paint::folga_do_texto(lado, m::LABEL_PX),
                 m::LABEL_PX,

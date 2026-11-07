@@ -522,14 +522,6 @@ fn catching_up_in_one_call_is_the_same_as_catching_up_step_by_step() {
     }
 }
 
-/// **Os gates do TRANSPORTE da §11** — irmão deste ficheiro pelo teto de LOC do shell (HR-18).
-///
-/// ⚠️ **O corte é por LEI, e não por tamanho:** aqui mora o que responde *«o que está a tocar, e
-/// a partir de onde»* — rebobinar, escolher, ligar, retomar. O que fica no ficheiro-pai é a
-/// AUTORIA (a biblioteca, os nomes, os intervalos) e o snapshot. São as duas metades que a própria
-/// seção separa com dois rótulos.
-///
-
 /// **O MOTOR e o PAINEL dão a mesma resposta a «esta reprodução está pendurada?»**
 ///
 /// ⚠️ A lei existe **duas vezes**, e de propósito: o painel é chrome e não vê o motor

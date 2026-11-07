@@ -138,6 +138,24 @@ pub fn cut_again(
     true
 }
 
+/// As células com desenho de cada fileira da folha que `e` mostra: o que Split by rows lê da folha pintada.
+#[must_use]
+pub fn fileiras_de(
+    world: &World,
+    e: Entity,
+    db: &AssetDb,
+    atlas: &BTreeMap<u32, AssetId>,
+) -> Vec<Vec<u32>> {
+    let leitura = shown_id(world, e, atlas).and_then(|id| db.get(&id));
+    let (Some((w, h, px)), Some(g)) = (
+        leitura.as_ref().and_then(|a| a.image_rgba8()),
+        world.get::<SpriteGrid>(e),
+    ) else {
+        return Vec::new();
+    };
+    crate::editor::split::drawn_by_row(&px, w, h, g.hframes, g.vframes)
+}
+
 /// **Keep the cut**: o corte fica, o aviso sai.
 pub fn keep_cut(world: &mut World, e: Entity) -> bool {
     let tinha = world.get::<SpriteCutNotice>(e).is_some();

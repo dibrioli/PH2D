@@ -1,0 +1,20 @@
+[package]
+name = "ph2d-sprite-anim-scene"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ A cena `PH2D_GAME_SMOKE=5` como FOLHA, pela catraca `the_shell_only_shrinks_and_every_app_crate_too`:
+# o guião de gestos mora aqui, e a shell só o executa pelas portas do produto.
+[dependencies]
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+
+[lints]
+workspace = true

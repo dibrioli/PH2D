@@ -5822,6 +5822,7 @@ dependencies = [
  "ph2d-runtime",
  "ph2d-script",
  "ph2d-sfx-scene",
+ "ph2d-sprite-anim-scene",
  "ph2d-tokens",
  "ph2d-vector",
 ]
@@ -7521,6 +7522,7 @@ dependencies = [
  "ph2d-skeleton-ecs",
  "ph2d-skeleton-live",
  "ph2d-skeleton-render",
+ "ph2d-sprite-anim-scene",
  "ph2d-sprite-edit",
  "ph2d-sprite-precision",
  "ph2d-sprite-screen",
@@ -10923,6 +10925,15 @@ name = "ph2d-spring"
 version = "0.0.0"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "ph2d-sprite-anim-scene"
+version = "0.0.0"
+dependencies = [
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-physics-ecs",
 ]
 
 [[package]]

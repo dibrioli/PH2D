@@ -3,18 +3,12 @@
 
 use super::*;
 
-/// O instante que a foto quer (`PH2D_GAME_SMOKE_FOTO`). A mão do dono faz o mesmo pelo Inspector e pelos Assets;
-/// a tela virtual não recebe cliques. Plano 12: o seletor aberto sobre os montes, ou as duas imagens trocadas.
-/// Plano 13: o bloco Platform High (sem quadros), com a bandeira (o aviso), já animada, e a «Platform» largada
-/// no canvas (sobre o céu). Plano 14: a Platform Low em Tiled, e com Width 4. Plano 15 (o seletor «Use»): o
-/// Player animado, a bandeira num bloco passada a parada, e o «heroi_azul» num bloco passado a animado (a grelha
-/// proposta pela transparência).
+/// O instante que a foto quer (`PH2D_GAME_SMOKE_FOTO`); a mão do dono faz o mesmo pelo Inspector e pelos Assets.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Foto {
     Seletor,
     Trocado,
-    /// GEF 23, a ficha da Sprite: o cartão vazio, em uso, o Advanced aberto, Custom, o recibo do Replace, a folha,
-    /// o Repeated, o pivô no pé, e a imagem no Painter.
+    /// GEF 23, a ficha da Sprite.
     SpriteVazio,
     SpriteUso,
     SpriteAdvanced,
@@ -24,7 +18,6 @@ pub enum Foto {
     SpritePivoPe,
     /// Edit in Painter no app real: um traço, sair do Draw, `[sprite-pixel]` das duas plataformas, Ctrl+Z.
     SpritePainterVolta,
-    /// O mesmo pelo Apply, sem sair do Draw.
     SpritePainterAplica,
     /// Abre, não pinta, sai: `[sprite-pixel]` diz quantos passos ficaram e se a marca do botão saiu.
     SpritePainterSemPintar,

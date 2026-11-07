@@ -43,16 +43,8 @@ pub const IMAGENS_4: [&str; 2] = [
 /// As imagens que a cena `nivel` traz para a biblioteca.
 #[must_use]
 pub fn imagens_da_cena(nivel: u32) -> &'static [&'static str] {
-    if matches!(nivel, 4 | 5) {
-        &IMAGENS_4
-    } else {
-        &[]
-    }
+    if nivel >= 4 { &IMAGENS_4 } else { &[] }
 }
-
-// A cena 5, a do Animated Sprite (ficha 02).
-#[path = "smoke_animado.rs"]
-pub mod animado;
 
 // As fotos do dono (`PH2D_GAME_SMOKE_FOTO`), irmãs pelo tecto de LOC.
 #[path = "smoke_foto.rs"]
@@ -170,10 +162,8 @@ pub fn conducao() -> Option<GameStage> {
 /// corre, salta para a plataforma baixa, sai a cair, aterra e pára — as quatro animações por esta ordem.
 #[must_use]
 pub fn gesto_no_quadro(nivel: u32, stage: GameStage, quadro: u32) -> Option<Gesto> {
-    if nivel == animado::CENA && quadro != 60 {
-        return animado::gesto_do_nivel_5(quadro);
-    }
     let horario: &[(u32, Gesto)] = match nivel {
+        5 => &HORARIO_5,
         2 | 4 => &HORARIO_2,
         3 => &HORARIO_3,
         _ => &HORARIO_1,
@@ -207,6 +197,14 @@ pub const HORARIO_3: [(u32, Gesto); 7] = [
     (330, Gesto::Direita(true)),
     (420, Gesto::Direita(false)),
     (480, Gesto::Para),
+];
+/// O nível 5: o Player anda e pára, para a regra acesa trocar; o Stop vem no fim, para as provas.
+pub const HORARIO_5: [(u32, Gesto); 5] = [
+    (120, Gesto::Direita(true)),
+    (170, Gesto::Direita(false)),
+    (220, Gesto::Esquerda(true)),
+    (270, Gesto::Esquerda(false)),
+    (1500, Gesto::Para),
 ];
 /// Onde o salto do nível 2 sai (afinado pelo gate `o_nivel_2_anda_salta_cai_e_anima`).
 pub const QUADRO_DO_SALTO: u32 = 190;
@@ -294,7 +292,15 @@ pub fn montar(sim: &mut SimWorld, portas: Portas<'_>, nivel: u32) -> Entity {
             );
             jogador
         }
-        animado::CENA => animado::nivel_5(sim, portas),
+        5 => {
+            let jogador = nivel_2(sim, portas);
+            for (nome, at) in ph2d_sprite_anim_scene::OBJETOS {
+                let e = do_menu(sim, portas, crate::object_add::ANIMATED_SPRITE);
+                arruma(sim, e, nome, at, [1.0, 1.0]);
+            }
+            println!("{}", ph2d_sprite_anim_scene::MENSAGEM);
+            jogador
+        }
         _ => nivel_1(sim.world_mut()),
     }
 }

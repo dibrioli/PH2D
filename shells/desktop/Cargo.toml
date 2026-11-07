@@ -67,6 +67,7 @@ ph2d-sprite-edit = { path = "../../crates/ph2d-sprite-edit" }
 ph2d-pick-order = { path = "../../crates/ph2d-pick-order" }
 ph2d-sfx-scene = { path = "../../crates/ph2d-sfx-scene" }
 ph2d-app-sfxlab = { path = "../../crates/ph2d-app-sfxlab" }
+ph2d-sprite-anim-scene = { path = "../../crates/ph2d-sprite-anim-scene" }
 # ⭐ A família do KANBAN (TrelloClone): instalada no arranque, um `frame` por quadro.
 ph2d-app-kanban = { path = "../../crates/ph2d-app-kanban" }
 ph2d-sfx-recipe = { path = "../../crates/ph2d-sfx-recipe", features = ["component"] }

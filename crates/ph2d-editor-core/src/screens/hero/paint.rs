@@ -390,6 +390,7 @@ pub fn paint_hero_screen(
             &hero.store,
             &hero.motion,
             &hero.documents,
+            hero.view.game_run,
         );
     }
     // ⛔⛔⛔ **A SEGUNDA PORTA DO RECT DO INSPECTOR E DA HIERARQUIA SAIU DAQUI (2026-09-08).**

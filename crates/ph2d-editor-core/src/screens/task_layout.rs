@@ -48,6 +48,8 @@ use ph2d_i18n::TextKey;
 /// Um layout por tarefa (**D7**).
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TaskLayout {
+    /// Arrumar a cena e os objectos, com a ferramenta de mover (dono 07/11).
+    Scene,
     /// Pintar — canvas grande, camadas.
     Drawing2d,
     /// ⭐ Desenho vetorial, **separado do raster por decisão do Enio**.
@@ -99,12 +101,13 @@ pub struct LayoutSpec {
 }
 
 impl TaskLayout {
-    /// Os cinco, na ordem em que aparecem na barra — a fonte de toda varredura.
+    /// Os seis, na ordem em que aparecem na barra — a fonte de toda varredura.
     ///
     /// ⚠️ **A ordem é a da D7** (menos os dois bloqueados e o *Model*, que saiu com o 3D —
     /// ADR-0179), e não a alfabética: ela é lida da esquerda para a direita por quem escolhe, e a
     /// tabela dele começa no desenho.
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
+        Self::Scene,
         Self::Drawing2d,
         Self::Vector,
         Self::Flip,
@@ -135,6 +138,14 @@ impl TaskLayout {
             // dono do canvas não a faz — o pintor, o `move` — **tem** de o nomear,
             // senão ele fecha e não há quem o reabra. Gate: `a_layout_names_the_inspector_exactly_
             // when_its_canvas_owner_does_not_take_it_over`.
+            // ⭐ Arrumar a cena (dono 07/11): nenhuma ferramenta de desenho.
+            Self::Scene => LayoutSpec {
+                title: TextKey::new("chrome.layout.scene"),
+                wire: "scene",
+                open: &["hierarchy", "inspector"],
+                slots: &[],
+                canvas: CanvasOwner::Tool("move"),
+            },
             Self::Drawing2d => LayoutSpec {
                 title: TextKey::new("chrome.layout.draw"),
                 wire: "drawing_2d",
@@ -185,6 +196,21 @@ impl TaskLayout {
         }
     }
 
+    /// ⭐ A aba de quem tem este objecto selecionado (dono 07/11). Quem não desenha numa aba própria arruma-se na Scene.
+    #[must_use]
+    pub const fn of_kind(kind: ObjectKind) -> Self {
+        match kind {
+            ObjectKind::Vector => Self::Vector,
+            ObjectKind::Painted => Self::Drawing2d,
+            ObjectKind::Flip => Self::Flip,
+            ObjectKind::Motion => Self::Nodes,
+            ObjectKind::Empty
+            | ObjectKind::Image
+            | ObjectKind::Skeleton
+            | ObjectKind::PixelSprite => Self::Scene,
+        }
+    }
+
     /// A volta do [`LayoutSpec::wire`]. `None` para o que não se reconhece — *um layout de um build
     /// mais novo cai no de omissão*, que é o comportamento certo para uma preferência.
     #[must_use]
@@ -194,10 +220,9 @@ impl TaskLayout {
 }
 
 impl Default for TaskLayout {
-    /// ⚠️ **O de omissão é o DESENHO**, e não é uma escolha arbitrária: é o primeiro da tabela da
-    /// D7, e é a tarefa que o app abre a fazer desde que existe.
+    /// O de omissão é o primeiro da tabela: a Scene, sem ferramenta de desenho (dono 07/11).
     fn default() -> Self {
-        Self::Drawing2d
+        Self::Scene
     }
 }
 

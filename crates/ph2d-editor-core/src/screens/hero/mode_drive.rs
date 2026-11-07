@@ -425,6 +425,15 @@ pub fn drive(
     {
         reveal_inspector(hero);
     }
+    if std::mem::take(&mut hero.view.revela_inspector) && current.is_none() {
+        reveal_inspector(hero);
+    }
+    if current.is_none()
+        && now_entity != was_entity
+        && let Some(e) = now_entity
+    {
+        super::layout_switch::follow_object(hero, tools, kind_of(e));
+    }
     // 5. O seletor — em todo quadro, vazio incluído.
     let menu = hero.gizmo.mode.menu(&mut hero.store);
     hero.store.publish_mode_menu(menu);

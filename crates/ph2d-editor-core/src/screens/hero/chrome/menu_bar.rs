@@ -100,7 +100,7 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
     true
 }
 
-/// A linha do menu *Run* que escolhe onde o jogo se mostra.
+/// O botão da barra que escolhe onde o jogo se mostra.
 fn game_stage_of(id: ph2d_a11y::NodeId) -> Option<crate::game_stage::GameStage> {
     use crate::game_stage::GameStage;
     [

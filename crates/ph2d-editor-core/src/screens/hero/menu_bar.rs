@@ -61,7 +61,7 @@ use ph2d_vector::VectorScene;
 pub const MENU_BAR_H: f32 = ROW_H_PX;
 
 /// ⭐ **A TABELA** — título, id, e o menu que ele abre. A fonte única desta barra.
-pub const MENUS: [(NodeId, TextKey, ContextMenuKind); 5] = [
+pub const MENUS: [(NodeId, TextKey, ContextMenuKind); 4] = [
     (
         ids::MENUBAR_FILE,
         TextKey::new("chrome.menu_bar.file"),
@@ -82,11 +82,6 @@ pub const MENUS: [(NodeId, TextKey, ContextMenuKind); 5] = [
         TextKey::new("chrome.menu_bar.window"),
         ContextMenuKind::MenuBarWindow,
     ),
-    (
-        ids::MENUBAR_RUN,
-        TextKey::new("chrome.menu_bar.run"),
-        ContextMenuKind::MenuBarRun,
-    ),
 ];
 
 /// Os ids de linha que **esta** barra trouxe — os que nenhum outro botão do app alcançava.
@@ -94,7 +89,7 @@ pub const MENUS: [(NodeId, TextKey, ContextMenuKind); 5] = [
 /// ⚠️ Existe para o registo não ser uma lista escrita à mão ao lado da tabela de rows: quem
 /// acrescentar um verbo novo a um destes menus acrescenta-o aqui, e o gate
 /// `every_menu_bar_row_is_registered` reprova se esquecer.
-pub const OWN_ROWS: [NodeId; 15] = [
+pub const OWN_ROWS: [NodeId; 12] = [
     ids::MENUBAR_FILE_NEW,
     ids::MENUBAR_FILE_SCENES,
     ids::MENUBAR_EDIT_PREFERENCES,
@@ -107,9 +102,6 @@ pub const OWN_ROWS: [NodeId; 15] = [
     ids::MENUBAR_VIEW_TOOL_ROW_BOTTOM,
     ids::MENUBAR_VIEW_FRAME_ALL,
     ids::MENUBAR_VIEW_FRAME_SELECTED,
-    ids::MENUBAR_RUN_WINDOW,
-    ids::MENUBAR_RUN_FULLSCREEN,
-    ids::MENUBAR_RUN_EDITOR,
 ];
 
 /// Recuo da barra à esquerda, para o primeiro título não nascer colado à borda da janela.
@@ -207,8 +199,6 @@ pub enum ModuleTruth {
     Column(crate::screens::layout::DockSide),
     /// A fila ② está embaixo da área (F5)? Aceso = embaixo.
     ToolRowBottom,
-    /// Onde o Play mostra o jogo (menu *Run*): aceso = a escolha actual.
-    GameStage(crate::game_stage::GameStage),
 }
 
 impl ModuleTruth {
@@ -221,14 +211,13 @@ impl ModuleTruth {
             Self::Rulers => hero.view.rulers_visible,
             Self::Column(side) => !super::dock_columns::is_closed(hero, side),
             Self::ToolRowBottom => hero.store.tool_row_bottom(),
-            Self::GameStage(s) => hero.view.game_stage == s,
         }
     }
 }
 
 /// A tabela. ⚠️ **Toda linha de alternância dos menus tem de estar aqui**, e há censo a exigi-lo
 /// (`every_toggle_row_of_the_bar_is_marked_by_its_own_state`).
-pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 24] = [
+pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 21] = [
     (ids::TOPBAR_MOTION, ModuleTruth::Tool("motion")),
     (ids::TOPBAR_PHYSICS, ModuleTruth::Panel("physics")),
     // ⭐⭐⭐ **OS OSSOS** (ordem do dono, 2026-09-09). ⚠️ O literal é o `Panel::ID` da
@@ -278,18 +267,6 @@ pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 24] = [
     (
         ids::MENUBAR_VIEW_COLUMN_RIGHT,
         ModuleTruth::Column(crate::screens::layout::DockSide::Right),
-    ),
-    (
-        ids::MENUBAR_RUN_WINDOW,
-        ModuleTruth::GameStage(crate::game_stage::GameStage::Window),
-    ),
-    (
-        ids::MENUBAR_RUN_FULLSCREEN,
-        ModuleTruth::GameStage(crate::game_stage::GameStage::Fullscreen),
-    ),
-    (
-        ids::MENUBAR_RUN_EDITOR,
-        ModuleTruth::GameStage(crate::game_stage::GameStage::Editor),
     ),
 ];
 
@@ -364,6 +341,7 @@ pub fn paint_menu_bar(
     store: &WidgetStore,
     motion: &crate::motion::UiMotion,
     docs: &crate::documents::Documents,
+    run: crate::game_stage::GameRun,
 ) {
     let bar = layout.top_bar;
     if bar.w <= 0.0 || bar.h <= 0.0 {
@@ -433,10 +411,14 @@ pub fn paint_menu_bar(
     let layout_start = super::layout_tabs::tab_rects(bar, menus_end_x, text_system)
         .first()
         .map_or(bar.x + bar.w, |(_, r)| r.x);
+    // ⭐ Os botões do jogo mandam no centro; as abas de documento ficam com o vão à esquerda deles.
+    let botoes = super::transport_bar::rects(bar, menus_end_x, layout_start);
+    let docs_end = botoes.first().map_or(layout_start, |(_, _, r)| r.x);
+    super::transport_bar::paint(&botoes, run, scene, theme, hit_index, store);
     super::document_tabs::paint(
         bar,
         menus_end_x + gap,
-        layout_start - gap,
+        docs_end - gap,
         docs,
         scene,
         text_system,

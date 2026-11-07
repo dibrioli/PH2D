@@ -67,6 +67,44 @@ pub fn install_at_startup(hero: &mut HeroScreen, tools: &mut ToolRegistry, layou
     }
 }
 
+/// ⭐ **A aba acompanha o objecto selecionado** (dono 07/11). Selecionar só escolhe: a ferramenta de outra aba larga-se,
+/// mas nenhuma de desenho se pega. Só troca o que é das duas abas: o painel que o artista abriu fica. Em Animate, todo
+/// objecto se anima: a aba fica.
+pub fn follow_object(
+    hero: &mut HeroScreen,
+    tools: &mut ToolRegistry,
+    kind: ph2d_component_desc::ObjectKind,
+) {
+    let de = hero.store.active_layout();
+    if de == TaskLayout::Animation {
+        return;
+    }
+    let para = TaskLayout::of_kind(kind);
+    let dona = |l: TaskLayout| match l.spec().canvas {
+        CanvasOwner::Tool(id) if id != "move" => Some(id),
+        _ => None,
+    };
+    let activa = tools.active().map(|t| t.id().0);
+    if activa.is_some_and(|a| {
+        dona(para).is_none_or(|p| p != a)
+            && TaskLayout::ALL.iter().any(|l| dona(*l) == Some(a.as_str()))
+    }) {
+        tools.activate_default();
+        hero.view.revela_inspector = true;
+    }
+    if para == de {
+        return;
+    }
+    let (fecha, abre) = (de.spec().open, para.spec().open);
+    for p in fecha.iter().filter(|p| !abre.contains(p)) {
+        hero.panel_visibility.insert(p, false);
+    }
+    for p in abre.iter().filter(|p| !fecha.contains(p)) {
+        hero.panel_visibility.insert(p, true);
+    }
+    hero.store.set_active_layout(para);
+}
+
 /// Tudo o que trocar de layout faz **menos** pegar a ferramenta; devolve quem deve ser o dono do
 /// canvas, para cada chamador o pegar pela porta que tem.
 fn arrange(hero: &mut HeroScreen, layout: TaskLayout) -> CanvasOwner {
@@ -113,3 +151,7 @@ fn arrange(hero: &mut HeroScreen, layout: TaskLayout) -> CanvasOwner {
 // crate o `test_support::ensure_panel_registry` é um `{}` — uma varredura sobre zero painéis
 // passaria sobre nada. Eles vivem em
 // `ph2d-panel-registry-init/tests/it/switching_layout_rearranges_the_screen.rs`.
+
+#[cfg(test)]
+#[path = "layout_follow_tests.rs"]
+mod follow_tests;

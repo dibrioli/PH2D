@@ -1,7 +1,7 @@
 //! ⭐ **A cena a CORRER** (onda 4, item 1 — dono no 3.º smoke de 09/10: *«na Godot não é necessário
 //! Play All: os marcados com Autoplay tocam no Play do runtime, o Play da barra superior»*).
 //!
-//! O **Play da barra superior** (e `Run ▸ Play`) põe a cena a correr, como o jogo: cada objecto a
+//! O **Play da barra superior** (e os botões de Play) põe a cena a correr, como o jogo: cada objecto a
 //! Animação dele (a entrada, ou o clipe pedido), o Arrange da Cena — ou, vazio, o clipe dela — e as
 //! cutscenes, em qualquer aba, no relógio da CENA. O Pause de cima pausa sem sair; o Reset de cima
 //! sai. O **transporte da timeline** é de EDIÇÃO (toca o que a aba mostra): usá-lo sai da corrida —

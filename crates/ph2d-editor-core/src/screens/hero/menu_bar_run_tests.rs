@@ -1,4 +1,4 @@
-//! O menu *Run* escolhe onde jogar E joga — pela cadeia inteira (`dispatch_all`), não pelo handler.
+//! Os botões da barra escolhem onde jogar E jogam — pela cadeia inteira (`dispatch_all`), não pelo handler.
 
 use crate::action_bus::{EditorAction, TransportCmd};
 use crate::game_stage::GameStage;
@@ -32,11 +32,6 @@ fn cada_linha_do_run_escolhe_o_palco_e_joga() {
                 [EditorAction::Transport(TransportCmd::Play)]
             ),
             "{id:?} não levantou o Play: {got:?}"
-        );
-        // A marca do menu diz a escolha.
-        assert_eq!(
-            super::super::super::menu_bar::module_is_on(&hero, id),
-            Some(true)
         );
     }
 }

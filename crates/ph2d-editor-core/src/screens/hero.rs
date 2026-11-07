@@ -132,6 +132,7 @@ pub mod slot_tabs_face;
 /// pergunta da fila: *o que se vê*, *o que uma aba diz*, e **como se chega ao que não se vê**.
 pub mod slot_tabs_overflow;
 pub mod surface_input;
+pub mod transport_bar;
 pub mod variant_axes;
 // ⚠️ Re-exportado para o gate `every_registered_panel_is_reachable_by_the_z_order_walk`: uma
 // lista que um teste não consegue ler é uma lista que ninguém confere — e esta já custou

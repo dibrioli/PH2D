@@ -20,12 +20,6 @@ pub const MENUBAR_EDIT: NodeId = hash_node_id("menubar_edit");
 pub const MENUBAR_VIEW: NodeId = hash_node_id("menubar_view");
 /// Título *Window*.
 pub const MENUBAR_WINDOW: NodeId = hash_node_id("menubar_window");
-/// Título *Run* — o transporte (tocar · pausar · rebobinar).
-///
-/// ⚠️ **Ele existe porque o `Reset` ficou SEM PORTA.** O `Espaço` alterna tocar/pausar e as
-/// vírgulas andam quadro a quadro, mas **rebobinar** só se alcançava pelo pill da barra antiga.
-/// Uma auditoria de 2026-08-30 contou-o entre os verbos que a retirada dos pills deixou órfãos.
-pub const MENUBAR_RUN: NodeId = hash_node_id("menubar_run");
 
 /// ⛔⛔ **O FUNDO da barra — o rectângulo que ENGOLE o clique.**
 ///
@@ -118,9 +112,9 @@ pub const MENUBAR_VIEW_COLUMN_LEFT: NodeId = hash_node_id("menubar_view_column_l
 /// distinção que a involução precisa — reabrir devolveria a união dos dois fechos.
 pub const MENUBAR_VIEW_COLUMN_RIGHT: NodeId = hash_node_id("menubar_view_column_right");
 
-/// *Run ▸ Play in a Window* — escolhe [`crate::game_stage::GameStage::Window`] e joga.
+/// **Play in a Window**, na barra — escolhe [`crate::game_stage::GameStage::Window`] e joga.
 pub const MENUBAR_RUN_WINDOW: NodeId = hash_node_id("menubar_run_window");
-/// *Run ▸ Play Fullscreen* — escolhe [`crate::game_stage::GameStage::Fullscreen`] e joga.
+/// **Play Fullscreen**, na barra — escolhe [`crate::game_stage::GameStage::Fullscreen`] e joga.
 pub const MENUBAR_RUN_FULLSCREEN: NodeId = hash_node_id("menubar_run_fullscreen");
-/// *Run ▸ Play in the Editor* — escolhe [`crate::game_stage::GameStage::Editor`] e joga.
+/// **Play in the Editor**, na barra — escolhe [`crate::game_stage::GameStage::Editor`] e joga.
 pub const MENUBAR_RUN_EDITOR: NodeId = hash_node_id("menubar_run_editor");

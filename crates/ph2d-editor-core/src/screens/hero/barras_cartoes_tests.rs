@@ -57,6 +57,7 @@ fn menu_bar() -> (VectorScene, Vec<(NodeId, Rect)>) {
         &WidgetStore::default(),
         &crate::motion::UiMotion::default(),
         &crate::documents::Documents::default(),
+        crate::game_stage::GameRun::default(),
     );
     let alvos = hits.iter_registrations().collect();
     (scene, alvos)
@@ -68,8 +69,8 @@ fn as_abas_do_topo_sao_segmentos_sem_acento() {
     let ((novo, alvos_novos), (antigo, alvos_antigos)) = nos_dois_modos(menu_bar);
     assert_eq!(alvos_novos, alvos_antigos);
     assert!(alvos_novos.len() > 6, "sem abas não prova nada");
-    // A aba de modo e a de documento: duas pílulas, dois escolhidos.
-    assert_eq!(vezes(&novo, ColorToken::CardField), 2);
+    // A aba de modo, a de documento e os botões do jogo: três pílulas, dois escolhidos.
+    assert_eq!(vezes(&novo, ColorToken::CardField), 3);
     assert_eq!(vezes(&novo, ColorToken::KanbanCardRaised), 2);
     assert_eq!(vezes(&novo, ColorToken::AccentSoft), 0);
     assert_eq!(vezes(&novo, ColorToken::KanbanList), 1, "o chão da barra");

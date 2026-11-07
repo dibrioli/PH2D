@@ -119,7 +119,6 @@ pub enum ContextMenuKind {
     MenuBarWindow,
     /// Ver [`Self::MenuBarFile`]. O **transporte** — e ele existe porque o *Reset* (rebobinar)
     /// não tinha porta nenhuma depois de os pills saírem.
-    MenuBarRun,
     /// Clicked the TOPBAR theme cluster. Menu offers the 4 theme
     /// options plus 3 corner-radius scale presets (Sharp / Default
     /// / Round) — the standardized way to switch chrome look.
@@ -465,7 +464,6 @@ impl ContextMenuKind {
         Self::MenuBarEdit,
         Self::MenuBarView,
         Self::MenuBarWindow,
-        Self::MenuBarRun,
         Self::ThemeSelector,
         Self::SaveMenu,
         Self::OpenMenu,

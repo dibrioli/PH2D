@@ -340,7 +340,7 @@ fn nivel_1(world: &mut ph2d_ecs::World) -> Entity {
     ph2d_ecs::assign_missing_stable_ids(world);
     println!(
         "[game-smoke] =1 o nível: chão com um vão, duas plataformas, a meta verde e cinco moedas. \
-         A cena está PARADA. Run ▸ Play in a Window (ou F5) abre o jogo numa janela; setas andam, \
+         A cena está PARADA. o botão Play in a Window, no centro da barra (ou F5) abre o jogo numa janela; setas andam, \
          ↑ salta, as moedas somem ao tocar. Shift+F5 (ou fechar a janela) pára — e tudo volta."
     );
     jogador
@@ -552,7 +552,7 @@ fn nivel_2(sim: &mut SimWorld, portas: Portas<'_>) -> Entity {
     println!(
         "[game-smoke] =2 o nível feito SÓ com o menu Add (Add ▸ Game) e a arte do Kenney em vetor: chão e \
          plataformas (Static Body), parede invisível (Collision Shape), tecto baixo (segure ↓), jogador \
-         (Character), moedas e bandeira (Animated Sprite), céu, nuvens e montes em parallax. Run ▸ Play: \
+         (Character), moedas e bandeira (Animated Sprite), céu, nuvens e montes em parallax. o botão Play in a Window: \
          cada moeda tocada faz «plim», soma 1 ao contador do HUD e some."
     );
     jogador

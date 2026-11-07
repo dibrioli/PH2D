@@ -403,11 +403,7 @@ fn every_toggle_row_of_the_bar_is_marked_by_its_own_state() {
                 || *id == ids::MENUBAR_VIEW_COLUMN_LEFT
                 || *id == ids::MENUBAR_VIEW_COLUMN_RIGHT
                 // ⭐ D10 F5 (08/10): a fila ② embaixo — em cima/embaixo é um estado.
-                || *id == ids::MENUBAR_VIEW_TOOL_ROW_BOTTOM
-                // ⭐ Onde jogar (GameEngineFuncional R0): a marca é a escolha actual.
-                || *id == ids::MENUBAR_RUN_WINDOW
-                || *id == ids::MENUBAR_RUN_FULLSCREEN
-                || *id == ids::MENUBAR_RUN_EDITOR;
+                || *id == ids::MENUBAR_VIEW_TOOL_ROW_BOTTOM;
             assert_eq!(
                 menu_bar::row_is_marked_by_button_state(*id),
                 is_toggle,
@@ -431,12 +427,11 @@ fn every_toggle_row_of_the_bar_is_marked_by_its_own_state() {
 /// As linhas de alternância que **não** vivem no menu *Window*: os dois painéis laterais
 /// (*Hierarchy*, *Inspector*), a régua, — desde 2026-09-19 — as duas COLUNAS, e — desde 2026-10-07
 /// (D10) até 2026-10-15 (o dono tirou o desligar) — a barra de ações da seleção, e — desde
-/// 2026-10-08 (D10 F5) — a fila ② embaixo, e — desde 2026-10-25 (GameEngineFuncional R0) — as três
-/// linhas do *Run* que escolhem onde jogar.
+/// 2026-10-08 (D10 F5) — a fila ② embaixo.
 ///
 /// ⚠️ Escritas como CONTAGEM porque a lista delas está no `is_toggle` acima — se lá aparecer mais
 /// uma, este número tem de subir no mesmo commit, e o gate diz qual é a diferença.
-const OUTSIDE_WINDOW_TOGGLES: usize = 9;
+const OUTSIDE_WINDOW_TOGGLES: usize = 6;
 
 /// **E a régua PUBLICA o estado dela**, porque quem pinta a marca não alcança o `HeroScreen`.
 #[test]
@@ -501,6 +496,10 @@ const NO_DOOR_PENDING: &[(&str, &str)] = &[
          que o `io_menu` despacha. Este const era so' o pill que abria o menu.",
     ),
     (
+        "TOPBAR_PLAY_BUTTON",
+        "o verbo mudou-se: os tres botoes de Play da barra (`transport_bar::BOTOES`) e o F5.",
+    ),
+    (
         "TOPBAR_THEME",
         "idem — o menu dele e' o `ThemeSelector`, aberto pela linha `Theme…` do menu View.",
     ),
@@ -562,6 +561,7 @@ fn every_topbar_verb_has_a_door_that_is_not_the_legacy_key() {
         .iter()
         .flat_map(|(_, _, k)| menu_rows(*k))
         .map(|(id, ..)| *id)
+        .chain(ph2d_editor_core::screens::hero::transport_bar::BOTOES.map(|(id, _)| id))
         .collect();
     let mut doorless = Vec::new();
     for (name, id) in &declared {

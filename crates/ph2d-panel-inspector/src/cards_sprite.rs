@@ -361,12 +361,6 @@ fn curto(v: f32) -> String {
     s.trim_end_matches('0').trim_end_matches('.').to_owned()
 }
 
-/// O resumo do Look dobrado: `Opacity 100%`.
-fn resumo_do_look(info: &InspectorSpriteInfo) -> String {
-    let pct = format!("{:.0}", info.opacity * 100.0); // LITERAL-PX-OK: fração → %
-    tr_with("card.insp.look_summary", &[("opacity", &pct)])
-}
-
 /// O resumo do Advanced dobrado: a estratégia e o formato.
 fn resumo_do_advanced(info: &InspectorSpriteInfo) -> String {
     let estrategia = match info.source_kind {
@@ -397,7 +391,7 @@ pub(crate) fn proprio<'a>(p: &'a Presente, actions: Vec<HeadAction>) -> Option<C
             title: tr("card.insp.look"),
             actions,
             add: None,
-            summary: animada.then(|| resumo_do_look(&info)),
+            summary: None,
             body: Some(Box::new(move |c: &mut CardCtx<'_>, y| {
                 let y = com_corpo(c, y, |t, theme, store, x, w, y| {
                     sections::look::paint_cores(

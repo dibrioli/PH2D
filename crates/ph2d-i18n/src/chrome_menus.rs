@@ -76,7 +76,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu_bar.edit" => "Edit",
         "chrome.menu_bar.view" => "View",
         "chrome.menu_bar.window" => "Window",
-        "chrome.menu_bar.run" => "Run",
         "chrome.menu.create_note" => "Create note",
         "chrome.menu.no_outline" => "No outline",
         // ⭐ A 1.ª linha do menu de tema de uma SECÇÃO — desfaz a escolha (2026-09-29).
@@ -170,9 +169,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.menu.widget_lab" => "Widget Lab",
         "chrome.menu.grid_settings" => "Grid Settings",
         "chrome.menu.assets" => "Assets",
-        "chrome.menu.play_space" => "Play \u{00b7} F5",
-        "chrome.menu.pause_space" => "Pause \u{00b7} F5",
-        "chrome.menu.rewind" => "Stop \u{00b7} Shift+F5",
         "chrome.menu.play_in_window" => "Play in a Window",
         "chrome.menu.play_fullscreen" => "Play Fullscreen",
         "chrome.menu.play_in_editor" => "Play in the Editor",

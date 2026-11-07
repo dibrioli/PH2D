@@ -113,6 +113,10 @@ pub struct ViewState {
     pub jogo_com_o_teclado: bool,
     /// Onde o Play mostra o jogo (menu *Run*).
     pub game_stage: crate::game_stage::GameStage,
+    /// O que a corrida está a fazer agora: os botões da barra leem daqui.
+    pub game_run: crate::game_stage::GameRun,
+    /// A aba largou uma ferramenta que tomava a coluna: o Inspector volta à frente no próximo quadro, já sem ela.
+    pub revela_inspector: bool,
     /// O PALCO do jogo (ecrã cheio ou janela): o canvas ocupa tudo e o editor não se pinta.
     /// A shell liga-o enquanto o jogo corre.
     pub palco_do_jogo: bool,
@@ -132,6 +136,8 @@ impl Default for ViewState {
             luz2d: crate::luz_edits::PreferenciaDaLuz::default(),
             jogo_com_o_teclado: false,
             game_stage: crate::game_stage::GameStage::default(),
+            game_run: crate::game_stage::GameRun::default(),
+            revela_inspector: false,
             palco_do_jogo: false,
             camera_canvas: crate::CameraCanvasView::default(),
         }

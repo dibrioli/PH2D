@@ -336,6 +336,7 @@ fn barra(on: bool) -> (VectorScene, HitIndex) {
         &store,
         &UiMotion::default(),
         &crate::documents::Documents::default(),
+        crate::game_stage::GameRun::default(),
     );
     force_cromo_on_this_thread(None);
     (scene, hits)

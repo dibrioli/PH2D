@@ -28,7 +28,7 @@ pub(crate) struct JanelaDoJogo {
 }
 
 impl crate::App {
-    /// A entrada no palco escolhido no menu *Run*. `None` = no editor: nada muda.
+    /// A entrada no palco escolhido nos botões da barra. `None` = no editor: nada muda.
     pub(crate) fn palco_entra(&mut self) -> Option<VistaAntes> {
         let gfx = self.gfx.as_mut()?;
         let hero = gfx.hero_screen.as_mut()?;
@@ -65,8 +65,12 @@ impl crate::App {
     /// Depois de cada quadro, com o event loop na mão: abre a janela que o palco pede e fecha-a quando
     /// o jogo pára.
     pub(crate) fn palco_janela(&mut self, event_loop: &ActiveEventLoop) {
-        let quer =
-            self.undo.jogo.foto().and_then(|f| f.vista).map(|v| v.stage) == Some(GameStage::Window);
+        let stage = self.undo.jogo.foto().and_then(|f| f.vista).map(|v| v.stage);
+        let playing = self.playhead.is_playing();
+        if let Some(hero) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            hero.view.game_run = ph2d_editor_core::game_stage::GameRun { stage, playing };
+        }
+        let quer = stage == Some(GameStage::Window);
         match (quer, self.undo.janela_do_jogo.is_some()) {
             (true, false) => self.abre_a_janela_do_jogo(event_loop),
             (false, true) => self.fecha_a_janela_do_jogo(),

@@ -135,6 +135,7 @@
 - [Provas de mutação (43) — 4 controlos, pré-voo das âncoras · cercas em SEQUÊNCIA](reference_topic_mutation_proofs.md)
 - ⭐ [Dono 05/11: próxima fase Painter (redo · mescla aguada/óleo · travamento · Clip Studio)](project_next_phase_painter_2026_11_06.md)
 - ⭐⭐ [Dono 05/11: cartão da Sprite — sem Replace, miniatura 72 px, W×H na mesma linha, Transform do Vector = o do Object](project_sprite_card_owner_decisions_2026_11_05.md)
+- ⭐⭐ [Dono 07/11: aba Scene, a aba acompanha o objeto; menu Run vira 5 botões no centro da barra](project_scene_tab_follows_object_transport_in_bar_2026_11_07.md)
 - ⭐⭐ [Dono 06/11: Animated Sprite versão B; folha no editor, Auto + Starts with, ▶ só prévia, nasce vazio, regra acesa](project_animated_sprite_card_owner_decisions_2026_11_06.md)
 - ⭐⭐ [Dono 06/11: Sprite FECHADA, «aceitar como está»; Mirror vira a imagem, Pivot animado sem cura, undo da agulha → Timeline](project_sprite_closed_accept_as_is_2026_11_06.md)
 - ⭐ [07/11: GEF entregue ao integrador SEM smoke do dono do Animated; smoke dele depois da integração](project_gef_animated_sprite_delivered_without_owner_smoke_2026_11_07.md)

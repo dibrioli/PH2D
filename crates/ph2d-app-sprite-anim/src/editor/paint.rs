@@ -142,18 +142,6 @@ fn card(scene: &mut VectorScene, theme: Theme, r: Rect) {
     );
 }
 
-/// Um verbo da lista: o botão claro, que se lê como botão e não como campo.
-fn verb(scene: &mut VectorScene, text: &mut TextSystem, theme: Theme, r: Rect, label: &str) {
-    fill_rounded_rect(
-        scene,
-        r,
-        frame_radius(theme, m::FIELD_RADIUS),
-        tom(ColorToken::Bg3, theme),
-    );
-    let c = tom(ColorToken::Text1, theme);
-    paint_text_centered(text, scene, label, r, FONT_TOKEN.px(), c);
-}
-
 /// Um título ou rótulo do cartão.
 fn label(
     scene: &mut VectorScene,
@@ -537,12 +525,15 @@ fn paint_list(
             tom(ColorToken::Text2, theme),
         );
     }
-    verb(scene, text, theme, l.add, tr("anim_editor.add"));
-    if l.split.w > 0.0 {
-        verb(scene, text, theme, l.split, tr("anim_editor.split_by_rows"));
-    }
-    if !rows.is_empty() {
-        verb(scene, text, theme, l.remove, tr("anim_editor.remove"));
+    // O botão claro, que se lê como botão e não como campo.
+    for (r, key, visible) in [
+        (l.add, "anim_editor.add", true),
+        (l.split, "anim_editor.split_by_rows", l.split.w > 0.0),
+        (l.remove, "anim_editor.remove", !rows.is_empty()),
+    ] {
+        if visible {
+            button_sized(scene, text, theme, r, tr(key), true, font);
+        }
     }
 }
 

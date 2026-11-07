@@ -81,6 +81,33 @@ fn anda(h: &mut HeroScreen, n: usize) {
 }
 
 /// *Mutação: o alfinete de dois estados ⇒ o 2.º clique solta em vez de pôr a corda.*
+/// «Collision Layers» (ficha f1, onda 7) é um cartão como os irmãos: solta-se pela pega e tem o alfinete.
+#[test]
+fn collision_layers_solta_e_prende_como_os_irmaos() {
+    use ph2d_panel_inspector::ids::CARD_PHYS_LAYERS;
+    let mut h = hero_com_o_inspector();
+    ph2d_panel_inspector::set_current_inspector_physics(Some(
+        super::o_inspector_armado::fisica_armada(),
+    ));
+    // Os irmãos dobrados: o título dele tem de estar na janela do teste.
+    for id in [
+        ph2d_editor_core::ids::INSP_LIVE_PHYSICS_SECTION,
+        ph2d_panel_inspector::ids::CARD_PHYS_SHAPE,
+        CARD_TRANSFORM,
+    ] {
+        h.store.set_collapsed(id, true);
+        h.store.set_section_open_live(id, 0.0);
+    }
+    pinta(&mut h, 30);
+    assert!(h.store.is_card_section(CARD_PHYS_LAYERS));
+    solta(&mut h, CARD_PHYS_LAYERS);
+    assert!(h.store.loose_card(CARD_PHYS_LAYERS).is_some(), "não soltou");
+    clica(&mut h, loose_pin_of(CARD_PHYS_LAYERS));
+    let preso = h.store.loose_card(CARD_PHYS_LAYERS).map(|c| c.pin);
+    ph2d_panel_inspector::set_current_inspector_physics(None);
+    assert_eq!(preso, Some(Some(OBJETO)), "o alfinete não prendeu");
+}
+
 #[test]
 fn the_pin_cycles_pinned_then_rope_then_loose() {
     let mut h = hero_com_o_inspector();

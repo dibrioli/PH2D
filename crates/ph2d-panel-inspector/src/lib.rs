@@ -252,6 +252,7 @@ pub use sections::bake_label;
 /// linha FECHADA da lista dizem a mesma coisa, que é exactamente o que elas não diziam até 17/09.
 pub use sections::counter_watch::{opcoes_de_comparacao, simbolo_da_comparacao};
 pub use sections::paste_label;
+pub use sections::physics_cartao::resumo_do_cartao as resumo_do_cartao_de_fisica;
 pub use sections::rig_button_label;
 /// ⭐ **A CHAVE de cada cerca do ABANÃO** (suplente #25) — exportada para um gate da shell poder
 /// afirmar que ela concorda com o `SignalFrom::label()` do motor, que esta crate não vê (ADR-0029).

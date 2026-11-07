@@ -1,5 +1,5 @@
 //! **O que as camadas de colisão se chamam e em quem tocam** (ficha f1, onda 2): a app publica a tabela do projeto e as
-//! linhas da matriz do mundo a cada quadro; o cartão Shape e quem mais mostra uma camada leem-nas daqui.
+//! linhas da matriz do mundo a cada quadro; o cartão Collision Layers e quem mais mostra uma camada leem-nas daqui.
 
 use std::cell::RefCell;
 

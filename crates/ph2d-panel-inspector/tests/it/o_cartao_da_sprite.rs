@@ -339,7 +339,7 @@ fn pinta_a_largura(
     pinta_na_janela(host, st, largura, 900.0)
 }
 
-fn pinta_na_janela(
+pub(crate) fn pinta_na_janela(
     host: &mut MockPanelHost,
     st: &mut InspectorState,
     largura: f32,

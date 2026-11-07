@@ -23,8 +23,12 @@ const PLAYER: NodeId = ids::INSP_LIVE_PLAYER_SECTION;
 fn every_component_card_has_a_reset_that_asks_for_its_component() {
     super::o_inspector_armado::arma_tudo();
     let mut h = hero_com_aberto(PLAYER);
-    // Os dois cartões da física abertos empurram os de baixo para fora da janela do teste.
-    for id in [ids::INSP_LIVE_PHYSICS_SECTION, insp::ids::CARD_PHYS_SHAPE] {
+    // Os cartões da física abertos empurram os de baixo para fora da janela do teste.
+    for id in [
+        ids::INSP_LIVE_PHYSICS_SECTION,
+        insp::ids::CARD_PHYS_SHAPE,
+        insp::ids::CARD_PHYS_LAYERS,
+    ] {
         h.store.set_collapsed(id, true);
         h.store.set_section_open_live(id, 0.0);
     }

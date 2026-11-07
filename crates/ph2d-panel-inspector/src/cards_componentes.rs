@@ -152,6 +152,8 @@ pub(crate) struct Presente {
     /// A largura do corpo e a que o título pede: o cartão Animation cede no cabeçalho estreito.
     pub largura: f32,
     pub titulo_w: f32,
+    /// O resumo mais curto, quando o inteiro não cabe no título dobrado.
+    pub resumo_curto: Option<String>,
 }
 
 /// Que secções de componente este objecto tem: pinta-as numa cena à parte (sem cliques) e guarda
@@ -201,12 +203,15 @@ pub(crate) fn presentes(
                 &titulo,
                 ph2d_card_stack::metrics::CARD_TITLE_PX,
             );
+            let resumo_curto =
+                crate::sections::physics_colide::curto_se_a_fila_nao_cabe(id, text, w, titulo_w);
             out.push(Presente {
                 id,
                 titulo,
                 cab_h,
                 largura: w,
                 titulo_w,
+                resumo_curto,
             });
         }
     }
@@ -296,7 +301,10 @@ pub(crate) fn cartao<'a>(
         title: &p.titulo,
         actions,
         add: None,
-        summary: crate::sections::physics_cartao::resumo_do_cartao(id),
+        summary: p
+            .resumo_curto
+            .clone()
+            .or_else(|| crate::sections::physics_cartao::resumo_do_cartao(id)),
         body: Some(Box::new(move |c: &mut CardCtx<'_>, y| {
             ph2d_editor_core::panel::cards::compacta::fluir(c, |c| {
                 let store = c.store;

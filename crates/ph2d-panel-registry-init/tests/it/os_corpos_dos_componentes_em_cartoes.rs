@@ -85,10 +85,14 @@ fn hero_com_a_fisica_aberta() -> HeroScreen {
         h.store.set_section_open_live(seccao, 1.0);
         pinta(&mut h);
     }
-    // Os dois cartões (ficha f1) e as dobras abertas: estes gates medem as caixas, não a dobra.
-    let shape = ph2d_panel_inspector::ids::CARD_PHYS_SHAPE;
-    h.store.set_collapsed(shape, false);
-    h.store.set_section_open_live(shape, 1.0);
+    // Os cartões (ficha f1) e as dobras abertas: estes gates medem as caixas, não a dobra.
+    for id in [
+        ph2d_panel_inspector::ids::CARD_PHYS_SHAPE,
+        ph2d_panel_inspector::ids::CARD_PHYS_LAYERS,
+    ] {
+        h.store.set_collapsed(id, false);
+        h.store.set_section_open_live(id, 1.0);
+    }
     for id in ph2d_panel_inspector::ids::INSP_PHYS_FOLDS {
         h.store.set_collapsed(id, false);
         h.store.set_section_open_live(id, 1.0);

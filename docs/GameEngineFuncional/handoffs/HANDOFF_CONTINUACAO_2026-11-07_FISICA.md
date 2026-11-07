@@ -30,10 +30,17 @@ Bola 2 × 1 com `ZONE_FORCE = 40`: oscila entre y ≈ 3 e 7 m, sem nunca chegar 
 
 Feita, à espera do smoke do dono. Quadros no cartão Shape, «Edit matrix…», curas a–d da onda 5. Detalhe, medidas e provas: fim da [ficha](../componentes/f1_physics_static_shape.md). Fotos: [`fotos_fisica/onda6/`](fotos_fisica/onda6/). Tectos: shell 189 039 de 189 041; `ph2d-app-physics` 55 511 de 55 515. Quem somar linhas ali tem de mover antes.
 
+## Onda 7, cartão «Collision Layers» (07/11)
+
+Feita, à espera do smoke do dono. As camadas saíram do cartão Shape para um cartão próprio, com os mesmos ids e edições. Detalhe e provas: fim da [ficha](../componentes/f1_physics_static_shape.md). Fotos: [`fotos_fisica/onda7/`](fotos_fisica/onda7/). Na largura de fábrica o Crate dobrado resume só `Props`: a fila inteira não cabe ao lado do título.
+
+**Vermelhos que já vinham das ondas 5 e 6, por curar:** `quantas_entradas_tem_cada_painel` (`physics`, 4 contra 3 e 1636 px contra 1236) e `no_magic_numeric` (`ph2d-panel-physics/src/paint/matrix.rs:63`, `paint.rs:41`). O integrador reprovaria: cure-os antes de fechar a linha.
+
 ## O que falta
 
-1. Smoke do dono: aprovados 1–9 e 11–13. **Passo 10 por repetir:** o achado e a proposta estão na ficha; o rótulo é decisão dele. Smoke da onda 5 e da onda 6.
-2. **Polígono pelo contorno:** item próprio, a seguir. Mexe no motor e no formato salvo.
+1. Smoke do dono: aprovados 1–9 e 11–13. **Passo 10 por repetir:** o achado e a proposta estão na ficha; o rótulo é decisão dele. Smoke das ondas 5, 6 e 7.
+2. Curar os vermelhos acima.
+3. **Polígono pelo contorno:** o próximo item. Mexe no motor e no formato salvo.
 
 ## Não provado
 
@@ -41,6 +48,7 @@ Feita, à espera do smoke do dono. Quadros no cartão Shape, «Edit matrix…»,
 - As teclas na cena 120 (←/→/↑) não foram conduzidas no app; os gates dão o dedo direto à ponte. No nível 4 o condutor prime as setas reais.
 - A cena 120 sob Run ▸ Play: ela não tem câmera de jogo. O smoke usa o Play da timeline (Espaço).
 - `suite-completa` e `nextest-impacted`: são do integrador.
+- Onda 7: a fila inteira do Crate no título (só gate, com Inspector largo); `Rename…` só por gate, sem foto; arrastar o cartão para reordenar e o alfinete no app (gates).
 - Onda 6: o projeto inteiro em disco e o `autokey_pass` com as 528 curvas; a roda real (a tela virtual não recebe rato); o estado pintado da caixinha, só por foto.
 
 ## Como retomar
@@ -53,4 +61,4 @@ PH2D_PHYSICS_SMOKE=120 ./target/smoke/ph2d-host-desktop
 bash docs/GameEngineFuncional/ferramentas/prova_alcas.sh
 ```
 
-Testes: `ph2d-physics-scene ficha::` · `ph2d-shape-handles tests::` · `ph2d-host-desktop esc_a_meio` · `ph2d-host-game-scenes a_plataforma_alargada`. Fecho da linha: `/pd-linha-fechar`.
+Testes: `ph2d-panel-inspector o_cartao_das_camadas` · `ph2d-physics-scene ficha::` · `ph2d-shape-handles tests::` · `ph2d-host-desktop esc_a_meio` · `ph2d-host-game-scenes a_plataforma_alargada`. Fecho da linha: `/pd-linha-fechar`.

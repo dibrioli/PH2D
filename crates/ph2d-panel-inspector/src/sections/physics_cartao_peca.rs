@@ -3,7 +3,7 @@
 
 use super::physics_cartao::Tinta;
 use super::physics_cartao_forma::{
-    camada, dobra_material, dobra_offset, dobra_sinais, dobra_superficie, medidas_e_estado, toque,
+    dobra_material, dobra_offset, dobra_sinais, dobra_superficie, medidas_e_estado, toque,
 };
 use super::physics_rows::paint_bounce_friction;
 use super::rows::num_row;
@@ -17,7 +17,6 @@ pub(super) fn peca(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f3
     y = medidas_e_estado(t, y, info);
     y = toque(t, y, info);
     y = paint_bounce_friction(t.scene, t.text, t.theme, t.hit, t.store, t.x, t.w, y);
-    y = camada(t, y, info);
     // A densidade de uma peça é real: conta para a massa do corpo composto.
     let densidade = format_number(t.store.number_value(ids::INSP_PHYS_DENSITY).unwrap_or(0.0));
     let titulo = tr("card.insp.phys.density");

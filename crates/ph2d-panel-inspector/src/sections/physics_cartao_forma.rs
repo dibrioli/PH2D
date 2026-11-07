@@ -9,8 +9,8 @@ use super::physics_rows::{
 use super::rows::{Campo, par_row, seg_row};
 use super::*;
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
+use ph2d_editor_core::widget::SectionFold;
 use ph2d_editor_core::widget::key_mark::Eixos;
-use ph2d_editor_core::widget::{Dropdown, DropdownOption, SectionFold, paint_dropdown_chip};
 use ph2d_i18n::{TextKey, tr, tr_with};
 
 const KIND_STATIC: u8 = 1;
@@ -31,24 +31,48 @@ pub(crate) fn secao_da_forma(
     y: f32,
     info: &InspectorPhysicsInfo,
 ) -> f32 {
-    let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
-    let header = section_header(store, CARD_PHYS_SHAPE, tr("card.insp.phys.shape"));
-    paint_section_header(&header, Rect::new(x, y, w, header_h), scene, text, theme);
-    let top = y + header_h;
-    let Some(fold) = SectionFold::begin(store, CARD_PHYS_SHAPE, x, w, top, scene, hit) else {
-        return top;
-    };
     let mut t = Tinta {
-        scene: &mut *scene,
+        scene,
         text,
         theme,
-        hit: &mut *hit,
+        hit,
         store,
         x,
         w,
     };
-    let fim = forma(&mut t, top, info);
-    fold.finish(store, scene, hit, fim)
+    cartao_de_fisica(
+        &mut t,
+        y,
+        CARD_PHYS_SHAPE,
+        tr("card.insp.phys.shape"),
+        |t, top| forma(t, top, info),
+    )
+}
+
+/// Um cartão de física só dele: o cabeçalho, a dobra e o corpo.
+pub(super) fn cartao_de_fisica(
+    t: &mut Tinta<'_>,
+    y: f32,
+    id: NodeId,
+    titulo: &str,
+    corpo: impl FnOnce(&mut Tinta<'_>, f32) -> f32,
+) -> f32 {
+    let (x, w, store) = (t.x, t.w, t.store);
+    let header_h = TypeToken::Md.px() + Spacing::Md.px(); // LITERAL-PX-OK: section header band height
+    let header = section_header(store, id, titulo);
+    paint_section_header(
+        &header,
+        Rect::new(x, y, w, header_h),
+        t.scene,
+        t.text,
+        t.theme,
+    );
+    let top = y + header_h;
+    let Some(fold) = SectionFold::begin(store, id, x, w, top, t.scene, t.hit) else {
+        return top;
+    };
+    let fim = corpo(t, top);
+    fold.finish(store, t.scene, t.hit, fim)
 }
 
 fn forma(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
@@ -71,7 +95,6 @@ fn forma(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
         }
         y = paint_bounce_friction(t.scene, t.text, t.theme, t.hit, t.store, t.x, t.w, y);
     }
-    y = camada(t, y, info);
     if info.is_sensor {
         y = dobra_zona(t, y, info);
     }
@@ -201,107 +224,6 @@ pub(super) fn uma_via(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) ->
         &ONEWAY_LABELS.map(TextKey::tr),
         u8::from(info.one_way),
     )
-}
-
-/// Layer em lista com os nomes (os ids e a edição são os de sempre), os quadros de «Collides with» (só com corpo acima), o «Rename…» e o «Edit matrix…».
-pub(super) fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
-    let rotulo = tr("component.field.collider.4");
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(t.text, 1, &[rotulo]);
-    let linha = ph2d_editor_core::property_row::paint_label_row(
-        t.scene,
-        t.text,
-        t.theme,
-        t.x,
-        t.w,
-        y,
-        ph2d_tokens::ROW_H_PX,
-        rotulo,
-        seccao,
-    );
-    t.hit.register(ids::INSP_PHYS_LAYER_PICK, linha.control);
-    let aberta = matches!(
-        t.store.get(ids::INSP_PHYS_LAYER_PICK),
-        Some(InteractiveState::Dropdown { open: true, .. })
-    );
-    let dd = lista_da_camada(info.layer)
-        .open(aberta)
-        .visual(t.store.dropdown_visual(ids::INSP_PHYS_LAYER_PICK));
-    paint_dropdown_chip(&dd, linha.control, t.scene, t.text, t.theme);
-    if aberta {
-        crate::state_popovers::set_pending_phys_layer_dd(Some((info.layer, linha.control)));
-    }
-    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_for(
-        t.scene,
-        t.theme,
-        linha.dot,
-        &ids::INSP_PHYS_LAYER,
-    ) {
-        t.hit.register(alvo, linha.dot);
-    }
-    let y = linha.fim(ph2d_tokens::row_pitch_px());
-    let camada = usize::from(info.layer);
-    let solta = super::physics_colide::solta(info);
-    let y = if solta {
-        y
-    } else {
-        super::physics_colide::colide_com(t, y, info)
-    };
-    let y = if solta {
-        let (r, y) = t.botao(
-            ids::INSP_PHYS_LAYER_RENAME,
-            tr("card.insp.phys.layer_rename"),
-            y,
-        );
-        t.hit.register(ids::INSP_PHYS_LAYER_RENAME, r);
-        y
-    } else {
-        t.dois_botoes(
-            y,
-            (
-                ids::INSP_PHYS_LAYER_RENAME,
-                tr("card.insp.phys.layer_rename"),
-            ),
-            (ids::INSP_PHYS_EDIT_MATRIX, tr("card.insp.phys.edit_matrix")),
-        )
-    };
-    if t.store.is_collapsed(ids::INSP_PHYS_LAYER_RENAMING) {
-        return y;
-    }
-    let dica = camada.to_string();
-    let rotulo = tr("card.insp.phys.layer_name");
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(t.text, 1, &[rotulo]);
-    ph2d_editor_core::property_row::paint_text_row(
-        t.scene,
-        t.text,
-        t.theme,
-        t.hit,
-        t.store,
-        t.x,
-        t.w,
-        y,
-        rotulo,
-        ids::INSP_PHYS_LAYER_NAME,
-        TextInput::new(ids::INSP_PHYS_LAYER_NAME, "").placeholder(&dica),
-        seccao,
-    )
-}
-
-/// As opções da lista: as camadas visíveis e a do objecto, pelo nome ou pelo número.
-fn opcoes(camada: u8) -> Vec<DropdownOption<u8>> {
-    ids::INSP_PHYS_LAYER
-        .iter()
-        .enumerate()
-        .filter(|&(i, _)| crate::camadas_fisica::visivel(i) || usize::from(camada) == i)
-        .map(|(i, &id)| DropdownOption::new(id, i as u8, crate::camadas_fisica::rotulo(i)))
-        .collect()
-}
-
-/// A lista da camada, com a camada do objecto escolhida: o que o chip mostra.
-#[must_use]
-pub(crate) fn lista_da_camada(camada: u8) -> Dropdown<u8> {
-    let mut dd = Dropdown::new(ids::INSP_PHYS_LAYER_PICK, "", opcoes(camada));
-    dd.select(camada);
-    dd
 }
 
 fn sinais(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
@@ -494,38 +416,4 @@ pub(super) fn dobra_sinais(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInf
     t.dobra(y, ids::INSP_PHYS_FOLD_SIGNALS, titulo, &resumo, |t, y| {
         sinais(t, y, info)
     })
-}
-
-#[cfg(test)]
-mod lista_tests {
-    use super::*;
-
-    /// O chip mostra a camada do objecto, com número ou com nome: cada opção carrega o seu próprio valor.
-    #[test]
-    fn a_lista_da_camada_mostra_a_camada_do_objecto_como_escolhida() {
-        let mut nomes: [String; 32] = Default::default();
-        nomes[2] = "Enemy".into();
-        crate::camadas_fisica::set_current(nomes, [u32::MAX; 32], 0xFF);
-        for i in 0..8u8 {
-            let dd = lista_da_camada(i);
-            let esperado = if i == 2 {
-                "Enemy".to_owned()
-            } else {
-                i.to_string()
-            };
-            assert_eq!(dd.selected_label(), Some(esperado.as_str()), "camada {i}");
-        }
-        crate::camadas_fisica::set_current(Default::default(), [u32::MAX; 32], 0xFF);
-    }
-
-    /// A lista só traz as visíveis; a camada do objecto, mesmo fora delas, nunca falta.
-    #[test]
-    fn a_lista_da_camada_so_traz_as_visiveis_e_a_do_objecto() {
-        crate::camadas_fisica::set_current(Default::default(), [u32::MAX; 32], 1 | 1 << 20);
-        assert_eq!(opcoes(0).len(), 2);
-        assert_eq!(lista_da_camada(20).selected_label(), Some("20"));
-        assert_eq!(opcoes(25).len(), 3, "a do objecto entra");
-        assert_eq!(lista_da_camada(25).selected_label(), Some("25"));
-        crate::camadas_fisica::set_current(Default::default(), [u32::MAX; 32], 0xFF);
-    }
 }

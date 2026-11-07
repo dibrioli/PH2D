@@ -7,6 +7,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.phys.body" => "Body",
         "card.insp.phys.shape" => "Shape",
         "card.insp.phys.collision_shape" => "Collision Shape",
+        "card.insp.phys.collision_layers" => "Collision Layers",
         "card.insp.phys.width" => "Width",
         "card.insp.phys.height" => "Height",
         "card.insp.phys.touch" => "Touch",

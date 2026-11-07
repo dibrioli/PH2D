@@ -1,7 +1,10 @@
-//! ⭐ **«Collides with»** (ficha f1, onda 6): a linha da matriz global, vista e editada a partir do
-//! objecto. Um quadro por camada visível; clicar é a mesma edição da célula da matriz.
+//! ⭐ **O cartão «Collision Layers»** (ficha f1, onda 7): a camada do objecto e, com corpo acima, «Collides with»: a
+//! linha da matriz global, vista e editada a partir do objecto. Um quadro por camada visível; clicar é a mesma
+//! edição da célula da matriz.
 
 use super::physics_cartao::Tinta;
+use super::physics_cartao_forma::cartao_de_fisica;
+use super::*;
 use crate::camadas_fisica as camadas;
 use crate::ids;
 use ph2d_editor_core::action_bus::EditorAction;
@@ -12,6 +15,7 @@ use ph2d_editor_core::paint::{
 use ph2d_editor_core::panel::{PanelHostInternal, seam_reset_button};
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
 use ph2d_editor_core::widget::card_ink::tinta;
+use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, TypeToken};
@@ -20,6 +24,176 @@ use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, TypeToken};
 #[must_use]
 pub(super) fn solta(info: &InspectorPhysicsInfo) -> bool {
     !info.has_body && info.part_owner.is_empty()
+}
+
+/// O cartão **Collision Layers**, de quem tem `Collider`.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn secao_das_camadas(
+    scene: &mut VectorScene,
+    text: &mut TextSystem,
+    theme: Theme,
+    hit: &mut HitIndex,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorPhysicsInfo,
+) -> f32 {
+    let mut t = Tinta {
+        scene,
+        text,
+        theme,
+        hit,
+        store,
+        x,
+        w,
+    };
+    let titulo = tr("card.insp.phys.collision_layers");
+    cartao_de_fisica(&mut t, y, ids::CARD_PHYS_LAYERS, titulo, |t, top| {
+        camada(t, top, info) + SECTION_BOTTOM_PAD_PX
+    })
+}
+
+/// A fila não cabe inteira no título dobrado: fica só o nome da camada. O pintor do título é inteiro ou nada, e
+/// sem isto o Inspector de fábrica não mostraria resumo nenhum em «Props · Ground, Props, Zones» (medido na foto).
+#[must_use]
+pub(crate) fn curto_se_a_fila_nao_cabe(
+    id: NodeId,
+    text: &mut TextSystem,
+    largura: f32,
+    titulo_w: f32,
+) -> Option<String> {
+    use ph2d_card_stack::metrics as m;
+    if id != ids::CARD_PHYS_LAYERS {
+        return None;
+    }
+    let info = crate::state::current_inspector_physics()?;
+    let livre = largura
+        - (m::LIST_PAD_X + m::CARD_PAD_X) * 2.0
+        - m::LIST_PAD_X
+        - m::CARD_CHEVRON
+        - m::CARD_CHEVRON_GAP
+        - titulo_w
+        - m::FIELD_GAP * 2.0;
+    let pede = text.prefix_width(&resumo(&info), m::LABEL_PX).ceil();
+    (pede > livre).then(|| camadas::rotulo(usize::from(info.layer)))
+}
+
+/// O título dobrado: a camada e, com corpo acima, os quadros acesos, os mesmos que a fila mostra.
+#[must_use]
+pub(super) fn resumo(info: &InspectorPhysicsInfo) -> String {
+    let camada = usize::from(info.layer);
+    let nome = camadas::rotulo(camada);
+    if solta(info) {
+        return nome;
+    }
+    let fila: Vec<String> = da_fila(camada)
+        .filter(|&j| camadas::colide(camada, j))
+        .map(camadas::rotulo)
+        .collect();
+    let alvo = if fila.is_empty() {
+        tr("card.insp.phys.none").to_string()
+    } else {
+        fila.join(", ")
+    };
+    format!("{nome} \u{b7} {alvo}")
+}
+
+/// Layer em lista com os nomes (os ids e a edição são os de sempre), os quadros de «Collides with» (só com corpo acima), o «Rename…» e o «Edit matrix…».
+fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
+    let rotulo = tr("component.field.collider.4");
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(t.text, 1, &[rotulo]);
+    let linha = ph2d_editor_core::property_row::paint_label_row(
+        t.scene,
+        t.text,
+        t.theme,
+        t.x,
+        t.w,
+        y,
+        ph2d_tokens::ROW_H_PX,
+        rotulo,
+        seccao,
+    );
+    t.hit.register(ids::INSP_PHYS_LAYER_PICK, linha.control);
+    let aberta = matches!(
+        t.store.get(ids::INSP_PHYS_LAYER_PICK),
+        Some(InteractiveState::Dropdown { open: true, .. })
+    );
+    let dd = lista_da_camada(info.layer)
+        .open(aberta)
+        .visual(t.store.dropdown_visual(ids::INSP_PHYS_LAYER_PICK));
+    paint_dropdown_chip(&dd, linha.control, t.scene, t.text, t.theme);
+    if aberta {
+        crate::state_popovers::set_pending_phys_layer_dd(Some((info.layer, linha.control)));
+    }
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_for(
+        t.scene,
+        t.theme,
+        linha.dot,
+        &ids::INSP_PHYS_LAYER,
+    ) {
+        t.hit.register(alvo, linha.dot);
+    }
+    let y = linha.fim(ph2d_tokens::row_pitch_px());
+    let camada = usize::from(info.layer);
+    let solta = solta(info);
+    let y = if solta { y } else { colide_com(t, y, info) };
+    let y = if solta {
+        let (r, y) = t.botao(
+            ids::INSP_PHYS_LAYER_RENAME,
+            tr("card.insp.phys.layer_rename"),
+            y,
+        );
+        t.hit.register(ids::INSP_PHYS_LAYER_RENAME, r);
+        y
+    } else {
+        t.dois_botoes(
+            y,
+            (
+                ids::INSP_PHYS_LAYER_RENAME,
+                tr("card.insp.phys.layer_rename"),
+            ),
+            (ids::INSP_PHYS_EDIT_MATRIX, tr("card.insp.phys.edit_matrix")),
+        )
+    };
+    if t.store.is_collapsed(ids::INSP_PHYS_LAYER_RENAMING) {
+        return y;
+    }
+    let dica = camada.to_string();
+    let rotulo = tr("card.insp.phys.layer_name");
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(t.text, 1, &[rotulo]);
+    ph2d_editor_core::property_row::paint_text_row(
+        t.scene,
+        t.text,
+        t.theme,
+        t.hit,
+        t.store,
+        t.x,
+        t.w,
+        y,
+        rotulo,
+        ids::INSP_PHYS_LAYER_NAME,
+        TextInput::new(ids::INSP_PHYS_LAYER_NAME, "").placeholder(&dica),
+        seccao,
+    )
+}
+
+/// As opções da lista: as camadas visíveis e a do objecto, pelo nome ou pelo número.
+fn opcoes(camada: u8) -> Vec<DropdownOption<u8>> {
+    ids::INSP_PHYS_LAYER
+        .iter()
+        .enumerate()
+        .filter(|&(i, _)| camadas::visivel(i) || usize::from(camada) == i)
+        .map(|(i, &id)| DropdownOption::new(id, i as u8, camadas::rotulo(i)))
+        .collect()
+}
+
+/// A lista da camada, com a camada do objecto escolhida: o que o chip mostra.
+#[must_use]
+pub(crate) fn lista_da_camada(camada: u8) -> Dropdown<u8> {
+    let mut dd = Dropdown::new(ids::INSP_PHYS_LAYER_PICK, "", opcoes(camada));
+    dd.select(camada);
+    dd
 }
 
 /// As camadas da fila: as visíveis e, mesmo fora delas, a do objecto.
@@ -199,4 +373,38 @@ pub(crate) fn clique(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool 
         return true;
     }
     false
+}
+
+#[cfg(test)]
+mod lista_tests {
+    use super::*;
+
+    /// O chip mostra a camada do objecto, com número ou com nome: cada opção carrega o seu próprio valor.
+    #[test]
+    fn a_lista_da_camada_mostra_a_camada_do_objecto_como_escolhida() {
+        let mut nomes: [String; 32] = Default::default();
+        nomes[2] = "Enemy".into();
+        camadas::set_current(nomes, [u32::MAX; 32], 0xFF);
+        for i in 0..8u8 {
+            let dd = lista_da_camada(i);
+            let esperado = if i == 2 {
+                "Enemy".to_owned()
+            } else {
+                i.to_string()
+            };
+            assert_eq!(dd.selected_label(), Some(esperado.as_str()), "camada {i}");
+        }
+        camadas::set_current(Default::default(), [u32::MAX; 32], 0xFF);
+    }
+
+    /// A lista só traz as visíveis; a camada do objecto, mesmo fora delas, nunca falta.
+    #[test]
+    fn a_lista_da_camada_so_traz_as_visiveis_e_a_do_objecto() {
+        camadas::set_current(Default::default(), [u32::MAX; 32], 1 | 1 << 20);
+        assert_eq!(opcoes(0).len(), 2);
+        assert_eq!(lista_da_camada(20).selected_label(), Some("20"));
+        assert_eq!(opcoes(25).len(), 3, "a do objecto entra");
+        assert_eq!(lista_da_camada(25).selected_label(), Some("25"));
+        camadas::set_current(Default::default(), [u32::MAX; 32], 0xFF);
+    }
 }

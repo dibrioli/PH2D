@@ -66,6 +66,7 @@ mod no_row_paints_its_name_above_its_control;
 mod o_cartao_da_animacao;
 mod o_cartao_da_fisica;
 mod o_cartao_da_sprite;
+mod o_cartao_das_camadas;
 mod o_cartao_do_pixel_sprite;
 mod o_chip_da_vigia_mostra_um_sinal;
 mod o_chip_de_uma_tag_cabe_na_pilula;

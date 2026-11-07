@@ -112,6 +112,21 @@ pub(crate) fn push_physics_sections<'a>(
                 },
             );
         }
+        if crate::cards::active() && phys.has_collider {
+            emoldurada(
+                plano,
+                crate::ids::CARD_PHYS_LAYERS,
+                store,
+                inner_x,
+                inner_w,
+                header_h,
+                move |c, t, y| {
+                    crate::sections::physics_colide::secao_das_camadas(
+                        c.scene, c.text, t, c.hit, store, inner_x, inner_w, y, phys,
+                    )
+                },
+            );
+        }
     } else if crate::cards::active() && crate::recibo_fisica::a_vista().is_some() {
         // O corpo saiu e o objecto ficou sem secção de física: o recibo segura o lugar dela.
         emoldurada(

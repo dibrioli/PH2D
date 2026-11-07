@@ -1,4 +1,4 @@
-//! **Os cartões Body e Shape da física** (ficha `docs/GameEngineFuncional/componentes/f1_physics_static_shape.md`,
+//! **Os cartões Body e Shape da física** (Collision Layers: `physics_colide.rs`) (ficha `docs/GameEngineFuncional/componentes/f1_physics_static_shape.md`,
 //! opção B): «como se move» e «em que bate» em dois cartões, o resto em dobras com nome. Os ids são os de
 //! sempre, e o destino de cada campo é a tabela `M` da maquete. `PH2D_CARDS=0` continua em `physics_body.rs`.
 
@@ -107,6 +107,11 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
         store.set_collapsed_if_unchosen(id, !abertas);
     }
     store.set_collapsed_if_unchosen(ids::INSP_PHYS_LAYER_RENAMING, true);
+    // Como o Body, nasce aberto uma vez; `PH2D_FISICA_CAMADAS_DOBRADAS=1` é a foto dele dobrado.
+    static DOBRADAS: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    let dobradas =
+        *DOBRADAS.get_or_init(|| std::env::var_os("PH2D_FISICA_CAMADAS_DOBRADAS").is_some());
+    store.set_collapsed_if_unchosen(ids::CARD_PHYS_LAYERS, dobradas);
     semeia_o_nome_da_camada(store);
     let camada = crate::state::current_inspector_physics().map_or(0, |f| usize::from(f.layer));
     super::physics_colide::prepara_as_dicas(store, camada);
@@ -438,15 +443,18 @@ pub(crate) fn secao_do_recibo(
     fold.finish(store, scene, hit, fim)
 }
 
-/// O que o título dos cartões de física diz quando dobrado: o tipo; a forma e o toque.
-pub(crate) fn resumo_do_cartao(id: NodeId) -> Option<String> {
+/// O que o título dos cartões de física diz quando dobrado: o tipo; a forma e o toque; a camada e a fila.
+#[must_use]
+pub fn resumo_do_cartao(id: NodeId) -> Option<String> {
     let info = crate::state::current_inspector_physics()?;
     let forma = || {
         let f = super::physics::SHAPE_LABELS.get(usize::from(info.shape_tag))?;
         let toque = SENSOR_LABELS[usize::from(info.is_sensor)].tr();
         Some(format!("{} \u{b7} {toque}", f.tr()))
     };
-    if id == CARD_PHYS_SHAPE {
+    if id == ids::CARD_PHYS_LAYERS {
+        Some(super::physics_colide::resumo(&info))
+    } else if id == CARD_PHYS_SHAPE {
         forma()
     } else if id == core_ids::INSP_LIVE_PHYSICS_SECTION && info.has_body {
         KIND_LABELS

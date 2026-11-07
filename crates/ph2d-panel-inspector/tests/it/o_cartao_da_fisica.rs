@@ -34,17 +34,18 @@ fn pose(scale: [f32; 2]) -> InspectorTransformInfo {
     }
 }
 
-/// O Inspector em cartões, em metros, com os dois cartões e todas as dobras abertos.
+/// O Inspector em cartões, em metros, com os três cartões e todas as dobras abertos.
 pub(crate) fn cena(info: InspectorPhysicsInfo, scale: [f32; 2]) -> (MockPanelHost, InspectorState) {
     set_cards_on(true);
     set_current_inspector_sprite(None);
     set_current_inspector_physics(Some(info));
     set_current_inspector_transform(Some(pose(scale)));
     let mut host = crate::host_em_metros();
-    for id in INSP_PHYS_FOLDS
-        .into_iter()
-        .chain([core_ids::INSP_LIVE_PHYSICS_SECTION, CARD_PHYS_SHAPE])
-    {
+    for id in INSP_PHYS_FOLDS.into_iter().chain([
+        core_ids::INSP_LIVE_PHYSICS_SECTION,
+        CARD_PHYS_SHAPE,
+        CARD_PHYS_LAYERS,
+    ]) {
         host.store_mut().set_collapsed(id, false);
     }
     (host, InspectorState::default())

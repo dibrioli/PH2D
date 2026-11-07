@@ -1,4 +1,4 @@
-//! ⭐ **A fila «Collides with» do cartão Shape** (ficha f1, onda 6): o clique real no quadro pede o par da
+//! ⭐ **A fila «Collides with» do cartão Collision Layers** (ficha f1, ondas 6 e 7): o clique real no quadro pede o par da
 //! camada do objecto; só as visíveis; a forma solta não tem fila. Que a edição é a da célula da matriz e
 //! chega ao motor está em `ph2d-app-physics` (`physics_tests_quadros`) e, com o desfazer, na shell.
 

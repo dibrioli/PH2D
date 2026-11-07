@@ -49,9 +49,9 @@ Também: `docs/Sprite_projeto/` e os docs `12`–`16` desta pasta.
 
 | Item | Crítica | Estudo | Estado |
 |---|---|---|---|
-| Physics Body | Physics Body | Corpo físico | `a revisar` |
-| Static Body | Static Body | Corpo físico | `a revisar` |
-| Collision Shape | Collision Shape | Colisor | `a revisar` |
+| Physics Body | Physics Body | Corpo físico | `em obra`, linha GEF02: [ficha](componentes/f1_physics_static_shape.md) |
+| Static Body | Static Body | Corpo físico | `em obra`, linha GEF02: mesma ficha |
+| Collision Shape | Collision Shape | Colisor | `em obra`, linha GEF02: mesma ficha |
 | Character | Character | — | `a revisar` |
 | Top-Down Player | Top-Down Player | — | `a revisar` |
 | Projectile Motion | Projectile Motion | — | `a revisar` |

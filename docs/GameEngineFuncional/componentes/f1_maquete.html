@@ -1,0 +1,301 @@
+<title>Cartões de Física</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: uma página de decisão em tela escura, a mesma do Inspector, para os cartões parecerem os do app. */
+:root{
+  color-scheme:dark;
+  --bg:#10151f; --ink:#e7ebf3; --dim:#9aa5b8; --line:#2a3345;
+  --panel:#0e1420; --card:#212938; --field:#161c29; --seg:#303a4d; --label:#8c97ab;
+  --accent:#5aa2ff; --good:#4fc98b; --warn:#e8b45a;
+  --font:"Noto Sans",system-ui,sans-serif;
+}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--font);padding-block:32px 64px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1180px;margin:auto;display:flex;flex-direction:column;gap:44px}
+h1{font-size:30px;line-height:1.2;margin:0 0 8px;text-wrap:balance}
+h2{font-size:21px;margin:0 0 6px;text-wrap:balance}
+h3{font-size:14px;margin:0 0 8px;color:var(--dim);font-weight:600}
+p{margin:0 0 10px;max-width:72ch}
+.lead{font-size:17px;color:var(--dim)}
+.rule{border:1px solid var(--good);border-radius:8px;padding:12px 14px;max-width:72ch}
+.tres{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:18px}
+.tres>div{min-width:0}
+.tres b{display:block;margin-bottom:4px}
+ul{margin:0;padding-left:18px}
+li{margin-bottom:5px}
+.opt-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px}
+.tag{font-size:12px;font-weight:700;color:var(--bg);background:var(--good);padding:2px 8px;border-radius:99px}
+.board{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start;margin-top:14px}
+.col{width:290px;max-width:100%;min-width:0;display:flex;flex-direction:column;gap:8px}
+.col img{border-radius:10px;width:100%}
+.note{font-size:13px;color:var(--dim)}
+/* O cartão do app */
+.insp{background:var(--panel);border-radius:10px;padding:8px;display:flex;flex-direction:column;gap:8px;font-size:12px}
+.c{background:var(--card);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.t{font-weight:700;font-size:13px;display:flex;justify-content:space-between;gap:8px}
+.t i{font-style:normal;font-weight:400;color:var(--label);font-size:11px;text-align:right}
+.r{display:flex;gap:8px}
+.r>div{flex:1;min-width:0}
+.l{color:var(--label);font-size:11px;font-weight:500;margin-bottom:3px}
+.seg{display:flex;background:var(--field);border-radius:5px;padding:2px;flex-wrap:wrap}
+.seg span{flex:1;text-align:center;padding:3px 4px;border-radius:4px;color:var(--ink);font-weight:500;font-size:11px;white-space:nowrap}
+.seg .on{background:var(--seg);font-weight:700}
+.n{background:var(--field);border-radius:5px;padding:4px 8px;display:flex;gap:8px;font-weight:500}
+.n u{text-decoration:none;color:var(--label)}
+.b{background:var(--field);border-radius:5px;padding:5px;text-align:center;font-weight:600}
+.b.ac{outline:1px solid var(--accent);color:var(--accent)}
+.chk{display:flex;gap:6px;align-items:center;font-weight:500}
+.chk::before{content:"";width:12px;height:12px;border:1px solid var(--label);border-radius:3px}
+.chk.on::before{background:var(--accent);border-color:var(--accent)}
+.say{color:var(--dim);font-size:11px;line-height:1.35}
+.say.w{color:var(--warn)}
+.say a,.lk{color:var(--accent);text-decoration:none;font-weight:600}
+details.f{border-top:1px solid var(--line);padding-top:6px}
+details.f>summary{cursor:pointer;display:flex;justify-content:space-between;gap:8px;font-weight:600;list-style:none}
+details.f>summary::-webkit-details-marker{display:none}
+details.f>summary::before{content:"›";color:var(--label);margin-right:2px}
+details.f[open]>summary::before{content:"⌄"}
+details.f>summary span{flex:1}
+details.f>summary i{font-style:normal;font-weight:400;color:var(--label);font-size:11px;text-align:right}
+details.f>.in{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+summary:focus-visible{outline:2px solid var(--accent)}
+.stage{background:#b9d8df;border-radius:6px;height:118px;position:relative;overflow:hidden}
+.stage svg{width:100%;height:100%;display:block}
+/* Tabelas */
+.scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:7px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--dim);font-weight:600;background:var(--panel);white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.g{background:var(--panel);font-weight:700}
+.vis{color:var(--good);font-weight:600}
+.fold{color:var(--accent)}
+.q{display:flex;flex-direction:column;gap:12px;max-width:80ch}
+.q>div{border-left:3px solid var(--accent);padding-left:12px}
+.canvasmock{width:100%;max-width:560px;border-radius:8px;display:block}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>Cartões de Física</h1>
+  <p class="lead">Physics Body, Static Body e Collision Shape: como ficam mais fáceis de usar, sem perder nenhum ajuste. As maquetes são desenhos, não o app; as dobras abrem com um clique.</p>
+  <div class="rule"><b>A sua regra, aplicada aqui:</b> nenhum ajuste de hoje some. Cada um continua no cartão, à vista ou em uma dobra. O <a class="lk" href="#mapa">mapa no fim da página</a> mostra o destino de todos.</div>
+</header>
+
+<section>
+  <h2>O que está fraco hoje</h2>
+  <div class="tres">
+    <div><b>Poder: forte</b>Tem mais ajustes do que a crítica contou. Faltam três coisas: puxar a forma no canvas, camadas com nome e forma por polígono.</div>
+    <div><b>Facilidade: fraca</b>Dynamic são 35 campos em uma coluna só. Travar a rotação, que todo personagem pede, fica lá embaixo. Half Size obriga a fazer conta: quem quer 200 px digita 100.</div>
+    <div><b>Intuitividade: fraca</b>Camada é 0 a 7, sem nome. O cartão de uma forma se chama Physics Body. O aviso de forma solta aparece cortado. A forma pode deixar de acompanhar a imagem sem avisar.</div>
+  </div>
+</section>
+
+<section>
+  <h2>O que as engines ensinam</h2>
+  <ul>
+    <li><b>Unity e Cocos:</b> um botão no cartão acende as alças da forma na cena.</li>
+    <li><b>Godot:</b> camadas em grade, com nomes dados pelo projeto.</li>
+    <li><b>Roblox e GDevelop:</b> um campo que abre e mostra os detalhes logo abaixo.</li>
+    <li><b>O que evitar:</b> o Godot deixa a escala quebrar a física sem avisar, e a Unity esconde o Is Trigger em uma caixinha perdida.</li>
+  </ul>
+  <p class="note" style="margin-top:8px">Vem dos dois estudos. Só o Godot foi aberto de verdade; as outras são documentação e fotos.</p>
+</section>
+
+<section id="a">
+  <div class="opt-head"><h2>Opção A: um cartão, com dobras</h2></div>
+  <p>Fica um cartão só, como hoje. O essencial fica em cima, e o resto em dobras com nome. É a menor mudança, mas o cartão continua misturando “como se move” e “em que bate”.</p>
+  <div class="board" id="boardA"></div>
+</section>
+
+<section id="b">
+  <div class="opt-head"><h2>Opção B: dois cartões, Body e Shape</h2><span class="tag">Recomendada</span></div>
+  <p>“Como se move” e “em que bate” viram dois cartões. Um objeto com várias formas passa a fazer sentido à vista. Trocar o tipo troca o que aparece, e a Zona mostra o que ela faz.</p>
+  <div class="board" id="boardB"></div>
+</section>
+
+<section id="c">
+  <div class="opt-head"><h2>Opção C: a forma desenhada no cartão</h2></div>
+  <p>A forma aparece sobre a imagem dentro do cartão, e Feels like oferece atalhos de material. É a mais bonita e a mais cara. Rock, Wood, Rubber e Ice são só atalhos: os números continuam na dobra. Os valores de cada atalho ainda teriam de ser testados.</p>
+  <div class="board" id="boardC"></div>
+</section>
+
+<section>
+  <h2>Comparando em números</h2>
+  <div class="scroll"><table>
+    <tr><th>Campos à vista / total</th><th>Hoje</th><th>A</th><th>B</th><th>C</th></tr>
+    <tr><td>Dynamic</td><td>35 / 35</td><td>8 / 35</td><td class="vis">12 / 35</td><td>5 / 36</td></tr>
+    <tr><td>Static</td><td>21 / 21</td><td>8 / 21</td><td class="vis">9 / 21</td><td>6 / 22</td></tr>
+    <tr><td>Zona (Sensor)</td><td>28 / 28</td><td>8 / 28</td><td class="vis">9 / 28</td><td>7 / 29</td></tr>
+    <tr><td>Forma sem corpo próprio</td><td>19 / 19</td><td>7 / 19</td><td class="vis">7 / 19</td><td>6 / 20</td></tr>
+    <tr><td>Travar a rotação</td><td>rolar até o campo</td><td>abrir a dobra</td><td class="vis">1 clique, à vista</td><td>abrir a dobra</td></tr>
+    <tr><td>Plataforma One-way</td><td>rolar até o campo</td><td>abrir a dobra</td><td class="vis">1 clique, à vista</td><td>1 clique, à vista</td></tr>
+  </table></div>
+  <p class="note" style="margin-top:8px">Contagem feita nas fotos e nas maquetes, sem teste com pessoas. Em Static e na Zona, um dos campos do total é o Density, que fica escondido mas guardado. A opção C soma 1 ao total por causa do Feels like.</p>
+</section>
+
+<section>
+  <h2>Vale em qualquer opção: o que entra de novo</h2>
+  <p>Tudo isto acrescenta. Nenhum item tira ajuste.</p>
+  <div class="board" style="align-items:stretch">
+    <div class="col" style="width:min(560px,100%)">
+      <svg class="canvasmock" viewBox="0 0 560 220" role="img" aria-label="Plataforma no canvas com a forma tracejada e oito alças">
+        <rect width="560" height="220" fill="#b9d8df"/>
+        <rect x="120" y="70" width="320" height="30" fill="#35e07a"/><rect x="120" y="100" width="320" height="50" fill="#c97d5c"/>
+        <rect x="120" y="82" width="320" height="68" fill="none" stroke="#1566d6" stroke-width="2" stroke-dasharray="7 5"/>
+        <g fill="#fff" stroke="#1566d6" stroke-width="2">
+          <rect x="114" y="76" width="12" height="12"/><rect x="274" y="76" width="12" height="12"/><rect x="434" y="76" width="12" height="12"/>
+          <rect x="114" y="110" width="12" height="12"/><rect x="434" y="110" width="12" height="12"/>
+          <rect x="114" y="144" width="12" height="12"/><rect x="274" y="144" width="12" height="12"/><rect x="434" y="144" width="12" height="12"/>
+        </g>
+        <text x="280" y="190" text-anchor="middle" fill="#1b2533" font-family="Noto Sans,sans-serif" font-size="14">Edit shape: puxe as alças; Esc termina</text>
+      </svg>
+      <p class="note">Exemplo: baixar o topo da forma para o pé afundar um pouco na grama. A resposta do jogador a isso ainda precisa ser testada.</p>
+    </div>
+    <div class="col" style="flex:1;min-width:min(280px,100%);width:auto">
+      <ul>
+        <li><b>Alças no canvas:</b> um botão Edit shape acende as alças da forma, como já acontece com a câmera. É o maior ganho desta rodada.</li>
+        <li><b>Camadas com nome:</b> Ground, Player, Enemy em vez de 0 a 7, com o nome guardado no projeto.</li>
+        <li><b>Width e Height de verdade:</b> no lugar de Half Size. Quem quer 200 px digita 200. O que o projeto salva não muda.</li>
+        <li><b>Estado da forma:</b> “Follows the picture”, ou “Custom size” com o botão Fit to picture. Cura o caso que hoje não avisa.</li>
+        <li><b>Aviso de bola esticada:</b> com a escala 2 × 1 ela vira elipse. O cartão avisa e oferece duas saídas: voltar a escala ou trocar a forma.</li>
+        <li><b>Recibo ao remover:</b> “Physics Body removed · Undo”.</li>
+        <li><b>Quem esta camada toca:</b> uma linha mostra “Hits: Ground, Enemy”, lida da regra do mundo. A ideia vem da crítica; não confirmei se alguma engine faz igual.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Consertos que não dependem de escolha</h2>
+  <ul>
+    <li>O aviso cortado passa a caber, em duas linhas e com destaque.</li>
+    <li>O cartão de uma forma passa a se chamar Collision Shape.</li>
+    <li>A dica do Static Body deixa de mandar escalar, como você decidiu em 26/10. Texto proposto: “Set Use to Repeated and give it a Width”.</li>
+    <li>O rótulo “Trigger” com as opções Solid e Sensor fica como você decidir na pergunta 3.</li>
+    <li>Density some de Static e Kinematic, onde a medição mostrou efeito zero. O valor fica guardado para quando o corpo virar Dynamic.</li>
+  </ul>
+</section>
+
+<section id="decisoes">
+  <h2>O que preciso que você decida</h2>
+  <div class="q">
+    <div><b>1. Qual opção: A, B ou C?</b><br>Recomendo a B. É a que mais ajuda quem usa todo dia, e a dobra de cada grupo mantém tudo a um clique.</div>
+    <div><b>2. As alças no canvas entram agora?</b><br>Recomendo que sim. Elas são a maior diferença em relação à Unity e ao Cocos, e o campo numérico continua lá para quem quer precisão.</div>
+    <div><b>3. Solid | Sensor ou Solid | Trigger?</b><br>Recomendo manter Sensor por enquanto, com o rótulo Touch. “Trigger” já é o nome de outro componente, o da tecla. Se esse for renomeado, a palavra fica livre e trocamos.</div>
+    <div><b>4. Polígono pelo contorno da imagem: agora ou como item próprio?</b><br>Recomendo como item próprio, logo depois. É poder novo, mas é o único item que mexe no motor e no formato salvo. Os outros não dependem dele.</div>
+    <div><b>5. Static Body continua nascendo com o bloco de pedra?</b><br>Recomendo manter, porque dá para testar na hora, sem ter uma imagem. A alternativa é nascer pedindo a imagem, como a Sprite.</div>
+  </div>
+</section>
+
+<section id="mapa">
+  <h2>Mapa dos campos, na opção B</h2>
+  <p><span class="vis">Verde</span> fica à vista. <span class="fold">Azul</span> fica em uma dobra. Nas opções A e C, as dobras têm os mesmos grupos; muda só o que fica à vista. A última coluna diz em quais tipos o campo aparece hoje: D Dynamic · S Static · K Kinematic · Z Zona · F forma sem corpo próprio.</p>
+  <div class="scroll"><table id="mapaT"></table></div>
+  <p class="note" style="margin-top:8px">O total bate com a contagem das fotos: 35 em Dynamic, 21 em Static, 28 na Zona, 19 na forma. Botões à parte. A Kinematic hoje mostra os mesmos campos da Static; ali, a One-way fica em Surface, porque a pergunta “plataforma que se atravessa” quase sempre é de um Static.</p>
+</section>
+</div>
+
+<script>
+const seg=(l,o,s)=>`<div>${l?`<div class="l">${l}</div>`:''}<div class="seg">${o.map((x,i)=>`<span class="${i===s?'on':''}">${x}</span>`).join('')}</div></div>`;
+const num=(l,k,v)=>`<div><div class="l">${l}</div><div class="n"><u>${k}</u>${v}</div></div>`;
+const r=(...x)=>`<div class="r">${x.join('')}</div>`;
+const fold=(t,s,i)=>`<details class="f"><summary><span>${t}</span><i>${s}</i></summary><div class="in">${i}</div></details>`;
+const card=(t,s,i)=>`<div class="c"><div class="t">${t}<i>${s||''}</i></div>${i}</div>`;
+const col=(h,c,n)=>`<div class="col"><h3>${h}</h3><div class="insp">${c}</div>${n?`<div class="note">${n}</div>`:''}</div>`;
+const btn=(t,c)=>`<div class="b ${c||''}">${t}</div>`;
+const say=(t,w)=>`<div class="say ${w?'w':''}">${t}</div>`;
+const chk=(t,on)=>`<div class="chk ${on?'on':''}">${t}</div>`;
+const BODY=['Dynamic','Static','Kinematic'], SHAPE=['Ball','Box','Capsule'], COMB=['Average','Min','Multiply','Max'], FREE=['Free','Locked'];
+const kind=s=>seg('Body',BODY,s), shape=seg('Shape',SHAPE,1);
+const size=(a,b)=>r(num('Width (px)','W',a),num('Height (px)','H',b));
+const touch=s=>seg('Touch',['Solid','Sensor'],s);
+const bf=r(num('Bounce','B','0'),num('Friction','F','0.500'));
+const layer=t=>`<div><div class="l">Layer</div><div class="n">${t} <u style="margin-left:auto">⌄</u></div></div>${say('Hits: Ground, Enemy')}`;
+const editB=btn('Edit shape on canvas','ac'), follows=say('Follows the picture');
+
+const fStart=fold('Start moving','still',r(num('Init Velocity X (px/s)','X','0'),num('Y','Y','0'))+num('Init Spin (deg/s)','S','0'));
+const fAdv=fold('Advanced','Discrete · Dominance 0',seg('Collision',['Discrete','Continuous'],0)+num('Dominance','D','0')+r(seg('Freeze X',FREE,0),seg('Freeze Y',FREE,0))+r(num('Linear Damping','D','0'),num('Angular Damping','A','0'))+seg('Damp Mode',['Combine','Replace'],0));
+const fJoint=fold('Joint','Pin',seg('Join As',['Pin','Spring','Rope','Weld','Slider','Rod','Wheel','Pulley','Custom'],0)+btn('Draw Joint on Canvas'));
+const fBake=fold('Bake to Timeline','All',seg('Bake',['All','Position','Rotation'],0)+btn('Bake 4.0s to Timeline'));
+const rem=btn('Remove Physics Body');
+const fMat=fold('Material rules','Average',seg('Bounce Combine',COMB,0)+seg('Friction Combine',COMB,0));
+const fOff=fold('Offset','0, 0',r(num('X (px)','X','0'),num('Y (px)','Y','0')));
+const fSurf=(way)=>fold('Surface',way?'One-way off · Wall Cling on':'Wall Cling on',(way?chk('One-way: jump up through it'):'')+seg('Wall Cling',['On','Off'],0)+r(num('Grip','G','1'),num('Belt (px/s)','B','0')));
+const sig=num('On Hit','','Signal on hit…')+num('On Leave','','Signal on leave…')+num('Only for tag','','(any)');
+const fSig=fold('Signals','none',sig);
+const fZone=fold('Zone force','none',r(num('Force X (N)','X','0'),num('Force Y (N)','Y','0'))+r(seg('Force Axes',['Zone','World'],0),num('Torque (N·m)','T','0'))+r(num('Falloff','F','0'),num('Drag','D','0'))+r(num('Fluid Density','D','0'),num('Shape Drag','S','0')));
+const fBF=fold('Bounce and Friction','0 · 0.500',bf+seg('Bounce Combine',COMB,0)+seg('Friction Combine',COMB,0));
+
+const massRow=r(seg('Mass',['Auto','Manual'],0),num('Density','D','1'));
+const bodyDyn=kind(0)+r(num('Gravity Scale','S','1'),seg('Rotation',FREE,0))+massRow;
+
+// A
+document.getElementById('boardA').innerHTML=
+ col('Dynamic',card('Physics Body','Dynamic · Box',kind(0)+shape+size('100','100')+bf+r(touch(0))+layer('Default')+editB+fold('Movement','Gravity 1 · Free',massRow+r(num('Gravity Scale','S','1'),seg('Rotation',FREE,0)))+fStart+fAdv+fOff+fMat+fSurf(true)+fSig+fJoint+fBake+rem))+
+ col('Static',card('Physics Body','Static · Box',kind(1)+shape+size('300','50')+follows+bf+r(touch(0))+layer('Ground')+editB+fOff+fMat+fSurf(true)+fSig+fJoint+rem),'A dobra Movement some: nada ali vale para um corpo que não se move.');
+
+// B
+document.getElementById('boardB').innerHTML=
+ col('Dynamic',card('Body','Dynamic',bodyDyn+fStart+fAdv+fJoint+fBake+rem)+card('Shape','Box · Solid',shape+size('100','100')+follows+touch(0)+bf+layer('Default')+editB+fOff+fMat+fSurf(true)+fSig))+
+ col('Static',card('Body','Static',kind(1)+fJoint+rem)+card('Shape','Box · Solid',shape+size('300','50')+follows+touch(0)+chk('One-way: jump up through it')+bf+layer('Ground')+editB+fOff+fMat+fSurf(false)+fSig),'O cartão Body encolhe. One-way fica à vista, porque um chão quase sempre pergunta isso.')+
+ col('Zona (Sensor)',card('Body','Static',kind(1)+fJoint+rem)+card('Shape','Box · Sensor',shape+size('100','100')+touch(1)+sig+layer('Triggers')+editB+fZone+fOff+fBF+fSurf(false)),'Saem de vista Bounce e Friction. Entram os sinais, e a dobra Zone force mostra o que a zona faz com quem entra.')+
+ col('Forma sem corpo próprio',card('Collision Shape','Box · Solid',say('No body above this shape. Nothing bumps into it yet.',true)+r(btn('Make Independent Body'))+say('Or drag it inside a body in the Hierarchy.')+shape+size('100','100')+touch(0)+bf+layer('Default')+editB+fold('Density','1',num('Density','D','1'))+fOff+fMat+fSurf(true)+fSig+btn('Remove Shape')),'Dentro de um corpo, o aviso vira “Part of: Platform High”. O botão Make Independent Body já existe hoje; a crítica o dava como novo.');
+
+// C
+const palco=`<div class="stage"><svg viewBox="0 0 270 118"><rect x="55" y="42" width="160" height="14" fill="#35e07a"/><rect x="55" y="56" width="160" height="24" fill="#c97d5c"/><rect x="55" y="42" width="160" height="38" fill="none" stroke="#1566d6" stroke-width="1.5" stroke-dasharray="5 4"/><g fill="#fff" stroke="#1566d6"><rect x="51" y="38" width="8" height="8"/><rect x="211" y="38" width="8" height="8"/><rect x="51" y="76" width="8" height="8"/><rect x="211" y="76" width="8" height="8"/></g></svg></div>`;
+const feel=seg('Feels like',['Rock','Wood','Rubber','Ice'],1);
+const fNum=fold('Numbers','300 × 50 · 0 · 0.500',size('300','50')+bf+seg('Bounce Combine',COMB,0)+seg('Friction Combine',COMB,0)+r(num('Offset X (px)','X','0'),num('Offset Y (px)','Y','0')));
+document.getElementById('boardC').innerHTML=
+ col('Dynamic',card('Physics Body','Dynamic',palco+follows+kind(0)+shape+feel+touch(0)+layer('Default')+fold('Move','Gravity 1 · Free',massRow+r(num('Gravity Scale','S','1'),seg('Rotation',FREE,0)))+fStart+fAdv+fNum+fSurf(true)+fSig+fJoint+fBake+rem))+
+ col('Static',card('Physics Body','Static',palco+follows+kind(1)+shape+seg('Solid on',['All sides','Top only','None'],0)+feel+touch(0)+layer('Ground')+fNum+fSurf(false)+fSig+fJoint+rem),'Solid on é o One-way dito em palavras. O campo None precisaria de uma definição sua: seria o mesmo que tirar o corpo?')+
+ `<div class="col"><h3>O cartão de hoje, para comparar</h3><img src="hoje_dynamic.png" alt="Cartão Physics Body do app em Dynamic, com todos os campos em uma coluna"></div>`;
+
+// Mapa
+const M=[
+['Como se move'],
+['Body (Dynamic, Static, Kinematic)','v','Body','DSKZ'],
+['Gravity Scale','v','Body','D'],
+['Rotation (Free, Locked)','v','Body','D'],
+['Mass (Auto, Manual)','v','Body','D'],
+['Density ou Mass','v','Body em Dynamic, inclusive numa Zona Dynamic · escondido e guardado em corpo Static ou Kinematic · dobra Density na F','DSKZF'],
+['Init Velocity X e Y (2)','f','Start moving','D'],
+['Init Spin','f','Start moving','D'],
+['Collision (Discrete, Continuous)','f','Advanced','D'],
+['Dominance','f','Advanced','D'],
+['Freeze X e Y (2)','f','Advanced','D'],
+['Linear e Angular Damping (2)','f','Advanced','D'],
+['Damp Mode','f','Advanced','D'],
+['Join As','f','Joint','DSKZ'],
+['Bake (canal)','f','Bake to Timeline. A crítica o tirava do cartão; aqui ele fica','D'],
+['Forma'],
+['Shape (Ball, Box, Capsule)','v','Shape','DSKZF'],
+['Half Size W e H (2), ou Radius e Half Height','v','Shape, como Width e Height. Ball: Radius. Capsule: Radius e Height','DSKZF'],
+['Offset X e Y (2)','f','Offset, e as alças também movem','DSKZF'],
+['Como toca'],
+['Trigger (Solid, Sensor)','v','Shape, como Touch','DSKZF'],
+['Layer','v','Shape, com nome no lugar do número','DSKZF'],
+['One-Way','v','Shape à vista em Static · Surface em D, K e F. Não existe na Zona','DSKF'],
+['Material'],
+['Bounce e Friction (2)','v','Shape · na Zona, dobra Bounce and Friction','DSKZF'],
+['Bounce Combine e Friction Combine (2)','f','Material rules · na Zona, Bounce and Friction','DSKZF'],
+['Superfície, para o Player'],
+['Wall Cling','f','Surface','DSKZF'],
+['Grip e Belt (2)','f','Surface','DSKZF'],
+['Sinais'],
+['On Hit, On Leave e Only for tag (3)','f','Signals · à vista na Zona','DSKZF'],
+['Zona, só em Sensor'],
+['Force X e Y (2)','f','Zone force','Z'],
+['Force Axes, Torque','f','Zone force','Z'],
+['Falloff, Drag','f','Zone force','Z'],
+['Fluid Density, Shape Drag','f','Zone force','Z'],
+['Botões'],
+['Draw Joint on Canvas','f','Joint','DSKZ'],
+['Bake 4.0s to Timeline','f','Bake to Timeline','D'],
+['Remove Physics Body','v','Body, agora com recibo e Undo','DSKZ'],
+['Make Independent Body, Remove Shape','v','Collision Shape','F'],
+['Make Platform Player','v','Continua em cartão próprio, igual a hoje','D'],
+];
+document.getElementById('mapaT').innerHTML='<tr><th>Ajuste de hoje</th><th>Onde fica</th><th>Tipos</th></tr>'+M.map(x=>x.length===1?`<tr><td class="g" colspan="3">${x[0]}</td></tr>`:`<tr><td>${x[0]}</td><td class="${x[1]==='v'?'vis':'fold'}">${x[2]}</td><td>${x[3]}</td></tr>`).join('');
+</script>

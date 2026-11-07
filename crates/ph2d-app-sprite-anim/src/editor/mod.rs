@@ -201,8 +201,12 @@ impl DocumentSurface for AnimDocs {
     }
 
     fn undo(&mut self, _id: u64, _redo: bool) -> bool {
-        // O desfazer é o do projecto: as edições desta aba entram na mesma fila por diff.
         false
+    }
+
+    /// As edições desta aba são diffs da cena. Sem isto a aba engolia o Ctrl+Z (medido em 07/11, ficha 02).
+    fn undo_is_the_projects(&self) -> bool {
+        true
     }
 
     fn take_focus_request(&mut self) -> Option<u64> {

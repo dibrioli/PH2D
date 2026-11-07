@@ -189,6 +189,9 @@ pub fn undo(hero: &mut HeroScreen, redo: bool) -> Option<bool> {
         return None;
     }
     let (f, id) = hero.documents.active_surface_mut()?;
+    if f.undo_is_the_projects() {
+        return None;
+    }
     Some(f.undo(id, redo))
 }
 

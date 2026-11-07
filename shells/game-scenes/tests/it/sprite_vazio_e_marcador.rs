@@ -393,3 +393,35 @@ fn o_marcador_do_editor_chega_a_regra_e_a_tabela_sem_script() {
     let efeitos = ph2d_ecs::resolve_signal_actions(aba.sim.world_mut(), &tags, &disparos);
     assert_eq!(efeitos.len(), 1, "a linha de Signal Actions responde");
 }
+
+/// ⭐ Com a aba do editor à frente, o Ctrl+Z vai à fila do projecto: é lá que Split by rows e os marcadores estão.
+/// Antes de 07/11 a aba respondia «nada a fazer» e engolia a tecla (medido na janela real, `animado_prova_desfaz`).
+/// *Mutação: `undo_is_the_projects` devolver `false` ⇒ vermelho.*
+#[test]
+fn com_a_aba_a_frente_o_ctrl_z_vai_a_fila_do_projeto() {
+    use ph2d_editor_core::screens::hero::surface_input;
+    let mut sim = SimWorld::new();
+    let e = sprite_do_menu(ph2d_app_game::object_add::ANIMATED_SPRITE, &mut sim);
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.documents
+        .install_surface(Box::new(AnimDocs::default()));
+    let mut aba = Aba {
+        sim,
+        hero,
+        ts: TextSystem::without_system_fonts(),
+        e: e.to_bits(),
+    };
+    assert!(editor::request_open(
+        &mut aba.sim,
+        e.to_bits(),
+        &AnimFieldEdit::OpenEditor
+    ));
+    aba.quadro();
+    aba.hero.documents.follow_surfaces();
+    assert!(
+        aba.hero.documents.active_surface_mut().is_some(),
+        "controlo: a aba está à frente"
+    );
+    assert_eq!(surface_input::undo(&mut aba.hero, false), None);
+    assert_eq!(surface_input::undo(&mut aba.hero, true), None);
+}

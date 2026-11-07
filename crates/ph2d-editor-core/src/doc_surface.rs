@@ -214,6 +214,10 @@ pub trait DocumentSurface: Any {
     fn close(&mut self, id: u64);
     /// Desfazer/refazer pedido pelo menu Edit com esta aba activa. `true` = havia o que fazer.
     fn undo(&mut self, id: u64, redo: bool) -> bool;
+    /// As edições desta aba entram na fila do projecto: o Ctrl+Z passa por ela e vai à fila de cena.
+    fn undo_is_the_projects(&self) -> bool {
+        false
+    }
     /// Os nós de acessibilidade da aba (o `Document` primeiro, depois um `TextRun` por linha visível).
     fn a11y(&self, id: u64) -> Vec<(ph2d_a11y::NodeId, ph2d_a11y::Node)> {
         let _ = id;

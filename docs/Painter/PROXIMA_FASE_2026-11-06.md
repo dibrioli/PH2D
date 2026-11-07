@@ -2,6 +2,10 @@
 
 Ordem do dono para a próxima fase, na ordem dele. Estado de partida: [HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-05_NOITE.md](handoffs/HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-05_NOITE.md). **Pendente do dono: a ordem de integrar.**
 
+## Antes de tudo (dono 07/11): reduzir a memória do 1.º traço
+
+O registo do undo guarda quase a grade inteira no pen-down: pico do Dabber 367 → 490 MiB a raio 300. Marcar só a caixa do traço e baixar `TECTO_DA_MEMORIA_MIB`. [Detalhe](../../project-memory/project_first_stroke_undo_memory_cut_next_round_2026_11_07.md).
+
 ## 0) «Ver se REDO mata a tinta de Wet Paint (para a simulação)»
 O que a auditoria deixou: no teste, três undo e três redo com Borracha/pintura/Borracha funcionam. **Hipótese não provada:** `wetpaint/undo_vivo.rs`, `p.depois.take()?` (linha 196) consome o passo sem devolvê-lo se a refação falha, e `can_redo` (linha 187) só consulta o motor. Começar por **reproduzir**: um traço, undo, redo com a água ainda correndo, e olhar se a simulação para. Depois o teste vermelho, depois a cura.
 

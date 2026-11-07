@@ -50,6 +50,8 @@
 - ⭐⭐ [Dono 05/11: módulo de criação de efeitos sonoros sai SEM IA](project_sfx_module_no_ai_2026_11_05.md)
 - ⭐ [Dono 06/11: W4 do SFX Lab, 4 decisões delegadas: nivelado só nos sorteios, N, Heard salvo, W5 pode seguir sem o profissional](project_sfx_w4_owner_delegated_decisions_2026_11_06.md)
 
+- ⭐⭐ [Dono 07/11: depois do CI, a linha Painter reduz a memória do 1.º traço (undo só na caixa do traço) e baixa o tecto](project_first_stroke_undo_memory_cut_next_round_2026_11_07.md)
+
 ## Comunicação & decisão
 - ⭐⭐⭐ [Painter (31/10): Pigmento + Água = só a DILUIÇÃO; o VOLUME ao papel é outro controlo — um controlo, uma grandeza](project_painter_volume_is_independent_of_dilution_2026_10_31.md)
 - ⛔⛔⛔ [O APP é SÓ em inglês — toda string de UI, e a ajuda/tooltip em Plain English para qualquer país (31/10)](feedback_app_ui_english_only.md)

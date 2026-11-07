@@ -116,8 +116,9 @@ pub(crate) fn prepare(store: &mut WidgetStore, snap: &PhysicsSnapshot) {
             store.set_number_value(row.chip, f64::from((row.get)(&snap.interaction)));
         }
     }
-    for a in 0..MAX_LAYERS {
-        for b in 0..=a {
+    let visiveis = crate::state::visible_layers();
+    for &a in &visiveis {
+        for &b in visiveis.iter().filter(|&&b| b <= a) {
             let id = i::PHYSICS_LAYER_CELL[i::physics_layer_cell_index(a, b)];
             if store.tooltip_for(id).is_none() {
                 store.set_tooltip(
@@ -348,10 +349,18 @@ fn cartao_das_camadas(snap: PhysicsSnapshot) -> CardDef<'static> {
         None,
         move |c, y| {
             let matriz = LayerMatrix::from_rows(snap.vivo.layer_matrix);
+            let visiveis = crate::state::visible_layers();
+            let nomes = crate::state::layer_names();
+            let rotulo_de = |l: usize| match nomes.0[l].as_str() {
+                "" => l.to_string(),
+                n => format!("{l} {n}"),
+            };
             let mut y = c.toggle_triangle(
                 &ToggleTriangle {
                     label: tr("card.physics.layers"),
-                    n: MAX_LAYERS,
+                    linhas: &visiveis,
+                    rotulo_de: &rotulo_de,
+                    rola: Some(i::PHYSICS_LAYER_SCROLL),
                     group: i::PHYSICS_LAYER_PAINT_GROUP,
                     key: Some(&i::PHYSICS_LAYER_CELL),
                     id_of: &|a, b| i::PHYSICS_LAYER_CELL[i::physics_layer_cell_index(a, b)],
@@ -359,14 +368,30 @@ fn cartao_das_camadas(snap: PhysicsSnapshot) -> CardDef<'static> {
                 },
                 y,
             );
+            // «+ Layer»; nas 32 fica desligado, com o motivo.
+            let cheia = visiveis.len() >= MAX_LAYERS;
+            let texto = tr("card.physics.layer_add");
+            let botao = if cheia {
+                Widget::ButtonOff { text: texto }
+            } else {
+                Widget::Button {
+                    id: i::PHYSICS_LAYER_ADD,
+                    text: texto,
+                    primary: false,
+                }
+            };
+            y = c.full(None, botao, y);
+            if cheia {
+                y = c.hint(tr("card.physics.layer_add_full"), y);
+            }
             // O nome da cabeça de cada linha; o número continua a ser a identidade.
-            for (n, &id) in i::PHYSICS_LAYER_NAME.iter().enumerate() {
+            for &n in &visiveis {
                 let rotulo = tr_with("card.physics.layer_name", &[("n", &n.to_string())]);
                 let placeholder = n.to_string();
                 y = c.full(
                     Some(&rotulo),
                     Widget::Text {
-                        id,
+                        id: i::PHYSICS_LAYER_NAME[n],
                         placeholder: &placeholder,
                     },
                     y,

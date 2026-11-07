@@ -29,9 +29,10 @@ pub const SONO_DEMORA: u16 = 10;
 pub const ADORMECE: u16 = 11;
 /// Uma célula da matriz de camadas (colidem as camadas do par? 0/1), `i` = a célula.
 pub const CAMADAS: u16 = 12;
-/// As células da matriz: o triângulo de `MAX_LAYERS = 8` com a diagonal (gate em
-/// `ph2d-app-physics`, que vê as duas pontas).
-pub const CELULAS: u16 = 36;
+/// As células da matriz: o triângulo de `MAX_LAYERS = 32` com a diagonal (gate em
+/// `ph2d-app-physics`, que vê as duas pontas). O índice é o triângulo por `max(a, b)`: as 36 de `8` camadas
+/// ficam nos mesmos `i`, e as chaves gravadas nelas no mesmo par.
+pub const CELULAS: u16 = 528;
 
 /// Os campos de UM valor (`i = 0`), na ordem do vocabulário — a matriz ([`CAMADAS`]) fica à parte.
 pub const CAMPOS: [u16; 11] = [

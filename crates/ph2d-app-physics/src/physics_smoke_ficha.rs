@@ -17,6 +17,13 @@ pub fn physics_smoke_ficha(ctx: &mut crate::SceneCtx<'_>) {
     if std::env::var_os("PH2D_PHYSICS_SMOKE_PAINEL").is_some() {
         ctx.want.panels.push("physics");
     }
+    // As fotos da matriz: `<n>` camadas nomeadas, além das quatro da cena.
+    let nomeadas = std::env::var("PH2D_PHYSICS_SMOKE_CAMADAS")
+        .ok()
+        .and_then(|v| v.trim().parse::<u8>().ok());
+    for i in 4..nomeadas.unwrap_or(0) {
+        ph2d_physics_ecs::LayerNames::rename(ctx.world, i, &format!("Layer {i}"));
+    }
     if let Ok(nome) = std::env::var("PH2D_PHYSICS_SMOKE_SELECT") {
         let mut q = ctx.world.query::<(Entity, &Name)>();
         ctx.want.select = q

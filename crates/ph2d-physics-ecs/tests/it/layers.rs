@@ -241,3 +241,95 @@ fn a_lopsided_matrix_from_a_file_is_read_the_way_rapier_acts() {
          through, but it is at y={y}"
     );
 }
+
+/// Duas bolas nas camadas 20 e 25: uma parada, a outra cai em cima dela. Só a célula alta decide.
+fn duas_bolas(settings: PhysicsSettings, a: u8, b: u8) -> f32 {
+    let mut sim = SimWorld::new();
+    sim.world_mut().spawn((
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Ball { radius: 1.0 },
+            layer: a,
+            ..Collider::default()
+        },
+        Transform::from_translation(Vec2::new(0.0, 0.0)),
+    ));
+    let bola = sim
+        .world_mut()
+        .spawn((
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Collider {
+                shape: ColliderShape::Ball { radius: 0.25 },
+                layer: b,
+                ..Collider::default()
+            },
+            Transform::from_translation(Vec2::new(0.0, 2.0)),
+        ))
+        .id();
+    let mut bridge = PhysicsBridge::new();
+    bridge.set_settings(settings);
+    for tick in 1..=120 {
+        bridge.dispatch(&mut sim, true, tick);
+    }
+    sim.world().get::<Transform>(bola).unwrap().translation.y
+}
+
+#[test]
+fn a_celula_alta_20_25_decide_se_as_bolas_batem() {
+    let batem = duas_bolas(PhysicsSettings::default(), 20, 25);
+    assert!(batem > 0.5, "de fábrica, batem: y={batem}");
+    let passam = duas_bolas(matrix_without(20, 25), 20, 25);
+    assert!(passam < -2.0, "sem a marca, atravessam: y={passam}");
+    // Controlos: outra célula alta não mexe; a mesma marca não pega nas camadas baixas de mesmo resto.
+    assert_eq!(
+        batem.to_bits(),
+        duas_bolas(matrix_without(20, 24), 20, 25).to_bits()
+    );
+    assert_eq!(
+        batem.to_bits(),
+        duas_bolas(matrix_without(20, 25), 4, 1).to_bits()
+    );
+    assert_eq!(
+        batem.to_bits(),
+        duas_bolas(PhysicsSettings::default(), 20, 25).to_bits(),
+        "mesmos bits"
+    );
+}
+
+/// O fio: ida e volta em 32 linhas; e bytes de 8 linhas lidos sob a `LayerRowsV218`.
+#[test]
+fn a_matriz_vai_e_volta_em_32_linhas_e_a_de_8_bytes_e_alargada() {
+    let s = matrix_without(20, 25);
+    let bytes = postcard::to_allocvec(&s).unwrap();
+    assert_eq!(postcard::from_bytes::<PhysicsSettings>(&bytes).unwrap(), s);
+
+    let velha = {
+        let mut m = LayerMatrix::all();
+        m.set(1, 5, false);
+        PhysicsSettings {
+            layer_matrix: m.rows(),
+            air_drag: 0.25,
+            ..PhysicsSettings::default()
+        }
+    };
+    let oito = {
+        let _g = ph2d_physics_ecs::LayerRowsV218::enter();
+        postcard::to_allocvec(&velha).unwrap()
+    };
+    let lida = {
+        let _g = ph2d_physics_ecs::LayerRowsV218::enter();
+        postcard::from_bytes::<PhysicsSettings>(&oito).unwrap()
+    };
+    assert_eq!(
+        lida, velha,
+        "os pares antigos no sítio e o campo seguinte (air_drag) também"
+    );
+    assert!(
+        postcard::from_bytes::<PhysicsSettings>(&oito).map_or(true, |s| s != velha),
+        "CONTROLO: sem a guarda, o fio antigo não abre igual"
+    );
+}

@@ -42,6 +42,26 @@ thread_local! {
 
 thread_local! {
     static LAYER_NAMES: RefCell<ph2d_physics_ecs::LayerNames> = RefCell::default();
+    /// As camadas visíveis, em bits; até a app publicar, as oito de um projeto sem nada dito.
+    static VISIVEIS: Cell<u32> = const { Cell::new(0xFF) };
+}
+
+/// Uma vez por quadro: as camadas que a matriz mostra (`ph2d_physics_ecs::visible_layers`).
+pub fn set_visible_layers(bits: u32) {
+    VISIVEIS.set(bits);
+}
+
+/// As camadas visíveis, em ordem.
+#[must_use]
+pub fn visible_layers() -> Vec<usize> {
+    let bits = VISIVEIS.get();
+    (0..ph2d_physics_ecs::MAX_LAYERS)
+        .filter(|&i| bits & (1 << i) != 0)
+        .collect()
+}
+
+pub(crate) fn visible_bits() -> u32 {
+    VISIVEIS.get()
 }
 
 /// Uma vez por quadro: a tabela de nomes das camadas do projeto.

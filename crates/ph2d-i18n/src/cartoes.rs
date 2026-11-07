@@ -343,6 +343,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.physics.pull_force" => "Force (N)",
         "card.physics.layers" => "Layers that collide",
         "card.physics.layer_name" => "Layer {n} name",
+        "card.physics.layer_add" => "+ Layer",
+        "card.physics.layer_add_full" => {
+            "All 32 layers are in use: 32 is the most the physics engine has."
+        }
         "card.physics.layer_cell" => {
             "Layer {a} and layer {b}: click or drag to switch their collision"
         }

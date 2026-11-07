@@ -43,7 +43,7 @@ pub use world::joint_break::{JointBreak, JointKey, JointLoad};
 pub use world::joint_custom::{AxisMode, AxisSpec, CustomAxis, CustomDesc};
 pub use world::joint_desc::{JointDesc, JointKind, MotorDesc, MotorMode};
 pub use world::joints::motor_axis;
-pub use world::layers::{LayerMatrix, MAX_LAYERS};
+pub use world::layers::{LEGACY_LAYERS, LayerMatrix, MAX_LAYERS};
 pub use world::oneway::{ALLOWED_ANGLE, ALLOWED_COS};
 pub use world::queries::FluidAt;
 pub use world::{

@@ -26,7 +26,7 @@ pub mod joint_tool;
 /// partilham (a da shell e a da fita). Ver o cabeçalho do módulo.
 pub mod keyboard_driven;
 mod layer_names;
-pub use layer_names::LayerNames;
+pub use layer_names::{LayerNames, layers_in_use, visible_layers};
 pub mod name_refs;
 mod parts;
 /// ⭐ **O REMAP identidade → identidade** (ADR-0164 / F4.2) — o que faz a junta de uma
@@ -152,13 +152,13 @@ pub use seam::{ColliderPose, seam_between, seam_point};
 // direction is ever read by a person, so a second answer would be a picture of a
 // blow that does not happen, and no gate reads a screenshot.
 pub use ph2d_physics::{
-    CAPSULE_CAP_SEGS, ELLIPSE_SEGS, LayerMatrix, MAX_LAYERS, PhysicsWorld, ShapeDesc,
-    capsule_vertices, ellipse_vertices, zone_force_world_at, zone_spin_sign,
+    CAPSULE_CAP_SEGS, ELLIPSE_SEGS, LEGACY_LAYERS, LayerMatrix, MAX_LAYERS, PhysicsWorld,
+    ShapeDesc, capsule_vertices, ellipse_vertices, zone_force_world_at, zone_spin_sign,
 };
 pub use settings::{
-    DEFAULT_SOLVER_ITERATIONS, GRAVITY_LIMIT, MAX_AIR_DRAG, MAX_CONTACT_HZ, MAX_DAMPING,
-    MAX_SLEEP_THRESHOLD, MAX_SOLVER_ITERATIONS, MAX_SUBSTEPS, MAX_TIME_UNTIL_SLEEP, MIN_CONTACT_HZ,
-    PhysicsSettings,
+    DEFAULT_SOLVER_ITERATIONS, GRAVITY_LIMIT, LayerRowsV218, MAX_AIR_DRAG, MAX_CONTACT_HZ,
+    MAX_DAMPING, MAX_SLEEP_THRESHOLD, MAX_SOLVER_ITERATIONS, MAX_SUBSTEPS, MAX_TIME_UNTIL_SLEEP,
+    MIN_CONTACT_HZ, PhysicsSettings,
 };
 
 use ph2d_ecs::scene::ComponentRegistry;

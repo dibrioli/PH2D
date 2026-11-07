@@ -51,6 +51,8 @@ impl crate::App {
         let _pilha_v23 = sem_ids.then(ph2d_vec_scene::PilhaLayoutV23::enter);
         let por_posicao = ver <= crate::project_schema::PROJECT_SCHEMA_RELOGIO_POR_POSICAO;
         let _pose_v196 = por_posicao.then(ph2d_ui_state::PoseLayoutV196::enter);
+        let matriz_de_oito = ver <= crate::project_schema::PROJECT_SCHEMA_MATRIZ_DE_OITO;
+        let _linhas_v218 = matriz_de_oito.then(ph2d_physics_ecs::LayerRowsV218::enter);
         let (mut file, migrated_counter) = match ver {
             // ⭐ **193 → … → 197: as animações do personagem, o `TiledDraw`, a memória do uso da imagem, o
             // `ImageRegion`** — um componente novo cada, a mesma forma; falta-lhes o `jogo` (198): o `0` do `Vec` vazio.
@@ -230,6 +232,12 @@ fn le_com_o_tipo_vivo(bytes: &[u8], path: &str) -> Option<ProjectFile> {
 
 /// A migração de CONTEÚDO depois de o ficheiro lido (a opacidade das poses; o fio antigo do vetor).
 fn migra_depois_de_ler(file: &mut ProjectFile, ver: u32, fio: Option<u32>) {
+    // ⭐ As oito camadas de sempre continuam à vista; um blob ilegível é recusado em voz alta no load.
+    if ver <= crate::project_schema::PROJECT_SCHEMA_MATRIZ_DE_OITO
+        && let Ok(b) = ph2d_physics_ecs::LayerNames::upgrade_v218(&file.physics_layers)
+    {
+        file.physics_layers = b;
+    }
     // ⭐ **Até ao `191` a opacidade não era canal de estado** (F22b): cada pose gravada recebe a
     // da forma, e o Show desses projetos continua a não a mexer.
     if ver <= crate::project_schema::PROJECT_SCHEMA_OPACIDADE_FORA_DOS_ESTADOS {

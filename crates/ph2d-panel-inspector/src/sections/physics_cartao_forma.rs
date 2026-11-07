@@ -275,11 +275,18 @@ pub(super) fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> 
     )
 }
 
-/// As opções da lista: os nomes, ou 0..7 sem nomes. ⚠️ `pub(crate)`: o passe diferido re-deriva-as.
+/// As opções da lista: as camadas visíveis, pelo nome ou pelo número. ⚠️ `pub(crate)`: o passe diferido re-deriva-as.
 pub(crate) fn layer_options() -> Vec<DropdownOption<u8>> {
+    opcoes(None)
+}
+
+fn opcoes(tambem: Option<u8>) -> Vec<DropdownOption<u8>> {
     ids::INSP_PHYS_LAYER
         .iter()
         .enumerate()
+        .filter(|&(i, _)| {
+            crate::camadas_fisica::visivel(i) || tambem.is_some_and(|c| usize::from(c) == i)
+        })
         .map(|(i, &id)| DropdownOption::new(id, i as u8, crate::camadas_fisica::rotulo(i)))
         .collect()
 }
@@ -287,7 +294,7 @@ pub(crate) fn layer_options() -> Vec<DropdownOption<u8>> {
 /// A lista da camada, com a camada do objecto escolhida: o que o chip mostra.
 #[must_use]
 pub(crate) fn lista_da_camada(camada: u8) -> Dropdown<u8> {
-    let mut dd = Dropdown::new(ids::INSP_PHYS_LAYER_PICK, "", layer_options());
+    let mut dd = Dropdown::new(ids::INSP_PHYS_LAYER_PICK, "", opcoes(Some(camada)));
     dd.select(camada);
     dd
 }

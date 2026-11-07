@@ -503,7 +503,15 @@
 /// `physics_layers: Vec<u8>` no FIM do `ProjectFile`: a `LayerNames`, blob `PH2DLAYN` com versão PRÓPRIA (vazio = sem
 /// nomes). ⭐ **COM leitura dos anteriores:** `falta_no_fim` e os braços antigos levam mais um `0`. O número da camada
 /// continua a identidade. Gate: `project_layer_names_tests`. Registos: `0`. ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 218;
+///
+/// # `218 → 219` — **32 camadas de colisão** (`line/GameEngineFuncional02`, ficha f1, onda 5, 2026-11-07)
+///
+/// `PhysicsSettings.layer_matrix` passa de `[u8; 8]` a `[u32; 32]`, no MEIO do fio; os `<= 218` leem-se sob `LayerRowsV218`
+/// (`LayerMatrix::rows_from_legacy`). `LayerNames` v2 (32 nomes + mostradas); os `<= 218` mostram as oito. Gate: `project_layer_names_tests`.
+pub(crate) const PROJECT_SCHEMA: u32 = 219;
+
+/// O último degrau da matriz de oito camadas.
+pub(crate) const PROJECT_SCHEMA_MATRIZ_DE_OITO: u32 = 218;
 
 /// O último degrau sem os nomes das camadas — a mesma forma do actual, sem o `Vec` final.
 pub(crate) const PROJECT_SCHEMA_SEM_NOMES_DE_CAMADA: u32 = 217;

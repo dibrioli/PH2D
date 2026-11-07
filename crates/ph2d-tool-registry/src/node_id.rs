@@ -30,7 +30,12 @@ const FNV_PRIME_64: u64 = 0x0000_0100_0000_01b3;
 /// collides exactly with `0` (astronomically rare but defended for
 /// determinism).
 pub const fn hash_node_id(s: &'static str) -> NodeId {
-    let bytes = s.as_bytes();
+    hash_node_id_bytes(s.as_bytes())
+}
+
+/// O mesmo hash sobre bytes montados em tempo de compilação: tabelas de ids geradas por laço `const`
+/// (a matriz de camadas), que dão o id idêntico ao do literal.
+pub const fn hash_node_id_bytes(bytes: &[u8]) -> NodeId {
     let mut hash: u64 = FNV_OFFSET_BASIS_64;
     let mut i = 0;
     while i < bytes.len() {

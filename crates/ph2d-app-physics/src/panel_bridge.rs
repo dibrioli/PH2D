@@ -18,7 +18,7 @@
 
 use ph2d_editor_core::screens::hero::HeroScreen;
 use ph2d_panel_physics::{PhysicsIntent, PhysicsSnapshot};
-use ph2d_physics_ecs::{InputTape, InteractionSettings, PhysicsBridge};
+use ph2d_physics_ecs::{InputTape, InteractionSettings, LayerMatrix, PhysicsBridge};
 
 use crate::run_stash::{self, RunVerb};
 
@@ -45,10 +45,17 @@ pub struct RunTapes<'a> {
 pub fn publica_as_camadas(world: &ph2d_ecs::World, physics: &PhysicsBridge) {
     let nomes = ph2d_physics_ecs::LayerNames::of(world);
     ph2d_panel_physics::set_layer_names(nomes.clone());
-    ph2d_panel_inspector::camadas_fisica::set_current(
-        nomes.0,
-        physics.settings_vivos().layer_matrix,
+    let vivo = physics.settings_vivos().layer_matrix;
+    // O autorado e o que a curva conduz: nada configurado se esconde, em nenhum dos dois.
+    let visiveis = nomes.visible(
+        ph2d_physics_ecs::layers_in_use(world),
+        &LayerMatrix::from_rows(vivo),
+    ) | ph2d_physics_ecs::visible_layers(
+        world,
+        &LayerMatrix::from_rows(physics.settings().layer_matrix),
     );
+    ph2d_panel_physics::set_visible_layers(visiveis);
+    ph2d_panel_inspector::camadas_fisica::set_current(nomes.0, vivo, visiveis);
 }
 
 /// Publish the world state for `paint`, then apply whatever the artist did.

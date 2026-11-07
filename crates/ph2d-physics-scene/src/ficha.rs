@@ -204,7 +204,7 @@ pub fn monta(world: &mut World) {
 #[must_use]
 pub fn regras(base: PhysicsSettings) -> PhysicsSettings {
     PhysicsSettings {
-        layer_matrix: MATRIZ,
+        layer_matrix: ph2d_physics_ecs::LayerMatrix::rows_from_legacy(MATRIZ),
         ..base
     }
 }

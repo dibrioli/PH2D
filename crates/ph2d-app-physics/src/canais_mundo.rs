@@ -34,7 +34,7 @@ pub fn celulas() -> impl Iterator<Item = (u16, usize, usize)> {
     (0..MAX_LAYERS).flat_map(|a| {
         (0..=a).map(move |b| {
             let i = ph2d_panel_physics::ids::physics_layer_cell_index(a, b);
-            (u16::try_from(i).expect("36 células"), a, b)
+            (u16::try_from(i).expect("528 células"), a, b)
         })
     })
 }

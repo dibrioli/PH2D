@@ -297,11 +297,12 @@ impl crate::App {
                 C::Camadas => camadas::abre_a_lista(&mut hero.store),
                 C::CamadaSozinha => {
                     let mut s = gfx.physics.settings();
-                    s.layer_matrix = [0, 0, 0, 0, 0, 0, 0, 0];
+                    s.layer_matrix = [0; ph2d_physics_ecs::MAX_LAYERS];
                     gfx.physics.set_settings(s);
                 }
                 C::CamadaComPares | C::CamadasNoPainel => {
-                    let mut m = ph2d_physics_ecs::LayerMatrix::from_rows([0; 8]);
+                    let mut m =
+                        ph2d_physics_ecs::LayerMatrix::from_rows([0; ph2d_physics_ecs::MAX_LAYERS]);
                     m.set(1, 0, true);
                     m.set(1, 2, true);
                     let mut s = gfx.physics.settings();

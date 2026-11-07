@@ -183,13 +183,6 @@ const CAMPOS: &[(NodeId, &[PropKind])] = &[
     (insp::INSP_PHYS_FRIC_COMBINE[2], &[fi(fs::COMBINA_ATRITO)]),
     (insp::INSP_PHYS_FRIC_COMBINE[3], &[fi(fs::COMBINA_ATRITO)]),
     (insp::INSP_PHYS_LAYER[0], &[fi(fs::CAMADA)]),
-    (insp::INSP_PHYS_LAYER[1], &[fi(fs::CAMADA)]),
-    (insp::INSP_PHYS_LAYER[2], &[fi(fs::CAMADA)]),
-    (insp::INSP_PHYS_LAYER[3], &[fi(fs::CAMADA)]),
-    (insp::INSP_PHYS_LAYER[4], &[fi(fs::CAMADA)]),
-    (insp::INSP_PHYS_LAYER[5], &[fi(fs::CAMADA)]),
-    (insp::INSP_PHYS_LAYER[6], &[fi(fs::CAMADA)]),
-    (insp::INSP_PHYS_LAYER[7], &[fi(fs::CAMADA)]),
     (insp::INSP_PHYS_SENSOR[0], &[fi(fs::SENSOR)]),
     (insp::INSP_PHYS_SENSOR[1], &[fi(fs::SENSOR)]),
     (insp::INSP_PHYS_ONEWAY[0], &[fi(fs::UMA_VIA)]),
@@ -315,6 +308,11 @@ fn todos() -> impl Iterator<Item = (NodeId, Cow<'static, [PropKind]>)> {
 /// O grupo que o campo `id` do Inspector mostra (vazio = sem canal).
 #[must_use]
 pub fn canal_do_campo(id: NodeId) -> Cow<'static, [PropKind]> {
+    // Uma opção por camada, todas o mesmo campo (a `[0]` está na tabela).
+    if insp::INSP_PHYS_LAYER.contains(&id) {
+        const CAMADA: &[PropKind] = &[fi(fs::CAMADA)];
+        return Cow::Borrowed(CAMADA);
+    }
     todos()
         .find(|(c, _)| *c == id)
         .map_or(Cow::Borrowed(&[]), |(_, g)| g)

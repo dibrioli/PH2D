@@ -351,3 +351,75 @@ fn mexer_num_campo_nao_toca_nos_outros_que_a_curva_conduz() {
     assert_eq!(ponte.settings_vivos().gravity_y, 1.5, "a mão na gravidade");
     assert!(!liga(ponte.settings_vivos()), "a célula continua da curva");
 }
+
+/// As chaves gravadas nas 36 células de antes apontam para o mesmo par: o índice é o triângulo por `max`.
+/// A tabela é a do painel de 8 camadas (F41), escrita à mão, para não provar a fórmula com ela própria.
+#[test]
+fn as_36_celulas_antigas_ficam_no_mesmo_par_e_o_canal_novo_chega_ao_mundo() {
+    let mut esperado = Vec::new();
+    for a in 0..8usize {
+        for b in 0..=a {
+            esperado.push((a, b));
+        }
+    }
+    for (i, a, b) in celulas().take(36) {
+        assert_eq!(esperado[usize::from(i)], (a, b), "o canal {i}");
+    }
+    assert_eq!(celulas().nth(31).map(|c| (c.1, c.2)), Some((7, 3)));
+    let (i, a, b) = celulas().last().expect("células");
+    assert_eq!((usize::from(i), a, b), (527, 31, 31));
+
+    // Uma chave numa célula alta conduz o mundo vivo, sem tocar no autorado.
+    let (mut sim, _, mut ponte) = queda();
+    let mut cond = ConducaoMundo::default();
+    let alta = celulas()
+        .find(|c| (c.1, c.2) == (25, 20))
+        .expect("a célula")
+        .0;
+    publicar(&mut sim, &ponte);
+    let c = cena(&sim).expect("cena");
+    sim.world_mut()
+        .get_resource_or_insert_with(CanaisEscritos::default)
+        .escrever(c, kc(alta), 0.0);
+    assert!(aplicar(&mut sim, &mut ponte, &mut cond), "o mundo mudou");
+    let vivo = LayerMatrix::from_rows(ponte.settings_vivos().layer_matrix);
+    assert!(!vivo.collides(25, 20) && !vivo.collides(20, 25));
+    assert!(LayerMatrix::from_rows(ponte.settings().layer_matrix).collides(25, 20));
+}
+
+/// Sonda de custo (`--ignored --nocapture`): um quadro do funil, com a Cena e as 528 células.
+#[test]
+#[ignore = "mede: corre à mão"]
+fn mede_o_quadro_das_celulas() {
+    use std::time::Instant;
+    let (mut sim, _, mut ponte) = queda();
+    let mut cond = ConducaoMundo::default();
+    let c = cena(&sim).expect("cena");
+    let mut lidos = CanaisLidos::default();
+    let (mut pub36, mut pub528, mut funil) = (f64::MAX, f64::MAX, f64::MAX);
+    for _ in 0..200 {
+        let t = Instant::now();
+        for (i, _, _) in celulas().take(36) {
+            lidos.publicar(c, kc(i), 1.0);
+        }
+        pub36 = pub36.min(t.elapsed().as_secs_f64());
+        let t = Instant::now();
+        for (i, _, _) in celulas() {
+            lidos.publicar(c, kc(i), 1.0);
+        }
+        pub528 = pub528.min(t.elapsed().as_secs_f64());
+        let t = Instant::now();
+        publicar(&mut sim, &ponte);
+        let _ = aplicar(&mut sim, &mut ponte, &mut cond);
+        funil = funil.min(t.elapsed().as_secs_f64());
+    }
+    println!(
+        "[canais] publicar 36 = {:.1} us · 528 = {:.1} us · quadro inteiro (publicar + aplicar, 528) = {:.1} us · \
+         PhysicsSettings = {} B · entrada dos mapas = {} B",
+        pub36 * 1e6,
+        pub528 * 1e6,
+        funil * 1e6,
+        size_of::<PhysicsSettings>(),
+        size_of::<((u64, FieldKey), f32)>(),
+    );
+}

@@ -419,6 +419,11 @@ impl crate::App {
                     ph2d_physics_ecs::LayerNames::rename(g.sim.world_mut(), layer, &name);
                 }
             }
+            EditorAction::LayerShow { layer } => {
+                if let Some(g) = self.gfx.as_mut() {
+                    ph2d_physics_ecs::LayerNames::show(g.sim.world_mut(), layer);
+                }
+            }
             other => return Some(other),
         }
         None

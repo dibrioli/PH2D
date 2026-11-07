@@ -336,7 +336,7 @@ fn every_choice_check_verb_and_cell_answers_a_real_click() {
     );
 
     let matriz = LayerMatrix::from_rows(base.vivo.layer_matrix);
-    for a in 0..ph2d_physics_ecs::MAX_LAYERS {
+    for a in 0..ph2d_physics_ecs::LEGACY_LAYERS {
         for b in 0..=a {
             let id = ids::PHYSICS_LAYER_CELL[ids::physics_layer_cell_index(a, b)];
             let got = ultimo_mundo(&mesa.clica(id)).expect("a célula escreve");
@@ -690,7 +690,7 @@ fn cada_camada_tem_o_seu_nome_no_cartao_da_matriz() {
     nomes.0[2] = "Ground".into();
     ph2d_panel_physics::set_layer_names(nomes);
     let mut mesa = Mesa::nova(PhysicsSnapshot::default());
-    for (i, &id) in ids::PHYSICS_LAYER_NAME.iter().enumerate() {
+    for (i, &id) in ids::PHYSICS_LAYER_NAME.iter().enumerate().take(8) {
         assert!(
             mesa.rects.iter().any(|(n, r)| *n == id && r.w > 0.0),
             "o campo {i}"
@@ -716,4 +716,100 @@ fn cada_camada_tem_o_seu_nome_no_cartao_da_matriz() {
     }
     ph2d_panel_physics::set_layer_names(Default::default());
     cards::force_cards_on_this_thread(None);
+}
+
+fn bits(camadas: &[usize]) -> u32 {
+    camadas.iter().fold(0, |b, &l| b | 1 << l)
+}
+
+/// O clique REAL (ponteiro no rect pintado) na célula alta (25, 20) escreve esse par e só ele.
+#[test]
+fn o_clique_na_celula_alta_escreve_o_par_dela() {
+    ph2d_panel_physics::set_visible_layers(bits(&[0, 20, 25]));
+    let mut mesa = Mesa::nova(mundo(
+        PhysicsSettings::default(),
+        InteractionSettings::default(),
+    ));
+    let id = ids::PHYSICS_LAYER_CELL[ids::physics_layer_cell_index(25, 20)];
+    let got = ultimo_mundo(&mesa.clica(id)).expect("a célula escreve");
+    let m = LayerMatrix::from_rows(got.layer_matrix);
+    assert!(!m.collides(25, 20) && !m.collides(20, 25));
+    for a in 0..ph2d_physics_ecs::MAX_LAYERS {
+        for b in 0..ph2d_physics_ecs::MAX_LAYERS {
+            if (a, b) != (25, 20) && (a, b) != (20, 25) {
+                assert!(m.collides(a, b), "({a},{b}) não devia mudar");
+            }
+        }
+    }
+    assert!(
+        mesa.rect(ids::PHYSICS_LAYER_CELL[ids::physics_layer_cell_index(7, 0)])
+            .is_none(),
+        "a camada escondida não tem célula"
+    );
+}
+
+/// Um projeto novo mostra a 0 e o botão; o clique pede a próxima livre e põe o foco no nome dela.
+#[test]
+fn o_mais_layer_da_a_proxima_livre_com_o_nome_em_foco() {
+    ph2d_panel_physics::set_visible_layers(bits(&[0, 1, 3]));
+    let mut mesa = Mesa::nova(mundo(
+        PhysicsSettings::default(),
+        InteractionSettings::default(),
+    ));
+    let _ = mesa.host.drained_actions();
+    let _ = mesa.clica(ids::PHYSICS_LAYER_ADD);
+    assert_eq!(
+        mesa.host.drained_actions(),
+        [ph2d_editor_core::action_bus::EditorAction::LayerShow { layer: 2 }],
+    );
+    assert_eq!(
+        mesa.host.store().focus_id(),
+        Some(ids::PHYSICS_LAYER_NAME[2])
+    );
+}
+
+/// Com as 32, o botão apaga-se e diz porquê; as colunas rolam dentro do cartão, sem sair dele, e toda
+/// célula é alcançável por um valor da barra.
+#[test]
+fn as_32_rolam_dentro_do_cartao_e_o_botao_fica_desligado() {
+    ph2d_panel_physics::set_visible_layers(u32::MAX);
+    let mut mesa = Mesa::nova(mundo(
+        PhysicsSettings::default(),
+        InteractionSettings::default(),
+    ));
+    assert!(
+        mesa.rect(ids::PHYSICS_LAYER_ADD).is_none(),
+        "o botão não aceita clique"
+    );
+    assert!(
+        mesa.rect(ids::PHYSICS_LAYER_SCROLL).is_some(),
+        "a barra aparece"
+    );
+    let mut alcancadas = std::collections::BTreeSet::new();
+    let barra = mesa.rect(ids::PHYSICS_LAYER_SCROLL).unwrap();
+    for passo in 0..=40 {
+        mesa.host
+            .store_mut()
+            .set_slider_value(ids::PHYSICS_LAYER_SCROLL, passo as f32 / 40.0);
+        mesa.assenta();
+        for (i, id) in ids::PHYSICS_LAYER_CELL.iter().enumerate() {
+            if let Some(r) = mesa.rect(*id) {
+                assert!(
+                    r.x + r.w <= barra.x + barra.w + 0.5,
+                    "a célula {i} sai do cartão: {r:?} além de {barra:?}"
+                );
+                assert_eq!(
+                    r.w,
+                    ph2d_card_stack::metrics::GRID_CELL,
+                    "o toque não encolhe"
+                );
+                alcancadas.insert(i);
+            }
+        }
+    }
+    assert_eq!(
+        alcancadas.len(),
+        ids::PHYSICS_LAYER_CELLS,
+        "nada inalcançável"
+    );
 }

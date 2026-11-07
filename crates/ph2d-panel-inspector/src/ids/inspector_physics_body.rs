@@ -179,20 +179,40 @@ pub const INSP_PHYS_GRAVITY_SCALE: NodeId = hash_node_id("insp_phys_gravity_scal
 /// ids: the count is a const, so every one can be checked against the others
 /// and against all chrome by `node_id_collisions` — which does NOT see
 /// registrations made inside a loop, and so cannot police dynamic ids.
-/// Group id for the layer segmented control (the label/aria owner; the eight
-/// chips below are its options).
+/// Group id for the layer segmented control (the label/aria owner; the chips
+/// below are its options).
 pub const INSP_LIVE_PHYSICS_LAYER: NodeId = hash_node_id("insp_live_physics_layer");
 
-pub const INSP_PHYS_LAYER: [NodeId; 8] = [
-    hash_node_id("insp_phys_layer_0"),
-    hash_node_id("insp_phys_layer_1"),
-    hash_node_id("insp_phys_layer_2"),
-    hash_node_id("insp_phys_layer_3"),
-    hash_node_id("insp_phys_layer_4"),
-    hash_node_id("insp_phys_layer_5"),
-    hash_node_id("insp_phys_layer_6"),
-    hash_node_id("insp_phys_layer_7"),
-];
+/// Uma opção por camada: `insp_phys_layer_<n>`, o mesmo id do literal de antes.
+///
+/// O `32` é o `MAX_LAYERS` do motor: esta crate não o vê, e `panel_bridge::publica_as_camadas` não
+/// compila se divergirem.
+pub const INSP_PHYS_LAYERS: usize = 32;
+
+pub static INSP_PHYS_LAYER: [NodeId; INSP_PHYS_LAYERS] = {
+    const fn opcao(n: usize) -> NodeId {
+        const P: &[u8] = b"insp_phys_layer_";
+        let mut buf = [0u8; 32];
+        let mut k = 0;
+        while k < P.len() {
+            buf[k] = P[k];
+            k += 1;
+        }
+        if n >= 10 {
+            buf[k] = b'0' + (n / 10) as u8;
+            k += 1;
+        }
+        buf[k] = b'0' + (n % 10) as u8;
+        ph2d_tool_registry::hash_node_id_bytes(buf.split_at(k + 1).0)
+    }
+    let mut t = [NodeId(0); INSP_PHYS_LAYERS];
+    let mut n = 0;
+    while n < t.len() {
+        t[n] = opcao(n);
+        n += 1;
+    }
+    t
+};
 
 /// §11 Sensor (trigger) toggle — group id + the two options. A sensor passes
 /// through but reports its overlaps (W7); the overlay lights it up. Modelled as

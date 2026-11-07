@@ -4,17 +4,20 @@
 use ph2d_i18n::{tr, tr_with};
 use std::cell::RefCell;
 
-const CAMADAS: usize = 8;
+const CAMADAS: usize = crate::ids::INSP_PHYS_LAYERS;
 
 struct Camadas {
     nomes: [String; CAMADAS],
-    linhas: [u8; CAMADAS],
+    linhas: [u32; CAMADAS],
+    /// As que se mostram, em bits (`ph2d_physics_ecs::visible_layers`).
+    visiveis: u32,
 }
 
 thread_local! {
     static AGORA: RefCell<Camadas> = RefCell::new(Camadas {
         nomes: Default::default(),
-        linhas: [u8::MAX; CAMADAS],
+        linhas: [u32::MAX; CAMADAS],
+        visiveis: 0xFF,
     });
 }
 
@@ -44,9 +47,21 @@ pub fn abre_a_lista(store: &mut ph2d_editor_core::interaction::WidgetStore) {
     }
 }
 
-/// Uma vez por quadro: os nomes dados (vazio = sem nome) e a matriz do mundo.
-pub fn set_current(nomes: [String; CAMADAS], linhas: [u8; CAMADAS]) {
-    AGORA.with(|a| *a.borrow_mut() = Camadas { nomes, linhas });
+/// Uma vez por quadro: os nomes dados (vazio = sem nome), a matriz do mundo e as camadas visíveis.
+pub fn set_current(nomes: [String; CAMADAS], linhas: [u32; CAMADAS], visiveis: u32) {
+    AGORA.with(|a| {
+        *a.borrow_mut() = Camadas {
+            nomes,
+            linhas,
+            visiveis,
+        };
+    });
+}
+
+/// A camada aparece nas listas?
+#[must_use]
+pub(crate) fn visivel(i: usize) -> bool {
+    AGORA.with(|a| a.borrow().visiveis & (1u32 << i) != 0)
 }
 
 /// O nome dado à camada, vazio se não tem.
@@ -66,8 +81,9 @@ pub(crate) fn rotulo(i: usize) -> String {
 #[must_use]
 pub fn hits(camada: usize) -> String {
     let linha = AGORA.with(|a| a.borrow().linhas.get(camada).copied().unwrap_or(0));
+    // Só as visíveis: as de fábrica, por usar, batem em tudo e não dizem nada a ninguém.
     let nomes: Vec<String> = (0..CAMADAS)
-        .filter(|j| linha & (1 << j) != 0)
+        .filter(|&j| linha & (1 << j) != 0 && visivel(j))
         .map(rotulo)
         .collect();
     if nomes.is_empty() {

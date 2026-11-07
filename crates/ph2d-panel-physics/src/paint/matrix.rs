@@ -13,7 +13,7 @@
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::zones::Rect;
-use ph2d_physics_ecs::{LayerMatrix, MAX_LAYERS};
+use ph2d_physics_ecs::LayerMatrix;
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, Theme, TypeToken};
 
 /// Cell edge. Small enough that 8 columns plus the row label fit the dock, big
@@ -49,8 +49,11 @@ pub(super) fn paint(
 
     // Column headers, offset by the label gutter. Only as many as the widest
     // row needs — the last row is the only one with all eight.
-    for j in 0..MAX_LAYERS {
-        let cx = x + label_w + gap + j as f32 * step;
+    // A face clássica mostra as visíveis e as colunas que cabem; quem rola é a face em cartões.
+    let visiveis = crate::state::visible_layers();
+    let cabem = (((ctx.slot.w - x + ctx.slot.x - label_w) / step).floor() as usize).max(1);
+    for (pos, &j) in visiveis.iter().take(cabem).enumerate() {
+        let cx = x + label_w + gap + pos as f32 * step;
         paint_text(
             ctx.text_system,
             ctx.scene,
@@ -64,7 +67,7 @@ pub(super) fn paint(
     }
     y += font + gap;
 
-    for i in 0..MAX_LAYERS {
+    for (linha, &i) in visiveis.iter().enumerate() {
         // Row label.
         paint_text(
             ctx.text_system,
@@ -76,8 +79,8 @@ pub(super) fn paint(
             label_w,
             resolve(ColorToken::Text2, theme),
         );
-        for j in 0..=i {
-            let cell = Rect::new(x + label_w + gap + j as f32 * step, y, CELL_PX, CELL_PX);
+        for (pos, &j) in visiveis.iter().take((linha + 1).min(cabem)).enumerate() {
+            let cell = Rect::new(x + label_w + gap + pos as f32 * step, y, CELL_PX, CELL_PX);
             let on = matrix.collides(i, j);
             // On = accent fill, off = the panel's recessed surface. A checkmark
             // glyph at this size would be mud; the fill IS the state.

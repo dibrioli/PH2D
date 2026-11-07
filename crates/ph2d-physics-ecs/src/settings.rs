@@ -14,7 +14,7 @@
 //!
 //! [`PhysicsBridge::set_settings`]: crate::PhysicsBridge::set_settings
 
-use ph2d_physics::{BodyDefaults, LayerMatrix, MAX_LAYERS, PhysicsWorld};
+use ph2d_physics::{BodyDefaults, LEGACY_LAYERS, LayerMatrix, MAX_LAYERS, PhysicsWorld};
 use serde::{Deserialize, Serialize};
 
 /// Gravity, per axis (m/s²).
@@ -166,6 +166,50 @@ fn sanitize_sleep_spin(v: f32) -> f32 {
 /// `BodyDefaults::ours`.
 pub const MAX_TIME_UNTIL_SLEEP: f32 = 10.0;
 
+thread_local! {
+    static LINHAS_V218: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Enquanto vive, `PhysicsSettings` lê a matriz na forma do fio até o schema 218 (`[u8; 8]`), e a
+/// alarga por [`LayerMatrix::rows_from_legacy`]. O postcard é posicional e não tem versão por campo.
+#[must_use]
+pub struct LayerRowsV218(());
+
+impl LayerRowsV218 {
+    pub fn enter() -> Self {
+        LINHAS_V218.set(true);
+        Self(())
+    }
+}
+
+impl Drop for LayerRowsV218 {
+    fn drop(&mut self) {
+        LINHAS_V218.set(false);
+    }
+}
+
+/// Sob a [`LayerRowsV218`], a forma antiga: é como os testes escrevem um ficheiro de um degrau anterior.
+fn escreve_as_linhas<S: serde::Serializer>(
+    rows: &[u32; MAX_LAYERS],
+    s: S,
+) -> Result<S::Ok, S::Error> {
+    if LINHAS_V218.get() {
+        let velhas: [u8; LEGACY_LAYERS] = std::array::from_fn(|i| rows[i].to_le_bytes()[0]);
+        velhas.serialize(s)
+    } else {
+        rows.serialize(s)
+    }
+}
+
+fn le_as_linhas<'de, D: serde::Deserializer<'de>>(d: D) -> Result<[u32; MAX_LAYERS], D::Error> {
+    if LINHAS_V218.get() {
+        let velhas = <[u8; LEGACY_LAYERS]>::deserialize(d)?;
+        Ok(LayerMatrix::rows_from_legacy(velhas))
+    } else {
+        <[u32; MAX_LAYERS]>::deserialize(d)
+    }
+}
+
 /// The world's authored physics settings.
 ///
 /// **Append-only** (postcard is positional — ADR-0131's schema note): new knobs
@@ -216,7 +260,14 @@ pub struct PhysicsSettings {
     /// hand-edited or future-build file must not be able to install a matrix the
     /// type says cannot exist (rapier ANDs both directions, so a half-set pair
     /// means "no collision" — a rule nobody wrote).
-    pub layer_matrix: [u8; MAX_LAYERS],
+    ///
+    /// ⚠️ **O fio mudou no schema 219** (`[u8; 8]` → `[u32; 32]`), no MEIO do ficheiro: quem lê um
+    /// ficheiro antigo entra em [`LayerRowsV218`] antes de desserializar.
+    #[serde(
+        serialize_with = "escreve_as_linhas",
+        deserialize_with = "le_as_linhas"
+    )]
+    pub layer_matrix: [u32; MAX_LAYERS],
     /// Air-drag coefficient. **Appended** — postcard is positional, so new
     /// fields go at the END and `Default` must keep meaning "what the engine
     /// did before this existed" (here: `0.0`, a vacuum).

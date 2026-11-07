@@ -36,7 +36,7 @@ mod event;
 
 pub use state::{
     PhysicsIntent, PhysicsPanelState, PhysicsSnapshot, Toque, drain_intents, last_content_h,
-    last_visible_h, set_current_physics, set_layer_names,
+    last_visible_h, set_current_physics, set_layer_names, set_visible_layers, visible_layers,
 };
 
 use ph2d_a11y::NodeId;

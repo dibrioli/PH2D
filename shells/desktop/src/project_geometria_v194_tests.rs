@@ -52,12 +52,12 @@ fn a_v194_project_opens_with_vertex_ids_in_order() {
 #[test]
 fn the_same_bytes_under_todays_header_do_not_open_the_same() {
     let mut hoje = V194.to_vec();
-    // `194` e `218` são varints de dois bytes (`0xC2 0x01` / `0xDA 0x01`); os sete `0` finais são o `jogo`, a `mesa`,
+    // `194` e `219` são varints de dois bytes (`0xC2 0x01` / `0xDB 0x01`); os sete `0` finais são o `jogo`, a `mesa`,
     // os `kanbans`, os `pixel_sprites`, os `sounds`, o `sfx_lab` e os `physics_layers` vazios que o braço do `194` acrescenta sozinho — assim
     // só o FIO difere entre o certo e o torto.
     assert_eq!(&hoje[..2], &[0xC2, 0x01], "o fixture é um v194");
-    const { assert!(PROJECT_SCHEMA == 218) };
-    hoje[0] = 0xDA;
+    const { assert!(PROJECT_SCHEMA == 219) };
+    hoje[0] = 0xDB;
     hoje.extend_from_slice(&[0, 0, 0, 0, 0, 0, 0]);
     let certo = le(V194, "geometria_v194_certo").expect("um v194 abre");
     let torto = le(&hoje, "geometria_v194_torto");

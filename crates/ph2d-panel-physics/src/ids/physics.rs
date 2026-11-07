@@ -5,7 +5,8 @@
 //! carregar.
 
 use ph2d_a11y::NodeId;
-use ph2d_tool_registry::hash_node_id;
+use ph2d_physics_ecs::MAX_LAYERS;
+use ph2d_tool_registry::{hash_node_id, hash_node_id_bytes};
 
 /// Physics panel close (X) button.
 pub const PHYSICS_CLOSE: NodeId = hash_node_id("physics.close");
@@ -104,69 +105,83 @@ pub const PHYSICS_SLEEP_DELAY: NodeId = hash_node_id("physics.sleep_delay");
 pub const PHYSICS_SLEEP_DELAY_NUM: NodeId = hash_node_id("physics.sleep_delay_num");
 
 // ── Collision-layer matrix ──────────────────────────────────────────────────
-/// The 36 cells of the triangular 8×8 layer matrix, in row-major lower-triangle
-/// order — cell `(i, j)` with `j <= i` sits at index `i(i+1)/2 + j`.
+/// Quantas células: o triângulo de `MAX_LAYERS` com a diagonal.
+pub const PHYSICS_LAYER_CELLS: usize = MAX_LAYERS * (MAX_LAYERS + 1) / 2;
+
+/// `prefixo` + `n` em decimal, no fim de `buf` a partir de `at`. Devolve o novo fim.
+const fn escreve_numero(buf: &mut [u8; 32], at: usize, n: usize) -> usize {
+    let mut at = at;
+    if n >= 10 {
+        buf[at] = b'0' + (n / 10) as u8;
+        at += 1;
+    }
+    buf[at] = b'0' + (n % 10) as u8;
+    at + 1
+}
+
+const fn com_prefixo(prefixo: &[u8]) -> ([u8; 32], usize) {
+    let mut buf = [0u8; 32];
+    let mut k = 0;
+    while k < prefixo.len() {
+        buf[k] = prefixo[k];
+        k += 1;
+    }
+    (buf, k)
+}
+
+/// O id de `physics.layer_<a>_<b>`: o mesmo do literal, para as 36 células de antes não mudarem.
+const fn id_da_celula(a: usize, b: usize) -> NodeId {
+    let (mut buf, at) = com_prefixo(b"physics.layer_");
+    let at = escreve_numero(&mut buf, at, a);
+    buf[at] = b'_';
+    let at = escreve_numero(&mut buf, at + 1, b);
+    hash_node_id_bytes(buf.split_at(at).0)
+}
+
+const fn tabela_das_celulas() -> [NodeId; PHYSICS_LAYER_CELLS] {
+    let mut t = [NodeId(0); PHYSICS_LAYER_CELLS];
+    let mut a = 0;
+    while a < MAX_LAYERS {
+        let mut b = 0;
+        while b <= a {
+            t[physics_layer_cell_index(a, b)] = id_da_celula(a, b);
+            b += 1;
+        }
+        a += 1;
+    }
+    t
+}
+
+const fn tabela_dos_nomes() -> [NodeId; MAX_LAYERS] {
+    let mut t = [NodeId(0); MAX_LAYERS];
+    let mut n = 0;
+    while n < MAX_LAYERS {
+        let (mut buf, at) = com_prefixo(b"physics_layer_name_");
+        let at = escreve_numero(&mut buf, at, n);
+        t[n] = hash_node_id_bytes(buf.split_at(at).0);
+        n += 1;
+    }
+    t
+}
+
+/// The cells of the triangular layer matrix, in row-major lower-triangle order — cell `(i, j)` with
+/// `j <= i` sits at index `i(i+1)/2 + j`, so the first 36 are the 8-layer matrix of before: the
+/// channels recorded on them keep their pair.
 ///
-/// ⚠️ **A fixed array, not runtime-hashed ids.** `node_id_collisions` checks
-/// consts; ids built at paint time are invisible to it. And
-/// `architecture_panel_wiring_parity` cannot see a registration made inside a
-/// LOOP either — which a matrix necessarily is — so the seam test that CLICKS
-/// every cell is not redundant with those gates, it is the only thing covering
-/// this widget.
+/// ⚠️ `node_id_collisions` checks literal consts and `architecture_panel_wiring_parity` cannot see
+/// a LOOP: the unicity test below and the seam test that CLICKS cells cover this widget.
 ///
-/// Only the lower triangle exists because the matrix is symmetric by
-/// construction: `(i, j)` and `(j, i)` are one fact, so painting both halves
-/// would be two controls for one checkbox.
-pub const PHYSICS_LAYER_CELL: [NodeId; 36] = [
-    hash_node_id("physics.layer_0_0"),
-    hash_node_id("physics.layer_1_0"),
-    hash_node_id("physics.layer_1_1"),
-    hash_node_id("physics.layer_2_0"),
-    hash_node_id("physics.layer_2_1"),
-    hash_node_id("physics.layer_2_2"),
-    hash_node_id("physics.layer_3_0"),
-    hash_node_id("physics.layer_3_1"),
-    hash_node_id("physics.layer_3_2"),
-    hash_node_id("physics.layer_3_3"),
-    hash_node_id("physics.layer_4_0"),
-    hash_node_id("physics.layer_4_1"),
-    hash_node_id("physics.layer_4_2"),
-    hash_node_id("physics.layer_4_3"),
-    hash_node_id("physics.layer_4_4"),
-    hash_node_id("physics.layer_5_0"),
-    hash_node_id("physics.layer_5_1"),
-    hash_node_id("physics.layer_5_2"),
-    hash_node_id("physics.layer_5_3"),
-    hash_node_id("physics.layer_5_4"),
-    hash_node_id("physics.layer_5_5"),
-    hash_node_id("physics.layer_6_0"),
-    hash_node_id("physics.layer_6_1"),
-    hash_node_id("physics.layer_6_2"),
-    hash_node_id("physics.layer_6_3"),
-    hash_node_id("physics.layer_6_4"),
-    hash_node_id("physics.layer_6_5"),
-    hash_node_id("physics.layer_6_6"),
-    hash_node_id("physics.layer_7_0"),
-    hash_node_id("physics.layer_7_1"),
-    hash_node_id("physics.layer_7_2"),
-    hash_node_id("physics.layer_7_3"),
-    hash_node_id("physics.layer_7_4"),
-    hash_node_id("physics.layer_7_5"),
-    hash_node_id("physics.layer_7_6"),
-    hash_node_id("physics.layer_7_7"),
-];
+/// Only the lower triangle exists because the matrix is symmetric by construction: `(i, j)` and
+/// `(j, i)` are one fact, so painting both halves would be two controls for one checkbox.
+pub static PHYSICS_LAYER_CELL: [NodeId; PHYSICS_LAYER_CELLS] = tabela_das_celulas();
 
 /// O campo do nome de cada camada, ao lado da matriz.
-pub const PHYSICS_LAYER_NAME: [NodeId; 8] = [
-    hash_node_id("physics_layer_name_0"),
-    hash_node_id("physics_layer_name_1"),
-    hash_node_id("physics_layer_name_2"),
-    hash_node_id("physics_layer_name_3"),
-    hash_node_id("physics_layer_name_4"),
-    hash_node_id("physics_layer_name_5"),
-    hash_node_id("physics_layer_name_6"),
-    hash_node_id("physics_layer_name_7"),
-];
+pub static PHYSICS_LAYER_NAME: [NodeId; MAX_LAYERS] = tabela_dos_nomes();
+
+/// O «+ Layer»: a próxima camada livre passa a mostrar-se, com o campo do nome em foco.
+pub const PHYSICS_LAYER_ADD: NodeId = hash_node_id("physics.layer_add");
+/// A barra que rola as colunas da matriz dentro do cartão.
+pub const PHYSICS_LAYER_SCROLL: NodeId = hash_node_id("physics.layer_scroll");
 
 /// Index of cell `(a, b)` in [`PHYSICS_LAYER_CELL`], order-independent.
 pub const fn physics_layer_cell_index(a: usize, b: usize) -> usize {
@@ -314,3 +329,49 @@ pub const PHYSICS_IK_ANGLE_OPT: [NodeId; 2] = [
     hash_node_id("physics.ik.angle.free"),
     hash_node_id("physics.ik.angle.match"),
 ];
+
+#[cfg(test)]
+mod tabela_tests {
+    use super::*;
+
+    /// Os literais de antes: uma chave gravada na célula continua a apontar para o mesmo par.
+    #[test]
+    fn a_tabela_gerada_da_o_mesmo_id_do_literal_e_o_mesmo_indice_das_36() {
+        assert_eq!(PHYSICS_LAYER_CELLS, 528);
+        assert_eq!(PHYSICS_LAYER_CELL[0], hash_node_id("physics.layer_0_0"));
+        assert_eq!(PHYSICS_LAYER_CELL[35], hash_node_id("physics.layer_7_7"));
+        assert_eq!(
+            PHYSICS_LAYER_CELL[physics_layer_cell_index(25, 20)],
+            hash_node_id("physics.layer_25_20")
+        );
+        assert_eq!(PHYSICS_LAYER_NAME[7], hash_node_id("physics_layer_name_7"));
+        assert_eq!(
+            PHYSICS_LAYER_NAME[31],
+            hash_node_id("physics_layer_name_31")
+        );
+        // As 36 de antes, lidas do triângulo escrito à mão: fila a fila, sem saltos.
+        let mut k = 0;
+        for a in 0..8 {
+            for b in 0..=a {
+                assert_eq!(physics_layer_cell_index(a, b), k);
+                assert_eq!(physics_layer_cell_index(b, a), k);
+                k += 1;
+            }
+        }
+        assert_eq!(physics_layer_cell_index(31, 31), 527);
+    }
+
+    #[test]
+    fn nenhum_id_gerado_colide() {
+        let mut v: Vec<u64> = PHYSICS_LAYER_CELL
+            .iter()
+            .chain(&PHYSICS_LAYER_NAME)
+            .chain(&[PHYSICS_LAYER_ADD, PHYSICS_LAYER_SCROLL])
+            .map(|n| n.0)
+            .collect();
+        let n = v.len();
+        v.sort_unstable();
+        v.dedup();
+        assert_eq!(v.len(), n);
+    }
+}

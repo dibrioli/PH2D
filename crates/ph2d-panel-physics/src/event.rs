@@ -149,6 +149,24 @@ pub(crate) fn apply_event(
                 .push(ph2d_editor_core::action_bus::EditorAction::LayerRename { layer, name });
             true
         }
+        WidgetEvent::Click(id) if id == crate::ids::PHYSICS_LAYER_ADD => {
+            let visiveis = state::visible_bits();
+            if let Some(layer) = ph2d_physics_ecs::LayerNames::next_free(visiveis) {
+                host.bus_mut()
+                    .push(ph2d_editor_core::action_bus::EditorAction::LayerShow { layer });
+                // A coluna nova à vista, e o nome pronto a escrever.
+                let depois = visiveis | 1 << layer;
+                let antes = (depois & ((1u32 << layer) - 1)).count_ones() as f32;
+                let total = (depois.count_ones() - 1).max(1) as f32;
+                let store = host.store_mut();
+                store.set_slider_value(crate::ids::PHYSICS_LAYER_SCROLL, antes / total);
+                ph2d_editor_core::interaction::dispatch::focus_text_field(
+                    store,
+                    crate::ids::PHYSICS_LAYER_NAME[usize::from(layer)],
+                );
+            }
+            true
+        }
         // A matrix cell toggles ONE pair. `LayerMatrix::set` writes both halves,
         // so the asymmetric state the panel could otherwise author does not exist.
         WidgetEvent::Click(id) if crate::ids::PHYSICS_LAYER_CELL.contains(&id) => {

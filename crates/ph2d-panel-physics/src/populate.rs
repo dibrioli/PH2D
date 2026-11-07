@@ -122,13 +122,22 @@ pub fn populate(store: &mut WidgetStore) {
         store.set_tooltip(grip, ph2d_i18n::tr("chrome.section.grip_hint"));
     }
 
-    // The 36 matrix cells. Registered in a loop, which is exactly why the seam
+    button(store, crate::ids::PHYSICS_LAYER_ADD);
+    store.register(
+        crate::ids::PHYSICS_LAYER_SCROLL,
+        InteractiveState::Slider {
+            state: SliderState::Normal,
+            value: 0.0,
+            orientation: SliderOrientation::Horizontal,
+        },
+    );
+    // The matrix cells. Registered in a loop, which is exactly why the seam
     // test clicks every one of them: `architecture_panel_wiring_parity` cannot
     // see loop registrations, so nothing else would notice these going dead.
     for &cell in crate::ids::PHYSICS_LAYER_CELL.iter() {
         button(store, cell);
     }
-    for id in crate::ids::PHYSICS_LAYER_NAME {
+    for &id in crate::ids::PHYSICS_LAYER_NAME.iter() {
         store.register(
             id,
             InteractiveState::TextInput {

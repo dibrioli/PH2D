@@ -214,6 +214,20 @@ pub fn focus_number_field(store: &mut WidgetStore, id: ph2d_a11y::NodeId) -> boo
     true
 }
 
+/// O mesmo para um campo de texto: foco, com o cursor no fim. `false` = o id não é um campo de texto registado.
+pub fn focus_text_field(store: &mut WidgetStore, id: ph2d_a11y::NodeId) -> bool {
+    let Some(InteractiveState::TextInput {
+        state, text, caret, ..
+    }) = store.get_mut(id)
+    else {
+        return false;
+    };
+    *state = crate::widget::TextInputState::Focused;
+    *caret = text.len();
+    store.set_focus(Some(id));
+    true
+}
+
 pub(super) fn init_number_buffer(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
     // BlenderColorPicker channel chip: seed `value` from the parent
     // picker's current channel value (the chip's stored `value` is

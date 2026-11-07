@@ -67,7 +67,7 @@ pub const CAMPOS: &[(u16, &[NodeId])] = &[
         &[painel::PHYSICS_SLEEP_DELAY, painel::PHYSICS_SLEEP_DELAY_NUM],
     ),
     (m::ADORMECE, &[painel::PHYSICS_SLEEP_SPIN]),
-    // A matriz é UM controlo (um losango no canto): as 36 células, um grupo (F41).
+    // A matriz é UM controlo (um losango no canto): as células, um grupo (F41).
     (m::CAMADAS, &painel::PHYSICS_LAYER_CELL),
 ];
 

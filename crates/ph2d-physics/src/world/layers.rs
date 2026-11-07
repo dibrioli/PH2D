@@ -30,23 +30,19 @@
 //! than gate against that state, [`LayerMatrix::set`] writes **both halves**, so
 //! the asymmetric matrix does not exist. One cell of the UI is one fact.
 //!
-//! ## Why eight layers
+//! ## Why 32 layers (decisão do dono, 07/11/2026)
 //!
-//! The representation allows 32 (rapier's `Group` is a `u32`) — that is the
-//! hard ceiling and it is not what binds here. What binds is the panel: a
-//! triangular matrix of `N` layers has `N(N+1)/2` cells, so 8 → **36**,
-//! 16 → 136, 32 → **528**. Unity ships 32 and its matrix is the standard example
-//! of a settings screen nobody can read. Eight is what stays legible at the
-//! width of a docked panel.
-//!
-//! Growing it later is a UI change plus a schema bump, not a physics change —
-//! the storage below is the only thing that would move.
+//! `32` is the width of rapier's `Group` (`u32`): the resource ceiling. The panel shows only the
+//! layers in use, so its legibility no longer binds this number; the cost of the cells is measured
+//! in `docs/GameEngineFuncional/componentes/f1_physics_static_shape.md`.
 
 use rapier2d::geometry::{Group, InteractionGroups, InteractionTestMode};
 
-/// How many collision layers the editor exposes. See the module docs for why
-/// this is 8 and not rapier's representational 32.
-pub const MAX_LAYERS: usize = 8;
+/// How many collision layers exist: the bits of rapier's `Group`.
+pub const MAX_LAYERS: usize = 32;
+
+/// How many layers a project written up to schema 218 could address.
+pub const LEGACY_LAYERS: usize = 8;
 
 /// Which layers each layer collides with. Row `i`, bit `j` set = layers `i` and
 /// `j` collide.
@@ -55,7 +51,7 @@ pub const MAX_LAYERS: usize = 8;
 /// bridge can hold one without a rapier dependency.
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct LayerMatrix {
-    rows: [u8; MAX_LAYERS],
+    rows: [u32; MAX_LAYERS],
 }
 
 impl LayerMatrix {
@@ -63,7 +59,7 @@ impl LayerMatrix {
     /// did before layers existed.
     pub const fn all() -> Self {
         Self {
-            rows: [u8::MAX; MAX_LAYERS],
+            rows: [u32::MAX; MAX_LAYERS],
         }
     }
 
@@ -94,12 +90,12 @@ impl LayerMatrix {
     }
 
     /// Row `i` as a raw bitmask — what becomes a collider's `filter`.
-    pub fn row(&self, layer: usize) -> u8 {
-        self.rows.get(layer).copied().unwrap_or(u8::MAX)
+    pub fn row(&self, layer: usize) -> u32 {
+        self.rows.get(layer).copied().unwrap_or(u32::MAX)
     }
 
     /// The rows, for serialization by the ECS layer.
-    pub fn rows(&self) -> [u8; MAX_LAYERS] {
+    pub fn rows(&self) -> [u32; MAX_LAYERS] {
         self.rows
     }
 
@@ -108,7 +104,7 @@ impl LayerMatrix {
     /// not be able to install a matrix this type says cannot exist. A pair is
     /// taken to collide only if BOTH halves say so — the same conservative
     /// reading rapier's `AND` already applies.
-    pub fn from_rows(rows: [u8; MAX_LAYERS]) -> Self {
+    pub fn from_rows(rows: [u32; MAX_LAYERS]) -> Self {
         let mut m = Self {
             rows: [0; MAX_LAYERS],
         };
@@ -121,6 +117,21 @@ impl LayerMatrix {
             }
         }
         m
+    }
+
+    /// As linhas de um projeto até o schema 218 (8 camadas de 8 bits), por extenso.
+    ///
+    /// **A regra:** os pares `0..8` ficam como estão e todo par com uma camada nova colide, porque
+    /// é o que uma camada vale de fábrica ([`Self::all`]). Nada do projeto antigo está nelas, logo
+    /// nenhum contato muda; a matriz de fábrica antiga vira exatamente a de fábrica nova.
+    #[must_use]
+    pub fn rows_from_legacy(old: [u8; LEGACY_LAYERS]) -> [u32; MAX_LAYERS] {
+        const NOVAS: u32 = u32::MAX << LEGACY_LAYERS;
+        let mut rows = [u32::MAX; MAX_LAYERS];
+        for (linha, velha) in rows.iter_mut().zip(old) {
+            *linha = NOVAS | u32::from(velha);
+        }
+        rows
     }
 }
 
@@ -149,7 +160,7 @@ pub(crate) fn groups_for(layer: usize, matrix: LayerMatrix) -> InteractionGroups
     let layer = layer.min(MAX_LAYERS - 1);
     InteractionGroups::new(
         Group::from_bits_truncate(1 << layer),
-        Group::from_bits_truncate(u32::from(matrix.row(layer))),
+        Group::from_bits_truncate(matrix.row(layer)),
         InteractionTestMode::And,
     )
 }
@@ -173,7 +184,7 @@ mod tests {
     #[test]
     fn a_lopsided_file_is_read_conservatively() {
         // Row 2 says "collides with 6", row 6 does not agree.
-        let mut rows = [u8::MAX; MAX_LAYERS];
+        let mut rows = [u32::MAX; MAX_LAYERS];
         rows[6] &= !(1 << 2);
         let m = LayerMatrix::from_rows(rows);
         assert!(
@@ -181,6 +192,41 @@ mod tests {
             "an asymmetric file must resolve to the reading rapier would ACT on \
              (no collision), not to the half that happens to be set"
         );
+    }
+
+    #[test]
+    fn os_bits_altos_sobrevivem_a_from_rows() {
+        let mut m = LayerMatrix::all();
+        m.set(20, 25, false);
+        let lida = LayerMatrix::from_rows(m.rows());
+        assert!(!lida.collides(20, 25) && !lida.collides(25, 20));
+        assert!(lida.collides(20, 24) && lida.collides(31, 31));
+        assert_eq!(lida.row(31), u32::MAX);
+    }
+
+    #[test]
+    fn a_matriz_antiga_guarda_os_seus_pares_e_as_novas_colidem_como_as_de_fabrica() {
+        assert_eq!(
+            LayerMatrix::rows_from_legacy([u8::MAX; LEGACY_LAYERS]),
+            LayerMatrix::all().rows(),
+            "a de fábrica antiga é a de fábrica nova"
+        );
+        let mut velha = [u8::MAX; LEGACY_LAYERS];
+        velha[1] &= !(1 << 5);
+        velha[5] &= !(1 << 1);
+        velha[3] = 0;
+        let m = LayerMatrix::from_rows(LayerMatrix::rows_from_legacy(velha));
+        for a in 0..LEGACY_LAYERS {
+            for b in 0..LEGACY_LAYERS {
+                let antes = velha[a] & (1 << b) != 0 && velha[b] & (1 << a) != 0;
+                assert_eq!(m.collides(a, b), antes, "o par antigo {a},{b}");
+            }
+        }
+        for a in 0..MAX_LAYERS {
+            for b in LEGACY_LAYERS..MAX_LAYERS {
+                assert!(m.collides(a, b), "a camada nova {b} colide com {a}");
+            }
+        }
     }
 
     #[test]

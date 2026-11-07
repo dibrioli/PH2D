@@ -144,7 +144,7 @@ impl FxCtx {
 /// O "ligado" é propriedade da ENTRADA, não do efeito: desarmar não pode custar os parâmetros.
 /// Zerar a amplitude para "desligar" um Zig Zag e depois querer o valor de volta é a definição
 /// de uma feature que obriga o artista a lembrar-se de números.
-#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct FxEntry {
     pub effect: PathEffect,
     /// Desligado = a pilha o SALTA, como se fosse neutro — mas os parâmetros ficam.

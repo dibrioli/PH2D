@@ -79,55 +79,9 @@ fn a_malha_e_os_pesos_atravessam_o_arquivo_juntos() {
     assert_eq!(volta.ossos(), 2);
 }
 
-/// ⭐⭐⭐ **UM BIND GRAVADO ANTES DO CAMPO CONTINUA A LER-SE, COM OS PESOS INTACTOS.**
+/// ⭐⭐ **O CONTROLO da leitura** — a forma viva passa pela `le` com o campo dentro.
 ///
-/// # ⛔⛔ O defeito que este gate impede
-///
-/// O postcard é **posicional**: apendar o `campo` ao [`super::SkinnedPath`] faz os bytes de um bind
-/// já gravado acabarem cedo. Sem a leitura versionada o `from_bytes` devolve `Err`, a
-/// [`super::le`] devolve `None`, e quem chama lê isso como *«esta fonte não se lê»* e resolve pela
-/// **lei derivada** — ou seja, **toda forma já presa perderia a tabela do padrão-ouro em
-/// silêncio**, e o desenho dela mudava sem ninguém lhe ter tocado.
-///
-/// ⚠️ **A fixtura são os bytes da forma ANTIGA**, montados aqui pela struct que a descreve — ⛔ não
-/// os bytes da nova com o campo a `None`, que seriam outro teste (esses têm o byte da tag e leem-se
-/// pelo caminho novo).
-#[test]
-fn um_bind_gravado_antes_do_campo_ainda_le_os_pesos() {
-    #[derive(serde::Serialize)]
-    struct ComoEraAntes {
-        path: ph2d_vec_scene::VecPath,
-        pesos: Vec<f64>,
-    }
-    let antes = ComoEraAntes {
-        path: ph2d_vec_scene::cook(
-            ph2d_vec_scene::ShapeKind::Rectangle,
-            [0.0, 0.0],
-            [4.0, 2.0],
-            &[],
-        ),
-        pesos: vec![0.25; 4 * 3 * 2],
-    };
-    let bytes = postcard::to_allocvec(&antes).expect("serializa a forma antiga");
-
-    let lido = super::le(&bytes).expect("a forma ANTIGA tem de continuar a ler-se");
-    assert_eq!(
-        lido.pesos, antes.pesos,
-        "os pesos do padrão-ouro de um bind já gravado não se podem perder"
-    );
-    assert!(
-        lido.campo.is_none(),
-        "um bind anterior não tem campo, e isso é a resposta — não um erro"
-    );
-    assert!(
-        lido.valida(),
-        "o par caminho/tabela continua a fechar depois da leitura versionada"
-    );
-}
-
-/// ⭐⭐ **O CONTROLO do gate acima** — a forma NOVA passa pelo caminho novo, com o campo dentro.
-///
-/// ⛔ Sem ele, uma [`super::le`] que ignorasse o campo e caísse SEMPRE na forma antiga ficaria
+/// ⛔ Sem ele, uma [`super::le`] que ignorasse o campo ficaria verde e o campo nunca chegaria ao quadro.
 /// verde no irmão, e o campo nunca chegaria ao quadro.
 #[test]
 fn a_forma_nova_atravessa_o_arquivo_com_o_campo_dentro() {

@@ -77,23 +77,10 @@ fn deleting_a_style_keeps_the_colour_and_a_layer_lives_in_one_style() {
     assert_eq!(s.estilo_de((a, ItemId(1))), None);
 }
 
-/// ⭐ Gate do degrau v29: os bytes de uma cena v28 (sem estilos) lêem-se iguais e sem estilos; e o
-/// controlo — os mesmos bytes lidos pela forma viva NÃO abrem.
+/// A forma viva (com estilos) volta igual pelo `to_bytes`/`from_bytes`.
 #[test]
-fn a_vec_scene_v28_le_sem_estilos() {
+fn a_vec_scene_com_estilos_volta_igual() {
     let (s, _, _) = cena();
-    let v28 =
-        postcard::to_allocvec(&(28u32, (&s.paths, s.next_id, &s.regras, s.next_regra))).unwrap();
-    // O âmbito grava a mesma forma (é como os testes do projeto fabricam um degrau antigo).
-    let pelo_ambito = crate::with_wire_layout(28, || postcard::to_allocvec(&(28u32, &s)).unwrap());
-    assert_eq!(pelo_ambito, v28);
-    let lida = VecScene::from_bytes(&v28).expect("um v28 abre");
-    assert_eq!(lida, s);
-    assert!(lida.estilos().is_empty());
-    assert!(
-        postcard::from_bytes::<(u32, VecScene)>(&v28).is_err(),
-        "sem o âmbito o v28 leu-se — o gate é cego"
-    );
     let mut com = s.clone();
     let id = com.add_estilo("Grass", LARANJA);
     com.link_estilo((s.paths[0].id, ItemId(1)), id);

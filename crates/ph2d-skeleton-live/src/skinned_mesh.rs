@@ -129,32 +129,8 @@ pub struct SkinnedPath {
     /// ⭐⭐ **O caminho saiu de EFEITOS COZIDOS no Bind** (2026-10-03, ver `skin_live::bind`): as
     /// cristas e pontas de um efeito não são quinas do artista, e o contacto é só a UNIÃO, e só
     /// quando neutra em repouso — a lei da F50 (a bola comia os dentes de um *Zig Zag* dobrado,
-    /// FOTOGRAFADO). `false` num bind anterior (lido pela [`SkinnedPathV2`]).
+    /// FOTOGRAFADO).
     pub efeitos_cozidos: bool,
-}
-
-/// O registo antes de [`SkinnedPath::efeitos_cozidos`] (2026-10-03) — ver a [`SkinnedPathV1`].
-#[derive(serde::Deserialize)]
-struct SkinnedPathV2 {
-    path: ph2d_vec_scene::VecPath,
-    pesos: Vec<f64>,
-    campo: Option<ph2d_vec_skin::pesos::CampoDoDominio>,
-}
-
-/// ⭐⭐ **A FORMA ANTERIOR do registo, para a [`le`] não perder os pesos de um bind já gravado.**
-///
-/// ⛔⛔ **O postcard é POSICIONAL e não auto-descritivo:** apendar um campo faz os bytes antigos
-/// acabarem cedo, o `from_bytes` devolve `Err` e a [`le`] devolveria `None` — que quem chama lê
-/// como *«esta fonte não se lê»* e resolve pela **lei derivada**. ⇒ toda forma já presa perderia a
-/// tabela do padrão-ouro **em silêncio**, e o desenho mudava sem ninguém ter tocado nela.
-///
-/// ⚠️ **A ordem das tentativas é load-bearing:** o novo PRIMEIRO. Bytes novos lidos como antigos
-/// deixariam cauda por consumir, e bytes antigos lidos como novos **falham a meio de um campo** —
-/// só a ordem *novo → antigo* recusa exactamente o que tem de recusar.
-#[derive(serde::Deserialize)]
-struct SkinnedPathV1 {
-    path: ph2d_vec_scene::VecPath,
-    pesos: Vec<f64>,
 }
 
 impl SkinnedPath {
@@ -193,59 +169,9 @@ impl SkinnedPath {
     }
 }
 
-/// ⭐ **Os binds de um ficheiro de fio antigo, regravados na forma viva** (F16c v22 · W4.2 v23) — o
-/// `VecPath` dentro do `SkinBind::source` vem na forma da `VEC_SCENE_SCHEMA_VERSION` `fio`, e o leitor
-/// de cada quadro já não sabe a versão do ficheiro. Devolve quantos binds mudaram.
-///
-/// ⚠️ Lê com **consumo EXACTO** (`take_from_bytes` sem sobra), as três formas pela ordem da
-/// [`le`]: a fonte de uma IMAGEM é uma `SkinnedMesh` e não pode ser tomada por um caminho — o que
-/// não se lê exactamente fica como estava.
-pub fn migra_fio(mundo: &mut ph2d_ecs::scene::WorldSnapshot, fio: u32) -> usize {
-    regrava_fontes(mundo, Some(fio))
-}
-
-/// ⭐ **Os binds de um ficheiro anterior ao id da pilha (`VEC_SCENE` v24, F31), regravados na forma
-/// nova** — os ids ficam `NONE` e o passe `ids_da_pilha` do `ph2d-app-vec` atribui-os.
-pub fn migra_pilha_v23(mundo: &mut ph2d_ecs::scene::WorldSnapshot) -> usize {
-    regrava_fontes(mundo, None)
-}
-
-/// Lê cada fonte na forma antiga da pilha (e do fio `fio`, se houver) e regrava-a na viva.
-fn regrava_fontes(mundo: &mut ph2d_ecs::scene::WorldSnapshot, fio: Option<u32>) -> usize {
-    fn exacto<'a, T: serde::Deserialize<'a>>(b: &'a [u8]) -> Option<T> {
-        match postcard::take_from_bytes::<T>(b) {
-            Ok((v, [])) => Some(v),
-            _ => None,
-        }
-    }
-    let caminho = |b: &[u8]| -> Option<SkinnedPath> {
-        let le = || {
-            exacto::<SkinnedPath>(b)
-                .or_else(|| {
-                    exacto::<SkinnedPathV2>(b).map(|v2| SkinnedPath {
-                        path: v2.path,
-                        pesos: v2.pesos,
-                        campo: v2.campo,
-                        efeitos_cozidos: false,
-                    })
-                })
-                .or_else(|| {
-                    exacto::<SkinnedPathV1>(b).map(|v1| SkinnedPath {
-                        path: v1.path,
-                        pesos: v1.pesos,
-                        campo: None,
-                        efeitos_cozidos: false,
-                    })
-                })
-        };
-        ph2d_vec_scene::with_fio_layout(fio, le)
-    };
-    mundo.rewrite_component_blobs(ph2d_skeleton_ecs::SKIN_TYPE_NAME, |blob| {
-        let mut skin: ph2d_skeleton_ecs::SkinBind = exacto(blob)?;
-        let g = caminho(&skin.source)?;
-        skin.source = postcard::to_allocvec(&g).ok()?;
-        postcard::to_allocvec(&skin).ok()
-    })
+/// Resto de compatibilidade com o shell (`project_load_read.rs`): não faz nada e sai com a chamada dele.
+pub fn migra_fio(_mundo: &mut ph2d_ecs::scene::WorldSnapshot, _fio: u32) -> usize {
+    0
 }
 
 /// ⭐⭐⭐ **A PORTA do formato guardado** — o `SkinBind::source` lê-se por aqui, e só por aqui.
@@ -258,26 +184,7 @@ fn regrava_fontes(mundo: &mut ph2d_ecs::scene::WorldSnapshot, fio: Option<u32>) 
 /// que os sete já tomavam cada um por si.
 #[must_use]
 pub fn le(bytes: &[u8]) -> Option<SkinnedPath> {
-    if let Ok(g) = postcard::from_bytes::<SkinnedPath>(bytes) {
-        return Some(g);
-    }
-    if let Ok(v2) = postcard::from_bytes::<SkinnedPathV2>(bytes) {
-        return Some(SkinnedPath {
-            path: v2.path,
-            pesos: v2.pesos,
-            campo: v2.campo,
-            efeitos_cozidos: false,
-        });
-    }
-    // ⭐ A forma ANTERIOR — ver [`SkinnedPathV1`]. Um bind gravado antes de 2026-09-20 não tem
-    // campo, e a lei da curva volta à mistura das linhas dos nós, que é o que ele já desenhava.
-    let v1 = postcard::from_bytes::<SkinnedPathV1>(bytes).ok()?;
-    Some(SkinnedPath {
-        path: v1.path,
-        pesos: v1.pesos,
-        campo: None,
-        efeitos_cozidos: false,
-    })
+    postcard::from_bytes::<SkinnedPath>(bytes).ok()
 }
 
 /// ⭐⭐ **O sentido inverso da [`le`].** `None` quando a serialização falha — e aí quem chama **não

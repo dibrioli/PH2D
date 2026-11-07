@@ -80,44 +80,22 @@
 /// v23: o [`crate::StrokeSpec`] ganhou o tracejado em **até três pares** (`dash:
 /// Option<DashPattern>`, era `Option<(f64, f64)>`) e o tamanho da ponta **por lado**
 /// (`marker_scale_start`/`_end`, era um `marker_scale`) — F16c, o painel Stroke do Illustrator.
-/// ⭐ **O primeiro degrau desta escada que LÊ o anterior em vez de o recusar** (ordem do dono:
-/// *«ficheiros antigos têm de continuar a abrir iguais»*): só o `StrokeSpec` tem forma antiga
-/// ([`crate::stroke_wire`]), e o leitor de um v22 abre o âmbito [`crate::with_stroke_layout_v22`].
-/// O par antigo vira o 1.º par; o tamanho único vai para as duas pontas ⇒ os VALORES voltam iguais
-/// (gate `stroke_v22_fixture`, sobre bytes gravados pelo código v22). ⚠️ O piso de um elemento do
-/// tracejado subiu na mesma wave (`MIN_DASH_FRACTION`): um vão `0` antigo mede `0,1 %` da largura em
-/// vez de `2e-16` — invisível, e o que faz o PONTO do «traço-ponto» existir.
+/// ⚠️ O piso de um elemento do tracejado subiu na mesma wave (`MIN_DASH_FRACTION`): um vão mede no mínimo
+/// `0,1 %` da largura — o que faz o PONTO do «traço-ponto» existir.
 /// v24: o [`crate::VecVertex`] ganhou `id: VertId` e o [`crate::VecPath`] `next_vert`, os dois no FIM
 /// (W4.2, `line/BlenderConstraints`) — o endereço estável de um vértice para as regras de CAD e o Copy
-/// Point. Lê o v23 e o v22 ([`crate::with_wire_layout`]): um path antigo abre numerado `1..=n` pela
-/// ordem `verts` → `subpaths` (gate `vec_v23_fixture`, sobre bytes gravados pelo código v23).
+/// Point.
 /// v25: cada [`crate::PaintEntry`] e [`crate::FxEntry`] ganha o `id` (`ItemId`, `line/UIUX`, F31 §B.1)
 /// — o endereço durável da chave do Auto Key. ⚠️ **Os dois `v24` nasceram em linhas paralelas** (vértice
 /// com id; entrada da pilha com id): a integração de 29/10 deu o `24` à do vértice (já no `main`) e o
-/// `25` à da pilha. A v23 e a v24 lêem-se pelo âmbito [`crate::with_pilha_layout_v23`] (ids `NONE`,
-/// atribuídos no 1.º quadro) — o nome é o da linha; vale para todo fio ANTERIOR à pilha com id.
-/// Gate `a_vec_scene_v23_le_com_ids_por_atribuir`.
+/// `25` à da pilha.
 /// v26: o [`crate::VecPath`] ganhou `fill_hidden`/`stroke_hidden` no FIM (`line/UIUX`, F44b) — o OLHO
 /// da tinta de base: escondida, ela sai do `fill`/`stroke` e fica guardada ali, então toda leitura do
-/// documento já a trata como «não pinta» ([`crate::PaintSlot`]). Lê a v25 e anteriores (os dois `None`)
-/// pelo [`crate::with_wire_layout`]. Gate `vec_v25_fixture`, sobre bytes gravados pelo código v25.
+/// documento já a trata como «não pinta» ([`crate::PaintSlot`]).
 /// v27: o [`crate::VecPath`] ganhou `base_order` no FIM (`line/UIUX`, F45) — a POSIÇÃO da tinta de base
-/// na pilha, para um preenchimento cobrir um traço e vice-versa ([`crate::BaseOrder`]). Lê a v26 e
-/// anteriores com o neutro (a ordem de antes). Gate `vec_v26_fixture`, sobre bytes gravados pelo v26.
+/// na pilha, para um preenchimento cobrir um traço e vice-versa ([`crate::BaseOrder`]).
 /// v28: o [`crate::StrokeSpec`] ganhou `above_effects` no FIM (`line/UIUX`, F47) — o traço desenha-se
-/// por cima dos Filtros da forma. Lê a v27 e anteriores com `false` (a aparência de antes) pelo
-/// [`crate::with_wire_layout`]. Gate `vec_v27_fixture`, sobre bytes gravados pelo código v27.
+/// por cima dos Filtros da forma.
 /// v29: a [`crate::VecScene`] ganha os ESTILOS DE COR do projeto (`estilos`, `next_estilo`, no FIM;
-/// CartoesUI D28/D30 — ligados como no Figma, a ligação mora no estilo por `(path, ItemId)`). Um ≤ v28
-/// lê-se pelo âmbito [`crate::with_wire_layout`] sem estilos. Gate `vec_v28_fixture`.
+/// CartoesUI D28/D30 — ligados como no Figma, a ligação mora no estilo por `(path, ItemId)`).
 pub const VEC_SCENE_SCHEMA_VERSION: u32 = 29;
-
-/// Os degraus anteriores que ainda se leem ([`crate::VecScene::from_bytes`]).
-pub(crate) const VEC_SCENE_SCHEMA_V22: u32 = 22;
-pub(crate) const VEC_SCENE_SCHEMA_V23: u32 = 23;
-pub(crate) const VEC_SCENE_SCHEMA_V24: u32 = 24;
-pub(crate) const VEC_SCENE_SCHEMA_V25: u32 = 25;
-pub(crate) const VEC_SCENE_SCHEMA_V26: u32 = 26;
-pub(crate) const VEC_SCENE_SCHEMA_V27: u32 = 27;
-/// O traço acima dos filtros, sem estilos de cor.
-pub(crate) const VEC_SCENE_SCHEMA_V28: u32 = 28;

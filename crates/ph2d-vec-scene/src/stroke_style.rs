@@ -235,9 +235,7 @@ impl StrokePaint {
 /// ⚠️ **Deixou de ser `Copy` em 2026-08-27** (plano 35): a tinta pode ser um padrão, e ele vive
 /// atrás de um `Box` porque em linha o `VecPath` engordaria 54 % (§0.1 do plano).
 ///
-/// ⚠️ **O `Deserialize` é escrito à mão** em [`crate::stroke_wire`]: um ficheiro v22 lê-se na forma
-/// antiga (um par de tracejado, um tamanho de ponta) dentro do âmbito que o leitor abre.
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct StrokeSpec {
     /// ⚠️ **Era `color: Rgba8`.** Quem só quer uma cor pergunta por [`Self::color`].
     pub paint: StrokePaint,

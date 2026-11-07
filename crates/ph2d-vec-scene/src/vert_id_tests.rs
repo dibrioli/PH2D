@@ -1,5 +1,5 @@
 use super::*;
-use crate::{Rgba8, VecScene, with_wire_layout};
+use crate::{Contour, FillRule, Paint, Rgba8, StrokeSpec, VecScene};
 
 fn dez() -> Vec<VecVertex> {
     (0..10)
@@ -114,29 +114,4 @@ fn a_deleted_id_is_never_reused() {
     p.normaliza_ids();
     assert_ne!(p.verts[9].id, ultimo);
     assert_eq!(p.verts[9].id, VertId(11));
-}
-
-/// O âmbito v23 lê o vértice sem id e o path sem contador — e fecha.
-#[test]
-fn the_v23_scope_reads_the_geometry_without_ids_and_closes() {
-    #[derive(serde::Serialize)]
-    struct Antigo {
-        anchor: [f64; 2],
-        in_handle: [f64; 2],
-        out_handle: [f64; 2],
-        kind: VertexKind,
-        corner_radius: f64,
-    }
-    let bytes = postcard::to_allocvec(&Antigo {
-        anchor: [1.0, 2.0],
-        in_handle: [3.0, 4.0],
-        out_handle: [5.0, 6.0],
-        kind: VertexKind::Symmetric,
-        corner_radius: 1.5,
-    })
-    .unwrap();
-    let v: VecVertex = with_wire_layout(23, || postcard::from_bytes(&bytes)).unwrap();
-    assert_eq!(v.id, VertId::NOVO);
-    assert_eq!((v.kind, v.corner_radius), (VertexKind::Symmetric, 1.5));
-    assert!(!reading_geometry_v23(), "o âmbito fechou");
 }

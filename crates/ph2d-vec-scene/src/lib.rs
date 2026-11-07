@@ -315,12 +315,10 @@ mod dash_pattern;
 mod stroke_style;
 pub use dash_pattern::{DashLengths, DashPattern, MAX_DASH_PAIRS};
 /// A leitura das entradas da pilha por versão — o âmbito v23 (F31).
-mod pilha_wire;
 /// A leitura por versão — o âmbito do fio (F16c, W4.2).
 mod stroke_wire;
 pub use brush_stroke::{brush_along_path, brush_copies, brush_height, brush_spans};
-pub use pilha_wire::{PilhaLayoutV23, with_fio_layout, with_pilha_layout_v23};
-pub use stroke_wire::{WireLayout, with_wire_layout};
+pub use stroke_wire::{PilhaLayoutV23, WireLayout, with_wire_layout};
 
 pub use stroke_style::{
     BrushStroke, LineCap, LineJoin, MIN_DASH_FRACTION, MITER_LIMIT, OffsetSide, StrokeAlign,
@@ -404,7 +402,7 @@ pub enum VertexKind {
 
 /// Vértice cúbico: âncora + dois handles, em coordenadas **absolutas** de
 /// world-space (como o `CubicVertex` do Rive — cada ponto é skinado à parte).
-#[derive(Copy, Clone, Debug, PartialEq, Serialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct VecVertex {
     pub anchor: [f64; 2],
     pub in_handle: [f64; 2],
@@ -457,7 +455,7 @@ pub type VecPathId = u64;
 ///
 /// **Não** carrega nome, visibilidade, trava nem pai: isso é da entidade ECS que o
 /// representa na Hierarquia (ADR-0110). Aqui só geometria e estilo.
-#[derive(Clone, Debug, Default, PartialEq, Serialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct VecPath {
     pub id: VecPathId,
     pub verts: Vec<VecVertex>,

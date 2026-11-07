@@ -94,7 +94,7 @@ pub enum PaintKind {
 /// [`crate::effect::FxEntry`] o tem: *desarmar não pode custar os parâmetros* — pôr o alfa a zero
 /// para esconder uma camada e depois querer a cor de volta é a definição de uma feature que obriga
 /// o artista a lembrar-se de números.
-#[derive(Clone, Debug, PartialEq, serde::Serialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct PaintEntry {
     pub kind: PaintKind,
     /// Desligada = a pilha SALTA-a, e os parâmetros ficam.

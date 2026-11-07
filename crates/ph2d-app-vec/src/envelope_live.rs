@@ -465,44 +465,7 @@ mod tests;
 #[path = "envelope_sondas_tests.rs"]
 mod sondas_tests;
 
-#[cfg(test)]
-#[path = "envelope_traco_v22_tests.rs"]
-mod traco_v22_tests;
-
-/// ⭐ **Os envelopes de um ficheiro de fio antigo, regravados na forma viva** (F16c v22 · W4.2 v23) —
-/// a fonte de cada filho é um `VecPath` na forma da `VEC_SCENE_SCHEMA_VERSION` `fio`, e quem a lê a
-/// cada quadro já não sabe a versão do ficheiro. Devolve quantos envelopes mudaram.
-///
-/// ⚠️ Consumo EXACTO (`take_from_bytes` sem sobra): uma fonte que não se lê inteira na forma `fio`
-/// fica como estava, em vez de ser regravada a partir de lixo bem-formado.
-pub fn migra_fio(mundo: &mut ph2d_ecs::scene::WorldSnapshot, fio: u32) -> usize {
-    regrava_fontes(mundo, Some(fio))
-}
-
-/// ⭐ **Os envelopes de um ficheiro anterior ao id da pilha (`VEC_SCENE` v24, F31), regravados na
-/// forma nova** — os ids ficam `NONE` e o passe `ids_da_pilha` atribui-os quando a forma for vista.
-pub fn migra_pilha_v23(mundo: &mut ph2d_ecs::scene::WorldSnapshot) -> usize {
-    regrava_fontes(mundo, None)
-}
-
-/// Lê cada fonte na forma antiga da pilha (e do fio `fio`, se houver) e regrava-a na viva.
-fn regrava_fontes(mundo: &mut ph2d_ecs::scene::WorldSnapshot, fio: Option<u32>) -> usize {
-    mundo.rewrite_component_blobs(ph2d_ecs::VEC_ENVELOPE_TYPE_NAME, |blob| {
-        let Ok((mut env, [])) = postcard::take_from_bytes::<ph2d_ecs::VecEnvelope>(blob) else {
-            return None;
-        };
-        let mut mudou = false;
-        for filho in &mut env.children {
-            let le = || match postcard::take_from_bytes::<VecPath>(&filho.source) {
-                Ok((p, [])) => Some(p),
-                _ => None,
-            };
-            let fonte = ph2d_vec_scene::with_fio_layout(fio, le);
-            if let Some(bytes) = fonte.and_then(|p| postcard::to_allocvec(&p).ok()) {
-                mudou |= bytes != filho.source;
-                filho.source = bytes;
-            }
-        }
-        mudou.then(|| postcard::to_allocvec(&env).ok()).flatten()
-    })
+/// Resto de compatibilidade com o shell (`project_load_read.rs`): não faz nada e sai com a chamada dele.
+pub fn migra_fio(_mundo: &mut ph2d_ecs::scene::WorldSnapshot, _fio: u32) -> usize {
+    0
 }

@@ -1,6 +1,6 @@
 # A tinta viva sobrevive (decisões do dono, 06/11)
 
-Estado: **ondas 1 e 2 construídas** (itens 1, 2, 3, 4 e a compressão; ver [§ onda 2](#construído-onda-2-0611)); **faltam o item 5 (opção ao salvar), o item 6, o custo de adormecer logo após o traço, as provas de mutação e o veredito do dono**. Commit de partida: `9aa112caec` (Relief Eraser).
+Estado: **ondas 1 e 2 construídas** (itens 1, 2, 3, 4 e a compressão; ver [§ onda 2](#construído-onda-2-0611)); **o undo, a mão leve da Borracha e o custo de adormecer no Dabber estão feitos (noite de 06/11; ver [§ undo](#construído-onda-do-undo-da-mão-leve-e-do-fecho-0611-noite)); faltam o item 5 (opção ao salvar), o Wet Round, as provas de mutação e os vereditos do dono**. Commit de partida: `9aa112caec` (Relief Eraser).
 
 ## Defeito reproduzido
 Dabber → trocar para Digital/Watercolor/Impasto (com ou sem traço) → voltar ao Wet → Relief Eraser: corte seco em vez da borracha que amassa. Sonda sobre `com_oleo()` + `apaga()` de `wetpaint/borracha_de_fabrica_tests.rs`:
@@ -112,12 +112,13 @@ Handoff com o mecanismo, constantes e provas: [HANDOFF_CONTINUACAO_2026-11-06_ti
 - ⛔ **Erros da onda 1 corrigidos:** o «577 MB» era 5 081 MB (a sonda perguntava com o motor no worker); o «adormecer 0,01–0,02 ms» era 0,4 s (1080p) a 2,0–2,3 s (4K) logo após o traço, tudo em `wet_ultima_imagem`; hipótese não isolada: só no mesmo quadro do soltar.
 
 **Por fazer:**
-- Veredito do dono: foto da Borracha morta e smoke.
-- Medir o custo de adormecer logo após o traço (imagem assentada × no ar, e contra a base); com células enterradas essa recomposição re-iluminaria a orla.
+- Vereditos do dono: foto da mão leve, o resto da foto da Borracha, a aguada, o passo de troca de modo. (Feitos: foto da Borracha morta e smoke.)
+- Wet Round ainda engasga ao adormecer (4K 245/1282 ms): imagem atrasada · baixar o custo da ótica · aceitar. (Medido e curado no Dabber: 0,5 ms.)
 - Item 5 (opção ao salvar, ligada por omissão): mapa no handoff da onda 2; campo no FIM do `ProjectFile`, não no `PaintedDocument`; a sessão reconstrói-se no load; quantizar só com foto aprovada.
-- Item 6: preço da compressão com carga baixa, 4K com várias camadas, redo.
+- Item 6: só falta repetir a compressão com carga baixa (4K com várias camadas e redo já medidos, ver o handoff).
 - Bug #70 (candidato): tinta velha na `base` fora da grade.
-- Provas de mutação de `adormecida_tests.rs` e `dentro_do_wet_tests.rs`; suíte completa só na integração.
+- Provas de mutação de `adormecida_tests.rs`, `dentro_do_wet_tests.rs` e dos portões novos (outro agente a correr; não dadas como feitas); suíte completa só na integração.
+- Achado não tratado: `Engine::action_*` (wet/dry/clear) abrem registo sem passo no undo vivo se chamadas na sessão.
 
 **Dono 06/11, Relief Eraser:** sombras apagadas em rectângulos depois de voltar, e a tinta de outros modos a sair de uma vez. Causa A: com aguada na camada a caixa recomposta não lia a sombra (`composite.rs`), 5 246 px → 261; planos velhos e orla re-iluminada à volta do enterro, 3 091 px → 78. Causa B: a `base` cortava seco; agora, fora das células com tinta, segue a lei de `borracha_morta` (uma passada 255 → 166, 9 ao papel, óleo vivo 0 px). A «sobra medida» acima era a causa A. Detalhe e dois portões vermelhos: [handoff](handoffs/HANDOFF_CONTINUACAO_2026-11-06_tinta_viva_onda2.md).
 
@@ -130,3 +131,6 @@ Handoff com o mecanismo, constantes e provas: [HANDOFF_CONTINUACAO_2026-11-06_ti
 **Dono 06/11, fronteira viva × morta:** a Borracha que passava pela fronteira deixava uma orla em degraus, com o papel a aparecer. Duas causas medidas: a escolha por célula (um resto invisível de tinta cortava a `base` de uma vez) e, no enterro, a cobertura que a tela mostra e a tinta perdeu. Cura: um peso contínuo por píxel, a cobertura do pigmento (`PesoDaViva`), e a orla do enterro na `base`. Papel na fronteira, 1 passada: morta 103 → 0 (razão 1), 189 → 11 (razão 4); enterrada 31 → 0, 65 → 12. Óleo vivo e tinta morta sozinhos: 0 px contra o commit de antes. Números, recusas e o que fica: [handoff da onda 2](handoffs/HANDOFF_CONTINUACAO_2026-11-06_tinta_viva_onda2.md); foto: [foto_fronteira_viva_morta.png](handoffs/material_2026-11-06/foto_fronteira_viva_morta.png). **Aguarda o smoke do dono.**
 
 **Dono 06/11: smoke da fronteira tinta viva × morta OK.**
+
+## Construído (onda do undo, da mão leve e do fecho, 06/11 noite)
+A tinta já não morre com o desfazer (o histórico conta registos + fotos e guarda tiles iguais uma vez: 4K curto 4 → 28 passos), a Borracha de pouca pressão também chega ao papel (piso 0,30, à espera da foto do dono), os «5 pontos» eram arredondamento do alfa, e adormecer após o traço no Dabber custa 0,5 ms em vez de 1,7 s. Wet Round não curado. Números, portões e pendências: [handoff da onda 2, última seção](handoffs/HANDOFF_CONTINUACAO_2026-11-06_tinta_viva_onda2.md#onda-do-undo-da-mão-leve-e-do-fecho-0611-noite).

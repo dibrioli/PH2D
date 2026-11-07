@@ -61,6 +61,8 @@ RSS do processo a 4K: 8 961 MB antes, 6 519 MB depois de comprimir (o alocador r
 
 ## ABERTO medido: adormecer logo após o traço custa caro
 
+> **Resolvido/medido (06/11 noite):** no Dabber o custo caiu a 0,3–0,5 ms (1080p e 4K); a hipótese confirmou-se, era a recomposição da grade inteira com a imagem no ar. O Wet Round continua caro. Ver «Onda do undo, da mão leve e do fecho», §5. O texto abaixo é o estado de então.
+
 Adormecer custou 424 ms (1080p) e 2 040–2 308 ms (4096×2560) logo a seguir ao traço. O doc da onda 1 dizia 0,01–0,02 ms. Cronometrado por partes, tudo está em `wet_ultima_imagem` (`authored_actions.rs:229`: recompor a tela inteira quando `otica.pendente()`, imagem no ar); adiados e guardar < 6 ms. **Hipótese não isolada:** só acontece trocando de modo no mesmo quadro do soltar; não medi com a imagem assentada, nem comparei com a base. Além do engasgo, com células enterradas essa recomposição re-iluminaria a orla. **Primeiro item a medir.**
 
 ## Verificado em `62fb674a33`
@@ -151,3 +153,58 @@ O que fica: o salto de 28 é a diferença de nível entre a tinta viva e a morta
 **Verificado, por nome:** `borracha` 62 verdes e 2 vermelhos (os conhecidos, `(38, 0)` e 5 px, sem piorar) · `dentro_do_wet` 10 · `adormecida_tests` só os mesmos 2 vermelhos · `macro_track` 86 · `undo_tinta_viva` 9 · os dois alarmes de pincel verdes · `seam_wetpaint` 33/33 · fmt · clippy das 2 crates limpo.
 
 **Dono 06/11: smoke da fronteira tinta viva × morta OK.**
+
+## Onda do undo, da mão leve e do fecho (06/11, noite)
+
+Commits: `2ad96106ad` (undo) · `325d15de9b` (mão leve + alfa) · `e8444946e7` (régua, foto) · `648108c5ee` (engasgo do óleo) · `b798272888` (régua). Fotos e patch em `handoffs/material_2026-11-06/`.
+
+### 1. A tinta morria com o desfazer (`2ad96106ad`)
+Reproduzido (`undo_tinta_morre_tests.rs`, `sonda_quando_o_undo_mata`): 12 traços morriam no 7.º undo, e o 1.º traço sem foto fazia o refazer deixar tudo morto. Causas: `HISTORY_DEPTH = 6`; o orçamento só contava as fotos (a 4K cabiam 4 passos; os registos, até 2,8 GB, não entravam na conta); a sessão nascia depois do pen-down.
+Cura:
+- `Engine::fundo_da_historia` (default 6; a sessão abre com ele).
+- `teto_da_historia` = 6 × `history_budget_bytes`, contando registos + fotos. É o que seis passos de largura inteira já retinham a 4K (2,8 + 0,5 GB × 3,4 GB).
+- `foto_em_tiles.rs` (`PlanoEmTiles`): tile igual ao bit à foto anterior = mesmo `Arc` (97 % iguais a 4K com óleo); compressão adormecida com `tira_os_tiles`/`poe_os_tiles`, cada tile uma vez.
+- `wet_guarda_o_passo` no nascimento com traço aberto.
+- `wet_enterra_sem_passo`: para lá do tecto só o que voltou atrás enterra, sem abrir passo, mais a tinta de alfa 0 (medido: 1 827 células, massa < 1 contra 570 no máximo).
+
+Passos vivos, antes → agora: 4K curto 4 → 28 · 4K largura inteira 4 → 7–8 · 1080p curto 6 → 40+ · 1080p largura inteira 6 → 13. Fotos a 4K: 480–560 MB → ~150–180 MB. Pen-down igual ou melhor: 4K curto ~58 → ~52 ms; largo ~80 → ~68 ms (carga ~10). Registos não comprimidos em vida (candidato: zstd, ~10×).
+Portões: `desfazer_fundo_nao_mata_a_tinta_que_ficou` · `o_primeiro_traco_desfeito_e_refeito_fica_vivo` · `o_tecto_conta_os_registos_e_as_fotos` · `para_la_do_tecto_so_o_traco_desfeito_acaba` · `para_la_do_tecto_o_traco_que_cruza_nao_deixa_nada` · `desfazer_depois_de_comprimir_nao_muda_nada`.
+Foi reprodução por cenário: a cena exacta do dono não foi dada; falta o olho dele. **Achado não tratado:** `Engine::action_*` (wet/dry/clear) abrem registo sem passo no undo vivo se chamados na sessão; não verifiquei se o app as chama.
+
+Redo (carga ~10): 1080p desfazer 45,8/60,0 ms, refazer 45,1/56,7; 4K desfazer 199/351, refazer 206/298.
+
+### 2. Mão leve da Borracha (`325d15de9b`)
+`PISO` em `borracha_morta.rs`: `tira = piso + (1-piso)·p^8`. Passadas até o papel, pressão 0,35 / 0,6 / 1:
+
+| piso | tinta morta | traço por cima |
+|---|---|---|
+| 0 | >60 / >60 / 6 | >60 / >60 / 8 |
+| 0,15 | 32 / 27 / 6 | 31 / 26 / 8 |
+| 0,30 | 19 / 18 / 6 | 24 / 21 / 8 |
+
+Sem piso, 30 passadas leves queimam a parede a preto e branco. **Ligado 0,30 (candidata B), aguardando o veredito do dono pela foto** `material_2026-11-06/foto_borracha_pouca_pressao.png`. Óleo vivo: a lei não passa pelo piso. `a_pressao_plena_nao_muda` 0 px. `a_borracha_leva_o_traco_e_o_oleo_juntos` verde em 8 passadas (rampa).
+
+### 3. Os 5 pontos (`325d15de9b`)
+Não era a aguada. `escreve_o_sulco` fazia floor de `a0/255*255`; em f32 164/255·255 < 164, e o alfa 164 perdia um ponto onde nada saiu, daí a coluna única (x = 146). Agora a conta é sobre o alfa inteiro e `NADA_SAI` (1e-3) ignora o rasto numérico. `traco_longe_nao_muda_a_borracha_e_fica_na_tela` verde.
+
+### 4. O resto da Borracha, sem mudar nada (`e8444946e7`)
+Foto ao dono: `material_2026-11-06/foto_resto_da_borracha.png`. Vê-se: manchas escuras curtas e faixa escura no contacto óleo × Digital sob a Borracha; fio claro no contacto; contornos fracos a razão 4. Digital vermelho 37 → 47 é artefacto da contagem: dos 47, 36 são comuns às duas leis e 11 só da de hoje, e são mistura de vermelho apagado, não papel (ex. [140,91,108] × velha [147,89,101]); a foto mostra hoje melhor (o degrau sumiu). Causas das manchas e do fio não isoladas além do que está acima; aguardam o dono escolher.
+
+### 5. O engasgo de adormecer após o traço — RESOLVIDO no Dabber, não no Wet Round (`648108c5ee`, `b798272888`)
+Medido, ms mín/mediana, intercalado, carga ~10:
+
+| | antes | agora | main |
+|---|---|---|---|
+| 1080p Dabber logo | 348/379 | 0,3/0,4 | 376/376 |
+| 4K Dabber logo | 1721/1788 | 0,5/0,5 | 1817/1885 |
+
+Causa: `wet_ultima_imagem` recompunha a grade inteira quando `otica.pendente()`; com a água a andar «assentada» quase não existe (passos sobem ~20 por 30 quadros durante 4 s). A base «Acaba» enganava: com a tela cheia o main paga o mesmo. Cura: o sujo que saiu do motor volta (`o_sujo_por_mostrar_volta_ao_motor`, `Correio` em `offthread_otica.rs`) e a saída compõe só isso; tela inteira só com véu ou varredura do Real Oil por acabar. Portões em `adormecer_so_o_que_falta_tests.rs`.
+
+⚠️ **Wet Round NÃO curado:** 1080p 89/333 (main 381/409), 4K 245/1282 (main 1303/1382), cargas 13–14. Não é regressão. Medido: compor por linhas não alcança as metas (ótica 78–94 % do tempo, antes da pista de sujo; previsto 1080p 126/281, 4K 541/1160). Patch das sondas: [regua_censo_do_sujo.patch](material_2026-11-06/regua_censo_do_sujo.patch). Opções: imagem atrasada (decisão do dono) · baixar o custo da ótica · aceitar.
+
+Consertos no enterro (ms): 4K enterrar 90/105 (sem a orla 74/96), planos caixa do traço 61/67, grade inteira 1603/1622, congelar 3,7; 1080p enterrar 35,5/37,3 (sem orla 31,5/34,0), planos 78/84, inteira 363/371, congelar 0,7.
+Sombra com a compressão sozinha, 4K: comprimiu em 87 ms, trocar de volta 0,0 ms, 0 px perderam a sombra.
+Várias camadas, 4K, 4 camadas de 6 passadas, carga 6–9: adormecer 0 ms, comprimir tudo 959 ms, somam 575 MB, 4 de 4 ficam; traço Digital 15,3/16,1 × 14,8/16,2 ms sem tinta (igual); acordar 740 ms. ⚠️ Uma rodada anterior morreu por OOM (tecto 24 G, várias pinturas 4K vivas no mesmo processo de teste; não explicado por inteiro; o controlo só com `on_tick` mostra ~250 MB por traço nos dois casos).
+
+### Pendente do dono
+Veredito da foto da mão leve · o que fazer com o resto da foto · a aguada · Wet Round (opções acima) · o passo de troca de modo sem veredito próprio. **Provas de mutação: outro agente, ainda a correr — não dar como feitas.** Depois de integrar: a opção de manter a tinta viva ao salvar (mapa no item 5 acima, «Próximo»). Suíte completa só na integração.

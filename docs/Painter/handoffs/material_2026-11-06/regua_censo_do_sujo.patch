@@ -1,0 +1,216 @@
+diff --git a/crates/ph2d-tool-painter/src/tool/paint/wetpaint/regua_do_fecho_tests.rs b/crates/ph2d-tool-painter/src/tool/paint/wetpaint/regua_do_fecho_tests.rs
+index 4b8ff543d3..2d533ca744 100644
+--- a/crates/ph2d-tool-painter/src/tool/paint/wetpaint/regua_do_fecho_tests.rs
++++ b/crates/ph2d-tool-painter/src/tool/paint/wetpaint/regua_do_fecho_tests.rs
+@@ -156,6 +156,211 @@ fn regua_do_fecho_engasgo_de_trocar_de_modo() {
+     println!("[engasgo] carga {}", carga());
+ }
+ 
++/// Fracção das linhas de `l` (em `0..n`) marcadas depois de crescer cada uma por `a`.
++fn linhas_crescidas(l: &[bool], a: usize) -> usize {
++    let mut v = vec![false; l.len()];
++    for (y, _) in l.iter().enumerate().filter(|(_, m)| **m) {
++        for m in &mut v[y.saturating_sub(a)..(y + a + 1).min(l.len())] {
++            *m = true;
++        }
++    }
++    v.iter().filter(|m| **m).count()
++}
++
++/// ⭐ O teto de compor só as linhas ou tiles sujos à saída, com água a correr: onde está o tempo e quantas linhas
++/// mudam de facto. A previsão usa o que muda (o melhor possível) e as linhas com água, a única pista barata.
++#[test]
++#[ignore = "régua: corre por nome com --ignored"]
++fn regua_do_fecho_censo_do_sujo_da_saida() {
++    use super::composite::split;
++    use super::composite_contagem as contagem;
++    for (w, h) in TAMANHOS {
++        let mut t = pintada(w, h, 10);
++        t.preset_aplicar(&preset("Watercolor/Fluid/Wet Round.ph2d-brush.png"))
++            .expect("o meio");
++        t.set_brush_size_px(60.0);
++        let (mut ideal, mut pista, mut vaos_prev, mut total) =
++            (Vec::new(), Vec::new(), Vec::new(), Vec::new());
++        for r in 0..9usize {
++            traco_inteiro(&mut t, w, 40.0 + 90.0 * r as f32);
++            // A água a correr com uma imagem no ar: é a saída que custa.
++            let mut esperou = 0;
++            while esperou < 120
++                && !t
++                    .paint
++                    .wetpaint
++                    .session
++                    .as_ref()
++                    .is_some_and(|s| s.otica.pendente())
++            {
++                t.on_tick(1000.0 / 60.0);
++                std::thread::sleep(Duration::from_millis(2));
++                esperou += 1;
++            }
++            let sess = t.paint.wetpaint.session.as_mut().expect("sessão");
++            let pend = sess.otica.pendente();
++            let t0 = Instant::now();
++            sess.bring_home();
++            let casa = t0.elapsed().as_secs_f64() * 1e3;
++            let (gw, gh) = sess.grid;
++            let rr = usize::from(sess.ratio);
++            let grade = sess.engine.active_grid();
++            // A faixa viva do solver: um superconjunto do que o passo pode tocar.
++            let faixas: Vec<(i32, i32)> = (1..=gh)
++                .map(|cy| (grade.row_lo[cy], grade.row_hi[cy]))
++                .collect();
++            let molhadas: Vec<bool> = faixas.iter().map(|(a, b)| a <= b).collect();
++            let antes = t.canvas_rgba.to_vec();
++            let _ = split::take();
++            let _ = contagem::take();
++            let _ = contagem::take_campo();
++            let _ = contagem::take_tempos();
++            let t0 = Instant::now();
++            t.set_paint_media(PaintMedia::Digital);
++            let saida = t0.elapsed().as_secs_f64() * 1e3;
++            let (otica, pixel) = split::take();
++            let (n, motor, render) = contagem::take();
++            let campo = contagem::take_campo();
++            let (pig, som) = contagem::take_tempos();
++            // O que mudou: linhas, a soma dos vãos de cada linha e os tiles de 64 px.
++            let mut lin_mud = vec![false; h];
++            let mut vaos = 0usize;
++            let mut tiles = std::collections::BTreeSet::new();
++            let mut px_mud = 0usize;
++            for (y, (a, b)) in antes
++                .chunks(w * 4)
++                .zip(t.canvas_rgba.chunks(w * 4))
++                .enumerate()
++            {
++                let (mut x0, mut x1) = (usize::MAX, 0);
++                for (x, (p, q)) in a.chunks(4).zip(b.chunks(4)).enumerate() {
++                    if p != q {
++                        x0 = x0.min(x);
++                        x1 = x1.max(x);
++                        px_mud += 1;
++                        tiles.insert((x / 64, y / 64));
++                    }
++                }
++                if x0 != usize::MAX {
++                    lin_mud[y] = true;
++                    vaos += x1 + 1 - x0;
++                }
++            }
++            let n_mud = lin_mud.iter().filter(|m| **m).count();
++            let fx = |f: f64| casa + (saida - otica - pixel) + (otica + pixel) * f;
++            // A caixa cresce pelo alcance do óleo: o mesmo alcance cresce as linhas com água.
++            let alto = render as f64 / motor.max(1) as f64;
++            let caixa_h = (motor as f64 / gw as f64).min(gh as f64);
++            let alcance = ((alto.sqrt() - 1.0) * caixa_h / 2.0).ceil() as usize;
++            let n_mol = linhas_crescidas(&molhadas, alcance);
++            // A área das faixas crescidas pelo alcance: o teto de compor por vãos em vez de linhas.
++            let area_viva: usize = (0..gh)
++                .map(|y| {
++                    let mut lo = i32::MAX;
++                    let mut hi = i32::MIN;
++                    for &(a, b) in &faixas[y.saturating_sub(alcance)..(y + alcance + 1).min(gh)] {
++                        if a <= b {
++                            lo = lo.min(a);
++                            hi = hi.max(b);
++                        }
++                    }
++                    if lo <= hi {
++                        ((hi - lo) as usize + 1 + 2 * alcance).min(gw)
++                    } else {
++                        0
++                    }
++                })
++                .sum();
++            let f_area = (area_viva as f64 / render.max(1) as f64).min(1.0);
++            let caixa_lin = ((render as f64 / gw as f64).round() as usize).clamp(1, gh);
++            let f_mud = (n_mud as f64 / rr as f64 / caixa_lin as f64).min(1.0);
++            let f_mol = (n_mol as f64 / caixa_lin as f64).min(1.0);
++            println!(
++                "[censo] {w}×{h} r={rr} a{r} esperou {esperou} pend {pend} n {n}: casa {casa:.1} saída {saida:.1} = ótica {otica:.1} (campo {campo:.1} pig {pig:.1} som {som:.1}) + píxel {pixel:.1} + resto {:.1} ms | células motor {motor} render {render} grade {} alcance {alcance} | linhas: caixa {caixa_lin} com água {n_mol} mudaram {n_mud}/{h} px | px mudados {px_mud} ({:.1} %) vãos {vaos} tiles64 {}/{} | área viva {area_viva} | previsão: linhas que mudam {:.1} · linhas vivas {:.1} · vãos vivos {:.1} ms",
++                saida - otica - pixel,
++                gw * gh,
++                100.0 * px_mud as f64 / (w * h) as f64,
++                tiles.len(),
++                w.div_ceil(64) * h.div_ceil(64),
++                fx(f_mud),
++                fx(f_mol),
++                fx(f_area),
++            );
++            total.push(casa + saida);
++            ideal.push(fx(f_mud));
++            pista.push(fx(f_mol));
++            vaos_prev.push(fx(f_area));
++            t.set_paint_media(PaintMedia::WetPaint);
++            t.wet_acorda();
++            quadro(&mut t);
++        }
++        println!(
++            "[censo] {w}×{h} hoje {} | só as linhas que mudam {} | só as linhas vivas {} | só os vãos vivos {}",
++            resumo(&mut total),
++            resumo(&mut ideal),
++            resumo(&mut pista),
++            resumo(&mut vaos_prev)
++        );
++    }
++    println!("[censo] carga {}", carga());
++}
++
++/// A pista exacta que sobra: entre duas imagens, quantas linhas têm uma entrada da óptica diferente ao bit? Com o filme
++/// (o que a óptica lê) e sem ele (só a massa e a cor da tinta).
++#[test]
++#[ignore = "régua: corre por nome com --ignored"]
++fn regua_do_fecho_censo_das_entradas() {
++    for (w, h) in TAMANHOS {
++        let mut t = pintada(w, h, 10);
++        t.preset_aplicar(&preset("Watercolor/Fluid/Wet Round.ph2d-brush.png"))
++            .expect("o meio");
++        t.set_brush_size_px(60.0);
++        for r in 0..5usize {
++            traco_inteiro(&mut t, w, 40.0 + 90.0 * r as f32);
++            for quadros in [6usize, 25, 100] {
++                let sess = t.paint.wetpaint.session.as_mut().expect("sessão");
++                sess.bring_home();
++                let (film, susp, susp_rgb, sett, sett_rgb) = {
++                    let g = sess.engine.active_grid();
++                    (
++                        g.film.clone(),
++                        g.susp.clone(),
++                        g.susp_rgb.clone(),
++                        g.sett.clone(),
++                        g.sett_rgb.clone(),
++                    )
++                };
++                for _ in 0..quadros {
++                    quadro(&mut t);
++                }
++                let sess = t.paint.wetpaint.session.as_mut().expect("sessão");
++                sess.bring_home();
++                let (gw, gh) = sess.grid;
++                let g = sess.engine.active_grid();
++                let t0 = Instant::now();
++                let (mut com, mut sem) = (vec![false; gh], vec![false; gh]);
++                for cy in 1..=gh {
++                    let f = cy * g.s..(cy + 1) * g.s;
++                    let massa = susp[f.clone()] != g.susp[f.clone()]
++                        || sett[f.clone()] != g.sett[f.clone()]
++                        || susp_rgb[f.clone()] != g.susp_rgb[f.clone()]
++                        || sett_rgb[f.clone()] != g.sett_rgb[f.clone()];
++                    sem[cy - 1] = massa;
++                    com[cy - 1] = massa || film[f.clone()] != g.film[f];
++                }
++                let ms = t0.elapsed().as_secs_f64() * 1e3;
++                let vivas = (1..=gh).filter(|&y| g.row_lo[y] <= g.row_hi[y]).count();
++                println!(
++                    "[entradas] {w}×{h} a{r} {quadros} quadros: {gw}×{gh} | linhas (+9) com filme {} sem filme {} vivas {vivas} | comparar {ms:.1} ms",
++                    linhas_crescidas(&com, 9),
++                    linhas_crescidas(&sem, 9),
++                );
++            }
++        }
++    }
++    println!("[entradas] carga {}", carga());
++}
++
+ /// O custo dos consertos no enterro, a 4K: parte a parte e com a orla desligada.
+ #[test]
+ #[ignore = "régua: corre por nome com --ignored"]

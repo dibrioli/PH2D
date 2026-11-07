@@ -177,13 +177,6 @@ fn has_tilemap(s: &Sprite) -> bool {
     s.layers().iter().any(|l| l.tileset().is_some())
 }
 
-/// Um deslocamento só serve se for múltiplo do tile de todas as camadas de tilemap.
-fn fits_the_grids(s: &Sprite, dx: i32, dy: i32) -> bool {
-    let sets = s.layers().iter().filter_map(|l| s.tileset(l.tileset()?));
-    sets.into_iter()
-        .all(|t| dx.rem_euclid(i32::from(t.tile_w)) == 0 && dy.rem_euclid(i32::from(t.tile_h)) == 0)
-}
-
 /// **Sprite ▸ Flip Canvas** Horizontal/Vertical.
 #[must_use]
 pub fn flip_canvas(s: &Sprite, horizontal: bool) -> Option<Op> {
@@ -255,9 +248,6 @@ pub fn canvas_size(s: &Sprite, b: Borders, bg: u32) -> Option<Op> {
     if nw < 1 || nh < 1 || nw > i64::from(crate::MAX_SIDE) || nh > i64::from(crate::MAX_SIDE) {
         return None;
     }
-    if !fits_the_grids(s, b.left, b.top) {
-        return None;
-    }
     let (nw, nh) = (nw as u32, nh as u32);
     let t = s.transparent_value();
     remap(s, (nw, nh), (b.left, b.top), |c, is_bg| {
@@ -278,7 +268,7 @@ pub fn canvas_size(s: &Sprite, b: Borders, bg: u32) -> Option<Op> {
 #[must_use]
 pub fn crop(s: &Sprite, r: Rect) -> Option<Op> {
     let r = r.intersect(s.bounds());
-    if r.is_empty() || !fits_the_grids(s, -r.x, -r.y) {
+    if r.is_empty() {
         return None;
     }
     remap(s, (r.w, r.h), (-r.x, -r.y), |c, _| {

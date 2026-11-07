@@ -116,8 +116,7 @@ Conferido com a camada ativa: `crates/ph2d-app-registry-init/tests/it/tilemap_re
 | Edit: Invert, Despeckle, Outline, Convolution, Brightness/Contrast, Hue/Saturation, Color Curve | `filter::patch` = `None` | mensagem; com «All» saltam só o tilemap |
 | Replace Color | recusa no chamador | mensagem |
 | Sprite: Rotate Canvas 90/180, Flip Canvas H/V, Sprite Size (todos os métodos) | `None` com qualquer camada de tilemap no sprite | ⚠️ **mudo** |
-| Sprite: Canvas Size, Crop com deslocamento fora de múltiplo do tile | `None` | ⚠️ **mudo** |
-| Sprite: Trim, idem | `None` | ⚠️ `pixel.sprite.refuse.trim`, mensagem que não diz o motivo certo |
+| ~~Sprite: Canvas Size, Crop, Trim fora de múltiplo do tile~~ | **Saiu da lista em 06/11:** Pixelorama e Trial aceitam (M9); a grelha vai com o canvas | — |
 | Layer: Merge Down com tilemap em qualquer lado | `None` | mensagem `pixel.layer.refuse.action` |
 | Layer via Cut | `None` | mensagem `pixel.layer.refuse.action` |
 | Timeline: arrastar cel para camada de outro tileset ou de imagem | `None` | ⚠️ **mudo** |
@@ -174,6 +173,18 @@ Três scripts, `ferramentas/oraculo_godot_tiles.py`, `ferramentas/pixelorama_til
 | 1024×1024 × 1 quadro, um píxel editado | 801 ms | **10 ms** | 7 ms |
 
 Por degrau, no pior caso (256×256 × 64): só por linha, 178 ms; com fios por quadro, 142 ms. A parada é a banda da memória (4 GiB escritos), não a CPU: 16 fios deram só 20 %. ⇒ Os fios saíram (o núcleo continua sem fios nem dependências) e entrou reescrever só as linhas sujas. ⚠️ Mudar TODAS as linhas de um tile nesse documento continua em ~178 ms (mesmo caminho, sem o ganho das linhas): só nesse caso extremo. ⚠️ Ainda não medido: preview e GPU.
+
+### 6.1b Decisões com o M9 (06/11; o dono delegou, «o estado da arte»)
+
+Medição e fixtura: [P10_oraculos.md](P10_oraculos.md) M9 e M9b, gates `as_bordas_batem_com_o_m9_corrido` e `a_lista_e_a_copia_que_fica_batem_com_o_m9b`.
+
+| Pergunta | Lei | Porquê |
+|---|---|---|
+| Borracha | Igual aos outros traços. Apagar um tile inteiro: Manual esvazia o tile e as cópias, Auto põe a célula a 0 e tira o tile sem uso, Stack põe a célula a 0 e o tile fica | Os dois oráculos concordam, menos Manual e Stack a apagar tudo: o Pixelorama deixa o tile intacto com o canvas vazio, e o mapa volta ao reabrir. Vale o Trial |
+| Um traço por várias cópias | Pela posição da célula, linha primeiro, nunca pela ordem do traço: em Auto, cada cópia ganha um tile novo no fim da lista e a última que restar edita o original. Todas as cópias com a mesma imagem: o original sai, os de cima descem um número, e o novo fica no fim | Os dois oráculos (M9b). Na diagonal discordam, e vale o Trial; o Pixelorama vai por coluna. Manual: a união (Trial). ⛔ Editar no lugar para manter os números foi feito e desfeito: nenhum oráculo o faz |
+| Encolher o canvas | Não corta o mapa; crescer devolve as células. Canvas Size, Crop e Trim aceitam tamanho fora do múltiplo, a grelha vai com o canvas | Pixelorama e Trial. O Tiled corta, mas é um editor de mapas. O Trial também tem a opção de cortar: não há nesta linha |
+| Tileset sem camada | Fica no sprite, sempre oferecido | Flatten e Convert: todos ficam. Delete: Pixelorama e Tiled ficam; o Trial avisa e apaga, recusado pela ordem do dono («disponíveis para qualquer camada desde sempre») |
+| Camada nova | Traz o tileset da camada activa escolhido | Ordem do dono; o Trial traz «New Tileset» |
 
 ### 6.2 ⛔ Recusas MEDIDAS
 

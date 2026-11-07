@@ -58,7 +58,8 @@ pub(crate) fn no_terreno(set: &Tileset, id: u32) -> bool {
         .any(|k| id >= k.first && id < k.first + TERRAIN_TILES)
 }
 
-/// Por célula do mapa, os píxeis relativos à célula e o valor.
+/// Por `(linha, coluna)`, os píxeis relativos à célula e o valor. A ordem decide quem fica com o
+/// tile original num traço por várias cópias: a do Trial, medida em `P10_oraculos.md` M9b.
 type PorCelula = BTreeMap<(i32, i32), Vec<(u32, u32, u32)>>;
 
 /// As escritas agrupadas por célula; a última vence.
@@ -69,7 +70,7 @@ fn por_celula(s: &Sprite, m: &Mapa, set: &Tileset, escritas: &[(i32, i32, u32)])
         let (c, r) = m.celula(x, y);
         let (ox, oy) = m.origem(c, r);
         debug_assert!(x >= ox && y >= oy && x < ox + tw && y < oy + th);
-        out.entry((c, r))
+        out.entry((r, c))
             .or_default()
             .push(((x - ox) as u32, (y - oy) as u32, v));
     }
@@ -159,7 +160,7 @@ pub fn aplica(
         usos: usos(s, set),
         largados: BTreeSet::new(),
     };
-    for ((c, r), px) in grupos {
+    for ((r, c), px) in grupos {
         let t = m.get(c, r);
         let id = t.id();
         let novo = o.resultado(t, &px);

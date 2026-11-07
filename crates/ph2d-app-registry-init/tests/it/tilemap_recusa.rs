@@ -57,11 +57,10 @@ fn pedidos() -> Vec<R> {
 }
 
 #[rustfmt::skip]
-fn dialogos() -> [D; 4] {
+fn dialogos() -> [D; 3] {
     let channels = Default::default();
     [
         D::SpriteSize { width: 64, height: 64, method: PixelSizeMethod::default() },
-        D::CanvasSize { left: 1, top: 0, right: 0, bottom: 0 },
         D::Invert { channels, all: false },
         D::BrightnessContrast { brightness: 50, contrast: 0, channels, all: false },
     ]

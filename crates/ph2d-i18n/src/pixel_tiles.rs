@@ -57,12 +57,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "This tile cannot be deleted: it is the empty tile or part of a terrain"
         }
         "pixel.tiles.refuse.sprite" => "Not available while this sprite has a tilemap layer",
-        "pixel.tiles.refuse.offset" => {
-            "A tilemap layer moves in whole tiles: use a multiple of the tile size"
-        }
-        "pixel.tiles.refuse.trim" => {
-            "Nothing to trim in whole tiles: a tilemap layer moves by its tile size"
-        }
         "pixel.tiles.refuse.cel_drag" => {
             "A tilemap cel can only move to a layer with the same tileset"
         }

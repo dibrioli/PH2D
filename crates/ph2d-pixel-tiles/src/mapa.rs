@@ -25,6 +25,12 @@ impl Mapa {
     pub fn de(s: &Sprite, layer: LayerId, frame: FrameId, set: &Tileset) -> Self {
         let (tw, th) = (i32::from(set.tile_w), i32::from(set.tile_h));
         let dono = s.owner((layer, frame));
+        // Um quadro ainda sem mapa segue a grelha da camada: o canvas pode tê-la deslocado.
+        let fase = s
+            .entries()
+            .filter(|(k, _)| k.0 == layer)
+            .find_map(|(_, c)| c.tiles.as_deref())
+            .map_or((0, 0), |g| (g.x, g.y));
         match s.entry(dono).and_then(|c| c.tiles.as_deref()) {
             Some(g) => Self {
                 tw,
@@ -40,8 +46,8 @@ impl Mapa {
             None => Self {
                 tw,
                 th,
-                fase_x: 0,
-                fase_y: 0,
+                fase_x: fase.0.rem_euclid(tw),
+                fase_y: fase.1.rem_euclid(th),
                 col0: 0,
                 row0: 0,
                 w: 0,

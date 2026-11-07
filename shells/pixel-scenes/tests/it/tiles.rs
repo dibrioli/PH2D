@@ -672,6 +672,42 @@ fn a_camada_nova_e_o_convert_passam_pela_janela() {
 }
 
 /// Os comandos que eram mudos numa camada de tilemap dizem porquê, e o documento fica igual.
+/// Fora do múltiplo do tile, o canvas anda como nos oráculos (M9), e o desenho vai com ele.
+#[test]
+fn o_canvas_fora_do_multiplo_nao_recusa() {
+    let mut p = Palco::novo();
+    p.desenha();
+    let (w, arte) = (p.s().width(), p.vista(0, 3));
+    p.app.aplica_dialogo(
+        ph2d_editor_core::pixel_panel::PixelDialogChoice::CanvasSize {
+            left: 16,
+            top: 0,
+            right: 1,
+            bottom: 0,
+        },
+    );
+    assert_eq!(p.s().width(), w + 17);
+    assert_eq!(p.avisos(), 0);
+    p.desenha();
+    assert_eq!(p.vista(1, 3), arte);
+    assert!(p.app.undo(p.key));
+
+    p.app.aplica_dialogo(
+        ph2d_editor_core::pixel_panel::PixelDialogChoice::CanvasSize {
+            left: 1,
+            top: 0,
+            right: 0,
+            bottom: 0,
+        },
+    );
+    assert_eq!(p.s().width(), w + 1);
+    assert!(derived_is_consistent(p.s()));
+    p.app.pede(PixelRequest::Sprite(Sp::Trim));
+    assert_eq!(p.avisos(), 0, "o Trim corta sem recusar");
+    assert_eq!(p.s().width(), w, "a coluna vazia sai");
+    assert!(derived_is_consistent(p.s()));
+}
+
 #[test]
 fn nenhum_comando_do_menu_sprite_recusa_calado() {
     for a in [

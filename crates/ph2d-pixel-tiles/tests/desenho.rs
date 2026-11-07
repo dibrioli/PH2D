@@ -572,3 +572,230 @@ fn a_porta_recusa_quem_nao_e_tilemap() {
     assert!(aplica(&d.s, d.l, FrameId(9999), &[(0, 0, AZUL)], Modo::Auto).is_none());
     assert!(aplica(&d.s, d.l, d.f, &[], Modo::Auto).is_none());
 }
+
+fn cor(ch: char) -> u32 {
+    match ch {
+        'R' => VERMELHO,
+        'G' => VERDE,
+        'B' => AZUL,
+        'W' => u32::MAX,
+        _ => 0,
+    }
+}
+
+/// O estado de uma corrida do M9: o mapa e os tiles que a fixtura gravou.
+fn m9_doc(e: &serde_json::Value) -> Doc {
+    let mut d = Doc::novo(32, T);
+    let tiles = e["tiles"].as_array().unwrap()[1..]
+        .iter()
+        .map(|t| {
+            let linhas = t["img"].as_array().unwrap();
+            let chars = linhas.iter().flat_map(|l| l.as_str().unwrap().chars());
+            chars.flat_map(|c| cor(c).to_le_bytes()).collect()
+        })
+        .collect();
+    let mut grelha = vec![TileRef::EMPTY; 16];
+    for (k, id) in e["cells"].as_object().unwrap() {
+        let (c, r) = k.split_once(',').unwrap();
+        let (c, r): (usize, usize) = (c.parse().unwrap(), r.parse().unwrap());
+        grelha[r * 4 + c] = TileRef::new(id.as_u64().unwrap() as u32, false, false, false);
+    }
+    let mapa = TileGrid {
+        x: 0,
+        y: 0,
+        w: 4,
+        h: 4,
+        tiles: grelha,
+    };
+    let f = d.f;
+    d.com_tiles(tiles, f, mapa);
+    d
+}
+
+/// O traço que a corrida fez: o que mudou no canvas. Em Manual, as outras cópias entram também e
+/// dão o mesmo tile.
+fn m9_escritas(antes: &serde_json::Value, depois: &serde_json::Value) -> Vec<(i32, i32, u32)> {
+    let linhas = |e: &serde_json::Value| -> Vec<Vec<char>> {
+        let c = e["canvas"].as_array().unwrap();
+        c.iter()
+            .map(|l| l.as_str().unwrap().chars().collect())
+            .collect()
+    };
+    let (a, b) = (linhas(antes), linhas(depois));
+    let mut out = Vec::new();
+    for y in 0..a.len() {
+        for x in 0..a[y].len() {
+            if a[y][x] != b[y][x] {
+                out.push((x as i32, y as i32, cor(b[y][x])));
+            }
+        }
+    }
+    out
+}
+
+/// **M9 corrido**, caso a caso, sobre o que Pixelorama e Trial fazem igual. Ficam de fora os casos
+/// onde discordam, e aí vale o Trial, no teste de baixo: apagar um tile inteiro em Manual e em Stack
+/// (o Pixelorama deixa o tile intacto com o canvas vazio, e o mapa volta ao reabrir) e a união de um
+/// traço em Manual (o Pixelorama perde a parte da direita).
+#[test]
+fn as_bordas_batem_com_o_m9_corrido() {
+    let txt = include_str!("fixtures/oracle_tile_edges_m9.json");
+    let v: serde_json::Value = serde_json::from_str(txt).unwrap();
+    let corridas = v["pixelorama_q1_q2_q5"].as_object().unwrap();
+    let mut conferidos = 0;
+    for (tag, depois) in corridas {
+        let [q, modo, caso, "depois"] = tag.split('/').collect::<Vec<_>>()[..] else {
+            continue;
+        };
+        let m = match modo {
+            "manual" => Modo::Manual,
+            "auto" => Modo::Auto,
+            "stack" => Modo::Stack,
+            _ => continue,
+        };
+        let inteiro = caso.starts_with('b') || caso.starts_with('d');
+        let discordam = match (q, m) {
+            ("q1", Modo::Manual | Modo::Stack) => inteiro,
+            ("q2", Modo::Manual) => true,
+            ("q1" | "q2", _) => false,
+            _ => true,
+        };
+        if discordam {
+            continue;
+        }
+        let antes = &corridas[&format!("{q}/{modo}/{caso}/antes")];
+        let mut d = m9_doc(antes);
+        let original = d.s.clone();
+        let escritas = m9_escritas(antes, depois);
+        assert!(!escritas.is_empty(), "{tag}");
+        d.traco(&escritas, m);
+        let esperado = m9_doc(depois);
+        let (nosso, deles) = (
+            d.s.tileset(d.set).unwrap().tiles.clone(),
+            esperado.s.tileset(esperado.set).unwrap().tiles.clone(),
+        );
+        assert_eq!(nosso.len(), deles.len(), "{tag}: número de tiles");
+        assert_eq!(nosso, deles, "{tag}: imagens dos tiles");
+        for r in 0..4 {
+            for c in 0..4 {
+                assert_eq!(d.id(c, r), esperado.id(c, r), "{tag}: célula {c},{r}");
+            }
+        }
+        assert!(derived_is_consistent(&d.s), "{tag}");
+        assert!(d.h.undo(&mut d.s), "{tag}");
+        assert_eq!(d.s, original, "{tag}: um passo desfaz");
+        conferidos += 1;
+    }
+    assert!(conferidos >= 20, "só {conferidos} casos conferidos");
+    println!("M9: {conferidos} casos");
+}
+
+/// Onde os oráculos discordam, vale o Trial (M9): apagar tudo em Manual esvazia o tile e as cópias,
+/// que continua no conjunto; em Stack a célula esvazia e o tile fica; a união em Manual.
+#[test]
+fn onde_os_oraculos_discordam_vale_o_trial() {
+    let um_px = |d: &Doc, x, y| d.tile_com(&[(x, y, VERMELHO)]);
+    let monta = |usos: &[(usize, usize)]| {
+        let mut d = Doc::novo(32, T);
+        let tile = um_px(&d, 1, 1);
+        let mut g = vec![TileRef::EMPTY; 16];
+        for &(c, r) in usos {
+            g[r * 4 + c] = TileRef::new(1, false, false, false);
+        }
+        let mapa = TileGrid {
+            x: 0,
+            y: 0,
+            w: 4,
+            h: 4,
+            tiles: g,
+        };
+        let f = d.f;
+        d.com_tiles(vec![tile], f, mapa);
+        d
+    };
+    let tres = [(0, 0), (1, 0), (3, 0)];
+    let vazio_em = |c: i32| (c * i32::from(T) + 1, 1, 0);
+
+    let mut d = monta(&tres);
+    d.traco(&[vazio_em(0)], Modo::Manual);
+    let set = d.s.tileset(d.set).unwrap();
+    assert_eq!(set.tiles.len(), 2, "Manual: o tile fica");
+    assert_eq!(set.tiles[1], set.tiles[0], "Manual: e fica vazio");
+    assert_eq!(d.id(1, 0), 1, "as cópias continuam a apontar para ele");
+
+    let mut d = monta(&tres);
+    d.traco(&[vazio_em(0)], Modo::Stack);
+    assert_eq!(d.id(0, 0), 0, "Stack: a célula esvazia");
+    assert_eq!(d.id(1, 0), 1);
+    assert_eq!(
+        d.s.tileset(d.set).unwrap().tiles.len(),
+        2,
+        "Stack: o tile fica"
+    );
+
+    let mut d = monta(&tres[..2]);
+    let t = i32::from(T);
+    d.traco(&[(0, 0, AZUL), (t + 7, 0, AZUL)], Modo::Manual);
+    let esperado = d.tile_com(&[(1, 1, VERMELHO), (0, 0, AZUL), (7, 0, AZUL)]);
+    assert_eq!(d.s.tileset(d.set).unwrap().tiles[1], esperado, "a união");
+}
+
+/// **M9b corrido.** A (2×), B e C: a lista e os números, e quem fica com o original fora da horizontal.
+/// Na diagonal os oráculos discordam, e vale o Trial: linha primeiro.
+#[test]
+fn a_lista_e_a_copia_que_fica_batem_com_o_m9b() {
+    let monta = |a_em: &[(usize, usize)]| {
+        let mut d = Doc::novo(32, T);
+        let tiles = vec![
+            d.tile_com(&[(1, 1, VERMELHO)]),
+            d.tile_com(&[(2, 2, VERDE)]),
+            d.tile_com(&[(3, 3, VERDE)]),
+        ];
+        let mut g = vec![TileRef::EMPTY; 16];
+        for &(c, r) in a_em {
+            g[r * 4 + c] = TileRef::new(1, false, false, false);
+        }
+        g[3 * 4 + 2] = TileRef::new(2, false, false, false);
+        g[3 * 4 + 3] = TileRef::new(3, false, false, false);
+        let mapa = TileGrid {
+            x: 0,
+            y: 0,
+            w: 4,
+            h: 4,
+            tiles: g,
+        };
+        let f = d.f;
+        d.com_tiles(tiles, f, mapa);
+        d
+    };
+    let t = i32::from(T);
+    // Dois toques no mesmo píxel do tile, um em cada célula.
+    let igual = |c: i32, r: i32| (c * t, r * t, AZUL);
+    let outro = |c: i32, r: i32| (c * t + 7, r * t + 7, AZUL);
+
+    // 1. Iguais: A sai e os de cima descem; o novo vai para o fim.
+    let mut d = monta(&[(0, 0), (1, 0)]);
+    let (b, c) = {
+        let set = d.s.tileset(d.set).unwrap();
+        (set.tiles[2].clone(), set.tiles[3].clone())
+    };
+    d.traco(&[igual(0, 0), igual(1, 0)], Modo::Auto);
+    let set = d.s.tileset(d.set).unwrap();
+    assert_eq!(set.tiles.len(), 4);
+    assert_eq!((&set.tiles[1], &set.tiles[2]), (&b, &c), "B=1, C=2");
+    assert_eq!((d.id(0, 0), d.id(1, 0)), (3, 3), "novo=3");
+    assert_eq!((d.id(2, 3), d.id(3, 3)), (1, 2));
+
+    // 2. Diferentes na horizontal, 3. na vertical e 4. na diagonal: quem vem primeiro ganha o novo.
+    for (nome, p, q) in [
+        ("horizontal", (0, 0), (1, 0)),
+        ("vertical", (0, 0), (0, 1)),
+        ("diagonal, linha primeiro", (1, 0), (0, 1)),
+    ] {
+        let mut d = monta(&[(p.0 as usize, p.1 as usize), (q.0 as usize, q.1 as usize)]);
+        d.traco(&[outro(q.0, q.1), igual(p.0, p.1)], Modo::Auto);
+        assert_eq!(d.id(p.0, p.1), 4, "{nome}: o primeiro ganha o novo, no fim");
+        assert_eq!(d.id(q.0, q.1), 1, "{nome}: o outro edita o original");
+        assert_eq!((d.id(2, 3), d.id(3, 3)), (2, 3), "{nome}: a ordem fica");
+    }
+}

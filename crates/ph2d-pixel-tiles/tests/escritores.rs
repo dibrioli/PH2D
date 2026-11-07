@@ -116,29 +116,6 @@ fn os_que_recusam_recusam_e_o_documento_fica_igual() {
             "sprite size rotsprite",
             canvas::sprite_size(&s, 64, 64, SizeMethod::RotSprite),
         ),
-        (
-            "canvas size fora",
-            canvas::canvas_size(
-                &s,
-                Borders {
-                    left: 1,
-                    ..Borders::default()
-                },
-                bg,
-            ),
-        ),
-        (
-            "canvas size fora y",
-            canvas::canvas_size(
-                &s,
-                Borders {
-                    top: 2,
-                    ..Borders::default()
-                },
-                bg,
-            ),
-        ),
-        ("crop fora", canvas::crop(&s, Rect::new(1, 0, 16, 16))),
         ("filtro", filter::apply(&s, &[key], Channels::ALL, &Invert)),
         (
             "filtro ligado",
@@ -178,7 +155,7 @@ fn os_que_recusam_recusam_e_o_documento_fica_igual() {
     assert!(derived_is_consistent(&d.s));
 }
 
-/// Múltiplo do tile, a grelha anda. Fora dele, recusa (no teste de cima).
+/// O canvas leva a grelha com ele, múltiplo do tile ou não (Pixelorama e Trial, M9).
 #[test]
 fn canvas_size_crop_e_trim_andam_a_grelha_por_multiplos_do_tile() {
     let mut d = doc();
@@ -219,15 +196,81 @@ fn canvas_size_crop_e_trim_andam_a_grelha_por_multiplos_do_tile() {
     assert!(d.h.undo(&mut d.s));
     assert_eq!(d.s, antes);
 
-    // Trim: a imagem começa em (1,1), que não é múltiplo: recusa.
-    assert!(canvas::trim(&d.s).is_none());
-    // Sem esse píxel, o que fica é a caixa do mapa, múltipla: anda.
+    // Trim: a imagem começa em (1,1), fora do múltiplo; a grelha vai atrás.
+    let op = canvas::trim(&d.s).unwrap();
+    d.h.commit(&mut d.s, op).unwrap();
+    assert!(derived_is_consistent(&d.s));
+    assert!(d.h.undo(&mut d.s));
+    assert_eq!(d.s, antes);
+    // Sem esse píxel, o que fica é a caixa do mapa.
     let op = layers::delete(&d.s, d.img).unwrap();
     d.h.commit(&mut d.s, op).unwrap();
     let op = canvas::trim(&d.s).unwrap();
     d.h.commit(&mut d.s, op).unwrap();
     assert!(derived_is_consistent(&d.s));
     assert_eq!((d.s.width(), d.s.height()), (8, 4));
+}
+
+/// M9, os dois oráculos: fora do múltiplo aceita, e encolher e voltar a crescer devolve as células.
+#[test]
+fn o_canvas_fora_do_multiplo_mantem_o_desenho_e_o_traco_cai_onde_se_ve() {
+    let mut d = doc();
+    let bg = d.s.transparent_value();
+    let visto = composto(&d.s, d.f);
+    let borda = |left, top, right, bottom| Borders {
+        left,
+        top,
+        right,
+        bottom,
+    };
+    let op = canvas::canvas_size(&d.s, borda(1, 0, 0, 0), bg).unwrap();
+    d.h.commit(&mut d.s, op).unwrap();
+    assert!(derived_is_consistent(&d.s));
+    let g = d.s.entry((d.tm, d.f)).unwrap().tiles.clone().unwrap();
+    assert_eq!((g.x, g.y), (5, 8), "a grelha fica fora do múltiplo");
+    let novo = composto(&d.s, d.f);
+    for y in 0..32_usize {
+        for x in 0..32_usize {
+            let (a, b) = (y * 32 + x, y * 33 + x + 1);
+            assert_eq!(visto[a * 4..a * 4 + 4], novo[b * 4..b * 4 + 4], "{x},{y}");
+        }
+    }
+    // Pintar depois: o píxel cai onde se pintou, neste quadro e num quadro sem mapa ainda.
+    let (x, y, v) = (g.x + 1, g.y + 1, u32::from_le_bytes([1, 2, 3, 255]));
+    let op = aplica(&d.s, d.tm, d.f, &[(x, y, v)], Modo::Stack).unwrap();
+    d.h.commit(&mut d.s, op).unwrap();
+    assert!(derived_is_consistent(&d.s));
+    let visto = composto(&d.s, d.f);
+    let i = (y as usize * 33 + x as usize) * 4;
+    assert_eq!(visto[i..i + 4], [1, 2, 3, 255]);
+    let set = d.s.tileset(d.set).unwrap();
+    let m = ph2d_pixel_tiles::mapa::Mapa::de(&d.s, d.tm, FrameId(u32::MAX), set);
+    assert_eq!(
+        m.origem(0, 0),
+        (1, 0),
+        "sem mapa, a grelha continua a da camada"
+    );
+
+    // Encolher deixa células de fora; crescer devolve-as.
+    let inteiro = composto(&d.s, d.f);
+    let (w, h) = (d.s.width() as i32, d.s.height() as i32);
+    let op = canvas::canvas_size(&d.s, borda(0, 0, 10 - w, 10 - h), bg).unwrap();
+    d.h.commit(&mut d.s, op).unwrap();
+    let op = canvas::canvas_size(&d.s, borda(0, 0, w - 10, h - 10), bg).unwrap();
+    d.h.commit(&mut d.s, op).unwrap();
+    assert!(derived_is_consistent(&d.s));
+    let g2 = d.s.entry((d.tm, d.f)).unwrap().tiles.clone().unwrap();
+    assert_eq!((g2.x, g2.y), (g.x, g.y));
+    // A imagem de baixo corta-se, como sempre; o tilemap volta inteiro.
+    let depois = composto(&d.s, d.f);
+    let i = (y as usize * w as usize + x as usize) * 4;
+    assert_eq!(depois[i..i + 4], inteiro[i..i + 4]);
+    let n = d.s.tileset(d.set).unwrap().tiles.len();
+    assert!(n >= 2);
+
+    let op = canvas::crop(&d.s, Rect::new(3, 3, 20, 20)).unwrap();
+    d.h.commit(&mut d.s, op).unwrap();
+    assert!(derived_is_consistent(&d.s));
 }
 
 #[test]

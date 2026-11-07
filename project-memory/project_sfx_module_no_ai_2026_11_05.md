@@ -19,3 +19,5 @@ O dono decidiu em 2026-11-05: «vamos esquecer a AI» no módulo de criação de
 **Dono 06/11, smoke do corpo vibrante:** aprovado, W3 liberada. O Drum Thump (base 95 Hz) «quase não se ouve» nas caixas pequenas dele; a receita não muda sem pedido dele. Em smoke de som grave, lembre que ele pode estar ouvindo em caixas pequenas.
 
 **Dono 06/11, smoke da tela (W3):** tudo OK. Duas ordens: com Play on change ligado, mudar o S toca a faixa em solo; o Use in Game abre um modal bem desenhado, com campo de busca e um eyedropper que escolhe o objeto na Hierarchy (a lista simples sai). Ctrl+Z fica como está: na aba de som desfaz a edição do som, e a ligação com o objeto só na aba Scene.
+
+**Dono 06/11, 2.º smoke:** S e janela do Use in Game aprovados; seguir para a W4.

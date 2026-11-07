@@ -492,6 +492,8 @@ impl PainterTool {
                 "o histórico do motor tinha o passo (verificado ao soltar)"
             );
             foto.repoe(&mut sess.engine);
+            // Uma imagem no ar é de antes do restauro: aplicada, punha a tela de outro passo por cima, e nada a corrigia.
+            sess.otica.toca_tudo(sess.grid);
             sess.canvas = Arc::downgrade(&self.canvas_rgba);
             self.undo.write_state.vigia_a_tela(Some(&self.canvas_rgba));
             sess.stroke_open = false;
@@ -510,7 +512,6 @@ impl PainterTool {
             // orla delas (3 862 px); a orla só se recalcula sob o pincel seguinte.
             if sess.enterrou {
                 sess.engine.take_dirty();
-                sess.otica.toca_tudo(sess.grid);
                 // Enterrou só agora (`tela_antes`): os planos nunca seguiram a grade.
                 let c = if ja_enterrou {
                     caixa

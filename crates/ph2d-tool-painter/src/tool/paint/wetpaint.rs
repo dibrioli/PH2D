@@ -688,6 +688,9 @@ pub(in crate::tool::paint) fn composite_for_measure(t: &mut PainterTool) {
 // O undo devolve a tinta viva de antes do passo (smoke do dono 30/10).
 mod foto_em_tiles;
 #[cfg(test)]
+#[path = "wetpaint/redo_relevo_tests.rs"]
+mod redo_relevo_tests;
+#[cfg(test)]
 mod undo_auditoria_tests;
 #[cfg(test)]
 #[path = "wetpaint/undo_matriz_tests.rs"]

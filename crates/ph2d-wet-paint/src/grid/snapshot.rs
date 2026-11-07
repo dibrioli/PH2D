@@ -415,9 +415,7 @@ impl Registo {
         ajusta(&mut g.nivelado, v[3], a3.as_ref());
         ajusta(&mut g.material, v[4], a5.as_ref());
         ajusta(&mut g.aparencia, v[5], a6.as_ref());
-        super::aparencia::reconta_teto(g);
         ajusta(&mut g.oleo, v[6], a7.as_ref());
-        super::oleo_celula::reconta_real(g);
         let a8 = amostra!(tinta);
         ajusta(&mut g.tinta, v[7], a8.as_ref());
         let a9 = amostra!(pigmento);
@@ -425,6 +423,9 @@ impl Registo {
         for (k, t) in tiles() {
             t.poe(g, ret_do_tile(*k, g.s, g.rows));
         }
+        // Contam o que os tiles acabaram de pôr: antes deles, um plano recém-criado ainda está neutro.
+        super::aparencia::reconta_teto(g);
+        super::oleo_celula::reconta_real(g);
         let fluxo = self.fluxo.iter().chain(
             extra
                 .into_iter()

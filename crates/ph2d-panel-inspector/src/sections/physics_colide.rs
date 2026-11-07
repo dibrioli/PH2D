@@ -159,7 +159,7 @@ fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
     if t.store.is_collapsed(ids::INSP_PHYS_LAYER_RENAMING) {
         return y;
     }
-    let dica = camada.to_string();
+    let dica = camadas::rotulo_padrao(camada);
     let rotulo = tr("card.insp.phys.layer_name");
     let seccao = ph2d_editor_core::property_row::Seccao::medida(t.text, 1, &[rotulo]);
     ph2d_editor_core::property_row::paint_text_row(

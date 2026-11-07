@@ -301,8 +301,8 @@ fn o_resumo_diz_a_camada_e_os_quadros_acesos_dela() {
     let mut linhas = [0u32; 32];
     linhas[1] = 1 << 3;
     set_current(Default::default(), linhas, 0b1011);
-    assert_eq!(caso(na(1, with_body())).as_deref(), Some("1 \u{b7} 3"));
-    assert_eq!(caso(na(0, with_body())).as_deref(), Some("0 \u{b7} None"));
+    assert_eq!(caso(na(1, with_body())).as_deref(), Some("Layer 1 \u{b7} Layer 3"));
+    assert_eq!(caso(na(0, with_body())).as_deref(), Some("Layer 0 \u{b7} None"));
     fim();
 }
 
@@ -328,6 +328,57 @@ fn os_quadros_e_o_edit_matrix_chegam_pelo_clique_com_o_shape_dobrado() {
             achado(&r, INSP_PHYS_EDIT_MATRIX).unwrap()
         ),
         [EditorAction::LayerMatrixOpen { layer: 2 }]
+    );
+    fim();
+}
+
+/// ⭐ Onda 8: duplo clique no chip da Layer abre o nome ali, com foco; escrever não grava; Enter grava UM
+/// passo; Esc desiste; vazio grava vazio (volta a «Layer n»). O campo vazio mostra «Layer n».
+#[test]
+fn duplo_clique_no_chip_da_layer_renomeia_num_passo() {
+    use ph2d_editor_core::interaction::WidgetEvent;
+    mundo();
+    let (mut host, mut st) = cena(na(2, with_body()), [1.0, 1.0]);
+    let r = pinta(&mut host, &mut st);
+    assert!(achado(&r, INSP_PHYS_LAYER_PICK).is_some(), "o chip da Layer");
+    let evento = |host: &mut ph2d_ui_testkit::MockPanelHost,
+                  st: &mut ph2d_panel_inspector::InspectorState,
+                  ev: WidgetEvent| {
+        let _ = host.drained_actions();
+        let _ = host.apply_panel_event::<ph2d_panel_inspector::InspectorPanel>(st, ev);
+        host.drained_actions()
+    };
+    let _ = evento(&mut host, &mut st, WidgetEvent::DoubleClick(INSP_PHYS_LAYER_PICK));
+    assert_eq!(host.store().focus_id(), Some(INSP_PHYS_LAYER_NAME));
+    assert!(!host.store().is_collapsed(INSP_PHYS_LAYER_RENAMING), "o campo abriu");
+    host.set_text(INSP_PHYS_LAYER_NAME, "Mud");
+    assert!(
+        evento(&mut host, &mut st, WidgetEvent::TextChanged(INSP_PHYS_LAYER_NAME)).is_empty(),
+        "escrever não grava"
+    );
+    assert_eq!(
+        evento(&mut host, &mut st, WidgetEvent::Submit(INSP_PHYS_LAYER_NAME)),
+        [EditorAction::LayerRename {
+            layer: 2,
+            name: "Mud".into()
+        }]
+    );
+    assert!(host.store().is_collapsed(INSP_PHYS_LAYER_RENAMING), "Enter fecha");
+    let _ = evento(&mut host, &mut st, WidgetEvent::DoubleClick(INSP_PHYS_LAYER_PICK));
+    host.set_text(INSP_PHYS_LAYER_NAME, "Nope");
+    assert!(
+        evento(&mut host, &mut st, WidgetEvent::Cancel(INSP_PHYS_LAYER_NAME)).is_empty(),
+        "Esc nunca grava"
+    );
+    let _ = evento(&mut host, &mut st, WidgetEvent::DoubleClick(INSP_PHYS_LAYER_PICK));
+    host.set_text(INSP_PHYS_LAYER_NAME, "  ");
+    assert_eq!(
+        evento(&mut host, &mut st, WidgetEvent::Submit(INSP_PHYS_LAYER_NAME)),
+        [EditorAction::LayerRename {
+            layer: 2,
+            name: String::new()
+        }],
+        "vazio volta a «Layer n»"
     );
     fim();
 }

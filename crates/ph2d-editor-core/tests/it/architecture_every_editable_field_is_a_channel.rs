@@ -1483,7 +1483,7 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-physics",
-        "paint/matrix.rs::paint",
+        "modal.rs::paint",
         Canal,
         &["PHYSICS_LAYER_CELL"],
         "a matriz de camadas é UM losango sobre as células (canal MUNDO `CAMADAS`, F41)",

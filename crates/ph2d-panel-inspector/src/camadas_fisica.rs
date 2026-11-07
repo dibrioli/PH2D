@@ -73,11 +73,13 @@ pub(crate) fn nome(i: usize) -> String {
 #[must_use]
 pub(crate) fn rotulo(i: usize) -> String {
     let n = nome(i);
-    if n.is_empty() {
-        ph2d_i18n::tr_with("card.physics.layer_default", &[("n", &i.to_string())])
-    } else {
-        n
-    }
+    if n.is_empty() { rotulo_padrao(i) } else { n }
+}
+
+/// «Layer n»: o que mostra a camada sem nome.
+#[must_use]
+pub(crate) fn rotulo_padrao(i: usize) -> String {
+    ph2d_i18n::tr_with("card.physics.layer_default", &[("n", &i.to_string())])
 }
 
 /// A linha de `a` da matriz do mundo inclui `b`?

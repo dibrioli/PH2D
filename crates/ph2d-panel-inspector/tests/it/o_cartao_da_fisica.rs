@@ -701,7 +701,7 @@ fn a_forma_solta_nao_mostra_os_quadros_mas_mantem_a_camada_e_o_rename() {
 
 /// «Rename…» abre o campo ali mesmo; escrever pede o novo nome da camada do objecto.
 #[test]
-fn rename_abre_o_campo_e_escrever_renomeia_a_camada_do_objecto() {
+fn rename_abre_o_campo_e_o_enter_renomeia_a_camada_do_objecto() {
     let mut info = with_body();
     info.layer = 3;
     let (mut host, mut st) = cena(info, [1.0, 1.0]);
@@ -722,6 +722,12 @@ fn rename_abre_o_campo_e_escrever_renomeia_a_camada_do_objecto() {
     let _ = host.apply_panel_event::<InspectorPanel>(
         &mut st,
         ph2d_editor_core::interaction::WidgetEvent::TextChanged(INSP_PHYS_LAYER_NAME),
+    );
+    // Onda 8: escrever não grava; o Enter grava UM passo.
+    assert!(host.drained_actions().is_empty(), "um passo por tecla");
+    let _ = host.apply_panel_event::<InspectorPanel>(
+        &mut st,
+        ph2d_editor_core::interaction::WidgetEvent::Submit(INSP_PHYS_LAYER_NAME),
     );
     assert_eq!(
         host.drained_actions().last(),

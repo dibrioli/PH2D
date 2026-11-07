@@ -268,6 +268,7 @@ pub(super) fn populate_physics(store: &mut WidgetStore) {
             selection_anchor: None,
         },
     );
+    store.mark_cancel_on_escape(ids::INSP_PHYS_LAYER_NAME);
     for id in ids::INSP_PHYS_FOLDS {
         store.mark_collapsible_section(id);
     }

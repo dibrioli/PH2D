@@ -11,7 +11,48 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::{InspectorPhysicsInfo, PhysicsFieldEdit};
 
+/// ⭐ O nome da camada (onda 8): duplo clique no chip da Layer abre o campo ali; Enter grava UM passo,
+/// Esc desiste; vazio volta a «Layer n». O «Rename…» abre o mesmo campo.
+fn nome_da_camada(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    let campo = crate::ids::INSP_PHYS_LAYER_NAME;
+    let renomeando = crate::ids::INSP_PHYS_LAYER_RENAMING;
+    match ev {
+        WidgetEvent::DoubleClick(id) if id == crate::ids::INSP_PHYS_LAYER_PICK => {
+            let store = host.store_mut();
+            if let Some(ph2d_editor_core::interaction::InteractiveState::Dropdown { open, .. }) =
+                store.get_mut(id)
+            {
+                *open = false;
+            }
+            store.set_collapsed(renomeando, false);
+            ph2d_editor_core::interaction::dispatch::focus_text_field(store, campo);
+            true
+        }
+        WidgetEvent::Submit(id) if id == campo => {
+            if let Some(info) = state::current_inspector_physics() {
+                let name = host.store().text(id).unwrap_or("").trim().to_string();
+                if name != crate::camadas_fisica::nome(usize::from(info.layer)) {
+                    host.bus_mut().push(EditorAction::LayerRename {
+                        layer: info.layer,
+                        name,
+                    });
+                }
+            }
+            host.store_mut().set_collapsed(renomeando, true);
+            true
+        }
+        WidgetEvent::Cancel(id) if id == campo => {
+            host.store_mut().set_collapsed(renomeando, true);
+            true
+        }
+        _ => false,
+    }
+}
+
 pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
+    if nome_da_camada(host, ev) {
+        return true;
+    }
     if crate::recibo_fisica::click(host, ev) || crate::sections::physics_colide::clique(host, ev) {
         return true;
     }

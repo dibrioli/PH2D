@@ -47,7 +47,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.phys.collides_add" => "+",
         "card.insp.phys.collides_add_tip" => "Show one more layer here and in the matrix.",
         "card.insp.phys.edit_matrix" => "Edit matrix…",
-        "card.insp.phys.edit_matrix_tip" => "Open the Physics panel at this layer's row.",
+        "card.insp.phys.edit_matrix_tip" => "Open the collision matrix with this layer's row lit.",
         "card.insp.phys.layer_rename" => "Rename…",
         "card.insp.phys.layer_name" => "Layer name",
         "card.insp.phys.stretched" => "Scale stretches this round shape into an oval.",

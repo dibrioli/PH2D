@@ -118,3 +118,39 @@ fn the_down_on_an_unavailable_row_keeps_the_menu_open() {
         "com o custom gravado o Down na linha e' o de sempre"
     );
 }
+
+/// O Esc fecha um menu aberto, mesmo com o foco no botão que o abriu; num campo a escrever, é do campo.
+#[test]
+fn esc_closes_an_open_menu_unless_a_field_is_being_typed_in() {
+    let arena = Bump::new();
+    let (mut store, _, _) = number_input_setup(7.0);
+    let esc = || KeyEvent {
+        keycode: KEY_ESCAPE,
+        modifiers: Modifiers::default(),
+        kind: KeyKind::Down,
+        timestamp_ns: 0,
+    };
+    let abre = |s: &mut WidgetStore| {
+        s.open_context_menu(ContextMenuRequest {
+            x: 0.0,
+            y: 0.0,
+            kind: ContextMenuKind::MenuBarFile,
+        });
+    };
+    abre(&mut store);
+    let _ = dispatch_key(&mut store, esc(), &arena);
+    assert!(store.context_menu().is_none(), "sem foco, fecha");
+
+    store.set_focus(Some(NodeId(9001)));
+    abre(&mut store);
+    let _ = dispatch_key(&mut store, esc(), &arena);
+    assert!(
+        store.context_menu().is_none(),
+        "com o foco noutra coisa, fecha"
+    );
+
+    store.set_focus(Some(NodeId(77)));
+    abre(&mut store);
+    let _ = dispatch_key(&mut store, esc(), &arena);
+    assert!(store.context_menu().is_some(), "o Esc é do campo");
+}

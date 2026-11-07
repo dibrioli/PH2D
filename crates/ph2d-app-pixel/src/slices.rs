@@ -32,7 +32,7 @@ const GRAB_MIN_CELLS: f64 = 0.5;
 
 #[derive(Default)]
 pub(crate) struct Estado {
-    sel: BTreeMap<u32, Vec<SliceId>>,
+    pub(crate) sel: BTreeMap<u32, Vec<SliceId>>,
     gesto: Option<(u32, Gesto)>,
     transform: bool,
     /// O último clique: o segundo, depressa e na mesma célula, mostra o cartão (T2).
@@ -55,6 +55,13 @@ impl PixelApp {
     #[must_use]
     pub fn slices_selected(&self, key: u32) -> &[SliceId] {
         self.slices.sel.get(&key).map_or(&[], Vec::as_slice)
+    }
+
+    /// A célula sob o cursor (para os gates).
+    #[doc(hidden)]
+    #[must_use]
+    pub fn hover_cell(&self) -> Option<(i32, i32)> {
+        self.hover.map(|h| h.1)
     }
 }
 
@@ -109,6 +116,9 @@ pub(crate) fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32)) -> bool {
     if let (Some(m), Some((_, g))) = (q, app.slices.gesto.as_mut()) {
         let q = image_point(m, p);
         g.drag((q.x, q.y));
+        app.hover = c
+            .editing
+            .map(|bits| (bits, (q.x.floor() as i32, q.y.floor() as i32)));
     }
     true
 }
@@ -226,7 +236,13 @@ pub(crate) fn tecla(
     ctrl: bool,
     shift: bool,
 ) -> Option<KeyAnswer> {
-    if app.tool != Tool::Slice || ctrl || shift || app.slices_selected(key).is_empty() {
+    if app.tool != Tool::Slice || ctrl || shift {
+        return None;
+    }
+    if code == KeyCode::Escape && canal::esc_fecha_menu() {
+        return Some(KeyAnswer::Quiet);
+    }
+    if app.slices_selected(key).is_empty() {
         return None;
     }
     match code {

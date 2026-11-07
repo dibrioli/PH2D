@@ -235,14 +235,18 @@ fn cabecalhos(ctx: &mut PaintCtx, info: &PixelPanelInfo, g: &Grelha, duracoes: &
     }
 }
 
-/// A marca de um quadro onde uma slice selecionada tem key (decisão do dono, P11 §9.2): um quadradinho
-/// no canto do cabeçalho, por baixo do número.
+/// A marca de um quadro onde uma slice selecionada tem key (decisão do dono, P11 §9.2): uma barrinha
+/// centrada no topo do cabeçalho, por cima do número, sem tocar na coluna vizinha.
 fn marca_de_slice(ctx: &mut PaintCtx, r: Rect) {
     crate::state::conta_marca_de_slice();
-    let lado = Spacing::Xs.px();
-    let q = Rect::new(r.x + r.w - lado, r.y, lado, lado);
+    let q = caixa_da_marca(r);
     let cor = resolve(ColorToken::Accent, ctx.host.theme());
-    fill_rounded_rect(ctx.scene, q, lado * 0.5, cor);
+    fill_rounded_rect(ctx.scene, q, q.h * 0.5, cor);
+}
+
+fn caixa_da_marca(r: Rect) -> Rect {
+    let (w, h) = (r.w * 0.5, Spacing::Xs.px());
+    Rect::new(r.x + (r.w - w) * 0.5, r.y, w, h)
 }
 
 #[expect(clippy::too_many_arguments, reason = "um texto centrado numa caixa")]
@@ -528,5 +532,21 @@ pub(crate) fn ponto(ctx: &mut PaintCtx, r: Rect, cel: Option<&PixelCel>) {
             fonte,
             resolve(ColorToken::Accent, theme),
         );
+    }
+}
+
+#[cfg(test)]
+mod marca_tests {
+    use super::*;
+
+    /// A marca diz de que quadro é: centrada na coluna, dentro dela, e larga para se ver.
+    #[test]
+    fn a_marca_de_slice_fica_centrada_na_coluna_do_quadro() {
+        let r = Rect::new(100.0, 10.0, 44.0, 30.0);
+        let q = caixa_da_marca(r);
+        assert_eq!(q.x + q.w * 0.5, r.x + r.w * 0.5, "centrada");
+        assert!(q.x > r.x && q.x + q.w < r.x + r.w, "não toca na vizinha");
+        assert!(q.w > q.h * 2.0, "uma barra, não um ponto");
+        assert_eq!(q.y, r.y);
     }
 }

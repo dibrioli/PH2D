@@ -10,7 +10,7 @@ use ph2d_editor_core::pixel_panel::{
 
 pub const ROUTERS: &[ph2d_app_host::SmokeRouter] = &[ph2d_app_host::SmokeRouter {
     env: "PH2D_PIXEL_SMOKE",
-    max_level: 23,
+    max_level: 24,
 }];
 
 /// O nível armado em `PH2D_PIXEL_SMOKE`.
@@ -120,6 +120,7 @@ pub fn stage(
             app.wants_edit = None;
             true
         }),
+        24 => crate::smoke_slices::stage(app, sim, spawn_root).is_some(),
         _ => false,
     }
 }

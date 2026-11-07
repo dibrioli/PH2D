@@ -58,6 +58,8 @@ pub enum Pedido {
 struct Canal {
     contexto: Contexto,
     menu: Option<Menu>,
+    menu_aberto: bool,
+    fechar_menu: bool,
     mostrar: bool,
     pedidos: Vec<Pedido>,
 }
@@ -87,6 +89,25 @@ pub fn abrir_menu(m: Menu) {
 #[must_use]
 pub fn take_menu() -> Option<Menu> {
     com(|c| c.menu.take())
+}
+
+/// O painel diz se o menu está à vista.
+pub fn publish_menu_aberto(aberto: bool) {
+    com(|c| c.menu_aberto = aberto);
+}
+
+/// `Esc` com o menu à vista: fecha só o menu; `true` = consumiu.
+#[must_use]
+pub fn esc_fecha_menu() -> bool {
+    com(|c| {
+        c.fechar_menu = c.menu_aberto;
+        c.menu_aberto
+    })
+}
+
+#[must_use]
+pub fn take_fechar_menu() -> bool {
+    com(|c| std::mem::take(&mut c.fechar_menu))
 }
 
 /// `Slice Properties...` e o duplo clique: o cartão à vista, aberto.

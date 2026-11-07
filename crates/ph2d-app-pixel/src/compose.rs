@@ -23,7 +23,7 @@ pub struct View<'a> {
     pub ppm: f32,
     /// O objecto em Pixel Sprite ▸ Draw, se há.
     pub editing: Option<u64>,
-    /// Um campo de texto da interface tem o teclado (`HeroScreen::text_entry_focused`).
+    /// Um campo de texto da interface ou um menu aberto tem o teclado.
     pub typing: bool,
     /// O conta-gotas do seletor de cor partilhado está armado: o próximo clique é dele.
     pub conta_gotas: bool,
@@ -48,7 +48,7 @@ impl<'a> View<'a> {
             window,
             ppm,
             editing,
-            typing: hero.text_entry_focused(),
+            typing: hero.text_entry_focused() || hero.store.context_menu().is_some(),
             conta_gotas: hero.store.eyedropper_pending().is_some(),
         }
     }

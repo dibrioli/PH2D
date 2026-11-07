@@ -49,6 +49,7 @@ pub mod smoke_pincel;
 pub mod smoke_pontas;
 pub mod smoke_quadros;
 pub mod smoke_selecao;
+pub mod smoke_slices;
 pub mod smoke_tiles;
 pub mod smoke_tocar;
 pub mod smoke_viva;

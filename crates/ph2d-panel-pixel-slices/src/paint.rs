@@ -80,6 +80,7 @@ pub(crate) fn paint(st: &mut PixelSlicesPanelState, ctx: &mut PaintCtx) {
     }
     let x = canal::contexto();
     if !x.na_mao {
+        canal::publish_menu_aberto(false);
         ctx.host.store_mut().clear_panel_rect(node);
         event::sem_nada(ctx.host);
         return;
@@ -94,10 +95,10 @@ pub(crate) fn paint(st: &mut PixelSlicesPanelState, ctx: &mut PaintCtx) {
     }
     let store = ctx.host.store_mut();
     // `Esc` limpou a seleção: o menu ficaria a oferecer verbos sem alvo.
-    if x.vista.is_none()
-        && let Some(InteractiveState::Dropdown { open, .. }) = store.get_mut(ids::MENU)
-    {
-        *open = false;
+    let fechar = canal::take_fechar_menu() || x.vista.is_none();
+    if let Some(InteractiveState::Dropdown { open, .. }) = store.get_mut(ids::MENU) {
+        *open &= !fechar;
+        canal::publish_menu_aberto(*open);
     }
     if canal::take_mostrar() {
         store.set_collapsed(ids::SEC_PROPS, false);

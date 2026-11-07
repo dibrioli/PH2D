@@ -96,9 +96,9 @@ impl Mesa {
         }
     }
 
-    pub(super) fn arrasta(&mut self, a: (f64, f64), b: (f64, f64), mods: Mods) {
-        self.ponteiro(PointerKind::Down, a, mods);
-        let q = self.ecra(b.0, b.1);
+    /// O ponteiro a andar, com ou sem gesto; `true` = consumido.
+    pub(super) fn mexe(&mut self, c: (f64, f64), mods: Mods) -> bool {
+        let q = self.ecra(c.0, c.1);
         let v = View {
             world: self.sim.world(),
             camera: &mut self.cam,
@@ -109,7 +109,12 @@ impl Mesa {
             typing: false,
             conta_gotas: false,
         };
-        assert!(self.app.pointer_moved(&v, q, mods), "o arrasto é consumido");
+        self.app.pointer_moved(&v, q, mods)
+    }
+
+    pub(super) fn arrasta(&mut self, a: (f64, f64), b: (f64, f64), mods: Mods) {
+        self.ponteiro(PointerKind::Down, a, mods);
+        assert!(self.mexe(b, mods), "o arrasto é consumido");
         self.ponteiro(PointerKind::Up, b, mods);
     }
 
@@ -175,7 +180,7 @@ pub(super) const SHIFT: Mods = Mods {
     shift: true,
     ctrl: false,
 };
-const CTRL: Mods = Mods {
+pub(super) const CTRL: Mods = Mods {
     alt: false,
     shift: false,
     ctrl: true,
@@ -369,6 +374,8 @@ fn the_slices_reach_the_scene_with_any_tool_and_selected_adds_outline_handles_an
     let mut t = Mesa::nova();
     let mut text = ph2d_text::TextSystem::without_system_fonts();
     let mut caminhos = |t: &mut Mesa| {
+        // O ponteiro fora da imagem: o cursor de célula não conta como caminho da slice.
+        let _ = t.mexe(px(-5, -5), NADA);
         let mut scene = ph2d_vector::VectorScene::new();
         let ids = [t.bits];
         t.app.draw_of(

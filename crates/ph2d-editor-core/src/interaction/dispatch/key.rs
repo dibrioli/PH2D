@@ -275,6 +275,10 @@ pub fn dispatch_key<'frame>(
         }
         KEY_ESCAPE if super::card_field::escape_scrub(store, &mut events) => {}
         KEY_ESCAPE if store.end_card_drag(true).is_some() => {}
+        // Um menu aberto sem campo a escrever: o Esc fecha só o menu.
+        KEY_ESCAPE if store.context_menu().is_some() && !escrevendo(store) => {
+            store.close_context_menu();
+        }
         KEY_ESCAPE => {
             // Audit fix #1 (CRITICAL): Esc must also abort any
             // in-flight NumberInput drag-slider OR stepper-hold,
@@ -489,6 +493,16 @@ pub fn graph_key_for(keycode: u32, cmd: bool, alt: bool) -> Option<GraphKey> {
         KEY_SPACE if !cmd => GraphKey::TogglePlay,
         KEY_F2 => GraphKey::Rename,
         _ => return None,
+    })
+}
+
+/// O foco está num campo de escrever: o Esc é dele.
+fn escrevendo(store: &WidgetStore) -> bool {
+    store.focus_id().is_some_and(|id| {
+        matches!(
+            store.get(id),
+            Some(InteractiveState::TextInput { .. } | InteractiveState::NumberInput { .. })
+        )
     })
 }
 

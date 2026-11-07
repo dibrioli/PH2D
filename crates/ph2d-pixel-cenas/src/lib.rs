@@ -15,5 +15,6 @@ pub mod pincel;
 pub mod pontas;
 pub mod quadros;
 pub mod selecao;
+pub mod slices;
 pub mod tocar;
 pub mod viva;

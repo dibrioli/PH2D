@@ -37,3 +37,4 @@ Estado: **P0 + P0b + P1 na `line/PixelArt`** — [ADR-0196](../architecture/deci
 - 21 — P10b, uma camada de tilemap já desenhada, com a janela Tilemap aberta (`smoke_tiles`).
 - 22 — P10c, ilhas com praia sobre água: as 47 formas desenhadas por regra (`exemplo::terreno_ilhas`), com o pincel de terreno na mão (`smoke_tiles`).
 - 23 — GEF 23, o cartão do Pixel Sprite: os degradês 96 × 64 seleccionados, em Object.
+- 24 — P11, Slices: 72 × 48, 6 quadros, um botão (`button`, 9-slice) e um boneco a andar (`hero`, pivot nos pés, uma key por quadro), a Slice Tool na mão e a janela SLICES aberta com `hero` selecionada (`smoke_slices`).

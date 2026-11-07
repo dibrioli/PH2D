@@ -171,7 +171,8 @@ fn caixa_do_mirror(
     if fim_grade <= linha_y && c.largura_pedida(&caixa) <= coluna.1 {
         let (x0, w0) = (c.x, c.w);
         (c.x, c.w) = coluna;
-        c.row(&[caixa], linha_y);
+        // A linha sem rótulo desce `FIELD_ROW_GAP`; aqui ela divide a fila com os botões do Mirror.
+        c.row(&[caixa], linha_y - m::FIELD_ROW_GAP);
         (c.x, c.w) = (x0, w0);
         return fim.max(fim_grade);
     }

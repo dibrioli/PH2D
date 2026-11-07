@@ -55,7 +55,6 @@ pub fn publica_as_camadas(world: &ph2d_ecs::World, physics: &PhysicsBridge) {
         &LayerMatrix::from_rows(physics.settings().layer_matrix),
     );
     ph2d_panel_physics::set_visible_layers(visiveis);
-    ph2d_panel_physics::set_layer_counts(ph2d_physics_ecs::objects_per_layer(world));
     ph2d_panel_physics::set_layer_objects(ph2d_physics_ecs::objects_on_layers(world));
     ph2d_panel_inspector::camadas_fisica::set_current(nomes.0, vivo, visiveis);
 }
@@ -150,7 +149,7 @@ pub fn acao_das_camadas(
         }
         A::LayerShow { layer } => ph2d_physics_ecs::LayerNames::show(sim.world_mut(), layer),
         A::LayerRemove { layer, to } => {
-            ph2d_physics_ecs::LayerNames::remove(sim.world_mut(), layer, to);
+            ph2d_physics_ecs::LayerNames::remove(sim.world_mut(), layer, to)
         }
         A::LayerMatrixOpen { layer } => {
             if let Some(h) = hero.as_mut() {

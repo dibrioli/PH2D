@@ -92,8 +92,14 @@ thread_local! {
     static OBJETOS: RefCell<Vec<(usize, u64, String)>> = const { RefCell::new(Vec::new()) };
 }
 
-/// Uma vez por quadro: (camada, bits, nome) de cada objeto (`ph2d_physics_ecs::objects_on_layers`).
+/// Uma vez por quadro: (camada, bits, nome) de cada objeto (`ph2d_physics_ecs::objects_on_layers`, a
+/// regra de `objects_per_layer`); as contagens da lista saem daqui.
 pub fn set_layer_objects(v: Vec<(usize, u64, String)>) {
+    let mut n = [0u32; ph2d_physics_ecs::MAX_LAYERS];
+    for o in &v {
+        n[o.0.min(ph2d_physics_ecs::MAX_LAYERS - 1)] += 1;
+    }
+    set_layer_counts(n);
     OBJETOS.with(|o| *o.borrow_mut() = v);
 }
 

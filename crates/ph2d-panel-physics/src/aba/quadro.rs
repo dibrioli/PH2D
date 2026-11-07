@@ -46,6 +46,11 @@ pub(super) fn fotos(ctx: &mut PaintCtx) {
     }
     FEITO.set(true);
     abre(Some(1));
+    // `remove`: a Enemy (2) aberta, com a pergunta do «Remove» (destino Ground).
+    if caso == "remove" {
+        abre(Some(2));
+        super::pergunta_o_destino(Some(0));
+    }
     // `default`: a camada 0 perde o nome (lê-se «Default»); os outros casos dão os nomes da maquete B.
     let nomes: Vec<&str> = if caso == "default" {
         vec![""]
@@ -210,7 +215,15 @@ impl Quadro {
         let contagem_w = largura(ctx, &MAX_LAYERS.to_string().repeat(2));
         let lista_w = (rotulo_w + contagem_w + Spacing::Lg.px() * 2.0)
             .max(largura(ctx, tr("card.physics.tab_layers")) + Spacing::Lg.px() * 2.0)
-            .max(ROW_H_PX * 6.0); // LITERAL-PX-OK: a lista tem pelo menos seis linhas de largura
+            .max(ROW_H_PX * 6.0) // LITERAL-PX-OK: a lista tem pelo menos seis linhas de largura
+            // «+ Add» e «Remove» lado a lado cabem dentro do cartão.
+            .max(
+                largura(ctx, add_rotulo)
+                    + largura(ctx, tr("card.physics.tab_remove"))
+                    + Spacing::Lg.px() * 2.0
+                    + Spacing::Lg.px() * 2.0
+                    + Spacing::Md.px(),
+            );
         let aberta_n = camada_aberta();
         let nomes_dos_objetos: Vec<String> = crate::state::layer_objects(aberta_n)
             .into_iter()

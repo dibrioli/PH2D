@@ -129,10 +129,18 @@ fn novo_valor(c: &Campo, l: &Layer, base: &Recipe, u: f64, tamanho: f64) -> Opti
         return None;
     }
     let v = c.le(base, Some(l))?;
+    if !dentro_da_faixa(c, v) {
+        return None;
+    }
     Some(match lei_de(c.id)? {
         Lei::Fator => v * (u * tamanho).det_exp(),
         Lei::Soma(por_unidade) => v + u * tamanho * por_unidade,
     })
+}
+
+/// O valor que veio de fora da faixa do campo foi posto de propósito: o sorteio não o corta.
+fn dentro_da_faixa(c: &Campo, v: f64) -> bool {
+    (c.faixa.0..=c.faixa.1).contains(&v)
 }
 
 fn iguala_o_fim(r: &mut Recipe, base: &Recipe, id: LayerId, inicio: NodeId, fim: NodeId) {
@@ -142,7 +150,11 @@ fn iguala_o_fim(r: &mut Recipe, base: &Recipe, id: LayerId, inicio: NodeId, fim:
     let Some(l) = base.layer(id) else {
         return;
     };
-    if l.travas.contains(&fim.0) || ci.le(base, Some(l)) != cf.le(base, Some(l)) {
+    let de_antes = ci.le(base, Some(l));
+    if l.travas.contains(&fim.0)
+        || de_antes != cf.le(base, Some(l))
+        || !de_antes.is_some_and(|v| dentro_da_faixa(ci, v))
+    {
         return;
     }
     if let Some(novo) = r.layer(id).and_then(|n| ci.le(r, Some(n))) {

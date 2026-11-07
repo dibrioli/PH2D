@@ -9,7 +9,7 @@ use ph2d_sfx_recipe::LayerId;
 use crate::aba::{Aba, Alvo, Gesto};
 use crate::metrics as m;
 
-fn alvo_em(a: &Aba, x: f32, y: f32) -> Option<Alvo> {
+pub(crate) fn alvo_em(a: &Aba, x: f32, y: f32) -> Option<Alvo> {
     // O último pintado está por cima.
     a.alvos
         .iter()
@@ -19,6 +19,9 @@ fn alvo_em(a: &Aba, x: f32, y: f32) -> Option<Alvo> {
 }
 
 pub(crate) fn ponteiro(a: &mut Aba, kind: PointerKind, x: f32, y: f32) -> bool {
+    if kind == PointerKind::Move {
+        a.ponteiro = Some((x, y));
+    }
     if let Some(j) = a.janela.as_mut() {
         let saida = j.ponteiro(kind, x, y);
         responde_a_janela(a, saida);
@@ -136,7 +139,7 @@ fn reordena(a: &mut Aba, id: LayerId, y: f32) {
 
 fn clique(a: &mut Aba, alvo: Option<Alvo>) {
     match alvo {
-        Some(Alvo::Play) => a.quer_tocar = true,
+        Some(Alvo::Play) => toca(a),
         Some(Alvo::Stop) => para(a),
         Some(Alvo::PlayOnChange) => a.play_on_change = !a.play_on_change,
         Some(Alvo::UseInGame) => a.quer_escolher = true,
@@ -157,8 +160,15 @@ fn clique(a: &mut Aba, alvo: Option<Alvo>) {
     }
 }
 
+/// O `Space` e o Play são o volume real, mesmo sobre um sorteio que ainda não tocou.
+fn toca(a: &mut Aba) {
+    a.quer_tocar = true;
+    a.quer_nivelado = false;
+}
+
 fn para(a: &mut Aba) {
     a.quer_tocar = false;
+    a.quer_nivelado = false;
     a.quer_parar = true;
 }
 
@@ -195,7 +205,7 @@ pub(crate) fn tecla(a: &mut Aba, k: &KeyInput<'_>) -> KeyOutcome {
     match k.key {
         Key::Space => {
             if k.pressed {
-                a.quer_tocar = true;
+                toca(a);
             }
             tomada(true)
         }
@@ -236,6 +246,16 @@ pub(crate) fn roda(a: &mut Aba, x: f32, y: f32, dy: f32) -> bool {
     }
     a.rolagem = (a.rolagem - dy * m::WHEEL_LINE_PX).clamp(0.0, a.rolagem_max);
     true
+}
+
+/// A pintura mudou os alvos: o que está sob a mão parada pode ser outro.
+pub(crate) fn hover_de_novo(a: &mut Aba) {
+    if a.gesto.is_some() {
+        return;
+    }
+    if let Some((x, y)) = a.ponteiro {
+        a.hover = alvo_em(a, x, y);
+    }
 }
 
 pub(crate) fn aparencia(a: &Aba, x: f32, y: f32) -> PointerLook {

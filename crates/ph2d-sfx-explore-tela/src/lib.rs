@@ -8,7 +8,7 @@ use ph2d_editor_core::paint::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
-use ph2d_sfx_explore::{Exploracao, FILHOS, Grade, TAMANHO_ROLL};
+use ph2d_sfx_explore::{Exploracao, FILHOS, Filho, Grade, TAMANHO_ROLL};
 use ph2d_sfx_lab::job::Onda;
 use ph2d_sfx_recipe::Como;
 use ph2d_text::TextSystem;
@@ -72,6 +72,8 @@ pub enum AlvoE {
     Explore,
     Atual,
     Filho(u8),
+    /// O aviso da variação que estoura. Registrado antes da célula, que fica por cima: não tira o clique dela.
+    Estoura(u8),
     Mudanca,
     SoKept,
     Ouvido(u32),
@@ -448,6 +450,11 @@ fn filho(p: &mut P<'_>, g: &Grade, i: usize, r: Rect) {
     }
     let n = (i + 1).to_string();
     p.texto(&n, r.x + GAP, topo(r), TEXTO_PX, T::Text1);
+    if g.filhos[i].as_ref().is_some_and(Filho::estoura) {
+        let x = r.x + GAP + NUMERO_W;
+        p.texto(tr("sfxlab.explore.clips"), x, topo(r), PEQUENO_PX, T::Warn);
+        p.alvos.push((AlvoE::Estoura(i as u8), r));
+    }
     if g.filhos[i].is_none() {
         let dito = if g.erro.is_some() {
             tr("sfxlab.explore.failed")

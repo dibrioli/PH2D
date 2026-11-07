@@ -7,6 +7,7 @@
 //! Medição em `04_W3_plano.md` §6: gate `os_extremos_de_cada_campo_soam_e_sao_finitos`.
 
 use ph2d_a11y::NodeId;
+use ph2d_det_math::DetMath;
 use ph2d_sfx_recipe::{
     Body, EnvPoint, Envelope, Layer, MAX_HZ, MAX_SECONDS, MAX_SEMITONES, MIN_BODY_HZ, MIN_HZ,
     ModeLaw, Noise, NoiseFilter, Recipe, Recording, SAMPLE_RATE, Source, Tone, Wave,
@@ -205,7 +206,7 @@ fn db_de(g: f32) -> f64 {
     if g <= 0.0 {
         DB_MIN
     } else {
-        redondo((20.0 * f64::from(g).log10()).max(DB_MIN), CEM)
+        redondo((20.0 * f64::from(g).det_log10()).max(DB_MIN), CEM)
     }
 }
 
@@ -213,7 +214,7 @@ fn ganho_de(db: f64) -> f32 {
     if db <= DB_MIN {
         0.0
     } else {
-        10f64.powf(db / 20.0) as f32
+        10f64.det_powf(db / 20.0) as f32
     }
 }
 

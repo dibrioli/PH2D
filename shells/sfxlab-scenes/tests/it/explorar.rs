@@ -139,3 +139,17 @@ fn o_explore_nao_tira_os_cartoes_nem_os_medidores() {
         .expect("grade");
     assert_eq!(g.base, receita);
 }
+
+/// O gesto do cartão não tem `Gesto` na aba, só o gesto aberto no desfazer.
+#[test]
+fn com_o_scrub_do_cartao_em_curso_o_r_nao_sorteia() {
+    let mut m = Mesa::nova();
+    let id = m.abre("Metal Hit", metal());
+    let ganho = hash_node_id("sfxlab_gain");
+    m.agarra(ganho, 40.0);
+    let arrastada = m.receita(id);
+    assert_ne!(arrastada, metal(), "o scrub mexeu");
+    let _ = tecla(&mut m, 'r');
+    assert_eq!(m.receita(id), arrastada, "o R no meio do scrub");
+    m.solta(ganho, 40.0);
+}

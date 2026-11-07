@@ -34,7 +34,15 @@ impl Aba {
         self.quer_nivelado = true;
     }
 
+    /// Com a mão no meio de um gesto, as teclas que trocam o som não fazem nada.
+    fn em_gesto(&self) -> bool {
+        self.gesto.is_some() || self.hist.em_gesto()
+    }
+
     fn roll(&mut self) {
+        if self.em_gesto() {
+            return;
+        }
         if self.ex.aberta() {
             let (r, t) = (self.receita.clone(), self.takes.clone());
             return self.ex.semeia(&r, TAMANHO_ROLL, &t);
@@ -44,6 +52,9 @@ impl Aba {
     }
 
     fn mutate(&mut self) {
+        if self.em_gesto() {
+            return;
+        }
         if self.ex.aberta() {
             let (r, t) = (self.receita.clone(), self.takes.clone());
             return self.ex.semeia(&r, TAMANHO_MUTATE, &t);
@@ -53,6 +64,9 @@ impl Aba {
     }
 
     fn next(&mut self) {
+        if self.em_gesto() {
+            return;
+        }
         if self.ex.aberta() {
             let t = self.takes.clone();
             return self.ex.proximo_filho(&t);
@@ -65,7 +79,7 @@ impl Aba {
     fn keep(&mut self) {
         let do_filho = self.ex.grade.as_ref().and_then(|g| {
             let i = g.ultimo?;
-            Some((g.filhos[i].as_ref()?.receita.clone(), g.como(i)))
+            Some((g.receita(i), g.como(i)))
         });
         match do_filho {
             Some((r, como)) => {
@@ -78,19 +92,21 @@ impl Aba {
 
     /// `Enter`: a variação ouvida por último vira a atual, e nascem oito novas em volta dela.
     fn escolhe_o_filho(&mut self) {
+        if self.em_gesto() {
+            return;
+        }
         let nova = self
             .ex
             .grade
             .as_ref()
-            .and_then(|g| g.filhos[g.ultimo?].as_ref())
-            .map(|f| f.receita.clone());
+            .and_then(|g| Some(g.receita(g.ultimo?)));
         if let Some(r) = nova {
             self.troca_por(r);
         }
     }
 
     fn alterna_explore(&mut self) {
-        self.gesto = None;
+        self.fecha_gesto();
         let (r, t) = (self.receita.clone(), self.takes.clone());
         self.ex.alterna(&r, &t);
     }
@@ -182,7 +198,7 @@ pub(crate) fn clique(a: &mut Aba, alvo: AlvoE) {
         AlvoE::SoKept => a.so_kept = !a.so_kept,
         AlvoE::Ouvido(i) => a.da_linha(i),
         AlvoE::Estrela(i) => a.ex.sessao.alterna_estrela(i as usize),
-        AlvoE::Filho(_) | AlvoE::Mudanca => {}
+        AlvoE::Filho(_) | AlvoE::Estoura(_) | AlvoE::Mudanca => {}
     }
 }
 
@@ -246,16 +262,16 @@ pub(crate) fn move_(a: &mut Aba, gesto: Gesto, x: f32, y: f32) {
             });
             a.mao = (x, y);
             let t = a.takes.clone();
-            let tamanho = tamanho_do_arrasto(a, i, x, y, x0, y0, t0);
+            let tamanho = tamanho_do_arrasto(a, x, y, x0, y0, t0);
             a.ex.redimensiona(i, tamanho, &t);
         }
         _ => {}
     }
 }
 
-/// A distância ao som atual manda: encostar nele é a base, a célula é o tamanho de agora e longe é mais. Voltar ao ponto de onde
-/// saiu devolve o valor exato.
-fn tamanho_do_arrasto(a: &Aba, _i: usize, x: f32, y: f32, x0: f32, y0: f32, t0: f64) -> f64 {
+/// A distância ao som atual manda: encostar nele é a base, e cada distância igual à da partida soma o `Change`. Voltar ao ponto
+/// de onde saiu devolve o valor exato.
+fn tamanho_do_arrasto(a: &Aba, x: f32, y: f32, x0: f32, y0: f32, t0: f64) -> f64 {
     if ((x - x0).powi(2) + (y - y0).powi(2)).sqrt() < ARRASTO_MIN_PX {
         return t0;
     }
@@ -268,8 +284,9 @@ fn tamanho_do_arrasto(a: &Aba, _i: usize, x: f32, y: f32, x0: f32, y0: f32, t0: 
     if c.contains(x, y) {
         return 0.0;
     }
-    let base = if t0 > 0.0 { t0 } else { TAMANHO_MUTATE };
-    (base * f64::from(d / d0)).min(TAMANHO_MAX)
+    let change = a.ex.grade.as_ref().map_or(0.0, |g| g.tamanho);
+    let base = if change > 0.0 { change } else { TAMANHO_MUTATE };
+    (t0 + base * f64::from((d - d0) / d0)).clamp(0.0, TAMANHO_MAX) // CLAMP-OK: 0 < TAMANHO_MAX
 }
 
 pub(crate) fn sobe(a: &mut Aba, gesto: Gesto) {

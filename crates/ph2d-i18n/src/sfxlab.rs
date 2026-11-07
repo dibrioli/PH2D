@@ -18,6 +18,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "sfxlab.explore.same_volume_only" => "Same volume",
         "sfxlab.explore.current" => "Current",
         "sfxlab.explore.rendering" => "Rendering",
+        "sfxlab.explore.clips" => "Clips",
         "sfxlab.explore.failed" => "This variation could not be rendered",
         "sfxlab.explore.change_n" => "Change (%) {n}",
         "sfxlab.explore.hint" => {

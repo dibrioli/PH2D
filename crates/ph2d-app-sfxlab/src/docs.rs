@@ -99,6 +99,11 @@ impl SfxLabDocs {
                 a.quer_parar = false;
                 self.parar = true;
             }
+            // O render que há é de outro som: tocá-lo fingiria que este soa.
+            if a.erro.is_some() {
+                a.quer_tocar = false;
+                a.quer_nivelado = false;
+            }
             if a.quer_tocar
                 && !a.em_voo()
                 && let Some(f) = &a.pronto
@@ -203,6 +208,12 @@ impl SfxLabDocs {
     #[must_use]
     pub fn exploracao(&self, id: u64) -> Option<&ph2d_sfx_explore::Exploracao> {
         self.aba(id).map(|a| &a.ex)
+    }
+
+    /// O que está aceso sob a mão.
+    #[must_use]
+    pub fn hover(&self, id: u64) -> Option<Alvo> {
+        self.aba(id)?.hover
     }
 
     /// O filtro «Kept» da faixa Heard.

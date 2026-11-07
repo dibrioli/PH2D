@@ -310,3 +310,90 @@ fn medir_exploracao() {
         minimo(&grade)
     );
 }
+
+/// A pergunta do limite da `Ninhada` (`docs/SfxLab/05_W4_plano.md` §6): pedidos seguidos do pior corpo de 120 s. `R` preso são oito
+/// por tecla; 1000 pedidos dizem se o pico cresce com o tamanho da rajada.
+/// `cargo test --profile smoke -p ph2d-host-sfxlab-scenes --test it medir_ninhada -- --ignored --nocapture --test-threads=1`
+#[test]
+#[ignore = "sonda: mede, não reprova"]
+fn medir_ninhada() {
+    use ph2d_sfx_explore::{FILHOS, Ninhada};
+    use ph2d_sfx_recipe::{Body, ModeLaw, Source, Takes};
+    use std::sync::Arc;
+    use std::time::Duration;
+
+    let vivas = || {
+        std::fs::read_to_string("/proc/self/status")
+            .ok()
+            .and_then(|s| {
+                s.lines()
+                    .find(|l| l.starts_with("Threads"))
+                    .and_then(|l| l.split_whitespace().nth(1)?.parse::<i64>().ok())
+            })
+            .unwrap_or(0)
+    };
+    let mut pior = Recipe::new(1, 120.0);
+    pior.add(
+        1.0,
+        Source::Body(Body {
+            law: ModeLaw::Bar,
+            base_hz: 20.0,
+            modes: 1080,
+            t60: 60.0,
+            damping: 0.0,
+            rolloff: 0.5,
+            contact_ms: 1.0,
+            noise: 0.5,
+        }),
+        Envelope::default(),
+    );
+    let takes = Arc::new(Takes::default());
+    let corrida = |pedidos: usize, lugares: usize, por_vez: usize, intervalo: Duration| {
+        let antes = vivas();
+        let mut n = Ninhada::default();
+        let mut pico = 0;
+        let t = Instant::now();
+        for i in 0..pedidos {
+            n.pede(i % lugares, pior.clone(), takes.clone());
+            pico = pico.max(vivas() - antes);
+            if !intervalo.is_zero() && (i + 1) % por_vez == 0 {
+                std::thread::sleep(intervalo);
+            }
+        }
+        let pedir = t.elapsed().as_secs_f64() * 1e3;
+        let t = Instant::now();
+        drop(n);
+        (pico, pedir, t.elapsed().as_secs_f64() * 1e3)
+    };
+    println!("== o pior corpo de 120 s (o maior de {BLOCOS} blocos intercalados)");
+    let quadro = Duration::from_millis(16);
+    let casos = [
+        ("200, 1 lugar, sem pausa", 200, 1, 1, Duration::ZERO),
+        ("1000, 1 lugar, sem pausa", 1000, 1, 1, Duration::ZERO),
+        ("200, 1 lugar, 1 por quadro", 200, 1, 1, quadro),
+        ("200, 8 lugares, sem pausa", 200, FILHOS, 1, Duration::ZERO),
+        (
+            "1000, 8 lugares, sem pausa",
+            1000,
+            FILHOS,
+            1,
+            Duration::ZERO,
+        ),
+        ("200, 8 lugares, 8 por quadro", 200, FILHOS, FILHOS, quadro),
+    ];
+    let mut maximos = [(0, 0.0f64, 0.0f64); 6];
+    for bloco in 0..BLOCOS {
+        for k in 0..casos.len() {
+            let i = (k + bloco) % casos.len();
+            let (pico, pedir, soltar) = corrida(casos[i].1, casos[i].2, casos[i].3, casos[i].4);
+            let m = &mut maximos[i];
+            *m = (m.0.max(pico), m.1.max(pedir), m.2.max(soltar));
+        }
+    }
+    for (c, m) in casos.iter().zip(maximos) {
+        println!(
+            "{:<30} pico de threads {:>4} · pedir tudo {:>8.1} ms · Drop {:>7.1} ms",
+            c.0, m.0, m.1, m.2
+        );
+    }
+}

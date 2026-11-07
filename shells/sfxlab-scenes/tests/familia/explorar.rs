@@ -1,11 +1,18 @@
 //! A exploração pela mão: tecla e clique reais, efeito lido na receita, na lista Heard e no que a escuta recebeu.
 
+use crate::pico;
 use crate::{Mesa, verdade};
-use ph2d_app_sfxlab::{Alvo, AlvoE, FILHOS};
+use ph2d_app_sfxlab::{Alvo, AlvoE, FILHOS, TAMANHO_MUTATE, TAMANHO_ROLL};
 use ph2d_audio::dsp::maior_momento;
 use ph2d_editor_core::screens::hero::board_keys::BoardKey;
+use ph2d_editor_core::screens::hero::board_view;
+use ph2d_sfx_dsp::limitar_escuta;
+use ph2d_sfx_explore::{Grade, varia};
 use ph2d_sfx_lab::medida::ALVO_DA_ESCUTA;
-use ph2d_sfx_recipe::{Approved, Recipe, SAMPLE_RATE, SfxLibrary, factory};
+use ph2d_sfx_recipe::{
+    Approved, Body, Como, Envelope, ModeLaw, Noise, NoiseFilter, Recipe, SAMPLE_RATE, SfxLibrary,
+    Source, factory,
+};
 
 fn fabrica(nome: &str) -> Recipe {
     factory::all()
@@ -535,4 +542,440 @@ fn trazer_do_heard_nao_desaprova_o_som_do_jogo() {
     let atual = m.receita(id);
     assert_eq!(atual.layers, linha.receita.layers, "o som voltou");
     assert_eq!(atual.approved, Some(aprovado));
+}
+
+// ── As auditorias da W4 ──
+
+/// Um corpo longo: o render demora o bastante para a tecla chegar antes dele. Cada gate confere que chegou.
+fn lenta() -> Recipe {
+    let mut r = Recipe::new(5, 12.0);
+    r.add(
+        1.0,
+        Source::Body(Body {
+            law: ModeLaw::Bar,
+            base_hz: 40.0,
+            modes: 500,
+            t60: 3.0,
+            damping: 0.0,
+            rolloff: 0.5,
+            contact_ms: 1.0,
+            noise: 0.0,
+        }),
+        Envelope::default(),
+    );
+    r
+}
+
+fn aberta_com(r: Recipe) -> (Mesa, u64) {
+    let mut m = Mesa::new();
+    m.poe("Som", r);
+    let id = m.abre("Som");
+    m.espera(id);
+    m.escuta.toques.clear();
+    (m, id)
+}
+
+fn grade_de(m: &mut Mesa, id: u64) -> &Grade {
+    m.docs()
+        .exploracao(id)
+        .expect("aba")
+        .grade
+        .as_ref()
+        .expect("grade")
+}
+
+fn numero(g: &Grade, i: usize) -> u64 {
+    match g.como(i) {
+        Como::Variacao(n) => n,
+        c => panic!("{c:?}"),
+    }
+}
+
+#[test]
+fn tab_no_meio_do_arrasto_fecha_o_gesto_e_o_mute_seguinte_e_outro_passo() {
+    let (mut m, id) = aberta("Impact");
+    let inicio = m.receita(id);
+    m.clica(id, Alvo::PlayOnChange);
+    let camada = m.camada(id, 1);
+    let de = m.centro(id, Alvo::Onda(camada));
+    assert!(m.carrega(de));
+    m.move_((de.0 + 40.0, de.1));
+    m.quadro();
+    let movida = m.receita(id);
+    assert_ne!(movida, inicio, "o arrasto mexeu");
+    assert!(m.tecla(BoardKey::Tab));
+    assert!(m.docs().exploracao(id).expect("aba").aberta());
+    let _ = m.larga((de.0 + 40.0, de.1));
+    assert!(m.tecla(BoardKey::Tab));
+    assenta(&mut m, id);
+    m.escuta.toques.clear();
+
+    m.clica(id, Alvo::Mudo(camada));
+    assert!(m.receita(id).layers[1].muted);
+    assenta(&mut m, id);
+    assert_eq!(m.escuta.toques.len(), 1, "com Play on change, o Mute toca");
+
+    assert_eq!(m.desfaz(false), Some(true));
+    assert_eq!(m.receita(id), movida, "desfazer reverte só o Mute");
+    assert_eq!(m.desfaz(false), Some(true));
+    assert_eq!(m.receita(id), inicio, "e depois só o arrasto");
+}
+
+#[test]
+fn esc_no_meio_do_arrasto_tambem_fecha_o_gesto() {
+    let (mut m, id) = aberta("Impact");
+    assert!(m.tecla(BoardKey::Tab));
+    assert!(m.tecla(BoardKey::Tab));
+    let camada = m.camada(id, 0);
+    let ultima = m.receita(id).layers.last().expect("camada").id;
+    let de = m.centro(id, Alvo::Alca(camada));
+    let para = m.centro(id, Alvo::Alca(ultima));
+    assert!(m.carrega(de));
+    m.move_(para);
+    m.quadro();
+    let movida = m.receita(id);
+    assert_ne!(movida.layers[0].id, camada, "a ordem mudou");
+    assert!(m.tecla(BoardKey::Tab), "entra no Explore com a alça presa");
+    assert!(m.tecla(BoardKey::Escape));
+    assert!(!m.docs().exploracao(id).expect("aba").aberta());
+    let _ = m.larga(para);
+    m.clica(id, Alvo::Mudo(camada));
+    assert_eq!(m.desfaz(false), Some(true));
+    assert_eq!(m.receita(id), movida);
+}
+
+#[test]
+fn sortear_com_gesto_em_curso_e_ignorado_mas_a_tecla_e_tomada() {
+    let (mut m, id) = aberta("Impact");
+    let camada = m.camada(id, 1);
+    let de = m.centro(id, Alvo::Onda(camada));
+    assert!(m.carrega(de));
+    m.move_((de.0 + 40.0, de.1));
+    m.quadro();
+    let movida = m.receita(id);
+    for c in ['r', 'm', 'n'] {
+        assert!(m.tecla(char_(c)), "{c} é tomada");
+        assert_eq!(m.receita(id), movida, "{c} no meio do arrasto");
+    }
+    let _ = m.larga((de.0 + 40.0, de.1));
+
+    let inicio = m.receita(id);
+    assert!(m.tecla(BoardKey::Tab));
+    assenta(&mut m, id);
+    assert!(m.tecla(char_('1')));
+    assenta(&mut m, id);
+    let (como, de) = (
+        grade_de(&mut m, id).como(0),
+        m.centro(id, Alvo::Ex(AlvoE::Filho(2))),
+    );
+    assert!(m.carrega(de));
+    m.move_((de.0, de.1 - 30.0));
+    m.quadro();
+    for k in [BoardKey::Enter, char_('r'), char_('m'), char_('n')] {
+        assert!(m.tecla(k), "{k:?} é tomada");
+        assert_eq!(m.receita(id), inicio, "{k:?} no meio do arrasto");
+        let g = grade_de(&mut m, id);
+        assert_eq!(g.ultimo, Some(0), "{k:?} não anda");
+        assert_eq!(g.como(0), como, "{k:?} não refaz as oito");
+    }
+    let _ = m.larga((de.0, de.1 - 30.0));
+}
+
+#[test]
+fn n_e_k_antes_do_render_dao_a_estrela_a_variacao_ouvida() {
+    let base = lenta();
+    let (mut m, id) = aberta_com(base.clone());
+    assert!(m.tecla(BoardKey::Tab));
+    assert!(m.tecla(char_('n')));
+    assert!(m.tecla(char_('k')));
+    let g = grade_de(&mut m, id);
+    assert!(g.filhos[0].is_none(), "a fixture: ainda a renderizar");
+    let (certa, como) = (varia(&base, numero(g, 0), g.tamanhos[0]), g.como(0));
+    let lista = m.docs().exploracao(id).expect("aba").sessao.ouvidos.clone();
+    assert_eq!(lista.len(), 1, "{lista:?}");
+    assert!(lista[0].estrela);
+    assert_eq!(lista[0].receita, certa);
+    assert_eq!(lista[0].como, como);
+    assert!(
+        lista.iter().all(|o| o.receita != base),
+        "a base sem estrela"
+    );
+}
+
+#[test]
+fn arrastar_e_enter_antes_do_render_a_atual_e_a_arrastada() {
+    let base = lenta();
+    let (mut m, id) = aberta_com(base.clone());
+    assert!(m.tecla(BoardKey::Tab));
+    assenta(&mut m, id);
+    let de = m.centro(id, Alvo::Ex(AlvoE::Filho(1)));
+    m.arrasta(de, (de.0, de.1 - 60.0), 1);
+    let g = grade_de(&mut m, id);
+    assert_eq!(g.ultimo, Some(1));
+    let certa = varia(&base, numero(g, 1), g.tamanhos[1]);
+    assert_ne!(
+        g.filhos[1].as_ref().expect("a velha").receita,
+        certa,
+        "a fixture: o render novo ainda não chegou"
+    );
+    assert!(m.tecla(BoardKey::Enter));
+    assert_eq!(m.receita(id), certa);
+}
+
+#[test]
+fn k_logo_apos_arrastar_marca_a_arrastada() {
+    let base = lenta();
+    let (mut m, id) = aberta_com(base.clone());
+    assert!(m.tecla(BoardKey::Tab));
+    assenta(&mut m, id);
+    let de = m.centro(id, Alvo::Ex(AlvoE::Filho(1)));
+    m.arrasta(de, (de.0, de.1 - 60.0), 1);
+    let g = grade_de(&mut m, id);
+    let certa = varia(&base, numero(g, 1), g.tamanhos[1]);
+    assert_ne!(g.filhos[1].as_ref().expect("a velha").receita, certa);
+    assert!(m.tecla(char_('k')));
+    let lista = &m.docs().exploracao(id).expect("aba").sessao.ouvidos;
+    assert!(lista.iter().any(|o| o.estrela && o.receita == certa));
+}
+
+#[test]
+fn n_e_r_antes_do_render_nao_tocam_nada() {
+    let (mut m, id) = aberta_com(lenta());
+    assert!(m.tecla(BoardKey::Tab));
+    assert!(m.tecla(char_('n')));
+    assert!(grade_de(&mut m, id).filhos[0].is_none(), "a fixture");
+    assert!(m.tecla(char_('r')));
+    assenta(&mut m, id);
+    assert!(m.escuta.toques.is_empty(), "ninguém pediu para tocar");
+    assert_eq!(ouvidos(&mut m, id), 0, "o que não tocou não entra no Heard");
+}
+
+/// O sorteio ainda a renderizar, seguido de uma das três portas do volume real.
+fn roll_pendente(fim: impl FnOnce(&mut Mesa, u64)) {
+    let (mut m, id) = aberta_com(lenta());
+    assert!(m.tecla(char_('r')));
+    assert!(m.docs().em_voo(id), "a fixture: o Roll ainda não tocou");
+    assert!(m.escuta.toques.is_empty(), "a fixture");
+    fim(&mut m, id);
+    assenta(&mut m, id);
+    let arquivo = verdade(&m.receita(id), m.lib());
+    assert_eq!(m.escuta.toques.len(), 1);
+    assert!(
+        m.escuta.toques[0] == limitar_escuta(&arquivo, SAMPLE_RATE),
+        "o volume real"
+    );
+}
+
+#[test]
+fn roll_e_esc_nao_deixam_o_space_nivelado() {
+    roll_pendente(|m, _| {
+        assert!(m.tecla(BoardKey::Escape));
+        assert!(m.tecla(BoardKey::Space));
+    });
+}
+
+#[test]
+fn space_sobre_um_roll_pendente_toca_o_volume_real() {
+    roll_pendente(|m, _| {
+        assert!(m.tecla(BoardKey::Space));
+    });
+}
+
+#[test]
+fn o_botao_play_sobre_um_roll_pendente_toca_o_volume_real() {
+    roll_pendente(|m, id| m.clica(id, Alvo::Play));
+}
+
+#[test]
+fn roll_e_esc_nao_deixam_o_play_on_change_nivelado() {
+    roll_pendente(|m, id| {
+        m.clica(id, Alvo::PlayOnChange);
+        assert!(m.tecla(BoardKey::Escape));
+        let camada = m.camada(id, 0);
+        m.clica(id, Alvo::Solo(camada));
+    });
+}
+
+#[test]
+fn rolar_e_l_trava_a_camada_que_esta_sob_a_mao() {
+    let mut r = Recipe::new(3, 0.1);
+    for _ in 0..30 {
+        r.add(
+            0.1,
+            Source::Noise(Noise {
+                filter: NoiseFilter::White,
+                hz: 800.0,
+                hz_end: 800.0,
+                q: 1.0,
+            }),
+            Envelope::default(),
+        );
+    }
+    let (mut m, id) = aberta_com(r);
+    let primeira = m.camada(id, 0);
+    let mao = m.centro(id, Alvo::Linha(primeira));
+    assert!(m.move_(mao));
+    m.quadro();
+    assert!(board_view::wheel(&mut m.hero, mao.0, mao.1, -10.0));
+    m.quadro();
+    let receita = m.receita(id);
+    let sob = receita
+        .layers
+        .iter()
+        .position(|l| {
+            m.docs()
+                .rect_de(id, Alvo::Linha(l.id))
+                .is_some_and(|c| c.contains(mao.0, mao.1))
+        })
+        .expect("uma linha sob a mão");
+    assert_ne!(sob, 0, "a fixture: a pilha rolou");
+    assert!(m.tecla(char_('l')));
+    let depois = m.receita(id);
+    assert!(depois.layers[sob].travada, "a que está sob a mão");
+    assert!(!depois.layers[0].travada, "não a de antes de rolar");
+}
+
+#[test]
+fn a_mao_no_meio_do_arrasto_nao_acende_o_que_passa_por_baixo() {
+    let (mut m, id) = aberta("Impact");
+    let (a, b) = (m.camada(id, 0), m.camada(id, 1));
+    let de = m.centro(id, Alvo::Onda(a));
+    let sobre = m.centro(id, Alvo::Mudo(b));
+    assert!(m.carrega(de));
+    m.move_(sobre);
+    m.quadro();
+    assert_eq!(m.docs().hover(id), None, "nada acende durante o gesto");
+    let _ = m.larga(sobre);
+    m.quadro();
+    assert_eq!(
+        m.docs().hover(id),
+        Some(Alvo::Mudo(b)),
+        "e acende ao soltar"
+    );
+}
+
+fn com_ganho(g: f32) -> Recipe {
+    let mut r = fabrica("Impact");
+    for l in &mut r.layers {
+        l.gain = g;
+    }
+    r
+}
+
+#[test]
+fn so_a_variacao_que_estoura_avisa() {
+    for (ganho, estoura) in [(20.0, true), (0.01, false)] {
+        let (mut m, id) = aberta_com(com_ganho(ganho));
+        assert!(m.tecla(BoardKey::Tab));
+        assenta(&mut m, id);
+        for i in 0..FILHOS {
+            let pico = pico(&grade_de(&mut m, id).filhos[i].as_ref().expect("f").arquivo);
+            assert_eq!(pico > 1.0, estoura, "a fixture, ganho {ganho}: {pico}");
+            let aviso = m.docs().rect_de(id, Alvo::Ex(AlvoE::Estoura(i as u8)));
+            assert_eq!(aviso.is_some(), estoura, "célula {i}, pico {pico}");
+        }
+    }
+}
+
+/// O aviso não pode roubar o clique da célula.
+#[test]
+fn clicar_no_aviso_ainda_toca_a_variacao() {
+    let (mut m, id) = aberta_com(com_ganho(20.0));
+    assert!(m.tecla(BoardKey::Tab));
+    assenta(&mut m, id);
+    m.clica(id, Alvo::Ex(AlvoE::Estoura(3)));
+    assert_eq!(grade_de(&mut m, id).ultimo, Some(3));
+}
+
+#[test]
+fn com_erro_o_space_e_o_play_nao_tocam_o_render_antigo() {
+    let (mut m, id) = aberta_com(fabrica("Impact"));
+    let boa = m.receita(id);
+    let mut quebrada = boa.clone();
+    quebrada.engine += 1;
+    m.poe("Som", quebrada);
+    m.quadro();
+    m.espera(id);
+    assert!(m.docs().pcm(id).is_some(), "a fixture: há render antigo");
+    assert!(m.tecla(BoardKey::Space));
+    m.quadro();
+    m.clica(id, Alvo::Play);
+    m.quadro();
+    assert!(
+        m.escuta.toques.is_empty(),
+        "o som velho não finge ser o novo"
+    );
+    // O pedido morreu ali: consertar o som não toca sozinho.
+    m.poe("Som", boa);
+    m.quadro();
+    m.espera(id);
+    assenta(&mut m, id);
+    assert!(m.escuta.toques.is_empty());
+}
+
+fn tamanho_de(m: &mut Mesa, id: u64, i: usize) -> f64 {
+    grade_de(m, id).tamanhos[i]
+}
+
+#[test]
+fn arrastar_a_variacao_e_continuo_mesmo_saindo_do_zero() {
+    let (mut m, id) = aberta("Impact");
+    assert!(m.tecla(BoardKey::Tab));
+    assenta(&mut m, id);
+    // O `Change` no meio: a régua do arrasto é ele, e não o tamanho do Mutate.
+    m.clica(id, Alvo::Ex(AlvoE::Mudanca));
+    assenta(&mut m, id);
+    let base = grade_de(&mut m, id).tamanho;
+    assert!((base - TAMANHO_MUTATE).abs() > 0.1, "a fixture: {base}");
+    let centro = m.centro(id, Alvo::Ex(AlvoE::Atual));
+    let de = m.centro(id, Alvo::Ex(AlvoE::Filho(1)));
+    let d0 = ((de.0 - centro.0).powi(2) + (de.1 - centro.1).powi(2)).sqrt();
+    let a = |px: f32| {
+        let t = (d0 + px) / d0;
+        (
+            centro.0 + (de.0 - centro.0) * t,
+            centro.1 + (de.1 - centro.1) * t,
+        )
+    };
+
+    // Zero: a variação é o som atual.
+    m.arrasta(de, centro, 2);
+    assert_eq!(tamanho_de(&mut m, id, 1), 0.0);
+    // Sair do zero anda aos poucos, sem salto.
+    assert!(m.carrega(de));
+    m.move_(a(20.0));
+    m.quadro();
+    let t = tamanho_de(&mut m, id, 1);
+    let certo = base * 20.0 / f64::from(d0);
+    assert!((t - certo).abs() < 1.0e-3, "{t} × {certo}");
+    // Mais perto do que partiu: o piso é zero, nunca negativo.
+    m.move_(a(-20.0));
+    m.quadro();
+    assert_eq!(tamanho_de(&mut m, id, 1), 0.0);
+    // De volta ao ponto de partida: exato.
+    m.move_(a(2.0));
+    m.quadro();
+    assert_eq!(tamanho_de(&mut m, id, 1), 0.0);
+    let _ = m.larga(a(2.0));
+
+    // Fora do zero: soma ao tamanho de onde partiu.
+    let de3 = m.centro(id, Alvo::Ex(AlvoE::Filho(3)));
+    let d3 = ((de3.0 - centro.0).powi(2) + (de3.1 - centro.1).powi(2)).sqrt();
+    let t0 = tamanho_de(&mut m, id, 3);
+    assert!(m.carrega(de3));
+    let t3 = (d3 + 20.0) / d3;
+    let longe = (
+        centro.0 + (de3.0 - centro.0) * t3,
+        centro.1 + (de3.1 - centro.1) * t3,
+    );
+    m.move_(longe);
+    m.quadro();
+    let t = tamanho_de(&mut m, id, 3);
+    let certo = t0 + base * 20.0 / f64::from(d3);
+    assert!((t - certo).abs() < 1.0e-3, "{t} × {certo}");
+    // Muito longe: o teto.
+    m.move_((longe.0 - 100_000.0, longe.1));
+    m.quadro();
+    assert_eq!(tamanho_de(&mut m, id, 3), 2.0 * TAMANHO_ROLL);
+    let _ = m.larga(de3);
 }

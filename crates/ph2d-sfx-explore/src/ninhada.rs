@@ -18,6 +18,7 @@ pub const FILHOS: usize = 8;
 pub const AVULSO: usize = FILHOS;
 const LUGARES: usize = FILHOS + 1;
 const NINGUEM: u64 = u64::MAX;
+const ESCALA_CHEIA: f32 = 1.0;
 
 #[derive(Clone, Debug)]
 pub struct Filho {
@@ -27,6 +28,16 @@ pub struct Filho {
     /// O que se ouve.
     pub nivelada: Vec<f32>,
     pub onda: Onda,
+    /// O maior valor absoluto do arquivo.
+    pub pico: f32,
+}
+
+impl Filho {
+    /// O arquivo desta variação passa da escala cheia.
+    #[must_use]
+    pub fn estoura(&self) -> bool {
+        self.pico > ESCALA_CHEIA
+    }
 }
 
 type Chegada = (usize, u64, Result<Filho, RenderError>);
@@ -74,7 +85,7 @@ impl Ninhada {
         match feita {
             Ok(t) => self.threads.push(t),
             Err(e) => {
-                let _ = self.tx.send((lugar, ticket, Err(RenderError::Cancelled)));
+                let _ = self.tx.send((lugar, ticket, Err(RenderError::SemThread)));
                 tracing::warn!("sfx lab: variation thread did not start: {e}");
             }
         }
@@ -126,13 +137,18 @@ fn rende(
         takes,
         cancelado,
     )?;
+    if cancelado() {
+        return Err(RenderError::Cancelled);
+    }
     let nivelada = escuta_nivelada(&pcm.samples, pcm.rate);
     if cancelado() {
         return Err(RenderError::Cancelled);
     }
+    let pico = pcm.samples.iter().fold(0.0_f32, |a, s| a.max(s.abs()));
     Ok(Filho {
         receita,
         onda: Onda::de(&pcm.samples),
+        pico,
         arquivo: pcm.samples,
         nivelada,
     })

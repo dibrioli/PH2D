@@ -10761,6 +10761,7 @@ dependencies = [
  "ph2d-sfx-dsp",
  "ph2d-sfx-recipe",
  "ph2d-tool-registry",
+ "tracing",
 ]
 
 [[package]]

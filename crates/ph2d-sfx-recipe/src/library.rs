@@ -186,7 +186,7 @@ impl SfxLibrary {
     /// O blob a gravar: vazio quando não há nada, e o projeto sem receitas continua igual ao byte.
     #[must_use]
     pub fn to_bytes(&self) -> Vec<u8> {
-        if self.recipes.is_empty() && self.takes.is_empty() {
+        if self.recipes.is_empty() && self.takes.is_empty() && self.ouvidos.is_empty() {
             return Vec::new();
         }
         let corpo = Escrita {
@@ -276,6 +276,21 @@ mod tests {
             .unwrap()
             .1;
         assert_eq!(lida.recipes["Metal Hit"], de_fabrica);
+    }
+
+    #[test]
+    fn so_a_lista_dos_ouvidos_tambem_se_grava() {
+        let mut lib = SfxLibrary::default();
+        assert!(lib.to_bytes().is_empty(), "sem nada, o byte vazio");
+        lib.ouvidos.insert(
+            "Som".into(),
+            vec![Ouvido {
+                receita: Recipe::new(1, 0.1),
+                como: Como::Mao,
+                estrela: true,
+            }],
+        );
+        assert_eq!(SfxLibrary::from_bytes(&lib.to_bytes()).unwrap(), lib);
     }
 
     #[test]

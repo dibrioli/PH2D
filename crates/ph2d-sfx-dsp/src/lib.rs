@@ -40,6 +40,8 @@ pub enum RenderError {
     TooLarge { bytes: u64 },
     /// Quem pediu desistiu: uma edição mais nova já vale. O que ficou pronto continua no cache.
     Cancelled,
+    /// O sistema não deu uma thread para o render.
+    SemThread,
 }
 
 impl std::fmt::Display for RenderError {
@@ -48,6 +50,7 @@ impl std::fmt::Display for RenderError {
             Self::UnknownEngine(v) => write!(f, "sound engine {v} is not available"),
             Self::TooLarge { bytes } => write!(f, "this recipe needs {bytes} bytes of audio"),
             Self::Cancelled => f.write_str("the sound was edited again"),
+            Self::SemThread => f.write_str("the system could not start the sound render"),
         }
     }
 }

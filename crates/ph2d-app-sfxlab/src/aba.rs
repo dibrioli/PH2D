@@ -82,6 +82,8 @@ pub(crate) struct Aba {
     pub gesto_do_cartao: bool,
     pub prensa: Option<Alvo>,
     pub hover: Option<Alvo>,
+    /// Onde a mão estava no último `Move`.
+    pub ponteiro: Option<(f32, f32)>,
     pub menu_add: bool,
     /// O objeto a que este som se destina, pela identidade.
     pub ligado: Option<StableId>,
@@ -139,6 +141,7 @@ impl Aba {
             gesto_do_cartao: false,
             prensa: None,
             hover: None,
+            ponteiro: None,
             menu_add: false,
             ligado: None,
             quer_escolher: false,

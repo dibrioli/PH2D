@@ -9,7 +9,8 @@ use crate::lei::{TAMANHO_MUTATE, TAMANHO_ROLL, varia};
 use crate::ninhada::{AVULSO, FILHOS, Filho, Ninhada};
 
 /// O recurso é o tamanho do arquivo do projeto: 10 000 receitas de 4 camadas são 2,4 MB e gravam em 3,4 ms; a um som por segundo,
-/// quase 3 h seguidas no mesmo som (`docs/SfxLab/05_W4_plano.md` §6). O mais velho sem estrela sai primeiro.
+/// quase 3 h seguidas no mesmo som (`docs/SfxLab/05_W4_plano.md` §6). O mais velho sem estrela sai primeiro, e o recém-ouvido
+/// nunca. A estrela é escolha do artista: só as estrelas passam a lista deste teto.
 pub const MAX_OUVIDOS: usize = 10_000;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -116,11 +117,13 @@ impl Sessao {
     }
 
     fn corta(&mut self) {
-        if self.ouvidos.len() <= MAX_OUVIDOS {
-            return;
+        while self.ouvidos.len() > MAX_OUVIDOS {
+            let velhos = &self.ouvidos[..self.ouvidos.len() - 1];
+            let Some(i) = velhos.iter().position(|o| !o.estrela) else {
+                return;
+            };
+            self.ouvidos.remove(i);
         }
-        let i = self.ouvidos.iter().position(|o| !o.estrela).unwrap_or(0);
-        self.ouvidos.remove(i);
     }
 
     /// Keep: o som ganha a estrela e vira o ponto de partida.
@@ -150,10 +153,13 @@ impl Sessao {
         self.sujo = false;
     }
 
-    /// O mundo tem outra lista? Barato de propósito: corre uma vez por imagem.
+    /// O mundo tem outra lista? Corre uma vez por imagem: compara a receita só da última, e `como` e estrela de todas.
     #[must_use]
     pub fn difere_de(&self, outra: &[Ouvido]) -> bool {
-        self.ouvidos.len() != outra.len() || self.ouvidos.last() != outra.last()
+        self.ouvidos.len() != outra.len()
+            || (self.ouvidos.iter().zip(outra))
+                .any(|(a, b)| a.como != b.como || a.estrela != b.estrela)
+            || self.ouvidos.last().map(|o| &o.receita) != outra.last().map(|o| &o.receita)
     }
 }
 
@@ -206,7 +212,9 @@ impl Grade {
         Como::Variacao(self.numero(i))
     }
 
-    fn receita(&self, i: usize) -> Recipe {
+    /// A receita do lugar `i`, de agora: não depende do render ter chegado.
+    #[must_use]
+    pub fn receita(&self, i: usize) -> Recipe {
         de_algum_lugar(&self.base, self.numero(i), self.tamanhos[i])
     }
 }
@@ -241,6 +249,7 @@ impl Exploracao {
 
     /// Oito novas em volta de `base`.
     pub fn semeia(&mut self, base: &Recipe, tamanho: f64, takes: &Arc<Takes>) {
+        self.a_tocar = None;
         let numero0 = self.sessao.numero;
         self.sessao.numero += FILHOS as u64;
         let g = Grade {
@@ -366,7 +375,6 @@ impl Exploracao {
             return;
         }
         let tamanho = g.tamanho;
-        self.a_tocar = None;
         self.semeia(atual, tamanho, takes);
     }
 

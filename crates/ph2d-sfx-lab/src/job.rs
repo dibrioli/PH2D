@@ -73,6 +73,8 @@ pub struct RenderJob {
     rx: Receiver<(u64, Result<Feito, RenderError>)>,
     novo: Arc<AtomicU64>,
     thread: Option<JoinHandle<()>>,
+    /// Só existe quando a thread não nasceu: cada pedido responde o erro por aqui.
+    sem_thread: Option<Sender<(u64, Result<Feito, RenderError>)>>,
 }
 
 impl Default for RenderJob {
@@ -81,14 +83,17 @@ impl Default for RenderJob {
         let (saida, rx) = channel();
         let novo = Arc::new(AtomicU64::new(NINGUEM));
         let dela = novo.clone();
+        let reserva = saida.clone();
         let thread = std::thread::Builder::new()
             .name("ph2d-sfx-render".into())
             .spawn(move || corre(&entrada, &saida, &dela))
+            .inspect_err(|e| tracing::warn!("sfx lab: render thread did not start: {e}"))
             .ok();
         Self {
             tx: Some(tx),
             rx,
             novo,
+            sem_thread: thread.is_none().then_some(reserva),
             thread,
         }
     }
@@ -98,6 +103,10 @@ impl RenderJob {
     /// Volta na hora. `ticket` tem de crescer.
     pub fn submit(&self, pedido: Pedido, ticket: u64) {
         self.novo.store(ticket, Ordering::SeqCst);
+        if let Some(s) = &self.sem_thread {
+            let _ = s.send((ticket, Err(RenderError::SemThread)));
+            return;
+        }
         if let Some(tx) = &self.tx {
             let _ = tx.send((ticket, pedido));
         }

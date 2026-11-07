@@ -67,6 +67,18 @@ pub(crate) fn aba(
     ts: &mut TextSystem,
     theme: Theme,
 ) {
+    pinta_a_aba(a, area, over, scene, ts, theme);
+    crate::gestos::hover_de_novo(a);
+}
+
+fn pinta_a_aba(
+    a: &mut Aba,
+    area: Rect,
+    over: Option<Rect>,
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    theme: Theme,
+) {
     let mut p = P { scene, ts, theme };
     p.fill(area, T::Bg1);
     a.alvos.clear();

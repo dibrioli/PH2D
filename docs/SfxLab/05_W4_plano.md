@@ -173,6 +173,19 @@ Custo por filho: maior momento 0,11 ms; limitador 0,01 ms quando não trabalha. 
 | Heard com 10 000 linhas | Entrar uma: 0,035 ms; copiar para o mundo: 1,38 ms |
 | Quadro da tela, CPU, sem GPU | Normal 0,372 ms; Explore 0,310 ms |
 
+**`Ninhada`, uma thread por pedido: limitar?** Medido em 06/11 (`medir_ninhada`, `--ignored`; pior corpo de 120 s; o maior de 7 blocos intercalados; perfil `smoke`; load ~9–13, logo ordem de grandeza):
+
+| Pedidos | Pico de threads vivas | `Drop` na UI (ms) |
+|---|---:|---:|
+| **200, 1 lugar, sem pausa** | **74–86** | **28–32** |
+| 1 000, 1 lugar, sem pausa | 134 | 101 |
+| 200, 1 lugar, 1 por quadro (o arrasto) | 2 | 5–6 |
+| 200, 8 lugares, sem pausa | 68–92 | 37–55 |
+| 1 000, 8 lugares, sem pausa | 104 | 57 |
+| 200, 8 lugares, 8 por quadro (`R` preso) | 23 | 10 |
+
+**Sem limite:** o `Drop` do caso pedido fica abaixo de 100 ms, e o pico não acompanha a rajada (cinco vezes os pedidos, 1,1–1,8 vez as threads): cada thread velha desiste no próximo teste de cancelamento, e o pico é taxa × essa demora. O 101 ms é o pior de 7, numa rajada de 1 000 sem pausa que a mão não produz; a mão real (arrasto, `R` preso) fica em 2–23 threads e 5–10 ms.
+
 O pior caso de 120 s ficou muito abaixo dos 9 370 ms da W2 porque aquele era outro corpo; os 75 s estimados acima não se confirmaram nesta fixture, e o cancelamento continua pelo caso real de W2. **Aberto:** o medidor Loudness segue na medida de arquivo inteiro; ele e o nivelado leem coisas diferentes de propósito até o dono decidir.
 
 ## 7. Teste às cegas com profissional (fim da W4, antes de W5)

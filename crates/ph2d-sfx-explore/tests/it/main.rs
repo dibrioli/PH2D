@@ -12,7 +12,8 @@ use ph2d_sfx_explore::{
 use ph2d_sfx_lab::medida::{ALVO_DA_ESCUTA, VOLUME_MUDO, escuta_nivelada};
 use ph2d_sfx_lab::tabela::{CAMPOS, Onde};
 use ph2d_sfx_recipe::{
-    Body, Como, Envelope, ModeLaw, Noise, NoiseFilter, Recipe, SAMPLE_RATE, Source, Takes, factory,
+    Body, Como, Envelope, ModeLaw, Noise, NoiseFilter, Ouvido, Recipe, SAMPLE_RATE, Source, Takes,
+    Tone, Wave, factory,
 };
 
 fn fabrica(nome: &str) -> Recipe {
@@ -470,4 +471,114 @@ fn render_velho_que_ja_terminou_tambem_nao_entra() {
     let chegou = n.recebe();
     assert_eq!(chegou.len(), 1, "só o novo passa");
     assert_eq!(chegou[0].1.as_ref().expect("render").receita, novo);
+}
+
+// ── As auditorias da W4 ──
+
+#[test]
+fn valor_fora_da_faixa_do_campo_nao_e_cortado_pelo_sorteio() {
+    let mut base = fabrica("Impact");
+    base.layers[0].gain = 100.0;
+    for n in 1..=20 {
+        let v = varia(&base, n, 1.0e-9);
+        assert_eq!(v.layers[0].gain, 100.0, "40 dB não vira 24 no sorteio {n}");
+    }
+}
+
+#[test]
+fn o_fim_igual_ao_inicio_fora_da_faixa_tambem_nao_e_cortado() {
+    let mut base = Recipe::new(1, 0.5);
+    base.add(
+        0.5,
+        Source::Tone(Tone {
+            wave: Wave::Fm {
+                ratio: 2.0,
+                index: 2000.0,
+                index_end: 2000.0,
+            },
+            hz: 440.0,
+            hz_end: 440.0,
+            glide: 0.0,
+        }),
+        Envelope::default(),
+    );
+    let Source::Tone(t) = &varia(&base, 1, 1.0e-9).layers[0].source else {
+        panic!("tom");
+    };
+    let Wave::Fm {
+        index, index_end, ..
+    } = t.wave
+    else {
+        panic!("fm");
+    };
+    assert_eq!((index, index_end), (2000.0, 2000.0));
+}
+
+#[test]
+fn outra_estrela_no_meio_da_lista_e_outra_lista() {
+    let mut s = Sessao::default();
+    for n in 0..5 {
+        s.ouviu(&Recipe::new(n, 0.1), Como::Mao);
+    }
+    let igual = s.ouvidos.clone();
+    assert!(!s.difere_de(&igual));
+    let mut estrela = igual.clone();
+    estrela[2].estrela = true;
+    assert!(s.difere_de(&estrela), "a estrela do meio");
+    let mut como = igual.clone();
+    como[2].como = Como::Roll(9);
+    assert!(s.difere_de(&como), "o como do meio");
+    let mut fim = igual.clone();
+    fim[4].receita.seed = 99;
+    assert!(s.difere_de(&fim), "a receita da última");
+    assert!(s.difere_de(&igual[..4]), "o tamanho");
+}
+
+#[test]
+fn com_todas_as_estrelas_o_recem_ouvido_entra_e_nenhuma_se_perde() {
+    let mut s = Sessao::default();
+    let modelo = Ouvido {
+        receita: Recipe::new(0, 0.1),
+        como: Como::Mao,
+        estrela: true,
+    };
+    s.ouvidos.extend((0..MAX_OUVIDOS as u64).map(|n| {
+        let mut o = modelo.clone();
+        o.receita.seed = n;
+        o
+    }));
+    let nova = Recipe::new(99_999, 0.1);
+    s.ouviu(&nova, Como::Mao);
+    assert_eq!(s.ouvidos.len(), MAX_OUVIDOS + 1, "a estrela é do artista");
+    assert_eq!(s.ouvidos.last().unwrap().receita, nova);
+    assert_eq!(s.ouvidos.iter().filter(|o| o.estrela).count(), MAX_OUVIDOS);
+    // O Keep do som novo fica com a estrela.
+    let outra = Recipe::new(100_000, 0.1);
+    s.keep(&outra);
+    assert!(s.ouvidos.iter().any(|o| o.receita == outra && o.estrela));
+    // Tiradas as estrelas, a lista volta ao teto de uma vez.
+    for i in 0..3 {
+        s.alterna_estrela(i);
+    }
+    s.ouviu(&Recipe::new(100_001, 0.1), Como::Mao);
+    assert_eq!(s.ouvidos.len(), MAX_OUVIDOS);
+}
+
+#[test]
+fn o_pico_do_filho_e_o_do_arquivo() {
+    let takes = sem_nada();
+    for (ganho, estoura) in [(20.0, true), (0.01, false)] {
+        let mut base = fabrica("Impact");
+        for l in &mut base.layers {
+            l.gain = ganho;
+        }
+        let mut x = Exploracao::default();
+        x.semeia(&base, TAMANHO_MUTATE, &takes);
+        espera_todos(&mut x, &takes);
+        for f in x.grade.as_ref().unwrap().filhos.iter().flatten() {
+            let certo = f.arquivo.iter().fold(0.0f32, |a, s| a.max(s.abs()));
+            assert_eq!(f.pico, certo);
+            assert_eq!(f.estoura(), estoura, "ganho {ganho}: pico {certo}");
+        }
+    }
 }

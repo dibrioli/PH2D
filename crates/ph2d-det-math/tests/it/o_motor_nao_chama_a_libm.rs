@@ -4,7 +4,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-const CRATES: [&str; 13] = [
+const CRATES: [&str; 15] = [
     "ph2d-wet-paint",
     "ph2d-paint-tinta",
     "ph2d-pigment",
@@ -18,6 +18,8 @@ const CRATES: [&str; 13] = [
     "ph2d-affine",
     "ph2d-sfx-recipe",
     "ph2d-sfx-dsp",
+    "ph2d-sfx-lab",
+    "ph2d-sfx-explore",
 ];
 const FUNCOES: [&str; 22] = [
     "sin", "cos", "tan", "asin", "acos", "atan", "atan2", "sin_cos", "sinh", "cosh", "tanh", "exp",

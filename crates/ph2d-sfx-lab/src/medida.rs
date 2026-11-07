@@ -47,7 +47,7 @@ impl Medida {
 pub fn pico_db(amostras: &[f32]) -> f32 {
     let p = amostras.iter().fold(0.0_f32, |a, s| a.max(s.abs()));
     if p > 0.0 {
-        20.0 * p.log10()
+        20.0 * p.det_log10()
     } else {
         f32::NEG_INFINITY
     }
@@ -57,7 +57,7 @@ fn banda_de(hz: f32) -> Option<usize> {
     if !(HZ_MIN..HZ_MAX).contains(&hz) {
         return None;
     }
-    let t = (hz / HZ_MIN).ln() / (HZ_MAX / HZ_MIN).ln();
+    let t = (hz / HZ_MIN).det_ln() / (HZ_MAX / HZ_MIN).det_ln();
     Some(((t * BANDAS as f32) as usize).min(BANDAS - 1))
 }
 
@@ -83,7 +83,7 @@ pub fn espectro(amostras: &[f32], taxa: u32) -> [f32; BANDAS] {
         }
     });
     for (o, v) in out.iter_mut().zip(linear) {
-        *o = (20.0 * (v / referencia).max(SEM_SINAL).log10()).max(DB_PISO);
+        *o = (20.0 * (v / referencia).max(SEM_SINAL).det_log10()).max(DB_PISO);
     }
     out
 }

@@ -105,7 +105,7 @@ impl PainterTool {
             self.wet_volta_do_undo(v, desfez);
         }
         if let Some(p) = presa {
-            self.wet_volta_do_restauro(p, desfez, false);
+            self.wet_volta_do_restauro(p, false);
         }
         desfez
     }
@@ -167,7 +167,7 @@ impl PainterTool {
             self.wet_volta_do_undo(v, refez);
         }
         if let Some(p) = presa {
-            self.wet_volta_do_restauro(p, refez, true);
+            self.wet_volta_do_restauro(p, true);
         }
         refez
     }

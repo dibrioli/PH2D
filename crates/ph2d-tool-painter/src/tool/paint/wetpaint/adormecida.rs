@@ -179,10 +179,10 @@ impl PainterTool {
         let Some(mut sess) = self.paint.wetpaint.session.take() else {
             return false;
         };
-        if !std::ptr::eq(sess.canvas.as_ptr(), Arc::as_ptr(&velha))
-            || velha.len() != self.canvas_rgba.len()
-            || sess.camada != self.layers.active()
-        {
+        // A tela retida é sempre a da sessão: `vigia_a_tela` e `sess.canvas` andam juntos em todos os sítios que um
+        // deles muda, e `a_tela_sai` só retém a vigiada. Por isso não há guarda de ponteiro aqui (mutação provada
+        // equivalente: nenhum caminho a decide).
+        if velha.len() != self.canvas_rgba.len() || sess.camada != self.layers.active() {
             return false;
         }
         sess.bring_home();
@@ -212,14 +212,11 @@ impl PainterTool {
     /// Depois do undo/redo: a mesma tela (um passo sem pixels), outra camada (a tinta adormece com a dela), um redo (a
     /// tela nova enterra-se como qualquer escrita), ou um undo de um passo que já saiu do histórico (o que voltou atrás
     /// enterra-se fora da história).
-    pub(crate) fn wet_volta_do_restauro(
-        &mut self,
-        p: SessaoNoRestauro,
-        aplicou: bool,
-        refaz: bool,
-    ) {
+    pub(crate) fn wet_volta_do_restauro(&mut self, p: SessaoNoRestauro, refaz: bool) {
         let SessaoNoRestauro { mut sess, tela } = p;
-        let mesma_tela = !aplicou || *tela == *self.canvas_rgba;
+        // Um undo que não se aplicou deixa a mesma `Arc`: o `ptr_eq` poupa a comparação da tela inteira (e não decide
+        // nada: com a mesma `Arc` o conteúdo é igual por definição).
+        let mesma_tela = Arc::ptr_eq(&tela, &self.canvas_rgba) || *tela == *self.canvas_rgba;
         if sess.camada != self.layers.active() {
             self.wet_guarda_adormecida(sess, tela);
             self.wet_acorda_da_camada();
@@ -416,7 +413,12 @@ impl PainterTool {
 
     /// Na orla do enterro a tinta perdeu cobertura que a tela ainda mostra: fica na `base`, ou a Borracha que refaz estes
     /// píxeis destapa o papel de repente.
-    fn wet_orla_vai_para_a_base(&self, sess: &mut WetSession, mudou: &[bool], tocada: &[bool]) {
+    pub(super) fn wet_orla_vai_para_a_base(
+        &self,
+        sess: &mut WetSession,
+        mudou: &[bool],
+        tocada: &[bool],
+    ) {
         #[cfg(test)]
         if super::borracha_fronteira_tests::com_degrau::get() {
             return;

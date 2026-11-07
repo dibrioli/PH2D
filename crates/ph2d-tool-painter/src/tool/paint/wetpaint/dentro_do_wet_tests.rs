@@ -275,3 +275,97 @@ fn o_traco_molhado_nao_retem_a_tela() {
         }
     }
 }
+
+/// ⭐ Uma troca de camada que a tinta não pôde adormecer (um traço de outro dedo aberto) não leva a tinta para a camada
+/// nova: quando o traço fecha, a sessão da camada de antes acaba (ou já dorme), nunca continua sobre a outra.
+#[test]
+fn a_troca_de_camada_com_um_traco_aberto_nao_leva_a_tinta() {
+    let mut t = com_oleo();
+    let antes = t.layers.active();
+    t.poe_tracos_fora(1);
+    t.add_raster_layer("outra").expect("a outra camada");
+    assert_ne!(t.layers.active(), antes);
+    t.ticks_em_blocos(2);
+    t.poe_tracos_fora(0);
+    t.ticks_em_blocos(2);
+    let ativa = t.layers.active();
+    assert!(
+        t.paint
+            .wetpaint
+            .session
+            .as_ref()
+            .is_none_or(|s| s.camada == ativa),
+        "a sessão da camada de antes continua sobre a camada nova"
+    );
+}
+
+/// ⭐ Com um traço aberto (dois dedos) a tela é dele: a sessão espera, e só enterra quando ele acaba.
+#[test]
+fn a_tela_de_um_traco_aberto_so_se_enterra_quando_ele_acaba() {
+    let mut t = com_oleo();
+    t.poe_tracos_fora(1);
+    preenche_longe(&mut t);
+    t.ticks_em_blocos(2);
+    let s = t.paint.wetpaint.session.as_ref().expect("a sessão espera");
+    assert!(!s.enterrou, "enterrou a meio do traço aberto");
+    t.poe_tracos_fora(0);
+    t.ticks_em_blocos(2);
+    let s = t
+        .paint
+        .wetpaint
+        .session
+        .as_ref()
+        .expect("a sessão continua");
+    assert!(s.enterrou, "o enterro adiado nunca veio");
+}
+
+/// A tela com outro tamanho (outro documento na mesma camada) não se enterra: a sessão acaba.
+#[test]
+fn uma_tela_de_outro_tamanho_acaba_a_sessao_sem_panico() {
+    let mut t = com_oleo();
+    t.poe_tracos_fora(1);
+    t.abre_a_sprite(
+        vec![255u8; (W / 2) * (H / 2) * 4],
+        (W / 2) as u32,
+        (H / 2) as u32,
+    );
+    t.poe_tracos_fora(0);
+    t.ticks_em_blocos(2);
+    assert!(
+        t.paint.wetpaint.session.is_none(),
+        "a sessão sobreviveu a outro tamanho"
+    );
+}
+
+/// ⭐ Desfazer a criação de uma camada com a tinta da camada nova viva: a sessão da nova adormece com ela e a tinta da
+/// camada de antes acorda logo, não só no pen-down seguinte.
+#[test]
+fn desfazer_a_camada_com_a_tinta_da_nova_viva_acorda_a_de_antes() {
+    let mut t = com_oleo();
+    let antes = t.layers.active();
+    t.add_raster_layer("outra").expect("a outra camada");
+    t.set_brush_color_srgb8([220, 30, 30]);
+    t.on_canvas_pointer(ponteiro(40.0, 40.0, PointerPhase::Down));
+    for k in 1..=20 {
+        t.on_canvas_pointer(ponteiro(40.0 + 5.0 * k as f32, 40.0, PointerPhase::Move));
+        t.on_tick(1000.0 / 60.0);
+    }
+    t.on_canvas_pointer(ponteiro(140.0, 40.0, PointerPhase::Up));
+    t.ticks_em_blocos(3);
+    assert!(
+        t.paint.wetpaint.session.is_some(),
+        "CONTROLO: a tinta da camada nova está viva"
+    );
+    assert!(t.undo_last(), "o traço desfaz-se");
+    assert!(t.undo_last(), "a camada desfaz-se");
+    assert_eq!(
+        t.layers.active(),
+        antes,
+        "CONTROLO: voltou à camada de antes"
+    );
+    assert_eq!(
+        t.paint.wetpaint.session.as_ref().map(|s| s.camada),
+        Some(antes),
+        "a tinta da camada de antes não acordou com ela"
+    );
+}

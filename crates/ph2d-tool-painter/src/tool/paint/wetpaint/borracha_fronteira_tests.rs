@@ -415,3 +415,66 @@ fn sonda_fronteira() {
         }
     }
 }
+
+/// A orla do enterro, píxel a píxel: tela toda `(10, 20, 30, ta)`, `base` toda `(200, 150, 100, ba)`, pigmento de alfa
+/// `pa` e sombra `s` em todas as células. Devolve a `base` de um píxel do meio depois de `wet_orla_vai_para_a_base`.
+fn orla_da_base(pa: u8, s: u8, ba: u8, ta: u8, mudou: bool, tocada: bool) -> [u8; 4] {
+    use super::agua_sobre_oleo_tests::{H, W, com_oleo};
+    let mut t = com_oleo();
+    let mut sess = t.paint.wetpaint.session.take().expect("a sessão");
+    let (gw, gh) = sess.grid;
+    for c in Arc::make_mut(&mut t.canvas_rgba).chunks_mut(4) {
+        c.copy_from_slice(&[10, 20, 30, ta]);
+    }
+    for c in Arc::make_mut(&mut sess.base).chunks_mut(4) {
+        c.copy_from_slice(&[200, 150, 100, ba]);
+    }
+    for c in sess.planos.pigment.chunks_mut(4) {
+        c.copy_from_slice(&[0, 0, 0, pa]);
+    }
+    sess.planos.sombra = vec![s; gw * gh];
+    t.wet_orla_vai_para_a_base(&mut sess, &vec![mudou; gw * gh], &vec![tocada; gw * gh]);
+    let o = (50 * W + 100) * 4;
+    assert!(o + 4 <= W * H * 4);
+    sess.base[o..o + 4].try_into().unwrap()
+}
+
+/// ⭐ A `base` sob a tinta dá a cobertura da tela: `pa + (1 - pa) · ba' = ta`, sem degrau de píxel a píxel.
+#[test]
+fn a_orla_da_base_poe_a_cobertura_que_a_tela_mostra() {
+    let (pa, ta) = (128u8, 230u8);
+    let b = orla_da_base(pa, 0, 0, ta, true, false);
+    assert_eq!(b[..3], [10, 20, 30], "a cor da tela");
+    let (p, b3) = (f32::from(pa) / 255.0, f32::from(b[3]) / 255.0);
+    let total = (p + (1.0 - p) * b3) * 255.0;
+    assert!(
+        (total - f32::from(ta)).abs() <= 1.0,
+        "a tinta sobre a base dá {total}, a tela tem {ta}"
+    );
+}
+
+/// ⭐ A célula que o outro meio tocou fica como está: a `base` dela já é a tela.
+#[test]
+fn a_orla_da_base_nao_toca_a_celula_tocada() {
+    assert_eq!(orla_da_base(128, 0, 0, 230, true, true), [200, 150, 100, 0]);
+    assert_eq!(
+        orla_da_base(128, 0, 0, 230, false, false),
+        [200, 150, 100, 0]
+    );
+}
+
+/// ⭐ Abaixo de 2/255 de excesso a tela não conta como cobertura nova (ruído de arredondamento): a `base` fica; acima,
+/// vai.
+#[test]
+fn a_orla_da_base_ignora_o_excesso_de_arredondamento() {
+    assert_eq!(
+        orla_da_base(0, 0, 100, 101, true, false),
+        [200, 150, 100, 100],
+        "1/255 de excesso"
+    );
+    assert_eq!(
+        orla_da_base(0, 0, 100, 103, true, false),
+        [10, 20, 30, 103],
+        "3/255 de excesso"
+    );
+}

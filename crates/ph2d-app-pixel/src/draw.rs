@@ -246,6 +246,7 @@ pub fn draw(
         (theme, window),
         scene,
     );
+    crate::slices::desenha(app, key, m, LINE_PX, scene);
     #[expect(clippy::cast_precision_loss, reason = "tamanho de janela")]
     let janela = (window.width as f32, window.height as f32);
     crate::viva::draw(app, key, m, (theme, janela), scene);
@@ -275,6 +276,10 @@ pub fn draw(
 /// Quantos ms as formigas levam a andar um píxel de ecrã (escolha visual: o passo do Aseprite).
 const ANTS_STEP_MS: u64 = 60;
 
+pub(crate) fn fase_das_formigas(app: &PixelApp) -> f64 {
+    ((app.formigas_ms / ANTS_STEP_MS) % (2.0 * ph2d_pixel_render::ANTS_DASH_PX) as u64) as f64
+}
+
 /// **A selecção por cima da arte** (P6): as formigas da máscara (a da moldura solta quando há
 /// uma), as do laço em curso, e a moldura com as alças.
 fn selecao(
@@ -285,8 +290,7 @@ fn selecao(
     (theme, window): (Theme, WindowSize),
     scene: &mut VectorScene,
 ) {
-    let fase =
-        ((app.formigas_ms / ANTS_STEP_MS) % (2.0 * ph2d_pixel_render::ANTS_DASH_PX) as u64) as f64;
+    let fase = fase_das_formigas(app);
     let Some(s) = app.docs.get(&key).map(|d| &d.sprite) else {
         return;
     };

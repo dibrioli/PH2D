@@ -101,7 +101,7 @@ pub(crate) fn cell(
 const AXIS_GRAB_PX: f64 = 4.0; // LITERAL-PX-OK: alcance do clique sobre uma linha de 1 px
 
 /// O ponto de ecrã `p` em coordenadas da IMAGEM (células, contínuas).
-fn image_point(m: Affine, p: (f32, f32)) -> Point {
+pub(crate) fn image_point(m: Affine, p: (f32, f32)) -> Point {
     m.inverse() * Point::new(f64::from(p.0), f64::from(p.1))
 }
 
@@ -187,6 +187,9 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
         crate::pincel::press(app, key, (x, y), button == Button::Secondary);
         return Press::Done;
     }
+    if app.tool == Tool::Slice {
+        return crate::slices::press(app, c, bits, key, p, button, m);
+    }
     let sel = app.tool.selects();
     if sel && m.ctrl && !m.shift {
         return crate::solta::press_move(app, c, bits, key, p, (x, y));
@@ -265,7 +268,8 @@ pub fn press(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), button: Button, 
         | Tool::Lasso
         | Tool::PolygonLasso
         | Tool::MagicWand
-        | Tool::Transform => return Press::Done,
+        | Tool::Transform
+        | Tool::Slice => return Press::Done,
         Tool::Eyedropper => {
             if let Some(v) = pick(s, frame, x, y, Sample::AllLayers) {
                 let rgba = s.rgba_of_value(v);
@@ -383,7 +387,10 @@ pub fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32), m: Mods) -> bool
         }
         return true;
     }
-    if crate::solta::moved(app, c, p, m) || crate::viva::moved(app, c, p, m) {
+    if crate::slices::moved(app, c, p)
+        || crate::solta::moved(app, c, p, m)
+        || crate::viva::moved(app, c, p, m)
+    {
         return true;
     }
     if app.live_shape().is_some() {
@@ -516,7 +523,11 @@ pub fn release(app: &mut PixelApp) -> bool {
     if app.tiles.carimbo.take().is_some() {
         return true;
     }
-    if crate::solta::release(app) || crate::selecao::release(app) || crate::viva::release(app) {
+    if crate::slices::release(app)
+        || crate::solta::release(app)
+        || crate::selecao::release(app)
+        || crate::viva::release(app)
+    {
         return true;
     }
     if crate::viva::nasce(app) {
@@ -592,6 +603,7 @@ pub(crate) fn set_tool(app: &mut PixelApp, t: Tool) {
     if app.tool != t {
         finish(app);
         crate::texto::fecha(app, true);
+        crate::slices::cancela(app);
         app.laco = None;
     }
     app.tool = t;
@@ -600,7 +612,7 @@ pub(crate) fn set_tool(app: &mut PixelApp, t: Tool) {
 
 /// Larga o gesto sem gravar (`Esc`).
 pub(crate) fn cancel(app: &mut PixelApp) -> bool {
-    if crate::tiles::cancela(app) {
+    if crate::slices::cancela(app) || crate::tiles::cancela(app) {
         return true;
     }
     let Some(g) = app.gesture.take() else {

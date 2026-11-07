@@ -194,6 +194,7 @@ pub struct PixelApp {
     pub(crate) exporta: ph2d_panel_pixel_export::canal::LadoDaFamilia,
     /// A tela dos tilemaps ([`crate::tiles`]).
     pub(crate) tiles: crate::tiles::Estado,
+    pub(crate) slices: crate::slices::Estado,
     /// O gesto de selecção em curso (marquee, laços).
     pub(crate) laco: Option<crate::selecao::Laco>,
     /// A moldura solta (Transform, Ctrl+arrasto com uma selecção, Paste): as células levantadas até
@@ -290,6 +291,7 @@ impl Default for PixelApp {
             nasce_doc: Vec::new(),
             exporta: Default::default(),
             tiles: Default::default(),
+            slices: Default::default(),
             laco: None,
             solta: None,
             largada: None,
@@ -421,6 +423,7 @@ impl PixelApp {
             doc.stamp = stamp;
             doc.sane_frame(was);
             crate::camadas::sane_active(doc);
+            crate::slices::poda(&mut self.slices, key, &doc.sprite);
         }
         done
     }
@@ -434,7 +437,7 @@ impl PixelApp {
     /// Há um traço em curso.
     #[must_use]
     pub fn stroking(&self) -> bool {
-        self.gesture.is_some() || self.tiles.carimbo.is_some()
+        self.gesture.is_some() || self.tiles.carimbo.is_some() || self.slices.em_curso()
     }
 
     /// Há uma moldura solta (células levantadas à espera do Enter/Esc).

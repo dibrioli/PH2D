@@ -74,7 +74,8 @@ pub fn key_with(
     let bits = editing?;
     let key = key_of(world, bits)?;
     if !app.stroking()
-        && let Some(a) = crate::selecao::key(app, key, code, ctrl, shift)
+        && let Some(a) = crate::slices::tecla(app, key, code, ctrl, shift)
+            .or_else(|| crate::selecao::key(app, key, code, ctrl, shift))
     {
         return Some(a);
     }
@@ -108,6 +109,7 @@ pub fn key_with(
         (KeyCode::KeyD, false, true) => tool(app, Tool::Polygon),
         (KeyCode::KeyH, false, false) => tool(app, Tool::Hand),
         (KeyCode::KeyT, false, false) => tool(app, Tool::Text),
+        (KeyCode::KeyC, false, true) => tool(app, Tool::Slice),
         (KeyCode::Enter | KeyCode::NumpadEnter, false, _) if app.stroking() => {
             finish(app);
             KeyAnswer::Quiet

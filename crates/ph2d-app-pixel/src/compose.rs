@@ -248,6 +248,7 @@ impl PixelApp {
             editing,
         };
         crate::viva::ficha(self, &c, hero.last_content, hero.theme, (scene, text));
+        crate::slices::nomes(self, &c, hero.last_content, hero.theme, (scene, text));
     }
 }
 

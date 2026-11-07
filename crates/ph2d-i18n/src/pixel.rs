@@ -9,6 +9,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.tool.eraser" => "Eraser",
         "pixel.tool.eyedropper" => "Eyedropper",
         "pixel.tool.hand" => "Hand",
+        "pixel.tool.slice" => "Slice Tool",
+        "pixel.hint.slice" => {
+            "{tool}: drag on empty to create · drag a slice to move · drag its edges, center lines or pivot · Shift+drag selects · Delete removes"
+        }
         "pixel.tool.spray" => "Spray",
         "pixel.tool.bucket" => "Paint Bucket",
         "pixel.tool.gradient" => "Gradient",

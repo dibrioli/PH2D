@@ -16,6 +16,8 @@ pub enum PixelTool {
     PolygonLasso,
     MagicWand,
     Transform,
+    /// P11: a Slice Tool (`Shift+C`): cria, seleciona e edita as slices na tela.
+    Slice,
     #[default]
     Pencil,
     Spray,
@@ -45,13 +47,14 @@ pub enum PixelTool {
 }
 
 /// As ferramentas que não são formas, na ordem da coluna; as formas entram depois da Curva.
-const PLAIN: [PixelTool; 20] = [
+const PLAIN: [PixelTool; 21] = [
     PixelTool::RectMarquee,
     PixelTool::EllipseMarquee,
     PixelTool::Lasso,
     PixelTool::PolygonLasso,
     PixelTool::MagicWand,
     PixelTool::Transform,
+    PixelTool::Slice,
     PixelTool::Pencil,
     PixelTool::Spray,
     PixelTool::Eraser,
@@ -69,7 +72,7 @@ const PLAIN: [PixelTool; 20] = [
 ];
 
 /// Onde as formas entram em [`PixelTool::ALL`]: depois da Curva.
-const SHAPES_AT: usize = 16;
+const SHAPES_AT: usize = 17;
 
 impl PixelTool {
     /// O retângulo do Aseprite (`U`).
@@ -105,6 +108,7 @@ impl PixelTool {
             Self::PolygonLasso => "pixel.tool.polygon_lasso",
             Self::MagicWand => "pixel.tool.magic_wand",
             Self::Transform => "pixel.tool.transform",
+            Self::Slice => "pixel.tool.slice",
             Self::Pencil => "pixel.tool.pencil",
             Self::Spray => "pixel.tool.spray",
             Self::Eraser => "pixel.tool.eraser",
@@ -133,6 +137,7 @@ impl PixelTool {
             Self::Lasso | Self::PolygonLasso => "Q",
             Self::MagicWand => "W",
             Self::Transform => "V",
+            Self::Slice => "C",
             Self::Pencil | Self::Spray => "B",
             Self::Eraser => "E",
             Self::Eyedropper => "I",
@@ -161,6 +166,7 @@ impl PixelTool {
                 | Self::EllipseMarquee
                 | Self::PolygonLasso
                 | Self::Gradient
+                | Self::Slice
         )
     }
 

@@ -35,6 +35,7 @@ pub mod pinceis;
 mod pincel;
 pub mod quadros;
 pub mod selecao;
+pub mod slices;
 pub mod smoke;
 pub mod smoke_ajustes;
 pub mod smoke_camadas;

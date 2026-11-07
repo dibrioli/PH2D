@@ -28,6 +28,7 @@ mod pontas;
 mod preview;
 mod quadros;
 mod selecao;
+mod slices;
 mod sobreviventes;
 mod texto;
 mod texto_fontes;

@@ -97,8 +97,8 @@ fi
 echo
 echo "▸ REGISTRO DE COMPONENTES — o contador é TRÊS, cada um roda só na suíte da própria crate"
 num "ph2d-ecs"    "crates/ph2d-ecs/src/scene/registry_tests.rs crates/ph2d-ecs/src/scene/registry.rs" 'reg\.len\(\), *[0-9]+'
-num "ph2d-render (espelho)" "crates/ph2d-render/src/registry.rs" 'reg\.len\(\), *[0-9]+'
-num "ph2d-script (espelho)" "crates/ph2d-script/src/registry.rs" 'reg\.len\(\), *[0-9]+'
+num "ph2d-render (espelho = ecs + K)" "crates/ph2d-render/src/registry.rs" 'so_ecs\.len\(\) *\+ *[0-9]+'
+num "ph2d-script (espelho = ecs + K)" "crates/ph2d-script/src/registry.rs" 'so_ecs\.len\(\) *\+ *[0-9]+'
 
 echo
 echo "▸ CONTRATO CONGELADO (§6) — deve ser INTOCADO; se não, exige ADR"

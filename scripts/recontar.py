@@ -125,6 +125,13 @@ def escrito_len(path):
     return (int(m.group(1)), linha_de(src, m.start())) if m else (None, None)
 
 
+def escrito_derivado(path):
+    """O espelho que CONTA (`assert_eq!(reg.len(), so_ecs.len() + K)`): devolve K."""
+    src = ler(path)
+    m = re.search(r"assert_eq!\(reg\.len\(\),\s*so_ecs\.len\(\)\s*\+\s*(\d+)\)", src)
+    return (int(m.group(1)), linha_de(src, m.start())) if m else (None, None)
+
+
 def registos(raiz):
     print("— registos de componentes (ecs / render / script) —")
     ecs = conta_registos(os.path.join(raiz, "crates/ph2d-ecs/src"), "register_ecs_components")
@@ -138,7 +145,15 @@ def registos(raiz):
         if proprio is None:
             ko(f"registo {crate}: `{fn}` não encontrado (sonda cega)")
             continue
-        alvos.append((crate, f"crates/{crate}/src/registry.rs", ecs + proprio))
+        rel = f"crates/{crate}/src/registry.rs"
+        p = os.path.join(raiz, rel)
+        k, ln = escrito_derivado(p) if os.path.isfile(p) else (None, None)
+        if k is None:
+            alvos.append((crate, rel, ecs + proprio))
+        elif k == proprio:
+            ok(f"registo {crate} = {ecs + proprio} (deriva do ecs + {k})")
+        else:
+            ko(f"registo {crate}: escrito ecs + {k}, contado ecs + {proprio} ({rel}:{ln})")
     for crate, rel, contado in alvos:
         p = os.path.join(raiz, rel)
         escrito, ln = escrito_len(p) if os.path.isfile(p) else (None, None)

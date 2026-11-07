@@ -12,7 +12,7 @@ use ph2d_editor_core::screens::hero::{HeroScreen, PANEL_PIXEL_TILES};
 use ph2d_panel_pixel_tiles::canal::{self, Alvo, Mao, Pedido};
 use ph2d_pixel_core::{Forma, Sprite, TERRAIN_TILES, TileRef, derived_is_consistent};
 use ph2d_pixel_tiles::desenho::Modo;
-use ph2d_pixel_tiles::exemplo::{LADO, MAPA, celulas_reais};
+use ph2d_pixel_tiles::exemplo::{LADO, MAPA, celulas_ilhas};
 use ph2d_pixel_tiles::mao::tileset_de;
 use ph2d_pixel_tiles::mapa::Mapa;
 use ph2d_pixel_tiles::terreno;
@@ -765,7 +765,7 @@ fn casa_em(p: &Palco, c: i32, r: i32) -> Option<u32> {
 }
 
 #[test]
-fn a_cena_22_abre_com_o_mapa_real_e_o_pincel_de_terreno() {
+fn a_cena_22_abre_com_as_ilhas_e_o_pincel_de_terreno() {
     let p = Palco::cena(22);
     let x = canal::contexto();
     assert_eq!(p.mao().alvo, Alvo::Terreno);
@@ -773,7 +773,7 @@ fn a_cena_22_abre_com_o_mapa_real_e_o_pincel_de_terreno() {
     assert_eq!(x.forma, Forma::Square);
     assert!(p.hero.panel_visibility.get(PANEL_PIXEL_TILES).copied() == Some(true));
     assert!(derived_is_consistent(p.s()));
-    for (c, r) in celulas_reais() {
+    for (c, r) in celulas_ilhas() {
         assert!(casa_em(&p, c, r).is_some(), "({c},{r}) sem terreno");
     }
     assert_eq!(casa_em(&p, 0, 0), None);
@@ -875,7 +875,7 @@ fn o_conta_gotas_em_terrain_fica_com_o_terreno_da_celula() {
         alt: true,
         ..Mods::default()
     };
-    let (c, r) = celulas_reais()[0];
+    let (c, r) = celulas_ilhas()[0];
     let antes = p.s().clone();
     assert_eq!(p.prime_meio(c, r, Button::Primary, alt), Press::Done);
     let _ = input::release(&mut p.app);

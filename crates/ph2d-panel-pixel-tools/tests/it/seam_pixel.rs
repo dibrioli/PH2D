@@ -237,7 +237,7 @@ fn o_hex_e_um_formato_so() {
     force_cards_on_this_thread(None);
 }
 
-/// P8: o balde é um botão de grupo com o Gradient (Shift+G) e o Blur/Jumble (R) outro; o flyout
+/// P8: o balde é um botão de grupo com o Gradient (Shift+P) e o Blur/Jumble (R) outro; o flyout
 /// mostra-os, e a cara é a última usada.
 #[test]
 fn o_balde_e_o_blur_sao_botoes_de_grupo_com_o_gradient_e_o_jumble_no_flyout() {
@@ -253,7 +253,7 @@ fn o_balde_e_o_blur_sao_botoes_de_grupo_com_o_gradient_e_o_jumble_no_flyout() {
         .find(|b| b.id == ids::PIXEL_BUCKET_GROUP)
         .expect("botão do balde");
     assert!(
-        balde.on && balde.label.contains("Shift+G"),
+        balde.on && balde.label.contains("Shift+P"),
         "{}",
         balde.label
     );
@@ -267,8 +267,8 @@ fn o_balde_e_o_blur_sao_botoes_de_grupo_com_o_gradient_e_o_jumble_no_flyout() {
     assert_eq!(
         nomes,
         [
-            ("Paint Bucket (G)".to_owned(), false),
-            ("Gradient (Shift+G)".to_owned(), true)
+            ("Paint Bucket (P)".to_owned(), false),
+            ("Gradient (Shift+P)".to_owned(), true)
         ]
     );
     i.tool = PixelTool::Jumble;

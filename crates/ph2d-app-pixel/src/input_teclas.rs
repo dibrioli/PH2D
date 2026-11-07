@@ -87,8 +87,9 @@ pub fn key_with(
         (KeyCode::KeyB, false, true) => tool(app, Tool::Spray),
         (KeyCode::KeyE, false, false) => tool(app, Tool::Eraser),
         (KeyCode::KeyI, false, false) => tool(app, Tool::Eyedropper),
-        (KeyCode::KeyG, false, false) => tool(app, Tool::Bucket),
-        (KeyCode::KeyG, false, true) => tool(app, Tool::Gradient),
+        // Dono 07/11: o `G` é da grade do canvas, em todo o app; aqui ele tem de passar.
+        (KeyCode::KeyP, false, false) => tool(app, Tool::Bucket),
+        (KeyCode::KeyP, false, true) => tool(app, Tool::Gradient),
         // O `R` do Aseprite: o Blur e, de novo, o Jumble (e volta).
         (KeyCode::KeyR, false, false) => {
             let t = if app.tool == Tool::Blur {

@@ -81,13 +81,34 @@ fn confere(app: &PixelApp, sim: &SimWorld, bits: u64, esperado: &[((i32, i32), u
     }
 }
 
+/// Dono 07/11: o `G` esconde a grade do canvas, que cobre a arte; o Pixel não pode ficar com ele.
 #[test]
-fn shift_g_picks_the_gradient_and_r_toggles_blur_and_jumble() {
+fn g_is_left_to_the_canvas_grid_and_never_picks_a_tool() {
     let (mut app, sim, _cam, bits) = born();
-    key(&mut app, &sim, bits, KeyCode::KeyG, true);
+    let antes = app.tool;
+    for shift in [false, true] {
+        assert!(
+            input::key(
+                &mut app,
+                sim.world(),
+                Some(bits),
+                KeyCode::KeyG,
+                false,
+                shift
+            )
+            .is_none()
+        );
+        assert_eq!(app.tool, antes);
+    }
+}
+
+#[test]
+fn shift_p_picks_the_gradient_and_r_toggles_blur_and_jumble() {
+    let (mut app, sim, _cam, bits) = born();
+    key(&mut app, &sim, bits, KeyCode::KeyP, true);
     assert_eq!(app.tool, Tool::Gradient);
     assert_eq!(Tool::Gradient.group(), Some(PixelToolGroup::Bucket));
-    key(&mut app, &sim, bits, KeyCode::KeyG, false);
+    key(&mut app, &sim, bits, KeyCode::KeyP, false);
     assert_eq!(app.tool, Tool::Bucket);
     key(&mut app, &sim, bits, KeyCode::KeyR, false);
     assert_eq!(app.tool, Tool::Blur);

@@ -65,7 +65,7 @@ fn every_aseprite_shortcut_picks_its_tool_and_the_same_key_never_switches_to_a_f
     let (mut app, sim, _cam, bits) = born();
     for (code, shift, want) in [
         (KeyCode::KeyB, true, Tool::Spray),
-        (KeyCode::KeyG, false, Tool::Bucket),
+        (KeyCode::KeyP, false, Tool::Bucket),
         (KeyCode::KeyL, false, Tool::Line),
         (KeyCode::KeyL, true, Tool::Curve),
         (KeyCode::KeyU, false, Tool::RECTANGLE),
@@ -74,7 +74,7 @@ fn every_aseprite_shortcut_picks_its_tool_and_the_same_key_never_switches_to_a_f
         (KeyCode::KeyU, true, Tool::ELLIPSE),
         (KeyCode::KeyD, false, Tool::Contour),
         (KeyCode::KeyD, true, Tool::Polygon),
-        (KeyCode::KeyG, true, Tool::Gradient),
+        (KeyCode::KeyP, true, Tool::Gradient),
         (KeyCode::KeyR, false, Tool::Blur),
         (KeyCode::KeyR, false, Tool::Jumble),
         (KeyCode::KeyR, false, Tool::Blur),

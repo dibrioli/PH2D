@@ -525,3 +525,68 @@ fn a_grelha_quadrada_nao_mudou() {
     assert_eq!(expand(&g, t, 4).len(), 8 * 4 * 4);
     assert_eq!(g.ancora(Forma::Square, 4, 4), ((1, 2), (0, 0)));
 }
+
+/// A cena 22 (dono 07/11, «pouco compreensível»): as faixas do desenho das 47 formas casam nas duas
+/// emendas de todo o mapa, ou cada célula mostraria um degrau na praia.
+#[test]
+fn the_island_art_of_scene_22_matches_across_every_seam() {
+    use ph2d_pixel_tiles::exemplo::{ILHAS, LADO, celulas_ilhas, terreno_ilhas};
+    assert!(ILHAS.iter().all(|l| l.len() == ILHAS[0].len()));
+    let (mut s, mut h, l, f, set) = doc(Forma::Square, LADO, LADO);
+    let op = terreno_ilhas(&s, set, "Island").unwrap();
+    h.commit(&mut s, op).unwrap();
+    let celulas = celulas_ilhas();
+    let op = terreno::pinta(&s, l, f, &celulas, Some(0)).unwrap();
+    h.commit(&mut s, op).unwrap();
+    let t = set_de(&s, set);
+    let m = Mapa::de(&s, l, f, t);
+    let (lado, bpp) = (usize::from(LADO), s.mode().bpp());
+    let cor =
+        |i: usize| s.value_of_rgba(*s.palette().get(i).unwrap()).to_le_bytes()[..bpp].to_vec();
+    let vazio = t.tiles[0][..bpp].to_vec();
+    let (espuma, areia, areia2, escura) = (cor(20), cor(7), cor(6), cor(12));
+    // 0 água · 1 espuma · 2 areia · 3 relva escura · 4 relva.
+    let faixa = |id: u32, x: usize, y: usize| {
+        let p = (y * lado + x) * bpp;
+        let v = &t.tiles[id as usize][p..p + bpp];
+        match () {
+            () if v == vazio.as_slice() => 0,
+            () if v == espuma.as_slice() => 1,
+            () if v == areia.as_slice() || v == areia2.as_slice() => 2,
+            () if v == escura.as_slice() => 3,
+            () => 4,
+        }
+    };
+    let mut emendas = 0;
+    for &(c, r) in &celulas {
+        let id = m.get(c, r).id();
+        assert_eq!(
+            faixa(id, lado / 2, lado / 2),
+            4,
+            "({c},{r}): sem relva no meio"
+        );
+        if celulas.contains(&(c + 1, r)) {
+            let vizinha = m.get(c + 1, r).id();
+            for y in 0..lado {
+                assert_eq!(
+                    faixa(id, lado - 1, y),
+                    faixa(vizinha, 0, y),
+                    "({c},{r}) y={y}"
+                );
+                emendas += 1;
+            }
+        }
+        if celulas.contains(&(c, r + 1)) {
+            let vizinha = m.get(c, r + 1).id();
+            for x in 0..lado {
+                assert_eq!(
+                    faixa(id, x, lado - 1),
+                    faixa(vizinha, x, 0),
+                    "({c},{r}) x={x}"
+                );
+                emendas += 1;
+            }
+        }
+    }
+    assert!(emendas > 1000, "{emendas}");
+}

@@ -23,7 +23,7 @@ pub enum PixelTool {
     Eyedropper,
     /// O balde (*Paint Bucket*).
     Bucket,
-    /// P8: o Gradient (`Shift+G`, no botão de grupo do balde): arrasta-se de A a B, fg → bg, na
+    /// P8: o Gradient (`Shift+P`, no botão de grupo do balde): arrasta-se de A a B, fg → bg, na
     /// região que o balde pintaria.
     Gradient,
     /// P8: Blur e Jumble (`R` alterna), ferramentas de pincel num botão de grupo.
@@ -124,7 +124,8 @@ impl PixelTool {
         }
     }
 
-    /// A tecla do atalho por omissão (a do Aseprite; o `V` do Move dele escolhe o Transform).
+    /// A tecla do atalho por omissão (a do Aseprite; o `V` do Move dele escolhe o Transform; o balde
+    /// é `P`, não o `G` dele: o `G` é da grade do canvas, dono 07/11).
     #[must_use]
     pub const fn shortcut(self) -> &'static str {
         match self {
@@ -135,7 +136,7 @@ impl PixelTool {
             Self::Pencil | Self::Spray => "B",
             Self::Eraser => "E",
             Self::Eyedropper => "I",
-            Self::Bucket | Self::Gradient => "G",
+            Self::Bucket | Self::Gradient => "P",
             // O `R` do Aseprite: escolhe o Blur e, de novo, alterna para o Jumble.
             Self::Blur | Self::Jumble => "R",
             Self::Line | Self::Curve => "L",

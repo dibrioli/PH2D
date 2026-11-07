@@ -123,7 +123,7 @@ fn a_tabela_do_mirror() {
 fn campo(linha: &str, nome: &str) -> Vec<f32> {
     let de = linha.find(&format!("\"{nome}\":")).expect(nome) + nome.len() + 3;
     let resto = linha[de..].trim_start_matches('[');
-    let fim = resto.find(|c| c == ']' || c == '}').unwrap();
+    let fim = resto.find([']', '}']).unwrap();
     let fim = if linha[de..].starts_with('[') {
         fim
     } else {

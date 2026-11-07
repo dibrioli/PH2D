@@ -254,12 +254,11 @@ fn a_caixa_cai_no_desenho_com_o_objeto_espelhado() {
         let b = sprite_box(a, [0.0, 0.0], anchor, half);
         let centro = [7.0 + sx * anchor[0], 2.25 + sy * anchor[1]];
         // O sincosf de π deixa 1e-7 na caixa.
-        for i in 0..2 {
+        for (i, alvo) in centro.iter().enumerate() {
             let c = (b.bbox_min_world[i] + b.bbox_max_world[i]) * 0.5;
             assert!(
-                (c - centro[i]).abs() < 1e-5,
-                "escala ({sx}, {sy}), eixo {i}: {c} ≠ {}",
-                centro[i]
+                (c - alvo).abs() < 1e-5,
+                "escala ({sx}, {sy}), eixo {i}: {c} ≠ {alvo}"
             );
         }
     }

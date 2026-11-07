@@ -52,55 +52,6 @@ fn o_formato_do_jogo_atravessa_o_arquivo() {
     assert_eq!(lido, autorado);
 }
 
-/// ⭐ **Um v197 abre, com 16:9**. ⚠️ Os bytes são escritos campo a campo (a forma de então, sem o campo).
-#[test]
-fn um_v197_abre_com_o_formato_de_fabrica() {
-    let _fio = ph2d_physics_ecs::LayerRowsV218::enter();
-    let f = arquivo(Vec::new());
-    let v197 = (
-        &f.assets,
-        &f.painted,
-        &f.motion,
-        &f.timeline,
-        &f.physics,
-        &f.tokens,
-        &f.settings,
-        &f.player_tape,
-        &f.sprite_pixels,
-        &f.stable_id_counter,
-        &f.input_map,
-        &f.pattern_art,
-        &f.boards,
-        &f.scripts,
-        &f.marcas_do_artista,
-    );
-    let path = tmp_path("jogo_v197");
-    // A cena vetorial de um v197 é a v23 (sem as regras de CAD, que nasceram no 201): o postcard é a
-    // concatenação dos campos, e a vazia viva acaba nos dois zeros das regras.
-    let st = &f.state;
-    let vec_vivo = ph2d_vec_scene::with_wire_layout(28, || postcard::to_allocvec(&*st.vec))
-        .expect("serializa");
-    assert_eq!(
-        &vec_vivo[vec_vivo.len() - 2..],
-        &[0, 0],
-        "a cena vazia acaba nas regras vazias"
-    );
-    let mut bytes = postcard::to_allocvec(&(197u32, &st.world)).expect("serializa");
-    bytes.extend_from_slice(&vec_vivo[..vec_vivo.len() - 2]);
-    let resto = (&st.flip, &st.guides, &st.ui_states, &st.library, &st.tags);
-    bytes.extend(postcard::to_allocvec(&resto).expect("serializa"));
-    bytes.extend(postcard::to_allocvec(&v197).expect("serializa"));
-    std::fs::write(&path, bytes).expect("grava");
-    let lido = headless_app().read_project_file(&path.to_string_lossy());
-    let _ = std::fs::remove_file(&path);
-    let (back, _) = lido.expect("um v197 é recusado");
-    assert!(back.jogo.is_empty());
-    let mut s = ph2d_editor_core::ProjectSettings::default();
-    s.game_format.preset = ph2d_editor_core::GamePreset::Nes;
-    crate::project_settings::install_jogo(&mut s, &back.jogo);
-    assert_eq!(s.game_format, ph2d_editor_core::GameFormat::default());
-}
-
 /// ⭐ **Um blob `jogo` v1 (a onda 17, sem o ícone) abre com o formato dele e o ícone de fábrica** (17b).
 #[test]
 fn um_jogo_v1_abre_com_o_icone_de_fabrica() {

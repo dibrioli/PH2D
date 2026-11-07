@@ -40,8 +40,6 @@ pub(super) fn empty_state() -> ProjectState {
     }
 }
 
-#[path = "project_opacidade_tests.rs"]
-mod opacidade;
 /// **O ESCRITOR de arquivo das suítes** — filho (`#[path]`) pelo teto de LOC do HR-18, cortado por
 /// responsabilidade. `pub(super)` + `use` para que os outros filhos o alcancem por `super::*`.
 #[path = "project_test_writer.rs"]
@@ -582,10 +580,3 @@ mod sounds;
 /// segundo escritor de arquivo de projeto, e ele divergiria no próximo bump.
 #[path = "project_tape_tests.rs"]
 mod tape;
-
-#[path = "project_geometria_v194_tests.rs"]
-mod geometria_v194;
-/// **Projectos v189 (F16c, o mesmo traço) e v194 (W4.2, a geometria numerada) abrem iguais** — filhos
-/// pela razão dos de cima.
-#[path = "project_traco_v189_tests.rs"]
-mod traco_v189;

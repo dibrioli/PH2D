@@ -1,5 +1,5 @@
 //! **QUE BYTES SÃO ESTES** — a metade do load que decide o TIPO com que desserializar, corre a
-//! escada de migração e devolve o `ProjectFile` já no formato de hoje. Irmão de
+//! recusa tudo o que não é o `PROJECT_SCHEMA` de hoje (sem projetos antigos: dono 07/11) e devolve o `ProjectFile`. Irmão de
 //! [`super::project_load`] pelo teto de LOC (HR-18, 600), e o corte é de RESPONSABILIDADE: aqui
 //! *que ficheiro é este*; lá *o que a sessão faz com um ficheiro aceite*.
 //!
@@ -43,200 +43,15 @@ impl crate::App {
                 return None;
             }
         };
-        // ⭐ O vetor de um ficheiro antigo lê-se pela forma do FIO dele (`fio_do_projeto`).
-        let fio = crate::project_schema::fio_do_projeto(ver);
-        let _fio = fio.map(ph2d_vec_scene::WireLayout::enter);
-        // ⭐ **Até ao `205` as entradas da pilha do Vetor não tinham id** (F31 §B1, `VEC_SCENE` v25).
-        let sem_ids = ver <= crate::project_schema::PROJECT_SCHEMA_FILTROS_SEM_ID;
-        let _pilha_v23 = sem_ids.then(ph2d_vec_scene::PilhaLayoutV23::enter);
-        let por_posicao = ver <= crate::project_schema::PROJECT_SCHEMA_RELOGIO_POR_POSICAO;
-        let _pose_v196 = por_posicao.then(ph2d_ui_state::PoseLayoutV196::enter);
-        let matriz_de_oito = ver <= crate::project_schema::PROJECT_SCHEMA_MATRIZ_DE_OITO;
-        let _linhas_v218 = matriz_de_oito.then(ph2d_physics_ecs::LayerRowsV218::enter);
-        let (mut file, migrated_counter) = match ver {
-            // ⭐ **193 → … → 197: as animações do personagem, o `TiledDraw`, a memória do uso da imagem, o
-            // `ImageRegion`** — um componente novo cada, a mesma forma; falta-lhes o `jogo` (198): o `0` do `Vec` vazio.
-            crate::project_schema::PROJECT_SCHEMA_SEM_MESA..=PROJECT_SCHEMA
-            | crate::project_schema::PROJECT_SCHEMA_GEOMETRIA_V23
-            | crate::project_schema::PROJECT_SCHEMA_SEM_CONSTRAINTS
-            | crate::project_schema::PROJECT_SCHEMA_SEM_FORMATO_DO_JOGO
-            | crate::project_schema::PROJECT_SCHEMA_SEM_REGION
-            | crate::project_schema::PROJECT_SCHEMA_SEM_MEMORIA_DO_USO
-            | crate::project_schema::PROJECT_SCHEMA_SEM_TILED_DRAW
-            | crate::project_schema::PROJECT_SCHEMA_SEM_ANIMACOES_DO_PERSONAGEM => (
-                le_com_o_tipo_vivo(&[&bytes[..], falta_no_fim(ver)].concat(), path)?,
-                None,
-            ),
-            // ⛔ Um v97 e um v98 são RECUSADOS (sem tipo congelado não há forma honesta de os ler): o
-            // porquê, verbatim, em `docs/archive/project-schema/bracos_97_e_98_recusados.md`.
-            // ⭐⭐⭐ **128 → 129: as TAGS** (TOP-20 #9). Duas coisas mudaram e nenhuma é aditiva no
-            // fio: a árvore entrou no `ProjectState` (um campo no MEIO do fluxo de bytes, porque o
-            // `state` é o primeiro campo do ficheiro) e o `SignalAction` ganhou o alvo por TAG.
-            // ⇒ este braço lê com um tipo CONGELADO (o vivo daria lixo bem-formado a partir do campo novo).
-            // ⚠️ **E COM migração, ao contrário dos últimos onze degraus:** o `128` é o schema que o
-            // `main` tem desde 10/09, com o `Timer` e o `SignalActions` dentro — um projecto gravado
-            // desde então tem autoria que recusar apagaria.
-            128 => {
-                match postcard::from_bytes::<(u32, crate::project_migrate::ProjectFileV128)>(&bytes)
-                {
-                    Ok((_, old)) => {
-                        let m = crate::project_migrate::migrate_v128_to_v129(old);
-                        eprintln!(
-                            "[proj] migrado v128 -> v{PROJECT_SCHEMA} ({} tabela(s) de accoes reescrita(s), {} ilegivel(eis); {} camera(s) do jogo com dolly 0, {} ilegivel(eis))",
-                            m.actions.tables,
-                            m.actions.unreadable,
-                            m.cameras.tables,
-                            m.cameras.unreadable
-                        );
-                        let chave = if m.sculpture_left_out {
-                            "shell.project_load.project_migrated_from_128_without_sculpture"
-                        } else {
-                            "shell.project_load.project_migrated_from_128"
-                        };
-                        self.toast(ph2d_i18n::tr_with(
-                            chave,
-                            &[("PROJECT_SCHEMA", &PROJECT_SCHEMA)],
-                        ));
-                        (m.file, None)
-                    }
-                    Err(e) => {
-                        eprintln!("[proj] v128 ilegivel: {e}");
-                        self.toast_refused("shell.project_load.project_refused_format_128", &e);
-                        return None;
-                    }
-                }
-            }
-            // ⭐ **190 → 191: os scripts no projeto** (ADR-0188). O campo novo é o ÚLTIMO, e um
-            // `Vec` vazio no postcard é o byte `0` — o v190 (e o v189, que só difere no traço, já
-            // coberto pelo âmbito acima) lê-se com o tipo vivo acrescentando-o. Os blobs do
-            // `LuauScript` passam de v2 (o caminho) a v3; o load importa os caminhos.
-            // ⭐ **192 → 193: as marcas do artista** (W9 das Macros): o campo novo é o ÚLTIMO, e o `0` do
-            // `Vec` vazio acrescentado lê o v192 com o tipo vivo (os anteriores levam-no também). O `191`
-            // tem a mesma forma; só o SIGNIFICADO da opacidade nas poses mudou (abaixo).
-            // ⭐ **203 → 204: a mesa de som** (F30 §B2): mais um `Vec` vazio no fim — um `0` a mais.
-            // ⭐ **207 → 208: os kanbans** (ADR-0195): outro `0` no fim.
-            // ⭐ **208 → 209: os Pixel Sprites**, **214 → 215: os sons**, **216 → 217: as receitas**, **217 → 218: os nomes das camadas**: mais um `0` cada.
-            192 | crate::project_schema::PROJECT_SCHEMA_OPACIDADE_FORA_DOS_ESTADOS => {
-                match postcard::from_bytes::<(u32, ProjectFile)>(
-                    &[&bytes[..], &[0, 0, 0, 0, 0, 0, 0, 0]].concat(),
-                ) {
-                    Ok((_, f)) => (f, None),
-                    Err(e) => {
-                        eprintln!("[proj] v{ver} ilegivel: {e}");
-                        self.toast_refused("shell.project_load.project_refused_format_191", &e);
-                        return None;
-                    }
-                }
-            }
-            190 | crate::project_schema::PROJECT_SCHEMA_TRACO_V22 => {
-                use ph2d_app_components::script_project::read_before_scripts;
-                match read_before_scripts(
-                    ver,
-                    &[&bytes[..], &[0, 0, 0, 0, 0, 0, 0, 0]].concat(),
-                    |f: &mut ProjectFile| &mut f.state.world,
-                    PROJECT_SCHEMA,
-                ) {
-                    Ok((f, aviso)) => {
-                        self.toast(aviso);
-                        (f, None)
-                    }
-                    Err(e) => {
-                        self.toast_refused("shell.project_load.project_refused_format_189", &e);
-                        return None;
-                    }
-                }
-            }
-            95 => {
-                match postcard::from_bytes::<(u32, crate::project_migrate::ProjectFileV95)>(&bytes)
-                {
-                    Ok((_, old)) => {
-                        let mut m = crate::project_migrate::migrate_v95_to_v96(old);
-                        // ⚠️ **A escada é ENCADEADA: um v95 sobe a 96 e depois passa pelo corte
-                        // da 99.** O `migrate_v95_to_v96` não sabe da `Sprite`, e um v95 tem
-                        // sprites v4 como qualquer outro — saltar este passo daria um ficheiro
-                        // antigo que abre com todas as sprites a ler lixo bem-formado.
-                        let split = crate::project_migrate_sprite::split_sprite_blobs(
-                            &mut m.file.state.world,
-                        );
-                        eprintln!(
-                            "[proj] migrado v95 -> v{PROJECT_SCHEMA} ({} objetos receberam identidade, {} sprites partidas)",
-                            m.file.state.world.entities.len(),
-                            split.sprites
-                        );
-                        let chave = if m.sculpture_left_out {
-                            "shell.project_load.project_migrated_from_without_sculpture"
-                        } else {
-                            "shell.project_load.project_migrated_from"
-                        };
-                        self.toast(ph2d_i18n::tr_with(
-                            chave,
-                            &[("PROJECT_SCHEMA", &PROJECT_SCHEMA)],
-                        ));
-                        (m.file, Some(m.stable_id_counter))
-                    }
-                    Err(e) => {
-                        eprintln!("[proj] v95 ilegivel: {e}");
-                        self.toast_refused("shell.project_load.project_refused_format", &e);
-                        return None;
-                    }
-                }
-            }
-            _ => {
-                eprintln!("[proj] schema {ver} != {PROJECT_SCHEMA} — recusado");
-                self.toast(ph2d_i18n::tr_with(
-                    "shell.project_load.project_refused_file",
-                    &[("ver", &ver), ("PROJECT_SCHEMA", &PROJECT_SCHEMA)],
-                ));
-                return None;
-            }
-        };
-        migra_depois_de_ler(&mut file, ver, fio);
-        if ver <= crate::project_schema::PROJECT_SCHEMA_CAIXA_ANTIGA {
-            let reg = crate::init::build_component_registry();
-            let n = reg.desvira_caixas_do_mundo(&mut file.state.world);
-            eprintln!("[proj] v{ver}: {n} pilha(s) com o Follow Value sobre caixas virado");
+        if ver != PROJECT_SCHEMA {
+            eprintln!("[proj] schema {ver} != {PROJECT_SCHEMA} — recusado");
+            self.toast(ph2d_i18n::tr_with(
+                "shell.project_load.project_refused_file",
+                &[("ver", &ver), ("PROJECT_SCHEMA", &PROJECT_SCHEMA)],
+            ));
+            return None;
         }
-        migra_formas(&mut file, ver);
-        Some((file, migrated_counter))
-    }
-}
-
-/// Os `0` do `Vec` vazio que faltam ao fim de um ficheiro `ver` lido com o tipo vivo: um por cada campo
-/// final que ele não tem — os `physics_layers` (`<= 217`), o `sfx_lab` (`<= 216`), os `sounds` (`<= 214`), os `pixel_sprites` (`<= 208`); do `204` ao `207`
-/// também os `kanbans`; do `198` ao `203` também a `mesa`; abaixo também o `jogo`. Os itens
-/// (F30 §A1, `205`), os filtros e a pilha (`206`) e os relógios (`207`) migram em `migra_depois_de_ler`: a forma
-/// do ficheiro é a mesma.
-fn falta_no_fim(ver: u32) -> &'static [u8] {
-    use crate::project_schema as s;
-    let ultimos_sem = [
-        s::PROJECT_SCHEMA_SEM_NOMES_DE_CAMADA,
-        s::PROJECT_SCHEMA_SEM_RECEITAS_DE_SOM,
-        s::PROJECT_SCHEMA_SEM_SONS,
-        s::PROJECT_SCHEMA_SEM_PIXEL,
-        s::PROJECT_SCHEMA_SEM_KANBANS,
-        s::PROJECT_SCHEMA_SEM_MESA,
-        s::PROJECT_SCHEMA_SEM_FORMATO_DO_JOGO,
-    ];
-    &[0; 7][..ultimos_sem.iter().filter(|&&d| ver <= d).count()]
-}
-
-/// ⭐ Até ao `219` a forma de colisão morava no corpo (GEF02 B2): passa a filha, e as trilhas dela seguem-na.
-fn migra_formas(file: &mut ProjectFile, ver: u32) {
-    if ver > crate::project_schema::PROJECT_SCHEMA_FORMA_NO_CORPO {
-        return;
-    }
-    let reg = crate::init::build_component_registry();
-    let (w, c) = (&mut file.state.world, &mut file.stable_id_counter);
-    match ph2d_physics_ecs::migra_formas_no_retrato(w, c, &reg) {
-        Ok(m) => {
-            let t = ph2d_timeline_persist::realveja_trilhas_da_forma(&mut file.timeline, &m.pares);
-            eprintln!(
-                "[proj] v{ver}: {} forma(s) a filha, {} recusada(s); trilhas {t:?}",
-                m.pares.len(),
-                m.recusados
-            );
-        }
-        Err(e) => eprintln!("[proj] v{ver}: formas por migrar: {e}"),
+        le_com_o_tipo_vivo(&bytes, path).map(|f| (f, None))
     }
 }
 
@@ -248,44 +63,5 @@ fn le_com_o_tipo_vivo(bytes: &[u8], path: &str) -> Option<ProjectFile> {
             eprintln!("[proj] erro ao ler {path}: {e}");
             None
         }
-    }
-}
-
-/// A migração de CONTEÚDO depois de o ficheiro lido (a opacidade das poses; o fio antigo do vetor).
-fn migra_depois_de_ler(file: &mut ProjectFile, ver: u32, fio: Option<u32>) {
-    // ⭐ As oito camadas de sempre continuam à vista; um blob ilegível é recusado em voz alta no load.
-    if ver <= crate::project_schema::PROJECT_SCHEMA_MATRIZ_DE_OITO
-        && let Ok(b) = ph2d_physics_ecs::LayerNames::upgrade_v218(&file.physics_layers)
-    {
-        file.physics_layers = b;
-    }
-    // ⭐ **Até ao `191` a opacidade não era canal de estado** (F22b): cada pose gravada recebe a
-    // da forma, e o Show desses projetos continua a não a mexer.
-    if ver <= crate::project_schema::PROJECT_SCHEMA_OPACIDADE_FORA_DOS_ESTADOS {
-        let n = ph2d_app_vec::ui_state_edit::opacity_from_scene(
-            &mut file.state.ui_states,
-            &file.state.vec,
-        );
-        eprintln!("[proj] v{ver}: {n} pose(s) de estado com a opacidade da forma");
-    }
-    // Os degraus de FORMA: os itens das listas (`<= 204`), os filtros da forma (`<= 205`), os
-    // relógios (`<= 206`) e o tendão da pele (`<= 210`). Antes do `migra_fio`, que lê a pele viva.
-    if ver <= crate::project_schema::PROJECT_SCHEMA_TENDAO_SEM_COMPRIMENTO {
-        // Os degraus de fora (a pele) registam-se com o registo: montá-lo aqui garante-os mesmo num
-        // load sem janela (idempotente).
-        let _ = crate::init::build_component_registry();
-        let m = ph2d_ecs::item_id::migra(&mut file.state.world, ver);
-        eprintln!(
-            "[proj] v{ver}: {} lista(s) de itens migrada(s), {} ilegivel(eis)",
-            m.migrados, m.ilegiveis
-        );
-    }
-    if let Some(fio) = fio {
-        // As formas guardadas DENTRO de componentes (Envelope, pele) são lidas mais tarde, fora
-        // deste âmbito ⇒ regravam-se agora na forma viva.
-        let w = &mut file.state.world;
-        let n = ph2d_app_vec::envelope_live::migra_fio(w, fio)
-            + ph2d_skeleton_live::skinned_mesh::migra_fio(w, fio);
-        eprintln!("[proj] v{ver}: vetor v{fio} lido; {n} envelope(s)/pele(s) regravado(s)");
     }
 }

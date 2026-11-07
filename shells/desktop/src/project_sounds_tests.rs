@@ -22,39 +22,3 @@ fn the_project_sounds_cross_the_file_byte_for_byte() {
     let _ = std::fs::remove_file(&path);
     assert_eq!(lido.expect("aceite").0.sounds, lib.to_bytes());
 }
-
-/// ⚠️ Os bytes do v214 são escritos campo a campo (a forma de então, sem o campo) — não a partir do tipo
-/// vivo, senão o teste provaria o braço com a hipótese dele.
-#[test]
-fn a_v214_opens_without_sounds() {
-    let _fio = ph2d_physics_ecs::LayerRowsV218::enter();
-    let f = bare_file(empty_state());
-    let v214 = (
-        (&f.state, &f.assets, &f.painted, &f.motion),
-        (&f.timeline, &f.physics, &f.tokens, &f.settings),
-        (&f.player_tape, &f.sprite_pixels, &f.stable_id_counter),
-        (&f.input_map, &f.pattern_art, &f.boards, &f.scripts),
-        (
-            &f.marcas_do_artista,
-            &f.jogo,
-            &f.mesa,
-            &f.kanbans,
-            vec![7u8],
-        ),
-    );
-    let path = ph2d_vec_scene::with_wire_layout(28, || {
-        written(
-            "sons_v214",
-            &(crate::project_schema::PROJECT_SCHEMA_SEM_SONS, v214),
-        )
-    });
-    let lido = headless_app().read_project_file(&path.to_string_lossy());
-    let _ = std::fs::remove_file(&path);
-    let (f, _) = lido.expect("um v214 é recusado");
-    assert_eq!(
-        f.pixel_sprites,
-        [7],
-        "o último campo do v214 lê-se no sítio dele"
-    );
-    assert!(f.sounds.is_empty());
-}

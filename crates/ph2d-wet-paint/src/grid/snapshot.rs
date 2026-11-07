@@ -340,6 +340,25 @@ impl Registo {
         self.marca(g, 0, 0, s, rows);
     }
 
+    /// A caixa dos tiles que o registo guarda (meio-aberta, com o pad); a grade inteira se o papel muda.
+    #[must_use]
+    pub fn caixa(&self, g: &Grid) -> Option<[usize; 4]> {
+        if self.base.paper_preset != g.paper_preset || self.base.paper_sheet != g.paper_sheet {
+            return Some([0, 0, g.s, g.rows]);
+        }
+        self.finos.keys().fold(None, |c, k| {
+            let r = ret_do_tile(*k, g.s, g.rows);
+            Some(c.map_or([r.x0, r.y0, r.x1, r.y1], |c: [usize; 4]| {
+                [
+                    c[0].min(r.x0),
+                    c[1].min(r.y0),
+                    c[2].max(r.x1),
+                    c[3].max(r.y1),
+                ]
+            }))
+        })
+    }
+
     /// Fotografa o estado ACTUAL sobre os tiles que `a` (e `b`) guardam — o registo inverso.
     #[must_use]
     pub fn inverso(g: &Grid, a: &Registo, b: Option<&Registo>) -> Self {

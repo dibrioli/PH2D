@@ -16,7 +16,7 @@ pub(crate) struct PlanoEmTiles {
 }
 
 /// Por plano: início e comprimento de cada tile nas células distintas.
-pub(super) type MapaDosTiles = Vec<Vec<(u32, u32)>>;
+pub(super) type MapaDosTiles = Vec<Vec<(usize, usize)>>;
 
 impl PlanoEmTiles {
     fn tiles_por_linha(s: usize) -> usize {
@@ -116,38 +116,46 @@ impl PlanoEmTiles {
 
 /// Tira os tiles dos `planos`, cada `Arc` uma vez: a partilha sobrevive ao vai e volta.
 pub(super) fn tira_os_tiles(planos: Vec<&mut PlanoEmTiles>) -> (Vec<f32>, MapaDosTiles) {
-    let mut vistos: BTreeMap<*const f32, (u32, u32)> = BTreeMap::new();
-    let mut celulas = Vec::new();
-    let mapa = planos
+    let tiles: Vec<Vec<Arc<[f32]>>> = planos
         .into_iter()
+        .map(|p| std::mem::take(&mut p.tiles))
+        .collect();
+    let mut vistos: BTreeMap<*const f32, (usize, usize)> = BTreeMap::new();
+    let mut total = 0;
+    let mapa: MapaDosTiles = tiles
+        .iter()
         .map(|p| {
-            std::mem::take(&mut p.tiles)
-                .iter()
+            p.iter()
                 .map(|t| {
                     *vistos.entry(t.as_ptr()).or_insert_with(|| {
-                        let inicio = celulas.len() as u32;
-                        celulas.extend_from_slice(t);
-                        (inicio, t.len() as u32)
+                        let inicio = total;
+                        total += t.len();
+                        (inicio, t.len())
                     })
                 })
                 .collect()
         })
         .collect();
+    let mut celulas = Vec::with_capacity(total);
+    for (t, &(inicio, _)) in tiles.iter().flatten().zip(mapa.iter().flatten()) {
+        if inicio == celulas.len() {
+            celulas.extend_from_slice(t);
+        }
+    }
     (celulas, mapa)
 }
 
 /// Devolve aos `planos` (os mesmos, na mesma ordem) o que [`tira_os_tiles`] tirou.
 pub(super) fn poe_os_tiles(planos: Vec<&mut PlanoEmTiles>, celulas: &[f32], mapa: &MapaDosTiles) {
-    let mut feitos: BTreeMap<u32, Arc<[f32]>> = BTreeMap::new();
+    let mut feitos: BTreeMap<usize, Arc<[f32]>> = BTreeMap::new();
     for (p, m) in planos.into_iter().zip(mapa) {
         p.tiles = m
             .iter()
             .map(|&(inicio, n)| {
-                let (a, b) = (inicio as usize, (inicio + n) as usize);
                 Arc::clone(
                     feitos
                         .entry(inicio)
-                        .or_insert_with(|| Arc::from(&celulas[a..b])),
+                        .or_insert_with(|| Arc::from(&celulas[inicio..inicio + n])),
                 )
             })
             .collect();
@@ -219,6 +227,7 @@ mod tests {
         let mut b = PlanoEmTiles::de(&v, s, Some(&a));
         let (celulas, mapa) = tira_os_tiles(vec![&mut a, &mut b]);
         assert_eq!(celulas.len(), v.len(), "cada tile uma vez");
+        assert_eq!(celulas.capacity(), celulas.len(), "sem reservar a mais");
         assert_eq!(a.bytes(), 0);
         assert_eq!(a.bytes_novos(), 0, "sem tiles nada retém");
         poe_os_tiles(vec![&mut a, &mut b], &celulas, &mapa);

@@ -48,6 +48,19 @@ impl Congelada {
     pub(super) fn bytes(&self) -> usize {
         self.tela.len() + self.pigment.len() + self.sombra.len()
     }
+
+    /// Os bytes só dela, sem os `Arc` que ela partilha.
+    pub(super) fn bytes_proprios(&self) -> usize {
+        self.pigment.len() + self.sombra.len() + self.enterradas.len() + self.mudou.len()
+    }
+
+    pub(super) fn tela(&self) -> &Arc<Vec<u8>> {
+        &self.tela
+    }
+
+    pub(super) fn base(&self) -> &Arc<Vec<u8>> {
+        &self.base
+    }
 }
 
 /// A sessão fora do caminho de um undo sem fotografia, com a tela e a camada de antes.
@@ -186,7 +199,6 @@ impl PainterTool {
             return false;
         }
         sess.bring_home();
-        sess.otica.toca_tudo(sess.grid);
         self.wet_enterra_como_passo(&mut sess, &velha);
         sess.canvas = Arc::downgrade(&self.canvas_rgba);
         self.undo.write_state.vigia_a_tela(Some(&self.canvas_rgba));
@@ -358,8 +370,8 @@ impl PainterTool {
         true
     }
 
-    /// As células sob o que outro meio pintou acabam: a imagem de agora passa a ser a `base` delas.
-    pub(super) fn wet_enterra_o_que_mudou(&self, sess: &mut WetSession, velha: &[u8]) {
+    /// As células sob o que outro meio pintou acabam: a imagem de agora passa a ser a `base` delas. Devolve-as.
+    pub(super) fn wet_enterra_o_que_mudou(&self, sess: &mut WetSession, velha: &[u8]) -> Vec<bool> {
         let nova = &self.canvas_rgba[..];
         let (w, h) = (self.source_size.0 as usize, self.source_size.1 as usize);
         let q = usize::from(sess.ratio);
@@ -409,6 +421,7 @@ impl PainterTool {
             .collect();
         self.wet_orla_vai_para_a_base(sess, &mudou, &tocada);
         self.wet_congela(sess, Some((&tocada, &mudou)));
+        tocada
     }
 
     /// Na orla do enterro a tinta perdeu cobertura que a tela ainda mostra: fica na `base`, ou a Borracha que refaz estes

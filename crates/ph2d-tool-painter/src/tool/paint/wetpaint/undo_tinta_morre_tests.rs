@@ -12,15 +12,15 @@ pub(super) mod teto {
     pub(in crate::tool::paint) fn get() -> Option<usize> {
         V.with(Cell::get)
     }
-    pub(super) fn set(v: Option<usize>) {
+    pub(in crate::tool::paint) fn set(v: Option<usize>) {
         V.with(|c| c.set(v));
     }
 }
 
-const DABBER: &str = "Oil/Dabber/Dabber.ph2d-brush.png";
-const AGUADA: &str = "Watercolor/Fluid/Wet Flat.ph2d-brush.png";
+pub(super) const DABBER: &str = "Oil/Dabber/Dabber.ph2d-brush.png";
+pub(super) const AGUADA: &str = "Watercolor/Fluid/Wet Flat.ph2d-brush.png";
 
-fn tela(w: usize, h: usize, meio: &str, tamanho: f32) -> PainterTool {
+pub(super) fn tela(w: usize, h: usize, meio: &str, tamanho: f32) -> PainterTool {
     let mut t = PainterTool::default();
     t.abre_a_sprite(vec![255u8; w * h * 4], w as u32, h as u32);
     t.set_paint_tool_mode("wetpaint");
@@ -36,7 +36,7 @@ fn tela(w: usize, h: usize, meio: &str, tamanho: f32) -> PainterTool {
 }
 
 /// Um traço horizontal de `x0` a `x1` na linha `y`, em 40 movimentos.
-fn traco(t: &mut PainterTool, x0: f32, x1: f32, y: f32) {
+pub(super) fn traco(t: &mut PainterTool, x0: f32, x1: f32, y: f32) {
     t.on_canvas_pointer(ponteiro(x0, y, PointerPhase::Down));
     for k in 1..=40 {
         t.on_canvas_pointer(ponteiro(
@@ -51,7 +51,7 @@ fn traco(t: &mut PainterTool, x0: f32, x1: f32, y: f32) {
 }
 
 /// A tinta que a grade ainda tem na linha `y`: 0 = aquela tinta é morta (ou a sessão acabou).
-fn tinta_viva_na_linha(t: &mut PainterTool, y: usize) -> f32 {
+pub(super) fn tinta_viva_na_linha(t: &mut PainterTool, y: usize) -> f32 {
     t.wet_bring_home();
     let Some(s) = t.paint.wetpaint.session.as_ref() else {
         return 0.0;
@@ -133,7 +133,7 @@ fn sonda_quando_o_undo_mata() {
 }
 
 /// O que o motor tem de tinta, células por plano, para comparar duas linhas do tempo.
-fn grade(t: &mut PainterTool) -> Vec<Vec<u32>> {
+pub(super) fn grade(t: &mut PainterTool) -> Vec<Vec<u32>> {
     t.wet_bring_home();
     let g = &t
         .paint
@@ -158,7 +158,7 @@ fn grade(t: &mut PainterTool) -> Vec<Vec<u32>> {
     .collect()
 }
 
-fn linha_y(i: usize) -> f32 {
+pub(super) fn linha_y(i: usize) -> f32 {
     20.0 + 30.0 * i as f32
 }
 
@@ -279,7 +279,7 @@ fn para_la_do_tecto_so_o_traco_desfeito_acaba() {
             assert!(t.paint.wetpaint.session.is_some(), "{meio}: desfazer {i}");
             assert!(t.canvas_rgba[..] == telas[i][..], "{meio}: a tela {i}");
             assert_eq!(
-                tinta_viva_na_linha(&mut t, (20 + 60 * i) as usize),
+                tinta_viva_na_linha(&mut t, 20 + 60 * i),
                 0.0,
                 "{meio}: tinta invisível no traço {i}"
             );
@@ -336,8 +336,10 @@ fn para_la_do_tecto_o_traco_que_cruza_nao_deixa_nada() {
     t.ticks_em_blocos(600);
     let amarelo = t
         .canvas_rgba
-        .chunks_exact(4)
-        .zip(antes.chunks_exact(4))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .zip(antes.as_chunks::<4>().0)
         .filter(|(a, b)| {
             i32::from(a[0]) > i32::from(b[0]) + 12 && i32::from(a[2]) < i32::from(b[2]) - 12
         })

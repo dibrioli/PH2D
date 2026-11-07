@@ -242,8 +242,7 @@ fn regua_do_fecho_varias_camadas() {
     println!("[camadas] camada 0 pintada: {}", memoria());
     let mut trocas = Vec::new();
     for c in 1..4 {
-        t.add_raster_layer(&format!("camada {c}"))
-            .expect("a camada");
+        t.add_raster_layer(format!("camada {c}")).expect("a camada");
         let t0 = Instant::now();
         t.on_tick(1000.0 / 60.0);
         trocas.push(t0.elapsed().as_secs_f64() * 1e3);
@@ -489,4 +488,86 @@ fn regua_do_fecho_memoria_sem_consumir() {
 #[ignore = "régua: corre por nome com --ignored"]
 fn regua_do_fecho_memoria_consumindo() {
     memoria_por_traco(true);
+}
+
+/// ⭐ O desfazer para lá do tecto, a 4K: 10 traços de largura inteira, e o desfazer de um por um. Também o desfazer com
+/// fotografia numa sessão que já enterrou (um Fill antes), e o Dry Canvas com o registo aberto.
+#[test]
+#[ignore = "régua: corre por nome com --ignored"]
+fn regua_do_fecho_desfazer_para_la_do_tecto() {
+    use super::undo_tinta_morre_tests::teto;
+    let (w, h) = (4096usize, 2560usize);
+    println!("[desfazer] carga antes {}", carga());
+    teto::set(Some(1));
+    let mut t = pintada(w, h, 10);
+    println!("[desfazer] pintada, carga {}", carga());
+    use super::undo_auditoria_tests::grade_inteira;
+    // Variantes alternadas no mesmo processo, ABBA: 0 = caixa, 1 = a grade inteira de antes.
+    let abba = |i: usize| (i + 1) % 4 < 2;
+    let mut sem_passo = [Vec::new(), Vec::new()];
+    for i in 0..9 {
+        grade_inteira::set(abba(i));
+        let t0 = Instant::now();
+        assert!(t.undo_last());
+        let ms = t0.elapsed().as_secs_f64() * 1e3;
+        println!("[desfazer] tecto {i} inteira {}: {ms:7.1} ms", abba(i));
+        if i > 0 {
+            sem_passo[usize::from(abba(i))].push(ms);
+        }
+        quadro(&mut t);
+    }
+    teto::set(None);
+    println!(
+        "[desfazer] para lá do tecto: caixa {} · inteira {} · carga {}",
+        resumo(&mut sem_passo[0]),
+        resumo(&mut sem_passo[1]),
+        carga()
+    );
+
+    grade_inteira::set(false);
+    let mut t = pintada(w, h, 4);
+    t.set_rect_selection(100, 100, 200, 200);
+    t.selection_color_fill();
+    t.on_tick(1000.0 / 60.0);
+    t.clear_selection();
+    for p in 0..8 {
+        traco_inteiro(&mut t, w, 200.0 + p as f32 * 280.0);
+        t.on_tick(1000.0 / 60.0);
+    }
+    let mut foto = [Vec::new(), Vec::new()];
+    for i in 0..8 {
+        grade_inteira::set(abba(i));
+        let t0 = Instant::now();
+        assert!(t.undo_last());
+        let ms = t0.elapsed().as_secs_f64() * 1e3;
+        println!("[desfazer] foto {i} inteira {}: {ms:7.1} ms", abba(i));
+        foto[usize::from(abba(i))].push(ms);
+        quadro(&mut t);
+    }
+    grade_inteira::set(false);
+    println!(
+        "[desfazer] com fotografia, já enterrou: caixa {} · inteira {} · carga {}",
+        resumo(&mut foto[0]),
+        resumo(&mut foto[1]),
+        carga()
+    );
+
+    traco_inteiro(&mut t, w, 300.0);
+    t.wet_bring_home();
+    let bytes = |t: &PainterTool| {
+        t.paint
+            .wetpaint
+            .session
+            .as_ref()
+            .map_or(0, |s| s.engine.bytes_do_historico(0))
+    };
+    let antes = bytes(&t);
+    let t0 = Instant::now();
+    t.wetpaint_dry_canvas();
+    println!(
+        "[desfazer] Dry Canvas: {:7.1} ms · registos {} → {} MB",
+        t0.elapsed().as_secs_f64() * 1e3,
+        antes >> 20,
+        bytes(&t) >> 20
+    );
 }

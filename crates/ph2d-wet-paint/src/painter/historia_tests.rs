@@ -389,3 +389,112 @@ fn historia_redo_cobre_a_agua_dos_dabs_que_a_caixa_nao_viu() {
         "o redo deixou água da deriva"
     );
 }
+
+/// As portas do produto sem captura escrevem no registo aberto: o desfazer do passo devolve as células longe dele.
+#[test]
+fn historia_portas_sem_captura_entram_no_registo_aberto() {
+    for (nome, porta) in [
+        ("wet", Engine::wet_canvas_now as fn(&mut Engine)),
+        ("dry", Engine::dry_canvas_now),
+        ("fast", Engine::fast_dry_now),
+    ] {
+        let mut e = Engine::new(300, 220);
+        e.sliders.water = 1.0;
+        traco(&mut e, 40.0, 40.0, 5);
+        corre(&mut e, 10);
+        e.drain_step();
+        e.capture_history();
+        let a = hash_grid(e.active_grid());
+        traco(&mut e, 200.0, 170.0, 5);
+        porta(&mut e);
+        assert!(e.undo(), "{nome}");
+        e.drain_step();
+        assert_eq!(hash_grid(e.active_grid()), a, "{nome}");
+    }
+}
+
+/// Esquecer a história larga também o registo do redo em curso.
+#[test]
+fn historia_esquecida_nao_retem_nada() {
+    let mut e = Engine::new(300, 220);
+    e.sliders.water = 1.0;
+    traco(&mut e, 40.0, 40.0, 5);
+    traco(&mut e, 200.0, 170.0, 5);
+    assert!(e.undo());
+    corre(&mut e, 5);
+    assert!(e.can_redo());
+    e.esquece_a_historia();
+    assert!(!e.can_undo() && !e.can_redo());
+    assert_eq!(e.bytes_do_historico(0), 0, "o `desde` ficou");
+}
+
+/// O enterro de poucas células só guarda os tiles delas, e o desfazer devolve-as ao byte.
+#[test]
+fn historia_o_enterro_so_retem_os_tiles_dele() {
+    let mut e = Engine::new(1000, 800);
+    e.sliders.water = 1.0;
+    traco(&mut e, 40.0, 40.0, 5);
+    corre(&mut e, 5);
+    e.drain_step();
+    e.capture_history();
+    let a = hash_grid(e.active_grid());
+    let gw = 1000;
+    let mut t = vec![false; gw * 800];
+    t[20 * gw + 20] = true;
+    let de_antes = e.bytes_do_historico(0);
+    e.enterra_celulas(&t, gw);
+    let retidos = e.bytes_do_historico(0) - de_antes;
+    e.capture_history();
+    let cheio = {
+        let agora = e.bytes_do_historico(0);
+        e.marca_tudo();
+        e.bytes_do_historico(0) - agora
+    };
+    assert!(retidos * 50 < cheio, "{retidos} de {cheio} bytes");
+    assert!(e.undo());
+    assert!(e.undo());
+    assert_eq!(hash_grid(e.active_grid()), a);
+}
+
+/// A caixa do próximo restauro cobre tudo o que ele escreve.
+#[test]
+fn historia_a_caixa_do_restauro_cobre_o_que_muda() {
+    let mut e = Engine::new(600, 400);
+    e.sliders.water = 1.0;
+    traco(&mut e, 40.0, 40.0, 5);
+    corre(&mut e, 5);
+    e.drain_step();
+    let fora = |e: &Engine, a: &crate::grid::GridSnapshot, c: Option<[usize; 4]>| {
+        let g = e.active_grid();
+        let b = snapshot_grid(g);
+        let [x0, y0, x1, y1] = c.unwrap_or([0, 0, 0, 0]);
+        (0..g.sett.len())
+            .filter(|i| {
+                let (x, y) = (i % g.s, i / g.s);
+                let dentro = x >= x0 && x < x1 && y >= y0 && y < y1;
+                !dentro
+                    && (a.sett[*i].to_bits() != b.sett[*i].to_bits()
+                        || a.susp[*i].to_bits() != b.susp[*i].to_bits())
+            })
+            .count()
+    };
+    traco(&mut e, 300.0, 200.0, 5);
+    corre(&mut e, 5);
+    let depois = snapshot_grid(e.active_grid());
+    e.drain_step();
+    let c = e.caixa_do_restauro(false);
+    let g = e.active_grid();
+    assert!(
+        c.is_some_and(|c| c[2] - c[0] < g.s),
+        "a caixa não é a grade"
+    );
+    assert!(e.undo());
+    let antes = snapshot_grid(e.active_grid());
+    assert_eq!(fora(&e, &depois, c), 0, "desfazer");
+    corre(&mut e, 5);
+    let c = e.caixa_do_restauro(true);
+    let agora = snapshot_grid(e.active_grid());
+    assert!(e.redo());
+    assert_eq!(fora(&e, &agora, c), 0, "refazer");
+    let _ = antes;
+}

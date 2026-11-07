@@ -16,7 +16,7 @@ use super::*;
 #[derive(Clone, Default)]
 pub(super) struct OticaDoTique {
     /// A época do pedido por responder.
-    no_ar: Option<u64>,
+    pub(super) no_ar: Option<u64>,
     epoca: u64,
     pub(super) uniao_local: Option<CaixaCel>,
     pub(super) divida: Option<CaixaCel>,
@@ -27,7 +27,7 @@ pub(super) struct OticaDoTique {
     pub(super) tocadas: u32,
 }
 
-fn une(a: Option<CaixaCel>, b: CaixaCel) -> CaixaCel {
+pub(super) fn une(a: Option<CaixaCel>, b: CaixaCel) -> CaixaCel {
     a.map_or(b, |a| {
         (a.0.min(b.0), a.1.min(b.1), a.2.max(b.2), a.3.max(b.3))
     })

@@ -89,15 +89,38 @@ pub(crate) fn bytes_das_fotos(passos: &[PassoVivo]) -> usize {
             .sum::<usize>()
 }
 
-/// Os bytes que os passos retêm fora do motor: as fotografias, as telas e as `base` distintas.
-fn bytes_dos_passos(passos: &[PassoVivo], base_de_agora: &Arc<Vec<u8>>) -> usize {
-    let mut ultima = Arc::as_ptr(base_de_agora);
+/// Os bytes que os passos retêm fora do motor: as fotografias e cada `Arc` distinto de tela, `base` e tela congelada.
+/// A `base` e a congelada de agora são da sessão, com ou sem passos.
+pub(super) fn bytes_retidos_nos_passos(
+    passos: &[PassoVivo],
+    base_de_agora: &Arc<Vec<u8>>,
+    congelada_de_agora: Option<&Arc<super::adormecida::Congelada>>,
+) -> usize {
+    use std::collections::BTreeSet;
+    let mut telas: BTreeSet<*const Vec<u8>> = BTreeSet::from([Arc::as_ptr(base_de_agora)]);
+    let mut congeladas: BTreeSet<*const super::adormecida::Congelada> =
+        congelada_de_agora.map(Arc::as_ptr).into_iter().collect();
     let mut soma = bytes_das_fotos(passos);
-    for p in passos.iter().rev() {
-        soma += p.tela_antes.as_ref().map_or(0, |t| t.len());
-        if Arc::as_ptr(&p.base_antes) != ultima {
-            ultima = Arc::as_ptr(&p.base_antes);
-            soma += p.base_antes.len();
+    let mut conta = |t: &Arc<Vec<u8>>, soma: &mut usize| {
+        if telas.insert(Arc::as_ptr(t)) {
+            *soma += t.len();
+        }
+    };
+    if let Some(c) = congelada_de_agora {
+        conta(c.tela(), &mut 0);
+        conta(c.base(), &mut 0);
+    }
+    for p in passos {
+        conta(&p.base_antes, &mut soma);
+        for t in p.base_depois.iter().chain(&p.tela_antes) {
+            conta(t, &mut soma);
+        }
+        for c in p.congelada_antes.iter().chain(&p.congelada_depois) {
+            if congeladas.insert(Arc::as_ptr(c)) {
+                soma += c.bytes_proprios();
+                conta(c.tela(), &mut soma);
+                conta(c.base(), &mut soma);
+            }
         }
     }
     soma
@@ -105,7 +128,12 @@ fn bytes_dos_passos(passos: &[PassoVivo], base_de_agora: &Arc<Vec<u8>>) -> usize
 
 /// Abre o registo copy-on-write do passo `chave` no motor (em casa), fotografa o resto, e larga os passos mais velhos
 /// que passem do tecto: o registo e a fotografia de cada um.
-fn abre_o_passo(sess: &mut WetSession, chave: usize, tela_antes: Option<Arc<Vec<u8>>>) {
+fn abre_o_passo(
+    sess: &mut WetSession,
+    chave: usize,
+    tela_antes: Option<Arc<Vec<u8>>>,
+    alcancavel_desde: usize,
+) {
     sess.antes_do_passo.retain(|p| p.chave < chave);
     // O registo copy-on-write do passo: daqui em diante toda escrita no grid marca os seus tiles nele.
     sess.engine.capture_history();
@@ -123,7 +151,14 @@ fn abre_o_passo(sess: &mut WetSession, chave: usize, tela_antes: Option<Arc<Vec<
     let teto = teto_da_historia(sess.engine.width, sess.engine.height);
     let mut registos = sess.engine.bytes_do_historico(sess.engine.active_layer);
     while sess.antes_do_passo.len() > 1
-        && registos + bytes_dos_passos(&sess.antes_do_passo, &sess.base) > teto
+        && (sess.antes_do_passo[0].chave < alcancavel_desde
+            || registos
+                + bytes_retidos_nos_passos(
+                    &sess.antes_do_passo,
+                    &sess.base,
+                    sess.congelada.as_ref(),
+                )
+                > teto)
     {
         registos -= sess.engine.solta_o_registo_mais_velho();
         sess.antes_do_passo.remove(0);
@@ -133,6 +168,92 @@ fn abre_o_passo(sess: &mut WetSession, chave: usize, tela_antes: Option<Arc<Vec<
 fn esquece_os_passos(sess: &mut WetSession) {
     sess.antes_do_passo.clear();
     sess.engine.esquece_a_historia();
+}
+
+/// O alcance do enterro da orla, em células: a tinta invisível de um traço desfeito fica até 7 células do que a tela
+/// mudou (`sonda_alcance_da_orla`: Wet Flat de 20 a 160 px, até 3000 quadros de água). 32 é a folga sobre o medido.
+const ALCANCE_DA_ORLA: usize = 32;
+
+/// As células a até `r` (Chebyshev) de uma marcada, e a caixa delas (1-based, inclusiva).
+fn perto_de(
+    marcadas: &[bool],
+    gw: usize,
+    gh: usize,
+    r: usize,
+) -> (Vec<bool>, Option<(usize, usize, usize, usize)>) {
+    let mut fora = vec![false; gw * gh];
+    let (Some(a), Some(b)) = (
+        marcadas.iter().position(|m| *m),
+        marcadas.iter().rposition(|m| *m),
+    ) else {
+        return (fora, None);
+    };
+    let (y0, y1) = ((a / gw).saturating_sub(r), (b / gw + r).min(gh - 1));
+    // Por linha, depois por coluna: cada passada é linear.
+    let mut por_linha = vec![false; gw * gh];
+    for y in a / gw..=b / gw {
+        let (linha, saida) = (
+            &marcadas[y * gw..(y + 1) * gw],
+            &mut por_linha[y * gw..(y + 1) * gw],
+        );
+        let mut d = usize::MAX;
+        for x in 0..gw {
+            d = if linha[x] { 0 } else { d.saturating_add(1) };
+            saida[x] = d <= r;
+        }
+        d = usize::MAX;
+        for x in (0..gw).rev() {
+            d = if linha[x] { 0 } else { d.saturating_add(1) };
+            saida[x] |= d <= r;
+        }
+    }
+    let mut d = vec![usize::MAX; gw];
+    for y in y0..=y1 {
+        for x in 0..gw {
+            d[x] = if por_linha[y * gw + x] {
+                0
+            } else {
+                d[x].saturating_add(1)
+            };
+            fora[y * gw + x] = d[x] <= r;
+        }
+    }
+    d.fill(usize::MAX);
+    for y in (y0..=y1).rev() {
+        for x in 0..gw {
+            d[x] = if por_linha[y * gw + x] {
+                0
+            } else {
+                d[x].saturating_add(1)
+            };
+            fora[y * gw + x] |= d[x] <= r;
+        }
+    }
+    let (mut cx0, mut cx1) = (gw, 0);
+    for y in y0..=y1 {
+        let l = &fora[y * gw..(y + 1) * gw];
+        if let Some(x) = l.iter().position(|m| *m) {
+            cx0 = cx0.min(x);
+        }
+        if let Some(x) = l.iter().rposition(|m| *m) {
+            cx1 = cx1.max(x);
+        }
+    }
+    (fora, Some((cx0 + 1, y0 + 1, cx1 + 1, y1 + 1)))
+}
+
+/// A caixa a recompor nos planos: a grade inteira só em teste, para comparar.
+fn caixa_dos_planos(
+    c: (usize, usize, usize, usize),
+    gw: usize,
+    gh: usize,
+) -> (usize, usize, usize, usize) {
+    #[cfg(test)]
+    if super::undo_auditoria_tests::grade_inteira::get() {
+        return (1, 1, gw, gh);
+    }
+    let _ = (gw, gh);
+    c
 }
 
 impl FotoDoMotor {
@@ -229,11 +350,12 @@ impl PainterTool {
     /// resto com a chave do passo, dentro do orçamento.
     pub(crate) fn wet_guarda_o_passo(&mut self) {
         let chave = self.undo.chave_do_topo();
+        let desde = chave - self.undo.undo_depth();
         let Some(sess) = self.paint.wetpaint.session.as_mut() else {
             return;
         };
         sess.bring_home();
-        abre_o_passo(sess, chave, None);
+        abre_o_passo(sess, chave, None, desde);
     }
 
     /// Desfazer um passo que já saiu do histórico: a tinta dele acaba e a que ficou continua viva. As células onde a tela
@@ -243,15 +365,19 @@ impl PainterTool {
         esquece_os_passos(sess);
         sess.enterrou = true;
         sess.otica.toca_tudo(sess.grid);
-        self.wet_enterra_o_que_mudou(sess, velha);
-        // O passo deixou tinta onde ela não muda nenhum píxel (a orla fina da aguada, alfa 0): voltaria a correr.
+        let tocada = self.wet_enterra_o_que_mudou(sess, velha);
+        // O passo deixou tinta onde ela não muda nenhum píxel (a orla fina da aguada, alfa 0): voltaria a correr. Só a dele.
         let (gw, gh) = sess.grid;
-        self.wet_planos_em_dia(sess, (1, 1, gw, gh));
+        let perto = perto_de(&tocada, gw, gh, ALCANCE_DA_ORLA);
+        // Só a caixa: a água que corre noutro sítio recompõe-se no passo seguinte dela.
+        if let Some(c) = perto.1.map(|c| caixa_dos_planos(c, gw, gh)) {
+            self.wet_planos_em_dia(sess, c);
+        }
         let g = sess.engine.active_grid();
         let invisivel: Vec<bool> = (0..gw * gh)
             .map(|k| {
                 let c = (k / gw + 1) * g.s + k % gw + 1;
-                sess.planos.pigment[k * 4 + 3] == 0 && g.sett[c] + g.susp[c] > 0.0
+                perto.0[k] && sess.planos.pigment[k * 4 + 3] == 0 && g.sett[c] + g.susp[c] > 0.0
             })
             .collect();
         sess.engine.enterra_celulas(&invisivel, gw);
@@ -271,12 +397,15 @@ impl PainterTool {
             sess.antes_do_passo.retain(|p| p.chave <= chave);
             // O passo já aberto no pen-down é este (a Borracha plana): o enterro entra no registo dele.
             if sess.antes_do_passo.last().is_none_or(|p| p.chave != chave) {
-                abre_o_passo(sess, chave, Some(Arc::clone(velha)));
+                let desde = self.undo.chave_do_topo() - self.undo.undo_depth();
+                abre_o_passo(sess, chave, Some(Arc::clone(velha)), desde);
             }
         } else {
             esquece_os_passos(sess);
         }
         sess.enterrou = true;
+        // Uma imagem no ar é de antes do enterro: aplicada, punha a tinta velha de volta.
+        sess.otica.toca_tudo(sess.grid);
         self.wet_enterra_o_que_mudou(sess, velha);
     }
 
@@ -335,6 +464,20 @@ impl PainterTool {
                 }
                 sess.congelada = p.congelada_depois.take();
             }
+            // O que os planos têm de seguir: o que o restauro escreve (com a água viva, a caixa dela).
+            let (gw, gh) = sess.grid;
+            let ja_enterrou = sess.enterrou;
+            let caixa = sess
+                .engine
+                .caixa_do_restauro(refaz)
+                .map(|[x0, y0, x1, y1]| {
+                    (
+                        x0.clamp(1, gw),
+                        y0.clamp(1, gh),
+                        x1.saturating_sub(1).clamp(1, gw),
+                        y1.saturating_sub(1).clamp(1, gh),
+                    )
+                });
             let feito = if refaz {
                 sess.engine.redo()
             } else {
@@ -364,8 +507,15 @@ impl PainterTool {
             if sess.enterrou {
                 sess.engine.take_dirty();
                 sess.otica.toca_tudo(sess.grid);
-                let (gw, gh) = sess.grid;
-                self.wet_planos_em_dia(&mut sess, (1, 1, gw, gh));
+                // Enterrou só agora (`tela_antes`): os planos nunca seguiram a grade.
+                let c = if ja_enterrou {
+                    caixa
+                } else {
+                    Some((1, 1, gw, gh))
+                };
+                if let Some(c) = c.map(|c| caixa_dos_planos(c, gw, gh)) {
+                    self.wet_planos_em_dia(&mut sess, c);
+                }
                 if sess.congelada.is_some() {
                     self.wet_congela(&mut sess, None);
                 }
@@ -374,6 +524,12 @@ impl PainterTool {
         // Uma sessão que o restore fez nascer (não devia: o restore acaba-as) perde para a que estava viva.
         self.paint.wetpaint.session = Some(sess);
     }
+}
+
+/// O que os passos retêm de verdade, cada `Arc` uma vez: a régua do tecto.
+#[cfg(test)]
+pub(super) fn bytes_reais_dos_passos(sess: &WetSession) -> usize {
+    bytes_retidos_nos_passos(&sess.antes_do_passo, &sess.base, sess.congelada.as_ref())
 }
 
 #[cfg(test)]

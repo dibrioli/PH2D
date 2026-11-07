@@ -115,7 +115,8 @@ impl Engine {
             x1 as i64 + 2,
             (ultima / gw) as i64 + 2,
         );
-        let g = self.active_grid_mut();
+        // ⛔ `active_grid_mut` marcaria a grade inteira: 662 MB por enterro a 4096×2560.
+        let g = &mut self.layers[self.active_layer].grid;
         let s = g.s;
         for (k, _) in tocada.iter().enumerate().filter(|(_, t)| **t) {
             crate::grid::enterra_celula(g, (k / gw + 1) * s + k % gw + 1);
@@ -144,6 +145,7 @@ impl Engine {
         let layer = &mut self.layers[self.active_layer];
         layer.undo.clear();
         layer.redo.clear();
+        layer.desde = None;
     }
 
     pub fn can_undo(&self) -> bool {
@@ -221,6 +223,28 @@ impl Engine {
             self.rebake_paper();
         }
         self.mark_dirty_full();
+    }
+
+    /// A caixa (células com o pad, meio-aberta) de tudo o que o próximo `undo`/`redo` escreve na grade. `None`: nada.
+    #[must_use]
+    pub fn caixa_do_restauro(&self, refaz: bool) -> Option<[usize; 4]> {
+        let l = &self.layers[self.active_layer];
+        let (reg, extra) = if refaz {
+            (l.redo.last()?, l.desde.as_ref())
+        } else {
+            (l.undo.last()?, None)
+        };
+        let g = &l.grid;
+        let a = reg.caixa(g);
+        match (a, extra.and_then(|e| e.caixa(g))) {
+            (Some(a), Some(b)) => Some([
+                a[0].min(b[0]),
+                a[1].min(b[1]),
+                a[2].max(b[2]),
+                a[3].max(b[3]),
+            ]),
+            (a, b) => a.or(b),
+        }
     }
 
     /// Bytes retidos pelo histórico de uma camada (os registos de `undo`, `redo` e `desde`).

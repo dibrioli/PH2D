@@ -49,8 +49,9 @@ fn encolhe<T: Celula>(v: &mut Vec<T>) -> Bloco {
     if cru.is_empty() {
         return Bloco::default();
     }
-    let mut buf = Vec::new();
+    let mut buf = Vec::with_capacity(cru.len() * T::N * 4);
     para_bytes(&cru, &mut buf);
+    drop(cru); // o pico é um plano só, nunca os dois
     Bloco::de_bytes(&buf, buf.len())
 }
 

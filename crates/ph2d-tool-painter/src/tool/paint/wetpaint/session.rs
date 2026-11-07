@@ -209,7 +209,7 @@ pub(super) struct PaperKey {
 }
 
 impl WetSession {
-    /// Os bytes que a sessão segura (ver [`PainterTool::wet_bytes_retidos`]).
+    /// Os bytes que a sessão segura (fotografias incluídas; a régua do teto do undo).
     pub(super) fn bytes_retidos(&self) -> usize {
         use super::offthread::EngineSlot;
         let motor = match &self.engine {
@@ -448,6 +448,7 @@ impl PainterTool {
     /// **O que a água de uma cópia retém**: o motor (sem o rascunho do solver), os planos da óptica (pigmento,
     /// sombra, grão, degrau do Smooth Edges) e as fotografias dos passos do undo vivo. A `base` é partilhada
     /// e ninguém a escreve; o rascunho da autoria é um recorte do dab — não contam.
+    #[cfg(test)]
     pub(crate) fn wet_bytes_retidos(&self) -> usize {
         self.paint
             .wetpaint

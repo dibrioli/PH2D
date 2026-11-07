@@ -51,14 +51,14 @@ Toda a tabela de destino está na maquete, secção «Mapa dos campos». Resumo:
 - **Cartão Body:** Body. Em Dynamic: Gravity Scale, Rotation, Mass, Density ou Mass. Dobras: Start moving, Advanced,
   Joint, Bake to Timeline. Botão Remove Physics Body, com recibo e Undo.
 - **Cartão Shape:** Shape, Width, Height (Ball: Radius; Capsule: Radius e Height), estado da forma, Touch, Bounce, Friction,
-  Layer, Hits, Edit shape on canvas. One-way à vista em Static. Dobras: Offset, Material rules, Surface, Signals.
+  Layer, Collides with (revoga a linha Hits), Edit shape on canvas. One-way à vista em Static. Dobras: Offset, Material rules, Surface, Signals.
 - **Zona (Sensor):** On Hit, On Leave e Only for tag à vista; dobras Zone force e Bounce and Friction; sem One-way.
 - **Forma sem corpo próprio:** cartão «Collision Shape», aviso inteiro e em destaque, Make Independent Body, dica de
   arrastar. Dentro de um corpo: «Part of: X». Density em dobra.
 - **Density** some de corpo Static ou Kinematic e **o valor fica guardado**. Numa Zona Dynamic continua à vista.
 - **Estado da forma:** só a caixa automática diz «Follows the picture»; as outras dizem «Custom size» com o botão Fit to picture, que mantém o tipo e ajusta uma vez.
 - **Aviso de escala:** bola ou cápsula esticada avisa, com as saídas Set Scale to 1 e Use Box.
-- **Camadas com nome:** o nome mora no projeto; o número continua a ser a identidade. «Hits» lê a regra do mundo.
+- **Camadas com nome:** o nome mora no projeto; o número continua a ser a identidade. «Collides with» lê e edita a regra do mundo.
 - **Dica do Static Body:** «Set Use to Repeated and give it a Width».
 
 ⚠️ **Width e Height são só leitura e escrita de tela:** o `Collider` continua a guardar metades, e o ficheiro não muda.
@@ -81,7 +81,7 @@ Capsule: Height = 2 × (Half Height + Radius). Os ids `INSP_PHYS_*` ficam, para 
 | 3 | Alças no canvas, no molde da câmera (`ph2d-app-game/src/smoke_mao.rs`, doc 17b), com undo e Auto Key | feita, à espera do smoke do dono |
 | 4 | Curas da onda 3, cena de smoke `PH2D_PHYSICS_SMOKE=120`, uso no jogo, fotos | feita; smoke do dono 07/11: 12 de 13, passo 10 por repetir |
 | 5 | 32 camadas: formato, canais, matriz com as visíveis, «+ Layer» (schema `218 → 219`) | feita, à espera do smoke do dono |
-| 6 | Fila «Collides with» no objeto | fila |
+| 6 | Fila «Collides with» no objeto, «Edit matrix…», curas da 5 | feita, à espera do smoke do dono |
 | depois | Polígono pelo contorno: item próprio | fila |
 
 ## ⛔ Recusas
@@ -136,3 +136,26 @@ Capsule: Height = 2 × (Half Height + Radius). Os ids `INSP_PHYS_*` ficam, para 
 - **Ray Sensor:** limite 31 por `MAX_LAYERS - 1`; o campo continua por número, de propósito. Chips da face clássica: por número.
 - **Testes:** `ph2d-physics`, `ph2d-physics-ecs`, `ph2d-panel-physics`, `ph2d-app-physics` e `ph2d-host-desktop --bins` inteiras · `a_celula_alta_20_25` (motor) · `o_clique_na_celula_alta` · `o_mais_layer` · `as_32_rolam` · `um_v218_abre` · `um_v219_guarda` · `a_forma_de_oito_nomes` · `visivel_e_nome`. **Mutações que sangraram:** `from_rows` a 8 bits, filtro a 8 bits, camadas novas sem colidir, índice triangular trocado, `next_free`, linha e objeto fora da regra, foco no campo errado. Fotos: [`../handoffs/fotos_fisica/onda5/`](../handoffs/fotos_fisica/onda5/), `PH2D_PHYSICS_SMOKE=120` + `PH2D_PHYSICS_SMOKE_PAINEL=1` + `PH2D_PHYSICS_SMOKE_CAMADAS=8|16|32` (e `PH2D_PHYSICS_SMOKE_ROLA=1`).
 - **Para a onda 6:** visíveis = `ph2d_physics_ecs::visible_layers(world, &matriz)` (bits) e `LayerNames::of(world).label(i)`; editar um par = `LayerMatrix::set(a, b, on)` sobre o autorado, pelo mesmo caminho da célula (`PHYSICS_LAYER_CELL[physics_layer_cell_index(a, b)]`, evento em `ph2d-panel-physics/src/event.rs`, `PhysicsIntent::SetSettings`). No Inspector só há as linhas e as visíveis em `camadas_fisica` (a crate não vê a física), por isso a fila precisa de uma ação nova no bus para a edição.
+- **Onda 6, «Collides with» (07/11):** cartão Shape, abaixo de Layer, no lugar da linha Hits, que saiu (`camadas_fisica::hits` e as chaves). `sections/physics_colide.rs`: um quadro por camada de `visivel(j) || j == camada`, ids `INSP_PHYS_COLLIDES` (tabela de 32, `tabela_por_camada`), quebra pelo nome, «+» no fim se houver camada livre, frase «Applies to everything on X», e na linha de baixo `[Rename…] [Edit matrix…]` meio a meio. Forma solta: só Layer e Rename.
+- **A mesma edição:** bus `LayerPairToggle { a, b }` → `ph2d_panel_physics::alterna_par`, que é também o braço da célula. O mesmo `editar`, o mesmo `Toque`, o mesmo `set_settings`. Losango: `marcas_mundo::QUADROS` entra no grupo `CAMADAS` (`CAMPOS` continua um id por linha; `toda_linha_do_painel_tem_canal` lê-a) e o clique usa `canal_do_campo`.
+- **«Edit matrix…»:** bus `LayerMatrixOpen { layer }` → `panel_bridge::acao_das_camadas` → `ph2d_panel_physics::abre_a_matriz`: painel visível, secção aberta, barra das colunas com a linha à vista, `state::destaque`. Durante 45 quadros o painel rola até a faixa ficar no terço de cima (a dobra abre em mola). O painel abre na aba dele, em cima do Inspector: «Inspector» no topo volta. O destaque cai ao fechar (`painel_fechado`, também chamado por `dispatch`).
+- **Curas da onda 5:**
+  - **a)** `SetSettings(Box<PhysicsSettings>, Box<Toque>)`, sem `expect`; `PhysicsIntent` perdeu o `Copy`.
+  - **b)** Medido abaixo: não é mau, **sem cura**.
+  - **c)** A face clássica encolhe: passo = `min(largura / colunas, 22 + vão)`, vão ≤ ¼ do passo, legendas uma em cada tantas (`a_face_classica_alcanca_as_32`: 528 células dentro do painel). Decisão: encolher, porque não pede estado novo numa saída de referência. Nas 32 a célula fica com cerca de 7 px.
+  - **d)** Porta nova `interaction::roda_lateral`: a grelha publica a região ao pintar, `dispatch_wheel` anda a barra com Shift+roda ou roda horizontal; a roda simples rola o painel. Só com o painel dono por cima (`por_cima == painel`). Cartão solto (alfinete) não anda: `panel_at` devolve o id solto; lá fica a barra.
+- **Medida b)** (sonda `mede_o_losango_da_matriz` no commit `18b89ec804`, saiu para pagar a catraca; `--profile smoke`, intercalado, mínimo de 200, load ~2–3; `apply_active_clip` + `publicar` + `aplicar`):
+
+| Curvas | Blob da timeline | Salvar | Abrir | Clonar (passo de undo) | Um quadro | `marcas` por quadro | O clique |
+|---|---|---|---|---|---|---|---|
+| 1 | 72 B | 0,4 µs | 0,5 µs | 0,1 µs | 90,6 µs | 23,1 µs | 23 µs |
+| 36 (antes) | 1 262 B | 4,0 µs | 6,2 µs | 2,2 µs | 87,8 µs | 24,9 µs | 80 µs |
+| 528 (agora) | 19 193 B | 50 µs | 85,5 µs | 35,7 µs | 241 µs | 50,3 µs | 13,9 ms |
+
+  Um clique no losango custa 19 KB no ficheiro e 13,9 ms uma vez (quadrático nas `AddKey`: 174 × para 14,7 × as curvas). Tocar a timeline com a matriz chaveada: 241 µs, 1,4 % de 16,6 ms, contra 88 µs. Só quem clica no losango paga. **Não medido:** o projeto inteiro em disco e o `autokey_pass` com as 528 curvas. Se o clique doer: chavear só as células que mudam, sem perder o poder.
+- **Cena 120:** as camadas 4–7 ficam no padrão de fábrica (`POR_USAR`): antes a linha delas a zero as punha na lista e os quadros mostravam 4, 5, 6, 7 vazios. Fotos: [`../handoffs/fotos_fisica/onda6/`](../handoffs/fotos_fisica/onda6/). Conferidas: Floor, Crate, Player, Updraft Zone, Collision Shape e o painel do Edit matrix.
+- **Conduzido no app:** `PH2D_PHYSICS_SMOKE_CLIQUE="quadro:0,desfaz,quadro:0,matriz"` + `PH2D_PHYSICS_SMOKE_SELECT=Crate`, janela de 2700 (`panel_bridge::passo_da_fila`, ponteiro real). `[fila-mao]`: linhas `[6,1,d,4]` → clique → `[2,1,c,4]` (os dois lados do par) → desfaz → `[6,1,d,4]` → clique → `[2,1,c,4]`. O clique na tela de 1400 não acha o quadro: fica abaixo da dobra.
+- **Catracas pagas a mover:** o prólogo da cena (`smoke::aplica_o_pedido`, `resolve_os_nomes`) e as fotos da camada (`panel_bridge::arruma_a_foto`) saíram da shell (189 039 de 189 041). A lei do dedo (`player_input`, 244 linhas) desceu para `ph2d-physics-ecs`, com um invólucro de 10 linhas em `ph2d-app-physics`; a sonda saiu e o gate do motor foi para `ph2d-panel-physics` (55 511 de 55 515: quase no tecto).
+- **Testes:** `ph2d-panel-inspector os_quadros_da_colisao` (7, clique real) · `ph2d-panel-physics o_par_alternado` · `o_quadro_decide_no_motor` · `edit_matrix_abre` · `a_face_classica` · `a_roda_de_lado` · `ph2d-app-physics quadros::` (Auto Key, losango, «+») · shell `o_quadro_da_fila_e_um_passo_de_desfazer`. **Mutações que sangraram (11 de 11):** um lado só, linha errada, par trocado, fila com todas, solta com fila, sem abrir painel (sobreviveu: o `MockPanelHost` força o painel visível ao pintar; o gate foi corrigido e sangrou), sem abrir secção, sem destaque, barra que não vai, Shift ignorado, clássica a cortar.
+- **Limite das provas:** a mutação de quem pinta a caixinha (`Some(colide(camada, j))` em `colide_com`) não foi corrida: a dica usa a mesma função, mas o estado pintado só tem a foto como prova. A dica (`tooltip`) e o losango do cartão não foram vistos em uso no app: gates e fotos.
+

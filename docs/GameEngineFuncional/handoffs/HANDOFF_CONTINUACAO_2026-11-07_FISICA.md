@@ -26,9 +26,13 @@ Ground: Player, Props · Player: Ground · Props: Ground, Props, Zones · Zones:
 
 Bola 2 × 1 com `ZONE_FORCE = 40`: oscila entre y ≈ 3 e 7 m, sem nunca chegar ao chão (`probe_cena_120`). Sem a força, chega. Salto do Player: pico y ≈ 1,82, pousa a 1,55 na One-way (topo 1,10 + 0,45).
 
+## Onda 6, «Collides with» (07/11)
+
+Feita, à espera do smoke do dono. Quadros no cartão Shape, «Edit matrix…», curas a–d da onda 5. Detalhe, medidas e provas: fim da [ficha](../componentes/f1_physics_static_shape.md). Fotos: [`fotos_fisica/onda6/`](fotos_fisica/onda6/). Tectos: shell 189 039 de 189 041; `ph2d-app-physics` 55 511 de 55 515. Quem somar linhas ali tem de mover antes.
+
 ## O que falta
 
-1. Smoke do dono: aprovados 1–9 e 11–13. **Passo 10 por repetir:** o achado e a proposta estão na ficha; o rótulo é decisão dele.
+1. Smoke do dono: aprovados 1–9 e 11–13. **Passo 10 por repetir:** o achado e a proposta estão na ficha; o rótulo é decisão dele. Smoke da onda 5 e da onda 6.
 2. **Polígono pelo contorno:** item próprio, a seguir. Mexe no motor e no formato salvo.
 
 ## Não provado
@@ -37,6 +41,7 @@ Bola 2 × 1 com `ZONE_FORCE = 40`: oscila entre y ≈ 3 e 7 m, sem nunca chegar 
 - As teclas na cena 120 (←/→/↑) não foram conduzidas no app; os gates dão o dedo direto à ponte. No nível 4 o condutor prime as setas reais.
 - A cena 120 sob Run ▸ Play: ela não tem câmera de jogo. O smoke usa o Play da timeline (Espaço).
 - `suite-completa` e `nextest-impacted`: são do integrador.
+- Onda 6: o projeto inteiro em disco e o `autokey_pass` com as 528 curvas; a roda real (a tela virtual não recebe rato); o estado pintado da caixinha, só por foto.
 
 ## Como retomar
 

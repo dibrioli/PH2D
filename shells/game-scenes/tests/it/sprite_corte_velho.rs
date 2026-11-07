@@ -2,7 +2,7 @@
 
 use ph2d_app_sprite_anim::sprite_card::{cut_notice, keep_size};
 use ph2d_asset::{AssetDb, AssetId};
-use ph2d_ecs::{Entity, SpriteAnimations, SpriteCutNotice, SpriteGrid, World};
+use ph2d_ecs::{Entity, SpriteAnimations, SpriteGrid, World};
 use ph2d_editor_core::ImageCutNotice;
 use ph2d_render::Sprite;
 use ph2d_sprite_edit::vazio::sem_imagem;
@@ -87,7 +87,7 @@ fn escolher_a_imagem_no_vazio_ja_entra_em_animated() {
     assert_eq!(a.current, ph2d_app_sprite_anim::image_use::LOOP_TAG);
     assert!(a.autoplay);
     assert!(!sem_imagem(w, e), "deixou de ser o convite");
-    assert!(w.get::<SpriteCutNotice>(e).is_none(), "nada a avisar");
+    assert!(w.get::<SpriteAnimations>(e).is_none_or(|l| l.1.is_none()), "nada a avisar");
 }
 
 /// Uma animada de 8 × 4 com 6 animações, a mostrar `id`.
@@ -142,11 +142,11 @@ fn imagem_que_traz_corte_nao_avisa() {
     escolhe(&mut sim, &db, outro, cortada);
     let e = animada(&mut sim, &db, a);
     escolhe(&mut sim, &db, e, folha(&db, 300, 100, 100, 100));
-    assert!(sim.world().get::<SpriteCutNotice>(e).is_some());
+    assert!(sim.world().get::<SpriteAnimations>(e).is_some_and(|l| l.1.is_some()));
     escolhe(&mut sim, &db, e, cortada);
     let w = sim.world();
     assert_eq!(grade(w, e), [4, 2], "o corte veio com a imagem");
-    assert!(w.get::<SpriteCutNotice>(e).is_none());
+    assert!(w.get::<SpriteAnimations>(e).is_none_or(|l| l.1.is_none()));
 }
 
 /// ⭐ **Cut again** aplica a grade proposta da imagem nova; **Keep the cut** fica com a velha. Os dois fecham o aviso.
@@ -163,7 +163,7 @@ fn as_duas_saidas_do_aviso() {
         let w = sim.world_mut();
         assert!(apply_edit(w, e, &db, &atlas, PPM, verbo));
         assert_eq!(grade(w, e), esperada);
-        assert!(w.get::<SpriteCutNotice>(e).is_none());
+        assert!(w.get::<SpriteAnimations>(e).is_none_or(|l| l.1.is_none()));
         assert!(
             !apply_edit(w, e, &db, &atlas, PPM, verbo),
             "sem aviso, nada"
@@ -198,7 +198,7 @@ fn cut_again_sem_proposta_abre_o_editor() {
         "fechar o editor sem cortar não perde o aviso"
     );
     corta(&mut sim, e, 4, 2);
-    assert!(sim.world().get::<SpriteCutNotice>(e).is_none(), "cortou");
+    assert!(sim.world().get::<SpriteAnimations>(e).is_none_or(|l| l.1.is_none()), "cortou");
 }
 
 fn corta(sim: &mut ph2d_ecs::SimWorld, e: Entity, h: u32, v: u32) {
@@ -225,6 +225,6 @@ fn voltar_a_grade_antiga_nao_ressuscita_o_aviso() {
     corta(&mut sim, e, 4, 2);
     corta(&mut sim, e, 8, 4);
     assert_eq!(grade(sim.world(), e), [8, 4]);
-    assert!(sim.world().get::<SpriteCutNotice>(e).is_none());
+    assert!(sim.world().get::<SpriteAnimations>(e).is_none_or(|l| l.1.is_none()));
     assert!(cut_notice(sim.world(), e, &db, &atlas, PPM).is_none());
 }

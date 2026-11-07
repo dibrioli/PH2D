@@ -308,15 +308,12 @@ fn notice_of_the_swap(world: &mut World, e: Entity, corte_velho: bool) {
     let com_animacoes = world
         .get::<SpriteAnimations>(e)
         .is_some_and(|l| l.iter().next().is_some());
-    match world.get::<SpriteGrid>(e).copied() {
-        Some(g) if corte_velho && com_animacoes => {
-            world.entity_mut(e).insert(ph2d_ecs::SpriteCutNotice {
-                grid: [g.hframes, g.vframes],
-            });
-        }
-        _ => {
-            world.entity_mut(e).remove::<ph2d_ecs::SpriteCutNotice>();
-        }
+    let aviso = match world.get::<SpriteGrid>(e).copied() {
+        Some(g) if corte_velho && com_animacoes => Some([g.hframes, g.vframes]),
+        _ => None,
+    };
+    if let Some(mut l) = world.get_mut::<SpriteAnimations>(e) {
+        l.1 = aviso;
     }
 }
 

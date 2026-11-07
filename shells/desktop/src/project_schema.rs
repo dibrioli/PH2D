@@ -351,7 +351,13 @@
 /// Componente NOVO registado, `ph2d::physics::CollisionOverride { include, exclude }`, no lado-forma; o fio
 /// dos existentes é o mesmo, um `<= 220` abre como está (sem o componente = a linha da camada). Gate:
 /// `um_v220_abre_sem_excecao_de_camadas`. Registos: `+1`. ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 221;
+///
+/// # `221 → 222` — **o início e o aviso viram campos** (`line/GameEngineFuncional`, dono 07/11, §0.11)
+///
+/// `SpriteAnimator.start: Option<String>` e `SpriteAnimations.1: Option<[u32; 2]>` (o aviso do corte velho) no FIM;
+/// os componentes `SpriteAnimStart` e `SpriteCutNotice` saem do registo (`120 → 118`). SEM leitura dos anteriores.
+/// Registos de componentes: `-2`. ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 222;
 
 /// O último degrau com a forma de colisão no próprio corpo.
 pub(crate) const PROJECT_SCHEMA_FORMA_NO_CORPO: u32 = 219;

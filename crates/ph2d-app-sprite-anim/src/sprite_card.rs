@@ -5,7 +5,7 @@ use crate::image_choice::ImageFacts;
 use crate::image_choice::library_facts;
 use crate::image_use::{ImageUse, cells, display_scale, image_use, proposed_grid, shown_id};
 use ph2d_asset::{AssetDb, AssetId};
-use ph2d_ecs::{Entity, SpriteAnimations, SpriteCutNotice, SpriteGrid, World};
+use ph2d_ecs::{Entity, SpriteAnimations, SpriteGrid, World};
 use ph2d_editor_core::ImageCutNotice;
 use ph2d_render::Sprite;
 use ph2d_sprite_edit::vazio::sem_imagem;
@@ -83,11 +83,10 @@ pub(crate) fn aviso_segue_a_grade(world: &mut World, e: Entity) {
 
 /// A mesma lei, com a grade que está a chegar (quem a põe na fila de comandos).
 pub fn aviso_perante_a_grade(world: &mut World, e: Entity, grade: [u32; 2]) {
-    if world
-        .get::<SpriteCutNotice>(e)
-        .is_some_and(|n| n.grid != grade)
+    if let Some(mut l) = world.get_mut::<SpriteAnimations>(e)
+        && l.1.is_some_and(|n| n != grade)
     {
-        world.entity_mut(e).remove::<SpriteCutNotice>();
+        l.1 = None;
     }
 }
 
@@ -100,18 +99,19 @@ pub fn cut_notice(
     atlas: &BTreeMap<u32, AssetId>,
     ppm: f32,
 ) -> Option<ImageCutNotice> {
-    let aviso = world.get::<SpriteCutNotice>(e)?;
+    let lib = world.get::<SpriteAnimations>(e)?;
+    let aviso = lib.1?;
     let g = world.get::<SpriteGrid>(e)?;
-    let n = world.get::<SpriteAnimations>(e)?.iter().count();
+    let n = lib.iter().count();
     if n == 0
-        || aviso.grid != [g.hframes, g.vframes]
+        || aviso != [g.hframes, g.vframes]
         || image_use(world, e) != Some(ImageUse::Animated)
     {
         return None;
     }
     let px = library_facts(world, shown_id(world, e, atlas)?, db, atlas, ppm)?.px;
     Some(ImageCutNotice {
-        grid: aviso.grid,
+        grid: aviso,
         cell_px: [px[0] / g.hframes.max(1), px[1] / g.vframes.max(1)],
         animations: u32::try_from(n).unwrap_or(u32::MAX),
     })
@@ -126,7 +126,7 @@ pub fn cut_again(
     atlas: &BTreeMap<u32, AssetId>,
     facts: Option<ImageFacts>,
 ) -> bool {
-    if world.get::<SpriteCutNotice>(e).is_none() {
+    if world.get::<SpriteAnimations>(e).is_none_or(|l| l.1.is_none()) {
         return false;
     }
     let proposta = shown_id(world, e, atlas)
@@ -137,7 +137,9 @@ pub fn cut_again(
         });
     match (proposta, facts) {
         (Some(grid), Some(f)) => {
-            world.entity_mut(e).remove::<SpriteCutNotice>();
+            if let Some(mut l) = world.get_mut::<SpriteAnimations>(e) {
+                l.1 = None;
+            }
             // A grelha ainda é a velha: a escala lê-se antes de `show` a trocar.
             let k = display_scale(world, e, f);
             crate::image_use::show(world, e, f, grid, k);
@@ -171,7 +173,7 @@ pub fn fileiras_de(
 
 /// **Keep the cut**: o corte fica, o aviso sai.
 pub fn keep_cut(world: &mut World, e: Entity) -> bool {
-    let tinha = world.get::<SpriteCutNotice>(e).is_some();
-    world.entity_mut(e).remove::<SpriteCutNotice>();
-    tinha
+    world
+        .get_mut::<SpriteAnimations>(e)
+        .is_some_and(|mut l| l.1.take().is_some())
 }

@@ -11,7 +11,7 @@ use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::scene::{WorldSnapshot, snapshot_to_world, world_to_snapshot};
 use ph2d_ecs::{
     AnimationTag, Disparo, Entity, SignalAction, SignalActions, SignalVerb, SimWorld,
-    SpriteAnimMarkers, SpriteAnimations, SpriteAnimator, SpriteCutNotice, SpriteGrid,
+    SpriteAnimMarkers, SpriteAnimations, SpriteAnimator, SpriteGrid,
 };
 use ph2d_editor_core::doc_surface::{DocumentSurface, Key, KeyInput, PointerInput};
 use ph2d_editor_core::zones::Rect;
@@ -118,7 +118,7 @@ fn grelha(sim: &SimWorld, e: Entity) -> [u32; 2] {
 }
 
 /// ⭐ O aviso viaja na foto: desfazer o Keep the cut devolve o aviso; desfazer o Cut again devolve o corte velho e o
-/// aviso; desfazer a troca tira-o. *Mutação: deixar de registar o `SpriteCutNotice` ⇒ a foto perde o aviso.*
+/// aviso; desfazer a troca tira-o. *Mutação: deixar de registar o aviso do `SpriteAnimations` ⇒ a foto perde o aviso.*
 #[test]
 fn as_saidas_do_aviso_voltam_pelo_desfazer() {
     let (db, atlas) = (AssetDb::new(), BTreeMap::new());
@@ -128,22 +128,22 @@ fn as_saidas_do_aviso_voltam_pelo_desfazer() {
     assert_eq!(grelha(&sim, e), [8, 4]);
     let antes_da_troca = foto(&mut sim);
     escolhe(&mut sim, &db, e, folha(&db, 256, 128, 64));
-    assert!(sim.world().get::<SpriteCutNotice>(e).is_some());
+    assert!(sim.world().get::<SpriteAnimations>(e).is_some_and(|l| l.1.is_some()));
     let com_aviso = foto(&mut sim);
     for verbo in [ImageUseEdit::CutAgain, ImageUseEdit::KeepCut] {
         let (mut s, e) = repoe(&com_aviso);
         assert!(apply_edit(s.world_mut(), e, &db, &atlas, PPM, verbo));
-        assert!(s.world().get::<SpriteCutNotice>(e).is_none());
+        assert!(s.world().get::<SpriteAnimations>(e).is_none_or(|l| l.1.is_none()));
         let (s2, e2) = repoe(&com_aviso);
         assert!(
-            s2.world().get::<SpriteCutNotice>(e2).is_some(),
+            s2.world().get::<SpriteAnimations>(e2).is_some_and(|l| l.1.is_some()),
             "volta o aviso"
         );
         assert_eq!(grelha(&s2, e2), [8, 4], "volta o corte velho");
     }
     let (s, e) = repoe(&antes_da_troca);
     assert!(
-        s.world().get::<SpriteCutNotice>(e).is_none(),
+        s.world().get::<SpriteAnimations>(e).is_none_or(|l| l.1.is_none()),
         "a troca desfeita não avisa"
     );
 }

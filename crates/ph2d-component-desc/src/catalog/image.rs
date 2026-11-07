@@ -232,12 +232,6 @@ pub const DESCS: &[D] = &[
         "component.sprite_anim_markers.name",
         C::Animation,
     ),
-    // Com qual animação começa (GEF 24 E2): o menu «Starts with» do cartão escreve-a.
-    D::machinery(
-        "ph2d::ecs::SpriteAnimStart",
-        "component.sprite_anim_start.name",
-        C::Animation,
-    ),
     D::authored(
         "ph2d::ecs::SpriteAnimations",
         "component.sprite_animations.name",
@@ -273,12 +267,6 @@ pub const DESCS: &[D] = &[
     )
     .coded("corner_tint")
     .row_of("ph2d::render::Sprite"),
-    // O aviso de imagem trocada (GEF 24 E4): o cartão Image lê-o e os dois botões dele o tiram.
-    D::machinery(
-        "ph2d::ecs::SpriteCutNotice",
-        "component.sprite_cut_notice.name",
-        C::Animation,
-    ),
     // ⚠️ Categoria `Image` e não `Animation`: a grelha é um FATO da textura (como ela se
     // divide), e é a `SpriteAnimations` que a percorre. Pô-la em Animation faria um sprite com
     // folha estática — o caso comum — procurar a grelha na secção errada.

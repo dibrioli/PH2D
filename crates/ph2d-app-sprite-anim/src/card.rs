@@ -7,7 +7,7 @@
 
 use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue};
 use ph2d_ecs::{
-    AnimDirection, Entity, SpriteAnimCursor, SpriteAnimFrames, SpriteAnimStart, SpriteAnimations,
+    AnimDirection, Entity, SpriteAnimCursor, SpriteAnimFrames, SpriteAnimations,
     SpriteAnimator, SpriteGrid, World,
 };
 use ph2d_editor_core::{
@@ -26,8 +26,6 @@ const RULES: &str = "ph2d::physics::AnimRules";
 const ANIMATIONS: &str = "ph2d::ecs::SpriteAnimations";
 const ANIMATOR: &str = "ph2d::ecs::SpriteAnimator";
 const GRID: &str = "ph2d::ecs::SpriteGrid";
-pub(crate) const START: &str = "ph2d::ecs::SpriteAnimStart";
-const NOTICE: &str = "ph2d::ecs::SpriteCutNotice";
 
 /// Maior lado de uma grelha que o cartão aceita (o `SpriteGrid` guarda `u32`; isto é o que cabe a
 /// clicar numa folha: 256 × 256 células).
@@ -105,9 +103,7 @@ pub fn build_card_info(world: &World, entity: Entity) -> AnimCardInfo {
         });
     let starts_with = player
         .zip(world.get::<SpriteAnimations>(entity))
-        .map_or_else(String::new, |(p, lib)| {
-            SpriteAnimStart::ou_current(world.get(entity), p, lib).to_owned()
-        });
+        .map_or_else(String::new, |(p, lib)| p.start_or_current(lib).to_owned());
     AnimCardInfo {
         chooser,
         starts_with,
@@ -250,8 +246,12 @@ pub fn apply_card_edit(
         }
         AnimFieldEdit::StartsWith(name) => {
             world.get::<SpriteAnimations>(entity)?.get(name)?;
-            let start = SpriteAnimStart(name.clone());
-            queue_set(queue, registry, entity_bits, START, &start);
+            let mut p = world
+                .get::<SpriteAnimator>(entity)
+                .cloned()
+                .unwrap_or_default();
+            p.start = Some(name.clone());
+            queue_set(queue, registry, entity_bits, ANIMATOR, &p);
         }
         AnimFieldEdit::RuleWhen(..)
         | AnimFieldEdit::RulePlay(..)
@@ -316,11 +316,11 @@ pub fn apply_card_edit(
             g.frame = g.frame.min(g.cells().saturating_sub(1));
             queue_set(queue, registry, entity_bits, GRID, &g);
             // A grade mudou = o aviso sobre a de antes morre, e voltar a ela não o ressuscita.
-            if world
-                .get::<ph2d_ecs::SpriteCutNotice>(entity)
-                .is_some_and(|n| n.grid != [g.hframes, g.vframes])
+            if let Some(mut lib) = world.get::<SpriteAnimations>(entity).cloned()
+                && lib.1.is_some_and(|n| n != [g.hframes, g.vframes])
             {
-                queue_remove(queue, registry, entity_bits, NOTICE);
+                lib.1 = None;
+                queue_set(queue, registry, entity_bits, ANIMATIONS, &lib);
             }
         }
         _ => return None,

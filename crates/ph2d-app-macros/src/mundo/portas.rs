@@ -93,8 +93,6 @@ pub const PORTAS: &[(&str, Porta)] = &[
     ("ph2d::ecs::SpriteAnimCursor", Gravado),
     ("ph2d::ecs::SpriteAnimFrames", Gravado),
     ("ph2d::ecs::SpriteAnimMarkers", Gravado),
-    ("ph2d::ecs::SpriteAnimStart", Gravado),
-    ("ph2d::ecs::SpriteCutNotice", Gravado),
     ("ph2d::ecs::SpriteAnimations", Gravado),
     ("ph2d::ecs::SpriteAnimator", Gravado),
     ("ph2d::ecs::SpriteCornerTint", Gravado),

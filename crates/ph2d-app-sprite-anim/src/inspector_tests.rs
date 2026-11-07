@@ -410,7 +410,7 @@ fn o_inicio_segue_o_renomear_e_cai_na_primeira_ao_apagar() {
     edit(&mut sim, e, &reg, AnimFieldEdit::StartsWith("run".into()));
     edit(&mut sim, e, &reg, AnimFieldEdit::Rename(1, "corre".into()));
     assert_eq!(
-        sim.world().get::<ph2d_ecs::SpriteAnimStart>(e).unwrap().0,
+        sim.world().get::<SpriteAnimator>(e).unwrap().start.clone().unwrap(),
         "corre"
     );
     edit(
@@ -420,12 +420,12 @@ fn o_inicio_segue_o_renomear_e_cai_na_primeira_ao_apagar() {
         AnimFieldEdit::StartsWith("nao existe".into()),
     );
     assert_eq!(
-        sim.world().get::<ph2d_ecs::SpriteAnimStart>(e).unwrap().0,
+        sim.world().get::<SpriteAnimator>(e).unwrap().start.clone().unwrap(),
         "corre"
     );
     edit(&mut sim, e, &reg, AnimFieldEdit::Remove(1));
     assert_eq!(
-        sim.world().get::<ph2d_ecs::SpriteAnimStart>(e).unwrap().0,
+        sim.world().get::<SpriteAnimator>(e).unwrap().start.clone().unwrap(),
         "idle"
     );
 }

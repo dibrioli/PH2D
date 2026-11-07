@@ -238,12 +238,11 @@ pub fn start_autoplay_animations(sim: &mut SimWorld) {
         ph2d_ecs::Entity,
         &SpriteAnimator,
         &SpriteAnimations,
-        Option<&ph2d_ecs::SpriteAnimStart>,
     )>();
     let inicios: Vec<(ph2d_ecs::Entity, String)> = q
         .iter(world)
         .filter(|(_, a, ..)| a.autoplay)
-        .map(|(e, a, l, s)| (e, ph2d_ecs::SpriteAnimStart::ou_current(s, a, l).to_owned()))
+        .map(|(e, a, l)| (e, a.start_or_current(l).to_owned()))
         .collect();
     for (e, nome) in inicios {
         vai_para_o_inicio(world, e, &nome);

@@ -237,7 +237,7 @@ fn a_folha_nova_do_player_mantem_as_animacoes() {
         .id();
     porta(&mut sim, &b, e, azul);
     let w = sim.world();
-    assert_eq!(w.get::<SpriteAnimations>(e), Some(&tags));
+    assert_eq!(w.get::<SpriteAnimations>(e).map(|l| &l.0), Some(&tags.0));
     assert_eq!(
         w.get::<SpriteGrid>(e).copied(),
         Some(SpriteGrid {

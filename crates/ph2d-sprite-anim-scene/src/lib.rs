@@ -237,10 +237,10 @@ pub fn relato(sim: &SimWorld, nome: &str, e: Entity) -> String {
     format!(
         "{nome}: toca={:?} inicio={:?} anims={} grade={:?} aviso={:?}",
         w.get::<SpriteAnimator>(e).map(|p| p.current.as_str()),
-        w.get::<ph2d_ecs::SpriteAnimStart>(e).map(|s| s.0.as_str()),
+        w.get::<SpriteAnimator>(e).and_then(|p| p.start.as_deref()),
         w.get::<SpriteAnimations>(e).map_or(0, |l| l.iter().count()),
         w.get::<SpriteGrid>(e).map(|g| (g.hframes, g.vframes)),
-        w.get::<ph2d_ecs::SpriteCutNotice>(e).map(|n| n.grid),
+        w.get::<SpriteAnimations>(e).and_then(|l| l.1),
     )
 }
 

@@ -434,6 +434,7 @@ fn both_components_round_trip_through_postcard() {
         elapsed_ticks: 12_345,
         pingpong_reverse: true,
         repeat_count: 7,
+        start: Some("idle".into()),
     };
     let bytes = postcard::to_allocvec(&a).unwrap();
     assert_eq!(postcard::from_bytes::<SpriteAnimator>(&bytes).unwrap(), a);

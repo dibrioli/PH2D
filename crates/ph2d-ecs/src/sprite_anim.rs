@@ -248,11 +248,16 @@ impl AnimationTag {
 /// próprio no `ProjectFile`, e o `AssetDb` **não é persistido** (os pixels são re-inseridos no
 /// load). Um componente registado grava-se com zero máquina nova.
 #[derive(Component, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-pub struct SpriteAnimations(pub SmallVec<[AnimationTag; 4]>);
+pub struct SpriteAnimations(
+    pub SmallVec<[AnimationTag; 4]>,
+    /// O aviso de imagem trocada: o corte `[colunas, linhas]` que ficou da imagem de antes, enquanto a grelha é esta.
+    /// Entra e sai pelo desfazer com a troca que o causou; refazer o corte à mão o cala.
+    pub Option<[u32; 2]>,
+);
 
 impl SpriteAnimations {
     pub fn new() -> Self {
-        Self(SmallVec::new())
+        Self(SmallVec::new(), None)
     }
 
     pub fn len(&self) -> usize {
@@ -329,6 +334,9 @@ pub struct SpriteAnimator {
     pub pingpong_reverse: bool,
     /// Quantos ciclos já terminaram.
     pub repeat_count: u32,
+    /// A animação com que o jogo e o abrir do projeto começam (só em «Auto»). Separada do `current`: o ▶ do cartão é
+    /// prévia e muda o `current`, nunca isto. `None` = começa no `current`.
+    pub start: Option<String>,
 }
 
 /// A velocidade da §11 Animation: a faixa do motor (±100×). A lei do cartão Animation (`ph2d_app_sprite_anim`) e do
@@ -350,7 +358,17 @@ impl SpriteAnimator {
             elapsed_ticks: 0,
             pingpong_reverse: false,
             repeat_count: 0,
+            start: None,
         }
+    }
+
+    /// A animação que vale ao começar: a escolhida, se a lista ainda a tem; senão o `current`.
+    #[must_use]
+    pub fn start_or_current(&self, lib: &SpriteAnimations) -> &str {
+        self.start
+            .as_deref()
+            .filter(|n| lib.get(n).is_some())
+            .unwrap_or(&self.current)
     }
 
     /// A direção efetiva: a da tag, ou a que a substitui.

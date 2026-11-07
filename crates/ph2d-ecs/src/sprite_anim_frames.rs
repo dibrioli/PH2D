@@ -224,10 +224,13 @@ pub fn rename_tag(
             }
         }
     }
-    if let Some(a) = animator
-        && a.current == old
-    {
-        a.current = new.to_owned();
+    if let Some(a) = animator {
+        if a.current == old {
+            a.current = new.to_owned();
+        }
+        if a.start.as_deref() == Some(old) {
+            a.start = Some(new.to_owned());
+        }
     }
     true
 }

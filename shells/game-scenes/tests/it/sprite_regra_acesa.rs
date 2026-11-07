@@ -162,42 +162,10 @@ fn a_regra_acesa_nao_entra_no_documento() {
     assert_ne!(foto(&mut sim), controlo, "a régua vê a troca de animação");
 }
 
-/// O componente a mais não vira ruído: `SpriteAnimStart` e `SpriteCutNotice` não dão ícone novo na linha da Hierarchy,
-/// nem entram na paleta nem têm secção. *Mutação: declará-los `authored` no catálogo ⇒ vermelho.*
-#[test]
-fn inicio_e_aviso_nao_viram_ruido_na_hierarquia() {
-    use ph2d_app_components::row_components::RowComponents;
-    use ph2d_ecs::{SpriteAnimStart, SpriteCutNotice};
-    let mut sim = SimWorld::new();
-    let e = objeto(&mut sim, Vec::new());
-    let r = registo();
-    let icones =
-        |sim: &SimWorld| RowComponents::of(sim.world(), &r).of_entity(sim.world(), e.to_bits());
-    let antes = icones(&sim);
-    assert!(!antes.is_empty(), "controlo: o tocador tem ícone");
-    sim.world_mut().entity_mut(e).insert((
-        SpriteAnimStart("run".into()),
-        SpriteCutNotice { grid: [8, 4] },
-    ));
-    assert_eq!(icones(&sim), antes, "os dois não acrescentam família");
-    for nome in ["ph2d::ecs::SpriteAnimStart", "ph2d::ecs::SpriteCutNotice"] {
-        let d = r
-            .iter()
-            .find(|x| x.canonical_name == nome)
-            .and_then(|x| x.desc)
-            .expect("no catálogo");
-        assert!(
-            !d.is_offered() && !d.may_have_section(),
-            "{nome} é maquinaria"
-        );
-    }
-}
-
 /// ⭐ O aviso é estado que o artista ainda não resolveu: viaja no save enquanto a imagem está errada e reaparece ao
 /// reabrir; respondido (Keep the cut ou Cut again), não volta. *Mutação: tirar-lhe o registo ⇒ o reabrir perde-o.*
 #[test]
 fn o_aviso_reabre_so_enquanto_ninguem_respondeu() {
-    use ph2d_ecs::SpriteCutNotice;
     use ph2d_ecs::scene::snapshot_to_world;
     let abre = |snap: &WorldSnapshot| {
         let mut s = SimWorld::new();
@@ -209,16 +177,14 @@ fn o_aviso_reabre_so_enquanto_ninguem_respondeu() {
             .next()
             .expect("o tocador")
             .0;
-        w.get::<SpriteCutNotice>(e).copied()
+        w.get::<SpriteAnimations>(e).and_then(|l| l.1)
     };
     let mut sim = SimWorld::new();
     let e = objeto(&mut sim, Vec::new());
-    sim.world_mut()
-        .entity_mut(e)
-        .insert(SpriteCutNotice { grid: [8, 4] });
+    sim.world_mut().get_mut::<SpriteAnimations>(e).unwrap().1 = Some([8, 4]);
     assert_eq!(
         abre(&foto(&mut sim)),
-        Some(SpriteCutNotice { grid: [8, 4] }),
+        Some([8, 4]),
         "a pergunta continua aberta"
     );
     assert!(ph2d_app_sprite_anim::sprite_card::keep_cut(
@@ -268,8 +234,7 @@ fn regras_no_pai_mandam_no_tocador_do_filho_depois_do_inicio() {
     let w = sim.world_mut();
     let mut a = w.get_mut::<SpriteAnimator>(filho).expect("tocador");
     a.autoplay = true;
-    w.entity_mut(filho)
-        .insert(ph2d_ecs::SpriteAnimStart("run".into()));
+    w.get_mut::<SpriteAnimator>(filho).unwrap().start = Some("run".into());
     let pai = w
         .spawn((
             ph2d_ecs::Transform::default(),

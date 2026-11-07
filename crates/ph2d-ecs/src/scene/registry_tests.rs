@@ -173,8 +173,8 @@ fn register_ecs_components_populates_registry() {
     //   que entra: a conta desce de `79` a `77` -- e este e' o degrau que obriga o
     //   `PROJECT_SCHEMA` a subir, porque o `snapshot_to_world` recusa um blob cujo `type_id`
     //   deixou de estar registado.
-    // ⚠️ **2026-11-06: `118` -> `119`, delta +1** -- o `SpriteAnimStart` (GEF 24 E2).
-    // ⚠️ **2026-11-06: `119` -> `120`, delta +1** -- o `SpriteCutNotice` (GEF 24 E4).
+    // ⚠️ **2026-11-07: `120` -> `118`, delta -2** -- o `SpriteAnimStart` e o `SpriteCutNotice` viraram campos do
+    //   `SpriteAnimator` e do `SpriteAnimations` (dono 07/11, §0.11: sem peça separada por compatibilidade).
     // ⚠️ **2026-11-05: `116` -> `118`, delta +2** -- o `SoundSet` e o `SpriteAnimMarkers` (SFX Lab W1).
     //   Quem integrar conta o DELTA, nunca o literal.
     // ⛔ **Este numero SOMA entre linhas: conta-se, nunca se escolhe.** O `78` saiu do gate (ele
@@ -259,7 +259,7 @@ fn register_ecs_components_populates_registry() {
     //   (line/BlenderConstraints W5.5/W6; DELTA sobre o `113` do main, que já traz os +5 da GEF). Quem integrar conta o DELTA, nunca o literal.
     // ⚠️ **2026-10-25: `115` -> `116`, delta +1** -- o `PixelSprite` (ADR-0196, line/PixelArt P0).
     //   DELTA sobre o `115` do main. Quem integrar conta o DELTA, nunca o literal.
-    assert_eq!(reg.len(), 120);
+    assert_eq!(reg.len(), 118);
     assert!(reg.get_by_name("ph2d::ecs::PixelSprite").is_some());
     assert!(reg.get_by_name("ph2d::ecs::VecObject").is_none());
     assert!(reg.get_by_name("ph2d::ecs::MotionGenerator").is_some());

@@ -151,14 +151,12 @@ pub mod sorting;
 pub mod sprite_anim;
 pub mod sprite_anim_frames;
 mod sprite_anim_markers;
-mod sprite_anim_start;
 /// O tempo de uma `AnimationTag` (ritmo, tempos próprios por passo) — `impl` irmão.
 mod sprite_anim_timing;
 /// **ADR-0164 F1 passo 6 / ADR-0166** — os três grupos que saíram do `Sprite`, cada um um
 /// componente que pode estar AUSENTE (é isso que os deixa fora do Inspector até o artista os
 /// pedir). Módulos irmãos, append-only.
 pub mod sprite_corner_tint;
-mod sprite_cut_notice;
 pub mod sprite_grid;
 pub mod sprite_pixels;
 pub mod sprite_region;
@@ -297,9 +295,7 @@ pub use sprite_anim_frames::{
     fps_of_ms, ms_of_fps, rename_tag, tag_cells,
 };
 pub use sprite_anim_markers::{FrameMarker, SpriteAnimMarkers, advance_frames_marked, anim_steps};
-pub use sprite_anim_start::SpriteAnimStart;
 pub use sprite_corner_tint::{BOTTOM_LEFT, BOTTOM_RIGHT, SpriteCornerTint, TOP_LEFT, TOP_RIGHT};
-pub use sprite_cut_notice::SpriteCutNotice;
 pub use sprite_grid::SpriteGrid;
 pub use sprite_pixels::SpritePixels;
 pub use sprite_region::SpriteRegion;

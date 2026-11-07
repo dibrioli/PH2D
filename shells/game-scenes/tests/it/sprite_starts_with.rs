@@ -8,7 +8,7 @@ use ph2d_ecs::scene::{
     EditorCommandQueue, WorldSnapshot, apply_editor_commands, snapshot_to_world, world_to_snapshot,
 };
 use ph2d_ecs::{
-    AnimationTag, Entity, SimWorld, SpriteAnimStart, SpriteAnimations, SpriteAnimator, SpriteGrid,
+    AnimationTag, Entity, SimWorld, SpriteAnimations, SpriteAnimator, SpriteGrid,
 };
 use ph2d_editor_core::AnimFieldEdit;
 
@@ -86,15 +86,15 @@ fn o_starts_with_viaja_na_foto_e_o_desfazer_repoe() {
     assert_eq!(
         reaberto
             .world()
-            .get::<SpriteAnimStart>(r)
-            .map(|s| s.0.as_str()),
+            .get::<SpriteAnimator>(r)
+            .and_then(|a| a.start.as_deref()),
         Some("idle")
     );
     start_autoplay_animations(&mut reaberto);
     assert_eq!(atual(&reaberto, r), "idle");
 
     let (desfeito, d) = aberto(&antes);
-    assert!(desfeito.world().get::<SpriteAnimStart>(d).is_none());
+    assert!(desfeito.world().get::<SpriteAnimator>(d).unwrap().start.is_none());
     assert_eq!(atual(&desfeito, d), "idle");
 }
 
@@ -108,22 +108,6 @@ fn a_foto_tirada_antes_de_comecar_guarda_a_previa() {
     assert_eq!(atual(&sim, e), "idle", "o jogo");
     let (volta, d) = aberto(&documento);
     assert_eq!(atual(&volta, d), "run", "o Stop devolve o documento");
-}
-
-/// Sem o blob (projeto de antes): abre, e começa no `current` gravado.
-#[test]
-fn o_projeto_antigo_abre_igual() {
-    let (mut sim, e) = cena();
-    edita(&mut sim, e, AnimFieldEdit::SetCurrent("run".into()));
-    sim.world_mut().entity_mut(e).remove::<SpriteAnimStart>();
-    let gravado = foto(&mut sim);
-    let (mut velho, v) = aberto(&gravado);
-    // Abrir não inventa os componentes novos, e gravar de novo dá os mesmos bytes.
-    assert!(velho.world().get::<SpriteAnimStart>(v).is_none());
-    assert!(velho.world().get::<ph2d_ecs::SpriteCutNotice>(v).is_none());
-    assert_eq!(foto(&mut velho), gravado);
-    start_autoplay_animations(&mut velho);
-    assert_eq!(atual(&velho, v), "run");
 }
 
 /// O Play sempre começa no 1.º quadro do início, mesmo com o tocador já nele e a tocar: nada de meio de ciclo.
@@ -160,7 +144,7 @@ fn sem_cartoes_clicar_na_linha_muda_com_o_que_comeca() {
         assert_eq!(atual(&sim, e), nome);
     }
     assert_eq!(
-        sim.world().get::<SpriteAnimStart>(e).map(|s| s.0.as_str()),
+        sim.world().get::<SpriteAnimator>(e).and_then(|a| a.start.as_deref()),
         Some("run")
     );
 }
@@ -179,9 +163,9 @@ fn inicio_e_aviso_viajam_no_duplicar_e_na_instancia() {
     lib.insert(AnimationTag::new("run", 2, 3)).expect("run");
     let mut a = SpriteAnimator::new("idle");
     a.autoplay = true;
-    let aviso = ph2d_ecs::SpriteCutNotice { grid: [4, 1] };
-    w.entity_mut(m)
-        .insert((lib, a, SpriteAnimStart("idle".into()), aviso));
+    lib.1 = Some([4, 1]);
+    a.start = Some("idle".into());
+    w.entity_mut(m).insert((lib, a));
     let inst = ts::instantiate(&mut sim, &r, m, None).expect("instancia");
     let (mut sc, mut mp) = instance_docs::empty_docs();
     let mut docs = instance_docs::OwnedDocs {
@@ -190,19 +174,20 @@ fn inicio_e_aviso_viajam_no_duplicar_e_na_instancia() {
     };
     let dup =
         instantiate::duplicate_subtree(&mut sim, &r, m, &mut docs, [1.0, 0.0]).expect("copia");
-    let inicio = |s: &SimWorld, e| s.world().get::<SpriteAnimStart>(e).map(|i| i.0.clone());
+    let inicio = |s: &SimWorld, e| s.world().get::<SpriteAnimator>(e).and_then(|a| a.start.clone());
     for e in [inst, dup] {
         assert_eq!(inicio(&sim, e).as_deref(), Some("idle"));
-        let n = sim.world().get::<ph2d_ecs::SpriteCutNotice>(e);
-        assert_eq!(n.map(|n| n.grid), Some([4, 1]));
+        let n = sim.world().get::<SpriteAnimations>(e).and_then(|l| l.1);
+        assert_eq!(n, Some([4, 1]));
     }
     let ponte = ph2d_physics_ecs::PhysicsBridge::new();
     let mut eco = ph2d_app_components::instance_sync::MasterEcho::default();
     ts::pass(&mut sim, &r, &ponte, &mut eco);
     ts::pass(&mut sim, &r, &ponte, &mut eco);
     sim.world_mut()
-        .entity_mut(m)
-        .insert(SpriteAnimStart("run".into()));
+        .get_mut::<SpriteAnimator>(m)
+        .unwrap()
+        .start = Some("run".into());
     ts::pass(&mut sim, &r, &ponte, &mut eco);
     assert_eq!(inicio(&sim, inst).as_deref(), Some("run"), "o mestre manda");
 }

@@ -117,17 +117,14 @@ pub fn apply_physics_edit(
     }
     if matches!(edit, PhysicsFieldEdit::FitToPicture) {
         if let Some(cur) = world.get::<Collider>(entity).copied()
-            && world.get::<ph2d_render::Sprite>(entity).is_some()
+            && let Some(imagem) = world.get::<ph2d_render::Sprite>(entity)
         {
-            let half = sprite_half_extents(world, entity);
-            let next = Collider {
-                shape: ColliderShape::Cuboid {
-                    half_x: half[0],
-                    half_y: half[1],
-                },
+            let mut next = Collider {
+                shape: cur.shape_fitted_to(imagem.size),
                 offset: [0.0, 0.0],
                 ..cur
             };
+            next.sanitize();
             queue_set(queue, registry, entity_bits, COLLIDER, &next);
         }
         return;

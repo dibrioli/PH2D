@@ -54,7 +54,7 @@ pub struct InspectorPhysicsInfo {
     /// [`half_y`]: InspectorPhysicsInfo::half_y
     pub cap_half_height: f32,
     /// A forma em relação à imagem do objecto: `None` sem imagem · `Some(true)` a caixa mede o desenho e
-    /// o acompanha (`Collider::box_fits_picture`) · `Some(false)` não acompanha (mudada à mão, bola, cápsula).
+    /// o acompanha (`Collider::follows_picture`) · `Some(false)` não acompanha (mudada à mão, bola, cápsula).
     pub shape_follows: Option<bool>,
     pub density: f32,
     pub restitution: f32,

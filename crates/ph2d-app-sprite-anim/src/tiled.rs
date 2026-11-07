@@ -67,7 +67,7 @@ pub(crate) fn follow_auto_collider(
     depois: [f32; 2],
 ) {
     if let Some(mut c) = world.get_mut::<Collider>(e)
-        && c.box_fits_picture(antes)
+        && c.follows_picture(antes)
         && antes != depois
     {
         c.shape = ColliderShape::Cuboid {

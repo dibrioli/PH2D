@@ -348,7 +348,7 @@ pub fn build_physics_info(
         cap_half_height,
         shape_follows: world
             .get::<ph2d_render::Sprite>(entity)
-            .map(|s| col.box_fits_picture(s.size)),
+            .map(|s| col.follows_picture(s.size)),
         linvel: iv.linvel,
         angvel: iv.angvel,
         ccd,

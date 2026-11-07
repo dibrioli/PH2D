@@ -14,13 +14,39 @@ use crate::{Collider, ColliderShape, MAX_LAYERS};
 const MIN_EXTENT: f32 = 1e-3;
 
 impl Collider {
-    /// A caixa mede o desenho `picture` (lados em m)? É a pergunta que decide se a forma acompanha a
-    /// imagem: à precisão de um `f32` que passou por um campo de texto. Bola e cápsula nunca medem.
+    /// A forma do MESMO tipo que cabe no desenho `picture` (lados em m), a do Fit to picture. Caixa: o
+    /// desenho. Bola: raio = metade do menor lado. Cápsula: raio = metade da largura, e o resto da altura.
     #[must_use]
-    pub fn box_fits_picture(&self, picture: [f32; 2]) -> bool {
+    pub fn shape_fitted_to(&self, picture: [f32; 2]) -> ColliderShape {
+        let [w, h] = picture.map(|lado| lado * 0.5);
+        match self.shape {
+            ColliderShape::Cuboid { .. } => ColliderShape::Cuboid {
+                half_x: w,
+                half_y: h,
+            },
+            ColliderShape::Ball { .. } => ColliderShape::Ball { radius: w.min(h) },
+            ColliderShape::Capsule { .. } => ColliderShape::Capsule {
+                half_height: (h - w).max(0.0),
+                radius: w,
+            },
+        }
+    }
+
+    /// A forma acompanha o desenho `picture`? Só a caixa que o mede, à precisão de um `f32` que passou por um
+    /// campo de texto: a bola e a cápsula nunca acompanham a largura, mesmo acabadas de ajustar pelo Fit.
+    #[must_use]
+    pub fn follows_picture(&self, picture: [f32; 2]) -> bool {
         let same = |a: f32, b: f32| (a - b).abs() <= 1e-4 * b.abs().max(1.0);
-        matches!(self.shape, ColliderShape::Cuboid { half_x, half_y }
-            if same(half_x, picture[0] * 0.5) && same(half_y, picture[1] * 0.5))
+        match (self.shape, self.shape_fitted_to(picture)) {
+            (
+                ColliderShape::Cuboid { half_x, half_y },
+                ColliderShape::Cuboid {
+                    half_x: x,
+                    half_y: y,
+                },
+            ) => same(half_x, x) && same(half_y, y),
+            _ => false,
+        }
     }
 
     /// Tamanhos positivos (a meia-altura da cápsula pode ser 0 = uma bola), densidade e atrito

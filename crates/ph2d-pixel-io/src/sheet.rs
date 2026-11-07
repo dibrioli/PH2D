@@ -3,7 +3,10 @@
 //! encolhe ao que usou; `--trim` larga os vazios; em `split` os ligados partilham retângulo.
 //! Sem oráculo (ausentes dele), definidos pelo CLI do Aseprite: 2ⁿ, merge, extrude, split de tags.
 
-mod fatias;
+pub(crate) mod fatias;
+mod nomes;
+pub use nomes::nome_do_quadro;
+use nomes::padrao;
 
 use std::collections::BTreeMap;
 
@@ -46,6 +49,9 @@ pub struct OpcoesFolha {
     pub quadros: Quadros,
     pub split_layers: bool,
     pub split_tags: bool,
+    /// `--split-slices`: cada slice, em cada quadro, é uma peça cortada na key desse quadro; o quadro
+    /// em que ela está escondida não sai. `--split-grid` ganha se os dois estiverem ligados.
+    pub split_slices: bool,
     /// `--split-grid`: cada célula da grelha é uma peça da folha.
     pub split_grid: bool,
     /// `--trim-by-grid`: o recorte de `trim_cels` ou `trim_sprite` alarga-se às linhas da grelha. Sem
@@ -183,70 +189,13 @@ fn limites_do_conteudo(px: &[u8], w: u32, h: u32) -> Option<[u32; 4]> {
     algum.then(|| [x0, y0, x1 - x0, y1 - y0])
 }
 
-fn recorte(px: &[u8], w: u32, r: [u32; 4]) -> Vec<u8> {
+pub(crate) fn recorte(px: &[u8], w: u32, r: [u32; 4]) -> Vec<u8> {
     let mut out = Vec::with_capacity(r[2] as usize * r[3] as usize * 4);
     for y in r[1]..r[1] + r[3] {
         let i = (y as usize * w as usize + r[0] as usize) * 4;
         out.extend_from_slice(&px[i..i + r[2] as usize * 4]);
     }
     out
-}
-
-/// Tokens do `--filename-format`. `{frame}` conta na saída; `{frameNN}`: largura pelos dígitos, e o
-/// valor deles é o primeiro número (`{frame1}` começa em 1, `{frame01}` tem 2 dígitos).
-#[must_use]
-pub fn nome_do_quadro(
-    fmt: &str,
-    titulo: &str,
-    camada: &str,
-    tag: &str,
-    n: usize,
-    ext: &str,
-) -> String {
-    let mut out = String::new();
-    let mut resto = fmt;
-    while let Some(a) = resto.find('{') {
-        let Some(b) = resto[a..].find('}').map(|b| a + b) else {
-            break;
-        };
-        out.push_str(&resto[..a]);
-        let t = &resto[a + 1..b];
-        match t {
-            "title" | "name" => out.push_str(titulo),
-            "layer" => out.push_str(camada),
-            "tag" => out.push_str(tag),
-            "extension" => out.push_str(ext),
-            _ => match t.strip_prefix("frame") {
-                Some(d) if d.bytes().all(|c| c.is_ascii_digit()) => {
-                    let n = n + d.parse::<usize>().unwrap_or(0);
-                    out.push_str(&format!("{n:0w$}", w = d.len()));
-                }
-                _ => {
-                    out.push('{');
-                    out.push_str(t);
-                    out.push('}');
-                }
-            },
-        }
-        resto = &resto[b + 1..];
-    }
-    out.push_str(resto);
-    out
-}
-
-fn padrao(o: &OpcoesFolha, com_camada: bool, com_tag: bool, varios: bool) -> String {
-    let mut f = String::from("{title}");
-    if com_camada {
-        f.push_str(" ({layer})");
-    }
-    if com_tag {
-        f.push_str(" #{tag}");
-    }
-    if varios {
-        f.push_str(" {frame}");
-    }
-    f.push_str(".{extension}");
-    o.nome.clone().unwrap_or(f)
 }
 
 fn tag_de(s: &Sprite, i: usize) -> String {
@@ -291,6 +240,7 @@ fn pecas(s: &Sprite, o: &OpcoesFolha, titulo: &str, ext: &str, feito: &dyn Fn(f3
     let cortes = grelha_da_saida(s, o)
         .filter(|_| o.split_grid)
         .map(|g| (caixas_da_grelha(g, w, h), g.0, g.1));
+    let rotulos = fatias::rotulos(s);
     let mut out = Vec::new();
     let mut grupo = 0;
     for camada in &camadas {
@@ -306,8 +256,10 @@ fn pecas(s: &Sprite, o: &OpcoesFolha, titulo: &str, ext: &str, feito: &dyn Fn(f3
         let so_uma = camada.is_some() || matches!(o.camadas, Camadas::Uma(_));
         for (tag, lista) in &listas {
             let varios = lista.len() > 1 || cortes.is_some();
-            let fmt = padrao(o, so_uma, tag.is_some(), varios);
+            let por_slice = o.split_slices && cortes.is_none() && !rotulos.is_empty();
+            let fmt = padrao(o, so_uma, tag.is_some(), por_slice, varios);
             let mut item = 0;
+            let mut itens_da_slice = vec![0; rotulos.len()];
             for &i in lista {
                 feito(out.len() as f32 / total.max(1) as f32);
                 let fr = s.frames()[i];
@@ -324,6 +276,32 @@ fn pecas(s: &Sprite, o: &OpcoesFolha, titulo: &str, ext: &str, feito: &dyn Fn(f3
                             dono: None,
                         });
                         item += 1;
+                    }
+                    continue;
+                }
+                if por_slice {
+                    for (k, (id, rotulo)) in rotulos.iter().enumerate() {
+                        let Some(r) = fatias::caixa_no_quadro(s, *id, i) else {
+                            continue;
+                        };
+                        let rect = [r.x as u32, r.y as u32, r.w, r.h];
+                        let fmt = fmt.replace("{slice}", rotulo);
+                        out.push(Peca {
+                            nome: nome_do_quadro(
+                                &fmt,
+                                titulo,
+                                &nome_camada,
+                                &t,
+                                itens_da_slice[k],
+                                ext,
+                            ),
+                            grupo,
+                            rect,
+                            px: recorte(&px, w, rect),
+                            duration_ms: fr.duration_ms,
+                            dono: None,
+                        });
+                        itens_da_slice[k] += 1;
                     }
                     continue;
                 }

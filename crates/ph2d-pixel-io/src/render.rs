@@ -1,7 +1,10 @@
 //! **A pergunta de todo exportador: o que sai em cada quadro?** PNG, GIF, APNG, WebP e a folha pedem
 //! aqui; nenhum compõe por conta própria.
 
-use ph2d_pixel_core::{FrameId, Layer, LayerId, Sprite, compose_picked};
+use ph2d_pixel_core::{FrameId, Layer, LayerId, SliceId, Sprite, compose_picked};
+
+use crate::sheet::fatias;
+use crate::sheet::recorte;
 
 /// Que camadas entram.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -36,6 +39,15 @@ pub enum Direcao {
     PingPongReverse,
 }
 
+/// A área que sai (`Area:` do Export File).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Area {
+    #[default]
+    Canvas,
+    /// Só esta slice; o quadro em que ela não aparece não sai.
+    Slice(SliceId),
+}
+
 /// O pedido de um export.
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Pedido {
@@ -44,6 +56,7 @@ pub struct Pedido {
     pub direcao: Direcao,
     /// 1 = sem escala; 0 vale 1.
     pub escala: f64,
+    pub area: Area,
 }
 
 /// Um quadro pronto.
@@ -138,29 +151,59 @@ pub fn quadros(s: &Sprite, p: &Pedido) -> Vec<QuadroSaida> {
 /// [`quadros`], dizendo a fração feita a cada quadro (a barra de um export longo).
 #[must_use]
 pub fn quadros_com(s: &Sprite, p: &Pedido, feito: &dyn Fn(f32)) -> Vec<QuadroSaida> {
+    quadros_da_area(s, p, false, feito)
+}
+
+/// [`quadros_com`] com a escolha da caixa da slice: a de cada quadro, ou (`uma_caixa`) a que cobre
+/// todos, como pede um formato animado.
+pub(crate) fn quadros_da_area(
+    s: &Sprite,
+    p: &Pedido,
+    uma_caixa: bool,
+    feito: &dyn Fn(f32),
+) -> Vec<QuadroSaida> {
     let f = if p.escala > 0.0 { p.escala } else { 1.0 };
     let lista = ordem(s, p.quadros, p.direcao);
     let total = lista.len().max(1) as f32;
+    let comum = match p.area {
+        Area::Slice(id) if uma_caixa => Some(fatias::caixa_comum(s, id, &lista)),
+        _ => None,
+    };
     lista
-        .into_iter()
+        .iter()
+        .copied()
         .enumerate()
-        .map(|(n, indice)| {
+        .filter_map(|(n, indice)| {
             feito(n as f32 / total);
+            let caixa = match p.area {
+                Area::Canvas => None,
+                Area::Slice(id) => {
+                    let daqui = fatias::caixa_no_quadro(s, id, indice)?;
+                    Some(comum.unwrap_or(daqui))
+                }
+            };
             let fr = s.frames()[indice];
             let px = composto(s, fr.id, p.camadas);
-            let (w, h, rgba) = if (f - 1.0).abs() < f64::EPSILON {
-                (s.width(), s.height(), px)
-            } else {
-                escalado(&px, s.width(), s.height(), f)
+            let (cw, ch, px) = match caixa {
+                None => (s.width(), s.height(), px),
+                Some(r) => {
+                    let corte = [r.x as u32, r.y as u32, r.w, r.h];
+                    (r.w, r.h, recorte(&px, s.width(), corte))
+                }
             };
-            QuadroSaida {
+            let (w, h, rgba) = if (f - 1.0).abs() < f64::EPSILON {
+                (cw, ch, px)
+            } else {
+                escalado(&px, cw, ch, f)
+            };
+            Some(QuadroSaida {
                 indice,
                 frame: fr.id,
                 duration_ms: fr.duration_ms,
                 w,
                 h,
                 rgba,
-            }
+            })
         })
         .collect()
 }

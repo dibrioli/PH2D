@@ -5,7 +5,7 @@ use ph2d_pixel_core::{ColorMode, Sprite};
 
 use crate::ase;
 use crate::gif_cores;
-use crate::render::{Pedido, QuadroSaida, quadros_com};
+use crate::render::{Pedido, QuadroSaida, quadros_da_area};
 
 /// Os formatos do Export As.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -57,6 +57,8 @@ pub enum ErroSaida {
         w: u64,
         h: u64,
     },
+    /// A slice escolhida não aparece em nenhum dos quadros pedidos.
+    NadaNaArea,
 }
 
 impl std::fmt::Display for ErroSaida {
@@ -66,6 +68,7 @@ impl std::fmt::Display for ErroSaida {
             Self::GifGrandeDemais { w, h } => write!(f, "{w} x {h} does not fit a GIF (65535)"),
             Self::Ase(e) => e.fmt(f),
             Self::GrandeDemais { w, h } => write!(f, "{w} x {h} is too large"),
+            Self::NadaNaArea => f.write_str("the slice does not appear in these frames"),
         }
     }
 }
@@ -175,7 +178,10 @@ pub fn exportar_com(
     if ew > u64::from(ph2d_pixel_core::MAX_SIDE) || eh > u64::from(ph2d_pixel_core::MAX_SIDE) {
         return Err(ErroSaida::GrandeDemais { w: ew, h: eh });
     }
-    let qs = quadros_com(s, p, feito);
+    let qs = quadros_da_area(s, p, f != Formato::Png, feito);
+    if qs.is_empty() {
+        return Err(ErroSaida::NadaNaArea);
+    }
     let (w, h) = qs.first().map_or((s.width(), s.height()), |q| (q.w, q.h));
     let err = |e: ph2d_imageio::Error| ErroSaida::Formato(e.to_string());
     let ficheiros = match f {

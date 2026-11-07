@@ -151,6 +151,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.io.kind_apng" => "Animated PNG",
         "pixel.io.kind_webp" => "WebP image",
         "pixel.io.kind_ase" => "Aseprite file",
+        "pixel.io.error.nothing_in_area" => "This slice does not appear in the chosen frames.",
         "pixel.io.warn.slice_properties" => {
             "{n} {n?slice has|slices have} custom properties. The slices are kept, the properties are not."
         }

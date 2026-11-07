@@ -45,6 +45,7 @@ impl OpcoesAs {
             quadros: self.quadros,
             direcao: self.direcao,
             escala: f64::from(self.escala) / f64::from(PCT),
+            area: Default::default(),
         }
     }
 }

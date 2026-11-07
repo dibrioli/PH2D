@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 
 use ph2d_pixel_core::{ExportPreset, LayerId, Sprite};
 
-use crate::render::{Camadas, Direcao, Pedido, Quadros};
+use crate::render::{Area, Camadas, Direcao, Pedido, Quadros};
 use crate::saida::{self, AvisoSaida, ErroSaida, Formato};
 use crate::sheet::{self, Limite, OpcoesFolha, OpcoesJson, Tipo};
 use crate::tiles_saida::{self, ExportTiles};
@@ -112,7 +112,11 @@ pub fn gravar_com(
 ) -> Result<Gravado, ErroGravar> {
     match e {
         Export::Ficheiro(x) => {
-            if !alvo_existe(s, x.pedido.camadas, x.pedido.quadros) {
+            let area_existe = match x.pedido.area {
+                Area::Canvas => true,
+                Area::Slice(id) => s.slice(id).is_some(),
+            };
+            if !area_existe || !alvo_existe(s, x.pedido.camadas, x.pedido.quadros) {
                 return Err(ErroGravar::AlvoSumiu);
             }
             let r = saida::exportar_com(s, &x.pedido, x.formato, x.repeat, feito)
@@ -284,6 +288,9 @@ fn para_texto(s: &Sprite, e: &Export) -> String {
             l.push(format!("frames={}", quadros_txt(s, x.pedido.quadros)));
             l.push(format!("direction={}", direcao_txt(x.pedido.direcao)));
             l.push(format!("scale={}", x.pedido.escala));
+            if let Area::Slice(id) = x.pedido.area {
+                l.push(format!("area={}", id.0));
+            }
             l.push(format!("repeat={}", x.repeat));
         }
         Export::Folha(x) => {
@@ -308,6 +315,7 @@ fn para_texto(s: &Sprite, e: &Export) -> String {
                 ("ignore_empty", o.ignore_empty),
                 ("split_layers", o.split_layers),
                 ("split_tags", o.split_tags),
+                ("split_slices", o.split_slices),
                 ("split_grid", o.split_grid),
                 ("trim_by_grid", o.trim_by_grid),
                 ("trim_cels", o.trim_cels),
@@ -409,6 +417,10 @@ fn de_texto(s: &Sprite, t: &str) -> Option<Export> {
                     _ => return None,
                 },
                 escala: campo("scale")?.parse().ok()?,
+                area: match campo("area") {
+                    None => Area::Canvas,
+                    Some(id) => Area::Slice(ph2d_pixel_core::SliceId(id.parse().ok()?)),
+                },
             },
             formato: Formato::de_extensao(campo("format")?)?,
             repeat: campo("repeat")?.parse().ok()?,
@@ -445,6 +457,7 @@ fn de_texto(s: &Sprite, t: &str) -> Option<Export> {
                     quadros: de_quadros(s, campo("frames")?)?,
                     split_layers: sim("split_layers"),
                     split_tags: sim("split_tags"),
+                    split_slices: sim("split_slices"),
                     split_grid: sim("split_grid"),
                     trim_by_grid: sim("trim_by_grid"),
                     trim_cels: sim("trim_cels"),

@@ -49,6 +49,7 @@ pub fn erro_gravar(e: &ErroGravar) -> String {
         ErroGravar::Saida(ErroSaida::GifGrandeDemais { .. }) => {
             tr("pixel.io.err.gif_size").to_owned()
         }
+        ErroGravar::Saida(ErroSaida::NadaNaArea) => tr("pixel.io.error.nothing_in_area").to_owned(),
         ErroGravar::Saida(ErroSaida::GrandeDemais { .. }) => {
             tr("pixel.io.err.too_large").to_owned()
         }

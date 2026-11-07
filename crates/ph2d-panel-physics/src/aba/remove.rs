@@ -144,7 +144,7 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro, p: &Pergunta)
             p.rotulo_y,
             ColorToken::Text3,
         );
-        let mut botao = |texto: &mut _, cena: &mut _, r: Rect, s: &str, fundo, tinta| {
+        let botao = |texto: &mut _, cena: &mut _, r: Rect, s: &str, fundo, tinta| {
             fill_rounded_rect(cena, r, raio, fundo);
             paint_text_centered(texto, cena, s, r, font, tinta);
         };

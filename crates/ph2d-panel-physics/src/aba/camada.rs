@@ -216,7 +216,7 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro) {
         if let Some(y) = c.vazio_y {
             rotulo(texto, cena, tr("card.physics.tab_no_objects"), y);
         }
-        let mut botao = |texto: &mut _, cena: &mut _, r: Rect, s: &str, hover: bool| {
+        let botao = |texto: &mut _, cena: &mut _, r: Rect, s: &str, hover: bool| {
             let fundo = if hover {
                 ColorToken::Bg3
             } else {

@@ -179,10 +179,8 @@ impl crate::App {
             // ⛔ **E isto NÃO é da timeline estar aberta:** o único escritor de um `CenterSplit` é
             // o ramo da ferramenta Motion — a correcção que a wave do HUD pagou um dia antes, por
             // ler *onde o defeito aterrava* como *o que o causava*.
-            //
-            // ⭐ **Fora do split é BYTE-IDÊNTICO** (`CenterSplit::None` devolve a janela inteira),
-            // logo esta linha não muda um pixel de nenhuma das cenas que já shipavam.
             janela_da_cena,
+            *theme,
             vector_scene,
             // ⚠️ Reborrow por `paint_ctx`, não o binding cru: o `text_system`
             // já está emprestado por ele desde o começo do frame, e um

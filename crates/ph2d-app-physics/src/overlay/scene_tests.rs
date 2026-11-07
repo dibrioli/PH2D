@@ -466,11 +466,12 @@ fn a_part_of_a_compound_body_is_drawn_in_the_owners_colour() {
     }
 }
 
-/// **E um collider SEM corpo acima não é desenhado** — o controle da metade
-/// acima. Sem ele o gate ficaria verde sobre um passe que desenha toda forma da
-/// cena, inclusive as que o solver ignora.
+/// **E um collider SEM corpo acima sai com a marca da forma solta, nunca com a cor de um corpo**
+/// (decisão do dono 07/11, que trocou a lei antiga «não é desenhado») — o controle da metade acima.
+/// Sem ele o gate ficaria verde sobre um passe que pinta como simulada toda forma da cena, inclusive
+/// as que o solver ignora. O resto da lei: `loose_tests.rs`.
 #[test]
-fn a_collider_with_no_body_above_it_is_not_drawn() {
+fn a_collider_with_no_body_above_it_is_marked_loose_never_as_a_body() {
     use ph2d_core::Vec2;
     use ph2d_ecs::Transform;
     use ph2d_physics_ecs::Collider;
@@ -483,9 +484,12 @@ fn a_collider_with_no_body_above_it_is_not_drawn() {
         },
         Transform::from_translation(Vec2::new(0.0, 2.0)),
     ));
-    assert!(
-        outlines(true, false, &mut sim, &[], false, &camera(), window()).is_empty(),
-        "uma forma que o solver ignora ganhou contorno — a marca afirmaria que ela \
+    let out = outlines(true, false, &mut sim, &[], false, &camera(), window());
+    assert_eq!(out.len(), 1, "a forma solta aparece, uma vez");
+    assert_eq!(
+        out[0].1,
+        super::LOOSE_INK,
+        "uma forma que o solver ignora ganhou a tinta de um corpo — a marca afirmaria que ela \
          é simulada"
     );
 }

@@ -7,12 +7,8 @@
 //! (*"os colliders parecem redondos mas os desenhos são box"*, Enio
 //! 2026-07-18).
 //!
-//! That mismatch is not a bug in the demo scene: it is the **normal case**.
-//! In a real project the art is whatever the artist drew and the collider is
-//! a shape they chose, and the two are only related by intent. Every physics
-//! editor answers this the same way — Unity, Godot and Box2D's own debug draw
-//! all paint the collider as a wireframe on top of the art — so that is what
-//! this does. Making the *sprite* round would only fix the demo.
+//! Every physics editor answers this the same way — Unity, Godot and Box2D's
+//! own debug draw all paint the collider as a wireframe on top of the art.
 //!
 //! ## Screen space, deliberately
 //!
@@ -27,7 +23,7 @@
 //!
 //! ## Free when there is no physics
 //!
-//! Nothing is drawn for a scene with no bodies, so a painter or vector user
+//! Nothing is drawn for a scene with no colliders, so a painter or vector user
 //! never sees physics chrome and never pays for it. The toggle (`B`) exists
 //! for the case where the outlines are in the way; W2 moves it into the
 //! physics panel, reading this same flag.
@@ -36,7 +32,8 @@ use ph2d_ecs::SimWorld;
 use ph2d_host::WindowSize;
 use ph2d_physics_ecs::{BodyKind, Collider, scaled_shape};
 use ph2d_render::Camera2d;
-use ph2d_vector::{BezPath, VectorScene};
+use ph2d_tokens::{ColorToken, Theme};
+use ph2d_vector::{BezPath, Stroke, VectorScene};
 
 /// A GEOMETRIA do contorno mora no irmão (cap de 600 LOC da shell); re-exportada
 /// por este caminho porque é por ele que os chamadores sempre a pediram — o corte
@@ -93,6 +90,23 @@ const SENSOR_ACTIVE_RGBA: [f32; 4] = [1.0, 0.55, 0.98, 1.0]; // LITERAL-COLOR-OK
 /// inteira e não se vê é um estado que o artista descobre por acidente.
 const PASSABLE_RGBA: [f32; 4] = [0.55, 0.62, 0.58, 0.40]; // LITERAL-COLOR-OK: overlay de collider
 
+/// **A forma solta** (sem corpo acima; decisão do dono 07/11, ficha `f1_physics_static_shape.md`): aparece, tracejada e
+/// apagada, porque o solver a ignora. Não é cor: é a marca que `tinta_do_contorno` troca por token e tracejado.
+pub(crate) const LOOSE_INK: [f32; 4] = [0.0; 4]; // LITERAL-COLOR-OK: marca, nunca pintada
+const LOOSE_DASH_PX: [f64; 2] = [6.0, 5.0]; // LITERAL-PX-OK: chrome de overlay, tracejado de tela
+
+/// O traço e a cor de um contorno; a forma solta sai pelo token do tema.
+pub(crate) fn tinta_do_contorno(rgba: [f32; 4], theme: Theme) -> (Stroke, ph2d_vector::Color) {
+    if rgba == LOOSE_INK {
+        (
+            Stroke::new(OUTLINE_PX).with_dashes(0.0, LOOSE_DASH_PX),
+            ph2d_editor_core::paint::resolve(ColorToken::Text3, theme),
+        )
+    } else {
+        (Stroke::new(OUTLINE_PX), ph2d_vector::Color::new(rgba))
+    }
+}
+
 /// The colour of one collider outline: a sensor is magenta (bright when a body
 /// is inside it), and any solid collider is coloured by its body kind. A sensor
 /// overrides the kind colour on purpose — "is this a trigger?" is the first
@@ -134,14 +148,11 @@ fn outline_rgba(is_sensor: bool, triggered: bool, passable: bool, kind: BodyKind
 ///
 /// Dela mesma quando a entidade É um corpo; senão do corpo ancestral mais
 /// próximo, que é o que faz de uma PEÇA (W-Compound) uma forma a mais do dono e
-/// não um objeto solto. `None` quando não há corpo nenhum acima: aquele collider
-/// não é simulado, e desenhá-lo afirmaria que é.
+/// não um objeto solto. `None` quando não há corpo nenhum acima: a forma solta
+/// ([`LOOSE_INK`]).
 ///
 /// ⚠️ **DELEGA** (W-PartFace): o walk vive em `ph2d_physics_ecs::governing_kind`,
-/// ao lado da regra que a PONTE usa para pendurar a peça. Ele já esteve escrito
-/// aqui, no Inspector e na ponte — três cópias da mesma frase, e um contorno que
-/// colorisse por um dono diferente daquele em que o solver pendurou a forma seria
-/// o drift mais difícil de ver, porque os dois lados parecem certos.
+/// ao lado da regra que a PONTE usa para pendurar a peça.
 use ph2d_physics_ecs::governing_kind as owning_kind;
 
 pub fn outlines(
@@ -184,13 +195,7 @@ pub fn outlines(
         // De QUEM é esta forma? Dela mesma, se ela for um corpo; senão do corpo
         // ancestral mais próximo (W-Compound — o mesmo walk do `rig_edges`, e um
         // GRUPO no meio fica transparente pelo mesmo motivo).
-        //
-        // ⚠️ **Um collider sem corpo nenhum acima NÃO é desenhado**, e isso é o
-        // contorno sendo honesto: ele não é simulado, e uma marca sobre ele diria
-        // que é.
-        let Some(kind) = owning_kind(world, e) else {
-            continue;
-        };
+        let kind = owning_kind(world, e);
         let Some(t) = ph2d_ecs::world_transform_into(world, e, &mut chain) else {
             continue;
         };
@@ -214,6 +219,11 @@ pub fn outlines(
             camera,
             window,
         );
+        // Sem corpo acima o solver não a vê: outra tinta, e nenhuma anotação de corpo.
+        let Some(kind) = kind else {
+            out.push((path, LOOSE_INK));
+            continue;
+        };
         out.push((
             path,
             outline_rgba(
@@ -391,18 +401,16 @@ pub fn draw(
     selected_joint: Option<ph2d_ecs::Entity>,
     camera: &Camera2d,
     window: WindowSize,
+    theme: Theme,
     vector_scene: &mut VectorScene,
     text_system: &mut ph2d_text::TextSystem,
 ) {
-    use ph2d_vector::{Affine, Brush, Color, Stroke};
+    use ph2d_vector::{Affine, Brush, Color};
     for (path, rgba) in outlines(show, show_velocity, sim, triggered, ghost, camera, window) {
-        vector_scene.inner_mut().stroke(
-            &Stroke::new(OUTLINE_PX),
-            Affine::IDENTITY,
-            &Brush::Solid(Color::new(rgba)),
-            None,
-            &path,
-        );
+        let (traco, cor) = tinta_do_contorno(rgba, theme);
+        vector_scene
+            .inner_mut()
+            .stroke(&traco, Affine::IDENTITY, &Brush::Solid(cor), None, &path);
     }
     // A linha d'água ANTES dos corpos: ela é o cenário (onde a superfície está), e o
     // que se lê por cima dela são as coisas que boiam.
@@ -579,3 +587,7 @@ mod annotation_tests;
 #[cfg(test)]
 #[path = "passable_tests.rs"]
 mod passable_tests;
+
+#[cfg(test)]
+#[path = "loose_tests.rs"]
+mod loose_tests;

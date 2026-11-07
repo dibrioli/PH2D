@@ -4,7 +4,7 @@ A linha continua: isto fecha a ONDA 4. Ficha: [`../componentes/f1_physics_static
 
 ## Estado
 
-As quatro ondas da ficha estão feitas e **à espera do smoke do dono**. O `main` não andou durante a onda: sem rebase. Schema continua em 218. HEAD: o último commit `docs(GEF02)` desta onda (`git log -1`).
+As quatro ondas da ficha estão feitas; smoke do dono em 07/11 aprovou 12 de 13 passos, e a forma solta passou a aparecer no canvas, tracejada (decisão dele). O `main` não andou durante a onda: sem rebase. Schema continua em 218. HEAD: o último commit `docs(GEF02)` desta onda (`git log -1`).
 
 ## O que a onda 4 fez
 
@@ -28,9 +28,8 @@ Bola 2 × 1 com `ZONE_FORCE = 40`: oscila entre y ≈ 3 e 7 m, sem nunca chegar 
 
 ## O que falta
 
-1. Smoke do dono (rascunho no relatório desta onda).
+1. Smoke do dono: aprovados 1–9 e 11–13. **Passo 10 por repetir:** o achado e a proposta estão na ficha; o rótulo é decisão dele.
 2. **Polígono pelo contorno:** item próprio, a seguir. Mexe no motor e no formato salvo.
-3. Decisão de produto: a forma solta não tem contorno no canvas (só o anel; com a edição acesa, sim). O «Hits» dela já saiu: ver a ficha.
 
 ## Não provado
 

@@ -77,7 +77,7 @@ Capsule: Height = 2 × (Half Height + Radius). Os ids `INSP_PHYS_*` ficam, para 
 | 1 | Os dois cartões, dobras, Width e Height, Touch, Density, nomes dos cartões, avisos, estado da forma, Fit to picture, recibo do Remove, dica | feita, à espera do smoke do dono |
 | 2 | Camadas com nome e «Hits» (schema `217 → 218`) | feita, à espera do smoke do dono |
 | 3 | Alças no canvas, no molde da câmera (`ph2d-app-game/src/smoke_mao.rs`, doc 17b), com undo e Auto Key | feita, à espera do smoke do dono |
-| 4 | Curas da onda 3, cena de smoke `PH2D_PHYSICS_SMOKE=120`, uso no jogo, fotos | feita, à espera do smoke do dono |
+| 4 | Curas da onda 3, cena de smoke `PH2D_PHYSICS_SMOKE=120`, uso no jogo, fotos | feita; smoke do dono 07/11: 12 de 13, passo 10 por repetir |
 | depois | Polígono pelo contorno: item próprio | fila |
 
 ## ⛔ Recusas
@@ -110,5 +110,17 @@ Capsule: Height = 2 × (Half Height + Radius). Os ids `INSP_PHYS_*` ficam, para 
 - **Cena 120** (`PH2D_PHYSICS_SMOKE=120`, corpos em `ph2d-physics-scene/src/ficha.rs`: `ph2d-app-physics` estava a 200 linhas do tecto): gates `ficha::` (Crate atravessa a forma solta e pousa; zona com controlo; One-way com controlo; matriz; Player atravessa o Crate). `PH2D_PHYSICS_SMOKE_{SELECT,TOCA,VISTA,PAINEL}` servem às fotos. **Uso no jogo:** `a_plataforma_alargada_por_width` (`ph2d-host-game-scenes`) e, no app, `PH2D_GAME_SMOKE=4` + `PH2D_GAME_SMOKE_DRIVE=editor` (+ `fisica_larga`). Fotos: [`../handoffs/fotos_fisica/onda4/`](../handoffs/fotos_fisica/onda4/).
 - **Cura depois da onda 4 (07/11):** a forma sem corpo acima não mostra «Hits» (nada bate nela); a lista Layer e o «Rename…» ficam (`a_forma_solta_nao_mostra_hits`, visto vermelho). Peça e corpo continuam com a linha.
 - **Conduzido no app, cena 120** (`prova_alcas.sh`, casos `forma_ponta` e `forma_fit`, com `PH2D_PHYSICS_SMOKE_SELECT`; o campo Width recebe as teclas pelo `key_input`). Width 800: `half_x 4.0`, edição acesa; clique parado 15 px para dentro da alça direita, sobre as nuvens: `alvo=Updraft Zone editando=false`. Fit to picture no Player: `Capsule { half_height: 0.15, radius: 0.2 }` (20 e 70) → `{ 0.0, 0.5 }` (cartão: Radius 50, Height 100, Capsule) → Ctrl+Z → `{ 0.15, 0.2 }`, um passo só. Fotos: `onda4/prova_ponta_updraft_zone.png`, `onda4/prova_fit_player.png`; as da cena refeitas depois da cura.
-- **Aberto:** a forma solta não tem contorno no canvas, de propósito (`overlay/outline.rs`: «não é simulado»): na cena 120 ela é só um anel, e selecionada mostra a caixa pequena do gizmo, não 200 × 50; o contorno aparece com «Edit shape on canvas». Decisão de produto. As teclas da cena 120 não foram conduzidas no app, só o dedo direto nos gates.
-- A preencher: smoke do dono.
+- **Aberto:** as teclas da cena 120 não foram conduzidas no app, só o dedo direto nos gates.
+- **Smoke do dono, 07/11, cena 120:** aprovados os passos 1–9 e 11–13. Passo 10 («Não encontrei Layers») sem aprovação: achado abaixo.
+- **Decisão do dono, 07/11: a forma solta APARECE no canvas.** Revoga a lei «não é simulado, logo não se desenha». Traço tracejado (6 × 5 px de ecrã) e apagado, `ColorToken::Text3` do tema, a mesma geometria do solver (escala, rotação, Offset, pai), sem seta nem anel de corpo; o solver continua a não a ver. `overlay/outline.rs`: `LOOSE_INK` + `tinta_do_contorno`. Testes: `loose_tests.rs` (dois vistos vermelhos antes da cura; o da tinta e o Offset provados por mutação) e `a_collider_with_no_body_above_it_is_marked_loose_never_as_a_body`, a antiga `..._is_not_drawn`, vermelha pela cura e corrigida de propósito. No Play o Crate passa-lhe por dentro (`ficha::`). Fotos: `onda4/solta_sem_selecao.png`, `onda4/solta_play.png`.
+- **Achado do passo 10, medido em 1930 × 1012 úteis, cartões de nascimento, HOME isolado** (o painel vê até y ≈ 1000; fotos `onda4/camada_tela_*.png` e, de corpo inteiro, `onda4/camada_inspector_inteiro.png`, janela de 2700):
+
+| Objecto | Cartão Shape começa | Rótulo Layer em y | Rolagem até à lista | Na 1.ª tela? |
+|---|---|---|---|---|
+| Floor | ≈ 1030 | ≈ 1346 | ≈ 380 px | não |
+| Crate | ≈ 1160 | ≈ 1456 | ≈ 490 px | não |
+| Player | ≈ 2020 | ≈ 2349 | ≈ 1385 px | não |
+| Updraft Zone | ≈ 978 (só o título) | ≈ 1357 | ≈ 390 px | não |
+| Collision Shape | ≈ 530 | ≈ 898 | 0 | sim, e sem «Hits», por lei |
+
+  A linha não está em dobra nenhuma e nenhuma dobra nasce fechada por acidente: só em rolagem, e o Image, Look e Body de cada objecto vêm antes. A barra de rolagem é fina, à direita. O rótulo é uma legenda pequena e apagada, igual a Bounce; o que se lê é o valor («Ground», «Props»): a palavra «Layer» quase não se vê. «Hits» é uma frase apagada logo debaixo da lista, por isso também fica abaixo da 1.ª tela. **Não há «Layers» no menu Window** (`MENU_BAR_WINDOW_ROWS`); o plural mora em Window ▸ Physics («Collision Layers», «Layers that collide») e no painel do Painter (modo Draw, imagem). **Causa provável:** na 1.ª tela de um objecto com corpo não há cartão Shape; o dono procurou a palavra «Layers», que ali não existe. **Não provado:** em que objecto ele estava e se rolou; o Width dos passos 3 e 8 não prova rolagem se foi na Collision Shape (Width em y ≈ 711), e a rolagem de roda não se conduz na tela virtual. **Proposta, não aplicada porque decide texto de produto:** rótulo «Collision Layer» na linha do cartão, a mesma expressão do painel Physics.

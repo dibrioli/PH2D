@@ -44,6 +44,7 @@ ph2d-host = { path = "../ph2d-host" }
 ph2d-input = { path = "../ph2d-input" }
 ph2d-panel-physics = { path = "../ph2d-panel-physics" }
 ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-vector = { path = "../ph2d-vector" }
 # `libm`: HR-5, a trigonometria bit-idêntica entre OS que o overlay usa.
 libm = { version = "=0.2.16", default-features = false }

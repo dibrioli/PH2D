@@ -471,3 +471,81 @@ fn the_marks_show_the_preview_hide_the_empty_box_and_default_the_color() {
     let ids: Vec<_> = marcas(&s, 2, None, &sel).iter().map(|k| k.id).collect();
     assert_eq!(ids, [a], "caixa vazia esconde até à seguinte");
 }
+
+// --- Fixtures que separam hipóteses (prova de mutação P11) ---
+
+/// Onde duas slices se sobrepõem, a de cima (a criada depois) ganha o premir.
+#[test]
+fn where_two_slices_overlap_the_later_one_on_top_gets_the_press() {
+    let (mut s, a) = com_uma(SliceShape {
+        bounds: Rect::new(8, 8, 16, 16),
+        ..SliceShape::default()
+    });
+    let b = nova(
+        &mut s,
+        SliceShape {
+            bounds: Rect::new(12, 12, 16, 16),
+            ..SliceShape::default()
+        },
+    );
+    assert_eq!(ph2d_pixel_slices::interior(&s, 0, (14, 14)), Some(b));
+    assert_eq!(ph2d_pixel_slices::interior(&s, 0, (9, 9)), Some(a));
+    let mut sel = vec![];
+    let _ = Gesto::press(&s, 0, &mut sel, (14.5, 14.5), TOL, false);
+    assert_eq!(sel, [b]);
+}
+
+/// A marquise conta a célula do ponteiro: toca o que o ponteiro toca, e a caixa elástica a mostra.
+#[test]
+fn the_marquee_counts_the_pointer_cell_and_the_elastic_box_only_shows_after_moving() {
+    let (mut s, a) = com_uma(SliceShape {
+        bounds: Rect::new(8, 8, 8, 8),
+        ..SliceShape::default()
+    });
+    let canvas = Rect::new(0, 0, 64, 64);
+    let mut sel = vec![];
+    let mut g = Gesto::press(&s, 0, &mut sel, (5.5, 10.5), TOL, true);
+    g.drag((8.5, 10.5));
+    assert_eq!(g.elastico(canvas), Some(Rect::new(5, 10, 4, 1)));
+    assert!(g.release(&mut s, 0, &mut sel).is_none());
+    assert_eq!(sel, [a], "a célula 8 conta");
+
+    // Criar: sem mexer não há caixa elástica; mexendo, há.
+    let mut g = Gesto::press(&s, 0, &mut sel, (30.5, 30.5), TOL, false);
+    assert_eq!(g.elastico(canvas), None);
+    g.drag((34.5, 33.5));
+    assert_eq!(g.elastico(canvas), Some(Rect::new(30, 30, 4, 3)));
+}
+
+/// O pivot e o 9-slice são de cada uma: com duas selecionadas, só a agarrada muda.
+#[test]
+fn dragging_the_pivot_of_one_of_several_selected_moves_only_that_pivot() {
+    let (mut s, a) = com_uma(SliceShape {
+        bounds: Rect::new(8, 8, 8, 8),
+        pivot: Some((2, 2)),
+        ..SliceShape::default()
+    });
+    let b = nova(
+        &mut s,
+        SliceShape {
+            bounds: Rect::new(30, 8, 8, 8),
+            pivot: Some((3, 3)),
+            ..SliceShape::default()
+        },
+    );
+    let mut sel = vec![a, b];
+    arrasta(&mut s, &mut sel, (10, 10), (12, 11));
+    assert_eq!(forma(&s, a).pivot, Some((4, 3)));
+    assert_eq!(forma(&s, b).pivot, Some((3, 3)));
+}
+
+/// O pivot é um píxel: agarra-se mesmo com tolerância abaixo de meia célula.
+#[test]
+fn the_pivot_is_grabbed_even_with_a_tolerance_below_half_a_cell() {
+    let s = SliceShape {
+        bounds: Rect::new(10, 10, 24, 16),
+        center: None,
+        pivot: Some((5, 5)),
+    };
+    assert_eq!(hit(&s, (15.9, 15.5), 0.1), Some(Grab::Pivot));
+}

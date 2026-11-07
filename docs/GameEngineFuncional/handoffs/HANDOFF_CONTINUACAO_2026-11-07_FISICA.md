@@ -36,6 +36,14 @@ Feita, à espera do smoke do dono. As camadas saíram do cartão Shape para um c
 
 **Vermelhos que já vinham das ondas 5 e 6, por curar:** `quantas_entradas_tem_cada_painel` (`physics`, 4 contra 3 e 1636 px contra 1236) e `no_magic_numeric` (`ph2d-panel-physics/src/paint/matrix.rs:63`, `paint.rs:41`). O integrador reprovaria: cure-os antes de fechar a linha.
 
+## Onda 8, o modal «Collision Layers» (07/11)
+
+Feita, à espera do smoke do dono. A matriz inteira das 32 camadas saiu do painel para um modal central (`ph2d-panel-physics/src/modal.rs`), com nomes à esquerda e em cima, destaque cruzado, duplo clique para renomear (modal e chip da Layer do Inspector), Enter = um passo, Esc desiste. **Os três vermelhos curados** (carga 4 → 3; altura 1 636 → 1 064, catraca escrita; `no_magic_numeric` verde). Detalhe, provas, mutações e fotos: fim da [ficha](../componentes/f1_physics_static_shape.md). Fotos: [`fotos_fisica/onda8/`](fotos_fisica/onda8/).
+
+**Para o integrador (partilha com a linha irmã `line/GameEngineFuncional`):** o editor de animações dela é uma ABA do centro (`AnimDocs`, `DocumentSurface`, `ph2d-app-sprite-anim/src/editor/`), não um diálogo; o nosso modal é `widget::Modal` + `camada_das_listas::por_cima`. Parecidos: título no cabeçalho, fundo plano escuro, células/miniaturas em grelha com `Radius::Sm`, o «editor próprio» aberto por um botão «Edit …» do cartão do Inspector. Se o dono quiser o MESMO idioma, o caminho é um `DocumentSurface` «Collision Layers» com a pintura de `modal.rs` (a geometria `Geometria` já é independente da moldura). Tocámos fora da crate: `widget/modal.rs` (`sem_rodape`, campo `rodape`), `interaction/dispatch/key.rs` (`esc_fecha`), `i18n/cartoes.rs`, e a isenção `POR_FUNCAO` no gate dos canais.
+
+**Falta da onda 8:** rolagem dentro do modal com rótulos fixos (janela baixa); o campo de edição mais largo que o rótulo; a faixa da linha pairada por cima das células (hoje só o nome acende); o duplo clique no chip `Dropdown` conduzido no app.
+
 ## O que falta
 
 1. Smoke do dono: aprovados 1–9 e 11–13. **Passo 10 por repetir:** o achado e a proposta estão na ficha; o rótulo é decisão dele. Smoke das ondas 5, 6 e 7.

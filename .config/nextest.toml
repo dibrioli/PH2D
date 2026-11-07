@@ -86,6 +86,12 @@ filter = 'test(/orcamento::the_fit_/) + test(sorting_a_reversed_list_grows_n_log
 threads-required = 'num-cpus'
 priority = -100
 
+# Prazo de RELÓGIO de um quadro sobre o `print` do Luau: 07/11 estourou no Windows do CI (`42369994285`) mesmo
+# na faixa isolada, sem linha no diff. A repetição classifica: o que passa à 2.ª vem como FLAKY, nunca escondido.
+[[profile.default.overrides]]
+filter = 'test(o_console_cheio_deita_fora_a_mais_antiga_e_conta) + test(um_print_longo_corta_a_linha_e_o_console_tem_tecto_em_bytes)'
+retries = 2
+
 # Os portões de CENA do Wet Paint (prompt 16, 11/10): cada um pinta várias telas de 600×400 até
 # 10 passadas, já uma por thread. Medido no `ci-test`, sozinhos a load 1,5–6: as camadas 140 s em
 # série → 69 s em paralelo (a cena do dono, Live Water, é a mais longa e é sequencial); o

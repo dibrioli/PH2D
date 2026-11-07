@@ -218,6 +218,14 @@ pub static PHYSICS_LAYER_OBJECT: [NodeId; PHYSICS_LAYER_OBJECTS] = tabela_dos_ob
 pub const PHYSICS_LAYER_SELECT_ALL: NodeId = hash_node_id("physics.layers.select_all");
 /// «+N more»: abre a fila inteira dos objetos.
 pub const PHYSICS_LAYER_MORE: NodeId = hash_node_id("physics.layers.more");
+/// «Remove» da lista: tira a camada aberta (a 0 não: desligado, com a razão na dica).
+pub const PHYSICS_LAYER_REMOVE: NodeId = hash_node_id("physics.layers.remove");
+/// O seletor do destino dos objetos ao remover: a camada `d`.
+pub static PHYSICS_LAYER_MOVE_TO: [NodeId; MAX_LAYERS] = tabela_de(b"physics.layers.move_to_");
+/// «Move and remove».
+pub const PHYSICS_LAYER_MOVE_OK: NodeId = hash_node_id("physics.layers.move_ok");
+/// «Cancel» da pergunta do «Remove».
+pub const PHYSICS_LAYER_MOVE_CANCEL: NodeId = hash_node_id("physics.layers.move_cancel");
 
 const fn tabela_dos_objetos() -> [NodeId; PHYSICS_LAYER_OBJECTS] {
     let mut t = [NodeId(0); PHYSICS_LAYER_OBJECTS];
@@ -412,12 +420,16 @@ mod tabela_tests {
             .chain(&PHYSICS_LAYER_COL_LABEL)
             .chain(&PHYSICS_LAYER_LIST)
             .chain(&PHYSICS_LAYER_BUMPS)
+            .chain(&PHYSICS_LAYER_MOVE_TO)
             .chain(&PHYSICS_LAYER_OBJECT)
             .chain(&[
                 PHYSICS_MATRIX_OPEN,
                 PHYSICS_LAYER_ADD,
                 PHYSICS_LAYER_SELECT_ALL,
                 PHYSICS_LAYER_MORE,
+                PHYSICS_LAYER_REMOVE,
+                PHYSICS_LAYER_MOVE_OK,
+                PHYSICS_LAYER_MOVE_CANCEL,
             ])
             .map(|n| n.0)
             .collect();

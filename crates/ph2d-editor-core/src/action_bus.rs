@@ -612,6 +612,12 @@ pub enum EditorAction {
     LayerMatrixOpen {
         layer: u8,
     },
+    /// «Remove» da aba (onda 9b): os objetos da camada `layer` passam para `to`, e ela fica livre (sem nome,
+    /// sem «+ Add»). A linha da matriz volta ao padrão pelo painel, no MESMO quadro (um passo de undo).
+    LayerRemove {
+        layer: u8,
+        to: u8,
+    },
 
     /// Transport control from the TopBar Play/Pause/Reset chips
     /// (`chrome::transport`). The shell owns the ONE clock

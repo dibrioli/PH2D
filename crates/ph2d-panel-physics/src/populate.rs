@@ -128,6 +128,9 @@ pub fn populate(store: &mut WidgetStore) {
         crate::ids::PHYSICS_LAYER_ADD,
         crate::ids::PHYSICS_LAYER_SELECT_ALL,
         crate::ids::PHYSICS_LAYER_MORE,
+        crate::ids::PHYSICS_LAYER_REMOVE,
+        crate::ids::PHYSICS_LAYER_MOVE_OK,
+        crate::ids::PHYSICS_LAYER_MOVE_CANCEL,
     ] {
         button(store, id);
     }
@@ -136,6 +139,7 @@ pub fn populate(store: &mut WidgetStore) {
         .chain(&crate::ids::PHYSICS_LAYER_COL_LABEL)
         .chain(&crate::ids::PHYSICS_LAYER_LIST)
         .chain(&crate::ids::PHYSICS_LAYER_BUMPS)
+        .chain(&crate::ids::PHYSICS_LAYER_MOVE_TO)
         .chain(&crate::ids::PHYSICS_LAYER_OBJECT)
     {
         button(store, id);

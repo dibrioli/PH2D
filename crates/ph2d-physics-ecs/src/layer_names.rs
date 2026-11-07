@@ -65,6 +65,32 @@ impl LayerNames {
         }
     }
 
+    /// ⭐ «Remove» (onda 9b): os objetos da `layer` (o `Collider` e o `RaySensor`) passam para `to`, e ela
+    /// perde o nome e o «+ Add». A 0 (Default) nunca se remove.
+    pub fn remove(world: &mut World, layer: u8, to: u8) {
+        if layer == 0 || usize::from(layer) >= MAX_LAYERS || usize::from(to) >= MAX_LAYERS {
+            return;
+        }
+        if let Some(mut q) = world.try_query::<&mut Collider>() {
+            for mut c in q.iter_mut(world) {
+                if c.layer == layer {
+                    c.layer = to;
+                }
+            }
+        }
+        if let Some(mut q) = world.try_query::<&mut RaySensor>() {
+            for mut r in q.iter_mut(world) {
+                if r.layer == layer {
+                    r.layer = to;
+                }
+            }
+        }
+        let mut t = Self::of(world);
+        t.0[usize::from(layer)].clear();
+        t.1 &= !(1 << layer);
+        t.install(world);
+    }
+
     /// A próxima camada livre entre as não visíveis de `visiveis`; `None` nas 32.
     #[must_use]
     pub fn next_free(visiveis: u32) -> Option<u8> {
@@ -293,6 +319,35 @@ mod tests {
 
     /// A contagem da lista da aba: um objeto conta UMA vez (o `Collider` manda; o sensor sozinho conta
     /// na camada dele).
+    /// ⭐ Onda 9b: «Remove» leva os objetos (Collider e sensor) ao destino e livra a camada; a 0 não sai.
+    #[test]
+    fn remove_leva_os_objetos_ao_destino_e_livra_a_camada() {
+        let mut w = World::new();
+        let c = |layer| Collider {
+            layer,
+            ..Collider::default()
+        };
+        let a = w.spawn(c(2)).id();
+        let b = w.spawn(c(3)).id();
+        LayerNames::rename(&mut w, 2, "Enemy");
+        LayerNames::show(&mut w, 2);
+        LayerNames::remove(&mut w, 2, 1);
+        assert_eq!(w.get::<Collider>(a).map(|c| c.layer), Some(1));
+        assert_eq!(
+            w.get::<Collider>(b).map(|c| c.layer),
+            Some(3),
+            "só os da camada"
+        );
+        let t = LayerNames::of(&w);
+        assert!(
+            t.0[2].is_empty() && t.1 & (1 << 2) == 0,
+            "a camada fica livre"
+        );
+        assert_eq!(objects_per_layer(&w)[1], 1);
+        LayerNames::remove(&mut w, 0, 1);
+        assert_eq!(objects_per_layer(&w)[3], 1, "a Default nunca sai");
+    }
+
     #[test]
     fn cada_objeto_conta_uma_vez_na_sua_camada() {
         let mut w = World::new();

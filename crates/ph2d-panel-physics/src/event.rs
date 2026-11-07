@@ -59,6 +59,27 @@ pub fn abre_a_matriz(_host: &mut dyn PanelHostInternal, layer: u8) {
     crate::aba::abre(Some(usize::from(layer)));
 }
 
+/// ⭐ Tira a camada `n`: os objetos vão para `to` e o nome sai (no mundo, pela shell), e a linha da matriz
+/// volta ao padrão (bate em tudo) — as duas no MESMO quadro, um passo de undo. Abre a camada de destino.
+fn remove_a_camada(host: &mut dyn PanelHostInternal, n: usize, to: usize) {
+    host.bus_mut()
+        .push(ph2d_editor_core::action_bus::EditorAction::LayerRemove {
+            layer: n as u8,
+            to: to as u8,
+        });
+    editar(|s| {
+        let mut m = ph2d_physics_ecs::LayerMatrix::from_rows(s.layer_matrix);
+        for b in 0..ph2d_physics_ecs::MAX_LAYERS {
+            m.set(n, b, true);
+        }
+        PhysicsSettings {
+            layer_matrix: m.rows(),
+            ..s
+        }
+    });
+    crate::aba::abre_camada(to);
+}
+
 /// O nome em edição na aba: grava UM passo (Enter) ou desiste (Esc). Vazio volta ao padrão.
 fn evento_do_nome(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<bool> {
     let camada = |id| crate::ids::PHYSICS_LAYER_NAME.iter().position(|&c| c == id);
@@ -169,6 +190,40 @@ fn evento_do_nome(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<b
                     modifier,
                 });
             }
+            Some(true)
+        }
+        // «Remove»: a Default não sai; sem objetos sai logo; com objetos, pergunta para onde vão.
+        WidgetEvent::Click(id) if id == crate::ids::PHYSICS_LAYER_REMOVE => {
+            seam_reset_button(host, id);
+            let n = crate::aba::camada_aberta();
+            if n != 0 {
+                if state::layer_count(n) == 0 {
+                    remove_a_camada(host, n, 0);
+                } else {
+                    crate::aba::pergunta_o_destino(Some(0));
+                }
+            }
+            Some(true)
+        }
+        WidgetEvent::Click(id) if crate::ids::PHYSICS_LAYER_MOVE_TO.contains(&id) => {
+            seam_reset_button(host, id);
+            let d = crate::ids::PHYSICS_LAYER_MOVE_TO
+                .iter()
+                .position(|&c| c == id)
+                .expect("guard matched");
+            crate::aba::pergunta_o_destino(Some(d));
+            Some(true)
+        }
+        WidgetEvent::Click(id) if id == crate::ids::PHYSICS_LAYER_MOVE_OK => {
+            seam_reset_button(host, id);
+            if let Some(d) = crate::aba::removendo() {
+                remove_a_camada(host, crate::aba::camada_aberta(), d);
+            }
+            Some(true)
+        }
+        WidgetEvent::Click(id) if id == crate::ids::PHYSICS_LAYER_MOVE_CANCEL => {
+            seam_reset_button(host, id);
+            crate::aba::pergunta_o_destino(None);
             Some(true)
         }
         WidgetEvent::Click(id) if id == crate::ids::PHYSICS_LAYER_MORE => {

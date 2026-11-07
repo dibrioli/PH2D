@@ -149,6 +149,9 @@ pub fn acao_das_camadas(
             ph2d_physics_ecs::LayerNames::rename(sim.world_mut(), layer, &name);
         }
         A::LayerShow { layer } => ph2d_physics_ecs::LayerNames::show(sim.world_mut(), layer),
+        A::LayerRemove { layer, to } => {
+            ph2d_physics_ecs::LayerNames::remove(sim.world_mut(), layer, to);
+        }
         A::LayerMatrixOpen { layer } => {
             if let Some(h) = hero.as_mut() {
                 ph2d_panel_physics::abre_a_matriz(h, layer);

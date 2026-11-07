@@ -148,6 +148,14 @@ fn dicas(ctx: &mut PaintCtx, visiveis: &[usize], cheia: bool) {
         if store.tooltip_for(i::PHYSICS_LAYER_ADD) != Some(dica) {
             store.set_tooltip(i::PHYSICS_LAYER_ADD, dica);
         }
+        let dica = if super::camada_aberta() == 0 {
+            tr("card.physics.tab_remove_default_tip")
+        } else {
+            tr("card.physics.tab_remove_tip")
+        };
+        if store.tooltip_for(i::PHYSICS_LAYER_REMOVE) != Some(dica) {
+            store.set_tooltip(i::PHYSICS_LAYER_REMOVE, dica);
+        }
     }
 }
 
@@ -177,6 +185,9 @@ pub(super) struct Quadro {
     pub(super) cabeca_dir: String,
     pub(super) campo: Option<Campo>,
     pub(super) camada: super::camada::Camada,
+    pub(super) pergunta: Option<super::remove::Pergunta>,
+    pub(super) remove_w: f32,
+    pub(super) remove_aceso: bool,
 }
 
 impl Quadro {
@@ -213,8 +224,24 @@ impl Quadro {
             super::MAIS.get(),
             &mut |s| ctx.text_system.prefix_width(s, font),
         );
-        let g = Geometria::de(area, rotulo_w, lista_w, visiveis.len(), camada.altura);
+        let pergunta = super::removendo().map(|destino| {
+            super::remove::Pergunta::monta(
+                Geometria::largura_direita(area, lista_w),
+                aberta_n,
+                &visiveis,
+                &rotulos,
+                &nomes_dos_objetos,
+                destino,
+                &mut |s| ctx.text_system.prefix_width(s, font),
+            )
+        });
+        let altura = pergunta.as_ref().map_or(camada.altura, |p| p.altura);
+        let g = Geometria::de(area, rotulo_w, lista_w, visiveis.len(), altura);
         let camada = camada.desloca(g.camada.x, g.camada.y);
+        let pergunta = pergunta.map(|p| p.desloca(g.camada.x, g.camada.y));
+        let remove_w = largura(ctx, tr("card.physics.tab_remove")) + Spacing::Lg.px() * 2.0;
+        let remove_aceso =
+            ctx.host.store().button_state(i::PHYSICS_LAYER_REMOVE) == Some(ButtonState::Hovered);
         let matriz = LayerMatrix::from_rows(crate::state::current().vivo.layer_matrix);
         let sob = pairada(ctx, &visiveis);
         let editando = EDITANDO.get();
@@ -269,6 +296,9 @@ impl Quadro {
             cabeca_dir,
             campo,
             camada,
+            pergunta,
+            remove_w,
+            remove_aceso,
         }
     }
 

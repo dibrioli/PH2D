@@ -158,6 +158,71 @@ fn nomes_b() -> LayerNames {
 /// ⭐ Onda 9b — a camada aberta, pelo clique real: a caixinha «Bumps into» de Enemy (na camada
 /// Player) escreve os DOIS lados do par (1, 2) e só ele; o botão do objeto seleciona ESSE objeto; «Select
 /// all» seleciona todos (o 1.º troca, os outros juntam-se); com muitos objetos, «+N more» abre a fila.
+/// ⭐ Onda 9b — «Remove», pelo clique real: na Default não faz nada; numa camada vazia sai logo (os
+/// objetos vão para a 0 e a linha volta a bater em tudo); com objetos pergunta, «Cancel» desiste e o
+/// destino escolhido é o que «Move and remove» manda.
+#[test]
+fn remove_pergunta_para_onde_vao_os_objetos_e_a_default_fica() {
+    let mut mesa = Mesa::nova(nomes_b(), false);
+    let mut contagens = [0; MAX_LAYERS];
+    contagens[2] = 3;
+    ph2d_panel_physics::set_layer_counts(contagens);
+    ph2d_panel_physics::set_layer_objects(
+        ["Slime", "Slime 2", "Bat"]
+            .iter()
+            .enumerate()
+            .map(|(k, n)| (2, k as u64 + 1, (*n).into()))
+            .collect(),
+    );
+    // Default: desligado.
+    aba::abre(Some(0));
+    aba::poe_area_fixa(AREA);
+    mesa.pinta();
+    assert!(mesa.clica(ids::PHYSICS_LAYER_REMOVE).is_empty());
+    assert!(mesa.host.drained_actions().is_empty(), "a Default não sai");
+    // Vazia (Pickup, 3): sai logo, e a linha volta ao padrão no mesmo quadro.
+    let _ = mesa.clica(ids::PHYSICS_LAYER_LIST[3]);
+    mesa.pinta();
+    let m = mundo_de(&mesa.clica(ids::PHYSICS_LAYER_REMOVE));
+    assert_eq!(
+        mesa.host.drained_actions(),
+        [EditorAction::LayerRemove { layer: 3, to: 0 }]
+    );
+    assert!(
+        (0..MAX_LAYERS).all(|b| m.collides(3, b)),
+        "a linha volta ao padrão"
+    );
+    assert_eq!(aba::camada_aberta(), 0);
+    // Com objetos (Enemy, 2): pergunta; Cancel desiste.
+    let _ = mesa.clica(ids::PHYSICS_LAYER_LIST[2]);
+    mesa.pinta();
+    assert!(mesa.clica(ids::PHYSICS_LAYER_REMOVE).is_empty());
+    mesa.pinta();
+    assert_eq!(aba::removendo(), Some(0));
+    assert!(
+        mesa.rect(ids::PHYSICS_LAYER_MOVE_TO[2]).is_none(),
+        "não vai para si mesma"
+    );
+    let _ = mesa.clica(ids::PHYSICS_LAYER_MOVE_CANCEL);
+    mesa.pinta();
+    assert_eq!(aba::removendo(), None);
+    assert!(mesa.host.drained_actions().is_empty(), "Cancel não escreve");
+    // De novo: escolhe Ground e confirma.
+    let _ = mesa.clica(ids::PHYSICS_LAYER_REMOVE);
+    mesa.pinta();
+    let _ = mesa.clica(ids::PHYSICS_LAYER_MOVE_TO[1]);
+    mesa.pinta();
+    let _ = mesa.clica(ids::PHYSICS_LAYER_MOVE_OK);
+    assert_eq!(
+        mesa.host.drained_actions(),
+        [EditorAction::LayerRemove { layer: 2, to: 1 }],
+        "os objetos vão para o destino escolhido"
+    );
+    assert_eq!(aba::camada_aberta(), 1);
+    ph2d_panel_physics::set_layer_objects(Vec::new());
+    aba::fecha();
+}
+
 #[test]
 fn a_camada_aberta_marca_o_par_e_seleciona_os_objetos() {
     use ph2d_editor_core::action_bus::SelectModifier;

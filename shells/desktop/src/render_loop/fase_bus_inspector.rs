@@ -417,9 +417,7 @@ impl crate::App {
             EditorAction::LayerPairToggle { a, b } => {
                 ph2d_panel_physics::alterna_par(usize::from(a), usize::from(b));
             }
-            acao @ (EditorAction::LayerRename { .. }
-            | EditorAction::LayerShow { .. }
-            | EditorAction::LayerMatrixOpen { .. }) => {
+            acao if acao.e_das_camadas() => {
                 if let Some(g) = self.gfx.as_mut() {
                     ph2d_app_physics::panel_bridge::acao_das_camadas(
                         &mut g.sim,

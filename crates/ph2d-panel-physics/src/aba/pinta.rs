@@ -39,8 +39,16 @@ pub(crate) fn paint(ctx: &mut PaintCtx) {
     pinta_lista(ctx, &q);
     pinta_grade(ctx, &q);
     pinta_pe(ctx, &q);
-    super::camada::pinta(ctx, &q);
-    super::camada::alvos(ctx, &q.camada);
+    match &q.pergunta {
+        Some(p) => {
+            super::remove::pinta(ctx, &q, p);
+            super::remove::alvos(ctx, p);
+        }
+        None => {
+            super::camada::pinta(ctx, &q);
+            super::camada::alvos(ctx, &q.camada);
+        }
+    }
     alvos(ctx, &q, losango, canto);
 }
 
@@ -58,6 +66,8 @@ fn pinta_lista(ctx: &mut PaintCtx, q: &Quadro) {
         add_w,
         add_aceso,
         add_rotulo,
+        remove_w,
+        remove_aceso,
         ..
     } = q;
     let visiveis = &q.visiveis;
@@ -140,6 +150,30 @@ fn pinta_lista(ctx: &mut PaintCtx, q: &Quadro) {
             g.add(add_w),
             font,
             tom!(ColorToken::Text1, theme),
+        );
+        // «Remove» ao lado; na Default, desligado (a razão está na dica).
+        let r = remove_rect(&g, add_w, remove_w);
+        let livre = aberta_n != 0;
+        let fundo = if remove_aceso && livre {
+            ColorToken::Bg3
+        } else {
+            ColorToken::Bg2
+        };
+        fill_rounded_rect(cena, r, raio, tom!(fundo, theme));
+        ph2d_editor_core::paint::paint_text_centered(
+            texto,
+            cena,
+            tr("card.physics.tab_remove"),
+            r,
+            font,
+            tom!(
+                if livre {
+                    ColorToken::Text1
+                } else {
+                    ColorToken::Text3
+                },
+                theme
+            ),
         );
     });
 }
@@ -410,6 +444,11 @@ fn alvos(ctx: &mut PaintCtx, q: &Quadro, losango: Option<ph2d_a11y::NodeId>, can
     if !cheia {
         camada_das_listas::alvo(hit, i::PHYSICS_LAYER_ADD, g.add(add_w));
     }
+    camada_das_listas::alvo(
+        hit,
+        i::PHYSICS_LAYER_REMOVE,
+        remove_rect(g, add_w, q.remove_w),
+    );
     if let Some((_, id, _, _, _, r)) = &campo {
         camada_das_listas::alvo(hit, *id, *r);
     }
@@ -417,4 +456,10 @@ fn alvos(ctx: &mut PaintCtx, q: &Quadro, losango: Option<ph2d_a11y::NodeId>, can
         camada_das_listas::alvo(hit, alvo, canto);
     }
     ph2d_editor_core::widget::composto::grupo(i::PHYSICS_LAYER_CELL.iter().copied());
+}
+
+/// O «Remove», à direita do «+ Add».
+fn remove_rect(g: &super::Geometria, add_w: f32, remove_w: f32) -> Rect {
+    let a = g.add(add_w);
+    Rect::new(a.x + a.w + Spacing::Sm.px(), a.y, remove_w, a.h)
 }

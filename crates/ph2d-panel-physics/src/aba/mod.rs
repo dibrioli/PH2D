@@ -40,6 +40,8 @@ thread_local! {
     pub(crate) static NOVA: Cell<Option<usize>> = const { Cell::new(None) };
     /// «+N more» aberto: a fila inteira dos objetos da camada aberta.
     pub(crate) static MAIS: Cell<bool> = const { Cell::new(false) };
+    /// O «Remove» a perguntar para onde vão os objetos: o destino escolhido.
+    pub(crate) static REMOVENDO: Cell<Option<usize>> = const { Cell::new(None) };
 }
 
 /// A aba existe (à frente ou atrás de Scene)?
@@ -126,6 +128,31 @@ pub fn lente() -> Lente {
 pub(crate) fn abre_camada(n: usize) {
     CAMADA.set(n.min(MAX_LAYERS - 1));
     MAIS.set(false);
+    REMOVENDO.set(None);
+}
+
+/// O destino escolhido, com a pergunta do «Remove» aberta.
+#[must_use]
+pub fn removendo() -> Option<usize> {
+    REMOVENDO.get().filter(|_| aberta())
+}
+
+pub(crate) fn pergunta_o_destino(d: Option<usize>) {
+    REMOVENDO.set(d);
+}
+
+/// «Slime, Slime 2 and Bat».
+#[must_use]
+pub fn lista_de_nomes(nomes: &[String]) -> String {
+    match nomes {
+        [] => String::new(),
+        [um] => um.clone(),
+        [resto @ .., ultimo] => format!(
+            "{}{}{ultimo}",
+            resto.join(tr("card.physics.tab_names_sep")),
+            tr("card.physics.tab_names_last")
+        ),
+    }
 }
 
 pub(crate) fn mostra_todos() {
@@ -295,7 +322,7 @@ macro_rules! tom {
             Some(c) => ph2d_editor_core::widget::card_ink::CardInk::of_list($theme)
                 .color(c)
                 .with_alpha(1.0),
-            None => resolve(t, $theme),
+            None => ph2d_editor_core::paint::resolve(t, $theme),
         }
     }};
 }
@@ -305,6 +332,7 @@ pub mod familia;
 mod geometria;
 mod pinta;
 mod quadro;
+mod remove;
 
 pub use geometria::Geometria;
 pub(crate) use pinta::paint;

@@ -123,3 +123,17 @@ pub enum CatalogVerb {
         catalog: Option<u128>,
     },
 }
+
+impl super::EditorAction {
+    /// As ações das camadas que precisam do mundo ou do painel (a shell entrega-as à `ph2d-app-physics`).
+    #[must_use]
+    pub fn e_das_camadas(&self) -> bool {
+        matches!(
+            self,
+            Self::LayerRename { .. }
+                | Self::LayerShow { .. }
+                | Self::LayerMatrixOpen { .. }
+                | Self::LayerRemove { .. }
+        )
+    }
+}

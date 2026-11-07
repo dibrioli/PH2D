@@ -397,6 +397,26 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.physics.tab_select_all_tip" => "Select every object on this layer",
         "card.physics.tab_more" => "+{n} more",
         "card.physics.tab_more_tip" => "Show every object on this layer",
+        "card.physics.tab_remove" => "Remove",
+        "card.physics.tab_remove_tip" => {
+            "Remove this layer. If objects are on it, you choose where they go."
+        }
+        "card.physics.tab_remove_default_tip" => {
+            "Default can't be removed: every object starts on it."
+        }
+        "card.physics.tab_remove_ask" => {
+            "{n} {n?object is|objects are} on {layer}: {names}. Where should they go?"
+        }
+        "card.physics.tab_names_sep" => ", ",
+        "card.physics.tab_names_last" => " and ",
+        "card.physics.tab_move_to" => "Move them to",
+        "card.physics.tab_move_to_tip" => "The objects go to this layer",
+        "card.physics.tab_move_ok" => "Move and remove",
+        "card.physics.tab_move_ok_tip" => {
+            "Move the objects, then remove the layer. Ctrl+Z brings it all back."
+        }
+        "card.physics.tab_cancel" => "Cancel",
+        "card.physics.tab_cancel_tip" => "Keep the layer as it is",
         "card.physics.tab_summary" => {
             "{n} {n?pair|pairs} · {off} pass through. Double-click a name to rename it."
         }

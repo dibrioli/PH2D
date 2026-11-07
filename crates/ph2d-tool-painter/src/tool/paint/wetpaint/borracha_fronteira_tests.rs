@@ -19,6 +19,9 @@ pub(super) mod com_degrau {
     pub(super) fn set(v: bool) {
         V.with(|c| c.set(v));
     }
+    pub(in crate::tool::paint) fn set_de_fora(v: bool) {
+        set(v);
+    }
 }
 
 const RELIEF: &str = "Eraser/Relief/Relief Eraser.ph2d-brush.png";
@@ -353,6 +356,40 @@ fn desfazer_na_fronteira_devolve_tudo() {
             assert_eq!(*s.base, base, "{baixo:?}: a base");
         }
     }
+}
+
+#[test]
+#[ignore = "sonda: corre por nome com --ignored"]
+fn sonda_vermelho_a_razao_4() {
+    let conta = |degrau: bool| {
+        let (_, _, r) = mede(Baixo::EnterradaVermelha, 4.0, degrau, 1);
+        r
+    };
+    let (velha, hoje) = (conta(true), conta(false));
+    let e_papel = |p: &[u8], o: usize| (0..3).all(|k| p[o + k].abs_diff(PAPEL[k]) < 40);
+    let ate = ate_y(Baixo::EnterradaVermelha);
+    let (mut so_hoje, mut so_velha, mut ambas) = (Vec::new(), 0, 0);
+    for y in YS.filter(|y| *y < ate) {
+        for x in XS {
+            let o = (y * W + x) * 4;
+            match (e_papel(&velha, o), e_papel(&hoje, o)) {
+                (true, true) => ambas += 1,
+                (true, false) => so_velha += 1,
+                (false, true) => so_hoje.push((
+                    x,
+                    y,
+                    [hoje[o], hoje[o + 1], hoje[o + 2]],
+                    [velha[o], velha[o + 1], velha[o + 2]],
+                )),
+                _ => {}
+            }
+        }
+    }
+    relato(format!(
+        "ambas {ambas} · só a velha {so_velha} · só hoje {} (x, y, hoje, velha): {:?}",
+        so_hoje.len(),
+        &so_hoje[..so_hoje.len().min(14)]
+    ));
 }
 
 #[test]

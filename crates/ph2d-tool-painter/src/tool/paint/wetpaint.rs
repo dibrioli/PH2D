@@ -420,6 +420,8 @@ mod pousa_o_dab; // o corpo do laço da rota do dab: um dab entra na água — f
 mod preparo; // o motor e o papel prontos antes do toque (Bug #72)
 #[cfg(test)]
 mod preparo_tests;
+#[cfg(test)]
+mod regua_do_fecho_tests;
 mod rota_da_lane; // a lane de cada dab, a tinta do motor e o b/opacidade — filho de dab_route por LOC
 mod session;
 #[cfg(test)]

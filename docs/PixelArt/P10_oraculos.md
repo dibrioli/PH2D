@@ -137,5 +137,48 @@ A=1 (usado 2× ou 3×), B=2, C=3, cada um destes dois 1×. Fixtura: chave `m9b`.
 
 As apps diferem só na diagonal: Pixelorama percorre por coluna, depois linha; Trial por linha, depois coluna. Não medido: ponteiro real nestes casos da Pixelorama; undo; caso 1 ao contrário.
 
+## P10c: M2iso, M3b, M8a e M8 (06/11)
+
+Godot 4.7.2. Ferramentas: `oraculo_godot_p10c.{py,gd}` (sem janela e com xvfb), `oraculo_godot_remonta.{py,gd}` (renderização real em `opengl3`, llvmpipe). Fixturas: `oracle_godot_p10c.json`, `oracle_godot_remonta.json`.
+
+**Convenção escolhida.** Iso = `diamond_down`: em 32×16 dá `(1,0)→+16,+8` e `(0,1)→-16,+8`, igual a `iso_to_world` de `ph2d-grid` e à iso do Pixelorama. Hex = `stacked`: em linhas alternadas no eixo horizontal, em colunas no vertical. O Pixelorama usa outra disposição em hex, por isso não entra.
+
+**M3b, clique de volta, píxel a píxel** (`local_to_map` no centro do píxel, 15 configurações: 3 formas × 16×16, 32×16, 16×12, 15×15, 33×17), contra a nossa conta em inteiros (`Forma::celula`):
+
+| Forma | Resultado |
+|---|---|
+| Iso | 0 diferenças em todos os tamanhos, com o desempate «a aresta fica na coluna menor». Sem esse desempate, 256 de 4 096 em 16×16 |
+| Hex, largura par e altura múltipla de 4 | 0 diferenças |
+| Hex e Hex Flat, tamanhos ímpares e Hex Flat 32×16 | até 2,7 % dos píxeis, todos encostados à aresta (a célula do Godot cobre o píxel); as diferenças vêm de empates. Menor combinação de 16 regras de desempate; nenhuma chega a zero |
+
+Centros: a nossa origem arredonda para baixo e fica a menos de 1 px dos centros do Godot, que são fracionários em tamanho ímpar. `ph2d-grid`: iso 0 diferenças em 16 384 píxeis; hex regular, comparado por escala, abaixo de 1 %.
+
+**M2iso, terreno em iso.** 256 vizinhanças com `MATCH_CORNERS_AND_SIDES`: 0 diferem, com as direções do índice (`(0,-1)` = lado de cima à direita, `(1,-1)` = canto direito). ⇒ o gabarito de 47 vale em iso sem mudar a regra. Hex tem 6 vizinhos: recusa, com frase. Não medido: terreno em Hex no Godot.
+
+**M8a, ordem de desenho.** Tiles opacos, um por célula, 20×20 células. Iso: as três ordens candidatas dão 0, porque só há sobreposição entre células monótonas. Hex e Hex Flat, com `rendering_quadrant_size = 16` (a omissão): nenhuma ordem chega a zero, os blocos de 16 mandam (576 e 320 píxeis na melhor). Com um bloco só: **coluna, depois linha = 0**; linha, depois coluna = 6 080. ⇒ `expand` desenha coluna a coluna. ⚠️ Um consumidor com o bloco de omissão pode divergir, mas só em arte que sai da forma do tile.
+
+**Flips renderizados.** As 8 combinações com `TRANSFORM_FLIP_H/V/TRANSPOSE`: 0 píxeis diferem da lei D primeiro, depois X e Y.
+
+**M8, o Godot remonta o mapa.** A obra da aceitação (mapa real de 201 células com buracos e corredores, 8 combinações de flips, 3 modos, 2 quadros), nas 4 formas, a partir do nosso PNG + JSON: **0 píxeis diferentes em todos os quadros.** Hex fica sem terreno (recusa). Arte opaca: alfa parcial não foi comparado. O gate confere a soma do que o Godot leu: se a saída mudar, o gate manda refazer a corrida.
+
+**Trial abre o `.ase` da aceitação.** Foto `handoffs/P10_trial_aceitacao.png`: mapa, terreno, flips e tiles nos 3 modos, primeiro quadro. Não comparei píxel a píxel nem naveguei até ao segundo quadro nesta foto; a ida e volta `escrever`/`ler` é gate (`o_ase_de_aceitacao_volta_igual…`).
+
+## M10: Export Sprite Sheet no Trial (06/11)
+
+`ferramentas/trial_tiles_p10c_folha.py`. O Export está desligado: lê-se a folha no editor a 100 %, sem JSON. A opção «Split Grid» é o item **Source: Sprite Grid**; «By Grid» só aparece com um trim ligado. Fotos: `handoffs/P10_m10_trial_*.png`.
+
+| Pergunta | Medido no Trial | Lei nossa |
+|---|---|---|
+| Parcial à direita e em baixo | Sai. Grelha 16×8 em 40×24: 6 pedaços | Igual |
+| Parcial à esquerda e em cima (fase 3,2) | Fica, em tamanho inteiro, transparente fora do canvas | Igual. ⚠️ No JSON o `x`/`y` negativo fica 0: `origem` não tem sinal |
+| Ordem e vazias | Por linha; vazias ficam | Igual |
+| Que grelha | **A do sprite**, nunca a do tile. Com tilemap ativa, Grid Settings ABRE com o tile; dar OK copia-o | **Difere de propósito:** o documento não guarda grelha do sprite; é a do tile, o que o Trial sugere |
+| Trim + By Grid | Alarga às linhas da grelha | Igual |
+| By Grid sem trim | Não faz nada | Igual; a caixa só se oferece com trim |
+| Source Sprite Grid + Trim Cels | Não muda nada | Igual |
+| Source Sprite Grid + Trim Sprite | Célula sem o píxel, ou preview preso: parece defeito | **Não se copia:** ignora-se, como Trim Cels |
+
+Não medido: Ignore Empty com vazias (preview preso nas duas tentativas), Source: Tilesets, várias camadas de tilemap, o JSON e o ficheiro exportado, os flags de linha de comando. Visto numa só corrida: cada folha lida píxel a píxel (a lei repete-se em casos independentes), By Rows igual a Strip.
+
 ## O que ficou por medir
 M1: Eraser em Manual/Stack, arrasto de vários pixels, modos de «posicionar tiles»; Pixelorama com camadas iso/hex e `tile_layout`. M2: terrenos múltiplos e desempate. M3: `ph2d-grid`, layout no Pixelorama. M4: casos de borda do formato. M5: execução real de filtros, Rotate/Flip Canvas, Sprite/Canvas Size, moldura, Color Mode, Flatten, Merge Down com camada normal; qual o modo ao abrir com `aseprite.ini` limpo. M6–M8 não eram desta rodada.

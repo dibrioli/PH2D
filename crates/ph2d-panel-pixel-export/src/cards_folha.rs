@@ -265,7 +265,7 @@ pub(crate) fn cards(
                         f.trim_sprite,
                     ),
                 ];
-                if tem_tiles {
+                if tem_tiles && (f.trim_cels || f.trim_sprite) {
                     caixas.push((
                         ids::TRIM_BY_GRID,
                         "panel.pixel.export.trim_by_grid",

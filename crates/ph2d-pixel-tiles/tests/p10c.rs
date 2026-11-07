@@ -269,6 +269,25 @@ fn o_guia_tem_47_formas_distintas_nas_duas_grelhas() {
     assert!(terreno::guia_cheio(Forma::Iso, 0xff, 16, 8, 32, 16));
     assert!(terreno::guia_cheio(Forma::Square, 0xff, 0, 0, 16, 16));
     assert!(!terreno::guia_cheio(Forma::Square, 0, 0, 0, 16, 16));
+    // Cada canto no seu lugar: um guia espelhado também tem 47 formas distintas.
+    use terreno::{NE, NW, SE, SW, guia_cheio as g};
+    for (lado, cantos) in [
+        (NE, [(15, 0), (0, 0), (15, 15), (0, 15)]),
+        (SE, [(15, 15), (0, 0), (15, 0), (0, 15)]),
+        (SW, [(0, 15), (0, 0), (15, 15), (15, 0)]),
+        (NW, [(0, 0), (15, 0), (15, 15), (0, 15)]),
+    ] {
+        let [sim, a, b, c] = cantos;
+        assert!(g(Forma::Square, lado, sim.0, sim.1, 16, 16), "{lado}");
+        for n in [a, b, c] {
+            assert!(!g(Forma::Square, lado, n.0, n.1, 16, 16), "{lado} {n:?}");
+        }
+    }
+    // Em iso, (1,-1) é o canto da direita e (-1,-1) o de cima (M2iso).
+    assert!(g(Forma::Iso, NE, 29, 8, 32, 16));
+    assert!(!g(Forma::Iso, NE, 16, 1, 32, 16));
+    assert!(g(Forma::Iso, NW, 16, 1, 32, 16));
+    assert!(!g(Forma::Iso, NW, 29, 8, 32, 16));
 }
 
 /// O terreno em iso resolve pela mesma regra: o M2iso corrido; hex recusa, com a frase.

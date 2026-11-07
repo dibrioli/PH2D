@@ -5,6 +5,7 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
+use ph2d_pixel_core::canvas::{Borders, canvas_size};
 use ph2d_pixel_core::codec::{read_library, write_library};
 use ph2d_pixel_core::frames::{NewFrame, new_frame};
 use ph2d_pixel_core::tiles::new_tilemap_layer_forma;
@@ -13,7 +14,7 @@ use ph2d_pixel_core::{
     TilesSet, TilesetId, derived_is_consistent,
 };
 use ph2d_pixel_io::ase;
-use ph2d_pixel_io::exporta::{Export, gravar};
+use ph2d_pixel_io::exporta::{Export, ExportFolha, gravar, lembrar, o_ultimo, repetir};
 use ph2d_pixel_io::render::{Camadas, composto};
 use ph2d_pixel_io::sheet::{OpcoesFolha, montar};
 use ph2d_pixel_io::tiles_saida::{ExportTiles, atlas, json_do_mapa};
@@ -142,6 +143,16 @@ fn obra(forma: Forma) -> Sprite {
     let op = carimba(&o.s, l, f2, &[(1, 1), (2, 1), (3, 1), (2, 2)], t);
     o.faz(op);
     assert_eq!(o.s.frames().len(), 2);
+    // O canvas desloca a grelha: a fase tem de chegar ao JSON (`origin`) e ao Godot.
+    let bordas = Borders {
+        left: 5,
+        top: 3,
+        right: 5,
+        bottom: 3,
+    };
+    let t = o.s.transparent_value();
+    let op = canvas_size(&o.s, bordas, t);
+    o.faz(op);
     o.s
 }
 
@@ -285,10 +296,8 @@ fn o_ase_de_aceitacao_volta_igual_e_iso_hex_saem_como_imagem() {
     }
 }
 
-/// `--split-grid`: cada célula da grelha é uma peça, linha a linha, e os vazios saem com `ignore_empty`.
-/// `--trim-by-grid`: o recorte para nas linhas da grelha, e implica aparar.
-#[test]
-fn split_grid_e_trim_by_grid_seguem_a_grelha_da_camada() {
+/// Um sprite 44 × 24 de tile 16 × 8 com um só píxel; `fase` desloca a grelha por píxeis.
+fn folha_de_um_pixel(fase: i32) -> Sprite {
     let mut s = Sprite::new(NewSprite {
         width: 40,
         height: 24,
@@ -300,7 +309,9 @@ fn split_grid_e_trim_by_grid_seguem_a_grelha_da_camada() {
     let (acima, f) = (s.layers()[0].id, s.frames()[0].id);
     let (op, l, set) = new_tilemap_layer_forma(&mut s, acima, 16, 8, Forma::Square).unwrap();
     h.commit(&mut s, op).unwrap();
-    let px = VERDE.to_le_bytes().repeat(16 * 8);
+    // O píxel em (4, 2) do tile: em (20, 10) do sprite, longe das linhas da grelha.
+    let mut px = vec![0; 16 * 8 * 4];
+    px[(2 * 16 + 4) * 4..(2 * 16 + 4) * 4 + 4].copy_from_slice(&VERDE.to_le_bytes());
     let op = TilesSet {
         counts: vec![(set, 2)],
         tiles: vec![(set, 1, px)],
@@ -309,46 +320,124 @@ fn split_grid_e_trim_by_grid_seguem_a_grelha_da_camada() {
     h.commit(&mut s, Op::Tiles(Box::new(op))).unwrap();
     let op = carimba(&s, l, f, &[(1, 1)], TileRef::new(1, false, false, false)).unwrap();
     h.commit(&mut s, op).unwrap();
-    let base = OpcoesFolha::default();
-    let split = OpcoesFolha {
+    if fase != 0 {
+        let b = Borders {
+            left: fase,
+            top: 0,
+            right: 0,
+            bottom: 0,
+        };
+        let op = canvas_size(&s, b, s.transparent_value()).unwrap();
+        h.commit(&mut s, op).unwrap();
+    }
+    s
+}
+
+/// `--split-grid`, medido no Trial (M10): linha a linha; as parciais à direita e em baixo saem, as à
+/// esquerda e em cima ficam inteiras; os recortes não mudam nada.
+#[test]
+fn split_grid_segue_o_trial() {
+    let s = folha_de_um_pixel(0);
+    let base = OpcoesFolha {
         split_grid: true,
+        ..OpcoesFolha::default()
+    };
+    let fo = montar(&s, &base, "t", "png");
+    // 40 × 24 em tiles de 16 × 8: 2 colunas (a parcial sai) × 3 linhas.
+    assert_eq!(fo.entradas.len(), 6, "{:?}", fo.entradas);
+    assert_eq!(fo.entradas[0].origem, [0, 0, 16, 8]);
+    assert_eq!(fo.entradas[1].origem, [16, 0, 16, 8]);
+    assert_eq!(
+        fo.entradas[3].origem,
+        [16, 8, 16, 8],
+        "o tile cai no índice 3"
+    );
+    let trim = OpcoesFolha {
+        trim_cels: true,
+        trim_by_grid: true,
         ..base.clone()
     };
-    let fo = montar(&s, &split, "t", "png");
-    // 40 × 24 em tiles de 16 × 8: 3 colunas (a última de 8 px) × 3 linhas.
-    assert_eq!(fo.entradas.len(), 9, "{:?}", fo.entradas);
-    assert_eq!(fo.entradas[0].origem, [0, 0, 16, 8]);
-    assert_eq!(fo.entradas[2].origem, [32, 0, 8, 8], "cortada pelo canvas");
-    assert_eq!(fo.entradas[4].origem, [16, 8, 16, 8]);
+    assert_eq!(
+        montar(&s, &trim, "t", "png").entradas.len(),
+        6,
+        "os recortes não mudam nada"
+    );
     let cheias = OpcoesFolha {
-        split_grid: true,
         ignore_empty: true,
         ..base.clone()
     };
     let fo = montar(&s, &cheias, "t", "png");
     assert_eq!(fo.entradas.len(), 1);
     assert_eq!(fo.entradas[0].origem, [16, 8, 16, 8]);
-    // Um píxel de outra camada, solto: o recorte cresce à célula.
-    let so_trim = OpcoesFolha {
-        trim_cels: true,
-        ..base.clone()
-    };
-    let por_grelha = OpcoesFolha {
-        trim_by_grid: true,
-        ..base.clone()
-    };
-    let a = montar(&s, &so_trim, "t", "png");
-    let b = montar(&s, &por_grelha, "t", "png");
-    assert_eq!(a.entradas[0].origem, [16, 8, 16, 8]);
-    assert_eq!(b.entradas[0].origem, [16, 8, 16, 8]);
-    assert!(b.entradas[0].trimmed);
-    // Sem camada de tilemap, as duas não têm grelha e não mudam nada.
-    let mut sem = Sprite::new(NewSprite {
+    // Fase 4: a coluna de x = -12 fica inteira, transparente fora do canvas.
+    let s = folha_de_um_pixel(4);
+    let fo = montar(&s, &base, "t", "png");
+    assert_eq!(fo.entradas.len(), 9, "{:?}", fo.entradas);
+    assert_eq!(fo.entradas[0].origem[2..], [16, 8]);
+    assert_eq!(fo.entradas[1].origem, [4, 0, 16, 8]);
+    // Sem camada de tilemap não há grelha: a folha fica como sem a opção.
+    let sem = Sprite::new(NewSprite {
         width: 20,
         height: 20,
         ..NewSprite::default()
     })
     .unwrap();
-    sem.set_export_preset(None);
-    assert_eq!(montar(&sem, &split, "t", "png").entradas.len(), 1);
+    assert_eq!(montar(&sem, &base, "t", "png").entradas.len(), 1);
+}
+
+/// `--trim-by-grid`, medido no Trial (M10): alarga o recorte às linhas da grelha, e sozinho não faz nada.
+#[test]
+fn trim_by_grid_segue_o_trial() {
+    let s = folha_de_um_pixel(0);
+    let origem = |o: OpcoesFolha| montar(&s, &o, "t", "png").entradas[0].origem;
+    let so = |t: bool, st: bool, g: bool| OpcoesFolha {
+        trim_cels: t,
+        trim_sprite: st,
+        trim_by_grid: g,
+        ..OpcoesFolha::default()
+    };
+    assert_eq!(origem(so(true, false, false)), [20, 10, 1, 1]);
+    assert_eq!(origem(so(false, true, false)), [20, 10, 1, 1]);
+    assert_eq!(origem(so(true, false, true)), [16, 8, 16, 8]);
+    assert_eq!(origem(so(false, true, true)), [16, 8, 16, 8]);
+    assert_eq!(
+        origem(so(false, false, true)),
+        [0, 0, 40, 24],
+        "sem recorte não faz nada"
+    );
+    // Com a grelha deslocada, as linhas andam com ela: o píxel está agora em (24, 10), e a coluna em 20.
+    let s = folha_de_um_pixel(4);
+    let f = montar(&s, &so(true, false, true), "t", "png");
+    assert_eq!(f.entradas[0].origem, [20, 8, 16, 8]);
+}
+
+/// Repeat Last Export volta a escrever os mesmos ficheiros, e a forma de sempre continua a ler-se.
+#[test]
+fn o_repeat_lembra_o_export_tileset_e_as_opcoes_da_grelha() {
+    let dir = std::env::temp_dir().join(format!("ph2d_repeat_tiles_{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut s = obra(Forma::Iso);
+    let e = Export::Tiles(ExportTiles {
+        conjunto: s.tilesets()[0].id,
+        colunas: 5,
+    });
+    let c = dir.join("t.png");
+    lembrar(&mut s, &e, &c);
+    assert_eq!(o_ultimo(&s).unwrap().0, Some(e));
+    let g = repetir(&s).unwrap().unwrap();
+    assert_eq!(g.ficheiros, [c.clone(), dir.join("t.json")]);
+    let j: Value = serde_json::from_slice(&std::fs::read(dir.join("t.json")).unwrap()).unwrap();
+    assert_eq!(j["columns"], 5);
+    assert_eq!(j["shape"], "iso");
+    let f = Export::Folha(ExportFolha {
+        opcoes: OpcoesFolha {
+            split_grid: true,
+            trim_by_grid: true,
+            ..OpcoesFolha::default()
+        },
+        json: None,
+    });
+    lembrar(&mut s, &f, &c);
+    assert_eq!(o_ultimo(&s).unwrap().0, Some(f));
+    std::fs::remove_dir_all(&dir).unwrap();
 }

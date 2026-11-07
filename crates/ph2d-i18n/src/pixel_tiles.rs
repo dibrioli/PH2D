@@ -73,7 +73,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.layer.to_tilemap" => "Convert to Tilemap",
         "panel.pixel.layer.to_image" => "Convert to Image",
         "pixel.tiles.not_tilemap" => "This shortcut works on a tilemap layer",
-        "pixel.tiles.only_pencil" => "In Tiles mode, use the Pencil or the Eraser",
+        "pixel.tiles.only_pencil" => "In Tiles and Terrain, use the Pencil or the Eraser",
         "pixel.tiles.refuse.convert" => {
             "Only a plain image layer converts: not a group, a reference or the Background"
         }

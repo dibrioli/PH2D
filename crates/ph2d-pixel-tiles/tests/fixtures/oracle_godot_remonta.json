@@ -14,9 +14,9 @@
     0
    ],
    "amostras": [],
-   "json_sha": "d87bf86114567db58d2bb380e75940d2e25d2ea400545d680e9db9780a71c3bf",
+   "json_sha": "9ad4a63dd9c75293d2f99b8d4e824c7306551c02063d07731cf99ca6bb048d0f",
    "tiles_sha": "b695d56368c7dfd94306a8639f0adbf57ad9c08e4df9d5b0f857ad0ecdcb03b4",
-   "nossos_sha": "661432fb427a34eab7cdb15022bcd6dffa62fc8319829a7a8bc3a6818a6d6eae",
+   "nossos_sha": "8c425b3343b40813be2ff11dc40f2db3016ef56655a810de552202590362c216",
    "corrida": "REMONTOU 2 llvmpipe (LLVM 23.1.3, 256 bits)"
   },
   {
@@ -27,9 +27,9 @@
     0
    ],
    "amostras": [],
-   "json_sha": "775195d68207ac25f5bbb620f92442d9bfd26ad8d6e188141e8a0e7417c05d3c",
+   "json_sha": "99d7db60aca6b96974891c063285f8397d39c055acc969a129e3eca259955752",
    "tiles_sha": "5b08427102400ca0c1411ef74db41f0d7465b74085e57a1a482ffdeeb1555b09",
-   "nossos_sha": "9c9b9babfe083774ced3b9b5e869e0e8642714b487d3b1f35d518ca230b4027c",
+   "nossos_sha": "8c1bf07b46cc4918b889a771f8b436696da237cf06656d8c5b6f0b8de193da7b",
    "corrida": "REMONTOU 2 llvmpipe (LLVM 23.1.3, 256 bits)"
   },
   {
@@ -40,9 +40,9 @@
     0
    ],
    "amostras": [],
-   "json_sha": "7afdee90a23cf1119242262260ccee0b49669f2d33c3534e52527448c899b2e0",
+   "json_sha": "d86cda73af65fdaebf78e06d3b2ec6effd266a5f47023e7df0d3682242576fef",
    "tiles_sha": "9894941d5884d8c5bc621d26afe7e94eda3890330c6d24e3851bfddc76e9e7de",
-   "nossos_sha": "18164bad3166953258102c758f177e1cd0a75d54bc2c770e7142ac3c260a11ed",
+   "nossos_sha": "1aaeb78a84e22aa33662cc7fe5de1fba3fbbf1598781b8ed619ded457062159d",
    "corrida": "REMONTOU 2 llvmpipe (LLVM 23.1.3, 256 bits)"
   },
   {
@@ -53,9 +53,9 @@
     0
    ],
    "amostras": [],
-   "json_sha": "21251d26f3b26954511f5c46cfd2f0f9101c90168b5d61b530f961b7fb00980d",
+   "json_sha": "89e3740ad1b05273214ea6379cb7307182c9fd52afb34f911da4e81848f66a72",
    "tiles_sha": "9894941d5884d8c5bc621d26afe7e94eda3890330c6d24e3851bfddc76e9e7de",
-   "nossos_sha": "a9f51f0ff97e9e693a740194534b1183e6636cdd0904479caca2aeb173c8134d",
+   "nossos_sha": "00c951771194d86a5dba0eb31c460fa59cb20cb01fca321d676925aacdd1214a",
    "corrida": "REMONTOU 2 llvmpipe (LLVM 23.1.3, 256 bits)"
   }
  ]

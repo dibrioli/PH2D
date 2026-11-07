@@ -295,6 +295,12 @@ fn o_export_tileset_e_as_caixas_da_grelha_respondem() {
     assenta(&mut hero, &mut ts);
     clica(&mut hero, e::SPLIT_GRID, "Split grid");
     assenta(&mut hero, &mut ts);
+    assert!(
+        hero.hit_index.rect_for(e::TRIM_BY_GRID).is_none(),
+        "sem recorte não se oferece"
+    );
+    clica(&mut hero, e::TRIM_CELS, "Trim cels");
+    assenta(&mut hero, &mut ts);
     clica(&mut hero, e::TRIM_BY_GRID, "Trim by grid");
     assenta(&mut hero, &mut ts);
     clica(&mut hero, e::OK, "Export");

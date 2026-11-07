@@ -3,7 +3,7 @@
 > Linha `line/PixelArt`, HEAD `286ce1ea95`, merge-base `bbfefaf393` (conta-gotas e zoom aprovados no smoke, por integrar).
 > Plano do módulo: [02_plano_modulo.md §P10](02_plano_modulo.md). Estudo: [01_estudo_aseprite.md §3](01_estudo_aseprite.md). Molde: [P9_plano.md](P9_plano.md).
 > Lei do módulo: [ADR-0196](../architecture/decisions/0196-o-pixel-art-e-um-modulo-proprio-com-documento-inteiro-e-desfazer-por-sprite.md).
-> **Estado: P10a (motor) fechada na linha em 06/11, sem tela e sem smoke; próxima: P10b (tela).** Medido: §6.1. Lista de recusas para a tela: §5.1.
+> **Estado: P10a e P10b com smoke OK do dono em 06/11. P10c (terreno, iso, hex, Export Tileset) feita na linha, à espera do smoke.** Medido: §6.1 e [P10_oraculos.md](P10_oraculos.md). Lista de recusas para a tela: §5.1.
 
 ## 0. O que entra
 
@@ -147,12 +147,12 @@ Três scripts, `ferramentas/oraculo_godot_tiles.py`, `ferramentas/pixelorama_til
 |---|---|---|
 | M1 | A extensão conduziu (5.ª corrida; os falhanços foram montagem minha). 42 estados | gate `os_tres_modos_batem_com_o_pixelorama_corrido`: 17 cenários batem em mapa, número de tiles, píxeis cheios e usos |
 | M2 | 256/256 e 376/376 iguais à regra; slots em falta o Godot troca de tile | gates `o_terreno_bate_com_o_godot_*`, lendo o JSON; recusa em §6.2 |
-| M3 | Godot e Pixelorama fecham a volta, com convenções iso/hex diferentes entre si | só P10c; ⚠️ comparação com `ph2d-grid` por fazer |
+| M3 | Godot e Pixelorama fecham a volta, com convenções iso/hex diferentes entre si. M3b (P10c): clique píxel a píxel contra o Godot e `ph2d-grid` | gate `iso_hex_batem_com_godot_e_ph2d_grid`; `Forma` em `ph2d-pixel-core::forma` |
 | M4 | O Trial abre o nosso `.ase`; ordem D, depois X e Y | gates de flips; ordem de chunks tileset → layer → cel |
 | M5 | Modo inicial Auto (ini do dono copiado, não limpo). Filtros, Rotate, Sprite Size, moldura e Flatten **não foram executados**; Flip do Edit foi, sem interpretação | as recusas de §5.1 são escolha nossa |
 | M6 | Abaixo | ⚠️ acima de 100 ms |
 | M7 | Ver §4.9 | gate `a_minor_3_file_written_by_the_old_code_opens_the_same` |
-| M8 | Por fazer | P10c |
+| M8 | Feito: 0 píxeis diferentes, 4 formas × 2 quadros, renderização real | gate `o_godot_remonta_o_mapa`, fixtura `oracle_godot_remonta.json` |
 
 **Lei dos modos: o que é medido e o que é extrapolação.** Medido (M1, um pixel por vez): os 17 cenários. **Extrapolado, sem oráculo:** um traço de vários píxeis e células (aplicado célula a célula, com a contagem de usos viva: um tile usado 2× com as duas células no mesmo traço dá tile novo à primeira e edita o original na segunda) · só sai do conjunto o tile que **este** gesto largou, nunca um que já estava sem uso · a célula com flip mantém os flips no tile novo ou deduplicado · escrita fora do canvas ignora-se · dedupe não entra em tile de gabarito (lei nossa: a célula viraria terreno no próximo `pinta`). **Contra o que a sonda viu, por decisão do briefing da onda:** Eraser em Manual edita o tile e em Stack dedupa com o tile 0; a sonda viu «nada muda», sem saber se é a lei ou o toque dela. ⚠️ A confirmar no smoke do dono.
 
@@ -192,6 +192,20 @@ Medição e fixtura: [P10_oraculos.md](P10_oraculos.md) M9 e M9b, gates `as_bord
 |---|---|---|
 | Quadros em paralelo para o M6 | 178 → 142 ms com 16 fios, ver acima | A banda da memória manda; só as linhas sujas chegam a 38 ms |
 | Copiar o «tile mais próximo» do Godot num slot em falta | M2C: 4 corridas; sempre um vizinho a 1–4 bits, e 35 células com máscara existente receberam outra (a falta propaga-se) | Um mapa onde um tile em falta muda os vizinhos esconde o buraco. A célula fica com a casa dela, mesmo vazia, e o artista vê o que falta. Gate `slot_em_falta_nao_escolhe_outro_tile` |
+### 6.3 Desenho da P10c: onde se afastou do §4
+
+| Plano | Feito | Porquê |
+|---|---|---|
+| §4.1: `LayerKind::Tilemap { tileset, grid }` | A forma está em `Tileset.forma`, e o mapa ganhou `col` e `row` | A arte do tile depende da forma, como no `TileSet` do Godot. O índice é preciso porque deslocar o canvas muda `(x, y)`, e em iso/hex um deslocamento não se decompõe de volta em índice e fase |
+| §4.5: slot por preencher fica vazio | Continua. Mas `New` já desenha as 47 formas com a cor da frente | Com 47 tiles vazios, pintar terreno não mostraria nada. O guia é arte normal: o artista pinta por cima |
+| §5: cartão Terrain sem como editar os 47 | `Template` abre uma camada com as 47 formas e cresce o canvas se for preciso, num passo de desfazer | O traço já edita um tile de gabarito no lugar, em qualquer modo |
+| Terreno em qualquer forma | Só Square e Iso | M2iso; hex tem 6 vizinhos |
+| Só Draw Tiles em iso/hex | O traço em Pixels também funciona | Sem isso não haveria como desenhar a arte do tile. `Mapa` já responde por forma; o clique cai numa só célula |
+| Hex de um tipo | Hex e Hex Flat | Os dois existem no Godot e em `ph2d-grid`; o segundo é o primeiro com os eixos trocados |
+| `Convert To` para qualquer forma | Só para tileset quadrado | Cortar uma imagem pede caixas sem sobreposição |
+
+⚠️ `.ase` não tem forma de grelha: camada iso ou hex sai como imagem, com aviso `FormaVaiComoImagem`; a arte não muda (gate). O tileset fica de fora do ficheiro.
+
 ## 7. Gates, red-first
 
 | Gate | O que prova | Base |

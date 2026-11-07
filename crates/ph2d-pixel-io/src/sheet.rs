@@ -46,7 +46,8 @@ pub struct OpcoesFolha {
     pub split_tags: bool,
     /// `--split-grid`: cada célula da grelha é uma peça da folha.
     pub split_grid: bool,
-    /// `--trim-by-grid`: apara, com o recorte alargado às linhas da grelha.
+    /// `--trim-by-grid`: o recorte de `trim_cels` ou `trim_sprite` alarga-se às linhas da grelha. Sem
+    /// recorte não faz nada (medido no Trial, M10).
     pub trim_by_grid: bool,
     /// `--trim`: cada quadro ao seu conteúdo.
     pub trim_cels: bool,
@@ -93,7 +94,8 @@ struct Peca {
     dono: Option<(LayerId, FrameId)>,
 }
 
-/// A grelha de `--split-grid` e `--trim-by-grid`: a da primeira camada de tilemap que entra na saída,
+/// A grelha de `--split-grid` e `--trim-by-grid`. O Trial usa a do sprite, que abre com a do tile numa
+/// camada de tilemap (M10); o documento não guarda outra: é a da primeira camada de tilemap na saída,
 /// lida como retângulos: `(tile_w, tile_h, fase_x, fase_y)`. O formato de folha não tem outra forma.
 fn grelha_da_saida(s: &Sprite, o: &OpcoesFolha) -> Option<(u32, u32, i32, i32)> {
     let (l, set) = s.layers().iter().find_map(|l| {
@@ -114,25 +116,34 @@ fn grelha_da_saida(s: &Sprite, o: &OpcoesFolha) -> Option<(u32, u32, i32, i32)> 
     ))
 }
 
-/// As caixas da grelha que tocam o canvas, linha a linha, cortadas por ele.
-fn caixas_da_grelha((tw, th, fx, fy): (u32, u32, i32, i32), w: u32, h: u32) -> Vec<[u32; 4]> {
-    let corte = |fase: i32, lado: u32, total: u32| -> Vec<(u32, u32)> {
-        let mut v = Vec::new();
-        let mut a = fase as u32;
-        if a > 0 {
-            v.push((0, a.min(total)));
-        }
-        while a < total {
-            v.push((a, lado.min(total - a)));
-            a += lado;
-        }
-        v
+/// As células de `--split-grid`, linha a linha, em píxeis do sprite. Medido no Trial (M10): a parcial à
+/// direita e em baixo sai; a parcial à esquerda e em cima fica, inteira.
+fn caixas_da_grelha((tw, th, fx, fy): (u32, u32, i32, i32), w: u32, h: u32) -> Vec<(i32, i32)> {
+    let eixo = |fase: i32, lado: u32, total: u32| -> Vec<i32> {
+        let (lado, total) = (lado as i32, total as i32);
+        let inicio = if fase > 0 { fase - lado } else { 0 };
+        (0..)
+            .map(|i| inicio + i * lado)
+            .take_while(|x| x + lado <= total)
+            .collect()
     };
-    let (xs, ys) = (corte(fx, tw, w), corte(fy, th, h));
-    let mut out = Vec::with_capacity(xs.len() * ys.len());
-    for &(y, ch) in &ys {
-        for &(x, cw) in &xs {
-            out.push([x, y, cw, ch]);
+    let (xs, ys) = (eixo(fx, tw, w), eixo(fy, th, h));
+    ys.iter()
+        .flat_map(|&y| xs.iter().map(move |&x| (x, y)))
+        .collect()
+}
+
+/// A célula `(x, y)` de `tw × th`, transparente onde sai do canvas.
+fn celula_da_grelha(px: &[u8], w: u32, h: u32, (x, y): (i32, i32), tw: u32, th: u32) -> Vec<u8> {
+    let mut out = vec![0; tw as usize * th as usize * 4];
+    for dy in 0..th as i32 {
+        for dx in 0..tw as i32 {
+            let (sx, sy) = (x + dx, y + dy);
+            if sx >= 0 && sy >= 0 && sx < w as i32 && sy < h as i32 {
+                let o = (sy as usize * w as usize + sx as usize) * 4;
+                let d = (dy as usize * tw as usize + dx as usize) * 4;
+                out[d..d + 4].copy_from_slice(&px[o..o + 4]);
+            }
         }
     }
     out
@@ -277,7 +288,7 @@ fn pecas(s: &Sprite, o: &OpcoesFolha, titulo: &str, ext: &str, feito: &dyn Fn(f3
     let total: usize = camadas.len() * listas.iter().map(|(_, l)| l.len()).sum::<usize>();
     let cortes = grelha_da_saida(s, o)
         .filter(|_| o.split_grid)
-        .map(|g| caixas_da_grelha(g, w, h));
+        .map(|g| (caixas_da_grelha(g, w, h), g.0, g.1));
     let mut out = Vec::new();
     let mut grupo = 0;
     for camada in &camadas {
@@ -300,13 +311,13 @@ fn pecas(s: &Sprite, o: &OpcoesFolha, titulo: &str, ext: &str, feito: &dyn Fn(f3
                 let fr = s.frames()[i];
                 let px = composto(s, fr.id, so);
                 let t = tag.map_or_else(|| tag_de(s, i), str::to_owned);
-                if let Some(caixas) = &cortes {
-                    for &rect in caixas {
+                if let Some((caixas, tw, th)) = &cortes {
+                    for &(x, y) in caixas {
                         out.push(Peca {
                             nome: nome_do_quadro(&fmt, titulo, &nome_camada, &t, item, ext),
                             grupo,
-                            rect,
-                            px: recorte(&px, w, rect),
+                            rect: [x.max(0) as u32, y.max(0) as u32, *tw, *th],
+                            px: celula_da_grelha(&px, w, h, (x, y), *tw, *th),
                             duration_ms: fr.duration_ms,
                             dono: None,
                         });
@@ -360,10 +371,13 @@ fn apara(mut v: Vec<Peca>, o: &OpcoesFolha, grade: Option<(u32, u32, i32, i32)>)
             })
     });
     let por_grelha = grade.filter(|_| o.trim_by_grid);
-    let cada = o.trim_cels || por_grelha.is_some();
+    // Com `--split-grid` os recortes não mudam nada (medido no Trial, M10).
+    let partido = o.split_grid && grade.is_some();
+    let cada = o.trim_cels && !partido;
+    let uniao = uniao.filter(|_| !partido);
     v.retain_mut(|p| {
         let c = conteudo(p);
-        if c.is_none() && (o.ignore_empty || cada || o.trim_sprite) {
+        if c.is_none() && (o.ignore_empty || cada || uniao.is_some()) {
             return false;
         }
         let r = match (uniao, cada) {
@@ -538,7 +552,7 @@ pub fn montar_com(
                     p.rect[2] + 2 * o.inner,
                     p.rect[3] + 2 * o.inner,
                 ],
-                trimmed: o.trim_cels || o.trim_sprite || o.trim_by_grid,
+                trimmed: o.trim_cels || o.trim_sprite,
                 origem: p.rect,
                 tamanho: [w, h],
                 duration_ms: p.duration_ms,

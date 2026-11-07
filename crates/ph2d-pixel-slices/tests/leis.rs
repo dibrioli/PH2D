@@ -549,3 +549,102 @@ fn the_pivot_is_grabbed_even_with_a_tolerance_below_half_a_cell() {
     };
     assert_eq!(hit(&s, (15.9, 15.5), 0.1), Some(Grab::Pivot));
 }
+
+/// Os campos do cartão: o texto vira número pela lei do Trial; tamanho nunca abaixo de 1.
+#[test]
+fn the_card_fields_coerce_text_and_edit_only_what_exists() {
+    use ph2d_pixel_slices::campos::{Campo, coage, edita, pode_remover, remove_mudanca, vista};
+    assert_eq!(coage(Campo::X, " -12ab"), -12);
+    assert_eq!(coage(Campo::X, "abc"), 0);
+    assert_eq!(coage(Campo::W, "abc"), 1);
+    assert_eq!(coage(Campo::H, "0"), 1);
+    assert_eq!(
+        coage(Campo::CentroW, "-3"),
+        1,
+        "tamanho não passa de 1 para baixo"
+    );
+    assert_eq!(coage(Campo::X, "99999999999"), i32::MAX);
+
+    let (mut s, a) = com_uma(SliceShape {
+        bounds: Rect::new(8, 9, 10, 11),
+        center: Some(Rect::new(1, 2, 3, 4)),
+        pivot: Some((5, 6)),
+    });
+    let b = nova(
+        &mut s,
+        SliceShape {
+            bounds: Rect::new(30, 9, 10, 12),
+            ..SliceShape::default()
+        },
+    );
+    let mut ed = |s: &mut Sprite, c, t| {
+        let op = edita(s, 0, &[a, b], c, t).expect("muda");
+        apply(s, op).unwrap();
+    };
+    ed(&mut s, Campo::X, "20");
+    ed(&mut s, Campo::H, "7");
+    ed(&mut s, Campo::CentroX, "2");
+    ed(&mut s, Campo::CentroH, "9");
+    ed(&mut s, Campo::PivotY, "1");
+    let (fa, fb) = (forma(&s, a), forma(&s, b));
+    assert_eq!(
+        (fa.bounds.x, fa.bounds.y, fa.bounds.w, fa.bounds.h),
+        (20, 9, 10, 7)
+    );
+    assert_eq!((fb.bounds.x, fb.bounds.h), (20, 7));
+    assert_eq!(fa.center, Some(Rect::new(2, 2, 3, 9)));
+    assert_eq!(fa.pivot, Some((5, 1)));
+    assert_eq!(
+        (fb.center, fb.pivot),
+        (None, None),
+        "sem centro não se inventa"
+    );
+
+    let v = vista(&s, 0, &[a, b]).unwrap();
+    assert_eq!(v.bounds[0], Some(20));
+    assert_eq!(v.bounds[1], Some(9));
+    assert_eq!(v.bounds[2], Some(10));
+    assert_eq!(v.bounds[3], Some(7));
+    assert_eq!(v.nome, None, "nomes diferentes: vazio");
+    let v = vista(&s, 0, &[a]).unwrap();
+    assert!(v.pivot);
+
+    // Uma só key: nada a remover; com duas, só no quadro que tem a key.
+    assert!(!pode_remover(&s, 0, &[a]));
+    assert!(remove_mudanca(&s, 0, &[a]).is_none());
+    let op = set_shape(
+        &s,
+        a,
+        3,
+        SliceShape {
+            bounds: Rect::new(1, 1, 2, 2),
+            ..SliceShape::default()
+        },
+    )
+    .unwrap();
+    apply(&mut s, op).unwrap();
+    assert!(pode_remover(&s, 3, &[a]));
+    assert!(!pode_remover(&s, 2, &[a]), "o quadro 2 não tem key");
+    let op = remove_mudanca(&s, 3, &[a]).unwrap();
+    apply(&mut s, op).unwrap();
+    assert_eq!(s.slice(a).unwrap().keys.len(), 1);
+}
+
+/// Só as slices que mudaram de CAIXA levam píxeis; mexer no pivot ou no centro não.
+#[test]
+fn only_a_changed_box_carries_pixels() {
+    use ph2d_pixel_slices::transforma::caixas_que_mudam;
+    let (s, a) = com_uma(SliceShape {
+        bounds: Rect::new(8, 9, 10, 11),
+        pivot: Some((1, 1)),
+        ..SliceShape::default()
+    });
+    let mut k = forma(&s, a);
+    k.pivot = Some((2, 2));
+    assert!(caixas_que_mudam(&s, 0, &[(a, k)]).is_empty());
+    k.bounds.x = 12;
+    assert_eq!(
+        caixas_que_mudam(&s, 0, &[(a, k)]),
+        [(Rect::new(8, 9, 10, 11), Rect::new(12, 9, 10, 11))]
+    );
+}

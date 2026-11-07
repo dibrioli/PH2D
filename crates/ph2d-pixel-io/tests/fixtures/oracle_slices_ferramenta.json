@@ -1,0 +1,2156 @@
+{
+ "header": {
+  "what": "Semantica da ferramenta Slice lida do dialogo Slice Properties: teclas por quadro (T5), operacoes de quadro (T6), geometria (T7), arrasto do centro e das bordas (T4).",
+  "source": "Aseprite Trial por ponteiro e teclado reais sobre .ase NOSSOS (docs/PixelArt/ferramentas/trial_slices.py e trial_slices_tool_fixturas.py); o Trial nao grava: numeros lidos da tela.",
+  "date": "2026-11-07",
+  "tool_version": "Aseprite Trial 1.3.18.6",
+  "scripts": "docs/PixelArt/ferramentas/trial_slices_tool.py, trial_slices_tool_t7.py",
+  "format": "bounds [x,y,w,h]; center [x,y,w,h] relativo a bounds; pivot [x,y] relativo a bounds; frames indexados de 0; salvo dito, cada caso foi visto 1 vez"
+ },
+ "inputs": {
+  "keys": {
+   "moves": {
+    "0": [
+     8,
+     8,
+     16,
+     16
+    ],
+    "2": [
+     24,
+     8,
+     16,
+     16
+    ],
+    "4": [
+     24,
+     24,
+     32,
+     16
+    ]
+   }
+  },
+  "full": {
+   "nine": {
+    "bounds": [
+     4,
+     4,
+     24,
+     24
+    ],
+    "center": [
+     8,
+     8,
+     8,
+     8
+    ]
+   },
+   "pivot": {
+    "bounds": [
+     36,
+     4,
+     24,
+     24
+    ],
+    "pivot": [
+     12,
+     24
+    ]
+   },
+   "both_f0": {
+    "bounds": [
+     4,
+     36,
+     24,
+     20
+    ],
+    "center": [
+     4,
+     4,
+     16,
+     12
+    ],
+    "pivot": [
+     0,
+     0
+    ]
+   },
+   "both_f3": {
+    "bounds": [
+     36,
+     36,
+     16,
+     20
+    ],
+    "center": [
+     2,
+     6,
+     12,
+     8
+    ],
+    "pivot": [
+     8,
+     10
+    ]
+   }
+  },
+  "odd": {
+   "odd": {
+    "bounds": [
+     5,
+     7,
+     15,
+     9
+    ],
+    "center": [
+     3,
+     1,
+     9,
+     7
+    ],
+    "pivot": [
+     7,
+     3
+    ]
+   },
+   "odd2": {
+    "bounds": [
+     33,
+     11,
+     13,
+     21
+    ],
+    "center": [
+     1,
+     5,
+     11,
+     11
+    ],
+    "pivot": [
+     -3,
+     25
+    ]
+   }
+  }
+ },
+ "t4_nine_drag_full_nine": [
+  {
+   "drag": "centro: linha esquerda x=12 -> 16",
+   "bounds": [
+    4,
+    4,
+    24,
+    24
+   ],
+   "center": [
+    12,
+    8,
+    4,
+    8
+   ]
+  },
+  {
+   "drag": "centro: linha esquerda x=12 -> 24 (passa da oposta)",
+   "bounds": [
+    4,
+    4,
+    24,
+    24
+   ],
+   "center": [
+    15,
+    8,
+    1,
+    8
+   ]
+  },
+  {
+   "drag": "centro: linha de cima y=12 -> 14",
+   "bounds": [
+    4,
+    4,
+    24,
+    24
+   ],
+   "center": [
+    8,
+    10,
+    8,
+    6
+   ]
+  },
+  {
+   "drag": "centro: linha direita x=20 -> 18",
+   "bounds": [
+    4,
+    4,
+    24,
+    24
+   ],
+   "center": [
+    8,
+    8,
+    6,
+    8
+   ]
+  },
+  {
+   "drag": "centro: linha de baixo y=20 -> 22",
+   "bounds": [
+    4,
+    4,
+    24,
+    24
+   ],
+   "center": [
+    8,
+    8,
+    8,
+    10
+   ]
+  },
+  {
+   "drag": "centro: canto (12,12) -> (14,14)",
+   "bounds": [
+    4,
+    4,
+    24,
+    24
+   ],
+   "center": [
+    10,
+    10,
+    6,
+    6
+   ]
+  },
+  {
+   "drag": "centro: canto (20,20) -> (22,22)",
+   "bounds": [
+    4,
+    4,
+    24,
+    24
+   ],
+   "center": [
+    8,
+    8,
+    10,
+    10
+   ]
+  },
+  {
+   "drag": "interior (16,16) -> (18,18): move",
+   "bounds": [
+    6,
+    6,
+    24,
+    24
+   ],
+   "center": [
+    8,
+    8,
+    8,
+    8
+   ]
+  },
+  {
+   "drag": "banda (8,8) -> (10,10): move",
+   "bounds": [
+    6,
+    6,
+    24,
+    24
+   ],
+   "center": [
+    8,
+    8,
+    8,
+    8
+   ]
+  },
+  {
+   "drag": "borda esquerda -2",
+   "bounds": [
+    2,
+    4,
+    26,
+    24
+   ],
+   "center": [
+    8,
+    8,
+    10,
+    8
+   ]
+  },
+  {
+   "drag": "canto sup-esq -2,-2",
+   "bounds": [
+    2,
+    2,
+    26,
+    26
+   ],
+   "center": [
+    8,
+    8,
+    10,
+    10
+   ]
+  },
+  {
+   "drag": "canto inf-dir +4,+4",
+   "bounds": [
+    4,
+    4,
+    28,
+    28
+   ],
+   "center": [
+    8,
+    8,
+    12,
+    12
+   ]
+  },
+  {
+   "drag": "borda direita -2",
+   "bounds": [
+    4,
+    4,
+    22,
+    24
+   ],
+   "center": [
+    8,
+    8,
+    6,
+    8
+   ]
+  },
+  {
+   "drag": "borda direita ate w=17",
+   "bounds": [
+    4,
+    4,
+    17,
+    24
+   ],
+   "center": [
+    8,
+    8,
+    1,
+    8
+   ]
+  },
+  {
+   "drag": "borda direita ate w=16: 9-Slices desliga",
+   "bounds": [
+    4,
+    4,
+    16,
+    24
+   ],
+   "center": null
+  },
+  {
+   "drag": "borda direita ate w=11",
+   "bounds": [
+    4,
+    4,
+    11,
+    24
+   ],
+   "center": null
+  },
+  {
+   "drag": "borda esquerda +2",
+   "bounds": [
+    6,
+    4,
+    22,
+    24
+   ],
+   "center": [
+    8,
+    8,
+    6,
+    8
+   ]
+  },
+  {
+   "drag": "borda esquerda ate w=17",
+   "bounds": [
+    11,
+    4,
+    17,
+    24
+   ],
+   "center": [
+    8,
+    8,
+    1,
+    8
+   ]
+  },
+  {
+   "drag": "borda esquerda ate w=16",
+   "bounds": [
+    12,
+    4,
+    16,
+    24
+   ],
+   "center": null
+  },
+  {
+   "drag": "canto inf-dir para alem do oposto",
+   "bounds": [
+    4,
+    4,
+    1,
+    1
+   ],
+   "center": null
+  }
+ ],
+ "t5_keys": {
+  "hold": {
+   "0": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "1": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "2": [
+    24,
+    8,
+    16,
+    16
+   ],
+   "3": [
+    24,
+    8,
+    16,
+    16
+   ],
+   "4": [
+    24,
+    24,
+    32,
+    16
+   ],
+   "5": [
+    24,
+    24,
+    32,
+    16
+   ]
+  },
+  "move_in_frame_3_by_6_4": {
+   "0": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "1": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "2": [
+    24,
+    8,
+    16,
+    16
+   ],
+   "3": [
+    30,
+    12,
+    16,
+    16
+   ],
+   "4": [
+    24,
+    24,
+    32,
+    16
+   ],
+   "5": [
+    24,
+    24,
+    32,
+    16
+   ]
+  },
+  "one_undo_restores_values": true,
+  "undo_of_that_move_leaves_key_at_3": {
+   "note": "depois do undo, X=1 no quadro 2 NAO chega ao 3: o 3 fica [24,8,16,16]",
+   "frame3": [
+    24,
+    8,
+    16,
+    16
+   ]
+  },
+  "dialog_x1_in_frame_2": {
+   "2": [
+    1,
+    8,
+    16,
+    16
+   ],
+   "3": [
+    1,
+    8,
+    16,
+    16
+   ],
+   "4": [
+    24,
+    24,
+    32,
+    16
+   ]
+  },
+  "dialog_ok_unchanged_in_frame_3_creates_no_key": {
+   "then_x1_in_frame_2_frame3": [
+    1,
+    8,
+    16,
+    16
+   ]
+  },
+  "dialog_width_0_in_frame_2": {
+   "2": [
+    24,
+    8,
+    1,
+    16
+   ],
+   "3": [
+    24,
+    8,
+    1,
+    16
+   ]
+  },
+  "new_slice_in_frame_2": "aparece nos quadros 0,1,2,3,5 no mesmo sitio"
+ },
+ "t6_frame_ops_keys": {
+  "note": "resultado por indice de quadro; em TODOS os casos medidos as teclas ficam no mesmo indice: nao andam com a arte",
+  "new_frame_alt_n_on_1_7frames": {
+   "0": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "1": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "2": [
+    24,
+    8,
+    16,
+    16
+   ],
+   "3": [
+    24,
+    8,
+    16,
+    16
+   ],
+   "4": [
+    24,
+    24,
+    32,
+    16
+   ],
+   "5": [
+    24,
+    24,
+    32,
+    16
+   ],
+   "6": [
+    24,
+    24,
+    32,
+    16
+   ]
+  },
+  "new_empty_alt_b_on_1_7frames": {
+   "0": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "1": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "2": [
+    24,
+    8,
+    16,
+    16
+   ],
+   "3": [
+    24,
+    8,
+    16,
+    16
+   ],
+   "4": [
+    24,
+    24,
+    32,
+    16
+   ],
+   "5": [
+    24,
+    24,
+    32,
+    16
+   ],
+   "6": [
+    24,
+    24,
+    32,
+    16
+   ]
+  },
+  "delete_frame_alt_c_on_2_5frames": {
+   "0": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "1": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "2": [
+    24,
+    8,
+    16,
+    16
+   ],
+   "3": [
+    24,
+    8,
+    16,
+    16
+   ],
+   "4": [
+    24,
+    24,
+    32,
+    16
+   ]
+  },
+  "delete_frame_alt_c_on_1_5frames": {
+   "0": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "1": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "2": [
+    24,
+    8,
+    16,
+    16
+   ],
+   "3": [
+    24,
+    8,
+    16,
+    16
+   ],
+   "4": [
+    24,
+    24,
+    32,
+    16
+   ]
+  },
+  "delete_frame_alt_c_on_0_5frames": {
+   "0": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "1": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "2": [
+    24,
+    8,
+    16,
+    16
+   ],
+   "3": [
+    24,
+    8,
+    16,
+    16
+   ],
+   "4": [
+    24,
+    24,
+    32,
+    16
+   ]
+  },
+  "duplicate_linked_alt_m_on_1_6frames": {
+   "0": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "1": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "2": [
+    24,
+    8,
+    16,
+    16
+   ],
+   "3": [
+    24,
+    8,
+    16,
+    16
+   ],
+   "4": [
+    24,
+    24,
+    32,
+    16
+   ],
+   "5": [
+    24,
+    24,
+    32,
+    16
+   ]
+  },
+  "move_frame_1_to_index_3_6frames": {
+   "0": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "1": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "2": [
+    24,
+    8,
+    16,
+    16
+   ],
+   "3": [
+    24,
+    8,
+    16,
+    16
+   ],
+   "4": [
+    24,
+    24,
+    32,
+    16
+   ],
+   "5": [
+    24,
+    24,
+    32,
+    16
+   ]
+  },
+  "reverse_alt_i_range_1_3_6frames_art_not_checked": {
+   "0": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "1": [
+    8,
+    8,
+    16,
+    16
+   ],
+   "2": [
+    24,
+    8,
+    16,
+    16
+   ],
+   "3": [
+    24,
+    8,
+    16,
+    16
+   ],
+   "4": [
+    24,
+    24,
+    32,
+    16
+   ],
+   "5": [
+    24,
+    24,
+    32,
+    16
+   ]
+  }
+ },
+ "t7_geometry": {
+  "sprite_size_200": {
+   "canvas": [
+    128,
+    128
+   ],
+   "nine": {
+    "bounds": [
+     8,
+     8,
+     48,
+     48
+    ],
+    "center": [
+     16,
+     16,
+     16,
+     16
+    ]
+   },
+   "pivot": {
+    "bounds": [
+     72,
+     8,
+     48,
+     48
+    ],
+    "pivot": [
+     24,
+     48
+    ]
+   },
+   "both_f0": {
+    "bounds": [
+     8,
+     72,
+     48,
+     40
+    ],
+    "center": [
+     8,
+     8,
+     32,
+     24
+    ],
+    "pivot": [
+     0,
+     0
+    ]
+   },
+   "both_f3": {
+    "bounds": [
+     72,
+     72,
+     32,
+     40
+    ],
+    "center": [
+     4,
+     12,
+     24,
+     16
+    ],
+    "pivot": [
+     16,
+     20
+    ]
+   },
+   "undo_1x_nine": {
+    "bounds": [
+     4,
+     4,
+     24,
+     24
+    ],
+    "center": [
+     8,
+     8,
+     8,
+     8
+    ]
+   }
+  },
+  "sprite_size_50": {
+   "canvas": [
+    32,
+    32
+   ],
+   "nine": {
+    "bounds": [
+     2,
+     2,
+     12,
+     12
+    ],
+    "center": [
+     4,
+     4,
+     4,
+     4
+    ]
+   },
+   "pivot": {
+    "bounds": [
+     18,
+     2,
+     12,
+     12
+    ],
+    "pivot": [
+     6,
+     12
+    ]
+   },
+   "both_f0": {
+    "bounds": [
+     2,
+     18,
+     12,
+     10
+    ],
+    "center": [
+     2,
+     2,
+     8,
+     6
+    ],
+    "pivot": [
+     0,
+     0
+    ]
+   },
+   "both_f3": {
+    "bounds": [
+     18,
+     18,
+     8,
+     10
+    ],
+    "center": [
+     1,
+     3,
+     6,
+     4
+    ],
+    "pivot": [
+     4,
+     5
+    ]
+   }
+  },
+  "sprite_size_50_odd": {
+   "canvas": [
+    32,
+    32
+   ],
+   "odd": {
+    "bounds": [
+     2,
+     3,
+     8,
+     5
+    ],
+    "center": [
+     1,
+     0,
+     5,
+     4
+    ],
+    "pivot": [
+     3,
+     1
+    ]
+   },
+   "odd2": {
+    "bounds": [
+     16,
+     5,
+     7,
+     11
+    ],
+    "center": [
+     0,
+     2,
+     6,
+     6
+    ],
+    "pivot": [
+     -1,
+     12
+    ]
+   }
+  },
+  "canvas_size_left10_top10": {
+   "canvas": [
+    74,
+    74
+   ],
+   "nine": {
+    "bounds": [
+     14,
+     14,
+     24,
+     24
+    ],
+    "center": [
+     8,
+     8,
+     8,
+     8
+    ]
+   },
+   "pivot": {
+    "bounds": [
+     46,
+     14,
+     24,
+     24
+    ],
+    "pivot": [
+     12,
+     24
+    ]
+   },
+   "both_f0": {
+    "bounds": [
+     14,
+     46,
+     24,
+     20
+    ],
+    "center": [
+     4,
+     4,
+     16,
+     12
+    ],
+    "pivot": [
+     0,
+     0
+    ]
+   },
+   "both_f3": {
+    "bounds": [
+     46,
+     46,
+     16,
+     20
+    ],
+    "center": [
+     2,
+     6,
+     12,
+     8
+    ],
+    "pivot": [
+     8,
+     10
+    ]
+   }
+  },
+  "canvas_size_left_minus10_top_minus10": {
+   "canvas": [
+    54,
+    54
+   ],
+   "nine": {
+    "bounds": [
+     -6,
+     -6,
+     24,
+     24
+    ],
+    "center": [
+     8,
+     8,
+     8,
+     8
+    ]
+   },
+   "pivot": {
+    "bounds": [
+     26,
+     -6,
+     24,
+     24
+    ],
+    "pivot": [
+     12,
+     24
+    ]
+   },
+   "both_f0": {
+    "bounds": [
+     -6,
+     26,
+     24,
+     20
+    ],
+    "center": [
+     4,
+     4,
+     16,
+     12
+    ],
+    "pivot": [
+     0,
+     0
+    ]
+   },
+   "both_f3": {
+    "bounds": [
+     26,
+     26,
+     16,
+     20
+    ],
+    "center": [
+     2,
+     6,
+     12,
+     8
+    ],
+    "pivot": [
+     8,
+     10
+    ]
+   }
+  },
+  "trim_margin_8": {
+   "canvas": [
+    48,
+    48
+   ],
+   "input_cross": {
+    "bounds": [
+     4,
+     4,
+     24,
+     24
+    ],
+    "center": [
+     8,
+     8,
+     8,
+     8
+    ],
+    "pivot": [
+     12,
+     12
+    ]
+   },
+   "cross": {
+    "bounds": [
+     -4,
+     -4,
+     24,
+     24
+    ],
+    "center": [
+     8,
+     8,
+     8,
+     8
+    ],
+    "pivot": [
+     12,
+     12
+    ]
+   },
+   "outside": "continua na lista"
+  },
+  "flip_canvas_vertical": {
+   "both_f0": {
+    "bounds": [
+     4,
+     36,
+     24,
+     20
+    ],
+    "center": [
+     4,
+     4,
+     16,
+     12
+    ],
+    "pivot": [
+     0,
+     0
+    ]
+   },
+   "note": "a arte espelha; a slice lida nao"
+  },
+  "crop_selection_0_0_40_32": {
+   "canvas": [
+    40,
+    32
+   ],
+   "nine": {
+    "bounds": [
+     4,
+     4,
+     24,
+     24
+    ],
+    "center": [
+     8,
+     8,
+     8,
+     8
+    ]
+   },
+   "pivot": {
+    "bounds": [
+     36,
+     4,
+     24,
+     24
+    ],
+    "pivot": [
+     12,
+     24
+    ],
+    "note": "passa do canvas e nao e cortada"
+   },
+   "both": "continua na lista, toda fora do canvas",
+   "undo_1x_nine": {
+    "bounds": [
+     4,
+     4,
+     24,
+     24
+    ],
+    "center": [
+     8,
+     8,
+     8,
+     8
+    ]
+   }
+  },
+  "flip_canvas_horizontal": {
+   "nine": {
+    "bounds": [
+     4,
+     4,
+     24,
+     24
+    ],
+    "center": [
+     8,
+     8,
+     8,
+     8
+    ]
+   },
+   "pivot": {
+    "bounds": [
+     36,
+     4,
+     24,
+     24
+    ],
+    "pivot": [
+     12,
+     24
+    ]
+   },
+   "note": "a arte espelha; as slices nao"
+  },
+  "rotate_canvas_90_cw": {
+   "nine": {
+    "bounds": [
+     4,
+     4,
+     24,
+     24
+    ],
+    "center": [
+     8,
+     8,
+     8,
+     8
+    ]
+   },
+   "pivot": {
+    "bounds": [
+     36,
+     4,
+     24,
+     24
+    ],
+    "pivot": [
+     12,
+     24
+    ]
+   },
+   "note": "a arte gira; as slices nao"
+  }
+ },
+ "rodada2": {
+  "header": {
+   "data": "2026-11-07",
+   "app": "Aseprite Trial 1.3.18.6",
+   "leitura": "dialogo Slice Properties",
+   "visto": "1 vez salvo dito",
+   "condutor": "docs/PixelArt/ferramentas/trial_slices_tool_g.py"
+  },
+  "g1_sprite_size": {
+   "fixtura": "odd3.ase",
+   "inputs": {
+    "e": {
+     "bounds": [
+      4,
+      6,
+      15,
+      9
+     ],
+     "center": [
+      3,
+      1,
+      9,
+      7
+     ],
+     "pivot": [
+      7,
+      3
+     ]
+    },
+    "f": {
+     "bounds": [
+      35,
+      7,
+      16,
+      11
+     ],
+     "center": [
+      2,
+      3,
+      11,
+      5
+     ],
+     "pivot": [
+      5,
+      -3
+     ]
+    },
+    "g": {
+     "bounds": [
+      7,
+      33,
+      17,
+      20
+     ],
+     "center": [
+      5,
+      2,
+      7,
+      13
+     ],
+     "pivot": [
+      9,
+      19
+     ]
+    },
+    "h": {
+     "bounds": [
+      40,
+      34,
+      19,
+      13
+     ],
+     "center": [
+      5,
+      3,
+      9,
+      7
+     ],
+     "pivot": [
+      -5,
+      11
+     ]
+    }
+   },
+   "lei": "x=trunc(x*s); w=trunc((x+w)*s)-x; igual em y; centro igual no seu referencial; pivot=trunc(p*s)",
+   "canvas_33": [
+    21,
+    21
+   ],
+   "50": {
+    "e": {
+     "bounds": [
+      2,
+      3,
+      7,
+      4
+     ],
+     "center": [
+      1,
+      0,
+      5,
+      4
+     ],
+     "pivot": [
+      3,
+      1
+     ]
+    },
+    "f": {
+     "bounds": [
+      17,
+      3,
+      8,
+      6
+     ],
+     "center": [
+      1,
+      1,
+      5,
+      3
+     ],
+     "pivot": [
+      2,
+      -1
+     ]
+    },
+    "g": {
+     "bounds": [
+      3,
+      16,
+      9,
+      10
+     ],
+     "center": [
+      2,
+      1,
+      4,
+      6
+     ],
+     "pivot": [
+      4,
+      9
+     ]
+    },
+    "h": {
+     "bounds": [
+      20,
+      17,
+      9,
+      6
+     ],
+     "center": [
+      2,
+      1,
+      5,
+      4
+     ],
+     "pivot": [
+      -2,
+      5
+     ]
+    }
+   },
+   "150": {
+    "e": {
+     "bounds": [
+      6,
+      9,
+      22,
+      13
+     ],
+     "center": [
+      4,
+      1,
+      14,
+      11
+     ],
+     "pivot": [
+      10,
+      4
+     ]
+    },
+    "f": {
+     "bounds": [
+      52,
+      10,
+      24,
+      17
+     ],
+     "center": [
+      3,
+      4,
+      16,
+      8
+     ],
+     "pivot": [
+      7,
+      -4
+     ]
+    },
+    "g": {
+     "bounds": [
+      10,
+      49,
+      26,
+      30
+     ],
+     "center": [
+      7,
+      3,
+      11,
+      19
+     ],
+     "pivot": [
+      13,
+      28
+     ]
+    },
+    "h": {
+     "bounds": [
+      60,
+      51,
+      28,
+      19
+     ],
+     "center": [
+      7,
+      4,
+      14,
+      11
+     ],
+     "pivot": [
+      -7,
+      16
+     ]
+    }
+   },
+   "33": {
+    "e": {
+     "bounds": [
+      1,
+      1,
+      5,
+      3
+     ],
+     "center": [
+      0,
+      0,
+      3,
+      2
+     ],
+     "pivot": [
+      2,
+      0
+     ]
+    },
+    "f": {
+     "bounds": [
+      11,
+      2,
+      5,
+      3
+     ],
+     "center": [
+      0,
+      0,
+      4,
+      2
+     ],
+     "pivot": [
+      1,
+      0
+     ]
+    },
+    "g": {
+     "bounds": [
+      2,
+      10,
+      5,
+      7
+     ],
+     "center": [
+      1,
+      0,
+      2,
+      4
+     ],
+     "pivot": [
+      2,
+      6
+     ]
+    },
+    "h": {
+     "bounds": [
+      13,
+      11,
+      6,
+      4
+     ],
+     "center": [
+      1,
+      0,
+      3,
+      3
+     ],
+     "pivot": [
+      -1,
+      3
+     ]
+    }
+   }
+  },
+  "g2_apagar_quadro_maior_que_0": {
+   "fixtura": "keys.ase",
+   "casos": [
+    {
+     "caminho": "botao X",
+     "quadro": 3
+    },
+    {
+     "caminho": "Delete",
+     "quadro": 3
+    },
+    {
+     "caminho": "Delete Slice",
+     "quadro": 3
+    },
+    {
+     "caminho": "Delete",
+     "quadro": 2
+    }
+   ],
+   "resultado": "slice inteira sai de 0-5; 6 quadros; 1 undo devolve as 3 teclas"
+  },
+  "g3_multi": {
+   "fixtura": "full.ase, All",
+   "dialogo": "todos os campos * ; checkboxes desligados; cor mostra #FF8000 A128 de both",
+   "ok_sem_mudar": "nada",
+   "nome": "as 3",
+   "cor": "as 3",
+   "x_20": "as 3, so X",
+   "w_30": "as 3, so W; centro nao muda",
+   "ligar_9slices_sem_numero": "nada",
+   "ligar_pivot_sem_numero": "nada",
+   "centro_x_3_caixa_desligada": {
+    "nine_center": [
+     0,
+     8,
+     8,
+     8
+    ],
+    "both_center": [
+     0,
+     4,
+     16,
+     12
+    ],
+    "pivot": "sem centro"
+   },
+   "pivot_x_3_caixa_desligada": {
+    "pivot_x_mostrado": "-21474836... (cortado)",
+    "nine": "sem pivot"
+   },
+   "arrasto_4_4": {
+    "nine": [
+     8,
+     8,
+     24,
+     24
+    ],
+    "pivot": [
+     40,
+     8,
+     24,
+     24
+    ],
+    "both": [
+     8,
+     40,
+     24,
+     20
+    ]
+   },
+   "borda_direita_de_nine_menos_4": {
+    "nine": {
+     "bounds": [
+      4,
+      4,
+      23,
+      24
+     ],
+     "center": [
+      8,
+      8,
+      7,
+      8
+     ]
+    },
+    "pivot": {
+     "bounds": [
+      34,
+      4,
+      23,
+      24
+     ],
+     "pivot": [
+      12,
+      24
+     ]
+    },
+    "both": {
+     "bounds": [
+      4,
+      36,
+      23,
+      20
+     ],
+     "center": [
+      4,
+      4,
+      15,
+      12
+     ],
+     "pivot": [
+      0,
+      0
+     ]
+    }
+   },
+   "delete": "as 3 saem; 3 slice(s) removed; 1 undo",
+   "x": "as 3 saem; 1 undo"
+  },
+  "g4_redimensionar": {
+   "fixtura": "pv.ase quadro 0, 8,8,24,24 p12,12",
+   "direita_w8": {
+    "bounds": [
+     8,
+     8,
+     8,
+     24
+    ],
+    "pivot": [
+     12,
+     12
+    ]
+   },
+   "esquerda_4": {
+    "bounds": [
+     12,
+     8,
+     20,
+     24
+    ],
+    "pivot": [
+     12,
+     12
+    ]
+   },
+   "esquerda_16": {
+    "bounds": [
+     24,
+     8,
+     8,
+     24
+    ],
+    "pivot": [
+     12,
+     12
+    ]
+   },
+   "cima_16": {
+    "bounds": [
+     8,
+     24,
+     24,
+     8
+    ],
+    "pivot": [
+     12,
+     12
+    ]
+   },
+   "canto_sup_esq_4": {
+    "bounds": [
+     12,
+     12,
+     20,
+     20
+    ],
+    "pivot": [
+     12,
+     12
+    ]
+   },
+   "tecla_herdada_q3_direita_menos_4": {
+    "3": {
+     "bounds": [
+      30,
+      30,
+      20,
+      24
+     ],
+     "pivot": [
+      6,
+      18
+     ]
+    },
+    "2": {
+     "bounds": [
+      30,
+      30,
+      24,
+      24
+     ],
+     "pivot": [
+      6,
+      18
+     ]
+    },
+    "4": {
+     "bounds": [
+      8,
+      30,
+      24,
+      24
+     ],
+     "pivot": [
+      12,
+      12
+     ]
+    },
+    "5": {
+     "bounds": [
+      8,
+      30,
+      24,
+      24
+     ],
+     "pivot": [
+      12,
+      12
+     ]
+    },
+    "0": {
+     "bounds": [
+      8,
+      8,
+      24,
+      24
+     ],
+     "pivot": [
+      12,
+      12
+     ]
+    }
+   },
+   "tecla_so_no_0_mover_no_1": {
+    "fixtura": "tr.ase",
+    "0": [
+     20,
+     20,
+     32,
+     24
+    ],
+    "1": [
+     20,
+     20,
+     32,
+     24
+    ],
+    "2": [
+     20,
+     20,
+     32,
+     24
+    ],
+    "transform": "com e sem"
+   }
+  },
+  "g5_transform": {
+   "fixtura": "tr.ase",
+   "lei": "so a cel da camada activa no quadro actual; 1 undo; redimensionar escala",
+   "mover_8": [
+    20,
+    20,
+    32,
+    24
+   ],
+   "crescer_8": [
+    12,
+    12,
+    40,
+    32
+   ],
+   "encolher_8": [
+    12,
+    12,
+    24,
+    16
+   ],
+   "pv_q3_mover_4": {
+    "3": {
+     "bounds": [
+      34,
+      34,
+      24,
+      24
+     ],
+     "pivot": [
+      6,
+      18
+     ]
+    },
+    "2": {
+     "bounds": [
+      30,
+      30,
+      24,
+      24
+     ],
+     "pivot": [
+      6,
+      18
+     ]
+    },
+    "0": {
+     "bounds": [
+      8,
+      8,
+      24,
+      24
+     ],
+     "pivot": [
+      12,
+      12
+     ]
+    },
+    "4": {
+     "bounds": [
+      8,
+      30,
+      24,
+      24
+     ],
+     "pivot": [
+      12,
+      12
+     ]
+    }
+   }
+  },
+  "g6_entradas": {
+   "pivot_x_-5": -5,
+   "x_-10": -10,
+   "width_99999": 99999,
+   "height_-7": 1,
+   "width_abc": 1,
+   "width_12abc": 12,
+   "x_1.5": 1,
+   "x_vazio": 0,
+   "nome_cor_dados": "valem em 0-5; 1 undo"
+  },
+  "g7_geometria": {
+   "R180": "slices iguais",
+   "R90_CCW": "slices iguais",
+   "flip_cel_sem_seleccao": "slices iguais; arte vira",
+   "crop_8_8_40x32": {
+    "canvas": [
+     40,
+     32
+    ],
+    "nine": {
+     "bounds": [
+      -4,
+      -4,
+      24,
+      24
+     ],
+     "center": [
+      8,
+      8,
+      8,
+      8
+     ]
+    },
+    "pivot": {
+     "bounds": [
+      28,
+      -4,
+      24,
+      24
+     ],
+     "pivot": [
+      12,
+      24
+     ]
+    },
+    "both": {
+     "bounds": [
+      -4,
+      28,
+      24,
+      20
+     ],
+     "center": [
+      4,
+      4,
+      16,
+      12
+     ],
+     "pivot": [
+      0,
+      0
+     ]
+    }
+   }
+  },
+  "g8_undo": {
+   "delete_frame_2x_e_2_undos": {
+    "0": [
+     8,
+     8,
+     16,
+     16
+    ],
+    "1": [
+     8,
+     8,
+     16,
+     16
+    ],
+    "2": [
+     24,
+     8,
+     16,
+     16
+    ],
+    "3": [
+     24,
+     8,
+     16,
+     16
+    ],
+    "4": [
+     24,
+     24,
+     32,
+     16
+    ],
+    "5": [
+     24,
+     24,
+     32,
+     16
+    ]
+   },
+   "mover_o_1_e_undo": {
+    "0": [
+     8,
+     8,
+     16,
+     16
+    ],
+    "1": [
+     8,
+     8,
+     16,
+     16
+    ],
+    "2": [
+     24,
+     8,
+     16,
+     16
+    ],
+    "3": [
+     24,
+     8,
+     16,
+     16
+    ],
+    "4": [
+     24,
+     24,
+     32,
+     16
+    ],
+    "5": [
+     24,
+     24,
+     32,
+     16
+    ]
+   }
+  },
+  "nao_medido": [
+   "G3c 9-Slices/Pivot com numeros",
+   "G7 flip com seleccao",
+   "G8 New Frame, Reverse",
+   "G9 Pencil e Show off sobre slice existente",
+   "keys.ase quadro 1 mover"
+  ],
+  "g9_parcial": {
+   "show_slices_off": "contornos somem; arrastar em vazio cria (caixa Slice 1)"
+  }
+ }
+}

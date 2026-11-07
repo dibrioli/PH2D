@@ -354,22 +354,23 @@ pub(crate) fn rotated(slices: &[Slice], w: u32, h: u32, rot: Rotation) -> Vec<Sl
     })
 }
 
-/// Sprite Size: posição e pivot truncam para zero (T7).
+/// Sprite Size: posição e pivot truncam para zero; cada BORDA trunca, e o tamanho é a diferença
+/// (G1: `4,15` a 50 % dá largura 7). Uma caixa que existia não some: mínimo 1 (sem medida).
 fn scale_coord(v: i32, to: u32, from: u32) -> i32 {
     (i64::from(v) * i64::from(to) / i64::from(from.max(1))) as i32
 }
 
-fn scale_len(v: u32, to: u32, from: u32) -> u32 {
-    (u64::from(v) * u64::from(to)).div_ceil(u64::from(from.max(1))) as u32
+fn scale_span(start: i32, len: u32, to: u32, from: u32) -> (i32, u32) {
+    let a = scale_coord(start, to, from);
+    let end = i64::from(start) + i64::from(len);
+    let b = end * i64::from(to) / i64::from(from.max(1));
+    (a, (b - i64::from(a)).max(1) as u32)
 }
 
 fn scale_rect(r: Rect, sx: (u32, u32), sy: (u32, u32)) -> Rect {
-    Rect::new(
-        scale_coord(r.x, sx.0, sx.1),
-        scale_coord(r.y, sy.0, sy.1),
-        scale_len(r.w, sx.0, sx.1),
-        scale_len(r.h, sy.0, sy.1),
-    )
+    let (x, w) = scale_span(r.x, r.w, sx.0, sx.1);
+    let (y, h) = scale_span(r.y, r.h, sy.0, sy.1);
+    Rect::new(x, y, w, h)
 }
 
 /// Sprite Size de `from` para `to`, em caixa, centro e pivot.

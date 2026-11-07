@@ -500,6 +500,16 @@ fn canvas_size_crop_and_trim_translate_the_box_only() {
     );
 }
 
+/// G1: `x` par e `w` ímpar separam «cada borda trunca» (7) de «o tamanho sobe» (8).
+#[test]
+fn sprite_size_truncates_each_edge_and_the_size_is_the_difference() {
+    let mut s = sprite(64, 64, 1);
+    let id = com_keys(&mut s, &[(0, caixa(4, 0, 15, 9))]);
+    let op = canvas::sprite_size(&s, 32, 32, SizeMethod::Nearest).unwrap();
+    apply(&mut s, op).unwrap();
+    assert_eq!(so_a(&s, id).keys[0].shape.bounds, Rect::new(2, 0, 7, 5));
+}
+
 /// T7: Sprite Size escala tudo; posição e pivot truncam para zero.
 #[test]
 fn sprite_size_matches_the_trial_numbers() {

@@ -71,7 +71,7 @@ O Trial recusa gravar imagem (`Save operation is not supported in trial version.
 | Redimensionar a caixa: `x,y` do centro ficam, a largura leva a diferença; o que não cabe desliga o 9-slice | T4 |
 | Mover num quadro sem key cria key lá; `OK` sem mudança não cria | T5 |
 | Canvas Size e Trim transladam a caixa; centro e pivot ficam; negativos sobrevivem; Crop não apaga | T7 |
-| Sprite Size escala tudo; posição e pivot truncam para zero | T7; ⚠️ regra do tamanho na rodada 2 |
+| Sprite Size escala tudo; posição e pivot truncam para zero; cada borda trunca e o tamanho é a diferença | T7, G1 |
 | JSON: `name, color, data, keys[frame, bounds, center, pivot]`; `#rrggbbaa`; centro zero não sai; `slices` na **ordem inversa à do ficheiro**; quadros absolutos, indiferente a `--tag`/trim | F5 |
 | Ordem do chunk: 0x2022 seguido de 0x2020 com a cor, no quadro 0 depois das camadas | F2 |
 
@@ -154,4 +154,9 @@ Respondidas pelo dono em 07/11.
 
 ## 10. Rodada 2 de medição
 
-Buracos de T1–T8 que mudam lei: regra do tamanho no Sprite Size · apagar em quadro > 0 · edição em multi-seleção · pivot ao redimensionar · Transform ligado. Série, de propósito: nasceram da leitura da rodada 1 (CLAUDE.md §0.10). Resultado no fim de [P11_oraculos_ferramenta.md](P11_oraculos_ferramenta.md).
+Buracos de T1–T8 que mudavam lei; série, de propósito, porque nasceram da leitura da rodada 1 (CLAUDE.md §0.10). Resultado em [P11_oraculos_ferramenta.md](P11_oraculos_ferramenta.md), G1–G9.
+
+- **Leis que entram:** apagar tira a slice inteira, em qualquer quadro (G2) · arrastar e apagar valem para toda a seleção, 1 desfazer (G3) · nome e cor valem para todas as keys (G6) · o pivot não muda ao redimensionar, mesmo ficando fora (G4) · `Transform` mexe só na célula da camada ativa no quadro atual, e redimensionar escala os pixels (G5).
+- **Decisão nossa, por o Trial não fechar a regra:** arrastar uma borda com várias selecionadas aplica o mesmo delta a todas. Valor mixed no cartão aparece vazio, e digitar aplica a todas.
+- ⚠️ **Anomalia não explicada (G4):** com key só no quadro 0, mover no quadro 1 também mudou o 0 no Trial, mas com keys em 0, 2, 4 mover no 3 criou key. O fórum relata o mesmo como mudança da 1.3.18 ([tópico 28638](https://community.aseprite.org/t/slice-behavior-change-in-aseprite/28638)). **Nós: editar sempre cria key só naquele quadro.** A lei é uma só, e a marca na linha do tempo e «remover a mudança» a tornam visível. A mostrar ao dono no smoke.
+- **Por medir, sem mudar lei:** multi-seleção com caixa + números (`G3c`), Flip com seleção, cliques com outra ferramenta.

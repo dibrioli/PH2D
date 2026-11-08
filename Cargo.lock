@@ -9659,6 +9659,15 @@ name = "ph2d-orca"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-outline-trace"
+version = "0.0.0"
+dependencies = [
+ "parry2d",
+ "png",
+ "sha2 0.11.1",
+]
+
+[[package]]
 name = "ph2d-paint-gpu"
 version = "0.0.0"
 dependencies = [

@@ -1,0 +1,22 @@
+[package]
+name = "ph2d-outline-trace"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Picture alpha → collision outline in integer Q4 (plan f2, W1). Pure leaf: no ECS, no rapier. README.md.
+[dependencies]
+
+[dev-dependencies]
+# The in-process oracle (`hertel_mehlhorn_idx`) and the fixture readers; all already in Cargo.lock.
+parry2d = { version = "=0.31.1", default-features = false, features = ["std", "dim2", "f32"] }
+png = "0.18"
+sha2 = "0.11"
+
+[lints]
+workspace = true

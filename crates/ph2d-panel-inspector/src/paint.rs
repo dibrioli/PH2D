@@ -69,6 +69,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
             &snaps,
             None,
         );
+        crate::sections::physics_colide::dica_do_titulo(ctx.host.store_mut(), &presentes);
         // T61: os soltos presos a outro objecto — o retrato e as caixas de cada um.
         crate::cards_presos::ensaia(inspector_state, ctx.host);
         let tema = ctx.host.theme();

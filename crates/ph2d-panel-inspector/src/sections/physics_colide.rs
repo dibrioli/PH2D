@@ -448,12 +448,6 @@ pub(super) fn fila_da_matriz(
 
 /// As dicas dos quadros: dizem, com os nomes de hoje, o que o próximo clique faz.
 pub(crate) fn prepara_as_dicas(store: &mut WidgetStore, camada: usize) {
-    // O título dobrado corta os nomes: a dica dele diz o resumo com os nomes inteiros (onda 9e).
-    if let Some(info) = crate::state::current_inspector_physics() {
-        let inteiro = resumo_com(&info, camadas::rotulo_inteiro);
-        // Sempre: dobrado, o título pode mostrar só a camada (`curto_se_a_fila_nao_cabe`), sem corte nos nomes.
-        poe_a_dica(store, ids::CARD_PHYS_LAYERS, inteiro);
-    }
     let chaves = [
         "card.insp.phys.collides_self_on",
         "card.insp.phys.collides_self_off",
@@ -478,12 +472,34 @@ pub(crate) fn dicas_dos_quadros(
         let dica = tr_with(chave, &[("this", &este), ("other", &outra)]);
         poe_a_dica(store, quem.quadros[j], dica);
     }
-    // As opções da lista e a frase de baixo: o nome inteiro, que o «…» corta.
-    for (i, &id) in quem.opcoes.iter().enumerate() {
-        poe_a_dica(store, id, camadas::rotulo_inteiro(i));
+    // As opções da lista mostram o nome inteiro (a lista cresce com ele): balão nenhum a repetir o que se lê.
+    for &id in quem.opcoes {
+        poe_a_dica(store, id, String::new());
     }
+    // A frase de baixo só ganha balão quando o «…» cortou o nome.
     let frase = tr_with("card.insp.phys.collides_applies", &[("layer", &este)]);
-    poe_a_dica(store, quem.frase, frase);
+    let cortou = camadas::rotulo(camada) != este;
+    poe_a_dica(
+        store,
+        quem.frase,
+        if cortou { frase } else { String::new() },
+    );
+}
+
+/// O título dobrado de Collision Layers: o resumo inteiro no balão só quando o que se lê encurtou — um nome com «…» ou
+/// a fila trocada pela camada só (`curto_se_a_fila_nao_cabe`, medido em `presentes`).
+pub(crate) fn dica_do_titulo(store: &mut WidgetStore, ps: &[crate::cards_componentes::Presente]) {
+    let p = ps.iter().find(|p| p.id == ids::CARD_PHYS_LAYERS);
+    let (Some(p), Some(info)) = (p, crate::state::current_inspector_physics()) else {
+        return;
+    };
+    let inteiro = resumo_com(&info, camadas::rotulo_inteiro);
+    let encurtou = p.resumo_curto.is_some() || inteiro != resumo(&info);
+    poe_a_dica(
+        store,
+        ids::CARD_PHYS_LAYERS,
+        if encurtou { inteiro } else { String::new() },
+    );
 }
 
 fn poe_a_dica(store: &mut WidgetStore, id: NodeId, dica: String) {

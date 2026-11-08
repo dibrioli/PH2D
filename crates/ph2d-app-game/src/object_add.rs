@@ -180,11 +180,7 @@ pub fn add(entry: AddEntry, sim: &mut SimWorld, portas: Portas<'_>, pai: Option<
         }
         Ok(bits)
     })();
-    Some(match r {
-        Ok(escolhido) => Ok(escolhido),
-        Err(msg) => {
-            sim.world_mut().despawn(e);
-            Err(msg)
-        }
-    })
+    Some(r.inspect_err(|_| {
+        sim.world_mut().despawn(e);
+    }))
 }

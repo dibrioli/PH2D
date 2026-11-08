@@ -184,9 +184,6 @@ fn every_group_is_named_and_tinted() {
 #[test]
 fn the_cascade_is_shown_in_the_label_before_it_is_applied() {
     let m = build(ObjectKind::Image, &[], &buildable, false);
-    // ⚠️ O rótulo é **Physics Body** desde a poda de 13/09 e o `Collision Shape` que ele TRAZ já não
-    // é um item da paleta desde 14/09 (ordem do dono) — o que não muda é a lei: *o artista vê o que
-    // vem junto ANTES de clicar*. Ver o cabeçalho do `catalog/physics`.
     // ⭐ Opção B (08/11): o Physics Body já não traz a forma em componente (a filha nasce pela semente),
     // e a cascata que fica para mostrar é a do mover: *Top-Down Player* traz o corpo.
     let all = labels(&m);

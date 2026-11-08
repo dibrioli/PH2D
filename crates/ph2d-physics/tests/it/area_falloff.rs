@@ -43,6 +43,7 @@ fn desc(body_type: RigidBodyType, x: f32, y: f32, shape: ShapeDesc) -> BodyDesc 
         damping: None,
         one_way: false,
         effector: None,
+        shape_pose: [0.0; 3],
     }
 }
 
@@ -51,6 +52,7 @@ fn zone(half_x: f32, half_y: f32, effect: AreaEffect) -> BodyDesc {
     BodyDesc {
         is_sensor: true,
         effector: Some(effect),
+        shape_pose: [0.0; 3],
         ..desc(
             RigidBodyType::Fixed,
             0.0,

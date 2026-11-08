@@ -151,15 +151,7 @@ type NotAMaster = bevy_ecs::query::Without<ph2d_ecs::MasterPiece>;
 /// The query the bridge iterates each frame. Cached (built once) because
 /// `World::query` allocates a fresh `QueryState` per call — the cached
 /// state is the zero-alloc idiom (HR-3), mirroring `TransformPropagationState`.
-type BodyQuery = QueryState<
-    (
-        Entity,
-        &'static RigidBody,
-        &'static Collider,
-        &'static Transform,
-    ),
-    NotAMaster,
->;
+type BodyQuery = QueryState<(Entity, &'static RigidBody, &'static Transform), NotAMaster>;
 
 /// A joint waiting to be handed to the solver: which entity authored it, what
 /// it is, the two body handles, and the two body ENTITIES. The entities travel
@@ -213,6 +205,9 @@ pub(super) struct BodyRef {
     /// ball back where it started: the live `Transform` has already been
     /// overwritten by the readback.
     pub(super) rest: BodyDesc,
+    /// A entidade da FORMA principal (`crate::main_shape`): o próprio corpo, ou a filha que leva o
+    /// `Collider` (opção B). É dela que se lê o lado-forma e é ela que um gatilho reporta.
+    pub(super) shape: Entity,
 }
 
 /// O semeio de um joint: a entidade, as duas âncoras body-local e — só para uma
@@ -262,6 +257,9 @@ pub struct PhysicsBridge {
     parts: std::collections::BTreeMap<Entity, bridge_parts::PartRef>,
     /// Scratch da varredura de peças — zero-alloc em regime, como o `seen`.
     part_seen: Vec<Entity>,
+    /// `(forma filha, corpo)` das formas principais que NÃO moram no corpo (opção B), ordenada pela
+    /// forma; scratch reusado (vazio numa cena que só tem formas no corpo).
+    main_of: Vec<(Entity, Entity)>,
     /// A query das roldanas. Separada da dos joints porque uma roldana é uma
     /// ENTIDADE própria (W-Pulley W1) — a corda a aponta pelo nome.
     wheel_query: Option<rope::WheelQuery>,

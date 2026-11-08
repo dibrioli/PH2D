@@ -43,6 +43,7 @@ fn slide_and_spin(global: BodyDefaults, damping: Option<DampingDesc>) -> (f32, f
         damping,
         one_way: false,
         effector: None,
+        shape_pose: [0.0; 3],
     });
     for _ in 0..60 {
         w.step();
@@ -151,6 +152,7 @@ fn the_damping_reaches_the_body() {
         }),
         one_way: false,
         effector: None,
+        shape_pose: [0.0; 3],
     });
     let b = w.bodies().get(h).expect("body exists");
     assert_eq!(

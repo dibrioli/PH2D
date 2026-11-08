@@ -58,6 +58,7 @@ fn body(
         damping: None,
         one_way: false,
         effector: None,
+        shape_pose: [0.0; 3],
         offset: [0.0, 0.0],
     })
 }
@@ -118,6 +119,7 @@ fn cantilever(soft: bool, stiffness: f32, damping: f32, extra_mass: Option<f32>)
         damping: None,
         one_way: false,
         effector: None,
+        shape_pose: [0.0; 3],
         offset: [0.0, 0.0],
     });
     let (la, lb) = w
@@ -262,6 +264,7 @@ fn measure_what_a_soft_weld_gives() {
             damping: None,
             one_way: false,
             effector: None,
+            shape_pose: [0.0; 3],
             offset: [0.0, 0.0],
         });
         let (la, lb) = w

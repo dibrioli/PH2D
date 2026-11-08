@@ -25,15 +25,41 @@ impl PhysicsBridge {
         // other scratch fields without a borrow clash.
         let mut q = self.query.take().expect("query built in dispatch");
         let at_rest = self.last_stepped == 0;
-        for (e, rb, col, _local) in q.iter(world) {
+        self.main_of.clear();
+        for (e, rb, _local) in q.iter(world) {
+            // **A forma PRINCIPAL** (opção B): a do corpo, ou a 1.ª filha da ordem da árvore. Sem
+            // forma nenhuma não é um corpo para o solver (fica fora do `seen` e sai).
+            let Some(shape) = crate::main_shape(world, e) else {
+                continue;
+            };
+            let Some(col) = world.get::<Collider>(shape) else {
+                continue;
+            };
             self.seen.push(e);
             // ⚠️ WORLD, not the local `Transform` the query just handed us. The
             // solver has no hierarchy: a body authored under a parent must be
             // DESCRIBED where it is actually drawn, or it spawns (and rests, and
             // collides) at its local coordinates read as world ones.
-            let Some(t) = space::world_transform(world, e, &mut self.chain) else {
+            let Some(mut t) = space::world_transform(world, e, &mut self.chain) else {
                 continue;
             };
+            // A forma FILHA: a escala é a de mundo DELA (a lei das peças) e a pose dela no corpo vai
+            // para `shape_pose`, lida da cadeia AUTORADA como a das peças.
+            let mut shape_pose = [0.0; 3];
+            if shape != e {
+                self.main_of.push((shape, e));
+                let Some(ts) = space::world_transform(world, shape, &mut self.chain) else {
+                    continue;
+                };
+                let Some(rel) = space::local_in_ancestor(world, shape, e, &mut self.chain) else {
+                    continue;
+                };
+                t.scale = ts.scale;
+                shape_pose = [rel.translation.x, rel.translation.y, rel.rotation];
+            }
+            if let Some(b) = self.bodies.get_mut(&e) {
+                b.shape = shape;
+            }
             // Optional per-body gravity multiplier (W8); absent = full gravity.
             // Read here because this is the half holding the `World`; folded into
             // the `BodyDesc` so it survives rewind.
@@ -68,7 +94,7 @@ impl PhysicsBridge {
             // collider's friction/restitution combine policy, folded in and riding
             // the `BodyDesc` for rewind like the rest.
             let material = world
-                .get::<crate::MaterialCombine>(e)
+                .get::<crate::MaterialCombine>(shape)
                 .copied()
                 .unwrap_or_default();
             // Optional DampingOverride (W-Damping); absent = the world default drag.
@@ -78,7 +104,7 @@ impl PhysicsBridge {
             // Optional OneWayPlatform marker (W-OneWay); its PRESENCE is the flag. A
             // collider property (a platform is usually Static), folded in and riding
             // the `BodyDesc` for the rewind like the rest.
-            let one_way = world.get::<crate::OneWayPlatform>(e).is_some();
+            let one_way = world.get::<crate::OneWayPlatform>(shape).is_some();
             // Optional AreaEffector (W-Area); its VALUE is the force in newtons the
             // zone applies to whatever overlaps it. Folded in and riding the
             // `BodyDesc` for the rewind; the wrapper refuses it on a solid collider.
@@ -87,13 +113,13 @@ impl PhysicsBridge {
             // into the one `AreaEffect` the world takes — they are separate on this
             // side because a component blob is positional and a second FIELD would be
             // a schema bump, while a second COMPONENT is additive.
-            let zone_force = world.get::<crate::AreaEffector>(e).map(|a| a.force);
-            let zone_drag = world.get::<crate::AreaDrag>(e).map(|d| d.0);
-            let zone_density = world.get::<crate::AreaBuoyancy>(e).map(|b| b.0);
-            let zone_form = world.get::<crate::AreaFormDrag>(e).map(|f| f.0);
+            let zone_force = world.get::<crate::AreaEffector>(shape).map(|a| a.force);
+            let zone_drag = world.get::<crate::AreaDrag>(shape).map(|d| d.0);
+            let zone_density = world.get::<crate::AreaBuoyancy>(shape).map(|b| b.0);
+            let zone_form = world.get::<crate::AreaFormDrag>(shape).map(|f| f.0);
             // The rotational half (W-AreaTorque): a fifth optional component, folded into
             // the same `AreaEffect` bundle for the same reason as its siblings.
-            let zone_torque = world.get::<crate::AreaTorque>(e).map(|t| t.0);
+            let zone_torque = world.get::<crate::AreaTorque>(shape).map(|t| t.0);
             // The FRAME of the force (W-AreaFrame): a sixth optional component, and a
             // MARKER — its presence pins the force to world axes, its absence (the
             // default) authors it in the zone's own frame so turning the sensor turns
@@ -108,7 +134,7 @@ impl PhysicsBridge {
             // reason: ask what a layer buys ALONE and be willing to answer "nothing"
             // ([[feedback_layered_defenses_need_per_layer_gates]]). What it does buy is
             // a `BodyDesc` that does not claim to be a zone when it is not.
-            let zone_world_axes = world.get::<crate::AreaForceWorldAxes>(e).is_some();
+            let zone_world_axes = world.get::<crate::AreaForceWorldAxes>(shape).is_some();
             // How much of the push reaches the far side (W-AreaFalloff): a seventh
             // optional component, folded into the same bundle. Like the marker above it is
             // deliberately NOT part of `any` — a falloff is a MODIFIER, so a zone carrying
@@ -121,7 +147,7 @@ impl PhysicsBridge {
             // says otherwise, and the honest version is the one that survives being tested
             // ([[feedback_layered_defenses_need_per_layer_gates]]). What it buys is the
             // same thing its sibling buys: a `BodyDesc` that does not claim to be a zone.
-            let zone_falloff = world.get::<crate::AreaFalloff>(e).map(|f| f.0);
+            let zone_falloff = world.get::<crate::AreaFalloff>(shape).map(|f| f.0);
             let any = zone_force.is_some()
                 || zone_drag.is_some()
                 || zone_density.is_some()
@@ -158,6 +184,7 @@ impl PhysicsBridge {
                 one_way,
                 effector,
             );
+            let desc = BodyDesc { shape_pose, ..desc };
             match self.bodies.get(&e) {
                 None => self.to_spawn.push((e, desc, rb.kind)),
                 // **The rest pose is the authored pose at tick 0** — read, not
@@ -180,6 +207,7 @@ impl PhysicsBridge {
             }
         }
         self.query = Some(q);
+        self.main_of.sort_unstable_by_key(|(s, _)| s.to_bits());
 
         for i in 0..self.to_retune.len() {
             let (e, desc) = self.to_retune[i];
@@ -232,6 +260,11 @@ impl PhysicsBridge {
         for i in 0..self.to_spawn.len() {
             let (e, desc, kind) = self.to_spawn[i];
             let handle = self.world.spawn_body(desc);
+            let shape = self
+                .main_of
+                .iter()
+                .find(|(_, b)| *b == e)
+                .map_or(e, |m| m.0);
             // `desc` was built from the Transform as it is RIGHT NOW, before
             // any stepping — that is the rest state a rewind replays from.
             self.bodies.insert(
@@ -240,6 +273,7 @@ impl PhysicsBridge {
                     handle,
                     kind,
                     rest: desc,
+                    shape,
                 },
             );
         }

@@ -38,6 +38,7 @@ impl PhysicsBridge {
             surfaces: surfaces::Surfaces::default(),
             parts: std::collections::BTreeMap::new(),
             part_seen: Vec::new(),
+            main_of: Vec::new(),
             wheel_query: None,
             seen: Vec::new(),
             names: BTreeMap::new(),

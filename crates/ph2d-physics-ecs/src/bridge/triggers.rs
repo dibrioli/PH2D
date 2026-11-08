@@ -132,7 +132,8 @@ impl PhysicsBridge {
             }
             let body = self.world.collider_body(c)?;
             let e = *by_body.get(&body.into_raw_parts())?;
-            Some((e, e, self.bodies.get(&e)?.rest.is_sensor))
+            let b = self.bodies.get(&e)?;
+            Some((b.shape, e, b.rest.is_sensor))
         };
         let mut out = Vec::new();
         for (c1, c2) in pairs {

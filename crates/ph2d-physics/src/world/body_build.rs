@@ -159,6 +159,7 @@ impl PhysicsWorld {
             damping,
             one_way: _,
             effector: _,
+            shape_pose: _,
         } = *desc;
         let Some(&collider_handle) = self.bodies.get(handle).and_then(|b| b.colliders().first())
         else {

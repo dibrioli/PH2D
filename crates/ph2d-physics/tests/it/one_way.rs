@@ -55,6 +55,7 @@ fn platform_and_ball(
         damping: None,
         one_way,
         effector: None,
+        shape_pose: [0.0; 3],
     };
     let platform = base(
         RigidBodyType::Fixed,

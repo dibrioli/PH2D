@@ -59,6 +59,19 @@ pub(super) struct PartRef {
 }
 
 impl PhysicsBridge {
+    /// O corpo de que `shape` é a forma PRINCIPAL filha (opção B), ou `None`.
+    pub(super) fn main_body_of(&self, shape: Entity) -> Option<Entity> {
+        self.main_of
+            .binary_search_by_key(&shape.to_bits(), |(s, _)| s.to_bits())
+            .ok()
+            .map(|i| self.main_of[i].1)
+    }
+
+    /// A entidade da forma principal de `body` (ele mesmo quando a forma mora nele).
+    pub(super) fn shape_of(&self, body: Entity) -> Entity {
+        self.bodies.get(&body).map_or(body, |b| b.shape)
+    }
+
     /// O corpo ancestral mais próximo de `e` que a ponte de fato construiu.
     ///
     /// ⚠️ **Pergunta ao `self.bodies` e não só ao componente**: uma entidade com
@@ -96,6 +109,11 @@ impl PhysicsBridge {
             [f32; 3],
         )> = Vec::new();
         for (e, col, _local) in q.iter(world) {
+            // A forma PRINCIPAL filha já viaja no `BodyDesc` do corpo: pendurá-la de novo seria um
+            // collider dobrado.
+            if self.main_body_of(e).is_some() {
+                continue;
+            }
             let Some((owner, handle)) = self.owner_body(sim, e) else {
                 continue;
             };
@@ -170,6 +188,8 @@ impl PhysicsBridge {
             ));
         }
         self.part_query = Some(q);
+        // A ordem de pendurar decide os handles: por entidade, nunca pela do arquétipo (HR-5).
+        wanted.sort_unstable_by_key(|w| w.0.to_bits());
 
         // Peças que sumiram (a entidade morreu, ganhou `RigidBody`, ou o dono
         // deixou de ser corpo). `retain` sobre a lista vista, o mesmo padrão do

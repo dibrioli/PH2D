@@ -424,7 +424,11 @@ pub(super) fn origem_e_centro(
     b: &crate::bridge::BodyRef,
 ) -> Option<([f32; 2], [f32; 2])> {
     let pose = world.body_pose(b.handle)?;
-    let (at, [ox, oy]) = ([pose.translation.x, pose.translation.y], b.rest.offset);
+    // A forma FILHA (opção B) leva a sua pose no corpo: `collider_local` = `offset` com ela zero.
+    let (at, [ox, oy]) = (
+        [pose.translation.x, pose.translation.y],
+        b.rest.collider_local().0,
+    );
     let (sin, cos) = libm::sincosf(pose.rotation.angle());
     Some((
         at,

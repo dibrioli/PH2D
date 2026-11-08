@@ -478,4 +478,33 @@ pub struct BodyDesc {
     ///
     /// [`is_sensor`]: BodyDesc::is_sensor
     pub effector: Option<AreaEffect>,
+    /// **A pose da forma principal no corpo** (opção B, 08/11): `[x, y, rotação]` da forma FILHA
+    /// relativa ao corpo, composta por fora do [`offset`](BodyDesc::offset). Zero = a forma vive no
+    /// próprio corpo, byte-idêntico a antes deste campo.
+    pub shape_pose: [f32; 3],
+}
+
+impl BodyDesc {
+    /// A posição do collider principal relativa ao corpo: `shape_pose ∘ offset`. Com a pose zero é
+    /// literalmente a translação `offset` (sem aritmética, para o bit não mudar).
+    #[must_use]
+    pub fn collider_local(&self) -> ([f32; 2], f32) {
+        local_of(self.shape_pose, self.offset)
+    }
+}
+
+/// `pose ∘ offset` — ver [`BodyDesc::collider_local`].
+#[must_use]
+pub fn local_of(pose: [f32; 3], offset: [f32; 2]) -> ([f32; 2], f32) {
+    if pose == [0.0; 3] {
+        return (offset, 0.0);
+    }
+    let (s, c) = pose[2].sin_cos();
+    (
+        [
+            pose[0] + c * offset[0] - s * offset[1],
+            pose[1] + s * offset[0] + c * offset[1],
+        ],
+        pose[2],
+    )
 }

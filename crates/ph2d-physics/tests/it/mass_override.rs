@@ -43,6 +43,7 @@ fn mass_of(mass_override: Option<f32>) -> f32 {
         damping: None,
         one_way: false,
         effector: None,
+        shape_pose: [0.0; 3],
     });
     w.bodies().get(h).expect("body exists").mass()
 }
@@ -109,6 +110,7 @@ fn a_heavier_body_dominates_a_head_on_collision() {
             damping: None,
             one_way: false,
             effector: None,
+            shape_pose: [0.0; 3],
         });
         // Target: light (auto mass ≈ 0.196), at rest in the mover's path.
         w.spawn_body(BodyDesc {
@@ -136,6 +138,7 @@ fn a_heavier_body_dominates_a_head_on_collision() {
             damping: None,
             one_way: false,
             effector: None,
+            shape_pose: [0.0; 3],
         });
         for _ in 0..60 {
             w.step();

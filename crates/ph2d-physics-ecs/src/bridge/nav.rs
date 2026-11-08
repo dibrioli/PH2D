@@ -658,7 +658,8 @@ fn raio_que_envolve(d: &BodyDesc) -> f32 {
             ry,
         } => half_height + rx.max(ry),
     };
-    r.abs() + comprimento(d.offset[0], d.offset[1])
+    let [ox, oy] = d.collider_local().0;
+    r.abs() + comprimento(ox, oy)
 }
 
 #[path = "nav_desvio.rs"]

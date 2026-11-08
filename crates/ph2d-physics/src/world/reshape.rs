@@ -84,12 +84,21 @@ impl PhysicsWorld {
         let now = c
             .position_wrt_parent()
             .map(|p| [p.translation.x, p.translation.y]);
-        if now == Some(offset) {
+        // A forma FILHA (opção B) leva a sua pose no corpo por fora do offset do Crouch.
+        let (local, rot) = super::desc::local_of(rest.shape_pose, offset);
+        if now == Some(local) {
             return false;
         }
         let mass = c.mass();
         c.set_shape(collider_build::shape_builder(shape).shape);
-        c.set_translation_wrt_parent(Vector::new(offset[0], offset[1]));
+        if rest.shape_pose == [0.0; 3] {
+            c.set_translation_wrt_parent(Vector::new(local[0], local[1]));
+        } else {
+            c.set_position_wrt_parent(crate::rmath::Pose::new(
+                Vector::new(local[0], local[1]),
+                rot,
+            ));
+        }
         if shape == rest.shape && offset == rest.offset {
             match rest.mass_override {
                 Some(m) => c.set_mass(m),

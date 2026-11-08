@@ -266,6 +266,7 @@ pub(crate) fn body_desc(
             mirror: [sign_of(t.scale.x), sign_of(t.scale.y)],
             ..e
         }),
+        shape_pose: [0.0; 3],
     }
 }
 

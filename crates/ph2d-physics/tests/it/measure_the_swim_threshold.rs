@@ -55,6 +55,7 @@ fn desc(body_type: RigidBodyType, y: f32, shape: ShapeDesc) -> BodyDesc {
         damping: None,
         one_way: false,
         effector: None,
+        shape_pose: [0.0; 3],
     }
 }
 

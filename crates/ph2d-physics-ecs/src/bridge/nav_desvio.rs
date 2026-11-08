@@ -293,7 +293,8 @@ enum Forma {
 /// longo de uma forma comprida — os discos fazem uma serra, e um corpo largo que vem de frente PRENDIA
 /// o agente (o Godot também: preso com discos, contorna com vértices).
 fn forma(d: &BodyDesc) -> Forma {
-    let o = [f64::from(d.offset[0]), f64::from(d.offset[1])];
+    let [ox, oy] = d.collider_local().0;
+    let o = [f64::from(ox), f64::from(oy)];
     let (meia, ax, ay) = match d.shape {
         ShapeDesc::Ball { radius } => return Forma::Disco(o, f64::from(radius.abs())),
         ShapeDesc::Cuboid { half_x, half_y } => {

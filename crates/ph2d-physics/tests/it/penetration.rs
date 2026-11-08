@@ -56,6 +56,7 @@ fn drop_probe(world: &mut PhysicsWorld, drop_y: f32) -> (f32, u32, f32) {
         damping: None,
         one_way: false,
         effector: None,
+        shape_pose: [0.0; 3],
         offset: [0.0, 0.0],
     });
     let h = world.spawn_body(BodyDesc {
@@ -85,6 +86,7 @@ fn drop_probe(world: &mut PhysicsWorld, drop_y: f32) -> (f32, u32, f32) {
         damping: None,
         one_way: false,
         effector: None,
+        shape_pose: [0.0; 3],
         offset: [0.0, 0.0],
     });
     let (mut worst, mut frames) = (0.0f32, 0u32);
@@ -249,6 +251,7 @@ fn a_settled_pile_is_completely_still() {
         damping: None,
         one_way: false,
         effector: None,
+        shape_pose: [0.0; 3],
         offset: [0.0, 0.0],
     });
     for i in 0..30 {
@@ -276,6 +279,7 @@ fn a_settled_pile_is_completely_still() {
             damping: None,
             one_way: false,
             effector: None,
+            shape_pose: [0.0; 3],
             offset: [0.0, 0.0],
         });
     }
@@ -358,6 +362,7 @@ fn sub_stepping_costs_what_it_says_it_costs() {
             damping: None,
             one_way: false,
             effector: None,
+            shape_pose: [0.0; 3],
             offset: [0.0, 0.0],
         });
         for i in 0..200 {
@@ -385,6 +390,7 @@ fn sub_stepping_costs_what_it_says_it_costs() {
                 damping: None,
                 one_way: false,
                 effector: None,
+                shape_pose: [0.0; 3],
                 offset: [0.0, 0.0],
             });
         }

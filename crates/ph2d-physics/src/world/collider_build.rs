@@ -114,7 +114,12 @@ fn collider_from(shape: ColliderBuilder, desc: &BodyDesc) -> Collider {
         // the body (rapier's default, byte-identical to before this existed);
         // rapier rotates this translation with the body, so an offset foot-box
         // turns with the character. Scale is already folded in by the caller.
-        .translation(Vector::new(desc.offset[0], desc.offset[1]))
+        // ⚠️ `shape_pose` (forma FILHA, opção B) compõe-se por fora; zero = só o `offset`.
+        .translation(Vector::new(
+            desc.collider_local().0[0],
+            desc.collider_local().0[1],
+        ))
+        .rotation(desc.collider_local().1)
         // One-way (jump-through) platform. The flag reaches the stateless hook as a
         // `user_data` bit, and `MODIFY_SOLVER_CONTACTS` is what makes rapier call
         // the hook for this pair at all — without it the bit is inert. A collider

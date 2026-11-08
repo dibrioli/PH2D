@@ -149,6 +149,8 @@ impl PhysicsBridge {
             let k = p.handle.into_raw_parts();
             return self.surfaces.by_collider.entry(k).or_default();
         }
+        // Uma forma PRINCIPAL filha (opção B) é a forma do corpo: indexa-se pelo corpo.
+        let e = self.main_body_of(e).unwrap_or(e);
         let k = self
             .bodies
             .get(&e)

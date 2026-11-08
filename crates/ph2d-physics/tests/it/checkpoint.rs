@@ -338,6 +338,7 @@ fn the_new_collider_defaults_are_the_ones_rapier_already_used() {
         damping: None,
         one_way: false,
         effector: None,
+        shape_pose: [0.0; 3],
         offset: [0.0, 0.0],
     });
     for i in 0..12 {
@@ -365,6 +366,7 @@ fn the_new_collider_defaults_are_the_ones_rapier_already_used() {
             damping: None,
             one_way: false,
             effector: None,
+            shape_pose: [0.0; 3],
             offset: [0.0, 0.0],
         });
     }

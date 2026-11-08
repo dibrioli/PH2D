@@ -392,6 +392,7 @@ fn raw() -> (PhysicsWorld, ph2d_physics::RigidBodyHandle) {
         damping: None,
         one_way: false,
         effector: None,
+        shape_pose: [0.0; 3],
     });
     // ⚠️ **UM passo antes de castar, e não é higiene:** o cast lê o BVH que o
     // último `step` deixou (o contrato que o `bridge::player` documenta no

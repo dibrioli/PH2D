@@ -319,7 +319,7 @@ impl PhysicsBridge {
     ) -> usize {
         let n = body.rest.shape.snap_points(out);
         let pose = rest_pose(body);
-        let [ox, oy] = body.rest.offset;
+        let [ox, oy] = body.rest.collider_local().0;
         for slot in out.iter_mut().take(n) {
             *slot = PhysicsWorld::world_from_local_at_pose(pose, [slot[0] + ox, slot[1] + oy]);
         }

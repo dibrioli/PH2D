@@ -123,7 +123,9 @@ impl PhysicsBridge {
                 ContactPhase::Ended => &on_leave,
             };
             for (source, other) in [(ev.a, ev.b), (ev.b, ev.a)] {
-                if let Some(name) = named(source).filter(|_| passa(source, other)) {
+                // O sinal é do lado-FORMA: lê-se da forma principal do corpo (opção B).
+                let forma = self.shape_of(source);
+                if let Some(name) = named(forma).filter(|_| passa(forma, other)) {
                     out.push(SignalEvent {
                         name,
                         source,

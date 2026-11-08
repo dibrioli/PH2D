@@ -1,0 +1,269 @@
+//! **A forma FILHA simula igual à forma no corpo** (GEF02 B1, opção B 08/11).
+//!
+//! A mesma cena construída duas vezes: (A) cada `Collider` e o seu lado-forma no próprio corpo, (B)
+//! movidos para uma filha «Collision Shape» com `Transform` identidade. Os corpos nascem primeiro nas
+//! duas, então têm os mesmos bits de entidade e o hash compara-se direto.
+
+use ph2d_core::Vec2;
+use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, Transform};
+use ph2d_physics_ecs::{
+    AreaEffector, BodyKind, Collider, ColliderShape, CombineRule, LockRotation, MaterialCombine,
+    OneWayPlatform, PhysicsBridge, PlatformPlayer, PlayerInput, RigidBody, SignalOnHit,
+};
+
+fn caixa(half_x: f32, half_y: f32) -> Collider {
+    Collider {
+        shape: ColliderShape::Cuboid { half_x, half_y },
+        density: 1.0,
+        ..Collider::default()
+    }
+}
+
+fn rb(kind: BodyKind) -> RigidBody {
+    RigidBody { kind }
+}
+
+struct Cena {
+    sim: SimWorld,
+    corpos: Vec<Entity>,
+    formas: Vec<Entity>,
+    player: Entity,
+}
+
+/// Põe a forma (e o lado-forma) no corpo ou numa filha, conforme `filha`.
+fn forma(
+    sim: &mut SimWorld,
+    corpo: Entity,
+    filha: bool,
+    f: impl FnOnce(&mut bevy_ecs::world::EntityWorldMut),
+) -> Entity {
+    let alvo = if filha {
+        sim.world_mut()
+            .spawn((
+                Name::new("Collision Shape"),
+                Transform::IDENTITY,
+                ChildOf(corpo),
+            ))
+            .id()
+    } else {
+        corpo
+    };
+    f(&mut sim.world_mut().entity_mut(alvo));
+    alvo
+}
+
+fn cena(filha: bool) -> Cena {
+    let mut sim = SimWorld::new();
+    let w = sim.world_mut();
+    let em = |x: f32, y: f32| Transform::from_translation(Vec2::new(x, y));
+    let chao = w
+        .spawn((Name::new("Floor"), rb(BodyKind::Static), em(0.0, -0.5)))
+        .id();
+    let borda = w
+        .spawn((Name::new("Ledge"), rb(BodyKind::Static), em(3.0, 1.5)))
+        .id();
+    let bloco = w
+        .spawn((Name::new("Box"), rb(BodyKind::Dynamic), em(3.0, 4.0)))
+        .id();
+    let zona = w
+        .spawn((Name::new("Zone"), rb(BodyKind::Static), em(-3.0, 1.0)))
+        .id();
+    let bola = w
+        .spawn((Name::new("Ball"), rb(BodyKind::Dynamic), em(-3.0, 3.5)))
+        .id();
+    let player = w
+        .spawn((
+            Name::new("Player"),
+            rb(BodyKind::Dynamic),
+            LockRotation,
+            PlatformPlayer {
+                float_height: 1.1,
+                crouch_height: 0.6,
+                crouch_speed: 2.0,
+                ..PlatformPlayer::default()
+            },
+            em(0.0, 1.1),
+        ))
+        .id();
+    let material = MaterialCombine {
+        restitution: CombineRule::Max,
+        friction: CombineRule::Min,
+    };
+    let formas = vec![
+        forma(&mut sim, chao, filha, |e| {
+            e.insert((caixa(30.0, 0.5), material));
+        }),
+        forma(&mut sim, borda, filha, |e| {
+            e.insert((caixa(2.0, 0.1), OneWayPlatform));
+        }),
+        forma(&mut sim, bloco, filha, |e| {
+            e.insert((
+                Collider {
+                    restitution: 0.6,
+                    ..caixa(0.3, 0.3)
+                },
+                material,
+            ));
+        }),
+        forma(&mut sim, zona, filha, |e| {
+            e.insert((
+                Collider {
+                    is_sensor: true,
+                    ..caixa(1.0, 1.0)
+                },
+                AreaEffector { force: [0.0, 6.0] },
+                SignalOnHit("hit".into()),
+            ));
+        }),
+        forma(&mut sim, bola, filha, |e| {
+            e.insert(Collider {
+                shape: ColliderShape::Ball { radius: 0.25 },
+                restitution: 0.4,
+                ..Collider::default()
+            });
+        }),
+        forma(&mut sim, player, filha, |e| {
+            e.insert(Collider {
+                shape: ColliderShape::Capsule {
+                    half_height: 0.3,
+                    radius: 0.2,
+                },
+                ..Collider::default()
+            });
+        }),
+    ];
+    Cena {
+        sim,
+        corpos: vec![chao, borda, bloco, zona, bola, player],
+        formas,
+        player,
+    }
+}
+
+fn hash_bits(h: &mut u64, v: u64) {
+    *h = (*h ^ v).wrapping_mul(0x0100_0000_01b3);
+}
+
+/// 300 tiques: o player anda à direita, agachado a meio. Hash das poses (bits), contactos (pares,
+/// ponto, normal) e gatilhos (sensor levado ao seu CORPO). Devolve também os sensores vistos.
+fn corre(c: &mut Cena) -> (u64, Vec<Entity>) {
+    let mut bridge = PhysicsBridge::new();
+    let mut h = 0xcbf2_9ce4_8422_2325_u64;
+    let mut sensores = Vec::new();
+    for t in 1..=300_u64 {
+        let input = PlayerInput {
+            drive: 1.0,
+            down: (100..200).contains(&t),
+            ..PlayerInput::default()
+        };
+        bridge.set_player_input(c.player, input);
+        bridge.dispatch(&mut c.sim, true, t);
+        for &e in &c.corpos {
+            let tr = c.sim.world().get::<Transform>(e).copied().unwrap();
+            for v in [tr.translation.x, tr.translation.y, tr.rotation] {
+                hash_bits(&mut h, u64::from(v.to_bits()));
+            }
+        }
+        for k in bridge.contacts() {
+            hash_bits(&mut h, k.a.to_bits() ^ k.b.to_bits().rotate_left(17));
+            for v in [k.point[0], k.point[1], k.normal[0], k.normal[1]] {
+                hash_bits(&mut h, u64::from(v.to_bits()));
+            }
+        }
+        for ev in bridge.trigger_events() {
+            sensores.push(ev.sensor);
+            let corpo = c
+                .sim
+                .world()
+                .get::<ChildOf>(ev.sensor)
+                .map_or(ev.sensor, ChildOf::parent);
+            hash_bits(&mut h, corpo.to_bits() ^ ev.other.to_bits().rotate_left(29));
+        }
+    }
+    (h, sensores)
+}
+
+#[test]
+fn a_forma_filha_simula_igual_a_forma_no_corpo() {
+    let mut a = cena(false);
+    let mut b = cena(true);
+    assert_eq!(a.corpos, b.corpos, "os corpos nascem primeiro: mesmos bits");
+    let (ha, sa) = corre(&mut a);
+    let (hb, sb) = corre(&mut b);
+    assert!(
+        !sa.is_empty(),
+        "a bola tem de entrar na zona (senão o gatilho não é medido)"
+    );
+    assert_eq!(
+        ha, hb,
+        "a forma filha tem de simular byte a byte como a forma no corpo"
+    );
+    // ⭐ O gatilho reporta a FORMA: o corpo em (A), a filha em (B).
+    assert!(sa.iter().all(|&s| s == a.corpos[3]));
+    assert!(
+        sb.iter().all(|&s| s == b.formas[3]),
+        "o sensor filho reporta a FILHA"
+    );
+    // O player agachou (o Crouch encolheu a cápsula filha como encolhe a do corpo).
+    let y = |c: &Cena| {
+        c.sim
+            .world()
+            .get::<Transform>(c.player)
+            .unwrap()
+            .translation
+            .y
+    };
+    assert_eq!(y(&a).to_bits(), y(&b).to_bits());
+}
+
+/// Uma bola cai sobre uma rampa estática. (A) o corpo na pose de mundo da rampa, forma no corpo; (B)
+/// o corpo na origem e a forma FILHA deslocada `0,5` e rodada `0,3`. Mesma trajectória ⇒ a pose da
+/// filha chegou ao collider; e uma terceira, com a filha sem pose, cai noutro sítio.
+#[test]
+fn mover_a_forma_filha_move_o_collider() {
+    fn corre_rampa(corpo: Transform, filha: Option<Transform>) -> (f32, f32) {
+        let mut sim = SimWorld::new();
+        let w = sim.world_mut();
+        let rampa = w
+            .spawn((Name::new("Ramp"), rb(BodyKind::Static), corpo))
+            .id();
+        let bola = w
+            .spawn((
+                Name::new("Ball"),
+                rb(BodyKind::Dynamic),
+                Collider {
+                    shape: ColliderShape::Ball { radius: 0.2 },
+                    ..Collider::default()
+                },
+                Transform::from_translation(Vec2::new(0.9, 3.0)),
+            ))
+            .id();
+        match filha {
+            None => {
+                w.entity_mut(rampa).insert(caixa(1.0, 0.1));
+            }
+            Some(t) => {
+                w.spawn((caixa(1.0, 0.1), t, ChildOf(rampa)));
+            }
+        }
+        let mut bridge = PhysicsBridge::new();
+        for t in 1..=120 {
+            bridge.dispatch(&mut sim, true, t);
+        }
+        let p = sim.world().get::<Transform>(bola).unwrap().translation;
+        (p.x, p.y)
+    }
+    let mut pose = Transform::from_translation(Vec2::new(0.5, 0.0));
+    pose.rotation = 0.3;
+    let a = corre_rampa(pose, None);
+    let b = corre_rampa(Transform::IDENTITY, Some(pose));
+    let parado = corre_rampa(Transform::IDENTITY, Some(Transform::IDENTITY));
+    assert!(
+        (a.0 - b.0).abs() < 1e-4 && (a.1 - b.1).abs() < 1e-4,
+        "{a:?} vs {b:?}"
+    );
+    assert!(
+        (a.0 - parado.0).abs() > 0.05,
+        "a pose da filha tem de mudar onde a bola rola"
+    );
+}

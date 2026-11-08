@@ -12,6 +12,7 @@
 
 pub mod camadas;
 mod cartao;
+pub mod comando;
 pub mod compose;
 pub mod conta_gotas;
 pub mod degrade;

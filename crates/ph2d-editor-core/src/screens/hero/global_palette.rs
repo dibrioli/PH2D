@@ -241,7 +241,14 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
 /// `Ctrl+K` — abre a paleta sobre o que o app oferece AGORA, com os prefixos `@` e `:` da aba
 /// activa (I14). O modelo é construído na abertura, nunca por quadro.
 pub fn open(hero: &mut super::HeroScreen) {
-    let model = build_global_model(hero);
+    open_with(hero, None);
+}
+
+/// [`open`] com o grupo de uma família que vive FORA do hero (o Run Command do Pixel, P12 R): a
+/// família emite as linhas e executa o pick dela pelo próprio id ([`drain`] deixa-o no canal).
+pub fn open_with(hero: &mut super::HeroScreen, family: Option<PaletteGroup>) {
+    let mut model = build_global_model(hero);
+    model.groups.extend(family);
     hero.store.open_command_palette(model);
     let scopes = global_palette_places::scopes(hero);
     hero.store.set_command_palette_scopes(scopes);

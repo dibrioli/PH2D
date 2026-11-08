@@ -136,7 +136,7 @@ impl App {
             // (o `match` do Rust é ordenado), e o `K` nu fica exactamente como estava.
             KeyCode::KeyK if cmd_chord => {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
-                    crate::global_palette_input::open_global_palette(hero);
+                    crate::global_palette_input::open_global_palette(hero, &mut self.pixel);
                 }
             }
             // ⭐ G9: daqui para baixo, uma letra com Ctrl/Alt/Super nunca dispara o atalho solto.

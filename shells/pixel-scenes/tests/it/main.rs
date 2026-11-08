@@ -9,6 +9,7 @@ mod cartao;
 mod catalogo;
 mod cena18;
 mod cena19;
+mod comando;
 mod comum;
 mod conta_gotas;
 mod convolucao;

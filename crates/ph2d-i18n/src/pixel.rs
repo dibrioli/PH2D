@@ -44,6 +44,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.nothing_to_undo" => "Nothing to undo in this sprite",
         "pixel.nothing_to_redo" => "Nothing to redo in this sprite",
         "panel.pixel_tools.title" => "Pixel",
+        "pixel.command.unavailable" => "Not available now",
         // A linha do tempo do Pixel (P4): os nomes do Aseprite.
         "panel.pixel_timeline.title" => "Timeline",
         // A janela Preview (P5): os nomes do Aseprite.

@@ -33,6 +33,7 @@ mod selecao;
 mod slices;
 mod slices_cena;
 mod slices_janela;
+mod user_data_donos;
 mod sobreviventes;
 mod teclas;
 mod texto;

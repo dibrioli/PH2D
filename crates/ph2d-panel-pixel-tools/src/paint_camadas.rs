@@ -5,6 +5,7 @@
 use super::*;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::interaction::InteractiveState;
+use ph2d_editor_core::panel::cards::user_data;
 use ph2d_editor_core::pixel_layer_row::LayerRowPainter;
 use ph2d_editor_core::pixel_panel::{PixelBlend, PixelLayerRow};
 use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
@@ -34,15 +35,9 @@ impl Corpo<'_> {
             .active_layer
             .and_then(|a| info.layers.iter().find(|r| r.id == a))
         {
-            y = self.propriedades(row, y);
+            y = self.propriedades(row, info.user.layer.is_some(), y);
             if let (Some(v), Some(mut c)) = (&info.user.layer, self.cartao_ctx()) {
-                y = ph2d_editor_core::panel::cards::user_data::paint_card(
-                    &mut c,
-                    &crate::seam_user::ids(),
-                    v,
-                    None,
-                    y,
-                );
+                y = user_data::open_body(&mut c, &crate::seam_user::ids(), v, y);
             }
         }
         let a = ids::LAYER_ACTIONS;
@@ -82,17 +77,18 @@ impl Corpo<'_> {
     }
 
     /// O modo e a opacidade da activa; o grupo não tem modo próprio (passa os filhos como estão).
-    fn propriedades(&mut self, row: &PixelLayerRow, y: f32) -> f32 {
+    fn propriedades(&mut self, row: &PixelLayerRow, user: bool, y: f32) -> f32 {
         let nomes = [
             tr("panel.pixel.layer.mode"),
             tr("panel.pixel.layer.opacity"),
         ];
         let sec = Seccao::medida(self.text_system, 1, &nomes);
-        let mut y = self.linha(
-            &format!("{} · {}", tr("panel.pixel.layer.properties"), row.name),
-            ColorToken::Text3,
-            y,
-        );
+        let titulo = format!("{} · {}", tr("panel.pixel.layer.properties"), row.name);
+        let mut y = if let (true, Some(mut c)) = (user, self.cartao_ctx()) {
+            user_data::title_row(&mut c, &crate::seam_user::ids(), &titulo, y)
+        } else {
+            self.linha(&titulo, ColorToken::Text3, y)
+        };
         if row.group {
             return self.bloco(tr("panel.pixel.layer.group_mode"), ColorToken::Text3, y);
         }

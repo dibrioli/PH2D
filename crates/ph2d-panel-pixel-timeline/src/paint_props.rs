@@ -7,6 +7,7 @@ use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::paint::{paint_text, rect_to_vello, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::corpo::letra_da_grandeza;
+use ph2d_editor_core::panel::cards::user_data;
 use ph2d_editor_core::panel::cards::{CardCtx, Cell, Widget};
 use ph2d_editor_core::pixel_panel::{PixelCel, PixelDirection, PixelPanelInfo, PixelSpeed};
 use ph2d_editor_core::property_row;
@@ -171,7 +172,17 @@ pub(crate) fn paint(
     ys[k] = botao(ctx, c, ids::CONSTANT_RATE, rotulo, constante, y);
     if tem_cel {
         let (k, c) = proxima(&mut ys);
-        let y = linha(ctx, c, tr("panel.pixel.timeline.cel_props"), c.y);
+        let cel_ud = crate::seam_user::cel_ids();
+        let titulo = tr("panel.pixel.timeline.cel_props");
+        let y = match (cartoes, &info.user.cel) {
+            (true, Some(_)) => cartao_user(
+                ctx,
+                c,
+                |k, y| user_data::title_row(k, &cel_ud, titulo, y),
+                c.y,
+            ),
+            _ => linha(ctx, c, titulo, c.y),
+        };
         ys[k] = if cartoes {
             numeros_do_cartao(
                 ctx,
@@ -184,14 +195,23 @@ pub(crate) fn paint(
             campo(ctx, c, nomes[2], ids::CEL_Z, sec, y)
         };
         if let (true, Some(v)) = (cartoes, &info.user.cel) {
-            ys[k] = cartao_user(ctx, c, &crate::seam_user::cel_ids(), v, ys[k]);
+            ys[k] = cartao_user(ctx, c, |k, y| user_data::open_body(k, &cel_ud, v, y), ys[k]);
         }
     }
     if let Some(t) = tag {
         let (_, c) = proxima(&mut ys);
         let tag = &info.tags[t];
         let titulo = tr_with("panel.pixel.timeline.tag_props", &[("name", &tag.name)]);
-        let y = linha(ctx, c, &titulo, c.y);
+        let tag_ud = crate::seam_user::tag_ids();
+        let y = match (cartoes, &info.user.tag) {
+            (true, Some(_)) => cartao_user(
+                ctx,
+                c,
+                |k, y| user_data::title_row(k, &tag_ud, &titulo, y),
+                c.y,
+            ),
+            _ => linha(ctx, c, &titulo, c.y),
+        };
         let y = direcao(st, ctx, c, nomes[3], tag.direction, y);
         let y = if cartoes {
             numeros_do_cartao(
@@ -210,7 +230,9 @@ pub(crate) fn paint(
             campo(ctx, c, nomes[6], ids::TAG_TO, sec, y)
         };
         let y = match (cartoes, &info.user.tag) {
-            (true, Some(v)) => cartao_user(ctx, c, &crate::seam_user::tag_ids(), v, y),
+            (true, Some(v)) => {
+                cartao_user(ctx, c, |k, y| user_data::open_body(k, &tag_ud, v, y), y)
+            }
             _ => y,
         };
         let rotulo = tr("panel.pixel.timeline.tag_delete");
@@ -287,19 +309,17 @@ fn campo(
     .0
 }
 
-/// O cartão User Data de um dono (fechado: só o botão), na tinta do cartão.
+/// Uma peça do cartão User Data (a linha do nome com o botão, ou o corpo aberto), na tinta do cartão.
 fn cartao_user(
     ctx: &mut PaintCtx,
     area: Rect,
-    ids: &ph2d_editor_core::panel::cards::user_data::UserDataIds,
-    v: &ph2d_editor_core::panel::cards::user_data::UserDataView,
+    f: impl FnOnce(&mut CardCtx<'_>, f32) -> f32,
     y: f32,
 ) -> f32 {
     let ink = CardInk::of_list(ctx.host.theme());
     let (store, hit) = ctx.host.store_and_hit_index_mut();
     let mut c = CardCtx::flutuante(ctx.scene, ctx.text_system, store, hit, ink, area.x, area.w);
-    ph2d_editor_core::panel::cards::user_data::paint_card(&mut c, ids, v, None, y)
-        + ph2d_tokens::control_gap_px()
+    f(&mut c, y)
 }
 
 /// Números irmãos numa linha, na cara do cartão: rótulo por cima e pega de arrastar, sem setas.

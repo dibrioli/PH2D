@@ -307,6 +307,7 @@ pub enum CardEdit {
 }
 
 thread_local! {
+    static SUBMETIDO: std::cell::RefCell<Option<(u64, CardEdit)>> = const { std::cell::RefCell::new(None) };
     static ABERTOS: std::cell::RefCell<std::collections::BTreeSet<u64>> =
         const { std::cell::RefCell::new(std::collections::BTreeSet::new()) };
 }
@@ -315,6 +316,13 @@ thread_local! {
 #[must_use]
 pub fn is_open(ids: &UserDataIds) -> bool {
     ABERTOS.with(|a| a.borrow().contains(&ids.toggle.0))
+}
+
+/// Abre ou fecha o cartão de `ids` (as armações dos testes medem-no aberto).
+pub fn set_open(ids: &UserDataIds, open: bool) {
+    if is_open(ids) != open {
+        alterna(ids);
+    }
 }
 
 fn alterna(ids: &UserDataIds) {
@@ -365,6 +373,18 @@ pub fn on_event(
         (Hit::Kind(i), false) => nome(i).map(CardEdit::Kind),
         _ => None,
     };
+    // O `Enter` e o `Blur` do mesmo campo, antes de o documento voltar, são UM gesto.
+    let e = SUBMETIDO.with(|s| {
+        let mut s = s.borrow_mut();
+        let repetido =
+            matches!(*ev, E::Blur(_)) && e.is_some() && *s == e.clone().map(|e| (id.0, e));
+        *s = if matches!(*ev, E::Submit(_)) {
+            e.clone().map(|e| (id.0, e))
+        } else {
+            None
+        };
+        if repetido { None } else { e }
+    });
     Some(e)
 }
 
@@ -387,20 +407,16 @@ pub fn frame(store: &mut WidgetStore, ids: &UserDataIds, v: &UserDataView) -> Op
     picked_color(store, ids, v)
 }
 
-/// O botão `User Data` (com `name` à esquerda, se o dono o mostra nesta linha) e, aberto, o corpo
-/// completo por baixo.
-pub fn paint_card(
-    c: &mut CardCtx<'_>,
-    ids: &UserDataIds,
-    v: &UserDataView,
-    name: Option<&str>,
-    y: f32,
-) -> f32 {
-    let toggle = toggle_cell(ids);
-    let y = match name {
-        Some(text) => c.row(&[Cell::new(Widget::Readout { text }), toggle], y),
-        None => c.row(&[toggle], y),
-    };
+/// O nome do dono com o botão `User Data` à direita, numa linha (O17).
+pub fn title_row(c: &mut CardCtx<'_>, ids: &UserDataIds, name: &str, y: f32) -> f32 {
+    c.row(
+        &[Cell::new(Widget::Readout { text: name }), toggle_cell(ids)],
+        y,
+    )
+}
+
+/// O corpo completo, se o cartão está aberto.
+pub fn open_body(c: &mut CardCtx<'_>, ids: &UserDataIds, v: &UserDataView, y: f32) -> f32 {
     if is_open(ids) {
         paint_body(c, ids, v, true, y)
     } else {

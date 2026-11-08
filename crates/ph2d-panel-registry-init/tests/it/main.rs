@@ -88,6 +88,8 @@ mod the_pixel_export_answers_a_real_pointer;
 mod the_pixel_keys_answers_a_real_pointer;
 #[cfg(feature = "panel-pixel-slices")]
 mod the_pixel_slices_answers_a_real_pointer;
+#[cfg(feature = "panel-pixel-tools")]
+mod the_pixel_layer_user_data_answers_a_real_pointer;
 #[cfg(feature = "panel-pixel-tiles")]
 mod the_pixel_tiles_answers_a_real_pointer;
 mod the_properties_fold_into_an_icon_strip_on_small_tablets;

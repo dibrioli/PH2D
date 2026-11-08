@@ -333,8 +333,58 @@ fn arma_o_pixel() {
             .map(|i| [i * 7, 255 - i * 5, i * 3, 255])
             .collect(),
         options: Default::default(),
+        layers: vec![camada_do_pixel(1, "Layer 1")],
+        active_layer: Some(1),
+        user: ph2d_editor_core::pixel_panel::PixelUserInfo {
+            layer: Some(user_data_armado()),
+            ..Default::default()
+        },
         ..Default::default()
     });
+    ph2d_editor_core::panel::cards::user_data::set_open(
+        &ph2d_panel_pixel_tools::seam_user::ids(),
+        true,
+    );
+}
+
+/// Uma camada da lista do Pixel.
+#[cfg(any(feature = "panel-pixel-tools", feature = "panel-pixel-timeline"))]
+fn camada_do_pixel(id: u32, name: &str) -> ph2d_editor_core::pixel_panel::PixelLayerRow {
+    ph2d_editor_core::pixel_panel::PixelLayerRow {
+        id,
+        name: name.to_owned(),
+        depth: 0,
+        group: false,
+        collapsed: false,
+        visible: true,
+        locked: false,
+        continuous: false,
+        reference: false,
+        background: false,
+        opacity: 255,
+        blend: Default::default(),
+    }
+}
+
+/// O cartão User Data com as três espécies de linha: editável, só de leitura e de extensão (P12 U).
+#[cfg(any(feature = "panel-pixel-tools", feature = "panel-pixel-timeline"))]
+fn user_data_armado() -> ph2d_editor_core::panel::cards::user_data::UserDataView {
+    use ph2d_editor_core::panel::cards::user_data::{PropRow, UserDataView};
+    let linha = |name: &str, value: &str, kind: &'static str, editable: bool| PropRow {
+        name: name.to_owned(),
+        value: value.to_owned(),
+        kind,
+        editable,
+    };
+    UserDataView {
+        color: [200, 60, 60, 255],
+        text: "hero".to_owned(),
+        rows: vec![
+            linha("hp", "3", "Int", true),
+            linha("size", "16x8", "Size", false),
+        ],
+        extensions: vec![("ext".to_owned(), vec![linha("id", "7", "Int", true)])],
+    }
 }
 
 #[cfg(feature = "panel-pixel-tools")]
@@ -412,22 +462,9 @@ fn arma_as_slices() {
 #[cfg(feature = "panel-pixel-timeline")]
 fn arma_a_linha_do_tempo() {
     use ph2d_editor_core::pixel_panel::{
-        PixelCel, PixelDirection, PixelFrameCol, PixelLayerRow, PixelPanelInfo, PixelTagInfo,
+        PixelCel, PixelDirection, PixelFrameCol, PixelPanelInfo, PixelTagInfo,
     };
-    let camada = |id: u32, name: &str| PixelLayerRow {
-        id,
-        name: name.to_owned(),
-        depth: 0,
-        group: false,
-        collapsed: false,
-        visible: true,
-        locked: false,
-        continuous: false,
-        reference: false,
-        background: false,
-        opacity: 255,
-        blend: Default::default(),
-    };
+    let camada = camada_do_pixel;
     let cel = |layer: u32, frame: u32, owner: u32| PixelCel {
         layer,
         frame,
@@ -456,8 +493,19 @@ fn arma_a_linha_do_tempo() {
             repeat: 2,
             color: [200, 60, 60, 255],
         }],
+        user: ph2d_editor_core::pixel_panel::PixelUserInfo {
+            cel: Some(user_data_armado()),
+            tag: Some(user_data_armado()),
+            ..Default::default()
+        },
         ..Default::default()
     });
+    for ids in [
+        ph2d_panel_pixel_timeline::seam_user::cel_ids(),
+        ph2d_panel_pixel_timeline::seam_user::tag_ids(),
+    ] {
+        ph2d_editor_core::panel::cards::user_data::set_open(&ids, true);
+    }
 }
 
 #[cfg(feature = "panel-pixel-timeline")]

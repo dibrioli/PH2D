@@ -236,6 +236,8 @@ fn escrever(
     campo: u16,
     v: f32,
 ) -> Option<(f32, f32)> {
+    // A forma principal fala pelo corpo; o funil leva o campo de forma à filha (opção B).
+    let bits = ph2d_physics_ecs::corpo_da_forma(sim.world(), bits);
     let info = retrato(sim, bits)?;
     let antes = ler(&info, campo)?;
     if !mostrado(&info, campo) || antes == normal(campo, v) {
@@ -252,6 +254,23 @@ fn escrever(
     Some((antes, ficou))
 }
 
+/// Quem guarda `campo` de `b` (opção B): o de forma de um corpo é a forma principal.
+fn dono(sim: &SimWorld, b: u64, campo: u16) -> u64 {
+    ph2d_physics_ecs::dono_do_campo(sim.world(), b, campo)
+}
+
+/// ⭐ **A trilha que uma chave de `prop` em `e` grava** — a do campo de forma de um corpo é a da
+/// forma principal (opção B); qualquer outra, a de `e`.
+#[must_use]
+pub fn dono_da_chave(world: &ph2d_ecs::World, e: u64, prop: ph2d_timeline::PropKind) -> u64 {
+    match prop {
+        ph2d_timeline::PropKind::Field(kk) if kk.familia == FISICA => {
+            ph2d_physics_ecs::dono_do_campo(world, e, kk.campo)
+        }
+        _ => e,
+    }
+}
+
 /// ⭐ **Publica o que cada corpo vale AGORA** (através do eco) — os campos que a §11 mostra —,
 /// esquecido antes o que cada entidade publicou desta família.
 pub fn publicar(sim: &mut SimWorld, entidades: &[u64]) {
@@ -262,13 +281,16 @@ pub fn publicar(sim: &mut SimWorld, entidades: &[u64]) {
             f::CAMPOS
                 .iter()
                 .filter(|&&c| mostrado(&info, c))
-                .filter_map(|&c| Some((b, k(c), ler(&info, c)?)))
+                .filter_map(|&c| Some((dono(sim, b, c), k(c), ler(&info, c)?)))
                 .collect::<Vec<_>>()
         })
         .collect();
     let mut lidos = sim
         .world_mut()
         .get_resource_or_insert_with(CanaisLidos::default);
+    for &(b, _, _) in &lotes {
+        lidos.esquecer(b, FISICA);
+    }
     for &b in entidades {
         lidos.esquecer(b, FISICA);
     }

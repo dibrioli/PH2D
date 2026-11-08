@@ -265,3 +265,56 @@ fn a_curva_da_gravidade_chega_ao_solver_em_repouso() {
         "a curva tirou-lhe a gravidade"
     );
 }
+
+/// ⭐⭐ **Opção B: o campo de forma de um corpo mora na filha.** A chave de Width com o CORPO como
+/// alvo vai para a trilha da filha (o `StableId` dela); a reprodução — a trilha da filha, uma antiga
+/// do corpo, e o material pela filha — move o collider da filha, e o corpo continua sem `Collider`.
+#[test]
+fn a_chave_da_forma_no_corpo_vai_para_a_filha() {
+    let reg = registry();
+    let (mut sim, e) = sprite_scene();
+    ph2d_physics_ecs::torna_corpo(sim.world_mut(), e, BodyKind::Dynamic, [0.5, 0.5], true);
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    let b = e.to_bits();
+    let filha = ph2d_physics_ecs::main_shape(sim.world(), e).expect("a filha");
+    assert_ne!(filha, e, "a forma é filha");
+    publicar(&mut sim, &[b]);
+    let lidos = sim.world().resource::<CanaisLidos>();
+    assert_eq!(lidos.valor(filha.to_bits(), k(f::MEIO_X)), Some(0.5));
+    assert_eq!(
+        lidos.valor(b, k(f::MEIO_X)),
+        None,
+        "a forma não se publica no corpo"
+    );
+    assert!(lidos.valor(b, k(f::TIPO)).is_some(), "o tipo fica no corpo");
+    let alvo = dono_da_chave(sim.world(), b, ph2d_timeline::PropKind::Field(k(f::MEIO_X)));
+    let id = |x: u64| {
+        sim.world()
+            .get::<ph2d_ecs::StableId>(Entity::from_bits(x))
+            .copied()
+    };
+    assert!(id(alvo).is_some());
+    assert_eq!(id(alvo), id(filha.to_bits()), "a trilha é a da filha");
+    let tipo = dono_da_chave(sim.world(), b, ph2d_timeline::PropKind::Field(k(f::TIPO)));
+    assert_eq!(tipo, b, "a do tipo, a do corpo");
+    for (alvo, campo, v) in [
+        (filha.to_bits(), f::MEIO_X, 0.8),
+        (b, f::MEIO_X, 0.9),
+        (filha.to_bits(), f::RESTITUICAO, 0.3),
+    ] {
+        sim.world_mut()
+            .get_resource_or_insert_with(CanaisEscritos::default)
+            .escrever(alvo, k(campo), v);
+        aplicar(&mut sim, &reg, &mut ConducaoFisica::default());
+        let c = *sim
+            .world()
+            .get::<Collider>(filha)
+            .expect("a filha tem a forma");
+        let vale = match (campo, c.shape) {
+            (f::MEIO_X, ColliderShape::Cuboid { half_x, .. }) => half_x,
+            _ => c.restitution,
+        };
+        assert!((vale - v).abs() < 1e-5, "{campo}: {vale} ≠ {v}");
+        assert!(sim.world().get::<Collider>(e).is_none(), "nada no corpo");
+    }
+}

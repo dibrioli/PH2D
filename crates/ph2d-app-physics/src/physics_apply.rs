@@ -43,6 +43,17 @@ pub fn apply_physics_edit(
     const MATERIAL_COMBINE: &str = "ph2d::physics::MaterialCombine";
     const DAMPING_OVERRIDE: &str = "ph2d::physics::DampingOverride";
 
+    // Num corpo, a edição da forma vai à forma principal (opção B): nunca o `Collider` no corpo.
+    let forma = sim
+        .world()
+        .get::<RigidBody>(Entity::from_bits(entity_bits))
+        .is_some();
+    let forma = forma && edit.e_da_forma();
+    let entity_bits =
+        match ph2d_physics_ecs::main_shape(sim.world(), Entity::from_bits(entity_bits)) {
+            Some(s) if forma => s.to_bits(),
+            _ => entity_bits,
+        };
     let entity = Entity::from_bits(entity_bits);
     // O «Add Shape» de um CORPO sem forma: a filha «Collision Shape» (opção B), nunca o `Collider` nele.
     if matches!(edit, PhysicsFieldEdit::AddShape) && sim.world().get::<RigidBody>(entity).is_some()

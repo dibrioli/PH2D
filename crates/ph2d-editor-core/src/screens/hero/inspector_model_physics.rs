@@ -530,3 +530,43 @@ pub enum PhysicsFieldEdit {
     /// decisão D1 do dono (o modelo do Blender: a pertença é uma referência).
     SignalTagFilter(u64),
 }
+
+impl PhysicsFieldEdit {
+    /// ⭐ **A edição mora na FORMA** (opção B, a irmã de `ph2d_ecs::canal_fisica::e_da_forma`): num
+    /// corpo, a shell aplica-a à forma principal, nunca põe o `Collider` no corpo.
+    #[must_use]
+    pub const fn e_da_forma(self) -> bool {
+        use PhysicsFieldEdit as P;
+        matches!(
+            self,
+            P::FitToPicture
+                | P::ShapeDrag { .. }
+                | P::Shape(_)
+                | P::Radius(_)
+                | P::HalfX(_)
+                | P::HalfY(_)
+                | P::CapHalfHeight(_)
+                | P::OffsetX(_)
+                | P::OffsetY(_)
+                | P::WalkGrip(_)
+                | P::WalkBelt(_)
+                | P::Density(_)
+                | P::Restitution(_)
+                | P::Friction(_)
+                | P::Layer(_)
+                | P::Sensor(_)
+                | P::RestitutionCombine(_)
+                | P::FrictionCombine(_)
+                | P::OneWay(_)
+                | P::ForceWorldAxes(_)
+                | P::ForceX(_)
+                | P::ForceY(_)
+                | P::AreaDrag(_)
+                | P::AreaDensity(_)
+                | P::AreaFormDrag(_)
+                | P::AreaTorque(_)
+                | P::AreaFalloff(_)
+                | P::SignalTagFilter(_)
+        )
+    }
+}

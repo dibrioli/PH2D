@@ -69,7 +69,11 @@ pub fn build_physics_info(
     let entity = Entity::from_bits(entity_bits);
     world.get::<ph2d_ecs::Transform>(entity)?;
     let rb = world.get::<RigidBody>(entity);
-    let col = world.get::<Collider>(entity);
+    // Opção B: o lado-forma de um corpo lê-se da forma principal (a filha «Collision Shape»).
+    let forma = rb
+        .and(ph2d_physics_ecs::main_shape(world, entity))
+        .unwrap_or(entity);
+    let col = world.get::<Collider>(forma);
     // ⭐ **A §11 aparece com UM DOS SEUS COMPONENTES — ou com um GESTO que só ela oferece**
     // (ADR-0166 / F3).
     //
@@ -119,7 +123,7 @@ pub fn build_physics_info(
     // A superfície de caminhada (W-Surface); ausente = o neutro, que é
     // exatamente o que toda cena fazia antes de ela existir.
     let surface = world
-        .get::<WalkSurface>(entity)
+        .get::<WalkSurface>(forma)
         .copied()
         .unwrap_or(WalkSurface::NEUTRAL);
     // Optional mass override (W-Mass); presence = Manual mode, value = the kg. Absent
@@ -130,7 +134,7 @@ pub fn build_physics_info(
     // Optional material combine (W-Material); absent = both Average (tags 0, 0). A
     // collider material property, so it is read for any body kind (not Dynamic-only).
     let material = world
-        .get::<MaterialCombine>(entity)
+        .get::<MaterialCombine>(forma)
         .copied()
         .unwrap_or_default();
     // Optional damping override (W-Damping); absent = the world default drag, shown as
@@ -141,30 +145,30 @@ pub fn build_physics_info(
         .unwrap_or_default();
     // Optional OneWayPlatform marker (W-OneWay); its presence is the flag. A collider
     // property, so it is read for any body kind (a platform is usually Static).
-    let one_way = world.get::<OneWayPlatform>(entity).is_some();
+    let one_way = world.get::<OneWayPlatform>(forma).is_some();
     // Optional NoWallCling marker (W-WallMaterial); its presence says the surface is
     // not wall material. Read for any kind, and from the SAME entity as the collider —
     // a part carries its own, which is what lets one face of a body be unclimbable.
     let no_wall_cling = world.get::<ph2d_physics_ecs::NoWallCling>(entity).is_some();
     // Optional AreaForceWorldAxes marker (W-AreaFrame): the zone's force on world axes.
     let force_world_axes = world
-        .get::<ph2d_physics_ecs::AreaForceWorldAxes>(entity)
+        .get::<ph2d_physics_ecs::AreaForceWorldAxes>(forma)
         .is_some();
     // Optional AreaEffector (W-Area); absent = pushes nothing. Rows are SENSOR-only in paint.
     let force = world
-        .get::<AreaEffector>(entity)
+        .get::<AreaEffector>(forma)
         .map_or([0.0, 0.0], |a| a.force);
     // Optional AreaDrag (W-AreaDrag) — the medium half, its own component so that
     // adding it costs no `PROJECT_SCHEMA` bump. Same Sensor-only condition in paint.
-    let area_drag = world.get::<AreaDrag>(entity).map_or(0.0, |d| d.0);
+    let area_drag = world.get::<AreaDrag>(forma).map_or(0.0, |d| d.0);
     // Optional AreaBuoyancy (W-Buoyancy) — a densidade do fluido, terceiro componente
     // da mesma área e pela mesma razão: um campo novo seria bump de schema.
-    let area_density = world.get::<AreaBuoyancy>(entity).map_or(0.0, |b| b.0);
-    let area_form_drag = world.get::<AreaFormDrag>(entity).map_or(0.0, |f| f.0);
+    let area_density = world.get::<AreaBuoyancy>(forma).map_or(0.0, |b| b.0);
+    let area_form_drag = world.get::<AreaFormDrag>(forma).map_or(0.0, |f| f.0);
     // Optional AreaTorque (W-AreaTorque) — o giro que a área imprime; mesma condição de Sensor.
-    let area_torque = world.get::<AreaTorque>(entity).map_or(0.0, |t| t.0);
+    let area_torque = world.get::<AreaTorque>(forma).map_or(0.0, |t| t.0);
     // Optional AreaFalloff (W-AreaFalloff) — o empurrão perde do centro à borda; idem.
-    let area_falloff = world.get::<AreaFalloff>(entity).map_or(0.0, |f| f.0);
+    let area_falloff = world.get::<AreaFalloff>(forma).map_or(0.0, |f| f.0);
     // ⚠️ A pergunta é pelo COLLIDER, não pelo par (W-PartFace): uma peça é simulada.
     let Some(col) = col else {
         // The empty face. The dimensions are the values the Add button would
@@ -292,22 +296,22 @@ pub fn build_physics_info(
         // ruptura (W-J7) já tinham shipado antes, cada vez pela mesma causa: o
         // snapshot não carregava o valor, então não havia o que espelhar.
         signal: world
-            .get::<ph2d_physics_ecs::SignalOnHit>(entity)
+            .get::<ph2d_physics_ecs::SignalOnHit>(forma)
             .and_then(ph2d_physics_ecs::SignalOnHit::name)
             .unwrap_or_default()
             .to_string(),
         signal_leave: world
-            .get::<ph2d_physics_ecs::SignalOnLeave>(entity)
+            .get::<ph2d_physics_ecs::SignalOnLeave>(forma)
             .and_then(ph2d_physics_ecs::SignalOnLeave::name)
             .unwrap_or_default()
             .to_string(),
         // ⭐ O FILTRO dos dois nomes acima. ⚠️ **`Some(0)` (por escolher) e o caminho VAZIO com um
         // id vivo são histórias diferentes** — ver o doc do `SignalTagFilter`.
         signal_tag: world
-            .get::<ph2d_physics_ecs::SignalTagFilter>(entity)
+            .get::<ph2d_physics_ecs::SignalTagFilter>(forma)
             .map(|f| f.0),
         signal_tag_path: world
-            .get::<ph2d_physics_ecs::SignalTagFilter>(entity)
+            .get::<ph2d_physics_ecs::SignalTagFilter>(forma)
             .and_then(|f| f.tag())
             .and_then(|id| tree.get(ph2d_tags::TagId(id)))
             .map(|t| t.path.clone())

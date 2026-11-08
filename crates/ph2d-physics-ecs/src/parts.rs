@@ -236,6 +236,32 @@ pub fn main_shape(world: &World, body: Entity) -> Option<Entity> {
     desce(world, body)
 }
 
+/// **Quem guarda o campo FISICA `campo` de `bits`** (opção B): o de forma
+/// ([`ph2d_ecs::canal_fisica::e_da_forma`]) num corpo é da [`main_shape`]; o resto fica.
+#[must_use]
+pub fn dono_do_campo(world: &World, bits: u64, campo: u16) -> u64 {
+    let Some(e) = Entity::try_from_bits(bits) else {
+        return bits;
+    };
+    if !ph2d_ecs::canal_fisica::e_da_forma(campo) || world.get::<RigidBody>(e).is_none() {
+        return bits;
+    }
+    main_shape(world, e).map_or(bits, Entity::to_bits)
+}
+
+/// **O corpo que fala pela forma `bits`** (opção B): a forma principal de um corpo devolve o corpo
+/// (a face inteira e as guardas dele); qualquer outra entidade, ela mesma.
+#[must_use]
+pub fn corpo_da_forma(world: &World, bits: u64) -> u64 {
+    let Some(e) = Entity::try_from_bits(bits) else {
+        return bits;
+    };
+    match owner_body(world, e) {
+        Some(b) if b != e && main_shape(world, b) == Some(e) => b.to_bits(),
+        _ => bits,
+    }
+}
+
 #[cfg(test)]
 mod shapes_tests {
     use super::*;

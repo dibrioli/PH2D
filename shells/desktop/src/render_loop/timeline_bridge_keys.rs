@@ -320,6 +320,7 @@ pub(crate) fn chave_da_k(
     k_time: f64,
     keys_mode: bool,
 ) -> Option<ph2d_timeline::TimelineIntent> {
+    let entity = ph2d_app_physics::canais_corpo::dono_da_chave(mundo.world, entity, prop);
     let authored = if keys_mode {
         key_authoring_solo(mundo, timeline, entity, prop, k_time)
     } else {

@@ -6,6 +6,8 @@
 
 use std::collections::BTreeMap;
 
+pub mod edit;
+
 use crate::sprite::{CelKey, LayerId};
 use crate::tiles::TilesetId;
 

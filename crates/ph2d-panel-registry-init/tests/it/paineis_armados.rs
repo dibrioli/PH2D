@@ -404,6 +404,7 @@ fn arma_as_slices() {
             ..canal::Vista::default()
         }),
         transform: false,
+        user: None,
     });
 }
 

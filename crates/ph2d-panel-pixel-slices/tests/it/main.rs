@@ -26,6 +26,7 @@ fn contexto() -> Contexto {
             ..Vista::default()
         }),
         transform: false,
+        user: None,
     }
 }
 
@@ -81,4 +82,49 @@ fn sem_slices_so_o_transform_responde() {
     let mut m = mesa(x);
     assert!(m.rect(ids::ALL).is_none());
     assert_eq!(clica(&mut m, ids::TRANSFORM), vec![Pedido::Transform]);
+}
+
+/// O cartão User Data da slice (P12 U): nasce fechado atrás do botão ao lado do nome; aberto, cada
+/// controlo da tabela chega ao pedido pelo ponteiro, e o tipo que a tela não edita só se lê.
+#[test]
+fn o_cartao_user_data_chega_ao_pedido() {
+    use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
+    use ph2d_pixel_core::user::edit::{PropKind, UserEdit};
+    use ph2d_pixel_core::{PropMap, PropValue, UserData};
+    let mut mapa = PropMap::new();
+    mapa.insert("hp".into(), PropValue::I32(3));
+    mapa.insert("raw".into(), PropValue::U8(7));
+    let u = UserData {
+        props: [(String::new(), mapa)].into(),
+        ..UserData::default()
+    };
+    let mut x = contexto();
+    x.user = Some((SliceId(3), u));
+    let mut m = mesa(x);
+    let ud = ids::user_data();
+    assert!(m.rect(ud.name(0)).is_none(), "nasce fechado");
+    assert!(clica(&mut m, ud.toggle).is_empty());
+    assert!(m.rect(ud.name(0)).is_some(), "aberto, a tabela pinta-se");
+    assert!(m.rect(ud.name(1)).is_none(), "UInt8 só se lê: sem caixa");
+    let pede = |e| vec![Pedido::UserData(SliceId(3), e)];
+    assert_eq!(clica(&mut m, ud.add), pede(UserEdit::Add));
+    assert_eq!(
+        clica(&mut m, ud.kind(0)),
+        pede(UserEdit::Kind("hp".into(), PropKind::Float))
+    );
+    assert_eq!(
+        clica(&mut m, ud.remove(0)),
+        pede(UserEdit::Remove("hp".into()))
+    );
+    if let Some(InteractiveState::TextInput { text, .. }) = m.host.store_mut().get_mut(ud.value(0)) {
+        "12".clone_into(text);
+    }
+    let _ = m.aplica(vec![WidgetEvent::Submit(ud.value(0))]);
+    assert_eq!(
+        canal::take_pedidos(),
+        pede(UserEdit::Value("hp".into(), "12".into()))
+    );
+    let _ = m.aplica(vec![WidgetEvent::Submit(ud.value(0))]);
+    m.assenta_em(JANELA);
+    let _ = canal::take_pedidos();
 }

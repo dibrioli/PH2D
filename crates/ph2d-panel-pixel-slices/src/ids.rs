@@ -69,6 +69,12 @@ pub const CAMPOS: [(NodeId, Campo); 10] = [
     (PIVOT_Y, Campo::PivotY),
 ];
 
+/// Os ids do cartão User Data da slice.
+#[must_use]
+pub fn user_data() -> ph2d_editor_core::panel::cards::user_data::UserDataIds {
+    ph2d_editor_core::panel::cards::user_data::UserDataIds::new("pixel_slices")
+}
+
 /// A linha `i` da lista, na ordem por nome.
 #[must_use]
 pub fn linha(i: usize) -> NodeId {

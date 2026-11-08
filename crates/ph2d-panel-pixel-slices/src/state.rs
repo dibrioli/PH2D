@@ -13,4 +13,6 @@ pub struct PixelSlicesPanelState {
     pub(crate) cor_ao_abrir: Option<[u8; 4]>,
     /// Um número está sob a letra arrastada: o gesto ainda reescreve o mesmo passo.
     pub(crate) a_arrastar: bool,
+    /// O cartão User Data aberto (nasce fechado, como no Aseprite: O17).
+    pub(crate) user_aberto: bool,
 }

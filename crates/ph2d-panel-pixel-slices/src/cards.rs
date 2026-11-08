@@ -3,6 +3,7 @@
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::panel::TextKey;
 use ph2d_editor_core::panel::cards::ferramenta::{caixa, cartao, opcoes};
+use ph2d_editor_core::panel::cards::user_data::{self, UserDataView};
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, Widget};
 use ph2d_editor_core::widget::CheckboxValue;
 use ph2d_editor_core::widget::card_field::Glyph;
@@ -115,8 +116,13 @@ fn marca(id: NodeId, chave: &'static str, todas: bool, alguma: bool) -> Cell<'st
     })
 }
 
-fn propriedades(c: &mut CardCtx<'_>, v: &Vista, y: f32) -> f32 {
-    let y = c.row(&[texto(ids::SLICE_NAME, tr("panel.pixel.slices.name"))], y);
+fn propriedades(c: &mut CardCtx<'_>, v: &Vista, user: Option<&(UserDataView, bool)>, y: f32) -> f32 {
+    let ud = ids::user_data();
+    let nome = texto(ids::SLICE_NAME, tr("panel.pixel.slices.name"));
+    let y = match user {
+        Some(_) => c.row(&[nome, user_data::toggle_cell(&ud)], y),
+        None => c.row(&[nome], y),
+    };
     let codigo = v.cor.map_or_else(String::new, hex);
     let y = c.row(
         &[
@@ -132,6 +138,10 @@ fn propriedades(c: &mut CardCtx<'_>, v: &Vista, y: f32) -> f32 {
         ],
         y,
     );
+    let y = match user {
+        Some((vista, true)) => user_data::paint_body(c, &ud, vista, false, y),
+        _ => y,
+    };
     let mut y = linha_xywh(
         c,
         [ids::BOUNDS_X, ids::BOUNDS_Y, ids::BOUNDS_W, ids::BOUNDS_H],
@@ -209,8 +219,12 @@ fn sem_selecao(c: &mut CardCtx<'_>, y: f32) -> f32 {
 }
 
 /// Os cartões da janela.
-pub(crate) fn cartoes(x: &Contexto) -> Vec<CardDef<'static>> {
+pub(crate) fn cartoes(x: &Contexto, user_aberto: bool) -> Vec<CardDef<'static>> {
     let vista = x.vista.clone();
+    let user = x
+        .user
+        .as_ref()
+        .map(|(_, u)| (crate::user_data::vista(u), user_aberto));
     vec![
         cartao_lista(x.linhas.clone(), x.transform),
         cartao(
@@ -218,7 +232,7 @@ pub(crate) fn cartoes(x: &Contexto) -> Vec<CardDef<'static>> {
             tr("panel.pixel.slices.sec_props"),
             None,
             move |c, y| match &vista {
-                Some(v) => propriedades(c, v, y),
+                Some(v) => propriedades(c, v, user.as_ref(), y),
                 None => sem_selecao(c, y),
             },
         ),

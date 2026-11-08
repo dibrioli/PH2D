@@ -274,6 +274,9 @@ pub(crate) fn apply_event(
         WidgetEvent::DoubleClick(id) => WidgetEvent::Click(id),
         outro => outro,
     };
+    if let Some(o) = user_data_event(st, host, &ev) {
+        return o;
+    }
     match ev {
         WidgetEvent::ValueChanged(id) => match campo_de(id) {
             Some(c) => {
@@ -310,6 +313,48 @@ pub(crate) fn apply_event(
         },
         _ => EventOutcome::Ignored,
     }
+}
+
+/// Os gestos do cartão User Data: abrir, `+`, `×`, o chip do tipo, e os textos ao confirmar.
+fn user_data_event(
+    st: &mut PixelSlicesPanelState,
+    host: &mut dyn PanelHostInternal,
+    ev: &WidgetEvent,
+) -> Option<EventOutcome> {
+    let ud = ids::user_data();
+    let (id, texto) = match *ev {
+        WidgetEvent::Click(id) => (id, false),
+        WidgetEvent::Submit(id) | WidgetEvent::Blur(id) => (id, true),
+        _ => return None,
+    };
+    if id == ud.toggle {
+        if texto {
+            return Some(EventOutcome::Consumed);
+        }
+        st.user_aberto = !st.user_aberto;
+        return Some(EventOutcome::Consumed);
+    }
+    let (slice, u) = canal::contexto().user?;
+    let h = ph2d_editor_core::panel::cards::user_data::hit(
+        &ud,
+        u.props.get("").map_or(0, std::collections::BTreeMap::len),
+        id,
+    )?;
+    let e_texto = matches!(
+        h,
+        ph2d_editor_core::panel::cards::user_data::Hit::Name(_)
+            | ph2d_editor_core::panel::cards::user_data::Hit::Value(_)
+            | ph2d_editor_core::panel::cards::user_data::Hit::Text
+    );
+    if e_texto != texto {
+        return None;
+    }
+    if let Some(e) = crate::user_data::edit_of(host.store(), &ud, &u, id)
+        && ph2d_pixel_core::user::edit::apply_edit(&u, &e).is_some()
+    {
+        canal::pede_uma(Pedido::UserData(slice, e));
+    }
+    Some(EventOutcome::Consumed)
 }
 
 /// Fecha o painel que ficou sem nada a mostrar.

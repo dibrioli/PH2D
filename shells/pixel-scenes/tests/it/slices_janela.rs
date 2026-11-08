@@ -440,3 +440,42 @@ fn transform_recusa_o_que_nao_se_pinta_e_diz() {
         );
     }
 }
+
+/// **O cartão User Data da slice, do pedido ao documento** (P12 U): cada gesto é UM passo
+/// `User Data` pela porta `Op::UserData`, e o desfazer devolve a tabela de antes.
+#[test]
+fn o_user_data_da_slice_e_um_passo_e_desfaz() {
+    use ph2d_pixel_core::PropValue;
+    use ph2d_pixel_core::user::edit::{PropKind, UserEdit};
+    let mut t = Mesa::nova();
+    let id = t.com_uma((4, 4), (24, 14));
+    let antes = t.passos();
+    let original = t.sprite().slice(id).expect("slice").user.clone();
+    t.pede(Pedido::UserData(id, UserEdit::Add));
+    t.pede(Pedido::UserData(
+        id,
+        UserEdit::Kind("property".into(), PropKind::Int),
+    ));
+    t.pede(Pedido::UserData(
+        id,
+        UserEdit::Value("property".into(), "12".into()),
+    ));
+    t.pede(Pedido::UserData(
+        id,
+        UserEdit::Value("property".into(), "doze".into()),
+    ));
+    assert_eq!(t.passos(), antes + 3, "o valor que não é Int não é passo");
+    let u = &t.sprite().slice(id).expect("slice").user;
+    assert_eq!(u.props[""]["property"], PropValue::I32(12));
+    assert_eq!(u.color, original.color, "a cor da slice fica");
+    let d = t.app.doc(t.key).expect("doc");
+    let ultimo = d.history.entries().last().expect("passo").0;
+    assert_eq!(
+        ultimo,
+        ph2d_pixel_core::Label::new("pixel.history.user_data")
+    );
+    for _ in 0..3 {
+        assert!(t.app.undo(t.key));
+    }
+    assert_eq!(t.sprite().slice(id).expect("slice").user, original);
+}

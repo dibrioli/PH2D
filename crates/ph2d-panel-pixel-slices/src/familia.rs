@@ -62,6 +62,13 @@ pub fn responde(
             })
         }
         Pedido::RemoveMudanca => op(campos::remove_mudanca(s, frame, sel)),
+        Pedido::UserData(id, e) => op(s
+            .user_of(ph2d_pixel_core::Owner::Slice(*id))
+            .and_then(|u| ph2d_pixel_core::user::edit::apply_edit(u, e))
+            .map(|data| Op::UserData {
+                owner: ph2d_pixel_core::Owner::Slice(*id),
+                data: Box::new(data),
+            })),
     }
 }
 
@@ -82,6 +89,10 @@ pub fn contexto(s: &Sprite, frame: u32, sel: &[SliceId], transform: bool) -> Con
         linhas,
         vista: campos::vista(s, frame, sel),
         transform,
+        user: match sel {
+            [id] => s.slice(*id).map(|c| (*id, c.user.clone())),
+            _ => None,
+        },
     }
 }
 

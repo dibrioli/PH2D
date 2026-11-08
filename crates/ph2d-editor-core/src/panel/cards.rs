@@ -205,6 +205,9 @@ pub mod solto_some;
 /// ⭐ Os botões baixos de verbo, lado a lado em dois degraus.
 #[path = "cards_verbos.rs"]
 pub mod verbos;
+/// ⭐ O cartão User Data (cor, texto e a tabela de propriedades) de um dono do Pixel.
+#[path = "cards_user_data.rs"]
+pub mod user_data;
 use cartao::{flight_shadow, paint_card, paint_card_with, shadow};
 pub use lista::{ListTop, paint_card_list_pinned, paint_card_list_top, scroll_at_edge};
 pub use menu::{apply_list_menu_click, list_menu_of};

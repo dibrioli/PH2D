@@ -363,6 +363,7 @@ const fn nome_slice(p: &Pedido) -> &'static str {
     match p {
         Pedido::Apaga => DELETE,
         Pedido::Duplica => "pixel.history.duplicate_slice",
+        Pedido::UserData(..) => "pixel.history.user_data",
         _ => "pixel.history.slice_properties",
     }
 }

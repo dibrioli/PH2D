@@ -56,6 +56,7 @@ fn hero(ts: &mut ph2d_text::TextSystem) -> HeroScreen {
             ..Vista::default()
         }),
         transform: false,
+        user: None,
     });
     let mut hero = HeroScreen::new(NodeId(1));
     hero.panel_visibility.insert(PANEL_PIXEL_SLICES, true);

@@ -6,6 +6,7 @@ use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::cards::banda::metrics as m;
 use ph2d_editor_core::panel::cards::borda;
 use ph2d_editor_core::panel::cards::paint_card_list;
+use ph2d_editor_core::panel::cards::user_data;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::panel_drag_handle_rect;
 use ph2d_editor_core::widget::{Dropdown, DropdownOption};
@@ -126,7 +127,16 @@ pub(crate) fn paint(st: &mut PixelSlicesPanelState, ctx: &mut PaintCtx) {
     event::regista_linhas(store, x.linhas.len());
     event::semeia(store, &x);
     event::cor(st, store, &x);
-    let cartoes = cards::cartoes(&x);
+    if let Some((_, u)) = &x.user {
+        let ud = ids::user_data();
+        user_data::prepare(
+            ctx.host.store_mut(),
+            &ud,
+            &crate::user_data::vista(u),
+            false,
+        );
+    }
+    let cartoes = cards::cartoes(&x, st.user_aberto);
     let slot = solta(ctx);
     let encaixe = ctx.slot;
     ctx.slot = slot;

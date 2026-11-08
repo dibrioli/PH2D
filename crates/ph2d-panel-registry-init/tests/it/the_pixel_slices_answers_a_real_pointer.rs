@@ -152,6 +152,7 @@ fn uma_selecionada() -> Contexto {
             ..Vista::default()
         }),
         transform: false,
+        user: None,
     }
 }
 
@@ -569,4 +570,45 @@ fn esc_no_numero_reverte_e_larga_o_campo() {
         assenta(&mut hero, &mut ts);
         assert_eq!(numero(&hero, ids::BOUNDS_X), Some(4.0));
     }
+}
+
+/// **O cartão User Data da slice pelo ponteiro real** (P12 U): o botão ao lado do nome abre-o, o valor
+/// escrito com `Enter` e o `+` viram o pedido que a família grava num passo.
+#[test]
+fn the_pixel_slice_user_data_card_answers_a_real_pointer() {
+    use ph2d_pixel_core::user::edit::UserEdit;
+    use ph2d_pixel_core::{PropMap, PropValue, UserData};
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let mut mapa = PropMap::new();
+    mapa.insert("hp".into(), PropValue::I32(3));
+    let mut x = uma_selecionada();
+    x.user = Some((
+        SliceId(1),
+        UserData {
+            props: [(String::new(), mapa)].into(),
+            ..UserData::default()
+        },
+    ));
+    let mut hero = hero_com(&mut ts, x);
+    let ud = ids::user_data();
+    assert!(
+        hero.hit_index.rect_for(ud.value(0)).is_none(),
+        "nasce fechado"
+    );
+    clica(&mut hero, ud.toggle, "User Data");
+    assenta(&mut hero, &mut ts);
+    escreve(&mut hero, ud.value(0), "7");
+    assert_eq!(
+        canal::take_pedidos(),
+        [Pedido::UserData(
+            SliceId(1),
+            UserEdit::Value("hp".into(), "37".into())
+        )]
+    );
+    assenta(&mut hero, &mut ts);
+    clica(&mut hero, ud.add, "+ Property");
+    assert_eq!(
+        canal::take_pedidos(),
+        [Pedido::UserData(SliceId(1), UserEdit::Add)]
+    );
 }

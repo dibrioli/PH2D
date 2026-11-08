@@ -22,6 +22,8 @@ pub struct Contexto {
     /// `None`: nada selecionado.
     pub vista: Option<Vista>,
     pub transform: bool,
+    /// O user data da slice, só com UMA selecionada (a tabela de propriedades, P12 U).
+    pub user: Option<(SliceId, ph2d_pixel_core::UserData)>,
 }
 
 /// O menu do botão direito: onde abre, em píxeis da interface, e se há mudança para remover aqui.
@@ -54,6 +56,8 @@ pub enum Pedido {
     Apaga,
     Duplica,
     RemoveMudanca,
+    /// Um gesto do cartão User Data sobre a slice selecionada: um passo do desfazer.
+    UserData(SliceId, ph2d_pixel_core::user::edit::UserEdit),
 }
 
 impl Pedido {
@@ -132,6 +136,15 @@ pub fn take_mostrar() -> bool {
 
 pub fn pede(p: Pedido) {
     com(|c| c.pedidos.push(p));
+}
+
+/// Como [`pede`], salvo se o último pedido do quadro já é este (o `Enter` e o `Blur` do mesmo campo).
+pub fn pede_uma(p: Pedido) {
+    com(|c| {
+        if c.pedidos.last() != Some(&p) {
+            c.pedidos.push(p);
+        }
+    });
 }
 
 /// Toma (e limpa) os gestos deste quadro.

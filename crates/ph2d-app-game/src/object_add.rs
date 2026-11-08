@@ -13,7 +13,7 @@ use ph2d_ecs::{
     TextureRepeat, UvTransform, ZIndexOverride,
 };
 use ph2d_editor_core::object_add::{AddEntry, AddGroup};
-use ph2d_physics_ecs::{BodyKind, CharacterAnimations, Collider, ColliderShape, RigidBody};
+use ph2d_physics_ecs::{BodyKind, CharacterAnimations, ColliderShape, RigidBody};
 use ph2d_render::{FactoryArt, HERO_SHEET_SOLE_BELOW_CENTRE, HILLS_TILE, Sprite, WHITE_TILE_KEY};
 
 /// Uma imagem.
@@ -116,15 +116,17 @@ pub struct Portas<'a> {
 }
 
 /// ⭐ **Cria o objecto** desta entrada (`None` se não é desta família; se um componente não entra, o objecto
-/// sai). `pai` = o seleccionado: a Collision Shape nasce FILHA dele (W3, [`ph2d_physics_ecs::pendura_forma`]).
+/// sai). `pai` = o seleccionado: a Collision Shape segue [`ph2d_physics_ecs::pendura_forma`] (sem selecção nasce
+/// um «Static Body» com ela por filha) e o devolvido é a FORMA. Os corpos nascem com a forma em filha.
 pub fn add(entry: AddEntry, sim: &mut SimWorld, portas: Portas<'_>, pai: Option<u64>) -> Nasceu {
     if !ENTRIES.contains(&entry) {
         return None;
     }
-    let bits = (portas.raiz)(sim, entry.key.tr());
+    let solta = entry == COLLISION_SHAPE && pai.is_none();
+    let bits = (portas.raiz)(sim, if solta { STATIC_BODY } else { entry }.key.tr());
     let e = Entity::from_bits(bits);
     let attach = |sim: &mut SimWorld, name: &str| (portas.anexa)(sim, bits, name);
-    let r = (|| -> Result<(), String> {
+    let r = (|| -> Result<u64, String> {
         let world = sim.world_mut();
         if entry == SPRITE {
             world
@@ -147,16 +149,21 @@ pub fn add(entry: AddEntry, sim: &mut SimWorld, portas: Portas<'_>, pai: Option<
                     kind: BodyKind::Static,
                 },
             ));
-            attach(sim, "ph2d::physics::Collider")?;
+            let [w, h] = BLOCO;
+            let caixa = ColliderShape::Cuboid {
+                half_x: w / 2.0,
+                half_y: h / 2.0,
+            };
+            ph2d_physics_ecs::nasce_com_forma(world, e, caixa);
         } else if entry == BACKGROUND_LAYER {
             veste_camada(world, e, HILLS_TILE, CAMADA_LADRILHOS, CAMADA_K);
             world.entity_mut(e).insert(ZIndexOverride(-1));
         } else if entry == CHARACTER {
             ph2d_render::veste_o_heroi(world, e)?;
-            world.entity_mut(e).insert((
-                ph2d_physics_ecs::MaterialCombine::sem_atrito(CAPSULA),
-                CharacterAnimations::default(),
-            ));
+            world.entity_mut(e).insert(CharacterAnimations::default());
+            let forma = ph2d_physics_ecs::nasce_com_forma(world, e, CAPSULA);
+            let sem_atrito = ph2d_physics_ecs::MaterialCombine::sem_atrito(CAPSULA);
+            world.entity_mut(forma).insert(sem_atrito);
             attach(sim, "ph2d::physics::LockRotation")?;
             attach(sim, "ph2d::physics::PlatformPlayer")?;
             // Paira à altura dos pés desenhados (a semente parte de 0,5 m e só sobe).
@@ -168,19 +175,13 @@ pub fn add(entry: AddEntry, sim: &mut SimWorld, portas: Portas<'_>, pai: Option<
                 p.crouch_height = AGACHADO;
             }
         } else {
-            world.entity_mut(e).insert(Collider {
-                shape: ColliderShape::Cuboid {
-                    half_x: 0.5,
-                    half_y: 0.5,
-                },
-                ..Collider::default()
-            });
-            ph2d_physics_ecs::pendura_forma(world, e, pai.map(Entity::from_bits));
+            let forma = ph2d_physics_ecs::pendura_forma(world, e, pai.map(Entity::from_bits));
+            return Ok(forma.to_bits());
         }
-        Ok(())
+        Ok(bits)
     })();
     Some(match r {
-        Ok(()) => Ok(bits),
+        Ok(escolhido) => Ok(escolhido),
         Err(msg) => {
             sim.world_mut().despawn(e);
             Err(msg)

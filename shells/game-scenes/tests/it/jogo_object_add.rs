@@ -5,6 +5,11 @@ use ph2d_physics_ecs::{BodyKind, CharacterAnimations, Collider, ColliderShape, R
 use ph2d_physics_ecs::{LockRotation, PlatformPlayer};
 use ph2d_render::{HERO_SHEET_TAGS, Sprite};
 
+/// A forma principal de `e` (opção B: a filha «Collision Shape»).
+fn forma(w: &ph2d_ecs::World, e: Entity) -> Option<&Collider> {
+    ph2d_physics_ecs::main_shape(w, e).and_then(|f| w.get::<Collider>(f))
+}
+
 fn nasce(entry: AddEntry, sim: &mut SimWorld) -> Entity {
     let bits = crate::comp::menu(entry, sim)
         .expect("a entrada é desta família")
@@ -23,9 +28,22 @@ fn cada_objecto_nasce_com_o_seu_conjunto() {
             w.get::<Sprite>(e).is_some(),
             w.get::<SpriteAnimator>(e).is_some() && w.get::<SpriteGrid>(e).is_some(),
             w.get::<RigidBody>(e).map(|b| b.kind),
-            w.get::<Collider>(e).is_some(),
+            forma(w, e).is_some(),
             w.get::<PlatformPlayer>(e).is_some() && w.get::<CharacterAnimations>(e).is_some(),
         );
+        // A Collision Shape solta devolve a FORMA (o seleccionado); o conjunto é o do corpo dela.
+        let corpo = ph2d_physics_ecs::owner_body(w, e).unwrap_or(e);
+        let tem = if corpo == e {
+            tem
+        } else {
+            (
+                w.get::<Sprite>(corpo).is_some(),
+                false,
+                w.get::<RigidBody>(corpo).map(|b| b.kind),
+                forma(w, corpo).is_some(),
+                false,
+            )
+        };
         let esperado = match entry.key.key() {
             "object_add.game.sprite" => (true, false, None, false, false),
             "object_add.game.animated_sprite" => (true, true, None, false, false),
@@ -38,9 +56,15 @@ fn cada_objecto_nasce_com_o_seu_conjunto() {
             other => panic!("entrada sem conjunto esperado: {other}"),
         };
         assert_eq!(tem, esperado, "{}", entry.key.key());
+        let nome = if *entry == COLLISION_SHAPE {
+            STATIC_BODY
+        } else {
+            *entry
+        };
         assert_eq!(
-            w.get::<ph2d_ecs::Name>(e).map(|n| n.as_str().to_owned()),
-            Some(entry.key.tr().to_owned()),
+            w.get::<ph2d_ecs::Name>(corpo)
+                .map(|n| n.as_str().to_owned()),
+            Some(nome.key.tr().to_owned()),
             "o objecto chama-se como a entrada"
         );
     }
@@ -51,7 +75,7 @@ fn cada_objecto_nasce_com_o_seu_conjunto() {
 fn o_bloco_estatico_bate_onde_se_ve() {
     let mut sim = SimWorld::new();
     let e = nasce(STATIC_BODY, &mut sim);
-    let c = sim.world().get::<Collider>(e).expect("colisão");
+    let c = forma(sim.world(), e).expect("colisão");
     assert_eq!(
         c.shape,
         ColliderShape::Cuboid {
@@ -67,7 +91,7 @@ fn o_personagem_tem_capsula_e_as_quatro_animacoes() {
     let mut sim = SimWorld::new();
     let e = nasce(CHARACTER, &mut sim);
     let w = sim.world();
-    assert_eq!(w.get::<Collider>(e).map(|c| c.shape), Some(CAPSULA));
+    assert_eq!(forma(w, e).map(|c| c.shape), Some(CAPSULA));
     assert!(w.get::<LockRotation>(e).is_some(), "o personagem roda");
     let tags = w.get::<SpriteAnimations>(e).expect("animações");
     for t in HERO_SHEET_TAGS {
@@ -117,9 +141,10 @@ fn o_personagem_nasce_sem_atrito() {
     let mut sim = SimWorld::new();
     let e = nasce(CHARACTER, &mut sim);
     let w = sim.world();
-    assert_eq!(w.get::<Collider>(e).map(|c| c.friction), Some(0.0));
+    assert_eq!(forma(w, e).map(|c| c.friction), Some(0.0));
+    let f = ph2d_physics_ecs::main_shape(w, e).expect("forma");
     assert_eq!(
-        w.get::<ph2d_physics_ecs::MaterialCombine>(e)
+        w.get::<ph2d_physics_ecs::MaterialCombine>(f)
             .map(|m| m.friction),
         Some(ph2d_physics_ecs::CombineRule::Min)
     );
@@ -145,9 +170,10 @@ fn forma_sob(sim: &mut SimWorld, pai: Option<Entity>) -> Entity {
     Entity::from_bits(bits)
 }
 
-/// ⭐ **Add ▸ Collision Shape, os três casos** (W3): sem seleção é um objecto na raiz com Static próprio;
-/// com um corpo seleccionado é FILHA dele e mais uma forma dele (sem corpo próprio, «Part of»); com um
-/// objecto sem corpo seleccionado é filha dele e nasce com o seu Static. Nunca componente do seleccionado.
+/// ⭐ **Add ▸ Collision Shape, os três casos** (opção B, respostas do dono 08/11): sem seleção nasce um
+/// «Static Body» na raiz com a forma por filha; com um corpo seleccionado é FILHA dele (peça); com um
+/// objecto sem corpo seleccionado ele VIRA Static e a forma nasce filha dele. O devolvido (o que fica
+/// seleccionado) é sempre a FORMA.
 #[test]
 fn a_forma_nasce_filha_do_seleccionado_e_so_tem_corpo_se_nao_ha_corpo_acima() {
     let mut sim = SimWorld::new();
@@ -161,28 +187,130 @@ fn a_forma_nasce_filha_do_seleccionado_e_so_tem_corpo_se_nao_ha_corpo_acima() {
     let w = sim.world();
     let pai = |e| w.get::<ph2d_ecs::ChildOf>(e).map(ph2d_ecs::ChildOf::parent);
     let corpo = |e| w.get::<RigidBody>(e).map(|b| b.kind);
-    assert_eq!((pai(solta), corpo(solta)), (None, Some(BodyKind::Static)));
+    let raiz = pai(solta).expect("a forma solta é filha do seu Static Body");
+    assert_eq!((pai(raiz), corpo(raiz)), (None, Some(BodyKind::Static)));
+    assert_eq!(
+        w.get::<ph2d_ecs::Name>(raiz).map(|n| n.as_str().to_owned()),
+        Some(STATIC_BODY.key.tr().to_owned())
+    );
+    assert!(w.get::<Sprite>(raiz).is_none(), "sem imagem");
     assert_eq!((pai(peca), corpo(peca)), (Some(chao), None));
+    assert_eq!(ph2d_physics_ecs::owner_body(w, peca), Some(chao));
+    assert_eq!((pai(propria), corpo(propria)), (Some(vazio), None));
     assert_eq!(
-        ph2d_physics_ecs::owner_body(w, peca),
-        Some(chao),
-        "é mais uma forma do chão"
+        corpo(vazio),
+        Some(BodyKind::Static),
+        "o seleccionado VIRA Static"
     );
-    assert_eq!(
-        (pai(propria), corpo(propria)),
-        (Some(vazio), Some(BodyKind::Static))
-    );
-    for e in [peca, propria] {
-        assert!(w.get::<Collider>(e).is_some());
+    for e in [solta, peca, propria] {
+        assert!(w.get::<Collider>(e).is_some() && w.get::<RigidBody>(e).is_none());
         let t = w.get::<ph2d_ecs::Transform>(e).expect("pose");
-        assert_eq!(
-            t.translation,
-            ph2d_ecs::Transform::IDENTITY.translation,
-            "offset local zero"
+        assert_eq!(t.translation, ph2d_ecs::Transform::IDENTITY.translation);
+    }
+    for e in [raiz, chao, vazio] {
+        assert!(w.get::<Collider>(e).is_none(), "a forma no próprio corpo");
+    }
+    assert_eq!(ph2d_physics_ecs::main_shape(w, vazio), Some(propria));
+}
+
+/// Nenhum corpo do mundo carrega a sua forma (opção B).
+fn nenhum_corpo_com_forma(sim: &mut SimWorld, porta: &str) {
+    let w = sim.world_mut();
+    let mut q = w.query::<(Entity, &RigidBody, &Collider)>();
+    let errados: Vec<Entity> = q.iter(w).map(|(e, _, _)| e).collect();
+    assert!(
+        errados.is_empty(),
+        "{porta}: corpo com Collider: {errados:?}"
+    );
+    let mut q = w.query::<(Entity, &RigidBody)>();
+    let corpos: Vec<Entity> = q.iter(w).map(|(e, _)| e).collect();
+    for c in corpos {
+        assert!(
+            ph2d_physics_ecs::main_shape(w, c).is_some(),
+            "{porta}: corpo sem forma"
         );
     }
-    assert_eq!(corpo(vazio), None, "o seleccionado não ganha componente");
-    assert!(w.get::<Collider>(chao).is_some() && w.get::<Collider>(vazio).is_none());
+}
+
+/// ⭐⭐ **Gate `nenhuma_porta_do_editor_poe_a_forma_no_corpo`** (opção B): cada porta do editor que cria
+/// um corpo ou uma forma — o menu Add (Static Body, Character, Collision Shape nos três casos), o `+`
+/// *Physics Body* e o mover que o traz, o Reset do corpo e o «Add Shape» do corpo sem forma — acaba sem
+/// nenhuma entidade com `RigidBody` e `Collider` juntos.
+#[test]
+fn nenhuma_porta_do_editor_poe_a_forma_no_corpo() {
+    let reg = crate::comp::registo();
+    let seeds = ph2d_app_physics::physics_seed::COMPONENT_SEEDS;
+    let attach = |sim: &mut SimWorld, e: Entity, n: &str| {
+        ph2d_app_components::component_attach::attach_by_name(sim, &reg, seeds, e.to_bits(), n)
+            .expect(n);
+    };
+    let imagem = |sim: &mut SimWorld| {
+        let bits = ph2d_app_components::object_add::spawn_empty_root(sim, "Picture");
+        let e = Entity::from_bits(bits);
+        sim.world_mut()
+            .entity_mut(e)
+            .insert(Sprite::atlas(0, [4.0, 1.0], [1.0; 4]));
+        e
+    };
+    let mut sim = SimWorld::new();
+    for entry in ENTRIES {
+        nasce(*entry, &mut sim);
+        nenhum_corpo_com_forma(&mut sim, entry.key.key());
+    }
+    let chao = nasce(STATIC_BODY, &mut sim);
+    forma_sob(&mut sim, Some(chao));
+    let vazio = imagem(&mut sim);
+    forma_sob(&mut sim, Some(vazio));
+    nenhum_corpo_com_forma(&mut sim, "Add ▸ Collision Shape");
+
+    for nome in ["ph2d::physics::RigidBody", "ph2d::physics::TopDownPlayer"] {
+        let e = imagem(&mut sim);
+        attach(&mut sim, e, nome);
+        nenhum_corpo_com_forma(&mut sim, nome);
+        let f = ph2d_physics_ecs::main_shape(sim.world(), e).expect("forma");
+        assert_eq!(
+            sim.world().get::<Collider>(f).map(|c| c.shape),
+            Some(ColliderShape::Cuboid {
+                half_x: 2.0,
+                half_y: 0.5
+            }),
+            "{nome}: a caixa do desenho"
+        );
+        ph2d_app_components::component_attach::reset_by_name(
+            &mut sim,
+            &reg,
+            seeds,
+            e.to_bits(),
+            "ph2d::physics::RigidBody",
+        )
+        .expect("reset");
+        nenhum_corpo_com_forma(&mut sim, "Reset");
+        let filhas = ph2d_ecs::ordered_children(sim.world(), e);
+        assert_eq!(filhas, vec![f], "{nome}: o Reset fez uma segunda forma");
+    }
+
+    let e = imagem(&mut sim);
+    sim.world_mut().entity_mut(e).insert(RigidBody {
+        kind: BodyKind::Static,
+    });
+    for _ in 0..2 {
+        let q = ph2d_ecs::scene::EditorCommandQueue::default();
+        let edit = ph2d_editor_core::PhysicsFieldEdit::AddShape;
+        ph2d_app_physics::inspector::body::apply_physics_edit(
+            &mut sim,
+            e.to_bits(),
+            edit,
+            &q,
+            &reg,
+        );
+        ph2d_ecs::scene::apply_editor_commands(sim.world_mut(), &q, &reg).expect("commit");
+    }
+    nenhum_corpo_com_forma(&mut sim, "Add Shape");
+    assert_eq!(
+        ph2d_ecs::ordered_children(sim.world(), e).len(),
+        1,
+        "uma forma só"
+    );
 }
 
 /// A cena 2 continua a mesma: a parede invisível é PEÇA do chão da direita, sem corpo próprio.

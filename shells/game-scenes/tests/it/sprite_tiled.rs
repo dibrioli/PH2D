@@ -46,7 +46,8 @@ fn edita(sim: &mut SimWorld, e: Entity, edit: ImageUseEdit) -> bool {
 }
 
 fn caixa(sim: &SimWorld, e: Entity) -> ColliderShape {
-    sim.world().get::<Collider>(e).expect("collider").shape
+    let f = ph2d_physics_ecs::main_shape(sim.world(), e).expect("forma");
+    sim.world().get::<Collider>(f).expect("collider").shape
 }
 
 /// ⭐ D3: a Largura (em cópias da imagem, dono 27/10) muda o desenho e leva o collider automático; a escala fica 1.
@@ -84,8 +85,9 @@ fn collider_a_mao_fica() {
         half_x: 0.7,
         half_y: 0.1,
     };
+    let f = ph2d_physics_ecs::main_shape(sim.world(), e).expect("forma");
     sim.world_mut()
-        .get_mut::<Collider>(e)
+        .get_mut::<Collider>(f)
         .expect("collider")
         .shape = mao;
     assert!(edita(&mut sim, e, ImageUseEdit::Height(2.0)));

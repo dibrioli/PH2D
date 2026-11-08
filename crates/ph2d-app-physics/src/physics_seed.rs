@@ -123,6 +123,28 @@ pub fn seed_nav_agent(sim: &mut SimWorld, entity_bits: u64) {
     sim.world_mut().entity_mut(entity).insert(mover);
 }
 
+/// ⭐ **Anexar um `Physics Body` faz nascer a forma dele** (opção B, B3a): se o corpo ainda não tem
+/// forma ([`ph2d_physics_ecs::main_shape`]), nasce a filha «Collision Shape» com a caixa do desenho
+/// ([`ph2d_physics_ecs::nasce_com_forma`]); depois, a lei do controlador cinemático. Idempotente (um
+/// Reset não cria segunda forma).
+pub fn seed_attached_body(sim: &mut SimWorld, entity_bits: u64) {
+    forma_que_falta(sim.world_mut(), Entity::from_bits(entity_bits));
+    seed_kinematic_controller_body(sim, entity_bits);
+}
+
+/// A forma de um corpo que ainda não a tem: a filha com a caixa do desenho. `None` se `entity` não é
+/// corpo ou já tem forma — a porta do seed e do «Add Shape».
+pub(crate) fn forma_que_falta(world: &mut ph2d_ecs::World, entity: Entity) -> Option<Entity> {
+    if world.get::<ph2d_physics_ecs::RigidBody>(entity).is_none()
+        || ph2d_physics_ecs::main_shape(world, entity).is_some()
+    {
+        return None;
+    }
+    let [half_x, half_y] = sprite_half_extents(world, entity);
+    let caixa = ph2d_physics_ecs::ColliderShape::Cuboid { half_x, half_y };
+    Some(ph2d_physics_ecs::nasce_com_forma(world, entity, caixa))
+}
+
 /// A semente de um componente: recebe o mundo e os bits da entidade acabada de anexar.
 /// ⚠️ Estruturalmente IGUAL a `ph2d_app_components::component_seed::Seed`, e escrita aqui de
 /// propósito — nomear a outra família seria a aresta que a A1 cortou.
@@ -149,7 +171,7 @@ pub const COMPONENT_SEEDS: &[(&str, Seed)] = &[
         "ph2d::physics::ProjectileMotion",
         seed_kinematic_controller_body,
     ),
-    ("ph2d::physics::RigidBody", seed_kinematic_controller_body),
+    ("ph2d::physics::RigidBody", seed_attached_body),
     (
         "ph2d::physics::TopDownPlayer",
         seed_kinematic_controller_body,

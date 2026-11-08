@@ -133,7 +133,7 @@ fn o_nivel_2_nasce_so_pelo_menu() {
             "{nome}"
         );
         assert!(
-            w.get::<Sprite>(e).is_some() && w.get::<Collider>(e).is_some(),
+            w.get::<Sprite>(e).is_some() && ph2d_physics_ecs::main_shape(w, e).is_some(),
             "{nome}"
         );
     }
@@ -173,7 +173,9 @@ fn o_nivel_2_nasce_so_pelo_menu() {
             "{nome}"
         );
         assert_eq!(
-            w.get::<ph2d_physics_ecs::Collider>(e).map(|c| c.shape),
+            ph2d_physics_ecs::main_shape(w, e)
+                .and_then(|f| w.get::<ph2d_physics_ecs::Collider>(f))
+                .map(|c| c.shape),
             Some(ph2d_physics_ecs::ColliderShape::Cuboid {
                 half_x: h[0],
                 half_y: h[1]
@@ -215,7 +217,9 @@ fn o_nivel_2_nasce_so_pelo_menu() {
         .filter(|&e| {
             w.get::<LuauScript>(e).is_none()
                 && w.get::<RigidBody>(e).map(|b| b.kind) == Some(BodyKind::Static)
-                && w.get::<Collider>(e).is_some_and(|c| c.is_sensor)
+                && ph2d_physics_ecs::main_shape(w, e)
+                    .and_then(|f| w.get::<Collider>(f))
+                    .is_some_and(|c| c.is_sensor)
         })
         .count();
     assert_eq!(moedas, MOEDAS_2.len(), "cada moeda é um Trigger sem script");

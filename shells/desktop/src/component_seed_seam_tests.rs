@@ -249,10 +249,14 @@ fn attaching_a_player_brings_the_body_and_the_collider() {
         sim.world().get::<ph2d_physics_ecs::RigidBody>(e).is_some(),
         "a cascata tem de trazer o corpo"
     );
+    // Opção B: a forma nasce FILHA «Collision Shape» pela semente do corpo, nunca no corpo.
+    let w = sim.world();
     assert!(
-        sim.world().get::<ph2d_physics_ecs::Collider>(e).is_some(),
-        "e o collider, que vem por transitividade"
+        w.get::<ph2d_physics_ecs::Collider>(e).is_none(),
+        "a forma no corpo"
     );
+    let f = ph2d_physics_ecs::main_shape(w, e).expect("e a forma, que vem com o corpo");
+    assert!(w.get::<ph2d_physics_ecs::Collider>(f).is_some());
     // ⭐ E a §14 aparece — que e' a razao de tudo isto existir.
     assert!(
         secao_player_aparece(&sim, e.to_bits()),

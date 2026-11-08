@@ -144,7 +144,8 @@ fn undoing_remove_brings_body_and_shape_back() {
 }
 
 /// ⭐ **Corpo sem forma** (dono 08/11): a info diz `body_without_shape`, o «Add Shape» dá a caixa da
-/// imagem sem tocar no tipo, e é UM passo de undo (a captura muda e repô-la tira só a forma).
+/// imagem (numa filha, opção B) sem tocar no tipo, e é UM passo de undo (a captura muda e repô-la
+/// tira só a forma).
 #[test]
 fn corpo_sem_forma_ganha_a_caixa_da_imagem_num_passo() {
     let (mut sim, e) = sprite_scene();
@@ -169,7 +170,16 @@ fn corpo_sem_forma_ganha_a_caixa_da_imagem_num_passo() {
     };
     let antes = snap(&mut sim);
     apply(&mut sim, e, PhysicsFieldEdit::AddShape);
-    let c = *sim.world().get::<Collider>(e).expect("a forma nasce");
+    // Opção B: a forma nasce FILHA «Collision Shape», nunca no corpo.
+    assert!(sim.world().get::<Collider>(e).is_none(), "a forma no corpo");
+    let f = ph2d_physics_ecs::main_shape(sim.world(), e).expect("a forma nasce");
+    assert_eq!(
+        sim.world()
+            .get::<ph2d_ecs::ChildOf>(f)
+            .map(ph2d_ecs::ChildOf::parent),
+        Some(e)
+    );
+    let c = *sim.world().get::<Collider>(f).expect("a forma nasce");
     assert_eq!(
         c.shape,
         ColliderShape::Cuboid {
@@ -178,8 +188,16 @@ fn corpo_sem_forma_ganha_a_caixa_da_imagem_num_passo() {
         }
     );
     assert_eq!(sim.world().get::<RigidBody>(e), Some(&estatico));
-    let depois = info(&sim, 0);
-    assert!(depois.has_body && !depois.body_without_shape && depois.shape_follows == Some(true));
+    // A filha conta como peça pela mesma contagem do produto (o cartão da filha é a B4).
+    let w = sim.world_mut();
+    let mut q = w.query_filtered::<Entity, (
+        bevy_ecs::query::With<Collider>,
+        bevy_ecs::query::Without<RigidBody>,
+    )>();
+    let candidatas: Vec<Entity> = q.iter(w).collect();
+    let partes = ph2d_physics_ecs::count_parts(sim.world(), e, candidatas);
+    assert_eq!(partes, 1);
+    assert!(!info(&sim, 1).body_without_shape, "o aviso fica");
     assert_ne!(antes, snap(&mut sim), "o Add Shape não daria passo de undo");
     let _ = sim.world_mut().despawn(e);
     ph2d_ecs::scene::snapshot_to_world(sim.world_mut(), &antes, &reg).expect("restore");

@@ -24,7 +24,7 @@ use crate::physics_seed::sprite_half_extents;
 /// Unity and Godot both fit the box to the renderer for the same reason.)
 /// A sprite-less entity falls back to a half-metre box.
 pub fn apply_physics_edit(
-    sim: &SimWorld,
+    sim: &mut SimWorld,
     entity_bits: u64,
     edit: PhysicsFieldEdit,
     queue: &EditorCommandQueue,
@@ -44,6 +44,12 @@ pub fn apply_physics_edit(
     const DAMPING_OVERRIDE: &str = "ph2d::physics::DampingOverride";
 
     let entity = Entity::from_bits(entity_bits);
+    // O «Add Shape» de um CORPO sem forma: a filha «Collision Shape» (opção B), nunca o `Collider` nele.
+    if matches!(edit, PhysicsFieldEdit::AddShape) && sim.world().get::<RigidBody>(entity).is_some()
+    {
+        crate::physics_seed::forma_que_falta(sim.world_mut(), entity);
+        return;
+    }
     let world = sim.world();
 
     if matches!(edit, PhysicsFieldEdit::Add) {
@@ -77,8 +83,7 @@ pub fn apply_physics_edit(
         }
         return;
     }
-    // A caixa do sprite sem tocar no `RigidBody`: peça de um corpo acima (W-Compound) ou a forma
-    // que falta a um corpo sem forma (dono 08/11).
+    // A caixa do sprite sem tocar no `RigidBody`: peça de um corpo acima (W-Compound).
     if matches!(edit, PhysicsFieldEdit::AddShape) {
         let half = sprite_half_extents(world, entity);
         queue_set(

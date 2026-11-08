@@ -123,7 +123,7 @@ fn authoring_a_surface_makes_one_of_three_identical_players_slip() {
     let queue = EditorCommandQueue::new();
     for floor in [ice_floor, ice_part] {
         crate::physics_apply::apply_physics_edit(
-            &sim,
+            &mut sim,
             floor.to_bits(),
             PhysicsFieldEdit::WalkGrip(0.0),
             &queue,

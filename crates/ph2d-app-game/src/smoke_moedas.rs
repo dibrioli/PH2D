@@ -48,18 +48,21 @@ fn linha(verb: SignalVerb, target: &str, arg: &str) -> SignalAction {
 pub fn veste_moeda(sim: &mut SimWorld, portas: Portas<'_>, e: Entity) {
     for c in [
         "ph2d::physics::RigidBody",
-        "ph2d::physics::SignalOnHit",
         "ph2d::ecs::AudioSource2D",
         "ph2d::ecs::SignalActions",
     ] {
         mais(sim, portas, e, c);
     }
-    let mut m = sim.world_mut().entity_mut(e);
-    m.get_mut::<RigidBody>().expect("Physics Body").kind = BodyKind::Static;
+    // A forma e o sinal do toque (lado-forma) moram na filha «Collision Shape» (opção B).
+    let f = ph2d_physics_ecs::main_shape(sim.world(), e).expect("Collision Shape");
+    mais(sim, portas, f, "ph2d::physics::SignalOnHit");
+    let mut m = sim.world_mut().entity_mut(f);
     let mut col = m.get_mut::<Collider>().expect("Collision Shape");
     col.shape = ColliderShape::Ball { radius: RAIO };
     col.is_sensor = true;
     m.get_mut::<SignalOnHit>().expect("Signal On Hit").0 = SINAL.into();
+    let mut m = sim.world_mut().entity_mut(e);
+    m.get_mut::<RigidBody>().expect("Physics Body").kind = BodyKind::Static;
     m.get_mut::<AudioSource2D>().expect("Audio Source 2D").sound = NOME_DO_SOM.into();
     m.get_mut::<SignalActions>().expect("Signal Actions").0 = vec![
         linha(SignalVerb::PlaySound, "", ""),

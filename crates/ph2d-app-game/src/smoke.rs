@@ -436,7 +436,8 @@ fn azulejo(sim: &mut SimWorld, e: Entity, nome: &str, meia: [f32; 2]) {
 /// A caixa do collider de `e` com meia-extensão `meia` (m).
 fn caixa(w: &mut ph2d_ecs::World, e: Entity, meia: [f32; 2]) {
     use ph2d_physics_ecs::{Collider, ColliderShape};
-    if let Some(mut c) = w.get_mut::<Collider>(e) {
+    let f = ph2d_physics_ecs::main_shape(w, e).unwrap_or(e);
+    if let Some(mut c) = w.get_mut::<Collider>(f) {
         c.shape = ColliderShape::Cuboid {
             half_x: meia[0],
             half_y: meia[1],

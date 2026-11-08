@@ -460,11 +460,13 @@ pub const DESCS: &[D] = &[
     // ⭐ **PORTA 1 — a que o dono conhecia pelo nome.** Era o botão *Add Physics Body* da face
     // vazia da §11; desde o ADR-0166/F3 a rota é o `+`, e o rótulo passa a dizer o que a secção
     // que nasce diz.
+    // ⭐ Opção B (08/11): o corpo NÃO traz o `Collider` — a semente dele faz nascer a filha «Collision
+    // Shape» (`ph2d_physics_ecs::nasce_com_forma`), e nenhuma porta do editor põe a forma no corpo.
     pr(
         "ph2d::physics::RigidBody",
         "component.rigid_body.name",
         RIGID_BODY,
-        &["ph2d::physics::Collider"],
+        &[],
     )
     .coded("physics_body"),
     // As folgas das pontas da corda arrastam-se no canvas (o batente); nenhum cartão as mostra.

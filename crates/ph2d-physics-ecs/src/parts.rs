@@ -73,17 +73,40 @@ pub fn is_part(world: &World, e: Entity) -> bool {
         && owner_body(world, e).is_some()
 }
 
-/// **Add ▸ Collision Shape** (W3): a forma `e` nasce FILHA de `pai` (se ele existe), e só ganha o seu
-/// `RigidBody{Static}` quando não há corpo acima — com corpo acima é mais uma peça dele.
-pub fn pendura_forma(world: &mut World, e: Entity, pai: Option<Entity>) {
-    if let Some(p) = pai.filter(|&p| world.get_entity(p).is_ok()) {
-        world.entity_mut(e).insert(ChildOf(p));
+/// A caixa com que o menu cria uma forma (meio metro de lado a lado).
+pub const FORMA_DO_MENU: crate::ColliderShape = crate::ColliderShape::Cuboid {
+    half_x: 0.5,
+    half_y: 0.5,
+};
+
+/// **Add ▸ Collision Shape** (opção B, respostas do dono 08/11). `e` é o objecto que o menu acabou de
+/// criar na raiz; devolve o que fica SELECCIONADO (sempre a forma):
+/// - sem `pai` → `e` é o corpo «Static Body» (sem imagem) e a forma nasce filha dele;
+/// - `pai` é corpo ou tem corpo acima → `e` é mais uma forma (peça) daquele corpo;
+/// - `pai` sem corpo acima → o `pai` VIRA `Static` e a forma nasce filha dele (`e` sai).
+///
+/// Nunca põe `Collider` num corpo.
+pub fn pendura_forma(world: &mut World, e: Entity, pai: Option<Entity>) -> Entity {
+    let estatico = RigidBody {
+        kind: crate::BodyKind::Static,
+    };
+    let Some(p) = pai.filter(|&p| world.get_entity(p).is_ok() && p != e) else {
+        world.entity_mut(e).insert(estatico);
+        return crate::nasce_com_forma(world, e, FORMA_DO_MENU);
+    };
+    if world.get::<RigidBody>(p).is_some() || owner_body(world, p).is_some() {
+        world.entity_mut(e).insert((
+            ChildOf(p),
+            Collider {
+                shape: FORMA_DO_MENU,
+                ..Collider::default()
+            },
+        ));
+        return e;
     }
-    if owner_body(world, e).is_none() {
-        world.entity_mut(e).insert(RigidBody {
-            kind: crate::BodyKind::Static,
-        });
-    }
+    world.despawn(e);
+    world.entity_mut(p).insert(estatico);
+    crate::nasce_com_forma(world, p, FORMA_DO_MENU)
 }
 
 /// Quantas peças estão penduradas em `body`.

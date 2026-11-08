@@ -577,7 +577,8 @@ fn o_collider_automatico_segue_o_uso() {
     let mut sim = SimWorld::new();
     crate::comp::montar(&mut sim, 4);
     let e = por_nome(&mut sim, "Platform High");
-    let caixa = |sim: &SimWorld| match sim.world().get::<Collider>(e).map(|c| c.shape) {
+    let f = ph2d_physics_ecs::main_shape(sim.world(), e).expect("forma");
+    let caixa = |sim: &SimWorld| match sim.world().get::<Collider>(f).map(|c| c.shape) {
         Some(ColliderShape::Cuboid { half_x, half_y }) => [half_x * 2.0, half_y * 2.0],
         outro => panic!("{outro:?}"),
     };
@@ -601,7 +602,7 @@ fn o_collider_automatico_segue_o_uso() {
         );
     }
     sim.world_mut()
-        .get_mut::<Collider>(e)
+        .get_mut::<Collider>(f)
         .expect("collider")
         .shape = ColliderShape::Cuboid {
         half_x: 9.0,

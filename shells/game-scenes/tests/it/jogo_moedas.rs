@@ -6,7 +6,7 @@
 //! `fase_fabrica_e_morte`.
 
 use ph2d_app_game::smoke_moedas::{CONTADOR, PLACAR, SINAL};
-use ph2d_ecs::{Name, SimWorld};
+use ph2d_ecs::{Entity, Name, SimWorld};
 use ph2d_physics_ecs::{PhysicsBridge, PlayerInput};
 use ph2d_script::LuauScript;
 
@@ -123,21 +123,22 @@ fn a_moeda_nao_tem_script_e_o_hud_tem_o_contador() {
     let mut sim = SimWorld::new();
     crate::comp::montar(&mut sim, 2);
     let w = sim.world_mut();
-    let mut q = w.query::<(
-        &Name,
-        Option<&LuauScript>,
-        Option<&ph2d_physics_ecs::SignalOnHit>,
-        Option<&ph2d_physics_ecs::Collider>,
-    )>();
-    let mut moedas = 0;
-    for (n, script, grita, forma) in q.iter(w) {
-        if n.as_str().starts_with("Coin ") {
-            moedas += 1;
-            assert!(script.is_none(), "{n:?} ainda tem script");
-            // ⚠️ A corrida não distingue (a moeda sai ao primeiro toque): o Trigger afirma-se aqui (mutação 02/11).
-            assert!(forma.is_some_and(|c| c.is_sensor), "{n:?} não é Trigger");
-            assert_eq!(grita.map(|g| g.0.as_str()), Some(SINAL), "{n:?}");
-        }
+    let mut q = w.query::<(Entity, &Name, Option<&LuauScript>)>();
+    let moedas_e: Vec<(Entity, String, bool)> = q
+        .iter(w)
+        .filter(|(_, n, _)| n.as_str().starts_with("Coin "))
+        .map(|(e, n, s)| (e, n.as_str().to_owned(), s.is_some()))
+        .collect();
+    let moedas = moedas_e.len();
+    for (e, n, script) in moedas_e {
+        assert!(!script, "{n:?} ainda tem script");
+        // A forma e o sinal moram na filha «Collision Shape» (opção B).
+        let f = ph2d_physics_ecs::main_shape(w, e).expect("forma");
+        let forma = w.get::<ph2d_physics_ecs::Collider>(f);
+        let grita = w.get::<ph2d_physics_ecs::SignalOnHit>(f);
+        // ⚠️ A corrida não distingue (a moeda sai ao primeiro toque): o Trigger afirma-se aqui (mutação 02/11).
+        assert!(forma.is_some_and(|c| c.is_sensor), "{n:?} não é Trigger");
+        assert_eq!(grita.map(|g| g.0.as_str()), Some(SINAL), "{n:?}");
     }
     assert_eq!(moedas, 5);
     let mut q = w.query::<(&Name, &ph2d_ecs::Counter)>();

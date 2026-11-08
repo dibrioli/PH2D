@@ -67,15 +67,16 @@ fn a_water_zone_is_authorable_with_ui_gestures_alone() {
     //    2 x 3), então o artista não digita dimensão nenhuma para ter a piscina do tamanho que
     //    desenhou — e agora isso é o *seed* que a paleta corre, não um braço do botão que morreu.
     //
-    // ⚠️⚠️ **UMA linha, e a segunda não volta.** Até 2026-09-14 havia aqui um
-    // `attach(.., "ph2d::physics::Collider")` logo a seguir, e ele tornava este bloco **incapaz de
-    // reprovar**: a forma chegava pela mão do teste, então a asserção abaixo passava com a CASCATA
-    // apagada. Hoje a `Collision Shape` chega **só** pelo `requires` do `RigidBody`, que é a única
-    // rota que o artista tem desde que a paleta passou a oferecer uma porta só — e é por isso que
-    // este é o gate que a defende. (Mutação medida: pôr `requires: &[]` no `pr(..RigidBody..)` do
-    // `catalog/physics.rs` ⇒ RED aqui, a ler `(0.5, 0.5)` — o meio-metro do `Collider::default()`.)
+    // ⚠️⚠️ **UMA linha, e a segunda não volta**: a forma chega SÓ pela semente do `RigidBody`, como
+    // filha «Collision Shape» (opção B, 08/11). Mutação: tirar `seed_attached_body` das sementes ⇒
+    // RED aqui (sem forma). Os gestos do lado-forma fazem-se com a FILHA seleccionada (dono 08/11).
     attach(&mut sim, pool, "ph2d::physics::RigidBody");
-    let i = snapshot(&sim, pool);
+    let forma = ph2d_physics_ecs::main_shape(sim.world(), pool).expect("a forma nasce com o corpo");
+    assert!(
+        sim.world().get::<Collider>(pool).is_none(),
+        "a forma no corpo"
+    );
+    let i = snapshot(&sim, forma);
     assert_eq!(
         (i.half_x, i.half_y),
         (1.0, 1.5),
@@ -84,17 +85,17 @@ fn a_water_zone_is_authorable_with_ui_gestures_alone() {
 
     // 2. Kind = Static (uma piscina não cai). 3. Trigger = Sensor (dá para entrar nela).
     apply(&mut sim, pool, PhysicsFieldEdit::Kind(1));
-    apply(&mut sim, pool, PhysicsFieldEdit::Sensor(true));
-    let i = snapshot(&sim, pool);
+    apply(&mut sim, forma, PhysicsFieldEdit::Sensor(true));
+    let i = snapshot(&sim, forma);
     assert!(
-        i.is_sensor && i.kind_tag == 1,
+        i.is_sensor && sim.world().get::<RigidBody>(pool).map(|b| b.kind) == Some(BodyKind::Static),
         "é o Sensor que faz as rows Force/Drag serem oferecidas — sem ele o passo 4 não existe"
     );
 
     // 4. Force Y (o empuxo). 5. Drag (o meio).
-    apply(&mut sim, pool, PhysicsFieldEdit::ForceY(3.5));
-    apply(&mut sim, pool, PhysicsFieldEdit::AreaDrag(4.0));
-    let i = snapshot(&sim, pool);
+    apply(&mut sim, forma, PhysicsFieldEdit::ForceY(3.5));
+    apply(&mut sim, forma, PhysicsFieldEdit::AreaDrag(4.0));
+    let i = snapshot(&sim, forma);
     assert_eq!((i.force, i.area_drag), ([0.0, 3.5], 4.0));
 
     // E agora o oráculo: duas caixas idênticas, uma cai na piscina, a outra ao lado.

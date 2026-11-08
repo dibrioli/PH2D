@@ -114,7 +114,8 @@ fn o_collider_automatico_segue_a_area() {
     assert!(regiao(&mut sim, e, [0, 0, pw / 2, ph], [2, 1]));
     let w = sim.world();
     let size = w.get::<Sprite>(e).map(|s| s.size).expect("sprite");
-    match w.get::<Collider>(e).map(|c| c.shape) {
+    let f = ph2d_physics_ecs::main_shape(w, e).expect("forma");
+    match w.get::<Collider>(f).map(|c| c.shape) {
         Some(ColliderShape::Cuboid { half_x, half_y }) => {
             assert!(
                 perto([half_x * 2.0, half_y * 2.0], size),

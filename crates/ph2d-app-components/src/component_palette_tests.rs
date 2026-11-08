@@ -187,12 +187,23 @@ fn the_cascade_is_shown_in_the_label_before_it_is_applied() {
     // ⚠️ O rótulo é **Physics Body** desde a poda de 13/09 e o `Collision Shape` que ele TRAZ já não
     // é um item da paleta desde 14/09 (ordem do dono) — o que não muda é a lei: *o artista vê o que
     // vem junto ANTES de clicar*. Ver o cabeçalho do `catalog/physics`.
-    let body = labels(&m)
-        .into_iter()
+    // ⭐ Opção B (08/11): o Physics Body já não traz a forma em componente (a filha nasce pela semente),
+    // e a cascata que fica para mostrar é a do mover: *Top-Down Player* traz o corpo.
+    let all = labels(&m);
+    let corpo = all
+        .iter()
         .find(|l| l.starts_with("Physics Body"))
         .expect("o Physics Body tem de estar na paleta");
     assert!(
-        body.contains("brings Collision Shape"),
+        !corpo.contains("brings"),
+        "o corpo não traz a forma como componente: {corpo:?}"
+    );
+    let body = all
+        .into_iter()
+        .find(|l| l.starts_with("Top-Down Player"))
+        .expect("o Top-Down Player tem de estar na paleta");
+    assert!(
+        body.contains("brings Physics Body"),
         "o rotulo tem de dizer o que vem junto: {body:?}"
     );
     // ⚠️ **A metade FECHADA (transitiva) mede-se na tabela, e não na paleta** — desde 14/09 o único
@@ -251,10 +262,10 @@ fn the_require_graph_has_no_cycles() {
         seen >= 2,
         "o gate ficou verde por nao haver `requires` nenhum ({seen})"
     );
-    let corpo = ph2d_component_desc::desc_for("ph2d::physics::RigidBody").expect("o descritor");
+    let corpo = ph2d_component_desc::desc_for("ph2d::physics::TopDownPlayer").expect("o descritor");
     assert_eq!(
         corpo.requires,
-        ["ph2d::physics::Collider"],
+        ["ph2d::physics::RigidBody"],
         "a cascata CANONICA desapareceu — este gate percorre um grafo, e sem uma aresta conhecida \
          ele nao percorre nada. Se o `RigidBody` deixou mesmo de exigir o `Collider`, troque esta \
          ancora pela cascata que ficou no lugar dela."

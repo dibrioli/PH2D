@@ -417,6 +417,9 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         // Color mixing: as opções Off · Wet blend (`cards_mistura`).
         ph2d_tool_painter::ids::PAINTER_BRUSH_MIX_MODES[0],
         ph2d_tool_painter::ids::PAINTER_BRUSH_MIX_MODES[1],
+        // Color mixing ▸ Sample: This layer · All visible layers.
+        ph2d_tool_painter::ids::PAINTER_BRUSH_MIX_SAMPLES[0],
+        ph2d_tool_painter::ids::PAINTER_BRUSH_MIX_SAMPLES[1],
         // Shape (Wet Paint): a caixa das pontas rectas (J6).
         ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_RECTAS,
         // Shape: a caixa do ponto fixo do spray (dono 08/11).

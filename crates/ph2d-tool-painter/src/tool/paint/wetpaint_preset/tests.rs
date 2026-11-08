@@ -254,6 +254,7 @@ fn pincel_mexido() -> BrushSpec {
             pigmento: 0.35,
             amount_pressure: 0.5,
             density_pressure: 0.25,
+            amostra: ph2d_painter_brush::mistura_opaca::AmostraDaMistura::TodasVisiveis,
         },
         borda_px: 1.5,
         sub_passo_fino: true,
@@ -629,6 +630,7 @@ fn mistura_opaca_preset_antigo_sem_o_campo_carrega_off() {
             pigmento: 0.65,
             amount_pressure: 1.0,
             density_pressure: 0.0,
+            amostra: ph2d_painter_brush::mistura_opaca::AmostraDaMistura::TodasVisiveis,
         },
         ..d
     };
@@ -636,5 +638,43 @@ fn mistura_opaca_preset_antigo_sem_o_campo_carrega_off() {
     assert_eq!(
         json::pincel_de_json(&m, &campos, d).mistura_opaca,
         ligado.mistura_opaca
+    );
+}
+
+/// O **Sample** da mistura: «All visible layers» vai e volta pela chave `sample`; o default (This layer) não a grava, e
+/// um ficheiro sem ela carrega This layer.
+#[test]
+fn a_amostra_da_mistura_vai_e_volta_e_o_default_nao_se_grava() {
+    use ph2d_painter_brush::mistura_opaca::{AmostraDaMistura, MisturaOpaca, ModoMisturaOpaca};
+    let campos = campos_da_macro();
+    let d = BrushSpec::default();
+    let ligado = BrushSpec {
+        mistura_opaca: MisturaOpaca {
+            modo: ModoMisturaOpaca::WetBlend,
+            ..MisturaOpaca::default()
+        },
+        ..d
+    };
+    let m = json::pincel_para_json(&ligado, &campos);
+    assert!(
+        m["mistura_opaca"].get("sample").is_none(),
+        "o default não se grava: {m:?}"
+    );
+    assert_eq!(
+        json::pincel_de_json(&m, &campos, d).mistura_opaca.amostra,
+        AmostraDaMistura::EstaCamada
+    );
+    let todas = BrushSpec {
+        mistura_opaca: MisturaOpaca {
+            amostra: AmostraDaMistura::TodasVisiveis,
+            ..ligado.mistura_opaca
+        },
+        ..d
+    };
+    let m = json::pincel_para_json(&todas, &campos);
+    assert_eq!(m["mistura_opaca"]["sample"], "AllVisibleLayers");
+    assert_eq!(
+        json::pincel_de_json(&m, &campos, d).mistura_opaca,
+        todas.mistura_opaca
     );
 }

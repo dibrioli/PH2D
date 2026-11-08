@@ -235,6 +235,7 @@ pub(crate) const BRUSH: &[&str] = &[
     "panel.painter_layers.brush.blend",
     "panel.painter_layers.brush.blend_on_empty",
     "panel.painter_layers.brush.mix_mode",
+    "panel.painter_layers.brush.mix_sample",
     "panel.painter_layers.brush.mix_amount",
     "panel.painter_layers.brush.mix_density",
     "panel.painter_layers.brush.mix_stretch",

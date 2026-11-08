@@ -66,6 +66,13 @@ impl PainterTool {
                 self.grao_e_o_papel() && !b.paper.is_active(),
             ),
             (
+                Dependente::ProfundidadeDoGraoSemPapel,
+                self.grao_e_o_papel() && !b.paper.is_active(),
+            ),
+            // A aguada não lê a Depth: `accumulate_wet_coverage` só lê a ponta, e o Grain entra cru como mapa de
+            // granulação (`watercolor_rewet_px::SubstrateSession::at`, `gran_h`). Borracha e os outros modos vão ao carimbo.
+            (Dependente::ProfundidadeNaAguada, aquarela),
+            (
                 Dependente::CaixaDoPapelSemPapel,
                 !aquarela && !b.paper.is_active() && !b.texture.is_active(),
             ),

@@ -206,6 +206,14 @@ pub const PAINTER_BRUSH_MIX_MODES: [NodeId; 2] = [
     hash_node_id("painter_brush.mix.off"),
     hash_node_id("painter_brush.mix.wet_blend"),
 ];
+/// O grupo do seletor **Sample** da mistura no painel de antes (`PH2D_CARDS=0`); as opções são as de baixo.
+pub const PAINTER_BRUSH_MIX_SAMPLE: NodeId = hash_node_id("painter_brush.mix.sample");
+/// **Sample** da mistura (`MisturaOpaca::amostra`): as opções, pela ordem de `AmostraDaMistura::TODAS`
+/// (This layer · All visible layers). `Click` → `set_brush_mistura_amostra`.
+pub const PAINTER_BRUSH_MIX_SAMPLES: [NodeId; 2] = [
+    hash_node_id("painter_brush.mix.sample.this_layer"),
+    hash_node_id("painter_brush.mix.sample.all_visible"),
+];
 /// Os números da mistura: Amount · Density · Color stretch · Amount pressure · Density pressure · Pigment (`0..1`; o painel
 /// mostra-os por [`PAINTER_BRUSH_MIX_ORDEM`]). `SetValue` → `set_brush_mistura_numero` (`tool/paint/mistura_settings.rs`).
 pub const PAINTER_BRUSH_MIX_FIELDS: [NodeId; 6] = [

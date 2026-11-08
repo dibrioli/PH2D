@@ -111,7 +111,8 @@ pub const MEIOS: &[ReceitaMeio] = &[
         opacity: Some(1.0),
         ..ReceitaMeio::digital("Oil", "Thick paint", "Thin Gouache")
     },
-    // Gouache blender (CSP Mix 0/0, stretch 20, papel 20, intervalo 20): só arrasta a tinta, não pinta o vazio
+    // Gouache blender (CSP Mix 0/0, stretch 20, papel 20, intervalo 20): só arrasta a tinta, não pinta o vazio;
+    // amostra todas as camadas visíveis (o esbatedor numa camada nova, dono 08/11)
     // (Amount 0); a Density é a força do arrasto (no CSP «0» com o modo de aguarela, que o nosso não tem).
     ReceitaMeio {
         pincel: &[
@@ -120,7 +121,10 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("continuous_spacing", "true"),
             ("texture", PAPEL),
             ("grain_depth", "0.2"),
-            ("mistura_opaca", mistura!(0.0, 0.7, 0.8, 0.0, 0.5)),
+            (
+                "mistura_opaca",
+                r#"{"modo": "WetBlend", "paint_amount": 0.0, "paint_density": 0.7, "color_stretch": 0.8, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.5, "sample": "AllVisibleLayers"}"#,
+            ),
         ],
         mao: &[("pressureSize", 0.5), ("pressureSizeCurve", 1.0)],
         size_px: Some(80.0),

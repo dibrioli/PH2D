@@ -239,7 +239,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("stabilizer", "0.04"),
             (
                 "mistura_opaca",
-                r#"{"modo": "WetBlend", "paint_amount": 0.0, "paint_density": 1.0, "color_stretch": 0.8, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
+                r#"{"modo": "WetBlend", "paint_amount": 0.0, "paint_density": 1.0, "color_stretch": 0.8, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0, "sample": "AllVisibleLayers"}"#,
             ),
         ],
         mao: &[("pressureSize", 0.5), ("pressureOpacity", 0.6)],

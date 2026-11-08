@@ -87,10 +87,15 @@ pub enum Dependente {
     GraoDoPapelSemPapel,
     // …e a própria caixa: sem papel e sem Grain próprio, ligá-la ou desligá-la não muda o traço.
     CaixaDoPapelSemPapel,
+    // A Depth do Grain com o «Same as Paper» e Paper: None (Bug #80): não há grão a aprofundar. Regra própria — na
+    // lista de cima ela reprovava o censo da Aquarela, onde a lei dela é outra.
+    ProfundidadeDoGraoSemPapel,
+    // A Depth do Grain na aguada (Bug #80): a lavagem lê o grão cru, como a lei do grão (`LeiDoGraoNaAguada`).
+    ProfundidadeNaAguada,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 52] = [
+    pub const TODOS: [Dependente; 54] = [
         Dependente::ForaDaPontaDePixel,
         Dependente::TaperTip,
         Dependente::TaperOpacity,
@@ -109,6 +114,8 @@ impl Dependente {
         Dependente::SemPapel,
         Dependente::GraoDoPapelSemPapel,
         Dependente::CaixaDoPapelSemPapel,
+        Dependente::ProfundidadeDoGraoSemPapel,
+        Dependente::ProfundidadeNaAguada,
         Dependente::QuandoDoRandomize,
         Dependente::CerdasDaAgua,
         Dependente::FollowSemNada,
@@ -234,6 +241,9 @@ impl Dependente {
             }
             Dependente::DualForaDoDigital | Dependente::DualForaDoTraco => &DUAL,
             Dependente::CaixaDoPapelSemPapel => &[ids::PAINTER_BRUSH_GRAIN_SAME_AS_PAPER],
+            Dependente::ProfundidadeDoGraoSemPapel | Dependente::ProfundidadeNaAguada => {
+                &[ids::PAINTER_BRUSH_GRAIN_DEPTH]
+            }
             Dependente::GraoDoPapelSemPapel => &[
                 ids::PAINTER_PONTA_FIELDS[1],
                 ids::PAINTER_PONTA_FIELDS[2],
@@ -258,7 +268,7 @@ impl Dependente {
             Dependente::PenteadoForaDoMolhado => penteado(),
             Dependente::PenteadoSemFios => penteado_sem_o_relevo(),
             Dependente::PenteadoSemLuz => relevo_do_penteado(),
-            Dependente::MisturaDesligada => &ids::PAINTER_BRUSH_MIX_FIELDS,
+            Dependente::MisturaDesligada => &MISTURA_DESLIGADA,
             Dependente::PontoFixoSemEspalhar => {
                 &[ids::PAINTER_BRUSH_DAB_FIXO, ids::PAINTER_BRUSH_DAB_PX]
             }
@@ -288,14 +298,17 @@ impl Dependente {
             Dependente::BordaSemTilt => "panel.painter_layers.inerte.tilt_on",
             Dependente::SemPapel
             | Dependente::GraoDoPapelSemPapel
-            | Dependente::CaixaDoPapelSemPapel => "panel.painter_layers.inerte.paper_chosen",
+            | Dependente::CaixaDoPapelSemPapel
+            | Dependente::ProfundidadeDoGraoSemPapel => "panel.painter_layers.inerte.paper_chosen",
             Dependente::QuandoDoRandomize => "panel.painter_layers.inerte.randomize_above_zero",
             Dependente::CerdasDaAgua => "panel.painter_layers.inerte.bristles_no_grain",
             Dependente::FollowSemNada => "panel.painter_layers.inerte.follow_nothing_to_turn",
             Dependente::ContinuoSemPasso => "panel.painter_layers.inerte.method_lays_a_path",
             Dependente::CorDaTexturaSemLeitor => "panel.painter_layers.inerte.texture_colors_media",
             Dependente::CorDoGraoDaAgua => "panel.painter_layers.inerte.paint_tool_only",
-            Dependente::LeiDoGraoNaAguada => "panel.painter_ponta.inerte.wash_grain_law",
+            Dependente::LeiDoGraoNaAguada | Dependente::ProfundidadeNaAguada => {
+                "panel.painter_ponta.inerte.wash_grain_law"
+            }
             Dependente::TexturaSemForma => {
                 "panel.painter_layers.inerte.texture_color_needs_a_shape"
             }
@@ -362,6 +375,18 @@ impl Dependente {
 }
 
 /// As linhas do Tuning que só o Real Oil lê: o slider e o chip de cada (os ids do Tuning hasheiam-se em execução).
+/// Os números da mistura e o seletor Sample: esmaecem juntos com o Color mixing em `Off`.
+const MISTURA_DESLIGADA: [NodeId; 8] = [
+    ids::PAINTER_BRUSH_MIX_FIELDS[0],
+    ids::PAINTER_BRUSH_MIX_FIELDS[1],
+    ids::PAINTER_BRUSH_MIX_FIELDS[2],
+    ids::PAINTER_BRUSH_MIX_FIELDS[3],
+    ids::PAINTER_BRUSH_MIX_FIELDS[4],
+    ids::PAINTER_BRUSH_MIX_FIELDS[5],
+    ids::PAINTER_BRUSH_MIX_SAMPLES[0],
+    ids::PAINTER_BRUSH_MIX_SAMPLES[1],
+];
+
 fn material_do_oleo() -> &'static [NodeId] {
     static IDS: std::sync::OnceLock<Vec<NodeId>> = std::sync::OnceLock::new();
     IDS.get_or_init(|| {

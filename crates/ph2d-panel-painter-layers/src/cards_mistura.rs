@@ -10,13 +10,25 @@ use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::cards::{CardCtx, Seg};
 use ph2d_i18n::tr;
 use ph2d_tool_painter::ids as pids;
-use ph2d_tool_painter::{BrushSettings, FerramentaDoPincel, ModoMisturaOpaca, PaintMedia};
+use ph2d_tool_painter::{
+    AmostraDaMistura, BrushSettings, FerramentaDoPincel, ModoMisturaOpaca, PaintMedia,
+};
 
 /// Os nomes das opções, pela ordem de `ModoMisturaOpaca::TODOS`.
 const OPCOES: [&str; 2] = [
     "panel.painter_layers.brush.mix_off",
     "panel.painter_layers.brush.mix_wet_blend",
 ];
+
+/// Os nomes das opções do **Sample**, pela ordem de `AmostraDaMistura::TODAS`.
+const AMOSTRAS: [&str; 2] = [
+    "panel.painter_layers.brush.mix_sample_this_layer",
+    "panel.painter_layers.brush.mix_sample_all_visible",
+];
+
+/// O rótulo e a dica do seletor Sample.
+const AMOSTRA: &str = "panel.painter_layers.brush.mix_sample";
+const DICA_DA_AMOSTRA: &str = "panel.painter_layers.brush.mix_sample_tip";
 
 /// Os rótulos dos números, pela ordem de `PAINTER_BRUSH_MIX_FIELDS`.
 const ROTULOS: [&str; 6] = [
@@ -74,6 +86,22 @@ fn indice(b: &BrushSettings) -> usize {
         .unwrap_or(0)
 }
 
+fn indice_da_amostra(b: &BrushSettings) -> usize {
+    AmostraDaMistura::TODAS
+        .iter()
+        .position(|a| *a == b.mistura_opaca.amostra)
+        .unwrap_or(0)
+}
+
+/// A dica do Sample: a da inércia (Color mixing em `Off`) toma o lugar da explicação.
+fn poe_dicas(store: &mut WidgetStore) {
+    for id in pids::PAINTER_BRUSH_MIX_SAMPLES {
+        if crate::esmaecer::poe_dica(store, &[id]).is_none() {
+            store.set_tooltip(id, tr(DICA_DA_AMOSTRA));
+        }
+    }
+}
+
 /// Com o store MUTÁVEL, antes de pintar (os dois painéis).
 pub(crate) fn prepare(store: &mut WidgetStore, b: &BrushSettings) {
     if oferecida(b) {
@@ -82,6 +110,7 @@ pub(crate) fn prepare(store: &mut WidgetStore, b: &BrushSettings) {
             &numeros(b),
             &numeros(&crate::paint_brush::FALLBACK_BRUSH),
         );
+        poe_dicas(store);
     }
 }
 
@@ -101,6 +130,19 @@ pub(crate) fn grupo_da_mistura(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -
         })
         .collect();
     let y = escolha(c, tr("panel.painter_layers.brush.mix_mode"), &segs, y);
+    let atual = indice_da_amostra(b);
+    let segs: Vec<Seg<'_>> = AMOSTRAS
+        .iter()
+        .zip(pids::PAINTER_BRUSH_MIX_SAMPLES)
+        .enumerate()
+        .map(|(i, (k, id))| Seg {
+            id,
+            icon: None,
+            text: tr(k),
+            on: i == atual,
+        })
+        .collect();
+    let y = escolha(c, tr(AMOSTRA), &segs, y);
     let itens: Vec<Item> = numeros(b).into_iter().map(Item::Num).collect();
     fila(c, &itens, y)
 }
@@ -118,34 +160,45 @@ pub(crate) fn paint_de_antes(
         SegmentedAdaptive, SegmentedOption, measure_segmented_adaptive, paint_segmented_adaptive,
     };
     use ph2d_editor_core::zones::Rect;
-    let opcoes = OPCOES
-        .iter()
-        .zip(pids::PAINTER_BRUSH_MIX_MODES)
-        .map(|(k, id)| SegmentedOption::new(id, tr(k)))
-        .collect();
-    let seg = SegmentedAdaptive::new(
-        pids::PAINTER_BRUSH_MIX_MODE,
-        tr("panel.painter_layers.brush.mix_mode"),
-        opcoes,
-    )
-    .selected(indice(b));
+    let seletores = [
+        (
+            pids::PAINTER_BRUSH_MIX_MODE,
+            "panel.painter_layers.brush.mix_mode",
+            OPCOES.iter().zip(pids::PAINTER_BRUSH_MIX_MODES),
+            indice(b),
+        ),
+        (
+            pids::PAINTER_BRUSH_MIX_SAMPLE,
+            AMOSTRA,
+            AMOSTRAS.iter().zip(pids::PAINTER_BRUSH_MIX_SAMPLES),
+            indice_da_amostra(b),
+        ),
+    ];
     let row = ph2d_tokens::ROW_H_PX;
-    let h = measure_segmented_adaptive(&seg, w, row, ctx.text_system);
-    {
-        let scene = &mut *ctx.scene;
-        let text_system = &mut *ctx.text_system;
-        let (store, hit_index) = ctx.host.store_and_hit_index_mut();
-        paint_segmented_adaptive(
-            &seg,
-            Rect::new(x, y, w, row),
-            scene,
-            text_system,
-            theme,
-            store,
-            hit_index,
-        );
+    let mut y = y;
+    for (grupo, rotulo, opcoes, atual) in seletores {
+        let opcoes = opcoes
+            .map(|(k, id)| SegmentedOption::new(id, tr(k)))
+            .collect();
+        let seg = SegmentedAdaptive::new(grupo, tr(rotulo), opcoes).selected(atual);
+        let h = measure_segmented_adaptive(&seg, w, row, ctx.text_system);
+        {
+            let scene = &mut *ctx.scene;
+            let text_system = &mut *ctx.text_system;
+            let (store, hit_index) = ctx.host.store_and_hit_index_mut();
+            paint_segmented_adaptive(
+                &seg,
+                Rect::new(x, y, w, row),
+                scene,
+                text_system,
+                theme,
+                store,
+                hit_index,
+            );
+        }
+        y += h + ph2d_tokens::control_gap_px();
     }
-    let mut y = y + h + ph2d_tokens::control_gap_px();
+    poe_dicas(ctx.host.store_mut());
     for n in numeros(b) {
         y = n.linha_de_antes(ctx, theme, x, w, y);
     }
@@ -181,5 +234,8 @@ mod tests {
         assert_eq!(tr(ROTULOS[0]), "Amount");
         b.mistura_opaca.modo = ModoMisturaOpaca::WetBlend;
         assert_eq!(indice(&b), 1);
+        assert_eq!(tr(AMOSTRAS[1]), "All visible layers");
+        b.mistura_opaca.amostra = AmostraDaMistura::TodasVisiveis;
+        assert_eq!(indice_da_amostra(&b), 1);
     }
 }

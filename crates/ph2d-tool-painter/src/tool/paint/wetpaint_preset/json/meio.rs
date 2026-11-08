@@ -61,7 +61,7 @@ pub(super) fn ler(b: &BrushSpec, campo: &str) -> Value {
         "smear_fio" => json!(b.smear_fio),
         "mistura_opaca" => {
             let m = &b.mistura_opaca;
-            json!({
+            let mut o = json!({
                 "modo": nome(m.modo),
                 "paint_amount": num(m.paint_amount),
                 "paint_density": num(m.paint_density),
@@ -69,7 +69,12 @@ pub(super) fn ler(b: &BrushSpec, campo: &str) -> Value {
                 "pigment": num(m.pigmento),
                 "amount_pressure": num(m.amount_pressure),
                 "density_pressure": num(m.density_pressure),
-            })
+            });
+            // «Sample» só se grava fora do default: os pincéis de antes guardam o mesmo byte.
+            if m.amostra != Default::default() {
+                o["sample"] = json!(m.amostra.nome());
+            }
+            o
         }
         // O dual brush (L6): gravado só ARMADO (`pincel_para_json`).
         "dual" => b.dual.map_or(Value::Null, |d| {
@@ -187,6 +192,11 @@ pub(super) fn escrever(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
                 pigmento: f(c("pigment"), fab.pigmento).clamp(0.0, 1.0),
                 amount_pressure: f(c("amount_pressure"), fab.amount_pressure).clamp(0.0, 1.0),
                 density_pressure: f(c("density_pressure"), fab.density_pressure).clamp(0.0, 1.0),
+                // «Sample» (#79): ausente = This layer (gravado antes de 08/11).
+                amostra: c("sample")
+                    .and_then(Value::as_str)
+                    .and_then(ph2d_painter_brush::mistura_opaca::AmostraDaMistura::do_nome)
+                    .unwrap_or(fab.amostra),
             };
         }
         // Campo ausente = o pincel de `b` (a lei do módulo); campo PRESENTE com uma sub-chave ausente (gravado

@@ -93,7 +93,7 @@ pub use ph2d_color::{
 /// [`tool::PainterTool::set_canvas_warp`], logo parte da superfície desta crate. ⛔ Sem a
 /// re-exportação a shell teria de depender do motor de pincel só para nomear um argumento.
 pub use ph2d_painter_brush::canvas_warp::CanvasWarp;
-pub use ph2d_painter_brush::mistura_opaca::{MisturaOpaca, ModoMisturaOpaca};
+pub use ph2d_painter_brush::mistura_opaca::{AmostraDaMistura, MisturaOpaca, ModoMisturaOpaca};
 pub use ph2d_painter_brush::stroke_method::{MethodOffer, offered_methods};
 pub use ph2d_painter_brush::{
     BrushBlend,

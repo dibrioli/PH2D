@@ -10770,8 +10770,14 @@ name = "ph2d-recovery"
 version = "0.0.0"
 dependencies = [
  "fastrand",
+ "jiff",
+ "ph2d-a11y",
+ "ph2d-editor-core",
  "ph2d-i18n",
- "rfd",
+ "ph2d-pixel-core",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-vector",
 ]
 
 [[package]]

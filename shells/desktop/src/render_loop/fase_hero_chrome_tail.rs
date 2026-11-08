@@ -33,15 +33,7 @@ impl crate::App {
         let escala = hero_screen
             .as_ref()
             .map_or_else(Default::default, |h| h.escala());
-        // Legacy `FloatingPanel` Procreate-style paint was retired
-        // here (2026-05-17). The pink/magenta tab-strip + Accent
-        // toggle decoration was inconsistent with the canonical
-        // dark-glass surface used by Inspector / Hierarchy /
-        // Widget Gallery. `Tool::build_panel()` still exists for
-        // event dispatch but the visual is dropped; per-tool
-        // chrome rewires through the new panel style in a
-        // follow-up wave (BgRemoval especially needs its preview
-        // panel re-painted; Move/Brush were stubs anyway).
+        // O `FloatingPanel` legado saiu (2026-05-17); o `build_panel()` só despacha eventos.
         let _ = tools;
         ph2d_editor_core::ui_scale::pintar_no_chrome(escala, viewport, vector_scene, |vp, cena| {
             let mut paint_ctx = PaintCtx {
@@ -56,10 +48,9 @@ impl crate::App {
                 ph2d_editor_core::toast::paint_top_column(toasts, jobs, cena, &mut paint_ctx);
             }
         });
-        // Drain frame-local arena AFTER the dispatch + paint pass
-        // so any events emitted earlier this frame are still alive
-        // for downstream consumers — wired in Phase A+ (currently
-        // events are logged, not acted on).
+        // A arena do quadro esvazia DEPOIS do despacho e da pintura; a recuperação pinta por cima.
         hero_arena.reset();
+        let r = &mut self.recovery;
+        ph2d_recovery::card::paint(r, viewport, escala, vector_scene, text_system, *theme);
     }
 }

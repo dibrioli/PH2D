@@ -139,6 +139,17 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "recovery.ago_days" => "{n} days ago",
         "recovery.size_kb" => "{n} KB",
         "recovery.size_mb" => "{n} MB",
+        "recovery.today_at" => "Today {time}",
+        "recovery.yesterday_at" => "Yesterday {time}",
+        "recovery.date_at" => "{date}, {time}",
+        "recovery.detail" => "{when} \u{00b7} {size}",
+        "recovery.quit_title" => "Save changes before closing?",
+        "recovery.quit_body" => {
+            "\u{201c}{name}\u{201d} has changes that are not saved. If you close without saving, they are lost."
+        }
+        "recovery.save" => "Save",
+        "recovery.dont_save" => "Don\u{2019}t Save",
+        "recovery.cancel" => "Cancel",
         "code.recovery.kept_one" => "1 unsaved script of the previous project was kept in {dir}",
         "code.recovery.failed" => {
             "Could not keep {count} unsaved scripts of the previous project: {err}"

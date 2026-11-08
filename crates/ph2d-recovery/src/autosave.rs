@@ -82,8 +82,9 @@ pub enum Offer {
     Started,
 }
 
-/// A impressão dos bytes.
-fn print_of(bytes: &[u8]) -> u64 {
+/// A impressão dos bytes (o «mudou?» do relógio e do fecho).
+#[must_use]
+pub fn print_of(bytes: &[u8]) -> u64 {
     let mut h = std::collections::hash_map::DefaultHasher::new();
     bytes.hash(&mut h);
     h.finish()
@@ -96,6 +97,8 @@ pub struct Autosave {
     pub period: Period,
     next: Instant,
     last: Option<u64>,
+    /// A impressão do que está no disco do artista (o último Save ou Open); `None` = por gravar.
+    saved: Option<u64>,
     writing: Option<JoinHandle<std::io::Result<()>>>,
 }
 
@@ -107,6 +110,7 @@ impl Autosave {
             period,
             next: now + period.duration(),
             last: None,
+            saved: None,
             writing: None,
         }
     }
@@ -122,8 +126,24 @@ impl Autosave {
     pub fn mark_saved(&mut self, bytes: &[u8], session: &Session, now: Instant) {
         self.finish();
         self.last = Some(print_of(bytes));
+        self.saved = self.last;
         self.next = now + self.period.duration();
         session.clear_copy();
+    }
+
+    /// Abriu-se um projecto com estes bytes: a próxima hora só escreve se mudarem. `restored` = veio
+    /// de uma cópia (fica por gravar); senão é o disco do artista.
+    pub fn opened(&mut self, bytes: &[u8], restored: bool, now: Instant) {
+        self.finish();
+        self.last = Some(print_of(bytes));
+        self.saved = if restored { None } else { self.last };
+        self.next = now + self.period.duration();
+    }
+
+    /// Estes bytes diferem do que está no disco do artista (ou o projecto nunca foi gravado)?
+    #[must_use]
+    pub fn is_unsaved(&self, bytes: &[u8]) -> bool {
+        self.saved != Some(print_of(bytes))
     }
 
     /// Esquece a impressão (o projecto restaurado está por gravar: a próxima hora escreve).

@@ -31,19 +31,55 @@ impl crate::App {
         }
     }
 
-    /// Arranque da recuperação: a sessão, a varredura e a janela; `Restore` abre a cópia por gravar
-    /// com o caminho original (o Save grava lá).
-    pub(crate) fn recovery_start(
-        &mut self,
-        root: Option<&std::path::Path>,
-        ask: impl FnMut(&ph2d_recovery::Orphan) -> ph2d_recovery::Choice,
-    ) {
+    /// Arranque da recuperação: a sessão, a varredura e a janela em cartões (`ph2d_recovery::card`).
+    pub(crate) fn recovery_start(&mut self, root: Option<&std::path::Path>) {
         self.recovery = ph2d_recovery::Recovery::start(root, crate::prefs::recovery());
-        if let Some((copy, original)) = self.recovery.ask_all(ask) {
-            self.project_load_from(&copy.to_string_lossy());
-            self.project_path = original;
-            self.title_dirty = true;
+        self.recovery_opened(false);
+    }
+
+    /// Abriu-se um projecto: a linha de base da cópia e do «por gravar» são os bytes de agora.
+    pub(crate) fn recovery_opened(&mut self, restored: bool) {
+        let bytes = self.project_bytes();
+        self.recovery.opened(bytes.as_deref(), restored);
+    }
+
+    /// A janela da recuperação é modal: o clique é dela. `Restore` abre a cópia por gravar com o
+    /// caminho original (o Save grava lá); as outras ficam para depois.
+    pub(crate) fn recovery_click(&mut self, evt: &ph2d_host::PointerEvent) -> bool {
+        use ph2d_recovery::card::Hit;
+        let down = evt.kind == ph2d_host::PointerKind::Down;
+        let Some(hit) = ph2d_recovery::card::click(&mut self.recovery, evt.x, evt.y) else {
+            return false;
+        };
+        match hit {
+            Hit::Answer(i, choice) if down => {
+                if let Some((copy, original)) = self.recovery.answer(i, choice) {
+                    self.recovery.prompt.later_all();
+                    self.project_load_from(&copy.to_string_lossy());
+                    self.project_path = original;
+                    self.title_dirty = true;
+                    self.recovery_opened(true);
+                }
+            }
+            Hit::Save if down => {
+                self.project_save_gesture(false);
+                let bytes = self.project_bytes();
+                self.recovery.saved_then_quit(bytes.as_deref());
+            }
+            Hit::DontSave if down => self.recovery.quit = ph2d_recovery::Quit::Go,
+            _ => {}
         }
+        true
+    }
+
+    /// O fecho com alterações por gravar pergunta antes (`true` = não fecha ainda).
+    pub(crate) fn recovery_quit_guard(&mut self) -> bool {
+        if self.recovery.quit == ph2d_recovery::Quit::Go {
+            return false;
+        }
+        let bytes = self.project_bytes();
+        let path = self.project_path.clone();
+        self.recovery.ask_quit(bytes.as_deref(), path.as_deref())
     }
 
     /// ⭐ A cópia de recuperação (P12 S, `ph2d_recovery`): à hora, os MESMOS bytes do Save.
@@ -62,8 +98,7 @@ impl crate::App {
         let assets = self.collect_assets();
         // Os documentos pintados carimbam a identidade estável no mundo: ANTES da captura.
         let painted = self.collect_painted_docs();
-        // Os pixels de todo sprite Individual (`docs/Sprite_projeto/17` §3). ⚠️ DEPOIS do
-        // `collect_painted_docs`: a colheita SALTA quem tem `PaintedDoc` (uma verdade por sprite).
+        // Os pixels de todo sprite Individual, DEPOIS do `collect_painted_docs` (que eles saltam).
         let sprite_pixels = self.collect_sprite_pixels();
         // A arte dos padrões de textura (plano 33 W4), por `AssetId`.
         let pattern_art = self
@@ -86,7 +121,7 @@ impl crate::App {
             }
             None => Vec::new(),
         };
-        // Os QUADROS (dono: o `HeroScreen`). ⚠️ Sem bytes NÃO se grava (apagaria os do disco).
+        // Os QUADROS e os KANBANS (ADR-0195): sem bytes NÃO se grava (apagaria os do disco).
         let boards = self
             .gfx
             .as_ref()
@@ -99,15 +134,12 @@ impl crate::App {
                 return None;
             }
         };
-        // Os KANBANS (ADR-0195), pela mesma lei dos quadros: sem bytes, não se grava.
         let hero = self.gfx.as_ref().and_then(|g| g.hero_screen.as_ref());
-        let Some(kanbans) = ph2d_app_kanban::project::to_bytes(hero.map(|h| &h.documents)) else {
-            return None;
-        };
+        let kanbans = ph2d_app_kanban::project::to_bytes(hero.map(|h| &h.documents))?;
         // A meio do Play o documento é a fotografia (`undo::jogo`): o que o jogo mudou não se grava.
-        let Some(state) = self.documento_do_jogo().or_else(|| self.capture_project()) else {
-            return None;
-        };
+        let state = self
+            .documento_do_jogo()
+            .or_else(|| self.capture_project())?;
         let file = ProjectFile {
             state,
             assets,

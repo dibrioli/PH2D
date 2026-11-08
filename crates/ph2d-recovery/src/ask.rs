@@ -1,11 +1,9 @@
-//! A janela do arranque, uma cópia de cada vez: nome, quando, tamanho, e `Restore` · `Discard` ·
-//! `Later`. Hoje é a janela NATIVA do sistema (o `rfd` que a shell já usa no Save/Open): é modal e
-//! dona do teclado por construção (o `Esc` = `Later`, nada se perde por fechá-la). A versão em
-//! cartões do chrome fica aberta (ver o handoff da P12).
+//! Os textos de uma cópia: há quanto tempo, o tamanho e o corpo por extenso (a janela em cartões
+//! é a [`crate::card`]).
 
-use ph2d_i18n::{tr, tr_with};
+use ph2d_i18n::tr_with;
 
-use crate::{Choice, Orphan};
+use crate::Orphan;
 
 /// «há quanto tempo», em inglês.
 #[must_use]
@@ -38,31 +36,4 @@ pub fn body(o: &Orphan, now: u64) -> String {
         "recovery.body",
         &[("name", &o.meta.name), ("ago", &ago), ("size", &size)],
     )
-}
-
-/// Pergunta na janela nativa. Fechar a janela = `Later`.
-#[must_use]
-pub fn ask_native(o: &Orphan) -> Choice {
-    let (r, d, l) = (
-        tr("recovery.restore"),
-        tr("recovery.discard"),
-        tr("recovery.later"),
-    );
-    let got = rfd::MessageDialog::new()
-        .set_level(rfd::MessageLevel::Warning)
-        .set_title(tr("recovery.title"))
-        .set_description(body(o, crate::now_secs()))
-        .set_buttons(rfd::MessageButtons::YesNoCancelCustom(
-            r.to_owned(),
-            d.to_owned(),
-            l.to_owned(),
-        ))
-        .show();
-    match got {
-        rfd::MessageDialogResult::Custom(s) if s == r => Choice::Restore,
-        rfd::MessageDialogResult::Yes => Choice::Restore,
-        rfd::MessageDialogResult::Custom(s) if s == d => Choice::Discard,
-        rfd::MessageDialogResult::No => Choice::Discard,
-        _ => Choice::Later,
-    }
 }

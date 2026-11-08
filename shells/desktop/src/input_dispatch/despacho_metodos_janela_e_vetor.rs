@@ -34,6 +34,9 @@ impl crate::App {
     }
 
     pub(crate) fn on_close_request(&mut self, event_loop: &ActiveEventLoop) {
+        if self.recovery_quit_guard() {
+            return;
+        }
         match self.handler.on_close_request() {
             CloseAction::Close => {
                 self.handler.on_lifecycle(Lifecycle::WillTerminate);
@@ -41,28 +44,12 @@ impl crate::App {
                 if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
                     ph2d_app_board::live::shutdown(h);
                 }
-                // Tear the audio system down HERE, deterministically, while the
-                // main thread is quiescent — instead of letting the `cpal::Stream`
-                // (ALSA/PipeWire, `!Send`) drop LAST in the `App` field cascade at
-                // the end of `main`, where `snd_pcm_close` on the pipewire-alsa
-                // plugin segfaults on teardown (benign — fires after "exited
-                // cleanly" — but returns 139, which pollutes exit-code checks).
+                // O áudio e a GPU caem AQUI, por ordem inversa à construção: no rabo do `main` o
+                // `snd_pcm_close` e a superfície EGL sobre um `wl_display` morto segfaultam (exit 139).
                 #[cfg(feature = "panel-audio-editor")]
                 {
                     self.audio = None;
                 }
-                // **E a GPU pela MESMA razão, medida no mesmo lugar.** O `EventLoop` é CONSUMIDO por
-                // `run_app`, então ele — e com ele a conexão Wayland — morre quando `run_app` retorna,
-                // e só DEPOIS o `App` desenrola seus campos. A `SurfaceContext` do `AppGfx` cai nesse
-                // rabo, e destruir uma superfície EGL sobre um `wl_display` que já se foi marshala num
-                // proxy morto: `wl_proxy_marshal_array_flags` <- libnvidia-egl-wayland2 <- libEGL_nvidia,
-                // dentro do epílogo do `main` (stack de 217 coredumps desde 2026-07-22, idêntica nas
-                // SEIS worktrees — é da shell, não de linha nenhuma). Benigno, porque dispara depois do
-                // "exited cleanly"; mas devolve 139 e some com todo `$status` que um smoke checaria.
-                //
-                // A ordem aqui é a INVERSA da construção, e cada passo é uma dependência real: a
-                // superfície/dispositivo primeiro (o que fala EGL), o host depois, a janela por último —
-                // ela é quem possui o `wl_surface` que os outros dois referenciam.
                 self.gfx = None;
                 self.host = None;
                 self.window = None;

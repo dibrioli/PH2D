@@ -208,6 +208,51 @@ fn a_escrita_de_um_projeto_grande_custa() {
     let _ = std::fs::remove_dir_all(d);
 }
 
+/// A medida da serialização, à hora, de um projecto GRANDE: 16 Pixel Sprites 512² RGBA × 8 quadros
+/// (128 MiB de cels, fundo branco opaco): o codec do Pixel, uma cópia (o `postcard` do
+/// `ProjectFile` copia cada blob uma vez) e a impressão. Corre com `--profile smoke`.
+#[test]
+fn a_serializacao_de_um_projeto_grande_custa() {
+    use ph2d_pixel_core::frames::{NewFrame, new_frame};
+    use ph2d_pixel_core::{Background, NewSprite, Sprite};
+    let spec = NewSprite {
+        width: 512,
+        height: 512,
+        background: Background::White,
+        ..NewSprite::default()
+    };
+    let mut lib = std::collections::BTreeMap::new();
+    for k in 0..16u64 {
+        let mut s = Sprite::new(spec).expect("sprite");
+        for _ in 1..8 {
+            let last = s.frames().last().expect("quadro").id;
+            let (op, _) = new_frame(&mut s, last, NewFrame::Copy).expect("quadro novo");
+            ph2d_pixel_core::apply(&mut s, op).expect("aplica");
+        }
+        lib.insert(k, s);
+    }
+    let min3 = |f: &mut dyn FnMut()| {
+        (0..3)
+            .map(|_| {
+                let t = Instant::now();
+                f();
+                t.elapsed()
+            })
+            .min()
+            .unwrap_or_default()
+    };
+    let mut bytes = Vec::new();
+    let codec = min3(&mut || bytes = ph2d_pixel_core::codec::write_library(&lib));
+    let copy = min3(&mut || drop(std::hint::black_box(bytes.to_vec())));
+    let mut p = 0;
+    let print = min3(&mut || p = ph2d_recovery::print_of(&bytes));
+    eprintln!(
+        "[medida] {} MiB: codec {codec:?} · cópia {copy:?} · impressão {print:?} ({p:x})",
+        bytes.len() >> 20
+    );
+    assert!(bytes.len() >= 128 << 20, "as cels estão lá");
+}
+
 /// A janela fala inglês da tabela (nunca a chave crua): nome, há quanto tempo, tamanho.
 #[test]
 fn a_janela_diz_nome_hora_e_tamanho() {
@@ -225,3 +270,5 @@ fn a_janela_diz_nome_hora_e_tamanho() {
     assert_eq!(ph2d_i18n::tr("recovery.restore"), "Restore");
     assert_eq!(ph2d_recovery::size(1), "1 KB");
 }
+
+mod card;

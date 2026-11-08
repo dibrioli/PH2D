@@ -388,24 +388,21 @@ impl App {
             _ => ElementState::Released,
         };
         self.any_input_this_frame = true;
-        // W-Grab: **soltar a mão vem ANTES de tudo.** Este handler tem muitos
-        // early-returns e uma mão que sobrevive ao release fica colada no cursor
-        // para sempre; e vale para qualquer botão, porque uma mão não é um
-        // modificador (ver `ph2d_app_physics::body_grab::release_body_grab`).
+        if self.recovery_click(&evt) {
+            return;
+        }
+        // W-Grab: soltar a mão (e a alça da âncora, §12) vem ANTES dos early-returns, qualquer botão.
         if state == ElementState::Released {
             if let Some(gfx) = self.gfx.as_mut() {
                 ph2d_app_physics::body_grab::release_body_grab(&mut gfx.physics);
                 ph2d_app_physics::body_pose::release_body_pose(&mut gfx.physics);
                 ph2d_app_physics::body_fk::release_body_fk(&mut gfx.physics);
             }
-            // **§12** — e a alça do gizmo de âncora, pela MESMA razão escrita acima: este handler
-            // tem muitos early-returns, e uma alça que sobrevive ao release fica colada ao cursor.
             self.end_anchor_gizmo_drag();
         }
         self.ramo_arrasto_biblioteca(state, button);
         self.ramo_aperto_solta_teclado(state, evt);
-        // O rato do JOGO (itens 6–7): depois do blur e antes de todo ramo que devolve; com a cena a correr o clique na
-        // cena é SÓ dele (`posse_do_jogo`).
+        // O rato do JOGO (itens 6–7): com a cena a correr o clique na cena é SÓ dele (`posse_do_jogo`).
         if self.rato_do_jogo(mapped_button, state == ElementState::Pressed) {
             self.clique_so_do_jogo(mapped_button, state == ElementState::Pressed);
             return;
@@ -419,8 +416,7 @@ impl App {
         if self.ramo_alca_da_ancora(state, button) {
             return;
         }
-        // Motion Nodes M0.T1: track the held button so `CursorMoved` can carry
-        // its identity (winit Move events don't). Held between Down and Up.
+        // Motion Nodes M0.T1: o botão preso entre Down e Up, para o `CursorMoved` o levar.
         self.held_button = match kind {
             PointerKind::Down => Some(mapped_button),
             PointerKind::Up => None,

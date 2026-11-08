@@ -83,6 +83,10 @@
 
 Cópia de segurança do documento a cada N minutos **só se mudou** desde a última, numa pasta própria fora do projeto, com escrita atómica (ficheiro novo + renomear). Ao abrir depois de um fecho à força, uma janela oferece cada cópia com nome, hora e miniatura: `Restore` · `Discard` · `Later`. Fecho normal apaga as cópias. Guardadas 1 semana. Prova: matar o processo em cada ponto da escrita e reabrir dá sempre ou a cópia anterior ou a nova, nunca um ficheiro partido.
 
+**Feito (08/11):** a janela é a do app, em cartões (`ph2d_recovery::card`: um cartão por sessão com nome, «Today 14:32» e tamanho, `Restore` · `Discard`; rodapé `Later`; `Esc` = `Later`; modal, come o ponteiro e o teclado); depois de Open/Restore os bytes abertos são a linha de base (a primeira hora não regrava igual); fechar com trabalho por gravar (um restaurado inclui-se) pergunta `Save` · `Don't Save` · `Cancel` na mesma janela.
+
+**Medido (08/11, `a_serializacao_de_um_projeto_grande_custa`, `--profile smoke`, load ~6–11):** 16 Pixel Sprites 512² RGBA × 8 quadros = 128 MiB — codec do Pixel **84–85 ms**, uma cópia (o `postcard` do `ProjectFile`) **22–23 ms**, impressão SipHash **33 ms** (mínimo de 3, duas corridas): ≈ 140 ms no fio da janela, ≫ 8 ms. Decidido: a hora só serializa se houve entrada do artista desde a última (`Recovery::touched`, alimentado pelo `had_input` do `post_frame_undo`); com o app parado custa zero. Aberto: serializar fora do fio a partir de uma fotografia barata (as cels do Pixel em `Arc`) e um hash mais rápido; a edição remota do Quadro sem entrada local espera a próxima entrada.
+
 ## 5. O desenho técnico (provisório até o §9)
 
 - **`ph2d-pixel-keys`** (crate nova): a tabela `Acção → [Tecla+contexto]` como dados; a de fábrica com teste contra a O-tabela; o delta do utilizador em `~/.ph2d/pixel-keys.txt` (só o que mudou, como o Aseprite); o despacho de `input_teclas.rs` passa a perguntar à tabela (o `match` sai da `ph2d-app-pixel`, que encolhe).

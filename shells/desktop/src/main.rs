@@ -910,7 +910,7 @@ impl ApplicationHandler for App {
         self.handler.on_resize(size, scale);
         self.title_dirty = true;
         let root = ph2d_recovery::default_root();
-        self.recovery_start(root.as_deref(), ph2d_recovery::ask_native);
+        self.recovery_start(root.as_deref());
         if let Some(host_ref) = self.host.as_ref() {
             host_ref.request_redraw();
         }
@@ -929,8 +929,10 @@ impl ApplicationHandler for App {
         if self.da_outra_janela(id, &event) {
             return;
         }
-        // A pure dispatch table (PR 9b): one arm here + one `input_dispatch::App::on_<arm>` method
-        // there — `docs/Migracao/2026-05-convention-by-discovery.md`.
+        if self.recovery.quit == ph2d_recovery::Quit::Go {
+            return self.on_close_request(event_loop);
+        }
+        // A pure dispatch table (PR 9b): one arm here + one `input_dispatch::App::on_<arm>` there.
         match event {
             // Com o jogo no palco, fechar pára o jogo; o app só fecha depois (dono 07/11).
             WindowEvent::CloseRequested

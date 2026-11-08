@@ -172,6 +172,7 @@ impl crate::App {
         self.project_load_from(&path);
         self.project_path = Some(path);
         self.title_dirty = true;
+        self.recovery_opened(false);
     }
 
     /// **Drena os itens do menu Ficheiro**, uma vez por quadro, com `self` livre do borrow do

@@ -8,7 +8,7 @@
 //!   de forma atómica ([`atomic::write_atomic`]: temporário + `fsync` + `rename` + `fsync` da pasta);
 //! - a sessão tem uma tranca com o `pid` ([`Session`]); o fecho normal e o Save apagam as cópias;
 //! - ao arrancar, [`scan`] poda o que tem mais de uma semana e devolve as cópias de sessões mortas,
-//!   que a janela [`Prompt`] oferece: `Restore` · `Discard` · `Later`.
+//!   que a janela em cartões ([`card`], estado [`Prompt`]) oferece: `Restore` · `Discard` · `Later`.
 //!
 //! O `PH2D_SCRIPT_RECOVERY_DIR` do editor de scripts (`ph2d-app-code::recovery`) usa a MESMA raiz
 //! ([`data_dir`]), noutra subpasta.
@@ -17,12 +17,13 @@ mod app;
 mod ask;
 pub mod atomic;
 mod autosave;
+pub mod card;
 mod prompt;
 mod session;
 
-pub use app::{Recovery, meta_of};
-pub use ask::{ago, ask_native, body, size};
-pub use autosave::{Autosave, Offer, Period};
+pub use app::{Quit, Recovery, meta_of};
+pub use ask::{ago, body, size};
+pub use autosave::{Autosave, Offer, Period, print_of};
 pub use prompt::{Choice, Prompt};
 pub use session::{Meta, Orphan, Session, is_alive, scan};
 

@@ -10,15 +10,23 @@ authors.workspace = true
 [lib]
 
 # A recuperação depois de um fecho à força (`docs/PixelArt/P12_plano.md` §4.3, O15): a pasta de dados,
-# a escrita atómica, a sessão com tranca, a varredura ao arrancar e o estado da janela que oferece as
-# cópias. PURA: std só, sem UI; quem serializa o projecto é a shell (os mesmos bytes do Save).
+# a escrita atómica, a sessão com tranca, a varredura ao arrancar e a janela em cartões que oferece as
+# cópias (`card`: disposição, clique, pintura). Quem serializa o projecto é a shell (os bytes do Save).
 [dependencies]
-# Os textos da janela (inglês, `ph2d-i18n`) e a janela nativa (o mesmo `rfd` da shell).
 ph2d-i18n = { path = "../ph2d-i18n" }
-rfd = "0.17"
+# A janela em cartões: o `Rect`, a pintura e o botão do chrome, sobre os tokens.
+ph2d-a11y = { path = "../ph2d-a11y" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-vector = { path = "../ph2d-vector" }
+# «Today 14:32» no fuso do sistema (o mesmo `jiff` do `ph2d-kanban-dates`).
+jiff = { version = "0.2", default-features = false, features = ["std", "tz-system", "tzdb-zoneinfo", "tzdb-bundle-platform"] }
 
 [dev-dependencies]
 fastrand = "2"
+# A medida da serialização de um projecto grande (16 Pixel Sprites 512² × 8 quadros).
+ph2d-pixel-core = { path = "../ph2d-pixel-core" }
 
 [[test]]
 name = "it"

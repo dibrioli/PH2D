@@ -27,6 +27,7 @@ ph2d-host = { path = "../../crates/ph2d-host" }
 ph2d-i18n = { path = "../../crates/ph2d-i18n" }
 ph2d-pen = { path = "../../crates/ph2d-pen" }
 ph2d-pixel-core = { path = "../../crates/ph2d-pixel-core" }
+ph2d-pixel-cenas = { path = "../../crates/ph2d-pixel-cenas" }
 ph2d-pixel-io = { path = "../../crates/ph2d-pixel-io" }
 ph2d-pixel-render = { path = "../../crates/ph2d-pixel-render" }
 ph2d-pixel-text = { path = "../../crates/ph2d-pixel-text" }

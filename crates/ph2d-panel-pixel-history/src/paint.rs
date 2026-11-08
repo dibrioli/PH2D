@@ -24,7 +24,12 @@ fn solta(ctx: &mut PaintCtx) -> Rect {
         r.y + r.h + Spacing::Sm.px()
     };
     let fundo = area.y + area.h - Spacing::Sm.px();
-    let coluna = ctx.slot.x;
+    // A KEYBOARD SHORTCUTS aberta ocupa o mesmo canto: a história encosta-se à esquerda dela.
+    let atalhos = ctx
+        .host
+        .store_mut()
+        .panel_rect(ph2d_editor_core::ids::PIXEL_KEYS_PANEL);
+    let coluna = atalhos.map_or(ctx.slot.x, |r| r.x.min(ctx.slot.x));
     let store = ctx.host.store_mut();
     let node = PixelHistoryPanel::NODE_ID;
     let esquerda = livre.x.max(area.x);

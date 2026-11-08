@@ -24,7 +24,16 @@ fn solta(ctx: &mut PaintCtx) -> Rect {
         r.y + r.h + Spacing::Sm.px()
     };
     let fundo = area.y + area.h - Spacing::Sm.px();
-    let coluna = ctx.slot.x;
+    // KEYBOARD SHORTCUTS e UNDO HISTORY abertas ocupam o canto: esta encosta-se à esquerda delas
+    // (a ordem é fixa — atalhos, história, esta — e nunca dá ciclo).
+    let vizinhas = [
+        ph2d_editor_core::ids::PIXEL_KEYS_PANEL,
+        ph2d_editor_core::ids::PIXEL_HISTORY_PANEL,
+    ];
+    let coluna = vizinhas
+        .iter()
+        .filter_map(|&n| ctx.host.store_mut().panel_rect(n))
+        .fold(ctx.slot.x, |c, r| c.min(r.x));
     let store = ctx.host.store_mut();
     let node = PixelPrefsPanel::NODE_ID;
     let esquerda = livre.x.max(area.x);

@@ -9,9 +9,12 @@ authors.workspace = true
 
 [lib]
 
-# Os números e a arte das cenas de smoke do Pixel Art. PURA: sem ECS, sem UI.
+# Os números e a arte das cenas de smoke do Pixel Art. Sem ECS; o ph2d-pixel-keys só para a
+# tabela de teclas da cena 25.
 [dependencies]
 ph2d-pixel-core = { path = "../ph2d-pixel-core" }
+ph2d-pixel-keys = { path = "../ph2d-pixel-keys" }
+winit = "0.30"
 
 [lints]
 workspace = true

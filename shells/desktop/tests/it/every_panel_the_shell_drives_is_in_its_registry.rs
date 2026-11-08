@@ -54,6 +54,8 @@ const SHELL_DRIVEN_PANELS: &[(&str, &str)] = &[
     ("pixel_tiles", "panel-pixel-tiles"),
     ("pixel_slices", "panel-pixel-slices"),
     ("pixel_keys", "panel-pixel-keys"),
+    ("pixel_history", "panel-pixel-history"),
+    ("pixel_prefs", "panel-pixel-prefs"),
     // ⚠️ O gate protege contra uma lista esquecida (`[features] default`) com OUTRA lista escrita
     // à mão — então ele só cobre o painel de que alguém lembrou. Medido: com um painel fora do
     // `default` do shell e fora desta lista este gate ficava VERDE (foi o caso do da escultura,
@@ -80,6 +82,8 @@ fn enabled(feature: &str) -> bool {
         "panel-pixel-tiles" => cfg!(feature = "panel-pixel-tiles"),
         "panel-pixel-slices" => cfg!(feature = "panel-pixel-slices"),
         "panel-pixel-keys" => cfg!(feature = "panel-pixel-keys"),
+        "panel-pixel-history" => cfg!(feature = "panel-pixel-history"),
+        "panel-pixel-prefs" => cfg!(feature = "panel-pixel-prefs"),
         other => panic!("unknown feature in SHELL_DRIVEN_PANELS: {other}"),
     }
 }

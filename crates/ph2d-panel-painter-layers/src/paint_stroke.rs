@@ -417,6 +417,8 @@ pub(crate) mod jitter_card;
 /// As fileiras do card Jitter — a ordem da tela como DADO (ordem do dono 23/10).
 pub(crate) mod jitter_linhas;
 mod op_card;
+/// O ponto fixo do spray, no Jitter (dono 08/11).
+pub(crate) mod ponto_fixo;
 use apply::{paint_apply_row, paint_merge_row, paint_offset_card, paint_simplify_row};
 use grid_card::paint_grid_stamp_card;
 use jitter_card::{jitter_unit_options, paint_jitter_card};

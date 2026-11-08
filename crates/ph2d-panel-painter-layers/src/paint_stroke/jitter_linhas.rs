@@ -35,10 +35,12 @@ pub(crate) enum Fileira {
     },
     /// Uma linha da marca (`marca.rs` do tool), por barra.
     Marca(LinhaDaMarca),
+    /// A caixa «Fixed dab size» e o campo dela ([`super::ponto_fixo`]): logo depois do Count e do Scatter.
+    PontoFixo,
 }
 
 /// ⭐ **A ordem da tela**, de cima para baixo.
-pub(crate) const FILEIRAS_DO_JITTER: [Fileira; 14] = [
+pub(crate) const FILEIRAS_DO_JITTER: [Fileira; 15] = [
     Fileira::Unidade,
     // Quantas marcas cada ponto deixa — o Count transforma o resto de *tremer* em *espalhar*.
     Fileira::Pincel {
@@ -57,6 +59,7 @@ pub(crate) const FILEIRAS_DO_JITTER: [Fileira; 14] = [
         pista: pista_da_posicao,
     },
     Fileira::Marca(LinhaDaMarca::Across),
+    Fileira::PontoFixo,
     // Quando: o intervalo entre marcas.
     Fileira::Pincel {
         chave: "panel.painter_layers.stroke.jitter.spacing",
@@ -107,6 +110,7 @@ fn da_forma(f: Fileira) -> bool {
                 | LinhaDaMarca::FlipY
         ),
         Fileira::Unidade => false,
+        Fileira::PontoFixo => true,
     }
 }
 
@@ -145,9 +149,16 @@ pub(crate) fn barra_da_marca(id: NodeId) -> Option<usize> {
 }
 
 /// A altura que a fileira `f` ocupa (o mesmo avanço que o pintor dá) — a do cartão é a soma.
-pub(crate) fn altura(f: Fileira, inner_w: f32) -> f32 {
+pub(crate) fn altura(
+    ctx: &mut PaintCtx,
+    f: Fileira,
+    x: f32,
+    inner_w: f32,
+    b: &BrushSettings,
+) -> f32 {
     match f {
         Fileira::Unidade => ph2d_tokens::row_pitch_px(),
+        Fileira::PontoFixo => super::ponto_fixo::altura(ctx, x, inner_w, b),
         _ => {
             ph2d_editor_core::widget::slider_with_chip_height(ROW_H_PX, inner_w)
                 + ph2d_tokens::control_gap_px()
@@ -183,6 +194,7 @@ pub(crate) fn paint_fileiras(
                 }
                 ny
             }
+            Fileira::PontoFixo => super::ponto_fixo::paint(ctx, theme, x, w, y, brush),
             Fileira::Pincel {
                 chave,
                 slider,

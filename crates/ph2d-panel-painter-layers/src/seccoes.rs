@@ -345,7 +345,6 @@ pub(crate) const SELECTION: &[&str] = &["panel.painter_layers.selection.edit_giz
 /// ⛔ E não muda nada nesta secção: o mais largo dela é o *Use Texture Colors*.
 pub(crate) const SHAPE: &[&str] = &[
     "panel.painter_layers.shape.automatic",
-    "panel.painter_layers.shape.fixed_dab",
     "panel.painter_layers.shape.alpha_from_image",
     "panel.painter_layers.shape.per_layer_color",
     "panel.painter_layers.shape.use_texture_colors",
@@ -384,7 +383,11 @@ pub(crate) const STROKE: &[&str] = &[
 /// *Stroke ▸ Grid* — sub-cartão próprio, e por isso coluna própria.
 pub(crate) const STROKE_GRID: &[&str] = &["panel.painter_layers.stroke.grid.show_grid"];
 /// *Stroke ▸ Jitter* — sub-cartão próprio.
-pub(crate) const STROKE_JITTER: &[&str] = &["panel.painter_layers.stroke.jitter.unit"];
+pub(crate) const STROKE_JITTER: &[&str] = &[
+    "panel.painter_layers.stroke.jitter.unit",
+    "panel.painter_layers.stroke.jitter.fixed_dab",
+    "panel.painter_layers.stroke.jitter.dab_px",
+];
 /// *Symmetry*.
 pub(crate) const SYMMETRY: &[&str] = &[
     "panel.painter_layers.symmetry.use_symmetry",

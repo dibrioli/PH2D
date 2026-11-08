@@ -85,7 +85,6 @@ pub(crate) fn paint_shape_section(
             brush.watercolor_shape_auto,
         );
         if brush.watercolor_shape_auto {
-            let y = crate::paint_shape_pontas::paint_dab_fixo(ctx, theme, x, content_w, y, &brush);
             let fios = crate::cards_penteado::padroes(&brush);
             let sec = seccao_da_forma(ctx);
             let y = crate::number_field::paint_num_params(ctx, theme, x, content_w, y, &fios, sec);
@@ -144,7 +143,6 @@ pub(crate) fn paint_shape_section(
     // ── A ponta RETA (prompt 44): a quina da mesma pegada, logo abaixo do gizmo que a desenha. Só no Wet
     //    Paint (a ordem de 07/10: só ele evolui; o device do Digital não a carimba). ──
     y = crate::paint_shape_pontas::paint_pontas_do_molhado(ctx, theme, x, content_w, y, &brush);
-    y = crate::paint_shape_pontas::paint_dab_fixo(ctx, theme, x, content_w, y, &brush);
 
     // ── Texture source picker (None / procedural kinds / Image) — the same kinds as the Grain. Picking
     //    Image opens a file pick (or use the Hierarchy "Use as Brush Shape"); None reverts to the bare

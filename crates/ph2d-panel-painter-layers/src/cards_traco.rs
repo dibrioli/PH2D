@@ -164,7 +164,7 @@ fn do_fim(l: &BrushSettings, v: &BrushSettings) -> Vec<Barra> {
 fn do_jitter(l: &BrushSettings, v: &BrushSettings) -> Vec<Barra> {
     jitter_linhas::fileiras(l)
         .filter_map(|f| match f {
-            jitter_linhas::Fileira::Unidade => None,
+            jitter_linhas::Fileira::Unidade | jitter_linhas::Fileira::PontoFixo => None,
             jitter_linhas::Fileira::Pincel {
                 chave,
                 slider,
@@ -248,6 +248,11 @@ pub(crate) fn prepare(ctx: &mut PaintCtx, b: &BrushSettings) {
         pids::PAINTER_BRUSH_OFFSET_TRIM,
     ] {
         let _ = esmaecer::poe_dica(store, &[id]);
+    }
+    if metodo(b).allows_jitter() {
+        let fixo = paint_stroke::ponto_fixo::numeros;
+        crate::cards_wet::arma_numeros(store, &fixo(b, b), &fixo(b, &paint_brush::FALLBACK_BRUSH));
+        paint_stroke::ponto_fixo::poe_dicas(store);
     }
 }
 
@@ -436,7 +441,16 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, y: f32) -> f32 {
                 chave: "panel.painter_layers.stroke.jitter.unit",
                 texto: paint_stroke::jitter_card::jitter_unit_name(b.jitter_unit),
             }];
-            itens.extend(do_jitter(&b, &b).iter().map(|g| g.item()));
+            let mut barras = do_jitter(&b, &b).into_iter();
+            for f in jitter_linhas::fileiras(&b) {
+                match f {
+                    jitter_linhas::Fileira::Unidade => {}
+                    jitter_linhas::Fileira::PontoFixo => {
+                        itens.extend(paint_stroke::ponto_fixo::itens(&b, &b));
+                    }
+                    _ => itens.extend(barras.next().map(|g| g.item())),
+                }
+            }
             y = fila(c, &itens, y);
         }
     }

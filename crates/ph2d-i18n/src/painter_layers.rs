@@ -411,8 +411,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.shape.rotation_smoothing" => "Rotation smoothing",
         "panel.painter_layers.shape.flat_ends" => "Flat ends",
         "panel.painter_layers.shape.flat_ends_beyond" => "Ends beyond",
-        "panel.painter_layers.shape.fixed_dab" => "Fixed dab size",
-        "panel.painter_layers.shape.dab_px" => "Dab size (px)",
         "panel.painter_layers.shape.ends_fade" => "Ends fade",
         "panel.painter_layers.shape.use_document_layers" => "Use Document Layers",
         "panel.painter_layers.shape.alpha_from_image" => "Alpha From Image",
@@ -442,6 +440,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.stroke.grid.show_grid" => "Show Grid",
         "panel.painter_layers.stroke.jitter.jitter" => "Jitter",
         "panel.painter_layers.stroke.jitter.count" => "Count",
+        "panel.painter_layers.stroke.jitter.fixed_dab" => "Fixed dab size",
+        "panel.painter_layers.stroke.jitter.dab_px" => "Dab size (px)",
+        "panel.painter_layers.stroke.jitter.fixed_dab_tip" => {
+            "Every dab keeps the same size in pixels; Size only sets how far the spray spreads."
+        }
+        "panel.painter_layers.stroke.jitter.dab_px_tip" => {
+            "The size of each dab, in pixels, while Fixed dab size is on."
+        }
         "panel.painter_layers.stroke.jitter.position" => "Position",
         "panel.painter_layers.stroke.jitter.unit" => "Unit",
         "panel.painter_layers.stroke.jitter.scale" => "Scale",

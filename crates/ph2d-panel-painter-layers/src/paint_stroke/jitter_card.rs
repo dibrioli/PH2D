@@ -32,7 +32,7 @@ pub(crate) fn paint_jitter_card(
     // A altura é CONTADA das fileiras que o cartão pinta (a mesma tabela, o mesmo avanço), nunca escolhida: um
     // número fixo por fileira fê-la transbordar em 2026-06-29.
     let rows_h: f32 = jitter_linhas::fileiras(&brush)
-        .map(|f| jitter_linhas::altura(f, inner_w))
+        .map(|f| jitter_linhas::altura(ctx, f, x + pad, inner_w, &brush))
         .sum();
     let card_h = pad + rows_h + xs;
     let card = Rect::new(x, y, content_w, card_h);

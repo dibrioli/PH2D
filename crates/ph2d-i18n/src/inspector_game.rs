@@ -176,8 +176,20 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.ray.sees_nothing_right_now" => "Sees nothing right now.",
         // ⭐ A LEITURA VIVA — o que ele ve^ AGORA, do mapa da ponte.
         "panel.inspector.ray.sees_x_at_y_m" => "Sees {name}, at {dist}",
-        // O rótulo da camada no cartão diz o nome dela (fecho GEF02, 07/11).
-        "panel.inspector.ray.layer_named" => "Layer \u{b7} {name}",
+        // «Sees»: a linha da matriz do mundo da camada do raio (dono 08/11), as dicas dos quadros.
+        "panel.inspector.ray.sees" => "Sees",
+        "panel.inspector.ray.sees_on" => {
+            "This ray sees things on {other}. Click to look through them (things on {this} then pass through them too)."
+        }
+        "panel.inspector.ray.sees_off" => {
+            "This ray looks through things on {other}. Click to see them (things on {this} then bump into them too)."
+        }
+        "panel.inspector.ray.sees_self_on" => {
+            "This ray sees things on its own layer, {this}. Click to look through them (they then pass through each other too)."
+        }
+        "panel.inspector.ray.sees_self_off" => {
+            "This ray looks through things on its own layer, {this}. Click to see them (they then bump into each other too)."
+        }
         "panel.inspector.ray.the_clock_is_stopped_u_the_reading_is_the_pose_you_see" => {
             "The clock is stopped \u{2014} the reading is the pose you see."
         }

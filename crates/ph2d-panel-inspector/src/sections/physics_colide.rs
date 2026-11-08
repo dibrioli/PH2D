@@ -21,6 +21,34 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, TypeToken};
 
+/// ⭐ Quem pergunta pela camada: o collider ou o Ray Sensor (dono 08/11: «os mesmos campos»). A mesma lista, os
+/// mesmos quadros da matriz do mundo; só os ids são de cada um.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Quem {
+    pub pick: NodeId,
+    pub opcoes: &'static [NodeId; ids::INSP_PHYS_LAYERS],
+    pub quadros: &'static [NodeId; ids::INSP_PHYS_LAYERS],
+    pub mais: NodeId,
+    /// Os ids que levam o canal do losango da Layer.
+    pub canal: &'static [NodeId],
+}
+
+pub(crate) static DO_COLLIDER: Quem = Quem {
+    pick: ids::INSP_PHYS_LAYER_PICK,
+    opcoes: &ids::INSP_PHYS_LAYER,
+    quadros: &ids::INSP_PHYS_COLLIDES,
+    mais: ids::INSP_PHYS_COLLIDES_ADD,
+    canal: &ids::INSP_PHYS_LAYER,
+};
+
+pub(crate) static DO_RAIO: Quem = Quem {
+    pick: ids::INSP_RAY_LAYER,
+    opcoes: &ids::INSP_RAY_LAYER_OPTS,
+    quadros: &ids::INSP_RAY_SEES,
+    mais: ids::INSP_RAY_SEES_ADD,
+    canal: &[ids::INSP_RAY_LAYER],
+};
+
 /// Sem corpo acima nada bate na forma: os quadros desmentiriam a frase de cima.
 #[must_use]
 pub(super) fn solta(info: &InspectorPhysicsInfo) -> bool {
@@ -120,28 +148,8 @@ fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
         rotulo,
         seccao,
     );
-    t.hit.register(ids::INSP_PHYS_LAYER_PICK, linha.control);
-    let aberta = matches!(
-        t.store.get(ids::INSP_PHYS_LAYER_PICK),
-        Some(InteractiveState::Dropdown { open: true, .. })
-    );
-    let dd = lista_da_camada(info.layer)
-        .open(aberta)
-        .visual(t.store.dropdown_visual(ids::INSP_PHYS_LAYER_PICK));
-    paint_dropdown_chip(&dd, linha.control, t.scene, t.text, t.theme);
-    let j = usize::from(info.layer);
-    contorno(t, linha.control, j, ids::INSP_PHYS_LAYER_PICK);
-    if aberta {
-        crate::state_popovers::set_pending_phys_layer_dd(Some((info.layer, linha.control)));
-    }
-    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_for(
-        t.scene,
-        t.theme,
-        linha.dot,
-        &ids::INSP_PHYS_LAYER,
-    ) {
-        t.hit.register(alvo, linha.dot);
-    }
+    let caixas = (linha.control, linha.dot);
+    chip(t, caixas, &DO_COLLIDER, info.layer, rotulo.into());
     let y = linha.fim(ph2d_tokens::row_pitch_px());
     let camada = usize::from(info.layer);
     let solta = solta(info);
@@ -222,9 +230,38 @@ fn contorno(t: &mut Tinta<'_>, caixa: Rect, j: usize, id: ph2d_a11y::NodeId) {
     paint_layer_outline(t.scene, t.theme, id, j, caixa, raio, true);
 }
 
+/// O chip da lista da camada de `quem` em `caixa`: a escolhida, o contorno da cor dela, aberta, o popover diferido, e
+/// o losango em `dot` (o canal de `quem.canal`: a tabela de canais ou o campo do catálogo do `rotulo`).
+pub(super) fn chip(
+    t: &mut Tinta<'_>,
+    (caixa, dot): (Rect, Rect),
+    quem: &'static Quem,
+    camada: u8,
+    rotulo: ph2d_editor_core::widget::key_mark::Rotulo<'_>,
+) {
+    t.hit.register(quem.pick, caixa);
+    let aberta = matches!(
+        t.store.get(quem.pick),
+        Some(InteractiveState::Dropdown { open: true, .. })
+    );
+    let dd = lista(quem, camada)
+        .open(aberta)
+        .visual(t.store.dropdown_visual(quem.pick));
+    paint_dropdown_chip(&dd, caixa, t.scene, t.text, t.theme);
+    contorno(t, caixa, usize::from(camada), quem.pick);
+    if aberta {
+        crate::state_popovers::set_pending_phys_layer_dd(Some((quem, camada, caixa)));
+    }
+    if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_campo(
+        t.scene, t.theme, dot, quem.canal, rotulo,
+    ) {
+        t.hit.register(alvo, dot);
+    }
+}
+
 /// As opções da lista: as camadas visíveis e a do objecto, pelo nome ou pelo número.
-fn opcoes(camada: u8) -> Vec<DropdownOption<u8>> {
-    ids::INSP_PHYS_LAYER
+fn opcoes(quem: &Quem, camada: u8) -> Vec<DropdownOption<u8>> {
+    quem.opcoes
         .iter()
         .enumerate()
         // A face clássica guarda o alcance dos seus 8 chips de antes (0–7), em uso ou não.
@@ -236,10 +273,10 @@ fn opcoes(camada: u8) -> Vec<DropdownOption<u8>> {
         .collect()
 }
 
-/// A lista da camada, com a camada do objecto escolhida: o que o chip mostra.
+/// A lista da camada de `quem`, com `camada` escolhida.
 #[must_use]
-pub(crate) fn lista_da_camada(camada: u8) -> Dropdown<u8> {
-    let mut dd = Dropdown::new(ids::INSP_PHYS_LAYER_PICK, "", opcoes(camada));
+pub(crate) fn lista(quem: &Quem, camada: u8) -> Dropdown<u8> {
+    let mut dd = Dropdown::new(quem.pick, "", opcoes(quem, camada));
     dd.select(camada);
     dd
 }
@@ -258,7 +295,13 @@ fn largura(t: &mut Tinta<'_>, texto: &str, com_caixa: bool) -> f32 {
 }
 
 /// O fundo com a caixinha acesa ou apagada (ou sem ela, no «+») e o nome.
-fn pinta(t: &mut Tinta<'_>, r: Rect, texto: &str, id: ph2d_a11y::NodeId, aceso: Option<bool>) {
+fn pinta(
+    t: &mut Tinta<'_>,
+    r: Rect,
+    texto: &str,
+    (id, quem): (ph2d_a11y::NodeId, &Quem),
+    aceso: Option<bool>,
+) {
     let (fonte, folga) = (TypeToken::Sm.px(), Spacing::Xs.px());
     let raio = frame_radius(t.theme, Radius::Sm.px());
     let fundo = if t.store.hover_live(id) > 0.0 {
@@ -304,17 +347,28 @@ fn pinta(t: &mut Tinta<'_>, r: Rect, texto: &str, id: ph2d_a11y::NodeId, aceso: 
         tinta(cor, t.theme),
     );
     // O contorno da cor da camada na moldura do quadro; desligado, mais apagado (onda 9f; o «+» não tem camada).
-    if let Some(j) = ids::INSP_PHYS_COLLIDES.iter().position(|&o| o == id) {
+    if let Some(j) = quem.quadros.iter().position(|&o| o == id) {
         paint_layer_outline(t.scene, t.theme, id, j, r, raio, aceso != Some(false));
     }
     ph2d_editor_core::panel::cards::censo::controlo_maior_que_a_pega(id, r);
     t.hit.register(id, r);
 }
 
-/// O rótulo com a marca, os quadros quebrando pelo tamanho do nome, a frase e o «Open in tab…».
+/// «Collides with»: a linha da matriz da camada do objecto.
 pub(super) fn colide_com(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
-    let camada = usize::from(info.layer);
     let rotulo = tr("card.insp.phys.collides_with");
+    fila_da_matriz(t, y, &DO_COLLIDER, usize::from(info.layer), rotulo)
+}
+
+/// O rótulo com a marca, os quadros da linha `camada` da matriz do mundo (quebrando pelo tamanho do nome), o «+» e
+/// a frase. O collider («Collides with») e o Ray Sensor («Sees») editam a MESMA matriz.
+pub(super) fn fila_da_matriz(
+    t: &mut Tinta<'_>,
+    y: f32,
+    quem: &Quem,
+    camada: usize,
+    rotulo: &str,
+) -> f32 {
     let seccao = ph2d_editor_core::property_row::Seccao::medida(t.text, 1, &[rotulo]);
     let linha = ph2d_editor_core::property_row::paint_label_row(
         t.scene,
@@ -331,7 +385,7 @@ pub(super) fn colide_com(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo)
         t.scene,
         t.theme,
         linha.dot,
-        &ids::INSP_PHYS_COLLIDES,
+        quem.quadros,
     ) {
         t.hit.register(alvo, linha.dot);
     }
@@ -357,7 +411,7 @@ pub(super) fn colide_com(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo)
             t,
             r,
             &nome,
-            ids::INSP_PHYS_COLLIDES[j],
+            (quem.quadros[j], quem),
             Some(camadas::colide(camada, j)),
         );
     }
@@ -365,11 +419,19 @@ pub(super) fn colide_com(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo)
     if camadas::proxima_livre().is_some() {
         let mais = tr("card.insp.phys.collides_add");
         let cw = largura(t, mais, false);
-        let (r, ultima) = assenta(cw);
+        // A coluna estreita (a face clássica ao lado do nome) cortaria o «+»: ele desce a fila e usa a largura toda.
+        let (r, ultima) = if cw > c.w {
+            let abaixo = cy + c.h + gap;
+            (Rect::new(t.x, abaixo, cw.min(t.w), c.h), abaixo)
+        } else {
+            assenta(cw)
+        };
         fundo = ultima;
-        pinta(t, r, mais, ids::INSP_PHYS_COLLIDES_ADD, None);
+        pinta(t, r, mais, (quem.mais, quem), None);
     }
-    ph2d_editor_core::widget::composto::grupo(ids::INSP_PHYS_COLLIDES.iter().copied());
+    // O «+» é o fim da mesma fila: um composto, uma capacidade.
+    let fila = quem.quadros.iter().copied().chain([quem.mais]);
+    ph2d_editor_core::widget::composto::grupo(fila);
     let y = linha.fim(ph2d_tokens::row_pitch_px()) + (fundo - c.y);
     let frase = tr_with(
         "card.insp.phys.collides_applies",
@@ -392,22 +454,60 @@ pub(crate) fn prepara_as_dicas(store: &mut WidgetStore, camada: usize) {
             store.set_tooltip(ids::CARD_PHYS_LAYERS, dica);
         }
     }
+    let chaves = [
+        "card.insp.phys.collides_self_on",
+        "card.insp.phys.collides_self_off",
+        "card.insp.phys.collides_on",
+        "card.insp.phys.collides_off",
+    ];
+    dicas_dos_quadros(store, &DO_COLLIDER, camada, chaves);
+}
+
+/// As dicas dos quadros de `quem` na linha `camada`: `chaves` = (a própria acesa, apagada, outra acesa, apagada).
+pub(crate) fn dicas_dos_quadros(
+    store: &mut WidgetStore,
+    quem: &Quem,
+    camada: usize,
+    chaves: [&str; 4],
+) {
     let este = camadas::rotulo_inteiro(camada);
     for j in da_fila(camada) {
         let aceso = camadas::colide(camada, j);
-        let chave = match (j == camada, aceso) {
-            (true, true) => "card.insp.phys.collides_self_on",
-            (true, false) => "card.insp.phys.collides_self_off",
-            (false, true) => "card.insp.phys.collides_on",
-            (false, false) => "card.insp.phys.collides_off",
-        };
+        let chave = chaves[usize::from(j != camada) * 2 + usize::from(!aceso)];
         let outra = camadas::rotulo_inteiro(j);
         let dica = tr_with(chave, &[("this", &este), ("other", &outra)]);
-        let id = ids::INSP_PHYS_COLLIDES[j];
+        let id = quem.quadros[j];
         if store.tooltip_for(id) != Some(dica.as_str()) {
             store.set_tooltip(id, dica);
         }
     }
+}
+
+/// Um quadro de `quem` liga/desliga a célula `(a, b)` da matriz do mundo; o «+» mostra mais uma camada. `edita` =
+/// `false` consome o clique sem mexer. `true` = era da fila.
+pub(crate) fn clique_da_fila(
+    host: &mut dyn PanelHostInternal,
+    id: NodeId,
+    quem: &Quem,
+    a: u8,
+    edita: bool,
+) -> bool {
+    if let Some(b) = quem.quadros.iter().position(|&o| o == id) {
+        seam_reset_button(host, id);
+        if edita {
+            host.bus_mut()
+                .push(EditorAction::LayerPairToggle { a, b: b as u8 });
+        }
+        return true;
+    }
+    if id == quem.mais {
+        seam_reset_button(host, id);
+        if let Some(layer) = camadas::proxima_livre() {
+            host.bus_mut().push(EditorAction::LayerShow { layer });
+        }
+        return true;
+    }
+    false
 }
 
 /// Os cliques da fila. `true` = era dela. Uma forma solta não pinta quadros, e o clique não chega aqui.
@@ -419,19 +519,7 @@ pub(crate) fn clique(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool 
         return false;
     };
     let a = info.layer;
-    if let Some(b) = ids::INSP_PHYS_COLLIDES.iter().position(|&o| o == id) {
-        seam_reset_button(host, id);
-        if !solta(&info) {
-            host.bus_mut()
-                .push(EditorAction::LayerPairToggle { a, b: b as u8 });
-        }
-        return true;
-    }
-    if id == ids::INSP_PHYS_COLLIDES_ADD {
-        seam_reset_button(host, id);
-        if let Some(layer) = camadas::proxima_livre() {
-            host.bus_mut().push(EditorAction::LayerShow { layer });
-        }
+    if clique_da_fila(host, id, &DO_COLLIDER, a, !solta(&info)) {
         return true;
     }
     if id == ids::INSP_PHYS_EDIT_MATRIX {
@@ -454,7 +542,7 @@ mod lista_tests {
         nomes[2] = "Enemy".into();
         camadas::set_current(nomes, [u32::MAX; 32], 0xFF);
         for i in 0..8u8 {
-            let dd = lista_da_camada(i);
+            let dd = lista(&DO_COLLIDER, i);
             // Sem nome: «Default» (a 0) ou «Layer n» (onda 9a, dono 07/11).
             let esperado = if i == 2 {
                 "Enemy".to_owned()
@@ -471,13 +559,13 @@ mod lista_tests {
     fn a_lista_da_camada_so_traz_as_visiveis_e_a_do_objecto() {
         camadas::set_current(Default::default(), [u32::MAX; 32], 1 | 1 << 20);
         crate::set_cards_on(true);
-        assert_eq!(opcoes(0).len(), 2);
-        assert_eq!(lista_da_camada(20).selected_label(), Some("Layer 20"));
-        assert_eq!(opcoes(25).len(), 3, "a do objecto entra");
-        assert_eq!(lista_da_camada(25).selected_label(), Some("Layer 25"));
+        assert_eq!(opcoes(&DO_COLLIDER, 0).len(), 2);
+        assert_eq!(lista(&DO_COLLIDER, 20).selected_label(), Some("Layer 20"));
+        assert_eq!(opcoes(&DO_COLLIDER, 25).len(), 3, "a do objecto entra");
+        assert_eq!(lista(&DO_COLLIDER, 25).selected_label(), Some("Layer 25"));
         // A face clássica guarda o alcance dos 8 chips de antes: 0–7, mais a 20 visível.
         crate::set_cards_on(false);
-        assert_eq!(opcoes(0).len(), 9);
+        assert_eq!(opcoes(&DO_COLLIDER, 0).len(), 9);
         camadas::set_current(Default::default(), [u32::MAX; 32], 0xFF);
     }
 }

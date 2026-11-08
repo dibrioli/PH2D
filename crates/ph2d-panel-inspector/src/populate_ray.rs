@@ -44,16 +44,31 @@ use ph2d_editor_core::widget::TextInputState;
 /// queixa em vez de lhe impedir a escrita.
 ///
 /// [`RaySensor::default()`]: https://github.com/dibrioli/PH2D/blob/main/crates/ph2d-physics-ecs/src/components/ray_sensor.rs
-const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 6] = [
+const NUMEROS: [(ph2d_a11y::NodeId, f64, f64, f64, f64); 5] = [
     (ids::INSP_RAY_ORIGIN_X, 0.0, -50.0, 50.0, 0.1), // LITERAL-PX-OK: metros, locais
     (ids::INSP_RAY_ORIGIN_Y, 0.0, -50.0, 50.0, 0.1), // LITERAL-PX-OK: metros, locais
     (ids::INSP_RAY_DIR_X, 0.0, -1.0, 1.0, 0.1),      // LITERAL-PX-OK: direcção
     (ids::INSP_RAY_DIR_Y, -1.0, -1.0, 1.0, 0.1),     // LITERAL-PX-OK: direcção
     (ids::INSP_RAY_REACH, 1.0, 0.0, 1_000.0, 0.1),   // LITERAL-PX-OK: metros — ver o cabeçalho
-    (ids::INSP_RAY_LAYER, 0.0, 0.0, 31.0, 1.0),      // LITERAL-PX-OK: índice de camada
 ];
 
 pub(crate) fn populate_ray(store: &mut WidgetStore) {
+    // A camada: a lista suspensa (o chip é o próprio campo) e os quadros «Sees».
+    store.register(
+        ids::INSP_RAY_LAYER,
+        InteractiveState::Dropdown {
+            state: ph2d_editor_core::widget::DropdownState::Normal,
+            open: false,
+            selected_index: None,
+        },
+    );
+    crate::populate::register_button_ids(store, &ids::INSP_RAY_LAYER_OPTS);
+    crate::populate::register_button_ids(store, &ids::INSP_RAY_SEES);
+    crate::populate::register_button_ids(store, &[ids::INSP_RAY_SEES_ADD]);
+    store.set_tooltip(
+        ids::INSP_RAY_SEES_ADD,
+        ph2d_i18n::tr("card.insp.phys.collides_add_tip"),
+    );
     // ⚠️ **Os dois NOMES são TEXTO**, e vazio = calado — a regra do `SignalOnHit`, palavra por
     // palavra. Registá-los é o que os torna clicáveis; sem isto eles pintam e morrem sob o dedo.
     for id in [ids::INSP_RAY_ON_ENTER, ids::INSP_RAY_ON_EXIT] {

@@ -55,14 +55,13 @@ fn host(i: InspectorRayInfo) -> (MockPanelHost, InspectorState) {
     (h, InspectorState::default())
 }
 
-/// Os seis números da secção, na ordem em que o painel os pinta.
-const NUMEROS: [(ph2d_a11y::NodeId, f64); 6] = [
+/// Os cinco números da secção, na ordem em que o painel os pinta (a camada é a lista: `a_camada_pelo_nome`).
+const NUMEROS: [(ph2d_a11y::NodeId, f64); 5] = [
     (ph2d_panel_inspector::ids::INSP_RAY_ORIGIN_X, 0.25),
     (ph2d_panel_inspector::ids::INSP_RAY_ORIGIN_Y, -0.5),
     (ph2d_panel_inspector::ids::INSP_RAY_DIR_X, 1.0),
     (ph2d_panel_inspector::ids::INSP_RAY_DIR_Y, 0.0),
     (ph2d_panel_inspector::ids::INSP_RAY_REACH, 6.0),
-    (ph2d_panel_inspector::ids::INSP_RAY_LAYER, 3.0),
 ];
 
 /// ⭐⭐ **TODO campo da secção é pintado com área clicável** — a lição que o `Timers` cobrou.
@@ -81,12 +80,13 @@ fn todo_campo_da_seccao_e_pintado() {
         assert!(r.w > 0.0 && r.h > 0.0, "campo {id:?} sem area: {r:?}");
     }
     for id in [
+        ph2d_panel_inspector::ids::INSP_RAY_LAYER,
         ph2d_panel_inspector::ids::INSP_RAY_ON_ENTER,
         ph2d_panel_inspector::ids::INSP_RAY_ON_EXIT,
     ] {
         assert!(
             rects.iter().any(|(n, _)| *n == id),
-            "o campo de texto {id:?} nao foi pintado"
+            "o campo {id:?} nao foi pintado"
         );
     }
     set_current_inspector_ray(None);

@@ -1,10 +1,12 @@
 //! ⭐ **A camada pelo NOME fora do cartão** (dono 07/11, fecho da GEF02). A face clássica (`PH2D_CARDS=0`) e o Ray
-//! Sensor diziam só o número da camada.
+//! Sensor diziam só o número da camada; o Ray Sensor tem os mesmos campos do collider (dono 08/11).
 //!
 //! Mutações: o chip da face clássica sem o contorno, ou com a cor de outra camada; a lista sem as camadas além da 7
-//! (os chips «0»–«7» de antes); o nome do Ray noutra camada ou por cima do campo de número.
+//! (os chips «0»–«7» de antes); a lista do Ray a mandar outra camada, os quadros «Sees» noutra linha, sem losango.
 
 use crate::seam_physics::{click_real, expect, with_body};
+use ph2d_editor_core::action_bus::{ComponentEdit, EditorAction};
+use ph2d_editor_core::ray_edits::{InspectorRayInfo, RayFieldEdit};
 use ph2d_editor_core::screens::hero::PhysicsFieldEdit;
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_inspector::camadas_fisica::set_current;
@@ -70,34 +72,118 @@ fn a_face_classica_escolhe_a_camada_pelo_nome_em_todas_as_visiveis() {
     fim();
 }
 
-#[test]
-fn o_ray_sensor_diz_o_nome_da_camada_ao_lado_do_numero() {
-    mundo();
-    let mut olho = crate::a_seccao_ray_sensor_esta_viva::olho();
-    olho.layer = 20;
+/// Pinta o Inspector com a secção do raio aberta (as secções de componente nascem dobradas), como depois do clique
+/// no título. No cartão, pela moldura do cartão da física (as dobras assentam ao longo dos quadros).
+fn pinta_aberto(
+    cartoes: bool,
+    host: &mut ph2d_ui_testkit::MockPanelHost,
+    state: &mut InspectorState,
+) -> Vec<(ph2d_a11y::NodeId, Rect)> {
+    use ph2d_editor_core::panel::PanelHostInternal as _;
+    set_cards_on(cartoes);
+    host.store_mut()
+        .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_RAY_SECTION, false);
+    if cartoes {
+        return crate::o_cartao_da_fisica::pinta(host, state);
+    }
+    let tela = Rect::new(0.0, 0.0, 1600.0, 900.0);
+    let _ = host.paint::<InspectorPanel>(state, tela);
+    host.store_mut()
+        .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_RAY_SECTION, false);
+    host.paint::<InspectorPanel>(state, tela)
+}
+
+fn achar(rects: &[(ph2d_a11y::NodeId, Rect)], id: ph2d_a11y::NodeId) -> Option<Rect> {
+    crate::o_cartao_da_fisica::achado(rects, id)
+}
+
+/// O clique real (mover, premir, soltar) no meio de `r`; devolve as acções.
+fn clica(
+    host: &mut ph2d_ui_testkit::MockPanelHost,
+    state: &mut InspectorState,
+    r: Rect,
+) -> Vec<EditorAction> {
+    crate::o_cartao_da_fisica::clica(host, state, r)
+}
+
+/// Pinta o Ray Sensor `olho`, abre a lista se `id` for uma opção dela, e clica no meio de `id`.
+fn clique_no_raio(cartoes: bool, olho: InspectorRayInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
     let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_ray(Some(olho));
-    let tela = Rect::new(0.0, 0.0, 1600.0, 900.0);
-    let rects = host.paint::<InspectorPanel>(&mut state, tela);
+    let mut rects = pinta_aberto(cartoes, &mut host, &mut state);
+    if INSP_RAY_LAYER_OPTS.contains(&id) {
+        assert!(achar(&rects, id).is_none(), "fechada, nenhuma opção");
+        let r = achar(&rects, INSP_RAY_LAYER).expect("o chip Layer do raio");
+        let _ = clica(&mut host, &mut state, r);
+        rects = pinta_aberto(cartoes, &mut host, &mut state);
+    }
+    let r = achar(&rects, id).unwrap_or_else(|| panic!("{id:?} não foi pintado ({cartoes})"));
+    let out = clica(&mut host, &mut state, r);
     set_current_inspector_ray(None);
-    let campo = rects
-        .iter()
-        .find(|(n, _)| *n == INSP_RAY_LAYER)
-        .map(|(_, r)| *r)
-        .expect("o campo de número continua");
-    let nome =
-        ph2d_editor_core::paint::layer_outline_of(INSP_RAY_LAYER).expect("o nome no contorno");
-    assert_eq!(nome.camada, 20, "o nome é o da camada do raio");
-    assert!(
-        nome.rect.x >= campo.x + campo.w,
-        "o nome fica à direita do campo, sem o tapar: {:?} × {campo:?}",
-        nome.rect
-    );
-    assert!(
-        (nome.rect.y - campo.y).abs() < 0.5 && (nome.rect.h - campo.h).abs() < 0.5,
-        "à altura da caixa do número: {:?} × {campo:?}",
-        nome.rect
-    );
-    fim();
+    out
+}
+
+fn olho_na(camada: u32) -> InspectorRayInfo {
+    let mut olho = crate::a_seccao_ray_sensor_esta_viva::olho();
+    olho.layer = camada;
+    olho
+}
+
+/// Dono 08/11: o Ray Sensor com os MESMOS campos de camada do collider — a lista com o nome e o contorno da cor,
+/// o losango do campo (o mesmo canal `component.field.ray_sensor.3`) e «Sees», a linha da matriz do mundo.
+///
+/// Mutações: uma opção que manda outra camada; os quadros a ler outra linha da matriz; o chip sem losango.
+#[test]
+fn o_ray_sensor_escolhe_a_camada_pela_lista_e_ve_pela_matriz() {
+    use ph2d_editor_core::widget::key_mark;
+    for cartoes in [true, false] {
+        mundo();
+        let mut host = crate::host_em_metros();
+        let mut state = InspectorState::default();
+        set_current_inspector_ray(Some(olho_na(20)));
+        key_mark::set_key_marks(std::collections::BTreeMap::new());
+        let rects = pinta_aberto(cartoes, &mut host, &mut state);
+        set_current_inspector_ray(None);
+        let chip = achar(&rects, INSP_RAY_LAYER).expect("o chip Layer do raio");
+        let c = ph2d_editor_core::paint::layer_outline_of(INSP_RAY_LAYER).expect("contorno");
+        assert_eq!((c.camada, c.rect), (20, chip), "o chip veste a cor da camada do raio ({cartoes})");
+        let canal: Vec<_> = key_mark::rotulos_pintados()
+            .into_iter()
+            .filter(|(_, k)| *k == "component.field.ray_sensor.3")
+            .map(|(id, _)| id)
+            .collect();
+        assert_eq!(canal, vec![INSP_RAY_LAYER], "o losango do Layer é o canal de sempre ({cartoes})");
+        // Os quadros «Sees»: as visíveis e a do raio (a 0, 1, 2 e 20), mais o «+».
+        for j in [0, 1, 2, 20] {
+            assert!(rects.iter().any(|(n, _)| *n == INSP_RAY_SEES[j]), "o quadro {j} ({cartoes})");
+        }
+        assert!(rects.iter().any(|(n, _)| *n == INSP_RAY_SEES_ADD), "o «+» ({cartoes})");
+        // A camada 20 pela lista, o clique real.
+        let fora = clique_no_raio(cartoes, olho_na(2), INSP_RAY_LAYER_OPTS[20]);
+        assert_eq!(
+            fora,
+            [EditorAction::InspectorComponentEdit {
+                entity_bits: 0x00AB_CDEF,
+                edit: ComponentEdit::Ray(RayFieldEdit::Layer(20)),
+            }],
+            "a camada 20 pela lista do raio ({cartoes})"
+        );
+        // «Sees» edita a MESMA célula da matriz que o «Collides with» do collider na mesma camada.
+        let raio = clique_no_raio(cartoes, olho_na(2), INSP_RAY_SEES[1]);
+        assert_eq!(raio, [EditorAction::LayerPairToggle { a: 2, b: 1 }], "o quadro do raio ({cartoes})");
+        {
+            let mut corpo = with_body();
+            corpo.layer = 2;
+            // O «Collides with» vive no cartão Collision Layers.
+            use crate::o_cartao_da_fisica::{achado, cena, clica, pinta, sai};
+            let (mut host, mut st) = cena(corpo, [1.0, 1.0]);
+            let r = pinta(&mut host, &mut st);
+            let caixa = achado(&r, INSP_PHYS_COLLIDES[1]).expect("o quadro do collider");
+            let collider = clica(&mut host, &mut st, caixa);
+            sai();
+            assert_eq!(collider, raio, "a mesma célula que o collider");
+        }
+        fim();
+    }
 }

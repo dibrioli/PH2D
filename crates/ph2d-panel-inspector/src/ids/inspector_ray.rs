@@ -26,8 +26,16 @@ pub const INSP_RAY_DIR_X: NodeId = hash_node_id("insp_ray_dir_x");
 pub const INSP_RAY_DIR_Y: NodeId = hash_node_id("insp_ray_dir_y");
 /// Até onde ele enxerga, em metros.
 pub const INSP_RAY_REACH: NodeId = hash_node_id("insp_ray_reach");
-/// A camada de colisão pela qual ele pergunta — a matriz do mundo decide o que ele vê.
+/// A camada de colisão pela qual ele pergunta — a matriz do mundo decide o que ele vê. É a lista suspensa
+/// da camada (a mesma do collider) e o canal do losango (`component.field.ray_sensor.3`).
 pub const INSP_RAY_LAYER: NodeId = hash_node_id("insp_ray_layer");
+/// As opções da lista da camada, uma por camada.
+pub static INSP_RAY_LAYER_OPTS: [NodeId; super::INSP_PHYS_LAYERS] =
+    super::inspector_physics_body::tabela_por_camada(b"insp_ray_layer_opt_");
+/// «Sees»: um quadro por camada, a linha da matriz do mundo da camada do raio; o «+» no fim.
+pub static INSP_RAY_SEES: [NodeId; super::INSP_PHYS_LAYERS] =
+    super::inspector_physics_body::tabela_por_camada(b"insp_ray_sees_");
+pub const INSP_RAY_SEES_ADD: NodeId = hash_node_id("insp_ray_sees_add");
 /// O nome publicado quando ele **passa a ver** — ⚠️ vazio = calado, a regra do `SignalOnHit`.
 pub const INSP_RAY_ON_ENTER: NodeId = hash_node_id("insp_ray_on_enter");
 /// …e quando ele **deixa de ver**.

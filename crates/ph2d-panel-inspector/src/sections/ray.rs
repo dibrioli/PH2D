@@ -166,14 +166,22 @@ fn corpo(
             seccao,
         );
     }
-    cur_y = super::rows::fields_row(
+    // Reach e a camada: no cartão, irmãos curtos que dividem a linha (lei 1); fora dele, um por linha. A camada é a
+    // MESMA lista do collider (nomes, contorno da cor, o losango do campo) e «Sees», a linha da matriz do mundo
+    // dessa camada (dono 08/11: «os mesmos campos»).
+    let [(xa, wa), (xb, wb)] = if crate::cards::active() {
+        ph2d_editor_core::panel::cards::corpo::colunas_iguais(x, w)
+    } else {
+        [(x, w), (x, w)]
+    };
+    let depois_do_alcance = super::rows::fields_row(
         scene,
         text_system,
         theme,
         hit_index,
         store,
-        x,
-        w,
+        xa,
+        wa,
         cur_y,
         TextKey::new("component.field.ray_sensor.2"),
         &[crate::ids::INSP_RAY_REACH],
@@ -181,71 +189,38 @@ fn corpo(
         Some(ph2d_editor_core::widget::Unit::Meters),
         seccao,
     );
-    // A camada pelo número (arrastar, escrever, Auto Key) e o NOME (fecho 07/11): no cartão, que arruma as linhas
-    // sozinho, no próprio rótulo («Layer · Default»); na face clássica, ao lado do número no contorno da cor.
-    let cartao = crate::cards::active();
-    let camada = i.layer as usize;
-    let rotulo_com_nome = tr_with(
-        "panel.inspector.ray.layer_named",
-        &[("name", &crate::camadas_fisica::rotulo(camada))],
-    );
-    let chave = ph2d_editor_core::widget::key_mark::Rotulo::from(TextKey::new(
-        "component.field.ray_sensor.3",
-    ));
-    let mut rotulo = if cartao {
-        chave.com_texto(&rotulo_com_nome)
+    let topo_da_camada = if crate::cards::active() {
+        cur_y
     } else {
-        chave
+        depois_do_alcance
     };
-    // A letra da caixa continua a de «Layer» (a regra da última palavra daria a do nome).
-    rotulo.eixos = ph2d_editor_core::widget::key_mark::Eixos::Letra(tr("card.glyph.l"));
-    let passo = 1.0; // LITERAL-PX-OK: passo de um índice
-    if cartao {
-        cur_y = super::rows::fields_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            cur_y,
-            rotulo,
-            &[crate::ids::INSP_RAY_LAYER],
-            passo,
-            None,
-            seccao,
-        );
-    } else {
-        // O valor arranca na coluna da secção; o nome sai só do fim da caixa — ou, se ali cortaria, desce
-        // para uma linha própria na coluna do valor.
-        let controlo = ph2d_editor_core::property_row::caixa_do_controlo(x, w, cur_y, seccao);
-        let gap = Spacing::Xs.px();
-        let ao_lado = super::camada_por_nome::largura_do_nome(text_system, controlo.w, camada, gap);
-        let nome_w = ao_lado.map_or(0.0, |n| n + gap);
-        let (y, fim) = super::rows::fields_row_com_fim(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            (x, w, cur_y),
-            rotulo,
-            crate::ids::INSP_RAY_LAYER,
-            passo,
-            seccao,
-            nome_w,
-        );
-        cur_y = y;
-        let caixa = if ao_lado.is_some() {
-            Rect::new(fim.x + gap, fim.y, (fim.w - gap).max(0.0), fim.h)
-        } else {
-            let caixa = Rect::new(controlo.x, cur_y, controlo.w, fim.h);
-            cur_y += ph2d_tokens::row_pitch_px();
-            caixa
-        };
-        super::camada_por_nome::nome_do_raio(scene, text_system, theme, caixa, camada);
-    }
+    let mut t = super::physics_cartao::Tinta {
+        scene,
+        text: text_system,
+        theme,
+        hit: hit_index,
+        store,
+        x: xb,
+        w: wb,
+    };
+    let camada = u8::try_from(i.layer)
+        .ok()
+        .filter(|&c| usize::from(c) < crate::ids::INSP_PHYS_LAYERS)
+        .unwrap_or_default();
+    let rotulo = TextKey::new("component.field.ray_sensor.3");
+    let quem = &super::physics_colide::DO_RAIO;
+    let depois_da_camada = super::camada_por_nome::linha_da_camada(
+        &mut t,
+        topo_da_camada,
+        quem,
+        camada,
+        rotulo.into(),
+        seccao,
+    );
+    cur_y = depois_do_alcance.max(depois_da_camada);
+    (t.x, t.w) = (x, w);
+    let sees = tr("panel.inspector.ray.sees");
+    cur_y = super::physics_colide::fila_da_matriz(&mut t, cur_y, quem, usize::from(camada), sees);
     // ⚠️ **Os dois NOMES, e vazio = calado** — a regra do `SignalOnHit`, palavra por palavra.
     //
     // ⛔ **Pela porta que já existe** (`anim_rows::text_row`): copiá-la seria a terceira resposta a

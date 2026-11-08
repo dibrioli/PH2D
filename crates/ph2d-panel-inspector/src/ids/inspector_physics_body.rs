@@ -207,7 +207,7 @@ const fn por_camada(prefixo: &[u8], n: usize) -> NodeId {
     ph2d_tool_registry::hash_node_id_bytes(buf.split_at(k + 1).0)
 }
 
-const fn tabela_por_camada(prefixo: &[u8]) -> [NodeId; INSP_PHYS_LAYERS] {
+pub(super) const fn tabela_por_camada(prefixo: &[u8]) -> [NodeId; INSP_PHYS_LAYERS] {
     let mut t = [NodeId(0); INSP_PHYS_LAYERS];
     let mut n = 0;
     while n < t.len() {

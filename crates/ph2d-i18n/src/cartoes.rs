@@ -175,7 +175,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.glyph.x" => "X",
         "card.glyph.y" => "Y",
         "card.glyph.z" => "Z",
-        "card.glyph.l" => "L",
         // O Inspector principal (02 §7): a unidade no rótulo (D13).
         "card.insp.name" => "Name",
         "card.insp.visible" => "Show / hide",

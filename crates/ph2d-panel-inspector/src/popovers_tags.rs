@@ -33,8 +33,8 @@ pub(super) fn paint_deferred_tag_popovers(
 ) {
     // ⭐⭐⭐ **O FILTRO por tag da §11 PHYSICS** (TOP-20 #9, W3c) — terceiro slot, opções próprias
     // (com o `(any)` à frente, que LIMPA o filtro).
-    if let Some((camada, chip)) = state_popovers::take_pending_phys_layer_dd() {
-        let dd = crate::sections::physics_colide::lista_da_camada(camada).open(true);
+    if let Some((quem, camada, chip)) = state_popovers::take_pending_phys_layer_dd() {
+        let dd = crate::sections::physics_colide::lista(quem, camada).open(true);
         paint_open_popover(
             &dd,
             chip,

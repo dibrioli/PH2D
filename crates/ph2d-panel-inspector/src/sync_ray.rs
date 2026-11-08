@@ -60,6 +60,17 @@ pub(crate) fn sync(
         inspector_state.last_ray_sig = None;
         return;
     };
+    let camada = usize::try_from(info.layer).unwrap_or(usize::MAX);
+    if camada < crate::ids::INSP_PHYS_LAYERS {
+        let chaves = [
+            "panel.inspector.ray.sees_self_on",
+            "panel.inspector.ray.sees_self_off",
+            "panel.inspector.ray.sees_on",
+            "panel.inspector.ray.sees_off",
+        ];
+        let quem = &crate::sections::physics_colide::DO_RAIO;
+        crate::sections::physics_colide::dicas_dos_quadros(host.store_mut(), quem, camada, chaves);
+    }
     let sig = assinatura(&info);
     if !entity_changed && inspector_state.last_ray_sig == Some(sig) {
         return;
@@ -68,15 +79,13 @@ pub(crate) fn sync(
     let focus = host.store().focus_id();
     let drag = host.store().number_input_drag().map(|d| d.id);
     // ⚠️ **A ORDEM é a do [`super::populate_ray::NUMEROS`]**, e é assim que ela não pode divergir:
-    // os seis ids são os mesmos seis, na mesma ordem, e um campo novo tem de entrar nos dois.
+    // os cinco ids são os mesmos cinco, na mesma ordem, e um campo novo tem de entrar nos dois.
     for (id, v) in [
         (crate::ids::INSP_RAY_ORIGIN_X, info.origin_x),
         (crate::ids::INSP_RAY_ORIGIN_Y, info.origin_y),
         (crate::ids::INSP_RAY_DIR_X, info.dir_x),
         (crate::ids::INSP_RAY_DIR_Y, info.dir_y),
         (crate::ids::INSP_RAY_REACH, info.reach),
-        #[allow(clippy::cast_precision_loss)]
-        (crate::ids::INSP_RAY_LAYER, info.layer as f32),
     ] {
         if focus == Some(id) || drag == Some(id) {
             continue; // a mão do artista ganha ao instantâneo

@@ -1466,10 +1466,17 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
-        "sections/physics_colide.rs::colide_com",
+        "sections/physics_colide.rs::fila_da_matriz",
         Canal,
-        &["INSP_PHYS_COLLIDES"],
-        "os quadros de «Collides with» são a matriz de camadas: o mesmo losango (`marcas_mundo::QUADROS`)",
+        &["INSP_PHYS_COLLIDES", "INSP_RAY_SEES"],
+        "os quadros de «Collides with» (collider) e «Sees» (Ray Sensor) são a matriz de camadas: o mesmo losango (`marcas_mundo::QUADROS`)",
+    ),
+    (
+        "ph2d-panel-inspector",
+        "sections/physics_colide.rs::chip",
+        Canal,
+        &["INSP_PHYS_LAYER"],
+        "a Layer do collider (`Quem::canal` = as opções, `marcas_inspector`) e a do Ray Sensor (o rótulo `component.field.ray_sensor.3`)",
     ),
     (
         "ph2d-panel-physics",

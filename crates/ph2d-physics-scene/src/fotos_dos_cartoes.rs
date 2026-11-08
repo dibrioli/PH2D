@@ -215,7 +215,23 @@ const CAIXA: ColliderShape = ColliderShape::Cuboid {
     half_y: 0.5,
 };
 
-/// Monta o caso no mundo e devolve quem fica selecionado.
+/// A forma de `corpo` passa à filha «Collision Shape» (opção B, ADR-0199); devolve a filha, que é quem
+/// leva o Shape, as Collision Layers e as alças.
+fn na_filha(w: &mut ph2d_ecs::World, corpo: Entity) -> Entity {
+    ph2d_physics_ecs::move_forma_para_filha(w, corpo).expect("um corpo com forma")
+}
+
+/// A imagem de `alvo` (bits): o corpo da filha «Collision Shape», ou o próprio `alvo`.
+#[must_use]
+pub fn imagem_de(sim: &SimWorld, alvo: u64) -> u64 {
+    let e = Entity::from_bits(alvo);
+    sim.world()
+        .get::<ChildOf>(e)
+        .map_or(alvo, |c| c.parent().to_bits())
+}
+
+/// Monta o caso no mundo e devolve quem fica selecionado: o corpo nas fotos do cartão Body, a filha
+/// «Collision Shape» nas da forma (o Pivot da [`CasoFisica::FormaPivo`] é da imagem: o pai dela).
 pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u64> {
     let onde = Transform::from_translation(Vec2::new(onde[0], onde[1]));
     let imagem = Sprite::atlas(WHITE_TILE_KEY, [1.0, 1.0], [1.0; 4]);
@@ -257,14 +273,15 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
                 layer: 1,
                 ..Collider::default()
             };
-            w.spawn((
+            let e = w.spawn((
                 onde,
                 Name::new("Crate"),
                 imagem,
                 corpo(BodyKind::Dynamic),
                 col,
-            ))
-            .id()
+            ));
+            let e = e.id();
+            na_filha(w, e)
         }
         CasoFisica::FormaCaixa
         | CasoFisica::FormaArrasto
@@ -311,14 +328,15 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
                 offset: [0.2, 0.1],
                 ..Collider::default()
             };
-            w.spawn((
+            let e = w.spawn((
                 pose,
                 Name::new("Crate"),
                 imagem,
                 corpo(BodyKind::Static),
                 col,
-            ))
-            .id()
+            ));
+            let e = e.id();
+            na_filha(w, e)
         }
         CasoFisica::FormaSensor => {
             let col = Collider {
@@ -327,7 +345,8 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
                 ..Collider::default()
             };
             let nome = Name::new("Zone");
-            w.spawn((onde, nome, corpo(BodyKind::Static), col)).id()
+            let e = w.spawn((onde, nome, corpo(BodyKind::Static), col)).id();
+            na_filha(w, e)
         }
         CasoFisica::FormaSolta => {
             let col = Collider {
@@ -356,7 +375,8 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
                 is_sensor: true,
                 ..Collider::default()
             };
-            w.spawn((sobre, nome, corpo(BodyKind::Static), col)).id()
+            let e = w.spawn((sobre, nome, corpo(BodyKind::Static), col)).id();
+            na_filha(w, e)
         }
         CasoFisica::Dynamic | CasoFisica::Kinematic | CasoFisica::Bola | CasoFisica::Esticada => {
             let kind = if caso == CasoFisica::Kinematic {
@@ -378,7 +398,14 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
             if caso == CasoFisica::Esticada {
                 pose.scale = Vec2::new(2.0, 1.0);
             }
-            w.spawn((pose, nome, imagem, corpo(kind), col)).id()
+            let e = w.spawn((pose, nome, imagem, corpo(kind), col)).id();
+            let filha = na_filha(w, e);
+            // Dynamic e Kinematic mostram o cartão Body; Bola e Esticada, o Shape.
+            if matches!(caso, CasoFisica::Bola | CasoFisica::Esticada) {
+                filha
+            } else {
+                e
+            }
         }
         CasoFisica::Sensor => {
             let col = Collider {
@@ -387,7 +414,8 @@ pub fn prepara(sim: &mut SimWorld, caso: CasoFisica, onde: [f32; 2]) -> Option<u
                 ..Collider::default()
             };
             let nome = Name::new("Zone");
-            w.spawn((onde, nome, corpo(BodyKind::Static), col)).id()
+            let e = w.spawn((onde, nome, corpo(BodyKind::Static), col)).id();
+            na_filha(w, e)
         }
         CasoFisica::Solta => {
             let col = Collider {

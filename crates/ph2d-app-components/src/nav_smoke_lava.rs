@@ -183,6 +183,7 @@ pub fn montar(world: &mut World) -> Lava {
             Transform::from_translation(Vec2::new(rc[0], rc[1])),
         ))
         .id();
+    ph2d_physics_ecs::move_forma_para_filha(world, lava).expect("a lava tem forma");
     // ⭐ O PORTAL: a entrada leva o atalho, a saída é só um nome.
     let portal_a = marca(world, "Portal A", PORTAL_A, PORTAL_RGBA);
     let portal_b = marca(world, "Portal B", PORTAL_B, PORTAL_RGBA);
@@ -211,6 +212,7 @@ pub fn montar(world: &mut World) -> Lava {
             Transform::from_translation(Vec2::new(HEROI_EM[0], HEROI_EM[1])),
         ))
         .id();
+    ph2d_physics_ecs::move_forma_para_filha(world, heroi).expect("o herói tem forma");
     let vermelho = inimigo(world, "Red", VERMELHO_EM, VERMELHO_RGBA, true);
     let cinzento = inimigo(
         world,

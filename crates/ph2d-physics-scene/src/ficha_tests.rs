@@ -79,6 +79,7 @@ fn a_zona_empurra_a_bola_para_cima() {
     let mut c = Corrida::nova();
     let mut sem = Corrida::nova();
     let z = sem.por_nome("Updraft Zone");
+    let z = ph2d_physics_ecs::main_shape(sem.sim.world(), z).expect("a forma");
     sem.sim.world_mut().entity_mut(z).remove::<AreaEffector>();
     sem.corre(300);
     assert!(
@@ -135,6 +136,7 @@ fn o_player_sobe_pela_one_way_por_baixo_e_pousa() {
 fn sem_one_way_a_borda_barra_o_player() {
     let mut c = Corrida::nova();
     let p = c.por_nome("One-way Platform");
+    let p = ph2d_physics_ecs::main_shape(c.sim.world(), p).expect("a forma");
     c.sim.world_mut().entity_mut(p).remove::<OneWayPlatform>();
     c.corre(60);
     c.dedo(1.0, false);

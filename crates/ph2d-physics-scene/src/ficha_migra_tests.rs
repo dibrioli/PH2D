@@ -1,5 +1,6 @@
 //! A cena 120 migrada (`219 → 220`, GEF02 B2): cada forma passa a filha «Collision Shape», os mesmos
 //! corpos, nomes e camadas, e a mesma simulação de 240 tiques. O arquivo fica em `project_formas_tests`.
+//! Desde o B7 a cena nasce `220` ([`monta`]); o `219` é a [`monta_v219`], e a migrada tem de ser ela.
 
 use super::*;
 use ph2d_ecs::{SimWorld, StableId};
@@ -7,7 +8,7 @@ use ph2d_physics_ecs::{Collider, PhysicsBridge, RigidBody, main_shape, migra_for
 
 fn cena(migrada: bool) -> SimWorld {
     let mut sim = SimWorld::new();
-    monta(sim.world_mut());
+    monta_v219(sim.world_mut());
     if migrada {
         assert!(migra_formas_para_filhos(sim.world_mut()) >= 5);
     }
@@ -61,7 +62,14 @@ fn hash(sim: &mut SimWorld) -> u64 {
 #[test]
 fn a_cena_120_migrada_tem_as_formas_filhas_e_simula_igual() {
     let (mut s219, mut s220) = (cena(false), cena(true));
+    let mut nativa = SimWorld::new();
+    monta(nativa.world_mut());
     let (antes, depois) = (corpos(&mut s219), corpos(&mut s220));
+    assert_eq!(
+        corpos(&mut nativa),
+        depois,
+        "a cena nasce como a migração a deixa"
+    );
     assert!(
         antes.len() >= 5 && antes.iter().all(|c| !c.3),
         "controlo: {antes:?}"
@@ -84,5 +92,10 @@ fn a_cena_120_migrada_tem_as_formas_filhas_e_simula_igual() {
         hash(&mut s219),
         hash(&mut s220),
         "a migração não muda a simulação"
+    );
+    assert_eq!(
+        hash(&mut cena(false)),
+        hash(&mut nativa),
+        "a forma na filha simula como a forma no corpo"
     );
 }

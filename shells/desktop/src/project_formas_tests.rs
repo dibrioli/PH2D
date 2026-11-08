@@ -8,7 +8,7 @@ use ph2d_ecs::Name;
 fn cena_120() -> (ProjectFile, u64) {
     let reg = crate::init::build_component_registry();
     let mut sim = ph2d_ecs::SimWorld::new();
-    ph2d_physics_scene::ficha::monta(sim.world_mut());
+    ph2d_physics_scene::ficha::monta_v219(sim.world_mut());
     let (mut st, w) = (empty_state(), sim.world_mut());
     let mut prop = ph2d_ecs::TransformPropagationState::new(w);
     let mut work = ph2d_ecs::WorklistBuf::default();

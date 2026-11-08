@@ -44,8 +44,7 @@ pub enum Foto {
     PlayerRepetido,
     Memoria,
     MemoriaRepetida,
-    /// Plano 17 (a câmera no canvas): selecionada; sem seleção (ténue); o canto arrastado (5 m); os limites à
-    /// vista; o formato Game Boy; e o «Look through» (a moldura = o que o jogo mostra).
+    /// Plano 17 (a câmera no canvas): selecionada, sem seleção, o canto, os limites, Game Boy, «Look through».
     Camera,
     CameraLivre,
     CameraZoom,
@@ -321,7 +320,8 @@ pub fn plano_da_foto(
             }
             if c == fisica::CasoFisica::FormaPivo {
                 let canto = ph2d_editor_core::SpritePivot::Ponto([0, 2]);
-                plano.edicoes = vec![(plano.alvo, ph2d_editor_core::ImageUseEdit::Pivot(canto))];
+                let imagem = fisica::imagem_de(sim, plano.alvo); // o Pivot é da imagem, não da forma
+                plano.edicoes = vec![(imagem, ph2d_editor_core::ImageUseEdit::Pivot(canto))];
             }
         }
         Foto::Seletor => plano.alvo = hills,

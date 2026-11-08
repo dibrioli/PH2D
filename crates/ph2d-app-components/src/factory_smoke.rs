@@ -70,11 +70,25 @@ fn cuboide(hx: f32, hy: f32) -> Collider {
     }
 }
 
+fn chao(world: &mut World) {
+    let e = world
+        .spawn((
+            Name::new("Ground"),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+            cuboide(9.0, 0.3),
+            Sprite::atlas(WHITE_TILE_KEY, [18.0, 0.6], CHAO_RGBA),
+            Transform::from_translation(Vec2::new(0.0, -3.0)),
+        ))
+        .id();
+    ph2d_physics_ecs::move_forma_para_filha(world, e).expect("o chão tem forma");
+}
+
 /// A RECEITA: uma entidade `MasterRoot`, que é o que a fábrica instancia.
 ///
-/// ⚠️ **Um mestre não se DESENHA** (a receita fica escondida, F4.6) — o que se vê são as cópias. É
-/// por isso que a nuvem é outro objecto: sem ela, a cena não teria nada no alto a explicar de onde
-/// vêm as moedas.
+/// ⚠️ **Um mestre não se DESENHA** (F4.6): vêem-se as cópias, e a nuvem é outro objecto para mostrar
+/// de onde vêm as moedas. A forma do mestre mora numa filha (ADR-0199); a cópia leva a subárvore.
 fn receita(world: &mut World, nome: &str, extra: impl FnOnce(&mut World, Entity)) -> Entity {
     let e = world
         .spawn((
@@ -84,20 +98,13 @@ fn receita(world: &mut World, nome: &str, extra: impl FnOnce(&mut World, Entity)
         ))
         .id();
     extra(world, e);
+    ph2d_physics_ecs::move_forma_para_filha(world, e).expect("a receita tem forma");
     e
 }
 
 /// A cena `=1` — a chuva que não cresce.
 fn cena_um(world: &mut World) {
-    world.spawn((
-        Name::new("Ground"),
-        RigidBody {
-            kind: BodyKind::Static,
-        },
-        cuboide(9.0, 0.3),
-        Sprite::atlas(WHITE_TILE_KEY, [18.0, 0.6], CHAO_RGBA),
-        Transform::from_translation(Vec2::new(0.0, -3.0)),
-    ));
+    chao(world);
     // A moeda: cai, e vive dois segundos.
     let moeda = receita(world, "Coin", |w, e| {
         w.entity_mut(e).insert((
@@ -146,15 +153,7 @@ fn cena_um(world: &mut World) {
 /// A cena `=2` — os pontos marcados, o limite de vivas e o colhedor do fora-do-ecrã.
 fn cena_dois(world: &mut World, tree: &mut TagTree) {
     let ponto = tree.create("SpawnPoint").expect("cria");
-    world.spawn((
-        Name::new("Ground"),
-        RigidBody {
-            kind: BodyKind::Static,
-        },
-        cuboide(9.0, 0.3),
-        Sprite::atlas(WHITE_TILE_KEY, [18.0, 0.6], CHAO_RGBA),
-        Transform::from_translation(Vec2::new(0.0, -3.0)),
-    ));
+    chao(world);
     // ⭐⭐⭐ **Os pontos de nascimento são OBJECTOS MARCADOS** — não há componente `SpawnPoint`, e
     // essa é a recusa medida do plano §2.3: as tags já o exprimem.
     for (i, x) in [-5.0f32, -3.0, -1.0].into_iter().enumerate() {
@@ -184,8 +183,7 @@ fn cena_dois(world: &mut World, tree: &mut TagTree) {
                 kind: BodyKind::Dynamic,
             },
             Collider {
-                // ⚠️ **Sem gravidade nem atrito**: a cena é sobre nascer e ser colhido, e um bicho
-                // que cai sai do ecrã por baixo antes de chegar à borda direita.
+                // ⚠️ Sem gravidade nem atrito: um bicho que cai sai por baixo antes da borda direita.
                 friction: 0.0,
                 ..cuboide(0.3, 0.3)
             },

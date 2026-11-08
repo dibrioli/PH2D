@@ -115,8 +115,21 @@ fn player(world: &mut World) -> Entity {
     e
 }
 
-/// Monta a cena no mundo (a sonda e os gates usam esta mesma porta).
+/// Monta a cena no mundo (a sonda e os gates usam esta mesma porta): cada corpo com a forma numa filha
+/// «Collision Shape» (opção B, ADR-0199).
 pub fn monta(world: &mut World) {
+    monta_com(world, true);
+}
+
+/// A MESMA cena no formato `<= 219`, a forma no próprio corpo: a fixtura dos gates da migração
+/// (`ficha_migra_tests`, `project_formas_tests`). Nenhum smoke a usa.
+pub fn monta_v219(world: &mut World) {
+    monta_com(world, false);
+}
+
+/// `na_filha`: a forma de cada corpo passa à filha DEPOIS de a cena inteira nascer, para os corpos
+/// terem os mesmos `StableId` nos dois formatos (as filhas numeram-se por último, como na migração).
+fn monta_com(world: &mut World, na_filha: bool) {
     for (i, nome) in CAMADAS.iter().enumerate() {
         #[allow(clippy::cast_possible_truncation)]
         LayerNames::rename(world, i as u8, nome);
@@ -137,85 +150,115 @@ pub fn monta(world: &mut World) {
         caixa([0.5, 4.0], GROUND),
         ChildOf(floor),
     ));
-    world.spawn((
-        Name::new("Left Wall"),
-        pose([-FLOOR_HALF[0] - 0.5, 3.5]),
-        azulejo(DIRT_TILE, [0.5, 4.0], [1.0; 4]),
-        corpo(BodyKind::Static),
-        caixa([0.5, 4.0], GROUND),
-    ));
-    world.spawn((
-        Name::new("One-way Platform"),
-        pose(ONE_WAY_AT),
-        azulejo(PLATFORM_TILE, ONE_WAY_HALF, [1.0; 4]),
-        corpo(BodyKind::Static),
-        caixa(ONE_WAY_HALF, GROUND),
-        OneWayPlatform,
-    ));
+    let mut corpos = vec![floor];
+    corpos.push(
+        world
+            .spawn((
+                Name::new("Left Wall"),
+                pose([-FLOOR_HALF[0] - 0.5, 3.5]),
+                azulejo(DIRT_TILE, [0.5, 4.0], [1.0; 4]),
+                corpo(BodyKind::Static),
+                caixa([0.5, 4.0], GROUND),
+            ))
+            .id(),
+    );
+    corpos.push(
+        world
+            .spawn((
+                Name::new("One-way Platform"),
+                pose(ONE_WAY_AT),
+                azulejo(PLATFORM_TILE, ONE_WAY_HALF, [1.0; 4]),
+                corpo(BodyKind::Static),
+                caixa(ONE_WAY_HALF, GROUND),
+                OneWayPlatform,
+            ))
+            .id(),
+    );
     // Onda 9g: o terceiro tipo de corpo na cena, para o traço pontilhado do Kinematic se ver.
-    world.spawn((
-        Name::new("Kinematic Platform"),
-        pose(KINEMATIC_AT),
-        azulejo(PLATFORM_TILE, ONE_WAY_HALF, [1.0; 4]),
-        corpo(BodyKind::Kinematic),
-        caixa(ONE_WAY_HALF, GROUND),
-    ));
+    corpos.push(
+        world
+            .spawn((
+                Name::new("Kinematic Platform"),
+                pose(KINEMATIC_AT),
+                azulejo(PLATFORM_TILE, ONE_WAY_HALF, [1.0; 4]),
+                corpo(BodyKind::Kinematic),
+                caixa(ONE_WAY_HALF, GROUND),
+            ))
+            .id(),
+    );
     world.spawn((
         Name::new("Collision Shape"),
         pose(LOOSE_AT),
         caixa([1.0, 0.25], GROUND),
     ));
-    world.spawn((
-        Name::new("Crate"),
-        pose(CRATE_AT),
-        azulejo(DIRT_TILE, [0.5, 0.5], [1.0; 4]),
-        corpo(BodyKind::Dynamic),
-        caixa([0.5, 0.5], PROPS),
-    ));
+    corpos.push(
+        world
+            .spawn((
+                Name::new("Crate"),
+                pose(CRATE_AT),
+                azulejo(DIRT_TILE, [0.5, 0.5], [1.0; 4]),
+                corpo(BodyKind::Dynamic),
+                caixa([0.5, 0.5], PROPS),
+            ))
+            .id(),
+    );
     let mut bola = pose(BALL_AT);
     bola.scale = Vec2::new(2.0, 1.0);
-    world.spawn((
-        Name::new("Stretched Ball"),
-        bola,
-        Sprite::atlas(COIN_SHEET.key, [1.0, 1.0], [1.0; 4]),
-        SpriteRegion::for_atlas(COIN_CELL),
-        ImageRegion {
-            grid: COIN_SHEET.grid,
-        },
-        corpo(BodyKind::Dynamic),
-        Collider {
-            shape: ColliderShape::Ball { radius: 0.5 },
-            layer: PROPS,
-            ..Collider::default()
-        },
-    ));
-    world.spawn((
-        Name::new("Updraft Zone"),
-        pose(ZONE_AT),
-        Sprite::atlas(
-            CLOUDS_TILE.key,
-            [2.0 * ZONE_HALF[0], 2.0 * ZONE_HALF[1]],
-            [0.55, 0.8, 1.0, 1.0],
-        ),
-        TiledDraw { tile: ZONE_TILE },
-        ZIndexOverride(-1),
-        corpo(BodyKind::Static),
-        Collider {
-            is_sensor: true,
-            ..caixa(ZONE_HALF, ZONES)
-        },
-        AreaEffector {
-            force: [0.0, ZONE_FORCE],
-        },
-    ));
+    corpos.push(
+        world
+            .spawn((
+                Name::new("Stretched Ball"),
+                bola,
+                Sprite::atlas(COIN_SHEET.key, [1.0, 1.0], [1.0; 4]),
+                SpriteRegion::for_atlas(COIN_CELL),
+                ImageRegion {
+                    grid: COIN_SHEET.grid,
+                },
+                corpo(BodyKind::Dynamic),
+                Collider {
+                    shape: ColliderShape::Ball { radius: 0.5 },
+                    layer: PROPS,
+                    ..Collider::default()
+                },
+            ))
+            .id(),
+    );
+    corpos.push(
+        world
+            .spawn((
+                Name::new("Updraft Zone"),
+                pose(ZONE_AT),
+                Sprite::atlas(
+                    CLOUDS_TILE.key,
+                    [2.0 * ZONE_HALF[0], 2.0 * ZONE_HALF[1]],
+                    [0.55, 0.8, 1.0, 1.0],
+                ),
+                TiledDraw { tile: ZONE_TILE },
+                ZIndexOverride(-1),
+                corpo(BodyKind::Static),
+                Collider {
+                    is_sensor: true,
+                    ..caixa(ZONE_HALF, ZONES)
+                },
+                AreaEffector {
+                    force: [0.0, ZONE_FORCE],
+                },
+            ))
+            .id(),
+    );
     world.spawn((
         Name::new("No Shape Body"),
         pose(NO_SHAPE_AT),
         azulejo(DIRT_TILE, [0.5, 0.5], [1.0; 4]),
         corpo(BodyKind::Static),
     ));
-    player(world);
+    corpos.push(player(world));
     ph2d_ecs::assign_missing_stable_ids(world);
+    if na_filha {
+        for c in corpos {
+            ph2d_physics_ecs::move_forma_para_filha(world, c).expect("um corpo com forma");
+        }
+    }
     ph2d_ecs::assign_missing_root_order(world);
 }
 

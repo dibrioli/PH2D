@@ -9,7 +9,7 @@ pub mod inspector;
 pub use ph2d_anim_sheets::panel_frame;
 pub mod previa;
 pub mod region;
-pub mod sheet;
+pub use ph2d_anim_sheets::sheet_cache as sheet;
 pub mod sprite_card;
 pub mod tick;
 pub mod tiled;

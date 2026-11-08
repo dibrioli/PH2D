@@ -3,6 +3,8 @@
 //! Lei pura sobre os componentes de `ph2d-ecs`; quem escreve no mundo é a família (`ph2d-app-sprite-anim`).
 
 pub mod apply;
+pub mod editor_ui;
 pub mod ops;
 pub mod panel_frame;
+pub mod sheet_cache;
 pub mod split;

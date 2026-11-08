@@ -236,7 +236,8 @@ impl AnimDoc {
         } else {
             0.0
         };
-        let list_end = bottom - inner - row - split_h;
+        let clean = ph2d_anim_sheets::editor_ui::clean_buttons(self.snap.info.as_ref()) as f32;
+        let list_end = bottom - inner - row - split_h - clean * (row + gap);
         let buttons_y = (list_in.y + line + n as f32 * line + gap).min(list_end);
         // O piso da lista já dá `button_w` a cada um; o `max` tira o arredondamento que cortava «Remove».
         l.add = Rect::new(list_in.x, buttons_y, button_w, row);

@@ -243,27 +243,19 @@ fn name_of(sim: &SimWorld, bits: u64) -> String {
         )
 }
 
-/// O snapshot de uma aba: a §11 com o cartão (que já traz a folha da [`crate::sheet::SheetCache`]).
+/// O snapshot de uma aba: a §11 com o cartão e as folhas da [`crate::sheet::SheetCache`]; a grelha é a da visível.
 #[must_use]
 pub fn snapshot(sim: &SimWorld, bits: u64) -> EditorSnapshot {
-    let w = sim.world();
-    let e = Entity::from_bits(bits);
-    let info = crate::inspector::build_anim_info(w, bits, 1);
-    let grid = w
-        .get::<ph2d_ecs::SpriteGrid>(e)
-        .copied()
-        .unwrap_or(ph2d_ecs::SpriteGrid::SINGLE);
-    let entry = w
-        .get_resource::<crate::sheet::SheetCache>()
-        .and_then(|c| c.of_entity(bits))
-        .cloned();
+    let (sheets, shown) = ph2d_anim_sheets::editor_ui::editor_sheets(sim.world(), bits);
+    let s = sheets.get(usize::from(shown)).cloned().unwrap_or_default();
     EditorSnapshot {
-        info,
-        sheet: entry.as_ref().map(|e| e.sheet.clone()),
-        guess: entry.and_then(|e| e.guess),
-        hframes: grid.hframes,
-        vframes: grid.vframes,
-        shown_sheet: 0,
+        info: crate::inspector::build_anim_info(sim.world(), bits, 1),
+        sheet: s.image,
+        guess: s.guess,
+        hframes: s.hframes,
+        vframes: s.vframes,
+        shown_sheet: shown,
+        sheets,
     }
 }
 
@@ -312,6 +304,10 @@ pub fn frame(
         if !has_sprite(sim.world(), d.entity) {
             continue; // à espera do Stop
         }
+        let e = Entity::from_bits(d.entity);
+        for edit in std::mem::take(&mut d.sheet_ui.pending) {
+            ph2d_anim_sheets::apply::apply(sim.world_mut(), e, db, atlas, ppm, edit);
+        }
         let mut edits: Vec<AnimFieldEdit> = std::mem::take(&mut d.pending);
         edits.reverse();
         while let Some(edit) = edits.pop() {
@@ -325,6 +321,13 @@ pub fn frame(
                         ph2d_ecs::SpriteAnimations::next_free_name,
                     )
             });
+            // Cols/Rows de uma folha extra visível editam o corte DELA (plano GEF 26 §3.4).
+            let side = |n: u32| n.clamp(1, crate::card::GRID_SIDE_MAX);
+            if let AnimFieldEdit::Grid(h, v) = edit
+                && ph2d_anim_sheets::apply::set_shown_grid(sim.world_mut(), e, side(h), side(v))
+            {
+                continue;
+            }
             let queue = EditorCommandQueue::new();
             crate::previa::nota_o_gesto(sim.world_mut(), d.entity, &edit);
             if let Some(t) =

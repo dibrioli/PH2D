@@ -31,8 +31,9 @@ pub struct EditorSnapshot {
     pub guess: Option<GridGuess>,
     pub hframes: u32,
     pub vframes: u32,
-    /// A folha que a aba mostra (`0` = a do `Sprite`; plano GEF 26): os cliques juntam quadros dela.
+    /// A folha que a aba mostra (`ph2d_ecs::shown_sheet`, a do cartão Image): `sheet`/`guess`/grelha são dela.
     pub shown_sheet: u8,
+    pub sheets: Vec<ph2d_anim_sheets::editor_ui::EditorSheet>,
 }
 
 /// Um campo de texto aberto.
@@ -132,6 +133,8 @@ pub struct AnimDoc {
     select_last: bool,
     /// As edições à espera de [`super::frame`].
     pub pending: Vec<AnimFieldEdit>,
+    /// As folhas (plano GEF 26 §3.4): o dropdown, a limpeza dos vazios e o que a tira pintou.
+    pub sheet_ui: ph2d_anim_sheets::editor_ui::SheetUi,
 }
 
 impl AnimDoc {
@@ -174,10 +177,6 @@ impl AnimDoc {
         }
     }
 
-    fn cells(&self) -> u32 {
-        self.snap.hframes.max(1) * self.snap.vframes.max(1)
-    }
-
     /// Os quadros da animação aberta como estão autorados (sem o arrasto em curso).
     #[must_use]
     pub fn authored_frames(&self) -> Vec<AnimFrameRef> {
@@ -200,10 +199,10 @@ impl AnimDoc {
         let Some(row) = info.rows.get(self.selected) else {
             return Vec::new();
         };
-        if row.frames.is_empty()
-            && row.sheet == self.snap.shown_sheet
-            && row.span(self.cells()) == self.cells()
-        {
+        // A folha inteira DA ANIMAÇÃO (o «+» faz a 0), mostre o editor qual folha mostrar (plano GEF 26 §3.4).
+        let sheets = &info.sheets;
+        let all = sheets.get(usize::from(row.sheet)).copied().unwrap_or(0);
+        if row.frames.is_empty() && row.span(all) == all {
             return Vec::new();
         }
         row_cells(row, &info.sheets)
@@ -443,6 +442,9 @@ impl AnimDoc {
         let l = self.layout.clone();
         if !hit(l.area, x, y) {
             return false;
+        }
+        if self.sheet_ui.press(x, y) {
+            return true;
         }
         if let Some(f) = self.scrub_target(x, y)
             && let Some((v, step, bounds)) = self.scrub_law(&f)

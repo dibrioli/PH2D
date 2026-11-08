@@ -5544,6 +5544,7 @@ dependencies = [
 name = "ph2d-anim-sheets"
 version = "0.0.0"
 dependencies = [
+ "bevy_ecs",
  "ph2d-asset",
  "ph2d-ecs",
  "ph2d-editor-core",
@@ -5551,6 +5552,9 @@ dependencies = [
  "ph2d-render",
  "ph2d-sprite-edit",
  "ph2d-sprite-sheet",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-vector",
 ]
 
 [[package]]

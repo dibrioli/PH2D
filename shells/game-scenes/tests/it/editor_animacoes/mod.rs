@@ -801,6 +801,7 @@ fn o_cabecalho_da_hierarquia_conta_so_o_jogo_e_nao_cresce_com_os_gestos() {
 mod tira;
 
 mod cores;
+mod folhas;
 mod marcas;
 mod scrub;
 

@@ -7,41 +7,23 @@ use super::paint_sheet::{paint_hover_list, paint_sheet};
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::paint::{
     fill_rounded_rect, frame_radius, label_column_width, paint_text, paint_text_centered,
-    paint_text_title, resolve, stroke_rect, stroke_rounded_rect,
+    paint_text_title, stroke_rect, stroke_rounded_rect,
 };
 use ph2d_editor_core::paint_shapes::fill_diamond;
 use ph2d_editor_core::widget::paint_card_ghost;
-use ph2d_editor_core::widget::sheet_cell::paint_sheet_cell;
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{AnimCycleMode, InspectorAnimInfo};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
-use ph2d_vector::{Color, VectorScene};
+use ph2d_vector::VectorScene;
 
 /// A amostra de cor da lista, em relação à letra (a maquete, 9 de 11).
 const SWATCH_OVER_FONT: f32 = 0.8; // LITERAL-PX-OK: razão adimensional
 /// O corpo do texto do editor: o dos campos dos cartões.
 const FONT_TOKEN: TypeToken = TypeToken::Base;
 
-/// A cor do editor: em cartões, o tom da lista; `PH2D_CARDS=0`, o de antes.
-pub fn tom(t: ColorToken, theme: Theme) -> Color {
-    if !ph2d_editor_core::panel::cards::ferramenta::cards_on() {
-        return resolve(t, theme);
-    }
-    let cartao = match t {
-        ColorToken::PanelBg => ColorToken::KanbanList,
-        ColorToken::Bg1 => ColorToken::KanbanCard,
-        ColorToken::Bg2 => ColorToken::CardField,
-        ColorToken::Bg3 => ColorToken::KanbanCardRaised,
-        ColorToken::Text1 => ColorToken::KanbanCardFg,
-        ColorToken::Text2 | ColorToken::Text3 => ColorToken::CardLabel,
-        o => return resolve(o, theme),
-    };
-    ph2d_editor_core::widget::card_ink::CardInk::of_list(theme)
-        .color(cartao)
-        .with_alpha(1.0)
-}
+pub use ph2d_anim_sheets::editor_ui::tom;
 
 pub(crate) fn button(
     scene: &mut VectorScene,
@@ -214,12 +196,18 @@ pub fn paint_doc(
     for r in [l.list, l.sheet_card, l.frames_card] {
         card(scene, theme, r);
     }
+    let foot = if l.split.w > 0.0 { l.split } else { l.add };
+    doc.sheet_ui
+        .paint_clean(scene, text, theme, (foot, l.list_title.w), info.as_ref());
     paint_list(doc, &l, info.as_ref(), scene, text, theme);
     let mut hint = tr("anim_editor.sheet_hint");
     if label_column_width(text, FONT_TOKEN.px(), [hint]) > l.sheet_title.w {
         hint = tr("anim_editor.sheet");
     }
-    label(scene, text, theme, l.sheet_title, hint, ColorToken::Text2);
+    let (sheets, shown) = (&doc.snap.sheets, doc.snap.shown_sheet);
+    let title = (l.sheet_title, hint);
+    doc.sheet_ui
+        .paint_title(scene, text, theme, title, sheets, shown);
     if let (Some((t, use_)), Some(g)) = (l.banner, doc.proposal()) {
         fill_rounded_rect(
             scene,
@@ -256,6 +244,8 @@ pub fn paint_doc(
 
     let names = doc.hovered_names(&users);
     paint_hover_list(doc, &l, &names, scene, text, theme);
+    let (sheets, shown) = (&doc.snap.sheets, doc.snap.shown_sheet);
+    doc.sheet_ui.paint_menu(scene, text, theme, sheets, shown);
 }
 
 /// «run · 8 frames», com a duração de um ciclo à direita.
@@ -474,6 +464,9 @@ fn paint_list(
             field_sized(scene, text, theme, *r, "", Some(buf), FONT_TOKEN.px());
             continue;
         }
+        if doc.sheet_ui.paint_alert_row(scene, text, theme, *r, i, row) {
+            continue;
+        }
         let playing = info.is_some_and(|x| x.playing && x.current == row.name);
         let name = if playing {
             tr_with("anim_editor.row_playing", &[("name", &row.name)])
@@ -566,16 +559,16 @@ fn paint_strip(
         f64::from(l.strip.x + l.strip.w),
         f64::from(l.strip.y + l.strip.h),
     ));
-    for (i, ((thumb, close), cell)) in l.frames.iter().zip(frames).enumerate() {
+    for (i, (thumb, close)) in l.frames.iter().take(frames.len()).enumerate() {
         fill_rounded_rect(
             scene,
             *thumb,
             frame_radius(theme, m::FIELD_RADIUS),
             tom(ColorToken::Bg2, theme),
         );
-        if let (Some(sheet), Some(c)) = (&doc.snap.sheet, doc.shown_cell(*cell)) {
-            paint_sheet_cell(scene, sheet, doc.snap.hframes, doc.snap.vframes, c, *thumb);
-        }
+        let sheets = &doc.snap.sheets;
+        doc.sheet_ui
+            .paint_frame(scene, text, theme, sheets, frames, i, *thumb);
         if drag.is_some_and(|d| d.from == i) {
             // O lugar de onde o quadro saiu fica apagado enquanto ele anda.
             fill_rounded_rect(
@@ -661,10 +654,7 @@ fn paint_strip(
     {
         let thumb = f.0;
         let mut content = VectorScene::new();
-        if let (Some(sheet), Some(c)) = (&doc.snap.sheet, doc.shown_cell(*cell)) {
-            let (hf, vf) = (doc.snap.hframes, doc.snap.vframes);
-            paint_sheet_cell(&mut content, sheet, hf, vf, c, thumb);
-        }
+        ph2d_anim_sheets::editor_ui::paint_cell(&mut content, &doc.snap.sheets, *cell, thumb);
         // A borda separa o fantasma (meio transparente) da miniatura por cima da qual passa.
         stroke_rect(
             &mut content,

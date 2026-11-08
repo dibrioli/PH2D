@@ -21,6 +21,15 @@ ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-render = { path = "../ph2d-render" }
 ph2d-sprite-edit = { path = "../ph2d-sprite-edit" }
 ph2d-sprite-sheet = { path = "../ph2d-sprite-sheet" }
+# O editor de animações (V4): o dropdown das folhas, a tira com a folha de cada quadro e a limpeza dos vazios.
+ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-vector = { path = "../ph2d-vector" }
+# A `SheetCache` (`#[derive(Resource)]` expande para caminhos `bevy_ecs::`).
+bevy_ecs = "0.20"
+
+[package.metadata.cargo-machete]
+ignored = ["bevy_ecs"]
 
 [lints]
 workspace = true

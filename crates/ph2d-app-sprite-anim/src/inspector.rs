@@ -305,15 +305,19 @@ pub fn apply_anim_edit(
             }
         }
         AnimFieldEdit::SplitByRows(rows) => {
+            // As fileiras são da folha VISÍVEL (a do editor e do cartão Image; plano GEF 26 §3.4).
+            let k = ph2d_ecs::shown_sheet(world, entity);
+            let extra = world.get::<ph2d_ecs::SpriteSheets>(entity);
+            let extra = extra.and_then(|s| s.sheet(k));
             let grid = world.get::<ph2d_ecs::SpriteGrid>(entity);
-            let hf = grid.map_or(1, |g| g.hframes);
+            let hf = extra.map_or_else(|| grid.map_or(1, |g| g.hframes), |x| x.hframes);
             let frames = world.get::<ph2d_ecs::SpriteAnimFrames>(entity);
             match crate::editor::split::add_rows(
                 &mut lib,
                 frames,
                 rows,
                 hf,
-                0,
+                k,
                 &ph2d_ecs::sheet_cells_of(world, entity),
             ) {
                 Err(e) => {

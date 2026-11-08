@@ -47,6 +47,24 @@ pub fn show_sheet(world: &mut World, e: Entity, k: u8) -> bool {
     false
 }
 
+/// **Cols/Rows** com uma folha EXTRA visível (`k ≥ 1`): o corte dela passa a `h × v`. Com a folha `0` visível devolve
+/// `false` e nada muda (o corte do `SpriteGrid` é a porta de sempre, `AnimFieldEdit::Grid`).
+pub fn set_shown_grid(world: &mut World, e: Entity, h: u32, v: u32) -> bool {
+    let k = shown_sheet(world, e);
+    let Some(mut sheets) = world.get::<SpriteSheets>(e).cloned().filter(|_| k > 0) else {
+        return false;
+    };
+    let Some(s) = usize::from(k)
+        .checked_sub(1)
+        .and_then(|i| sheets.0.get_mut(i))
+    else {
+        return false;
+    };
+    (s.hframes, s.vframes) = (h.max(1), v.max(1));
+    world.entity_mut(e).insert(sheets);
+    true
+}
+
 /// Os píxeis de uma imagem da biblioteca: `[w, h]` e o RGBA (vazio numa de fábrica sem píxeis no `AssetDb`).
 fn pixels_of(
     id: AssetId,

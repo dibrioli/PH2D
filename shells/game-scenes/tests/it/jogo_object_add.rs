@@ -311,6 +311,72 @@ fn nenhuma_porta_do_editor_poe_a_forma_no_corpo() {
         1,
         "uma forma só"
     );
+
+    // *Add Body* (imagem sem nada) e *Make Independent Body* (peça com imagem · forma solta).
+    let add = |sim: &mut SimWorld, e: Entity| {
+        let q = ph2d_ecs::scene::EditorCommandQueue::default();
+        let edit = ph2d_editor_core::PhysicsFieldEdit::Add;
+        ph2d_app_physics::inspector::body::apply_physics_edit(sim, e.to_bits(), edit, &q, &reg);
+        ph2d_ecs::scene::apply_editor_commands(sim.world_mut(), &q, &reg).expect("commit");
+    };
+    let nua = imagem(&mut sim);
+    add(&mut sim, nua);
+    nenhum_corpo_com_forma(&mut sim, "Add Body");
+    let autorada = Collider {
+        shape: ColliderShape::Ball { radius: 0.3 },
+        density: 3.5,
+        ..Collider::default()
+    };
+    let peca = imagem(&mut sim);
+    let w = sim.world_mut();
+    w.entity_mut(peca)
+        .insert((autorada, ph2d_ecs::ChildOf(chao)));
+    add(&mut sim, peca);
+    nenhum_corpo_com_forma(&mut sim, "Make Independent Body (imagem)");
+    let f = ph2d_physics_ecs::main_shape(sim.world(), peca).expect("forma da peça");
+    assert_eq!(
+        sim.world().get::<Collider>(f),
+        Some(&autorada),
+        "a forma autorada"
+    );
+    let solta = sim
+        .world_mut()
+        .spawn((
+            ph2d_ecs::Name::new("Loose"),
+            autorada,
+            ph2d_ecs::Transform::from_translation(ph2d_core::Vec2::new(3.0, 1.0)),
+        ))
+        .id();
+    add(&mut sim, solta);
+    nenhum_corpo_com_forma(&mut sim, "Make Independent Body (solta)");
+    let pai = sim
+        .world()
+        .get::<ph2d_ecs::ChildOf>(solta)
+        .map(|c| c.parent());
+    let corpo = pai.expect("a forma solta passou a filha do corpo novo");
+    assert!(
+        sim.world().get::<RigidBody>(corpo).is_some(),
+        "o corpo novo"
+    );
+    let pose = ph2d_ecs::world_transform(sim.world(), solta).expect("pose");
+    assert_eq!(
+        pose.translation,
+        ph2d_core::Vec2::new(3.0, 1.0),
+        "a forma não saltou"
+    );
+
+    // O *Rig* da hierarquia: cada parte sem corpo vira corpo pela mesma porta.
+    let tronco = imagem(&mut sim);
+    let cabeca = imagem(&mut sim);
+    sim.world_mut()
+        .entity_mut(cabeca)
+        .insert(ph2d_ecs::ChildOf(tronco));
+    let plano = ph2d_app_physics::joint_rig::plan(&mut sim, &[tronco.to_bits()]);
+    let q = ph2d_ecs::scene::EditorCommandQueue::default();
+    let kind = ph2d_physics_ecs::JointKind::Pin;
+    let out = ph2d_app_physics::joint_rig::apply(&mut sim, &plano, kind, &q, &reg);
+    assert_eq!((out.bodies, out.joints), (2, 1), "o rig");
+    nenhum_corpo_com_forma(&mut sim, "Rig");
 }
 
 /// A cena 2 continua a mesma: a parede invisível é PEÇA do chão da direita, sem corpo próprio.

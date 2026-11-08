@@ -310,9 +310,12 @@ fn make_independent_body_keeps_the_shape_the_artist_authored() {
         .get::<Collider>(part)
         .expect("a peça tem collider");
     apply(&mut sim, part, PhysicsFieldEdit::Add);
+    // Opção B: a peça com imagem vira o corpo e a forma autorada passa INTEIRA para a filha.
+    let forma = ph2d_physics_ecs::main_shape(sim.world(), part).expect("a forma do corpo");
+    assert_ne!(forma, part, "a forma ficou no corpo");
     let after = *sim
         .world()
-        .get::<Collider>(part)
+        .get::<Collider>(forma)
         .expect("collider após o Add");
 
     assert!(

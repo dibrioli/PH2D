@@ -63,35 +63,12 @@ pub fn apply_physics_edit(
     }
     let world = sim.world();
 
+    // *Add Body* e *Make Independent Body*: a forma em filha (opção B), a autorada intacta (W-PartAdopt).
     if matches!(edit, PhysicsFieldEdit::Add) {
-        queue_set(
-            queue,
-            registry,
-            entity_bits,
-            RIGID_BODY,
-            &RigidBody {
-                kind: BodyKind::Dynamic,
-            },
-        );
-        // ⚠️ **SEMEAR É PARA QUEM NÃO TEM FORMA** (W-PartAdopt): a face vazia semeia a caixa do
-        // sprite; a de peça (*Make Independent Body*) já tem a forma autorada, e escrever por cima
-        // apagava-a em silêncio (medido: `0,17 × 0,91` voltava `0,10 × 0,50`). A lei do `AddShape`.
-        if world.get::<Collider>(entity).is_none() {
-            let half = sprite_half_extents(world, entity);
-            queue_set(
-                queue,
-                registry,
-                entity_bits,
-                COLLIDER,
-                &Collider {
-                    shape: ColliderShape::Cuboid {
-                        half_x: half[0],
-                        half_y: half[1],
-                    },
-                    ..Collider::default()
-                },
-            );
-        }
+        let half = sprite_half_extents(world, entity);
+        let imagem = world.get::<ph2d_render::Sprite>(entity).is_some();
+        let w = sim.world_mut();
+        ph2d_physics_ecs::torna_corpo(w, entity, BodyKind::Dynamic, half, imagem);
         return;
     }
     // A caixa do sprite sem tocar no `RigidBody`: peça de um corpo acima (W-Compound).

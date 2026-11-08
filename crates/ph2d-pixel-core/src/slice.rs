@@ -287,12 +287,12 @@ pub(crate) fn after_frames(
 
 // --- A geometria: a slice segue a arte ---
 
+/// Cada key, a escondida também (§10): a caixa vazia anda com a arte e continua vazia, para
+/// reaparecer sobre ela quando o artista lhe der tamanho.
 fn map_shapes(slices: &[Slice], f: impl Fn(SliceShape) -> SliceShape) -> Vec<Slice> {
     let mut out = slices.to_vec();
     for k in out.iter_mut().flat_map(|c| c.keys.iter_mut()) {
-        if !k.shape.bounds.is_empty() {
-            k.shape = f(k.shape);
-        }
+        k.shape = f(k.shape);
     }
     out
 }
@@ -370,7 +370,7 @@ pub(crate) fn rotated(slices: &[Slice], w: u32, h: u32, rot: Rotation) -> Vec<Sl
 }
 
 /// Sprite Size: posição e pivot truncam para zero; cada BORDA trunca, e o tamanho é a diferença
-/// (G1: `4,15` a 50 % dá largura 7). Uma caixa que existia não some: mínimo 1 (sem medida).
+/// (G1: `4,15` a 50 % dá largura 7). Uma caixa que existia não some: mínimo 1 (sem medida); o tamanho 0 (escondida) fica 0.
 fn scale_coord(v: i32, to: u32, from: u32) -> i32 {
     (i64::from(v) * i64::from(to) / i64::from(from.max(1))) as i32
 }
@@ -379,7 +379,7 @@ fn scale_span(start: i32, len: u32, to: u32, from: u32) -> (i32, u32) {
     let a = scale_coord(start, to, from);
     let end = i64::from(start) + i64::from(len);
     let b = end * i64::from(to) / i64::from(from.max(1));
-    (a, (b - i64::from(a)).max(1) as u32)
+    (a, (b - i64::from(a)).max(i64::from(len.min(1))) as u32)
 }
 
 fn scale_rect(r: Rect, sx: (u32, u32), sy: (u32, u32)) -> Rect {

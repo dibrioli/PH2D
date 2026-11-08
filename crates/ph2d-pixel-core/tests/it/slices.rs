@@ -436,14 +436,35 @@ fn flip_and_rotate_keep_box_center_and_pivot_on_the_same_pixels() {
     }
 }
 
-/// Uma key escondida fica escondida: a caixa vazia não vira coordenada.
+/// Uma key escondida segue a geometria como as outras e continua escondida (`P11_plano.md` §10): quando
+/// o artista lhe der tamanho, reaparece sobre a arte. *Mutação: voltar a saltar a caixa vazia.*
 #[test]
-fn a_hidden_key_stays_as_it_is_under_geometry() {
+fn a_hidden_key_follows_geometry_and_stays_hidden() {
     let mut s = sprite(40, 24, 3);
-    let id = com_keys(&mut s, &[(0, caixa(3, 2, 4, 4)), (1, caixa(0, 0, 0, 0))]);
-    let op = canvas::flip_canvas(&s, true).unwrap();
-    apply(&mut s, op).unwrap();
-    assert_eq!(so_a(&s, id).keys[1].shape, caixa(0, 0, 0, 0));
+    let id = com_keys(&mut s, &[(0, caixa(3, 2, 4, 4)), (1, caixa(5, 2, 0, 6))]);
+    let escondida = |s: &Sprite| so_a(s, id).keys[1].shape;
+    let mut f = s.clone();
+    let op = canvas::flip_canvas(&f, true).unwrap();
+    apply(&mut f, op).unwrap();
+    assert_eq!(escondida(&f), caixa(35, 2, 0, 6), "x' = W - x - w");
+    let mut r = s.clone();
+    let op = canvas::rotate_canvas(&r, Rotation::Cw90).unwrap();
+    apply(&mut r, op).unwrap();
+    assert_eq!(escondida(&r), caixa(16, 5, 6, 0), "w e h trocam");
+    let mut c = s.clone();
+    let b = Borders {
+        left: 10,
+        top: 0,
+        right: 0,
+        bottom: 0,
+    };
+    let op = canvas::canvas_size(&c, b, 0).unwrap();
+    apply(&mut c, op).unwrap();
+    assert_eq!(escondida(&c), caixa(15, 2, 0, 6));
+    let mut z = s.clone();
+    let op = canvas::sprite_size(&z, 20, 12, SizeMethod::Nearest).unwrap();
+    apply(&mut z, op).unwrap();
+    assert_eq!(escondida(&z), caixa(2, 1, 0, 3), "o tamanho 0 não vira 1");
 }
 
 /// Tudo isto muda só as slices se a arte é vazia: mesmo assim é um passo.

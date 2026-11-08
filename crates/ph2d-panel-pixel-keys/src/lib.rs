@@ -14,6 +14,7 @@ mod painel;
 mod shim;
 
 pub use canal::{a_capturar, oferece, pede_abrir, toma_keymap};
+pub use shim::load_user;
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};

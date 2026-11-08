@@ -6162,6 +6162,7 @@ dependencies = [
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-panel-pixel-export",
+ "ph2d-panel-pixel-keys",
  "ph2d-panel-pixel-preview",
  "ph2d-panel-pixel-slices",
  "ph2d-panel-pixel-tiles",

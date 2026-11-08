@@ -59,9 +59,15 @@ pub fn key_with(
     code: KeyCode,
     m: Mods,
 ) -> Option<KeyAnswer> {
-    let key = editing.and_then(|bits| key_of(world, bits))?;
     let mut chord = Chord::new(code);
     (chord.ctrl, chord.alt, chord.shift, chord.space) = (m.ctrl, m.alt, m.shift, app.space);
+    if ph2d_panel_pixel_keys::oferece(chord) {
+        return Some(KeyAnswer::Quiet);
+    }
+    let key = editing.and_then(|bits| key_of(world, bits))?;
+    ph2d_panel_pixel_keys::toma_keymap()
+        .into_iter()
+        .for_each(|k| app.keys = k);
     if ph2d_pixel_keys::reserved(chord).is_some() {
         return None;
     }
@@ -137,6 +143,10 @@ pub(crate) fn acao(app: &mut PixelApp, key: u32, a: A) -> Option<KeyAnswer> {
         }
         A::LayerRename => {
             ph2d_panel_pixel_timeline::pede_rename_layer();
+            KeyAnswer::Quiet
+        }
+        A::KeyboardShortcuts => {
+            ph2d_panel_pixel_keys::pede_abrir();
             KeyAnswer::Quiet
         }
         A::SwapColors => {

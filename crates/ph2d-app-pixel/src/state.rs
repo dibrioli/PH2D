@@ -243,16 +243,6 @@ pub struct PixelApp {
     pub(crate) espaco_visto: Option<crate::pinceis::Visto>,
 }
 
-/// A tabela de `~/.ph2d/pixel-keys.txt` (sem ficheiro: a de fábrica), a pasta do `prefs.txt`.
-fn teclas_do_utilizador() -> ph2d_pixel_keys::Keymap {
-    let p =
-        std::env::var_os("HOME").map(|h| std::path::PathBuf::from(h).join(".ph2d/pixel-keys.txt"));
-    let texto = p
-        .and_then(|p| std::fs::read_to_string(p).ok())
-        .unwrap_or_default();
-    ph2d_pixel_keys::Keymap::from_text(&texto).0
-}
-
 impl Default for PixelApp {
     fn default() -> Self {
         Self {
@@ -338,7 +328,7 @@ impl PixelApp {
             smoke: crate::smoke::armed_level(),
             paletas: crate::paleta::pasta_do_utilizador(),
             pinceis: crate::pinceis::pasta_do_utilizador(),
-            keys: teclas_do_utilizador(),
+            keys: ph2d_panel_pixel_keys::load_user().0,
             ..Self::default()
         }
     }

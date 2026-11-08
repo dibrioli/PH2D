@@ -27,8 +27,8 @@ fn no_app_wide_key_is_taken_by_the_pixel() {
     }
 }
 
-/// Sem efeito no Pixel ainda: a janela de atalhos e a grade do app (`Ctrl+'`) não têm porta.
-const SEM_PORTA: &[A] = &[A::KeyboardShortcuts, A::ShowGrid];
+/// Sem efeito no Pixel ainda: a grade do app (`Ctrl+'`) não tem porta.
+const SEM_PORTA: &[A] = &[A::ShowGrid];
 
 #[test]
 fn every_factory_key_in_normal_does_its_action() {
@@ -47,4 +47,44 @@ fn every_factory_key_in_normal_does_its_action() {
             || a.request().is_none_or(|r| app.pending().contains(&r));
         assert!(feito, "{c} não fez {a:?}");
     }
+}
+
+/// A tecla pela porta REAL (`compose::keyboard`, a que a shell chama), com o sprite em Draw.
+fn pela_porta(code: winit::keyboard::KeyCode, m: Mods) -> bool {
+    let (mut app, sim, mut cam, bits) = born();
+    let mut toasts = ph2d_editor_core::ToastQueue::new();
+    let mut v = ph2d_app_pixel::compose::View {
+        world: sim.world(),
+        camera: &mut cam,
+        toasts: &mut toasts,
+        window: crate::comum::WINDOW,
+        ppm: crate::comum::PPM,
+        editing: Some(bits),
+        typing: false,
+        conta_gotas: false,
+    };
+    let key = winit::keyboard::PhysicalKey::Code(code);
+    app.keyboard(&mut v, key, true, m, None)
+}
+
+/// §9.7: o `Ctrl+Space` é o zen do app; o Pixel em Draw não o consome pela porta real.
+#[test]
+fn ctrl_space_in_draw_is_not_consumed_by_the_pixel() {
+    let m = Mods {
+        alt: false,
+        ctrl: true,
+        shift: false,
+    };
+    assert!(!pela_porta(winit::keyboard::KeyCode::Space, m));
+}
+
+/// `Ctrl+Alt+Shift+K` abre a janela KEYBOARD SHORTCUTS (consumida pela porta real).
+#[test]
+fn ctrl_alt_shift_k_opens_the_shortcuts_window() {
+    let m = Mods {
+        alt: true,
+        ctrl: true,
+        shift: true,
+    };
+    assert!(pela_porta(winit::keyboard::KeyCode::KeyK, m));
 }

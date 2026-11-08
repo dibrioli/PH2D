@@ -1,0 +1,28 @@
+[package]
+name = "ph2d-recovery"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A recuperação depois de um fecho à força (`docs/PixelArt/P12_plano.md` §4.3, O15): a pasta de dados,
+# a escrita atómica, a sessão com tranca, a varredura ao arrancar e o estado da janela que oferece as
+# cópias. PURA: std só, sem UI; quem serializa o projecto é a shell (os mesmos bytes do Save).
+[dependencies]
+# Os textos da janela (inglês, `ph2d-i18n`) e a janela nativa (o mesmo `rfd` da shell).
+ph2d-i18n = { path = "../ph2d-i18n" }
+rfd = "0.17"
+
+[dev-dependencies]
+fastrand = "2"
+
+[[test]]
+name = "it"
+path = "tests/it/main.rs"
+
+[lints]
+workspace = true

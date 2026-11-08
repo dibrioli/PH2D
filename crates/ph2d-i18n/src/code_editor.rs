@@ -125,6 +125,20 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.recovery.kept" => {
             "{count} unsaved scripts of the previous project were kept in {dir}"
         }
+        // A recuperação do projecto inteiro depois de um fecho à força (P12 S, `ph2d-recovery`).
+        "recovery.title" => "Recover project",
+        "recovery.body" => {
+            "PH2D did not close normally. A recovery copy of \u{201c}{name}\u{201d} was saved {ago} ({size}).\n\nRestore opens it as an unsaved project; Save writes it back to the original file. Later keeps it for next time (up to a week)."
+        }
+        "recovery.restore" => "Restore",
+        "recovery.discard" => "Discard",
+        "recovery.later" => "Later",
+        "recovery.ago_secs" => "{n} seconds ago",
+        "recovery.ago_mins" => "{n} minutes ago",
+        "recovery.ago_hours" => "{n} hours ago",
+        "recovery.ago_days" => "{n} days ago",
+        "recovery.size_kb" => "{n} KB",
+        "recovery.size_mb" => "{n} MB",
         "code.recovery.kept_one" => "1 unsaved script of the previous project was kept in {dir}",
         "code.recovery.failed" => {
             "Could not keep {count} unsaved scripts of the previous project: {err}"

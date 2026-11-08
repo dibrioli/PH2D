@@ -1,25 +1,7 @@
-//! Preferências de UTILIZADOR — cross-session, `~/.ph2d/prefs.txt`.
-//!
-//! O que é do ARTISTA (como o app se mexe, como ele se parece) contra o que é do DOCUMENTO (o que
-//! o artista desenhou). Hoje: o **carácter** da UI viva (`ph2d_editor_core::motion::UiCharacter`) e o
-//! **reduced motion**.
-//!
-//! ⚠️ **Isto NÃO entra nas `SavedSettings` do `ProjectFile` (v69), e a razão é o modo de falha:**
-//! ali o gosto viajaria DENTRO do documento, e abrir o ficheiro de um colega mudaria como o **seu**
-//! app se mexe. Escala do mundo, unidade e snaps são do documento; a velocidade com que um botão
-//! acende é de quem olha para ele.
-//!
-//! ⚠️ **E não inventa um segundo lar.** O plano desta wave pedia `~/.config/ph2d/prefs.postcard`
-//! com `PREFS_SCHEMA` próprio; a leitura do repo corrigiu-o: já existe um ficheiro de preferências
-//! de utilizador nesta shell — o [`crate::palette_persist`], em `~/.ph2d/palettes.txt` — e abrir uma
-//! segunda pasta ao lado seria duas casas para a mesma categoria de facto. Este módulo é irmão
-//! daquele: mesma pasta, mesmo estilo (texto, std-only, best-effort, sem serde).
-//!
-//! ⚠️ **Sem número de schema, de propósito.** Num formato POSICIONAL (postcard) a versão é
-//! obrigatória — o `ProjectFile` recusa e está certo. Num `chave=valor` a compatibilidade é grátis
-//! nos dois sentidos: um build ANTIGO lê as chaves que conhece e ignora as que não conhece, que é
-//! precisamente o que se quer de uma preferência. Uma versão aqui faria o build antigo **recusar** o
-//! ficheiro que o novo escreveu — o trade errado para esta classe de dado.
+//! Preferências de UTILIZADOR — cross-session, `~/.ph2d/prefs.txt`: o que é do ARTISTA e da
+//! máquina dele, nunca do documento (abrir o ficheiro de um colega não muda o SEU app). Irmão do
+//! [`crate::palette_persist`] (mesma pasta, texto, std-only, best-effort). ⚠️ Sem número de schema:
+//! em `chave=valor` um build antigo ignora as chaves que não conhece, que é o que se quer aqui.
 
 use std::path::PathBuf;
 
@@ -30,12 +12,9 @@ use ph2d_editor_core::motion::UiCharacter;
 pub struct Prefs {
     pub character: UiCharacter,
     pub reduced_motion: bool,
-    /// **O SOM DE UI** (estudo de UI viva, D1). ⛔ **Nasce DESLIGADO**, e o default é a feature: um
-    /// app de desenho vive em cima de música e de referências em vídeo, e um som que ninguém pediu
-    /// desliga-se no primeiro minuto e leva a feature com ele.
+    /// **O SOM DE UI** (UI viva, D1). ⛔ Nasce DESLIGADO: som que ninguém pediu leva a feature.
     pub ui_sound: bool,
-    /// ⭐ **A fonte, o peso e o tamanho do texto da interface** (2026-10-01) — do artista, como o
-    /// carácter: abrir o projecto de um colega não muda as letras de quem lê.
+    /// ⭐ A fonte, o peso e o tamanho do texto da interface (2026-10-01).
     pub text: ph2d_tokens::UiTextStyle,
     /// ⭐ A escala da interface inteira (2026-10-02) — do artista, pela mesma razão.
     pub ui_scale: ph2d_tokens::UiScale,
@@ -43,6 +22,8 @@ pub struct Prefs {
     pub left_handed: bool,
     /// ⭐ A nitidez da luz 2D (Settings ▸ Light) — do artista e da máquina dele, nunca do projeto.
     pub luz2d: ph2d_editor_core::luz_edits::PreferenciaDaLuz,
+    /// O intervalo da cópia de recuperação (`recovery.minutes`, O15) — do artista e da máquina dele.
+    pub recovery: ph2d_recovery::Period,
 }
 
 /// `~/.ph2d/prefs.txt`, ou `None` com `$HOME` por definir (a persistência é então saltada).
@@ -57,7 +38,7 @@ fn prefs_file() -> Option<PathBuf> {
 pub fn serialize(p: &Prefs) -> String {
     format!(
         "# PH2D prefs\nmotion_character={}\nreduced_motion={}\nui_sound={}\nui_font={}\n\
-         ui_font_weight={}\nui_text_size={}\nui_scale={}\nleft_handed={}\nlight_quality={}\nlight_auto={}\n",
+         ui_font_weight={}\nui_text_size={}\nui_scale={}\nleft_handed={}\nlight_quality={}\nlight_auto={}\nrecovery.minutes={}\n",
         p.character.wire(),
         u8::from(p.reduced_motion),
         u8::from(p.ui_sound),
@@ -68,6 +49,7 @@ pub fn serialize(p: &Prefs) -> String {
         u8::from(p.left_handed),
         p.luz2d.nivel.token(),
         u8::from(p.luz2d.automatica),
+        p.recovery.to_minutes(),
     )
 }
 
@@ -95,6 +77,7 @@ pub fn parse(text: &str) -> Prefs {
             }
             "reduced_motion" => p.reduced_motion = value.trim() == "1",
             "ui_sound" => p.ui_sound = value.trim() == "1",
+            "recovery.minutes" => p.recovery = ph2d_recovery::Period::from_minutes(value),
             "left_handed" => p.left_handed = value.trim() == "1",
             // ⚠️ Os nomes vêm de `from_wire` dos próprios tipos, pela razão do carácter acima.
             "ui_font" => {
@@ -131,10 +114,8 @@ pub fn parse(text: &str) -> Prefs {
 
 /// *Vale a pena gravar?* — a decisão do detector de mudança, extraída para ser **executável**.
 ///
-/// ⚠️ **`None` é *ainda não observei*, e não *está tudo no default*.** A primeira observação de uma
-/// sessão SEMEIA o espelho e **não** escreve: o que está em memória acabou de vir do disco, então
-/// gravar seria reescrever o ficheiro sem ninguém ter tocado em nada — e, no caso em que ele estava
-/// malformado, seria apagar por cima do que o artista pode querer ver e corrigir.
+/// ⚠️ `None` é *ainda não observei*: a primeira observação SEMEIA o espelho e não escreve (o que
+/// está em memória acabou de vir do disco; malformado, apagaria o que o artista quer corrigir).
 #[must_use]
 pub fn should_save(previous: Option<Prefs>, now: Prefs) -> bool {
     previous.is_some_and(|p| p != now)
@@ -152,6 +133,13 @@ pub fn save(p: &Prefs) {
     if let Err(e) = std::fs::write(&path, serialize(p)) {
         eprintln!("[ph2d] prefs save: {e}");
     }
+}
+
+/// O intervalo da recuperação, lido UMA vez (não há UI que o mude a meio da sessão).
+#[must_use]
+pub fn recovery() -> ph2d_recovery::Period {
+    static P: std::sync::OnceLock<ph2d_recovery::Period> = std::sync::OnceLock::new();
+    *P.get_or_init(|| load().recovery)
 }
 
 /// Lê as preferências. **Default quando o ficheiro está ausente, ilegível ou malformado** — as

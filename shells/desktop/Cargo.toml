@@ -62,6 +62,8 @@ ph2d-app-macros = { path = "../../crates/ph2d-app-macros" }
 ph2d-app-board = { path = "../../crates/ph2d-app-board" }
 # ⭐ A família do EDITOR DE SCRIPTS (CodeEditor): instalada no arranque, um `frame` por quadro.
 ph2d-app-code = { path = "../../crates/ph2d-app-code" }
+# A cópia de recuperação do projecto inteiro (P12 S).
+ph2d-recovery = { path = "../../crates/ph2d-recovery" }
 # ⭐ A família do JOGO a correr (GameEngineFuncional R0): a sessão de Play sobre uma cópia.
 ph2d-app-game = { path = "../../crates/ph2d-app-game" }
 ph2d-camera-frame = { path = "../../crates/ph2d-camera-frame" }

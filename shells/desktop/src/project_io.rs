@@ -1,10 +1,5 @@
 //! **O ficheiro do projeto tem NOME** — `Save`, `Save As…` e `Open Project…` com diálogo.
 //!
-//! ⚠️ Até 2026-08-23 este app tinha **um** projeto: o `Ctrl+S` escrevia sempre em
-//! `ph2d_project.postcard` no diretório corrente (ou no que a env `PH2D_PROJECT_PATH` dissesse), e
-//! os três itens do menu Ficheiro **fechavam o menu e não faziam nada**. Guardar um segundo
-//! trabalho exigia sair da app e mexer numa variável de ambiente.
-//!
 //! # A sessão tem um caminho, e ele é a diferença entre Save e Save As
 //!
 //! [`crate::App::project_path`] é o ficheiro **desta** sessão. Ele nasce da env quando ela existe
@@ -17,25 +12,19 @@
 //! | `Ctrl+Shift+S` / **Save As…** | pergunta sempre | pergunta sempre |
 //! | `Ctrl+O` / **Open Project…** | pergunta sempre | pergunta sempre |
 //!
-//! ⚠️ **Abrir pergunta SEMPRE, e isso não é simetria decorativa:** um `Open` que reabrisse o
-//! caminho da sessão em silêncio deitaria fora o trabalho não gravado sem uma pergunta, com um
-//! atalho de uma tecla. O gesto que DESTRÓI pergunta; o que grava é que pode ser silencioso.
+//! ⚠️ **Abrir pergunta SEMPRE:** o gesto que DESTRÓI (o trabalho não gravado) pergunta; o que
+//! grava é que pode ser silencioso.
 //!
 //! # ⚠️ A extensão do projeto NÃO é `.ph2d`
 //!
-//! Ela seria a óbvia, e está tomada: `ph2d` é uma **imagem** neste app
-//! (`ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS`), e um seletor que oferecesse a mesma extensão para
-//! duas coisas diferentes é a ambiguidade que o [`crate::import_router`] acabou de curar noutro
-//! sítio. O projeto é **`.ph2dproj`**, e o `.postcard` continua a ser oferecido para abrir o que já
-//! foi gravado.
+//! `ph2d` é uma **imagem** (`ph2d_asset::SUPPORTED_IMAGE_EXTENSIONS`). O projeto é **`.ph2dproj`**;
+//! o `.postcard` continua a abrir o que já foi gravado.
 
 use ph2d_i18n::{tr, tr_with};
 use std::path::Path;
 
-/// As extensões que um ficheiro de projeto pode ter, para o diálogo **enumerar**.
-///
-/// ⚠️ A primeira é a que um `Save As` sugere; as outras existem para **abrir** o que já está
-/// gravado. `postcard` é o nome do formato de fio, e era o que o caminho fixo usava.
+/// As extensões do projeto, para o diálogo: a primeira é a que um `Save As` sugere; as outras
+/// abrem o que já está gravado.
 pub(crate) const PROJECT_EXTENSIONS: &[&str] = &["ph2dproj", "postcard"];
 
 /// O nome sugerido quando a sessão ainda não tem ficheiro.
@@ -130,9 +119,6 @@ impl crate::App {
     /// **O caminho com que a sessão nasce.** A env continua a mandar quando existe — é o que faz
     /// os smokes e os scripts que já dependem dela funcionarem exactamente como antes. Sem ela, a
     /// sessão nasce **sem ficheiro**, e o primeiro `Ctrl+S` pergunta.
-    ///
-    /// ⚠️ Antes de 2026-08-23 a ausência da env significava *«grava em `ph2d_project.postcard` no
-    /// diretório corrente»* — silenciosamente, e sempre no mesmo sítio.
     #[must_use]
     pub(crate) fn initial_project_path() -> Option<String> {
         seed_from_env(std::env::var("PH2D_PROJECT_PATH").ok())

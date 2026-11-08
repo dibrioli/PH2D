@@ -816,8 +816,7 @@ impl App {
             wheel_body_pick: None,
             wheel_rope_pick: None,
             anchor_gizmo_drag: None,
-            // O agregado da família `physics` (W2/L2). O `Default` reproduz,
-            // campo a campo, os sete inicializadores que viviam soltos aqui.
+            // O agregado da família `physics` (W2/L2).
             physics: ph2d_app_physics::physics_state::PhysicsState::default(),
             morph_machines: Default::default(),
             offset_live: crate::offset_live::OffsetLive::default(),
@@ -842,6 +841,7 @@ impl App {
             any_input_this_frame: false,
             preview_drive: ph2d_preview_drive::PreviewDrive::default(),
             project_path: crate::App::initial_project_path(),
+            recovery: ph2d_recovery::Recovery::off(),
             // ⭐ O cadeado do padrão nasce LIGADO — o comportamento que a secção tinha antes de os
             // dois eixos existirem (plano 33, W10).
             texpat_lock_aspect: [true, true],
@@ -893,16 +893,13 @@ impl App {
         // **O menu Ficheiro**, no mesmo sítio e pela mesma razão: `self` está livre do borrow do
         // render loop, e um diálogo nativo é modal — abri-lo a meio do frame prenderia o `gfx`.
         self.drain_project_io();
+        self.recovery_tick();
     }
 }
 
 impl ApplicationHandler for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        // PR 9c of the convention-by-discovery migration: subsystem
-        // boot pipeline lives in `init::build_initial_state`. This
-        // method now only wires the produced state into `self` and
-        // fires lifecycle hooks. See
-        // `docs/Migracao/2026-05-convention-by-discovery.md`.
+        // The boot pipeline lives in `init::build_initial_state`; this only wires it into `self`.
         let (window, host, gfx) = init::build_initial_state(&self.handler, event_loop);
         let size = gfx.surface.size();
         let scale = host.scale_factor();
@@ -912,6 +909,8 @@ impl ApplicationHandler for App {
         self.handler.on_lifecycle(Lifecycle::Foreground);
         self.handler.on_resize(size, scale);
         self.title_dirty = true;
+        let root = ph2d_recovery::default_root();
+        self.recovery_start(root.as_deref(), ph2d_recovery::ask_native);
         if let Some(host_ref) = self.host.as_ref() {
             host_ref.request_redraw();
         }
@@ -979,6 +978,7 @@ impl ApplicationHandler for App {
 
     fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
         crate::input_drop::release_wayland_receivers();
+        self.recovery.close();
     }
 }
 

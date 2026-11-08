@@ -7564,6 +7564,7 @@ dependencies = [
  "ph2d-poly2d",
  "ph2d-preview-drive",
  "ph2d-preview-slot",
+ "ph2d-recovery",
  "ph2d-render",
  "ph2d-runtime",
  "ph2d-script",
@@ -10749,6 +10750,15 @@ version = "0.0.0"
 dependencies = [
  "libm",
  "ph2d-sweep",
+]
+
+[[package]]
+name = "ph2d-recovery"
+version = "0.0.0"
+dependencies = [
+ "fastrand",
+ "ph2d-i18n",
+ "rfd",
 ]
 
 [[package]]

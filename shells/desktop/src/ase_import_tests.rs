@@ -24,6 +24,7 @@ fn ase_tag(name: &str, from: u16, to: u16, direction: u8, repeat: u16) -> AseTag
         direction,
         repeat,
         rgb: [0, 0, 0],
+        user_data: None,
     }
 }
 

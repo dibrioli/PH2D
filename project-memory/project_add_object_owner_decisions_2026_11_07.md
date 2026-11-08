@@ -20,3 +20,6 @@ Dono, 07/11, sobre o painel Add Object (Crítica `#addobject`, `GameEngineSample
 **Why:** produto é do dono; a Crítica mediu que o problema de hoje é mais de explicar que de tamanho.
 **How to apply:** plano em `docs/GameEngineFuncional/24_add_object_plano.md`; o painel de arrastar
 da versão C fica para depois. Ver [[project-game-engine-refounded-item-by-item-2026-11-05]].
+
+**Smoke do dono 07/11: OK** (versão estreita, 820 px, 3 colunas, à referência do Add Component da Crítica).
+Próximo, pedido dele: **o Add Component no mesmo padrão, com dicas**.

@@ -376,7 +376,11 @@ fn a_serializacao_corre_no_fio_da_escrita() {
     let t1 = t0 + Duration::from_secs(120);
     a.offer_with(
         move || {
-            assert_ne!(std::thread::current().id(), janela, "juntou no fio da janela");
+            assert_ne!(
+                std::thread::current().id(),
+                janela,
+                "juntou no fio da janela"
+            );
             Some(b"AB".to_vec())
         },
         meta(1),
@@ -388,8 +392,16 @@ fn a_serializacao_corre_no_fio_da_escrita() {
     assert_eq!(std::fs::read(&copia).expect("copy"), b"AB");
     a.offer_with(|| None, meta(2), &s, t1);
     assert_eq!(a.finish(), None, "recusado: nada gravado");
-    assert_eq!(std::fs::read(&copia).expect("copy"), b"AB", "a anterior fica");
+    assert_eq!(
+        std::fs::read(&copia).expect("copy"),
+        b"AB",
+        "a anterior fica"
+    );
     a.offer(b"AB".to_vec(), meta(3), &s, t1);
-    assert_eq!(a.finish(), Some(Offer::Written), "a falha esqueceu a impressão");
+    assert_eq!(
+        a.finish(),
+        Some(Offer::Written),
+        "a falha esqueceu a impressão"
+    );
     let _ = std::fs::remove_dir_all(root);
 }

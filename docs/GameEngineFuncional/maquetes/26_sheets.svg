@@ -1,68 +1,77 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="620" height="900" font-family="Noto Sans, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="900" font-family="Noto Sans, sans-serif">
 <style>
  .bg{fill:#1b2130}.card{fill:#222a3a}.fld{fill:#2c3546}.t{fill:#e8ecf3;font-size:13px;font-weight:600}
  .s{fill:#9aa3b5;font-size:11px}.b{fill:#e8ecf3;font-size:11px;font-weight:600}.on{fill:#2d4a7a}
- .tag{fill:#3a2f5a}.tagt{fill:#c9b8ff;font-size:10px}.drop{fill:none;stroke:#5b6578;stroke-dasharray:5 4}
- .ttl{fill:#e8ecf3;font-size:14px;font-weight:700}
+ .ttl{fill:#e8ecf3;font-size:14px;font-weight:700}.pop{fill:#2a3242;stroke:#4a5568}
+ .mk{fill:#c9b8ff;font-size:9px;font-weight:700}
 </style>
-<rect width="620" height="900" fill="#141824"/>
-<!-- ESQUERDA: Inspector -->
-<text x="10" y="18" class="ttl">Inspector · proposta</text>
-<rect x="6" y="28" width="292" height="868" rx="8" class="bg"/>
-<rect x="14" y="36" width="276" height="40" rx="6" class="card"/><text x="44" y="61" class="t">Two Sheets</text>
-<!-- Sheets card -->
-<rect x="14" y="84" width="276" height="250" rx="6" class="card"/>
-<text x="24" y="106" class="t">Sheets (2)</text><text x="272" y="107" class="t">+</text>
-<rect x="22" y="116" width="260" height="58" rx="5" class="on"/>
-<rect x="28" y="121" width="48" height="48" rx="3" fill="#4a6b55"/>
-<text x="84" y="138" class="t">idle</text><text x="84" y="154" class="s">128 × 32 px · 4 × 1</text>
-<rect x="196" y="144" width="80" height="22" rx="4" class="fld"/><text x="214" y="159" class="b">⇧ Painter</text>
-<rect x="22" y="180" width="260" height="58" rx="5" class="fld"/>
-<rect x="28" y="185" width="48" height="48" rx="3" fill="#7a4a3a"/>
-<text x="84" y="202" class="t">run</text><text x="84" y="218" class="s">288 × 96 px · 6 × 2</text>
-<text x="262" y="203" class="t">−</text>
-<text x="84" y="252" class="s">hover no −: «Remove run and 1 animation»</text>
-<rect x="22" y="262" width="260" height="62" rx="5" class="drop"/>
-<text x="46" y="290" class="s">Drop a sprite sheet or click to choose</text>
-<text x="96" y="308" class="s">(campo vazio que o + criou)</text>
-<!-- Use -->
-<text x="24" y="356" class="s">Use</text>
-<rect x="22" y="362" width="260" height="24" rx="4" class="fld"/>
-<rect x="150" y="364" width="66" height="20" rx="3" class="on"/>
-<text x="30" y="378" class="b">Still</text><text x="72" y="378" class="b">Repeated</text><text x="156" y="378" class="b">Animated</text><text x="228" y="378" class="b">Region</text>
-<!-- Animation card -->
-<rect x="14" y="398" width="276" height="250" rx="6" class="card"/>
-<text x="24" y="420" class="t">Animation (3)</text><text x="200" y="420" class="t">+  −  ▦  ↻</text>
-<rect x="128" y="432" width="48" height="56" rx="6" fill="#7a4a3a"/>
-<rect x="22" y="500" width="260" height="22" rx="3" class="on"/>
-<text x="30" y="515" class="b">idle</text><rect x="120" y="504" width="34" height="15" rx="7" class="tag"/><text x="126" y="515" class="tagt">idle</text><text x="196" y="515" class="s">4 frames</text><text x="268" y="515" class="b">▷</text>
-<text x="30" y="539" class="b">run</text><rect x="120" y="528" width="34" height="15" rx="7" class="tag"/><text x="127" y="539" class="tagt">run</text><text x="190" y="539" class="s">12 frames</text><text x="268" y="539" class="b">▷</text>
-<text x="30" y="563" class="b">run fast</text><rect x="120" y="552" width="34" height="15" rx="7" class="tag"/><text x="127" y="563" class="tagt">run</text><text x="196" y="563" class="s">6 frames</text><text x="268" y="563" class="b">▷</text>
-<text x="24" y="592" class="s">Playback · Frames/s · Speed · Cycle · More · Who Picks</text>
-<text x="24" y="610" class="s">(iguais a hoje)</text>
-<text x="24" y="680" class="s">Com UMA folha: o cartão continua «Image»</text>
-<text x="24" y="696" class="s">como hoje, sem etiquetas na Animation.</text>
-<!-- DIREITA: editor -->
-<text x="314" y="18" class="ttl">Editor · título da folha</text>
-<rect x="310" y="28" width="304" height="300" rx="8" class="bg"/>
-<rect x="318" y="36" width="288" height="30" rx="5" class="card"/>
-<rect x="326" y="41" width="96" height="20" rx="4" class="fld"/><text x="334" y="55" class="b">run   ▾</text>
-<text x="432" y="55" class="s">idle · run</text>
-<g fill="#7a4a3a" stroke="#141824">
-<rect x="326" y="76" width="44" height="44"/><rect x="370" y="76" width="44" height="44"/><rect x="414" y="76" width="44" height="44"/>
-<rect x="458" y="76" width="44" height="44"/><rect x="502" y="76" width="44" height="44"/><rect x="546" y="76" width="44" height="44"/>
-<rect x="326" y="120" width="44" height="44"/><rect x="370" y="120" width="44" height="44"/><rect x="414" y="120" width="44" height="44"/>
-<rect x="458" y="120" width="44" height="44"/><rect x="502" y="120" width="44" height="44"/><rect x="546" y="120" width="44" height="44"/></g>
-<text x="326" y="184" class="s">A lista mostra as 3 animações com a etiqueta;</text>
-<text x="326" y="200" class="s">clicar «idle» põe a folha idle em cena.</text>
-<text x="326" y="216" class="s">+ Add e Split by rows agem na folha do seletor.</text>
-<!-- pés -->
-<text x="314" y="360" class="ttl">Trocar idle → run</text>
-<rect x="310" y="370" width="304" height="200" rx="8" class="bg"/>
-<line x1="320" y1="530" x2="604" y2="530" stroke="#5b6578"/>
-<rect x="350" y="466" width="64" height="64" fill="#4a6b55"/><circle cx="382" cy="530" r="5" fill="#ffcc33"/>
-<text x="350" y="550" class="s">idle 32 px</text>
-<rect x="470" y="434" width="96" height="96" fill="#7a4a3a"/><circle cx="518" cy="530" r="5" fill="#ffcc33"/>
-<text x="470" y="550" class="s">run 48 px</text><text x="320" y="566" class="s">os pés (●) ficam no mesmo sítio</text>
-<text x="320" y="392" class="s">● = Pivot (cada folha tem o seu; a nova copia o da 1.ª)</text>
+<rect width="640" height="900" fill="#141824"/>
+<defs>
+ <g id="idle"><rect width="64" height="16" fill="#4a6b55"/><g fill="#9fe0b0"><circle cx="8" cy="8" r="5"/><circle cx="24" cy="8" r="5"/><circle cx="40" cy="8" r="5"/><circle cx="56" cy="8" r="5"/></g></g>
+ <g id="run"><rect width="72" height="24" fill="#7a4a3a"/><g fill="#f0a080"><circle cx="6" cy="6" r="4"/><circle cx="18" cy="6" r="4"/><circle cx="30" cy="6" r="4"/><circle cx="42" cy="6" r="4"/><circle cx="54" cy="6" r="4"/><circle cx="66" cy="6" r="4"/><circle cx="6" cy="18" r="4"/><circle cx="18" cy="18" r="4"/><circle cx="30" cy="18" r="4"/><circle cx="42" cy="18" r="4"/><circle cx="54" cy="18" r="4"/><circle cx="66" cy="18" r="4"/></g></g>
+</defs>
+<!-- 1: cartão Image com 2 folhas -->
+<text x="10" y="18" class="ttl">1 · Image em Animated, 2 folhas</text>
+<rect x="6" y="28" width="300" height="220" rx="8" class="bg"/>
+<rect x="14" y="36" width="284" height="204" rx="6" class="card"/>
+<text x="24" y="58" class="t">Image</text>
+<rect x="22" y="68" width="268" height="84" rx="5" class="fld"/>
+<rect x="28" y="72" width="76" height="76" rx="3" fill="#1b2130"/><use href="#run" x="30" y="98"/>
+<rect x="88" y="132" width="14" height="14" rx="3" fill="#141824"/><text x="91" y="143" class="b">▾</text>
+<text x="112" y="90" class="t">run</text><text x="112" y="106" class="s">288 × 96 px · 6 × 2 · sheet 2 of 2</text>
+<rect x="112" y="118" width="170" height="24" rx="4" class="card"/><text x="170" y="134" class="b">⇧ Painter</text>
+<rect x="22" y="160" width="130" height="26" rx="4" class="fld"/><text x="40" y="177" class="b">+  Load sheet</text>
+<rect x="160" y="160" width="130" height="26" rx="4" class="fld"/><text x="174" y="177" class="b">🗑  Delete sheet</text>
+<text x="24" y="204" class="s">Use</text>
+<rect x="22" y="210" width="268" height="24" rx="4" class="fld"/><rect x="152" y="212" width="68" height="20" rx="3" class="on"/>
+<text x="30" y="226" class="b">Still</text><text x="72" y="226" class="b">Repeated</text><text x="158" y="226" class="b">Animated</text><text x="234" y="226" class="b">Region</text>
+<!-- 2: dropdown aberto -->
+<text x="10" y="276" class="ttl">2 · Clique na miniatura: as folhas</text>
+<rect x="6" y="286" width="300" height="200" rx="8" class="bg"/>
+<rect x="22" y="296" width="200" height="180" rx="6" class="pop"/>
+<rect x="30" y="304" width="184" height="78" rx="4" class="fld"/>
+<rect x="36" y="310" width="96" height="48" rx="3" fill="#1b2130"/><use href="#idle" x="52" y="326"/>
+<text x="140" y="330" class="b">idle</text><text x="140" y="346" class="s">4 × 1</text>
+<rect x="30" y="388" width="184" height="78" rx="4" class="on"/>
+<rect x="36" y="394" width="96" height="48" rx="3" fill="#1b2130"/><use href="#run" x="48" y="406"/>
+<text x="140" y="414" class="b">run  ✓</text><text x="140" y="430" class="s">6 × 2</text>
+<text x="232" y="330" class="s">moldura com</text><text x="232" y="344" class="s">a imagem</text><text x="232" y="358" class="s">inteira</text>
+<!-- 3: Animation -->
+<text x="10" y="514" class="ttl">3 · Animation: uma lista só</text>
+<rect x="6" y="524" width="300" height="160" rx="8" class="bg"/>
+<rect x="14" y="532" width="284" height="144" rx="6" class="card"/>
+<text x="24" y="554" class="t">Animation (3)</text><text x="208" y="554" class="t">+  −  ▦  ↻</text>
+<rect x="22" y="568" width="268" height="22" rx="3" class="on"/>
+<text x="30" y="583" class="b">idle</text><text x="206" y="583" class="s">4 frames</text><text x="276" y="583" class="b">▷</text>
+<text x="30" y="607" class="b">run</text><text x="200" y="607" class="s">12 frames</text><text x="276" y="607" class="b">▷</text>
+<text x="30" y="631" class="b">attack</text><text x="206" y="631" class="s">5 frames</text><text x="276" y="631" class="b">▷</text>
+<text x="24" y="660" class="s">Todas tocam, seja qual for a folha visível.</text>
+<!-- 4: editor -->
+<text x="326" y="18" class="ttl">4 · Editor: animação «attack»</text>
+<rect x="322" y="28" width="312" height="300" rx="8" class="bg"/>
+<rect x="330" y="36" width="296" height="30" rx="5" class="card"/>
+<rect x="338" y="41" width="90" height="20" rx="4" class="fld"/><text x="346" y="55" class="b">idle   ▾</text>
+<text x="438" y="55" class="s">a folha que se clica</text>
+<g transform="translate(338,76) scale(4.5)"><use href="#idle"/></g>
+<text x="338" y="168" class="s">tira da animação (ordem tocada):</text>
+<g>
+<rect x="338" y="176" width="44" height="44" rx="3" fill="#7a4a3a"/><text x="342" y="216" class="mk">run</text>
+<rect x="386" y="176" width="44" height="44" rx="3" fill="#7a4a3a"/><text x="390" y="216" class="mk">run</text>
+<rect x="434" y="176" width="44" height="44" rx="3" fill="#4a6b55"/><text x="438" y="216" class="mk">idle</text>
+<rect x="482" y="176" width="44" height="44" rx="3" fill="#4a6b55"/><text x="486" y="216" class="mk">idle</text>
+<rect x="530" y="176" width="44" height="44" rx="3" fill="#7a4a3a"/><text x="534" y="216" class="mk">run</text>
+</g>
+<text x="338" y="246" class="s">Escolho «run» no ▾, clico quadros; troco para</text>
+<text x="338" y="262" class="s">«idle», continuo clicando: a mesma animação</text>
+<text x="338" y="278" class="s">mistura as duas. A marca só aparece quando mistura.</text>
+<!-- 5: pivot -->
+<text x="326" y="360" class="ttl">5 · Quadro de 32 px → quadro de 48 px</text>
+<rect x="322" y="370" width="312" height="200" rx="8" class="bg"/>
+<line x1="332" y1="530" x2="624" y2="530" stroke="#5b6578"/>
+<rect x="360" y="466" width="64" height="64" fill="#4a6b55"/><circle cx="392" cy="530" r="5" fill="#ffcc33"/>
+<text x="360" y="550" class="s">idle 32 px</text>
+<rect x="480" y="434" width="96" height="96" fill="#7a4a3a"/><circle cx="528" cy="530" r="5" fill="#ffcc33"/>
+<text x="480" y="550" class="s">run 48 px</text>
+<text x="332" y="392" class="s">● = Pivot. Cada folha tem o seu; a nova copia o da 1.ª.</text>
+<text x="332" y="566" class="s">Os pés ficam no mesmo sítio (o Godot salta 8 px).</text>
 </svg>

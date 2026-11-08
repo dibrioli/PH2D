@@ -31,3 +31,25 @@ fn as_celulas_de_cada_folha_comecam_pela_grelha_do_objeto() {
     let sem_grelha = w.spawn(()).id();
     assert_eq!(sheet_cells_of(&w, sem_grelha).as_slice(), &[1]);
 }
+
+/// ⭐ GEF 26 F5: duplicar (a cópia funda do Duplicate, da instância e do prefab) leva as folhas extra; a imagem é um
+/// nome durável, nada a re-apontar. Mutação que sangra: tirar o `SpriteSheets` do registo.
+#[test]
+fn duplicar_leva_as_folhas() {
+    let mut reg = crate::scene::ComponentRegistry::new();
+    crate::scene::register_ecs_components(&mut reg);
+    let mut w = World::new();
+    let folhas = SpriteSheets([folha(2, 6, 1), folha(3, 4, 2)].into_iter().collect());
+    let e = w
+        .spawn((
+            crate::Transform::IDENTITY,
+            SpriteGrid::new(4, 1),
+            folhas.clone(),
+        ))
+        .id();
+    let copia = crate::deep_copy_subtree(&mut w, &reg, e, None)
+        .expect("copia")
+        .root;
+    assert_ne!(copia, e);
+    assert_eq!(w.get::<SpriteSheets>(copia), Some(&folhas));
+}

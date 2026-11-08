@@ -29,8 +29,7 @@
 //! *Um retrato parcial com os limites escritos é outra coisa que um retrato que se diz completo.*
 
 use ph2d_asset_index::Thumb;
-use ph2d_ecs::{Entity, SimWorld, StableId, Transform};
-use ph2d_render::Sprite;
+use ph2d_ecs::{Entity, SimWorld, SpriteGrid, StableId, Transform};
 
 /// O lado do retrato, em px. O mesmo tecto das miniaturas por textura — é o mesmo cartão.
 const SIDE: u32 = ph2d_thumbnail::THUMB_MAX;
@@ -91,7 +90,8 @@ pub(crate) fn compose(
     let mut ordered: Vec<Entity> = pieces.to_vec();
     ordered.sort_by_key(|e| sim.world().get::<StableId>(*e).map_or(u64::MAX, |s| s.0));
     for &p in &ordered {
-        let Some(sprite) = sim.world().get::<Sprite>(p) else {
+        // A geometria do quadro na tela, da folha dele (GEF 26 F6).
+        let Some((sprite, grid)) = ph2d_render::drawn_geometry(sim.world(), p) else {
             continue;
         };
         let Some(thumb) = piece_art(p) else {
@@ -109,7 +109,7 @@ pub(crate) fn compose(
         let a = sprite.resolve_anchor(ppm);
         let (sin, cos) = rel.rotation.sin_cos();
         let (ax, ay) = (a[0] * rel.scale.x, a[1] * rel.scale.y);
-        let uv = uv_window(sim, p, &thumb);
+        let uv = uv_window(sim, p, grid, &thumb);
         placed.push(Placed {
             thumb,
             center: [
@@ -175,7 +175,7 @@ pub(crate) fn compose(
 /// ⚠️ **Pelas MESMAS funções que o `sim_extract` usa, e na MESMA ordem** (região, depois célula da
 /// folha). Reescrever a conta aqui seria a quarta vez que este trabalho re-deriva uma lei que já
 /// tem porta — e as três anteriores custaram um report cada.
-fn uv_window(sim: &SimWorld, p: Entity, thumb: &Thumb) -> [f32; 4] {
+fn uv_window(sim: &SimWorld, p: Entity, grid: Option<SpriteGrid>, thumb: &Thumb) -> [f32; 4] {
     let unit = [0.0, 0.0, 1.0, 1.0];
     let after_region = match sim.world().get::<ph2d_ecs::SpriteRegion>(p) {
         // ⚠️ **Sem `filter_clip`**: o meio-texel existe para o sampler bilinear não sangrar do
@@ -189,7 +189,7 @@ fn uv_window(sim: &SimWorld, p: Entity, thumb: &Thumb) -> [f32; 4] {
         ),
         None => unit,
     };
-    match sim.world().get::<ph2d_ecs::SpriteGrid>(p) {
+    match grid {
         Some(g) => {
             ph2d_render::sprite::sprite_sheet_subrect(after_region, g.hframes, g.vframes, g.frame)
         }

@@ -108,3 +108,36 @@ fn a_imagem_editada_herda_o_nome_da_de_onde_veio() {
     let m = corre(&[(raiz, "Platform")], &[raiz]);
     assert_eq!(m.len(), 1, "desfeito, nada muda: {m:?}");
 }
+
+/// ⭐ GEF 26 F3/F13: a imagem pintada volta também a toda FOLHA EXTRA que a mostrava (de outro objecto e do próprio),
+/// e só a essas. Mutação que sangra: `segue_a_pintura` sem `aponta_folhas` (o Painter só reescreve a folha `0`).
+#[test]
+fn o_painter_devolve_a_imagem_a_folha_certa() {
+    let db = AssetDb::default();
+    let (mut w, antigo, a, _, c) = mundo(&db);
+    let outra = w.get::<SpritePixels>(c).unwrap().0;
+    let folha = |asset| ph2d_ecs::ExtraSheet {
+        asset,
+        size: [1.0; 2],
+        anchor: [0.0; 2],
+        hframes: 2,
+        vframes: 1,
+    };
+    let folhas = ph2d_ecs::SpriteSheets([folha(outra), folha(antigo)].into_iter().collect());
+    w.entity_mut(c).insert(folhas.clone());
+    w.entity_mut(a).insert(folhas);
+    let atlas = BTreeMap::new();
+    marca_edicao(&w, a, &atlas);
+    let novo = db.insert_image_rgba8(1, 1, px(99));
+    w.entity_mut(a).insert(SpritePixels(novo));
+    segue_a_pintura(&mut w, &atlas, a, 77).expect("segue");
+    EDICAO.with(|c| c.set(None));
+    for e in [a, c] {
+        let s = w.get::<ph2d_ecs::SpriteSheets>(e).unwrap();
+        assert_eq!(
+            (s.0[0].asset, s.0[1].asset),
+            (outra, novo),
+            "a folha 2 de {e:?} segue a pintura, a 1 não"
+        );
+    }
+}

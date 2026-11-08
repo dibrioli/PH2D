@@ -55,17 +55,7 @@ impl crate::App {
         //    ⚠️ `Option<&PaintedDoc>` vai na QUERY: a pergunta *"quem mais é dono destes
         //    pixels?"* faz parte do filtro, e deixá-la de fora é exatamente como a
         //    fotografia achatada acabaria por competir com o documento.
-        let mut wanted: Vec<(ph2d_asset::AssetId, bool)> = Vec::new();
-        {
-            let world = gfx.sim.world_mut();
-            let mut q = world.query::<(&Sprite, &SpritePixels, Option<&ph2d_ecs::PaintedDoc>)>();
-            for (sprite, pixels, painted) in q.iter(world) {
-                if !should_collect(&sprite.source, painted.is_some()) {
-                    continue;
-                }
-                wanted.push((pixels.0, sprite.premultiplied));
-            }
-        }
+        let wanted = wanted_pixels(gfx.sim.world_mut(), &gfx.atlas_asset_map);
         // 2. Os bytes.
         let mut docs: Vec<SpritePixelDoc> = Vec::new();
         for (id, premultiplied) in wanted {
@@ -292,6 +282,27 @@ impl crate::App {
     }
 }
 
+/// Os pixels a gravar, `(nome, premultiplied)`: a folha `0` de quem tem os seus ([`should_collect`]) e as folhas extra
+/// fora do átlas (GEF 26 F4: uma editada ou de 16 bits só vive aqui; a do átlas grava-a `project_assets`).
+fn wanted_pixels(
+    world: &mut ph2d_ecs::World,
+    atlas: &BTreeMap<u32, ph2d_asset::AssetId>,
+) -> Vec<(ph2d_asset::AssetId, bool)> {
+    let mut q = world.query::<(&Sprite, &SpritePixels, Option<&ph2d_ecs::PaintedDoc>)>();
+    let mut wanted: Vec<(ph2d_asset::AssetId, bool)> = q
+        .iter(world)
+        .filter(|(sprite, _, painted)| should_collect(&sprite.source, painted.is_some()))
+        .map(|(sprite, pixels, _)| (pixels.0, sprite.premultiplied))
+        .collect();
+    let mut q = world.query::<&ph2d_ecs::SpriteSheets>();
+    for a in q.iter(world).flat_map(|s| s.0.iter().map(|x| x.asset)) {
+        if !atlas.values().any(|v| *v == a) && !wanted.iter().any(|(w, _)| *w == a) {
+            wanted.push((a, false));
+        }
+    }
+    wanted
+}
+
 /// **Quem entra no arquivo** — a regra de posse, isolada porque é onde os bugs de lógica moram.
 ///
 /// Duas exclusões, e as duas por motivo próprio:
@@ -386,6 +397,34 @@ mod tests {
 
     fn individual() -> SpriteSource {
         SpriteSource::Individual { texture_id: 1 }
+    }
+
+    /// ⭐ GEF 26 F4: a imagem de uma folha extra fora do átlas vai no arquivo e volta ao abrir; a do átlas não se
+    /// repete (grava-a `project_assets`). Mutação que sangra: `wanted_pixels` sem as folhas extra (gravar salta-as).
+    #[test]
+    fn abrir_o_projeto_traz_as_texturas_todas() {
+        let (fora, no_atlas) = (AssetId::from_bytes(b"run"), AssetId::from_bytes(b"idle"));
+        let folha = |asset| ph2d_ecs::ExtraSheet {
+            asset,
+            size: [1.0; 2],
+            anchor: [0.0; 2],
+            hframes: 6,
+            vframes: 1,
+        };
+        let mut w = ph2d_ecs::World::new();
+        let folhas = ph2d_ecs::SpriteSheets([folha(fora), folha(no_atlas)].into_iter().collect());
+        w.spawn((Sprite::atlas(3, [1.0; 2], [1.0; 4]), folhas));
+        let atlas = [(3, no_atlas)].into_iter().collect();
+        assert_eq!(wanted_pixels(&mut w, &atlas), [(fora, false)]);
+        let doc = SpritePixelDoc {
+            id: fora,
+            width: 1,
+            height: 1,
+            pixels: ph2d_sprite_sheet::PixelPayload::Rgba8(vec![9, 8, 7, 255]),
+            premultiplied: false,
+        };
+        let bytes = ph2d_sprite_sheet::encode(&[doc.clone()], &[]).unwrap();
+        assert_eq!(ph2d_sprite_sheet::decode(&bytes).unwrap().0, [doc]);
     }
 
     #[test]

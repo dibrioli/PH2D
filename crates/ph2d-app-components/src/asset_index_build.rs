@@ -217,13 +217,7 @@ pub(crate) fn build(
         // O censo `the_index_asks_the_texture_door` fecha-a.
         let mut deps: Vec<AssetRef> = pieces
             .iter()
-            .filter_map(|&p| {
-                texture_of(
-                    sim.world().get::<SpritePixels>(p),
-                    sim.world().get::<ph2d_render::Sprite>(p),
-                    atlas_assets,
-                )
-            })
+            .flat_map(|&p| ph2d_render::images_of(sim.world(), p, atlas_assets))
             .map(|id| AssetRef::Texture {
                 asset: *id.as_bytes(),
             })
@@ -272,11 +266,8 @@ pub(crate) fn build(
             // ⭐⭐⭐ **A PORTA ÚNICA resolve a textura da peça** — e é ela que sabe as DUAS formas
             // (átlas e `SpritePixels`). O retrato não as conhece, de propósito: uma terceira forma
             // amanhã entra aqui e não volta a partir o cartão.
-            let id = texture_of(
-                sim.world().get::<SpritePixels>(p),
-                sim.world().get::<ph2d_render::Sprite>(p),
-                atlas_assets,
-            )?;
+            // A imagem do quadro na tela, da folha dele (GEF 26 F6).
+            let id = ph2d_render::drawn_texture(sim.world(), p, atlas_assets)?;
             thumb_for(db, id, swatches, &mut budget)
         })
         .or_else(|| face.and_then(|id| thumb_for(db, id, swatches, &mut budget)));
@@ -317,15 +308,15 @@ pub(crate) fn build(
     // pelo `atlas_loader` e **não** neste mapa. *A cura anterior acertava no sintoma pelo
     // predicado errado; esta acerta pela proveniência, que é o que a pergunta sempre foi.*
     let mut loose: Vec<(u64, Entity, AssetId)> = {
-        let mut q = sim
-            .world_mut()
-            .query::<(Entity, Option<&SpritePixels>, Option<&ph2d_render::Sprite>)>();
+        // As folhas extra de um Animated Sprite também estão em uso (GEF 26 F4): `images_of`.
+        let (mut q, w) = (sim.world_mut().query::<Entity>(), sim.world());
         let mut v: Vec<(u64, Entity, AssetId)> = q
-            .iter(sim.world())
-            .filter_map(|(e, px, spr)| {
-                let id = texture_of(px, spr, atlas_assets)?;
-                let order = sim.world().get::<StableId>(e).map_or(u64::MAX, |s| s.0);
-                Some((order, e, id))
+            .iter(w)
+            .flat_map(|e| {
+                let order = w.get::<StableId>(e).map_or(u64::MAX, |s| s.0);
+                ph2d_render::images_of(w, e, atlas_assets)
+                    .into_iter()
+                    .map(move |id| (order, e, id))
             })
             .collect();
         v.sort_unstable_by_key(|(order, _, _)| *order);

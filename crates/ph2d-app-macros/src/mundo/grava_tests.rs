@@ -416,3 +416,45 @@ fn o_pause_nao_grava_a_pose_do_solver_como_autoria() {
         );
     }
 }
+
+/// ⭐ GEF 26 F12: as folhas extra de um Animated Sprite gravam-se COM a imagem de cada folha (o recurso embutido), e
+/// a de que o `AssetDb` não tem bytes recusa o componente pelo nome. Mutação que sangra: `bytes` sem o ramo das
+/// `SpriteSheets` (a macro salta as folhas).
+#[test]
+fn a_macro_embute_as_folhas() {
+    let reg = registo();
+    let (mut sim, img) = mundo();
+    let antes = foto(&mut sim, &reg);
+    let folha = |b: u8| ph2d_ecs::ExtraSheet {
+        asset: ph2d_asset_id::AssetId::from_digest([b; 32]),
+        size: [1.0; 2],
+        anchor: [0.0; 2],
+        hframes: 6,
+        vframes: 1,
+    };
+    let folhas = ph2d_ecs::SpriteSheets([folha(3), folha(4)].into_iter().collect());
+    sim.world_mut()
+        .entity_mut(Entity::from_bits(img))
+        .insert(folhas);
+    let depois = foto(&mut sim, &reg);
+    let corre = |tem: &dyn Fn(&[u8; 32]) -> Option<Vec<u8>>| {
+        let mut g = Gravacao::new(DONO);
+        g.mudou(&antes, &depois, 1_000);
+        let l = super::super::Leitores {
+            recurso: tem,
+            premultiplicado: &|_| false,
+            sprite: &mut |_| None,
+            por_assar: None,
+        };
+        let doc = MacroDoc::new(RefRect { w: 1.0, h: 1.0 });
+        super::super::fecha(g, &doc, &familia, &reg, l)
+    };
+    let f = corre(&|id| Some(id.to_vec())).expect("gravou");
+    let Evento::Passo { recursos, .. } = &passos(&f)[0] else {
+        panic!("um passo");
+    };
+    let ids: Vec<[u8; 32]> = recursos.iter().map(|r| r.id).collect();
+    assert_eq!(ids, [[3; 32], [4; 32]], "uma imagem por folha");
+    let sem = corre(&|id| (id[0] == 3).then(|| id.to_vec()));
+    assert!(sem.is_none_or(|f| f.avisos.recusados.contains("ph2d::ecs::SpriteSheets")));
+}

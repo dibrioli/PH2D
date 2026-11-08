@@ -31,7 +31,7 @@ mod vertex;
 mod tests;
 
 pub use component::{Sprite, SpriteSource};
-pub use image_of::{OverrideLaw, texture_of};
+pub use image_of::{OverrideLaw, drawn_texture, images_of, texture_of, texture_of_entity};
 pub use instance::{GpuTexRun, RenderInstance};
 pub use sheets::{
     SheetTextures, SheetView, drawn_geometry, resolve_sheet_textures, sheet_geometry, sheet_sprite,

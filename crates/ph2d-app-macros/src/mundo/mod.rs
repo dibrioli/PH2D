@@ -28,6 +28,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 /// O nome canónico do componente dos píxeis de uma imagem importada (o recurso que se embute).
 const PIXEIS: &str = "ph2d::ecs::SpritePixels";
+/// As folhas extra de um Animated Sprite: cada imagem é um recurso, como a dos píxeis.
+const FOLHAS: &str = "ph2d::ecs::SpriteSheets";
 
 /// **Os píxeis em alfa pré-multiplicado** do mundo (pelo id de conteúdo): as sprites com
 /// `SpritePixels` e `Sprite::premultiplied` — a única cópia viva da bandeira (o `AssetDb` não a tem).
@@ -175,16 +177,26 @@ impl Tradutor<'_> {
         Some(nome)
     }
 
-    /// Os bytes de um componente gravado; um `SpritePixels` leva o recurso (uma vez por id).
+    /// Os bytes de um componente gravado; um `SpritePixels` leva o recurso, e as folhas extra (`SpriteSheets`, GEF 26
+    /// F12) o de cada folha (uma vez por id).
     fn bytes(&mut self, nome: &str, b: &[u8]) -> bool {
-        if nome != PIXEIS {
-            return true;
-        }
-        let Ok(px) = postcard::from_bytes::<ph2d_ecs::SpritePixels>(b) else {
+        let lidos: Result<Vec<[u8; 32]>, _> = match nome {
+            PIXEIS => {
+                postcard::from_bytes::<ph2d_ecs::SpritePixels>(b).map(|p| vec![*p.0.as_bytes()])
+            }
+            FOLHAS => postcard::from_bytes::<ph2d_ecs::SpriteSheets>(b)
+                .map(|s| s.0.iter().map(|x| *x.asset.as_bytes()).collect()),
+            _ => return true,
+        };
+        let Ok(ids) = lidos else {
             self.recusados.insert(nome.to_owned());
             return false;
         };
-        let id = *px.0.as_bytes();
+        ids.into_iter().all(|id| self.embute(nome, id))
+    }
+
+    /// O recurso `id` vai na trilha (uma vez); sem bytes no `AssetDb`, o componente `nome` recusa-se.
+    fn embute(&mut self, nome: &str, id: [u8; 32]) -> bool {
         if self.recursos_vistos.contains(&id) {
             return true;
         }

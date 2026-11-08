@@ -90,6 +90,19 @@ fn aponta(world: &mut World, e: Entity, texture_id: u32, novo: AssetId, premulti
     ent.remove::<ph2d_ecs::SpriteSheetRef>();
 }
 
+/// ⭐ As folhas extra que mostravam `antigo` passam a `novo` (plano GEF 26 F3/F13): a textura delas resolve-se pelo
+/// nome no cache derivado, logo basta o nome.
+fn aponta_folhas(world: &mut World, antigo: AssetId, novo: AssetId) {
+    let mut q = world.query::<&mut ph2d_ecs::SpriteSheets>();
+    for mut s in q.iter_mut(world) {
+        if s.0.iter().any(|x| x.asset == antigo) {
+            s.0.iter_mut()
+                .filter(|x| x.asset == antigo)
+                .for_each(|x| x.asset = novo);
+        }
+    }
+}
+
 /// Em que deu uma troca de píxeis.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Trocados {
@@ -133,6 +146,7 @@ pub fn segue_a_pintura(
     for o in &outros {
         aponta(world, *o, texture_id, novo, premultiplied);
     }
+    aponta_folhas(world, antigo, novo);
     // A pintura seguinte parte da que agora se vê.
     EDICAO.with(|c| c.set(Some((quem, novo))));
     Some(Trocados {

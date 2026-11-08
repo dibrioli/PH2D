@@ -146,7 +146,8 @@ pub(super) fn drain(
         return false;
     };
     // Report the pair so the caller can fork the copy's texture off the source (independent
-    // object) + flush any live paint on the source first. Only matters for sprite entities.
+    // object) + flush any live paint on the source first. Only matters for sprite entities. The extra
+    // sheets (`SpriteSheets`) need no fork: they name immutable content, and each copy resolves its own cache.
     if sprite {
         *duplicate_made = Some((entity_bits, copy.to_bits()));
     }

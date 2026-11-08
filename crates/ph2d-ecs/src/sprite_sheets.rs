@@ -83,6 +83,16 @@ pub fn sheet_cells_of(world: &World, entity: Entity) -> SmallVec<[u32; 4]> {
     )
 }
 
+/// **As imagens das folhas extra** de `entity`, por ordem (a folha `0` responde-se por `ph2d_render::texture_of`).
+/// Quem pergunta «que imagens este objeto usa» (uso, gravar, macro, Painter) soma-as às da folha `0`.
+#[must_use]
+pub fn sheet_assets(world: &World, entity: Entity) -> SmallVec<[AssetId; 4]> {
+    world
+        .get::<SpriteSheets>(entity)
+        .map(|s| s.0.iter().map(|x| x.asset).collect())
+        .unwrap_or_default()
+}
+
 /// [`sheet_cells_of`] sobre os componentes já em mão (o tique, numa query).
 #[must_use]
 pub fn cells_per_sheet(

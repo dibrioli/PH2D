@@ -21,7 +21,7 @@
 //! opinião, e com ele o artista sabe exactamente o que tem de fazer para a tirar (mudar aqueles N).
 //! *É a mesma informação que o `Select users` entrega como gesto.*
 
-use ph2d_ecs::{Entity, InstanceOf, SimWorld, SpritePixels, StableId};
+use ph2d_ecs::{Entity, InstanceOf, SimWorld, StableId};
 use ph2d_editor_core::Toast;
 use ph2d_editor_core::action_bus::AssetCardAction;
 use ph2d_editor_core::interaction::drag_payload::DragPayload;
@@ -79,16 +79,12 @@ pub(crate) fn users_of(
             // uma sprite de átlas não carrega `SpritePixels`, e perguntar só por ele fazia o
             // *Select users* devolver **zero** sobre toda imagem importada. *A pergunta «que
             // textura é esta?» tem um dono, e ele não é este ficheiro.*
+            // As folhas extra de um Animated Sprite também a usam (GEF 26 F2): `images_of`.
             let wanted = ph2d_asset::AssetId::from_digest(asset);
-            let mut q =
-                sim.world_mut()
-                    .query::<(Entity, Option<&SpritePixels>, Option<&ph2d_render::Sprite>)>();
-            q.iter(sim.world())
-                .filter(|(_, px, spr)| {
-                    ph2d_render::texture_of(*px, *spr, atlas_assets) == Some(wanted)
-                })
-                .map(|(e, _, _)| e)
-                .collect::<Vec<_>>()
+            let mut q = sim.world_mut().query::<Entity>();
+            let w = sim.world();
+            let uses = |e: &Entity| ph2d_render::images_of(w, *e, atlas_assets).contains(&wanted);
+            q.iter(w).filter(uses).collect::<Vec<_>>()
         }
     }
     .into_iter()

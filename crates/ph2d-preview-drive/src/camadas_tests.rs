@@ -149,3 +149,39 @@ fn the_first_driver_is_the_least_and_per_entity_queries_see_every_driver() {
         vec![Driver::SolverPose, Driver::ColaPose]
     );
 }
+
+/// ⭐ GEF 26 F8: o Stop repõe a FOLHA e o quadro do documento, e o Play volta ao vivo. Mutação que sangra: o
+/// `Driven::write` só repõe a célula (o `SpriteGrid::sheet` fica o do Play).
+#[test]
+fn o_stop_repoe_folha_e_quadro() {
+    use ph2d_ecs::{FrameRef, SpriteAnimator, SpriteGrid};
+    let (doc, vivo) = (
+        FrameRef::Cell { sheet: 0, cell: 2 },
+        FrameRef::Cell { sheet: 1, cell: 5 },
+    );
+    let anim = |frame| Driven::SpriteAnim {
+        elapsed_ticks: 0,
+        pingpong_reverse: false,
+        repeat_count: 0,
+        frame,
+    };
+    let mut sim = SimWorld::new();
+    let mut g = SpriteGrid::new(4, 1);
+    g.show(vivo);
+    let e = sim.world_mut().spawn((SpriteAnimator::default(), g)).id();
+    let mut pd = PreviewDrive::default();
+    pd.driven(e, anim(doc), anim(vivo));
+    let mostra = |sim: &SimWorld| sim.world().get::<SpriteGrid>(e).map(|g| (g.sheet, g.frame));
+    let live = pd.substitute_authored(&mut sim);
+    assert_eq!(
+        mostra(&sim),
+        Some((0, 2)),
+        "o Stop repõe a folha 0 e a célula 2"
+    );
+    PreviewDrive::restore_live(&mut sim, &live);
+    assert_eq!(
+        mostra(&sim),
+        Some((1, 5)),
+        "o Play volta à folha 1, célula 5"
+    );
+}

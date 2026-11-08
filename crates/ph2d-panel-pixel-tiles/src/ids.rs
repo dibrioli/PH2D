@@ -87,3 +87,9 @@ pub fn tile(i: usize) -> NodeId {
 pub fn terreno(i: usize) -> NodeId {
     hash_node_id_runtime(&format!("pixel_tiles.terrain.{i}"))
 }
+
+/// Os ids do cartão User Data do tileset.
+#[must_use]
+pub fn user_data() -> ph2d_editor_core::panel::cards::user_data::UserDataIds {
+    ph2d_editor_core::panel::cards::user_data::UserDataIds::new("pixel_tileset")
+}

@@ -176,6 +176,13 @@ fn pedido(app: &mut PixelApp, key: u32, p: Pedido) {
         return;
     };
     let onde = (d.layer, d.frame);
+    if let Pedido::UserData(e) = &p {
+        let set = d.sprite.layer(d.layer).and_then(|l| l.tileset());
+        let o = set.map(|t| ph2d_editor_core::pixel_panel::PixelOwner::Tileset(t.0));
+        let op = o.and_then(|o| ph2d_pixel_ponte::user::op(&d.sprite, o, e));
+        app.passo_nomeado(key, op, "pixel.history.user_data");
+        return;
+    }
     let cor = d.sprite.value_of_rgba(fg);
     let nome = nome_tiles(&p);
     let r = familia::responde(p, &mut d.sprite, onde, &mut app.tiles.mao, cor);
@@ -254,6 +261,7 @@ pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
         x.mao = Some(t.mao);
         (x.tile_w, x.tile_h, x.forma) = (set.tile_w, set.tile_h, set.forma);
         x.terrenos = set.terrains.iter().map(|k| k.name.clone()).collect();
+        x.user = Some(ph2d_pixel_ponte::user::vista(&set.user));
         x.imagens = t
             .publicado
             .as_ref()

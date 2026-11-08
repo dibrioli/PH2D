@@ -22,6 +22,8 @@ pub struct Contexto {
     /// A forma da grelha e os terrenos do tileset activo.
     pub forma: Forma,
     pub terrenos: Vec<String>,
+    /// O user data do tileset activo (P12 U), na vista do cartão.
+    pub user: Option<ph2d_editor_core::panel::cards::user_data::UserDataView>,
 }
 
 /// A janela de criar ou converter.
@@ -42,7 +44,7 @@ pub enum Eixo {
 }
 
 /// Um gesto do painel.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Pedido {
     Alvo(Alvo),
     Modo(Modo),
@@ -72,6 +74,8 @@ pub enum Pedido {
     },
     /// A janela fechou sem criar nada.
     Fechou,
+    /// Um gesto do cartão User Data do tileset activo: um passo «User Data».
+    UserData(ph2d_editor_core::panel::cards::user_data::CardEdit),
 }
 
 #[derive(Default)]

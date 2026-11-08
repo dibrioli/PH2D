@@ -117,7 +117,7 @@ pub fn responde(
             h,
             flips,
         } => return converte_para(s, layer, conjunto, (w, h), flips),
-        Pedido::Fechou => {}
+        Pedido::Fechou | Pedido::UserData(_) => {}
         Pedido::NovoTile | Pedido::ApagaTile | Pedido::Forma(_) | Pedido::ApagaTerreno => {
             return set.map_or_else(Resposta::default, |id| do_tileset(p, s, id, mao));
         }

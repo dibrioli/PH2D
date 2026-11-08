@@ -61,6 +61,7 @@ pub const fn dono(o: PixelOwner) -> Owner {
         PixelOwner::Layer(l) => Owner::Layer(LayerId(l)),
         PixelOwner::Cel { layer, frame } => Owner::Cel((LayerId(layer), FrameId(frame))),
         PixelOwner::Tag(i) => Owner::Tag(i),
+        PixelOwner::Tileset(t) => Owner::Tileset(ph2d_pixel_core::TilesetId(t)),
     }
 }
 

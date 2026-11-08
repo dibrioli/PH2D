@@ -4,6 +4,7 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::panel::cards::ferramenta::{
     Numero, aos_pares, caixa, caixas_aos_pares, campo, cartao, opcoes,
 };
+use ph2d_editor_core::panel::cards::user_data;
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, Widget};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_pixel_core::Forma;
@@ -239,6 +240,7 @@ fn cartao_tileset(m: Mao, st: &PixelTilesPanelState, x: &Contexto) -> CardDef<'s
     let imagens = st.imagens.clone();
     let lados = (x.tile_w, x.tile_h);
     let forma = x.forma;
+    let user = x.user.clone();
     let resumo = tr_with(
         "panel.pixel.tiles.summary",
         &[
@@ -272,7 +274,15 @@ fn cartao_tileset(m: Mao, st: &PixelTilesPanelState, x: &Contexto) -> CardDef<'s
                 text: tr("panel.pixel.tiles.delete"),
                 primary: false,
             });
-            c.row(&[add, del], y)
+            let ud = ids::user_data();
+            let y = match &user {
+                Some(_) => c.row(&[add, del, user_data::toggle_cell(&ud)], y),
+                None => c.row(&[add, del], y),
+            };
+            match &user {
+                Some(v) => user_data::open_body(c, &ud, v, y),
+                None => y,
+            }
         },
     );
     def.summary = Some(resumo);

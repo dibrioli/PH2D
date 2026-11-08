@@ -2,6 +2,7 @@
 
 use ph2d_editor_core::panel::cards::banda::metrics as m;
 use ph2d_editor_core::panel::cards::ferramenta::{pinta_lista_curta, prepara_numeros};
+use ph2d_editor_core::panel::cards::user_data;
 use ph2d_editor_core::panel::cards::{borda, paint_card_list};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::panel_drag_handle_rect;
@@ -115,6 +116,13 @@ pub(crate) fn paint(st: &mut PixelTilesPanelState, ctx: &mut PaintCtx) {
     imagens(st, &x);
     event::regista_tiles(ctx.host.store_mut(), x.imagens.len());
     event::regista_terrenos(ctx.host.store_mut(), x.terrenos.len());
+    if let Some(e) = x
+        .user
+        .as_ref()
+        .and_then(|v| user_data::frame(ctx.host.store_mut(), &ids::user_data(), v))
+    {
+        canal::pede(canal::Pedido::UserData(e));
+    }
     let cartoes = cards::tileset(st, &x);
     // Ao lado do encaixe do painel PIXEL, como a Preview: a área do desenho passa por baixo da coluna.
     let coluna = ctx.slot.x;

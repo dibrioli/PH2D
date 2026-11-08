@@ -2,6 +2,7 @@
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState, WidgetEvent, WidgetStore};
+use ph2d_editor_core::panel::cards::user_data;
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_editor_core::widget::{ButtonState, TextInputState};
 use ph2d_pixel_core::Forma;
@@ -119,6 +120,14 @@ pub(crate) fn apply_event(
         WidgetEvent::DoubleClick(id) => WidgetEvent::Click(id),
         outro => outro,
     };
+    if let Some(v) = canal::contexto().user
+        && let Some(e) = user_data::on_event(host.store(), &ids::user_data(), &v, &ev)
+    {
+        if let Some(e) = e {
+            canal::pede(Pedido::UserData(e));
+        }
+        return EventOutcome::Consumed;
+    }
     match ev {
         WidgetEvent::Click(id) if id == ids::TILES_CANCEL => fecha(st, Pedido::Fechou),
         WidgetEvent::Click(id) if id == ids::TILES_OK => {

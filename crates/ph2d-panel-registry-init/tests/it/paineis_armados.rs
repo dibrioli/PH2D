@@ -367,7 +367,11 @@ fn camada_do_pixel(id: u32, name: &str) -> ph2d_editor_core::pixel_panel::PixelL
 }
 
 /// O cartão User Data com as três espécies de linha: editável, só de leitura e de extensão (P12 U).
-#[cfg(any(feature = "panel-pixel-tools", feature = "panel-pixel-timeline"))]
+#[cfg(any(
+    feature = "panel-pixel-tools",
+    feature = "panel-pixel-timeline",
+    feature = "panel-pixel-tiles"
+))]
 fn user_data_armado() -> ph2d_editor_core::panel::cards::user_data::UserDataView {
     use ph2d_editor_core::panel::cards::user_data::{PropRow, UserDataView};
     let linha = |name: &str, value: &str, kind: &'static str, editable: bool| PropRow {
@@ -432,8 +436,13 @@ fn arma_os_tiles() {
         tile_w: 4,
         tile_h: 4,
         imagens: std::sync::Arc::new(vec![vec![0; 4 * 4 * 4], tile.clone(), tile]),
+        user: Some(user_data_armado()),
         ..canal::Contexto::default()
     });
+    ph2d_editor_core::panel::cards::user_data::set_open(
+        &ph2d_panel_pixel_tiles::ids::user_data(),
+        true,
+    );
 }
 
 /// A Slice Tool na mão, com uma slice selecionada.

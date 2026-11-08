@@ -457,6 +457,7 @@ pub enum PixelOwner {
     Layer(u32),
     Cel { layer: u32, frame: u32 },
     Tag(usize),
+    Tileset(u32),
 }
 
 /// O user data da camada, do cel e da tag activos, já na vista do cartão.

@@ -334,6 +334,13 @@ impl SceneScripts {
         self.slots.get(&id).map(|s| &s.info)
     }
 
+    /// O gancho `name` da última versão BOA do script `id` — onde o depurador arma os pontos de
+    /// parada (`ph2d-script-debug`).
+    #[must_use]
+    pub fn hook(&self, id: ScriptId, name: &str) -> Option<mlua::Function> {
+        self.slots.get(&id)?.module.as_ref()?.hook(name)
+    }
+
     /// Porque o objecto parou de correr o script, se parou.
     #[must_use]
     pub fn failure(&self, entity: Entity) -> Option<&ScriptDiagnostic> {

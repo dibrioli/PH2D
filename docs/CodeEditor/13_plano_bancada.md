@@ -119,6 +119,45 @@ cena de 50 objectos com script, medido com o gancho armado e desarmado no MESMO 
 nesta forma. 1.º passo da onda: confirmar que o `mlua`/Luau expõe o gancho (o Luau tem `interrupt` e `debugstep`,
 não o `lua_sethook` do Lua 5).
 
+#### Onda D — o gancho existe e foi MEDIDO (08/11)
+**O gancho.** `mlua` 0.12 com `luau` não tem `set_hook`, mas o `mlua::ffi` (Luau 0.740) expõe tudo:
+`lua_breakpoint` (REESCREVE as instruções da linha para `LOP_BREAK` → custo zero nas outras), `lua_singlestep`
+(por fio; as corrotinas herdam-no em `lua_newthread`, e cada gancho da cena corre numa corrotina nova,
+`scene_wait.rs run_hook`), `lua_Callbacks::debugbreak/debugstep/debugprotectederror`, `lua_getlocal`, `lua_break`.
+A `interrupt` já é da casa (o prazo, `host.rs:448`) — os de depuração estão livres. Duas descobertas:
+1. **`unsafe` é proibido na workspace** — a porta vive na crate-excepção **`ph2d-script-debug`** (`src/ffi.rs`,
+   API segura `breakpoint` / `single_step` / `set_hooks`), nomeada no gate
+   `architecture_every_member_inherits_the_workspace_lints`. A cena ganhou `SceneScripts::hook(id, name)`.
+2. **As variáveis locais exigem `debugLevel = 2`** no compilador (o padrão 1 só guarda linhas: `lua_getlocal`
+   devolve nada — medido, 0 locais lidas). O nível 2 com tudo desarmado custa **0** (tabela).
+
+**A medição** — `crates/ph2d-script-debug/tests/sonda_gancho_de_linha.rs` (`--ignored`), `ScriptHost` real,
+50 objectos, `update` com 2 `get`, 2 `set`, laço de 8 chamadas; perfil `smoke` (herda `release`); 9 rodadas ×
+120 quadros, ordem rodada, resumo = mínimo; load 0,7. Contadores de controlo provam cada gancho armado.
+
+| nível | variante | ms/quadro (mín) | mediana | + sobre o de hoje | % do quadro 60 Hz | paragens/q | passos/q | linhas/q | locais/q |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | desarmado (hoje) | 0,1249 | 0,1257 | — | — | 0 | 0 | 0 | 0 |
+| 2 | desarmado | 0,1246 | 0,1255 | −0,0003 ms | −0,00 % | 0 | 0 | 0 | 0 |
+| 2 | F9 posto, não atingido | 0,1245 | 0,1254 | −0,0004 ms | −0,00 % | 0 | 0 | 0 | 0 |
+| 2 | parada em CADA linha do `update` | 0,1310 | 0,1315 | +0,0061 ms | +0,04 % | 850 | 0 | 0 | 0 |
+| 2 | passo-a-passo, gancho vazio | 0,1901 | 0,1911 | +0,0651 ms | +0,39 % | 0 | 8 900 | 0 | 0 |
+| 2 | passo-a-passo + ler as locais a cada linha | 0,3134 | 0,3146 | +0,1884 ms | **+1,13 %** | 0 | 8 900 | 2 550 | 9 400 |
+
+**Veredito do kill-criterion (≤ 2 %): PASSA em todas.** Mas o custo é por TRABALHO, não por quadro:
+≈ 7 ns por instrução em passo-a-passo e ≈ 13 ns por local lida. Um jogo com 10× este trabalho de script
+estoura os 2 % se o passo-a-passo ficar ligado para TODOS os scripts. Daí a proposta (à espera do dono):
+- **D17 — ponto de parada (F9)**: `lua_breakpoint` na linha → **custo zero** até ser atingido (medido). Ao atingir,
+  `lua_break` suspende a corrotina daquele objecto; o jogo pára; *Continue* retoma-a; *Next line* liga o
+  passo-a-passo SÓ nesse fio até a linha mudar. Compilar sempre em `debugLevel = 2` (custo 0 medido).
+- **Pause on Error**: `debugprotectederror` corre antes de a pilha se desfazer → custo zero (provar no build que
+  dispara dentro do `resume` da corrotina).
+- **D18 — valor no fim da linha**: só para o script da aba em FOCO e só durante o Play — o passo-a-passo
+  liga-se apenas nas corrotinas desse script (o bit é por fio), nunca na VM inteira; contagem «printed 3×» sai
+  do mesmo gancho. Pior caso medido com TODOS os 50 a passo-a-passo: +1,13 %.
+- ⚠️ Se um dia se ligar o JIT do Luau (`luau-jit`, hoje desligado), o ponto de parada não actua em código nativo
+  (`luaG_breakpoint`): o depurador tem de devolver ao interpretador a função que vigia.
+
 ## 5. Não fazer (decidido aqui)
 - Minimapa: nenhuma das 9 o tem como peça de engine que importe ao iniciante; custa largura da aba.
 - Janela separada do editor: a aba já é central; reabrir isto é outra conversa.

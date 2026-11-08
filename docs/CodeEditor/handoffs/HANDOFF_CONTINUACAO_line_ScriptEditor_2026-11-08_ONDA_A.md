@@ -51,3 +51,14 @@ crates: limpo. fmt: limpo.
 - Os 6 textos `code.console.runtime_error*/refused*/warning*` saíram do i18n (sem leitor).
 - Item 5 do plano, botão «Install» na app: NÃO feito — pergunta de produto ao dono (descarregar da internet com
   um clique vs só no pacote); com os helpers ao lado do binário o caso de hoje está coberto.
+
+## Onda D — 1.º passo: MEDIR (08/11, feito; o depurador NÃO foi construído)
+GEF02 ainda não estava no main (`camadas_de_colisao.rs` ausente) → Onda D antes da B. Gancho confirmado no
+`mlua::ffi` (Luau 0.740): `lua_breakpoint`, `lua_singlestep`, `debugbreak`/`debugstep`/`debugprotectederror`.
+Crate nova **`ph2d-script-debug`** (excepção de `unsafe` nomeada no gate
+`architecture_every_member_inherits_the_workspace_lints`: `src/ffi.rs` + a sonda) · `SceneScripts::hook(id,name)`
+em `ph2d-script`. Sonda `tests/sonda_gancho_de_linha.rs` (`--ignored`, perfil smoke). Tabela e proposta:
+[plano 13 §4, Onda D medida](../13_plano_bancada.md). Resumo: tudo ≤ 2 % (pior +1,13 % com todos a passo-a-passo
+lendo locais); locais exigem `debugLevel = 2` (custo 0). **Aguarda o dono** decidir o âmbito da D18 antes de construir.
+Provas: sonda verde (controlos), gate dos lints 3/3, clippy `-D warnings` ph2d-script + ph2d-script-debug limpo, fmt limpo.
+Integrador: crate nova → `Cargo.lock` muda (+9 linhas).

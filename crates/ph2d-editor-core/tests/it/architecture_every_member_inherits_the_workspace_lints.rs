@@ -57,6 +57,12 @@ const EXCECOES: &[(&str, &[&str], &str)] = &[
          o `zwp_tablet_v2`, a caneta é um receptor na MESMA ligação — ADR-0189",
     ),
     (
+        "ph2d-script-debug",
+        &["src/ffi.rs", "tests/sonda_gancho_de_linha.rs"],
+        "os ganchos de depuração do Luau (`lua_breakpoint`, `lua_singlestep`, `debugbreak`/`debugstep`) \
+         só existem pela ABI C do `mlua::ffi` — CodeEditor plano 13, Onda D",
+    ),
+    (
         "ph2d-wayland-dnd",
         &["src/receiver.rs", "tests/kwin_drop.rs"],
         "a `wl_display`/`wl_surface` do winit por ponteiro (`raw-window-handle`): sem DnD no winit \

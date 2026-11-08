@@ -1,0 +1,25 @@
+[package]
+name = "ph2d-script-debug"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+[dependencies]
+# A mesma VM do `ph2d-script` (mesma versão e feature: o `Lua` que ele passa é este).
+mlua = { version = "0.12", features = ["luau"] }
+
+[dev-dependencies]
+ph2d-script = { path = "../ph2d-script" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+
+[lints.rust]
+# ⚠️ NÃO herda `[lints] workspace = true`: excepção nomeada do gate
+# `architecture_every_member_inherits_the_workspace_lints` — os ganchos de depuração do Luau
+# (`lua_breakpoint`, `lua_singlestep`, `lua_Callbacks::debugbreak/debugstep`) só existem pela ABI C
+# crua do `mlua::ffi`. `deny`: só o `src/ffi.rs` e a sonda o autorizam por escrito.
+unsafe_code = "deny"

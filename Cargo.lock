@@ -10903,6 +10903,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-script-debug"
+version = "0.0.0"
+dependencies = [
+ "mlua",
+ "ph2d-ecs",
+ "ph2d-script",
+]
+
+[[package]]
 name = "ph2d-script-doc"
 version = "0.0.0"
 dependencies = [

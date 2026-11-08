@@ -26,6 +26,11 @@ pub mod joint_tool;
 /// partilham (a da shell e a da fita). Ver o cabeçalho do módulo.
 pub mod keyboard_driven;
 mod layer_names;
+mod migra_formas;
+pub use migra_formas::{
+    LADO_FORMA, Migracao, NOME_DA_FORMA, migra_formas_no_retrato, migra_formas_para_filhos,
+    migra_formas_para_filhos_com_pares,
+};
 pub mod player_input;
 pub use layer_names::{
     LayerNames, layers_in_use, objects_on_layers, objects_per_layer, visible_layers,

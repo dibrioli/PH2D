@@ -23,10 +23,10 @@ fn rb(kind: BodyKind) -> RigidBody {
     RigidBody { kind }
 }
 
-struct Cena {
-    sim: SimWorld,
-    corpos: Vec<Entity>,
-    formas: Vec<Entity>,
+pub(super) struct Cena {
+    pub(super) sim: SimWorld,
+    pub(super) corpos: Vec<Entity>,
+    pub(super) formas: Vec<Entity>,
     player: Entity,
 }
 
@@ -52,7 +52,7 @@ fn forma(
     alvo
 }
 
-fn cena(filha: bool) -> Cena {
+pub(super) fn cena(filha: bool) -> Cena {
     let mut sim = SimWorld::new();
     let w = sim.world_mut();
     let em = |x: f32, y: f32| Transform::from_translation(Vec2::new(x, y));
@@ -146,7 +146,7 @@ fn hash_bits(h: &mut u64, v: u64) {
 
 /// 300 tiques: o player anda à direita, agachado a meio. Hash das poses (bits), contactos (pares,
 /// ponto, normal) e gatilhos (sensor levado ao seu CORPO). Devolve também os sensores vistos.
-fn corre(c: &mut Cena) -> (u64, Vec<Entity>) {
+pub(super) fn corre(c: &mut Cena) -> (u64, Vec<Entity>) {
     let mut bridge = PhysicsBridge::new();
     let mut h = 0xcbf2_9ce4_8422_2325_u64;
     let mut sensores = Vec::new();

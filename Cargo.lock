@@ -10489,6 +10489,7 @@ dependencies = [
  "bevy_ecs",
  "blake3",
  "libm",
+ "ph2d-component-desc",
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-health",

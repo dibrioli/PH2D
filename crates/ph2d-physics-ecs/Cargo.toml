@@ -86,5 +86,9 @@ postcard = { version = "1", features = ["use-std"] }
 # (same hash family as `PhysicsWorld::deterministic_hash`).
 blake3 = "1"
 
+[dev-dependencies]
+# O catálogo, para o gate `o_lado_forma_cobre_o_catalogo` (a fonte única do lado-forma).
+ph2d-component-desc = { path = "../ph2d-component-desc" }
+
 [lints]
 workspace = true

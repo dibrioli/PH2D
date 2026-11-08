@@ -222,8 +222,8 @@ pub fn shapes_in_order(world: &World, body: Entity) -> Vec<(u64, String, u8)> {
 #[must_use]
 pub fn main_shape(world: &World, body: Entity) -> Option<Entity> {
     fn desce(world: &World, pai: Entity) -> Option<Entity> {
-        world.get::<ph2d_ecs::Children>(pai)?;
-        for f in ph2d_ecs::ordered_children(world, pai) {
+        // Sem alocar (caminho quente: cada reconcile), na mesma ordem de `shapes_in_order`.
+        for f in ph2d_ecs::ordered_children_iter(world, pai) {
             if world.get::<RigidBody>(f).is_some() {
                 continue;
             }

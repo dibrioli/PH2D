@@ -121,3 +121,17 @@ fn an_unnumbered_child_collates_last() {
         "o sem-numero fica no fim ate a varredura lhe dar um",
     );
 }
+
+/// **O iterador sem alocação dá a MESMA ordem que [`ordered_children`]** — numerados, reordenados,
+/// um sem número no fim, e um pai sem filhos.
+#[test]
+fn the_non_allocating_iter_walks_the_same_order() {
+    let (mut w, parent, kids) = family(4);
+    assign_missing_sibling_order(&mut w);
+    set_sibling_order(&mut w, parent, &[kids[2], kids[0], kids[3], kids[1]]);
+    let fresh = w.spawn((Transform::IDENTITY, ChildOf(parent))).id();
+    let iter: Vec<Entity> = ordered_children_iter(&w, parent).collect();
+    assert_eq!(iter, ordered_children(&w, parent));
+    assert_eq!(iter, vec![kids[2], kids[0], kids[3], kids[1], fresh]);
+    assert_eq!(ordered_children_iter(&w, kids[0]).count(), 0);
+}

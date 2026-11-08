@@ -179,6 +179,26 @@ pub fn ordered_children(world: &World, parent: Entity) -> Vec<Entity> {
     kids
 }
 
+/// Os filhos de `parent` na MESMA ordem de [`ordered_children`], **sem alocar** — para o caminho
+/// quente que pára no primeiro que serve (a forma principal de um corpo, a cada reconcile).
+///
+/// A chave [`sibling_key`] é TOTAL (o índice da entidade desempata), então «o menor estritamente
+/// acima do anterior» percorre exatamente a ordenação. `O(n)` por passo: barato para a lista curta
+/// de filhos de um corpo; quem quer TODOS de uma lista longa usa [`ordered_children`].
+pub fn ordered_children_iter(world: &World, parent: Entity) -> impl Iterator<Item = Entity> + '_ {
+    let kids: &[Entity] = world.get::<Children>(parent).map_or(&[], |c| &**c);
+    let mut last = None;
+    std::iter::from_fn(move || {
+        let (key, e) = kids
+            .iter()
+            .map(|&c| (sibling_key(world, c), c))
+            .filter(|(k, _)| last.is_none_or(|l| *k > l))
+            .min_by_key(|(k, _)| *k)?;
+        last = Some(key);
+        Some(e)
+    })
+}
+
 /// ⭐ **A ordem da lista de objectos** — raízes (com `Transform`) por [`root_key`], filhos por
 /// [`ordered_children`], pai antes dos filhos: a ordem em que a Hierarquia as mostra e em que o
 /// `ph2d.find_by_name` procura. Uma porta só para os dois (estava dentro da pista dos scripts).

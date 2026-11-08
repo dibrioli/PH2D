@@ -118,7 +118,7 @@ pub(crate) fn anda(app: &mut PixelApp, at: (i32, i32)) {
         app.undo(key);
     }
     let op = app.docs.get(&key).and_then(|d| g.op(&d.sprite, &celulas));
-    let feito = op.is_some_and(|op| app.commit(key, op).is_ok());
+    let feito = app.passo_nomeado(key, op, "pixel.history.tiles");
     if let Some((_, _, g)) = app.tiles.carimbo.as_mut() {
         g.celulas = celulas;
         g.passo = feito;
@@ -158,7 +158,7 @@ pub(crate) fn aplica_pedido(app: &mut PixelApp, r: &PixelRequest) -> bool {
             .docs
             .get(&key)
             .and_then(|d| converte::para_imagem(&d.sprite, d.layer));
-        app.passo(key, op);
+        app.passo_nomeado(key, op, "pixel.history.convert_to_image");
     } else {
         canal::abrir(if *a == A::NewTilemap {
             Tela::NovaCamada
@@ -177,11 +177,12 @@ fn pedido(app: &mut PixelApp, key: u32, p: Pedido) {
     };
     let onde = (d.layer, d.frame);
     let cor = d.sprite.value_of_rgba(fg);
+    let nome = nome_tiles(&p);
     let r = familia::responde(p, &mut d.sprite, onde, &mut app.tiles.mao, cor);
     if let Some(motivo) = r.recusa {
         app.recusa(motivo);
     }
-    if r.op.is_some_and(|op| app.commit(key, op).is_ok()) {
+    if app.passo_nomeado(key, r.op, nome) {
         let mao = &mut app.tiles.mao;
         mao.tile = r.tile.unwrap_or(mao.tile);
         mao.terreno = r.terreno.unwrap_or(mao.terreno);
@@ -273,4 +274,17 @@ pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
 pub(crate) fn realce(app: &PixelApp, bits: u64) -> Option<(i32, i32)> {
     let tiles = app.tiles.mao.alvo != Alvo::Pixels;
     app.hover.filter(|h| tiles && h.0 == bits).map(|h| h.1)
+}
+
+/// O nome do passo de um pedido da janela dos tiles.
+const fn nome_tiles(p: &Pedido) -> &'static str {
+    match p {
+        Pedido::NovoTile => "pixel.history.new_tile",
+        Pedido::ApagaTile => "pixel.history.delete_tile",
+        Pedido::NovoTerreno => "pixel.history.new_terrain",
+        Pedido::ApagaTerreno => "pixel.history.delete_terrain",
+        Pedido::NovaCamada { .. } => "pixel.keys.layer.new_tilemap",
+        Pedido::Converte { .. } => "pixel.history.convert_to_tilemap",
+        _ => "pixel.history.tiles",
+    }
 }

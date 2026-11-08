@@ -34,6 +34,8 @@ ph2d-panel-pixel-preview = { path = "../../crates/ph2d-panel-pixel-preview" }
 ph2d-panel-pixel-export = { path = "../../crates/ph2d-panel-pixel-export" }
 ph2d-panel-pixel-tiles = { path = "../../crates/ph2d-panel-pixel-tiles" }
 ph2d-panel-pixel-slices = { path = "../../crates/ph2d-panel-pixel-slices" }
+ph2d-panel-pixel-history = { path = "../../crates/ph2d-panel-pixel-history" }
+ph2d-panel-pixel-tools = { path = "../../crates/ph2d-panel-pixel-tools" }
 ph2d-pixel-slices = { path = "../../crates/ph2d-pixel-slices" }
 ph2d-pixel-tiles = { path = "../../crates/ph2d-pixel-tiles" }
 ph2d-text = { path = "../../crates/ph2d-text" }

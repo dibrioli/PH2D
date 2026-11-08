@@ -110,8 +110,12 @@ impl PixelApp {
                         None,
                     )
                 };
-                if let Some(op) = op
-                    && self.commit(key, op).is_ok()
+                let nome = if *copy {
+                    "pixel.history.copy_frames"
+                } else {
+                    "pixel.history.move_frames"
+                };
+                if self.passo_nomeado(key, op, nome)
                     && let (Some(novos), Some(doc)) = (novos, self.docs.get_mut(&key))
                 {
                     doc.range.frames = novos.iter().map(|f| f.0).collect();
@@ -139,8 +143,13 @@ impl PixelApp {
                 if feito.is_none() {
                     crate::tiles::recusou(self, key, None, "pixel.tiles.refuse.cel_drag");
                 }
+                let nome = if *copy {
+                    "pixel.history.copy_cels"
+                } else {
+                    "pixel.history.move_cels"
+                };
                 if let Some((op, novos)) = feito
-                    && self.commit(key, op).is_ok()
+                    && self.passo_nomeado(key, Some(op), nome)
                     && let Some(doc) = self.docs.get_mut(&key)
                 {
                     let pares = pares

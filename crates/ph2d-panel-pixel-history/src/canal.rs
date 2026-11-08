@@ -78,6 +78,12 @@ pub fn pede_abrir() {
     com(|c| c.abrir = true);
 }
 
+/// Há um pedido de abrir à espera do próximo quadro (sem o consumir).
+#[must_use]
+pub fn abrir_pendente() -> bool {
+    com(|c| c.abrir)
+}
+
 pub(crate) fn take_abrir() -> bool {
     com(|c| std::mem::take(&mut c.abrir))
 }

@@ -273,7 +273,7 @@ impl PixelApp {
             | E::ColorCurve
             | E::ConvolutionMatrix => None,
         };
-        self.passo(key, op);
+        self.passo_nomeado(key, op, ph2d_pixel_ponte::nomes::nome_edit(a));
     }
 
     fn sprite_menu(&mut self, key: u32, a: Sp) {
@@ -310,7 +310,7 @@ impl PixelApp {
         } else if !matches!(a, Sp::CanvasSize | Sp::SpriteSize | Sp::Crop) {
             crate::tiles::recusou(self, key, op.as_ref(), "pixel.tiles.refuse.sprite");
         }
-        self.passo(key, op);
+        self.passo_nomeado(key, op, ph2d_pixel_ponte::nomes::nome_sprite(a));
     }
 
     /// O OK de um diálogo do Pixel sobre o documento em Draw: UM passo.
@@ -370,6 +370,12 @@ impl PixelApp {
             | PixelDialogChoice::ColorCurve { .. }
             | PixelDialogChoice::Convolution { .. } => None,
         };
-        self.passo(key, op);
+        self.passo_nomeado(key, op, ph2d_pixel_ponte::nomes::nome_dialogo(c));
+    }
+
+    /// Um passo com o nome do comando (Undo History, Aseprite O11); `None` = nenhum passo.
+    pub(crate) fn passo_nomeado(&mut self, key: u32, op: Option<Op>, nome: &'static str) -> bool {
+        let nome = ph2d_pixel_core::Label::new(nome);
+        op.is_some_and(|op| self.commit_labeled(key, op, nome).is_ok())
     }
 }

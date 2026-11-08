@@ -204,40 +204,47 @@ impl PixelApp {
             PixelRequest::FrameDuration(ms) => {
                 let ids = self.docs.get(&key).map(crate::state::Doc::alvo_quadros);
                 let ids = ids.unwrap_or_default();
-                self.faz(key, |s, _, _| frames::set_duration(s, &ids, *ms))
+                self.faz(key, "pixel.history.frame_properties", |s, _, _| {
+                    frames::set_duration(s, &ids, *ms)
+                })
             }
-            PixelRequest::ConstantFrameRate(ms) => self.faz(key, |s, _, _| {
-                let ids: Vec<FrameId> = s.frames().iter().map(|f| f.id).collect();
-                frames::set_duration(s, &ids, *ms)
+            PixelRequest::ConstantFrameRate(ms) => {
+                self.faz(key, "pixel.history.constant_frame_rate", |s, _, _| {
+                    let ids: Vec<FrameId> = s.frames().iter().map(|f| f.id).collect();
+                    frames::set_duration(s, &ids, *ms)
+                })
+            }
+            PixelRequest::CelOpacity(o) => self.faz(key, CEL, |s, f, l| {
+                frames::set_cel(s, (l, f), Some(*o), None)
             }),
-            PixelRequest::CelOpacity(o) => {
-                self.faz(key, |s, f, l| frames::set_cel(s, (l, f), Some(*o), None))
-            }
-            PixelRequest::CelZ(z) => {
-                self.faz(key, |s, f, l| frames::set_cel(s, (l, f), None, Some(*z)))
-            }
+            PixelRequest::CelZ(z) => self.faz(key, CEL, |s, f, l| {
+                frames::set_cel(s, (l, f), None, Some(*z))
+            }),
             PixelRequest::TagDirection { index, direction } => {
                 let d = dir_in(*direction);
-                self.faz(key, |s, _, _| {
+                self.faz(key, TAG, |s, _, _| {
                     frames::edit_tag(s, *index, |t| t.direction = d)
                 })
             }
-            PixelRequest::TagRepeat { index, repeat } => self.faz(key, |s, _, _| {
+            PixelRequest::TagRepeat { index, repeat } => self.faz(key, TAG, |s, _, _| {
                 frames::edit_tag(s, *index, |t| t.repeat = *repeat)
             }),
             // A lei do diálogo do Trial: `to < from` → `to = from` (sem troca); ambos presos ao último.
-            PixelRequest::TagRange { index, from, to } => self.faz(key, |s, _, _| {
+            PixelRequest::TagRange { index, from, to } => self.faz(key, TAG, |s, _, _| {
                 let last = u32::try_from(s.frames().len().saturating_sub(1)).unwrap_or(u32::MAX);
                 let from = (*from).min(last);
                 let to = (*to).max(from).min(last);
                 frames::edit_tag(s, *index, |t| (t.from, t.to) = (from, to))
             }),
-            PixelRequest::TagRename { index, name } if !name.trim().is_empty() => self
-                .faz(key, |s, _, _| {
+            PixelRequest::TagRename { index, name } if !name.trim().is_empty() => {
+                self.faz(key, TAG, |s, _, _| {
                     frames::edit_tag(s, *index, |t| t.name = name.trim().to_owned())
-                }),
+                })
+            }
             PixelRequest::TagRename { .. } => true,
-            PixelRequest::TagDelete(i) => self.faz(key, |s, _, _| frames::delete_tag(s, *i)),
+            PixelRequest::TagDelete(i) => self.faz(key, "pixel.history.delete_tag", |s, _, _| {
+                frames::delete_tag(s, *i)
+            }),
             _ => false,
         }
     }
@@ -264,14 +271,17 @@ impl PixelApp {
     }
 
     /// Um passo do desfazer feito pelo construtor `f(sprite, frame activo, camada activa)`.
-    fn faz(&mut self, key: u32, f: impl FnOnce(&Sprite, FrameId, LayerId) -> Option<Op>) -> bool {
+    fn faz(
+        &mut self,
+        key: u32,
+        nome: &'static str,
+        f: impl FnOnce(&Sprite, FrameId, LayerId) -> Option<Op>,
+    ) -> bool {
         let op = self
             .docs
             .get(&key)
             .and_then(|d| f(&d.sprite, d.frame, d.layer));
-        if let Some(op) = op {
-            let _ = self.commit(key, op);
-        }
+        self.passo_nomeado(key, op, nome);
         true
     }
 
@@ -329,8 +339,7 @@ impl PixelApp {
             A::LoopSection => (envelope.and_then(|(a, b)| loop_section(s, a, b)), None),
             _ => (None, None),
         };
-        if let Some(op) = op {
-            let _ = self.commit(key, op);
+        if self.passo_nomeado(key, op, ph2d_pixel_ponte::nomes::nome_quadro(a)) {
             if let (Some(id), Some(doc)) = (vai_para.flatten(), self.docs.get_mut(&key)) {
                 doc.frame = id;
             }
@@ -381,3 +390,6 @@ fn loop_section(s: &Sprite, a: usize, b: usize) -> Option<Op> {
         None => frames::new_tag(s, LOOP_TAG, a, b),
     }
 }
+
+const CEL: &str = "pixel.history.cel_properties";
+const TAG: &str = "pixel.history.tag_properties";

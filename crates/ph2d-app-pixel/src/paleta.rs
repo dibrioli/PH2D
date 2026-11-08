@@ -125,7 +125,7 @@ impl PixelApp {
             PixelRequest::SavePalette => self.grava(key),
             PixelRequest::DefaultPalette => {
                 let c = self.paleta_de_omissao();
-                self.poe_paleta(key, c, None);
+                self.poe_paleta(key, c, None, "pixel.history.default_palette");
             }
             PixelRequest::DragSwatch {
                 from,
@@ -136,7 +136,11 @@ impl PixelApp {
             PixelRequest::ReverseColors => {
                 let r = self.trecho(key);
                 let n = self.docs[&key].sprite.palette().len();
-                self.reordena(key, palette::reverse_permutation(n, r));
+                self.reordena(
+                    key,
+                    palette::reverse_permutation(n, r),
+                    "pixel.history.reverse_colors",
+                );
             }
             PixelRequest::Gradient { hue } => self.gradiente(key, hue),
             PixelRequest::RemapPalette => self.remapeia(key),
@@ -182,7 +186,13 @@ impl PixelApp {
     }
 
     /// Troca a paleta inteira (`transparent = None`: o de agora, preso à paleta nova).
-    fn poe_paleta(&mut self, key: u32, colors: Vec<[u8; 4]>, transparent: Option<u8>) {
+    fn poe_paleta(
+        &mut self,
+        key: u32,
+        colors: Vec<[u8; 4]>,
+        transparent: Option<u8>,
+        nome: &'static str,
+    ) {
         if colors.is_empty() {
             return;
         }
@@ -193,13 +203,11 @@ impl PixelApp {
             return;
         }
         let n = colors.len();
-        let _ = self.commit(
-            key,
-            Op::Palette {
-                colors,
-                transparent,
-            },
-        );
+        let op = Op::Palette {
+            colors,
+            transparent,
+        };
+        self.passo_nomeado(key, Some(op), nome);
         self.prende_selecao(n);
     }
 
@@ -207,7 +215,7 @@ impl PixelApp {
         let n = n.clamp(1, palette::MAX_COLORS);
         let mut colors = self.docs[&key].sprite.palette().to_vec();
         colors.resize(n, PRETO);
-        self.poe_paleta(key, colors, None);
+        self.poe_paleta(key, colors, None, "pixel.history.palette_size");
     }
 
     fn ordena(&mut self, key: u32, descending: bool) {
@@ -217,7 +225,7 @@ impl PixelApp {
         let perm =
             palette::sort_permutation(s.palette(), range, sort_key(self.sort_key), descending, t);
         if perm.iter().enumerate().any(|(i, &o)| i != o) {
-            self.reordena(key, perm);
+            self.reordena(key, perm, "pixel.history.remap");
         }
     }
 
@@ -243,7 +251,7 @@ impl PixelApp {
                 perm.swap(i, i + 1);
             }
         }
-        if self.reordena(key, perm) {
+        if self.reordena(key, perm, MOVE) {
             let anda = |i: usize| if d < 0 { i - 1 } else { i + 1 };
             self.sel = sel.into_iter().map(anda).collect();
             self.ancora = self.ancora.map(anda);
@@ -268,7 +276,7 @@ impl PixelApp {
             return;
         }
         let novo = palette::invert_permutation(&perm);
-        if self.reordena(key, perm) {
+        if self.reordena(key, perm, MOVE) {
             self.sel = bloco.iter().map(|&i| novo[i]).collect();
             self.ancora = self.sel.first().copied();
             self.ultima = Some(novo[from]);
@@ -326,7 +334,7 @@ impl PixelApp {
                 tilesets,
             };
             let n = w.palette.len();
-            let _ = self.commit(key, Op::Whole(Box::new(w)));
+            self.passo_nomeado(key, Some(Op::Whole(Box::new(w))), DO_SPRITE);
             self.prende_selecao(n);
             return;
         }
@@ -349,7 +357,7 @@ impl PixelApp {
             );
             colors.truncate(palette::MAX_COLORS);
         }
-        self.poe_paleta(key, colors, Some(0));
+        self.poe_paleta(key, colors, Some(0), DO_SPRITE);
     }
 
     fn le(&mut self, key: u32) {
@@ -370,7 +378,7 @@ impl PixelApp {
         match lida {
             Ok(f) => {
                 let n = f.colors.len().to_string();
-                self.poe_paleta(key, f.colors, f.transparent);
+                self.poe_paleta(key, f.colors, f.transparent, LOAD);
                 self.aviso(
                     false,
                     ph2d_i18n::tr_with("pixel.palette.loaded", &[("n", &n)]),
@@ -481,7 +489,7 @@ impl PixelApp {
             rect,
             pixels,
         });
-        let _ = self.commit(key, op);
+        self.passo_nomeado(key, Some(op), "pixel.keys.edit.replace_color");
     }
 
     /// O OK do diálogo *Color Mode*: o sprite convertido, UM passo do desfazer.
@@ -493,7 +501,11 @@ impl PixelApp {
         let Some(w) = convert(&doc.sprite, mode, opt) else {
             return;
         };
-        if self.commit(key, Op::Whole(Box::new(w))).is_ok() {
+        if self.passo_nomeado(
+            key,
+            Some(Op::Whole(Box::new(w))),
+            "pixel.history.color_mode",
+        ) {
             let nome = crate::panel::mode_label(c.target);
             self.aviso(
                 false,
@@ -531,17 +543,16 @@ impl PixelApp {
         let mut colors = s.palette().to_vec();
         colors[i] = nova;
         let transparent = s.transparent_index();
-        if self
-            .commit(
-                key,
-                Op::Palette {
-                    colors,
-                    transparent,
-                },
-            )
-            .is_ok()
-        {
+        let op = Op::Palette {
+            colors,
+            transparent,
+        };
+        if self.passo_nomeado(key, Some(op), "pixel.history.edit_color") {
             self.edicao = Some((key, i, self.docs[&key].history.undo_len()));
         }
     }
 }
+
+const MOVE: &str = "pixel.history.move_colors";
+const DO_SPRITE: &str = "pixel.history.palette_from_sprite";
+pub(crate) const LOAD: &str = "pixel.history.load_palette";

@@ -17,23 +17,19 @@ impl PixelApp {
     }
 
     /// Reordena a paleta por `perm` (`perm[novo] = antigo`) como UM passo.
-    pub(super) fn reordena(&mut self, key: u32, perm: Vec<usize>) -> bool {
+    pub(super) fn reordena(&mut self, key: u32, perm: Vec<usize>, nome: &'static str) -> bool {
         let s = &self.docs[&key].sprite;
         if s.mode() != ColorMode::Indexed {
-            return self.commit(key, Op::Remap { perm }).is_ok();
+            return self.passo_nomeado(key, Some(Op::Remap { perm }), nome);
         }
         let colors = perm.iter().map(|&o| s.palette()[o]).collect();
         let transparent = s.transparent_index();
         let onde = palette::invert_permutation(&perm);
-        let ok = self
-            .commit(
-                key,
-                Op::Palette {
-                    colors,
-                    transparent,
-                },
-            )
-            .is_ok();
+        let op = Op::Palette {
+            colors,
+            transparent,
+        };
+        let ok = self.passo_nomeado(key, Some(op), nome);
         if ok {
             self.pendente(key, &onde);
         }
@@ -67,7 +63,7 @@ impl PixelApp {
             colors,
             transparent,
         };
-        if self.commit(key, op).is_err() {
+        if !self.passo_nomeado(key, Some(op), "pixel.history.copy_colors") {
             return;
         }
         if indexed {
@@ -94,13 +90,11 @@ impl PixelApp {
         let mut colors = s.palette().to_vec();
         colors.splice(r, rampa);
         let transparent = s.transparent_index();
-        let _ = self.commit(
-            key,
-            Op::Palette {
-                colors,
-                transparent,
-            },
-        );
+        let op = Op::Palette {
+            colors,
+            transparent,
+        };
+        self.passo_nomeado(key, Some(op), "pixel.history.palette_gradient");
     }
 
     /// *Remap Palette*: os pixels seguem as cores. Monta a paleta de antes (`P'`, do tamanho da de
@@ -139,6 +133,6 @@ impl PixelApp {
             },
             Op::Remap { perm },
         ]);
-        let _ = self.commit(key, op);
+        self.passo_nomeado(key, Some(op), "pixel.history.remap_palette");
     }
 }

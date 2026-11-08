@@ -66,7 +66,7 @@ impl PixelApp {
         };
         if let PixelRequest::LayerSolo(id) = r {
             if let Some(op) = self.solo_op(key, LayerId(*id)) {
-                let _ = self.commit(key, op);
+                self.passo_nomeado(key, Some(op), ph2d_pixel_ponte::nomes::nome_camada(r));
             }
             return true;
         }
@@ -136,7 +136,7 @@ impl PixelApp {
             _ => None,
         };
         if let Some(op) = op
-            && self.commit(key, op).is_ok()
+            && self.passo_nomeado(key, Some(op), ph2d_pixel_ponte::nomes::nome_camada(r))
             && let Some(doc) = self.docs.get_mut(&key)
         {
             if let Some(n) = novo_activo {

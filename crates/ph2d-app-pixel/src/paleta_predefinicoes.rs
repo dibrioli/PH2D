@@ -106,7 +106,7 @@ impl PixelApp {
             .ok_or_else(String::new)
             .and_then(|c| le(&c));
         match lida {
-            Ok(f) => self.poe_paleta(key, f.colors, f.transparent),
+            Ok(f) => self.poe_paleta(key, f.colors, f.transparent, crate::paleta::LOAD),
             Err(_) => {
                 self.predefinicoes = None;
                 self.aviso(

@@ -172,7 +172,7 @@ pub(crate) fn release(app: &mut PixelApp) -> bool {
     let sel = app.slices.sel.entry(key).or_default();
     if let Some(op) = g.release(&mut doc.sprite, frame, sel) {
         let op = com_pixels(&doc.sprite, op, (doc.layer, doc.frame), &caixas, fundo);
-        let _ = app.commit(key, op);
+        app.passo_nomeado(key, Some(op), "pixel.history.slice");
     }
     true
 }
@@ -207,7 +207,7 @@ fn pedido(app: &mut PixelApp, key: u32, p: &Pedido) {
     let sel = app.slices.sel.get(&key).cloned().unwrap_or_default();
     let t = &mut app.slices.transform;
     let r = familia::responde(p, &mut d.sprite, frame, &sel, t);
-    let feito = r.op.is_some_and(|op| app.commit(key, op).is_ok());
+    let feito = app.passo_nomeado(key, r.op, nome_slice(p));
     if let Some(nova) = r.sel {
         app.slices.sel.insert(key, nova);
     }
@@ -267,7 +267,7 @@ pub(crate) fn cancela(app: &mut PixelApp) -> bool {
 pub(crate) fn tecla(app: &mut PixelApp, key: u32, apaga: bool) -> Option<KeyAnswer> {
     if apaga {
         let op = delete(&app.docs.get(&key)?.sprite, app.slices_selected(key))?;
-        let _ = app.commit(key, op);
+        app.passo_nomeado(key, Some(op), DELETE);
     }
     app.slices.sel.remove(&key);
     Some(KeyAnswer::Quiet)
@@ -353,5 +353,16 @@ pub(crate) fn nomes(
         let cx = (q.x as f32 + w * 0.5).max(area.x + w * 0.5);
         let cy = (q.y as f32 - meio).max(area.y + meio);
         paint_chip(text, scene, &name, [cx, cy], 0.0, theme);
+    }
+}
+
+const DELETE: &str = "pixel.history.delete_slice";
+
+/// O nome do passo de um pedido da janela Slices.
+const fn nome_slice(p: &Pedido) -> &'static str {
+    match p {
+        Pedido::Apaga => DELETE,
+        Pedido::Duplica => "pixel.history.duplicate_slice",
+        _ => "pixel.history.slice_properties",
     }
 }

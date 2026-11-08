@@ -8,4 +8,5 @@ pub mod gesto;
 pub mod leis;
 pub mod mao;
 pub mod moldura;
+pub mod nomes;
 pub mod paletas;

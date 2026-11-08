@@ -57,7 +57,12 @@ pub(crate) fn menu(app: &mut PixelApp, key: u32, a: E) {
     let s = &doc.sprite;
     let m = if a == E::Stroke { m.edge4() } else { m };
     let op = pinta(s, (doc.layer, doc.frame), &m, s.value_of_rgba(app.fg));
-    app.passo(key, op);
+    let nome = if a == E::Stroke {
+        "pixel.keys.edit.stroke"
+    } else {
+        "pixel.keys.edit.fill"
+    };
+    app.passo_nomeado(key, op, nome);
 }
 
 /// Os cels do alvo: o activo, ou com «All» todos os quadros × as camadas que se pintam (nem grupo,
@@ -162,7 +167,7 @@ pub(crate) fn aplica(app: &mut PixelApp, key: u32, c: PixelDialogChoice) -> bool
         return true;
     }
     let o = op(app, key, c, true);
-    app.passo(key, o);
+    app.passo_nomeado(key, o, ph2d_pixel_ponte::nomes::nome_dialogo(c));
     true
 }
 

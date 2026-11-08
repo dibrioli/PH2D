@@ -1,5 +1,8 @@
 //! **Os nomes dos atalhos do PIXEL ART, P12a** (`ph2d-pixel-keys`) — os do Aseprite, em Plain English.
 
+/// As da janela KEYBOARD SHORTCUTS (P12a).
+mod janela;
+
 /// A tradução de uma chave `pixel.keys.*`, ou `None`.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
@@ -140,6 +143,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.keys.tool.polygon" => "Polygon",
         "pixel.keys.tool.hand" => "Hand",
         "pixel.keys.tool.text" => "Text",
-        _ => return None,
+        _ => return janela::tr(key),
     })
 }

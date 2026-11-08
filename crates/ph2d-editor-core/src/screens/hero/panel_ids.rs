@@ -31,6 +31,8 @@ pub(super) fn default_panel_visibility() -> std::collections::BTreeMap<&'static 
     map.insert(PANEL_PIXEL_TILES, false);
     // A janela SLICES (P11b): abre e fecha com a Slice Tool na mão.
     map.insert(PANEL_PIXEL_SLICES, false);
+    // A janela KEYBOARD SHORTCUTS (P12a): abre pelo menu Edit ou Ctrl+Alt+Shift+K.
+    map.insert(PANEL_PIXEL_KEYS, false);
     map
 }
 
@@ -58,6 +60,8 @@ pub const PANEL_PIXEL_EXPORT: &str = "pixel_export";
 pub const PANEL_PIXEL_TILES: &str = "pixel_tiles";
 /// A janela SLICES do Pixel (P11b) — o `Panel::ID` da `ph2d-panel-pixel-slices`.
 pub const PANEL_PIXEL_SLICES: &str = "pixel_slices";
+/// A janela KEYBOARD SHORTCUTS do Pixel (P12a) — o `Panel::ID` da `ph2d-panel-pixel-keys`.
+pub const PANEL_PIXEL_KEYS: &str = "pixel_keys";
 
 /// Canonical `&'static str` for known panel ids — keeps the
 /// visibility HashMap keys stable across calls without leaking.
@@ -80,6 +84,7 @@ pub(super) fn canonical_panel_id(id: &str) -> Option<&'static str> {
         PANEL_PIXEL_EXPORT => Some(PANEL_PIXEL_EXPORT),
         PANEL_PIXEL_TILES => Some(PANEL_PIXEL_TILES),
         PANEL_PIXEL_SLICES => Some(PANEL_PIXEL_SLICES),
+        PANEL_PIXEL_KEYS => Some(PANEL_PIXEL_KEYS),
         _ => None,
     }
 }

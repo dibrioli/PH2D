@@ -1,0 +1,24 @@
+[package]
+name = "ph2d-panel-pixel-keys"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A janela KEYBOARD SHORTCUTS do Pixel Art (P12a): a tabela viva de `ph2d-pixel-keys`, a busca, a
+# captura de uma tecla e a lei do conflito. A família lê o mapa novo pelo canal (`toma_keymap`).
+[dependencies]
+ph2d-a11y          = { path = "../ph2d-a11y" }
+ph2d-editor-core   = { path = "../ph2d-editor-core" }
+ph2d-i18n          = { path = "../ph2d-i18n" }
+ph2d-pixel-keys    = { path = "../ph2d-pixel-keys" }
+ph2d-tokens        = { path = "../ph2d-tokens" }
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+winit              = "0.30"
+
+[lints]
+workspace = true

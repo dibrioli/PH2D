@@ -1239,6 +1239,10 @@ const PAINEIS_COM_ID_DERIVADO: &[(&str, &str)] = &[
         "authored.opt.{key}.{index} · authored.row.{key}",
     ),
     (
+        "pixel_keys",
+        "ph2d_panel_pixel_keys::ids — `add`/`reset` por acção e `ficha` por tecla de cada acção",
+    ),
+    (
         "pixel_timeline",
         "ph2d_panel_pixel_timeline::ids — um cabeçalho por frame, uma célula por cel, uma barra por \
          tag, as partes de cada camada e as opções da direcção",

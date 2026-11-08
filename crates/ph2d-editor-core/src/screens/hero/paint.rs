@@ -106,6 +106,8 @@ pub const PANEL_Z_ORDER_FALLBACK: &[ph2d_a11y::NodeId] = &[
     ids::PIXEL_TILES_PANEL,
     // A janela SLICES do Pixel (`ph2d-panel-pixel-slices`, P11b): nasce fechada.
     ids::PIXEL_SLICES_PANEL,
+    // A janela KEYBOARD SHORTCUTS do Pixel (`ph2d-panel-pixel-keys`, P12a): nasce fechada.
+    ids::PIXEL_KEYS_PANEL,
     // A bancada de widgets (`ph2d-panel-widget-lab`). ⚠️ **Sétima vez que este arquivo paga o
     // mesmo defeito** — o painel nasceu registado, visível ao clique do menu, e o passeio de
     // z-order nunca chegava a ele: nada quebra, nada avisa, e o menu abre um painel invisível.

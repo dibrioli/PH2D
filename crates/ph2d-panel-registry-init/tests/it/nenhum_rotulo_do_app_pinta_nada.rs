@@ -1403,13 +1403,25 @@ fn tabelas() -> Vec<String> {
         .and_then(std::path::Path::parent)
         .expect("crates/<crate>/ tem dois pais")
         .join("crates/ph2d-i18n/src");
-    let mut v: Vec<String> = std::fs::read_dir(&dir)
-        .expect("a pasta da tabela existe")
-        .flatten()
-        .map(|e| e.path())
-        .filter(|p| p.extension().is_some_and(|x| x == "rs"))
-        .filter_map(|p| std::fs::read_to_string(p).ok())
-        .collect();
+    // ⛔ Também as sub-tabelas (`pixel_teclas/janela.rs`, `pixel_slices/history.rs`): o tecto de
+    // LOC do `lib.rs` empurra as palavras novas para submódulos, e ler só o topo cegava a régua.
+    let mut pastas = vec![dir];
+    let mut v: Vec<String> = Vec::new();
+    while let Some(d) = pastas.pop() {
+        for p in std::fs::read_dir(&d)
+            .expect("a pasta da tabela existe")
+            .flatten()
+            .map(|e| e.path())
+        {
+            if p.is_dir() {
+                pastas.push(p);
+            } else if p.extension().is_some_and(|x| x == "rs")
+                && let Ok(t) = std::fs::read_to_string(&p)
+            {
+                v.push(t);
+            }
+        }
+    }
     v.sort();
     v
 }

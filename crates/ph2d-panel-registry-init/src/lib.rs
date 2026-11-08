@@ -82,6 +82,12 @@ pub fn build_typed_registry() -> ph2d_editor_core::panel::PanelRegistry {
     reg.push(ErasedPanel::new::<ph2d_panel_physics::PhysicsPanel>());
     #[cfg(feature = "panel-pixel-export")]
     reg.push(ErasedPanel::new::<ph2d_panel_pixel_export::PixelExportPanel>());
+    #[cfg(feature = "panel-pixel-history")]
+    reg.push(ErasedPanel::new::<
+        ph2d_panel_pixel_history::PixelHistoryPanel,
+    >());
+    #[cfg(feature = "panel-pixel-keys")]
+    reg.push(ErasedPanel::new::<ph2d_panel_pixel_keys::PixelKeysPanel>());
     #[cfg(feature = "panel-pixel-preview")]
     reg.push(ErasedPanel::new::<
         ph2d_panel_pixel_preview::PixelPreviewPanel,
@@ -209,6 +215,11 @@ mod tests {
         }
         // A janela SLICES do Pixel (P11b).
         #[cfg(feature = "panel-pixel-slices")]
+        {
+            n += 1;
+        }
+        // A janela KEYBOARD SHORTCUTS do Pixel (P12a).
+        #[cfg(feature = "panel-pixel-keys")]
         {
             n += 1;
         }

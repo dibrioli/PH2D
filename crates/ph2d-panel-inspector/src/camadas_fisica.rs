@@ -73,7 +73,11 @@ pub(crate) fn nome(i: usize) -> String {
 #[must_use]
 pub(crate) fn rotulo(i: usize) -> String {
     let n = nome(i);
-    if n.is_empty() { rotulo_padrao(i) } else { n }
+    if n.is_empty() {
+        rotulo_padrao(i)
+    } else {
+        ph2d_editor_core::nome_curto::nome_de_camada(&n)
+    }
 }
 
 /// O que mostra a camada sem nome: a 0 é «Default» (onda 9a, maquete B), as outras «Layer n».

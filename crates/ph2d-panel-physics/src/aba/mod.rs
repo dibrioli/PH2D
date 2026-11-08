@@ -206,7 +206,7 @@ pub(crate) fn acaba_de_renomear() {
 #[must_use]
 pub fn rotulo(nomes: &LayerNames, n: usize) -> String {
     match nomes.0.get(n).map(String::as_str) {
-        Some(nome) if !nome.is_empty() => nome.to_owned(),
+        Some(nome) if !nome.is_empty() => ph2d_editor_core::nome_curto::nome_de_camada(nome),
         _ if n == 0 => tr("card.physics.layer_zero").to_owned(),
         _ => tr_with("card.physics.layer_default", &[("n", &n.to_string())]),
     }

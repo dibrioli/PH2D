@@ -198,6 +198,7 @@ fn pinta_grade(ctx: &mut PaintCtx, q: &Quadro) {
     let coluna_acesa = |n: usize| q.coluna_acesa(n);
     let texto = &mut *ctx.text_system;
     let pad = Spacing::Md.px();
+    let gf = g.fonte_da_grade(font);
     camada_das_listas::por_cima(ctx.scene, |cena| {
         // A grade «Who bumps into whom · N pairs».
         let ty = g.grade.y + pad;
@@ -225,9 +226,7 @@ fn pinta_grade(ctx: &mut PaintCtx, q: &Quadro) {
         let pilula = resolve(ColorToken::AccentSoft, theme);
         for (p, &n) in visiveis.iter().enumerate() {
             if linha_acesa(n) {
-                let r = g.rotulo_da_linha(p);
-                let r = Rect::new(r.x - Spacing::Xs.px(), r.y, r.w, r.h - Spacing::Xs.px());
-                fill_rounded_rect(cena, r, raio, pilula);
+                fill_rounded_rect(cena, g.pilula_da_linha(p), raio, pilula);
             }
         }
         let tinta = |aceso: bool| {
@@ -253,8 +252,8 @@ fn pinta_grade(ctx: &mut PaintCtx, q: &Quadro) {
                     cena,
                     &rotulos[n],
                     r.x,
-                    r.y + (r.h - font) * 0.5,
-                    font,
+                    r.y + (r.h - gf) * 0.5,
+                    gf,
                     r.w,
                     tinta(linha_acesa(n)),
                 );
@@ -266,9 +265,9 @@ fn pinta_grade(ctx: &mut PaintCtx, q: &Quadro) {
                     texto,
                     cena,
                     &rotulos[n],
-                    c.x + (c.w - font) * 0.5 + StrokeToken::Hairline.px(),
+                    c.x + (c.w - gf) * 0.5 + StrokeToken::Hairline.px(),
                     c.y + c.h - Spacing::Xs.px(),
-                    font,
+                    gf,
                     c.h,
                     tinta(true),
                 );
@@ -277,9 +276,9 @@ fn pinta_grade(ctx: &mut PaintCtx, q: &Quadro) {
                 texto,
                 cena,
                 &rotulos[n],
-                c.x + (c.w - font) * 0.5,
+                c.x + (c.w - gf) * 0.5,
                 c.y + c.h - Spacing::Xs.px(),
-                font,
+                gf,
                 c.h,
                 tinta(coluna_acesa(n)),
             );

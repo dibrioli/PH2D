@@ -66,6 +66,8 @@ pub mod math;
 /// o carácter é uma PORTA, o chamador declara o `Role` e nunca uma duração, e um mapa vazio pinta
 /// exactamente o que o app pintava antes desta wave.
 pub mod motion;
+/// ⭐ O nome curto de uma camada (dono 07/11): 12 caracteres e «…».
+pub mod nome_curto;
 pub mod object_add;
 /// ⭐⭐ O modo de edição do objecto activo e o cadeado da selecção (spec/06 F2).
 pub mod object_mode;

@@ -145,6 +145,9 @@ pub struct InspectorPhysicsInfo {
     ///
     /// [`has_body`]: InspectorPhysicsInfo::has_body
     pub has_collider: bool,
+    /// Um `RigidBody` SEM forma — nem `Collider` próprio nem peça pendurada (`part_count == 0`):
+    /// não bate em nada. A face vazia avisa e oferece a caixa da imagem (`INSP_PHYS_ADD_SHAPE`).
+    pub body_without_shape: bool,
     /// Quantas PEÇAS este corpo tem penduradas nele (W-PartFace) — filhos que
     /// carregam `Collider` e não `RigidBody`, com este corpo como ancestral mais
     /// próximo. `0` num corpo de forma única.

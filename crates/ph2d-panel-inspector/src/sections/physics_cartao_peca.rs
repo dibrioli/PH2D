@@ -53,6 +53,15 @@ pub(super) fn peca(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f3
     y - Spacing::Sm.px() + SECTION_BOTTOM_PAD_PX
 }
 
+/// Um corpo sem forma não bate em nada: o aviso da forma solta, ao contrário, e a caixa da imagem.
+/// As duas faces (cartões e `PH2D_CARDS=0`) pintam isto; o handler gateia em `body_without_shape`.
+pub(super) fn sem_forma(t: &mut Tinta<'_>, y: f32) -> f32 {
+    let y = t.frase(y, tr("card.insp.phys.no_shape"), ColorToken::Warn);
+    let (r, y) = t.botao(ids::INSP_PHYS_ADD_SHAPE, tr("card.insp.phys.add_shape"), y);
+    t.hit.register(ids::INSP_PHYS_ADD_SHAPE, r);
+    y - Spacing::Sm.px() + SECTION_BOTTOM_PAD_PX
+}
+
 /// A forma diz de quem é, e dá a saída: virar um corpo próprio.
 fn de_quem_e(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
     let solta = info.part_owner.is_empty();

@@ -87,7 +87,7 @@ pub(crate) fn paint_physics_section(
         core_ids::INSP_LIVE_PHYSICS_SECTION,
         if !crate::cards::active() {
             tr("component.rigid_body.name")
-        } else if info.has_body {
+        } else if info.has_body || info.body_without_shape {
             tr("card.insp.phys.body")
         } else if info.has_collider {
             tr("card.insp.phys.collision_shape")
@@ -147,6 +147,8 @@ pub(crate) fn paint_physics_section(
             w,
             yy,
         )
+    } else if info.body_without_shape {
+        super::physics_cartao_peca::sem_forma(&mut tinta, yy)
     } else if !info.has_body {
         let yy = super::physics_cartao::recibo(&mut tinta, yy);
         super::physics_doors::paint_empty_face(

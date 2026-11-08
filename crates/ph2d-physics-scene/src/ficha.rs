@@ -47,6 +47,8 @@ pub const CRATE_AT: [f32; 2] = [0.5, 5.0];
 pub const LOOSE_AT: [f32; 2] = [0.5, 2.5];
 pub const KINEMATIC_AT: [f32; 2] = [-3.0, 4.5];
 pub const BALL_AT: [f32; 2] = [4.0, 6.5];
+/// Um corpo SEM forma (dono 08/11): o cartão Body avisa e oferece «Add Shape».
+pub const NO_SHAPE_AT: [f32; 2] = [-1.5, 7.5];
 pub const ZONE_AT: [f32; 2] = [4.0, 2.0];
 pub const ZONE_HALF: [f32; 2] = [1.5, 2.0];
 /// N, para cima. MEDIDO (`probe_cena_120`): vence o peso da bola 2 × 1, que pára de cair e sobe.
@@ -205,6 +207,12 @@ pub fn monta(world: &mut World) {
         AreaEffector {
             force: [0.0, ZONE_FORCE],
         },
+    ));
+    world.spawn((
+        Name::new("No Shape Body"),
+        pose(NO_SHAPE_AT),
+        azulejo(DIRT_TILE, [0.5, 0.5], [1.0; 4]),
+        corpo(BodyKind::Static),
     ));
     player(world);
     ph2d_ecs::assign_missing_stable_ids(world);

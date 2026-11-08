@@ -42,6 +42,7 @@ pub(crate) fn with_body() -> InspectorPhysicsInfo {
         // não herdado, porque uma fixture que chega ao estado por omissão inverte
         // de sentido no dia em que o default se move.
         has_collider: true,
+        body_without_shape: false,
         part_count: 0,
         // W-Compound: a fixture base é um objeto SOLTO, sem corpo acima — então
         // não há dono e o "Add Shape" não é oferecido. Os gates que o exercitam

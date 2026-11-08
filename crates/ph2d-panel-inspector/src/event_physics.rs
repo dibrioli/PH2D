@@ -318,7 +318,7 @@ fn click_edit(
         // a count they disagreed the day the chain arrived.
         Some(PhysicsFieldEdit::Join)
     } else if id == crate::ids::INSP_PHYS_ADD_SHAPE
-        && !info.part_owner.is_empty()
+        && (!info.part_owner.is_empty() || info.body_without_shape)
         && !info.has_collider
     {
         // A recusa vive AQUI e não no laço de pintura: uma forma sem corpo acima

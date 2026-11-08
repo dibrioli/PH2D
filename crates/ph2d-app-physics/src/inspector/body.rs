@@ -181,13 +181,7 @@ pub fn build_physics_info(
     // Optional AreaFalloff (W-AreaFalloff) — quanto o empurrão perde do centro à borda,
     // sétimo componente da mesma zona e pela mesma razão. Mesma condição de Sensor.
     let area_falloff = world.get::<AreaFalloff>(entity).map_or(0.0, |f| f.0);
-    // ⚠️ **A pergunta é pelo COLLIDER, não pelo par** (W-PartFace): um `Collider`
-    // sem `RigidBody` é uma **PEÇA** — mais uma forma do corpo ancestral —, e ela
-    // é simulada. Enquanto esta linha exigia os dois, toda peça caía na face
-    // vazia, cujo texto diz *"Not simulated"* e cujos números são SEMENTES:
-    // medido, uma peça autorada como barra `0,17 × 0,91` com offset
-    // `[0,13, −0,07]`, densidade `3,5` e camada `2` era mostrada como caixa
-    // `0,50 × 0,50`, offset `[0, 0]`, densidade `1,00`, camada `0`.
+    // ⚠️ A pergunta é pelo COLLIDER, não pelo par (W-PartFace): uma peça é simulada.
     let Some(col) = col else {
         // The empty face. The dimensions are the values the Add button would
         // seed if the sprite had no bounds — the panel never shows them.
@@ -195,6 +189,7 @@ pub fn build_physics_info(
             entity_bits,
             has_body: false,
             has_collider: false,
+            body_without_shape: rb.is_some() && part_count == 0,
             part_count: 0,
             no_wall_cling: false,
             bake_seconds,
@@ -208,17 +203,8 @@ pub fn build_physics_info(
             restitution: Collider::DEFAULT_RESTITUTION,
             friction: Collider::DEFAULT_FRICTION,
             layer: 0,
-            // An entity with no body cannot be half of a joint, whatever the
-            // selection looks like. ⚠️ The empty face early-returns after the
-            // *Add Physics Body* door, so NEITHER creation route is painted here
-            // — a joint needs a body, and the door is the one thing to offer.
+            // Sem corpo não há joint; o rig (abaixo) CRIA os corpos, por isso fica.
             join_count: 0,
-            // ⚠️ **Mas o RIG aparece aqui**, e a diferença não é um detalhe: as
-            // rotas de LIGAR precisam de corpos que ainda não existem, e o rig é
-            // quem os CRIA. Zerá-lo junto com o `join_count` faria o gerador
-            // exigir o passo manual que ele existe para remover — e o caso normal
-            // dele é exatamente este: um personagem desenhado em sprites, nenhum
-            // corpo em lugar nenhum.
             rig_parts,
             // W-Compound: a face VAZIA é a única em que a pergunta faz sentido —
             // um objeto que já é corpo não vira peça de ninguém.
@@ -226,12 +212,9 @@ pub fn build_physics_info(
             join_draw_armed,
             join_kind_tag,
             is_sensor: false,
-            // Nenhum dos dois nomes é lido aqui, e é uma decisão: esta face
-            // descreve algo que ainda NÃO é corpo, e as rows de sinal só são
-            // pintadas com um collider em mãos.
+            // Sem collider não há sinal nem filtro.
             signal: String::new(),
             signal_leave: String::new(),
-            // Idem: sem collider não há sinal, logo não há filtro para ele.
             signal_tag: None,
             signal_tag_path: String::new(),
             bake_channels_tag,
@@ -291,6 +274,7 @@ pub fn build_physics_info(
         entity_bits,
         has_body: rb.is_some(),
         has_collider: true,
+        body_without_shape: false,
         // ⚠️ Só um CORPO tem peças penduradas nele; numa peça o número é dela
         // mesma, e uma peça não hospeda peças (o walk sobe até o corpo, e ele é
         // o dono de todas).

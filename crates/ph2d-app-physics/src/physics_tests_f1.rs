@@ -2,29 +2,32 @@
 
 use super::*;
 
+/// A info do Inspector com `partes` peças penduradas (o resto neutro).
+fn info_de(sim: &SimWorld, e: Entity, partes: u8) -> ph2d_editor_core::InspectorPhysicsInfo {
+    let tree = ph2d_tags::TagTree::default();
+    let bake = (0.0, 1.0);
+    build_physics_info(
+        sim.world(),
+        e.to_bits(),
+        0,
+        0,
+        partes,
+        false,
+        0,
+        bake,
+        0,
+        &tree,
+    )
+    .expect("i")
+}
+
 /// Fit to picture devolve a caixa do desenho, centrada, e o estado volta a «Follows the picture»;
 /// o resto do colisor fica. A bola e a mão dizem «Custom size». (Ficha f1.)
 #[test]
 fn fit_to_picture_volta_a_acompanhar_a_imagem() {
     let (mut sim, e) = sprite_scene();
     apply(&mut sim, e, PhysicsFieldEdit::Add);
-    let segue = |sim: &SimWorld| {
-        let tree = ph2d_tags::TagTree::default();
-        build_physics_info(
-            sim.world(),
-            e.to_bits(),
-            0,
-            0,
-            0,
-            false,
-            0,
-            (0.0, 1.0),
-            0,
-            &tree,
-        )
-        .expect("info")
-        .shape_follows
-    };
+    let segue = |sim: &SimWorld| info_de(sim, e, 0).shape_follows;
     assert_eq!(segue(&sim), Some(true), "a caixa nasce com o desenho");
     apply(&mut sim, e, PhysicsFieldEdit::Density(3.0));
     apply(&mut sim, e, PhysicsFieldEdit::HalfX(9.0));
@@ -45,23 +48,7 @@ fn fit_to_picture_mantem_o_tipo_da_forma() {
     let (mut sim, e) = sprite_scene(); // 2 × 1 m
     apply(&mut sim, e, PhysicsFieldEdit::Add);
     let forma = |sim: &SimWorld| sim.world().get::<Collider>(e).expect("forma").shape;
-    let segue = |sim: &SimWorld| {
-        let tree = ph2d_tags::TagTree::default();
-        build_physics_info(
-            sim.world(),
-            e.to_bits(),
-            0,
-            0,
-            0,
-            false,
-            0,
-            (0.0, 1.0),
-            0,
-            &tree,
-        )
-        .expect("info")
-        .shape_follows
-    };
+    let segue = |sim: &SimWorld| info_de(sim, e, 0).shape_follows;
     apply(&mut sim, e, PhysicsFieldEdit::OffsetX(0.5));
     apply(&mut sim, e, PhysicsFieldEdit::Shape(0));
     apply(&mut sim, e, PhysicsFieldEdit::FitToPicture);
@@ -154,4 +141,49 @@ fn undoing_remove_brings_body_and_shape_back() {
         .expect("o corpo e a forma voltam");
     assert_eq!(de_volta.1, BodyKind::Static);
     assert_eq!(de_volta.2, forma);
+}
+
+/// ⭐ **Corpo sem forma** (dono 08/11): a info diz `body_without_shape`, o «Add Shape» dá a caixa da
+/// imagem sem tocar no tipo, e é UM passo de undo (a captura muda e repô-la tira só a forma).
+#[test]
+fn corpo_sem_forma_ganha_a_caixa_da_imagem_num_passo() {
+    let (mut sim, e) = sprite_scene();
+    let estatico = RigidBody {
+        kind: BodyKind::Static,
+    };
+    sim.world_mut().entity_mut(e).insert(estatico);
+    let info = |sim: &SimWorld, partes| info_de(sim, e, partes);
+    assert!(info(&sim, 0).body_without_shape && !info(&sim, 0).has_body);
+    assert!(
+        !info(&sim, 1).body_without_shape,
+        "uma peça pendurada já é forma"
+    );
+    let reg = registry();
+    let mut prop = ph2d_ecs::TransformPropagationState::new(sim.world_mut());
+    let mut work = ph2d_ecs::WorklistBuf::default();
+    let mut snap = |sim: &mut SimWorld| {
+        let mut out = ph2d_ecs::scene::WorldSnapshot::default();
+        ph2d_ecs::scene::world_to_snapshot(sim.world_mut(), &mut prop, &mut work, &reg, &mut out)
+            .expect("captura");
+        out
+    };
+    let antes = snap(&mut sim);
+    apply(&mut sim, e, PhysicsFieldEdit::AddShape);
+    let c = *sim.world().get::<Collider>(e).expect("a forma nasce");
+    assert_eq!(
+        c.shape,
+        ColliderShape::Cuboid {
+            half_x: 1.0,
+            half_y: 0.5
+        }
+    );
+    assert_eq!(sim.world().get::<RigidBody>(e), Some(&estatico));
+    let depois = info(&sim, 0);
+    assert!(depois.has_body && !depois.body_without_shape && depois.shape_follows == Some(true));
+    assert_ne!(antes, snap(&mut sim), "o Add Shape não daria passo de undo");
+    let _ = sim.world_mut().despawn(e);
+    ph2d_ecs::scene::snapshot_to_world(sim.world_mut(), &antes, &reg).expect("restore");
+    let mut q = sim.world_mut().query::<(&RigidBody, Option<&Collider>)>();
+    let (b, c) = q.iter(sim.world()).next().expect("o corpo volta");
+    assert_eq!((b.kind, c), (BodyKind::Static, None));
 }

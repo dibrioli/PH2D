@@ -814,3 +814,65 @@ fn os_textos_do_cartao_estao_na_tabela() {
         assert_ne!(tr(k), k, "{k} sem texto");
     }
 }
+
+/// ⭐ **Corpo sem forma** (dono 08/11): o cartão Body avisa e oferece «Add Shape», dentro do cartão;
+/// o clique real pede a caixa da imagem (`AddShape`). Na face clássica, o mesmo aviso e o mesmo botão.
+/// Sem a bandeira (e sem dono acima), o mesmo id não despacha. O efeito no ECS: `ph2d-app-physics
+/// corpo_sem_forma`.
+#[test]
+fn o_corpo_sem_forma_avisa_e_o_add_shape_pede_a_caixa() {
+    let sem_forma = InspectorPhysicsInfo {
+        has_body: false,
+        has_collider: false,
+        body_without_shape: true,
+        part_owner: String::new(),
+        ..with_body()
+    };
+    let aviso = tr("card.insp.phys.no_shape").to_string();
+    for cartoes in [true, false] {
+        let (mut host, mut st) = cena(sem_forma.clone(), [1.0, 1.0]);
+        set_cards_on(cartoes);
+        let (r, avisos) =
+            ph2d_panel_inspector::censo_dos_avisos::medindo(|| pinta(&mut host, &mut st));
+        assert!(
+            avisos.iter().any(|a| a.texto == aviso),
+            "cartões={cartoes}: sem o aviso"
+        );
+        let botao = achado(&r, INSP_PHYS_ADD_SHAPE).expect("o botão Add Shape");
+        let cartao = achado(&r, core_ids::INSP_LIVE_PHYSICS_SECTION).expect("o cabeçalho");
+        assert!(
+            botao.x >= cartao.x && botao.x + botao.w <= cartao.x + cartao.w,
+            "cartões={cartoes}: o botão sai do cartão: {botao:?} × {cartao:?}"
+        );
+        let a = clica(&mut host, &mut st, botao);
+        assert!(
+            a.iter().any(|a| matches!(
+                a,
+                EditorAction::InspectorPhysicsEdit {
+                    edit: E::AddShape,
+                    ..
+                }
+            )),
+            "cartões={cartoes}: o clique não pediu a forma: {a:?}"
+        );
+        sai();
+    }
+    let (mut host, mut st) = cena(sem_forma.clone(), [1.0, 1.0]);
+    let botao = achado(&pinta(&mut host, &mut st), INSP_PHYS_ADD_SHAPE).expect("botão");
+    set_current_inspector_physics(Some(InspectorPhysicsInfo {
+        body_without_shape: false,
+        ..sem_forma
+    }));
+    let a = clica(&mut host, &mut st, botao);
+    assert!(
+        !a.iter().any(|a| matches!(
+            a,
+            EditorAction::InspectorPhysicsEdit {
+                edit: E::AddShape,
+                ..
+            }
+        )),
+        "sem corpo nem dono, o id não pode despachar: {a:?}"
+    );
+    sai();
+}

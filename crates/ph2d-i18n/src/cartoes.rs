@@ -23,6 +23,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.phys.bounce_friction" => "Bounce and Friction",
         "card.insp.phys.density" => "Density",
         "card.insp.phys.loose" => "No body above this shape. Nothing bumps into it yet.",
+        "card.insp.phys.no_shape" => "This body has no collision shape, so nothing will touch it.",
+        "card.insp.phys.add_shape" => "Add Shape",
         "card.insp.phys.drag_hint" => "Or drag it inside a body in the Hierarchy.",
         "card.insp.phys.part_of" => "Part of: {owner}",
         "card.insp.phys.follows" => "Follows the picture",

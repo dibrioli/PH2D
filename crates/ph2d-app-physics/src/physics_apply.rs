@@ -56,25 +56,9 @@ pub fn apply_physics_edit(
                 kind: BodyKind::Dynamic,
             },
         );
-        // ⚠️ **SEMEAR É PARA QUEM NÃO TEM FORMA** (W-PartAdopt).
-        //
-        // Este braço é a porta das TRÊS faces da §11, e as duas em que ela
-        // aparece querem coisas opostas:
-        //
-        // - a face **VAZIA** (*Add Physics Body*) descreve um sprite pelado, e
-        //   semear a caixa dele é a única forma inicial que não pode discordar do
-        //   que está desenhado — sem isto a física seria autorável em lugar
-        //   nenhum;
-        // - a face de **PEÇA** (*Make Independent Body*) descreve um `Collider`
-        //   que o artista JÁ autorou, e tornar-se um corpo independente não muda
-        //   a forma de nada. Escrever por cima apagava o trabalho **em
-        //   silêncio** — medido numa peça `0,17 × 0,91` com offset
-        //   `[0,13, −0,07]`, densidade `3,5`, camada `2` e restituição `0,42`:
-        //   ela voltava `0,10 × 0,50` com tudo zerado.
-        //
-        // É a MESMA lei que o `AddShape` logo abaixo já honra (a porta que CRIA a
-        // peça recusa reescrever uma que existe, W-PartFace) — ela era dita numa
-        // das duas portas e não na outra.
+        // ⚠️ **SEMEAR É PARA QUEM NÃO TEM FORMA** (W-PartAdopt): a face vazia semeia a caixa do
+        // sprite; a de peça (*Make Independent Body*) já tem a forma autorada, e escrever por cima
+        // apagava-a em silêncio (medido: `0,17 × 0,91` voltava `0,10 × 0,50`). A lei do `AddShape`.
         if world.get::<Collider>(entity).is_none() {
             let half = sprite_half_extents(world, entity);
             queue_set(
@@ -93,11 +77,8 @@ pub fn apply_physics_edit(
         }
         return;
     }
-    // **A peça** (W-Compound): o MESMO collider que o `Add` faz — a caixa do
-    // sprite, a única forma inicial que não pode discordar do que está desenhado
-    // — mas **sem** `RigidBody`. É a ausência dele que faz desta entidade uma
-    // forma a mais do corpo ancestral em vez de um segundo corpo, e a ponte
-    // pergunta exatamente isso (`Without<RigidBody>`).
+    // A caixa do sprite sem tocar no `RigidBody`: peça de um corpo acima (W-Compound) ou a forma
+    // que falta a um corpo sem forma (dono 08/11).
     if matches!(edit, PhysicsFieldEdit::AddShape) {
         let half = sprite_half_extents(world, entity);
         queue_set(

@@ -61,7 +61,7 @@ fn solta(ctx: &PaintCtx, w: f32, x_de: impl FnOnce(Rect, f32) -> f32) -> Rect {
 
 /// A faixa do título arrasta a janela.
 fn alca(ctx: &mut PaintCtx, tudo: Rect) {
-    let reserva = (m::HEAD_ICON_BOX + m::LIST_HEAD_PAD_X) * 2.0;
+    let reserva = borda::reserva_do_titulo();
     ctx.host.hit_index_mut().register(
         ids::TILES_DRAG,
         panel_drag_handle_rect(tudo, m::LIST_HEAD_H, reserva),
@@ -131,6 +131,7 @@ pub(crate) fn paint(st: &mut PixelTilesPanelState, ctx: &mut PaintCtx) {
     let slot = solta(ctx, w, |a, w| (coluna - w - Spacing::Lg.px()).max(a.x));
     let encaixe = ctx.slot;
     ctx.slot = slot;
+    borda::declara_fecho(ctx.host.store_mut(), node);
     let lista = paint_card_list(ctx, node, PixelTilesPanel::TITLE.tr(), &cartoes);
     ctx.slot = encaixe;
     ctx.host.store_mut().set_panel_rect(node, lista);

@@ -37,6 +37,13 @@ pub const CTX_MENU_PIXEL_REPEAT_EXPORT: NodeId = hash_node_id("ctx_menu_pixel_re
 pub const TOPBAR_PIXEL: NodeId = hash_node_id("topbar_pixel");
 /// A linha *Pixel Preview* do menu *Window* (a janela Preview, P5; também F7).
 pub const TOPBAR_PIXEL_PREVIEW: NodeId = hash_node_id("topbar_pixel_preview");
+/// As janelas acessórias do Pixel no menu *Window* (smoke do dono 08/11: «nem estão presentes no
+/// menu Window»): Slices, Tilemap, Undo History, Keyboard Shortcuts, Grid & Background.
+pub const TOPBAR_PIXEL_SLICES: NodeId = hash_node_id("topbar_pixel_slices");
+pub const TOPBAR_PIXEL_TILES: NodeId = hash_node_id("topbar_pixel_tiles");
+pub const TOPBAR_PIXEL_HISTORY: NodeId = hash_node_id("topbar_pixel_history");
+pub const TOPBAR_PIXEL_KEYS: NodeId = hash_node_id("topbar_pixel_keys");
+pub const TOPBAR_PIXEL_PREFS: NodeId = hash_node_id("topbar_pixel_prefs");
 
 /// A amostra da cor de FRENTE (a coluna da esquerda em Draw): um Down abre o seletor partilhado, e
 /// a família lê de volta a cor dele (`ph2d_app_pixel::panel`).

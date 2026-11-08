@@ -270,6 +270,12 @@ pub(super) const MENU_BAR_WINDOW_ROWS: &[MenuRow] = &[
     menu_row(ids::TOPBAR_PIXEL, "chrome.menu.pixel"),
     // A janela Preview do Pixel (P5): F7 e Shift+Enter abrem-na em Draw; esta é a porta à vista.
     menu_row(ids::TOPBAR_PIXEL_PREVIEW, "chrome.menu.pixel_preview"),
+    // As janelas acessórias do Pixel (smoke do dono 08/11). O rótulo é o `TITLE` do painel: um nome.
+    menu_row(ids::TOPBAR_PIXEL_SLICES, "panel.pixel_slices.title"),
+    menu_row(ids::TOPBAR_PIXEL_TILES, "panel.pixel_tiles.title"),
+    menu_row(ids::TOPBAR_PIXEL_HISTORY, "panel.pixel_history.title"),
+    menu_row(ids::TOPBAR_PIXEL_KEYS, "panel.pixel_keys.title"),
+    menu_row(ids::TOPBAR_PIXEL_PREFS, "panel.pixel_prefs.title"),
     // ⭐⭐⭐ **OS OSSOS** (ordem do dono, 2026-09-09: *«o Menu Windows deve receber a opção
     // de Bones»*). ⚠️ Vizinho da Física porque os dois são painéis de MUNDO — e é a única
     // porta do painel numa cena **sem** ossos, que é onde o artista carrega em *Create*

@@ -44,9 +44,12 @@ impl Panel for PixelHistoryPanel {
 
     fn apply_event(
         _: &mut PixelHistoryPanelState,
-        _: &mut dyn PanelHostInternal,
+        host: &mut dyn PanelHostInternal,
         ev: WidgetEvent,
     ) -> EventOutcome {
+        if ph2d_editor_core::panel::cards::borda::fechou(host, &ev, Self::NODE_ID, Self::ID) {
+            return EventOutcome::Consumed;
+        }
         event::apply_event(ev)
     }
 

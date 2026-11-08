@@ -217,7 +217,7 @@ impl ModuleTruth {
 
 /// A tabela. ⚠️ **Toda linha de alternância dos menus tem de estar aqui**, e há censo a exigi-lo
 /// (`every_toggle_row_of_the_bar_is_marked_by_its_own_state`).
-pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 21] = [
+pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 26] = [
     (ids::TOPBAR_MOTION, ModuleTruth::Tool("motion")),
     (ids::TOPBAR_PHYSICS, ModuleTruth::Panel("physics")),
     // ⭐⭐⭐ **OS OSSOS** (ordem do dono, 2026-09-09). ⚠️ O literal é o `Panel::ID` da
@@ -234,6 +234,26 @@ pub const MODULE_TRUTHS: [(NodeId, ModuleTruth); 21] = [
     (
         ids::TOPBAR_PIXEL_PREVIEW,
         ModuleTruth::Panel(super::PANEL_PIXEL_PREVIEW),
+    ),
+    (
+        ids::TOPBAR_PIXEL_SLICES,
+        ModuleTruth::Panel(super::PANEL_PIXEL_SLICES),
+    ),
+    (
+        ids::TOPBAR_PIXEL_TILES,
+        ModuleTruth::Panel(super::PANEL_PIXEL_TILES),
+    ),
+    (
+        ids::TOPBAR_PIXEL_HISTORY,
+        ModuleTruth::Panel(super::PANEL_PIXEL_HISTORY),
+    ),
+    (
+        ids::TOPBAR_PIXEL_KEYS,
+        ModuleTruth::Panel(super::PANEL_PIXEL_KEYS),
+    ),
+    (
+        ids::TOPBAR_PIXEL_PREFS,
+        ModuleTruth::Panel(super::PANEL_PIXEL_PREFS),
     ),
     (ids::TOPBAR_AUDIO_MIXER, ModuleTruth::Panel("audio_mixer")),
     (ids::TOPBAR_AUDIO_EDITOR, ModuleTruth::Panel("audio_editor")),

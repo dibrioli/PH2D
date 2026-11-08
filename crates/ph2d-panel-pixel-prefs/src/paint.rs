@@ -303,10 +303,11 @@ pub(crate) fn paint(st: &mut PixelPrefsPanelState, ctx: &mut PaintCtx) {
     let encaixe = ctx.slot;
     ctx.slot = slot;
     let titulo = <PixelPrefsPanel as Panel>::TITLE.tr().to_owned();
+    borda::declara_fecho(ctx.host.store_mut(), node);
     let lista = paint_card_list(ctx, node, &titulo, &cartoes);
     ctx.slot = encaixe;
     ctx.host.store_mut().set_panel_rect(node, lista);
-    let reserva = (m::HEAD_ICON_BOX + m::LIST_HEAD_PAD_X) * 2.0;
+    let reserva = borda::reserva_do_titulo();
     ctx.host.hit_index_mut().register(
         ids::DRAG,
         panel_drag_handle_rect(lista, m::LIST_HEAD_H, reserva),

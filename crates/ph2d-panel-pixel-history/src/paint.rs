@@ -16,7 +16,7 @@ use crate::{PixelHistoryPanel, event, ids};
 
 /// O rect da janela: à esquerda da coluna, abaixo da régua, deslocável pelo título e fora da lista
 /// docada da esquerda (a mesma régua da janela SLICES).
-fn solta(ctx: &mut PaintCtx) -> Rect {
+fn solta(ctx: &mut PaintCtx, piso: f32) -> Rect {
     let area = ctx.layout.draw_area;
     let livre = ctx.layout.clear_of_left_list(area);
     let teto = {
@@ -33,7 +33,7 @@ fn solta(ctx: &mut PaintCtx) -> Rect {
     let store = ctx.host.store_mut();
     let node = PixelHistoryPanel::NODE_ID;
     let esquerda = livre.x.max(area.x);
-    let w = borda::largura(store, node, area, coluna)
+    let w = borda::largura_com_piso(store, node, area, coluna, piso)
         .min((coluna - Spacing::Lg.px() - esquerda).max(0.0));
     let base = (coluna - Spacing::Lg.px() - w).max(esquerda);
     let (dx, dy) = store.blender_picker_offset(node);
@@ -78,14 +78,18 @@ pub(crate) fn paint(ctx: &mut PaintCtx) {
     }
     event::regista_linhas(ctx.host.store_mut(), v.rows.len());
     let titulo = canal::title(v.bytes);
+    // O piso é o do conteúdo: o nome de passo mais largo inteiro (dono 08/11: «não consigo estreitar»).
+    let nomes: Vec<String> = v.rows.iter().map(|r| tr(r.label).to_owned()).collect();
+    let piso = borda::piso_das_linhas(ctx.text_system, nomes.iter().map(String::as_str));
     let cartoes = [cartao_lista(v)];
-    let slot = solta(ctx);
+    let slot = solta(ctx, piso);
     let encaixe = ctx.slot;
     ctx.slot = slot;
+    borda::declara_fecho(ctx.host.store_mut(), node);
     let lista = paint_card_list(ctx, node, &titulo, &cartoes);
     ctx.slot = encaixe;
     ctx.host.store_mut().set_panel_rect(node, lista);
-    let reserva = (m::HEAD_ICON_BOX + m::LIST_HEAD_PAD_X) * 2.0;
+    let reserva = borda::reserva_do_titulo();
     ctx.host.hit_index_mut().register(
         ids::DRAG,
         panel_drag_handle_rect(lista, m::LIST_HEAD_H, reserva),

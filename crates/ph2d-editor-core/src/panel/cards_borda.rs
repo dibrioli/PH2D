@@ -9,6 +9,7 @@
 
 use crate::interaction::{BlenderHitKind, InteractiveState, WidgetStore};
 use crate::panel::PaintCtx;
+use crate::panel::cards::banda::metrics as m;
 use crate::screens::hero::dock_reopen::paint_seam_mark;
 use crate::screens::layout::DOCK_SEAM_PX;
 use crate::zones::Rect;
@@ -38,12 +39,89 @@ pub fn fundo(layout: &crate::screens::layout::HeroLayout) -> f32 {
 /// A largura da janela `panel` neste quadro — a escolha do artista limitada ao piso e ao tecto; o
 /// limitado volta ao store, para o próximo arrasto partir do que se vê (sem borracha).
 pub fn largura(store: &mut WidgetStore, panel: NodeId, area: Rect, coluna_x: f32) -> f32 {
+    largura_com_piso(store, panel, area, coluna_x, PANEL_MIN_W_PX)
+}
+
+/// [`largura`] com o piso que o CONTEÚDO da janela pede ([`piso_das_linhas`]); a largura de
+/// fábrica continua o [`PANEL_MIN_W_PX`].
+pub fn largura_com_piso(
+    store: &mut WidgetStore,
+    panel: NodeId,
+    area: Rect,
+    coluna_x: f32,
+    piso: f32,
+) -> f32 {
     let Some(escolha) = store.accessory_width(panel) else {
         return PANEL_MIN_W_PX;
     };
-    let w = escolha.clamp(PANEL_MIN_W_PX, tecto(area, coluna_x));
+    let tecto = tecto(area, coluna_x);
+    let w = escolha.clamp(piso.min(tecto), tecto);
     store.set_accessory_width(panel, w);
     w
+}
+
+/// O que a janela gasta à volta do texto de uma linha da lista (`ListRow`): as margens da lista,
+/// o recuo dos cartões, o do corpo do cartão e o da linha, dos dois lados.
+pub const MOLDURA_DA_LINHA: f32 =
+    (m::LIST_MARGIN + m::LIST_PAD_X + m::CARD_PAD_X + m::SEG_INSET) * 2.0;
+
+/// O cabeçalho mais estreito que ainda se usa: as margens, o «…» e o «×» ([`declara_fecho`]) e
+/// uma caixa de ícone de título (o resto do nome elide-se).
+pub const PISO_DO_CABECALHO: f32 =
+    (m::LIST_MARGIN + m::LIST_PAD_X + m::LIST_HEAD_PAD_X) * 2.0 + m::HEAD_ICON_BOX * 3.0;
+
+/// ⭐ **O piso medido no conteúdo**: a linha mais larga de `textos` (no corpo das linhas da lista)
+/// inteira, mais a moldura — e nunca abaixo do cabeçalho. Abaixo disto um nome de linha corta-se.
+#[must_use]
+pub fn piso_das_linhas<'a>(
+    ts: &mut ph2d_text::TextSystem,
+    textos: impl IntoIterator<Item = &'a str>,
+) -> f32 {
+    let maior = textos
+        .into_iter()
+        .map(|t| ts.prefix_width(t, m::VALUE_PX))
+        .fold(0.0_f32, f32::max);
+    (maior.ceil() + MOLDURA_DA_LINHA).max(PISO_DO_CABECALHO)
+}
+
+/// O id do «×» da janela `panel` (derivado dele: uma janela, um fecho).
+#[must_use]
+pub fn fecho_de(panel: NodeId) -> NodeId {
+    const SAL_DO_FECHO: u64 = 0x2C6F_E1A9_0B37_D45E;
+    NodeId(panel.0 ^ SAL_DO_FECHO)
+}
+
+/// ⭐ Declara o «×» da janela `panel` (antes do `paint_card_list`): o cabeçalho pinta-o no mesmo
+/// sítio que o dos painéis encaixados (`cards_menu::pinta_fecho`).
+pub fn declara_fecho(store: &mut WidgetStore, panel: NodeId) {
+    let f = fecho_de(panel);
+    store.register_if_absent(
+        f,
+        InteractiveState::Button {
+            state: crate::widget::ButtonState::Normal,
+        },
+    );
+    store.mark_card_list_close(panel, f);
+}
+
+/// O clique no «×» da janela `panel` esconde-a (`id` é o `Panel::ID`). `true` se era ele.
+pub fn fechou(
+    host: &mut dyn crate::panel::PanelHostInternal,
+    ev: &crate::interaction::WidgetEvent,
+    panel: NodeId,
+    id: &'static str,
+) -> bool {
+    let hit = matches!(ev, crate::interaction::WidgetEvent::Click(c) if *c == fecho_de(panel));
+    if hit {
+        host.set_panel_visible(id, false);
+    }
+    hit
+}
+
+/// A reserva da alça do título: o «…» e o «×» à direita não são alça.
+#[must_use]
+pub fn reserva_do_titulo() -> f32 {
+    (m::HEAD_ICON_BOX + m::LIST_HEAD_PAD_X) * 3.0
 }
 
 /// Regista o widget da alça `id` da janela `panel` (no `populate` do painel).

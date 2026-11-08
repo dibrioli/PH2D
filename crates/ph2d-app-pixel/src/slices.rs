@@ -19,7 +19,6 @@ use ph2d_pixel_slices::transforma::{caixas_que_mudam, com_pixels, previa as arte
 use ph2d_pixel_slices::{Gesto, Grab, Marca, alcance, interior, no_quadro, seta, sob};
 use ph2d_tokens::Theme;
 use ph2d_vector::{Affine, Point, VectorScene};
-use winit::keyboard::KeyCode;
 use winit::window::CursorIcon;
 
 use crate::gesture::Mods;
@@ -264,34 +263,19 @@ pub(crate) fn cancela(app: &mut PixelApp) -> bool {
     app.slices.gesto.take().map(|g| app.toca(g.0)).is_some()
 }
 
-/// `Esc` limpa a seleção; `Delete` apaga as slices inteiras, 1 desfazer (G2, G3). As setas não são
-/// daqui: mudam de quadro (T2).
-pub(crate) fn tecla(
-    app: &mut PixelApp,
-    key: u32,
-    code: KeyCode,
-    ctrl: bool,
-    shift: bool,
-) -> Option<KeyAnswer> {
-    if app.tool != Tool::Slice || ctrl || shift {
-        return None;
-    }
-    if code == KeyCode::Escape && canal::esc_fecha_menu() {
-        return Some(KeyAnswer::Quiet);
-    }
-    if app.slices_selected(key).is_empty() {
-        return None;
-    }
-    match code {
-        KeyCode::Escape => {}
-        KeyCode::Delete | KeyCode::Backspace => {
-            let op = delete(&app.docs.get(&key)?.sprite, app.slices_selected(key))?;
-            let _ = app.commit(key, op);
-        }
-        _ => return None,
+/// `Esc` limpa a seleção; `Delete` (`apaga`) apaga as slices inteiras, 1 desfazer (G2, G3).
+pub(crate) fn tecla(app: &mut PixelApp, key: u32, apaga: bool) -> Option<KeyAnswer> {
+    if apaga {
+        let op = delete(&app.docs.get(&key)?.sprite, app.slices_selected(key))?;
+        let _ = app.commit(key, op);
     }
     app.slices.sel.remove(&key);
     Some(KeyAnswer::Quiet)
+}
+
+/// O `Esc` com a Slice Tool fecha primeiro o menu dela.
+pub(crate) fn esc_do_menu(app: &PixelApp) -> bool {
+    app.tool == Tool::Slice && canal::esc_fecha_menu()
 }
 
 /// O desfazer pode tirar uma slice da seleção.

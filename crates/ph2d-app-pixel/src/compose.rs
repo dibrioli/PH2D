@@ -176,7 +176,8 @@ impl PixelApp {
         if pressed && input::text_key(self, v.world, v.editing, code, m, text).is_some() {
             return true;
         }
-        if code == KeyCode::Space {
+        // O Ctrl+Space é o zen do app (§9.7): passa.
+        if code == KeyCode::Space && !m.ctrl {
             return input::space(self, v.world, v.editing, pressed);
         }
         if !pressed {

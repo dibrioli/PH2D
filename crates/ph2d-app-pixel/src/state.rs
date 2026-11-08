@@ -197,6 +197,8 @@ pub struct PixelApp {
     pub(crate) slices: crate::slices::Estado,
     /// O gesto de selecção em curso (marquee, laços).
     pub(crate) laco: Option<crate::selecao::Laco>,
+    /// Os atalhos: a fábrica com o delta de `~/.ph2d/pixel-keys.txt` (P12a).
+    pub keys: ph2d_pixel_keys::Keymap,
     /// A moldura solta (Transform, Ctrl+arrasto com uma selecção, Paste): as células levantadas até
     /// ao Enter/Esc.
     pub(crate) solta: Option<crate::solta::Solta>,
@@ -239,6 +241,16 @@ pub struct PixelApp {
     pub(crate) espaco_activo: Option<usize>,
     /// O pincel na mão como o espaço activo o viu da última vez (só se relê quando muda).
     pub(crate) espaco_visto: Option<crate::pinceis::Visto>,
+}
+
+/// A tabela de `~/.ph2d/pixel-keys.txt` (sem ficheiro: a de fábrica), a pasta do `prefs.txt`.
+fn teclas_do_utilizador() -> ph2d_pixel_keys::Keymap {
+    let p =
+        std::env::var_os("HOME").map(|h| std::path::PathBuf::from(h).join(".ph2d/pixel-keys.txt"));
+    let texto = p
+        .and_then(|p| std::fs::read_to_string(p).ok())
+        .unwrap_or_default();
+    ph2d_pixel_keys::Keymap::from_text(&texto).0
 }
 
 impl Default for PixelApp {
@@ -305,6 +317,7 @@ impl Default for PixelApp {
             pincel: None,
             pincel_imagem: true,
             recorte: false,
+            keys: ph2d_pixel_keys::Keymap::factory(),
             mao: None,
             mancha: None,
             texto: None,
@@ -325,6 +338,7 @@ impl PixelApp {
             smoke: crate::smoke::armed_level(),
             paletas: crate::paleta::pasta_do_utilizador(),
             pinceis: crate::pinceis::pasta_do_utilizador(),
+            keys: teclas_do_utilizador(),
             ..Self::default()
         }
     }

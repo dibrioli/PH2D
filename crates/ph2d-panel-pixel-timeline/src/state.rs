@@ -59,6 +59,7 @@ impl PixelTimelinePanelState {
 
 thread_local! {
     static MARCAS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    static RENOMEAR: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
     static MARCAS_DE_SLICE: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
     static CURRENT: std::cell::RefCell<PixelPanelInfo> =
         std::cell::RefCell::new(PixelPanelInfo::default());
@@ -67,6 +68,15 @@ thread_local! {
 /// **A porta da shell** — uma vez por quadro (o mesmo instantâneo do painel PIXEL).
 pub fn set_current_pixel(info: PixelPanelInfo) {
     CURRENT.with(|c| *c.borrow_mut() = info);
+}
+
+/// O `F2` do Pixel: abre o campo do nome da camada activa no próximo quadro do painel.
+pub fn pede_rename_layer() {
+    RENOMEAR.with(|c| c.set(true));
+}
+
+pub(crate) fn toma_rename_layer() -> bool {
+    RENOMEAR.with(|c| c.replace(false))
 }
 
 /// O instantâneo como o painel o leu.

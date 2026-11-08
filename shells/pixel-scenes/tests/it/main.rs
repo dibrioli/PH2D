@@ -32,6 +32,7 @@ mod slices;
 mod slices_cena;
 mod slices_janela;
 mod sobreviventes;
+mod teclas;
 mod texto;
 mod texto_fontes;
 mod tilemap_recusa;

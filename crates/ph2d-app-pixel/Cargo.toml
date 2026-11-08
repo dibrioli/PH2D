@@ -54,6 +54,8 @@ ph2d-pixel-tiles = { path = "../ph2d-pixel-tiles" }
 # Os números e a arte das cenas de smoke; a ferramenta Slice (P11b).
 ph2d-pixel-cenas = { path = "../ph2d-pixel-cenas" }
 ph2d-pixel-slices = { path = "../ph2d-pixel-slices" }
+# P12a: os atalhos como dados.
+ph2d-pixel-keys = { path = "../ph2d-pixel-keys" }
 bumpalo = "3"
 # O diálogo de ficheiro do Load/Save Palette (pela porta `ph2d_app_host::modal`).
 rfd = "0.17"

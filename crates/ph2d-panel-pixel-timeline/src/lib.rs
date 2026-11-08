@@ -23,7 +23,7 @@ mod paint_props;
 mod paint_voo;
 mod state;
 
-pub use state::{PixelTimelinePanelState, current_pixel, set_current_pixel};
+pub use state::{PixelTimelinePanelState, current_pixel, pede_rename_layer, set_current_pixel};
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};

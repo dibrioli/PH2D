@@ -2,10 +2,19 @@
 
 A tabela vive em `crates/ph2d-pixel-keys` (`FACTORY`, `RESERVED_GLOBAL`, `SAME_MEANING`, `ASEPRITE`,
 `OWNER_EXCEPTIONS`). Fonte: [`P12_oraculos.md`](P12_oraculos.md) (tabela de fábrica + Rodada 2) e as
-excepções do dono em [`P12_plano.md`](P12_plano.md) §4.2 e §9. O despacho de `input_teclas.rs`
-**ainda não** pergunta à tabela: é o passo seguinte (ligação na `ph2d-app-pixel`).
+excepções do dono em [`P12_plano.md`](P12_plano.md) §4.2 e §9. **Ligada** (08/11): `input_teclas::key_with`
+faz `PixelApp::keys.resolve(chord, contexto)` e despacha a `PixelAction` (`request()` → `pede`, `tool()` →
+`set_tool`); ficam à mão a cascata do `Esc`, o `Enter`/`Esc` a meio, o desfazer e a caixa do Text. O
+delta do utilizador lê-se de `~/.ph2d/pixel-keys.txt` no arranque (`with_armed_smoke`). Provas por nome:
+`teclas::no_app_wide_key_is_taken_by_the_pixel` e `teclas::every_factory_key_in_normal_does_its_action`
+(`shells/pixel-scenes`).
 
-## 1. O que muda quando a ligação entrar
+⚠️ Ainda sem porta: `Ctrl+'` Show Grid (a grade do app não tem pedido do Pixel: a tecla passa ao app,
+que não a usa) e `Ctrl+Alt+Shift+K` (a janela de atalhos é a P12 seguinte). `F2` pede ao painel
+Timeline que abra o campo do nome da camada activa (só com a Timeline à vista). O laço poligonal
+aberto conta como gesto a meio (contexto `Stroking`).
+
+## 1. O que muda com a ligação
 
 | Tecla | Antes | Depois | Porquê |
 |---|---|---|---|

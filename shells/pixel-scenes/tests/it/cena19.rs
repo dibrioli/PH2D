@@ -179,7 +179,11 @@ fn scene_19_opens_ready_and_each_p8_family_takes_one_step() {
     eprintln!("[sonda cena 19] Text «PH2D» (fonte de pixel): {texto} células, 1 passo");
 
     // Convolution Matrix blur-3x3: o Preview não grava, o OK grava UM passo.
-    p.tecla(KeyCode::F9, false, false);
+    p.app
+        .pede(ph2d_editor_core::pixel_panel::PixelRequest::Edit(
+            ph2d_editor_core::pixel_panel::PixelEditAction::ConvolutionMatrix,
+        ));
+    let _ = p.quadro();
     let i = KERNELS
         .iter()
         .position(|k| k.name == "blur-3x3")

@@ -22,6 +22,13 @@ impl PixelApp {
         self.pedidos.push(r);
     }
 
+    /// Os pedidos à espera do quadro (para os gates).
+    #[doc(hidden)]
+    #[must_use]
+    pub fn pending(&self) -> &[PixelRequest] {
+        &self.pedidos
+    }
+
     /// Aplica um gesto do painel (os da paleta e da cor vão ao documento em Draw).
     pub fn aplica(&mut self, r: PixelRequest) {
         if crate::edicao::assenta_antes(&r) {

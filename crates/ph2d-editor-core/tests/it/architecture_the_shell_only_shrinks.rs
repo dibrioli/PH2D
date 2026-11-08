@@ -219,7 +219,7 @@ const TETOS_DAS_CRATES_APP: &[(&str, usize)] = &[
     ("ph2d-app-motion", 197_516), // 193_644
     ("ph2d-app-painter", 24_429), // 23_950
     ("ph2d-app-physics", 55_515), // 54_427
-    ("ph2d-app-pixel", 11_415), // 11_192
+    ("ph2d-app-pixel", 11_278), // 11_278 (P12a: as teclas pela tabela `ph2d-pixel-keys`)
     ("ph2d-app-planner", 5_824), // 5_710
     ("ph2d-app-registry-init", 799), // 699
     ("ph2d-app-sfxlab", 2_692), // 2_592

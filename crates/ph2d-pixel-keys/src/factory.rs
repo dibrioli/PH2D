@@ -47,6 +47,18 @@ impl Context {
             .find(|c| c.id().eq_ignore_ascii_case(s))
     }
 
+    /// O contexto do estado, por prioridade: gesto a meio, moldura solta, slices, selecção.
+    #[must_use]
+    pub const fn of(stroking: bool, floating: bool, slices: bool, selection: bool) -> Self {
+        match (stroking, floating, slices, selection) {
+            (true, ..) => Self::Stroking,
+            (_, true, ..) => Self::Transformation,
+            (_, _, true, _) => Self::Slices,
+            (.., true) => Self::Selection,
+            _ => Self::Normal,
+        }
+    }
+
     #[must_use]
     pub const fn name_key(self) -> &'static str {
         match self {

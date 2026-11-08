@@ -69,6 +69,11 @@ pub(crate) fn paint(st: &mut PixelTimelinePanelState, ctx: &mut PaintCtx) {
 
     let info = current_pixel();
     event::register_frame(ctx.host.store_mut(), &info);
+    if crate::state::toma_rename_layer()
+        && let Some(l) = info.active_layer.filter(|_| info.editing)
+    {
+        st.rename_layer = Some((l, false));
+    }
     event::seed_renames(st, ctx.host.store_mut());
     crate::gestos::drena(st, ctx, &info);
     if st

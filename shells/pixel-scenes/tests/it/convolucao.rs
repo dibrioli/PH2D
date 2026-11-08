@@ -53,13 +53,17 @@ fn kernel(nome: &str) -> ph2d_editor_core::NodeId {
 }
 
 #[test]
-fn convolution_opens_by_f9_and_menu_with_the_core_list_and_brightness_first() {
+fn convolution_opens_by_its_menu_with_the_core_list_and_brightness_first() {
     assert!(
         KERNELS.len() <= ids::PIXEL_FILTER_KERNEL_SLOTS,
         "a escada de ids cobre a lista do núcleo"
     );
     let mut p = com_quadrado();
-    p.tecla(KeyCode::F9, false, false);
+    p.app
+        .pede(ph2d_editor_core::pixel_panel::PixelRequest::Edit(
+            ph2d_editor_core::pixel_panel::PixelEditAction::ConvolutionMatrix,
+        ));
+    let _ = p.quadro();
     assert_eq!(aberto(&p), Some(PixelDialogKind::ConvolutionMatrix), "F9");
     let f = p.hero.store.pixel_edit_dialog().filter;
     let nomes: Vec<&str> = KERNELS.iter().map(|k| k.name).collect();
@@ -98,7 +102,11 @@ fn choosing_a_kernel_previews_without_writing_and_ok_is_one_step_that_undo_resto
     let mut p = com_quadrado();
     let antes = p.sprite().clone();
     let n = p.passos();
-    p.tecla(KeyCode::F9, false, false);
+    p.app
+        .pede(ph2d_editor_core::pixel_panel::PixelRequest::Edit(
+            ph2d_editor_core::pixel_panel::PixelEditAction::ConvolutionMatrix,
+        ));
+    let _ = p.quadro();
     carrega(&mut p, kernel("negative"));
     assert_eq!(mostrado(&mut p, (102, 42)), [0, 255, 255, 255], "negative");
     assert_eq!(*p.sprite(), antes, "o Preview não grava");
@@ -113,7 +121,11 @@ fn choosing_a_kernel_previews_without_writing_and_ok_is_one_step_that_undo_resto
     p.tecla(KeyCode::KeyZ, true, false);
     assert_eq!(*p.sprite(), antes, "um Ctrl+Z desfaz o filtro inteiro");
     // A sessão lembra o kernel.
-    p.tecla(KeyCode::F9, false, false);
+    p.app
+        .pede(ph2d_editor_core::pixel_panel::PixelRequest::Edit(
+            ph2d_editor_core::pixel_panel::PixelEditAction::ConvolutionMatrix,
+        ));
+    let _ = p.quadro();
     let i = KERNELS.iter().position(|k| k.name == "negative");
     assert_eq!(
         Some(usize::from(p.hero.store.pixel_edit_dialog().filter.kernel)),
@@ -126,7 +138,11 @@ fn convolution_cancel_leaves_the_document_byte_for_byte() {
     let mut p = com_quadrado();
     let antes = p.sprite().clone();
     let n = p.passos();
-    p.tecla(KeyCode::F9, false, false);
+    p.app
+        .pede(ph2d_editor_core::pixel_panel::PixelRequest::Edit(
+            ph2d_editor_core::pixel_panel::PixelEditAction::ConvolutionMatrix,
+        ));
+    let _ = p.quadro();
     carrega(&mut p, kernel("blur-3x3"));
     assert_ne!(
         mostrado(&mut p, (99, 42)),
@@ -154,7 +170,11 @@ fn convolution_tiled_wraps_the_border() {
     p.press((0, 10), Mods::default());
     p.release();
     assert_eq!(p.rgba(0, 10), RED);
-    p.tecla(KeyCode::F9, false, false);
+    p.app
+        .pede(ph2d_editor_core::pixel_panel::PixelRequest::Edit(
+            ph2d_editor_core::pixel_panel::PixelEditAction::ConvolutionMatrix,
+        ));
+    let _ = p.quadro();
     carrega(&mut p, kernel("blur-3x3"));
     let preso = mostrado(&mut p, (w - 1, 10));
     carrega(&mut p, ids::PIXEL_FILTER_TILED);
@@ -177,7 +197,11 @@ fn convolution_tiled_wraps_the_border() {
 #[test]
 fn choosing_blur_turns_alpha_on_and_negative_turns_it_off() {
     let mut p = com_quadrado();
-    p.tecla(KeyCode::F9, false, false);
+    p.app
+        .pede(ph2d_editor_core::pixel_panel::PixelRequest::Edit(
+            ph2d_editor_core::pixel_panel::PixelEditAction::ConvolutionMatrix,
+        ));
+    let _ = p.quadro();
     carrega(&mut p, kernel("blur-3x3"));
     assert_eq!(
         p.hero.store.pixel_edit_dialog().filter.channels,
@@ -208,14 +232,22 @@ fn choosing_blur_turns_alpha_on_and_negative_turns_it_off() {
 #[test]
 fn opening_the_convolution_puts_the_channels_of_the_chosen_kernel() {
     let mut p = com_quadrado();
-    p.tecla(KeyCode::F9, false, false);
+    p.app
+        .pede(ph2d_editor_core::pixel_panel::PixelRequest::Edit(
+            ph2d_editor_core::pixel_panel::PixelEditAction::ConvolutionMatrix,
+        ));
+    let _ = p.quadro();
     let f = p.hero.store.pixel_edit_dialog().filter;
     assert_eq!(f.channels, KERNELS[0].channels, "os do kernel ao abrir");
     assert_eq!(f.channels, [true, true, true, false], "brightness = R G B");
     carrega(&mut p, kernel("blur-3x3"));
     carrega(&mut p, ids::PIXEL_FILTER_CHANNELS[3].1);
     carrega(&mut p, ids::PIXEL_EDIT_CANCEL);
-    p.tecla(KeyCode::F9, false, false);
+    p.app
+        .pede(ph2d_editor_core::pixel_panel::PixelRequest::Edit(
+            ph2d_editor_core::pixel_panel::PixelEditAction::ConvolutionMatrix,
+        ));
+    let _ = p.quadro();
     assert_eq!(
         p.hero.store.pixel_edit_dialog().filter.channels,
         [true; 4],
@@ -228,7 +260,11 @@ fn opening_the_convolution_puts_the_channels_of_the_chosen_kernel() {
 #[test]
 fn the_convolution_channels_do_not_leak_into_the_next_dialog() {
     let mut p = com_quadrado();
-    p.tecla(KeyCode::F9, false, false);
+    p.app
+        .pede(ph2d_editor_core::pixel_panel::PixelRequest::Edit(
+            ph2d_editor_core::pixel_panel::PixelEditAction::ConvolutionMatrix,
+        ));
+    let _ = p.quadro();
     assert!(
         !p.hero.store.pixel_edit_dialog().filter.channels[3],
         "A solto"
@@ -242,6 +278,10 @@ fn the_convolution_channels_do_not_leak_into_the_next_dialog() {
         "o Invert com os seus"
     );
     carrega(&mut p, ids::PIXEL_EDIT_CANCEL);
-    p.tecla(KeyCode::F9, false, false);
+    p.app
+        .pede(ph2d_editor_core::pixel_panel::PixelRequest::Edit(
+            ph2d_editor_core::pixel_panel::PixelEditAction::ConvolutionMatrix,
+        ));
+    let _ = p.quadro();
     assert!(!p.hero.store.pixel_edit_dialog().filter.channels[3]);
 }

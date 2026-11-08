@@ -6,14 +6,13 @@
 
 use ph2d_editor_core::pixel_panel::{
     PixelDialogKind, PixelEditAction as E, PixelRange, PixelRequest, PixelSelectAction as S,
-    PixelSelectMode, PixelSpriteAction as Sp,
+    PixelSelectMode,
 };
 use ph2d_i18n::tr;
 use ph2d_pixel_core::fill::BucketSample;
 use ph2d_pixel_core::raster::Cell;
 use ph2d_pixel_core::selection::{self, Mask, SelectMode, Wand};
 use ph2d_pixel_io::msk;
-use winit::keyboard::KeyCode;
 
 use crate::gesture::Mods;
 use crate::input::KeyAnswer;
@@ -350,104 +349,45 @@ pub(crate) fn fecha_poligono(app: &mut PixelApp) {
     }
 }
 
-fn pede(app: &mut PixelApp, r: PixelRequest) -> KeyAnswer {
-    app.pede(r);
-    KeyAnswer::Quiet
+/// Há selecção (o contexto `Selection` da tabela): moldura do Ctrl+B, laço, intervalo ou máscara.
+pub(crate) fn tem(app: &PixelApp, key: u32) -> bool {
+    let d = app.docs.get(&key);
+    app.recorte || d.is_some_and(|d| d.sprite.mask().is_some() || !d.range_info().is_empty())
 }
 
-fn ferramenta(app: &mut PixelApp, t: Tool) -> KeyAnswer {
-    crate::input::set_tool(app, t);
-    KeyAnswer::Toast(t.named())
+/// O `Esc` em cascata: Ctrl+B → moldura solta → laço → intervalo (e a selecção, Trial 01/11) →
+/// máscara. `None` = nada a largar.
+pub(crate) fn esc(app: &mut PixelApp, key: u32) -> Option<KeyAnswer> {
+    let d = app.docs.get(&key)?;
+    let (mascara, intervalo) = (d.sprite.mask().is_some(), !d.range_info().is_empty());
+    if app.recorte {
+        app.recorte = false;
+        app.laco = app.laco.take().filter(|l| l.pincel.is_none());
+    } else if app.solta.as_ref().is_some_and(|s| s.key == key) {
+        app.pede(PixelRequest::Edit(E::Cancel));
+    } else if app.laco.take().is_none() {
+        if intervalo {
+            app.pede(PixelRequest::Range(PixelRange::default()));
+        }
+        if !mascara && !intervalo {
+            return None;
+        }
+        if mascara {
+            app.pede(PixelRequest::Select(S::Deselect));
+        }
+    }
+    Some(KeyAnswer::Quiet)
 }
 
-/// **As teclas da P6** (os atalhos do Aseprite dos menus Select/Edit/Sprite e das ferramentas de
-/// selecção); `None` = não é daqui. O `Esc` e o `Enter` só são daqui quando há moldura, laço ou
-/// selecção (senão seguem para o tocar).
-pub(crate) fn key(
-    app: &mut PixelApp,
-    key: u32,
-    code: KeyCode,
-    ctrl: bool,
-    shift: bool,
-) -> Option<KeyAnswer> {
-    let solta = app.solta.as_ref().is_some_and(|s| s.key == key);
-    let laco = app.laco.as_ref().is_some_and(|l| l.key == key);
-    let mascara = app
-        .docs
-        .get(&key)
-        .is_some_and(|d| d.sprite.mask().is_some());
-    let intervalo = app
-        .docs
-        .get(&key)
-        .is_some_and(|d| !d.range_info().is_empty());
-    Some(match (code, ctrl, shift) {
-        (KeyCode::KeyM, false, false) => ferramenta(app, Tool::RectMarquee),
-        (KeyCode::KeyM, false, true) => ferramenta(app, Tool::EllipseMarquee),
-        (KeyCode::KeyQ, false, false) => ferramenta(app, Tool::Lasso),
-        (KeyCode::KeyQ, false, true) => ferramenta(app, Tool::PolygonLasso),
-        (KeyCode::KeyW, false, false) => ferramenta(app, Tool::MagicWand),
-        // P6c: o `V` do Move do Aseprite escolhe o Transform, como o botão dele (levanta já).
-        (KeyCode::KeyV, false, false) => {
-            app.pede(PixelRequest::Tool(Tool::Transform));
-            KeyAnswer::Toast(Tool::Transform.named())
-        }
-        (KeyCode::KeyA, true, false) => pede(app, PixelRequest::Select(S::All)),
-        (KeyCode::KeyD, true, false) => pede(app, PixelRequest::Select(S::Deselect)),
-        (KeyCode::KeyD, true, true) => pede(app, PixelRequest::Select(S::Reselect)),
-        (KeyCode::KeyI, true, true) => pede(app, PixelRequest::Select(S::Inverse)),
-        (KeyCode::KeyB, true, false) => pede(app, PixelRequest::Edit(E::NewBrush)),
-        (KeyCode::Escape, _, _) if app.recorte => {
-            app.recorte = false;
-            app.laco = app.laco.take().filter(|l| l.pincel.is_none());
-            KeyAnswer::Quiet
-        }
-        (KeyCode::Escape, _, _) if solta => pede(app, PixelRequest::Edit(E::Cancel)),
-        (KeyCode::Escape, _, _) if laco => {
-            app.laco = None;
-            KeyAnswer::Quiet
-        }
-        // Um Esc limpa o intervalo E a selecção (Trial 01/11, `esc_sel_e_intervalo`).
-        (KeyCode::Escape, _, _) if intervalo => {
-            if mascara {
-                app.pede(PixelRequest::Select(S::Deselect));
-            }
-            pede(app, PixelRequest::Range(PixelRange::default()))
-        }
-        (KeyCode::Escape, _, _) if mascara => pede(app, PixelRequest::Select(S::Deselect)),
-        (KeyCode::Enter | KeyCode::NumpadEnter, false, _) if solta => {
-            pede(app, PixelRequest::Edit(E::Commit))
-        }
-        (KeyCode::Enter | KeyCode::NumpadEnter, false, _) if laco => {
-            fecha_poligono(app);
-            KeyAnswer::Quiet
-        }
-        // O Ctrl+Z com células levantadas larga-as (não desfaz o passo de antes).
-        (KeyCode::KeyZ, true, _) if solta || laco => {
-            app.solta = None;
-            app.laco = None;
-            app.toca(key);
-            KeyAnswer::Quiet
-        }
-        (KeyCode::KeyT, true, false) => pede(app, PixelRequest::Edit(E::Transform)),
-        (KeyCode::KeyH, false, true) => pede(app, PixelRequest::Edit(E::FlipH)),
-        (KeyCode::KeyV, false, true) => pede(app, PixelRequest::Edit(E::FlipV)),
-        (KeyCode::Delete | KeyCode::Backspace, false, false) => {
-            pede(app, PixelRequest::Edit(E::Clear))
-        }
-        (KeyCode::KeyC, true, false) => pede(app, PixelRequest::Edit(E::Copy)),
-        (KeyCode::KeyX, true, false) => pede(app, PixelRequest::Edit(E::Cut)),
-        (KeyCode::KeyC, true, true) => pede(app, PixelRequest::Edit(E::CopyMerged)),
-        (KeyCode::KeyV, true, false) => pede(app, PixelRequest::Edit(E::Paste)),
-        (KeyCode::KeyC, false, false) => pede(app, PixelRequest::Sprite(Sp::CanvasSize)),
-        // P8: Edit ▸ Fill (F), Stroke (S), FX ▸ Outline (Shift+O).
-        (KeyCode::KeyF, false, false) => pede(app, PixelRequest::Edit(E::Fill)),
-        (KeyCode::KeyS, false, false) => pede(app, PixelRequest::Edit(E::Stroke)),
-        (KeyCode::KeyO, false, true) => pede(app, PixelRequest::Edit(E::Outline)),
-        // P8: Adjustments ▸ Hue/Saturation (Ctrl+U), Color Curve (Ctrl+M).
-        (KeyCode::KeyU, true, false) => pede(app, PixelRequest::Edit(E::HueSaturation)),
-        (KeyCode::KeyM, true, false) => pede(app, PixelRequest::Edit(E::ColorCurve)),
-        // P8: FX ▸ Convolution Matrix (F9).
-        (KeyCode::F9, false, false) => pede(app, PixelRequest::Edit(E::ConvolutionMatrix)),
-        _ => return None,
-    })
+/// O Ctrl+Z com células levantadas (ou laço aberto) larga-as: não desfaz o passo de antes.
+pub(crate) fn larga(app: &mut PixelApp, key: u32) -> bool {
+    if app.solta.as_ref().is_none_or(|s| s.key != key)
+        && app.laco.as_ref().is_none_or(|l| l.key != key)
+    {
+        return false;
+    }
+    app.solta = None;
+    app.laco = None;
+    app.toca(key);
+    true
 }

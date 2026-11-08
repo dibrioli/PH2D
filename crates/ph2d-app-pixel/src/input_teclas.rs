@@ -1,21 +1,14 @@
-//! **As teclas do Draw** (de [`crate::input`]): os atalhos do Aseprite, com o Alt nos que o levam.
+//! **As teclas do Draw** (de [`crate::input`]): a tabela `ph2d_pixel_keys` diz a acção pelo
+//! contexto (`docs/PixelArt/P12_teclas.md`); aqui só o que precisa do estado.
 
-use ph2d_editor_core::pixel_panel::{
-    PixelFileAction, PixelFrameAction, PixelLayerAction, PixelRequest, PixelSpriteAction,
-};
+use ph2d_editor_core::pixel_panel::PixelRequest;
+use ph2d_pixel_keys::{Chord, Context, PixelAction as A};
 use ph2d_pixel_tiles::desenho::Modo;
 use winit::keyboard::KeyCode;
 
 use crate::gesture::Mods;
 use crate::input::{KeyAnswer, cancel, finish, key_of, set_tool};
 use crate::{PixelApp, Tool};
-
-/// As teclas do modo Draw (só ao premir; a shell já descartou o caso de um campo de texto com o
-/// foco). `None` = não é desta família.
-fn camada(app: &mut PixelApp, a: PixelLayerAction) -> KeyAnswer {
-    app.pede(PixelRequest::LayerAction(a));
-    KeyAnswer::Quiet
-}
 
 /// Com a caixa do Text aberta a tecla é do texto (`text` = o que ela escreveu); `None` = não há
 /// caixa no sprite em Draw e a tecla segue para os atalhos.
@@ -48,7 +41,17 @@ pub fn key(
     key_with(app, world, editing, code, m)
 }
 
-/// As teclas com os modificadores inteiros: com o Alt só os atalhos do Aseprite que o levam.
+/// O contexto da tabela para o sprite `key` (o laço poligonal aberto é um gesto a meio).
+pub(crate) fn contexto(app: &PixelApp, key: u32) -> Context {
+    Context::of(
+        app.stroking() || app.laco.as_ref().is_some_and(|l| l.key == key),
+        app.solta.as_ref().is_some_and(|s| s.key == key),
+        app.tool == Tool::Slice && !app.slices_selected(key).is_empty(),
+        crate::selecao::tem(app, key),
+    )
+}
+
+/// A tecla premida em Draw. `None` = não é do Pixel (as teclas do app nunca o são, §9.7).
 pub fn key_with(
     app: &mut PixelApp,
     world: &ph2d_ecs::World,
@@ -56,192 +59,109 @@ pub fn key_with(
     code: KeyCode,
     m: Mods,
 ) -> Option<KeyAnswer> {
-    let (ctrl, shift) = (m.ctrl, m.shift);
-    if m.alt {
-        let key = editing.and_then(|bits| key_of(world, bits))?;
-        if let Some(n) = espaco(code).filter(|_| !app.stroking() && !ctrl && !shift) {
-            return Some(if app.recupera(key, n) {
-                KeyAnswer::Toast(ph2d_i18n::tr_with(
-                    "pixel.brush.recalled",
-                    &[("n", &(n + 1).to_string())],
-                ))
-            } else {
-                KeyAnswer::Quiet
-            });
-        }
-        return com_alt(app, code, ctrl, shift);
+    let key = editing.and_then(|bits| key_of(world, bits))?;
+    let mut chord = Chord::new(code);
+    (chord.ctrl, chord.alt, chord.shift, chord.space) = (m.ctrl, m.alt, m.shift, app.space);
+    if ph2d_pixel_keys::reserved(chord).is_some() {
+        return None;
     }
-    let bits = editing?;
-    let key = key_of(world, bits)?;
-    if !app.stroking()
-        && let Some(a) = crate::slices::tecla(app, key, code, ctrl, shift)
-            .or_else(|| crate::selecao::key(app, key, code, ctrl, shift))
-    {
-        return Some(a);
+    if code == KeyCode::Escape && !app.stroking() && crate::slices::esc_do_menu(app) {
+        return Some(KeyAnswer::Quiet);
     }
-    let tool = |app: &mut PixelApp, t: Tool| {
-        set_tool(app, t);
-        KeyAnswer::Toast(t.named())
-    };
-    Some(match (code, ctrl, shift) {
-        (KeyCode::KeyB, false, false) => tool(app, Tool::Pencil),
-        (KeyCode::KeyB, false, true) => tool(app, Tool::Spray),
-        (KeyCode::KeyE, false, false) => tool(app, Tool::Eraser),
-        (KeyCode::KeyI, false, false) => tool(app, Tool::Eyedropper),
-        // Dono 07/11: o `G` é da grade do canvas, em todo o app; aqui ele tem de passar.
-        (KeyCode::KeyP, false, false) => tool(app, Tool::Bucket),
-        (KeyCode::KeyP, false, true) => tool(app, Tool::Gradient),
-        // O `R` do Aseprite: o Blur e, de novo, o Jumble (e volta).
-        (KeyCode::KeyR, false, false) => {
-            let t = if app.tool == Tool::Blur {
+    let a = app.keys.resolve(chord, contexto(app, key))?;
+    acao(app, key, a)
+}
+
+/// Faz a acção `a` no sprite `key`. `None` = não há nada a fazer (a tecla passa).
+pub(crate) fn acao(app: &mut PixelApp, key: u32, a: A) -> Option<KeyAnswer> {
+    let tiles = |app: &mut PixelApp, m: Modo| crate::tiles::tecla(app, |h| h.modo = m);
+    Some(match a {
+        A::ToolBlurJumble => ferramenta(
+            app,
+            if app.tool == Tool::Blur {
                 Tool::Jumble
             } else {
                 Tool::Blur
-            };
-            tool(app, t)
+            },
+        ),
+        A::ToolTransform => {
+            app.pede(PixelRequest::Tool(Tool::Transform));
+            KeyAnswer::Toast(Tool::Transform.named())
         }
-        (KeyCode::KeyL, false, false) => tool(app, Tool::Line),
-        (KeyCode::KeyL, false, true) => tool(app, Tool::Curve),
-        // Cheio ou vazio é a caixa «Fill» do painel (P6c), não outra ferramenta.
-        (KeyCode::KeyU, false, false) => tool(app, Tool::RECTANGLE),
-        (KeyCode::KeyU, false, true) => tool(app, Tool::ELLIPSE),
-        (KeyCode::KeyD, false, false) => tool(app, Tool::Contour),
-        (KeyCode::KeyD, false, true) => tool(app, Tool::Polygon),
-        (KeyCode::KeyH, false, false) => tool(app, Tool::Hand),
-        (KeyCode::KeyT, false, false) => tool(app, Tool::Text),
-        (KeyCode::KeyC, false, true) => tool(app, Tool::Slice),
-        (KeyCode::Enter | KeyCode::NumpadEnter, false, _) if app.stroking() => {
+        A::FinishStroke if app.laco.is_some() => {
+            crate::selecao::fecha_poligono(app);
+            KeyAnswer::Quiet
+        }
+        A::FinishStroke => {
             finish(app);
             KeyAnswer::Quiet
         }
-        (KeyCode::Escape, _, _) if app.stroking() => {
+        A::CancelStroke if app.stroking() => {
             if !crate::viva::escape(app) {
                 cancel(app);
             }
             KeyAnswer::Quiet
         }
-        (KeyCode::KeyX, false, false) => {
-            let bg = app.bg;
-            app.bg = app.fg;
-            app.escolhe_fg(bg);
-            KeyAnswer::Quiet
+        A::CancelStroke | A::CancelTransform | A::ClearSelection => crate::selecao::esc(app, key)?,
+        A::DeleteSlices | A::DeselectSlices => {
+            crate::slices::tecla(app, key, a == A::DeleteSlices)?
         }
-        (KeyCode::Quote, true, true) => {
-            app.grid = !app.grid;
-            KeyAnswer::Toast(
-                ph2d_i18n::tr(if app.grid {
-                    "pixel.grid_on"
-                } else {
-                    "pixel.grid_off"
-                })
-                .to_owned(),
-            )
-        }
-        // O menu Layer do Aseprite: Shift+N, Ctrl+J, Ctrl+Shift+J, Shift+X (com Alt: `com_alt`).
-        // Select/Edit/Sprite: `crate::selecao::key`.
-        // O menu File do Aseprite (Ctrl+Alt+Shift+S: `com_alt`).
-        (KeyCode::KeyE, true, false) => ficheiro(app, PixelFileAction::ExportSheet),
-        (KeyCode::KeyI, true, false) => ficheiro(app, PixelFileAction::ImportSheet),
-        (KeyCode::KeyX, true, true) => ficheiro(app, PixelFileAction::RepeatExport),
-        (KeyCode::KeyN, false, true) => camada(app, PixelLayerAction::NewLayer),
-        (KeyCode::KeyJ, true, false) => camada(app, PixelLayerAction::ViaCopy),
-        (KeyCode::KeyJ, true, true) => camada(app, PixelLayerAction::ViaCut),
-        (KeyCode::KeyX, false, true) => {
-            let id = app.docs.get(&key).map(|d| d.layer.0);
-            if let Some(id) = id {
-                app.pede(PixelRequest::LayerVisible(id));
-            }
-            KeyAnswer::Quiet
-        }
-        (KeyCode::KeyZ, true, false) => {
+        A::Undo | A::DropFloating if crate::selecao::larga(app, key) => KeyAnswer::Quiet,
+        A::Undo | A::DropFloating => {
             if crate::viva::desfaz(app) || app.stroking() || app.undo(key) {
                 KeyAnswer::Quiet
             } else {
                 KeyAnswer::Toast(ph2d_i18n::tr("pixel.nothing_to_undo").to_owned())
             }
         }
-        (KeyCode::KeyZ, true, true) | (KeyCode::KeyY, true, false) => {
+        A::Redo => {
             if crate::viva::refaz(app) || app.stroking() || app.redo(key) {
                 KeyAnswer::Quiet
             } else {
                 KeyAnswer::Toast(ph2d_i18n::tr("pixel.nothing_to_redo").to_owned())
             }
         }
-        (KeyCode::ArrowLeft, false, false) => quadro(app, PixelFrameAction::Previous),
-        (KeyCode::ArrowRight, false, false) => quadro(app, PixelFrameAction::Next),
-        (KeyCode::Home, false, false) => quadro(app, PixelFrameAction::First),
-        (KeyCode::End, false, false) => quadro(app, PixelFrameAction::Last),
-        (KeyCode::Enter | KeyCode::NumpadEnter, false, false) => {
-            quadro(app, PixelFrameAction::Play)
+        A::PixelGrid => {
+            app.grid = !app.grid;
+            let k = if app.grid {
+                "pixel.grid_on"
+            } else {
+                "pixel.grid_off"
+            };
+            KeyAnswer::Toast(ph2d_i18n::tr(k).to_owned())
         }
-        (KeyCode::Enter | KeyCode::NumpadEnter, false, true) => {
-            quadro(app, PixelFrameAction::PlayPreview)
+        A::LayerVisibility => {
+            let id = app.docs.get(&key)?.layer.0;
+            app.pede(PixelRequest::LayerVisible(id));
+            KeyAnswer::Quiet
         }
-        (KeyCode::F7, false, false) => quadro(app, PixelFrameAction::Preview),
-        (KeyCode::F2, false, false) => quadro(app, PixelFrameAction::LoopSection),
-        (KeyCode::F3, false, false) => quadro(app, PixelFrameAction::Onion),
-        (KeyCode::Tab, false, false) if app.space => crate::tiles::tecla(app, |m| m.alterna_alvo()),
-        (KeyCode::Digit1, false, false) if app.space => {
-            crate::tiles::tecla(app, |m| m.modo = Modo::Manual)
+        A::LayerRename => {
+            ph2d_panel_pixel_timeline::pede_rename_layer();
+            KeyAnswer::Quiet
         }
-        (KeyCode::Digit2, false, false) if app.space => {
-            crate::tiles::tecla(app, |m| m.modo = Modo::Auto)
+        A::SwapColors => {
+            let bg = app.bg;
+            app.bg = app.fg;
+            app.escolhe_fg(bg);
+            KeyAnswer::Quiet
         }
-        (KeyCode::Digit3, false, false) if app.space => {
-            crate::tiles::tecla(app, |m| m.modo = Modo::Stack)
-        }
-        // O `Tab` sozinho é só do modo (dono, 06/11); a linha do tempo fica ao lado do papel vegetal.
-        (KeyCode::F4, false, false) => {
+        A::Timeline => {
             app.alterna_timeline = true;
             KeyAnswer::Quiet
         }
-        _ => return None,
-    })
-}
-
-/// Os atalhos do Aseprite com Alt (menus Sprite, Layer e Frame); a gesto a meio, nenhum.
-fn com_alt(app: &mut PixelApp, code: KeyCode, ctrl: bool, shift: bool) -> Option<KeyAnswer> {
-    if app.stroking() {
-        return None;
-    }
-    Some(match (code, ctrl, shift) {
-        (KeyCode::KeyI, true, false) => {
-            app.pede(PixelRequest::Sprite(PixelSpriteAction::SpriteSize));
+        A::TileModeToggle => crate::tiles::tecla(app, |h| h.alterna_alvo()),
+        A::TileManual => tiles(app, Modo::Manual),
+        A::TileAuto => tiles(app, Modo::Auto),
+        A::TileStack => tiles(app, Modo::Stack),
+        _ if a.tool().is_some() => ferramenta(app, a.tool()?),
+        _ => {
+            app.pede(a.request()?);
             KeyAnswer::Quiet
         }
-        (KeyCode::KeyS, true, true) => ficheiro(app, PixelFileAction::ExportAs),
-        (KeyCode::KeyN, false, true) => camada(app, PixelLayerAction::NewGroup),
-        (KeyCode::KeyN, false, false) => quadro(app, PixelFrameAction::NewFrame),
-        (KeyCode::KeyB, false, false) => quadro(app, PixelFrameAction::NewEmptyFrame),
-        (KeyCode::KeyM, false, false) => quadro(app, PixelFrameAction::DuplicateLinked),
-        (KeyCode::KeyC, false, false) => quadro(app, PixelFrameAction::Delete),
-        (KeyCode::KeyI, false, false) => quadro(app, PixelFrameAction::Reverse),
-        _ => return None,
     })
 }
 
-/// Alt+1…Alt+9: o espaço de pincel (de 0).
-fn espaco(code: KeyCode) -> Option<usize> {
-    const D: [KeyCode; 9] = [
-        KeyCode::Digit1,
-        KeyCode::Digit2,
-        KeyCode::Digit3,
-        KeyCode::Digit4,
-        KeyCode::Digit5,
-        KeyCode::Digit6,
-        KeyCode::Digit7,
-        KeyCode::Digit8,
-        KeyCode::Digit9,
-    ];
-    D.iter().position(|&d| d == code)
-}
-
-fn ficheiro(app: &mut PixelApp, a: PixelFileAction) -> KeyAnswer {
-    app.pede(PixelRequest::File(a));
-    KeyAnswer::Quiet
-}
-
-fn quadro(app: &mut PixelApp, a: PixelFrameAction) -> KeyAnswer {
-    app.pede(PixelRequest::FrameAction(a));
-    KeyAnswer::Quiet
+fn ferramenta(app: &mut PixelApp, t: Tool) -> KeyAnswer {
+    set_tool(app, t);
+    KeyAnswer::Toast(t.named())
 }

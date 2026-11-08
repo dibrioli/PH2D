@@ -90,6 +90,20 @@ pub fn nasce_com_forma(world: &mut World, body: Entity, shape: crate::ColliderSh
     filha
 }
 
+/// ⭐ **«Move shape to a child»** (opção B, B4): a migração de UM corpo antigo — o `Collider` e todo o
+/// lado-forma de `body` passam à filha «Collision Shape» nova, PRIMEIRA entre as irmãs. Devolve a
+/// filha; `None` (e nada muda) se `body` não é corpo ou não tem `Collider` próprio.
+pub fn move_forma_para_filha(world: &mut World, body: Entity) -> Option<Entity> {
+    let w = &*world;
+    if w.get::<crate::RigidBody>(body).is_none() || w.get::<crate::Collider>(body).is_none() {
+        return None;
+    }
+    let filha = filha_vazia(world, body);
+    move_lado_forma(world, body, filha);
+    ph2d_ecs::assign_missing_stable_ids(world);
+    Some(filha)
+}
+
 /// O nome do corpo que *Make Independent Body* põe em volta de uma forma solta (sem imagem).
 pub const NOME_DO_CORPO: &str = "Physics Body";
 

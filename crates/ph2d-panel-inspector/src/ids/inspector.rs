@@ -326,6 +326,9 @@ pub const INSP_PHYS_RIG: NodeId = hash_node_id("insp_phys_rig");
 /// mais um collider do corpo ancestral, em vez de um corpo novo.
 pub const INSP_PHYS_ADD_SHAPE: NodeId = hash_node_id("insp_phys_add_shape");
 
+/// **Move shape to a child** (opção B, B4): o corpo antigo com `Collider` próprio passa-o à filha.
+pub const INSP_PHYS_MOVE_TO_CHILD: NodeId = hash_node_id("insp_phys_move_to_child");
+
 /// **Signal** (W-Signal) — o nome que este objeto GRITA quando algo chega nele.
 ///
 /// Um `TextInput`, porque o valor É uma string: o sinal é um **contrato por

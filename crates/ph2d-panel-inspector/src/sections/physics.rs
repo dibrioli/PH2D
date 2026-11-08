@@ -133,6 +133,8 @@ pub(crate) fn paint_physics_section(
     };
     let out = if em_cartao && info.has_body {
         super::physics_cartao::corpo(&mut tinta, yy, info)
+    } else if em_cartao && !info.shape_of.is_empty() {
+        super::physics_cartao_peca::forma_do_corpo(&mut tinta, yy, info)
     } else if em_cartao && info.has_collider {
         super::physics_cartao_peca::peca(&mut tinta, yy, info)
     } else if info.has_collider && !info.has_body {

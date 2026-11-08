@@ -97,7 +97,9 @@ pub(crate) fn push_physics_sections<'a>(
                 )
             },
         );
-        if crate::cards::active() && phys.has_body {
+        // Opção B (B4): o Shape e as camadas são da FORMA; o corpo de forma na filha só tem o Body.
+        let forma_aqui = (phys.has_body || !phys.shape_of.is_empty()) && !phys.shape_on_child;
+        if crate::cards::active() && forma_aqui && phys.has_collider {
             emoldurada(
                 plano,
                 crate::sections::physics_cartao::CARD_PHYS_SHAPE,
@@ -112,7 +114,7 @@ pub(crate) fn push_physics_sections<'a>(
                 },
             );
         }
-        if crate::cards::active() && phys.has_collider {
+        if crate::cards::active() && phys.has_collider && !phys.shape_on_child {
             emoldurada(
                 plano,
                 crate::ids::CARD_PHYS_LAYERS,

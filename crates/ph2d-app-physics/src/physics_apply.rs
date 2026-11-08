@@ -62,6 +62,10 @@ pub fn apply_physics_edit(
         crate::physics_seed::forma_que_falta(sim.world_mut(), entity);
         return;
     }
+    if matches!(edit, PhysicsFieldEdit::MoveShapeToChild) {
+        let _ = ph2d_physics_ecs::move_forma_para_filha(sim.world_mut(), entity);
+        return;
+    }
     let world = sim.world();
 
     // *Add Body* e *Make Independent Body*: a forma em filha (opção B), a autorada intacta (W-PartAdopt).
@@ -547,6 +551,7 @@ pub fn apply_physics_edit(
         PhysicsFieldEdit::Sensor(s) => next.is_sensor = s,
         PhysicsFieldEdit::Add
         | PhysicsFieldEdit::AddShape
+        | PhysicsFieldEdit::MoveShapeToChild
         | PhysicsFieldEdit::Remove
         | PhysicsFieldEdit::FitToPicture
         | PhysicsFieldEdit::Kind(_)
@@ -590,7 +595,7 @@ pub fn apply_physics_edit(
 }
 
 /// A imagem que a forma `e` cobre (opção B): a dela, ou a do antepassado mais próximo até ao corpo.
-fn imagem_da_forma(world: &ph2d_ecs::World, e: Entity) -> Option<&ph2d_render::Sprite> {
+pub(crate) fn imagem_da_forma(world: &ph2d_ecs::World, e: Entity) -> Option<&ph2d_render::Sprite> {
     let mut cur = Some(e);
     while let Some(x) = cur {
         if let Some(s) = world.get::<ph2d_render::Sprite>(x) {

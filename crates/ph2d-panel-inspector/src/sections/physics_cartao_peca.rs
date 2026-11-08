@@ -17,10 +17,37 @@ pub(super) fn peca(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f3
     y = medidas_e_estado(t, y, info);
     y = toque(t, y, info);
     y = paint_bounce_friction(t.scene, t.text, t.theme, t.hit, t.store, t.x, t.w, y);
-    // A densidade de uma peça é real: conta para a massa do corpo composto.
+    y = dobra_densidade(t, y);
+    y = dobra_offset(t, y);
+    y = dobra_material(t, y, info);
+    y = dobra_superficie(t, y, info, !info.is_sensor);
+    y = dobra_sinais(t, y, info);
+    remover(t, y)
+}
+
+/// A forma de um corpo (opção B, B4): diz de quem é; as linhas dela vêm no cartão Shape ao lado.
+pub(super) fn forma_do_corpo(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
+    let frase = tr_with("card.insp.phys.shape_of", &[("owner", &info.shape_of)]);
+    let y = t.frase(y, &frase, ColorToken::Text2);
+    let y = dobra_densidade(t, y);
+    remover(t, y)
+}
+
+fn remover(t: &mut Tinta<'_>, y: f32) -> f32 {
+    let (r, y) = t.botao(
+        ids::INSP_PHYS_REMOVE,
+        tr("panel.inspector.physics.remove_shape"),
+        y,
+    );
+    t.hit.register(ids::INSP_PHYS_REMOVE, r);
+    y - Spacing::Sm.px() + SECTION_BOTTOM_PAD_PX
+}
+
+/// A densidade de uma forma é real: conta para a massa do corpo.
+fn dobra_densidade(t: &mut Tinta<'_>, y: f32) -> f32 {
     let densidade = format_number(t.store.number_value(ids::INSP_PHYS_DENSITY).unwrap_or(0.0));
     let titulo = tr("card.insp.phys.density");
-    y = t.dobra(
+    t.dobra(
         y,
         ids::INSP_PHYS_FOLD_DENSITY,
         titulo,
@@ -39,18 +66,7 @@ pub(super) fn peca(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f3
                 ids::INSP_PHYS_DENSITY,
             )
         },
-    );
-    y = dobra_offset(t, y);
-    y = dobra_material(t, y, info);
-    y = dobra_superficie(t, y, info, !info.is_sensor);
-    y = dobra_sinais(t, y, info);
-    let (r, y) = t.botao(
-        ids::INSP_PHYS_REMOVE,
-        tr("panel.inspector.physics.remove_shape"),
-        y,
-    );
-    t.hit.register(ids::INSP_PHYS_REMOVE, r);
-    y - Spacing::Sm.px() + SECTION_BOTTOM_PAD_PX
+    )
 }
 
 /// Um corpo sem forma não bate em nada: o aviso da forma solta, ao contrário, e a caixa da imagem.

@@ -252,6 +252,18 @@ fn click_edit(
     id: ph2d_editor_core::NodeId,
     info: InspectorPhysicsInfo,
 ) -> Option<PhysicsFieldEdit> {
+    // Opção B (B4): só o corpo antigo, com o `Collider` nele, oferece «Move shape to a child».
+    if id == crate::ids::INSP_PHYS_MOVE_TO_CHILD {
+        let velho = info.has_body && info.has_collider && !info.shape_on_child;
+        return velho.then_some(PhysicsFieldEdit::MoveShapeToChild);
+    }
+    click_controle(id, info)
+}
+
+fn click_controle(
+    id: ph2d_editor_core::NodeId,
+    info: InspectorPhysicsInfo,
+) -> Option<PhysicsFieldEdit> {
     // ⭐⭐⭐ **O FILTRO por tag dos sinais** (TOP-20 #9, W3c) — o `(any)` e as opções da árvore.
     //
     // ⚠️ **Antes de tudo**, porque a lista é resolvida por `position()` sobre um array e os braços

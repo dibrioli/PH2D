@@ -76,7 +76,8 @@ pub(super) fn cartao_de_fisica(
 }
 
 fn forma(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
-    let mut y = medidas_e_estado(t, y, info);
+    let mut y = mover_para_filha(t, y, info);
+    y = medidas_e_estado(t, y, info);
     if info.part_count > 0 {
         let n = info.part_count;
         let frase = if n == 1 {
@@ -110,6 +111,20 @@ fn forma(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
         y = dobra_sinais(t, y, info);
     }
     y + SECTION_BOTTOM_PAD_PX
+}
+
+/// Um corpo antigo com a forma nele (opção B): a saída para a filha «Collision Shape».
+fn mover_para_filha(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
+    if !info.has_body || info.shape_on_child {
+        return y;
+    }
+    let (r, y) = t.botao(
+        ids::INSP_PHYS_MOVE_TO_CHILD,
+        tr("card.insp.phys.move_to_child"),
+        y,
+    );
+    t.hit.register(ids::INSP_PHYS_MOVE_TO_CHILD, r);
+    y
 }
 
 /// Shape, as medidas, o estado da forma e o aviso de escala: a abertura das duas faces da forma.

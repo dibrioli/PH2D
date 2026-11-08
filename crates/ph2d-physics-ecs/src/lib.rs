@@ -29,8 +29,8 @@ mod layer_names;
 mod migra_formas;
 pub use migra_formas::{
     LADO_FORMA, Migracao, NOME_DA_FORMA, NOME_DO_CORPO, migra_formas_no_retrato,
-    migra_formas_para_filhos, migra_formas_para_filhos_com_pares, nasce_com_forma, tira_corpo,
-    torna_corpo,
+    migra_formas_para_filhos, migra_formas_para_filhos_com_pares, move_forma_para_filha,
+    nasce_com_forma, tira_corpo, torna_corpo,
 };
 pub mod player_input;
 pub use layer_names::{

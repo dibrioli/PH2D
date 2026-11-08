@@ -104,6 +104,14 @@ pub fn build_physics_info(
     if rb.is_none() && col.is_none() && rig_parts == 0 && part_owner.is_empty() {
         return None;
     }
+    // Opção B (B4): o corpo de forma na filha só mostra o Body; a forma dele diz de quem é.
+    let shape_on_child = rb.is_some() && forma != entity;
+    let shape_of =
+        if rb.is_none() && col.is_some() && world.get::<ph2d_render::Sprite>(entity).is_none() {
+            part_owner.clone()
+        } else {
+            String::new()
+        };
     // Optional per-body gravity multiplier (W8); absent = the neutral 1.0.
     let gravity_scale = world
         .get::<GravityScale>(entity)
@@ -178,6 +186,8 @@ pub fn build_physics_info(
             has_body: false,
             has_collider: false,
             body_without_shape: rb.is_some() && part_count == 0,
+            shape_on_child: false,
+            shape_of: String::new(),
             part_count: 0,
             no_wall_cling: false,
             bake_seconds,
@@ -263,14 +273,14 @@ pub fn build_physics_info(
         has_body: rb.is_some(),
         has_collider: true,
         body_without_shape: false,
+        shape_on_child,
+        shape_of,
         // ⚠️ Só um CORPO tem peças penduradas nele; numa peça o número é dela
         // mesma, e uma peça não hospeda peças (o walk sobe até o corpo, e ele é
         // o dono de todas).
         part_count: if rb.is_some() { part_count } else { 0 },
-        // ⚠️ Não é lido na face de peça (o §11 nunca pinta os chips de Body sem
-        // corpo, e o event handler os gateia em `has_body`), então o `0` aqui é
-        // um valor de exibição que ninguém consulta — não um `Dynamic` afirmado.
-        kind_tag: rb.map_or(0, |b| b.kind.tag()),
+        // O tipo que governa a forma: o cartão Shape da filha esconde o One-way num Dynamic.
+        kind_tag: ph2d_physics_ecs::governing_kind(world, entity).map_or(0, |k| k.tag()),
         shape_tag,
         radius,
         half_x,
@@ -319,8 +329,7 @@ pub fn build_physics_info(
         bake_channels_tag,
         gravity_scale,
         cap_half_height,
-        shape_follows: world
-            .get::<ph2d_render::Sprite>(entity)
+        shape_follows: crate::physics_apply::imagem_da_forma(world, entity)
             .map(|s| col.follows_picture(s.size)),
         shape_edit_on: ph2d_shape_handles::editando(world) == Some(entity_bits),
         linvel: iv.linvel,

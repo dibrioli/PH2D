@@ -148,6 +148,11 @@ pub struct InspectorPhysicsInfo {
     /// Um `RigidBody` SEM forma — nem `Collider` próprio nem peça pendurada (`part_count == 0`):
     /// não bate em nada. A face vazia avisa e oferece a caixa da imagem (`INSP_PHYS_ADD_SHAPE`).
     pub body_without_shape: bool,
+    /// Um corpo cuja forma mora numa filha (opção B): o Inspector dele mostra só o cartão Body.
+    pub shape_on_child: bool,
+    /// Na forma de um corpo (`Collider` sem `RigidBody`, sem imagem, com corpo acima): o nome do
+    /// corpo, para «Shape of: X». Vazio em todo o resto (corpo, peça com imagem, forma solta).
+    pub shape_of: String,
     /// Quantas PEÇAS este corpo tem penduradas nele (W-PartFace) — filhos que
     /// carregam `Collider` e não `RigidBody`, com este corpo como ancestral mais
     /// próximo. `0` num corpo de forma única.
@@ -351,6 +356,8 @@ pub enum PhysicsFieldEdit {
     /// `Collider` entra SEM `RigidBody`, e é a ausência dele que faz da entidade
     /// uma forma do dono em vez de um segundo corpo.
     AddShape,
+    /// Um corpo antigo com o `Collider` nele: a forma passa à filha «Collision Shape» (opção B).
+    MoveShapeToChild,
     /// Detach both components — the entity goes back to being plain art.
     Remove,
     /// A forma volta à caixa da imagem, centrada: o estado «Follows the picture».

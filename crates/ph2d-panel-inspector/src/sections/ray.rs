@@ -223,7 +223,7 @@ fn corpo(
         let gap = Spacing::Xs.px();
         let ao_lado = super::camada_por_nome::largura_do_nome(text_system, controlo.w, camada, gap);
         let nome_w = ao_lado.map_or(0.0, |n| n + gap);
-        let (y, fim) = ph2d_editor_core::property_row::paint_fields_row_com_fim(
+        let (y, fim) = super::rows::fields_row_com_fim(
             scene,
             text_system,
             theme,

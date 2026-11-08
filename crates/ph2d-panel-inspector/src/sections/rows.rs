@@ -170,16 +170,40 @@ pub(super) fn fields_row<'a>(
     )
 }
 
-/// A altura que uma [`num_row`] consome — **uma linha**.
-///
-/// ⚠️ Existe porque o **card** (`card_frame`) precisa saber quanto medir ANTES
-/// de as rows serem pintadas, e uma segunda cópia dessa aritmética é como uma
-/// moldura passa a não caber no que ela emoldura: a próxima seção pintaria por
-/// cima das caixas. Uma régua, dois consumidores — o mesmo argumento do
-/// `segmented_row_counts` do Painter.
-/// ⚠️ **Encolheu em 2026-09-14** — de `rótulo + caixa + respiro` para **o passo de uma linha**.
-/// O rótulo deixou de ter faixa própria (ele é a coluna da esquerda, pela
-/// `widget::property_row_columns`), logo uma row mede uma LINHA, como em todo painel desta casa.
+/// A [`fields_row`] de UM campo sem unidade com um fim reservado à direita (o nome da camada do Ray Sensor), pela
+/// porta px/m como as outras; devolve o `y` seguinte e o retângulo do fim.
+#[allow(clippy::too_many_arguments)]
+pub(super) fn fields_row_com_fim<'a>(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    hit_index: &mut HitIndex,
+    store: &WidgetStore,
+    xwy: (f32, f32, f32),
+    label: impl Into<ph2d_editor_core::widget::key_mark::Rotulo<'a>>,
+    id: NodeId,
+    step: f64,
+    seccao: ph2d_editor_core::property_row::Seccao,
+    fim_w: f32,
+) -> (f32, ph2d_editor_core::zones::Rect) {
+    let (_, step) = crate::unidade_mundo::no_campo(&[id], None, step);
+    ph2d_editor_core::property_row::paint_fields_row_com_fim(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        xwy,
+        label,
+        id,
+        step,
+        seccao,
+        fim_w,
+    )
+}
+
+/// A altura que uma [`num_row`] consome — **uma linha** (o rótulo é a coluna da esquerda). O `card_frame` mede
+/// por ela ANTES de pintar: uma régua, dois consumidores.
 pub(super) fn num_row_h() -> f32 {
     ph2d_tokens::row_pitch_px()
 }

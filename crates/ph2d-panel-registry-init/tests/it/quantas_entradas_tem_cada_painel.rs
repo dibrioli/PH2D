@@ -2320,7 +2320,7 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     //    dobrado (`cards::prepare`, com o resumo «Bodies: n»). Medido pelo gate.
     // ⬇️ `1 236 → 1 064` em 2026-11-07 (GEF02 onda 8): a matriz das camadas saiu para o modal central
     //    (as ondas 5–7 tinham-na levado a `1 636`); no cartão ficam o resumo e «Edit matrix…». Medido pelo gate.
-    ("physics", 1064.0),
+    ("physics", 1037.0), // GEF02 fecho 08/11: a matriz foi para a aba Collision Layers
     // ⬇️ `1209 → 1207` em 2026-09-24 (o mixer no molde da Física): os quatro liga/desliga do master
     //    viraram caixas de marcar (passo da casa em vez de `MUTE_H + gap`), o *Play Test* passou pela
     //    `caixa_do_botao` (`ROW_H_PX`), e saiu o `+ Spacing::Sm` escrito à mão depois do *Limiter*.

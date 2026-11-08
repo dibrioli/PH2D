@@ -212,10 +212,11 @@
 | [0196](0196-o-pixel-art-e-um-modulo-proprio-com-documento-inteiro-e-desfazer-por-sprite.md) | Accepted — o PRODUTO é decisão do DONO (25/10: módulo NOVO e autocontido, sem Painter; … | O Pixel Art é um módulo próprio, com documento inteiro e desfazer por sprite |
 | [0197](0197-o-painter-e-uma-lei-de-pigmento-em-volumes-e-os-meios-sao-pontos-dela.md) | Proposed — o desenho técnico é delegado (padrão-ouro); … | O Painter é uma lei de pigmento em VOLUMES; os meios são pontos dela, não ramos |
 | [0198](0198-o-motor-do-sfx-lab-e-kernels-proprios-sobre-det-math.md) | Accepted — desenho técnico delegado (padrão-ouro); … | O motor do SFX Lab é de kernels próprios sobre `ph2d-det-math`; o FunDSP fica fora do render canônico |
+| [0199](0199-a-forma-de-colisao-e-um-objeto-filho-do-corpo.md) | Accepted — produto do dono (08/11, smoke da W3-B); … | A forma de colisão é um objeto filho do corpo |
 
 ---
 
-**203 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
+**204 ADRs** · **68** marcados ⛔ · **4** sem linha `Status:` no próprio texto.
 
 ⚠️ **⛔ diz «o ADR NNNN alega supersedê-lo»**, e a alegação pode ser PARCIAL: o ADR-0085
 supersede uma *regra* dentro do ADR-0049, não o ADR inteiro. O índice reporta a alegação

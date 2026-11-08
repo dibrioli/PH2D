@@ -116,7 +116,8 @@ fn o_cartao_user_data_chega_ao_pedido() {
         clica(&mut m, ud.remove(0)),
         pede(UserEdit::Remove("hp".into()))
     );
-    if let Some(InteractiveState::TextInput { text, .. }) = m.host.store_mut().get_mut(ud.value(0)) {
+    if let Some(InteractiveState::TextInput { text, .. }) = m.host.store_mut().get_mut(ud.value(0))
+    {
         "12".clone_into(text);
     }
     let _ = m.aplica(vec![WidgetEvent::Submit(ud.value(0))]);

@@ -349,7 +349,10 @@ fn user_data_event(
     if e_texto != texto {
         return None;
     }
-    if let Some(e) = crate::user_data::edit_of(host.store(), &ud, &u, id)
+    let v = ph2d_pixel_ponte::user::vista(&u);
+    if let Some(Some(e)) =
+        ph2d_editor_core::panel::cards::user_data::on_event(host.store(), &ud, &v, ev)
+        && let Some(e) = ph2d_pixel_ponte::user::traduz(&u, &e)
         && ph2d_pixel_core::user::edit::apply_edit(&u, &e).is_some()
     {
         canal::pede_uma(Pedido::UserData(slice, e));

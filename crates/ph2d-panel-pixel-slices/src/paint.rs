@@ -132,7 +132,7 @@ pub(crate) fn paint(st: &mut PixelSlicesPanelState, ctx: &mut PaintCtx) {
         user_data::prepare(
             ctx.host.store_mut(),
             &ud,
-            &crate::user_data::vista(u),
+            &ph2d_pixel_ponte::user::vista(u),
             false,
         );
     }

@@ -12,7 +12,6 @@ pub mod familia;
 pub mod ids;
 mod paint;
 mod state;
-pub mod user_data;
 
 pub use state::PixelSlicesPanelState;
 

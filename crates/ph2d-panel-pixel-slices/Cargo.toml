@@ -16,6 +16,7 @@ ph2d-a11y         = { path = "../ph2d-a11y" }
 ph2d-editor-core  = { path = "../ph2d-editor-core" }
 ph2d-i18n         = { path = "../ph2d-i18n" }
 ph2d-pixel-core   = { path = "../ph2d-pixel-core" }
+ph2d-pixel-ponte  = { path = "../ph2d-pixel-ponte" }
 ph2d-pixel-slices = { path = "../ph2d-pixel-slices" }
 ph2d-tokens       = { path = "../ph2d-tokens" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }

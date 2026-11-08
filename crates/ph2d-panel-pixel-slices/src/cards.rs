@@ -116,7 +116,12 @@ fn marca(id: NodeId, chave: &'static str, todas: bool, alguma: bool) -> Cell<'st
     })
 }
 
-fn propriedades(c: &mut CardCtx<'_>, v: &Vista, user: Option<&(UserDataView, bool)>, y: f32) -> f32 {
+fn propriedades(
+    c: &mut CardCtx<'_>,
+    v: &Vista,
+    user: Option<&(UserDataView, bool)>,
+    y: f32,
+) -> f32 {
     let ud = ids::user_data();
     let nome = texto(ids::SLICE_NAME, tr("panel.pixel.slices.name"));
     let y = match user {
@@ -224,7 +229,7 @@ pub(crate) fn cartoes(x: &Contexto, user_aberto: bool) -> Vec<CardDef<'static>> 
     let user = x
         .user
         .as_ref()
-        .map(|(_, u)| (crate::user_data::vista(u), user_aberto));
+        .map(|(_, u)| (ph2d_pixel_ponte::user::vista(u), user_aberto));
     vec![
         cartao_lista(x.linhas.clone(), x.transform),
         cartao(

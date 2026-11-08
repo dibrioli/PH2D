@@ -247,8 +247,11 @@ fn clicar_uma_celula_junta_a_ao_fim_e_chega_a_cena() {
     m.click(at);
     assert_eq!(
         m.pending(),
-        [AnimFieldEdit::Frames(0, fr(&[0, 1, 2, 3, 4, 5, 20]))],
-        "a idle (0..=5) ganha a célula 20 no fim"
+        [
+            AnimFieldEdit::Frames(0, fr(&[0, 1, 2, 3, 4, 5, 20])),
+            AnimFieldEdit::SetStep(6)
+        ],
+        "a idle (0..=5) ganha a célula 20 no fim, escolhida"
     );
     m.frame();
     assert_eq!(m.world_frames("idle"), Some(vec![0, 1, 2, 3, 4, 5, 20]));
@@ -266,10 +269,10 @@ fn arrastar_por_tres_celulas_junta_as_pela_ordem_do_arrasto() {
     m.pointer(PointerKind::Up, c);
     assert_eq!(
         m.pending(),
-        [AnimFieldEdit::Frames(
-            0,
-            fr(&[0, 1, 2, 3, 4, 5, 11, 10, 18])
-        )]
+        [
+            AnimFieldEdit::Frames(0, fr(&[0, 1, 2, 3, 4, 5, 11, 10, 18])),
+            AnimFieldEdit::SetStep(8)
+        ]
     );
 }
 
@@ -282,7 +285,13 @@ fn uma_animacao_acabada_de_criar_comeca_do_primeiro_clique() {
     assert_eq!(m.doc().selected, 2, "a nova fica escolhida");
     let at = m.cell(7);
     m.click(at);
-    assert_eq!(m.pending(), [AnimFieldEdit::Frames(2, fr(&[7]))]);
+    assert_eq!(
+        m.pending(),
+        [
+            AnimFieldEdit::Frames(2, fr(&[7])),
+            AnimFieldEdit::SetStep(0)
+        ]
+    );
 }
 
 #[test]

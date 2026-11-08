@@ -551,7 +551,10 @@ impl AnimDoc {
                 self.push_frames(frames.clone());
                 self.launch(frames, at.min(base.len()), &added);
                 self.markers_follow_insert(at, added.len());
-                self.insert_at = Some(at + added.len());
+                // O último que entrou fica escolhido e na tela, como num clique nele (dono 08/11).
+                let last = at.min(base.len()) + added.len() - 1;
+                (self.insert_at, self.frame_selected) = (Some(last + 1), Some(last));
+                self.pending.push(AnimFieldEdit::SetStep(last as u32));
                 true
             }
             Drag::Playhead => true,

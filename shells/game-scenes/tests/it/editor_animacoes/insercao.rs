@@ -22,7 +22,15 @@ fn as_celulas_entram_onde_esta_a_marca_e_ela_anda_para_depois_delas() {
     m.click(at);
     assert_eq!(
         m.pending(),
-        [AnimFieldEdit::Frames(0, fr(&[0, 1, 20, 2, 3, 4, 5]))]
+        [
+            AnimFieldEdit::Frames(0, fr(&[0, 1, 20, 2, 3, 4, 5])),
+            AnimFieldEdit::SetStep(2)
+        ]
+    );
+    assert_eq!(
+        m.doc().frame_selected,
+        Some(2),
+        "o que entrou fica escolhido"
     );
     m.frame();
     m.paint();
@@ -30,7 +38,10 @@ fn as_celulas_entram_onde_esta_a_marca_e_ela_anda_para_depois_delas() {
     m.click(at);
     assert_eq!(
         m.pending(),
-        [AnimFieldEdit::Frames(0, fr(&[0, 1, 20, 21, 2, 3, 4, 5]))],
+        [
+            AnimFieldEdit::Frames(0, fr(&[0, 1, 20, 21, 2, 3, 4, 5])),
+            AnimFieldEdit::SetStep(3)
+        ],
         "o seguinte entra depois do anterior"
     );
 }
@@ -211,6 +222,9 @@ fn clicar_num_quadro_poe_a_marca_a_direita_dele() {
     m.click(at);
     assert_eq!(
         m.pending(),
-        [AnimFieldEdit::Frames(0, fr(&[0, 1, 20, 2, 3, 4, 5]))]
+        [
+            AnimFieldEdit::Frames(0, fr(&[0, 1, 20, 2, 3, 4, 5])),
+            AnimFieldEdit::SetStep(2)
+        ]
     );
 }

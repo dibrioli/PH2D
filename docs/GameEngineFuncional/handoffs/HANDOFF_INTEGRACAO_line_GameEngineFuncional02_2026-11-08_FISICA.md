@@ -143,3 +143,7 @@ Larguras próprias para a aba (segue o editor de animações, 9g) · 8 camadas f
 ```
     Finished `smoke` profile [optimized] target(s) in 0.22s
 ```
+
+## Smoke do dono (08/11)
+
+OK — o fecho e as emendas 1–4 (sem duplo clique no Layer; botões abaixo de Layer; Remove com retângulos coloridos numa linha; Ray Sensor com Layer em lista, «Sees», «Rename layers…»/«Open in tab…» e o raio na cor da camada). Próximo: rever o plano para o que está em aberto (o polígono pelo contorno da imagem é o item já decidido para depois da integração).

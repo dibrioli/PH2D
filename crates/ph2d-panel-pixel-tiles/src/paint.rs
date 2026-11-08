@@ -129,6 +129,7 @@ pub(crate) fn paint(st: &mut PixelTilesPanelState, ctx: &mut PaintCtx) {
     let area = ctx.layout.draw_area;
     let w = borda::largura(ctx.host.store_mut(), node, area, coluna);
     let slot = solta(ctx, w, |a, w| (coluna - w - Spacing::Lg.px()).max(a.x));
+    let slot = borda::assenta_ao_abrir(ctx.host.store_mut(), node, slot, area.x);
     let encaixe = ctx.slot;
     ctx.slot = slot;
     borda::declara_fecho(ctx.host.store_mut(), node);

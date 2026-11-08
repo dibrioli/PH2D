@@ -24,16 +24,8 @@ fn solta(ctx: &mut PaintCtx) -> Rect {
         r.y + r.h + Spacing::Sm.px()
     };
     let fundo = borda::fundo(ctx.layout);
-    // KEYBOARD SHORTCUTS e UNDO HISTORY abertas ocupam o canto: esta encosta-se à esquerda delas
-    // (a ordem é fixa — atalhos, história, esta — e nunca dá ciclo).
-    let vizinhas = [
-        ph2d_editor_core::ids::PIXEL_KEYS_PANEL,
-        ph2d_editor_core::ids::PIXEL_HISTORY_PANEL,
-    ];
-    let coluna = vizinhas
-        .iter()
-        .filter_map(|&n| ctx.host.store_mut().panel_rect(n))
-        .fold(ctx.slot.x, |c, r| c.min(r.x));
+    // Ao abrir, foge das janelas já abertas (`borda::assenta_ao_abrir`); depois fica onde está.
+    let coluna = ctx.slot.x;
     let store = ctx.host.store_mut();
     let node = PixelPrefsPanel::NODE_ID;
     let esquerda = livre.x.max(area.x);
@@ -46,7 +38,12 @@ fn solta(ctx: &mut PaintCtx) -> Rect {
     if (x - base, y - teto) != (dx, dy) {
         store.set_blender_picker_offset(node, x - base, y - teto);
     }
-    Rect::new(x, y, w, (fundo - y).max(0.0))
+    borda::assenta_ao_abrir(
+        store,
+        node,
+        Rect::new(x, y, w, (fundo - y).max(0.0)),
+        esquerda,
+    )
 }
 
 fn numero(n: Numero, chave: &'static str) -> Cell<'static> {

@@ -7,8 +7,8 @@ use ph2d_editor_core::panel::cards::banda::metrics as m;
 use ph2d_editor_core::panel::cards::ferramenta::cartao;
 use ph2d_editor_core::panel::cards::{CardDef, Cell, Seg, Widget, borda, paint_card_list};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
+use ph2d_editor_core::widget::ButtonState;
 use ph2d_editor_core::widget::panel_chrome::panel_drag_handle_rect;
-use ph2d_editor_core::widget::{ButtonState, TextInputState};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_pixel_keys::{Chord, Context, Keymap, PixelAction, Section};
@@ -33,15 +33,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     }
     store.set_tooltip(ids::IMPORT, tr("panel.pixel_keys.import_tip"));
     store.set_tooltip(ids::EXPORT, tr("panel.pixel_keys.export_tip"));
-    store.register(
-        ids::SEARCH,
-        InteractiveState::TextInput {
-            state: TextInputState::Normal,
-            text: String::new(),
-            caret: 0,
-            selection_anchor: None,
-        },
-    );
+    ph2d_editor_core::panel::cards::busca::regista(store, ids::SEARCH);
     store.register(
         ids::DRAG,
         InteractiveState::BlenderHit {
@@ -233,7 +225,7 @@ fn cartao_topo(modo: Modo, aviso: Option<String>, vazio: bool) -> CardDef<'stati
         None,
         move |c, y| {
             let mut y = c.row(
-                &[Cell::new(Widget::Text {
+                &[Cell::new(Widget::Search {
                     id: ids::SEARCH,
                     placeholder: tr("panel.pixel_keys.search"),
                 })],
@@ -316,7 +308,8 @@ fn solta(ctx: &mut PaintCtx) -> Rect {
     if (x - base, y - teto) != (dx, dy) {
         store.set_blender_picker_offset(PixelKeysPanel::NODE_ID, x - base, y - teto);
     }
-    Rect::new(x, y, w, (fundo - y).max(0.0))
+    let r = Rect::new(x, y, w, (fundo - y).max(0.0));
+    borda::assenta_ao_abrir(store, PixelKeysPanel::NODE_ID, r, esquerda)
 }
 
 fn janela(st: &mut PixelKeysPanelState) -> &mut Janela {
@@ -443,9 +436,12 @@ fn gesto_de(st: &mut PixelKeysPanelState, id: ph2d_a11y::NodeId) -> Option<Gesto
 
 pub(crate) fn apply_event(
     st: &mut PixelKeysPanelState,
-    _host: &mut dyn PanelHostInternal,
+    host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> EventOutcome {
+    if ph2d_editor_core::panel::cards::busca::limpou(host.store_mut(), &ev, ids::SEARCH) {
+        return EventOutcome::Consumed;
+    }
     let id = match ev {
         WidgetEvent::Click(id) | WidgetEvent::DoubleClick(id) => id,
         _ => return EventOutcome::Ignored,

@@ -24,12 +24,8 @@ fn solta(ctx: &mut PaintCtx, piso: f32) -> Rect {
         r.y + r.h + Spacing::Sm.px()
     };
     let fundo = borda::fundo(ctx.layout);
-    // A KEYBOARD SHORTCUTS aberta ocupa o mesmo canto: a história encosta-se à esquerda dela.
-    let atalhos = ctx
-        .host
-        .store_mut()
-        .panel_rect(ph2d_editor_core::ids::PIXEL_KEYS_PANEL);
-    let coluna = atalhos.map_or(ctx.slot.x, |r| r.x.min(ctx.slot.x));
+    // Ao abrir, foge das janelas já abertas (`borda::assenta_ao_abrir`); depois fica onde está.
+    let coluna = ctx.slot.x;
     let store = ctx.host.store_mut();
     let node = PixelHistoryPanel::NODE_ID;
     let esquerda = livre.x.max(area.x);
@@ -42,7 +38,12 @@ fn solta(ctx: &mut PaintCtx, piso: f32) -> Rect {
     if (x - base, y - teto) != (dx, dy) {
         store.set_blender_picker_offset(node, x - base, y - teto);
     }
-    Rect::new(x, y, w, (fundo - y).max(0.0))
+    borda::assenta_ao_abrir(
+        store,
+        node,
+        Rect::new(x, y, w, (fundo - y).max(0.0)),
+        esquerda,
+    )
 }
 
 fn cartao_lista(v: HistoryView) -> CardDef<'static> {

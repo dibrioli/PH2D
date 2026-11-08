@@ -100,6 +100,7 @@ mod the_pixel_sprite_properties_answers_a_real_pointer;
 mod the_pixel_tiles_answers_a_real_pointer;
 #[cfg(feature = "panel-pixel-slices")]
 mod the_pixel_windows_close_and_live_in_the_window_menu;
+mod the_pixel_windows_open_clear_of_each_other;
 mod the_properties_fold_into_an_icon_strip_on_small_tablets;
 mod the_slices_window_widens_by_its_outer_edge;
 mod the_tab_and_the_menu_call_a_panel_the_same_thing;

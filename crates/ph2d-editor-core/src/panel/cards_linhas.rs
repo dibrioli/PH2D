@@ -82,6 +82,7 @@ impl<'s> CardCtx<'s> {
                 ),
                 Widget::Button { id, text, primary } => self.button(r, id, text, primary),
                 Widget::Text { id, placeholder } => self.text(r, id, placeholder),
+                Widget::Search { id, placeholder } => self.search(r, id, placeholder),
                 Widget::Badge(icon) => {
                     fill_rounded_rect(
                         self.scene,

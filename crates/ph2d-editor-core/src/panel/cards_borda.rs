@@ -84,6 +84,49 @@ pub fn piso_das_linhas<'a>(
     (maior.ceil() + MOLDURA_DA_LINHA).max(PISO_DO_CABECALHO)
 }
 
+/// ⭐ **A janela que ABRE não cai sobre outra** (smoke do dono 08/11: a Undo History reaberta caiu
+/// sobre a Slices). `r` é o rect de omissão da janela `panel`, já com o arrasto; `esquerda` é o piso
+/// do `x`. Só no quadro em que ela abre (ainda sem rect publicado): fora dele quem manda é o arrasto
+/// do artista. Os obstáculos são as outras janelas acessórias visíveis (as do [`declara_fecho`]).
+/// Os candidatos são o próprio `x` e as posições coladas a cada obstáculo que caem em
+/// `[esquerda, r.x]`; ganha a menor área sobreposta e, no empate, o mais perto da coluna. O desvio
+/// escolhido vai para o arrasto da janela, e ela fica onde abriu.
+pub fn assenta_ao_abrir(store: &mut WidgetStore, panel: NodeId, r: Rect, esquerda: f32) -> Rect {
+    if store.panel_rect(panel).is_some() {
+        return r;
+    }
+    let outras: Vec<Rect> = store
+        .panel_rects_by_id()
+        .filter(|&(id, _)| id != panel && store.card_list_close(id) == Some(fecho_de(id)))
+        .map(|(_, o)| o)
+        .collect();
+    let em = |x: f32| Rect::new(x, r.y, r.w, r.h);
+    let sobra = |x: f32| -> f32 {
+        let a = em(x);
+        outras
+            .iter()
+            .map(|o| {
+                let w = (a.x + a.w).min(o.x + o.w) - a.x.max(o.x);
+                let h = (a.y + a.h).min(o.y + o.h) - a.y.max(o.y);
+                w.max(0.0) * h.max(0.0)
+            })
+            .sum()
+    };
+    let folga = Spacing::Lg.px();
+    let x = std::iter::once(r.x)
+        .chain(outras.iter().map(|o| o.x - folga - r.w))
+        .chain(outras.iter().map(|o| o.x + o.w + folga))
+        .filter(|&x| x >= esquerda && x <= r.x)
+        .map(|x| (sobra(x), x))
+        .min_by(|a, b| a.0.total_cmp(&b.0).then(b.1.total_cmp(&a.1)))
+        .map_or(r.x, |(_, x)| x);
+    if x != r.x {
+        let (dx, dy) = store.blender_picker_offset(panel);
+        store.set_blender_picker_offset(panel, dx + x - r.x, dy);
+    }
+    em(x)
+}
+
 /// O id do «×» da janela `panel` (derivado dele: uma janela, um fecho).
 #[must_use]
 pub fn fecho_de(panel: NodeId) -> NodeId {

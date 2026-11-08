@@ -313,6 +313,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // O ícone ao lado do título da lista (D21).
         "card.menu.panel" => "Panel options",
         "card.menu.close" => "Close this panel",
+        "card.search.clear" => "Clear the search",
         // O painel Physics: a unidade no rótulo (D13).
         "card.macros.record" => "Record",
         "card.macros.steps" => "Steps",

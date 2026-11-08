@@ -78,6 +78,8 @@ pub enum Widget<'a> {
     },
     /// Um campo de TEXTO (o nome do objeto): o `TextInput` de hoje dentro da caixa do cartão.
     Text { id: NodeId, placeholder: &'a str },
+    /// Um campo de BUSCA: o `Text` com o «×» que o esvazia dentro da caixa, enquanto há texto ([`busca`]).
+    Search { id: NodeId, placeholder: &'a str },
     /// Um ícone fixo numa caixa quadrada (o tipo do objeto) — não é clicável.
     Badge(IconId),
     /// Um botão APAGADO: o gesto não é possível agora, e sem clique (sem rect não há `Click`).
@@ -164,6 +166,8 @@ pub mod banda;
 /// ⭐ A borda de fora de uma janela acessória — a alça que a alarga.
 #[path = "cards_borda.rs"]
 pub mod borda;
+#[path = "cards_busca.rs"]
+pub mod busca;
 
 #[path = "cards_cartao.rs"]
 mod cartao;
@@ -202,12 +206,12 @@ mod rotulos;
 mod solto;
 #[path = "cards_solto_some.rs"]
 pub mod solto_some;
-/// ⭐ Os botões baixos de verbo, lado a lado em dois degraus.
-#[path = "cards_verbos.rs"]
-pub mod verbos;
 /// ⭐ O cartão User Data (cor, texto e a tabela de propriedades) de um dono do Pixel.
 #[path = "cards_user_data.rs"]
 pub mod user_data;
+/// ⭐ Os botões baixos de verbo, lado a lado em dois degraus.
+#[path = "cards_verbos.rs"]
+pub mod verbos;
 use cartao::{flight_shadow, paint_card, paint_card_with, shadow};
 pub use lista::{ListTop, paint_card_list_pinned, paint_card_list_top, scroll_at_edge};
 pub use menu::{apply_list_menu_click, list_menu_of};

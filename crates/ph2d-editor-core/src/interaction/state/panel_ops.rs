@@ -219,6 +219,11 @@ impl WidgetStore {
         self.panel_rects.values().copied()
     }
 
+    /// [`Self::panel_rects`] com o dono de cada rect (`cards_borda::assenta_ao_abrir`).
+    pub fn panel_rects_by_id(&self) -> impl Iterator<Item = (NodeId, Rect)> + '_ {
+        self.panel_rects.iter().map(|(k, v)| (*k, *v))
+    }
+
     /// Drop the published rect for a panel. Used by transient
     /// panels (e.g. the floating BlenderColorPicker) when they're
     /// not currently visible — so dispatch's "is the click inside

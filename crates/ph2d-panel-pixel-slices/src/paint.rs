@@ -1,7 +1,6 @@
 //! O quadro do painel: os cartões, flutuando ao lado do painel PIXEL, e o menu do botão direito.
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::ids::PIXEL_TILES_PANEL;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::cards::banda::metrics as m;
 use ph2d_editor_core::panel::cards::borda;
@@ -21,8 +20,8 @@ use crate::{PixelSlicesPanel, PixelSlicesPanelState, cards, event, ids};
 /// A alça da borda de fora (`borda`): o id mora aqui para não tocar os ids dos cartões.
 pub(crate) const SLICES_EDGE: NodeId = hash_node_id("pixel_slices.edge");
 
-/// O rect da janela: à esquerda da coluna; se a janela Tilemap está pintada ali (o rect PUBLICADO dela,
-/// não a suposição de que está aberta), à esquerda dela. O arrasto do título desloca-a, mas ela fica
+/// O rect da janela: à esquerda da coluna; ao abrir, fora das janelas já abertas
+/// (`borda::assenta_ao_abrir`, a Tilemap incluída). O arrasto do título desloca-a, mas ela fica
 /// dentro da área e fora da lista da esquerda (`clear_of_left_list`, a mesma régua das abas): a lista
 /// docada nunca a tapa nem lhe rouba o ponteiro. O desvio limitado volta ao store (sem borracha).
 fn solta(ctx: &mut PaintCtx) -> Rect {
@@ -36,13 +35,7 @@ fn solta(ctx: &mut PaintCtx) -> Rect {
     let coluna = ctx.slot.x;
     let store = ctx.host.store_mut();
     let mut w = borda::largura(store, PixelSlicesPanel::NODE_ID, area, coluna);
-    let mut direita = coluna - Spacing::Lg.px();
-    if let Some(t) = store.panel_rect(PIXEL_TILES_PANEL)
-        && t.x < direita
-        && direita - w - Spacing::Lg.px() < t.x + t.w
-    {
-        direita = t.x - Spacing::Lg.px();
-    }
+    let direita = coluna - Spacing::Lg.px();
     let esquerda = livre.x.max(area.x);
     w = w.min((coluna - Spacing::Lg.px() - esquerda).max(0.0));
     let base = (direita - w).max(esquerda);
@@ -52,7 +45,8 @@ fn solta(ctx: &mut PaintCtx) -> Rect {
     if (x - base, y - teto) != (dx, dy) {
         store.set_blender_picker_offset(PixelSlicesPanel::NODE_ID, x - base, y - teto);
     }
-    Rect::new(x, y, w, (fundo - y).max(0.0))
+    let r = Rect::new(x, y, w, (fundo - y).max(0.0));
+    borda::assenta_ao_abrir(store, PixelSlicesPanel::NODE_ID, r, esquerda)
 }
 
 /// As linhas do menu, com os nomes do Aseprite e o extra do dono.

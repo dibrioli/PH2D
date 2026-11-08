@@ -862,3 +862,80 @@ fn a_grade_com_muitas_camadas_rola_e_o_clique_e_o_da_celula_sob_o_ponteiro() {
     assert_eq!(aba::geometria_da_ultima().map(|g| g.l0), Some(0));
     aba::fecha();
 }
+
+/// ⭐ Onda 9f: a grade que rola MOSTRA que rola — uma barra vertical à direita e uma horizontal debaixo das células à
+/// vista, sem as cobrir nem sair do cartão; o polegar acompanha a roda; arrastá-lo até ao fim mostra a última linha
+/// (e a última coluna); com cinco camadas não há barra e a medida é a de antes.
+#[test]
+fn a_grade_que_rola_tem_barras_que_acompanham_a_roda_e_se_arrastam() {
+    let mut mesa = Mesa::nova(nomes_b(), false);
+    abre(&mut mesa);
+    let g5 = aba::geometria_da_ultima().expect("a aba pintou");
+    assert!(g5.barra_vertical().is_none() && g5.barra_horizontal().is_none());
+    ph2d_panel_physics::set_visible_layers((1u32 << 27) - 1);
+    mesa.pinta();
+    let g = aba::geometria_da_ultima().expect("a aba pintou");
+    let (v, h) = (
+        g.barra_vertical().expect("barra vertical"),
+        g.barra_horizontal().expect("barra horizontal"),
+    );
+    let ultima = g.celula(g.cabem_l - 1, g.cabem_c - 1);
+    assert!(v.x >= ultima.x + ultima.w, "a barra vertical cobre células");
+    assert!(
+        h.y >= ultima.y + ultima.h,
+        "a barra horizontal cobre células"
+    );
+    for b in [v, h] {
+        assert!(
+            b.x + b.w <= g.grade.x + g.grade.w && b.y + b.h <= g.grade.y + g.grade.h,
+            "a barra {b:?} sai do cartão {:?}",
+            g.grade
+        );
+    }
+    assert!(g.pe().y >= h.y + h.h, "o pé cobre a barra horizontal");
+    // O polegar acompanha a roda.
+    let p0 = g.polegar_vertical().unwrap();
+    let (cx, cy) = (ultima.x, ultima.y);
+    assert!(aba::rola(cx, cy, -1.0, false));
+    let p1 = aba::geometria_da_ultima()
+        .unwrap()
+        .polegar_vertical()
+        .unwrap();
+    assert!(p1.y > p0.y, "o polegar não desceu com a roda");
+    // Arrastar o polegar vertical até ao fim da calha: a última linha à vista.
+    assert!(
+        aba::agarra(p1.x + p1.w * 0.5, p1.y + p1.h * 0.5),
+        "a barra não agarrou"
+    );
+    assert_eq!(aba::arrastando(), Some(true));
+    let _ = aba::arrasta(p1.x, v.y + v.h + 100.0);
+    assert!(aba::solta());
+    let g2 = aba::geometria_da_ultima().unwrap();
+    assert_eq!(
+        g2.l0,
+        27 - g2.cabem_l,
+        "o arrasto não chegou à última linha"
+    );
+    assert!(g2.linha_a_vista(26));
+    let pv = g2.polegar_vertical().unwrap();
+    assert!(
+        (pv.y + pv.h - (v.y + v.h)).abs() < 0.5,
+        "o polegar não está no fim da calha"
+    );
+    // Carregar no começo da calha horizontal salta para lá; arrastar para a direita mostra a última coluna.
+    assert!(aba::agarra(h.x + 1.0, h.y + h.h * 0.5));
+    assert_eq!(aba::arrastando(), Some(false));
+    assert_eq!(aba::geometria_da_ultima().unwrap().c0, 0);
+    let _ = aba::arrasta(h.x + h.w + 100.0, h.y);
+    let _ = aba::solta();
+    let g3 = aba::geometria_da_ultima().unwrap();
+    assert_eq!(
+        g3.c0,
+        27 - g3.cabem_c,
+        "o arrasto não chegou à última coluna"
+    );
+    assert_eq!(g3.l0, g2.l0, "o arrasto de lado mexeu nas linhas");
+    // Fora das barras nada é tomado.
+    assert!(!aba::agarra(ultima.x, ultima.y));
+    aba::fecha();
+}

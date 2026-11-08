@@ -32,6 +32,8 @@ thread_local! {
     pub(crate) static GEOMETRIA: Cell<Option<Geometria>> = const { Cell::new(None) };
     /// A rolagem da grade: (primeira linha, primeira coluna) à vista.
     pub(crate) static ROLAGEM: Cell<(usize, usize)> = const { Cell::new((0, 0)) };
+    /// O arrasto de uma barra da grade: (vertical?, onde o polegar foi agarrado, do começo dele).
+    pub(crate) static ARRASTO: Cell<Option<(bool, f32)>> = const { Cell::new(None) };
     pub(crate) static EDITANDO: Cell<Option<(usize, Onde)>> = const { Cell::new(None) };
     /// A aba pediu para vir à frente (a superfície entrega-o à barra de abas).
     pub(crate) static PEDIDO: Cell<bool> = const { Cell::new(false) };
@@ -132,6 +134,60 @@ pub fn rola(x: f32, y: f32, dy: f32, shift: bool) -> bool {
     ROLAGEM.set(novo);
     GEOMETRIA.set(Some(g.rolada(novo)));
     novo != (l0, c0)
+}
+
+/// ⭐ Onda 9f: carregar numa barra da grade agarra o polegar (fora dele, o polegar salta para o ponteiro, pelo
+/// meio) e rola já; fora das barras não é tomado.
+pub fn agarra(x: f32, y: f32) -> bool {
+    let Some(g) = GEOMETRIA.get() else {
+        return false;
+    };
+    let pega = |calha: Option<Rect>, polegar: Option<Rect>, vertical: bool| {
+        let (c, p) = (calha?, polegar?);
+        c.contains(x, y).then(|| {
+            let (pos, ini, len) = if vertical {
+                (y, p.y, p.h)
+            } else {
+                (x, p.x, p.w)
+            };
+            let dentro = (ini..ini + len).contains(&pos);
+            (vertical, if dentro { pos - ini } else { len * 0.5 })
+        })
+    };
+    let Some(a) = pega(g.barra_vertical(), g.polegar_vertical(), true)
+        .or_else(|| pega(g.barra_horizontal(), g.polegar_horizontal(), false))
+    else {
+        return false;
+    };
+    ARRASTO.set(Some(a));
+    let _ = arrasta(x, y);
+    true
+}
+
+/// Com um polegar agarrado, o ponteiro em `(x, y)` diz a primeira linha (ou coluna) à vista.
+pub fn arrasta(x: f32, y: f32) -> bool {
+    let (Some((vertical, pega)), Some(g)) = (ARRASTO.get(), GEOMETRIA.get()) else {
+        return false;
+    };
+    let novo = if vertical {
+        (g.primeira_sob(true, y, pega), g.c0)
+    } else {
+        (g.l0, g.primeira_sob(false, x, pega))
+    };
+    ROLAGEM.set(novo);
+    GEOMETRIA.set(Some(g.rolada(novo)));
+    true
+}
+
+/// Larga o polegar; `true` se havia um agarrado.
+pub fn solta() -> bool {
+    ARRASTO.take().is_some()
+}
+
+/// O polegar agarrado: `Some(true)` = o vertical.
+#[must_use]
+pub fn arrastando() -> Option<bool> {
+    ARRASTO.get().map(|(v, _)| v)
 }
 
 /// A geometria do último quadro pintado da aba.
@@ -374,6 +430,7 @@ macro_rules! tom {
     }};
 }
 
+mod barras;
 mod camada;
 pub mod familia;
 mod geometria;

@@ -1,5 +1,6 @@
 //! A geometria da aba das camadas.
 
+use ph2d_editor_core::widget::{SCROLLBAR_W, scrollbar_thumb_rect as thumb_rect};
 use ph2d_editor_core::zones::Rect;
 use ph2d_tokens::{ROW_H_PX, Spacing};
 
@@ -23,6 +24,11 @@ pub struct Geometria {
     pub c0: usize,
     pub cabem_l: usize,
     pub cabem_c: usize,
+}
+
+/// A largura de uma barra de rolagem e o vão até às células (a porta das barras do app).
+fn faixa_da_barra() -> f32 {
+    SCROLLBAR_W + Spacing::Xs.px()
 }
 
 impl Geometria {
@@ -51,8 +57,21 @@ impl Geometria {
             .min(row + Spacing::Sm.px())
             .max(Self::passo_minimo());
         let cabe = |livre: f32| ((livre / passo).floor().max(1.0) as usize).min(k.max(1));
-        let (cabem_l, cabem_c) = (cabe(livre_h), cabe(livre_w));
-        let grade = Rect::new(dx, area.y + pad, dw, fixo_h + passo * cabem_l as f32);
+        // ⭐ Onda 9f: o que não cabe mostra que rola — a barra vertical toma a faixa da direita e a horizontal a de
+        // baixo (duas voltas: uma barra pode fazer faltar lugar à outra). Sem rolagem, a medida de antes.
+        let (mut cabem_l, mut cabem_c) = (cabe(livre_h), cabe(livre_w));
+        for _ in 0..2 {
+            let menos = |falta: bool| if falta { faixa_da_barra() } else { 0.0 };
+            cabem_l = cabe(livre_h - menos(cabem_c < k));
+            cabem_c = cabe(livre_w - menos(cabem_l < k));
+        }
+        let barra_h = if cabem_c < k { faixa_da_barra() } else { 0.0 };
+        let grade = Rect::new(
+            dx,
+            area.y + pad,
+            dw,
+            fixo_h + passo * cabem_l as f32 + barra_h,
+        );
         let camada = Rect::new(dx, grade.y + grade.h + pad, dw, camada_h);
         let lista_h = Self::MARGEM_DA_LISTA * 3.0 + row * (k + 2) as f32; // LITERAL-PX-OK: em cima, antes dos botões e embaixo
         let lista = Rect::new(
@@ -178,10 +197,89 @@ impl Geometria {
         let pad = Spacing::Md.px();
         Rect::new(
             self.grade.x + pad,
-            self.y + self.rotulo_w + self.cabem_l as f32 * self.passo + pad,
+            self.y
+                + self.rotulo_w
+                + self.cabem_l as f32 * self.passo
+                + self.barra_horizontal().map_or(0.0, |_| faixa_da_barra())
+                + pad,
             self.grade.w - pad * 2.0,
             ROW_H_PX,
         )
+    }
+
+    /// ⭐ A calha da barra vertical (onda 9f), à direita das células à vista; `None` = todas as linhas cabem.
+    #[must_use]
+    pub fn barra_vertical(&self) -> Option<Rect> {
+        (self.cabem_l < self.k).then(|| {
+            Rect::new(
+                self.x + self.rotulo_w + self.cabem_c as f32 * self.passo + Spacing::Xs.px(),
+                self.y + self.rotulo_w,
+                SCROLLBAR_W,
+                self.cabem_l as f32 * self.passo,
+            )
+        })
+    }
+
+    /// A calha da barra horizontal, debaixo das células à vista; `None` = todas as colunas cabem.
+    #[must_use]
+    pub fn barra_horizontal(&self) -> Option<Rect> {
+        (self.cabem_c < self.k).then(|| {
+            Rect::new(
+                self.x + self.rotulo_w,
+                self.y + self.rotulo_w + self.cabem_l as f32 * self.passo + Spacing::Xs.px(),
+                self.cabem_c as f32 * self.passo,
+                SCROLLBAR_W,
+            )
+        })
+    }
+
+    /// O polegar vertical: a parte das linhas à vista, na posição da primeira (o `thumb_rect` das barras do app).
+    #[must_use]
+    pub fn polegar_vertical(&self) -> Option<Rect> {
+        let t = self.barra_vertical()?;
+        let p = self.passo;
+        Some(thumb_rect(
+            t,
+            self.l0 as f32 * p,
+            self.k as f32 * p,
+            self.cabem_l as f32 * p,
+        ))
+    }
+
+    /// O polegar horizontal (a mesma conta, de lado).
+    #[must_use]
+    pub fn polegar_horizontal(&self) -> Option<Rect> {
+        let t = self.barra_horizontal()?;
+        let p = self.passo;
+        let deitada = Rect::new(t.y, t.x, t.h, t.w);
+        let r = thumb_rect(
+            deitada,
+            self.c0 as f32 * p,
+            self.k as f32 * p,
+            self.cabem_c as f32 * p,
+        );
+        Some(Rect::new(r.y, r.x, r.h, r.w))
+    }
+
+    /// A primeira linha (vertical) ou coluna que põe o polegar sob o ponteiro em `pos` (ao longo da calha),
+    /// com `pega` = onde o polegar foi agarrado, medido do começo dele.
+    #[must_use]
+    pub fn primeira_sob(&self, vertical: bool, pos: f32, pega: f32) -> usize {
+        let (calha, polegar, cabem) = if vertical {
+            let (Some(c), Some(p)) = (self.barra_vertical(), self.polegar_vertical()) else {
+                return self.l0;
+            };
+            ((c.y, c.h), p.h, self.cabem_l)
+        } else {
+            let (Some(c), Some(p)) = (self.barra_horizontal(), self.polegar_horizontal()) else {
+                return self.c0;
+            };
+            ((c.x, c.w), p.w, self.cabem_c)
+        };
+        let max = self.k.saturating_sub(cabem);
+        let curso = (calha.1 - polegar).max(1.0);
+        let t = ((pos - pega - calha.0) / curso).clamp(0.0, 1.0);
+        (t * max as f32).round() as usize
     }
 
     /// A linha `p` da lista (debaixo do título «Layers»).

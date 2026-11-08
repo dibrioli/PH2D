@@ -52,16 +52,21 @@ impl DocumentSurface for AbaDasCamadas {
         &mut self,
         _id: u64,
         _input: PointerInput<'_>,
-        _kind: PointerKind,
+        kind: PointerKind,
         _button: PointerButton,
-        _x: f32,
-        _y: f32,
+        x: f32,
+        y: f32,
     ) -> bool {
-        false
+        // As barras da grade (onda 9f): carregar agarra, largar solta.
+        match kind {
+            PointerKind::Down => aba::agarra(x, y),
+            PointerKind::Up => aba::solta(),
+            PointerKind::Move => aba::arrasta(x, y),
+        }
     }
 
-    fn pointer_move(&mut self, _id: u64, _input: PointerInput<'_>, _x: f32, _y: f32) -> bool {
-        false
+    fn pointer_move(&mut self, _id: u64, _input: PointerInput<'_>, x: f32, y: f32) -> bool {
+        aba::arrasta(x, y)
     }
 
     fn wheel(&mut self, _id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool {

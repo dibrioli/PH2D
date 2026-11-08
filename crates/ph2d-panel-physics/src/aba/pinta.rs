@@ -40,6 +40,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx) {
     q.lente();
     pinta_lista(ctx, &q);
     pinta_grade(ctx, &q);
+    super::barras::pinta(ctx, &q.g);
     pinta_pe(ctx, &q);
     match &q.pergunta {
         Some(p) => {

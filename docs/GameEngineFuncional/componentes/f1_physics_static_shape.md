@@ -223,3 +223,20 @@ Os pedidos do dono da 9c que faltavam (*«cada camada com cor única e fluoresce
 - **Contraste do Remove:** os nomes não escolhidos eram `Text2` (no cartão `CardLabel`) sobre `DangerSoft`: **1,10–2,09:1** medido (PlumberRed 1,10 · Gray 1,62 · Dark 2,09). Agora o texto forte em todos (a escolhida diz-se pelo `AccentSoft` e pela ✓); e onde o próprio `DangerSoft` não deixa o texto forte a `TEXT_MIN_RATIO` (PlumberRed/PlumberGreen, 4,01:1) o fundo é o do cartão e o contorno `Danger` fica. Medido nos 12 temas: **mínimo 5,91:1** (Gray).
 - **NÃO feito:** o tipo de corpo pela espessura do traço no canvas (espera o dono).
 - **Smoke do dono (07/11), exceção:** *«Gostei. mas aqui (nas setas) ficam os quadrados antes do nome como antes. Nos outros locais fica a outline»* — a lista «Layers» da aba volta ao quadradinho da cor antes do nome (o da 9d: lado `font − Xs`, raio meio), SEM o contorno; a selecionada só com o fundo de seleção. Os outros sítios (Collides with, seletor Layer, Rename, Bumps into, destinos do Remove) ficam com o contorno. O quadradinho regista-se para os testes (`aba::quadradinho_da_lista`).
+
+### Larguras da aba × editor de animações do Animated Sprite (pedido do dono 07/11, MEDIDO; ajuste NÃO feito)
+
+*«veja se as larguras estão no padrão como na linha GameEngineFuncional na edição de animated Sprites»*. Referência lida por git: `line/GameEngineFuncional:crates/ph2d-app-sprite-anim/src/editor/layout.rs` (`lay_out`). Valores de fábrica dos tokens.
+
+| Medida | Referência (Animations) | Nossa (Layers) |
+|---|---|---|
+| Largura dos dois botões | a MESMA nos dois: o maior rótulo por `rect_for_label` (texto + `Md`×2 = +16 px), piso `FIELD_H` | a MESMA nos dois: o maior rótulo + `Lg`×2 (+24 px) |
+| Letra dos botões | `TypeToken::Base` | `TypeToken::Sm` |
+| Altura dos botões | `m::FIELD_H` = 28 px | `ROW_H_PX` = 22 px |
+| Vão entre os botões | `m::FIELD_GAP` = 6 px | `MARGEM_DA_LISTA` = `Sm` = 6 px (igual) |
+| Margem interna do cartão da lista | `Spacing::Lg` = 12 px | `Spacing::Sm` = 6 px |
+| Margem externa (entre cartões) | `Spacing::Md` = 8 px | `Spacing::Md` = 8 px (igual) |
+| Largura da coluna | `max(min(área×0,18; 28×7), 28×3, split+2·Lg, 2·(botão+Lg)+vão)` | `max(rótulo+contagem+2·Lg, título+2·Lg, 22×6 = 132, 2·botão+3·Sm)` |
+| Altura das linhas da lista | `ROW_H_PX` = 22 px | `ROW_H_PX` = 22 px (igual) |
+
+⚠️ A referência NÃO dá a cada botão a largura do seu próprio texto: «+ Add» e «Remove» têm a largura do maior dos dois (só o «Split by rows» tem a sua). O que difere de facto: o acolchoado (16 × 24 px), a letra, a altura (28 × 22), a margem interna (12 × 6) e a regra da largura da coluna. As caixinhas «Bumps into», os botões «Objects on this layer»/«Select all» e as margens da grade e da camada aberta NÃO foram medidos contra os chips da referência. Falta: aplicar estes tokens, mudar o teste `os_botoes_da_lista_ficam_dentro_do_cartao_em_tres_larguras` para a lei nova e tirar a foto lado a lado.

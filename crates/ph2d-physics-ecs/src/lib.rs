@@ -28,8 +28,8 @@ pub mod keyboard_driven;
 mod layer_names;
 mod migra_formas;
 pub use migra_formas::{
-    LADO_FORMA, Migracao, NOME_DA_FORMA, migra_formas_no_retrato, migra_formas_para_filhos,
-    migra_formas_para_filhos_com_pares, nasce_com_forma,
+    LADO_FORMA, Migracao, NOME_DA_FORMA, NOME_DO_CORPO, migra_formas_no_retrato,
+    migra_formas_para_filhos, migra_formas_para_filhos_com_pares, nasce_com_forma, torna_corpo,
 };
 pub mod player_input;
 pub use layer_names::{

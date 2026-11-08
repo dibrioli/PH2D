@@ -144,15 +144,14 @@ pub(crate) fn create_joint_at(
     // iguais encostadas, o elo de corrente), então a corrente que já shipa não
     // se move. Sem collider dos dois lados não há silhueta a medir, e aí o
     // fallback é o meio — o que se sabe sem geometria nenhuma.
-    let seam = ph2d_physics_ecs::seam_between(
-        sim.world()
-            .get::<ph2d_physics_ecs::Collider>(a)
-            .zip(ph2d_ecs::world_transform(sim.world(), a)),
-        sim.world()
-            .get::<ph2d_physics_ecs::Collider>(b)
-            .zip(ph2d_ecs::world_transform(sim.world(), b)),
-    )
-    .unwrap_or((pa + pb) * 0.5);
+    // A silhueta é a da forma PRINCIPAL, no corpo ou numa filha (opção B).
+    let silhueta = |e: Entity| {
+        let w = sim.world();
+        let f = ph2d_physics_ecs::main_shape(w, e)?;
+        w.get::<ph2d_physics_ecs::Collider>(f)
+            .zip(ph2d_ecs::world_transform(w, f))
+    };
+    let seam = ph2d_physics_ecs::seam_between(silhueta(a), silhueta(b)).unwrap_or((pa + pb) * 0.5);
     // The display pivot: the A anchor when the gesture named one (the value
     // `sync_joint_pivots` will keep deriving), the seam otherwise.
     let origin = anchored.map_or(seam, |(_, _, wa, _)| ph2d_core::Vec2::new(wa[0], wa[1]));

@@ -86,6 +86,62 @@ pub fn nasce_com_forma(world: &mut World, body: Entity, shape: crate::ColliderSh
     filha
 }
 
+/// O nome do corpo que *Make Independent Body* põe em volta de uma forma solta (sem imagem).
+pub const NOME_DO_CORPO: &str = "Physics Body";
+
+/// ⭐ **`e` vira corpo `kind` sem a forma nele** (opção B, B3b) — a porta do *Add Body*, do rig e do
+/// *Make Independent Body*. Devolve o CORPO.
+/// - `e` sem `Collider`: ganha o `RigidBody` e, se não tem forma, a filha de caixa `caixa`.
+/// - `e` com `Collider` e imagem: a imagem é o corpo; a forma autorada passa inteira para a filha.
+/// - `e` forma solta (sem imagem): um corpo novo na pose dela, no lugar dela entre as irmãs, e ela
+///   passa a filha com `Transform` identidade — a pose no mundo não muda.
+///
+/// `tem_imagem`: `e` tem `Sprite` (esta crate não conhece a `ph2d-render`).
+pub fn torna_corpo(
+    world: &mut World,
+    e: Entity,
+    kind: crate::BodyKind,
+    caixa: [f32; 2],
+    tem_imagem: bool,
+) -> Entity {
+    let corpo_de = crate::RigidBody { kind };
+    if world.get::<crate::Collider>(e).is_none() {
+        world.entity_mut(e).insert(corpo_de);
+        if crate::main_shape(world, e).is_none() {
+            let [half_x, half_y] = caixa;
+            nasce_com_forma(world, e, crate::ColliderShape::Cuboid { half_x, half_y });
+        }
+        return e;
+    }
+    if tem_imagem {
+        world.entity_mut(e).insert(corpo_de);
+        let filha = filha_vazia(world, e);
+        move_lado_forma(world, e, filha);
+        ph2d_ecs::assign_missing_stable_ids(world);
+        return e;
+    }
+    let pose = world
+        .get::<Transform>(e)
+        .copied()
+        .unwrap_or(Transform::IDENTITY);
+    let pai = world.get::<ChildOf>(e).map(ChildOf::parent);
+    let corpo = world.spawn((Name::new(NOME_DO_CORPO), pose, corpo_de)).id();
+    if let Some(p) = pai {
+        let irmas = ordered_children(world, p);
+        world.entity_mut(corpo).insert(ChildOf(p));
+        let ordem: Vec<Entity> = irmas
+            .into_iter()
+            .map(|x| if x == e { corpo } else { x })
+            .collect();
+        set_sibling_order(world, p, &ordem);
+    }
+    world
+        .entity_mut(e)
+        .insert((Transform::IDENTITY, ChildOf(corpo)));
+    ph2d_ecs::assign_missing_stable_ids(world);
+    corpo
+}
+
 /// O que a migração fez: `(StableId do corpo, StableId da filha)` por corpo, na ordem de `StableId`.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Migracao {

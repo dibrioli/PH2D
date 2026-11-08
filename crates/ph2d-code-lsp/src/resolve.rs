@@ -67,7 +67,21 @@ impl Pin {
 
     /// Resolves the binary in the documented order.
     pub fn resolve(&self) -> Result<(PathBuf, BinarySource), ResolveError> {
-        if let Some(p) = std::env::var_os(self.env).filter(|v| !v.is_empty()) {
+        let exe_dir = std::env::current_exe()
+            .ok()
+            .and_then(|e| e.parent().map(PathBuf::from));
+        self.resolve_from(std::env::var_os(self.env), exe_dir, self.cache_dir())
+    }
+
+    /// The same order over explicit places (the env var's value, the executable's folder, the cache
+    /// folder) — what `resolve` reads from the process, testable without touching it.
+    pub fn resolve_from(
+        &self,
+        env: Option<std::ffi::OsString>,
+        exe_dir: Option<PathBuf>,
+        cache_dir: Option<PathBuf>,
+    ) -> Result<(PathBuf, BinarySource), ResolveError> {
+        if let Some(p) = env.filter(|v| !v.is_empty()) {
             let p = PathBuf::from(p);
             return if p.is_file() {
                 Ok((p, BinarySource::Env))
@@ -79,17 +93,14 @@ impl Pin {
             };
         }
         let mut tried = Vec::new();
-        if let Some(dir) = std::env::current_exe()
-            .ok()
-            .and_then(|e| e.parent().map(PathBuf::from))
-        {
+        if let Some(dir) = exe_dir {
             let p = dir.join(self.binary_file_name());
             if p.is_file() {
                 return Ok((p, BinarySource::NextToExe));
             }
             tried.push(p);
         }
-        if let Some(dir) = self.cache_dir() {
+        if let Some(dir) = cache_dir {
             let p = dir.join(self.binary_file_name());
             if p.is_file() {
                 return Ok((p, BinarySource::Cache));

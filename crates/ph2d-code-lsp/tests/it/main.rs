@@ -10,6 +10,7 @@ mod definicoes;
 mod framing;
 mod ganchos;
 mod latencia;
+mod onde_mora_o_ajudante;
 mod position_utf16;
 mod script_canonico;
 mod solver_scripts_reais;

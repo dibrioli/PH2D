@@ -14,4 +14,6 @@ cd "$SCRIPT_DIR"
 
 echo "[play] building + launching PH2D editor (smoke profile)…"
 echo "[play] (close the window or Cmd+Q to exit)"
+# The code assistant (luau-lsp) and the formatter (StyLua), pinned, next to the binary (CodeEditor 13 §A5).
+bash scripts/pinned-helpers-next-to-exe.sh smoke || echo "[play] code helpers not placed — the script editor runs without them"
 exec cargo run -p ph2d-host-desktop --profile smoke

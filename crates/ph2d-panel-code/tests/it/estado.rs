@@ -77,8 +77,15 @@ fn o_assistente_so_aparece_quando_nao_esta_pronto() {
             ..Deco::default()
         };
         let (texto, t) = status(&buf, &d).assist.expect("peça do assistente");
-        if matches!(a, Assist::Missing | Assist::Stopped) {
+        if a == Assist::Stopped {
             assert!(texto.contains("editing works"), "{a:?}: {texto}");
+        }
+        // Sem o programa, a barra diz o que se perde (crítica 08/11: «not installed» não dizia).
+        if a == Assist::Missing {
+            for perdido in ["suggestions", "help", "rename"] {
+                assert!(texto.contains(perdido), "{a:?} não diz «{perdido}»: {texto}");
+            }
+            assert!(!texto.contains("not installed"), "{texto}");
         }
         assert_eq!(t, tom, "{a:?}");
         textos.insert(texto);
@@ -112,9 +119,8 @@ fn uma_contagem_de_um_fala_no_singular() {
     );
     assert_eq!(ph2d_panel_code::problems_title(0), "Problems");
     assert_eq!(ph2d_panel_code::problems_title(5), "Problems (5)");
-    assert_eq!(ph2d_panel_code::console_title_text(0), "Console");
-    assert_eq!(ph2d_panel_code::console_title_text(1), "Console · 1 error");
-    assert_eq!(ph2d_panel_code::console_title_text(2), "Console · 2 errors");
+    // Onda A: os erros contam-se nos Problems, o console já não os conta.
+    assert_eq!(ph2d_panel_code::console_title_text(), "Console");
     let um = ph2d_panel_code::FindCount {
         current: None,
         total: 1,

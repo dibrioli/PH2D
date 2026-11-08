@@ -46,4 +46,7 @@ echo "[run-shell] (PH2D editor — close window or Cmd+Q to exit)"
 # Inspector / BottomHUD) with the M14.4a live ECS bridge wired since
 # the 2026-05-14 gate inversion. The legacy 1000-sprite M5 perf demo
 # is opt-in via `PH2D_M5_DEMO=1` for HR-4 bench / stress work.
+case "$PROFILE" in release | smoke) HELPER_DIR="$PROFILE" ;; *) HELPER_DIR="debug" ;; esac
+bash "$(dirname "${BASH_SOURCE[0]}")/pinned-helpers-next-to-exe.sh" "$HELPER_DIR" \
+    || echo "[run-shell] code helpers not placed — the script editor runs without them"
 exec cargo run -p ph2d-host-desktop $PROFILE_FLAG

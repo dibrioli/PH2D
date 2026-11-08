@@ -54,6 +54,7 @@ pub fn scopes(hero: &mut crate::HeroScreen) -> PaletteScopes {
             .enumerate()
             .filter(|(i, s)| s.kind == kind && (*i as u64) < SYMBOL_IDS)
             .map(|(i, s)| PaletteItem {
+                badge: None,
                 label: match &s.container {
                     Some(c) => format!("{} \u{00b7} {c}", s.name),
                     None => s.name.clone(),

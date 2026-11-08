@@ -28,6 +28,7 @@ fn hash_node_id_rt(n: &str) -> NodeId {
 
 fn model(select: bool) -> PaletteModel {
     let item = |n: &str| PaletteItem {
+        badge: None,
         label: n.into(),
         id: id(n),
         keywords: if n == "Wall" { "floor, wall" } else { "" },

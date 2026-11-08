@@ -38,6 +38,7 @@ fn without_tip() -> NodeId {
 
 fn model() -> PaletteModel {
     let item = |label: &str, id| PaletteItem {
+        badge: None,
         label: label.into(),
         id,
         keywords: "",

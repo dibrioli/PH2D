@@ -31,6 +31,7 @@ fn model(select: bool) -> PaletteModel {
             items: items
                 .iter()
                 .map(|n| PaletteItem {
+                    badge: None,
                     label: (*n).into(),
                     id: id(n),
                     keywords: "",
@@ -164,4 +165,71 @@ fn a_contagem_do_grupo_fica_a_direita() {
             .any(|(s, _)| s.replace('\u{a0}', " ") == "Game \u{00b7} 3"),
         "a paleta de sempre perdeu o «Title · N»"
     );
+}
+
+/// As pílulas de uma paleta, por rótulo: `(rótulo, rect no cartão + origem do cartão)`.
+fn pilulas(ts: &mut TextSystem, m: &PaletteModel) -> Vec<(String, [f32; 4])> {
+    let mt = metrics(ts, m, VP, false, "");
+    let mut v = Vec::new();
+    for (cl, ox, oy, _) in &mt.placed {
+        for p in &cl.placed {
+            if let super::super::Placed::Pill { rect, label, .. } = p {
+                v.push((label.clone(), [ox + rect.x, oy + rect.y, rect.w, rect.h]));
+            }
+        }
+    }
+    v
+}
+
+/// ⭐ **A plaquinha «+N» (Add Component, maquete B `.bri`) cabe DENTRO da pílula, e quem não a tem
+/// fica como era.** (a) a pílula com plaquinha é mais larga que a mesma sem ela; (b) num modelo sem
+/// plaquinha nenhuma cada pílula mede o de sempre (ponto + vão + texto + recuos), e uma plaquinha
+/// num cartão não mexe nos outros cartões. Nos dois acabamentos.
+///
+/// (Mutação: tirar a reserva de largura da plaquinha no `flow_pills` ⇒ RED em (a).)
+#[test]
+fn a_plaquinha_cabe_na_pilula_e_nao_muda_quem_nao_a_tem() {
+    let mut ts = TextSystem::new();
+    for select in [false, true] {
+        let lk = look(&model(select));
+        let sem = model(select);
+        let mut com = model(select);
+        com.groups[0].subs[0].items[0].badge = Some("+3".into());
+        let (p_sem, p_com) = (pilulas(&mut ts, &sem), pilulas(&mut ts, &com));
+        assert_eq!(p_sem.len(), p_com.len());
+
+        let w = |v: &[(String, [f32; 4])], l: &str| {
+            v.iter().find(|(s, _)| s == l).map(|p| p.1[2]).expect(l)
+        };
+        let chip =
+            super::super::layout::badge_gap() + super::super::layout::badge_size(&mut ts, "+3").0;
+        assert!(
+            (w(&p_com, "Sprite") - w(&p_sem, "Sprite") - chip).abs() < 0.01,
+            "a pílula não reservou a plaquinha ({select}): {} contra {}",
+            w(&p_com, "Sprite"),
+            w(&p_sem, "Sprite")
+        );
+
+        for (label, r) in &p_sem {
+            let texto = ts.prefix_width_weighted(label, lk.pill_font, lk.pill_weight);
+            let antes =
+                lk.dot_r * 2.0 + ph2d_tokens::Spacing::Xs.px() + texto + lk.pill_pad_x * 2.0;
+            assert!(
+                (r[2] - antes).abs() < 0.01,
+                "{label:?} mudou de largura sem plaquinha ({select}): {} contra {antes}",
+                r[2]
+            );
+        }
+        let pictures = [
+            "Sprite",
+            "Animated Sprite",
+            "Pixel Sprite",
+            "Background Layer",
+        ];
+        for (a, b) in p_sem.iter().zip(&p_com) {
+            if !pictures.contains(&a.0.as_str()) {
+                assert_eq!(a, b, "uma plaquinha noutro cartão mexeu em {:?}", a.0);
+            }
+        }
+    }
 }

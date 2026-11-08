@@ -202,6 +202,7 @@ pub fn build(
             Some(reason) => format!("{label}  \u{2014}  {reason}"),
         };
         PaletteItem {
+            badge: None,
             label,
             id: e.id(),
             keywords: e.keywords(),

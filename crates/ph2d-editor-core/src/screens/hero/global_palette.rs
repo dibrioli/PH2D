@@ -123,6 +123,7 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
             .iter()
             .filter_map(|e| {
                 Some(PaletteItem {
+                    badge: None,
                     label: e.label()?.to_string(),
                     id: e.node_id()?,
                     keywords: "",
@@ -147,6 +148,7 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
     let doc: Vec<PaletteItem> = super::surface_input::commands(hero)
         .into_iter()
         .map(|c| PaletteItem {
+            badge: None,
             label: c.label,
             id: c.id,
             keywords: "",
@@ -173,6 +175,7 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
     crate::panel::with_registry_opt(|reg| {
         for p in reg.panels() {
             panels.push(PaletteItem {
+                badge: None,
                 label: humanise_panel_id(p.manifest.id),
                 id: p.manifest.panel_node_id,
                 keywords: "",
@@ -205,6 +208,7 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
             let items: Vec<PaletteItem> = super::menu_rows::menu_rows(*kind)
                 .iter()
                 .map(|(id, label, _)| PaletteItem {
+                    badge: None,
                     label: palette_label(label.tr()),
                     id: *id,
                     keywords: "",

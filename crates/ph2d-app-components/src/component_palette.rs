@@ -74,19 +74,18 @@ pub(crate) fn intent_words(desc: &ComponentDesc) -> &'static str {
     if words == key { "" } else { words }
 }
 
-/// Um item da paleta: o nome, `+N` quando traz peças junto (a lista vai na dica), a razão do inaplicável.
+/// Um item da paleta: o nome, a plaquinha `+N` quando traz peças junto (a lista vai na dica), a razão do inaplicável.
 fn make_item(desc: &ComponentDesc, applicable: bool, ja: &[&str]) -> PaletteItem {
     let mut label = tr(desc.display_key).to_string();
     let n = cd::trazidos(desc.canonical_name, ja).len();
-    if n > 0 {
-        label.push_str(&tr("component_add.plus_n").replace("{n}", &n.to_string()));
-    }
+    let badge = (n > 0).then(|| tr("component_add.plus_n").replace("{n}", &n.to_string()));
     if !applicable {
         label.push_str(tr(
             "app.components.component_palette.not_for_this_object_type_2",
         ));
     }
     PaletteItem {
+        badge,
         label,
         id: item_id(desc.canonical_name),
         keywords: intent_words(desc),
@@ -224,6 +223,7 @@ pub const ANIMATION_ITEM: NodeId = item_id("timeline.animation");
 pub(crate) fn offer_animation(model: &mut PaletteModel) {
     let label = tr("app.components.component_palette.animation");
     let item = PaletteItem {
+        badge: None,
         label: label.to_string(),
         id: ANIMATION_ITEM,
         keywords: "",

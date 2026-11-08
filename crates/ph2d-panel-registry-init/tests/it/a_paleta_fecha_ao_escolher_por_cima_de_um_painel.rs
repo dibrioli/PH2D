@@ -37,6 +37,7 @@ fn paleta_sobre_a_fisica() -> (PaletteModel, ph2d_editor_core::NodeId) {
             subs: vec![PaletteSub {
                 title: None,
                 items: vec![PaletteItem {
+                    badge: None,
                     label: rotulo,
                     id,
                     keywords: "",

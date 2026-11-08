@@ -151,6 +151,7 @@ fn an_open_palette_wins_the_click_over_a_shadowing_graph_surface() {
             subs: vec![PaletteSub {
                 title: None,
                 items: vec![PaletteItem {
+                    badge: None,
                     label: "Boids".into(),
                     id: pill,
                     keywords: "",

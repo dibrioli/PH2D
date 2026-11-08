@@ -3,6 +3,7 @@
 //! Irmão de [`super`] pelo tecto de 500 LOC dos primitivos; as medidas e os pesos vêm do
 //! [`Look`] (o de sempre, ou o da referência no Add Object).
 
+use super::layout::{badge_font, badge_gap, badge_size};
 use super::look::Look;
 use super::{CardLayout, Placed};
 use crate::interaction::HitIndex;
@@ -116,7 +117,12 @@ pub(super) fn paint_card(
                     superficie.cor(ColorToken::Text3),
                 );
             }
-            Placed::Pill { rect, id, label } => {
+            Placed::Pill {
+                rect,
+                id,
+                label,
+                badge,
+            } => {
                 let r = Rect::new(ox + rect.x, dy + rect.y, rect.w, rect.h);
                 let fg = match ink {
                     _ if chosen == Some(*id) => superficie.botao(scene, r, true, false),
@@ -147,7 +153,20 @@ pub(super) fn paint_card(
                     r.x + pad_x + dot_r * 2.0 + Spacing::Xs.px(),
                     r.y + superficie.folga(r.h, ink_px),
                 );
-                let lw = r.w - pad_x * 2.0 - dot_r * 2.0;
+                let chip = badge.as_deref().map(|b| (b, badge_size(ts, b)));
+                let reserva = chip.map_or(0.0, |(_, (w, _))| badge_gap() + w);
+                let lw = r.w - pad_x * 2.0 - dot_r * 2.0 - reserva;
+                if let Some((b, (w, h))) = chip {
+                    paint_badge(
+                        scene,
+                        ts,
+                        b,
+                        r.x + r.w - pad_x - w,
+                        r.y,
+                        [w, h, r.h],
+                        &superficie,
+                    );
+                }
                 // O peso de sempre pinta pela porta de sempre (que corta numa linha); o da
                 // referência pede o seu peso — o rótulo foi MEDIDO nele, e cabe.
                 if lk.pill_weight == FontWeight::MEDIUM {
@@ -172,6 +191,37 @@ pub(super) fn paint_card(
             }
         }
     }
+}
+
+/// ⭐ **A plaquinha** («+3», maquete B `.bri`): uma pílula cinza (a cor do texto apagado) com o
+/// texto na cor do fundo do painel, em negrito pequeno, centrada na altura `ph` da pílula do item.
+fn paint_badge(
+    scene: &mut VectorScene,
+    ts: &mut TextSystem,
+    text: &str,
+    x: f32,
+    py: f32,
+    [w, h, ph]: [f32; 3],
+    superficie: &Superficie,
+) {
+    let r = Rect::new(x, py + (ph - h) * 0.5, w, h);
+    fill_rounded_rect(scene, r, h * 0.5, superficie.cor(ColorToken::Text3));
+    let tinta = match superficie.tinta() {
+        Some(ink) => ink.color(ColorToken::KanbanList),
+        None => superficie.cor(ColorToken::BgElev),
+    };
+    let (px, weight) = badge_font();
+    let _ = paint_text_weighted(
+        ts,
+        scene,
+        text,
+        r.x + Spacing::Xs.px(),
+        r.y + superficie.folga(h, px),
+        px,
+        w,
+        tinta,
+        weight,
+    );
 }
 
 /// A small filled category dot of radius `r` centred at `(cx, cy)`.

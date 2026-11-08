@@ -93,6 +93,7 @@ fn cada_ensino_do_add_component_so_cita_o_que_existe_e_so_aparece_sem_resultado(
             let kw = d.keywords_key();
             let words = ph2d_i18n::tr(&kw);
             PaletteItem {
+                badge: None,
                 label: ph2d_i18n::tr(d.display_key).to_string(),
                 id: ph2d_editor_core::NodeId(0),
                 keywords: if words == kw { "" } else { words },

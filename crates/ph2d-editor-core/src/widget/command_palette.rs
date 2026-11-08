@@ -102,6 +102,9 @@ pub struct PaletteItem {
     /// ⭐ **As palavras de INTENÇÃO** (doc ObjectsAndComponents 01 §7.3): o que o item FAZ, por vírgula
     /// («fall, gravity, jump»). Nunca se pintam; a busca acha o item por elas. `""` = só o rótulo.
     pub keywords: &'static str,
+    /// A **plaquinha** à direita do rótulo (o «+3» do Add Component), já traduzida; `None` = nenhuma.
+    /// Pinta-se como um chip; a busca não a lê.
+    pub badge: Option<String>,
 }
 
 /// A named cluster inside a category (e.g. Transform's "Forces & Physics"). `title == None` means the
@@ -199,6 +202,7 @@ enum Placed {
         rect: Rect,
         id: NodeId,
         label: String,
+        badge: Option<String>,
     },
 }
 

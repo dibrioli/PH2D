@@ -17,7 +17,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component_add.group.bones" => "Bones",
         "component_add.group.organize" => "Organize",
         // A dica: a frase, depois as palavras da busca, depois o que vem junto.
-        "component_add.plus_n" => "  +{n}",
+        "component_add.plus_n" => "+{n}",
         "component_add.tip.words" => "Words: {words}.",
         "component_add.tip.also_adds" => "Also adds: {names}.",
         // Move and collide

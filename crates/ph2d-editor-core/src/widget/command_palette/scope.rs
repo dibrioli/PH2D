@@ -155,6 +155,7 @@ pub fn scoped<'a>(
             subs: vec![PaletteSub {
                 title: None,
                 items: vec![PaletteItem {
+                    badge: None,
                     label,
                     id: line.id,
                     keywords: "",
@@ -200,6 +201,7 @@ mod tests {
 
     fn item(label: &str, n: u64) -> PaletteItem {
         PaletteItem {
+            badge: None,
             label: label.into(),
             id: NodeId(n),
             keywords: "",

@@ -6,6 +6,7 @@ use ph2d_tokens::ColorToken;
 
 fn item(label: &'static str) -> PaletteItem {
     PaletteItem {
+        badge: None,
         label: label.into(),
         id: hash_node_id(label),
         keywords: "",
@@ -59,6 +60,7 @@ fn item_matches_is_case_insensitive_substring_and_empty_matches_all() {
 #[test]
 fn every_query_word_is_found_in_the_label_or_the_intent_words() {
     let fonte = PaletteItem {
+        badge: None,
         keywords: "play sound, sfx, music",
         ..item("Audio Source 2D")
     };
@@ -311,6 +313,7 @@ fn tall(n: usize, k: usize) -> PaletteModel {
 fn item_owned(label: String) -> PaletteItem {
     let id = hash_node_id(Box::leak(label.clone().into_boxed_str()));
     PaletteItem {
+        badge: None,
         label,
         id,
         keywords: "",

@@ -11,9 +11,27 @@
 
 use super::look::{Look, look};
 use super::*;
+use ph2d_text::FontWeight;
 
 /// Abaixo de três colunas o arranjo não é uma grade — ele empilha.
 const MIN_COLS_FOR_GRID: f32 = 3.0; // LITERAL-PX-OK: CONTAGEM de colunas, não medida
+
+/// O corpo e o peso da plaquinha (maquete B, `.bri{font-size:10px;font-weight:700}`).
+pub(super) fn badge_font() -> (f32, FontWeight) {
+    (TypeToken::Xs.px(), FontWeight::BOLD)
+}
+
+/// O vão entre o rótulo e a plaquinha.
+pub(super) fn badge_gap() -> f32 {
+    Spacing::Xs.px()
+}
+
+/// `(largura, altura)` da plaquinha de texto `text`: o texto mais o recuo dos lados, uma pílula.
+pub(super) fn badge_size(ts: &mut TextSystem, text: &str) -> (f32, f32) {
+    let (px, weight) = badge_font();
+    let w = ts.prefix_width_weighted(text, px, weight) + Spacing::Xs.px() * 2.0;
+    (w, px + Spacing::Xxs.px() * 2.0)
+}
 
 /// Append pill placements for `items`, wrapping to new rows at `width`, starting at card-local
 /// `(ox, oy)`. Returns the y just below the last row (including the trailing pill gap).
@@ -31,7 +49,12 @@ fn flow_pills(
     let mut row_started = false;
     for it in items {
         let text_w = ts.prefix_width_weighted(&it.label, lk.pill_font, lk.pill_weight);
-        let pill_w = (lk.dot_r * 2.0 + Spacing::Xs.px() + text_w + lk.pill_pad_x * 2.0).min(width);
+        let chip = it
+            .badge
+            .as_deref()
+            .map_or(0.0, |b| badge_gap() + badge_size(ts, b).0);
+        let pill_w =
+            (lk.dot_r * 2.0 + Spacing::Xs.px() + text_w + chip + lk.pill_pad_x * 2.0).min(width);
         if row_started && x + pill_w > width {
             x = 0.0;
             y += lk.pill_h + lk.pill_gap;
@@ -40,6 +63,7 @@ fn flow_pills(
             rect: Rect::new(ox + x, y, pill_w, lk.pill_h),
             id: it.id,
             label: it.label.clone(),
+            badge: it.badge.clone(),
         });
         x += pill_w + lk.pill_gap;
         row_started = true;

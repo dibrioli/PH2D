@@ -19,6 +19,16 @@ fn labels(m: &PaletteModel) -> Vec<String> {
         .collect()
 }
 
+/// O rótulo e a plaquinha de cada item.
+fn com_plaquinha(m: &PaletteModel) -> Vec<(String, Option<String>)> {
+    m.groups
+        .iter()
+        .flat_map(|g| &g.subs)
+        .flat_map(|s| &s.items)
+        .map(|i| (i.label.clone(), i.badge.clone()))
+        .collect()
+}
+
 /// ⭐ **O EXEMPLO DO ENIO, medido:** *"9-slice provavelmente não se aplica a nada além de uma
 /// sprite de imagem"*. Ele é oferecido a uma imagem e **não** a um objeto vetorial.
 ///
@@ -175,13 +185,19 @@ fn every_group_is_named_and_tinted() {
     }
 }
 
-/// ⭐ **A cascata é mostrada ANTES de ser aplicada** (Bevy #16570), e FECHADA: «+N» no rótulo, a lista
+/// ⭐ **A cascata é mostrada ANTES de ser aplicada** (Bevy #16570), e FECHADA: a plaquinha «+N» ao lado do nome, a lista
 /// inteira na dica (dono 08/11). Nav Agent traz Top-Down Player, Physics Body e Collision Shape.
 #[test]
 fn a_cascata_e_um_mais_n_no_rotulo_e_a_lista_na_dica() {
     let m = build(ObjectKind::Image, &[], &buildable, false);
-    let nav = labels(&m).into_iter().find(|l| l.starts_with("Nav Agent"));
-    assert_eq!(nav.as_deref(), Some("Nav Agent  +3"), "N é transitivo");
+    let nav = com_plaquinha(&m)
+        .into_iter()
+        .find(|(l, _)| l.starts_with("Nav Agent"));
+    assert_eq!(
+        nav,
+        Some(("Nav Agent".into(), Some("+3".into()))),
+        "N é transitivo, e vai na plaquinha, não no rótulo"
+    );
     let tip = m
         .tips
         .iter()
@@ -219,9 +235,10 @@ fn os_grupos_seguem_os_onze_assuntos_e_o_primeiro_vem_destacado() {
     let m = build(ObjectKind::Image, &moeda, &buildable, false);
     let primeiro = m.groups[0].subs[0].items[0].id;
     // O que o objecto JÁ tem não conta no «+N»: a moeda tem corpo, o Damage não traz nada.
-    let l = labels(&m);
+    let l = com_plaquinha(&m);
     assert!(
-        l.iter().any(|x| x == "Damage") && l.iter().any(|x| x == "Nav Agent  +1"),
+        l.contains(&("Damage".into(), None))
+            && l.contains(&("Nav Agent".into(), Some("+1".into()))),
         "{l:?}"
     );
     assert_eq!(

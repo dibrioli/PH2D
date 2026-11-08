@@ -20,6 +20,7 @@ fn row_item(e: &ToolRailEntry) -> Option<PaletteItem> {
     match e {
         ToolRailEntry::Number { .. } | ToolRailEntry::Divider => None,
         _ => Some(PaletteItem {
+            badge: None,
             label: e.label()?.to_string(),
             id: e.node_id()?,
             keywords: "",
@@ -29,6 +30,7 @@ fn row_item(e: &ToolRailEntry) -> Option<PaletteItem> {
 
 fn button_item(b: &BarButton) -> PaletteItem {
     PaletteItem {
+        badge: None,
         label: b.label.clone(),
         id: b.id,
         keywords: "",

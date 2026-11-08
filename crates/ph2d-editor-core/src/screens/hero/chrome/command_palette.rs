@@ -122,11 +122,13 @@ mod tests {
                     title: None,
                     items: vec![
                         PaletteItem {
+                            badge: None,
                             label: "Grid".into(),
                             id: hash_node_id("motion.grid"),
                             keywords: "",
                         },
                         PaletteItem {
+                            badge: None,
                             label: "Boids".into(),
                             id: hash_node_id("motion.boids"),
                             keywords: "",

@@ -140,6 +140,7 @@ fn paleta(on: bool) -> (bool, usize) {
                 subs: vec![PaletteSub {
                     title: None,
                     items: vec![PaletteItem {
+                        badge: None,
                         label: "Grid".into(),
                         id: NodeId(11),
                         keywords: "",

@@ -559,6 +559,12 @@ fn esc_no_numero_reverte_e_larga_o_campo() {
             None,
             "a tecla {tecla:?} não largou o campo"
         );
+        let (visto, ..) = hero.store.number_input(ids::BOUNDS_X).expect("o campo");
+        assert_ne!(
+            format!("{visto:?}"),
+            "Focused",
+            "a tecla {tecla:?} largou o foco mas o campo ainda o desenha"
+        );
         let _ = canal::take_pedidos();
         assenta(&mut hero, &mut ts);
         assert_eq!(numero(&hero, ids::BOUNDS_X), Some(4.0));

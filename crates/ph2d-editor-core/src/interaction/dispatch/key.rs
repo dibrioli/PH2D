@@ -324,6 +324,8 @@ pub fn dispatch_key<'frame>(
                 {
                     write_hex_canonical(store, id);
                 }
+                // O desenho do foco (anel, cursor) sai com ele, como no Enter.
+                super::reset_focused_visual_state(store, id);
                 store.set_focus(None);
                 events.push(WidgetEvent::Blur(id));
             }

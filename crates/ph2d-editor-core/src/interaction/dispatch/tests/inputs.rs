@@ -100,6 +100,21 @@ fn number_input_escape_reverts_to_last_committed() {
     assert_eq!(buf, "7");
 }
 
+/// O `Esc` larga o foco E o desenho dele: o anel e o cursor saem do campo, como no `Enter`
+/// (smoke 08/11, SLICES: o foco saía mas o campo continuava a parecer focado).
+#[test]
+fn number_input_escape_drops_the_focused_look_like_enter() {
+    for tecla in [KEY_ESCAPE, KEY_ENTER] {
+        let mut store = make_number_store(7.0);
+        let arena = Bump::new();
+        let _ = dispatch_text_input(&mut store, '9', &arena);
+        let _ = dispatch_key(&mut store, key(tecla, false), &arena);
+        assert_eq!(store.focus_id(), None);
+        let (state, ..) = store.number_input(NodeId(1)).unwrap();
+        assert_eq!(state, TextInputState::Normal, "tecla {tecla}");
+    }
+}
+
 #[test]
 fn number_input_unparsable_buffer_reverts_on_commit() {
     let mut store = make_number_store(3.0);

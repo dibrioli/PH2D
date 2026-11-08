@@ -130,13 +130,18 @@ fn os_quadros_quebram_pelo_nome_sem_se_tocar() {
             assert!(separados, "{a:?} pisa {b:?}");
         }
     }
-    let botao = achado(&r, INSP_PHYS_EDIT_MATRIX).expect("Edit matrix…");
-    let ultimo = caixas
+    // Dono 08/11: «Rename layers…» e «Open in tab…» entre a Layer e a fila.
+    let botao = achado(&r, INSP_PHYS_EDIT_MATRIX).expect("Open in tab…");
+    let rename = achado(&r, INSP_PHYS_LAYER_RENAME).expect("Rename layers…");
+    assert!(botao.y > lista.y + lista.h, "os botões abaixo da Layer");
+    let primeiro = caixas
         .iter()
         .chain([&mais])
-        .map(|c| c.y + c.h)
-        .fold(0.0, f32::max);
-    assert!(botao.y > ultimo, "a frase e o botão vêm depois da fila");
+        .map(|c| c.y)
+        .fold(f32::MAX, f32::min);
+    for b in [botao, rename] {
+        assert!(b.y + b.h < primeiro, "os botões antes da fila: {b:?}");
+    }
     fim();
 }
 

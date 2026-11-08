@@ -155,7 +155,7 @@ fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
         t.hit.register(ids::INSP_PHYS_LAYER_RENAME_DONE, r);
         return y;
     }
-    let y = if solta { y } else { colide_com(t, y, info) };
+    // Dono 08/11: os botões logo abaixo da Layer, antes do «Collides with».
     if solta {
         let (r, y) = t.botao(
             ids::INSP_PHYS_LAYER_RENAME,
@@ -163,17 +163,17 @@ fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
             y,
         );
         t.hit.register(ids::INSP_PHYS_LAYER_RENAME, r);
-        y
-    } else {
-        t.dois_botoes(
-            y,
-            (
-                ids::INSP_PHYS_LAYER_RENAME,
-                tr("card.insp.phys.layer_rename"),
-            ),
-            (ids::INSP_PHYS_EDIT_MATRIX, tr("card.insp.phys.edit_matrix")),
-        )
+        return y;
     }
+    let y = t.dois_botoes(
+        y,
+        (
+            ids::INSP_PHYS_LAYER_RENAME,
+            tr("card.insp.phys.layer_rename"),
+        ),
+        (ids::INSP_PHYS_EDIT_MATRIX, tr("card.insp.phys.edit_matrix")),
+    );
+    colide_com(t, y, info)
 }
 
 /// As camadas do modo Rename: as visíveis e a do objecto (a mesma fila das caixinhas).

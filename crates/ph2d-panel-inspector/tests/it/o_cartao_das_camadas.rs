@@ -338,18 +338,13 @@ fn os_quadros_e_o_edit_matrix_chegam_pelo_clique_com_o_shape_dobrado() {
     fim();
 }
 
-/// ⭐ Onda 8: duplo clique no chip da Layer abre o nome ali, com foco; escrever não grava; Enter grava UM
-/// passo; Esc desiste; vazio grava vazio (volta a «Layer n»). O campo vazio mostra «Layer n».
+/// ⭐ Dono 08/11: o duplo clique no chip da Layer NÃO renomeia («já temos o botão»), nem no cartão nem na face
+/// clássica: o modo Rename fica fechado e o foco não sai. Só «Rename layers…» abre, com o nome todo selecionado;
+/// escrever não grava; Enter grava UM passo; Esc desiste; vazio grava vazio (volta a «Layer n»).
+/// Mutação: devolver o braço `DoubleClick(INSP_PHYS_LAYER_PICK)` em `event_physics` deixa-o vermelho.
 #[test]
-fn duplo_clique_no_chip_da_layer_renomeia_num_passo() {
-    use ph2d_editor_core::interaction::WidgetEvent;
-    mundo();
-    let (mut host, mut st) = cena(na(2, with_body()), [1.0, 1.0]);
-    let r = pinta(&mut host, &mut st);
-    assert!(
-        achado(&r, INSP_PHYS_LAYER_PICK).is_some(),
-        "o chip da Layer"
-    );
+fn o_duplo_clique_no_chip_da_layer_nao_renomeia_so_o_botao() {
+    use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
     let evento = |host: &mut ph2d_ui_testkit::MockPanelHost,
                   st: &mut ph2d_panel_inspector::InspectorState,
                   ev: WidgetEvent| {
@@ -357,16 +352,69 @@ fn duplo_clique_no_chip_da_layer_renomeia_num_passo() {
         let _ = host.apply_panel_event::<ph2d_panel_inspector::InspectorPanel>(st, ev);
         host.drained_actions()
     };
-    let _ = evento(
+    for cartoes in [true, false] {
+        mundo();
+        let (mut host, mut st) = cena(na(2, with_body()), [1.0, 1.0]);
+        ph2d_panel_inspector::set_cards_on(cartoes);
+        let r = pinta(&mut host, &mut st);
+        assert!(
+            achado(&r, INSP_PHYS_LAYER_PICK).is_some(),
+            "o chip da Layer ({cartoes})"
+        );
+        let foco = host.store().focus_id();
+        let antes = host.store().is_collapsed(INSP_PHYS_LAYER_RENAMING);
+        assert!(!cartoes || antes, "o cartão nasce sem o renomear aberto");
+        let _ = evento(
+            &mut host,
+            &mut st,
+            WidgetEvent::DoubleClick(INSP_PHYS_LAYER_PICK),
+        );
+        assert_eq!(
+            host.store().is_collapsed(INSP_PHYS_LAYER_RENAMING),
+            antes,
+            "o duplo clique não abre o renomear (cartões: {cartoes})"
+        );
+        assert!(
+            !INSP_PHYS_LAYER_NAMES
+                .iter()
+                .any(|&c| host.store().focus_id() == Some(c)),
+            "nenhum campo do nome com o foco ({cartoes})"
+        );
+        assert_eq!(
+            host.store().focus_id(),
+            foco,
+            "o foco fica onde estava ({cartoes})"
+        );
+        fim();
+    }
+    // A porta é o botão: abre com o nome INTEIRO selecionado (escrever substitui-o).
+    mundo();
+    let (mut host, mut st) = cena(na(2, with_body()), [1.0, 1.0]);
+    let r = pinta(&mut host, &mut st);
+    let _ = clica(
         &mut host,
         &mut st,
-        WidgetEvent::DoubleClick(INSP_PHYS_LAYER_PICK),
+        achado(&r, INSP_PHYS_LAYER_RENAME).unwrap(),
     );
-    assert_eq!(host.store().focus_id(), Some(INSP_PHYS_LAYER_NAMES[2]));
+    let _ = pinta(&mut host, &mut st);
     assert!(
         !host.store().is_collapsed(INSP_PHYS_LAYER_RENAMING),
-        "o campo abriu"
+        "o botão abre"
     );
+    assert_eq!(host.store().focus_id(), Some(INSP_PHYS_LAYER_NAMES[2]));
+    match host.store().get(INSP_PHYS_LAYER_NAMES[2]) {
+        Some(InteractiveState::TextInput {
+            text,
+            caret,
+            selection_anchor,
+            ..
+        }) => assert_eq!(
+            (*selection_anchor, *caret),
+            (Some(0), text.len()),
+            "o nome todo selecionado: {text:?}"
+        ),
+        outro => panic!("o campo do nome: {outro:?}"),
+    }
     host.set_text(INSP_PHYS_LAYER_NAMES[2], "Mud");
     assert!(
         evento(
@@ -388,15 +436,6 @@ fn duplo_clique_no_chip_da_layer_renomeia_num_passo() {
             name: "Mud".into()
         }]
     );
-    assert!(
-        !host.store().is_collapsed(INSP_PHYS_LAYER_RENAMING),
-        "Enter fica no modo Rename (passa ao campo seguinte)"
-    );
-    let _ = evento(
-        &mut host,
-        &mut st,
-        WidgetEvent::DoubleClick(INSP_PHYS_LAYER_PICK),
-    );
     host.set_text(INSP_PHYS_LAYER_NAMES[2], "Nope");
     assert!(
         evento(
@@ -407,10 +446,11 @@ fn duplo_clique_no_chip_da_layer_renomeia_num_passo() {
         .is_empty(),
         "Esc nunca grava"
     );
-    let _ = evento(
+    let r = pinta(&mut host, &mut st);
+    let _ = clica(
         &mut host,
         &mut st,
-        WidgetEvent::DoubleClick(INSP_PHYS_LAYER_PICK),
+        achado(&r, INSP_PHYS_LAYER_RENAME).unwrap(),
     );
     host.set_text(INSP_PHYS_LAYER_NAMES[2], "  ");
     assert_eq!(

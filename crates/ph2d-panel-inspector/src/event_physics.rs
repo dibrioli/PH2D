@@ -11,9 +11,9 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::{InspectorPhysicsInfo, PhysicsFieldEdit};
 
-/// ⭐ O modo Rename (onda 9c, dono 07/11): «Rename layers…» (ou duplo clique no chip da Layer) troca as caixinhas
-/// pela lista de TODAS as camadas, cada uma com o seu campo; Enter grava ESSE nome (um passo de undo) e passa ao
-/// seguinte; vazio volta ao padrão; Esc e «Done» saem.
+/// ⭐ O modo Rename (onda 9c, dono 07/11): «Rename layers…» (a ÚNICA porta: o duplo clique no chip saiu, dono
+/// 08/11) troca as caixinhas pela lista de TODAS as camadas, cada uma com o seu campo; Enter grava ESSE nome
+/// (um passo de undo) e passa ao seguinte; vazio volta ao padrão; Esc e «Done» saem.
 fn nome_da_camada(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     let renomeando = crate::ids::INSP_PHYS_LAYER_RENAMING;
     let campos = &crate::ids::INSP_PHYS_LAYER_NAMES;
@@ -24,19 +24,6 @@ fn nome_da_camada(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         ph2d_editor_core::interaction::dispatch::focus_text_field_selected(store, campos[camada]);
     };
     match ev {
-        // Só no cartão: a face clássica não pinta os campos do renomear (o foco ficaria num campo invisível).
-        WidgetEvent::DoubleClick(id)
-            if id == crate::ids::INSP_PHYS_LAYER_PICK && crate::cards::active() =>
-        {
-            if let Some(ph2d_editor_core::interaction::InteractiveState::Dropdown {
-                open, ..
-            }) = host.store_mut().get_mut(id)
-            {
-                *open = false;
-            }
-            entra(host);
-            true
-        }
         WidgetEvent::Click(id) if id == crate::ids::INSP_PHYS_LAYER_RENAME => {
             ph2d_editor_core::panel::seam_reset_button(host, id);
             if host.store().is_collapsed(renomeando) {

@@ -679,7 +679,8 @@ fn a_lista_da_camada_escolhe_cada_camada_pela_mesma_edicao() {
 }
 
 /// Sem corpo acima nada bate na forma: os quadros contradiriam «Nothing bumps into it yet» e saem; a lista e o
-/// «Rename…» ficam. Com dono ou com corpo, a fila continua entre os dois.
+/// «Rename…» ficam. Dono 08/11: o «Rename…» vem logo abaixo da Layer nos três casos (no mesmo sítio), e a fila,
+/// com dono ou com corpo, vem depois dele.
 #[test]
 fn a_forma_solta_nao_mostra_os_quadros_mas_mantem_a_camada_e_o_rename() {
     let vao = |info: InspectorPhysicsInfo| {
@@ -687,16 +688,28 @@ fn a_forma_solta_nao_mostra_os_quadros_mas_mantem_a_camada_e_o_rename() {
         let r = pinta(&mut host, &mut st);
         let lista = achado(&r, INSP_PHYS_LAYER_PICK).expect("a lista da camada");
         let rename = achado(&r, INSP_PHYS_LAYER_RENAME).expect("o Rename…");
+        let fila = achado(&r, INSP_PHYS_COLLIDES[0]);
+        if let Some(q) = fila {
+            assert!(
+                q.y > rename.y + rename.h,
+                "a fila depois do Rename: {q:?} × {rename:?}"
+            );
+        }
         sai();
-        rename.y - lista.y
+        (rename.y - lista.y, fila.is_some())
     };
     let solta = InspectorPhysicsInfo {
         part_owner: String::new(),
         ..as_part()
     };
     let (sem, peca, corpo) = (vao(solta), vao(as_part()), vao(with_body()));
-    assert_eq!(peca, corpo, "peça e corpo mostram a mesma linha");
-    assert!(sem < peca, "a solta ainda reserva a fila: {sem} × {peca}");
+    assert_eq!(
+        (sem.1, peca.1, corpo.1),
+        (false, true, true),
+        "só a solta não tem a fila"
+    );
+    assert_eq!(peca.0, corpo.0, "peça e corpo mostram a mesma linha");
+    assert_eq!(sem.0, peca.0, "o Rename no mesmo sítio, com ou sem fila");
 }
 
 /// «Rename…» abre o campo ali mesmo; escrever pede o novo nome da camada do objecto.

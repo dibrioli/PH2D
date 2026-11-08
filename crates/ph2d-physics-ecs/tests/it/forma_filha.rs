@@ -267,3 +267,34 @@ fn mover_a_forma_filha_move_o_collider() {
         "a pose da filha tem de mudar onde a bola rola"
     );
 }
+
+/// ⭐ **O sinal de um sensor FILHO grita pelo CORPO** (opção B, B3a): o «só se fui eu» de uma moeda
+/// mora no corpo, e a forma filha leva o `SignalOnHit`. O gatilho continua a nomear a forma; o
+/// `SignalEvent.source` é o corpo nas duas construções (a migrada da B2 incluída).
+#[test]
+fn o_sinal_do_sensor_filho_tem_o_corpo_por_fonte() {
+    for filha in [false, true] {
+        let mut c = cena(filha);
+        let mut bridge = PhysicsBridge::new();
+        let mut fontes = Vec::new();
+        for t in 1..=300_u64 {
+            let input = PlayerInput {
+                drive: 1.0,
+                ..PlayerInput::default()
+            };
+            bridge.set_player_input(c.player, input);
+            bridge.dispatch(&mut c.sim, true, t);
+            for s in bridge.signal_events(&c.sim, &ph2d_tags::TagTree::new()) {
+                if s.name == "hit" {
+                    fontes.push(s.source);
+                }
+            }
+        }
+        assert!(!fontes.is_empty(), "filha={filha}: a zona não gritou");
+        assert!(
+            fontes.iter().all(|&s| s == c.corpos[3]),
+            "filha={filha}: a fonte não é o corpo da zona: {fontes:?} (forma {:?})",
+            c.formas[3]
+        );
+    }
+}

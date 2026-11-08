@@ -142,10 +142,13 @@ impl PhysicsBridge {
             (self.trigger_exits(), &on_leave),
         ] {
             for ev in evs {
-                if let Some(name) = named(ev.sensor).filter(|_| passa(ev.sensor, ev.other)) {
+                // O nome e o filtro são do lado-FORMA (a forma lida); quem GRITA é o CORPO dono de
+                // uma forma filha (opção B: o «só se fui eu» mora no corpo). O mapa guarda a forma.
+                let forma = self.shape_of(ev.sensor);
+                if let Some(name) = named(forma).filter(|_| passa(forma, ev.other)) {
                     out.push(SignalEvent {
                         name,
-                        source: ev.sensor,
+                        source: self.signal_source(ev.sensor),
                         other: ev.other,
                     });
                 }

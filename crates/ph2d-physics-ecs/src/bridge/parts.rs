@@ -67,6 +67,14 @@ impl PhysicsBridge {
             .map(|i| self.main_of[i].1)
     }
 
+    /// Quem GRITA o sinal de um sensor `shape`: o corpo dono quando ela é uma forma filha (a
+    /// principal ou uma peça), senão ela mesma (a forma no próprio corpo).
+    pub(super) fn signal_source(&self, shape: Entity) -> Entity {
+        self.main_body_of(shape)
+            .or_else(|| self.parts.get(&shape).map(|p| p.owner))
+            .unwrap_or(shape)
+    }
+
     /// A entidade da forma principal de `body` (ele mesmo quando a forma mora nele).
     pub(super) fn shape_of(&self, body: Entity) -> Entity {
         self.bodies.get(&body).map_or(body, |b| b.shape)

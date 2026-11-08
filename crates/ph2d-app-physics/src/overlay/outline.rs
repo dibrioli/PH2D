@@ -129,7 +129,7 @@ pub fn outlines(
             path,
             crate::overlay::tinta::marca(
                 col,
-                kind.is_some(),
+                kind,
                 triggered.contains(&e),
                 ghost && one_way.is_some(),
             ),
@@ -464,3 +464,7 @@ mod passable_tests;
 #[cfg(test)]
 #[path = "loose_tests.rs"]
 mod loose_tests;
+
+#[cfg(test)]
+#[path = "body_kind_tests.rs"]
+mod body_kind_tests;

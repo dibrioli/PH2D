@@ -31,6 +31,7 @@ mod paint;
 mod populate;
 pub mod rows;
 pub mod state;
+pub mod tinta_canvas;
 
 pub mod aba;
 mod event;

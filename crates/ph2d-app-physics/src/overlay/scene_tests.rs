@@ -134,20 +134,22 @@ fn a_sensor_is_dashed_in_its_layer_colour_and_brightens_when_triggered() {
         layer: 3,
         ..Default::default()
     };
-    let vazio = crate::overlay::tinta::marca(&sensor, true, false, false);
-    let aceso = crate::overlay::tinta::marca(&sensor, true, true, false);
+    let vazio = crate::overlay::tinta::marca(&sensor, Some(BodyKind::Static), false, false);
+    let aceso = crate::overlay::tinta::marca(&sensor, Some(BodyKind::Static), true, false);
     assert_eq!(
         vazio,
         Tinta::Camada {
             camada: 3,
-            marca: Marca::SensorVazio
+            marca: Marca::SensorVazio,
+            corpo: Some(BodyKind::Static)
         }
     );
     assert_eq!(
         aceso,
         Tinta::Camada {
             camada: 3,
-            marca: Marca::SensorAceso
+            marca: Marca::SensorAceso,
+            corpo: Some(BodyKind::Static)
         }
     );
     let (tv, cv) = tinta_do_contorno(vazio, Theme::Forge);
@@ -201,7 +203,8 @@ fn a_triggered_sensor_outline_uses_the_active_colour() {
         idle[0].1,
         Tinta::Camada {
             camada: 0,
-            marca: Marca::SensorVazio
+            marca: Marca::SensorVazio,
+            corpo: Some(BodyKind::Static)
         },
         "an empty sensor is drawn idle"
     );
@@ -211,7 +214,8 @@ fn a_triggered_sensor_outline_uses_the_active_colour() {
         active[0].1,
         Tinta::Camada {
             camada: 0,
-            marca: Marca::SensorAceso
+            marca: Marca::SensorAceso,
+            corpo: Some(BodyKind::Static)
         },
         "a triggered sensor is drawn active"
     );
@@ -512,7 +516,8 @@ fn a_part_of_a_compound_body_is_drawn_in_the_owners_colour() {
             *rgba,
             Tinta::Camada {
                 camada: 0,
-                marca: Marca::Solida
+                marca: Marca::Solida,
+                corpo: Some(BodyKind::Dynamic)
             },
             "a peça não herdou a cor do dono — ela não tem tipo próprio, ela É o \
              corpo dele"
@@ -544,7 +549,8 @@ fn a_collider_with_no_body_above_it_is_marked_loose_never_as_a_body() {
         out[0].1,
         Tinta::Camada {
             camada: 0,
-            marca: Marca::Solta
+            marca: Marca::Solta,
+            corpo: None
         },
         "uma forma que o solver ignora ganhou a tinta de um corpo — a marca afirmaria que ela \
          é simulada"

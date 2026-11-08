@@ -42,9 +42,46 @@ pub enum Op {
     Tiles(Box<crate::tiles::TilesSet>),
     /// A lista de slices inteira (criar, editar uma key, apagar). O inverso é a lista de antes.
     Slices(Vec<Slice>),
+    /// O user data de um dono (P12). O inverso é o de antes.
+    UserData {
+        owner: crate::user::Owner,
+        data: Box<crate::user::UserData>,
+    },
     /// Vários ops como UM passo (uma transformação assentada: as células e a selecção). Aplica-se
     /// em ordem; se um falha, os já aplicados desfazem-se e o documento fica intacto.
     Batch(Vec<Op>),
+}
+
+fn user_slot(
+    s: &mut Sprite,
+    owner: crate::user::Owner,
+) -> Result<&mut crate::user::UserData, OpError> {
+    use crate::user::Owner;
+    match owner {
+        Owner::Sprite => Ok(&mut s.user),
+        Owner::Layer(id) => s
+            .layers
+            .iter_mut()
+            .find(|l| l.id == id)
+            .map(|l| &mut l.user)
+            .ok_or(OpError::UnknownLayer(id)),
+        Owner::Cel(k) => s
+            .cels
+            .get_mut(&k)
+            .map(|c| &mut c.user)
+            .ok_or(OpError::BadCel(k)),
+        Owner::Tag(i) => s
+            .tags
+            .get_mut(i)
+            .map(|t| &mut t.user)
+            .ok_or(OpError::BadFrames("tag")),
+        Owner::Tileset(id) => s
+            .tilesets
+            .iter_mut()
+            .find(|t| t.id == id)
+            .map(|t| &mut t.user)
+            .ok_or(OpError::BadTiles("tileset")),
+    }
 }
 
 /// O que [`Op::Mask`] põe no sprite (cada máscara com o tamanho do sprite).
@@ -184,6 +221,11 @@ impl Op {
             }
             Op::Tiles(t) => t.bytes(),
             Op::Slices(v) => slices_bytes(v),
+            Op::UserData { data, .. } => {
+                data.text.len()
+                    + 64 * data.props.values().map(|m| m.len() + 1).sum::<usize>()
+                    + std::mem::size_of::<Op>()
+            }
             Op::Batch(v) => v.iter().map(Op::bytes).sum::<usize>(),
         }
     }
@@ -222,6 +264,14 @@ pub fn apply(sprite: &mut Sprite, op: Op) -> Result<Op, OpError> {
         Op::Slices(v) => {
             check_slices(&v, sprite.next_id)?;
             Ok(Op::Slices(std::mem::replace(&mut sprite.slices, v)))
+        }
+        Op::UserData { owner, data } => {
+            let slot = user_slot(sprite, owner)?;
+            let before = std::mem::replace(slot, *data);
+            Ok(Op::UserData {
+                owner,
+                data: Box::new(before),
+            })
         }
         Op::Batch(ops) => apply_batch(sprite, ops).map(Op::Batch),
     }

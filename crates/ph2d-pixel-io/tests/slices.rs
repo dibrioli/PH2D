@@ -118,18 +118,20 @@ fn user_data_belongs_only_to_the_chunk_right_before_it() {
     );
 }
 
-/// Propriedades tipadas ficam para a P12: a slice fica, e o artista é avisado.
+/// Propriedades tipadas de uma slice ainda não têm onde morar no documento (a `Slice` guarda só cor e
+/// texto, P12): a slice fica, e o artista é avisado.
 #[test]
 fn typed_properties_warn_and_the_slice_stays() {
     let (limpo, _) = ler(&ase("full")).unwrap();
     let (bytes, _) = escrever(&limpo).unwrap();
     assert_eq!(ler(&bytes).unwrap().1, Vec::new());
 
-    // O user data de `full` traz a cor (bit 2): acende-se o bit das propriedades (4).
-    let mut marcado = bytes.clone();
-    let cabecalho = [14, 0, 0, 0, 0x20, 0x20, 2, 0, 0, 0];
-    let i = marcado.windows(10).position(|w| w == cabecalho).unwrap();
-    marcado[i + 6..i + 10].copy_from_slice(&6_u32.to_le_bytes());
+    let mut f = ph2d_aseprite::parse_file(&bytes).unwrap();
+    f.slices[0].maps = vec![ph2d_aseprite::AsePropMap {
+        key: 0,
+        props: vec![("hp".into(), ph2d_aseprite::AseProp::I32(3))],
+    }];
+    let marcado = ph2d_aseprite::write_file(&f).unwrap();
     let (s, avisos) = ler(&marcado).unwrap();
     assert_eq!(avisos, vec![Aviso::PropriedadesDeSlices(1)]);
     assert_eq!(s.slices().len(), 3);

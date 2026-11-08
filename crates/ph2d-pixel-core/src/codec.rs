@@ -8,6 +8,8 @@
 //! Sprite   : 1 largura · 2 altura · 3 modo · 4 paleta (n×4 bytes) · 5 transparente · 6 Layer*
 //!            · 7 Frame* · 8 Cel* · 9 próximo id · 10 Tag*                (inteiros em varint)
 //!            · 13 Slice* (`codec/slices.rs`)                                         [1.5]
+//!            · 14 UserData · 15 Prefs (`codec/user.rs`)                              [1.6]
+//!            Layer 8 · Cel 12 · Tag 7 · Tileset 8 = UserData; sem = o de omissão     [1.6]
 //! Layer    : 1 id · 2 nome (utf8) · 3 bandeiras (bit0 visível, bit1 background, bit2 trancada,
 //!            bit3 referência, bit4 grupo, bit5 grupo recolhido, bit6 continuous [1.2]) · 4 opacidade (sem = 255)
 //!            · 5 modo de mistura (id do `.ase`, sem = Normal) · 6 pai (id; sem = raiz)   [1.1]
@@ -32,7 +34,7 @@ use crate::tiles::{Terrain, Tileset, TilesetId};
 
 pub const MAGIC: &[u8; 9] = b"PH2DPIXEL";
 pub const MAJOR: u16 = 1;
-pub const MINOR: u16 = 5;
+pub const MINOR: u16 = 6;
 
 /// Ficheiro recusado; nunca um documento meio lido.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -156,6 +158,7 @@ fn sprite_record(s: &Sprite) -> Vec<u8> {
         if let Some(t) = l.tileset() {
             put_uint(&mut b, 7, u64::from(t.0));
         }
+        user::put_user(&mut b, 8, &l.user);
         b.push(0);
         put_field(&mut r, 6, &b);
     }
@@ -188,6 +191,7 @@ fn sprite_record(s: &Sprite) -> Vec<u8> {
         if let Some(g) = &c.tiles {
             put_field(&mut b, 11, &grid_record(g));
         }
+        user::put_user(&mut b, 12, &c.user);
         b.push(0);
         put_field(&mut r, 8, &b);
     }
@@ -200,6 +204,7 @@ fn sprite_record(s: &Sprite) -> Vec<u8> {
         put_uint(&mut b, 4, u64::from(t.direction.code()));
         put_uint(&mut b, 5, u64::from(t.repeat));
         put_field(&mut b, 6, &t.color);
+        user::put_user(&mut b, 7, &t.user);
         b.push(0);
         put_field(&mut r, 10, &b);
     }
@@ -225,6 +230,7 @@ fn sprite_record(s: &Sprite) -> Vec<u8> {
         if t.forma != crate::forma::Forma::Square {
             put_uint(&mut b, 7, u64::from(t.forma.code()));
         }
+        user::put_user(&mut b, 8, &t.user);
         b.push(0);
         put_field(&mut r, 12, &b);
     }
@@ -235,6 +241,10 @@ fn sprite_record(s: &Sprite) -> Vec<u8> {
         put_field(&mut b, 2, p.options.as_bytes());
         b.push(0);
         put_field(&mut r, 11, &b);
+    }
+    user::put_user(&mut r, 14, &s.user);
+    if let Some(p) = user::prefs_record(&s.prefs) {
+        put_field(&mut r, 15, &p);
     }
     r.push(0);
     r
@@ -257,6 +267,8 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
         mask: None,
         last_mask: None,
         export_preset: None,
+        user: crate::user::UserData::default(),
+        prefs: crate::prefs::PixelPrefs::default(),
     };
     let mut raw_cels = Vec::new();
     for (tag, b) in Fields::new(bytes)? {
@@ -315,6 +327,7 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
                                 tileset: TilesetId(u32_of(v, "layer.tileset")?),
                             };
                         }
+                        8 => l.user = user::read_user(v)?,
                         _ => {}
                     }
                 }
@@ -356,6 +369,7 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
                         }
                         10 => cel.link = Some(FrameId(u32_of(v, "cel.link")?)),
                         11 => cel.tiles = Some(Box::new(read_grid(v)?)),
+                        12 => cel.user = user::read_user(v)?,
                         _ => {}
                     }
                 }
@@ -371,6 +385,7 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
                     direction: Direction::Forward,
                     repeat: 0,
                     color: [0, 0, 0, 255],
+                    user: crate::user::UserData::default(),
                 };
                 for (t, v) in Fields::new(b)? {
                     match t {
@@ -394,12 +409,15 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
                             tag.color = <[u8; 4]>::try_from(v)
                                 .map_err(|_| CodecError::Invalid("tag.color"))?;
                         }
+                        7 => tag.user = user::read_user(v)?,
                         _ => {}
                     }
                 }
                 s.tags.push(tag);
             }
             13 => s.slices.push(slices::read_slice(b)?),
+            14 => s.user = user::read_user(b)?,
+            15 => s.prefs = user::read_prefs(b)?,
             12 => {
                 let mut t = Tileset::new(TilesetId(0), "", 0, 0, Vec::new());
                 for (tag, v) in Fields::new(b)? {
@@ -435,6 +453,7 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
                                 .and_then(crate::forma::Forma::from_code)
                                 .ok_or(CodecError::Invalid("tileset.forma"))?;
                         }
+                        8 => t.user = user::read_user(v)?,
                         _ => {}
                     }
                 }
@@ -480,6 +499,8 @@ pub struct SpriteParts {
     pub tags: Vec<Tag>,
     pub tilesets: Vec<Tileset>,
     pub slices: Vec<crate::slice::Slice>,
+    /// P12: o user data do sprite.
+    pub user: crate::user::UserData,
 }
 
 impl Sprite {
@@ -512,6 +533,8 @@ impl Sprite {
             mask: None,
             last_mask: None,
             export_preset: None,
+            user: p.user,
+            prefs: crate::prefs::PixelPrefs::default(),
         };
         validate(&mut s, p.cels)?;
         Ok(s)
@@ -577,6 +600,7 @@ fn split_tilesets(s: &mut Sprite) -> Result<(), CodecError> {
 
 mod grade;
 mod slices;
+mod user;
 use grade::{grid_record, read_grid};
 
 // ── registos ──────────────────────────────────────────────────────────────────

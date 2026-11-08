@@ -1,0 +1,28 @@
+{ "frames": {
+   "p12_todos_os_donos.ase": {
+    "frame": { "x": 0, "y": 0, "w": 16, "h": 16 },
+    "rotated": false,
+    "trimmed": false,
+    "spriteSourceSize": { "x": 0, "y": 0, "w": 16, "h": 16 },
+    "sourceSize": { "w": 16, "h": 16 },
+    "duration": 100
+   }
+ },
+ "meta": {
+  "app": "http://www.aseprite.org/",
+  "version": "1.3.18.6-x64-trial",
+  "image": "s.png",
+  "format": "RGBA8888",
+  "size": { "w": 16, "h": 16 },
+  "scale": "1",
+  "frameTags": [
+   { "name": "walk", "from": 0, "to": 0, "direction": "forward", "color": "#000000ff", "data": "tag data", "properties": {"box": "[unsupported type]", "hp": -12, "list": "[unsupported type]", "name": "ok", "nested": {"deep": true}, "speed": 1.25, "ph2d.p12": {"weight": 7}} }
+  ],
+  "layers": [
+   { "name": "Layer 1", "opacity": 255, "blendMode": "normal", "color": "#00ff00ff", "data": "layer data", "properties": {"box": "[unsupported type]", "hp": -12, "list": "[unsupported type]", "name": "ok", "nested": {"deep": true}, "speed": 1.25, "ph2d.p12": {"weight": 7}}, "cels": [{ "frame": 0, "color": "#0000ff80", "data": "cel data", "properties": {"box": "[unsupported type]", "hp": -12, "list": "[unsupported type]", "name": "ok", "nested": {"deep": true}, "speed": 1.25, "ph2d.p12": {"weight": 7}} }] },
+   { "name": "Tilemap 2", "opacity": 255, "blendMode": "normal" }
+  ],
+  "slices": [
+  ]
+ }
+}

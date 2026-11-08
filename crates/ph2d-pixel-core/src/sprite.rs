@@ -120,6 +120,8 @@ pub struct Layer {
     pub kind: LayerKind,
     /// O grupo que a contém; `None` = na raiz.
     pub parent: Option<LayerId>,
+    /// P12: o user data (Layer Properties).
+    pub user: crate::user::UserData,
 }
 
 impl Layer {
@@ -138,6 +140,7 @@ impl Layer {
             blend: crate::blend::BlendMode::Normal,
             kind: LayerKind::Image,
             parent: None,
+            user: crate::user::UserData::default(),
         }
     }
 
@@ -181,6 +184,8 @@ pub struct Cel {
     pub link: Option<FrameId>,
     /// Num cel de tilemap, a verdade; `data` e `bbox` derivam dele (`tiles::expand`).
     pub tiles: Option<Box<crate::tiles::TileGrid>>,
+    /// P12: o user data. Por cel, também num ligado (no `.ase` o `0x2020` segue cada chunk de cel).
+    pub user: crate::user::UserData,
 }
 
 impl Cel {
@@ -194,6 +199,7 @@ impl Cel {
             z: 0,
             link: None,
             tiles: None,
+            user: crate::user::UserData::default(),
         }
     }
 
@@ -216,6 +222,7 @@ impl Cel {
             z,
             link: Some(owner),
             tiles: None,
+            user: crate::user::UserData::default(),
         }
     }
 }
@@ -270,6 +277,8 @@ pub struct Tag {
     pub direction: Direction,
     pub repeat: u16,
     pub color: [u8; 4],
+    /// P12: o user data. A cor da tag continua a ser `color`; esta é a do user data.
+    pub user: crate::user::UserData,
 }
 
 /// Erros de construção/validação.
@@ -300,6 +309,10 @@ pub struct Sprite {
     pub(crate) last_mask: Option<Mask>,
     /// O último export (File ▸ Repeat Last Export). Não é passo do desfazer.
     pub(crate) export_preset: Option<ExportPreset>,
+    /// P12: o user data do sprite (Sprite Properties).
+    pub(crate) user: crate::user::UserData,
+    /// P12: grade, grade de píxel, xadrez e onion DESTE documento.
+    pub(crate) prefs: crate::prefs::PixelPrefs,
 }
 
 /// O último export deste sprite: o caminho e as opções em texto (quem as lê é `ph2d-pixel-io`).
@@ -353,6 +366,8 @@ impl Sprite {
             mask: None,
             last_mask: None,
             export_preset: None,
+            user: crate::user::UserData::default(),
+            prefs: crate::prefs::PixelPrefs::default(),
         };
         let opaque = background != Background::Transparent;
         let layer = s.alloc_id();
@@ -510,6 +525,36 @@ impl Sprite {
     /// Guarda o último export; não é passo do desfazer.
     pub fn set_export_preset(&mut self, p: Option<ExportPreset>) {
         self.export_preset = p;
+    }
+
+    /// O user data do sprite; muda por [`crate::Op::UserData`].
+    #[must_use]
+    pub fn user(&self) -> &crate::user::UserData {
+        &self.user
+    }
+
+    /// O user data de `owner`, se o dono existe.
+    #[must_use]
+    pub fn user_of(&self, owner: crate::user::Owner) -> Option<&crate::user::UserData> {
+        use crate::user::Owner;
+        match owner {
+            Owner::Sprite => Some(&self.user),
+            Owner::Layer(id) => self.layers.iter().find(|l| l.id == id).map(|l| &l.user),
+            Owner::Cel(k) => self.cels.get(&k).map(|c| &c.user),
+            Owner::Tag(i) => self.tags.get(i).map(|t| &t.user),
+            Owner::Tileset(id) => self.tilesets.iter().find(|t| t.id == id).map(|t| &t.user),
+        }
+    }
+
+    /// Grade, xadrez e onion deste documento.
+    #[must_use]
+    pub fn prefs(&self) -> &crate::prefs::PixelPrefs {
+        &self.prefs
+    }
+
+    /// Como no Aseprite, mudar a grade ou o onion não é passo do desfazer.
+    pub fn set_prefs(&mut self, p: crate::prefs::PixelPrefs) {
+        self.prefs = p;
     }
 
     /// A selecção activa (`None` = nada seleccionado).

@@ -293,6 +293,7 @@ fn the_document_refuses_broken_links_empty_timelines_and_tags_out_of_range() {
                 direction: Direction::Forward,
                 repeat: 0,
                 color: [0; 4],
+                user: ph2d_pixel_core::UserData::default(),
             }],
         ),
         // o frame sai e o cel dele fica órfão

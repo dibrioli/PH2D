@@ -110,6 +110,7 @@ fn documento(
         cels,
         tilesets: Vec::new(),
         slices: Vec::new(),
+        user: ph2d_pixel_core::UserData::default(),
         tags: Vec::new(),
     })
     .map_err(ErroAbrir::Documento)

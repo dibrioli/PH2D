@@ -9,7 +9,6 @@ use ph2d_aseprite::file::{
 use ph2d_aseprite::{
     AseCel, AseCelBody, AseFile, AseFileFrame, AseLayer, AseTag, AseTilemap, AseTileset,
 };
-use ph2d_pixel_core::Forma;
 use ph2d_pixel_core::blend::BlendMode;
 use ph2d_pixel_core::codec::SpriteParts;
 use ph2d_pixel_core::palette;
@@ -17,6 +16,7 @@ use ph2d_pixel_core::{
     Cel, CodecError, ColorMode, Direction, Frame, FrameId, Layer, LayerId, LayerKind, Rect, Sprite,
     Tag, TileGrid, TileRef, Tileset, TilesetId,
 };
+use ph2d_pixel_core::{Forma, UserData};
 
 /// O que o ficheiro trazia e o documento não guarda (o artista é avisado, nunca é perda muda).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -110,6 +110,7 @@ fn posicao(b: Rect) -> Result<(i16, i16), AseErro> {
 mod slices;
 use slices::{slices_de, slices_saida};
 mod saida_tiles;
+mod user;
 use saida_tiles::{mapa_saida, tilesets_saida, vai_em_tiles};
 
 /// O documento em `.ase`.
@@ -121,6 +122,7 @@ pub fn escrever(s: &Sprite) -> Result<(Vec<u8>, Vec<Aviso>), AseErro> {
         return Err(AseErro::QuadrosDemais(s.frames().len()));
     }
     let ordem = pre_ordem(s);
+    let ext = user::extensoes(s);
     let layers = ordem
         .iter()
         .map(|&(l, nivel)| AseLayer {
@@ -139,6 +141,7 @@ pub fn escrever(s: &Sprite) -> Result<(Vec<u8>, Vec<Aviso>), AseErro> {
             } else {
                 0
             },
+            user_data: user::saida(&l.user, &ext),
         })
         .collect();
     let mut avisos = Vec::new();
@@ -161,7 +164,9 @@ pub fn escrever(s: &Sprite) -> Result<(Vec<u8>, Vec<Aviso>), AseErro> {
             let Some(c) = s.entry((l.id, f.id)) else {
                 continue;
             };
-            cels.push(cel_saida(s, i as u16, l.id, c)?);
+            let mut a = cel_saida(s, i as u16, l.id, c)?;
+            a.user_data = user::saida(&c.user, &ext);
+            cels.push(a);
         }
         frames.push(AseFileFrame {
             duration_ms,
@@ -192,10 +197,24 @@ pub fn escrever(s: &Sprite) -> Result<(Vec<u8>, Vec<Aviso>), AseErro> {
                 direction: t.direction.code(),
                 repeat: t.repeat,
                 rgb: [t.color[0], t.color[1], t.color[2]],
+                // A cor de uma tag no Aseprite 1.3 é a do user data (o Trial mostra-a, não a `rgb`).
+                user_data: user::saida(&t.user, &ext).map(|mut u| {
+                    u.color = Some(t.color);
+                    u
+                }),
             })
             .collect(),
-        tilesets: tilesets_saida(s),
+        tilesets: tilesets_saida(s)
+            .into_iter()
+            .map(|mut a| {
+                let t = s.tilesets().iter().find(|t| t.id.0 == a.id);
+                a.user_data = t.and_then(|t| user::saida(&t.user, &ext));
+                a
+            })
+            .collect(),
         slices: slices_saida(s),
+        user_data: user::saida(s.user(), &ext),
+        external_files: ext.clone(),
     };
     let bytes = ph2d_aseprite::write_file(&file).map_err(AseErro::Escrever)?;
     Ok((bytes, avisos))
@@ -203,7 +222,13 @@ pub fn escrever(s: &Sprite) -> Result<(Vec<u8>, Vec<Aviso>), AseErro> {
 
 /// Lê um tileset do ficheiro, com o vazio no índice 0. `None`: externo ou com a tira errada; quem
 /// chama cai na imagem expandida, e avisa.
-fn tileset_de(t: &AseTileset, id: TilesetId, bpp: usize, transparent: u8) -> Option<Tileset> {
+fn tileset_de(
+    t: &AseTileset,
+    id: TilesetId,
+    bpp: usize,
+    transparent: u8,
+    ext: &[ph2d_aseprite::AseExternalFile],
+) -> Option<Tileset> {
     let size = usize::from(t.tile_w) * usize::from(t.tile_h) * bpp;
     if size == 0 || t.count == 0 || t.pixels.len() != size * t.count as usize {
         return None;
@@ -225,6 +250,7 @@ fn tileset_de(t: &AseTileset, id: TilesetId, bpp: usize, transparent: u8) -> Opt
         tiles,
         terrains: Vec::new(),
         forma: ph2d_pixel_core::Forma::Square,
+        user: user::de(t.user_data.as_ref(), ext),
     })
 }
 
@@ -282,6 +308,7 @@ fn cel_saida(s: &Sprite, layer: u16, id: LayerId, c: &Cel) -> Result<AseCel, Ase
                 y,
                 opacity: d.map_or(255, |o| o.opacity),
                 z: c.z,
+                user_data: None,
                 body: AseCelBody::Linked {
                     frame: s.frame_index(dono).unwrap_or(0) as u16,
                 },
@@ -301,6 +328,7 @@ fn cel_saida(s: &Sprite, layer: u16, id: LayerId, c: &Cel) -> Result<AseCel, Ase
                 y,
                 opacity: c.opacity,
                 z: c.z,
+                user_data: None,
                 body: AseCelBody::Image { w: 1, h: 1, pixels },
             }
         }
@@ -312,6 +340,7 @@ fn cel_saida(s: &Sprite, layer: u16, id: LayerId, c: &Cel) -> Result<AseCel, Ase
                 y,
                 opacity: c.opacity,
                 z: c.z,
+                user_data: None,
                 body: AseCelBody::Tilemap(mapa_saida(c)),
             }
         }
@@ -323,6 +352,7 @@ fn cel_saida(s: &Sprite, layer: u16, id: LayerId, c: &Cel) -> Result<AseCel, Ase
                 y,
                 opacity: c.opacity,
                 z: c.z,
+                user_data: None,
                 body: AseCelBody::Image {
                     w: c.bbox.w as u16,
                     h: c.bbox.h as u16,
@@ -348,7 +378,7 @@ fn modo_de(depth: u16) -> ColorMode {
 pub fn ler(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>), AseErro> {
     let file = ph2d_aseprite::parse_file(bytes).map_err(AseErro::Ler)?;
     let mut avisos = Vec::new();
-    let com_propriedades = file.slices.iter().filter(|s| s.has_properties).count();
+    let com_propriedades = file.slices.iter().filter(|s| !s.maps.is_empty()).count();
     if com_propriedades > 0 {
         avisos.push(Aviso::PropriedadesDeSlices(com_propriedades));
     }
@@ -366,7 +396,13 @@ pub fn ler(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>), AseErro> {
     let mut sets: Vec<(u32, Tileset)> = Vec::new();
     for t in &file.tilesets {
         let id = TilesetId(novo_id());
-        if let Some(novo) = tileset_de(t, id, mode.bpp(), file.transparent_index) {
+        if let Some(novo) = tileset_de(
+            t,
+            id,
+            mode.bpp(),
+            file.transparent_index,
+            &file.external_files,
+        ) {
             sets.push((t.id, novo));
         }
     }
@@ -383,6 +419,7 @@ pub fn ler(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>), AseErro> {
         c.continuous = l.flags & LAYER_PREFER_LINKED != 0;
         c.reference = l.flags & LAYER_REFERENCE != 0;
         c.opacity = l.opacity;
+        c.user = user::de(l.user_data.as_ref(), &file.external_files);
         c.parent = abertos.last().copied();
         c.background =
             l.flags & LAYER_BACKGROUND != 0 && i == 0 && c.parent.is_none() && l.kind != KIND_GROUP;
@@ -438,7 +475,15 @@ pub fn ler(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>), AseErro> {
             to: u32::from(t.from.max(t.to)).min(n - 1),
             direction: Direction::from_code(t.direction).unwrap_or_default(),
             repeat: t.repeat,
-            color: [t.rgb[0], t.rgb[1], t.rgb[2], 255],
+            color: t
+                .user_data
+                .as_ref()
+                .and_then(|u| u.color)
+                .unwrap_or([t.rgb[0], t.rgb[1], t.rgb[2], 255]),
+            user: UserData {
+                color: [0; 4],
+                ..user::de(t.user_data.as_ref(), &file.external_files)
+            },
         })
         .collect();
 
@@ -469,6 +514,7 @@ pub fn ler(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>), AseErro> {
         tags,
         slices: slices_de(&file, proximo_id),
         tilesets,
+        user: user::de(file.user_data.as_ref(), &file.external_files),
     })
     .map_err(AseErro::Documento)?;
     Ok((sprite, avisos))
@@ -524,6 +570,7 @@ fn cel_de_mapa(
         z: c.z,
         link: None,
         tiles: Some(Box::new(g)),
+        user: ph2d_pixel_core::UserData::default(),
     })
 }
 
@@ -570,9 +617,11 @@ fn cels_de(
                         z: c.z,
                         link: None,
                         tiles: None,
+                        user: ph2d_pixel_core::UserData::default(),
                     }),
             };
-            if let Some(cel) = cel {
+            if let Some(mut cel) = cel {
+                cel.user = user::de(c.user_data.as_ref(), &file.external_files);
                 out.insert(key, cel);
             }
         }
@@ -610,6 +659,7 @@ fn ligado(
         opacity: c.opacity,
         z: c.z,
         link: None,
+        user: ph2d_pixel_core::UserData::default(),
         tiles: dono.tiles.as_ref().map(|g| {
             Box::new(TileGrid {
                 x,
@@ -635,7 +685,7 @@ mod tests {
             pixels: vec![1, 2, 3, 255, 4, 5, 6, 255],
             ..AseTileset::default()
         };
-        let set = tileset_de(&t, TilesetId(1), 4, 0).expect("tileset");
+        let set = tileset_de(&t, TilesetId(1), 4, 0, &[]).expect("tileset");
         assert_eq!(set.tiles.len(), 3, "o vazio entra no índice 0");
         assert_eq!(set.tiles[1], [1, 2, 3, 255]);
         let m = AseTilemap {
@@ -664,7 +714,7 @@ mod tests {
             pixels: vec![0; 16],
             ..AseTileset::default()
         };
-        let set = tileset_de(&t, TilesetId(1), 4, 0).expect("tileset");
+        let set = tileset_de(&t, TilesetId(1), 4, 0, &[]).expect("tileset");
         let m = AseTilemap {
             w: 2,
             h: 1,

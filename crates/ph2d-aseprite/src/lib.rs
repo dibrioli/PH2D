@@ -40,6 +40,7 @@ mod blend;
 mod composite;
 pub mod file;
 mod read;
+pub mod user_data;
 mod write;
 
 pub use blend::BlendMode;
@@ -47,6 +48,7 @@ pub use file::{
     AseCel, AseCelBody, AseFile, AseFileFrame, AseLayer, AseSlice, AseSliceKey, AseTilemap,
     AseTileset, parse_file,
 };
+pub use user_data::{AseExternalFile, AseProp, AsePropMap, AseUserData};
 pub use write::{WriteError, write_file};
 
 /// O pivot gravado numa key SEM pivot de uma slice com a flag (a flag é por slice): `0,0` é um pivot
@@ -93,6 +95,8 @@ pub struct AseTag {
     pub repeat: u16,
     /// A cor da tag no chunk (o campo deprecado que todos os leitores entendem).
     pub rgb: [u8; 3],
+    /// O user data da tag (o `0x2020` de ordem igual depois do chunk de tags).
+    pub user_data: Option<user_data::AseUserData>,
 }
 
 impl AseTag {

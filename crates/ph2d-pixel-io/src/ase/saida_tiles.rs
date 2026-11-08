@@ -36,6 +36,7 @@ pub(super) fn tilesets_saida(s: &Sprite) -> Vec<AseTileset> {
             tile_h: t.tile_h,
             count: t.tiles.len() as u32,
             pixels: t.tiles.concat(),
+            user_data: None,
         })
         .collect()
 }

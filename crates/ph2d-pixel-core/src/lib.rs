@@ -30,6 +30,7 @@ mod op;
 pub mod palette;
 pub mod pattern;
 pub mod play;
+pub mod prefs;
 pub mod raster;
 mod rect;
 pub mod selection;
@@ -39,6 +40,7 @@ mod stroke;
 pub mod symmetry;
 pub mod tiles;
 pub mod transform;
+pub mod user;
 
 pub use codec::{CodecError, MAJOR, MINOR};
 pub use compose::{
@@ -48,6 +50,7 @@ pub use compose::{
 pub use forma::Forma;
 pub use history::{DEFAULT_CAP_BYTES, History};
 pub use op::{CanvasSet, FrameSet, LayerSet, MaskSet, Op, OpError, Patch, Whole, apply};
+pub use prefs::{Checker, Grid, PixelGrid, PixelPrefs};
 pub use slice::{DEFAULT_SLICE_COLOR, Slice, SliceId, SliceKey, SliceShape};
 pub use sprite::{
     Background, Cel, CelKey, ColorMode, DEFAULT_FRAME_MS, Direction, ExportPreset, Frame, FrameId,
@@ -57,3 +60,4 @@ pub use stroke::{Paint, Stroke};
 pub use tiles::{
     TERRAIN_TILES, Terrain, TileGrid, TileRef, TilesSet, Tileset, TilesetId, derived_is_consistent,
 };
+pub use user::{Owner, PropMap, PropValue, Properties, UserData};

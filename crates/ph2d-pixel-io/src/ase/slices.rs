@@ -36,7 +36,7 @@ pub(super) fn slices_saida(s: &Sprite) -> Vec<AseSlice> {
             name: c.name.clone(),
             color: c.color,
             text: c.data.clone(),
-            has_properties: false,
+            maps: Vec::new(),
             keys: c
                 .keys
                 .iter()

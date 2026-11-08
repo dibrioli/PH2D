@@ -84,7 +84,7 @@ pub fn compose_picked(sprite: &Sprite, frame: FrameId, pick: &dyn Fn(&Layer) -> 
 }
 
 /// O papel vegetal (Aseprite: *Onion Skin*). Por omissão o do Trial 1.3.18: um antes e um depois,
-/// opacidade 68 a descer 28 por frame, por TRÁS do frame, sem tinta.
+/// opacidade 68 a descer 28 por frame, por TRÁS do frame, sem tinta (O21 mostra-os em %: 27 e 11).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Onion {
     pub prev: u32,
@@ -95,6 +95,11 @@ pub struct Onion {
     pub tint: bool,
     /// Por cima do frame em vez de por trás.
     pub front: bool,
+    /// P12 (O21 `Loop through tag frames`, ligado): dentro de uma tag os fantasmas dão a volta.
+    /// Guardado no documento; quem escolhe os quadros ainda não o lê.
+    pub loop_tag: bool,
+    /// P12 (O21 `Current layer only`, desligado). Guardado; ainda sem leitor.
+    pub current_layer_only: bool,
 }
 
 impl Default for Onion {
@@ -106,6 +111,8 @@ impl Default for Onion {
             step: 28,
             tint: false,
             front: false,
+            loop_tag: true,
+            current_layer_only: false,
         }
     }
 }

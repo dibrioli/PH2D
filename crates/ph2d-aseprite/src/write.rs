@@ -21,6 +21,7 @@ const CHUNK_PALETTE: u16 = 0x2019;
 const CHUNK_TILESET: u16 = 0x2023;
 const CHUNK_SLICE: u16 = 0x2022;
 const CHUNK_USER_DATA: u16 = 0x2020;
+const CHUNK_EXTERNAL_FILES: u16 = 0x2008;
 /// A cor de uma slice sem cor no documento (Trial: `#0000FF`).
 const DEFAULT_SLICE_COLOR: [u8; 4] = [0, 0, 255, 255];
 /// Tileset com os píxeis dentro do ficheiro, e o tile 0 é o vazio (spec).
@@ -164,13 +165,19 @@ fn slice_chunk(s: &AseSlice) -> Vec<u8> {
 
 /// O user data de uma slice: sem cor o Trial não a desenha (F3), por isso sai sempre a cor.
 fn slice_user_data(s: &AseSlice) -> Vec<u8> {
-    let flags = u32::from(!s.text.is_empty()) | 2;
-    let mut b = flags.to_le_bytes().to_vec();
-    if !s.text.is_empty() {
-        string(&mut b, &s.text);
+    crate::user_data::write(&crate::AseUserData {
+        text: (!s.text.is_empty()).then(|| s.text.clone()),
+        color: Some(s.color.unwrap_or(DEFAULT_SLICE_COLOR)),
+        maps: s.maps.clone(),
+    })
+}
+
+/// Grava o `0x2020` de um dono, se tem.
+fn user_data(chunks: &mut Vec<u8>, n: &mut usize, u: Option<&crate::AseUserData>) {
+    if let Some(u) = u.filter(|u| !u.is_empty()) {
+        chunk(chunks, CHUNK_USER_DATA, &crate::user_data::write(u));
+        *n += 1;
     }
-    b.extend_from_slice(&s.color.unwrap_or(DEFAULT_SLICE_COLOR));
-    b
 }
 
 fn tags_chunk(file: &AseFile) -> Vec<u8> {
@@ -266,21 +273,52 @@ pub fn write_file(file: &AseFile) -> Result<Vec<u8>, WriteError> {
             profile.extend_from_slice(&[0; 12]);
             chunk(&mut chunks, CHUNK_COLOR_PROFILE, &profile);
             n += 1;
+            if !file.external_files.is_empty() {
+                let b = crate::user_data::write_external(&file.external_files);
+                chunk(&mut chunks, CHUNK_EXTERNAL_FILES, &b);
+                n += 1;
+            }
+            // O user data do sprite vai logo a seguir à paleta (spec 1.3): sem paleta, não há onde.
             if !file.palette.is_empty() {
                 chunk(&mut chunks, CHUNK_PALETTE, &palette_chunk(file));
                 n += 1;
+                user_data(&mut chunks, &mut n, file.user_data.as_ref());
             }
             for t in &file.tilesets {
                 chunk(&mut chunks, CHUNK_TILESET, &tileset_chunk(t));
                 n += 1;
+                // Com o do tileset, o Trial espera logo um `0x2020` por tile (senão avisa
+                // «Unexpected chunk type … when reading tileset»): vazios, flags 0.
+                if t.user_data.as_ref().is_some_and(|u| !u.is_empty()) {
+                    user_data(&mut chunks, &mut n, t.user_data.as_ref());
+                    for _ in 0..t.count {
+                        chunk(
+                            &mut chunks,
+                            CHUNK_USER_DATA,
+                            &crate::user_data::write(&crate::AseUserData::default()),
+                        );
+                        n += 1;
+                    }
+                }
             }
             for l in &file.layers {
                 chunk(&mut chunks, CHUNK_LAYER, &layer_chunk(l));
                 n += 1;
+                user_data(&mut chunks, &mut n, l.user_data.as_ref());
             }
             if !file.tags.is_empty() {
                 chunk(&mut chunks, CHUNK_TAGS, &tags_chunk(file));
                 n += 1;
+                // O n.º `0x2020` é da tag n: se alguma tem, todas levam o seu (vazio = flags 0).
+                let some = file
+                    .tags
+                    .iter()
+                    .any(|t| t.user_data.as_ref().is_some_and(|u| !u.is_empty()));
+                for t in file.tags.iter().filter(|_| some) {
+                    let u = t.user_data.clone().unwrap_or_default();
+                    chunk(&mut chunks, CHUNK_USER_DATA, &crate::user_data::write(&u));
+                    n += 1;
+                }
             }
             for s in &file.slices {
                 chunk(&mut chunks, CHUNK_SLICE, &slice_chunk(s));
@@ -305,6 +343,7 @@ pub fn write_file(file: &AseFile) -> Result<Vec<u8>, WriteError> {
             }
             chunk(&mut chunks, CHUNK_CEL, &cel_chunk(c)?);
             n += 1;
+            user_data(&mut chunks, &mut n, c.user_data.as_ref());
         }
         body.extend_from_slice(&((16 + chunks.len()) as u32).to_le_bytes());
         u16s(

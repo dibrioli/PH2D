@@ -508,6 +508,7 @@ pub fn new_tag(s: &Sprite, name: &str, from: u32, to: u32) -> Option<Op> {
         direction: Direction::Forward,
         repeat: 0,
         color: [0, 0, 0, 255],
+        user: crate::user::UserData::default(),
     });
     Some(op(s, s.frames().to_vec(), Vec::new(), tags))
 }

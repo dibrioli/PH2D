@@ -96,6 +96,8 @@ pub struct Tileset {
     pub tiles: Vec<Vec<u8>>,
     pub terrains: Vec<Terrain>,
     pub forma: Forma,
+    /// P12: o user data do tileset.
+    pub user: crate::user::UserData,
 }
 
 impl Tileset {
@@ -116,6 +118,7 @@ impl Tileset {
             tiles: vec![empty],
             terrains: Vec::new(),
             forma: Forma::Square,
+            user: crate::user::UserData::default(),
         }
     }
 

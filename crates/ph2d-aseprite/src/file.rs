@@ -2,6 +2,7 @@
 //! quer quadros RGBA passa pelo [`crate::parse`], quem edita (Pixel Art) lê isto. Chunks: spec pública.
 
 use crate::read::Reader;
+use crate::user_data::{AseExternalFile, AsePropMap, AseUserData};
 use crate::{AseError, AseTag};
 
 const HEADER_LEN: usize = 128;
@@ -19,6 +20,7 @@ const CHUNK_PALETTE: u16 = 0x2019;
 const CHUNK_SLICE: u16 = 0x2022;
 const CHUNK_USER_DATA: u16 = 0x2020;
 const CHUNK_TILESET: u16 = 0x2023;
+const CHUNK_EXTERNAL_FILES: u16 = 0x2008;
 
 /// Flags de camada da spec.
 pub const LAYER_VISIBLE: u16 = 1;
@@ -49,6 +51,10 @@ pub struct AseFile {
     pub tilesets: Vec<AseTileset>,
     /// Pela ordem do ficheiro.
     pub slices: Vec<AseSlice>,
+    /// O user data do sprite (1.3: o `0x2020` logo depois da paleta do quadro 0).
+    pub user_data: Option<AseUserData>,
+    /// O `0x2008`: as extensões que dão nome às chaves dos mapas de propriedades.
+    pub external_files: Vec<AseExternalFile>,
 }
 
 /// Uma slice como está no ficheiro, com o user data que a segue.
@@ -57,8 +63,8 @@ pub struct AseSlice {
     pub name: String,
     pub color: Option<[u8; 4]>,
     pub text: String,
-    /// O user data trazia propriedades tipadas (a P12 é que as guarda).
-    pub has_properties: bool,
+    /// Os mapas de propriedades do user data (P12).
+    pub maps: Vec<AsePropMap>,
     /// Em ordem de quadro, seja qual for a do ficheiro (F3).
     pub keys: Vec<AseSliceKey>,
 }
@@ -86,6 +92,7 @@ pub struct AseLayer {
     pub opacity: u8,
     /// Só em tilemap: o índice do tileset.
     pub tileset: u32,
+    pub user_data: Option<AseUserData>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
@@ -104,6 +111,7 @@ pub struct AseCel {
     pub opacity: u8,
     pub z: i16,
     pub body: AseCelBody,
+    pub user_data: Option<AseUserData>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -144,6 +152,7 @@ pub struct AseTileset {
     pub count: u32,
     /// `tile_w * tile_h * count * depth/8` bytes (uma tira vertical); vazio se a tira for externa.
     pub pixels: Vec<u8>,
+    pub user_data: Option<AseUserData>,
 }
 
 impl AseFile {
@@ -237,7 +246,7 @@ pub fn parse_file(bytes: &[u8]) -> Result<AseFile, AseError> {
         },
         modern_palette: false,
         layer_opacity_valid: flags & FLAG_LAYER_OPACITY_VALID != 0,
-        after_slice: false,
+        last: Last::None,
     };
     for index in 0..usize::from(frame_count) {
         let frame_start = r.pos();
@@ -329,13 +338,45 @@ struct Build {
     modern_palette: bool,
     /// Bit 1 do cabeçalho: sem ele, a opacidade da camada não vale (spec).
     layer_opacity_valid: bool,
-    /// O chunk anterior era uma slice: o user data a seguir é dela (spec: «last read chunk»).
-    after_slice: bool,
+    /// O dono do próximo `0x2020` (spec: «last read chunk»).
+    last: Last,
+}
+
+/// A quem pertence o `0x2020` seguinte.
+#[derive(Clone, Copy)]
+enum Last {
+    None,
+    Sprite,
+    Layer,
+    Cel,
+    /// O `n`.º user data depois do chunk de tags é da tag `n`.
+    Tags(usize),
+    /// O 1.º depois de um tileset é dele; os seguintes são das tiles (não guardados).
+    Tileset {
+        seen: bool,
+    },
+    Slice,
 }
 
 impl Build {
     fn chunk(&mut self, ctype: u16, r: &mut Reader<'_>, frame: usize) -> Result<(), AseError> {
-        let after_slice = std::mem::replace(&mut self.after_slice, ctype == CHUNK_SLICE);
+        if ctype == CHUNK_USER_DATA {
+            self.user_data(r, frame);
+            return Ok(());
+        }
+        self.last = match ctype {
+            CHUNK_LAYER => Last::Layer,
+            CHUNK_CEL => Last::Cel,
+            CHUNK_PALETTE if frame == 0 => Last::Sprite,
+            // Os chunks velhos de paleta que um 1.3 grava a seguir não roubam o user data do sprite.
+            CHUNK_OLD_PALETTE_8 | CHUNK_OLD_PALETTE_6 if matches!(self.last, Last::Sprite) => {
+                Last::Sprite
+            }
+            CHUNK_TAGS => Last::Tags(0),
+            CHUNK_TILESET => Last::Tileset { seen: false },
+            CHUNK_SLICE => Last::Slice,
+            _ => Last::None,
+        };
         match ctype {
             CHUNK_LAYER => self.layer(r),
             CHUNK_CEL => self.cel(r, frame)?,
@@ -344,7 +385,7 @@ impl Build {
             CHUNK_OLD_PALETTE_6 if !self.modern_palette => self.old_palette(r, true),
             CHUNK_TAGS => self.tags(r),
             CHUNK_SLICE => self.slice(r),
-            CHUNK_USER_DATA if after_slice => self.slice_user_data(r),
+            CHUNK_EXTERNAL_FILES => self.file.external_files = crate::user_data::read_external(r),
             CHUNK_TILESET => self.tileset(r, frame)?,
             _ => {}
         }
@@ -377,6 +418,7 @@ impl Build {
                 255
             },
             tileset,
+            user_data: None,
         });
     }
 
@@ -472,21 +514,46 @@ impl Build {
         self.file.slices.push(slice);
     }
 
-    fn slice_user_data(&mut self, r: &mut Reader<'_>) {
-        let Some(slice) = self.file.slices.last_mut() else {
-            return;
-        };
-        let Some(flags) = r.u32() else { return };
-        if flags & 1 != 0 {
-            slice.text = r.string().unwrap_or_default();
+    fn user_data(&mut self, r: &mut Reader<'_>, frame: usize) {
+        let u = crate::user_data::read(r);
+        let f = &mut self.file;
+        match &mut self.last {
+            Last::None => {}
+            Last::Sprite => f.user_data = Some(u),
+            Last::Layer => {
+                if let Some(l) = f.layers.last_mut() {
+                    l.user_data = Some(u);
+                }
+            }
+            Last::Cel => {
+                if let Some(c) = f.frames.get_mut(frame).and_then(|q| q.cels.last_mut()) {
+                    c.user_data = Some(u);
+                }
+            }
+            Last::Tags(n) => {
+                if let Some(t) = f.tags.get_mut(*n) {
+                    t.user_data = Some(u);
+                }
+                *n += 1;
+            }
+            Last::Tileset { seen } => {
+                if !*seen && let Some(t) = f.tilesets.last_mut() {
+                    t.user_data = Some(u);
+                }
+                *seen = true;
+            }
+            Last::Slice => {
+                if let Some(s) = f.slices.last_mut() {
+                    s.text = u.text.unwrap_or_default();
+                    s.color = u.color;
+                    s.maps = u.maps;
+                }
+                self.last = Last::None;
+            }
         }
-        if flags & 2 != 0 {
-            let (Some(cr), Some(g), Some(b), Some(a)) = (r.u8(), r.u8(), r.u8(), r.u8()) else {
-                return;
-            };
-            slice.color = Some([cr, g, b, a]);
+        if matches!(self.last, Last::Sprite | Last::Layer | Last::Cel) {
+            self.last = Last::None;
         }
-        slice.has_properties = flags & 4 != 0;
     }
 
     fn tags(&mut self, r: &mut Reader<'_>) {
@@ -512,6 +579,7 @@ impl Build {
                 direction,
                 repeat,
                 rgb,
+                user_data: None,
             });
         }
     }
@@ -559,6 +627,7 @@ impl Build {
                 opacity,
                 z,
                 body,
+                user_data: None,
             });
         }
         Ok(())
@@ -591,6 +660,7 @@ impl Build {
             tile_h,
             count,
             pixels,
+            user_data: None,
         });
         Ok(())
     }

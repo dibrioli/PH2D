@@ -212,6 +212,7 @@ fn the_onion_skin_matches_the_trial_in_position_fade_and_red_blue_tint() {
             step: get("opacity_step", 28) as u8,
             tint: get("type", 0) == 1,
             front: get("position", 0) == 1,
+            ..Onion::default()
         };
         let faixa = v["file"].as_str() == Some("on_faixa.ase");
         let (s, ids) = onion_sprite(&f, w, h, faixa);

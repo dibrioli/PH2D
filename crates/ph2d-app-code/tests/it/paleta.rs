@@ -124,10 +124,10 @@ fn strict_poe_e_tira_a_linha_num_passo_e_o_rotulo_diz_o_que_faz() {
             .unwrap()
             .label
     };
-    assert_eq!(rotulo(&mut m), "Turn On Strict Types (--!strict)");
+    assert_eq!(rotulo(&mut m), "Strict Types (--!strict): Off");
     assert!(m.docs().command(id.0, CMD_STRICT));
     assert_eq!(m.docs().text_of(id), Some(format!("--!strict\n{BOB}")));
-    assert_eq!(rotulo(&mut m), "Turn Off Strict Types (--!strict)");
+    assert_eq!(rotulo(&mut m), "Strict Types (--!strict): On");
     m.tecla(id, Key::Char('z'), ctrl(), Some("z"));
     assert_eq!(
         m.docs().text_of(id).as_deref(),
@@ -176,4 +176,83 @@ fn clicar_num_simbolo_da_paleta_leva_la() {
         m.docs().cursor_of(id),
         Some((3, BOB.find("init(").unwrap()))
     );
+}
+
+/// Onda C, item 13: sem prefixo, o `Ctrl+K` acha as funções e propriedades do script ao lado dos
+/// comandos, com o rótulo que diz o que fazem e onde; o Enter leva o cursor lá.
+#[test]
+fn paleta_sem_prefixo_acha_a_funcao_e_leva_a_linha() {
+    let (mut m, id) = aberta(BOB);
+    global_palette::open(&mut m.hero);
+    for c in "upd".chars() {
+        m.hero.store.command_palette_push_char(c);
+    }
+    let model = m.hero.store.command_palette_model().cloned().unwrap();
+    let view = ph2d_editor_core::widget::command_palette::scoped(
+        &model,
+        "upd",
+        m.hero.store.command_palette_scopes(),
+    );
+    let labels: Vec<String> = view
+        .model
+        .groups
+        .iter()
+        .flat_map(|g| &g.subs)
+        .flat_map(|s| &s.items)
+        .map(|i| i.label.clone())
+        .collect();
+    assert!(
+        labels
+            .iter()
+            .any(|l| l == "Go to function: update \u{2014} line 8"),
+        "{labels:?}"
+    );
+    m.hero.store.close_command_palette();
+    paleta(&mut m, "upd");
+    assert_eq!(
+        m.docs().cursor_of(id),
+        Some((7, BOB.find("update(").unwrap()))
+    );
+    global_palette::open(&mut m.hero);
+    for c in "speed".chars() {
+        m.hero.store.command_palette_push_char(c);
+    }
+    let model = m.hero.store.command_palette_model().cloned().unwrap();
+    let view = ph2d_editor_core::widget::command_palette::scoped(
+        &model,
+        "speed",
+        m.hero.store.command_palette_scopes(),
+    );
+    assert!(
+        view.model
+            .groups
+            .iter()
+            .flat_map(|g| &g.subs)
+            .flat_map(|s| &s.items)
+            .any(|i| i.label == "Go to property: speed \u{2014} line 2")
+    );
+}
+
+/// Onda C, item 13: cada comando da aba mostra o seu atalho na coluna da direita da pílula.
+#[test]
+fn paleta_comandos_mostram_o_atalho() {
+    use ph2d_editor_core::widget::command_palette::split_shortcut;
+    let (mut m, _) = aberta(BOB);
+    global_palette::open(&mut m.hero);
+    let model = m.hero.store.command_palette_model().cloned().unwrap();
+    let find = |want: &str| {
+        model
+            .groups
+            .iter()
+            .flat_map(|g| &g.subs)
+            .flat_map(|s| &s.items)
+            .find(|i| split_shortcut(&i.label).0 == want)
+            .map(|i| split_shortcut(&i.label).1.map(str::to_owned))
+            .unwrap_or_else(|| panic!("{want} na paleta"))
+    };
+    assert_eq!(find("Save Script"), Some("Cmd+S".to_owned()));
+    assert_eq!(find("Toggle Comment"), Some("Cmd+/".to_owned()));
+    assert_eq!(find("Find References"), Some("Shift+F12".to_owned()));
+    assert_eq!(find("Fold All"), None, "sem atalho, sem coluna");
+    m.hero.store.close_command_palette();
 }

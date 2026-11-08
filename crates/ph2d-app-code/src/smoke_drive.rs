@@ -1,4 +1,4 @@
-//! ⭐ **A porta das FOTOS das cenas 3 a 5 e 10** (`PH2D_CODE_SMOKE=3|4|5|10 PH2D_CODE_SMOKE_PASSO=<n>`): o
+//! ⭐ **A porta das FOTOS das cenas 3 a 5, 10 e 11** (`PH2D_CODE_SMOKE=3|4|5|10|11 PH2D_CODE_SMOKE_PASSO=<n>`): o
 //! roteiro do smoke conduzido pelas teclas REAIS da aba até ao fim do passo `n`, e pára — cada foto é
 //! o passo que diz ser. A tela virtual das fotos ignora eventos sintéticos (`fotografa_cena.sh`), logo
 //! o gesto entra pelas portas do artista (`DocumentSurface::key`, `pointer_move`, `pointer`), o cursor
@@ -40,6 +40,11 @@ pub enum Gesture {
         ahead: usize,
     },
     Key(Key, Modifiers),
+    /// Um objecto da Hierarchy largado SEM tecla na 1.ª `needle` (item 15: abre a pergunta).
+    DropObject {
+        needle: &'static str,
+        name: &'static str,
+    },
     /// Uma letra por quadro, como a mão: a gramática assenta entre as teclas (num quadro só, a
     /// letra depois de um Enter num comentário ainda se lia como comentário e a lista não abria).
     Type(&'static str),
@@ -55,6 +60,12 @@ pub enum Gesture {
     ClickProblem(usize),
     /// Um clique no separador `k` da faixa de baixo (0 = Console, 1 = Problems).
     ClickBandTab(usize),
+    /// Um clique no título `k` da barra da aba (0 = File … 4 = Run).
+    ClickTabMenu(usize),
+    /// O rato (sem botão) sobre a linha `k` do menu aberto da barra.
+    PointTabMenuRow(usize),
+    /// Um clique na engrenagem da barra (o cartão «Script options»).
+    ClickGear,
     /// O resto do passo entra no quadro seguinte (cada Tab vê-se).
     Frame,
     /// Um clique com `mods` sobre o carácter `ahead` bytes depois da 1.ª `needle` (o Ctrl+clique).
@@ -118,7 +129,7 @@ pub enum Until {
 #[path = "smoke_steps.rs"]
 mod roteiros;
 use roteiros::NONE;
-pub use roteiros::{STEPS, STEPS_4, STEPS_5, STEPS_10};
+pub use roteiros::{STEPS, STEPS_4, STEPS_5, STEPS_10, STEPS_11};
 
 /// O roteiro da cena `level` (`None` = a cena não tem fotos conduzidas).
 #[must_use]
@@ -128,6 +139,7 @@ pub fn steps(level: u32) -> Option<&'static [&'static [Gesture]]> {
         4 => Some(STEPS_4),
         5 => Some(STEPS_5),
         10 => Some(STEPS_10),
+        11 => Some(STEPS_11),
         _ => None,
     }
 }
@@ -390,6 +402,20 @@ fn act(docs: &mut CodeDocs, id: ScriptId, g: Gesture) -> bool {
             };
             key(docs, id.0, k, mods, s.as_deref());
         }
+        Gesture::DropObject { needle, name } => {
+            let at = docs.text_of(id).and_then(|t| t.find(needle));
+            let Some((x, y)) = at.and_then(|at| docs.glyph_center(id, at)) else {
+                return false;
+            };
+            let names = [name.to_owned()];
+            let at = ph2d_editor_core::doc_surface::DropAt {
+                x,
+                y,
+                what: ph2d_editor_core::doc_surface::Dropping::Objects(&names),
+                mods: NONE,
+            };
+            docs.drop(id.0, at);
+        }
         Gesture::Point { needle, ahead } => {
             let at = docs
                 .text_of(id)
@@ -409,11 +435,29 @@ fn act(docs: &mut CodeDocs, id: ScriptId, g: Gesture) -> bool {
             };
             let _ = docs.pointer_move(id.0, input, x, y);
         }
-        Gesture::ClickProblem(_) | Gesture::ClickBandTab(_) => {
+        Gesture::PointTabMenuRow(k) => {
+            let Some(r) = docs.bar_painted().rows.get(k).map(|r| r.1) else {
+                return false;
+            };
+            let mut ts = TextSystem::without_system_fonts();
+            let input = PointerInput {
+                text: &mut ts,
+                mods: NONE,
+                now_ns: 1,
+            };
+            let _ = docs.pointer_move(id.0, input, r.x + r.w * 0.5, r.y + r.h * 0.5);
+        }
+        Gesture::ClickProblem(_)
+        | Gesture::ClickBandTab(_)
+        | Gesture::ClickTabMenu(_)
+        | Gesture::ClickGear => {
             let band = docs.band_of(id);
+            let bar = docs.bar_painted();
             let r = match g {
                 Gesture::ClickProblem(k) => band.and_then(|b| b.problems.get(k).map(|p| p.rect)),
                 Gesture::ClickBandTab(k) => band.and_then(|b| b.tabs.get(k).map(|t| t.1)),
+                Gesture::ClickTabMenu(k) => bar.titles.get(k).map(|t| t.1),
+                Gesture::ClickGear => bar.gear,
                 _ => None,
             };
             let Some(r) = r else {

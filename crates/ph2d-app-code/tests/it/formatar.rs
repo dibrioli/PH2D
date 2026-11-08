@@ -247,13 +247,9 @@ fn o_comando_liga_e_desliga_em_todas_as_abas() {
             .expect("o comando está na aba")
             .label
     };
-    assert_eq!(
-        rotulo(&mut m),
-        "Turn Off Format on Save",
-        "ligado por omissão"
-    );
+    assert_eq!(rotulo(&mut m), "Format on Save: On", "ligado por omissão");
     assert!(m.docs().command(id.0, CMD_FORMAT_ON_SAVE));
-    assert_eq!(rotulo(&mut m), "Turn On Format on Save");
+    assert_eq!(rotulo(&mut m), "Format on Save: Off");
     salva(&mut m, id);
     assert_eq!(m.docs().format_in_flight(), 0, "desligado: nada se pede");
     chega(&mut m);

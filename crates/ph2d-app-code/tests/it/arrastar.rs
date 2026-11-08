@@ -35,6 +35,87 @@ fn em<'a>(p: (f32, f32), names: &'a [String], ctrl: bool) -> DropAt<'a> {
     }
 }
 
+/// A escolha `i` da pergunta da soltura (item 15): `i` vezes ↓ e Enter.
+fn escolhe(m: &mut Mesa, id: ScriptId, i: usize) {
+    use crate::assistente::tecla;
+    use ph2d_editor_core::doc_surface::Key;
+    for _ in 0..i {
+        tecla(m, id, Key::Down, Modifiers::default(), None, "");
+    }
+    tecla(m, id, Key::Enter, Modifiers::default(), None, "");
+}
+
+/// ⭐ Item 15 (doc 13 §4 Onda C): a soltura SEM tecla abre a pergunta no sítio — três linhas, cada uma
+/// com o que escreve; «Variable» escreve byte a byte o que o Ctrl escreve, num passo de undo; Esc não
+/// escreve nada. A caixa ao lado tem o título e a dica das teclas.
+#[test]
+fn soltar_sem_tecla_pergunta_e_cada_escolha_e_a_da_tecla() {
+    let b = TEXTO.find(", \"x\"").expect("agulha");
+    let porta = ["Porta".to_owned()];
+    let (mut m, id) = mesa();
+    let p = ponto(&mut m, id, b);
+    assert!(m.docs().drop(id.0, em(p, &porta, true)));
+    let com_ctrl = m.docs().text_of(id).expect("aberto");
+    let (mut m, id) = mesa();
+    let p = ponto(&mut m, id, b);
+    assert!(m.docs().drop(id.0, em(p, &porta, false)));
+    let (titulos, sel, previa) = m.docs().actions_of(id).expect("a pergunta abriu");
+    assert_eq!(
+        titulos,
+        [
+            "ph2d.object(\"Porta\") \u{2014} Name",
+            "local porta = ph2d.object(\"Porta\") \u{2014} Variable",
+            "ph2d.property(\"porta\", ph2d.object(\"Porta\")) \u{2014} Inspector field",
+        ]
+    );
+    assert_eq!(sel, 0);
+    assert!(previa.is_empty(), "a caixa ao lado é a nota, não a prévia");
+    m.pinta(id);
+    assert_eq!(
+        m.docs().completion_painted(id).map(|r| r.len()),
+        Some(3),
+        "pintou-se"
+    );
+    escolhe(&mut m, id, 1);
+    assert_eq!(m.docs().text_of(id), Some(com_ctrl), "Variable = o Ctrl");
+    assert_eq!(m.docs().actions_of(id), None);
+    assert!(m.docs().undo(id.0, false));
+    assert_eq!(m.docs().text_of(id).as_deref(), Some(TEXTO), "um Ctrl+Z");
+    // Esc: nada.
+    assert!(m.docs().drop(id.0, em(p, &porta, false)));
+    assert!(m.docs().actions_of(id).is_some());
+    crate::assistente::tecla(
+        &mut m,
+        id,
+        ph2d_editor_core::doc_surface::Key::Escape,
+        Modifiers::default(),
+        None,
+        "",
+    );
+    assert_eq!(m.docs().actions_of(id), None);
+    assert_eq!(
+        m.docs().text_of(id).as_deref(),
+        Some(TEXTO),
+        "Esc não escreve"
+    );
+}
+
+/// Ctrl e Alt saltam a pergunta (escrevem logo).
+#[test]
+fn com_ctrl_ou_alt_a_soltura_nao_pergunta() {
+    let b = TEXTO.find(", \"x\"").expect("agulha");
+    let porta = ["Porta".to_owned()];
+    for alt in [false, true] {
+        let (mut m, id) = mesa();
+        let p = ponto(&mut m, id, b);
+        let mut at = em(p, &porta, !alt);
+        at.mods.alt = alt;
+        assert!(m.docs().drop(id.0, at));
+        assert_eq!(m.docs().actions_of(id), None, "alt={alt}");
+        assert_ne!(m.docs().text_of(id).as_deref(), Some(TEXTO), "alt={alt}");
+    }
+}
+
 #[test]
 fn por_cima_do_texto_mostra_onde_cai_e_largar_escreve_num_passo_de_undo() {
     let (mut m, id) = mesa();
@@ -56,6 +137,12 @@ fn por_cima_do_texto_mostra_onde_cai_e_largar_escreve_num_passo_de_undo() {
     m.pinta(id);
     assert!(m.docs().drop(id.0, em(p, &porta, false)));
     assert!(m.docs().drop_mark_of(id).is_none(), "largar apaga a marca");
+    assert_eq!(
+        m.docs().text_of(id).as_deref(),
+        Some(TEXTO),
+        "pergunta antes"
+    );
+    escolhe(&mut m, id, 0);
     let esperado = TEXTO.replacen("set(,", "set(ph2d.object(\"Porta\"),", 1);
     assert_eq!(m.docs().text_of(id).as_deref(), Some(esperado.as_str()));
     let fim = b + "ph2d.object(\"Porta\")".len();

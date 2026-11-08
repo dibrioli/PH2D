@@ -48,7 +48,11 @@ fn flow_pills(
     let mut y = oy;
     let mut row_started = false;
     for it in items {
-        let text_w = ts.prefix_width_weighted(&it.label, lk.pill_font, lk.pill_weight);
+        let (name, key) = split_shortcut(&it.label);
+        let text_w = ts.prefix_width_weighted(name, lk.pill_font, lk.pill_weight)
+            + key.map_or(0.0, |k| {
+                Spacing::Lg.px() + ts.prefix_width_weighted(k, lk.pill_font, lk.pill_weight)
+            });
         let chip = it
             .badge
             .as_deref()

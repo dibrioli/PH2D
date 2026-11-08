@@ -83,6 +83,9 @@ pub struct KeyInput<'a> {
 pub enum DocMenu {
     File,
     Edit,
+    /// No menu PRÓPRIO da aba (o editor de scripts, 13 §4 item 11): a barra do app não o lista; a
+    /// paleta `Ctrl+K` sim.
+    Tab,
 }
 
 /// Um comando de uma aba de família (ver [`DocumentSurface::commands`]).

@@ -82,6 +82,9 @@ pub struct CodeDocs {
     pub(crate) reload: Vec<ScriptId>,
     /// A última lista boa de cada texto aberto ou estacionado (1b) — o que o quadro publica.
     pub(crate) drafts: BTreeMap<ScriptId, Vec<ph2d_script::props::PropDecl>>,
+    /// A barra da aba (13 §4 itens 11 e 13b) e o cartão «Script options» (item 12).
+    pub(crate) bar: crate::tab_menu::Bar,
+    pub(crate) options: crate::options_card::OptionsCard,
 }
 
 /// O que a gramática de uma aba fez (a sonda do gate da tecla).
@@ -127,6 +130,8 @@ impl Default for CodeDocs {
             scene: crate::scene_names::Shared::default(),
             reload: Vec::new(),
             drafts: BTreeMap::new(),
+            bar: crate::tab_menu::Bar::default(),
+            options: crate::options_card::OptionsCard::default(),
         }
     }
 }
@@ -260,7 +265,7 @@ impl CodeDocs {
         let (list, doc_r) = self.split_area(self.area);
         let d = self.docs.iter().find(|d| d.script == id)?;
         let open = self.consoles.get(&id).is_some_and(|s| s.open);
-        let (code, band) = d.cards(doc_r, open);
+        let (code, band) = d.cards(self.code_body(id.0, doc_r), open);
         Some([list, code, band])
     }
 

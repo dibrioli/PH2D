@@ -86,10 +86,13 @@ impl DocumentSurface for CodeDocs {
         let (now, steady) = self.clock;
         let typing = self.list.focus.is_none();
         let assist = self.intel.assist();
+        let body = self.code_body(id, doc_r);
+        self.paint_bar(id, doc_r, scene, text, theme);
         if let Some((doc, store)) = self.split(id) {
             let lit = typing && blink_on(now, doc.last_input_ns, steady);
-            doc.paint(doc_r, scene, text, theme, store, (lit, assist));
+            doc.paint(body, scene, text, theme, store, (lit, assist));
         }
+        self.paint_over(id, doc_r, scene, text, theme);
     }
 
     fn chrome_over(&mut self, _id: u64, over: Option<Rect>) {
@@ -105,7 +108,13 @@ impl DocumentSurface for CodeDocs {
         x: f32,
         y: f32,
     ) -> bool {
-        let (_, area) = self.split_area(self.area);
+        let area = self.code_body(id, self.split_area(self.area).1);
+        if matches!((kind, button), (PointerKind::Down, PointerButton::Primary))
+            && let Some(taken) = self.bar_press(id, x, y)
+        {
+            self.pressed = taken;
+            return taken;
+        }
         if matches!((kind, button), (PointerKind::Down, PointerButton::Primary))
             && let Some(h) = self.list.view.hit(input.text, x, y)
         {
@@ -169,6 +178,9 @@ impl DocumentSurface for CodeDocs {
             }
             return true;
         }
+        if self.bar_move(x, y) {
+            return true;
+        }
         self.list.hover_count = self.list.view.count_at(x, y);
         if let Some(page) = page_of(id) {
             return self.help_pointer_move(page, input, x, y);
@@ -218,6 +230,12 @@ impl DocumentSurface for CodeDocs {
             text,
             paste,
         } = input;
+        if pressed && key == Key::Escape && self.bar_escape() {
+            return KeyOutcome {
+                consumed: true,
+                copy: None,
+            };
+        }
         if pressed && let Some(out) = self.family_key(id, key, mods) {
             return out;
         }
@@ -376,7 +394,7 @@ impl DocumentSurface for CodeDocs {
 
     fn command(&mut self, id: u64, cmd: ph2d_a11y::NodeId) -> bool {
         self.list.focus = None;
-        if self.family_command(cmd) {
+        if self.family_command(cmd) || self.tab_family_command(id, cmd) {
             return true;
         }
         let did = self.touched(id).is_some_and(|d| {

@@ -10,7 +10,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.status.position" => "Ln {line}, Col {col}",
         "code.complete.scene_object" => "object in the scene",
         "code.complete.scene_master" => "master",
-        "code.drop.objects" => "Drop: writes ph2d.object(\"…\") here.",
+        "code.drop.objects" => "Drop: choose what to write here.",
         "code.drop.ctrl_local" => "Hold Ctrl: a local variable on this line.",
         "code.drop.ctrl_init" => "Hold Ctrl: kept in self, inside init.",
         "code.drop.alt_property" => "Hold Alt: an object property, set in the Inspector.",
@@ -18,6 +18,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.drop.ctrl_const" => "Hold Ctrl: a local constant on this line.",
         "code.drop.property" => "Drop: writes the property name, in quotes, here.",
         "code.drop.property_self" => "Drop: writes self.<name>, a property of this script.",
+        // Onda C item 15 (doc 13 §4): a soltura sem tecla pergunta o que escrever.
+        "code.drop.choose_title" => "{name} \u{2014} what to write?",
+        "code.drop.choose_skip" => "Hold Ctrl or Alt while dropping to skip this.",
+        "code.drop.choice_name" => "{code} \u{2014} Name",
+        "code.drop.choice_variable" => "{code} \u{2014} Variable",
+        "code.drop.choice_field" => "{code} \u{2014} Inspector field",
+        // Onda C item 16: o número no corpo de uma função vira um campo do Inspector.
+        "code.action.make_property" => "Make it a property (Inspector field)",
         // O script tem `--!strict` na 1.ª linha (I14).
         "code.status.strict" => "Strict types",
         // O contador de problemas (ícones e números) ao leitor de ecrã: o molde do VS Code 1.142.
@@ -42,7 +50,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Code assistant missing — no smart suggestions, help or rename"
         }
         "code.status.assist_stopped" => {
-            "Code assistant stopped — editing works; Edit ▸ Restart Code Assistant"
+            "Code assistant stopped — editing works; Run ▸ Restart Code Assistant"
         }
         // A barra de buscar/substituir e o «Go to line» (E9).
         "code.find.placeholder" => "Find",
@@ -154,13 +162,43 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.cmd.restart_assistant" => "Restart Code Assistant",
         "code.cmd.rename" => "Rename Symbol \u{00b7} F2",
         "code.cmd.references" => "Find References \u{00b7} Shift+F12",
-        // Ligar/desligar (I9, I14): o rótulo diz o que o comando FAZ agora.
-        "code.cmd.type_hints" => "Show Type Hints",
-        "code.cmd.type_hints_off" => "Hide Type Hints",
-        "code.cmd.strict" => "Turn On Strict Types (--!strict)",
-        "code.cmd.strict_off" => "Turn Off Strict Types (--!strict)",
-        "code.cmd.format_on_save" => "Turn On Format on Save",
-        "code.cmd.format_on_save_off" => "Turn Off Format on Save",
+        // As três caixas do cartão «Script options» (13 §4 item 12); na paleta, o NOME da caixa e o
+        // estado dela (escolher troca-o).
+        "code.cmd.type_hints" => "Type Hints: Off",
+        "code.cmd.type_hints_off" => "Type Hints: On",
+        "code.cmd.strict" => "Strict Types (--!strict): Off",
+        "code.cmd.strict_off" => "Strict Types (--!strict): On",
+        "code.cmd.format_on_save" => "Format on Save: Off",
+        "code.cmd.format_on_save_off" => "Format on Save: On",
+        // 13 §4 item 11: o menu PRÓPRIO da aba (File · Edit · Find · Go To · Run).
+        "code.menu.file" => "File",
+        "code.menu.edit" => "Edit",
+        "code.menu.find" => "Find",
+        "code.menu.go_to" => "Go To",
+        "code.menu.run" => "Run",
+        "code.cmd.new_script" => "New Script",
+        "code.cmd.save_as" => "Save As\u{2026} \u{00b7} Cmd+Shift+S",
+        "code.cmd.close_tab" => "Close Tab \u{00b7} Cmd+W",
+        "code.cmd.undo" => "Undo \u{00b7} Cmd+Z",
+        "code.cmd.redo" => "Redo \u{00b7} Cmd+Shift+Z",
+        "code.cmd.go_to_definition" => "Go to Definition \u{00b7} F12",
+        "code.cmd.back" => "Back \u{00b7} Alt+\u{2190}",
+        "code.cmd.forward" => "Forward \u{00b7} Alt+\u{2192}",
+        "code.cmd.next_problem" => "Next Problem \u{00b7} F8",
+        "code.cmd.script_options" => "Script Options\u{2026}",
+        "code.menu.restart_hint" => "Only needed if suggestions stop working",
+        "code.menu.options_tip" => "Script options",
+        // 13 §4 item 13: o caminho até o cursor, à direita da barra da aba.
+        "code.crumb.line" => "line {line}",
+        "code.crumb.go_tip" => "Go to {name}",
+        // 13 §4 item 12: o cartão «Script options».
+        "code.options.title" => "Script options",
+        "code.options.strict" => "Strict types",
+        "code.options.format_on_save" => "Format on save",
+        "code.options.type_hints" => "Type hints",
+        "code.options.assist_on" => "Code assistant: on",
+        "code.options.restart" => "Restart",
+        "code.options.pin" => "Keep open",
         // I13: o formatador (StyLua) ao salvar.
         "code.format.missing" => {
             "The formatter (StyLua) is missing, so scripts are saved without formatting. {err}"

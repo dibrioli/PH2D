@@ -2,13 +2,14 @@
 //! §3.11–12): por cima do texto ela mostra onde cairia (o cursor fino pela MESMA `hit` do clique) e o
 //! balão das teclas; ao largar escreve pela lei pura ([`ph2d_code_syntax::dropping`]) num passo de undo.
 
+use crate::actions::{Action, Then};
 use crate::doc::CodeDoc;
 use ph2d_code_buffer::{Range, Selection};
 use ph2d_code_syntax::dropping::{
     Insertion, insertion, name_insertion, object_property_insertion, property_insertion,
 };
 use ph2d_editor_core::doc_surface::{DropAt, Dropping};
-use ph2d_i18n::tr;
+use ph2d_i18n::{tr, tr_with};
 use ph2d_panel_code::Hit;
 
 /// O que a aba mostra durante o arrasto: o byte onde cairia e as linhas do balão.
@@ -108,6 +109,10 @@ impl CodeDoc {
         if names.is_empty() {
             return false;
         }
+        if matches!(at.what, Dropping::Objects(_)) && !at.mods.ctrl && !at.mods.alt {
+            self.offer_drop(b, at, names);
+            return true;
+        }
         let ins = self.drop_insertion(b, at);
         self.buffer.seal_history();
         self.buffer
@@ -119,5 +124,54 @@ impl CodeDoc {
         self.buffer.seal_history();
         self.reveal();
         true
+    }
+
+    /// ⭐ Item 15 (doc 13 §4): a soltura SEM tecla pergunta — Name · Variable · Inspector field, cada
+    /// linha com o que escreve. Cada escolha é a MESMA inserção da tecla (sem tecla · Ctrl · Alt), num
+    /// passo de undo; Esc ou um clique fora não escrevem nada. Hoje nenhum contexto tira uma das três
+    /// (a lei de `dropping` responde as três em qualquer byte de código), por isso a pergunta é sempre.
+    fn offer_drop(&mut self, b: usize, at: DropAt<'_>, names: &[String]) {
+        let with = |ctrl, alt| DropAt {
+            mods: ph2d_host::Modifiers {
+                ctrl,
+                alt,
+                ..ph2d_host::Modifiers::default()
+            },
+            ..at
+        };
+        let first = ph2d_code_syntax::dropping::reference(&names[0]);
+        let rows = [
+            (false, false, "code.drop.choice_name"),
+            (true, false, "code.drop.choice_variable"),
+            (false, true, "code.drop.choice_field"),
+        ];
+        let list = rows
+            .into_iter()
+            .map(|(ctrl, alt, key)| {
+                let ins = self.drop_insertion(b, with(ctrl, alt));
+                // O que se lê é a linha que nomeia o 1.º objecto (com Ctrl no topo, a do `init`).
+                let code = ins
+                    .text
+                    .lines()
+                    .find(|l| l.contains(&first))
+                    .unwrap_or(&ins.text)
+                    .trim()
+                    .to_owned();
+                let more = if names.len() > 1 && !code.contains(", ") {
+                    " \u{2026}"
+                } else {
+                    ""
+                };
+                Action {
+                    title: tr_with(key, &[("code", &format!("{code}{more}"))]),
+                    edits: vec![(ins.at..ins.at, ins.text)],
+                    then: Then::Caret(ins.caret),
+                }
+            })
+            .collect();
+        let title = tr_with("code.drop.choose_title", &[("name", &names[0])]);
+        let note = format!("{title}\n\n{}", tr("code.drop.choose_skip"));
+        self.offer(b, list, note);
+        self.reveal();
     }
 }

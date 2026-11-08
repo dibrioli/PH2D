@@ -70,11 +70,38 @@ pub fn scopes(hero: &mut crate::HeroScreen) -> PaletteScopes {
             });
         }
     }
+    // Sem prefixo os símbolos misturam-se com os comandos: o rótulo diz o que o pick FAZ e onde.
+    let named: Vec<PaletteItem> = places
+        .symbols
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| (*i as u64) < SYMBOL_IDS)
+        .map(|(i, s)| {
+            let key = match s.kind {
+                DocSymbolKind::Function => "chrome.palette.goto_function",
+                DocSymbolKind::Property => "chrome.palette.goto_property",
+                DocSymbolKind::Variable => "chrome.palette.goto_variable",
+            };
+            PaletteItem {
+                label: ph2d_i18n::tr_with(key, &[("name", &s.name), ("line", &(s.line + 1))]),
+                id: symbol_id(i),
+                keywords: "",
+            }
+        })
+        .collect();
     PaletteScopes {
         symbols: (!subs.is_empty()).then(|| PaletteGroup {
             title: tr("chrome.palette.symbols").to_owned(),
             color: ColorToken::NodeCatSource,
             subs,
+        }),
+        named: (!named.is_empty()).then(|| PaletteGroup {
+            title: tr("chrome.palette.symbols").to_owned(),
+            color: ColorToken::NodeCatSource,
+            subs: vec![PaletteSub {
+                title: None,
+                items: named,
+            }],
         }),
         line: Some(LineScope {
             id: PALETTE_GOTO_LINE,

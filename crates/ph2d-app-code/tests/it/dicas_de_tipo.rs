@@ -71,9 +71,9 @@ fn desligadas_por_omissao_e_o_comando_liga_e_desliga() {
         |m| m.docs().inlays_of(id).is_empty(),
     );
     assert_eq!(visto.lock().unwrap().tipos, 0);
-    assert_eq!(rotulo(&mut m, id), "Show Type Hints");
+    assert_eq!(rotulo(&mut m, id), "Type Hints: Off");
     liga(&mut m, id);
-    assert_eq!(rotulo(&mut m, id), "Hide Type Hints");
+    assert_eq!(rotulo(&mut m, id), "Type Hints: On");
     ate(
         &mut m,
         id,
@@ -88,7 +88,7 @@ fn desligadas_por_omissao_e_o_comando_liga_e_desliga() {
     );
     liga(&mut m, id);
     assert!(m.docs().inlays_of(id).is_empty(), "desligar larga-as");
-    assert_eq!(rotulo(&mut m, id), "Show Type Hints");
+    assert_eq!(rotulo(&mut m, id), "Type Hints: Off");
 }
 
 #[test]

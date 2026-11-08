@@ -17,6 +17,7 @@ mod fold;
 mod highlight;
 mod indent;
 mod names;
+mod promote;
 mod queries;
 mod self_fields;
 mod syntax;
@@ -28,6 +29,7 @@ pub use fold::{Fold, fold_captures_visited};
 pub use highlight::{HighlightKind, HighlightSpan};
 pub use indent::closer_tokens;
 pub use names::{LUAU_KEYWORDS, NameAt, is_identifier};
+pub use promote::Promotion;
 pub use queries::{
     CaptureUse, FOLDS_SCM, HIGHLIGHTS_SCM, INDENTS_SCM, capture_table, highlight_captures,
     unevaluated_predicates,

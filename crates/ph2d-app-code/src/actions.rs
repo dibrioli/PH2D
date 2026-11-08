@@ -33,6 +33,19 @@ pub(crate) struct Action {
     pub title: String,
     /// Em bytes do texto em que as acções abriram, por ordem, sem se tocarem.
     pub edits: Vec<Edit>,
+    pub then: Then,
+}
+
+/// O que fica depois de aplicada (bytes do texto DEPOIS).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub(crate) enum Then {
+    /// O cursor no fim da 1.ª troca.
+    #[default]
+    EndOfFirst,
+    /// O cursor aqui (a soltura escolhida, item 15).
+    Caret(usize),
+    /// O F2 sobre o nome que começa aqui (o número promovido, item 16).
+    Rename(usize),
 }
 
 /// Para que serve uma pergunta ao servidor.
@@ -56,6 +69,9 @@ pub(crate) struct Actions {
     groups: [Vec<Action>; 3],
     pub selected: usize,
     pub top: usize,
+    /// Uma lista que não é de consertos (a escolha da soltura, item 15): a caixa ao lado diz isto
+    /// no lugar da prévia.
+    pub note: Option<String>,
 }
 
 /// Os nomes da completion que podem estar no lugar de um nome errado.
@@ -100,6 +116,7 @@ impl Actions {
                 self.groups[0].push(Action {
                     title,
                     edits: vec![(typo.clone(), name)],
+                    then: Then::default(),
                 });
             }
         }
@@ -143,6 +160,7 @@ impl Actions {
                         self.groups[2].push(Action {
                             title: f.title,
                             edits: f.edits,
+                            then: Then::default(),
                         });
                     }
                 }
@@ -160,6 +178,7 @@ impl Actions {
                     self.groups[1].push(Action {
                         title: tr_with("code.action.add_type", &[("type", &ty)]),
                         edits,
+                        then: Then::default(),
                     });
                 }
             }
@@ -234,8 +253,26 @@ impl CodeDoc {
     pub(crate) fn open_actions(&mut self) {
         self.complete.close();
         self.hints.hover = None;
+        self.syntax.fresh(self.buffer.text());
         let head = self.buffer.selection().primary().head;
         self.actions = Some(self.actions_at(&[head]));
+    }
+
+    /// Uma lista de escolhas que não pergunta nada ao servidor (a soltura, item 15), alinhada em
+    /// `anchor`, com `note` na caixa ao lado.
+    pub(crate) fn offer(&mut self, anchor: usize, list: Vec<Action>, note: String) {
+        self.complete.close();
+        self.hints.hover = None;
+        self.actions = Some(Actions {
+            revision: self.buffer.revision(),
+            anchor,
+            wants: Vec::new(),
+            asked: Vec::new(),
+            groups: [list, Vec::new(), Vec::new()],
+            selected: 0,
+            top: 0,
+            note: Some(note),
+        });
     }
 
     /// As acções que o Alt+Enter daria em cada um dos `heads` (a janelinha alinha-se no 1.º), sem
@@ -252,7 +289,15 @@ impl CodeDoc {
             groups: Default::default(),
             selected: 0,
             top: 0,
+            note: None,
         };
+        if let Some(p) = self.syntax.promote_number(t, first) {
+            a.groups[1].push(Action {
+                title: tr("code.action.make_property").to_owned(),
+                edits: p.edits,
+                then: Then::Rename(p.name_at),
+            });
+        }
         for &head in heads {
             let touches = |r: &Range<usize>| r.start <= head && head <= r.end;
             let shown: Vec<Diag> = self
@@ -292,7 +337,10 @@ impl CodeDoc {
     pub(crate) fn actions_shown(&self) -> Option<crate::complete_doc::Shown> {
         let a = self.actions.as_ref().filter(|a| a.ready())?;
         let mut titles: Vec<String> = a.list().map(|x| x.title.clone()).collect();
-        let preview = a.preview(a.selected, self.buffer.text());
+        let preview = match a.note {
+            Some(_) => Vec::new(),
+            None => a.preview(a.selected, self.buffer.text()),
+        };
         if titles.is_empty() {
             titles.push(tr("code.action.none").to_owned());
         }
@@ -316,7 +364,7 @@ impl CodeDoc {
             top: a.top,
             selected: a.selected,
             width_chars,
-            doc: None,
+            doc: a.note.clone(),
             preview,
             kind: ph2d_panel_code::ListKind::Actions,
         })
@@ -380,7 +428,10 @@ impl CodeDoc {
         let Some((r0, s0)) = act.edits.first() else {
             return;
         };
-        let at = r0.start + s0.len();
+        let at = match act.then {
+            Then::EndOfFirst => r0.start + s0.len(),
+            Then::Caret(b) | Then::Rename(b) => b,
+        };
         let changes = act
             .edits
             .iter()
@@ -400,6 +451,9 @@ impl CodeDoc {
         );
         self.buffer.seal_history();
         self.edited(&edits, true);
+        if matches!(act.then, Then::Rename(_)) {
+            self.start_rename();
+        }
     }
 
     /// A roda sobre a janelinha das acções.

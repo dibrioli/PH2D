@@ -40,6 +40,7 @@ pub mod list;
 mod nav;
 mod note;
 mod object_rename;
+pub mod options_card;
 mod places;
 mod play_problems;
 mod pointer;
@@ -58,6 +59,7 @@ mod snippet;
 mod snippet_doc;
 mod strict;
 mod surface;
+pub mod tab_menu;
 
 pub use docs::{CodeDocs, GrammarProbe, ParkedFootprint, SaveKind};
 pub use format::FormatServer;

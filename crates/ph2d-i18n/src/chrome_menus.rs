@@ -67,6 +67,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "chrome.palette.no_symbols" => {
             "No symbols here \u{2014} open a script to jump to its functions and properties"
         }
+        "chrome.palette.goto_function" => "Go to function: {name} \u{2014} line {line}",
+        "chrome.palette.goto_property" => "Go to property: {name} \u{2014} line {line}",
+        "chrome.palette.goto_variable" => "Go to variable: {name} \u{2014} line {line}",
         "chrome.palette.no_lines" => "Open a script to go to one of its lines",
         "chrome.palette.goto_line" => "Go to Line",
         "chrome.palette.goto_line_n" => "Go to line {line}",

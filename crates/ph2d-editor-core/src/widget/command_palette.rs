@@ -186,7 +186,10 @@ impl PaletteModel {
 /// ObjectsAndComponents 01 §7.3). Irmão pelo tecto de 500 LOC dos primitivos.
 mod busca;
 use busca::filter_model;
-pub use busca::{fuzzy_score, item_matches, label_matches, top_match};
+pub use busca::{
+    SHORTCUT_SEP, fuzzy_score, item_matches, label_matches, shortcut_column, split_shortcut,
+    top_match,
+};
 
 /// **Os PREFIXOS** `>` `@` `:` (CodeEditor I14) — irmão pelo tecto de 500 LOC dos primitivos.
 mod scope;

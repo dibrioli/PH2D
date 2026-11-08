@@ -288,3 +288,47 @@ pub const STEPS_10: &[&[Gesture]] = &[
         Gesture::ClickBandTab(0),
     ],
 ];
+
+/// O roteiro da cena 11 (13 §4 itens 11–13b): o cursor dentro de `update`, o menu Edit aberto com o
+/// rato em «Toggle Comment»; depois o cartão «Script options» pela engrenagem.
+pub const STEPS_11: &[&[Gesture]] = &[
+    // 1 — o cursor em `update` (o caminho diz `update`) e o menu Edit aberto.
+    &[
+        Gesture::Go {
+            needle: "self.t = self.t + dt",
+            ahead: 0,
+        },
+        Gesture::Frame,
+        Gesture::ClickTabMenu(1),
+        Gesture::Frame,
+        Gesture::PointTabMenuRow(2),
+    ],
+    // 2 — o menu fecha (Esc) e a engrenagem abre o cartão.
+    &[
+        Gesture::TabKey(Key::Escape, NONE),
+        Gesture::Frame,
+        Gesture::ClickGear,
+    ],
+    // 3 — (item 15) o cartão fecha e um objecto largado sem tecla pergunta o que escrever.
+    &[
+        Gesture::Key(Key::Escape, NONE),
+        Gesture::Frame,
+        Gesture::DropObject {
+            needle: "self.t * self.sped",
+            name: "Door",
+        },
+        Gesture::Frame,
+    ],
+    // 4 — (item 16) Esc não escreve nada; Alt+Enter sobre o `3` oferece «Make it a property».
+    &[
+        Gesture::Key(Key::Escape, NONE),
+        Gesture::Frame,
+        Gesture::Go {
+            needle: "> 3 then",
+            ahead: 2,
+        },
+        Gesture::Key(Key::Enter, ALT),
+        Gesture::Frame,
+        Gesture::Frame,
+    ],
+];

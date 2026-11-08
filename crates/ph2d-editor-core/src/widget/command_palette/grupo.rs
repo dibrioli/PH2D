@@ -5,7 +5,7 @@
 
 use super::layout::{badge_font, badge_gap, badge_size};
 use super::look::Look;
-use super::{CardLayout, HitIndex, Placed};
+use super::{CardLayout, HitIndex, Placed, split_shortcut};
 use crate::paint::{fill_rounded_rect, paint_text, paint_text_weighted, resolve};
 use crate::widget::lista_flutuante::Superficie;
 use crate::zones::Rect;
@@ -154,7 +154,24 @@ pub(super) fn paint_card(
                 );
                 let chip = badge.as_deref().map(|b| (b, badge_size(ts, b)));
                 let reserva = chip.map_or(0.0, |(_, (w, _))| badge_gap() + w);
-                let lw = r.w - pad_x * 2.0 - dot_r * 2.0 - reserva;
+                // O atalho do comando encosta à direita (antes da plaquinha), apagado (VS Code).
+                let (name, key) = split_shortcut(label);
+                let key_w = key.map_or(0.0, |k| {
+                    Spacing::Lg.px() + ts.prefix_width_weighted(k, ink_px, lk.pill_weight)
+                });
+                if let Some(k) = key {
+                    paint_text(
+                        ts,
+                        scene,
+                        k,
+                        r.x + r.w - pad_x - reserva - (key_w - Spacing::Lg.px()),
+                        ly,
+                        ink_px,
+                        key_w,
+                        superficie.cor(ColorToken::Text3),
+                    );
+                }
+                let lw = r.w - pad_x * 2.0 - dot_r * 2.0 - reserva - key_w;
                 if let Some((b, (w, h))) = chip {
                     paint_badge(
                         scene,
@@ -169,20 +186,11 @@ pub(super) fn paint_card(
                 // O peso de sempre pinta pela porta de sempre (que corta numa linha); o da
                 // referência pede o seu peso — o rótulo foi MEDIDO nele, e cabe.
                 if lk.pill_weight == FontWeight::MEDIUM {
-                    paint_text(ts, scene, label, lx, ly, ink_px, lw, fg);
+                    paint_text(ts, scene, name, lx, ly, ink_px, lw, fg);
                 } else {
                     let w = lw + Spacing::Xs.px();
-                    let _ = paint_text_weighted(
-                        ts,
-                        scene,
-                        label,
-                        lx,
-                        ly,
-                        ink_px,
-                        w,
-                        fg,
-                        lk.pill_weight,
-                    );
+                    let _ =
+                        paint_text_weighted(ts, scene, name, lx, ly, ink_px, w, fg, lk.pill_weight);
                 }
                 // ⚠️ ASSENTE, nunca `r`: durante a entrada o cartão está 12 px abaixo, e um
                 //    clique apressado cairia na row de cima.

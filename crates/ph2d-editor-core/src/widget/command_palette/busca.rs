@@ -4,6 +4,29 @@
 use super::{PaletteGroup, PaletteItem, PaletteModel, PaletteSub};
 use ph2d_a11y::NodeId;
 
+/// Separa o rótulo do ATALHO, que se pinta encostado à direita da pílula (a convenção dos menus do
+/// Windows: `"Save\tCtrl+S"`).
+pub const SHORTCUT_SEP: char = '\t';
+
+/// O rótulo de um comando «Save Script · Cmd+S» com o atalho na coluna da direita
+/// («Save Script\tCmd+S»); sem atalho, igual.
+#[must_use]
+pub fn shortcut_column(label: &str) -> String {
+    match label.rsplit_once(" \u{00b7} ") {
+        Some((name, key)) if !key.is_empty() => format!("{name}{SHORTCUT_SEP}{key}"),
+        _ => label.to_owned(),
+    }
+}
+
+/// O texto e o atalho (se há) de um rótulo.
+#[must_use]
+pub fn split_shortcut(label: &str) -> (&str, Option<&str>) {
+    match label.split_once(SHORTCUT_SEP) {
+        Some((name, key)) => (name, Some(key)),
+        None => (label, None),
+    }
+}
+
 /// Does `label` match the live search `query`? Case-insensitive substring. An empty query matches
 /// everything.
 #[must_use]

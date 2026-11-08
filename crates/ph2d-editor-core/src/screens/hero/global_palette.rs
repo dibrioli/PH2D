@@ -149,7 +149,7 @@ pub fn build_global_model(hero: &super::HeroScreen) -> PaletteModel {
         .into_iter()
         .map(|c| PaletteItem {
             badge: None,
-            label: c.label,
+            label: crate::widget::command_palette::shortcut_column(&c.label),
             id: c.id,
             keywords: "",
         })

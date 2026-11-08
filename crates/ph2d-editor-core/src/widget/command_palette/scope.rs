@@ -24,6 +24,10 @@ pub struct PaletteScopes {
     pub symbols: Option<PaletteGroup>,
     /// `:` — ir a uma linha (`None` = não há documento).
     pub line: Option<LineScope>,
+    /// Os MESMOS símbolos (mesmos ids) com o rótulo da busca SEM prefixo, onde se misturam com os
+    /// comandos e precisam de dizer o que fazem («Go to function: update — line 8»). `None` = os
+    /// rótulos do `@`.
+    pub named: Option<PaletteGroup>,
 }
 
 impl PaletteScopes {
@@ -170,7 +174,7 @@ pub fn scoped<'a>(
     }
     let mut s = plain(query);
     if !query.is_empty()
-        && let Some(sym) = &sc.symbols
+        && let Some(sym) = sc.named.as_ref().or(sc.symbols.as_ref())
     {
         let found = filter_model(&only(model, vec![sym.clone()]), query);
         if !found.groups.is_empty() {
@@ -238,6 +242,7 @@ mod tests {
                 id: NodeId(20),
                 lines: 12,
             }),
+            named: None,
         };
         (model, scopes)
     }

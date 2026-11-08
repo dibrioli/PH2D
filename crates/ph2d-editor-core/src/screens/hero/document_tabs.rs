@@ -241,12 +241,13 @@ pub fn follow_surfaces(hero: &mut HeroScreen) {
     use crate::interaction::ContextMenuKind as K;
     let rows = super::surface_input::commands(hero)
         .into_iter()
-        .map(|c| {
+        .filter_map(|c| {
             let menu = match c.menu {
                 DocMenu::File => K::MenuBarFile,
                 DocMenu::Edit => K::MenuBarEdit,
+                DocMenu::Tab => return None,
             };
-            (menu, c.id, c.label)
+            Some((menu, c.id, c.label))
         })
         .collect();
     hero.store.set_doc_commands(rows);

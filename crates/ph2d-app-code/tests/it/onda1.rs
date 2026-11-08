@@ -34,20 +34,22 @@ fn a_paleta_lista_go_to_line_com_a_aba_activa_e_escolher_abre_o_campo() {
     segue(&mut m);
     let goto = ph2d_i18n::tr("code.cmd.goto");
     assert!(goto.contains("Cmd+G"), "o atalho no rótulo: {goto}");
-    let edit: Vec<String> = m
-        .hero
-        .store
-        .doc_menu_rows(ContextMenuKind::MenuBarEdit)
-        .map(|(_, l)| l.to_owned())
-        .collect();
-    assert!(edit.iter().any(|l| l == goto), "{edit:?}");
+    // 13 §4 item 11 (D3): os comandos do código moram no menu PRÓPRIO da aba — o File/Edit do app
+    // não muda com ela.
+    for menu in [ContextMenuKind::MenuBarEdit, ContextMenuKind::MenuBarFile] {
+        assert_eq!(m.hero.store.doc_menu_rows(menu).count(), 0, "{menu:?}");
+    }
     assert!(
-        m.hero
-            .store
-            .doc_menu_rows(ContextMenuKind::MenuBarFile)
-            .any(|(id, _)| id == CMD_SAVE)
+        ph2d_app_code::commands::menu_rows(ph2d_app_code::commands::TabMenu::File)
+            .iter()
+            .any(|r| r.0 == CMD_SAVE)
     );
-    assert!(rotulos(&m).iter().any(|l| l == goto), "o Ctrl+K lista-o");
+    // Na paleta o atalho vai para a coluna da direita (Onda C, item 13).
+    let na_paleta = ph2d_editor_core::widget::command_palette::shortcut_column(goto);
+    assert!(
+        rotulos(&m).iter().any(|l| *l == na_paleta),
+        "o Ctrl+K lista-o"
+    );
 
     assert!(global_palette::route_global_pick(&mut m.hero, CMD_GOTO));
     m.pinta(ids[0]);

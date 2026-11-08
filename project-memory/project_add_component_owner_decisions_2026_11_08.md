@@ -17,6 +17,10 @@ Decisões do dono (08/11) para o painel Add Component, no mesmo padrão do Add O
 3. **«brings …» vira «+N»** ao lado do nome; a lista inteira do que vem junto vai na dica.
    **Show all fica** como hoje (inaplicável esmaecido, com motivo).
 
+4. **Game Camera SAI do Add Component** (dono 08/11, depois do 1.º smoke): a câmera nasce só por Add Object ▸
+   Camera. «Ver se ajustes são necessários»: as peças que só servem numa câmera (Follow, Limits, Shake) não podem
+   ser oferecidas a quem não é câmera, e nenhuma cena/tutorial pode depender de anexar a Game Camera pela janela.
+
 **Why:** produto é do dono; ele seguiu as três recomendações da Crítica.
 **How to apply:** plano em `docs/GameEngineFuncional/25_add_component_plano.md`. O catálogo por baixo
 pode ficar igual — os 11 assuntos são apresentação. Ainda em aberto do Add Object (perguntar na foto

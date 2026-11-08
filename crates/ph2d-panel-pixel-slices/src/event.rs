@@ -1,15 +1,16 @@
-//! Os gestos: cada controlo vira um pedido à família. Os números e os textos só seguem ao confirmar
-//! (`Enter` ou sair do campo), e só se mudaram: um passo por confirmação.
+//! Os gestos: cada controlo vira um pedido à família. Os textos e os números escritos só seguem ao
+//! confirmar (`Enter` ou sair do campo), e só se mudaram: um passo por confirmação. Arrastar a letra de
+//! um número é um passo por arrasto: cada valor reescreve o mesmo passo até a mão soltar.
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState, WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
+use ph2d_editor_core::widget::card_field::CardFieldSpec;
 use ph2d_editor_core::widget::{ButtonState, DropdownState, TextInputState};
 use ph2d_i18n::tr;
 use ph2d_pixel_slices::campos::{Campo, Vista};
 
 use crate::canal::{self, Contexto, Pedido};
-use crate::cards::valor;
 use crate::{PixelSlicesPanel, PixelSlicesPanelState, ids};
 
 fn botao(store: &mut WidgetStore, id: NodeId) {
@@ -22,10 +23,37 @@ fn botao(store: &mut WidgetStore, id: NodeId) {
 }
 
 fn textos() -> impl Iterator<Item = NodeId> {
-    ids::CAMPOS
-        .into_iter()
-        .map(|(id, _)| id)
-        .chain([ids::SLICE_NAME, ids::USER_DATA])
+    [ids::SLICE_NAME, ids::USER_DATA].into_iter()
+}
+
+/// Os números à Figma: um píxel por passo e por píxel de arrasto; um tamanho não desce de 1 (G6).
+fn regista_numeros(store: &mut WidgetStore) {
+    for (id, c) in ids::CAMPOS {
+        store.register(
+            id,
+            InteractiveState::NumberInput {
+                state: TextInputState::Normal,
+                value: 0.0,
+                buffer: String::new(),
+                caret: 0,
+                last_committed: 0.0,
+                selection_anchor: None,
+            },
+        );
+        store.mark_card_field(
+            id,
+            CardFieldSpec {
+                step: 1.0,
+                scrub: 1.0,
+                default: None,
+            },
+        );
+        if matches!(c, Campo::W | Campo::H | Campo::CentroW | Campo::CentroH) {
+            // A taxa deixa o arrasto sem tecto; a faixa dá-lhe o piso.
+            store.set_number_drag_rate(id, 1.0);
+            store.set_number_range(id, 1.0, f64::from(i32::MAX), 1.0);
+        }
+    }
 }
 
 pub(crate) fn populate(store: &mut WidgetStore) {
@@ -45,6 +73,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         );
         store.mark_cancel_on_escape(id);
     }
+    regista_numeros(store);
     store.register_picker_swatch(ids::COLOR);
     store.register(ids::COLOR, InteractiveState::Plain);
     store.register(
@@ -71,9 +100,9 @@ pub(crate) fn regista_linhas(store: &mut WidgetStore, n: usize) {
     }
 }
 
-/// O que um campo mostra agora.
-fn valor_do_campo(v: &Vista, c: Campo) -> String {
-    valor(match c {
+/// O número de um campo no documento; `None` = misto.
+const fn numero_do_campo(v: &Vista, c: Campo) -> Option<i32> {
+    match c {
         Campo::X => v.bounds[0],
         Campo::Y => v.bounds[1],
         Campo::W => v.bounds[2],
@@ -84,7 +113,7 @@ fn valor_do_campo(v: &Vista, c: Campo) -> String {
         Campo::CentroH => v.centro[3],
         Campo::PivotX => v.ponto[0],
         Campo::PivotY => v.ponto[1],
-    })
+    }
 }
 
 fn campo_de(id: NodeId) -> Option<Campo> {
@@ -98,7 +127,7 @@ fn valor_de(v: &Vista, id: NodeId) -> Option<String> {
     if id == ids::USER_DATA {
         return Some(v.dados.clone().unwrap_or_default());
     }
-    campo_de(id).map(|c| valor_do_campo(v, c))
+    None
 }
 
 fn escreve(store: &mut WidgetStore, id: NodeId, novo: String) {
@@ -110,9 +139,19 @@ fn escreve(store: &mut WidgetStore, id: NodeId, novo: String) {
     }
 }
 
-/// Os campos mostram o documento, salvo o que tem o cursor.
+/// Os campos mostram o documento, salvo o que tem o cursor ou a mão; o número misto aparece vazio.
 pub(crate) fn semeia(store: &mut WidgetStore, x: &Contexto) {
     let foco = store.focus_id();
+    let arrastado = store.number_input_drag().map(|d| d.id);
+    for (id, c) in ids::CAMPOS {
+        if Some(id) == foco || Some(id) == arrastado {
+            continue;
+        }
+        match x.vista.as_ref().and_then(|v| numero_do_campo(v, c)) {
+            Some(n) => store.set_number_value(id, f64::from(n)),
+            None => store.blank_number_input(id),
+        }
+    }
     for id in textos().filter(|id| Some(*id) != foco) {
         let novo = x
             .vista
@@ -123,9 +162,21 @@ pub(crate) fn semeia(store: &mut WidgetStore, x: &Contexto) {
     }
 }
 
+/// A mão soltou a letra: o próximo número é outro passo.
+fn fecha_o_arrasto(st: &mut PixelSlicesPanelState, store: &WidgetStore) {
+    let agora = store
+        .number_input_drag()
+        .is_some_and(|d| d.crossed_threshold && campo_de(d.id).is_some());
+    if st.a_arrastar && !agora {
+        canal::pede(Pedido::PassoFechou);
+    }
+    st.a_arrastar = agora;
+}
+
 /// A amostra e o seletor partilhado: o seletor aberto nela manda a cor à família; fechado, ela mostra
-/// a do documento.
+/// a do documento. Antes, o fim do arrasto de um número (o mesmo passo partilhado do desfazer).
 pub(crate) fn cor(st: &mut PixelSlicesPanelState, store: &mut WidgetStore, x: &Contexto) {
+    fecha_o_arrasto(st, store);
     let aberto = store.picker_target() == Some(ids::COLOR);
     let doc = x.vista.as_ref().and_then(|v| v.cor);
     if aberto {
@@ -141,7 +192,7 @@ pub(crate) fn cor(st: &mut PixelSlicesPanelState, store: &mut WidgetStore, x: &C
         }
     } else {
         if st.a_escolher_cor {
-            canal::pede(Pedido::CorFechou);
+            canal::pede(Pedido::PassoFechou);
         }
         if let Some(c) = doc {
             store.set_widget_color(ids::COLOR, c);
@@ -162,13 +213,30 @@ fn confirma(host: &dyn PanelHostInternal, id: NodeId) {
     }
     canal::pede(if id == ids::SLICE_NAME {
         Pedido::Nome(t)
-    } else if id == ids::USER_DATA {
-        Pedido::Dados(t)
-    } else if let Some(c) = campo_de(id) {
-        Pedido::Campo(c, t)
     } else {
-        return;
+        Pedido::Dados(t)
     });
+}
+
+/// Um número mudou: escrito (só se difere do documento) ou sob a letra arrastada. O `Esc` a meio do
+/// arrasto chega aqui depois de a mão largar, e ainda é do mesmo passo.
+fn numero(st: &mut PixelSlicesPanelState, host: &dyn PanelHostInternal, id: NodeId, c: Campo) {
+    let Some(n) = host.store().number_value(id).filter(|n| n.is_finite()) else {
+        return;
+    };
+    let arrasta = st.a_arrastar
+        || host
+            .store()
+            .number_input_drag()
+            .is_some_and(|d| d.id == id && d.crossed_threshold);
+    let doc = canal::contexto().vista.and_then(|v| numero_do_campo(&v, c));
+    let t = format!("{:.0}", n.trunc());
+    if arrasta {
+        st.a_arrastar = true;
+        canal::pede(Pedido::Arrasta(c, t));
+    } else if doc.map(f64::from) != Some(n.trunc()) {
+        canal::pede(Pedido::Campo(c, t));
+    }
 }
 
 fn fecha_o_menu(store: &mut WidgetStore) {
@@ -197,7 +265,7 @@ fn pedido_de(id: NodeId, x: &Contexto) -> Option<Pedido> {
 }
 
 pub(crate) fn apply_event(
-    _st: &mut PixelSlicesPanelState,
+    st: &mut PixelSlicesPanelState,
     host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> EventOutcome {
@@ -207,6 +275,13 @@ pub(crate) fn apply_event(
         outro => outro,
     };
     match ev {
+        WidgetEvent::ValueChanged(id) => match campo_de(id) {
+            Some(c) => {
+                numero(st, host, id, c);
+                EventOutcome::Consumed
+            }
+            None => EventOutcome::Ignored,
+        },
         WidgetEvent::Submit(id) | WidgetEvent::Blur(id) if textos().any(|t| t == id) => {
             confirma(host, id);
             EventOutcome::Consumed

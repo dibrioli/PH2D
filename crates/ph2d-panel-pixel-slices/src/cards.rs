@@ -4,16 +4,12 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::panel::cards::ferramenta::{caixa, caixas_aos_pares, cartao, opcoes};
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, Widget};
 use ph2d_editor_core::widget::CheckboxValue;
+use ph2d_editor_core::widget::card_field::Glyph;
 use ph2d_i18n::tr;
 use ph2d_pixel_slices::campos::Vista;
 
 use crate::canal::{Contexto, Linha};
 use crate::ids;
-
-/// O texto de um número: misto aparece vazio (§10).
-pub(crate) fn valor(v: Option<i32>) -> String {
-    v.map_or_else(String::new, |n| n.to_string())
-}
 
 /// O código de uma cor no cartão.
 fn hex(c: [u8; 4]) -> String {
@@ -80,16 +76,19 @@ const fn rotulos_xywh() -> [&'static str; 4] {
     ]
 }
 
-/// Quatro números na mesma linha (dono: irmãos dividem a linha).
+/// O número à Figma: a letra mora dentro da caixa, e arrastá-la muda o número.
+fn numero(id: NodeId, chave: &'static str) -> Cell<'static> {
+    Cell::new(Widget::Field {
+        id,
+        glyph: Glyph::Text(tr(chave)),
+    })
+}
+
+/// Os quatro números em duas linhas: `X` `Y`, depois `W` `H` (dono 08/11).
 fn linha_xywh(c: &mut CardCtx<'_>, campos: [NodeId; 4], y: f32) -> f32 {
     let r = rotulos_xywh();
-    let cells = [
-        texto(campos[0], tr(r[0])),
-        texto(campos[1], tr(r[1])),
-        texto(campos[2], tr(r[2])),
-        texto(campos[3], tr(r[3])),
-    ];
-    c.row(&cells, y)
+    let y = c.row(&[numero(campos[0], r[0]), numero(campos[1], r[1])], y);
+    c.row(&[numero(campos[2], r[2]), numero(campos[3], r[3])], y)
 }
 
 fn propriedades(c: &mut CardCtx<'_>, v: &Vista, y: f32) -> f32 {
@@ -135,13 +134,8 @@ fn propriedades(c: &mut CardCtx<'_>, v: &Vista, y: f32) -> f32 {
         );
     }
     if v.algum_pivot {
-        y = c.row(
-            &[
-                texto(ids::PIVOT_X, tr("panel.pixel.slices.x")),
-                texto(ids::PIVOT_Y, tr("panel.pixel.slices.y")),
-            ],
-            y,
-        );
+        let r = rotulos_xywh();
+        y = c.row(&[numero(ids::PIVOT_X, r[0]), numero(ids::PIVOT_Y, r[1])], y);
     }
     c.row(
         &[
@@ -159,15 +153,8 @@ fn sem_selecao(c: &mut CardCtx<'_>, y: f32) -> f32 {
     let y = c.hint(tr("panel.pixel.slices.no_selection"), y);
     let y = c.row(&[facto(tr("panel.pixel.slices.name"))], y);
     let r = rotulos_xywh();
-    let y = c.row(
-        &[
-            facto(tr(r[0])),
-            facto(tr(r[1])),
-            facto(tr(r[2])),
-            facto(tr(r[3])),
-        ],
-        y,
-    );
+    let y = c.row(&[facto(tr(r[0])), facto(tr(r[1]))], y);
+    let y = c.row(&[facto(tr(r[2])), facto(tr(r[3]))], y);
     let apagado = |id, chave| {
         Cell::new(Widget::Check {
             id,

@@ -43,15 +43,25 @@ pub enum Pedido {
     Dados(String),
     /// O seletor de cor está nesta cor: reescreve o mesmo passo do desfazer enquanto estiver aberto.
     Cor([u8; 4]),
-    /// O seletor fechou: a próxima cor é outro passo.
-    CorFechou,
-    /// O texto como foi escrito: a lei G6 é que diz o número.
+    /// O seletor fechou ou o arrasto da letra soltou: a próxima mudança é outro passo.
+    PassoFechou,
+    /// O número escrito no campo, como texto: a lei G6 é que diz o que ele vale.
     Campo(Campo, String),
+    /// O número sob o arrasto da letra: reescreve o mesmo passo até soltar, como a cor.
+    Arrasta(Campo, String),
     Nove(bool),
     Pivot(bool),
     Apaga,
     Duplica,
     RemoveMudanca,
+}
+
+impl Pedido {
+    /// Reescreve o passo do desfazer do pedido anterior do mesmo gesto (seletor aberto, letra arrastada).
+    #[must_use]
+    pub const fn reescreve_o_passo(&self) -> bool {
+        matches!(self, Self::Cor(_) | Self::Arrasta(..))
+    }
 }
 
 #[derive(Default)]

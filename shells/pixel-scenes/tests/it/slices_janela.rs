@@ -7,7 +7,7 @@ use ph2d_panel_pixel_slices::canal::{self, Campo, Pedido};
 use ph2d_pixel_core::{CelKey, FrameId, LayerId, Op, Rect, SliceId, frames, layers};
 use winit::keyboard::KeyCode;
 
-use crate::slices::{Mesa, NADA, SHIFT, px};
+use crate::slices::{CTRL, Mesa, NADA, SHIFT, px};
 
 impl Mesa {
     fn passos(&self) -> usize {
@@ -128,7 +128,7 @@ fn os_campos_editam_a_key_do_quadro_e_o_nome_a_slice_inteira() {
     assert_eq!(t.forma(outra).bounds.x, 30, "só o campo escrito");
     t.pede(Pedido::Nome("zzz".to_owned()));
     t.pede(Pedido::Cor([255, 0, 255, 255]));
-    t.pede(Pedido::CorFechou);
+    t.pede(Pedido::PassoFechou);
     t.pede(Pedido::Dados("hello".to_owned()));
     assert_eq!(t.passos(), antes + 4);
     for s in t.sprite().slices() {
@@ -155,9 +155,42 @@ fn arrastar_no_seletor_de_cor_e_um_passo() {
         t.sprite().slice(id).expect("slice").color,
         Some([4, 0, 0, 255])
     );
-    t.pede(Pedido::CorFechou);
+    t.pede(Pedido::PassoFechou);
     t.pede(Pedido::Cor([9, 0, 0, 255]));
     assert_eq!(t.passos(), antes + 2);
+}
+
+/// ⭐ Arrastar a letra `W` é UM passo: cada valor reescreve o mesmo, soltar fecha-o, e um `Ctrl+Z` volta a
+/// largura de antes. Com duas selecionadas o arrasto vale para as duas, no mesmo passo (§10).
+#[test]
+fn arrastar_a_letra_de_um_numero_e_um_passo_e_um_ctrl_z_o_desfaz() {
+    let mut t = Mesa::nova();
+    let id = t.com_uma((4, 4), (24, 14));
+    let largura = t.forma(id).bounds.w;
+    let antes = t.passos();
+    for w in [largura + 1, largura + 3, largura + 7] {
+        t.pede(Pedido::Arrasta(Campo::W, w.to_string()));
+    }
+    t.pede(Pedido::PassoFechou);
+    assert_eq!(t.forma(id).bounds.w, largura + 7, "a largura seguiu a mão");
+    assert_eq!(t.passos(), antes + 1, "o arrasto inteiro é um passo");
+    assert!(t.tecla(KeyCode::KeyZ, CTRL));
+    assert_eq!(t.forma(id).bounds.w, largura, "um Ctrl+Z volta a largura");
+
+    t.pede(Pedido::Arrasta(Campo::W, "3".to_owned()));
+    t.pede(Pedido::PassoFechou);
+    t.pede(Pedido::Arrasta(Campo::W, "5".to_owned()));
+    t.pede(Pedido::PassoFechou);
+    assert_eq!(t.passos(), antes + 2, "dois arrastos são dois passos");
+
+    let outra = t.com_uma((30, 4), (40, 14));
+    t.pede(Pedido::Todas);
+    let antes = t.passos();
+    t.pede(Pedido::Arrasta(Campo::H, "0".to_owned()));
+    t.pede(Pedido::Arrasta(Campo::H, "4".to_owned()));
+    t.pede(Pedido::PassoFechou);
+    assert_eq!((t.forma(id).bounds.h, t.forma(outra).bounds.h), (4, 4));
+    assert_eq!(t.passos(), antes + 1);
 }
 
 /// O direito numa selecionada abre o menu; noutra, nada (T2). A linha da mudança só acende com key

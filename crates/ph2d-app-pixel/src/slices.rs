@@ -40,7 +40,7 @@ pub(crate) struct Estado {
     /// O botão direito premido: a célula e o ponto; o quadro abre o menu.
     menu: Option<((i32, i32), (f32, f32))>,
     visto: Option<bool>,
-    /// O documento e o desfazer depois da última cor: o seletor aberto reescreve o mesmo passo.
+    /// O documento e o desfazer depois da última cor ou do último arrasto: reescreve-se o mesmo passo.
     cor: Option<(u32, usize)>,
 }
 
@@ -156,11 +156,11 @@ pub(crate) fn release(app: &mut PixelApp) -> bool {
 }
 
 fn pedido(app: &mut PixelApp, key: u32, p: &Pedido) {
-    if *p == Pedido::CorFechou {
+    if *p == Pedido::PassoFechou {
         app.slices.cor = None;
         return;
     }
-    let cor = matches!(p, Pedido::Cor(_));
+    let cor = p.reescreve_o_passo();
     if cor && app.slices.cor == app.docs.get(&key).map(|d| (key, d.history.undo_len())) {
         app.undo(key);
     }

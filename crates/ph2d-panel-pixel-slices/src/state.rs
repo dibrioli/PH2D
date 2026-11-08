@@ -11,4 +11,6 @@ pub struct PixelSlicesPanelState {
     pub(crate) a_escolher_cor: bool,
     /// A cor do seletor ao abrir, enquanto a mão não a mudou: com valor misto, abrir não é escolher.
     pub(crate) cor_ao_abrir: Option<[u8; 4]>,
+    /// Um número está sob a letra arrastada: o gesto ainda reescreve o mesmo passo.
+    pub(crate) a_arrastar: bool,
 }

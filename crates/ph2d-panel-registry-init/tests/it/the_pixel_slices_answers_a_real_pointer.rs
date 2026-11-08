@@ -97,6 +97,37 @@ fn escreve(hero: &mut HeroScreen, id: NodeId, t: &str) {
     }
 }
 
+/// O número que o campo mostra (`None` = misto, pinta vazio).
+fn numero(hero: &HeroScreen, id: NodeId) -> Option<f64> {
+    (!hero.store.number_input_mixed(id))
+        .then(|| hero.store.number_value(id))
+        .flatten()
+}
+
+/// Arrasta a LETRA do campo `dx` píxeis, em passos de 5, e larga; cada evento aplica-se logo, como na shell.
+/// `t_s`: o segundo do gesto (dois arrastos no mesmo instante seriam um duplo clique).
+fn arrasta_a_letra(hero: &mut HeroScreen, id: NodeId, dx: f32, t_s: u128) {
+    let r = hero.hit_index.rect_for(id).expect("o campo foi pintado");
+    let valor = ph2d_editor_core::widget::card_field::value_rect(r);
+    let (x0, y) = ((r.x + valor.x) * 0.5, r.y + r.h * 0.5);
+    let passos = (dx.abs() / 5.0).round() as i32;
+    let xs = (1..=passos).map(|i| x0 + dx.signum() * 5.0 * i as f32);
+    let gesto = std::iter::once((PointerKind::Down, x0))
+        .chain(xs.map(|x| (PointerKind::Move, x)))
+        .chain([(PointerKind::Up, x0 + dx)]);
+    for (kind, x) in gesto {
+        let arena = Bump::new();
+        let p = PointerEvent {
+            timestamp_ns: t_s * 1_000_000_000,
+            ..ptr(kind, x, y)
+        };
+        let ev = hero.handle_pointer(p, &arena).to_vec();
+        for e in ev {
+            hero.apply_event(e);
+        }
+    }
+}
+
 fn linha(id: u32, nome: String, selecionada: bool) -> Linha {
     Linha {
         id: SliceId(id),
@@ -175,20 +206,20 @@ fn a_janela_flutua_e_o_titulo_a_arrasta() {
     assert_eq!(canal::take_pedidos(), [Pedido::Todas]);
 }
 
-/// Bounds na mesma linha; o que se escreve segue como foi escrito, só ao confirmar, e só se mudou.
+/// Bounds em duas linhas (`X` `Y`, `W` `H`); o número escrito segue só ao confirmar, e só se mudou.
 #[test]
 fn os_campos_seguem_ao_confirmar_e_so_se_mudaram() {
     let mut ts = ph2d_text::TextSystem::without_system_fonts();
     let mut hero = hero_com(&mut ts, uma_selecionada());
     let linha_y = |h: &HeroScreen, id| h.hit_index.rect_for(id).expect("campo").y;
-    let y = linha_y(&hero, ids::BOUNDS_X);
-    for id in [ids::BOUNDS_Y, ids::BOUNDS_W, ids::BOUNDS_H] {
-        assert_eq!(linha_y(&hero, id), y, "os quatro dividem a linha");
-    }
-    assert_eq!(hero.store.text(ids::BOUNDS_W), Some("20"));
+    let (y1, y2) = (linha_y(&hero, ids::BOUNDS_X), linha_y(&hero, ids::BOUNDS_W));
+    assert_eq!(linha_y(&hero, ids::BOUNDS_Y), y1, "X e Y dividem a linha");
+    assert_eq!(linha_y(&hero, ids::BOUNDS_H), y2, "W e H dividem a linha");
+    assert!(y2 > y1, "W e H na linha de baixo");
+    assert_eq!(numero(&hero, ids::BOUNDS_W), Some(20.0));
 
     escreve(&mut hero, ids::BOUNDS_X, "");
-    assert_eq!(hero.store.text(ids::BOUNDS_X), Some("4"));
+    assert_eq!(numero(&hero, ids::BOUNDS_X), Some(4.0));
     assert_eq!(canal::take_pedidos(), [], "Enter sem mudar não é passo");
     escreve(&mut hero, ids::BOUNDS_X, "5");
     assert_eq!(
@@ -197,8 +228,8 @@ fn os_campos_seguem_ao_confirmar_e_so_se_mudaram() {
     );
     assenta(&mut hero, &mut ts);
     assert_eq!(
-        hero.store.text(ids::BOUNDS_X),
-        Some("4"),
+        numero(&hero, ids::BOUNDS_X),
+        Some(4.0),
         "volta a mostrar o documento"
     );
     escreve(&mut hero, ids::SLICE_NAME, "!");
@@ -224,8 +255,8 @@ fn o_valor_misto_aparece_vazio_e_escrever_vale() {
     }
     let mut hero = hero_com(&mut ts, x);
     assert_eq!(hero.store.text(ids::SLICE_NAME), Some(""));
-    assert_eq!(hero.store.text(ids::BOUNDS_X), Some(""));
-    assert_eq!(hero.store.text(ids::BOUNDS_Y), Some("6"));
+    assert_eq!(numero(&hero, ids::BOUNDS_X), None, "misto aparece vazio");
+    assert_eq!(numero(&hero, ids::BOUNDS_Y), Some(6.0));
     escreve(&mut hero, ids::BOUNDS_X, "");
     assert_eq!(canal::take_pedidos(), []);
     escreve(&mut hero, ids::BOUNDS_X, "7");
@@ -255,14 +286,60 @@ fn nove_e_pivot_ligam_e_mostram_os_campos() {
     }
     canal::publish_contexto(x);
     assenta(&mut hero, &mut ts);
-    assert_eq!(hero.store.text(ids::CENTER_W), Some("18"));
-    assert_eq!(hero.store.text(ids::PIVOT_X), Some("-3"));
+    assert_eq!(numero(&hero, ids::CENTER_W), Some(18.0));
+    assert_eq!(numero(&hero, ids::PIVOT_X), Some(-3.0));
+    let y = |id| hero.hit_index.rect_for(id).expect("campo").y;
+    assert_eq!(
+        y(ids::CENTER_Y),
+        y(ids::CENTER_X),
+        "X e Y do centro dividem a linha"
+    );
+    assert!(
+        y(ids::CENTER_W) > y(ids::CENTER_X),
+        "W e H do centro na linha de baixo"
+    );
+    assert_eq!(y(ids::PIVOT_Y), y(ids::PIVOT_X), "o pivot numa linha só");
     clica(&mut hero, ids::NINE, "9-Slices");
     assert_eq!(canal::take_pedidos(), [Pedido::Nove(false)]);
     escreve(&mut hero, ids::PIVOT_Y, "2");
     assert_eq!(
         canal::take_pedidos().first(),
-        Some(&Pedido::Campo(Campo::PivotY, "02".to_owned()))
+        Some(&Pedido::Campo(Campo::PivotY, "2".to_owned())),
+        "o clique seleciona o número: o que se escreve substitui-o"
+    );
+}
+
+/// ⭐ Arrastar a LETRA `W` muda a largura: cada valor reescreve o mesmo passo, e soltar fecha-o (o passo
+/// único e o desfazer provam-se do pedido ao documento em `slices_janela`). A largura não desce de 1.
+#[test]
+fn arrastar_a_letra_w_muda_a_largura_num_passo() {
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let mut hero = hero_com(&mut ts, uma_selecionada());
+    arrasta_a_letra(&mut hero, ids::BOUNDS_W, 30.0, 1);
+    let pedidos = canal::take_pedidos();
+    assert!(!pedidos.is_empty(), "o arrasto não pediu nada");
+    assert!(
+        pedidos
+            .iter()
+            .all(|p| matches!(p, Pedido::Arrasta(Campo::W, _))),
+        "cada valor do arrasto reescreve o mesmo passo: {pedidos:?}"
+    );
+    assert!(
+        matches!(pedidos.last(), Some(Pedido::Arrasta(Campo::W, t)) if t.parse::<i32>().is_ok_and(|n| n > 20)),
+        "a largura cresceu para a direita: {pedidos:?}"
+    );
+    assenta(&mut hero, &mut ts);
+    assert_eq!(
+        canal::take_pedidos(),
+        [Pedido::PassoFechou],
+        "soltar fecha o passo"
+    );
+    arrasta_a_letra(&mut hero, ids::BOUNDS_W, -200.0, 2);
+    let pedidos = canal::take_pedidos();
+    assert_eq!(
+        pedidos.last(),
+        Some(&Pedido::Arrasta(Campo::W, "1".to_owned())),
+        "o tamanho pára em 1"
     );
 }
 

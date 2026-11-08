@@ -47,8 +47,8 @@ pub fn responde(
         Pedido::Nome(t) => op(campos::nome(s, sel, t)),
         Pedido::Dados(t) => op(campos::dados(s, sel, t)),
         Pedido::Cor(c) => op(campos::cor(s, sel, *c)),
-        Pedido::CorFechou => Resposta::default(),
-        Pedido::Campo(c, t) => op(campos::edita(s, frame, sel, *c, t)),
+        Pedido::PassoFechou => Resposta::default(),
+        Pedido::Campo(c, t) | Pedido::Arrasta(c, t) => op(campos::edita(s, frame, sel, *c, t)),
         Pedido::Nove(on) => op(campos::nove(s, frame, sel, *on)),
         Pedido::Pivot(on) => op(campos::pivot(s, frame, sel, *on)),
         Pedido::Apaga => Resposta {

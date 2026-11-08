@@ -1,13 +1,15 @@
 //! A pintura da aba das camadas: o que se lê antes ([`Quadro`]), as três partes e os alvos.
 
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_rotated_ccw, resolve};
+use ph2d_editor_core::paint::{
+    fill_rounded_rect, frame_radius, paint_text, paint_text_rotated_ccw, resolve,
+};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::camada_das_listas;
 use ph2d_editor_core::widget::{TextInput, paint_text_input_with_buffer};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_physics_ecs::MAX_LAYERS;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, StrokeToken, TypeToken};
+use ph2d_tokens::{ColorToken, Spacing, StrokeToken, TypeToken};
 
 use super::quadro::{Quadro, fotos, pairar_da_foto};
 use super::{AREA, Geometria, Onde, aberta};
@@ -66,9 +68,7 @@ fn pinta_lista(ctx: &mut PaintCtx, q: &Quadro) {
         g,
         aberta_n,
         editando,
-        font,
         raio,
-        contagem_w,
         add_aceso,
         add_rotulo,
         remove_aceso,
@@ -83,58 +83,55 @@ fn pinta_lista(ctx: &mut PaintCtx, q: &Quadro) {
         for r in [g.lista, g.grade, g.camada] {
             fill_rounded_rect(cena, r, raio, tom!(ColorToken::Bg1, theme));
         }
-        // A lista «Layers».
-        let t = g.linha_da_lista(0);
+        // A lista «Layers», pela régua do editor de animações (dono 08/11): a letra dele, linhas de
+        // `ROW_H_PX` sem vão, a selecionada numa faixa da largura inteira, o nome a `Text1` e a contagem a `Text2`.
+        let lf = Geometria::FONTE_DA_LISTA.px();
+        let t = g.titulo_da_lista();
         paint_text(
             texto,
             cena,
             tr("card.physics.tab_layers"),
-            t.x + Spacing::Sm.px(),
-            t.y - ROW_H_PX + (ROW_H_PX - font) * 0.5,
-            font,
+            t.x,
+            t.y,
+            lf,
             t.w,
-            tom!(ColorToken::Text3, theme),
+            tom!(ColorToken::Text2, theme),
         );
+        let faixa = frame_radius(theme, ph2d_card_stack::metrics::FIELD_RADIUS);
         for (p, &n) in visiveis.iter().enumerate() {
             let r = g.linha_da_lista(p);
-            let sel = n == aberta_n;
-            if sel {
-                fill_rounded_rect(cena, r, raio, tom!(ColorToken::Bg3, theme));
+            if n == aberta_n {
+                fill_rounded_rect(cena, r, faixa, tom!(ColorToken::Bg3, theme));
             }
             if editando.is_some_and(|(e, onde)| e == n && onde == Onde::Lista) {
                 continue;
             }
-            let cor = if sel {
-                ColorToken::Text1
-            } else {
-                ColorToken::Text2
-            };
-            // O quadradinho da cor da camada antes do nome, como na 9d (dono 07/11, onda 9f: «aqui ficam os
-            // quadrados antes do nome como antes»); a lista é o único sítio SEM o contorno na moldura.
-            let (q, cor_q) = quadradinho(cena, theme, n, r, font, raio);
-            let lado = q.w;
+            // O quadradinho da cor da camada antes do nome (dono 07/11, onda 9f); sem contorno na moldura.
+            let (q, cor_q) = quadradinho(cena, theme, n, r, lf);
             super::regista_quadradinho(n, q, cor_q);
+            let inset = Spacing::Sm.px();
+            let c = &contagens[p];
+            let cw = texto.prefix_width(c, lf);
+            let nome_x = q.x + q.w + inset;
             paint_text(
                 texto,
                 cena,
                 &rotulos[n],
-                r.x + Spacing::Sm.px() * 2.0 + lado,
-                r.y + (r.h - font) * 0.5,
-                font,
-                r.w - contagem_w - lado - Spacing::Sm.px(),
-                tom!(cor, theme),
+                nome_x,
+                r.y,
+                lf,
+                (r.x + r.w - cw - inset - nome_x).max(0.0),
+                tom!(ColorToken::Text1, theme),
             );
-            let c = &contagens[p];
-            let cw = texto.prefix_width(c, font);
             paint_text(
                 texto,
                 cena,
                 c,
-                r.x + r.w - Spacing::Sm.px() - cw,
-                r.y + (r.h - font) * 0.5,
-                font,
+                r.x + r.w - cw - inset,
+                r.y,
+                lf,
                 cw + Spacing::Xs.px(),
-                tom!(ColorToken::Text3, theme),
+                tom!(ColorToken::Text2, theme),
             );
         }
         // O «+ Add», como os botões do editor de animações.
@@ -179,24 +176,24 @@ fn pinta_lista(ctx: &mut PaintCtx, q: &Quadro) {
     });
 }
 
-/// A grade «Who bumps into whom · N pairs», com as faixas acesas e os nomes nas duas bordas.
 /// O quadradinho da cor da camada `n` à esquerda da linha `r` (lado `font − Xs`, raio meio): o da lista
-/// «Layers» e o das opções do destino do Remove (dono 08/11). Devolve a caixa e a cor pintada.
+/// «Layers» e o das opções do destino do Remove (dono 08/11), com a medida da amostra do editor de
+/// animações (`QUADRADINHO_SOBRE_A_LETRA`, raio `Xxs`). Devolve a caixa e a cor pintada.
 pub(super) fn quadradinho(
     cena: &mut ph2d_vector::VectorScene,
     theme: ph2d_tokens::Theme,
     n: usize,
     r: Rect,
     font: f32,
-    raio: f32,
 ) -> (Rect, [f32; 4]) {
-    let lado = font - Spacing::Xs.px();
+    let lado = Geometria::lado_do_quadradinho(font);
     let q = Rect::new(r.x + Spacing::Sm.px(), r.y + (r.h - lado) * 0.5, lado, lado);
     let cor = resolve(super::cor_da_camada(n), theme);
-    fill_rounded_rect(cena, q, raio * 0.5, cor);
+    fill_rounded_rect(cena, q, Spacing::Xxs.px(), cor);
     (q, cor.components)
 }
 
+/// A grade «Who bumps into whom · N pairs», com as faixas acesas e os nomes nas duas bordas.
 fn pinta_grade(ctx: &mut PaintCtx, q: &Quadro) {
     let theme = ctx.host.theme();
     let &Quadro {
@@ -404,14 +401,15 @@ fn pinta_pe(ctx: &mut PaintCtx, q: &Quadro) {
 
         // A camada aberta: a linha de título (o resto é a onda 9b).
         let cy = g.camada.y + pad;
+        let tc = g.titulo_da_camada(pares_w);
         ph2d_editor_core::paint::paint_text_title(
             texto,
             cena,
             titulo,
-            g.camada.x + pad,
+            tc.x,
             cy,
             TypeToken::Base.px(),
-            g.camada.w - pares_w - (pad * 2.0 + Spacing::Lg.px()),
+            tc.w,
             tom!(ColorToken::Text1, theme),
         );
         paint_text(
@@ -478,6 +476,10 @@ fn alvos(ctx: &mut PaintCtx, q: &Quadro, losango: Option<ph2d_a11y::NodeId>, can
     camada_das_listas::alvo(hit, i::PHYSICS_LAYER_REMOVE, g.remove());
     if let Some((_, id, _, _, _, r)) = &campo {
         camada_das_listas::alvo(hit, *id, *r);
+    }
+    // O título da camada aberta cortado com «…» mostra-se inteiro na dica (a regra dos rótulos, onda 9d).
+    if q.titulo_cortado {
+        camada_das_listas::alvo(hit, i::PHYSICS_LAYER_TITLE, g.titulo_da_camada(q.pares_w));
     }
     if let Some(alvo) = losango {
         camada_das_listas::alvo(hit, alvo, canto);

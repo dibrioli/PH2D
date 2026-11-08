@@ -218,6 +218,8 @@ pub static PHYSICS_LAYER_OBJECT: [NodeId; PHYSICS_LAYER_OBJECTS] = tabela_dos_ob
 pub const PHYSICS_LAYER_SELECT_ALL: NodeId = hash_node_id("physics.layers.select_all");
 /// «+N more»: abre a fila inteira dos objetos.
 pub const PHYSICS_LAYER_MORE: NodeId = hash_node_id("physics.layers.more");
+/// A linha de título da camada aberta («Player · 1 object»): o alvo da dica com o título inteiro quando cortado.
+pub const PHYSICS_LAYER_TITLE: NodeId = hash_node_id("physics.layers.title");
 /// «Remove» da lista: tira a camada aberta (a 0 não: desligado, com a razão na dica).
 pub const PHYSICS_LAYER_REMOVE: NodeId = hash_node_id("physics.layers.remove");
 /// O seletor do destino dos objetos ao remover: a camada `d`.
@@ -430,6 +432,7 @@ mod tabela_tests {
                 PHYSICS_LAYER_SELECT_ALL,
                 PHYSICS_LAYER_MORE,
                 PHYSICS_LAYER_REMOVE,
+                PHYSICS_LAYER_TITLE,
                 PHYSICS_LAYER_MOVE_PICK,
                 PHYSICS_LAYER_MOVE_OK,
                 PHYSICS_LAYER_MOVE_CANCEL,

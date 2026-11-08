@@ -271,7 +271,6 @@ pub(super) fn pinta_a_lista(ctx: &mut PaintCtx, q: &super::quadro::Quadro, p: &P
     }
     let theme = ctx.host.theme();
     let dd = lista(q, p).open(true).state(DropdownState::Focused);
-    let raio = q.raio;
     let destinos = p.destinos.clone();
     let mut linha = |cena: &mut ph2d_vector::VectorScene,
                      texto: &mut ph2d_text::TextSystem,
@@ -284,7 +283,13 @@ pub(super) fn pinta_a_lista(ctx: &mut PaintCtx, q: &super::quadro::Quadro, p: &P
         }
         let tinta = ph2d_editor_core::widget::resolve_opaque(row.ink(), theme);
         // Dono 08/11: o quadradinho da cor à esquerda (o da lista «Layers»), o nome depois dele; sem contorno.
-        let (caixa, cor) = super::pinta::quadradinho(cena, theme, d, row.rect, q.font, raio);
+        let (caixa, cor) = super::pinta::quadradinho(
+            cena,
+            theme,
+            d,
+            row.rect,
+            super::Geometria::FONTE_DA_LISTA.px(),
+        );
         super::regista_quadradinho_do_destino(d, caixa, cor);
         let marca_w = Spacing::Lg.px();
         let nome_x = caixa.x + caixa.w + Spacing::Sm.px();

@@ -196,9 +196,10 @@ pub(super) struct Quadro {
     pub(super) editando: Option<(usize, Onde)>,
     pub(super) font: f32,
     pub(super) raio: f32,
-    pub(super) contagem_w: f32,
     pub(super) cabeca_dir_w: f32,
     pub(super) pares_w: f32,
+    /// Se o título da camada aberta não cabe (então leva a dica com ele inteiro).
+    pub(super) titulo_cortado: bool,
     pub(super) add_aceso: bool,
     pub(super) matriz: LayerMatrix,
     pub(super) add_rotulo: &'static str,
@@ -239,7 +240,6 @@ impl Quadro {
         ))
         .max(Geometria::ALTURA_DO_BOTAO);
         let lista_w = Geometria::largura_da_lista(area.w, botao_w);
-        let contagem_w = largura(ctx, &MAX_LAYERS.to_string().repeat(2));
         let aberta_n = camada_aberta();
         let nomes_dos_objetos: Vec<String> = crate::state::layer_objects(aberta_n)
             .into_iter()
@@ -312,6 +312,18 @@ impl Quadro {
         // O campo em edição lê o store antes de a cena ser emprestada.
         let campo = campo_em_edicao(ctx, editando, &visiveis, &g, lista_w);
         dicas(ctx, &visiveis, cheia);
+        let titulo_cortado = ph2d_editor_core::text_elide::title_elided_width(
+            ctx.text_system,
+            &titulo,
+            TypeToken::Base.px(),
+        ) > g.titulo_da_camada(pares_w).w;
+        if titulo_cortado
+            && ctx.host.store().tooltip_for(i::PHYSICS_LAYER_TITLE) != Some(titulo.as_str())
+        {
+            ctx.host
+                .store_mut()
+                .set_tooltip(i::PHYSICS_LAYER_TITLE, titulo.clone());
+        }
         let contagens: Vec<String> = visiveis
             .iter()
             .map(|&n| crate::state::layer_count(n).to_string())
@@ -327,9 +339,9 @@ impl Quadro {
             editando,
             font,
             raio,
-            contagem_w,
             cabeca_dir_w,
             pares_w,
+            titulo_cortado,
             add_aceso,
             matriz,
             add_rotulo,

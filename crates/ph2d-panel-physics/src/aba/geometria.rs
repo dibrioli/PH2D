@@ -2,7 +2,7 @@
 
 use ph2d_editor_core::widget::{SCROLLBAR_W, scrollbar_thumb_rect as thumb_rect};
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ROW_H_PX, Spacing};
+use ph2d_tokens::{ROW_H_PX, Spacing, TypeToken};
 
 /// A geometria da aba numa `area`: a lista à esquerda, a grade em cima à direita, a camada aberta
 /// embaixo. `k` = quantas camadas visíveis.
@@ -174,12 +174,22 @@ impl Geometria {
         )
     }
 
-    /// A pílula da linha acesa: a mesma altura e o mesmo centro da linha de quadrados.
+    /// A pílula da linha acesa: a mesma altura e o mesmo centro da linha de quadrados, do rótulo até
+    /// debaixo da última célula à vista da linha (a faixa pairada passa sob as células, onda 9g).
     #[must_use]
     pub fn pilula_da_linha(&self, l: usize) -> Rect {
         let r = self.rotulo_da_linha(l);
         let cel = self.celula(l, 0);
-        Rect::new(r.x - Spacing::Xs.px(), cel.y, r.w, cel.h)
+        let x = r.x - Spacing::Xs.px();
+        let fim = (self.c0 + self.cabem_c)
+            .min(l + 1)
+            .checked_sub(1)
+            .filter(|&c| c >= self.c0)
+            .map_or(r.x + r.w, |c| {
+                let u = self.celula(l, c);
+                u.x + u.w + Spacing::Xs.px() * 0.5
+            });
+        Rect::new(x, cel.y, (fim - x).max(r.w), cel.h)
     }
 
     /// A letra dos rótulos da grade: a do painel, mas nunca maior que o quadrado.
@@ -309,6 +319,36 @@ impl Geometria {
             self.lista.w - pad * 2.0,
             ROW_H_PX,
         )
+    }
+
+    /// O título «Layers»: a linha acima da primeira (o `list_title` do editor de animações).
+    #[must_use]
+    pub fn titulo_da_lista(&self) -> Rect {
+        let r = self.linha_da_lista(0);
+        Rect::new(r.x, r.y - ROW_H_PX, r.w, ROW_H_PX)
+    }
+
+    /// A linha de título da camada aberta («Player · 1 object»), à esquerda de `pares_w`.
+    #[must_use]
+    pub fn titulo_da_camada(&self, pares_w: f32) -> Rect {
+        let pad = Self::MARGEM_DO_CARTAO;
+        Rect::new(
+            self.camada.x + pad,
+            self.camada.y + pad,
+            (self.camada.w - pares_w - (pad * 2.0 + Spacing::Lg.px())).max(0.0),
+            ROW_H_PX,
+        )
+    }
+
+    /// ⭐ A letra da lista «Layers»: a do editor de animações (`FONT_TOKEN` dele).
+    pub const FONTE_DA_LISTA: TypeToken = TypeToken::Base;
+    /// O quadradinho da cor sobre a letra (o `SWATCH_OVER_FONT` do editor de animações).
+    pub const QUADRADINHO_SOBRE_A_LETRA: f32 = 0.8; // LITERAL-PX-OK: razão adimensional
+
+    /// O lado do quadradinho da cor para a letra `font`.
+    #[must_use]
+    pub fn lado_do_quadradinho(font: f32) -> f32 {
+        font * Self::QUADRADINHO_SOBRE_A_LETRA
     }
 
     /// ⭐ A margem interna da lista (onda 9g: `Lg`, a do editor de animações; antes `Sm`).
@@ -449,6 +489,75 @@ mod alinhamento_tests {
                     "topo×coluna k={k} c={l}"
                 );
                 assert!(g.fonte_da_grade(row) <= cel.h + tol, "a letra cabe k={k}");
+            }
+        }
+    }
+
+    /// ⭐ Dono 08/11 (a lista lê-se como a do editor de animações): o passo das linhas é o `ROW_H_PX` e a
+    /// linha tem essa altura (nenhum vão), a faixa da selecionada tem a largura inteira da lista por dentro
+    /// das margens, e o título fica na linha de cima.
+    #[test]
+    fn a_lista_das_camadas_tem_o_passo_e_a_faixa_do_editor() {
+        let row = ROW_H_PX;
+        let area = Rect::new(row, row, row * 40.0, row * 24.0);
+        let tol = StrokeTokenPx::um();
+        for k in [3usize, 16, 32] {
+            let g = Geometria::de(area, row * 4.0, row * 8.0, k, row * 4.0);
+            let dentro = g.lista.w - Geometria::MARGEM_DA_LISTA * 2.0;
+            for p in 0..k {
+                let r = g.linha_da_lista(p);
+                assert!((r.h - row).abs() <= tol, "altura k={k} p={p}");
+                assert!((r.w - dentro).abs() <= tol, "faixa inteira k={k} p={p}");
+                assert!(
+                    (r.x - (g.lista.x + Geometria::MARGEM_DA_LISTA)).abs() <= tol,
+                    "margem k={k}"
+                );
+                if p + 1 < k {
+                    let s = g.linha_da_lista(p + 1);
+                    assert!((s.y - r.y - row).abs() <= tol, "passo sem vão k={k} p={p}");
+                }
+            }
+            let t = g.titulo_da_lista();
+            assert!(
+                (g.linha_da_lista(0).y - t.y - row).abs() <= tol,
+                "título k={k}"
+            );
+        }
+        let f = Geometria::FONTE_DA_LISTA.px();
+        assert!(
+            Geometria::lado_do_quadradinho(f) < f,
+            "o quadradinho é menor que a letra"
+        );
+    }
+
+    /// ⭐ A faixa da linha pairada passa SOB as células da linha (onda 9g): cobre do rótulo à última célula
+    /// à vista da linha (o triângulo de baixo), a qualquer rolagem.
+    #[test]
+    fn a_faixa_da_linha_pairada_passa_sob_as_celulas() {
+        let row = ROW_H_PX;
+        let area = Rect::new(row, row, row * 40.0, row * 24.0);
+        let tol = StrokeTokenPx::um();
+        for k in [5usize, 16, 32] {
+            for rolada in [(0, 0), (k / 2, k / 3)] {
+                let g = Geometria::de(area, row * 4.0, row * 8.0, k, row * 4.0).rolada(rolada);
+                for l in 0..k {
+                    if !g.linha_a_vista(l) {
+                        continue;
+                    }
+                    let pil = g.pilula_da_linha(l);
+                    let rot = g.rotulo_da_linha(l);
+                    assert!(pil.x <= rot.x + tol, "começa no rótulo k={k} l={l}");
+                    for c in 0..=l {
+                        if !g.coluna_a_vista(c) {
+                            continue;
+                        }
+                        let cel = g.celula(l, c);
+                        assert!(
+                            pil.x <= cel.x + tol && pil.x + pil.w + tol >= cel.x + cel.w,
+                            "a faixa cobre a célula k={k} l={l} c={c} {rolada:?}"
+                        );
+                    }
+                }
             }
         }
     }

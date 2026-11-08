@@ -110,6 +110,10 @@ pub fn frame(
 ) -> PixelPanelInfo {
     let editing = crate::mode::editing(world, hero);
     app.chave = editing.and_then(|b| crate::input::key_of(world, b));
+    // O mapa da janela de atalhos entra NESTE quadro (só na tecla seguinte = «uma atrasada», 08/11).
+    ph2d_panel_pixel_keys::toma_keymap()
+        .into_iter()
+        .for_each(|k| app.keys = k);
     crate::cartao::publica(app, world, hero, editing);
     crate::smoke::conduz_o_cartao(world, hero);
     crate::smoke_intervalo::conduz(hero);

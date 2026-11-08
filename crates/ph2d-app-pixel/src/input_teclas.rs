@@ -65,9 +65,6 @@ pub fn key_with(
         return Some(KeyAnswer::Quiet);
     }
     let key = editing.and_then(|bits| key_of(world, bits))?;
-    ph2d_panel_pixel_keys::toma_keymap()
-        .into_iter()
-        .for_each(|k| app.keys = k);
     if ph2d_pixel_keys::reserved(chord).is_some() {
         return None;
     }

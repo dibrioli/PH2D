@@ -31,11 +31,52 @@ pub(crate) fn publica_captura(on: bool) {
     A_CAPTURAR.store(on, Ordering::Relaxed);
 }
 
-/// A família oferece o acorde premido; `true` = a captura tomou-o (não o despache).
+/// Os modificadores seguros agora (a captura mostra-os ao vivo, «Ctrl+…»).
+static SEGUROS: Mutex<Option<Chord>> = Mutex::new(None);
+
+/// Uma tecla que só modifica: segurá-la não acaba a captura.
+fn so_modifica(k: winit::keyboard::KeyCode) -> bool {
+    use winit::keyboard::KeyCode as K;
+    matches!(
+        k,
+        K::ShiftLeft
+            | K::ShiftRight
+            | K::ControlLeft
+            | K::ControlRight
+            | K::AltLeft
+            | K::AltRight
+            | K::SuperLeft
+            | K::SuperRight
+            | K::Space
+    )
+}
+
+/// Os modificadores que a captura mostra enquanto espera (o `key` do acorde não conta).
+pub(crate) fn seguros() -> Option<Chord> {
+    *SEGUROS
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+pub(crate) fn larga_seguros() {
+    *SEGUROS
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = None;
+}
+
+/// A família oferece o acorde premido; `true` = a captura tomou-o (não o despache). Um modificador
+/// sozinho fica à vista e a captura continua.
 pub fn oferece(chord: Chord) -> bool {
     if !a_capturar() {
         return false;
     }
+    if so_modifica(chord.key) {
+        *SEGUROS
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(chord);
+        return true;
+    }
+    larga_seguros();
     *TECLA
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(chord);
@@ -49,7 +90,8 @@ pub(crate) fn take_tecla() -> Option<Chord> {
         .take()
 }
 
-pub(crate) fn publica_keymap(k: Keymap) {
+/// O mapa novo da janela, para a família tomar no próximo quadro ([`toma_keymap`]).
+pub fn publica_keymap(k: Keymap) {
     *NOVO
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(k);
@@ -135,4 +177,31 @@ pub(crate) fn take_escolhido() -> Option<(Troca, std::path::PathBuf)> {
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .take()
+}
+
+static PINTADOS: Mutex<Vec<(ph2d_a11y::NodeId, String)>> = Mutex::new(Vec::new());
+
+pub(crate) fn esquece_pintados() {
+    PINTADOS
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .clear();
+}
+
+pub(crate) fn pintou(id: ph2d_a11y::NodeId, texto: &str) {
+    PINTADOS
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .push((id, texto.to_owned()));
+}
+
+/// O texto que o campo `id` mostrou na última pintura da janela (a régua do «uma atrasada»).
+#[must_use]
+pub fn texto_pintado(id: ph2d_a11y::NodeId) -> Option<String> {
+    PINTADOS
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .iter()
+        .find(|(i, _)| *i == id)
+        .map(|(_, t)| t.clone())
 }

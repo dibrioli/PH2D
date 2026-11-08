@@ -14,7 +14,7 @@ use ph2d_i18n::tr;
 use ph2d_pixel_keys::{Chord, Context, Keymap, PixelAction, Section};
 use ph2d_tokens::Spacing;
 
-use crate::fila::{self, Linha};
+use crate::fila::{self, Campo, Linha};
 use crate::lei::{Gesto, Janela, Modo, frase_tomada};
 use crate::{PixelKeysPanel, PixelKeysPanelState, canal, ids};
 
@@ -94,17 +94,43 @@ fn texto_da_ficha(k: Chord) -> String {
     t
 }
 
-fn hovered(store: &WidgetStore, id: ph2d_a11y::NodeId) -> bool {
-    matches!(
-        store.get(id),
-        Some(InteractiveState::Button {
-            state: ButtonState::Hovered
-        })
-    )
+/// O texto do campo em captura: os modificadores seguros («Ctrl+…») ou o convite.
+fn texto_em_captura() -> String {
+    let espera = tr("panel.pixel_keys.press");
+    let Some(m) = canal::seguros() else {
+        return espera.to_owned();
+    };
+    use winit::keyboard::KeyCode as K;
+    let k = m.key;
+    let mut t = String::new();
+    for (on, nome) in [
+        (
+            m.ctrl || matches!(k, K::ControlLeft | K::ControlRight),
+            "Ctrl+",
+        ),
+        (m.alt || matches!(k, K::AltLeft | K::AltRight), "Alt+"),
+        (
+            m.shift || matches!(k, K::ShiftLeft | K::ShiftRight),
+            "Shift+",
+        ),
+        (m.space || k == K::Space, "Space+"),
+    ] {
+        if on {
+            t.push_str(nome);
+        }
+    }
+    if t.is_empty() {
+        return espera.to_owned();
+    }
+    t.push('\u{2026}');
+    t
 }
 
-fn linhas(store: &mut WidgetStore, keys: &Keymap, acoes: &[PixelAction]) -> Vec<Linha> {
+/// As fileiras: cada tecla um campo; o campo vazio quando não há tecla ou é ele o capturado (o
+/// clique no NOME da acção abre-o: a 2.ª tecla sem `+`); a recusa e a pergunta na fileira.
+fn linhas(store: &mut WidgetStore, j: &Janela, acoes: &[PixelAction]) -> Vec<Linha> {
     let fabrica = Keymap::factory();
+    let (keys, modo, campo) = (&j.keys, j.modo, j.campo());
     acoes
         .iter()
         .map(|&acao| {
@@ -115,31 +141,68 @@ fn linhas(store: &mut WidgetStore, keys: &Keymap, acoes: &[PixelAction]) -> Vec<
                 botao(store, id);
                 store.set_tooltip(id, tr(dica));
             }
-            let fichas = keys
-                .keys_of(acao)
-                .into_iter()
-                .map(|(k, c)| {
-                    let id = ids::ficha(acao, k);
-                    botao(store, id);
-                    store.set_tooltip(id, tr("panel.pixel_keys.remove_tip"));
-                    let mut t = texto_da_ficha(k);
-                    if c != Context::Normal {
-                        t = format!("{t} · {}", tr(c.name_key()));
-                    }
-                    if hovered(store, id) {
-                        t.push_str(" ×");
-                    }
-                    (id, t)
-                })
-                .collect();
-            let mut agora = keys.keys_of(acao);
+            // O nome não leva dica: ela taparia o campo vazio que o pairar mostra.
+            botao(store, ids::nome(acao));
+            let teclas = keys.keys_of(acao);
+            let aceso_em = |alvo: Option<(Chord, Context)>| campo == Some((acao, alvo));
+            let texto_aceso = || match modo {
+                Modo::Pergunta { tecla, .. } => texto_da_ficha(tecla),
+                _ => texto_em_captura(),
+            };
+            let mut campos: Vec<Campo> = Vec::new();
+            for &(k, c) in &teclas {
+                let id = ids::ficha(acao, k);
+                botao(store, id);
+                store.set_tooltip(id, tr("panel.pixel_keys.remove_tip"));
+                let aceso = aceso_em(Some((k, c)));
+                let texto = if aceso {
+                    texto_aceso()
+                } else if c == Context::Normal {
+                    texto_da_ficha(k)
+                } else {
+                    format!("{} · {}", texto_da_ficha(k), tr(c.name_key()))
+                };
+                campos.push(Campo { id, texto, aceso });
+            }
+            let vazio_aceso = aceso_em(None);
+            if teclas.is_empty() || vazio_aceso {
+                let texto = if vazio_aceso {
+                    texto_aceso()
+                } else {
+                    tr("panel.pixel_keys.empty").to_owned()
+                };
+                campos.insert(
+                    0,
+                    Campo {
+                        id: ids::add(acao),
+                        texto,
+                        aceso: vazio_aceso,
+                    },
+                );
+            }
+            // A recusa (tecla do app) fica na fileira do campo, que continua à espera.
+            let recusa = match modo {
+                Modo::Captura { campo: (a, _) } if a == acao => j.aviso.clone(),
+                _ => None,
+            };
+            let pergunta = match modo {
+                Modo::Pergunta {
+                    campo: (a, _),
+                    tecla,
+                    dono,
+                } if a == acao => Some(frase_tomada(tecla, dono)),
+                _ => None,
+            };
+            let mut agora = teclas;
             let mut antes = fabrica.keys_of(acao);
             agora.sort_by_key(|(k, c)| (k.to_string(), *c));
             antes.sort_by_key(|(k, c)| (k.to_string(), *c));
             Linha {
                 acao,
-                fichas,
+                campos,
                 mudada: agora != antes,
+                recusa,
+                pergunta,
             }
         })
         .collect()
@@ -156,26 +219,14 @@ fn b(id: ph2d_a11y::NodeId, chave: &'static str, primary: bool) -> Cell<'static>
 fn cartao_secao(s: Section, linhas: Vec<Linha>) -> CardDef<'static> {
     cartao(ids::secao(s), tr(s.name_key()), None, move |c, mut y| {
         for l in &linhas {
-            y = fila::pinta(c, l, ids::add(l.acao), ids::reset(l.acao), y);
+            y = fila::pinta(c, l, y);
         }
         y
     })
 }
 
-/// O cartão de cima: a busca e o que o modo pede.
+/// O cartão de cima: a busca, Reset All (com a confirmação) e a troca; a captura vive na fileira.
 fn cartao_topo(modo: Modo, aviso: Option<String>, vazio: bool) -> CardDef<'static> {
-    let frase = match modo {
-        Modo::Captura { acao, .. } => {
-            Some(tr("panel.pixel_keys.press").replace("{action}", acao.name()))
-        }
-        Modo::Pergunta { tecla, dono, .. } => Some(frase_tomada(tecla, dono)),
-        Modo::ResetAll => Some(tr("panel.pixel_keys.reset_all_ask").to_owned()),
-        Modo::Lista => None,
-    };
-    let lida = match modo {
-        Modo::Captura { tecla: Some(t), .. } => t.to_string(),
-        _ => tr("panel.pixel_keys.waiting").to_owned(),
-    };
     cartao(
         ids::SEC_TOP,
         tr("panel.pixel_keys.sec_top"),
@@ -188,68 +239,41 @@ fn cartao_topo(modo: Modo, aviso: Option<String>, vazio: bool) -> CardDef<'stati
                 })],
                 y,
             );
-            if let Some(f) = &frase {
-                y = c.hint(f, y);
+            if modo == Modo::ResetAll {
+                y = c.hint(tr("panel.pixel_keys.reset_all_ask"), y);
+                y = c.row(
+                    &[
+                        b(ids::CONFIRM, "panel.pixel_keys.reset_all", true),
+                        b(ids::CANCEL, "panel.pixel_keys.cancel", false),
+                    ],
+                    y,
+                );
+            } else {
+                // Uma fileira: Reset All e os ícones da troca.
+                let troca = [
+                    Seg {
+                        id: ids::IMPORT,
+                        icon: Some(IconId::Open),
+                        text: "",
+                        on: false,
+                    },
+                    Seg {
+                        id: ids::EXPORT,
+                        icon: Some(IconId::Export),
+                        text: "",
+                        on: false,
+                    },
+                ];
+                y = c.row(
+                    &[
+                        b(ids::RESET_ALL, "panel.pixel_keys.reset_all", false),
+                        Cell::new(Widget::Bare(&troca)),
+                    ],
+                    y,
+                );
             }
-            match modo {
-                Modo::Captura { tecla, .. } => {
-                    y = c.row(&[Cell::new(Widget::Readout { text: &lida })], y);
-                    let confirma = if tecla.is_some() {
-                        b(ids::CONFIRM, "panel.pixel_keys.confirm", true)
-                    } else {
-                        Cell::new(Widget::ButtonOff {
-                            text: tr("panel.pixel_keys.confirm"),
-                        })
-                    };
-                    y = c.row(
-                        &[confirma, b(ids::CANCEL, "panel.pixel_keys.cancel", false)],
-                        y,
-                    );
-                }
-                Modo::Pergunta { .. } => {
-                    y = c.row(
-                        &[
-                            b(ids::REPLACE, "panel.pixel_keys.replace", true),
-                            b(ids::CANCEL, "panel.pixel_keys.cancel", false),
-                        ],
-                        y,
-                    );
-                }
-                Modo::ResetAll => {
-                    y = c.row(
-                        &[
-                            b(ids::CONFIRM, "panel.pixel_keys.reset_all", true),
-                            b(ids::CANCEL, "panel.pixel_keys.cancel", false),
-                        ],
-                        y,
-                    );
-                }
-                Modo::Lista => {
-                    // Uma fileira: Reset All e os ícones da troca; fecha-se pelo menu, como a SLICES.
-                    let troca = [
-                        Seg {
-                            id: ids::IMPORT,
-                            icon: Some(IconId::Open),
-                            text: "",
-                            on: false,
-                        },
-                        Seg {
-                            id: ids::EXPORT,
-                            icon: Some(IconId::Export),
-                            text: "",
-                            on: false,
-                        },
-                    ];
-                    y = c.row(
-                        &[
-                            b(ids::RESET_ALL, "panel.pixel_keys.reset_all", false),
-                            Cell::new(Widget::Bare(&troca)),
-                        ],
-                        y,
-                    );
-                }
-            }
-            if let Some(a) = &aviso {
+            // Em captura o aviso (a recusa) está DENTRO do campo.
+            if let (Some(a), false) = (&aviso, matches!(modo, Modo::Captura { .. })) {
                 y = c.hint(a, y);
             }
             if vazio {
@@ -332,24 +356,27 @@ pub(crate) fn paint(st: &mut PixelKeysPanelState, ctx: &mut PaintCtx) {
         .unwrap_or_default()
         .to_owned();
     let j = janela(st);
-    if j.a_capturar() {
-        canal::publica_captura(true);
+    canal::publica_captura(j.a_capturar());
+    if !j.a_capturar() {
+        canal::larga_seguros();
     }
-    let (modo, aviso, keys) = (j.modo, j.aviso.clone(), j.keys.clone());
+    let j = j.clone();
+    canal::esquece_pintados();
     let store = ctx.host.store_mut();
     let grupos = grupos(&query);
-    let mut cartoes = vec![cartao_topo(modo, aviso, grupos.is_empty())];
+    let mut cartoes = vec![cartao_topo(j.modo, j.aviso.clone(), grupos.is_empty())];
     for (s, acoes) in grupos {
-        let l = linhas(store, &keys, &acoes);
+        let l = linhas(store, &j, &acoes);
         cartoes.push(cartao_secao(s, l));
     }
     let slot = solta(ctx);
     let encaixe = ctx.slot;
     ctx.slot = slot;
+    borda::declara_fecho(ctx.host.store_mut(), node);
     let lista = paint_card_list(ctx, node, PixelKeysPanel::TITLE.tr(), &cartoes);
     ctx.slot = encaixe;
     ctx.host.store_mut().set_panel_rect(node, lista);
-    let reserva = (m::HEAD_ICON_BOX + m::LIST_HEAD_PAD_X) * 2.0;
+    let reserva = borda::reserva_do_titulo();
     ctx.host.hit_index_mut().register(
         ids::DRAG,
         panel_drag_handle_rect(lista, m::LIST_HEAD_H, reserva),
@@ -389,7 +416,7 @@ fn importa(st: &mut PixelKeysPanelState, p: &std::path::Path) {
     }
 }
 
-/// O gesto de um clique: os botões fixos e os de cada acção.
+/// O gesto de um clique: os botões fixos e os campos de cada acção.
 fn gesto_de(st: &mut PixelKeysPanelState, id: ph2d_a11y::NodeId) -> Option<Gesto> {
     Some(match id {
         i if i == ids::CONFIRM => Gesto::Confirma,
@@ -399,8 +426,8 @@ fn gesto_de(st: &mut PixelKeysPanelState, id: ph2d_a11y::NodeId) -> Option<Gesto
         _ => {
             let keys = &janela(st).keys;
             PixelAction::ALL.iter().find_map(|&a| {
-                if ids::add(a) == id {
-                    return Some(Gesto::Add(a));
+                if ids::add(a) == id || ids::nome(a) == id {
+                    return Some(Gesto::Campo((a, None)));
                 }
                 if ids::reset(a) == id {
                     return Some(Gesto::Reset(a));
@@ -408,7 +435,7 @@ fn gesto_de(st: &mut PixelKeysPanelState, id: ph2d_a11y::NodeId) -> Option<Gesto
                 keys.keys_of(a)
                     .into_iter()
                     .find(|(k, _)| ids::ficha(a, *k) == id)
-                    .map(|(k, _)| Gesto::Remove(a, k))
+                    .map(|t| Gesto::Campo((a, Some(t))))
             })?
         }
     })
@@ -423,6 +450,11 @@ pub(crate) fn apply_event(
         WidgetEvent::Click(id) | WidgetEvent::DoubleClick(id) => id,
         _ => return EventOutcome::Ignored,
     };
+    // Clicar fora do campo em captura cancela-a (o clique segue para o seu alvo).
+    if janela(st).a_capturar() && !matches!(gesto_de(st, id), Some(Gesto::Campo(_))) {
+        janela(st).aplica(Gesto::Cancela);
+        canal::publica_captura(false);
+    }
     if id == ids::EXPORT || id == ids::IMPORT {
         let t = if id == ids::EXPORT {
             canal::Troca::Export

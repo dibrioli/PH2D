@@ -25,6 +25,7 @@ pub fn secao(s: Section) -> NodeId {
 }
 
 #[must_use]
+/// O campo vazio da acção (a tecla nova; era o `+`).
 pub fn add(a: PixelAction) -> NodeId {
     hash_node_id_runtime(&format!("pixel_keys.add.{}", a.id()))
 }
@@ -34,8 +35,14 @@ pub fn reset(a: PixelAction) -> NodeId {
     hash_node_id_runtime(&format!("pixel_keys.reset.{}", a.id()))
 }
 
-/// A ficha de uma tecla da acção (o clique tira-a).
+/// O campo de uma tecla da acção (o clique captura a que a substitui).
 #[must_use]
 pub fn ficha(a: PixelAction, k: Chord) -> NodeId {
     hash_node_id_runtime(&format!("pixel_keys.chip.{}.{k}", a.id()))
+}
+
+/// O nome da acção na fileira (o clique abre o campo vazio em captura).
+#[must_use]
+pub fn nome(a: PixelAction) -> NodeId {
+    hash_node_id_runtime(&format!("pixel_keys.name.{}", a.id()))
 }

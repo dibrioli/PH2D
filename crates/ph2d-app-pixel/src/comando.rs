@@ -51,12 +51,8 @@ pub fn available(app: &PixelApp, a: A) -> bool {
             .any(|&(_, c)| c == ctx || (c == Context::Normal && normal))
 }
 
-/// O grupo do Pixel na paleta (`None` sem nenhum Pixel Sprite no projecto). Lê antes o mapa que a
-/// janela de atalhos acabou de editar.
+/// O grupo do Pixel na paleta (`None` sem nenhum Pixel Sprite no projecto).
 pub fn group(app: &mut PixelApp) -> Option<PaletteGroup> {
-    if let Some(k) = ph2d_panel_pixel_keys::toma_keymap() {
-        app.keys = k;
-    }
     (!app.docs.is_empty()).then_some(())?;
     let (on, off): (Vec<A>, Vec<A>) = A::ALL.iter().copied().partition(|&a| available(app, a));
     let sub = |title: Option<String>, v: Vec<A>| {

@@ -23,6 +23,8 @@ ph2d-component-desc = { path = "../../crates/ph2d-component-desc" }
 ph2d-ecs = { path = "../../crates/ph2d-ecs" }
 ph2d-editor-core = { path = "../../crates/ph2d-editor-core" }
 ph2d-pixel-keys = { path = "../../crates/ph2d-pixel-keys" }
+# O canal da janela de atalhos (`tests/mapa_da_janela_de_teclas.rs`).
+ph2d-panel-pixel-keys = { path = "../../crates/ph2d-panel-pixel-keys" }
 ph2d-host = { path = "../../crates/ph2d-host" }
 ph2d-i18n = { path = "../../crates/ph2d-i18n" }
 ph2d-pen = { path = "../../crates/ph2d-pen" }

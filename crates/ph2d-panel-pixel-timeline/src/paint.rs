@@ -39,6 +39,7 @@ pub(crate) fn paint(st: &mut PixelTimelinePanelState, ctx: &mut PaintCtx) {
     ctx.host
         .store_mut()
         .set_panel_rect(core_ids::PIXEL_TIMELINE_PANEL, rect);
+    crate::seam_user::quadro(ctx.host);
     let cartoes = ph2d_editor_core::panel::cards::ferramenta::cards_on();
     let moldura = cartoes.then(|| {
         ctx.host

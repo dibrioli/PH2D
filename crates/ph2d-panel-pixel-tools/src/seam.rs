@@ -331,6 +331,9 @@ pub(crate) fn apply_event(
     host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> EventOutcome {
+    if let Some(o) = crate::seam_user::evento(host, &ev) {
+        return o;
+    }
     let id = match ev {
         WidgetEvent::DoubleClick(id) => {
             let alvo = with_current(|i| {

@@ -35,6 +35,14 @@ impl PixelApp {
             self.assenta();
             crate::viva::assenta(self);
         }
+        if let (PixelRequest::UserData(o, e), Some(k)) = (&r, self.chave) {
+            let op = self
+                .docs
+                .get(&k)
+                .and_then(|d| ph2d_pixel_ponte::user::op(&d.sprite, *o, e));
+            self.passo_nomeado(k, op, "pixel.history.user_data");
+            return;
+        }
         if crate::tiles::aplica_pedido(self, &r)
             || self.aplica_selecao(&r)
             || self.aplica_edicao(&r)
@@ -241,7 +249,11 @@ pub fn frame(
         .map(|d| crate::quadros::timeline(&d.sprite))
         .unwrap_or_default();
     let palette_ok = palette.is_some();
+    let user = doc.map_or_else(Default::default, |d| {
+        ph2d_pixel_ponte::user::info(&d.sprite, d.layer, d.frame)
+    });
     PixelPanelInfo {
+        user,
         frames,
         active_frame: doc.map(|d| d.frame.0),
         cels,

@@ -35,6 +35,15 @@ impl Corpo<'_> {
             .and_then(|a| info.layers.iter().find(|r| r.id == a))
         {
             y = self.propriedades(row, y);
+            if let (Some(v), Some(mut c)) = (&info.user.layer, self.cartao_ctx()) {
+                y = ph2d_editor_core::panel::cards::user_data::paint_card(
+                    &mut c,
+                    &crate::seam_user::ids(),
+                    v,
+                    None,
+                    y,
+                );
+            }
         }
         let a = ids::LAYER_ACTIONS;
         let fila = |i: usize, j: usize| [(a[i].0, a[i].2), (a[j].0, a[j].2)];

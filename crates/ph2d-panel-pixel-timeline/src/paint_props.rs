@@ -183,6 +183,9 @@ pub(crate) fn paint(
             let y = campo(ctx, c, nomes[1], ids::CEL_OPACITY, sec, y);
             campo(ctx, c, nomes[2], ids::CEL_Z, sec, y)
         };
+        if let (true, Some(v)) = (cartoes, &info.user.cel) {
+            ys[k] = cartao_user(ctx, c, &crate::seam_user::cel_ids(), v, ys[k]);
+        }
     }
     if let Some(t) = tag {
         let (_, c) = proxima(&mut ys);
@@ -205,6 +208,10 @@ pub(crate) fn paint(
             let y = campo(ctx, c, nomes[4], ids::TAG_REPEAT, sec, y);
             let y = campo(ctx, c, nomes[5], ids::TAG_FROM, sec, y);
             campo(ctx, c, nomes[6], ids::TAG_TO, sec, y)
+        };
+        let y = match (cartoes, &info.user.tag) {
+            (true, Some(v)) => cartao_user(ctx, c, &crate::seam_user::tag_ids(), v, y),
+            _ => y,
         };
         let rotulo = tr("panel.pixel.timeline.tag_delete");
         let _ = botao(ctx, c, ids::TAG_DELETE, rotulo, false, y);
@@ -278,6 +285,21 @@ fn campo(
         sec,
     )
     .0
+}
+
+/// O cartão User Data de um dono (fechado: só o botão), na tinta do cartão.
+fn cartao_user(
+    ctx: &mut PaintCtx,
+    area: Rect,
+    ids: &ph2d_editor_core::panel::cards::user_data::UserDataIds,
+    v: &ph2d_editor_core::panel::cards::user_data::UserDataView,
+    y: f32,
+) -> f32 {
+    let ink = CardInk::of_list(ctx.host.theme());
+    let (store, hit) = ctx.host.store_and_hit_index_mut();
+    let mut c = CardCtx::flutuante(ctx.scene, ctx.text_system, store, hit, ink, area.x, area.w);
+    ph2d_editor_core::panel::cards::user_data::paint_card(&mut c, ids, v, None, y)
+        + ph2d_tokens::control_gap_px()
 }
 
 /// Números irmãos numa linha, na cara do cartão: rótulo por cima e pega de arrastar, sem setas.

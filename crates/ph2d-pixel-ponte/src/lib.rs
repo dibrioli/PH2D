@@ -10,3 +10,4 @@ pub mod mao;
 pub mod moldura;
 pub mod nomes;
 pub mod paletas;
+pub mod user;

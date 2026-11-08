@@ -446,12 +446,33 @@ pub struct PixelPanelInfo {
     pub pattern: Option<(u32, u32)>,
     /// Os pincéis guardados (Alt+1…), na ordem.
     pub brushes: Vec<PixelBrushSlotInfo>,
+    /// P12 U: o user data dos donos activos (o cartão User Data de cada janela).
+    pub user: PixelUserInfo,
+}
+
+/// Um dono de user data no vocabulário do chrome (`Tag` = índice na lista de tags).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PixelOwner {
+    Sprite,
+    Layer(u32),
+    Cel { layer: u32, frame: u32 },
+    Tag(usize),
+}
+
+/// O user data da camada, do cel e da tag activos, já na vista do cartão.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct PixelUserInfo {
+    pub layer: Option<crate::panel::cards::user_data::UserDataView>,
+    pub cel: Option<crate::panel::cards::user_data::UserDataView>,
+    pub tag: Option<crate::panel::cards::user_data::UserDataView>,
 }
 
 /// Um gesto do painel PIXEL (`EditorAction::Pixel`).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PixelRequest {
     Tool(PixelTool),
+    /// P12 U: um gesto do cartão User Data sobre um dono (um passo «User Data»).
+    UserData(PixelOwner, crate::panel::cards::user_data::CardEdit),
     /// Um botão de grupo: a última usada na mão, e o flyout abre/fecha.
     Group(PixelToolGroup),
     Fg([u8; 4]),

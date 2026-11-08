@@ -21,6 +21,7 @@ mod seam_opcoes;
 mod seam_pincel;
 mod seam_selecao;
 mod seam_seletor;
+pub mod seam_user;
 pub mod seletor;
 mod state;
 

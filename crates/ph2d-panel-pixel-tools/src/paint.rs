@@ -77,6 +77,7 @@ pub(crate) fn paint(st: &mut PixelToolsPanelState, ctx: &mut PaintCtx) {
     crate::seam_pincel::register_brushes(ctx.host.store_mut(), &trancados);
     with_current(|i| seam::register_layers(ctx.host.store_mut(), &i.layers));
     seam::seed_rename(st, ctx.host.store_mut());
+    crate::seam_user::quadro(ctx.host);
     let renaming = st.rename.map(|(id, _)| id);
     // Os campos mostram o MODELO (o instantâneo); a edição em curso de um campo com foco fica.
     let moldura = with_current(|i| i.transform);

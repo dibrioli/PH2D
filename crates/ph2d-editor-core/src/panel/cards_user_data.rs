@@ -196,15 +196,22 @@ pub fn toggle_cell(ids: &UserDataIds) -> Cell<'static> {
     })
 }
 
-fn so_leitura<'a>(c: &mut CardCtx<'_>, r: &'a PropRow, y: f32) -> f32 {
-    c.row(
-        &[
-            Cell::new(Widget::Readout { text: &r.name }),
-            Cell::new(Widget::Readout { text: &r.value }),
-            Cell::new(Widget::Readout { text: r.kind }),
-        ],
-        y,
-    )
+/// Uma linha que a tela não edita; `remove` = o `×` (o mapa do artista: a linha é dele e sai inteira;
+/// os mapas de extensão não o levam).
+fn so_leitura<'a>(c: &mut CardCtx<'_>, r: &'a PropRow, remove: Option<NodeId>, y: f32) -> f32 {
+    let mut cells = vec![
+        Cell::new(Widget::Readout { text: &r.name }),
+        Cell::new(Widget::Readout { text: &r.value }),
+        Cell::new(Widget::Readout { text: r.kind }),
+    ];
+    if let Some(id) = remove {
+        cells.push(Cell::new(Widget::Button {
+            id,
+            text: tr("card.user_data.remove"),
+            primary: false,
+        }));
+    }
+    c.row(&cells, y)
 }
 
 /// O corpo aberto: cor e texto (se `full`; a slice já os tem no próprio cartão), a tabela, `+`, e os
@@ -244,7 +251,7 @@ pub fn paint_body(
             primary: false,
         });
         if !r.editable {
-            y = so_leitura(c, r, y);
+            y = so_leitura(c, r, Some(ids.remove(i)), y);
             continue;
         }
         let nome = Cell::new(Widget::Text {
@@ -281,8 +288,122 @@ pub fn paint_body(
     for (ext, rows) in &v.extensions {
         y = c.hint(ext, y);
         for r in rows {
-            y = so_leitura(c, r, y);
+            y = so_leitura(c, r, None, y);
         }
     }
     y
+}
+
+/// Um gesto do cartão em nomes de linha (o dono traduz para o documento; `Kind` roda o tipo).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CardEdit {
+    Color([u8; 4]),
+    Text(String),
+    Add,
+    Remove(String),
+    Rename(String, String),
+    Kind(String),
+    Value(String, String),
+}
+
+thread_local! {
+    static ABERTOS: std::cell::RefCell<std::collections::BTreeSet<u64>> =
+        const { std::cell::RefCell::new(std::collections::BTreeSet::new()) };
+}
+
+/// O cartão de `ids` está aberto (estado da VISTA; nasce fechado, O17).
+#[must_use]
+pub fn is_open(ids: &UserDataIds) -> bool {
+    ABERTOS.with(|a| a.borrow().contains(&ids.toggle.0))
+}
+
+fn alterna(ids: &UserDataIds) {
+    ABERTOS.with(|a| {
+        let mut a = a.borrow_mut();
+        if !a.remove(&ids.toggle.0) {
+            a.insert(ids.toggle.0);
+        }
+    });
+}
+
+/// O evento `ev` sobre o cartão de `v`: `None` = não é dele; `Some(None)` = consumido sem gesto do
+/// documento (abrir, o clique num texto); `Some(Some(e))` = o gesto. Os textos valem no `Submit`/`Blur`.
+#[must_use]
+pub fn on_event(
+    store: &WidgetStore,
+    ids: &UserDataIds,
+    v: &UserDataView,
+    ev: &crate::interaction::WidgetEvent,
+) -> Option<Option<CardEdit>> {
+    use crate::interaction::WidgetEvent as E;
+    let (id, confirma) = match *ev {
+        E::Click(id) => (id, false),
+        E::Submit(id) | E::Blur(id) => (id, true),
+        _ => return None,
+    };
+    let h = hit(ids, v.rows.len(), id)?;
+    let nome = |i: usize| v.rows.get(i).map(|r| r.name.clone());
+    let texto = || store.text(id).map(str::to_owned);
+    let e = match (h, confirma) {
+        (Hit::Toggle, false) => {
+            alterna(ids);
+            None
+        }
+        (Hit::Text, true) => texto().filter(|t| *t != v.text).map(CardEdit::Text),
+        (Hit::Name(i), true) => nome(i)
+            .zip(texto())
+            .filter(|(a, b)| a != b)
+            .map(|(a, b)| CardEdit::Rename(a, b)),
+        (Hit::Value(i), true) => v
+            .rows
+            .get(i)
+            .zip(texto())
+            .filter(|(r, t)| r.value != *t)
+            .map(|(r, t)| CardEdit::Value(r.name.clone(), t)),
+        (Hit::Add, false) => Some(CardEdit::Add),
+        (Hit::Remove(i), false) => nome(i).map(CardEdit::Remove),
+        (Hit::Kind(i), false) => nome(i).map(CardEdit::Kind),
+        _ => None,
+    };
+    Some(e)
+}
+
+/// A cor do seletor aberto sobre o swatch do cartão, quando difere da do documento: o gesto `Color`.
+#[must_use]
+pub fn picked_color(store: &WidgetStore, ids: &UserDataIds, v: &UserDataView) -> Option<CardEdit> {
+    if store.picker_target() != Some(ids.color) {
+        return None;
+    }
+    store
+        .widget_color(ids.color)
+        .filter(|c| *c != v.color)
+        .map(CardEdit::Color)
+}
+
+/// Cada quadro, antes de pintar, o cartão completo (cor + texto + tabela): regista, semeia e devolve
+/// a cor que o seletor escreveu (o gesto `Color`).
+pub fn frame(store: &mut WidgetStore, ids: &UserDataIds, v: &UserDataView) -> Option<CardEdit> {
+    prepare(store, ids, v, true);
+    picked_color(store, ids, v)
+}
+
+/// O botão `User Data` (com `name` à esquerda, se o dono o mostra nesta linha) e, aberto, o corpo
+/// completo por baixo.
+pub fn paint_card(
+    c: &mut CardCtx<'_>,
+    ids: &UserDataIds,
+    v: &UserDataView,
+    name: Option<&str>,
+    y: f32,
+) -> f32 {
+    let toggle = toggle_cell(ids);
+    let y = match name {
+        Some(text) => c.row(&[Cell::new(Widget::Readout { text }), toggle], y),
+        None => c.row(&[toggle], y),
+    };
+    if is_open(ids) {
+        paint_body(c, ids, v, true, y)
+    } else {
+        y
+    }
 }

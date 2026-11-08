@@ -97,6 +97,8 @@ pub fn icones_em(
         .collect()
 }
 
+const ALFA_SOMBRA: f32 = 0.75; // LITERAL-PX-OK: opacidade da sombra, a mesma dos contornos (GEF02)
+
 /// Pinta a câmera no canvas.
 pub fn desenhar(
     ms: &[Moldura],
@@ -133,10 +135,21 @@ pub fn desenhar(
         );
         moldura_vazada(cena, canvas, r, fora);
     }
-    // ⭐ A câmera selecionada acende na cor dela, a da Hierarchy (dono 08/11).
+    // ⭐ A câmera selecionada acende na cor dela, a da Hierarchy (dono 08/11), sobre a sombra escura dos
+    //    contornos do canvas (a lei do GEF02: `Thin` de cada lado, `BgScrim` a ALFA_SOMBRA): todas as
+    //    sombras antes das cores.
     let destaque = ph2d_editor_core::paint::resolve(ColorToken::ObjCamera, theme);
-    for m in ms {
-        let r = icone(m.centro, p.icone_px, camera, window);
+    let mut sombra = ph2d_editor_core::paint::resolve(ColorToken::BgScrim, theme);
+    sombra.components[3] = ALFA_SOMBRA;
+    let largo = TRACO_PX[1] as f32 + 2.0 * ph2d_tokens::StrokeToken::Thin.px();
+    let rects: Vec<_> = ms
+        .iter()
+        .map(|m| (m, icone(m.centro, p.icone_px, camera, window)))
+        .collect();
+    for (_, r) in &rects {
+        ph2d_editor_core::paint_icon(cena, IconId::Camera, *r, sombra, largo);
+    }
+    for (m, r) in rects {
         let cor = if m.selecionada { destaque } else { selecao };
         ph2d_editor_core::paint_icon(cena, IconId::Camera, r, cor, TRACO_PX[1] as f32);
     }

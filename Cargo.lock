@@ -10698,7 +10698,10 @@ dependencies = [
  "ph2d-pen",
  "ph2d-pen-law",
  "ph2d-pixel-core",
+ "ph2d-pixel-formas",
  "ph2d-pixel-io",
+ "ph2d-vector",
+ "winit",
 ]
 
 [[package]]

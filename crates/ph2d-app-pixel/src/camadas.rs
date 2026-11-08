@@ -3,25 +3,15 @@
 //! Copy/Cut, colar como camada). Tudo o que muda o documento é UM passo do desfazer do sprite
 //! (`ph2d_pixel_core::layers`).
 
-use ph2d_editor_core::pixel_panel::{PixelBlend, PixelLayerAction, PixelLayerRow, PixelRequest};
-use ph2d_pixel_core::blend::BlendMode;
+use ph2d_editor_core::pixel_panel::{PixelLayerAction, PixelRequest};
 use ph2d_pixel_core::layers::{self, Place};
 use ph2d_pixel_core::{LayerId, LayerKind, Op, Sprite};
 
 use crate::{Doc, PixelApp};
 use ph2d_pixel_ponte::leis::via_selection;
 
-/// O modo do núcleo no vocabulário do chrome (os mesmos 19, na mesma ordem).
-#[must_use]
-pub fn blend_of(m: BlendMode) -> PixelBlend {
-    PixelBlend::ALL[usize::from(m.code())]
-}
-
-#[must_use]
-pub fn blend_to(b: PixelBlend) -> BlendMode {
-    let i = PixelBlend::ALL.iter().position(|&x| x == b).unwrap_or(0);
-    BlendMode::ALL[i]
-}
+use ph2d_pixel_ponte::camadas::sibling;
+pub use ph2d_pixel_ponte::camadas::{blend_of, blend_to, rows};
 
 /// Porque não se pinta na camada activa (a chave i18n do aviso), ou `None`.
 #[must_use]
@@ -40,37 +30,6 @@ pub fn recusa_pintar(doc: &Doc) -> Option<&'static str> {
     }
 }
 
-/// As linhas da lista, de CIMA para baixo; os filhos de um grupo recolhido não aparecem.
-#[must_use]
-pub fn rows(s: &Sprite) -> Vec<PixelLayerRow> {
-    let mut out = Vec::new();
-    push_children(s, None, 0, &mut out);
-    out
-}
-
-fn push_children(s: &Sprite, parent: Option<LayerId>, depth: u8, out: &mut Vec<PixelLayerRow>) {
-    for l in s.layers().iter().rev().filter(|l| l.parent == parent) {
-        let collapsed = matches!(l.kind, LayerKind::Group { collapsed: true });
-        out.push(PixelLayerRow {
-            id: l.id.0,
-            name: l.name.clone(),
-            depth,
-            group: l.is_group(),
-            collapsed,
-            visible: l.visible,
-            locked: l.locked,
-            continuous: l.continuous,
-            reference: l.reference,
-            background: l.background,
-            opacity: l.opacity,
-            blend: blend_of(l.blend),
-        });
-        if l.is_group() && !collapsed {
-            push_children(s, Some(l.id), depth.saturating_add(1), out);
-        }
-    }
-}
-
 /// A camada activa tem de existir: depois de um desfazer que a tirou, a de imagem mais alta.
 pub(crate) fn sane_active(doc: &mut Doc) {
     if doc.sprite.layer(doc.layer).is_none() {
@@ -81,23 +40,6 @@ pub(crate) fn sane_active(doc: &mut Doc) {
             .rev()
             .find(|l| !l.is_group())
             .map_or(doc.layer, |l| l.id);
-    }
-}
-
-/// O irmão logo acima/abaixo de `id` (o degrau do ↑/↓).
-fn sibling(s: &Sprite, id: LayerId, up: bool) -> Option<LayerId> {
-    let me = s.layer(id)?;
-    let irmaos: Vec<LayerId> = s
-        .layers()
-        .iter()
-        .filter(|l| l.parent == me.parent)
-        .map(|l| l.id)
-        .collect();
-    let i = irmaos.iter().position(|&x| x == id)?;
-    if up {
-        irmaos.get(i + 1).copied()
-    } else {
-        i.checked_sub(1).and_then(|j| irmaos.get(j).copied())
     }
 }
 

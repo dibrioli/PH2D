@@ -3,6 +3,9 @@
 #![forbid(unsafe_code)]
 
 pub mod ajustes;
+pub mod camadas;
+pub mod gesto;
 pub mod leis;
 pub mod mao;
+pub mod moldura;
 pub mod paletas;

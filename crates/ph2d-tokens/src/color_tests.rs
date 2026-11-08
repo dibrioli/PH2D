@@ -276,11 +276,7 @@ fn as_cores_das_camadas_sao_unicas_e_legiveis() {
     let lab = |c: Color| {
         let (l, ch, h) = srgb_to_oklch(c.r, c.g, c.b);
         let h = h.to_radians();
-        (
-            f64::from(l),
-            f64::from(ch * h.cos()),
-            f64::from(ch * h.sin()),
-        )
+        (l, ch * h.cos(), ch * h.sin())
     };
     let dist = |a: (f64, f64, f64), b: (f64, f64, f64)| {
         ((a.0 - b.0).powi(2) + (a.1 - b.1).powi(2) + (a.2 - b.2).powi(2)).sqrt()

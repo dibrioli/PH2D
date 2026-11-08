@@ -3,6 +3,10 @@
 
 use crate::color::ColorToken;
 
+/// ⭐ O contorno da camada num quadro DESLIGADO (não colide; onda 9f): a mesma cor a esta opacidade — a cor continua
+/// a dizer qual camada é, o estado lê-se pela caixa de marcar. O teste dos contornos mede os dois estados.
+pub const LAYER_OUTLINE_OFF_ALPHA: f32 = 0.4; // LITERAL-PX-OK: opacidade do contorno desligado
+
 impl ColorToken {
     /// As 32 cores das camadas de colisão, pelo número da camada.
     pub const LAYERS: [Self; 32] = [

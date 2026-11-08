@@ -225,9 +225,10 @@ fn remove_pergunta_para_onde_vao_os_objetos_e_a_default_fica() {
         ok.y >= destinos[3].y + destinos[3].h,
         "os botões vêm depois da lista"
     );
-    let sub = ph2d_editor_core::paint::layer_underline_of(ids::PHYSICS_LAYER_MOVE_TO[3])
-        .expect("sublinhado");
+    let sub =
+        ph2d_editor_core::paint::layer_outline_of(ids::PHYSICS_LAYER_MOVE_TO[3]).expect("contorno");
     assert_eq!(sub.camada, 3);
+    assert_eq!(Some(sub.rect), mesa.rect(ids::PHYSICS_LAYER_MOVE_TO[3]));
     let _ = mesa.clica(ids::PHYSICS_LAYER_MOVE_CANCEL);
     mesa.pinta();
     assert_eq!(aba::removendo(), None);
@@ -677,32 +678,73 @@ fn a_caixinha_bumps_into_pede_o_mesmo_que_a_celula_e_o_auto_key_grava_igual() {
     );
 }
 
-/// ⭐ Onda 9e (dono 07/11): a lista «Layers» e as caixinhas «Bumps into» sublinham o nome na cor da SUA camada,
-/// dentro do botão e na base dele (a mesma marca da fila do Inspector).
+/// ⭐ Onda 9f (dono 07/11: «outline colorida na moldura»): cada linha da lista «Layers» e cada caixinha «Bumps
+/// into» têm a MOLDURA na cor da SUA camada, dentro da caixa (a medida não muda); a caixinha desligada, a mesma cor
+/// mais apagada.
 #[test]
-fn a_lista_e_as_caixinhas_sublinham_o_nome_na_cor_da_camada() {
-    use ph2d_editor_core::paint::{forget_layer_underlines, layer_underline_of, resolve};
+fn a_lista_e_as_caixinhas_tem_a_moldura_na_cor_da_camada() {
+    use ph2d_editor_core::paint::{
+        espessura_do_contorno, forget_layer_outlines, layer_outline_of, resolve,
+    };
     use ph2d_editor_core::panel::PanelHost;
-    use ph2d_tokens::ColorToken;
+    use ph2d_tokens::{ColorToken, LAYER_OUTLINE_OFF_ALPHA};
     let mut mesa = Mesa::nova(nomes_b(), false);
+    let mut m = LayerMatrix::from_rows(PhysicsSettings::default().layer_matrix);
+    m.set(1, 2, false);
+    let vivo = PhysicsSettings {
+        layer_matrix: m.rows(),
+        ..PhysicsSettings::default()
+    };
+    ph2d_panel_physics::set_current_physics(Some(PhysicsSnapshot {
+        settings: vivo,
+        vivo,
+        ..PhysicsSnapshot::default()
+    }));
     aba::abre(Some(1));
     aba::poe_area_fixa(AREA);
-    forget_layer_underlines();
+    forget_layer_outlines();
     mesa.pinta();
     let tema = mesa.host.theme();
+    let e = espessura_do_contorno();
+    let mut estados = Vec::new();
     for n in 0..5 {
-        for id in [ids::PHYSICS_LAYER_LIST[n], ids::PHYSICS_LAYER_BUMPS[n]] {
+        for (id, caixinha) in [
+            (ids::PHYSICS_LAYER_LIST[n], false),
+            (ids::PHYSICS_LAYER_BUMPS[n], true),
+        ] {
             let caixa = mesa
                 .rect(id)
                 .unwrap_or_else(|| panic!("{id:?} não pintado"));
-            let s = layer_underline_of(id).unwrap_or_else(|| panic!("{id:?} sem sublinhado"));
-            assert_eq!(s.camada, n, "{id:?} sublinha a camada {}", s.camada);
-            assert_eq!(s.cor, resolve(ColorToken::layer(n), tema).components);
-            assert!(s.rect.x >= caixa.x && s.rect.x + s.rect.w <= caixa.x + caixa.w);
-            assert!(s.rect.y > caixa.y + caixa.h * 0.5 && s.rect.y + s.rect.h <= caixa.y + caixa.h);
-            assert!(s.rect.w > s.rect.h * 4.0, "a largura do nome");
+            let s = layer_outline_of(id).unwrap_or_else(|| panic!("{id:?} sem contorno"));
+            assert_eq!(s.camada, n, "{id:?} contorna na camada {}", s.camada);
+            assert_eq!(s.rect, caixa, "{id:?}: o contorno mudou a caixa");
+            let t = s.traco;
+            assert!(
+                (t.x - caixa.x - e * 0.5).abs() < 1e-3
+                    && (t.y - caixa.y - e * 0.5).abs() < 1e-3
+                    && (t.w + e - caixa.w).abs() < 1e-3
+                    && (t.h + e - caixa.h).abs() < 1e-3,
+                "{id:?}: o traço não está dentro da caixa"
+            );
+            let base = resolve(ColorToken::layer(n), tema);
+            let cor = if s.ligado {
+                base
+            } else {
+                base.multiply_alpha(LAYER_OUTLINE_OFF_ALPHA)
+            };
+            assert_eq!(s.cor, cor.components, "{id:?}: a cor");
+            if caixinha {
+                estados.push(s.ligado);
+            } else {
+                assert!(s.ligado, "a linha da lista nunca se apaga");
+            }
         }
     }
+    assert_eq!(
+        estados,
+        [true, true, false, true, true],
+        "a célula (1, 2) desligada: só a caixinha 2 apagada"
+    );
     aba::fecha();
 }
 

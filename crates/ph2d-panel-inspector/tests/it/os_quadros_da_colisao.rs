@@ -209,48 +209,56 @@ fn os_quadros_acompanham_a_matriz_e_o_nome() {
     fim();
 }
 
-/// ⭐ Onda 9e (dono 07/11: «melhor um sublinhado colorido que o pequeno quadrado»): cada quadro leva, debaixo
-/// do NOME, o sublinhado da cor da SUA camada; o seletor Layer, o da camada do objecto, debaixo do rótulo.
+/// ⭐ Onda 9f (dono 07/11: «não gostei do sublinhado. vamos tentar uma outline colorida na moldura»): cada quadro
+/// leva, na MOLDURA, o contorno da cor da SUA camada, dentro da caixa (a medida não muda); o desligado, a mesma cor
+/// mais apagada. O seletor Layer e os campos do Rename, o da camada de cada um.
 #[test]
-fn cada_quadro_sublinha_o_nome_na_cor_da_sua_camada() {
-    use ph2d_editor_core::paint::{forget_layer_underlines, layer_underline_of, resolve};
+fn cada_quadro_tem_a_moldura_na_cor_da_sua_camada() {
+    use ph2d_editor_core::paint::{
+        espessura_do_contorno, forget_layer_outlines, layer_outline_of, resolve,
+    };
     use ph2d_editor_core::panel::PanelHost;
-    use ph2d_tokens::ColorToken;
+    use ph2d_tokens::{ColorToken, LAYER_OUTLINE_OFF_ALPHA};
     mundo();
-    forget_layer_underlines();
+    forget_layer_outlines();
     let (mut host, mut st) = cena(na_camada_3(with_body()), [1.0, 1.0]);
     let r = pinta(&mut host, &mut st);
     let tema = host.theme();
+    let e = espessura_do_contorno();
+    let mut estados = Vec::new();
     for j in [0, 1, 3] {
         let quadro = achado(&r, INSP_PHYS_COLLIDES[j]).expect("o quadro está pintado");
-        let s = layer_underline_of(INSP_PHYS_COLLIDES[j]).expect("o quadro tem sublinhado");
-        assert_eq!(s.camada, j, "o quadro {j} sublinha a camada {}", s.camada);
-        assert_eq!(
-            s.cor,
-            resolve(ColorToken::layer(j), tema).components,
-            "a cor da camada {j}"
-        );
-        // Debaixo do nome: depois da caixinha, na metade de baixo do quadro, sem sair dele.
+        let s = layer_outline_of(INSP_PHYS_COLLIDES[j]).expect("o quadro tem contorno");
+        assert_eq!(s.camada, j, "o quadro {j} contorna na camada {}", s.camada);
+        assert_eq!(s.rect, quadro, "o contorno mudou a caixa do quadro {j}");
+        let t = s.traco;
         assert!(
-            s.rect.x > quadro.x + quadro.h * 0.5,
-            "o traço começa no nome, não na caixinha"
+            (t.x - quadro.x - e * 0.5).abs() < 1e-3
+                && (t.x + t.w + e * 0.5 - quadro.x - quadro.w).abs() < 1e-3
+                && (t.y - quadro.y - e * 0.5).abs() < 1e-3
+                && (t.y + t.h + e * 0.5 - quadro.y - quadro.h).abs() < 1e-3,
+            "o traço do quadro {j} não está dentro da caixa: {t:?} em {quadro:?}"
         );
-        assert!(
-            s.rect.x + s.rect.w <= quadro.x + quadro.w,
-            "não passa do quadro"
-        );
-        assert!(s.rect.y > quadro.y + quadro.h * 0.5, "na base do nome");
-        assert!(
-            s.rect.y + s.rect.h <= quadro.y + quadro.h,
-            "dentro do quadro"
-        );
-        assert!(
-            s.rect.w > s.rect.h * 4.0,
-            "a largura do texto, não um ponto"
-        );
+        let base = resolve(ColorToken::layer(j), tema);
+        let cor = if s.ligado {
+            base
+        } else {
+            base.multiply_alpha(LAYER_OUTLINE_OFF_ALPHA)
+        };
+        assert_eq!(s.cor, cor.components, "a cor da camada {j}");
+        estados.push(s.ligado);
     }
-    let pick = layer_underline_of(INSP_PHYS_LAYER_PICK).expect("o seletor Layer tem sublinhado");
-    assert_eq!(pick.camada, 3, "o seletor sublinha a camada do objecto");
+    assert!(
+        estados.contains(&true) && estados.contains(&false),
+        "a cena tem de mostrar os dois estados: {estados:?}"
+    );
+    let pick = layer_outline_of(INSP_PHYS_LAYER_PICK).expect("o seletor Layer tem contorno");
+    assert_eq!(pick.camada, 3, "o seletor contorna na camada do objecto");
+    assert_eq!(
+        Some(pick.rect),
+        achado(&r, INSP_PHYS_LAYER_PICK),
+        "o contorno do seletor mudou a caixa dele"
+    );
     fim();
 }
 

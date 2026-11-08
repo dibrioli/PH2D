@@ -1,7 +1,7 @@
 //! A pintura da aba das camadas: o que se lê antes ([`Quadro`]), as três partes e os alvos.
 
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_layer_underline, paint_text, paint_text_rotated_ccw, resolve,
+    fill_rounded_rect, paint_layer_outline, paint_text, paint_text_rotated_ccw, resolve,
 };
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::camada_das_listas;
@@ -97,6 +97,8 @@ fn pinta_lista(ctx: &mut PaintCtx, q: &Quadro) {
             if sel {
                 fill_rounded_rect(cena, r, raio, tom!(ColorToken::Bg3, theme));
             }
+            // A moldura da linha na cor da camada, com o raio da pílula (selecionada: fundo E contorno; onda 9f).
+            paint_layer_outline(cena, theme, i::PHYSICS_LAYER_LIST[n], n, r, raio, true);
             if editando.is_some_and(|(e, onde)| e == n && onde == Onde::Lista) {
                 continue;
             }
@@ -117,10 +119,6 @@ fn pinta_lista(ctx: &mut PaintCtx, q: &Quadro) {
                 cabe,
                 tom!(cor, theme),
             );
-            // O sublinhado da cor da camada (paleta por número, nada gravado; onda 9e).
-            let larg = texto.prefix_width(&rotulos[n], font).ceil().min(cabe);
-            let id = i::PHYSICS_LAYER_LIST[n];
-            paint_layer_underline(cena, theme, id, n, tx, topo, font, larg);
             let c = &contagens[p];
             let cw = texto.prefix_width(c, font);
             paint_text(

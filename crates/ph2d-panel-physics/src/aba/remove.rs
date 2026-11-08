@@ -1,7 +1,7 @@
 //! ⭐ **O «Remove» da aba** (onda 9b, maquete B estado 2): uma camada sem objetos sai logo; com objetos, a
 //! camada aberta pergunta para onde eles vão («Move and remove» / «Cancel»). A 0 (Default) não se remove.
 //! Onda 9e: a pergunta mora numa CAIXA realçada (`DangerSoft` com contorno `Danger`), e o destino escolhe-se
-//! numa LISTA (uma linha por camada, com o sublinhado da cor dela; a escolhida acesa).
+//! numa LISTA (uma linha por camada, com a moldura na cor dela; a escolhida acesa).
 
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered};
 use ph2d_editor_core::panel::{PaintCtx, camada_das_listas};
@@ -211,10 +211,14 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro, p: &Pergunta)
                 cabe,
                 tom!(cor, theme),
             );
-            let larg = texto.prefix_width(&q.rotulos[d], font).ceil().min(cabe);
-            let id = i::PHYSICS_LAYER_MOVE_TO[d];
-            ph2d_editor_core::paint::paint_layer_underline(
-                cena, theme, id, d, tx, topo, font, larg,
+            ph2d_editor_core::paint::paint_layer_outline(
+                cena,
+                theme,
+                i::PHYSICS_LAYER_MOVE_TO[d],
+                d,
+                r,
+                raio,
+                true,
             );
             if sel {
                 // A marca da escolhida, à esquerda do nome (a mesma ✓ das caixinhas).

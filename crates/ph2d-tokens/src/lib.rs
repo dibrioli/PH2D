@@ -95,6 +95,7 @@ pub(crate) mod generated {
     include!(concat!(env!("OUT_DIR"), "/tokens_generated.rs"));
 }
 
+pub use camadas_de_colisao::LAYER_OUTLINE_OFF_ALPHA;
 pub use chrome::{
     CHECKBOX_BOX_PX, DIVIDER_GAP_PX, DRAG_GHOST_ALPHA, DRAG_GHOST_SCALE, EDGE_PAD_PX,
     HERO_VIEWPORT_H_PX, HERO_VIEWPORT_W_PX, HIERARCHY_W_PX, HUD_BOTTOM_PAD_PX, HUD_H_PX,

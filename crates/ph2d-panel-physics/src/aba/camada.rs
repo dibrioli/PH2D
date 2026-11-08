@@ -3,7 +3,7 @@
 //! «Objects on this layer» com um botão por objeto, «Select all» e, passadas três linhas, «+N more».
 
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_layer_underline, paint_text, paint_text_centered, resolve,
+    fill_rounded_rect, paint_layer_outline, paint_text, paint_text_centered, resolve,
 };
 use ph2d_editor_core::panel::{PaintCtx, camada_das_listas};
 use ph2d_editor_core::widget::ButtonState;
@@ -240,10 +240,8 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro) {
                 cabe,
                 tom!(ColorToken::Text1, theme),
             );
-            // O sublinhado da cor da camada debaixo do nome (onda 9e: a língua da fila do Inspector).
-            let larg = texto.prefix_width(rot, font).ceil().min(cabe);
-            let id = i::PHYSICS_LAYER_BUMPS[n];
-            paint_layer_underline(cena, theme, id, n, tx, topo, font, larg);
+            // O contorno da cor da camada na moldura; desligada, mais apagado (onda 9f: a língua do Inspector).
+            paint_layer_outline(cena, theme, i::PHYSICS_LAYER_BUMPS[n], n, r, raio, on);
         }
         rotulo(texto, cena, tr("card.physics.tab_objects"), c.objetos_y);
         if let Some(y) = c.vazio_y {

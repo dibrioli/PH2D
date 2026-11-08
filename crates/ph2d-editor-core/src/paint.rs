@@ -57,11 +57,11 @@ pub use label_box::{
     label_budget, paint_text_centered, paint_text_centered_com_orcamento, rect_for_label,
 };
 
-#[path = "paint_sublinhado.rs"]
-mod sublinhado;
-pub use sublinhado::{
-    Sublinhado, forget_layer_underlines, layer_underline_of, paint_layer_underline,
-    rect_do_sublinhado,
+#[path = "paint_contorno_camada.rs"]
+mod contorno_camada;
+pub use contorno_camada::{
+    ContornoDeCamada, espessura_do_contorno, forget_layer_outlines, layer_outline_of,
+    paint_layer_outline,
 };
 
 #[path = "paint_rounded.rs"]

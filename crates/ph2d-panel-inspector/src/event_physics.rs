@@ -21,7 +21,7 @@ fn nome_da_camada(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         let camada = state::current_inspector_physics().map_or(0, |f| usize::from(f.layer));
         let store = host.store_mut();
         store.set_collapsed(renomeando, false);
-        ph2d_editor_core::interaction::dispatch::focus_text_field(store, campos[camada]);
+        ph2d_editor_core::interaction::dispatch::focus_text_field_selected(store, campos[camada]);
     };
     match ev {
         WidgetEvent::DoubleClick(id) if id == crate::ids::INSP_PHYS_LAYER_PICK => {
@@ -63,7 +63,7 @@ fn nome_da_camada(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             let fila: Vec<usize> =
                 crate::sections::physics_colide::fila_do_rename(camada).collect();
             if let Some(&seguinte) = fila.iter().skip_while(|&&k| k != j).nth(1) {
-                ph2d_editor_core::interaction::dispatch::focus_text_field(
+                ph2d_editor_core::interaction::dispatch::focus_text_field_selected(
                     host.store_mut(),
                     campos[seguinte],
                 );

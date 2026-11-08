@@ -71,7 +71,7 @@ pub(crate) fn nome(i: usize) -> String {
 
 /// O que se lê: o nome, ou o padrão («Default», «Layer n») sem nome dado (dono 07/11; o projeto não grava o «Layer n»).
 #[must_use]
-pub(crate) fn rotulo(i: usize) -> String {
+pub fn rotulo(i: usize) -> String {
     ph2d_editor_core::nome_curto::nome_de_camada(&rotulo_inteiro(i))
 }
 

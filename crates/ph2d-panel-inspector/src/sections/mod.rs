@@ -69,6 +69,7 @@ pub(crate) mod anim_rules;
 /// ⭐⭐⭐ O SOM de um objecto (TOP-20 #4) — a fonte e as orelhas.
 pub(crate) mod audio;
 pub(crate) mod audio_set;
+pub(crate) mod camada_por_nome;
 pub(crate) mod camera;
 pub(crate) mod camera_format;
 mod canal_item;

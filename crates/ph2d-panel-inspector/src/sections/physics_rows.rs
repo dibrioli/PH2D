@@ -308,10 +308,6 @@ pub(super) fn paint_mass_source(
     yy
 }
 
-/// Collision-layer chip labels of the classic face (`PH2D_CARDS=0`): bare numbers, the layer's identity.
-/// The card shows the project's names (`crate::camadas_fisica`).
-pub(crate) const LAYER_LABELS: [&str; 8] = ["0", "1", "2", "3", "4", "5", "6", "7"];
-
 /// Sensor toggle labels, indexed by `is_sensor as u8`: `0` a solid collider,
 /// `1` a sensor (trigger).
 pub(super) const SENSOR_LABELS: [TextKey; 2] = [
@@ -382,22 +378,25 @@ pub(super) fn paint_collision_rows(
     let mut yy = y;
     // The per-body half of collision layers. The other half — WHICH layers collide —
     // is a world rule and lives in the Physics panel; a body only says where it belongs.
-    for (label, group, opts, labels, sel) in [
-        (
-            TextKey::new("component.field.collider.4"),
-            ids::INSP_LIVE_PHYSICS_LAYER,
-            &ids::INSP_PHYS_LAYER[..],
-            &LAYER_LABELS[..],
-            layer,
-        ),
-        (
-            TextKey::new("component.field.collider.5"),
-            ids::INSP_LIVE_PHYSICS_SENSOR,
-            &ids::INSP_PHYS_SENSOR[..],
-            &SENSOR_LABELS.map(TextKey::tr),
-            u8::from(is_sensor),
-        ),
-    ] {
+    // A camada pela lista suspensa com o nome, a mesma do cartão (fecho 07/11).
+    yy = super::camada_por_nome::linha_classica(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        layer,
+    );
+    for (label, group, opts, labels, sel) in [(
+        TextKey::new("component.field.collider.5"),
+        ids::INSP_LIVE_PHYSICS_SENSOR,
+        &ids::INSP_PHYS_SENSOR[..],
+        &SENSOR_LABELS.map(TextKey::tr),
+        u8::from(is_sensor),
+    )] {
         yy = seg_row(
             scene,
             text_system,

@@ -151,7 +151,7 @@ fn click(info: InspectorPhysicsInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAction>
 /// `seg_row`, whose ids reach the hit index inside a LOOP, is in that gate's documented
 /// blind spot (the same one the W2c layer matrix fell into). For those, THIS is the only
 /// thing standing between a chip and being stone dead under the mouse.
-fn click_real(info: InspectorPhysicsInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
+pub(crate) fn click_real(info: InspectorPhysicsInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
     use ph2d_editor_core::zones::Rect;
     const VIEWPORT: Rect = Rect {
         x: 0.0,
@@ -162,7 +162,20 @@ fn click_real(info: InspectorPhysicsInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAc
     let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_physics(Some(info.clone()));
-    let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    let mut rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    // Fecho 07/11: a camada é uma lista suspensa também nesta face — a opção só existe aberta.
+    if ph2d_panel_inspector::ids::INSP_PHYS_LAYER.contains(&id)
+        && !rects.iter().any(|(n, _)| *n == id)
+    {
+        let pick = ph2d_panel_inspector::ids::INSP_PHYS_LAYER_PICK;
+        let r = rects
+            .iter()
+            .find(|(n, _)| *n == pick)
+            .map(|(_, r)| *r)
+            .expect("o seletor Layer");
+        let _ = host.click_at(r.x + r.w * 0.5, r.y + r.h * 0.5);
+        rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);
+    }
     let rect = rects
         .iter()
         .find(|(n, _)| *n == id)
@@ -196,7 +209,7 @@ fn commit(info: InspectorPhysicsInfo, id: ph2d_a11y::NodeId, v: f64) -> Vec<Edit
     out
 }
 
-fn expect(actions: &[EditorAction], edit: PhysicsFieldEdit, what: &str) {
+pub(crate) fn expect(actions: &[EditorAction], edit: PhysicsFieldEdit, what: &str) {
     assert_eq!(
         actions,
         [EditorAction::InspectorPhysicsEdit {
@@ -2175,7 +2188,7 @@ fn the_part_face_paints_the_collider_rows_and_no_body_rows() {
             ph2d_panel_inspector::ids::INSP_PHYS_REST_COMBINE[0],
             "o combine de quique",
         ),
-        (ph2d_panel_inspector::ids::INSP_PHYS_LAYER[0], "a camada"),
+        (ph2d_panel_inspector::ids::INSP_PHYS_LAYER_PICK, "a camada"),
         (ph2d_panel_inspector::ids::INSP_PHYS_SENSOR[0], "o trigger"),
         (ph2d_panel_inspector::ids::INSP_PHYS_ONEWAY[0], "o one-way"),
         (

@@ -17,6 +17,7 @@ pub(crate) fn host_em_metros() -> ph2d_ui_testkit::MockPanelHost {
 }
 
 mod a_caixa_do_contador_esta_viva;
+mod a_camada_pelo_nome_fora_do_cartao;
 mod a_faixa_media_do_dock_nao_corta_nomes;
 mod a_field_is_never_narrower_than_its_owner_declared;
 mod a_lista_de_resistencias_esta_viva;

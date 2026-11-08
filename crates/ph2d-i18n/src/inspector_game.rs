@@ -176,6 +176,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.ray.sees_nothing_right_now" => "Sees nothing right now.",
         // ⭐ A LEITURA VIVA — o que ele ve^ AGORA, do mapa da ponte.
         "panel.inspector.ray.sees_x_at_y_m" => "Sees {name}, at {dist}",
+        // O rótulo da camada no cartão diz o nome dela (fecho GEF02, 07/11).
+        "panel.inspector.ray.layer_named" => "Layer \u{b7} {name}",
         "panel.inspector.ray.the_clock_is_stopped_u_the_reading_is_the_pose_you_see" => {
             "The clock is stopped \u{2014} the reading is the pose you see."
         }

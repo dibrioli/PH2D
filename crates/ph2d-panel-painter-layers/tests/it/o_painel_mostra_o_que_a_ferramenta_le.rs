@@ -553,6 +553,17 @@ fn bancada_da_agua_com(armar: &[Gesto], fio: &str, no_pincel: &Gesto, bake: bool
     let mut b = bancada_com("eraser", armar, &Gesto::Nenhum);
     b.tool.set_paint_media(PaintMedia::WetPaint);
     b.no_modo("wet_paint");
+    // Paper: Cold — com Paper None o «Same as Paper» do Grain não age por lei (dono 08/11), e o controlo da linha
+    // GraoDoPapel mediria o vazio.
+    b.aplica(
+        &Gesto::Opcao(
+            PAINTER_WATERCOLOR_PAPER_KIND,
+            painter_paper_kind_option_id(26),
+            0,
+            0,
+        ),
+        &mut super::censo_dos_controlos::Entrega::default(),
+    );
     super::censo_ferramenta_x_linha::riscas(&mut b);
     assert!(
         b.tool.wet_pigmento().is_some(),

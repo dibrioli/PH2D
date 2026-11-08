@@ -126,10 +126,10 @@ Larguras próprias para a aba (segue as do editor de animações, onda 9g) · ta
 
 Larguras próprias para a aba (segue o editor de animações, 9g) · 8 camadas fixas (o dono quis 32) · cura do contorno do Crate por espessura (é a cor contra a arte; a cura é a sombra) · harness de gesto dentro da `App` em `cargo test`.
 
-## Binário do smoke (já compilado, 08/11, depois da emenda `ab9ae58111`)
+## Binário do smoke (já compilado, 08/11, depois das emendas 2 e 3, `429662bb16`)
 
 `rm -rf target/debug/incremental target/smoke/incremental`. Depois, `bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke` duas vezes; a 2.ª, sem nenhum «Compiling»:
 
 ```
-    Finished `smoke` profile [optimized] target(s) in 0.28s
+    Finished `smoke` profile [optimized] target(s) in 0.21s
 ```

@@ -499,7 +499,8 @@ pub fn local_of(pose: [f32; 3], offset: [f32; 2]) -> ([f32; 2], f32) {
     if pose == [0.0; 3] {
         return (offset, 0.0);
     }
-    let (s, c) = pose[2].sin_cos();
+    // libm, nunca o `std`: o caminho do hash não toca transcendental da plataforma (HR-5).
+    let (s, c) = libm::sincosf(pose[2]);
     (
         [
             pose[0] + c * offset[0] - s * offset[1],

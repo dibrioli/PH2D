@@ -119,3 +119,24 @@ pub fn tinta_do_contorno(tinta: Tinta, theme: Theme) -> (Stroke, Color) {
     c.components[3] *= alfa;
     (traco, c)
 }
+
+const ALFA_SOMBRA: f32 = 0.75; // LITERAL-PX-OK: opacidade da sombra do contorno
+
+/// ⭐ **A sombra escura por baixo do contorno da camada** (dono 07/11, GEF02 fecho: *«sombra escura
+/// por baixo dos contornos do canvas, SIM»*): o contorno laranja do Crate sumia sobre a arte laranja.
+/// Mais larga `Thin` de cada lado, o MESMO padrão (o pontilhado continua ponto), a cor escura do
+/// `BgScrim` (escura em todos os temas) sob a opacidade da marca. `None` nas anotações de cor fixa.
+#[must_use]
+pub fn sombra_do_contorno(tinta: Tinta, theme: Theme) -> Option<(Stroke, Color)> {
+    if matches!(tinta, Tinta::Fixa(_)) {
+        return None;
+    }
+    let (traco, cor) = tinta_do_contorno(tinta, theme);
+    let mut sombra = Stroke::new(traco.width + 2.0 * f64::from(StrokeToken::Thin.px()));
+    if traco.dash_pattern.len() == 2 {
+        sombra = sombra.with_dashes(0.0, [traco.dash_pattern[0], traco.dash_pattern[1]]);
+    }
+    let mut c = ph2d_editor_core::paint::resolve(ColorToken::BgScrim, theme);
+    c.components[3] = ALFA_SOMBRA * cor.components[3];
+    Some((sombra, c))
+}

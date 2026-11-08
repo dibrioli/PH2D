@@ -58,7 +58,7 @@ pub const OUTLINE_PX: f64 = 1.5; // LITERAL-PX-OK: chrome de overlay, espessura 
 /// is readable at, and the path is rebuilt per frame anyway.
 pub const CIRCLE_SEGS: u32 = 32;
 
-pub use crate::overlay::tinta::{Marca, Tinta, tinta_do_contorno};
+pub use crate::overlay::tinta::{Marca, Tinta, sombra_do_contorno, tinta_do_contorno};
 
 /// **What to draw, decided once.** Pure: the toggle and the "is there any
 /// physics here at all" question are answered here and returned as data, not
@@ -285,11 +285,18 @@ pub fn draw(
     text_system: &mut ph2d_text::TextSystem,
 ) {
     use ph2d_vector::{Affine, Brush, Color};
-    for (path, rgba) in outlines(show, show_velocity, sim, triggered, ghost, camera, window) {
-        let (traco, cor) = tinta_do_contorno(rgba, theme);
+    let contornos = outlines(show, show_velocity, sim, triggered, ghost, camera, window);
+    // As sombras TODAS antes das cores: a de uma forma vizinha nunca tapa a cor de outra.
+    let sombras = contornos
+        .iter()
+        .filter_map(|(p, t)| Some((p, sombra_do_contorno(*t, theme)?)));
+    let cores = contornos
+        .iter()
+        .map(|(p, t)| (p, tinta_do_contorno(*t, theme)));
+    for (path, (traco, cor)) in sombras.chain(cores) {
         vector_scene
             .inner_mut()
-            .stroke(&traco, Affine::IDENTITY, &Brush::Solid(cor), None, &path);
+            .stroke(&traco, Affine::IDENTITY, &Brush::Solid(cor), None, path);
     }
     // A linha d'água ANTES dos corpos: ela é o cenário (onde a superfície está), e o
     // que se lê por cima dela são as coisas que boiam.

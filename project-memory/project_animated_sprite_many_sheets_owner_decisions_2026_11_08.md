@@ -11,7 +11,9 @@ Dono, 08/11, sobre «Animated Sprite · várias folhas» (GEF 26), **revisto no 
 2. **Todas as folhas carregadas ficam ativas**, seja qual for a visível.
 3. **Uma animação MISTURA quadros de folhas diferentes** (pergunta feita 08/11: «Misturar quadros»). No editor escolhe-se a folha e clica-se; trocando a folha continua-se a mesma animação.
 4. **Uma lista só** de animações, na ordem que o artista quiser (editor e cartão Animation).
-5. **Pivot por folha** (pés no mesmo sítio, mesmo tamanho de pixel; a nova copia o da 1.ª) e **apagar leva o que é dela** — da 1.ª rodada, mantidos.
+5. **Pivot por folha** (pés no mesmo sítio, mesmo tamanho de pixel; a nova copia o da 1.ª), da 1.ª rodada.
+6. **Load sheet NÃO cria animação.**
+7. **Delete sheet deixa QUADROS VAZIOS no lugar** (revê «apagar leva o que é dela»): animações com vazios ficam em alerta, os vazios destacados na tira, e surgem **Remove empty frames** e **Delete empty animations**. Nada se apaga sozinho.
 
 Recusado pelo dono: a lista «Sheets (N)» com uma linha por folha (1.ª maquete) e «uma folha por animação».
 

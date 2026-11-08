@@ -12,9 +12,12 @@ dia** sobre a captura do cartão Image ([memória](../../project-memory/project_
 4. **Uma lista só**, na ordem que o artista quiser: as animações aparecem à esquerda no editor e no cartão Animation.
 5. **Pivot por folha:** ao trocar de quadro entre folhas os pés ficam no mesmo lugar e o pixel tem o mesmo tamanho na
    tela; a folha nova copia o Pivot da primeira. (Mantido da 1.ª rodada.)
-6. **Apagar uma folha leva o que é dela** (mantido da 1.ª rodada), num passo de desfazer, com aviso. Com a mistura isto
-   quer dizer: saem os QUADROS dessa folha de cada animação, e a animação que fica sem quadros sai. O aviso diz os
-   dois números (`Delete run.png: 5 frames in 2 animations; 1 animation becomes empty`). A confirmar no smoke.
+6. **Apagar uma folha deixa BURACOS, não apaga nada sozinho** (dono 08/11, revê a 1.ª rodada): os quadros dessa
+   folha viram **quadros vazios** no lugar onde estavam. Cada animação com quadros vazios fica **destacada como alerta**
+   (cartão Animation e lista do editor); os quadros vazios ficam destacados na tira; surgem os botões **Remove empty
+   frames** e **Delete empty animations**. Um passo de desfazer devolve a folha e os quadros.
+7. **Load sheet NÃO cria animação** (dono 08/11): o artista monta-as no editor.
+8. **O Pivot** que se edita é o da folha visível no painel (decisão técnica; o dono não objetou).
 
 Base: o Animated Sprite fechado ([ficha](componentes/02_animated_sprite.md)) e o editor da onda 1
 ([handoff](handoffs/HANDOFF_CONTINUACAO_2026-11-07_EDITOR_ANIMACOES_ONDA1.md)). **Não se reconstrói.**
@@ -60,11 +63,11 @@ Lição: o dono quer o poder do Godot (quadro de qualquer folha) **sem** o salto
 
   ```rust
   // ph2d-render/src/sprite/sheets.rs
-  pub struct ExtraSheet { source: SpriteSource, size: [f32; 2], anchor: [f32; 2], hframes: u32, vframes: u32 }
+pub struct ExtraSheet { source: SpriteSource, size: [f32; 2], anchor: [f32; 2], hframes: u32, vframes: u32 }
   pub struct SpriteSheets(pub SmallVec<[ExtraSheet; 2]>);   // índice k+1 no quadro
   ```
 
-- **O quadro diz a folha:** `SpriteAnimFrames` passa de `Vec<u32>` a `Vec<FrameRef { sheet: u8, cell: u32 }>`, e
+- **O quadro diz a folha:** `SpriteAnimFrames` passa de `Vec<u32>` a `Vec<FrameRef>`, com `enum FrameRef { Cell { sheet: u8, cell: u32 }, Empty }` em `ph2d-ecs`, e
   `SpriteGrid` ganha `sheet: u8` ao lado de `frame` (o que está na tela). Uma tag de intervalo `from..=to` ganha
   `sheet: u8` (todo o intervalo numa folha; a mistura é sempre uma lista). **`PROJECT_SCHEMA` 219 → 220**, sem leitor
   de formato velho (CLAUDE §0.11).
@@ -95,9 +98,14 @@ são 40 bytes no componente, e as texturas já são assets partilhados; 255 folh
 - Duas ou mais: a miniatura abre um **dropdown**: um item por folha, a moldura com a imagem inteira e o nome; a
   escolhida fica marcada. Ao lado, o nome e `W × H px · C × R` da visível, e Painter dela. **Delete sheet** aparece só
   com 2 ou mais (apagar a última é o convite do vazio, que já existe).
-- **Load sheet** abre o mesmo painel de Assets de hoje («Choose the image for …»). A folha nova vira a visível. Não
-  cria animação sozinha: o artista monta-as no editor (decisão 3). ⚠️ A confirmar no smoke: hoje a 1.ª folha cria a
-  animação «loop» com todas as células.
+- **Load sheet** abre o mesmo painel de Assets de hoje («Choose the image for …»). A folha nova vira a visível e
+  **não cria animação** (decisão 7). A 1.ª folha de um Animated vazio continua a criar o «loop» de hoje.
+- **Delete sheet** troca cada `FrameRef` dessa folha por `FrameRef::Empty` e reindexa `sheet > k`; nada mais sai.
+  Animação com algum vazio: linha em alerta (token de aviso + ícone ⚠ e «2 empty» no lugar de «N frames»). No cartão
+  Animation, quando alguma animação tem vazios, surge a fila **Remove empty frames · Delete empty animations**
+  (a segunda só quando há uma animação toda vazia). No editor, os mesmos dois botões ao pé da lista.
+- **Um quadro vazio a tocar não pinta nada e conserva o tempo dele**: o buraco vê-se no jogo, e o alerta explica-o.
+  Saltá-lo mudaria o ritmo da animação em silêncio.
 - Soltar uma imagem sobre a miniatura troca a folha visível, com o aviso de corte velho de hoje.
 
 ### 3.4 Editor de animações
@@ -121,7 +129,7 @@ são 40 bytes no componente, e as texturas já são assets partilhados; 255 folh
 | F7 | Character (herói), `.ase` | continuam folha 0; nada muda |
 | F8 | Stop do Play repõe | prova: `igual ao do Play: true` com duas folhas |
 | F9 | Split by rows, faixas, marcador, `per_frame_ms` | sobre `FrameRef`; o marcador é por passo, não muda |
-| F10 | Apagar folha | tira os `FrameRef` dela, reindexa `sheet > k`, tags vazias saem; um passo de undo |
+| F10 | Apagar folha | `FrameRef::Empty` no lugar, reindexa `sheet > k`, intervalo da folha vira lista de vazios; alerta; dois botões de limpeza; um passo de undo |
 | F11 | Trocar a imagem de uma folha (aviso de corte velho) | o aviso passa a ser por folha |
 
 Antes de codar F2–F4: um explorador lista TODOS os leitores de `Sprite.source` fora de `ph2d-render` (o mapa de 08/11
@@ -146,11 +154,14 @@ não fechou isto).
 - `os_pes_ficam_no_sitio_ao_trocar_de_folha` (o contrário do Godot, com a fixture) · `o_pixel_tem_o_mesmo_tamanho_nas_duas`
 - `a_folha_nova_copia_o_pivot_da_primeira` · `o_pivot_mexe_na_folha_visivel`
 - `load_sheet_acrescenta_e_fica_visivel` · `com_uma_folha_o_cartao_e_o_de_hoje_mais_load_sheet` (censo ≤ +1)
-- `delete_sheet_tira_os_quadros_dela_e_um_ctrl_z_devolve_tudo` · `a_animacao_que_fica_vazia_sai`
+- `delete_sheet_deixa_quadros_vazios_no_lugar_e_um_ctrl_z_devolve_tudo` · `a_animacao_com_vazios_fica_em_alerta`
+- `remove_empty_frames_tira_so_os_vazios` · `delete_empty_animations_so_apaga_as_todas_vazias` · `o_vazio_a_tocar_nao_pinta_e_dura_o_seu_tempo`
+- `load_sheet_nao_cria_animacao`
 - `a_imagem_de_outra_folha_conta_como_em_uso` · `o_painter_devolve_a_imagem_a_folha_certa` · `abrir_o_projeto_traz_as_texturas_todas`
 - `duplicar_leva_as_folhas` · `o_stop_repoe_folha_e_quadro`
 - Mutações mínimas: render ignora `sheet` · tique não escreve `sheet` · índice k sem o −1 · m/px da folha nova ·
-  fração do Pivot ignorada · Delete sem reindexar · em uso ignora as extras · Painter só na folha 0.
+  fração do Pivot ignorada · Delete sem reindexar · Delete apaga em vez de esvaziar · alerta sem vazios · vazio saltado ·
+  em uso ignora as extras · Painter só na folha 0.
 
 ## ⛔ Recusas
 
@@ -158,6 +169,8 @@ não fechou isto).
 |---|---|
 | Lista «Sheets (N)» com uma linha por folha (1.ª maquete) | dono 08/11: o cartão Image fica, a miniatura vira dropdown |
 | Uma folha por animação | dono 08/11: mistura permitida |
+| Apagar a folha leva quadros e animações | dono 08/11: deixa vazios em alerta, a limpeza é do artista |
+| Load sheet cria uma animação «loop» | dono 08/11 |
 | Centrar cada quadro (Godot) | o boneco salta 8 px (medido); dono 08/11 |
 | Encolher a folha maior ao tamanho da primeira | perde nitidez; dono 08/11 |
 | Juntar as folhas num atlas ao importar (LibreSprite) | perde o ficheiro de cada folha; trocar uma só fica impossível |

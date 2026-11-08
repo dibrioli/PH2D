@@ -104,18 +104,20 @@ fn a_transmissao_e_o_relevo_do_papel_mostram_o_grao() {
             "{nome} 0,5 entre os dois: {meio} ({d0}..{um})"
         );
     }
-    // ⭐ O Relevo do papel 1 = o Cycles com a tinta assente no dente do papel, na régua do §BUG-papel (o dente na tinta
-    // grossa ÷ no papel nu, absoluto: 1,71, `oraculo/relevo_papel_cycles.py`, tabela no commit da cura 02/11c; a
-    // âncora 0,67 de antes de `ca26a7738a` era o motor velho) — e o grão também nos BRILHOS da tinta.
+    // ⭐ O Relevo do papel 1 na régua do §BUG-papel (o dente na tinta grossa ÷ no papel nu, absoluto). ⚠️ A âncora é a
+    // do DONO, não a do Cycles: a rampa do `relief_na_tinta` (01fb209238) dá 0,84 a Relief 0,6 e mede 2,24 contra 1,71
+    // do Cycles (`oraculo/relevo_papel_cycles.py`, à profundidade 0,6). O dono provou as duas leis lado a lado (08/11,
+    // «ambas me parecem boas») e ficou com a rampa — a do Cycles tirava metade do papel à tinta no Relief 0 de fábrica.
+    // E o grão também nos BRILHOS da tinta.
     let abs = dente_na_tela(&com, &sem, &miolo) / nu_abs;
     let brilhos = dente_nos_brilhos(&com, &sem, &miolo) / nu_abs;
     println!(
-        "[transmission] Relevo do papel 1: miolo ÷ nu {abs:.3} (Cycles 1,71) · nos brilhos {brilhos:.3}"
+        "[transmission] Relevo do papel 1: miolo ÷ nu {abs:.3} (dono 2,24 · Cycles 1,71) · nos brilhos {brilhos:.3}"
     );
     assert!(
-        // A faixa relativa de antes (0,55..0,80 em 0,67: −18 % · +19 %) sobre o número do oráculo.
-        (1.40..=2.04).contains(&abs),
-        "Relevo do papel 1 ≈ o Cycles: {abs} × 1,71"
+        // A faixa relativa de sempre (−18 % · +19 %) sobre o número aprovado (2,24).
+        (1.84..=2.67).contains(&abs),
+        "Relevo do papel 1 ≈ o aprovado pelo dono: {abs} × 2,24"
     );
     assert!(brilhos >= 0.5, "o grão nos brilhos: {brilhos}");
 }

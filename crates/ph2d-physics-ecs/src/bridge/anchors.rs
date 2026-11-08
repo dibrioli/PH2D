@@ -319,9 +319,22 @@ impl PhysicsBridge {
     ) -> usize {
         let n = body.rest.shape.snap_points(out);
         let pose = rest_pose(body);
-        let [ox, oy] = body.rest.collider_local().0;
+        // `corpo ∘ forma`: a forma filha (ADR-0199) leva offset E ângulo; sem ângulo os bits são os
+        // de antes (nada de transcendental no caminho comum; libm no outro, HR-5).
+        let ([ox, oy], angle) = body.rest.collider_local();
+        let (s, c) = if angle == 0.0 {
+            (0.0, 1.0)
+        } else {
+            libm::sincosf(angle)
+        };
         for slot in out.iter_mut().take(n) {
-            *slot = PhysicsWorld::world_from_local_at_pose(pose, [slot[0] + ox, slot[1] + oy]);
+            let [px, py] = *slot;
+            let local = if angle == 0.0 {
+                [px + ox, py + oy]
+            } else {
+                [c * px - s * py + ox, s * px + c * py + oy]
+            };
+            *slot = PhysicsWorld::world_from_local_at_pose(pose, local);
         }
         n
     }

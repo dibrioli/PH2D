@@ -396,3 +396,48 @@ fn a_deleted_dormant_joint_leaves_the_published_list() {
         "a joint that no longer exists is still being offered a canvas handle"
     );
 }
+
+/// **Uma forma FILHA rodada leva o ângulo aos pontos de colagem** (ADR-0199, GEF02 B6): o corpo
+/// sem rotação, a forma filha em `(0, 0,3)` rodada `π/2` — o eixo longo tem de correr ao longo de Y.
+#[test]
+fn the_snap_targets_of_a_rotated_child_shape_include_its_rotation() {
+    let mut sim = rig();
+    let arm = named(&mut sim, "Arm");
+    let col = sim
+        .world_mut()
+        .entity_mut(arm)
+        .take::<Collider>()
+        .expect("collider");
+    let mut pose = Transform::from_translation(Vec2::new(0.0, 0.3));
+    pose.rotation = std::f32::consts::FRAC_PI_2;
+    sim.world_mut().spawn((
+        Name::new("Collision Shape"),
+        col,
+        pose,
+        ph2d_ecs::ChildOf(arm),
+    ));
+    let mut bridge = PhysicsBridge::new();
+    bridge.dispatch(&mut sim, false, 0);
+    let joint = named(&mut sim, "Link");
+    let mut out = [[0.0f32; 2]; ShapeDesc::MAX_SNAP_POINTS];
+    let n = bridge.joint_snap_targets(&sim, joint, JointSide::B, &mut out);
+    assert_eq!(n, 9);
+    let centre = out[0];
+    assert!(
+        dist(centre, [1.0, 5.3]) < 1e-4,
+        "o centro é a pose da filha, got {centre:?}"
+    );
+    let far = out[1..n]
+        .iter()
+        .copied()
+        .max_by(|a, b| {
+            dist(*a, centre)
+                .partial_cmp(&dist(*b, centre))
+                .expect("finite")
+        })
+        .expect("corners");
+    assert!(
+        (far[1] - centre[1]).abs() > (far[0] - centre[0]).abs(),
+        "a forma filha rodada 1/4 de volta oferece os cantos rodados, got {far:?}"
+    );
+}

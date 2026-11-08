@@ -297,3 +297,50 @@ fn f3_f4_and_the_draw_edge_drive_the_onion_and_the_timeline_panel() {
     p.tecla(KeyCode::F3);
     assert!(p.quadro().onion);
 }
+
+#[test]
+fn ctrl_aspas_liga_a_grade_do_documento_sem_passo_de_desfazer_mas_muda_a_revisao() {
+    let mut p = Palco::novo();
+    let h = |p: &Palco| {
+        let d = p.app.doc(p.key).expect("doc");
+        (d.history.revision(), d.history.current())
+    };
+    let (rev, passos) = h(&p);
+    assert!(!p.sprite().prefs().grid.visible);
+    let a = input::key(
+        &mut p.app,
+        p.sim.world(),
+        Some(p.bits),
+        KeyCode::Quote,
+        true,
+        false,
+    );
+    assert!(matches!(a, Some(KeyAnswer::Toast(_))), "{a:?}");
+    assert!(
+        p.sprite().prefs().grid.visible,
+        "Ctrl+' liga a grade DO DOCUMENTO"
+    );
+    let a = input::key(
+        &mut p.app,
+        p.sim.world(),
+        Some(p.bits),
+        KeyCode::Quote,
+        true,
+        true,
+    );
+    assert!(matches!(a, Some(KeyAnswer::Toast(_))), "{a:?}");
+    assert!(
+        p.sprite().prefs().pixel_grid.visible,
+        "Ctrl+Shift+' liga a grade de píxel"
+    );
+    let (rev2, passos2) = h(&p);
+    assert_eq!(passos2, passos, "não é passo do desfazer (Aseprite)");
+    assert_ne!(
+        rev2, rev,
+        "mas grava-se: a revisão muda (o modificado e a recuperação)"
+    );
+    // A tinta do onion também é do documento: o botão dela escreve as preferências.
+    let tinta = p.sprite().prefs().onion.tint;
+    p.pede(PixelRequest::FrameAction(A::OnionTint));
+    assert_eq!(p.sprite().prefs().onion.tint, !tinta);
+}

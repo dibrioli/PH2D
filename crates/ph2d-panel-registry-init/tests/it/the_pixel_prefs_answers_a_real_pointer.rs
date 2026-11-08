@@ -94,3 +94,37 @@ fn visible_muda_a_grade_do_documento_e_set_as_defaults_grava_os_novos() {
     );
     let _ = std::fs::remove_dir_all(pasta);
 }
+
+#[test]
+fn o_cartao_onion_skin_abre_pelo_pedido_do_onion_e_muda_o_documento() {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let pasta = std::env::temp_dir().join(format!("ph2d-pixel-prefs-onion-{}", std::process::id()));
+    let ficheiro = pasta.join("pixel-prefs.txt");
+    let doc = PixelPrefs::default();
+    let _ = canal::troca_em(Some(doc), Some(&ficheiro));
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let mut hero = HeroScreen::new(NodeId(1));
+    // O botão direito no botão do onion da linha do tempo pede isto (`ONION_SETTINGS`).
+    canal::pede_abrir_onion();
+    assenta(&mut hero, &mut ts, 60);
+    assert!(hero.is_panel_visible(PANEL_PIXEL_PREFS), "a janela abriu");
+    clica(&mut hero, ids::caixa(Caixa::OnionFront), "In Front");
+    let p = canal::troca_em(Some(doc), Some(&ficheiro)).expect("mudou");
+    assenta(&mut hero, &mut ts, 2);
+    clica(
+        &mut hero,
+        ids::caixa(Caixa::OnionCurrentLayer),
+        "Current layer only",
+    );
+    let q = canal::troca_em(Some(p), Some(&ficheiro)).expect("mudou");
+    assert!(q.onion.front && q.onion.current_layer_only);
+    assert_eq!(
+        PixelPrefs {
+            onion: doc.onion,
+            ..q
+        },
+        doc,
+        "só o onion mudou"
+    );
+    let _ = std::fs::remove_dir_all(pasta);
+}

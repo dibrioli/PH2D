@@ -57,3 +57,47 @@ fn o_clique_numa_caixa_pede_as_preferencias_com_ela_alternada() {
     let r = ph2d_panel_pixel_prefs::pedido(&ev, Scope::Document, p, |_| Some(5.0));
     assert!(matches!(r, Some(PrefsRequest::Set(Scope::Document, q)) if q.grid.h == 5));
 }
+
+#[test]
+fn o_onion_em_percentagem_como_o_trial_e_os_pares_escolhem() {
+    let p = PixelPrefs::default();
+    // O21: 68 mostra-se 27 %, 28 mostra-se 11 %; escrever 27 % e 11 % volta a 68 e 28.
+    assert_eq!(canal::numero(&p, Numero::OnionOpacity), 27);
+    assert_eq!(canal::numero(&p, Numero::OnionStep), 11);
+    let mut q = p;
+    canal::poe_numero(&mut q, Numero::OnionOpacity, 27.0);
+    canal::poe_numero(&mut q, Numero::OnionStep, 11.0);
+    assert_eq!((q.onion.base, q.onion.step), (68, 28));
+    for pct in 0..=100 {
+        let mut r = p;
+        canal::poe_numero(&mut r, Numero::OnionOpacity, f64::from(pct));
+        assert_eq!(
+            canal::numero(&r, Numero::OnionOpacity),
+            i64::from(pct),
+            "{pct} %"
+        );
+    }
+    canal::poe_numero(&mut q, Numero::OnionPrev, 3.0);
+    canal::poe_numero(&mut q, Numero::OnionNext, 0.0);
+    assert_eq!((q.onion.prev, q.onion.next), (3, 0));
+    // In Front escolhe (clicar duas vezes não volta a Behind); Behind volta.
+    let frente = WidgetEvent::Click(ids::caixa(Caixa::OnionFront));
+    let Some(PrefsRequest::Set(_, f)) =
+        ph2d_panel_pixel_prefs::pedido(&frente, Scope::Document, p, |_| None)
+    else {
+        panic!("pedido");
+    };
+    let Some(PrefsRequest::Set(_, f2)) =
+        ph2d_panel_pixel_prefs::pedido(&frente, Scope::Document, f, |_| None)
+    else {
+        panic!("pedido");
+    };
+    assert!(f.onion.front && f2.onion.front);
+    let atras = WidgetEvent::Click(ids::ONION_BEHIND);
+    let Some(PrefsRequest::Set(_, b)) =
+        ph2d_panel_pixel_prefs::pedido(&atras, Scope::Document, f, |_| None)
+    else {
+        panic!("pedido");
+    };
+    assert!(!b.onion.front);
+}

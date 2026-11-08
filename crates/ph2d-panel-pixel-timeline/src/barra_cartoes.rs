@@ -24,6 +24,15 @@ fn fila(id: NodeId, icon: IconId) -> Icone {
     }
 }
 
+/// O botão direito no botão do onion abre as definições dele (R4).
+pub(crate) fn gemeo_do_onion(ctx: &mut PaintCtx) {
+    let onion = ids::TOGGLES[0].1;
+    let hit = ctx.host.hit_index_mut();
+    if let Some(r) = hit.rect_for(onion) {
+        hit.register_with_secondary(onion, r, ids::ONION_SETTINGS);
+    }
+}
+
 /// Os grupos de ícones: navegar e tocar, e o menu Frame.
 fn grupos(info: &PixelPanelInfo) -> Vec<Vec<Icone>> {
     let transporte = ids::TRANSPORT.iter().map(|(a, id, icon, _)| {
@@ -142,6 +151,7 @@ pub(crate) fn paint(
     let chip = Rect::new(x, y, chip_w, m::FIELD_H);
     c.lista_em(ids::PLAY_SPEED, speed_texto, aberta, chip);
     c.segmentos_em_fila(&toque, x + chip_w + m::FIELD_GAP, y);
+    gemeo_do_onion(ctx);
     if aberta {
         st.speed_open = Some((chip, p.speed));
     }

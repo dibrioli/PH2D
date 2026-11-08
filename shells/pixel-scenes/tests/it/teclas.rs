@@ -255,14 +255,14 @@ fn as_teclas_novas_dos_quadros() {
     assert_eq!(i(&p), (a + n - 1) % n);
 }
 
-/// `Ctrl+'` = a grade de píxeis do canvas (a mesma do `Ctrl+Shift+'`).
+/// `Ctrl+'` = a grade do DOCUMENTO (P12 P; `Ctrl+Shift+'` é a de píxel).
 #[test]
 fn as_teclas_novas_da_grade() {
     use winit::keyboard::KeyCode as K;
     let mut p = Porta::nova();
-    let antes = p.app.grid;
+    let antes = p.doc().sprite.prefs().grid.visible;
     p.tecla(K::Quote, CTRL);
-    assert_eq!(p.app.grid, !antes);
+    assert_eq!(p.doc().sprite.prefs().grid.visible, !antes);
 }
 
 /// `F2` com a Timeline fechada abre-a (o campo do nome da camada é dela, o que o artista vê).

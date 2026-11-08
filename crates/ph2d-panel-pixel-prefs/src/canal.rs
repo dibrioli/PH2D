@@ -22,6 +22,11 @@ pub enum Numero {
     PixelOpacity,
     CheckerW,
     CheckerH,
+    OnionPrev,
+    OnionNext,
+    /// Em % como o Trial (O21: 27 % = 68).
+    OnionOpacity,
+    OnionStep,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -31,6 +36,12 @@ pub enum Caixa {
     PixelVisible,
     PixelAuto,
     CheckerZoom,
+    OnionLoopTag,
+    OnionCurrentLayer,
+    /// `In Front` (ligada) / `Behind` (desligada).
+    OnionFront,
+    /// `Red/Blue Tint` (ligada) / `Merge` (desligada).
+    OnionTint,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -53,7 +64,21 @@ pub fn numero(p: &PixelPrefs, n: Numero) -> i64 {
         Numero::PixelOpacity => i64::from(p.pixel_grid.opacity),
         Numero::CheckerW => i64::from(p.checker.w),
         Numero::CheckerH => i64::from(p.checker.h),
+        Numero::OnionPrev => i64::from(p.onion.prev),
+        Numero::OnionNext => i64::from(p.onion.next),
+        Numero::OnionOpacity => pct(p.onion.base),
+        Numero::OnionStep => pct(p.onion.step),
     }
+}
+
+/// 0–255 → % (o Trial mostra 27 % para 68 e 11 % para 28).
+fn pct(v: u8) -> i64 {
+    (f64::from(v) * 100.0 / 255.0).round() as i64
+}
+
+/// % → 0–255, o inverso exacto de [`pct`] (`floor`: 27 % → 68, 11 % → 28).
+fn de_pct(p: f64) -> u8 {
+    (p.clamp(0.0, 100.0) * 255.0 / 100.0).floor() as u8
 }
 
 /// Escreve um número (cortado à faixa do campo: tamanhos ≥ 1, opacidade 0–255).
@@ -62,6 +87,7 @@ pub fn poe_numero(p: &mut PixelPrefs, n: Numero, v: f64) {
     let lado = r.clamp(1.0, f64::from(u16::MAX)) as u32;
     let op = r.clamp(0.0, 255.0) as u8;
     let pos = r.clamp(f64::from(i16::MIN), f64::from(i16::MAX)) as i32;
+    let alcance = r.clamp(0.0, f64::from(u16::MAX)) as u32;
     match n {
         Numero::GridX => p.grid.x = pos,
         Numero::GridY => p.grid.y = pos,
@@ -71,6 +97,10 @@ pub fn poe_numero(p: &mut PixelPrefs, n: Numero, v: f64) {
         Numero::PixelOpacity => p.pixel_grid.opacity = op,
         Numero::CheckerW => p.checker.w = lado,
         Numero::CheckerH => p.checker.h = lado,
+        Numero::OnionPrev => p.onion.prev = alcance,
+        Numero::OnionNext => p.onion.next = alcance,
+        Numero::OnionOpacity => p.onion.base = de_pct(r),
+        Numero::OnionStep => p.onion.step = de_pct(r),
     }
 }
 
@@ -81,6 +111,10 @@ fn caixa_mut(p: &mut PixelPrefs, c: Caixa) -> &mut bool {
         Caixa::PixelVisible => &mut p.pixel_grid.visible,
         Caixa::PixelAuto => &mut p.pixel_grid.auto_opacity,
         Caixa::CheckerZoom => &mut p.checker.apply_zoom,
+        Caixa::OnionLoopTag => &mut p.onion.loop_tag,
+        Caixa::OnionCurrentLayer => &mut p.onion.current_layer_only,
+        Caixa::OnionFront => &mut p.onion.front,
+        Caixa::OnionTint => &mut p.onion.tint,
     }
 }
 
@@ -149,6 +183,7 @@ struct Canal {
     view: PrefsView,
     requests: Vec<PrefsRequest>,
     abrir: bool,
+    onion: bool,
     carregado: bool,
 }
 
@@ -165,8 +200,13 @@ pub fn pede_abrir() {
     com(|c| c.abrir = true);
 }
 
-pub(crate) fn take_abrir() -> bool {
-    com(|c| std::mem::take(&mut c.abrir))
+/// Abre a janela no cartão Onion Skin, sobre o documento (o botão direito no botão do onion, R4).
+pub fn pede_abrir_onion() {
+    com(|c| (c.abrir, c.onion) = (true, true));
+}
+
+pub(crate) fn take_abrir() -> (bool, bool) {
+    com(|c| (std::mem::take(&mut c.abrir), std::mem::take(&mut c.onion)))
 }
 
 #[must_use]

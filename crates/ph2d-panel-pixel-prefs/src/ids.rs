@@ -12,13 +12,17 @@ pub const SEC_SCOPE: NodeId = hash_node_id("pixel_prefs.sec.scope");
 pub const SEC_GRID: NodeId = hash_node_id("pixel_prefs.sec.grid");
 pub const SEC_PIXEL_GRID: NodeId = hash_node_id("pixel_prefs.sec.pixel_grid");
 pub const SEC_CHECKER: NodeId = hash_node_id("pixel_prefs.sec.checker");
+pub const SEC_ONION: NodeId = hash_node_id("pixel_prefs.sec.onion");
+/// Os segmentos `Behind` / `In Front` e `Merge` / `Red/Blue Tint` do Onion Skin.
+pub const ONION_BEHIND: NodeId = hash_node_id("pixel_prefs.onion.behind");
+pub const ONION_MERGE: NodeId = hash_node_id("pixel_prefs.onion.merge");
 pub const SCOPE_DOC: NodeId = hash_node_id("pixel_prefs.scope.doc");
 pub const SCOPE_NEW: NodeId = hash_node_id("pixel_prefs.scope.new");
 pub const SET_DEFAULTS: NodeId = hash_node_id("pixel_prefs.set_defaults");
 pub const RESET: NodeId = hash_node_id("pixel_prefs.reset");
 
 /// Os números, cada um com o seu campo.
-pub const NUMEROS: [(NodeId, Numero); 8] = [
+pub const NUMEROS: [(NodeId, Numero); 12] = [
     (hash_node_id("pixel_prefs.grid.x"), Numero::GridX),
     (hash_node_id("pixel_prefs.grid.y"), Numero::GridY),
     (hash_node_id("pixel_prefs.grid.w"), Numero::GridW),
@@ -33,10 +37,17 @@ pub const NUMEROS: [(NodeId, Numero); 8] = [
     ),
     (hash_node_id("pixel_prefs.checker.w"), Numero::CheckerW),
     (hash_node_id("pixel_prefs.checker.h"), Numero::CheckerH),
+    (hash_node_id("pixel_prefs.onion.prev"), Numero::OnionPrev),
+    (hash_node_id("pixel_prefs.onion.next"), Numero::OnionNext),
+    (
+        hash_node_id("pixel_prefs.onion.opacity"),
+        Numero::OnionOpacity,
+    ),
+    (hash_node_id("pixel_prefs.onion.step"), Numero::OnionStep),
 ];
 
 /// As caixas de marcar.
-pub const CAIXAS: [(NodeId, Caixa); 5] = [
+pub const CAIXAS: [(NodeId, Caixa); 9] = [
     (hash_node_id("pixel_prefs.grid.visible"), Caixa::GridVisible),
     (hash_node_id("pixel_prefs.grid.auto"), Caixa::GridAuto),
     (
@@ -48,6 +59,16 @@ pub const CAIXAS: [(NodeId, Caixa); 5] = [
         Caixa::PixelAuto,
     ),
     (hash_node_id("pixel_prefs.checker.zoom"), Caixa::CheckerZoom),
+    (
+        hash_node_id("pixel_prefs.onion.loop_tag"),
+        Caixa::OnionLoopTag,
+    ),
+    (
+        hash_node_id("pixel_prefs.onion.current_layer"),
+        Caixa::OnionCurrentLayer,
+    ),
+    (hash_node_id("pixel_prefs.onion.front"), Caixa::OnionFront),
+    (hash_node_id("pixel_prefs.onion.tint"), Caixa::OnionTint),
 ];
 
 /// As amostras de cor.

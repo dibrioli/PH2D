@@ -188,10 +188,92 @@ fn cartao_xadrez(p: PixelPrefs) -> CardDef<'static> {
     )
 }
 
+fn par(
+    c: &mut CardCtx<'_>,
+    a: (NodeId, &'static str),
+    b: (NodeId, &'static str),
+    on_b: bool,
+    y: f32,
+) -> f32 {
+    let o = opcoes(&[(a.0, tr(a.1)), (b.0, tr(b.1))], usize::from(on_b));
+    c.full(None, Widget::Choice(&o), y)
+}
+
+/// O Onion Skin (O21, R4): o que o botão direito no botão do onion da linha do tempo abre.
+fn cartao_onion(p: PixelPrefs) -> CardDef<'static> {
+    cartao(
+        ids::SEC_ONION,
+        tr("panel.pixel_prefs.sec_onion"),
+        None,
+        move |c, y| {
+            let y = c.row(
+                &[
+                    numero(Numero::OnionPrev, "panel.pixel_prefs.prev_glyph")
+                        .label(tr("panel.pixel_prefs.onion_prev")),
+                    numero(Numero::OnionNext, "panel.pixel_prefs.next_glyph")
+                        .label(tr("panel.pixel_prefs.onion_next")),
+                ],
+                y,
+            );
+            let y = c.row(
+                &[
+                    numero(Numero::OnionOpacity, "panel.pixel_prefs.opacity_glyph")
+                        .label(tr("panel.pixel_prefs.onion_opacity")),
+                    numero(Numero::OnionStep, "panel.pixel_prefs.step_glyph")
+                        .label(tr("panel.pixel_prefs.onion_step")),
+                ],
+                y,
+            );
+            let front = (
+                ids::caixa(Caixa::OnionFront),
+                "panel.pixel_prefs.onion_front",
+            );
+            let y = par(
+                c,
+                (ids::ONION_BEHIND, "panel.pixel_prefs.onion_behind"),
+                front,
+                p.onion.front,
+                y,
+            );
+            let tint = (ids::caixa(Caixa::OnionTint), "panel.pixel_prefs.onion_tint");
+            let y = par(
+                c,
+                (ids::ONION_MERGE, "panel.pixel_prefs.onion_merge"),
+                tint,
+                p.onion.tint,
+                y,
+            );
+            let y = marca(
+                c,
+                &p,
+                Caixa::OnionLoopTag,
+                "panel.pixel_prefs.onion_loop_tag",
+                y,
+            );
+            marca(
+                c,
+                &p,
+                Caixa::OnionCurrentLayer,
+                "panel.pixel_prefs.onion_current_layer",
+                y,
+            )
+        },
+    )
+}
+
 pub(crate) fn paint(st: &mut PixelPrefsPanelState, ctx: &mut PaintCtx) {
     let node = PixelPrefsPanel::NODE_ID;
-    if canal::take_abrir() {
+    let (abrir, onion) = canal::take_abrir();
+    if abrir {
         ctx.host.set_panel_visible(PixelPrefsPanel::ID, true);
+    }
+    if onion {
+        st.scope = Scope::Document;
+        let store = ctx.host.store_mut();
+        for s in [ids::SEC_GRID, ids::SEC_PIXEL_GRID, ids::SEC_CHECKER] {
+            store.set_collapsed(s, true);
+        }
+        store.set_collapsed(ids::SEC_ONION, false);
     }
     if !ctx.host.panel_visible(PixelPrefsPanel::ID) {
         ctx.host.store_mut().clear_panel_rect(node);
@@ -201,7 +283,12 @@ pub(crate) fn paint(st: &mut PixelPrefsPanelState, ctx: &mut PaintCtx) {
     let p = canal::view().of(st.scope);
     let mut cartoes = vec![cartao_ambito(st.scope, p.is_some())];
     if let Some(p) = p {
-        cartoes.extend([cartao_grade(p), cartao_pixel(p), cartao_xadrez(p)]);
+        cartoes.extend([
+            cartao_grade(p),
+            cartao_pixel(p),
+            cartao_xadrez(p),
+            cartao_onion(p),
+        ]);
     }
     let slot = solta(ctx);
     let encaixe = ctx.slot;

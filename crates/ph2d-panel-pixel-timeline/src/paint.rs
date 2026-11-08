@@ -319,6 +319,7 @@ fn barra(
         );
         ctx.host.hit_index_mut().register(*id, r);
     }
+    crate::barra_cartoes::gemeo_do_onion(ctx);
     x += w + gap;
 
     // *Playback* (o menu do botão Play do Aseprite): a velocidade e os quatro interruptores.

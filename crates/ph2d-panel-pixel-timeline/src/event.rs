@@ -34,6 +34,8 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for (_, id, _) in ids::TOGGLES {
         botao(store, id);
     }
+    botao(store, ids::ONION_SETTINGS);
+    store.set_tooltip(ids::TOGGLES[0].1, tr("panel.pixel.timeline.onion_tip"));
     for (_, id, _, dica) in ids::ACTIONS {
         botao(store, id);
         store.set_tooltip(id, tr(dica));
@@ -294,6 +296,10 @@ pub(crate) fn apply_event(
 ) -> EventOutcome {
     if let Some(o) = crate::seam_user::evento(host, &ev) {
         return o;
+    }
+    if ev == WidgetEvent::Click(ids::ONION_SETTINGS) {
+        ph2d_panel_pixel_prefs::canal::pede_abrir_onion();
+        return EventOutcome::Consumed;
     }
     match ev {
         WidgetEvent::DoubleClick(id) => {

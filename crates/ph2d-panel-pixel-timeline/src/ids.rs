@@ -47,6 +47,10 @@ pub const TRANSPORT: [(A, NodeId, IconId, &str); 5] = [
     ),
 ];
 
+/// O botão DIREITO no botão do onion (R4): abre as definições do Onion Skin
+/// (`ph2d-panel-pixel-prefs`, o cartão Onion Skin).
+pub const ONION_SETTINGS: NodeId = hash_node_id("pixel_timeline.onion_settings");
+
 /// O papel vegetal e a tinta dele (dois interruptores): a acção, o id e o rótulo.
 pub const TOGGLES: [(A, NodeId, &str); 2] = [
     (

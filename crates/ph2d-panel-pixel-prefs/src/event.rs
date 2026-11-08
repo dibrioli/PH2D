@@ -25,6 +25,8 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         ids::SCOPE_NEW,
         ids::SET_DEFAULTS,
         ids::RESET,
+        ids::ONION_BEHIND,
+        ids::ONION_MERGE,
     ] {
         botao(store, id);
     }
@@ -54,6 +56,8 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         let (lo, hi) = match n {
             Numero::GridX | Numero::GridY => (f64::from(i16::MIN), f64::from(i16::MAX)),
             Numero::GridOpacity | Numero::PixelOpacity => (0.0, 255.0),
+            Numero::OnionOpacity | Numero::OnionStep => (0.0, 100.0),
+            Numero::OnionPrev | Numero::OnionNext => (0.0, f64::from(u16::MAX)),
             _ => (1.0, f64::from(u16::MAX)),
         };
         store.set_number_drag_rate(id, 1.0);
@@ -120,6 +124,13 @@ pub fn pedido(
             return Some(PrefsRequest::SetAsDefaults);
         }
         WidgetEvent::Click(id) if id == ids::RESET => return Some(PrefsRequest::Reset(scope)),
+        // Os pares de segmentos: `Behind`/`In Front` e `Merge`/`Red/Blue Tint` escolhem, não alternam.
+        WidgetEvent::Click(id) if id == ids::ONION_BEHIND => p.onion.front = false,
+        WidgetEvent::Click(id) if id == ids::ONION_MERGE => p.onion.tint = false,
+        WidgetEvent::Click(id) if id == ids::caixa(canal::Caixa::OnionFront) => {
+            p.onion.front = true
+        }
+        WidgetEvent::Click(id) if id == ids::caixa(canal::Caixa::OnionTint) => p.onion.tint = true,
         WidgetEvent::Click(id) => {
             let (_, c) = ids::CAIXAS.iter().find(|(i, _)| *i == id)?;
             canal::alterna(&mut p, *c);

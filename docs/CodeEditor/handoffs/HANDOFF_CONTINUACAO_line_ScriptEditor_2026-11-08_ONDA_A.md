@@ -10,7 +10,17 @@
 de molduras»; `cards.rs`) · `86de17d93a` o erro do Play some ao CONSERTAR a linha (âncora pelo `map_byte` + texto
 da linha; volta no Ctrl+Z), não ao gravar.
 
-Smoke do dono 08/11: **OK**, salvo «sumir ao consertar» e as molduras — curados nos dois últimos, por re-smokar.
+Smoke do dono 08/11: **OK** (re-smoke das molduras e do «sumir ao consertar» também OK).
+
+## Onda C (08/11, construída, aguarda smoke)
+`2f5a7adba5` menu da aba (`tab_menu.rs`, `DocMenu::Tab` append em editor-core — o File/Edit da app deixa de
+mudar com a aba), caminho até o cursor, `options_card.rs`, Ctrl+K com funções (`PaletteScopes.named`, coluna de
+atalho), escolha ao soltar (`drop_doc.rs offer_drop`), `promote.rs` «Make it a property» · `b3c559f9b8` botão
+direito (`context_menu.rs`), acabamentos (grelha do cartão, Esc, Toggle Fold, largura das listas de acção, prévia
+com «…», a soltura dá o teclado à aba em `surface_input.rs`). Cena 11 ganhou passos de foto 1–5.
+Aberto: Cut/Copy/Paste fora do menu do botão direito (o clique não chega à área de transferência); alfinete do
+cartão é próprio, não o do sistema de cartões; menus sem nós de acessibilidade; arrastar real da Hierarchy com
+setas não provado no ecrã (só pelo caminho da shell no teste). Próximo: Onda B (espera a GEF02) e D (medir antes).
 
 ## O que a Onda A fez (mecanismo nos commits)
 - **Um problema, um lugar** — `ph2d-app-code/src/play_problems.rs` (`merge`), `console.rs` (`Store::push(l, who)`,

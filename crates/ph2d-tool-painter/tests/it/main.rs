@@ -57,6 +57,7 @@ mod presets_dos_meios;
 mod receitas_de_fabrica;
 mod regua_escada;
 mod regua_midia;
+mod sonda_auditoria_composite_camadas; // auditoria 08/11: Wet blend × Composite × Per-Layer Color × camadas (sonda)
 mod sonda_cartao_pen; // auditoria do cartão Pen (24/10)
 mod sonda_composite_vs_mixing; // Composite × Color mixing (pergunta do dono 07/11)
 mod sonda_continuo; // o Continuous em contas (dono 25/10)

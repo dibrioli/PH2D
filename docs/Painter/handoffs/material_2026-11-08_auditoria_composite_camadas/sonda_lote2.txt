@@ -1,0 +1,99 @@
+▸ linha line_painterwatercolor · CPU ≤ 1600% de 32 núcleos · mem ≤ 24G · prazo 1800s
+   Compiling ph2d-tool-painter v0.0.0 (/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PainterWatercolor/crates/ph2d-tool-painter)
+    Finished `smoke` profile [optimized] target(s) in 7.04s
+     Running tests/it/main.rs (target/smoke/deps/it-6395fd48ba6921d3)
+
+running 1 test
+
+[l2] ===== Round Mixing
+[l2] wet só          branco[176.0, 188.0, 244.0, 255.0] bloco[143.0, 71.0, 134.0, 255.0] cauda[148.0, 103.0, 167.0, 255.0] #32ff72a625929ce2
+[l2] wet 60×120 ev   Δmédio 0.000 máx 0
+[l2] wet C[B,B]      branco[104.0, 127.0, 234.0, 255.0] bloco[58.0, 51.0, 183.0, 255.0] cauda[57.0, 68.0, 204.0, 255.0] #09694d189b96f348 · vs só Δmédio 3.522 máx 138
+[l2] wet C[B,B] 60×120 Δmédio 0.649 máx 20
+[l2] wet C[B.1,B.1]  branco[242.0, 244.0, 253.0, 255.0] bloco[190.0, 3.0, 12.0, 255.0] cauda[240.0, 239.0, 248.0, 255.0] #d8a47db2102c5803 · vs C[B,B] Δmédio 7.033 máx 185
+[l2] wet C[S,B]      branco[202.0, 210.0, 248.0, 255.0] bloco[201.0, 209.0, 247.0, 255.0] cauda[201.0, 209.0, 247.0, 255.0] #1915275d5b9b250b
+[l2] wet receita     branco[100.0, 125.0, 234.0, 255.0] bloco[58.0, 89.0, 228.0, 255.0] cauda[52.0, 84.0, 227.0, 255.0] #94e94963b8050fe7
+[l2] wet receita B1  branco[100.0, 125.0, 234.0, 255.0] bloco[58.0, 89.0, 228.0, 255.0] cauda[52.0, 84.0, 227.0, 255.0] #94e94963b8050fe7 · Strength .1×1 Δmédio 0.000 máx 0
+[l2] wet C[E,B]      branco[95.0, 120.0, 233.0, 255.0] bloco[57.0, 88.0, 228.0, 255.0] cauda[52.0, 83.0, 227.0, 255.0] #6d2b857f4d7f6c3f
+[l2] wet C[B,E]      branco[104.0, 127.0, 234.0, 255.0] bloco[58.0, 51.0, 183.0, 255.0] cauda[57.0, 68.0, 204.0, 255.0] #d32505269ae1659a
+[l2] off só          branco[0.0, 40.0, 220.0, 255.0] bloco[0.0, 40.0, 220.0, 255.0] cauda[0.0, 40.0, 220.0, 255.0] #d50cdf3c5cf21ebb
+[l2] off 60×120 ev   Δmédio 0.000 máx 0
+[l2] off C[B,B]      branco[0.0, 40.0, 220.0, 255.0] bloco[0.0, 40.0, 220.0, 255.0] cauda[0.0, 40.0, 220.0, 255.0] #5405a21e17d5a8cd · vs só Δmédio 0.344 máx 64
+[l2] off C[B,B] 60×120 Δmédio 0.000 máx 0
+[l2] off C[B.1,B.1]  branco[206.0, 213.0, 248.0, 255.0] bloco[162.0, 8.0, 42.0, 255.0] cauda[206.0, 213.0, 248.0, 255.0] #57eb12fef99ff28a · vs C[B,B] Δmédio 8.930 máx 206
+[l2] off C[S,B]      branco[0.0, 40.0, 220.0, 255.0] bloco[0.0, 40.0, 220.0, 255.0] cauda[0.0, 40.0, 220.0, 255.0] #7f38c5e8cfa6009e
+[l2] off receita     branco[229.0, 233.0, 251.0, 255.0] bloco[180.0, 4.0, 22.0, 255.0] cauda[229.0, 233.0, 251.0, 255.0] #855d7d41288f88af
+[l2] off receita B1  branco[0.0, 40.0, 220.0, 255.0] bloco[0.0, 40.0, 220.0, 255.0] cauda[0.0, 40.0, 220.0, 255.0] #c4aac37589bff3b4 · Strength .1×1 Δmédio 8.421 máx 229
+[l2] off C[E,B]      branco[0.0, 40.0, 220.0, 0.0] bloco[0.0, 40.0, 220.0, 0.0] cauda[0.0, 40.0, 220.0, 0.0] #84ad4a5b78d06120
+[l2] off C[B,E]      branco[0.0, 40.0, 220.0, 255.0] bloco[0.0, 40.0, 220.0, 255.0] cauda[0.0, 40.0, 220.0, 255.0] #ac16de205ac29717
+
+[l2] ===== Gouache
+[l2] wet só          branco[141.0, 159.0, 239.0, 255.0] bloco[111.0, 19.0, 99.0, 255.0] cauda[139.0, 150.0, 231.0, 255.0] #1de56af004f1c0e2
+[l2] wet 60×120 ev   Δmédio 0.000 máx 0
+[l2] wet C[B,B]      branco[77.0, 105.0, 231.0, 255.0] bloco[60.0, 28.0, 154.0, 255.0] cauda[76.0, 104.0, 230.0, 255.0] #167b5f574f57ec18 · vs só Δmédio 3.308 máx 115
+[l2] wet C[B,B] 60×120 Δmédio 0.428 máx 28
+[l2] wet C[B.1,B.1]  branco[236.0, 240.0, 253.0, 255.0] bloco[185.0, 3.0, 16.0, 255.0] cauda[236.0, 240.0, 253.0, 255.0] #7b667abcffdd02e6 · vs C[B,B] Δmédio 6.143 máx 165
+[l2] wet C[S,B]      branco[187.0, 197.0, 246.0, 255.0] bloco[185.0, 196.0, 245.0, 255.0] cauda[184.0, 195.0, 245.0, 255.0] #fe9b4ee8338451ab
+[l2] wet receita     branco[31.0, 66.0, 224.0, 255.0] bloco[31.0, 66.0, 224.0, 255.0] cauda[31.0, 66.0, 224.0, 255.0] #aca33b02337c043f
+[l2] wet receita B1  branco[31.0, 66.0, 224.0, 255.0] bloco[31.0, 66.0, 224.0, 255.0] cauda[31.0, 66.0, 224.0, 255.0] #aca33b02337c043f · Strength .1×1 Δmédio 0.000 máx 0
+[l2] wet C[E,B]      branco[31.0, 66.0, 224.0, 255.0] bloco[31.0, 66.0, 224.0, 255.0] cauda[31.0, 66.0, 224.0, 255.0] #834c60d6ae5ad952
+[l2] wet C[B,E]      branco[77.0, 105.0, 231.0, 255.0] bloco[60.0, 28.0, 154.0, 255.0] cauda[77.0, 104.0, 230.0, 255.0] #059526ba03196242
+[l2] off só          branco[0.0, 40.0, 220.0, 255.0] bloco[0.0, 40.0, 220.0, 255.0] cauda[0.0, 40.0, 220.0, 255.0] #1a62f8038cc7103e
+[l2] off 60×120 ev   Δmédio 0.000 máx 0
+[l2] off C[B,B]      branco[0.0, 40.0, 220.0, 255.0] bloco[0.0, 40.0, 220.0, 255.0] cauda[0.0, 40.0, 220.0, 255.0] #fe8cc43a9822783f · vs só Δmédio 0.546 máx 64
+[l2] off C[B,B] 60×120 Δmédio 0.000 máx 0
+[l2] off C[B.1,B.1]  branco[206.0, 213.0, 248.0, 255.0] bloco[162.0, 8.0, 42.0, 255.0] cauda[206.0, 213.0, 248.0, 255.0] #8a81af05e1ed8e9a · vs C[B,B] Δmédio 8.382 máx 206
+[l2] off C[S,B]      branco[0.0, 40.0, 220.0, 255.0] bloco[0.0, 40.0, 220.0, 255.0] cauda[0.0, 40.0, 220.0, 255.0] #5e887e371be10f98
+[l2] off receita     branco[229.0, 233.0, 251.0, 255.0] bloco[180.0, 4.0, 22.0, 255.0] cauda[229.0, 233.0, 251.0, 255.0] #b0044284cbb94841
+[l2] off receita B1  branco[1.0, 41.0, 220.0, 255.0] bloco[1.0, 40.0, 219.0, 255.0] cauda[1.0, 41.0, 220.0, 255.0] #81b370254f94dbec · Strength .1×1 Δmédio 7.763 máx 228
+[l2] off C[E,B]      branco[0.0, 40.0, 220.0, 0.0] bloco[0.0, 40.0, 220.0, 0.0] cauda[0.0, 40.0, 220.0, 0.0] #9aa85a524afb4433
+[l2] off C[B,E]      branco[0.0, 40.0, 220.0, 255.0] bloco[0.0, 40.0, 220.0, 255.0] cauda[0.0, 40.0, 220.0, 255.0] #2147a319d3f7d076
+
+[l2] ===== Oil Paint
+[l2] wet só          branco[156.0, 171.0, 241.0, 255.0] bloco[124.0, 57.0, 133.0, 255.0] cauda[133.0, 107.0, 184.0, 255.0] #cc03e398cd6e23d8
+[l2] wet 60×120 ev   Δmédio 0.000 máx 0
+[l2] wet C[B,B]      branco[100.0, 125.0, 233.0, 255.0] bloco[72.0, 37.0, 154.0, 255.0] cauda[82.0, 89.0, 207.0, 255.0] #f0d1ef0e021a6daf · vs só Δmédio 2.604 máx 106
+[l2] wet C[B,B] 60×120 Δmédio 0.496 máx 30
+[l2] wet C[B.1,B.1]  branco[238.0, 241.0, 253.0, 255.0] bloco[187.0, 4.0, 15.0, 255.0] cauda[238.0, 237.0, 249.0, 255.0] #287a674836cfc052 · vs C[B,B] Δmédio 6.587 máx 168
+[l2] wet C[S,B]      branco[178.0, 190.0, 244.0, 255.0] bloco[165.0, 179.0, 242.0, 255.0] cauda[143.0, 105.0, 173.0, 255.0] #74e96419fc9ffd4f
+[l2] wet receita     branco[60.0, 90.0, 228.0, 255.0] bloco[27.0, 63.0, 224.0, 255.0] cauda[24.0, 60.0, 223.0, 255.0] #084d8981453f6a21
+[l2] wet receita B1  branco[60.0, 90.0, 228.0, 255.0] bloco[27.0, 63.0, 224.0, 255.0] cauda[24.0, 60.0, 223.0, 255.0] #084d8981453f6a21 · Strength .1×1 Δmédio 0.000 máx 0
+[l2] wet C[E,B]      branco[56.0, 87.0, 227.0, 255.0] bloco[27.0, 62.0, 224.0, 255.0] cauda[24.0, 60.0, 223.0, 255.0] #76c9846a14713c3c
+[l2] wet C[B,E]      branco[109.0, 131.0, 235.0, 254.0] bloco[78.0, 34.0, 146.0, 254.0] cauda[92.0, 98.0, 209.0, 254.0] #cea59026708be55e
+[l2] off só          branco[0.0, 40.0, 221.0, 255.0] bloco[0.0, 40.0, 219.0, 255.0] cauda[0.0, 39.0, 218.0, 255.0] #ef7984613797483c
+[l2] off 60×120 ev   Δmédio 0.000 máx 0
+[l2] off C[B,B]      branco[0.0, 40.0, 221.0, 255.0] bloco[0.0, 40.0, 219.0, 255.0] cauda[0.0, 39.0, 218.0, 255.0] #66d6b7904ec7471d · vs só Δmédio 0.224 máx 64
+[l2] off C[B,B] 60×120 Δmédio 0.000 máx 0
+[l2] off C[B.1,B.1]  branco[206.0, 213.0, 249.0, 255.0] bloco[162.0, 8.0, 43.0, 255.0] cauda[206.0, 213.0, 248.0, 255.0] #e473041fe8d552a5 · vs C[B,B] Δmédio 9.255 máx 206
+[l2] off C[S,B]      branco[0.0, 40.0, 220.0, 255.0] bloco[0.0, 40.0, 220.0, 255.0] cauda[0.0, 40.0, 219.0, 255.0] #ab2bb002086dce7c
+[l2] off receita     branco[229.0, 233.0, 251.0, 255.0] bloco[180.0, 4.0, 22.0, 255.0] cauda[229.0, 233.0, 251.0, 255.0] #96b1f37b53fd0e7d
+[l2] off receita B1  branco[0.0, 40.0, 222.0, 255.0] bloco[0.0, 40.0, 219.0, 255.0] cauda[0.0, 40.0, 220.0, 255.0] #9bf66ab082201b41 · Strength .1×1 Δmédio 8.792 máx 229
+[l2] off C[E,B]      branco[0.0, 40.0, 221.0, 0.0] bloco[0.0, 40.0, 219.0, 0.0] cauda[0.0, 39.0, 218.0, 0.0] #cb36a6dc03fde438
+[l2] off C[B,E]      branco[0.0, 40.0, 221.0, 255.0] bloco[0.0, 40.0, 219.0, 255.0] cauda[0.0, 39.0, 218.0, 255.0] #ee172d6359e43fc0
+
+[l2] ===== Finger Tip
+[l2] wet só          branco[255.0, 255.0, 255.0, 255.0] bloco[221.0, 97.0, 97.0, 255.0] cauda[230.0, 138.0, 138.0, 255.0] #ae6fdb531a3e58cc
+[l2] wet 60×120 ev   Δmédio 0.000 máx 0
+[l2] wet C[B,B]      branco[255.0, 255.0, 255.0, 255.0] bloco[239.0, 181.0, 181.0, 255.0] cauda[237.0, 172.0, 172.0, 255.0] #f5899c3e3cf03940 · vs só Δmédio 1.983 máx 122
+[l2] wet C[B,B] 60×120 Δmédio 0.717 máx 34
+[l2] wet C[B.1,B.1]  branco[255.0, 255.0, 255.0, 255.0] bloco[200.0, 2.0, 2.0, 255.0] cauda[253.0, 248.0, 248.0, 255.0] #efd99cee788e9996 · vs C[B,B] Δmédio 4.524 máx 210
+[l2] wet C[S,B]      branco[255.0, 255.0, 255.0, 255.0] bloco[255.0, 255.0, 255.0, 255.0] cauda[255.0, 255.0, 255.0, 255.0] #ce28c0bb96c05a50
+[l2] wet receita     branco[255.0, 255.0, 255.0, 255.0] bloco[255.0, 255.0, 255.0, 255.0] cauda[255.0, 255.0, 255.0, 255.0] #b38c729b12cb2453
+[l2] wet receita B1  branco[255.0, 255.0, 255.0, 255.0] bloco[255.0, 255.0, 255.0, 255.0] cauda[255.0, 255.0, 255.0, 255.0] #b38c729b12cb2453 · Strength .1×1 Δmédio 0.000 máx 0
+[l2] wet C[E,B]      branco[255.0, 255.0, 255.0, 255.0] bloco[255.0, 255.0, 255.0, 255.0] cauda[255.0, 255.0, 255.0, 255.0] #b38c729b12cb2453
+[l2] wet C[B,E]      branco[255.0, 255.0, 255.0, 255.0] bloco[239.0, 181.0, 181.0, 255.0] cauda[237.0, 172.0, 172.0, 255.0] #1dc5e3662f26eaa8
+[l2] off só          branco[0.0, 40.0, 220.0, 255.0] bloco[0.0, 40.0, 220.0, 255.0] cauda[0.0, 40.0, 220.0, 255.0] #e564e5e95a536d09
+[l2] off 60×120 ev   Δmédio 0.000 máx 0
+[l2] off C[B,B]      branco[0.0, 40.0, 220.0, 255.0] bloco[0.0, 40.0, 220.0, 255.0] cauda[0.0, 40.0, 220.0, 255.0] #18daea88d5214278 · vs só Δmédio 0.344 máx 64
+[l2] off C[B,B] 60×120 Δmédio 0.000 máx 0
+[l2] off C[B.1,B.1]  branco[206.0, 213.0, 248.0, 255.0] bloco[162.0, 8.0, 42.0, 255.0] cauda[206.0, 213.0, 248.0, 255.0] #21b7b31f4dddb6ff · vs C[B,B] Δmédio 9.081 máx 211
+[l2] off C[S,B]      branco[0.0, 40.0, 220.0, 255.0] bloco[0.0, 40.0, 220.0, 255.0] cauda[0.0, 40.0, 220.0, 255.0] #772178342a276519
+[l2] off receita     branco[229.0, 233.0, 251.0, 255.0] bloco[180.0, 4.0, 22.0, 255.0] cauda[229.0, 233.0, 251.0, 255.0] #ead92329c5062e31
+[l2] off receita B1  branco[0.0, 40.0, 220.0, 255.0] bloco[0.0, 40.0, 220.0, 255.0] cauda[0.0, 40.0, 220.0, 255.0] #c954ad8ea2f133c5 · Strength .1×1 Δmédio 8.485 máx 229
+[l2] off C[E,B]      branco[0.0, 40.0, 220.0, 0.0] bloco[0.0, 40.0, 220.0, 0.0] cauda[0.0, 40.0, 220.0, 0.0] #031f195a408dd65f
+[l2] off C[B,E]      branco[0.0, 40.0, 220.0, 255.0] bloco[0.0, 40.0, 220.0, 255.0] cauda[0.0, 40.0, 220.0, 255.0] #ad63c9b4963d9a28
+test sonda_auditoria_composite_camadas::sonda_auditoria_lote2 ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 394 filtered out; finished in 7.68s
+
+EXIT 0

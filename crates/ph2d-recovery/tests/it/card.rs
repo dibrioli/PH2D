@@ -100,7 +100,7 @@ fn o_fecho_pergunta_save_dont_save_cancel_pelo_ponteiro() {
     let map = UiScaleMap::new(UiScale::P100);
     let screen = Rect::new(0.0, 0.0, 1280.0, 800.0);
     r.screen = Some((screen, map));
-    let q = card::quit_layout(screen);
+    let q = card::quit_rects(&r, screen);
     let (x, y) = centre(q.save);
     assert_eq!(card::click(&mut r, x, y), Some(Hit::Save));
     let (x, y) = centre(q.dont_save);
@@ -120,10 +120,45 @@ fn o_clique_le_o_cursor_do_ultimo_movimento_nao_a_posicao_velha() {
     r.quit = Quit::Asking("A".into());
     let screen = Rect::new(0.0, 0.0, 1280.0, 800.0);
     r.screen = Some((screen, UiScaleMap::new(UiScale::P100)));
-    let (x, y) = centre(card::quit_layout(screen).dont_save);
+    let (x, y) = centre(card::quit_rects(&r, screen).dont_save);
     r.hover(x, y);
     assert_eq!(card::click(&mut r, 1.0, 1.0), Some(Hit::DontSave));
     assert_eq!(r.quit, Quit::Go);
+}
+
+/// ⛔ O corpo do fecho era elidido numa linha («If you close without saving…», smoke 08/11): agora
+/// quebra, a janela cresce até ele caber, e o clique lê a MESMA disposição depois de pintar.
+#[test]
+fn o_corpo_do_fecho_quebra_e_a_janela_cresce_ate_caber() {
+    let mut r = Recovery::off();
+    r.quit = Quit::Asking("A long project name for the sprite sheet.ph2dproj".into());
+    let (screen, map) = (
+        Rect::new(0.0, 0.0, 1280.0, 800.0),
+        UiScaleMap::new(UiScale::P100),
+    );
+    let mut text = ph2d_text::TextSystem::new();
+    let mut scene = ph2d_vector::VectorScene::new();
+    card::paint(
+        &mut r,
+        screen,
+        map,
+        &mut scene,
+        &mut text,
+        ph2d_tokens::Theme::Dark,
+    );
+    let body = r.quit_body_h.expect("medido ao pintar");
+    let line = ph2d_tokens::TypeToken::Base.px();
+    assert!(
+        body > line * 2.0,
+        "o corpo quebrou em várias linhas: {body} px"
+    );
+    let q = card::quit_rects(&r, screen);
+    assert!(
+        q.save.y > q.dialog.y + body,
+        "os botões ficam abaixo do texto"
+    );
+    let (x, y) = centre(q.dont_save);
+    assert_eq!(card::click(&mut r, x, y), Some(Hit::DontSave));
 }
 
 /// «Today 14:32» · «Yesterday» · a data, em inglês; e a linha do cartão leva o tamanho.

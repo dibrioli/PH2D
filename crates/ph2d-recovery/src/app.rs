@@ -44,6 +44,9 @@ pub struct Recovery {
         ph2d_editor_core::zones::Rect,
         ph2d_editor_core::ui_scale::UiScaleMap,
     )>,
+    /// A altura do corpo da pergunta do fecho, medida (já quebrado) no último quadro pintado: a
+    /// janela cresce com o texto e o [`crate::card::click`] lê a MESMA disposição.
+    pub quit_body_h: Option<f32>,
 }
 
 /// O fecho da janela do app com alterações por gravar.
@@ -74,6 +77,7 @@ impl Recovery {
             released: false,
             cursor: None,
             screen: None,
+            quit_body_h: None,
         }
     }
 

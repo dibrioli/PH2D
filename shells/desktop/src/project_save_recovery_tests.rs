@@ -8,7 +8,7 @@ use winit::keyboard::{KeyCode, PhysicalKey};
 
 /// O clique pelo caminho REAL: o movimento e o botão SEM posição (o `MouseInput` não a traz).
 /// ⛔ O clique à mão com a posição no evento escondeu que a janela comia o movimento (08/11).
-fn clica(app: &mut crate::App, r: Rect) {
+fn clica(r: Rect, app: &mut crate::App) {
     let (x, y) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
     let evt = ph2d_pen::ponteiro::do_rato(x, y, PointerKind::Move, PointerButton::Primary, 0);
     app.pointer_moved(evt);
@@ -35,27 +35,27 @@ fn o_arranque_abre_a_janela_em_cartoes_esc_e_later_restore_pelo_ponteiro() {
     };
     let mut app = crate::App::new();
     abre(&mut app);
-    clica(&mut app, card::layout(screen, 2).later);
+    clica(card::layout(screen, 2).later, &mut app);
     assert!(!app.recovery.is_modal() && app.project_path.is_none());
     app.recovery.close();
     let mut app = crate::App::new();
     abre(&mut app);
-    clica(&mut app, card::layout(screen, 2).rows[0].discard);
+    clica(card::layout(screen, 2).rows[0].discard, &mut app);
     assert_eq!(app.recovery.prompt.entries.len(), 1, "Discard tira a linha");
-    clica(&mut app, card::layout(screen, 1).rows[0].restore);
+    clica(card::layout(screen, 1).rows[0].restore, &mut app);
     assert_eq!(app.project_path.as_deref(), Some(path));
     assert!(!app.recovery.is_modal(), "um Restore fecha a janela");
     // A pergunta do fecho (sem janela o App não serializa: `abrir_poe_a_linha_de_base…` no crate).
     let pergunta = |app: &mut crate::App| assert!(app.recovery.ask_quit(Some(b"novo"), Some(path)));
     pergunta(&mut app);
-    clica(&mut app, card::quit_layout(screen).cancel);
+    clica(card::quit_rects(&app.recovery, screen).cancel, &mut app);
     assert_eq!(app.recovery.quit, Quit::Idle, "Cancel fica");
     pergunta(&mut app);
     let esc = PhysicalKey::Code(KeyCode::Escape);
     assert!(app.modal_owns_the_keyboard(esc, ElementState::Pressed, false));
     assert_eq!(app.recovery.quit, Quit::Idle, "Esc = Cancel");
     pergunta(&mut app);
-    clica(&mut app, card::quit_layout(screen).dont_save);
+    clica(card::quit_rects(&app.recovery, screen).dont_save, &mut app);
     assert_eq!(app.recovery.quit, Quit::Go);
     assert!(!app.recovery_quit_guard(), "respondido, fecha");
     app.recovery.close();

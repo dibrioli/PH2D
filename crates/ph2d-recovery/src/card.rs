@@ -5,7 +5,7 @@
 //! manda o ponteiro e o `Esc` aqui antes de qualquer outro consumidor.
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_block, resolve};
 use ph2d_editor_core::widget::{Button, paint_button};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
@@ -72,12 +72,23 @@ pub struct QuitLayout {
     pub save: Rect,
 }
 
-/// A disposição da pergunta do fecho, centrada em `viewport`.
+/// A disposição da pergunta do fecho de `r` (o corpo à altura medida no último quadro).
 #[must_use]
-pub fn quit_layout(viewport: Rect) -> QuitLayout {
+pub fn quit_rects(r: &crate::Recovery, viewport: Rect) -> QuitLayout {
+    quit_layout(viewport, r.quit_body_h.unwrap_or_else(row_h))
+}
+
+/// A largura do texto dentro da janela de largura `w`.
+fn body_w(w: f32) -> f32 {
+    (w - Spacing::Lg.px() * 2.0).max(0.0)
+}
+
+/// A disposição da pergunta do fecho, centrada em `viewport`, com o corpo de altura `body_h`.
+#[must_use]
+pub fn quit_layout(viewport: Rect, body_h: f32) -> QuitLayout {
     let (pad, gap) = (Spacing::Lg.px(), Spacing::Md.px());
     let w = (Spacing::Xl4.px() * DIALOG_COLS).min(viewport.w);
-    let h = header_h() + row_h() + footer_h();
+    let h = header_h() + body_h + footer_h();
     let dialog = Rect::new(
         viewport.x + (viewport.w - w) * 0.5,
         viewport.y + (viewport.h - h).max(0.0) * 0.5,
@@ -114,7 +125,7 @@ pub fn click(r: &mut crate::Recovery, x: f32, y: f32) -> Option<Hit> {
     let got = if r.prompt.is_open() {
         hit(&layout(vp, r.prompt.entries.len()), lx, ly)
     } else {
-        let q = quit_layout(vp);
+        let q = quit_rects(r, vp);
         if q.save.contains(lx, ly) {
             Hit::Save
         } else if q.dont_save.contains(lx, ly) {
@@ -309,6 +320,26 @@ pub fn paint(
     }
     r.screen = Some((screen, map));
     let now = crate::now_secs();
+    // O corpo mede-se (quebrado) ANTES de dispor a janela: ela cresce até caber o texto todo.
+    r.quit_body_h = match &r.quit {
+        crate::Quit::Asking(name) if !r.prompt.is_open() => {
+            let vp = map.rect_to_logical(screen);
+            let w = body_w((Spacing::Xl4.px() * DIALOG_COLS).min(vp.w));
+            let h = paint_text_block(
+                text,
+                &mut VectorScene::new(),
+                &quit_body(name),
+                0.0,
+                0.0,
+                TypeToken::Base.px(),
+                w,
+                resolve(ColorToken::Text2, theme),
+            );
+            Some(h + Spacing::Md.px())
+        }
+        _ => None,
+    };
+    let body_h = r.quit_body_h.unwrap_or_else(row_h);
     ph2d_editor_core::ui_scale::pintar_no_chrome(map, screen, scene, |vp, cena| {
         cena.fill_rect(
             ph2d_editor_core::paint::rect_to_vello(vp),
@@ -317,23 +348,34 @@ pub fn paint(
         if r.prompt.is_open() {
             paint_prompt(&r.prompt, vp, now, cena, text, theme);
         } else if let crate::Quit::Asking(name) = &r.quit {
-            paint_quit(name, vp, cena, text, theme);
+            paint_quit(name, vp, body_h, cena, text, theme);
         }
     });
 }
 
-fn paint_quit(name: &str, vp: Rect, scene: &mut VectorScene, text: &mut TextSystem, theme: Theme) {
-    let q = quit_layout(vp);
+fn quit_body(name: &str) -> String {
+    tr_with("recovery.quit_body", &[("name", &name)])
+}
+
+fn paint_quit(
+    name: &str,
+    vp: Rect,
+    body_h: f32,
+    scene: &mut VectorScene,
+    text: &mut TextSystem,
+    theme: Theme,
+) {
+    let q = quit_layout(vp, body_h);
     frame(q.dialog, &tr("recovery.quit_title"), scene, text, theme);
-    let pad = Spacing::Lg.px();
-    paint_text(
+    // Quebra em linhas (como o corpo de toda janela do app): nunca elide uma frase.
+    paint_text_block(
         text,
         scene,
-        &tr_with("recovery.quit_body", &[("name", &name)]),
-        q.dialog.x + pad,
+        &quit_body(name),
+        q.dialog.x + Spacing::Lg.px(),
         q.dialog.y + header_h(),
         TypeToken::Base.px(),
-        q.dialog.w - pad * 2.0,
+        body_w(q.dialog.w),
         resolve(ColorToken::Text2, theme),
     );
     let buttons = [

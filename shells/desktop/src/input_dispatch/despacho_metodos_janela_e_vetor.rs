@@ -34,7 +34,7 @@ impl crate::App {
     }
 
     pub(crate) fn on_close_request(&mut self, event_loop: &ActiveEventLoop) {
-        if self.recovery_quit_guard() {
+        if self.exiting || self.recovery_quit_guard() {
             return;
         }
         match self.handler.on_close_request() {

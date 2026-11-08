@@ -82,10 +82,15 @@ pub enum Dependente {
     MisturaDesligada,
     // O ponto fixo (dono 08/11) só age num pincel que espalha marcas (`DabJitter::espalha`): Count > 1 ou Scatter.
     PontoFixoSemEspalhar,
+    // O Grain «Same as Paper» com Paper: None não tem grão (dono 08/11, `poe_o_papel_como_grain`): a Depth, a lei do
+    // grão e as Grain Colors não têm o que ler até se escolher um papel.
+    GraoDoPapelSemPapel,
+    // …e a própria caixa: sem papel e sem Grain próprio, ligá-la ou desligá-la não muda o traço.
+    CaixaDoPapelSemPapel,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 50] = [
+    pub const TODOS: [Dependente; 52] = [
         Dependente::ForaDaPontaDePixel,
         Dependente::TaperTip,
         Dependente::TaperOpacity,
@@ -102,6 +107,8 @@ impl Dependente {
         Dependente::ToothDoDigital,
         Dependente::BordaSemTilt,
         Dependente::SemPapel,
+        Dependente::GraoDoPapelSemPapel,
+        Dependente::CaixaDoPapelSemPapel,
         Dependente::QuandoDoRandomize,
         Dependente::CerdasDaAgua,
         Dependente::FollowSemNada,
@@ -226,6 +233,14 @@ impl Dependente {
                 &[ids::PAINTER_PONTA_FIELDS[2], ids::PAINTER_PONTA_FIELDS[4]]
             }
             Dependente::DualForaDoDigital | Dependente::DualForaDoTraco => &DUAL,
+            Dependente::CaixaDoPapelSemPapel => &[ids::PAINTER_BRUSH_GRAIN_SAME_AS_PAPER],
+            Dependente::GraoDoPapelSemPapel => &[
+                ids::PAINTER_PONTA_FIELDS[1],
+                ids::PAINTER_PONTA_FIELDS[2],
+                ids::PAINTER_PONTA_FIELDS[3],
+                ids::PAINTER_PONTA_FIELDS[4],
+                ids::PAINTER_BRUSH_TEXTURE_RAMP_ENABLE,
+            ],
             // Min/Max pressure, Smoothing e a curva em S: o caminho da pressão que todo leitor dela lê.
             Dependente::MaoSemPressao => &[
                 ids::PAINTER_PEN_FIELDS[4],
@@ -271,7 +286,9 @@ impl Dependente {
             Dependente::EraseDaAgua => "panel.painter_layers.inerte.eraser_on",
             Dependente::ToothDoDigital => "panel.painter_layers.inerte.relief_and_no_grain",
             Dependente::BordaSemTilt => "panel.painter_layers.inerte.tilt_on",
-            Dependente::SemPapel => "panel.painter_layers.inerte.paper_chosen",
+            Dependente::SemPapel
+            | Dependente::GraoDoPapelSemPapel
+            | Dependente::CaixaDoPapelSemPapel => "panel.painter_layers.inerte.paper_chosen",
             Dependente::QuandoDoRandomize => "panel.painter_layers.inerte.randomize_above_zero",
             Dependente::CerdasDaAgua => "panel.painter_layers.inerte.bristles_no_grain",
             Dependente::FollowSemNada => "panel.painter_layers.inerte.follow_nothing_to_turn",

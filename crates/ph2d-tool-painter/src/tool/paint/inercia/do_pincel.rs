@@ -55,10 +55,19 @@ impl PainterTool {
             (Dependente::SpaceAttenuation, !b.space_attenuation_reaches()),
             (Dependente::JitterUnit, !b.jitter_unit_matters()),
             (Dependente::DashLength, !b.dash_length_matters()),
-            // O «Same as Paper» lê a Roughness como o contraste do grão (`ganho_do_dente`), com ou sem relevo à vista.
+            // O «Same as Paper» lê a Roughness como o contraste do grão (`ganho_do_dente`), com ou sem relevo à vista —
+            // só com um papel escolhido: sem papel não há grão (`poe_o_papel_como_grain`, dono 08/11).
             (
                 Dependente::PaperRoughness,
-                self.substrate().is_none() && !self.grao_e_o_papel(),
+                self.substrate().is_none() && !(self.grao_e_o_papel() && b.paper.is_active()),
+            ),
+            (
+                Dependente::GraoDoPapelSemPapel,
+                self.grao_e_o_papel() && !b.paper.is_active(),
+            ),
+            (
+                Dependente::CaixaDoPapelSemPapel,
+                !aquarela && !b.paper.is_active() && !b.texture.is_active(),
             ),
             // Com o «Same as Paper» o papel escolhido É o grão do pincel, com ou sem relevo à vista.
             (

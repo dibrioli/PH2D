@@ -249,8 +249,10 @@ fn o_same_as_paper_do_grain_aceita_o_clique_real_nos_tres_meios() {
                 .any(|(i, _)| *i == PAINTER_BRUSH_TEXTURE_KIND),
             "{meio:?}: o grão próprio já está escondido antes do clique"
         );
-        let (base, _) = ensaio(meio, &[], &Gesto::Nenhum);
-        let (com, entrega) = ensaio(meio, &[], &Gesto::Clique(caixa));
+        // O traço só muda com um papel escolhido: com Paper None não há grão (dono 08/11, `same_as_paper_nunca_muda_o_paper`).
+        let papel = [papel_cold()];
+        let (base, _) = ensaio(meio, &papel, &Gesto::Nenhum);
+        let (com, entrega) = ensaio(meio, &papel, &Gesto::Clique(caixa));
         assert!(
             entrega.ao_tool > 0 && entrega.ajuste_mudou,
             "{meio:?}: o clique na caixa não chegou à ferramenta (ao_tool={})",
@@ -298,5 +300,92 @@ fn armar_o_grain_pelo_menu_nao_muda_a_quantidade_no_wet() {
         eprintln!("GRAIN-MENU\t{k}\tn={n}\tecra={razao:.3}");
         assert!(n > 0, "{k}: o grão não pintou");
         assert!((0.9..1.1).contains(&razao), "{k}: ecrã {razao:.3}×");
+    }
+}
+
+/// O Paper escolhido pelo menu do cartão Paper (`k` = `TextureKind::to_u8`).
+fn papel_do_menu(k: u8) -> Gesto {
+    Gesto::Opcao(
+        PAINTER_WATERCOLOR_PAPER_KIND,
+        painter_paper_kind_option_id(k),
+        0,
+        0,
+    )
+}
+
+/// Paper: Cold (`TextureKind::PaperCold`).
+fn papel_cold() -> Gesto {
+    papel_do_menu(26)
+}
+
+/// **A caixa «Same as Paper» do Grain NUNCA muda o Paper** (dono 08/11: *«marcar Same as Paper colocou uma textura no
+/// Paper. Isso não deveria acontecer»*). Em cada meio que a oferece, com Paper None: marcar e desmarcar deixam o Paper em
+/// None (o menu, as linhas do padrão) e a tinta é, ao texel, a de sem a caixa — nenhum dente do papel de reserva
+/// (`default_paper`, o Cold) aparece. Com um papel escolhido, a caixa também não o troca. Sem papel, a caixa, a lei do grão e a
+/// Roughness esmaecem com a dica «Acts when a Paper is chosen» (`Dependente::CaixaDoPapelSemPapel`, `GraoDoPapelSemPapel`, `PaperRoughness`).
+///
+/// Mecanismo: `PainterTool::poe_o_papel_como_grain` (`dab_spec.rs`) fazia do papel de reserva o grão do traço quando o
+/// artista não escolhera papel — a textura «no papel» era a do Cold, que o cartão Paper não mostra. **Mutações que
+/// sangram:** tirar o ramo `!brush.paper.is_active()` desse método (a tinta difere em milhares de texels); a lei
+/// `GraoDoPapelSemPapel` a `false` em `inercia/do_pincel.rs` (a lei do grão não esmaece).
+#[test]
+fn same_as_paper_nunca_muda_o_paper() {
+    let caixa = Gesto::Clique(PAINTER_BRUSH_GRAIN_SAME_AS_PAPER);
+    let none = papel_do_menu(0);
+    for meio in [
+        PaintMedia::Digital,
+        PaintMedia::Impasto,
+        PaintMedia::WetPaint,
+    ] {
+        for (papel, kind) in [(none.clone(), 0u8), (papel_cold(), 26)] {
+            for cliques in 1..=2 {
+                let mut armar = vec![papel.clone()];
+                armar.extend(std::iter::repeat_n(caixa.clone(), cliques));
+                let b = Bancada::nova(meio, &armar);
+                let s = b.tool.brush_settings();
+                assert_eq!(
+                    s.grain_same_as_paper,
+                    cliques == 1,
+                    "{meio:?}: a caixa não alternou"
+                );
+                assert_eq!(
+                    s.paper_kind, kind,
+                    "{meio:?}, Paper {kind}, {cliques} clique(s): a caixa mudou o Paper para {}",
+                    s.paper_kind
+                );
+                let padrao = b
+                    .rects()
+                    .iter()
+                    .any(|(i, _)| *i == PAINTER_WATERCOLOR_PAPER_ANGLE);
+                assert_eq!(
+                    padrao,
+                    kind != 0,
+                    "{meio:?}, Paper {kind}, {cliques} clique(s): o cartão Paper mostra o padrão = {padrao}"
+                );
+                // Sem papel a caixa não tem efeito, e a UI di-lo: a caixa, a lei do grão e a Roughness esmaecem com a dica.
+                let inerte = |id| s.inercias.dica_de(id).is_some();
+                if cliques == 1 {
+                    for id in [
+                        PAINTER_BRUSH_GRAIN_SAME_AS_PAPER,
+                        PAINTER_PONTA_FIELDS[1],
+                        PAINTER_SUBSTRATE_ROUGHNESS,
+                    ] {
+                        assert_eq!(
+                            inerte(id),
+                            kind == 0,
+                            "{meio:?}, Paper {kind}: {id:?} esmaecida = {}",
+                            inerte(id)
+                        );
+                    }
+                }
+            }
+        }
+        let (sem, _) = ensaio(meio, &[none.clone()], &Gesto::Nenhum);
+        let (com, _) = ensaio(meio, &[none.clone()], &caixa);
+        let n = diferenca(&sem, &com).0;
+        assert_eq!(
+            n, 0,
+            "{meio:?}: com Paper None, marcar «Same as Paper» pôs uma textura na tinta ({n} texels)"
+        );
     }
 }

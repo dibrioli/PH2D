@@ -344,3 +344,29 @@ pub const STEPS_11: &[&[Gesture]] = &[
         Gesture::Frame,
     ],
 ];
+
+/// A linha do ponto de parada da cena 12 (a mesma agulha do `ph2d_app_components::code_smoke`).
+pub(super) const DEPURA_BREAK: &str = "local swing = ";
+
+/// ⭐ **Cena 12 — o depurador** (Onda D): o jogo pára no ponto que a cena traz; Continue passa ao
+/// objecto seguinte; tirado o ponto, os valores ao vivo aparecem.
+pub const STEPS_12: &[&[Gesture]] = &[
+    // 1 — parado no Circle: a seta, a faixa e o cartão «Stopped» com as variáveis.
+    &[Gesture::Wait(Until::Stopped("Circle"))],
+    // 2 — Continue: o mesmo ponto, agora na Star.
+    &[
+        Gesture::ClickDebug(0),
+        Gesture::Frame,
+        Gesture::Wait(Until::Stopped("Star")),
+    ],
+    // 3 — o ponto sai (clique na marca) e Continue: o jogo corre e os valores aparecem.
+    &[
+        Gesture::ClickMark {
+            needle: DEPURA_BREAK,
+        },
+        Gesture::Frame,
+        Gesture::ClickDebug(0),
+        Gesture::Frame,
+        Gesture::Wait(Until::Live),
+    ],
+];

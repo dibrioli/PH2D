@@ -41,6 +41,9 @@
 //!   [`ONDA_A_LUAU`]: cada segundo cada uma imprime as moedas (o Console diz «Circle · 0:01»); aos 3 s
 //!   o `self.sped` pára as três e os Problems mostram UMA linha com os três nomes e «×3», fundida com
 //!   o aviso do texto da mesma linha.
+//! - **12** — o depurador (Onda D, doc 13 §4): as três formas correm o [`DEPURA_LUAU`], aberto numa
+//!   aba com um ponto de parada já posto (o condutor põe-no); o jogo pára no Circle, o Continue passa
+//!   à Star; tirado o ponto, os valores ao vivo aparecem no fim das linhas.
 
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_script::{LuauScript, ProjectScripts, ScriptEditRequests, ScriptId, ScriptValue};
@@ -48,7 +51,7 @@ use ph2d_vec_entities::entities::{VecEntityMap, sync};
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecScene, ellipse, rectangle, regular_polygon, star};
 
 /// Quantas cenas este roteador serve — o `max_level` do roteador da família (conferido em teste).
-pub const CENAS: u32 = 11;
+pub const CENAS: u32 = 12;
 
 /// O nome do script das formas nos scripts do projeto.
 pub const BOB_NAME: &str = "bob.luau";
@@ -139,6 +142,31 @@ function update(self, dt)
   if self.t > 3 then
     ph2d.set(self.id, "x", self.t * self.sped) -- the typo: "sped" should be "speed"
   end
+end
+"#;
+
+/// O nome do script do nível 12.
+pub const DEPURA_NAME: &str = "depura.luau";
+
+/// A linha onde o condutor da cena 12 põe o ponto de parada (`ph2d_app_code::smoke_drive`).
+pub const DEPURA_BREAK: &str = "local swing = ";
+
+/// ⭐ **O script do nível 12** (comentários em inglês: o app é só inglês).
+pub const DEPURA_LUAU: &str = r#"-- depura.luau: Circle, Star and Hexagon all run THIS script.
+-- The red dot left of "local swing" is a breakpoint: the game stops there,
+-- and the Stopped card below shows the values. Continue (F8) goes to the next
+-- shape; Next line (F10) walks one line. Click the red dot (or F9) to remove it:
+-- then the values show at the end of each line while the game runs.
+function init(self)
+  self.base_x = ph2d.get(self.id, "x")
+  self.t = 0
+  self.step = 1
+end
+
+function update(self, dt)
+  self.t = self.t + dt
+  local swing = math.sin(self.t * 2) * self.step
+  ph2d.set(self.id, "x", self.base_x + swing)
 end
 "#;
 
@@ -341,6 +369,7 @@ pub fn monta_em(
             4 => lib.insert(PROBLEMAS_NAME, PROBLEMAS_LUAU),
             5 => lib.insert(AJUDA_NAME, AJUDA_LUAU),
             11 => lib.insert(ONDA_A_NAME, ONDA_A_LUAU),
+            12 => lib.insert(DEPURA_NAME, DEPURA_LUAU),
             _ => lib.insert(BOB_NAME, BOB_LUAU),
         };
         let broken = (nivel == 2).then(|| lib.insert(BROKEN_NAME, BROKEN_LUAU));
@@ -381,7 +410,7 @@ pub fn monta_em(
         }
         out.push(e);
     }
-    if let Some(aberto) = broken.or(((3..=5).contains(&nivel) || nivel == 11).then_some(bob)) {
+    if let Some(aberto) = broken.or(((3..=5).contains(&nivel) || nivel >= 11).then_some(bob)) {
         sim.world_mut()
             .get_resource_or_init::<ScriptEditRequests>()
             .0
@@ -608,6 +637,16 @@ pub fn montar(cx: crate::scene_ctx::SceneCtx<'_>, nivel: u32) -> Option<u64> {
              aberto numa aba. Play: cada segundo o Console mostra «coins: N» com «Circle · 0:01»; aos \
              3 s as três param e os Problems abrem com UMA linha: «… — on Circle, Star, Hexagon · ×3 \
              in Play».",
+            formas.len()
+        );
+        return None;
+    }
+    if nivel == 12 {
+        println!(
+            "[code-smoke] =12 {} formas: o círculo, a estrela e o hexágono correm o depura.luau, já \
+             aberto numa aba com um ponto vermelho na linha «local swing». O jogo pára no Circle: \
+             o cartão «Stopped» mostra as variáveis; Continue passa à Star; clique no ponto para o \
+             tirar e Continue: os valores aparecem no fim das linhas.",
             formas.len()
         );
         return None;

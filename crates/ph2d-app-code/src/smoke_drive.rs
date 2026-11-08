@@ -66,6 +66,12 @@ pub enum Gesture {
     PointTabMenuRow(usize),
     /// Um clique na engrenagem da barra (o cartão «Script options»).
     ClickGear,
+    /// Um clique no botão `k` do cartão «Stopped» (0 = Continue, 1 = Next line).
+    ClickDebug(usize),
+    /// Um clique na coluna das marcas (o ponto de parada) da linha da 1.ª `needle`.
+    ClickMark {
+        needle: &'static str,
+    },
     /// O botão direito sobre o carácter `ahead` bytes depois da 1.ª `needle` (o menu do item 14).
     RightClick {
         needle: &'static str,
@@ -127,6 +133,10 @@ pub enum Until {
     Checked,
     /// A busca da página activa contou (o «1 of N»).
     Found,
+    /// O jogo parado neste script, com o título do cartão a conter o texto («on Star»).
+    Stopped(&'static str),
+    /// Valores ao vivo pintados no fim de alguma linha, e o jogo a correr.
+    Live,
     /// Nada sublinhado e o ponteiro sobre o carácter `ahead` depois de `needle` não é a mão.
     Plain { needle: &'static str, ahead: usize },
 }
@@ -134,7 +144,7 @@ pub enum Until {
 #[path = "smoke_steps.rs"]
 mod roteiros;
 use roteiros::NONE;
-pub use roteiros::{STEPS, STEPS_4, STEPS_5, STEPS_10, STEPS_11};
+pub use roteiros::{STEPS, STEPS_4, STEPS_5, STEPS_10, STEPS_11, STEPS_12};
 
 /// O roteiro da cena `level` (`None` = a cena não tem fotos conduzidas).
 #[must_use]
@@ -145,6 +155,7 @@ pub fn steps(level: u32) -> Option<&'static [&'static [Gesture]]> {
         5 => Some(STEPS_5),
         10 => Some(STEPS_10),
         11 => Some(STEPS_11),
+        12 => Some(STEPS_12),
         _ => None,
     }
 }
@@ -227,6 +238,7 @@ impl Conductor {
 pub(crate) fn frame(docs: &mut CodeDocs) -> (bool, Option<bool>) {
     static DRIVE: OnceLock<Mutex<Conductor>> = OnceLock::new();
     static SHOWN: AtomicBool = AtomicBool::new(false);
+    preset_breakpoint(docs);
     let Some((level, n)) = armed_step() else {
         return (false, None);
     };
@@ -345,6 +357,15 @@ fn holds(docs: &mut CodeDocs, id: ScriptId, until: Until) -> bool {
                 })
         }
         Until::Script => docs.active == Some(id.0),
+        Until::Stopped(s) => docs.docs.iter().any(|d| {
+            d.script == id
+                && d.is_stopped_here()
+                && d.debug.card.as_ref().is_some_and(|c| c.title.contains(s))
+        }),
+        Until::Live => docs
+            .docs
+            .iter()
+            .any(|d| d.script == id && !d.is_stopped_here() && !d.debug.ghosts.is_empty()),
         Until::Checked => docs.assist_diagnostics(id).1.is_some(),
         Until::Found => docs
             .active
@@ -455,10 +476,15 @@ fn act(docs: &mut CodeDocs, id: ScriptId, g: Gesture) -> bool {
         Gesture::ClickProblem(_)
         | Gesture::ClickBandTab(_)
         | Gesture::ClickTabMenu(_)
-        | Gesture::ClickGear => {
+        | Gesture::ClickGear
+        | Gesture::ClickDebug(_)
+        | Gesture::ClickMark { .. } => {
             let band = docs.band_of(id);
             let bar = docs.bar_painted();
+            let doc = docs.docs.iter().find(|d| d.script == id);
             let r = match g {
+                Gesture::ClickDebug(k) => doc.and_then(|d| d.debug.painted.get(k).map(|b| b.1)),
+                Gesture::ClickMark { needle } => doc.and_then(|d| d.mark_rect_of(needle)),
                 Gesture::ClickProblem(k) => band.and_then(|b| b.problems.get(k).map(|p| p.rect)),
                 Gesture::ClickBandTab(k) => band.and_then(|b| b.tabs.get(k).map(|t| t.1)),
                 Gesture::ClickTabMenu(k) => bar.titles.get(k).map(|t| t.1),
@@ -550,4 +576,26 @@ fn key(docs: &mut CodeDocs, tab: u64, key: Key, mods: Modifiers, text: Option<&s
         paste: None,
     };
     let _ = docs.key(tab, &mut ts, input);
+}
+
+/// Cena 12: o ponto de parada que a cena traz, posto UMA vez quando a aba do `depura.luau` abre
+/// (a cena mora na `ph2d-app-components`, que não chega ao `ScriptHost`).
+fn preset_breakpoint(docs: &mut CodeDocs) {
+    static DONE: AtomicBool = AtomicBool::new(false);
+    if crate::smoke::armed_level() != Some(12) || DONE.load(Ordering::Relaxed) {
+        return;
+    }
+    let needle = roteiros::DEPURA_BREAK;
+    let Some(d) = docs
+        .docs
+        .iter_mut()
+        .find(|d| d.buffer.text().to_string().contains(needle))
+    else {
+        return;
+    };
+    let text = d.buffer.text().to_string();
+    let Some(at) = text.find(needle) else { return };
+    let line = text[..at].matches('\n').count();
+    d.toggle_breakpoint(line);
+    DONE.store(true, Ordering::Relaxed);
 }

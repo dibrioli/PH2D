@@ -23,6 +23,10 @@ pub(crate) fn paint(ctx: &mut PaintCtx) {
         AREA.set(Some((area, true)));
     }
     pairar_da_foto(ctx);
+    // Sem pergunta, a lista do destino não fica aberta (nenhum caminho que a acaba a deixa presa).
+    if super::removendo().is_none() {
+        super::remove::fecha_a_lista(ctx.host.store_mut());
+    }
     let q = Quadro::de(ctx, area);
     let canto = Rect::new(q.g.x, q.g.y, q.g.rotulo_w, q.g.rotulo_w);
     // O losango da matriz (canal MUNDO `CAMADAS`): UM, no canto dos rótulos.

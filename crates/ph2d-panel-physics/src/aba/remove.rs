@@ -270,6 +270,11 @@ pub(super) fn pinta_a_lista(ctx: &mut PaintCtx, q: &super::quadro::Quadro, p: &P
         }
         let tinta = ph2d_editor_core::widget::resolve_opaque(row.ink(), theme);
         paint_text_centered(texto, cena, &q.rotulos[d], row.rect, q.font, tinta);
+        if row.selected {
+            // A ✓ da escolhida: no cartão o realce da linha é discreto (a mesma marca das caixinhas).
+            let b = Rect::new(row.rect.x, row.rect.y, Spacing::Lg.px(), row.rect.h);
+            paint_text_centered(texto, cena, tr("card.physics.tab_check"), b, q.font, tinta);
+        }
         ph2d_editor_core::paint::paint_layer_outline(
             cena,
             theme,
@@ -280,7 +285,11 @@ pub(super) fn pinta_a_lista(ctx: &mut PaintCtx, q: &super::quadro::Quadro, p: &P
             true,
         );
     };
+    // Os alvos das linhas vão por cima dos da caixa da pergunta (senão «Move and remove», por baixo da lista,
+    // ganharia o clique numa linha).
+    let marca = ctx.host.store_and_hit_index_mut().1.len();
     paint_dropdown_list(ctx, &dd, p.chip, q.area, theme, Some(&mut linha));
+    camada_das_listas::alvos_desde(ctx.host.store_and_hit_index_mut().1, marca);
 }
 
 /// O fundo da caixa da pergunta: `DangerSoft`; num tema em que o texto forte não se lê nele a

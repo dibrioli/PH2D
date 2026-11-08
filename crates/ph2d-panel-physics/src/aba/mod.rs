@@ -86,6 +86,8 @@ pub fn abre(camada: Option<usize>) {
     }
     EDITANDO.set(None);
     NOVA.set(None);
+    // A pergunta do «Remove» era da camada de antes (auditoria do fecho: remover a 2 para a 2).
+    REMOVENDO.set(None);
 }
 
 /// Fecha a aba (o × da barra de abas). Um nome a meio perde-se.
@@ -93,6 +95,7 @@ pub fn fecha() {
     ABERTA.set(false);
     PEDIDO.set(false);
     EDITANDO.set(None);
+    REMOVENDO.set(None);
     NOVA.set(None);
     AREA.set(None);
     ROLAGEM.set((0, 0));

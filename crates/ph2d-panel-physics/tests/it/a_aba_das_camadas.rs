@@ -1025,3 +1025,33 @@ fn a_grade_que_rola_tem_barras_que_acompanham_a_roda_e_se_arrastam() {
     assert!(!aba::agarra(ultima.x, ultima.y));
     aba::fecha();
 }
+
+/// Auditoria do fecho (08/11): a pergunta do «Remove» é da camada aberta — abrir a aba noutra camada (o
+/// «Open in tab…» do Inspector) desiste dela, e a lista do destino não fica aberta sem pergunta. Antes: remover a 2
+/// para a 2. Mutação: tirar o `REMOVENDO.set(None)` de `abre`.
+#[test]
+fn abrir_a_aba_noutra_camada_desiste_da_pergunta_do_remove() {
+    let mut mesa = Mesa::nova(nomes_b(), false);
+    let mut contagens = [0; MAX_LAYERS];
+    contagens[2] = 1;
+    ph2d_panel_physics::set_layer_counts(contagens);
+    aba::abre(Some(2));
+    aba::poe_area_fixa(AREA);
+    mesa.pinta();
+    let _ = mesa.clica(ids::PHYSICS_LAYER_REMOVE);
+    mesa.pinta();
+    let _ = mesa.clica(ids::PHYSICS_LAYER_MOVE_PICK);
+    mesa.pinta();
+    let _ = mesa.clica(ids::PHYSICS_LAYER_MOVE_TO[1]);
+    mesa.pinta();
+    assert_eq!(aba::removendo(), Some(1));
+    aba::abre(Some(1));
+    mesa.pinta();
+    assert_eq!(aba::removendo(), None, "a pergunta era da Enemy");
+    assert!(
+        mesa.rect(ids::PHYSICS_LAYER_MOVE_OK).is_none(),
+        "sem «Move and remove»"
+    );
+    assert!(mesa.host.drained_actions().is_empty(), "nada removido");
+    aba::fecha();
+}

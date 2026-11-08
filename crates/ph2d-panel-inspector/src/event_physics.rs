@@ -24,7 +24,10 @@ fn nome_da_camada(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
         ph2d_editor_core::interaction::dispatch::focus_text_field_selected(store, campos[camada]);
     };
     match ev {
-        WidgetEvent::DoubleClick(id) if id == crate::ids::INSP_PHYS_LAYER_PICK => {
+        // Só no cartão: a face clássica não pinta os campos do renomear (o foco ficaria num campo invisível).
+        WidgetEvent::DoubleClick(id)
+            if id == crate::ids::INSP_PHYS_LAYER_PICK && crate::cards::active() =>
+        {
             if let Some(ph2d_editor_core::interaction::InteractiveState::Dropdown {
                 open, ..
             }) = host.store_mut().get_mut(id)

@@ -227,7 +227,10 @@ fn opcoes(camada: u8) -> Vec<DropdownOption<u8>> {
     ids::INSP_PHYS_LAYER
         .iter()
         .enumerate()
-        .filter(|&(i, _)| camadas::visivel(i) || usize::from(camada) == i)
+        // A face clássica guarda o alcance dos seus 8 chips de antes (0–7), em uso ou não.
+        .filter(|&(i, _)| {
+            camadas::visivel(i) || usize::from(camada) == i || (!crate::cards::active() && i < 8)
+        })
         // A lista do seletor mostra o nome INTEIRO (a largura dela cresce com a opção mais longa; onda 9e).
         .map(|(i, &id)| DropdownOption::new(id, i as u8, camadas::rotulo_inteiro(i)))
         .collect()

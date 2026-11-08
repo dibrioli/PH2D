@@ -219,8 +219,9 @@ fn evento_do_nome(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<b
         WidgetEvent::Click(id) if id == crate::ids::PHYSICS_LAYER_MOVE_OK => {
             seam_reset_button(host, id);
             crate::aba::fecha_a_lista(host.store_mut());
-            if let Some(d) = crate::aba::removendo() {
-                remove_a_camada(host, crate::aba::camada_aberta(), d);
+            let n = crate::aba::camada_aberta();
+            if let Some(d) = crate::aba::removendo().filter(|&d| n != 0 && d != n) {
+                remove_a_camada(host, n, d);
             }
             Some(true)
         }

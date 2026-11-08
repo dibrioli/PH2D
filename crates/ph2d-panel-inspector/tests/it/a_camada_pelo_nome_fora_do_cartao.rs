@@ -59,6 +59,45 @@ fn a_face_classica_escolhe_a_camada_pelo_nome_em_todas_as_visiveis() {
         PhysicsFieldEdit::Layer(20),
         "a camada 20 pela lista da face clássica",
     );
+    // E as 0–7 de antes, mesmo sem uso (a 5 não é visível): o alcance dos 8 chips não se perde.
+    let mut info5 = with_body();
+    info5.layer = 2;
+    expect(
+        &click_real(info5, INSP_PHYS_LAYER[5]),
+        PhysicsFieldEdit::Layer(5),
+        "a camada 5, sem uso, pela lista da face clássica",
+    );
+    fim();
+}
+
+/// Na face clássica o duplo clique no seletor não abre o renomear (ela não pinta esses campos: o foco ficaria
+/// num campo invisível a engolir o teclado). Mutação: tirar a guarda `cards::active()`.
+#[test]
+fn na_face_classica_o_duplo_clique_na_layer_nao_abre_um_campo_invisivel() {
+    use ph2d_editor_core::interaction::WidgetEvent;
+    set_cards_on(false);
+    mundo();
+    let mut host = crate::host_em_metros();
+    let mut state = InspectorState::default();
+    set_current_inspector_physics(Some(with_body()));
+    let _ = host.paint::<InspectorPanel>(&mut state, Rect::new(0.0, 0.0, 320.0, 2400.0));
+    let antes = host.store().is_collapsed(INSP_PHYS_LAYER_RENAMING);
+    let _ = host.apply_panel_event::<InspectorPanel>(
+        &mut state,
+        WidgetEvent::DoubleClick(INSP_PHYS_LAYER_PICK),
+    );
+    assert_eq!(
+        host.store().is_collapsed(INSP_PHYS_LAYER_RENAMING),
+        antes,
+        "nada de renomear invisível"
+    );
+    assert!(
+        !INSP_PHYS_LAYER_NAMES
+            .iter()
+            .any(|&c| host.store().focus_id() == Some(c)),
+        "o teclado não vai para um campo que não se vê"
+    );
+    set_current_inspector_physics(None);
     fim();
 }
 

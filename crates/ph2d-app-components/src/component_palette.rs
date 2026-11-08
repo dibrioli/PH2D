@@ -19,20 +19,18 @@
 //! lista e ⛔ nunca um no-op silencioso ao clique. *Um componente que existe e é invisível lê-se
 //! como defeito; um que aceita o clique e não faz nada é a DIRETIVA §2 violada.*
 //!
-//! # ⚠️ As cores são REAPROVEITADAS, e isso é uma pergunta em aberto para o Enio
+//! # Os 11 assuntos (plano GameEngineFuncional 25)
 //!
-//! Há **12** categorias de componente ([`ComponentCategory::ALL`]) e **7** tokens `NodeCat*` no
-//! design system. Este módulo mapeia 12 → 7 com a tabela abaixo, em vez de inventar cinco cores —
-//! *escolher cor é decisão de design (§7 do CLAUDE.md), não de quem está a ligar o botão*. A
-//! consequência visível é que pares de categorias partilham tinta; se isso incomodar no smoke, a
-//! cura é acrescentar tokens ao `ph2d-tokens`, não escrever hex aqui (HR-15).
+//! Grupos, ordem, dicas e desenhos são DADOS em [`ph2d_game_dicas::componente`]; o catálogo
+//! (`ComponentCategory`) não muda. O gesto é o do Add Object: 1 clique destaca, 2 escolhem.
 
-use ph2d_component_desc::{Attach, ComponentCategory as C, ComponentDesc, ObjectKind, ObjectKinds};
+use ph2d_component_desc::{Attach, ComponentDesc, ObjectKind, ObjectKinds};
 use ph2d_editor_core::NodeId;
 use ph2d_editor_core::widget::command_palette::{
-    PaletteGroup, PaletteItem, PaletteModel, PaletteSub,
+    PaletteGroup, PaletteItem, PaletteModel, PaletteSelect, PaletteSub, PaletteTeach, PaletteTip,
 };
-use ph2d_tokens::ColorToken;
+use ph2d_game_dicas::componente::{self as cd, Assunto};
+use ph2d_i18n::tr;
 
 /// O id de item de um componente na paleta — o hash do **nome canónico**.
 ///
@@ -41,59 +39,6 @@ use ph2d_tokens::ColorToken;
 #[must_use]
 pub const fn item_id(canonical_name: &'static str) -> NodeId {
     ph2d_tool_registry::hash_node_id(canonical_name)
-}
-
-/// A tinta de cada categoria. ⚠️ Ver a nota do módulo: **16** categorias, 7 tokens.
-fn cat_token(c: C) -> ColorToken {
-    match c {
-        // O que todo objeto É.
-        C::Identity | C::Transform => ColorToken::NodeCatSource,
-        // Onde e em que ordem ele sai.
-        C::Ordering => ColorToken::NodeCatDistribute,
-        // Como o pixel sai.
-        C::Rendering | C::Image => ColorToken::NodeCatFx,
-        // O que se move.
-        C::Animation | C::Anchors => ColorToken::NodeCatTransform,
-        // Geometria autorada.
-        C::Vector => ColorToken::NodeCatFocus,
-        // ⭐ O que DEFORMA o que foi autorado — o esqueleto fica com a cor de quem move, ao lado
-        // da Animação e das Âncoras, e não com a da geometria: ele não é geometria de ninguém.
-        C::Skeleton => ColorToken::NodeCatTransform,
-        // O que simula.
-        C::Physics => ColorToken::NodeCatOutput,
-        // ⭐ O que SOA. Ele fica com a cor de quem **sai** — ao lado da física —, e não com a de
-        // quem faz acontecer: um som é uma saída do jogo, e é essa a distinção que a família
-        // Áudio existe para não perder.
-        C::Audio => ColorToken::NodeCatOutput,
-        // ⭐ O PONTO DE VISTA fica com a cor de quem ENQUADRA — ao lado da geometria autorada, e
-        // ⛔ não com a das saídas: uma câmera não produz nada, ela escolhe o que se vê. É a mesma
-        // distinção que separou a família Câmera de `Rendering` no catálogo.
-        C::Camera => ColorToken::NodeCatFocus,
-        // ⭐ A LUZ fica com a cor de quem ORIGINA: uma lâmpada é uma fonte, não uma saída nem um
-        // enquadramento.
-        C::Light => ColorToken::NodeCatSource,
-        // ⭐ O que FAZ ACONTECER — a lógica autorada (`Timer`, e a fila do TOP-20 atrás dele) ao
-        // lado do script, porque é a mesma pergunta com e sem código. ⚠️ Este braço dizia «o
-        // resto», e a categoria nova obrigou a nomeá-lo: *um braço chamado «o resto» aceita
-        // qualquer coisa, e a próxima família entra nele sem ninguém pensar.*
-        C::Logic | C::Scripting => ColorToken::NodeCatUtility,
-        // O que uma cópia É.
-        C::Instancing => ColorToken::NodeCatUtility,
-    }
-}
-
-/// O rótulo em inglês de cada categoria (HR-15: a UI do app é em inglês).
-///
-/// ⚠️ **UMA porta:** ele delega para [`C::label_key`], que é a dona da CHAVE. Este `match` existiu
-/// aqui em cópia até 2026-09-06, com as 12 linhas repetidas letra a letra — duas respostas à mesma
-/// pergunta, e a segunda envelhece na primeira categoria nova (foi o que quase aconteceu ao
-/// acrescentar o `Skeleton`).
-///
-/// ⚠️⚠️ **E desde 2026-09-17 o catálogo devolve uma CHAVE, não o texto** — o rótulo vive em
-/// `ph2d-i18n` (`component.category.*`). *Uma função chamada `label` que devolvesse uma chave seria
-/// a armadilha que o `display_key` também evita: o TIPO não distingue as duas, só o nome.*
-fn cat_title(c: C) -> &'static str {
-    ph2d_i18n::tr(c.label_key())
 }
 
 /// **Um componente é oferecível?** Três condições, e cada uma barra um defeito diferente.
@@ -120,54 +65,24 @@ fn applies_to(desc: &ComponentDesc) -> Option<ObjectKinds> {
     }
 }
 
-/// ⭐ **O que vem JUNTO com este componente, escrito para o artista ler ANTES de clicar.**
-///
-/// ⚠️ Esta é a correção da crítica medida ao Bevy (discussão #16570, doc 02 §1.4): *«não vejo o que
-/// vem junto»*. A dependência automática cura o erro de setup e **cria** um problema de
-/// visibilidade — e num editor a UI é o sítio barato de o resolver. Vazio quando não há cascata.
-///
-/// ⚠️ **Diz os nomes de EXIBIÇÃO, e a lista é FECHADA** (transitiva): anexar *Platform Player*
-/// traz `RigidBody`, que traz `Collider` — e o artista tem de ver os dois, não o primeiro.
-fn brings_along(desc: &ComponentDesc) -> Vec<&'static str> {
-    let mut out: Vec<&'static str> = Vec::new();
-    let mut stack: Vec<&'static str> = desc.requires.to_vec();
-    while let Some(name) = stack.pop() {
-        let Some(d) = ph2d_component_desc::desc_for(name) else {
-            continue;
-        };
-        if out.contains(&ph2d_i18n::tr(d.display_key)) {
-            continue;
-        }
-        out.push(ph2d_i18n::tr(d.display_key));
-        stack.extend_from_slice(d.requires);
-    }
-    out
-}
-
 /// ⭐ **As palavras de intenção** do componente (doc ObjectsAndComponents 01 §7.3, F6) — `""` quando a
 /// tabela não as tem (o gate `every_offered_component_has_intent_words` diz se faltou alguma).
 #[must_use]
 pub(crate) fn intent_words(desc: &ComponentDesc) -> &'static str {
     let key = desc.keywords_key();
-    let words = ph2d_i18n::tr(&key);
+    let words = tr(&key);
     if words == key { "" } else { words }
 }
 
-/// Um item da paleta, com o rótulo já pronto.
-fn make_item(desc: &ComponentDesc, applicable: bool) -> PaletteItem {
-    // ⚠️ **A razão E a cascata viajam no RÓTULO**, e não em campos novos do widget genérico: o
-    // `PaletteItem` é do `ph2d-editor-core` e serve três consumidores; acrescentar-lhe um
-    // `disabled_reason` + um `brings` faria os outros dois carregar dois campos que não usam. O
-    // esmaecido pertence ao widget; o *porquê* e o *o-que-vem-junto* pertencem a quem construiu o
-    // modelo. E é a MESMA porta, o que é o ponto: um só sítio para tudo o que o item explica.
-    let mut label = ph2d_i18n::tr(desc.display_key).to_string();
-    let brings = brings_along(desc);
-    if !brings.is_empty() {
-        label.push_str(ph2d_i18n::tr("app.components.component_palette.brings"));
-        label.push_str(&brings.join(", "));
+/// Um item da paleta: o nome, `+N` quando traz peças junto (a lista vai na dica), a razão do inaplicável.
+fn make_item(desc: &ComponentDesc, applicable: bool, ja: &[&str]) -> PaletteItem {
+    let mut label = tr(desc.display_key).to_string();
+    let n = cd::trazidos(desc.canonical_name, ja).len();
+    if n > 0 {
+        label.push_str(&tr("component_add.plus_n").replace("{n}", &n.to_string()));
     }
     if !applicable {
-        label.push_str(ph2d_i18n::tr(
+        label.push_str(tr(
             "app.components.component_palette.not_for_this_object_type_2",
         ));
     }
@@ -178,14 +93,39 @@ fn make_item(desc: &ComponentDesc, applicable: bool) -> PaletteItem {
     }
 }
 
-/// ⭐ **O modelo da paleta para ESTE objeto.**
+/// A dica de uma entrada: a frase, as palavras da busca e o que vem junto.
+fn make_tip(e: &cd::Entrada, title: &str, desc: Option<&ComponentDesc>, ja: &[&str]) -> PaletteTip {
+    let mut body = e.tip.tr().to_string();
+    if let Some(d) = desc {
+        let words = intent_words(d);
+        if !words.is_empty() {
+            body.push('\n');
+            body.push_str(&tr("component_add.tip.words").replace("{words}", words));
+        }
+        let brings: Vec<&str> = cd::trazidos(d.canonical_name, ja)
+            .iter()
+            .map(|(_, b)| cd::nome(b))
+            .collect();
+        if !brings.is_empty() {
+            body.push('\n');
+            body.push_str(
+                &tr("component_add.tip.also_adds").replace("{names}", &brings.join(", ")),
+            );
+        }
+    }
+    PaletteTip {
+        id: item_id(e.name),
+        title: title.to_string(),
+        body,
+        picture: e.picture,
+    }
+}
+
+/// ⭐ **O modelo da paleta para ESTE objeto**, nos 11 assuntos.
 ///
-/// `kind` é o tipo do objeto selecionado (derivado do marcador — F0); `present` são os nomes
-/// canónicos que ele **já tem**; `can_build` responde se o registo sabe construir aquele tipo;
-/// `show_all` é a caixa *Show all* do artista.
-///
-/// ⚠️ **Com `show_all` desligado o inaplicável não aparece; com ele ligado aparece ESMAECIDO e com
-/// a razão** — nunca desaparece sem explicação, e nunca aceita o clique em silêncio.
+/// `kind` é o tipo do objeto selecionado; `present` os nomes canónicos que ele **já tem**; `can_build`
+/// responde se o registo sabe construir o tipo; `show_all` é a caixa *Show all*. Com ela desligada o
+/// inaplicável não aparece; ligada, aparece ESMAECIDO e com a razão.
 pub(crate) fn build(
     kind: ObjectKind,
     present: &[&str],
@@ -193,59 +133,80 @@ pub(crate) fn build(
     show_all: bool,
 ) -> PaletteModel {
     let mut groups = Vec::new();
-    for c in C::ALL {
-        let mut applicable = Vec::new();
-        let mut other = Vec::new();
-        for d in ph2d_component_desc::all() {
-            if d.category != c || !is_offerable(d, present, can_build(d.canonical_name)) {
+    let mut tips = Vec::new();
+    for a in Assunto::ALL {
+        let (mut applicable, mut other) = (Vec::new(), Vec::new());
+        for e in cd::ENTRADAS.iter().filter(|e| e.assunto == a) {
+            let Some(d) = ph2d_component_desc::desc_for(e.name) else {
+                continue;
+            };
+            if !is_offerable(d, present, can_build(d.canonical_name)) {
                 continue;
             }
             let fits = applies_to(d).is_some_and(|k| k.contains(kind));
-            if fits {
-                applicable.push(make_item(d, true));
-            } else if show_all {
-                other.push(make_item(d, false));
+            if fits || show_all {
+                tips.push(make_tip(e, tr(d.display_key), Some(d), present));
+                if fits { &mut applicable } else { &mut other }.push(make_item(d, fits, present));
             }
         }
-        if applicable.is_empty() && other.is_empty() {
-            continue;
-        }
         // ⚠️ Os aplicáveis PRIMEIRO, sempre — o inaplicável é contexto, não oferta.
-        let mut subs = Vec::new();
-        if !applicable.is_empty() {
-            subs.push(PaletteSub {
-                title: None,
-                items: applicable,
+        let other_title = tr("app.components.component_palette.not_for_this_object_type");
+        let subs: Vec<PaletteSub> = [(None, applicable), (Some(other_title.to_string()), other)]
+            .into_iter()
+            .filter(|(_, items)| !items.is_empty())
+            .map(|(title, items)| PaletteSub { title, items })
+            .collect();
+        if !subs.is_empty() {
+            groups.push(PaletteGroup {
+                title: a.title().to_string(),
+                color: a.color(),
+                subs,
             });
         }
-        if !other.is_empty() {
-            subs.push(PaletteSub {
-                title: Some(
-                    ph2d_i18n::tr("app.components.component_palette.not_for_this_object_type")
-                        .to_string(),
-                ),
-                items: other,
-            });
-        }
-        groups.push(PaletteGroup {
-            title: cat_title(c).to_string(),
-            color: cat_token(c),
-            subs,
-        });
     }
-    PaletteModel {
-        title: ph2d_i18n::tr("app.components.component_palette.add_component").to_string(),
+    let mut model = PaletteModel {
+        title: tr("app.components.component_palette.add_component").to_string(),
         groups,
-        // ⭐ **A caixa *Show all*** (ADR-0166 / F3) — o que revela o inaplicável, esmaecido e com a
-        // razão. ⚠️ Ela é do MODELO e não do widget: o estado vive na shell (`AppGfx`), e um
-        // clique nela reabre a paleta com o modelo reconstruído.
+        // ⭐ A caixa *Show all* (ADR-0166 / F3): o estado vive na shell; um clique reabre a paleta.
         toggle: Some(ph2d_editor_core::widget::command_palette::PaletteToggle {
-            label: ph2d_i18n::tr("app.components.component_palette.show_all").to_string(),
+            label: tr("app.components.component_palette.show_all").to_string(),
             on: show_all,
         }),
-        tips: Vec::new(),
+        tips,
         select: None,
-    }
+    };
+    reselect(&mut model, None);
+    model
+}
+
+/// ⭐ **O destaque**: `keep` se o item ainda está no modelo, senão o 1.º item (dono 08/11) — e o ensino
+/// da busca, só com começo que o modelo tem.
+pub fn reselect(model: &mut PaletteModel, keep: Option<NodeId>) {
+    let first = model
+        .groups
+        .iter()
+        .flat_map(|g| &g.subs)
+        .flat_map(|s| &s.items)
+        .next();
+    let Some(first) = first.map(|it| it.id) else {
+        model.select = None;
+        return;
+    };
+    let initial = keep.filter(|id| model.is_item(*id)).unwrap_or(first);
+    let teach = cd::TEACH
+        .iter()
+        .filter(|(_, _, start)| model.is_item(item_id(start)))
+        .filter_map(|(text, words, start)| {
+            let d = ph2d_component_desc::desc_for(start)?;
+            Some(PaletteTeach {
+                words: words.tr(),
+                text: text.tr().to_string(),
+                start: item_id(d.canonical_name),
+                start_label: tr("component_add.teach.start").replace("{name}", tr(d.display_key)),
+            })
+        })
+        .collect();
+    model.select = Some(PaletteSelect { initial, teach });
 }
 
 /// O nome canónico que este id de item nomeia, se algum. É o inverso do [`item_id`], e a única
@@ -258,15 +219,20 @@ pub(crate) fn build(
 /// Timeline o primeiro clip (a shell, por [`crate::component_attach::take_animation_pick`]).
 pub const ANIMATION_ITEM: NodeId = item_id("timeline.animation");
 
-/// Põe o item «Animation» à cabeça da família Animation — criando-a, no lugar dela na ordem da
-/// paleta, se nenhum componente do catálogo a abriu.
+/// Põe o item «Animation» à cabeça de *Change over time*, criando o grupo no lugar dele se nenhum
+/// componente o abriu, com a dica; e refaz o destaque (pode passar a ser o 1.º).
 pub(crate) fn offer_animation(model: &mut PaletteModel) {
+    let label = tr("app.components.component_palette.animation");
     let item = PaletteItem {
-        label: ph2d_i18n::tr("app.components.component_palette.animation").to_string(),
+        label: label.to_string(),
         id: ANIMATION_ITEM,
         keywords: "",
     };
-    let title = cat_title(C::Animation);
+    if let Some(e) = cd::entrada(cd::ANIMATION) {
+        model.tips.push(make_tip(e, label, None, &[]));
+    }
+    let a = Assunto::Time;
+    let title = a.title();
     if let Some(g) = model.groups.iter_mut().find(|g| g.title == title) {
         match g.subs.first_mut() {
             Some(s) if s.title.is_none() => s.items.insert(0, item),
@@ -278,26 +244,26 @@ pub(crate) fn offer_animation(model: &mut PaletteModel) {
                 },
             ),
         }
-        return;
+    } else {
+        let rank = |t: &str| Assunto::ALL.iter().position(|x| x.title() == t);
+        let at = model
+            .groups
+            .iter()
+            .position(|g| rank(&g.title) > rank(title));
+        model.groups.insert(
+            at.unwrap_or(model.groups.len()),
+            PaletteGroup {
+                title: title.to_string(),
+                color: a.color(),
+                subs: vec![PaletteSub {
+                    title: None,
+                    items: vec![item],
+                }],
+            },
+        );
     }
-    let rank = |t: &str| C::ALL.iter().position(|c| cat_title(*c) == t);
-    let me = rank(title);
-    let at = model
-        .groups
-        .iter()
-        .position(|g| rank(&g.title) > me)
-        .unwrap_or(model.groups.len());
-    model.groups.insert(
-        at,
-        PaletteGroup {
-            title: title.to_string(),
-            color: cat_token(C::Animation),
-            subs: vec![PaletteSub {
-                title: None,
-                items: vec![item],
-            }],
-        },
-    );
+    let keep = model.select.as_ref().map(|s| s.initial);
+    reselect(model, keep);
 }
 
 #[must_use]

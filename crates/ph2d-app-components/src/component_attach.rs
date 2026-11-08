@@ -192,12 +192,17 @@ pub fn attach_picked(
     registry: &ComponentRegistry,
     seeds: crate::component_seed::SeedTable<'_>,
     toasts: &mut ph2d_editor_core::ToastQueue,
-) {
-    let Some((bits, name)) = picks else {
-        return;
-    };
-    if let Err(msg) = attach_by_name(sim, registry, seeds, *bits, name) {
-        toasts.push(Toast::error(msg));
+) -> Option<(u64, String)> {
+    let (bits, name) = picks?;
+    let ja = ph2d_ecs::Entity::try_from_bits(*bits)
+        .map(|e| present_on(sim.world(), e, registry))
+        .unwrap_or_default();
+    match attach_by_name(sim, registry, seeds, *bits, name) {
+        Ok(()) => ph2d_game_dicas::componente::recibo(name, &ja).map(|t| (*bits, t)),
+        Err(msg) => {
+            toasts.push(Toast::error(msg));
+            None
+        }
     }
 }
 

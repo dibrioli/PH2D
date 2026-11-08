@@ -142,3 +142,82 @@ fn attaching_is_one_undo_step_and_undoing_closes_the_section() {
         "o componente saiu e a seccao ficou"
     );
 }
+
+/// ⭐⭐ **O Add Component no padrão do Add Object, ponta a ponta** (plano GEF 25 §4): ao abrir o 1.º da
+/// lista vem destacado; um clique destaca e não adiciona; dois cliques adicionam e fecham; o recibo diz o
+/// que veio junto e porquê; e a cascata inteira é UM passo — repor a captura de antes devolve o mundo ao
+/// bit.
+///
+/// (Mutações: o clique simples escolher ⇒ RED; a cascata fora do recibo ⇒ RED; o `initial` ser o último ⇒
+/// RED.)
+#[test]
+fn um_clique_destaca_dois_adicionam_e_o_recibo_desfaz_tudo_ate_ao_bit() {
+    use ph2d_app_components::component_attach as ca;
+    use ph2d_app_components::component_palette::item_id;
+    use ph2d_editor_core::interaction::WidgetEvent;
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut sim = SimWorld::new();
+    let bits = image(&mut sim);
+    let reg = registry();
+    let mut hero = HeroScreen::new(NodeId(1));
+    let mut target: Option<u64> = None;
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
+    ca::open_palette_if_asked(&mut hero, &sim, &reg, Some(bits), &mut target, &|_| false);
+    assert_eq!(
+        hero.store.command_palette_highlight(),
+        Some(item_id("ph2d::physics::RigidBody")),
+        "ao abrir, o 1.º da lista (Move and collide · Physics Body)"
+    );
+    let nav = item_id("ph2d::physics::NavAgent");
+    hero.apply_event(WidgetEvent::Click(nav));
+    assert!(hero.store.command_palette_open(), "um clique fechou");
+    assert_eq!(hero.store.command_palette_highlight(), Some(nav));
+    assert!(
+        ca::route_pick(&mut hero, &mut target).is_none(),
+        "um clique adicionou"
+    );
+    hero.apply_event(WidgetEvent::DoubleClick(nav));
+    assert!(
+        !hero.store.command_palette_open(),
+        "dois cliques não fecharam"
+    );
+    let picked = ca::route_pick(&mut hero, &mut target);
+    assert!(picked.is_some(), "o pick perdeu-se");
+
+    let mut prop = ph2d_ecs::TransformPropagationState::new(sim.world_mut());
+    let mut work = ph2d_ecs::WorklistBuf::default();
+    let mut snap = |sim: &mut SimWorld| {
+        let mut out = ph2d_ecs::scene::WorldSnapshot::default();
+        ph2d_ecs::scene::world_to_snapshot(sim.world_mut(), &mut prop, &mut work, &reg, &mut out)
+            .expect("captura");
+        out
+    };
+    let before = snap(&mut sim);
+    let seeds = ph2d_app_physics::physics_seed::COMPONENT_SEEDS;
+    let recibo = ca::attach_picked(picked.as_ref(), &mut sim, &reg, seeds, &mut toasts);
+    let (alvo, frase) = recibo.expect("o Nav Agent traz três peças");
+    assert_eq!(alvo, bits);
+    for parte in [
+        "Nav Agent added. Also added: Top-Down Player, because",
+        "Physics Body, because",
+        "Collision Shape, because a body needs a shape",
+    ] {
+        assert!(frase.contains(parte), "{parte:?} fora de {frase:?}");
+    }
+    assert_ne!(snap(&mut sim), before, "anexar não mudou a captura");
+    let editable: Vec<ph2d_ecs::Entity> = {
+        let mut q = sim
+            .world_mut()
+            .query_filtered::<ph2d_ecs::Entity, bevy_ecs::query::With<Transform>>();
+        q.iter(sim.world()).collect()
+    };
+    for e in editable {
+        let _ = sim.world_mut().despawn(e);
+    }
+    ph2d_ecs::scene::snapshot_to_world(sim.world_mut(), &before, &reg).expect("restore");
+    assert_eq!(
+        snap(&mut sim),
+        before,
+        "um passo não desfez alvo e trazidos ao bit"
+    );
+}

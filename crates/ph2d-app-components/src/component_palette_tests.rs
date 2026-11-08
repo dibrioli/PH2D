@@ -175,40 +175,60 @@ fn every_group_is_named_and_tinted() {
     }
 }
 
-/// ⭐ **A CASCATA É MOSTRADA ANTES DE SER APLICADA** — a correção da crítica medida ao Bevy
-/// (discussão #16570, doc 02 §1.4: *«não vejo o que vem junto»*).
-///
-/// ⚠️ **E ela é FECHADA:** *Platform Player* traz `RigidBody`, que traz `Collider`. Mostrar só o
-/// primeiro salto seria a mesma queixa um nível abaixo — o artista clicava esperando um componente
-/// e recebia três.
+/// ⭐ **A cascata é mostrada ANTES de ser aplicada** (Bevy #16570), e FECHADA: «+N» no rótulo, a lista
+/// inteira na dica (dono 08/11). Nav Agent traz Top-Down Player, Physics Body e Collision Shape.
 #[test]
-fn the_cascade_is_shown_in_the_label_before_it_is_applied() {
+fn a_cascata_e_um_mais_n_no_rotulo_e_a_lista_na_dica() {
     let m = build(ObjectKind::Image, &[], &buildable, false);
-    // ⭐ Opção B (08/11): o Physics Body já não traz a forma em componente (a filha nasce pela semente),
-    // e a cascata que fica para mostrar é a do mover: *Top-Down Player* traz o corpo.
-    let all = labels(&m);
-    let corpo = all
+    let nav = labels(&m).into_iter().find(|l| l.starts_with("Nav Agent"));
+    assert_eq!(nav.as_deref(), Some("Nav Agent  +3"), "N é transitivo");
+    let tip = m
+        .tips
         .iter()
-        .find(|l| l.starts_with("Physics Body"))
-        .expect("o Physics Body tem de estar na paleta");
+        .find(|t| t.id == item_id("ph2d::physics::NavAgent"));
+    let body = tip.map(|t| t.body.as_str()).unwrap_or_default();
     assert!(
-        !corpo.contains("brings"),
-        "o corpo não traz a forma como componente: {corpo:?}"
+        body.ends_with("Also adds: Top-Down Player, Physics Body, Collision Shape."),
+        "{body:?}"
     );
-    let body = all
-        .into_iter()
-        .find(|l| l.starts_with("Top-Down Player"))
-        .expect("o Top-Down Player tem de estar na paleta");
+}
+
+/// ⭐ Os 11 assuntos na ordem da maquete B, e cada item oferecido com a sua dica desenhada; o destaque ao
+/// abrir é o 1.º da lista (dono 08/11).
+#[test]
+fn os_grupos_seguem_os_onze_assuntos_e_o_primeiro_vem_destacado() {
+    let m = build(ObjectKind::Image, &[], &buildable, true);
+    let titulos: Vec<&str> = m.groups.iter().map(|g| g.title.as_str()).collect();
+    let onze: Vec<&str> = Assunto::ALL.iter().map(|a| a.title()).collect();
+    assert_eq!(titulos, onze);
+    let ids: Vec<NodeId> = m
+        .groups
+        .iter()
+        .flat_map(|g| &g.subs)
+        .flat_map(|s| &s.items)
+        .map(|i| i.id)
+        .collect();
+    for id in &ids {
+        assert!(
+            m.tips.iter().any(|t| t.id == *id && !t.picture.is_empty()),
+            "{id:?} sem dica"
+        );
+    }
+    assert_eq!(m.select.as_ref().map(|s| s.initial), ids.first().copied());
+    let moeda = ["ph2d::physics::RigidBody", "ph2d::physics::Collider"];
+    let m = build(ObjectKind::Image, &moeda, &buildable, false);
+    let primeiro = m.groups[0].subs[0].items[0].id;
+    // O que o objecto JÁ tem não conta no «+N»: a moeda tem corpo, o Damage não traz nada.
+    let l = labels(&m);
     assert!(
-        body.contains("brings Physics Body"),
-        "o rotulo tem de dizer o que vem junto: {body:?}"
+        l.iter().any(|x| x == "Damage") && l.iter().any(|x| x == "Nav Agent  +1"),
+        "{l:?}"
     );
-    // ⚠️ **A metade FECHADA (transitiva) mede-se na tabela, e não na paleta** — desde 14/09 o único
-    // `requires` da física é `RigidBody → Collider`, logo não há um 2.º salto para ver num rótulo.
-    // A lei do fecho continua gateada no `brings_along` pelas famílias que a exercem.
-    assert!(
-        !body.contains("brings brings"),
-        "o rotulo montou-se duas vezes: {body:?}"
+    assert_eq!(
+        m.select.map(|s| s.initial),
+        Some(primeiro),
+        "{:?}",
+        m.groups[0].title
     );
 }
 

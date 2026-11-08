@@ -192,6 +192,7 @@ mod fase_canvas_overlays;
 /// Fase do quadro: o relógio do chrome (`wall_dt`, `ui_dt` e os tiques que andam nele).
 mod fase_chrome_clock;
 /// Fase do quadro: a paleta de componentes.
+mod fase_component_add_smoke;
 mod fase_component_palette;
 /// Fase do quadro: os verbos de componente.
 mod fase_component_verbs;

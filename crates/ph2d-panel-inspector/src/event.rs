@@ -274,6 +274,7 @@ fn sheet_grid_changed(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool
 /// blocos têm a mesma forma, a forma é que é o dado.* O próximo entra numa linha.
 const SINGLE_ID_CLICKS: &[fn(&mut dyn PanelHostInternal, WidgetEvent) -> bool] = &[
     add_component_click,
+    crate::recibo::clique,
     // ⭐⭐ Os SEIS do CARTÃO DE INSTÂNCIA vivem no irmão [`crate::event_instance`] — corte por
     // assunto, imposto pelo tecto de 600 LOC deste ficheiro quando o *Put back* entrou.
     crate::event_instance::open_prefab_click,

@@ -13,6 +13,8 @@ authors.workspace = true
 # A TABELA DE TEXTOS (HR-15): tudo o que esta crate diz ao artista sai daqui, nunca de um
 # literal no fonte — o gate `every_word_..._comes_from_the_string_table` mede-o.
 ph2d-i18n = { path = "../ph2d-i18n" }
+# Os 11 assuntos do Add Component: grupos, dicas e desenhos como DADOS (plano GEF 25).
+ph2d-game-dicas = { path = "../ph2d-game-dicas" }
 # ⚠️ A INTERFACE da shell (`AppFamily`), não o agregador — importar de
 # `ph2d-app-registry-init` fecharia o ciclo `registry → família → registry`.
 ph2d-app-host = { path = "../ph2d-app-host" }

@@ -194,6 +194,8 @@ mod populate_vida;
 /// ⭐⭐⭐ O registo dos widgets das secções que chegam por WAVE — ver o cabeçalho.
 mod populate_waves;
 mod populate_weapon;
+/// ⭐ O recibo do Add Component (plano GEF 25 §2.4).
+pub mod recibo;
 mod reveal;
 mod sections;
 /// ⭐ A imagem que a ranhura mostra (plano GEF 12).

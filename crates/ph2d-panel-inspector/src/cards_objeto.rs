@@ -22,6 +22,7 @@ pub const CARD_VISIBILITY: NodeId = hash_node_id("cards.insp.visibility");
 pub const CARD_INSTANCE: NodeId = hash_node_id("cards.insp.instance");
 pub const CARD_PROPERTIES: NodeId = hash_node_id("cards.insp.properties");
 pub const CARD_EMPTY: NodeId = hash_node_id("cards.insp.empty");
+pub const CARD_RECEIPT: NodeId = hash_node_id("cards.insp.receipt");
 
 const ANTES_DA_ORDEM: [NodeId; 1] = [core_ids::INSP_LIVE_SLICE_SECTION];
 const DEPOIS_DA_ORDEM: [NodeId; 2] = [
@@ -52,6 +53,13 @@ pub(crate) fn animada_vazia() -> bool {
 /// que declara, a imagem e o uso dela, os controlos de visibilidade.
 pub(crate) fn do_topo(store: &WidgetStore) -> Vec<CardDef<'static>> {
     let mut out = Vec::new();
+    if let Some(frase) = crate::recibo::do_inspector() {
+        out.push(sem_titulo(CARD_RECEIPT, move |c, y| {
+            com_corpo(c, y, |t, theme, store, x, w, y| {
+                crate::recibo::pinta(t.scene, t.text, theme, t.hit, store, &frase, x, w, y)
+            })
+        }));
+    }
     if let Some(info) = crate::state::current_inspector_instance() {
         out.push(sem_titulo(CARD_INSTANCE, move |c, y| {
             com_corpo(c, y, |t, theme, store, x, w, y| {

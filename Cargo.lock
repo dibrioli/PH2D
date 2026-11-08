@@ -5678,6 +5678,7 @@ dependencies = [
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-entity-visibility",
+ "ph2d-game-dicas",
  "ph2d-gpu",
  "ph2d-health",
  "ph2d-host",
@@ -7240,7 +7241,9 @@ dependencies = [
 name = "ph2d-game-dicas"
 version = "0.0.0"
 dependencies = [
+ "ph2d-component-desc",
  "ph2d-editor-core",
+ "ph2d-i18n",
  "ph2d-tokens",
 ]
 

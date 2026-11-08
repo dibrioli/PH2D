@@ -85,6 +85,7 @@ mod code_editor;
 mod code_explain;
 /// A página de ajuda do editor de scripts: o texto de cada biblioteca do Luau (Onda 2, item 5).
 mod code_help;
+mod component_add;
 /// ⭐⭐ **As palavras do MOTOR DA CENA** (`ph2d-ecs`) — a 7.ª fatia da fronteira dos motores, e a
 /// primeira achada por um instrumento.
 mod ecs_scene;
@@ -652,6 +653,7 @@ fn tabela(key: &str) -> &'static str {
             .or_else(|| asset_browser::tr(k))
             .or_else(|| chrome_menus::tr(k))
             .or_else(|| object_add::tr(k))
+            .or_else(|| component_add::tr(k))
             .or_else(|| object_mode::tr(k))
             .or_else(|| hier_rows::tr(k))
             .or_else(|| board::tr(k))

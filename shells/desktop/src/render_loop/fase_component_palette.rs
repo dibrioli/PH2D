@@ -13,6 +13,8 @@ impl crate::App {
         // A Animação de um objecto vive na Timeline, não no mundo (doc ObjectsAndComponents 01 §6).
         let doc = &self.timeline.doc;
         let has_animation = |b: u64| doc.has_animation(b);
+        #[cfg(feature = "panel-inspector")]
+        ph2d_panel_inspector::recibo::vigia(self.undo.depth());
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
@@ -28,6 +30,8 @@ impl crate::App {
         let Some(hero) = hero_screen.as_mut() else {
             return;
         };
+        let add_component_for = add_component_for
+            .or_else(|| super::fase_component_add_smoke::abre(hero, sim, component_registry));
         // ⚠️ DEPOIS do dreno do pivot do joint (o gate `the_position_commit_reseats_the_anchor_
         // through_the_door` lê a janela de 3000 bytes a seguir à captura; ver o cabeçalho).
         // ⭐ **O `+` do Inspector, as DUAS pontas** (ADR-0166 / F3) — abrir a paleta para quem
@@ -52,6 +56,7 @@ impl crate::App {
         );
         // ⚠️ O pick chega **noutro quadro** (a paleta fica aberta), e por isso o alvo vive no
         // `AppGfx` em vez de num local deste laço.
+        super::fase_component_add_smoke::escolhe(hero);
         let animation_for = ph2d_app_components::component_attach::take_animation_pick(
             hero,
             component_palette_target,
@@ -66,13 +71,18 @@ impl crate::App {
                 &[("ph2d::ecs::CameraLimits", ph2d_camera_frame::semeia_limites)],
             ]
             .concat();
-            ph2d_app_components::component_attach::attach_picked(
+            // ⭐ O recibo (plano GEF 25 §2.4): o que veio junto, com Undo, no Inspector.
+            let _recibo = ph2d_app_components::component_attach::attach_picked(
                 picked.as_ref(),
                 sim,
                 component_registry,
                 &seeds,
                 toasts,
             );
+            #[cfg(feature = "panel-inspector")]
+            if let Some((bits, frase)) = _recibo {
+                ph2d_panel_inspector::recibo::mostra(bits, frase);
+            }
             // O ↺ dos cartões (T60) repõe com as mesmas sementes.
             ph2d_app_components::component_attach::reset_asked(
                 hero,

@@ -79,6 +79,19 @@ pub(crate) fn paint_top_cards(
     y: f32,
 ) -> f32 {
     let mut y = paint_selection_card(scene, text_system, theme, inner_x, inner_w, y);
+    if let Some(frase) = crate::recibo::do_inspector() {
+        y = crate::recibo::pinta(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            &frase,
+            inner_x,
+            inner_w,
+            y,
+        );
+    }
     if let Some(info) = instance_info {
         y = crate::sections::instance::paint_instance_card(
             scene,

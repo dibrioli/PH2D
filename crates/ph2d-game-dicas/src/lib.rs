@@ -2,11 +2,13 @@
 //! (x para a direita, y para baixo, de 0 a 1; raios em fracção da altura), cores do tema.
 
 pub mod add;
+pub mod componente;
+mod componente_desenhos;
 
 use ph2d_editor_core::widget::illustration::Mark;
 use ph2d_tokens::ColorToken as C;
 
-const CHAO: Mark = Mark::Rect {
+pub(crate) const CHAO: Mark = Mark::Rect {
     at: [0.0, 0.82],
     size: [1.0, 0.18],
     fill: C::BorderStrong,
@@ -14,7 +16,7 @@ const CHAO: Mark = Mark::Rect {
 };
 
 /// O boneco: corpo em cápsula, olho, sobre o chão em `x`.
-const fn boneco(x: f32, y: f32) -> [Mark; 2] {
+pub(crate) const fn boneco(x: f32, y: f32) -> [Mark; 2] {
     [
         Mark::Capsule {
             c: [x, y],

@@ -76,6 +76,8 @@ pub use inspector_vida::*;
 pub use inspector_weapon::*;
 mod inspector_instance;
 pub use inspector_instance::*;
+mod inspector_recibo;
+pub use inspector_recibo::*;
 mod inspector_joint;
 pub use inspector_joint::*;
 mod inspector_player;

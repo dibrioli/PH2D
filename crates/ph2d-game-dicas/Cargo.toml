@@ -14,6 +14,8 @@ authors.workspace = true
 [dependencies]
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-component-desc = { path = "../ph2d-component-desc" }
 
 [lints]
 workspace = true

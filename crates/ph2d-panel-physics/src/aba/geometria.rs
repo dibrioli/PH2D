@@ -18,6 +18,11 @@ pub struct Geometria {
     pub k: usize,
     /// A largura de cada um dos dois botões da lista («+ Add layer» e «Remove»; [`Self::com_botoes`]).
     pub botao_w: f32,
+    /// ⭐ A grade ROLA (onda 9e): a primeira linha e a primeira coluna à vista, e quantas cabem.
+    pub l0: usize,
+    pub c0: usize,
+    pub cabem_l: usize,
+    pub cabem_c: usize,
 }
 
 impl Geometria {
@@ -44,8 +49,10 @@ impl Geometria {
         let passo = (livre_h / n)
             .min(livre_w / n)
             .min(row + Spacing::Sm.px())
-            .max(Spacing::Md.px());
-        let grade = Rect::new(dx, area.y + pad, dw, fixo_h + passo * n);
+            .max(Self::PASSO_MINIMO);
+        let cabe = |livre: f32| ((livre / passo).floor().max(1.0) as usize).min(k.max(1));
+        let (cabem_l, cabem_c) = (cabe(livre_h), cabe(livre_w));
+        let grade = Rect::new(dx, area.y + pad, dw, fixo_h + passo * cabem_l as f32);
         let camada = Rect::new(dx, grade.y + grade.h + pad, dw, camada_h);
         let lista_h = Self::MARGEM_DA_LISTA * 3.0 + row * (k + 2) as f32; // LITERAL-PX-OK: em cima, antes dos botões e embaixo
         let lista = Rect::new(
@@ -64,7 +71,51 @@ impl Geometria {
             passo,
             k,
             botao_w: 0.0,
+            l0: 0,
+            c0: 0,
+            cabem_l,
+            cabem_c,
         }
+    }
+
+    /// ⭐ O passo mínimo da grade (onda 9e): a célula (passo − vão `Xs`) fica com a altura de uma linha do app,
+    /// `ROW_H_PX`, o alvo que a lista, os botões e os quadros do Inspector já clicam; o rótulo cabe inteiro
+    /// (`fonte_da_grade` = a letra do painel). Medido em 07/11 com 27 camadas: o passo antigo encolhia a
+    /// `Spacing::Md` (8 px, célula de 4 px; a foto `aba9d_27_camadas…` dava ~10 px).
+    pub const PASSO_MINIMO: f32 = ROW_H_PX + Spacing::Xs.factory_px();
+
+    /// Rola para a primeira linha `l0` e a primeira coluna `c0`, presas ao que há para mostrar.
+    #[must_use]
+    pub fn rolada(mut self, (l0, c0): (usize, usize)) -> Self {
+        self.l0 = l0.min(self.k.saturating_sub(self.cabem_l));
+        self.c0 = c0.min(self.k.saturating_sub(self.cabem_c));
+        self
+    }
+
+    /// Se a linha `l` está à vista.
+    #[must_use]
+    pub fn linha_a_vista(&self, l: usize) -> bool {
+        (self.l0..self.l0 + self.cabem_l).contains(&l)
+    }
+
+    /// Se a coluna `c` está à vista.
+    #[must_use]
+    pub fn coluna_a_vista(&self, c: usize) -> bool {
+        (self.c0..self.c0 + self.cabem_c).contains(&c)
+    }
+
+    /// Se a célula `(l, c)` está à vista.
+    #[must_use]
+    pub fn celula_a_vista(&self, l: usize, c: usize) -> bool {
+        self.linha_a_vista(l) && self.coluna_a_vista(c)
+    }
+
+    fn dl(&self, l: usize) -> f32 {
+        l as f32 - self.l0 as f32
+    }
+
+    fn dc(&self, c: usize) -> f32 {
+        c as f32 - self.c0 as f32
     }
 
     /// A célula da linha `l` × coluna `c` (posições na lista das visíveis).
@@ -74,8 +125,8 @@ impl Geometria {
         // centro do quadrado ser o do rótulo da linha, do rótulo girado e da pílula a qualquer passo.
         let vao = Spacing::Xs.px();
         Rect::new(
-            self.x + self.rotulo_w + c as f32 * self.passo + vao * 0.5,
-            self.y + self.rotulo_w + l as f32 * self.passo + vao * 0.5,
+            self.x + self.rotulo_w + self.dc(c) * self.passo + vao * 0.5,
+            self.y + self.rotulo_w + self.dl(l) * self.passo + vao * 0.5,
             self.passo - vao,
             self.passo - vao,
         )
@@ -99,7 +150,7 @@ impl Geometria {
     pub fn rotulo_da_linha(&self, l: usize) -> Rect {
         Rect::new(
             self.x,
-            self.y + self.rotulo_w + l as f32 * self.passo,
+            self.y + self.rotulo_w + self.dl(l) * self.passo,
             self.rotulo_w,
             self.passo,
         )
@@ -108,7 +159,7 @@ impl Geometria {
     #[must_use]
     pub fn rotulo_da_coluna(&self, c: usize) -> Rect {
         Rect::new(
-            self.x + self.rotulo_w + c as f32 * self.passo,
+            self.x + self.rotulo_w + self.dc(c) * self.passo,
             self.y,
             self.passo,
             self.rotulo_w,
@@ -121,7 +172,7 @@ impl Geometria {
         let pad = Spacing::Md.px();
         Rect::new(
             self.grade.x + pad,
-            self.y + self.rotulo_w + self.k as f32 * self.passo + pad,
+            self.y + self.rotulo_w + self.cabem_l as f32 * self.passo + pad,
             self.grade.w - pad * 2.0,
             ROW_H_PX,
         )

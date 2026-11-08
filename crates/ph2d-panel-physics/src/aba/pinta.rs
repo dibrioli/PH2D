@@ -225,7 +225,7 @@ fn pinta_grade(ctx: &mut PaintCtx, q: &Quadro) {
         // ⭐ A linha acesa tem o nome numa pílula (maquete B); a coluna acesa, o nome em negrito.
         let pilula = resolve(ColorToken::AccentSoft, theme);
         for (p, &n) in visiveis.iter().enumerate() {
-            if linha_acesa(n) {
+            if linha_acesa(n) && g.linha_a_vista(p) {
                 fill_rounded_rect(cena, g.pilula_da_linha(p), raio, pilula);
             }
         }
@@ -241,7 +241,8 @@ fn pinta_grade(ctx: &mut PaintCtx, q: &Quadro) {
         };
         for (p, &n) in visiveis.iter().enumerate() {
             let r = g.rotulo_da_linha(p);
-            if !editando.is_some_and(|(e, onde)| e == n && onde == Onde::Grade) {
+            let editado = editando.is_some_and(|(e, onde)| e == n && onde == Onde::Grade);
+            if !editado && g.linha_a_vista(p) {
                 let pinta = if linha_acesa(n) {
                     ph2d_editor_core::paint::paint_text_title
                 } else {
@@ -257,6 +258,9 @@ fn pinta_grade(ctx: &mut PaintCtx, q: &Quadro) {
                     r.w,
                     tinta(linha_acesa(n)),
                 );
+            }
+            if !g.coluna_a_vista(p) {
+                continue;
             }
             let c = g.rotulo_da_coluna(p);
             // A coluna acesa em negrito: a mesma letra, desenhada duas vezes com meio traço de vão.
@@ -285,6 +289,9 @@ fn pinta_grade(ctx: &mut PaintCtx, q: &Quadro) {
         }
         for (p, &a) in visiveis.iter().enumerate() {
             for (q, &b) in visiveis[..=p].iter().enumerate() {
+                if !g.celula_a_vista(p, q) {
+                    continue;
+                }
                 let cel = g.celula(p, q);
                 let liga = matriz.collides(a, b);
                 let pairada = sob == Some((a, b));
@@ -427,6 +434,9 @@ fn alvos(ctx: &mut PaintCtx, q: &Quadro, losango: Option<ph2d_a11y::NodeId>, can
     for (p, &a) in visiveis.iter().enumerate() {
         camada_das_listas::alvo(hit, i::PHYSICS_LAYER_LIST[a], g.linha_da_lista(p));
         for (q, &b) in visiveis[..=p].iter().enumerate() {
+            if !g.celula_a_vista(p, q) {
+                continue;
+            }
             let id = i::PHYSICS_LAYER_CELL[i::physics_layer_cell_index(a, b)];
             let cel = g.celula(p, q);
             camada_das_listas::alvo(hit, id, cel);
@@ -437,8 +447,12 @@ fn alvos(ctx: &mut PaintCtx, q: &Quadro, losango: Option<ph2d_a11y::NodeId>, can
                 cel,
             );
         }
-        camada_das_listas::alvo(hit, i::PHYSICS_LAYER_ROW_LABEL[a], g.rotulo_da_linha(p));
-        camada_das_listas::alvo(hit, i::PHYSICS_LAYER_COL_LABEL[a], g.rotulo_da_coluna(p));
+        if g.linha_a_vista(p) {
+            camada_das_listas::alvo(hit, i::PHYSICS_LAYER_ROW_LABEL[a], g.rotulo_da_linha(p));
+        }
+        if g.coluna_a_vista(p) {
+            camada_das_listas::alvo(hit, i::PHYSICS_LAYER_COL_LABEL[a], g.rotulo_da_coluna(p));
+        }
     }
     if !cheia {
         camada_das_listas::alvo(hit, i::PHYSICS_LAYER_ADD, g.add());

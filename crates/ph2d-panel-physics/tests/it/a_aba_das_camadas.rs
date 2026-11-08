@@ -717,3 +717,69 @@ fn os_botoes_da_lista_ficam_dentro_do_cartao_em_tres_larguras() {
     }
     aba::fecha();
 }
+
+/// ⭐ Onda 9e: com 27 camadas a grade ROLA em vez de encolher: a célula fica com o passo mínimo, a roda desce
+/// uma linha (Shift, uma coluna), e o clique depois de rolar edita a célula que está SOB o ponteiro.
+#[test]
+fn a_grade_com_muitas_camadas_rola_e_o_clique_e_o_da_celula_sob_o_ponteiro() {
+    use ph2d_panel_physics::aba::Geometria;
+    let mut mesa = Mesa::nova(nomes_b(), false);
+    ph2d_panel_physics::set_visible_layers((1u32 << 27) - 1);
+    abre(&mut mesa);
+    let g = aba::geometria_da_ultima().expect("a aba pintou");
+    assert!(
+        g.passo >= Geometria::PASSO_MINIMO,
+        "o passo {} encolheu",
+        g.passo
+    );
+    assert!(
+        g.cabem_l < 27,
+        "a área de teste devia obrigar a rolar ({} linhas)",
+        g.cabem_l
+    );
+    // Nenhuma célula pintada fora do cartão da grade.
+    let (l, c) = (g.cabem_l - 1, 0);
+    let antes = mesa.rect(celula(l, c)).expect("a última linha à vista");
+    assert!(
+        antes.y + antes.h <= g.grade.y + g.grade.h,
+        "a célula sai do cartão"
+    );
+    assert!(
+        mesa.rect(celula(g.cabem_l, c)).is_none(),
+        "a linha seguinte não está pintada"
+    );
+    // A roda para baixo sobre a grade: uma linha.
+    let (x, y) = (antes.x + antes.w * 0.5, antes.y + antes.h * 0.5);
+    assert!(aba::rola(x, y, -1.0, false), "a roda foi tomada");
+    mesa.pinta();
+    let g2 = aba::geometria_da_ultima().unwrap();
+    assert_eq!((g2.l0, g2.c0), (1, 0));
+    // Sob o MESMO ponteiro está agora a linha seguinte: o clique edita-a, não a de antes.
+    let sob = mesa.host.hit_at(x, y);
+    assert_eq!(
+        sob,
+        Some(celula(l + 1, c)),
+        "o ponteiro não está sobre a célula rolada"
+    );
+    let ev = mesa.host.click_at(x, y);
+    let pedido = mesa.aplica(ev);
+    let m = mundo_de(&pedido);
+    assert!(
+        !m.collides(l + 1, c),
+        "o clique não desligou o par sob o ponteiro ({}, {c})",
+        l + 1
+    );
+    assert!(
+        m.collides(l, c),
+        "o clique editou o par de ANTES da rolagem ({l}, {c})"
+    );
+    // Shift+roda: uma coluna; e a roda para cima volta.
+    let _ = aba::rola(x, y, -1.0, true);
+    assert_eq!(
+        aba::geometria_da_ultima().map(|g| g.c0),
+        Some(1.min(27 - g.cabem_c))
+    );
+    let _ = aba::rola(x, y, 1.0, false);
+    assert_eq!(aba::geometria_da_ultima().map(|g| g.l0), Some(0));
+    aba::fecha();
+}

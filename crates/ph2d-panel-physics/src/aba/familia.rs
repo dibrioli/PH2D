@@ -64,8 +64,8 @@ impl DocumentSurface for AbaDasCamadas {
         false
     }
 
-    fn wheel(&mut self, _id: u64, _x: f32, _y: f32, _dy: f32, _shift: bool) -> bool {
-        false
+    fn wheel(&mut self, _id: u64, x: f32, y: f32, dy: f32, shift: bool) -> bool {
+        aba::rola(x, y, dy, shift)
     }
 
     fn key(&mut self, _id: u64, _ts: &mut TextSystem, _input: KeyInput<'_>) -> KeyOutcome {

@@ -30,6 +30,8 @@ thread_local! {
     pub(crate) static CAMADA: Cell<usize> = const { Cell::new(0) };
     /// A geometria do último quadro pintado (os testes medem os botões e a rolagem por ela).
     pub(crate) static GEOMETRIA: Cell<Option<Geometria>> = const { Cell::new(None) };
+    /// A rolagem da grade: (primeira linha, primeira coluna) à vista.
+    pub(crate) static ROLAGEM: Cell<(usize, usize)> = const { Cell::new((0, 0)) };
     pub(crate) static EDITANDO: Cell<Option<(usize, Onde)>> = const { Cell::new(None) };
     /// A aba pediu para vir à frente (a superfície entrega-o à barra de abas).
     pub(crate) static PEDIDO: Cell<bool> = const { Cell::new(false) };
@@ -88,6 +90,8 @@ pub fn fecha() {
     EDITANDO.set(None);
     NOVA.set(None);
     AREA.set(None);
+    ROLAGEM.set((0, 0));
+    GEOMETRIA.set(None);
 }
 
 /// A superfície tira o pedido de vir à frente (uma vez).
@@ -104,6 +108,30 @@ pub fn poe_area(area: Rect) {
 /// A área fixa dos testes de painel (sem a barra de abas da shell): vale até `fecha`.
 pub fn poe_area_fixa(area: Rect) {
     AREA.set(Some((area, true)));
+}
+
+/// ⭐ A roda sobre a grade rola-a uma célula por passo (Shift = na horizontal); fora dela, não é tomada.
+pub fn rola(x: f32, y: f32, dy: f32, shift: bool) -> bool {
+    let Some(g) = GEOMETRIA.get() else {
+        return false;
+    };
+    if !g.grade.contains(x, y) || dy == 0.0 {
+        return false;
+    }
+    let passo = |v: usize, cabem: usize| {
+        // `dy` > 0 é a roda para cima: volta ao começo.
+        let novo = if dy > 0.0 { v.saturating_sub(1) } else { v + 1 };
+        novo.min(g.k.saturating_sub(cabem))
+    };
+    let (l0, c0) = (g.l0, g.c0);
+    let novo = if shift {
+        (l0, passo(c0, g.cabem_c))
+    } else {
+        (passo(l0, g.cabem_l), c0)
+    };
+    ROLAGEM.set(novo);
+    GEOMETRIA.set(Some(g.rolada(novo)));
+    novo != (l0, c0)
 }
 
 /// A geometria do último quadro pintado da aba.

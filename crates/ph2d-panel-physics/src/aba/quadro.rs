@@ -74,6 +74,8 @@ pub(super) fn fotos(ctx: &mut PaintCtx) {
         let name = tr("card.physics.smoke_long_name").to_owned();
         let bus = ctx.host.bus_mut();
         bus.push(ph2d_editor_core::action_bus::EditorAction::LayerRename { layer: 7, name });
+        // A grade rola até ao fim, para a célula do ponteiro (26, 2) estar à vista.
+        super::ROLAGEM.set((usize::from(u8::MAX), 0));
     }
     if caso == "nome" {
         let campo = i::PHYSICS_LAYER_NAME[2];
@@ -268,7 +270,9 @@ impl Quadro {
             )
         });
         let altura = pergunta.as_ref().map_or(camada.altura, |p| p.altura);
-        let g = Geometria::de(area, rotulo_w, lista_w, visiveis.len(), altura).com_botoes(botao_w);
+        let g = Geometria::de(area, rotulo_w, lista_w, visiveis.len(), altura)
+            .com_botoes(botao_w)
+            .rolada(super::ROLAGEM.get());
         super::GEOMETRIA.set(Some(g));
         let camada = camada.desloca(g.camada.x, g.camada.y);
         let pergunta = pergunta.map(|p| p.desloca(g.camada.x, g.camada.y));

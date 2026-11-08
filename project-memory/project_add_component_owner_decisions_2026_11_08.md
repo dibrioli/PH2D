@@ -30,3 +30,5 @@ Decisões do dono (08/11) para o painel Add Component, no mesmo padrão do Add O
 **How to apply:** plano em `docs/GameEngineFuncional/25_add_component_plano.md`. O catálogo por baixo
 pode ficar igual — os 11 assuntos são apresentação. Peso das letras e destaque: decididos (item 6). Ver
 [[project_add_object_owner_decisions_2026_11_07]].
+
+Smoke do dono 08/11: OK (recibo ×, câmera laranja com sombra no canvas).

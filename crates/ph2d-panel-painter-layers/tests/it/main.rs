@@ -82,5 +82,6 @@ mod seam_watercolor_flow; // as linhas da forma da borda: Flow, Size, Angle, Pap
 mod seam_wet_presets;
 mod seam_wetpaint; // W1: o navegador de presets e os volumes do Wet Painter, pelo ponteiro
 mod seam_wetpaint_oleo_real;
-mod seam_wetpaint_opcoes;
-mod size_px_e_dab_fixo; // dono 08/11: Size em px e Fixed dab size em todo meio // W1g: Live Water e Heavy Edge pelo clique real // Óleo Real (doc 49): a caixa e as cinco linhas pelo clique real
+mod seam_wetpaint_opcoes; // W1g: Live Water e Heavy Edge pelo clique real // Óleo Real (doc 49): a caixa e as cinco linhas pelo clique real
+// Dono 08/11: Size em px e Fixed dab size em todo meio.
+mod size_px_e_dab_fixo;

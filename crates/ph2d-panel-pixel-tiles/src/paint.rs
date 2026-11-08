@@ -2,7 +2,7 @@
 
 use ph2d_editor_core::panel::cards::banda::metrics as m;
 use ph2d_editor_core::panel::cards::ferramenta::{pinta_lista_curta, prepara_numeros};
-use ph2d_editor_core::panel::cards::paint_card_list;
+use ph2d_editor_core::panel::cards::{borda, paint_card_list};
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::widget::panel_chrome::panel_drag_handle_rect;
 use ph2d_editor_core::zones::Rect;
@@ -38,8 +38,9 @@ fn imagens(st: &mut PixelTilesPanelState, x: &Contexto) {
     st.fontes = x.imagens.clone();
 }
 
-/// O rect de uma janela solta, na área do desenho; o arrasto soma-se a ele.
-fn solta(ctx: &PaintCtx, x_de: impl FnOnce(Rect) -> f32) -> Rect {
+/// O rect de uma janela solta, na área do desenho; o arrasto soma-se a ele. `x_de` recebe a área e a
+/// largura.
+fn solta(ctx: &PaintCtx, w: f32, x_de: impl FnOnce(Rect, f32) -> f32) -> Rect {
     let area = ctx.layout.draw_area;
     let teto = {
         let r = ph2d_editor_core::ruler::top_band(area);
@@ -50,9 +51,9 @@ fn solta(ctx: &PaintCtx, x_de: impl FnOnce(Rect) -> f32) -> Rect {
         .store()
         .blender_picker_offset(PixelTilesPanel::NODE_ID);
     Rect::new(
-        x_de(area) + dx,
+        x_de(area, w) + dx,
         teto + dy,
-        PANEL_MIN_W_PX,
+        w,
         (area.y + area.h - teto - Spacing::Sm.px()).max(0.0),
     )
 }
@@ -80,7 +81,7 @@ fn janela(st: &PixelTilesPanelState, x: &Contexto, ctx: &mut PaintCtx) {
             tr("panel.pixel.tiles.create"),
         )
     };
-    let slot = solta(ctx, |a| a.x + (a.w - PANEL_MIN_W_PX) * 0.5);
+    let slot = solta(ctx, PANEL_MIN_W_PX, |a, w| a.x + (a.w - w) * 0.5);
     let cartoes = cards::janela(st, x);
     let encaixe = ctx.slot;
     ctx.slot = slot;
@@ -117,13 +118,14 @@ pub(crate) fn paint(st: &mut PixelTilesPanelState, ctx: &mut PaintCtx) {
     let cartoes = cards::tileset(st, &x);
     // Ao lado do encaixe do painel PIXEL, como a Preview: a área do desenho passa por baixo da coluna.
     let coluna = ctx.slot.x;
-    let slot = solta(ctx, |a| {
-        (coluna - PANEL_MIN_W_PX - Spacing::Lg.px()).max(a.x)
-    });
+    let area = ctx.layout.draw_area;
+    let w = borda::largura(ctx.host.store_mut(), node, area, coluna);
+    let slot = solta(ctx, w, |a, w| (coluna - w - Spacing::Lg.px()).max(a.x));
     let encaixe = ctx.slot;
     ctx.slot = slot;
     let lista = paint_card_list(ctx, node, PixelTilesPanel::TITLE.tr(), &cartoes);
     ctx.slot = encaixe;
     ctx.host.store_mut().set_panel_rect(node, lista);
     alca(ctx, lista);
+    borda::pega(ctx, ids::TILES_EDGE, lista);
 }

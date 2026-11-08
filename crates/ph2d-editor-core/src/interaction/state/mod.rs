@@ -23,6 +23,8 @@ mod kinds;
 mod slider_curve;
 pub use kinds::{InteractiveState, NamedPalette};
 
+mod accessory_width_ops;
+pub use accessory_width_ops::AccessoryWidths;
 mod asset_drag_ops;
 mod dock_width_ops;
 mod graph_ops;

@@ -335,6 +335,10 @@ pub(super) fn apply_blender_hit(
             store.begin_panel_resize_bl(parent, px, py);
             None
         }
+        BlenderHitKind::WidthEdge => {
+            store.begin_accessory_width_drag(parent, px);
+            None
+        }
         BlenderHitKind::VisibilityToggle => {
             // M14.6A: not dispatched through this `BlenderHit` arm —
             // the hierarchy eye uses an offset-NodeId companion

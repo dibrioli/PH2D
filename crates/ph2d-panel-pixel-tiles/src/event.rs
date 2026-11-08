@@ -44,6 +44,11 @@ pub(crate) fn populate(store: &mut WidgetStore) {
             kind: BlenderHitKind::DragHandle,
         },
     );
+    ph2d_editor_core::panel::cards::borda::regista(
+        store,
+        ids::TILES_EDGE,
+        PixelTilesPanel::NODE_ID,
+    );
 }
 
 /// As células do tileset: o sprite decide quantas são.

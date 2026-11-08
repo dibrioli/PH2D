@@ -41,6 +41,7 @@ impl WidgetStore {
             panel_resize_delta: BTreeMap::new(),
             panel_resize_anchor: None,
             panel_resize_anchor_bl: None,
+            accessory_widths: super::AccessoryWidths::default(),
             panel_slot: std::collections::BTreeMap::new(),
             panel_tab_order: Vec::new(),
             tab_drag: None,

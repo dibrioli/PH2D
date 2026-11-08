@@ -134,6 +134,8 @@ pub struct WidgetStore {
     /// tag because only one resize is active at a time and the dispatch
     /// can check both Options cheaply.
     pub(in crate::interaction) panel_resize_anchor_bl: Option<(NodeId, f32, f32)>,
+    /// A largura das janelas acessórias e o arrasto da borda delas. Ver `state::accessory_width_ops`.
+    pub(in crate::interaction) accessory_widths: super::AccessoryWidths,
     /// ⭐⭐ **AS EXCEPÇÕES de onde cada painel está** (decisão D4) — só quem o artista MOVEU. Quem
     /// não está aqui responde pelo `Panel::DEFAULT_SLOT`. Ver `state::slot_ops`.
     pub(in crate::interaction) panel_slot:

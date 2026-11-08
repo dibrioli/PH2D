@@ -87,6 +87,8 @@ pub(super) fn dispatch_move<'frame>(
         store.set_blender_picker_offset(panel, cur_off_x + dx, cur_off_y);
         store.update_panel_resize_cursor_bl(event.x, event.y);
     }
+    // A borda de fora de uma janela acessória (`state::accessory_width_ops`).
+    store.move_accessory_width_drag(event.x, ph2d_tokens::PANEL_MIN_W_PX);
     // Scrollbar drag — translate the cursor's y-delta into
     // a `panel_scroll` delta via `widget::scrollbar::
     // delta_for_drag`. Snapshot of metrics taken at Down so

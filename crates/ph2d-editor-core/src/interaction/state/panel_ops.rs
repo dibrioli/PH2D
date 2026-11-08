@@ -41,6 +41,7 @@ impl WidgetStore {
     pub fn end_panel_resize(&mut self) {
         self.panel_resize_anchor = None;
         self.panel_resize_anchor_bl = None;
+        self.end_accessory_width_drag();
     }
 
     /// Begin a resize from the bottom-LEFT corner. The Move handler

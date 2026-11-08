@@ -84,23 +84,34 @@ fn paint_float_seams(
         if !flutua || r.w <= 0.0 || r.h <= 0.0 {
             continue;
         }
-        let mark_h = ph2d_tokens::ROW_H_PX.min(r.h);
-        let mark = Rect::new(
-            r.x + (r.w - ARROW_W) * 0.5,
-            r.y + (r.h - mark_h) * 0.5,
-            ARROW_W,
-            mark_h,
-        );
-        if store.loose_card_covers(mark) {
+        if store.loose_card_covers(seam_mark(r)) {
             continue;
         }
-        fill_rounded_rect(
-            scene,
-            mark,
-            ARROW_W * 0.5,
-            resolve(ColorToken::Text3, theme),
-        );
+        paint_seam_mark(scene, r, theme);
     }
+}
+
+/// A marca da alça: uma barra vertical a meia altura de uma faixa de agarre `r`.
+fn seam_mark(r: Rect) -> Rect {
+    let mark_h = ph2d_tokens::ROW_H_PX.min(r.h);
+    Rect::new(
+        r.x + (r.w - ARROW_W) * 0.5,
+        r.y + (r.h - mark_h) * 0.5,
+        ARROW_W,
+        mark_h,
+    )
+}
+
+/// Pinta a marca da alça sobre a faixa `r` — a da coluna do Inspector e a das janelas acessórias
+/// (`panel::cards::borda`): a mesma alça, o mesmo desenho.
+pub fn paint_seam_mark(scene: &mut VectorScene, r: Rect, theme: Theme) {
+    let mark = seam_mark(r);
+    fill_rounded_rect(
+        scene,
+        mark,
+        ARROW_W * 0.5,
+        resolve(ColorToken::Text3, theme),
+    );
 }
 
 /// ⭐ F5: **a FAIXA de ícones do ③ recolhido** (iPad 11" e mini — mais estreito que a janela de

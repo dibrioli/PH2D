@@ -4,6 +4,8 @@ use ph2d_a11y::NodeId;
 use ph2d_tool_registry::{hash_node_id, hash_node_id_runtime};
 
 pub const TILES_DRAG: NodeId = hash_node_id("pixel_tiles.drag");
+/// A alça da borda de fora — alarga a janela do tileset (`panel::cards::borda`).
+pub const TILES_EDGE: NodeId = hash_node_id("pixel_tiles.edge");
 pub const TILES_CANCEL: NodeId = hash_node_id("pixel_tiles.cancel");
 pub const TILES_OK: NodeId = hash_node_id("pixel_tiles.ok");
 

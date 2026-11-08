@@ -91,6 +91,9 @@ pub enum BlenderHitKind {
     /// the left edge follows the cursor; Up ends it. Lets the user
     /// grab the panel from either bottom corner.
     ResizeHandleBl,
+    /// A borda de FORA (esquerda) de uma janela acessória — Down arma o arrasto da LARGURA; a
+    /// direita fica presa à coluna. Ver `state::accessory_width_ops`.
+    WidthEdge,
     /// M14.6A: eye icon on a hierarchy row — toggles the entity's
     /// `Visibility` component. Parent NodeId on the `BlenderHit` is
     /// the row's id; dispatcher sets `HeroScreen.pending_visibility_toggle`

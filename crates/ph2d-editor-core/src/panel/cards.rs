@@ -161,6 +161,9 @@ pub struct CardCtx<'s> {
 /// ⭐ A moldura e os controlos em fila de um painel-banda (Timeline).
 #[path = "cards_banda.rs"]
 pub mod banda;
+/// ⭐ A borda de fora de uma janela acessória — a alça que a alarga.
+#[path = "cards_borda.rs"]
+pub mod borda;
 
 #[path = "cards_cartao.rs"]
 mod cartao;

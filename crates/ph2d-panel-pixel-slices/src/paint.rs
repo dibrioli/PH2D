@@ -1,7 +1,10 @@
 //! O quadro do painel: os cartões, flutuando ao lado do painel PIXEL, e o menu do botão direito.
 
+use ph2d_a11y::NodeId;
+use ph2d_editor_core::ids::PIXEL_TILES_PANEL;
 use ph2d_editor_core::interaction::InteractiveState;
 use ph2d_editor_core::panel::cards::banda::metrics as m;
+use ph2d_editor_core::panel::cards::borda;
 use ph2d_editor_core::panel::cards::paint_card_list;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
 use ph2d_editor_core::screens::hero::PANEL_PIXEL_TILES;
@@ -9,32 +12,37 @@ use ph2d_editor_core::widget::panel_chrome::panel_drag_handle_rect;
 use ph2d_editor_core::widget::{Dropdown, DropdownOption};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::{PANEL_MIN_W_PX, ROW_H_PX, Spacing};
+use ph2d_tokens::{ROW_H_PX, Spacing};
+use ph2d_tool_registry::hash_node_id;
 
 use crate::canal::{self, Menu};
 use crate::{PixelSlicesPanel, PixelSlicesPanelState, cards, event, ids};
 
-/// O rect da janela: à esquerda da coluna; se a janela Tilemap está lá, à esquerda dela.
-fn solta(ctx: &PaintCtx) -> Rect {
+/// A alça da borda de fora (`borda`): o id mora aqui para não tocar os ids dos cartões.
+pub(crate) const SLICES_EDGE: NodeId = hash_node_id("pixel_slices.edge");
+
+/// O rect da janela: à esquerda da coluna; se a janela Tilemap está lá, à esquerda dela — pelas
+/// larguras REAIS das duas (a borda de fora alarga cada uma).
+fn solta(ctx: &mut PaintCtx) -> Rect {
     let area = ctx.layout.draw_area;
     let teto = {
         let r = ph2d_editor_core::ruler::top_band(area);
         r.y + r.h + Spacing::Sm.px()
     };
-    let (dx, dy) = ctx
-        .host
-        .store()
-        .blender_picker_offset(PixelSlicesPanel::NODE_ID);
-    let passo = PANEL_MIN_W_PX + Spacing::Lg.px();
-    let vizinhas = if ctx.host.panel_visible(PANEL_PIXEL_TILES) {
-        passo * 2.0
+    let coluna = ctx.slot.x;
+    let tiles = ctx.host.panel_visible(PANEL_PIXEL_TILES);
+    let store = ctx.host.store_mut();
+    let w = borda::largura(store, PixelSlicesPanel::NODE_ID, area, coluna);
+    let vizinha = if tiles {
+        borda::largura(store, PIXEL_TILES_PANEL, area, coluna) + Spacing::Lg.px()
     } else {
-        passo
+        0.0
     };
+    let (dx, dy) = store.blender_picker_offset(PixelSlicesPanel::NODE_ID);
     Rect::new(
-        (ctx.slot.x - vizinhas).max(area.x) + dx,
+        (coluna - Spacing::Lg.px() - vizinha - w).max(area.x) + dx,
         teto + dy,
-        PANEL_MIN_W_PX,
+        w,
         (area.y + area.h - teto - Spacing::Sm.px()).max(0.0),
     )
 }
@@ -123,5 +131,7 @@ pub(crate) fn paint(st: &mut PixelSlicesPanelState, ctx: &mut PaintCtx) {
         ids::SLICES_DRAG,
         panel_drag_handle_rect(lista, m::LIST_HEAD_H, reserva),
     );
+    borda::regista(ctx.host.store_mut(), SLICES_EDGE, node);
+    borda::pega(ctx, SLICES_EDGE, lista);
     menu_aberto(st, ctx);
 }

@@ -88,6 +88,8 @@ mod the_pixel_export_answers_a_real_pointer;
 mod the_pixel_slices_answers_a_real_pointer;
 #[cfg(feature = "panel-pixel-tiles")]
 mod the_pixel_tiles_answers_a_real_pointer;
+#[cfg(feature = "panel-pixel-slices")]
+mod the_slices_window_widens_by_its_outer_edge;
 mod the_properties_fold_into_an_icon_strip_on_small_tablets;
 mod the_tab_and_the_menu_call_a_panel_the_same_thing;
 mod the_tool_bar_never_grows_and_the_rest_is_behind_the_dots;

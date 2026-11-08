@@ -157,6 +157,10 @@ pub fn pointer_look(hero: &HeroScreen, x: f32, y: f32) -> Option<crate::doc_surf
     if let Some(look) = hero.store.pixel_timeline_look(hero.chrome_hit(x, y)) {
         return Some(look);
     }
+    let alca = |id| crate::panel::cards::borda::e_alca(&hero.store, id);
+    if hero.store.accessory_width_drag().is_some() || hero.chrome_hit(x, y).is_some_and(alca) {
+        return Some(crate::doc_surface::PointerLook::ResizeEw);
+    }
     if hero.documents.chrome_press.is_some() {
         return None;
     }

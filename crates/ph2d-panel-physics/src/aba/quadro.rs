@@ -226,18 +226,23 @@ impl Quadro {
             .fold(0.0_f32, f32::max)
             + Spacing::Md.px();
         let add_rotulo = tr("card.physics.tab_add");
+        let botao_w = largura(ctx, add_rotulo).max(largura(ctx, tr("card.physics.tab_remove")))
+            + Spacing::Lg.px() * 2.0;
         let contagem_w = largura(ctx, &MAX_LAYERS.to_string().repeat(2));
         let lista_w = (rotulo_w + contagem_w + Spacing::Lg.px() * 2.0)
             .max(largura(ctx, tr("card.physics.tab_layers")) + Spacing::Lg.px() * 2.0)
             .max(ROW_H_PX * 6.0) // LITERAL-PX-OK: a lista tem pelo menos seis linhas de largura
-            // «+ Add» e «Remove» lado a lado cabem dentro do cartão.
-            .max(
-                largura(ctx, add_rotulo)
-                    + largura(ctx, tr("card.physics.tab_remove"))
-                    + Spacing::Lg.px() * 2.0
-                    + Spacing::Lg.px() * 2.0
-                    + Spacing::Md.px(),
-            );
+            // «+ Add layer» e «Remove» com a mesma largura, lado a lado dentro do cartão (onda 9e); se a aba
+            // não deixa (a lista passaria de um terço dela), um debaixo do outro.
+            .max({
+                let lado_a_lado = Geometria::lista_para_os_botoes(botao_w);
+                let empilhados = botao_w + Geometria::MARGEM_DA_LISTA * 2.0;
+                if lado_a_lado <= area.w / 3.0 {
+                    lado_a_lado
+                } else {
+                    empilhados
+                } // LITERAL-PX-OK: um terço da aba
+            });
         let aberta_n = camada_aberta();
         let nomes_dos_objetos: Vec<String> = crate::state::layer_objects(aberta_n)
             .into_iter()
@@ -263,10 +268,11 @@ impl Quadro {
             )
         });
         let altura = pergunta.as_ref().map_or(camada.altura, |p| p.altura);
-        let g = Geometria::de(area, rotulo_w, lista_w, visiveis.len(), altura);
+        let g = Geometria::de(area, rotulo_w, lista_w, visiveis.len(), altura).com_botoes(botao_w);
+        super::GEOMETRIA.set(Some(g));
         let camada = camada.desloca(g.camada.x, g.camada.y);
         let pergunta = pergunta.map(|p| p.desloca(g.camada.x, g.camada.y));
-        let remove_w = largura(ctx, tr("card.physics.tab_remove")) + Spacing::Lg.px() * 2.0;
+        let remove_w = g.botao_w;
         let remove_aceso =
             ctx.host.store().button_state(i::PHYSICS_LAYER_REMOVE) == Some(ButtonState::Hovered);
         let matriz = LayerMatrix::from_rows(crate::state::current().vivo.layer_matrix);
@@ -286,7 +292,7 @@ impl Quadro {
         let cabeca_dir = tr_with("card.physics.tab_pairs", &[("n", &n_pares.to_string())]);
         let cabeca_dir_w = largura(ctx, &cabeca_dir);
         let pares_w = largura(ctx, &pares_da_camada);
-        let add_w = largura(ctx, add_rotulo) + Spacing::Lg.px() * 2.0;
+        let add_w = g.botao_w;
         let cheia = visiveis.len() >= MAX_LAYERS;
         let add_aceso =
             ctx.host.store().button_state(i::PHYSICS_LAYER_ADD) == Some(ButtonState::Hovered);

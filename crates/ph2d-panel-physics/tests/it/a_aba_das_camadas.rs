@@ -668,3 +668,52 @@ fn a_lista_e_as_caixinhas_sublinham_o_nome_na_cor_da_camada() {
     }
     aba::fecha();
 }
+
+/// ⭐ Onda 9e (pedido do dono com foto): «+ Add layer» e «Remove» ficam DENTRO do cartão da lista, com a margem
+/// lateral da lista e um vão entre eles, a mesma altura; nunca cortados nem para fora, em três larguras de aba.
+#[test]
+fn os_botoes_da_lista_ficam_dentro_do_cartao_em_tres_larguras() {
+    use ph2d_panel_physics::aba::Geometria;
+    let m = Geometria::MARGEM_DA_LISTA;
+    for w in [1000.0, 640.0, 360.0] {
+        let mut mesa = Mesa::nova(nomes_b(), false);
+        let area = Rect { w, ..AREA };
+        aba::abre(Some(1));
+        aba::poe_area_fixa(area);
+        mesa.pinta();
+        let g = aba::geometria_da_ultima().expect("a aba pintou");
+        let (add, rem) = (
+            mesa.rect(ids::PHYSICS_LAYER_ADD).expect("+ Add layer"),
+            mesa.rect(ids::PHYSICS_LAYER_REMOVE).expect("Remove"),
+        );
+        assert_eq!((add, rem), (g.add(), g.remove()), "o alvo é o pintado");
+        for b in [add, rem] {
+            assert!(
+                b.x >= g.lista.x + m - 0.01,
+                "{w}: margem esquerda {b:?} em {:?}",
+                g.lista
+            );
+            assert!(
+                b.x + b.w <= g.lista.x + g.lista.w - m + 0.01,
+                "{w}: passou da borda {b:?} em {:?}",
+                g.lista
+            );
+            assert!(
+                b.y + b.h <= g.lista.y + g.lista.h - m + 0.01,
+                "{w}: passou do fundo"
+            );
+        }
+        assert_eq!(
+            (add.h, add.w),
+            (rem.h, rem.w),
+            "{w}: a mesma altura e largura"
+        );
+        let vao = if g.botoes_empilhados() {
+            rem.y - (add.y + add.h)
+        } else {
+            rem.x - (add.x + add.w)
+        };
+        assert!((vao - m).abs() < 0.01, "{w}: o vão é a margem ({vao})");
+    }
+    aba::fecha();
+}

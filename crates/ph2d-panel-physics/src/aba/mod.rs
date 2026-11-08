@@ -28,6 +28,8 @@ thread_local! {
     pub(crate) static ABERTA: Cell<bool> = const { Cell::new(false) };
     /// A camada aberta: a selecionada na lista, acesa na grade.
     pub(crate) static CAMADA: Cell<usize> = const { Cell::new(0) };
+    /// A geometria do último quadro pintado (os testes medem os botões e a rolagem por ela).
+    pub(crate) static GEOMETRIA: Cell<Option<Geometria>> = const { Cell::new(None) };
     pub(crate) static EDITANDO: Cell<Option<(usize, Onde)>> = const { Cell::new(None) };
     /// A aba pediu para vir à frente (a superfície entrega-o à barra de abas).
     pub(crate) static PEDIDO: Cell<bool> = const { Cell::new(false) };
@@ -102,6 +104,12 @@ pub fn poe_area(area: Rect) {
 /// A área fixa dos testes de painel (sem a barra de abas da shell): vale até `fecha`.
 pub fn poe_area_fixa(area: Rect) {
     AREA.set(Some((area, true)));
+}
+
+/// A geometria do último quadro pintado da aba.
+#[must_use]
+pub fn geometria_da_ultima() -> Option<Geometria> {
+    GEOMETRIA.get()
 }
 
 /// O que o último `paint` da aba desenhou.

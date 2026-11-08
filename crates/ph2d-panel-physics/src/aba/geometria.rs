@@ -16,6 +16,8 @@ pub struct Geometria {
     pub rotulo_w: f32,
     pub passo: f32,
     pub k: usize,
+    /// A largura de cada um dos dois botões da lista («+ Add layer» e «Remove»; [`Self::com_botoes`]).
+    pub botao_w: f32,
 }
 
 impl Geometria {
@@ -45,7 +47,7 @@ impl Geometria {
             .max(Spacing::Md.px());
         let grade = Rect::new(dx, area.y + pad, dw, fixo_h + passo * n);
         let camada = Rect::new(dx, grade.y + grade.h + pad, dw, camada_h);
-        let lista_h = Spacing::Md.px() + Spacing::Sm.px() + row * (k + 2) as f32;
+        let lista_h = Self::MARGEM_DA_LISTA * 3.0 + row * (k + 2) as f32; // LITERAL-PX-OK: em cima, antes dos botões e embaixo
         let lista = Rect::new(
             area.x + pad,
             area.y + pad,
@@ -61,6 +63,7 @@ impl Geometria {
             rotulo_w,
             passo,
             k,
+            botao_w: 0.0,
         }
     }
 
@@ -127,7 +130,7 @@ impl Geometria {
     /// A linha `p` da lista (debaixo do título «Layers»).
     #[must_use]
     pub fn linha_da_lista(&self, p: usize) -> Rect {
-        let pad = Spacing::Sm.px();
+        let pad = Self::MARGEM_DA_LISTA;
         Rect::new(
             self.lista.x + pad,
             self.lista.y + pad + ROW_H_PX * (p + 1) as f32,
@@ -136,11 +139,50 @@ impl Geometria {
         )
     }
 
-    /// O «+ Add», debaixo da última linha da lista.
+    /// ⭐ A margem lateral da lista (as linhas e os botões) e o vão entre os dois botões (onda 9e, pedido do
+    /// dono: os botões DENTRO do cartão da lista, como a coluna «Animations» do editor de animações).
+    pub const MARGEM_DA_LISTA: f32 = Spacing::Sm.factory_px();
+
+    /// A largura que a lista pede para os dois botões de `botao_w` lado a lado, com as margens e o vão.
     #[must_use]
-    pub fn add(&self, w: f32) -> Rect {
+    pub fn lista_para_os_botoes(botao_w: f32) -> f32 {
+        botao_w * 2.0 + Self::MARGEM_DA_LISTA * 3.0 // LITERAL-PX-OK: dois botões, duas margens e o vão
+    }
+
+    /// Os dois botões com `botao_w`; se lado a lado não cabem dentro da lista, um debaixo do outro (a lista
+    /// cresce uma linha). Nunca passam da borda.
+    #[must_use]
+    pub fn com_botoes(mut self, botao_w: f32) -> Self {
+        self.botao_w = botao_w.min(self.lista.w - Self::MARGEM_DA_LISTA * 2.0);
+        if self.botoes_empilhados() {
+            let fim = self.remove().y + self.remove().h + Self::MARGEM_DA_LISTA;
+            self.lista.h = self.lista.h.max(fim - self.lista.y);
+        }
+        self
+    }
+
+    /// Se os dois botões vão um debaixo do outro.
+    #[must_use]
+    pub fn botoes_empilhados(&self) -> bool {
+        Self::lista_para_os_botoes(self.botao_w) > self.lista.w + f32::EPSILON
+    }
+
+    /// O «+ Add layer», debaixo da última linha da lista.
+    #[must_use]
+    pub fn add(&self) -> Rect {
         let r = self.linha_da_lista(self.k);
-        Rect::new(r.x, r.y + Spacing::Sm.px(), w, ROW_H_PX)
+        Rect::new(r.x, r.y + Self::MARGEM_DA_LISTA, self.botao_w, ROW_H_PX)
+    }
+
+    /// O «Remove»: ao lado do «+ Add layer», com o vão; ou debaixo dele.
+    #[must_use]
+    pub fn remove(&self) -> Rect {
+        let a = self.add();
+        if self.botoes_empilhados() {
+            Rect::new(a.x, a.y + a.h + Self::MARGEM_DA_LISTA, a.w, a.h)
+        } else {
+            Rect::new(a.x + a.w + Self::MARGEM_DA_LISTA, a.y, a.w, a.h)
+        }
     }
 }
 

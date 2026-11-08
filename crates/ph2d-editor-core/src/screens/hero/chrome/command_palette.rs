@@ -71,6 +71,11 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         }
         // A click on the card's dead space: consume so it never falls through the scrim to close.
         WidgetEvent::Click(id) if id == CMD_PALETTE_CARD => true,
+        // ⭐ Um clique na busca dá-lhe o foco (dono 08/11): o anel e o caret acendem.
+        WidgetEvent::Click(id) if id == command_palette::CMD_PALETTE_SEARCH => {
+            hero.store.focus_command_palette_search();
+            true
+        }
         // ⭐ O botão do ensino (modo de seleção): limpa a busca e volta ao primeiro item.
         WidgetEvent::Click(id) if id == command_palette::CMD_PALETTE_TEACH_START => {
             hero.store.restart_command_palette_highlight();
@@ -160,6 +165,24 @@ mod tests {
             !hero.store.command_palette_open(),
             "a click on the scrim closes the palette"
         );
+    }
+
+    /// **Um clique na busca dá-lhe o foco e não fecha; uma paleta nova nasce sem foco** (dono 08/11).
+    /// FALSIFIED by the handler not routing `CMD_PALETTE_SEARCH` (the click would fall to nobody) or by
+    /// `open_command_palette` keeping the old focus.
+    #[test]
+    fn um_clique_na_busca_da_lhe_o_foco_e_a_paleta_nova_nasce_sem() {
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.store.open_command_palette(model());
+        assert!(!hero.store.command_palette_search_focused());
+        assert!(apply(
+            &mut hero,
+            WidgetEvent::Click(command_palette::CMD_PALETTE_SEARCH)
+        ));
+        assert!(hero.store.command_palette_open() && hero.store.command_palette_search_focused());
+        hero.store.close_command_palette();
+        hero.store.open_command_palette(model());
+        assert!(!hero.store.command_palette_search_focused(), "herdou o foco");
     }
 
     /// **The close-X closes the palette.**

@@ -235,12 +235,13 @@ fn a_plaquinha_cabe_na_pilula_e_nao_muda_quem_nao_a_tem() {
 }
 
 /// O anel de foco e o caret da busca de uma paleta pintada em cartões: `(anéis, x de cada caret)`.
-fn foco_da_busca(select: bool, query: &str) -> (usize, Vec<f64>) {
+fn foco_da_busca(select: bool, query: &str, focus: impl Fn(&mut WidgetStore)) -> (usize, Vec<f64>) {
     use ph2d_vector::DrawOp;
     use ph2d_vector::{Brush, Shape};
     crate::widget::lista_flutuante::force_cromo_on_this_thread(Some(true));
     let mut store = WidgetStore::with_capacity(4);
     store.open_command_palette(model(select));
+    focus(&mut store);
     let m = store.command_palette_model().expect("aberta").clone();
     let mut scene = VectorScene::new();
     scene.record();
@@ -283,24 +284,40 @@ fn foco_da_busca(select: bool, query: &str) -> (usize, Vec<f64>) {
     (aneis, carets)
 }
 
-/// ⭐⭐ **A busca do Add Object / Add Component mostra que tem o teclado** (smoke do dono 08/11: «o usuário
-/// não percebe que está no campo de texto»): o anel de foco e o caret do campo do cartão, já com a caixa
-/// vazia — o teclado escreve nela enquanto a janela está aberta. O caret anda com a busca escrita. As
-/// paletas de sempre (`Ctrl+K`, biblioteca do Motion: `select: None`) pintam como antes, sem anel.
+/// ⭐⭐ **A busca do Add Object / Add Component mostra o foco só quando o tem** (smoke do dono 08/11: «o
+/// usuário não percebe que está no campo de texto», e depois «deveria ficar destacado se o usuário clicar
+/// nele ou começar a digitar»): ao abrir, a caixa pinta-se em repouso; um clique nela ou uma tecla acendem
+/// o anel e o caret do campo do cartão, que ficam mesmo se a busca voltar a vazia; um clique num item
+/// apaga-os. As paletas de sempre (`Ctrl+K`, biblioteca do Motion: `select: None`) nunca têm anel.
 ///
-/// (Mutação: `search_focus: false` no `compact`, ou tirar o anel do `paint_field_frame` ⇒ RED.)
+/// (Mutação: `search_focus: false` no `compact`; o `push_char` sem pôr o foco; o `&=` do pintor sem o store
+/// ⇒ RED.)
 #[test]
-fn a_busca_com_o_teclado_pinta_o_anel_e_o_caret() {
-    let (aneis, vazia) = foco_da_busca(true, "");
-    assert_eq!(aneis, 1, "a busca do Add Object não pinta o anel de foco");
-    assert_eq!(vazia.len(), 1, "a busca vazia não pinta o caret: {vazia:?}");
-    let (_, escrita) = foco_da_busca(true, "Spr");
-    assert_eq!(escrita.len(), 1);
+fn a_busca_so_acende_o_foco_depois_de_um_clique_ou_de_uma_tecla() {
+    let nada = |_: &mut WidgetStore| {};
+    assert_eq!(foco_da_busca(true, "", nada), (0, vec![]), "a busca nasce acesa");
+    let clique = |s: &mut WidgetStore| s.focus_command_palette_search();
+    let (aneis, vazia) = foco_da_busca(true, "", clique);
+    assert_eq!(aneis, 1, "o clique na busca não pinta o anel de foco");
+    assert_eq!(vazia.len(), 1, "a busca vazia com foco não pinta o caret: {vazia:?}");
+    let tecla = |s: &mut WidgetStore| s.command_palette_push_char('S');
+    let (aneis, escrita) = foco_da_busca(true, "Spr", tecla);
+    assert_eq!((aneis, escrita.len()), (1, 1), "a tecla não acende a busca");
     assert!(escrita[0] > vazia[0], "o caret não anda com a busca");
-    let (aneis, carets) = foco_da_busca(false, "");
+    let apagou = |s: &mut WidgetStore| {
+        s.command_palette_push_char('S');
+        s.command_palette_backspace();
+    };
+    assert_eq!(foco_da_busca(true, "", apagou).0, 1, "apagar tudo tirou o foco");
+    let item = |s: &mut WidgetStore| {
+        s.focus_command_palette_search();
+        let id = s.command_palette_highlight().expect("um item");
+        s.highlight_command_palette(id);
+    };
+    assert_eq!(foco_da_busca(true, "", item).0, 0, "o clique num item deixou a busca acesa");
     assert_eq!(
-        (aneis, carets.len()),
-        (0, 0),
+        foco_da_busca(false, "", clique),
+        (0, vec![]),
         "a paleta de sempre mudou de aspecto"
     );
 }

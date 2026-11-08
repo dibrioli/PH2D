@@ -69,6 +69,8 @@ pub const CMD_PALETTE_SCRIM: NodeId = hash_node_id("command_palette.scrim");
 /// The card body — a click on the card's dead space is a no-op (consumed, so it never falls through
 /// the scrim to close). Registered after the scrim, before the item pills.
 pub const CMD_PALETTE_CARD: NodeId = hash_node_id("command_palette.card");
+/// The search box — a click here gives it the focus (ring + caret).
+pub const CMD_PALETTE_SEARCH: NodeId = hash_node_id("command_palette.search");
 
 // ── Layout literals (LITERAL-PX-OK: modal geometry, not a measurement). ──
 const CARD_MAX_W: f32 = 1160.0; // LITERAL-PX-OK: command palette max card width
@@ -285,7 +287,8 @@ pub fn paint(
     //    saiu para o irmão `header.rs` quando a caixa da F3 (ADR-0166) a levaria a passar o teto de
     //    500 LOC deste ficheiro: o corte é por responsabilidade — aqui fica o CARTÃO, lá a BANDA.
     let header_y = card_y + pad;
-    let lk = look::look(model);
+    let mut lk = look::look(model);
+    lk.search_focus &= store.command_palette_search_focused();
     let close_rect = header::paint_header(
         scene, ts, theme, hit_index, model, query, card_x, card_w, content_x, content_w, header_y,
         pad, &lk,

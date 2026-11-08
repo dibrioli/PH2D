@@ -35,10 +35,25 @@ impl WidgetStore {
             .or_else(|| ids.first().copied())
     }
 
-    /// Destaca `id` (um clique num item).
+    /// Destaca `id` (um clique num item). O clique sai da busca, como num campo de verdade.
     pub fn highlight_command_palette(&mut self, id: NodeId) {
         if self.command_palette_selects() {
             self.command_palette_scope.highlight = Some(id);
+            self.command_palette_scope.search_focus = false;
+        }
+    }
+
+    /// ⭐ **A busca tem o foco?** Só depois de um clique nela ou de uma tecla (dono 08/11: «deveria ficar
+    /// destacado se o usuário clicar nele ou começar a digitar»); ao abrir, não.
+    #[must_use]
+    pub fn command_palette_search_focused(&self) -> bool {
+        self.command_palette.is_some() && self.command_palette_scope.search_focus
+    }
+
+    /// Um clique na caixa da busca.
+    pub fn focus_command_palette_search(&mut self) {
+        if self.command_palette.is_some() {
+            self.command_palette_scope.search_focus = true;
         }
     }
 

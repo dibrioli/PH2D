@@ -405,6 +405,7 @@ impl WidgetStore {
     pub fn command_palette_push_char(&mut self, c: char) {
         if self.command_palette.is_some() && !c.is_control() {
             self.command_palette_query.push(c);
+            self.command_palette_scope.search_focus = true;
         }
     }
 
@@ -412,6 +413,7 @@ impl WidgetStore {
     pub fn command_palette_backspace(&mut self) {
         if self.command_palette.is_some() {
             self.command_palette_query.pop();
+            self.command_palette_scope.search_focus = true;
         }
     }
 

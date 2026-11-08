@@ -120,6 +120,7 @@ pub(super) fn paint_header(
     let sb_x = content_x + title_w + Spacing::Md.px();
     let sb_w = (count_x - toggle_w - Spacing::Md.px() - sb_x).max(MIN_COL_W * 0.5);
     let sb = Rect::new(sb_x, header_y + (header_h - search_h) * 0.5, sb_w, search_h);
+    hit_index.register(super::CMD_PALETTE_SEARCH, sb);
     if let Some(ink) = superficie.tinta() {
         crate::widget::card_field::paint_field_frame(scene, ink, sb, false, lk.search_focus);
     } else {

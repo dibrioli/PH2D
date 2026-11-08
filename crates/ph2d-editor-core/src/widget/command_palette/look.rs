@@ -47,8 +47,8 @@ pub(super) struct Look {
     pub(super) count_right: bool,
     /// A lupa no campo de busca.
     pub(super) search_icon: bool,
-    /// A busca pinta-se COM FOCO (anel + caret): o teclado escreve nela enquanto a janela está aberta
-    /// (dono 08/11: «o usuário não percebe que está no campo de texto»).
+    /// A busca pinta-se COM FOCO (anel + caret) — só depois de um clique nela ou de uma tecla: o pintor
+    /// cruza isto com o store (dono 08/11).
     pub(super) search_focus: bool,
 }
 

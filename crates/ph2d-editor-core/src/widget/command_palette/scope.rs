@@ -192,6 +192,8 @@ pub struct ScopeState {
     pub pick_query: String,
     /// O item destacado no modo «destaca, depois escolhe» (`PaletteModel::select`).
     pub highlight: Option<NodeId>,
+    /// A busca tem o foco: um clique nela ou uma tecla escrita (dono 08/11). Nasce `false` ao abrir.
+    pub search_focus: bool,
 }
 
 #[cfg(test)]

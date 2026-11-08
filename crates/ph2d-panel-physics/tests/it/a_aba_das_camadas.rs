@@ -760,12 +760,25 @@ fn as_caixinhas_tem_a_moldura_e_a_lista_o_quadradinho_na_cor_da_camada() {
     aba::fecha();
 }
 
-/// ⭐ Onda 9e (pedido do dono com foto): «+ Add layer» e «Remove» ficam DENTRO do cartão da lista, com a margem
-/// lateral da lista e um vão entre eles, a mesma altura; nunca cortados nem para fora, em três larguras de aba.
+/// ⭐ Onda 9g (dono 07/11: «as larguras no padrão do editor de animações»): «+ Add layer» e «Remove» têm a
+/// largura do MAIOR texto em `Base` + o acolchoado de `rect_for_label` (piso `FIELD_H`), a altura `FIELD_H`, o
+/// vão `FIELD_GAP`, lado a lado DENTRO do cartão com a margem `Lg`; a coluna tem a régua do editor (18 % da aba
+/// entre 3 e 7 alturas, alargada até os botões caberem). Em três larguras de aba.
+/// Mutações: acolchoado `Lg`×2 de volta; letra `Sm`; altura `ROW_H_PX`; margem `Sm`; coluna sem a fração.
 #[test]
 fn os_botoes_da_lista_ficam_dentro_do_cartao_em_tres_larguras() {
+    use ph2d_card_stack::metrics::{FIELD_GAP, FIELD_H};
+    use ph2d_editor_core::paint::{label_column_width, rect_for_label};
     use ph2d_panel_physics::aba::Geometria;
-    let m = Geometria::MARGEM_DA_LISTA;
+    let m = ph2d_tokens::Spacing::Lg.px();
+    let mut texto = ph2d_text::TextSystem::without_system_fonts();
+    let rotulos = [
+        ph2d_i18n::tr("card.physics.tab_add"),
+        ph2d_i18n::tr("card.physics.tab_remove"),
+    ];
+    let maior = label_column_width(&mut texto, ph2d_tokens::TypeToken::Base.px(), rotulos);
+    let botao = rect_for_label(maior).max(FIELD_H);
+    assert!(botao > maior, "o acolchoado existe ({botao} sobre {maior})");
     for w in [1000.0, 640.0, 360.0] {
         let mut mesa = Mesa::nova(nomes_b(), false);
         let area = Rect { w, ..AREA };
@@ -779,6 +792,8 @@ fn os_botoes_da_lista_ficam_dentro_do_cartao_em_tres_larguras() {
         );
         assert_eq!((add, rem), (g.add(), g.remove()), "o alvo é o pintado");
         for b in [add, rem] {
+            assert!((b.w - botao).abs() < 0.01, "{w}: largura {} ≠ {botao}", b.w);
+            assert!((b.h - FIELD_H).abs() < 0.01, "{w}: altura {}", b.h);
             assert!(
                 b.x >= g.lista.x + m - 0.01,
                 "{w}: margem esquerda {b:?} em {:?}",
@@ -794,17 +809,22 @@ fn os_botoes_da_lista_ficam_dentro_do_cartao_em_tres_larguras() {
                 "{w}: passou do fundo"
             );
         }
-        assert_eq!(
-            (add.h, add.w),
-            (rem.h, rem.w),
-            "{w}: a mesma altura e largura"
+        assert!(!g.botoes_empilhados(), "{w}: lado a lado, como a referência");
+        let vao = rem.x - (add.x + add.w);
+        assert!((vao - FIELD_GAP).abs() < 0.01, "{w}: o vão ({vao})");
+        let coluna = (w * 0.18)
+            .min(FIELD_H * 7.0)
+            .max(FIELD_H * 3.0)
+            .max(2.0 * (botao + m) + FIELD_GAP);
+        assert!(
+            (g.lista.w - coluna).abs() < 0.01,
+            "{w}: coluna {} ≠ {coluna}",
+            g.lista.w
         );
-        let vao = if g.botoes_empilhados() {
-            rem.y - (add.y + add.h)
-        } else {
-            rem.x - (add.x + add.w)
-        };
-        assert!((vao - m).abs() < 0.01, "{w}: o vão é a margem ({vao})");
+        let linha = mesa.rect(ids::PHYSICS_LAYER_LIST[1]);
+        if let Some(l) = linha {
+            assert!((l.x - (g.lista.x + m)).abs() < 0.01, "{w}: a margem das linhas");
+        }
     }
     aba::fecha();
 }

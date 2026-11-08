@@ -43,7 +43,7 @@ impl Pergunta {
         escolhido: usize,
         largura: &mut dyn FnMut(&str) -> f32,
     ) -> Self {
-        let pad = Spacing::Md.px();
+        let pad = super::Geometria::MARGEM_DO_CARTAO;
         let row = ROW_H_PX;
         let dentro = (w - pad * 2.0).max(0.0);
         let mut nomes = super::lista_de_nomes(&objetos[..objetos.len().min(NOMES_NA_PERGUNTA)]);
@@ -93,7 +93,7 @@ impl Pergunta {
             botao(tr("card.physics.tab_move_ok"), largura),
             botao(tr("card.physics.tab_cancel"), largura),
         ];
-        let (rs, linhas) = fila(x, y, w, &larg);
+        let (rs, linhas) = fila(x, y, w, &larg, super::Geometria::fila_de_linhas());
         y += linhas as f32 * (row + Spacing::Xs.px()) - Spacing::Xs.px() + dentro_da_caixa;
         Self {
             frase,

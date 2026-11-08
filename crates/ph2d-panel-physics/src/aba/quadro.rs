@@ -3,7 +3,7 @@
 use std::cell::Cell;
 
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::paint::frame_radius;
+use ph2d_editor_core::paint::{frame_radius, label_column_width, rect_for_label};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::ButtonState;
 use ph2d_editor_core::zones::Rect;
@@ -226,23 +226,16 @@ impl Quadro {
             .fold(0.0_f32, f32::max)
             + Spacing::Md.px();
         let add_rotulo = tr("card.physics.tab_add");
-        let botao_w = largura(ctx, add_rotulo).max(largura(ctx, tr("card.physics.tab_remove")))
-            + Spacing::Lg.px() * 2.0;
+        // ⭐ Onda 9g: os botões e a coluna pela régua do editor de animações (`rect_for_label` do maior texto em
+        // `Base`, piso a altura do botão; a largura em `Geometria::largura_da_lista`).
+        let botao_w = rect_for_label(label_column_width(
+            ctx.text_system,
+            TypeToken::Base.px(),
+            [add_rotulo, tr("card.physics.tab_remove")],
+        ))
+        .max(Geometria::ALTURA_DO_BOTAO);
+        let lista_w = Geometria::largura_da_lista(area.w, botao_w);
         let contagem_w = largura(ctx, &MAX_LAYERS.to_string().repeat(2));
-        let lista_w = (rotulo_w + contagem_w + Spacing::Lg.px() * 2.0)
-            .max(largura(ctx, tr("card.physics.tab_layers")) + Spacing::Lg.px() * 2.0)
-            .max(ROW_H_PX * 6.0) // LITERAL-PX-OK: a lista tem pelo menos seis linhas de largura
-            // «+ Add layer» e «Remove» com a mesma largura, lado a lado dentro do cartão (onda 9e); se a aba
-            // não deixa (a lista passaria de um terço dela), um debaixo do outro.
-            .max({
-                let lado_a_lado = Geometria::lista_para_os_botoes(botao_w);
-                let empilhados = botao_w + Geometria::MARGEM_DA_LISTA * 2.0;
-                if lado_a_lado <= area.w / Geometria::PARTES_DA_ABA_PARA_A_LISTA {
-                    lado_a_lado
-                } else {
-                    empilhados
-                } // LITERAL-PX-OK: um terço da aba
-            });
         let aberta_n = camada_aberta();
         let nomes_dos_objetos: Vec<String> = crate::state::layer_objects(aberta_n)
             .into_iter()
@@ -254,7 +247,14 @@ impl Quadro {
             &rotulos,
             &nomes_dos_objetos,
             super::MAIS.get(),
-            &mut |s| ctx.text_system.prefix_width(s, font),
+            &mut |s, botao| {
+                if botao {
+                    rect_for_label(label_column_width(ctx.text_system, TypeToken::Base.px(), [s]))
+                        .max(Geometria::ALTURA_DO_BOTAO)
+                } else {
+                    ctx.text_system.prefix_width(s, font)
+                }
+            },
         );
         let pergunta = super::removendo().map(|destino| {
             super::remove::Pergunta::monta(

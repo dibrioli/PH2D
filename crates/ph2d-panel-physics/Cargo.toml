@@ -25,6 +25,9 @@ ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 ph2d-host = { path = "../ph2d-host" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-vector = { path = "../ph2d-vector" }
+# A altura e o vão dos botões da aba (`FIELD_H`, `FIELD_GAP`): os do editor de animações (onda 9g); e a
+# geometria do cartão nos testes do gesto.
+ph2d-card-stack = { path = "../ph2d-card-stack" }
 
 [dev-dependencies]
 # As duas bolas do gate do quadro de «Collides with».
@@ -38,8 +41,6 @@ ph2d-label-census = { path = "../ph2d-label-census" }
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 # O Esc real a meio do scrub (`dispatch_key` pede a arena do quadro).
 bumpalo = { version = "3", features = ["collections"] }
-# A geometria do cartão (a pega do campo), nos testes do gesto.
-ph2d-card-stack = { path = "../ph2d-card-stack" }
 
 [lints]
 workspace = true

@@ -49,9 +49,10 @@ impl Geometria {
         let dw = Self::largura_direita(area, lista_w);
         let n = k.max(1) as f32;
         // Título (uma linha), rótulos de cima, as células e o pé (uma linha), com os vãos.
-        let fixo_h = pad + pad + pad + row * 2.0 + rotulo_w;
+        let dentro = Self::MARGEM_DO_CARTAO;
+        let fixo_h = dentro * 2.0 + pad + row * 2.0 + rotulo_w;
         let livre_h = area.h - (pad + pad + pad) - camada_h - fixo_h;
-        let livre_w = dw - pad * 2.0 - rotulo_w;
+        let livre_w = dw - dentro * 2.0 - rotulo_w;
         let passo = (livre_h / n)
             .min(livre_w / n)
             .min(row + Spacing::Sm.px())
@@ -73,7 +74,11 @@ impl Geometria {
             fixo_h + passo * cabem_l as f32 + barra_h,
         );
         let camada = Rect::new(dx, grade.y + grade.h + pad, dw, camada_h);
-        let lista_h = Self::MARGEM_DA_LISTA * 3.0 + row * (k + 2) as f32; // LITERAL-PX-OK: em cima, antes dos botões e embaixo
+        // As duas margens, o título e as `k` linhas, o vão e os botões.
+        let lista_h = Self::MARGEM_DA_LISTA * 2.0 // LITERAL-PX-OK: em cima e embaixo
+            + row * (k + 1) as f32
+            + Self::VAO_DOS_BOTOES
+            + Self::ALTURA_DO_BOTAO;
         let lista = Rect::new(
             area.x + pad,
             area.y + pad,
@@ -84,8 +89,8 @@ impl Geometria {
             lista,
             grade,
             camada,
-            x: grade.x + pad,
-            y: grade.y + pad + row,
+            x: grade.x + dentro,
+            y: grade.y + dentro + row,
             rotulo_w,
             passo,
             k,
@@ -106,8 +111,20 @@ impl Geometria {
         ph2d_tokens::row_pitch_px()
     }
 
-    /// A lista não passa desta fração da aba para pôr os dois botões lado a lado.
-    pub const PARTES_DA_ABA_PARA_A_LISTA: f32 = 3.0; // LITERAL-PX-OK: um terço da aba
+    /// ⭐ A largura da lista pela regra do editor de animações (onda 9g): `FRACAO_DA_LISTA` da aba, entre
+    /// `LINHAS_MIN` e `LINHAS_MAX` alturas de botão, alargada até os dois botões caberem lado a lado.
+    #[must_use]
+    pub fn largura_da_lista(area_w: f32, botao_w: f32) -> f32 {
+        let h = Self::ALTURA_DO_BOTAO;
+        (area_w * Self::FRACAO_DA_LISTA)
+            .min(h * Self::LINHAS_MAX)
+            .max(h * Self::LINHAS_MIN)
+            .max(Self::lista_para_os_botoes(botao_w))
+    }
+
+    pub const FRACAO_DA_LISTA: f32 = 0.18; // LITERAL-PX-OK: fração de layout (a do editor de animações)
+    pub const LINHAS_MIN: f32 = 3.0; // LITERAL-PX-OK: múltiplo da altura do botão
+    pub const LINHAS_MAX: f32 = 7.0; // LITERAL-PX-OK: múltiplo da altura do botão
 
     /// Rola para a primeira linha `l0` e a primeira coluna `c0`, presas ao que há para mostrar.
     #[must_use]
@@ -194,15 +211,15 @@ impl Geometria {
     /// A frase do pé, logo abaixo da última linha da grade.
     #[must_use]
     pub fn pe(&self) -> Rect {
-        let pad = Spacing::Md.px();
+        let (pad, dentro) = (Spacing::Md.px(), Self::MARGEM_DO_CARTAO);
         Rect::new(
-            self.grade.x + pad,
+            self.grade.x + dentro,
             self.y
                 + self.rotulo_w
                 + self.cabem_l as f32 * self.passo
                 + self.barra_horizontal().map_or(0.0, |_| faixa_da_barra())
                 + pad,
-            self.grade.w - pad * 2.0,
+            self.grade.w - dentro * 2.0,
             ROW_H_PX,
         )
     }
@@ -294,14 +311,30 @@ impl Geometria {
         )
     }
 
-    /// ⭐ A margem lateral da lista (as linhas e os botões) e o vão entre os dois botões (onda 9e, pedido do
-    /// dono: os botões DENTRO do cartão da lista, como a coluna «Animations» do editor de animações).
-    pub const MARGEM_DA_LISTA: f32 = Spacing::Sm.factory_px();
+    /// ⭐ A margem interna da lista (onda 9g: `Lg`, a do editor de animações; antes `Sm`).
+    pub const MARGEM_DA_LISTA: f32 = Spacing::Lg.factory_px();
+    /// A margem interna dos cartões da grade e da camada aberta (onda 9g: `Lg`, como o editor de animações).
+    pub const MARGEM_DO_CARTAO: f32 = Spacing::Lg.factory_px();
+    /// O vão entre os botões e antes deles, e a altura deles: os campos dos cartões (`FIELD_GAP`, `FIELD_H`).
+    pub const VAO_DOS_BOTOES: f32 = ph2d_card_stack::metrics::FIELD_GAP;
+    pub const ALTURA_DO_BOTAO: f32 = ph2d_card_stack::metrics::FIELD_H;
+
+    /// A fila das caixinhas e da pergunta do Remove: a linha da lista, vão `Sm`, entre linhas `Xs`.
+    #[must_use]
+    pub fn fila_de_linhas() -> (f32, f32, f32) {
+        (ROW_H_PX, Spacing::Sm.px(), Spacing::Xs.px())
+    }
+
+    /// A fila dos botões (onda 9g): a altura e o vão dos botões da lista.
+    #[must_use]
+    pub fn fila_de_botoes() -> (f32, f32, f32) {
+        (Self::ALTURA_DO_BOTAO, Self::VAO_DOS_BOTOES, Self::VAO_DOS_BOTOES)
+    }
 
     /// A largura que a lista pede para os dois botões de `botao_w` lado a lado, com as margens e o vão.
     #[must_use]
     pub fn lista_para_os_botoes(botao_w: f32) -> f32 {
-        botao_w * 2.0 + Self::MARGEM_DA_LISTA * 3.0 // LITERAL-PX-OK: dois botões, duas margens e o vão
+        (botao_w + Self::MARGEM_DA_LISTA) * 2.0 + Self::VAO_DOS_BOTOES // LITERAL-PX-OK: dois botões, as margens e o vão
     }
 
     /// Os dois botões com `botao_w`; se lado a lado não cabem dentro da lista, um debaixo do outro (a lista
@@ -326,7 +359,12 @@ impl Geometria {
     #[must_use]
     pub fn add(&self) -> Rect {
         let r = self.linha_da_lista(self.k);
-        Rect::new(r.x, r.y + Self::MARGEM_DA_LISTA, self.botao_w, ROW_H_PX)
+        Rect::new(
+            r.x,
+            r.y + Self::VAO_DOS_BOTOES,
+            self.botao_w,
+            Self::ALTURA_DO_BOTAO,
+        )
     }
 
     /// O «Remove»: ao lado do «+ Add layer», com o vão; ou debaixo dele.
@@ -334,18 +372,17 @@ impl Geometria {
     pub fn remove(&self) -> Rect {
         let a = self.add();
         if self.botoes_empilhados() {
-            Rect::new(a.x, a.y + a.h + Self::MARGEM_DA_LISTA, a.w, a.h)
+            Rect::new(a.x, a.y + a.h + Self::VAO_DOS_BOTOES, a.w, a.h)
         } else {
-            Rect::new(a.x + a.w + Self::MARGEM_DA_LISTA, a.y, a.w, a.h)
+            Rect::new(a.x + a.w + Self::VAO_DOS_BOTOES, a.y, a.w, a.h)
         }
     }
 }
 
 /// Uma fila que quebra: um retângulo de uma linha por largura, da esquerda para a direita a partir de
-/// `(x, y)` dentro de `w`. Devolve os retângulos e quantas linhas ocupou.
+/// `(x, y)` dentro de `w`, com `(altura, vão, vão entre linhas)`. Devolve os retângulos e quantas linhas ocupou.
 #[must_use]
-pub fn fila(x: f32, y: f32, w: f32, larguras: &[f32]) -> (Vec<Rect>, usize) {
-    let (vao, vao_v) = (Spacing::Sm.px(), Spacing::Xs.px());
+pub fn fila(x: f32, y: f32, w: f32, larguras: &[f32], (h, vao, vao_v): (f32, f32, f32)) -> (Vec<Rect>, usize) {
     let mut v = Vec::with_capacity(larguras.len());
     let (mut cx, mut linha) = (x, 0usize);
     for &lw in larguras {
@@ -355,9 +392,9 @@ pub fn fila(x: f32, y: f32, w: f32, larguras: &[f32]) -> (Vec<Rect>, usize) {
         }
         v.push(Rect::new(
             cx,
-            y + linha as f32 * (ROW_H_PX + vao_v),
+            y + linha as f32 * (h + vao_v),
             lw,
-            ROW_H_PX,
+            h,
         ));
         cx += lw + vao;
     }

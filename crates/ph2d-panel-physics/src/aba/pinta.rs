@@ -10,7 +10,7 @@ use ph2d_physics_ecs::MAX_LAYERS;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, StrokeToken, TypeToken};
 
 use super::quadro::{Quadro, fotos, pairar_da_foto};
-use super::{AREA, Onde, aberta};
+use super::{AREA, Geometria, Onde, aberta};
 use crate::ids as i;
 
 /// Pinta a aba, se à frente neste quadro. Corre no fim do `paint` do painel, aberto ou fechado.
@@ -146,7 +146,7 @@ fn pinta_lista(ctx: &mut PaintCtx, q: &Quadro) {
             cena,
             add_rotulo,
             g.add(),
-            font,
+            TypeToken::Base.px(),
             tom!(ColorToken::Text1, theme),
         );
         // «Remove» ao lado; na Default, desligado (a razão está na dica).
@@ -163,7 +163,7 @@ fn pinta_lista(ctx: &mut PaintCtx, q: &Quadro) {
             cena,
             tr("card.physics.tab_remove"),
             r,
-            font,
+            TypeToken::Base.px(),
             tom!(
                 if livre {
                     ColorToken::Text1
@@ -195,7 +195,7 @@ fn pinta_grade(ctx: &mut PaintCtx, q: &Quadro) {
     let linha_acesa = |n: usize| q.linha_acesa(n);
     let coluna_acesa = |n: usize| q.coluna_acesa(n);
     let texto = &mut *ctx.text_system;
-    let pad = Spacing::Md.px();
+    let pad = Geometria::MARGEM_DO_CARTAO;
     let gf = g.fonte_da_grade(font);
     camada_das_listas::por_cima(ctx.scene, |cena| {
         // A grade «Who bumps into whom · N pairs».
@@ -348,7 +348,7 @@ fn pinta_pe(ctx: &mut PaintCtx, q: &Quadro) {
     let pares_da_camada = &q.pares_da_camada;
     let campo = &q.campo;
     let texto = &mut *ctx.text_system;
-    let pad = Spacing::Md.px();
+    let pad = Geometria::MARGEM_DO_CARTAO;
     camada_das_listas::por_cima(ctx.scene, |cena| {
         // O pé: a frase fixa, numa faixa própria (nunca sai da aba nem cobre uma linha).
         let r = g.pe();

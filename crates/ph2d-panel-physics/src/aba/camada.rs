@@ -11,7 +11,9 @@ use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, StrokeToken, TypeToken};
 
-use super::geometria::fila;
+use super::geometria::{Geometria, fila};
+
+const MARGEM_DO_CARTAO: f32 = Geometria::MARGEM_DO_CARTAO;
 use crate::ids as i;
 
 /// Quantas linhas de objetos se mostram antes do «+N more».
@@ -42,9 +44,10 @@ impl Camada {
         rotulos: &[String],
         nomes: &[String],
         mais_aberto: bool,
-        largura: &mut dyn FnMut(&str) -> f32,
+        // `(texto, botão)`: a largura do texto na letra do painel, ou a do botão inteiro (onda 9g).
+        largura: &mut dyn FnMut(&str, bool) -> f32,
     ) -> Self {
-        let pad = Spacing::Md.px();
+        let pad = MARGEM_DO_CARTAO;
         let row = ROW_H_PX;
         let dentro = (w - pad * 2.0).max(0.0);
         let caixa = TypeToken::Sm.px();
@@ -53,23 +56,22 @@ impl Camada {
         let so_default = visiveis.len() <= 1;
         let caixas = if so_default {
             // A frase quebra na largura do cartão: uma linha por largura medida, mais uma de folga.
-            let linhas = (largura(tr("card.physics.tab_only_default")) / dentro.max(1.0)).ceil();
+            let linhas = (largura(tr("card.physics.tab_only_default"), false) / dentro.max(1.0)).ceil();
             y += (linhas + 1.0) * row;
             Vec::new()
         } else {
             y += row;
             let larg: Vec<f32> = visiveis
                 .iter()
-                .map(|&n| caixa + Spacing::Md.px() + Spacing::Sm.px() + largura(&rotulos[n]))
+                .map(|&n| caixa + Spacing::Md.px() + Spacing::Sm.px() + largura(&rotulos[n], false))
                 .collect();
-            let (rs, linhas) = fila(pad, y, dentro, &larg);
+            let (rs, linhas) = fila(pad, y, dentro, &larg, Geometria::fila_de_linhas());
             y += linhas as f32 * (row + Spacing::Xs.px()) + Spacing::Sm.px();
             visiveis.iter().copied().zip(rs).collect()
         };
         let objetos_y = y;
         y += row;
-        let botao =
-            |s: &str, largura: &mut dyn FnMut(&str) -> f32| largura(s) + Spacing::Lg.px() * 2.0;
+        let botao = |s: &str, largura: &mut dyn FnMut(&str, bool) -> f32| largura(s, true);
         let todos_rot = tr("card.physics.tab_select_all");
         let todos_w = botao(todos_rot, largura);
         let objs: Vec<f32> = nomes.iter().map(|n| botao(n, largura)).collect();
@@ -79,7 +81,7 @@ impl Camada {
         let monta = |n: usize, extra: &[f32]| {
             let mut v = objs[..n].to_vec();
             v.extend_from_slice(extra);
-            fila(pad, y, dentro, &v)
+            fila(pad, y, dentro, &v, Geometria::fila_de_botoes())
         };
         let (mut rs, mut linhas) = monta(total, &[todos_w]);
         if !mais_aberto && linhas > LINHAS_DE_OBJETOS {
@@ -113,7 +115,8 @@ impl Camada {
         let mais = mais.map(|m| (rs[cabe], m));
         let todos = (!nomes.is_empty()).then(|| rs[rs.len() - 1]);
         let linhas = if nomes.is_empty() { 1 } else { linhas };
-        y += linhas as f32 * (row + Spacing::Xs.px());
+        let (bh, _, bv) = Geometria::fila_de_botoes();
+        y += linhas as f32 * (bh + bv);
         Self {
             bumps_y,
             so_default,
@@ -168,8 +171,8 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro) {
         aceso(i::PHYSICS_LAYER_SELECT_ALL),
     );
     let texto = &mut *ctx.text_system;
-    let x = g.camada.x + Spacing::Md.px();
-    let w = g.camada.w - Spacing::Md.px() * 2.0;
+    let x = g.camada.x + MARGEM_DO_CARTAO;
+    let w = g.camada.w - MARGEM_DO_CARTAO * 2.0;
     camada_das_listas::por_cima(ctx.scene, |cena| {
         let rotulo = |texto: &mut _, cena: &mut _, s: &str, y: f32| {
             paint_text(
@@ -254,7 +257,8 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro) {
                 ColorToken::Bg2
             };
             fill_rounded_rect(cena, r, raio, tom!(fundo, theme));
-            paint_text_centered(texto, cena, s, r, font, tom!(ColorToken::Text1, theme));
+            let base = TypeToken::Base.px();
+            paint_text_centered(texto, cena, s, r, base, tom!(ColorToken::Text1, theme));
         };
         for (o, &hover) in c.objetos.iter().zip(&objetos_acesos) {
             botao(texto, cena, o.2, &o.1, hover);

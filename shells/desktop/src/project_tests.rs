@@ -572,6 +572,8 @@ mod scripts;
 mod sfx;
 #[path = "project_sounds_tests.rs"]
 mod sounds;
+#[path = "project_tintas_molhadas_tests.rs"]
+mod tintas_molhadas;
 
 /// **O que um load faz com a CORRIDA GRAVADA** (W17) — FILHO e não irmão porque as fixtures desta suíte
 /// (`headless_app`, `write_project`, `tmp_path`, `empty_state`) são as portas dele: copiá-las seria um

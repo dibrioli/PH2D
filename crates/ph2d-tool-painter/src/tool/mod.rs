@@ -186,6 +186,11 @@ pub struct PainterTool {
     pub(crate) sem_vidro: bool,
     /// **O papel do documento** ([`papel`]): a cor sob as camadas, ou `None` (sem papel).
     papel: Option<[u8; 3]>,
+    /// As camadas que receberam tinta do **Wet Paint**, que desenha o papel DENTRO dos píxeis
+    /// (`grao_no_filme`): sob a tinta opaca delas a luz do dente esconde-se; sob a outra tinta (Digital,
+    /// aguada) vê-se, e só o corpo do relevo a enche (`ReliefFields::height_at`, dono 08/11). Viaja como
+    /// o vidro: documento, undo, disco. Posta no pen-down do Wet, DEPOIS do `before` do passo.
+    tintas_molhadas: BTreeSet<RtLayerId>,
     /// A imagem nascida «Textured Paper» que ainda não abriu ([`papel_texturizado`]).
     papel_texturizado_para: Option<u64>,
     /// The live **protection session** — see [`GateSession`]. Canvas-shaped, so it lives here beside
@@ -389,6 +394,7 @@ impl Default for PainterTool {
             #[cfg(test)]
             sem_vidro: false,
             papel: None,
+            tintas_molhadas: BTreeSet::new(),
             papel_texturizado_para: None,
             gate: None,
             mask_scratch_gen: 0,

@@ -136,6 +136,9 @@ pub struct ModelSnapshot {
     /// O PAPEL do documento ([`crate::tool::PainterTool::papel`]): o desfazer repõe só a EXISTÊNCIA dele
     /// (`None` ↔ `Some`), nunca a cor (dono 30/10).
     pub papel: Option<[u8; 3]>,
+    /// As camadas com tinta do Wet (`PainterTool::tintas_molhadas`): desfazer o 1.º traço Wet de uma
+    /// camada devolve-lhe a luz do papel sob a outra tinta.
+    pub tintas_molhadas: BTreeSet<RtLayerId>,
     /// The in-progress drag-preview's saved pixels, if a shape preview was live — so a restore can peel the
     /// preview back to the pristine baseline before re-stamping the editor's geometry (no double paint).
     pub preview_patch: Option<PreviewPatch>,

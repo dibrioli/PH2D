@@ -45,6 +45,7 @@ impl ModelSnapshot {
             offset_norm,
             offset_base_px,
             papel,
+            tintas_molhadas,
             active_op,
             mask_scratch_target,
             selection_active,
@@ -100,6 +101,7 @@ impl ModelSnapshot {
             && offset_norm.to_bits() == other.offset_norm.to_bits()
             && offset_base_px.to_bits() == other.offset_base_px.to_bits()
             && *papel == other.papel
+            && *tintas_molhadas == other.tintas_molhadas
             && *active_op == other.active_op
             && *mask_scratch_target == other.mask_scratch_target
             && *selection_active == other.selection_active

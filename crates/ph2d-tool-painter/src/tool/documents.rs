@@ -34,6 +34,8 @@ pub(crate) struct StashedDoc {
     vidros: crate::compositor::vidro::Vidros,
     /// O papel do documento ([`crate::tool::papel`]) — viaja com ele.
     papel: Option<[u8; 3]>,
+    /// As camadas com tinta do Wet ([`PainterTool::tintas_molhadas`]) — os ids colidem entre documentos.
+    tintas_molhadas: BTreeSet<RtLayerId>,
     layer_pixel_versions: BTreeMap<RtLayerId, u64>,
     source_size: (u32, u32),
     undo: crate::undo::UndoController,
@@ -69,6 +71,7 @@ impl StashedDoc {
             size: self.source_size,
             vidros: unshare(&self.vidros),
             papel: self.papel,
+            tintas_molhadas: self.tintas_molhadas.clone(),
         }
     }
 
@@ -88,6 +91,7 @@ impl StashedDoc {
             mats: reshare(doc.mats),
             vidros: reshare(doc.vidros),
             papel: doc.papel,
+            tintas_molhadas: doc.tintas_molhadas,
             // Rebuilt on demand: a version cache and a fresh history. (`bump_layer_pixels` re-stamps
             // the versions the first time the compositor asks.)
             layer_pixel_versions: BTreeMap::new(),
@@ -200,6 +204,7 @@ impl PainterTool {
         // vazia; com tinta, o alfa dela só vive aqui (BUGS #45).
         self.preview_layer_stack_is_trivial()
             && self.heights.is_empty()
+            && self.tintas_molhadas.is_empty() // a sprite não diz que a tinta é do Wet
             && match self.papel {
                 None => true,
                 Some(p) => {
@@ -222,6 +227,7 @@ impl PainterTool {
             mats: std::mem::take(&mut self.mats),
             vidros: std::mem::take(&mut self.vidros),
             papel: self.papel.take(),
+            tintas_molhadas: std::mem::take(&mut self.tintas_molhadas),
             layer_pixel_versions: std::mem::take(&mut self.layer_pixel_versions),
             source_size: self.source_size,
             undo: std::mem::take(&mut self.undo),
@@ -249,6 +255,7 @@ impl PainterTool {
         self.vidro_congelado = Default::default();
         self.covers = doc.covers;
         self.papel = doc.papel;
+        self.tintas_molhadas = doc.tintas_molhadas;
         self.drop_live_relief();
         // The stack and the relief travelled together, so the `has_relief` flags arrive already true —
         // EXCEPT for a document that came off disk from a build that never sculpted it. Re-deriving is

@@ -243,7 +243,11 @@ impl PainterTool {
                     } else {
                         self.images.get(&id)?.rgba8.as_slice()
                     };
-                    (px.len() == n * 4).then_some((px, l.opacity.clamp(0.0, 1.0)))
+                    (px.len() == n * 4).then_some((
+                        px,
+                        l.opacity.clamp(0.0, 1.0),
+                        self.tintas_molhadas.contains(&id),
+                    ))
                 })
                 .collect()
         } else {

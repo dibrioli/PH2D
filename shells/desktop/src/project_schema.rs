@@ -368,4 +368,12 @@
 /// `SpriteAnimFrames` guarda `FrameRef` (folha + célula, ou vazio) em vez de `u32`; `SpriteGrid.sheet: u8` e
 /// `AnimationTag.sheet: u8` no FIM; o componente `SpriteSheets` entra no registo (`118 → 119`). SEM leitura dos
 /// anteriores (§0.11). ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 224;
+///
+/// # `224 → 225` — **as camadas com tinta do Wet** (`line/PainterWatercolor`, 2026-11-08)
+///
+/// `PaintedDocument` ganha, no FIM, `tintas_molhadas` (dono 08/11: no Digital o relevo do papel vê-se na
+/// tinta; só a do Wet, que já traz o papel nos píxeis, o esconde). ⭐ **COM leitura dos anteriores:** todo
+/// ficheiro `<= 217` lê-se dentro do âmbito `ph2d_tool_painter::LeituraSemTintas` (o campo é o último do
+/// documento, não do ficheiro). O documento da macro sobe `1 → 2` e lê o `1`. Gate:
+/// `project_tintas_molhadas_tests`. Registos: `0`. ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 225;

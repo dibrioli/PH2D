@@ -56,8 +56,8 @@ pub(super) struct ReliefFields<'a> {
     pub(super) substrate: Option<super::substrate_relief::Substrate<'a>>,
     /// §BUG-papel (smoke do dono 27/10): os píxeis RGBA8 de cada camada raster VISÍVEL com a opacidade dela —
     /// a TINTA que cobre o papel. O dente vê-se pela parte que a tinta deixa passar ([`Self::papel_a_vista`]).
-    /// Vazio sem substrato.
-    pub(super) tinta: Vec<(&'a [u8], f32)>,
+    /// Vazio sem substrato. O `bool` diz se a camada recebeu tinta do Wet (`PainterTool::tintas_molhadas`).
+    pub(super) tinta: Vec<(&'a [u8], f32, bool)>,
     pub(super) width: usize,
     pub(super) height: usize,
 }
@@ -107,7 +107,13 @@ impl ReliefFields<'_> {
                 let cx = x.clamp(0, self.width as i64 - 1);
                 let cy = y.clamp(0, self.height as i64 - 1);
                 // A tinta tapa o dente mas fica à altura média dele: sem o degrau que a fazia parecer afundada (Bug #71).
-                let v = self.papel_a_vista(i);
+                // Só a tinta com CORPO o enche (doc 19 §1.2; dono 08/11: no Digital o relevo do papel tem de se ver na
+                // tinta): a opaca tapa-o na proporção da altura dela sobre a do dente — sem corpo (Digital, aguada)
+                // a tinta segue o papel; mais alta que o dente (o óleo grosso, §BUG-papel), enterra-o como antes.
+                // A tinta do Wet (que já traz o papel desenhado) tapa-o pela opacidade, como sempre (§BUG-papel).
+                let enche = (h / (CORPO_QUE_ENCHE * s.amplitude_em_cargas())).clamp(0.0, 1.0);
+                let (molhada, outra) = self.papel_a_vista(i);
+                let v = molhada * (1.0 - enche * (1.0 - outra));
                 h + s.tooth_loads(cx, cy) * v + s.meio_do_dente() * (1.0 - v)
             }
             None => h,
@@ -119,13 +125,20 @@ impl ReliefFields<'_> {
     /// opacidade do pincel, a da camada, a aguada — deixa-o ver na proporção. Antes o dente SOMAVA à tinta em
     /// toda a parte e o grão aparecia pela tinta grossa «como se fosse transparente» (`oraculo/README.md`
     /// §BUG-papel).
+    ///
+    /// Devolve `(sob a tinta do Wet, sob a outra)` — as duas leis de [`Self::height_at`].
     #[inline]
-    fn papel_a_vista(&self, i: usize) -> f32 {
-        let mut deixa = 1.0f32;
-        for &(px, op) in &self.tinta {
-            deixa *= 1.0 - f32::from(px[i * 4 + 3]) / 255.0 * op;
+    fn papel_a_vista(&self, i: usize) -> (f32, f32) {
+        let (mut molhada, mut outra) = (1.0f32, 1.0f32);
+        for &(px, op, wet) in &self.tinta {
+            let deixa = 1.0 - f32::from(px[i * 4 + 3]) / 255.0 * op;
+            if wet {
+                molhada *= deixa;
+            } else {
+                outra *= deixa;
+            }
         }
-        deixa
+        (molhada, outra)
     }
 
     /// **A PRESENÇA do papel** — `1` quando há substrato, `0` quando não há.
@@ -308,3 +321,8 @@ impl crate::layers::ReliefSamples for Amostras<'_, '_> {
         self.mascaras.get(&id).cloned()
     }
 }
+
+/// A espessura de tinta que ENCHE o dente do papel, em fracções da altura dele ([`ReliefFields::height_at`]): a tinta tão
+/// alta como o dente enche-o. Sonda 08/11: a pilha do Dabber do Wet não chega a este plano (o corpo dela vive na grade do
+/// Wet), por isso a tinta do Wet esconde o papel pela marca da camada, não por aqui.
+const CORPO_QUE_ENCHE: f32 = 1.0;

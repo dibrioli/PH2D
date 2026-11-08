@@ -20,7 +20,20 @@ pub const VERSAO: u64 = 1;
 
 /// A versão do formato posicional do [`PaintedDocument`] dentro do estado inicial. Sobe junto com o
 /// degrau do `PROJECT_SCHEMA` que mudar o documento (o gate acusa).
-pub const VERSAO_DO_DOCUMENTO: u64 = 1;
+pub const VERSAO_DO_DOCUMENTO: u64 = 2;
+
+/// A versão do documento sem as `tintas_molhadas` (o `PROJECT_SCHEMA <= 217`).
+const DOCUMENTO_SEM_TINTAS: u64 = 1;
+
+/// O documento `bytes` gravado na versão `vd` — a actual, ou a anterior sem as tintas do Wet.
+pub(super) fn le_o_documento(bytes: &[u8], vd: u64) -> Result<PaintedDocument, ErroDoInicial> {
+    let _sem = match vd {
+        VERSAO_DO_DOCUMENTO => None,
+        DOCUMENTO_SEM_TINTAS => Some(crate::LeituraSemTintas::enter()),
+        _ => return Err(ErroDoInicial::DocumentoNoutroFormato(vd)),
+    };
+    postcard::from_bytes(bytes).map_err(|e| ErroDoInicial::Documento(e.to_string()))
+}
 
 /// A entidade com que o tocador liga o documento no seu tool próprio.
 pub(crate) const ENTIDADE_DO_TOCADOR: u64 = 1;
@@ -72,11 +85,7 @@ pub fn tool_no_inicial(bytes: &[u8]) -> Result<PainterTool, ErroDoInicial> {
     let vd = campo(5)
         .map_or(Ok(0), rec::as_varint)
         .map_err(ErroDoInicial::Registo)?;
-    if vd != VERSAO_DO_DOCUMENTO {
-        return Err(ErroDoInicial::DocumentoNoutroFormato(vd));
-    }
-    let doc: PaintedDocument = postcard::from_bytes(campo(4).unwrap_or_default())
-        .map_err(|e| ErroDoInicial::Documento(e.to_string()))?;
+    let doc = le_o_documento(campo(4).unwrap_or_default(), vd)?;
     let mut texturas = BTreeMap::new();
     for (_, sub) in campos.iter().filter(|(t, _)| *t == 3) {
         let c = rec::fields(sub).map_err(ErroDoInicial::Registo)?;
@@ -146,13 +155,8 @@ pub fn sobre_documento(inicial: &[u8], doc: &PaintedDocument) -> Result<Vec<u8>,
                 .find(|(t, _)| *t == 5)
                 .map_or(Ok(0), |(_, v)| rec::as_varint(v))
                 .map_err(ErroDoInicial::Registo)?;
-            if vd != VERSAO_DO_DOCUMENTO {
-                return Err(ErroDoInicial::DocumentoNoutroFormato(vd));
-            }
             let velho = campos.iter().rev().find(|(t, _)| *t == 4).map(|(_, v)| *v);
-            let velho: PaintedDocument = postcard::from_bytes(velho.unwrap_or_default())
-                .map_err(|e| ErroDoInicial::Documento(e.to_string()))?;
-            velho.size
+            le_o_documento(velho.unwrap_or_default(), vd)?.size
         }
     };
     let mut r = Record::new();

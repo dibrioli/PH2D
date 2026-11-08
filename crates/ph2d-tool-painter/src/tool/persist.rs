@@ -48,9 +48,48 @@ pub struct PaintedDocument {
     /// O PAPEL do documento ([`crate::tool::papel`]): a cor sob as camadas, ou `None`.
     pub papel: Option<[u8; 3]>,
     /// O VIDRO por camada ([`crate::compositor::vidro`]): sem ele, reabrir o quadro devolveria a aguada
-    /// de um alfa só, e o papel de cor deixaria de a escurecer como filtro. ⚠️ O ÚLTIMO campo: o
-    /// postcard é posicional (o papel e o vidro: degrau `183 → 184` do `PROJECT_SCHEMA`).
+    /// de um alfa só, e o papel de cor deixaria de a escurecer como filtro (o papel e o vidro: degrau
+    /// `185 → 186` do `PROJECT_SCHEMA`).
     pub vidros: BTreeMap<RtLayerId, Vec<crate::compositor::vidro::Vidro>>,
+    /// As camadas com tinta do **Wet Paint** (`PainterTool::tintas_molhadas`): sem elas, reabrir o
+    /// quadro mostraria o dente do papel por cima da tinta do Wet, que já o traz desenhado. ⚠️ O
+    /// ÚLTIMO campo (degrau `217 → 218`): bytes de antes leem-se dentro de [`LeituraSemTintas`].
+    #[serde(deserialize_with = "le_as_tintas_molhadas")]
+    pub tintas_molhadas: std::collections::BTreeSet<RtLayerId>,
+}
+
+thread_local! {
+    /// Quantos [`LeituraSemTintas`] estão abertos nesta thread.
+    static SEM_TINTAS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
+/// **Âmbito de leitura dos bytes ANTERIORES às `tintas_molhadas`** (`PROJECT_SCHEMA <= 217`, a versão
+/// 1 do documento da macro): enquanto o guarda vive, todo [`PaintedDocument`] desserializado nesta
+/// thread nasce sem a marca e não lê byte nenhum para ela — o campo é o último, e o seguinte é o
+/// documento seguinte. O precedente é o `ph2d_vec_scene::WireLayout`: lê-se o anterior sem tipo congelado.
+#[must_use = "o âmbito fecha quando o guarda cai"]
+pub struct LeituraSemTintas(());
+
+impl LeituraSemTintas {
+    pub fn enter() -> Self {
+        SEM_TINTAS.with(|c| c.set(c.get() + 1));
+        Self(())
+    }
+}
+
+impl Drop for LeituraSemTintas {
+    fn drop(&mut self) {
+        SEM_TINTAS.with(|c| c.set(c.get() - 1));
+    }
+}
+
+fn le_as_tintas_molhadas<'de, D: serde::Deserializer<'de>>(
+    d: D,
+) -> Result<std::collections::BTreeSet<RtLayerId>, D::Error> {
+    if SEM_TINTAS.with(std::cell::Cell::get) > 0 {
+        return Ok(std::collections::BTreeSet::new());
+    }
+    serde::Deserialize::deserialize(d)
 }
 
 /// **O documento pintado como os esquemas ANTERIORES ao papel o guardavam** — o tipo das migrações
@@ -81,6 +120,7 @@ impl From<PaintedDocumentSemPapel> for PaintedDocument {
             size: d.size,
             papel: None,
             vidros: BTreeMap::new(),
+            tintas_molhadas: std::collections::BTreeSet::new(),
         }
     }
 }
@@ -146,6 +186,7 @@ impl PainterTool {
                 .iter()
                 .map(|(k, v)| (*k, v.as_ref().clone()))
                 .collect(),
+            tintas_molhadas: self.tintas_molhadas.clone(),
         }
     }
 

@@ -38,6 +38,7 @@ impl PainterTool {
             offset_norm: self.shape_offset_norm(),
             offset_base_px: self.shape_offset_base_px(),
             papel: self.papel,
+            tintas_molhadas: self.tintas_molhadas.clone(),
             preview_patch: None,
             // Layer ops carry no parked stroke shapes; the shape paths override this via `capture_shape_model`.
             parked_shapes: Vec::new(),
@@ -117,6 +118,7 @@ impl PainterTool {
         self.covers = m.covers;
         self.mats = m.mats;
         self.vidros = m.vidros;
+        self.tintas_molhadas = m.tintas_molhadas;
         // The live-edit buffer describes a stroke on a ground that no longer exists — forget it, or the
         // next Depth drag would rebuild an undone stroke out of thin air.
         self.drop_live_relief();

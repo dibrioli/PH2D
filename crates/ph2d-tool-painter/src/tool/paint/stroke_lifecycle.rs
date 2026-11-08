@@ -75,6 +75,12 @@ impl PainterTool {
             let before = self.snapshot_model_eliding_relief();
             self.paint.stroke_undo = Some(before);
         }
+        // DEPOIS do `before`: desfazer o 1.º traço Wet de uma camada devolve-a à lei da outra tinta.
+        if matches!(self.paint.paint_mode, PaintMode::WetPaint)
+            && let Some(id) = self.layers.active()
+        {
+            self.tintas_molhadas.insert(id);
+        }
         self.paint.drag_preview = None;
         self.paint.plano_do_traco = None; // o plano do traço (L8/L5) nasce no 1.º lote deste traço
         self.mancha_na_aguada = None; // a do gesto anterior é tinta (ou foi descascada)

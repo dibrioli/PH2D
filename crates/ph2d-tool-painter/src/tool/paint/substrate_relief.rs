@@ -200,6 +200,12 @@ impl<'a> Substrate<'a> {
         texture::contrasta(t, ganho_do_dente(self.rough)) * self.amp_px
     }
 
+    /// A altura INTEIRA do dente nas cargas do [`Self::tooth_loads`] — a espessura de tinta que o enche
+    /// (`ReliefFields::height_at`). Nunca 0 (o Relief 0 não resolve substrato).
+    pub(super) fn amplitude_em_cargas(&self) -> f32 {
+        (self.amp_px / DEPTH_UNIT_PX).max(f32::MIN_POSITIVE)
+    }
+
     /// A altura média do dente, nas cargas do [`Self::tooth_loads`]: meia amplitude nos tipos centrados, a média real nos
     /// outros e na imagem, que o `contrasta` satura (0,10..0,80; tabela no Bug #71 de `docs/Painter/BUGS_painter.md`).
     pub(super) fn meio_do_dente(&self) -> f32 {

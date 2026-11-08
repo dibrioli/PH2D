@@ -58,6 +58,7 @@ impl RasterEditTool for PainterTool {
         self.covers.clear();
         self.mats.clear(); // o material é da tinta DAQUELE documento — some com ela
         self.vidros.clear(); // ...e o vidro, que sela os píxeis dele
+        self.tintas_molhadas.clear(); // ...e a marca da tinta do Wet nas camadas dele
         self.vidro_congelado = Default::default();
         self.drop_live_relief();
         self.layers_revision = self.layers_revision.wrapping_add(1);

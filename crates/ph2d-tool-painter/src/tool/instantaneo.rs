@@ -40,6 +40,7 @@ impl PainterTool {
             #[cfg(test)]
             sem_vidro,
             papel,
+            tintas_molhadas,
             papel_texturizado_para,
             gate,
             mask_scratch_gen,
@@ -105,6 +106,7 @@ impl PainterTool {
             #[cfg(test)]
             sem_vidro: *sem_vidro,
             papel: *papel,
+            tintas_molhadas: tintas_molhadas.clone(),
             papel_texturizado_para: *papel_texturizado_para,
             gate: gate.clone(),
             mask_scratch_gen: *mask_scratch_gen,

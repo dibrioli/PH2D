@@ -10,6 +10,7 @@ mod layers;
 mod new_sprite;
 mod selection;
 mod shapes;
+pub mod sprite_props;
 mod timeline;
 mod tools;
 
@@ -466,6 +467,8 @@ pub struct PixelUserInfo {
     pub layer: Option<crate::panel::cards::user_data::UserDataView>,
     pub cel: Option<crate::panel::cards::user_data::UserDataView>,
     pub tag: Option<crate::panel::cards::user_data::UserDataView>,
+    /// O do sprite (Sprite ▸ Properties…).
+    pub sprite: Option<crate::panel::cards::user_data::UserDataView>,
 }
 
 /// Um gesto do painel PIXEL (`EditorAction::Pixel`).

@@ -151,6 +151,8 @@ pub enum PixelSpriteAction {
     Crop,
     /// Tira a borda transparente (ou de uma cor só).
     Trim,
+    /// P12 U: Sprite ▸ Properties… (abre/fecha a secção no painel PIXEL; sem passo).
+    Properties,
 }
 
 /// Um campo numérico da moldura solta (a barra do Aseprite com os píxeis levantados).

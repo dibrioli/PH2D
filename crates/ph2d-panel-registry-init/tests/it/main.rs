@@ -86,14 +86,16 @@ mod the_pixel_column_answers_a_real_pointer; // as ferramentas do Pixel na colun
 mod the_pixel_export_answers_a_real_pointer;
 #[cfg(feature = "panel-pixel-keys")]
 mod the_pixel_keys_answers_a_real_pointer;
-#[cfg(feature = "panel-pixel-prefs")]
-mod the_pixel_prefs_answers_a_real_pointer;
+#[cfg(feature = "panel-pixel-tools")]
+mod the_pixel_layer_user_data_answers_a_real_pointer;
 #[cfg(all(feature = "panel-pixel-prefs", feature = "panel-pixel-timeline"))]
 mod the_pixel_onion_range_answers_a_real_pointer;
+#[cfg(feature = "panel-pixel-prefs")]
+mod the_pixel_prefs_answers_a_real_pointer;
 #[cfg(feature = "panel-pixel-slices")]
 mod the_pixel_slices_answers_a_real_pointer;
 #[cfg(feature = "panel-pixel-tools")]
-mod the_pixel_layer_user_data_answers_a_real_pointer;
+mod the_pixel_sprite_properties_answers_a_real_pointer;
 #[cfg(feature = "panel-pixel-tiles")]
 mod the_pixel_tiles_answers_a_real_pointer;
 mod the_properties_fold_into_an_icon_strip_on_small_tablets;

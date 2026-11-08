@@ -53,6 +53,8 @@ pub(crate) mod paleta_menu;
 pub(crate) mod pincel;
 #[path = "paint_selecao.rs"]
 mod selecao;
+#[path = "paint_sprite_props.rs"]
+mod sprite_props;
 #[path = "paint_paleta_voo.rs"]
 mod voo;
 pub(crate) use voo::Queda;
@@ -545,6 +547,7 @@ impl Corpo<'_> {
     fn sprite(&mut self, info: &PixelPanelInfo, y: f32) -> f32 {
         let sec = Seccao::medida(self.text_system, 1, &[tr("panel.pixel.replace_tolerance")]);
         let y = self.titulo(tr("panel.pixel.sprite"), y);
+        let y = self.propriedades_do_sprite(info, y);
         let mut y = self.botoes(&[(ids::COLOR_MODE, "panel.pixel.color_mode")], y);
         y = self.menu_sprite(info, y);
         y = self.linha(tr("panel.pixel.replace"), ColorToken::Text3, y);

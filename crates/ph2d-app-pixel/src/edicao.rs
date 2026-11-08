@@ -306,6 +306,7 @@ impl PixelApp {
                 canvas::crop_to_selection(s)
             }
             Sp::Trim => canvas::trim(s),
+            Sp::Properties => return crate::sprite_props::pede(),
         };
         if a == Sp::Trim && op.is_none() {
             self.recusa("pixel.sprite.refuse.trim");

@@ -91,6 +91,7 @@ actions! {
     // Sprite.
     CanvasSize = "sprite.canvas_size", Menus;
     SpriteSize = "sprite.sprite_size", Menus;
+    SpriteProperties = "sprite.properties", Menus;
     // Layer.
     NewLayer = "layer.new", Menus;
     NewGroup = "layer.new_group", Menus;
@@ -293,6 +294,7 @@ impl PixelAction {
             Self::InvertSelection => R::Select(S::Inverse),
             Self::CanvasSize => R::Sprite(Sp::CanvasSize),
             Self::SpriteSize => R::Sprite(Sp::SpriteSize),
+            Self::SpriteProperties => R::Sprite(Sp::Properties),
             Self::NewLayer => R::LayerAction(L::NewLayer),
             Self::NewGroup => R::LayerAction(L::NewGroup),
             Self::NewTilemapLayer => R::LayerAction(L::NewTilemap),
@@ -362,6 +364,7 @@ impl PixelAction {
                 | Self::Paste
                 | Self::CanvasSize
                 | Self::SpriteSize
+                | Self::SpriteProperties
                 | Self::Fill
                 | Self::Stroke
                 | Self::Outline

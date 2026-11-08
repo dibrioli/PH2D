@@ -298,7 +298,7 @@ pub const EDIT_ACTIONS: [(NodeId, PixelRequest, &str); 31] = [
 ];
 
 /// Os botões do menu Sprite.
-pub const SPRITE_ACTIONS: [(NodeId, PixelRequest, &str); 9] = [
+pub const SPRITE_ACTIONS: [(NodeId, PixelRequest, &str); 10] = [
     (
         hash_node_id("pixel.sprite.canvas_size"),
         PixelRequest::Sprite(Sp::CanvasSize),
@@ -343,5 +343,11 @@ pub const SPRITE_ACTIONS: [(NodeId, PixelRequest, &str); 9] = [
         hash_node_id("pixel.sprite.trim"),
         PixelRequest::Sprite(Sp::Trim),
         "panel.pixel.sprite.trim",
+    ),
+    // P12 U (9): Sprite ▸ Properties… (o 1.º botão do menu; abre a secção, O17).
+    (
+        hash_node_id("pixel.sprite.properties"),
+        PixelRequest::Sprite(Sp::Properties),
+        "panel.pixel.sprite.properties",
     ),
 ];

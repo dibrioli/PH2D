@@ -35,7 +35,7 @@ impl Corpo<'_> {
     }
 
     /// O vão antes de uma linha: a 1.ª do corpo encosta no cabeçalho.
-    fn topo(&self, y: f32) -> f32 {
+    pub(super) fn topo(&self, y: f32) -> f32 {
         match self.cartao {
             Some((_, inicio)) if y > inicio => y + m::FIELD_ROW_GAP,
             _ => y,

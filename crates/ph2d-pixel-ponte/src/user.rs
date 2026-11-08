@@ -91,5 +91,6 @@ pub fn info(s: &Sprite, layer: LayerId, frame: FrameId) -> PixelUserInfo {
             .zip(frame)
             .map(|(layer, frame)| PixelOwner::Cel { layer, frame })),
         tag: v(tag.map(PixelOwner::Tag)),
+        sprite: v(Some(PixelOwner::Sprite)),
     }
 }

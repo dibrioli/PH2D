@@ -337,12 +337,19 @@ fn arma_o_pixel() {
         active_layer: Some(1),
         user: ph2d_editor_core::pixel_panel::PixelUserInfo {
             layer: Some(user_data_armado()),
+            sprite: Some(user_data_armado()),
             ..Default::default()
         },
         ..Default::default()
     });
     ph2d_editor_core::panel::cards::user_data::set_open(
         &ph2d_panel_pixel_tools::seam_user::ids(),
+        true,
+    );
+    // Sprite ▸ Properties… aberta, com o cartão User Data do sprite aberto (P12 U).
+    ph2d_editor_core::pixel_panel::sprite_props::set_open(true);
+    ph2d_editor_core::panel::cards::user_data::set_open(
+        &ph2d_panel_pixel_tools::seam_user::ids_sprite(),
         true,
     );
 }

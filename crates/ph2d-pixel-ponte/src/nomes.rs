@@ -32,6 +32,7 @@ pub const fn nome_sprite(a: Sp) -> &'static str {
         Sp::FlipCanvasV => "pixel.keys.edit.flip_v",
         Sp::Crop => "pixel.history.crop",
         Sp::Trim => "pixel.history.trim",
+        Sp::Properties => "pixel.keys.sprite.properties",
     }
 }
 

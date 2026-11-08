@@ -55,6 +55,7 @@ pub mod smoke_tiles;
 pub mod smoke_tocar;
 pub mod smoke_viva;
 pub mod solta;
+mod sprite_props;
 mod state;
 pub mod texto;
 mod tiles;

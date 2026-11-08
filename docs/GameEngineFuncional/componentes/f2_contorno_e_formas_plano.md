@@ -51,3 +51,40 @@ Leitor: a próxima LLM desta linha. Aprovado pelo dono em 08/11/2026 («faça co
 
 Riscos: LOC sem folga em `ph2d-app-physics` e na shell (cura = cortar/MOVER); `InspectorPhysicsInfo` sem `Default`
 (outras linhas precisam dos campos novos); Static filho de pai Dynamic é corpo separado; nav usa a caixa de limites.
+
+## ⛔ REVISÃO 08/11 (smoke do dono): opção B — toda forma é um objeto filho
+
+Dono: *«tirar collision shapes dos componentes e deixar apenas como Objeto aparecendo como filhos na hierarchy como
+objetos independentes (invisíveis). Sai dos componentes e suas configurações não aparecem no inspector de outros
+objetos.»* A lista «Shapes» (W3-B, `986c158873`) é REVOGADA. ADR novo previsto: **0199 «A forma de colisão é um objeto
+filho do corpo»** (confirma e estende o ADR-0110; não o revoga).
+
+- **Motor, UMA lei:** as formas de um corpo = o seu `Collider` (se tiver) e depois as formas descendentes em ordem de
+  árvore, parando num corpo filho e atravessando grupos (`ph2d_physics_ecs::shapes_in_order`, `parts.rs:150`). A 1.ª é a
+  **forma principal**, viaja no `BodyDesc` como hoje (Crouch, linha d'água, força de zona, `rest`, nav e gatilhos leem-na);
+  as outras são partes (`bridge/parts.rs`). `BodyDesc.shape_pose: [f32;3]` anexado (zero = hoje). O lado-forma do catálogo
+  (`row_of("ph2d::physics::Collider")`: material, one-way, superfície, zonas, sinais, e o futuro `ColliderOutline`) é lido
+  da entidade da FORMA. Mesmo hash de 300 ticks construída das duas maneiras (gate de equivalência).
+- **Editor, UMA lei:** nenhuma porta do editor põe `Collider` num corpo (gate `nenhuma_porta_do_editor_poe_a_forma_no_corpo`).
+  «Collision Shape» sai do Add Component (fica registada). Corpo nasce com a filha (`nasce_com_forma`, physics-ecs).
+- ⛔ Recusados: corpos sem collider próprio com todas as formas como partes (parte os 5 leitores da forma principal e a
+  ordem dos handles) · motor que recusa `Collider` no corpo (234 ficheiros de teste sem ganho) · sistema por quadro que
+  converte (muta o documento e o undo) · `Collider.shapes: Vec` · lista «Shapes» no Inspector do corpo.
+- **Migração** `migra_formas_para_filhos(world)` no load, `ver <= 219` → **schema 220** (o Outline passa a **221**): por
+  `StableId`, filha «Collision Shape» primeira entre irmãs, Transform identidade, leva o `Collider` e o lado-forma; mestre
+  só (instâncias materializam); trilhas da Timeline do lado-forma re-alvejadas para a filha; macros resolvem
+  `main_shape(body)` ao tocar.
+
+| Onda | O quê | Est. |
+|---|---|---|
+| B0 | tirar a lista W3-B (fica `shapes_in_order`, os cortes de LOC e a rota `set_command_pick(COLLISION_SHAPE)` = «Add Shape») | 1 h |
+| B1 | motor: `BodyQuery` sem `&Collider`, forma principal resolvida, lado-forma da forma, `shape_pose`, ordem das partes | 1 d |
+| B2 | migração + schema 220 (+ instâncias, Timeline) | 1–1,5 d |
+| B3 | ações: catálogo, seed do `RigidBody`, Player/Character/Static nascem com filha, `pendura_forma`, `follow_auto_collider` pelas formas da imagem, Make Independent Body | 1 d |
+| B4 | Inspector: corpo só Body; filha com o cartão Shape inteiro + Collision Layers + «Shape of: {body}» | 1 d |
+| B5 | canvas: corpo selecionado mostra as alças da forma filha | 0,5–1 d |
+| B6 | força de zona em formas extra (efetor por collider) | 0,5 d |
+| B7 | cenas (120, jogo, macros 8) por `nasce_com_forma`; fotos; smoke | 0,5 d |
+
+Outline (W0–W6) passa para a FILHA: `ColliderOutline` na forma, `source` = antepassado com imagem mais próximo até ao
+corpo. **Último ponto seguro para integrar:** o commit da B0 (sem a lista revogada, sem mudança de formato).

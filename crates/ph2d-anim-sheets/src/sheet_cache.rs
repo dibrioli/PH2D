@@ -41,6 +41,10 @@ pub struct SheetCache {
     entries: Vec<(SheetKey, SheetEntry)>,
     /// A folha `k` de cada entidade que alguém olhou neste quadro.
     by_entity: BTreeMap<(u64, u8), SheetKey>,
+    /// A folha que o Painter pinta, com a tinta por assar: `(objeto, folha, revisão, imagem)`.
+    live: Option<(u64, u8, (u64, u64), SheetEntry)>,
+    /// A revisão vista no quadro anterior: só se lê a tinta quando ela PAROU (o traço acabou).
+    seen: Option<(u64, (u64, u64))>,
 }
 
 impl SheetCache {
@@ -53,6 +57,11 @@ impl SheetCache {
     /// A folha `k` da entidade, se [`refresh`] a resolveu.
     #[must_use]
     pub fn of_sheet(&self, bits: u64, k: u8) -> Option<&SheetEntry> {
+        if let Some((b, s, _, e)) = &self.live
+            && (*b, *s) == (bits, k)
+        {
+            return Some(e);
+        }
         let key = self.by_entity.get(&(bits, k))?;
         self.entries.iter().find(|(c, _)| c == key).map(|(_, e)| e)
     }
@@ -152,3 +161,46 @@ pub fn refresh(world: &mut World, entities: &[u64], db: &AssetDb, atlas: &BTreeM
         }
     }
 }
+
+/// ⭐ **A folha que o Painter pinta, AO VIVO** (dono 08/11: o editor de animações só se atualizava depois de assar).
+/// `vivo` = o objeto que o Painter pinta com tinta por assar e a revisão do conteúdo dele (`None` = nada por assar: a
+/// imagem gravada volta a ser a verdade). Quando a revisão pára de andar (o traço acabou), `read` dá os píxeis retos
+/// da tinta, e a folha visível desse objeto passa a mostrá-los — no editor, no cartão e nas miniaturas. Uma leitura
+/// por traço, nunca por quadro.
+pub fn follow_live(
+    world: &mut World,
+    vivo: Option<(u64, (u64, u64))>,
+    read: impl FnOnce() -> Option<(Vec<u8>, u32, u32)>,
+) {
+    let k = vivo.map(|(b, _)| ph2d_ecs::shown_sheet(world, Entity::from_bits(b)));
+    let mut cache = world.get_resource_or_init::<SheetCache>();
+    let (Some((bits, rev)), Some(k)) = (vivo, k) else {
+        (cache.live, cache.seen) = (None, None);
+        return;
+    };
+    if cache.seen.replace((bits, rev)) != Some((bits, rev)) {
+        return; // ainda a mudar
+    }
+    if cache
+        .live
+        .as_ref()
+        .is_some_and(|l| (l.0, l.1, l.2) == (bits, k, rev))
+    {
+        return;
+    }
+    let guess = cache.of_sheet(bits, k).and_then(|e| e.guess);
+    cache.live = read()
+        .and_then(|(px, w, h)| SheetImage::new(Arc::new(px), w, h))
+        .map(|sheet| {
+            let entry = SheetEntry {
+                sheet,
+                guess,
+                name: None,
+            };
+            (bits, k, rev, entry)
+        });
+}
+
+#[cfg(test)]
+#[path = "sheet_cache_tests.rs"]
+mod tests;

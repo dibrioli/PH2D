@@ -23,6 +23,14 @@ pub fn imagem_por_assar(tools: &mut ToolRegistry, entity: u64) -> Option<(Vec<u8
     imagem_por_assar_do(o_painter(tools)?, entity)
 }
 
+/// **O objeto que o Painter pinta com tinta por assar, e a revisão do conteúdo dele** — a chave da folha ao vivo
+/// (`ph2d_anim_sheets::sheet_cache::follow_live`). `None`: nada por assar.
+pub fn revisao_viva(tools: &mut ToolRegistry) -> Option<(u64, (u64, u64))> {
+    let p = o_painter(tools)?;
+    let e = p.bound_document().filter(|_| p.has_unbaked_edits())?;
+    Some((e, p.content_revision()))
+}
+
 /// [`imagem_por_assar`] sobre o tool já na mão (a lei: `PainterTool::imagem_por_assar`).
 #[must_use]
 pub fn imagem_por_assar_do(

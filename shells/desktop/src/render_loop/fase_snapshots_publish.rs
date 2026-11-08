@@ -95,6 +95,10 @@ impl crate::App {
             let lib = ph2d_app_components::library_names::session_library(sim, db, at);
             ph2d_anim_sheets::names::publish(sim.world_mut(), ids, &lib);
         }
+        let vivo = ph2d_app_painter::painter_bridge_queries::revisao_viva(tools);
+        ph2d_anim_sheets::sheet_cache::follow_live(sim.world_mut(), vivo, || {
+            ph2d_app_painter::painter_bridge_queries::imagem_por_assar(tools, vivo?.0)
+        });
         anim_editor(sim, hero, db, at, reg, toasts);
         let pixel_edit = ph2d_app_pixel::mode::editing(sim.world(), hero).is_some();
         snapshots::publish(

@@ -172,19 +172,23 @@ fn cartao_secao(s: Section, linhas: Vec<Linha>) -> CardDef<'static> {
                 if !normais.is_empty() {
                     y = c.compact(&normais, y);
                 }
-                // As teclas de outro contexto: o nome do contexto numa linha, as fichas por baixo.
+                // As teclas de outro contexto: o nome do contexto sobre as fichas dele.
                 let mut vistos: Vec<&str> = Vec::new();
                 for onde in l.fichas.iter().filter_map(|f| f.2) {
                     if vistos.contains(&onde) {
                         continue;
                     }
                     vistos.push(onde);
-                    y = c.hint(onde, y);
+                    // O contexto é o rótulo da primeira ficha (lei do ritmo), não uma frase solta.
                     let dele: Vec<Cell<'_>> = l
                         .fichas
                         .iter()
                         .filter(|f| f.2 == Some(onde))
-                        .map(|(id, t, _)| ficha(*id, t))
+                        .enumerate()
+                        .map(|(i, (id, t, _))| {
+                            let f = ficha(*id, t);
+                            if i == 0 { f.label(onde) } else { f }
+                        })
                         .collect();
                     y = c.compact(&dele, y);
                 }

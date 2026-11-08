@@ -87,9 +87,15 @@ fn numero(id: NodeId, chave: &'static str) -> Cell<'static> {
 }
 
 /// Os quatro números em duas linhas: `X` `Y`, depois `W` `H` (dono 08/11).
-fn linha_xywh(c: &mut CardCtx<'_>, campos: [NodeId; 4], y: f32) -> f32 {
+/// `rotulo` mora sobre a primeira caixa, à distância do rótulo (lei do ritmo), nunca como frase solta.
+fn linha_xywh(c: &mut CardCtx<'_>, campos: [NodeId; 4], rotulo: Option<&str>, y: f32) -> f32 {
     let r = rotulos_xywh();
-    let y = c.row(&[numero(campos[0], r[0]), numero(campos[1], r[1])], y);
+    let x = numero(campos[0], r[0]);
+    let x = match rotulo {
+        Some(t) => x.label(t),
+        None => x,
+    };
+    let y = c.row(&[x, numero(campos[1], r[1])], y);
     c.row(&[numero(campos[2], r[2]), numero(campos[3], r[3])], y)
 }
 
@@ -126,10 +132,10 @@ fn propriedades(c: &mut CardCtx<'_>, v: &Vista, y: f32) -> f32 {
         ],
         y,
     );
-    let y = c.hint(tr("panel.pixel.slices.bounds"), y);
     let mut y = linha_xywh(
         c,
         [ids::BOUNDS_X, ids::BOUNDS_Y, ids::BOUNDS_W, ids::BOUNDS_H],
+        Some(tr("panel.pixel.slices.bounds")),
         y,
     );
     // Sem campos no meio, as duas caixas dividem a linha.
@@ -145,6 +151,7 @@ fn propriedades(c: &mut CardCtx<'_>, v: &Vista, y: f32) -> f32 {
         y = linha_xywh(
             c,
             [ids::CENTER_X, ids::CENTER_Y, ids::CENTER_W, ids::CENTER_H],
+            None,
             y,
         );
         y = c.row(&[pivot], y);

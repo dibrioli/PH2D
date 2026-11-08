@@ -99,10 +99,11 @@ O conjunto final é medido: correr as palavras contra o modelo, e só fica o cas
 
 ### 2.6 Fotos sem clique (a tela virtual não recebe cliques)
 
-`PH2D_COMPONENT_ADD_SMOKE=1` (cena da moeda: imagem com Physics Body, Audio Source 2D, Signal Actions,
-Animations, Animator; abre a janela) + `PH2D_COMPONENT_ADD_HOVER=<nome>` / `_QUERY=<texto>` /
-`_PICK=<nome>` (o último mostra o recibo). Ler as variáveis na shell (`fase_component_palette.rs`), e os
-leitores de `editor-core/src/object_add.rs:301-340` passam a ser partilhados, nunca duplicados.
+`PH2D_OBJECT_ADD_PICK=object_add.game.sprite PH2D_COMPONENT_ADD_SMOKE=1`: o Add Object cria a Sprite, o
+smoke põe-lhe a moeda da Crítica (Physics Body, Audio Source 2D, Signal Actions, Animations, Animator) e abre a
+janela (`shells/desktop/src/render_loop/fase_component_add_smoke.rs`). `PH2D_OBJECT_ADD_HOVER=<nome canónico>` e
+`PH2D_OBJECT_ADD_QUERY=<texto>` são os da paleta, partilhados; `PH2D_COMPONENT_ADD_PICK=<nome canónico>` adiciona
+e fecha (a foto do recibo).
 
 ## 3. Fora deste item (e porquê)
 

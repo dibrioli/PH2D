@@ -111,10 +111,11 @@ impl SceneScripts {
         self.held_error.is_some() || self.parked.iter().any(Parked::is_held)
     }
 
-    /// Onde o jogo está parado.
+    /// Onde o jogo está parado. Um ponto de parada que o artista já tirou não aparece na fila.
     #[must_use]
     pub fn debug_stop(&self, lua: &Lua) -> Option<DebugStop> {
-        let queued = self.parked.iter().filter(|p| p.is_held()).count();
+        let live = |p: &&Parked| p.is_held() && !self.stale(lua, p);
+        let queued = self.parked.iter().filter(live).count();
         if let Some(e) = &self.held_error {
             return Some(DebugStop {
                 entity: e.entity,
@@ -124,7 +125,7 @@ impl SceneScripts {
                 queued,
             });
         }
-        let p = self.parked.iter().find(|p| p.is_held())?;
+        let p = &self.parked[self.head(lua)?];
         let Park::Held { why, .. } = &p.kind else {
             return None;
         };
@@ -134,8 +135,35 @@ impl SceneScripts {
             script: p.script,
             why: why.clone(),
             frame,
-            queued: queued.saturating_sub(1),
+            queued: queued.saturating_sub(usize::from(!self.stale(lua, p))),
         })
+    }
+
+    /// Parado num ponto de parada cuja linha já não está armada (o artista tirou-o)?
+    fn stale(&self, lua: &Lua, p: &Parked) -> bool {
+        let Park::Held {
+            why: StopKind::Breakpoint,
+            ..
+        } = &p.kind
+        else {
+            return false;
+        };
+        let Some(line) = debugger(lua)
+            .and_then(|d| d.frame(lua, &p.thread).ok().flatten())
+            .map(|f| f.line)
+        else {
+            return false;
+        };
+        !self.armed_lines(p.script).contains(&line)
+    }
+
+    /// O 1.º parado que ainda conta; se todos estão obsoletos, o 1.º (o Continue solta-os).
+    fn head(&self, lua: &Lua) -> Option<usize> {
+        let held = || self.parked.iter().enumerate().filter(|(_, p)| p.is_held());
+        held()
+            .find(|(_, p)| !self.stale(lua, p))
+            .or_else(|| held().next())
+            .map(|(i, _)| i)
     }
 
     /// O 1.º erro guardado num relatório vira a paragem (Pause on Error), se nada está parado.
@@ -154,9 +182,10 @@ impl SceneScripts {
         }
     }
 
-    /// ⭐ **Continue** (`step = false`) ou **Next line** (`step = true`) do 1.º objecto parado.
+    /// ⭐ **Continue** (`step = false`) ou **Next line** (`step = true`) do objecto mostrado.
     /// Os ganchos que ele devia ter corrido entretanto correm a seguir, pela ordem; as escritas
-    /// pousam como no fim de um tique.
+    /// pousam como no fim de um tique. Depois, os que esperam num ponto de parada já tirado
+    /// seguem sozinhos (Next line e erro nunca).
     pub(crate) fn resume_held(
         &mut self,
         lua: &Lua,
@@ -165,14 +194,37 @@ impl SceneScripts {
         doors: &mut dyn SceneDoors,
         step: bool,
     ) -> SceneReport {
-        let mut report = SceneReport::default();
         // Depois de um erro não há o que retomar: o objecto já parou, o jogo segue.
         if self.held_error.take().is_some() {
-            return report;
+            return SceneReport::default();
         }
-        let Some(at) = self.parked.iter().position(Parked::is_held) else {
-            return report;
+        let Some(at) = self.head(lua) else {
+            return SceneReport::default();
         };
+        let mut report = self.resume_at(lua, deadline, sim, doors, at, step);
+        while let Some(at) = self
+            .parked
+            .iter()
+            .position(|p| p.is_held() && self.stale(lua, p))
+        {
+            let more = self.resume_at(lua, deadline, sim, doors, at, false);
+            merge(&mut report, more);
+        }
+        report.wrote.sort_by_key(|e| e.to_bits());
+        report.wrote.dedup();
+        report
+    }
+
+    fn resume_at(
+        &mut self,
+        lua: &Lua,
+        deadline: &Deadline,
+        sim: &mut SimWorld,
+        doors: &mut dyn SceneDoors,
+        at: usize,
+        step: bool,
+    ) -> SceneReport {
+        let mut report = SceneReport::default();
         let p = self.parked.remove(at);
         let Park::Held { then, .. } = p.kind else {
             return report;
@@ -235,4 +287,16 @@ impl SceneScripts {
         });
         finish_pass(lua, sim, doors, ran, &writes, report)
     }
+}
+
+/// Junta o relatório de uma passagem a outro (as escritas de cada uma já pousaram).
+fn merge(into: &mut SceneReport, more: SceneReport) {
+    into.wrote.extend(more.wrote);
+    into.emitted.extend(more.emitted);
+    into.failed.extend(more.failed);
+    into.despawned.extend(more.despawned);
+    into.wrote_before.extend(more.wrote_before);
+    into.calls += more.calls;
+    into.motion.extend(more.motion);
+    into.error_stops.extend(more.error_stops);
 }

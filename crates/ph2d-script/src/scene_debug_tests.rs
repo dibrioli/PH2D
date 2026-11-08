@@ -141,6 +141,47 @@ fn depurador_os_que_batem_no_mesmo_ponto_ficam_em_fila() {
 }
 
 #[test]
+fn depurador_tirar_o_ponto_com_tres_em_fila_um_continue_solta_todos() {
+    let mut m = Mesa::new(MOVE, 3);
+    m.host.set_breakpoints(m.id, vec![at(MOVE, "write")]);
+    m.frame();
+    assert_eq!(m.host.debug_stop().expect("paragem").queued, 2);
+    m.host.set_breakpoints(m.id, vec![]);
+    // O mostrado continua o mesmo; os da fila já não contam.
+    let s = m.host.debug_stop().expect("ainda parado");
+    assert_eq!((s.entity, s.queued), (m.actors[0], 0));
+    assert!(m.host.is_held(), "só o Continue os solta");
+    m.resume(false);
+    assert!(!m.host.is_held(), "os da fila seguiram sozinhos");
+    assert!(m.host.debug_stop().is_none());
+    assert_eq!((m.x(0), m.x(1), m.x(2)), (1.0, 1.0, 1.0));
+}
+
+#[test]
+fn depurador_paragem_de_next_line_nao_se_solta_sozinha() {
+    let mut m = Mesa::new(MOVE, 2);
+    m.host.set_breakpoints(m.id, vec![at(MOVE, "read")]);
+    m.frame();
+    m.resume(true);
+    let s = m.host.debug_stop().expect("Next line parou");
+    assert_eq!((s.why.clone(), s.entity), (StopKind::Step, m.actors[0]));
+    m.host.set_breakpoints(m.id, vec![]);
+    let s = m.host.debug_stop().expect("ainda o passo");
+    assert_eq!(
+        (s.why, s.entity, s.queued),
+        (StopKind::Step, m.actors[0], 0)
+    );
+    // Mais um Next line: o 2.º (ponto tirado) segue sozinho; a paragem do passo fica.
+    m.resume(true);
+    let s = m.host.debug_stop().expect("o passo não se solta");
+    assert_eq!((s.why, s.entity), (StopKind::Step, m.actors[0]));
+    assert_eq!(m.x(1), 1.0, "o da fila acabou o update");
+    m.resume(false);
+    assert!(!m.host.is_held());
+    assert_eq!((m.x(0), m.x(1)), (1.0, 1.0));
+}
+
+#[test]
 fn depurador_next_line_para_na_linha_seguinte() {
     let mut m = Mesa::new(MOVE, 1);
     m.host.set_breakpoints(m.id, vec![at(MOVE, "read")]);

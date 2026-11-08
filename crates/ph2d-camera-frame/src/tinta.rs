@@ -133,9 +133,12 @@ pub fn desenhar(
         );
         moldura_vazada(cena, canvas, r, fora);
     }
+    // ⭐ A câmera selecionada acende na cor dela, a da Hierarchy (dono 08/11).
+    let destaque = ph2d_editor_core::paint::resolve(ColorToken::ObjCamera, theme);
     for m in ms {
         let r = icone(m.centro, p.icone_px, camera, window);
-        ph2d_editor_core::paint_icon(cena, IconId::Camera, r, selecao, TRACO_PX[1] as f32);
+        let cor = if m.selecionada { destaque } else { selecao };
+        ph2d_editor_core::paint_icon(cena, IconId::Camera, r, cor, TRACO_PX[1] as f32);
     }
     let sob = {
         let a = camera.screen_to_world(p.ponteiro, window);
@@ -509,3 +512,7 @@ pub fn tarjas(cena: &mut VectorScene, canvas: [f32; 4], caixa: [f32; 4], theme: 
         }
     }
 }
+
+#[cfg(test)]
+#[path = "tinta_tests.rs"]
+mod tests;

@@ -63,6 +63,10 @@ pub(crate) struct CodeDoc {
     /// ⭐ Onda A: os problemas do Play deste script (cópia do [`crate::console::Store`], que vive
     /// com a aba fechada) e a geração dela — a lista funde-os com os do texto.
     pub(crate) play: (u64, std::sync::Arc<[crate::console::PlayProblem]>),
+    /// ⭐ Cada problema do Play com linha pertence ao TEXTO que correu: o byte do início da linha
+    /// (segue as edições, como o [`Self::diag_anchor`]) e o texto que ela tinha. Mostra-se só
+    /// enquanto a linha para onde as edições o levaram ainda tem esse texto.
+    pub(crate) play_at: Vec<crate::play_problems::PlayAt>,
     /// Onde ele mora no buffer: o byte do início da linha (segue as edições) e se era um erro de
     /// SINTAXE (esse o tree-sitter mostra vivo; os outros — uma declaração `ph2d.property` — ficam
     /// na calha enquanto há ●).
@@ -151,6 +155,7 @@ impl CodeDoc {
             console_view: ConsoleView::default(),
             saved_diag: None,
             play: (0, std::sync::Arc::from([])),
+            play_at: Vec::new(),
             diag_anchor: None,
             assist: crate::problems::Held::default(),
             complete: crate::complete::Completer::default(),
@@ -238,6 +243,11 @@ impl CodeDoc {
                 a.0 = map_byte(a.0, e);
             }
         }
+        for a in &mut self.play_at {
+            for e in edits {
+                a.byte = map_byte(a.byte, e);
+            }
+        }
         self.folds.edited(edits, self.buffer.text());
         self.find.follow(&self.buffer, edits);
     }
@@ -289,16 +299,7 @@ impl CodeDoc {
         let mut out = problems(t, &self.derived.errors, saved, &self.assist);
         out.extend(self.lint.problems(t));
         out.sort_by_key(|p| (p.line, p.culprit.as_ref().map(|c| c.start)));
-        crate::play_problems::merge(out, &self.play.1)
-    }
-
-    /// Os problemas do Play guardados para este script (`generation` muda quando eles mudam).
-    pub(crate) fn set_play(&mut self, store: Option<&crate::console::Store>) {
-        let generation = store.map_or(0, |s| s.play_generation);
-        if generation != self.play.0 {
-            let list: Vec<_> = store.map(|s| s.play().to_vec()).unwrap_or_default();
-            self.play = (generation, list.into());
-        }
+        crate::play_problems::merge(out, &self.live_play())
     }
 
     /// O diagnóstico do Luau para o texto salvo (lido da cena em todo quadro): ancora-o quando muda.

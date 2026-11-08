@@ -51,6 +51,8 @@ use ph2d_ecs::{Entity, Name, StableId, TextosDosCanais, World};
 
 mod animation;
 mod migra_vetor;
+mod migra_formas;
+pub use migra_formas::realveja_trilhas_da_forma;
 mod purga_itens;
 pub use animation::{copy_animations, follow_selection, publish_animation_header};
 use ph2d_timeline::{

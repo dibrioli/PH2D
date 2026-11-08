@@ -149,6 +149,14 @@ const COMBINA: &[&str] = &[
     "panel.inspector.physics.max",
 ];
 
+/// ⭐ **O campo mora na FORMA** (opção B, GEF02 B2): a forma, o deslocamento, o material, a camada, o
+/// sensor, a uma-via, a superfície e a zona — o que a migração `219 → 220` leva para a filha «Collision
+/// Shape» (`ph2d_physics_ecs::LADO_FORMA`). O resto (tipo, travas, massa, `SEM_PAREDE`) é do corpo.
+#[must_use]
+pub const fn e_da_forma(campo: u16) -> bool {
+    matches!(campo, FORMA..=UMA_VIA | ADERENCIA | ESTEIRA | FORCA_X..=ZONA_QUEDA)
+}
+
 /// O que o campo `campo` do corpo é.
 #[must_use]
 pub fn info(campo: u16) -> Option<CampoInfo> {

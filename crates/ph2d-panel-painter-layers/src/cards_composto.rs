@@ -15,8 +15,8 @@ use ph2d_editor_core::panel::cards::{CardCtx, Cell, Seg, Widget, censo};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
 use ph2d_tokens::{ColorToken, StrokeToken};
+use ph2d_tool_painter::BrushSettings;
 use ph2d_tool_painter::ids as pids;
-use ph2d_tool_painter::{BrushSettings, MAX_COMPOSITE_LAYER_SIZE};
 
 fn enc(c: f32) -> u8 {
     (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8 // LITERAL-PX-OK: sRGB 8-bit normalize
@@ -26,9 +26,9 @@ fn presente(b: &BrushSettings) -> bool {
     b.composite_enabled
 }
 
-/// A fracção da barra do tamanho: o chip mostra o multiplicador, e a projecção é a de `populate_composite_chips`.
+/// A fracção da barra do tamanho: o chip mostra px de diâmetro, e a projecção é a de `populate_composite_chips`.
 fn tamanho(b: &BrushSettings, pos: usize) -> f32 {
-    (b.composite_size[pos] / MAX_COMPOSITE_LAYER_SIZE).clamp(0.0, 1.0)
+    crate::populate_composite_chips::pista_do_px(b, pos)
 }
 
 /// Com o store e o barramento, antes de pintar.
@@ -64,6 +64,7 @@ fn arma_camada(store: &mut WidgetStore, b: &BrushSettings, f: &BrushSettings, po
         f.composite_strength[pos].clamp(0.0, 1.0),
         crate::cards_topo::CASAS_DO_PINCEL,
     );
+    crate::populate_composite_chips::liga_tamanho(store, b, pos);
     arma_barra(
         store,
         [
@@ -72,7 +73,7 @@ fn arma_camada(store: &mut WidgetStore, b: &BrushSettings, f: &BrushSettings, po
         ],
         tamanho(b, pos),
         tamanho(f, pos),
-        crate::cards_topo::CASAS_DO_PINCEL,
+        crate::populate_composite_chips::CASAS_DO_PX,
     );
     arma_barra(
         store,

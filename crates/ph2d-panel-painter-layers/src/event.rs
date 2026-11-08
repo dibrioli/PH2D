@@ -39,7 +39,8 @@ pub(crate) fn apply_event(
     ev: WidgetEvent,
 ) -> EventOutcome {
     // Brush-section widgets are fixed-id + tool-global → route before the per-layer dispatch.
-    if let Some(consumed) = crate::paint_wetpaint_presets_biblioteca::try_event(host, ev)
+    if let Some(consumed) = crate::paint_wetpaint_presets_busca::try_event(host, ev)
+        .or_else(|| crate::paint_wetpaint_presets_biblioteca::try_event(host, ev))
         .or_else(|| try_apply_brush_event(host, ev))
     {
         return EventOutcome::from_bool(consumed);

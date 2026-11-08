@@ -81,11 +81,13 @@ pub(crate) fn numeros_dos_volumes(
     valores: &BrushSettings,
 ) -> Vec<(Numero, Option<usize>)> {
     // O tecto do pincel (J3, decisão 8): a faixa acaba nele — o artista vê porque o Size não cresce.
+    // ⚠️ O valor é o px INTEIRO, como o «Size (px)» das camadas do Composite (uma unidade, um formato): o raio
+    // fraccionário (`82,76`) punha `165.520` na caixa do cartão (passo inteiro + fracção ⇒ casas, T29).
     let mut l = vec![(
         Numero {
             chave: "panel.painter_layers.wetpaint.vol_size",
             id: ids::PAINTER_WETPAINT_VOL_SIZE,
-            valor: valores.size_px * DIAMETRO_POR_RAIO,
+            valor: (valores.size_px * DIAMETRO_POR_RAIO).round(),
             min: BRUSH_SIZE_MIN_PX * DIAMETRO_POR_RAIO,
             max: valores.size_max_px * DIAMETRO_POR_RAIO,
             passo: SIZE_STEP,
@@ -345,7 +347,20 @@ pub(crate) fn nome_da_politica(i: u8) -> &'static str {
 
 /// As linhas do popover do Preset: os Favoritos e um TÍTULO por categoria (linhas `header`, dono 22/10 —
 /// nunca uma por pasta) e os presets, com o índice corrido como valor.
+#[cfg(test)]
 fn opcoes_do_preset(v: &VistaPresets) -> (Vec<DropdownOption<usize>>, usize) {
+    opcoes_filtradas(v, "")
+}
+
+/// [`opcoes_do_preset`] só com os pincéis cujo nome casa `busca` ([`crate::paint_wetpaint_presets_busca::casa`]):
+/// cada título só aparece com algum achado; sem achado nenhum, a linha «No brushes found».
+pub(crate) fn opcoes_filtradas(
+    v: &VistaPresets,
+    busca: &str,
+) -> (Vec<DropdownOption<usize>>, usize) {
+    use crate::paint_wetpaint_presets_busca as busca_;
+    let filtra = !busca.trim().is_empty();
+    let casa = |e: &&st::VistaPreset| busca_::casa(&e.nome, busca);
     let mut out = Vec::new();
     let mut atual = usize::MAX;
     let titulo = |out: &mut Vec<DropdownOption<usize>>, texto: String| {
@@ -354,7 +369,7 @@ fn opcoes_do_preset(v: &VistaPresets) -> (Vec<DropdownOption<usize>>, usize) {
             DropdownOption::new(ids::painter_wetpaint_preset_title_id(k), k, texto).header(true),
         );
     };
-    if v.ilegiveis > 0 {
+    if v.ilegiveis > 0 && !filtra {
         // Um aviso, não um título: apagado, como sempre.
         let k = out.len();
         out.push(
@@ -380,7 +395,12 @@ fn opcoes_do_preset(v: &VistaPresets) -> (Vec<DropdownOption<usize>>, usize) {
             e.nome.clone(),
         ));
     };
-    let favoritos: Vec<&st::VistaPreset> = v.entradas.iter().filter(|e| e.favorito).collect();
+    let favoritos: Vec<&st::VistaPreset> = v
+        .entradas
+        .iter()
+        .filter(|e| e.favorito)
+        .filter(casa)
+        .collect();
     if !favoritos.is_empty() {
         titulo(
             &mut out,
@@ -391,12 +411,15 @@ fn opcoes_do_preset(v: &VistaPresets) -> (Vec<DropdownOption<usize>>, usize) {
         }
     }
     let mut categoria_atual: Option<&str> = None;
-    for e in v.entradas.iter().filter(|e| !e.favorito) {
+    for e in v.entradas.iter().filter(|e| !e.favorito).filter(casa) {
         if categoria_atual != Some(e.categoria.as_str()) {
             categoria_atual = Some(e.categoria.as_str());
             titulo(&mut out, e.categoria.clone());
         }
         linha(&mut out, SECAO_GRUPO, e);
+    }
+    if filtra && out.is_empty() {
+        out.push(busca_::sem_achados(0));
     }
     (out, atual)
 }
@@ -406,9 +429,23 @@ pub(crate) fn paint_wetpaint_presets_popovers(ctx: &mut PaintCtx, theme: ph2d_to
     if let Some(r) = st::PENDING_PRESET_DD.with(std::cell::Cell::take)
         && let Some(v) = st::current_wet_presets()
     {
-        let (opcoes, atual) = opcoes_do_preset(&v);
-        crate::paint_wetpaint_presets_biblioteca::paint_popover(ctx, theme, opcoes, r, atual);
+        use crate::paint_wetpaint_presets_busca as busca;
+        let q = busca::abre(ctx);
+        let (opcoes, atual) = opcoes_filtradas(&v, &q);
+        let realce = busca::realce(ctx, &opcoes, r, atual, &q);
+        let opcoes = busca::com_campo(opcoes);
+        let arrasta = q.trim().is_empty();
+        let p = crate::paint_wetpaint_presets_biblioteca::paint_popover(
+            ctx,
+            theme,
+            opcoes.clone(),
+            r,
+            realce,
+            arrasta,
+        );
+        busca::pinta_campo(ctx, theme, &opcoes, r, p);
     } else {
+        crate::paint_wetpaint_presets_busca::fecha(ctx);
         crate::paint_wetpaint_presets_biblioteca::sem_popover(ctx);
     }
     crate::paint_wetpaint_presets_biblioteca::paint_dialogo(ctx, theme);

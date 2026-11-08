@@ -567,7 +567,9 @@ impl PainterTool {
                 || ph2d_painter_brush::pen::any_tilted(dabs)
                 || brush.has_colour_jitter_amount()
                 || brush.has_per_dab_rotation()
-                || (brush.texture.is_active() && !brush.texture.is_cacheable());
+                || (brush.texture.is_active() && !brush.texture.is_cacheable())
+                // O dente do papel é preso à tela: o carimbo colorido em cache não o leva.
+                || brush.dente.is_some();
             if per_dab_dynamic {
                 self.stamp_dabs_per_layer_dynamic(dabs, &brush, alpha_locked, w, h);
             } else if self.paint.shape_layers.any_texture_color() {

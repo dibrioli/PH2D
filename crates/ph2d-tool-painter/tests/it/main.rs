@@ -80,5 +80,6 @@ mod sonda_spacing_continuo;
 mod sonda_tilt_do_preset;
 mod sonda_traco_rapido;
 mod sonda_tracos_por_meio;
+mod dente_do_papel_por_cima_do_grain; // o papel morde por cima do Grain do pincel (dono 08/11)
 mod sonda_watercolor_no_digital; // a mistura do Watercolor Basic no Digital? (pedido do dono 07/11)
 mod textura_do_tamanho; // W3 K2: a textura acompanha o tamanho do pincel e a marca do spray pousa // W3 K3b: as cerdas crescem com o pincel e a ponta esfarela pelo grão

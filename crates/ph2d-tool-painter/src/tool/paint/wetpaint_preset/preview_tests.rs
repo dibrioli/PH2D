@@ -292,6 +292,7 @@ fn a_miniatura_pinta_a_shape_color() {
         let mut ultimo = Vec::new();
         assert!(super::pintar_miniatura(
             &t.wet_preview_cena(),
+            true,
             &|| false,
             &mut |px, _, _| ultimo = px.to_vec()
         ));
@@ -402,6 +403,7 @@ fn o_preview_escorre_como_a_tela() {
     let mut mini = Vec::new();
     assert!(super::pintar_miniatura(
         &cena,
+        true,
         &|| false,
         &mut |px, _, _| mini = px.to_vec()
     ));

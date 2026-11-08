@@ -365,21 +365,6 @@ pub struct Carimbo {
     pub coverage: f32,
     /// A pressão da caneta (`1` no rato).
     pub pressao: f32,
-    /// O que este carimbo faz além de amostrar.
-    pub deposito: Deposito,
-}
-
-/// O que um carimbo da mistura deposita (Bug #78).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum Deposito {
-    /// Amostra e pinta a fracção do passo de 3 % (o pincel de pegada fixa: a mescla lisa).
-    #[default]
-    NoPassoDaMistura,
-    /// Só amostra: o reservatório anda, a tela não muda (o pincel que SORTEIA a pegada, entre dois carimbos dele).
-    SoAmostra,
-    /// Amostra e pinta um dab INTEIRO do pincel (o pincel que sorteia a pegada, no passo dele): as marcas sorteadas
-    /// são as do pincel sem a mistura, não três vezes mais.
-    PassoDoPincel,
 }
 
 /// Um carimbo do Wet blend. `antes(i)` = o RGBA do byte `i` (múltiplo de 4) da tela de ANTES do traço, sobre a qual
@@ -494,9 +479,6 @@ pub fn mistura_opaca_carimbo(
     res.cheio = true;
     res.ultimo = c.center;
     res.arco = arco;
-    if c.deposito == Deposito::SoAmostra {
-        return None;
-    }
     // 3. A tinta do carimbo: o papel transparente não suja (o pincel fica com a cor dele onde não apanhou nada).
     let amount = MisturaOpaca::pela_pressao(m.paint_amount, m.amount_pressure, c.pressao);
     let a_eff = peso_do_pincel(amount, res.carga);
@@ -544,9 +526,9 @@ pub fn mistura_opaca_carimbo(
     // A opacidade acumula como o pincel SEM a mistura: cada carimbo vale `passo / passo do pincel` de um dab dele
     // (a mistura adensa os carimbos a 3 %, não a cobertura); o 1.º vale um passo da mistura (sem disco no início).
     let nominal = spec.spacing.max(PASSO_DA_MISTURA);
-    let k_passo = if c.deposito == Deposito::PassoDoPincel {
-        1.0
-    } else if primeiro {
+    // O pincel que sorteia a pegada (Pointillism, Pastel, Chalk) carimba também a 3 % e enche: o look aprovado pelo
+    // dono (08/11, revoga o Bug #78).
+    let k_passo = if primeiro {
         spec.spacing_do_traco() / nominal
     } else {
         passo / nominal

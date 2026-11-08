@@ -557,6 +557,9 @@ pub struct BrushSpec {
     /// [`Self::paper`] tooth textures the wash (the paper's substrate bite, independent of the
     /// granulation amount). `0` = a flat wash; `1` = the historical full tooth.
     pub paper_depth: f32,
+    /// ⭐ **O dente do papel** por cima do Grain do pincel (Digital, dono 08/11) — [`crate::dente`]. `None`
+    /// (omissão) = o traço de sempre; só o `poe_o_papel_como_grain` da ferramenta o enche.
+    pub dente: Option<crate::dente::Dente>,
     /// **Shape "Automatic"** (watercolor mode, Enio 2026-07-07): `true` (default) = the watercolor
     /// stamp uses its own built-in silhouette (the two-segment feather disc — byte-identical to the
     /// historical behaviour, the Shape section is not consulted). `false` = the Shape section drives

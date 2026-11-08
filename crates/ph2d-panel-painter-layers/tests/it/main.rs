@@ -52,6 +52,8 @@ mod seam_accumulate_por_meio; // o Accumulate e o Space Attenuation só onde o m
 mod seam_color_inativo; // Bug #51: o Color inativo em Per-Layer Color (12/10)
 mod seam_composite_escopo; // o chip do escopo da borracha: pintado, registado, alcançável
 mod seam_composite_montagem; // o `+`, o menu e o `x` da pilha: pintados, registados, alcançáveis
+mod seam_composite_size_px; // o Size de cada camada em px de diâmetro (dono 08/11)
+mod seam_wet_presets_busca; // a busca do popover do Preset, pelo teclado e pelo painel (dono 08/11)
 mod seam_curve_drag_ownership;
 mod seam_deform;
 mod seam_dock_modes;

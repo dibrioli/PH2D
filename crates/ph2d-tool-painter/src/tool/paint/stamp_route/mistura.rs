@@ -22,7 +22,7 @@
 use super::super::Region;
 use crate::tool::PainterTool;
 use ph2d_painter_brush::mistura_opaca::{
-    Carimbo, Deposito, Pegada, ReservatorioOpaco, Sombra, Tela, mistura_opaca_carimbo,
+    Carimbo, Pegada, ReservatorioOpaco, Sombra, Tela, mistura_opaca_carimbo,
 };
 use ph2d_painter_brush::{BrushSpec, Dab};
 use std::sync::Arc;
@@ -111,9 +111,6 @@ pub(in crate::tool::paint) struct MisturaDoTraco {
     pub sombra: Sombra,
     /// Os mapas pré-multiplicados de cada camada do Shape de cor (Per-Layer Color) para a pegada de UM carimbo.
     pub camadas: Vec<Vec<u8>>,
-    /// O pincel que sorteia a pegada carimba no passo dele: o `arc_len` do último dab que carimbou (`None` no
-    /// pen-down) — as cópias da Symmetry, do Tiling e do spray partilham-no e carimbam juntas.
-    pub carimbou_em: Option<f32>,
 }
 
 impl Default for MisturaDoTraco {
@@ -127,7 +124,6 @@ impl Default for MisturaDoTraco {
             pegada_lisa: Vec::new(),
             sombra: Sombra::default(),
             camadas: Vec::new(),
-            carimbou_em: None,
         }
     }
 }
@@ -141,7 +137,6 @@ impl PainterTool {
             m.res.clear();
             m.antes.recomeca();
             m.sombra.recomeca();
-            m.carimbou_em = None;
         }
     }
 
@@ -320,11 +315,6 @@ impl PainterTool {
                 }
             }
         }
-        // Só quando a mistura encurtou o passo (o do pincel acima de 3 %): o Wet Wash Mix já anda abaixo dele.
-        let sorteia = brush.sorteia_a_pegada()
-            && brush.spacing > ph2d_painter_brush::mistura_opaca::PASSO_DA_MISTURA;
-        let passo_do_pincel = brush.passo_de(brush.spacing);
-        let mut carimbou_em = self.paint.mistura_opaca.carimbou_em;
         let mut dab_rng = super::super::tiling::DabRng::new(self.paint.tex_rng);
         let buf = super::super::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
@@ -351,15 +341,6 @@ impl PainterTool {
             };
             let spec = brush.at_dab(d);
             let tex_rng = dab_rng.enter(&groups, i);
-            let deposito = if !sorteia {
-                Deposito::NoPassoDaMistura
-            } else if carimbou_em.is_none_or(|a| d.arc_len == a || d.arc_len >= a + passo_do_pincel)
-            {
-                carimbou_em = Some(d.arc_len);
-                Deposito::PassoDoPincel
-            } else {
-                Deposito::SoAmostra
-            };
             // A pegada: o kernel da rota normal (`stamp_dabs_per_pixel`), a branco, força 1, Flow 1, sobre o vazio.
             let fp = spec.dab_footprint_of(d);
             let shape_basis = shape_active.then(|| {
@@ -538,6 +519,7 @@ impl PainterTool {
                     d.center,
                     &BrushSpec {
                         texture: Default::default(),
+                        dente: None, // o dente do papel morde como o grão: fora da pegada lisa
                         ..branco
                     },
                     1.0,
@@ -564,7 +546,6 @@ impl PainterTool {
                 cor: d.color,
                 coverage: d.coverage,
                 pressao,
-                deposito,
             };
             let pegada = Pegada::Mascara {
                 mascara: &mascara,
@@ -635,7 +616,6 @@ impl PainterTool {
         self.paint.mistura_opaca.pegada = mascara;
         self.paint.mistura_opaca.pegada_lisa = liso;
         self.paint.mistura_opaca.camadas = mapas;
-        self.paint.mistura_opaca.carimbou_em = carimbou_em;
         self.paint.tex_rng = dab_rng.finish();
         self.declare_wrote(touched);
         if let Some(rect) = touched {

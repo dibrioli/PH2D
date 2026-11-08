@@ -394,10 +394,10 @@ fn a_ponta_de_pixel_carimba_binaria_com_a_mistura() {
     );
 }
 
-/// ⭐ #78: os pincéis que SORTEIAM a pegada (Pointillism, Pastel) carimbam no passo deles — a cobertura no vazio
-/// fica perto da do pincel sem a mistura (Pointillism 0,71 contra 0,38; Pastel 0,36 contra 0,16).
+/// ⭐ Dono 08/11 (revoga o #78): os pincéis que SORTEIAM a pegada (Pointillism, Pastel) carimbam a 3 % com a mistura
+/// e ENCHEM — o look cheio que ele aprovou (Pointillism 0,71 contra 0,38 Off; Pastel 0,36 contra 0,16).
 #[test]
-fn os_pinceis_que_espalham_nao_enchem_com_a_mistura() {
+fn os_pinceis_que_espalham_enchem_com_a_mistura() {
     for nome in ["Pointillism", "Pastel"] {
         let a = |off: bool| {
             let p = pinta_listras(nome, |t| {
@@ -410,8 +410,8 @@ fn os_pinceis_que_espalham_nao_enchem_com_a_mistura() {
         let (wet, off) = (a(false), a(true));
         assert!(off > 0.05, "{nome}: CONTROLO — o traço pinta ({off:.3})");
         assert!(
-            wet < off * 1.3,
-            "{nome}: com a mistura a cobertura enche — {wet:.3} contra {off:.3}"
+            wet > off * 1.5,
+            "{nome}: com a mistura a cobertura voltou a ser a rala do Off — {wet:.3} contra {off:.3}"
         );
     }
 }

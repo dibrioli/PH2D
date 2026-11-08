@@ -43,6 +43,7 @@ pub mod clone_grain;
 pub mod cor_mao;
 pub mod curve_fit;
 pub mod dab;
+pub mod dente;
 /// O DUAL BRUSH da L6: a 2.ª ponta que recorta a 1.ª por um modo.
 pub mod dual;
 pub mod dynamics;

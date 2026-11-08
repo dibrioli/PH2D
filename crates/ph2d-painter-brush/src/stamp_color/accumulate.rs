@@ -264,6 +264,7 @@ pub fn accumulate_shape_layer_rgba(
                 // Stencil: no paint outside the rect even when a ramp recolours `g = 0` (Enio 2026-06-28).
                 a *= crate::texture::stencil_gate(&spec.texture, gb, px, py);
             }
+            a *= crate::dente::dente_at(spec, a, px, py);
             a *= coverage;
             if a <= 0.0 {
                 continue;

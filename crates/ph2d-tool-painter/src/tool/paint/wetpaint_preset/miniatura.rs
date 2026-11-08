@@ -17,6 +17,12 @@ const AZUL: [u8; 3] = [23, 101, 179];
 /// desconhecido não pinta nada: a miniatura fica a tela branca (o preset é recusado ao aplicar).
 #[must_use]
 pub fn miniatura_do_preset(p: &Preset) -> Miniatura {
+    miniatura_com(p, true)
+}
+
+/// A miniatura de `p`; `por_baixo = false` tira a tinta que a ferramenta mexe (a régua dos esbatedores: o que o
+/// pincel deixa no branco sozinho).
+pub(super) fn miniatura_com(p: &Preset, por_baixo: bool) -> Miniatura {
     let mut t = PainterTool::default();
     if super::meio_do_preset(&p.parametros.media) == Some(PaintMedia::WetPaint) {
         t.set_paint_media(PaintMedia::WetPaint);
@@ -43,12 +49,17 @@ pub fn miniatura_do_preset(p: &Preset) -> Miniatura {
         altura: 0,
         rgba: Vec::new(),
     };
-    pintar_miniatura(&t.wet_preview_cena(), &|| false, &mut |px, w, h| {
-        ultimo = Miniatura {
-            largura: w,
-            altura: h,
-            rgba: px.to_vec(),
-        };
-    });
+    pintar_miniatura(
+        &t.wet_preview_cena(),
+        por_baixo,
+        &|| false,
+        &mut |px, w, h| {
+            ultimo = Miniatura {
+                largura: w,
+                altura: h,
+                rgba: px.to_vec(),
+            };
+        },
+    );
     ultimo
 }

@@ -636,6 +636,7 @@ fn canvas_blit_band(
                 .texture
                 .lei
                 .factor(w, g, depth, ctx.spec.effective_granulation());
+            w *= crate::dente::dente_at(ctx.spec, w, px, py);
             if w <= 0.0 {
                 continue;
             }

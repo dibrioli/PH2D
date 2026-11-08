@@ -215,6 +215,23 @@ pub fn arm_brush_once(painter: &mut ph2d_tool_painter::PainterTool) {
         Ok("layers") => painter.set_dock_shows_layers(true),
         _ => {}
     }
+    // A foto da prévia de um pincel de fábrica (08/11, os esbatedores): `PH2D_COMPOSITE_PRESET=<nome>`.
+    if let Ok(nome) = std::env::var("PH2D_COMPOSITE_PRESET") {
+        let raiz =
+            std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/brushes");
+        match ph2d_brush_presets::Biblioteca::carregar(&raiz, None)
+            .entradas
+            .into_iter()
+            .find(|e| e.preset.parametros.name == nome)
+        {
+            Some(e) => {
+                if let Err(err) = painter.preset_aplicar(&e.preset) {
+                    eprintln!("PH2D_COMPOSITE_PRESET: {nome}: {err:?}");
+                }
+            }
+            None => eprintln!("PH2D_COMPOSITE_PRESET: {nome} não é de fábrica"),
+        }
+    }
     println!(
         "PH2D_COMPOSITE_SMOKE: pilha armada — {} camadas, Composite Brush ligado, Size 0.4.",
         painter.composite_len()

@@ -466,6 +466,7 @@ pub fn accumulate_shape_layers_rgba_batch(
                                         a *= m[3];
                                         a *= gate;
                                     }
+                                    a *= crate::dente::dente_at(&d.spec, a, px, py);
                                     a *= b.coverage;
                                     if a <= 0.0 {
                                         continue;

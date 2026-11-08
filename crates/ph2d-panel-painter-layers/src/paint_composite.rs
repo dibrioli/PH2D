@@ -41,7 +41,7 @@ use ph2d_tool_painter::BrushSettings;
 // [`caixa_de_valor`]. Por THREAD: um átomo global reprovaria na suíte em paralelo.
 #[cfg(test)]
 thread_local! {
-    pub(crate) static ROTULOS_PINTADOS: std::cell::RefCell<Vec<String>> =
+    pub(crate) static ROTULOS_PINTADOS: std::cell::RefCell<Vec<(String, Rect)>> =
         const { std::cell::RefCell::new(Vec::new()) };
 }
 
@@ -136,7 +136,7 @@ fn caixa_de_valor(
     // ver o rótulo que o PINTOR recebe — um censo textual das chamadas mediria o código, não o
     // produto.
     #[cfg(test)]
-    ROTULOS_PINTADOS.with(|c| c.borrow_mut().push(rotulo.to_string()));
+    ROTULOS_PINTADOS.with(|c| c.borrow_mut().push((rotulo.to_string(), rect)));
     let scene = &mut *ctx.scene;
     let text_system = &mut *ctx.text_system;
     let (store, hit_index) = ctx.host.store_and_hit_index_mut();
@@ -189,6 +189,117 @@ fn largura_do_chip_do_escopo(text_system: &mut ph2d_text::TextSystem) -> f32 {
     rect_for_label(mais_largo)
 }
 
+/// O NOME desta caixa de valor sai INTEIRO em `caixa`? — a repartição da caixa única
+/// ([`ph2d_editor_core::widget::label_column`] com a coluna do valor de [`caixa_de_valor`]) e a medição do pintor
+/// (o `layout` na fonte `Sm`, a que o `fit_label` compara).
+pub(crate) fn o_nome_cabe(
+    text_system: &mut ph2d_text::TextSystem,
+    rotulo: &str,
+    caixa: Rect,
+) -> bool {
+    let deco = ph2d_editor_core::widget::FORM_ROWS_SHOW_DECORATOR
+        && ph2d_editor_core::paint::ui_is_redesign();
+    let coluna = ph2d_editor_core::widget::label_column(caixa, default_chip_w(), deco);
+    text_system
+        .layout(rotulo, TypeToken::Sm.px(), f32::INFINITY)
+        .width()
+        <= coluna.w
+}
+
+/// A largura do que a fileira B pinta à ESQUERDA do tamanho — a cor e o botão de volta (quem deposita) ou o chip
+/// do escopo (a borracha) —, com o vão; `0` sem nada. ⚠️ O botão de volta conta SEMPRE: a decisão de
+/// [`prefixo_ao_lado_do_tamanho`] não salta quando o artista autora a cor.
+fn prefixo_w(text_system: &mut ph2d_text::TextSystem, op: u8) -> f32 {
+    let gap = Spacing::Xs.px();
+    if deposita_cor(op) {
+        SWATCH_W + gap + CLEAR_W + gap
+    } else if apaga(op) {
+        largura_do_chip_do_escopo(text_system) + gap
+    } else {
+        0.0
+    }
+}
+
+/// ⭐ **O que vem antes do «Size (px)» cabe ao lado dele sem lhe cortar o nome?** Medido, nunca escolhido: o
+/// prefixo mede-se ([`prefixo_w`]), a caixa mede o rótulo dela ([`o_nome_cabe`]). Não cabendo, o prefixo desce a
+/// uma fileira PRÓPRIA ([`paint_layer_row_prefixo`]) — 08/11: o «(px)» alongou o rótulo e o chip «Image» da
+/// borracha (e a cor das Brush, à largura do dono) cortavam-no em `Size…`.
+fn prefixo_ao_lado_do_tamanho(
+    text_system: &mut ph2d_text::TextSystem,
+    x: f32,
+    row_w: f32,
+    op: u8,
+) -> bool {
+    let p = prefixo_w(text_system, op);
+    if p <= 0.0 {
+        return true;
+    }
+    let cx = x + ph2d_tokens::list_indent_px() + p;
+    let caixa = Rect::new(
+        cx,
+        0.0,
+        (caixa_direita(x, row_w) - cx).max(MIN_CAIXA_W),
+        ROW_H_PX,
+    );
+    o_nome_cabe(
+        text_system,
+        tr("panel.painter_layers.composite.size"),
+        caixa,
+    )
+}
+
+/// Onde acabam as caixas das fileiras B e C: na coluna da caixa da fileira A, antes das setas.
+fn caixa_direita(x: f32, row_w: f32) -> f32 {
+    let gap = Spacing::Xs.px();
+    x + row_w - ARROW_W - gap - ARROW_W - gap
+}
+
+/// A caixa da Strength na fileira A: depois do `N` e da coluna do nome da operação, antes das setas e do `x`.
+fn caixa_da_forca_na_fileira_a(
+    text_system: &mut ph2d_text::TextSystem,
+    x: f32,
+    row_w: f32,
+    y: f32,
+) -> Rect {
+    let gap = Spacing::Xs.px();
+    let up_x = x + row_w - ARROW_W - gap - ARROW_W - gap - ARROW_W;
+    let caixa_x = x + LABEL_W + gap + largura_do_chip_da_operacao(text_system) + gap;
+    Rect::new(
+        caixa_x,
+        y,
+        (up_x - gap - caixa_x).max(MIN_CAIXA_W),
+        ROW_H_PX,
+    )
+}
+
+/// ⭐ **A «Strength» cabe inteira na fileira A?** A mesma lei do «Size (px)» ([`prefixo_ao_lado_do_tamanho`]):
+/// medido, nunca escolhido. Não cabendo (≈ `245`–`304` px de painel, 08/11: o número, o nome da operação e as
+/// três setas comiam o rótulo até ao vazio), a caixa desce a uma fileira PRÓPRIA recuada, na coluna da B e da C
+/// ([`paint_layer_row_forca`]); a fileira A fica com `N` · nome · setas · `x`.
+fn forca_na_fileira_a(text_system: &mut ph2d_text::TextSystem, x: f32, row_w: f32) -> bool {
+    let caixa = caixa_da_forca_na_fileira_a(text_system, x, row_w, 0.0);
+    o_nome_cabe(
+        text_system,
+        tr("panel.painter_layers.composite.strength"),
+        caixa,
+    )
+}
+
+/// Quantas fileiras a camada `pos` ocupa — as [`FILEIRAS_POR_CAMADA`], mais a da Strength quando ela não cabe na
+/// fileira A e a do prefixo quando ele não cabe ao lado do tamanho. ⚠️ A ALTURA do cartão e o laço que pinta
+/// leem ESTA função.
+fn fileiras_da_camada(
+    text_system: &mut ph2d_text::TextSystem,
+    x: f32,
+    row_w: f32,
+    brush: &BrushSettings,
+    pos: usize,
+) -> usize {
+    let propria = !prefixo_ao_lado_do_tamanho(text_system, x, row_w, brush.composite_ops[pos]);
+    let forca_propria = !forca_na_fileira_a(text_system, x, row_w);
+    FILEIRAS_POR_CAMADA + usize::from(propria) + usize::from(forca_propria)
+}
+
 fn enc(c: f32) -> u8 {
     (c.clamp(0.0, 1.0) * 255.0 + 0.5) as u8 // LITERAL-PX-OK: sRGB 8-bit normalize
 }
@@ -214,12 +325,44 @@ pub(crate) fn paint_composite_card(
     // ⚠️ **`+ 1` é a fileira do `+`**, e ela é pintada SEMPRE que a secção está ligada — mesmo com
     // a pilha vazia, que desde 2026-09-21 é como ela nasce. *Sem essa fileira uma secção ligada e
     // vazia seria uma caixa sem nada dentro e sem forma de lhe pôr alguma coisa.*
+    let ix = x + pad;
+    let iw = content_w - 2.0 * pad;
+    let fileiras: usize = (0..n)
+        .map(|pos| fileiras_da_camada(ctx.text_system, ix, iw, &brush, pos))
+        .sum();
     let layers_h = if checked {
-        gap + (FILEIRAS_POR_CAMADA * n + 1) as f32 * ph2d_tokens::row_pitch_px()
+        gap + (fileiras + 1) as f32 * ph2d_tokens::row_pitch_px()
     } else {
         0.0
     };
-    let card_h = pad + ROW_H_PX + layers_h + pad;
+
+    // The enable checkbox (forwards a plain Click → the tool's `toggle_composite`).
+    // ⚠️ Ela é uma linha de propriedade como as outras, logo o nome vive na coluna da SECÇÃO
+    // (spec §6-quinquies) — aqui construída à mão só por causa do `visual`, não por ser outra lei.
+    const CHAVE: &str = "panel.painter_layers.composite.composite_brush";
+    let seccao = crate::seccoes::seccao_da_chave(ctx.text_system, CHAVE);
+    let cb = Checkbox::new(
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ENABLE,
+        tr(CHAVE),
+    )
+    .visual(
+        ctx.host
+            .store()
+            .checkbox_visual(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ENABLE),
+    )
+    .value(if checked {
+        CheckboxValue::Checked
+    } else {
+        CheckboxValue::Unchecked
+    })
+    .seccao(seccao);
+    let cb_rect = Rect::new(ix, y + pad, iw, ROW_H_PX);
+    // ⛔ A secção QUEBRA o nome que não cabe (`Composite` / `Brush`, 03/11) e a 2.ª linha dele desce um passo:
+    // sem a crescer aqui, o «Brush» pintava-se DENTRO da 1.ª camada (o «Bru» à esquerda da Strength da Blur,
+    // cortado pela caixa pintada por cima) ou sobre o Accumulate com a secção desligada.
+    let linhas_do_nome = cb.linhas_do_nome(cb_rect, ctx.text_system);
+    let nome_h = ROW_H_PX + ph2d_tokens::row_pitch_px() * (linhas_do_nome - 1) as f32;
+    let card_h = pad + nome_h + layers_h + pad;
     let card = Rect::new(x, y, content_w, card_h);
     // ⭐ Raio e moldura pela porta do TEMA: o cartão é plano num tema moderno.
     let radius = ph2d_editor_core::paint::frame_radius(theme, Radius::Md.px());
@@ -242,44 +385,28 @@ pub(crate) fn paint_composite_card(
         resolve(ColorToken::Border, theme),
     );
 
-    let ix = x + pad;
-    let iw = content_w - 2.0 * pad;
-    let mut iy = y + pad;
-
-    // The enable checkbox (forwards a plain Click → the tool's `toggle_composite`).
-    // ⚠️ Ela é uma linha de propriedade como as outras, logo o nome vive na coluna da SECÇÃO
-    // (spec §6-quinquies) — aqui construída à mão só por causa do `visual`, não por ser outra lei.
-    const CHAVE: &str = "panel.painter_layers.composite.composite_brush";
-    let seccao = crate::seccoes::seccao_da_chave(ctx.text_system, CHAVE);
-    let cb = Checkbox::new(
-        ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ENABLE,
-        tr(CHAVE),
-    )
-    .visual(
-        ctx.host
-            .store()
-            .checkbox_visual(ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ENABLE),
-    )
-    .value(if checked {
-        CheckboxValue::Checked
-    } else {
-        CheckboxValue::Unchecked
-    })
-    .seccao(seccao);
-    let cb_rect = Rect::new(ix, iy, iw, ROW_H_PX);
     paint_checkbox(&cb, cb_rect, ctx.scene, ctx.text_system, theme);
     ctx.host.hit_index_mut().register(
         ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ENABLE,
-        cb_rect,
+        Rect::new(cb_rect.x, cb_rect.y, cb_rect.w, nome_h),
     );
-    iy += ROW_H_PX;
+    let mut iy = y + pad + nome_h;
 
     if checked {
         iy += gap;
+        let forca_aqui = forca_na_fileira_a(ctx.text_system, ix, iw);
         for pos in 0..n {
-            iy = paint_layer_row(ctx, theme, ix, iw, iy, pos, brush);
-            iy = paint_layer_row_b(ctx, theme, ix, iw, iy, pos, brush);
+            let propria =
+                !prefixo_ao_lado_do_tamanho(ctx.text_system, ix, iw, brush.composite_ops[pos]);
+            iy = paint_layer_row(ctx, theme, ix, iw, iy, pos, brush, forca_aqui);
+            if !forca_aqui {
+                iy = paint_layer_row_forca(ctx, theme, ix, iw, iy, pos, brush);
+            }
+            iy = paint_layer_row_b(ctx, theme, ix, iw, iy, pos, brush, !propria);
             iy = paint_layer_row_c(ctx, theme, ix, iw, iy, pos, brush);
+            if propria {
+                iy = paint_layer_row_prefixo(ctx, theme, ix, iy, pos, brush);
+            }
         }
         crate::paint_composite_montagem::paint_add_row(ctx, theme, ix, iw, iy, brush);
     }
@@ -297,6 +424,7 @@ pub(crate) fn paint_composite_card(
 /// inclusive o Strength»*). O doc antigo defendia o rótulo vazio com *«o nome desta linha é o chip
 /// da operação»* — com o chip a virar nome, essa premissa morreu: o nome da CAMADA e o nome do que
 /// a barra CONTROLA são duas coisas.
+#[allow(clippy::too_many_arguments)]
 fn paint_layer_row(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -305,6 +433,7 @@ fn paint_layer_row(
     y: f32,
     pos: usize,
     brush: BrushSettings,
+    forca_aqui: bool,
 ) -> f32 {
     let gap = Spacing::Xs.px();
     let font = TypeToken::Base.px();
@@ -314,8 +443,6 @@ fn paint_layer_row(
     let up_x = down_x - gap - ARROW_W;
     let op_x = x + LABEL_W + gap;
     let op_w = largura_do_chip_da_operacao(ctx.text_system);
-    let caixa_x = op_x + op_w + gap;
-    let caixa_w = (up_x - gap - caixa_x).max(MIN_CAIXA_W);
 
     // The fixed position number.
     paint_text(
@@ -341,19 +468,11 @@ fn paint_layer_row(
         resolve(ColorToken::Text1, theme),
     );
 
-    // A Strength na CAIXA ÚNICA do app, agora COM o nome dela.
-    let sid = ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[pos];
-    let val = brush.composite_strength[pos].clamp(0.0, 1.0);
-    caixa_de_valor(
-        ctx,
-        theme,
-        Rect::new(caixa_x, y, caixa_w, ROW_H_PX),
-        tr("panel.painter_layers.composite.strength"),
-        val,
-        f64::from(val),
-        sid,
-        ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH_CHIP[pos],
-    );
+    // A Strength na CAIXA ÚNICA do app, COM o nome dela — aqui só quando ele cabe inteiro ([`forca_na_fileira_a`]).
+    if forca_aqui {
+        let caixa = caixa_da_forca_na_fileira_a(ctx.text_system, x, row_w, y);
+        pinta_forca(ctx, theme, caixa, pos, &brush);
+    }
 
     // Reorder arrows (dim + inert at the list edges) — shared with the Layers rows.
     crate::paint_rows::paint_reorder_btn(
@@ -385,9 +504,30 @@ fn paint_layer_row(
     y + ph2d_tokens::row_pitch_px()
 }
 
-/// Row B: a **cor** desta camada (amostra + o botão que a devolve ao pincel) e o **tamanho** do
-/// carimbo dela. Recuada sob a fileira A.
-fn paint_layer_row_b(
+/// A caixa da Strength da camada `pos` em `caixa` — a mesma na fileira A e na fileira própria.
+fn pinta_forca(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    caixa: Rect,
+    pos: usize,
+    brush: &BrushSettings,
+) {
+    let val = brush.composite_strength[pos].clamp(0.0, 1.0);
+    caixa_de_valor(
+        ctx,
+        theme,
+        caixa,
+        tr("panel.painter_layers.composite.strength"),
+        val,
+        f64::from(val),
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH[pos],
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_STRENGTH_CHIP[pos],
+    );
+}
+
+/// A fileira PRÓPRIA da Strength — só quando ela não cabe na fileira A ([`forca_na_fileira_a`]): recuada e na
+/// coluna da B e da C (acaba em [`caixa_direita`]).
+fn paint_layer_row_forca(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
     x: f32,
@@ -396,11 +536,76 @@ fn paint_layer_row_b(
     pos: usize,
     brush: BrushSettings,
 ) -> f32 {
-    let gap = Spacing::Xs.px();
-    let bx = x + ph2d_tokens::list_indent_px();
-    let mut cx = bx;
+    let cx = x + ph2d_tokens::list_indent_px();
+    let caixa = Rect::new(
+        cx,
+        y,
+        (caixa_direita(x, row_w) - cx).max(MIN_CAIXA_W),
+        ROW_H_PX,
+    );
+    pinta_forca(ctx, theme, caixa, pos, &brush);
+    y + ph2d_tokens::row_pitch_px()
+}
 
-    // ── A cor, só para quem a deposita ───────────────────────────────────────────────────────
+/// Row B: a **cor** desta camada (amostra + o botão que a devolve ao pincel) — ou o ESCOPO de uma borracha — e o
+/// **tamanho** do carimbo dela. Recuada sob a fileira A. `prefixo_aqui` = o que vem antes do tamanho cabe ao lado
+/// dele ([`prefixo_ao_lado_do_tamanho`]); senão vai à fileira própria ([`paint_layer_row_prefixo`]).
+#[allow(clippy::too_many_arguments)]
+fn paint_layer_row_b(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    row_w: f32,
+    y: f32,
+    pos: usize,
+    brush: BrushSettings,
+    prefixo_aqui: bool,
+) -> f32 {
+    let mut cx = x + ph2d_tokens::list_indent_px();
+    if prefixo_aqui {
+        cx = pinta_prefixo(ctx, theme, cx, y, pos, &brush);
+    }
+
+    // ── O tamanho do carimbo, em px de diâmetro (o motor guarda o multiplicador do raio) ─────
+    //
+    // ⚠️ **A caixa acaba onde a da fileira A acaba**, e não na borda do cartão: as duas ficam na
+    // MESMA coluna. Sem isso a de baixo passava por baixo das setas de reordenar e as duas
+    // fileiras da mesma camada liam-se como pertencendo a grelhas diferentes.
+    //
+    // ⚠️ **O chip mostra px e a barra guarda a fracção** — a projecção é o `liga_tamanho` de
+    // `populate_composite_chips`, re-ligada a cada quadro (a escala segue o Size do pincel).
+    let size_id = ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_SIZE[pos];
+    crate::populate_composite_chips::liga_tamanho(ctx.host.store_mut(), &brush, pos);
+    let caixa_w = (caixa_direita(x, row_w) - cx).max(MIN_CAIXA_W);
+    caixa_de_valor(
+        ctx,
+        theme,
+        Rect::new(cx, y, caixa_w, ROW_H_PX),
+        tr("panel.painter_layers.composite.size"),
+        crate::populate_composite_chips::pista_do_px(&brush, pos),
+        f64::from(crate::populate_composite_chips::tamanho_px(&brush, pos)),
+        size_id,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_SIZE_CHIP[pos],
+    );
+
+    y + ph2d_tokens::row_pitch_px()
+}
+
+/// O PREFIXO da fileira B em `(cx, y)`, com os hit rects; devolve o `x` seguinte.
+///
+/// - **A cor, só para quem a deposita** — e o botão de VOLTA só quando há cor autorada para limpar.
+/// - **O ESCOPO, só numa borracha** (ordem do dono, 2026-09-20: *«se a borracha atua só no próprio traço do
+///   Brush ou se ela apaga também a camada da imagem abaixo»*) — numa borracha a cor não existe, logo o chip
+///   ocupa o lugar dela sem custar altura enquanto cabe.
+fn pinta_prefixo(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    mut cx: f32,
+    y: f32,
+    pos: usize,
+    brush: &BrushSettings,
+) -> f32 {
+    let gap = Spacing::Xs.px();
     if deposita_cor(brush.composite_ops[pos]) {
         let sw_id = ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_COLOR[pos];
         let c = brush.composite_color[pos];
@@ -425,8 +630,6 @@ fn paint_layer_row_b(
         ctx.host.hit_index_mut().register(sw_id, sw_rect);
         crate::composite_picker::readback(ctx, sw_id, c);
         cx += SWATCH_W + gap;
-
-        // ⛔ O botão de VOLTA só existe quando há uma cor autorada para limpar.
         if brush.composite_color_authored[pos] {
             crate::paint_rows::paint_reorder_btn(
                 ctx,
@@ -439,16 +642,6 @@ fn paint_layer_row_b(
             cx += CLEAR_W + gap;
         }
     }
-
-    // ── O ESCOPO, só numa camada de borracha ─────────────────────────────────────────────────
-    //
-    // ⭐ Ordem do dono, 2026-09-20: *«uma opção em erase: se a borracha atua só no próprio traço do
-    // Brush ou se ela apaga também a camada da imagem abaixo»*.
-    //
-    // ⚠️ **Ele vive aqui e não numa fileira própria porque numa borracha a fileira B está VAZIA à
-    // esquerda** — a amostra de cor e o botão de volta dela só existem para quem deposita
-    // ([`deposita_cor`]) —, logo o chip não custa um pixel de altura ao cartão. *Uma fileira a mais
-    // custaria `N_CAMADAS × row_pitch` a TODAS as camadas para servir uma.*
     if apaga(brush.composite_ops[pos]) {
         let id = ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ERASE_SCOPE[pos];
         let w = largura_do_chip_do_escopo(ctx.text_system);
@@ -463,30 +656,39 @@ fn paint_layer_row_b(
         ctx.host.hit_index_mut().register(id, rect);
         cx += w + gap;
     }
+    cx
+}
 
-    // ── O tamanho do carimbo, em multiplicadores do raio do pincel ───────────────────────────
-    //
-    // ⚠️ **A caixa acaba onde a da fileira A acaba**, e não na borda do cartão: as duas ficam na
-    // MESMA coluna. Sem isso a de baixo passava por baixo das setas de reordenar e as duas
-    // fileiras da mesma camada liam-se como pertencendo a grelhas diferentes.
-    //
-    // ⚠️ **O chip mostra o MULTIPLICADOR e a barra guarda a fracção** — a projecção é o
-    // `link_slider_number_mapped` do `populate`, escrita UMA vez.
-    let size_id = ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_SIZE[pos];
-    let mult = brush.composite_size[pos];
-    let direita = x + row_w - ARROW_W - gap - ARROW_W - gap;
-    let caixa_w = (direita - cx).max(MIN_CAIXA_W);
-    caixa_de_valor(
-        ctx,
-        theme,
-        Rect::new(cx, y, caixa_w, ROW_H_PX),
-        tr("panel.painter_layers.composite.size"),
-        (mult / ph2d_tool_painter::MAX_COMPOSITE_LAYER_SIZE).clamp(0.0, 1.0),
-        f64::from(mult),
-        size_id,
-        ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_SIZE_CHIP[pos],
+/// A fileira PRÓPRIA do prefixo — só quando ele não cabe ao lado do tamanho ([`prefixo_ao_lado_do_tamanho`]):
+/// recuada como a B e a C, com o NOME dele («Color» · «Erases», os do cartão novo) medido antes dos controlos.
+fn paint_layer_row_prefixo(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    y: f32,
+    pos: usize,
+    brush: BrushSettings,
+) -> f32 {
+    let gap = Spacing::Xs.px();
+    let font = TypeToken::Sm.px();
+    let cx = x + ph2d_tokens::list_indent_px();
+    let nome = if deposita_cor(brush.composite_ops[pos]) {
+        tr("panel.painter_layers.brush.color")
+    } else {
+        tr("panel.painter_layers.composite.erases")
+    };
+    let nome_w = ctx.text_system.prefix_width(nome, font);
+    paint_text(
+        ctx.text_system,
+        ctx.scene,
+        nome,
+        cx,
+        y + (ROW_H_PX - font) * 0.5,
+        font,
+        f32::INFINITY,
+        resolve(ColorToken::Text2, theme),
     );
-
+    pinta_prefixo(ctx, theme, cx + nome_w + gap, y, pos, &brush);
     y + ph2d_tokens::row_pitch_px()
 }
 
@@ -528,8 +730,7 @@ fn paint_layer_row_c(
     }
 
     let dureza = brush.composite_hardness[pos].clamp(0.0, 1.0);
-    let direita = x + row_w - ARROW_W - gap - ARROW_W - gap;
-    let caixa_w = (direita - cx).max(MIN_CAIXA_W);
+    let caixa_w = (caixa_direita(x, row_w) - cx).max(MIN_CAIXA_W);
     caixa_de_valor(
         ctx,
         theme,

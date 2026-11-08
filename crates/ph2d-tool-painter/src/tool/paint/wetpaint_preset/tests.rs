@@ -203,6 +203,7 @@ fn pincel_mexido() -> BrushSpec {
         pigment_mix: 0.4,
         pigment_espectral: true,
         paper_depth: 0.3,
+        dente: None,
         // ── volumes ──
         radius_px: 9.0,
         strength: 0.85,

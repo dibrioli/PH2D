@@ -21,6 +21,11 @@ pub fn painter_wetpaint_preset_option_id(secao: u8, relativo: &str) -> NodeId {
     ))
 }
 
+/// The **search field** at the top of the open Preset popover (owner 08/11): a `TextInput` that filters
+/// the presets by name; ↑/↓ move the highlight, Enter picks, Esc clears then closes.
+pub const PAINTER_WETPAINT_PRESET_SEARCH: NodeId =
+    hash_node_id("painter_brush.wetpaint_preset_search");
+
 /// A section title in the open Preset popover (Favorites / a group) — painted disabled.
 #[must_use]
 pub fn painter_wetpaint_preset_title_id(k: usize) -> NodeId {

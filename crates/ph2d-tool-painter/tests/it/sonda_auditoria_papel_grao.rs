@@ -103,7 +103,7 @@ struct V {
     raio: Option<f32>,
 }
 
-const VARIANTES: [V; 20] = {
+const VARIANTES: [V; 26] = {
     const Z: V = V {
         nome: "",
         off: false,
@@ -214,6 +214,45 @@ const VARIANTES: [V; 20] = {
         V {
             nome: "r40",
             raio: Some(40.0),
+            ..Z
+        },
+        V {
+            nome: "papel_grao",
+            papel: true,
+            grao: true,
+            ..Z
+        },
+        V {
+            nome: "papel_grao_off",
+            papel: true,
+            grao: true,
+            off: true,
+            ..Z
+        },
+        V {
+            nome: "papel_grao_cor",
+            papel: true,
+            grao: true,
+            cor_grao: true,
+            ..Z
+        },
+        V {
+            nome: "papel_grao_cor_off",
+            papel: true,
+            grao: true,
+            cor_grao: true,
+            off: true,
+            ..Z
+        },
+        V {
+            nome: "papel_preset",
+            papel: true,
+            ..Z
+        },
+        V {
+            nome: "papel_preset_off",
+            papel: true,
+            off: true,
             ..Z
         },
         V {
@@ -360,7 +399,14 @@ fn sonda_auditoria_papel_grao() {
         {
             continue;
         }
+        let so_var = std::env::var("PH2D_AUD_VAR").ok();
         for v in VARIANTES {
+            if so_var
+                .as_deref()
+                .is_some_and(|s| !s.split(',').any(|n| n == v.nome))
+            {
+                continue;
+            }
             let t0 = std::time::Instant::now();
             let (px, mist, r) = pinta(nome, v, &b);
             let mut hash: u64 = 0xcbf2_9ce4_8422_2325;

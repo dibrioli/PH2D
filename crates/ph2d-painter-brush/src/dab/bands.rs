@@ -494,7 +494,7 @@ pub(super) fn stamp_band(
             };
             let color = tinta.color.unwrap_or(ctx.spec.color);
             let stamp_alpha = tinta.stamp_alpha; // mode TextureAlpha: the source pixel's own alpha
-            let mut g = tinta.g;
+            let mut g = tinta.g * crate::dente::dente_at(ctx.spec, w, px, py);
             if let Some(b) = ctx.tex {
                 g *= crate::texture::stencil_gate(&ctx.spec.texture, b, px, py); // rect mask, ramp-safe
                 if w * g <= 0.0 {

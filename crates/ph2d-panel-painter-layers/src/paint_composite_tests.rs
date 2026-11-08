@@ -253,7 +253,10 @@ fn pinta_pilha(n: usize) -> (Vec<ph2d_a11y::NodeId>, Vec<String>) {
         .iter_registrations()
         .map(|(id, _)| id)
         .collect();
-    (ids, super::ROTULOS_PINTADOS.with(|c| c.borrow().clone()))
+    (
+        ids,
+        super::ROTULOS_PINTADOS.with(|c| c.borrow().iter().map(|(r, _)| r.clone()).collect()),
+    )
 }
 
 /// ⭐⭐⭐ **A secção nasce VAZIA e o `+` está lá** (ordem do dono, 2026-09-21).
@@ -356,5 +359,169 @@ fn todo_slider_do_cartao_tem_nome() {
             .iter()
             .any(|r| r == ph2d_i18n::tr("panel.painter_layers.composite.strength")),
         "o Strength tem de estar entre os nomes: {rotulos:?}"
+    );
+}
+
+/// A pilha do smoke do dono (`PH2D_COMPOSITE_SMOKE=1`): Blur · Brush × 3 · Smear · Erase.
+const PILHA_DO_SMOKE: [u8; 6] = [2, 0, 0, 0, 1, 3];
+
+/// Pinta o cartão com a [`PILHA_DO_SMOKE`] na linha `content_w` e devolve `(nome e rect de cada caixa de valor,
+/// o hit rect da caixa de marcar)`.
+fn pinta_o_smoke(
+    text: &mut TextSystem,
+    content_w: f32,
+) -> (
+    Vec<(String, ph2d_editor_core::zones::Rect)>,
+    ph2d_editor_core::zones::Rect,
+) {
+    super::ROTULOS_PINTADOS.with(|c| c.borrow_mut().clear());
+    let mut host = ph2d_ui_testkit::MockPanelHost::with_panel::<crate::PainterLayersPanel>();
+    let mut scene = ph2d_vector::VectorScene::new();
+    let viewport = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 800.0, 4000.0);
+    let layout = ph2d_editor_core::screens::HeroLayout::for_viewport(viewport);
+    let mut brush = crate::paint_brush::FALLBACK_BRUSH;
+    brush.composite_enabled = true;
+    let n = PILHA_DO_SMOKE
+        .len()
+        .min(ph2d_tool_painter::N_COMPOSITE_LAYERS);
+    brush.composite_len = n;
+    brush.composite_ops[..n].copy_from_slice(&PILHA_DO_SMOKE[..n]);
+    {
+        let mut ctx = ph2d_editor_core::panel::PaintCtx {
+            host: &mut host,
+            layout: &layout,
+            slot: layout
+                .slot_rects(ph2d_editor_core::screens::slot::SlotSet::ANY_DOCK)
+                .get(ph2d_editor_core::screens::slot::Slot::RightTop),
+            viewport,
+            scene: &mut scene,
+            text_system: text,
+        };
+        super::paint_composite_card(
+            &mut ctx,
+            ph2d_tokens::Theme::default(),
+            0.0,
+            content_w,
+            0.0,
+            brush,
+        );
+    }
+    use ph2d_editor_core::panel::PanelHostInternal;
+    let marcar = host
+        .hit_index_mut()
+        .iter_registrations()
+        .find(|(id, _)| *id == ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_ENABLE)
+        .map(|(_, r)| r)
+        .expect("a caixa de marcar do Composite registou hit rect");
+    (super::ROTULOS_PINTADOS.with(|c| c.borrow().clone()), marcar)
+}
+
+/// O nome de uma caixa sai inteiro no rect onde o pintor a pôs? — a repartição da caixa única
+/// (`label_column`) e a medida que o `fit_label` compara; o rect é o OBSERVADO.
+fn cabe(text: &mut TextSystem, rotulo: &str, r: ph2d_editor_core::zones::Rect) -> bool {
+    let deco = ph2d_editor_core::widget::FORM_ROWS_SHOW_DECORATOR
+        && ph2d_editor_core::paint::ui_is_redesign();
+    let col =
+        ph2d_editor_core::widget::label_column(r, ph2d_editor_core::widget::default_chip_w(), deco);
+    text.layout(rotulo, ph2d_tokens::TypeToken::Sm.px(), f32::INFINITY)
+        .width()
+        <= col.w
+}
+
+/// ⏳ `(painel, Strength cortados, Size/Hardness cortados)` no cartão do smoke — e só ENCOLHE. Até 08/11 a caixa
+/// da fileira A dividia a linha com o número, o nome da operação e as três setas, e abaixo de ~`304` o nome dela
+/// elidia até ao vazio; agora, não cabendo, ela desce à fileira própria (`forca_na_fileira_a`).
+const CORTADOS_POR_LARGURA: &[(f32, usize, usize)] = &[
+    // Perto do mínimo do dock a caixa recuada inteira (sem prefixo) é estreita demais para o nome e a coluna do
+    // número (o piso de 72 px, ordem do dono de 2026-05-24): tudo corta.
+    (245.0, 6, 12),
+    // A largura do dono (14/09): a Strength e o prefixo descem às fileiras próprias e tudo sai inteiro.
+    (273.3, 0, 0),
+    (304.0, 0, 0),
+    (720.0, 0, 0),
+];
+
+/// ⭐⭐⭐ **No cartão do Composite do painel de antes, o «Size (px)» e o «Hardness» saem INTEIROS em toda camada,
+/// e o nome da secção que quebra em duas linhas não invade a 1.ª camada** (smoke 08/11: `Size…` na Erase e um
+/// «Bru» à esquerda da Strength da Blur).
+///
+/// ⛔ O `cada_nome_deste_painel_cabe_na_coluna_da_seccao` não via nenhum dos dois: ele mede os nomes da COLUNA
+/// DA SECÇÃO (o cartão só declara `Composite Brush`), nunca os nomes DENTRO de uma caixa de valor; e dá por bom o
+/// nome que quebra (`Composite` / `Brush`) sem perguntar se a linha dele CRESCE — o cartão tinha altura fixa.
+/// Esta régua OBSERVA o rect de cada caixa que o pintor recebeu, à largura do painel.
+///
+/// ⚠️ O CONTROLO: à largura do dono o chip do escopo AO LADO do tamanho cortava-o — senão a fileira própria do
+/// escopo seria um custo sem causa.
+#[test]
+fn no_cartao_do_composite_cada_nome_de_caixa_cabe_e_o_titulo_nao_invade() {
+    let mut text = TextSystem::new();
+    let tamanho = ph2d_i18n::tr("panel.painter_layers.composite.size");
+    let dureza = ph2d_i18n::tr("panel.painter_layers.composite.hardness");
+    let forca = ph2d_i18n::tr("panel.painter_layers.composite.strength");
+    let mut medido = Vec::new();
+    for &(painel, tecto, tecto_outros) in CORTADOS_POR_LARGURA {
+        let content_w = painel - 2.0 * ph2d_tokens::PANEL_HEAD_PAD_PX;
+        let (caixas, marcar) = pinta_o_smoke(&mut text, content_w);
+        assert_eq!(
+            caixas.len(),
+            3 * PILHA_DO_SMOKE.len(),
+            "piso de população a {painel}: {caixas:?}"
+        );
+        let (mut forca_cortada, mut outros) = (0, Vec::new());
+        for (rotulo, r) in &caixas {
+            let inteiro = cabe(&mut text, rotulo, *r);
+            if rotulo == forca {
+                forca_cortada += usize::from(!inteiro);
+            } else if !inteiro {
+                assert!(
+                    [tamanho, dureza].contains(&rotulo.as_str()),
+                    "nome inesperado «{rotulo}»"
+                );
+                outros.push(format!("«{rotulo}» {r:?}"));
+            }
+            assert!(
+                r.y >= marcar.y + marcar.h,
+                "painel {painel}: a caixa «{rotulo}» ({r:?}) começa dentro do nome da secção ({marcar:?})"
+            );
+        }
+        medido.push((painel, forca_cortada, outros.len()));
+        assert!(
+            forca_cortada <= tecto && outros.len() <= tecto_outros,
+            "painel {painel}: {forca_cortada} Strength (tecto {tecto}) e {} Size/Hardness (tecto {tecto_outros}) \
+             cortados — subiu:\n  {}",
+            outros.len(),
+            outros.join("\n  ")
+        );
+    }
+    let tabela: Vec<(f32, usize, usize)> = CORTADOS_POR_LARGURA.to_vec();
+    assert_eq!(
+        medido, tabela,
+        "melhorou (ou a tabela está larga) — aperte-a para o medido"
+    );
+    // O CONTROLO à largura do dono.
+    let content_w = 273.3 - 2.0 * ph2d_tokens::PANEL_HEAD_PAD_PX; // LITERAL-PX-OK: a largura do dono (14/09)
+    let iw = content_w - 2.0 * ph2d_tokens::Spacing::Sm.px();
+    assert!(
+        !super::prefixo_ao_lado_do_tamanho(&mut text, 0.0, iw, 3),
+        "CONTROLO: à largura do dono o chip do escopo ao lado do tamanho tem de o cortar"
+    );
+    // E o título que quebra cresce a linha dele (a 2.ª linha, `Brush`, não cai na 1.ª camada): varre o curso do
+    // dock, com piso de população — alguma largura TEM de o quebrar, senão a metade de cima não mediu nada.
+    let mut quebrou = 0;
+    for passo in 0..=100u16 {
+        let painel = 220.0 + 5.0 * f32::from(passo); // LITERAL-PX-OK: varredura 220..720 do dock
+        let (caixas, marcar) =
+            pinta_o_smoke(&mut text, painel - 2.0 * ph2d_tokens::PANEL_HEAD_PAD_PX);
+        if marcar.h > ph2d_tokens::ROW_H_PX {
+            quebrou += 1;
+            assert!(
+                caixas.iter().all(|(_, r)| r.y >= marcar.y + marcar.h),
+                "painel {painel}: o nome quebrado da secção ({marcar:?}) cai dentro da 1.ª camada"
+            );
+        }
+    }
+    assert!(
+        quebrou > 0,
+        "CONTROLO: nenhuma largura do dock quebrou o `Composite Brush`"
     );
 }

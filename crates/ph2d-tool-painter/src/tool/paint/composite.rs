@@ -73,6 +73,26 @@ pub const N_CAMADAS: usize = MAX_CAMADAS;
 /// quadro inteiro. ⇒ o tecto é **`4`**, e ele nomeia o relógio, não o conforto.
 pub const MAX_TAMANHO_DA_CAMADA: f32 = 4.0;
 
+/// O multiplicador que a camada PINTA: o autorado entre o piso do Spacing e o tecto (ver
+/// [`PainterTool::tamanho_da_camada`]). Uma lei, dois leitores: o motor e o número do painel.
+fn tamanho_efectivo(autorado: f32, spacing: f32) -> f32 {
+    autorado.clamp(spacing.clamp(1e-3, 1.0), MAX_TAMANHO_DA_CAMADA)
+}
+
+impl super::brush_settings::BrushSettings {
+    /// O multiplicador que a camada `pos` pinta hoje — o que o «Size (px)» dela mostra (× o diâmetro).
+    #[must_use]
+    pub fn composite_layer_size_effective(&self, pos: usize) -> f32 {
+        tamanho_efectivo(self.composite_size[pos], self.spacing)
+    }
+
+    /// O piso do multiplicador de uma camada (o Spacing do pincel).
+    #[must_use]
+    pub fn composite_layer_size_floor(&self) -> f32 {
+        tamanho_efectivo(0.0, self.spacing)
+    }
+}
+
 /// **Quantas OPERAÇÕES o chip de uma camada cicla** — `Brush · Smear · Blur · Erase`.
 ///
 /// ⛔ Ela existe porque o `% 4` do ciclo era um literal ao lado do `match` de quatro braços do
@@ -344,10 +364,7 @@ impl PainterTool {
     /// - **Tecto = [`MAX_TAMANHO_DA_CAMADA`]**, medido (ver a const).
     #[must_use]
     pub(crate) fn tamanho_da_camada(&self, pos: usize) -> f32 {
-        let piso = self.paint.brush.spacing.clamp(1e-3, 1.0);
-        self.paint.composite[pos]
-            .size
-            .clamp(piso, MAX_TAMANHO_DA_CAMADA)
+        tamanho_efectivo(self.paint.composite[pos].size, self.paint.brush.spacing)
     }
 
     /// Move the layer at `pos` one position UP (toward layer 1 / top) — swaps the tool with its upper
@@ -547,7 +564,8 @@ impl PainterTool {
                     .iter()
                     .position(|x| x == id)
                 {
-                    // ⚠️ A pista é `0..1` e o campo é um MULTIPLICADOR até `MAX_TAMANHO_DA_CAMADA`.
+                    // ⚠️ A pista é `0..1` e o campo é um MULTIPLICADOR até `MAX_TAMANHO_DA_CAMADA`
+                    // (o chip mostra px de diâmetro; a projecção px ↔ pista é do painel).
                     self.set_composite_layer_size(p, *v as f32 * MAX_TAMANHO_DA_CAMADA);
                     return true;
                 }

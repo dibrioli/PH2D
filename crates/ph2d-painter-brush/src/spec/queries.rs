@@ -369,6 +369,8 @@ impl BrushSpec {
             && self.texture.is_cacheable()
             && !self.film_aa_wanted(self.shape_silhouette_active(has_shape_image))
             && self.borda_px <= 0.0
+            // O dente do papel é preso à TELA: a máscara local do dab não o leva (`crate::dente`).
+            && self.dente.is_none()
     }
 
     /// Whether the film's screen-space AA ([`crate::height_film::FilmAa`], BUGS #16) applies to this
@@ -397,18 +399,6 @@ impl BrushSpec {
         } else {
             self.spacing
         }
-    }
-
-    /// O pincel SORTEIA a pegada a cada dab (posição, spray, contagem, forma, rotação): com o Color mixing ele
-    /// amostra a 3 % e carimba no passo dele ([`crate::mistura_opaca::Deposito`]) — carimbar a 3 % lançava três vezes
-    /// mais marcas e o pontilhado enchia (Bug #78).
-    #[must_use]
-    pub fn sorteia_a_pegada(&self) -> bool {
-        self.jitter > 0.0
-            || self.dab_jitter.espalha(self.spray_count)
-            || self.dab_jitter.count > 0.0
-            || self.dab_jitter.muda_a_forma()
-            || self.gira_a_marca()
     }
 
     /// [`Self::dab_spacing_px`] a outra fracção `spacing` do diâmetro.

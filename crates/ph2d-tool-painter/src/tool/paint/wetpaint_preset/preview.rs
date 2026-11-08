@@ -363,8 +363,10 @@ fn quadro(t: &mut PainterTool) -> Option<(std::sync::Arc<Vec<u8>>, u32, u32)> {
 /// **A receita da MINIATURA dos ficheiros** (a de antes de 10/10, mantida para as miniaturas de fábrica
 /// não mudarem): o S numa tela de [`LADO_MINIATURA`]², o diâmetro preso a [`DIAMETRO_MAX`], a pressão a
 /// subir e a descer, 2 s de água. `emite(rgba, w, h)` a cada quadro; `deve_parar` ⇒ desiste (`false`).
+/// `por_baixo = false` tira a tinta que a ferramenta mexe (a régua: o que o pincel deixa sozinho no branco).
 pub(super) fn pintar_miniatura(
     cena: &CenaDoPreview,
+    por_baixo: bool,
     deve_parar: &dyn Fn() -> bool,
     emite: &mut dyn FnMut(&[u8], u32, u32),
 ) -> bool {
@@ -394,8 +396,12 @@ pub(super) fn pintar_miniatura(
 
     let l = lado as f32;
     let (x0, x1, cy) = (MARGEM, l - MARGEM, l * 0.5);
-    if !borracha_do_wet && e_ferramenta(cena) {
-        faixa_da_ferramenta(&mut t, cena, x0, x1, cy);
+    if por_baixo && !borracha_do_wet && e_ferramenta(cena) {
+        if so_mexe_tinta(cena) {
+            tintas_por_baixo(&mut t, cena, x0, x1, cy, AMPLITUDE);
+        } else {
+            faixa_da_ferramenta(&mut t, cena, x0, x1, cy);
+        }
     }
     if let Some(fio) = fio_do_trilho(cena) {
         // A faixa pintou-se com o Pincel; o S é a ferramenta, com o pincel do preset (trocar de modo troca o slot).
@@ -484,8 +490,54 @@ pub(super) use super::controlos_e10::knobs_da_faixa;
 pub(super) use super::controlos_e10::{AGUA_DA_FAIXA, PIGMENTO_DA_FAIXA};
 
 fn faixa_da_ferramenta(t: &mut PainterTool, cena: &CenaDoPreview, x0: f32, x1: f32, cy: f32) {
-    use super::super::wetpaint_settings::WetTool;
     const VERMELHO: [u8; 3] = [191, 0, 18];
+    // Sob o Blur, o Smear e o Clone a faixa é mais fina e de orla VIVA (o S cruza as duas orlas a meio da subida, onde
+    // eles mexem); o pincel volta inteiro com a cena.
+    let viva = fio_do_trilho(cena).is_some();
+    if viva {
+        t.paint.brush.hardness = 1.0;
+    }
+    let raio = if viva { 0.5 * AMPLITUDE } else { AMPLITUDE };
+    faixas(t, cena, &[(x0, x1, cy, raio, VERMELHO)]);
+}
+
+/// **As tintas por baixo de quem só MEXE tinta** (dono 08/11: «prévia especial para pincéis que só mexem tinta, com o
+/// efeito sobre alguns traços de tinta»): três faixas paralelas de cores distintas, de orla viva, que o S do pincel
+/// atravessa — a miniatura e o preview vivo pintam-nas pela MESMA função.
+const TINTAS_POR_BAIXO: [[u8; 3]; 3] = [[191, 0, 18], [240, 184, 0], [23, 101, 179]];
+
+fn tintas_por_baixo(
+    t: &mut PainterTool,
+    cena: &CenaDoPreview,
+    x0: f32,
+    x1: f32,
+    cy: f32,
+    amp: f32,
+) {
+    let dureza = t.paint.brush.hardness;
+    t.paint.brush.hardness = 1.0;
+    let r = 0.3 * amp;
+    let lista: Vec<_> = TINTAS_POR_BAIXO
+        .iter()
+        .zip([-0.65, 0.0, 0.65])
+        .map(|(&c, f)| (x0, x1, cy + f * amp, r, c))
+        .collect();
+    faixas(t, cena, &lista);
+    t.paint.brush.hardness = dureza;
+}
+
+/// **Só mexe tinta**: o esbatedor do Wet blend e o Smear e o Blur do trilho — no branco deixam 0 px (a régua
+/// `esbatedores_tests::a_regua_dos_esbatedores`, 08/11). As ferramentas molhadas que não são o Paint (Blender *,
+/// Smear * do Wet, Water Brush) pousam 4 500–12 000 px no branco: pintam, ficam com a faixa vermelha.
+pub(super) fn so_mexe_tinta(cena: &CenaDoPreview) -> bool {
+    !cena.borracha
+        && (so_arrasta(&cena.brush) || matches!(cena.modo, PaintMode::Smear | PaintMode::Blur))
+}
+
+/// Pinta cada faixa `(x0, x1, y, raio, cor)` com o mesmo pincel a PINTAR (o Mix, a ferramenta Paint, tinta cheia, sem
+/// grão nem mistura) e devolve o pincel como estava.
+fn faixas(t: &mut PainterTool, cena: &CenaDoPreview, lista: &[(f32, f32, f32, f32, [u8; 3])]) {
+    use super::super::wetpaint_settings::WetTool;
     let (raio, blend, cor) = (
         t.paint.brush.radius_px,
         t.paint.brush.blend,
@@ -505,25 +557,21 @@ fn faixa_da_ferramenta(t: &mut PainterTool, cena: &CenaDoPreview, x0: f32, x1: f
     t.paint.wetpaint.knobs = knobs_da_faixa(f64::from(super::OPACIDADE_DE_FABRICA));
     t.paint.brush.blend = ph2d_painter_brush::BrushBlend::Mix;
     t.paint.wetpaint.tool = WetTool::Paint;
-    t.paint.brush.radius_px = AMPLITUDE;
-    // Sob o Blur, o Smear e o Clone a faixa é mais fina e de orla VIVA (o S cruza as duas orlas a meio da subida, onde
-    // eles mexem); o pincel volta inteiro com a cena.
-    if fio_do_trilho(cena).is_some() {
-        t.paint.brush.hardness = 1.0;
-        t.paint.brush.radius_px = 0.5 * AMPLITUDE;
+    for &(x0, x1, cy, r, c) in lista {
+        t.paint.brush.radius_px = r;
+        t.set_brush_color_srgb8(c);
+        let n = ((x1 - x0) / PASSO_PX).ceil() as u32;
+        t.on_canvas_pointer(ponto([x0, cy], 1.0, PointerPhase::Down));
+        for k in 1..=n {
+            t.on_canvas_pointer(ponto(
+                [x0 + (x1 - x0) * k as f32 / n as f32, cy],
+                1.0,
+                PointerPhase::Move,
+            ));
+            t.on_tick(TICK_MS);
+        }
+        t.on_canvas_pointer(ponto([x1, cy], 1.0, PointerPhase::Up));
     }
-    t.set_brush_color_srgb8(VERMELHO);
-    let n = ((x1 - x0) / PASSO_PX).ceil() as u32;
-    t.on_canvas_pointer(ponto([x0, cy], 1.0, PointerPhase::Down));
-    for k in 1..=n {
-        t.on_canvas_pointer(ponto(
-            [x0 + (x1 - x0) * k as f32 / n as f32, cy],
-            1.0,
-            PointerPhase::Move,
-        ));
-        t.on_tick(TICK_MS);
-    }
-    t.on_canvas_pointer(ponto([x1, cy], 1.0, PointerPhase::Up));
     t.paint.brush.radius_px = raio;
     t.paint.brush.strength = forca;
     t.paint.brush.texture.kind = grao;
@@ -554,6 +602,14 @@ pub fn pintar_preview(
     if !cena.borracha {
         t.set_paint_media(cena.meio);
         t.instalar_cena(cena, true);
+        if so_mexe_tinta(cena) {
+            let (x0, x1, cy, amp) = trajeto(&t, lw, lh);
+            tintas_por_baixo(&mut t, cena, x0, x1, cy, amp);
+            if let Some(fio) = fio_do_trilho(cena) {
+                t.set_paint_tool_mode(fio);
+                t.instalar_cena(cena, true);
+            }
+        }
         return gesto_do_preview(&mut t, lw, lh, deve_parar, emite);
     }
     // ⭐ A borracha: a tela cheia e ela por cima, no S do Pincel — o meio, o modo (pela porta do trilho) e o
@@ -692,6 +748,9 @@ pub(super) fn reduz(px: &[u8], w: u32, h: u32, ow: u32, oh: u32) -> Vec<u8> {
 #[cfg(test)]
 #[path = "preview_censo_tests.rs"]
 mod censo_tests;
+#[cfg(test)]
+#[path = "preview_esbatedores_tests.rs"]
+mod esbatedores_tests;
 #[cfg(test)]
 #[path = "preview_paridade_tests.rs"]
 mod paridade_tests;

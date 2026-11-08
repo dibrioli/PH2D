@@ -192,6 +192,7 @@ impl Default for BrushSpec {
             grain_same_as_paper: false,
             grao_aplicado: crate::GraoAplicado::default(),
             paper_depth: 1.0,
+            dente: None,
             watercolor_shape_auto: true, // built-in feather silhouette (byte-identical default)
             // Impasto: the `impasto` gate (OFF) is what guarantees the byte-identical default — the
             // params below carry sensible *when-enabled* values (a visible ridge the moment the

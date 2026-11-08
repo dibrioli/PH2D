@@ -226,12 +226,14 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // A pilha montada à mão (2026-09-21): o rótulo da força de cada camada. ⚠️ A fileira do
         // `+` não tem frase — ela é o botão mais o DROPDOWN da casa, que já diz o que vai criar.
         "panel.painter_layers.composite.strength" => "Strength",
-        "panel.painter_layers.composite.size" => "Size",
+        "panel.painter_layers.composite.size" => "Size (px)",
         "panel.painter_layers.composite.hardness" => "Hardness",
         // O chip do ESCOPO da borracha de uma camada. ⚠️ Os dois nomes descrevem **o que ela come**,
         // nunca o modo: «Image» apaga também o que já estava lá, «Stroke» só a tinta deste gesto.
         "panel.painter_layers.composite.erase_image" => "Image",
         "panel.painter_layers.composite.erase_stroke" => "Stroke",
+        // O nome da fileira PRÓPRIA do escopo, quando o chip não cabe ao lado do «Size (px)» sem o cortar.
+        "panel.painter_layers.composite.erases" => "Erases",
         "panel.painter_layers.deform.warp_tool" => "Warp tool",
         "panel.painter_layers.deform.liquify" => "Liquify",
         "panel.painter_layers.deform.transform" => "Transform",
@@ -590,6 +592,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.wetpaint.preset_none" => "No preset",
         "panel.painter_layers.wetpaint.preset_favorite" => "Favorite",
         "panel.painter_layers.wetpaint.preset_favorites" => "Favorites",
+        "panel.painter_layers.wetpaint.preset_search" => "Search brushes",
+        "panel.painter_layers.wetpaint.preset_no_match" => "No brushes found",
         "panel.painter_layers.wetpaint.preset_unreadable" => "{n} preset files could not be read",
         "panel.painter_layers.wetpaint.preset_actions" => "Preset actions",
         "panel.painter_layers.wetpaint.preset_save_new" => "Save as New",

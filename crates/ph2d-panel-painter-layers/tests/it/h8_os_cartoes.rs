@@ -322,7 +322,11 @@ fn every_number_shows_the_value_of_the_brush_and_the_range_of_the_old_panel() {
         }
         for (id, espera) in [
             (p::PAINTER_BRUSH_COMPOSITE_STRENGTH_CHIP[0], 0.31),
-            (p::PAINTER_BRUSH_COMPOSITE_SIZE_CHIP[0], 1.7),
+            // O Size em px de diâmetro: o efectivo × 2 × raio, inteiro (dono 08/11).
+            (
+                p::PAINTER_BRUSH_COMPOSITE_SIZE_CHIP[0],
+                f64::from((2.0 * b.size_px * b.composite_layer_size_effective(0)).round()),
+            ),
             (p::PAINTER_BRUSH_COMPOSITE_HARDNESS_CHIP[0], 0.42),
             (p::PAINTER_DEFORM_PRESSURE_CHIP, 0.37),
             (p::PAINTER_SEL_FEATHER_CHIP, 0.21),

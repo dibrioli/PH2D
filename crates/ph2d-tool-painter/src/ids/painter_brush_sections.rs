@@ -289,10 +289,9 @@ pub const PAINTER_BRUSH_COMPOSITE_STRENGTH_CHIP: [NodeId; 7] = [
     hash_node_id("painter_brush.composite_strength_chip_6"),
 ];
 
-/// Os chips numéricos das barras de **tamanho**. ⚠️ Eles mostram o MULTIPLICADOR (`1,00`..`4,00`) e
-/// a barra guarda `mult / MAX_TAMANHO_DA_CAMADA` — a projecção vive no
-/// `link_slider_number_mapped` do `populate`, **uma vez**, e não em duas aritméticas (a do pintor e
-/// a do dreno) que divergiriam no dia em que o tecto mudasse.
+/// Os chips numéricos das barras de **tamanho**. ⚠️ Eles mostram **px de diâmetro** (dono 08/11) e
+/// a barra guarda `mult / MAX_TAMANHO_DA_CAMADA` — a projecção px ↔ pista vive no `liga_tamanho`
+/// do painel, **uma vez**, re-ligada a cada quadro com o raio do pincel; o dreno só vê a pista.
 pub const PAINTER_BRUSH_COMPOSITE_SIZE_CHIP: [NodeId; 7] = [
     hash_node_id("painter_brush.composite_size_chip_0"),
     hash_node_id("painter_brush.composite_size_chip_1"),

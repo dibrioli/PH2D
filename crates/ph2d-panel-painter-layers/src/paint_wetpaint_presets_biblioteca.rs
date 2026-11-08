@@ -17,7 +17,9 @@ use ph2d_editor_core::panel::{
     paint_dropdown_list, paint_dropdown_list_reordering, visible_option_bands,
 };
 use ph2d_editor_core::tool::PanelEvent;
-use ph2d_editor_core::widget::{Button, Dropdown, DropdownOption, Modal, paint_modal};
+use ph2d_editor_core::widget::{
+    Button, Dropdown, DropdownOption, Modal, PaintedPopover, paint_modal,
+};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_tokens::ColorToken;
@@ -107,7 +109,8 @@ pub(crate) fn paint_popover(
     opcoes: Vec<DropdownOption<usize>>,
     chip: Rect,
     atual: usize,
-) {
+    arrasta: bool,
+) -> PaintedPopover {
     let dd = Dropdown::new(ids::PAINTER_WETPAINT_PRESET, "", opcoes)
         .selected(atual)
         .open(true);
@@ -152,11 +155,18 @@ pub(crate) fn paint_popover(
         }
         None => paint_dropdown_list(ctx, &dd, chip, viewport, theme, None),
     };
-    let bandas = visible_option_bands(&dd, chip, painted.panel, painted.scroll);
-    let linhas = bandas.map(|(id, _)| id).collect();
+    // Com a busca a filtrar, nada se arrasta: a ordem é a da lista inteira.
+    let linhas = if arrasta {
+        visible_option_bands(&dd, chip, painted.panel, painted.scroll)
+            .map(|(id, _)| id)
+            .collect()
+    } else {
+        Default::default()
+    };
     ctx.host
         .store_mut()
         .set_panel_row_ids(PanelRowFamily::PainterPreset, linhas);
+    painted
 }
 
 /// O valor do vão: nenhum preset o tem, nem o «sem preset» do popover (`usize::MAX`).

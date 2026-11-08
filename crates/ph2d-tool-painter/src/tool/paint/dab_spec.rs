@@ -125,6 +125,16 @@ impl PainterTool {
             brush.texture = brush.paper;
             brush.grain_depth =
                 (brush.paper_depth / ph2d_painter_brush::PAPER_TOOTH_MAX).clamp(0.0, 1.0);
+        } else if self.papel_pode_morder()
+            && brush.texture.is_active()
+            && !ph2d_painter_brush::dente::sonda_desligou_o_dente()
+        {
+            // Com um Grain do pincel (ou o Grain Colors), o papel MORDE por cima dele (dono 08/11: «a pintura
+            // parecia chapada mesmo com paper com relevo»): o mesmo fator que ele dá como Grain, preso à tela.
+            brush.dente = ph2d_painter_brush::dente::Dente::do_papel(
+                brush.paper,
+                brush.paper_depth / ph2d_painter_brush::PAPER_TOOTH_MAX,
+            );
         }
     }
 
@@ -259,11 +269,17 @@ impl PainterTool {
     /// escolhido) — só falta o Tooth. É a lei do Tooth ESMAECIDO no Digital (`inercia`).
     #[must_use]
     pub(crate) fn papel_pode_ser_grain(&self) -> bool {
+        self.papel_pode_morder() && !self.paint.brush.texture.is_active()
+    }
+
+    /// O Digital em condições de o papel morder a tinta (o Relief ligado com um papel e o Tooth > 0): como
+    /// Grain sem Grain escolhido ([`Self::papel_pode_ser_grain`]), como dente por cima dele com um.
+    #[must_use]
+    pub(crate) fn papel_pode_morder(&self) -> bool {
         matches!(self.paint_media(), super::media::PaintMedia::Digital)
             && matches!(self.paint.paint_mode, super::PaintMode::Paint)
             && self.paint.substrate_depth > 0.0
             && self.paint.brush.paper.is_active()
-            && !self.paint.brush.texture.is_active()
     }
 
     /// A versão da imagem do slot que faz de Grain no traço (a do papel quando ele faz de Grain,

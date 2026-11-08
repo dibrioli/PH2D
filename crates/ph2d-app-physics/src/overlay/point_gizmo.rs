@@ -134,12 +134,7 @@ pub fn joint_param_handles(
             {
                 // ⚠️ **Two geometries, because there are two kinds of range.** A
                 // hinge's ends live on the ARC; a rail's live ON THE RAIL, where
-                // `slider_rail` already draws its end-of-travel ticks. The
-                // question is `limits_in_metres` — the SAME door the §12 label
-                // and the shell's conversion ask, and the one this publisher did
-                // not ask until 2026-07-26: it put a rail's 0.5 *metre* stroke on
-                // the arc at 0.5 *radians*, and the drag then authored a bearing
-                // into a field read as metres (the runaway Enio reported).
+                // `slider_rail` already draws its end-of-travel ticks. The (…)
                 let world = if v.kind.limits_in_metres() {
                     let axis = match v.axis {
                         Some(a) => a,
@@ -155,9 +150,7 @@ pub fn joint_param_handles(
                     let p = limit_end_screen(camera, window, v.anchor_a, v.angle_a, l[i]);
                     // ⚠️ Unprojected. The arc lives at a fixed SCREEN radius (an
                     // angle is not a length — the module's own law), while a
-                    // `PointHandle` is a world point so that one projection
-                    // serves every handle. The round trip is a linear map, so it
-                    // re-projects to the pixel it came from.
+                    // `PointHandle` is a world point so that one projection (…)
                     camera.screen_to_world((p.x as f32, p.y as f32), window)
                 };
                 out.push(PointHandle { key, kind, world });
@@ -165,10 +158,7 @@ pub fn joint_param_handles(
         }
         // ⚠️ **`length_is_a_radius`, não `v.length.is_some()`** — e a diferença
         // nasceu com a polia: ela TEM comprimento (a corda) e ele **não** é a
-        // distância entre as âncoras, então um anel de raio `L0` em volta de A
-        // descreveria uma distância que não existe na cena, com um grip que
-        // autoraria a corda arrastando um círculo que não a mede. É a mesma
-        // classe do bug do trilho de 2026-07-26, uma porta adiante.
+        // distância entre as âncoras, então um anel de raio `L0` em volta de A (…)
         if let Some(len) = v.length.filter(|_| v.kind.length_is_a_radius()) {
             out.push(PointHandle {
                 key,
@@ -199,9 +189,7 @@ pub fn build_point_view(
     snap: Option<[f32; 2]>,
     // W-J4b: o gesto de DESENHAR um joint está armado ⇒ as alças existentes ficam
     // visíveis e fora de alcance (ver `PointGizmoView::inert`). O mesmo booleano
-    // que pinta o botão Pressed, lido aqui — duas cópias da pergunta *"o gesto
-    // está armado?"* divergiriam, e a divergência seria uma alça apagada que
-    // ainda pega o clique.
+    // que pinta o botão Pressed, lido aqui — duas cópias da pergunta *"o gesto (…)
     inert: bool,
 ) -> Option<PointGizmoView> {
     if handles.is_empty() {
@@ -324,14 +312,7 @@ pub fn wheel_handles(
         });
         // **O segundo diâmetro** (W6) — e ele é oferecido SÓ quando existe.
         //
-        // ⚠️ **Numa roldana comum ele cairia exatamente sobre o de entrada**, e
-        // duas alças no mesmo pixel são uma alça que às vezes faz outra coisa:
-        // qual das duas o hit-test devolve vira acidente de ordem de registro. É
-        // a mesma lei que fez o W4 desenhar o segundo anel só quando ele difere.
-        //
-        // À ESQUERDA do centro, e não à direita: o de entrada já ocupa aquele
-        // raio, e um tambor cujos dois raios são próximos porá as duas alças a
-        // poucos pixels uma da outra se as duas saírem do mesmo lado.
+        // ⚠️ **Numa roldana comum ele cairia exatamente sobre o de entrada**, e (…)
         if w.radius_out > 0.0 {
             out.push(PointHandle {
                 key: e.to_bits(),

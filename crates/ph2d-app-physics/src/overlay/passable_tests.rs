@@ -7,7 +7,12 @@
 //! invisível.
 
 use super::tests::{camera, window};
-use super::{PASSABLE_RGBA, STATIC_RGBA, outlines};
+use super::{Marca, Tinta, outlines};
+
+const CHAO: Tinta = Tinta::Camada {
+    camada: 0,
+    marca: Marca::Solida,
+};
 
 /// **Uma prancha que o player está a atravessar NÃO se desenha como chão.**
 ///
@@ -17,7 +22,7 @@ use super::{PASSABLE_RGBA, STATIC_RGBA, outlines};
 /// acidente. E a marca é da PLATAFORMA, não do player, porque é ela que deixa
 /// de ser sólida.
 ///
-/// Mutação: apagar o braço `passable` do `outline_rgba` deixa as duas leituras
+/// Mutação: apagar o braço `atravessavel` de `tinta::marca` deixa as duas leituras
 /// idênticas e este gate vermelho.
 #[test]
 fn a_platform_being_passed_through_is_not_drawn_as_solid_ground() {
@@ -43,13 +48,17 @@ fn a_platform_being_passed_through_is_not_drawn_as_solid_ground() {
     let solid = outlines(true, false, &mut sim, &[], false, &camera(), window());
     assert_eq!(solid.len(), 1);
     assert_eq!(
-        solid[0].1, STATIC_RGBA,
+        solid[0].1, CHAO,
         "sem ninguem a atravessar, a prancha e' chao estatico como qualquer outro"
     );
 
     let ghost = outlines(true, false, &mut sim, &[], true, &camera(), window());
     assert_eq!(
-        ghost[0].1, PASSABLE_RGBA,
+        ghost[0].1,
+        Tinta::Camada {
+            camada: 0,
+            marca: Marca::Atravessavel
+        },
         "com uma descida em curso ela tem de dizer que NAO esta' la'"
     );
 }
@@ -78,7 +87,7 @@ fn a_drop_does_not_dim_solid_ground() {
     ));
     let drawn = outlines(true, false, &mut sim, &[], true, &camera(), window());
     assert_eq!(
-        drawn[0].1, STATIC_RGBA,
+        drawn[0].1, CHAO,
         "chao solido continua solido durante uma descida"
     );
 }

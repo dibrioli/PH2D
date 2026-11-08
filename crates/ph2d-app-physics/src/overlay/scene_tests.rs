@@ -11,10 +11,7 @@
 //! halves cannot start disagreeing about what a pixel is.
 
 use super::tests::{camera, points, window};
-use super::{
-    DYNAMIC_RGBA, SENSOR_ACTIVE_RGBA, SENSOR_IDLE_RGBA, STATIC_RGBA, collider_outline,
-    outline_rgba, outlines,
-};
+use super::{Marca, Tinta, collider_outline, outlines, tinta_do_contorno};
 use ph2d_physics_ecs::{BodyKind, ColliderShape, ShapeDesc};
 
 fn physics_scene() -> ph2d_ecs::SimWorld {
@@ -126,29 +123,47 @@ fn a_parented_bodys_outline_sits_on_its_sprite_not_its_local_pose() {
     );
 }
 
-/// **A sensor is magenta, and brightens when triggered.** The colour is the
-/// whole visible reaction of a trigger: idle vs active is how you see it
-/// fire, and a sensor overrides its body-kind colour so "is this a trigger?"
-/// reads first. Mutation-tested: collapsing idle and active to one colour, or
-/// letting a sensor keep its kind colour, fails an assert here.
+/// **Um sensor é a cor da SUA camada, tracejado, e acende quando disparado.** O salto de opacidade
+/// é a reação visível do gatilho; o tracejado diz «isto não é sólido» antes de tudo.
+/// Mutação: igualar vazio e aceso, ou dar ao sensor o traço cheio da sólida, reprova aqui.
 #[test]
-fn a_sensor_is_magenta_and_brightens_when_triggered() {
+fn a_sensor_is_dashed_in_its_layer_colour_and_brightens_when_triggered() {
+    use ph2d_tokens::Theme;
+    let sensor = ph2d_physics_ecs::Collider {
+        is_sensor: true,
+        layer: 3,
+        ..Default::default()
+    };
+    let vazio = crate::overlay::tinta::marca(&sensor, true, false, false);
+    let aceso = crate::overlay::tinta::marca(&sensor, true, true, false);
     assert_eq!(
-        outline_rgba(true, false, false, BodyKind::Static),
-        SENSOR_IDLE_RGBA
+        vazio,
+        Tinta::Camada {
+            camada: 3,
+            marca: Marca::SensorVazio
+        }
     );
     assert_eq!(
-        outline_rgba(true, true, false, BodyKind::Dynamic),
-        SENSOR_ACTIVE_RGBA
+        aceso,
+        Tinta::Camada {
+            camada: 3,
+            marca: Marca::SensorAceso
+        }
     );
-    // A solid collider keeps its kind colour and is never magenta.
+    let (tv, cv) = tinta_do_contorno(vazio, Theme::Forge);
+    let (ta, ca) = tinta_do_contorno(aceso, Theme::Forge);
+    assert!(
+        !tv.dash_pattern.is_empty() && !ta.dash_pattern.is_empty(),
+        "sensor é tracejado"
+    );
+    assert!(
+        ca.components[3] > cv.components[3],
+        "o disparo TEM de acender"
+    );
     assert_eq!(
-        outline_rgba(false, false, false, BodyKind::Static),
-        STATIC_RGBA
-    );
-    assert_ne!(
-        SENSOR_IDLE_RGBA, SENSOR_ACTIVE_RGBA,
-        "idle and active sensors must differ — the colour change IS the trigger firing"
+        cv.components[..3],
+        ca.components[..3],
+        "a matiz é a da camada nos dois"
     );
 }
 
@@ -182,11 +197,22 @@ fn a_triggered_sensor_outline_uses_the_active_colour() {
 
     let idle = outlines(true, false, &mut sim, &[], false, &camera(), window());
     assert_eq!(idle.len(), 1);
-    assert_eq!(idle[0].1, SENSOR_IDLE_RGBA, "an empty sensor is drawn idle");
+    assert_eq!(
+        idle[0].1,
+        Tinta::Camada {
+            camada: 0,
+            marca: Marca::SensorVazio
+        },
+        "an empty sensor is drawn idle"
+    );
 
     let active = outlines(true, false, &mut sim, &[sensor], false, &camera(), window());
     assert_eq!(
-        active[0].1, SENSOR_ACTIVE_RGBA,
+        active[0].1,
+        Tinta::Camada {
+            camada: 0,
+            marca: Marca::SensorAceso
+        },
         "a triggered sensor is drawn active"
     );
 }
@@ -206,20 +232,46 @@ fn a_scene_without_bodies_draws_no_physics_chrome() {
     );
 }
 
-/// Scenery and movers are told apart at a glance. Without this the floor
-/// and the falling body draw identically, and "which of these can move?"
-/// — the first question you ask a physics scene — has no answer on screen.
+/// ⭐ **Cada camada pinta o contorno com a SUA cor** (dono 07/11, onda 9d): lê a cor PINTADA (a que
+/// `draw` entrega ao Vello) de cada forma de uma cena com as camadas 0 e 1, nos dois temas, e
+/// compara com o token da camada. Mutação «duas camadas com a mesma cor no canvas» (ler sempre a
+/// camada 0 em `tinta::marca`) reprova aqui.
 #[test]
-fn static_and_dynamic_bodies_are_drawn_in_different_colours() {
+fn each_layer_paints_its_outline_in_its_own_colour() {
+    use ph2d_tokens::{ColorToken, Theme};
     let mut sim = physics_scene();
+    let mut q = sim.world_mut().query::<&mut ph2d_physics_ecs::Collider>();
+    let mut n = 0u8;
+    for mut c in q.iter_mut(sim.world_mut()) {
+        c.layer = n;
+        n += 1;
+    }
     let out = outlines(true, false, &mut sim, &[], false, &camera(), window());
-    let colours: Vec<[f32; 4]> = out.iter().map(|(_, c)| *c).collect();
-    assert!(colours.contains(&STATIC_RGBA), "no static body was drawn");
-    assert!(colours.contains(&DYNAMIC_RGBA), "no dynamic body was drawn");
-    assert_ne!(
-        STATIC_RGBA, DYNAMIC_RGBA,
-        "static and dynamic share a colour — the distinction is invisible"
-    );
+    for theme in [Theme::Forge, Theme::Sunstone] {
+        let pintadas: Vec<[f32; 3]> = out
+            .iter()
+            .map(|(_, t)| {
+                let c = tinta_do_contorno(*t, theme).1.components;
+                [c[0], c[1], c[2]]
+            })
+            .collect();
+        assert_eq!(pintadas.len(), 2);
+        for (i, cor) in pintadas.iter().enumerate() {
+            let Tinta::Camada { camada, .. } = out[i].1 else {
+                panic!("um contorno de forma saiu com cor fixa")
+            };
+            let token = ph2d_editor_core::paint::resolve(ColorToken::layer(camada.into()), theme);
+            assert_eq!(
+                cor[..],
+                token.components[..3],
+                "camada {camada}: a cor não é a dela"
+            );
+        }
+        assert_ne!(
+            pintadas[0], pintadas[1],
+            "duas camadas com a mesma cor no canvas"
+        );
+    }
 }
 
 /// **A non-uniformly scaled ball is drawn as the ELLIPSE it simulates.**
@@ -459,7 +511,11 @@ fn a_part_of_a_compound_body_is_drawn_in_the_owners_colour() {
     );
     for (_, rgba) in &out {
         assert_eq!(
-            *rgba, DYNAMIC_RGBA,
+            *rgba,
+            Tinta::Camada {
+                camada: 0,
+                marca: Marca::Solida
+            },
             "a peça não herdou a cor do dono — ela não tem tipo próprio, ela É o \
              corpo dele"
         );
@@ -488,7 +544,10 @@ fn a_collider_with_no_body_above_it_is_marked_loose_never_as_a_body() {
     assert_eq!(out.len(), 1, "a forma solta aparece, uma vez");
     assert_eq!(
         out[0].1,
-        super::LOOSE_INK,
+        Tinta::Camada {
+            camada: 0,
+            marca: Marca::Solta
+        },
         "uma forma que o solver ignora ganhou a tinta de um corpo — a marca afirmaria que ela \
          é simulada"
     );
@@ -578,7 +637,15 @@ fn a_sensor_part_lights_up_in_the_overlay() {
     );
     let lit = drawn
         .iter()
-        .filter(|(_, rgba)| *rgba == SENSOR_ACTIVE_RGBA)
+        .filter(|(_, t)| {
+            matches!(
+                t,
+                Tinta::Camada {
+                    marca: Marca::SensorAceso,
+                    ..
+                }
+            )
+        })
         .count();
     assert_eq!(
         lit,

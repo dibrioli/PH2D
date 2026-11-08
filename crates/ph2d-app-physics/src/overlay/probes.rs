@@ -138,10 +138,7 @@ pub fn probe_marks(
                 let mut p = BezPath::new();
                 // ⚠️ **O desenho começa na BORDA do corpo, não no centro.** O
                 // cast parte do centro porque o `exclude_body` precisa disso;
-                // medido, num raio de parede 20 dos 35 px caíam por baixo do
-                // contorno do collider, e o que sobrava para o artista ver do
-                // número que ele mexe era um toco de 15 px. `skin` vem da MESMA
-                // porta que lançou o raio.
+                // medido, num raio de parede 20 dos 35 px caíam por baixo do (…)
                 let skin = skin.clamp(0.0, reach);
                 let from = [origin[0] + dir[0] * skin, origin[1] + dir[1] * skin];
                 let end = [origin[0] + dir[0] * reach, origin[1] + dir[1] * reach];
@@ -214,10 +211,7 @@ fn profile_path(
 ) -> Vec<(BezPath, [f32; 4])> {
     // ⚠️ **O VÃO nunca veste o brilho de acerto, e é isso que torna o perfil
     // legível.** O estado do perfil é *achou* assim que UMA célula está tapada;
-    // se a barra inteira acendesse junto, a resposta (*onde* há teto) ficaria
-    // indistinguível da pergunta (*onde ele olha*) — exatamente a informação
-    // pela qual este sensor existe. A barra diz ONDE ELE OLHA (inerte ou
-    // perguntou), as hastes dizem O QUE ELE ACHOU.
+    // se a barra inteira acendesse junto, a resposta (*onde* há teto) ficaria (…)
     let span_a = probe_alpha(if state == ProbeState::Idle {
         ProbeState::Idle
     } else {
@@ -231,15 +225,7 @@ fn profile_path(
 
     // A barra do vão, na altura que o leque alcança, mais as duas hastes que a
     // ligam ao topo da cabeça (é isso que mostra quanto ele olha para CIMA).
-    //
-    // ⚠️ **E as duas PONTAS em px de tela, sem as quais este sensor é invisível
-    // na esmagadora maioria dos quadros.** O `rise` vale `rel_up · dt ·
-    // CORNER_LOOKAHEAD`, ou seja **ZERO sempre que a cabeça não sobe** — medido,
-    // `rise = 0.0000 m` nos três momentos da cena 108, e a barra saía com
-    // **0,0 px de altura**: as hastes que o roteiro do smoke manda procurar não
-    // estavam fracas, **não existiam**. Um leque parado olha mesmo zero para
-    // cima, então alongá-lo seria mentir; o que a ponta desenha é o **VÃO
-    // lateral**, que é o número autorado (`corner_reach`) e não é zero nunca.
+    // (…)
     let mut span = BezPath::new();
     let (lo, hi) = (top[0] + offs[0], top[0] + offs[cells - 1]);
     let (a, b) = (to_screen(lo, y), to_screen(hi, y));

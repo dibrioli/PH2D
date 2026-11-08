@@ -2,7 +2,16 @@
 //! `f1_physics_static_shape.md`): a mesma geometria real, outra tinta, nenhuma anotação.
 
 use super::tests::{camera, points, window};
-use super::{DYNAMIC_RGBA, LOOSE_INK, STATIC_RGBA, outlines, tinta_do_contorno};
+use super::{Marca, Tinta, outlines, tinta_do_contorno};
+
+const SOLTA: Tinta = Tinta::Camada {
+    camada: 0,
+    marca: Marca::Solta,
+};
+const SOLIDA: Tinta = Tinta::Camada {
+    camada: 0,
+    marca: Marca::Solida,
+};
 use ph2d_core::Vec2;
 use ph2d_ecs::{ChildOf, SimWorld, Transform};
 use ph2d_physics_ecs::{BodyKind, Collider, ColliderShape, InitialVelocity, RigidBody};
@@ -51,8 +60,8 @@ fn a_forma_solta_aparece_com_a_geometria_de_uma_simulada_e_outra_tinta() {
     let a = outlines(true, false, &mut solta, &[], false, &cam, win);
     let b = outlines(true, false, &mut simulada, &[], false, &cam, win);
     assert_eq!(a.len(), 1, "a forma solta tem de aparecer, uma vez");
-    assert_eq!(a[0].1, LOOSE_INK);
-    assert_eq!(b[0].1, STATIC_RGBA, "o controlo é simulado");
+    assert_eq!(a[0].1, SOLTA);
+    assert_eq!(b[0].1, SOLIDA, "o controlo é simulado");
     assert_eq!(
         points(&a[0].0),
         points(&b[0].0),
@@ -82,22 +91,34 @@ fn a_forma_solta_aparece_com_a_geometria_de_uma_simulada_e_outra_tinta() {
     );
 }
 
-/// Mutação: tirar o tracejado, trocar o token, ou tracejar quem é simulado.
+/// A solta: a matiz da SUA camada, tracejada, mais apagada que o sensor vazio; a simulada é cheia.
+/// Mutação: tirar o tracejado, pintá-la de outra camada, ou tracejar quem é simulado.
 #[test]
-fn a_tinta_da_solta_e_tracejada_e_vem_do_token_e_a_simulada_nao() {
+fn a_tinta_da_solta_e_tracejada_na_cor_da_camada_e_a_simulada_nao() {
     for theme in [Theme::Forge, Theme::Sunstone] {
-        let (traco, cor) = tinta_do_contorno(LOOSE_INK, theme);
+        let base = ph2d_editor_core::paint::resolve(ColorToken::layer(5), theme).components;
+        let solta = Tinta::Camada {
+            camada: 5,
+            marca: Marca::Solta,
+        };
+        let (traco, cor) = tinta_do_contorno(solta, theme);
         assert!(!traco.dash_pattern.is_empty(), "a solta é tracejada");
-        assert_eq!(
-            cor,
-            ph2d_editor_core::paint::resolve(ColorToken::Text3, theme)
+        assert_eq!(cor.components[..3], base[..3], "a cor é a da camada 5");
+        let vazio = Tinta::Camada {
+            camada: 5,
+            marca: Marca::SensorVazio,
+        };
+        let (_, sensor) = tinta_do_contorno(vazio, theme);
+        assert!(cor.components[3] > 0.0 && cor.components[3] < sensor.components[3]);
+        let (traco, cor) = tinta_do_contorno(
+            Tinta::Camada {
+                camada: 5,
+                marca: Marca::Solida,
+            },
+            theme,
         );
-        assert!(cor.components[3] > 0.0, "a marca não pode sair invisível");
-        for simulada in [STATIC_RGBA, DYNAMIC_RGBA] {
-            let (traco, cor) = tinta_do_contorno(simulada, theme);
-            assert!(traco.dash_pattern.is_empty(), "a simulada é traço cheio");
-            assert_eq!(cor.components, simulada);
-        }
+        assert!(traco.dash_pattern.is_empty(), "a simulada é traço cheio");
+        assert_eq!(cor.components[..3], base[..3]);
     }
 }
 

@@ -119,21 +119,13 @@ pub fn joint_readouts(
     for v in views {
         // **Um joint DESLIGADO não mostra carga** (W-J8), e não é higiene: ele
         // não está segurando nada, então o número vivo é zero por construção — e
-        // a marca d'água ao lado dele descreveria uma corrida que o próprio
-        // interruptor encerrou, que é exatamente a figura de um joint ROMPIDO.
-        // Duas coisas diferentes não podem imprimir o mesmo par. O glifo apagado
-        // já diz por que não há número.
+        // a marca d'água ao lado dele descreveria uma corrida que o próprio (…)
         if !v.active {
             continue;
         }
         // ⚠️ Aqui havia um `if !v.kind.can_break() { continue }`, e ele existia
         // porque a POLIA não vivia no `ImpulseJointSet`: nada media a reação
-        // dela, o par de números era estruturalmente zero, e um zero permanente
-        // é a forma de readout que não responde a nada. O W-Pulley W2 fez o
-        // passe dela publicar a própria tensão, então a pergunta deixou de ter
-        // um NÃO — e um guard que não pode disparar é o que apodrece calado.
-        // Quem gateia de verdade é o `breakable` abaixo, que é a pergunta certa:
-        // *há um limiar a mostrar ao lado da carga?*
+        // dela, o par de números era estruturalmente zero, e um zero permanente (…)
         let breakable = v.break_force.is_finite() || v.break_torque.is_finite();
         if !breakable && selected != Some(v.entity) {
             continue;
@@ -150,16 +142,7 @@ pub fn joint_readouts(
         };
         // **Uma corda que não resolve a rota DIZ ISSO** (W-RopeSays), em vez de
         // um `0 N` em âmbar.
-        //
-        // ⚠️ O desenho dela já veste o vermelho do *não-segura* desde o
-        // W-PulleyDegenerate, e o número ao lado continuava âmbar dizendo zero —
-        // **duas metades do mesmo fato discordando**, com a metade que carrega o
-        // NÚMERO afirmando a mais tranquilizadora das duas. E zero não é uma
-        // medição: o passe da polia sai por `continue` antes de medir coisa
-        // alguma, então não houve carga a ler.
-        //
-        // O texto substitui a linha de carga inteira — imprimir *"no route"* e
-        // um teto ao lado sugeriria que o teto está sendo comparado com algo.
+        // (…)
         if not_acting.contains(&v.entity) {
             push(
                 ph2d_i18n::tr("app.physics.joint_readout.no_route").to_string(),

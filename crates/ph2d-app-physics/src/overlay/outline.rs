@@ -30,9 +30,9 @@
 
 use ph2d_ecs::SimWorld;
 use ph2d_host::WindowSize;
-use ph2d_physics_ecs::{BodyKind, Collider, scaled_shape};
+use ph2d_physics_ecs::{Collider, scaled_shape};
 use ph2d_render::Camera2d;
-use ph2d_tokens::{ColorToken, Theme};
+use ph2d_tokens::Theme;
 use ph2d_vector::{BezPath, Stroke, VectorScene};
 
 /// A GEOMETRIA do contorno mora no irmão (cap de 600 LOC da shell); re-exportada
@@ -58,80 +58,7 @@ pub const OUTLINE_PX: f64 = 1.5; // LITERAL-PX-OK: chrome de overlay, espessura 
 /// is readable at, and the path is rebuilt per frame anyway.
 pub const CIRCLE_SEGS: u32 = 32;
 
-/// Static bodies — the scenery. Cool green, the Unity/Box2D convention.
-const STATIC_RGBA: [f32; 4] = [0.36, 0.85, 0.52, 0.85]; // LITERAL-COLOR-OK: overlay de collider
-
-/// Dynamic bodies — the things that move. Cyan, chosen to stay clear of the
-/// amber selection halo: a selected dynamic body must still read as selected.
-const DYNAMIC_RGBA: [f32; 4] = [0.35, 0.80, 1.0, 0.85]; // LITERAL-COLOR-OK: overlay de collider
-
-/// Kinematic bodies — moved by the scene, not by the solver (a baked body, an
-/// animated platform). Violet: it must not read as either neighbour, because
-/// the whole question the overlay answers here is *who is driving this*. Box2D
-/// and Unity both give the kind its own colour for the same reason.
-const KINEMATIC_RGBA: [f32; 4] = [0.72, 0.55, 1.0, 0.85]; // LITERAL-COLOR-OK: overlay de collider
-
-/// A **sensor** (trigger) with nothing inside it — magenta, a hue no body kind
-/// or the amber joint uses, so a trigger zone never reads as a solid collider.
-/// Dim, because an empty trigger is standing information, not an event.
-const SENSOR_IDLE_RGBA: [f32; 4] = [0.95, 0.45, 0.90, 0.55]; // LITERAL-COLOR-OK: overlay de collider
-
-/// A sensor with a body inside it — the SAME magenta, bright and opaque. The
-/// jump from idle to this is the whole point of a trigger: you see it fire.
-const SENSOR_ACTIVE_RGBA: [f32; 4] = [1.0, 0.55, 0.98, 1.0]; // LITERAL-COLOR-OK: overlay de collider
-
-/// **Uma plataforma jump-through que o player está a ATRAVESSAR agora** — a
-/// mesma família do par idle/active do sensor: o mesmo assunto, outra
-/// intensidade. Apagada, porque o que ela diz é *"eu não estou aqui para ele"*.
-///
-/// ⚠️ **Sem isto a descida é INVISÍVEL**, e é essa a razão de existir: toda a
-/// classe de defeitos desta feature é *a prancha ficou fantasma e ninguém viu*
-/// (ver `bridge::player::retire_drops`). Um estado que muda a colisão da cena
-/// inteira e não se vê é um estado que o artista descobre por acidente.
-const PASSABLE_RGBA: [f32; 4] = [0.55, 0.62, 0.58, 0.40]; // LITERAL-COLOR-OK: overlay de collider
-
-/// **A forma solta** (sem corpo acima; decisão do dono 07/11, ficha `f1_physics_static_shape.md`): aparece, tracejada e
-/// apagada, porque o solver a ignora. Não é cor: é a marca que `tinta_do_contorno` troca por token e tracejado.
-pub(crate) const LOOSE_INK: [f32; 4] = [0.0; 4]; // LITERAL-COLOR-OK: marca, nunca pintada
-const LOOSE_DASH_PX: [f64; 2] = [6.0, 5.0]; // LITERAL-PX-OK: chrome de overlay, tracejado de tela
-
-/// O traço e a cor de um contorno; a forma solta sai pelo token do tema.
-pub(crate) fn tinta_do_contorno(rgba: [f32; 4], theme: Theme) -> (Stroke, ph2d_vector::Color) {
-    if rgba == LOOSE_INK {
-        (
-            Stroke::new(OUTLINE_PX).with_dashes(0.0, LOOSE_DASH_PX),
-            ph2d_editor_core::paint::resolve(ColorToken::Text3, theme),
-        )
-    } else {
-        (Stroke::new(OUTLINE_PX), ph2d_vector::Color::new(rgba))
-    }
-}
-
-/// The colour of one collider outline: a sensor is magenta (bright when a body
-/// is inside it), and any solid collider is coloured by its body kind. A sensor
-/// overrides the kind colour on purpose — "is this a trigger?" is the first
-/// thing you need to know about it, ahead of who moves it.
-fn outline_rgba(is_sensor: bool, triggered: bool, passable: bool, kind: BodyKind) -> [f32; 4] {
-    if passable {
-        // Antes do sensor de propósito: *"isto não é sólido para ele agora"* é o
-        // fato mais forte que se pode dizer de uma forma, e uma plataforma
-        // one-way nunca é sensor (as duas metades são mutuamente exclusivas —
-        // W-Area).
-        PASSABLE_RGBA
-    } else if is_sensor {
-        if triggered {
-            SENSOR_ACTIVE_RGBA
-        } else {
-            SENSOR_IDLE_RGBA
-        }
-    } else {
-        match kind {
-            BodyKind::Static => STATIC_RGBA,
-            BodyKind::Dynamic => DYNAMIC_RGBA,
-            BodyKind::Kinematic => KINEMATIC_RGBA,
-        }
-    }
-}
+pub use crate::overlay::tinta::{Marca, Tinta, tinta_do_contorno};
 
 /// **What to draw, decided once.** Pure: the toggle and the "is there any
 /// physics here at all" question are answered here and returned as data, not
@@ -144,15 +71,7 @@ fn outline_rgba(is_sensor: bool, triggered: bool, passable: bool, kind: BodyKind
 /// while the bodies are at their AUTHORED rest (before the sim steps): once a
 /// body has moved, its live velocity is no longer the authored one, so the
 /// caller passes `false` while the clock is running.
-/// **De quem é esta forma** — o `BodyKind` que a colore.
-///
-/// Dela mesma quando a entidade É um corpo; senão do corpo ancestral mais
-/// próximo, que é o que faz de uma PEÇA (W-Compound) uma forma a mais do dono e
-/// não um objeto solto. `None` quando não há corpo nenhum acima: a forma solta
-/// ([`LOOSE_INK`]).
-///
-/// ⚠️ **DELEGA** (W-PartFace): o walk vive em `ph2d_physics_ecs::governing_kind`,
-/// ao lado da regra que a PONTE usa para pendurar a peça.
+/// De quem é esta forma: o corpo dela ou o ancestral mais próximo (`governing_kind`); `None` = solta.
 use ph2d_physics_ecs::governing_kind as owning_kind;
 
 pub fn outlines(
@@ -163,15 +82,13 @@ pub fn outlines(
     ghost: bool,
     camera: &Camera2d,
     window: WindowSize,
-) -> Vec<(BezPath, [f32; 4])> {
+) -> Vec<(BezPath, Tinta)> {
     if !show {
         return Vec::new();
     }
     // ⚠️ **`&Collider` sem `&RigidBody`** (W-Compound): um corpo composto tem mais
     // de uma forma, e as extras são FILHOS que carregam só o collider. Pedir os
-    // dois componentes aqui — como esta query pedia — deixava toda peça de todo
-    // corpo composto **invisível**, que é exatamente o que o contorno existe para
-    // não deixar acontecer (um collider é invisível e um sprite é um quad).
+    // dois componentes aqui — como esta query pedia — deixava toda peça de todo (…)
     let mut q = sim.world_mut().query::<(
         ph2d_ecs::Entity,
         &Collider,
@@ -180,15 +97,7 @@ pub fn outlines(
     let world = sim.world();
     // ⚠️ WORLD, never the raw `Transform`. The outline annotates a SPRITE, and
     // the sprite is drawn from the composed chain — so an outline placed at the
-    // entity's LOCAL pose lands a full parent-offset away from the thing it is
-    // supposed to be describing. Under a rig at x = -3 every collider drew at
-    // x = 0 instead, so all of them piled up in the middle of the scene, far
-    // from their art. That shipped, and it is what Enio saw
-    // (`docs/Physics/BUGS_physics.md` #2 — the overlay was a SIXTH reader of
-    // "where is this body", missed when the bridge's five were converted).
-    //
-    // One scratch buffer for the whole pass, so the chain walk allocates once
-    // rather than once per body.
+    // entity's LOCAL pose lands a full parent-offset away from the thing it is (…)
     let mut chain = Vec::new();
     let mut out = Vec::new();
     for (e, col, one_way) in q.iter(world) {
@@ -201,10 +110,7 @@ pub fn outlines(
         };
         // The collider offset, placed exactly where the solver puts it. The
         // bridge folds the body's SIGNED scale into the offset (a flip mirrors it)
-        // and rapier rotates the result with the body; the overlay does the same
-        // so the wireframe sits on the collider, not the sprite centre. Reading
-        // `col.offset` any other way here is how the outline and the solver would
-        // come to disagree about WHERE the collider is.
+        // and rapier rotates the result with the body; the overlay does the same (…)
         let (ox, oy) = (col.offset[0] * t.scale.x, col.offset[1] * t.scale.y);
         let (sin_r, cos_r) = t.rotation.sin_cos();
         let (wox, woy) = (ox * cos_r - oy * sin_r, ox * sin_r + oy * cos_r);
@@ -219,20 +125,19 @@ pub fn outlines(
             camera,
             window,
         );
-        // Sem corpo acima o solver não a vê: outra tinta, e nenhuma anotação de corpo.
-        let Some(kind) = kind else {
-            out.push((path, LOOSE_INK));
-            continue;
-        };
         out.push((
             path,
-            outline_rgba(
-                col.is_sensor,
+            crate::overlay::tinta::marca(
+                col,
+                kind.is_some(),
                 triggered.contains(&e),
                 ghost && one_way.is_some(),
-                kind,
             ),
         ));
+        // Sem corpo acima o solver não a vê: nenhuma anotação de corpo.
+        if kind.is_none() {
+            continue;
+        }
         // The armed launch, when the bodies are at rest (so `t` is the authored
         // position the arrow springs from). Absent component = no arrow.
         if show_velocity
@@ -240,22 +145,11 @@ pub fn outlines(
             && let Some(arrow) =
                 velocity_arrow(t.translation.x, t.translation.y, iv.linvel, camera, window)
         {
-            out.push((arrow, VELOCITY_RGBA));
+            out.push((arrow, Tinta::Fixa(VELOCITY_RGBA)));
         }
         // The force zone's push — WHICH WAY DOES THIS BLOW, and how hard. A zone is a
         // sensor, so it is already magenta; the arrow is what makes it a *directed*
         // area rather than a region that merely notices things.
-        //
-        // Unlike the launch above it is drawn whether or not the clock is running: a
-        // force is a property of the AREA, authored once, and it does not stop being
-        // true because the simulation started (the launch arrow is hidden while
-        // playing precisely because it stops being true the moment the body moves).
-        //
-        // ⚠️ The force is authored in the ZONE's frame, so the arrow is drawn through
-        // `zone_force_world_at` — the SAME door the solver's substep asks (re-exported
-        // for exactly this). Rotating `a.force` here with a second copy of the rule
-        // would draw a wind that does not blow: the arrow is the only place a person
-        // ever reads this direction, and a screenshot is not something a gate reads.
         if show
             && let Some(a) = world.get::<ph2d_physics_ecs::AreaEffector>(e)
             && let Some(arrow) = effector_arrow(
@@ -277,15 +171,11 @@ pub fn outlines(
                 window,
             )
         {
-            out.push((arrow, EFFECTOR_RGBA));
+            out.push((arrow, Tinta::Fixa(EFFECTOR_RGBA)));
         }
         // A ESTEIRA desta superfície — PARA QUE LADO ELA CORRE (W-Surface).
         //
         // ⚠️ A tangente e a régua moram no `belt_arrow` — ver o doc dele.
-        //
-        // ⚠️ **Desenhada com o relógio a andar também**, como a do campo: uma
-        // correia é propriedade da SUPERFÍCIE, autorada uma vez, e não deixa de
-        // ser verdade porque a simulação começou.
         if show
             && let Some(surf) = world.get::<ph2d_physics_ecs::WalkSurface>(e)
             && let Some(arrow) = belt_arrow(
@@ -297,7 +187,7 @@ pub fn outlines(
                 window,
             )
         {
-            out.push((arrow, BELT_RGBA));
+            out.push((arrow, Tinta::Fixa(BELT_RGBA)));
         }
         // The torque zone's spin — WHICH WAY DOES THIS TURN. The rotational sibling of the
         // force arrow, drawn for the same reason and under the same rule (authored, so it
@@ -316,22 +206,11 @@ pub fn outlines(
                 window,
             )
         {
-            out.push((glyph, TORQUE_RGBA));
+            out.push((glyph, Tinta::Fixa(TORQUE_RGBA)));
         }
         // E o ANEL DO FALLOFF — a curva de nível de meio caminho, quando o empurrão desta
         // zona desvanece para a borda. Sem ele o falloff é o único número do modelo de
-        // área que não deixa marca nenhuma na tela: a seta continua do mesmo tamanho (ela
-        // desenha a força AUTORADA, que é a do centro) e a diferença só aparece nos corpos
-        // se moverem de formas diferentes.
-        //
-        // ⚠️ Desenhado só quando há o que atenuar — um falloff sobre uma zona que não
-        // empurra nem gira descreveria o desvanecimento de nada. Mesma regra das duas
-        // anotações acima: cada uma aparece exatamente quando a sua grandeza existe.
-        //
-        // ⚠️ A metade sai pela MESMA `scaled_shape` do contorno, com a escala do corpo
-        // reduzida à metade — não por uma segunda função que encolhe formas. Halvar as
-        // duas componentes preserva a igualdade `|sx| == |sy|` que decide círculo-ou-elipse
-        // lá dentro, então o fantasma é da mesma FAMÍLIA que o contorno, sempre.
+        // área que não deixa marca nenhuma na tela: a seta continua do mesmo tamanho (ela (…)
         if show
             && let Some(f) = world.get::<ph2d_physics_ecs::AreaFalloff>(e)
             && f.0 > 0.0
@@ -349,7 +228,7 @@ pub fn outlines(
                     camera,
                     window,
                 ),
-                FALLOFF_RGBA,
+                Tinta::Fixa(FALLOFF_RGBA),
             ));
         }
     }
@@ -462,11 +341,7 @@ pub fn draw(
     }
     // Joints ON TOP of the colliders: the link runs between two bodies and
     // would otherwise be hidden by whichever outline was drawn last.
-    //
-    // W-J1: uma cor por FATO (glifo · posse · limite · deformação), então o
-    // laço percorre pares — a mesma forma que o `outlines` já usa.
-    // A BANDA do gesto de criar, ANTES de tudo e SEM o gate de `show`: ela é o
-    // feedback de algo que o artista está fazendo agora.
+    // (…)
     if let Some(band) = crate::overlay::gesture::draw_band(join_band, camera, window) {
         vector_scene.inner_mut().stroke(
             &Stroke::new(OUTLINE_PX),
@@ -567,9 +442,7 @@ const READOUT_BOX_H_PX: f32 = 14.0; // LITERAL-PX-OK: chrome de overlay
 
 // ⚠️ `pub(crate)` e não privado: as três funções de fixture (a câmera, a janela
 // e a leitura de pontos) têm agora um QUARTO consumidor — os gates do desenho
-// dos sensores (`W-Probes`), que moram num módulo IRMÃO. Duas câmeras fariam as
-// duas famílias de gate medir projeções diferentes, e o dia em que uma delas
-// mudasse a outra ficaria verde sobre outra premissa.
+// dos sensores (`W-Probes`), que moram num módulo IRMÃO. Duas câmeras fariam as (…)
 #[cfg(test)]
 #[path = "tests.rs"]
 pub mod tests;

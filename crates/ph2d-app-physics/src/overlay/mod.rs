@@ -20,3 +20,4 @@ pub mod point_gizmo;
 pub mod probes;
 pub mod pulley;
 pub mod shapes;
+pub mod tinta;

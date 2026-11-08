@@ -66,12 +66,7 @@ pub fn pulley_marks(
             ring_px(centre, r, glyph);
             // **O SEGUNDO diâmetro do eixo** (W4). Sem ele o tambor diferencial
             // seria indistinguível de uma roldana comum, e a vantagem mecânica —
-            // que é o QUOCIENTE das duas circunferências — não teria de onde ser
-            // lida: o artista veria um número na §13 e um círculo na tela.
-            //
-            // Desenhado só quando difere, porque numa roldana comum o segundo
-            // anel cairia exatamente sobre o primeiro: dois traços no mesmo lugar
-            // são um traço mais grosso, e isso diria *diferencial* onde não há um.
+            // que é o QUOCIENTE das duas circunferências — não teria de onde ser (…)
             let r_out = w.radius_out();
             if r_out != w.radius {
                 let rim_out = screen_of(
@@ -96,12 +91,7 @@ pub fn pulley_marks(
     }
     // A corda. `route` devolve os trechos entre TANGENTES; entre o trecho que
     // chega e o que sai, a corda **abraça** a roda, e esse pedaço é um arco.
-    //
-    // ⚠️ Ligar os dois pontos de tangência por uma reta é o que a v1 fazia, com
-    // um comentário afirmando que *já mostra o que importa* — e é falso na tela:
-    // uma corda entre dois pontos de um círculo é uma CORDA, que atravessa o
-    // disco. Nenhum número mudava (o comprimento no solver sempre incluiu o
-    // arco), então o defeito só existia no desenho, que é onde o artista olha.
+    // (…)
     let mut segs = Vec::new();
     let ends = (v.anchor_a, v.anchor_b);
     if rope_route::route(ends.0, ends.1, wheels, &mut segs).is_some() {
@@ -122,13 +112,6 @@ pub fn pulley_marks(
         // Rota degenerada — a mesma recusa do solver, e ali a corda de fato não
         // está segurando. Uma linha reta diz *há um vínculo aqui* sem afirmar
         // uma geometria que não existe.
-        //
-        // ⚠️ **E ela sai na cor do NÃO-SEGURA** (o `false` abaixo). Uma reta âmbar
-        // é exatamente o desenho de uma CORDA que funciona, então a única coisa na
-        // tela era a carga caindo — medido: −1,237 m contra −0,460 do controle, sem
-        // erro, sem aviso. O vermelho já está definido no vocabulário desta linha
-        // como *isto não está segurando por acidente*, que é precisamente o caso:
-        // ninguém desarmou nada, a geometria ficou impossível.
         span.move_to(a);
         span.line_to(b);
         false

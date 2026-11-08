@@ -139,33 +139,7 @@ pub fn joint_marks(
         let b = screen_of(camera, window, v.anchor_b);
         // **Um joint ROMPIDO desenha em vermelho e SEM envelope** (W-J7). Ele
         // continua na cena, com tudo que o artista autorou — o que parou foi a
-        // restrição —, então a geometria fica e só a cor muda; mas o arco de
-        // limite, o anel de comprimento e a seta do motor são *o que o joint
-        // IMPÕE*, e nada disso está mais em vigor. Desenhá-los descreveria uma
-        // regra que o solver deixou de aplicar, que é exatamente a divergência
-        // desenho×solver que o P2 do plano existe para proibir.
-        //
-        // **Um joint DESLIGADO desenha apagado** (W-J8) — a mesma figura, a
-        // mesma geometria, a mesma cor, com um terço da tinta. Ele não rompeu e
-        // não está errado: o artista o desarmou, e o desenho tem de dizer
-        // *presente, não em vigor* sem tomar emprestado o vermelho, que já
-        // significa *isto não está segurando por acidente*.
-        //
-        // ⚠️ Um joint desligado **nunca é `broken`** — a `JointView` separa as
-        // duas perguntas na fonte, porque as duas escrevem a MESMA flag do
-        // rapier; sem essa separação desarmar um joint o pintaria vermelho, com
-        // estouro de ruptura.
-        //
-        // ⚠️ **E uma corda cuja ROTA não resolve veste o mesmo vermelho** — ela
-        // também *não está segurando por acidente*. O `acting` sai da MESMA
-        // chamada que desenha a corda (`pulley_marks` já computa a rota para achar
-        // o caminho), então cor e desenho não podem discordar. É por isso que o
-        // `kind_marks` roda ANTES da escolha de cor, e não depois: a ordem em que
-        // as marcas são EMPILHADAS não muda (posse embaixo, span e glifo em cima).
-        //
-        // Distinguir do rompido é o que o ESTOURO faz: um joint que partiu ganha o
-        // `break_burst`; uma rota impossível não, e a corda dela sai reta em vez de
-        // roteada. Mesma cor, duas figuras.
+        // restrição —, então a geometria fica e só a cor muda; mas o arco de (…)
         let (span, glyph, acting) = kind_marks(v, wheels, spins, a, b, g_screen, camera, window);
         if !acting {
             not_acting.push(v.entity);
@@ -193,25 +167,7 @@ pub fn joint_marks(
         }
         // O ENVELOPE AUTORADO, na banda apagada: até onde a dobradiça pode ir,
         // e o comprimento que a mola/corda nomeia. Não são o joint — são o que
-        // o artista permitiu a ele, e por isso lêem como fundo do glifo (a
-        // mesma distinção que separa a seta de força do anel do falloff).
-        // ⚠️ **The arc is the envelope of an ANGULAR range only.** A Slider is
-        // limited too, and its range is a stroke in metres — drawn by
-        // `slider_rail`'s end-of-travel ticks, not by a circle at 0.5 radians.
-        // Without this question a rail painted BOTH, and the arc it painted
-        // described a hinge that does not exist.
-        //
-        // ⚠️ **`dim`/`main`, não as constantes acesas** (W-J8): o envelope de um
-        // joint DESLIGADO tem de apagar junto com ele, senão a dobradiça some e o
-        // arco dela fica brilhando sozinho. E ele É desenhado num joint
-        // desligado — ao contrário de um rompido, que sai por `continue` acima —
-        // porque desligar é AUTORIA: o artista continua ajustando o alcance, e
-        // esconder o que ele está ajustando é o oposto do que o botão promete.
-        // ⚠️ **`has_limits` E `!limits_in_metres`, as duas portas.** A segunda
-        // sempre esteve aqui; a primeira era herdada da PONTE, que só põe
-        // `Some` num tipo limitável — uma premissa correta e não declarada, do
-        // mesmo formato da que o anel de comprimento acabou de pagar. O desenho
-        // responde por si.
+        // o artista permitiu a ele, e por isso lêem como fundo do glifo (a (…)
         if let Some(arc) = v
             .limits
             .filter(|_| v.kind.has_limits() && !v.kind.limits_in_metres())
@@ -221,15 +177,7 @@ pub fn joint_marks(
         }
         // ⚠️ **`length_is_a_radius`, não `length.is_some()`** — e a diferença é
         // um bug que chegou à tela. Uma Spring/Rope/Rod nomeia um comprimento
-        // que É uma distância a partir da âncora, e o anel o desenha. Uma POLIA
-        // nomeia a corda INTEIRA (a soma dos dois ramos, que passam por
-        // roldanas em outro lugar): o mesmo campo, medindo outra coisa. Pintado
-        // como raio, ele vira um círculo gigante em volta da âncora,
-        // descrevendo uma distância que não existe na cena.
-        //
-        // A porta existia e estava aplicada a UM consumidor (o handle
-        // arrastável do `point_gizmo`); esta era a segunda cópia da pergunta, e
-        // duas cópias divergem — é a irmã exata do bug do trilho de 26/07.
+        // que É uma distância a partir da âncora, e o anel o desenha. Uma POLIA (…)
         if let Some(len) = v.length.filter(|_| v.kind.length_is_a_radius()) {
             out.push((length_ring(camera, window, v.anchor_a, len), dim));
         }
@@ -318,9 +266,7 @@ fn kind_marks(
     let mut glyph = BezPath::new();
     // **Este tipo está de fato AGINDO?** `true` para todos menos a polia, e não é
     // preguiça: os outros seis são joints do rapier, que os instala ou não — se a
-    // view existe, o solver os tem. Uma corda de polia é o único vínculo cuja
-    // geometria pode ficar impossível com o joint presente (a rota não resolve, o
-    // passe a pula), e é por isso que só ela responde `false`.
+    // view existe, o solver os tem. Uma corda de polia é o único vínculo cuja (…)
     let mut acting = true;
     match v.kind {
         // Pin e Weld COMPARTILHAM um ponto: o glifo mora na âncora, e o span
@@ -429,11 +375,7 @@ fn ownership_lines(
     if v.body_b.is_none() {
         // ⚠️ **`body_b`, não uma comparação de posições.** A ponte publica `None`
         // exatamente para isto (o campo virou `Option` no W-JointWorld *"para
-        // esquecer o caso do mundo ficar impossível por TIPO"*), e o teste de
-        // posição que ele substitui erraria: a ponte põe `centre_b == anchor_b`
-        // num pino de mundo, mas um joint entre dois corpos cujo B esteja
-        // centrado na âncora satisfaz a MESMA igualdade e ganharia um chão que
-        // não existe.
+        // esquecer o caso do mundo ficar impossível por TIPO"*), e o teste de (…)
         p.extend(ground_hatch(b, g_screen).iter());
         return p;
     }

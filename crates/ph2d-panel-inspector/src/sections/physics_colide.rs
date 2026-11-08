@@ -83,14 +83,19 @@ pub(crate) fn curto_se_a_fila_nao_cabe(
 /// O título dobrado: a camada e, com corpo acima, os quadros acesos, os mesmos que a fila mostra.
 #[must_use]
 pub(super) fn resumo(info: &InspectorPhysicsInfo) -> String {
+    resumo_com(info, camadas::rotulo)
+}
+
+/// O resumo com os nomes de `nome_de` (cortados no título; inteiros na dica, onda 9e).
+fn resumo_com(info: &InspectorPhysicsInfo, nome_de: fn(usize) -> String) -> String {
     let camada = usize::from(info.layer);
-    let nome = camadas::rotulo(camada);
+    let nome = nome_de(camada);
     if solta(info) {
         return nome;
     }
     let fila: Vec<String> = da_fila(camada)
         .filter(|&j| camadas::colide(camada, j))
-        .map(camadas::rotulo)
+        .map(nome_de)
         .collect();
     let alvo = if fila.is_empty() {
         tr("card.insp.phys.none").to_string()
@@ -248,7 +253,8 @@ fn opcoes(camada: u8) -> Vec<DropdownOption<u8>> {
         .iter()
         .enumerate()
         .filter(|&(i, _)| camadas::visivel(i) || usize::from(camada) == i)
-        .map(|(i, &id)| DropdownOption::new(id, i as u8, camadas::rotulo(i)))
+        // A lista do seletor mostra o nome INTEIRO (a largura dela cresce com a opção mais longa; onda 9e).
+        .map(|(i, &id)| DropdownOption::new(id, i as u8, camadas::rotulo_inteiro(i)))
         .collect()
 }
 
@@ -397,6 +403,18 @@ pub(super) fn colide_com(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo)
 
 /// As dicas dos quadros: dizem, com os nomes de hoje, o que o próximo clique faz.
 pub(crate) fn prepara_as_dicas(store: &mut WidgetStore, camada: usize) {
+    // O título dobrado corta os nomes: a dica dele diz o resumo com os nomes inteiros (onda 9e).
+    if let Some(info) = crate::state::current_inspector_physics() {
+        let inteiro = resumo_com(&info, camadas::rotulo_inteiro);
+        let dica = if inteiro == resumo(&info) {
+            String::new()
+        } else {
+            inteiro
+        };
+        if store.tooltip_for(ids::CARD_PHYS_LAYERS).unwrap_or_default() != dica {
+            store.set_tooltip(ids::CARD_PHYS_LAYERS, dica);
+        }
+    }
     let este = camadas::rotulo_inteiro(camada);
     for j in da_fila(camada) {
         let aceso = camadas::colide(camada, j);

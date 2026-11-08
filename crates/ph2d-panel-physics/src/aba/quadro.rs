@@ -376,6 +376,8 @@ impl Quadro {
                     .map(|&n| (n, rotulos[n].clone(), crate::state::layer_count(n)))
                     .collect(),
                 titulo: (titulo.clone(), pares_da_camada.clone()),
+                frase_da_camada: (visiveis.len() <= 1)
+                    .then(|| tr("card.physics.tab_only_default").to_owned()),
             };
         });
     }

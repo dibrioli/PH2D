@@ -153,6 +153,8 @@ pub struct Lente {
     pub lista: Vec<(usize, String, u32)>,
     /// A linha de título da camada aberta.
     pub titulo: (String, String),
+    /// Projeto novo: a frase que o cartão de baixo mostra no lugar de «Bumps into» (onda 9e).
+    pub frase_da_camada: Option<String>,
 }
 
 /// A lente do último `paint`.
@@ -202,12 +204,16 @@ pub fn cor_da_camada(n: usize) -> ph2d_tokens::ColorToken {
 }
 
 /// O par da frase do pé, em negrito: «Player Shots × Player:».
+/// Com os nomes INTEIROS (onda 9e): o pé e o título têm a largura da grade, e o corte «…» fica para as bordas.
 #[must_use]
 pub fn par_do_pe(sob: Option<(usize, usize)>, nomes: &LayerNames) -> Option<String> {
     sob.map(|(a, b)| {
         tr_with(
             "card.physics.tab_pair",
-            &[("a", &rotulo(nomes, a)), ("b", &rotulo(nomes, b))],
+            &[
+                ("a", &nome_inteiro(nomes, a)),
+                ("b", &nome_inteiro(nomes, b)),
+            ],
         )
     })
 }
@@ -304,9 +310,6 @@ pub fn frase_do_pe(
     if nova.is_some_and(|n| visiveis.contains(&n)) {
         return tr("card.physics.tab_new_layer").to_owned();
     }
-    if visiveis.len() <= 1 {
-        return tr("card.physics.tab_only_default").to_owned();
-    }
     let (n, off) = pares(visiveis, m);
     tr_with(
         "card.physics.tab_summary",
@@ -328,7 +331,10 @@ pub fn titulo_da_camada(
     (
         tr_with(
             "card.physics.tab_layer_title",
-            &[("name", &rotulo(nomes, n)), ("n", &objetos.to_string())],
+            &[
+                ("name", &nome_inteiro(nomes, n)),
+                ("n", &objetos.to_string()),
+            ],
         ),
         tr_with(
             "card.physics.tab_layer_pairs",

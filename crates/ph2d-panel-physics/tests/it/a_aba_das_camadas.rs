@@ -567,7 +567,19 @@ fn default_e_layer_n_e_nao_grava_nomes() {
     ph2d_panel_physics::set_visible_layers(1);
     abre(&mut mesa);
     assert_eq!(aba::lente().lista[0].1, "Default");
-    assert!(aba::lente().pe.starts_with("Everything is on Default"));
+    // Onda 9e (maquete B estado 4): a frase mora no cartão de baixo, no lugar de «Bumps into».
+    let frase = aba::lente()
+        .frase_da_camada
+        .expect("o cartão de baixo ensina");
+    assert!(frase.starts_with("Everything is on Default"));
+    assert!(
+        !aba::lente().pe.starts_with("Everything"),
+        "o pé já não a repete"
+    );
+    assert!(
+        mesa.rect(ids::PHYSICS_LAYER_BUMPS[0]).is_none(),
+        "sem caixinhas «Bumps into»"
+    );
     aba::fecha();
 }
 

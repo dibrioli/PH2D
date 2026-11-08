@@ -253,3 +253,28 @@ fn cada_quadro_sublinha_o_nome_na_cor_da_sua_camada() {
     assert_eq!(pick.camada, 3, "o seletor sublinha a camada do objecto");
     fim();
 }
+
+/// ⭐ Onda 9e: um nome comprido corta-se no título dobrado, e a dica dele diz o resumo com o nome INTEIRO.
+#[test]
+fn o_titulo_dobrado_diz_o_nome_inteiro_na_dica() {
+    use ph2d_panel_inspector::ids::CARD_PHYS_LAYERS;
+    let longo = "Flying Enemies That Only Hit The Players";
+    let mut nomes: [String; 32] = Default::default();
+    nomes[0] = "Ground".into();
+    nomes[3] = longo.into();
+    let mut linhas = [0u32; 32];
+    linhas[3] = 1;
+    linhas[0] = 1 << 3;
+    set_current(nomes, linhas, 1 | 1 << 3);
+    let (mut host, mut st) = cena(na_camada_3(with_body()), [1.0, 1.0]);
+    let _ = pinta(&mut host, &mut st);
+    let dica = host
+        .store()
+        .tooltip_for(CARD_PHYS_LAYERS)
+        .map(str::to_owned);
+    assert!(
+        dica.as_deref().is_some_and(|d| d.contains(longo)),
+        "a dica do título não tem o nome inteiro: {dica:?}"
+    );
+    fim();
+}

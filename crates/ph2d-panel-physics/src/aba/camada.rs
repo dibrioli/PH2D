@@ -21,6 +21,8 @@ const LINHAS_DE_OBJETOS: usize = 3;
 #[derive(Clone, Debug, Default)]
 pub(super) struct Camada {
     pub(super) bumps_y: f32,
+    /// Projeto novo (só a Default à vista; maquete B estado 4): a frase que ensina, no lugar de «Bumps into».
+    pub(super) so_default: bool,
     /// (camada, caixinha).
     pub(super) caixas: Vec<(usize, Rect)>,
     pub(super) objetos_y: f32,
@@ -48,14 +50,22 @@ impl Camada {
         let caixa = TypeToken::Sm.px();
         let mut y = pad + row; // a linha de título
         let bumps_y = y;
-        y += row;
-        let larg: Vec<f32> = visiveis
-            .iter()
-            .map(|&n| caixa + Spacing::Md.px() + Spacing::Sm.px() + largura(&rotulos[n]))
-            .collect();
-        let (rs, linhas) = fila(pad, y, dentro, &larg);
-        let caixas = visiveis.iter().copied().zip(rs).collect();
-        y += linhas as f32 * (row + Spacing::Xs.px()) + Spacing::Sm.px();
+        let so_default = visiveis.len() <= 1;
+        let caixas = if so_default {
+            // A frase quebra na largura do cartão: uma linha por largura medida, mais uma de folga.
+            let linhas = (largura(tr("card.physics.tab_only_default")) / dentro.max(1.0)).ceil();
+            y += (linhas + 1.0) * row;
+            Vec::new()
+        } else {
+            y += row;
+            let larg: Vec<f32> = visiveis
+                .iter()
+                .map(|&n| caixa + Spacing::Md.px() + Spacing::Sm.px() + largura(&rotulos[n]))
+                .collect();
+            let (rs, linhas) = fila(pad, y, dentro, &larg);
+            y += linhas as f32 * (row + Spacing::Xs.px()) + Spacing::Sm.px();
+            visiveis.iter().copied().zip(rs).collect()
+        };
         let objetos_y = y;
         y += row;
         let botao =
@@ -106,6 +116,7 @@ impl Camada {
         y += linhas as f32 * (row + Spacing::Xs.px());
         Self {
             bumps_y,
+            so_default,
             caixas,
             objetos_y,
             objetos,
@@ -172,7 +183,20 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro) {
                 tom!(ColorToken::Text3, theme),
             );
         };
-        rotulo(texto, cena, tr("card.physics.tab_bumps_into"), c.bumps_y);
+        if c.so_default {
+            ph2d_editor_core::paint::paint_text_block(
+                texto,
+                cena,
+                tr("card.physics.tab_only_default"),
+                x,
+                c.bumps_y + (ROW_H_PX - font) * 0.5,
+                font,
+                w,
+                tom!(ColorToken::Text2, theme),
+            );
+        } else {
+            rotulo(texto, cena, tr("card.physics.tab_bumps_into"), c.bumps_y);
+        }
         for (&(n, r), &hover) in c.caixas.iter().zip(&caixas_acesas) {
             let on = q.matriz.collides(q.aberta_n, n);
             let fundo = if hover {

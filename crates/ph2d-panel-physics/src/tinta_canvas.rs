@@ -35,7 +35,17 @@ pub enum Tinta {
         marca: Marca,
         corpo: Option<BodyKind>,
     },
+    /// ⭐ Uma linha de sensor (o traço fino de [`SONDA_PX`]). Com `camada` (o `RaySensor` do objecto, emenda 4, dono
+    /// 08/11) a matiz é a da camada e o estado fica na opacidade `rgba[3]` (parado · nada · viu), com a sombra do
+    /// contorno; sem ela (os sensores do personagem, o caminho) é a cor fixa `rgba`, sem sombra.
+    Sonda {
+        camada: Option<u8>,
+        rgba: [f32; 4],
+    },
 }
+
+/// A espessura de uma linha de sensor, mais fina que o contorno (`OUTLINE_PX` da `ph2d-app-physics`).
+pub const SONDA_PX: f64 = 1.25; // LITERAL-PX-OK: chrome de overlay
 
 impl PartialEq<[f32; 4]> for Tinta {
     fn eq(&self, rgba: &[f32; 4]) -> bool {
@@ -103,6 +113,15 @@ pub fn tinta_do_contorno(tinta: Tinta, theme: Theme) -> (Stroke, Color) {
             marca,
             corpo,
         } => (camada, marca, corpo),
+        Tinta::Sonda { camada, rgba } => {
+            let cor = camada.map_or(Color::new(rgba), |j| {
+                let mut c =
+                    ph2d_editor_core::paint::resolve(ColorToken::layer(usize::from(j)), theme);
+                c.components[3] *= rgba[3];
+                c
+            });
+            return (Stroke::new(SONDA_PX), cor);
+        }
     };
     let mut c = ph2d_editor_core::paint::resolve(ColorToken::layer(usize::from(camada)), theme);
     let alfa = match marca {
@@ -128,7 +147,7 @@ const ALFA_SOMBRA: f32 = 0.75; // LITERAL-PX-OK: opacidade da sombra do contorno
 /// `BgScrim` (escura em todos os temas) sob a opacidade da marca. `None` nas anotações de cor fixa.
 #[must_use]
 pub fn sombra_do_contorno(tinta: Tinta, theme: Theme) -> Option<(Stroke, Color)> {
-    if matches!(tinta, Tinta::Fixa(_)) {
+    if matches!(tinta, Tinta::Fixa(_) | Tinta::Sonda { camada: None, .. }) {
         return None;
     }
     let (traco, cor) = tinta_do_contorno(tinta, theme);

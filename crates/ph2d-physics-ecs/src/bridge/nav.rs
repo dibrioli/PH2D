@@ -507,6 +507,7 @@ impl PhysicsBridge {
                         hit: None,
                         skin: 0.0,
                     },
+                    layer: None,
                 });
             }
         }

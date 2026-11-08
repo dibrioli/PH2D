@@ -313,14 +313,18 @@ pub fn draw(
     // descrevem para onde o personagem olha, então têm de ficar por cima da arte
     // que atravessam — e por baixo das cruzes, que marcam um evento e são as
     // menores marcas da tela.
-    for (path, rgba) in crate::overlay::probes::probe_marks(show, probes, sim, camera, window) {
-        vector_scene.inner_mut().stroke(
-            &Stroke::new(crate::overlay::probes::PROBE_PX),
-            Affine::IDENTITY,
-            &Brush::Solid(Color::new(rgba)),
-            None,
-            &path,
-        );
+    // O raio do objecto veste a cor da camada com a sombra por baixo, como o contorno (emenda 4).
+    let sondas = crate::overlay::probes::probe_marks(show, probes, sim, camera, window);
+    let sombras = sondas
+        .iter()
+        .filter_map(|(p, t)| Some((p, sombra_do_contorno(*t, theme)?)));
+    let cores = sondas
+        .iter()
+        .map(|(p, t)| (p, tinta_do_contorno(*t, theme)));
+    for (path, (traco, cor)) in sombras.chain(cores) {
+        vector_scene
+            .inner_mut()
+            .stroke(&traco, Affine::IDENTITY, &Brush::Solid(cor), None, path);
     }
     // Contacts ON TOP of everything: a contact is the smallest mark on screen (a few
     // pixels) and it sits exactly ON the outlines of the two bodies that meet, so any

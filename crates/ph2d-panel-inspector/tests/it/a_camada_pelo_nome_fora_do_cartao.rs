@@ -209,3 +209,107 @@ fn o_ray_sensor_escolhe_a_camada_pela_lista_e_ve_pela_matriz() {
         fim();
     }
 }
+
+/// Emenda 4 (dono 08/11): o Ray Sensor tem «Rename layers…» e «Open in tab…» no lugar dos do collider (abaixo de
+/// Layer, acima de «Sees»), com ids próprios: o objecto pode ter collider E raio, e os dois cartões à vista. Rename
+/// abre os campos com o nome todo selecionado (só num cartão de cada vez) e Enter grava UM `LayerRename`; Open in
+/// tab abre a aba na camada do RAIO.
+///
+/// Mutações: Open in tab com a camada do collider; o Rename do raio sem fechar o do collider.
+#[test]
+fn o_ray_sensor_renomeia_e_abre_a_aba_pelos_botoes_do_collider() {
+    use crate::o_cartao_da_fisica::{achado, cena, clica, pinta, sai};
+    use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
+    use ph2d_editor_core::panel::PanelHostInternal as _;
+    mundo();
+    let mut corpo = with_body();
+    corpo.layer = 2;
+    let (mut host, mut st) = cena(corpo, [1.0, 1.0]);
+    set_current_inspector_ray(Some(olho_na(20)));
+    host.store_mut()
+        .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_RAY_SECTION, false);
+    let r = pinta(&mut host, &mut st);
+    let y = |id| achado(&r, id).unwrap_or_else(|| panic!("{id:?} pintado")).y;
+    assert!(
+        achado(&r, INSP_PHYS_LAYER_RENAME).is_some(),
+        "o do collider"
+    );
+    let rename = y(INSP_RAY_LAYER_RENAME);
+    assert_eq!(rename, y(INSP_RAY_EDIT_MATRIX), "os dois na mesma linha");
+    assert!(
+        y(INSP_RAY_LAYER) < rename && rename < y(INSP_RAY_SEES[0]),
+        "abaixo de Layer, acima de «Sees»"
+    );
+    let aba = clica(
+        &mut host,
+        &mut st,
+        achado(&r, INSP_RAY_EDIT_MATRIX).unwrap(),
+    );
+    assert_eq!(
+        aba,
+        [EditorAction::LayerMatrixOpen { layer: 20 }],
+        "a camada do raio"
+    );
+    // O collider em Rename; o do raio fecha-o e abre o seu, com o nome da 20 todo selecionado.
+    let _ = clica(
+        &mut host,
+        &mut st,
+        achado(&r, INSP_PHYS_LAYER_RENAME).unwrap(),
+    );
+    let r = pinta(&mut host, &mut st);
+    let _ = clica(
+        &mut host,
+        &mut st,
+        achado(&r, INSP_RAY_LAYER_RENAME).unwrap(),
+    );
+    let r = pinta(&mut host, &mut st);
+    assert!(
+        host.store().is_collapsed(INSP_PHYS_LAYER_RENAMING),
+        "um cartão de cada vez"
+    );
+    assert!(
+        achado(&r, INSP_RAY_LAYER_RENAME_DONE).is_some(),
+        "o Done do raio"
+    );
+    assert!(achado(&r, INSP_PHYS_LAYER_RENAME_DONE).is_none());
+    let campo = achado(&r, INSP_PHYS_LAYER_NAMES[20]).expect("o campo da 20");
+    assert!(campo.y > y(INSP_RAY_LAYER), "no cartão do raio");
+    assert_eq!(
+        r.iter()
+            .filter(|(n, q)| *n == INSP_PHYS_LAYER_NAMES[20] && q.w > 0.0)
+            .count(),
+        1,
+        "o campo uma vez só"
+    );
+    assert_eq!(host.store().focus_id(), Some(INSP_PHYS_LAYER_NAMES[20]));
+    match host.store().get(INSP_PHYS_LAYER_NAMES[20]) {
+        Some(InteractiveState::TextInput {
+            text,
+            caret,
+            selection_anchor,
+            ..
+        }) => assert_eq!(
+            (*selection_anchor, *caret),
+            (Some(0), text.len()),
+            "{text:?}"
+        ),
+        outro => panic!("o campo: {outro:?}"),
+    }
+    host.set_text(INSP_PHYS_LAYER_NAMES[20], "Magma");
+    let _ = host.drained_actions();
+    let _ = host.apply_panel_event::<InspectorPanel>(
+        &mut st,
+        WidgetEvent::Submit(INSP_PHYS_LAYER_NAMES[20]),
+    );
+    assert_eq!(
+        host.drained_actions(),
+        [EditorAction::LayerRename {
+            layer: 20,
+            name: "Magma".into()
+        }],
+        "Enter grava UM passo"
+    );
+    set_current_inspector_ray(None);
+    sai();
+    fim();
+}

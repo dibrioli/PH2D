@@ -190,7 +190,7 @@ pub(crate) fn fila_do_rename(camada: usize) -> impl Iterator<Item = usize> {
 }
 
 /// ⭐ O modo Rename: um campo por camada, com o nome INTEIRO; a do objecto na pílula (a mesma da aba).
-fn rename(t: &mut Tinta<'_>, mut y: f32, camada: usize) -> f32 {
+pub(super) fn rename(t: &mut Tinta<'_>, mut y: f32, camada: usize) -> f32 {
     let fila: Vec<usize> = da_fila(camada).collect();
     let rotulos: Vec<String> = fila.iter().map(|j| j.to_string()).collect();
     let refs: Vec<&str> = rotulos.iter().map(String::as_str).collect();

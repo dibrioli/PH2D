@@ -219,8 +219,7 @@ fn corpo(
     );
     cur_y = depois_do_alcance.max(depois_da_camada);
     (t.x, t.w) = (x, w);
-    let sees = tr("panel.inspector.ray.sees");
-    cur_y = super::physics_colide::fila_da_matriz(&mut t, cur_y, quem, usize::from(camada), sees);
+    cur_y = botoes_do_raio(&mut t, cur_y, usize::from(camada));
     // ⚠️ **Os dois NOMES, e vazio = calado** — a regra do `SignalOnHit`, palavra por palavra.
     //
     // ⛔ **Pela porta que já existe** (`anim_rows::text_row`): copiá-la seria a terceira resposta a
@@ -310,4 +309,44 @@ pub(crate) fn paint_ray_section(
         info,
     );
     fold.finish(store, scene, hit_index, cur_y)
+}
+
+/// Os botões do Ray no lugar e idioma dos do collider (emenda 4, dono 08/11), só em cartões como o cartão Collision
+/// Layers; renomeando, os campos de todas as camadas e «Done» tomam o lugar de «Sees».
+fn botoes_do_raio(t: &mut super::physics_cartao::Tinta<'_>, y: f32, camada: usize) -> f32 {
+    let sees = tr("panel.inspector.ray.sees");
+    if !crate::cards::active() {
+        return super::physics_colide::fila_da_matriz(
+            t,
+            y,
+            &super::physics_colide::DO_RAIO,
+            camada,
+            sees,
+        );
+    }
+    if renomeia_o_raio(t.store) {
+        let y = super::physics_colide::rename(t, y, camada);
+        let feito = tr("card.insp.phys.layer_rename_done");
+        let (r, y) = t.botao(crate::ids::INSP_RAY_LAYER_RENAME_DONE, feito, y);
+        t.hit.register(crate::ids::INSP_RAY_LAYER_RENAME_DONE, r);
+        return y;
+    }
+    let y = t.dois_botoes(
+        y,
+        (
+            crate::ids::INSP_RAY_LAYER_RENAME,
+            tr("card.insp.phys.layer_rename"),
+        ),
+        (
+            crate::ids::INSP_RAY_EDIT_MATRIX,
+            tr("card.insp.phys.edit_matrix"),
+        ),
+    );
+    super::physics_colide::fila_da_matriz(t, y, &super::physics_colide::DO_RAIO, camada, sees)
+}
+
+/// O Ray está no modo Rename (só por escolha: o estado nunca semeado é «fechado»).
+#[must_use]
+pub(crate) fn renomeia_o_raio(store: &ph2d_editor_core::interaction::WidgetStore) -> bool {
+    store.collapsed_choice(crate::ids::INSP_RAY_LAYER_RENAMING) == Some(false)
 }

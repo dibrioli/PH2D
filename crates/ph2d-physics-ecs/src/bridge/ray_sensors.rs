@@ -168,19 +168,22 @@ impl PhysicsBridge {
                 // ⭐ **A marca sai do CAST, acerte ele ou não** — ver o cabeçalho. A distância é a
                 // que o motor devolveu; quem a resolve em ENTIDADE é o bloco abaixo, e são duas
                 // perguntas: o desenho responde *onde ele parou* e o painel *o que ele viu*.
-                self.ray_marks.push(ProbeMark::ray(
-                    ProbeKind::Sensor,
-                    raio.origem,
-                    raio.dir,
-                    raio.reach,
-                    achou.map(|h| h.distance),
-                    // ⛔ **Sem `skin`, e a ausência é a lei:** o sensor do personagem nasce no
-                    // CENTRO do corpo porque o `exclude_body` precisa disso, e desenhá-lo dali
-                    // enterraria metade da linha sob o contorno. Aqui a origem é **autorada** — o
-                    // artista escolheu-a, e encolher o desenho esconderia justamente o número que
-                    // ele mexe.
-                    0.0,
-                ));
+                self.ray_marks.push(
+                    ProbeMark::ray(
+                        ProbeKind::Sensor,
+                        raio.origem,
+                        raio.dir,
+                        raio.reach,
+                        achou.map(|h| h.distance),
+                        // ⛔ **Sem `skin`, e a ausência é a lei:** o sensor do personagem nasce no
+                        // CENTRO do corpo porque o `exclude_body` precisa disso, e desenhá-lo dali
+                        // enterraria metade da linha sob o contorno. Aqui a origem é **autorada** — o
+                        // artista escolheu-a, e encolher o desenho esconderia justamente o número que
+                        // ele mexe.
+                        0.0,
+                    )
+                    .na_camada(r.layer),
+                );
                 let Some(h) = achou else {
                     continue;
                 };
@@ -253,13 +256,10 @@ impl PhysicsBridge {
             let Some(raio) = self.raio_em_mundo(world, e, &r) else {
                 continue;
             };
-            self.ray_marks.push(ProbeMark::idle_ray(
-                ProbeKind::Sensor,
-                raio.origem,
-                raio.dir,
-                raio.reach,
-                0.0,
-            ));
+            self.ray_marks.push(
+                ProbeMark::idle_ray(ProbeKind::Sensor, raio.origem, raio.dir, raio.reach, 0.0)
+                    .na_camada(r.layer),
+            );
         }
     }
 

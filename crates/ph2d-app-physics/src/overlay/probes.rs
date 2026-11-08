@@ -1,52 +1,12 @@
-//! **OS SENSORES DO PLAYER, NA TELA** (`W-Probes`) — o report do Enio:
-//! *"os Rays (ou outros modos de cast) dos Setups dos Players não estão visíveis
-//! e nem são plenamente editáveis através da UI"*.
+//! **Os sensores na tela** (`W-Probes`): onde cada um olha (o ALCANCE, sempre: o censo `measure_player_probes`
+//! mediu que a parede só é perguntada em 13,5 % dos tiques e a quina em 6 %) e o que respondeu.
 //!
-//! O overlay de física desenhava collider, joint, glifo de zona, seta de força,
-//! anel de falloff, linha d'água, cruz de contato e as ferramentas de ponto —
-//! **e dos sensores do player não desenhava um pixel**. É a mesma lei que fez o
-//! contorno do collider existir (W2a, *"um collider é invisível e um sprite é um
-//! quad"*), levada a uma coisa que é **ainda mais invisível**: um raio nem forma
-//! tem.
+//! O ESTADO lê-se pela intensidade (parado · nada · viu) e por um tique na distância do acerto. Os sensores do
+//! personagem têm cor fixa; o `RaySensor` do objecto veste a cor da sua CAMADA, com a sombra do contorno (emenda 4
+//! da GEF02, dono 08/11; `ph2d_panel_physics::tinta_canvas::Tinta::Sonda`).
 //!
-//! # ⚠️ O ALCANCE é desenhado SEMPRE, e o número que decidiu isso está medido
-//!
-//! Os três sensores condicionais só são lançados nos tiques em que a lei pode
-//! agir, e o censo (`measure_player_probes`, 600 tiques de um personagem a
-//! andar / pular / agachar) diz quão estreitas essas janelas são:
-//!
-//! | sensor | perguntado |
-//! |---|---|
-//! | chão | 100% |
-//! | agachar | 50,3% |
-//! | **parede** | **13,5%** |
-//! | **quina / lado** | **6,0%** |
-//!
-//! Desenhar só o que foi CASTADO mostraria a perna e mais nada em ~90% dos
-//! quadros — justamente nos dois sensores cujo alcance o artista afina às cegas.
-//! Então o que se desenha é **onde ele olha**, e a **cor diz o que aconteceu**.
-//!
-//! # ⚠️ Por que o estado é ALPHA + um TIQUE, e não um quarto tom saturado
-//!
-//! O overlay já gastou verde (estático · a mão), ciano (dinâmico · a água),
-//! violeta (cinemático · o torque), magenta (sensor), âmbar (joint), branco
-//! (contato), laranja (zona), amarelo (lançamento) e vermelho (carga). Um hue
-//! novo e saturado entraria num espaço cheio e leria como *mais um sistema*.
-//!
-//! Aqui o **estado** é a mensagem, e ele cabe em duas coisas que não gastam hue
-//! nenhum: a **intensidade** (inerte · perguntou · achou) e um **TIQUE
-//! perpendicular na distância do acerto** — que ainda por cima responde *onde*
-//! ele achou, o número que o artista está de facto a afinar.
-//!
-//! # ⚠️ Nada aqui DERIVA geometria
-//!
-//! Toda posição vem da leitura que a ponte publica
-//! ([`ph2d_physics_ecs::ProbeMark`]), preenchida pelas MESMAS portas que lançam
-//! os raios. Um segundo cálculo deste lado seria uma segunda resposta a *"onde
-//! este raio nasce?"* — e ela divergiria no primeiro dia em que alguém mexesse
-//! numa das duas, com o sintoma a ser um desenho que mente sobre o que o produto
-//! mede. É a regra que o `scaled_shape` (W6) impôs ao contorno e a
-//! `zone_force_world_at` (W-AreaFrame) impôs à seta.
+//! Nada aqui deriva geometria: toda posição vem da [`ph2d_physics_ecs::ProbeMark`] que a ponte publica, preenchida
+//! pelas mesmas portas que lançam os raios.
 
 use ph2d_ecs::SimWorld;
 use ph2d_host::WindowSize;
@@ -55,6 +15,13 @@ use ph2d_render::Camera2d;
 use ph2d_vector::{BezPath, Point};
 
 use crate::overlay::shapes::collider_outline;
+use ph2d_panel_physics::tinta_canvas::Tinta;
+
+/// As marcas do personagem: cor fixa, sem camada.
+fn fixa(v: Vec<(BezPath, [f32; 4])>) -> impl Iterator<Item = (BezPath, Tinta)> {
+    v.into_iter()
+        .map(|(p, rgba)| (p, Tinta::Sonda { camada: None, rgba }))
+}
 
 /// **O hue dos sensores** — aço frio, de baixa croma.
 ///
@@ -87,35 +54,22 @@ const HIT_TICK_PX: f64 = 5.0; // LITERAL-PX-OK: chrome de overlay
 /// exactamente no fim do alcance seria indistinguível de um que não achou nada.
 const END_TICK_PX: f64 = 3.0; // LITERAL-PX-OK: chrome de overlay
 
-/// Espessura das marcas de sensor, em px de tela.
-///
-/// Mais fina que o contorno do collider (1,5): um sensor é uma pergunta, não uma
-/// coisa — e ele cruza a arte, então tem de ceder a leitura para ela.
-pub const PROBE_PX: f64 = 1.25; // LITERAL-PX-OK: chrome de overlay
+/// Espessura das marcas de sensor, em px de tela: mais fina que o contorno (um sensor é uma pergunta).
+pub const PROBE_PX: f64 = ph2d_panel_physics::tinta_canvas::SONDA_PX;
 
-/// ⚠️ **A ordem entre as duas espessuras é afirmada em tempo de COMPILAÇÃO**, e
-/// não num teste: ela é uma relação entre duas constantes, então um teste de
-/// runtime não pode falhar por nada que não seja alguém tê-las trocado — e o
-/// compilador responde isso melhor, e antes.
+/// A ordem entre as duas espessuras, afirmada em tempo de compilação.
 const _: () = assert!(PROBE_PX < crate::overlay::outline::OUTLINE_PX);
 
-/// **O que desenhar para os sensores deste quadro.**
-///
-/// Devolve pares `(path, rgba)` prontos para o `stroke` sob `Affine::IDENTITY` —
-/// a mesma convenção de espaço de TELA de todo o resto do overlay (no Vello o
-/// transform do `stroke` **multiplica a largura**, e foi isso que virou o realce
-/// do Flip num borrão).
-///
-/// `show` falso devolve vazio: os sensores acompanham o mesmo interruptor do
-/// contorno (tecla `B` / a linha do painel de física), porque são a mesma
-/// pergunta — *"mostre-me a física que não se vê"*.
+/// **O que desenhar para os sensores deste quadro**: pares `(path, tinta)` para o `stroke` sob `Affine::IDENTITY`
+/// (espaço de TELA: no Vello o transform do `stroke` multiplica a largura). `show` falso (o interruptor do
+/// contorno, tecla `B`) devolve vazio.
 pub fn probe_marks(
     show: bool,
     marks: &[ProbeMark],
     sim: &SimWorld,
     camera: &Camera2d,
     window: WindowSize,
-) -> Vec<(BezPath, [f32; 4])> {
+) -> Vec<(BezPath, Tinta)> {
     if !show || marks.is_empty() {
         return Vec::new();
     }
@@ -167,7 +121,13 @@ pub fn probe_marks(
                         tick(&mut p, at, HIT_TICK_PX);
                     }
                 }
-                out.push((p, rgba));
+                out.push((
+                    p,
+                    Tinta::Sonda {
+                        camada: m.layer,
+                        rgba,
+                    },
+                ));
             }
             ProbeShape::Profile {
                 top,
@@ -177,12 +137,12 @@ pub fn probe_marks(
                 ref blocked,
                 samples,
             } => {
-                out.extend(profile_path(
+                out.extend(fixa(profile_path(
                     top, half_width, reach, rise, blocked, samples, m.state, &to_screen,
-                ));
+                )));
             }
             ProbeShape::Sweep { body, offset } => {
-                out.extend(sweep_ghost(sim, body, offset, rgba, camera, window));
+                out.extend(fixa(sweep_ghost(sim, body, offset, rgba, camera, window)));
             }
         }
     }

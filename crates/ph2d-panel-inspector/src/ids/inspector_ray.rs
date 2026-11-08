@@ -40,3 +40,10 @@ pub const INSP_RAY_SEES_ADD: NodeId = hash_node_id("insp_ray_sees_add");
 pub const INSP_RAY_ON_ENTER: NodeId = hash_node_id("insp_ray_on_enter");
 /// …e quando ele **deixa de ver**.
 pub const INSP_RAY_ON_EXIT: NodeId = hash_node_id("insp_ray_on_exit");
+/// «Rename layers…» e «Open in tab…» do Ray (emenda 4, dono 08/11): ids próprios porque o collider pinta os dele no
+/// mesmo Inspector (hover e prima vivem no store por id); os campos do renomear são os do collider, e só um cartão os
+/// mostra de cada vez (`INSP_RAY_LAYER_RENAMING`).
+pub const INSP_RAY_LAYER_RENAME: NodeId = hash_node_id("insp_ray_layer_rename");
+pub const INSP_RAY_LAYER_RENAMING: NodeId = hash_node_id("insp_ray_layer_renaming");
+pub const INSP_RAY_LAYER_RENAME_DONE: NodeId = hash_node_id("insp_ray_layer_rename_done");
+pub const INSP_RAY_EDIT_MATRIX: NodeId = hash_node_id("insp_ray_edit_matrix");

@@ -35,6 +35,13 @@ pub(crate) fn apply_ray_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
         if crate::sections::physics_colide::clique_da_fila(host, id, quem, a, true) {
             return true;
         }
+        // «Open in tab…»: a aba central na camada do RAIO (emenda 4).
+        if id == crate::ids::INSP_RAY_EDIT_MATRIX {
+            ph2d_editor_core::panel::seam_reset_button(host, id);
+            host.bus_mut()
+                .push(EditorAction::LayerMatrixOpen { layer: a });
+            return true;
+        }
     }
 
     if let WidgetEvent::TextChanged(id) = ev {

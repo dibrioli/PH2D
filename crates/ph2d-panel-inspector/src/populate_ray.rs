@@ -64,7 +64,19 @@ pub(crate) fn populate_ray(store: &mut WidgetStore) {
     );
     crate::populate::register_button_ids(store, &ids::INSP_RAY_LAYER_OPTS);
     crate::populate::register_button_ids(store, &ids::INSP_RAY_SEES);
-    crate::populate::register_button_ids(store, &[ids::INSP_RAY_SEES_ADD]);
+    crate::populate::register_button_ids(
+        store,
+        &[
+            ids::INSP_RAY_SEES_ADD,
+            ids::INSP_RAY_LAYER_RENAME,
+            ids::INSP_RAY_LAYER_RENAME_DONE,
+            ids::INSP_RAY_EDIT_MATRIX,
+        ],
+    );
+    store.set_tooltip(
+        ids::INSP_RAY_EDIT_MATRIX,
+        ph2d_i18n::tr("card.insp.phys.edit_matrix_tip"),
+    );
     store.set_tooltip(
         ids::INSP_RAY_SEES_ADD,
         ph2d_i18n::tr("card.insp.phys.collides_add_tip"),

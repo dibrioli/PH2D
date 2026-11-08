@@ -15,27 +15,56 @@ use ph2d_editor_core::screens::hero::{InspectorPhysicsInfo, PhysicsFieldEdit};
 /// 08/11) troca as caixinhas pela lista de TODAS as camadas, cada uma com o seu campo; Enter grava ESSE nome
 /// (um passo de undo) e passa ao seguinte; vazio volta ao padrão; Esc e «Done» saem.
 fn nome_da_camada(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    let renomeando = crate::ids::INSP_PHYS_LAYER_RENAMING;
-    let campos = &crate::ids::INSP_PHYS_LAYER_NAMES;
-    let entra = |host: &mut dyn PanelHostInternal| {
-        let camada = state::current_inspector_physics().map_or(0, |f| usize::from(f.layer));
-        let store = host.store_mut();
-        store.set_collapsed(renomeando, false);
-        ph2d_editor_core::interaction::dispatch::focus_text_field_selected(store, campos[camada]);
+    use crate::ids as i;
+    let campos = &i::INSP_PHYS_LAYER_NAMES;
+    // As duas portas (emenda 4, dono 08/11): o collider e o Ray Sensor. Os campos são os mesmos e só um cartão os
+    // mostra de cada vez: abrir um fecha o outro.
+    let portas = [
+        (
+            i::INSP_PHYS_LAYER_RENAME,
+            i::INSP_PHYS_LAYER_RENAME_DONE,
+            i::INSP_PHYS_LAYER_RENAMING,
+        ),
+        (
+            i::INSP_RAY_LAYER_RENAME,
+            i::INSP_RAY_LAYER_RENAME_DONE,
+            i::INSP_RAY_LAYER_RENAMING,
+        ),
+    ];
+    let camada_de = |raio: bool| {
+        if raio {
+            crate::state_components::current_inspector_ray()
+                .map_or(0, |r| (r.layer as usize).min(i::INSP_PHYS_LAYERS - 1))
+        } else {
+            state::current_inspector_physics().map_or(0, |f| usize::from(f.layer))
+        }
+    };
+    let fecha_todas = |host: &mut dyn PanelHostInternal| {
+        for (_, _, flag) in portas {
+            host.store_mut().set_collapsed(flag, true);
+        }
     };
     match ev {
-        WidgetEvent::Click(id) if id == crate::ids::INSP_PHYS_LAYER_RENAME => {
+        WidgetEvent::Click(id) if portas.iter().any(|q| q.0 == id) => {
+            let p = usize::from(portas[1].0 == id);
             ph2d_editor_core::panel::seam_reset_button(host, id);
-            if host.store().is_collapsed(renomeando) {
-                entra(host);
-            } else {
-                host.store_mut().set_collapsed(renomeando, true);
+            let aberta = host.store().collapsed_choice(portas[p].2) == Some(false);
+            fecha_todas(host);
+            if !aberta {
+                let camada = camada_de(p == 1);
+                let store = host.store_mut();
+                store.set_collapsed(portas[p].2, false);
+                ph2d_editor_core::interaction::dispatch::focus_text_field_selected(
+                    store,
+                    campos[camada],
+                );
             }
             true
         }
-        WidgetEvent::Click(id) if id == crate::ids::INSP_PHYS_LAYER_RENAME_DONE => {
+        WidgetEvent::Click(id) if portas.iter().any(|q| q.1 == id) => {
+            let p = usize::from(portas[1].1 == id);
             ph2d_editor_core::panel::seam_reset_button(host, id);
-            host.store_mut().set_collapsed(renomeando, true);
+            host.store_mut().set_collapsed(portas[p].2, true);
             true
         }
         WidgetEvent::Submit(id) if campos.contains(&id) => {
@@ -49,7 +78,7 @@ fn nome_da_camada(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
                     name,
                 });
             }
-            let camada = state::current_inspector_physics().map_or(0, |f| usize::from(f.layer));
+            let camada = camada_de(crate::sections::ray::renomeia_o_raio(host.store()));
             let fila: Vec<usize> =
                 crate::sections::physics_colide::fila_do_rename(camada).collect();
             if let Some(&seguinte) = fila.iter().skip_while(|&&k| k != j).nth(1) {
@@ -61,9 +90,8 @@ fn nome_da_camada(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
             true
         }
         WidgetEvent::Cancel(id) if campos.contains(&id) => {
-            let store = host.store_mut();
-            store.set_collapsed(renomeando, true);
-            store.set_focus(None);
+            fecha_todas(host);
+            host.store_mut().set_focus(None);
             true
         }
         _ => false,

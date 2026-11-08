@@ -173,6 +173,9 @@ pub struct ProbeMark {
     pub kind: ProbeKind,
     pub state: ProbeState,
     pub shape: ProbeShape,
+    /// A camada de quem olha, quando ela é do objecto: o `RaySensor` autorado (o canvas pinta-o na cor dela, emenda 4
+    /// da GEF02, dono 08/11). Os sensores do personagem são anatomia dele e não têm camada própria: `None`.
+    pub layer: Option<u8>,
 }
 
 impl ProbeMark {
@@ -203,6 +206,7 @@ impl ProbeMark {
                 hit,
                 skin,
             },
+            layer: None,
         }
     }
 
@@ -225,6 +229,7 @@ impl ProbeMark {
                 hit: None,
                 skin,
             },
+            layer: None,
         }
     }
 
@@ -255,6 +260,16 @@ impl ProbeMark {
                 blocked: blocked.unwrap_or([false; MAX_CORNER_SAMPLES]),
                 samples,
             },
+            layer: None,
+        }
+    }
+
+    /// A mesma marca, na camada `layer` do objecto que olha.
+    #[must_use]
+    pub fn na_camada(self, layer: u8) -> Self {
+        Self {
+            layer: Some(layer),
+            ..self
         }
     }
 
@@ -269,6 +284,7 @@ impl ProbeMark {
                 Some(false) => ProbeState::Clear,
             },
             shape: ProbeShape::Sweep { body, offset },
+            layer: None,
         }
     }
 }

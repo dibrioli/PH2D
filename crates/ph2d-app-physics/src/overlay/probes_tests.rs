@@ -4,7 +4,7 @@
 //! `tests/player_probe_view.rs`): aqui a pergunta é *"o que a marca publicada
 //! vira na tela?"*, não *"a marca está certa?"*.
 
-use super::probe_marks;
+use super::probe_marks as marcas;
 use crate::overlay::outline::tests::{camera, points, window};
 use ph2d_core::Vec2;
 use ph2d_ecs::{Name, SimWorld, Transform};
@@ -14,6 +14,58 @@ use ph2d_physics_ecs::{
 
 /// A contagem DEFAULT do perfil — lida da porta, nunca escrita à mão.
 const SAMPLES: usize = ph2d_physics_ecs::CORNER_SAMPLES;
+
+/// O desenho com a cor fixa de cada marca (as do personagem não têm camada).
+fn probe_marks(
+    on: bool,
+    m: &[ProbeMark],
+    s: &SimWorld,
+    c: &ph2d_render::Camera2d,
+    w: ph2d_host::WindowSize,
+) -> Vec<(ph2d_vector::BezPath, [f32; 4])> {
+    let rgba = |t| match t {
+        ph2d_panel_physics::tinta_canvas::Tinta::Sonda { rgba, .. } => rgba,
+        _ => panic!(),
+    };
+    marcas(on, m, s, c, w)
+        .into_iter()
+        .map(|(p, t)| (p, rgba(t)))
+        .collect()
+}
+
+/// ⭐ Emenda 4 (dono 08/11): o raio do objecto pinta-se na cor da CAMADA dele, resolvida pelo tema, com a sombra do
+/// contorno; o estado fica na opacidade. O do personagem fica na cor fixa. Mutação: a cor fixa de antes.
+#[test]
+fn o_raio_do_objecto_veste_a_cor_da_camada() {
+    use ph2d_panel_physics::tinta_canvas::{sombra_do_contorno, tinta_do_contorno};
+    let sim = no_world();
+    let cor = |m: ProbeMark, theme| {
+        let t = marcas(true, &[m], &sim, &camera(), window())[0].1;
+        (
+            tinta_do_contorno(t, theme).1.components,
+            sombra_do_contorno(t, theme).is_some(),
+        )
+    };
+    for theme in [ph2d_tokens::Theme::Forge, ph2d_tokens::Theme::Sunstone] {
+        for c in [2u8, 5] {
+            let camada = ph2d_tokens::ColorToken::layer(usize::from(c));
+            let want = ph2d_editor_core::paint::resolve(camada, theme).components;
+            let (viu, sombra) = cor(ray(ProbeKind::Sensor, Some(1.0)).na_camada(c), theme);
+            assert_eq!((viu, sombra), (want, true), "a camada {c} em {theme:?}");
+            let nada = cor(ray(ProbeKind::Sensor, None).na_camada(c), theme).0;
+            assert!(
+                nada[3] < viu[3] && nada[..3] == viu[..3],
+                "não viu: a mesma cor, mais apagada"
+            );
+        }
+        let um = |c| cor(ray(ProbeKind::Sensor, Some(1.0)).na_camada(c), theme).0;
+        assert_ne!(um(2), um(5), "mudar de camada muda a cor ({theme:?})");
+        assert!(
+            !cor(ray(ProbeKind::Ground, None), theme).1,
+            "o do personagem: fixo, sem sombra"
+        );
+    }
+}
 
 fn no_world() -> SimWorld {
     SimWorld::new()
@@ -346,6 +398,7 @@ fn uma_parede_da_area_andavel_nao_leva_tiques() {
             hit: None,
             skin: 0.0,
         },
+        layer: None,
     };
     let caminho = ProbeMark::ray(ProbeKind::Path, [0.0, 0.0], [1.0, 0.0], 2.0, None, 0.0);
     let d = probe_marks(true, &[parede, caminho], &sim, &camera(), window());

@@ -19,7 +19,7 @@ Opção B:
 - **Add ▸ Collision Shape:** nada selecionado → cria «Static Body» + filho (o filho fica selecionado); imagem sem corpo selecionada → a imagem vira Static + filho; corpo selecionado → filho dele.
 - **Alças da forma só com a PRÓPRIA forma selecionada;** com o corpo selecionado o canvas mostra só o contorno.
 
-Outline polygon (contorno): um contorno por Animated Sprite (união dos quadros); côncavo sólido; buracos ficam buracos; padrões **Alpha cutoff 0,5** e **Detail 2 px**; o Auto Key grava Detail e Alpha. (Não há memória `project-memory/project_outline_polygon_owner_decisions_*` no disco: se a quiser, crie-a a partir do plano, uma linha no `MEMORY.md`.)
+Outline polygon (contorno): um contorno por Animated Sprite (união dos quadros); côncavo sólido; buracos ficam buracos; padrões **Alpha cutoff 0,5** e **Detail 2 px**; o Auto Key grava Detail e Alpha. (Memória do dono: `project-memory/project_outline_polygon_owner_decisions_2026_11_08.md` no checkout PRIMÁRIO `/home/enio/Documentos/Projetos/PH2D`, ainda por comitar lá; não está no worktree.)
 
 Smokes do dono 08/11: fecho e emendas 1–4 OK; fecho 2 (aviso corpo sem forma, lista da aba como o editor de animações, nome inteiro ao passar a mão) OK; W3-A Add Collision Shape passos 2–3 OK; **W3-B lista «Shapes» REVOGADA** (removida em `c40927c0dd`).
 

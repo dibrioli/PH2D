@@ -5,6 +5,27 @@
 use crate::op::{Op, OpError, apply};
 use crate::sprite::{FrameId, LayerId, Sprite};
 
+static NEXT_REVISION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+/// A revisão do conteúdo gravado: um valor do PROCESSO (nunca se repete entre documentos), novo a
+/// cada passo aplicado, desfeito ou refeito. Não é conteúdo: dois históricos iguais comparam-se
+/// iguais seja qual for a revisão.
+#[derive(Debug, Clone, Copy)]
+struct Revision(u64);
+
+impl Revision {
+    fn fresh() -> Self {
+        Self(NEXT_REVISION.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+    }
+}
+
+impl PartialEq for Revision {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
+}
+impl Eq for Revision {}
+
 /// O tecto por omissão: 64 MiB de RAM por sprite — o do MVP web (`docs/Pixel Art/app/engine/ops.js`,
 /// `DEFAULT_CAP_BYTES`). O recurso é a memória do processo; o mais velho cai primeiro.
 pub const DEFAULT_CAP_BYTES: usize = 64 * 1024 * 1024;
@@ -85,6 +106,7 @@ pub struct History {
     redo: Vec<Step>,
     bytes: usize,
     cap_bytes: usize,
+    revision: Revision,
 }
 
 impl Default for History {
@@ -101,7 +123,21 @@ impl History {
             redo: Vec::new(),
             bytes: 0,
             cap_bytes,
+            revision: Revision::fresh(),
         }
+    }
+
+    /// Muda em todo passo que mexe no sprite por esta porta (commit, undo, redo, `go_to`) e em
+    /// [`Self::touch`]; um passo recusado ou nada a desfazer/refazer deixa-a. A chave da cache do
+    /// codec ([`crate::codec::EntryCache`]).
+    #[must_use]
+    pub fn revision(&self) -> u64 {
+        self.revision.0
+    }
+
+    /// Uma mudança gravável que não é passo do desfazer.
+    pub fn touch(&mut self) {
+        self.revision = Revision::fresh();
     }
 
     /// [`Self::commit_labeled`] com o nome da família do op.
@@ -118,6 +154,7 @@ impl History {
         label: Label,
     ) -> Result<(), OpError> {
         let inverse = apply(sprite, op)?;
+        self.touch();
         for s in self.redo.drain(..) {
             self.bytes -= s.op.bytes();
         }
@@ -132,12 +169,20 @@ impl History {
 
     /// Desfaz o último passo. `false` = nada a desfazer.
     pub fn undo(&mut self, sprite: &mut Sprite) -> bool {
-        Self::swap(sprite, &mut self.undo, &mut self.redo, &mut self.bytes)
+        let feito = Self::swap(sprite, &mut self.undo, &mut self.redo, &mut self.bytes);
+        if feito {
+            self.touch();
+        }
+        feito
     }
 
     /// Refaz o último passo desfeito. `false` = nada a refazer.
     pub fn redo(&mut self, sprite: &mut Sprite) -> bool {
-        Self::swap(sprite, &mut self.redo, &mut self.undo, &mut self.bytes)
+        let feito = Self::swap(sprite, &mut self.redo, &mut self.undo, &mut self.bytes);
+        if feito {
+            self.touch();
+        }
+        feito
     }
 
     fn swap(

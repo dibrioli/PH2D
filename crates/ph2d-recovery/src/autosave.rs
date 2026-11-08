@@ -203,11 +203,22 @@ impl Autosave {
     /// A hora chegou e a shell serializou: ENTREGA os bytes ao fio, que tira a impressão e só
     /// escreve se mudaram. No fio da janela não se lê um byte (o resultado vem em [`Self::finish`]).
     pub fn offer(&mut self, bytes: Vec<u8>, meta: Meta, session: &Session, now: Instant) {
+        self.offer_with(move || Some(bytes), meta, session, now);
+    }
+
+    /// [`Self::offer`] com os bytes ainda por JUNTAR: `make` corre no fio da escrita (P12 S — a
+    /// serialização do projecto sai do fio da janela). `None` = recusado, nada se grava.
+    pub fn offer_with<F>(&mut self, make: F, meta: Meta, session: &Session, now: Instant)
+    where
+        F: FnOnce() -> Option<Vec<u8>> + Send + 'static,
+    {
         self.next = now + self.period.duration();
         self.finish();
         let last = self.last;
         let dir = session.dir().to_path_buf();
         self.writing = Some(std::thread::spawn(move || {
+            let bytes =
+                make().ok_or_else(|| std::io::Error::other("the project did not serialize"))?;
             let p = print_of(&bytes);
             if last == Some(p) {
                 return Ok((p, false));

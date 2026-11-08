@@ -37,6 +37,8 @@ pub struct Doc {
         Vec<ph2d_editor_core::pixel_panel::PixelRange>,
         Vec<ph2d_editor_core::pixel_panel::PixelRange>,
     ),
+    /// A entrada gravada da última cópia ([`crate::persist::to_bytes`]).
+    pub(crate) encoded: ph2d_pixel_core::codec::EntryCache,
 }
 
 impl Doc {
@@ -57,6 +59,7 @@ impl Doc {
             speed: ph2d_editor_core::pixel_panel::PixelSpeed::One,
             range: ph2d_editor_core::pixel_panel::PixelRange::default(),
             ranges: (Vec::new(), Vec::new()),
+            encoded: ph2d_pixel_core::codec::EntryCache::default(),
         }
     }
 

@@ -84,21 +84,27 @@ impl crate::App {
         self.recovery.ask_quit(bytes.as_deref(), path.as_deref())
     }
 
-    /// ⭐ A cópia de recuperação (P12 S, `ph2d_recovery`): à hora, os MESMOS bytes do Save.
+    /// ⭐ A cópia de recuperação (P12 S): os MESMOS bytes do Save, serializados no fio da escrita.
     pub(crate) fn recovery_tick(&mut self) {
         let now = std::time::Instant::now();
         self.recovery
             .follow(ph2d_editor_core::recovery_pref::secs(), now);
         if self.recovery.due(now)
-            && let Some(bytes) = self.project_bytes()
+            && let Some((file, pixel)) = self.project_file()
         {
             let path = self.project_path.clone();
-            self.recovery.offer(bytes, path.as_deref(), now);
+            (self.recovery).offer_with(move || serialize(file, &pixel), path.as_deref(), now);
         }
     }
 
     /// Os bytes do projecto inteiro, como o Save os grava (`None` = recusado, e já se disse porquê).
     pub(crate) fn project_bytes(&mut self) -> Option<Vec<u8>> {
+        let (file, pixel) = self.project_file()?;
+        serialize(file, &pixel)
+    }
+
+    /// O `ProjectFile` por serializar e os Pixel Sprites por juntar ([`serialize`]).
+    fn project_file(&mut self) -> Option<(ProjectFile, ph2d_app_pixel::persist::Entries)> {
         let assets = self.collect_assets();
         // Os documentos pintados carimbam a identidade estável no mundo: ANTES da captura.
         let painted = self.collect_painted_docs();
@@ -144,26 +150,24 @@ impl crate::App {
         let state = self
             .documento_do_jogo()
             .or_else(|| self.capture_project())?;
+        let pixel = (self.gfx.as_ref())
+            .map(|g| ph2d_app_pixel::persist::entries(&mut self.pixel, g.sim.world()))
+            .unwrap_or_default();
         let file = ProjectFile {
             state,
             assets,
             painted,
-            motion: self
-                .gfx
-                .as_ref()
+            motion: (self.gfx.as_ref())
                 .map(|g| g.motion.doc.to_text())
                 .unwrap_or_default(),
             timeline,
-            physics: self
-                .gfx
-                .as_ref()
+            physics: (self.gfx.as_ref())
                 .map(|g| g.physics.settings())
                 .unwrap_or_default(),
             tokens: crate::project_tokens::collect(),
             // Sem janela não há `HeroScreen`: o save headless grava os defaults.
             settings: crate::project_settings::collect(
-                self.gfx
-                    .as_ref()
+                (self.gfx.as_ref())
                     .and_then(|g| g.hero_screen.as_ref())
                     .map(|h| h.project)
                     .unwrap_or_default(),
@@ -172,23 +176,17 @@ impl crate::App {
             player_tape: self.player_tape.to_wire(),
             sprite_pixels,
             // ⚠️ O contador de identidade (ADR-0164 F1), só fotografado; o load reconcilia-o.
-            stable_id_counter: self
-                .gfx
-                .as_ref()
+            stable_id_counter: (self.gfx.as_ref())
                 .and_then(|g| g.sim.world().get_resource::<ph2d_ecs::StableIdCounter>())
                 .map_or(ph2d_ecs::StableId::FIRST, |c| c.next_free()),
             // O Input Map por VALOR (v97); dono: o `HeroScreen` (sem hero, o vazio).
-            input_map: self
-                .gfx
-                .as_ref()
+            input_map: (self.gfx.as_ref())
                 .and_then(|g| g.hero_screen.as_ref())
                 .map(|h| h.input_map.clone())
                 .unwrap_or_default(),
             pattern_art,
             boards,
-            scripts: self
-                .gfx
-                .as_ref()
+            scripts: (self.gfx.as_ref())
                 .map(|g| ph2d_app_components::script_project::save(g.sim.world()))
                 .unwrap_or_default(),
             marcas_do_artista: self
@@ -200,8 +198,7 @@ impl crate::App {
                 })
                 .unwrap_or_default(),
             jogo: crate::project_settings::collect_jogo(
-                self.gfx
-                    .as_ref()
+                (self.gfx.as_ref())
                     .and_then(|g| g.hero_screen.as_ref())
                     .map(|h| h.project)
                     .unwrap_or_default(),
@@ -211,11 +208,7 @@ impl crate::App {
                 .map(|g| ph2d_app_audio::mesa_doc::autorado(&g.sim).to_bytes())
                 .unwrap_or_default(),
             kanbans,
-            pixel_sprites: self
-                .gfx
-                .as_ref()
-                .map(|g| ph2d_app_pixel::persist::to_bytes(&mut self.pixel, g.sim.world()))
-                .unwrap_or_default(),
+            pixel_sprites: Vec::new(),
             sounds: (self.gfx.as_ref())
                 .map(|g| ph2d_app_components::sound_project::save(g.sim.world()))
                 .unwrap_or_default(),
@@ -227,9 +220,7 @@ impl crate::App {
             }),
             // ⚠️ A taxonomia NÃO está aqui (v105): viaja no `state` ([`crate::project_library`]).
         };
-        postcard::to_allocvec(&(PROJECT_SCHEMA, &file))
-            .map_err(|e| eprintln!("[proj] falha ao serializar: {e}"))
-            .ok()
+        Some((file, pixel))
     }
 
     /// Um aviso na tela, não só no terminal — a porta única (o *Export SVG…* usa a mesma).
@@ -238,6 +229,14 @@ impl crate::App {
             gfx.toasts.push(ph2d_editor_core::Toast::info(msg));
         }
     }
+}
+
+/// Junta os Pixel Sprites e serializa: no fio da janela para o Save, no da escrita para a cópia.
+fn serialize(mut file: ProjectFile, pixel: &ph2d_app_pixel::persist::Entries) -> Option<Vec<u8>> {
+    file.pixel_sprites = pixel.library();
+    postcard::to_allocvec(&(PROJECT_SCHEMA, &file))
+        .map_err(|e| eprintln!("[proj] falha ao serializar: {e}"))
+        .ok()
 }
 
 #[cfg(test)]

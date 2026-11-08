@@ -70,16 +70,37 @@ pub fn write_library(sprites: &BTreeMap<u64, Sprite>) -> Vec<u8> {
     out.extend_from_slice(MAGIC);
     out.extend_from_slice(&MAJOR.to_le_bytes());
     out.extend_from_slice(&MINOR.to_le_bytes());
-    let mut lib = Vec::new();
-    for (&key, sprite) in sprites {
-        let mut entry = Vec::new();
-        put_uint(&mut entry, 1, key);
-        put_field(&mut entry, 2, &sprite_record(sprite));
-        entry.push(0);
-        put_field(&mut lib, 1, &entry);
+    let entries: Vec<Vec<u8>> = sprites.iter().map(|(&k, s)| write_entry(k, s)).collect();
+    write_library_from_entries(entries.iter().map(Vec::as_slice))
+}
+
+/// Uma entrada da biblioteca já com a moldura (`1 · comprimento · Entry`): o que
+/// [`write_library_from_entries`] concatena. A biblioteca é a sequência delas, então uma entrada
+/// guardada ([`EntryCache`]) dá os mesmos bytes que a escrita inteira.
+#[must_use]
+pub fn write_entry(key: u64, sprite: &Sprite) -> Vec<u8> {
+    let mut entry = Vec::new();
+    put_uint(&mut entry, 1, key);
+    put_field(&mut entry, 2, &sprite_record(sprite));
+    entry.push(0);
+    let mut framed = Vec::with_capacity(entry.len() + 10);
+    put_field(&mut framed, 1, &entry);
+    framed
+}
+
+/// O blob a partir das entradas de [`write_entry`], em ordem de chave.
+#[must_use]
+pub fn write_library_from_entries<'a>(entries: impl Iterator<Item = &'a [u8]>) -> Vec<u8> {
+    let entries: Vec<&[u8]> = entries.collect();
+    let body: usize = entries.iter().map(|e| e.len()).sum();
+    let mut out = Vec::with_capacity(MAGIC.len() + 4 + body + 1);
+    out.extend_from_slice(MAGIC);
+    out.extend_from_slice(&MAJOR.to_le_bytes());
+    out.extend_from_slice(&MINOR.to_le_bytes());
+    for e in &entries {
+        out.extend_from_slice(e);
     }
-    lib.push(0);
-    out.extend_from_slice(&lib);
+    out.push(0);
     out
 }
 
@@ -120,6 +141,12 @@ pub fn read_library(bytes: &[u8]) -> Result<BTreeMap<u64, Sprite>, CodecError> {
 }
 
 fn sprite_record(s: &Sprite) -> Vec<u8> {
+    sprite_record_with(s, true)
+}
+
+/// `pixels = false` salta as células (`Cel.data`, mapas, tiles): o resto do documento, pequeno —
+/// a parte que muda sem passar pelo `History` ([`EntryCache`]).
+fn sprite_record_with(s: &Sprite, pixels: bool) -> Vec<u8> {
     let mut r = Vec::new();
     put_uint(&mut r, 1, u64::from(s.width));
     put_uint(&mut r, 2, u64::from(s.height));
@@ -177,7 +204,9 @@ fn sprite_record(s: &Sprite) -> Vec<u8> {
         put_uint(&mut b, 4, zigzag(c.bbox.y));
         put_uint(&mut b, 5, u64::from(c.bbox.w));
         put_uint(&mut b, 6, u64::from(c.bbox.h));
-        put_field(&mut b, 7, &c.data);
+        if pixels {
+            put_field(&mut b, 7, &c.data);
+        }
         if c.opacity != 255 {
             put_uint(&mut b, 8, u64::from(c.opacity));
         }
@@ -188,7 +217,7 @@ fn sprite_record(s: &Sprite) -> Vec<u8> {
             put_uint(&mut b, 10, u64::from(o.0));
         }
         // MINOR 4: `data` continua gravado, para o binário antigo; ao ler, deriva-se do mapa.
-        if let Some(g) = &c.tiles {
+        if let Some(g) = c.tiles.as_ref().filter(|_| pixels) {
             put_field(&mut b, 11, &grid_record(g));
         }
         user::put_user(&mut b, 12, &c.user);
@@ -219,7 +248,9 @@ fn sprite_record(s: &Sprite) -> Vec<u8> {
         put_field(&mut b, 2, t.name.as_bytes());
         put_uint(&mut b, 3, u64::from(t.tile_w));
         put_uint(&mut b, 4, u64::from(t.tile_h));
-        put_field(&mut b, 5, &t.tiles.concat());
+        if pixels {
+            put_field(&mut b, 5, &t.tiles.concat());
+        }
         for k in &t.terrains {
             let mut c = Vec::new();
             put_field(&mut c, 1, k.name.as_bytes());
@@ -598,7 +629,9 @@ fn split_tilesets(s: &mut Sprite) -> Result<(), CodecError> {
     Ok(())
 }
 
+mod cache;
 mod grade;
+pub use cache::{Entries, EntryCache};
 mod slices;
 mod user;
 use grade::{grid_record, read_grid};

@@ -141,6 +141,20 @@ impl Recovery {
         self.autosave.offer(bytes, meta_of(project), s, now);
     }
 
+    /// [`Self::offer`] com os bytes por juntar no fio da escrita
+    /// ([`crate::Autosave::offer_with`]).
+    pub fn offer_with<F>(&mut self, make: F, project: Option<&str>, now: Instant)
+    where
+        F: FnOnce() -> Option<Vec<u8>> + Send + 'static,
+    {
+        let Some(s) = self.session.as_ref() else {
+            return;
+        };
+        self.touched = false;
+        self.released = false;
+        self.autosave.offer_with(make, meta_of(project), s, now);
+    }
+
     /// O Save gravou `bytes`: a cópia sai.
     pub fn saved(&mut self, bytes: &[u8], now: Instant) {
         self.touched = false;

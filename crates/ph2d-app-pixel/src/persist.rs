@@ -4,7 +4,8 @@
 use std::collections::BTreeMap;
 
 use ph2d_pixel_core::CodecError;
-use ph2d_pixel_core::codec::{read_library, write_library};
+pub use ph2d_pixel_core::codec::Entries;
+use ph2d_pixel_core::codec::read_library;
 
 use crate::PixelApp;
 use crate::mode::sprites;
@@ -15,21 +16,31 @@ use crate::state::Doc;
 ///
 /// A forma viva e a moldura solta ASSENTAM antes (um passo do desfazer cada): o ficheiro leva o que
 /// o artista vê, nunca o documento de antes delas.
+///
+/// Cada documento reaproveita a entrada da cópia anterior se nada gravável mudou
+/// (`ph2d_pixel_core::codec::EntryCache`): os mesmos bytes, sem reescrever os que não mudaram.
 #[must_use]
 pub fn to_bytes(app: &mut PixelApp, world: &ph2d_ecs::World) -> Vec<u8> {
+    entries(app, world).library()
+}
+
+/// [`to_bytes`] por juntar: as entradas partilhadas, para o fio da cópia (P12 S) as juntar.
+#[must_use]
+pub fn entries(app: &mut PixelApp, world: &ph2d_ecs::World) -> Entries {
     crate::viva::assenta(app);
     app.assenta();
     let live: BTreeMap<u32, ()> = sprites(world).into_iter().map(|(_, k)| (k, ())).collect();
-    if live.is_empty() {
-        return Vec::new();
+    let mut out = Vec::new();
+    for (k, d) in &mut app.docs {
+        if live.contains_key(k) {
+            d.encoded
+                .entry(u64::from(*k), d.history.revision(), &d.sprite);
+            out.extend(d.encoded.shared());
+        } else {
+            d.encoded.clear();
+        }
     }
-    let lib = app
-        .docs
-        .iter()
-        .filter(|(k, _)| live.contains_key(k))
-        .map(|(k, d)| (u64::from(*k), d.sprite.clone()))
-        .collect();
-    write_library(&lib)
+    Entries(out)
 }
 
 /// Os documentos lidos, ainda por instalar — ler e instalar são dois passos para o load recusar o
@@ -66,4 +77,44 @@ pub fn install(app: &mut PixelApp, loaded: Loaded) {
     app.panning = false;
     app.sobre_eixo = false;
     app.hover = None;
+}
+
+#[cfg(test)]
+mod tests {
+    use ph2d_pixel_core::{Op, codec::write_library};
+
+    /// Cada edição (passo, prefs, desfazer): os bytes com a cache = `write_library` sobre clones.
+    #[test]
+    fn a_entrada_guardada_e_a_escrita_inteira_a_cada_edicao() {
+        let (mut app, mut sim) = (crate::PixelApp::default(), ph2d_ecs::SimWorld::new());
+        for _ in 0..2 {
+            let key = app.create(Default::default()).expect("sprite");
+            (sim.world_mut()).spawn((ph2d_ecs::Transform::IDENTITY, ph2d_ecs::PixelSprite(key)));
+        }
+        for i in 0..4 {
+            let d = app.docs.values_mut().last().expect("doc");
+            match i {
+                1 => {
+                    let op = Op::Palette {
+                        colors: vec![[0; 4], [7; 4]],
+                        transparent: 0,
+                    };
+                    d.history.commit(&mut d.sprite, op).expect("passo");
+                }
+                2 => {
+                    let mut p = d.sprite.prefs().clone();
+                    p.grid.w = 3;
+                    d.sprite.set_prefs(p);
+                }
+                3 => assert!(d.history.undo(&mut d.sprite)),
+                _ => {}
+            }
+            let lib = app
+                .docs
+                .iter()
+                .map(|(k, d)| (u64::from(*k), d.sprite.clone()));
+            let fresh = write_library(&lib.collect());
+            assert_eq!(super::to_bytes(&mut app, sim.world()), fresh, "edição {i}");
+        }
+    }
 }

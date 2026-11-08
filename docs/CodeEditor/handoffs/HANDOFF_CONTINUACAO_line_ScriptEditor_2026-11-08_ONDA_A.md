@@ -12,7 +12,7 @@ da linha; volta no Ctrl+Z), não ao gravar.
 
 Smoke do dono 08/11: **OK** (re-smoke das molduras e do «sumir ao consertar» também OK).
 
-## Onda C (08/11, construída, aguarda smoke)
+## Onda C (08/11, construída — smoke do dono OK 08/11)
 `2f5a7adba5` menu da aba (`tab_menu.rs`, `DocMenu::Tab` append em editor-core — o File/Edit da app deixa de
 mudar com a aba), caminho até o cursor, `options_card.rs`, Ctrl+K com funções (`PaletteScopes.named`, coluna de
 atalho), escolha ao soltar (`drop_doc.rs offer_drop`), `promote.rs` «Make it a property» · `b3c559f9b8` botão

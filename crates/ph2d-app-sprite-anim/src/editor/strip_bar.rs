@@ -3,10 +3,14 @@
 //! app ([`scrollbar_thumb_color`]); a roda continua a rolar pela tira.
 
 use super::doc::AnimDoc;
-use ph2d_editor_core::paint::{fill_rounded_rect, resolve};
+use ph2d_editor_core::paint::{
+    fill_rounded_rect, label_column_width, paint_text_rotated_ccw, resolve,
+    stroke_rounded_rect_dashed,
+};
 use ph2d_editor_core::widget::{SCROLLBAR_W, ScrollbarState, scrollbar_thumb_color};
 use ph2d_editor_core::zones::Rect;
-use ph2d_tokens::{ColorToken, ROW_H_PX, Theme};
+use ph2d_text::TextSystem;
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_vector::VectorScene;
 
 /// O polegar no trilho `track` para `content` de largura com `visible` à vista, rolado `scroll`. `None` = cabe tudo.
@@ -82,6 +86,50 @@ impl AnimDoc {
             r,
             scrollbar_thumb_color((state, ph2d_editor_core::motion::SETTLED), theme),
         );
+    }
+}
+
+impl AnimDoc {
+    /// ⭐ **A marca de inserção** (dono 08/11): o vão quadriculado entre dois quadros, com borda tracejada de acento e
+    /// «INSERT HERE» na vertical — onde as próximas células da folha entram.
+    pub(super) fn paint_playhead(
+        &self,
+        scene: &mut VectorScene,
+        text: &mut TextSystem,
+        theme: Theme,
+    ) {
+        let (r, strip) = (self.layout.playhead, self.layout.strip);
+        if r.w <= 0.0 || r.h <= 0.0 {
+            return;
+        }
+        scene.push_clip(&ph2d_vector::Rect::new(
+            f64::from(strip.x),
+            f64::from(strip.y),
+            f64::from(strip.x + strip.w),
+            f64::from(strip.y + strip.h),
+        ));
+        let tile = Spacing::Sm.px();
+        let tons = [ColorToken::Bg2, ColorToken::Bg3].map(|c| resolve(c, theme));
+        let (cols, rows) = ((r.w / tile).ceil() as usize, (r.h / tile).ceil() as usize);
+        for j in 0..rows {
+            for i in 0..cols {
+                let x = r.x + i as f32 * tile;
+                let y = r.y + j as f32 * tile;
+                let w = tile.min(r.x + r.w - x);
+                let h = tile.min(r.y + r.h - y);
+                fill_rounded_rect(scene, Rect::new(x, y, w, h), 0.0, tons[(i + j) % 2]);
+            }
+        }
+        let accent = resolve(ColorToken::Accent, theme);
+        let dash = (f64::from(Spacing::Xs.px()), f64::from(Spacing::Xxs.px()));
+        let radius = Spacing::Xxs.px();
+        stroke_rounded_rect_dashed(scene, r, radius, StrokeToken::Thick.px(), dash, accent);
+        let font = TypeToken::Sm.px();
+        let label = ph2d_i18n::tr("anim_editor.insert_here");
+        let tw = label_column_width(text, font, [label]).min(r.h);
+        let (ax, ay) = (r.x + r.w / 2.0, r.y + (r.h + tw) / 2.0);
+        paint_text_rotated_ccw(text, scene, label, ax, ay, font, r.h, accent);
+        scene.pop_layer();
     }
 }
 

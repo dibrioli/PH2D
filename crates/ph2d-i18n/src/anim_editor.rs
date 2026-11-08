@@ -14,6 +14,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "anim_editor.sheet_item" => "{name} \u{b7} {cols} \u{00d7} {rows}",
         "anim_editor.sheet_item_on" => "{name} \u{b7} {cols} \u{00d7} {rows} \u{2713}",
         "anim_editor.empty_frame" => "\u{26A0}",
+        "anim_editor.insert_here" => "INSERT HERE",
         "anim_editor.sheet_hint" => "\u{b7} drag across cells to add frames",
         "anim_editor.frames_title" => "{name} \u{b7} {n} {n?frame|frames}",
         "anim_editor.total_ms" => "{ms} ms total",

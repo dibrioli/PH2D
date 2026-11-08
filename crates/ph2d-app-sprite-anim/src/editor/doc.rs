@@ -21,6 +21,8 @@ const DRAG_SLOP_ROWS: f32 = 0.25; // LITERAL-PX-OK: fração do token de linha
 
 #[path = "doc_scrub.rs"]
 mod scrub;
+#[path = "doc_strip.rs"]
+mod strip;
 
 /// O que a aba mostra: o snapshot da §11 (com o cartão) e a folha.
 #[derive(Clone, Debug, Default)]
@@ -52,11 +54,14 @@ pub enum Field {
 enum Drag {
     #[default]
     None,
-    /// Arrastar (ou clicar) na folha: as células juntam-se por ordem a `base`.
+    /// Arrastar (ou clicar) na folha: as células entram por ordem em `base`, no intervalo `at` (a marca de inserção).
     Cells {
         base: Vec<AnimFrameRef>,
         added: Vec<AnimFrameRef>,
+        at: usize,
     },
+    /// A marca de inserção agarrada.
+    Playhead,
     /// Arrastar um quadro da faixa para outro intervalo (`gap`, `0..=n`); `at` é a mão.
     Frame {
         from: usize,
@@ -116,6 +121,8 @@ pub struct AnimDoc {
     pub editing: Option<(Field, String)>,
     pub layout: Layout,
     pub strip_scroll: f32,
+    /// A marca de inserção: o intervalo (`0..=n`) onde as células entram; `None` = no fim.
+    pub insert_at: Option<usize>,
     /// Com o polegar da barra agarrado: onde, dentro dele, o ponteiro o pegou.
     pub bar_grab: Option<f32>,
     /// O que a última pintura desenhou do arrasto.
@@ -214,7 +221,7 @@ impl AnimDoc {
     #[must_use]
     pub fn shown_frames(&self) -> Vec<AnimFrameRef> {
         match &self.drag {
-            Drag::Cells { base, added } => base.iter().chain(added).copied().collect(),
+            Drag::Cells { base, added, at } => strip::spliced(base, added, *at),
             _ => self.authored_frames(),
         }
     }
@@ -300,66 +307,6 @@ impl AnimDoc {
             cw,
             ch,
         )
-    }
-
-    /// ⭐ **A lei única do marcador e da largada**: o intervalo (`0..=n`) onde um quadro largado em
-    /// `x` entra — antes do primeiro quadro pintado cujo centro está à direita de `x`.
-    #[must_use]
-    pub fn drop_gap(&self, x: f32) -> usize {
-        self.layout
-            .frames
-            .iter()
-            .filter(|f| f.0.x + f.0.w / 2.0 <= x)
-            .count()
-    }
-
-    /// A tira rola por um tique, se a mão de um arrasto de quadro está na borda dela.
-    pub(super) fn scroll_at_edge(&mut self, strip: Rect, step: f32, margin: f32) {
-        if let Some(d) = self.frame_drag() {
-            let x = d.at.0;
-            if x > strip.x + strip.w - margin {
-                self.strip_scroll += step;
-            } else if x < strip.x + margin {
-                self.strip_scroll -= step;
-            }
-        }
-    }
-
-    /// A faixa rolou por baixo da mão: o intervalo do arrasto é o que ela aponta agora.
-    pub(super) fn drag_points_at(&mut self, frames: &[(Rect, Rect)]) {
-        if let Drag::Frame {
-            moved: true,
-            gap,
-            at,
-            ..
-        } = &mut self.drag
-        {
-            *gap = frames
-                .iter()
-                .filter(|f| f.0.x + f.0.w / 2.0 <= at.0)
-                .count();
-        }
-    }
-
-    /// O arrasto de quadro em curso, se já passou o limiar.
-    #[must_use]
-    pub fn frame_drag(&self) -> Option<FrameDrag> {
-        match self.drag {
-            Drag::Frame {
-                from,
-                x0,
-                y0,
-                moved: true,
-                gap,
-                at,
-            } => Some(FrameDrag {
-                from,
-                gap,
-                grab: (x0, y0),
-                at,
-            }),
-            _ => None,
-        }
     }
 
     // ── Os gestos ──────────────────────────────────────────────────────────────────────────────
@@ -499,6 +446,9 @@ impl AnimDoc {
             self.frame_selected = None;
             self.push_frames(frames);
             self.markers_follow_delete(i);
+            self.playhead_follow_delete(i);
+        } else if hit(l.playhead, x, y) {
+            self.drag = Drag::Playhead;
         } else if let Some(i) = l.frames.iter().position(|f| hit(f.0, x, y)) {
             self.drag = Drag::Frame {
                 from: i,
@@ -508,11 +458,15 @@ impl AnimDoc {
                 gap: i,
                 at: (x, y),
             };
+        } else if hit(l.strip, x, y) && !l.frames.is_empty() {
+            self.insert_at = Some(self.drop_gap(x));
         } else if let Some(cell) = self.cell_at(x, y)
             && self.row().is_some()
         {
+            let base = self.click_base();
             self.drag = Drag::Cells {
-                base: self.click_base(),
+                at: self.insert_at.unwrap_or(base.len()).min(base.len()),
+                base,
                 added: vec![self.frame_of(cell)],
             };
         }
@@ -537,6 +491,10 @@ impl AnimDoc {
                 _ => last,
             };
             self.drag = Drag::Scrub(f, s, last);
+            return true;
+        }
+        if matches!(self.drag, Drag::Playhead) {
+            self.insert_at = Some(self.drop_gap(x));
             return true;
         }
         let cell = self.cell_at(x, y).map(|c| self.frame_of(c));
@@ -568,7 +526,7 @@ impl AnimDoc {
                 }
                 true
             }
-            Drag::Scrub(..) | Drag::None => false,
+            Drag::Scrub(..) | Drag::None | Drag::Playhead => false,
         }
     }
 
@@ -579,10 +537,13 @@ impl AnimDoc {
             return true;
         }
         match std::mem::take(&mut self.drag) {
-            Drag::Cells { base, added } => {
-                self.push_frames(base.into_iter().chain(added).collect());
+            Drag::Cells { base, added, at } => {
+                self.push_frames(strip::spliced(&base, &added, at));
+                self.markers_follow_insert(at, added.len());
+                self.insert_at = Some(at + added.len());
                 true
             }
+            Drag::Playhead => true,
             Drag::Frame {
                 from, moved, gap, ..
             } => {
@@ -616,7 +577,7 @@ impl AnimDoc {
             return;
         }
         self.selected = i;
-        self.frame_selected = None;
+        (self.frame_selected, self.insert_at) = (None, None);
         if let Some(r) = self.snap.info.as_ref().and_then(|x| x.rows.get(i)) {
             self.pending.push(AnimFieldEdit::SetCurrent(r.name.clone()));
         }
@@ -657,6 +618,7 @@ impl AnimDoc {
         self.frame_selected = None;
         self.push_frames(frames);
         self.markers_follow_delete(i);
+        self.playhead_follow_delete(i);
         true
     }
 }

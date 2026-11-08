@@ -802,6 +802,7 @@ mod tira;
 
 mod cores;
 mod folhas;
+mod insercao;
 mod marcas;
 mod scrub;
 

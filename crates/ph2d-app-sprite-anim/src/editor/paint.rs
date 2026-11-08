@@ -234,6 +234,7 @@ pub fn paint_doc(
     let frames = doc.shown_frames();
     doc.painted = paint_strip(doc, &l, &frames, info.as_ref(), scene, text, theme);
     doc.paint_bar(scene, theme);
+    doc.paint_playhead(scene, text, theme);
     doc.painted_marks = (0..l.frames.len())
         .filter(|i| doc.marker_at(*i).is_some())
         .collect();

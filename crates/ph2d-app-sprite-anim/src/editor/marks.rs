@@ -110,6 +110,12 @@ impl AnimDoc {
         });
     }
 
+    /// Entraram `n` quadros no intervalo `at`: os marcadores dali para a frente andam `n`.
+    pub(super) fn markers_follow_insert(&mut self, at: usize, n: usize) {
+        let (at, n) = (at as u32, n as u32);
+        self.markers_follow(|s| Some(if s >= at { s + n } else { s }));
+    }
+
     /// O quadro `gone` saiu.
     pub(super) fn markers_follow_delete(&mut self, gone: usize) {
         let g = gone as u32;

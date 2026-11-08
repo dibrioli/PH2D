@@ -58,6 +58,8 @@ pub struct Layout {
     pub strip: Rect,
     /// O trilho da barra de rolagem, logo abaixo da tira, e a largura de todos os quadros juntos.
     pub strip_bar: Rect,
+    /// A marca de inserção (vazia sem quadros).
+    pub playhead: Rect,
     pub strip_content: f32,
     /// Por quadro da faixa: (miniatura, ×).
     pub frames: Vec<(Rect, Rect)>,
@@ -97,6 +99,7 @@ impl Default for Layout {
             sheet: z,
             strip: z,
             strip_bar: z,
+            playhead: z,
             strip_content: 0.0,
             frames: Vec::new(),
             marker: None,
@@ -389,20 +392,29 @@ impl AnimDoc {
 
         // ── Os quadros da tira ──
         self.scroll_at_edge(l.strip, row * EDGE_SCROLL_ROWS, row);
-        let fill = (l.strip.w - n_frames.saturating_sub(1) as f32 * gap) / n_frames.max(1) as f32;
+        // A marca de inserção ocupa um vão da largura de uma linha entre dois quadros (dono 08/11).
+        let slot = if n_frames > 0 { row + gap } else { 0.0 };
+        let p = self.playhead_gap().min(n_frames);
+        let fill =
+            (l.strip.w - slot - n_frames.saturating_sub(1) as f32 * gap) / n_frames.max(1) as f32;
         let thumb_w = fill.min(thumb * THUMB_MAX_ASPECT).max(thumb);
-        let max_scroll = (n_frames as f32 * (thumb_w + gap) - gap - l.strip.w).max(0.0);
+        let max_scroll = (n_frames as f32 * (thumb_w + gap) - gap + slot - l.strip.w).max(0.0);
         self.strip_scroll = self.strip_scroll.clamp(0.0, max_scroll);
         l.strip_content = max_scroll + l.strip.w;
         l.frames = (0..n_frames)
             .map(|i| {
-                let fx = l.strip.x + i as f32 * (thumb_w + gap) - self.strip_scroll;
+                let fx = l.strip.x + i as f32 * (thumb_w + gap) - self.strip_scroll
+                    + if i >= p { slot } else { 0.0 };
                 (
                     Rect::new(fx, l.strip.y, thumb_w, thumb),
                     Rect::new(fx + thumb_w - close_side, l.strip.y, close_side, close_side),
                 )
             })
             .collect();
+        if n_frames > 0 {
+            let x = l.strip.x + p as f32 * (thumb_w + gap) - self.strip_scroll;
+            l.playhead = Rect::new(x, l.strip.y, row, thumb);
+        }
         self.drag_points_at(&l.frames);
         l.marker = self.frame_drag().and_then(|d| {
             let centre = match (l.frames.get(d.gap), l.frames.last()) {

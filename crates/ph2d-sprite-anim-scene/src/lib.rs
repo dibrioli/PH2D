@@ -15,6 +15,11 @@ pub const OUVE: &str = "Hears Step";
 pub const INICIO: &str = "Starts With";
 pub const TROCADA: &str = "Swapped Image";
 pub const PLAYER: &str = "Player";
+/// O Animated de DUAS folhas (plano GEF 26 V6): `idle` 4 × 1 e `run` 6 × 2, e uma animação que as mistura.
+pub const DUAS: &str = "Two Sheets";
+/// As imagens da cena pela ordem em que a biblioteca as recebe: as duas folhas de `DUAS`.
+const IDLE: usize = 2;
+const RUN: usize = 3;
 /// O sinal que o marcador da folha grita e a regra de [`OUVE`] ouve.
 pub const SINAL: &str = "footstep";
 /// O índice de «row 1» na lista: a folha entra com o «loop» e o Split junta depois dele.
@@ -23,19 +28,21 @@ const ROW_1: u8 = 1;
 const QUADRO_DO_GRITO: u32 = 2;
 
 /// Em fila acima das moedas do chão da esquerda, à direita do Player.
-pub const OBJETOS: [(&str, [f32; 2]); 5] = [
+pub const OBJETOS: [(&str, [f32; 2]); 6] = [
     (VAZIO, [-5.5, 1.8]),
     (FOLHA, [-3.5, 1.8]),
     (OUVE, [-1.5, 1.8]),
     (INICIO, [0.5, 1.8]),
     (TROCADA, [-3.5, 4.2]),
+    (DUAS, [-1.0, 4.2]),
 ];
 /// Onde a vista abre: a fila de objectos e o Player.
 pub const VISTA: ([f32; 2], f32) = ([-3.5, 2.5], 9.0);
 
 pub const MENSAGEM: &str = "[game-smoke] =5 o Animated Sprite peça a peça: «Empty Sheet» vazio; «Split Sheet» cortada por \
     Split by rows com um marcador «footstep»; «Hears Step» salta quando o marcador grita; «Starts With» com outra animação \
-    em prévia; «Swapped Image» com o aviso; e o Player com regras, a que ganha acesa no Play.";
+    em prévia; «Swapped Image» com o aviso; «Two Sheets» com as folhas idle e run e a animação «attack» que as mistura; \
+    e o Player com regras, a que ganha acesa no Play.";
 
 /// O instante que a foto do item quer (`PH2D_GAME_SMOKE_FOTO`), ou a prova que o guião corre e relata.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -52,6 +59,12 @@ pub enum Foto {
     ProvaPlay,
     /// O Ctrl+Z real de Split by rows, do herói de amostra, de Cut again e de Keep the cut.
     ProvaDesfaz,
+    /// «Two Sheets» com a folha `run` visível no cartão Image (plano GEF 26, painel 1 e 3 da maquete).
+    Folhas,
+    /// …e o editor aberto na «attack», que mistura as duas (painel 4).
+    FolhasEditor,
+    /// …depois de Delete sheet na `idle`: quadros vazios em alerta (painel 6).
+    FolhasApagada,
 }
 
 #[must_use]
@@ -67,6 +80,9 @@ pub fn foto() -> Option<Foto> {
         "animado_estreito" => Some(Foto::Estreito),
         "animado_prova_play" => Some(Foto::ProvaPlay),
         "animado_prova_desfaz" => Some(Foto::ProvaDesfaz),
+        "animado_folhas" => Some(Foto::Folhas),
+        "animado_folhas_editor" => Some(Foto::FolhasEditor),
+        "animado_folhas_apagada" => Some(Foto::FolhasApagada),
         _ => None,
     }
 }
@@ -81,6 +97,7 @@ impl Foto {
             Self::Inicio | Self::Estreito | Self::ProvaPlay => INICIO,
             Self::Aviso | Self::ProvaDesfaz => TROCADA,
             Self::RegraAcesa => PLAYER,
+            Self::Folhas | Self::FolhasEditor | Self::FolhasApagada => DUAS,
         }
     }
 }
@@ -94,6 +111,8 @@ pub enum Passo {
     Heroi(&'static str),
     /// Escolhe a imagem da biblioteca da cena (pela ordem em que a cena as traz).
     Imagem(&'static str, usize),
+    /// Load sheet respondido com a imagem da biblioteca da cena (pela ordem em que a cena as traz).
+    Folha(&'static str, usize),
     /// O botão Split by rows sobre a folha que `nome` mostra.
     Corta(&'static str),
     /// A regra que ouve o marcador.
@@ -140,6 +159,7 @@ pub fn passos(q: u32, foto: Option<Foto>) -> Vec<Passo> {
             P::Heroi(TROCADA),
             P::Imagem(FOLHA, 0),
             P::Imagem(TROCADA, 1),
+            P::Imagem(DUAS, IDLE),
             P::Ouve(OUVE),
         ],
         2 if !desfaz => vec![
@@ -157,7 +177,7 @@ pub fn passos(q: u32, foto: Option<Foto>) -> Vec<Passo> {
             P::Anim(FOLHA, Ed::MarkerSignal(ROW_1, 0, SINAL.into())),
         ],
         12 => vec![P::Foto(foto)],
-        _ => Vec::new(),
+        _ => duas_folhas(q, foto),
     };
     match foto {
         Some(Foto::ProvaPlay) => v.extend(prova_do_play(q)),
@@ -166,6 +186,38 @@ pub fn passos(q: u32, foto: Option<Foto>) -> Vec<Passo> {
         _ => {}
     }
     v
+}
+
+/// ⭐ «Two Sheets» (plano GEF 26 V6), pelas portas do artista: o corte da `idle`, Load sheet com a `run`, as três
+/// animações (`idle` na folha 1, `run` na 2 e `attack` misturada) e a `run` visível. Na foto do alerta, Delete sheet
+/// apaga a `idle`.
+fn duas_folhas(q: u32, foto: Option<Foto>) -> Vec<Passo> {
+    use ph2d_editor_core::AnimFrameRef as F;
+    use Passo as P;
+    let (i, r) = (|cell| F { sheet: 0, cell }, |cell| F { sheet: 1, cell });
+    match q {
+        3 => vec![P::Anim(DUAS, Ed::Grid(4, 1)), P::Folha(DUAS, RUN)],
+        4 => vec![
+            P::Anim(DUAS, Ed::Rename(0, "idle".into())),
+            P::Anim(DUAS, Ed::To(0, 3)),
+            P::Anim(DUAS, Ed::Add),
+        ],
+        6 => vec![
+            P::Anim(DUAS, Ed::Rename(1, "run".into())),
+            P::Anim(DUAS, Ed::Frames(1, (0..12).map(r).collect())),
+            P::Anim(DUAS, Ed::Add),
+        ],
+        9 => vec![
+            P::Anim(DUAS, Ed::Rename(2, "attack".into())),
+            P::Anim(DUAS, Ed::Frames(2, vec![r(0), r(1), i(0), i(1), r(2)])),
+            P::Anim(DUAS, Ed::SetCurrent("attack".into())),
+            P::Verbo(DUAS, Verbo::ShowSheet(1)),
+        ],
+        10 if foto == Some(Foto::FolhasApagada) => vec![P::Verbo(DUAS, Verbo::ShowSheet(0))],
+        11 if foto == Some(Foto::FolhasApagada) => vec![P::Verbo(DUAS, Verbo::DeleteSheet)],
+        14 => vec![P::Relata("as folhas".into(), DUAS)],
+        _ => Vec::new(),
+    }
 }
 
 /// ▶ noutra animação; o condutor joga (quadro 60) e pára (1500): o `[jogo]` compara os documentos.
@@ -235,18 +287,39 @@ pub fn ouve_o_marcador(sim: &mut SimWorld, e: Entity) {
 pub fn relato(sim: &SimWorld, nome: &str, e: Entity) -> String {
     let w = sim.world();
     format!(
-        "{nome}: toca={:?} inicio={:?} anims={} grade={:?} aviso={:?}",
+        "{nome}: toca={:?} inicio={:?} anims={} grade={:?} aviso={:?} folhas={} visivel={} quadros={:?}",
         w.get::<SpriteAnimator>(e).map(|p| p.current.as_str()),
         w.get::<SpriteAnimator>(e).and_then(|p| p.start.as_deref()),
         w.get::<SpriteAnimations>(e).map_or(0, |l| l.iter().count()),
         w.get::<SpriteGrid>(e).map(|g| (g.hframes, g.vframes)),
         w.get::<SpriteAnimations>(e).and_then(|l| l.1),
+        1 + w.get::<ph2d_ecs::SpriteSheets>(e).map_or(0, |s| s.0.len()),
+        ph2d_ecs::shown_sheet(w, e),
+        w.get::<ph2d_ecs::SpriteAnimFrames>(e)
+            .map(|f| f.0.iter().map(|t| (t.tag.clone(), t.cells.len())).collect::<Vec<_>>()),
     )
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ⭐ «Two Sheets»: Load sheet com a `run` e a «attack» misturada como na maquete (run, run, idle, idle, run); Delete
+    /// sheet só na foto do alerta. *Mutação: a tira toda numa folha ⇒ reprova.*
+    #[test]
+    fn two_sheets_carrega_a_run_e_mistura_a_attack() {
+        let todos = |f| (0..20).flat_map(move |q| passos(q, f)).collect::<Vec<_>>();
+        let v = todos(None);
+        assert!(v.contains(&Passo::Folha(DUAS, RUN)));
+        let attack = v.iter().find_map(|p| match p {
+            Passo::Anim(DUAS, Ed::Frames(2, f)) => Some(f.iter().map(|x| x.sheet).collect::<Vec<_>>()),
+            _ => None,
+        });
+        assert_eq!(attack, Some(vec![1, 1, 0, 0, 1]));
+        let apaga = |v: &[Passo]| v.contains(&Passo::Verbo(DUAS, Verbo::DeleteSheet));
+        assert!(!apaga(&v));
+        assert!(apaga(&todos(Some(Foto::FolhasApagada))));
+    }
 
     /// O guião da prova do desfazer não corta nem marca antes do gesto dela: um passo por gesto.
     #[test]

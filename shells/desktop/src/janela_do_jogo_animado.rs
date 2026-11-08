@@ -34,6 +34,7 @@ impl crate::App {
             | P::Verbo(n, _)
             | P::Heroi(n)
             | P::Imagem(n, _)
+            | P::Folha(n, _)
             | P::Corta(n)
             | P::Ouve(n)
             | P::Relata(_, n) => n,
@@ -56,6 +57,11 @@ impl crate::App {
             (P::Imagem(_, i), Some(b)) => {
                 if let Some(id) = a::imagem(i) {
                     self.choose_image(b, id);
+                }
+            }
+            (P::Folha(_, i), Some(b)) => {
+                if let Some(id) = a::imagem(i) {
+                    self.image_use_edit(b, ph2d_editor_core::ImageUseEdit::AddSheet(id));
                 }
             }
             (P::Corta(_), Some(b)) => {
@@ -120,7 +126,10 @@ impl crate::App {
                     Some(0.0),
                 );
             }
-            (Some(a::Foto::Editor), Some(entity_bits)) => {
+            (
+                Some(a::Foto::Editor | a::Foto::FolhasEditor | a::Foto::FolhasApagada),
+                Some(entity_bits),
+            ) => {
                 h.bus.push(EditorAction::InspectorAnimEdit {
                     entity_bits,
                     edit: ph2d_editor_core::AnimFieldEdit::OpenEditor,

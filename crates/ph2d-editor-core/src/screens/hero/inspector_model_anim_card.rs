@@ -127,6 +127,8 @@ pub struct AnimCardInfo {
     pub step: u32,
     /// A folha, quando a sprite tem pixels em memória.
     pub sheet: Option<SheetImage>,
+    /// As folhas extra `1..` (plano GEF 26): a imagem e o corte de cada uma, `[k - 1]` = a folha `k`.
+    pub extra_sheets: Vec<(Option<SheetImage>, u32, u32)>,
 }
 
 impl Default for AnimCardInfo {
@@ -146,11 +148,24 @@ impl Default for AnimCardInfo {
             vframes: 1,
             step: 0,
             sheet: None,
+            extra_sheets: Vec::new(),
         }
     }
 }
 
 impl AnimCardInfo {
+    /// A imagem e o corte `(colunas, linhas)` da folha `k` (`0` = a do `Sprite`).
+    #[must_use]
+    pub fn sheet_of(&self, k: u8) -> Option<(&SheetImage, u32, u32)> {
+        match k {
+            0 => self.sheet.as_ref().map(|s| (s, self.hframes, self.vframes)),
+            k => self
+                .extra_sheets
+                .get(usize::from(k) - 1)
+                .and_then(|(s, h, v)| s.as_ref().map(|s| (s, *h, *v))),
+        }
+    }
+
     /// **As opções do menu «When»**, pela ordem do menu: as poses (só com Platform Player), as teclas,
     /// os factos de vida e os sinais.
     #[must_use]
@@ -213,6 +228,22 @@ pub fn row_cells(row: &super::InspectorAnimRow, sheets: &[u32]) -> Vec<super::An
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ⭐ O cartão pinta cada quadro pela imagem e o corte da folha DELE (plano GEF 26): a «run» de uma «attack»
+    /// misturada já não sai em branco. *Mutação: `sheet_of` só com a folha 0 ⇒ `None` na 1.*
+    #[test]
+    fn cada_quadro_pinta_se_pela_folha_dele() {
+        let img = |w| SheetImage::new(std::sync::Arc::new(vec![255; (w * 4 * 4) as usize]), w, 4);
+        let info = AnimCardInfo {
+            sheet: img(16),
+            hframes: 4,
+            extra_sheets: vec![(img(24), 6, 2)],
+            ..AnimCardInfo::default()
+        };
+        assert_eq!(info.sheet_of(0).map(|(s, h, v)| (s.w, h, v)), Some((16, 4, 1)));
+        assert_eq!(info.sheet_of(1).map(|(s, h, v)| (s.w, h, v)), Some((24, 6, 2)));
+        assert!(info.sheet_of(2).is_none());
+    }
 
     #[test]
     fn os_tags_dos_dois_seletores_vao_e_voltam() {

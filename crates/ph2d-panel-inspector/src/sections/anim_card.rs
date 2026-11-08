@@ -27,20 +27,13 @@ pub(crate) fn paint_preview(
     y: f32,
     info: &InspectorAnimInfo,
 ) -> f32 {
-    let Some(sheet) = info.card.sheet.as_ref() else {
+    if info.card.sheet.is_none() {
         return y;
-    };
+    }
     let h = ROW_H * PREVIEW_ROWS;
-    // A imagem em mão é a da folha 0; as outras folhas pintam-se pela sua (plano GEF 26 V3).
-    if info.frame.sheet == 0 {
-        paint_sheet_cell(
-            scene,
-            sheet,
-            info.card.hframes,
-            info.card.vframes,
-            info.frame.cell,
-            Rect::new(x, y, w, h),
-        );
+    // Cada quadro pinta-se pela imagem da folha DELE (plano GEF 26); um vazio não pinta.
+    if let Some((sheet, cols, rows)) = info.card.sheet_of(info.frame.sheet) {
+        paint_sheet_cell(scene, sheet, cols, rows, info.frame.cell, Rect::new(x, y, w, h));
     }
     y + h + ph2d_tokens::control_gap_px()
 }
@@ -158,18 +151,13 @@ pub(crate) fn paint_list(
         }
         let cells = row_cells(row, &info.sheets);
         let mut text_x = x + Spacing::Sm.px();
-        if let Some(sheet) = info.card.sheet.as_ref() {
+        if info.card.sheet.is_some() {
             // A miniatura é um quadrado do lado da linha; o texto anda na HORIZONTAL, não é um passo.
             let thumb = Rect::new(x, cur_y, ROW_H, ROW_H);
-            if let Some(first) = cells.first().filter(|f| f.sheet == 0) {
-                paint_sheet_cell(
-                    scene,
-                    sheet,
-                    info.card.hframes,
-                    info.card.vframes,
-                    first.cell,
-                    thumb,
-                );
+            if let Some(first) = cells.first()
+                && let Some((sheet, cols, rows)) = info.card.sheet_of(first.sheet)
+            {
+                paint_sheet_cell(scene, sheet, cols, rows, first.cell, thumb);
             }
             text_x = thumb.x + thumb.w + Spacing::Sm.px();
         }

@@ -24,6 +24,14 @@ pub const CENAS: u32 = 5;
 
 /// A cena 4 (plano 12): o nível 2 com duas imagens na biblioteca do projecto para trocar pelo Inspector — a
 /// folha do herói azul e os montes ao pôr do sol (`docs/GameEngineFuncional/ferramentas/arte_trocar.py`).
+/// A cena 5: as da 4 e as duas folhas de «Two Sheets» (plano GEF 26 V6, `arte/duas_folhas.py`).
+pub const IMAGENS_5: [&str; 4] = [
+    IMAGENS_4[0],
+    IMAGENS_4[1],
+    concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/GameEngineFuncional/arte/idle.png"),
+    concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/GameEngineFuncional/arte/run.png"),
+];
+
 pub const IMAGENS_4: [&str; 2] = [
     concat!(
         env!("CARGO_MANIFEST_DIR"),
@@ -38,7 +46,11 @@ pub const IMAGENS_4: [&str; 2] = [
 /// As imagens que a cena `nivel` traz para a biblioteca.
 #[must_use]
 pub fn imagens_da_cena(nivel: u32) -> &'static [&'static str] {
-    if nivel >= 4 { &IMAGENS_4 } else { &[] }
+    match nivel {
+        5 => &IMAGENS_5,
+        4 => &IMAGENS_4,
+        _ => &[],
+    }
 }
 
 // As fotos do dono (`PH2D_GAME_SMOKE_FOTO`), irmãs pelo tecto de LOC.

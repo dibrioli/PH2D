@@ -141,7 +141,7 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro, p: &Pergunta)
     let x = p.caixa.x + Spacing::Sm.px();
     let w = p.caixa.w - Spacing::Sm.px() * 2.0;
     camada_das_listas::por_cima(ctx.scene, |cena| {
-        fill_rounded_rect(cena, p.caixa, raio, tom!(ColorToken::DangerSoft, theme));
+        fill_rounded_rect(cena, p.caixa, raio, fundo_da_pergunta(theme));
         // FRAME-RAW-OK: a caixa realçada da pergunta (maquete B, estado 2) leva o contorno do perigo
         ph2d_editor_core::paint::stroke_rounded_rect(
             cena,
@@ -196,11 +196,6 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro, p: &Pergunta)
             }
             let (tx, topo) = (r.x + Spacing::Lg.px(), r.y + (r.h - font) * 0.5);
             let cabe = r.w - Spacing::Lg.px() * 2.0;
-            let cor = if sel {
-                ColorToken::Text1
-            } else {
-                ColorToken::Text2
-            };
             paint_text(
                 texto,
                 cena,
@@ -209,7 +204,7 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro, p: &Pergunta)
                 topo,
                 font,
                 cabe,
-                tom!(cor, theme),
+                tinta_do_destino(theme),
             );
             ph2d_editor_core::paint::paint_layer_outline(
                 cena,
@@ -250,6 +245,35 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro, p: &Pergunta)
             tom!(ColorToken::Text1, theme),
         );
     });
+}
+
+/// O fundo da caixa da pergunta: `DangerSoft`; num tema em que o texto forte não se lê nele a
+/// [`ph2d_tokens::contrast::TEXT_MIN_RATIO`] (medido 07/11: PlumberRed, 4,01:1), o do cartão — o contorno `Danger`
+/// continua a dizer que é a pergunta do perigo.
+#[must_use]
+pub fn fundo_da_pergunta(theme: ph2d_tokens::Theme) -> ph2d_vector::Color {
+    let perigo = tom!(ColorToken::DangerSoft, theme);
+    if razao(tinta_do_destino(theme), perigo) >= ph2d_tokens::contrast::TEXT_MIN_RATIO {
+        perigo
+    } else {
+        tom!(ColorToken::Bg1, theme)
+    }
+}
+
+/// A razão WCAG entre duas cores pintadas.
+fn razao(a: ph2d_vector::Color, b: ph2d_vector::Color) -> f64 {
+    let t = |c: ph2d_vector::Color| {
+        let [r, g, b, a] = c.to_rgba8().to_u8_array();
+        ph2d_tokens::Color { r, g, b, a }
+    };
+    t(a).contrast_ratio(&t(b))
+}
+
+/// O nome de cada destino, escolhido ou não: o texto FORTE (onda 9f: o `Text2` sobre o `DangerSoft` lia-se
+/// fraco; a escolhida diz-se pelo fundo e pela ✓). O teste do contraste mede-o sobre [`fundo_da_pergunta`].
+#[must_use]
+pub fn tinta_do_destino(theme: ph2d_tokens::Theme) -> ph2d_vector::Color {
+    tom!(ColorToken::Text1, theme)
 }
 
 /// Os alvos e as dicas da pergunta.

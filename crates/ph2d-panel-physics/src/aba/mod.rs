@@ -383,3 +383,4 @@ mod remove;
 
 pub use geometria::Geometria;
 pub(crate) use pinta::paint;
+pub use remove::{fundo_da_pergunta, tinta_do_destino};

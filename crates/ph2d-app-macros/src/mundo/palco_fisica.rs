@@ -13,6 +13,7 @@ use ph2d_editor_core::macro_edits::ErroDaMacroView;
 use ph2d_editor_core::macro_etapas::erros::{MUNDO_DIFERE, erro_com};
 use ph2d_macro::MacroTime;
 use ph2d_physics_ecs::{BodyKind, FrozenScene, InputTape, PhysicsBridge, RigidBody};
+use ph2d_physics_ecs::{move_forma_para_filha, shapes_in_order};
 use std::collections::BTreeMap;
 
 /// O passo fixo do relógio da física (o `fixed_dt` da shell, que converte a cabeça em tiques).
@@ -79,6 +80,14 @@ fn poe_tudo(cx: &Contexto<'_>, w: &mut ph2d_ecs::World, e: Entity, cs: &BTreeMap
     }
 }
 
+fn copia(cx: &Contexto<'_>, de: &ph2d_ecs::World, e: Entity, w: &mut ph2d_ecs::World, pe: Entity) {
+    for r in cx.registo.iter() {
+        if let Ok(Some(b)) = (r.serialize)(de, e) {
+            let _ = (r.insert_from_bytes)(w, pe, &b);
+        }
+    }
+}
+
 /// O que nasce no mundo privado.
 enum Nasce {
     Obstaculo(Entity),
@@ -123,13 +132,23 @@ fn monta(
     for ((_, n), pe) in ordem.into_iter().zip(pes) {
         match n {
             Nasce::Obstaculo(e) => {
-                for r in cx.registo.iter() {
-                    if let Ok(Some(b)) = (r.serialize)(vivo.world(), e) {
-                        let _ = (r.insert_from_bytes)(p.world_mut(), pe, &b);
-                    }
+                let (v, w) = (vivo.world(), p.world_mut());
+                copia(cx, v, e, w, pe);
+                let t = ph2d_ecs::world_transform(v, e);
+                if let Some(t) = t {
+                    w.entity_mut(pe).insert(t);
                 }
-                if let Some(t) = ph2d_ecs::world_transform(vivo.world(), e) {
-                    p.world_mut().entity_mut(pe).insert(t);
+                let t = t.unwrap_or_default();
+                // ADR-0199: as formas filhas do obstáculo vêm com ele, na pose relativa.
+                let filhas = shapes_in_order(v, e)
+                    .into_iter()
+                    .map(|s| Entity::from_bits(s.0));
+                for f in filhas.filter(|&f| f != e) {
+                    let pf = w.spawn_empty().id();
+                    copia(cx, v, f, w, pf);
+                    let m = ph2d_ecs::world_transform(v, f).unwrap_or_default();
+                    let local = Transform::inverse_compose(t, m).unwrap_or_default();
+                    w.entity_mut(pf).insert((local, ChildOf(pe)));
                 }
             }
             Nasce::Raiz => {
@@ -159,6 +178,10 @@ fn monta(
             p.world_mut().entity_mut(pe).insert(ChildOf(pai));
         }
     }
+    // ADR-0199: a forma gravada no corpo passa à filha.
+    locais
+        .values()
+        .for_each(|&pe| _ = move_forma_para_filha(p.world_mut(), pe));
     ph2d_ecs::assign_master_pieces(p.world_mut());
     (p, locais)
 }
@@ -188,7 +211,8 @@ pub fn impressao(w: &ph2d_ecs::World, dono: Entity) -> [u8; 32] {
         .filter(|e| !dentro_de(w, e.id(), dono))
         .map(|e| {
             let mut b = postcard::to_allocvec(&e.get::<RigidBody>()).unwrap_or_default();
-            let c = e.get::<ph2d_physics_ecs::Collider>();
+            let forma = ph2d_physics_ecs::main_shape(w, e.id()).unwrap_or(e.id());
+            let c = w.get::<ph2d_physics_ecs::Collider>(forma);
             b.extend(postcard::to_allocvec(&c).unwrap_or_default());
             b.extend(
                 postcard::to_allocvec(&ph2d_ecs::world_transform(w, e.id())).unwrap_or_default(),

@@ -128,20 +128,20 @@ impl Cena {
         ph2d_physics_ecs::register_physics_components(&mut reg);
         let mut sim = SimWorld::new();
         let w = sim.world_mut();
-        w.spawn((
-            StableId(1),
-            RigidBody {
-                kind: BodyKind::Static,
-            },
-            Collider {
-                shape: ColliderShape::Cuboid {
-                    half_x: 80.0,
-                    half_y: 0.1,
+        let chao = w
+            .spawn((
+                StableId(1),
+                RigidBody {
+                    kind: BodyKind::Static,
                 },
-                ..Collider::default()
-            },
-            Transform::default(),
-        ));
+                Transform::default(),
+            ))
+            .id();
+        let forma = ColliderShape::Cuboid {
+            half_x: 80.0,
+            half_y: 0.1,
+        };
+        ph2d_physics_ecs::nasce_com_forma(w, chao, forma);
         let dono = w
             .spawn((
                 StableId(1_000),

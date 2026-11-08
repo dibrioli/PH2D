@@ -48,24 +48,21 @@ fn sprite(b: &mut Banca, bits: u64, (w, h): (u32, u32)) {
         .insert(s);
 }
 
-/// O *Add Physics Body* (`ph2d_app_physics::physics_apply`): corpo dinâmico e a caixa da `Sprite`;
-/// devolve a fotografia de depois (o baseline do undo).
+/// O *Add Physics Body* (`ph2d_app_physics::physics_apply`): corpo dinâmico e a caixa da `Sprite`
+/// na filha «Collision Shape» (ADR-0199); devolve a fotografia de depois (o baseline do undo).
 fn corpo(b: &mut Banca, bits: u64) -> WorldSnapshot {
     let antes = foto(b);
     let e = Entity::from_bits(bits);
     let s = *b.sim.world().get::<ph2d_render::Sprite>(e).expect("Sprite");
-    b.sim.world_mut().entity_mut(e).insert((
-        RigidBody {
-            kind: BodyKind::Dynamic,
-        },
-        Collider {
-            shape: ColliderShape::Cuboid {
-                half_x: s.size[0] * 0.5,
-                half_y: s.size[1] * 0.5,
-            },
-            ..Collider::default()
-        },
-    ));
+    let w = b.sim.world_mut();
+    w.entity_mut(e).insert(RigidBody {
+        kind: BodyKind::Dynamic,
+    });
+    let caixa = ColliderShape::Cuboid {
+        half_x: s.size[0] * 0.5,
+        half_y: s.size[1] * 0.5,
+    };
+    ph2d_physics_ecs::nasce_com_forma(w, e, caixa);
     let depois = foto(b);
     b.m.mundo_mudou(&antes, &depois);
     depois

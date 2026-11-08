@@ -279,13 +279,16 @@ fn conduz(
         let o = agora.get(&id);
         let vivo = o.is_some_and(|o| o.vivo);
         if vivo {
+            let forma = forma_filha(sim.world(), e);
             for n in nomes.iter().filter(|n| *n != VISIBILIDADE && *n != CORPO) {
                 let Some(p) = porta(n) else { continue };
                 let v = match fisica.get(&id) {
                     Some(pose) if n == TRANSFORM => Some(pose.as_slice()),
                     _ => o.and_then(|o| o.componentes.get(n)).map(Vec::as_slice),
                 };
-                drive.blobs.conduz(sim, e, p, v);
+                let lado_forma = ph2d_physics_ecs::LADO_FORMA.contains(&n.as_str());
+                let alvo = forma.filter(|_| lado_forma).unwrap_or(e);
+                drive.blobs.conduz(sim, alvo, p, v);
             }
         }
         if let Some(p) = porta(VISIBILIDADE) {
@@ -310,6 +313,14 @@ fn conduz(
             drive.blobs.conduz(sim, e, p, v.as_deref());
         }
     }
+}
+
+/// ADR-0199: a filha-forma de um corpo — o lado forma de uma gravação antiga conduz-se nela.
+fn forma_filha(w: &ph2d_ecs::World, e: Entity) -> Option<Entity> {
+    w.get::<RigidBody>(e)?;
+    ph2d_ecs::ordered_children_iter(w, e).find(|&f| {
+        w.get::<RigidBody>(f).is_none() && w.get::<ph2d_physics_ecs::Collider>(f).is_some()
+    })
 }
 
 #[cfg(test)]

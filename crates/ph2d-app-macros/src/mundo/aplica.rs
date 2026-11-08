@@ -295,6 +295,8 @@ fn nasce(
                 .ok_or_else(|| desconhecido(nome))?;
             (insere.insert_from_bytes)(w, e, &b).map_err(|er| nao_nasce(nome, &er))?;
         }
+        // ADR-0199: uma gravação antiga traz a forma no corpo — ela nasce na filha.
+        ph2d_physics_ecs::move_forma_para_filha(w, e);
     }
     Ok(sid(w, raiz))
 }

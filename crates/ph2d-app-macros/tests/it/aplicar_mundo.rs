@@ -78,6 +78,20 @@ fn aplica(b: &mut Banca, lib: &std::path::Path, f: &Ficheiro, onde: OndeAplicar)
         .collect()
 }
 
+/// O estado inicial com só o objecto Macro (`StableId` 900).
+fn so_o_dono() -> Inicial {
+    let (id, original, quem) = (0, 900, Quem::Macro);
+    Inicial {
+        objetos: vec![Objeto { id, original, quem }],
+        ..Inicial::default()
+    }
+}
+
+fn obj(id: u32, original: u64) -> Objeto {
+    let quem = Quem::Mundo;
+    Objeto { id, original, quem }
+}
+
 fn sid(b: &Banca, e: Entity) -> u64 {
     b.sim.world().get::<StableId>(e).expect("tem identidade").0
 }
@@ -139,27 +153,20 @@ fn aplicar_novo_faz_nascer_com_ids_novos_e_juntas_remapeadas() {
         body_b: bb,
         ..PhysicsJoint::default()
     };
+    // ADR-0199: cada corpo gravado com o `Collider` nele (antes da opção B) nasce com a forma na filha.
+    let bola = Collider {
+        shape: ph2d_physics_ecs::ColliderShape::Ball { radius: 0.7 },
+        ..Collider::default()
+    };
     let corpo = |id: u32| Linha {
         id,
         pai: None,
         componentes: vec![
             blob(&reg, RIGIDO, RigidBody::default()),
-            blob(&reg, COLISOR, Collider::default()),
+            blob(&reg, COLISOR, bola),
         ],
     };
-    let inicial = Inicial {
-        objetos: vec![Objeto {
-            id: 0,
-            original: 900,
-            quem: Quem::Macro,
-        }],
-        ..Inicial::default()
-    };
-    let obj = |id, original| Objeto {
-        id,
-        original,
-        quem: Quem::Mundo,
-    };
+    let inicial = so_o_dono();
     let passo = Evento::Passo {
         novos: vec![obj(1, chao), obj(2, a), obj(3, bb), obj(4, junta)],
         mudancas: vec![
@@ -192,7 +199,10 @@ fn aplicar_novo_faz_nascer_com_ids_novos_e_juntas_remapeadas() {
     }
     assert!(sids[0] != sids[1] && sids[1] != sids[2] && sids[0] != sids[2]);
     for e in &dentro {
-        assert!(w.get::<RigidBody>(*e).is_some() && w.get::<Collider>(*e).is_some());
+        let forma = ph2d_physics_ecs::main_shape(w, *e).expect("a forma do corpo");
+        assert!(w.get::<RigidBody>(*e).is_some() && w.get::<Collider>(*e).is_none());
+        assert_eq!(w.get::<ChildOf>(forma).map(|p| p.0), Some(*e));
+        assert_eq!(w.get::<Collider>(forma), Some(&bola), "o mesmo Collider");
     }
     // A trilha instalada fala do projecto de destino: o `original` de cada objecto é o novo.
     let d = doc_de(&b, novos[0]);
@@ -211,7 +221,9 @@ fn aplicar_novo_faz_nascer_com_ids_novos_e_juntas_remapeadas() {
         ph2d_ecs::entity_of_stable_id(b.sim.world_mut(), StableId(s)).expect("vivo")
     };
     let e_a = por_sid(&mut b, o[2]);
-    let j = filhos(&mut b, e_a);
+    let forma_a = ph2d_physics_ecs::main_shape(b.sim.world(), e_a).expect("a forma de a");
+    let mut j = filhos(&mut b, e_a);
+    j.retain(|f| *f != forma_a);
     assert_eq!(j, [por_sid(&mut b, o[4])], "a junta dentro do corpo a");
     let jv = *b.sim.world().get::<PhysicsJoint>(j[0]).expect("a junta");
     assert_eq!((jv.body_a, jv.body_b), (o[2], o[3]));
@@ -363,19 +375,7 @@ fn o_apagado_na_gravacao_nao_nasce_nem_aponta_um_alheio() {
     let (mut b, _) = banca(32, 32, &lib);
     let reg = crate::portas_de_teste::registo();
     let (morto, vivo, junta) = (10, 21, 22);
-    let inicial = Inicial {
-        objetos: vec![Objeto {
-            id: 0,
-            original: 900,
-            quem: Quem::Macro,
-        }],
-        ..Inicial::default()
-    };
-    let obj = |id, original| Objeto {
-        id,
-        original,
-        quem: Quem::Mundo,
-    };
+    let inicial = so_o_dono();
     let corpo = |id: u32| Linha {
         id,
         pai: None,

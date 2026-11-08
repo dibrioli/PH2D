@@ -660,13 +660,4 @@ impl CodeDoc {
     }
 }
 
-/// Um byte do texto antes da edição `e`, no texto depois dela.
-pub(crate) fn map_byte(b: usize, e: &TextEdit) -> usize {
-    if b < e.start_byte {
-        b
-    } else if b >= e.old_end_byte {
-        b - e.old_end_byte + e.new_end_byte
-    } else {
-        e.start_byte
-    }
-}
+pub(crate) use ph2d_code_assist::complete::map_byte;

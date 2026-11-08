@@ -85,7 +85,7 @@ impl crate::doc::CodeDoc {
         }
         match key {
             Key::Tab if !mods.shift => {
-                match s.next() {
+                match s.next_stop() {
                     Jump::Stop(sel) => self.buffer.jump_selection(sel),
                     Jump::End(sel) => {
                         self.buffer.jump_selection(sel);

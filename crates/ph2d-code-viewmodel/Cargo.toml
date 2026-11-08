@@ -1,0 +1,18 @@
+[package]
+name = "ph2d-code-viewmodel"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Os tipos que a família do editor de scripts entrega à pintura (CodeEditor, fecho da Onda D: saíram
+# do `ph2d-panel-code` para que a lógica do `ph2d-code-assist` os produza sem subir uma camada).
+[dependencies]
+ph2d-tokens = { path = "../ph2d-tokens" }
+
+[lints]
+workspace = true

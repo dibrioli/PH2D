@@ -8,20 +8,20 @@ use ph2d_code_buffer::Text;
 use ph2d_code_help::resolve::{Query, resolve};
 use ph2d_code_help::{Anchor, Kind, Member, Page};
 use ph2d_code_syntax::Syntax;
+use ph2d_code_viewmodel::Ink;
+use ph2d_code_viewmodel::help::{Block, HelpDoc, Span, SpanKind};
 use ph2d_i18n::tr;
-use ph2d_panel_code::Ink;
-use ph2d_panel_code::help::{Block, HelpDoc, Span, SpanKind};
 
 /// Para onde leva o número de um link (ou de um botão de copiar).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Target {
+pub enum Target {
     Anchor(Anchor),
     /// O botão de copiar o exemplo do membro `n` da página.
     Example(usize),
 }
 
 /// A página, e o destino de cada número.
-pub(crate) struct Built {
+pub struct Built {
     pub doc: HelpDoc,
     pub targets: Vec<Target>,
 }
@@ -131,7 +131,7 @@ fn paragraphs(text: &str) -> impl Iterator<Item = &str> {
 }
 
 /// `(args)` e o retorno de uma assinatura (`<T>(a: T): R` → `("<T>(a: T)", "R")`); sem retorno = `""`.
-pub(crate) fn split_sig(sig: &str) -> (&str, &str) {
+pub fn split_sig(sig: &str) -> (&str, &str) {
     let mut depth = 0i32;
     let bytes = sig.as_bytes();
     let mut opened = false;
@@ -394,7 +394,7 @@ fn build_into(page: &Page) -> Builder {
 }
 
 /// A página `page` pronta a pintar.
-pub(crate) fn build(page: &Page) -> Built {
+pub fn build(page: &Page) -> Built {
     let b = build_into(page);
     let sections = b
         .blocks

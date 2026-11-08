@@ -2,38 +2,8 @@
 //! (a lei do filtro, da ordem e da sessão está em [`crate::complete`]).
 
 use crate::complete::{insertion, replaced, word_at};
-use std::ops::Range;
 
-/// A tinta do rótulo pelo `kind` do LSP (as cores do realce do próprio código).
-fn ink_of_kind(kind: Option<u32>) -> ph2d_panel_code::Ink {
-    use ph2d_panel_code::Ink;
-    match kind {
-        Some(2..=4) => Ink::Function,
-        Some(5 | 10) => Ink::Property,
-        Some(6) => Ink::Variable,
-        Some(7 | 8 | 9 | 22 | 25) => Ink::Type,
-        Some(14) => Ink::Keyword,
-        Some(12 | 20 | 21) => Ink::String,
-        _ => Ink::Plain,
-    }
-}
-
-/// As faixas de bytes do rótulo que casaram (os índices de carácter agrupados em trechos).
-fn matched_bytes(label: &str, chars: &[usize]) -> Vec<Range<usize>> {
-    let offs: Vec<(usize, usize)> = label
-        .char_indices()
-        .map(|(b, c)| (b, b + c.len_utf8()))
-        .collect();
-    let mut out: Vec<Range<usize>> = Vec::new();
-    for &i in chars {
-        let Some(&(a, b)) = offs.get(i) else { continue };
-        match out.last_mut() {
-            Some(r) if r.end == a => r.end = b,
-            _ => out.push(a..b),
-        }
-    }
-    out
-}
+use ph2d_code_assist::complete::{ink_of_kind, matched_bytes};
 
 /// O que a aba pinta da lista neste quadro.
 pub(crate) struct Shown {

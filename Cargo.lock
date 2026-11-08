@@ -5664,13 +5664,16 @@ dependencies = [
  "fastrand",
  "ph2d-a11y",
  "ph2d-app-host",
+ "ph2d-code-assist",
  "ph2d-code-buffer",
  "ph2d-code-explain",
  "ph2d-code-format",
  "ph2d-code-help",
  "ph2d-code-intel",
  "ph2d-code-lsp",
+ "ph2d-code-smoke",
  "ph2d-code-syntax",
+ "ph2d-code-viewmodel",
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-gpu",
@@ -5705,6 +5708,7 @@ dependencies = [
  "ph2d-audio-encode",
  "ph2d-code-explain",
  "ph2d-code-format",
+ "ph2d-code-scenes",
  "ph2d-code-syntax",
  "ph2d-component-desc",
  "ph2d-constraints-ecs",
@@ -6877,6 +6881,22 @@ name = "ph2d-chrome-sync"
 version = "0.0.0"
 
 [[package]]
+name = "ph2d-code-assist"
+version = "0.0.0"
+dependencies = [
+ "fastrand",
+ "ph2d-code-buffer",
+ "ph2d-code-explain",
+ "ph2d-code-help",
+ "ph2d-code-intel",
+ "ph2d-code-syntax",
+ "ph2d-code-viewmodel",
+ "ph2d-editor-core",
+ "ph2d-i18n",
+ "ph2d-script",
+]
+
+[[package]]
 name = "ph2d-code-buffer"
 version = "0.0.0"
 dependencies = [
@@ -6930,6 +6950,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-code-scenes"
+version = "0.0.0"
+dependencies = [
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-input",
+ "ph2d-script",
+ "ph2d-vec-entities",
+ "ph2d-vec-scene",
+]
+
+[[package]]
+name = "ph2d-code-smoke"
+version = "0.0.0"
+dependencies = [
+ "ph2d-editor-core",
+ "ph2d-host",
+]
+
+[[package]]
 name = "ph2d-code-syntax"
 version = "0.0.0"
 dependencies = [
@@ -6938,6 +6978,13 @@ dependencies = [
  "ph2d-code-buffer",
  "tree-sitter",
  "tree-sitter-luau",
+]
+
+[[package]]
+name = "ph2d-code-viewmodel"
+version = "0.0.0"
+dependencies = [
+ "ph2d-tokens",
 ]
 
 [[package]]
@@ -9882,6 +9929,7 @@ dependencies = [
  "parley",
  "ph2d-a11y",
  "ph2d-code-buffer",
+ "ph2d-code-viewmodel",
  "ph2d-editor-core",
  "ph2d-i18n",
  "ph2d-text",

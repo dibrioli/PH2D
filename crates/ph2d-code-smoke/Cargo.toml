@@ -1,0 +1,19 @@
+[package]
+name = "ph2d-code-smoke"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Os roteiros do smoke conduzido do editor de scripts (os gestos e as esperas de cada passo); saíram
+# do `ph2d-app-code/src/smoke_drive.rs` no fecho da Onda D. Folha: só teclas e modificadores.
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-host = { path = "../ph2d-host" }
+
+[lints]
+workspace = true

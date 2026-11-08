@@ -11,6 +11,7 @@ authors.workspace = true
 
 [dependencies]
 ph2d-code-buffer = { path = "../ph2d-code-buffer" }
+ph2d-code-viewmodel = { path = "../ph2d-code-viewmodel" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-tokens      = { path = "../ph2d-tokens" }
 ph2d-text        = { path = "../ph2d-text" }

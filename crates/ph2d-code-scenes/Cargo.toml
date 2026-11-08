@@ -1,0 +1,23 @@
+[package]
+name = "ph2d-code-scenes"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# As cenas do smoke do editor de scripts (scripts Luau, formas, montagem no mundo); saíram do
+# `ph2d-app-components/src/code_smoke.rs` no fecho da Onda D. Folha: mundo, scripts e vetor.
+[dependencies]
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-input = { path = "../ph2d-input" }
+ph2d-script = { path = "../ph2d-script" }
+ph2d-vec-entities = { path = "../ph2d-vec-entities" }
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+
+[lints]
+workspace = true

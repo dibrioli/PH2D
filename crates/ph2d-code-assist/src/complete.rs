@@ -12,7 +12,6 @@
 //!   pedido por sessão, o resto é nosso. Depois de `self.` ele só conhece os campos ATRIBUÍDOS; as
 //!   propriedades `ph2d.property` entram por nós.
 
-use crate::doc::map_byte;
 use ph2d_code_buffer::{Text, TextEdit};
 use ph2d_code_intel::Ticket;
 use std::cmp::Reverse;
@@ -20,7 +19,7 @@ use std::collections::BTreeMap;
 use std::ops::Range;
 
 /// A pausa antes de a lista abrir sozinha: o `code_complete_delay` do Godot 4.7.2 (I0b §7, 0,3 s).
-pub(crate) const AUTO_OPEN_NS: u128 = 300_000_000;
+pub const AUTO_OPEN_NS: u128 = 300_000_000;
 
 /// O `kind` LSP de um campo (as propriedades do `self` que juntamos).
 const FIELD: u32 = 5;
@@ -169,7 +168,7 @@ pub fn completable(word: &str) -> bool {
 
 /// O contexto do cursor: onde começa a palavra que se escreve e o que vem antes dela.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Word {
+pub struct Word {
     pub start: usize,
     /// `ph2d` em `ph2d.se|`, `self` em `self.|` (`None` = não é membro de um nome simples).
     pub qualifier: Option<String>,
@@ -178,7 +177,7 @@ pub(crate) struct Word {
 }
 
 /// A palavra no cursor `head` (`None` = uma palavra que começa por dígito: um número).
-pub(crate) fn word_at(text: &Text, head: usize) -> Option<Word> {
+pub fn word_at(text: &Text, head: usize) -> Option<Word> {
     let line = text.byte_of_line(text.line_of_byte(head));
     let before = text.slice(line..head);
     let start = before
@@ -315,7 +314,7 @@ fn count_words(s: &str, out: &mut BTreeMap<String, u32>) {
 
 /// Uma sessão de completação: a palavra que se escreve (o início segue as edições) e a resposta.
 #[derive(Debug)]
-pub(crate) struct Session {
+pub struct Session {
     pub anchor: usize,
     pub qualifier: Option<String>,
     /// Quando a lista pode abrir (a pausa); o pedido sai nesse quadro.
@@ -333,7 +332,7 @@ pub(crate) struct Session {
 
 /// A lista de uma aba.
 #[derive(Debug, Default)]
-pub(crate) struct Completer {
+pub struct Completer {
     pub session: Option<Session>,
 }
 
@@ -527,7 +526,7 @@ impl Completer {
                 filter: c.filter,
                 insert: c.insert,
                 snippet: c.snippet,
-                signature: c.command.as_deref() == Some(crate::hint::PARAMETER_HINTS),
+                signature: c.command.as_deref() == Some(PARAMETER_HINTS),
             })
             .map(|mut i| {
                 if let Some(e) = q.and_then(|q| crate::skeleton::api_entry(q, &i.label)) {
@@ -596,7 +595,7 @@ impl Session {
 
 /// O texto a inserir para `item` sobre a palavra, com os buracos do snippet (I12).
 #[must_use]
-pub(crate) fn insertion(item: &Item) -> crate::snippet::Expanded {
+pub fn insertion(item: &Item) -> crate::snippet::Expanded {
     if item.snippet {
         crate::snippet::parse(&item.insert)
     } else {
@@ -609,8 +608,55 @@ pub(crate) fn insertion(item: &Item) -> crate::snippet::Expanded {
 }
 
 /// A faixa de bytes que a aceitação troca: do início da palavra ao cursor.
-pub(crate) fn replaced(s: &Session, head: usize) -> Range<usize> {
+pub fn replaced(s: &Session, head: usize) -> Range<usize> {
     s.anchor..head
+}
+
+/// O comando com que o `luau-lsp` marca cada função da lista (sonda do I4, 16/10).
+pub const PARAMETER_HINTS: &str = "editor.action.triggerParameterHints";
+
+/// Um byte do texto antes da edição `e`, no texto depois dela.
+pub fn map_byte(b: usize, e: &TextEdit) -> usize {
+    if b < e.start_byte {
+        b
+    } else if b >= e.old_end_byte {
+        b - e.old_end_byte + e.new_end_byte
+    } else {
+        e.start_byte
+    }
+}
+
+/// A tinta do rótulo pelo `kind` do LSP (as cores do realce do próprio código).
+#[must_use]
+pub fn ink_of_kind(kind: Option<u32>) -> ph2d_code_viewmodel::Ink {
+    use ph2d_code_viewmodel::Ink;
+    match kind {
+        Some(2..=4) => Ink::Function,
+        Some(5 | 10) => Ink::Property,
+        Some(6) => Ink::Variable,
+        Some(7 | 8 | 9 | 22 | 25) => Ink::Type,
+        Some(14) => Ink::Keyword,
+        Some(12 | 20 | 21) => Ink::String,
+        _ => Ink::Plain,
+    }
+}
+
+/// As faixas de bytes do rótulo que casaram (os índices de carácter agrupados em trechos).
+#[must_use]
+pub fn matched_bytes(label: &str, chars: &[usize]) -> Vec<Range<usize>> {
+    let offs: Vec<(usize, usize)> = label
+        .char_indices()
+        .map(|(b, c)| (b, b + c.len_utf8()))
+        .collect();
+    let mut out: Vec<Range<usize>> = Vec::new();
+    for &i in chars {
+        let Some(&(a, b)) = offs.get(i) else { continue };
+        match out.last_mut() {
+            Some(r) if r.end == a => r.end = b,
+            _ => out.push(a..b),
+        }
+    }
+    out
 }
 
 #[cfg(test)]

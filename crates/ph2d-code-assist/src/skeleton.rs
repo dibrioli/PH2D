@@ -19,7 +19,7 @@ use ph2d_script::api_table::{API_TYPES, ApiEntry, ApiHook, HOOKS};
 const SNIPPET: u32 = 15;
 
 /// Os parâmetros de um tipo de função Luau `(a: T, b: U?) -> R`: (nome, tipo, opcional).
-pub(crate) fn params(luau_type: &str) -> Vec<(&str, &str, bool)> {
+pub fn params(luau_type: &str) -> Vec<(&str, &str, bool)> {
     let Some(inner) = luau_type.strip_prefix('(') else {
         return Vec::new();
     };
@@ -91,7 +91,7 @@ fn textual(ty: &str, name: &str) -> Option<String> {
 }
 
 /// O esqueleto do gancho; `keyword` = com o `function ` (sem ele: depois de o artista o escrever).
-pub(crate) fn hook_snippet(h: &ApiHook, keyword: bool) -> String {
+pub fn hook_snippet(h: &ApiHook, keyword: bool) -> String {
     let args: Vec<String> = params(h.luau_type)
         .iter()
         .enumerate()
@@ -110,7 +110,7 @@ pub(crate) fn hook_snippet(h: &ApiHook, keyword: bool) -> String {
 }
 
 /// A chamada `ident(…)` com um buraco por parâmetro obrigatório (os de texto entre aspas).
-pub(crate) fn call_snippet(e: &ApiEntry) -> String {
+pub fn call_snippet(e: &ApiEntry) -> String {
     let args: Vec<String> = params(e.luau_type)
         .iter()
         .filter(|(_, _, optional)| !optional)
@@ -124,13 +124,13 @@ pub(crate) fn call_snippet(e: &ApiEntry) -> String {
 }
 
 /// A entrada da API `table.label`, se é uma.
-pub(crate) fn api_entry(table: &str, label: &str) -> Option<&'static ApiEntry> {
+pub fn api_entry(table: &str, label: &str) -> Option<&'static ApiEntry> {
     ph2d_script::api_table::api().find(|e| e.table == table && e.ident == label)
 }
 
 /// Os esqueletos que a palavra que começa em `start` aceita: os ganchos ainda por declarar e a
 /// `ph2d.property`, no topo e no início de uma instrução (ou só os ganchos, depois de `function `).
-pub(crate) fn skeletons(text: &Text, syntax: &Syntax, start: usize) -> Vec<Item> {
+pub fn skeletons(text: &Text, syntax: &Syntax, start: usize) -> Vec<Item> {
     let ls = text.byte_of_line(text.line_of_byte(start));
     let lead = text.slice(ls..start);
     let lead = lead.trim_start();
@@ -165,7 +165,7 @@ pub(crate) fn skeletons(text: &Text, syntax: &Syntax, start: usize) -> Vec<Item>
 }
 
 /// Os esqueletos da sessão de completação `s` (um membro, `ph2d.x`, tem o `ph2d.` antes: nenhum).
-pub(crate) fn local_items(text: &Text, syntax: &Syntax, s: &crate::complete::Session) -> Vec<Item> {
+pub fn local_items(text: &Text, syntax: &Syntax, s: &crate::complete::Session) -> Vec<Item> {
     skeletons(text, syntax, s.anchor)
 }
 

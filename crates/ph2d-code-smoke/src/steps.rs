@@ -1,19 +1,19 @@
-//! **Os roteiros das cenas 3, 4, 5 e 10** — cada `STEPS*[k]` é o passo `k + 1`. Sairam do `smoke_drive.rs`
+//! **Os roteiros das cenas 3, 4, 5 e 10** — cada `STEPS*[k]` é o passo `k + 1`. Sairam do `ph2d-app-code/src/smoke_drive.rs`
 //! por tecto de LOC (fecho da Onda 2, 20/10); a porta que os conduz continua lá.
 
-use super::{Gesture, Until};
+use crate::{Gesture, Until};
 use ph2d_editor_core::doc_surface::Key;
 use ph2d_host::Modifiers;
 
-pub(super) const NONE: Modifiers = Modifiers {
+pub const NONE: Modifiers = Modifiers {
     shift: false,
     ctrl: false,
     alt: false,
     meta: false,
 };
-pub(super) const ALT: Modifiers = Modifiers { alt: true, ..NONE };
-pub(super) const CTRL: Modifiers = Modifiers { ctrl: true, ..NONE };
-pub(super) const CTRL_SHIFT: Modifiers = Modifiers {
+pub const ALT: Modifiers = Modifiers { alt: true, ..NONE };
+pub const CTRL: Modifiers = Modifiers { ctrl: true, ..NONE };
+pub const CTRL_SHIFT: Modifiers = Modifiers {
     shift: true,
     ..CTRL
 };
@@ -346,7 +346,7 @@ pub const STEPS_11: &[&[Gesture]] = &[
 ];
 
 /// A linha do ponto de parada da cena 12 (a mesma agulha do `ph2d_app_components::code_smoke`).
-pub(super) const DEPURA_BREAK: &str = "local swing = ";
+pub const DEPURA_BREAK: &str = "local swing = ";
 
 /// ⭐ **Cena 12 — o depurador** (Onda D): o jogo pára no ponto que a cena traz; Continue passa ao
 /// objecto seguinte; tirado o ponto, os valores ao vivo aparecem.

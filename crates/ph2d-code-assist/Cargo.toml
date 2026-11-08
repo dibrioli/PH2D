@@ -1,0 +1,33 @@
+[package]
+name = "ph2d-code-assist"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A lógica pura do editor de scripts que não conhece as abas (`CodeDocs`) nem o quadro: os problemas,
+# o realce semântico, a página de ajuda, a completação, os snippets, os esqueletos, o histórico ‹ ›, a
+# recuperação de rascunhos, o «did you mean» e o modelo do cartão Stopped. Saiu do `ph2d-app-code`
+# no fecho da Onda D (catraca `the_shell_only_shrinks_and_every_app_crate_too`). Folha: só tipos
+# (`ph2d-code-viewmodel`), nunca o painel.
+[dependencies]
+ph2d-code-buffer = { path = "../ph2d-code-buffer" }
+ph2d-code-explain = { path = "../ph2d-code-explain" }
+ph2d-code-help = { path = "../ph2d-code-help" }
+ph2d-code-intel = { path = "../ph2d-code-intel" }
+ph2d-code-syntax = { path = "../ph2d-code-syntax" }
+ph2d-code-viewmodel = { path = "../ph2d-code-viewmodel" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-script = { path = "../ph2d-script" }
+
+[dev-dependencies]
+# Os traços ao acaso dos gates do mapa de problemas.
+fastrand = "2"
+
+[lints]
+workspace = true

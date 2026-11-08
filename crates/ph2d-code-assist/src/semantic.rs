@@ -14,19 +14,19 @@ use crate::problems::Held;
 use ph2d_code_buffer::{Text, TextEdit};
 use ph2d_code_intel::{Answer, Diag, Sem, SemToken, Ticket};
 use ph2d_code_syntax::Syntax;
-use ph2d_panel_code::Ink;
+use ph2d_code_viewmodel::Ink;
 use std::ops::Range;
 
 /// A pausa da escrita antes de pedir as cores (`idle_parse_delay`).
-pub(crate) const IDLE_NS: u128 = 1_500_000_000;
+pub const IDLE_NS: u128 = 1_500_000_000;
 /// A mesma, com um erro na aba (`idle_parse_delay_with_errors_found`).
-pub(crate) const IDLE_ERRORS_NS: u128 = 500_000_000;
+pub const IDLE_ERRORS_NS: u128 = 500_000_000;
 /// O `code` do Luau para «Unknown global» (I0c).
 const UNKNOWN_GLOBAL: &str = "1001";
 
 /// As cores do assistente que a aba segura.
 #[derive(Default)]
-pub(crate) struct SemHeld {
+pub struct SemHeld {
     /// Por ordem do texto (a do servidor; as edições não a trocam).
     pub list: Vec<SemToken>,
     /// O (arranque do servidor, versão) da última pergunta: uma por versão de cada arranque.
@@ -89,7 +89,7 @@ fn ink_of(s: Sem) -> Ink {
 
 /// Os globais que não existem (o `1001` seguro), por ordem: tirados UMA vez por quadro, e cada bloco
 /// de linhas pintado corta-os por busca (I15).
-pub(crate) fn unresolved(assist: &[Diag]) -> Vec<Range<usize>> {
+pub fn unresolved(assist: &[Diag]) -> Vec<Range<usize>> {
     let mut v: Vec<Range<usize>> = assist
         .iter()
         .filter(|d| d.code.as_deref() == Some(UNKNOWN_GLOBAL))
@@ -103,7 +103,7 @@ pub(crate) fn unresolved(assist: &[Diag]) -> Vec<Range<usize>> {
 /// global que não existe. O assistente só recolore NOMES: onde o tree-sitter vê outra coisa (uma
 /// palavra reservada, uma string, um comentário — um token velho que a pausa ainda não refez), fica
 /// a cor da gramática.
-pub(crate) fn spans(
+pub fn spans(
     syntax: &Syntax,
     text: &Text,
     sem: &SemHeld,

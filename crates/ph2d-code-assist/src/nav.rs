@@ -6,9 +6,24 @@
 
 use ph2d_script::ScriptId;
 
+/// O bit das abas de ajuda no id do hero (um `ScriptId` nunca chega lá).
+pub const HELP_TAG: u64 = 1 << 62;
+
+/// O id da aba da página `page` (o índice no catálogo).
+#[must_use]
+pub fn tab_id(page: usize) -> u64 {
+    HELP_TAG | page as u64
+}
+
+/// A página de uma aba de ajuda; `None` = é um script.
+#[must_use]
+pub fn page_of(id: u64) -> Option<usize> {
+    (id & HELP_TAG != 0).then_some((id & !HELP_TAG) as usize)
+}
+
 /// Um sítio da família.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) enum Place {
+pub enum Place {
     Script {
         id: ScriptId,
         caret: usize,
@@ -25,13 +40,13 @@ impl Place {
     pub fn tab(self) -> u64 {
         match self {
             Place::Script { id, .. } => id.0,
-            Place::Help { page, .. } => crate::help::tab_id(page),
+            Place::Help { page, .. } => tab_id(page),
         }
     }
 }
 
 #[derive(Debug, Default)]
-pub(crate) struct Nav {
+pub struct Nav {
     list: Vec<Place>,
     /// O sítio corrente em `list` (sem sentido com ela vazia).
     at: usize,

@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 const SUB: &str = "recovered-scripts";
 
 /// A pasta por omissão (`None` = o sistema não dá nenhuma).
-pub(crate) fn default_dir() -> Option<PathBuf> {
+pub fn default_dir() -> Option<PathBuf> {
     let var = |k: &str| {
         std::env::var_os(k)
             .filter(|v| !v.is_empty())
@@ -59,7 +59,7 @@ fn write_all(dir: &Path, unsaved: &[(String, String)]) -> std::io::Result<()> {
 
 /// Grava os textos `(nome, texto)` e devolve o aviso do ecrã. Se não houver onde gravar, o aviso é
 /// um erro e o texto vai, inteiro, para o terminal (a última rede).
-pub(crate) fn keep(dir: Option<&Path>, unsaved: &[(String, String)]) -> Toast {
+pub fn keep(dir: Option<&Path>, unsaved: &[(String, String)]) -> Toast {
     let count = unsaved.len();
     let written = match dir {
         Some(d) => write_all(d, unsaved).map(|()| d.display().to_string()),

@@ -26,9 +26,6 @@ pub(crate) const HOVER_HIDE_NS: u128 = 300_000_000;
 /// Para onde o rato foi depois de sair do balão à vista, e quando isso vale.
 type Target = Option<(Range<usize>, Option<Note>)>;
 
-/// O comando com que o `luau-lsp` marca cada função da lista (sonda do I4, 16/10).
-pub(crate) const PARAMETER_HINTS: &str = "editor.action.triggerParameterHints";
-
 #[derive(Debug)]
 pub(crate) struct Hovering {
     /// A palavra sob o rato (bytes do buffer).

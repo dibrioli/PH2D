@@ -19,20 +19,7 @@ use ph2d_vector::VectorScene;
 use std::collections::BTreeMap;
 use std::ops::Range;
 
-/// O bit das abas de ajuda no id do hero (um `ScriptId` nunca chega lá).
-pub const HELP_TAG: u64 = 1 << 62;
-
-/// O id da aba da página `page` (o índice no catálogo).
-#[must_use]
-pub fn tab_id(page: usize) -> u64 {
-    HELP_TAG | page as u64
-}
-
-/// A página de uma aba de ajuda; `None` = é um script.
-#[must_use]
-pub fn page_of(id: u64) -> Option<usize> {
-    (id & HELP_TAG != 0).then_some((id & !HELP_TAG) as usize)
-}
+pub use ph2d_code_assist::nav::{HELP_TAG, page_of, tab_id};
 
 /// O bloco dos ids do leitor de ecrã das páginas (os dos scripts são `0xC0DE… ^ (id << 32)`).
 const A11Y_SALT: u64 = 0x4E1F_0000_0000_0000;

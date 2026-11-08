@@ -332,7 +332,7 @@ struct Spot {
 
 /// A sessão de um modelo inserido (num ou em vários cursores).
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Tabstops {
+pub struct Tabstops {
     stops: Vec<Vec<Spot>>,
     /// O fim de cada inserção (o `$0`, ou o fim do texto dela).
     ends: Vec<usize>,
@@ -343,7 +343,7 @@ pub(crate) struct Tabstops {
 }
 
 /// O que um Tab fez.
-pub(crate) enum Jump {
+pub enum Jump {
     /// Outro buraco: seleccione isto.
     Stop(Selection),
     /// Acabou: o cursor no `$0`.
@@ -403,7 +403,7 @@ impl Tabstops {
     }
 
     /// Tab: o buraco seguinte, ou o fim.
-    pub fn next(&mut self) -> Jump {
+    pub fn next_stop(&mut self) -> Jump {
         if self.active + 1 < self.stops.len() {
             self.active += 1;
             Jump::Stop(self.selection())

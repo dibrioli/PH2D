@@ -6,8 +6,8 @@
 use ph2d_code_buffer::{Text, TextEdit};
 use ph2d_code_intel::Diag;
 use ph2d_code_syntax::{HighlightKind, SyntaxError};
+use ph2d_code_viewmodel::{Explanation, Ink, Problem, Severity};
 use ph2d_i18n::{tr, tr_with};
-use ph2d_panel_code::{Ink, Problem, Severity};
 use ph2d_script::ScriptDiagnostic;
 use ph2d_script::api_table::HOOKS;
 use std::ops::Range;
@@ -21,7 +21,7 @@ const FUNCTION_UNUSED: &str = "8";
 /// feitas depois dela. Cada tecla avança a versão do servidor; pintar só os da versão corrente
 /// fá-los-ia piscar a cada tecla.
 #[derive(Default)]
-pub(crate) struct Held {
+pub struct Held {
     /// A versão do servidor a que a lista responde (`None` = nenhuma resposta).
     pub version: Option<u64>,
     /// Nenhuma edição desde a resposta: o texto é o que o servidor analisou.
@@ -94,7 +94,7 @@ fn shift(r: &Range<usize>, e: &TextEdit) -> Option<Range<usize>> {
 /// Um gancho que o MOTOR chama, declarado global (`function init(self)`): o lint «nunca usada» do
 /// servidor não sabe do motor (I0b §2, medido em todo script). Uma `local function init` não é
 /// gancho e o aviso fica.
-pub(crate) fn engine_hook(text: &Text, d: &Diag, bytes: &Range<usize>) -> bool {
+pub fn engine_hook(text: &Text, d: &Diag, bytes: &Range<usize>) -> bool {
     if d.code.as_deref() != Some(FUNCTION_UNUSED) {
         return false;
     }
@@ -166,7 +166,7 @@ pub fn culprit_on_line(
 /// (`exact` — senão é o erro que a tecla acabou de corrigir). Numa linha com erro de sintaxe, o resto
 /// do que o assistente diz é eco do parser (`SameLineStatement`, o global de um `if x = 1`) e não sai.
 #[must_use]
-pub(crate) fn problems(
+pub fn problems(
     text: &Text,
     errors: &[SyntaxError],
     saved: Option<(&ScriptDiagnostic, usize)>,
@@ -274,13 +274,23 @@ pub(crate) fn problems(
         .into_iter()
         .map(|mut r| {
             if r.luau {
-                r.p.explanation = crate::note::explanation(&r.p.message);
+                r.p.explanation = explanation(&r.p.message);
             }
             r.p
         })
         .collect();
     out.sort_by_key(|p| (p.line, p.culprit.as_ref().map(|c| c.start)));
     out
+}
+
+/// A explicação escrita à mão de uma mensagem do Luau (I8), no tipo que a pintura mostra.
+#[must_use]
+pub fn explanation(message: &str) -> Option<Explanation> {
+    ph2d_code_explain::explain(message).map(|e| Explanation {
+        kind: e.kind.id(),
+        title: e.title(),
+        why: e.why(),
+    })
 }
 
 #[cfg(test)]

@@ -43,10 +43,10 @@ impl PartialEq<[f32; 4]> for Tinta {
     }
 }
 
-const ALFA_SOLIDA: f32 = 0.85; // LITERAL-COLOR-OK: opacidade do contorno
-const ALFA_SENSOR_VAZIO: f32 = 0.6; // LITERAL-COLOR-OK: opacidade do contorno
-const ALFA_ATRAVESSAVEL: f32 = 0.35; // LITERAL-COLOR-OK: opacidade do contorno
-const ALFA_SOLTA: f32 = 0.45; // LITERAL-COLOR-OK: opacidade do contorno
+const ALFA_SOLIDA: f32 = 0.85; // LITERAL-PX-OK: opacidade do contorno
+const ALFA_SENSOR_VAZIO: f32 = 0.6; // LITERAL-PX-OK: opacidade do contorno
+const ALFA_ATRAVESSAVEL: f32 = 0.35; // LITERAL-PX-OK: opacidade do contorno
+const ALFA_SOLTA: f32 = 0.45; // LITERAL-PX-OK: opacidade do contorno
 
 /// A espessura do traço pelo tipo do corpo: Static grosso, Dynamic e Kinematic finos.
 #[must_use]

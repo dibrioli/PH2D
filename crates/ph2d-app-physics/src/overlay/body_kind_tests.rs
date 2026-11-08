@@ -48,7 +48,11 @@ fn o_tipo_do_corpo_le_se_pelo_traco_na_cor_da_camada() {
                 .unwrap_or_else(|| panic!("a camada {n} não foi desenhada"));
             let (traco, cor) = tinta_do_contorno(*tinta, theme);
             let base = ph2d_editor_core::paint::resolve(ColorToken::layer(usize::from(n)), theme);
-            assert_eq!(cor.components[..3], base.components[..3], "a cor da camada {n}");
+            assert_eq!(
+                cor.components[..3],
+                base.components[..3],
+                "a cor da camada {n}"
+            );
             traco
         };
         let (estatico, dinamico, cinematico, sensor, composto) = (

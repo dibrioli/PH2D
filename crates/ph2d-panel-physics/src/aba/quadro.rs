@@ -249,8 +249,12 @@ impl Quadro {
             super::MAIS.get(),
             &mut |s, botao| {
                 if botao {
-                    rect_for_label(label_column_width(ctx.text_system, TypeToken::Base.px(), [s]))
-                        .max(Geometria::ALTURA_DO_BOTAO)
+                    rect_for_label(label_column_width(
+                        ctx.text_system,
+                        TypeToken::Base.px(),
+                        [s],
+                    ))
+                    .max(Geometria::ALTURA_DO_BOTAO)
                 } else {
                     ctx.text_system.prefix_width(s, font)
                 }

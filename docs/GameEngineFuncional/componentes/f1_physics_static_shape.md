@@ -240,3 +240,38 @@ Os pedidos do dono da 9c que faltavam (*«cada camada com cor única e fluoresce
 | Altura das linhas da lista | `ROW_H_PX` = 22 px | `ROW_H_PX` = 22 px (igual) |
 
 ⚠️ A referência NÃO dá a cada botão a largura do seu próprio texto: «+ Add» e «Remove» têm a largura do maior dos dois (só o «Split by rows» tem a sua). O que difere de facto: o acolchoado (16 × 24 px), a letra, a altura (28 × 22), a margem interna (12 × 6) e a regra da largura da coluna. As caixinhas «Bumps into», os botões «Objects on this layer»/«Select all» e as margens da grade e da camada aberta NÃO foram medidos contra os chips da referência. Falta: aplicar estes tokens, mudar o teste `os_botoes_da_lista_ficam_dentro_do_cartao_em_tres_larguras` para a lei nova e tirar a foto lado a lado.
+
+## Onda 9g (07/11) — o tipo do corpo pelo traço; as larguras da aba = as do editor de animações
+
+### Tipo do corpo pelo traço no canvas (decisão do dono)
+
+*«Static grosso, Dynamic fino e Kinematic pontilhado - pode ser assim»*. A cor continua a da camada; o tipo lê-se pelo traço (`ph2d_panel_physics::tinta_canvas`, reexportado em `ph2d-app-physics::overlay::tinta`; a crate do overlay estava a 62 linhas do tecto, por isso a tinta MUDOU de crate em vez de subir o número):
+
+| Forma | Espessura | Padrão `[traço, vão]` |
+|---|---|---|
+| Static | `StrokeToken::Heavy` (3 px) | contínuo |
+| Dynamic | `StrokeToken::Default` (1,5 px) | contínuo |
+| Kinematic | `StrokeToken::Default` | pontilhado `[espessura, Spacing::Xs]` |
+| Sensor (qualquer corpo) | a do corpo | traços longos `[Spacing::Lg, Spacing::Sm]` |
+| Solta (sem corpo) | `Default` | `[Spacing::Xs, Spacing::Md]`, a mais apagada |
+| Peça de corpo composto | a do corpo dono (`governing_kind`) | idem |
+
+A cena 120 ganhou a **Kinematic Platform** (camada Ground, em `KINEMATIC_AT`) para o pontilhado se ver. Teste `o_tipo_do_corpo_le_se_pelo_traco_na_cor_da_camada` (lê o `Stroke` que o passe entrega para pintar, em dois temas, mais a cor da camada). Mutações, todas sangraram: Static = Dynamic; Kinematic sem pontilhado; sensor com o pontilhado do Kinematic. **Visto na foto:** o Crate (Dynamic, camada Props laranja) tem o contorno fino de 1,5 px quase da cor da arte — lê-se de perto, fraco de longe; é a COR da camada contra a arte, não a espessura (a mesma de antes desta onda).
+
+### Larguras da aba × editor de animações — aplicadas
+
+| Medida | Referência (Animations) | Nossa (Layers), onda 9g |
+|---|---|---|
+| Largura dos dois botões | a MESMA nos dois: maior texto `Base` por `rect_for_label` (+16 px), piso `FIELD_H` | igual (≈ 87 px na foto) |
+| Letra dos botões | `TypeToken::Base` | igual |
+| Altura dos botões | `FIELD_H` = 28 | igual (`ph2d_card_stack::metrics::FIELD_H`) |
+| Vão entre os botões e antes deles | `FIELD_GAP` = 6 | igual |
+| Margem interna da lista | `Lg` = 12 | igual (`Geometria::MARGEM_DA_LISTA`) |
+| Margem externa | `Md` = 8 | igual |
+| Largura da coluna | `max(min(área×0,18; 28×7), 28×3, 2·(botão+Lg)+vão)` | igual (`Geometria::largura_da_lista`; ≈ 204 px) |
+| Altura das linhas da lista | `ROW_H_PX` = 22 | igual |
+| «Objects on this layer», «Select all», «+N more» | (botões: a regra acima) | `rect_for_label` do texto em `Base`, piso `FIELD_H`, altura `FIELD_H`, vãos `FIELD_GAP` |
+| Caixinhas «Bumps into» | (sem equivalente; as linhas da lista têm `ROW_H_PX`) | ficam linhas de `ROW_H_PX`, vão `Sm`/`Xs`, letra `Sm` |
+| Margem interna da grade e da camada aberta | `Lg` (cartões do meio) | `Lg` (`Geometria::MARGEM_DO_CARTAO`; antes `Md`) |
+
+Perdido de propósito: a coluna já não alarga pelo nome mais longo nem pelo título (a referência também não). ⚠️ Com os nossos rótulos o piso dos botões (≈ 204 px) passa o tecto de 7×28 = 196, por isso a fração 18 % nunca decide: a mutação «coluna sem a fração» SOBREVIVE ao teste (equivalente com estes textos). O teste `os_botoes_da_lista_ficam_dentro_do_cartao_em_tres_larguras` foi mudado DE PROPÓSITO para a lei nova (largura = maior texto + acolchoado, altura, vão, margem, lado a lado, a coluna pela régua, em 1000/640/360 px); sangraram: acolchoado `Lg`×2 de volta, altura `ROW_H_PX`, margem `Sm`. Fotos em [`../handoffs/fotos_fisica/onda9g/`](../handoffs/fotos_fisica/onda9g/).

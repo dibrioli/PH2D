@@ -328,7 +328,11 @@ impl Geometria {
     /// A fila dos botões (onda 9g): a altura e o vão dos botões da lista.
     #[must_use]
     pub fn fila_de_botoes() -> (f32, f32, f32) {
-        (Self::ALTURA_DO_BOTAO, Self::VAO_DOS_BOTOES, Self::VAO_DOS_BOTOES)
+        (
+            Self::ALTURA_DO_BOTAO,
+            Self::VAO_DOS_BOTOES,
+            Self::VAO_DOS_BOTOES,
+        )
     }
 
     /// A largura que a lista pede para os dois botões de `botao_w` lado a lado, com as margens e o vão.
@@ -382,7 +386,13 @@ impl Geometria {
 /// Uma fila que quebra: um retângulo de uma linha por largura, da esquerda para a direita a partir de
 /// `(x, y)` dentro de `w`, com `(altura, vão, vão entre linhas)`. Devolve os retângulos e quantas linhas ocupou.
 #[must_use]
-pub fn fila(x: f32, y: f32, w: f32, larguras: &[f32], (h, vao, vao_v): (f32, f32, f32)) -> (Vec<Rect>, usize) {
+pub fn fila(
+    x: f32,
+    y: f32,
+    w: f32,
+    larguras: &[f32],
+    (h, vao, vao_v): (f32, f32, f32),
+) -> (Vec<Rect>, usize) {
     let mut v = Vec::with_capacity(larguras.len());
     let (mut cx, mut linha) = (x, 0usize);
     for &lw in larguras {
@@ -390,12 +400,7 @@ pub fn fila(x: f32, y: f32, w: f32, larguras: &[f32], (h, vao, vao_v): (f32, f32
             cx = x;
             linha += 1;
         }
-        v.push(Rect::new(
-            cx,
-            y + linha as f32 * (h + vao_v),
-            lw,
-            h,
-        ));
+        v.push(Rect::new(cx, y + linha as f32 * (h + vao_v), lw, h));
         cx += lw + vao;
     }
     (v, if larguras.is_empty() { 0 } else { linha + 1 })

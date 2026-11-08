@@ -809,7 +809,10 @@ fn os_botoes_da_lista_ficam_dentro_do_cartao_em_tres_larguras() {
                 "{w}: passou do fundo"
             );
         }
-        assert!(!g.botoes_empilhados(), "{w}: lado a lado, como a referência");
+        assert!(
+            !g.botoes_empilhados(),
+            "{w}: lado a lado, como a referência"
+        );
         let vao = rem.x - (add.x + add.w);
         assert!((vao - FIELD_GAP).abs() < 0.01, "{w}: o vão ({vao})");
         let coluna = (w * 0.18)
@@ -823,7 +826,10 @@ fn os_botoes_da_lista_ficam_dentro_do_cartao_em_tres_larguras() {
         );
         let linha = mesa.rect(ids::PHYSICS_LAYER_LIST[1]);
         if let Some(l) = linha {
-            assert!((l.x - (g.lista.x + m)).abs() < 0.01, "{w}: a margem das linhas");
+            assert!(
+                (l.x - (g.lista.x + m)).abs() < 0.01,
+                "{w}: a margem das linhas"
+            );
         }
     }
     aba::fecha();

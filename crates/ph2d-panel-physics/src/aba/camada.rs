@@ -56,7 +56,8 @@ impl Camada {
         let so_default = visiveis.len() <= 1;
         let caixas = if so_default {
             // A frase quebra na largura do cartão: uma linha por largura medida, mais uma de folga.
-            let linhas = (largura(tr("card.physics.tab_only_default"), false) / dentro.max(1.0)).ceil();
+            let linhas =
+                (largura(tr("card.physics.tab_only_default"), false) / dentro.max(1.0)).ceil();
             y += (linhas + 1.0) * row;
             Vec::new()
         } else {

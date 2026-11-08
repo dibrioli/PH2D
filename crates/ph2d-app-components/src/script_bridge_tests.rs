@@ -380,3 +380,83 @@ end
     rewind(&mut c.host, &mut c.sim, &mut c.drive);
     assert_eq!(x(&c), 10.0, "rebobinar devolve a pedra");
 }
+
+/// ⭐ **O depurador congela o jogo**: um ponto de parada batido num quadro deixa os seguintes sem
+/// tique (a pose fica), e o Continue acaba o `update` parado e o jogo volta a andar.
+#[test]
+fn o_ponto_de_parada_congela_e_o_continue_retoma() {
+    const SEMPRE: &str = "function update(self, dt)\n  ph2d.set(self.id, \"x\", ph2d.get(self.id, \"x\") + 1)\nend\n";
+    let mut c = cena(SEMPRE);
+    let id = id_do_script(&c);
+    // Um vizinho com OUTRO script, sem ponto de parada: o jogo inteiro congela, não só quem parou.
+    let outro = c
+        .sim
+        .world_mut()
+        .get_resource_or_init::<ProjectScripts>()
+        .insert("outro.luau", format!("{SEMPRE}-- outro"));
+    let vizinho = c
+        .sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, StableId(2), LuauScript::library(outro)))
+        .id();
+    let vx = |c: &Cena| {
+        c.sim
+            .world()
+            .get::<Transform>(vizinho)
+            .expect("pose")
+            .translation
+            .x
+    };
+    c.host.set_breakpoints(id, vec![2]);
+    assert_eq!(
+        super::retem(Some(&c.host), 0.25),
+        0.25,
+        "solto, o tempo passa"
+    );
+    c.quadro(true);
+    assert!(c.host.is_held(), "o 1.º tique bateu na linha 2");
+    assert_eq!(c.x(), 10.0, "parado ANTES da escrita");
+    assert_eq!(
+        super::retem(Some(&c.host), 0.25),
+        0.0,
+        "retido, zero tempo ao acumulador"
+    );
+    let relogio = crate::motores::Relogio::do_quadro(true, 2, 0.5).com_quadro(0.3);
+    let r = relogio.retido_por(Some(&c.host));
+    assert!(
+        !r.playing && r.ticks == 0 && r.frame_dt == 0.0,
+        "os motores veem a pausa"
+    );
+    assert_eq!(
+        relogio.retido_por(None).ticks,
+        2,
+        "sem host, o relógio passa como veio"
+    );
+    let v = vx(&c);
+    for _ in 0..3 {
+        let f = c.quadro(true);
+        assert_eq!(f.calls, 0, "retido, nenhum gancho corre");
+        assert!(c.host.is_held());
+        assert_eq!(c.x(), 10.0, "retido, a pose fica");
+        assert_eq!(vx(&c), v, "retido, o vizinho também não anda");
+    }
+    c.host.set_breakpoints(id, Vec::new());
+    c.host.request_continue();
+    c.quadro(true);
+    assert!(!c.host.is_held(), "o Continue soltou-o");
+    assert_eq!(
+        c.x(),
+        12.0,
+        "o `update` parado acabou (+1) e o tique deste quadro correu (+1)"
+    );
+    c.quadro(true);
+    assert_eq!(c.x(), 13.0, "o jogo voltou a andar");
+    assert!(vx(&c) > v, "e o vizinho também");
+}
+
+fn id_do_script(c: &Cena) -> ph2d_script::ScriptId {
+    match c.sim.world().get::<LuauScript>(c.e).expect("script").source {
+        ph2d_script::ScriptSource::Library(id) => id,
+        _ => panic!("fixture: o script é da biblioteca"),
+    }
+}

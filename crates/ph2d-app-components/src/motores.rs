@@ -21,6 +21,7 @@ use ph2d_script::ScriptHost;
 
 /// **O relógio do quadro**, para os dois motores: se a corrida anda, quantos passos fixos e quanto
 /// dura cada um.
+#[derive(Clone, Copy, Debug)]
 pub struct Relogio {
     /// A corrida está a andar (`playhead.is_playing()`)?
     pub playing: bool,
@@ -55,6 +56,22 @@ impl Relogio {
         self.frame_dt = frame_dt;
         self
     }
+
+    /// ⭐ **Retido no depurador, os motores veem a PAUSA** (gatilho, armas, partículas, vigias,
+    /// barras): o Play continua aceso, mas nada do jogo anda até ao Continue.
+    #[must_use]
+    pub fn retido_por(self, host: Option<&ScriptHost>) -> Self {
+        if host.is_some_and(ScriptHost::is_held) {
+            Self {
+                playing: false,
+                ticks: 0,
+                frame_dt: 0.0,
+                ..self
+            }
+        } else {
+            self
+        }
+    }
 }
 
 /// Os cursores dos motores que OUVEM — um por motor: partilhar um apagaria os sinais do outro.
@@ -86,6 +103,8 @@ pub fn correm(
     accoes: &BTreeMap<String, ph2d_ecs::ActionSample>,
     portas: &mut crate::script_bridge::ScriptDoors<'_, '_>,
 ) -> Vec<ph2d_ecs::Death> {
+    // Lido ANTES dos scripts: quem parar neste quadro só congela os motores no seguinte.
+    let relogio = &relogio.retido_por(script.as_ref());
     let mortes = scripts(
         sim,
         script,

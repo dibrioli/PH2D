@@ -234,6 +234,8 @@ fn declare(sim: &SimWorld, before: &BTreeMap<Entity, Transform>, drive: &mut Pre
 /// outbox entregou a este leitor, com os bits de quem os emitiu.
 ///
 /// A correr: os passos fixos (`physics` → `update`), os sinais, e UMA vez o `process`.
+/// ⭐ **Retido no depurador** ([`ScriptHost::is_held`]) nada corre até ao Continue, que é
+/// executado aqui no início do quadro; o resto do jogo congela por [`retem`].
 ///
 /// ⚠️ **O `drive` é obrigatório na assinatura**, pela lei que a `ProjectState::capture` escreve para
 /// si mesma: uma função-irmã «sem ledger» seria a segunda porta pela qual cada quadro de uma
@@ -254,17 +256,29 @@ pub fn frame(
     host.scene_sync(sim.world_mut());
     let mut before = poses(sim, drive);
     crate::script_properties::observe(sim, drive);
-    if playing {
+    // O Continue / Next line da aba corre mesmo com o transporte em pausa: acaba o `update` parado.
+    if let Some(r) = host.debug_frame_with(sim, doors) {
+        absorb(&mut out, &mut before, r);
+    }
+    if playing && !host.is_held() {
+        // Um ponto de parada a meio do quadro: os tiques que faltam deste quadro já não correm.
         for _ in 0..ticks {
             let r = host.scene_tick_with(sim, fixed_dt, doors);
             absorb(&mut out, &mut before, r);
+            if host.is_held() {
+                break;
+            }
         }
-        let r = host.scene_hear_with(sim, heard, doors);
-        absorb(&mut out, &mut before, r);
-        let r = host.scene_process_with(sim, frame_dt, doors);
-        absorb(&mut out, &mut before, r);
+        if !host.is_held() {
+            let r = host.scene_hear_with(sim, heard, doors);
+            absorb(&mut out, &mut before, r);
+            let r = host.scene_process_with(sim, frame_dt, doors);
+            absorb(&mut out, &mut before, r);
+            host.debug_end_frame();
+        }
     } else {
-        // Parado, nenhuma borda do teclado ou do rato espera pelo Play.
+        // Parado (ou retido no depurador), nenhuma borda espera: o que se tecla na aba do código
+        // não cai no jogo ao Continue.
         host.devices().forget_edges();
     }
     declare(sim, &before, drive);
@@ -286,6 +300,20 @@ fn absorb(
         .extend(r.emitted.into_iter().map(|(e, n)| (e.to_bits(), n)));
     out.failed
         .extend(r.failed.into_iter().map(|(e, m)| (e.to_bits(), m)));
+}
+
+/// ⭐ **O depurador congela o jogo inteiro** — o tempo de parede que o acumulador do passo fixo
+/// recebe: zero com um objecto parado (zero tiques, o relógio da cena não anda, `dt` de quadro
+/// zero), como a pausa no golpe ([`crate::impacto`]). A app continua a desenhar e o Play continua
+/// aceso: é uma pausa do depurador, não um Stop. Pausa com ele retido continua retido; o Stop
+/// rebobina e solta-o; o Continue mora na aba do código.
+#[must_use]
+pub fn retem(host: Option<&ScriptHost>, wall_dt: f64) -> f64 {
+    if host.is_some_and(ScriptHost::is_held) {
+        0.0
+    } else {
+        wall_dt
+    }
 }
 
 /// O script de demonstração do arranque (M7): prova que a VM está ligada e só imprime uma vez.

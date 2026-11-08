@@ -38,6 +38,7 @@ impl crate::App {
             tools,
             sim,
             health_bars,
+            script,
             ..
         } = FrameGfx::of(gfx);
 
@@ -83,10 +84,9 @@ impl crate::App {
             // (see `input_dispatch::fill_drag`). `last_pointer` is disjoint from `self.gfx.tools`.
             crate::input_dispatch::fill_drag::fill_drag_tick(t, self.last_pointer, frame_ms_now);
         }
-        // ⭐ **A PAUSA NO GOLPE** (plano 28, W5): o tempo de parede retido ANTES do acumulador — o
-        // jogo inteiro congela (física, relógios, vida) e nada disto entra no anel. Ver
-        // `ph2d_app_components::impacto`.
+        // ⭐ O DEPURADOR e a PAUSA NO GOLPE (W5) retêm tempo ANTES do acumulador: o jogo congela.
         let a_correr = self.playhead.is_playing();
+        let wall_dt = ph2d_app_components::script_bridge::retem(script.as_ref(), wall_dt);
         let wall_dt = health_bars.impacto.retem(wall_dt, a_correr);
         let wall_dt = ph2d_transport::world_dt(wall_dt, self.timeline.runtime, a_correr);
         let report = self.fixed_step.advance(wall_dt);

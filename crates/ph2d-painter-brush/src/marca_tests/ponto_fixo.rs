@@ -51,3 +51,40 @@ fn o_ponto_fixo_mantem_o_tamanho_e_a_densidade_em_todo_size() {
         "sem a referência a densidade cai: {sem_dens} × {c_dens}"
     );
 }
+
+/// ⭐ **Um carimbo só lançado de lado também fixa o ponto** (dono 08/11, «Fixed dab size» em todo pincel): com
+/// `spray_count` 1 e `across` > 0 o raio da marca é o mesmo a Size 40 / 80 / 160; sem `across` o ponto fixo não
+/// age (o traço é o do pincel sem ele, ao bit).
+#[test]
+fn um_carimbo_espalhado_mantem_o_ponto_fixo_em_todo_size() {
+    let base = |diametro: f32, across: f32, fixo: bool| {
+        let mut s = com(|j| {
+            j.across = across;
+            if fixo {
+                j.particle_px = 26.4;
+                j.particle_ref_px = 80.0;
+            }
+        });
+        s.spray_count = 1;
+        s.radius_px = 0.5 * diametro;
+        s.jitter_scale = 0.0;
+        s.spacing = 0.1;
+        s
+    };
+    for diametro in [40.0, 80.0, 160.0] {
+        let d = recto(base(diametro, 0.5, true), 7);
+        assert!(!d.is_empty());
+        for m in &d {
+            assert!(
+                (m.radius_px - 13.2).abs() < 1e-4,
+                "Size {diametro}: raio {}",
+                m.radius_px
+            );
+        }
+        assert_eq!(
+            recto(base(diametro, 0.0, true), 7),
+            recto(base(diametro, 0.0, false), 7),
+            "Size {diametro}: sem espalhar o ponto fixo não age"
+        );
+    }
+}

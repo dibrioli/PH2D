@@ -200,18 +200,9 @@ fn paint_top_basics(
     // 3. Size + 4. Strength — canonical slider + editable numeric chip (Widget-Gallery look).
     //    ⚠️ No Wet Paint o Size é o volume «Size px» do topo (o DIÂMETRO do anel, W1): um segundo
     //    controlo do mesmo raio, em escala normalizada, seriam duas portas para uma pergunta.
+    //    Fora dele (dono 08/11) é a MESMA caixa «Size (px)»: o diâmetro em píxeis em todo meio.
     if !brush.wetpaint {
-        y = paint_slider_chip_row(
-            ctx,
-            theme,
-            x,
-            content_w,
-            y,
-            tr("panel.painter_layers.brush.size"),
-            ph2d_tool_painter::ids::PAINTER_BRUSH_SIZE_SLIDER,
-            ph2d_tool_painter::ids::PAINTER_BRUSH_SIZE_CHIP,
-            brush.size_norm,
-        );
+        y = crate::paint_wetpaint_presets::paint_size_px(ctx, theme, x, content_w, y, &brush);
     }
     // Strength — the single opacity slider. Hidden when the Composite Brush is on: its per-layer
     // Strength sliders (in the card below) replace it. Also hidden in Inpaint (the heal has no opacity).

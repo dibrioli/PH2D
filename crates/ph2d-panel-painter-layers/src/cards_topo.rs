@@ -63,6 +63,22 @@ impl Numero {
         }
     }
 
+    /// ⭐ A caixa que o cartão pinta e as chaves da marca. O Size é o «Size (px)» do Wet Paint em todo meio
+    /// (dono 08/11): o diâmetro em píxeis, a entrada `N` px dá o raio `N/2` (`wet_preset_aplicar_volumes`).
+    fn caixa(self) -> (&'static str, NodeId, &'static [NodeId]) {
+        match self {
+            Self::Tamanho => (
+                "panel.painter_layers.wetpaint.vol_size",
+                pids::PAINTER_WETPAINT_VOL_SIZE,
+                std::slice::from_ref(&pids::PAINTER_WETPAINT_VOL_SIZE),
+            ),
+            _ => {
+                let (chave, ids) = self.dados();
+                (chave, ids[1], ids.as_slice())
+            }
+        }
+    }
+
     fn de_fabrica(self, b: &BrushSettings) -> f32 {
         match self {
             Self::Tamanho => b.size_norm,
@@ -178,7 +194,12 @@ pub(crate) fn dos_basicos(brush: BrushSettings) -> Vec<Linha> {
         }
     }
     // O número que sobra divide a fila da linha do traço, se nada se põe entre os dois.
-    let sobra = if !brush.is_clone && !brush.is_inpaint && numeros.len() % 2 == 1 {
+    // O Size em px é uma caixa, não uma barra: não vai à linha do traço.
+    let sobra = if !brush.is_clone
+        && !brush.is_inpaint
+        && numeros.len() % 2 == 1
+        && !matches!(numeros.last(), Some(Numero::Tamanho))
+    {
         numeros.pop()
     } else {
         None
@@ -215,7 +236,7 @@ pub(crate) fn dos_basicos(brush: BrushSettings) -> Vec<Linha> {
 /// Com o store MUTÁVEL, antes de pintar: o que estas linhas leem e não podem escrever.
 pub(crate) fn prepare(store: &mut WidgetStore, b: &BrushSettings) {
     let fabrica = paint_brush::FALLBACK_BRUSH;
-    for n in [Numero::Tamanho, Numero::Forca, Numero::Fluxo] {
+    for n in [Numero::Forca, Numero::Fluxo] {
         let chip = n.dados().1[1];
         store.mark_card_field(
             chip,
@@ -259,9 +280,8 @@ pub(crate) fn prepare(store: &mut WidgetStore, b: &BrushSettings) {
     if b.color_inactive && store.picker_target() == Some(cor) {
         store.set_picker_target(None);
     }
-    if b.wetpaint {
-        cards_wet::prepara_volumes(store, b);
-    }
+    // Os volumes vivos; fora do Wet Paint só o «Size (px)» (`numeros_dos_volumes`).
+    cards_wet::prepara_volumes(store, b);
     for id in COM_LEI {
         let _ = crate::esmaecer::poe_dica(store, &[id]);
     }
@@ -392,9 +412,9 @@ fn numeros(c: &mut CardCtx<'_>, par: &[Numero], y: f32) -> f32 {
     let cells: Vec<Cell<'_>> = par
         .iter()
         .map(|n| {
-            let (chave, ids) = n.dados();
+            let (chave, id, ids) = n.caixa();
             let rotulo = tr(chave);
-            Cell::new(numero_em_caixa(rotulo, ids[1]))
+            Cell::new(numero_em_caixa(rotulo, id))
                 .label(rotulo)
                 .key(ids)
         })

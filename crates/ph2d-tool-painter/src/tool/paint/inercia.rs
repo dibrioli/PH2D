@@ -80,10 +80,12 @@ pub enum Dependente {
     PenteadoSemLuz,
     // Os números da mistura opaca só agem com ela num modo (`mistura_opaca_dab`: `Off` devolve sem tocar).
     MisturaDesligada,
+    // O ponto fixo (dono 08/11) só age num pincel que espalha marcas (`DabJitter::espalha`): Count > 1 ou Scatter.
+    PontoFixoSemEspalhar,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 49] = [
+    pub const TODOS: [Dependente; 50] = [
         Dependente::ForaDaPontaDePixel,
         Dependente::TaperTip,
         Dependente::TaperOpacity,
@@ -133,6 +135,7 @@ impl Dependente {
         Dependente::PenteadoSemFios,
         Dependente::PenteadoSemLuz,
         Dependente::MisturaDesligada,
+        Dependente::PontoFixoSemEspalhar,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -241,6 +244,9 @@ impl Dependente {
             Dependente::PenteadoSemFios => penteado_sem_o_relevo(),
             Dependente::PenteadoSemLuz => relevo_do_penteado(),
             Dependente::MisturaDesligada => &ids::PAINTER_BRUSH_MIX_FIELDS,
+            Dependente::PontoFixoSemEspalhar => {
+                &[ids::PAINTER_BRUSH_DAB_FIXO, ids::PAINTER_BRUSH_DAB_PX]
+            }
             Dependente::ExpoenteAtravesSemProprio => expoente_atraves(),
         }
     }
@@ -303,6 +309,9 @@ impl Dependente {
             Dependente::PenteadoSemFios => "panel.painter_ponta.inerte.combing_needs_bristles",
             Dependente::PenteadoSemLuz => "panel.painter_ponta.inerte.combing_needs_light",
             Dependente::MisturaDesligada => "panel.painter_layers.brush.inerte.mix_off",
+            Dependente::PontoFixoSemEspalhar => {
+                "panel.painter_layers.inerte.fixed_dab_needs_scatter"
+            }
         }
     }
 

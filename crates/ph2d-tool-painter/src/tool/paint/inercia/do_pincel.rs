@@ -182,6 +182,10 @@ impl PainterTool {
             (Dependente::PenteadoSemLuz, sem_luz_no_relevo),
             (Dependente::MisturaDesligada, !b.mistura_opaca.ligada()),
             (
+                Dependente::PontoFixoSemEspalhar,
+                !b.dab_jitter.espalha(b.spray_count) || !b.stroke_method.allows_jitter(),
+            ),
+            (
                 Dependente::ExpoenteAtravesSemProprio,
                 agua && self
                     .paint

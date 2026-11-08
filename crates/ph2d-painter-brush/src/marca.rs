@@ -42,7 +42,7 @@ pub struct DabJitter {
     /// **Partícula em PÍXEIS** (J4 `texturas`): o diâmetro de cada marca do spray na TELA, o mesmo a 5 e a 200 px
     /// — o espalhamento continua o do pincel (a gotícula do Spray e do Pointillism do Krita não cresce com o
     /// pincel: a 200 px são gotas soltas, não discos maiores; a 5 px um cordão de gotas MAIORES que o pincel).
-    /// `0` = desligada (a [`Self::particle`] relativa de sempre). Só com spray (`spray_count > 1`).
+    /// `0` = desligada (a [`Self::particle`] relativa de sempre). Só quando o pincel espalha ([`Self::espalha`]).
     pub particle_px: f32,
     /// ⭐ **O diâmetro de REFERÊNCIA do spray de ponto fixo** (dono 08/11, «Fixed dab size»): com a
     /// [`Self::particle_px`] ligada, o número de marcas por ponto do caminho cresce com a ÁREA do pincel —
@@ -148,12 +148,20 @@ impl DabJitter {
         self.flip_x > 0.0 || self.flip_y > 0.0 || self.roundness > 0.0
     }
 
+    /// ⭐ **O pincel ESPALHA marcas** (dono 08/11, «Fixed dab size» em todo pincel): spray (`n > 1`) ou um carimbo
+    /// só lançado de lado ([`Self::across`] `> 0`). Só então o ponto fixo age: sem espalhar, fixar o carimbo tiraria
+    /// todo o efeito do Size.
+    #[must_use]
+    pub fn espalha(&self, n: u32) -> bool {
+        n > 1 || self.across > 0.0
+    }
+
     /// ⭐ **A partícula efectiva de um pincel de raio `raio_px`** (o factor do raio de cada marca): a em píxeis
     /// ([`Self::particle_px`]) quando ligada — `diâmetro ÷ (2·raio)`, acima de `1` num pincel menor que ela —, senão
     /// a relativa (`≤ 1`).
     #[must_use]
     pub fn particula_no(&self, n: u32, raio_px: f32) -> f32 {
-        if n > 1 && self.particle_px > 0.0 && raio_px > 0.0 {
+        if self.espalha(n) && self.particle_px > 0.0 && raio_px > 0.0 {
             self.particle_px / (2.0 * raio_px)
         } else {
             self.particula(n)
@@ -167,7 +175,11 @@ impl DabJitter {
     pub fn conta_no(&self, n: u32, raio_px: f32) -> u32 {
         use crate::stroke::spray::{SPRAY_COUNT_MAX, SPRAY_FIXO_MAX};
         let n = n.clamp(1, SPRAY_COUNT_MAX);
-        if n <= 1 || self.particle_px <= 0.0 || self.particle_ref_px <= 0.0 || raio_px <= 0.0 {
+        if !self.espalha(n)
+            || self.particle_px <= 0.0
+            || self.particle_ref_px <= 0.0
+            || raio_px <= 0.0
+        {
             return n;
         }
         let k = 2.0 * raio_px / self.particle_ref_px;

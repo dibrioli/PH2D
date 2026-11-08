@@ -345,6 +345,7 @@ pub(crate) const SELECTION: &[&str] = &["panel.painter_layers.selection.edit_giz
 /// ⛔ E não muda nada nesta secção: o mais largo dela é o *Use Texture Colors*.
 pub(crate) const SHAPE: &[&str] = &[
     "panel.painter_layers.shape.automatic",
+    "panel.painter_layers.shape.fixed_dab",
     "panel.painter_layers.shape.alpha_from_image",
     "panel.painter_layers.shape.per_layer_color",
     "panel.painter_layers.shape.use_texture_colors",

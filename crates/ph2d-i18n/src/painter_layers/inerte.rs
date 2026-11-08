@@ -34,6 +34,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Acts when the Shape's Automatic is off"
         }
         "panel.painter_layers.inerte.spray_count_above_one" => "Acts when Count is above 1",
+        "panel.painter_layers.inerte.fixed_dab_needs_scatter" => {
+            "Works when the brush scatters dabs: raise Count or Scatter"
+        }
         "panel.painter_layers.inerte.accumulate_off" => "Acts when Accumulate is off",
         "panel.painter_layers.inerte.hardness_above_zero" => {
             "Acts when Hardness is above 0: it only softens the brush"

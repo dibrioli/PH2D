@@ -109,6 +109,8 @@ fn the_knob_rows_are_offered_only_while_armed() {
         .filter(|id| *id != ph2d_tool_painter::ids::PAINTER_WETPAINT_ABSORBENCY)
         // E10: o Water do topo é só da ferramenta Wet; no Pincel o slot é a Dilution (`os_valores_rapidos_mudam_o_volume`).
         .filter(|id| *id != ph2d_tool_painter::ids::PAINTER_WETPAINT_WATER)
+        // Dono 08/11: o «Size (px)» é o Size de TODO meio (o Basics), não um knob do motor molhado.
+        .filter(|id| *id != ph2d_tool_painter::ids::PAINTER_WETPAINT_VOL_SIZE)
     {
         assert!(
             has(&armed, id),

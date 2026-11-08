@@ -103,7 +103,7 @@ pub(crate) fn paint_pontas_do_molhado(
 }
 
 /// O ponto fixo do spray (dono 08/11) no painel de antes: a caixa «Fixed dab size» e, ligada, o «Dab size (px)».
-/// Só com spray (`Count > 1`). Devolve o próximo `y`.
+/// Sempre à vista; esmaecida (a inércia `PontoFixoSemEspalhar`) num pincel que não espalha. Devolve o próximo `y`.
 pub(crate) fn paint_dab_fixo(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -112,9 +112,6 @@ pub(crate) fn paint_dab_fixo(
     mut y: f32,
     brush: &BrushSettings,
 ) -> f32 {
-    if brush.spray_count <= 1 {
-        return y;
-    }
     let sec = crate::paint_shape::seccao_da_forma(ctx);
     y = crate::paint_brush_top::paint_checkbox_row(
         ctx,
@@ -146,10 +143,10 @@ pub(crate) fn paint_dab_fixo(
     y
 }
 
-/// ⭐ **O ponto fixo do spray** (dono 08/11): a caixa «Fixed dab size» e, ligada, o «Dab size (px)» ao lado. Só
-/// com spray (`Count > 1`): sem ele não há marcas soltas para fixar.
+/// ⭐ **O ponto fixo** (dono 08/11): a caixa «Fixed dab size» e, ligada, o «Dab size (px)» ao lado. Em todo
+/// pincel que lê a Forma; sem espalhar marcas (Count 1, Scatter 0) a inércia `PontoFixoSemEspalhar` esmaece-a.
 pub(crate) fn do_dab_fixo(l: &BrushSettings, v: &BrushSettings) -> Vec<crate::cards_linhas::Item> {
-    if l.spray_count <= 1 || !l.le(ph2d_tool_painter::LinhaDaFerramenta::Forma) {
+    if !l.le(ph2d_tool_painter::LinhaDaFerramenta::Forma) {
         return Vec::new();
     }
     let mut n = vec![crate::cards_linhas::Item::Caixa {

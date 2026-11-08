@@ -95,6 +95,10 @@ pub(crate) fn numeros_dos_volumes(
     )];
     // E10 (F3 §9): o Pincel pousa TINTA — Dilution (Pigment + Water fundidos) e Volume em µm; a ferramenta Wet
     // pousa só água e guarda o seu Water.
+    // Fora do Wet Paint só o Size (px) — o Basics de todo meio o pinta.
+    if !leis.wetpaint {
+        return l;
+    }
     if leis.le(ph2d_tool_painter::LinhaDaFerramenta::DepositoMolhado) {
         let e10 = [
             (
@@ -128,6 +132,37 @@ pub(crate) fn numeros_dos_volumes(
         ));
     }
     l
+}
+
+/// O «Size (px)» do painel de antes fora do Wet Paint (dono 08/11): a mesma caixa do Basics dos cartões, sem o
+/// chip dos valores rápidos (o cartão também não o tem fora do Wet).
+pub(crate) fn paint_size_px(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    y: f32,
+    brush: &BrushSettings,
+) -> f32 {
+    let Some((n, _)) = numeros_dos_volumes(brush, brush).into_iter().next() else {
+        return y;
+    };
+    let sec = crate::seccoes::seccao_da_chave(ctx.text_system, n.chave);
+    number_field::paint_num_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        tr(n.chave),
+        n.id,
+        n.valor,
+        n.min,
+        n.max,
+        n.passo,
+        n.casas,
+        sec,
+    )
 }
 
 /// A pintura de antes dos volumes.

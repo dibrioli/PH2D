@@ -348,7 +348,7 @@ fn todos(l: &BrushSettings, v: &BrushSettings) -> Vec<Numero> {
         })
     };
     if automatica(l) {
-        return Vec::new();
+        return so_numeros(crate::paint_shape_pontas::do_dab_fixo(l, v)).collect();
     }
     let mut n = do_taper(l, v);
     n.extend(so_numeros(da_pegada(l, v)));
@@ -561,6 +561,8 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, p: &Pecas, y: f32) -> f32 {
             y,
         );
         if automatica(&b) {
+            // O ponto fixo vale também com a Shape automática (dono 08/11: em todo modo).
+            y = fila(c, &crate::paint_shape_pontas::do_dab_fixo(&b, &b), y);
             return cards_penteado::grupo_do_penteado(c, &b, y);
         }
     }

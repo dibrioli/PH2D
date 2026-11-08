@@ -16,9 +16,8 @@ pub const IMPORT: NodeId = hash_node_id("pixel_keys.import");
 pub const EXPORT: NodeId = hash_node_id("pixel_keys.export");
 pub const CLOSE: NodeId = hash_node_id("pixel_keys.close");
 
-pub const BOTOES: [NodeId; 8] = [
-    CONFIRM, CANCEL, REPLACE, RESET_ALL, IMPORT, EXPORT, CLOSE, DRAG,
-];
+/// O `CLOSE` saiu da janela (P12: fecha-se pelo menu, como a SLICES); o id fica (append-only).
+pub const BOTOES: [NodeId; 7] = [CONFIRM, CANCEL, REPLACE, RESET_ALL, IMPORT, EXPORT, DRAG];
 
 #[must_use]
 pub fn secao(s: Section) -> NodeId {

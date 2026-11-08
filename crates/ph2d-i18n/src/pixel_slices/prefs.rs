@@ -28,8 +28,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel_prefs.color_b" => "Color 2",
         "panel.pixel_prefs.opacity" => "Opacity",
         "panel.pixel_prefs.opacity_glyph" => "O",
-        "panel.pixel_prefs.auto" => "Auto opacity (fades when lines get close)",
-        "panel.pixel_prefs.apply_zoom" => "Apply Zoom (size in sprite pixels)",
+        "panel.pixel_prefs.auto" => "Auto",
+        "panel.pixel_prefs.auto_tip" => "Fade the grid when zoomed out",
+        "panel.pixel_prefs.apply_zoom" => "Apply Zoom",
+        "panel.pixel_prefs.apply_zoom_tip" => {
+            "Size the checkerboard in sprite pixels, so it zooms with the art"
+        }
         "panel.pixel_prefs.sec_onion" => "Onion Skin",
         "panel.pixel_prefs.onion_prev" => "Frames before",
         "panel.pixel_prefs.onion_next" => "Frames after",

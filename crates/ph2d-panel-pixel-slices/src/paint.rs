@@ -32,7 +32,7 @@ fn solta(ctx: &mut PaintCtx) -> Rect {
         let r = ph2d_editor_core::ruler::top_band(area);
         r.y + r.h + Spacing::Sm.px()
     };
-    let fundo = area.y + area.h - Spacing::Sm.px();
+    let fundo = borda::fundo(ctx.layout);
     let coluna = ctx.slot.x;
     let store = ctx.host.store_mut();
     let mut w = borda::largura(store, PixelSlicesPanel::NODE_ID, area, coluna);

@@ -23,7 +23,7 @@ fn solta(ctx: &mut PaintCtx) -> Rect {
         let r = ph2d_editor_core::ruler::top_band(area);
         r.y + r.h + Spacing::Sm.px()
     };
-    let fundo = area.y + area.h - Spacing::Sm.px();
+    let fundo = borda::fundo(ctx.layout);
     // A KEYBOARD SHORTCUTS aberta ocupa o mesmo canto: a história encosta-se à esquerda dela.
     let atalhos = ctx
         .host

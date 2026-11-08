@@ -7,6 +7,7 @@
 #![forbid(unsafe_code)]
 
 pub mod canal;
+mod fila;
 pub mod ids;
 pub mod lei;
 mod painel;

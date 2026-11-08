@@ -27,6 +27,10 @@ fn ptr(kind: PointerKind, x: f32, y: f32) -> PointerEvent {
     }
 }
 
+/// Os quadros que a mola do cartão de cima leva a chegar à altura nova (a captura e a pergunta
+/// crescem o cartão): o que fica além da altura do quadro anterior ainda não tem alvo.
+const ASSENTA_A_MOLA: usize = 30;
+
 fn assenta(hero: &mut HeroScreen, ts: &mut ph2d_text::TextSystem, n: usize) {
     let vp = Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H);
     for _ in 0..n {
@@ -80,7 +84,7 @@ fn add_captura_e_confirm_juntam_a_tecla_e_a_tomada_pergunta() {
     assert!(ph2d_panel_pixel_keys::a_capturar(), "a captura armou");
     let f12 = Chord::new(K::F12);
     assert!(ph2d_panel_pixel_keys::oferece(f12));
-    assenta(&mut hero, &mut ts, 2);
+    assenta(&mut hero, &mut ts, ASSENTA_A_MOLA);
     assert!(
         ph2d_panel_pixel_keys::toma_keymap().is_none(),
         "premir não é confirmar"
@@ -111,7 +115,7 @@ fn add_captura_e_confirm_juntam_a_tecla_e_a_tomada_pergunta() {
     clica(&mut hero, ids::add(A::ExportAs), "Add de Export As");
     assenta(&mut hero, &mut ts, 1);
     assert!(ph2d_panel_pixel_keys::oferece(Chord::new(K::KeyB)));
-    assenta(&mut hero, &mut ts, 2);
+    assenta(&mut hero, &mut ts, ASSENTA_A_MOLA);
     clica(&mut hero, ids::CONFIRM, "Confirm");
     assert!(
         ph2d_panel_pixel_keys::toma_keymap().is_none(),
@@ -128,7 +132,7 @@ fn add_captura_e_confirm_juntam_a_tecla_e_a_tomada_pergunta() {
     // Repõe o ficheiro do utilizador (o teste corre com um HOME de teste).
     assenta(&mut hero, &mut ts, 2);
     clica(&mut hero, ids::RESET_ALL, "Reset All");
-    assenta(&mut hero, &mut ts, 2);
+    assenta(&mut hero, &mut ts, ASSENTA_A_MOLA);
     clica(&mut hero, ids::CONFIRM, "Confirm do Reset All");
     let k = ph2d_panel_pixel_keys::toma_keymap().expect("o Reset All muda o mapa");
     assert_eq!(k, ph2d_pixel_keys::Keymap::factory());

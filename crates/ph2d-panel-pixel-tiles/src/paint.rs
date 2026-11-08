@@ -55,7 +55,7 @@ fn solta(ctx: &PaintCtx, w: f32, x_de: impl FnOnce(Rect, f32) -> f32) -> Rect {
         x_de(area, w) + dx,
         teto + dy,
         w,
-        (area.y + area.h - teto - Spacing::Sm.px()).max(0.0),
+        (ph2d_editor_core::panel::cards::borda::fundo(ctx.layout) - teto).max(0.0),
     )
 }
 

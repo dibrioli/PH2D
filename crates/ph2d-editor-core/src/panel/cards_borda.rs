@@ -27,6 +27,14 @@ pub fn tecto(area: Rect, coluna_x: f32) -> f32 {
     ((coluna_x - area.x - Spacing::Lg.px() * 3.0) * 0.5).max(PANEL_MIN_W_PX)
 }
 
+/// ⭐ **O fundo de uma janela acessória**: acima da faixa da pílula do rodapé (a dica da ferramenta),
+/// que senão se pinta por cima da última linha (foto `P12_smoke_07`, dono 08/11).
+#[must_use]
+pub fn fundo(layout: &crate::screens::layout::HeroLayout) -> f32 {
+    let area = layout.draw_area;
+    (area.y + area.h).min(layout.bottom_hud.y) - Spacing::Sm.px()
+}
+
 /// A largura da janela `panel` neste quadro — a escolha do artista limitada ao piso e ao tecto; o
 /// limitado volta ao store, para o próximo arrasto partir do que se vê (sem borracha).
 pub fn largura(store: &mut WidgetStore, panel: NodeId, area: Rect, coluna_x: f32) -> f32 {

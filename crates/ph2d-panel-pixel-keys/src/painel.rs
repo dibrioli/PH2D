@@ -1,10 +1,11 @@
 //! O quadro e os gestos da janela: um cartão de cima (busca, captura, pergunta, Import/Export) e um
 //! cartão por secção com as acções que casam a busca. Cada mudança grava o delta e vai à família.
 
+use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::{BlenderHitKind, InteractiveState, WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::cards::banda::metrics as m;
 use ph2d_editor_core::panel::cards::ferramenta::cartao;
-use ph2d_editor_core::panel::cards::{CardDef, Cell, Widget, borda, paint_card_list};
+use ph2d_editor_core::panel::cards::{CardDef, Cell, Seg, Widget, borda, paint_card_list};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal};
 use ph2d_editor_core::widget::panel_chrome::panel_drag_handle_rect;
 use ph2d_editor_core::widget::{ButtonState, TextInputState};
@@ -13,6 +14,7 @@ use ph2d_i18n::tr;
 use ph2d_pixel_keys::{Chord, Context, Keymap, PixelAction, Section};
 use ph2d_tokens::Spacing;
 
+use crate::fila::{self, Linha};
 use crate::lei::{Gesto, Janela, Modo, frase_tomada};
 use crate::{PixelKeysPanel, PixelKeysPanelState, canal, ids};
 
@@ -29,6 +31,8 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for id in ids::BOTOES {
         botao(store, id);
     }
+    store.set_tooltip(ids::IMPORT, tr("panel.pixel_keys.import_tip"));
+    store.set_tooltip(ids::EXPORT, tr("panel.pixel_keys.export_tip"));
     store.register(
         ids::SEARCH,
         InteractiveState::TextInput {
@@ -45,13 +49,6 @@ pub(crate) fn populate(store: &mut WidgetStore) {
             kind: BlenderHitKind::DragHandle,
         },
     );
-}
-
-/// Uma linha da lista: a acção, as fichas das teclas e os ids dos botões dela.
-struct Linha {
-    acao: PixelAction,
-    /// As fichas: o id, o texto e o contexto (`None` = `Normal`, na fileira compacta).
-    fichas: Vec<(ph2d_a11y::NodeId, String, Option<&'static str>)>,
 }
 
 /// As acções que casam a busca, por secção, na ordem do diálogo quando a busca é vazia.
@@ -84,7 +81,7 @@ fn grupos(query: &str) -> Vec<(Section, Vec<PixelAction>)> {
 }
 
 /// O nome da tecla na tela: as teclas com nome de palavra passam pela tabela de strings.
-fn texto_da_ficha(k: Chord, hover: bool) -> String {
+fn texto_da_ficha(k: Chord) -> String {
     let mut t = k.to_string();
     if let Some(nome) = ph2d_pixel_keys::key_name(k.key) {
         let chave = format!("panel.pixel_keys.key.{}", nome.to_ascii_lowercase());
@@ -93,9 +90,6 @@ fn texto_da_ficha(k: Chord, hover: bool) -> String {
             t.truncate(t.len() - nome.len());
             t.push_str(dito);
         }
-    }
-    if hover {
-        t.push_str(" ×");
     }
     t
 }
@@ -110,11 +104,17 @@ fn hovered(store: &WidgetStore, id: ph2d_a11y::NodeId) -> bool {
 }
 
 fn linhas(store: &mut WidgetStore, keys: &Keymap, acoes: &[PixelAction]) -> Vec<Linha> {
+    let fabrica = Keymap::factory();
     acoes
         .iter()
         .map(|&acao| {
-            botao(store, ids::add(acao));
-            botao(store, ids::reset(acao));
+            for (id, dica) in [
+                (ids::add(acao), "panel.pixel_keys.add_tip"),
+                (ids::reset(acao), "panel.pixel_keys.reset_tip"),
+            ] {
+                botao(store, id);
+                store.set_tooltip(id, tr(dica));
+            }
             let fichas = keys
                 .keys_of(acao)
                 .into_iter()
@@ -122,11 +122,25 @@ fn linhas(store: &mut WidgetStore, keys: &Keymap, acoes: &[PixelAction]) -> Vec<
                     let id = ids::ficha(acao, k);
                     botao(store, id);
                     store.set_tooltip(id, tr("panel.pixel_keys.remove_tip"));
-                    let ctx = (c != Context::Normal).then(|| tr(c.name_key()));
-                    (id, texto_da_ficha(k, hovered(store, id)), ctx)
+                    let mut t = texto_da_ficha(k);
+                    if c != Context::Normal {
+                        t = format!("{t} · {}", tr(c.name_key()));
+                    }
+                    if hovered(store, id) {
+                        t.push_str(" ×");
+                    }
+                    (id, t)
                 })
                 .collect();
-            Linha { acao, fichas }
+            let mut agora = keys.keys_of(acao);
+            let mut antes = fabrica.keys_of(acao);
+            agora.sort_by_key(|(k, c)| (k.to_string(), *c));
+            antes.sort_by_key(|(k, c)| (k.to_string(), *c));
+            Linha {
+                acao,
+                fichas,
+                mudada: agora != antes,
+            }
         })
         .collect()
 }
@@ -139,60 +153,10 @@ fn b(id: ph2d_a11y::NodeId, chave: &'static str, primary: bool) -> Cell<'static>
     })
 }
 
-fn ficha(id: ph2d_a11y::NodeId, t: &str) -> Cell<'_> {
-    Cell::new(Widget::Button {
-        id,
-        text: t,
-        primary: false,
-    })
-}
-
 fn cartao_secao(s: Section, linhas: Vec<Linha>) -> CardDef<'static> {
     cartao(ids::secao(s), tr(s.name_key()), None, move |c, mut y| {
         for l in &linhas {
-            y = c.compact(
-                &[
-                    Cell::new(Widget::Readout {
-                        text: l.acao.name(),
-                    }),
-                    b(ids::add(l.acao), "panel.pixel_keys.add", false),
-                    b(ids::reset(l.acao), "panel.pixel_keys.reset", false),
-                ],
-                y,
-            );
-            if l.fichas.is_empty() {
-                y = c.hint(tr("panel.pixel_keys.no_keys"), y);
-            } else {
-                let normais: Vec<Cell<'_>> = l
-                    .fichas
-                    .iter()
-                    .filter(|f| f.2.is_none())
-                    .map(|(id, t, _)| ficha(*id, t))
-                    .collect();
-                if !normais.is_empty() {
-                    y = c.compact(&normais, y);
-                }
-                // As teclas de outro contexto: o nome do contexto sobre as fichas dele.
-                let mut vistos: Vec<&str> = Vec::new();
-                for onde in l.fichas.iter().filter_map(|f| f.2) {
-                    if vistos.contains(&onde) {
-                        continue;
-                    }
-                    vistos.push(onde);
-                    // O contexto é o rótulo da primeira ficha (lei do ritmo), não uma frase solta.
-                    let dele: Vec<Cell<'_>> = l
-                        .fichas
-                        .iter()
-                        .filter(|f| f.2 == Some(onde))
-                        .enumerate()
-                        .map(|(i, (id, t, _))| {
-                            let f = ficha(*id, t);
-                            if i == 0 { f.label(onde) } else { f }
-                        })
-                        .collect();
-                    y = c.compact(&dele, y);
-                }
-            }
+            y = fila::pinta(c, l, ids::add(l.acao), ids::reset(l.acao), y);
         }
         y
     })
@@ -261,12 +225,25 @@ fn cartao_topo(modo: Modo, aviso: Option<String>, vazio: bool) -> CardDef<'stati
                     );
                 }
                 Modo::Lista => {
+                    // Uma fileira: Reset All e os ícones da troca; fecha-se pelo menu, como a SLICES.
+                    let troca = [
+                        Seg {
+                            id: ids::IMPORT,
+                            icon: Some(IconId::Open),
+                            text: "",
+                            on: false,
+                        },
+                        Seg {
+                            id: ids::EXPORT,
+                            icon: Some(IconId::Export),
+                            text: "",
+                            on: false,
+                        },
+                    ];
                     y = c.row(
                         &[
-                            b(ids::IMPORT, "panel.pixel_keys.import", false),
-                            b(ids::EXPORT, "panel.pixel_keys.export", false),
                             b(ids::RESET_ALL, "panel.pixel_keys.reset_all", false),
-                            b(ids::CLOSE, "panel.pixel_keys.close", false),
+                            Cell::new(Widget::Bare(&troca)),
                         ],
                         y,
                     );
@@ -291,8 +268,19 @@ fn solta(ctx: &mut PaintCtx) -> Rect {
         let r = ph2d_editor_core::ruler::top_band(area);
         r.y + r.h + Spacing::Sm.px()
     };
-    let fundo = area.y + area.h - Spacing::Sm.px();
+    let fundo = borda::fundo(ctx.layout);
     let coluna = ctx.slot.x;
+    if ctx
+        .host
+        .store()
+        .accessory_width(PixelKeysPanel::NODE_ID)
+        .is_none()
+    {
+        let w = fila::largura_de_fabrica(ctx.text_system);
+        ctx.host
+            .store_mut()
+            .set_accessory_width(PixelKeysPanel::NODE_ID, w);
+    }
     let store = ctx.host.store_mut();
     let mut w = borda::largura(store, PixelKeysPanel::NODE_ID, area, coluna);
     let esquerda = livre.x.max(area.x);
@@ -428,18 +416,13 @@ fn gesto_de(st: &mut PixelKeysPanelState, id: ph2d_a11y::NodeId) -> Option<Gesto
 
 pub(crate) fn apply_event(
     st: &mut PixelKeysPanelState,
-    host: &mut dyn PanelHostInternal,
+    _host: &mut dyn PanelHostInternal,
     ev: WidgetEvent,
 ) -> EventOutcome {
     let id = match ev {
         WidgetEvent::Click(id) | WidgetEvent::DoubleClick(id) => id,
         _ => return EventOutcome::Ignored,
     };
-    if id == ids::CLOSE {
-        canal::publica_captura(false);
-        host.set_panel_visible(PixelKeysPanel::ID, false);
-        return EventOutcome::Consumed;
-    }
     if id == ids::EXPORT || id == ids::IMPORT {
         let t = if id == ids::EXPORT {
             canal::Troca::Export

@@ -7,7 +7,7 @@ use ph2d_editor_core::panel::{EventOutcome, Panel, PanelHostInternal};
 use ph2d_editor_core::widget::card_field::CardFieldSpec;
 use ph2d_editor_core::widget::{ButtonState, TextInputState};
 
-use crate::canal::{self, Numero, PrefsRequest, Scope};
+use crate::canal::{self, Caixa, Numero, PrefsRequest, Scope};
 use crate::{PixelPrefsPanel, PixelPrefsPanelState, ids};
 
 fn botao(store: &mut WidgetStore, id: NodeId) {
@@ -29,6 +29,14 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         ids::ONION_MERGE,
     ] {
         botao(store, id);
+    }
+    // O rótulo curto cabe; a frase longa vai à dica (P12, foto 07: «Auto opacity (fades w…»).
+    for (k, dica) in [
+        (Caixa::GridAuto, "panel.pixel_prefs.auto_tip"),
+        (Caixa::PixelAuto, "panel.pixel_prefs.auto_tip"),
+        (Caixa::CheckerZoom, "panel.pixel_prefs.apply_zoom_tip"),
+    ] {
+        store.set_tooltip(ids::caixa(k), ph2d_i18n::tr(dica));
     }
     for (id, _) in ids::CAIXAS {
         botao(store, id);

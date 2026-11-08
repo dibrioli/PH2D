@@ -16,6 +16,7 @@ ph2d-a11y          = { path = "../ph2d-a11y" }
 ph2d-editor-core   = { path = "../ph2d-editor-core" }
 ph2d-i18n          = { path = "../ph2d-i18n" }
 ph2d-pixel-keys    = { path = "../ph2d-pixel-keys" }
+ph2d-text          = { path = "../ph2d-text" }
 ph2d-tokens        = { path = "../ph2d-tokens" }
 ph2d-tool-registry = { path = "../ph2d-tool-registry" }
 winit              = "0.30"

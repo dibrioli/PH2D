@@ -23,7 +23,7 @@ fn solta(ctx: &mut PaintCtx) -> Rect {
         let r = ph2d_editor_core::ruler::top_band(area);
         r.y + r.h + Spacing::Sm.px()
     };
-    let fundo = area.y + area.h - Spacing::Sm.px();
+    let fundo = borda::fundo(ctx.layout);
     // KEYBOARD SHORTCUTS e UNDO HISTORY abertas ocupam o canto: esta encosta-se à esquerda delas
     // (a ordem é fixa — atalhos, história, esta — e nunca dá ciclo).
     let vizinhas = [

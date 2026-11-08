@@ -1,22 +1,5 @@
-//! **O que o Inspector diz sobre uma PEÇA** (W-PartFace).
-//!
-//! A W-Compound deu ao artista o gesto de CRIAR uma peça, o contorno para vê-la
-//! e a ponte para simulá-la. O que ela não deu foi a volta: selecionar a peça e
-//! **editá-la**. Medido antes da wave, com uma peça autorada como barra
-//! `0,17 × 0,91`, offset `[0,13, −0,07]`, densidade `3,5`, atrito `0,9`, quique
-//! `0,4` e camada `2`, o §11 respondia:
-//!
-//! ```text
-//!   has_body ............ false              → face VAZIA, texto "Not simulated"
-//!   shape_tag/half ...... 1 / [0.50, 0.50]   ← as SEMENTES, não a barra
-//!   offset .............. [0.0, 0.0]
-//!   density ............. 1.00
-//!   friction/restitution  0.50 / 0.00
-//!   layer ............... 0
-//! ```
-//!
-//! Ou seja: **nada do que o artista autorou**, sob um texto que afirma o oposto
-//! da verdade (uma peça É simulada, como forma do corpo ancestral).
+//! **O que o Inspector diz sobre uma PEÇA** (W-PartFace): selecionar a peça mostra o collider AUTORADO
+//! dela, nunca as sementes (medição antes da wave: `docs/Physics/handoffs/`, W-PartFace).
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{ChildOf, Entity, Name, SimWorld, Transform};
@@ -189,11 +172,7 @@ fn a_body_reports_how_many_parts_hang_from_it() {
         2,
         "o grupo no meio deixou a peça invisível para a contagem"
     );
-    // ⚠️ **Um SEGUNDO corpo com peça própria**, e a fixture não é decorativa: com
-    // um corpo só, *"as peças do braço"* e *"todas as peças da cena"* são o MESMO
-    // número — uma contagem que ignorasse o dono passaria. Medido: a mutação
-    // (`owner_body(...).is_some()` no lugar de `== Some(body)`) SOBREVIVEU até
-    // esta metade existir.
+    // ⚠️ Um SEGUNDO corpo: sem ele a mutação `owner_body(..).is_some()` sobrevivia.
     let other = sim
         .world_mut()
         .spawn((
@@ -224,15 +203,8 @@ fn a_body_reports_how_many_parts_hang_from_it() {
     assert_eq!(info(&mut sim, leg).part_count, 0);
 }
 
-/// **O apply de `AddShape` é INCONDICIONAL, e isso é de propósito.**
-///
-/// Ele escreve a caixa do sprite — o que a face vazia quer. A recusa de
-/// re-oferecê-lo a algo que JÁ tem forma vive no painel, com todo irmão do §11
-/// (`event_physics::click_edit`), porque é lá que a lei *dim não é recusa* é
-/// aplicada e é lá que o gate de seam consegue clicar de verdade.
-///
-/// Este gate existe para PINAR o preço daquele clique — se um dia ele deixar de
-/// resetar, a recusa do painel vira cerimônia e alguém a removerá.
+/// **O apply de `AddShape` é INCONDICIONAL** (escreve a caixa do sprite); a recusa de o re-oferecer vive no
+/// painel (`event_physics::click_edit`). Este gate PINA o preço daquele clique.
 #[test]
 fn the_add_shape_apply_still_overwrites_and_that_is_why_the_panel_refuses_it() {
     let (mut sim, _arm, leg) = ell();
@@ -425,4 +397,36 @@ fn the_mass_seed_of_a_plain_body_is_its_own_shape() {
         (seeded - 0.6).abs() < 1e-3,
         "um corpo de UMA forma passou a semear {seeded:.4} em vez de 0,600"
     );
+}
+
+/// W3-A: o Static que Add ▸ Collision Shape dá a um filho sem corpo acima diz-se no cartão — só aí.
+#[test]
+fn own_body_note_only_for_a_child_static_with_no_body_above() {
+    let (mut sim, arm, leg) = ell();
+    let w = sim.world_mut();
+    let root = w
+        .spawn((
+            Name::new("Root"),
+            Transform::default(),
+            RigidBody {
+                kind: BodyKind::Static,
+            },
+        ))
+        .id();
+    w.entity_mut(root).insert(Collider::default());
+    let plain = w.spawn(Name::new("Plain")).id();
+    let own = w
+        .spawn((Name::new("Own"), Collider::default(), Transform::default()))
+        .id();
+    ph2d_physics_ecs::pendura_forma(sim.world_mut(), own, Some(plain));
+    sim.world_mut().entity_mut(leg).insert(RigidBody {
+        kind: BodyKind::Static,
+    });
+    assert!(
+        info(&mut sim, own).own_body_note,
+        "filho Static sem corpo acima"
+    );
+    assert!(!info(&mut sim, root).own_body_note, "na raiz");
+    assert!(!info(&mut sim, arm).own_body_note, "o corpo raiz do L");
+    assert!(!info(&mut sim, leg).own_body_note, "antepassado com corpo");
 }

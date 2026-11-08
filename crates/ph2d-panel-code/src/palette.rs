@@ -63,10 +63,9 @@ impl Palette {
             fold: c(ColorToken::Text2),
             pill: c(ColorToken::Bg3),
             pill_text: c(ColorToken::Text2),
-            // A barra de estado assenta na raiz do documento, não dentro de um cartão: é ela a
-            // superfície de nível de cartão, e o tom vem da porta.
+            // A barra de estado fica no pé do cartão do código (dono 08/11): o tom do cartão.
             status_bg: if cartoes {
-                c(ColorToken::KanbanList)
+                c(ColorToken::KanbanCard)
             } else {
                 CardDepth::Section.fill(theme)
             },

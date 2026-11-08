@@ -72,10 +72,15 @@ impl DocumentSurface for CodeDocs {
             .filter(|d| d.2.is_dirty())
             .map(|d| d.0)
             .collect();
+        crate::cards::floor(scene, area, theme);
+        crate::cards::open(scene, list_r, theme);
         self.list
             .paint(list_r, id, &|s| dirty.contains(&s), scene, text, theme);
+        crate::cards::close(scene);
         if let Some(page) = page_of(id) {
+            crate::cards::open(scene, doc_r, theme);
             self.paint_help(page, doc_r, scene, text, theme);
+            crate::cards::close(scene);
             return;
         }
         let (now, steady) = self.clock;

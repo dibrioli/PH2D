@@ -139,12 +139,8 @@ impl ScriptListView {
         self.fields.clear();
         self.counts.clear();
         self.tip = None;
+        // A lista é um cartão (dono 08/11): o fundo dele, sem a linha de borda à direita.
         scene.fill_rect(rect_to_vello(area), ui.bg);
-        let t = ph2d_tokens::StrokeToken::Thin.px();
-        scene.fill_rect(
-            rect_to_vello(Rect::new(area.x + area.w - t, area.y, t, area.h)),
-            ui.border,
-        );
         let gap = Spacing::Sm.px();
         let right = area.x + area.w - gap;
         let y = area.y + gap;

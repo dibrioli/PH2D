@@ -12,6 +12,7 @@ mod assistente;
 mod bancada;
 mod botoes;
 mod busca;
+mod cartoes;
 mod completar;
 mod console;
 mod cores;

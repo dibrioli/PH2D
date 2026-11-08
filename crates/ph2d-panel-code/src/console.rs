@@ -282,7 +282,10 @@ impl ConsoleView {
             .zip([BandTab::Console, BandTab::Problems])
             .enumerate()
         {
-            let w = chrome::label_w(ts, label) + pad * 2.0;
+            // ⚠️ O texto pinta-se na largura MEDIDA, nunca em `(lw + 2·pad) − 2·pad`: a volta da
+            // aritmética perde um ULP e a elisão (`<=`) cortava «Problems (1)» em «Problems (…».
+            let lw = chrome::label_w(ts, label);
+            let w = lw + pad * 2.0;
             let r = Rect::new(x, self.header.y, w, self.header.h);
             let active = tab == band.tab;
             let color = match tab {
@@ -293,13 +296,13 @@ impl ConsoleView {
                 scene,
                 ts,
                 label,
-                Rect::new(r.x + pad, r.y, (r.w - pad * 2.0).max(0.0), r.h),
+                Rect::new(r.x + pad, r.y, lw.next_up(), r.h),
                 color,
             );
             if active && band.open {
                 let t = StrokeToken::Thick.px();
                 scene.fill_rect(
-                    rect_to_vello(Rect::new(r.x + pad, r.y + r.h - t, r.w - pad * 2.0, t)),
+                    rect_to_vello(Rect::new(r.x + pad, r.y + r.h - t, lw, t)),
                     ui.focus,
                 );
             }

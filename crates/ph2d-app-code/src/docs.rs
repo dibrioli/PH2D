@@ -242,13 +242,26 @@ impl CodeDocs {
             .is_some_and(|d| blink_on(self.clock.0, d.last_input_ns, self.clock.1))
     }
 
-    /// As áreas da lista e do documento dentro da aba.
+    /// O cartão da lista e a área do documento (os seus dois cartões) dentro da aba: a margem de fora
+    /// e o vão entre eles são os de [`crate::cards::gap`].
     pub(crate) fn split_area(&self, area: Rect) -> (Rect, Rect) {
-        let w = ScriptListView::width(self.list.open).min(area.w);
+        let a = crate::cards::inset(area);
+        let g = crate::cards::gap();
+        let w = ScriptListView::width(self.list.open).min(a.w);
         (
-            Rect::new(area.x, area.y, w, area.h),
-            Rect::new(area.x + w, area.y, (area.w - w).max(0.0), area.h),
+            Rect::new(a.x, a.y, w, a.h),
+            Rect::new(a.x + w + g, a.y, (a.w - w - g).max(0.0), a.h),
         )
+    }
+
+    /// Os três cartões da aba `id` (a lista, o código, a faixa de baixo) no último quadro pintado.
+    #[must_use]
+    pub fn card_rects(&self, id: ScriptId) -> Option<[Rect; 3]> {
+        let (list, doc_r) = self.split_area(self.area);
+        let d = self.docs.iter().find(|d| d.script == id)?;
+        let open = self.consoles.get(&id).is_some_and(|s| s.open);
+        let (code, band) = d.cards(doc_r, open);
+        Some([list, code, band])
     }
 
     /// Abre (ou activa) o script `id`: um documento aberto ganha o foco; um estacionado volta como

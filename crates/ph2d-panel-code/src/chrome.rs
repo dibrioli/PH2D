@@ -71,7 +71,8 @@ impl Ui {
     fn do_cartao(theme: Theme) -> Self {
         let c = |t: ColorToken| resolve(t, theme);
         Self {
-            bg: c(ColorToken::KanbanList),
+            // As regiões da aba são cartões (dono 08/11): o fundo é o do cartão, o chão é a lista.
+            bg: c(ColorToken::KanbanCard),
             border: c(ColorToken::KanbanSlot),
             field: c(ColorToken::CardField),
             field_edge: c(ColorToken::CardField),
@@ -283,7 +284,7 @@ mod cromo_tests {
         force_cards_on_this_thread(None);
         assert_eq!(antes.field, resolve(ColorToken::CodeBg, tema));
         assert_eq!(antes.button, resolve(ColorToken::Bg3, tema));
-        assert_eq!(novo.bg, resolve(ColorToken::KanbanList, tema));
+        assert_eq!(novo.bg, resolve(ColorToken::KanbanCard, tema));
         assert_eq!(novo.field, resolve(ColorToken::CardField, tema));
         assert_eq!(novo.button, resolve(ColorToken::CardField, tema));
         assert_eq!(novo.text2, resolve(ColorToken::CardLabel, tema));

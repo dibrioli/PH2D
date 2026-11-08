@@ -399,16 +399,29 @@ impl CodeDoc {
     /// Problems).
     pub fn layout(&self, area: Rect, console_open: bool) -> (Option<Rect>, Rect, Rect) {
         let find_h = self.find.bar_height();
-        let console_h = ConsoleView::height(console_open, area.h).min((area.h - find_h).max(0.0));
-        let find = (find_h > 0.0).then(|| Rect::new(area.x, area.y, area.w, find_h));
-        let code = Rect::new(
-            area.x,
-            area.y + find_h,
-            area.w,
-            (area.h - find_h - console_h).max(0.0),
+        let (card, console) = self.cards(area, console_open);
+        let p = crate::cards::well_pad();
+        let card = Rect::new(
+            card.x + p,
+            card.y + p,
+            (card.w - p * 2.0).max(0.0),
+            (card.h - p).max(0.0),
         );
-        let console = Rect::new(area.x, area.y + area.h - console_h, area.w, console_h);
+        let find = (find_h > 0.0).then(|| Rect::new(card.x, card.y, card.w, find_h.min(card.h)));
+        let code = Rect::new(card.x, card.y + find_h, card.w, (card.h - find_h).max(0.0));
         (find, code, console)
+    }
+
+    /// Os dois cartões da direita: o código (com a busca e a barra de estado) em cima, a faixa de
+    /// baixo (Console | Problems) em baixo, com o vão de [`crate::cards::gap`] entre eles.
+    pub(crate) fn cards(&self, area: Rect, console_open: bool) -> (Rect, Rect) {
+        let g = crate::cards::gap();
+        let find_h = self.find.bar_height();
+        let console_h =
+            ConsoleView::height(console_open, area.h).min((area.h - find_h - g).max(0.0));
+        let code = Rect::new(area.x, area.y, area.w, (area.h - console_h - g).max(0.0));
+        let console = Rect::new(area.x, area.y + area.h - console_h, area.w, console_h);
+        (code, console)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -422,6 +435,7 @@ impl CodeDoc {
         (blink_on, assist): (bool, Option<ph2d_panel_code::Assist>),
     ) {
         let (find_r, code_r, console_r) = self.layout(area, console.open);
+        let (code_card, _) = self.cards(area, console.open);
         let problems = self.problems();
         let note = self.note_sections(&problems);
         let shown = self
@@ -558,11 +572,13 @@ impl CodeDoc {
                 hint: &d.hint,
             }),
         };
+        crate::cards::open(scene, code_card, theme);
         view.paint(frame, code_r, scene, ts, theme);
         if let Some(r) = find_r {
             let bar = self.find.bar();
             self.find_view.paint(&bar, r, scene, ts, theme);
         }
+        crate::cards::close(scene);
         // A lista lê o MESMO `Arc` da calha; só se ordena e compõe com ela à mostra.
         let listing = console.open && console.tab == ph2d_panel_code::BandTab::Problems;
         let order = if listing {
@@ -584,7 +600,9 @@ impl CodeDoc {
             current,
             tab_width: TAB,
         };
+        crate::cards::open(scene, console_r, theme);
         self.console_view.paint(band, console_r, scene, ts, theme);
+        crate::cards::close(scene);
     }
 
     /// Os nós da aba ao leitor de ecrã: o `Document` (`base`) e as linhas, e a faixa de baixo (os

@@ -10,6 +10,7 @@
 //! [`ScriptId`]: ph2d_script::ScriptId
 
 mod actions;
+mod cards;
 pub mod commands;
 pub mod complete;
 mod complete_doc;

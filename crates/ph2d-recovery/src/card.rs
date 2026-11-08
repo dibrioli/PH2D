@@ -98,12 +98,14 @@ pub fn quit_layout(viewport: Rect) -> QuitLayout {
 }
 
 /// O clique do ponteiro (píxeis FÍSICOS do ecrã) numa janela aberta, pela disposição do último
-/// quadro pintado. `Later` e `Cancel` já se executam aqui; o resto devolve-se à shell. `None` = não
-/// há janela aberta (o clique é do editor).
+/// quadro pintado. `Later`, `Cancel` e `Don't Save` já se executam aqui; o resto devolve-se à shell. `None` = não
+/// há janela aberta (o clique é do editor). A posição é a do último [`crate::Recovery::hover`]
+/// (`x, y` só sem nenhum movimento visto).
 pub fn click(r: &mut crate::Recovery, x: f32, y: f32) -> Option<Hit> {
     if !r.is_modal() {
         return None;
     }
+    let (x, y) = r.cursor.unwrap_or((x, y));
     let Some((screen, map)) = r.screen else {
         return Some(Hit::Swallowed);
     };
@@ -126,6 +128,8 @@ pub fn click(r: &mut crate::Recovery, x: f32, y: f32) -> Option<Hit> {
     match got {
         Hit::Later => r.prompt.later_all(),
         Hit::Cancel => r.quit = crate::Quit::Idle,
+        // `Don't Save` = descartar também a cópia: o fecho normal apaga a sessão inteira.
+        Hit::DontSave => r.quit = crate::Quit::Go,
         _ => {}
     }
     Some(got)

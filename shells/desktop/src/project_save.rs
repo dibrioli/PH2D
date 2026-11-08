@@ -68,7 +68,6 @@ impl crate::App {
                 let bytes = self.project_bytes();
                 self.recovery.saved_then_quit(bytes.as_deref());
             }
-            Hit::DontSave if down => self.recovery.quit = ph2d_recovery::Quit::Go,
             _ => {}
         }
         true

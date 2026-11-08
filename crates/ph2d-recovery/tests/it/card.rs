@@ -105,9 +105,25 @@ fn o_fecho_pergunta_save_dont_save_cancel_pelo_ponteiro() {
     assert_eq!(card::click(&mut r, x, y), Some(Hit::Save));
     let (x, y) = centre(q.dont_save);
     assert_eq!(card::click(&mut r, x, y), Some(Hit::DontSave));
+    assert_eq!(r.quit, Quit::Go, "Don't Save fecha o app");
+    r.quit = Quit::Asking("A".into());
     let (x, y) = centre(q.cancel);
     assert_eq!(card::click(&mut r, x, y), Some(Hit::Cancel));
     assert_eq!(r.quit, Quit::Idle, "Cancel fecha a pergunta");
+}
+
+/// ⛔ O clique do winit não traz posição e a shell dava a do último movimento VISTO PELO EDITOR,
+/// que a janela esconde: o clique tem de ler o cursor do [`Recovery::hover`] (smoke 08/11).
+#[test]
+fn o_clique_le_o_cursor_do_ultimo_movimento_nao_a_posicao_velha() {
+    let mut r = Recovery::off();
+    r.quit = Quit::Asking("A".into());
+    let screen = Rect::new(0.0, 0.0, 1280.0, 800.0);
+    r.screen = Some((screen, UiScaleMap::new(UiScale::P100)));
+    let (x, y) = centre(card::quit_layout(screen).dont_save);
+    r.hover(x, y);
+    assert_eq!(card::click(&mut r, 1.0, 1.0), Some(Hit::DontSave));
+    assert_eq!(r.quit, Quit::Go);
 }
 
 /// «Today 14:32» · «Yesterday» · a data, em inglês; e a linha do cartão leva o tamanho.

@@ -34,6 +34,11 @@ pub struct Recovery {
     quiet: bool,
     /// Um traço acabou desde a última hora (o quadro calmo seguinte já é pausa).
     released: bool,
+    /// Onde o ponteiro está (píxeis FÍSICOS), visto por [`Self::hover`] em TODO movimento.
+    /// ⛔ O clique do winit não traz posição: a shell usa a do último movimento, e a janela modal
+    /// esconde o movimento do editor — sem este cursor o clique caía onde o ponteiro estava ao
+    /// abrir-se a janela, era comido, e o app parecia travado (smoke do dono, 08/11).
+    pub cursor: Option<(f32, f32)>,
     /// Onde a janela se pintou no último quadro (o ecrã e a escala do chrome): o clique lê daqui.
     pub screen: Option<(
         ph2d_editor_core::zones::Rect,
@@ -67,6 +72,7 @@ impl Recovery {
             held: false,
             quiet: true,
             released: false,
+            cursor: None,
             screen: None,
         }
     }
@@ -97,6 +103,11 @@ impl Recovery {
             self.touched = true;
             self.last_input = Some(now);
         }
+    }
+
+    /// O ponteiro mexeu-se para `(x, y)` (píxeis FÍSICOS): o clique da janela lê daqui.
+    pub fn hover(&mut self, x: f32, y: f32) {
+        self.cursor = Some((x, y));
     }
 
     /// Um botão do ponteiro desceu (`true`) ou subiu: um traço não se interrompe para serializar.

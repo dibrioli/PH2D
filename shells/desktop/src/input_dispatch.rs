@@ -152,6 +152,7 @@ impl App {
         // Diagnostics: count every raw winit move (input rate), paired with `paint_stamps_this_frame`
         // in the HUD so the coalescing is visible (high events → 1 stamp).
         self.input_events_this_frame = self.input_events_this_frame.saturating_add(1);
+        self.recovery.hover(evt.x, evt.y);
         if self.recovery.is_modal() {
             return; // a janela da recuperação é modal: nem o hover passa por baixo.
         }

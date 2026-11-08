@@ -6,12 +6,14 @@ use ph2d_recovery::{Quit, Session, card};
 use winit::event::{ElementState, MouseButton};
 use winit::keyboard::{KeyCode, PhysicalKey};
 
+/// O clique pelo caminho REAL: o movimento e o botão SEM posição (o `MouseInput` não a traz).
+/// ⛔ O clique à mão com a posição no evento escondeu que a janela comia o movimento (08/11).
 fn clica(app: &mut crate::App, r: Rect) {
     let (x, y) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
-    for k in [PointerKind::Down, PointerKind::Up] {
-        let evt = ph2d_pen::ponteiro::do_rato(x, y, k, PointerButton::Primary, 0);
-        app.pointer_button(evt, MouseButton::Left);
-    }
+    let evt = ph2d_pen::ponteiro::do_rato(x, y, PointerKind::Move, PointerButton::Primary, 0);
+    app.pointer_moved(evt);
+    app.on_mouse_input(ElementState::Pressed, MouseButton::Left);
+    app.on_mouse_input(ElementState::Released, MouseButton::Left);
 }
 
 #[test]
@@ -19,30 +21,40 @@ fn o_arranque_abre_a_janela_em_cartoes_esc_e_later_restore_pelo_ponteiro() {
     let root = std::env::temp_dir().join(format!("ph2d-shell-recovery-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&root);
     let path = "/x/Hero.ph2dproj";
-    let morta = Session::start(&root, 1, u32::MAX).expect("sessão morta");
     use super::super::tests::{bare_file, empty_state};
     let bytes = postcard::to_allocvec(&(super::PROJECT_SCHEMA, &bare_file(empty_state())));
-    morta
-        .write_copy(&bytes.expect("bytes"), &ph2d_recovery::meta_of(Some(path)))
-        .expect("cópia");
-    // O `Esc` é da janela (nenhum atalho o vê) e é `Later`: a cópia fica no disco.
+    let (bytes, meta) = (bytes.expect("bytes"), ph2d_recovery::meta_of(Some(path)));
+    for pid in [1, 2] {
+        let morta = Session::start(&root, u64::from(pid), u32::MAX - pid).expect("sessão morta");
+        morta.write_copy(&bytes, &meta).expect("cópia");
+    }
+    let (screen, map) = (Rect::new(0.0, 0.0, 1280.0, 800.0), UiScaleMap::default());
+    let abre = |app: &mut crate::App| {
+        app.recovery_start(Some(&root));
+        app.recovery.screen = Some((screen, map));
+    };
     let mut app = crate::App::new();
-    app.recovery_start(Some(&root));
-    assert!(app.recovery.prompt.is_open());
-    let esc = PhysicalKey::Code(KeyCode::Escape);
-    assert!(app.modal_owns_the_keyboard(esc, ElementState::Pressed, false));
+    abre(&mut app);
+    clica(&mut app, card::layout(screen, 2).later);
     assert!(!app.recovery.is_modal() && app.project_path.is_none());
     app.recovery.close();
-    // O clique real no `Restore` do cartão: abre, lembra o caminho; e o `Don't Save` do fecho.
     let mut app = crate::App::new();
-    app.recovery_start(Some(&root));
-    let (screen, map) = (Rect::new(0.0, 0.0, 1280.0, 800.0), UiScaleMap::default());
-    app.recovery.screen = Some((screen, map));
+    abre(&mut app);
+    clica(&mut app, card::layout(screen, 2).rows[0].discard);
+    assert_eq!(app.recovery.prompt.entries.len(), 1, "Discard tira a linha");
     clica(&mut app, card::layout(screen, 1).rows[0].restore);
     assert_eq!(app.project_path.as_deref(), Some(path));
     assert!(!app.recovery.is_modal(), "um Restore fecha a janela");
-    // Sem janela o App não serializa: o «por gravar» prova-se no crate (`abrir_poe_a_linha_de_base…`).
-    app.recovery.quit = Quit::Asking("Hero.ph2dproj".into());
+    // A pergunta do fecho (sem janela o App não serializa: `abrir_poe_a_linha_de_base…` no crate).
+    let pergunta = |app: &mut crate::App| assert!(app.recovery.ask_quit(Some(b"novo"), Some(path)));
+    pergunta(&mut app);
+    clica(&mut app, card::quit_layout(screen).cancel);
+    assert_eq!(app.recovery.quit, Quit::Idle, "Cancel fica");
+    pergunta(&mut app);
+    let esc = PhysicalKey::Code(KeyCode::Escape);
+    assert!(app.modal_owns_the_keyboard(esc, ElementState::Pressed, false));
+    assert_eq!(app.recovery.quit, Quit::Idle, "Esc = Cancel");
+    pergunta(&mut app);
     clica(&mut app, card::quit_layout(screen).dont_save);
     assert_eq!(app.recovery.quit, Quit::Go);
     assert!(!app.recovery_quit_guard(), "respondido, fecha");

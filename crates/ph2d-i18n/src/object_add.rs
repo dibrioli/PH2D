@@ -30,7 +30,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "The hero the player controls. The arrow keys (or A and D) walk, Up or Z jumps, with gravity built in. Its animation changes by itself between idle, run, jump and fall \u{2014} choose which animation plays in each case in the Inspector."
         }
         "object_add.game.collision_shape.tip" => {
-            "An invisible shape that things bump into. Drag it inside a Static Body or a Character to give that body one more shape: an invisible wall at the end of a level, a ledge, a wider hit area."
+            "An invisible shape that things bump into. Select a body first and the shape goes inside it as one more shape of that body: an invisible wall at the end of a level, a ledge, a wider hit area. With nothing selected it is a fixed wall of its own."
         }
         "object_add.game.background_layer.tip" => {
             "Scenery far away: sky, clouds, hills. When the camera moves it stays behind and moves more slowly than the level, which makes the world look deep. Set how far away it is in the Inspector (Parallax) \u{2014} 0 stays still on the screen, 1 moves with the level. It repeats sideways, so it never ends."

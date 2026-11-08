@@ -103,6 +103,8 @@ pub fn veste_camada(
     ));
 }
 
+type Nasceu = Option<Result<u64, String>>;
+
 /// As portas de OUTRA família que o menu usa, entregues pela composição.
 #[derive(Clone, Copy)]
 pub struct Portas<'a> {
@@ -113,9 +115,9 @@ pub struct Portas<'a> {
     pub anexa: &'a dyn Fn(&mut SimWorld, u64, &str) -> Result<(), String>,
 }
 
-/// ⭐ **Cria o objecto** desta entrada — `None` se a entrada não é desta família. Se um componente não
-/// entra, o objecto sai (um *«Character»* sem personagem seria um nome que mente).
-pub fn add(entry: AddEntry, sim: &mut SimWorld, portas: Portas<'_>) -> Option<Result<u64, String>> {
+/// ⭐ **Cria o objecto** desta entrada (`None` se não é desta família; se um componente não entra, o objecto
+/// sai). `pai` = o seleccionado: a Collision Shape nasce FILHA dele (W3, [`ph2d_physics_ecs::pendura_forma`]).
+pub fn add(entry: AddEntry, sim: &mut SimWorld, portas: Portas<'_>, pai: Option<u64>) -> Nasceu {
     if !ENTRIES.contains(&entry) {
         return None;
     }
@@ -173,6 +175,7 @@ pub fn add(entry: AddEntry, sim: &mut SimWorld, portas: Portas<'_>) -> Option<Re
                 },
                 ..Collider::default()
             });
+            ph2d_physics_ecs::pendura_forma(world, e, pai.map(Entity::from_bits));
         }
         Ok(())
     })();

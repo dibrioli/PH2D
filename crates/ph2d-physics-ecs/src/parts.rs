@@ -73,6 +73,19 @@ pub fn is_part(world: &World, e: Entity) -> bool {
         && owner_body(world, e).is_some()
 }
 
+/// **Add ▸ Collision Shape** (W3): a forma `e` nasce FILHA de `pai` (se ele existe), e só ganha o seu
+/// `RigidBody{Static}` quando não há corpo acima — com corpo acima é mais uma peça dele.
+pub fn pendura_forma(world: &mut World, e: Entity, pai: Option<Entity>) {
+    if let Some(p) = pai.filter(|&p| world.get_entity(p).is_ok()) {
+        world.entity_mut(e).insert(ChildOf(p));
+    }
+    if owner_body(world, e).is_none() {
+        world.entity_mut(e).insert(RigidBody {
+            kind: crate::BodyKind::Static,
+        });
+    }
+}
+
 /// Quantas peças estão penduradas em `body`.
 ///
 /// `candidates` vem de uma query do chamador (`&Collider` sem `&RigidBody`) — não

@@ -142,6 +142,11 @@ fn semeia_o_nome_da_camada(store: &mut WidgetStore) {
 /// O cartão **Body** de um corpo.
 pub(super) fn corpo(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
     let dinamico = info.kind_tag == KIND_DYNAMIC;
+    let y = if info.own_body_note {
+        t.frase(y, tr("card.insp.phys.own_body_note"), ColorToken::Text3)
+    } else {
+        y
+    };
     let mut y = seg_row(
         t.scene,
         t.text,

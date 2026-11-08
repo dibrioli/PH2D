@@ -27,6 +27,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.phys.add_shape" => "Add Shape",
         "card.insp.phys.drag_hint" => "Or drag it inside a body in the Hierarchy.",
         "card.insp.phys.part_of" => "Part of: {owner}",
+        "card.insp.phys.own_body_note" => {
+            "Own body (Static) \u{2014} make the parent a body to join it"
+        }
         "card.insp.phys.follows" => "Follows the picture",
         "card.insp.phys.custom" => "Custom size",
         "card.insp.phys.fit" => "Fit to picture",

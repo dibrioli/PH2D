@@ -825,6 +825,7 @@ fn o_corpo_sem_forma_avisa_e_o_add_shape_pede_a_caixa() {
         has_body: false,
         has_collider: false,
         body_without_shape: true,
+        own_body_note: false,
         part_owner: String::new(),
         ..with_body()
     };
@@ -861,6 +862,7 @@ fn o_corpo_sem_forma_avisa_e_o_add_shape_pede_a_caixa() {
     let botao = achado(&pinta(&mut host, &mut st), INSP_PHYS_ADD_SHAPE).expect("botão");
     set_current_inspector_physics(Some(InspectorPhysicsInfo {
         body_without_shape: false,
+        own_body_note: false,
         ..sem_forma
     }));
     let a = clica(&mut host, &mut st, botao);

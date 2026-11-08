@@ -42,10 +42,6 @@ fn nearest_body_name(world: &World, e: ph2d_ecs::Entity) -> String {
 /// armado, o alcance do bake, a árvore). Empacotá-los num struct só moveria a
 /// mesma lista para outro arquivo, com um sítio de construção a mais para alguém
 /// esquecer de preencher.
-///
-/// ⚠️ Este doc-comment estava **ÓRFÃO** desde antes desta wave — colado no
-/// `nearest_body_name` abaixo, afirmando *"o 8º argumento"* de uma função que já
-/// tinha outros. Reancorado aqui.
 #[allow(clippy::too_many_arguments)]
 pub fn build_physics_info(
     world: &World,
@@ -53,10 +49,7 @@ pub fn build_physics_info(
     join_count: u8,
     // W-Rig: partes que um rig tocaria; `0` = o botão não é oferecido.
     rig_parts: u8,
-    // W-PartFace: quantas PEÇAS estão penduradas neste corpo. Só a shell pode
-    // contar (precisa de uma query sobre o mundo inteiro — não há índice de
-    // filhos no ECS), e sem o número um corpo composto é indistinguível de um
-    // de forma única quando o contorno está desligado.
+    // W-PartFace: as PEÇAS penduradas neste corpo; só a shell conta (query sobre o mundo inteiro).
     part_count: u8,
     join_draw_armed: bool,
     join_kind_tag: u8,
@@ -248,6 +241,7 @@ pub fn build_physics_info(
             area_form_drag: 0.0,
             area_torque: 0.0,
             area_falloff: 0.0,
+            own_body_note: false,
         });
     };
     // Each arm also carries what the OTHER shapes' rows would seed if the artist
@@ -387,6 +381,9 @@ pub fn build_physics_info(
         area_form_drag,
         area_torque,
         area_falloff,
+        own_body_note: rb.is_some()
+            && world.get::<ph2d_ecs::ChildOf>(entity).is_some()
+            && ph2d_physics_ecs::owner_body(world, entity).is_none(),
     })
 }
 

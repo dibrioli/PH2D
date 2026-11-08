@@ -93,7 +93,7 @@ const CARTAO: [f32; 4] = [0.18, 0.55, 0.62, 1.0];
 
 /// A imagem, pelo menu Add ▸ Game ▸ Sprite (a porta do produto), tingida.
 pub fn imagem(sim: &mut SimWorld, portas: crate::object_add::Portas<'_>) -> Option<u64> {
-    let bits = crate::object_add::add(crate::object_add::SPRITE, sim, portas)?.ok()?;
+    let bits = crate::object_add::add(crate::object_add::SPRITE, sim, portas, None)?.ok()?;
     if let Some(mut s) = sim.world_mut().get_mut::<Sprite>(Entity::from_bits(bits)) {
         s.tint = CARTAO;
     }

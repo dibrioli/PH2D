@@ -1,6 +1,5 @@
 //! **Fase do quadro: O MENU ADD DE OBJECTOS** (spec/06 F1) — abrir o modal quando o `+` da
 //! Hierarquia ou o `Shift+A` o pedem, e entregar o pick à FAMÍLIA dona.
-//!
 //! ⚠️ **A shell é composição:** cada família declara as entradas e sabe criá-las com os recursos
 //! dela; aqui só se junta a lista compilada e se passam os recursos.
 
@@ -112,6 +111,7 @@ impl crate::App {
                     )
                 },
             },
+            hero.gizmo.selection,
         )
         .or_else(|| ph2d_app_components::object_add::add(entry, sim, component_registry, seeds))
         {

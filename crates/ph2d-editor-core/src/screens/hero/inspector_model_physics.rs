@@ -334,6 +334,9 @@ pub struct InspectorPhysicsInfo {
     /// centro até a borda, em `0..=1`. Espelha o opcional `AreaFalloff`; ausente/zero é um
     /// campo uniforme. Mesma condição de Sensor que as irmãs.
     pub area_falloff: f32,
+    /// Corpo PRÓPRIO debaixo de um pai sem corpo (W3, Add ▸ Collision Shape com seleção): o cartão Body
+    /// diz que a forma não se junta a ninguém até o pai virar corpo.
+    pub own_body_note: bool,
 }
 
 /// A single editable §11 physics field, dispatched as

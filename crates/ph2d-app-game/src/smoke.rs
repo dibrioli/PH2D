@@ -9,8 +9,8 @@
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{
-    AnimationTag, CameraFollow, CameraLimits, ChildOf, Entity, GameCamera, Name, ScrollFactor,
-    SimWorld, SpriteAnimations, SpriteAnimator, SpriteGrid, TiledDraw, Transform, ZIndexOverride,
+    AnimationTag, CameraFollow, CameraLimits, Entity, GameCamera, Name, ScrollFactor, SimWorld,
+    SpriteAnimations, SpriteAnimator, SpriteGrid, TiledDraw, Transform, ZIndexOverride,
 };
 use ph2d_editor_core::game_stage::GameStage;
 use ph2d_render::{
@@ -352,7 +352,7 @@ fn do_menu(
     portas: Portas<'_>,
     entry: ph2d_editor_core::object_add::AddEntry,
 ) -> Entity {
-    let bits = crate::object_add::add(entry, sim, portas.menu)
+    let bits = crate::object_add::add(entry, sim, portas.menu, None)
         .expect("a entrada é desta família")
         .unwrap_or_else(|e| panic!("{}: {e}", entry.key.key()));
     Entity::from_bits(bits)
@@ -478,7 +478,8 @@ fn nivel_2(sim: &mut SimWorld, portas: Portas<'_>) -> Entity {
     }
     // A parede do fim: uma forma DENTRO do chão, de escala 1 — o tamanho é a caixa do collider.
     let (chao, c, _) = chao_direito.expect("o chão da direita");
-    let parede = do_menu(sim, portas, COLLISION_SHAPE);
+    let parede = crate::object_add::add(COLLISION_SHAPE, sim, portas.menu, Some(chao.to_bits()));
+    let parede = Entity::from_bits(parede.and_then(Result::ok).expect("a parede nasce"));
     let ([px, py], meia) = PAREDE_INVISIVEL;
     arruma(
         sim,
@@ -489,7 +490,6 @@ fn nivel_2(sim: &mut SimWorld, portas: Portas<'_>) -> Entity {
     );
     let w = sim.world_mut();
     caixa(w, parede, meia);
-    w.entity_mut(parede).insert(ChildOf(chao));
     // O céu é uma Sprite com a Parallax a 0 (parada no ecrã); as nuvens e os montes são Background Layers.
     let ceu = do_menu(sim, portas, SPRITE);
     arruma(sim, ceu, "Sky", [0.0, 0.0], CEU_TAMANHO);

@@ -31,7 +31,9 @@ fn cada_objecto_nasce_com_o_seu_conjunto() {
             "object_add.game.animated_sprite" => (true, true, None, false, false),
             "object_add.game.static_body" => (true, false, Some(BodyKind::Static), true, false),
             "object_add.game.character" => (true, true, Some(BodyKind::Dynamic), true, true),
-            "object_add.game.collision_shape" => (false, false, None, true, false),
+            "object_add.game.collision_shape" => {
+                (false, false, Some(BodyKind::Static), true, false)
+            }
             "object_add.game.background_layer" => (true, false, None, false, false),
             other => panic!("entrada sem conjunto esperado: {other}"),
         };
@@ -130,4 +132,75 @@ fn entrada_alheia_nao_cria_nada() {
     let antes = sim.world().entities().len();
     assert!(crate::comp::menu(ph2d_editor_core::object_add::EMPTY, &mut sim).is_none());
     assert_eq!(sim.world().entities().len(), antes);
+}
+
+/// A *Collision Shape* com o objecto `pai` seleccionado, pelas portas do produto.
+fn forma_sob(sim: &mut SimWorld, pai: Option<Entity>) -> Entity {
+    let reg = crate::comp::registo();
+    let bits = crate::comp::com_portas(&reg, |p| {
+        add(COLLISION_SHAPE, sim, p.menu, pai.map(Entity::to_bits))
+    })
+    .expect("é do jogo")
+    .expect("nasce");
+    Entity::from_bits(bits)
+}
+
+/// ⭐ **Add ▸ Collision Shape, os três casos** (W3): sem seleção é um objecto na raiz com Static próprio;
+/// com um corpo seleccionado é FILHA dele e mais uma forma dele (sem corpo próprio, «Part of»); com um
+/// objecto sem corpo seleccionado é filha dele e nasce com o seu Static. Nunca componente do seleccionado.
+#[test]
+fn a_forma_nasce_filha_do_seleccionado_e_so_tem_corpo_se_nao_ha_corpo_acima() {
+    let mut sim = SimWorld::new();
+    let solta = forma_sob(&mut sim, None);
+    let chao = nasce(STATIC_BODY, &mut sim);
+    let vazio = Entity::from_bits(ph2d_app_components::object_add::spawn_empty_root(
+        &mut sim, "Group",
+    ));
+    let peca = forma_sob(&mut sim, Some(chao));
+    let propria = forma_sob(&mut sim, Some(vazio));
+    let w = sim.world();
+    let pai = |e| w.get::<ph2d_ecs::ChildOf>(e).map(ph2d_ecs::ChildOf::parent);
+    let corpo = |e| w.get::<RigidBody>(e).map(|b| b.kind);
+    assert_eq!((pai(solta), corpo(solta)), (None, Some(BodyKind::Static)));
+    assert_eq!((pai(peca), corpo(peca)), (Some(chao), None));
+    assert_eq!(
+        ph2d_physics_ecs::owner_body(w, peca),
+        Some(chao),
+        "é mais uma forma do chão"
+    );
+    assert_eq!(
+        (pai(propria), corpo(propria)),
+        (Some(vazio), Some(BodyKind::Static))
+    );
+    for e in [peca, propria] {
+        assert!(w.get::<Collider>(e).is_some());
+        let t = w.get::<ph2d_ecs::Transform>(e).expect("pose");
+        assert_eq!(
+            t.translation,
+            ph2d_ecs::Transform::IDENTITY.translation,
+            "offset local zero"
+        );
+    }
+    assert_eq!(corpo(vazio), None, "o seleccionado não ganha componente");
+    assert!(w.get::<Collider>(chao).is_some() && w.get::<Collider>(vazio).is_none());
+}
+
+/// A cena 2 continua a mesma: a parede invisível é PEÇA do chão da direita, sem corpo próprio.
+#[test]
+fn a_parede_invisivel_e_peca_do_chao() {
+    let mut sim = SimWorld::new();
+    crate::comp::montar(&mut sim, 2);
+    let w = sim.world_mut();
+    let mut q = w.query::<(Entity, &ph2d_ecs::Name)>();
+    let nomes: Vec<(Entity, String)> = q.iter(w).map(|(e, n)| (e, n.as_str().to_owned())).collect();
+    let achar = |n: &str| {
+        nomes
+            .iter()
+            .find(|(_, m)| m == n)
+            .map(|(e, _)| *e)
+            .expect(n)
+    };
+    let (parede, chao) = (achar("Invisible Wall"), achar("Ground Right"));
+    assert_eq!(ph2d_physics_ecs::owner_body(w, parede), Some(chao));
+    assert!(w.get::<RigidBody>(parede).is_none(), "sem Static próprio");
 }

@@ -434,6 +434,7 @@ pub fn fisica_armada() -> InspectorPhysicsInfo {
         part_owner: "Hero".to_string(),
         has_collider: true,
         body_without_shape: false,
+        own_body_note: false,
         part_count: 2,
         join_draw_armed: false,
         join_kind_tag: 1,

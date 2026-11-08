@@ -42,6 +42,6 @@ pub fn menu(
     sim: &mut SimWorld,
 ) -> Option<Result<u64, String>> {
     com_portas(&registo(), |p| {
-        ph2d_app_game::object_add::add(entry, sim, p.menu)
+        ph2d_app_game::object_add::add(entry, sim, p.menu, None)
     })
 }

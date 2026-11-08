@@ -267,3 +267,42 @@ fn person_colours_read_in_every_theme() {
         }
     }
 }
+
+/// ⭐ GEF02 onda 9c (dono 07/11): as 32 cores das camadas de colisão são ÚNICAS (diferença OKLab de qualquer par
+/// ≥ 0,025 (medido: 0,0254 nos escuros, 0,0259 nos claros), vizinhas ≥ 0,04) e separam-se do `bg-1` a ≥ 3:1 (um gráfico) nos temas de base.
+#[test]
+fn as_cores_das_camadas_sao_unicas_e_legiveis() {
+    use crate::theme::Theme;
+    let lab = |c: Color| {
+        let (l, ch, h) = srgb_to_oklch(c.r, c.g, c.b);
+        let h = h.to_radians();
+        (f64::from(l), f64::from(ch * h.cos()), f64::from(ch * h.sin()))
+    };
+    let dist = |a: (f64, f64, f64), b: (f64, f64, f64)| {
+        ((a.0 - b.0).powi(2) + (a.1 - b.1).powi(2) + (a.2 - b.2).powi(2)).sqrt()
+    };
+    for theme in Theme::ALL {
+        let cores: Vec<_> = ColorToken::LAYERS
+            .iter()
+            .map(|t| lab(t.resolve(theme)))
+            .collect();
+        let mut menor = f64::MAX;
+        for (i, &a) in cores.iter().enumerate() {
+            for &b in &cores[i + 1..] {
+                menor = menor.min(dist(a, b));
+            }
+            if i + 1 < cores.len() {
+                assert!(dist(a, cores[i + 1]) >= 0.04, "{theme:?}: {i} × {} vizinhas", i + 1);
+            }
+            let fundo = ColorToken::Bg1.resolve(theme);
+            let c = ColorToken::layer(i).resolve(theme);
+            // Os temas de base (claro e escuro), como as cores das pessoas.
+            if matches!(theme, Theme::Forge | Theme::Sunstone | Theme::Dark | Theme::Light) {
+                assert!(fundo.contrast_ratio(&c) >= 3.0, "{theme:?}: camada {i} sobre o fundo");
+            }
+        }
+        eprintln!("camadas {theme:?}: {menor:.4}");
+        assert!(menor >= 0.025, "{theme:?}: duas camadas a {menor:.4}");
+        assert_eq!(ColorToken::layer(7), ColorToken::ObjLayer7);
+    }
+}

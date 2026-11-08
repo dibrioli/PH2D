@@ -374,7 +374,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.physics.smoke_layer_names" => "Ground|Player|Enemy|Pickup|Player Shots",
         "card.physics.smoke_layer_rename" => "Enemy Bats",
         "card.physics.tab_layers" => "Layers",
-        "card.physics.tab_add" => "+ Add",
+        "card.physics.tab_add" => "+ Add layer",
         "card.physics.tab_add_tip" => {
             "Make a new layer. It bumps into everything until you switch pairs off."
         }

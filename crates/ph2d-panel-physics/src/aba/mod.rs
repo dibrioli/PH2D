@@ -159,22 +159,10 @@ pub(crate) fn mostra_todos() {
     MAIS.set(true);
 }
 
-/// A cor de uma camada: uma paleta de tokens indexada pelo número (nada se grava).
+/// A cor de uma camada: o token fluorescente ÚNICO dela, pelo número (onda 9c; nada se grava).
 #[must_use]
 pub fn cor_da_camada(n: usize) -> ph2d_tokens::ColorToken {
-    use ph2d_tokens::ColorToken as C;
-    const PALETA: [C; 9] = [
-        C::KanbanGreen,
-        C::KanbanSky,
-        C::KanbanPink,
-        C::KanbanYellow,
-        C::KanbanPurple,
-        C::KanbanOrange,
-        C::KanbanBlue,
-        C::KanbanLime,
-        C::KanbanRed,
-    ];
-    PALETA[n % PALETA.len()]
+    ph2d_tokens::ColorToken::layer(n)
 }
 
 /// O par da frase do pé, em negrito: «Player Shots × Player:».

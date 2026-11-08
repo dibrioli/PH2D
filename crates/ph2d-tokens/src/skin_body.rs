@@ -206,6 +206,38 @@ impl ColorToken {
             | T::ObjJoint
             | T::ObjBody
             | T::ObjCollider
+            | T::ObjLayer0
+            | T::ObjLayer1
+            | T::ObjLayer2
+            | T::ObjLayer3
+            | T::ObjLayer4
+            | T::ObjLayer5
+            | T::ObjLayer6
+            | T::ObjLayer7
+            | T::ObjLayer8
+            | T::ObjLayer9
+            | T::ObjLayer10
+            | T::ObjLayer11
+            | T::ObjLayer12
+            | T::ObjLayer13
+            | T::ObjLayer14
+            | T::ObjLayer15
+            | T::ObjLayer16
+            | T::ObjLayer17
+            | T::ObjLayer18
+            | T::ObjLayer19
+            | T::ObjLayer20
+            | T::ObjLayer21
+            | T::ObjLayer22
+            | T::ObjLayer23
+            | T::ObjLayer24
+            | T::ObjLayer25
+            | T::ObjLayer26
+            | T::ObjLayer27
+            | T::ObjLayer28
+            | T::ObjLayer29
+            | T::ObjLayer30
+            | T::ObjLayer31
             | T::PortInstances
             | T::PortVector
             | T::PortField

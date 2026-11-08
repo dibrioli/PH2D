@@ -622,6 +622,8 @@ pub(crate) fn colour(theme: Theme, token: ColorToken) -> Color {
         // A calha desce meio degrau rumo ao chão; a linha do cursor é um véu da cor do texto.
         "code-gutter" => code_gutter(r.panel).color(),
         "code-line-current" => r.mono.over(r.panel, CODE_LINE_VEIL).color(),
+        // ── as 32 camadas de colisão (GEF02 9c): DADO medido par a par, emprestado tal qual ──
+        k if k.starts_with("obj-layer-") => borrow(),
         // ── a cor do TIPO de objecto (F42): emprestada e, se preciso, legível neste fundo ──
         k if k.starts_with("obj-") => crate::type_colour::legible_on(
             borrow(),

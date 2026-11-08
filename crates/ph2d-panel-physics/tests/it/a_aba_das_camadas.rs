@@ -203,6 +203,31 @@ fn remove_pergunta_para_onde_vao_os_objetos_e_a_default_fica() {
         mesa.rect(ids::PHYSICS_LAYER_MOVE_TO[2]).is_none(),
         "não vai para si mesma"
     );
+    // Onda 9e: o destino escolhe-se numa LISTA (uma coluna, uma linha por camada), dentro da caixa, acima dos botões.
+    let destinos: Vec<Rect> = [0, 1, 3, 4]
+        .iter()
+        .map(|&d| {
+            mesa.rect(ids::PHYSICS_LAYER_MOVE_TO[d])
+                .expect("destino pintado")
+        })
+        .collect();
+    for par in destinos.windows(2) {
+        assert_eq!(par[0].x, par[1].x, "a lista é uma coluna");
+        assert!(
+            par[1].y >= par[0].y + par[0].h - 0.01,
+            "uma linha por camada"
+        );
+    }
+    let ok = mesa
+        .rect(ids::PHYSICS_LAYER_MOVE_OK)
+        .expect("Move and remove");
+    assert!(
+        ok.y >= destinos[3].y + destinos[3].h,
+        "os botões vêm depois da lista"
+    );
+    let sub = ph2d_editor_core::paint::layer_underline_of(ids::PHYSICS_LAYER_MOVE_TO[3])
+        .expect("sublinhado");
+    assert_eq!(sub.camada, 3);
     let _ = mesa.clica(ids::PHYSICS_LAYER_MOVE_CANCEL);
     mesa.pinta();
     assert_eq!(aba::removendo(), None);

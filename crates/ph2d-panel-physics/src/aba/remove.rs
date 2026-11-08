@@ -1,12 +1,14 @@
 //! ⭐ **O «Remove» da aba** (onda 9b, maquete B estado 2): uma camada sem objetos sai logo; com objetos, a
 //! camada aberta pergunta para onde eles vão («Move and remove» / «Cancel»). A 0 (Default) não se remove.
+//! Onda 9e: a pergunta mora numa CAIXA realçada (`DangerSoft` com contorno `Danger`), e o destino escolhe-se
+//! numa LISTA (uma linha por camada, com o sublinhado da cor dela; a escolhida acesa).
 
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered};
 use ph2d_editor_core::panel::{PaintCtx, camada_das_listas};
 use ph2d_editor_core::widget::ButtonState;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, StrokeToken};
 
 use super::geometria::fila;
 use crate::ids as i;
@@ -23,6 +25,8 @@ pub(super) struct Pergunta {
     /// (camada de destino, botão).
     pub(super) destinos: Vec<(usize, Rect)>,
     pub(super) escolhido: usize,
+    /// A caixa realçada que contém a pergunta inteira.
+    pub(super) caixa: Rect,
     pub(super) ok: Rect,
     pub(super) cancela: Rect,
     pub(super) altura: f32,
@@ -59,7 +63,13 @@ impl Pergunta {
                 ("names", &nomes),
             ],
         );
-        let mut y = pad + row;
+        let dentro_da_caixa = Spacing::Sm.px();
+        let topo = pad + row;
+        let (x, w) = (
+            pad + dentro_da_caixa,
+            (dentro - dentro_da_caixa * 2.0).max(0.0),
+        );
+        let mut y = topo + dentro_da_caixa;
         let frase_y = y;
         y += row;
         let rotulo_y = y;
@@ -67,25 +77,31 @@ impl Pergunta {
         let botao =
             |s: &str, largura: &mut dyn FnMut(&str) -> f32| largura(s) + Spacing::Lg.px() * 2.0;
         let outras: Vec<usize> = visiveis.iter().copied().filter(|&d| d != aberta).collect();
-        let larg: Vec<f32> = outras
+        // A lista do destino: uma linha por camada, com a largura do nome mais comprido.
+        let lista_w = outras
             .iter()
             .map(|&d| botao(&rotulos[d], largura))
-            .collect();
-        let (rs, linhas) = fila(pad, y, dentro, &larg);
-        let destinos = outras.into_iter().zip(rs).collect();
-        y += linhas.max(1) as f32 * (row + Spacing::Xs.px()) + Spacing::Sm.px();
+            .fold(0.0_f32, f32::max)
+            .min(w);
+        let destinos = outras
+            .into_iter()
+            .enumerate()
+            .map(|(k, d)| (d, Rect::new(x, y + k as f32 * row, lista_w, row)))
+            .collect::<Vec<_>>();
+        y += destinos.len().max(1) as f32 * row + Spacing::Sm.px();
         let larg = [
             botao(tr("card.physics.tab_move_ok"), largura),
             botao(tr("card.physics.tab_cancel"), largura),
         ];
-        let (rs, linhas) = fila(pad, y, dentro, &larg);
-        y += linhas as f32 * (row + Spacing::Xs.px());
+        let (rs, linhas) = fila(x, y, w, &larg);
+        y += linhas as f32 * (row + Spacing::Xs.px()) - Spacing::Xs.px() + dentro_da_caixa;
         Self {
             frase,
             frase_y,
             rotulo_y,
             destinos,
             escolhido,
+            caixa: Rect::new(pad, topo, dentro, y - topo),
             ok: rs[0],
             cancela: rs[1],
             altura: y + pad,
@@ -102,6 +118,7 @@ impl Pergunta {
         self.destinos.iter_mut().for_each(|d| m(&mut d.1));
         m(&mut self.ok);
         m(&mut self.cancela);
+        m(&mut self.caixa);
         self
     }
 }
@@ -109,7 +126,7 @@ impl Pergunta {
 /// Pinta a pergunta (a linha de título é do pé).
 pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro, p: &Pergunta) {
     let theme = ctx.host.theme();
-    let (g, font, raio) = (q.g, q.font, q.raio);
+    let (font, raio) = (q.font, q.raio);
     let aceso = |id| ctx.host.store().button_state(id) == Some(ButtonState::Hovered);
     let acesos: Vec<bool> = p
         .destinos
@@ -121,9 +138,18 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro, p: &Pergunta)
         aceso(i::PHYSICS_LAYER_MOVE_CANCEL),
     );
     let texto = &mut *ctx.text_system;
-    let x = g.camada.x + Spacing::Md.px();
-    let w = g.camada.w - Spacing::Md.px() * 2.0;
+    let x = p.caixa.x + Spacing::Sm.px();
+    let w = p.caixa.w - Spacing::Sm.px() * 2.0;
     camada_das_listas::por_cima(ctx.scene, |cena| {
+        fill_rounded_rect(cena, p.caixa, raio, tom!(ColorToken::DangerSoft, theme));
+        // FRAME-RAW-OK: a caixa realçada da pergunta (maquete B, estado 2) leva o contorno do perigo
+        ph2d_editor_core::paint::stroke_rounded_rect(
+            cena,
+            p.caixa,
+            raio,
+            StrokeToken::Thin.px(),
+            ph2d_editor_core::paint::resolve(ColorToken::Danger, theme),
+        );
         let linha = |texto: &mut _, cena: &mut _, s: &str, y: f32, cor| {
             paint_text(
                 texto,
@@ -159,15 +185,49 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro, p: &Pergunta)
             )
         };
         for (&(d, r), &hover) in p.destinos.iter().zip(&acesos) {
-            let (fundo, tinta) = if d == p.escolhido {
-                (
-                    ph2d_editor_core::paint::resolve(ColorToken::Accent, theme),
-                    ph2d_editor_core::paint::resolve(ColorToken::AccentFg, theme),
-                )
+            let sel = d == p.escolhido;
+            if sel || hover {
+                let fundo = if sel {
+                    ColorToken::AccentSoft
+                } else {
+                    ColorToken::Bg3
+                };
+                fill_rounded_rect(cena, r, raio, tom!(fundo, theme));
+            }
+            let (tx, topo) = (r.x + Spacing::Lg.px(), r.y + (r.h - font) * 0.5);
+            let cabe = r.w - Spacing::Lg.px() * 2.0;
+            let cor = if sel {
+                ColorToken::Text1
             } else {
-                (normal(hover), tom!(ColorToken::Text1, theme))
+                ColorToken::Text2
             };
-            botao(texto, cena, r, &q.rotulos[d], fundo, tinta);
+            paint_text(
+                texto,
+                cena,
+                &q.rotulos[d],
+                tx,
+                topo,
+                font,
+                cabe,
+                tom!(cor, theme),
+            );
+            let larg = texto.prefix_width(&q.rotulos[d], font).ceil().min(cabe);
+            let id = i::PHYSICS_LAYER_MOVE_TO[d];
+            ph2d_editor_core::paint::paint_layer_underline(
+                cena, theme, id, d, tx, topo, font, larg,
+            );
+            if sel {
+                // A marca da escolhida, à esquerda do nome (a mesma ✓ das caixinhas).
+                let b = Rect::new(r.x, r.y, Spacing::Lg.px(), r.h);
+                paint_text_centered(
+                    texto,
+                    cena,
+                    tr("card.physics.tab_check"),
+                    b,
+                    font,
+                    tom!(ColorToken::Text1, theme),
+                );
+            }
         }
         botao(
             texto,

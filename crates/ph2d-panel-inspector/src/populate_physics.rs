@@ -227,11 +227,6 @@ pub(super) fn populate_physics(store: &mut WidgetStore) {
     register_button_ids(store, &ids::INSP_PHYS_WALLMAT);
     register_button_ids(store, &ids::INSP_PHYS_FORCE_AXES);
     register_button_ids(store, &ids::INSP_PHYS_BAKE_CH);
-    register_button_ids(store, &ids::INSP_PHYS_SHAPE_ROW);
-    register_button_ids(store, &ids::INSP_PHYS_SHAPE_DEL);
-    for id in ids::INSP_PHYS_SHAPE_DEL {
-        store.set_tooltip(id, ph2d_i18n::tr("card.insp.phys.remove_part"));
-    }
     register_button_ids(
         store,
         &[
@@ -240,7 +235,6 @@ pub(super) fn populate_physics(store: &mut WidgetStore) {
             ids::INSP_PHYS_REMOVE,
             ids::INSP_PHYS_FIT_PICTURE,
             ids::INSP_PHYS_EDIT_SHAPE,
-            ids::INSP_PHYS_ADD_PART,
             ids::INSP_PHYS_SCALE_ONE,
             ids::INSP_PHYS_USE_BOX,
             ids::INSP_PHYS_REMOVED_UNDO,

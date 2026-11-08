@@ -137,7 +137,6 @@ mod physics_cartao_peca;
 pub(crate) mod physics_colide;
 /// As portas da face VAZIA do §11 (docs dele) — irmão pelo cap de 600 LOC.
 mod physics_doors;
-pub(crate) mod physics_formas;
 mod physics_join_rows;
 /// W-PartFace: a 3ª face do §11 — o que se mostra de um `Collider` que não é
 /// corpo (uma PEÇA de um corpo composto).

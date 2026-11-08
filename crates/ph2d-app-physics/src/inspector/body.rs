@@ -233,7 +233,6 @@ pub fn build_physics_info(
             area_torque: 0.0,
             area_falloff: 0.0,
             own_body_note: false,
-            shapes: Vec::new(),
         });
     };
     // Each arm also carries what the OTHER shapes' rows would seed if the artist
@@ -376,9 +375,6 @@ pub fn build_physics_info(
         own_body_note: rb.is_some()
             && world.get::<ph2d_ecs::ChildOf>(entity).is_some()
             && ph2d_physics_ecs::owner_body(world, entity).is_none(),
-        shapes: rb.map_or_else(Vec::new, |_| {
-            ph2d_physics_ecs::shapes_in_order(world, entity)
-        }),
     })
 }
 

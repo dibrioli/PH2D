@@ -337,9 +337,6 @@ pub struct InspectorPhysicsInfo {
     /// Corpo PRÓPRIO debaixo de um pai sem corpo (W3, Add ▸ Collision Shape com seleção): o cartão Body
     /// diz que a forma não se junta a ninguém até o pai virar corpo.
     pub own_body_note: bool,
-    /// A lista «Shapes» do cartão (W3-B): `(bits, nome, tag)` — a forma do corpo primeiro, depois cada peça
-    /// na ordem da árvore (`ph2d_physics_ecs::shapes_in_order`). Vazia fora de um corpo. É VISTA dos filhos.
-    pub shapes: Vec<(u64, String, u8)>,
 }
 
 /// A single editable §11 physics field, dispatched as
@@ -363,10 +360,6 @@ pub enum PhysicsFieldEdit {
     FitToPicture,
     /// O botão «Edit shape on canvas»: acende ou apaga as alças da forma. Não é escrita de componente.
     EditShapeOnCanvas,
-    /// «+ Add shape» (W3-B): a shell pede Add ▸ Collision Shape com o corpo seleccionado — nasce peça dele.
-    AddPart,
-    /// «Remove shape» (W3-B): apaga a peça `bits` deste corpo (um passo de undo); outra entidade é recusada.
-    RemovePart(u64),
     /// **Um passo do arrasto das alças:** medidas e Offset juntos, UM valor, porque dois campos no mesmo quadro
     /// perderiam o primeiro (a fila é diferida, doc 17b A3). `medidas`: caixa `[half_x, half_y]`, bola `[radius, _]`,
     /// cápsula `[radius, half_height]`. Só para o objecto agarrado: não se espalha pela seleção.

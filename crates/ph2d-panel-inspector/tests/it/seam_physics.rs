@@ -44,7 +44,6 @@ pub(crate) fn with_body() -> InspectorPhysicsInfo {
         has_collider: true,
         body_without_shape: false,
         own_body_note: false,
-        shapes: Vec::new(),
         part_count: 0,
         // W-Compound: a fixture base é um objeto SOLTO, sem corpo acima — então
         // não há dono e o "Add Shape" não é oferecido. Os gates que o exercitam
@@ -2422,9 +2421,6 @@ fn a_compound_body_says_so_and_the_rows_below_make_room() {
         let mut state = InspectorState::default();
         set_current_inspector_physics(Some(InspectorPhysicsInfo {
             part_count: parts,
-            shapes: (0..=u64::from(parts))
-                .map(|i| (i, String::new(), 1))
-                .collect(),
             ..with_body()
         }));
         let rects = host.paint::<InspectorPanel>(&mut state, VIEWPORT);

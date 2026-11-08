@@ -38,12 +38,6 @@ impl crate::App {
                 } else if let ph2d_editor_core::PhysicsFieldEdit::JoinKind(tag) = edit {
                     // O tipo do próximo Join: a mesma classe do BakeChannels.
                     self.physics.join_kind = tag;
-                } else if matches!(edit, ph2d_editor_core::PhysicsFieldEdit::AddPart) {
-                    // «+ Add shape» = Add ▸ Collision Shape com o corpo seleccionado: nasce peça dele.
-                    if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
-                        h.store
-                            .set_command_pick(ph2d_app_game::object_add::COLLISION_SHAPE.id());
-                    }
                 } else if matches!(edit, ph2d_editor_core::PhysicsFieldEdit::EditShapeOnCanvas) {
                     if let Some(g) = self.gfx.as_mut() {
                         ph2d_shape_handles::alterna(g.sim.world_mut(), entity_bits);

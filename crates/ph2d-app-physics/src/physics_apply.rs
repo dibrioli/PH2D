@@ -45,12 +45,7 @@ pub fn apply_physics_edit(
 
     let entity = Entity::from_bits(entity_bits);
     let world = sim.world();
-    if let PhysicsFieldEdit::RemovePart(p) = edit {
-        if ph2d_physics_ecs::is_part_of(world, Entity::from_bits(p), entity) {
-            let _ = queue.push(ph2d_ecs::scene::EditorCommand::Despawn { entity: p });
-        }
-        return;
-    }
+
     if matches!(edit, PhysicsFieldEdit::Add) {
         queue_set(
             queue,
@@ -428,8 +423,6 @@ pub fn apply_physics_edit(
         | PhysicsFieldEdit::JoinKind(_)
         | PhysicsFieldEdit::JoinDraw
         | PhysicsFieldEdit::Rig
-        | PhysicsFieldEdit::AddPart
-        | PhysicsFieldEdit::RemovePart(_)
         | PhysicsFieldEdit::EditShapeOnCanvas => {}
         // Switching shape PRESERVES the footprint: a box becomes the ball
         // that fits inside it and back, so the object does not jump size.

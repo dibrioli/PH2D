@@ -528,3 +528,39 @@ fn sem_selecao_o_menu_fecha() {
     assenta(&mut hero, &mut ts);
     assert!(hero.hit_index.rect_for(ids::MENU_DELETE).is_none());
 }
+
+/// ⭐ `Esc` num número devolve o valor E larga o campo (como o Name): o `Delete` seguinte é da
+/// ferramenta, não do campo. `Enter` também larga, como o `O` do painel PIXEL.
+#[test]
+fn esc_no_numero_reverte_e_larga_o_campo() {
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let mut hero = hero_com(&mut ts, uma_selecionada());
+    for tecla in [0x1B_u32, KEY_ENTER] {
+        let (x, y) = centro(&hero, ids::BOUNDS_X, "X");
+        let arena = Bump::new();
+        let mut ev = hero
+            .handle_pointer(ptr(PointerKind::Down, x, y), &arena)
+            .to_vec();
+        ev.extend_from_slice(hero.handle_pointer(ptr(PointerKind::Up, x, y), &arena));
+        assert_eq!(hero.store.focus_id(), Some(ids::BOUNDS_X));
+        ev.extend_from_slice(hero.handle_text_input('9', &arena));
+        let tecla = KeyEvent {
+            keycode: tecla,
+            modifiers: Modifiers::default(),
+            kind: KeyKind::Down,
+            timestamp_ns: 0,
+        };
+        ev.extend_from_slice(hero.handle_key(tecla, &arena));
+        for e in ev {
+            hero.apply_event(e);
+        }
+        assert_eq!(
+            hero.store.focus_id(),
+            None,
+            "a tecla {tecla:?} não largou o campo"
+        );
+        let _ = canal::take_pedidos();
+        assenta(&mut hero, &mut ts);
+        assert_eq!(numero(&hero, ids::BOUNDS_X), Some(4.0));
+    }
+}

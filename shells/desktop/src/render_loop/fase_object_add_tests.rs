@@ -567,3 +567,28 @@ fn a_sprite_e_o_animated_nascem_a_pedir_a_imagem() {
     pede_a_imagem(CHARACTER, 7, &mut bus);
     assert_eq!(bus.drain().count(), 0);
 }
+
+/// ⭐⭐ **Add Object: dois cliques REAIS do rato criam e fecham** (smoke do dono 08/11: «dois cliques não
+/// funcionam em nenhum dos quadros») — pelo `Down`/`Up` no rect pintado, não pelo `DoubleClick` injetado.
+///
+/// (Mutação: o ramo do modal no `dispatch_down` não registar o `Down` para o duplo ⇒ RED.)
+#[test]
+fn add_object_dois_cliques_reais_criam_e_fecham() {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.store.open_command_palette(super::add_model(&[]));
+    let alvo = ph2d_app_game::object_add::SPRITE.id();
+    assert!(
+        crate::component_attach_seam_tests::dois_apertos_reais(&mut hero, alvo),
+        "o 1.º aperto não destacou ou fechou"
+    );
+    assert!(
+        !hero.store.command_palette_open(),
+        "dois cliques reais não fecharam o Add Object"
+    );
+    let picked = hero
+        .store
+        .take_command_pick_if(|id| entry_of_pick(FAMILIES, id).is_some())
+        .and_then(|id| entry_of_pick(FAMILIES, id));
+    assert_eq!(picked.map(|e| e.id()), Some(alvo), "o pick perdeu-se");
+}

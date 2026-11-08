@@ -221,3 +221,79 @@ fn um_clique_destaca_dois_adicionam_e_o_recibo_desfaz_tudo_ate_ao_bit() {
         "um passo não desfez alvo e trazidos ao bit"
     );
 }
+
+/// ⭐⭐ **Dois apertos REAIS do rato num item da paleta** (smoke do dono 08/11: «dois cliques não funcionam
+/// em nenhum dos quadros»): a tela pintada, Down/Up no centro do rect que o item registou, repinta, e o
+/// segundo Down/Up 120 ms depois — pela porta que a shell usa (`handle_pointer_fisico` → `apply_event`).
+/// Devolve se o primeiro aperto deixou a paleta aberta. Chamar `apply_event(DoubleClick)` direto não
+/// prova este caminho: o duplo nasce no despacho do `Down`.
+pub(crate) fn dois_apertos_reais(hero: &mut HeroScreen, item: NodeId) -> bool {
+    use ph2d_editor_core::screens::hero::{HERO_VIEWPORT_H, HERO_VIEWPORT_W, paint_hero_screen};
+    use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let mut pinta = |hero: &mut HeroScreen| {
+        let mut scene = ph2d_vector::VectorScene::new();
+        let vp = ph2d_editor_core::zones::Rect::new(0.0, 0.0, HERO_VIEWPORT_W, HERO_VIEWPORT_H);
+        paint_hero_screen(hero, vp, &mut scene, &mut ts);
+    };
+    let mut aperto = |hero: &mut HeroScreen, t0: u128| {
+        pinta(hero);
+        let r = hero
+            .hit_index
+            .rect_for(item)
+            .expect("o item não foi pintado");
+        let (x, y) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        let mut ts = ph2d_text::TextSystem::without_system_fonts();
+        let arena = bumpalo::Bump::new();
+        for (kind, t) in [(PointerKind::Down, t0), (PointerKind::Up, t0 + 40_000_000)] {
+            let ev = PointerEvent {
+                x,
+                y,
+                pressure: 1.0,
+                kind,
+                source: PointerSource::Mouse,
+                button: PointerButton::Primary,
+                timestamp_ns: t,
+            };
+            let evs = hero.handle_pointer_fisico(ev, &mut ts, &arena).to_vec();
+            for e in evs {
+                hero.apply_event(e);
+            }
+        }
+    };
+    let t0 = 1_000_000_000_000;
+    aperto(hero, t0);
+    let ficou =
+        hero.store.command_palette_open() && hero.store.command_palette_highlight() == Some(item);
+    aperto(hero, t0 + 120_000_000);
+    ficou
+}
+
+/// ⭐⭐ **Add Component: dois cliques REAIS do rato adicionam e fecham** (smoke do dono 08/11).
+///
+/// (Mutação: o ramo do modal no `dispatch_down` não registar o `Down` para o duplo ⇒ RED.)
+#[test]
+fn add_component_dois_cliques_reais_adicionam_e_fecham() {
+    use ph2d_app_components::component_attach as ca;
+    use ph2d_app_components::component_palette::item_id;
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut sim = SimWorld::new();
+    let bits = image(&mut sim);
+    let reg = registry();
+    let mut hero = HeroScreen::new(NodeId(1));
+    let mut target: Option<u64> = None;
+    ca::open_palette_if_asked(&mut hero, &sim, &reg, Some(bits), &mut target, &|_| false);
+    let nav = item_id("ph2d::physics::NavAgent");
+    assert!(
+        dois_apertos_reais(&mut hero, nav),
+        "o 1.º aperto não destacou ou fechou"
+    );
+    assert!(
+        !hero.store.command_palette_open(),
+        "dois cliques reais não fecharam o Add Component"
+    );
+    assert!(
+        ca::route_pick(&mut hero, &mut target).is_some(),
+        "o pick perdeu-se"
+    );
+}

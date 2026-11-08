@@ -121,8 +121,7 @@ pub(super) fn paint_header(
     let sb_w = (count_x - toggle_w - Spacing::Md.px() - sb_x).max(MIN_COL_W * 0.5);
     let sb = Rect::new(sb_x, header_y + (header_h - search_h) * 0.5, sb_w, search_h);
     if let Some(ink) = superficie.tinta() {
-        let fundo = ink.color(ColorToken::CardField);
-        fill_rounded_rect(scene, sb, m::FIELD_RADIUS, fundo);
+        crate::widget::card_field::paint_field_frame(scene, ink, sb, false, lk.search_focus);
     } else {
         let sb_radius = crate::paint::frame_radius(theme, Radius::Sm.px());
         fill_rounded_rect(scene, sb, sb_radius, resolve(ColorToken::Bg3, theme));
@@ -172,8 +171,21 @@ pub(super) fn paint_header(
         sb.w - Spacing::Sm.px() * 2.0 - lupa,
         search_color,
     );
-    // Caret at the end of the typed text (only while there IS a query — the placeholder needs none).
-    if !query.is_empty() {
+    // ⭐ Com foco (o acabamento da referência), o caret do campo do cartão, também na caixa vazia: ele
+    //    diz onde a letra vai cair. Os outros, o de sempre: só com busca escrita.
+    if lk.search_focus
+        && let Some(ink) = superficie.tinta()
+    {
+        let caret_x = (text_x + ts.prefix_width(query, sm)).min(sb.x + sb.w - Spacing::Xs.px());
+        let h = sb.h - Spacing::Xs.px() * 2.0;
+        crate::widget::card_field::paint_field_caret(
+            scene,
+            ink,
+            caret_x,
+            sb.y + Spacing::Xs.px(),
+            h,
+        );
+    } else if !query.is_empty() {
         let caret_x = (text_x + ts.prefix_width(query, sm)).min(sb.x + sb.w - Spacing::Xs.px());
         fill_rounded_rect(
             scene,

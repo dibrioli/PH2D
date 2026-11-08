@@ -233,3 +233,74 @@ fn a_plaquinha_cabe_na_pilula_e_nao_muda_quem_nao_a_tem() {
         }
     }
 }
+
+/// O anel de foco e o caret da busca de uma paleta pintada em cartões: `(anéis, x de cada caret)`.
+fn foco_da_busca(select: bool, query: &str) -> (usize, Vec<f64>) {
+    use ph2d_vector::DrawOp;
+    use ph2d_vector::{Brush, Shape};
+    crate::widget::lista_flutuante::force_cromo_on_this_thread(Some(true));
+    let mut store = WidgetStore::with_capacity(4);
+    store.open_command_palette(model(select));
+    let m = store.command_palette_model().expect("aberta").clone();
+    let mut scene = VectorScene::new();
+    scene.record();
+    let _ = paint_palette(
+        &mut scene,
+        &mut TextSystem::new(),
+        Theme::default(),
+        &mut HitIndex::new(),
+        &m,
+        query,
+        VP,
+        &crate::motion::UiMotion::default(),
+        &store,
+    );
+    crate::widget::lista_flutuante::force_cromo_on_this_thread(None);
+    let ink = crate::widget::card_ink::CardInk::of_list(Theme::default());
+    let (anel, acento) = (
+        ink.color(ColorToken::KanbanBlueBold),
+        ink.color(ColorToken::Accent),
+    );
+    let traco = f64::from(ph2d_tokens::StrokeToken::Default.px());
+    let mut aneis = 0;
+    let mut carets = Vec::new();
+    for op in scene.take_record() {
+        match op {
+            DrawOp::Stroke {
+                brush: Brush::Solid(c),
+                ..
+            } if c == anel => aneis += 1,
+            DrawOp::Fill {
+                brush: Brush::Solid(c),
+                path,
+                ..
+            } if c == acento && (path.bounding_box().width() - traco).abs() < 0.01 => {
+                carets.push(path.bounding_box().x0);
+            }
+            _ => {}
+        }
+    }
+    (aneis, carets)
+}
+
+/// ⭐⭐ **A busca do Add Object / Add Component mostra que tem o teclado** (smoke do dono 08/11: «o usuário
+/// não percebe que está no campo de texto»): o anel de foco e o caret do campo do cartão, já com a caixa
+/// vazia — o teclado escreve nela enquanto a janela está aberta. O caret anda com a busca escrita. As
+/// paletas de sempre (`Ctrl+K`, biblioteca do Motion: `select: None`) pintam como antes, sem anel.
+///
+/// (Mutação: `search_focus: false` no `compact`, ou tirar o anel do `paint_field_frame` ⇒ RED.)
+#[test]
+fn a_busca_com_o_teclado_pinta_o_anel_e_o_caret() {
+    let (aneis, vazia) = foco_da_busca(true, "");
+    assert_eq!(aneis, 1, "a busca do Add Object não pinta o anel de foco");
+    assert_eq!(vazia.len(), 1, "a busca vazia não pinta o caret: {vazia:?}");
+    let (_, escrita) = foco_da_busca(true, "Spr");
+    assert_eq!(escrita.len(), 1);
+    assert!(escrita[0] > vazia[0], "o caret não anda com a busca");
+    let (aneis, carets) = foco_da_busca(false, "");
+    assert_eq!(
+        (aneis, carets.len()),
+        (0, 0),
+        "a paleta de sempre mudou de aspecto"
+    );
+}

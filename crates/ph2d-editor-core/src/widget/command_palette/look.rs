@@ -47,6 +47,9 @@ pub(super) struct Look {
     pub(super) count_right: bool,
     /// A lupa no campo de busca.
     pub(super) search_icon: bool,
+    /// A busca pinta-se COM FOCO (anel + caret): o teclado escreve nela enquanto a janela está aberta
+    /// (dono 08/11: «o usuário não percebe que está no campo de texto»).
+    pub(super) search_focus: bool,
 }
 
 /// O acabamento de sempre — as consts do pai e os tokens vivos, sem mudar um bit.
@@ -71,6 +74,7 @@ pub(super) fn classic() -> Look {
         rule_gap: Spacing::Xs.px(),
         count_right: false,
         search_icon: false,
+        search_focus: false,
     }
 }
 
@@ -97,6 +101,7 @@ pub(super) fn compact() -> Look {
 
         count_right: true,
         search_icon: true,
+        search_focus: true,
     }
 }
 

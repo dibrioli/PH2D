@@ -142,22 +142,7 @@ pub fn paint_field(
         .number_input_drag()
         .is_some_and(|d| d.id == id && d.crossed_threshold);
     let hover = store.hover_live(id) > 0.0 || st == TextInputState::Hovered;
-    let fundo = if hover || scrubbing || focused {
-        ColorToken::CardFieldHover
-    } else {
-        ColorToken::CardField
-    };
-    fill_rounded_rect(scene, rect, m::FIELD_RADIUS, ink.color(fundo));
-    if focused || scrubbing {
-        // FRAME-RAW-OK: o anel de FOCO do campo do cartão (a mensagem é «é este»)
-        crate::paint::stroke_rounded_rect(
-            scene,
-            rect,
-            m::FIELD_RADIUS,
-            m::FIELD_BORDER,
-            ink.color(ColorToken::KanbanBlueBold),
-        );
-    }
+    paint_field_frame(scene, ink, rect, hover, focused || scrubbing);
 
     let tinta = ink.color(if scrubbing {
         ColorToken::KanbanBlueBold
@@ -208,10 +193,42 @@ pub fn paint_field(
     if focused {
         let c = caret.min(texto.len());
         let x = area.x + text_system.prefix_width(&texto[..c], m::VALUE_PX);
-        let r = Rect::new(x, y, StrokeToken::Default.px(), m::VALUE_PX);
-        fill_rounded_rect(scene, r, 0.0, ink.color(ColorToken::Accent));
+        paint_field_caret(scene, ink, x, y, m::VALUE_PX);
     }
     scene.pop_layer();
+}
+
+/// ⭐ **A caixa de um campo de texto do cartão**: o fundo (mais claro sob o rato ou com foco) e, com
+/// foco, o anel «é este». A do campo Figma e a da busca da paleta (dono 08/11) — um estado, um desenho.
+pub fn paint_field_frame(
+    scene: &mut VectorScene,
+    ink: CardInk,
+    rect: Rect,
+    hover: bool,
+    focused: bool,
+) {
+    let fundo = if hover || focused {
+        ColorToken::CardFieldHover
+    } else {
+        ColorToken::CardField
+    };
+    fill_rounded_rect(scene, rect, m::FIELD_RADIUS, ink.color(fundo));
+    if focused {
+        // FRAME-RAW-OK: o anel de FOCO do campo do cartão (a mensagem é «é este»)
+        crate::paint::stroke_rounded_rect(
+            scene,
+            rect,
+            m::FIELD_RADIUS,
+            m::FIELD_BORDER,
+            ink.color(ColorToken::KanbanBlueBold),
+        );
+    }
+}
+
+/// O caret de um campo de texto do cartão, em `x`, da altura `h` a partir de `y`.
+pub fn paint_field_caret(scene: &mut VectorScene, ink: CardInk, x: f32, y: f32, h: f32) {
+    let r = Rect::new(x, y, StrokeToken::Default.px(), h);
+    fill_rounded_rect(scene, r, 0.0, ink.color(ColorToken::Accent));
 }
 
 /// A pega: o glifo, ou a letra, centrados na célula.

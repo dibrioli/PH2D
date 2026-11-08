@@ -40,9 +40,12 @@ pub(super) fn dispatch_down<'frame>(
     // press. Without this the click was captured as a graph box-select and the palette never saw it
     // (Enio smoke: *"nenhum botão funciona e o botão fechar não funciona"*).
     if store.command_palette_model().is_some() {
-        if let Some((id, rect)) =
-            hit_index.hit_with_rect_where(event.x, event.y, |id| !store.is_pointer_surface(id))
-        {
+        let hit =
+            hit_index.hit_with_rect_where(event.x, event.y, |id| !store.is_pointer_surface(id));
+        // ⭐ O duplo («destaca, depois escolhe», dono 08/11): este ramo devolve antes do registo geral do
+        // `Down`, e sem ele o `Up` nunca vira `DoubleClick`.
+        let _ = store.record_pointer_down(hit.map(|(id, _)| id), event.timestamp_ns);
+        if let Some((id, rect)) = hit {
             store.set_active(Some(id));
             store.set_active_rect(Some(rect));
         }

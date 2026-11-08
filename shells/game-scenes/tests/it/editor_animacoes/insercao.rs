@@ -228,3 +228,35 @@ fn clicar_num_quadro_poe_a_marca_a_direita_dele() {
         ]
     );
 }
+
+/// Auditoria 08/11: na animação que o «+» acabou de criar, a tira mostra a folha inteira, mas o primeiro clique
+/// começa uma lista nova — então a marca está no COMEÇO, mesmo que se clique num vão do meio. *Mutação: medir a
+/// marca pela lista mostrada ⇒ ela aparece no fim (ou no meio) e a célula entra no 0.*
+#[test]
+fn na_animacao_nova_a_marca_esta_onde_a_celula_entra() {
+    let mut m = Mesa::new();
+    let add = centre(m.doc().layout.add);
+    m.click(add);
+    m.frame();
+    m.paint();
+    assert_eq!(m.doc().playhead_gap(), 0, "começo");
+    let l = m.doc().layout.clone();
+    assert!(
+        l.playhead.x < l.frames[0].0.x,
+        "pintada antes do 1.º quadro"
+    );
+    m.click((
+        l.frames[2].0.x + l.frames[2].0.w + 1.0,
+        centre(l.frames[2].0).1,
+    )); // LITERAL-PX-OK: um vão
+    assert_eq!(m.doc().playhead_gap(), 0, "o vão do meio não engana");
+    let at = m.cell(7);
+    m.click(at);
+    assert_eq!(
+        m.pending(),
+        [
+            AnimFieldEdit::Frames(2, fr(&[7])),
+            AnimFieldEdit::SetStep(0)
+        ]
+    );
+}

@@ -155,3 +155,47 @@ fn a_celula_na_tela_volta_para_dentro_da_sua_folha() {
     let g = w.get::<SpriteGrid>(e).copied().unwrap();
     assert_eq!((g.sheet, g.frame), (1, 2));
 }
+
+/// ⭐ Auditoria 08/11: a folha `0` de átlas e a folha extra cuja textura se resolveu para a MESMA célula de átlas são
+/// a mesma imagem — o corte passa entre elas nos dois sentidos. *Mutação: `same` só pelo nome da biblioteca ⇒ o
+/// corte não passa.*
+#[test]
+fn o_corte_passa_entre_a_folha_de_atlas_e_a_folha_extra_da_mesma_imagem() {
+    let mut w = World::new();
+    let cel = SpriteSource::Atlas { key: 5 };
+    let a = w
+        .spawn((
+            Sprite {
+                source: cel,
+                ..Sprite::atlas(5, [1.0, 1.0], [1.0; 4])
+            },
+            SpriteGrid::new(4, 1),
+        ))
+        .id();
+    let b = w
+        .spawn((
+            sprite(),
+            SpritePixels(idle()),
+            SpriteGrid::new(2, 2),
+            SpriteSheets([folha(run(), 6, 2)].into_iter().collect()),
+            ph2d_render::SheetTextures(vec![Some((run(), cel))]),
+        ))
+        .id();
+    assert_eq!(
+        recut_users(&mut w, b, 1),
+        vec![a],
+        "da extra para a folha 0 de átlas"
+    );
+    let g = w.get::<SpriteGrid>(a).copied().unwrap();
+    assert_eq!((g.hframes, g.vframes), (6, 2));
+    let mut g = g;
+    (g.hframes, g.vframes) = (3, 1);
+    w.entity_mut(a).insert(g);
+    recut_users(&mut w, a, 0);
+    let s = w.get::<SpriteSheets>(b).unwrap().0[0];
+    assert_eq!(
+        (s.hframes, s.vframes),
+        (3, 1),
+        "e da folha 0 de átlas para a extra"
+    );
+}

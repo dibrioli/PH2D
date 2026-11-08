@@ -129,12 +129,10 @@ impl crate::App {
             (
                 Some(a::Foto::Editor | a::Foto::FolhasEditor | a::Foto::FolhasApagada),
                 Some(entity_bits),
-            ) => {
-                h.bus.push(EditorAction::InspectorAnimEdit {
-                    entity_bits,
-                    edit: ph2d_editor_core::AnimFieldEdit::OpenEditor,
-                })
-            }
+            ) => h.bus.push(EditorAction::InspectorAnimEdit {
+                entity_bits,
+                edit: ph2d_editor_core::AnimFieldEdit::OpenEditor,
+            }),
             _ => {}
         }
     }

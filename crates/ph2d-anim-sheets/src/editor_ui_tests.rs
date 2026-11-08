@@ -50,3 +50,12 @@ fn o_editor_mostra_o_nome_da_biblioteca_o_mesmo_do_cartao() {
     let nomes: Vec<&str> = sheets.iter().map(|s| s.name.as_str()).collect();
     assert_eq!(nomes, ["idle", "run (2)"]);
 }
+
+/// Auditoria 08/11: o editor e o cartão Image dizem o MESMO nome da folha — o da biblioteca, ou «Sheet N» sem ele
+/// (nunca um item em branco). *Mutação: devolver o vazio ⇒ «» em vez de «Sheet 2».*
+#[test]
+fn o_nome_da_folha_sem_biblioteca_e_sheet_n() {
+    assert_eq!(sheet_label(Some("run"), 1), "run");
+    assert_eq!(sheet_label(None, 1), "Sheet 2");
+    assert_eq!(sheet_label(Some(""), 0), "Sheet 1");
+}

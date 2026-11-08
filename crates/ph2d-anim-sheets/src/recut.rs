@@ -9,25 +9,42 @@ use ph2d_ecs::{
 };
 use ph2d_render::{Sprite, SpriteSource};
 
-/// De onde vêm os píxeis de uma folha: o nome da biblioteca, ou a célula de átlas sem nome (a arte de fábrica).
+/// De onde vêm os píxeis de uma folha, pelos DOIS nomes que a mesma imagem pode ter: o da biblioteca e a célula de
+/// átlas. Uma folha `0` de átlas e uma folha extra cuja textura se resolveu para a MESMA célula são a mesma imagem
+/// (auditoria 08/11: comparar só um dos nomes deixava o «Cut again» parar entre elas).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum Image {
-    Asset(AssetId),
-    Atlas(SpriteSource),
+struct Image {
+    asset: Option<AssetId>,
+    atlas: Option<SpriteSource>,
+}
+
+impl Image {
+    fn same(self, o: Self) -> bool {
+        (self.asset.is_some() && self.asset == o.asset)
+            || (self.atlas.is_some() && self.atlas == o.atlas)
+    }
 }
 
 fn image_of(world: &World, e: Entity, k: u8) -> Option<Image> {
+    let atlas = |s: SpriteSource| matches!(s, SpriteSource::Atlas { .. }).then_some(s);
     if k > 0 {
-        return world
-            .get::<SpriteSheets>(e)?
-            .sheet(k)
-            .map(|s| Image::Asset(s.asset));
+        let asset = world.get::<SpriteSheets>(e)?.sheet(k)?.asset;
+        let tex = world
+            .get::<ph2d_render::SheetTextures>(e)
+            .and_then(|t| t.0.get(usize::from(k) - 1).copied().flatten())
+            .filter(|(a, _)| *a == asset)
+            .and_then(|(_, s)| atlas(s));
+        return Some(Image {
+            asset: Some(asset),
+            atlas: tex,
+        });
     }
-    if let Some(p) = world.get::<SpritePixels>(e) {
-        return Some(Image::Asset(p.0));
-    }
-    let s = world.get::<Sprite>(e)?;
-    matches!(s.source, SpriteSource::Atlas { .. }).then_some(Image::Atlas(s.source))
+    let asset = world.get::<SpritePixels>(e).map(|p| p.0);
+    let source = world.get::<Sprite>(e).and_then(|s| atlas(s.source));
+    (asset.is_some() || source.is_some()).then_some(Image {
+        asset,
+        atlas: if asset.is_some() { None } else { source },
+    })
 }
 
 /// O corte `[colunas, linhas]` da folha `k` (a `0` sem grelha é uma célula).
@@ -122,7 +139,8 @@ pub fn recut_users(world: &mut World, e: Entity, k: u8) -> Vec<Entity> {
         let n = world.get::<SpriteSheets>(o).map_or(0, |s| s.0.len());
         for j in 0..=u8::try_from(n).unwrap_or(u8::MAX - 1) {
             let outra = (o, j) != (e, k);
-            if outra && image_of(world, o, j) == Some(img) && cut_of(world, o, j) != Some(cut) {
+            let mesma = image_of(world, o, j).is_some_and(|i| i.same(img));
+            if outra && mesma && cut_of(world, o, j) != Some(cut) {
                 set_cut(world, o, j, cut);
                 if !mudou.contains(&o) {
                     mudou.push(o);

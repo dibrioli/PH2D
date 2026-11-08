@@ -84,8 +84,10 @@ impl AnimDoc {
     pub fn playhead_gap(&self) -> usize {
         match &self.drag {
             Drag::Cells { base, added, at } => (*at).min(base.len()) + added.len(),
+            // A animação que o «+» acabou de criar recomeça do primeiro clique (`click_base` vazia): a marca está
+            // no começo, onde a célula entra de facto (auditoria 08/11).
             _ => {
-                let n = self.authored_frames().len();
+                let n = self.click_base().len();
                 self.insert_at.unwrap_or(n).min(n)
             }
         }

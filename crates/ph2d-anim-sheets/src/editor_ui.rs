@@ -58,6 +58,16 @@ pub struct EditorSheet {
     pub name: String,
 }
 
+/// ⭐ **O nome que se mostra da folha `k`**, no editor e no cartão Image: o da biblioteca, ou «Sheet N» quando não há
+/// (auditoria 08/11: o cartão mostrava um item em branco onde o editor dizia «Sheet 2»).
+#[must_use]
+pub fn sheet_label(name: Option<&str>, k: usize) -> String {
+    name.filter(|n| !n.is_empty()).map_or_else(
+        || tr_with("anim_editor.sheet_n", &[("n", &(k + 1))]),
+        str::to_owned,
+    )
+}
+
 /// As folhas de `bits` (a `0` primeiro, nunca vazio) e a visível (`ph2d_ecs::shown_sheet`). Lê a [`SheetCache`]
 /// que `sheet_cache::refresh` resolveu neste quadro.
 #[must_use]
@@ -80,14 +90,13 @@ pub fn editor_sheets(world: &World, bits: u64) -> (Vec<EditorSheet>, u8) {
             let name = match k8.and_then(|k| cache?.key_of(bits, k)) {
                 Some(SheetKey::Asset(id)) => ph2d_ecs::sheet_name(world, id).map(str::to_owned),
                 _ => entry.and_then(|x| x.name.clone()),
-            }
-            .filter(|n| !n.is_empty());
+            };
             EditorSheet {
                 image: entry.map(|x| x.sheet.clone()),
                 guess: entry.and_then(|x| x.guess),
                 hframes,
                 vframes,
-                name: name.unwrap_or_else(|| tr_with("anim_editor.sheet_n", &[("n", &(k + 1))])),
+                name: sheet_label(name.as_deref(), k),
             }
         })
         .collect();

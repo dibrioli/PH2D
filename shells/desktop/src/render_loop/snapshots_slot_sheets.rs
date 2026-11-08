@@ -36,7 +36,8 @@ pub(super) fn sheet_card(
     // O nome é o da biblioteca, a MESMA fonte do editor de animações (`ph2d_ecs::SheetNames`).
     let nomes: Vec<String> = ids
         .iter()
-        .map(|id| ph2d_ecs::sheet_name(w, *id).unwrap_or_default().to_owned())
+        .enumerate()
+        .map(|(k, id)| ph2d_anim_sheets::editor_ui::sheet_label(ph2d_ecs::sheet_name(w, *id), k))
         .collect();
     let sheets = ids
         .into_iter()

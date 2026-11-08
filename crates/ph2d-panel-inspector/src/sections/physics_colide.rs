@@ -455,10 +455,11 @@ mod lista_tests {
         camadas::set_current(nomes, [u32::MAX; 32], 0xFF);
         for i in 0..8u8 {
             let dd = lista_da_camada(i);
+            // Sem nome: «Default» (a 0) ou «Layer n» (onda 9a, dono 07/11).
             let esperado = if i == 2 {
                 "Enemy".to_owned()
             } else {
-                i.to_string()
+                camadas::rotulo_padrao(usize::from(i))
             };
             assert_eq!(dd.selected_label(), Some(esperado.as_str()), "camada {i}");
         }
@@ -469,10 +470,14 @@ mod lista_tests {
     #[test]
     fn a_lista_da_camada_so_traz_as_visiveis_e_a_do_objecto() {
         camadas::set_current(Default::default(), [u32::MAX; 32], 1 | 1 << 20);
+        crate::set_cards_on(true);
         assert_eq!(opcoes(0).len(), 2);
-        assert_eq!(lista_da_camada(20).selected_label(), Some("20"));
+        assert_eq!(lista_da_camada(20).selected_label(), Some("Layer 20"));
         assert_eq!(opcoes(25).len(), 3, "a do objecto entra");
-        assert_eq!(lista_da_camada(25).selected_label(), Some("25"));
+        assert_eq!(lista_da_camada(25).selected_label(), Some("Layer 25"));
+        // A face clássica guarda o alcance dos 8 chips de antes: 0–7, mais a 20 visível.
+        crate::set_cards_on(false);
+        assert_eq!(opcoes(0).len(), 9);
         camadas::set_current(Default::default(), [u32::MAX; 32], 0xFF);
     }
 }

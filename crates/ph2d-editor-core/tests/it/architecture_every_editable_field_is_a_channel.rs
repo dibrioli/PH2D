@@ -1367,18 +1367,6 @@ const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
     ),
     (
         "ph2d-panel-inspector",
-        "paint_collision_rows",
-        Canal,
-        &[
-            "INSP_PHYS_LAYER",
-            "INSP_PHYS_SENSOR",
-            "INSP_PHYS_WALK_GRIP",
-            "INSP_PHYS_WALK_BELT",
-        ],
-        "a camada, o sensor e a superfície, em laços (canal FISICA)",
-    ),
-    (
-        "ph2d-panel-inspector",
         "paint_signal_rows",
         NaoAnimavel,
         &[],
@@ -2144,15 +2132,34 @@ fn casa(corpo: &str, p: &str) -> bool {
         .any(|(i, _)| !corpo[i + p.len()..].starts_with("dropper"))
 }
 
+/// ⛔ **Escolhas de um DIÁLOGO dentro do [`ESCOPO`]** (GEF02 fecho, 08/11): (`ficheiro.rs`, `fn`, porquê). Não
+/// são campos da cena — a escolha vive enquanto a pergunta está aberta e morre no clique — logo não têm losango.
+const DIALOGO_SEM_COLUNA: &[(&str, &str, &str)] = &[(
+    "aba/remove.rs",
+    "pinta",
+    "o destino da pergunta do «Remove» da aba Collision Layers: para onde vão os objetos da camada que sai",
+)];
+
 /// ⭐ **A lei da COLUNA** (F24d): uma caixa de marcar, um chip de menu, um seletor pintado direto ou
 /// um olho só se pintam numa função que pinta a coluna do decorator — onde o losango mora e onde
 /// este gate os vê. (Mutação: o `checkbox_row` sem o `decorator` ⇒ reprova.)
 #[test]
 fn todo_campo_sem_coluna_propria_ganha_a_do_losango() {
     let todos = sem_coluna();
+    for &(ficheiro, func, porque) in DIALOGO_SEM_COLUNA {
+        assert!(
+            todos.iter().any(|(f, fu, ..)| f == ficheiro && fu == func),
+            "DIALOGO_SEM_COLUNA {ficheiro}::{func} ({porque}) já não pinta nada: apague-a"
+        );
+    }
     let sem: Vec<String> = todos
         .iter()
         .filter(|(.., coluna)| !coluna)
+        .filter(|(f, fu, ..)| {
+            !DIALOGO_SEM_COLUNA
+                .iter()
+                .any(|&(df, dfu, _)| f == df && fu == dfu)
+        })
         .map(|(f, func, p, _)| format!("{f} · fn {func} pinta `{p}` sem a coluna do losango"))
         .collect();
     assert!(

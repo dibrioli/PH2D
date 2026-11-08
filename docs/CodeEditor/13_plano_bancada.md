@@ -3,7 +3,7 @@
 > Origem: pedido do dono 08/11 — *«estude a crítica (`GameEngineSamples/critica_ph2d.html#editor_scripts`),
 > trabalhe a ideia, melhore; funcional como o Godot, mas belo e original como o editor de Collision
 > Layers da linha GameEngineFuncional02. Planeje.»* Linha: `line/ScriptEditor` (continua o CodeEditor).
-> Estado: **PLANO — aguarda as decisões do dono do §6.** Nada construído.
+> Estado: **PLANO APROVADO 08/11** (as quatro decisões do §6, todas na recomendação). Próximo: Onda A.
 
 ## 1. A tese
 
@@ -124,7 +124,7 @@ não o `lua_sethook` do Lua 5).
 - Janela separada do editor: a aba já é central; reabrir isto é outra conversa.
 - Copiar o código da aba de camadas para cá: reusa-se por `main` depois da GEF02 (§2).
 
-## 6. Decisões do dono (antes da Onda A)
+## 6. Decisões do dono (08/11 — respostas: D1 **Bancada** · D2 **cor por objecto** · D3 **menu da própria aba** · D5 **sim, sob o kill-criterion**)
 - **D1** — A Bancada (B + grelha «Who has what» + frase do pé) é o rumo?
 - **D2** — Cor por **objecto** (cada objecto que usa o script tem a sua cor, como cada camada tem a sua) ou cor
   por **script**?

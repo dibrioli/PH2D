@@ -249,6 +249,7 @@ fn as_ferramentas_de_selecao_estao_na_coluna_com_o_atalho() {
         (ids::PIXEL_SELECT_GROUP, false),
         (ids::TOOLS[4].1, true),
         (ids::TOOLS[5].1, false),
+        (ids::TOOLS[6].1, false),
     ];
     assert_eq!(sel, quer);
     assert!(
@@ -260,6 +261,10 @@ fn as_ferramentas_de_selecao_estao_na_coluna_com_o_atalho() {
     assert_eq!(col[0][1].face, BarFace::Icon(IconId::WandSparkles));
     assert_eq!(col[0][2].face, BarFace::Icon(IconId::Transform));
     assert!(col[0][2].label.contains("(V)"), "{}", col[0][2].label);
+    // P11: a Slice fecha o grupo, solta, com a faca e o `Shift+C` do Aseprite.
+    assert_eq!(ids::TOOLS[6].0, PixelTool::Slice);
+    assert_eq!(col[0][3].face, BarFace::Icon(IconId::Knife));
+    assert!(col[0][3].label.contains("(Shift+C)"), "{}", col[0][3].label);
     // Com uma das quatro na mão o botão de grupo acende.
     i.tool = PixelTool::PolygonLasso;
     let col = ph2d_panel_pixel_tools::column::column(&i);

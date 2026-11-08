@@ -120,8 +120,8 @@ fn a_coluna_tem_todas_as_ferramentas_em_quatro_grupos_e_as_duas_cores() {
     assert_eq!(col.len(), 5, "selecção · à mão · formas · vista · cores");
     assert_eq!(
         col[0].len(),
-        3,
-        "o botão das quatro selecções, Magic Wand, Transform (P6c: sem o Move)"
+        4,
+        "o botão das quatro selecções, Magic Wand, Transform (P6c: sem o Move), Slice (P11)"
     );
     assert_eq!(
         col[1].len(),
@@ -140,6 +140,7 @@ fn a_coluna_tem_todas_as_ferramentas_em_quatro_grupos_e_as_duas_cores() {
         Some(ids::PIXEL_SELECT_GROUP),
         id(PixelTool::MagicWand),
         id(PixelTool::Transform),
+        id(PixelTool::Slice),
         id(PixelTool::Pencil),
         id(PixelTool::Spray),
         id(PixelTool::Eraser),

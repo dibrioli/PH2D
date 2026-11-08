@@ -144,6 +144,7 @@ fn an_open_palette_wins_the_click_over_a_shadowing_graph_surface() {
         title: "Add Node".into(),
         toggle: None,
         tips: Vec::new(),
+        select: None,
         groups: vec![PaletteGroup {
             title: "Source".into(),
             color: ColorToken::NodeCatSource,

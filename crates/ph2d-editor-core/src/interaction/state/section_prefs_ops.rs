@@ -36,6 +36,9 @@ pub struct SectionPrefs {
     /// ⭐ **A ÉPOCA da ordem natural de cada painel** que esta ordem gravada já conhece (F17,
     /// 16/10) — ver [`WidgetStore::adopt_natural_order`]. Ausente = `0`.
     epochs: BTreeMap<NodeId, u32>,
+    /// ⭐ Os tipos que o Add Object criou por último (o mais novo primeiro) — ver
+    /// [`super::chrome_ops`]`::palette_select_ops`.
+    pub(super) add_recent: Vec<NodeId>,
     /// Mudou algo que se GRAVA (tema ou ordem) desde a última vez que a shell perguntou.
     dirty: bool,
 }
@@ -248,6 +251,7 @@ pub fn section_prefs_text(store: &WidgetStore) -> String {
     tema_custom::escreve(store, &mut s);
     super::picker_pin_ops::escreve_posicao(store, &mut s);
     super::card_loose_ops::escreve(store, &mut s);
+    super::chrome_ops::escreve_recentes(store, &mut s);
     s
 }
 
@@ -279,6 +283,7 @@ pub fn restore_section_prefs_text(store: &mut WidgetStore, text: &str) {
             epochs.insert(NodeId(id), e);
         } else if !super::picker_pin_ops::le_posicao(store, k, v)
             && !super::card_loose_ops::le(store, k, v)
+            && !super::chrome_ops::le_recentes(store, k, v)
         {
             custom.linha(k, v);
         }

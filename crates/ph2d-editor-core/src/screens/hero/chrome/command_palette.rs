@@ -71,8 +71,20 @@ pub fn apply(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         }
         // A click on the card's dead space: consume so it never falls through the scrim to close.
         WidgetEvent::Click(id) if id == CMD_PALETTE_CARD => true,
-        // A click on an item: record the pick (the shell routes it) and close.
-        WidgetEvent::Click(id) => {
+        // ⭐ O botão do ensino (modo de seleção): limpa a busca e volta ao primeiro item.
+        WidgetEvent::Click(id) if id == command_palette::CMD_PALETTE_TEACH_START => {
+            hero.store.restart_command_palette_highlight();
+            true
+        }
+        // ⭐ Modo «destaca, depois escolhe» (Add Object, dono 07/11): um clique destaca e mostra a dica.
+        WidgetEvent::Click(id)
+            if hero.store.command_palette_selects() && hero.store.command_palette_has(id) =>
+        {
+            hero.store.highlight_command_palette(id);
+            true
+        }
+        // A click on an item (or, selecting, a double-click): record the pick (the shell routes it) and close.
+        WidgetEvent::Click(id) | WidgetEvent::DoubleClick(id) => {
             let is_item = hero.store.command_palette_has(id);
             if is_item {
                 hero.store.set_command_pick(id);
@@ -102,6 +114,7 @@ mod tests {
             title: "Add Node".into(),
             toggle: None,
             tips: Vec::new(),
+            select: None,
             groups: vec![PaletteGroup {
                 title: "Source".into(),
                 color: ColorToken::NodeCatSource,

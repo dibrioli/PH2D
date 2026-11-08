@@ -35,6 +35,8 @@ pub(super) struct Metrics {
     pub(super) pad: f32,
     pub(super) font: f32,
     pub(super) placed: Vec<(CardLayout, f32, f32, f32)>,
+    /// A faixa da dica no modo de seleção (`None` fora dele).
+    pub(super) dock: Option<Rect>,
 }
 
 pub(super) fn metrics(
@@ -42,6 +44,7 @@ pub(super) fn metrics(
     model: &PaletteModel,
     viewport: Rect,
     no_match: bool,
+    query: &str,
 ) -> Metrics {
     // ── Card geometry independent of content height: width (centred) + the content box. ──
     let card_w = CARD_MAX_W
@@ -56,12 +59,21 @@ pub(super) fn metrics(
     let (placed, measured) = arrange(ts, model, content_x, content_w);
     // With no matches the arrangement is empty (height 0); reserve a row for the "No matches" message so
     // the card doesn't collapse to just the header.
-    let content_h = if no_match {
+    let content_h = if no_match && model.select.is_some() {
+        super::selecao::teach_height(ts, model, query, content_w)
+    } else if no_match {
         TypeToken::Md.px() + Spacing::Lg.px()
     } else {
         measured
     };
-    let chrome_h = pad * 2.0 + HEADER_H + Spacing::Sm.px();
+    // Sem resultado, a busca ensina no corpo e não há destacado: a faixa sai.
+    let dock_h = if no_match {
+        0.0
+    } else {
+        super::selecao::dock_height(ts, model, content_w)
+    };
+    let dock_gap = if dock_h > 0.0 { Spacing::Sm.px() } else { 0.0 };
+    let chrome_h = pad * 2.0 + HEADER_H + Spacing::Sm.px() + dock_h + dock_gap;
     let card_h = (chrome_h + content_h)
         .min(viewport.h * CARD_MAX_H_FRAC)
         .min(viewport.h - EDGE_MARGIN * 2.0);
@@ -76,6 +88,8 @@ pub(super) fn metrics(
         pad,
         font,
         placed,
+        dock: (dock_h > 0.0)
+            .then(|| Rect::new(content_x, card_y + card_h - pad - dock_h, content_w, dock_h)),
     }
 }
 
@@ -93,7 +107,7 @@ pub fn max_scroll(ts: &mut TextSystem, model: &PaletteModel, query: &str, viewpo
         filtered = filter_model(model, query);
         &filtered
     };
-    let m = metrics(ts, model, viewport, model.groups.is_empty());
+    let m = metrics(ts, model, viewport, model.groups.is_empty(), query);
     (m.content_h - m.view_h).max(0.0)
 }
 

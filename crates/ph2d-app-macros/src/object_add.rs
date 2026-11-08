@@ -9,7 +9,9 @@ use ph2d_ecs::SimWorld;
 use ph2d_editor_core::object_add::{AddEntry, AddGroup};
 
 /// O item do menu.
-pub const MACRO: AddEntry = AddEntry::new("object_add.macro", AddGroup::Empty);
+pub const MACRO: AddEntry = AddEntry::new("object_add.macro", AddGroup::Empty)
+    .at(1)
+    .with_tip("object_add.macro.tip", ph2d_game_dicas::MACRO);
 /// As entradas desta família, na ordem do modal.
 pub const ENTRIES: &[AddEntry] = &[MACRO];
 

@@ -9,7 +9,9 @@ use ph2d_pixel_core::{Background, ColorMode, NewSprite, Op, Patch, Rect, apply};
 
 use crate::PixelApp;
 
-pub const PIXEL_SPRITE: AddEntry = AddEntry::new("object_add.pixel_sprite", AddGroup::TwoD);
+pub const PIXEL_SPRITE: AddEntry = AddEntry::new("object_add.pixel_sprite", AddGroup::Pictures)
+    .at(3)
+    .with_tip("object_add.pixel_sprite.tip", ph2d_game_dicas::PIXEL_SPRITE);
 pub const ENTRIES: &[AddEntry] = &[PIXEL_SPRITE];
 
 /// **O pick do menu Add**: abre o diálogo *New Sprite* — `false` se a entrada não é desta família.

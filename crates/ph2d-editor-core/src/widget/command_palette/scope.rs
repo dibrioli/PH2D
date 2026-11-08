@@ -66,6 +66,7 @@ fn only(model: &PaletteModel, groups: Vec<PaletteGroup>) -> PaletteModel {
         groups,
         toggle: model.toggle.clone(),
         tips: model.tips.clone(),
+        select: model.select.clone(),
     }
 }
 
@@ -188,6 +189,8 @@ pub fn scoped<'a>(
 pub struct ScopeState {
     pub scopes: Option<PaletteScopes>,
     pub pick_query: String,
+    /// O item destacado no modo «destaca, depois escolhe» (`PaletteModel::select`).
+    pub highlight: Option<NodeId>,
 }
 
 #[cfg(test)]
@@ -220,6 +223,7 @@ mod tests {
             )],
             toggle: None,
             tips: Vec::new(),
+            select: None,
         };
         let scopes = PaletteScopes {
             symbols: Some(group(

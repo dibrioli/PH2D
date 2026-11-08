@@ -108,6 +108,7 @@ fn a_still_frame_with_every_panel_open_shapes_no_text() {
                 ph2d_app_light2d::object_add::ENTRIES,
             ],
             &|_| None,
+            None,
         ));
     ph2d_editor_core::panel::with_registry_ref(|reg| {
         for p in reg.panels() {

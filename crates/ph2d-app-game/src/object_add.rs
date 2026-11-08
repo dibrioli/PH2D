@@ -12,46 +12,15 @@ use ph2d_ecs::{
     Entity, RepeatMode, ScrollFactor, ScrollRepeat, SimWorld, SpriteAnimations, SpriteAnimator,
     TextureRepeat, UvTransform, ZIndexOverride,
 };
-use ph2d_editor_core::object_add::{AddEntry, AddGroup};
+use ph2d_editor_core::object_add::AddEntry;
 use ph2d_physics_ecs::{BodyKind, CharacterAnimations, ColliderShape, RigidBody};
 use ph2d_render::{FactoryArt, HERO_SHEET_SOLE_BELOW_CENTRE, HILLS_TILE, Sprite, WHITE_TILE_KEY};
 
-/// Uma imagem.
-pub const SPRITE: AddEntry = AddEntry::new("object_add.game.sprite", AddGroup::Game)
-    .with_tip("object_add.game.sprite.tip", crate::dicas::SPRITE);
-/// Uma imagem que se anima por intervalos da folha.
-pub const ANIMATED_SPRITE: AddEntry =
-    AddEntry::new("object_add.game.animated_sprite", AddGroup::Game).with_tip(
-        "object_add.game.animated_sprite.tip",
-        crate::dicas::ANIMATED_SPRITE,
-    );
-/// Um bloco fixo em que as coisas batem (chão, plataforma, parede).
-pub const STATIC_BODY: AddEntry = AddEntry::new("object_add.game.static_body", AddGroup::Game)
-    .with_tip("object_add.game.static_body.tip", crate::dicas::STATIC_BODY);
-/// O personagem que o jogador controla.
-pub const CHARACTER: AddEntry = AddEntry::new("object_add.game.character", AddGroup::Game)
-    .with_tip("object_add.game.character.tip", crate::dicas::CHARACTER);
-/// Uma forma de colisão invisível — dentro de um corpo, é mais uma forma dele.
-pub const COLLISION_SHAPE: AddEntry =
-    AddEntry::new("object_add.game.collision_shape", AddGroup::Game).with_tip(
-        "object_add.game.collision_shape.tip",
-        crate::dicas::COLLISION_SHAPE,
-    );
-/// Uma camada de fundo que fica para trás quando a câmara anda (parallax) — plano 11.
-pub const BACKGROUND_LAYER: AddEntry =
-    AddEntry::new("object_add.game.background_layer", AddGroup::Game).with_tip(
-        "object_add.game.background_layer.tip",
-        crate::dicas::BACKGROUND_LAYER,
-    );
-/// O que esta família põe no menu, na ordem do modal.
-pub const ENTRIES: &[AddEntry] = &[
-    SPRITE,
-    ANIMATED_SPRITE,
-    STATIC_BODY,
-    CHARACTER,
-    COLLISION_SHAPE,
-    BACKGROUND_LAYER,
-];
+/// As entradas e o ensino do menu Add moram na folha de dados (`ph2d-game-dicas`), pela catraca de LOC.
+pub use ph2d_game_dicas::add::{
+    ANIMATED_SPRITE, BACKGROUND_LAYER, CHARACTER, COLLISION_SHAPE, ENTRIES, SPRITE, STATIC_BODY,
+    TEACH,
+};
 
 const BRANCO: [f32; 4] = [1.0, 1.0, 1.0, 1.0];
 const PEDRA: [f32; 4] = [0.45, 0.47, 0.52, 1.0];

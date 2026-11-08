@@ -61,6 +61,7 @@ fn model() -> PaletteModel {
                 .into(),
             picture: PICTURE,
         }],
+        select: None,
     }
 }
 

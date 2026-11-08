@@ -10,28 +10,28 @@ use ph2d_ecs::{Name, SimWorld, Transform};
 use ph2d_editor_core::object_add::{AddEntry, AddGroup};
 
 /// Câmara de jogo.
-pub const CAMERA: AddEntry = AddEntry::new("object_add.game.camera", AddGroup::Game).with_tip(
-    "object_add.game.camera.tip",
-    crate::object_add_dicas::CAMERA,
-);
-/// Corpo de física.
-pub const BODY: AddEntry = AddEntry::new("object_add.game.body", AddGroup::Game)
-    .with_tip("object_add.game.body.tip", crate::object_add_dicas::BODY);
+pub const CAMERA: AddEntry = AddEntry::new("object_add.game.camera", AddGroup::Game)
+    .at(3)
+    .with_tip(
+        "object_add.game.camera.tip",
+        crate::object_add_dicas::CAMERA,
+    );
 /// Fonte de som.
 pub const SOUND: AddEntry = AddEntry::new("object_add.game.sound", AddGroup::Game)
+    .at(4)
     .with_tip("object_add.game.sound.tip", crate::object_add_dicas::SOUND);
 /// Tela de HUD.
 pub const HUD: AddEntry = AddEntry::new("object_add.game.hud", AddGroup::Game)
+    .at(5)
     .with_tip("object_add.game.hud.tip", crate::object_add_dicas::HUD);
-/// O que esta família põe no menu.
-pub const ENTRIES: &[AddEntry] = &[CAMERA, BODY, SOUND, HUD];
+/// O que esta família põe no menu. ⚠️ O corpo de física saiu do Add (dono 07/11): mora no Add Component.
+pub const ENTRIES: &[AddEntry] = &[CAMERA, SOUND, HUD];
 
 /// O componente que faz cada entrada de jogo ser o que é — pelo nome canónico do registo.
 #[must_use]
 pub fn component_of(entry: AddEntry) -> Option<&'static str> {
     Some(match entry {
         e if e == CAMERA => "ph2d::ecs::GameCamera",
-        e if e == BODY => "ph2d::physics::RigidBody",
         e if e == SOUND => "ph2d::ecs::AudioSource2D",
         e if e == HUD => "ph2d::ecs::UiCanvas",
         _ => return None,

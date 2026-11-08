@@ -48,7 +48,6 @@ const PLANO: &[Passo] = &[
     Passo::Add("object_add.game.character"),
     Passo::Add("object_add.game.collision_shape"),
     Passo::Add("object_add.game.camera"),
-    Passo::Add("object_add.game.body"),
     Passo::Add("object_add.game.sound"),
     Passo::Add("object_add.game.hud"),
     Passo::Add("object_add.light.point"),

@@ -3,7 +3,7 @@
 
 use bevy_ecs::world::World;
 use ph2d_app_light2d::inspector::{apply, build_info, tag_do_tipo, tipo_da_tag};
-use ph2d_app_light2d::object_add::{ENTRIES, LUZ, LUZ_AMBIENTE, add, luz_de};
+use ph2d_app_light2d::object_add::{ENTRIES, LUZ, add, luz_de};
 use ph2d_app_light2d::{DEGRAU_PADRAO, LuzDoQuadro, grade_do_quadro};
 use ph2d_ecs::{GlobalTransform, Name, PresentWorld, SimWorld, Transform};
 use ph2d_editor_core::luz_edits::{AvisoDaLuz, LuzFieldEdit as E, TIPOS};
@@ -118,21 +118,16 @@ fn a_lampada_de_fabrica_nao_some_ao_afastar_o_zoom() {
     );
 }
 
-/// ⭐⭐ **O menu Add cria a luz com o componente** — a de fábrica, a ambiente, nome único, raiz com
-/// identidade; uma entrada alheia não é desta família.
+/// ⭐⭐ **O menu Add cria a luz com o componente** — a de fábrica, nome único, raiz com identidade; uma
+/// entrada alheia não é desta família. A ambiente não está no Add (dono 07/11): é `Type: Ambient` no cartão.
 #[test]
 fn o_menu_add_cria_a_luz_com_o_componente() {
     let mut sim = SimWorld::new();
     let a = add(LUZ, &mut sim).expect("é desta família");
     let b = add(LUZ, &mut sim).expect("é desta família");
-    let c = add(LUZ_AMBIENTE, &mut sim).expect("é desta família");
     let w = sim.world();
     let e = |bits| ph2d_ecs::Entity::from_bits(bits);
     assert_eq!(w.get::<Luz>(e(a)), Some(&Luz::default()));
-    assert_eq!(
-        w.get::<Luz>(e(c)).map(|l| l.tipo),
-        Some(TipoDeLuz::Ambiente)
-    );
     assert!(w.get::<Transform>(e(a)).is_some());
     assert!(
         w.get::<ph2d_ecs::StableId>(e(a)).is_some(),

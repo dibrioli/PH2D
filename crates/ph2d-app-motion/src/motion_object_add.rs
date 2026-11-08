@@ -9,7 +9,9 @@ use ph2d_ecs::SimWorld;
 use ph2d_editor_core::object_add::{AddEntry, AddGroup};
 
 /// O item do menu.
-pub const MOTION: AddEntry = AddEntry::new("object_add.motion", AddGroup::TwoD);
+pub const MOTION: AddEntry = AddEntry::new("object_add.motion", AddGroup::Drawing)
+    .at(4)
+    .with_tip("object_add.motion.tip", ph2d_game_dicas::MOTION);
 /// As entradas desta família, na ordem do modal.
 pub const ENTRIES: &[AddEntry] = &[MOTION];
 

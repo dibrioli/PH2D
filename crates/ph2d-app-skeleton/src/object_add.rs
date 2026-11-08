@@ -1,13 +1,13 @@
-//! ⭐ **Add ▸ Skeleton** (A14) — o esqueleto nasce com UM osso e pede o Edit (como o Add do vetor:
-//! o próximo gesto é desenhar ossos).
+//! ⭐ **Add ▸ Skeleton** (A14): nasce com UM osso e pede o Edit (o próximo gesto é desenhar ossos).
 
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_editor_core::object_add::{AddEntry, AddGroup};
 
 use crate::state::SkeletonState;
 
-/// A entrada do menu.
-pub const SKELETON: AddEntry = AddEntry::new("object_add.skeleton", AddGroup::TwoD);
+pub const SKELETON: AddEntry = AddEntry::new("object_add.skeleton", AddGroup::Drawing)
+    .at(3)
+    .with_tip("object_add.skeleton.tip", ph2d_game_dicas::SKELETON);
 /// As entradas desta família.
 pub const ENTRIES: &[AddEntry] = &[SKELETON];
 

@@ -9,33 +9,42 @@
 //! O pick volta como a [`AddEntry`], e quem a sabe criar é a família dona — com os recursos dela.
 
 use crate::widget::command_palette::{
-    PaletteGroup, PaletteItem, PaletteModel, PaletteSub, PaletteTip,
+    PaletteGroup, PaletteItem, PaletteModel, PaletteSelect, PaletteSub, PaletteTeach, PaletteTip,
 };
 use crate::widget::illustration::Mark;
 use ph2d_a11y::NodeId;
 use ph2d_i18n::TextKey;
 use ph2d_tokens::ColorToken;
 
-/// **O grupo do menu** — por natureza do objecto, como o *Add* do Blender agrupa por tipo de dado.
+/// **O grupo do menu** — o que o objecto É para quem faz o jogo (Crítica `#addobject`, versão B, dono
+/// 07/11): imagens, desenhos, peças de jogo, vazios.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AddGroup {
-    /// Imagem, Flip, Vetor.
-    TwoD,
-    /// Um vazio com o componente de jogo já posto (só modo Object).
+    /// Uma imagem: nova, Sprite, Animated, Pixel, fundo.
+    Pictures,
+    /// Um desenho com modo próprio: Vetor, Texto, Flip, Esqueleto, Motion.
+    Drawing,
+    /// Um vazio com o componente de jogo já posto.
     Game,
-    /// O objecto vazio.
+    /// O objecto vazio e a Macro.
     Empty,
 }
 
 impl AddGroup {
     /// Todos, na ordem em que o modal os mostra.
-    pub const ALL: [AddGroup; 3] = [AddGroup::TwoD, AddGroup::Game, AddGroup::Empty];
+    pub const ALL: [AddGroup; 4] = [
+        AddGroup::Pictures,
+        AddGroup::Drawing,
+        AddGroup::Game,
+        AddGroup::Empty,
+    ];
 
     /// O título do grupo.
     #[must_use]
     pub fn title(self) -> &'static str {
         ph2d_i18n::tr(match self {
-            AddGroup::TwoD => "object_add.group.two_d",
+            AddGroup::Pictures => "object_add.group.pictures",
+            AddGroup::Drawing => "object_add.group.drawing",
             AddGroup::Game => "object_add.group.game",
             AddGroup::Empty => "object_add.group.empty",
         })
@@ -45,11 +54,49 @@ impl AddGroup {
     #[must_use]
     pub const fn color(self) -> ColorToken {
         match self {
-            AddGroup::TwoD => ColorToken::NodeCatSource,
+            AddGroup::Pictures => ColorToken::NodeCatSource,
+            AddGroup::Drawing => ColorToken::NodeCatFx,
             AddGroup::Game => ColorToken::NodeCatOutput,
             AddGroup::Empty => ColorToken::NodeCatUtility,
         }
     }
+}
+
+/// A cor do grupo *Recent*.
+const RECENT_COLOR: ColorToken = ColorToken::NodeCatFocus;
+/// Quantos tipos o *Recent* guarda (as três linhas da maquete B).
+pub const RECENT_MAX: usize = 3;
+
+/// ⭐ **Uma busca que não acha, a ensinar** (plano 24 §2.5) — as palavras e a frase por chave i18n, e a
+/// entrada que o botão destaca. Mora na família que sabe montar a peça.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub struct AddTeach {
+    /// As palavras (inglês, vírgula) que a disparam inteiras.
+    pub words: TextKey,
+    /// A frase: de que peças isto se monta.
+    pub text: TextKey,
+    /// A entrada por onde se começa.
+    pub start: AddEntry,
+}
+
+impl AddTeach {
+    /// O ensino de frase `text`, palavras `words` (chaves i18n) e começo `start`.
+    #[must_use]
+    pub const fn new(text: &'static str, words: &'static str, start: AddEntry) -> Self {
+        Self {
+            words: TextKey::new(words),
+            text: TextKey::new(text),
+            start,
+        }
+    }
+}
+
+/// ⭐ **O gesto «destaca, depois escolhe»** do modal (dono 07/11): o destaque inicial, o ensino e os
+/// recentes (ids de entrada, o mais novo primeiro).
+pub struct AddSelect<'a> {
+    pub initial: AddEntry,
+    pub teach: &'a [AddTeach],
+    pub recent: &'a [NodeId],
 }
 
 /// ⭐ **A dica ILUSTRADA de uma entrada** (GameEngineFuncional N1, decisão 1 do dono no plano 03): a
@@ -69,8 +116,10 @@ pub struct AddEntry {
     pub key: TextKey,
     /// Onde o modal a mostra.
     pub group: AddGroup,
-    /// A dica ilustrada ao passar o rato (`None` = nenhuma).
+    /// A dica ilustrada (`None` = nenhuma).
     pub tip: Option<AddTip>,
+    /// A posição dentro do grupo (menor primeiro) — a ordem da maquete, não a das famílias compiladas.
+    pub order: u8,
 }
 
 impl AddEntry {
@@ -81,7 +130,23 @@ impl AddEntry {
             key: TextKey::new(key),
             group,
             tip: None,
+            order: u8::MAX,
         }
+    }
+
+    /// A mesma entrada, na posição `order` do grupo.
+    #[must_use]
+    pub const fn at(self, order: u8) -> Self {
+        Self { order, ..self }
+    }
+
+    /// ⭐ **As palavras de busca** (`<chave>.keywords`, inglês, por vírgula — a lei das listas do Add
+    /// Component); `""` sem lista.
+    #[must_use]
+    pub fn keywords(self) -> &'static str {
+        let key = format!("{}.keywords", self.key.key());
+        let words = ph2d_i18n::tr(&key);
+        if words == key { "" } else { words }
     }
 
     /// A mesma entrada, com a dica ilustrada: a explicação pela chave `body_key` e o desenho.
@@ -104,16 +169,21 @@ impl AddEntry {
 }
 
 /// **As entradas da fundação**: o vazio e a imagem (que abre o diálogo de tamanho do `Ctrl+N`).
-pub const EMPTY: AddEntry = AddEntry::new("object_add.empty", AddGroup::Empty);
+pub const EMPTY: AddEntry = AddEntry::new("object_add.empty", AddGroup::Empty)
+    .at(0)
+    .with_tip("object_add.empty.tip", crate::object_add_dicas::EMPTY);
 /// Ver [`EMPTY`].
-pub const IMAGE: AddEntry = AddEntry::new("object_add.image", AddGroup::TwoD);
+pub const IMAGE: AddEntry = AddEntry::new("object_add.image", AddGroup::Pictures)
+    .at(0)
+    .with_tip("object_add.image.tip", crate::object_add_dicas::IMAGE);
 /// Ver [`EMPTY`].
 pub const CORE: &[AddEntry] = &[IMAGE, EMPTY];
 
 /// ⭐ **O modelo do modal**, sobre as famílias compiladas.
 ///
-/// Cada fatia é um AGRUPAMENTO dentro do seu grupo (uma família = uma coluna de itens); um grupo
-/// sem entrada nenhuma não aparece.
+/// Cada grupo tem as entradas que podem nascer, na ordem de [`AddEntry::order`], e depois as que não
+/// podem; um grupo sem entrada nenhuma não aparece. Com `select`, o *Recent* vem no topo e o modal
+/// destaca antes de escolher ([`PaletteSelect`]).
 ///
 /// ⚠️ `why_not` é a razão pela qual uma entrada **não pode nascer agora** (`None` = pode). Ela
 /// APARECE na mesma, a seguir às que podem, com a razão no rótulo — a lei da paleta de formas: o
@@ -122,48 +192,61 @@ pub const CORE: &[AddEntry] = &[IMAGE, EMPTY];
 pub fn build(
     families: &[&[AddEntry]],
     why_not: &dyn Fn(AddEntry) -> Option<&'static str>,
+    select: Option<AddSelect<'_>>,
 ) -> PaletteModel {
-    let groups = AddGroup::ALL
-        .into_iter()
-        .filter_map(|group| {
-            let subs: Vec<PaletteSub> = families
-                .iter()
-                .flat_map(|family| {
-                    let mut ready = Vec::new();
-                    let mut blocked = Vec::new();
-                    for e in family.iter().filter(|e| e.group == group) {
-                        let label = e.key.tr();
-                        match why_not(*e) {
-                            None => ready.push(PaletteItem {
-                                label: label.to_string(),
-                                id: e.id(),
-                                keywords: "",
-                            }),
-                            Some(reason) => blocked.push(PaletteItem {
-                                label: format!("{label}  \u{2014}  {reason}"),
-                                id: e.id(),
-                                keywords: "",
-                            }),
-                        }
-                    }
-                    [ready, blocked]
-                        .into_iter()
-                        .filter(|items| !items.is_empty())
-                        .map(|items| PaletteSub { title: None, items })
-                })
-                .collect();
-            (!subs.is_empty()).then(|| PaletteGroup {
-                title: group.title().to_string(),
-                color: group.color(),
-                subs,
-            })
-        })
+    let all = || families.iter().flat_map(|f| f.iter().copied());
+    let item = |e: AddEntry| {
+        let label = e.key.tr();
+        let label = match why_not(e) {
+            None => label.to_string(),
+            Some(reason) => format!("{label}  \u{2014}  {reason}"),
+        };
+        PaletteItem {
+            label,
+            id: e.id(),
+            keywords: e.keywords(),
+        }
+    };
+    let recent: Vec<PaletteItem> = select
+        .as_ref()
+        .map(|s| s.recent)
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|id| entry_of_pick(families, *id))
+        .filter(|e| why_not(*e).is_none())
+        .take(RECENT_MAX)
+        .map(item)
         .collect();
+    let recent = (!recent.is_empty()).then(|| PaletteGroup {
+        title: ph2d_i18n::tr("object_add.group.recent").to_string(),
+        color: RECENT_COLOR,
+        subs: vec![PaletteSub {
+            title: None,
+            items: recent,
+        }],
+    });
+    let groups = AddGroup::ALL.into_iter().filter_map(|group| {
+        let mut entries: Vec<AddEntry> = all().filter(|e| e.group == group).collect();
+        entries.sort_by_key(|e| e.order);
+        let (ready, blocked): (Vec<_>, Vec<_>) =
+            entries.into_iter().partition(|e| why_not(*e).is_none());
+        let subs: Vec<PaletteSub> = [ready, blocked]
+            .into_iter()
+            .filter(|v| !v.is_empty())
+            .map(|v| PaletteSub {
+                title: None,
+                items: v.into_iter().map(item).collect(),
+            })
+            .collect();
+        (!subs.is_empty()).then(|| PaletteGroup {
+            title: group.title().to_string(),
+            color: group.color(),
+            subs,
+        })
+    });
     // ⭐ A dica de toda entrada que a tem — também das que não podem nascer agora: o artista lê o que
     //    o tipo é antes de saber porque não pode.
-    let tips = families
-        .iter()
-        .flat_map(|f| f.iter())
+    let tips = all()
         .filter_map(|e| {
             e.tip.map(|t| PaletteTip {
                 id: e.id(),
@@ -173,11 +256,26 @@ pub fn build(
             })
         })
         .collect();
+    let select = select.map(|s| PaletteSelect {
+        initial: s.initial.id(),
+        teach: s
+            .teach
+            .iter()
+            .map(|t| PaletteTeach {
+                words: t.words.tr(),
+                text: t.text.tr().to_string(),
+                start: t.start.id(),
+                start_label: ph2d_i18n::tr("object_add.teach.start")
+                    .replace("{name}", t.start.key.tr()),
+            })
+            .collect(),
+    });
     PaletteModel {
         title: ph2d_i18n::tr("object_add.title").to_string(),
-        groups,
+        groups: recent.into_iter().chain(groups).collect(),
         toggle: None,
         tips,
+        select,
     }
 }
 
@@ -222,8 +320,22 @@ pub fn smoke_hover() -> Option<NodeId> {
 pub fn smoke_drive(store: &mut crate::interaction::WidgetStore) {
     use std::sync::atomic::{AtomicBool, Ordering};
     static TAKEN: AtomicBool = AtomicBool::new(false);
+    static QUERY: AtomicBool = AtomicBool::new(false);
     if let Some(id) = smoke_hover().filter(|_| store.command_palette_open()) {
-        store.set_hot(Some(id));
+        // No modo de seleção a dica é a do DESTACADO (plano 24): o smoke destaca em vez de pairar.
+        if store.command_palette_selects() {
+            store.highlight_command_palette(id);
+        } else {
+            store.set_hot(Some(id));
+        }
+    }
+    // ⭐ `PH2D_OBJECT_ADD_QUERY=<texto>`: a busca escrita UMA vez, com o menu aberto (as fotos de «wall» e
+    //    de «coin» do plano 24 §4).
+    if store.command_palette_open()
+        && let Ok(q) = std::env::var("PH2D_OBJECT_ADD_QUERY")
+        && !QUERY.swap(true, Ordering::Relaxed)
+    {
+        q.chars().for_each(|c| store.command_palette_push_char(c));
     }
     if let Ok(key) = std::env::var("PH2D_OBJECT_ADD_PICK")
         && !TAKEN.swap(true, Ordering::Relaxed)

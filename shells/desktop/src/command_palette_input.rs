@@ -30,6 +30,13 @@ impl App {
         }
     }
 
+    /// ↑ ↓ move the highlight (palettes that highlight before picking).
+    pub(crate) fn command_palette_step(&mut self, delta: isize) {
+        if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+            h.store.step_command_palette_highlight(delta);
+        }
+    }
+
     /// Backspace in the palette's search box.
     pub(crate) fn command_palette_backspace(&mut self) {
         if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
@@ -37,13 +44,12 @@ impl App {
         }
     }
 
-    /// Enter: pick the TOP filtered match (the Motion bridge routes it to an `AddNode` next frame, exactly
-    /// like a mouse pick). No-op when the search is empty or matches nothing — Enter never adds a node the
-    /// artist did not narrow to, and `top_match` is the SAME predicate the widget paints the filter with.
+    /// Enter: pick the highlighted item (Add Object) or the TOP filtered match — routed next frame exactly
+    /// like a mouse pick; no-op when nothing is highlighted or matched.
     pub(crate) fn command_palette_confirm(&mut self) {
         if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             let store = &mut h.store;
-            if let Some(id) = store.command_palette_top() {
+            if let Some(id) = store.command_palette_enter_target() {
                 store.set_command_pick(id);
                 store.close_command_palette();
             }

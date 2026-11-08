@@ -69,6 +69,7 @@ pub mod motion;
 /// ⭐ O nome curto de uma camada (dono 07/11): 12 caracteres e «…».
 pub mod nome_curto;
 pub mod object_add;
+pub mod object_add_dicas;
 /// ⭐⭐ O modo de edição do objecto activo e o cadeado da selecção (spec/06 F2).
 pub mod object_mode;
 pub mod paint;

@@ -32,7 +32,6 @@ fn every_game_object_is_born_with_its_component() {
         let w = sim.world();
         let concrete = match entry.key.key() {
             "object_add.game.camera" => w.get::<ph2d_ecs::GameCamera>(e).is_some(),
-            "object_add.game.body" => w.get::<ph2d_physics_ecs::RigidBody>(e).is_some(),
             "object_add.game.sound" => w.get::<ph2d_ecs::AudioSource2D>(e).is_some(),
             "object_add.game.hud" => w.get::<ph2d_ecs::UiCanvas>(e).is_some(),
             other => panic!("entrada de jogo sem tipo esperado: {other}"),

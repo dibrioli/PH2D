@@ -26,6 +26,7 @@ ph2d-app-host = { path = "../ph2d-app-host" }
 ph2d-component-desc = { path = "../ph2d-component-desc" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-game-dicas = { path = "../ph2d-game-dicas" }
 ph2d-host = { path = "../ph2d-host" }
 ph2d-i18n = { path = "../ph2d-i18n" }
 ph2d-render = { path = "../ph2d-render" }

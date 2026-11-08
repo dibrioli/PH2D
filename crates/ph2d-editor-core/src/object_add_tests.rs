@@ -2,8 +2,8 @@ use super::*;
 use crate::widget::command_palette::top_match;
 
 const A: &[AddEntry] = &[
-    AddEntry::new("object_add.flip", AddGroup::TwoD),
-    AddEntry::new("object_add.vector.drawing", AddGroup::TwoD),
+    AddEntry::new("object_add.flip", AddGroup::Drawing),
+    AddEntry::new("object_add.vector.drawing", AddGroup::Drawing),
 ];
 const B: &[AddEntry] = &[AddEntry::new("object_add.game.camera", AddGroup::Game)];
 
@@ -13,7 +13,7 @@ const B: &[AddEntry] = &[AddEntry::new("object_add.game.camera", AddGroup::Game)
 #[test]
 fn every_entry_has_one_item_and_its_id_maps_back() {
     let fams: &[&[AddEntry]] = &[CORE, A, B];
-    let model = build(fams, &|_| None);
+    let model = build(fams, &|_| None, None);
     let all: Vec<AddEntry> = fams.iter().flat_map(|f| f.iter().copied()).collect();
     assert_eq!(model.item_count(), all.len());
     for e in &all {
@@ -29,11 +29,11 @@ fn every_entry_has_one_item_and_its_id_maps_back() {
 /// **Uma família que não está compilada não deixa grupo** — o grupo vazio não é pintado.
 #[test]
 fn a_group_without_entries_is_not_shown() {
-    let model = build(&[CORE], &|_| None);
+    let model = build(&[CORE], &|_| None, None);
     let titles: Vec<&str> = model.groups.iter().map(|g| g.title.as_str()).collect();
     assert_eq!(
         titles,
-        [AddGroup::TwoD.title(), AddGroup::Empty.title()],
+        [AddGroup::Pictures.title(), AddGroup::Empty.title()],
         "sem a família de Jogo, o grupo dela não pode aparecer"
     );
     assert_eq!(entry_of_pick(&[CORE], A[0].id()), None);
@@ -43,7 +43,7 @@ fn a_group_without_entries_is_not_shown() {
 /// paleta só lê o rótulo.
 #[test]
 fn the_search_finds_every_family_by_its_type_name() {
-    let model = build(&[CORE, A, B], &|_| None);
+    let model = build(&[CORE, A, B], &|_| None, None);
     assert_eq!(top_match(&model, "flip"), Some(A[0].id()));
     assert_eq!(top_match(&model, "image"), Some(IMAGE.id()));
     for e in [CORE, A, B].iter().flat_map(|f| f.iter()) {
@@ -74,7 +74,7 @@ fn every_label_is_translated() {
 #[test]
 fn a_blocked_entry_shows_after_the_ready_ones_with_its_reason() {
     let reason = "already one";
-    let model = build(&[A], &|e| (e == A[0]).then_some(reason));
+    let model = build(&[A], &|e| (e == A[0]).then_some(reason), None);
     let subs = &model.groups[0].subs;
     assert_eq!(subs.len(), 2);
     assert_eq!(subs[0].items[0].id, A[1].id(), "o que pode vem primeiro");
@@ -98,8 +98,8 @@ const PICTURE: &[crate::widget::illustration::Mark] = &[crate::widget::illustrat
 fn an_entry_with_a_tip_puts_it_in_the_model() {
     const WITH: AddEntry = AddEntry::new("object_add.game.camera", AddGroup::Game)
         .with_tip("object_add.title", PICTURE);
-    let fams: &[&[AddEntry]] = &[CORE, &[WITH]];
-    let model = build(fams, &|_| None);
+    let fams: &[&[AddEntry]] = &[A, &[WITH]];
+    let model = build(fams, &|_| None, None);
     assert_eq!(model.tips.len(), 1, "só a entrada com dica deixa dica");
     let tip = &model.tips[0];
     assert_eq!(tip.id, WITH.id());

@@ -146,3 +146,5 @@
 - ⭐⭐ [Dono 06/11: tiles para qualquer camada; leis de borda de tilemap a LLM decide medindo os melhores apps](project_tiles_any_layer_oracle_decides_2026_11_06.md)
 - ⭐⭐ [Dono 06/11: tiles do Pixel = carimbo + gabarito de 47; descoberta por área pintada (MVP Tiling) não](project_tilemap_rule_discovery_not_intuitive_2026_11_06.md)
 - ⭐⭐ [Dono 07/11: editor de animações reconstruído no layout da Crítica; sem prévia própria, sem ◆, faixas empilhadas](project_animation_editor_rebuild_owner_decisions_2026_11_07.md)
+
+- ⭐⭐ [Dono 07/11: Add Object versão B; Sprite já destacada com a dica embaixo, 1 clique destaca, 2 criam e fecham; Physics Body e Ambient Light saem](project_add_object_owner_decisions_2026_11_07.md)

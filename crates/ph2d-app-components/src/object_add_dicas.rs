@@ -32,27 +32,6 @@ pub const CAMERA: &[Mark] = &[
     },
 ];
 
-pub const BODY: &[Mark] = &[
-    CHAO,
-    Mark::Rect {
-        at: [0.3, 0.12],
-        size: [0.12, 0.22],
-        fill: C::Info,
-        round: 0.02,
-    },
-    Mark::Line {
-        a: [0.36, 0.4],
-        b: [0.36, 0.7],
-        stroke: C::Text1,
-        arrow: true,
-    },
-    Mark::Disc {
-        c: [0.66, 0.7],
-        r: 0.12,
-        fill: C::Info,
-    },
-];
-
 pub const SOUND: &[Mark] = &[
     Mark::Rect {
         at: [0.3, 0.38],

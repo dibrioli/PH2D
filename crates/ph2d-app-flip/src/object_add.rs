@@ -14,7 +14,9 @@ use ph2d_flip::FlipDoc;
 use crate::state::FlipState;
 
 /// A entrada do menu.
-pub const FLIP: AddEntry = AddEntry::new("object_add.flip", AddGroup::TwoD);
+pub const FLIP: AddEntry = AddEntry::new("object_add.flip", AddGroup::Drawing)
+    .at(2)
+    .with_tip("object_add.flip.tip", ph2d_game_dicas::FLIP);
 /// O que esta família põe no menu.
 pub const ENTRIES: &[AddEntry] = &[FLIP];
 

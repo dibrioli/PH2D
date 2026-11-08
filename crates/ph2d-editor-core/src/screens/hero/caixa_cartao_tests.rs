@@ -133,6 +133,7 @@ fn paleta(on: bool) -> (bool, usize) {
             title: "Add".into(),
             toggle: None,
             tips: Vec::new(),
+            select: None,
             groups: vec![PaletteGroup {
                 title: "Source".into(),
                 color: ColorToken::NodeCatSource,

@@ -23,7 +23,9 @@ pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
 };
 
 /// O texto.
-pub const TEXT: AddEntry = AddEntry::new("object_add.vector.text", AddGroup::TwoD);
+pub const TEXT: AddEntry = AddEntry::new("object_add.vector.text", AddGroup::Drawing)
+    .at(1)
+    .with_tip("object_add.vector.text.tip", ph2d_game_dicas::TEXT);
 /// O que esta família põe no menu.
 pub const ENTRIES: &[AddEntry] = &[TEXT];
 

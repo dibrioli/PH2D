@@ -68,6 +68,10 @@ impl App {
                         self.command_palette_backspace();
                         return true;
                     }
+                    KeyCode::ArrowUp | KeyCode::ArrowDown => {
+                        self.command_palette_step(if code == KeyCode::ArrowUp { -1 } else { 1 });
+                        return true;
+                    }
                     _ => {}
                 }
             }

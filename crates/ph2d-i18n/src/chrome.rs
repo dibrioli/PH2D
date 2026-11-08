@@ -38,6 +38,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         //    por isso mesmo e devolvi-lhe a decisão; ele decidiu.
         "chrome.checkbox.on" => "On",
         "chrome.no_matches" => "No matches",
+        "chrome.palette.nothing_called" => "Nothing is called \u{201c}{query}\u{201d}.",
         "chrome.flyout.shape_options" => "Shape options",
         "chrome.flyout.mask_options" => "Mask options",
         "chrome.color.hex" => "Hex",

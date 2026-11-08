@@ -26,6 +26,7 @@ ph2d-curve = { path = "../ph2d-curve" }
 ph2d-ease = { path = "../ph2d-ease" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-game-dicas = { path = "../ph2d-game-dicas" }
 # ⭐ O `NodeId` de acessibilidade, para os ids das amostras de cor das rows de param — o
 # vocabulário que sobreviveu à saída do painel lateral (doc 114 §13).
 # O texto da biblioteca de nós e dos fundos do grafo (HR-15).

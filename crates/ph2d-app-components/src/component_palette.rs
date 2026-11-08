@@ -244,6 +244,7 @@ pub(crate) fn build(
             on: show_all,
         }),
         tips: Vec::new(),
+        select: None,
     }
 }
 

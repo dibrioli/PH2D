@@ -25,6 +25,9 @@ pub(in crate::interaction) struct SheetModal {
 mod color_mode_ops;
 #[path = "new_image_ops.rs"]
 mod new_image_ops;
+#[path = "palette_select_ops.rs"]
+mod palette_select_ops;
+pub(super) use palette_select_ops::{escreve_recentes, le_recentes};
 #[path = "new_sprite_ops.rs"]
 mod new_sprite_ops;
 #[path = "pixel_card_ops.rs"]
@@ -320,6 +323,11 @@ impl WidgetStore {
         self.command_pick = None;
         self.command_palette_query.clear();
         self.command_palette_scope = Default::default();
+        self.command_palette_scope.highlight = self
+            .command_palette
+            .as_ref()
+            .and_then(|m| m.select.as_ref())
+            .map(|s| s.initial);
         self.reset_command_palette_scroll();
     }
 
@@ -329,6 +337,7 @@ impl WidgetStore {
         self.command_palette = None;
         self.command_palette_query.clear();
         self.command_palette_scope.scopes = None;
+        self.command_palette_scope.highlight = None;
         self.reset_command_palette_scroll();
     }
 

@@ -1,4 +1,5 @@
-//! ⭐ **«Luz» e «Luz ambiente» no menu Add** (plano §4) — um objeto vazio com a `Luz` já posta.
+//! ⭐ **«Light» no menu Add** (plano §4) — um objeto vazio com a `Luz` já posta. A ambiente é a mesma
+//! Luz com `Type: Ambient` no cartão (dono 07/11: saiu do Add).
 //!
 //! ⚠️ A `Luz` não pede nenhum outro componente (o catálogo a declara sem `requires`), logo nascer
 //! com ela é a mesma coisa que o `attach_by_name` do Inspector faria — e a família não chama a
@@ -9,18 +10,17 @@ use ph2d_editor_core::object_add::{AddEntry, AddGroup};
 use ph2d_light2d_ecs::Luz;
 
 /// A lâmpada (a de fábrica: branco a 1 m).
-pub const LUZ: AddEntry = AddEntry::new("object_add.light.point", AddGroup::Game);
-/// A luz ambiente (a de fábrica: o forno branco — a cena como sem luz; o artista baixa-a).
-pub const LUZ_AMBIENTE: AddEntry = AddEntry::new("object_add.light.ambient", AddGroup::Game);
+pub const LUZ: AddEntry = AddEntry::new("object_add.light.point", AddGroup::Game)
+    .at(6)
+    .with_tip("object_add.light.point.tip", ph2d_game_dicas::LIGHT);
 /// O que esta família põe no menu.
-pub const ENTRIES: &[AddEntry] = &[LUZ, LUZ_AMBIENTE];
+pub const ENTRIES: &[AddEntry] = &[LUZ];
 
 /// A `Luz` com que cada entrada nasce — `None` se a entrada não é desta família.
 #[must_use]
 pub fn luz_de(entry: AddEntry) -> Option<Luz> {
     Some(match entry {
         e if e == LUZ => Luz::default(),
-        e if e == LUZ_AMBIENTE => Luz::ambiente(),
         _ => return None,
     })
 }

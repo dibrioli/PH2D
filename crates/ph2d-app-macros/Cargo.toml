@@ -18,6 +18,7 @@ ph2d-app-host = { path = "../ph2d-app-host" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-timeline = { path = "../ph2d-timeline" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-game-dicas = { path = "../ph2d-game-dicas" }
 # O Painter grava por esta crate; o Motion é outra família e chega pela composição (a gravadora e
 # `ph2d_editor_core::macro_etapas::EtapasDaFamilia`).
 ph2d-tool-painter = { path = "../ph2d-tool-painter" }

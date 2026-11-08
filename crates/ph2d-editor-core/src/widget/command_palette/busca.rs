@@ -103,5 +103,6 @@ pub(super) fn filter_model(model: &PaletteModel, query: &str) -> PaletteModel {
         toggle: model.toggle.clone(),
         // A dica procura-se pela id: as dos itens filtrados ficam e não pintam.
         tips: model.tips.clone(),
+        select: model.select.clone(),
     }
 }

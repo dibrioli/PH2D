@@ -22,6 +22,18 @@ pub(crate) const FAMILIES: &[&[AddEntry]] = &[
     ph2d_app_pixel::object_add::ENTRIES,
 ];
 
+/// ⭐ **O modelo do menu** (plano 24): a Sprite destacada ao abrir, o ensino do jogo e os recentes.
+pub(crate) fn add_model(
+    recent: &[ph2d_editor_core::NodeId],
+) -> ph2d_editor_core::widget::command_palette::PaletteModel {
+    let select = object_add::AddSelect {
+        initial: ph2d_app_game::object_add::SPRITE,
+        teach: ph2d_app_game::object_add::TEACH,
+        recent,
+    };
+    object_add::build(FAMILIES, &|_| None, Some(select))
+}
+
 /// O que o pick deu: um objecto já na cena, ou nada ainda (a imagem abre o diálogo de tamanho; o
 /// desenho vetorial nasce no 1.º traço).
 enum Born {
@@ -55,8 +67,8 @@ impl crate::App {
             return;
         };
         if open {
-            hero.store
-                .open_command_palette(object_add::build(FAMILIES, &|_| None));
+            let model = add_model(hero.store.add_recent());
+            hero.store.open_command_palette(model);
         }
         object_add::smoke_drive(&mut hero.store);
         // O OK do diálogo New Sprite (aberto por um pick anterior) nasce o Pixel Sprite.
@@ -161,6 +173,12 @@ impl crate::App {
 
     /// O que o Add faz a um objecto que nasceu: a macro, a selecção, o aviso.
     fn object_born(&mut self, entry: AddEntry, born: Result<Born, String>) {
+        if let (Ok(_), Some(h)) = (
+            &born,
+            self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()),
+        ) {
+            h.store.push_add_recent(entry.id());
+        }
         let bits = match born {
             Ok(Born::Entity(bits)) => Some(bits),
             Ok(Born::Dialog) => None,

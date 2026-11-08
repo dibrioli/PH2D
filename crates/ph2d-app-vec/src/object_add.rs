@@ -8,7 +8,9 @@
 use ph2d_editor_core::object_add::{AddEntry, AddGroup};
 
 /// O desenho vetorial.
-pub const VECTOR: AddEntry = AddEntry::new("object_add.vector.drawing", AddGroup::TwoD);
+pub const VECTOR: AddEntry = AddEntry::new("object_add.vector.drawing", AddGroup::Drawing)
+    .at(0)
+    .with_tip("object_add.vector.drawing.tip", ph2d_game_dicas::VECTOR);
 /// O que esta família põe no menu.
 pub const ENTRIES: &[AddEntry] = &[VECTOR];
 

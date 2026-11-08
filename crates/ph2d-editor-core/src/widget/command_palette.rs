@@ -52,6 +52,10 @@ pub use header::{CMD_PALETTE_SHOW_ALL, PaletteToggle};
 /// **A dica ilustrada** do item sob o rato (GameEngineFuncional N1) — a 5.ª responsabilidade.
 mod tip;
 
+/// **«Destaca, depois escolhe»** e a faixa da dica (Add Object, dono 07/11) — a 6.ª responsabilidade.
+mod selecao;
+pub use selecao::{CMD_PALETTE_TEACH_START, PaletteSelect, PaletteTeach, item_ids, teach_for};
+
 /// The close-X in the header.
 pub const CMD_PALETTE_CLOSE: NodeId = hash_node_id("command_palette.close");
 /// The full-viewport scrim barrier — a click here (outside the card) closes the palette.
@@ -125,6 +129,8 @@ pub struct PaletteModel {
     /// ⭐ **As dicas ilustradas** dos itens que as têm (GameEngineFuncional N1), pela id do item. Ver
     /// [`PaletteTip`]; vazio = nenhum item explica nada ao passar o rato.
     pub tips: Vec<PaletteTip>,
+    /// ⭐ **O gesto «destaca, depois escolhe»** ([`PaletteSelect`]); `None` = um clique escolhe.
+    pub select: Option<PaletteSelect>,
 }
 
 /// ⭐ **A dica ILUSTRADA de um item** (as do Fusion 360): o nome simples, um desenho e a explicação
@@ -236,7 +242,9 @@ pub fn paint(
         pad,
         font,
         placed,
-    } = metrics(ts, model, viewport, no_match);
+        dock,
+    } = metrics(ts, model, viewport, no_match, query);
+    let chosen = store.command_palette_highlight();
     let (card_x, card_y, card_w, card_h) = (card.x, card.y, card.w, card.h);
 
     // ── Scrim: dim the whole app with the modal-backdrop token (heavy alpha). ──
@@ -291,7 +299,10 @@ pub fn paint(
     //    conteúdo; a porta prende o ALVO e o vivo alcança-o. Preso também aqui, para esse quadro não
     //    mostrar um cartão vazio.
     let scroll = crate::math::safe_clamp(area.scroll(), 0.0, (content_h - view_h).max(0.0));
-    if no_match {
+    if no_match && model.select.is_some() {
+        let at = (content_x, content_y);
+        let _ = selecao::paint_teach(scene, ts, theme, hit_index, model, query, at, content_w);
+    } else if no_match {
         paint_text(
             ts,
             scene,
@@ -323,7 +334,7 @@ pub fn paint(
                 settled_y,
                 *w,
                 crate::motion::cascade_rise(t, travels),
-                store.hot_id(),
+                [store.hot_id(), chosen],
             );
         }
     }
@@ -333,9 +344,13 @@ pub fn paint(
         paint_scroll_hint(scene, theme, body, content_h, view_h, scroll);
     }
 
-    // ⭐ A dica do item sob o rato, por cima de tudo o que a paleta pinta — e sem alvo.
-    let rect_for = |id| hit_index.rect_for(id);
-    let _ = tip::paint_tip(scene, ts, theme, rect_for, model, store.hot_id(), viewport);
+    // ⭐ A dica: na faixa do destacado (modo de seleção), ou sobre o item sob o rato — sem alvo.
+    if let Some(dock) = dock {
+        selecao::paint_dock(scene, ts, theme, model, chosen, dock);
+    } else {
+        let rect_for = |id| hit_index.rect_for(id);
+        let _ = tip::paint_tip(scene, ts, theme, rect_for, model, store.hot_id(), viewport);
+    }
 
     // Close-X last (wins its rect inside the card).
     hit_index.register(CMD_PALETTE_CLOSE, close_rect);
@@ -355,7 +370,7 @@ fn paint_card(
     oy: f32,
     card_w: f32,
     rise: f32,
-    hot: Option<NodeId>,
+    [hot, chosen]: [Option<NodeId>; 2],
 ) {
     // ⚠️ `oy` é a posição ASSENTE — a que o dedo procura — e `dy` a que o olho vê durante a
     //    entrada. Tudo o que DESENHA lê `dy`; o único `register` deste corpo lê `oy`.
@@ -427,7 +442,8 @@ fn paint_card(
             }
             Placed::Pill { rect, id, label } => {
                 let r = Rect::new(ox + rect.x, dy + rect.y, rect.w, rect.h);
-                match ink {
+                let fg = match ink {
+                    _ if chosen == Some(*id) => superficie.botao(scene, r, true, false),
                     Some(ink) => {
                         let tom = if hot == Some(*id) {
                             ColorToken::CardFieldHover
@@ -435,14 +451,14 @@ fn paint_card(
                             ColorToken::CardField
                         };
                         fill_rounded_rect(scene, r, m::FIELD_RADIUS, ink.color(tom));
+                        superficie.cor(ColorToken::Text1)
                     }
-                    None => fill_rounded_rect(
-                        scene,
-                        r,
-                        crate::paint::frame_radius(theme, Radius::Sm.px()),
-                        resolve(ColorToken::Bg3, theme),
-                    ),
-                }
+                    None => {
+                        let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
+                        fill_rounded_rect(scene, r, radius, resolve(ColorToken::Bg3, theme));
+                        superficie.cor(ColorToken::Text1)
+                    }
+                };
                 dot(scene, r.x + PILL_PAD_X + DOT_R, r.y + r.h * 0.5, cat_color);
                 paint_text(
                     ts,
@@ -452,7 +468,7 @@ fn paint_card(
                     r.y + superficie.folga(r.h, xs),
                     xs,
                     r.w - PILL_PAD_X * 2.0 - DOT_R * 2.0,
-                    superficie.cor(ColorToken::Text1),
+                    fg,
                 );
                 // ⚠️ ASSENTE, nunca `r`: durante a entrada o cartão está 12 px abaixo, e um
                 //    clique apressado cairia na row de cima.

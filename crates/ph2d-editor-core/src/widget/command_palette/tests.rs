@@ -19,6 +19,7 @@ fn model() -> PaletteModel {
         title: "Add Node".into(),
         toggle: None,
         tips: Vec::new(),
+        select: None,
         groups: vec![
             PaletteGroup {
                 title: "Source".into(),
@@ -291,6 +292,7 @@ fn tall(n: usize, k: usize) -> PaletteModel {
         title: "Add Component".into(),
         toggle: None,
         tips: Vec::new(),
+        select: None,
         groups: (0..n)
             .map(|i| PaletteGroup {
                 title: format!("Cat {i}"),

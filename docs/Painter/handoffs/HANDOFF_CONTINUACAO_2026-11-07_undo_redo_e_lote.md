@@ -2,6 +2,17 @@
 
 Base: `main` `652b506b58` (reaberta por `reset --keep`; `git cherry` = 0 `+`, 34 `-`; ponto de volta `backup/line-PainterWatercolor-pre-reabertura-2026-11-07`). Commits: `c887156cbb` (item 1), `3fc47dc81d` (item 3), e o desta onda (sondas e este doc). Não integrada.
 
+## Revisão v3 de 08/11: os 22 pincéis CSP contra o CSP corrido em 3 fundos
+
+**SUPERA** as receitas e as folhas da secção seguinte. Doc: [`REVISAO_CSP_V3_2026-11-08.md`](../REVISAO_CSP_V3_2026-11-08.md), com a tabela antes × depois, as causas e as recusas medidas.
+- **Veredito do dono:** os pincéis Multiply não pintavam na camada vazia, e vários estavam «completamente diferentes».
+- **Mecanismo, de RECEITA:** faltava `blend_sobre_vazio` (a lei W3C já existe no motor). **Nenhum código do motor mudou.**
+- **Curas:** 20 receitas afinadas em 5 rodadas de variantes (`PH2D_V3_VARIANTES`, sonda `sonda_csp_v3_revisao`). A **Round Watercolor mudou para o meio Digital** (Multiply α 0,44); o ficheiro dela em `assets/brushes/Watercolor/…` saiu. O Gouache Blender passa ao tamanho 80, que é o de fábrica do CSP.
+- **Resultado:** 16 pincéis iguais ou perto nos 3 fundos. Ficam diferentes: o Wet Wash no vazio (a orla esfumada e o toque pálido; o corpo casa); o Chalk no branco (o CSP apanha mais branco; com Amount < 0,25 deixaria de cobrir o vazio); o Soft Airbrush e o Paint And Apply ~20–30 % mais estreitos (a orla macia do CSP passa do raio).
+- **Portões verdes por nome:** receitas, contagem, os 2 alarmes, «cada família», a mistura (18), o Watercolor Basic ao byte. Teste no app com foto: ver o fim desta secção.
+- **Fila pesada:** limpa (os 3 itens velhos estão no scratchpad da sessão).
+- **ABERTO:** o smoke do dono; fmt/clippy 1× no fecho; a suíte completa (integrador). O CLAUDE.md §5 diz 78 pincéis: o integrador reconta.
+
 ## Missão autónoma de 08/11 (noite): Wet blend à CSP + 16 pincéis CSP
 
 **SUPERA** «Color mixing → Pigment mix» e o item 0 de «Próximos» abaixo. Sem smoke do dono (é amanhã); suíte completa NÃO correu (é do integrador).

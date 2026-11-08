@@ -1,0 +1,52 @@
+Wet Wash Mix	w1	jitter=0.0	spray_count=2	dab_jitter={"across": 0.0, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 1.0, "roundness": 1.0, "veu": 1.0, "veu_escala": 4.5, "veu_opacidade": 1.0}	mistura.paint_amount=0.3
+Wet Wash Mix	w2	jitter=0.0	spray_count=2	dab_jitter={"across": 0.0, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 1.0, "roundness": 1.0, "veu": 1.0, "veu_escala": 4.5, "veu_opacidade": 1.0}	mistura.paint_amount=0.15
+Wet Wash Mix	w3	jitter=0.0	spray_count=2	dab_jitter={"across": 0.0, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 1.0, "roundness": 1.0, "veu": 1.0, "veu_escala": 3.5, "veu_opacidade": 1.0}	mistura.paint_amount=0.3
+Wet Wash Mix	w4	spray_count=1	-dab_jitter=	jitter=0.0	size=137	mistura.paint_amount=0.3
+Watercolor Splash	s1	dab_jitter={"across": 2.0, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.3, "particle": 0.8, "roundness": 0.6}	grain_depth=1.0	opacity=0.9
+Watercolor Splash	s2	dab_jitter={"across": 1.5, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.3, "particle": 1.0, "roundness": 0.6}	jitter_scale=0.6	opacity=1.0
+Watercolor Splash	s3	dab_jitter={"across": 2.0, "angle_per_stroke": 0.0, "count": 0.6, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.5, "particle": 0.6, "roundness": 0.5}	grain_depth=1.0	opacity=1.0
+Round Watercolor	r1	base=G-Pen	-taper=	blend="Multiply"	blend_sobre_vazio=true	hardness=1.0	borda_px=1.0	opacity=0.44
+Round Watercolor	r2	base=G-Pen	-taper=	blend="Multiply"	blend_sobre_vazio=true	hardness=1.0	borda_px=1.0	opacity=0.44	hardness=0.9
+Round Watercolor	r3	base=G-Pen	-taper=	blend="Multiply"	blend_sobre_vazio=true	hardness=1.0	borda_px=1.0	opacity=0.46	mao.pressureSize=0.0
+Sketch Pencil	p1	hardness=0.8	grain_depth=0.6
+Sketch Pencil	p2	hardness=0.9	falloff="Sharp"	grain_depth=0.5
+Sketch Pencil	p3	hardness=0.9	falloff="Sharp"	grain_depth=0.5	-dual=
+Soft Airbrush	a1	falloff="Smooth"
+Soft Airbrush	a2	falloff="Linear"
+Soft Airbrush	a3	falloff="Smoother"
+Charcoal Stick	c1	hardness=0.9	grain_depth=0.8
+Charcoal Stick	c2	hardness=0.9	grain_depth=0.8	-dual=
+G-Pen	g1	borda_px=1.5
+Turnip Pen	t1	borda_px=1.5
+Round Mixing	m1	mistura.paint_amount=0.9
+Round Mixing	m2	mistura.paint_density=0.8
+Round Mixing	m3	mistura.paint_amount=0.9	mistura.paint_density=0.8
+Gouache	g1	mistura.paint_amount=0.85	mistura.paint_density=0.7
+Gouache	g2	mistura.paint_amount=0.85	mistura.paint_density=0.7	shape={"angle_deg": 0, "flow": false, "kind": "Bristles", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [1.0, 1.0, 0.3, 1.0, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}
+Gouache	g3	mistura.paint_amount=0.85	mistura.paint_density=0.7	hardness=0.6
+Thin Gouache	h1	opacity=1.0
+Thin Gouache	h2	opacity=1.0	mistura.paint_density=0.9
+Thin Gouache	h3	opacity=1.0	mistura.paint_density=0.9	hardness=1.0	grain_depth=0.1
+Oil Paint	o1	mistura.paint_amount=0.45
+Oil Paint	o2	mistura.paint_density=0.6
+Oil Paint	o3	mistura.paint_amount=0.45	mistura.paint_density=0.6	shape={"angle_deg": 0, "flow": false, "kind": "Bristles", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [1.0, 0.8, 0.4, 0.6, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}
+Paint And Apply	q1	hardness=0.1
+Paint And Apply	q2	hardness=0.1	mistura.paint_density=0.6
+Paint And Apply	q3	hardness=0.0	falloff="Smooth"	mistura.paint_density=0.6
+Gouache Blender	b1	size=80
+Thick Oil Paint	k1	shape={"angle_deg": 0, "flow": false, "kind": "Bristles", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [1.0, 0.3, 0.6, 0.9, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}
+Thick Oil Paint	k2	-shape=
+Thick Oil Paint	k3	-shape=	mistura.paint_density=0.9
+Crayon	y1	grain_depth=0.4
+Crayon	y2	grain_depth=0.3	hardness=0.9
+Crayon	y3	grain_depth=0.3	hardness=0.9	mistura.paint_density=1.0	mistura.paint_amount=0.6
+Chalk	k1	hardness=0.9	dab_flatten=0.2
+Chalk	k2	hardness=0.9	dab_flatten=0.2	grain_depth=0.3
+Chalk	k3	hardness=0.9	dab_flatten=0.0	grain_depth=0.3
+Pastel	l1	grain_depth=0.7
+Pastel	l2	jitter=0.2
+Pointillism	i1	jitter=0.4
+Brush Pen	n1	-dual=
+Brush Pen	n2	-dual=	hardness=1.0
+Finger Tip	f1	mistura.paint_density=0.3
+Finger Tip	f2	mistura.paint_density=0.15

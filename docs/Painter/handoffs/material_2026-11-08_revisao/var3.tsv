@@ -1,0 +1,13 @@
+Watercolor Splash	s7	spray_count=3	jitter=0.3	jitter_scale=0.5	hardness=0.8	dab_jitter={"across": 0.35, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.3, "particle": 0.3, "roundness": 0.6}	grain_depth=1.0	opacity=0.9
+Watercolor Splash	s8	spray_count=3	jitter=0.3	jitter_scale=0.5	hardness=0.8	dab_jitter={"across": 0.5, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.3, "particle": 0.35, "roundness": 0.6}	grain_depth=1.0	opacity=0.9
+Watercolor Splash	s9	spray_count=2	jitter=0.3	jitter_scale=0.5	hardness=0.8	dab_jitter={"across": 0.35, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.3, "particle": 0.3, "roundness": 0.6}	grain_depth=1.0	opacity=0.9
+Watercolor Splash	sa	spray_count=3	jitter=0.2	jitter_scale=0.5	hardness=0.8	dab_jitter={"across": 0.25, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.3, "particle": 0.4, "roundness": 0.6}	grain_depth=1.0	opacity=0.9
+Chalk	k7	hardness=0.9	dab_flatten=0.2	grain_depth=0.3	opacity=1.0	mistura.paint_density=0.6
+Chalk	k8	hardness=0.9	dab_flatten=0.2	opacity=1.0
+Chalk	k9	hardness=0.9	dab_flatten=0.2	grain_depth=0.3	opacity=1.0	mistura.paint_amount=0.3
+Crayon	y6	grain_depth=0.3	hardness=0.9	mistura.paint_amount=0.45
+Crayon	y7	grain_depth=0.4	hardness=0.9	mistura.paint_amount=0.5	mistura.paint_density=0.8
+Pastel	l5	opacity=0.6	mistura.paint_amount=0.3
+Pastel	l6	jitter=0.35	mistura.paint_amount=0.3
+Soft Airbrush	a7	flow=0.65
+Paint And Apply	q7	hardness=0.0	falloff="Smooth"	mistura.paint_density=0.5	-taper=

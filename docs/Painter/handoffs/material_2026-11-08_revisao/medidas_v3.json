@@ -1,0 +1,2360 @@
+[
+ {
+  "pincel": "G-Pen",
+  "csp": "G-pen",
+  "tam": 10,
+  "vazio": {
+   "veredito": "igual",
+   "medida": "cob ×1.12 · larg ×1.18 · cor Δ4",
+   "csp": {
+    "cov": 3.28,
+    "larg": 10.0,
+    "cor": [
+     27,
+     170,
+     81
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 3.69,
+    "larg": 12.0,
+    "cor": [
+     30,
+     171,
+     83
+    ],
+    "cores": null
+   }
+  },
+  "branco": {
+   "veredito": "igual",
+   "medida": "cob ×1.12 · larg ×1.18 · cor Δ4",
+   "csp": {
+    "cov": 3.28,
+    "larg": 10.0,
+    "cor": [
+     27,
+     170,
+     81
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 3.69,
+    "larg": 12.0,
+    "cor": [
+     30,
+     171,
+     83
+    ],
+    "cores": null
+   }
+  },
+  "blocos": {
+   "veredito": "igual",
+   "medida": "cob ×1.11 · larg ×1.18 · cor Δ4",
+   "csp": {
+    "cov": 3.27,
+    "larg": 10.0,
+    "cor": [
+     17,
+     155,
+     60
+    ],
+    "cores": [
+     [
+      0,
+      151,
+      73
+     ],
+     [
+      25,
+      164,
+      54
+     ],
+     [
+      21,
+      145,
+      56
+     ]
+    ]
+   },
+   "ph2d": {
+    "cov": 3.62,
+    "larg": 12.0,
+    "cor": [
+     19,
+     156,
+     58
+    ],
+    "cores": [
+     [
+      0,
+      153,
+      70
+     ],
+     [
+      28,
+      165,
+      53
+     ],
+     [
+      23,
+      144,
+      55
+     ]
+    ]
+   }
+  }
+ },
+ {
+  "pincel": "Turnip Pen",
+  "csp": "Turnip pen",
+  "tam": 8,
+  "vazio": {
+   "veredito": "perto",
+   "medida": "cob ×1.08 · larg ×1.00 · cor Δ20",
+   "csp": {
+    "cov": 2.61,
+    "larg": 8.0,
+    "cor": [
+     36,
+     173,
+     88
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 2.81,
+    "larg": 8.0,
+    "cor": [
+     21,
+     168,
+     76
+    ],
+    "cores": null
+   }
+  },
+  "branco": {
+   "veredito": "perto",
+   "medida": "cob ×1.08 · larg ×1.00 · cor Δ20",
+   "csp": {
+    "cov": 2.61,
+    "larg": 8.0,
+    "cor": [
+     36,
+     174,
+     88
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 2.81,
+    "larg": 8.0,
+    "cor": [
+     21,
+     168,
+     76
+    ],
+    "cores": null
+   }
+  },
+  "blocos": {
+   "veredito": "perto",
+   "medida": "cob ×1.08 · larg ×1.00 · cor Δ16",
+   "csp": {
+    "cov": 2.6,
+    "larg": 8.0,
+    "cor": [
+     23,
+     154,
+     60
+    ],
+    "cores": [
+     [
+      0,
+      148,
+      78
+     ],
+     [
+      34,
+      166,
+      52
+     ],
+     [
+      29,
+      140,
+      54
+     ]
+    ]
+   },
+   "ph2d": {
+    "cov": 2.8,
+    "larg": 8.0,
+    "cor": [
+     13,
+     157,
+     60
+    ],
+    "cores": [
+     [
+      0,
+      153,
+      70
+     ],
+     [
+      19,
+      163,
+      55
+     ],
+     [
+      16,
+      149,
+      57
+     ]
+    ]
+   }
+  }
+ },
+ {
+  "pincel": "Soft Airbrush",
+  "csp": "Soft",
+  "tam": 150,
+  "vazio": {
+   "veredito": "perto",
+   "medida": "cob ×0.66 · larg ×0.70 · cor Δ7",
+   "csp": {
+    "cov": 58.75,
+    "larg": 171.0,
+    "cor": [
+     164,
+     221,
+     185
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 38.64,
+    "larg": 119.0,
+    "cor": [
+     158,
+     219,
+     181
+    ],
+    "cores": null
+   }
+  },
+  "branco": {
+   "veredito": "perto",
+   "medida": "cob ×0.65 · larg ×0.69 · cor Δ7",
+   "csp": {
+    "cov": 59.04,
+    "larg": 172.0,
+    "cor": [
+     164,
+     221,
+     185
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 38.62,
+    "larg": 119.0,
+    "cor": [
+     158,
+     219,
+     181
+    ],
+    "cores": null
+   }
+  },
+  "blocos": {
+   "veredito": "perto",
+   "medida": "cob ×0.66 · larg ×0.69 · cor Δ5",
+   "csp": {
+    "cov": 55.71,
+    "larg": 171.0,
+    "cor": [
+     101,
+     130,
+     59
+    ],
+    "cores": [
+     [
+      0,
+      104,
+      141
+     ],
+     [
+      150,
+      185,
+      22
+     ],
+     [
+      130,
+      69,
+      34
+     ]
+    ]
+   },
+   "ph2d": {
+    "cov": 36.95,
+    "larg": 117.0,
+    "cor": [
+     102,
+     133,
+     56
+    ],
+    "cores": [
+     [
+      0,
+      106,
+      137
+     ],
+     [
+      146,
+      184,
+      23
+     ],
+     [
+      126,
+      72,
+      35
+     ]
+    ]
+   }
+  }
+ },
+ {
+  "pincel": "Sketch Pencil",
+  "csp": "Pencil",
+  "tam": 10,
+  "vazio": {
+   "veredito": "perto",
+   "medida": "cob ×1.22 · larg ×1.14 · cor Δ7",
+   "csp": {
+    "cov": 1.96,
+    "larg": 6.0,
+    "cor": [
+     100,
+     197,
+     136
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 2.4,
+    "larg": 7.0,
+    "cor": [
+     94,
+     195,
+     132
+    ],
+    "cores": null
+   }
+  },
+  "branco": {
+   "veredito": "perto",
+   "medida": "cob ×1.23 · larg ×1.14 · cor Δ7",
+   "csp": {
+    "cov": 1.96,
+    "larg": 6.0,
+    "cor": [
+     100,
+     197,
+     136
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 2.41,
+    "larg": 7.0,
+    "cor": [
+     94,
+     195,
+     132
+    ],
+    "cores": null
+   }
+  },
+  "blocos": {
+   "veredito": "perto",
+   "medida": "cob ×1.22 · larg ×1.14 · cor Δ6",
+   "csp": {
+    "cov": 1.94,
+    "larg": 6.0,
+    "cor": [
+     64,
+     143,
+     58
+    ],
+    "cores": [
+     [
+      0,
+      126,
+      109
+     ],
+     [
+      94,
+      176,
+      37
+     ],
+     [
+      77,
+      106,
+      45
+     ]
+    ]
+   },
+   "ph2d": {
+    "cov": 2.36,
+    "larg": 7.0,
+    "cor": [
+     59,
+     144,
+     58
+    ],
+    "cores": [
+     [
+      0,
+      129,
+      104
+     ],
+     [
+      88,
+      175,
+      38
+     ],
+     [
+      72,
+      110,
+      46
+     ]
+    ]
+   }
+  }
+ },
+ {
+  "pincel": "Charcoal Stick",
+  "csp": "Charcoal",
+  "tam": 20,
+  "vazio": {
+   "veredito": "perto",
+   "medida": "cob ×0.82 · larg ×0.89 · cor Δ4",
+   "csp": {
+    "cov": 6.43,
+    "larg": 18.0,
+    "cor": [
+     69,
+     183,
+     112
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 5.28,
+    "larg": 16.0,
+    "cor": [
+     71,
+     186,
+     114
+    ],
+    "cores": null
+   }
+  },
+  "branco": {
+   "veredito": "perto",
+   "medida": "cob ×0.82 · larg ×0.89 · cor Δ5",
+   "csp": {
+    "cov": 6.43,
+    "larg": 18.0,
+    "cor": [
+     69,
+     183,
+     112
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 5.26,
+    "larg": 16.0,
+    "cor": [
+     71,
+     187,
+     114
+    ],
+    "cores": null
+   }
+  },
+  "blocos": {
+   "veredito": "perto",
+   "medida": "cob ×0.81 · larg ×0.89 · cor Δ3",
+   "csp": {
+    "cov": 6.37,
+    "larg": 18.0,
+    "cor": [
+     44,
+     146,
+     58
+    ],
+    "cores": [
+     [
+      0,
+      135,
+      93
+     ],
+     [
+      64,
+      169,
+      43
+     ],
+     [
+      55,
+      120,
+      48
+     ]
+    ]
+   },
+   "ph2d": {
+    "cov": 5.16,
+    "larg": 16.0,
+    "cor": [
+     45,
+     148,
+     59
+    ],
+    "cores": [
+     [
+      0,
+      137,
+      94
+     ],
+     [
+      66,
+      171,
+      43
+     ],
+     [
+      54,
+      122,
+      49
+     ]
+    ]
+   }
+  }
+ },
+ {
+  "pincel": "Round Watercolor",
+  "csp": "Round watercolor",
+  "tam": 80,
+  "vazio": {
+   "veredito": "igual",
+   "medida": "cob ×1.00 · larg ×1.00 · cor Δ1",
+   "csp": {
+    "cov": 28.46,
+    "larg": 80.0,
+    "cor": [
+     144,
+     214,
+     170
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 28.59,
+    "larg": 80.0,
+    "cor": [
+     144,
+     213,
+     170
+    ],
+    "cores": null
+   }
+  },
+  "branco": {
+   "veredito": "igual",
+   "medida": "cob ×1.00 · larg ×1.00 · cor Δ1",
+   "csp": {
+    "cov": 28.46,
+    "larg": 80.0,
+    "cor": [
+     143,
+     213,
+     169
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 28.59,
+    "larg": 80.0,
+    "cor": [
+     144,
+     213,
+     169
+    ],
+    "cores": null
+   }
+  },
+  "blocos": {
+   "veredito": "igual",
+   "medida": "cob ×1.00 · larg ×1.00 · cor Δ2",
+   "csp": {
+    "cov": 28.46,
+    "larg": 80.0,
+    "cor": [
+     89,
+     93,
+     40
+    ],
+    "cores": [
+     [
+      0,
+      59,
+      125
+     ],
+     [
+      135,
+      167,
+      0
+     ],
+     [
+      111,
+      17,
+      13
+     ]
+    ]
+   },
+   "ph2d": {
+    "cov": 28.57,
+    "larg": 80.0,
+    "cor": [
+     90,
+     93,
+     40
+    ],
+    "cores": [
+     [
+      0,
+      59,
+      126
+     ],
+     [
+      135,
+      167,
+      0
+     ],
+     [
+      113,
+      17,
+      13
+     ]
+    ]
+   }
+  }
+ },
+ {
+  "pincel": "Wet Wash Mix",
+  "csp": "Wet wash",
+  "tam": 30,
+  "vazio": {
+   "veredito": "diferente",
+   "medida": "cob ×0.95 · larg ×0.94 · cor Δ88",
+   "csp": {
+    "cov": 49.64,
+    "larg": 139.0,
+    "cor": [
+     26,
+     169,
+     79
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 47.14,
+    "larg": 130.0,
+    "cor": [
+     92,
+     194,
+     131
+    ],
+    "cores": null
+   }
+  },
+  "branco": {
+   "veredito": "igual",
+   "medida": "cob ×0.92 · larg ×0.91 · cor Δ5",
+   "csp": {
+    "cov": 47.87,
+    "larg": 137.0,
+    "cor": [
+     170,
+     223,
+     190
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 43.86,
+    "larg": 124.0,
+    "cor": [
+     166,
+     222,
+     187
+    ],
+    "cores": null
+   }
+  },
+  "blocos": {
+   "veredito": "perto",
+   "medida": "cob ×0.89 · larg ×0.93 · cor Δ22",
+   "csp": {
+    "cov": 48.67,
+    "larg": 137.5,
+    "cor": [
+     83,
+     68,
+     34
+    ],
+    "cores": [
+     [
+      0,
+      31,
+      115
+     ],
+     [
+      132,
+      138,
+      0
+     ],
+     [
+      104,
+      8,
+      4
+     ]
+    ]
+   },
+   "ph2d": {
+    "cov": 43.43,
+    "larg": 128.0,
+    "cor": [
+     93,
+     81,
+     38
+    ],
+    "cores": [
+     [
+      0,
+      42,
+      125
+     ],
+     [
+      144,
+      156,
+      0
+     ],
+     [
+      114,
+      12,
+      9
+     ]
+    ]
+   }
+  }
+ },
+ {
+  "pincel": "Watercolor Splash",
+  "csp": "Watercolor splash",
+  "tam": 300,
+  "vazio": {
+   "veredito": "igual",
+   "medida": "cob ×1.16 · larg ×0.87 · cor Δ13",
+   "csp": {
+    "cov": 37.36,
+    "larg": 130.5,
+    "cor": [
+     120,
+     205,
+     150
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 43.29,
+    "larg": 114.0,
+    "cor": [
+     110,
+     200,
+     143
+    ],
+    "cores": null
+   }
+  },
+  "branco": {
+   "veredito": "igual",
+   "medida": "cob ×1.09 · larg ×0.87 · cor Δ1",
+   "csp": {
+    "cov": 38.48,
+    "larg": 163.0,
+    "cor": [
+     112,
+     201,
+     144
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 42.11,
+    "larg": 142.0,
+    "cor": [
+     111,
+     201,
+     145
+    ],
+    "cores": null
+   }
+  },
+  "blocos": {
+   "veredito": "perto",
+   "medida": "cob ×1.22 · larg ×1.09 · cor Δ19",
+   "csp": {
+    "cov": 36.22,
+    "larg": 141.0,
+    "cor": [
+     84,
+     96,
+     34
+    ],
+    "cores": [
+     [
+      0,
+      57,
+      119
+     ],
+     [
+      118,
+      162,
+      0
+     ],
+     [
+      107,
+      17,
+      13
+     ]
+    ]
+   },
+   "ph2d": {
+    "cov": 44.1,
+    "larg": 154.0,
+    "cor": [
+     71,
+     87,
+     30
+    ],
+    "cores": [
+     [
+      0,
+      54,
+      103
+     ],
+     [
+      100,
+      156,
+      0
+     ],
+     [
+      91,
+      16,
+      12
+     ]
+    ]
+   }
+  }
+ },
+ {
+  "pincel": "Round Mixing",
+  "csp": "Round mixing brush",
+  "tam": 50,
+  "vazio": {
+   "veredito": "perto",
+   "medida": "cob ×0.99 · larg ×1.00 · cor Δ28",
+   "csp": {
+    "cov": 17.28,
+    "larg": 50.0,
+    "cor": [
+     34,
+     173,
+     86
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 17.08,
+    "larg": 50.0,
+    "cor": [
+     13,
+     165,
+     70
+    ],
+    "cores": null
+   }
+  },
+  "branco": {
+   "veredito": "igual",
+   "medida": "cob ×0.99 · larg ×1.00 · cor Δ1",
+   "csp": {
+    "cov": 17.28,
+    "larg": 50.0,
+    "cor": [
+     30,
+     171,
+     83
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 17.07,
+    "larg": 50.0,
+    "cor": [
+     29,
+     171,
+     82
+    ],
+    "cores": null
+   }
+  },
+  "blocos": {
+   "veredito": "igual",
+   "medida": "cob ×0.99 · larg ×1.00 · cor Δ9",
+   "csp": {
+    "cov": 17.27,
+    "larg": 50.0,
+    "cor": [
+     15,
+     154,
+     63
+    ],
+    "cores": [
+     [
+      0,
+      144,
+      83
+     ],
+     [
+      24,
+      164,
+      54
+     ],
+     [
+      18,
+      149,
+      56
+     ]
+    ]
+   },
+   "ph2d": {
+    "cov": 17.04,
+    "larg": 50.0,
+    "cor": [
+     17,
+     155,
+     61
+    ],
+    "cores": [
+     [
+      0,
+      149,
+      75
+     ],
+     [
+      26,
+      163,
+      55
+     ],
+     [
+      21,
+      148,
+      56
+     ]
+    ]
+   }
+  }
+ },
+ {
+  "pincel": "Gouache",
+  "csp": "Gouache",
+  "tam": 80,
+  "vazio": {
+   "veredito": "igual",
+   "medida": "cob ×1.19 · larg ×1.17 · cor Δ4",
+   "csp": {
+    "cov": 22.27,
+    "larg": 65.0,
+    "cor": [
+     54,
+     180,
+     101
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 26.56,
+    "larg": 76.0,
+    "cor": [
+     57,
+     181,
+     104
+    ],
+    "cores": null
+   }
+  },
+  "branco": {
+   "veredito": "igual",
+   "medida": "cob ×1.19 · larg ×1.17 · cor Δ12",
+   "csp": {
+    "cov": 22.26,
+    "larg": 65.0,
+    "cor": [
+     68,
+     186,
+     112
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 26.48,
+    "larg": 76.0,
+    "cor": [
+     77,
+     189,
+     119
+    ],
+    "cores": null
+   }
+  },
+  "blocos": {
+   "veredito": "igual",
+   "medida": "cob ×1.18 · larg ×1.18 · cor Δ11",
+   "csp": {
+    "cov": 22.22,
+    "larg": 64.0,
+    "cor": [
+     41,
+     147,
+     61
+    ],
+    "cores": [
+     [
+      1,
+      133,
+      99
+     ],
+     [
+      61,
+      169,
+      45
+     ],
+     [
+      51,
+      125,
+      49
+     ]
+    ]
+   },
+   "ph2d": {
+    "cov": 26.26,
+    "larg": 76.0,
+    "cor": [
+     48,
+     145,
+     60
+    ],
+    "cores": [
+     [
+      1,
+      133,
+      99
+     ],
+     [
+      71,
+      171,
+      42
+     ],
+     [
+      60,
+      118,
+      48
+     ]
+    ]
+   }
+  }
+ },
+ {
+  "pincel": "Dry Gouache",
+  "csp": "Dry Gouache",
+  "tam": 80,
+  "vazio": {
+   "veredito": "igual",
+   "medida": "cob ×1.08 · larg ×1.04 · cor Δ1",
+   "csp": {
+    "cov": 25.28,
+    "larg": 75.0,
+    "cor": [
+     80,
+     190,
+     121
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 27.18,
+    "larg": 78.0,
+    "cor": [
+     81,
+     190,
+     122
+    ],
+    "cores": null
+   }
+  },
+  "branco": {
+   "veredito": "igual",
+   "medida": "cob ×1.07 · larg ×1.03 · cor Δ0",
+   "csp": {
+    "cov": 25.36,
+    "larg": 76.0,
+    "cor": [
+     107,
+     200,
+     142
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 27.11,
+    "larg": 78.0,
+    "cor": [
+     107,
+     200,
+     142
+    ],
+    "cores": null
+   }
+  },
+  "blocos": {
+   "veredito": "igual",
+   "medida": "cob ×1.07 · larg ×1.04 · cor Δ2",
+   "csp": {
+    "cov": 25.2,
+    "larg": 75.0,
+    "cor": [
+     68,
+     140,
+     59
+    ],
+    "cores": [
+     [
+      1,
+      122,
+      114
+     ],
+     [
+      99,
+      176,
+      35
+     ],
+     [
+      84,
+      101,
+      43
+     ]
+    ]
+   },
+   "ph2d": {
+    "cov": 26.97,
+    "larg": 78.0,
+    "cor": [
+     66,
+     139,
+     60
+    ],
+    "cores": [
+     [
+      1,
+      121,
+      116
+     ],
+     [
+      97,
+      176,
+      36
+     ],
+     [
+      86,
+      100,
+      43
+     ]
+    ]
+   }
+  }
+ },
+ {
+  "pincel": "Thin Gouache",
+  "csp": "Thin Gouache",
+  "tam": 20,
+  "vazio": {
+   "veredito": "perto",
+   "medida": "cob ×1.14 · larg ×1.17 · cor Δ21",
+   "csp": {
+    "cov": 5.81,
+    "larg": 17.0,
+    "cor": [
+     48,
+     178,
+     97
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 6.61,
+    "larg": 20.0,
+    "cor": [
+     32,
+     172,
+     85
+    ],
+    "cores": null
+   }
+  },
+  "branco": {
+   "veredito": "igual",
+   "medida": "cob ×1.14 · larg ×1.17 · cor Δ13",
+   "csp": {
+    "cov": 5.82,
+    "larg": 17.0,
+    "cor": [
+     22,
+     169,
+     77
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 6.61,
+    "larg": 20.0,
+    "cor": [
+     32,
+     172,
+     85
+    ],
+    "cores": null
+   }
+  },
+  "blocos": {
+   "veredito": "igual",
+   "medida": "cob ×1.14 · larg ×1.17 · cor Δ10",
+   "csp": {
+    "cov": 5.8,
+    "larg": 17.0,
+    "cor": [
+     14,
+     156,
+     59
+    ],
+    "cores": [
+     [
+      0,
+      153,
+      70
+     ],
+     [
+      21,
+      164,
+      54
+     ],
+     [
+      17,
+      148,
+      56
+     ]
+    ]
+   },
+   "ph2d": {
+    "cov": 6.59,
+    "larg": 20.0,
+    "cor": [
+     21,
+     154,
+     60
+    ],
+    "cores": [
+     [
+      0,
+      149,
+      76
+     ],
+     [
+      31,
+      165,
+      52
+     ],
+     [
+      25,
+      143,
+      55
+     ]
+    ]
+   }
+  }
+ },
+ {
+  "pincel": "Gouache Blender",
+  "csp": "Gouache blender",
+  "tam": 80,
+  "vazio": {
+   "veredito": "igual",
+   "medida": "nenhum pinta",
+   "csp": {
+    "cov": 0.0,
+    "larg": 0.0,
+    "cor": null,
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 0.0,
+    "larg": 0.0,
+    "cor": null,
+    "cores": null
+   }
+  },
+  "branco": {
+   "veredito": "igual",
+   "medida": "nenhum pinta",
+   "csp": {
+    "cov": 0.0,
+    "larg": 0.0,
+    "cor": null,
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 0.0,
+    "larg": 0.0,
+    "cor": null,
+    "cores": null
+   }
+  },
+  "blocos": {
+   "veredito": "diferente",
+   "medida": "cob ×1.19 · larg ×4.19 · cor Δ17",
+   "csp": {
+    "cov": 5.35,
+    "larg": 9.5,
+    "cor": [
+     192,
+     122,
+     34
+    ],
+    "cores": [
+     [
+      16,
+      79,
+      177
+     ],
+     [
+      209,
+      183,
+      25
+     ],
+     [
+      206,
+      48,
+      16
+     ]
+    ]
+   },
+   "ph2d": {
+    "cov": 6.36,
+    "larg": 43.0,
+    "cor": [
+     179,
+     121,
+     45
+    ],
+    "cores": [
+     [
+      23,
+      82,
+      172
+     ],
+     [
+      210,
+      181,
+      23
+     ],
+     [
+      206,
+      48,
+      17
+     ]
+    ]
+   }
+  }
+ },
+ {
+  "pincel": "Oil Paint",
+  "csp": "Oil paint",
+  "tam": 80,
+  "vazio": {
+   "veredito": "igual",
+   "medida": "cob ×1.12 · larg ×1.11 · cor Δ8",
+   "csp": {
+    "cov": 24.98,
+    "larg": 72.0,
+    "cor": [
+     44,
+     176,
+     94
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 27.88,
+    "larg": 80.0,
+    "cor": [
+     38,
+     174,
+     89
+    ],
+    "cores": null
+   }
+  },
+  "branco": {
+   "veredito": "igual",
+   "medida": "cob ×1.11 · larg ×1.10 · cor Δ14",
+   "csp": {
+    "cov": 24.76,
+    "larg": 71.0,
+    "cor": [
+     125,
+     206,
+     157
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 27.5,
+    "larg": 78.0,
+    "cor": [
+     136,
+     211,
+     164
+    ],
+    "cores": null
+   }
+  },
+  "blocos": {
+   "veredito": "igual",
+   "medida": "cob ×1.11 · larg ×1.10 · cor Δ8",
+   "csp": {
+    "cov": 24.61,
+    "larg": 71.0,
+    "cor": [
+     66,
+     135,
+     70
+    ],
+    "cores": [
+     [
+      1,
+      109,
+      133
+     ],
+     [
+      92,
+      168,
+      47
+     ],
+     [
+      96,
+      110,
+      41
+     ]
+    ]
+   },
+   "ph2d": {
+    "cov": 27.38,
+    "larg": 78.0,
+    "cor": [
+     70,
+     134,
+     73
+    ],
+    "cores": [
+     [
+      1,
+      109,
+      134
+     ],
+     [
+      95,
+      164,
+      53
+     ],
+     [
+      103,
+      112,
+      41
+     ]
+    ]
+   }
+  }
+ },
+ {
+  "pincel": "Paint And Apply",
+  "csp": "Paint and apply",
+  "tam": 40,
+  "vazio": {
+   "veredito": "perto",
+   "medida": "cob ×0.76 · larg ×0.79 · cor Δ16",
+   "csp": {
+    "cov": 15.75,
+    "larg": 46.0,
+    "cor": [
+     64,
+     184,
+     109
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 11.97,
+    "larg": 36.0,
+    "cor": [
+     76,
+     188,
+     118
+    ],
+    "cores": null
+   }
+  },
+  "branco": {
+   "veredito": "perto",
+   "medida": "cob ×0.76 · larg ×0.79 · cor Δ7",
+   "csp": {
+    "cov": 15.57,
+    "larg": 46.0,
+    "cor": [
+     106,
+     200,
+     141
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 11.88,
+    "larg": 36.0,
+    "cor": [
+     101,
+     197,
+     137
+    ],
+    "cores": null
+   }
+  },
+  "blocos": {
+   "veredito": "perto",
+   "medida": "cob ×0.76 · larg ×0.79 · cor Δ8",
+   "csp": {
+    "cov": 15.22,
+    "larg": 46.0,
+    "cor": [
+     66,
+     142,
+     59
+    ],
+    "cores": [
+     [
+      0,
+      124,
+      112
+     ],
+     [
+      98,
+      176,
+      35
+     ],
+     [
+      82,
+      102,
+      43
+     ]
+    ]
+   },
+   "ph2d": {
+    "cov": 11.63,
+    "larg": 36.0,
+    "cor": [
+     62,
+     142,
+     59
+    ],
+    "cores": [
+     [
+      0,
+      126,
+      109
+     ],
+     [
+      91,
+      175,
+      38
+     ],
+     [
+      79,
+      106,
+      44
+     ]
+    ]
+   }
+  }
+ },
+ {
+  "pincel": "Thick Oil Paint",
+  "csp": "Thick oil paint",
+  "tam": 60,
+  "vazio": {
+   "veredito": "igual",
+   "medida": "cob ×1.14 · larg ×1.04 · cor Δ8",
+   "csp": {
+    "cov": 15.15,
+    "larg": 54.0,
+    "cor": [
+     16,
+     157,
+     70
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 17.33,
+    "larg": 56.0,
+    "cor": [
+     12,
+     164,
+     69
+    ],
+    "cores": null
+   }
+  },
+  "branco": {
+   "veredito": "perto",
+   "medida": "cob ×1.14 · larg ×1.04 · cor Δ20",
+   "csp": {
+    "cov": 15.14,
+    "larg": 54.0,
+    "cor": [
+     32,
+     164,
+     81
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 17.31,
+    "larg": 56.0,
+    "cor": [
+     43,
+     176,
+     93
+    ],
+    "cores": null
+   }
+  },
+  "blocos": {
+   "veredito": "igual",
+   "medida": "cob ×1.14 · larg ×1.04 · cor Δ12",
+   "csp": {
+    "cov": 15.13,
+    "larg": 54.0,
+    "cor": [
+     22,
+     151,
+     64
+    ],
+    "cores": [
+     [
+      9,
+      146,
+      77
+     ],
+     [
+      29,
+      159,
+      59
+     ],
+     [
+      25,
+      144,
+      60
+     ]
+    ]
+   },
+   "ph2d": {
+    "cov": 17.27,
+    "larg": 56.0,
+    "cor": [
+     25,
+     152,
+     61
+    ],
+    "cores": [
+     [
+      0,
+      145,
+      82
+     ],
+     [
+      37,
+      165,
+      53
+     ],
+     [
+      34,
+      141,
+      53
+     ]
+    ]
+   }
+  }
+ },
+ {
+  "pincel": "Crayon",
+  "csp": "Crayon",
+  "tam": 30,
+  "vazio": {
+   "veredito": "perto",
+   "medida": "cob ×1.19 · larg ×1.09 · cor Δ36",
+   "csp": {
+    "cov": 7.27,
+    "larg": 22.0,
+    "cor": [
+     22,
+     158,
+     78
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 8.64,
+    "larg": 24.0,
+    "cor": [
+     46,
+     177,
+     96
+    ],
+    "cores": null
+   }
+  },
+  "branco": {
+   "veredito": "igual",
+   "medida": "cob ×1.19 · larg ×1.09 · cor Δ8",
+   "csp": {
+    "cov": 7.22,
+    "larg": 22.0,
+    "cor": [
+     149,
+     211,
+     175
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 8.6,
+    "larg": 24.0,
+    "cor": [
+     144,
+     214,
+     170
+    ],
+    "cores": null
+   }
+  },
+  "blocos": {
+   "veredito": "igual",
+   "medida": "cob ×1.19 · larg ×1.09 · cor Δ8",
+   "csp": {
+    "cov": 7.21,
+    "larg": 22.0,
+    "cor": [
+     93,
+     130,
+     65
+    ],
+    "cores": [
+     [
+      3,
+      104,
+      140
+     ],
+     [
+      136,
+      178,
+      32
+     ],
+     [
+      118,
+      80,
+      41
+     ]
+    ]
+   },
+   "ph2d": {
+    "cov": 8.57,
+    "larg": 24.0,
+    "cor": [
+     92,
+     134,
+     59
+    ],
+    "cores": [
+     [
+      0,
+      109,
+      134
+     ],
+     [
+      135,
+      182,
+      26
+     ],
+     [
+      112,
+      81,
+      38
+     ]
+    ]
+   }
+  }
+ },
+ {
+  "pincel": "Pastel",
+  "csp": "Pastel",
+  "tam": 40,
+  "vazio": {
+   "veredito": "perto",
+   "medida": "cob ×0.88 · larg ×0.88 · cor Δ40",
+   "csp": {
+    "cov": 7.9,
+    "larg": 24.0,
+    "cor": [
+     208,
+     236,
+     218
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 6.95,
+    "larg": 21.0,
+    "cor": [
+     177,
+     226,
+     195
+    ],
+    "cores": null
+   }
+  },
+  "branco": {
+   "veredito": "perto",
+   "medida": "cob ×1.43 · larg ×1.40 · cor Δ9",
+   "csp": {
+    "cov": 4.54,
+    "larg": 14.0,
+    "cor": [
+     236,
+     248,
+     240
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 6.48,
+    "larg": 20.0,
+    "cor": [
+     229,
+     245,
+     235
+    ],
+    "cores": null
+   }
+  },
+  "blocos": {
+   "veredito": "perto",
+   "medida": "cob ×1.40 · larg ×1.06 · cor Δ37",
+   "csp": {
+    "cov": 3.91,
+    "larg": 17.0,
+    "cor": [
+     193,
+     138,
+     25
+    ],
+    "cores": [
+     [
+      1,
+      80,
+      176
+     ],
+     [
+      215,
+      193,
+      11
+     ],
+     [
+      188,
+      41,
+      22
+     ]
+    ]
+   },
+   "ph2d": {
+    "cov": 5.46,
+    "larg": 18.0,
+    "cor": [
+     163,
+     127,
+     44
+    ],
+    "cores": [
+     [
+      0,
+      81,
+      174
+     ],
+     [
+      215,
+      196,
+      6
+     ],
+     [
+      179,
+      35,
+      24
+     ]
+    ]
+   }
+  }
+ },
+ {
+  "pincel": "Chalk",
+  "csp": "Chalk",
+  "tam": 30,
+  "vazio": {
+   "veredito": "perto",
+   "medida": "cob ×0.97 · larg ×0.81 · cor Δ9",
+   "csp": {
+    "cov": 9.05,
+    "larg": 30.0,
+    "cor": [
+     54,
+     175,
+     99
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 8.74,
+    "larg": 24.0,
+    "cor": [
+     46,
+     177,
+     95
+    ],
+    "cores": null
+   }
+  },
+  "branco": {
+   "veredito": "diferente",
+   "medida": "cob ×1.00 · larg ×0.86 · cor Δ43",
+   "csp": {
+    "cov": 8.6,
+    "larg": 28.0,
+    "cor": [
+     207,
+     236,
+     218
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 8.63,
+    "larg": 24.0,
+    "cor": [
+     174,
+     225,
+     193
+    ],
+    "cores": null
+   }
+  },
+  "blocos": {
+   "veredito": "perto",
+   "medida": "cob ×1.03 · larg ×0.86 · cor Δ32",
+   "csp": {
+    "cov": 8.39,
+    "larg": 28.0,
+    "cor": [
+     132,
+     123,
+     57
+    ],
+    "cores": [
+     [
+      0,
+      86,
+      164
+     ],
+     [
+      192,
+      191,
+      12
+     ],
+     [
+      162,
+      47,
+      27
+     ]
+    ]
+   },
+   "ph2d": {
+    "cov": 8.6,
+    "larg": 24.0,
+    "cor": [
+     111,
+     128,
+     58
+    ],
+    "cores": [
+     [
+      0,
+      99,
+      149
+     ],
+     [
+      163,
+      187,
+      20
+     ],
+     [
+      136,
+      65,
+      33
+     ]
+    ]
+   }
+  }
+ },
+ {
+  "pincel": "Pointillism",
+  "csp": "Pointillism",
+  "tam": 80,
+  "vazio": {
+   "veredito": "igual",
+   "medida": "cob ×0.98 · larg ×1.05 · cor Δ6",
+   "csp": {
+    "cov": 24.27,
+    "larg": 72.0,
+    "cor": [
+     67,
+     180,
+     110
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 23.71,
+    "larg": 76.0,
+    "cor": [
+     69,
+     185,
+     112
+    ],
+    "cores": null
+   }
+  },
+  "branco": {
+   "veredito": "igual",
+   "medida": "cob ×0.96 · larg ×1.04 · cor Δ11",
+   "csp": {
+    "cov": 24.41,
+    "larg": 74.0,
+    "cor": [
+     163,
+     219,
+     184
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 23.33,
+    "larg": 77.0,
+    "cor": [
+     171,
+     223,
+     190
+    ],
+    "cores": null
+   }
+  },
+  "blocos": {
+   "veredito": "perto",
+   "medida": "cob ×0.95 · larg ×1.03 · cor Δ18",
+   "csp": {
+    "cov": 24.46,
+    "larg": 73.0,
+    "cor": [
+     104,
+     129,
+     65
+    ],
+    "cores": [
+     [
+      8,
+      104,
+      145
+     ],
+     [
+      149,
+      181,
+      30
+     ],
+     [
+      130,
+      77,
+      39
+     ]
+    ]
+   },
+   "ph2d": {
+    "cov": 23.3,
+    "larg": 75.0,
+    "cor": [
+     109,
+     127,
+     60
+    ],
+    "cores": [
+     [
+      1,
+      99,
+      149
+     ],
+     [
+      157,
+      186,
+      22
+     ],
+     [
+      140,
+      63,
+      33
+     ]
+    ]
+   }
+  }
+ },
+ {
+  "pincel": "Brush Pen",
+  "csp": "Brush pen",
+  "tam": 70,
+  "vazio": {
+   "veredito": "igual",
+   "medida": "cob ×1.10 · larg ×1.01 · cor Δ5",
+   "csp": {
+    "cov": 21.65,
+    "larg": 67.0,
+    "cor": [
+     7,
+     162,
+     65
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 23.86,
+    "larg": 68.0,
+    "cor": [
+     11,
+     164,
+     68
+    ],
+    "cores": null
+   }
+  },
+  "branco": {
+   "veredito": "igual",
+   "medida": "cob ×1.10 · larg ×1.01 · cor Δ5",
+   "csp": {
+    "cov": 21.66,
+    "larg": 67.0,
+    "cor": [
+     7,
+     162,
+     65
+    ],
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 23.86,
+    "larg": 68.0,
+    "cor": [
+     11,
+     164,
+     68
+    ],
+    "cores": null
+   }
+  },
+  "blocos": {
+   "veredito": "igual",
+   "medida": "cob ×1.10 · larg ×1.01 · cor Δ5",
+   "csp": {
+    "cov": 21.64,
+    "larg": 67.0,
+    "cor": [
+     4,
+     159,
+     60
+    ],
+    "cores": [
+     [
+      0,
+      158,
+      63
+     ],
+     [
+      9,
+      161,
+      58
+     ],
+     [
+      4,
+      157,
+      59
+     ]
+    ]
+   },
+   "ph2d": {
+    "cov": 23.81,
+    "larg": 68.0,
+    "cor": [
+     7,
+     158,
+     60
+    ],
+    "cores": [
+     [
+      0,
+      157,
+      65
+     ],
+     [
+      11,
+      162,
+      57
+     ],
+     [
+      8,
+      155,
+      58
+     ]
+    ]
+   }
+  }
+ },
+ {
+  "pincel": "Finger Tip",
+  "csp": "Finger tip",
+  "tam": 30,
+  "vazio": {
+   "veredito": "igual",
+   "medida": "nenhum pinta",
+   "csp": {
+    "cov": 0.0,
+    "larg": 0.0,
+    "cor": null,
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 0.0,
+    "larg": 0.0,
+    "cor": null,
+    "cores": null
+   }
+  },
+  "branco": {
+   "veredito": "igual",
+   "medida": "nenhum pinta",
+   "csp": {
+    "cov": 0.0,
+    "larg": 0.0,
+    "cor": null,
+    "cores": null
+   },
+   "ph2d": {
+    "cov": 0.0,
+    "larg": 0.0,
+    "cor": null,
+    "cores": null
+   }
+  },
+  "blocos": {
+   "veredito": "diferente",
+   "medida": "cob ×0.84 · larg ×1.00 · cor Δ70",
+   "csp": {
+    "cov": 1.06,
+    "larg": 0.0,
+    "cor": [
+     166,
+     126,
+     56
+    ],
+    "cores": [
+     null,
+     [
+      171,
+      163,
+      54
+     ],
+     [
+      213,
+      79,
+      13
+     ]
+    ]
+   },
+   "ph2d": {
+    "cov": 0.89,
+    "larg": 0.0,
+    "cor": [
+     179,
+     124,
+     45
+    ],
+    "cores": [
+     null,
+     [
+      222,
+      190,
+      14
+     ],
+     [
+      203,
+      35,
+      18
+     ]
+    ]
+   }
+  }
+ }
+]

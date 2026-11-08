@@ -447,14 +447,15 @@ pub const MEIOS: &[ReceitaMeio] = &[
     // disco `Sharp` + o dual tomam-lhes o lugar, e o papel é o `Noise` procedural mais grosso que o do Sketch Pencil.
     ReceitaMeio {
         pincel: &[
-            ("hardness", "0.7"),
+            // revisão v3 08/11 (CSP em 3 fundos): mais duro e cheio, sem o achatado nem o tremor.
+            ("hardness", "0.9"),
             ("falloff", "\"Sharp\""),
             ("spacing", "0.1"),
-            ("jitter", "0.1"),
-            ("dab_flatten", "0.1"),
+            ("jitter", "0.0"),
+            ("dab_flatten", "0.0"),
             ("dual", ORLA_DO_PAU),
             ("texture", PAPEL_DO_PAU),
-            ("grain_depth", "1.0"),
+            ("grain_depth", "0.8"),
             ("color_jitter_enabled", "true"),
             ("color_jitter_val", "0.05"),
         ],

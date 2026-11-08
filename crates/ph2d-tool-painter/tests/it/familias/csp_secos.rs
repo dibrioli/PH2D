@@ -15,26 +15,26 @@ const PAPEL_ASPERO: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "
 const PAPEL_DE_DESENHO: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "lei": {"depth_jitter": 0.3, "depth_min": 0.0, "depth_pressure": true, "mode": 0}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [80.0, 80.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 /// A nuvem manchada das aguadas (o «Dappled cloud» do CSP não foi copiado): `Clouds` procedural.
 const NUVEM: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Clouds", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [160.0, 160.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
-/// A 2.ª ponta da Brush Pen: cerdas finas que rasgam a orla.
-const CERDAS_DA_PENA: &str = r#"{"angulo": 0, "atraves": 0.15, "contagem": 4, "dureza": 0.6, "escala": 0.35, "espalhar": 0.25, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.1, "rotacao": 1.0}"#;
 
+// Revisão v3 (08/11, CSP corrido em 3 fundos, `docs/Painter/REVISAO_CSP_V3_2026-11-08.md`): grão, dureza, Amount,
+// espalhamento da Splash, o tubo do Wet wash (véu 4,5×), a Brush Pen sem 2.ª ponta e o Finger tip curto.
 pub const MEIOS: &[ReceitaMeio] = &[
     // Crayon (CSP: 30 px, dureza 100, intervalo 20 contínuo, espessura 80, «Rough textured» dens 90, mistura
     // 60/100/15, HSV por dab 10/−10/−3, Size P·T(30), Flow P): a cera que apanha um pouco de cor e deixa o papel.
     ReceitaMeio {
         pincel: &[
-            ("hardness", "0.6"),
+            ("hardness", "0.9"),
             ("falloff", "\"Sharp\""),
             ("spacing", "0.1"),
             ("continuous_spacing", "true"),
             ("dab_flatten", "0.2"),
             ("texture", PAPEL_ASPERO),
-            ("grain_depth", "0.8"),
+            ("grain_depth", "0.3"),
             ("color_jitter_hue", "0.02"),
             ("color_jitter_val", "0.02"),
             (
                 "mistura_opaca",
-                r#"{"modo": "WetBlend", "paint_amount": 0.6, "paint_density": 1.0, "color_stretch": 0.15, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
+                r#"{"modo": "WetBlend", "paint_amount": 0.45, "paint_density": 1.0, "color_stretch": 0.15, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
             ),
         ],
         mao: &[
@@ -65,7 +65,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("color_jitter_sat", "0.06"),
             (
                 "mistura_opaca",
-                r#"{"modo": "WetBlend", "paint_amount": 0.4, "paint_density": 0.4, "color_stretch": 0.4, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
+                r#"{"modo": "WetBlend", "paint_amount": 0.3, "paint_density": 0.4, "color_stretch": 0.4, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
             ),
         ],
         mao: &[
@@ -81,18 +81,18 @@ pub const MEIOS: &[ReceitaMeio] = &[
     // 0/5/−10, Size P·T(50), Flow P·T(50)): o giz achatado e granulado.
     ReceitaMeio {
         pincel: &[
-            ("hardness", "0.45"),
+            ("hardness", "0.9"),
             ("falloff", "\"Sharp\""),
             ("spacing", "0.1"),
-            ("dab_flatten", "0.5"),
+            ("dab_flatten", "0.2"),
             ("jitter", "0.02"),
             ("texture", PAPEL_DE_DESENHO),
-            ("grain_depth", "0.5"),
+            ("grain_depth", "0.3"),
             ("color_jitter_sat", "0.02"),
             ("color_jitter_val", "0.04"),
             (
                 "mistura_opaca",
-                r#"{"modo": "WetBlend", "paint_amount": 0.41, "paint_density": 1.0, "color_stretch": 0.15, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
+                r#"{"modo": "WetBlend", "paint_amount": 0.3, "paint_density": 1.0, "color_stretch": 0.15, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
             ),
         ],
         mao: &[
@@ -101,7 +101,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("pressureOpacity", 0.5),
         ],
         size_px: Some(42.0),
-        opacity: Some(0.8),
+        opacity: Some(1.0),
         ..ReceitaMeio::digital("Pastel", "Chalk", "Chalk")
     },
     // Pointillism (CSP: 80 px, intervalo 10, espessura 30 @45°, spray 30 desvio −100, mistura 50/50/15, HSV por
@@ -116,7 +116,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("continuous_spacing", "false"),
             ("dab_flatten", "0.7"),
             ("dab_angle_deg", "135"),
-            ("spray_count", "3"),
+            ("spray_count", "4"),
             ("jitter", "0.45"),
             ("jitter_scale", "0.3"),
             ("color_jitter_hue", "0.04"),
@@ -147,19 +147,20 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("spacing", "0.03"),
             ("continuous_spacing", "true"),
             ("blend", "\"Multiply\""),
+            ("blend_sobre_vazio", "true"),
             ("flow", "0.5"),
-            ("spray_count", "3"),
-            ("jitter", "0.8"),
+            ("spray_count", "2"),
+            ("jitter", "0.0"),
             ("jitter_scale", "0.4"),
             (
                 "dab_jitter",
-                r#"{"across": 2.0, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 1.0, "roundness": 0.3, "veu": 0.85, "veu_escala": 2.0, "veu_opacidade": 1.5}"#,
+                r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 1.0, "roundness": 1.0, "veu": 1.0, "veu_escala": 4.5, "veu_opacidade": 1.0}"#,
             ),
             ("texture", NUVEM),
             ("grain_depth", "0.15"),
             (
                 "mistura_opaca",
-                r#"{"modo": "WetBlend", "paint_amount": 0.7, "paint_density": 0.5, "color_stretch": 0.1, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
+                r#"{"modo": "WetBlend", "paint_amount": 0.3, "paint_density": 0.5, "color_stretch": 0.1, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
             ),
         ],
         mao: &[("pressureSize", 0.0), ("pressureOpacity", 0.9)],
@@ -172,26 +173,27 @@ pub const MEIOS: &[ReceitaMeio] = &[
     // a mancha irregular é a nuvem procedural funda sobre partículas de 0,4 do pincel (sem ponta de imagem).
     ReceitaMeio {
         pincel: &[
-            ("hardness", "0.6"),
+            ("hardness", "0.7"),
             ("falloff", "\"Sharp\""),
             ("spacing", "0.1"),
             ("continuous_spacing", "false"),
             ("blend", "\"Multiply\""),
-            ("spray_count", "3"),
-            ("jitter", "1.0"),
-            ("jitter_scale", "0.9"),
+            ("blend_sobre_vazio", "true"),
+            ("spray_count", "2"),
+            ("jitter", "0.1"),
+            ("jitter_scale", "0.5"),
             ("jitter_rotate", "1.0"),
-            ("color_jitter_hue", "0.04"),
+            ("color_jitter_hue", "0.0"),
             ("texture", NUVEM),
-            ("grain_depth", "0.9"),
+            ("grain_depth", "0.6"),
             (
                 "dab_jitter",
-                r#"{"across": 2.0, "angle_per_stroke": 0.0, "count": 0.6, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.5, "particle": 0.4, "roundness": 0.4}"#,
+                r#"{"across": 0.3, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.3, "particle": 0.25, "roundness": 0.3}"#,
             ),
         ],
         mao: &[("pressureSize", 0.5), ("pressureOpacity", 0.6)],
         size_px: Some(300.0),
-        opacity: Some(0.65),
+        opacity: Some(1.0),
         ..ReceitaMeio::digital("Watercolor", "Splash", "Watercolor Splash")
     },
     // Brush pen (CSP: 70 px, intervalo 2 contínuo, ponta dupla de cerdas, «Dappled cloud» dens 100, estab. 15,
@@ -203,7 +205,6 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("spacing", "0.02"),
             ("continuous_spacing", "true"),
             ("stabilizer", "0.15"),
-            ("dual", CERDAS_DA_PENA),
             ("texture", NUVEM),
             ("grain_depth", "0.25"),
         ],
@@ -226,7 +227,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("stabilizer", "0.04"),
             (
                 "mistura_opaca",
-                r#"{"modo": "WetBlend", "paint_amount": 0.0, "paint_density": 1.0, "color_stretch": 0.7, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
+                r#"{"modo": "WetBlend", "paint_amount": 0.0, "paint_density": 1.0, "color_stretch": 0.2, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
             ),
         ],
         mao: &[("pressureSize", 0.5), ("pressureOpacity", 0.6)],

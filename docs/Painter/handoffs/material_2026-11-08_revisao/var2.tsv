@@ -1,0 +1,33 @@
+Wet Wash Mix	w5	jitter=0.0	spray_count=2	mistura.paint_amount=0.3	dab_jitter={"across": 0.0, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 1.0, "roundness": 1.0, "veu": 1.0, "veu_escala": 4.5, "veu_opacidade": 1.5}
+Wet Wash Mix	w6	jitter=0.0	spray_count=2	mistura.paint_amount=0.3	dab_jitter={"across": 0.0, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 1.0, "roundness": 1.0, "veu": 1.0, "veu_escala": 4.5, "veu_opacidade": 1.0}	-texture=
+Wet Wash Mix	w7	jitter=0.0	spray_count=2	mistura.paint_amount=0.3	dab_jitter={"across": 0.0, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 1.0, "roundness": 1.0, "veu": 1.0, "veu_escala": 4.0, "veu_opacidade": 1.0}	-texture=	hardness=0.9
+Watercolor Splash	s4	spray_count=1	dab_jitter={"across": 2.0, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.3, "particle": 0.6, "roundness": 0.5}	grain_depth=1.0	opacity=1.0
+Watercolor Splash	s5	spray_count=2	dab_jitter={"across": 2.0, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.3, "particle": 0.6, "roundness": 0.5}	grain_depth=1.0	opacity=1.0
+Watercolor Splash	s6	spray_count=1	dab_jitter={"across": 2.0, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.3, "particle": 0.8, "roundness": 0.5}	grain_depth=1.0	opacity=1.0
+Chalk	k4	hardness=0.9	dab_flatten=0.2	grain_depth=0.3	opacity=1.0
+Chalk	k5	hardness=1.0	dab_flatten=0.0	grain_depth=0.15
+Chalk	k6	hardness=0.9	dab_flatten=0.1	grain_depth=0.2	mistura.paint_density=1.0	mistura.paint_amount=0.6
+Crayon	y4	grain_depth=0.5	hardness=0.8
+Crayon	y5	grain_depth=0.3	hardness=0.7
+Pastel	l3	opacity=0.7
+Pastel	l4	grain_depth=1.0	jitter=0.3	opacity=0.8
+Paint And Apply	q4	hardness=0.0	falloff="Smooth"	mistura.paint_density=0.6	-taper=
+Paint And Apply	q5	hardness=0.0	falloff="Linear"	mistura.paint_density=0.8
+Paint And Apply	q6	hardness=0.0	falloff="Sphere"	mistura.paint_density=0.6
+Soft Airbrush	a4	flow=0.8
+Soft Airbrush	a5	flow=1.0
+Soft Airbrush	a6	flow=0.8	-texture=
+Sketch Pencil	p4	hardness=0.3	falloff="Sharp"	grain_depth=0.5
+Sketch Pencil	p5	hardness=0.0	falloff="Sharp"	grain_depth=0.5	opacity=1.0
+Sketch Pencil	p6	hardness=0.6	falloff="Sharp"	grain_depth=0.5	opacity=1.0
+Charcoal Stick	c3	hardness=0.9	grain_depth=0.8	dab_flatten=0.0
+Charcoal Stick	c4	hardness=0.9	grain_depth=0.8	dab_flatten=0.0	jitter=0.0
+Pointillism	i2	spray_count=4
+Pointillism	i3	jitter_scale=0.4
+Turnip Pen	t2	borda_px=1.2
+Finger Tip	f3	mistura.paint_density=0.05
+Finger Tip	f4	mistura.color_stretch=0.2
+Gouache Blender	b2	size=80	mistura.paint_density=0.3
+Gouache Blender	b3	size=80	mistura.paint_density=0.15
+Oil Paint	o4	mistura.paint_amount=0.45	mistura.paint_density=0.7
+Thin Gouache	h4	opacity=1.0	hardness=0.9

@@ -62,7 +62,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
     ReceitaMeio {
         pincel: &[
             ("hardness", "1.0"),
-            ("borda_px", "1.0"),
+            ("borda_px", "1.5"), // revisão v3 08/11: a orla do CSP (cor Δ17 → 4)
             ("spacing", "0.1"),
             ("continuous_spacing", "true"),
             ("stabilizer", "0.0"),
@@ -82,7 +82,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
     ReceitaMeio {
         pincel: &[
             ("hardness", "1.0"),
-            ("borda_px", "1.0"),
+            ("borda_px", "1.2"), // revisão v3 08/11: a orla do CSP
             ("spacing", "0.1"),
             ("continuous_spacing", "true"),
             ("stabilizer", "0.1"),

@@ -587,23 +587,24 @@ const SALPICO: Receita = Receita {
 /// do preset de fábrica «Watercolor Basic».
 pub const MEIOS: &[ReceitaMeio] = &[
     ReceitaMeio::aquarela("Watercolor", "Basic", "Watercolor Basic"),
-    // Lote 1 do estudo CSP (`docs/Painter/ESTUDO_CLIP_STUDIO_PINCEIS_2026-11-07.md` §3 e §5): a aguarela redonda — o
-    // carimbo do Digital com o flag watercolor (o meio Watercolor), 80 px, o disco duro (dureza 100 → 0,8: a lavagem
-    // amacia), a borda de água FRACA e estreita (raio 2, alfa 5 → `edge_gain` 0,1 a 2 px), a pressão no tamanho. A
-    // composição «Multiplicar» do CSP: a lavagem ignora o `blend` (`watercolor_wash_ignores_the_brush_blend_mode`), e
-    // o que escurece por cima é o Pigment (a composição subtractiva da aguada). A opacidade pela pressão e pela
-    // velocidade não tem linha neste meio (fica fora); o papel é o da tela (a granulação de fábrica).
+    // Lote 1 do estudo CSP (`docs/Painter/ESTUDO_CLIP_STUDIO_PINCEIS_2026-11-07.md` §3), REFEITA na revisão v3 (08/11,
+    // `docs/Painter/REVISAO_CSP_V3_2026-11-08.md`): o CSP corrido pinta um tubo liso, disco duro, que MULTIPLICA a α 0,44
+    // (o bloco azul casa ao código: (0,59,125)) e pinta cor cheia sobre a camada vazia. A versão de aguada (borda rasgada,
+    // ciano, sem multiplicar) era outro pincel. Digital: o traço é uma camada (não escurece a si mesmo).
     ReceitaMeio {
         pincel: &[
-            ("hardness", "0.8"),
+            ("hardness", "1.0"),
+            ("borda_px", "1.0"),
             ("spacing", "0.1"),
-            ("edge_gain", "0.1"),
-            ("edge_spread", "2.0"),
-            ("pigment", "true"),
+            ("continuous_spacing", "true"),
+            ("stabilizer", "0.0"),
+            ("blend", "\"Multiply\""),
+            ("blend_sobre_vazio", "true"),
         ],
         mao: &[("pressureSize", 0.9), ("pressureSizeCurve", 1.0)],
         size_px: Some(80.0),
-        ..ReceitaMeio::aquarela("Watercolor", "Round", "Round Watercolor")
+        opacity: Some(0.44),
+        ..ReceitaMeio::digital("Watercolor", "Round", "Round Watercolor")
     },
 ];
 

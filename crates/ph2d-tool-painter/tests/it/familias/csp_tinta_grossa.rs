@@ -47,6 +47,8 @@ macro_rules! cerdas {
 /// O papel do guache (CSP «Paper», densidade 85–100): o nosso papel prensado a frio, preso à tela.
 const PAPEL: &str = r#"{"angle_deg": 0, "flow": false, "kind": "PaperCold", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [128.0, 128.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
+// Revisão v3 (08/11, CSP corrido em 3 fundos, `docs/Painter/REVISAO_CSP_V3_2026-11-08.md`): Amount/Density, dureza,
+// tamanho do Gouache blender (80) e as cerdas do Thick oil (chapado no CSP) afinados pela folha.
 pub const MEIOS: &[ReceitaMeio] = &[
     // Round mixing brush (CSP 50 · dureza 100 · 10 % contínuo · 80/50/100, Alpha P(90)): o redondo que apanha e arrasta.
     ReceitaMeio {
@@ -55,7 +57,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("spacing", "0.1"),
             ("continuous_spacing", "true"),
             ("stabilizer", "0.02"),
-            ("mistura_opaca", mistura!(0.8, 0.5, 1.0, 0.0, 0.1)),
+            ("mistura_opaca", mistura!(0.9, 0.8, 1.0, 0.0, 0.1)),
         ],
         mao: &[("pressureSize", 0.8), ("pressureSizeCurve", 1.0)],
         size_px: Some(50.0),
@@ -65,12 +67,12 @@ pub const MEIOS: &[ReceitaMeio] = &[
     // Gouache (CSP 80 · cerda @45° · Paper 100 · 70/45/15, Mix/Alpha P(10)): cobre com estrias e esquece depressa.
     ReceitaMeio {
         pincel: &[
-            ("hardness", "0.85"),
+            ("hardness", "0.6"),
             ("spacing", "0.1"),
             ("continuous_spacing", "true"),
             ("dab_angle_deg", "45"),
             ("shape", cerdas!(1.0, 1.0, 0.4, 1.0)),
-            ("mistura_opaca", mistura!(0.7, 0.45, 0.15, 0.9, 0.9)),
+            ("mistura_opaca", mistura!(0.85, 0.7, 0.15, 0.9, 0.9)),
         ],
         mao: &[("pressureSize", 0.9), ("pressureSizeCurve", 1.0)],
         size_px: Some(80.0),
@@ -96,7 +98,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
     // Thin Gouache (CSP 20 · @63° · Paper 85 · 100/55/70): guache diluído — só a cor do pincel, que vela e arrasta.
     ReceitaMeio {
         pincel: &[
-            ("hardness", "0.8"),
+            ("hardness", "0.9"),
             ("spacing", "0.1"),
             ("continuous_spacing", "true"),
             ("dab_angle_deg", "63"),
@@ -106,7 +108,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
         ],
         mao: &[("pressureSize", 0.9), ("pressureSizeCurve", 1.0)],
         size_px: Some(20.0),
-        opacity: Some(0.85),
+        opacity: Some(1.0),
         ..ReceitaMeio::digital("Oil", "Thick paint", "Thin Gouache")
     },
     // Gouache blender (CSP Mix 0/0, stretch 20, papel 20, intervalo 20): só arrasta a tinta, não pinta o vazio
@@ -118,10 +120,10 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("continuous_spacing", "true"),
             ("texture", PAPEL),
             ("grain_depth", "0.2"),
-            ("mistura_opaca", mistura!(0.0, 0.6, 0.2, 0.0, 0.5)),
+            ("mistura_opaca", mistura!(0.0, 0.15, 0.2, 0.0, 0.5)),
         ],
         mao: &[("pressureSize", 0.5), ("pressureSizeCurve", 1.0)],
-        size_px: Some(60.0),
+        size_px: Some(80.0),
         opacity: Some(1.0),
         ..ReceitaMeio::digital("Oil", "Thick paint", "Gouache Blender")
     },
@@ -135,7 +137,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("shape", cerdas!(1.0, 0.8, 0.5, 0.6)),
             ("color_jitter_enabled", "true"),
             ("color_jitter_val", "0.02"),
-            ("mistura_opaca", mistura!(0.61, 0.81, 0.87, 0.9, 0.9)),
+            ("mistura_opaca", mistura!(0.45, 0.7, 0.87, 0.9, 0.9)),
         ],
         mao: &[("pressureSize", 0.9), ("pressureSizeCurve", 1.0)],
         size_px: Some(80.0),
@@ -145,14 +147,11 @@ pub const MEIOS: &[ReceitaMeio] = &[
     // Paint and apply (CSP 40 · dureza 40 · 80/100/50 · entrada/saída 20, Flow P(40)): redondo macio que cobre.
     ReceitaMeio {
         pincel: &[
-            ("hardness", "0.4"),
+            ("hardness", "0.0"),
+            ("falloff", "\"Smooth\""),
             ("spacing", "0.1"),
             ("continuous_spacing", "true"),
-            (
-                "taper",
-                r#"{"start":0.5,"tip_start":0.4,"end":0.5,"tip_end":0.4,"opacity":0.0}"#,
-            ),
-            ("mistura_opaca", mistura!(0.8, 1.0, 0.5, 0.5, 0.0)),
+            ("mistura_opaca", mistura!(0.8, 0.5, 0.5, 0.5, 0.0)),
         ],
         mao: &[
             ("pressureSize", 0.0),
@@ -172,10 +171,9 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("continuous_spacing", "true"),
             ("dab_angle_deg", "70"),
             ("dab_flatten", "0.4"),
-            ("shape", cerdas!(1.0, 1.0, 0.6, 0.9)),
             ("color_jitter_enabled", "true"),
             ("color_jitter_val", "0.03"),
-            ("mistura_opaca", mistura!(0.85, 0.5, 0.6, 0.7, 0.0)),
+            ("mistura_opaca", mistura!(0.85, 0.9, 0.6, 0.7, 0.0)),
         ],
         mao: &[("pressureSize", 0.7), ("pressureSizeCurve", 1.0)],
         size_px: Some(60.0),

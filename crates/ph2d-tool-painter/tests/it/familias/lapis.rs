@@ -81,13 +81,14 @@ pub const MEIOS: &[ReceitaMeio] = &[
     // tomam-lhe o lugar; o papel é o `Grain` procedural.
     ReceitaMeio {
         pincel: &[
-            ("hardness", "0.5"),
-            ("falloff", "\"Linear\""),
+            // revisão v3 08/11 (CSP em 3 fundos): o núcleo `Sharp` mais fino e escuro — o Pencil 10 do CSP traça 6 px.
+            ("hardness", "0.0"),
+            ("falloff", "\"Sharp\""),
             ("spacing", "0.1"),
             ("jitter", "0.05"),
             ("dual", ORLA_DO_SKETCH),
             ("texture", PAPEL_DO_SKETCH),
-            ("grain_depth", "0.8"),
+            ("grain_depth", "0.5"),
         ],
         mao: &[
             ("pressureSize", 0.9),
@@ -96,7 +97,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("pressureOpacityCurve", 1.0),
         ],
         size_px: Some(10.0),
-        opacity: Some(0.9),
+        opacity: Some(1.0),
         ..ReceitaMeio::digital("Pencil", "Sketch", "Sketch Pencil")
     },
 ];

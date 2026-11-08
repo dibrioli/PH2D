@@ -678,11 +678,12 @@ fn a_caixinha_bumps_into_pede_o_mesmo_que_a_celula_e_o_auto_key_grava_igual() {
     );
 }
 
-/// ⭐ Onda 9f (dono 07/11: «outline colorida na moldura»): cada linha da lista «Layers» e cada caixinha «Bumps
-/// into» têm a MOLDURA na cor da SUA camada, dentro da caixa (a medida não muda); a caixinha desligada, a mesma cor
-/// mais apagada.
+/// ⭐ Onda 9f (dono 07/11: «outline colorida na moldura»): cada caixinha «Bumps into» tem a MOLDURA na cor da SUA
+/// camada, dentro da caixa (a medida não muda); a desligada, a mesma cor mais apagada. A lista «Layers» é a exceção
+/// do dono («aqui (nas setas) ficam os quadrados antes do nome como antes»): o quadradinho da cor antes do nome,
+/// dentro da linha, e NENHUM contorno.
 #[test]
-fn a_lista_e_as_caixinhas_tem_a_moldura_na_cor_da_camada() {
+fn as_caixinhas_tem_a_moldura_e_a_lista_o_quadradinho_na_cor_da_camada() {
     use ph2d_editor_core::paint::{
         espessura_do_contorno, forget_layer_outlines, layer_outline_of, resolve,
     };
@@ -708,10 +709,25 @@ fn a_lista_e_as_caixinhas_tem_a_moldura_na_cor_da_camada() {
     let e = espessura_do_contorno();
     let mut estados = Vec::new();
     for n in 0..5 {
-        for (id, caixinha) in [
-            (ids::PHYSICS_LAYER_LIST[n], false),
-            (ids::PHYSICS_LAYER_BUMPS[n], true),
-        ] {
+        let linha = ids::PHYSICS_LAYER_LIST[n];
+        let r = mesa
+            .rect(linha)
+            .unwrap_or_else(|| panic!("{linha:?} não pintada"));
+        assert_eq!(
+            layer_outline_of(linha),
+            None,
+            "a linha {n} da lista tem contorno (o dono quer só o quadradinho)"
+        );
+        let (q, cor_q) =
+            aba::quadradinho_da_lista(n).unwrap_or_else(|| panic!("a linha {n} sem o quadradinho"));
+        assert_eq!(cor_q, resolve(ColorToken::layer(n), tema).components);
+        assert!(
+            q.x > r.x && q.x + q.w < r.x + r.w * 0.5 && q.y > r.y && q.y + q.h < r.y + r.h,
+            "o quadradinho {q:?} não está à esquerda, dentro da linha {r:?}"
+        );
+        assert!(q.w > 0.0 && (q.w - q.h).abs() < 1e-3, "um quadrado");
+        {
+            let id = ids::PHYSICS_LAYER_BUMPS[n];
             let caixa = mesa
                 .rect(id)
                 .unwrap_or_else(|| panic!("{id:?} não pintado"));
@@ -733,11 +749,7 @@ fn a_lista_e_as_caixinhas_tem_a_moldura_na_cor_da_camada() {
                 base.multiply_alpha(LAYER_OUTLINE_OFF_ALPHA)
             };
             assert_eq!(s.cor, cor.components, "{id:?}: a cor");
-            if caixinha {
-                estados.push(s.ligado);
-            } else {
-                assert!(s.ligado, "a linha da lista nunca se apaga");
-            }
+            estados.push(s.ligado);
         }
     }
     assert_eq!(

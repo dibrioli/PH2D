@@ -48,6 +48,9 @@ thread_local! {
     pub(crate) static MAIS: Cell<bool> = const { Cell::new(false) };
     /// O «Remove» a perguntar para onde vão os objetos: o destino escolhido.
     pub(crate) static REMOVENDO: Cell<Option<usize>> = const { Cell::new(None) };
+    /// O quadradinho de cor de cada linha da lista «Layers» no último quadro: (caixa, cor) — os testes.
+    pub(crate) static QUADRADINHOS: std::cell::RefCell<std::collections::BTreeMap<usize, (Rect, [f32; 4])>> =
+        const { std::cell::RefCell::new(std::collections::BTreeMap::new()) };
 }
 
 /// A aba existe (à frente ou atrás de Scene)?
@@ -188,6 +191,16 @@ pub fn solta() -> bool {
 #[must_use]
 pub fn arrastando() -> Option<bool> {
     ARRASTO.get().map(|(v, _)| v)
+}
+
+pub(crate) fn regista_quadradinho(n: usize, caixa: Rect, cor: [f32; 4]) {
+    QUADRADINHOS.with(|m| m.borrow_mut().insert(n, (caixa, cor)));
+}
+
+/// O quadradinho de cor da linha `n` da lista «Layers» (caixa e cor), o último pintado.
+#[must_use]
+pub fn quadradinho_da_lista(n: usize) -> Option<(Rect, [f32; 4])> {
+    QUADRADINHOS.with(|m| m.borrow().get(&n).copied())
 }
 
 /// A geometria do último quadro pintado da aba.

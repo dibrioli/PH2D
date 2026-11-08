@@ -1,8 +1,6 @@
 //! A pintura da aba das camadas: o que se lê antes ([`Quadro`]), as três partes e os alvos.
 
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, paint_layer_outline, paint_text, paint_text_rotated_ccw, resolve,
-};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_rotated_ccw, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::camada_das_listas;
 use ph2d_editor_core::widget::{TextInput, paint_text_input_with_buffer};
@@ -98,8 +96,6 @@ fn pinta_lista(ctx: &mut PaintCtx, q: &Quadro) {
             if sel {
                 fill_rounded_rect(cena, r, raio, tom!(ColorToken::Bg3, theme));
             }
-            // A moldura da linha na cor da camada, com o raio da pílula (selecionada: fundo E contorno; onda 9f).
-            paint_layer_outline(cena, theme, i::PHYSICS_LAYER_LIST[n], n, r, raio, true);
             if editando.is_some_and(|(e, onde)| e == n && onde == Onde::Lista) {
                 continue;
             }
@@ -108,16 +104,21 @@ fn pinta_lista(ctx: &mut PaintCtx, q: &Quadro) {
             } else {
                 ColorToken::Text2
             };
-            let (tx, topo) = (r.x + Spacing::Sm.px(), r.y + (r.h - font) * 0.5);
-            let cabe = r.w - contagem_w - Spacing::Sm.px() * 2.0;
+            // O quadradinho da cor da camada antes do nome, como na 9d (dono 07/11, onda 9f: «aqui ficam os
+            // quadrados antes do nome como antes»); a lista é o único sítio SEM o contorno na moldura.
+            let lado = font - Spacing::Xs.px();
+            let q = Rect::new(r.x + Spacing::Sm.px(), r.y + (r.h - lado) * 0.5, lado, lado);
+            let cor_q = resolve(super::cor_da_camada(n), theme);
+            fill_rounded_rect(cena, q, raio * 0.5, cor_q);
+            super::regista_quadradinho(n, q, cor_q.components);
             paint_text(
                 texto,
                 cena,
                 &rotulos[n],
-                tx,
-                topo,
+                r.x + Spacing::Sm.px() * 2.0 + lado,
+                r.y + (r.h - font) * 0.5,
                 font,
-                cabe,
+                r.w - contagem_w - lado - Spacing::Sm.px(),
                 tom!(cor, theme),
             );
             let c = &contagens[p];

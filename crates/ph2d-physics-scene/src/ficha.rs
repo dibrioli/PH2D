@@ -45,6 +45,7 @@ pub const PLAYER_AT: [f32; 2] = [-5.5, HERO_SHEET_SOLE_BELOW_CENTRE];
 pub const CRATE_AT: [f32; 2] = [0.5, 5.0];
 /// A forma solta fica no caminho do Crate: ele passa-lhe por dentro, porque sem corpo ela não segura nada.
 pub const LOOSE_AT: [f32; 2] = [0.5, 2.5];
+pub const KINEMATIC_AT: [f32; 2] = [-3.0, 4.5];
 pub const BALL_AT: [f32; 2] = [4.0, 6.5];
 pub const ZONE_AT: [f32; 2] = [4.0, 2.0];
 pub const ZONE_HALF: [f32; 2] = [1.5, 2.0];
@@ -148,6 +149,14 @@ pub fn monta(world: &mut World) {
         corpo(BodyKind::Static),
         caixa(ONE_WAY_HALF, GROUND),
         OneWayPlatform,
+    ));
+    // Onda 9g: o terceiro tipo de corpo na cena, para o traço pontilhado do Kinematic se ver.
+    world.spawn((
+        Name::new("Kinematic Platform"),
+        pose(KINEMATIC_AT),
+        azulejo(PLATFORM_TILE, ONE_WAY_HALF, [1.0; 4]),
+        corpo(BodyKind::Kinematic),
+        caixa(ONE_WAY_HALF, GROUND),
     ));
     world.spawn((
         Name::new("Collision Shape"),

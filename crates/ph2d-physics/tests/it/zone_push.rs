@@ -307,3 +307,53 @@ fn a_dry_body_is_told_nothing() {
     w.step();
     assert_eq!(w.fluid_at(body).push, [0.0, 0.0]);
 }
+
+/// **Uma forma FILHA rodada sopra no frame DELA** (ADR-0199, GEF02 B6): o corpo da zona sem
+/// rotação, a forma rodada `π/2` pelo `shape_pose`. O solver e a consulta empurram para +Y.
+#[test]
+fn a_zone_with_a_rotated_child_shape_pushes_in_the_shapes_frame() {
+    let mut w = PhysicsWorld::new();
+    w.set_gravity(0.0, 0.0);
+    let mut z = desc(
+        ShapeDesc::Cuboid {
+            half_x: 40.0,
+            half_y: 40.0,
+        },
+        0.0,
+        0.0,
+        RigidBodyType::Fixed,
+    );
+    z.is_sensor = true;
+    z.effector = Some(AreaEffect {
+        force: [4.0, 0.0],
+        ..inert()
+    });
+    z.shape_pose = [0.0, 0.0, std::f32::consts::FRAC_PI_2];
+    w.spawn_body(z);
+    let mut d = desc(
+        ShapeDesc::Ball { radius: 0.5 },
+        0.0,
+        0.0,
+        RigidBodyType::Dynamic,
+    );
+    d.lock_rotation = true;
+    let body = w.spawn_body(d);
+    w.step();
+    let before = linvel(&w, body);
+    let said = w.fluid_at(body).push;
+    w.step();
+    let after = linvel(&w, body);
+    let done = [after[0] - before[0], after[1] - before[1]];
+    assert!(
+        done[1] > 0.0 && done[0].abs() < done[1] * 1e-3,
+        "o solver tem de empurrar para +Y; fez ({:.8}, {:.8})",
+        done[0],
+        done[1]
+    );
+    assert!(
+        said[1] > 0.0 && said[0].abs() < said[1] * 1e-3,
+        "a consulta tem de dizer +Y; disse ({:.8}, {:.8})",
+        said[0],
+        said[1]
+    );
+}

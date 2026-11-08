@@ -69,12 +69,15 @@ impl PhysicsWorld {
             .colliders
             .insert_with_parent(collider, body, &mut self.bodies);
         self.stamp_layer(handle, desc.layer as usize);
+        // Uma peça-sensor com efeito é uma zona própria (GEF02 B6, efector por collider).
+        super::effector::register(&mut self.effectors, handle, body, desc);
         Some(handle)
     }
 
     /// Tira uma peça do corpo. `wake` acorda o dono — uma peça que some muda a
     /// massa dele, e um corpo dormindo não recomputaria nada.
     pub fn detach_part(&mut self, handle: ColliderHandle) {
+        self.effectors.retain(|z| z.collider != handle);
         let owner = self.colliders.get(handle).and_then(|c| c.parent());
         self.colliders.remove(
             handle,

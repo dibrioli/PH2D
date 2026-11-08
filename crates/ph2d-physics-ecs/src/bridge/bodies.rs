@@ -105,67 +105,8 @@ impl PhysicsBridge {
             // collider property (a platform is usually Static), folded in and riding
             // the `BodyDesc` for the rewind like the rest.
             let one_way = world.get::<crate::OneWayPlatform>(shape).is_some();
-            // Optional AreaEffector (W-Area); its VALUE is the force in newtons the
-            // zone applies to whatever overlaps it. Folded in and riding the
-            // `BodyDesc` for the rewind; the wrapper refuses it on a solid collider.
-            // Optional AreaEffector / AreaDrag (W-Area, W-AreaDrag); the VALUES are
-            // what the area does to whatever overlaps it. Two components, bundled here
-            // into the one `AreaEffect` the world takes — they are separate on this
-            // side because a component blob is positional and a second FIELD would be
-            // a schema bump, while a second COMPONENT is additive.
-            let zone_force = world.get::<crate::AreaEffector>(shape).map(|a| a.force);
-            let zone_drag = world.get::<crate::AreaDrag>(shape).map(|d| d.0);
-            let zone_density = world.get::<crate::AreaBuoyancy>(shape).map(|b| b.0);
-            let zone_form = world.get::<crate::AreaFormDrag>(shape).map(|f| f.0);
-            // The rotational half (W-AreaTorque): a fifth optional component, folded into
-            // the same `AreaEffect` bundle for the same reason as its siblings.
-            let zone_torque = world.get::<crate::AreaTorque>(shape).map(|t| t.0);
-            // The FRAME of the force (W-AreaFrame): a sixth optional component, and a
-            // MARKER — its presence pins the force to world axes, its absence (the
-            // default) authors it in the zone's own frame so turning the sensor turns
-            // the wind.
-            //
-            // ⚠️ It is deliberately NOT part of `any` — a marker alone describes the
-            // frame of a force that is not there — but that exclusion is HYGIENE, not
-            // correctness, and a mutation proved it: putting it in `any` leaves every
-            // gate green, because `effector::zone_effect` refuses a wholly inert zone
-            // anyway (zero force, zero torque, no drag). Same shape as the two refusals
-            // that function documents about itself, and worth writing down for the same
-            // reason: ask what a layer buys ALONE and be willing to answer "nothing"
-            // ([[feedback_layered_defenses_need_per_layer_gates]]). What it does buy is
-            // a `BodyDesc` that does not claim to be a zone when it is not.
-            let zone_world_axes = world.get::<crate::AreaForceWorldAxes>(shape).is_some();
-            // How much of the push reaches the far side (W-AreaFalloff): a seventh
-            // optional component, folded into the same bundle. Like the marker above it is
-            // deliberately NOT part of `any` — a falloff is a MODIFIER, so a zone carrying
-            // nothing else attenuates nothing and is not a zone.
-            //
-            // ⚠️ And, like the marker above, that exclusion is HYGIENE rather than
-            // correctness — a mutation proved it: putting it in `any` leaves both gates
-            // green, because `effector::zone_effect` refuses the wholly inert zone anyway.
-            // I first wrote here that "the reason is not merely hygiene"; the measurement
-            // says otherwise, and the honest version is the one that survives being tested
-            // ([[feedback_layered_defenses_need_per_layer_gates]]). What it buys is the
-            // same thing its sibling buys: a `BodyDesc` that does not claim to be a zone.
-            let zone_falloff = world.get::<crate::AreaFalloff>(shape).map(|f| f.0);
-            let any = zone_force.is_some()
-                || zone_drag.is_some()
-                || zone_density.is_some()
-                || zone_form.is_some()
-                || zone_torque.is_some();
-            let effector = any.then(|| ph2d_physics::AreaEffect {
-                force: zone_force.unwrap_or([0.0, 0.0]),
-                drag: zone_drag.unwrap_or(0.0),
-                density: zone_density.unwrap_or(0.0),
-                form_drag: zone_form.unwrap_or(0.0),
-                torque: zone_torque.unwrap_or(0.0),
-                world_axes: zone_world_axes,
-                falloff: zone_falloff.unwrap_or(0.0),
-                // A lateralidade do frame é função da POSE, não dos componentes, então ela
-                // não se decide aqui: `scale::body_desc` a dobra ao lado da linha que já
-                // dobra a escala sincada no offset (W-Offset), que é a mesma regra.
-                mirror: ph2d_physics::AreaEffect::UNMIRRORED,
-            });
+            // As zonas (W-Area…W-AreaFalloff): a porta única `area_effect`, também a das peças.
+            let effector = area_effect(world, shape);
             let desc = crate::scale::body_desc(
                 rb,
                 col,
@@ -291,4 +232,74 @@ fn sem_pose(d: BodyDesc) -> BodyDesc {
         angvel: 0.0,
         ..d
     }
+}
+
+/// **O que uma forma faz como ZONA** — os sete componentes de área dobrados no `AreaEffect` que o
+/// mundo leva. A porta ÚNICA: a forma principal (`BodyDesc.effector`) e cada peça extra (GEF02 B6,
+/// efector por collider) leem daqui, senão uma peça seria uma zona que não sopra.
+pub(super) fn area_effect(
+    world: &bevy_ecs::world::World,
+    shape: Entity,
+) -> Option<ph2d_physics::AreaEffect> {
+    // Optional AreaEffector (W-Area); its VALUE is the force in newtons the
+    // zone applies to whatever overlaps it. Folded in and riding the
+    // `BodyDesc` for the rewind; the wrapper refuses it on a solid collider.
+    // Optional AreaEffector / AreaDrag (W-Area, W-AreaDrag); the VALUES are
+    // what the area does to whatever overlaps it. Two components, bundled here
+    // into the one `AreaEffect` the world takes — they are separate on this
+    // side because a component blob is positional and a second FIELD would be
+    // a schema bump, while a second COMPONENT is additive.
+    let zone_force = world.get::<crate::AreaEffector>(shape).map(|a| a.force);
+    let zone_drag = world.get::<crate::AreaDrag>(shape).map(|d| d.0);
+    let zone_density = world.get::<crate::AreaBuoyancy>(shape).map(|b| b.0);
+    let zone_form = world.get::<crate::AreaFormDrag>(shape).map(|f| f.0);
+    // The rotational half (W-AreaTorque): a fifth optional component, folded into
+    // the same `AreaEffect` bundle for the same reason as its siblings.
+    let zone_torque = world.get::<crate::AreaTorque>(shape).map(|t| t.0);
+    // The FRAME of the force (W-AreaFrame): a sixth optional component, and a
+    // MARKER — its presence pins the force to world axes, its absence (the
+    // default) authors it in the zone's own frame so turning the sensor turns
+    // the wind.
+    //
+    // ⚠️ It is deliberately NOT part of `any` — a marker alone describes the
+    // frame of a force that is not there — but that exclusion is HYGIENE, not
+    // correctness, and a mutation proved it: putting it in `any` leaves every
+    // gate green, because `effector::zone_effect` refuses a wholly inert zone
+    // anyway (zero force, zero torque, no drag). Same shape as the two refusals
+    // that function documents about itself, and worth writing down for the same
+    // reason: ask what a layer buys ALONE and be willing to answer "nothing"
+    // ([[feedback_layered_defenses_need_per_layer_gates]]). What it does buy is
+    // a `BodyDesc` that does not claim to be a zone when it is not.
+    let zone_world_axes = world.get::<crate::AreaForceWorldAxes>(shape).is_some();
+    // How much of the push reaches the far side (W-AreaFalloff): a seventh
+    // optional component, folded into the same bundle. Like the marker above it is
+    // deliberately NOT part of `any` — a falloff is a MODIFIER, so a zone carrying
+    // nothing else attenuates nothing and is not a zone.
+    //
+    // ⚠️ And, like the marker above, that exclusion is HYGIENE rather than
+    // correctness — a mutation proved it: putting it in `any` leaves both gates
+    // green, because `effector::zone_effect` refuses the wholly inert zone anyway.
+    // I first wrote here that "the reason is not merely hygiene"; the measurement
+    // says otherwise, and the honest version is the one that survives being tested
+    // ([[feedback_layered_defenses_need_per_layer_gates]]). What it buys is the
+    // same thing its sibling buys: a `BodyDesc` that does not claim to be a zone.
+    let zone_falloff = world.get::<crate::AreaFalloff>(shape).map(|f| f.0);
+    let any = zone_force.is_some()
+        || zone_drag.is_some()
+        || zone_density.is_some()
+        || zone_form.is_some()
+        || zone_torque.is_some();
+    any.then(|| ph2d_physics::AreaEffect {
+        force: zone_force.unwrap_or([0.0, 0.0]),
+        drag: zone_drag.unwrap_or(0.0),
+        density: zone_density.unwrap_or(0.0),
+        form_drag: zone_form.unwrap_or(0.0),
+        torque: zone_torque.unwrap_or(0.0),
+        world_axes: zone_world_axes,
+        falloff: zone_falloff.unwrap_or(0.0),
+        // A lateralidade do frame é função da POSE, não dos componentes, então ela
+        // não se decide aqui: `scale::body_desc` a dobra ao lado da linha que já
+        // dobra a escala sincada no offset (W-Offset), que é a mesma regra.
+        mirror: ph2d_physics::AreaEffect::UNMIRRORED,
+    })
 }

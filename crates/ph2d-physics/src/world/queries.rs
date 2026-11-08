@@ -28,13 +28,9 @@ impl PhysicsWorld {
     pub fn waterlines(&self) -> Vec<([f32; 2], [f32; 2])> {
         self.effectors
             .iter()
-            .filter(|(_, e, _)| e.density > 0.0)
-            .filter_map(|(handle, _, _)| {
-                let collider = self
-                    .bodies
-                    .get(*handle)
-                    .and_then(|b| b.colliders().first().copied())
-                    .and_then(|h| self.colliders.get(h))?;
+            .filter(|z| z.effect.density > 0.0)
+            .filter_map(|z| {
+                let collider = self.colliders.get(z.collider)?;
                 buoyancy::waterline(collider.shape(), collider.position(), self.gravity)
             })
             .collect()
@@ -201,19 +197,18 @@ impl PhysicsWorld {
                 let Some(zone) = self.colliders.get(other) else {
                     continue;
                 };
-                let Some(zone_body) = zone.parent() else {
-                    continue;
-                };
                 let Some(idx) = self
                     .effectors
-                    .binary_search_by_key(&zone_body.into_raw_parts(), |(h, _, _)| {
-                        h.into_raw_parts()
-                    })
+                    .binary_search_by_key(&other.into_raw_parts(), |z| z.collider.into_raw_parts())
                     .ok()
                 else {
                     continue;
                 };
-                let (_, effect, zone_shape) = &self.effectors[idx];
+                let super::effector::Zone {
+                    effect,
+                    shape: zone_shape,
+                    ..
+                } = &self.effectors[idx];
                 // O arrasto é do MEIO: ele conta por ESTAR dentro, mesmo numa zona
                 // que não tem empuxo nenhum (uma corrente de ar viscosa).
                 drag = drag.max(effect.drag);
@@ -231,8 +226,9 @@ impl PhysicsWorld {
                 let already = cols[..i]
                     .iter()
                     .any(|&prev| self.narrow_phase.intersection_pair(prev, other) == Some(true));
-                if !already && let Some(zb) = self.bodies.get(zone_body) {
-                    let rot = *zb.rotation();
+                if !already {
+                    // O frame da FORMA da zona, não o do corpo (ADR-0199).
+                    let rot = zone.position().rotation;
                     let (f, _) = super::effector::zone_push_at(
                         effect,
                         *zone_shape,

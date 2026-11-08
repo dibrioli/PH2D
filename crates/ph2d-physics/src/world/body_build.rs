@@ -115,11 +115,7 @@ impl PhysicsWorld {
         // drag: it would touch nothing and only WAKE bodies, so registering it would
         // not be byte-neutral). Kept sorted by handle so two overlapping zones apply
         // in a fixed order.
-        if let Some(effect) = effector::zone_effect(&desc) {
-            self.effectors.push((handle, effect, desc.shape));
-            self.effectors
-                .sort_unstable_by_key(|(h, _, _)| h.into_raw_parts());
-        }
+        effector::register(&mut self.effectors, collider_handle, handle, &desc);
         handle
     }
 
@@ -217,12 +213,7 @@ impl PhysicsWorld {
             c.set_active_hooks(fresh.active_hooks());
         }
         self.stamp_layer(collider_handle, layer as usize);
-        self.effectors.retain(|(h, _, _)| *h != handle);
-        if let Some(effect) = effector::zone_effect(desc) {
-            self.effectors.push((handle, effect, desc.shape));
-            self.effectors
-                .sort_unstable_by_key(|(h, _, _)| h.into_raw_parts());
-        }
+        effector::register(&mut self.effectors, collider_handle, handle, desc);
         true
     }
 }

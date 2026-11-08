@@ -238,6 +238,35 @@ pub(crate) fn zone_push_at(
 /// single door the §11 rows mirror — the panel offers Force only for a sensor, and
 /// its seam gate is where that rule IS observable.
 #[must_use]
+/// One registered zone: its collider (the key), the body that owns it, what it does, and its
+/// silhouette (for the falloff).
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Zone {
+    pub(crate) collider: rapier2d::geometry::ColliderHandle,
+    pub(crate) body: RigidBodyHandle,
+    pub(crate) effect: AreaEffect,
+    pub(crate) shape: ShapeDesc,
+}
+
+/// Registers (or replaces) the zone of `collider`, kept sorted by collider handle.
+pub(crate) fn register(
+    zones: &mut Vec<Zone>,
+    collider: rapier2d::geometry::ColliderHandle,
+    body: RigidBodyHandle,
+    desc: &BodyDesc,
+) {
+    zones.retain(|z| z.collider != collider);
+    if let Some(effect) = zone_effect(desc) {
+        zones.push(Zone {
+            collider,
+            body,
+            effect,
+            shape: desc.shape,
+        });
+        zones.sort_unstable_by_key(|z| z.collider.into_raw_parts());
+    }
+}
+
 pub(crate) fn zone_effect(desc: &BodyDesc) -> Option<AreaEffect> {
     let e = desc.effector?;
     // ⚠️ `falloff` is deliberately NOT in this list: it is a MODIFIER, not an effect. A
@@ -278,7 +307,7 @@ pub(crate) fn apply(
     bodies: &mut RigidBodySet,
     colliders: &ColliderSet,
     narrow_phase: &NarrowPhase,
-    zones: &[(RigidBodyHandle, AreaEffect, ShapeDesc)],
+    zones: &[Zone],
     gravity: Vector,
     dt: f32,
 ) {
@@ -293,7 +322,13 @@ pub(crate) fn apply(
     // As formas de um corpo, em ordem estável — reusado por corpo E por zona
     // (a capacidade sobrevive), então uma cena sem empuxo não aloca.
     let mut shapes: Vec<rapier2d::geometry::ColliderHandle> = Vec::new();
-    for &(zone_body, effect, zone_shape) in zones {
+    for &Zone {
+        collider: zone_collider,
+        effect,
+        shape: zone_shape,
+        ..
+    } in zones
+    {
         touched.clear();
         // The zone's own collider handle AND its pose, copied out so the immutable
         // borrow of `bodies` ends before the impulses below need it mutably.
@@ -308,16 +343,15 @@ pub(crate) fn apply(
         // complex — `glamx::Rot2` since 0.32, with the same two fields nalgebra's
         // `UnitComplex` had), handed to the door exactly as they are — see
         // `zone_force_world` for why an angle must not appear on this path.
-        let Some((zone_collider, sin_r, cos_r)) = bodies.get(zone_body).and_then(|b| {
-            let rot = *b.rotation();
-            b.colliders().first().map(|&c| (c, rot.im, rot.re))
-        }) else {
-            continue;
-        };
         // A pose de MUNDO do collider da zona — onde a forma de fato está quando há
         // offset. Copiada aqui porque o empréstimo imutável de `colliders` tem de
         // acabar antes de `bodies` ser tomado mutavelmente lá em baixo.
         let zone_iso = colliders.get(zone_collider).map(|c| *c.position());
+        // ⚠️ O frame é o do COLLIDER, não o do corpo (ADR-0199): uma forma filha
+        // rodada (`shape_pose` com ângulo) sopra no frame dela.
+        let Some((sin_r, cos_r)) = zone_iso.map(|p| (p.rotation.im, p.rotation.re)) else {
+            continue;
+        };
         for (c1, c2, intersecting) in narrow_phase.intersection_pairs_with(zone_collider) {
             // `intersecting` is the real shape overlap; the pair exists as soon as
             // the bounding volumes touch, which is a bigger region than the area.

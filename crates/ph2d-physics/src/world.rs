@@ -146,7 +146,10 @@ pub struct PhysicsWorld {
     /// carried here rather than re-read from the collider because this table is already
     /// the zone's config record, and asking rapier's `Shape` trait instead would be a
     /// second vocabulary for a silhouette `ShapeDesc` already names exactly.
-    effectors: Vec<(RigidBodyHandle, desc::AreaEffect, shape::ShapeDesc)>,
+    ///
+    /// ⚠️ Keyed by the zone's **collider** (GEF02 B6): a part (`attach_part`) carrying an
+    /// effect is a zone of its own, so one body can own several. Sorted by collider handle.
+    effectors: Vec<effector::Zone>,
     /// The live pulleys (W-Pulley) — rope constraints rapier does not have, so
     /// they are imposed from outside by a per-substep impulse pass, exactly like
     /// the drag and the force zones above it.
@@ -484,7 +487,7 @@ impl PhysicsWorld {
         // querying a dead collider handle every substep — harmless today (the
         // lookup fails), and exactly the kind of stale table that stops being
         // harmless the moment the arena reuses the index.
-        self.effectors.retain(|(h, _, _)| *h != handle);
+        self.effectors.retain(|z| z.body != handle);
         // A pulley whose body is gone has no branch to pull on; `branch` would
         // already answer `None`, but a table that keeps naming dead handles is
         // the stale table the comment above is about.

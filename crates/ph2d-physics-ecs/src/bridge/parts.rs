@@ -171,7 +171,8 @@ impl PhysicsBridge {
                     .unwrap_or_default(),
                 None,
                 world.get::<crate::OneWayPlatform>(e).is_some(),
-                None,
+                // Uma peça-sensor com componentes de área é uma ZONA (GEF02 B6).
+                super::bodies::area_effect(world, e),
             );
             // ⚠️ **A POSE do `desc` é zerada, e é isso que torna a comparação
             // abaixo honesta.** `attach_part` lê só a metade de COLLIDER do

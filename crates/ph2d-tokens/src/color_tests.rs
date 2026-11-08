@@ -268,8 +268,8 @@ fn person_colours_read_in_every_theme() {
     }
 }
 
-/// ⭐ GEF02 onda 9c (dono 07/11): as 32 cores das camadas de colisão são ÚNICAS (diferença OKLab de qualquer par
-/// ≥ 0,025 (medido: 0,0254 nos escuros, 0,0259 nos claros), vizinhas ≥ 0,04) e separam-se do `bg-1` a ≥ 3:1 (um gráfico) nos temas de base.
+/// ⭐ GEF02 ondas 9c–9d (dono 07/11): as 32 cores das camadas de colisão são ÚNICAS (diferença OKLab de qualquer par
+/// ≥ 0,06 (onda 9d, paleta rearrumada variando a luz: medido 0,0635 nos escuros, 0,0637 nos claros; era 0,0254), vizinhas ≥ 0,04) e separam-se do `bg-1` a ≥ 3:1 (um gráfico) nos temas de base.
 #[test]
 fn as_cores_das_camadas_sao_unicas_e_legiveis() {
     use crate::theme::Theme;
@@ -312,7 +312,7 @@ fn as_cores_das_camadas_sao_unicas_e_legiveis() {
             }
         }
         eprintln!("camadas {theme:?}: {menor:.4}");
-        assert!(menor >= 0.025, "{theme:?}: duas camadas a {menor:.4}");
+        assert!(menor >= 0.06, "{theme:?}: duas camadas a {menor:.4}");
         assert_eq!(ColorToken::layer(7), ColorToken::ObjLayer7);
     }
 }

@@ -211,7 +211,20 @@ fn remove_pergunta_para_onde_vao_os_objetos_e_a_default_fica() {
     let ok = mesa
         .rect(ids::PHYSICS_LAYER_MOVE_OK)
         .expect("Move and remove");
-    assert!(ok.y >= chip.y + chip.h, "os botões vêm depois do chip");
+    let cancela = mesa.rect(ids::PHYSICS_LAYER_MOVE_CANCEL).expect("Cancel");
+    // Dono 08/11: o chip e os dois botões numa linha só, da altura dos campos; os botões à direita.
+    let campo = ph2d_card_stack::metrics::FIELD_H;
+    for r in [chip, ok, cancela] {
+        assert_eq!(
+            (r.y, r.h),
+            (chip.y, campo),
+            "na linha do chip, altura FIELD_H: {r:?}"
+        );
+    }
+    assert!(
+        chip.x + chip.w <= ok.x && ok.x + ok.w <= cancela.x,
+        "chip, Move and remove, Cancel"
+    );
     let c =
         ph2d_editor_core::paint::layer_outline_of(ids::PHYSICS_LAYER_MOVE_PICK).expect("contorno");
     assert_eq!(
@@ -220,6 +233,7 @@ fn remove_pergunta_para_onde_vao_os_objetos_e_a_default_fica() {
         "o chip veste a cor da escolhida"
     );
     let _ = mesa.clica(ids::PHYSICS_LAYER_MOVE_PICK);
+    ph2d_editor_core::paint::forget_layer_outlines();
     mesa.pinta();
     assert!(
         mesa.rect(ids::PHYSICS_LAYER_MOVE_TO[2]).is_none(),
@@ -239,10 +253,27 @@ fn remove_pergunta_para_onde_vao_os_objetos_e_a_default_fica() {
             "uma linha por camada"
         );
     }
-    let sub =
-        ph2d_editor_core::paint::layer_outline_of(ids::PHYSICS_LAYER_MOVE_TO[3]).expect("contorno");
-    assert_eq!(sub.camada, 3);
-    assert_eq!(Some(sub.rect), mesa.rect(ids::PHYSICS_LAYER_MOVE_TO[3]));
+    // Dono 08/11: cada opção com o quadradinho da SUA cor à esquerda do nome (o da lista «Layers»), sem
+    // contorno por linha; a lista aberta não tapa os botões.
+    for (&d, r) in [0, 1, 3, 4].iter().zip(&destinos) {
+        assert!(
+            ph2d_editor_core::paint::layer_outline_of(ids::PHYSICS_LAYER_MOVE_TO[d]).is_none(),
+            "a opção {d} sem contorno"
+        );
+        let (q, cor) = aba::quadradinho_do_destino(d).expect("o quadradinho da opção");
+        let (ql, cor_l) = aba::quadradinho_da_lista(d).expect("o quadradinho da lista Layers");
+        assert_eq!(cor, cor_l, "a cor da camada {d}");
+        assert_eq!((q.w, q.h), (ql.w, ql.h), "o mesmo desenho");
+        assert!(
+            q.x > r.x && q.x + q.w < r.x + r.w * 0.5,
+            "à esquerda: {q:?} em {r:?}"
+        );
+        assert!(q.y > r.y && q.y + q.h < r.y + r.h, "dentro da linha");
+        assert!(
+            r.y >= ok.y + ok.h || r.x + r.w <= ok.x,
+            "a lista não tapa os botões"
+        );
+    }
     // Escolher fecha a lista e o chip passa a dizer a escolhida.
     let _ = mesa.clica(ids::PHYSICS_LAYER_MOVE_TO[3]);
     mesa.pinta();

@@ -111,11 +111,9 @@ fn pinta_lista(ctx: &mut PaintCtx, q: &Quadro) {
             };
             // O quadradinho da cor da camada antes do nome, como na 9d (dono 07/11, onda 9f: «aqui ficam os
             // quadrados antes do nome como antes»); a lista é o único sítio SEM o contorno na moldura.
-            let lado = font - Spacing::Xs.px();
-            let q = Rect::new(r.x + Spacing::Sm.px(), r.y + (r.h - lado) * 0.5, lado, lado);
-            let cor_q = resolve(super::cor_da_camada(n), theme);
-            fill_rounded_rect(cena, q, raio * 0.5, cor_q);
-            super::regista_quadradinho(n, q, cor_q.components);
+            let (q, cor_q) = quadradinho(cena, theme, n, r, font, raio);
+            let lado = q.w;
+            super::regista_quadradinho(n, q, cor_q);
             paint_text(
                 texto,
                 cena,
@@ -182,6 +180,23 @@ fn pinta_lista(ctx: &mut PaintCtx, q: &Quadro) {
 }
 
 /// A grade «Who bumps into whom · N pairs», com as faixas acesas e os nomes nas duas bordas.
+/// O quadradinho da cor da camada `n` à esquerda da linha `r` (lado `font − Xs`, raio meio): o da lista
+/// «Layers» e o das opções do destino do Remove (dono 08/11). Devolve a caixa e a cor pintada.
+pub(super) fn quadradinho(
+    cena: &mut ph2d_vector::VectorScene,
+    theme: ph2d_tokens::Theme,
+    n: usize,
+    r: Rect,
+    font: f32,
+    raio: f32,
+) -> (Rect, [f32; 4]) {
+    let lado = font - Spacing::Xs.px();
+    let q = Rect::new(r.x + Spacing::Sm.px(), r.y + (r.h - lado) * 0.5, lado, lado);
+    let cor = resolve(super::cor_da_camada(n), theme);
+    fill_rounded_rect(cena, q, raio * 0.5, cor);
+    (q, cor.components)
+}
+
 fn pinta_grade(ctx: &mut PaintCtx, q: &Quadro) {
     let theme = ctx.host.theme();
     let &Quadro {

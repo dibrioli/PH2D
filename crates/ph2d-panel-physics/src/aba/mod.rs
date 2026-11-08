@@ -51,6 +51,9 @@ thread_local! {
     /// O quadradinho de cor de cada linha da lista «Layers» no último quadro: (caixa, cor) — os testes.
     pub(crate) static QUADRADINHOS: std::cell::RefCell<std::collections::BTreeMap<usize, (Rect, [f32; 4])>> =
         const { std::cell::RefCell::new(std::collections::BTreeMap::new()) };
+    /// O quadradinho de cor de cada opção aberta do destino do Remove no último quadro — os testes.
+    pub(crate) static QUADRADINHOS_DO_DESTINO: std::cell::RefCell<std::collections::BTreeMap<usize, (Rect, [f32; 4])>> =
+        const { std::cell::RefCell::new(std::collections::BTreeMap::new()) };
 }
 
 /// A aba existe (à frente ou atrás de Scene)?
@@ -204,6 +207,16 @@ pub(crate) fn regista_quadradinho(n: usize, caixa: Rect, cor: [f32; 4]) {
 #[must_use]
 pub fn quadradinho_da_lista(n: usize) -> Option<(Rect, [f32; 4])> {
     QUADRADINHOS.with(|m| m.borrow().get(&n).copied())
+}
+
+pub(crate) fn regista_quadradinho_do_destino(d: usize, caixa: Rect, cor: [f32; 4]) {
+    QUADRADINHOS_DO_DESTINO.with(|m| m.borrow_mut().insert(d, (caixa, cor)));
+}
+
+/// O quadradinho de cor da opção `d` da lista aberta do destino do Remove (caixa e cor), o último pintado.
+#[must_use]
+pub fn quadradinho_do_destino(d: usize) -> Option<(Rect, [f32; 4])> {
+    QUADRADINHOS_DO_DESTINO.with(|m| m.borrow().get(&d).copied())
 }
 
 /// A geometria do último quadro pintado da aba.

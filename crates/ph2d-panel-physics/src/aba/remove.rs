@@ -5,7 +5,7 @@
 //! SUSPENSA (maquete B), pela porta das listas do app (`Dropdown` + `paint_dropdown_list`).
 
 use ph2d_editor_core::interaction::InteractiveState;
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered};
+use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered, rect_for_label};
 use ph2d_editor_core::panel::{PaintCtx, camada_das_listas, paint_dropdown_list};
 use ph2d_editor_core::widget::{
     ButtonState, Dropdown, DropdownOption, DropdownState, PopoverRow, paint_dropdown_chip,
@@ -13,7 +13,7 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
-use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, StrokeToken};
+use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing, StrokeToken, TypeToken};
 
 use super::geometria::fila;
 use crate::ids as i;
@@ -26,7 +26,8 @@ const NOMES_NA_PERGUNTA: usize = 3;
 pub(super) struct Pergunta {
     pub(super) frase: String,
     pub(super) frase_y: f32,
-    pub(super) rotulo_y: f32,
+    /// A caixa do rótulo «Move them to», na linha do chip e dos botões.
+    pub(super) rotulo: Rect,
     /// As camadas para onde os objetos podem ir (as opções da lista suspensa).
     pub(super) destinos: Vec<usize>,
     /// O chip da lista suspensa do destino (`PHYSICS_LAYER_MOVE_PICK`).
@@ -79,35 +80,44 @@ impl Pergunta {
         let mut y = topo + dentro_da_caixa;
         let frase_y = y;
         y += row;
-        let rotulo_y = y;
-        y += row;
-        let botao =
-            |s: &str, largura: &mut dyn FnMut(&str) -> f32| largura(s) + Spacing::Lg.px() * 2.0;
+        // Dono 08/11: «Move them to», o chip e os dois botões numa linha só, da altura dos campos (`FIELD_H`,
+        // letra `Base`, acolchoados por `rect_for_label`, vãos `FIELD_GAP`); a lista aberta cai em espaço livre.
+        let caixa_de = |s: &str, largura: &mut dyn FnMut(&str) -> f32| {
+            rect_for_label(largura(s)).max(super::Geometria::ALTURA_DO_BOTAO)
+        };
         let destinos: Vec<usize> = visiveis.iter().copied().filter(|&d| d != aberta).collect();
         // A lista SUSPENSA do destino (maquete B): o chip pela opção mais comprida, nunca pela escolhida.
         let texto_w = destinos
             .iter()
             .map(|&d| largura(&rotulos[d]))
             .fold(0.0_f32, f32::max);
-        let chip_w = ph2d_editor_core::widget::dropdown_chip_width_for(texto_w, row).min(w);
-        let chip = Rect::new(x, y, chip_w, row);
-        y += row + Spacing::Sm.px();
+        let h = super::Geometria::ALTURA_DO_BOTAO;
         let larg = [
-            botao(tr("card.physics.tab_move_ok"), largura),
-            botao(tr("card.physics.tab_cancel"), largura),
+            rect_for_label(largura(tr("card.physics.tab_move_to"))),
+            ph2d_editor_core::widget::dropdown_chip_width_for(texto_w, h).min(w),
+            caixa_de(tr("card.physics.tab_move_ok"), largura),
+            caixa_de(tr("card.physics.tab_cancel"), largura),
         ];
-        let (rs, linhas) = fila(x, y, w, &larg, super::Geometria::fila_de_linhas());
-        y += linhas as f32 * (row + Spacing::Xs.px()) - Spacing::Xs.px() + dentro_da_caixa;
+        let (mut rs, linhas) = fila(x, y, w, &larg, super::Geometria::fila_de_botoes());
+        if linhas == 1 {
+            // Numa linha só, os botões encostam à direita.
+            let vao = super::Geometria::VAO_DOS_BOTOES;
+            rs[3].x = x + w - rs[3].w;
+            rs[2].x = rs[3].x - vao - rs[2].w;
+        }
+        y += linhas as f32 * (h + super::Geometria::VAO_DOS_BOTOES)
+            - super::Geometria::VAO_DOS_BOTOES
+            + dentro_da_caixa;
         Self {
             frase,
             frase_y,
-            rotulo_y,
+            rotulo: rs[0],
             destinos,
-            chip,
+            chip: rs[1],
             escolhido,
             caixa: Rect::new(pad, topo, dentro, y - topo),
-            ok: rs[0],
-            cancela: rs[1],
+            ok: rs[2],
+            cancela: rs[3],
             altura: y + pad,
         }
     }
@@ -118,7 +128,7 @@ impl Pergunta {
             r.y += y;
         };
         self.frase_y += y;
-        self.rotulo_y += y;
+        m(&mut self.rotulo);
         m(&mut self.chip);
         m(&mut self.ok);
         m(&mut self.cancela);
@@ -199,11 +209,15 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro, p: &Pergunta)
             p.frase_y,
             tom!(ColorToken::Text1, theme),
         );
-        linha(
+        let base = TypeToken::Base.px();
+        paint_text(
             texto,
             cena,
             tr("card.physics.tab_move_to"),
-            p.rotulo_y,
+            p.rotulo.x,
+            p.rotulo.y + (p.rotulo.h - base) * 0.5,
+            base,
+            p.rotulo.w,
             tinta_do_rotulo(theme),
         );
         paint_dropdown_chip(&dd, p.chip, cena, texto, theme);
@@ -218,7 +232,7 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro, p: &Pergunta)
         );
         let botao = |texto: &mut _, cena: &mut _, r: Rect, s: &str, fundo, tinta| {
             fill_rounded_rect(cena, r, raio, fundo);
-            paint_text_centered(texto, cena, s, r, font, tinta);
+            paint_text_centered(texto, cena, s, r, base, tinta);
         };
         let normal = |hover: bool| {
             tom!(
@@ -250,7 +264,7 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro, p: &Pergunta)
 }
 
 /// A lista aberta, pela porta das listas do app (por cima de tudo, rola, light-dismiss); cada linha
-/// com o contorno da sua camada.
+/// com o quadradinho da sua camada.
 pub(super) fn pinta_a_lista(ctx: &mut PaintCtx, q: &super::quadro::Quadro, p: &Pergunta) {
     if !lista_aberta(ctx.host.store()) {
         return;
@@ -269,21 +283,31 @@ pub(super) fn pinta_a_lista(ctx: &mut PaintCtx, q: &super::quadro::Quadro, p: &P
             paint_popover_row_highlight(cena, row.rect, theme);
         }
         let tinta = ph2d_editor_core::widget::resolve_opaque(row.ink(), theme);
-        paint_text_centered(texto, cena, &q.rotulos[d], row.rect, q.font, tinta);
+        // Dono 08/11: o quadradinho da cor à esquerda (o da lista «Layers»), o nome depois dele; sem contorno.
+        let (caixa, cor) = super::pinta::quadradinho(cena, theme, d, row.rect, q.font, raio);
+        super::regista_quadradinho_do_destino(d, caixa, cor);
+        let marca_w = Spacing::Lg.px();
+        let nome_x = caixa.x + caixa.w + Spacing::Sm.px();
+        paint_text(
+            texto,
+            cena,
+            &q.rotulos[d],
+            nome_x,
+            row.rect.y + (row.rect.h - q.font) * 0.5,
+            q.font,
+            (row.rect.x + row.rect.w - Spacing::Sm.px() - marca_w - nome_x).max(0.0),
+            tinta,
+        );
         if row.selected {
-            // A ✓ da escolhida: no cartão o realce da linha é discreto (a mesma marca das caixinhas).
-            let b = Rect::new(row.rect.x, row.rect.y, Spacing::Lg.px(), row.rect.h);
+            // A ✓ da escolhida, à direita com respiro (não encostada à borda).
+            let b = Rect::new(
+                row.rect.x + row.rect.w - Spacing::Sm.px() - marca_w,
+                row.rect.y,
+                marca_w,
+                row.rect.h,
+            );
             paint_text_centered(texto, cena, tr("card.physics.tab_check"), b, q.font, tinta);
         }
-        ph2d_editor_core::paint::paint_layer_outline(
-            cena,
-            theme,
-            i::PHYSICS_LAYER_MOVE_TO[d],
-            d,
-            row.rect,
-            raio,
-            true,
-        );
     };
     // Os alvos das linhas vão por cima dos da caixa da pergunta (senão «Move and remove», por baixo da lista,
     // ganharia o clique numa linha).

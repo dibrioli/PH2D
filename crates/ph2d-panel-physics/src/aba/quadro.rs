@@ -272,7 +272,11 @@ impl Quadro {
                 &rotulos,
                 &nomes_dos_objetos,
                 destino,
-                &mut |s| ctx.text_system.prefix_width(s, font),
+                &mut |s| {
+                    let base = TypeToken::Base.px();
+                    label_column_width(ctx.text_system, base, [s])
+                        .max(ctx.text_system.prefix_width(s, base))
+                },
             )
         });
         let altura = pergunta.as_ref().map_or(camada.altura, |p| p.altura);

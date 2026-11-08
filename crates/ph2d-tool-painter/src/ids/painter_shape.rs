@@ -232,6 +232,14 @@ pub const PAINTER_BRUSH_PONTAS_RECTAS: NodeId = hash_node_id("painter_brush.pont
 
 /// **Flat ends → Beyond** value sink (`0..1` radii, J6). `SetValue` → `set_brush_pontas_alem`.
 pub const PAINTER_BRUSH_PONTAS_ALEM: NodeId = hash_node_id("painter_brush.pontas_alem");
+/// **Fixed dab size** checkbox (dono 08/11; spray only). `Click` → `toggle_brush_dab_fixo`.
+pub const PAINTER_BRUSH_DAB_FIXO: NodeId = hash_node_id("painter_brush.dab_fixo");
+/// **Dab size (px)** value sink (spray with Fixed dab size). `SetValue` → `set_brush_dab_px`.
+pub const PAINTER_BRUSH_DAB_PX: NodeId = hash_node_id("painter_brush.dab_px");
+/// O piso do campo de [`PAINTER_BRUSH_DAB_PX`]: o diâmetro do raio mínimo de um dab (`DabJitter::RAIO_MIN_PX`).
+pub const PAINTER_BRUSH_DAB_PX_MIN: f32 = 2.0 * ph2d_painter_brush::DabJitter::RAIO_MIN_PX;
+/// O tecto do campo de [`PAINTER_BRUSH_DAB_PX`]: o diâmetro do maior dab que o motor pinta (`MAX_BRUSH_RADIUS_PX`).
+pub const PAINTER_BRUSH_DAB_PX_MAX: f32 = 2.0 * ph2d_painter_brush::MAX_BRUSH_RADIUS_PX;
 /// O tecto do campo de [`PAINTER_BRUSH_PONTAS_ALEM`] (a faixa do produto, `ph2d_painter_brush::PONTAS_ALEM_MAX`).
 pub const PAINTER_BRUSH_PONTAS_ALEM_MAX: f32 = ph2d_painter_brush::PONTAS_ALEM_MAX;
 /// **Ends fade** value sink (`−4..8`, J6t; below `0` the ends load, R2-A). `SetValue` → `set_brush_pontas_esbate`.

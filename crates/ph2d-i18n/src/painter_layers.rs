@@ -411,6 +411,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.shape.rotation_smoothing" => "Rotation smoothing",
         "panel.painter_layers.shape.flat_ends" => "Flat ends",
         "panel.painter_layers.shape.flat_ends_beyond" => "Ends beyond",
+        "panel.painter_layers.shape.fixed_dab" => "Fixed dab size",
+        "panel.painter_layers.shape.dab_px" => "Dab size (px)",
         "panel.painter_layers.shape.ends_fade" => "Ends fade",
         "panel.painter_layers.shape.use_document_layers" => "Use Document Layers",
         "panel.painter_layers.shape.alpha_from_image" => "Alpha From Image",

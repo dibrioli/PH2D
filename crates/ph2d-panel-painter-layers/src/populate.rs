@@ -419,6 +419,8 @@ fn register_toggles_and_dropdowns(store: &mut WidgetStore) {
         ph2d_tool_painter::ids::PAINTER_BRUSH_MIX_MODES[1],
         // Shape (Wet Paint): a caixa das pontas rectas (J6).
         ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_RECTAS,
+        // Shape: a caixa do ponto fixo do spray (dono 08/11).
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_FIXO,
         // Card Line: o checkbox Solid (sem ele o widget pinta, registra hit e fica MORTO sob o mouse).
         ph2d_tool_painter::ids::PAINTER_LINE_SOLID,
         // Card Line / Sketchy: o checkbox Magnetify.

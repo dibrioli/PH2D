@@ -98,3 +98,66 @@ fn measure_the_spray_budget_per_event() {
 // duas discordaram no ponto que partilhavam: `r=200, count 16` deu **5,073 ms** de pior evento numa e
 // **7,074** na outra, os mesmos ~40% de deriva de máquina que o doc 28 §5.46 já documenta. Duas
 // sondas para um fato só podem divergir, e a que diverge é a que alguém vai citar.
+
+/// **O TETO DO SPRAY DE PONTO FIXO** (`SPRAY_FIXO_MAX`, dono 08/11): a mesma espiral, mas cada marca do tamanho do
+/// ponto do Pointillism (26,4 px) — o custo de uma cópia é o de um dab de 13,2 px de raio, não o do pincel. A
+/// contagem é a que o `conta_no` daria (referência = o diâmetro, logo `count` cópias), sem o teto (a sonda sobe-o).
+/// Rodar: `bash scripts/ph2d-run.sh cargo test -p ph2d-tool-painter --profile smoke --lib measure_the_fixed_dab -- --ignored --nocapture`
+#[test]
+#[ignore = "measurement, not a gate — run explicitly"]
+fn measure_the_fixed_dab_spray_budget_per_event() {
+    use ph2d_painter_brush::stroke::spray::SPRAY_FIXO_MAX;
+    let corre = |n: u32, radius: f32| {
+        let side = 2048u32;
+        let mut t = tool(side, PaintMedia::Digital, radius);
+        t.paint.brush.stroke_method = StrokeMethod::Space;
+        t.paint.brush.spray_count = 3;
+        t.paint.brush.jitter = 0.45;
+        t.paint.brush.dab_jitter.particle_px = 26.4;
+        // A referência que dá `n` marcas a este raio: `3·(2r/ref)² = n`.
+        #[allow(clippy::cast_precision_loss)]
+        let referencia = 2.0 * radius * (3.0 / n as f32).sqrt();
+        t.paint.brush.dab_jitter.particle_ref_px = referencia;
+        #[allow(clippy::cast_precision_loss)]
+        let c = (side / 2) as f32;
+        let steps = 8 * 40;
+        let pt = |i: usize| {
+            #[allow(clippy::cast_precision_loss)]
+            let u = i as f32 / steps as f32;
+            let ang = u * 8.0 * std::f32::consts::TAU;
+            let r = 20.0 + u * 180.0;
+            [c + r * ang.det_cos(), c + r * ang.det_sin()]
+        };
+        t.on_canvas_pointer(cp(pt(0), PointerPhase::Down));
+        let mut worst = 0.0f64;
+        let mut total = 0.0f64;
+        for i in 1..=steps {
+            let t0 = Instant::now();
+            t.on_canvas_pointer(cp(pt(i), PointerPhase::Move));
+            let ms = t0.elapsed().as_secs_f64() * 1e3;
+            total += ms;
+            worst = worst.max(ms);
+        }
+        t.on_canvas_pointer(cp(pt(steps), PointerPhase::Up));
+        #[allow(clippy::cast_precision_loss)]
+        (total / steps as f64, worst)
+    };
+    println!("[fixo] teto vigente: SPRAY_FIXO_MAX = {SPRAY_FIXO_MAX} (a sonda clampa nele)");
+    let _ = corre(3, 40.0);
+    println!(
+        "{:>7} {:>7}  {:>10} {:>10}",
+        "count", "raio", "ms/evento", "pior ms"
+    );
+    for radius in [200.0f32, 512.0] {
+        for n in [16u32, 64, 256, 1024, 2048, 4096] {
+            // Duas corridas intercaladas, o MÍNIMO do pior.
+            let (a, wa) = corre(n, radius);
+            let (b, wb) = corre(n, radius);
+            println!(
+                "{n:>7} {radius:>7.0}  {:>10.3} {:>10.3}",
+                a.min(b),
+                wa.min(wb)
+            );
+        }
+    }
+}

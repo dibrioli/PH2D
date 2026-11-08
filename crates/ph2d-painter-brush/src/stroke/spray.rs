@@ -84,6 +84,24 @@ use super::{Dab, Stroke};
 /// comparáveis entre si porque nasceram juntas; a irmã foi **removida** por isso.
 pub const SPRAY_COUNT_MAX: u32 = 16;
 
+/// ⭐ **Teto das marcas do spray de PONTO FIXO** ([`crate::marca::DabJitter::conta_no`], dono 08/11 «Fixed dab
+/// size»): a contagem cresce com a área do pincel, e a marca NÃO cresce com ele — o custo de uma cópia é o de um
+/// dab do tamanho do ponto, não do pincel, e o [`SPRAY_COUNT_MAX`] (medido com a marca do tamanho do pincel) não
+/// é o recurso aqui. MEDIDO por `measure_the_fixed_dab_spray_budget_per_event` (`ph2d-tool-painter`,
+/// `spray_probe.rs`; a mesma espiral, `--profile smoke`, o mínimo de 2 corridas intercaladas, 08/11, load ~3):
+///
+/// | count | r=200 pior ms | r=512 pior ms |
+/// |---:|---:|---:|
+/// | 256 | 0,571 | 0,692 |
+/// | 1024 | 1,919 | 1,924 |
+/// | 2048 | 3,910 | 3,427 |
+/// | **4096** | **6,431** | **6,532** |
+///
+/// `4096` é a maior potência de 2 cujo PIOR evento cabe no kill de 8 ms com o ponto do Pointillism (26,4 px) — a
+/// lei é linear (×2 por linha), a seguinte daria ~13 ms. O Pointillism de fábrica no Size máximo pede
+/// `3 × (1024 ÷ 80)² ≈ 492`. ⚠️ Medido sem o Wet blend armado (só o carimbo do Digital).
+pub const SPRAY_FIXO_MAX: u32 = 4096;
+
 /// **O ESPALHAMENTO que a primeira nuvem ganha** — uma fração do diâmetro, o mesmo número do
 /// `Jitter → Position`.
 ///
@@ -190,7 +208,10 @@ impl Stroke {
         if !self.spec.stroke_method.allows_jitter() {
             return;
         }
-        let n = self.spec.spray_count.clamp(1, SPRAY_COUNT_MAX);
+        let n = self
+            .spec
+            .dab_jitter
+            .conta_no(self.spec.spray_count, self.spec.clamped_radius());
         // A contagem sorteada (L4, Photoshop *Count Jitter*): o ponto deixa entre 1 e `n` marcas.
         let n = crate::marca::conta(&mut self.por_traco.rng, &self.spec.dab_jitter, n);
         for _ in 1..n {

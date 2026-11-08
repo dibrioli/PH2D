@@ -679,3 +679,6 @@ fn a_marca_abaixo_de_meio_pixel_pousa_pela_area() {
     // Acima de meio píxel: ao bit.
     assert_eq!(gotas(20.0, 0.5, false), gotas(20.0, 0.5, true));
 }
+
+#[path = "marca_tests/ponto_fixo.rs"]
+mod ponto_fixo;

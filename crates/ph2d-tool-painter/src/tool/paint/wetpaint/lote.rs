@@ -389,10 +389,8 @@ pub(super) fn regua_do_grao(
 /// Cada marca menor que o pincel leva `1 ÷ (n·p²)` do pigmento por célula (a área do dab repartida pelas marcas);
 /// sem spray, ou com marcas do tamanho do pincel, `1`, ao bit. `p` tem o piso de 0,5 px de raio do `dab_from`.
 pub(super) fn pigmento_da_marca(brush: &BrushSpec) -> f32 {
-    let n = brush
-        .spray_count
-        .clamp(1, ph2d_painter_brush::stroke::spray::SPRAY_COUNT_MAX);
     let r = brush.clamped_radius();
+    let n = brush.dab_jitter.conta_no(brush.spray_count, r);
     let p = brush.dab_jitter.particula_no(brush.spray_count, r);
     if n <= 1 || p >= 1.0 {
         return 1.0;

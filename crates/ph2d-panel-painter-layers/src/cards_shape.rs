@@ -358,6 +358,7 @@ fn todos(l: &BrushSettings, v: &BrushSettings) -> Vec<Numero> {
     if !imagem(l) {
         n.push(dureza(v));
     }
+    n.extend(so_numeros(crate::paint_shape_pontas::do_dab_fixo(l, v)));
     if imagem(l) && l.shape_has_image {
         n.extend(so_numeros(da_ponta(CartaoDaPonta::Forma, l, v)));
     }
@@ -390,6 +391,7 @@ pub(crate) fn prepare(ctx: &mut PaintCtx, b: &BrushSettings) {
         pids::PAINTER_SHAPE_KIND,
         pids::PAINTER_SHAPE_FOLLOW,
         pids::PAINTER_BRUSH_PONTAS_RECTAS,
+        pids::PAINTER_BRUSH_DAB_FIXO,
         pids::PAINTER_SHAPE_ALPHA_FROM_IMAGE,
         pids::PAINTER_SHAPE_PER_LAYER_COLOR,
     ] {
@@ -569,6 +571,7 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, p: &Pecas, y: f32) -> f32 {
     if !imagem(&b) {
         y = queda(c, &b, y);
     }
+    y = fila(c, &crate::paint_shape_pontas::do_dab_fixo(&b, &b), y);
     y = grupo_sobre_controlo(c, "panel.painter_layers.taper.taper", y);
     y = taper_e_pegada(c, &b, y);
     y = filete(c, y);

@@ -101,3 +101,74 @@ pub(crate) fn paint_pontas_do_molhado(
     );
     y
 }
+
+/// O ponto fixo do spray (dono 08/11) no painel de antes: a caixa «Fixed dab size» e, ligada, o «Dab size (px)».
+/// Só com spray (`Count > 1`). Devolve o próximo `y`.
+pub(crate) fn paint_dab_fixo(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    mut y: f32,
+    brush: &BrushSettings,
+) -> f32 {
+    if brush.spray_count <= 1 {
+        return y;
+    }
+    let sec = crate::paint_shape::seccao_da_forma(ctx);
+    y = crate::paint_brush_top::paint_checkbox_row(
+        ctx,
+        theme,
+        x,
+        content_w,
+        y,
+        ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_FIXO,
+        "panel.painter_layers.shape.fixed_dab",
+        brush.dab_fixo,
+    );
+    if brush.dab_fixo {
+        y = crate::number_field::paint_num_row(
+            ctx,
+            theme,
+            x,
+            content_w,
+            y,
+            tr("panel.painter_layers.shape.dab_px"),
+            ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_PX,
+            brush.dab_px,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_PX_MIN,
+            ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_PX_MAX,
+            crate::number_field::SIZE_STEP,
+            1,
+            sec,
+        );
+    }
+    y
+}
+
+/// ⭐ **O ponto fixo do spray** (dono 08/11): a caixa «Fixed dab size» e, ligada, o «Dab size (px)» ao lado. Só
+/// com spray (`Count > 1`): sem ele não há marcas soltas para fixar.
+pub(crate) fn do_dab_fixo(l: &BrushSettings, v: &BrushSettings) -> Vec<crate::cards_linhas::Item> {
+    if l.spray_count <= 1 || !l.le(ph2d_tool_painter::LinhaDaFerramenta::Forma) {
+        return Vec::new();
+    }
+    let mut n = vec![crate::cards_linhas::Item::Caixa {
+        id: ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_FIXO,
+        chave: "panel.painter_layers.shape.fixed_dab",
+        on: l.dab_fixo,
+    }];
+    if l.dab_fixo {
+        n.push(crate::cards_linhas::Item::Num(crate::cards_linhas::numero(
+            "panel.painter_layers.shape.dab_px",
+            ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_PX,
+            v.dab_px,
+            (
+                ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_PX_MIN,
+                ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_PX_MAX,
+            ),
+            crate::number_field::SIZE_STEP,
+            1,
+        )));
+    }
+    n
+}

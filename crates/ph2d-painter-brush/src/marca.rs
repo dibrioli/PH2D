@@ -44,6 +44,11 @@ pub struct DabJitter {
     /// pincel: a 200 px são gotas soltas, não discos maiores; a 5 px um cordão de gotas MAIORES que o pincel).
     /// `0` = desligada (a [`Self::particle`] relativa de sempre). Só com spray (`spray_count > 1`).
     pub particle_px: f32,
+    /// ⭐ **O diâmetro de REFERÊNCIA do spray de ponto fixo** (dono 08/11, «Fixed dab size»): com a
+    /// [`Self::particle_px`] ligada, o número de marcas por ponto do caminho cresce com a ÁREA do pincel —
+    /// `spray_count × (diâmetro ÷ isto)²` —, e a densidade (marcas por px²) fica a mesma a 40 e a 400 px. `0` =
+    /// desligado (o Pastel de sempre: o ponto fixo SEM crescer a contagem). Lei em [`Self::conta_no`].
+    pub particle_ref_px: f32,
     /// ⭐ **O TECTO da partícula em PÍXEIS** (J4 `texturas`, «Motor J4»): o diâmetro máximo de cada marca do spray na
     /// TELA — o espalhamento continua o do pincel. O Spatter/Star do Rebelle a 200 px espalha as estrelas por
     /// ~234 px mas nenhuma passa de 56 px (a caixa da imagem dele: as que passariam saem QUADRADAS). `0` =
@@ -99,6 +104,7 @@ impl DabJitter {
         across: 0.0,
         particle: 1.0,
         particle_px: 0.0,
+        particle_ref_px: 0.0,
         particle_max_px: 0.0,
         particle_min_px: 0.0,
         veu: 0.0,
@@ -152,6 +158,22 @@ impl DabJitter {
         } else {
             self.particula(n)
         }
+    }
+
+    /// ⭐ **As marcas por ponto do caminho de um pincel de raio `raio_px`** (`n` = o `spray_count`): com o ponto fixo
+    /// e a referência ([`Self::particle_ref_px`]) ligados, `n × (2·raio ÷ referência)²` arredondado, entre `1` e
+    /// [`crate::stroke::spray::SPRAY_FIXO_MAX`]; senão `n` em `1..SPRAY_COUNT_MAX`, ao bit.
+    #[must_use]
+    pub fn conta_no(&self, n: u32, raio_px: f32) -> u32 {
+        use crate::stroke::spray::{SPRAY_COUNT_MAX, SPRAY_FIXO_MAX};
+        let n = n.clamp(1, SPRAY_COUNT_MAX);
+        if n <= 1 || self.particle_px <= 0.0 || self.particle_ref_px <= 0.0 || raio_px <= 0.0 {
+            return n;
+        }
+        let k = 2.0 * raio_px / self.particle_ref_px;
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+        let m = (n as f32 * k * k).round().min(SPRAY_FIXO_MAX as f32) as u32;
+        m.clamp(1, SPRAY_FIXO_MAX)
     }
 
     /// O raio de uma marca do spray de `n` entre o piso [`Self::particle_min_px`] e o tecto

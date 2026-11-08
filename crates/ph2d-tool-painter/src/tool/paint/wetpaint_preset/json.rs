@@ -185,6 +185,10 @@ fn marca_para_json(j: &DabJitter) -> Value {
     // A partícula em píxeis (J4) só ligada: o preset sem ela é o de antes, ao byte.
     if j.particle_px > 0.0 {
         v["particle_px"] = num(j.particle_px);
+        // A contagem que cresce com o pincel (dono 08/11) só ligada: o Pastel é o de antes, ao byte.
+        if j.particle_ref_px > 0.0 {
+            v["particle_ref_px"] = num(j.particle_ref_px);
+        }
     }
     // O tecto da partícula e o véu (J4) só ligados: idem.
     if j.particle_max_px > 0.0 {
@@ -231,6 +235,7 @@ fn marca_de_json(v: Option<&Value>, base: DabJitter) -> DabJitter {
         particle: f(o.get("particle"), base.particle),
         // AUSENTE = desligada (nunca a do pincel anterior: o preset sem ela é o de antes).
         particle_px: f(o.get("particle_px"), 0.0).max(0.0),
+        particle_ref_px: f(o.get("particle_ref_px"), 0.0).max(0.0),
         particle_max_px: f(o.get("particle_max_px"), 0.0).max(0.0),
         particle_min_px: f(o.get("particle_min_px"), 0.0).max(0.0),
         po: f(o.get("po"), 0.0).max(0.0),

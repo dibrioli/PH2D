@@ -223,6 +223,39 @@ impl PainterTool {
         self.paint.brush.pontas_rectas = !self.paint.brush.pontas_rectas;
     }
 
+    /// **Fixed dab size** on/off (dono 08/11; spray only): on, each mark of the spray keeps its size in
+    /// pixels (today's mark at this Size) and the count of marks grows with the brush area, so the
+    /// density stays ([`ph2d_painter_brush::DabJitter::particle_px`], `particle_ref_px`); off, the mark
+    /// follows the Size again.
+    pub fn toggle_brush_dab_fixo(&mut self) {
+        let b = &mut self.paint.brush;
+        let j = &mut b.dab_jitter;
+        if j.particle_px > 0.0 {
+            j.particle_px = 0.0;
+            j.particle_ref_px = 0.0;
+        } else {
+            let d = 2.0
+                * b.radius_px
+                    .clamp(0.5, ph2d_painter_brush::MAX_BRUSH_RADIUS_PX);
+            j.particle_px = (j.particula(b.spray_count) * d).clamp(
+                crate::ids::PAINTER_BRUSH_DAB_PX_MIN,
+                crate::ids::PAINTER_BRUSH_DAB_PX_MAX,
+            );
+            j.particle_ref_px = d;
+        }
+    }
+
+    /// Set the **Dab size** in pixels (`PAINTER_BRUSH_DAB_PX_MIN..MAX`, clamped) — only while Fixed dab size is on.
+    pub fn set_brush_dab_px(&mut self, v: f32) {
+        let j = &mut self.paint.brush.dab_jitter;
+        if j.particle_px > 0.0 && !v.is_nan() {
+            j.particle_px = v.clamp(
+                crate::ids::PAINTER_BRUSH_DAB_PX_MIN,
+                crate::ids::PAINTER_BRUSH_DAB_PX_MAX,
+            );
+        }
+    }
+
     /// Grain **«Same as Paper»** on/off fora da Aquarela (dono 28/10) — o grão do pincel passa a ser o papel
     /// do documento ([`ph2d_painter_brush::BrushSpec::grain_same_as_paper`], `PainterTool::papel_como_grain`).
     pub fn toggle_brush_grain_same_as_paper(&mut self) {

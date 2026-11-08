@@ -410,6 +410,8 @@ impl PainterTool {
             dab_follows_stroke: b.follows_stroke(),
             pontas_rectas: b.pontas_rectas,
             pontas_alem: b.pontas_alem,
+            dab_fixo: b.dab_jitter.particle_px > 0.0,
+            dab_px: b.dab_jitter.particle_px,
             pontas_esbate: b.pontas_esbate,
             // The orientation the NEXT dab will wear: the brush Angle turned by the stroke-follow rotor.
             // Same two functions the engine composes in `BrushSpec::dab_rotor` (minus the per-dab Jitter

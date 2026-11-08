@@ -108,6 +108,8 @@ pub const MEIOS: &[ReceitaMeio] = &[
     // carimbo 30/20/10): pontos achatados com a cor do fundo e a variação de cor por ponto. O jitter de cor do motor
     // entra ANTES da mistura (na cor do pincel, a metade da tinta com Amount 0,5): a amplitude vai a dobrar do HSV
     // 30/20/10 lido como frações de 360/100/100 (matiz 0,04 — a 0,17 a folha de 08/11 virou arco-íris).
+    // Fixed dab size (dono 08/11): o ponto de 0,33 × 80 = 26,4 px fica em todo Size e a contagem cresce com a área
+    // (referência 80): no Size de fábrica a nuvem é a de antes.
     ReceitaMeio {
         pincel: &[
             ("hardness", "0.5"),
@@ -124,7 +126,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("color_jitter_val", "0.12"),
             (
                 "dab_jitter",
-                r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 0.33, "roundness": 0.0}"#,
+                r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 0.33, "particle_px": 26.4, "particle_ref_px": 80.0, "roundness": 0.0}"#,
             ),
             (
                 "mistura_opaca",

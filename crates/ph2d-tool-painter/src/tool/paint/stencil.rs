@@ -380,6 +380,10 @@ impl PainterTool {
                 self.toggle_brush_pontas_rectas();
                 return true;
             }
+            if *id == crate::ids::PAINTER_BRUSH_DAB_FIXO {
+                self.toggle_brush_dab_fixo();
+                return true;
+            }
             if *id == crate::ids::PAINTER_BRUSH_OFFSET_TRIM {
                 self.toggle_offset_trim();
                 return true;
@@ -405,6 +409,7 @@ impl PainterTool {
                 self.set_brush_dab_rotation_lag(v);
             }
             x if x == crate::ids::PAINTER_BRUSH_PONTAS_ALEM => self.set_brush_pontas_alem(v),
+            x if x == crate::ids::PAINTER_BRUSH_DAB_PX => self.set_brush_dab_px(v),
             x if x == crate::ids::PAINTER_BRUSH_PONTAS_ESBATE => self.set_brush_pontas_esbate(v),
             x if x == crate::ids::PAINTER_TAPER_START => self.set_brush_taper_start(v),
             x if x == crate::ids::PAINTER_TAPER_TIP_START => self.set_brush_taper_tip_start(v),

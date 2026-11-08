@@ -132,6 +132,7 @@ fn pincel_mexido() -> BrushSpec {
             across: 1.2,
             particle: 0.5,
             particle_px: 6.0,
+            particle_ref_px: 60.0,
             particle_max_px: 30.0,
             particle_min_px: 4.0,
             po: 0.9,

@@ -390,6 +390,10 @@ pub struct BrushSettings {
     pub pontas_rectas: bool,
     /// How far the flat cut passes the end centres, in dab radii — `BrushSpec::pontas_alem`.
     pub pontas_alem: f32,
+    /// **Fixed dab size** (dono 08/11; spray only) — `DabJitter::particle_px > 0`.
+    pub dab_fixo: bool,
+    /// **Dab size** in px while [`Self::dab_fixo`] — `DabJitter::particle_px`.
+    pub dab_px: f32,
     /// **Ends fade** (J6t; `0` = off) — the deposit falls toward both ends over one footprint — `BrushSpec::pontas_esbate`.
     pub pontas_esbate: f32,
     /// The **live orientation of the dab footprint** as a unit rotor `[cos, sin]` — the brush's own

@@ -61,6 +61,7 @@ pub(crate) fn is_param_field(id: NodeId) -> bool {
         || crate::cards_mistura::e_campo(id)
         || id == ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_ROTATION_LAG
         || id == ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_ALEM
+        || id == ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_PX
         || id == ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_ESBATE
         // Só as da cor pela mão: as do cartão Jitter são barras (`jitter_linhas::encaminha_marca`).
         || (ph2d_tool_painter::ids::PAINTER_MARCA_FIELDS.contains(&id)

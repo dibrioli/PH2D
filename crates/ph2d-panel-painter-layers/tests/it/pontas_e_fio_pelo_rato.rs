@@ -10,8 +10,8 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind, PointerSource};
 use ph2d_tool_painter::ids::{
-    PAINTER_BRUSH_PONTAS_ALEM, PAINTER_BRUSH_PONTAS_ESBATE, PAINTER_BRUSH_PONTAS_RECTAS,
-    PAINTER_BRUSH_SMEAR_FIO,
+    PAINTER_BRUSH_DAB_FIXO, PAINTER_BRUSH_DAB_PX, PAINTER_BRUSH_PONTAS_ALEM,
+    PAINTER_BRUSH_PONTAS_ESBATE, PAINTER_BRUSH_PONTAS_RECTAS, PAINTER_BRUSH_SMEAR_FIO,
 };
 use ph2d_tool_painter::{BrushSettings, PaintMedia};
 
@@ -180,4 +180,48 @@ fn as_pontas_e_o_fio_aceitam_o_rato_e_o_traco_muda() {
         falhas.len(),
         falhas.join("\n")
     );
+}
+
+/// ⭐ **«Fixed dab size» e «Dab size (px)» pelo rato** (dono 08/11): com spray, o clique na caixa liga o ponto fixo
+/// (no Size de agora o traço é o MESMO — o ponto de hoje), a linha «Dab size (px)» aparece, e o arrasto nela muda o
+/// ponto e o traço. **Mutação que sangra:** tirar `PAINTER_BRUSH_DAB_FIXO` do `event.rs` ou `PAINTER_BRUSH_DAB_PX`
+/// do `is_param_field`.
+#[test]
+fn o_ponto_fixo_aceita_o_rato_e_o_traco_muda() {
+    let armar = vec![Gesto::Numero(
+        ph2d_tool_painter::ids::PAINTER_BRUSH_SPRAY_COUNT_CHIP,
+        3.0,
+    )];
+    let mut b = Bancada::nova(PaintMedia::Digital, &armar);
+    assert!(
+        b.tool.brush_settings().spray_count > 1,
+        "o gesto armou o spray"
+    );
+    let traco_antes = traco_com_pontas(&mut Bancada::nova(PaintMedia::Digital, &armar).tool);
+    let (x, y) = centro(&b, PAINTER_BRUSH_DAB_FIXO, "Fixed dab size");
+    let eventos = b.host.click_at(x, y);
+    let mut entrega = Entrega::default();
+    b.aplica_eventos(eventos, &mut entrega);
+    let s = b.tool.brush_settings();
+    assert!(
+        s.dab_fixo && s.dab_px > 0.0,
+        "a caixa ligou o ponto fixo: {}",
+        s.dab_px
+    );
+    let mesmo = diferenca(&traco_antes, &traco_com_pontas(&mut b.tool)).0;
+    assert!(
+        mesmo < 64,
+        "no Size de agora o ponto é o de antes: {mesmo} px"
+    );
+    let antes = f64::from(s.dab_px);
+    let eventos = arrasta(&mut b, PAINTER_BRUSH_DAB_PX, "Dab size (px)", 120.0);
+    let mut entrega = Entrega::default();
+    b.aplica_eventos(eventos, &mut entrega);
+    let depois = f64::from(b.tool.brush_settings().dab_px);
+    assert!(
+        entrega.ao_tool > 0 && (depois - antes).abs() > 1e-3,
+        "o arrasto chegou: {antes} → {depois}"
+    );
+    let n = diferenca(&traco_antes, &traco_com_pontas(&mut b.tool)).0;
+    assert!(n > 0, "o ponto maior muda o traço");
 }

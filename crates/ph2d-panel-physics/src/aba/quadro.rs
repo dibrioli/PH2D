@@ -9,7 +9,7 @@ use ph2d_editor_core::widget::ButtonState;
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_physics_ecs::{LayerMatrix, MAX_LAYERS};
-use ph2d_tokens::{ROW_H_PX, Radius, Spacing, TypeToken};
+use ph2d_tokens::{Radius, Spacing, TypeToken};
 
 use super::{
     CAMADA, EDITANDO, Geometria, LENTE, Lente, NOVA, Onde, abre, camada_aberta, comeca_a_renomear,

@@ -769,7 +769,6 @@ fn as_caixinhas_tem_a_moldura_e_a_lista_o_quadradinho_na_cor_da_camada() {
 fn os_botoes_da_lista_ficam_dentro_do_cartao_em_tres_larguras() {
     use ph2d_card_stack::metrics::{FIELD_GAP, FIELD_H};
     use ph2d_editor_core::paint::{label_column_width, rect_for_label};
-    use ph2d_panel_physics::aba::Geometria;
     let m = ph2d_tokens::Spacing::Lg.px();
     let mut texto = ph2d_text::TextSystem::without_system_fonts();
     let rotulos = [
@@ -816,8 +815,7 @@ fn os_botoes_da_lista_ficam_dentro_do_cartao_em_tres_larguras() {
         let vao = rem.x - (add.x + add.w);
         assert!((vao - FIELD_GAP).abs() < 0.01, "{w}: o vão ({vao})");
         let coluna = (w * 0.18)
-            .min(FIELD_H * 7.0)
-            .max(FIELD_H * 3.0)
+            .clamp(FIELD_H * 3.0, FIELD_H * 7.0)
             .max(2.0 * (botao + m) + FIELD_GAP);
         assert!(
             (g.lista.w - coluna).abs() < 0.01,

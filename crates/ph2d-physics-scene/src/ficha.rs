@@ -241,3 +241,7 @@ pub fn regras(base: PhysicsSettings) -> PhysicsSettings {
 #[cfg(test)]
 #[path = "ficha_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "ficha_migra_tests.rs"]
+mod migra_tests;

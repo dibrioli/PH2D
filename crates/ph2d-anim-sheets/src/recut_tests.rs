@@ -70,11 +70,23 @@ fn o_cut_again_passa_as_folhas_extra_que_mostram_a_mesma_imagem() {
     let g = w.get::<SpriteGrid>(b).copied().unwrap();
     assert_eq!((g.hframes, g.vframes), (3, 1));
     let s = w.get::<SpriteSheets>(c).unwrap().0[0];
-    assert_eq!((s.hframes, s.vframes), (3, 1), "a folha extra de c segue o corte");
+    assert_eq!(
+        (s.hframes, s.vframes),
+        (3, 1),
+        "a folha extra de c segue o corte"
+    );
     let g = w.get::<SpriteGrid>(c).copied().unwrap();
-    assert_eq!((g.hframes, g.vframes), (4, 1), "a folha 0 de c é outra imagem");
+    assert_eq!(
+        (g.hframes, g.vframes),
+        (4, 1),
+        "a folha 0 de c é outra imagem"
+    );
     let g = w.get::<SpriteGrid>(outro).copied().unwrap();
-    assert_eq!((g.hframes, g.vframes), (2, 2), "quem mostra outra imagem fica");
+    assert_eq!(
+        (g.hframes, g.vframes),
+        (2, 2),
+        "quem mostra outra imagem fica"
+    );
 }
 
 /// ⭐ Um corte menor deixa BURACOS no lugar dos quadros que saíram da grelha, e a animação continua a tocar o resto
@@ -84,7 +96,8 @@ fn o_cut_again_passa_as_folhas_extra_que_mostram_a_mesma_imagem() {
 fn cols_rows_menores_deixam_buracos_e_a_animacao_toca_o_resto() {
     let mut w = World::new();
     let mut lib = SpriteAnimations::new();
-    lib.insert(ph2d_ecs::AnimationTag::new("mix", 0, 0)).unwrap();
+    lib.insert(ph2d_ecs::AnimationTag::new("mix", 0, 0))
+        .unwrap();
     let e = w
         .spawn((
             sprite(),

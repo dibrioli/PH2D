@@ -111,7 +111,12 @@ pub(crate) fn pinta(
     let lado = caixa.h;
     let gap = ph2d_tokens::control_gap_px();
     let x_fecha = x + w - lado;
-    let caixa = Rect::new(caixa.x, caixa.y, caixa.w.min(x_fecha - gap - caixa.x), caixa.h);
+    let caixa = Rect::new(
+        caixa.x,
+        caixa.y,
+        caixa.w.min(x_fecha - gap - caixa.x),
+        caixa.h,
+    );
     let fecha = Rect::new(x_fecha, caixa.y, lado, lado);
     hit.register(crate::ids::INSP_RECEIPT_CLOSE, fecha);
     let id = crate::ids::INSP_RECEIPT_CLOSE;

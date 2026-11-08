@@ -143,7 +143,10 @@ pub fn build_card_info(world: &World, entity: Entity) -> AnimCardInfo {
 }
 
 /// As folhas extra como o cartão as pinta: a imagem descodificada (se `sheet::refresh` a resolveu) e o corte.
-fn extra_sheets(world: &World, entity: Entity) -> Vec<(Option<ph2d_editor_core::SheetImage>, u32, u32)> {
+fn extra_sheets(
+    world: &World,
+    entity: Entity,
+) -> Vec<(Option<ph2d_editor_core::SheetImage>, u32, u32)> {
     let cache = world.get_resource::<crate::sheet::SheetCache>();
     world
         .get::<ph2d_ecs::SpriteSheets>(entity)

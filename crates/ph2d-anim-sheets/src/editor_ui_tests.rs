@@ -40,7 +40,12 @@ fn o_editor_mostra_o_nome_da_biblioteca_o_mesmo_do_cartao() {
         ids: vec![idle, run],
         names: [(idle, "idle".to_owned()), (run, "run (2)".to_owned())].into(),
     });
-    crate::sheet_cache::refresh(&mut w, &[e.to_bits()], &db, &std::collections::BTreeMap::new());
+    crate::sheet_cache::refresh(
+        &mut w,
+        &[e.to_bits()],
+        &db,
+        &std::collections::BTreeMap::new(),
+    );
     let (sheets, _) = editor_sheets(&w, e.to_bits());
     let nomes: Vec<&str> = sheets.iter().map(|s| s.name.as_str()).collect();
     assert_eq!(nomes, ["idle", "run (2)"]);

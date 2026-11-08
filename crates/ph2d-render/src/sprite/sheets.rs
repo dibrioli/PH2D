@@ -132,6 +132,28 @@ fn open_sheet_view(world: &World, entity: Entity, sprite: &Sprite) -> SheetView 
     }
 }
 
+/// ⭐ **A prévia da animação ao lado da imagem aberta no Painter** corta-se pela folha VISÍVEL: com a folha `k ≥ 1`
+/// aberta, o tamanho e a grelha são os DELA (a célula na tela, se é dela; senão a primeira). Fora disso, `(sprite,
+/// grid)` tal como vieram.
+#[must_use]
+pub fn open_preview_cell(
+    world: &World,
+    entity: Entity,
+    sprite: &Sprite,
+    grid: SpriteGrid,
+) -> (Sprite, SpriteGrid) {
+    let k = ph2d_ecs::shown_sheet(world, entity);
+    let sheet = world.get::<SpriteSheets>(entity).and_then(|s| s.sheet(k));
+    match sheet {
+        Some(s) if k > 0 && ph2d_ecs::imagem_aberta(world, entity).is_some() => {
+            let na_tela = world.get::<SpriteGrid>(entity).copied();
+            let frame = na_tela.filter(|g| g.sheet == k).map_or(0, |g| g.frame);
+            (sheet_sprite(s, sprite), s.grid(frame))
+        }
+        _ => (*sprite, grid),
+    }
+}
+
 /// **Uma vez por quadro, antes do extract**: resolve a textura de cada folha extra que mudou de imagem. A célula do
 /// átlas ganha (sem cópia); senão `upload` sobe a imagem e devolve o `texture_id` (`None` = ainda não há).
 pub fn resolve_sheet_textures(

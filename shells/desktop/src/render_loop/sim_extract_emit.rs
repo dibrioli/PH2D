@@ -292,10 +292,11 @@ fn spawn(
             // uma lasca arbitrária: um sprite de atlas mostraria lixo na
             // pré-visualização, e o de textura própria acertava por os dois serem
             // o rect unitário. *Um acerto que depende da fonte não é um acerto.*
+            let (cel, cel_grid) = ph2d_render::open_preview_cell(sim, sim_entity, spr, grid);
             let anim_preview = override_for_entity.and_then(|_| {
                 crate::render_loop::sim_extract_sheet::anim_preview_quad(
-                    spr,
-                    grid,
+                    &cel,
+                    cel_grid,
                     [0.0, 0.0, 1.0, 1.0],
                 )
             });
@@ -319,7 +320,7 @@ fn spawn(
                     ri.atlas_uv = uv;
                     // ⚠️ UMA célula, e não o quad desdobrado: é a imagem que a
                     // sprite mostra quando a folha volta a fechar.
-                    ri.size = spr.size;
+                    ri.size = cel.size;
                     ri.anchor = [quad_anchor[0] + off[0], quad_anchor[1] + off[1]];
                     present.spawn((
                         SimRef(sim_entity),

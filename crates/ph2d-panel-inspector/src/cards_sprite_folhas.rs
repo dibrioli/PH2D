@@ -96,28 +96,31 @@ pub(crate) fn formas_da_folha(
     com.into_iter().chain(formas).collect()
 }
 
-/// A moldura, com duas ou mais folhas: a miniatura é a caixa do dropdown, com a ▾ no canto de baixo.
+/// A moldura, com duas ou mais folhas: a miniatura é a caixa do dropdown, com uma faixa translúcida no pé e a ▾ ao
+/// centro (dono 08/11: o quadradinho no canto lia-se como uma caixa de marcar).
 pub(crate) fn miniatura_escolhe(c: &mut CardCtx<'_>, foto: Rect, card: &SheetCard) {
     c.hit_index.register(ids::INSP_IMAGE_SHEET_PICK, foto);
     let theme = c.ink.theme;
     let lado = m::HEAD_ICON_GLYPH;
     let inset = Spacing::Xxs.px();
-    let canto = Rect::new(
-        foto.x + foto.w - lado - inset,
-        foto.y + foto.h - lado - inset,
-        lado,
-        lado,
-    );
+    let alto = lado + inset;
+    let faixa = Rect::new(foto.x, foto.y + foto.h - alto, foto.w, alto);
     fill_rounded_rect(
         c.scene,
-        canto,
+        faixa,
         frame_radius(theme, Radius::Sm.px()),
-        c.ink.color(ColorToken::CardFieldHover),
+        c.ink.color(ColorToken::RailBg),
+    );
+    let seta = Rect::new(
+        faixa.x + (faixa.w - lado) * 0.5,
+        faixa.y + inset * 0.5,
+        lado,
+        lado,
     );
     paint_icon(
         c.scene,
         IconId::ChevronDown,
-        canto,
+        seta,
         resolve(ColorToken::Text1, theme),
         StrokeToken::Default.px(),
     );

@@ -124,7 +124,11 @@ fn a_imagem_aberta_no_painter_e_a_da_folha_visivel() {
     let (mut w, e, sprite) = two_sheets();
     resolve_sheet_textures(&mut w, &BTreeMap::new(), &mut |_| Some(42));
     w.entity_mut(e).insert(ph2d_ecs::ShownSheet(1));
-    assert_eq!(sheet_view(&w, e, &sprite), SheetView::Own, "fechada: o quadro na tela");
+    assert_eq!(
+        sheet_view(&w, e, &sprite),
+        SheetView::Own,
+        "fechada: o quadro na tela"
+    );
     w.insert_resource(ph2d_ecs::ImagemAberta {
         entity: e,
         quad: [1.0, 1.0],
@@ -138,4 +142,33 @@ fn a_imagem_aberta_no_painter_e_a_da_folha_visivel() {
     // CONTROLO: com a folha 0 visível, aberta, é ela.
     w.entity_mut(e).insert(ph2d_ecs::ShownSheet(0));
     assert_eq!(sheet_view(&w, e, &sprite), SheetView::Own);
+}
+
+/// ⭐ Bug do smoke 08/11: a prévia da animação ao lado da `run` aberta no Painter cortava a imagem pela grelha da
+/// `idle` (4 × 1), mostrando bonecos e meio. Corta-se pela folha visível, à célula na tela quando é dela.
+/// *Mutações: devolver `(sprite, grid)` sempre ⇒ 4 × 1; ignorar a célula na tela ⇒ frame 0.*
+#[test]
+fn a_previa_ao_lado_da_folha_aberta_corta_se_pela_grelha_dela() {
+    let (mut w, e, sprite) = two_sheets();
+    let g0 = SpriteGrid::new(4, 1);
+    w.entity_mut(e).insert(ph2d_ecs::ShownSheet(1));
+    assert_eq!(
+        open_preview_cell(&w, e, &sprite, g0),
+        (sprite, g0),
+        "fechada"
+    );
+    w.insert_resource(ph2d_ecs::ImagemAberta {
+        entity: e,
+        quad: [1.0, 1.0],
+    });
+    let (s, g) = open_preview_cell(&w, e, &sprite, g0);
+    assert_eq!(s.size, [1.5, 1.5]);
+    assert_eq!((g.hframes, g.vframes, g.frame), (6, 2, 0));
+    let mut na_tela = g0;
+    (na_tela.sheet, na_tela.frame) = (1, 7);
+    w.entity_mut(e).insert(na_tela);
+    assert_eq!(open_preview_cell(&w, e, &sprite, g0).1.frame, 7);
+    // CONTROLO: a folha 0 aberta é a de sempre.
+    w.entity_mut(e).insert(ph2d_ecs::ShownSheet(0));
+    assert_eq!(open_preview_cell(&w, e, &sprite, g0), (sprite, g0));
 }

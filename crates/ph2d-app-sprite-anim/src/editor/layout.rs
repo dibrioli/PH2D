@@ -56,6 +56,9 @@ pub struct Layout {
     /// A folha encaixada (a imagem inteira).
     pub sheet: Rect,
     pub strip: Rect,
+    /// O trilho da barra de rolagem, logo abaixo da tira, e a largura de todos os quadros juntos.
+    pub strip_bar: Rect,
+    pub strip_content: f32,
     /// Por quadro da faixa: (miniatura, ×).
     pub frames: Vec<(Rect, Rect)>,
     /// Durante o arrasto de um quadro: (o intervalo `0..=n`, a barra de inserção).
@@ -93,6 +96,8 @@ impl Default for Layout {
             banner: None,
             sheet: z,
             strip: z,
+            strip_bar: z,
+            strip_content: 0.0,
             frames: Vec::new(),
             marker: None,
             time_group: z,
@@ -175,11 +180,13 @@ impl AnimDoc {
         let row = m::FIELD_H;
         let line = ROW_H_PX;
         let font = TypeToken::Base.px();
-        let close_side = rect_for_label(label_column_width(
-            text,
-            font,
-            [ph2d_i18n::tr("anim_editor.remove_frame")],
-        ));
+        // O × do quadro tem o dobro da caixa de uma letra (dono 08/11: o pequeno não se acertava).
+        let close_side = 2.0 // LITERAL-PX-OK: o dobro, ordem do dono
+            * rect_for_label(label_column_width(
+                text,
+                font,
+                [ph2d_i18n::tr("anim_editor.remove_frame")],
+            ));
         let mut fit = |labels: &[&str]| {
             rect_for_label(label_column_width(text, font, labels.iter().copied())).max(row)
         };
@@ -260,8 +267,18 @@ impl AnimDoc {
         let side_field = (side_w - PER_GROUP * group_pad - gap) / PER_GROUP;
         let side_by_side = side_field >= label_need;
         let group_line = if side_by_side { 0.0 } else { group_h + gap };
-        let frames_fixed =
-            2.0 * inner + row + gap + mark_line + gap + group_h + group_line + gap + row; // LITERAL-PX-OK: as margens
+        let bar = ph2d_editor_core::widget::SCROLLBAR_W;
+        let frames_fixed = 2.0 * inner
+            + row
+            + gap
+            + mark_line
+            + bar
+            + gap
+            + gap
+            + group_h
+            + group_line
+            + gap
+            + row; // LITERAL-PX-OK: as margens
         let banner_h = if self.proposal().is_some() {
             row + gap
         } else {
@@ -307,6 +324,8 @@ impl AnimDoc {
         y += row + gap + mark_line;
         l.strip = Rect::new(cx, y, card_w, thumb);
         y += thumb + gap;
+        l.strip_bar = Rect::new(cx, y, card_w, bar);
+        y += bar + gap;
         let group_w = if side_by_side { side_w } else { card_w };
         l.time_group = Rect::new(cx, y, group_w, group_h);
         l.grid_group = if side_by_side {
@@ -374,6 +393,7 @@ impl AnimDoc {
         let thumb_w = fill.min(thumb * THUMB_MAX_ASPECT).max(thumb);
         let max_scroll = (n_frames as f32 * (thumb_w + gap) - gap - l.strip.w).max(0.0);
         self.strip_scroll = self.strip_scroll.clamp(0.0, max_scroll);
+        l.strip_content = max_scroll + l.strip.w;
         l.frames = (0..n_frames)
             .map(|i| {
                 let fx = l.strip.x + i as f32 * (thumb_w + gap) - self.strip_scroll;

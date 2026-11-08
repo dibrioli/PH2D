@@ -33,7 +33,14 @@ pub(crate) fn paint_preview(
     let h = ROW_H * PREVIEW_ROWS;
     // Cada quadro pinta-se pela imagem da folha DELE (plano GEF 26); um vazio não pinta.
     if let Some((sheet, cols, rows)) = info.card.sheet_of(info.frame.sheet) {
-        paint_sheet_cell(scene, sheet, cols, rows, info.frame.cell, Rect::new(x, y, w, h));
+        paint_sheet_cell(
+            scene,
+            sheet,
+            cols,
+            rows,
+            info.frame.cell,
+            Rect::new(x, y, w, h),
+        );
     }
     y + h + ph2d_tokens::control_gap_px()
 }

@@ -6,13 +6,13 @@ use super::doc::{AnimDoc, DragPaint, Field};
 use super::paint_sheet::{paint_hover_list, paint_sheet};
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, frame_radius, label_column_width, paint_text, paint_text_centered,
-    paint_text_title, stroke_rect, stroke_rounded_rect,
+    fill_rounded_rect, frame_radius, label_column_width, paint_icon, paint_text,
+    paint_text_centered, paint_text_title, stroke_rect, stroke_rounded_rect,
 };
 use ph2d_editor_core::paint_shapes::fill_diamond;
 use ph2d_editor_core::widget::paint_card_ghost;
 use ph2d_editor_core::zones::Rect;
-use ph2d_editor_core::{AnimCycleMode, InspectorAnimInfo};
+use ph2d_editor_core::{AnimCycleMode, IconId, InspectorAnimInfo};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
@@ -200,10 +200,7 @@ pub fn paint_doc(
     doc.sheet_ui
         .paint_clean(scene, text, theme, (foot, l.list_title.w), info.as_ref());
     paint_list(doc, &l, info.as_ref(), scene, text, theme);
-    let mut hint = tr("anim_editor.sheet_hint");
-    if label_column_width(text, FONT_TOKEN.px(), [hint]) > l.sheet_title.w {
-        hint = tr("anim_editor.sheet");
-    }
+    let hint = tr("anim_editor.sheet_hint");
     let (sheets, shown) = (&doc.snap.sheets, doc.snap.shown_sheet);
     let title = (l.sheet_title, hint);
     doc.sheet_ui
@@ -236,6 +233,7 @@ pub fn paint_doc(
     paint_frames_title(doc, &l, info.as_ref(), scene, text, theme);
     let frames = doc.shown_frames();
     doc.painted = paint_strip(doc, &l, &frames, info.as_ref(), scene, text, theme);
+    doc.paint_bar(scene, theme);
     doc.painted_marks = (0..l.frames.len())
         .filter(|i| doc.marker_at(*i).is_some())
         .collect();
@@ -603,13 +601,19 @@ fn paint_strip(
             x >= thumb.x && x < thumb.x + thumb.w && y >= thumb.y && y < thumb.y + thumb.h
         });
         if frames.len() > 1 && hovered {
-            paint_text_centered(
-                text,
+            let d = Spacing::Sm.px();
+            let icon = Rect::new(
+                close.x + d,
+                close.y + d,
+                close.w - 2.0 * d,
+                close.h - 2.0 * d,
+            ); // LITERAL-PX-OK: as duas margens
+            paint_icon(
                 scene,
-                tr("anim_editor.remove_frame"),
-                *close,
-                font,
-                tom(ColorToken::Text2, theme),
+                IconId::Close,
+                icon,
+                tom(ColorToken::Text1, theme),
+                StrokeToken::Default.px(),
             );
         }
         if doc.marker_at(i).is_some() {

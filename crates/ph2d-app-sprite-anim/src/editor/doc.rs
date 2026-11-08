@@ -116,6 +116,8 @@ pub struct AnimDoc {
     pub editing: Option<(Field, String)>,
     pub layout: Layout,
     pub strip_scroll: f32,
+    /// Com o polegar da barra agarrado: onde, dentro dele, o ponteiro o pegou.
+    pub bar_grab: Option<f32>,
     /// O que a última pintura desenhou do arrasto.
     pub painted: DragPaint,
     /// Os quadros com ◆ na última pintura.
@@ -443,7 +445,7 @@ impl AnimDoc {
         if !hit(l.area, x, y) {
             return false;
         }
-        if self.sheet_ui.press(x, y) {
+        if self.sheet_ui.press(x, y) || self.bar_press(x, y) {
             return true;
         }
         if let Some(f) = self.scrub_target(x, y)
@@ -520,6 +522,9 @@ impl AnimDoc {
     /// O rato moveu-se (com ou sem botão).
     pub fn motion(&mut self, x: f32, y: f32) -> bool {
         self.hover = hit(self.layout.area, x, y).then_some((x, y));
+        if self.bar_motion(x) {
+            return true;
+        }
         if matches!(self.drag, Drag::Scrub(..))
             && let Drag::Scrub(f, mut s, last) = std::mem::take(&mut self.drag)
         {
@@ -570,6 +575,9 @@ impl AnimDoc {
     /// Botão solto.
     pub fn release(&mut self, x: f32, y: f32) -> bool {
         self.motion(x, y);
+        if self.bar_grab.take().is_some() {
+            return true;
+        }
         match std::mem::take(&mut self.drag) {
             Drag::Cells { base, added } => {
                 self.push_frames(base.into_iter().chain(added).collect());

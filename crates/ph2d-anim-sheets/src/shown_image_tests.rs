@@ -38,7 +38,11 @@ fn o_painter_abre_e_grava_a_folha_visivel() {
     assert_ne!(novo, run);
     let s = w.get::<SpriteSheets>(e).unwrap().0[0];
     assert_eq!(s.asset, novo);
-    assert_eq!(s.size, [1.5, 1.5], "o mesmo tamanho de imagem, o mesmo quad");
+    assert_eq!(
+        s.size,
+        [1.5, 1.5],
+        "o mesmo tamanho de imagem, o mesmo quad"
+    );
     let (px, ..) = read_shown_extra(&w, e, &db).unwrap();
     assert_eq!(px[0], 7);
 }

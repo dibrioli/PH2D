@@ -10,6 +10,7 @@ pub mod layout;
 mod marks;
 pub mod paint;
 pub mod paint_sheet;
+pub mod strip_bar;
 pub use ph2d_anim_sheets::split;
 
 use std::collections::BTreeMap;
@@ -159,8 +160,8 @@ impl DocumentSurface for AnimDocs {
         let Some(d) = self.doc_mut(id) else {
             return false;
         };
-        let s = d.layout.strip;
-        if !(x >= s.x && x < s.x + s.w && y >= s.y && y < s.y + s.h) {
+        let (s, b) = (d.layout.strip, d.layout.strip_bar);
+        if !(x >= s.x && x < s.x + s.w && y >= s.y && y < b.y + b.h) {
             return false;
         }
         let n = d.layout.frames.len() as f32;

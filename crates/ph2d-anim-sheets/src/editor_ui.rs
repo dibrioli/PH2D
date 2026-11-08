@@ -9,7 +9,7 @@ use crate::sheet_cache::{SheetCache, SheetKey};
 use ph2d_ecs::{Entity, SpriteGrid, SpriteSheets, World};
 use ph2d_editor_core::paint::{
     fill_rounded_rect, frame_radius, label_column_width, paint_text, paint_text_centered,
-    rect_for_label, resolve, stroke_rounded_rect_dashed,
+    paint_text_title, rect_for_label, resolve, stroke_rounded_rect_dashed,
 };
 use ph2d_editor_core::widget::sheet_cell::paint_sheet_cell;
 use ph2d_editor_core::zones::Rect;
@@ -224,7 +224,8 @@ impl SheetUi {
         false
     }
 
-    /// O título da folha: com 2 ou mais folhas, o botão «nome ▾» e a dica ao lado; senão, só a dica.
+    /// O título da folha: «SHEET» em destaque (dono 08/11), com 2 ou mais folhas o botão «nome ▾», e a dica ao lado
+    /// enquanto couber.
     pub fn paint_title(
         &mut self,
         scene: &mut VectorScene,
@@ -252,17 +253,23 @@ impl SheetUi {
         } else {
             self.open = false;
         }
-        let w = (title.x + title.w - x).max(0.0);
-        paint_text(
+        let head = tr("anim_editor.sheet");
+        let fim = title.x + title.w;
+        paint_text_title(
             text,
             scene,
-            hint,
+            head,
             x,
             y,
             font,
-            w,
-            tom(ColorToken::Text2, theme),
+            (fim - x).max(0.0),
+            tom(ColorToken::Text1, theme),
         );
+        x += label_column_width(text, font, [head]) + Spacing::Xs.px();
+        if label_column_width(text, font, [hint]) <= fim - x {
+            let c = tom(ColorToken::Text2, theme);
+            paint_text(text, scene, hint, x, y, font, fim - x, c);
+        }
     }
 
     /// O dropdown aberto, por cima de tudo: um item por folha (`nome · C × R`), a visível com ✓.

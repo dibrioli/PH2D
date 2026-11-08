@@ -89,6 +89,13 @@ impl CodeDocs {
         d.view.completion_painted()
     }
 
+    /// ⚠️ SONDA: as linhas da lista pintada cujo rótulo saiu cortado (vazio = todas inteiras).
+    #[must_use]
+    pub fn completion_cut(&self, id: ScriptId) -> Option<Vec<usize>> {
+        let d = self.docs.iter().find(|d| d.script == id)?;
+        d.view.completion_cut()
+    }
+
     /// ⚠️ SONDA: o texto do balão do rato que a aba do script `id` tem para mostrar.
     #[must_use]
     pub fn hover_of(&self, id: ScriptId) -> Option<String> {

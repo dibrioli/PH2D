@@ -93,6 +93,7 @@ impl DocumentSurface for CodeDocs {
             doc.paint(body, scene, text, theme, store, (lit, assist));
         }
         self.paint_over(id, doc_r, scene, text, theme);
+        self.context_paint(id, scene, text, theme);
     }
 
     fn chrome_over(&mut self, _id: u64, over: Option<Rect>) {
@@ -109,6 +110,22 @@ impl DocumentSurface for CodeDocs {
         y: f32,
     ) -> bool {
         let area = self.code_body(id, self.split_area(self.area).1);
+        if matches!((kind, button), (PointerKind::Down, PointerButton::Primary))
+            && let Some(taken) = self.context_press(x, y)
+        {
+            self.pressed = taken;
+            return taken;
+        }
+        if matches!(
+            (kind, button),
+            (PointerKind::Down, PointerButton::Secondary)
+        ) {
+            self.context_close();
+            if page_of(id).is_none() && self.context_open(id, x, y) {
+                self.pressed = true;
+                return true;
+            }
+        }
         if matches!((kind, button), (PointerKind::Down, PointerButton::Primary))
             && let Some(taken) = self.bar_press(id, x, y)
         {
@@ -178,7 +195,7 @@ impl DocumentSurface for CodeDocs {
             }
             return true;
         }
-        if self.bar_move(x, y) {
+        if self.context_move(x, y) || self.bar_move(x, y) {
             return true;
         }
         self.list.hover_count = self.list.view.count_at(x, y);
@@ -230,7 +247,7 @@ impl DocumentSurface for CodeDocs {
             text,
             paste,
         } = input;
-        if pressed && key == Key::Escape && self.bar_escape() {
+        if pressed && (self.context_key(key) || (key == Key::Escape && self.bar_escape())) {
             return KeyOutcome {
                 consumed: true,
                 copy: None,

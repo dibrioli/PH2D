@@ -117,10 +117,19 @@ pub fn drop_hover(hero: &mut HeroScreen, at: Option<crate::doc_surface::DropAt<'
 }
 
 /// Largou-se um arrasto entre painéis: a aba de família activa recebe-o? (`true` = escreveu.)
+///
+/// ⭐ A aba que recebe a queda recebe o teclado, como um carregar nela ([`pointer`]): o gesto acaba
+/// nela, e a pergunta que a queda abre (↑/↓/Enter/Esc) tem de ouvir as teclas mesmo que o arrasto
+/// tenha começado com um campo de outro painel focado (a busca da Hierarchy).
 pub fn drop(hero: &mut HeroScreen, at: crate::doc_surface::DropAt<'_>) -> bool {
-    hero.documents
+    let taken = hero
+        .documents
         .active_surface_mut()
-        .is_some_and(|(f, id)| f.drop(id, at))
+        .is_some_and(|(f, id)| f.drop(id, at));
+    if taken && hero.store.focus_id().is_some() {
+        hero.solta_o_teclado();
+    }
+    taken
 }
 
 /// Ficheiros do sistema largados em `(x, y)`: a aba de família activa recebe-os? (`true` = sim.)

@@ -89,6 +89,8 @@ pub(crate) struct CodeDoc {
     pub(crate) reach: crate::reach::Reach,
     /// As acções de contexto do Alt+Enter (I7).
     pub(crate) actions: Option<crate::actions::Actions>,
+    /// Os consertos do menu do botão direito (item 14), à espera do assistente como os do Alt+Enter.
+    pub(crate) menu_fixes: Option<crate::actions::Actions>,
     /// Os campos do `self` que ninguém dá (I7).
     pub(crate) lint: crate::lint::Lint,
     /// As declarações do texto por salvar (1b, [`crate::draft`]).
@@ -166,6 +168,7 @@ impl CodeDoc {
             help_request: None,
             reach: crate::reach::Reach::default(),
             actions: None,
+            menu_fixes: None,
             lint: crate::lint::Lint::default(),
             draft: crate::draft::Draft::default(),
             rename: None,

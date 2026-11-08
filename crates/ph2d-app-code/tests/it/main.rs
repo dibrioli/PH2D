@@ -11,6 +11,7 @@ mod arrastar;
 mod assistente;
 mod bancada;
 mod barra_da_aba;
+mod botao_direito;
 mod botoes;
 mod busca;
 mod cartoes;
@@ -228,6 +229,15 @@ impl Mesa {
         let mut ts = std::mem::replace(&mut self.ts, TextSystem::without_system_fonts());
         self.docs()
             .paint(id.0, AREA, &mut scene, &mut ts, &Theme::default());
+        self.ts = ts;
+    }
+
+    /// Pinta a aba `id` numa área própria (a da cena do smoke, por exemplo).
+    pub fn pinta_em(&mut self, id: ScriptId, area: Rect) {
+        let mut scene = VectorScene::new();
+        let mut ts = std::mem::replace(&mut self.ts, TextSystem::without_system_fonts());
+        self.docs()
+            .paint(id.0, area, &mut scene, &mut ts, &Theme::default());
         self.ts = ts;
     }
 

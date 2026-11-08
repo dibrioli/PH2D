@@ -10,8 +10,8 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::{folga_do_texto, paint_icon, paint_text, resolve};
 use ph2d_editor_core::widget::{
-    Button, Checkbox, CheckboxValue, Popover, paint_button, paint_checkbox, paint_popover,
-    pop_popover_clip, push_popover_clip,
+    Button, CHECKBOX_BOX_PX, Checkbox, CheckboxValue, Popover, paint_button, paint_checkbox,
+    paint_popover, pop_popover_clip, push_popover_clip,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_panel_code::Assist;
@@ -28,6 +28,8 @@ pub struct OptionsPainted {
     pub card: Option<Rect>,
     /// As três caixas e o «Restart»: o comando e a caixa.
     pub rows: Vec<(NodeId, Rect)>,
+    /// A marca de cada caixa (a grelha: a borda direita dela é a do «Restart»).
+    pub marks: Vec<Rect>,
     pub pin: Option<Rect>,
 }
 
@@ -99,7 +101,12 @@ impl OptionsCard {
         if !self.open {
             return;
         }
-        let pad = ph2d_tokens::card_pad_px();
+        // ⭐ Uma grelha (dono 04/11): os nomes numa coluna à esquerda (`inner`), as marcas, o alfinete
+        // e o «Restart» com a borda direita em `inner + inner_w`. A caixa de marcar é a linha simples
+        // (sem secção nem losango: nada aqui anima), cuja marca recua `Spacing::Md` da borda da linha.
+        let edge = ph2d_tokens::card_pad_px();
+        let md = Spacing::Md.px();
+        let pad = edge + md;
         let rh = ph2d_tokens::row_pitch_px();
         let sentence = assist_sentence(assist);
         let restart = ph2d_i18n::tr("code.options.restart");
@@ -114,23 +121,19 @@ impl OptionsCard {
             ),
             (CMD_TYPE_HINTS, "code.options.type_hints", state.type_hints),
         ];
-        let mut label_w = width(ts, ph2d_i18n::tr("code.options.title"));
+        let mut label_w = width(ts, ph2d_i18n::tr("code.options.title")) + rh;
         for b in &boxes {
-            label_w = label_w.max(width(ts, ph2d_i18n::tr(b.1)));
+            label_w = label_w.max(width(ts, ph2d_i18n::tr(b.1)) + md * 2.0 + CHECKBOX_BOX_PX);
         }
-        // A linha de formulário dá metade da caixa ao nome: o dobro do mais largo, mais a marca.
-        label_w = label_w * 2.0 + rh * 2.0;
-        let w = (width(ts, sentence) + Spacing::Xl.px() + restart_w)
-            .max(label_w)
-            .min(under.w)
-            + pad * 2.0;
-        let h = rh * 5.0 + pad * 2.0;
+        let w = ((width(ts, sentence) + Spacing::Xl.px() + restart_w).max(label_w) + pad * 2.0)
+            .min(under.w);
+        let h = rh * 5.0 + Spacing::Xs.px() + pad * 2.0;
         let g = crate::cards::gap();
         let card = Rect::new(under.x + under.w - w - g, under.y + g, w, h.min(under.h));
         paint_popover(&Popover::new(CARD_ID), card, scene, *theme);
         push_popover_clip(card, scene);
         let inner = card.x + pad;
-        let inner_w = card.w - pad * 2.0;
+        let inner_w = (card.w - pad * 2.0).max(0.0);
         let mut y = card.y + pad;
         let text = |ts: &mut TextSystem,
                     scene: &mut VectorScene,
@@ -182,14 +185,23 @@ impl OptionsCard {
         self.painted.pin = Some(pin);
         y += rh;
         for (cmd, key, on) in boxes {
-            let r = Rect::new(inner, y, inner_w, rh);
+            let r = Rect::new(inner - md, y, inner_w + md * 2.0, rh);
             let mut cb = Checkbox::new(cmd, ph2d_i18n::tr(key));
+            cb.seccao = None;
+            cb.decorator = false;
             cb.value = if on {
                 CheckboxValue::Checked
             } else {
                 CheckboxValue::Unchecked
             };
             paint_checkbox(&cb, r, scene, ts, *theme);
+            // A mesma conta do pintor (`property_box::value_column` sem losango).
+            self.painted.marks.push(Rect::new(
+                r.x + r.w - md - CHECKBOX_BOX_PX,
+                y + (rh - CHECKBOX_BOX_PX) * 0.5,
+                CHECKBOX_BOX_PX,
+                CHECKBOX_BOX_PX,
+            ));
             self.painted.rows.push((cmd, r));
             y += rh;
         }

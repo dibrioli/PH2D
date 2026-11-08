@@ -154,8 +154,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.cmd.unfold_all" => "Unfold All",
         // Onda A (doc 13 §4, itens 3–4): comentar, dobrar o bloco do cursor, a contagem da lista.
         "code.cmd.toggle_comment" => "Toggle Comment \u{00b7} Cmd+/",
-        "code.cmd.fold" => "Fold \u{00b7} Alt+F",
-        "code.cmd.unfold" => "Unfold \u{00b7} Alt+F",
+        "code.cmd.toggle_fold" => "Toggle Fold \u{00b7} Alt+F",
         "code.list.unused" => "unused",
         "code.list.used_by" => "Used by {count} {count?object|objects}",
         "code.list.used_by_none" => "No object uses this script",
@@ -191,6 +190,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // 13 §4 item 13: o caminho até o cursor, à direita da barra da aba.
         "code.crumb.line" => "line {line}",
         "code.crumb.go_tip" => "Go to {name}",
+        // 13 §4 item 14: o menu do botão direito no texto.
+        "code.ctx.help_for" => "Help for {name}",
+        "code.ctx.fix_keys" => "Alt+Enter",
         // 13 §4 item 12: o cartão «Script options».
         "code.options.title" => "Script options",
         "code.options.strict" => "Strict types",

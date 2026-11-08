@@ -156,6 +156,7 @@ impl CodeDoc {
                 .as_ref()
                 .is_some_and(|g| g.ticket == Some(ticket) || g.hover_ticket == Some(ticket))
             || self.actions.as_ref().is_some_and(|a| a.owns(ticket))
+            || self.menu_fixes.as_ref().is_some_and(|a| a.owns(ticket))
             || self.occ.ticket == Some(ticket)
             || self.reach_owns(ticket)
             || self
@@ -184,6 +185,8 @@ impl CodeDoc {
             self.rename_answer(answer);
         } else if self.actions.as_ref().is_some_and(|a| a.owns(ticket)) {
             self.actions_answer(ticket, answer);
+        } else if let Some(a) = self.menu_fixes.as_mut().filter(|a| a.owns(ticket)) {
+            a.answer(ticket, answer, self.buffer.text());
         } else if let Some(f) = self
             .hints
             .hover

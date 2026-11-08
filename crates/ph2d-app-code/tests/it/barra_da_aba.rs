@@ -131,3 +131,85 @@ fn o_cartao_script_options_liga_as_caixas_e_o_alfinete_o_segura() {
     clica(&mut m, id, fora);
     assert!(!m.docs().options_card().open, "sem alfinete fecha");
 }
+
+fn dentro(card: Rect, r: Rect) -> bool {
+    r.x >= card.x && r.y >= card.y && r.x + r.w <= card.x + card.w && r.y + r.h <= card.y + card.h
+}
+
+/// t5: toda caixa pintada do cartão (as linhas, as marcas, o alfinete e o «Restart») cabe dentro dele,
+/// e as marcas, o alfinete e o «Restart» partilham a borda direita (uma grelha).
+#[test]
+fn o_cartao_script_options_pinta_tudo_dentro_dele_numa_grelha() {
+    let (mut m, id) = aberta();
+    m.docs().set_options_open(true);
+    m.pinta(id);
+    let p = m.docs().options_card().painted.clone();
+    let card = p.card.expect("o cartão");
+    let pin = p.pin.expect("o alfinete");
+    assert_eq!(p.marks.len(), 3, "três marcas");
+    for r in p
+        .rows
+        .iter()
+        .map(|r| r.1)
+        .chain(p.marks.iter().copied())
+        .chain([pin])
+    {
+        assert!(dentro(card, r), "{r:?} sai de {card:?}");
+    }
+    let restart = p.rows.last().expect("o Restart").1;
+    let borda = restart.x + restart.w;
+    for r in p.marks.iter().chain([&pin]) {
+        assert!(
+            (r.x + r.w - borda).abs() < 0.5,
+            "{r:?} fora da borda {borda}"
+        );
+    }
+}
+
+/// t6: o Esc fecha o cartão sem alfinete; com alfinete fica.
+#[test]
+fn o_esc_fecha_o_cartao_script_options_sem_alfinete() {
+    let (mut m, id) = aberta();
+    m.docs().set_options_open(true);
+    m.pinta(id);
+    m.tecla(
+        id,
+        ph2d_editor_core::doc_surface::Key::Escape,
+        Modifiers::default(),
+        None,
+    );
+    assert!(!m.docs().options_card().open, "o Esc fechou-o");
+    m.docs().set_options_open(true);
+    m.pinta(id);
+    let pin = m.docs().options_card().painted.pin.expect("o alfinete");
+    clica(&mut m, id, pin);
+    m.tecla(
+        id,
+        ph2d_editor_core::doc_surface::Key::Escape,
+        Modifiers::default(),
+        None,
+    );
+    assert!(m.docs().options_card().open, "com alfinete fica");
+}
+
+/// t7: o menu Edit tem UMA linha com o Alt+F, «Toggle Fold», e ela faz o que a tecla faz: dobra o
+/// bloco do cursor e, de novo, abre-o. «Fold All» e «Unfold All» continuam.
+#[test]
+fn o_menu_edit_tem_uma_linha_toggle_fold_que_faz_o_que_o_alt_f_faz() {
+    use ph2d_app_code::commands::{CMD_FOLD_ALL, CMD_TOGGLE_FOLD, CMD_UNFOLD_ALL, menu_rows};
+    let rows = menu_rows(TabMenu::Edit);
+    let alt_f: Vec<_> = rows.iter().filter(|r| r.2 == "Alt+F").collect();
+    assert_eq!(alt_f.len(), 1, "uma linha por tecla: {rows:?}");
+    assert_eq!(
+        (alt_f[0].0, alt_f[0].1.as_str()),
+        (CMD_TOGGLE_FOLD, "Toggle Fold")
+    );
+    assert!(rows.iter().any(|r| r.0 == CMD_FOLD_ALL));
+    assert!(rows.iter().any(|r| r.0 == CMD_UNFOLD_ALL));
+    let (mut m, id) = aberta();
+    assert!(m.docs().go_to(id.0, 3, 4), "o cursor dentro de update");
+    let _ = m.docs().command(id.0, CMD_TOGGLE_FOLD);
+    assert_eq!(m.docs().closed_folds(id), vec![(2, 4)]);
+    let _ = m.docs().command(id.0, CMD_TOGGLE_FOLD);
+    assert_eq!(m.docs().closed_folds(id), Vec::<(usize, usize)>::new());
+}

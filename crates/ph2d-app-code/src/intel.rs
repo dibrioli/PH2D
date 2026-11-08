@@ -218,6 +218,9 @@ impl Intel {
                 if let Some(a) = d.actions.as_mut() {
                     a.offline();
                 }
+                if let Some(a) = d.menu_fixes.as_mut() {
+                    a.offline();
+                }
                 if let Some(f) = d.hints.hover.as_mut().and_then(|h| h.fixes.as_mut()) {
                     f.offline();
                 }
@@ -470,6 +473,7 @@ impl Intel {
                 && d.hints.sig.is_none()
                 && d.goto.is_none()
                 && d.actions.is_none()
+                && d.menu_fixes.is_none()
                 && !reach
             {
                 continue;
@@ -480,6 +484,9 @@ impl Intel {
                     d.goto = None;
                     d.reach_offline();
                     if let Some(a) = d.actions.as_mut() {
+                        a.offline();
+                    }
+                    if let Some(a) = d.menu_fixes.as_mut() {
                         a.offline();
                     }
                 }
@@ -493,6 +500,9 @@ impl Intel {
                 continue;
             };
             if let Some(a) = d.actions.as_mut() {
+                a.send(|req| session.ask(&m.uri, req));
+            }
+            if let Some(a) = d.menu_fixes.as_mut() {
                 a.send(|req| session.ask(&m.uri, req));
             }
             if let Some(f) = d.hints.hover.as_mut().and_then(|h| h.fixes.as_mut()) {

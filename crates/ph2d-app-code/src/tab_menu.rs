@@ -62,11 +62,11 @@ pub fn split(doc_r: Rect) -> (Rect, Rect) {
     )
 }
 
-fn width_of(ts: &mut TextSystem, s: &str) -> f32 {
+pub(crate) fn width_of(ts: &mut TextSystem, s: &str) -> f32 {
     ts.layout(s, font(), f32::INFINITY).width()
 }
 
-fn label(
+pub(crate) fn label(
     ts: &mut TextSystem,
     scene: &mut VectorScene,
     s: &str,
@@ -322,7 +322,7 @@ impl CodeDocs {
                 let col = t.slice(t.byte_of_line(l)..s.byte).chars().count();
                 (l <= line && line <= end).then_some((s.name, l, col))
             })
-            .last();
+            .next_back();
         Some(Crumb {
             script: d.title.clone(),
             func,
@@ -439,9 +439,16 @@ impl CodeDocs {
         true
     }
 
-    /// O Esc fecha o menu aberto. `true` = havia um.
+    /// O Esc fecha o menu aberto; sem menu, o cartão «Script options» sem alfinete. `true` = fechou algo.
     pub(crate) fn bar_escape(&mut self) -> bool {
-        self.bar.open.take().is_some()
+        if self.bar.open.take().is_some() {
+            return true;
+        }
+        if self.options.open && !self.options.pinned {
+            self.options.open = false;
+            return true;
+        }
+        false
     }
 
     /// O que a barra pintou (os testes clicam por aqui).

@@ -26,6 +26,8 @@ pub(crate) struct Painted {
     pub doc: Option<Rect>,
     /// O que a lista é (o nome para o leitor de ecrã).
     pub kind: ListKind,
+    /// Os índices das linhas cujo rótulo não coube inteiro.
+    pub cut: Vec<usize>,
 }
 
 /// Uma linha pintada da lista, como a sonda a dá: o índice, o rótulo, se é a seleccionada e o centro.
@@ -70,7 +72,13 @@ impl CodeView {
         let tr = self.text_rect();
         let pad = self.pad();
         let lh = self.m.line_h;
-        let cols = safe_clamp_ord(c.width_chars, 1, COMPLETION_MAX_CHARS) as f32;
+        // ⭐ Só a completação tem o tecto do oráculo (`completion_max_width` do Godot): ela lista nomes
+        // curtos e rola. As acções e os sítios são frases que se lêem inteiras para escolher; a
+        // largura delas é a que pedem, e o tecto é o da área do texto.
+        let cols = match c.kind {
+            ListKind::Completion => safe_clamp_ord(c.width_chars, 1, COMPLETION_MAX_CHARS),
+            ListKind::Actions | ListKind::References => c.width_chars.max(1),
+        } as f32;
         let w = (cols * self.m.advance + 2.0 * pad).min(tr.w);
         let h = c.rows.len().min(COMPLETION_ROWS) as f32 * lh + 2.0 * pad;
         let x = (at.x - pad).min(tr.x + tr.w - w).max(tr.x);
@@ -88,6 +96,7 @@ impl CodeView {
             rows: Vec::new(),
             doc: None,
             kind: c.kind,
+            cut: Vec::new(),
         };
         for (k, row) in c.rows.iter().take(COMPLETION_ROWS).enumerate() {
             let i = c.top + k;
@@ -113,8 +122,24 @@ impl CodeView {
                     pal.match_,
                 );
             }
+            // A largura é `colunas × advance` (a média dos dígitos); a soma das larguras dos glifos
+            // pode passá-la por um erro de vírgula e cortar a ÚLTIMA letra (foto 08/11: o «)» de «Make
+            // it a property (Inspector field)»). Meio recuo de folga absorve-o sem tocar na borda.
             let right = x + w - pad;
-            let label = self.paint_mono(ts, scene, pal, &row.label, row.ink, x0, r.y, right);
+            let label = self.paint_mono(
+                ts,
+                scene,
+                pal,
+                &row.label,
+                row.ink,
+                x0,
+                r.y,
+                right + pad * 0.5,
+            );
+            let whole = x0 + row.label.chars().count() as f32 * self.m.advance;
+            if label + self.m.advance * 0.5 < whole {
+                painted.cut.push(i);
+            }
             if let Some(d) = &row.detail {
                 let room = ((right - label) / self.m.advance).floor() as usize;
                 if room > 2 {
@@ -147,15 +172,8 @@ impl CodeView {
     ) -> Option<Rect> {
         let pad = self.pad();
         let lh = self.m.line_h;
-        let cols = COMPLETION_MAX_CHARS;
+        let (x, cols) = self.beside(list, tr)?;
         let w = cols as f32 * self.m.advance + 2.0 * pad;
-        let x = if list.x + list.w + w <= tr.x + tr.w {
-            list.x + list.w
-        } else if list.x - w >= tr.x {
-            list.x - w
-        } else {
-            return None;
-        };
         let mut lines = wrap(&plain(doc), cols);
         if lines.len() > COMPLETION_ROWS {
             lines.truncate(COMPLETION_ROWS);
@@ -188,15 +206,8 @@ impl CodeView {
     ) -> Option<Rect> {
         let pad = self.pad();
         let lh = self.m.line_h;
-        let cols = COMPLETION_MAX_CHARS;
+        let (x, cols) = self.beside(list, tr)?;
         let w = cols as f32 * self.m.advance + 2.0 * pad;
-        let x = if list.x + list.w + w <= tr.x + tr.w {
-            list.x + list.w
-        } else if list.x - w >= tr.x {
-            list.x - w
-        } else {
-            return None;
-        };
         let lines = &lines[..lines.len().min(COMPLETION_ROWS)];
         let r = Rect::new(x, list.y, w, lines.len() as f32 * lh + 2.0 * pad);
         paint_popover(&Popover::new(NodeId(0)), r, scene, pal.theme);
@@ -214,6 +225,44 @@ impl CodeView {
         }
         pop_popover_clip(scene);
         Some(r)
+    }
+
+    /// A caixa ao lado da lista: à direita, senão à esquerda, com `COMPLETION_MAX_CHARS` colunas; uma
+    /// lista larga (as acções pedem a largura delas) estreita-a até metade, no lado com mais espaço.
+    /// `(x, colunas)`; `None` = nenhum lado tem metade.
+    fn beside(&self, list: Rect, tr: Rect) -> Option<(f32, usize)> {
+        let pad = self.pad();
+        let fit = |room: f32| ((room - 2.0 * pad) / self.m.advance).floor().max(0.0) as usize;
+        let right = fit(tr.x + tr.w - list.x - list.w);
+        let left = fit(list.x - tr.x);
+        let want = COMPLETION_MAX_CHARS;
+        let (on_right, cols) = if right >= want {
+            (true, want)
+        } else if left >= want {
+            (false, want)
+        } else if right >= left {
+            (true, right)
+        } else {
+            (false, left)
+        };
+        if cols < want / 2 {
+            return None;
+        }
+        let w = cols as f32 * self.m.advance + 2.0 * pad;
+        Some((
+            if on_right {
+                list.x + list.w
+            } else {
+                list.x - w
+            },
+            cols,
+        ))
+    }
+
+    /// ⚠️ SONDA: os índices das linhas da lista cujo rótulo saiu cortado no último quadro.
+    #[must_use]
+    pub fn completion_cut(&self) -> Option<Vec<usize>> {
+        self.popup.as_ref().map(|p| p.cut.clone())
     }
 
     /// Onde caiu `(x, y)` na lista do último quadro (`None` = fora dela).
@@ -384,7 +433,6 @@ impl CompletionView<'_> {
             .map(|(l, d)| l.chars().count() + d.map_or(0, |d| d.chars().count() + 2))
             .max()
             .unwrap_or(0)
-            .min(COMPLETION_MAX_CHARS)
     }
 }
 

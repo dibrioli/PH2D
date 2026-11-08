@@ -214,7 +214,8 @@ impl Actions {
             let end = start + line.len();
             let changed = marks
                 .iter()
-                .filter(|m| m.start <= end && m.end >= start)
+                // Uma inserção que acaba no `\n` não toca na linha seguinte.
+                .filter(|m| m.start <= end && (m.end > start || (m.is_empty() && m.start >= start)))
                 .map(|m| m.start.max(start) - start..m.end.min(end) - start)
                 .collect();
             lines.push(PreviewLine {
@@ -236,7 +237,23 @@ impl Actions {
                 *m = m.start.saturating_sub(cut)..m.end.saturating_sub(cut);
             }
         }
-        lines
+        // Só as linhas que mudam: as que ficam iguais ENTRE duas edições (o «Make it a property»
+        // escreve no topo e no número) viram um «…».
+        let mut kept: Vec<PreviewLine> = Vec::new();
+        for l in lines {
+            if !l.changed.is_empty() {
+                kept.push(l);
+            } else if kept.last().is_some_and(|k| !k.changed.is_empty()) {
+                kept.push(PreviewLine {
+                    text: "\u{2026}".to_owned(),
+                    changed: Vec::new(),
+                });
+            }
+        }
+        if kept.last().is_some_and(|k| k.changed.is_empty()) {
+            kept.pop();
+        }
+        kept
     }
 }
 

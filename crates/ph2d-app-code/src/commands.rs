@@ -26,8 +26,8 @@ pub const CMD_FOLD_ALL: NodeId = hash_node_id("code_cmd_fold_all");
 pub const CMD_UNFOLD_ALL: NodeId = hash_node_id("code_cmd_unfold_all");
 /// Ctrl+/ comenta/descomenta; Alt+F dobra/desdobra o bloco do cursor (Onda A, item 3).
 pub const CMD_TOGGLE_COMMENT: NodeId = hash_node_id("code_cmd_toggle_comment");
-pub const CMD_FOLD: NodeId = hash_node_id("code_cmd_fold");
-pub const CMD_UNFOLD: NodeId = hash_node_id("code_cmd_unfold");
+/// Alt+F no menu: UMA linha, a mesma troca da tecla (dobra o bloco do cursor ou abre o fechado).
+pub const CMD_TOGGLE_FOLD: NodeId = hash_node_id("code_cmd_toggle_fold");
 /// O assistente de código parado: procura o programa outra vez e volta a ligá-lo (I2).
 pub const CMD_RESTART_ASSIST: NodeId = hash_node_id("code_cmd_restart_assistant");
 /// Renomear o nome no cursor (I10, F2), e a lista dos sítios dele (Shift+F12).
@@ -77,7 +77,7 @@ pub struct CommandState {
 
 /// `(id, chave do rótulo, menu da aba)` — `None` = só na paleta (as três caixas do cartão). Um
 /// comando de ligar/desligar tem aqui a chave do estado DESLIGADO (a do ligado, em [`commands`]).
-const TABLE: [(NodeId, &str, Option<TabMenu>); 25] = [
+const TABLE: [(NodeId, &str, Option<TabMenu>); 24] = [
     (CMD_NEW_SCRIPT, "code.cmd.new_script", Some(TabMenu::File)),
     (CMD_SAVE, "code.cmd.save", Some(TabMenu::File)),
     (CMD_SAVE_AS, "code.cmd.save_as", Some(TabMenu::File)),
@@ -89,8 +89,7 @@ const TABLE: [(NodeId, &str, Option<TabMenu>); 25] = [
         "code.cmd.toggle_comment",
         Some(TabMenu::Edit),
     ),
-    (CMD_FOLD, "code.cmd.fold", Some(TabMenu::Edit)),
-    (CMD_UNFOLD, "code.cmd.unfold", Some(TabMenu::Edit)),
+    (CMD_TOGGLE_FOLD, "code.cmd.toggle_fold", Some(TabMenu::Edit)),
     (CMD_FOLD_ALL, "code.cmd.fold_all", Some(TabMenu::Edit)),
     (CMD_UNFOLD_ALL, "code.cmd.unfold_all", Some(TabMenu::Edit)),
     (CMD_RENAME, "code.cmd.rename", Some(TabMenu::Edit)),
@@ -226,8 +225,7 @@ impl CodeDoc {
             CMD_REFERENCES => self.open_refs(),
             CMD_STRICT => self.toggle_strict(),
             CMD_TOGGLE_COMMENT => self.toggle_comment(),
-            CMD_FOLD => self.fold_at_cursor(true),
-            CMD_UNFOLD => self.fold_at_cursor(false),
+            CMD_TOGGLE_FOLD => self.toggle_fold_at_cursor(),
             CMD_FOLD_ALL => self.fold_all(true),
             CMD_UNFOLD_ALL => self.fold_all(false),
             _ => return false,

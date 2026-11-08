@@ -331,4 +331,16 @@ pub const STEPS_11: &[&[Gesture]] = &[
         Gesture::Frame,
         Gesture::Frame,
     ],
+    // 5 — (item 14) o botão direito sobre `self.sped`: o conserto primeiro, a 1.ª linha acesa.
+    &[
+        Gesture::Key(Key::Escape, NONE),
+        Gesture::Frame,
+        Gesture::RightClick {
+            needle: "self.sped",
+            ahead: 7,
+        },
+        Gesture::Frame,
+        Gesture::TabKey(Key::Down, NONE),
+        Gesture::Frame,
+    ],
 ];

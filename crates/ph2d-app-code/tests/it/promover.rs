@@ -73,3 +73,33 @@ fn nao_se_oferece_no_topo_nem_dentro_de_ph2d_property() {
     let sem_self = "function f(a)\n  return a + 220\nend\n";
     assert!(!titulos_em(sem_self, "220").iter().any(|t| t == FIX));
 }
+
+/// A prévia do «Make it a property» mostra só as duas linhas que mudam (a declaração nova e a do
+/// número), com um «…» no lugar das que ficam iguais entre elas.
+#[test]
+fn a_previa_mostra_so_as_duas_linhas_que_mudam() {
+    let (mut m, id) = sem_assistente(TEXTO);
+    clica_em(
+        &mut m,
+        id,
+        TEXTO.find("220").unwrap() + 1,
+        Modifiers::default(),
+    );
+    alt_enter(&mut m, id);
+    quadro_em(&mut m, T0);
+    let (titulos, _, _) = m.docs().actions_of(id).expect("abriu");
+    let i = titulos.iter().position(|t| t == FIX).expect("oferecida");
+    for _ in 0..i {
+        tecla(&mut m, id, Key::Down, Modifiers::default(), None, "");
+    }
+    let (_, sel, previa) = m.docs().actions_of(id).expect("aberta");
+    assert_eq!(sel, i);
+    assert_eq!(
+        previa,
+        [
+            "ph2d.property(\"value\", 220)",
+            "\u{2026}",
+            "  ph2d.set(self.id, \"x\", x + self.value * dt)",
+        ]
+    );
+}

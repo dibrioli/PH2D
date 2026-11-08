@@ -66,6 +66,11 @@ pub enum Gesture {
     PointTabMenuRow(usize),
     /// Um clique na engrenagem da barra (o cartão «Script options»).
     ClickGear,
+    /// O botão direito sobre o carácter `ahead` bytes depois da 1.ª `needle` (o menu do item 14).
+    RightClick {
+        needle: &'static str,
+        ahead: usize,
+    },
     /// O resto do passo entra no quadro seguinte (cada Tab vê-se).
     Frame,
     /// Um clique com `mods` sobre o carácter `ahead` bytes depois da 1.ª `needle` (o Ctrl+clique).
@@ -490,6 +495,15 @@ fn act(docs: &mut CodeDocs, id: ScriptId, g: Gesture) -> bool {
                 return false;
             };
             click(docs, id.0, p, mods);
+        }
+        Gesture::RightClick { needle, ahead } => {
+            let at = docs
+                .text_of(id)
+                .and_then(|t| t.find(needle))
+                .map(|b| b + ahead);
+            if !at.is_some_and(|at| docs.context_open_at(id.0, at)) {
+                return false;
+            }
         }
         Gesture::TabKey(k, mods) => {
             let s = match k {

@@ -556,3 +556,78 @@ fn uma_linha_do_inspector_cai_pelo_nome_e_a_do_proprio_script_por_self() {
     let texto = m.docs().text_of(id).expect("texto");
     assert!(texto.contains("ph2d.set(self.health.max"), "{texto}");
 }
+
+/// ⭐ A pergunta da soltura lê-se INTEIRA: na largura da aba da cena 11 do smoke (1302 × 675, a foto
+/// de 08/11 cortava «Inspector field» em «Inspe»), as três linhas pintam o rótulo todo. A completação mantém o tecto dela (`COMPLETION_MAX_CHARS`).
+#[test]
+fn a_pergunta_da_soltura_pinta_as_tres_linhas_inteiras_na_largura_da_cena_11() {
+    let texto = "function update(self)\n  if self.t > 3 then\n    ph2d.set(self.id, \"x\", self.t * self.sped)\n  end\nend\n";
+    let (mut m, ids) = Mesa::new(&[("onda_a.luau", texto)]);
+    let id = ids[0];
+    let area = ph2d_editor_core::zones::Rect::new(0.0, 0.0, 1302.0, 675.0);
+    m.pede(id);
+    m.pinta_em(id, area);
+    let b = texto.find("self.t * self.sped").expect("agulha");
+    let p = ponto(&mut m, id, b);
+    let door = ["Door".to_owned()];
+    assert!(m.docs().drop(id.0, em(p, &door, false)));
+    m.pinta_em(id, area);
+    let rows = m.docs().completion_painted(id).expect("a lista pintada");
+    assert_eq!(rows.len(), 3);
+    assert!(rows[2].1.ends_with("Inspector field"), "{rows:?}");
+    assert_eq!(
+        m.docs().completion_cut(id),
+        Some(Vec::new()),
+        "nenhum rótulo cortado"
+    );
+}
+
+/// ⭐ A queda dá o teclado à aba (o arrasto real começa na Hierarchy, que pode ter a busca focada):
+/// pela porta da shell (`surface_input::drop`), a pergunta abre, o campo de fora perde o foco, a aba
+/// passa a ser dona do teclado e ↓ + Enter pelas teclas do ecrã (`board_keys::key`) escolhem «Variable».
+#[test]
+fn a_queda_vinda_de_um_campo_focado_da_o_teclado_a_pergunta() {
+    use ph2d_editor_core::InteractiveState;
+    use ph2d_editor_core::screens::hero::board_keys::{BoardKey, key};
+    use ph2d_editor_core::screens::hero::surface_input::{drop, owns_the_keyboard};
+    let b = TEXTO.find(", \"x\"").expect("agulha");
+    let porta = ["Porta".to_owned()];
+    let (mut m, id) = mesa();
+    let p = ponto(&mut m, id, b);
+    assert!(m.docs().drop(id.0, em(p, &porta, true)));
+    let com_ctrl = m.docs().text_of(id).expect("aberto");
+    let (mut m, id) = mesa();
+    let p = ponto(&mut m, id, b);
+    let busca = ph2d_editor_core::NodeId(0x5eac);
+    m.hero.store.register(
+        busca,
+        InteractiveState::TextInput {
+            state: ph2d_editor_core::widget::TextInputState::Focused,
+            text: String::new(),
+            caret: 0,
+            selection_anchor: None,
+        },
+    );
+    m.hero.store.set_focus(Some(busca));
+    assert!(!owns_the_keyboard(Some(&m.hero)), "a busca tem o teclado");
+    assert!(drop(&mut m.hero, em(p, &porta, false)));
+    assert!(m.docs().actions_of(id).is_some(), "a pergunta abriu");
+    assert!(
+        owns_the_keyboard(Some(&m.hero)),
+        "a queda deu o teclado à aba"
+    );
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    for k in [BoardKey::Down, BoardKey::Enter] {
+        let out = key(
+            &mut m.hero,
+            &mut ts,
+            k,
+            Modifiers::default(),
+            true,
+            None,
+            None,
+        );
+        assert!(out.consumed, "{k:?} chegou à pergunta");
+    }
+    assert_eq!(m.docs().text_of(id), Some(com_ctrl), "Variable = o Ctrl");
+}

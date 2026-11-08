@@ -373,12 +373,23 @@ impl PixelApp {
 
     /// Aplica `op` ao documento `key` como UM passo do desfazer dele.
     pub fn commit(&mut self, key: u32, op: Op) -> Result<(), OpError> {
+        let label = ph2d_pixel_core::Label::of(&op);
+        self.commit_labeled(key, op, label)
+    }
+
+    /// [`Self::commit`] com o nome do passo na Undo History (`pixel.history.*`, Aseprite O11).
+    pub fn commit_labeled(
+        &mut self,
+        key: u32,
+        op: Op,
+        label: ph2d_pixel_core::Label,
+    ) -> Result<(), OpError> {
         let stamp = self.stamp();
         let Some(doc) = self.docs.get_mut(&key) else {
             return Ok(());
         };
         let was = doc.sprite.frame_index(doc.frame);
-        doc.history.commit(&mut doc.sprite, op)?;
+        doc.history.commit_labeled(&mut doc.sprite, op, label)?;
         doc.ranges.0.push(doc.range.clone());
         doc.ranges.1.clear();
         let fora = doc.ranges.0.len().saturating_sub(doc.history.undo_len());
@@ -397,6 +408,39 @@ impl PixelApp {
     /// Refaz no documento `key`. `false` = nada a refazer.
     pub fn redo(&mut self, key: u32) -> bool {
         self.step(key, true)
+    }
+
+    /// **Undo History**: desfaz/refaz até a linha `n` ser a actual, pelo MESMO degrau do Ctrl+Z
+    /// (intervalo e quadro seguem), e vai ao quadro/camada que esse passo mudou (O14). `false` = `n`
+    /// fora da lista.
+    pub fn go_to(&mut self, key: u32, n: usize) -> bool {
+        let Some(h) = self.docs.get(&key).map(|d| &d.history) else {
+            return false;
+        };
+        if n >= h.len() {
+            return false;
+        }
+        while self
+            .docs
+            .get(&key)
+            .is_some_and(|d| d.history.current() != n)
+        {
+            let redo = self.docs[&key].history.current() < n;
+            if !self.step(key, redo) {
+                return false;
+            }
+        }
+        if let Some(d) = self.docs.get_mut(&key)
+            && let Some(t) = d.history.touched(n)
+        {
+            if d.sprite.layer(t.layer).is_some() {
+                d.layer = t.layer;
+            }
+            if d.sprite.frame_index(t.frame).is_some() {
+                d.frame = t.frame;
+            }
+        }
+        true
     }
 
     fn step(&mut self, key: u32, redo: bool) -> bool {

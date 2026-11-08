@@ -74,6 +74,7 @@ default = [
     "panel-pixel-tiles",
     "panel-pixel-slices",
     "panel-pixel-keys",
+    "panel-pixel-history",
     "panel-pixel-preview",
     "panel-color-equalization", "panel-equalize-sizes", "panel-upscale",
     "panel-audio-mixer", "panel-audio-editor",

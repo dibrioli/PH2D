@@ -223,6 +223,11 @@ mod tests {
         {
             n += 1;
         }
+        // A janela UNDO HISTORY do Pixel (P12a).
+        #[cfg(feature = "panel-pixel-history")]
+        {
+            n += 1;
+        }
         // A janela Preview do Pixel (P5).
         #[cfg(feature = "panel-pixel-preview")]
         {

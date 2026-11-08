@@ -133,7 +133,7 @@ pub const SELECT_ACTIONS: [(NodeId, PixelRequest, &str); 10] = [
 ];
 
 /// Os botões do menu Edit e da moldura (Apply = `Enter`, Cancel = `Esc`).
-pub const EDIT_ACTIONS: [(NodeId, PixelRequest, &str); 28] = [
+pub const EDIT_ACTIONS: [(NodeId, PixelRequest, &str); 30] = [
     (
         hash_node_id("pixel.edit.copy"),
         PixelRequest::Edit(E::Copy),
@@ -277,6 +277,17 @@ pub const EDIT_ACTIONS: [(NodeId, PixelRequest, &str); 28] = [
         hash_node_id("pixel.edit.insert_text"),
         PixelRequest::Edit(E::InsertText),
         "panel.pixel.edit.insert_text",
+    ),
+    // P12a (28, 29): Edit ▸ Undo History e Keyboard Shortcuts… (abrem as janelas).
+    (
+        hash_node_id("pixel.edit.undo_history"),
+        PixelRequest::Edit(E::UndoHistory),
+        "panel.pixel.edit.undo_history",
+    ),
+    (
+        hash_node_id("pixel.edit.keyboard_shortcuts"),
+        PixelRequest::Edit(E::KeyboardShortcuts),
+        "panel.pixel.edit.keyboard_shortcuts",
     ),
 ];
 

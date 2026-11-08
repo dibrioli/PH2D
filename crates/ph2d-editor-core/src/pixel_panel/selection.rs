@@ -128,6 +128,10 @@ pub enum PixelEditAction {
     ConvolutionMatrix,
     /// P8: Edit ▸ Insert Text: abre a caixa do Text no centro da vista.
     InsertText,
+    /// P12a: Edit ▸ Undo History (a janela `ph2d-panel-pixel-history`).
+    UndoHistory,
+    /// P12a: Edit ▸ Keyboard Shortcuts… (a janela `ph2d-panel-pixel-keys`).
+    KeyboardShortcuts,
 }
 
 /// O menu Sprite.

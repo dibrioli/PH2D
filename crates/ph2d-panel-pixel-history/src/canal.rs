@@ -2,6 +2,7 @@
 
 use std::cell::RefCell;
 
+use ph2d_editor_core::panel::Panel;
 use ph2d_i18n::tr;
 use ph2d_pixel_core::{History, PrettySize, StepState};
 
@@ -60,7 +61,7 @@ pub fn pretty_size(bytes: usize) -> String {
 pub fn title(bytes: usize) -> String {
     format!(
         "{} ({})",
-        tr("panel.pixel_history.title"),
+        <crate::PixelHistoryPanel as Panel>::TITLE.tr(),
         pretty_size(bytes)
     )
 }
@@ -69,6 +70,16 @@ pub fn title(bytes: usize) -> String {
 struct Canal {
     view: HistoryView,
     requests: Vec<HistoryRequest>,
+    abrir: bool,
+}
+
+/// Abre a janela no próximo quadro (Edit ▸ Undo History).
+pub fn pede_abrir() {
+    com(|c| c.abrir = true);
+}
+
+pub(crate) fn take_abrir() -> bool {
+    com(|c| std::mem::take(&mut c.abrir))
 }
 
 thread_local! {

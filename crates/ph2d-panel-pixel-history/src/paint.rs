@@ -64,6 +64,9 @@ fn cartao_lista(v: HistoryView) -> CardDef<'static> {
 pub(crate) fn paint(ctx: &mut PaintCtx) {
     let node = PixelHistoryPanel::NODE_ID;
     let v = canal::view();
+    if canal::take_abrir() {
+        ctx.host.set_panel_visible(PixelHistoryPanel::ID, true);
+    }
     if !ctx.host.panel_visible(PixelHistoryPanel::ID) || v.rows.is_empty() {
         ctx.host.store_mut().clear_panel_rect(node);
         return;

@@ -74,7 +74,8 @@ impl PixelApp {
     /// Aplica um passo de selecção ao documento `key` (nada a fazer = nenhum passo).
     pub(crate) fn passo(&mut self, key: u32, op: Option<ph2d_pixel_core::Op>) {
         if let Some(op) = op {
-            let _ = self.commit(key, op);
+            let nome = ph2d_pixel_core::Label::new("pixel.history.select");
+            let _ = self.commit_labeled(key, op, nome);
         }
     }
 

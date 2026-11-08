@@ -232,3 +232,32 @@ pub fn reshape(
     };
     stroke.set_shape(sprite, &outline, &interior);
 }
+
+/// O nome do passo de um traço na Undo History: o da FERRAMENTA, não do gesto (Aseprite O11).
+#[must_use]
+pub fn rotulo(tool: Tool) -> ph2d_pixel_core::Label {
+    use ph2d_pixel_core::Label;
+    Label::new(match tool {
+        Tool::Pencil => "pixel.history.pencil",
+        Tool::Eraser => "pixel.history.eraser",
+        Tool::Spray => "pixel.history.spray",
+        Tool::Line => "pixel.history.line",
+        Tool::Curve => "pixel.history.curve",
+        Tool::RECTANGLE => "pixel.history.rectangle",
+        Tool::ELLIPSE => "pixel.history.ellipse",
+        Tool::Shape(_) => "pixel.history.shape",
+        Tool::Bucket => "pixel.history.paint_bucket",
+        Tool::Gradient => "pixel.history.gradient",
+        Tool::Blur => "pixel.history.blur",
+        Tool::Jumble => "pixel.history.jumble",
+        Tool::Contour => "pixel.history.contour",
+        Tool::Polygon => "pixel.history.polygon",
+        Tool::Text => "pixel.history.text",
+        Tool::Transform => "pixel.history.move",
+        Tool::RectMarquee | Tool::EllipseMarquee => "pixel.history.marquee",
+        Tool::Lasso | Tool::PolygonLasso => "pixel.history.lasso",
+        Tool::MagicWand => "pixel.history.magic_wand",
+        Tool::Slice => "pixel.history.slice",
+        Tool::Eyedropper | Tool::Hand => "pixel.history.draw",
+    })
+}

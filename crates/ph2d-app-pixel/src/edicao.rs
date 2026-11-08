@@ -168,6 +168,8 @@ impl PixelApp {
             }
             E::NewBrush => return self.novo_pincel(key),
             E::InsertText => return crate::texto::insere(self, key),
+            E::UndoHistory => return ph2d_panel_pixel_history::canal::pede_abrir(),
+            E::KeyboardShortcuts => return ph2d_panel_pixel_keys::pede_abrir(),
             E::Fill
             | E::Stroke
             | E::Invert
@@ -259,6 +261,8 @@ impl PixelApp {
             | E::Paste
             | E::NewBrush
             | E::InsertText
+            | E::UndoHistory
+            | E::KeyboardShortcuts
             | E::Fill
             | E::Stroke
             | E::Invert

@@ -135,6 +135,7 @@ pub fn frame(
     crate::exportar::frame(app, hero);
     crate::tiles::frame(app, hero);
     crate::slices::frame(app, hero);
+    historia(app);
     if let Some(c) = hero.store.take_pixel_edit_request() {
         app.aplica_dialogo(c);
     }
@@ -368,4 +369,17 @@ fn painel_do_sujeito(app: &mut PixelApp, hero: &mut HeroScreen, sujeito: Option<
         .insert(if em_draw { PANEL_ID } else { "inspector" }, true);
     hero.store
         .bump_panel_z(if em_draw { PIXEL_PANEL } else { INSP_PANEL });
+}
+
+/// P12a: os cliques da janela UNDO HISTORY e a vista da história do documento em Draw.
+fn historia(app: &mut PixelApp) {
+    use ph2d_panel_pixel_history::canal::{self, HistoryRequest, HistoryView};
+    for r in canal::take_requests() {
+        let HistoryRequest::GoTo(n) = r;
+        if let Some(key) = app.chave {
+            app.go_to(key, n);
+        }
+    }
+    let doc = app.chave.and_then(|k| app.docs.get(&k));
+    canal::publish_view(doc.map_or_else(HistoryView::default, |d| HistoryView::of(&d.history)));
 }

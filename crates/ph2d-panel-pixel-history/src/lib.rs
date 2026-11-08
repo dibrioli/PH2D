@@ -13,8 +13,8 @@ use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
 use ph2d_editor_core::panel::{EventOutcome, PaintCtx, Panel, PanelHostInternal, TextKey};
 
-/// O `Panel::ID`. ⚠️ Falta a entrada em `ph2d-editor-core::screens::hero::panel_ids` (nasce FECHADO).
-pub const PANEL_PIXEL_HISTORY: &str = "pixel_history";
+/// O `Panel::ID` (`ph2d-editor-core::screens::hero::panel_ids`; nasce FECHADO).
+pub use ph2d_editor_core::screens::hero::PANEL_PIXEL_HISTORY;
 
 /// O estado da janela: nada além do store.
 #[derive(Default)]

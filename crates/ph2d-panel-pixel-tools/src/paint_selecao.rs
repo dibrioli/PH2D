@@ -212,7 +212,8 @@ impl Corpo<'_> {
         let sel = info.has_selection;
         let e = &ids::EDIT_ACTIONS;
         let y = self.titulo(tr("panel.pixel.edit"), y);
-        let mut filas = Vec::new();
+        // P12a: Undo History no topo (onde o Aseprite o põe, junto do Undo/Redo).
+        let mut filas = vec![vec![par(e, 28)]];
         if sel {
             filas.push(vec![par(e, 0), par(e, 1)]);
             filas.push(vec![par(e, 2)]);
@@ -239,7 +240,9 @@ impl Corpo<'_> {
         let y = self.linha(tr("panel.pixel.edit.adjustments"), ColorToken::Text3, y);
         let y = self.filas_de_botoes(&[vec![par(e, 23)], vec![par(e, 24), par(e, 25)]], y);
         let y = self.linha(tr("panel.pixel.edit.fx"), ColorToken::Text3, y);
-        self.filas_de_botoes(&[vec![par(e, 21), par(e, 22)], vec![par(e, 26)]], y)
+        let y = self.filas_de_botoes(&[vec![par(e, 21), par(e, 22)], vec![par(e, 26)]], y);
+        // P12a: Keyboard Shortcuts… perto do fim (antes das Preferences, no Aseprite).
+        self.filas_de_botoes(&[vec![par(e, 29)]], y)
     }
 
     /// Os botões do menu Sprite (o Crop pede selecção).

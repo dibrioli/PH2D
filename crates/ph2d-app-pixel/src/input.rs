@@ -580,7 +580,7 @@ pub(crate) fn finish(app: &mut PixelApp) {
         .and_then(|d| ph2d_pixel_tiles::mao::op_do_traco(&g.stroke, &d.sprite, modo));
     match op {
         Some(op) => {
-            let _ = app.commit(g.key, op);
+            let _ = app.commit_labeled(g.key, op, ph2d_pixel_ponte::gesto::rotulo(app.tool));
         }
         None => {
             // Nada mudou: a imagem volta à do documento.

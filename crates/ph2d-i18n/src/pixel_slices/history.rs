@@ -4,6 +4,8 @@
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
         "panel.pixel_history.title" => "Undo History",
+        "panel.pixel.edit.undo_history" => "Undo History",
+        "panel.pixel.edit.keyboard_shortcuts" => "Keyboard Shortcuts…",
         "panel.pixel.history.sec_list" => "Steps",
         "panel.pixel.history.bytes" => "bytes",
         "panel.pixel.history.kib" => "K",
@@ -29,6 +31,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.history.curve" => "Curve Tool",
         "pixel.history.rectangle" => "Rectangle Tool",
         "pixel.history.ellipse" => "Ellipse Tool",
+        "pixel.history.shape" => "Shape Tool",
         "pixel.history.paint_bucket" => "Paint Bucket Tool",
         "pixel.history.gradient" => "Gradient Tool",
         "pixel.history.spray" => "Spray Tool",

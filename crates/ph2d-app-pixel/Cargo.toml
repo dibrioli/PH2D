@@ -57,6 +57,7 @@ ph2d-pixel-slices = { path = "../ph2d-pixel-slices" }
 # P12a: os atalhos como dados.
 ph2d-pixel-keys = { path = "../ph2d-pixel-keys" }
 ph2d-panel-pixel-keys = { path = "../ph2d-panel-pixel-keys" }
+ph2d-panel-pixel-history = { path = "../ph2d-panel-pixel-history" }
 bumpalo = "3"
 # O diálogo de ficheiro do Load/Save Palette (pela porta `ph2d_app_host::modal`).
 rfd = "0.17"

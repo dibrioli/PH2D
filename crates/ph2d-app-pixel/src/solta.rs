@@ -94,7 +94,12 @@ impl PixelApp {
         });
         match op {
             Some(op) => {
-                let _ = self.commit(so.key, op);
+                let nome = match (&so.original, so.tinta) {
+                    (_, Some(_)) => "pixel.history.text",
+                    (Some(_), None) => "pixel.history.transform",
+                    (None, None) => "pixel.history.paste",
+                };
+                let _ = self.commit_labeled(so.key, op, ph2d_pixel_core::Label::new(nome));
             }
             None => self.toca(so.key),
         }

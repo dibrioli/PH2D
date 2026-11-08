@@ -6,7 +6,11 @@
 > (tokens `ColorToken::layer(n)` e `paint_layer_outline` vivem só lá).
 
 ## Commits
-`83194981e0` plano 13 · `f8951fa1d2` decisões · `787f345d4b` A5 helpers · `65546ce6fb` Onda A · `631ec556e7` clippy.
+`83194981e0` plano 13 · `f8951fa1d2` decisões · `787f345d4b` A5 helpers · `65546ce6fb` Onda A · `631ec556e7` clippy · `a91498c37e` a aba em CARTÕES (dono: «tudo fica mais legal dentro
+de molduras»; `cards.rs`) · `86de17d93a` o erro do Play some ao CONSERTAR a linha (âncora pelo `map_byte` + texto
+da linha; volta no Ctrl+Z), não ao gravar.
+
+Smoke do dono 08/11: **OK**, salvo «sumir ao consertar» e as molduras — curados nos dois últimos, por re-smokar.
 
 ## O que a Onda A fez (mecanismo nos commits)
 - **Um problema, um lugar** — `ph2d-app-code/src/play_problems.rs` (`merge`), `console.rs` (`Store::push(l, who)`,

@@ -48,6 +48,7 @@
 //!   ela não paga. Ver `docs/Vector Module/Estudos/PLANO_UI_UX_padrao_figma.md` §4/W4.
 
 mod alias_walk;
+mod camadas_de_colisao;
 pub mod chrome;
 pub mod color;
 mod color_alias;

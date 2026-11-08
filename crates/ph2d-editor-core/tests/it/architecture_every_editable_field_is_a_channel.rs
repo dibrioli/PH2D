@@ -167,11 +167,6 @@ const LINHAS: &[(&str, &str)] = &[
 /// A classe de uma chamada por um dos seus ids — exacto, ou PREFIXO quando acaba em `_`.
 const POR_ID: &[(&str, Classe, &str)] = &[
     (
-        "INSP_PHYS_LAYER_NAMES",
-        NaoAnimavel,
-        "os nomes das camadas no modo «Rename layers…»: fiação por nome (§8)",
-    ),
-    (
         "INSP_SPRITE_CORNERS_ON",
         NaoAnimavel,
         "estado de VISTA do cartão Look: abre os quatro cantos; o que se anima são os cantos, cada um com o seu canal",
@@ -314,6 +309,13 @@ const CANAL_DO_ITEM: &str = "canal_item::regista";
 /// canal). ⭐ `ficheiro.rs::fn` (F27 B2) nomeia UMA função e vale para todas as chamadas dela — o
 /// rótulo vem de uma tabela, mesmo com o id literal.
 const POR_FUNCAO: &[(&str, &str, Classe, &[&str], &str)] = &[
+    (
+        "ph2d-panel-inspector",
+        "sections/physics_colide.rs::rename",
+        NaoAnimavel,
+        &["INSP_PHYS_LAYER_NAMES"],
+        "os nomes das camadas no modo «Rename layers…»: um nome é estrutura do projeto, não se anima (§8)",
+    ),
     (
         "ph2d-panel-inspector",
         "sections/audio_set.rs::pick_row",

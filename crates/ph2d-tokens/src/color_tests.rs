@@ -276,7 +276,11 @@ fn as_cores_das_camadas_sao_unicas_e_legiveis() {
     let lab = |c: Color| {
         let (l, ch, h) = srgb_to_oklch(c.r, c.g, c.b);
         let h = h.to_radians();
-        (f64::from(l), f64::from(ch * h.cos()), f64::from(ch * h.sin()))
+        (
+            f64::from(l),
+            f64::from(ch * h.cos()),
+            f64::from(ch * h.sin()),
+        )
     };
     let dist = |a: (f64, f64, f64), b: (f64, f64, f64)| {
         ((a.0 - b.0).powi(2) + (a.1 - b.1).powi(2) + (a.2 - b.2).powi(2)).sqrt()
@@ -292,13 +296,23 @@ fn as_cores_das_camadas_sao_unicas_e_legiveis() {
                 menor = menor.min(dist(a, b));
             }
             if i + 1 < cores.len() {
-                assert!(dist(a, cores[i + 1]) >= 0.04, "{theme:?}: {i} × {} vizinhas", i + 1);
+                assert!(
+                    dist(a, cores[i + 1]) >= 0.04,
+                    "{theme:?}: {i} × {} vizinhas",
+                    i + 1
+                );
             }
             let fundo = ColorToken::Bg1.resolve(theme);
             let c = ColorToken::layer(i).resolve(theme);
             // Os temas de base (claro e escuro), como as cores das pessoas.
-            if matches!(theme, Theme::Forge | Theme::Sunstone | Theme::Dark | Theme::Light) {
-                assert!(fundo.contrast_ratio(&c) >= 3.0, "{theme:?}: camada {i} sobre o fundo");
+            if matches!(
+                theme,
+                Theme::Forge | Theme::Sunstone | Theme::Dark | Theme::Light
+            ) {
+                assert!(
+                    fundo.contrast_ratio(&c) >= 3.0,
+                    "{theme:?}: camada {i} sobre o fundo"
+                );
             }
         }
         eprintln!("camadas {theme:?}: {menor:.4}");

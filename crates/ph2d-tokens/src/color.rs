@@ -328,42 +328,15 @@ color_tokens! {
     ObjBody => "obj-body",
     /// `obj-collider` — forma de colisão sem arte.
     ObjCollider => "obj-collider",
-    // ⭐ As 32 camadas de colisão (GEF02 onda 9c, dono 07/11: «cada camada com cor única e fluorescente»): cor
-    // de DADO pelo número da camada (nada se grava). Escuro: L 0,74–0,82 com o croma máximo do sRGB; claro: a
-    // MESMA matiz escurecida até ≥ 3,7:1 sobre o `bg-1` do sunstone. Distinção MEDIDA (OKLab, qualquer par, por
-    // tema): a tabela está no gate `as_cores_das_camadas_sao_unicas_e_legiveis` e na ficha f1 (onda 9c).
-    ObjLayer0 => "obj-layer-0",
-    ObjLayer1 => "obj-layer-1",
-    ObjLayer2 => "obj-layer-2",
-    ObjLayer3 => "obj-layer-3",
-    ObjLayer4 => "obj-layer-4",
-    ObjLayer5 => "obj-layer-5",
-    ObjLayer6 => "obj-layer-6",
-    ObjLayer7 => "obj-layer-7",
-    ObjLayer8 => "obj-layer-8",
-    ObjLayer9 => "obj-layer-9",
-    ObjLayer10 => "obj-layer-10",
-    ObjLayer11 => "obj-layer-11",
-    ObjLayer12 => "obj-layer-12",
-    ObjLayer13 => "obj-layer-13",
-    ObjLayer14 => "obj-layer-14",
-    ObjLayer15 => "obj-layer-15",
-    ObjLayer16 => "obj-layer-16",
-    ObjLayer17 => "obj-layer-17",
-    ObjLayer18 => "obj-layer-18",
-    ObjLayer19 => "obj-layer-19",
-    ObjLayer20 => "obj-layer-20",
-    ObjLayer21 => "obj-layer-21",
-    ObjLayer22 => "obj-layer-22",
-    ObjLayer23 => "obj-layer-23",
-    ObjLayer24 => "obj-layer-24",
-    ObjLayer25 => "obj-layer-25",
-    ObjLayer26 => "obj-layer-26",
-    ObjLayer27 => "obj-layer-27",
-    ObjLayer28 => "obj-layer-28",
-    ObjLayer29 => "obj-layer-29",
-    ObjLayer30 => "obj-layer-30",
-    ObjLayer31 => "obj-layer-31",
+    // ⭐ As 32 camadas de colisão (GEF02 9c), cor de DADO pelo número: `camadas_de_colisao.rs`.
+    ObjLayer0 => "obj-layer-0", ObjLayer1 => "obj-layer-1", ObjLayer2 => "obj-layer-2", ObjLayer3 => "obj-layer-3",
+    ObjLayer4 => "obj-layer-4", ObjLayer5 => "obj-layer-5", ObjLayer6 => "obj-layer-6", ObjLayer7 => "obj-layer-7",
+    ObjLayer8 => "obj-layer-8", ObjLayer9 => "obj-layer-9", ObjLayer10 => "obj-layer-10", ObjLayer11 => "obj-layer-11",
+    ObjLayer12 => "obj-layer-12", ObjLayer13 => "obj-layer-13", ObjLayer14 => "obj-layer-14", ObjLayer15 => "obj-layer-15",
+    ObjLayer16 => "obj-layer-16", ObjLayer17 => "obj-layer-17", ObjLayer18 => "obj-layer-18", ObjLayer19 => "obj-layer-19",
+    ObjLayer20 => "obj-layer-20", ObjLayer21 => "obj-layer-21", ObjLayer22 => "obj-layer-22", ObjLayer23 => "obj-layer-23",
+    ObjLayer24 => "obj-layer-24", ObjLayer25 => "obj-layer-25", ObjLayer26 => "obj-layer-26", ObjLayer27 => "obj-layer-27",
+    ObjLayer28 => "obj-layer-28", ObjLayer29 => "obj-layer-29", ObjLayer30 => "obj-layer-30", ObjLayer31 => "obj-layer-31",
 
     // ── Motion Nodes: port colors by PortType axis ─────────────────
     // Socket color = Domain (or Clock for event/static); shape = Dim.
@@ -604,48 +577,6 @@ impl ColorToken {
         Self::Person6,
         Self::Person7,
     ];
-
-    /// As 32 cores das camadas de colisão, pelo número da camada.
-    pub const LAYERS: [Self; 32] = [
-        Self::ObjLayer0,
-        Self::ObjLayer1,
-        Self::ObjLayer2,
-        Self::ObjLayer3,
-        Self::ObjLayer4,
-        Self::ObjLayer5,
-        Self::ObjLayer6,
-        Self::ObjLayer7,
-        Self::ObjLayer8,
-        Self::ObjLayer9,
-        Self::ObjLayer10,
-        Self::ObjLayer11,
-        Self::ObjLayer12,
-        Self::ObjLayer13,
-        Self::ObjLayer14,
-        Self::ObjLayer15,
-        Self::ObjLayer16,
-        Self::ObjLayer17,
-        Self::ObjLayer18,
-        Self::ObjLayer19,
-        Self::ObjLayer20,
-        Self::ObjLayer21,
-        Self::ObjLayer22,
-        Self::ObjLayer23,
-        Self::ObjLayer24,
-        Self::ObjLayer25,
-        Self::ObjLayer26,
-        Self::ObjLayer27,
-        Self::ObjLayer28,
-        Self::ObjLayer29,
-        Self::ObjLayer30,
-        Self::ObjLayer31,
-    ];
-
-    /// A cor da camada de colisão `n` (as 32 do motor; dá a volta por segurança).
-    #[must_use]
-    pub const fn layer(n: usize) -> Self {
-        Self::LAYERS[n % 32]
-    }
 
     /// A cor da pessoa de índice `i` (dá a volta depois da oitava).
     #[must_use]

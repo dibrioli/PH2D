@@ -55,6 +55,37 @@ lado_forma!(
     AreaFalloff,
 );
 
+/// A filha «Collision Shape» vazia de `corpo`: invisível, `Transform` identidade, PRIMEIRA entre as
+/// irmãs (logo a forma principal de [`crate::main_shape`]). A fonte única da migração e das portas.
+fn filha_vazia(world: &mut World, corpo: Entity) -> Entity {
+    let irmas = ordered_children(world, corpo);
+    let filha = world
+        .spawn((
+            Name::new(NOME_DA_FORMA),
+            Transform::IDENTITY,
+            Visibility::hidden(),
+            ChildOf(corpo),
+        ))
+        .id();
+    let ordem: Vec<Entity> = std::iter::once(filha).chain(irmas).collect();
+    set_sibling_order(world, corpo, &ordem);
+    filha
+}
+
+/// ⭐ **O corpo nasce com a sua forma** (opção B, B3a): a filha «Collision Shape» de `body` com um
+/// `Collider` de forma `shape` (o resto no ponto neutro) e `StableId`. A ÚNICA porta do editor que
+/// cria a forma de um corpo — nenhuma põe `Collider` no próprio corpo (gate
+/// `nenhuma_porta_do_editor_poe_a_forma_no_corpo`).
+pub fn nasce_com_forma(world: &mut World, body: Entity, shape: crate::ColliderShape) -> Entity {
+    let filha = filha_vazia(world, body);
+    world.entity_mut(filha).insert(crate::Collider {
+        shape,
+        ..crate::Collider::default()
+    });
+    ph2d_ecs::assign_missing_stable_ids(world);
+    filha
+}
+
 /// O que a migração fez: `(StableId do corpo, StableId da filha)` por corpo, na ordem de `StableId`.
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Migracao {
@@ -100,18 +131,8 @@ pub fn migra_formas_para_filhos_com_pares(world: &mut World) -> Migracao {
             out.recusados += 1;
             continue;
         }
-        let irmas = ordered_children(world, corpo);
-        let filha = world
-            .spawn((
-                Name::new(NOME_DA_FORMA),
-                Transform::IDENTITY,
-                Visibility::hidden(),
-                ChildOf(corpo),
-            ))
-            .id();
+        let filha = filha_vazia(world, corpo);
         move_lado_forma(world, corpo, filha);
-        let ordem: Vec<Entity> = std::iter::once(filha).chain(irmas).collect();
-        set_sibling_order(world, corpo, &ordem);
         filhas.push((sid, filha));
     }
     // Ids na ordem do laço: as filhas nasceram por ordem de `StableId` do corpo, e a varredura

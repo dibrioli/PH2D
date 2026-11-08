@@ -566,7 +566,8 @@ impl AnimDoc {
                         self.markers_follow_move(from, to);
                     }
                 } else {
-                    self.frame_selected = Some(from);
+                    // Escolher um quadro põe a marca de inserção logo à direita dele (dono 08/11).
+                    (self.frame_selected, self.insert_at) = (Some(from), Some(from + 1));
                     self.pending.push(AnimFieldEdit::SetStep(from as u32));
                 }
                 true

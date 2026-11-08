@@ -194,3 +194,23 @@ fn o_voo_cai_quando_outra_edicao_muda_a_animacao() {
     assert!(m.doc().flight.is_none());
     assert!(m.doc().layout.frames.iter().all(|f| f.0.w > 0.0));
 }
+
+/// Clicar num quadro põe a marca logo à direita dele, e a célula seguinte entra ali. *Mutação: não mover a marca no
+/// clique ⇒ fica no fim e a célula entra no fim.*
+#[test]
+fn clicar_num_quadro_poe_a_marca_a_direita_dele() {
+    let mut m = Mesa::new();
+    let r = m.doc().layout.frames[1].0;
+    m.click(centre(r));
+    assert_eq!(
+        (m.doc().frame_selected, m.doc().insert_at),
+        (Some(1), Some(2))
+    );
+    m.doc().pending.clear();
+    let at = m.cell(20);
+    m.click(at);
+    assert_eq!(
+        m.pending(),
+        [AnimFieldEdit::Frames(0, fr(&[0, 1, 20, 2, 3, 4, 5]))]
+    );
+}

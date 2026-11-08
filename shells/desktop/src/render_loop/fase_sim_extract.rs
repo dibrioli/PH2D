@@ -23,6 +23,7 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
+        crate::hero_intents::troca_de_folha(gfx);
         let FrameGfx {
             renderer,
             sim,

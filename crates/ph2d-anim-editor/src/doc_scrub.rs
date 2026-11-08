@@ -29,7 +29,7 @@ impl AnimDoc {
 
     /// O valor, o passo por pixel e o intervalo do modelo de um campo com letra.
     pub(super) fn scrub_law(&self, field: &Field) -> Option<(f64, f64, (f64, f64))> {
-        let side = (1.0, f64::from(crate::card::GRID_SIDE_MAX));
+        let side = (1.0, f64::from(crate::GRID_SIDE_MAX));
         let row = self
             .snap
             .info

@@ -14,3 +14,14 @@ pub fn publica(world: &mut World, tools: &mut ToolRegistry) {
         .and_then(|p| Some((Entity::try_from_bits(p.bound_document()?)?, p.canvas_size())));
     ph2d_sprite_screen::imagem_aberta::publica(world, aberta);
 }
+
+/// ⭐ **A folha visível mudou com o Painter ligado?** Uma vez por quadro, antes do bind; a lei é
+/// [`ph2d_sprite_screen::imagem_aberta::troca`] (auditoria 08/11).
+pub fn folha_trocou(world: &World, tools: &mut ToolRegistry) -> Option<(u64, Option<u8>)> {
+    let ligada = tools
+        .active_mut()
+        .filter(|t| t.id() == ToolId::new("painter"))
+        .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
+        .and_then(|p| p.bound_document());
+    ph2d_sprite_screen::imagem_aberta::troca(world, ligada)
+}

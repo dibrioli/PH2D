@@ -5541,6 +5541,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-anim-editor"
+version = "0.0.0"
+dependencies = [
+ "ph2d-anim-sheets",
+ "ph2d-card-stack",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-host",
+ "ph2d-i18n",
+ "ph2d-spring",
+ "ph2d-sprite-sheet",
+ "ph2d-text",
+ "ph2d-tokens",
+ "ph2d-vector",
+]
+
+[[package]]
 name = "ph2d-anim-sheets"
 version = "0.0.0"
 dependencies = [
@@ -6287,6 +6304,7 @@ version = "0.0.0"
 dependencies = [
  "bevy_ecs",
  "ph2d-a11y",
+ "ph2d-anim-editor",
  "ph2d-anim-sheets",
  "ph2d-anim-signals",
  "ph2d-app-host",
@@ -6303,7 +6321,6 @@ dependencies = [
  "ph2d-physics-ecs",
  "ph2d-preview-drive",
  "ph2d-render",
- "ph2d-spring",
  "ph2d-sprite-edit",
  "ph2d-sprite-sheet",
  "ph2d-text",

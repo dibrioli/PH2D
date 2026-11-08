@@ -4,14 +4,8 @@
 //! [`AnimDocs`] uma vez e chama [`frame`] uma vez por quadro, ANTES dos snapshots. O «Editar animações…»
 //! do cartão chega como `AnimFieldEdit::OpenEditor`, que a shell entrega a [`request_open`].
 
-pub mod bands;
-pub mod doc;
-pub mod layout;
-mod marks;
-pub mod paint;
-pub mod paint_sheet;
-pub mod strip_bar;
-pub use ph2d_anim_sheets::split;
+// O documento da aba mora em `ph2d-anim-editor` (catraca das `ph2d-app-*`, auditoria 08/11); aqui fica a ligação.
+pub use ph2d_anim_editor::{bands, doc, layout, paint, paint_sheet, split, strip_bar};
 
 use std::collections::BTreeMap;
 

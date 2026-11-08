@@ -1,0 +1,32 @@
+[package]
+name = "ph2d-anim-editor"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ O DOCUMENTO do editor de animações (plano GEF 07 + 26): estado, disposição, gestos e pintura de uma aba — a tira
+# com a marca de inserção, o voo, a barra de rolagem, a lista e a folha. Folha: saiu de `ph2d-app-sprite-anim` pela
+# catraca `the_shell_only_shrinks_and_every_app_crate_too` (auditoria 08/11); a família fica com a ligação (a
+# `DocumentSurface`, o `frame` e o snapshot).
+
+[dependencies]
+ph2d-anim-sheets = { path = "../ph2d-anim-sheets" }
+ph2d-card-stack = { path = "../ph2d-card-stack" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-host = { path = "../ph2d-host" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-sprite-sheet = { path = "../ph2d-sprite-sheet" }
+# A mola do voo da inserção (a lei vem de `UiMotion::law`).
+ph2d-spring = { path = "../ph2d-spring" }
+ph2d-text = { path = "../ph2d-text" }
+ph2d-tokens = { path = "../ph2d-tokens" }
+ph2d-vector = { path = "../ph2d-vector" }
+
+[lints]
+workspace = true

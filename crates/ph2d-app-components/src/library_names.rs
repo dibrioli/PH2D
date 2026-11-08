@@ -131,37 +131,6 @@ pub fn session_library(
     crate::asset_index_build::with_library(|lib| library(sim, db, atlas_assets, lib))
 }
 
-/// ⭐ **Publica [`ph2d_ecs::SheetNames`]**: o nome de biblioteca de cada imagem que um Animated usa como folha (a `0` e
-/// as extra). Uma vez por quadro, antes do editor de animações e do cartão; recalcula só quando as imagens mudam.
-pub fn publish_sheet_names(sim: &mut SimWorld, db: &AssetDb, atlas: &BTreeMap<u32, AssetId>) {
-    use ph2d_ecs::{SheetNames, SpriteAnimations, SpriteSheets};
-    let w = sim.world_mut();
-    let mut q = w.query_filtered::<Entity, bevy_ecs::query::Or<(
-        bevy_ecs::query::With<SpriteSheets>,
-        bevy_ecs::query::With<SpriteAnimations>,
-    )>>();
-    let es: Vec<Entity> = q.iter(w).collect();
-    let mut ids: Vec<AssetId> = es
-        .iter()
-        .flat_map(|&e| {
-            texture_of(w.get(e), w.get(e), atlas)
-                .into_iter()
-                .chain(ph2d_ecs::sheet_assets(w, e))
-        })
-        .collect();
-    ids.sort_unstable();
-    ids.dedup();
-    if w.get_resource::<SheetNames>().is_some_and(|n| n.ids == ids) {
-        return;
-    }
-    let lib = session_library(sim, db, atlas);
-    let names = ids
-        .iter()
-        .filter_map(|id| lib.get(id).map(|n| (*id, n.clone())))
-        .collect();
-    sim.world_mut().insert_resource(SheetNames { ids, names });
-}
-
 #[cfg(test)]
 #[path = "library_names_tests.rs"]
 mod tests;

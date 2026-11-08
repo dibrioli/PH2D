@@ -19,7 +19,7 @@ impl AnimDoc {
     }
 
     /// A tira rola por um tique, se a mão de um arrasto de quadro está na borda dela.
-    pub(in crate::editor) fn scroll_at_edge(&mut self, strip: Rect, step: f32, margin: f32) {
+    pub(crate) fn scroll_at_edge(&mut self, strip: Rect, step: f32, margin: f32) {
         if let Some(d) = self.frame_drag() {
             let x = d.at.0;
             if x > strip.x + strip.w - margin {
@@ -31,7 +31,7 @@ impl AnimDoc {
     }
 
     /// A faixa rolou por baixo da mão: o intervalo do arrasto é o que ela aponta agora.
-    pub(in crate::editor) fn drag_points_at(&mut self, frames: &[(Rect, Rect)]) {
+    pub(crate) fn drag_points_at(&mut self, frames: &[(Rect, Rect)]) {
         if let Drag::Frame {
             moved: true,
             gap,
@@ -94,7 +94,7 @@ impl AnimDoc {
     }
 
     /// O quadro `gone` saiu: a marca que estava depois dele recua um.
-    pub(in crate::editor) fn playhead_follow_delete(&mut self, gone: usize) {
+    pub(crate) fn playhead_follow_delete(&mut self, gone: usize) {
         if let Some(p) = self.insert_at.as_mut()
             && *p > gone
         {

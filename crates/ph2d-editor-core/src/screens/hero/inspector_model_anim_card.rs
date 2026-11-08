@@ -240,8 +240,14 @@ mod tests {
             extra_sheets: vec![(img(24), 6, 2)],
             ..AnimCardInfo::default()
         };
-        assert_eq!(info.sheet_of(0).map(|(s, h, v)| (s.w, h, v)), Some((16, 4, 1)));
-        assert_eq!(info.sheet_of(1).map(|(s, h, v)| (s.w, h, v)), Some((24, 6, 2)));
+        assert_eq!(
+            info.sheet_of(0).map(|(s, h, v)| (s.w, h, v)),
+            Some((16, 4, 1))
+        );
+        assert_eq!(
+            info.sheet_of(1).map(|(s, h, v)| (s.w, h, v)),
+            Some((24, 6, 2))
+        );
         assert!(info.sheet_of(2).is_none());
     }
 

@@ -4,6 +4,7 @@
 
 pub mod apply;
 pub mod editor_ui;
+pub mod names;
 pub mod ops;
 pub mod panel_frame;
 pub mod recut;

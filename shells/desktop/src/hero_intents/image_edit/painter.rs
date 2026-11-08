@@ -125,6 +125,32 @@ pub(crate) fn assa_antes_de_escrever(g: &mut crate::AppGfx, alvo: impl Fn(&SimWo
     auto_commit_painter(e, sim, r, db, at, p, &mut g.toasts);
 }
 
+/// ⭐ **A folha visível mudou com o Painter ligado** (auditoria 08/11): a tinta assa na folha ANTIGA (posta à vista
+/// só para isso) e o documento sai, para o bind seguinte abrir a folha nova.
+pub(crate) fn troca_de_folha(g: &mut crate::AppGfx) {
+    let Some((bits, velha)) =
+        ph2d_app_painter::imagem_aberta::folha_trocou(g.sim.world(), &mut g.tools)
+    else {
+        return;
+    };
+    let e = ph2d_ecs::Entity::from_bits(bits);
+    if let Some(k) = velha {
+        let nova = ph2d_ecs::shown_sheet(g.sim.world(), e);
+        g.sim
+            .world_mut()
+            .entity_mut(e)
+            .insert(ph2d_ecs::ShownSheet(k));
+        assa_antes_de_escrever(g, |_, b| b == bits);
+        g.sim
+            .world_mut()
+            .entity_mut(e)
+            .insert(ph2d_ecs::ShownSheet(nova));
+    }
+    if let Some(p) = ph2d_app_painter::painter_bridge_queries::o_painter(&mut g.tools) {
+        let _ = p.tira_documento(bits);
+    }
+}
+
 /// Drain a `pending_painter` Tool Action: pull the painted canvas at the
 /// sprite's full resolution and swap to a fresh Individual texture with
 /// the same dimensions (alpha + colour mutation). Caller gates on

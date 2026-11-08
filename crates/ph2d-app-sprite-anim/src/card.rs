@@ -27,9 +27,7 @@ const ANIMATIONS: &str = "ph2d::ecs::SpriteAnimations";
 const ANIMATOR: &str = "ph2d::ecs::SpriteAnimator";
 const GRID: &str = "ph2d::ecs::SpriteGrid";
 
-/// Maior lado de uma grelha que o cartão aceita (o `SpriteGrid` guarda `u32`; isto é o que cabe a
-/// clicar numa folha: 256 × 256 células).
-pub const GRID_SIDE_MAX: u32 = 256;
+pub use ph2d_anim_editor::GRID_SIDE_MAX;
 
 /// A condição da física → a do cartão.
 #[must_use]

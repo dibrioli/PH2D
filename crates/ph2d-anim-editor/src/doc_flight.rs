@@ -48,12 +48,7 @@ pub fn between(a: Rect, b: Rect, t: f32) -> Rect {
 
 impl AnimDoc {
     /// Parte um voo: `frames` é a lista nova, com `added` metidas em `at`.
-    pub(in crate::editor) fn launch(
-        &mut self,
-        frames: Vec<AnimFrameRef>,
-        at: usize,
-        added: &[AnimFrameRef],
-    ) {
+    pub(crate) fn launch(&mut self, frames: Vec<AnimFrameRef>, at: usize, added: &[AnimFrameRef]) {
         let from = added.iter().map(|c| self.cell_rect(c.cell)).collect();
         self.flight = Some(Flight {
             frames,
@@ -83,7 +78,7 @@ impl AnimDoc {
 
     /// Antes de cada disposição: a lista nova chegou ao mundo? E se outra edição a mudou depois (undo, apagar a
     /// folha), o voo cai — o cartão não pode tapar um quadro que já é outro.
-    pub(in crate::editor) fn follow_flight(&mut self) {
+    pub(crate) fn follow_flight(&mut self) {
         let authored = self.authored_frames();
         let Some(f) = self.flight.as_mut() else {
             return;

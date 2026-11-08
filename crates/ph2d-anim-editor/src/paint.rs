@@ -29,7 +29,7 @@ pub use ph2d_anim_sheets::editor_ui::tom;
 mod list;
 use list::paint_list;
 
-pub(crate) fn button(
+pub fn button(
     scene: &mut VectorScene,
     text: &mut TextSystem,
     theme: Theme,
@@ -70,7 +70,7 @@ fn button_sized(
     paint_text_centered(text, scene, label, r, font, tom(fg, theme));
 }
 
-pub(crate) fn field(
+pub fn field(
     scene: &mut VectorScene,
     text: &mut TextSystem,
     theme: Theme,

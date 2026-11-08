@@ -91,7 +91,10 @@ impl crate::App {
         hero.gizmo.handles_only = caixa == ph2d_app_vec::overlay::ObjectBox::HandlesOnly;
         // ⭐ O editor de animações (plano GEF 07), ANTES dos snapshots: descodifica as folhas do cartão.
         let (db, at, reg) = (&*asset_db, &*atlas_asset_map, &*component_registry);
-        ph2d_app_components::library_names::publish_sheet_names(sim, db, at);
+        if let Some(ids) = ph2d_anim_sheets::names::stale_ids(sim.world_mut(), at) {
+            let lib = ph2d_app_components::library_names::session_library(sim, db, at);
+            ph2d_anim_sheets::names::publish(sim.world_mut(), ids, &lib);
+        }
         anim_editor(sim, hero, db, at, reg, toasts);
         let pixel_edit = ph2d_app_pixel::mode::editing(sim.world(), hero).is_some();
         snapshots::publish(

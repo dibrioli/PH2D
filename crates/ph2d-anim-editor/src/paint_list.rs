@@ -5,7 +5,7 @@ use super::*;
 
 pub(super) fn paint_list(
     doc: &AnimDoc,
-    l: &crate::editor::doc::Layout,
+    l: &crate::doc::Layout,
     info: Option<&InspectorAnimInfo>,
     scene: &mut VectorScene,
     text: &mut TextSystem,

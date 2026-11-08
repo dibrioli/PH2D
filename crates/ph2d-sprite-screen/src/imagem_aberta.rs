@@ -14,10 +14,18 @@ pub fn quad_da_imagem_inteira(world: &World, e: Entity, canvas: (u32, u32)) -> O
     let size = world.get::<Sprite>(e)?.size;
     // A folha extra visível (plano GEF 26 F13): a imagem inteira dela, dita no quad que a grelha da folha `0` desdobra.
     let k = ph2d_ecs::shown_sheet(world, e);
-    if let Some(s) = world.get::<ph2d_ecs::SpriteSheets>(e).and_then(|x| x.sheet(k)) {
-        let g = world.get::<ph2d_ecs::SpriteGrid>(e).copied().unwrap_or(ph2d_ecs::SpriteGrid::SINGLE);
+    if let Some(s) = world
+        .get::<ph2d_ecs::SpriteSheets>(e)
+        .and_then(|x| x.sheet(k))
+    {
+        let g = world
+            .get::<ph2d_ecs::SpriteGrid>(e)
+            .copied()
+            .unwrap_or(ph2d_ecs::SpriteGrid::SINGLE);
         let (n, n0) = ([s.hframes, s.vframes], [g.hframes, g.vframes]);
-        return Some(std::array::from_fn(|i| s.size[i] * n[i] as f32 / n0[i].max(1) as f32));
+        return Some(std::array::from_fn(|i| {
+            s.size[i] * n[i] as f32 / n0[i].max(1) as f32
+        }));
     }
     if let Some(t) = world.get::<TiledDraw>(e) {
         return Some(t.tile);
@@ -55,6 +63,52 @@ pub fn publica(world: &mut World, aberta: Option<(Entity, (u32, u32))>) {
             world.remove_resource::<ImagemAberta>();
         }
     }
+}
+
+/// A folha que o Painter tinha ligada no quadro anterior: o objeto, a folha visível e quantas folhas ele tinha.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FolhaLigada {
+    pub entity: u64,
+    pub sheet: u8,
+    pub n: usize,
+}
+
+thread_local! {
+    static LIGADA: std::cell::Cell<Option<FolhaLigada>> = const { std::cell::Cell::new(None) };
+}
+
+/// ⭐ **A lei da troca** (auditoria 08/11): o mesmo objeto com outra folha visível (o dropdown, o editor, Load ou
+/// Delete sheet) devolve `(objeto, folha onde assar)`. Assa-se na folha ANTIGA só se ela ainda é a mesma imagem — o
+/// número de folhas não desceu (Load acrescenta no fim; Delete apagou-a, e a tinta dela vai junto).
+#[must_use]
+pub fn decide_troca(
+    antes: Option<FolhaLigada>,
+    agora: Option<FolhaLigada>,
+) -> Option<(u64, Option<u8>)> {
+    let (a, f) = (antes?, agora?);
+    if a.entity != f.entity || (a.sheet, a.n) == (f.sheet, f.n) {
+        return None;
+    }
+    Some((f.entity, (f.n >= a.n).then_some(a.sheet)))
+}
+
+/// ⭐ **A folha visível mudou com o Painter ligado em `ligada`?** Guarda a folha deste quadro e compara com a do
+/// anterior: a shell assa a tinta na folha antiga e solta o documento, e o bind seguinte abre a folha nova (sem isto,
+/// a tinta de uma folha era gravada na outra).
+pub fn troca(world: &World, ligada: Option<u64>) -> Option<(u64, Option<u8>)> {
+    let agora = ligada.and_then(|b| {
+        let e = Entity::try_from_bits(b)?;
+        let n = 1 + world
+            .get::<ph2d_ecs::SpriteSheets>(e)
+            .map_or(0, |s| s.0.len());
+        Some(FolhaLigada {
+            entity: b,
+            sheet: ph2d_ecs::shown_sheet(world, e),
+            n,
+        })
+    });
+    let antes = LIGADA.with(|c| c.replace(agora));
+    decide_troca(antes, agora)
 }
 
 #[cfg(test)]
@@ -150,5 +204,50 @@ mod tests {
         let mut w = World::new();
         let e = w.spawn(Sprite::atlas(0, [4.0, 2.0], [1.0; 4])).id();
         assert_eq!(quad_da_imagem_inteira(&w, e, IMAGEM), Some([4.0, 2.0]));
+    }
+}
+
+#[cfg(test)]
+mod troca_tests {
+    use super::*;
+
+    const fn f(sheet: u8, n: usize) -> Option<FolhaLigada> {
+        Some(FolhaLigada {
+            entity: 7,
+            sheet,
+            n,
+        })
+    }
+
+    /// *Mutações: assar sempre ⇒ o Delete assa numa folha que já é outra; nunca ⇒ a tinta da folha antiga perde-se.*
+    #[test]
+    fn trocar_de_folha_assa_na_antiga_salvo_se_ela_saiu() {
+        assert_eq!(decide_troca(f(1, 3), f(1, 3)), None, "nada mudou");
+        assert_eq!(
+            decide_troca(f(1, 3), f(0, 3)),
+            Some((7, Some(1))),
+            "o dropdown"
+        );
+        assert_eq!(
+            decide_troca(f(1, 3), f(3, 4)),
+            Some((7, Some(1))),
+            "Load sheet"
+        );
+        assert_eq!(
+            decide_troca(f(1, 3), f(1, 2)),
+            Some((7, None)),
+            "Delete sheet"
+        );
+        let outro = Some(FolhaLigada {
+            entity: 8,
+            sheet: 0,
+            n: 3,
+        });
+        assert_eq!(
+            decide_troca(f(1, 3), outro),
+            None,
+            "outro objeto: o bind dele trata"
+        );
+        assert_eq!(decide_troca(None, f(1, 3)), None, "acabou de ligar");
     }
 }

@@ -36,8 +36,8 @@ ph2d-app-host = { path = "../ph2d-app-host" }
 ph2d-sprite-edit = { path = "../ph2d-sprite-edit" }
 ph2d-host = { path = "../ph2d-host" }
 ph2d-sprite-sheet = { path = "../ph2d-sprite-sheet" }
-# A mola do voo da inserção no editor de animações (a lei vem de `UiMotion::law`).
-ph2d-spring = { path = "../ph2d-spring" }
+# O documento do editor de animações (a aba; a família liga-o).
+ph2d-anim-editor = { path = "../ph2d-anim-editor" }
 ph2d-text = { path = "../ph2d-text" }
 ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-vector = { path = "../ph2d-vector" }

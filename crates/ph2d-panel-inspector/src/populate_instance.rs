@@ -34,6 +34,7 @@ pub(crate) fn populate_instance_card(store: &mut WidgetStore) {
     button(store, crate::ids::INSP_INSTANCE_CLEAR_ORPHANS);
     button(store, crate::ids::INSP_INSTANCE_OPEN_PREFAB);
     button(store, crate::ids::INSP_RECEIPT_UNDO);
+    button(store, crate::ids::INSP_RECEIPT_CLOSE);
     // ⭐⭐⭐ **Os botões da ESCADA do *Aplicar*** (F5 critério 4).
     //
     // ⚠️ **Registados os OITO, e não só os que a cena de hoje pinta:** o `WidgetStore` é o estado

@@ -210,6 +210,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component_add.receipt" => "{name} added. Also added: {list}.",
         "component_add.receipt.because" => "{name}, because {why}",
         "component_add.receipt.undo" => "Undo",
+        "component_add.receipt.close" => "Close",
         // O ensino da busca que não acha.
         "component_add.teach.platform_player" => {
             "To make it walk and jump, add Physics Body, then press Make Platform Player on its card."

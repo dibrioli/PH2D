@@ -23,4 +23,8 @@ fn o_recibo_vive_so_enquanto_o_passo_dele_e_o_topo() {
     mostra(7, "x".into());
     vigia_com(3, Some(9));
     assert!(texto(7).is_none(), "outro objecto: sai");
+    mostra(7, "x".into());
+    vigia_com(3, Some(7));
+    fecha();
+    assert!(texto(7).is_none(), "o × fecha já");
 }

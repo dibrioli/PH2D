@@ -5,3 +5,5 @@ use ph2d_tool_registry::hash_node_id;
 
 /// O botão **Undo** do recibo.
 pub const INSP_RECEIPT_UNDO: NodeId = hash_node_id("insp_receipt_undo");
+/// O **×** que fecha o recibo.
+pub const INSP_RECEIPT_CLOSE: NodeId = hash_node_id("insp_receipt_close");

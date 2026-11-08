@@ -72,12 +72,17 @@ pub fn texto(entity_bits: u64) -> Option<String> {
     })
 }
 
+/// O **×** do recibo: fecha-o já (dono 08/11), sem desfazer nada.
+pub fn fecha() {
+    RECIBO.with(|r| *r.borrow_mut() = None);
+}
+
 /// O recibo do objecto que o Inspector mostra agora.
 pub(crate) fn do_inspector() -> Option<String> {
     texto(crate::state::current_inspector_transform()?.entity_bits)
 }
 
-/// Pinta a frase e o botão **Undo**; devolve o `y` de baixo.
+/// Pinta a frase, o botão **Undo** e, à direita dele, o **×** que fecha; devolve o `y` de baixo.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn pinta(
     scene: &mut VectorScene,
@@ -103,6 +108,19 @@ pub(crate) fn pinta(
     );
     let rotulo = ph2d_i18n::tr("component_add.receipt.undo");
     let caixa: Rect = caixa_do_botao(text, x, w, y, rotulo);
+    let lado = caixa.h;
+    let gap = ph2d_tokens::control_gap_px();
+    let x_fecha = x + w - lado;
+    let caixa = Rect::new(caixa.x, caixa.y, caixa.w.min(x_fecha - gap - caixa.x), caixa.h);
+    let fecha = Rect::new(x_fecha, caixa.y, lado, lado);
+    hit.register(crate::ids::INSP_RECEIPT_CLOSE, fecha);
+    let id = crate::ids::INSP_RECEIPT_CLOSE;
+    let b = Button::new(id, ph2d_i18n::tr("component_add.receipt.close"))
+        .kind(ButtonKind::IconOnly {
+            icon: ph2d_editor_core::icons::IconId::Close,
+        })
+        .visual(store.button_visual(id));
+    paint_button(&b, fecha, scene, text, theme);
     hit.register(crate::ids::INSP_RECEIPT_UNDO, caixa);
     let b = Button::new(crate::ids::INSP_RECEIPT_UNDO, rotulo.to_owned())
         .kind(ButtonKind::Default)
@@ -111,9 +129,16 @@ pub(crate) fn pinta(
     abaixo_do_botao(caixa)
 }
 
-/// O clique no **Undo**: o mesmo pedido do botão da barra.
+/// O clique no **Undo** (o mesmo pedido do botão da barra) ou no **×** (só fecha).
 pub(crate) fn clique(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    if ev != WidgetEvent::Click(crate::ids::INSP_RECEIPT_UNDO) || do_inspector().is_none() {
+    if do_inspector().is_none() {
+        return false;
+    }
+    if ev == WidgetEvent::Click(crate::ids::INSP_RECEIPT_CLOSE) {
+        fecha();
+        return true;
+    }
+    if ev != WidgetEvent::Click(crate::ids::INSP_RECEIPT_UNDO) {
         return false;
     }
     host.bus_mut().push(EditorAction::UndoStep { redo: false });

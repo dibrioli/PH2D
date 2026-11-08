@@ -166,14 +166,19 @@ fn forma_e_offset_chegam_juntos_e_os_canais_do_auto_key_veem_os_dois() {
     use ph2d_ecs::canal_fisica as f;
     let (mut sim, e) = sprite_scene();
     apply(&mut sim, e, PhysicsFieldEdit::Add);
-    alterna(sim.world_mut(), e.to_bits());
+    // Opção B: as alças são da forma, e só com ELA selecionada (dono 08/11).
+    let forma = shape_of(&sim, e);
+    alterna(sim.world_mut(), forma.to_bits());
     let cam = Camera2d::new([0.0, 3.0], 10.0);
     let antes = crate::canais_corpo::retrato(&sim, e.to_bits()).expect("retrato");
     let a = Alca::Lado(1, 0);
-    let (s, c) = (ecra(&sim, e, cam, a), ecra(&sim, e, cam, Alca::Miolo));
+    let (s, c) = (
+        ecra(&sim, forma, cam, a),
+        ecra(&sim, forma, cam, Alca::Miolo),
+    );
     arrasta(
         &mut sim,
-        e,
+        forma,
         cam,
         a,
         (s.0 + (s.0 - c.0) * 0.5, s.1),
@@ -199,7 +204,8 @@ fn forma_e_offset_chegam_juntos_e_os_canais_do_auto_key_veem_os_dois() {
 fn a_caixa_puxada_passa_a_custom_e_o_fit_volta() {
     let (mut sim, e) = sprite_scene();
     apply(&mut sim, e, PhysicsFieldEdit::Add);
-    alterna(sim.world_mut(), e.to_bits());
+    let forma = shape_of(&sim, e);
+    alterna(sim.world_mut(), forma.to_bits());
     let segue = |sim: &SimWorld| {
         crate::canais_corpo::retrato(sim, e.to_bits())
             .expect("retrato")
@@ -207,10 +213,10 @@ fn a_caixa_puxada_passa_a_custom_e_o_fit_volta() {
     };
     assert_eq!(segue(&sim), Some(true));
     let cam = Camera2d::new([0.0, 3.0], 10.0);
-    let s = ecra(&sim, e, cam, Alca::Lado(1, 1));
+    let s = ecra(&sim, forma, cam, Alca::Lado(1, 1));
     arrasta(
         &mut sim,
-        e,
+        forma,
         cam,
         Alca::Lado(1, 1),
         (s.0 + 30.0, s.1 - 30.0),
@@ -219,8 +225,8 @@ fn a_caixa_puxada_passa_a_custom_e_o_fit_volta() {
     assert_eq!(segue(&sim), Some(false), "puxada");
     apply(&mut sim, e, PhysicsFieldEdit::FitToPicture);
     assert_eq!(segue(&sim), Some(true), "Fit to picture");
-    let info = crate::canais_corpo::retrato(&sim, e.to_bits()).expect("retrato");
-    assert!(info.shape_edit_on, "o botão acende pelo retrato");
+    let info = crate::canais_corpo::retrato(&sim, forma.to_bits()).expect("retrato");
+    assert!(info.shape_edit_on, "o botão acende pelo retrato da forma");
 }
 
 /// O motor colide na medida nova: uma bola pousa no topo puxado da caixa, a 1 m acima de onde pousava.

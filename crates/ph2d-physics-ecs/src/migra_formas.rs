@@ -35,6 +35,10 @@ macro_rules! lado_forma {
                 }
             )+
         }
+
+        fn tira_lado_forma(world: &mut World, e: Entity) {
+            $( world.entity_mut(e).remove::<crate::$t>(); )+
+        }
     };
 }
 
@@ -140,6 +144,25 @@ pub fn torna_corpo(
         .insert((Transform::IDENTITY, ChildOf(corpo)));
     ph2d_ecs::assign_missing_stable_ids(world);
     corpo
+}
+
+/// ⭐ **O *Remove* do corpo** (opção B): `body` deixa de ser corpo e leva as suas formas. Cada
+/// forma-objeto (sem imagem nem filhos: a «Collision Shape») sai da cena; a forma que mora no próprio
+/// corpo perde o lado-forma; uma peça com imagem fica como está (a lei de antes). `e_imagem`: tem `Sprite`.
+pub fn tira_corpo(world: &mut World, body: Entity, e_imagem: impl Fn(&World, Entity) -> bool) {
+    let formas: Vec<Entity> = crate::shapes_in_order(world, body)
+        .into_iter()
+        .filter_map(|(bits, _, _)| Entity::try_from_bits(bits))
+        .collect();
+    for f in formas {
+        let sem_filhos = ordered_children(world, f).is_empty();
+        if f == body {
+            tira_lado_forma(world, f);
+        } else if sem_filhos && !e_imagem(world, f) {
+            world.despawn(f);
+        }
+    }
+    world.entity_mut(body).remove::<crate::RigidBody>();
 }
 
 /// O que a migração fez: `(StableId do corpo, StableId da filha)` por corpo, na ordem de `StableId`.

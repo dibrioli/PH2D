@@ -29,7 +29,8 @@ mod layer_names;
 mod migra_formas;
 pub use migra_formas::{
     LADO_FORMA, Migracao, NOME_DA_FORMA, NOME_DO_CORPO, migra_formas_no_retrato,
-    migra_formas_para_filhos, migra_formas_para_filhos_com_pares, nasce_com_forma, torna_corpo,
+    migra_formas_para_filhos, migra_formas_para_filhos_com_pares, nasce_com_forma, tira_corpo,
+    torna_corpo,
 };
 pub mod player_input;
 pub use layer_names::{
@@ -114,7 +115,7 @@ pub use joint_group::{jointed_by, jointed_group, jointed_rig};
 pub use joint_tool::{DragReach, JointGesture, JointTool};
 pub use parts::{
     auto_mass_with_parts, corpo_da_forma, count_parts, dono_do_campo, governing_kind, is_part,
-    is_part_of, main_shape, owner_body, pendura_forma, shapes_in_order,
+    is_part_of, main_shape, owner_body, pendura_forma, shapes_in_order, tem_corpo,
 };
 /// A geometria do LIMITADOR (W-RopeStop) — a marca, e a inversa dela.
 ///

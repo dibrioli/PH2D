@@ -44,6 +44,7 @@ pub fn apply_physics_edit(
     const DAMPING_OVERRIDE: &str = "ph2d::physics::DampingOverride";
 
     // Num corpo, a edição da forma vai à forma principal (opção B): nunca o `Collider` no corpo.
+    let pedido = Entity::from_bits(entity_bits);
     let forma = sim
         .world()
         .get::<RigidBody>(Entity::from_bits(entity_bits))
@@ -91,7 +92,7 @@ pub fn apply_physics_edit(
     }
     if matches!(edit, PhysicsFieldEdit::FitToPicture) {
         if let Some(cur) = world.get::<Collider>(entity).copied()
-            && let Some(imagem) = world.get::<ph2d_render::Sprite>(entity)
+            && let Some(imagem) = imagem_da_forma(world, entity)
         {
             let mut next = Collider {
                 shape: cur.shape_fitted_to(imagem.size),
@@ -104,8 +105,13 @@ pub fn apply_physics_edit(
         return;
     }
     if matches!(edit, PhysicsFieldEdit::Remove) {
-        queue_remove(queue, registry, entity_bits, RIGID_BODY);
-        queue_remove(queue, registry, entity_bits, COLLIDER);
+        if world.get::<RigidBody>(pedido).is_some() {
+            let imagem = |w: &ph2d_ecs::World, e| w.get::<ph2d_render::Sprite>(e).is_some();
+            ph2d_physics_ecs::tira_corpo(sim.world_mut(), pedido, imagem);
+        } else {
+            queue_remove(queue, registry, entity_bits, RIGID_BODY);
+            queue_remove(queue, registry, entity_bits, COLLIDER);
+        }
         return;
     }
     if let PhysicsFieldEdit::Kind(tag) = edit {
@@ -206,7 +212,8 @@ pub fn apply_physics_edit(
         // Mass source (W-Mass): another RigidBody-level, optional presence-override
         // component (`MassOverride`), handled here beside the constraints. Gated on a
         // live collider: without one there is no shape to seed the mass from.
-        let Some(col) = world.get::<Collider>(entity).copied() else {
+        let fonte = ph2d_physics_ecs::main_shape(world, entity).unwrap_or(entity);
+        let Some(col) = world.get::<Collider>(fonte).copied() else {
             return;
         };
         if manual {
@@ -296,7 +303,7 @@ pub fn apply_physics_edit(
         // would drop the other). Gated on a live body: without one there is nothing
         // to give a material to, and this would attach an orphan to a plain sprite.
         // NOT Dynamic-only — a static floor's combine rule matters too.
-        if world.get::<RigidBody>(entity).is_none() {
+        if !ph2d_physics_ecs::tem_corpo(world, entity) {
             return;
         }
         // A tag no rule claims is DROPPED, not folded onto Average — the chip that
@@ -580,4 +587,21 @@ pub fn apply_physics_edit(
     if next != cur {
         queue_set(queue, registry, entity_bits, COLLIDER, &next);
     }
+}
+
+/// A imagem que a forma `e` cobre (opção B): a dela, ou a do antepassado mais próximo até ao corpo.
+fn imagem_da_forma(world: &ph2d_ecs::World, e: Entity) -> Option<&ph2d_render::Sprite> {
+    let mut cur = Some(e);
+    while let Some(x) = cur {
+        if let Some(s) = world.get::<ph2d_render::Sprite>(x) {
+            return Some(s);
+        }
+        if world.get::<ph2d_physics_ecs::RigidBody>(x).is_some() {
+            return None;
+        }
+        cur = world
+            .get::<ph2d_ecs::ChildOf>(x)
+            .map(ph2d_ecs::ChildOf::parent);
+    }
+    None
 }

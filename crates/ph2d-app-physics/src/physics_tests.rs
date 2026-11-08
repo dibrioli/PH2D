@@ -131,12 +131,19 @@ fn the_added_collider_is_boxed_to_the_sprite() {
 fn removing_a_body_detaches_both_components() {
     let (mut sim, e) = sprite_scene();
     apply(&mut sim, e, PhysicsFieldEdit::Add);
+    let filha = ph2d_physics_ecs::main_shape(sim.world(), e).expect("a forma filha");
     apply(&mut sim, e, PhysicsFieldEdit::Remove);
     assert!(
         sim.world().get::<RigidBody>(e).is_none(),
         "RigidBody stayed"
     );
     assert!(sim.world().get::<Collider>(e).is_none(), "Collider stayed");
+    // Opção B: a «Collision Shape» do corpo sai com ele; a imagem fica.
+    assert!(
+        sim.world().get_entity(filha).is_err(),
+        "a forma filha ficou"
+    );
+    assert!(sim.world().get_entity(e).is_ok(), "a imagem saiu");
 
     // ⚠️ **E a §11 FECHA** (ADR-0166 / F3): ela seguia toda entidade com `Transform` e mostrava uma
     // face vazia; hoje segue os componentes dela. A rota de volta é o `+` do cabeçalho.

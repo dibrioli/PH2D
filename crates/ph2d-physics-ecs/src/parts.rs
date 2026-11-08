@@ -53,6 +53,12 @@ pub fn owner_body(world: &World, e: Entity) -> Option<Entity> {
     None
 }
 
+/// `e` é um corpo ou mora debaixo de um (opção B: a forma filha tem corpo pelo pai).
+#[must_use]
+pub fn tem_corpo(world: &World, e: Entity) -> bool {
+    world.get::<RigidBody>(e).is_some() || owner_body(world, e).is_some()
+}
+
 /// O `BodyKind` que governa esta forma: o dela mesma se `e` for corpo, senão o do
 /// dono. `None` quando não há corpo nenhum acima — aquela forma **não é
 /// simulada**, e quem desenha ou descreve tem de dizer isso em vez de inventar

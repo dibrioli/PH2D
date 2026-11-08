@@ -56,7 +56,13 @@ pub(super) fn apply_marker_edit(
         AreaForceWorldAxes, Ccd, LockPositionX, LockPositionY, LockRotation, OneWayPlatform,
     };
 
-    if world.get::<ph2d_physics_ecs::RigidBody>(entity).is_none() {
+    // O lado-forma (One-Way…) mora na forma, que pede um corpo ACIMA dela (opção B).
+    let com_corpo = if edit.e_da_forma() {
+        ph2d_physics_ecs::tem_corpo(world, entity)
+    } else {
+        world.get::<ph2d_physics_ecs::RigidBody>(entity).is_some()
+    };
+    if !com_corpo {
         // Not "not mine": these edits ARE ours, they are simply refused here. Saying
         // `false` would send them down the collider path, which is a different write.
         return matches!(

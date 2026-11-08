@@ -7,7 +7,6 @@ use ph2d_editor_core::panel::cards::banda::metrics as m;
 use ph2d_editor_core::panel::cards::borda;
 use ph2d_editor_core::panel::cards::paint_card_list;
 use ph2d_editor_core::panel::{PaintCtx, Panel};
-use ph2d_editor_core::screens::hero::PANEL_PIXEL_TILES;
 use ph2d_editor_core::widget::panel_chrome::panel_drag_handle_rect;
 use ph2d_editor_core::widget::{Dropdown, DropdownOption};
 use ph2d_editor_core::zones::Rect;
@@ -21,30 +20,38 @@ use crate::{PixelSlicesPanel, PixelSlicesPanelState, cards, event, ids};
 /// A alça da borda de fora (`borda`): o id mora aqui para não tocar os ids dos cartões.
 pub(crate) const SLICES_EDGE: NodeId = hash_node_id("pixel_slices.edge");
 
-/// O rect da janela: à esquerda da coluna; se a janela Tilemap está lá, à esquerda dela — pelas
-/// larguras REAIS das duas (a borda de fora alarga cada uma).
+/// O rect da janela: à esquerda da coluna; se a janela Tilemap está pintada ali (o rect PUBLICADO dela,
+/// não a suposição de que está aberta), à esquerda dela. O arrasto do título desloca-a, mas ela fica
+/// dentro da área e fora da lista da esquerda (`clear_of_left_list`, a mesma régua das abas): a lista
+/// docada nunca a tapa nem lhe rouba o ponteiro. O desvio limitado volta ao store (sem borracha).
 fn solta(ctx: &mut PaintCtx) -> Rect {
     let area = ctx.layout.draw_area;
+    let livre = ctx.layout.clear_of_left_list(area);
     let teto = {
         let r = ph2d_editor_core::ruler::top_band(area);
         r.y + r.h + Spacing::Sm.px()
     };
+    let fundo = area.y + area.h - Spacing::Sm.px();
     let coluna = ctx.slot.x;
-    let tiles = ctx.host.panel_visible(PANEL_PIXEL_TILES);
     let store = ctx.host.store_mut();
-    let w = borda::largura(store, PixelSlicesPanel::NODE_ID, area, coluna);
-    let vizinha = if tiles {
-        borda::largura(store, PIXEL_TILES_PANEL, area, coluna) + Spacing::Lg.px()
-    } else {
-        0.0
-    };
+    let mut w = borda::largura(store, PixelSlicesPanel::NODE_ID, area, coluna);
+    let mut direita = coluna - Spacing::Lg.px();
+    if let Some(t) = store.panel_rect(PIXEL_TILES_PANEL)
+        && t.x < direita
+        && direita - w - Spacing::Lg.px() < t.x + t.w
+    {
+        direita = t.x - Spacing::Lg.px();
+    }
+    let esquerda = livre.x.max(area.x);
+    w = w.min((coluna - Spacing::Lg.px() - esquerda).max(0.0));
+    let base = (direita - w).max(esquerda);
     let (dx, dy) = store.blender_picker_offset(PixelSlicesPanel::NODE_ID);
-    Rect::new(
-        (coluna - Spacing::Lg.px() - vizinha - w).max(area.x) + dx,
-        teto + dy,
-        w,
-        (area.y + area.h - teto - Spacing::Sm.px()).max(0.0),
-    )
+    let x = (base + dx).clamp(esquerda, (coluna - Spacing::Lg.px() - w).max(esquerda));
+    let y = (teto + dy).clamp(teto, (fundo - m::LIST_HEAD_H).max(teto));
+    if (x - base, y - teto) != (dx, dy) {
+        store.set_blender_picker_offset(PixelSlicesPanel::NODE_ID, x - base, y - teto);
+    }
+    Rect::new(x, y, w, (fundo - y).max(0.0))
 }
 
 /// As linhas do menu, com os nomes do Aseprite e o extra do dono.

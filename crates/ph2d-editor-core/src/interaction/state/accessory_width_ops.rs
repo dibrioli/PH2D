@@ -6,8 +6,9 @@
 //!   grava-se em `~/.ph2d/sections.txt` pela porta de
 //!   [`super::section_prefs_ops::section_prefs_text`], como a posição do seletor de cor: o formato é
 //!   do editor e a shell só sabe onde fica o disco.
-//! - **O arrasto** — incremental (âncora = o último `x`), como o do seletor: o tecto e o piso
-//!   moram na pintura, que conhece a área, e ela escreve de volta o limitado — sem borracha.
+//! - **O arrasto** — ABSOLUTO: a largura é a de partida menos o caminho do ponteiro desde o Down.
+//!   O tecto e o piso moram na pintura, que conhece a área; como o arrasto nunca soma ao limitado,
+//!   passar do tecto e voltar devolve a borda para debaixo do ponteiro (incremental, escorregava).
 //!
 //! ⚠️ A borda é a de FORA (a esquerda): a direita fica presa à coluna, logo puxar para a esquerda
 //! ALARGA.
@@ -23,8 +24,8 @@ const CHAVE: &str = "accessory_w.";
 #[derive(Clone, Debug, Default)]
 pub struct AccessoryWidths {
     widths: BTreeMap<NodeId, f32>,
-    /// `(painel, último x)` enquanto a borda está agarrada.
-    drag: Option<(NodeId, f32)>,
+    /// `(painel, x do Down, largura no Down)` enquanto a borda está agarrada.
+    drag: Option<(NodeId, f32, Option<f32>)>,
 }
 
 impl WidgetStore {
@@ -45,24 +46,23 @@ impl WidgetStore {
 
     /// Down na borda de fora: arma o arrasto.
     pub fn begin_accessory_width_drag(&mut self, panel: NodeId, x: f32) {
-        self.accessory_widths.drag = Some((panel, x));
+        let w = self.accessory_width(panel);
+        self.accessory_widths.drag = Some((panel, x, w));
     }
 
     /// O painel cuja borda está agarrada, se algum.
     #[must_use]
     pub fn accessory_width_drag(&self) -> Option<NodeId> {
-        self.accessory_widths.drag.map(|(p, _)| p)
+        self.accessory_widths.drag.map(|(p, _, _)| p)
     }
 
     /// Move: a borda segue o dedo — `x` a descer ALARGA (a direita está presa). `false` sem arrasto.
     /// `base` é a largura de fábrica, para o primeiro arrasto de quem nunca escolheu.
     pub(crate) fn move_accessory_width_drag(&mut self, x: f32, base: f32) -> bool {
-        let Some((panel, last)) = self.accessory_widths.drag else {
+        let Some((panel, x0, w0)) = self.accessory_widths.drag else {
             return false;
         };
-        let w = self.accessory_width(panel).unwrap_or(base) - (x - last);
-        self.set_accessory_width(panel, w);
-        self.accessory_widths.drag = Some((panel, x));
+        self.set_accessory_width(panel, w0.unwrap_or(base) - (x - x0));
         true
     }
 

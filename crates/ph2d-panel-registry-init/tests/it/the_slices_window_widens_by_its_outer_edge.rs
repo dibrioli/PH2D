@@ -164,3 +164,58 @@ fn a_costura_da_coluna_continua_a_responder() {
     let layout = hero.last_layout.expect("layout");
     assert_eq!(layout.dock_seam_at(p), Some(DockSide::Right));
 }
+
+/// ⭐ A largura é função da posição do ponteiro desde o Down: passar do tecto e voltar devolve a
+/// borda para debaixo do ponteiro (antes, o excesso somado ao limitado escorregava).
+#[test]
+fn passar_do_tecto_e_voltar_nao_escorrega() {
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let mut hero = hero(&mut ts);
+    let antes = hero.store.panel_rect(JANELA).expect("pintou");
+    let (x, y) = (antes.x + DOCK_SEAM_PX * 0.5, antes.y + antes.h * 0.5);
+    let arena = Bump::new();
+    let _ = hero.handle_pointer(ptr(PointerKind::Down, x, y), &arena);
+    let _ = hero.handle_pointer(ptr(PointerKind::Move, x - 4000.0, y), &arena);
+    assenta(&mut hero, &mut ts);
+    let _ = hero.handle_pointer(ptr(PointerKind::Move, x - 50.0, y), &arena);
+    assenta(&mut hero, &mut ts);
+    let _ = hero.handle_pointer(ptr(PointerKind::Up, x - 50.0, y), &arena);
+    assenta(&mut hero, &mut ts);
+    let depois = hero.store.panel_rect(JANELA).expect("continua");
+    assert_eq!(depois.w, antes.w + 50.0, "a borda não ficou sob o ponteiro");
+}
+
+/// ⭐ Arrastada pelo título para longe, a janela fica DENTRO da área de desenho e fora da lista que
+/// flutua sobre a coluna da esquerda (a Hierarchy): nunca tapada por ela, nunca a tapar.
+#[test]
+fn arrastada_pelo_titulo_fica_na_area_e_fora_da_hierarchy() {
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let mut hero = hero(&mut ts);
+    for (dx, dy) in [(-4000.0, 4000.0), (4000.0, -4000.0), (-4000.0, -4000.0)] {
+        let r = hero
+            .hit_index
+            .rect_for(ph2d_panel_pixel_slices::ids::SLICES_DRAG);
+        let r = r.expect("a alça do título");
+        let (x, y) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+        let arena = Bump::new();
+        let _ = hero.handle_pointer(ptr(PointerKind::Down, x, y), &arena);
+        let _ = hero.handle_pointer(ptr(PointerKind::Move, x + dx, y + dy), &arena);
+        let _ = hero.handle_pointer(ptr(PointerKind::Up, x + dx, y + dy), &arena);
+        assenta(&mut hero, &mut ts);
+        let layout = hero.last_layout.expect("layout");
+        let (area, j) = (
+            layout.draw_area,
+            hero.store.panel_rect(JANELA).expect("pintou"),
+        );
+        let dentro = j.x >= area.x
+            && j.y >= area.y
+            && j.x + j.w <= layout.inspector.x
+            && j.y + j.h <= area.y + area.h;
+        assert!(dentro, "({dx},{dy}): {j:?} saiu da área {area:?}");
+        let hier = layout.float_lists[0];
+        let tapa = hier.h > 0.0 && j.x < hier.x + hier.w && hier.x < j.x + j.w;
+        assert!(!tapa, "({dx},{dy}): {j:?} sobre a Hierarchy {hier:?}");
+        let (cx, cy) = (j.x + j.w * 0.5, j.y + j.h * 0.5);
+        assert_eq!(hero.chrome_panel_at(cx, cy), Some(JANELA));
+    }
+}

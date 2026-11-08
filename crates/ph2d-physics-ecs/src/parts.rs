@@ -187,6 +187,32 @@ pub fn shapes_in_order(world: &World, body: Entity) -> Vec<(u64, String, u8)> {
     out
 }
 
+/// **A forma PRINCIPAL de `body`** (opção B, 08/11): a 1.ª de [`shapes_in_order`] — o `Collider` do
+/// próprio corpo se ele o carrega, senão a primeira forma descendente em ordem de árvore (pára num
+/// corpo filho, atravessa grupos). É ela que viaja no `BodyDesc`; as outras são peças.
+#[must_use]
+pub fn main_shape(world: &World, body: Entity) -> Option<Entity> {
+    fn desce(world: &World, pai: Entity) -> Option<Entity> {
+        world.get::<ph2d_ecs::Children>(pai)?;
+        for f in ph2d_ecs::ordered_children(world, pai) {
+            if world.get::<RigidBody>(f).is_some() {
+                continue;
+            }
+            if world.get::<Collider>(f).is_some() {
+                return Some(f);
+            }
+            if let Some(m) = desce(world, f) {
+                return Some(m);
+            }
+        }
+        None
+    }
+    if world.get::<Collider>(body).is_some() {
+        return Some(body);
+    }
+    desce(world, body)
+}
+
 #[cfg(test)]
 mod shapes_tests {
     use super::*;
@@ -232,5 +258,38 @@ mod shapes_tests {
         assert!(is_part_of(&w, teto, chao) && is_part_of(&w, parede, chao));
         assert!(!is_part_of(&w, chao, chao), "o corpo não é peça dele mesmo");
         assert!(!is_part_of(&w, outro, chao), "um corpo filho não é peça");
+    }
+
+    /// A forma principal é a 1.ª de `shapes_in_order`: a do corpo, senão a 1.ª filha na ordem dos
+    /// irmãos (reordenar muda-a), atravessando grupos e nunca descendo num corpo filho.
+    #[test]
+    fn a_forma_principal_e_a_primeira_da_ordem_da_arvore() {
+        let mut w = World::new();
+        let rb = RigidBody {
+            kind: BodyKind::Dynamic,
+        };
+        let corpo = w.spawn((Name::new("Box"), rb)).id();
+        assert_eq!(main_shape(&w, corpo), None, "corpo sem forma");
+        let filho = w
+            .spawn((Name::new("Crate"), Collider::default(), rb, ChildOf(corpo)))
+            .id();
+        assert_eq!(
+            main_shape(&w, corpo),
+            None,
+            "a forma de um corpo filho é dele"
+        );
+        let grupo = w.spawn((Name::new("Group"), ChildOf(corpo))).id();
+        let a = forma(&mut w, "A", grupo, ColliderShape::Ball { radius: 1.0 });
+        let b = forma(&mut w, "B", corpo, ColliderShape::Ball { radius: 1.0 });
+        ph2d_ecs::set_sibling_order(&mut w, corpo, &[filho, grupo, b]);
+        assert_eq!(main_shape(&w, corpo), Some(a));
+        ph2d_ecs::set_sibling_order(&mut w, corpo, &[b, filho, grupo]);
+        assert_eq!(main_shape(&w, corpo), Some(b), "reordenar muda a principal");
+        w.entity_mut(corpo).insert(Collider::default());
+        assert_eq!(
+            main_shape(&w, corpo),
+            Some(corpo),
+            "a do corpo vem primeiro"
+        );
     }
 }

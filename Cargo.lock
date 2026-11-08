@@ -10648,6 +10648,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-pixel-keys"
+version = "0.0.0"
+dependencies = [
+ "ph2d-editor-core",
+ "ph2d-i18n",
+ "winit",
+]
+
+[[package]]
 name = "ph2d-pixel-ponte"
 version = "0.0.0"
 dependencies = [

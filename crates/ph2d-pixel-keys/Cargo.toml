@@ -1,0 +1,20 @@
+[package]
+name = "ph2d-pixel-keys"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# Os atalhos do Pixel Art como DADOS (`docs/PixelArt/P12_plano.md` §5, `docs/PixelArt/P12_teclas.md`):
+# acção, tecla, contexto, a tabela de fábrica, o delta do utilizador e a busca. PURA: sem UI, sem SO.
+[dependencies]
+ph2d-editor-core = { path = "../ph2d-editor-core" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+winit = "0.30"
+
+[lints]
+workspace = true

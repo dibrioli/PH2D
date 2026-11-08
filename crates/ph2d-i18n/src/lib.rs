@@ -189,6 +189,7 @@ mod pixel_export;
 mod pixel_pincel;
 mod pixel_selecao;
 mod pixel_slices;
+mod pixel_teclas;
 mod pixel_tiles;
 /// ⭐⭐ **A COR, a CURVA, o COMANDO e as RECUSAS da timeline** — quatro motores numa fatia.
 mod quatro_motores;
@@ -643,6 +644,7 @@ fn tabela(key: &str) -> &'static str {
             .or_else(|| pixel_export::tr(k))
             .or_else(|| pixel_tiles::tr(k))
             .or_else(|| pixel_slices::tr(k))
+            .or_else(|| pixel_teclas::tr(k))
             .or_else(|| inspector_motion_input::tr(k))
             .or_else(|| inspector_macro::tr(k))
             .or_else(|| inspector_player::tr(k))

@@ -10,7 +10,8 @@
 //!
 //! [ADR-0166]: ../../../../../docs/architecture/decisions/0166-the-inspector-shows-what-the-object-has-and-components-attach-through-one-palette-filtered-by-object-type.md
 
-use super::{CLOSE_W, HEADER_H, MIN_COL_W, PILL_H, PaletteModel};
+use super::look::Look;
+use super::{CLOSE_W, MIN_COL_W, PILL_H, PaletteModel};
 use crate::interaction::HitIndex;
 use crate::paint::{fill_rounded_rect, paint_text, resolve};
 use crate::widget::lista_flutuante::Superficie;
@@ -62,8 +63,10 @@ pub(super) fn paint_header(
     content_w: f32,
     header_y: f32,
     pad: f32,
-    font: f32,
+    lk: &Look,
 ) -> Rect {
+    let header_h = lk.header_h;
+    let font = lk.title_font;
     // ── Header band: title left, search box in the middle, count centre-right, close-X right. ──
     let superficie = Superficie::de(theme);
     let title_w = ts.prefix_width(&model.title, font).min(content_w * 0.35); // LITERAL-PX-OK: FRAÇÃO da banda que o título pode tomar antes de ceder ao campo de busca
@@ -72,7 +75,7 @@ pub(super) fn paint_header(
         scene,
         &model.title,
         content_x,
-        header_y + superficie.folga(HEADER_H, font),
+        header_y + superficie.folga(header_h, font),
         font,
         title_w,
         superficie.cor(ColorToken::Text1),
@@ -91,7 +94,7 @@ pub(super) fn paint_header(
         scene,
         &count_str,
         count_x,
-        header_y + superficie.folga(HEADER_H, TypeToken::Sm.px()),
+        header_y + superficie.folga(header_h, TypeToken::Sm.px()),
         TypeToken::Sm.px(),
         count_w,
         superficie.cor(ColorToken::Text3),
@@ -107,15 +110,16 @@ pub(super) fn paint_header(
         model.toggle.as_ref(),
         count_x - Spacing::Sm.px(),
         header_y,
+        header_h,
     );
 
     // ── Search box: a Bg3 rounded field showing the typed query (or a "Search" placeholder), the app's
     //    keyboard feeds it while the palette is open (a full-screen modal captures the keys). ──
     let sm = TypeToken::Sm.px();
-    let search_h = (HEADER_H - Spacing::Sm.px()).max(PILL_H);
+    let search_h = (header_h - Spacing::Sm.px()).max(PILL_H);
     let sb_x = content_x + title_w + Spacing::Md.px();
     let sb_w = (count_x - toggle_w - Spacing::Md.px() - sb_x).max(MIN_COL_W * 0.5);
-    let sb = Rect::new(sb_x, header_y + (HEADER_H - search_h) * 0.5, sb_w, search_h);
+    let sb = Rect::new(sb_x, header_y + (header_h - search_h) * 0.5, sb_w, search_h);
     if let Some(ink) = superficie.tinta() {
         let fundo = ink.color(ColorToken::CardField);
         fill_rounded_rect(scene, sb, m::FIELD_RADIUS, fundo);
@@ -141,20 +145,36 @@ pub(super) fn paint_header(
         (query, superficie.cor(ColorToken::Text1))
     };
     let text_y = sb.y + superficie.folga(sb.h, sm);
+    // ⭐ A lupa da referência (Add Object): o texto recua a largura dela.
+    let lupa = if lk.search_icon {
+        let lado = m::HEAD_ICON_GLYPH;
+        let r = Rect::new(
+            sb.x + Spacing::Sm.px(),
+            sb.y + (sb.h - lado) * 0.5,
+            lado,
+            lado,
+        );
+        let traco = ph2d_tokens::StrokeToken::Default.px();
+        let tinta = superficie.cor(ColorToken::Text2);
+        crate::paint::paint_icon(scene, crate::icons::IconId::Search, r, tinta, traco);
+        lado + Spacing::Xs.px()
+    } else {
+        0.0
+    };
+    let text_x = sb.x + Spacing::Sm.px() + lupa;
     paint_text(
         ts,
         scene,
         search_text,
-        sb.x + Spacing::Sm.px(),
+        text_x,
         text_y,
         sm,
-        sb.w - Spacing::Sm.px() * 2.0,
+        sb.w - Spacing::Sm.px() * 2.0 - lupa,
         search_color,
     );
     // Caret at the end of the typed text (only while there IS a query — the placeholder needs none).
     if !query.is_empty() {
-        let caret_x = (sb.x + Spacing::Sm.px() + ts.prefix_width(query, sm))
-            .min(sb.x + sb.w - Spacing::Xs.px());
+        let caret_x = (text_x + ts.prefix_width(query, sm)).min(sb.x + sb.w - Spacing::Xs.px());
         fill_rounded_rect(
             scene,
             Rect::new(
@@ -169,7 +189,7 @@ pub(super) fn paint_header(
     }
     let close_rect = Rect::new(
         close_x,
-        header_y + (HEADER_H - CLOSE_W) * 0.5,
+        header_y + (header_h - CLOSE_W) * 0.5,
         CLOSE_W,
         CLOSE_W,
     );
@@ -213,6 +233,7 @@ fn paint_toggle(
     toggle: Option<&PaletteToggle>,
     right_x: f32,
     header_y: f32,
+    header_h: f32,
 ) -> f32 {
     let Some(t) = toggle else {
         return 0.0;
@@ -221,24 +242,24 @@ fn paint_toggle(
     let label_w = ts.prefix_width(&t.label, sm);
     let total = BOX_W + Spacing::Xs.px() + label_w;
     let x = right_x - total;
-    let box_rect = Rect::new(x, header_y + (HEADER_H - BOX_W) * 0.5, BOX_W, BOX_W);
+    let box_rect = Rect::new(x, header_y + (header_h - BOX_W) * 0.5, BOX_W, BOX_W);
     let superficie = Superficie::de(theme);
     if let Some(ink) = superficie.tinta() {
-        let caixa = crate::widget::checkbox::card_check_rect(x, header_y, HEADER_H);
+        let caixa = crate::widget::checkbox::card_check_rect(x, header_y, header_h);
         crate::widget::checkbox::paint_card_check(scene, ink, caixa, t.on, false);
         paint_text(
             ts,
             scene,
             &t.label,
             caixa.x + caixa.w + Spacing::Xs.px(),
-            header_y + superficie.folga(HEADER_H, sm),
+            header_y + superficie.folga(header_h, sm),
             sm,
             label_w,
             superficie.cor(ColorToken::Text1),
         );
         hit_index.register(
             CMD_PALETTE_SHOW_ALL,
-            Rect::new(x, header_y, total, HEADER_H),
+            Rect::new(x, header_y, total, header_h),
         );
         return total + Spacing::Md.px();
     }
@@ -276,7 +297,7 @@ fn paint_toggle(
         scene,
         &t.label,
         x + BOX_W + Spacing::Xs.px(),
-        header_y + (HEADER_H - sm) * 0.5,
+        header_y + (header_h - sm) * 0.5,
         sm,
         label_w,
         resolve(fg, theme),
@@ -285,7 +306,7 @@ fn paint_toggle(
     // vezes e concluir que o controlo está morto.
     hit_index.register(
         CMD_PALETTE_SHOW_ALL,
-        Rect::new(x, header_y, total, HEADER_H),
+        Rect::new(x, header_y, total, header_h),
     );
     total + Spacing::Md.px()
 }

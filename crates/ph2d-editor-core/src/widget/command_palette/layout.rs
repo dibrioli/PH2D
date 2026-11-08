@@ -9,15 +9,11 @@
 //! Nada aqui desenha. Nada aqui registra hit. As consts de medida moram no pai — um filho
 //! enxerga os privados do pai, então o corte não move visibilidade nenhuma.
 
+use super::look::{Look, look};
 use super::*;
 
 /// Abaixo de três colunas o arranjo não é uma grade — ele empilha.
 const MIN_COLS_FOR_GRID: f32 = 3.0; // LITERAL-PX-OK: CONTAGEM de colunas, não medida
-
-/// Height of the category header block inside a card (name row + gap + coloured rule + gap).
-fn card_head_h() -> f32 {
-    TypeToken::Sm.px() + Spacing::Xs.px() + RULE_H + Spacing::Sm.px()
-}
 
 /// Append pill placements for `items`, wrapping to new rows at `width`, starting at card-local
 /// `(ox, oy)`. Returns the y just below the last row (including the trailing pill gap).
@@ -28,28 +24,28 @@ fn flow_pills(
     ox: f32,
     oy: f32,
     width: f32,
-    font: f32,
+    lk: &Look,
 ) -> f32 {
     let mut x = 0.0_f32;
     let mut y = oy;
     let mut row_started = false;
     for it in items {
-        let text_w = ts.prefix_width(&it.label, font);
-        let pill_w = (DOT_R * 2.0 + Spacing::Xs.px() + text_w + PILL_PAD_X * 2.0).min(width);
+        let text_w = ts.prefix_width_weighted(&it.label, lk.pill_font, lk.pill_weight);
+        let pill_w = (lk.dot_r * 2.0 + Spacing::Xs.px() + text_w + lk.pill_pad_x * 2.0).min(width);
         if row_started && x + pill_w > width {
             x = 0.0;
-            y += PILL_H + PILL_GAP;
+            y += lk.pill_h + lk.pill_gap;
         }
         placed.push(Placed::Pill {
-            rect: Rect::new(ox + x, y, pill_w, PILL_H),
+            rect: Rect::new(ox + x, y, pill_w, lk.pill_h),
             id: it.id,
             label: it.label.clone(),
         });
-        x += pill_w + PILL_GAP;
+        x += pill_w + lk.pill_gap;
         row_started = true;
     }
     if row_started {
-        y += PILL_H + PILL_GAP;
+        y += lk.pill_h + lk.pill_gap;
     }
     y
 }
@@ -58,19 +54,18 @@ fn flow_pills(
 /// for a flat category, or as a masonry of sub-blocks across `inner_cols` sub-columns when the category
 /// has named sub-clusters (so a big category reads as a tidy grid, not one tall list). All placements
 /// are card-local (origin at the card's top-left).
-fn layout_card(ts: &mut TextSystem, group: &PaletteGroup, card_w: f32) -> CardLayout {
-    let font = TypeToken::Sm.px();
+fn layout_card(ts: &mut TextSystem, group: &PaletteGroup, card_w: f32, lk: &Look) -> CardLayout {
     let sub_font = TypeToken::Xs.px();
-    let content_x = CARD_PAD;
-    let content_w = (card_w - CARD_PAD * 2.0).max(PILL_H);
+    let content_x = lk.card_pad_x;
+    let content_w = (card_w - lk.card_pad_x * 2.0).max(lk.pill_h);
 
     let count: usize = group.subs.iter().map(|s| s.items.len()).sum();
     let mut placed = vec![Placed::Header {
         title: group.title.clone(),
         count,
-        y: CARD_PAD,
+        y: lk.card_pad_y,
     }];
-    let top = CARD_PAD + card_head_h();
+    let top = lk.card_pad_y + lk.head_h();
 
     let content_bottom = if group.subs.iter().any(|s| s.title.is_some()) {
         // Masonry the sub-clusters into sub-columns (widest a big category needs to stay short).
@@ -92,7 +87,7 @@ fn layout_card(ts: &mut TextSystem, group: &PaletteGroup, card_w: f32) -> CardLa
                 });
                 sy += sub_font + Spacing::Xs.px();
             }
-            sy = flow_pills(&mut placed, ts, &sub.items, ox, sy, sub_w, font);
+            sy = flow_pills(&mut placed, ts, &sub.items, ox, sy, sub_w, lk);
             sub_bottom[c] = sy + SUB_GAP;
         }
         sub_bottom.iter().copied().fold(top, f32::max) - SUB_GAP
@@ -102,13 +97,13 @@ fn layout_card(ts: &mut TextSystem, group: &PaletteGroup, card_w: f32) -> CardLa
             .iter()
             .flat_map(|s| s.items.iter().cloned())
             .collect();
-        flow_pills(&mut placed, ts, &all, content_x, top, content_w, font) - PILL_GAP
+        flow_pills(&mut placed, ts, &all, content_x, top, content_w, lk) - lk.pill_gap
     };
 
     CardLayout {
         color: group.color,
         placed,
-        height: content_bottom + CARD_PAD,
+        height: content_bottom + lk.card_pad_y,
     }
 }
 
@@ -125,6 +120,7 @@ pub(super) fn arrange(
     content_x: f32,
     content_w: f32,
 ) -> (Vec<(CardLayout, f32, f32, f32)>, f32) {
+    let lk = &look(model);
     let mut small: Vec<&PaletteGroup> = Vec::new();
     let mut big: Vec<&PaletteGroup> = Vec::new();
     for g in &model.groups {
@@ -158,33 +154,36 @@ pub(super) fn arrange(
         // ⚠️ **A ordem de visita é a de EXIBIÇÃO, e as largas vão primeiro**: uma larga precisa de
         //    dois vãos adjacentes, e semeá-la depois de as estreitas encherem a grade obriga-a a
         //    um par desnivelado. É o idioma de todo empacotador — o item grande primeiro.
-        let unit_w = (content_w - COL_GAP * 3.0) / 4.0; // LITERAL-PX-OK: CONTAGENS da grade de 4 unidades (3 vãos)
-        let slot_x = |c: usize| content_x + c as f32 * (unit_w + COL_GAP);
-        let span_w = |span: usize| unit_w * span as f32 + COL_GAP * (span as f32 - 1.0);
-        let mut bottom = [0.0_f32; 4];
+        let n = lk.units as f32;
+        let unit_w = (content_w - lk.col_gap * (n - 1.0)) / n;
+        let slot_x = |c: usize| content_x + c as f32 * (unit_w + lk.col_gap);
+        let span_w = |span: usize| unit_w * span as f32 + lk.col_gap * (span as f32 - 1.0);
+        // Uma GRANDE ocupa dois vãos só numa grade de quatro; na de três, cada grupo é uma coluna.
+        let wide = if lk.units >= 4 { 2 } else { 1 }; // LITERAL-PX-OK: CONTAGENS de vãos, não medidas
+        let mut bottom = vec![0.0_f32; lk.units];
         for (g, span) in big
             .iter()
-            .map(|g| (*g, 2usize))
+            .map(|g| (*g, wide))
             .chain(small.iter().map(|g| (*g, 1usize)))
         {
             let c = shortest_slot(&bottom, span);
             let top = bottom[c..c + span].iter().copied().fold(0.0_f32, f32::max);
             let w = span_w(span);
-            let cl = layout_card(ts, g, w);
+            let cl = layout_card(ts, g, w, lk);
             let h = cl.height;
             placed.push((cl, slot_x(c), top, w));
             for b in &mut bottom[c..c + span] {
-                *b = top + h + SECT_GAP;
+                *b = top + h + lk.sect_gap;
             }
         }
     } else {
         // Fallback (narrow window / no big category): one stacked column of full-width cards.
         let mut y = 0.0_f32;
         for g in &model.groups {
-            let cl = layout_card(ts, g, content_w);
+            let cl = layout_card(ts, g, content_w, lk);
             let h = cl.height;
             placed.push((cl, content_x, y, content_w));
-            y += h + SECT_GAP;
+            y += h + lk.sect_gap;
         }
     }
 

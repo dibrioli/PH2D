@@ -21,11 +21,10 @@ use crate::paint::{fill_rounded_rect, paint_text, resolve};
 use crate::widget::lista_flutuante::Superficie;
 use crate::zones::Rect;
 use ph2d_a11y::NodeId;
-use ph2d_card_stack::metrics as m;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Radius, Spacing, Theme, TypeToken};
 use ph2d_tool_registry::hash_node_id;
-use ph2d_vector::{Color, VectorScene};
+use ph2d_vector::VectorScene;
 
 /// **Quanto mede, e onde cada coisa cai** — irmã pelo teto de 500 LOC dos primitivos; o corte é
 /// por responsabilidade: aqui fica o que a paleta DESENHA, lá o que ela MEDE.
@@ -51,6 +50,13 @@ pub use header::{CMD_PALETTE_SHOW_ALL, PaletteToggle};
 
 /// **A dica ilustrada** do item sob o rato (GameEngineFuncional N1) — a 5.ª responsabilidade.
 mod tip;
+
+/// **O ACABAMENTO** (o de sempre · o da referência, Add Object 07/11) — a decisão única das medidas.
+mod look;
+
+/// **O CARTÃO de um grupo** pintado — irmão pelo tecto de 500 LOC dos primitivos.
+mod grupo;
+use grupo::paint_card;
 
 /// **«Destaca, depois escolhe»** e a faixa da dica (Add Object, dono 07/11) — a 6.ª responsabilidade.
 mod selecao;
@@ -275,14 +281,15 @@ pub fn paint(
     //    saiu para o irmão `header.rs` quando a caixa da F3 (ADR-0166) a levaria a passar o teto de
     //    500 LOC deste ficheiro: o corte é por responsabilidade — aqui fica o CARTÃO, lá a BANDA.
     let header_y = card_y + pad;
+    let lk = look::look(model);
     let close_rect = header::paint_header(
         scene, ts, theme, hit_index, model, query, card_x, card_w, content_x, content_w, header_y,
-        pad, font,
+        pad, &lk,
     );
 
     // ── Content: paint the measured category cards at the card's content origin — or a "No matches"
     //    message when the search filtered everything out. ──
-    let content_y = header_y + HEADER_H + Spacing::Sm.px();
+    let content_y = header_y + lk.header_h + Spacing::Sm.px();
     // ⭐ **O CORPO É RECORTADO no CLIQUE e na PINTURA** (F3 / ADR-0166) — pela PORTA: sem os dois
     //    recortes o conteúdo rolado desenha por cima do cabeçalho e por fora do cartão, que foi o
     //    report do Enio no 1.º smoke (a lista saía pela base do ecrã).
@@ -335,6 +342,7 @@ pub fn paint(
                 *w,
                 crate::motion::cascade_rise(t, travels),
                 [store.hot_id(), chosen],
+                &lk,
             );
         }
     }
@@ -355,137 +363,6 @@ pub fn paint(
     // Close-X last (wins its rect inside the card).
     hit_index.register(CMD_PALETTE_CLOSE, close_rect);
     pending
-}
-
-/// Paint one category card: a rounded `Bg2` box + `Border`, then its header (dot + name + count +
-/// coloured rule), the grey sub-cluster headers, and the pills (each registering its hit rect).
-#[allow(clippy::too_many_arguments)]
-fn paint_card(
-    scene: &mut VectorScene,
-    ts: &mut TextSystem,
-    theme: Theme,
-    hit_index: &mut HitIndex,
-    cl: &CardLayout,
-    ox: f32,
-    oy: f32,
-    card_w: f32,
-    rise: f32,
-    [hot, chosen]: [Option<NodeId>; 2],
-) {
-    // ⚠️ `oy` é a posição ASSENTE — a que o dedo procura — e `dy` a que o olho vê durante a
-    //    entrada. Tudo o que DESENHA lê `dy`; o único `register` deste corpo lê `oy`.
-    let dy = oy + rise;
-    let radius = crate::paint::frame_radius(theme, Radius::Md.px());
-    let card = Rect::new(ox, dy, card_w, cl.height);
-    let superficie = Superficie::de(theme);
-    let ink = superficie.tinta();
-    if let Some(ink) = ink {
-        let fundo = ink.color(ColorToken::KanbanCard);
-        fill_rounded_rect(scene, card, m::CARD_RADIUS, fundo);
-    } else {
-        fill_rounded_rect(scene, card, radius, resolve(ColorToken::Bg2, theme));
-        crate::paint::stroke_frame(
-            scene,
-            card,
-            radius,
-            theme,
-            ph2d_tokens::visuals::Feel::Rest,
-            1.0,
-            resolve(ColorToken::Border, theme),
-        );
-    }
-
-    let cat_color = resolve(cl.color, theme);
-    let sm = TypeToken::Sm.px();
-    let xs = TypeToken::Xs.px();
-    let content_w = card_w - CARD_PAD * 2.0;
-    for p in &cl.placed {
-        match p {
-            Placed::Header { title, count, y } => {
-                let hx = ox + CARD_PAD;
-                let hy = dy + *y;
-                dot(scene, hx + DOT_R, hy + sm * 0.5, cat_color);
-                let label = format!("{title} \u{00b7} {count}");
-                paint_text(
-                    ts,
-                    scene,
-                    &label,
-                    hx + DOT_R * 2.0 + Spacing::Xs.px(),
-                    hy + if ink.is_some() {
-                        superficie.folga(sm, sm)
-                    } else {
-                        0.0
-                    },
-                    sm,
-                    content_w,
-                    cat_color,
-                );
-                // Coloured underline rule across the card content width.
-                fill_rounded_rect(
-                    scene,
-                    Rect::new(hx, hy + sm + Spacing::Xs.px(), content_w, RULE_H),
-                    RULE_H * 0.5,
-                    cat_color,
-                );
-            }
-            Placed::Sub { title, x, y } => {
-                paint_text(
-                    ts,
-                    scene,
-                    title,
-                    ox + *x,
-                    dy + *y,
-                    xs,
-                    content_w,
-                    superficie.cor(ColorToken::Text3),
-                );
-            }
-            Placed::Pill { rect, id, label } => {
-                let r = Rect::new(ox + rect.x, dy + rect.y, rect.w, rect.h);
-                let fg = match ink {
-                    _ if chosen == Some(*id) => superficie.botao(scene, r, true, false),
-                    Some(ink) => {
-                        let tom = if hot == Some(*id) {
-                            ColorToken::CardFieldHover
-                        } else {
-                            ColorToken::CardField
-                        };
-                        fill_rounded_rect(scene, r, m::FIELD_RADIUS, ink.color(tom));
-                        superficie.cor(ColorToken::Text1)
-                    }
-                    None => {
-                        let radius = crate::paint::frame_radius(theme, Radius::Sm.px());
-                        fill_rounded_rect(scene, r, radius, resolve(ColorToken::Bg3, theme));
-                        superficie.cor(ColorToken::Text1)
-                    }
-                };
-                dot(scene, r.x + PILL_PAD_X + DOT_R, r.y + r.h * 0.5, cat_color);
-                paint_text(
-                    ts,
-                    scene,
-                    label,
-                    r.x + PILL_PAD_X + DOT_R * 2.0 + Spacing::Xs.px(),
-                    r.y + superficie.folga(r.h, xs),
-                    xs,
-                    r.w - PILL_PAD_X * 2.0 - DOT_R * 2.0,
-                    fg,
-                );
-                // ⚠️ ASSENTE, nunca `r`: durante a entrada o cartão está 12 px abaixo, e um
-                //    clique apressado cairia na row de cima.
-                hit_index.register(*id, Rect::new(ox + rect.x, oy + rect.y, rect.w, rect.h));
-            }
-        }
-    }
-}
-
-/// A small filled category dot centred at `(cx, cy)`.
-fn dot(scene: &mut VectorScene, cx: f32, cy: f32, color: Color) {
-    fill_rounded_rect(
-        scene,
-        Rect::new(cx - DOT_R, cy - DOT_R, DOT_R * 2.0, DOT_R * 2.0),
-        DOT_R,
-        color,
-    );
 }
 
 // Gates for the search filter live in a `#[path]` sibling so they remain a CHILD module (reaching the

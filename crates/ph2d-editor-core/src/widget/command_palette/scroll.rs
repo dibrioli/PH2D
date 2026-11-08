@@ -9,8 +9,8 @@
 //! torna a rolagem obrigatória e não um conforto.
 
 use super::{
-    CARD_MAX_H_FRAC, CARD_MAX_W, CardLayout, EDGE_MARGIN, HEADER_H, MIN_COL_W, PILL_H,
-    PaletteModel, arrange, filter_model,
+    CARD_MAX_H_FRAC, CardLayout, EDGE_MARGIN, MIN_COL_W, PILL_H, PaletteModel, arrange,
+    filter_model,
 };
 use crate::paint::{fill_rounded_rect, resolve};
 use crate::zones::Rect;
@@ -47,7 +47,9 @@ pub(super) fn metrics(
     query: &str,
 ) -> Metrics {
     // ── Card geometry independent of content height: width (centred) + the content box. ──
-    let card_w = CARD_MAX_W
+    let lk = super::look::look(model);
+    let card_w = lk
+        .card_max_w
         .min(viewport.w - EDGE_MARGIN * 2.0)
         .max(MIN_COL_W);
     let card_x = viewport.x + (viewport.w - card_w) * 0.5;
@@ -73,7 +75,7 @@ pub(super) fn metrics(
         super::selecao::dock_height(ts, model, content_w)
     };
     let dock_gap = if dock_h > 0.0 { Spacing::Sm.px() } else { 0.0 };
-    let chrome_h = pad * 2.0 + HEADER_H + Spacing::Sm.px() + dock_h + dock_gap;
+    let chrome_h = pad * 2.0 + lk.header_h + Spacing::Sm.px() + dock_h + dock_gap;
     let card_h = (chrome_h + content_h)
         .min(viewport.h * CARD_MAX_H_FRAC)
         .min(viewport.h - EDGE_MARGIN * 2.0);

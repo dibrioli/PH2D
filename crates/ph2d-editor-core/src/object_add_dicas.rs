@@ -9,7 +9,7 @@ pub const IMAGE: &[Mark] = &[
     Mark::Rect {
         at: [0.3, 0.1],
         size: [0.4, 0.8],
-        fill: C::AccentFg,
+        fill: C::Text1,
         round: 0.03,
     },
     Mark::Line {

@@ -195,7 +195,6 @@ pub(super) struct Quadro {
     pub(super) contagem_w: f32,
     pub(super) cabeca_dir_w: f32,
     pub(super) pares_w: f32,
-    pub(super) add_w: f32,
     pub(super) add_aceso: bool,
     pub(super) matriz: LayerMatrix,
     pub(super) add_rotulo: &'static str,
@@ -207,7 +206,6 @@ pub(super) struct Quadro {
     pub(super) campo: Option<Campo>,
     pub(super) camada: super::camada::Camada,
     pub(super) pergunta: Option<super::remove::Pergunta>,
-    pub(super) remove_w: f32,
     pub(super) remove_aceso: bool,
 }
 
@@ -239,7 +237,7 @@ impl Quadro {
             .max({
                 let lado_a_lado = Geometria::lista_para_os_botoes(botao_w);
                 let empilhados = botao_w + Geometria::MARGEM_DA_LISTA * 2.0;
-                if lado_a_lado <= area.w / 3.0 {
+                if lado_a_lado <= area.w / Geometria::PARTES_DA_ABA_PARA_A_LISTA {
                     lado_a_lado
                 } else {
                     empilhados
@@ -276,7 +274,6 @@ impl Quadro {
         super::GEOMETRIA.set(Some(g));
         let camada = camada.desloca(g.camada.x, g.camada.y);
         let pergunta = pergunta.map(|p| p.desloca(g.camada.x, g.camada.y));
-        let remove_w = g.botao_w;
         let remove_aceso =
             ctx.host.store().button_state(i::PHYSICS_LAYER_REMOVE) == Some(ButtonState::Hovered);
         let matriz = LayerMatrix::from_rows(crate::state::current().vivo.layer_matrix);
@@ -296,7 +293,6 @@ impl Quadro {
         let cabeca_dir = tr_with("card.physics.tab_pairs", &[("n", &n_pares.to_string())]);
         let cabeca_dir_w = largura(ctx, &cabeca_dir);
         let pares_w = largura(ctx, &pares_da_camada);
-        let add_w = g.botao_w;
         let cheia = visiveis.len() >= MAX_LAYERS;
         let add_aceso =
             ctx.host.store().button_state(i::PHYSICS_LAYER_ADD) == Some(ButtonState::Hovered);
@@ -322,7 +318,6 @@ impl Quadro {
             contagem_w,
             cabeca_dir_w,
             pares_w,
-            add_w,
             add_aceso,
             matriz,
             add_rotulo,
@@ -334,7 +329,6 @@ impl Quadro {
             campo,
             camada,
             pergunta,
-            remove_w,
             remove_aceso,
         }
     }

@@ -49,7 +49,7 @@ impl Geometria {
         let passo = (livre_h / n)
             .min(livre_w / n)
             .min(row + Spacing::Sm.px())
-            .max(Self::PASSO_MINIMO);
+            .max(Self::passo_minimo());
         let cabe = |livre: f32| ((livre / passo).floor().max(1.0) as usize).min(k.max(1));
         let (cabem_l, cabem_c) = (cabe(livre_h), cabe(livre_w));
         let grade = Rect::new(dx, area.y + pad, dw, fixo_h + passo * cabem_l as f32);
@@ -78,11 +78,17 @@ impl Geometria {
         }
     }
 
-    /// ⭐ O passo mínimo da grade (onda 9e): a célula (passo − vão `Xs`) fica com a altura de uma linha do app,
-    /// `ROW_H_PX`, o alvo que a lista, os botões e os quadros do Inspector já clicam; o rótulo cabe inteiro
+    /// ⭐ O passo mínimo da grade (onda 9e): o passo de linha do app (`row_pitch_px` = `ROW_H_PX` + o vão dos
+    /// controlos), o alvo que a lista, os botões e os quadros do Inspector já clicam; o rótulo cabe inteiro
     /// (`fonte_da_grade` = a letra do painel). Medido em 07/11 com 27 camadas: o passo antigo encolhia a
     /// `Spacing::Md` (8 px, célula de 4 px; a foto `aba9d_27_camadas…` dava ~10 px).
-    pub const PASSO_MINIMO: f32 = ROW_H_PX + Spacing::Xs.factory_px();
+    #[must_use]
+    pub fn passo_minimo() -> f32 {
+        ph2d_tokens::row_pitch_px()
+    }
+
+    /// A lista não passa desta fração da aba para pôr os dois botões lado a lado.
+    pub const PARTES_DA_ABA_PARA_A_LISTA: f32 = 3.0; // LITERAL-PX-OK: um terço da aba
 
     /// Rola para a primeira linha `l0` e a primeira coluna `c0`, presas ao que há para mostrar.
     #[must_use]

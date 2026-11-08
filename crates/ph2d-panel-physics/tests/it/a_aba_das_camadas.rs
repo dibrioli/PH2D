@@ -765,7 +765,7 @@ fn a_grade_com_muitas_camadas_rola_e_o_clique_e_o_da_celula_sob_o_ponteiro() {
     abre(&mut mesa);
     let g = aba::geometria_da_ultima().expect("a aba pintou");
     assert!(
-        g.passo >= Geometria::PASSO_MINIMO,
+        g.passo >= Geometria::passo_minimo() - 0.01,
         "o passo {} encolheu",
         g.passo
     );

@@ -65,10 +65,8 @@ fn pinta_lista(ctx: &mut PaintCtx, q: &Quadro) {
         font,
         raio,
         contagem_w,
-        add_w,
         add_aceso,
         add_rotulo,
-        remove_w,
         remove_aceso,
         ..
     } = q;
@@ -426,7 +424,7 @@ fn pinta_pe(ctx: &mut PaintCtx, q: &Quadro) {
 }
 
 fn alvos(ctx: &mut PaintCtx, q: &Quadro, losango: Option<ph2d_a11y::NodeId>, canto: Rect) {
-    let (g, visiveis, matriz, campo, add_w) = (&q.g, &q.visiveis, q.matriz, &q.campo, q.add_w);
+    let (g, visiveis, matriz, campo) = (&q.g, &q.visiveis, q.matriz, &q.campo);
     let cheia = visiveis.len() >= MAX_LAYERS;
     // Os alvos, por ordem: o último registado ganha o clique.
     let (_, hit) = ctx.host.store_and_hit_index_mut();

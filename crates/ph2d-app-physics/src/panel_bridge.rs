@@ -173,8 +173,11 @@ pub fn dispatch(
     run: RunTapes<'_>,
     mundo: &mut crate::canais_mundo::ConducaoMundo,
 ) -> bool {
-    if std::env::var_os("PH2D_PHYSICS_SMOKE_RENAME").is_some() {
-        ph2d_panel_inspector::camadas_fisica::abre_o_rename(&mut hero.store);
+    // `=dobra` (onda 9e): só dobra os cartões de cima, para a foto da fila «Collides with».
+    if let Some(v) = std::env::var_os("PH2D_PHYSICS_SMOKE_RENAME") {
+        if v != "dobra" {
+            ph2d_panel_inspector::camadas_fisica::abre_o_rename(&mut hero.store);
+        }
         ph2d_panel_inspector::camadas_fisica::dobra_os_cartoes_de_cima(&mut hero.store);
     }
     // ── 1. Publish. Every row reads this; the panel keeps no copy. ──

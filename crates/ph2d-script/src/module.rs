@@ -36,6 +36,8 @@ pub(crate) struct DeclSink {
 /// **Um script carregado.**
 pub struct ScriptModule {
     env: Table,
+    /// O topo do módulo: o depurador arma nele (o Luau desce às funções de dentro).
+    main: Function,
     /// As declarações, na ordem das chamadas (Q7).
     pub decls: Vec<PropDecl>,
 }
@@ -48,6 +50,12 @@ impl ScriptModule {
     #[must_use]
     pub fn hook(&self, name: &str) -> Option<Function> {
         self.env.raw_get::<Option<Function>>(name).ok().flatten()
+    }
+
+    /// O topo do módulo (onde se armam os pontos de parada).
+    #[must_use]
+    pub fn main(&self) -> &Function {
+        &self.main
     }
 }
 
@@ -76,6 +84,7 @@ pub fn load_module(
     match (ran, sink.error) {
         (Ok(()), _) => Ok(ScriptModule {
             env,
+            main: func,
             decls: sink.decls,
         }),
         // A linha vem da pilha do `ph2d.property` que recusou.

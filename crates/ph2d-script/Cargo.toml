@@ -18,6 +18,8 @@ authors.workspace = true
 # i64 (o `2^53` era `Number` e passa a `Integer`). As chaves de tabela stringificam
 # igual nas duas ⇒ sem deriva no `StateTable`.
 mlua = { version = "0.12", features = ["luau"] }
+# O depurador (ponto de parada, Next line, valores ao vivo): a porta crua do Luau isolada (plano 13 Onda D).
+ph2d-script-debug = { path = "../ph2d-script-debug" }
 # blake3 used for source-content hashing — drives the reset+restore
 # decision in `ScriptHost::load_script` (HR-16: hot-reload only when
 # bytes actually changed, not on every save).

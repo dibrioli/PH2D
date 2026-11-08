@@ -240,6 +240,13 @@ pub(crate) fn wire_print(lua: &Lua, console: &Console) -> mlua::Result<()> {
     lua.set_app_data(console.clone());
     let tostring: Function = lua.globals().get("tostring")?;
     let print = lua.create_function(move |lua, args: MultiValue| -> mlua::Result<()> {
+        // Valores ao vivo: o `print` do objecto vigiado conta na linha de onde saiu.
+        if let Some(d) =
+            crate::scene::debugger_of(lua).filter(ph2d_script_debug::Debugger::watching_now)
+            && let Some(line) = lua.inspect_stack(1, |s| s.current_line()).flatten()
+        {
+            d.printed(u32::try_from(line).unwrap_or(0));
+        }
         let mut text = String::new();
         for (i, v) in args.into_iter().enumerate() {
             // Passado o tecto por linha o resto nem se copia (o `push` corta e põe o `…`).

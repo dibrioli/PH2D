@@ -20,7 +20,7 @@ use ph2d_ecs::{Entity, SimWorld};
 use ph2d_script_doc::ScriptId;
 
 use super::this::{apply_props, born};
-use super::wait::{Parked, micros, park, resume_due, run_hook};
+use super::wait::{Park, Parked, micros, park, resume_due, run_hook};
 use super::{
     Deadline, Instance, SceneReport, SceneScripts, Slot, absorb_lane, actors, apply_writes,
     chunk_in, library_id, module_in, settle_call,
@@ -95,9 +95,25 @@ pub(super) fn call(
     writes: &mut Vec<EntityWrite>,
     report: &mut SceneReport,
 ) -> bool {
+    // Parado no depurador: o gancho espera a vez dele, pela ordem (Continue corre-o).
+    if let Some(Parked {
+        kind: Park::Held { then, .. },
+        ..
+    }) = parked
+        .iter_mut()
+        .find(|p| p.entity == entity && p.is_held())
+    {
+        if let Ok(args) = args.into_lua_multi(lua) {
+            then.push((hook.clone(), args));
+        }
+        return true;
+    }
     report.calls += 1;
+    let watch = super::wait::debugger(lua)
+        .is_some_and(|d| d.is_target(inst.script.0, entity.to_bits()))
+        .then_some(inst.chunk.as_str());
     let ran = speaking(lua, inst.script, Some(entity), || {
-        deadline.within(|| run_hook(lua, hook, args))
+        deadline.within(|| run_hook(lua, hook, args, watch))
     });
     let ran = park(ran, entity, inst.script, parked);
     settle_call(lua, entity, ran, inst, writes, report)

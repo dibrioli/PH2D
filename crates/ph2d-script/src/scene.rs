@@ -144,6 +144,8 @@ pub struct SceneReport {
     pub calls: usize,
     /// ⭐ Ciclo 19: o que os scripts escreveram na tabela `motion` (já aplicado ao recurso).
     pub motion: Vec<crate::motion_api::MotionWrite>,
+    /// Pause on Error: os erros com a pilha lida antes de a corrotina cair (`scene_debug.rs`).
+    pub(crate) error_stops: Vec<(Entity, ScriptId, String, ph2d_script_debug::StopFrame)>,
 }
 
 /// **O tempo que UMA chamada de gancho pode levar: um quadro.**
@@ -222,6 +224,10 @@ pub struct SceneScripts {
     dying: BTreeSet<u64>,
     /// Quem saiu entre quadros e ainda não correu o `exit` (`scene_life.rs`).
     leaving: Vec<Leaving>,
+    /// Os pontos de parada armados, por script (`scene_debug.rs`).
+    armed: BTreeMap<ScriptId, debug::Armed>,
+    /// Um objecto parado por um erro (Pause on Error).
+    held_error: Option<debug::HeldError>,
 }
 
 /// Um objecto com script, no instante do tique.
@@ -291,6 +297,8 @@ impl SceneScripts {
         // As corrotinas são da VM velha.
         self.parked.clear();
         self.leaving.clear();
+        self.armed.clear();
+        self.held_error = None;
     }
 
     /// ⛔ **Outra biblioteca = outro projecto**: os módulos, os vivos e as recargas por drenar são
@@ -319,13 +327,14 @@ impl SceneScripts {
         self.parked.clear();
         self.dying.clear();
         self.leaving.clear();
+        self.held_error = None;
         n
     }
 
-    /// Quantas esperas estão por retomar — o número que um gate lê.
+    /// Quantas esperas estão por retomar — o número que um gate lê (sem os parados no depurador).
     #[must_use]
     pub fn waiting_count(&self) -> usize {
-        self.parked.len()
+        self.parked.iter().filter(|p| !p.is_held()).count()
     }
 
     /// O que se sabe do script `id` — `None` se nenhum objecto o apontou ainda.
@@ -470,7 +479,15 @@ fn settle_call(
     let (mine, emitted) = drain_queues(lua);
     let motion = crate::motion_api::drain(lua);
     let failure = match ran {
-        Err(e) => Some(ScriptDiagnostic::from_error(&e, &inst.chunk)),
+        Err(e) => {
+            let d = ScriptDiagnostic::from_error(&e, &inst.chunk);
+            if let Some(frame) = wait::debugger(lua).and_then(|g| g.take_error_frame()) {
+                report
+                    .error_stops
+                    .push((entity, inst.script, d.message.clone(), frame));
+            }
+            Some(d)
+        }
         Ok(()) => mine
             .iter()
             .find(|w| matches!(w.value, WriteValue::Pose(_)) && pose_field(&w.field).is_none())
@@ -563,6 +580,15 @@ mod this;
 #[path = "scene_wait.rs"]
 mod wait;
 
+#[path = "scene_debug.rs"]
+mod debug;
+pub use debug::DebugStop;
+
+/// O depurador da VM de `lua`.
+pub(crate) fn debugger_of(lua: &Lua) -> Option<ph2d_script_debug::Debugger> {
+    wait::debugger(lua)
+}
+
 /// Segundos → µs, o MESMO relógio do `ph2d.wait` (o do console carimba as linhas com ele).
 pub(crate) fn micros(seconds: f64) -> u64 {
     wait::micros(seconds)
@@ -571,6 +597,10 @@ pub(crate) fn micros(seconds: f64) -> u64 {
 #[cfg(test)]
 #[path = "scene_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "scene_debug_tests.rs"]
+mod debug_tests;
 
 #[cfg(test)]
 #[path = "scene_api_tests.rs"]

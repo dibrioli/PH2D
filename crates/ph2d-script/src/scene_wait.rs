@@ -10,6 +10,7 @@ use std::collections::BTreeMap;
 
 use mlua::{Function, IntoLuaMulti, Lua, MultiValue, Thread, Value};
 use ph2d_ecs::Entity;
+use ph2d_script_debug::{Debugger, StopKind};
 use ph2d_script_doc::ScriptId;
 
 use super::{Deadline, Instance, SceneReport, settle_call};
@@ -17,20 +18,41 @@ use crate::console::speaking;
 use crate::io::EntityWrite;
 use crate::lane::Lane;
 
-/// Um gancho que parou num `ph2d.wait`.
+/// Um gancho que parou num `ph2d.wait` — ou no depurador.
 pub(super) struct Parked {
     pub(super) entity: Entity,
     pub(super) script: ScriptId,
-    thread: Thread,
+    pub(super) thread: Thread,
+    pub(super) kind: Park,
+}
+
+pub(super) enum Park {
     /// Microssegundos inteiros, como o `Timer` da casa: `round(s·1e6)`.
-    target_us: u64,
-    elapsed_us: u64,
+    Wait { target_us: u64, elapsed_us: u64 },
+    /// ⭐ **Parado no depurador** (plano 13 Onda D): não anda com o tempo; sai por Continue / Next
+    /// line. Os ganchos que o objecto devia correr enquanto está parado esperam em `then`, por ordem.
+    Held {
+        why: StopKind,
+        then: Vec<(Function, MultiValue)>,
+    },
+}
+
+impl Parked {
+    pub(super) fn is_held(&self) -> bool {
+        matches!(self.kind, Park::Held { .. })
+    }
 }
 
 /// O que uma chamada de gancho deu.
 pub(super) enum Ran {
     Done,
     Waiting(Thread, u64),
+    Held(Thread, StopKind),
+}
+
+/// O depurador da VM (instalado pelo `ScriptHost`).
+pub(crate) fn debugger(lua: &Lua) -> Option<Debugger> {
+    lua.app_data_ref::<Debugger>().map(|d| d.clone())
 }
 
 /// A marca que o `ph2d.wait` cede junto com os segundos (uma cedência sem ela não é uma espera).
@@ -47,24 +69,49 @@ pub(super) fn micros(seconds: f64) -> u64 {
     us
 }
 
-/// ⭐ **Corre um gancho numa corrotina nova.**
-pub(super) fn run_hook(lua: &Lua, f: &Function, args: impl IntoLuaMulti) -> mlua::Result<Ran> {
-    resume(lua, lua.create_thread(f.clone())?, args)
+/// ⭐ **Corre um gancho numa corrotina nova.** `watch` = o chunk, se este gancho é do objecto cujos
+/// valores ao vivo a aba mostra.
+pub(super) fn run_hook(
+    lua: &Lua,
+    f: &Function,
+    args: impl IntoLuaMulti,
+    watch: Option<&str>,
+) -> mlua::Result<Ran> {
+    let th = lua.create_thread(f.clone())?;
+    if let (Some(chunk), Some(d)) = (watch, debugger(lua)) {
+        d.watch(lua, &th, chunk)?;
+    }
+    resume(lua, th, args)
 }
 
 /// Retoma `th`.
-fn resume(lua: &Lua, th: Thread, args: impl IntoLuaMulti) -> mlua::Result<Ran> {
-    let out = th.resume::<MultiValue>(args);
+pub(super) fn resume(lua: &Lua, th: Thread, args: impl IntoLuaMulti) -> mlua::Result<Ran> {
+    let dbg = debugger(lua);
+    let out = match &dbg {
+        Some(d) => d.running(&th, || th.resume::<MultiValue>(args)),
+        None => th.resume::<MultiValue>(args),
+    };
     let yielded = th.status() == mlua::thread::ThreadStatus::Resumable;
     match out {
         Ok(vals) if yielded => match wait_of(lua, &vals) {
             Some(us) => Ok(Ran::Waiting(th, us)),
-            None => Err(mlua::Error::RuntimeError(
-                "coroutine.yield in a hook: use ph2d.wait(seconds) to pause".into(),
-            )),
+            None => match dbg.as_ref().and_then(|d| d.took_stop(&th)) {
+                Some(why) => Ok(Ran::Held(th, why)),
+                None => Err(mlua::Error::RuntimeError(
+                    "coroutine.yield in a hook: use ph2d.wait(seconds) to pause".into(),
+                )),
+            },
         },
         Ok(_) => Ok(Ran::Done),
-        Err(e) => Err(e),
+        Err(e) => {
+            // Pause on Error: a pilha da corrotina que errou ainda está de pé — lê-se AGORA.
+            if let Some(d) = dbg.as_ref().filter(|d| d.pause_on_error())
+                && let Ok(Some(frame)) = d.frame(lua, &th)
+            {
+                d.stash_error_frame(frame);
+            }
+            Err(e)
+        }
     }
 }
 
@@ -97,8 +144,22 @@ pub(super) fn park(
                 entity,
                 script,
                 thread,
-                target_us,
-                elapsed_us: 0,
+                kind: Park::Wait {
+                    target_us,
+                    elapsed_us: 0,
+                },
+            });
+            Ok(())
+        }
+        Ran::Held(thread, why) => {
+            parked.push(Parked {
+                entity,
+                script,
+                thread,
+                kind: Park::Held {
+                    why,
+                    then: Vec::new(),
+                },
             });
             Ok(())
         }
@@ -122,8 +183,16 @@ pub(super) fn resume_due(
 ) {
     let mut due = Vec::new();
     for mut p in std::mem::take(parked) {
-        p.elapsed_us = p.elapsed_us.saturating_add(dt_us);
-        if p.elapsed_us >= p.target_us {
+        let Park::Wait {
+            target_us,
+            elapsed_us,
+        } = &mut p.kind
+        else {
+            parked.push(p); // parado no depurador: não anda com o tempo
+            continue;
+        };
+        *elapsed_us = elapsed_us.saturating_add(dt_us);
+        if *elapsed_us >= *target_us {
             due.push(p);
         } else {
             parked.push(p);
@@ -149,7 +218,10 @@ pub(super) fn resume_due(
             clippy::cast_precision_loss,
             reason = "microssegundos de uma espera cabem em 2^53"
         )]
-        let secs = p.elapsed_us as f64 / 1e6;
+        let secs = match p.kind {
+            Park::Wait { elapsed_us, .. } => elapsed_us as f64 / 1e6,
+            Park::Held { .. } => 0.0,
+        };
         report.calls += 1;
         let ran = speaking(lua, inst.script, Some(p.entity), || {
             deadline.within(|| resume(lua, p.thread, secs))

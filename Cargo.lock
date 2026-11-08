@@ -10895,6 +10895,7 @@ dependencies = [
  "ph2d-component-desc",
  "ph2d-ecs",
  "ph2d-input",
+ "ph2d-script-debug",
  "ph2d-script-doc",
  "postcard",
  "proptest",

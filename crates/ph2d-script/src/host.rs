@@ -47,7 +47,12 @@ pub struct ScriptHost {
     scene: SceneScripts,
     /// ⭐ CodeEditor E10: o `print`, os erros de runtime e as recusas de recarga.
     console: Console,
+    /// ⭐ O depurador (plano 13 Onda D): pontos de parada, Pause on Error, valores ao vivo.
+    debug: debug_api::DebugConfig,
 }
+
+#[path = "host_debug.rs"]
+mod debug_api;
 
 impl ScriptHost {
     pub fn new() -> mlua::Result<Self> {
@@ -79,6 +84,7 @@ impl ScriptHost {
             deadline,
             scene: SceneScripts::default(),
             console,
+            debug: debug_api::DebugConfig::default(),
         })
     }
 
@@ -213,6 +219,7 @@ impl ScriptHost {
                 &ph2d_script_doc::ScriptLibrary::default(),
             );
         }
+        self.debug_after_sync();
     }
 
     /// ⭐⭐⭐ **Um passo fixo** sem portas para mestres ([`NoDoors`]) — os testes da crate; o
@@ -229,9 +236,10 @@ impl ScriptHost {
         dt: f64,
         doors: &mut dyn SceneDoors,
     ) -> SceneReport {
-        let r = self
+        let mut r = self
             .scene
             .tick(self.runtime.lua(), &self.deadline, sim, dt, doors);
+        self.scene.absorb_error_stop(&mut r);
         self.console.advance(dt);
         self.devices.edges_seen();
         self.forget_the_dead(&r);
@@ -252,9 +260,10 @@ impl ScriptHost {
         signals: &[(&str, Option<u64>)],
         doors: &mut dyn SceneDoors,
     ) -> SceneReport {
-        let r = self
+        let mut r = self
             .scene
             .hear(self.runtime.lua(), &self.deadline, sim, signals, doors);
+        self.scene.absorb_error_stop(&mut r);
         self.forget_the_dead(&r);
         r
     }
@@ -272,9 +281,10 @@ impl ScriptHost {
         dt: f64,
         doors: &mut dyn SceneDoors,
     ) -> SceneReport {
-        let r = self
+        let mut r = self
             .scene
             .process(self.runtime.lua(), &self.deadline, sim, dt, doors);
+        self.scene.absorb_error_stop(&mut r);
         self.forget_the_dead(&r);
         r
     }
@@ -407,6 +417,13 @@ fn build_runtime(
     crate::kanban_stub::wire(runtime.lua())?;
     crate::console::wire_print(runtime.lua(), console)?;
     install_deadline(runtime.lua(), deadline);
+    // ⭐ O depurador nasce com cada VM; o nível 2 guarda os nomes das variáveis locais (sem eles o
+    // `lua_getlocal` não devolve nada) e custa 0 com tudo desarmado (medido, plano 13 §4 Onda D).
+    runtime
+        .lua()
+        .set_compiler(mlua::chunk::Compiler::new().set_debug_level(2));
+    let debugger = ph2d_script_debug::Debugger::install(runtime.lua())?;
+    runtime.lua().set_app_data(debugger);
     runtime.lua().sandbox(true)?;
     Ok(runtime)
 }

@@ -12,10 +12,10 @@ use ph2d_editor_core::zones::Rect as Zona;
 use ph2d_panel_pixel_slices::canal::{self, Contexto, Pedido};
 use ph2d_panel_pixel_slices::familia;
 use ph2d_pixel_core::slice::delete;
-use ph2d_pixel_core::{SliceId, Sprite};
+use ph2d_pixel_core::{SliceId, Sprite, Stroke};
 use ph2d_pixel_render::{SliceMark, draw_marching_ants, draw_slice, px_per_cell, rect_edges};
 use ph2d_pixel_slices::campos::quadros_com_key;
-use ph2d_pixel_slices::transforma::{caixas_que_mudam, com_pixels};
+use ph2d_pixel_slices::transforma::{caixas_que_mudam, com_pixels, previa as arte};
 use ph2d_pixel_slices::{Gesto, Grab, Marca, alcance, interior, no_quadro, seta, sob};
 use ph2d_tokens::Theme;
 use ph2d_vector::{Affine, Point, VectorScene};
@@ -140,12 +140,16 @@ pub(crate) fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32)) -> bool {
             .then(|| to_screen(c.world, bits, app.docs.get(key)?, c.camera, c.window, c.ppm))
             .flatten()
     });
+    let key = *key;
     if let (Some(m), Some((_, g))) = (q, app.slices.gesto.as_mut()) {
         let q = image_point(m, p);
         g.drag((q.x, q.y));
         app.hover = c
             .editing
             .map(|bits| (bits, (q.x.floor() as i32, q.y.floor() as i32)));
+        if app.slices.transform {
+            app.toca(key);
+        }
     }
     true
 }
@@ -172,6 +176,20 @@ pub(crate) fn release(app: &mut PixelApp) -> bool {
         let _ = app.commit(key, op);
     }
     true
+}
+
+/// A arte a meio do arrasto com `Transform`: o traço do MESMO op que o largar grava.
+pub(crate) fn previa(app: &PixelApp, key: u32) -> Option<Stroke> {
+    let g = app
+        .slices
+        .gesto
+        .as_ref()
+        .filter(|g| g.0 == key && app.slices.transform)?;
+    let d = app
+        .docs
+        .get(&key)
+        .filter(|d| crate::camadas::recusa_pintar(d).is_none())?;
+    arte(&d.sprite, (d.layer, d.frame), &g.1, app.fundo(&d.sprite))
 }
 
 fn pedido(app: &mut PixelApp, key: u32, p: &Pedido) {
@@ -243,7 +261,7 @@ pub(crate) fn marcas_de_quadro(app: &PixelApp, key: u32) -> Vec<u32> {
 
 /// `Esc` a meio: o gesto cai sem passo nenhum.
 pub(crate) fn cancela(app: &mut PixelApp) -> bool {
-    app.slices.gesto.take().is_some()
+    app.slices.gesto.take().map(|g| app.toca(g.0)).is_some()
 }
 
 /// `Esc` limpa a seleção; `Delete` apaga as slices inteiras, 1 desfazer (G2, G3). As setas não são

@@ -96,6 +96,32 @@ impl Stroke {
         s
     }
 
+    /// [`Self::with_values`] com os píxeis que os `Patch` de `op` escrevem (num `Batch`, o último
+    /// ganha): a pré-visualização É o op de assentar.
+    #[must_use]
+    pub fn of_patches(layer: LayerId, frame: FrameId, op: &Op, bpp: usize) -> Self {
+        fn junta(op: &Op, bpp: usize, v: &mut Vec<(Cell, u32)>) {
+            match op {
+                Op::Patch(p) => {
+                    for (i, px) in p.pixels.chunks_exact(bpp).enumerate() {
+                        let (x, y) = (i as u32 % p.rect.w, i as u32 / p.rect.w);
+                        let mut b = [0u8; 4];
+                        b[..bpp].copy_from_slice(px);
+                        v.push((
+                            (p.rect.x + x as i32, p.rect.y + y as i32),
+                            u32::from_le_bytes(b),
+                        ));
+                    }
+                }
+                Op::Batch(ops) => ops.iter().for_each(|o| junta(o, bpp, v)),
+                _ => {}
+            }
+        }
+        let mut v = Vec::new();
+        junta(op, bpp, &mut v);
+        Self::with_values(layer, frame, v)
+    }
+
     /// A rampa e o sentido do Shading (botão esquerdo = +1, direito = −1).
     #[must_use]
     pub fn with_shading(mut self, ramp: Vec<u32>, dir: i8) -> Self {

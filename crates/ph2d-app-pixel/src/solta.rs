@@ -390,6 +390,7 @@ impl PixelApp {
         if !self.solta.as_ref().is_some_and(|s| s.key == key) {
             return crate::texto::previa(self, key)
                 .or_else(|| crate::filtros::previa(self, key))
+                .or_else(|| crate::slices::previa(self, key))
                 .map(|t| (t, None));
         }
         let method = resample(self.options.resample);
@@ -401,33 +402,11 @@ impl PixelApp {
         let texto = so.tinta.is_some();
         let (op, f) = so.refresh(s, method, bg);
         let mask = f.map(|f| formigas(f, texto, (s.width(), s.height())));
-        let mut values = Vec::new();
-        let mut patch = |p: &ph2d_pixel_core::Patch| {
-            let bpp = s.mode().bpp();
-            for y in 0..p.rect.h {
-                for x in 0..p.rect.w {
-                    let i = (y as usize * p.rect.w as usize + x as usize) * bpp;
-                    let mut b = [0u8; 4];
-                    b[..bpp].copy_from_slice(&p.pixels[i..i + bpp]);
-                    values.push((
-                        (p.rect.x + x as i32, p.rect.y + y as i32),
-                        u32::from_le_bytes(b),
-                    ));
-                }
-            }
-        };
-        match op {
-            Some(Op::Patch(p)) => patch(p),
-            Some(Op::Batch(ops)) => {
-                for o in ops {
-                    if let Op::Patch(p) = o {
-                        patch(p);
-                    }
-                }
-            }
-            _ => {}
-        }
-        Some((Stroke::with_values(layer, frame, values), mask))
+        let st = op.map_or_else(
+            || Stroke::with_values(layer, frame, []),
+            |op| Stroke::of_patches(layer, frame, op, s.mode().bpp()),
+        );
+        Some((st, mask))
     }
 }
 

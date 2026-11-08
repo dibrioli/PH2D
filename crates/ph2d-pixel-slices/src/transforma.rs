@@ -1,10 +1,11 @@
-//! **`Transform`** (decisão do dono, `P11_plano.md` §9.2; medido em G5): ao largar, os píxeis da caixa
-//! vão com a slice, só na cel da camada ativa no quadro atual, deixando buraco. Mudar o tamanho escala
+//! **`Transform`** (decisão do dono, `P11_plano.md` §9.2; medido em G5): os píxeis da caixa seguem a
+//! slice ao vivo no arrasto ([`previa`]) e vão com ela ao largar, só na cel da camada ativa no quadro atual, deixando buraco. Mudar o tamanho escala
 //! pelo vizinho mais próximo, como o resto do módulo. Um passo só com a slice.
 
+use crate::{Gesto, no_quadro};
 use ph2d_pixel_core::selection::Mask;
 use ph2d_pixel_core::transform::{Floating, Image, lift, resize_nearest, stamp};
-use ph2d_pixel_core::{CelKey, Op, Rect, SliceId, SliceShape, Sprite, apply};
+use ph2d_pixel_core::{CelKey, Op, Rect, SliceId, SliceShape, Sprite, Stroke, apply};
 
 /// O par de caixas (antes, depois) das slices que mudaram de caixa neste gesto.
 #[must_use]
@@ -48,16 +49,11 @@ fn um(s: &Sprite, key: CelKey, de: Rect, para: Rect, fundo: u32) -> Option<Op> {
     stamp(s, key, &solta, Some(&m), None, fundo)
 }
 
-/// **O passo inteiro**: `slices` e os píxeis de cada caixa, em sequência, para caixas que se sobrepõem
-/// verem o resultado da anterior; sem caixas, `slices` só. `fundo` é o valor do buraco numa camada
-/// Background.
-#[must_use]
-pub fn com_pixels(s: &Sprite, slices: Op, key: CelKey, caixas: &[(Rect, Rect)], fundo: u32) -> Op {
-    if caixas.is_empty() {
-        return slices;
-    }
+/// Os ops dos píxeis de cada caixa, em sequência, para caixas que se sobrepõem verem o resultado da
+/// anterior. `fundo` é o valor do buraco numa camada Background.
+fn pixels(s: &Sprite, key: CelKey, caixas: &[(Rect, Rect)], fundo: u32) -> Vec<Op> {
     let mut copia = s.clone();
-    let mut ops = vec![slices];
+    let mut ops = Vec::new();
     for (de, para) in caixas {
         let Some(op) = um(&copia, key, *de, *para, fundo) else {
             continue;
@@ -66,5 +62,25 @@ pub fn com_pixels(s: &Sprite, slices: Op, key: CelKey, caixas: &[(Rect, Rect)], 
             ops.push(op);
         }
     }
+    ops
+}
+
+/// **O passo inteiro**: `slices` e os píxeis de cada caixa; sem caixas, `slices` só.
+#[must_use]
+pub fn com_pixels(s: &Sprite, slices: Op, key: CelKey, caixas: &[(Rect, Rect)], fundo: u32) -> Op {
+    if caixas.is_empty() {
+        return slices;
+    }
+    let mut ops = vec![slices];
+    ops.extend(pixels(s, key, caixas, fundo));
     Op::Batch(ops)
+}
+
+/// **A arte a meio do arrasto** `g`: o traço com os MESMOS píxeis que [`com_pixels`] grava ao
+/// largar (a pré-visualização é o passo); `None` sem caixas que mudem.
+#[must_use]
+pub fn previa(s: &Sprite, key: CelKey, g: &Gesto, fundo: u32) -> Option<Stroke> {
+    let caixas = caixas_que_mudam(s, no_quadro(s, key.1), &g.previa());
+    let op = Op::Batch((!caixas.is_empty()).then(|| pixels(s, key, &caixas, fundo))?);
+    Some(Stroke::of_patches(key.0, key.1, &op, s.mode().bpp()))
 }

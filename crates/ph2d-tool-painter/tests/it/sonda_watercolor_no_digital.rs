@@ -104,7 +104,12 @@ const VARS: [(&str, Var, [u8; 3], f32); 12] = [
     ("Y G-Pen Color mixing", Var::ColorMixing, AMARELO, 0.0),
     ("Y G-Pen Pigment 1", Var::PigmentoDigital, AMARELO, 1.0),
     ("Y Aguada op dura Pig1", Var::AguadaOpacaDura, AMARELO, 1.0),
-    ("Y Aguada op macia Pig1", Var::AguadaOpacaMacia, AMARELO, 1.0),
+    (
+        "Y Aguada op macia Pig1",
+        Var::AguadaOpacaMacia,
+        AMARELO,
+        1.0,
+    ),
     ("Y Basic sem Pigment", Var::WatercolorBasic, AMARELO, 0.0),
 ];
 
@@ -180,7 +185,9 @@ fn grumos(p: &[u8]) -> f32 {
 #[test]
 #[ignore = "sonda"]
 fn sonda_wcd_folha() {
-    let pasta = std::env::var("PH2D_WCD_FOTO").ok().map(std::path::PathBuf::from);
+    let pasta = std::env::var("PH2D_WCD_FOTO")
+        .ok()
+        .map(std::path::PathBuf::from);
     let mut melhor = [f64::INFINITY; VARS.len()];
     for _ in 0..3 {
         for (i, &(_, v, cor, pig)) in VARS.iter().enumerate() {
@@ -189,10 +196,28 @@ fn sonda_wcd_folha() {
     }
     for (i, &(rot, v, cor, pig)) in VARS.iter().enumerate() {
         let (p, _) = corre(v, cor, pig);
-        let [a, b, c, d] = [media(&p, 165, 175), media(&p, 210, 230), media(&p, 285, 295), media(&p, 325, 335)];
+        let [a, b, c, d] = [
+            media(&p, 165, 175),
+            media(&p, 210, 230),
+            media(&p, 285, 295),
+            media(&p, 325, 335),
+        ];
         eprintln!(
             "[wcd] {rot:<20} entra {:>3.0},{:>3.0},{:>3.0} | meio {:>3.0},{:>3.0},{:>3.0} | sai {:>3.0},{:>3.0},{:>3.0} | cauda {:>3.0},{:>3.0},{:>3.0} | grumos {:>5.2} | {:>6.1} ms",
-            a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2], d[0], d[1], d[2], grumos(&p), melhor[i]
+            a[0],
+            a[1],
+            a[2],
+            b[0],
+            b[1],
+            b[2],
+            c[0],
+            c[1],
+            c[2],
+            d[0],
+            d[1],
+            d[2],
+            grumos(&p),
+            melhor[i]
         );
         if let Some(dir) = &pasta {
             std::fs::write(dir.join(format!("wcd_{i:02}.rgba")), &p).expect("escreve");

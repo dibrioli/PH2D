@@ -141,13 +141,13 @@ mod wet_editable;
 mod wetpaint; // Wet Paint (PaintMode::WetPaint): the fluid-engine session — ADR-0134; see its module doc
 pub(crate) use wetpaint::fita; // a fita do worker que a trilha da macro (`crate::macro_track`) grava e toca
 mod blend_vazio_settings; // a porta do painel do modo sobre o vazio (L7)
-mod mistura_settings; // a porta do painel da mistura opaca do Digital (Color mixing)
 mod dual; // o DUAL BRUSH (L6): a 2.ª ponta, o motor dela e a máscara do traço que recorta a 1.ª
 mod dual_ferramenta; // …e nas ferramentas do Digital: a borracha, o Blur, o Smear e o Clone
 mod macro_estado;
 mod mangueira; // a ponta de N IMAGENS (L19): as imagens além da Shape e o carimbo em corridas
 pub mod mao; // a MÃO do pincel (pressão, inclinação) nos quatro meios, por uma lei só (L2, Pinceis/03 §4)
 pub mod marca; // as linhas da MARCA (o jitter da L4) no cartão Jitter, nos quatro meios
+mod mistura_settings; // a porta do painel da mistura opaca do Digital (Color mixing)
 mod pixel_route; // a ponta de PÍXEL (L18): o trilho ancorado e o carimbo binário, só no Digital
 pub mod ponta; // as linhas da PONTA (L9 o grão · L18 o píxel · L19 as imagens) nas secções Brush/Grain/Shape
 mod traco_plano; // o PLANO do traço: o traço num modo de cor como uma camada, o dual e a cauda (L5), só no Digital

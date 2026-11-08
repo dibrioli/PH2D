@@ -48,13 +48,29 @@ fn traco(buf: &mut [u8], spec: &BrushSpec, cor: [f32; 3]) {
     let passo = (2.0 * spec.radius_px * spec.spacing_do_traco()).max(0.25);
     let mut x = 10.0f32;
     while x <= 190.0 {
-        let mut tela = Tela { buf, width: W, height: H, sombra: &mut sombra, trava_alfa: false, plano: false };
+        let mut tela = Tela {
+            buf,
+            width: W,
+            height: H,
+            sombra: &mut sombra,
+            trava_alfa: false,
+            plano: false,
+        };
         let _ = mistura_opaca_carimbo(
             &mut tela,
             |i| [antes[i], antes[i + 1], antes[i + 2], antes[i + 3]],
             spec,
-            Carimbo { center: [x, 20.0], radius_px: spec.radius_px, cor, coverage: 1.0, pressao: 1.0 },
-            Pegada::Disco { centro: [x, 20.0], raio: spec.radius_px },
+            Carimbo {
+                center: [x, 20.0],
+                radius_px: spec.radius_px,
+                cor,
+                coverage: 1.0,
+                pressao: 1.0,
+            },
+            Pegada::Disco {
+                centro: [x, 20.0],
+                raio: spec.radius_px,
+            },
             &mut res,
         );
         x += passo;
@@ -74,13 +90,29 @@ fn wet_blend_off_nao_toca_em_nada() {
     let mut sombra = Sombra::default();
     let spec = BrushSpec::default();
     assert_eq!(spec.mistura_opaca.modo, ModoMisturaOpaca::Off);
-    let mut tela = Tela { buf: &mut b, width: W, height: H, sombra: &mut sombra, trava_alfa: false, plano: false };
+    let mut tela = Tela {
+        buf: &mut b,
+        width: W,
+        height: H,
+        sombra: &mut sombra,
+        trava_alfa: false,
+        plano: false,
+    };
     let r = mistura_opaca_carimbo(
         &mut tela,
         |i| [antes[i], antes[i + 1], antes[i + 2], antes[i + 3]],
         &spec,
-        Carimbo { center: [40.0, 20.0], radius_px: 8.0, cor: [0.0; 3], coverage: 1.0, pressao: 1.0 },
-        Pegada::Disco { centro: [40.0, 20.0], raio: 8.0 },
+        Carimbo {
+            center: [40.0, 20.0],
+            radius_px: 8.0,
+            cor: [0.0; 3],
+            coverage: 1.0,
+            pressao: 1.0,
+        },
+        Pegada::Disco {
+            centro: [40.0, 20.0],
+            raio: 8.0,
+        },
         &mut res,
     );
     assert!(r.is_none());
@@ -97,11 +129,17 @@ fn wet_blend_nao_deixa_a_costura_de_baixo_dentro_do_traco() {
     let maior = (40..120)
         .map(|x| {
             let (a, c) = (px(&b, x, 20), px(&b, x + 1, 20));
-            (0..3).map(|k| (i32::from(a[k]) - i32::from(c[k])).abs()).max().unwrap_or(0)
+            (0..3)
+                .map(|k| (i32::from(a[k]) - i32::from(c[k])).abs())
+                .max()
+                .unwrap_or(0)
         })
         .max()
         .unwrap_or(0);
-    assert!(maior <= 8, "degrau de {maior} níveis entre colunas vizinhas no miolo do traço");
+    assert!(
+        maior <= 8,
+        "degrau de {maior} níveis entre colunas vizinhas no miolo do traço"
+    );
 }
 
 /// O patamar do CSP com a amostra da tela VIVA: num fundo uniforme o carimbo vê metade de tinta sua e metade de
@@ -116,9 +154,19 @@ fn wet_blend_patamar_e_o_amount() {
         (255.0 - r) / (255.0 - f32::from(AZUL[0]))
     };
     let f8 = fracao(0.8);
-    eprintln!("fração do fundo a Amount 0,8: {f8:.3} · 0,5: {:.3}", fracao(0.5));
-    assert!((0.03..=0.15).contains(&f8), "Amount 0,8: {f8:.3} (CSP 0,07)");
-    assert!(fracao(0.5) > f8 && fracao(0.5) < 0.5, "Amount 0,5: {:.3}", fracao(0.5));
+    eprintln!(
+        "fração do fundo a Amount 0,8: {f8:.3} · 0,5: {:.3}",
+        fracao(0.5)
+    );
+    assert!(
+        (0.03..=0.15).contains(&f8),
+        "Amount 0,8: {f8:.3} (CSP 0,07)"
+    );
+    assert!(
+        fracao(0.5) > f8 && fracao(0.5) < 0.5,
+        "Amount 0,5: {:.3}",
+        fracao(0.5)
+    );
 }
 
 /// Color stretch maior leva o vermelho apanhado mais longe sobre o azul.
@@ -130,7 +178,10 @@ fn wet_blend_stretch_e_a_memoria() {
         (60..W).take_while(|&x| px(&b, x, 20)[0] > 110).count()
     };
     let (curto, longo) = (alcance(0.1), alcance(0.9));
-    assert!(longo > curto + 10, "stretch 0,9 leva {longo} px, 0,1 leva {curto} px");
+    assert!(
+        longo > curto + 10,
+        "stretch 0,9 leva {longo} px, 0,1 leva {curto} px"
+    );
 }
 
 /// Pigment 1: amarelo sobre azul dá VERDE em algum Amount; Pigment 0 (RGB do CSP) nunca tão verde.
@@ -176,15 +227,26 @@ fn wet_blend_density_e_a_forca_do_carimbo() {
         traco(&mut b, &s, [1.0, 1.0, 1.0]);
         px(&b, 150, 20)[0]
     };
-    assert!(branco(1.0, 0.1) >= 250, "Density 1 cobre: {}", branco(1.0, 0.1));
-    assert!(branco(0.5, 0.1) >= 235, "Density 0,5 cobre quase tudo: {}", branco(0.5, 0.1));
+    assert!(
+        branco(1.0, 0.1) >= 250,
+        "Density 1 cobre: {}",
+        branco(1.0, 0.1)
+    );
+    assert!(
+        branco(0.5, 0.1) >= 235,
+        "Density 0,5 cobre quase tudo: {}",
+        branco(0.5, 0.1)
+    );
     let fraca = branco(0.1, 0.25);
     assert!(fraca < 200, "Density 0,1 a spacing 0,25 vela: {fraca}");
 }
 
 #[test]
 fn wet_blend_aperta_o_passo_so_quando_ligada() {
-    let mut s = BrushSpec { spacing: 0.15, ..BrushSpec::default() };
+    let mut s = BrushSpec {
+        spacing: 0.15,
+        ..BrushSpec::default()
+    };
     assert!((s.spacing_do_traco() - 0.15).abs() < 1e-6);
     s.mistura_opaca.modo = ModoMisturaOpaca::WetBlend;
     assert!((s.spacing_do_traco() - PASSO_DA_MISTURA).abs() < 1e-6);
@@ -193,9 +255,15 @@ fn wet_blend_aperta_o_passo_so_quando_ligada() {
 #[test]
 fn wet_blend_carrega_os_nomes_antigos() {
     for n in ["PigmentMix", "Blend", "RunningColor", "WetBlend"] {
-        assert_eq!(ModoMisturaOpaca::do_nome(n), Some(ModoMisturaOpaca::WetBlend));
+        assert_eq!(
+            ModoMisturaOpaca::do_nome(n),
+            Some(ModoMisturaOpaca::WetBlend)
+        );
     }
-    assert_eq!(ModoMisturaOpaca::do_nome("Off"), Some(ModoMisturaOpaca::Off));
+    assert_eq!(
+        ModoMisturaOpaca::do_nome("Off"),
+        Some(ModoMisturaOpaca::Off)
+    );
 }
 
 /// Amount 0 é um esbatedor: arrasta a cor de baixo e não pinta o vazio.

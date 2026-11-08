@@ -2,7 +2,7 @@
 //! nos dois painéis. Só onde a lei age — o Pincel do Digital sem o flag da aquarela, como o Fine Thread só no Smear do
 //! Digital. Com `Off` os números ficam à vista, esmaecidos ([`ph2d_tool_painter::Dependente::MisturaDesligada`]).
 
-use crate::cards_linhas::{Item, escolha, filete, fila};
+use crate::cards_linhas::{Item, escolha, fila, filete};
 use crate::paint_wetpaint::Numero;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::WidgetStore;
@@ -173,7 +173,10 @@ mod tests {
         assert_eq!(n[5].valor, 0.75);
         assert_eq!(tr(ROTULOS[5]), "Pigment");
         assert_eq!(tr(ROTULOS[2]), "Color stretch");
-        assert!(n.iter().all(|n| e_campo(n.id) && n.min == 0.0 && n.max == 1.0));
+        assert!(
+            n.iter()
+                .all(|n| e_campo(n.id) && n.min == 0.0 && n.max == 1.0)
+        );
         assert_eq!(tr(OPCOES[1]), "Wet blend");
         assert_eq!(tr(ROTULOS[0]), "Amount");
         b.mistura_opaca.modo = ModoMisturaOpaca::WetBlend;

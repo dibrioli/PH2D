@@ -15,12 +15,20 @@ pub(crate) const VERMELHO: [u8; 3] = [200, 0, 0];
 pub(crate) const AMARELO: [u8; 3] = [245, 205, 0];
 
 pub(crate) fn arrasta(t: &mut PainterTool, a: [f32; 2], b: [f32; 2]) {
-    let cp = |pos: [f32; 2], phase| CanvasPointer { pos, pressure: 1.0, tilt: [0.0, 0.0], phase };
+    let cp = |pos: [f32; 2], phase| CanvasPointer {
+        pos,
+        pressure: 1.0,
+        tilt: [0.0, 0.0],
+        phase,
+    };
     t.on_canvas_pointer(cp(a, PointerPhase::Down));
     let n = 60;
     for k in 1..=n {
         let u = k as f32 / n as f32;
-        t.on_canvas_pointer(cp([a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u], PointerPhase::Move));
+        t.on_canvas_pointer(cp(
+            [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u],
+            PointerPhase::Move,
+        ));
         t.on_tick(8.0);
     }
     t.on_canvas_pointer(cp(b, PointerPhase::Up));
@@ -56,7 +64,9 @@ pub(crate) fn basic(cor: [u8; 3], pig: f32) -> Vec<u8> {
 }
 
 fn fnv(p: &[u8]) -> u64 {
-    p.iter().fold(0xcbf2_9ce4_8422_2325u64, |h, &b| (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3))
+    p.iter().fold(0xcbf2_9ce4_8422_2325u64, |h, &b| {
+        (h ^ u64::from(b)).wrapping_mul(0x0100_0000_01b3)
+    })
 }
 
 /// ⛔ O Watercolor Basic dá o MESMO byte que antes da lei nova (azul sobre vermelho e sobre amarelo, Pigment 0 e 1).
@@ -68,7 +78,10 @@ fn o_watercolor_basic_nao_mudou_com_o_pigment_mix() {
         ("amarelo pig 0", AMARELO, 0.0, 0xf37f_c00b_ec43_cc66),
         ("amarelo pig 1", AMARELO, 1.0, 0xaeee_cae1_7310_546a),
     ];
-    let lidos: Vec<(&str, u64, u64)> = gravados.iter().map(|&(rot, cor, pig, h)| (rot, fnv(&basic(cor, pig)), h)).collect();
+    let lidos: Vec<(&str, u64, u64)> = gravados
+        .iter()
+        .map(|&(rot, cor, pig, h)| (rot, fnv(&basic(cor, pig)), h))
+        .collect();
     for &(rot, l, h) in &lidos {
         assert_eq!(l, h, "Watercolor Basic {rot} mudou; lidos: {lidos:x?}");
     }
@@ -108,7 +121,10 @@ fn o_pigment_mix_da_verde_continuo_e_violeta() {
         let mut ant: Option<[i32; 4]> = None;
         for x in 160..290 {
             let c = px(&p, x, Y as usize);
-            assert!(x < 200 || (c[1] >= c[2] && c[1] > c[0] + 10), "{preset}: x {x} não é verde: {c:?}");
+            assert!(
+                x < 200 || (c[1] >= c[2] && c[1] > c[0] + 10),
+                "{preset}: x {x} não é verde: {c:?}"
+            );
             if let Some(a) = ant {
                 let d = (0..3).map(|k| (c[k] - a[k]).abs()).max().unwrap_or(0);
                 assert!(d <= 12, "{preset}: degrau {d} em x {x}: {a:?} → {c:?}");
@@ -117,7 +133,10 @@ fn o_pigment_mix_da_verde_continuo_e_violeta() {
         }
         let v = digital(preset, Some(VERMELHO), 1.0);
         let c = px(&v, 220, Y as usize);
-        assert!(c[0] > c[1] + 20 && c[2] >= c[1], "{preset}: azul sobre vermelho não é vinho: {c:?}");
+        assert!(
+            c[0] > c[1] + 20 && c[2] >= c[1],
+            "{preset}: azul sobre vermelho não é vinho: {c:?}"
+        );
     }
 }
 
@@ -138,7 +157,10 @@ fn o_pigment_mix_no_vazio_pinta_a_cor_do_pincel() {
     // cinzento nem transparente.
     let b = digital("G-Pen", None, 1.0);
     let c = px(&b, 200, Y as usize);
-    assert!(c[3] == 255 && c[2] > c[0] + 100 && c[2] > c[1] + 80, "o branco opaco dá azul claro: {c:?}");
+    assert!(
+        c[3] == 255 && c[2] > c[0] + 100 && c[2] > c[1] + 80,
+        "o branco opaco dá azul claro: {c:?}"
+    );
 }
 
 /// Density baixa deixa ver o de baixo; o Sketch Pencil guarda o grão (desvio do ALFA na camada vazia ≥ 80 % do Off: a
@@ -149,7 +171,10 @@ fn o_pigment_mix_tem_see_through_e_guarda_o_grao() {
     let cheio = digital("G-Pen", Some(AMARELO), 1.0);
     let meio = digital("G-Pen", Some(AMARELO), 0.05);
     let (a, b) = (px(&cheio, 220, Y as usize), px(&meio, 220, Y as usize));
-    assert!(b[0] > a[0] + 20, "Density 0,05 tem de deixar ver o amarelo: {a:?} × {b:?}");
+    assert!(
+        b[0] > a[0] + 20,
+        "Density 0,05 tem de deixar ver o amarelo: {a:?} × {b:?}"
+    );
     let desvio = |p: &[u8]| {
         let v: Vec<f32> = (100..300)
             .flat_map(|x| (Y as usize - 6..=Y as usize + 6).map(move |y| (x, y)))
@@ -166,15 +191,24 @@ fn o_pigment_mix_tem_see_through_e_guarda_o_grao() {
         arrasta(&mut t, [60.0, Y], [340.0, Y]);
         t.run_full().0
     };
-    let (off, mix) = (no_vazio(ModoMisturaOpaca::Off), no_vazio(ModoMisturaOpaca::WetBlend));
+    let (off, mix) = (
+        no_vazio(ModoMisturaOpaca::Off),
+        no_vazio(ModoMisturaOpaca::WetBlend),
+    );
     let (so, sm) = (desvio(&off), desvio(&mix));
-    assert!(sm >= 0.8 * so, "o grão do lápis sumiu: desvio {sm} × Off {so}");
+    assert!(
+        sm >= 0.8 * so,
+        "o grão do lápis sumiu: desvio {sm} × Off {so}"
+    );
 }
 
 /// O mesmo traço dá o mesmo byte (duas corridas no mesmo processo).
 #[test]
 fn o_pigment_mix_e_determinista() {
-    assert_eq!(fnv(&digital("G-Pen", Some(AMARELO), 0.6)), fnv(&digital("G-Pen", Some(AMARELO), 0.6)));
+    assert_eq!(
+        fnv(&digital("G-Pen", Some(AMARELO), 0.6)),
+        fnv(&digital("G-Pen", Some(AMARELO), 0.6))
+    );
 }
 
 /// Custo (à mão, `--profile smoke`): ms do arrasto azul (60 moves) por cima da mancha amarela — G-Pen Off, G-Pen
@@ -229,15 +263,24 @@ fn foto_pigment_mix_digital() {
                 let i = (y * W + x) * 4;
                 // Sobre o papel branco (a camada vazia é transparente).
                 let a = u32::from(p[i + 3]);
-                v.push([0, 1, 2].map(|c| ((u32::from(p[i + c]) * a + 255 * (255 - a) + 127) / 255) as u8));
+                v.push(
+                    [0, 1, 2]
+                        .map(|c| ((u32::from(p[i + c]) * a + 255 * (255 - a) + 127) / 255) as u8),
+                );
             }
         }
         v
     };
-    let mut linhas: Vec<[Vec<[u8; 3]>; 2]> = vec![[recorte(&basic(AMARELO, 1.0)), recorte(&basic(VERMELHO, 1.0))]];
+    let mut linhas: Vec<[Vec<[u8; 3]>; 2]> = vec![[
+        recorte(&basic(AMARELO, 1.0)),
+        recorte(&basic(VERMELHO, 1.0)),
+    ]];
     for preset in ["G-Pen", "Hard Round", "Sketch Pencil"] {
         for d in [1.0, 0.6] {
-            linhas.push([recorte(&digital(preset, Some(AMARELO), d)), recorte(&digital(preset, Some(VERMELHO), d))]);
+            linhas.push([
+                recorte(&digital(preset, Some(AMARELO), d)),
+                recorte(&digital(preset, Some(VERMELHO), d)),
+            ]);
         }
     }
     let vazio = {

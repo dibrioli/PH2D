@@ -57,7 +57,11 @@ enum Var {
 fn com_a_mancha(nome: Option<&str>) -> PainterTool {
     let mut t = PainterTool::default();
     // `PH2D_CMP_FUNDO=vazio`: a camada TRANSPARENTE sobre o papel (o «branco» é a camada vazia, não tinta branca).
-    let fundo = if std::env::var("PH2D_CMP_FUNDO").as_deref() == Ok("vazio") { 0u8 } else { 255 };
+    let fundo = if std::env::var("PH2D_CMP_FUNDO").as_deref() == Ok("vazio") {
+        0u8
+    } else {
+        255
+    };
     t.set_source(vec![fundo; W * H * 4], W as u32, H as u32);
     if let Some(n) = nome {
         pinceis(n).remove(0).aplica(&mut t, true);
@@ -203,8 +207,14 @@ fn variantes() -> Vec<(&'static str, Var)> {
         ("Off", Var::Off),
         ("Mix Blend 0.5/1/0.5", Var::Mix(WetBlend, 0.5, 1.0, 0.5)),
         ("Mix Running 0.5/1/0.5", Var::Mix(WetBlend, 0.5, 1.0, 0.5)),
-        ("Mix Blend afinado", Var::Mix(WetBlend, AFIN_B.0, AFIN_B.1, AFIN_B.2)),
-        ("Mix Running afinado", Var::Mix(WetBlend, AFIN_R.0, AFIN_R.1, AFIN_R.2)),
+        (
+            "Mix Blend afinado",
+            Var::Mix(WetBlend, AFIN_B.0, AFIN_B.1, AFIN_B.2),
+        ),
+        (
+            "Mix Running afinado",
+            Var::Mix(WetBlend, AFIN_R.0, AFIN_R.1, AFIN_R.2),
+        ),
         ("Comp Smear1 / Brush1", Var::Comp(C_SMEAR_EM_CIMA)),
         ("Comp Smear.6 / Brush1", Var::Comp(C_SMEAR_EM_CIMA_06)),
         ("Comp Smear1 / Brush.6", Var::Comp(C_SMEAR_BRUSH_FRACO)),
@@ -226,8 +236,16 @@ const PINCEIS: [(Option<&str>, &str); 3] = [
 fn linha(rot: &str, m: &Medida, ms: f64) {
     eprintln!(
         "[cmp] {rot:<30} dentro {:>3.0},{:>3.0},{:>3.0} | cauda {:>3} px | branco {:>3.0},{:>3.0},{:>3.0} | ruido {:>5.2} | borda {:>4.1} px | grao {:>5.1} | {ms:>7.1} ms",
-        m.dentro[0], m.dentro[1], m.dentro[2], m.cauda_px, m.branco[0], m.branco[1], m.branco[2],
-        m.ruido_branco, m.borda_px, m.grao
+        m.dentro[0],
+        m.dentro[1],
+        m.dentro[2],
+        m.cauda_px,
+        m.branco[0],
+        m.branco[1],
+        m.branco[2],
+        m.ruido_branco,
+        m.borda_px,
+        m.grao
     );
 }
 
@@ -254,7 +272,9 @@ fn sonda_cmp_varre() {
 #[test]
 #[ignore = "sonda"]
 fn sonda_cmp_folha() {
-    let pasta = std::env::var("PH2D_CMP_FOTO").ok().map(std::path::PathBuf::from);
+    let pasta = std::env::var("PH2D_CMP_FOTO")
+        .ok()
+        .map(std::path::PathBuf::from);
     let vs = variantes();
     for (nome, slug) in PINCEIS {
         let mut melhor = vec![f64::INFINITY; vs.len()];
@@ -270,7 +290,10 @@ fn sonda_cmp_folha() {
                 let tag = if pressao { "P" } else { "-" };
                 linha(&format!("{slug} {tag} {rot}"), &mede(&p), melhor[i]);
                 if let Some(d) = &pasta {
-                    let f = d.join(format!("{slug}_{}_{i:02}.rgba", if pressao { "p" } else { "c" }));
+                    let f = d.join(format!(
+                        "{slug}_{}_{i:02}.rgba",
+                        if pressao { "p" } else { "c" }
+                    ));
                     std::fs::write(f, &p).expect("escreve");
                 }
             }

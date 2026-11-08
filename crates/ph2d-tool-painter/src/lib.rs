@@ -93,6 +93,7 @@ pub use ph2d_color::{
 /// [`tool::PainterTool::set_canvas_warp`], logo parte da superfície desta crate. ⛔ Sem a
 /// re-exportação a shell teria de depender do motor de pincel só para nomear um argumento.
 pub use ph2d_painter_brush::canvas_warp::CanvasWarp;
+pub use ph2d_painter_brush::mistura_opaca::{MisturaOpaca, ModoMisturaOpaca};
 pub use ph2d_painter_brush::stroke_method::{MethodOffer, offered_methods};
 pub use ph2d_painter_brush::{
     BrushBlend,
@@ -145,7 +146,6 @@ pub use ph2d_painter_brush::{
     // law, so the picture and the paint cannot drift -- see `ph2d_painter_brush::taper`.
     taper::{MAX_FALL_OFF_DIAMETERS, MAX_TAPER_DIAMETERS, Taper},
 };
-pub use ph2d_painter_brush::mistura_opaca::{MisturaOpaca, ModoMisturaOpaca};
 pub use tool::paint::ferramenta_linhas::{FerramentaDoPincel, LinhaDaFerramenta, NAO_LE};
 pub use tool::paint::mao::{LINHAS_DA_MAO, LinhaDaMao, MAO_DE_FABRICA, N_LINHAS_DA_MAO};
 pub use tool::paint::marca::{

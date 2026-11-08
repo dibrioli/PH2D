@@ -195,7 +195,7 @@ impl PainterTool {
             mascara.resize(n4, 0);
         }
         let mut liso = std::mem::take(&mut self.paint.mistura_opaca.pegada_lisa);
-        if textured && liso.len() != n4 {
+        if (textured || shape_active) && liso.len() != n4 {
             liso.clear();
             liso.resize(n4, 0);
         }
@@ -279,20 +279,24 @@ impl PainterTool {
                 continue;
             };
             let mut caixa = (r.x, r.y, r.x + r.w, r.y + r.h);
-            // Com o Grain, a mesma pegada sem ele (o grão vai ao tecto, `Pegada::Mascara::sem_grao`).
-            let com_grao = basis.is_some();
+            // Com o Grain ou a Shape, a mesma pegada sem eles (o grão e a silhueta vão ao tecto, como no Off —
+            // `Pegada::Mascara::sem_grao`; na taxa as cerdas saíam ralas e translúcidas, lote A 08/11).
+            let com_grao = basis.is_some() || shape_in.is_some();
             if com_grao
                 && let Some(r2) = ph2d_painter_brush::stamp_dab_textured_masked(
                     &mut liso,
                     w,
                     h,
                     d.center,
-                    &BrushSpec { texture: Default::default(), ..branco },
+                    &BrushSpec {
+                        texture: Default::default(),
+                        ..branco
+                    },
                     1.0,
                     false,
                     None,
                     None,
-                    shape_in,
+                    None,
                     None,
                     None,
                     spec.dab_rotor(d),
@@ -318,7 +322,14 @@ impl PainterTool {
                 caixa,
                 sem_grao: com_grao.then_some(liso.as_slice()),
             };
-            let mut tela = Tela { buf: &mut *buf, width: w, height: h, sombra: &mut sombra, trava_alfa: alpha_locked, plano: base.is_some() };
+            let mut tela = Tela {
+                buf: &mut *buf,
+                width: w,
+                height: h,
+                sombra: &mut sombra,
+                trava_alfa: alpha_locked,
+                plano: base.is_some(),
+            };
             let r = if let Some(b) = base.as_deref() {
                 let antes = |i: usize| [b[i], b[i + 1], b[i + 2], b[i + 3]];
                 mistura_opaca_carimbo(&mut tela, antes, &spec, carimbo, pegada, alvo)

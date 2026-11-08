@@ -455,6 +455,14 @@ fn e_ferramenta(cena: &CenaDoPreview) -> bool {
     !matches!(cena.brush.blend, BrushBlend::Mix | BrushBlend::Multiply)
         || (cena.meio == PaintMedia::WetPaint && cena.ferramenta != WetTool::Paint)
         || fio_do_trilho(cena).is_some()
+        || so_arrasta(&cena.brush)
+}
+
+/// Um esbatedor do Wet blend (Amount abaixo do que cobre): só arrasta a cor da tela, e no branco não pinta nada.
+fn so_arrasta(b: &BrushSpec) -> bool {
+    use ph2d_painter_brush::mistura_opaca::{AMOUNT_QUE_COBRE, ModoMisturaOpaca};
+    b.mistura_opaca.modo == ModoMisturaOpaca::WetBlend
+        && b.mistura_opaca.paint_amount < AMOUNT_QUE_COBRE
 }
 
 /// O fio do Blur, do Smear ou do Clone do trilho (24/10: a biblioteca de cada ferramenta) — a miniatura do preset
@@ -486,6 +494,8 @@ fn faixa_da_ferramenta(t: &mut PainterTool, cena: &CenaDoPreview, x0: f32, x1: f
     let (forca, knobs) = (t.paint.brush.strength, t.paint.wetpaint.knobs);
     let (fluxo, soma) = (t.paint.brush.flow, t.paint.brush.accumulate);
     let grao = t.paint.brush.texture.kind;
+    // O esbatedor pinta a faixa sem a mistura (com ela não depositaria nada no branco).
+    let mistura = std::mem::take(&mut t.paint.brush.mistura_opaca);
     // A faixa é tinta CHEIA (a força da borracha macia, o pigmento da aguarela da ferramenta, o fluxo da velatura de um
     // efeito, a pintariam pálida) — e sem o grão do pincel (o grão preso à tela morde à Strength 1 desde 25/10).
     t.paint.brush.strength = 1.0;
@@ -517,6 +527,7 @@ fn faixa_da_ferramenta(t: &mut PainterTool, cena: &CenaDoPreview, x0: f32, x1: f
     t.paint.brush.radius_px = raio;
     t.paint.brush.strength = forca;
     t.paint.brush.texture.kind = grao;
+    t.paint.brush.mistura_opaca = mistura;
     (t.paint.brush.flow, t.paint.brush.accumulate) = (fluxo, soma);
     t.paint.wetpaint.knobs = knobs;
     t.paint.brush.blend = blend;

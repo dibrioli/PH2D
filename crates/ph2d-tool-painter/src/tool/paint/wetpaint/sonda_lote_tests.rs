@@ -421,8 +421,8 @@ fn sonda_a_escovada_do_dabber() {
         b.shape.flow,
         b.shape.mapping
     );
-    let mut vs: Vec<(String, Box<dyn Fn(&mut PainterTool)>)> =
-        vec![("F".to_owned(), Box::new(|_| {}))];
+    type Variante = (String, Box<dyn Fn(&mut PainterTool)>);
+    let mut vs: Vec<Variante> = vec![("F".to_owned(), Box::new(|_| {}))];
     for d in fora {
         let (kn, v) = (d.knob, padrao.get(d.knob));
         vs.push((

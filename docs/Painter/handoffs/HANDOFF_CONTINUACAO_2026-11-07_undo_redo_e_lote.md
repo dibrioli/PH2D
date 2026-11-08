@@ -2,6 +2,37 @@
 
 Base: `main` `652b506b58` (reaberta por `reset --keep`; `git cherry` = 0 `+`, 34 `-`; ponto de volta `backup/line-PainterWatercolor-pre-reabertura-2026-11-07`). Commits: `c887156cbb` (item 1), `3fc47dc81d` (item 3), e o desta onda (sondas e este doc). Não integrada.
 
+## Missão autónoma de 08/11 (noite): Wet blend à CSP + 16 pincéis CSP
+
+**SUPERA** «Color mixing → Pigment mix» e o item 0 de «Próximos» abaixo. Sem smoke do dono (é amanhã); suíte completa NÃO correu (é do integrador).
+- **Ordem do dono (08/11):** mistura do Digital tão boa ou melhor que o Clip Studio (foto dele: costura dura/pixelada da tinta de baixo dentro do traço do Pigment mix); depois os principais pincéis do CSP; autónomo.
+- **Backup:** branch `backup/PainterWatercolor-2026-11-08-antes-mistura-csp` (a3f6b20b78) + `/home/enio/Documentos/Projetos/PH2D-backups/PainterWatercolor-2026-11-08-antes-mistura-csp.tar.gz`. Checkpoint da lei: `f77c01494e` (inclui o trabalho sem commit de 07–08/11).
+
+### Lei «Wet blend» (`ph2d-painter-brush/src/mistura_opaca.rs`)
+- `ModoMisturaOpaca::{Off, WetBlend}`; PigmentMix/Blend/RunningColor carregam como WetBlend.
+- Por carimbo, amostra = média da tela de ANTES do traço + película VELHA do próprio traço (1.º depósito há > `DESFASAGEM`=1,0 raio de caminho) sob a pegada. Reservatório pelo Color stretch (memória L = 0,1·e^(4s) diâmetros). Tinta P = lerp(reservatório, pincel, Amount); Pigment 0 = RGB do CSP, 1 = espectral.
+- Película f32 (`Sombra`, ladrilhos 64², 5 f32/texel: RGB, cobertura, arco do 1.º depósito). TECTO = coverage do dab × grão/silhueta (Shape e Grain vão ao tecto como no Off, via pegada `sem_grao`); TAXA = Density × Flow × pegada, normalizada pelo spacing NOMINAL. Accumulate ligado = tecto 1. Amount < 0,25 (`AMOUNT_QUE_COBRE`) não cobre o vazio (esbatedor).
+- Passo efetivo dos carimbos `PASSO_DA_MISTURA` = 0,03 diâmetro (`BrushSpec::spacing_do_traco`, `stroke/walk.rs`). Rota `stamp_route/mistura.rs` reescrita (sem cobertura/força/tecto antigos); cauda (`traco_plano/cauda.rs`) recomeça a sombra; `escala_do_plano` exclui a mistura.
+- Painel: ids `painter_brush.mix.wet_blend`, `painter_brush.mix.pigment_amount`; ordem [0,1,2,5,3,4]; i18n `mix_wet_blend` «Wet blend», `mix_pigment_amount` «Pigment», `mix_stretch` «Color stretch»; JSON `mistura_opaca` com chave "pigment". Visível: Color mixing · Off · Wet blend · Amount · Density · Color stretch · Pigment.
+
+### Medido contra o CSP corrido (Xvfb; `material_2026-11-08/wetblend_vs_csp_*.png`, `wetblend_vs_csp_medidas.txt`)
+- Fração do fundo a Amount 0,8 = 0,072 com amostra viva pura (CSP 0,07).
+- Varredura da DESFASAGEM (erro médio por região, 4 pincéis): 0,75→95 · 1,0→79 · 1,25→69 · 1,5→67; Round mixing 7·12·16·20 → escolhido 1,0.
+- ⛔ Recusas MEDIDAS: amostra viva pura (G-Pen não misturava e dependia do spacing); Density como tecto (véu chapado; CSP com Density 45–50 cobre 88–98 %).
+- Custo (sonda `custo_do_wet_blend_por_tamanho`, arrasto 300 px, 100 eventos): Hard Round r8 2,9→4,6 ms, r30 8,8→38,1, r100 7,1→73,4; Sketch Pencil r100 17,3→129,0 ms (≤ 1,3 ms por evento).
+- No app (Xvfb, `PH2D_WETPAINT_SMOKE=1`, xdotool): mescla lisa na borda, sem costura. Fotos `material_2026-11-08/no_app_wet_blend_*.png`.
+
+### 16 pincéis de fábrica novos (84 → 100; o CLAUDE.md §5 diz 78: o integrador reconta)
+- `tests/it/familias/csp_tinta_grossa.rs`: Round Mixing, Gouache, Dry Gouache, Thin Gouache, Gouache Blender, Oil Paint, Paint And Apply, Thick Oil Paint (pasta Digital/Oil/Thick paint; cerdas pelo Shape Bristles, macro `cerdas!`).
+- `tests/it/familias/csp_secos.rs`: Crayon, Pastel, Chalk (Digital/Pastel); Pointillism (Digital/Texture); Wet Wash Mix e Watercolor Splash em Multiply (Digital/Watercolor); Brush Pen (Digital/Ink/Brush); Finger Tip (Digital/Blend).
+- Sondas `sonda_csp_tinta_grossa.rs`, `sonda_csp_secos.rs`; folhas `csp_lote_A_tinta_grossa.png`, `csp_lote_B_secos.png`. Miniatura dos esbatedores: faixa vermelha das ferramentas (`wetpaint_preset/preview.rs`, `so_arrasta`). Gerados com `PH2D_REGERA_SO` só dos 16; nenhum ficheiro antigo mudou.
+- Limites de motor vs CSP (NÃO construídos): spray espalha ≤ 2 diâmetros (Splash CSP 3,25×); jitter de cor entra antes da mistura (Pointillism compensa a amplitude); sem pontas de imagem (Splash sem contorno recortado; Wet Wash lóbulos mais esfumados); Paint and apply sem o borrão próprio do CSP; Gouache cobre um pouco menos; pontas de traço arredondadas.
+
+### Verde por nome e ABERTO
+- Verde: núcleo wet_blend 10 · ferramenta lib mistura+preview 77 · `it` a_mistura 13 (hash do Watercolor Basic idêntico) · `cada_preset_de_fabrica_e_a_sua_receita`, `the_factory_presets_are_counted`, os 2 alarmes de pincel, `cada_familia_e_um_ficheiro` · painel mistura/color_mixing.
+- ABERTO: smoke do dono (amanhã); fmt/clippy 1× no fecho; suíte completa (integrador).
+- ⚠️ A fila pesada (`scripts/fila-pesada.sh`) tem itens 1–3 velhos desta onda: o 1 regravaria os 6 pincéis CSP de 07/11. **NÃO correr `correr`; limpar antes.**
+
 ## Item 1: FEITO, pânico do undo com `flow_ratio` > 1
 - **Mecanismo:** `FotoDoMotor::de` passava `g.s` a `flow_x/flow_y`, que moram em `g.flow`. `foto_em_tiles` truncava e `repoe` encolhia o plano; `apply_boundaries` (`project.rs:269`) entrava em pânico na thread da água. RED com a mensagem exata do dono (`1052676` × `1051650`).
 - **Geometria do dono, por exclusão:** com fluxo de 1024, a conta só fecha em largura fina 2048 e `flow_ratio` 2 (varridos rf 1..16). Não é a tela do `PH2D_COMPOSITE_SMOKE` (1024²): ele estava noutra tela, ou 4096 com grade 2.
@@ -161,6 +192,8 @@ Painel inteiro 454/455 e a 1 falha curada · censo · `color_mixing` · ferramen
 
 ## Color mixing → Pigment mix (07–08/11): o que foi feito e o que o dono quer
 
+> ⛔ **SUPERADA** pela «Missão autónoma de 08/11 (noite)» no topo: Pigment mix virou a lei Wet blend. Fica só como história.
+
 Tudo sem commit. Esta secção SUPERA «Lei de mistura opaca» acima (Blend/Running já não existem como modos).
 
 ### 1. Blend/Running (lei opaca por carimbo): corrigidos, depois substituídos
@@ -190,7 +223,7 @@ Smoke do dono: «sem efeito». Causas achadas e curadas:
 - Lote 2 (pincéis de tinta grossa à CSP) espera a lei de mistura que o dono aceitar.
 
 ## Próximos, por ordem
-0. ⏳ Mescla espacial no Digital (secção acima, §3): ler o estudo de 08/11, desenhar a lei que traz smear/blur/bleed do Watercolor ao opaco (Pigment mix sai ou vira só a parte da cor), manter Watercolor Basic byte-idêntico (hash), medir custo, fotografar lado a lado com a foto do dono ANTES do smoke. Depois do veredito dele: lote 2. Fecho: fmt/clippy das crates tocadas 1×. Smoke dos 6 pincéis CSP segue pendente. Missão noturna futura: presets por tamanho no menu Size.
+0. ⛔ SUPERADO pela missão de 08/11 (noite), no topo (Wet blend + 16 pincéis CSP; resta o smoke do dono). Texto antigo: ⏳ Mescla espacial no Digital (secção acima, §3): ler o estudo de 08/11, desenhar a lei que traz smear/blur/bleed do Watercolor ao opaco (Pigment mix sai ou vira só a parte da cor), manter Watercolor Basic byte-idêntico (hash), medir custo, fotografar lado a lado com a foto do dono ANTES do smoke. Depois do veredito dele: lote 2. Fecho: fmt/clippy das crates tocadas 1×. Smoke dos 6 pincéis CSP segue pendente. Missão noturna futura: presets por tamanho no menu Size.
 1. ⏳ Smoke do dono do grupo Bristle Combing. Abertos, decisão dele: que pincéis a óleo ganham width 3, relief 0, ragged 0,64, follow 1,5 (foto antes de regravar alarme); depois levar os fios ao Digital e ao Impasto, um por vez, Watercolor por último. O item 2 (aguada) segue parado; base: [estudo de custo](../ESTUDO_CUSTO_WET_PAINT_2026-11-07.md).
 2. Item 4, depois da foto aprovada: o controle no painel em cartões (seletor, inglês, HR-15, todas as pontas e teste de costura), padrão «agua/alisar»; definir onde mora (por pincel ou da ferramenta), macro e preset sem mudar os de fábrica; «tex+fios» sem as estrias do Wet Round. Alarmes: só regravam com aprovação.
 3. Item 2: até 3 protótipos com ganho medido e pixels iguais. Primeiro: separar o compositor do pool da simulação (medir a hipótese; a imagem não muda). Respeitar J13 §5 e a recusa de compor por linhas.

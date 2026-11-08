@@ -609,7 +609,10 @@ fn mistura_opaca_preset_antigo_sem_o_campo_carrega_off() {
     assert!(!antigo.contains_key("mistura_opaca"));
     // Mesmo sobre um pincel que a tinha ligada, a ausência é `Off` (nunca o pincel anterior).
     let base = BrushSpec {
-        mistura_opaca: MisturaOpaca { modo: ModoMisturaOpaca::WetBlend, ..MisturaOpaca::default() },
+        mistura_opaca: MisturaOpaca {
+            modo: ModoMisturaOpaca::WetBlend,
+            ..MisturaOpaca::default()
+        },
         ..d
     };
     let lido = json::pincel_de_json(&antigo, &campos, base);
@@ -629,5 +632,8 @@ fn mistura_opaca_preset_antigo_sem_o_campo_carrega_off() {
         ..d
     };
     let m = json::pincel_para_json(&ligado, &campos);
-    assert_eq!(json::pincel_de_json(&m, &campos, d).mistura_opaca, ligado.mistura_opaca);
+    assert_eq!(
+        json::pincel_de_json(&m, &campos, d).mistura_opaca,
+        ligado.mistura_opaca
+    );
 }

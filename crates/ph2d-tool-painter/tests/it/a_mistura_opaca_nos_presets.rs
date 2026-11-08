@@ -105,7 +105,8 @@ fn leva_o_vermelho(nome: Option<&str>) {
         "{rotulo}: a mancha não ficou vermelha: {vermelho:?}"
     );
     assert!(off[2] > off[0], "{rotulo} Off: o azul não passou: {off:?}");
-    for modo in [ModoMisturaOpaca::WetBlend] {
+    {
+        let modo = ModoMisturaOpaca::WetBlend;
         let (_, c) = arrasto_azul(nome, modo);
         eprintln!("[mistura] {rotulo}: mancha {vermelho:?} · Off {off:?} · {modo:?} {c:?}");
         assert!(
@@ -115,8 +116,14 @@ fn leva_o_vermelho(nome: Option<&str>) {
             vermelhidao(off)
         );
         // Pigmento: o azul sobre o vermelho ESCURECE-o (roxo-escuro/vinho), não o pinta de azul.
-        assert!(c[0] <= vermelho[0] - 30.0, "{rotulo} {modo:?}: o azul não entrou: {c:?} sobre {vermelho:?}");
-        assert!(c[1] < 70.0, "{rotulo} {modo:?}: desbotou para o branco: {c:?}");
+        assert!(
+            c[0] <= vermelho[0] - 30.0,
+            "{rotulo} {modo:?}: o azul não entrou: {c:?} sobre {vermelho:?}"
+        );
+        assert!(
+            c[1] < 70.0,
+            "{rotulo} {modo:?}: desbotou para o branco: {c:?}"
+        );
     }
 }
 
@@ -160,7 +167,8 @@ fn sonda_mistura_variantes() {
             t.set_brush_texture_kind(0);
         }),
     ] {
-        for modo in [ModoMisturaOpaca::WetBlend] {
+        {
+            let modo = ModoMisturaOpaca::WetBlend;
             let mut t = com_a_mancha(Some("Sketch Pencil"));
             f(&mut t);
             t.set_brush_mistura_modo(modo);
@@ -199,7 +207,11 @@ fn grao(px: &[u8]) -> f32 {
     for y in Y as usize - 6..=Y as usize + 6 {
         for x in 80..=120 {
             let i = (y * W + x) * 4;
-            v.push(0.299 * f32::from(px[i]) + 0.587 * f32::from(px[i + 1]) + 0.114 * f32::from(px[i + 2]));
+            v.push(
+                0.299 * f32::from(px[i])
+                    + 0.587 * f32::from(px[i + 1])
+                    + 0.114 * f32::from(px[i + 2]),
+            );
         }
     }
     let m = v.iter().sum::<f32>() / v.len() as f32;
@@ -218,10 +230,14 @@ fn a_mistura_opaca_do_sketch_pencil_guarda_o_grao() {
         grao(&t.run_full().0)
     };
     let off = mede(ModoMisturaOpaca::Off);
-    for modo in [ModoMisturaOpaca::WetBlend] {
+    {
+        let modo = ModoMisturaOpaca::WetBlend;
         let g = mede(modo);
         eprintln!("[grao] Off {off:.1} · {modo:?} {g:.1}");
-        assert!(g >= 0.8 * off, "{modo:?}: grão {g:.1} < 80 % do Off {off:.1}");
+        assert!(
+            g >= 0.8 * off,
+            "{modo:?}: grão {g:.1} < 80 % do Off {off:.1}"
+        );
     }
 }
 
@@ -229,7 +245,8 @@ fn a_mistura_opaca_do_sketch_pencil_guarda_o_grao() {
 #[test]
 fn a_mistura_opaca_sobre_a_camada_vazia_nao_desbota() {
     for nome in [None, Some("G-Pen")] {
-        for modo in [ModoMisturaOpaca::WetBlend] {
+        {
+            let modo = ModoMisturaOpaca::WetBlend;
             let mut t = PainterTool::default();
             t.set_source(vec![0u8; W * H * 4], W as u32, H as u32);
             if let Some(n) = nome {
@@ -242,7 +259,10 @@ fn a_mistura_opaca_sobre_a_camada_vazia_nao_desbota() {
             let px = t.run_full().0;
             let i = ((Y as usize) * W + 200) * 4;
             let p = [px[i], px[i + 1], px[i + 2], px[i + 3]];
-            assert!(p[3] >= 250 && p[2] >= 215, "{nome:?} {modo:?}: sobre o vazio desbotou: {p:?}");
+            assert!(
+                p[3] >= 250 && p[2] >= 215,
+                "{nome:?} {modo:?}: sobre o vazio desbotou: {p:?}"
+            );
         }
     }
 }
@@ -254,7 +274,9 @@ fn descidas_na_cauda(px: &[u8]) -> f32 {
         let mut s = 0.0;
         for y in Y as usize - 1..=Y as usize + 1 {
             let i = (y * W + x) * 4;
-            s += 0.299 * f32::from(px[i]) + 0.587 * f32::from(px[i + 1]) + 0.114 * f32::from(px[i + 2]);
+            s += 0.299 * f32::from(px[i])
+                + 0.587 * f32::from(px[i + 1])
+                + 0.114 * f32::from(px[i + 2]);
         }
         s / 3.0
     };
@@ -277,15 +299,22 @@ fn a_cauda_da_mistura_opaca_nao_tem_aneis_nem_contas() {
             let px = t.run_full().0;
             // Nem pontos pretos (o perfil da cor com a cobertura reconstruída do `u8`, 07/11): vermelho, azul e branco
             // não fazem preto.
-            let pretos = px.chunks(4).filter(|p| u32::from(p[0]) + u32::from(p[1]) + u32::from(p[2]) < 40).count();
+            let pretos = px
+                .chunks(4)
+                .filter(|p| u32::from(p[0]) + u32::from(p[1]) + u32::from(p[2]) < 40)
+                .count();
             assert_eq!(pretos, 0, "{nome:?} {modo:?}: {pretos} pontos pretos");
             descidas_na_cauda(&px)
         };
         let off = mede(ModoMisturaOpaca::Off);
-        for modo in [ModoMisturaOpaca::WetBlend] {
+        {
+            let modo = ModoMisturaOpaca::WetBlend;
             let d = mede(modo);
             eprintln!("[cauda] {nome:?} Off {off:.1} · {modo:?} {d:.1}");
-            assert!(d <= off + 3.0, "{nome:?} {modo:?}: a cauda tem vales (anéis/contas): {d:.1} vs Off {off:.1}");
+            assert!(
+                d <= off + 3.0,
+                "{nome:?} {modo:?}: a cauda tem vales (anéis/contas): {d:.1} vs Off {off:.1}"
+            );
         }
     }
 }
@@ -294,7 +323,12 @@ fn a_cauda_da_mistura_opaca_nao_tem_aneis_nem_contas() {
 #[test]
 #[ignore = "sonda"]
 fn sonda_cobertura_amount_1() {
-    for nome in [None, Some("Charcoal Stick"), Some("Sketch Pencil"), Some("Soft Airbrush")] {
+    for nome in [
+        None,
+        Some("Charcoal Stick"),
+        Some("Sketch Pencil"),
+        Some("Soft Airbrush"),
+    ] {
         let mut v = Vec::new();
         for modo in [ModoMisturaOpaca::Off, ModoMisturaOpaca::WetBlend] {
             let mut t = com_a_mancha(nome);

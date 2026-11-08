@@ -20,7 +20,10 @@ fn a_mistura_aparece_no_digital_e_o_clique_chega() {
             .iter()
             .chain(&p::PAINTER_BRUSH_MIX_FIELDS)
         {
-            assert!(m.rect(*id).is_some(), "cartões={cartoes}: {id:?} não pintado");
+            assert!(
+                m.rect(*id).is_some(),
+                "cartões={cartoes}: {id:?} não pintado"
+            );
         }
         for id in p::PAINTER_BRUSH_MIX_FIELDS {
             assert!(b.inercias.dica_de(id).is_some(), "com Off o número esmaece");
@@ -31,7 +34,9 @@ fn a_mistura_aparece_no_digital_e_o_clique_chega() {
         let saida = m.clica(p::PAINTER_BRUSH_MIX_MODES[1]);
         let alvo = format!("{:?}", p::PAINTER_BRUSH_MIX_MODES[1]);
         assert!(
-            saida.iter().any(|s| s.contains("Click") && s.contains(&alvo)),
+            saida
+                .iter()
+                .any(|s| s.contains("Click") && s.contains(&alvo)),
             "cartões={cartoes}: o Blend não chegou: {saida:?}"
         );
         if cartoes {
@@ -63,7 +68,10 @@ fn a_mistura_some_onde_a_lei_nao_corre() {
                 .iter()
                 .chain(&p::PAINTER_BRUSH_MIX_FIELDS)
             {
-                assert!(m.rect(*id).is_none(), "{meio:?}/{modo} cartões={cartoes}: {id:?} à vista");
+                assert!(
+                    m.rect(*id).is_none(),
+                    "{meio:?}/{modo} cartões={cartoes}: {id:?} à vista"
+                );
             }
         }
     }

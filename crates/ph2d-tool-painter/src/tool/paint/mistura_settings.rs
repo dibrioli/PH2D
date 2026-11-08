@@ -14,7 +14,11 @@ impl PainterTool {
 
     /// Um número da mistura, pela ordem de `ids::PAINTER_BRUSH_MIX_FIELDS`, preso a `0..1`.
     pub fn set_brush_mistura_numero(&mut self, campo: usize, v: f32) {
-        let v = if v.is_finite() { v.clamp(0.0, 1.0) } else { return };
+        let v = if v.is_finite() {
+            v.clamp(0.0, 1.0)
+        } else {
+            return;
+        };
         let m = &mut self.paint.brush.mistura_opaca;
         match campo {
             0 => m.paint_amount = v,
@@ -85,7 +89,10 @@ mod tests {
         ];
         assert_eq!(lidos, valores);
         t.handle_panel_event(PanelEvent::SetValue(ids::PAINTER_BRUSH_MIX_FIELDS[0], 7.0));
-        assert_eq!(t.paint.brush.mistura_opaca.paint_amount, 1.0, "preso a 0..1");
+        assert_eq!(
+            t.paint.brush.mistura_opaca.paint_amount, 1.0,
+            "preso a 0..1"
+        );
     }
 
     /// Os oito ids são distintos entre si e de todo outro id do pincel que conta aqui.

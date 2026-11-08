@@ -629,7 +629,8 @@ fn a_mistura_opaca_ligada_fica_na_cpu_e_desligada_no_device() {
         mistura_opaca: mexida,
         ..BrushSpec::default()
     }));
-    for modo in [ModoMisturaOpaca::WetBlend] {
+    {
+        let modo = ModoMisturaOpaca::WetBlend;
         assert!(!eligible(&BrushSpec {
             mistura_opaca: MisturaOpaca { modo, ..mexida },
             ..BrushSpec::default()
@@ -646,7 +647,11 @@ fn a_mistura_opaca_ligada_fica_na_cpu_e_desligada_no_device() {
             chamada,
             modo == ModoMisturaOpaca::Off,
             "{modo:?}: a ponte {}",
-            if chamada { "foi chamada" } else { "não foi chamada" }
+            if chamada {
+                "foi chamada"
+            } else {
+                "não foi chamada"
+            }
         );
         assert!(
             t.canvas_rgba.iter().any(|&b| b != 255),

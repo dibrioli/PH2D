@@ -69,7 +69,10 @@ fn a_mistura_opaca_amount_zero_leva_o_vermelho_para_o_azul() {
         dentro[0] > longe[0] + 20,
         "o vermelho não foi levado para o azul: {dentro:?} · {longe:?}"
     );
-    assert!(dentro[1] < 30 && longe[1] < 30, "Amount 0 sobre tinta cheia não deposita verde: {dentro:?} · {longe:?}");
+    assert!(
+        dentro[1] < 30 && longe[1] < 30,
+        "Amount 0 sobre tinta cheia não deposita verde: {dentro:?} · {longe:?}"
+    );
     // Controlo: longe do traço o azul ficou.
     let i = ((300 * SIZE + 540) * 4) as usize;
     assert_eq!(&t.canvas_rgba[i..i + 4], &[0, 0, 255, 255]);
@@ -94,7 +97,10 @@ fn a_mistura_opaca_pigmento_mistura_a_cor_do_traco() {
     cheio.on_canvas_pointer(cp([470.0, Y], PointerPhase::Down));
     cheio.on_canvas_pointer(cp([470.0, Y], PointerPhase::Up));
     let q = px(&cheio, 470);
-    assert!(q[1] >= 250 && q[0] <= 5, "Amount 1 cobre com o verde: {q:?}");
+    assert!(
+        q[1] >= 250 && q[0] <= 5,
+        "Amount 1 cobre com o verde: {q:?}"
+    );
     // Controlo: o Digital de sempre pinta verde puro no mesmo sítio.
     let mut off = vermelho_azul(MisturaOpaca::default());
     traco(&mut off, 380.0, 480.0);
@@ -207,7 +213,8 @@ fn a_mistura_de_fabrica_arrastada_mostra_o_vermelho_dentro_do_bloco() {
         px(&t, 500)
     };
     assert_eq!(&off[..3], &[0, 0, 255], "controlo: o Off pinta azul puro");
-    for modo in [ModoMisturaOpaca::WetBlend] {
+    {
+        let modo = ModoMisturaOpaca::WetBlend;
         let mut t = bloco_vermelho(de_fabrica(modo), None);
         arrasto(&mut t, 360.0, 640.0, Y);
         let p = px(&t, 500);
@@ -217,7 +224,10 @@ fn a_mistura_de_fabrica_arrastada_mostra_o_vermelho_dentro_do_bloco() {
             (30..=200).contains(&p[0]),
             "{modo:?}: o vermelho de baixo não entrou na mistura: {p:?}"
         );
-        assert!(p[2] >= 120 && p[2] < 250 && p[1] <= 40, "{modo:?}: não é a tinta do pincel suja de vermelho: {p:?}");
+        assert!(
+            p[2] >= 120 && p[2] < 250 && p[1] <= 40,
+            "{modo:?}: não é a tinta do pincel suja de vermelho: {p:?}"
+        );
     }
 }
 
@@ -249,7 +259,8 @@ fn a_mistura_de_fabrica_leva_o_vermelho_para_la_do_bloco() {
 /// A mesma mistura com o espaçamento 0,05 e 0,2: as taxas são por distância, não por dab.
 #[test]
 fn a_mistura_opaca_nao_depende_do_espacamento() {
-    for modo in [ModoMisturaOpaca::WetBlend] {
+    {
+        let modo = ModoMisturaOpaca::WetBlend;
         let corre = |s: f32| {
             let mut t = bloco_vermelho(de_fabrica(modo), Some(s));
             arrasto(&mut t, 360.0, 700.0, Y);

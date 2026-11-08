@@ -175,12 +175,11 @@ impl PainterTool {
         let b = &self.paint.brush;
         let shape_cor = self.paint.shape_layers.is_color_mode()
             && b.shape_silhouette_active(self.paint.shape_image.is_some());
-        let linear =
-            !b.accumulate
-                && b.effective_pigment_mix() <= 0.0
-                && !b.mistura_opaca.ligada()
-                && !self.pixel_vivo(b)
-                && !shape_cor;
+        let linear = !b.accumulate
+            && b.effective_pigment_mix() <= 0.0
+            && !b.mistura_opaca.ligada()
+            && !self.pixel_vivo(b)
+            && !shape_cor;
         if linear && b.strength > 0.0 && b.strength < 1.0 {
             b.strength
         } else {

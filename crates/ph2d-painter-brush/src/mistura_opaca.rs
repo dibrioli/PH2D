@@ -25,7 +25,7 @@ use crate::spec::BrushSpec;
 pub const PASSO_DA_MISTURA: f32 = 0.03;
 
 /// O Amount a partir do qual a tinta do pincel cobre inteira o que não apanhou cor (o vazio).
-const AMOUNT_QUE_COBRE: f32 = 0.25;
+pub const AMOUNT_QUE_COBRE: f32 = 0.25;
 
 /// O modo do Color mixing. `Off` = a lei não existe para este pincel.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -133,7 +133,12 @@ fn sobre(a: [f32; 4], b: [f32; 4]) -> [f32; 4] {
         return [0.0; 4];
     }
     let f = b[3] * (1.0 - a[3]);
-    [(a[0] * a[3] + b[0] * f) / al, (a[1] * a[3] + b[1] * f) / al, (a[2] * a[3] + b[2] * f) / al, al]
+    [
+        (a[0] * a[3] + b[0] * f) / al,
+        (a[1] * a[3] + b[1] * f) / al,
+        (a[2] * a[3] + b[2] * f) / al,
+        al,
+    ]
 }
 
 /// `x^t` para `x ∈ [0, 1]`, `t ≥ 0`, sem transcendentais da libm (o mesmo byte em qualquer máquina).
@@ -211,13 +216,21 @@ impl Sombra {
     }
 
     /// Cria os ladrilhos da caixa: lidos de `buf` (`da_tela`) ou vazios.
-    fn garante(&mut self, buf: &[u8], w: u32, h: u32, (x0, y0, x1, y1): (u32, u32, u32, u32), da_tela: bool) {
+    fn garante(
+        &mut self,
+        buf: &[u8],
+        w: u32,
+        h: u32,
+        (x0, y0, x1, y1): (u32, u32, u32, u32),
+        da_tela: bool,
+    ) {
         if self.w != w || self.h != h || self.ladrilhos.is_empty() {
             self.w = w;
             self.h = h;
             self.colunas = w.div_ceil(LADO);
             self.ladrilhos.clear();
-            self.ladrilhos.resize((self.colunas * h.div_ceil(LADO)) as usize, None);
+            self.ladrilhos
+                .resize((self.colunas * h.div_ceil(LADO)) as usize, None);
         }
         for ty in y0 / LADO..=(y1 - 1) / LADO {
             for tx in x0 / LADO..=(x1 - 1) / LADO {
@@ -235,7 +248,11 @@ impl Sombra {
                             let px = &buf[i..i + 4];
                             b.extend(px.iter().map(|&v| f32::from(v) / 255.0));
                             // O plano já pintado é tinta VELHA deste traço (visível à amostra).
-                            b.push(if px[3] > 0 { f32::NEG_INFINITY } else { SEM_TINTA });
+                            b.push(if px[3] > 0 {
+                                f32::NEG_INFINITY
+                            } else {
+                                SEM_TINTA
+                            });
                         } else {
                             b.extend([0.0, 0.0, 0.0, 0.0, SEM_TINTA]);
                         }
@@ -261,7 +278,10 @@ impl Sombra {
     fn le(&self, x: u32, y: u32) -> Option<[f32; POR_TEXEL]> {
         let (tx, ty) = (x / LADO, y / LADO);
         let lw = LADO.min(self.w - tx * LADO);
-        let t = self.ladrilhos.get((ty * self.colunas + tx) as usize)?.as_deref()?;
+        let t = self
+            .ladrilhos
+            .get((ty * self.colunas + tx) as usize)?
+            .as_deref()?;
         let j = ((y - ty * LADO) * lw + (x - tx * LADO)) as usize * POR_TEXEL;
         t[j..j + POR_TEXEL].try_into().ok()
     }
@@ -335,12 +355,18 @@ pub fn mistura_opaca_carimbo(
     }
     let peso = |x: u32, y: u32| -> f32 {
         match pegada {
-            Pegada::Mascara { mascara, .. } => f32::from(mascara[((y * w + x) * 4 + 3) as usize]) / 255.0,
+            Pegada::Mascara { mascara, .. } => {
+                f32::from(mascara[((y * w + x) * 4 + 3) as usize]) / 255.0
+            }
             Pegada::Disco { centro, raio } => {
                 let dx = x as f32 + 0.5 - centro[0];
                 let dy = y as f32 + 0.5 - centro[1];
                 let t = (dx * dx + dy * dy).sqrt() / raio.max(1e-6);
-                if t >= 1.0 { 0.0 } else { spec.falloff_weight(t) }
+                if t >= 1.0 {
+                    0.0
+                } else {
+                    spec.falloff_weight(t)
+                }
             }
         }
     };
@@ -365,7 +391,9 @@ pub fn mistura_opaca_carimbo(
             let i = ((y * w + x) * 4) as usize;
             let fundo = antes(i).map(|v| f32::from(v) / 255.0);
             let px = match sombra_valida.then(|| tela.sombra.le(x, y)).flatten() {
-                Some(f) if f[4] <= velha_desde && f[3] > 0.0 => sobre([f[0], f[1], f[2], f[3]], fundo),
+                Some(f) if f[4] <= velha_desde && f[3] > 0.0 => {
+                    sobre([f[0], f[1], f[2], f[3]], fundo)
+                }
                 _ => fundo,
             };
             let t = wt * px[3];
@@ -381,7 +409,11 @@ pub fn mistura_opaca_carimbo(
     }
     let pincel = c.cor.map(|v| v.clamp(0.0, 1.0));
     let carga_aqui = soma_a / soma_w;
-    let amostra = if soma_a > 0.0 { soma.map(|v| v / soma_a) } else { pincel };
+    let amostra = if soma_a > 0.0 {
+        soma.map(|v| v / soma_a)
+    } else {
+        pincel
+    };
     // 2. O reservatório, por distância (em diâmetros).
     let primeiro = !res.cheio;
     let passo = if res.cheio {
@@ -389,14 +421,19 @@ pub fn mistura_opaca_carimbo(
     } else {
         1.0
     };
-    let retem = if res.cheio { potencia(m.retem_por_diametro(), passo) } else { 0.0 };
+    let retem = if res.cheio {
+        potencia(m.retem_por_diametro(), passo)
+    } else {
+        0.0
+    };
     let velha = retem * res.carga;
     let nova = (1.0 - retem) * carga_aqui;
     let carga = velha + nova;
     if carga > 0.0 {
         let f = nova / carga;
-        for k in 0..3 {
-            res.cor[k] += (amostra[k] - res.cor[k]) * if res.cheio && res.carga > 0.0 { f } else { 1.0 };
+        let peso = if res.cheio && res.carga > 0.0 { f } else { 1.0 };
+        for (cor, a) in res.cor.iter_mut().zip(amostra.iter()) {
+            *cor += (a - *cor) * peso;
         }
     }
     res.carga = carga;
@@ -427,17 +464,26 @@ pub fn mistura_opaca_carimbo(
     // cobre 88–98 % numa passada) e o tecto é a opacidade do pincel; como tecto ela dava um véu chapado.
     let taxa = densidade * spec.flow.clamp(0.0, 1.0) * corpo;
     let tecto = if spec.accumulate { 1.0 } else { cobertura };
-    let taxa = if spec.accumulate { taxa * cobertura } else { taxa };
+    let taxa = if spec.accumulate {
+        taxa * cobertura
+    } else {
+        taxa
+    };
     if tecto <= 0.0 || taxa <= 0.0 {
         return None;
     }
     // A opacidade acumula como o pincel SEM a mistura: cada carimbo vale `passo / passo do pincel` de um dab dele
     // (a mistura adensa os carimbos a 3 %, não a cobertura); o 1.º vale um passo da mistura (sem disco no início).
     let nominal = spec.spacing.max(PASSO_DA_MISTURA);
-    let k_passo = if primeiro { spec.spacing_do_traco() } else { passo } / nominal;
+    let k_passo = if primeiro {
+        spec.spacing_do_traco()
+    } else {
+        passo
+    } / nominal;
     let k_passo = k_passo.clamp(PASSO_DA_MISTURA * 0.25, 1.0);
     // No plano do traço a tela É a película (relê-se dela); na tela directa a película nasce vazia no pen-down.
-    tela.sombra.garante(tela.buf, w, h, (x0, y0, x1, y1), tela.plano);
+    tela.sombra
+        .garante(tela.buf, w, h, (x0, y0, x1, y1), tela.plano);
     for y in y0..y1 {
         for x in x0..x1 {
             let wt = peso(x, y);
@@ -446,9 +492,15 @@ pub fn mistura_opaca_carimbo(
             }
             // O grão: a razão entre a pegada e a pegada sem ele vai ao tecto; a pegada sem ele é a taxa.
             let (wt, grao) = match pegada {
-                Pegada::Mascara { sem_grao: Some(sg), .. } => {
+                Pegada::Mascara {
+                    sem_grao: Some(sg), ..
+                } => {
                     let liso = f32::from(sg[((y * w + x) * 4 + 3) as usize]) / 255.0;
-                    if liso > 0.0 { (liso, (wt / liso).min(1.0)) } else { (wt, 1.0) }
+                    if liso > 0.0 {
+                        (liso, (wt / liso).min(1.0))
+                    } else {
+                        (wt, 1.0)
+                    }
                 }
                 _ => (wt, 1.0),
             };
@@ -497,8 +549,8 @@ pub fn mistura_opaca_carimbo(
                     }
                 }
             };
-            for k in 0..4 {
-                tela.buf[i + k] = (out[k].clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+            for (dst, v) in tela.buf[i..i + 4].iter_mut().zip(out.iter()) {
+                *dst = (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
             }
         }
     }

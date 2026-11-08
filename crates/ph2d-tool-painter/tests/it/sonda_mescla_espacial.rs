@@ -14,12 +14,21 @@ const H: usize = 240;
 const AMARELO: [u8; 3] = [245, 205, 0];
 
 fn arrasta_p(t: &mut PainterTool, a: [f32; 2], b: [f32; 2], p: impl Fn(f32) -> f32) {
-    let cp = |pos: [f32; 2], pressure, phase| CanvasPointer { pos, pressure, tilt: [0.0, 0.0], phase };
+    let cp = |pos: [f32; 2], pressure, phase| CanvasPointer {
+        pos,
+        pressure,
+        tilt: [0.0, 0.0],
+        phase,
+    };
     t.on_canvas_pointer(cp(a, p(0.0), PointerPhase::Down));
     let n = 60;
     for k in 1..=n {
         let u = k as f32 / n as f32;
-        t.on_canvas_pointer(cp([a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u], p(u), PointerPhase::Move));
+        t.on_canvas_pointer(cp(
+            [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u],
+            p(u),
+            PointerPhase::Move,
+        ));
         t.on_tick(8.0);
     }
     t.on_canvas_pointer(cp(b, p(1.0), PointerPhase::Up));
@@ -65,10 +74,22 @@ const VARS: [(Var, &str); 15] = [
     (Var::PontaDura, "09 Shape auto off + Hardness 1"),
     (Var::Opaco, "10 Fill 1 + Opacity 1"),
     (Var::SemArrastoNenhum, "11 Smudge 0 + Rewet 0 + Charge 1"),
-    (Var::DigitalPigmentMix("Hard Round"), "12 Digital Hard Round, Pigment mix"),
-    (Var::DigitalPigmentMix("Soft Round"), "13 Digital Soft Round, Pigment mix"),
-    (Var::DigitalPigmentMix("G-Pen"), "14 Digital G-Pen, Pigment mix"),
-    (Var::WatercolorOpacoPigment, "15 Wc Fill1 Op1 Pigment1 (proto)"),
+    (
+        Var::DigitalPigmentMix("Hard Round"),
+        "12 Digital Hard Round, Pigment mix",
+    ),
+    (
+        Var::DigitalPigmentMix("Soft Round"),
+        "13 Digital Soft Round, Pigment mix",
+    ),
+    (
+        Var::DigitalPigmentMix("G-Pen"),
+        "14 Digital G-Pen, Pigment mix",
+    ),
+    (
+        Var::WatercolorOpacoPigment,
+        "15 Wc Fill1 Op1 Pigment1 (proto)",
+    ),
 ];
 
 fn prepara(v: Var, base: &[u8]) -> PainterTool {
@@ -124,7 +145,9 @@ fn amarelos(t: &mut PainterTool, pressao: bool) {
         arrasta_p(t, [60.0, y], [250.0, y], |_| 1.0);
     }
     if pressao {
-        arrasta_p(t, [200.0, 200.0], [330.0, 70.0], |u| 0.2 + 0.8 * (1.0 - (2.0 * u - 1.0).abs()));
+        arrasta_p(t, [200.0, 200.0], [330.0, 70.0], |u| {
+            0.2 + 0.8 * (1.0 - (2.0 * u - 1.0).abs())
+        });
     } else {
         arrasta_p(t, [200.0, 200.0], [330.0, 70.0], |_| 1.0);
     }
@@ -145,7 +168,12 @@ fn metricas(p: &[u8]) -> (f32, f32, f32) {
         let perfil: Vec<f32> = (90..230).map(|x| rgb(p, x, y)[0]).collect();
         let hi = perfil[0..6].iter().copied().fold(f32::MIN, f32::max);
         let lo = perfil.iter().copied().fold(f32::MAX, f32::min);
-        let lim = |f: f32| perfil.iter().position(|&r| r < hi - f * (hi - lo)).unwrap_or(perfil.len()) as f32;
+        let lim = |f: f32| {
+            perfil
+                .iter()
+                .position(|&r| r < hi - f * (hi - lo))
+                .unwrap_or(perfil.len()) as f32
+        };
         larg.push(lim(0.9) - lim(0.1));
     }
     let mut gmax: f32 = 0.0;
@@ -162,7 +190,11 @@ fn metricas(p: &[u8]) -> (f32, f32, f32) {
             }
         }
     }
-    ((larg[0] + larg[1]) * 0.5, gmax, 100.0 * placas as f32 / n as f32)
+    (
+        (larg[0] + larg[1]) * 0.5,
+        gmax,
+        100.0 * placas as f32 / n as f32,
+    )
 }
 
 fn ppm(p: &[u8], destino: &str) {
@@ -190,8 +222,14 @@ fn sonda_mescla_espacial_do_watercolor() {
             amarelos(&mut t, pressao);
             let p = t.run_full().0;
             let (larg, gmax, p99) = metricas(&p);
-            eprintln!("[mescla] {} | {nome} | largura10-90 {larg:.0} px | degrau max miolo {gmax:.0} | placas {p99:.2} %", if pressao { "pressao" } else { "mouse" });
-            ppm(&p, &format!("{dir}/{}_{i:02}.ppm", if pressao { "p" } else { "m" }));
+            eprintln!(
+                "[mescla] {} | {nome} | largura10-90 {larg:.0} px | degrau max miolo {gmax:.0} | placas {p99:.2} %",
+                if pressao { "pressao" } else { "mouse" }
+            );
+            ppm(
+                &p,
+                &format!("{dir}/{}_{i:02}.ppm", if pressao { "p" } else { "m" }),
+            );
         }
     }
     // O molhado: a mesma cena com o azul ainda MOLHADO (mesma ferramenta, sem secar).
@@ -205,7 +243,9 @@ fn sonda_mescla_espacial_do_watercolor() {
         amarelos(&mut t, false);
         let p = t.run_full().0;
         let (larg, gmax, p99) = metricas(&p);
-        eprintln!("[mescla] mouse | 16 Watercolor Basic, azul MOLHADO | largura10-90 {larg:.0} px | degrau max miolo {gmax:.0} | placas {p99:.2} %");
+        eprintln!(
+            "[mescla] mouse | 16 Watercolor Basic, azul MOLHADO | largura10-90 {larg:.0} px | degrau max miolo {gmax:.0} | placas {p99:.2} %"
+        );
         ppm(&p, &format!("{dir}/m_15.ppm"));
     }
     let n = VARS.len();

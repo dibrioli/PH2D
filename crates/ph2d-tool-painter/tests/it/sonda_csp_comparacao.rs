@@ -289,7 +289,11 @@ fn ziguezague(x0: f32, x1: f32, y0: f32, y1: f32, n: usize) -> Vec<[f32; 2]> {
             y0 + (y1 - y0) * k as f32 / n as f32,
             y0 + (y1 - y0) * (k as f32 + 0.5) / n as f32,
         );
-        let (a, b) = if k % 2 == 0 { ([x0, ya], [x1, yb]) } else { ([x1, ya], [x0, yb]) };
+        let (a, b) = if k % 2 == 0 {
+            ([x0, ya], [x1, yb])
+        } else {
+            ([x1, ya], [x0, yb])
+        };
         let passos = (((b[0] - a[0]).hypot(b[1] - a[1])) / 3.0).ceil() as usize;
         for i in 0..passos {
             let t = i as f32 / passos as f32;
@@ -309,12 +313,18 @@ fn sonda_wet_blend_ziguezague() {
     base.set_brush_mistura_modo(ModoMisturaOpaca::Off);
     base.set_brush_color_srgb8([30, 90, 200]);
     let bloco: Vec<Vec<[f32; 2]>> = (0..5)
-        .map(|i| vec![[110.0, 40.0 + 50.0 * i as f32], [150.0, 45.0 + 50.0 * i as f32]])
+        .map(|i| {
+            vec![
+                [110.0, 40.0 + 50.0 * i as f32],
+                [150.0, 45.0 + 50.0 * i as f32],
+            ]
+        })
         .collect();
     traca(&mut base, &bloco);
     let base = base.run_full().0;
     grava(&o, "zz_base", &base);
-    let variantes: [(&str, Option<(f32, f32, f32, f32)>); 5] = [
+    type Wet = Option<(f32, f32, f32, f32)>;
+    let variantes: [(&str, Wet); 5] = [
         ("off", None),
         ("wet_a50_s50", Some((0.5, 1.0, 0.5, 0.0))),
         ("wet_a30_s80", Some((0.3, 1.0, 0.8, 0.0))),
@@ -397,7 +407,11 @@ fn custo_do_wet_blend_por_tamanho() {
     }
     let casos: Vec<(&str, f32, bool)> = ["Hard Round", "Sketch Pencil"]
         .into_iter()
-        .flat_map(|p| [8.0f32, 30.0, 100.0].into_iter().flat_map(move |r| [(p, r, false), (p, r, true)]))
+        .flat_map(|p| {
+            [8.0f32, 30.0, 100.0]
+                .into_iter()
+                .flat_map(move |r| [(p, r, false), (p, r, true)])
+        })
         .collect();
     let mut min = vec![f64::MAX; casos.len()];
     for bloco in 0..5 {
@@ -405,7 +419,11 @@ fn custo_do_wet_blend_por_tamanho() {
             let v = (k + bloco) % casos.len();
             let (p, r, wet) = casos[v];
             let mut t = novo2(base.clone(), w, h, Some(p), r);
-            t.set_brush_mistura_modo(if wet { ModoMisturaOpaca::WetBlend } else { ModoMisturaOpaca::Off });
+            t.set_brush_mistura_modo(if wet {
+                ModoMisturaOpaca::WetBlend
+            } else {
+                ModoMisturaOpaca::Off
+            });
             t.set_brush_color_srgb8([240, 200, 0]);
             let traco: Vec<[f32; 2]> = (0..=100).map(|i| [170.0 + 3.0 * i as f32, 200.0]).collect();
             let t0 = std::time::Instant::now();
@@ -415,6 +433,9 @@ fn custo_do_wet_blend_por_tamanho() {
         }
     }
     for ((p, r, wet), m) in casos.iter().zip(min) {
-        eprintln!("[custo] {p} r{r} {}: {m:.1} ms", if *wet { "Wet blend" } else { "Off" });
+        eprintln!(
+            "[custo] {p} r{r} {}: {m:.1} ms",
+            if *wet { "Wet blend" } else { "Off" }
+        );
     }
 }

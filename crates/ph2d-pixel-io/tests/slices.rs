@@ -55,8 +55,7 @@ fn sem_ids(v: &[Slice]) -> Vec<Slice> {
     v
 }
 
-/// Gravar e reabrir não perde nada, salvo o que o formato não diz: pivot por key numa slice com flag
-/// geral, que se escreve `0,0` (limitação declarada no plano).
+/// Gravar e reabrir não perde nada (o pivot por key numa slice com flag geral: o teste seguinte).
 #[test]
 fn saving_and_reopening_keeps_every_slice() {
     for (nome, _) in casos() {
@@ -67,6 +66,25 @@ fn saving_and_reopening_keeps_every_slice() {
         let (de_novo, _) = escrever(&volta).unwrap();
         assert_eq!(de_novo, bytes, "{nome}: gravar é estável");
     }
+}
+
+/// Pivot numa key e não noutra (a flag do formato é por slice): gravar e reabrir é um ponto fixo do
+/// documento e do JSON. *Mutação: gravar `0,0` na key sem pivot.*
+#[test]
+fn a_slice_with_a_pivot_on_some_keys_only_survives_save_and_reopen() {
+    use ph2d_pixel_core::{apply, slice};
+    let (mut s, id) = sprite_com_keys();
+    let mut k = s.slice(id).unwrap().shape_at(1).unwrap();
+    k.pivot = Some((1, 2));
+    let op = slice::set_shape(&s, id, 1, k).unwrap();
+    apply(&mut s, op).unwrap();
+    let c = s.slice(id).unwrap();
+    assert!(c.keys.iter().any(|k| k.shape.pivot.is_none()), "mista");
+    let (bytes, _) = escrever(&s).unwrap();
+    let (volta, _) = ler(&bytes).unwrap();
+    assert_eq!(sem_ids(volta.slices()), sem_ids(s.slices()));
+    assert_eq!(meta_slices(&volta), meta_slices(&s));
+    assert_eq!(escrever(&volta).unwrap().0, bytes, "gravar é estável");
 }
 
 /// F3: a key fora de ordem ordena-se, e o chunk conta onde quer que esteja.

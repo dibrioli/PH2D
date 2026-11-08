@@ -133,7 +133,7 @@ fn i32s(b: &mut Vec<u8>, v: &[i32]) {
 }
 
 /// O chunk 0x2022. As flags valem para a slice inteira: key sem centro grava centro zero (lê-se como
-/// sem centro) e key sem pivot grava `0,0`.
+/// sem centro) e key sem pivot grava [`crate::NO_PIVOT`] (lê-se como sem pivot; `0,0` é um pivot real).
 fn slice_chunk(s: &AseSlice) -> Vec<u8> {
     let has_center = s.keys.iter().any(|k| k.center.is_some());
     let has_pivot = s.keys.iter().any(|k| k.pivot.is_some());
@@ -155,7 +155,7 @@ fn slice_chunk(s: &AseSlice) -> Vec<u8> {
             b.extend_from_slice(&h.to_le_bytes());
         }
         if has_pivot {
-            let (x, y) = k.pivot.unwrap_or_default();
+            let (x, y) = k.pivot.unwrap_or(crate::NO_PIVOT);
             i32s(&mut b, &[x, y]);
         }
     }

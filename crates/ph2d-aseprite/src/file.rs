@@ -317,7 +317,8 @@ fn slice_key(r: &mut Reader<'_>, flags: u32) -> Option<AseSliceKey> {
         k.center = ((c.2, c.3) != (0, 0)).then_some(c);
     }
     if flags & 2 != 0 {
-        k.pivot = Some((i32_of(r.u32()?), i32_of(r.u32()?)));
+        let p = (i32_of(r.u32()?), i32_of(r.u32()?));
+        k.pivot = (p != crate::NO_PIVOT).then_some(p);
     }
     Some(k)
 }

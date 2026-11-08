@@ -118,7 +118,7 @@ Testadas por propriedade, sobre fixturas que separam as hipóteses:
 | JSON | `ph2d-sprite-sheet/src/aseprite.rs`, `ph2d-pixel-io/src/sheet.rs` | estende o escritor, nunca um segundo |
 | `split_slices`, `Area` | `sheet.rs`, `exporta.rs`, `ph2d-panel-pixel-export` | precedente `split_grid` |
 
-Limitação do formato, declarada: as flags do chunk valem para a slice inteira. Key sem centro grava centro zero (o Trial lê como sem centro, F3); key sem pivot, numa slice em que outra tem, grava `0,0`.
+Limitação do formato, declarada: as flags do chunk valem para a slice inteira. Key sem centro grava centro zero (o Trial lê como sem centro, F3); key sem pivot, numa slice em que outra tem, grava a sentinela `ph2d_aseprite::NO_PIVOT` (`i32::MIN, i32::MIN`), que lemos de volta como sem pivot: `0,0` é um pivot real e não pode marcar ausência. Gravar e reabrir é ponto fixo do documento e do JSON (`a_slice_with_a_pivot_on_some_keys_only_survives_save_and_reopen`). O Trial aceita pivot fora do canvas sem clamp e não o desenha (`weird.badpivot`, F3): lá a key fica sem marca visível, como a nossa.
 
 ## 6. As provas
 

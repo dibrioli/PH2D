@@ -47,7 +47,10 @@ fn one_key_with_a_center_or_pivot_is_enough_for_the_slice_flags() {
     assert_eq!(k[0].center, Some((1, 1, 2, 1)));
     assert_eq!(k[0].pivot, Some((3, 2)));
     assert_eq!(k[1].center, None, "centro zero lê-se como sem centro");
-    assert_eq!(k[1].pivot, Some((0, 0)), "sem pivot grava 0,0");
+    assert_eq!(
+        k[1].pivot, None,
+        "sem pivot grava a sentinela e lê-se sem ele"
+    );
 }
 
 /// Duas keys no mesmo quadro: a última lida ganha, e fica uma só.

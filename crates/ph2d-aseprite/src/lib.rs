@@ -49,6 +49,11 @@ pub use file::{
 };
 pub use write::{WriteError, write_file};
 
+/// O pivot gravado numa key SEM pivot de uma slice com a flag (a flag é por slice): `0,0` é um pivot
+/// real, por isso a ausência grava-se fora de qualquer canvas (o Trial aceita pivot fora sem clamp e
+/// não o desenha: `P11_oraculos_arquivo.md`, `weird.badpivot`) e lê-se de volta como `None`.
+pub const NO_PIVOT: (i32, i32) = (i32::MIN, i32::MIN);
+
 /// Um documento `.ase` decodificado: os quadros já **compostos** em RGBA8 e a autoria.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AseDoc {

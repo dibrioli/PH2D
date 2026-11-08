@@ -226,6 +226,8 @@ pub static INSP_PHYS_COLLIDES: [NodeId; INSP_PHYS_LAYERS] =
 pub static INSP_PHYS_LAYER_NAMES: [NodeId; INSP_PHYS_LAYERS] =
     tabela_por_camada(b"insp_phys_layer_names_");
 pub const INSP_PHYS_COLLIDES_ADD: NodeId = hash_node_id("insp_phys_collides_add");
+/// A frase «Applies to everything on X» debaixo da fila: só a dica, com o nome inteiro.
+pub const INSP_PHYS_COLLIDES_APPLIES: NodeId = hash_node_id("insp_phys_collides_applies");
 pub const INSP_PHYS_EDIT_MATRIX: NodeId = hash_node_id("insp_phys_edit_matrix");
 
 /// §11 Sensor (trigger) toggle — group id + the two options. A sensor passes

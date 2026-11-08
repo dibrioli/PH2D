@@ -291,3 +291,58 @@ fn o_titulo_dobrado_diz_o_nome_inteiro_na_dica() {
     );
     fim();
 }
+
+/// O nome comprido, cortado com «…» na frase, no título dobrado e nas opções da lista, volta INTEIRO no balão: a mão
+/// sobre a frase «Applies to everything on …» acende o id dela, e cada um diz o nome todo (collider e Ray Sensor).
+///
+/// Mutações: sem a dica da frase; sem o rect dela; as opções sem dica.
+#[test]
+fn o_nome_comprido_volta_inteiro_ao_passar_a_mao() {
+    use ph2d_editor_core::panel::PanelHostInternal as _;
+    use ph2d_host::{PointerButton, PointerEvent, PointerKind};
+    let longo = "Flying Enemies Of The North";
+    let mut nomes: [String; 32] = Default::default();
+    nomes[3] = longo.into();
+    set_current(nomes, [u32::MAX; 32], 1 | 1 << 3);
+    let (mut host, mut st) = cena(na_camada_3(with_body()), [1.0, 1.0]);
+    let r = pinta(&mut host, &mut st);
+    let frase = achado(&r, INSP_PHYS_COLLIDES_APPLIES).expect("a frase tem rect");
+    let _ = host.dispatch_pointer_event(PointerEvent {
+        x: frase.x + frase.w * 0.5,
+        y: frase.y + frase.h * 0.5,
+        pressure: 1.0,
+        kind: PointerKind::Move,
+        source: ph2d_host::PointerSource::Mouse,
+        button: PointerButton::Primary,
+        timestamp_ns: 0,
+    });
+    assert_eq!(host.store().hot_id(), Some(INSP_PHYS_COLLIDES_APPLIES));
+    let dica = |host: &ph2d_ui_testkit::MockPanelHost, id| {
+        host.store().tooltip_for(id).unwrap_or_default().to_owned()
+    };
+    let esperada = format!("Applies to everything on {longo}");
+    assert_eq!(dica(&host, INSP_PHYS_COLLIDES_APPLIES), esperada);
+    assert_eq!(dica(&host, INSP_RAY_SEES_APPLIES), "", "sem raio, sem dica");
+    assert_eq!(dica(&host, INSP_PHYS_LAYER[3]), longo);
+    assert_eq!(dica(&host, INSP_RAY_LAYER_OPTS[3]), "");
+    assert!(dica(&host, CARD_PHYS_LAYERS).contains(longo));
+    // A lista aberta: a opção pintada é a que leva a dica.
+    let chip = achado(&r, INSP_PHYS_LAYER_PICK).expect("o seletor");
+    let _ = clica(&mut host, &mut st, chip);
+    let r = pinta(&mut host, &mut st);
+    assert!(achado(&r, INSP_PHYS_LAYER[3]).is_some(), "a opção da 3");
+    assert_eq!(dica(&host, INSP_PHYS_LAYER[3]), longo);
+    // O Ray Sensor, os mesmos campos: a mesma dica nos ids dele.
+    let olho = ph2d_editor_core::ray_edits::InspectorRayInfo {
+        layer: 3,
+        ..crate::a_seccao_ray_sensor_esta_viva::olho()
+    };
+    ph2d_panel_inspector::set_current_inspector_ray(Some(olho));
+    host.store_mut()
+        .set_collapsed(ph2d_editor_core::ids::INSP_LIVE_RAY_SECTION, false);
+    let _ = pinta(&mut host, &mut st);
+    ph2d_panel_inspector::set_current_inspector_ray(None);
+    assert_eq!(dica(&host, INSP_RAY_SEES_APPLIES), esperada);
+    assert_eq!(dica(&host, INSP_RAY_LAYER_OPTS[3]), longo);
+    fim();
+}

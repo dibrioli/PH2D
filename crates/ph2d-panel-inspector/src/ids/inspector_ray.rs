@@ -36,6 +36,8 @@ pub static INSP_RAY_LAYER_OPTS: [NodeId; super::INSP_PHYS_LAYERS] =
 pub static INSP_RAY_SEES: [NodeId; super::INSP_PHYS_LAYERS] =
     super::inspector_physics_body::tabela_por_camada(b"insp_ray_sees_");
 pub const INSP_RAY_SEES_ADD: NodeId = hash_node_id("insp_ray_sees_add");
+/// A frase debaixo da fila «Sees»: só a dica, com o nome inteiro.
+pub const INSP_RAY_SEES_APPLIES: NodeId = hash_node_id("insp_ray_sees_applies");
 /// O nome publicado quando ele **passa a ver** — ⚠️ vazio = calado, a regra do `SignalOnHit`.
 pub const INSP_RAY_ON_ENTER: NodeId = hash_node_id("insp_ray_on_enter");
 /// …e quando ele **deixa de ver**.

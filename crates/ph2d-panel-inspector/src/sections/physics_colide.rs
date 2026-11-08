@@ -31,6 +31,8 @@ pub(crate) struct Quem {
     pub mais: NodeId,
     /// Os ids que levam o canal do losango da Layer.
     pub canal: &'static [NodeId],
+    /// A frase debaixo da fila: só a dica, com o nome inteiro.
+    pub frase: NodeId,
 }
 
 pub(crate) static DO_COLLIDER: Quem = Quem {
@@ -39,6 +41,7 @@ pub(crate) static DO_COLLIDER: Quem = Quem {
     quadros: &ids::INSP_PHYS_COLLIDES,
     mais: ids::INSP_PHYS_COLLIDES_ADD,
     canal: &ids::INSP_PHYS_LAYER,
+    frase: ids::INSP_PHYS_COLLIDES_APPLIES,
 };
 
 pub(crate) static DO_RAIO: Quem = Quem {
@@ -47,6 +50,7 @@ pub(crate) static DO_RAIO: Quem = Quem {
     quadros: &ids::INSP_RAY_SEES,
     mais: ids::INSP_RAY_SEES_ADD,
     canal: &[ids::INSP_RAY_LAYER],
+    frase: ids::INSP_RAY_SEES_APPLIES,
 };
 
 /// Sem corpo acima nada bate na forma: os quadros desmentiriam a frase de cima.
@@ -437,7 +441,9 @@ pub(super) fn fila_da_matriz(
         "card.insp.phys.collides_applies",
         &[("layer", &camadas::rotulo(camada))],
     );
-    t.frase(y, &frase, ColorToken::Text3)
+    let fim = t.frase(y, &frase, ColorToken::Text3);
+    t.hit.register(quem.frase, Rect::new(t.x, y, t.w, fim - y));
+    fim
 }
 
 /// As dicas dos quadros: dizem, com os nomes de hoje, o que o próximo clique faz.
@@ -445,14 +451,8 @@ pub(crate) fn prepara_as_dicas(store: &mut WidgetStore, camada: usize) {
     // O título dobrado corta os nomes: a dica dele diz o resumo com os nomes inteiros (onda 9e).
     if let Some(info) = crate::state::current_inspector_physics() {
         let inteiro = resumo_com(&info, camadas::rotulo_inteiro);
-        let dica = if inteiro == resumo(&info) {
-            String::new()
-        } else {
-            inteiro
-        };
-        if store.tooltip_for(ids::CARD_PHYS_LAYERS).unwrap_or_default() != dica {
-            store.set_tooltip(ids::CARD_PHYS_LAYERS, dica);
-        }
+        // Sempre: dobrado, o título pode mostrar só a camada (`curto_se_a_fila_nao_cabe`), sem corte nos nomes.
+        poe_a_dica(store, ids::CARD_PHYS_LAYERS, inteiro);
     }
     let chaves = [
         "card.insp.phys.collides_self_on",
@@ -476,10 +476,19 @@ pub(crate) fn dicas_dos_quadros(
         let chave = chaves[usize::from(j != camada) * 2 + usize::from(!aceso)];
         let outra = camadas::rotulo_inteiro(j);
         let dica = tr_with(chave, &[("this", &este), ("other", &outra)]);
-        let id = quem.quadros[j];
-        if store.tooltip_for(id) != Some(dica.as_str()) {
-            store.set_tooltip(id, dica);
-        }
+        poe_a_dica(store, quem.quadros[j], dica);
+    }
+    // As opções da lista e a frase de baixo: o nome inteiro, que o «…» corta.
+    for (i, &id) in quem.opcoes.iter().enumerate() {
+        poe_a_dica(store, id, camadas::rotulo_inteiro(i));
+    }
+    let frase = tr_with("card.insp.phys.collides_applies", &[("layer", &este)]);
+    poe_a_dica(store, quem.frase, frase);
+}
+
+fn poe_a_dica(store: &mut WidgetStore, id: NodeId, dica: String) {
+    if store.tooltip_for(id) != Some(dica.as_str()) {
+        store.set_tooltip(id, dica);
     }
 }
 

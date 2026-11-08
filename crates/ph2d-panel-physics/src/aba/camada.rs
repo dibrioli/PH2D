@@ -64,10 +64,13 @@ impl Camada {
             y += row;
             let larg: Vec<f32> = visiveis
                 .iter()
-                .map(|&n| caixa + Spacing::Md.px() + Spacing::Sm.px() + largura(&rotulos[n], false))
+                // ⭐ Onda 9g, dono: «tão largo como os botões» — o acolchoado, a altura e o vão dos botões de baixo,
+                // mais a caixa de marcar e o seu vão.
+                .map(|&n| largura(&rotulos[n], true) + caixa + Spacing::Sm.px())
                 .collect();
-            let (rs, linhas) = fila(pad, y, dentro, &larg, Geometria::fila_de_linhas());
-            y += linhas as f32 * (row + Spacing::Xs.px()) + Spacing::Sm.px();
+            let (rs, linhas) = fila(pad, y, dentro, &larg, Geometria::fila_de_botoes());
+            let (bh, _, bv) = Geometria::fila_de_botoes();
+            y += linhas as f32 * (bh + bv) + Spacing::Sm.px();
             visiveis.iter().copied().zip(rs).collect()
         };
         let objetos_y = y;
@@ -210,7 +213,7 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro) {
             };
             fill_rounded_rect(cena, r, raio, tom!(fundo, theme));
             let lado = TypeToken::Sm.px();
-            let b = Rect::new(r.x + Spacing::Sm.px(), r.y + (r.h - lado) * 0.5, lado, lado);
+            let b = Rect::new(r.x + Spacing::Md.px(), r.y + (r.h - lado) * 0.5, lado, lado);
             if on {
                 fill_rounded_rect(cena, b, raio, resolve(ColorToken::Accent, theme));
                 paint_text_centered(
@@ -231,8 +234,9 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro) {
                     tom!(ColorToken::Text3, theme),
                 );
             }
-            let (tx, topo) = (b.x + b.w + Spacing::Sm.px(), r.y + (r.h - font) * 0.5);
-            let cabe = r.w - b.w - Spacing::Sm.px() * 2.0;
+            let base = TypeToken::Base.px();
+            let (tx, topo) = (b.x + b.w + Spacing::Sm.px(), r.y + (r.h - base) * 0.5);
+            let cabe = r.x + r.w - tx; // o acolchoado da direita fica como folga do pintor
             let rot = &q.rotulos[n];
             paint_text(
                 texto,
@@ -240,7 +244,7 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro) {
                 rot,
                 tx,
                 topo,
-                font,
+                base,
                 cabe,
                 tom!(ColorToken::Text1, theme),
             );

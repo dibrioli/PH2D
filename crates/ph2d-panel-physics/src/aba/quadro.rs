@@ -249,12 +249,12 @@ impl Quadro {
             super::MAIS.get(),
             &mut |s, botao| {
                 if botao {
-                    rect_for_label(label_column_width(
-                        ctx.text_system,
-                        TypeToken::Base.px(),
-                        [s],
-                    ))
-                    .max(Geometria::ALTURA_DO_BOTAO)
+                    // A medida do pintor (`prefix_width`) entra também: com só a de `label_column_width` o
+                    // rótulo da caixinha cortava («Play…», foto da onda 9g).
+                    let base = TypeToken::Base.px();
+                    let t = label_column_width(ctx.text_system, base, [s])
+                        .max(ctx.text_system.prefix_width(s, base));
+                    rect_for_label(t).max(Geometria::ALTURA_DO_BOTAO)
                 } else {
                     ctx.text_system.prefix_width(s, font)
                 }

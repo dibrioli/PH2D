@@ -734,6 +734,25 @@ fn as_caixinhas_tem_a_moldura_e_a_lista_o_quadradinho_na_cor_da_camada() {
             let s = layer_outline_of(id).unwrap_or_else(|| panic!("{id:?} sem contorno"));
             assert_eq!(s.camada, n, "{id:?} contorna na camada {}", s.camada);
             assert_eq!(s.rect, caixa, "{id:?}: o contorno mudou a caixa");
+            // Onda 9g (dono: «tão largo como os botões»): a altura dos botões de baixo, não os 22 px de antes.
+            let botao_h = ph2d_card_stack::metrics::FIELD_H;
+            assert!(
+                (caixa.h - botao_h).abs() < 1e-3,
+                "{id:?}: altura {} ≠ {botao_h}",
+                caixa.h
+            );
+            if let Some(prev) = n
+                .checked_sub(1)
+                .and_then(|p| mesa.rect(ids::PHYSICS_LAYER_BUMPS[p]))
+                && (prev.y - caixa.y).abs() < 1e-3
+            {
+                let vao = caixa.x - (prev.x + prev.w);
+                let esperado = ph2d_card_stack::metrics::FIELD_GAP;
+                assert!(
+                    (vao - esperado).abs() < 1e-3,
+                    "{id:?}: vão {vao} ≠ {esperado}"
+                );
+            }
             let t = s.traco;
             assert!(
                 (t.x - caixa.x - e * 0.5).abs() < 1e-3

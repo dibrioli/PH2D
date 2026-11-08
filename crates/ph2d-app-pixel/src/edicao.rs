@@ -170,6 +170,7 @@ impl PixelApp {
             E::InsertText => return crate::texto::insere(self, key),
             E::UndoHistory => return ph2d_panel_pixel_history::canal::pede_abrir(),
             E::KeyboardShortcuts => return ph2d_panel_pixel_keys::pede_abrir(),
+            E::GridSettings => return ph2d_panel_pixel_prefs::canal::pede_abrir(),
             E::Fill
             | E::Stroke
             | E::Invert
@@ -263,6 +264,7 @@ impl PixelApp {
             | E::InsertText
             | E::UndoHistory
             | E::KeyboardShortcuts
+            | E::GridSettings
             | E::Fill
             | E::Stroke
             | E::Invert

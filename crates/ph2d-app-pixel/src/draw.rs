@@ -6,8 +6,8 @@
 use ph2d_editor_core::paint::resolve;
 use ph2d_host::WindowSize;
 use ph2d_pixel_render::{
-    CURSOR_CORE, draw_border, draw_cell_cursor, draw_marching_ants, draw_pixel_grid,
-    draw_symmetry_axes, mask_edges, px_per_cell,
+    CURSOR_CORE, draw_border, draw_cell_cursor, draw_marching_ants, draw_symmetry_axes,
+    mask_edges,
 };
 use ph2d_render::Camera2d;
 use ph2d_tokens::{ColorToken, Theme};

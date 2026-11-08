@@ -1,0 +1,31 @@
+[package]
+name = "ph2d-panel-pixel-prefs"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A janela GRID & BACKGROUND do Pixel Art (P12 P, Aseprite O18/O19): a grade, a grade de píxel e o
+# xadrez do documento activo ou dos documentos novos. O painel lê uma vista e devolve pedidos.
+[dependencies]
+ph2d-a11y          = { path = "../ph2d-a11y" }
+ph2d-editor-core   = { path = "../ph2d-editor-core" }
+ph2d-i18n          = { path = "../ph2d-i18n" }
+ph2d-pixel-core    = { path = "../ph2d-pixel-core" }
+ph2d-pixel-render  = { path = "../ph2d-pixel-render" }
+ph2d-tokens        = { path = "../ph2d-tokens" }
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+
+[[test]]
+name = "it"
+path = "tests/it/main.rs"
+
+[dev-dependencies]
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+
+[lints]
+workspace = true

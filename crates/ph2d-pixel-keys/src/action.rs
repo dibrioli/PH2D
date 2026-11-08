@@ -123,6 +123,7 @@ actions! {
     SwapColors = "color.swap", Commands;
     ShowGrid = "view.grid", Commands;
     PixelGrid = "view.pixel_grid", Commands;
+    GridSettings = "view.grid_settings", Commands;
     Timeline = "view.timeline", Commands;
     BrushSlot1 = "brush.slot_1", Commands;
     BrushSlot2 = "brush.slot_2", Commands;

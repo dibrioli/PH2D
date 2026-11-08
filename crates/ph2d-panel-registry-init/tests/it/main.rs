@@ -86,6 +86,8 @@ mod the_pixel_column_answers_a_real_pointer; // as ferramentas do Pixel na colun
 mod the_pixel_export_answers_a_real_pointer;
 #[cfg(feature = "panel-pixel-keys")]
 mod the_pixel_keys_answers_a_real_pointer;
+#[cfg(feature = "panel-pixel-prefs")]
+mod the_pixel_prefs_answers_a_real_pointer;
 #[cfg(feature = "panel-pixel-slices")]
 mod the_pixel_slices_answers_a_real_pointer;
 #[cfg(feature = "panel-pixel-tools")]

@@ -22,6 +22,8 @@ pub const PIXEL_SLICES_PANEL: NodeId = hash_node_id("pixel_slices.panel");
 pub const PIXEL_KEYS_PANEL: NodeId = hash_node_id("pixel_keys.panel");
 /// A janela UNDO HISTORY do Pixel (P12a, `ph2d-panel-pixel-history`).
 pub const PIXEL_HISTORY_PANEL: NodeId = hash_node_id("pixel_history.panel");
+/// A janela GRID & BACKGROUND do Pixel (P12 P, `ph2d-panel-pixel-prefs`).
+pub const PIXEL_PREFS_PANEL: NodeId = hash_node_id("pixel_prefs.panel");
 
 /// As linhas do Pixel no menu *File*: só existem com um Pixel Sprite em Draw.
 pub const CTX_MENU_PIXEL_OPEN: NodeId = hash_node_id("ctx_menu_pixel_open");

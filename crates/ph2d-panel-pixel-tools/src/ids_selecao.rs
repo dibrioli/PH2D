@@ -133,7 +133,7 @@ pub const SELECT_ACTIONS: [(NodeId, PixelRequest, &str); 10] = [
 ];
 
 /// Os botões do menu Edit e da moldura (Apply = `Enter`, Cancel = `Esc`).
-pub const EDIT_ACTIONS: [(NodeId, PixelRequest, &str); 30] = [
+pub const EDIT_ACTIONS: [(NodeId, PixelRequest, &str); 31] = [
     (
         hash_node_id("pixel.edit.copy"),
         PixelRequest::Edit(E::Copy),
@@ -288,6 +288,12 @@ pub const EDIT_ACTIONS: [(NodeId, PixelRequest, &str); 30] = [
         hash_node_id("pixel.edit.keyboard_shortcuts"),
         PixelRequest::Edit(E::KeyboardShortcuts),
         "panel.pixel.edit.keyboard_shortcuts",
+    ),
+    // P12 P (30): Edit ▸ Grid & Background… (o Aseprite: View ▸ Grid ▸ Grid Settings).
+    (
+        hash_node_id("pixel.edit.grid_settings"),
+        PixelRequest::Edit(E::GridSettings),
+        "panel.pixel.edit.grid_settings",
     ),
 ];
 

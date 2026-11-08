@@ -132,6 +132,8 @@ pub enum PixelEditAction {
     UndoHistory,
     /// P12a: Edit ▸ Keyboard Shortcuts… (a janela `ph2d-panel-pixel-keys`).
     KeyboardShortcuts,
+    /// P12 P: Edit ▸ Grid & Background… (a janela `ph2d-panel-pixel-prefs`).
+    GridSettings,
 }
 
 /// O menu Sprite.

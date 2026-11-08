@@ -57,6 +57,12 @@ impl PixelApp {
             eprintln!("[pixel-smoke] nível {level} desconhecido ou falhou");
         }
         self.reconcile(sim);
+        let prefs = self
+            .chave
+            .and_then(|k| Some(*self.docs.get(&k)?.sprite.prefs()));
+        if let (Some(k), Some(p)) = (self.chave, ph2d_panel_pixel_prefs::canal::troca(prefs)) {
+            self.muda_prefs(k, |x| *x = p);
+        }
         if editing.is_none() {
             // SAIR do Draw assenta as células levantadas (o Aseprite larga-as antes de mudar); a cena
             // de smoke que levanta antes do 1.º Draw não saiu de lado nenhum.

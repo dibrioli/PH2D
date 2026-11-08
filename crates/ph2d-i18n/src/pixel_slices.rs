@@ -2,6 +2,7 @@
 
 /// As da janela UNDO HISTORY (P12 H), outra janela flutuante do Pixel.
 mod history;
+mod prefs;
 /// As do cartão USER DATA (P12 U).
 mod user_data;
 
@@ -34,6 +35,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.slices.menu_duplicate" => "Duplicate Slice",
         "panel.pixel.slices.menu_delete" => "Delete Slice",
         "panel.pixel.slices.menu_remove_key" => "Remove Change on This Frame",
-        _ => return history::tr(key).or_else(|| user_data::tr(key)),
+        _ => {
+            return history::tr(key)
+                .or_else(|| user_data::tr(key))
+                .or_else(|| prefs::tr(key));
+        }
     })
 }

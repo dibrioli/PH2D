@@ -110,8 +110,6 @@ pub struct PixelApp {
     /// (`docs/PixelArt/aseprite/01_editor.png`).
     pub fg: [u8; 4],
     pub bg: [u8; 4],
-    /// A grelha de pixels (View ▸ Show ▸ Pixel Grid; desligada por omissão, como no Aseprite).
-    pub grid: bool,
     pub(crate) gesture: Option<Gesture>,
     /// `Espaço` segurado em Draw (a mão temporária do Aseprite).
     pub(crate) space: bool,
@@ -256,7 +254,6 @@ impl Default for PixelApp {
             options: crate::texto::opcoes_iniciais(),
             fg: [255, 255, 255, 255],
             bg: [0, 0, 0, 255],
-            grid: false,
             gesture: None,
             space: false,
             panning: false,
@@ -347,7 +344,8 @@ impl PixelApp {
 
     /// Cria um documento e devolve a chave nova (a maior + 1, nunca reciclada nesta sessão).
     pub fn create(&mut self, spec: NewSprite) -> Result<u32, ph2d_pixel_core::SpriteError> {
-        let sprite = Sprite::with_palette(spec, &self.paleta_de_omissao())?;
+        let mut sprite = Sprite::with_palette(spec, &self.paleta_de_omissao())?;
+        sprite.set_prefs(ph2d_pixel_render::prefs_view::load_defaults());
         let key = self.docs.keys().next_back().map_or(1, |k| k + 1);
         let stamp = self.stamp();
         self.docs.insert(key, Doc::new(sprite, stamp));

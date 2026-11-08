@@ -141,6 +141,6 @@ pub(crate) fn stage(
     let doc = app.docs.get_mut(&key)?;
     (doc.frame, doc.layer) = (f0, ball);
     app.onion_on = true;
-    app.onion.tint = true;
+    app.muda_prefs(key, |p| p.onion.tint = true);
     Some(bits as u32)
 }

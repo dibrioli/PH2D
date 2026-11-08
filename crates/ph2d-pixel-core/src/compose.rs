@@ -95,10 +95,11 @@ pub struct Onion {
     pub tint: bool,
     /// Por cima do frame em vez de por trás.
     pub front: bool,
-    /// P12 (O21 `Loop through tag frames`, ligado): dentro de uma tag os fantasmas dão a volta.
-    /// Guardado no documento; quem escolhe os quadros ainda não o lê.
+    /// P12 (O21 `Loop through tag frames`, ligado): dentro de uma tag os fantasmas dão a volta
+    /// (o de antes do primeiro frame da tag é o último dela).
     pub loop_tag: bool,
-    /// P12 (O21 `Current layer only`, desligado). Guardado; ainda sem leitor.
+    /// P12 (O21 `Current layer only`, desligado): os fantasmas só da camada activa
+    /// ([`compose_with_onion_of`]).
     pub current_layer_only: bool,
 }
 
@@ -135,13 +136,27 @@ pub fn ghosts(sprite: &Sprite, frame: FrameId, onion: &Onion) -> Vec<Ghost> {
     let op = |d: u32| {
         (i32::from(onion.base) - i32::from(onion.step) * (d as i32 - 1)).clamp(0, 255) as u8
     };
+    // `Loop through tag frames`: a primeira tag que contém o frame dá a volta dentro dela.
+    let tag = onion
+        .loop_tag
+        .then(|| {
+            sprite
+                .tags()
+                .iter()
+                .find(|t| (t.from as usize..=t.to as usize).contains(&i))
+        })
+        .flatten()
+        .map(|t| (t.from as usize, (t.to - t.from) as usize + 1));
     let mut out = Vec::new();
     for (side, reach) in [(true, onion.prev), (false, onion.next)] {
         for d in (1..=reach).rev() {
-            let j = if side {
-                i.checked_sub(d as usize)
-            } else {
-                Some(i + d as usize)
+            let j = match tag {
+                Some((from, len)) => {
+                    let k = (i - from) as i64 + if side { -i64::from(d) } else { i64::from(d) };
+                    Some(from + k.rem_euclid(len as i64) as usize).filter(|&j| j != i)
+                }
+                None if side => i.checked_sub(d as usize),
+                None => Some(i + d as usize),
             };
             let Some(f) = j.and_then(|j| sprite.frames().get(j)) else {
                 continue;
@@ -183,6 +198,22 @@ pub fn compose_with_onion(
     onion: &Onion,
     under: Option<&[u8]>,
 ) -> Vec<u8> {
+    compose_with_onion_of(sprite, frame, pending, region, onion, under, None)
+}
+
+/// O [`compose_with_onion`] com a camada activa `layer`: com `onion.current_layer_only` os
+/// fantasmas são só dela (o frame continua inteiro).
+#[must_use]
+pub fn compose_with_onion_of(
+    sprite: &Sprite,
+    frame: FrameId,
+    pending: Option<&Stroke>,
+    region: Rect,
+    onion: &Onion,
+    under: Option<&[u8]>,
+    layer: Option<LayerId>,
+) -> Vec<u8> {
+    let only = layer.filter(|_| onion.current_layer_only);
     let mut buf = under.map_or_else(|| vec![0u8; region.area() * 4], <[u8]>::to_vec);
     let ctx = Ctx {
         sprite,
@@ -195,7 +226,18 @@ pub fn compose_with_onion(
         ctx.draw(&mut buf);
     }
     for g in ghosts(sprite, frame, onion) {
-        let px = compose_window(sprite, g.frame, None, region, Purpose::View);
+        let px = match only {
+            Some(id) => {
+                let mut px = vec![0u8; region.area() * 4];
+                Ctx {
+                    frame: g.frame,
+                    ..ctx
+                }
+                .draw_only(id, &mut px);
+                px
+            }
+            None => compose_window(sprite, g.frame, None, region, Purpose::View),
+        };
         for (d, s) in buf
             .as_chunks_mut::<4>()
             .0
@@ -218,6 +260,7 @@ pub fn compose_with_onion(
     buf
 }
 
+#[derive(Clone, Copy)]
 struct Ctx<'a> {
     sprite: &'a Sprite,
     frame: FrameId,
@@ -238,6 +281,17 @@ impl Ctx<'_> {
         let mut flat = Vec::new();
         self.flatten(None, true, &mut flat);
         let flat = flat.into_iter().map(|(l, _)| (l, pick(l))).collect();
+        self.draw_flat(flat, buf);
+    }
+
+    /// Só a camada `id`, se visível.
+    fn draw_only(&self, id: LayerId, buf: &mut [u8]) {
+        let mut flat = Vec::new();
+        self.flatten(None, true, &mut flat);
+        let flat = flat
+            .into_iter()
+            .map(|(l, v)| (l, v && l.id == id))
+            .collect();
         self.draw_flat(flat, buf);
     }
 

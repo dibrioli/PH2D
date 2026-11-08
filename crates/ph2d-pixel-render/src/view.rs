@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use ph2d_pixel_core::{
-    FrameId, Onion, Purpose, Rect, Sprite, Stroke, compose_window, compose_with_onion,
+    FrameId, LayerId, Onion, Purpose, Rect, Sprite, Stroke, compose_window, compose_with_onion_of,
 };
 use ph2d_vector::{
     Affine, BezPath, Color, ImageQuality, Point, StableImage, Stroke as Pen, VectorScene,
@@ -40,6 +40,10 @@ pub struct SpriteImage {
     frames: BTreeMap<FrameId, (Arc<Vec<u8>>, StableImage)>,
     frames_stamp: Option<u64>,
     frames_bytes: usize,
+    /// A camada activa, para o `Current layer only` do papel vegetal.
+    ghost_layer: Option<LayerId>,
+    /// O xadrez das preferências do documento.
+    doc_checker: crate::prefs_view::DocChecker,
 }
 
 impl SpriteImage {
@@ -58,6 +62,25 @@ impl SpriteImage {
     #[must_use]
     pub fn is_current(&self, frame: FrameId, stamp: u64, onion: Option<&Onion>) -> bool {
         self.image.is_some() && self.key == Some((stamp, frame, onion.copied()))
+    }
+
+    /// A camada activa (o `Current layer only` do papel vegetal); mudá-la refaz a imagem.
+    pub fn set_ghost_layer(&mut self, layer: Option<LayerId>) {
+        if self.ghost_layer != layer {
+            self.ghost_layer = layer;
+            self.key = None;
+        }
+    }
+
+    /// O xadrez das preferências `c` do documento por baixo do sprite `w × h`.
+    pub fn draw_doc_checker(
+        &mut self,
+        scene: &mut VectorScene,
+        size: (u32, u32),
+        c: &ph2d_pixel_core::Checker,
+        to_screen: Affine,
+    ) {
+        self.doc_checker.draw_under(scene, size, c, to_screen);
     }
 
     /// O [`Self::refresh`] com o papel vegetal (`None` = desligado).
@@ -98,12 +121,17 @@ impl SpriteImage {
         let pronto = same_view && self.scratch.len() == cheio && self.image.is_some();
         match (self.pending_rect, cur) {
             (Some(a), None) if assentou && pronto => {
-                region_into(sprite, frame, None, a, onion, &mut self.scratch);
+                let o = onion.map(|o| (o, self.ghost_layer));
+                region_into(sprite, frame, None, a, o, &mut self.scratch);
             }
             (Some(a), Some(b)) if pronto => {
-                region_into(sprite, frame, pending, a.union(b), onion, &mut self.scratch);
+                let o = onion.map(|o| (o, self.ghost_layer));
+                region_into(sprite, frame, pending, a.union(b), o, &mut self.scratch);
             }
-            _ => self.scratch = compose_bands(sprite, frame, pending, onion),
+            _ => {
+                let o = onion.map(|o| (o, self.ghost_layer));
+                self.scratch = compose_bands_of(sprite, frame, pending, o);
+            }
         }
         self.pending_rect = cur;
         let px = Arc::new(self.scratch.clone());
@@ -188,10 +216,10 @@ fn window(
     frame: FrameId,
     pending: Option<&Stroke>,
     region: Rect,
-    onion: Option<&Onion>,
+    onion: Option<(&Onion, Option<LayerId>)>,
 ) -> Vec<u8> {
     match onion {
-        Some(o) => compose_with_onion(sprite, frame, pending, region, o, None),
+        Some((o, l)) => compose_with_onion_of(sprite, frame, pending, region, o, None, l),
         None => compose_window(sprite, frame, pending, region, Purpose::View),
     }
 }
@@ -202,7 +230,7 @@ fn region_into(
     frame: FrameId,
     pending: Option<&Stroke>,
     region: Rect,
-    onion: Option<&Onion>,
+    onion: Option<(&Onion, Option<LayerId>)>,
     out: &mut [u8],
 ) {
     let region = region.intersect(sprite.bounds());
@@ -225,6 +253,17 @@ pub fn compose_bands(
     frame: FrameId,
     pending: Option<&Stroke>,
     onion: Option<&Onion>,
+) -> Vec<u8> {
+    compose_bands_of(sprite, frame, pending, onion.map(|o| (o, None)))
+}
+
+/// O [`compose_bands`] com a camada activa do papel vegetal.
+#[must_use]
+pub fn compose_bands_of(
+    sprite: &Sprite,
+    frame: FrameId,
+    pending: Option<&Stroke>,
+    onion: Option<(&Onion, Option<LayerId>)>,
 ) -> Vec<u8> {
     let (w, h) = (sprite.width(), sprite.height());
     let n = std::thread::available_parallelism().map_or(1, |n| (n.get() / 2).max(1)) as u32;

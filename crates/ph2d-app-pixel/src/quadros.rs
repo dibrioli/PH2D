@@ -77,7 +77,20 @@ impl PixelApp {
     #[must_use]
     pub(crate) fn onion_view(&self, key: u32, editing: bool) -> Option<Onion> {
         let parado = self.docs.get(&key).is_some_and(|d| d.play.is_none());
-        (self.onion_on && editing && parado).then_some(self.onion)
+        let d = self.docs.get(&key)?;
+        (self.onion_on && editing && parado).then(|| d.sprite.prefs().onion)
+    }
+
+    /// Muda as preferências do documento `key` (P12 P): não é passo do desfazer (o Aseprite), mas
+    /// grava-se — `touch` muda a revisão (o modificado e a cópia de recuperação).
+    pub fn muda_prefs(&mut self, key: u32, f: impl FnOnce(&mut ph2d_pixel_core::PixelPrefs)) {
+        if let Some(d) = self.docs.get_mut(&key) {
+            let mut p = *d.sprite.prefs();
+            f(&mut p);
+            d.sprite.set_prefs(p);
+            d.history.touch();
+            self.onion = p.onion;
+        }
     }
 
     /// Anda o tocar do sprite em Draw `dt_ms` no relógio do host.
@@ -251,7 +264,10 @@ impl PixelApp {
 
     fn alterna_onion(&mut self, r: &PixelRequest) -> bool {
         if matches!(r, PixelRequest::FrameAction(A::OnionTint)) {
-            self.onion.tint = !self.onion.tint;
+            match self.chave {
+                Some(k) => self.muda_prefs(k, |p| p.onion.tint = !p.onion.tint),
+                None => self.onion.tint = !self.onion.tint,
+            }
         } else {
             self.onion_on = !self.onion_on;
         }

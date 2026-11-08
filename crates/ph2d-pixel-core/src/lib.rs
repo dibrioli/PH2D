@@ -45,7 +45,7 @@ pub mod user;
 pub use codec::{CodecError, MAJOR, MINOR};
 pub use compose::{
     Ghost, Onion, Purpose, Sample, compose_picked, compose_region, compose_rgba, compose_window,
-    compose_with_onion, ghosts, onion_tint, pick,
+    compose_with_onion, compose_with_onion_of, ghosts, onion_tint, pick,
 };
 pub use forma::Forma;
 pub use history::{DEFAULT_CAP_BYTES, History, Label, PrettySize, StepState, Touched};

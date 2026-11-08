@@ -192,8 +192,16 @@ pub(crate) fn acao(app: &mut PixelApp, key: u32, a: A) -> Option<KeyAnswer> {
             KeyAnswer::Quiet
         }
         A::PixelGrid | A::ShowGrid => {
-            app.grid = !app.grid;
-            let k = if app.grid {
+            let mut on = false;
+            app.muda_prefs(key, |p| {
+                let v = if a == A::ShowGrid {
+                    &mut p.grid.visible
+                } else {
+                    &mut p.pixel_grid.visible
+                };
+                (*v, on) = (!*v, !*v);
+            });
+            let k = if on {
                 "pixel.grid_on"
             } else {
                 "pixel.grid_off"

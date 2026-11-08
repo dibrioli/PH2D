@@ -8,7 +8,7 @@ use ph2d_pixel_core::layers;
 use ph2d_pixel_core::play::{Play, PlayOptions};
 use ph2d_pixel_core::{
     Background, ColorMode, Direction, FrameId, LayerId, NewSprite, Onion, Op, Patch, Rect, Sprite,
-    apply, compose_rgba, compose_with_onion,
+    apply, compose_rgba, compose_with_onion, compose_with_onion_of, ghosts,
 };
 use serde_json::Value;
 
@@ -328,4 +328,107 @@ fn playback_steps_through_tags_passes_and_exits_as_the_trial_played_them() {
             );
         }
     }
+}
+
+/// Seis frames de 2×1 numa camada; a tag `run` cobre os frames 1..=3.
+fn seis_com_tag() -> (Sprite, Vec<FrameId>) {
+    let mut s = sprite(2, 1);
+    let mut ids = vec![s.frames()[0].id];
+    for _ in 1..6 {
+        let after = *ids.last().expect("último");
+        let (op, id) = frames::new_frame(&mut s, after, NewFrame::Empty).expect("frame");
+        apply(&mut s, op).expect("frame");
+        ids.push(id);
+    }
+    let op = frames::new_tag(&s, "run", 1, 3).expect("tag");
+    apply(&mut s, op).expect("tag");
+    (s, ids)
+}
+
+#[test]
+fn o_onion_da_a_volta_dentro_da_tag_com_loop_tag_e_corta_no_frame_1_sem_tag() {
+    let (s, ids) = seis_com_tag();
+    let frames = |f: FrameId, o: &Onion| -> Vec<(usize, bool)> {
+        ghosts(&s, f, o)
+            .iter()
+            .map(|g| {
+                (
+                    ids.iter().position(|&i| i == g.frame).expect("id"),
+                    g.before,
+                )
+            })
+            .collect()
+    };
+    let o = Onion::default();
+    // No primeiro frame da tag (1) o de antes é o último dela (3); o de depois, o 2.
+    assert_eq!(frames(ids[1], &o), [(3, true), (2, false)]);
+    // No último (3) o de depois volta ao primeiro (1).
+    assert_eq!(frames(ids[3], &o), [(2, true), (1, false)]);
+    // Sem Loop through tag: 0 antes e 4 depois (a tag não prende).
+    let sem = Onion {
+        loop_tag: false,
+        ..o
+    };
+    assert_eq!(frames(ids[1], &sem), [(0, true), (2, false)]);
+    // Fora de tag, no frame 1 da linha do tempo, não há fantasma de antes (corte, não volta).
+    assert_eq!(frames(ids[0], &o), [(1, false)]);
+    // Alcance 2 antes / 0 depois: a distância 2 vem primeiro (do mais longe para o mais perto).
+    let largo = Onion {
+        prev: 2,
+        next: 0,
+        loop_tag: false,
+        ..o
+    };
+    assert_eq!(frames(ids[4], &largo), [(2, true), (3, true)]);
+}
+
+#[test]
+fn o_onion_current_layer_only_so_mostra_a_camada_activa_e_a_tinta_e_a_posicao_valem() {
+    let mut s = sprite(2, 1);
+    let baixo = camada(&mut s, None);
+    let cima = camada(&mut s, Some(baixo));
+    let f0 = s.frames()[0].id;
+    let (op, f1) = frames::new_frame(&mut s, f0, NewFrame::Empty).expect("frame");
+    apply(&mut s, op).expect("frame");
+    // Frame 0: a de baixo pinta o píxel 0 de verde, a de cima o píxel 1 de branco.
+    pinta(&mut s, baixo, f0, vec![0, 255, 0, 255, 0, 0, 0, 0]);
+    pinta(&mut s, cima, f0, vec![0, 0, 0, 0, 255, 255, 255, 255]);
+    let o = Onion {
+        base: 255,
+        ..Onion::default()
+    };
+    let r = s.bounds();
+    let todas = compose_with_onion_of(&s, f1, None, r, &o, None, Some(cima));
+    assert_eq!(todas, [0, 255, 0, 255, 255, 255, 255, 255]);
+    let so = Onion {
+        current_layer_only: true,
+        ..o
+    };
+    let uma = compose_with_onion_of(&s, f1, None, r, &so, None, Some(cima));
+    assert_eq!(uma, [0, 0, 0, 0, 255, 255, 255, 255]);
+    // Sem camada activa dada, o `current_layer_only` não tem a quem se aplicar: todas.
+    assert_eq!(
+        compose_with_onion_of(&s, f1, None, r, &so, None, None),
+        todas
+    );
+    // Tinta: o de antes fica vermelho ((255+v)/2, v/2, v/2).
+    let t = Onion { tint: true, ..so };
+    assert_eq!(
+        compose_with_onion_of(&s, f1, None, r, &t, None, Some(cima))[4..],
+        [255, 127, 127, 255]
+    );
+    // Por cima do frame (front): o fantasma cobre o que o frame pinta.
+    pinta(&mut s, cima, f1, vec![0, 0, 0, 0, 0, 0, 255, 255]);
+    let atras = compose_with_onion_of(&s, f1, None, r, &so, None, Some(cima));
+    let frente = compose_with_onion_of(
+        &s,
+        f1,
+        None,
+        r,
+        &Onion { front: true, ..so },
+        None,
+        Some(cima),
+    );
+    assert_eq!(atras[4..], [0, 0, 255, 255]);
+    assert_eq!(frente[4..], [255, 255, 255, 255]);
 }

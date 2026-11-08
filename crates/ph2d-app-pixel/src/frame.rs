@@ -156,7 +156,10 @@ impl PixelApp {
                     c
                 }
                 _ => match ph2d_pixel_core::Sprite::new(NewSprite::default()) {
-                    Ok(s) => Doc::new(s, stamp),
+                    Ok(mut s) => {
+                        s.set_prefs(ph2d_pixel_render::prefs_view::load_defaults());
+                        Doc::new(s, stamp)
+                    }
                     Err(_) => continue,
                 },
             };

@@ -132,11 +132,15 @@ fn art_of(
         let (w, h) = (doc.sprite.width(), doc.sprite.height());
         let edit = editing == Some(bits);
         let onion = app.onion_view(key, edit);
+        if let Some(d) = app.docs.get_mut(&key) {
+            let only = onion.is_some_and(|o| o.current_layer_only);
+            d.view.set_ghost_layer(only.then_some(d.layer));
+        }
         crate::tiles::compoe(app, key, pending.as_ref(), onion.as_ref());
         let Some(doc) = app.docs.get_mut(&key) else {
             continue;
         };
-        let o = app.options;
+        let (o, chk) = (app.options, doc.sprite.prefs().checker);
         if edit && (o.tile_x || o.tile_y) {
             // O Tiled Mode mostra as vizinhas: o desenho que sai por um lado entra pelo outro.
             let (fw, fh) = (f64::from(w), f64::from(h));
@@ -146,14 +150,14 @@ fn art_of(
                 for &tx in xs {
                     if (tx, ty) != (0.0, 0.0) {
                         let k = m * ph2d_vector::Affine::translate((tx * fw, ty * fh));
-                        doc.view.draw_checker_under(scene, w, h, k);
+                        doc.view.draw_doc_checker(scene, (w, h), &chk, k);
                         doc.view.draw(scene, k);
                     }
                 }
             }
         }
         if edit {
-            doc.view.draw_checker_under(scene, w, h, m);
+            doc.view.draw_doc_checker(scene, (w, h), &chk, m);
         }
         doc.view.draw(scene, m);
         drawn.push(Drawn {
@@ -198,10 +202,8 @@ pub fn draw(
     };
     let previa = app.previa(key);
     let o = app.options;
-    if app.grid && px_per_cell(m) >= GRID_MIN_PX_PER_CELL {
-        draw_pixel_grid(scene, w, h, m, resolve(ColorToken::Border, theme), LINE_PX);
-    }
     if let Some(d) = app.docs.get(&key) {
+        ph2d_pixel_render::prefs_view::draw_doc_grids(scene, (w, h), d.sprite.prefs(), m);
         ph2d_pixel_tiles::grelha::desenha(
             &d.sprite,
             (d.layer, d.frame),

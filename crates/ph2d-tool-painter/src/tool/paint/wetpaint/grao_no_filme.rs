@@ -16,9 +16,47 @@ pub(in crate::tool::paint) const RELIEF_NA_TINTA_MIN: f32 = 0.6;
 /// A profundidade do papel NA tinta: de [`RELIEF_NA_TINTA_MIN`] no Relief 0 a `1` no Relief 1, sempre a crescer com
 /// ele (dono 08/11: «independente da intensidade do relevo, o efeito sobre a tinta é o mesmo» — o piso `max` de antes
 /// achatava todo Relief abaixo de 0,6). As pontas são as de antes.
+///
+/// ⚠️ EM PROVA (dono 08/11, «melhor testar os dois modos»): `PH2D_PAPEL_NA_TINTA=b` troca pela [`relief_na_tinta_b`].
 #[must_use]
 pub(in crate::tool::paint) fn relief_na_tinta(relief: f32) -> f32 {
+    static B: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    if *B.get_or_init(|| std::env::var("PH2D_PAPEL_NA_TINTA").is_ok_and(|v| v == "b")) {
+        relief_na_tinta_b(relief)
+    } else {
+        relief_na_tinta_rampa(relief)
+    }
+}
+
+/// (a) A rampa de 01fb209238: [`RELIEF_NA_TINTA_MIN`] no Relief 0, `1` no 1. A Relief 0,6 dá 0,84 — o Relevo do papel
+/// do Óleo Real mostra o dente 2,24 × o papel nu, contra 1,71 do Cycles (`a_transmissao_e_o_relevo_do_papel_mostram_o_grao`).
+#[must_use]
+pub(in crate::tool::paint) fn relief_na_tinta_rampa(relief: f32) -> f32 {
     RELIEF_NA_TINTA_MIN + (1.0 - RELIEF_NA_TINTA_MIN) * relief.clamp(0.0, 1.0)
+}
+
+/// (b) O papel na tinta É o do papel de [`RELIEF_NA_TINTA_MIN`] para cima (a lei calibrada contra o Cycles, igual à de
+/// antes de 01fb209238); abaixo continua a crescer, da metade do piso no Relief 0 até ao piso.
+#[must_use]
+pub(in crate::tool::paint) fn relief_na_tinta_b(relief: f32) -> f32 {
+    let r = relief.clamp(0.0, 1.0);
+    if r >= RELIEF_NA_TINTA_MIN {
+        r
+    } else {
+        0.5 * RELIEF_NA_TINTA_MIN * (1.0 + r / RELIEF_NA_TINTA_MIN)
+    }
+}
+
+/// As duas leis em prova sobem sempre com o Relief e acabam juntas no 1; a (b) passa pelo piso nele.
+#[test]
+fn as_duas_leis_do_papel_na_tinta_sobem_com_o_relief() {
+    for lei in [relief_na_tinta_rampa, relief_na_tinta_b] {
+        let v: Vec<f32> = (0..=10).map(|k| lei(k as f32 / 10.0)).collect();
+        assert!(v.windows(2).all(|w| w[1] > w[0]), "{v:?}");
+        assert!((v[10] - 1.0).abs() < 1e-6 && v[0] > 0.0, "{v:?}");
+    }
+    assert!((relief_na_tinta_b(RELIEF_NA_TINTA_MIN) - RELIEF_NA_TINTA_MIN).abs() < 1e-6);
+    assert!((relief_na_tinta_b(0.0) - 0.3).abs() < 1e-6);
 }
 
 /// O papel que o filme transmissivo mostra: o do documento (a textura escolhida) ou, sem papel escolhido, o de

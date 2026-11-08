@@ -28,10 +28,7 @@ impl crate::App {
             }
             // **A SPRITE COMO FONTE DE LUZ** (plano `docs/Sprite_projeto/18` W8).
             //
-            // ⚠️ **Zero REMOVE o componente**, e é o que faz o quadro voltar a ser
-            // byte-idêntico: uma sprite que não emite não tem por que carregar a linha no
-            // ficheiro nem uma entrada na varredura do passe. Mesmo caminho do
-            // `TextureFilter` — quem tem o `ComponentRegistry` é o shell.
+            // ⚠️ **Zero REMOVE o componente**, e é o que faz o quadro voltar a ser (…)
             EditorAction::InspectorSpriteEmissiveChange {
                 entity_bits,
                 intensity,
@@ -47,9 +44,7 @@ impl crate::App {
             }
             // ADR-0040 TG-A: generic one-shot image-op dispatch.
             // Trim/MakeSquare/RealSize collect into per-tool Option<u64>
-            // for the existing per-tool drain functions; bgremoval bake
-            // is deferred via leftover (must run AFTER ActivateTool
-            // has switched the tool active, image_edit.rs:184 picks it up).
+            // for the existing per-tool drain functions; bgremoval bake (…)
             oneshot @ EditorAction::OneShotImageOp {
                 tool_id,
                 entity_bits,
@@ -109,9 +104,7 @@ impl crate::App {
             EditorAction::InspectorSpriteEdit { entity_bits, edit } => {
                 // BulkSelect: apply to EVERY selected sprite, not
                 // just the dispatching (primary) entity. The Vec
-                // includes the primary first; single-select pushes
-                // one. Fall back to the edit's own entity if the
-                // selection snapshot is empty (stale dispatch).
+                // includes the primary first; single-select pushes (…)
                 if pd.inspector_selection.is_empty() {
                     pd.sprite_edits.push((entity_bits, edit));
                 } else {
@@ -162,9 +155,7 @@ impl crate::App {
             }
             // §12 Sockets / Anchors. ⚠️ **NÃO espalha sobre a BulkSelect**, e isso é
             // uma decisão: uma âncora é identificada pelo NOME, e o índice que a edição
-            // carrega só significa alguma coisa na lista da entidade primária. Espalhar
-            // por índice escreveria na âncora errada de todas as outras — pior que não
-            // espalhar. Fan-out por nome é trabalho para quando houver quem o peça.
+            // carrega só significa alguma coisa na lista da entidade primária. Espalhar (…)
             EditorAction::InspectorAnchorEdit { entity_bits, edit } => {
                 pd.anchor_edits.push((entity_bits, edit));
             }
@@ -203,16 +194,6 @@ impl crate::App {
             // ⭐ **A secção TAGS** (TOP-20 #9). ⚠️ **NÃO espalha sobre a BulkSelect**, e aqui a
             // razão é OUTRA que a das irmãs: o que a edição carrega não é um índice — é uma
             // IDENTIDADE, que significa o mesmo em toda a cena, logo espalhar seria exprimível.
-            // Fica de fora porque *marcar N objectos de uma vez* é um gesto que ninguém pediu e
-            // que o painel não desenha: a secção mostra os chips da primária e diz quantos mais
-            // estão escolhidos. ⛔ Ligá-lo sem o desenhar daria ao artista um efeito invisível.
-            // ⭐ **As secções FACTORY e LIFECYCLE** (TOP-20 #11 e #12). ⚠️ **NÃO espalha sobre a
-            // BulkSelect**, pela razão das irmãs: o painel mostra a PRIMÁRIA e di-lo por escrito.
-            // ⭐⭐⭐ **As ONZE secções de COMPONENTE DE JOGO, num braço só** — a família saiu
-            // do `EditorAction` em 2026-09-18 (ver `action_bus_component.rs`), e o dreno
-            // seguiu-a: onze braços de seis linhas custavam `+47` LOC neste ficheiro para os
-            // mesmos onze destinos. ⚠️ **NENHUMA se espalha sobre a BulkSelect**, pela razão
-            // que as onze declaram: o painel mostra a PRIMÁRIA e di-lo por escrito.
             EditorAction::InspectorComponentEdit { entity_bits, edit } => match edit {
                 ComponentEdit::Factory(e) => pd.factory_edits.push((entity_bits, e)),
                 ComponentEdit::TopDown(e) => pd.topdown_edits.push((entity_bits, e)),
@@ -289,15 +270,10 @@ impl crate::App {
             // ⭐ **Limpar as excepções SEM ALVO** (ADR-0164 / F5.3). Aplicado JÁ, e não
             // adiado para um local: ele não precisa de nada que este ponto não tenha, e o
             // `post_frame_undo` (que corre no fim) vê a mudança e regista o passo.
-            // ⭐⭐⭐ **ABRIR a receita que o cartão NOMEIA** (2026-09-07) — a quarta e
-            // última superfície da família. ⚠️ Pelo MESMO dreno dos outros três acessos,
-            // que é onde vivem a resolução do sujeito (`master_subject`) e a voz da recusa.
             EditorAction::InspectorOpenPrefab { root_bits } => {
                 // ⚠️ **Aplicado JÁ, como os irmãos deste bloco** — ele não precisa de nada
                 // que este ponto não tenha: a lei de abrir é SELECCIONAR, e a porta
-                // (`instance_open`) é a mesma que os outros três acessos usam. ⛔ Deferi-lo
-                // para o dreno dos verbos pediria um terceiro canal (bits, a par de `row` e
-                // `stable_id`) para um verbo que não toca no documento.
+                // (`instance_open`) é a mesma que os outros três acessos usam. ⛔ Deferi-lo (…)
                 let mut select_out = None;
                 ph2d_app_components::instance_open::open_prefab(
                     sim,
@@ -321,9 +297,6 @@ impl crate::App {
             // ⭐⭐⭐ **Largar UMA** (F5.3-ter) — o `✕` da linha. ⚠️ Aplicado JÁ, como o irmão
             // acima e pela mesma razão: ele não precisa de nada que este ponto não tenha, e
             // o `post_frame_undo` vê a mudança e regista o passo.
-            // ⭐⭐⭐ **Devolver uma peça recusada** (F5.10). ⚠️ Ela só apaga a DECISÃO — quem
-            // materializa a peça, lhe traz os bytes da receita e exuma a excepção que o
-            // artista tinha nela é o passe estrutural, no quadro seguinte.
             EditorAction::InspectorRestoreRemovedPiece { root_bits, piece } => {
                 if ph2d_app_components::instance_structure::restore_piece(sim, root_bits, piece) {
                     toasts.push(ph2d_editor_core::Toast::success(tr(
@@ -344,14 +317,7 @@ impl crate::App {
             }
             // ⭐⭐⭐ **Trocar a VARIANTE** (ADR-0164 / F5, critério 2).
             //
-            // ⚠️ **ADIADO para depois do dreno**, ao contrário do irmão acima, e a razão é
-            // uma só: a troca precisa do **eco** (`self.instance_echo`) para o esquecer, e
-            // aqui dentro o `self` já está emprestado. *Um gesto que precisa de mais do que
-            // o ponto de aplicação tem, adia-se — não se duplica o estado.*
-            // ⭐⭐ **Mostrar a biblioteca** — o clique na ranhura da textura. ⚠️ Ele
-            // **abre**, nunca alterna: o gesto é *«mostra-me o que cabe aqui»*, e
-            // fechar um painel que o artista acabou de pedir seria responder ao
-            // contrário.
+            // ⚠️ **ADIADO para depois do dreno**, ao contrário do irmão acima, e a razão é (…)
             EditorAction::OpenImagePicker { entity_bits } => {
                 pd.open_image_picker = Some(entity_bits);
             }

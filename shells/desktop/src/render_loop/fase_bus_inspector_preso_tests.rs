@@ -254,3 +254,63 @@ fn o_quadro_da_fila_e_um_passo_de_desfazer() {
         "um passo, e Ctrl+Z devolve"
     );
 }
+
+/// ⭐ «Move and remove» (onda 9b) é UM passo e Ctrl+Z devolve camada, nome, regra e objetos (onda 9d): o
+/// braço real da shell (`acao_das_camadas`) tira a camada; a linha da matriz volta ao padrão como o painel a pede.
+/// Mutação: tirar o `camadas.install` do `Regras::repor` deixa o nome perdido e reprova aqui.
+#[test]
+fn mover_e_remover_e_um_passo_e_ctrl_z_devolve_camada_nome_regra_e_objetos() {
+    use crate::undo::{ProjectUndo, Regras, SelectionMark};
+    use ph2d_physics_ecs::{Collider, LayerMatrix, LayerNames, PhysicsBridge, RigidBody};
+    let (mut sim, vec) = (SimWorld::new(), VecScene::new());
+    let (mut reg, mut fila) = (ComponentRegistry::new(), ProjectUndo::default());
+    register_ecs_components(&mut reg);
+    ph2d_physics_ecs::register_physics_components(&mut reg);
+    let mut ponte = PhysicsBridge::new();
+    let mut s = ponte.settings();
+    let mut m = LayerMatrix::from_rows(s.layer_matrix);
+    m.set(2, 1, false);
+    s.layer_matrix = m.rows();
+    ponte.set_settings(s);
+    LayerNames::show(sim.world_mut(), 2);
+    LayerNames::rename(sim.world_mut(), 2, "Enemy Bats");
+    let col = Collider {
+        layer: 2,
+        ..Collider::default()
+    };
+    sim.world_mut()
+        .spawn((Transform::default(), RigidBody::default(), col));
+    let foto = |sim: &mut SimWorld, ponte: &PhysicsBridge| {
+        let mut e = captura(sim, &vec, &reg);
+        e.regras = Regras::de(ponte, sim);
+        e
+    };
+    let antes = foto(&mut sim, &ponte);
+    let acao = EditorAction::LayerRemove { layer: 2, to: 0 };
+    ph2d_app_physics::panel_bridge::acao_das_camadas(&mut sim, &mut None, acao);
+    let mut m = LayerMatrix::from_rows(ponte.settings().layer_matrix);
+    (0..ph2d_physics_ecs::MAX_LAYERS).for_each(|b| m.set(2, b, true));
+    ponte.set_settings(ph2d_physics_ecs::PhysicsSettings {
+        layer_matrix: m.rows(),
+        ..ponte.settings()
+    });
+    let depois = foto(&mut sim, &ponte);
+    assert_eq!(depois.regras.camadas.0[2], "", "o nome saiu");
+    fila.push_undo(antes.clone(), SelectionMark::default());
+    let (volta, _) = fila
+        .undo(depois, SelectionMark::default())
+        .expect("o passo");
+    assert_eq!((&volta, fila.depth()), (&antes, 0), "um passo devolve tudo");
+    let _ = volta.restore(&mut sim, &reg);
+    volta.regras.repor(&mut ponte, &mut sim);
+    let nomes = LayerNames::of(sim.world());
+    assert_eq!(nomes.0[2], "Enemy Bats", "o nome voltou");
+    assert!(nomes.1 & (1 << 2) != 0, "a camada voltou à lista");
+    assert!(
+        !LayerMatrix::from_rows(ponte.settings().layer_matrix).collides(2, 1),
+        "a regra voltou"
+    );
+    let mut q = sim.world_mut().query::<&Collider>();
+    let camadas: Vec<u8> = q.iter(sim.world()).map(|c| c.layer).collect();
+    assert_eq!(camadas, [2], "o objeto voltou à camada dele");
+}

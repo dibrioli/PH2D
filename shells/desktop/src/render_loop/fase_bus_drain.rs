@@ -46,31 +46,7 @@ impl crate::App {
         let hero = hero_screen.as_mut()?;
         // ─────────────────────────────────────────────────────────
         // Wave 2.5 PR 11.8 closeout — consolidated bus drain.
-        // ─────────────────────────────────────────────────────────
-        //
-        // Previously, each of the 18 EditorAction variants had its
-        // own filter-and-replace block (one per drain site, ~20 LOC
-        // of "drain, capture this variant, push others back" each).
-        // Now we drain the bus ONCE at the top of this section,
-        // categorize every variant into per-kind locals, and the
-        // dispatch sites further down just read `if let Some(x) = X`.
-        //
-        // First-wins for most variants (matches the old
-        // `found.is_none()` short-circuit). Latest-wins for
-        // `InspectorNameEdit` (preserves the pre-bus Option
-        // coalescing that drained at most one SetComponent per
-        // frame). `Bgremoval` is NOT categorized here — it keeps
-        // a separate filter-and-replace at its original site so
-        // its `bgremoval_active` gate runs AFTER any same-frame
-        // `ActivateTool { tool_id: "bgremoval" }` fires (1-frame
-        // defer edge case).
-        //
-        // Audit 2026-05-26 F1: 6 flags hardcoded per-tool (`activate_bgremoval`
-        // etc.) substituídas por uma única option `pending_image_tool_activation`.
-        // O drain único abaixo usa `installed_registry().cluster("image_tools")`
-        // + `Tool::label()` para dispatch data-driven. Painter + os 5 image-tools
-        // pré-existentes flow pelo mesmo canal — anti-padrão Image Tools Bugs
-        // §2.b fechado neste ponto da render loop.
+        // ───────────────────────────────────────────────────────── (…)
         let mut pd = DrainOut {
             // ⚠️ Lê-se AQUI, antes de o mundo ser emprestado mutável. Num gesto sobre um cartão
             // preso é o osso dele.
@@ -83,9 +59,7 @@ impl crate::App {
             selecao_bits: hero.gizmo.iter_selected().collect(),
             // BulkSelect (T2.0): the live selection (primary + extras),
             // captured before the drain so an Inspector sprite edit can
-            // fan out to every selected sprite. Only allocated for a
-            // MULTI-selection; single-select takes the empty path and the
-            // edit's own `entity_bits` (no per-frame alloc — audit D-5).
+            // fan out to every selected sprite. Only allocated for a (…)
             inspector_selection: hero
                 .store
                 .card_fan_out(hero.gizmo.selected_len(), hero.gizmo.iter_selected()),

@@ -193,10 +193,27 @@ pub(crate) fn acaba_de_renomear() {
 /// nunca se grava no projeto.
 #[must_use]
 pub fn rotulo(nomes: &LayerNames, n: usize) -> String {
+    ph2d_editor_core::nome_curto::nome_de_camada(&nome_inteiro(nomes, n))
+}
+
+/// O mesmo sem o corte: o que a DICA mostra ao pairar sobre um nome com «…» (onda 9d).
+#[must_use]
+pub fn nome_inteiro(nomes: &LayerNames, n: usize) -> String {
     match nomes.0.get(n).map(String::as_str) {
-        Some(nome) if !nome.is_empty() => ph2d_editor_core::nome_curto::nome_de_camada(nome),
+        Some(nome) if !nome.is_empty() => nome.to_owned(),
         _ if n == 0 => tr("card.physics.layer_zero").to_owned(),
         _ => tr_with("card.physics.layer_default", &[("n", &n.to_string())]),
+    }
+}
+
+/// A dica de um rótulo de camada: com o nome inteiro quando o rótulo o cortou.
+#[must_use]
+pub fn dica_do_rotulo(nomes: &LayerNames, n: usize) -> String {
+    let inteiro = nome_inteiro(nomes, n);
+    if rotulo(nomes, n) == inteiro {
+        tr("card.physics.layer_label_tip").to_owned()
+    } else {
+        tr_with("card.physics.layer_label_tip_named", &[("name", &inteiro)])
     }
 }
 

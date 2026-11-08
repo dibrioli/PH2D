@@ -368,6 +368,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.physics.matrix_title" => "Collision Layers",
         "card.physics.matrix_summary" => "{n} layers shown · {off} pairs that do not collide",
         "card.physics.layer_label_tip" => "Double-click to rename",
+        "card.physics.layer_label_tip_named" => "{name}. Double-click to rename",
         "card.physics.layer_zero" => "Default",
         "card.physics.name_ellipsis" => "…",
         // As fotos do smoke da aba (`PH2D_PHYSICS_SMOKE_ABA`): os nomes da maquete B, separados por «|».

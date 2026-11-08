@@ -72,12 +72,14 @@ pub(crate) fn nome(i: usize) -> String {
 /// O que se lê: o nome, ou o padrão («Default», «Layer n») sem nome dado (dono 07/11; o projeto não grava o «Layer n»).
 #[must_use]
 pub(crate) fn rotulo(i: usize) -> String {
+    ph2d_editor_core::nome_curto::nome_de_camada(&rotulo_inteiro(i))
+}
+
+/// O mesmo sem o corte «…»: o que as dicas mostram (onda 9d).
+#[must_use]
+pub(crate) fn rotulo_inteiro(i: usize) -> String {
     let n = nome(i);
-    if n.is_empty() {
-        rotulo_padrao(i)
-    } else {
-        ph2d_editor_core::nome_curto::nome_de_camada(&n)
-    }
+    if n.is_empty() { rotulo_padrao(i) } else { n }
 }
 
 /// O que mostra a camada sem nome: a 0 é «Default» (onda 9a, maquete B), as outras «Layer n».

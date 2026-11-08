@@ -132,16 +132,18 @@ fn campo_em_edicao(
 /// As dicas dos rótulos e do «+ Add» (as células não têm: a frase do pé diz o par).
 fn dicas(ctx: &mut PaintCtx, visiveis: &[usize], cheia: bool) {
     {
+        let nomes = crate::state::layer_names();
         let store = ctx.host.store_mut();
         for &a in visiveis {
+            let dica = super::dica_do_rotulo(&nomes, a);
             // A frase do pé diz o par: a célula não leva dica flutuante.
             for id in [
                 i::PHYSICS_LAYER_ROW_LABEL[a],
                 i::PHYSICS_LAYER_COL_LABEL[a],
                 i::PHYSICS_LAYER_LIST[a],
             ] {
-                if store.tooltip_for(id).is_none() {
-                    store.set_tooltip(id, tr("card.physics.layer_label_tip"));
+                if store.tooltip_for(id) != Some(dica.as_str()) {
+                    store.set_tooltip(id, dica.clone());
                 }
             }
         }

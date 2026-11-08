@@ -44,6 +44,10 @@ pub(crate) struct ListState {
     pub notice: Option<String>,
     /// Os scripts do projeto, pela ordem da biblioteca (o `frame` renova-os).
     pub entries: Vec<(ScriptId, String)>,
+    /// Quantos objectos correm cada script — uma passagem pelo mundo por quadro, nunca por linha.
+    pub users: std::collections::BTreeMap<ScriptId, usize>,
+    /// O script cuja contagem está sob o rato.
+    pub hover_count: Option<u64>,
     pub asks: Vec<Ask>,
     pub view: ScriptListView,
     pub drag: Option<ListDrag>,
@@ -59,6 +63,8 @@ impl Default for ListState {
             renaming: None,
             notice: None,
             entries: Vec::new(),
+            users: std::collections::BTreeMap::new(),
+            hover_count: None,
             asks: Vec::new(),
             view: ScriptListView::default(),
             drag: None,
@@ -108,6 +114,7 @@ impl ListState {
                 name,
                 dirty: dirty(id),
                 current: id.0 == current,
+                users: self.users.get(&id).copied().unwrap_or(0),
             })
             .collect();
         let list = ScriptList {
@@ -117,6 +124,7 @@ impl ListState {
             rows: &rows,
             renaming: self.renaming.as_ref().map(|(id, b)| (id.0, b)),
             notice: self.notice.as_deref(),
+            hover_count: self.hover_count,
         };
         view.paint(&list, area, scene, ts, theme);
         self.view = view;
@@ -242,6 +250,18 @@ pub fn users_of(world: &mut World, id: ScriptId) -> usize {
         .count()
 }
 
+/// [`users_of`] de todos os scripts numa passagem só.
+fn users_by_script(world: &mut World) -> std::collections::BTreeMap<ScriptId, usize> {
+    let mut out = std::collections::BTreeMap::new();
+    let mut q = world.query::<&LuauScript>();
+    for c in q.iter(world) {
+        if let ScriptSource::Library(id) = &c.source {
+            *out.entry(*id).or_insert(0) += 1;
+        }
+    }
+    out
+}
+
 impl CodeDocs {
     /// Os pedidos da lista contra a biblioteca do mundo, e as entradas renovadas.
     pub(crate) fn apply_list(&mut self, world: &mut World) {
@@ -297,6 +317,24 @@ impl CodeDocs {
             .get_resource::<ProjectScripts>()
             .map(|l| l.iter().map(|(id, d)| (id, d.name.clone())).collect())
             .unwrap_or_default();
+        self.list.users = users_by_script(world);
+    }
+
+    /// O que cada linha da lista pintou à direita (`"2"`, `"unused"`) — os testes perguntam aqui.
+    #[must_use]
+    pub fn list_counts(&self) -> Vec<(ScriptId, String, ph2d_editor_core::zones::Rect)> {
+        self.list
+            .view
+            .painted_counts()
+            .iter()
+            .map(|c| (ScriptId(c.id), c.text.clone(), c.rect))
+            .collect()
+    }
+
+    /// O balão da contagem pintado no último quadro.
+    #[must_use]
+    pub fn list_count_tip(&self) -> Option<&str> {
+        self.list.view.painted_tip()
     }
 
     /// O que a lista mostra — os testes perguntam por aqui.

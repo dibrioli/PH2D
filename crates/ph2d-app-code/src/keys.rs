@@ -9,7 +9,11 @@ use ph2d_editor_core::doc_surface::{Key, KeyOutcome};
 use ph2d_host::Modifiers;
 
 /// As letras dos acordes Ctrl/Cmd que o editor usa (no texto e nos campos da busca).
-const CHORDS: [char; 11] = ['a', 'c', 'd', 'f', 'g', 'h', 's', 'v', 'x', 'y', 'z'];
+/// `/` comenta (Ctrl+/); `[`/`]` com Shift dobram/desdobram — a shell traduz a tecla FÍSICA
+/// (`keyboard_board.rs`), porque com Ctrl o texto da tecla não chega.
+const CHORDS: [char; 14] = [
+    '/', '[', ']', 'a', 'c', 'd', 'f', 'g', 'h', 's', 'v', 'x', 'y', 'z',
+];
 
 /// O acorde é do editor? Os outros (Ctrl+K a paleta, Ctrl+O abrir…) NÃO são tomados: a shell segue
 /// para o atalho dela.
@@ -140,6 +144,9 @@ impl CodeDoc {
             Key::Char(c) if cmd => out.copy = self.chord(c, shift, paste),
             // Alt+Enter: as acções de contexto no cursor (I7).
             Key::Enter if mods.alt && !cmd && !shift => self.open_actions(),
+            // Alt+F: dobra/desdobra o bloco do cursor (o «Toggle Fold Line» do Godot) — a tecla que não
+            // muda de sítio entre teclados (o `[` físico do ABNT2 é o `]` do US).
+            Key::Char('f' | 'F') if mods.alt && !cmd && !shift => self.toggle_fold_at_cursor(),
             Key::Enter => self.enter(),
             Key::Backspace => self.backspace(cmd),
             Key::Delete => self.delete(cmd),
@@ -240,6 +247,9 @@ impl CodeDoc {
                     SaveKind::Save
                 })
             }
+            '/' => self.toggle_comment(),
+            '[' | '{' if shift => self.fold_at_cursor(true),
+            ']' | '}' if shift => self.fold_at_cursor(false),
             _ => {}
         }
         None

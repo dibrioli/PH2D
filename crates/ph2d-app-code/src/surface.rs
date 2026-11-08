@@ -164,6 +164,7 @@ impl DocumentSurface for CodeDocs {
             }
             return true;
         }
+        self.list.hover_count = self.list.view.count_at(x, y);
         if let Some(page) = page_of(id) {
             return self.help_pointer_move(page, input, x, y);
         }

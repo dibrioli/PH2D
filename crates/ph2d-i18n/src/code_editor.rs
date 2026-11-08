@@ -37,8 +37,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // O assistente de código (`luau-lsp`) quando não está pronto: o editor continua a editar.
         "code.status.assist_starting" => "Starting code assistant…",
         "code.status.assist_restarting" => "Code assistant stopped — restarting it…",
+        // Diz o que se PERDE (curto: a barra é partilhada); os esqueletos locais ainda abrem a lista.
         "code.status.assist_missing" => {
-            "Code assistant not installed — editing works, without suggestions"
+            "Code assistant missing — no smart suggestions, help or rename"
         }
         "code.status.assist_stopped" => {
             "Code assistant stopped — editing works; Edit ▸ Restart Code Assistant"
@@ -58,21 +59,26 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.goto.placeholder" => "Line number",
         // O console da aba (E10).
         "code.console.title" => "Console",
-        "code.console.title_errors" => "Console · {count} {count?error|errors}",
-        "code.console.title_errors_one" => "Console · 1 error",
         "code.console.clear" => "Clear",
         "code.console.empty" => "Nothing printed yet — print() from the script shows here",
-        "code.console.runtime_error" => "Line {line}: {msg}",
-        "code.console.runtime_error_noline" => "Error: {msg}",
-        "code.console.refused" => "Not applied — line {line}: {msg}",
-        "code.console.refused_noline" => "Not applied: {msg}",
-        "code.console.warning" => "Refused — line {line}: {msg}",
-        "code.console.warning_noline" => "Refused: {msg}",
         // A lista de problemas, o 2.º separador da faixa de baixo (acabamento, Onda 2 item 4).
         "code.band.problems" => "Problems",
         "code.band.problems_count" => "Problems ({count})",
         "code.problems.empty" => "No problems in this script.",
         "code.problems.line" => "Line {line}",
+        // Onda A (doc 13 §4.1): um problema do Play — os objectos onde aconteceu e quantas vezes.
+        "code.problems.on_objects" => "{text} — on {who}",
+        "code.problems.on_objects_times" => "{text} — on {who} · ×{count}",
+        "code.problems.times" => "{text} · ×{count}",
+        "code.problems.on_objects_in_play" => "{text} — on {who} in Play",
+        "code.problems.on_objects_times_in_play" => "{text} — on {who} · ×{count} in Play",
+        "code.problems.in_play" => "{text} — in Play",
+        "code.problems.times_in_play" => "{text} — ×{count} in Play",
+        "code.problems.more" => "{names} +{count} more",
+        // Onda A (doc 13 §4.2): quem disse o `print` e quando (o relógio do jogo).
+        "code.console.tag" => "{who} · {time}",
+        "code.console.time" => "{min}:{sec}",
+        "code.console.object" => "Object {id}",
         // O leitor de ecrã: a lista e cada linha (o molde do VS Code 1.142, `oraculo_acabamento`).
         "code.problems.a11y_list" => "Problems: {count}",
         "code.problems.a11y_error" => "Error: {text}, line {line}",
@@ -138,6 +144,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.cmd.goto" => "Go to Line\u{2026} \u{00b7} Cmd+G",
         "code.cmd.fold_all" => "Fold All",
         "code.cmd.unfold_all" => "Unfold All",
+        // Onda A (doc 13 §4, itens 3–4): comentar, dobrar o bloco do cursor, a contagem da lista.
+        "code.cmd.toggle_comment" => "Toggle Comment \u{00b7} Cmd+/",
+        "code.cmd.fold" => "Fold \u{00b7} Alt+F",
+        "code.cmd.unfold" => "Unfold \u{00b7} Alt+F",
+        "code.list.unused" => "unused",
+        "code.list.used_by" => "Used by {count} {count?object|objects}",
+        "code.list.used_by_none" => "No object uses this script",
         "code.cmd.restart_assistant" => "Restart Code Assistant",
         "code.cmd.rename" => "Rename Symbol \u{00b7} F2",
         "code.cmd.references" => "Find References \u{00b7} Shift+F12",

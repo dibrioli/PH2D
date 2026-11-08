@@ -393,6 +393,13 @@ impl CodeDocs {
         Some(d.view.counter_rect()).filter(|r| r.w > 0.0)
     }
 
+    /// ⚠️ SONDA: o que o contador da barra de estado da aba `id` disse no último quadro.
+    #[must_use]
+    pub fn problems_counter_label_of(&self, id: ScriptId) -> Option<String> {
+        let d = self.docs.iter().find(|d| d.script == id)?;
+        Some(d.view.counter_label().to_owned())
+    }
+
     /// ⚠️ SONDA: espera as respostas do formatador em voo (o quadro seguinte aplica-as).
     pub fn wait_format(&mut self) {
         self.format.wait(std::time::Duration::from_secs(30));

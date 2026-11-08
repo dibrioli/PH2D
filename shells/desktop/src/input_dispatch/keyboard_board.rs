@@ -46,6 +46,10 @@ fn board_key(code: KeyCode) -> BoardKey {
         KeyCode::Digit7 => BoardKey::Char('7'),
         KeyCode::Digit8 => BoardKey::Char('8'),
         KeyCode::Digit9 => BoardKey::Char('9'),
+        // O `/` do ABNT2 é a tecla `IntlRo` (a `Slash` física é o `;` dele): ambas, e a do teclado numérico.
+        KeyCode::Slash | KeyCode::IntlRo | KeyCode::NumpadDivide => BoardKey::Char('/'),
+        KeyCode::BracketLeft => BoardKey::Char('['),
+        KeyCode::BracketRight => BoardKey::Char(']'),
         KeyCode::Enter | KeyCode::NumpadEnter => BoardKey::Enter,
         KeyCode::Escape => BoardKey::Escape,
         KeyCode::Backspace => BoardKey::Backspace,

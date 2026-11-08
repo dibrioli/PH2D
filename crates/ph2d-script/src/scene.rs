@@ -556,6 +556,11 @@ mod this;
 #[path = "scene_wait.rs"]
 mod wait;
 
+/// Segundos → µs, o MESMO relógio do `ph2d.wait` (o do console carimba as linhas com ele).
+pub(crate) fn micros(seconds: f64) -> u64 {
+    wait::micros(seconds)
+}
+
 #[cfg(test)]
 #[path = "scene_tests.rs"]
 mod tests;

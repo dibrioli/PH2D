@@ -45,6 +45,8 @@ pub struct ListRow<'a> {
     pub dirty: bool,
     /// O script da aba activa (realçado, com o lixo).
     pub current: bool,
+    /// Quantos objectos correm o script (à direita: «2», ou «unused» apagado).
+    pub users: usize,
 }
 
 /// O que a lista mostra neste quadro.
@@ -59,6 +61,17 @@ pub struct ScriptList<'a> {
     pub renaming: Option<(u64, &'a Buffer)>,
     /// A frase de uma recusa (apagar um script em uso), no fundo da lista.
     pub notice: Option<&'a str>,
+    /// O script cuja contagem está sob o rato (o balão «Used by N objects»).
+    pub hover_count: Option<u64>,
+}
+
+/// Uma contagem pintada: o script, o texto e onde.
+#[derive(Clone, Debug, PartialEq)]
+pub struct PaintedCount {
+    pub id: u64,
+    pub users: usize,
+    pub text: String,
+    pub rect: Rect,
 }
 
 struct Painted {
@@ -76,6 +89,8 @@ pub struct ScriptListView {
     rows_rect: Rect,
     scroll: f32,
     content_h: f32,
+    counts: Vec<PaintedCount>,
+    tip: Option<String>,
 }
 
 impl Default for ScriptListView {
@@ -87,6 +102,8 @@ impl Default for ScriptListView {
             rows_rect: chrome::NO_RECT,
             scroll: 0.0,
             content_h: 0.0,
+            counts: Vec::new(),
+            tip: None,
         }
     }
 }
@@ -120,6 +137,8 @@ impl ScriptListView {
         self.area = area;
         self.targets.clear();
         self.fields.clear();
+        self.counts.clear();
+        self.tip = None;
         scene.fill_rect(rect_to_vello(area), ui.bg);
         let t = ph2d_tokens::StrokeToken::Thin.px();
         scene.fill_rect(
@@ -208,6 +227,7 @@ impl ScriptListView {
             self.row(scene, ts, list, row, r, &ui, *theme);
         }
         scene.pop_layer();
+        self.count_tip(scene, ts, list, &ui);
         if let Some(n) = list.notice {
             let w = (area.w - gap * 2.0).max(0.0);
             paint_text_block(
@@ -251,6 +271,9 @@ impl ScriptListView {
             );
             text_right = del.x - gap;
         }
+        if list.renaming.is_none_or(|(id, _)| id != row.id) {
+            text_right = self.count(scene, ts, row, r, text_right, ui);
+        }
         if let Some((_, buf)) = list.renaming.filter(|(id, _)| *id == row.id) {
             let field = Rect::new(r.x + gap, r.y, (text_right - r.x - gap).max(0.0), r.h);
             let focus = list.focus == Some(ListField::Rename);
@@ -286,6 +309,127 @@ impl ScriptListView {
         );
         // A linha inteira é alvo — depois do lixo, que ganha por vir primeiro.
         self.targets.push((ListHit::Row(row.id), r));
+    }
+
+    /// A contagem à direita da linha, encostada a `right`; devolve onde o nome tem de parar.
+    fn count(
+        &mut self,
+        scene: &mut VectorScene,
+        ts: &mut TextSystem,
+        row: &ListRow<'_>,
+        r: Rect,
+        right: f32,
+        ui: &Ui,
+    ) -> f32 {
+        let text = if row.users == 0 {
+            tr("code.list.unused").to_owned()
+        } else {
+            row.users.to_string()
+        };
+        let color = if row.users == 0 { ui.text3 } else { ui.text2 };
+        let w = chrome::label_w(ts, &text);
+        let rect = Rect::new(right - w, r.y, w, r.h);
+        chrome::label_in(scene, ts, &text, rect, color);
+        self.counts.push(PaintedCount {
+            id: row.id,
+            users: row.users,
+            text,
+            rect,
+        });
+        rect.x - Spacing::Sm.px()
+    }
+
+    /// O balão da contagem sob o rato, por baixo dela, dentro da lista.
+    fn count_tip(
+        &mut self,
+        scene: &mut VectorScene,
+        ts: &mut TextSystem,
+        list: &ScriptList<'_>,
+        ui: &Ui,
+    ) {
+        let Some(c) = list
+            .hover_count
+            .and_then(|id| self.counts.iter().find(|c| c.id == id))
+            .filter(|c| self.rows_rect.contains(c.rect.x, c.rect.y + c.rect.h * 0.5))
+        else {
+            return;
+        };
+        let tip = if c.users == 0 {
+            tr("code.list.used_by_none").to_owned()
+        } else {
+            tr_with("code.list.used_by", &[("count", &c.users)])
+        };
+        let gap = Spacing::Sm.px();
+        let max_w = (self.area.w - gap * 2.0).max(0.0);
+        let w = (chrome::label_w(ts, &tip) + gap * 2.0).min(max_w);
+        let mut probe = VectorScene::new();
+        let h = paint_text_block(
+            ts,
+            &mut probe,
+            &tip,
+            0.0,
+            0.0,
+            chrome::font(),
+            w - gap * 2.0,
+            ui.text1,
+        ) + gap * 2.0;
+        let x = (c.rect.x + c.rect.w - w).max(self.area.x + gap);
+        let below = c.rect.y + c.rect.h;
+        let y = if below + h > self.area.y + self.area.h {
+            c.rect.y - h
+        } else {
+            below
+        };
+        let b = Rect::new(x, y, w, h);
+        let radius = ph2d_editor_core::paint::frame_radius(ui.theme, Radius::Sm.px());
+        fill_rounded_rect(scene, b, radius, ui.field_edge);
+        let t = ph2d_tokens::StrokeToken::Thin.px();
+        fill_rounded_rect(
+            scene,
+            Rect::new(
+                b.x + t,
+                b.y + t,
+                (b.w - t * 2.0).max(0.0),
+                (b.h - t * 2.0).max(0.0),
+            ),
+            radius,
+            ui.field,
+        );
+        paint_text_block(
+            ts,
+            scene,
+            &tip,
+            b.x + gap,
+            b.y + gap,
+            chrome::font(),
+            w - gap * 2.0,
+            ui.text1,
+        );
+        self.tip = Some(tip);
+    }
+
+    /// O script cuja contagem está em `(x, y)` (o rato pede o balão por aqui).
+    #[must_use]
+    pub fn count_at(&self, x: f32, y: f32) -> Option<u64> {
+        if !self.rows_rect.contains(x, y) {
+            return None;
+        }
+        self.counts
+            .iter()
+            .find(|c| c.rect.contains(x, y))
+            .map(|c| c.id)
+    }
+
+    /// As contagens pintadas no último quadro (os testes lêem-nas).
+    #[must_use]
+    pub fn painted_counts(&self) -> &[PaintedCount] {
+        &self.counts
+    }
+
+    /// O balão da contagem pintado no último quadro.
+    #[must_use]
+    pub fn painted_tip(&self) -> Option<&str> {
+        self.tip.as_deref()
     }
 
     fn clamp_scroll(&mut self) {

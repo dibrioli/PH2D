@@ -46,8 +46,9 @@ pub(crate) fn hear(docs: &mut crate::docs::CodeDocs) {
             entity: None,
             text: l.text,
             kind,
+            at_us: 0,
         };
-        if docs.consoles.entry(script).or_default().push(&line)
+        if docs.consoles.entry(script).or_default().push(&line, None)
             && let Some(d) = docs.docs.iter_mut().find(|d| d.script == script)
         {
             d.console_view.follow();

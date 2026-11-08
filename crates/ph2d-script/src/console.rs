@@ -76,6 +76,10 @@ pub struct ConsoleLine {
     /// Os argumentos do `print` pelo `tostring` do Luau, separados por tab; ou o diagnóstico.
     pub text: String,
     pub kind: ConsoleKind,
+    /// ⭐ O tempo de JOGO (µs) do passo em que falou: o relógio dos passos fixos da corrida
+    /// ([`ScriptHost::scene_tick_with`](crate::ScriptHost::scene_tick_with) soma o `dt`; o rebobinar
+    /// zera-o). Carimbado pelo [`Console::push`] — o valor de quem constrói a linha é ignorado.
+    pub at_us: u64,
 }
 
 #[derive(Default)]
@@ -85,6 +89,9 @@ struct Inner {
     bytes: usize,
     dropped: u64,
     speaker: (ScriptId, Option<Entity>),
+    /// O relógio de jogo (µs) e a corrida (sobe a cada rebobinar de uma corrida que andou).
+    clock_us: u64,
+    run: u64,
 }
 
 /// A fila partilhada (sobrevive à reconstrução da VM, como as outras filas do host).
@@ -101,6 +108,7 @@ impl Console {
     pub(crate) fn push(&self, mut line: ConsoleLine) {
         line.text = clip_console_text(line.text);
         let mut g = self.lock();
+        line.at_us = g.clock_us;
         while !g.lines.is_empty()
             && (g.lines.len() >= CONSOLE_LINES_MAX || g.bytes + line.text.len() > CONSOLE_BYTES_MAX)
         {
@@ -131,6 +139,7 @@ impl Console {
             entity,
             text: d.to_string(),
             kind,
+            at_us: 0,
         });
     }
 
@@ -154,6 +163,7 @@ impl Console {
             entity,
             text: d.to_string(),
             kind: ConsoleKind::Warning(d),
+            at_us: 0,
         });
     }
 
@@ -175,6 +185,28 @@ impl Console {
         let mut g = self.lock();
         g.bytes = 0;
         g.lines.drain(..).collect()
+    }
+
+    /// Um passo fixo de `dt` segundos andou (o relógio das linhas seguintes).
+    pub(crate) fn advance(&self, dt: f64) {
+        let mut g = self.lock();
+        g.clock_us = g.clock_us.saturating_add(crate::scene::micros(dt));
+    }
+
+    /// O rebobinar: o relógio volta a zero; se a corrida tinha andado, é outra corrida.
+    pub(crate) fn rewind(&self) {
+        let mut g = self.lock();
+        if g.clock_us > 0 {
+            g.run += 1;
+        }
+        g.clock_us = 0;
+    }
+
+    /// A corrida actual: muda a cada rebobinar de uma corrida que andou (o editor limpa então os
+    /// erros do Play que guardava).
+    #[must_use]
+    pub fn run(&self) -> u64 {
+        self.lock().run
     }
 
     /// Quantas linhas o tecto já deitou fora (desde o arranque).
@@ -238,6 +270,7 @@ pub(crate) fn wire_print(lua: &Lua, console: &Console) -> mlua::Result<()> {
                 entity,
                 text,
                 kind: ConsoleKind::Print,
+                at_us: 0,
             });
         }
         Ok(())

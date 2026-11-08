@@ -29,8 +29,9 @@ fn print_oi_chega_ao_console_da_aba_certa() {
     );
 }
 
+/// Onda A: o erro de runtime abre a faixa nos PROBLEMS (não no console), e a linha dele leva o cursor.
 #[test]
-fn um_erro_de_runtime_abre_o_console_e_a_linha_leva_o_cursor() {
+fn um_erro_de_runtime_abre_os_problems_e_a_linha_leva_o_cursor() {
     let (m, ids) = Mesa::new(&[("parte.luau", PARTE)]);
     let mut m = m.com_cena(ids[0], 1);
     m.pede(ids[0]);
@@ -38,18 +39,24 @@ fn um_erro_de_runtime_abre_o_console_e_a_linha_leva_o_cursor() {
     m.quadro();
     assert!(
         m.docs().console_open(ids[0]),
-        "o erro de runtime abre o console sozinho"
+        "o erro de runtime abre a faixa sozinho"
     );
-    let linhas = m.docs().console_texts(ids[0]);
-    assert_eq!(linhas.len(), 1, "{linhas:?}");
+    assert_eq!(
+        m.docs().band_tab_of(ids[0]),
+        ph2d_panel_code::BandTab::Problems
+    );
     assert!(
-        linhas[0].contains('5'),
-        "a linha do erro (5) vem na frase: {linhas:?}"
+        m.docs().console_texts(ids[0]).is_empty(),
+        "o erro não é linha do console"
     );
+    let ps = m.docs().problems_of(ids[0]);
+    assert_eq!(ps.len(), 1, "{ps:?}");
+    assert_eq!(ps[0].line, 4, "a linha do erro (5): {ps:?}");
     m.pinta(ids[0]);
     let r = m
         .docs()
-        .console_row_rect(ids[0], 0)
+        .band_of(ids[0])
+        .and_then(|b| b.problems.first().map(|p| p.rect))
         .expect("a linha foi pintada");
     let (x, y) = centro(r);
     m.clica(ids[0], x, y, Modifiers::default());

@@ -26,6 +26,8 @@ pub struct ConsoleRow<'a> {
     pub tone: Tone,
     /// A linha (1-based) do script a que o clique leva.
     pub line: Option<u32>,
+    /// Quem falou e quando («Hero · 0:12»), pintado à direita no tom fraco.
+    pub tag: Option<&'a str>,
 }
 
 /// As linhas de um console, por índice: a pintura só pede as que estão à vista (e nenhuma com o
@@ -60,8 +62,6 @@ pub struct Band<'a> {
     pub open: bool,
     pub tab: BandTab,
     pub console: &'a dyn ConsoleSource,
-    /// Os erros do console (o título do separador conta-os).
-    pub console_errors: usize,
     /// Quantos problemas o script tem (o separador mostra-o).
     pub problem_count: usize,
     /// As linhas da lista, pela ordem (vazias se a lista não está à mostra).
@@ -147,14 +147,11 @@ impl Default for ConsoleView {
 /// completação e dos balões; os da lista de problemas em [`problems`]).
 const A11Y_TABS: u64 = (1 << 31) | (1 << 28);
 
-/// O título do separador do console: «Console», ou com a contagem de erros («1 error», «2 errors»).
+/// O título do separador do console: «Console». ⭐ Onda A (doc 13 §4.1): os erros moram nos
+/// Problems e só lá se contam — o console é o que a cena DISSE.
 #[must_use]
-pub fn title_text(errors: usize) -> String {
-    match errors {
-        0 => tr("code.console.title").to_owned(),
-        1 => tr("code.console.title_errors_one").to_owned(),
-        n => tr_with("code.console.title_errors", &[("count", &n)]),
-    }
+pub fn title_text() -> String {
+    tr("code.console.title").to_owned()
 }
 
 fn row_h() -> f32 {
@@ -278,10 +275,7 @@ impl ConsoleView {
         ts: &mut TextSystem,
         ui: &Ui,
     ) {
-        let labels = [
-            title_text(band.console_errors),
-            problems_title(band.problem_count),
-        ];
+        let labels = [title_text(), problems_title(band.problem_count)];
         let pad = Spacing::Md.px();
         for (k, (label, tab)) in labels
             .iter()
@@ -292,7 +286,6 @@ impl ConsoleView {
             let r = Rect::new(x, self.header.y, w, self.header.h);
             let active = tab == band.tab;
             let color = match tab {
-                BandTab::Console if band.console_errors > 0 => ui.error,
                 _ if active => ui.text1,
                 _ => ui.text2,
             };
@@ -353,11 +346,18 @@ impl ConsoleView {
             if row.line.is_some() {
                 scene.fill_rect(rect_to_vello(r), ui.hover);
             }
+            let mut text_w = (r.w - pad * 2.0).max(0.0);
+            if let Some(tag) = row.tag {
+                let tw = chrome::label_w(ts, tag).min(text_w);
+                let tx = r.x + r.w - pad - tw;
+                chrome::label_in(scene, ts, tag, Rect::new(tx, r.y, tw, r.h), ui.text3);
+                text_w = (tx - r.x - pad * 2.0).max(0.0);
+            }
             chrome::label_in(
                 scene,
                 ts,
                 &shown,
-                Rect::new(r.x + pad, r.y, (r.w - pad * 2.0).max(0.0), r.h),
+                Rect::new(r.x + pad, r.y, text_w, r.h),
                 color,
             );
             self.rows.push((i, r, row.line.is_some()));

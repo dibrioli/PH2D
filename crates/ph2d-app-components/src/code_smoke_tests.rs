@@ -219,3 +219,40 @@ fn a_cena_6_e_um_jogo_que_responde_ao_teclado_e_ao_rato() {
         "e o círculo"
     );
 }
+
+/// ⭐ **O nível 11** (Onda A): cada forma imprime as moedas a cada segundo; aos 3 s o `self.sped`
+/// pára as três NA MESMA linha — o editor agrupa-as numa linha dos Problems.
+#[test]
+fn o_nivel_11_imprime_moedas_e_para_as_tres_na_mesma_linha() {
+    let mut sim = SimWorld::new();
+    let mut vec = VecScene::new();
+    let mut mapa = VecEntityMap::new();
+    let formas = monta_em(&mut sim, &mut vec, &mut mapa, 11);
+    let mut host = ScriptHost::new().expect("vm");
+    for _ in 0..(4 * 60) {
+        host.scene_sync(sim.world_mut());
+        let _ = host.scene_tick(&mut sim, 1.0 / 60.0);
+    }
+    let linhas = host.drain_console();
+    let moedas = linhas
+        .iter()
+        .filter(|l| l.kind == ph2d_script::ConsoleKind::Print)
+        .count();
+    assert_eq!(moedas, 9, "3 formas × 3 segundos: {linhas:?}");
+    let erros: Vec<_> = linhas
+        .iter()
+        .filter_map(|l| match &l.kind {
+            ph2d_script::ConsoleKind::RuntimeError(d) => Some((l.entity, d.line)),
+            _ => None,
+        })
+        .collect();
+    let linha = ONDA_A_LUAU
+        .lines()
+        .position(|l| l.contains("self.sped"))
+        .map(|i| u32::try_from(i + 1).unwrap());
+    assert_eq!(erros.len(), 3, "{linhas:?}");
+    assert!(erros.iter().all(|(_, l)| *l == linha), "{erros:?}");
+    assert_eq!(formas.len(), 4);
+    let pedidos = &sim.world().resource::<ScriptEditRequests>().0;
+    assert_eq!(pedidos.len(), 1, "a aba abre no onda_a.luau");
+}

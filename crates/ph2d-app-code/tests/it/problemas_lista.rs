@@ -358,9 +358,10 @@ fn a_mao_sobre_as_linhas_o_contador_e_os_separadores() {
     assert_eq!(olha(&mut m, (x, y)), Some(PointerLook::Text));
 }
 
-/// (h) Uma linha do console com número (o erro de runtime) é a mão; uma sem número é a seta.
+/// (h) Onda A: o erro de runtime abre a faixa nos Problems e a linha dele é a mão; a do `print` no
+/// console (sem número) é a seta.
 #[test]
-fn a_mao_sobre_a_linha_do_console_que_leva_ao_script() {
+fn a_mao_sobre_a_linha_do_problema_do_play_e_a_seta_no_print() {
     const PARTE: &str =
         "print(\"oi\")\nfunction update(self, dt)\n  local t = nil\n  t.x = 1\nend\n";
     let (m, ids) = Mesa::new(&[("parte.luau", PARTE)]);
@@ -370,18 +371,22 @@ fn a_mao_sobre_a_linha_do_console_que_leva_ao_script() {
     m.cena();
     m.quadro();
     assert!(m.docs().console_open(id), "o erro abre a faixa");
-    assert_eq!(m.docs().band_tab_of(id), BandTab::Console);
+    assert_eq!(m.docs().band_tab_of(id), BandTab::Problems);
     m.pinta(id);
-    let linhas = m.docs().console_texts(id);
-    assert_eq!(linhas.len(), 2, "{linhas:?}");
-    let sem = m.docs().console_row_rect(id, 0).expect("o print");
-    let com = m.docs().console_row_rect(id, 1).expect("o erro");
-    assert_eq!(
-        m.docs().pointer_look(id.0, centro(sem).0, centro(sem).1),
-        Some(PointerLook::Arrow)
-    );
+    let com = m.docs().band_of(id).unwrap().problems[0].rect;
     assert_eq!(
         m.docs().pointer_look(id.0, centro(com).0, centro(com).1),
         Some(PointerLook::Hand)
+    );
+    let (tx, ty) = centro(m.docs().band_of(id).unwrap().tabs[0].1);
+    m.clica(id, tx, ty, Modifiers::default());
+    assert_eq!(m.docs().band_tab_of(id), BandTab::Console);
+    m.pinta(id);
+    let linhas = m.docs().console_texts(id);
+    assert_eq!(linhas, ["oi"], "o erro não é linha do console");
+    let sem = m.docs().console_row_rect(id, 0).expect("o print");
+    assert_eq!(
+        m.docs().pointer_look(id.0, centro(sem).0, centro(sem).1),
+        Some(PointerLook::Arrow)
     );
 }

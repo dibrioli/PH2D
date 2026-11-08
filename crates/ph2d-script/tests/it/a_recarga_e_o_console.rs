@@ -232,6 +232,7 @@ fn o_print_vai_para_o_console_com_o_script_certo() {
             entity: Some(c.objs[0]),
             text: "oi\t1\tnil".into(),
             kind: ConsoleKind::Print,
+            at_us: 0,
         }]
     );
     assert!(c.host.drain_console().is_empty(), "drenar esvazia");
@@ -253,6 +254,7 @@ fn um_erro_de_runtime_entra_no_console_com_a_linha() {
             entity,
             kind: ConsoleKind::RuntimeError(d),
             text,
+            ..
         },
     ] = &linhas[..]
     else {

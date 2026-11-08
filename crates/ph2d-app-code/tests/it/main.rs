@@ -28,6 +28,7 @@ mod kanban;
 mod linha_longa;
 mod lista;
 mod onda1;
+mod onda_a;
 mod oraculo_lsp;
 mod paleta;
 mod problemas_lista;
@@ -35,6 +36,7 @@ mod projecto;
 mod renomear;
 mod salvar;
 mod teclado;
+mod um_lugar;
 
 use ph2d_app_code::CodeDocs;
 use ph2d_ecs::{SimWorld, StableId, Transform};

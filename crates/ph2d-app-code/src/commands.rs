@@ -15,6 +15,10 @@ pub const CMD_REPLACE: NodeId = hash_node_id("code_cmd_replace");
 pub const CMD_GOTO: NodeId = hash_node_id("code_cmd_goto");
 pub const CMD_FOLD_ALL: NodeId = hash_node_id("code_cmd_fold_all");
 pub const CMD_UNFOLD_ALL: NodeId = hash_node_id("code_cmd_unfold_all");
+/// Ctrl+/ comenta/descomenta; Ctrl+Shift+[ / ] dobra/desdobra o bloco do cursor (Onda A, item 3).
+pub const CMD_TOGGLE_COMMENT: NodeId = hash_node_id("code_cmd_toggle_comment");
+pub const CMD_FOLD: NodeId = hash_node_id("code_cmd_fold");
+pub const CMD_UNFOLD: NodeId = hash_node_id("code_cmd_unfold");
 /// O assistente de código parado: procura o programa outra vez e volta a ligá-lo (I2).
 pub const CMD_RESTART_ASSIST: NodeId = hash_node_id("code_cmd_restart_assistant");
 /// Renomear o nome no cursor (I10, F2), e a lista dos sítios dele (Shift+F12).
@@ -37,16 +41,19 @@ pub struct CommandState {
 
 /// `(id, chave do rótulo, menu)` — a tabela única, lida pelos menus, pela paleta e pelo despacho. Um
 /// comando de ligar/desligar tem aqui a chave do estado DESLIGADO (a do ligado, em [`commands`]).
-const TABLE: [(NodeId, &str, DocMenu); 12] = [
+const TABLE: [(NodeId, &str, DocMenu); 15] = [
     (CMD_SAVE, "code.cmd.save", DocMenu::File),
     (CMD_FIND, "code.cmd.find", DocMenu::Edit),
     (CMD_REPLACE, "code.cmd.replace", DocMenu::Edit),
     (CMD_GOTO, "code.cmd.goto", DocMenu::Edit),
+    (CMD_TOGGLE_COMMENT, "code.cmd.toggle_comment", DocMenu::Edit),
     (CMD_RENAME, "code.cmd.rename", DocMenu::Edit),
     (CMD_REFERENCES, "code.cmd.references", DocMenu::Edit),
     (CMD_TYPE_HINTS, "code.cmd.type_hints", DocMenu::Edit),
     (CMD_STRICT, "code.cmd.strict", DocMenu::Edit),
     (CMD_FORMAT_ON_SAVE, "code.cmd.format_on_save", DocMenu::Edit),
+    (CMD_FOLD, "code.cmd.fold", DocMenu::Edit),
+    (CMD_UNFOLD, "code.cmd.unfold", DocMenu::Edit),
     (CMD_FOLD_ALL, "code.cmd.fold_all", DocMenu::Edit),
     (CMD_UNFOLD_ALL, "code.cmd.unfold_all", DocMenu::Edit),
     (
@@ -118,6 +125,9 @@ impl CodeDoc {
             CMD_RENAME => self.start_rename(),
             CMD_REFERENCES => self.open_refs(),
             CMD_STRICT => self.toggle_strict(),
+            CMD_TOGGLE_COMMENT => self.toggle_comment(),
+            CMD_FOLD => self.fold_at_cursor(true),
+            CMD_UNFOLD => self.fold_at_cursor(false),
             CMD_FOLD_ALL => self.fold_all(true),
             CMD_UNFOLD_ALL => self.fold_all(false),
             _ => return false,

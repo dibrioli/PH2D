@@ -172,6 +172,50 @@ impl CodeDoc {
         lines
     }
 
+    /// Ctrl+/: comenta ou descomenta (`-- `) as linhas tocadas por todos os cursores — UM passo de
+    /// undo, o idioma do VS Code e do Godot. Todas as não-vazias já começam por `--` ⇒ tira o `--` e
+    /// um espaço; senão comenta-as todas na menor indentação delas. As vazias ficam como estão.
+    pub fn toggle_comment(&mut self) {
+        let t = self.buffer.text();
+        let lines: Vec<(usize, String)> = self
+            .touched_lines()
+            .into_iter()
+            .map(|l| (l, t.line_string(l)))
+            .filter(|(_, s)| !s.trim().is_empty())
+            .collect();
+        let indent = |s: &str| s.bytes().take_while(|b| *b == b' ' || *b == b'\t').count();
+        let commented =
+            !lines.is_empty() && lines.iter().all(|(_, s)| s[indent(s)..].starts_with("--"));
+        let min = lines.iter().map(|(_, s)| indent(s)).min().unwrap_or(0);
+        let changes: Vec<Change> = lines
+            .iter()
+            .map(|(l, s)| {
+                let b = t.byte_of_line(*l);
+                if commented {
+                    let at = b + indent(s);
+                    let n = if s[indent(s) + 2..].starts_with(' ') {
+                        3
+                    } else {
+                        2
+                    };
+                    Change {
+                        range: at..at + n,
+                        insert: String::new(),
+                    }
+                } else {
+                    Change {
+                        range: b + min..b + min,
+                        insert: "-- ".to_owned(),
+                    }
+                }
+            })
+            .collect();
+        if let Some(cs) = ChangeSet::new(changes) {
+            let edits = self.buffer.apply(cs, None, EditKind::Other);
+            self.edited(&edits, true);
+        }
+    }
+
     /// Tab / Shift+Tab: sem seleção o Tab escreve um nível; com seleção (ou `back`) indenta/recua
     /// cada linha tocada — UM passo de undo.
     pub fn indent(&mut self, back: bool) {

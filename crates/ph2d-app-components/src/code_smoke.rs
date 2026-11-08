@@ -37,6 +37,10 @@
 //! - **8** — as propriedades pelo nome (fase 8d): [`crate::code_smoke_props`].
 //! - **9** — arrastar nomes do Inspector: [`crate::code_smoke_inspector`].
 //! - **10** — um script que mexe no Kanban do projecto (`ph2d.kanban`): [`kanban`].
+//! - **11** — um problema, um lugar (Onda A, doc 13 §4.1–2): as três formas correm o
+//!   [`ONDA_A_LUAU`]: cada segundo cada uma imprime as moedas (o Console diz «Circle · 0:01»); aos 3 s
+//!   o `self.sped` pára as três e os Problems mostram UMA linha com os três nomes e «×3», fundida com
+//!   o aviso do texto da mesma linha.
 
 use ph2d_ecs::{Entity, Name, SimWorld, Transform};
 use ph2d_script::{LuauScript, ProjectScripts, ScriptEditRequests, ScriptId, ScriptValue};
@@ -44,7 +48,7 @@ use ph2d_vec_entities::entities::{VecEntityMap, sync};
 use ph2d_vec_scene::{Paint, Rgba8, VecPath, VecScene, ellipse, rectangle, regular_polygon, star};
 
 /// Quantas cenas este roteador serve — o `max_level` do roteador da família (conferido em teste).
-pub const CENAS: u32 = 10;
+pub const CENAS: u32 = 11;
 
 /// O nome do script das formas nos scripts do projeto.
 pub const BOB_NAME: &str = "bob.luau";
@@ -106,6 +110,35 @@ function update(self, dt)
   local s = math.sin(self.t * self.speed + self.base_x)
   ph2d.set(self.id, "y", self.base_y + s * self.ampiltude)
   -- 2) escreva aqui, numa linha nova
+end
+"#;
+
+/// O nome do script do nível 11.
+pub const ONDA_A_NAME: &str = "onda_a.luau";
+
+/// ⭐ **O script do nível 11** — o `sped` é de propósito (comentários em inglês: o app é só inglês).
+pub const ONDA_A_LUAU: &str = r#"-- onda_a.luau: Circle, Star and Hexagon all run THIS script.
+-- Every second each one prints its coins (open Console: who said it, and when).
+-- After 3 seconds the typo "sped" below stops all three:
+-- Problems shows ONE row that names the three shapes.
+ph2d.property("speed", 2.0, { min = 0, max = 10 })
+
+function init(self)
+  self.t = 0
+  self.coins = 0
+  self.next = 1
+end
+
+function update(self, dt)
+  self.t = self.t + dt
+  if self.t >= self.next then
+    self.next = self.next + 1
+    self.coins = self.coins + 1
+    print("coins: " .. self.coins)
+  end
+  if self.t > 3 then
+    ph2d.set(self.id, "x", self.t * self.sped) -- the typo: "sped" should be "speed"
+  end
 end
 "#;
 
@@ -307,6 +340,7 @@ pub fn monta_em(
             3 => lib.insert(ONDA_NAME, ONDA_LUAU),
             4 => lib.insert(PROBLEMAS_NAME, PROBLEMAS_LUAU),
             5 => lib.insert(AJUDA_NAME, AJUDA_LUAU),
+            11 => lib.insert(ONDA_A_NAME, ONDA_A_LUAU),
             _ => lib.insert(BOB_NAME, BOB_LUAU),
         };
         let broken = (nivel == 2).then(|| lib.insert(BROKEN_NAME, BROKEN_LUAU));
@@ -347,7 +381,7 @@ pub fn monta_em(
         }
         out.push(e);
     }
-    if let Some(aberto) = broken.or((3..=5).contains(&nivel).then_some(bob)) {
+    if let Some(aberto) = broken.or(((3..=5).contains(&nivel) || nivel == 11).then_some(bob)) {
         sim.world_mut()
             .get_resource_or_init::<ScriptEditRequests>()
             .0
@@ -565,6 +599,16 @@ pub fn montar(cx: crate::scene_ctx::SceneCtx<'_>, nivel: u32) -> Option<u64> {
             "[code-smoke] =7 arrastar para o código: o círculo «Ship» corre o arrastar.luau, já aberto \
              numa aba; «Door» e «Gold Coin» não têm script. Ctrl + arrastar a «Door» da Hierarquia para \
              a linha vazia do update: a porta sobe e desce (Ctrl+S, aba «Cena»)."
+        );
+        return None;
+    }
+    if nivel == 11 {
+        println!(
+            "[code-smoke] =11 {} formas: o círculo, a estrela e o hexágono correm o onda_a.luau, já \
+             aberto numa aba. Play: cada segundo o Console mostra «coins: N» com «Circle · 0:01»; aos \
+             3 s as três param e os Problems abrem com UMA linha: «… — on Circle, Star, Hexagon · ×3 \
+             in Play».",
+            formas.len()
         );
         return None;
     }

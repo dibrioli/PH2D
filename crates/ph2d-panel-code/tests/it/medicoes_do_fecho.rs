@@ -25,6 +25,7 @@ impl ConsoleSource for Linhas {
             text: &self.0[i],
             tone: Tone::Plain,
             line: None,
+            tag: None,
         }
     }
 }
@@ -111,7 +112,6 @@ fn medicoes_do_fecho() {
                     open: true,
                     tab: ph2d_panel_code::BandTab::Console,
                     console: &consoles[i],
-                    console_errors: 0,
                     problem_count: 0,
                     problems: &[],
                     current: None,

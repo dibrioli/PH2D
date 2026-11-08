@@ -179,6 +179,12 @@ impl CodeView {
         self.counter
     }
 
+    /// O que o leitor de ecrã diz do contador no último quadro («Errors: 1, Warnings: 0»).
+    #[must_use]
+    pub fn counter_label(&self) -> &str {
+        &self.counter_label
+    }
+
     /// `(x, y)` cai no contador de problemas da barra (o clique abre a lista).
     #[must_use]
     pub fn counter_contains(&self, x: f32, y: f32) -> bool {

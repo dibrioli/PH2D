@@ -37,7 +37,7 @@ struct Derived {
     saved_generation: u64,
 }
 
-type ProblemsKey = (u64, u64, bool, u64, u64, u64);
+type ProblemsKey = (u64, u64, bool, u64, u64, u64, u64);
 
 pub(crate) struct CodeDoc {
     pub script: ScriptId,
@@ -60,6 +60,9 @@ pub(crate) struct CodeDoc {
     pub console_view: ConsoleView,
     /// O diagnóstico do Luau para o texto SALVO (`None` = compilou, ou ainda não foi lido).
     pub saved_diag: Option<ScriptDiagnostic>,
+    /// ⭐ Onda A: os problemas do Play deste script (cópia do [`crate::console::Store`], que vive
+    /// com a aba fechada) e a geração dela — a lista funde-os com os do texto.
+    pub(crate) play: (u64, std::sync::Arc<[crate::console::PlayProblem]>),
     /// Onde ele mora no buffer: o byte do início da linha (segue as edições) e se era um erro de
     /// SINTAXE (esse o tree-sitter mostra vivo; os outros — uma declaração `ph2d.property` — ficam
     /// na calha enquanto há ●).
@@ -147,6 +150,7 @@ impl CodeDoc {
             find_view: FindBarView::default(),
             console_view: ConsoleView::default(),
             saved_diag: None,
+            play: (0, std::sync::Arc::from([])),
             diag_anchor: None,
             assist: crate::problems::Held::default(),
             complete: crate::complete::Completer::default(),
@@ -238,7 +242,7 @@ impl CodeDoc {
         self.find.follow(&self.buffer, edits);
     }
 
-    fn derive(&mut self) {
+    pub(crate) fn derive(&mut self) {
         let key = (self.buffer.revision(), self.syntax.generation());
         if self.derived.key == Some(key) {
             return;
@@ -260,6 +264,7 @@ impl CodeDoc {
             self.assist.generation,
             self.lint.generation,
             self.derived.saved_generation,
+            self.play.0,
         );
         if let Some((k, p)) = &self.derived.problems
             && *k == key
@@ -284,7 +289,16 @@ impl CodeDoc {
         let mut out = problems(t, &self.derived.errors, saved, &self.assist);
         out.extend(self.lint.problems(t));
         out.sort_by_key(|p| (p.line, p.culprit.as_ref().map(|c| c.start)));
-        out
+        crate::play_problems::merge(out, &self.play.1)
+    }
+
+    /// Os problemas do Play guardados para este script (`generation` muda quando eles mudam).
+    pub(crate) fn set_play(&mut self, store: Option<&crate::console::Store>) {
+        let generation = store.map_or(0, |s| s.play_generation);
+        if generation != self.play.0 {
+            let list: Vec<_> = store.map(|s| s.play().to_vec()).unwrap_or_default();
+            self.play = (generation, list.into());
+        }
     }
 
     /// O diagnóstico do Luau para o texto salvo (lido da cena em todo quadro): ancora-o quando muda.
@@ -565,7 +579,6 @@ impl CodeDoc {
             open: console.open,
             tab: console.tab,
             console,
-            console_errors: console.errors(),
             problem_count: problems.len(),
             problems: &rows,
             current,

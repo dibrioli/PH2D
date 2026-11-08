@@ -83,7 +83,10 @@ fn o_assistente_so_aparece_quando_nao_esta_pronto() {
         // Sem o programa, a barra diz o que se perde (crítica 08/11: «not installed» não dizia).
         if a == Assist::Missing {
             for perdido in ["suggestions", "help", "rename"] {
-                assert!(texto.contains(perdido), "{a:?} não diz «{perdido}»: {texto}");
+                assert!(
+                    texto.contains(perdido),
+                    "{a:?} não diz «{perdido}»: {texto}"
+                );
             }
             assert!(!texto.contains("not installed"), "{texto}");
         }

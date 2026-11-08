@@ -40,6 +40,7 @@ mod nav;
 mod note;
 mod object_rename;
 mod places;
+mod play_problems;
 mod pointer;
 mod problem_list;
 pub mod problems;

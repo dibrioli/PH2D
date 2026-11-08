@@ -106,9 +106,12 @@ pub fn frame(
     );
     docs.drafts(world, host.as_deref());
     if let Some(h) = host {
-        hear(docs, h);
+        hear(docs, h, world);
     }
     crate::kanban::hear(docs);
+    for d in &mut docs.docs {
+        d.set_play(docs.consoles.get(&d.script));
+    }
     if let Some(lib) = world.get_resource::<ProjectScripts>() {
         docs.sync_intel(lib);
     }
@@ -131,6 +134,14 @@ pub fn frame(
     {
         hero.gizmo.replace_selection(Some(e.to_bits()));
     }
+}
+
+/// O nome de um objecto como a Hierarchy o mostra (sem `Name`, «Object N»).
+fn object_name(world: &ph2d_ecs::World, e: ph2d_ecs::Entity) -> String {
+    world.get::<ph2d_ecs::Name>(e).map_or_else(
+        || ph2d_i18n::tr_with("code.console.object", &[("id", &e.index())]),
+        |n| n.as_str().to_owned(),
+    )
 }
 
 /// A biblioteca manda no que a aba não mexeu: um script que sumiu (outro projeto) fecha a aba; um
@@ -230,10 +241,22 @@ fn save(
 }
 
 /// O que a cena disse desde o último quadro: o selo de cada recarga, o console, o diagnóstico.
-fn hear(docs: &mut CodeDocs, h: &mut ScriptHost) {
+///
+/// ⭐ Onda A: os problemas do Play de um script saem quando ele recarrega bem (o texto novo é outro)
+/// e quando a corrida acaba (o Stop e o rebobinar mudam a [`ScriptHost::play_run`]).
+fn hear(docs: &mut CodeDocs, h: &mut ScriptHost, world: &ph2d_ecs::World) {
+    let run = h.play_run();
+    for s in docs.consoles.values_mut() {
+        s.follow_run(run);
+    }
     for r in h.drain_reloads() {
         let badge = match r.outcome {
-            ReloadOutcome::Reloaded => Badge::Reloaded { objects: r.objects },
+            ReloadOutcome::Reloaded => {
+                if let Some(s) = docs.consoles.get_mut(&r.script) {
+                    s.clear_play();
+                }
+                Badge::Reloaded { objects: r.objects }
+            }
             ReloadOutcome::Refused(d) => Badge::Refused { line: d.line },
         };
         if let Some(d) = docs.docs.iter_mut().find(|d| d.script == r.script) {
@@ -244,7 +267,10 @@ fn hear(docs: &mut CodeDocs, h: &mut ScriptHost) {
         if l.script == ScriptId::NONE {
             continue;
         }
-        if docs.consoles.entry(l.script).or_default().push(&l)
+        let who = l.entity.map(|e| object_name(world, e));
+        let store = docs.consoles.entry(l.script).or_default();
+        store.follow_run(run);
+        if store.push(&l, who.as_deref())
             && let Some(d) = docs.docs.iter_mut().find(|d| d.script == l.script)
         {
             d.console_view.follow();

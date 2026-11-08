@@ -232,6 +232,7 @@ impl ScriptHost {
         let r = self
             .scene
             .tick(self.runtime.lua(), &self.deadline, sim, dt, doors);
+        self.console.advance(dt);
         self.devices.edges_seen();
         self.forget_the_dead(&r);
         r
@@ -289,6 +290,7 @@ impl ScriptHost {
     pub fn scene_rewind(&mut self) -> usize {
         self.state_table.clear_all();
         self.devices.forget_edges();
+        self.console.rewind();
         self.scene.rewind()
     }
 
@@ -365,6 +367,12 @@ impl ScriptHost {
     /// ⭐ As linhas do console por ler, da mais antiga à mais nova ([`crate::CONSOLE_LINES_MAX`]).
     pub fn drain_console(&self) -> Vec<ConsoleLine> {
         self.console.drain()
+    }
+
+    /// A corrida do Play — ver [`Console::run`].
+    #[must_use]
+    pub fn play_run(&self) -> u64 {
+        self.console.run()
     }
 
     /// Quantas linhas do console o tecto deitou fora (desde o arranque).

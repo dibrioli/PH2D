@@ -80,6 +80,15 @@ Se a linha irmã também gastou folga da shell, **a soma estoura**: cura = MOVER
 - **Foundational:** APAGADA a porta `paint_fields_row_com_fim` do `ph2d-editor-core` (`property_row.rs` volta ao byte de antes de `03d9ea5f17`; `property_row/casas.rs` sem o `fim_w`); o gate `architecture_every_editable_field_is_a_channel` ganhou as isenções `fila_da_matriz`/`chip` (nenhuma catraca de dívida subiu). Nenhuma catraca movida.
 - Detalhe, testes, mutações e fotos: ficha, «Fecho da linha» → «Emendas 2 e 3».
 
+### 5.3 Emenda 4 depois do smoke (dono 08/11)
+
+*«faltaram os botões «Rename layers…» e «Open in tab…» no Ray»* · *«A cor do ray deve ser a mesma de layer como os outros objetos»*
+
+- **Ray Sensor:** «Rename layers…» · «Open in tab…» abaixo de Layer, acima de «Sees» (só cartões). Ids novos `INSP_RAY_LAYER_RENAME`/`_RENAME_DONE`/`_RENAMING`, `INSP_RAY_EDIT_MATRIX` (o mesmo id nos dois cartões acenderia os dois); os campos do renomear são os do collider, um cartão de cada vez.
+- **Canvas:** o raio do `RaySensor` na cor da camada com a sombra do contorno; estado na opacidade. Sondas do player sem camada: cor fixa.
+- **Foundational (aditivo):** `ProbeMark.layer: Option<u8>` + `na_camada` (`ph2d-physics-ecs`); `Tinta::Sonda` + `SONDA_PX` (`ph2d-panel-physics::tinta_canvas`). Quem constrói `ProbeMark { .. }` à mão noutra linha precisa de `layer: None`.
+- Detalhe, testes, mutações e fotos: ficha, «Fecho da linha» → «Emenda 4».
+
 ## 6. Auditoria (duas lentes) do fecho: achado · cura
 
 | Achado | Cura |
@@ -117,7 +126,8 @@ Se a linha irmã também gastou folga da shell, **a soma estoura**: cura = MOVER
 3. **Remove.** `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional02 && PH2D_PHYSICS_SMOKE=120 PH2D_PHYSICS_SMOKE_ABA=remove_lista ./target/smoke/ph2d-host-desktop` (com `=remove` a pergunta fica fechada). Abre a aba **Collision Layers** com a pergunta do **Remove**: «Move them to» é uma lista que abre ao clicar, com ✓ na escolhida; o texto «Move them to» lê-se bem. **Move and remove** não deixa mover para a camada 0 nem para a própria. Errado: lista sempre aberta, sem ✓, ou aceita a própria camada.
 4. **Face clássica.** `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional02 && PH2D_CARDS=0 PH2D_PHYSICS_SMOKE=120 ./target/smoke/ph2d-host-desktop`. Selecione o Crate: a **Layer** é uma lista com nomes (0–7 e as visíveis até 31); com o Inspector estreito o nome fica por cima do chip. Errado: só números, ou nome cortado.
 5. **Ray Sensor.** `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional02 && PH2D_RAY_SMOKE=1 ./target/smoke/ph2d-host-desktop`. Selecione o Ray Sensor: **Layer** é uma lista com os nomes das camadas (como a do collider); debaixo, **Sees** com um quadro por camada e «+ Add layer». Escolha outra camada na lista: o contorno do campo muda de cor; clique num quadro de «Sees»: liga/desliga o que o raio vê (o mesmo que o «Collides with» do collider). Errado: um campo de número, ou o quadro não muda nada.
-6. Diga o que deu errado em cada passo.
+6. **Botões e cor do Ray.** `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional02 && PH2D_RAY_SMOKE=1 ./target/smoke/ph2d-host-desktop`. Selecione «Olho que ve»: logo abaixo de **Layer** estão **Rename layers…** e **Open in tab…**, e só depois **Sees**. **Open in tab…** abre a aba Collision Layers na camada do raio. **Rename layers…** mostra os nomes de todas as camadas com o da camada do raio já selecionado; escreva `Eyes`, Enter, **Done**: o nome muda em todo o lado; Ctrl+Z volta num passo. No canvas, a linha do raio tem a cor da camada dele (a mesma do contorno do campo Layer) com sombra escura; troque a camada na lista e a cor da linha muda. Errado: botões ausentes ou abaixo de «Sees», a aba abre noutra camada, o raio azul-claro fixo.
+7. Diga o que deu errado em cada passo.
 
 
 

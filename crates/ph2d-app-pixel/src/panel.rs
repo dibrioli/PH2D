@@ -265,7 +265,7 @@ pub fn frame(
             ..app.tocar
         },
         onion: app.onion_on,
-        onion_tint: app.onion.tint,
+        onion_tint: doc.map_or(app.onion.tint, |d| d.sprite.prefs().onion.tint),
         editing: palette.is_some(),
         tool: app.tool,
         fg: app.fg,

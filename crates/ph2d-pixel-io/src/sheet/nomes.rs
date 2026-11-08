@@ -65,5 +65,18 @@ pub(super) fn padrao(
         f.push_str(" {frame}");
     }
     f.push_str(".{extension}");
-    o.nome.clone().unwrap_or(f)
+    let Some(dele) = o.nome.clone() else { return f };
+    if !com_slice || dele.contains("{slice}") {
+        return dele;
+    }
+    // Sem `{slice}` todas as slices teriam um nome: entra onde o por omissão o põe, depois do
+    // `{title}`; sem ele, antes da extensão; sem ela, no fim.
+    let at = dele
+        .find("{title}")
+        .map(|i| i + "{title}".len())
+        .or_else(|| dele.rfind(".{extension}"))
+        .unwrap_or(dele.len());
+    let mut dele = dele;
+    dele.insert_str(at, " [{slice}]");
+    dele
 }

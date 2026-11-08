@@ -101,7 +101,7 @@ Ver §9: a slice segue a arte (§4.4); nome na tela, marcas na linha do tempo, r
 Testadas por propriedade, sobre fixturas que separam as hipóteses:
 
 - `Split slices` e `Area: Slice`: cada quadro corta **na key desse quadro**; quadro escondido não sai; recorte fora do canvas corta na interseção, e a célula nula não sai.
-- Nome do item: `{title} ({slice}) {frame}`, com o mesmo padrão editável da P9. Gémeos ganham sufixo numérico, nunca se sobrepõem.
+- Nome do item: `{title} [{slice}] {frame}` (os parênteses já são do `({layer})`, e as duas partições juntam-se: `{title} ({layer}) [{slice}] {frame}`; o Aseprite não tem nome medido nem documentado além de `part-{slice}.png`, F1), com o mesmo padrão editável da P9. Padrão do artista sem `{slice}` ganha ` [{slice}]` depois do `{title}` (sem ele, antes de `.{extension}`; sem ela, no fim): nunca colapsa as slices num nome. Gémeos ganham o primeiro ` N` (de 2) livre contra o conjunto TODO dos nomes (`a`, `a`, `a 2` → `a`, `a 3`, `a 2`), nunca se sobrepõem (`split_slice_names_never_collide_even_with_a_custom_pattern_without_slice`).
 - `meta.slices` continua em quadros absolutos e coordenadas do sprite, porque foi o medido.
 
 ## 5. O desenho técnico

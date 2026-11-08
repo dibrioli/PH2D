@@ -1,5 +1,7 @@
 //! As slices na folha: `meta.slices` e o corte por slice (P11).
 
+use std::collections::BTreeSet;
+
 use ph2d_pixel_core::{Rect, SliceId, Sprite};
 
 /// `meta.slices`: na ordem inversa à do documento e em quadros absolutos, com qualquer recorte da
@@ -31,20 +33,21 @@ fn rect_json(r: Rect) -> (i32, i32, u32, u32) {
     (r.x, r.y, r.w, r.h)
 }
 
-/// O nome de cada slice na saída. Sem comparação medida (o Trial não exporta imagem): os gémeos levam
-/// um número, senão duas peças teriam a mesma chave no JSON.
+/// O nome de cada slice na saída. Sem comparação medida (o Trial não exporta imagem): o gémeo leva
+/// o primeiro ` N` (de 2) livre contra TODOS os nomes, senão duas peças teriam a mesma chave no JSON.
 pub(super) fn rotulos(s: &Sprite) -> Vec<(SliceId, String)> {
-    let mut vistos: std::collections::BTreeMap<&str, u32> = std::collections::BTreeMap::new();
+    let reservados: BTreeSet<&str> = s.slices().iter().map(|c| c.name.as_str()).collect();
+    let mut dados: BTreeSet<String> = BTreeSet::new();
     s.slices()
         .iter()
         .map(|c| {
-            let n = vistos.entry(c.name.as_str()).or_insert(0);
-            *n += 1;
-            let rotulo = if *n == 1 {
-                c.name.clone()
-            } else {
-                format!("{} {n}", c.name)
-            };
+            // O próprio nome só choca com um já dado; um sufixado também com o de outra slice.
+            let (mut rotulo, mut n) = (c.name.clone(), 1);
+            while dados.contains(&rotulo) || (n > 1 && reservados.contains(rotulo.as_str())) {
+                n += 1;
+                rotulo = format!("{} {n}", c.name);
+            }
+            dados.insert(rotulo.clone());
             (c.id, rotulo)
         })
         .collect()

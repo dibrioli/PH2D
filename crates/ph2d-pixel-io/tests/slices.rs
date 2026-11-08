@@ -318,3 +318,45 @@ fn split_slices_without_slices_is_the_plain_sheet() {
     };
     assert_eq!(montar(&s, &o, "x", "ase").entradas.len(), 1);
 }
+
+/// Os nomes partidos são únicos contra o conjunto TODO (`a`, `a`, `a 2` não repete `a 2`), e um
+/// padrão do artista sem `{slice}` ganha ` [{slice}]` depois do `{title}`, como o por omissão.
+/// *Mutação: tirar o laço até livre, ou a inserção do `{slice}`.*
+#[test]
+fn split_slice_names_never_collide_even_with_a_custom_pattern_without_slice() {
+    use ph2d_pixel_core::{NewSprite, Rect, apply, slice};
+    use ph2d_pixel_io::sheet::{OpcoesFolha, montar};
+    let mut s = Sprite::new(NewSprite {
+        width: 8,
+        height: 8,
+        ..NewSprite::default()
+    })
+    .unwrap();
+    for nome in ["a", "a", "a 2"] {
+        let (op, id) = slice::create(&mut s, 0, Rect::new(0, 0, 2, 2)).unwrap();
+        apply(&mut s, op).unwrap();
+        let c = s.slice(id).unwrap();
+        let (cor, data) = (c.color.unwrap(), c.data.clone());
+        let op = slice::set_info(&s, id, nome, cor, &data).unwrap();
+        apply(&mut s, op).unwrap();
+    }
+    let nomes = |o: &OpcoesFolha| -> Vec<String> {
+        montar(&s, o, "x", "ase")
+            .entradas
+            .iter()
+            .map(|e| e.nome.clone())
+            .collect()
+    };
+    let mut o = OpcoesFolha {
+        split_slices: true,
+        ..OpcoesFolha::default()
+    };
+    assert_eq!(nomes(&o), ["x [a].ase", "x [a 3].ase", "x [a 2].ase"]);
+    o.nome = Some("{title}-{frame}.{extension}".into());
+    assert_eq!(nomes(&o), ["x [a]-0.ase", "x [a 3]-0.ase", "x [a 2]-0.ase"]);
+    o.nome = Some("sprite.png".into());
+    assert_eq!(
+        nomes(&o),
+        ["sprite.png [a]", "sprite.png [a 3]", "sprite.png [a 2]"]
+    );
+}

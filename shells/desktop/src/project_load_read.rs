@@ -196,6 +196,7 @@ impl crate::App {
             let n = reg.desvira_caixas_do_mundo(&mut file.state.world);
             eprintln!("[proj] v{ver}: {n} pilha(s) com o Follow Value sobre caixas virado");
         }
+        migra_formas(&mut file, ver);
         Some((file, migrated_counter))
     }
 }
@@ -217,6 +218,26 @@ fn falta_no_fim(ver: u32) -> &'static [u8] {
         s::PROJECT_SCHEMA_SEM_FORMATO_DO_JOGO,
     ];
     &[0; 7][..ultimos_sem.iter().filter(|&&d| ver <= d).count()]
+}
+
+/// ⭐ Até ao `219` a forma de colisão morava no corpo (GEF02 B2): passa a filha, e as trilhas dela seguem-na.
+fn migra_formas(file: &mut ProjectFile, ver: u32) {
+    if ver > crate::project_schema::PROJECT_SCHEMA_FORMA_NO_CORPO {
+        return;
+    }
+    let reg = crate::init::build_component_registry();
+    let (w, c) = (&mut file.state.world, &mut file.stable_id_counter);
+    match ph2d_physics_ecs::migra_formas_no_retrato(w, c, &reg) {
+        Ok(m) => {
+            let t = ph2d_timeline_persist::realveja_trilhas_da_forma(&mut file.timeline, &m.pares);
+            eprintln!(
+                "[proj] v{ver}: {} forma(s) a filha, {} recusada(s); trilhas {t:?}",
+                m.pares.len(),
+                m.recusados
+            );
+        }
+        Err(e) => eprintln!("[proj] v{ver}: formas por migrar: {e}"),
+    }
 }
 
 /// Os bytes lidos com o tipo VIVO (`None` = ilegível, dito no terminal).

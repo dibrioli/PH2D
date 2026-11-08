@@ -558,6 +558,8 @@ fn an_unreadable_animation_refuses_the_whole_file_and_leaves_the_session_alone()
 // scripts (CodeEditor T7, v190) · as marcas do artista (Macros W9, v192) · os Pixel Sprites (v209).
 #[path = "project_boards_tests.rs"]
 mod boards;
+#[path = "project_formas_tests.rs"]
+mod formas;
 #[path = "project_layer_names_tests.rs"]
 mod layer_names;
 #[path = "project_macro_aplicada_tests.rs"]

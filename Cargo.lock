@@ -7506,6 +7506,7 @@ dependencies = [
  "ph2d-panel-wet-tuning",
  "ph2d-pen",
  "ph2d-physics-ecs",
+ "ph2d-physics-scene",
  "ph2d-pick-order",
  "ph2d-poly2d",
  "ph2d-preview-drive",

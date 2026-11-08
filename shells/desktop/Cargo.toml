@@ -487,6 +487,8 @@ ph2d-app-motion = { path = "../../crates/ph2d-app-motion", features = ["test-sup
 # porque atravessam a porta de produção `component_attach::attach_by_name`, e o
 # `#[cfg(test)]` da crate é falso quando é ELA a ser compilada como dependência.
 ph2d-app-physics = { path = "../../crates/ph2d-app-physics", features = ["test-support"] }
+# GEF02 B2: a cena 120 gravada a 219 (`project_formas_tests`).
+ph2d-physics-scene = { path = "../../crates/ph2d-physics-scene" }
 # ⚠️ §2.5 — DUAS costuras de teste ficam nesta shell porque o sujeito delas é meio
 # chrome de famílias que ainda não saíram (`render_loop/inspector_presence_probe`
 # e `hero_intents/texture_rebind`), e o arnês que elas montam mudou-se para a

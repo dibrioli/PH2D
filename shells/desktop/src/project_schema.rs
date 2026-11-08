@@ -420,7 +420,16 @@
 ///
 /// `PhysicsSettings.layer_matrix` passa de `[u8; 8]` a `[u32; 32]`, no MEIO do fio; os `<= 218` leem-se sob `LayerRowsV218`
 /// (`LayerMatrix::rows_from_legacy`). `LayerNames` v2 (32 nomes + mostradas); os `<= 218` mostram as oito. Gate: `project_layer_names_tests`.
-pub(crate) const PROJECT_SCHEMA: u32 = 219;
+///
+/// # `219 → 220` — **a forma de colisão é um objeto filho** (`line/GameEngineFuncional02`, B2, 2026-11-08)
+///
+/// Migração de CONTEÚDO, a forma do ficheiro é a mesma: num `<= 219` cada corpo ganha a filha «Collision Shape» com o
+/// `Collider` e o lado-forma (`ph2d_physics_ecs::migra_formas_no_retrato`) e as trilhas dela seguem-na. Gate:
+/// `project_formas_tests`. Registos: `0`. ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 220;
+
+/// O último degrau com a forma de colisão no próprio corpo.
+pub(crate) const PROJECT_SCHEMA_FORMA_NO_CORPO: u32 = 219;
 
 /// O último degrau da matriz de oito camadas.
 pub(crate) const PROJECT_SCHEMA_MATRIZ_DE_OITO: u32 = 218;

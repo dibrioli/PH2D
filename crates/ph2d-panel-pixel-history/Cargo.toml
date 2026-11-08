@@ -1,0 +1,30 @@
+[package]
+name = "ph2d-panel-pixel-history"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# A janela UNDO HISTORY do Pixel Art (P12 H): a lista dos passos com nome; clicar = ir até lá. O painel
+# não vê a família: lê uma vista e devolve pedidos pelo canal.
+[dependencies]
+ph2d-a11y          = { path = "../ph2d-a11y" }
+ph2d-editor-core   = { path = "../ph2d-editor-core" }
+ph2d-i18n          = { path = "../ph2d-i18n" }
+ph2d-pixel-core    = { path = "../ph2d-pixel-core" }
+ph2d-tokens        = { path = "../ph2d-tokens" }
+ph2d-tool-registry = { path = "../ph2d-tool-registry" }
+
+[[test]]
+name = "it"
+path = "tests/it/main.rs"
+
+[dev-dependencies]
+ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
+
+[lints]
+workspace = true

@@ -1,5 +1,8 @@
 //! **As palavras da janela SLICES do PIXEL ART, P11b** — os nomes do Aseprite, em Plain English.
 
+/// As da janela UNDO HISTORY (P12 H), outra janela flutuante do Pixel.
+mod history;
+
 /// A tradução de uma chave daqui, ou `None`.
 pub(crate) fn tr(key: &str) -> Option<&'static str> {
     Some(match key {
@@ -29,6 +32,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.slices.menu_duplicate" => "Duplicate Slice",
         "panel.pixel.slices.menu_delete" => "Delete Slice",
         "panel.pixel.slices.menu_remove_key" => "Remove Change on This Frame",
-        _ => return None,
+        _ => return history::tr(key),
     })
 }

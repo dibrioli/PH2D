@@ -10134,6 +10134,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-panel-pixel-history"
+version = "0.0.0"
+dependencies = [
+ "ph2d-a11y",
+ "ph2d-editor-core",
+ "ph2d-i18n",
+ "ph2d-pixel-core",
+ "ph2d-tokens",
+ "ph2d-tool-registry",
+ "ph2d-ui-testkit",
+]
+
+[[package]]
 name = "ph2d-panel-pixel-preview"
 version = "0.0.0"
 dependencies = [

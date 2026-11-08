@@ -133,6 +133,37 @@ impl AnimDoc {
     }
 }
 
+impl AnimDoc {
+    /// ⭐ **Os cartões em voo**: cada célula escolhida desce da folha até o seu lugar na tira, por cima de tudo, com a
+    /// moldura de acento da escolha.
+    pub(super) fn paint_flight(
+        &self,
+        scene: &mut VectorScene,
+        text: &mut TextSystem,
+        theme: Theme,
+        frames: &[ph2d_editor_core::AnimFrameRef],
+    ) {
+        let Some(f) = &self.flight else {
+            return;
+        };
+        let radius = Spacing::Xs.px();
+        let accent = resolve(ColorToken::Accent, theme);
+        for (j, from) in f.from.iter().enumerate() {
+            let Some((slot, _)) = self.layout.frames.get(f.at + j) else {
+                continue;
+            };
+            let full = Rect::new(slot.x, slot.y, self.layout.strip_thumb_w(), slot.h);
+            let card = super::doc::flight::between(*from, full, f.t());
+            fill_rounded_rect(scene, card, radius, resolve(ColorToken::Bg2, theme));
+            let sheets = &self.snap.sheets;
+            self.sheet_ui
+                .paint_frame(scene, text, theme, sheets, frames, f.at + j, card);
+            let w = StrokeToken::Thick.px();
+            ph2d_editor_core::paint::stroke_rounded_rect(scene, card, radius, w, accent);
+        }
+    }
+}
+
 #[cfg(test)]
 #[path = "strip_bar_tests.rs"]
 mod tests;

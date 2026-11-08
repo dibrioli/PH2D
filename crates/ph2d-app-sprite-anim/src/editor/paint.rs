@@ -235,6 +235,7 @@ pub fn paint_doc(
     doc.painted = paint_strip(doc, &l, &frames, info.as_ref(), scene, text, theme);
     doc.paint_bar(scene, theme);
     doc.paint_playhead(scene, text, theme);
+    doc.paint_flight(scene, text, theme, &frames);
     doc.painted_marks = (0..l.frames.len())
         .filter(|i| doc.marker_at(*i).is_some())
         .collect();
@@ -464,6 +465,14 @@ fn paint_list(
             continue;
         }
         if doc.sheet_ui.paint_alert_row(scene, text, theme, *r, i, row) {
+            // O fundo de alerta tapa o da escolha (dono 08/11): a escolhida ganha a moldura de acento.
+            if i == doc.selected {
+                let (rad, w) = (
+                    frame_radius(theme, m::FIELD_RADIUS),
+                    StrokeToken::Thick.px(),
+                );
+                stroke_rounded_rect(scene, *r, rad, w, tom(ColorToken::Accent, theme));
+            }
             continue;
         }
         let playing = info.is_some_and(|x| x.playing && x.current == row.name);
@@ -559,6 +568,9 @@ fn paint_strip(
         f64::from(l.strip.y + l.strip.h),
     ));
     for (i, (thumb, close)) in l.frames.iter().take(frames.len()).enumerate() {
+        if doc.flying(i) {
+            continue; // o cartão em voo é ele
+        }
         fill_rounded_rect(
             scene,
             *thumb,

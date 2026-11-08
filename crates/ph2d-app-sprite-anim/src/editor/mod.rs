@@ -76,6 +76,8 @@ pub fn propose_after_drop(sim: &mut SimWorld, bits: u64, rgba: &[u8], w: u32, h:
 pub struct AnimDocs {
     pub docs: Vec<AnimDoc>,
     focus: Option<u64>,
+    /// O relógio do quadro anterior (o voo da inserção anda a diferença).
+    clock_ns: Option<u128>,
 }
 
 impl AnimDocs {
@@ -164,8 +166,8 @@ impl DocumentSurface for AnimDocs {
         if !(x >= s.x && x < s.x + s.w && y >= s.y && y < b.y + b.h) {
             return false;
         }
-        let n = d.layout.frames.len() as f32;
-        let max = (n * d.layout.strip_pitch() - ph2d_tokens::control_gap_px() - s.w).max(0.0);
+        // A mesma largura que a disposição mediu (com o vão da marca): a roda chega ao último quadro.
+        let max = (d.layout.strip_content - s.w).max(0.0);
         d.strip_scroll = (d.strip_scroll - dy).clamp(0.0, max);
         true
     }
@@ -223,6 +225,11 @@ impl DocumentSurface for AnimDocs {
 
     fn take_focus_request(&mut self) -> Option<u64> {
         self.focus.take()
+    }
+
+    /// Um voo de inserção em curso pede quadros até assentar.
+    fn wants_frame(&self) -> bool {
+        self.docs.iter().any(|d| d.flight.is_some())
     }
 
     fn as_any(&self) -> &dyn std::any::Any {
@@ -287,6 +294,10 @@ pub fn frame(
         .unwrap_or_default();
     let names: Vec<(u64, String)> = wanted.iter().map(|&b| (b, name_of(sim, b))).collect();
     let selection = hero.gizmo.selection;
+    let (now, law) = (
+        hero.store.clock_ns(),
+        hero.motion.law(ph2d_editor_core::motion::Role::Travel),
+    );
     let active = hero.documents.surface_active().filter(|t| {
         let f = hero.documents.surfaces_mut().get(t.family);
         f.is_some_and(|f| f.as_any().is::<AnimDocs>())
@@ -294,6 +305,12 @@ pub fn frame(
     let Some(docs) = hero.documents.surfaces_mut().find_mut::<AnimDocs>() else {
         return;
     };
+    // O voo anda o tempo real entre dois quadros (preso a um décimo: uma pausa longa não o teletransporta).
+    let dt = docs.clock_ns.map_or(0, |t| now.saturating_sub(t)) as f64 * 1e-9; // LITERAL-PX-OK: ns → s
+    docs.clock_ns = Some(now);
+    for d in &mut docs.docs {
+        d.tick(dt.min(0.1), law); // LITERAL-PX-OK: segundos
+    }
     for (b, n) in names {
         docs.open(b, n);
     }

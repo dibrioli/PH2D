@@ -116,12 +116,10 @@ impl Default for Layout {
 }
 
 impl Layout {
-    /// O passo de um quadro na faixa (miniatura mais o intervalo); `0` sem quadros.
+    /// A largura de uma miniatura aberta (a do quadro que não voa; `0` sem quadros).
     #[must_use]
-    pub fn strip_pitch(&self) -> f32 {
-        self.frames
-            .first()
-            .map_or(0.0, |f| f.0.w + ph2d_tokens::control_gap_px())
+    pub fn strip_thumb_w(&self) -> f32 {
+        self.frames.iter().map(|f| f.0.w).fold(0.0, f32::max)
     }
 
     /// A pega do scrub de um campo com letra: a célula da letra, como no cartão.
@@ -204,6 +202,7 @@ impl AnimDoc {
         ]);
         let title_w = fit(&[&self.frames_title_text()]);
         let total_w = fit(&[&self.total_text()]);
+        self.follow_flight();
         let n_frames = self.shown_frames().len();
 
         let mut l = Layout {
@@ -398,21 +397,46 @@ impl AnimDoc {
         let fill =
             (l.strip.w - slot - n_frames.saturating_sub(1) as f32 * gap) / n_frames.max(1) as f32;
         let thumb_w = fill.min(thumb * THUMB_MAX_ASPECT).max(thumb);
-        let max_scroll = (n_frames as f32 * (thumb_w + gap) - gap + slot - l.strip.w).max(0.0);
+        // O voo da inserção: os quadros que chegam abrem o vão aos poucos (`open`), e a tira anda até a marca.
+        let open = self
+            .flight
+            .as_ref()
+            .map_or(1.0, super::doc::flight::Flight::open);
+        let fly = self.flight.as_ref().map(|f| f.at..f.at + f.n);
+        let flying = |i: usize| fly.as_ref().is_some_and(|r| r.contains(&i));
+        let pitch = |i: usize| (thumb_w + gap) * if flying(i) { open } else { 1.0 };
+        let left = |k: usize| (0..k).map(pitch).sum::<f32>() + if k >= p { slot } else { 0.0 };
+        let content = left(n_frames) - if n_frames > 0 { gap } else { 0.0 };
+        let max_scroll = (content - l.strip.w).max(0.0);
+        if let Some(f) = self.flight.as_mut() {
+            // O destino é medido na tira JÁ aberta: os cartões e a marca à vista.
+            let full = |k: usize| k as f32 * (thumb_w + gap) + if k >= p { slot } else { 0.0 };
+            let (a, b) = (full(f.at), full(p));
+            let s0 = f.start_scroll;
+            let goal = if a < s0 {
+                a
+            } else if b > s0 + l.strip.w {
+                b - l.strip.w
+            } else {
+                s0
+            };
+            self.strip_scroll = s0 + (goal - s0) * f.open();
+            f.laid_out = f.spring.x == 1.0;
+        }
         self.strip_scroll = self.strip_scroll.clamp(0.0, max_scroll);
         l.strip_content = max_scroll + l.strip.w;
         l.frames = (0..n_frames)
             .map(|i| {
-                let fx = l.strip.x + i as f32 * (thumb_w + gap) - self.strip_scroll
-                    + if i >= p { slot } else { 0.0 };
+                let fx = l.strip.x + left(i) - self.strip_scroll;
+                let w = if flying(i) { thumb_w * open } else { thumb_w };
                 (
-                    Rect::new(fx, l.strip.y, thumb_w, thumb),
-                    Rect::new(fx + thumb_w - close_side, l.strip.y, close_side, close_side),
+                    Rect::new(fx, l.strip.y, w, thumb),
+                    Rect::new(fx + w - close_side, l.strip.y, close_side, close_side),
                 )
             })
             .collect();
         if n_frames > 0 {
-            let x = l.strip.x + p as f32 * (thumb_w + gap) - self.strip_scroll;
+            let x = l.strip.x + left(p) - slot - self.strip_scroll;
             l.playhead = Rect::new(x, l.strip.y, row, thumb);
         }
         self.drag_points_at(&l.frames);

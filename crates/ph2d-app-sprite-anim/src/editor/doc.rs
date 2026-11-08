@@ -19,6 +19,8 @@ pub use super::layout::Layout;
 /// Um arrasto na faixa só conta depois deste caminho (um clique trémulo não reordena).
 const DRAG_SLOP_ROWS: f32 = 0.25; // LITERAL-PX-OK: fração do token de linha
 
+#[path = "doc_flight.rs"]
+pub mod flight;
 #[path = "doc_scrub.rs"]
 mod scrub;
 #[path = "doc_strip.rs"]
@@ -123,6 +125,8 @@ pub struct AnimDoc {
     pub strip_scroll: f32,
     /// A marca de inserção: o intervalo (`0..=n`) onde as células entram; `None` = no fim.
     pub insert_at: Option<usize>,
+    /// As células a caminho da marca (o voo da inserção).
+    pub flight: Option<flight::Flight>,
     /// Com o polegar da barra agarrado: onde, dentro dele, o ponteiro o pegou.
     pub bar_grab: Option<f32>,
     /// O que a última pintura desenhou do arrasto.
@@ -222,7 +226,11 @@ impl AnimDoc {
     pub fn shown_frames(&self) -> Vec<AnimFrameRef> {
         match &self.drag {
             Drag::Cells { base, added, at } => strip::spliced(base, added, *at),
-            _ => self.authored_frames(),
+            _ => self
+                .flight
+                .as_ref()
+                .filter(|f| !f.seen)
+                .map_or_else(|| self.authored_frames(), |f| f.frames.clone()),
         }
     }
 
@@ -387,6 +395,7 @@ impl AnimDoc {
     /// Botão premido em `(x, y)`. Devolve se a aba o tomou.
     pub fn press(&mut self, x: f32, y: f32) -> bool {
         self.hover = Some((x, y));
+        self.flight = None;
         self.close_field(true);
         let l = self.layout.clone();
         if !hit(l.area, x, y) {
@@ -538,7 +547,9 @@ impl AnimDoc {
         }
         match std::mem::take(&mut self.drag) {
             Drag::Cells { base, added, at } => {
-                self.push_frames(strip::spliced(&base, &added, at));
+                let frames = strip::spliced(&base, &added, at);
+                self.push_frames(frames.clone());
+                self.launch(frames, at.min(base.len()), &added);
                 self.markers_follow_insert(at, added.len());
                 self.insert_at = Some(at + added.len());
                 true

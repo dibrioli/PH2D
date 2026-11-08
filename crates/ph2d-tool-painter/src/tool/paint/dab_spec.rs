@@ -100,7 +100,11 @@ impl PainterTool {
     /// pergunta «a linha age?» (`inercia.rs`) passam por ela. Perguntar ao pincel cru esmaecia o Accumulate, a
     /// Roughness e o Source Grain que agiam (censo do esmaecido, 28/10).
     pub(crate) fn poe_o_papel_como_grain(&self, brush: &mut ph2d_painter_brush::BrushSpec) {
-        if self.grao_e_o_papel_do(brush) {
+        if self.grao_e_o_papel_do(brush) && !brush.paper.is_active() {
+            // «Same as Paper» com Paper: None (dono 08/11): não há papel, logo não há grão — nunca o papel de reserva.
+            brush.texture = ph2d_painter_brush::texture::TextureSettings::default();
+            brush.grain_depth = 0.0;
+        } else if self.grao_e_o_papel_do(brush) {
             // «Same as Paper» (dono 28/10): o papel do documento, preso à tela, como o papel VISÍVEL o mostra —
             // a Roughness do cartão é o contraste do dente e o Relief a profundidade (com o piso do papel na tinta,
             // `relief_na_tinta`), × a Depth do próprio Grain (smoke 28/10: «corresponde parcialmente»). A lei do

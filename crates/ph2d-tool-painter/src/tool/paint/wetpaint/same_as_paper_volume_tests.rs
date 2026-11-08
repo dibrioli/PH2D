@@ -59,6 +59,8 @@ pub(super) fn le(t: &PainterTool) -> [f64; 4] {
 pub(super) fn traco(p: &ph2d_brush_presets::Preset, papel: bool) -> ([f64; 4], PainterTool) {
     traco_com(p, |t| {
         if papel {
+            // Um papel escolhido: com Paper: None o «Same as Paper» não tem grão (dono 08/11).
+            t.set_paper_field(|b| b.paper = crate::tool::paint::substrate_relief::default_paper());
             t.toggle_brush_grain_same_as_paper();
         }
     })

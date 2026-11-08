@@ -5,7 +5,7 @@
 //! e a altura do papel nesse texel. Desligado, a tinta é a de hoje (o grão próprio, que não segue o papel).
 //!
 //! **Mutações que sangram:** `grao_e_o_papel` a devolver `false` (o Digital, o Impasto e o Wet perdem a
-//! correlação); `papel_do_documento` a devolver o `tex` cru (sem papel escolhido o grão some).
+//! correlação); sem papel escolhido (Paper: None), o ramo do `dab_spec` que tira o grão a devolver o papel de reserva.
 
 use super::measure_shape_system::{cp, tool};
 use crate::tool::PainterTool;
@@ -143,17 +143,35 @@ fn same_as_paper_o_grao_do_traco_segue_o_papel_em_cada_meio() {
     assert!(falhas.is_empty(), "{}", falhas.join("\n"));
 }
 
-/// **Sem papel escolhido, o papel do documento é o de fábrica** (o mesmo que o filme do Wet mostra): ligar a
-/// opção nunca deixa o pincel sem grão — o traço segue o papel de fábrica em cada meio.
+/// **Sem papel escolhido (Paper: None), o «Same as Paper» não tem grão** (dono 08/11: *«Grain: Same as paper não
+/// pode ser efeito de paper está com Paper: none»* — revoga a leitura do papel de fábrica de 28/10): o traço não
+/// segue o papel de reserva e o grão (as Grain Colors) não varia no miolo.
 #[test]
-fn same_as_paper_sem_papel_escolhido_le_o_papel_de_fabrica() {
+fn same_as_paper_sem_papel_escolhido_nao_tem_grao() {
     let mut falhas = Vec::new();
     let fabrica = super::substrate_relief::default_paper();
     for m in MEIOS {
-        let (r, n) = correlacao(&pinta(m, None, true).canvas_rgba, &fabrica);
-        if n < 400 || r < 0.6 {
+        let t = pinta(m, None, true);
+        let (r, _) = correlacao(&t.canvas_rgba, &fabrica);
+        let mut fr = Vec::new();
+        for y in 52..76 {
+            for x in 24..104 {
+                let p = &t.canvas_rgba[(y * LADO + x) * 4..][..4];
+                let (rr, g) = (f64::from(p[0]), f64::from(p[1]));
+                // Sem grão a rampa não colore: mede-se a cor do miolo pintado, que tem de ser lisa.
+                if p[3] >= 64 {
+                    fr.push(rr / (rr + g + f64::from(p[2])).max(1.0));
+                }
+            }
+        }
+        let n = fr.len() as f64;
+        let media = fr.iter().sum::<f64>() / n.max(1.0);
+        let sd = (fr.iter().map(|v| (v - media).powi(2)).sum::<f64>() / n.max(1.0)).sqrt();
+        eprintln!("{m:?}: r = {r:.3}, σ grão {sd:.4}, {} texels", fr.len());
+        if fr.len() < 400 || r.abs() > 0.3 || sd > 0.03 {
             falhas.push(format!(
-                "{m:?}: o grão não segue o papel de fábrica (r = {r:.3}, {n} texels)"
+                "{m:?}: sem papel, o traço ainda tem grão (r = {r:.3}, σ {sd:.4}, {} texels)",
+                fr.len()
             ));
         }
     }

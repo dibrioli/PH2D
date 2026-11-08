@@ -915,6 +915,18 @@ Fonte: dono 31/10, [`project_rebelle_no_longer_the_reference_2026_10_31.md`](../
 | `familias::pastel_carvao::portoes::o_square_hard_tapa_o_vermelho_como_a_foto` (inteira) | R ≤ 86 (Rebelle 74) e a mutação «carga 75» que já não o cruza com o Pigment mixing de fábrica (`0170428784`: 63,2/88,0 → 40,0/55,1, as duas tapam) | — |
 | `as_leis_da_escala::o_relevo_nao_cresce_com_o_pincel` | o tecto da família do Rebelle (0,824) e o alvo ±2 do Bristle Flat (`0170428784`: razão 0,793 → 0,886) | a lei: razão 200 ÷ 40 < 1 (sem a lei 1,13) |
 
+## Bugs #73–#80 (ABERTOS, 08/11) — a mistura Wet blend × Composite, rampas de cor, esbatedores, pincéis que espalham
+
+Medidos pela auditoria de 08/11; tabela completa (medição · mecanismo ficheiro:linha · cura · decisão do dono) em
+[`AUDITORIA_MISTURA_2026-11-08.md`](AUDITORIA_MISTURA_2026-11-08.md). Em uma linha: **#73** a camada Erase do Composite
+pinta com Wet blend · **#74** camadas do Composite partilham um reservatório → o byte depende da cadência dos eventos ·
+**#75** a Strength da camada Brush não age com Wet blend · **#76** esbatedores (Amount 0) pintam a cor do pincel no
+rasto sobre o vazio · **#77** Grain Colors / Shape Color / Per-Layer Color mortos com Wet blend (a rota sai em
+`stamp_route.rs:520`) · **#78** pincéis que espalham ficam cheios (`PASSO_DA_MISTURA` 3 %) · **#79** a mistura só vê a
+própria camada (opção «This layer · All visible layers» aprovada) · **#80** a Depth do Grain não esmaece com Same as
+Paper sem papel. A raiz comum de #73/#75/#77: **a rota da mistura sai cedo e não lê o que as rotas seguintes leem**
+(blend, Strength, rampas) — cure-os juntos e varra a mesma porta por tudo o que ela salta.
+
 ## Como adicionar um bug aqui
 
 Uma seção `## Bug #N — <título>` + linha na tabela (o fim do pedaço [#41–#46](BUGS_painter_fechados_41_a_46.md)). Foque nos bugs cuja **causa enganou** (vários rounds

@@ -48,7 +48,7 @@ pub use compose::{
     compose_with_onion, ghosts, onion_tint, pick,
 };
 pub use forma::Forma;
-pub use history::{DEFAULT_CAP_BYTES, History};
+pub use history::{DEFAULT_CAP_BYTES, History, Label, PrettySize, StepState, Touched};
 pub use op::{CanvasSet, FrameSet, LayerSet, MaskSet, Op, OpError, Patch, Whole, apply};
 pub use prefs::{Checker, Grid, PixelGrid, PixelPrefs};
 pub use slice::{DEFAULT_SLICE_COLOR, Slice, SliceId, SliceKey, SliceShape};

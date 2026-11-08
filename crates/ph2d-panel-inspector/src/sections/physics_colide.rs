@@ -10,7 +10,8 @@ use crate::ids;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
 use ph2d_editor_core::paint::{
-    fill_rounded_rect, folga_do_texto, frame_radius, paint_text_elided, resolve,
+    fill_rounded_rect, folga_do_texto, frame_radius, paint_layer_underline, paint_text_elided,
+    resolve,
 };
 use ph2d_editor_core::panel::{PanelHostInternal, seam_reset_button};
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
@@ -123,7 +124,14 @@ fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
         .open(aberta)
         .visual(t.store.dropdown_visual(ids::INSP_PHYS_LAYER_PICK));
     paint_dropdown_chip(&dd, linha.control, t.scene, t.text, t.theme);
-    bolinha_do_rotulo(t, linha.control, rotulo, usize::from(info.layer));
+    let j = usize::from(info.layer);
+    sublinhado_do_rotulo(
+        t,
+        (linha.control, Some(linha.label)),
+        rotulo,
+        j,
+        ids::INSP_PHYS_LAYER_PICK,
+    );
     if aberta {
         crate::state_popovers::set_pending_phys_layer_dd(Some((info.layer, linha.control)));
     }
@@ -203,27 +211,35 @@ fn rename(t: &mut Tinta<'_>, mut y: f32, camada: usize) -> f32 {
             seccao,
         );
         if let Some(campo) = t.hit.rect_for(id) {
-            bolinha_do_rotulo(t, campo, refs[p], j);
+            sublinhado_do_rotulo(t, (campo, None), refs[p], j, id);
         }
     }
     y
 }
 
-/// A bolinha da cor da camada `j` no rótulo do controlo (o seletor Layer, o campo do Rename): no
-/// cartão o rótulo está EM CIMA e ela vem logo depois dele; fora do cartão, antes do controlo.
-fn bolinha_do_rotulo(t: &mut Tinta<'_>, controlo: Rect, rotulo: &str, j: usize) {
+/// O sublinhado da cor da camada `j` debaixo do rótulo do controlo (o seletor Layer, o campo do Rename; onda
+/// 9e): no cartão o rótulo está EM CIMA do controlo; fora dele, na coluna da esquerda (`rotulo_fora`, ou `t.x`).
+fn sublinhado_do_rotulo(
+    t: &mut Tinta<'_>,
+    (controlo, rotulo_fora): (Rect, Option<Rect>),
+    rotulo: &str,
+    j: usize,
+    id: ph2d_a11y::NodeId,
+) {
     use ph2d_card_stack::metrics as m;
-    let lado = TypeToken::Sm.px() - Spacing::Xs.px();
-    let ponto = if ph2d_editor_core::widget::card_ink::card_body().is_some() {
-        let topo = controlo.y - m::LABEL_BOTTOM - m::LABEL_PX;
-        let x = controlo.x + t.text.prefix_width(rotulo, m::LABEL_PX).ceil() + Spacing::Xs.px();
-        Rect::new(x, topo + (m::LABEL_PX - lado) * 0.5, lado, lado)
+    let (x, topo, fonte) = if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        (
+            controlo.x,
+            controlo.y - m::LABEL_BOTTOM - m::LABEL_PX,
+            m::LABEL_PX,
+        )
     } else {
-        let x = controlo.x - Spacing::Xs.px() - lado;
-        Rect::new(x, controlo.y + (controlo.h - lado) * 0.5, lado, lado)
+        let fonte = TypeToken::Sm.px();
+        let fila = rotulo_fora.unwrap_or(Rect::new(t.x, controlo.y, controlo.w, controlo.h));
+        (fila.x, fila.y + (fila.h - fonte) * 0.5, fonte)
     };
-    let raio = frame_radius(t.theme, Radius::Sm.px()) * 0.5;
-    fill_rounded_rect(t.scene, ponto, raio, resolve(ColorToken::layer(j), t.theme));
+    let largura = t.text.prefix_width(rotulo, fonte).ceil();
+    paint_layer_underline(t.scene, t.theme, id, j, x, topo, fonte, largura);
 }
 
 /// As opções da lista: as camadas visíveis e a do objecto, pelo nome ou pelo número.
@@ -252,12 +268,7 @@ fn da_fila(camada: usize) -> impl Iterator<Item = usize> {
 /// A caixa de um quadro em `x`; a largura sai do nome.
 fn largura(t: &mut Tinta<'_>, texto: &str, com_caixa: bool) -> f32 {
     let (fonte, folga) = (TypeToken::Sm.px(), Spacing::Xs.px());
-    // A caixinha e a bolinha da cor da camada (onda 9d), cada uma com a sua folga.
-    let caixa = if com_caixa {
-        (fonte + folga) * 2.0
-    } else {
-        0.0
-    };
+    let caixa = if com_caixa { fonte + folga } else { 0.0 };
     let medida = t.text.prefix_width(texto, fonte).ceil();
     folga + caixa + medida + folga
 }
@@ -288,37 +299,33 @@ fn pinta(t: &mut Tinta<'_>, r: Rect, texto: &str, id: ph2d_a11y::NodeId, aceso: 
             );
         }
         x += fonte + folga;
-        bolinha(t, x, r, id);
-        x += fonte + folga;
     }
     let cor = if aceso == Some(false) {
         ColorToken::CardLabel
     } else {
         ColorToken::KanbanCardFg
     };
+    let (topo, cabe) = (
+        r.y + folga_do_texto(r.h, fonte),
+        (r.x + r.w - folga - x).max(0.0),
+    );
     paint_text_elided(
         t.text,
         t.scene,
         texto,
         x,
-        r.y + folga_do_texto(r.h, fonte),
+        topo,
         fonte,
-        (r.x + r.w - folga - x).max(0.0),
+        cabe,
         tinta(cor, t.theme),
     );
+    // O sublinhado da cor da camada debaixo do nome (onda 9e; o «+» não tem camada).
+    if let Some(j) = ids::INSP_PHYS_COLLIDES.iter().position(|&o| o == id) {
+        let largura = t.text.prefix_width(texto, fonte).ceil().min(cabe);
+        paint_layer_underline(t.scene, t.theme, id, j, x, topo, fonte, largura);
+    }
     ph2d_editor_core::panel::cards::censo::controlo_maior_que_a_pega(id, r);
     t.hit.register(id, r);
-}
-
-/// A bolinha da cor da camada antes do nome, a mesma da lista da aba (`ColorToken::layer`).
-fn bolinha(t: &mut Tinta<'_>, x: f32, r: Rect, id: ph2d_a11y::NodeId) {
-    let Some(j) = ids::INSP_PHYS_COLLIDES.iter().position(|&o| o == id) else {
-        return;
-    };
-    let lado = TypeToken::Sm.px() - Spacing::Xs.px();
-    let raio = frame_radius(t.theme, Radius::Sm.px()) * 0.5;
-    let ponto = Rect::new(x, r.y + (r.h - lado) * 0.5, lado, lado);
-    fill_rounded_rect(t.scene, ponto, raio, resolve(ColorToken::layer(j), t.theme));
 }
 
 /// O rótulo com a marca, os quadros quebrando pelo tamanho do nome, a frase e o «Open in tab…».

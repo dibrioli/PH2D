@@ -1,6 +1,8 @@
 //! A pintura da aba das camadas: o que se lê antes ([`Quadro`]), as três partes e os alvos.
 
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_rotated_ccw, resolve};
+use ph2d_editor_core::paint::{
+    fill_rounded_rect, paint_layer_underline, paint_text, paint_text_rotated_ccw, resolve,
+};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::panel::camada_das_listas;
 use ph2d_editor_core::widget::{TextInput, paint_text_input_with_buffer};
@@ -105,24 +107,22 @@ fn pinta_lista(ctx: &mut PaintCtx, q: &Quadro) {
             } else {
                 ColorToken::Text2
             };
-            // A bolinha da cor da camada (paleta por número, nada gravado).
-            let lado = font - Spacing::Xs.px();
-            fill_rounded_rect(
-                cena,
-                Rect::new(r.x + Spacing::Sm.px(), r.y + (r.h - lado) * 0.5, lado, lado),
-                raio * 0.5,
-                resolve(super::cor_da_camada(n), theme),
-            );
+            let (tx, topo) = (r.x + Spacing::Sm.px(), r.y + (r.h - font) * 0.5);
+            let cabe = r.w - contagem_w - Spacing::Sm.px() * 2.0;
             paint_text(
                 texto,
                 cena,
                 &rotulos[n],
-                r.x + Spacing::Sm.px() * 2.0 + lado,
-                r.y + (r.h - font) * 0.5,
+                tx,
+                topo,
                 font,
-                r.w - contagem_w - lado - Spacing::Sm.px(),
+                cabe,
                 tom!(cor, theme),
             );
+            // O sublinhado da cor da camada (paleta por número, nada gravado; onda 9e).
+            let larg = texto.prefix_width(&rotulos[n], font).ceil().min(cabe);
+            let id = i::PHYSICS_LAYER_LIST[n];
+            paint_layer_underline(cena, theme, id, n, tx, topo, font, larg);
             let c = &contagens[p];
             let cw = texto.prefix_width(c, font);
             paint_text(

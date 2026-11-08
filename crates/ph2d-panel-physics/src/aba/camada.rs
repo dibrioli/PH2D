@@ -2,7 +2,9 @@
 //! visível (a MESMA edição da célula da grade e da fila do Inspector: [`crate::alterna_par`]) e
 //! «Objects on this layer» com um botão por objeto, «Select all» e, passadas três linhas, «+N more».
 
-use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, paint_text_centered, resolve};
+use ph2d_editor_core::paint::{
+    fill_rounded_rect, paint_layer_underline, paint_text, paint_text_centered, resolve,
+};
 use ph2d_editor_core::panel::{PaintCtx, camada_das_listas};
 use ph2d_editor_core::widget::ButtonState;
 use ph2d_editor_core::zones::Rect;
@@ -201,16 +203,23 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro) {
                     tom!(ColorToken::Text3, theme),
                 );
             }
+            let (tx, topo) = (b.x + b.w + Spacing::Sm.px(), r.y + (r.h - font) * 0.5);
+            let cabe = r.w - b.w - Spacing::Sm.px() * 2.0;
+            let rot = &q.rotulos[n];
             paint_text(
                 texto,
                 cena,
-                &q.rotulos[n],
-                b.x + b.w + Spacing::Sm.px(),
-                r.y + (r.h - font) * 0.5,
+                rot,
+                tx,
+                topo,
                 font,
-                r.w - b.w - Spacing::Sm.px() * 2.0,
+                cabe,
                 tom!(ColorToken::Text1, theme),
             );
+            // O sublinhado da cor da camada debaixo do nome (onda 9e: a língua da fila do Inspector).
+            let larg = texto.prefix_width(rot, font).ceil().min(cabe);
+            let id = i::PHYSICS_LAYER_BUMPS[n];
+            paint_layer_underline(cena, theme, id, n, tx, topo, font, larg);
         }
         rotulo(texto, cena, tr("card.physics.tab_objects"), c.objetos_y);
         if let Some(y) = c.vazio_y {

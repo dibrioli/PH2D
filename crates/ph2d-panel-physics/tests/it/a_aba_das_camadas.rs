@@ -639,3 +639,32 @@ fn a_caixinha_bumps_into_pede_o_mesmo_que_a_celula_e_o_auto_key_grava_igual() {
         "a caixinha e a célula pedem coisas diferentes"
     );
 }
+
+/// ⭐ Onda 9e (dono 07/11): a lista «Layers» e as caixinhas «Bumps into» sublinham o nome na cor da SUA camada,
+/// dentro do botão e na base dele (a mesma marca da fila do Inspector).
+#[test]
+fn a_lista_e_as_caixinhas_sublinham_o_nome_na_cor_da_camada() {
+    use ph2d_editor_core::paint::{forget_layer_underlines, layer_underline_of, resolve};
+    use ph2d_editor_core::panel::PanelHost;
+    use ph2d_tokens::ColorToken;
+    let mut mesa = Mesa::nova(nomes_b(), false);
+    aba::abre(Some(1));
+    aba::poe_area_fixa(AREA);
+    forget_layer_underlines();
+    mesa.pinta();
+    let tema = mesa.host.theme();
+    for n in 0..5 {
+        for id in [ids::PHYSICS_LAYER_LIST[n], ids::PHYSICS_LAYER_BUMPS[n]] {
+            let caixa = mesa
+                .rect(id)
+                .unwrap_or_else(|| panic!("{id:?} não pintado"));
+            let s = layer_underline_of(id).unwrap_or_else(|| panic!("{id:?} sem sublinhado"));
+            assert_eq!(s.camada, n, "{id:?} sublinha a camada {}", s.camada);
+            assert_eq!(s.cor, resolve(ColorToken::layer(n), tema).components);
+            assert!(s.rect.x >= caixa.x && s.rect.x + s.rect.w <= caixa.x + caixa.w);
+            assert!(s.rect.y > caixa.y + caixa.h * 0.5 && s.rect.y + s.rect.h <= caixa.y + caixa.h);
+            assert!(s.rect.w > s.rect.h * 4.0, "a largura do nome");
+        }
+    }
+    aba::fecha();
+}

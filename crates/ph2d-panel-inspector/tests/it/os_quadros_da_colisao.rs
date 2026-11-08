@@ -208,3 +208,48 @@ fn os_quadros_acompanham_a_matriz_e_o_nome() {
     );
     fim();
 }
+
+/// ⭐ Onda 9e (dono 07/11: «melhor um sublinhado colorido que o pequeno quadrado»): cada quadro leva, debaixo
+/// do NOME, o sublinhado da cor da SUA camada; o seletor Layer, o da camada do objecto, debaixo do rótulo.
+#[test]
+fn cada_quadro_sublinha_o_nome_na_cor_da_sua_camada() {
+    use ph2d_editor_core::paint::{forget_layer_underlines, layer_underline_of, resolve};
+    use ph2d_editor_core::panel::PanelHost;
+    use ph2d_tokens::ColorToken;
+    mundo();
+    forget_layer_underlines();
+    let (mut host, mut st) = cena(na_camada_3(with_body()), [1.0, 1.0]);
+    let r = pinta(&mut host, &mut st);
+    let tema = host.theme();
+    for j in [0, 1, 3] {
+        let quadro = achado(&r, INSP_PHYS_COLLIDES[j]).expect("o quadro está pintado");
+        let s = layer_underline_of(INSP_PHYS_COLLIDES[j]).expect("o quadro tem sublinhado");
+        assert_eq!(s.camada, j, "o quadro {j} sublinha a camada {}", s.camada);
+        assert_eq!(
+            s.cor,
+            resolve(ColorToken::layer(j), tema).components,
+            "a cor da camada {j}"
+        );
+        // Debaixo do nome: depois da caixinha, na metade de baixo do quadro, sem sair dele.
+        assert!(
+            s.rect.x > quadro.x + quadro.h * 0.5,
+            "o traço começa no nome, não na caixinha"
+        );
+        assert!(
+            s.rect.x + s.rect.w <= quadro.x + quadro.w,
+            "não passa do quadro"
+        );
+        assert!(s.rect.y > quadro.y + quadro.h * 0.5, "na base do nome");
+        assert!(
+            s.rect.y + s.rect.h <= quadro.y + quadro.h,
+            "dentro do quadro"
+        );
+        assert!(
+            s.rect.w > s.rect.h * 4.0,
+            "a largura do texto, não um ponto"
+        );
+    }
+    let pick = layer_underline_of(INSP_PHYS_LAYER_PICK).expect("o seletor Layer tem sublinhado");
+    assert_eq!(pick.camada, 3, "o seletor sublinha a camada do objecto");
+    fim();
+}

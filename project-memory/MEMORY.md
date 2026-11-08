@@ -148,3 +148,4 @@
 - ⭐⭐ [Dono 07/11: editor de animações reconstruído no layout da Crítica; sem prévia própria, sem ◆, faixas empilhadas](project_animation_editor_rebuild_owner_decisions_2026_11_07.md)
 
 - ⭐⭐ [Dono 07/11: Add Object versão B; Sprite já destacada com a dica embaixo, 1 clique destaca, 2 criam e fecham; Physics Body e Ambient Light saem](project_add_object_owner_decisions_2026_11_07.md)
+- ⭐⭐ [Dono 08/11: Add Component versão B + recibo com Undo; 1.º da lista destacado; «+N»; Show all fica](project_add_component_owner_decisions_2026_11_08.md)

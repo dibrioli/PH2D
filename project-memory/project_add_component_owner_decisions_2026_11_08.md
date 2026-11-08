@@ -1,0 +1,24 @@
+---
+name: project_add_component_owner_decisions_2026_11_08
+description: Dono 08/11 — Add Component na versão B da Crítica + recibo da A; destaque inicial = 1.º da lista; «brings» vira «+N» (lista na dica); Show all fica
+metadata:
+  type: project
+---
+
+Decisões do dono (08/11) para o painel Add Component, no mesmo padrão do Add Object
+(Crítica `GameEngineSamples/critica_ph2d.html#addcomponent`):
+
+1. **Versão B + recibo da A**: a mesma janela grande, 11 assuntos (nenhum grupo de uma entrada só;
+   Nav ganha grupo, Label/Button/HUD vão para «On screen», Parallax para «Background»), dica para cada
+   uma das 64 entradas, e depois de adicionar uma linha «Also added: X, because …» com **Undo** que
+   desfaz tudo de uma vez.
+2. **Destaque ao abrir = o 1.º item do 1.º grupo** (a faixa da dica nunca nasce vazia, como Sprite no
+   Add Object).
+3. **«brings …» vira «+N»** ao lado do nome; a lista inteira do que vem junto vai na dica.
+   **Show all fica** como hoje (inaplicável esmaecido, com motivo).
+
+**Why:** produto é do dono; ele seguiu as três recomendações da Crítica.
+**How to apply:** plano em `docs/GameEngineFuncional/25_add_component_plano.md`. O catálogo por baixo
+pode ficar igual — os 11 assuntos são apresentação. Ainda em aberto do Add Object (perguntar na foto
+lado a lado): peso das letras (`CrispHeavy`) e destaque cheio × só contorno. Ver
+[[project_add_object_owner_decisions_2026_11_07]].

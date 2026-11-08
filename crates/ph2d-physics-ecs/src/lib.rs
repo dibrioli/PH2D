@@ -89,7 +89,6 @@ pub use bridge::views::JointView;
 pub use bridge::{
     FrozenScene, HeldInput, InputTape, PhysicsBridge, PlayerInputAtTick, SceneAtTick, TapeWire,
 };
-pub use components::MIN_EXTENT;
 pub use components::{
     AnimRule, AnimRules, AnimWhen, AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff,
     AreaForceWorldAxes, AreaFormDrag, AreaTorque, BodyKind, Ccd, CharacterAnimations,
@@ -103,6 +102,7 @@ pub use components::{
     WestonAxle, WrapSide, anim_target, kind_key, reseat_mounted_axle, reseat_wheel_geometry,
     rope_joint_of,
 };
+pub use components::{MIN_EXTENT, collider_box_or};
 pub use interaction::{
     HoldMode, InteractionSettings, InteractionTool, MAX_ATTRACT_FORCE, MAX_BLAST_IMPULSE,
     MAX_HOLD_DAMPING_RATIO, MAX_HOLD_STIFFNESS, MIN_HOLD_STIFFNESS, WORLD_REACH_M,

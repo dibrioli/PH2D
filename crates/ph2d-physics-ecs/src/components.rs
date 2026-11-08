@@ -221,6 +221,83 @@ impl Collider {
         };
         (self.density * area).max(1e-3)
     }
+
+    /// The collider's **local AABB** as `(centre, half_extents)`, in world units along the
+    /// body's local axes, before the body's scale — the `offset` plus the shape's half extents.
+    /// It is the selection box of an entity whose only extent is its collider (Godot's
+    /// `CollisionShape2D`).
+    #[must_use]
+    pub fn local_aabb(&self) -> ([f32; 2], [f32; 2]) {
+        let half = match self.shape {
+            ColliderShape::Ball { radius } => [radius, radius],
+            ColliderShape::Cuboid { half_x, half_y } => [half_x, half_y],
+            ColliderShape::Capsule {
+                half_height,
+                radius,
+            } => [radius, half_height + radius],
+        };
+        (self.offset, [half[0].abs(), half[1].abs()])
+    }
+}
+
+/// The local selection box `(centre, half_extents)` of an entity with no art of its own: its
+/// [`Collider::local_aabb`] when it has one (the «Collision Shape» child), else the `marker`
+/// half-extent centred on the origin (the empty-object marker). The caller already decided the
+/// entity draws nothing; this only answers *how big*.
+#[must_use]
+pub fn collider_box_or(
+    world: &ph2d_ecs::World,
+    e: ph2d_ecs::Entity,
+    marker: f32,
+) -> ([f32; 2], [f32; 2]) {
+    world
+        .get::<Collider>(e)
+        .map_or(([0.0, 0.0], [marker, marker]), Collider::local_aabb)
+}
+
+#[cfg(test)]
+mod collider_box_tests {
+    use super::*;
+
+    /// A collider-only entity's box IS the collider AABB (offset box, ball); without one, the marker.
+    /// (Mutation: return the marker for every entity ⇒ RED.)
+    #[test]
+    fn a_collider_only_entity_box_is_the_collider_aabb() {
+        let mut w = ph2d_ecs::World::new();
+        let floor = w
+            .spawn(Collider {
+                shape: ColliderShape::Cuboid {
+                    half_x: 7.0,
+                    half_y: 0.5,
+                },
+                offset: [1.0, -2.0],
+                ..Collider::default()
+            })
+            .id();
+        let ball = w
+            .spawn(Collider {
+                shape: ColliderShape::Ball { radius: 0.75 },
+                ..Collider::default()
+            })
+            .id();
+        let capsule = w
+            .spawn(Collider {
+                shape: ColliderShape::Capsule {
+                    half_height: 0.5,
+                    radius: 0.25,
+                },
+                ..Collider::default()
+            })
+            .id();
+        let bare = w.spawn_empty().id();
+        assert_eq!(collider_box_or(&w, floor, 0.2), ([1.0, -2.0], [7.0, 0.5]));
+        assert_eq!(collider_box_or(&w, ball, 0.2), ([0.0, 0.0], [0.75, 0.75]));
+        assert_eq!(
+            collider_box_or(&w, capsule, 0.2),
+            ([0.0, 0.0], [0.25, 0.75])
+        );
+        assert_eq!(collider_box_or(&w, bare, 0.2), ([0.0, 0.0], [0.2, 0.2]));
+    }
 }
 
 impl Default for Collider {

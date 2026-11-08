@@ -172,10 +172,12 @@ pub fn view(
     if sim.world().get_entity(entity).is_err() || !is_empty_object(sim, entity) {
         return None;
     }
-    let half = marker_half(pixels_per_meter);
+    // A forma de colisão sem arte (filha «Collision Shape»): a caixa abraça o collider (Godot).
+    let m = marker_half(pixels_per_meter);
+    let (anchor, half) = ph2d_physics_ecs::collider_box_or(sim.world(), entity, m);
     Some(crate::vec_gizmo_view::gizmo_view_from(
-        [0.0, 0.0],
-        [half, half],
+        anchor,
+        half,
         world_transform(sim, entity),
         camera,
         window_size,

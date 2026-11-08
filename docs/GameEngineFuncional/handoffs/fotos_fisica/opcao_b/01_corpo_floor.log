@@ -2,18 +2,18 @@ gilrs: initialized; no gamepads connected yet
 audio: Default Audio Device @ 48000 Hz, 2 ch, F32
 PH2D desktop shell starting (close window or Cmd+Q to exit)…
 [ph2d-gpu] surface present mode: Fifo
-[   264ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
-[   285ms] physics smoke: empty scene (only the physics bodies)
-[   285ms] M7: ScriptHost initialized (placeholder script loaded)
+[   289ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   312ms] physics smoke: empty scene (only the physics bodies)
+[   312ms] M7: ScriptHost initialized (placeholder script loaded)
 [ph2d] theme = dark
-[   293ms] M11: VelloPass initialized (1024×768 intermediate)
-[   297ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
-[   310ms] PR 8: tool registry built (14 manifests, installed in editor)
-[   338ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
-[   346ms] lifecycle: Foreground
-[   346ms] resize: 1024x768 @ 1.00x scale
+[   320ms] M11: VelloPass initialized (1024×768 intermediate)
+[   324ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   339ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   371ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   379ms] lifecycle: Foreground
+[   379ms] resize: 1024x768 @ 1.00x scale
 [physics-smoke 120] O item inteiro, PARADO. Espaço dá Play: o Crate atravessa a Loose Shape e pousa no Floor; a Stretched Ball cai na Updraft Zone e a zona empurra-a para cima. ←/→ andam, ↑ salta: o Player sobe pela One-way Platform por baixo e pousa em cima; ele atravessa o Crate porque a camada dele só toca Ground. O Stop devolve tudo.
 [ph2d-gpu] surface present mode → Immediate
-[   352ms] resize: 1930x1012 @ 1.00x scale
-warn: dropped 0.200s of sim time (max_substeps cap)
+[   386ms] resize: 1930x1012 @ 1.00x scale
+warn: dropped 0.233s of sim time (max_substeps cap)
 [ph2d-gpu] surface present mode → Fifo

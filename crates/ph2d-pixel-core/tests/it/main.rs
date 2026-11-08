@@ -33,6 +33,7 @@ mod selection_laws;
 mod selection_oracle;
 mod selection_parity;
 mod slices;
+mod slices_origem;
 mod stroke;
 mod tiles;
 mod transform_oracle;

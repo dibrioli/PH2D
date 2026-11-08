@@ -24,7 +24,18 @@ pub enum NewFrame {
 
 /// O passo de frames: as slices acompanham a ordem nova aqui, para nenhum chamador as esquecer.
 fn op(s: &Sprite, frames: Vec<Frame>, cels: Vec<(CelKey, Option<Cel>)>, tags: Vec<Tag>) -> Op {
-    let slices = crate::slice::after_frames(s.slices(), s.frames(), &frames);
+    copies_op(s, frames, cels, tags, &[])
+}
+
+/// [`op`] com quadros que são CÓPIAS (`origin`: novo → fonte): a slice deles é a da fonte (§4.4).
+fn copies_op(
+    s: &Sprite,
+    frames: Vec<Frame>,
+    cels: Vec<(CelKey, Option<Cel>)>,
+    tags: Vec<Tag>,
+    origin: &[(FrameId, FrameId)],
+) -> Op {
+    let slices = crate::slice::after_frames(s.slices(), s.frames(), &frames, origin);
     Op::Frames(Box::new(FrameSet {
         frames,
         cels,
@@ -114,7 +125,12 @@ pub fn insert(
         }
     }
     let tags = tags_after_insert(s.tags(), at as u32);
-    Some((op(s, frames, cels, tags), id))
+    let origin: &[(FrameId, FrameId)] = if content == NewFrame::Empty {
+        &[]
+    } else {
+        &[(id, src)]
+    };
+    Some((copies_op(s, frames, cels, tags, origin), id))
 }
 
 /// Os cels a pôr para que nenhum ligado fique a apontar para um dono que SAI: o primeiro ligado
@@ -284,7 +300,12 @@ pub fn copy_block(s: &mut Sprite, ids: &[FrameId], before: usize) -> Option<(Op,
         }
         novos.push(id);
     }
-    Some((op(s, frames, cels, tags), novos))
+    let origin: Vec<_> = novos
+        .iter()
+        .copied()
+        .zip(block.iter().map(|f| f.id))
+        .collect();
+    Some((copies_op(s, frames, cels, tags, &origin), novos))
 }
 
 /// Largar um intervalo de CELS (Trial 01/11, `mover_cels*`): cada par `(de, para)` leva o cel de

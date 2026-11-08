@@ -244,9 +244,15 @@ pub fn default_center(bounds: Rect) -> Rect {
 // --- Os quadros: a slice segue a arte ---
 
 /// As slices depois de a linha do tempo passar de `old` a `new`: cada quadro que fica leva o valor
-/// que tinha; o quadro novo herda o do anterior (ou o do seguinte, se for o primeiro). Mudança que
-/// não toca na ordem deixa as keys como estão.
-pub(crate) fn after_frames(slices: &[Slice], old: &[Frame], new: &[Frame]) -> Vec<Slice> {
+/// que tinha; a CÓPIA de um quadro (`origin`: novo → fonte) leva o da fonte, porque mostra a arte
+/// dela; o quadro novo sem fonte herda o do anterior (ou o do seguinte, se for o primeiro). Mudança
+/// que não toca na ordem deixa as keys como estão.
+pub(crate) fn after_frames(
+    slices: &[Slice],
+    old: &[Frame],
+    new: &[Frame],
+    origin: &[(FrameId, FrameId)],
+) -> Vec<Slice> {
     let ids = |f: &[Frame]| f.iter().map(|f| f.id).collect::<Vec<FrameId>>();
     let (old, new) = (ids(old), ids(new));
     if old == new {
@@ -255,7 +261,8 @@ pub(crate) fn after_frames(slices: &[Slice], old: &[Frame], new: &[Frame]) -> Ve
     let mut out = slices.to_vec();
     for c in out.iter_mut().filter(|c| !c.keys.is_empty()) {
         let shape_of = |id: FrameId| {
-            let i = old.iter().position(|o| *o == id)?;
+            let src = origin.iter().find(|o| o.0 == id).map_or(id, |o| o.1);
+            let i = old.iter().position(|o| *o == src)?;
             c.shape_at(i as u32)
         };
         let shapes: Vec<Option<SliceShape>> = new.iter().map(|id| shape_of(*id)).collect();

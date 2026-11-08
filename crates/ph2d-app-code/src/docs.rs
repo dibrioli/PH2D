@@ -85,6 +85,8 @@ pub struct CodeDocs {
     /// A barra da aba (13 §4 itens 11 e 13b) e o cartão «Script options» (item 12).
     pub(crate) bar: crate::tab_menu::Bar,
     pub(crate) options: crate::options_card::OptionsCard,
+    /// O depurador da família (Onda D).
+    pub(crate) debug: crate::debug::DebugState,
     /// O menu do botão direito (item 14, [`crate::context_menu`]).
     pub(crate) ctx: Option<crate::context_menu::ContextMenu>,
 }
@@ -134,6 +136,7 @@ impl Default for CodeDocs {
             drafts: BTreeMap::new(),
             bar: crate::tab_menu::Bar::default(),
             options: crate::options_card::OptionsCard::default(),
+            debug: crate::debug::DebugState::default(),
             ctx: None,
         }
     }

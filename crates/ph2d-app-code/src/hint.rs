@@ -216,7 +216,7 @@ impl CodeDoc {
             return;
         }
         let at = match self.view.hit(&self.buffer, x, y) {
-            ph2d_panel_code::Hit::Gutter(line) => self
+            ph2d_panel_code::Hit::Gutter(line) | ph2d_panel_code::Hit::Mark(line) => self
                 .gutter_note(line)
                 .map(|(anchor, note)| (anchor, Some(note))),
             ph2d_panel_code::Hit::Text(b) => match self.culprit_at(b, x, y) {

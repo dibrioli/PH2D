@@ -135,7 +135,14 @@ impl CodeDoc {
             Key::F(2) if !cmd && !shift => self.start_rename(),
             Key::F(12) if !cmd && shift => self.open_refs(),
             // F8 / Shift+F8: o problema seguinte/anterior pela ordem da lista (acabamento).
+            // Onda D: F8 com o jogo parado nesta aba = Continue (o do DevTools); F9 = ponto de parada;
+            // F10 = Next line.
+            Key::F(8) if !cmd && !shift && self.is_stopped_here() => {
+                self.debug.ask = Some(crate::debug::Ask::Continue);
+            }
             Key::F(8) if !cmd => self.problem_step(!shift),
+            Key::F(9) if !cmd && !shift => self.toggle_breakpoint_at_caret(),
+            Key::F(10) if !cmd && !shift => self.debug.ask = Some(crate::debug::Ask::NextLine),
             Key::Space if cmd => self.complete.open_now(
                 self.buffer.text(),
                 self.buffer.selection().primary().head,

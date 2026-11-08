@@ -16,6 +16,7 @@ pub mod complete;
 mod complete_doc;
 mod console;
 pub mod context_menu;
+mod debug;
 mod doc;
 mod docs;
 mod docs_probe;

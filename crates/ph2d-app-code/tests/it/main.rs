@@ -19,6 +19,7 @@ mod completar;
 mod console;
 mod cores;
 mod definicao;
+mod depurador;
 mod despacho;
 mod dicas;
 mod dicas_de_tipo;

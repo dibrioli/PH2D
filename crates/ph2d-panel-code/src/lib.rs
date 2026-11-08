@@ -6,6 +6,7 @@
 mod a11y;
 mod chrome;
 pub mod console;
+mod debug_marks;
 mod display;
 mod drop_mark;
 pub mod find_bar;
@@ -30,6 +31,7 @@ pub use console::{
     Band, BandProbe, BandTab, ConsoleHit, ConsoleRow, ConsoleSource, ConsoleView, PaintedProblem,
     ProblemRow, problem_label, problems_title, title_text as console_title_text,
 };
+pub use debug_marks::{Breakpoint, DebugMarks, Ghost};
 pub use drop_mark::DropView;
 pub use find_bar::{FindBar, FindBarView, FindCount, FindField, FindHit, count_text};
 pub use frame::{

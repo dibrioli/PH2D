@@ -130,6 +130,8 @@ pub(crate) struct CodeDoc {
     pub(crate) scene: crate::scene_names::Shared,
     /// O Ctrl+clique num nome de objecto: seleccioná-lo na cena (a família fá-lo no quadro).
     pub(crate) select_object: Option<String>,
+    /// O depurador (Onda D): os pontos de parada, a paragem, os valores ao vivo.
+    pub(crate) debug: crate::debug::DocDebug,
     derived: Derived,
 }
 
@@ -191,6 +193,7 @@ impl CodeDoc {
             dropping: None,
             scene: crate::scene_names::Shared::default(),
             select_object: None,
+            debug: crate::debug::DocDebug::default(),
             derived: Derived::default(),
         }
     }
@@ -251,6 +254,8 @@ impl CodeDoc {
                 a.byte = map_byte(a.byte, e);
             }
         }
+        self.debug.edited(edits);
+        self.refresh_marks();
         self.folds.edited(edits, self.buffer.text());
         self.find.follow(&self.buffer, edits);
     }
@@ -423,9 +428,31 @@ impl CodeDoc {
         let find_h = self.find.bar_height();
         let console_h =
             ConsoleView::height(console_open, area.h).min((area.h - find_h - g).max(0.0));
-        let code = Rect::new(area.x, area.y, area.w, (area.h - console_h - g).max(0.0));
+        let card_h = self.debug_card_h();
+        let card = if card_h > 0.0 { card_h + g } else { 0.0 };
+        let code = Rect::new(
+            area.x,
+            area.y,
+            area.w,
+            (area.h - console_h - g - card).max(0.0),
+        );
         let console = Rect::new(area.x, area.y + area.h - console_h, area.w, console_h);
         (code, console)
+    }
+
+    /// O cartão do depurador, entre o código e a faixa de baixo (`None` = nenhum).
+    pub(crate) fn debug_rect(&self, area: Rect, console_open: bool) -> Option<Rect> {
+        let h = self.debug_card_h();
+        if h <= 0.0 {
+            return None;
+        }
+        let (code, _) = self.cards(area, console_open);
+        Some(Rect::new(
+            area.x,
+            code.y + code.h + crate::cards::gap(),
+            area.w,
+            h,
+        ))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -483,6 +510,7 @@ impl CodeDoc {
             inlay,
             snippet,
             dropping,
+            debug,
             ..
         } = self;
         let stops = snippet.as_ref().map(|s| s.marks()).unwrap_or_default();
@@ -575,6 +603,7 @@ impl CodeDoc {
                 at: d.at,
                 hint: &d.hint,
             }),
+            debug: debug.view(),
         };
         crate::cards::open(scene, code_card, theme);
         view.paint(frame, code_r, scene, ts, theme);
@@ -583,6 +612,13 @@ impl CodeDoc {
             self.find_view.paint(&bar, r, scene, ts, theme);
         }
         crate::cards::close(scene);
+        if let Some(r) = self.debug_rect(area, console.open) {
+            crate::cards::open(scene, r, theme);
+            self.paint_debug_card(r, scene, ts, theme);
+            crate::cards::close(scene);
+        } else {
+            self.debug.card_rect = None;
+        }
         // A lista lê o MESMO `Arc` da calha; só se ordena e compõe com ela à mostra.
         let listing = console.open && console.tab == ph2d_panel_code::BandTab::Problems;
         let order = if listing {

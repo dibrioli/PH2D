@@ -91,10 +91,14 @@ impl CodeDoc {
                 self.refs = None;
             }
         }
+        if self.debug_press(x, y) {
+            return true;
+        }
         self.find.focus = None;
         match self.view.hit(&self.buffer, x, y) {
             Hit::Text(b) => self.click_text(b, mods, now_ns),
             Hit::Fold(line) => self.toggle_fold(line),
+            Hit::Mark(line) => self.toggle_breakpoint(line),
             Hit::Gutter(line) => {
                 let t = self.buffer.text();
                 let s = t.byte_of_line(line);

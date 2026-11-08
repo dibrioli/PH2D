@@ -53,7 +53,9 @@ impl CodeView {
         );
         scene.push_clip(&rect_to_vello(tr));
         self.paint_under(&frame, scene, &pal);
+        self.paint_stopped_band(&frame, scene, &pal);
         self.paint_glyphs(scene, &pal);
+        self.paint_ghosts(&frame, scene, ts, &pal);
         self.paint_problems(&frame, scene, &pal);
         self.paint_link(&frame, scene, &pal);
         self.paint_fold_pills(scene, ts, &pal);
@@ -61,6 +63,7 @@ impl CodeView {
         self.paint_drop_caret(&frame, scene, &pal);
         scene.pop_layer();
         self.paint_gutter(&frame, scene, &pal);
+        self.paint_debug_gutter(&frame, scene, &pal);
         // O HUD de baixo pinta-se por cima da aba e não tem alvos: o que abre sobre o texto fica sobre ele.
         ph2d_editor_core::panel::camada_das_listas::por_cima(scene, |scene| {
             self.paint_completion(&frame, scene, ts, &pal);

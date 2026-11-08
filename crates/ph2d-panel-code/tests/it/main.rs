@@ -126,6 +126,7 @@ pub fn frame<'a>(
         strict: d.strict,
         link: None,
         dropping: None,
+        debug: ph2d_panel_code::DebugMarks::default(),
     }
 }
 

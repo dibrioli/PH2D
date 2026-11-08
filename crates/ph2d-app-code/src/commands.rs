@@ -41,6 +41,12 @@ pub const CMD_TYPE_HINTS: NodeId = hash_node_id("code_cmd_type_hints");
 pub const CMD_STRICT: NodeId = hash_node_id("code_cmd_strict");
 /// Formatar ao salvar ligado/desligado em todas as abas (I13). Caixa do cartão; na paleta pelo nome.
 pub const CMD_FORMAT_ON_SAVE: NodeId = hash_node_id("code_cmd_format_on_save");
+/// O depurador (Onda D): F9, Continue, F10, Pause on Error, tirar todos os pontos.
+pub const CMD_TOGGLE_BREAKPOINT: NodeId = hash_node_id("code_cmd_toggle_breakpoint");
+pub const CMD_CONTINUE: NodeId = hash_node_id("code_cmd_continue");
+pub const CMD_NEXT_LINE: NodeId = hash_node_id("code_cmd_next_line");
+pub const CMD_PAUSE_ON_ERROR: NodeId = hash_node_id("code_cmd_pause_on_error");
+pub const CMD_REMOVE_BREAKPOINTS: NodeId = hash_node_id("code_cmd_remove_breakpoints");
 
 /// Os cinco menus da aba (os do Godot, enxutos).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -77,7 +83,7 @@ pub struct CommandState {
 
 /// `(id, chave do rótulo, menu da aba)` — `None` = só na paleta (as três caixas do cartão). Um
 /// comando de ligar/desligar tem aqui a chave do estado DESLIGADO (a do ligado, em [`commands`]).
-const TABLE: [(NodeId, &str, Option<TabMenu>); 24] = [
+const TABLE: [(NodeId, &str, Option<TabMenu>); 29] = [
     (CMD_NEW_SCRIPT, "code.cmd.new_script", Some(TabMenu::File)),
     (CMD_SAVE, "code.cmd.save", Some(TabMenu::File)),
     (CMD_SAVE_AS, "code.cmd.save_as", Some(TabMenu::File)),
@@ -115,6 +121,23 @@ const TABLE: [(NodeId, &str, Option<TabMenu>); 24] = [
         "code.cmd.restart_assistant",
         Some(TabMenu::Run),
     ),
+    (
+        CMD_TOGGLE_BREAKPOINT,
+        "code.cmd.toggle_breakpoint",
+        Some(TabMenu::Run),
+    ),
+    (CMD_CONTINUE, "code.cmd.continue", Some(TabMenu::Run)),
+    (CMD_NEXT_LINE, "code.cmd.next_line", Some(TabMenu::Run)),
+    (
+        CMD_PAUSE_ON_ERROR,
+        "code.cmd.pause_on_error",
+        Some(TabMenu::Run),
+    ),
+    (
+        CMD_REMOVE_BREAKPOINTS,
+        "code.cmd.remove_breakpoints",
+        Some(TabMenu::Run),
+    ),
     (CMD_STRICT, "code.cmd.strict", None),
     (CMD_FORMAT_ON_SAVE, "code.cmd.format_on_save", None),
     (CMD_TYPE_HINTS, "code.cmd.type_hints", None),
@@ -128,7 +151,7 @@ pub fn menu_rows(menu: TabMenu) -> Vec<(NodeId, String, String)> {
         .iter()
         .filter(|r| r.2 == Some(menu))
         .map(|&(id, key, _)| {
-            let full = tr(key);
+            let full = tr(stateful(id, key));
             match full.split_once(" \u{00b7} ") {
                 Some((name, keys)) => (id, name.to_owned(), keys.to_owned()),
                 None => (id, full.to_owned(), String::new()),
@@ -137,21 +160,31 @@ pub fn menu_rows(menu: TabMenu) -> Vec<(NodeId, String, String)> {
         .collect()
 }
 
+/// O rótulo de `id` com o estado que só o host sabe (Pause on Error: o espelho do quadro).
+fn stateful(id: NodeId, key: &'static str) -> &'static str {
+    let on = crate::debug::PAUSE_ON_ERROR.load(std::sync::atomic::Ordering::Relaxed);
+    if id == CMD_PAUSE_ON_ERROR && on {
+        "code.cmd.pause_on_error_off"
+    } else {
+        key
+    }
+}
+
 /// Os comandos da aba (`state` escolhe o rótulo dos de ligar/desligar).
 #[must_use]
 pub fn commands(state: CommandState) -> Vec<DocCommand> {
     TABLE
         .iter()
         .map(|&(id, key, _)| {
-            let on = match id {
-                CMD_TYPE_HINTS if state.type_hints => Some("code.cmd.type_hints_off"),
-                CMD_STRICT if state.strict => Some("code.cmd.strict_off"),
-                CMD_FORMAT_ON_SAVE if state.format_on_save => Some("code.cmd.format_on_save_off"),
-                _ => None,
+            let shown = match id {
+                CMD_TYPE_HINTS if state.type_hints => "code.cmd.type_hints_off",
+                CMD_STRICT if state.strict => "code.cmd.strict_off",
+                CMD_FORMAT_ON_SAVE if state.format_on_save => "code.cmd.format_on_save_off",
+                _ => stateful(id, key),
             };
             DocCommand {
                 id,
-                label: tr(on.unwrap_or(key)).to_owned(),
+                label: tr(shown).to_owned(),
                 menu: DocMenu::Tab,
             }
         })
@@ -188,7 +221,7 @@ impl crate::docs::CodeDocs {
             }
             CMD_NEW_SCRIPT => self.list.asks.push(crate::list::Ask::New),
             CMD_OPTIONS => self.options.toggle(),
-            _ => return false,
+            _ => return self.debug_command(cmd),
         }
         true
     }
@@ -228,6 +261,7 @@ impl CodeDoc {
             CMD_TOGGLE_FOLD => self.toggle_fold_at_cursor(),
             CMD_FOLD_ALL => self.fold_all(true),
             CMD_UNFOLD_ALL => self.fold_all(false),
+            CMD_TOGGLE_BREAKPOINT => self.toggle_breakpoint_at_caret(),
             _ => return false,
         }
         true

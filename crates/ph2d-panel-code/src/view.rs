@@ -17,6 +17,8 @@ use std::ops::Range;
 pub enum Hit {
     /// No texto: o byte do buffer mais próximo (o meio de cada glifo decide).
     Text(usize),
+    /// Na coluna das marcas da calha (o ponto de parada), na linha (0-based).
+    Mark(usize),
     /// Na calha, na linha (0-based).
     Gutter(usize),
     /// No marcador de dobra da linha (0-based).
@@ -411,7 +413,9 @@ impl CodeView {
                 .folds
                 .iter()
                 .any(|f| f.start == line && f.end > f.start);
-            return if is_fold && x >= fold_x0 {
+            return if x < a.x + self.m.mark_w {
+                Hit::Mark(line)
+            } else if is_fold && x >= fold_x0 {
                 Hit::Fold(line)
             } else {
                 Hit::Gutter(line)

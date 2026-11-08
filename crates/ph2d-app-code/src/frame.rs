@@ -35,6 +35,10 @@ pub fn frame(
     });
     let clock = (hero.store.clock_ns(), hero.motion.reduced_motion());
     let held = hero.store.cmd_held();
+    let selected = hero
+        .gizmo
+        .selection
+        .and_then(ph2d_ecs::Entity::try_from_bits);
     let Some(docs) = hero.documents.surfaces_mut().find_mut::<CodeDocs>() else {
         return;
     };
@@ -107,6 +111,10 @@ pub fn frame(
     docs.drafts(world, host.as_deref());
     if let Some(h) = host {
         hear(docs, h, world);
+        let watched = our_active
+            .map(ScriptId)
+            .filter(|id| docs.docs.iter().any(|d| d.script == *id));
+        crate::debug::frame(docs, h, world, (watched, selected), toasts);
     }
     crate::kanban::hear(docs);
     for d in &mut docs.docs {
@@ -137,7 +145,7 @@ pub fn frame(
 }
 
 /// O nome de um objecto como a Hierarchy o mostra (sem `Name`, «Object N»).
-fn object_name(world: &ph2d_ecs::World, e: ph2d_ecs::Entity) -> String {
+pub(crate) fn object_name(world: &ph2d_ecs::World, e: ph2d_ecs::Entity) -> String {
     world.get::<ph2d_ecs::Name>(e).map_or_else(
         || ph2d_i18n::tr_with("code.console.object", &[("id", &e.index())]),
         |n| n.as_str().to_owned(),

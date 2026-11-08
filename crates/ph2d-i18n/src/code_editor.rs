@@ -159,6 +159,29 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.list.used_by" => "Used by {count} {count?object|objects}",
         "code.list.used_by_none" => "No object uses this script",
         "code.cmd.restart_assistant" => "Restart Code Assistant",
+        // O depurador (Onda D).
+        "code.cmd.toggle_breakpoint" => "Toggle Breakpoint \u{00b7} F9",
+        "code.cmd.continue" => "Continue \u{00b7} F8",
+        "code.cmd.next_line" => "Next Line \u{00b7} F10",
+        "code.cmd.pause_on_error" => "Pause on Error: Off",
+        "code.cmd.pause_on_error_off" => "Pause on Error: On",
+        "code.cmd.remove_breakpoints" => "Remove All Breakpoints",
+        "code.debug.continue" => "Continue",
+        "code.debug.next_line" => "Next line",
+        "code.debug.stopped" => "Stopped at line {line} \u{2014} on {who}",
+        "code.debug.stopped_error" => "Stopped on error at line {line} \u{2014} on {who}",
+        "code.debug.waiting" => "{count} more waiting",
+        "code.debug.more_vars" => "+{count} more",
+        "code.debug.top_level" => "(top of script)",
+        "code.debug.frame" => "{function} \u{00b7} {line}",
+        "code.debug.stack" => "Calls: {calls}",
+        "code.debug.stack_sep" => "  \u{2190}  ",
+        "code.debug.hits" => "\u{00d7}{count}",
+        "code.debug.printed" => "printed {count}\u{00d7}",
+        "code.debug.live" => "Live values: {who}",
+        "code.debug.blocked" => {
+            "A breakpoint was hit inside a function the engine calls (like table.sort) \u{2014} the game can't stop there."
+        }
         "code.cmd.rename" => "Rename Symbol \u{00b7} F2",
         "code.cmd.references" => "Find References \u{00b7} Shift+F12",
         // As três caixas do cartão «Script options» (13 §4 item 12); na paleta, o NOME da caixa e o

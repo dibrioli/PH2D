@@ -118,24 +118,111 @@ const VARIANTES: [V; 20] = {
     [
         V { nome: "base", ..Z },
         V { nome: "base2", ..Z },
-        V { nome: "off", off: true, ..Z },
-        V { nome: "liso", sem_grao: true, ..Z },
-        V { nome: "liso_off", sem_grao: true, off: true, ..Z },
-        V { nome: "grao", grao: true, ..Z },
-        V { nome: "grao_off", grao: true, off: true, ..Z },
-        V { nome: "grao_cor", grao: true, cor_grao: true, ..Z },
-        V { nome: "grao_cor_off", grao: true, cor_grao: true, off: true, ..Z },
-        V { nome: "shape_cor", cor_shape: true, ..Z },
-        V { nome: "shape_cor_off", cor_shape: true, off: true, ..Z },
-        V { nome: "papel", papel: true, sem_grao: true, ..Z },
-        V { nome: "papel_off", papel: true, sem_grao: true, off: true, ..Z },
-        V { nome: "grao_a0", grao: true, amount: Some(0.0), ..Z },
-        V { nome: "grao_a010", grao: true, amount: Some(0.10), ..Z },
-        V { nome: "grao_a025", grao: true, amount: Some(0.25), ..Z },
-        V { nome: "grao_a050", grao: true, amount: Some(0.50), ..Z },
-        V { nome: "r6", raio: Some(6.0), ..Z },
-        V { nome: "r40", raio: Some(40.0), ..Z },
-        V { nome: "grao_cor_a010", grao: true, cor_grao: true, amount: Some(0.10), ..Z },
+        V {
+            nome: "off",
+            off: true,
+            ..Z
+        },
+        V {
+            nome: "liso",
+            sem_grao: true,
+            ..Z
+        },
+        V {
+            nome: "liso_off",
+            sem_grao: true,
+            off: true,
+            ..Z
+        },
+        V {
+            nome: "grao",
+            grao: true,
+            ..Z
+        },
+        V {
+            nome: "grao_off",
+            grao: true,
+            off: true,
+            ..Z
+        },
+        V {
+            nome: "grao_cor",
+            grao: true,
+            cor_grao: true,
+            ..Z
+        },
+        V {
+            nome: "grao_cor_off",
+            grao: true,
+            cor_grao: true,
+            off: true,
+            ..Z
+        },
+        V {
+            nome: "shape_cor",
+            cor_shape: true,
+            ..Z
+        },
+        V {
+            nome: "shape_cor_off",
+            cor_shape: true,
+            off: true,
+            ..Z
+        },
+        V {
+            nome: "papel",
+            papel: true,
+            sem_grao: true,
+            ..Z
+        },
+        V {
+            nome: "papel_off",
+            papel: true,
+            sem_grao: true,
+            off: true,
+            ..Z
+        },
+        V {
+            nome: "grao_a0",
+            grao: true,
+            amount: Some(0.0),
+            ..Z
+        },
+        V {
+            nome: "grao_a010",
+            grao: true,
+            amount: Some(0.10),
+            ..Z
+        },
+        V {
+            nome: "grao_a025",
+            grao: true,
+            amount: Some(0.25),
+            ..Z
+        },
+        V {
+            nome: "grao_a050",
+            grao: true,
+            amount: Some(0.50),
+            ..Z
+        },
+        V {
+            nome: "r6",
+            raio: Some(6.0),
+            ..Z
+        },
+        V {
+            nome: "r40",
+            raio: Some(40.0),
+            ..Z
+        },
+        V {
+            nome: "grao_cor_a010",
+            grao: true,
+            cor_grao: true,
+            amount: Some(0.10),
+            ..Z
+        },
     ]
 };
 
@@ -267,7 +354,10 @@ fn sonda_auditoria_papel_grao() {
     );
     let f = |c: [f64; 3]| format!("{:.0},{:.0},{:.0}", c[0], c[1], c[2]);
     for nome in PINCEIS {
-        if so.as_deref().is_some_and(|s| !s.split(',').any(|n| n == nome)) {
+        if so
+            .as_deref()
+            .is_some_and(|s| !s.split(',').any(|n| n == nome))
+        {
             continue;
         }
         for v in VARIANTES {
@@ -277,7 +367,10 @@ fn sonda_auditoria_papel_grao() {
             for &x in &px {
                 hash = (hash ^ u64::from(x)).wrapping_mul(0x100_0000_01b3);
             }
-            let fora = px.chunks(4).filter(|p| p[3] == 0 && (p[0] | p[1] | p[2]) != 0).count();
+            let fora = px
+                .chunks(4)
+                .filter(|p| p[3] == 0 && (p[0] | p[1] | p[2]) != 0)
+                .count();
             let al = regiao(&px, 410, 580, YA, r);
             let ab = regiao(&px, 220, 380, YA, r);
             let av = regiao(&px, 30, 180, YA, r);

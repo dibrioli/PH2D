@@ -59,6 +59,7 @@ fn traco(buf: &mut [u8], spec: &BrushSpec, cor: [f32; 3]) {
         let _ = mistura_opaca_carimbo(
             &mut tela,
             |i| [antes[i], antes[i + 1], antes[i + 2], antes[i + 3]],
+            |i| [antes[i], antes[i + 1], antes[i + 2], antes[i + 3]],
             spec,
             Carimbo {
                 center: [x, 20.0],
@@ -66,6 +67,7 @@ fn traco(buf: &mut [u8], spec: &BrushSpec, cor: [f32; 3]) {
                 cor,
                 coverage: 1.0,
                 pressao: 1.0,
+                deposito: Default::default(),
             },
             Pegada::Disco {
                 centro: [x, 20.0],
@@ -101,6 +103,7 @@ fn wet_blend_off_nao_toca_em_nada() {
     let r = mistura_opaca_carimbo(
         &mut tela,
         |i| [antes[i], antes[i + 1], antes[i + 2], antes[i + 3]],
+        |i| [antes[i], antes[i + 1], antes[i + 2], antes[i + 3]],
         &spec,
         Carimbo {
             center: [40.0, 20.0],
@@ -108,6 +111,7 @@ fn wet_blend_off_nao_toca_em_nada() {
             cor: [0.0; 3],
             coverage: 1.0,
             pressao: 1.0,
+            deposito: Default::default(),
         },
         Pegada::Disco {
             centro: [40.0, 20.0],

@@ -317,6 +317,12 @@ impl PainterTool {
             &mut self.paint.stroke_mask,
             &mut self.paint.composite_mask[pos],
         );
+        // A pressão é da caneta, não da camada.
+        self.paint.mistura_camada[pos].pressao = self.paint.mistura_opaca.pressao;
+        std::mem::swap(
+            &mut self.paint.mistura_opaca,
+            &mut self.paint.mistura_camada[pos],
+        );
         self.paint.acumulando_no_plano = true;
         let mut plano = std::mem::take(&mut self.paint.pilha.planos[pos]);
         super::plane_fork::swap_canvas_plane(
@@ -332,6 +338,10 @@ impl PainterTool {
         );
         self.paint.pilha.planos[pos] = plano;
         self.paint.acumulando_no_plano = false;
+        std::mem::swap(
+            &mut self.paint.mistura_opaca,
+            &mut self.paint.mistura_camada[pos],
+        );
         std::mem::swap(
             &mut self.paint.stroke_mask,
             &mut self.paint.composite_mask[pos],

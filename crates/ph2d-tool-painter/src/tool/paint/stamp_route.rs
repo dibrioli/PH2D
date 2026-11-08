@@ -517,9 +517,12 @@ impl PainterTool {
                 .and_then(|id| self.layers.get(id))
                 .is_some_and(|l| l.alpha_locked);
         // A MISTURA OPACA (só ligada, só a pintar): a tela sob o dab entra na cor (`stamp_route::mistura`).
+        // ⛔ Pergunta ao BLEND, não à ferramenta: a camada Erase e a Blur do Composite medem a cobertura apagando
+        // (`composite_acumulado::acumula_camada`), e a mistura não apaga — pintava a camada Erase e enchia a
+        // película da Blur, que travava a Strength da Brush (Bugs #73, #75). A cor por texel (#77) é da rota.
         if brush.mistura_opaca.ligada()
             && matches!(self.paint.paint_mode, PaintMode::Paint)
-            && !self.stroke_erases()
+            && !matches!(brush.blend, ph2d_painter_brush::BrushBlend::EraseAlpha)
         {
             self.stamp_dabs_mistura_opaca(dabs, &brush, alpha_locked, w, h);
             return;

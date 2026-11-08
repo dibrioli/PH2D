@@ -22,6 +22,7 @@ mod a_ponta_de_pixel;
 mod as_formas;
 mod as_leis_da_escala; // 03_MOTORES §7 c, d, b-resto: o relevo, a ponta das cerdas, a lente, o grão fino
 mod cerda_e_marca;
+mod curas_da_mistura; // as curas da mistura Wet blend de 08/11 (Bugs #73–#78)
 mod exame_bancada;
 mod familias; // J3: as receitas da fábrica, um ficheiro por família (familias/mod.rs as lista todas)
 mod leis_sistemicas;
@@ -58,6 +59,7 @@ mod receitas_de_fabrica;
 mod regua_escada;
 mod regua_midia;
 mod sonda_auditoria_composite_camadas; // auditoria 08/11: Wet blend × Composite × Per-Layer Color × camadas (sonda)
+mod sonda_auditoria_papel_grao; // auditoria 08/11: Wet blend × papel, grão, cor do grão e do Shape (sonda)
 mod sonda_cartao_pen; // auditoria do cartão Pen (24/10)
 mod sonda_composite_vs_mixing; // Composite × Color mixing (pergunta do dono 07/11)
 mod sonda_continuo; // o Continuous em contas (dono 25/10)

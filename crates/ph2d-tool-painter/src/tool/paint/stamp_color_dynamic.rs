@@ -267,45 +267,16 @@ impl PainterTool {
                         // Default (all Normal): premultiplied source-over then un-premultiply — byte-identical
                         // to the prior path. With a per-layer blend pick: un-premultiply each layer and compose
                         // it onto the accumulated lower layers under its own mode (the layer-system formulas).
-                        let stroke = if any_blend {
-                            let mut s = [0.0f32; 4]; // straight rgba
-                            for (i, map) in covband.iter().take(n).enumerate() {
-                                let la = f32::from(map[p4 + 3]) / 255.0;
-                                if la > 0.0 {
-                                    let inv = 1.0 / la;
-                                    // Un-premultiply to straight, then scale the layer's alpha by its opacity.
-                                    let c = [
-                                        f32::from(map[p4]) / 255.0 * inv,
-                                        f32::from(map[p4 + 1]) / 255.0 * inv,
-                                        f32::from(map[p4 + 2]) / 255.0 * inv,
-                                        la * opac[i],
-                                    ];
-                                    s = apply_blend(BlendMode::from_u8(blends[i]), s, c);
-                                }
-                            }
-                            s
-                        } else {
-                            let mut s = [0.0f32; 4]; // premultiplied rgba
-                            for (i, map) in covband.iter().take(n).enumerate() {
-                                // Scale the premultiplied colour AND its alpha by the layer's opacity (linear
-                                // in premul space) — a brush-only opacity on that layer's tip contribution.
-                                let o = opac[i];
-                                let la = f32::from(map[p4 + 3]) / 255.0 * o;
-                                if la > 0.0 {
-                                    let inv = 1.0 - la;
-                                    s[0] = f32::from(map[p4]) / 255.0 * o + s[0] * inv;
-                                    s[1] = f32::from(map[p4 + 1]) / 255.0 * o + s[1] * inv;
-                                    s[2] = f32::from(map[p4 + 2]) / 255.0 * o + s[2] * inv;
-                                    s[3] = la + s[3] * inv;
-                                }
-                            }
-                            if s[3] > 0.0 {
-                                let inv = 1.0 / s[3];
-                                [s[0] * inv, s[1] * inv, s[2] * inv, s[3]]
-                            } else {
-                                [0.0; 4]
-                            }
-                        };
+                        let stroke = camadas_num_texel(
+                            |i| {
+                                let m = &covband[i];
+                                [m[p4], m[p4 + 1], m[p4 + 2], m[p4 + 3]]
+                            },
+                            n,
+                            &blends,
+                            &opac,
+                            any_blend,
+                        );
                         // Base: the snapshot (incremental; absolute index) or the canvas itself (fills —
                         // already restored to the pre-shape this move).
                         let a4 = ((py as usize) * wus + px as usize) * 4;
@@ -407,5 +378,57 @@ impl PainterTool {
             }
         }
         self.mark_dirty(bb);
+    }
+}
+
+/// O traço de UM texel do Shape de várias camadas: os mapas pré-multiplicados de cada camada (ordem z) compostos num
+/// RGBA RECTO `0..1`, com o blend e a opacidade de cada uma. Todo Normal: o over pré-multiplicado e depois o recto; com
+/// um blend por camada, cada uma em recto sobre as de baixo pelas fórmulas do sistema de camadas. Dois chamadores: a
+/// recomposição do traço e a pegada de cor da mistura (Bug #77).
+pub(super) fn camadas_num_texel(
+    texel: impl Fn(usize) -> [u8; 4],
+    n: usize,
+    blends: &[u8],
+    opac: &[f32],
+    any_blend: bool,
+) -> [f32; 4] {
+    if any_blend {
+        let mut s = [0.0f32; 4]; // straight rgba
+        for i in 0..n {
+            let map = texel(i);
+            let la = f32::from(map[3]) / 255.0;
+            if la > 0.0 {
+                let inv = 1.0 / la;
+                // Un-premultiply to straight, then scale the layer's alpha by its opacity.
+                let c = [
+                    f32::from(map[0]) / 255.0 * inv,
+                    f32::from(map[1]) / 255.0 * inv,
+                    f32::from(map[2]) / 255.0 * inv,
+                    la * opac[i],
+                ];
+                s = apply_blend(BlendMode::from_u8(blends[i]), s, c);
+            }
+        }
+        s
+    } else {
+        let mut s = [0.0f32; 4]; // premultiplied rgba
+        for (i, &o) in opac.iter().enumerate().take(n) {
+            let map = texel(i);
+            // Scale the premultiplied colour AND its alpha by the layer's opacity (linear in premul space).
+            let la = f32::from(map[3]) / 255.0 * o;
+            if la > 0.0 {
+                let inv = 1.0 - la;
+                s[0] = f32::from(map[0]) / 255.0 * o + s[0] * inv;
+                s[1] = f32::from(map[1]) / 255.0 * o + s[1] * inv;
+                s[2] = f32::from(map[2]) / 255.0 * o + s[2] * inv;
+                s[3] = la + s[3] * inv;
+            }
+        }
+        if s[3] > 0.0 {
+            let inv = 1.0 / s[3];
+            [s[0] * inv, s[1] * inv, s[2] * inv, s[3]]
+        } else {
+            [0.0; 4]
+        }
     }
 }

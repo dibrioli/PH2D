@@ -62,6 +62,37 @@ impl ModoMisturaOpaca {
     }
 }
 
+/// **Sample**: de onde a mistura apanha a cor (Bug #79, dono 08/11).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum AmostraDaMistura {
+    /// A camada em que se pinta, como estava no início do traço (o default de todo pincel e ficheiro antigo).
+    #[default]
+    EstaCamada,
+    /// Todas as camadas visíveis compostas, como estavam no início do traço: o esbatedor numa camada nova vazia
+    /// arrasta a cor das de baixo.
+    TodasVisiveis,
+}
+
+impl AmostraDaMistura {
+    /// Todas, na ordem do seletor.
+    pub const TODAS: [Self; 2] = [Self::EstaCamada, Self::TodasVisiveis];
+
+    /// O nome gravado.
+    #[must_use]
+    pub fn nome(self) -> &'static str {
+        match self {
+            Self::EstaCamada => "ThisLayer",
+            Self::TodasVisiveis => "AllVisibleLayers",
+        }
+    }
+
+    /// A amostra de um nome gravado.
+    #[must_use]
+    pub fn do_nome(s: &str) -> Option<Self> {
+        Self::TODAS.into_iter().find(|a| a.nome() == s)
+    }
+}
+
 /// Os controlos da mistura. Tudo em `0..=1`.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct MisturaOpaca {
@@ -78,6 +109,8 @@ pub struct MisturaOpaca {
     pub amount_pressure: f32,
     /// Quanto a pressão escala a Density (`0` = ignora; `1` = density × pressão).
     pub density_pressure: f32,
+    /// De onde se amostra.
+    pub amostra: AmostraDaMistura,
 }
 
 impl Default for MisturaOpaca {
@@ -97,6 +130,7 @@ impl MisturaOpaca {
         pigmento: 0.0,
         amount_pressure: 0.0,
         density_pressure: 0.0,
+        amostra: AmostraDaMistura::EstaCamada,
     };
 
     /// A Density à pressão `pressao`.
@@ -297,6 +331,9 @@ pub enum Pegada<'a> {
         /// A mesma pegada SEM o Grain (só com o Grain ativo): o grão é o TECTO da cobertura e o resto a TAXA, como
         /// no pincel sem a mistura (`stroke_cover::cover_add`); sem isto o lápis enchia os furos do papel.
         sem_grao: Option<&'a [u8]>,
+        /// O RGB da máscara É a cor do pincel em cada texel (a rampa do Grain ou do Shape, as camadas do Per-Layer
+        /// Color): a tinta mistura o reservatório com ELA, não com a cor única do carimbo (Bug #77).
+        com_cor: bool,
     },
     /// Só o falloff do pincel num disco de `raio` à volta de `centro`.
     Disco { centro: [f32; 2], raio: f32 },
@@ -328,14 +365,31 @@ pub struct Carimbo {
     pub coverage: f32,
     /// A pressão da caneta (`1` no rato).
     pub pressao: f32,
+    /// O que este carimbo faz além de amostrar.
+    pub deposito: Deposito,
 }
 
-/// Um carimbo do Wet blend. `antes(i)` = o RGBA do byte `i` (múltiplo de 4) da tela de ANTES do traço, de onde se
-/// amostra; chamado só dentro da caixa da pegada. Devolve `None` com a lei `Off`, raio nulo ou fora da tela —
+/// O que um carimbo da mistura deposita (Bug #78).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Deposito {
+    /// Amostra e pinta a fracção do passo de 3 % (o pincel de pegada fixa: a mescla lisa).
+    #[default]
+    NoPassoDaMistura,
+    /// Só amostra: o reservatório anda, a tela não muda (o pincel que SORTEIA a pegada, entre dois carimbos dele).
+    SoAmostra,
+    /// Amostra e pinta um dab INTEIRO do pincel (o pincel que sorteia a pegada, no passo dele): as marcas sorteadas
+    /// são as do pincel sem a mistura, não três vezes mais.
+    PassoDoPincel,
+}
+
+/// Um carimbo do Wet blend. `antes(i)` = o RGBA do byte `i` (múltiplo de 4) da tela de ANTES do traço, sobre a qual
+/// a película se compõe; `amostra_de(i)` = o fundo de onde se amostra (a mesma tela, ou todas as camadas visíveis —
+/// [`AmostraDaMistura`]). Chamados só dentro da caixa da pegada. Devolve `None` com a lei `Off`, raio nulo ou fora da tela —
 /// e nesses casos a tela e o reservatório ficam intactos.
 pub fn mistura_opaca_carimbo(
     tela: &mut Tela<'_>,
     antes: impl Fn(usize) -> [u8; 4],
+    amostra_de: impl Fn(usize) -> [u8; 4],
     spec: &BrushSpec,
     c: Carimbo,
     pegada: Pegada<'_>,
@@ -389,7 +443,7 @@ pub fn mistura_opaca_carimbo(
                 continue;
             }
             let i = ((y * w + x) * 4) as usize;
-            let fundo = antes(i).map(|v| f32::from(v) / 255.0);
+            let fundo = amostra_de(i).map(|v| f32::from(v) / 255.0);
             let px = match sombra_valida.then(|| tela.sombra.le(x, y)).flatten() {
                 Some(f) if f[4] <= velha_desde && f[3] > 0.0 => {
                     sobre([f[0], f[1], f[2], f[3]], fundo)
@@ -440,16 +494,31 @@ pub fn mistura_opaca_carimbo(
     res.cheio = true;
     res.ultimo = c.center;
     res.arco = arco;
+    if c.deposito == Deposito::SoAmostra {
+        return None;
+    }
     // 3. A tinta do carimbo: o papel transparente não suja (o pincel fica com a cor dele onde não apanhou nada).
     let amount = MisturaOpaca::pela_pressao(m.paint_amount, m.amount_pressure, c.pressao);
-    let a_eff = 1.0 - (1.0 - amount) * res.carga.clamp(0.0, 1.0);
-    let rgb: [f32; 3] = std::array::from_fn(|k| res.cor[k] + (pincel[k] - res.cor[k]) * a_eff);
+    let a_eff = peso_do_pincel(amount, res.carga);
     let pig = m.pigmento.clamp(0.0, 1.0);
-    let tinta = if pig > 0.0 {
-        let e = crate::espectral::mistura(res.cor, pincel, a_eff);
-        std::array::from_fn(|k| rgb[k] + (e[k] - rgb[k]) * pig)
-    } else {
-        rgb
+    let res_cor = res.cor;
+    let tinta_de = |pincel: [f32; 3]| -> [f32; 3] {
+        let rgb: [f32; 3] = std::array::from_fn(|k| res_cor[k] + (pincel[k] - res_cor[k]) * a_eff);
+        if pig > 0.0 {
+            let e = crate::espectral::mistura(res_cor, pincel, a_eff);
+            std::array::from_fn(|k| rgb[k] + (e[k] - rgb[k]) * pig)
+        } else {
+            rgb
+        }
+    };
+    let tinta_unica = tinta_de(pincel);
+    let cor_da_mascara = match pegada {
+        Pegada::Mascara {
+            mascara,
+            com_cor: true,
+            ..
+        } => Some(mascara),
+        _ => None,
     };
     // 4. A película do traço: cada carimbo põe `tinta` nela à taxa da pegada × Density × Flow (normalizada pelo
     // passo do pincel), e a cobertura dela sobe só até ao TECTO do pincel sem a mistura (Accumulate desligado: a
@@ -475,11 +544,13 @@ pub fn mistura_opaca_carimbo(
     // A opacidade acumula como o pincel SEM a mistura: cada carimbo vale `passo / passo do pincel` de um dab dele
     // (a mistura adensa os carimbos a 3 %, não a cobertura); o 1.º vale um passo da mistura (sem disco no início).
     let nominal = spec.spacing.max(PASSO_DA_MISTURA);
-    let k_passo = if primeiro {
-        spec.spacing_do_traco()
+    let k_passo = if c.deposito == Deposito::PassoDoPincel {
+        1.0
+    } else if primeiro {
+        spec.spacing_do_traco() / nominal
     } else {
-        passo
-    } / nominal;
+        passo / nominal
+    };
     let k_passo = k_passo.clamp(PASSO_DA_MISTURA * 0.25, 1.0);
     // No plano do traço a tela É a película (relê-se dela); na tela directa a película nasce vazia no pen-down.
     tela.sombra
@@ -514,6 +585,10 @@ pub fn mistura_opaca_carimbo(
             if px[4] == SEM_TINTA {
                 px[4] = arco;
             }
+            let tinta = match cor_da_mascara {
+                Some(mc) => tinta_de([mc[i], mc[i + 1], mc[i + 2]].map(|v| f32::from(v) / 255.0)),
+                None => tinta_unica,
+            };
             let s0 = px[3];
             let s_livre = s0 + alfa * (1.0 - s0);
             for k in 0..3 {
@@ -560,6 +635,18 @@ pub fn mistura_opaca_carimbo(
         w: x1 - x0,
         h: y1 - y0,
     })
+}
+
+/// Quanto da tinta é a cor do pincel, pesada pela QUANTIDADE de cada lado (Bug #76, aprovado pelo dono 08/11):
+/// `a / (c·(1 − a) + a)` — o reservatório entra com o que leva (`c·(1 − a)`), o pincel com o Amount. `a = 0` → só o
+/// reservatório (o esbatedor não solta a cor do pincel quando a carga decai no vazio); `c = 0` → só o pincel;
+/// `c = 1` → `a`, a lei de antes. Sem nada dos dois lados não há tinta (o `corpo` é 0): devolve o pincel.
+#[must_use]
+pub fn peso_do_pincel(amount: f32, carga: f32) -> f32 {
+    let a = amount.clamp(0.0, 1.0);
+    let c = carga.clamp(0.0, 1.0);
+    let d = c * (1.0 - a) + a;
+    if d > 0.0 { a / d } else { 1.0 }
 }
 
 /// A caixa de píxeis `(x0, y0, x1, y1)` de um disco de raio `r` em `c` (`None` fora da tela).

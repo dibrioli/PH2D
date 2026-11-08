@@ -628,6 +628,12 @@ pub(crate) struct PaintState {
     /// A **mistura opaca** do Digital neste traço (`super::stamp_route::mistura`): o reservatório e a
     /// pressão da caneta do último evento. Renasce no pen-down e a cada re-carimbo de figura.
     pub(super) mistura_opaca: super::stamp_route::mistura::MisturaDoTraco,
+    /// A mistura de CADA camada do Composite (trocada para dentro de [`Self::mistura_opaca`] no passe dela, como o
+    /// `composite_mask`): cada parte mistura só a tela de antes do traço, com o seu reservatório e a sua película
+    /// (Bug #74 — partilhada, o byte dependia da cadência e a camada de cima apanhava a tinta da de baixo).
+    pub(super) mistura_camada: [super::stamp_route::mistura::MisturaDoTraco; composite::N_CAMADAS],
+    /// «Sample: All visible layers»: as camadas visíveis de antes do traço, compostas no 1.º lote (`None` fora dele).
+    pub(super) mistura_visivel: Option<std::sync::Arc<Vec<u8>>>,
     /// The previous dab centre of the Smudge TRUE-SMEAR chain (`None` = stroke start / no smear yet).
     /// With `wet_smudge > 0` each dab DRAGS the frozen base's paint from here to its own centre
     /// (`smear_dab` on the forked [`Self::watercolor_base`]) before the wash composites over it — the

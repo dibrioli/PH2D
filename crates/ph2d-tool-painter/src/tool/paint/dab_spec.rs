@@ -63,6 +63,9 @@ impl PainterTool {
             // (o miolo do Soft Pastel 92 → 109 px): o traço não o emite fora do Digital; o Wet pousa os grãos À
             // PARTE pela mesma lei (`wetpaint/po.rs`, lida do pincel do artista).
             brush.dab_jitter.po = 0.0;
+            // O Color mixing é do Digital (o painel só o oferece lá): guardado num pincel e levado ao Wet, cortava o
+            // passo do traço a 3 % (`spacing_do_traco`) — 848 px no `o_pincel_guardado_pinta_o_mesmo_traco`.
+            brush.mistura_opaca.modo = ph2d_painter_brush::mistura_opaca::ModoMisturaOpaca::Off;
         }
         // O Wet Paint não lê o PUSH do Impasto (o preset declara-o), mas o motor de traço lê-o para
         // AQUECER (reter os primeiros dabs até ter direcção): com a água a correr no traço (W1e, F6) o

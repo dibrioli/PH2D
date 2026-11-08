@@ -171,7 +171,10 @@ fn pinta(nome: &str, f: Fundo, prepara: impl FnOnce(&mut PainterTool)) -> Vec<u8
 fn sonda_auditoria_composite_e_camadas() {
     let so = std::env::var("PH2D_AUD_SO").ok();
     for &nome in PINCEIS {
-        if so.as_deref().is_some_and(|s| !s.split(',').any(|n| n == nome)) {
+        if so
+            .as_deref()
+            .is_some_and(|s| !s.split(',').any(|n| n == nome))
+        {
             continue;
         }
         let ref_bloco = pinta(nome, Fundo::Bloco, |_| {});
@@ -336,7 +339,11 @@ fn sonda_auditoria_per_layer_color() {
             t.run_full().0
         };
         for f in [Fundo::Branco, Fundo::Bloco] {
-            let fz = if f == Fundo::Branco { "branco" } else { "bloco" };
+            let fz = if f == Fundo::Branco {
+                "branco"
+            } else {
+                "bloco"
+            };
             let wet_pl = corre(None, true, f);
             let wet_sem = corre(None, false, f);
             let off_pl = corre(Some(ModoMisturaOpaca::Off), true, f);
@@ -455,12 +462,24 @@ fn sonda_auditoria_lote2() {
             let be = p(off, &[(BRUSH, 1.0), (ERASE, 1.0)], 60);
             eprintln!("[l2] {m} só          {}", resumo(&s));
             eprintln!("[l2] {m} 60×120 ev   {}", d(&s, &s120));
-            eprintln!("[l2] {m} C[B,B]      {} · vs só {}", resumo(&bb), d(&bb, &s));
+            eprintln!(
+                "[l2] {m} C[B,B]      {} · vs só {}",
+                resumo(&bb),
+                d(&bb, &s)
+            );
             eprintln!("[l2] {m} C[B,B] 60×120 {}", d(&bb, &bb120));
-            eprintln!("[l2] {m} C[B.1,B.1]  {} · vs C[B,B] {}", resumo(&bb01), d(&bb01, &bb));
+            eprintln!(
+                "[l2] {m} C[B.1,B.1]  {} · vs C[B,B] {}",
+                resumo(&bb01),
+                d(&bb01, &bb)
+            );
             eprintln!("[l2] {m} C[S,B]      {}", resumo(&sb));
             eprintln!("[l2] {m} receita     {}", resumo(&rec));
-            eprintln!("[l2] {m} receita B1  {} · Strength .1×1 {}", resumo(&rec10), d(&rec, &rec10));
+            eprintln!(
+                "[l2] {m} receita B1  {} · Strength .1×1 {}",
+                resumo(&rec10),
+                d(&rec, &rec10)
+            );
             eprintln!("[l2] {m} C[E,B]      {}", resumo(&eb));
             eprintln!("[l2] {m} C[B,E]      {}", resumo(&be));
         }

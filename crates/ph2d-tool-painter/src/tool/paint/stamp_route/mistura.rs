@@ -22,7 +22,7 @@
 use super::super::Region;
 use crate::tool::PainterTool;
 use ph2d_painter_brush::mistura_opaca::{
-    Carimbo, Pegada, ReservatorioOpaco, Sombra, Tela, mistura_opaca_carimbo,
+    Carimbo, Deposito, Pegada, ReservatorioOpaco, Sombra, Tela, mistura_opaca_carimbo,
 };
 use ph2d_painter_brush::{BrushSpec, Dab};
 use std::sync::Arc;
@@ -109,6 +109,11 @@ pub(in crate::tool::paint) struct MisturaDoTraco {
     pub pegada_lisa: Vec<u8>,
     /// A tela escrita em `f32` durante o traço.
     pub sombra: Sombra,
+    /// Os mapas pré-multiplicados de cada camada do Shape de cor (Per-Layer Color) para a pegada de UM carimbo.
+    pub camadas: Vec<Vec<u8>>,
+    /// O pincel que sorteia a pegada carimba no passo dele: o `arc_len` do último dab que carimbou (`None` no
+    /// pen-down) — as cópias da Symmetry, do Tiling e do spray partilham-no e carimbam juntas.
+    pub carimbou_em: Option<f32>,
 }
 
 impl Default for MisturaDoTraco {
@@ -121,6 +126,8 @@ impl Default for MisturaDoTraco {
             pegada: Vec::new(),
             pegada_lisa: Vec::new(),
             sombra: Sombra::default(),
+            camadas: Vec::new(),
+            carimbou_em: None,
         }
     }
 }
@@ -128,9 +135,48 @@ impl Default for MisturaDoTraco {
 impl PainterTool {
     /// O pincel começa limpo e a tela de antes é a de agora (pen-down, re-carimbo de figura — que já repôs a tela).
     pub(in crate::tool::paint) fn mistura_opaca_recomeca(&mut self) {
-        self.paint.mistura_opaca.res.clear();
-        self.paint.mistura_opaca.antes.recomeca();
-        self.paint.mistura_opaca.sombra.recomeca();
+        let paint = &mut self.paint;
+        paint.mistura_visivel = None;
+        for m in std::iter::once(&mut paint.mistura_opaca).chain(paint.mistura_camada.iter_mut()) {
+            m.res.clear();
+            m.antes.recomeca();
+            m.sombra.recomeca();
+            m.carimbou_em = None;
+        }
+    }
+
+    /// A composição das camadas visíveis de antes do traço, para a amostra (`None` = amostra a própria camada).
+    fn mistura_amostra_visivel(
+        &mut self,
+        brush: &BrushSpec,
+        base: Option<&Arc<Vec<u8>>>,
+        n4: usize,
+    ) -> Option<Arc<Vec<u8>>> {
+        use ph2d_painter_brush::mistura_opaca::AmostraDaMistura;
+        if brush.mistura_opaca.amostra != AmostraDaMistura::TodasVisiveis || self.layers.len() < 2 {
+            return None;
+        }
+        if let Some(v) = self
+            .paint
+            .mistura_visivel
+            .as_ref()
+            .filter(|v| v.len() == n4)
+        {
+            return Some(Arc::clone(v));
+        }
+        let (w, h) = self.source_size;
+        let ativa = match base {
+            Some(b) => Arc::clone(b),
+            None => Arc::clone(&self.canvas_rgba),
+        };
+        let src = crate::tool::internal::ToolPixelSource {
+            active_id: self.layers.active().unwrap_or(crate::layers::LayerId(0)),
+            active_rgba: &ativa,
+            images: &self.images,
+        };
+        let v = Arc::new(crate::compositor::composite(&self.layers, &src, w, h));
+        self.paint.mistura_visivel = Some(Arc::clone(&v));
+        Some(v)
     }
 
     /// A pressão do evento que vai gerar o próximo lote.
@@ -172,22 +218,16 @@ impl PainterTool {
         } else {
             None
         };
+        // «Sample: All visible layers» (#79): as camadas visíveis compostas no 1.º lote do traço, com a ativa como
+        // estava antes dele. Uma camada só = a própria (nada a compor).
+        let visivel = self.mistura_amostra_visivel(brush, base.as_ref(), n4);
         let mut ladrilhos = std::mem::take(&mut self.paint.mistura_opaca.antes);
         let mut sombra = std::mem::take(&mut self.paint.mistura_opaca.sombra);
         // A pegada real (Shape, Grain); o stream de RNG anda por dab como na rota normal.
         self.ensure_shape_ramp_lut();
         let papel = self.papel_como_grain();
         let shape_tom = self.shape_tom_ativo();
-        let image = if papel {
-            &self.paint.paper_image
-        } else {
-            &self.paint.texture_image
-        }
-        .as_ref()
-        .map(|i| i.as_mask());
-        let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
-        let shape_ramp_lut = shape_tom.then_some(self.paint.shape_ramp_lut.as_slice());
-        let shape_active = brush.shape_silhouette_active(shape_image.is_some());
+        let shape_active = brush.shape_silhouette_active(self.paint.shape_image.is_some());
         let textured = brush.texture.is_active();
         let mut mascara = std::mem::take(&mut self.paint.mistura_opaca.pegada);
         if mascara.len() != n4 {
@@ -199,6 +239,92 @@ impl PainterTool {
             liso.clear();
             liso.resize(n4, 0);
         }
+        // A COR da pegada (Bug #77): as rotas que dão cor por texel — a ponta de píxel, o Shape de várias camadas,
+        // a rampa do Grain ou do Shape — pintam-na na máscara, e a mistura lê o RGB como a cor do pincel. Mesma
+        // ordem do despacho (`stamp_dabs_inner`).
+        let pixel = self.pixel_vivo(brush);
+        let por_camada = !pixel
+            && self.paint.shape_layers.is_color_mode()
+            && brush.shape_silhouette_active(self.paint.shape_image.is_some());
+        let rampa_px = pixel
+            && self.paint.shape_color_ramp_enabled
+            && !self.shape_tom_ativo()
+            && self.paint.shape_camadas.alguma(false);
+        let dono = if pixel || por_camada {
+            super::super::ramp_lut::RampLutOwner::None
+        } else {
+            self.color_ramp_owner(textured)
+        };
+        if rampa_px {
+            self.ensure_ramp_lut(super::super::ramp_lut::RampLutOwner::Shape);
+        } else if dono != super::super::ramp_lut::RampLutOwner::None {
+            self.ensure_ramp_lut(dono);
+        }
+        let grain_ramp_camadas = por_camada && self.ensure_per_layer_grain_ramp(brush);
+        let com_cor = rampa_px || por_camada || dono != super::super::ramp_lut::RampLutOwner::None;
+        // Re-empresta o que o `ensure_*` (`&mut self`) acabou de preparar.
+        let image = if papel {
+            &self.paint.paper_image
+        } else {
+            &self.paint.texture_image
+        }
+        .as_ref()
+        .map(|i| i.as_mask());
+        let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
+        let shape_ramp_lut = shape_tom.then_some(self.paint.shape_ramp_lut.as_slice());
+        let rampa = if rampa_px {
+            Some(ph2d_painter_brush::RampPaint {
+                lut: &self.paint.texture_ramp_lut,
+                alpha_mode: super::super::ramp_lut::BRUSH_RAMP_ALPHA,
+                index: super::super::ramp_lut::RampLutOwner::Shape.index(),
+                shape: self.paint.shape_camadas.motor(false),
+                shift: [0.0; 3],
+            })
+        } else if dono != super::super::ramp_lut::RampLutOwner::None {
+            Some(ph2d_painter_brush::RampPaint {
+                lut: &self.paint.texture_ramp_lut,
+                alpha_mode: super::super::ramp_lut::BRUSH_RAMP_ALPHA,
+                index: dono.index(),
+                shape: if dono == super::super::ramp_lut::RampLutOwner::Shape {
+                    self.paint.shape_camadas.motor(shape_active)
+                } else {
+                    ph2d_painter_brush::ShapeRampLayers::default()
+                },
+                shift: [0.0; 3],
+            })
+        } else {
+            None
+        };
+        let camadas_do_shape = por_camada.then(|| {
+            let sl = &self.paint.shape_layers;
+            let n = sl.len();
+            let blends: Vec<u8> = (0..n).map(|i| sl.effective_blend(i)).collect();
+            let any_blend = blends.iter().any(|&b| b != 0);
+            (
+                sl.masks(),
+                sl.resolved_colors(brush.color),
+                (0..n).map(|i| sl.rgb_image(i)).collect::<Vec<_>>(),
+                blends,
+                sl.opacities(),
+                any_blend,
+            )
+        });
+        let grain_ramp = grain_ramp_camadas.then_some(self.paint.texture_ramp_lut.as_slice());
+        let mut mapas = std::mem::take(&mut self.paint.mistura_opaca.camadas);
+        if let Some((masks, ..)) = &camadas_do_shape {
+            mapas.resize_with(masks.len(), Vec::new);
+            for m in &mut mapas {
+                if m.len() != n4 {
+                    m.clear();
+                    m.resize(n4, 0);
+                }
+            }
+        }
+        // Só quando a mistura encurtou o passo (o do pincel acima de 3 %): o Wet Wash Mix já anda abaixo dele.
+        let sorteia = brush.sorteia_a_pegada()
+            && brush.spacing > ph2d_painter_brush::mistura_opaca::PASSO_DA_MISTURA;
+        let passo_do_pincel = brush.passo_de(brush.spacing);
+        let mut carimbou_em = self.paint.mistura_opaca.carimbou_em;
         let mut dab_rng = super::super::tiling::DabRng::new(self.paint.tex_rng);
         let buf = super::super::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
@@ -225,6 +351,15 @@ impl PainterTool {
             };
             let spec = brush.at_dab(d);
             let tex_rng = dab_rng.enter(&groups, i);
+            let deposito = if !sorteia {
+                Deposito::NoPassoDaMistura
+            } else if carimbou_em.is_none_or(|a| d.arc_len == a || d.arc_len >= a + passo_do_pincel)
+            {
+                carimbou_em = Some(d.arc_len);
+                Deposito::PassoDoPincel
+            } else {
+                Deposito::SoAmostra
+            };
             // A pegada: o kernel da rota normal (`stamp_dabs_per_pixel`), a branco, força 1, Flow 1, sobre o vazio.
             let fp = spec.dab_footprint_of(d);
             let shape_basis = shape_active.then(|| {
@@ -260,28 +395,141 @@ impl PainterTool {
                 blend: ph2d_painter_brush::BrushBlend::default(),
                 ..spec
             };
-            let Some(r) = ph2d_painter_brush::stamp_dab_textured_masked(
-                &mut mascara,
-                w,
-                h,
-                d.center,
-                &branco,
-                1.0,
-                false,
-                basis.as_ref(),
-                image.as_ref(),
-                shape_in,
-                None,
-                None,
-                spec.dab_rotor(d),
-                d.capsula(&branco),
-            ) else {
+            let r = if pixel {
+                // A ponta de píxel: a pegada binária na grelha (a textura não a carimba; a rampa pela queda sim).
+                let d1 = Dab {
+                    coverage: 1.0,
+                    ..*d
+                };
+                let rampa = rampa.map(|r| ph2d_painter_brush::RampPaint {
+                    shift: d.color_shift,
+                    ..r
+                });
+                ph2d_painter_brush::pixel::carimba(
+                    &mut mascara,
+                    w,
+                    h,
+                    &d1,
+                    &BrushSpec {
+                        color: d.color,
+                        ..branco
+                    },
+                    false,
+                    None,
+                    rampa.as_ref(),
+                )
+            } else if let (Some((masks, cores, rgb, blends, opac, any_blend)), Some(sb)) =
+                (&camadas_do_shape, &shape_basis)
+            {
+                let colors = cores
+                    .iter()
+                    .zip(rgb)
+                    .map(|(&c, rgb)| {
+                        if rgb.is_some() {
+                            c
+                        } else {
+                            ph2d_painter_brush::apply_color_shift(c, d.color_shift)
+                        }
+                    })
+                    .collect();
+                let um = [ph2d_painter_brush::DynDab {
+                    center: d.center,
+                    radius: d.radius_px,
+                    spec: BrushSpec {
+                        color: d.color,
+                        ..branco
+                    },
+                    shape_basis: sb.clone(),
+                    grain_basis: basis.clone(),
+                    colors,
+                    color_shift: d.color_shift,
+                    coverage: 1.0,
+                }];
+                let r = ph2d_painter_brush::accumulate_shape_layers_rgba_batch(
+                    &mut mapas,
+                    w,
+                    h,
+                    &um,
+                    masks,
+                    rgb,
+                    image.as_ref(),
+                    grain_ramp,
+                );
+                if let Some(r) = r {
+                    // As camadas compostas num RGBA recto na máscara; os mapas voltam a ser vazios.
+                    let n = masks.len();
+                    for y in r.y..r.y + r.h {
+                        for x in r.x..r.x + r.w {
+                            let i = ((y * w + x) * 4) as usize;
+                            let s = super::super::stamp_color_dynamic::camadas_num_texel(
+                                |k| {
+                                    let m = &mapas[k];
+                                    [m[i], m[i + 1], m[i + 2], m[i + 3]]
+                                },
+                                n,
+                                blends,
+                                opac,
+                                *any_blend,
+                            );
+                            for (dst, v) in mascara[i..i + 4].iter_mut().zip(s) {
+                                *dst = (v.clamp(0.0, 1.0) * 255.0 + 0.5) as u8;
+                            }
+                            for m in &mut mapas {
+                                m[i..i + 4].fill(0);
+                            }
+                        }
+                    }
+                }
+                r
+            } else if let Some(rampa) = rampa {
+                // A rampa lê a cor do carimbo (`stamp_dabs_ramped`): a pegada leva-a, não o branco.
+                ph2d_painter_brush::stamp_dab_ramped(
+                    &mut mascara,
+                    w,
+                    h,
+                    d.center,
+                    &BrushSpec {
+                        color: d.color,
+                        ..branco
+                    },
+                    1.0,
+                    false,
+                    basis.as_ref(),
+                    image.as_ref(),
+                    shape_in,
+                    ph2d_painter_brush::RampPaint {
+                        shift: d.color_shift,
+                        ..rampa
+                    },
+                    None,
+                    spec.dab_rotor(d),
+                    d.capsula(&branco),
+                )
+            } else {
+                ph2d_painter_brush::stamp_dab_textured_masked(
+                    &mut mascara,
+                    w,
+                    h,
+                    d.center,
+                    &branco,
+                    1.0,
+                    false,
+                    basis.as_ref(),
+                    image.as_ref(),
+                    shape_in,
+                    None,
+                    None,
+                    spec.dab_rotor(d),
+                    d.capsula(&branco),
+                )
+            };
+            let Some(r) = r else {
                 continue;
             };
             let mut caixa = (r.x, r.y, r.x + r.w, r.y + r.h);
             // Com o Grain ou a Shape, a mesma pegada sem eles (o grão e a silhueta vão ao tecto, como no Off —
             // `Pegada::Mascara::sem_grao`; na taxa as cerdas saíam ralas e translúcidas, lote A 08/11).
-            let com_grao = basis.is_some() || shape_in.is_some();
+            let com_grao = !pixel && (basis.is_some() || shape_in.is_some());
             if com_grao
                 && let Some(r2) = ph2d_painter_brush::stamp_dab_textured_masked(
                     &mut liso,
@@ -316,11 +564,13 @@ impl PainterTool {
                 cor: d.color,
                 coverage: d.coverage,
                 pressao,
+                deposito,
             };
             let pegada = Pegada::Mascara {
                 mascara: &mascara,
                 caixa,
                 sem_grao: com_grao.then_some(liso.as_slice()),
+                com_cor,
             };
             let mut tela = Tela {
                 buf: &mut *buf,
@@ -332,12 +582,32 @@ impl PainterTool {
             };
             let r = if let Some(b) = base.as_deref() {
                 let antes = |i: usize| [b[i], b[i + 1], b[i + 2], b[i + 3]];
-                mistura_opaca_carimbo(&mut tela, antes, &spec, carimbo, pegada, alvo)
+                match visivel.as_deref() {
+                    Some(v) => {
+                        let amostra = |i: usize| [v[i], v[i + 1], v[i + 2], v[i + 3]];
+                        mistura_opaca_carimbo(
+                            &mut tela, antes, amostra, &spec, carimbo, pegada, alvo,
+                        )
+                    }
+                    None => {
+                        mistura_opaca_carimbo(&mut tela, antes, antes, &spec, carimbo, pegada, alvo)
+                    }
+                }
             } else {
                 // Os ladrilhos do dab guardam-se ANTES de ele escrever: nenhum é lido depois de escrito.
                 ladrilhos.guarda(tela.buf, w, h, caixa);
                 let antes = |i: usize| ladrilhos.le(i);
-                mistura_opaca_carimbo(&mut tela, antes, &spec, carimbo, pegada, alvo)
+                match visivel.as_deref() {
+                    Some(v) => {
+                        let amostra = |i: usize| [v[i], v[i + 1], v[i + 2], v[i + 3]];
+                        mistura_opaca_carimbo(
+                            &mut tela, antes, amostra, &spec, carimbo, pegada, alvo,
+                        )
+                    }
+                    None => {
+                        mistura_opaca_carimbo(&mut tela, antes, antes, &spec, carimbo, pegada, alvo)
+                    }
+                }
             };
             // A máscara volta a ser vazia (só a caixa que o kernel pintou).
             let (x0, y0, x1, y1) = caixa;
@@ -364,6 +634,8 @@ impl PainterTool {
         self.paint.mistura_opaca.sombra = sombra;
         self.paint.mistura_opaca.pegada = mascara;
         self.paint.mistura_opaca.pegada_lisa = liso;
+        self.paint.mistura_opaca.camadas = mapas;
+        self.paint.mistura_opaca.carimbou_em = carimbou_em;
         self.paint.tex_rng = dab_rng.finish();
         self.declare_wrote(touched);
         if let Some(rect) = touched {

@@ -65,6 +65,9 @@ pub use console::{
 };
 pub use diagnostic::{DiagnosticKind, ScriptDiagnostic};
 pub use host::ScriptHost;
+/// ⭐ O depurador (plano 13 Onda D): o que a aba de código mostra.
+pub use ph2d_script_debug::{LineLive, StopFrame, StopKind, Var};
+pub use scene::DebugStop;
 pub use io::{Devices, Edge, EntityWrite, InputSnapshot, QueueFull, WriteQueue, WriteValue};
 pub use lane::{HealthRequest, NoDoors, SceneDoors};
 pub use lateral::{PodKey, PodValue, StateTable};

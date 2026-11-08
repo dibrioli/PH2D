@@ -226,3 +226,24 @@ fn a_busca_flp_poe_o_flip_primeiro() {
     assert!(search("zzzq").is_empty());
     assert_eq!(search("pencil")[0].0, PixelAction::ToolPencil);
 }
+
+/// O `Tab` sozinho é do modo do app (gate `no_crate_takes_the_tab_before_the_mode`): nenhum contexto
+/// o aceita, nem a fábrica nem o ficheiro do utilizador; o `Space+Tab` dos tiles fica.
+#[test]
+fn bare_tab_stays_the_modes() {
+    let mut m = Keymap::factory();
+    for c in Context::ALL {
+        assert!(m.resolve(Chord::new(K::Tab), c).is_none(), "{c:?}");
+        assert!(
+            m.assign_replacing(PixelAction::Timeline, Chord::new(K::Tab), c)
+                .is_err()
+        );
+    }
+    let (u, rep) = Keymap::from_text("view.timeline = Tab");
+    assert!(u.resolve(Chord::new(K::Tab), Context::Normal).is_none());
+    assert_eq!(rep.rejected.len(), 1);
+    assert_eq!(
+        m.resolve(Chord::new(K::Tab).space(), Context::Normal),
+        Some(PixelAction::TileModeToggle)
+    );
+}

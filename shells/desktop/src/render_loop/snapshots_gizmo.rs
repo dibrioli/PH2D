@@ -145,7 +145,7 @@ pub(super) fn sprite_view(
     sheet_gizmo_bits: Option<u64>,
     tool_preview_bits: &[Option<u64>],
 ) -> Option<ph2d_editor_core::GizmoView> {
-    let sprite = sim.world().get::<Sprite>(sim_entity)?;
+    let (sprite, grade) = ph2d_render::drawn_geometry(sim.world(), sim_entity)?;
     let mut q = present
         .world_mut()
         .query::<(&SimRef, &ph2d_ecs::GlobalTransform)>();
@@ -164,8 +164,8 @@ pub(super) fn sprite_view(
     let posada = ph2d_render::drawn_instance_of(present.world(), bits).and_then(|(_, m)| m);
     let malha = posada.as_deref();
     let (eff_anchor, half) = ph2d_sprite_screen::sheet_lattice::gizmo_box(
-        sprite,
-        sim.world().get::<ph2d_ecs::SpriteGrid>(sim_entity).copied(),
+        &sprite,
+        grade,
         gizmo_ppm,
         sheet_gizmo_bits == Some(bits),
         crate::render_loop::sim_extract_sheet::is_tool_previewed(tool_preview_bits, sim_entity),

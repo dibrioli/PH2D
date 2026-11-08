@@ -5,8 +5,8 @@
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_core::Vec2;
 use ph2d_ecs::{
-    Entity, RepeatMode, ScrollRepeat, SpriteGrid, SpritePixels, SpriteRegion, TextureRepeat,
-    TiledDraw, Transform, World,
+    Entity, RepeatMode, ScrollRepeat, SpriteGrid, SpritePixels, SpriteRegion, SpriteSheets,
+    TextureRepeat, TiledDraw, Transform, World,
 };
 use ph2d_editor_core::SpritePivot;
 use ph2d_physics_ecs::Collider;
@@ -93,21 +93,51 @@ fn repete(world: &World, e: Entity) -> bool {
         )
 }
 
-/// A fração visível do quad de `e`; o quad inteiro se ela não tem píxeis conhecidos.
-fn fracao_de(world: &World, e: Entity, db: &AssetDb, atlas: &BTreeMap<u32, AssetId>) -> [f32; 4] {
+/// ⭐ **A folha cujo Pivot se edita** (plano GEF 26 decisão 8): a visível no painel, como um `Sprite` com o tamanho e o
+/// Pivot dela. `0` = o `Sprite` de sempre.
+#[must_use]
+pub fn sprite_do_pivot(world: &World, e: Entity) -> Option<(u8, Sprite)> {
+    let k = ph2d_ecs::shown_sheet(world, e);
+    ph2d_render::sheet_geometry(world, e, k, 0).map(|(s, _)| (k, s))
+}
+
+/// A fração visível do quad da folha `k` de `e`; o quad inteiro se ela não tem píxeis conhecidos.
+fn fracao_de(
+    world: &World,
+    e: Entity,
+    db: &AssetDb,
+    atlas: &BTreeMap<u32, AssetId>,
+    k: u8,
+) -> [f32; 4] {
     const INTEIRO: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
     if repete(world, e) {
         return INTEIRO;
     }
-    let Some(id) = texture_of(world.get::<SpritePixels>(e), world.get::<Sprite>(e), atlas) else {
+    let extra = world
+        .get::<SpriteSheets>(e)
+        .and_then(|s| s.sheet(k))
+        .copied();
+    let id = match extra {
+        Some(s) => Some(s.asset),
+        None => texture_of(world.get::<SpritePixels>(e), world.get::<Sprite>(e), atlas),
+    };
+    let Some(id) = id else {
         return INTEIRO;
     };
-    let g = world
-        .get::<SpriteGrid>(e)
-        .copied()
-        .unwrap_or(SpriteGrid::SINGLE);
+    let g = extra.map_or_else(
+        || {
+            world
+                .get::<SpriteGrid>(e)
+                .copied()
+                .unwrap_or(SpriteGrid::SINGLE)
+        },
+        |s| s.grid(0),
+    );
     let grade = [g.hframes.max(1), g.vframes.max(1)];
-    let regiao = world.get::<SpriteRegion>(e).map(|r| r.rect);
+    let regiao = extra
+        .is_none()
+        .then(|| world.get::<SpriteRegion>(e).map(|r| r.rect))
+        .flatten();
     let Some(asset) = db.get(&id) else {
         return INTEIRO;
     };
@@ -219,8 +249,35 @@ fn pousa(world: &mut World, e: Entity, ppm: f32, alvo: [f32; 2]) -> bool {
     true
 }
 
-/// A ferramenta Pivot do canvas: a mesma lei, com a origem e a âncora que o arrasto calculou.
+/// O Pivot de uma folha EXTRA `k`: só onde ela se encaixa no objeto. A origem, os filhos, a colisão e as outras folhas
+/// não se mexem (mexer a origem faria a folha `0` saltar). `false` se nada mudou.
+fn pousa_na_folha(world: &mut World, e: Entity, k: u8, anchor: [f32; 2]) -> bool {
+    let Some(mut sheets) = world.get_mut::<SpriteSheets>(e) else {
+        return false;
+    };
+    let Some(s) = usize::from(k)
+        .checked_sub(1)
+        .and_then(|i| sheets.0.get_mut(i))
+    else {
+        return false;
+    };
+    if (s.anchor[0] - anchor[0]).abs() < MESMO_PONTO_M
+        && (s.anchor[1] - anchor[1]).abs() < MESMO_PONTO_M
+    {
+        return false;
+    }
+    s.anchor = anchor;
+    true
+}
+
+/// A ferramenta Pivot do canvas: a mesma lei, com a origem e a âncora que o arrasto calculou. Numa folha extra
+/// visível a origem fica e só a âncora dela muda (o arrasto captou o centro do quad DELA: [`sprite_do_pivot`]).
 pub fn arrasta(world: &mut World, e: Entity, origem: [f32; 2], anchor: [f32; 2]) {
+    let k = ph2d_ecs::shown_sheet(world, e);
+    if k > 0 {
+        pousa_na_folha(world, e, k, anchor);
+        return;
+    }
     let Some(t) = world.get::<Transform>(e).copied() else {
         return;
     };
@@ -264,13 +321,16 @@ pub fn set_pivot(
     ppm: f32,
     pivot: SpritePivot,
 ) -> bool {
-    let Some(s) = world.get::<Sprite>(e).copied() else {
+    let Some((k, s)) = sprite_do_pivot(world, e) else {
         return false;
     };
     let alvo = match pivot {
-        SpritePivot::Ponto(p) => ponto_local(&s, fracao_de(world, e, db, atlas), p),
+        SpritePivot::Ponto(p) => ponto_local(&s, fracao_de(world, e, db, atlas, k), p),
         SpritePivot::Px(px) => [px[0] / ppm, px[1] / ppm],
     };
+    if k > 0 {
+        return pousa_na_folha(world, e, k, [-alvo[0], -alvo[1]]);
+    }
     pousa(world, e, ppm, alvo)
 }
 
@@ -284,18 +344,18 @@ pub fn pivot_de(
     atlas: &BTreeMap<u32, AssetId>,
     ppm: f32,
 ) -> Option<(Option<[u8; 2]>, [f32; 2])> {
-    let s = world.get::<Sprite>(e)?;
+    let (k, s) = sprite_do_pivot(world, e)?;
     let a = s.resolve_anchor(ppm);
     let p = [-a[0], -a[1]];
     let px = [p[0] * ppm, p[1] * ppm];
     if p[0].abs() < MESMO_PONTO_M && p[1].abs() < MESMO_PONTO_M {
         return Some((Some([1, 1]), px));
     }
-    let f = fracao_de(world, e, db, atlas);
+    let f = fracao_de(world, e, db, atlas, k);
     let casa = (0..3_u8)
         .flat_map(|l| (0..3_u8).map(move |c| [c, l]))
         .find(|q| {
-            let v = ponto_local(s, f, *q);
+            let v = ponto_local(&s, f, *q);
             (v[0] - p[0]).abs() < MESMO_PONTO_M && (v[1] - p[1]).abs() < MESMO_PONTO_M
         });
     Some((casa, px))
@@ -308,3 +368,7 @@ mod tests;
 #[cfg(test)]
 #[path = "pivot_espelho_tests.rs"]
 mod espelho_tests;
+
+#[cfg(test)]
+#[path = "pivot_folhas_tests.rs"]
+mod folhas_tests;

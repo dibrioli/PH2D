@@ -267,7 +267,7 @@ pub(super) fn gizmo_anchor_half(
     flip: &ph2d_flip::FlipDoc,
     entity: ph2d_ecs::Entity,
 ) -> ([f32; 2], [f32; 2]) {
-    if let Some(s) = sim.world().get::<ph2d_render::Sprite>(entity) {
+    if let Some((s, _)) = ph2d_render::drawn_geometry(sim.world(), entity) {
         return (s.anchor, [s.size[0] * 0.5, s.size[1] * 0.5]);
     }
     // `sim`/`vec_scene`/`flip` chegam separados (e não via `AppGfx`) porque

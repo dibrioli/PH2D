@@ -92,3 +92,26 @@ fn trocar_a_imagem_de_uma_folha_resolve_de_novo_e_sem_folhas_o_cache_sai() {
     resolve_sheet_textures(&mut w, &BTreeMap::new(), &mut |_| None);
     assert!(w.get::<SheetTextures>(e).is_none());
 }
+
+/// ⭐ A caixa do gizmo e o encaixe medem o quad NA TELA: o da folha do quadro, e a folha `0` num vazio.
+///
+/// *Mutações: `drawn_geometry` ler sempre a folha 0 ⇒ o tamanho é 1 e reprova; a cópia herdar o `offset` da folha 0
+/// ⇒ o Pivot resolvido anda e reprova.*
+#[test]
+fn a_caixa_do_gizmo_e_a_da_folha_na_tela() {
+    let (mut w, e, sprite) = two_sheets();
+    w.get_mut::<Sprite>(e).unwrap().offset = [8.0, 8.0];
+    assert_eq!(drawn_geometry(&w, e).unwrap().0.size, sprite.size);
+    show(&mut w, e, FrameRef::Cell { sheet: 1, cell: 3 });
+    let (s, g) = drawn_geometry(&w, e).unwrap();
+    assert_eq!(s.size, run_sheet().size);
+    assert_eq!(
+        s.resolve_anchor(32.0),
+        run_sheet().anchor,
+        "o Pivot da folha, sem o offset da 0"
+    );
+    let g = g.unwrap();
+    assert_eq!((g.hframes, g.vframes, g.frame), (6, 2, 3));
+    show(&mut w, e, FrameRef::Empty);
+    assert_eq!(drawn_geometry(&w, e).unwrap().0.size, sprite.size);
+}

@@ -60,6 +60,19 @@ impl SpriteSheets {
     }
 }
 
+/// **A folha visível do painel** (plano GEF 26 §3.3, decisão 8): a do cartão Image e a do Pivot. Estado de UI, como
+/// a aba aberta: NÃO registado, não entra no gravar nem no undo.
+#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct ShownSheet(pub u8);
+
+/// A folha visível de `entity`, presa às que existem (um undo pode ter tirado a que estava à vista).
+#[must_use]
+pub fn shown_sheet(world: &World, entity: Entity) -> u8 {
+    let k = world.get::<ShownSheet>(entity).map_or(0, |s| s.0);
+    let n = world.get::<SpriteSheets>(entity).map_or(0, |s| s.0.len());
+    if usize::from(k) <= n { k } else { 0 }
+}
+
 /// **As células de cada folha** do objeto: `[0]` = a grelha dele (uma célula sem grelha), `[k]` = a folha extra `k`.
 /// É o `sheets` que [`crate::tag_cells`] e o tique pedem.
 #[must_use]

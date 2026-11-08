@@ -299,7 +299,9 @@ pub use sprite_pixels::SpritePixels;
 pub use sprite_region::SpriteRegion;
 pub use sprite_sheet_frame::SpriteSheetFrame;
 pub use sprite_sheet_ref::SpriteSheetRef;
-pub use sprite_sheets::{ExtraSheet, SHEETS_MAX, SpriteSheets, cells_per_sheet, sheet_cells_of};
+pub use sprite_sheets::{
+    ExtraSheet, SHEETS_MAX, ShownSheet, SpriteSheets, cells_per_sheet, sheet_cells_of, shown_sheet,
+};
 pub use stable_id::{
     ReataPorIdentidade, StableId, StableIdCounter, assign_missing_stable_ids, entity_of_stable_id,
     entity_with_stable_id, stable_id_for_name, stable_id_named, stable_id_of,

@@ -261,7 +261,11 @@ impl crate::App {
                         scale: [pw.scale.x, pw.scale.y],
                     };
                     let (anchor, half) =
-                        gizmo_anchor_half(&gfx.sim, &gfx.vec_scene, &gfx.flip, entity);
+                        ph2d_sprite_edit::pivot::sprite_do_pivot(gfx.sim.world(), entity)
+                            .map_or_else(
+                                || gizmo_anchor_half(&gfx.sim, &gfx.vec_scene, &gfx.flip, entity),
+                                |(_, s)| (s.anchor, [s.size[0] * 0.5, s.size[1] * 0.5]),
+                            );
                     // Invariant quad center = pivot + R·(anchor ⊙ scale).
                     let ax = anchor[0] * snap_t.scale[0];
                     let ay = anchor[1] * snap_t.scale[1];

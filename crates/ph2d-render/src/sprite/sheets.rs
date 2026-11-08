@@ -26,6 +26,50 @@ pub enum SheetView {
     Nothing,
 }
 
+/// A folha extra `s` sobre o resto de `sprite`: o tamanho e o Pivot dela. O Pivot da folha já é o resolvido (sem
+/// `offset` nem canto), logo a cópia nasce centrada.
+#[must_use]
+pub fn sheet_sprite(s: &ph2d_ecs::ExtraSheet, sprite: &Sprite) -> Sprite {
+    Sprite {
+        size: s.size,
+        anchor: s.anchor,
+        centered: true,
+        offset: [0.0, 0.0],
+        premultiplied: false,
+        ..*sprite
+    }
+}
+
+/// A GEOMETRIA da folha `k` (tamanho, Pivot, grelha na célula `frame`), sem textura: `k = 0` ou inexistente = o
+/// próprio `Sprite` e a grelha dele.
+#[must_use]
+pub fn sheet_geometry(
+    world: &World,
+    entity: Entity,
+    k: u8,
+    frame: u32,
+) -> Option<(Sprite, Option<SpriteGrid>)> {
+    let sprite = world.get::<Sprite>(entity)?;
+    let grid = world.get::<SpriteGrid>(entity).copied();
+    Some(
+        match world.get::<SpriteSheets>(entity).and_then(|s| s.sheet(k)) {
+            Some(s) => (sheet_sprite(s, sprite), Some(s.grid(frame))),
+            None => (*sprite, grid),
+        },
+    )
+}
+
+/// ⭐ **O quad na tela** sem textura: o que a caixa do gizmo, o encaixe e a grelha do canvas medem. Um quadro vazio
+/// mede a folha `0` (não há desenho, mas o objeto continua agarrável).
+#[must_use]
+pub fn drawn_geometry(world: &World, entity: Entity) -> Option<(Sprite, Option<SpriteGrid>)> {
+    let g = world
+        .get::<SpriteGrid>(entity)
+        .copied()
+        .unwrap_or(SpriteGrid::SINGLE);
+    sheet_geometry(world, entity, g.sheet, g.frame)
+}
+
 /// ⭐ **A lei de um ponto só**: a folha do quadro na tela decide a imagem, o tamanho, o Pivot e a grelha.
 #[must_use]
 pub fn sheet_view(world: &World, entity: Entity, sprite: &Sprite) -> SheetView {
@@ -44,10 +88,7 @@ pub fn sheet_view(world: &World, entity: Entity, sprite: &Sprite) -> SheetView {
                 (Some(s), Some((asset, source))) if asset == s.asset => SheetView::Other(
                     Sprite {
                         source,
-                        size: s.size,
-                        anchor: s.anchor,
-                        premultiplied: false,
-                        ..*sprite
+                        ..sheet_sprite(s, sprite)
                     },
                     s.grid(grid.frame),
                 ),

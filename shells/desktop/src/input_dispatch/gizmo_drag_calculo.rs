@@ -307,17 +307,13 @@ impl crate::App {
             );
             let mundo = ph2d_editor_core::compose_snapshot(drag.parent_world, drag.start_transform);
             let target = if ctrl {
-                let half_world = gfx
-                    .sim
-                    .world()
-                    .get::<ph2d_render::Sprite>(entity)
-                    .map(|s| {
+                let half_world = ph2d_sprite_edit::pivot::sprite_do_pivot(gfx.sim.world(), entity)
+                    .map_or([0.0, 0.0], |(_, s)| {
                         [
                             s.size[0] * mundo.scale[0] * 0.5,
                             s.size[1] * mundo.scale[1] * 0.5,
                         ]
-                    })
-                    .unwrap_or([0.0, 0.0]);
+                    });
                 let cands = ph2d_editor_core::pivot_snap_candidates(
                     drag.pivot_world,
                     mundo.rotation,

@@ -74,27 +74,10 @@ pub fn build_physics_info(
         .and(ph2d_physics_ecs::main_shape(world, entity))
         .unwrap_or(entity);
     let col = world.get::<Collider>(forma);
-    // ⭐ **A §11 aparece com UM DOS SEUS COMPONENTES — ou com um GESTO que só ela oferece**
-    // (ADR-0166 / F3).
-    //
-    // ⚠️ **O `Collider` sozinho conta, e não é generosidade:** um `Collider` **sem** `RigidBody` é
-    // uma PEÇA de um corpo ancestral (W-PartFace), e a seção tem uma face inteira para ela. Gatear
-    // só no corpo apagaria a autoria de toda peça composta.
-    //
-    // ⚠️ **O `rig_parts` também não é folga: é uma medição.** O gesto canónico do *Rig* é *marcar o
-    // TRONCO do personagem e clicar*, e o tronco costuma ser um nó de organização **sem corpo nem
-    // collider** (`joint_rig::plan` aceita como peça quem tem `Sprite` **ou** corpo). Gatear só nos
-    // componentes tornaria o Rig inalcançável precisamente no caso para que ele existe — e ele é um
-    // gesto sobre uma SUBÁRVORE, que a paleta de componentes não sabe exprimir.
-    //
-    // ⭐⭐ **E um CORPO ACIMA na árvore também conta** (ordem do dono, 2026-09-14: *«um objeto de
-    // física (Physics Body) e todas as opções aparecem com ele, inclusive Collision Shape»*). O
-    // `Collider` deixou de ser oferecido na paleta, e a rota que ele era — *esta forma é mais uma
-    // peça do corpo ancestral* — é o botão **Add Shape to X** da face vazia. ⚠️ Ela é a MESMA
-    // excepção do `rig_parts`, pela mesma razão e não por folga: **a paleta genérica não sabe
-    // NOMEAR o dono**, e sem o nome o gesto não existe (um collider é invisível e a hierarquia pode
-    // ter um grupo no meio). Gatear só nos componentes tornava a peça composta inalcançável
-    // exactamente no objecto para que ela existe — um filho de um corpo, ainda sem física nenhuma.
+    // ⭐ A §11 aparece com um dos seus componentes ou com um gesto que só ela oferece (ADR-0166 /
+    // F3): o `Collider` sozinho (peça de um corpo ancestral, W-PartFace), o `rig_parts` (o tronco do
+    // Rig costuma não ter corpo nem collider) e um CORPO ACIMA na árvore (dono 2026-09-14: o botão
+    // **Add Shape to X**, que a paleta genérica não sabe nomear).
     let part_owner = if rb.is_some() {
         // Um corpo não é peça de ninguém (docs do `nearest_body_name`).
         String::new()

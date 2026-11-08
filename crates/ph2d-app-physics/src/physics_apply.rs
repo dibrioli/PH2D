@@ -221,26 +221,9 @@ pub fn apply_physics_edit(
             return;
         };
         if manual {
-            // Auto → Manual: seed the override with the current AUTO mass (density ×
-            // authored-shape area) so the mass does not jump when the toggle flips —
-            // Unity seeds the manual field from the auto value the same way. Exact for
-            // an unscaled body (the common case); a scaled body's true mass also
-            // scales by the area factor, but this is only a starting value the artist
-            // then tunes, and reading the exact scaled mass would re-derive rapier's
-            // own computation in a second place.
-            // ⚠️ **Somando as PEÇAS** (W-PartMass): num corpo composto o seed lia
-            // a forma própria e ignorava o resto, então este gesto — cuja razão
-            // de existir é o número NÃO saltar — cortava a massa. Medido numa
-            // jangada de duas metades iguais: `0,600` semeado contra `1,200`
-            // reais. A lista de candidatos vem de uma query porque `ChildOf` é a
-            // única aresta do ECS: só se SOBE (a mesma restrição do `part_count`
-            // do snapshot).
-            //
-            // ⚠️ **`QueryState::try_new`, e é ela que salva a assinatura:** esta
-            // função toma `&SimWorld` de propósito — é um passe de LEITURA que
-            // ENFILEIRA escritas —, e `World::query` exige `&mut`. Trocar a
-            // assinatura por `&mut` para semear um número teria feito a função
-            // deixar de prometer o que ela promete.
+            // Auto → Manual: seed the override with the current AUTO mass so the number does not
+            // jump (Unity does the same), SUMMING the parts (W-PartMass: a two-half raft seeded
+            // `0,600` against `1,200`). `QueryState::try_new` keeps the `&SimWorld` read pass.
             let candidates: Vec<Entity> = {
                 let mut q = bevy_ecs::query::QueryState::<
                     Entity,

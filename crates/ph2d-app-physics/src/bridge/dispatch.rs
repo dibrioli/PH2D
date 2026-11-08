@@ -47,49 +47,15 @@ pub fn dispatch(
     tape: &mut InputTape,
     drive: &mut ph2d_preview_drive::PreviewDrive,
 ) {
-    // ⭐ **A marca de MESTRE tem de estar em dia ANTES da ponte** (ADR-0164 / F4.1).
-    //
-    // As SEIS consultas cacheadas da ponte filtram por `Without<MasterPiece>`, e a marca é
-    // **derivada** da hierarquia, não autorada. Um mestre criado — ou uma peça arrastada para
-    // dentro dele — neste quadro só fica inerte depois deste passe; correr a ponte antes dele
-    // simularia a receita por um quadro, e um quadro de gravidade numa biblioteca é autoria
-    // destruída.
-    //
-    // ⚠️ **Aqui, e não num sítio «de arrumação»:** este é o ÚNICO ponto por onde o produto entra na
-    // ponte, e o invariante vale para quem a usa. Idempotente — correr todo o quadro é no-op.
+    // ⭐ A marca de MESTRE em dia ANTES da ponte (ADR-0164 / F4.1): as consultas da ponte filtram
+    // `Without<MasterPiece>`, e um mestre novo simularia um quadro. Único ponto de entrada; idempotente.
     ph2d_ecs::assign_master_pieces(sim.world_mut());
     let target = physics_tick(playhead, fixed_dt);
     let players = hand_input_to_players(bridge, sim, input);
-    // ⚠️ **Gravar SÓ andando para a frente** (W7). Um scrub para trás pede um
-    // tique que a fita já descreve, e regravá-lo com o dedo de AGORA reescreveria
-    // a corrida que o artista está justamente tentando rever — o replay passaria
-    // a reproduzir uma corrida que ninguém deu.
-    //
-    // ⚠️⚠️ E a gravação é em TODO tique devido, não só no ALVO: um dispatch que
-    // deve vários ticks aplica a MESMA entrada a todos (é o que segurar uma tecla
-    // quer dizer), e a fita tem de dizer o mesmo. ⛔ Gravar só o alvo valia na 1.ª
-    // corrida (o `record` estende e preenche o vão com a última entrada) e MENTIA
-    // numa corrida regravada por cima de outra — depois de um recomeço, de um loop
-    // ou de um scrub para trás e play: os tiques do meio ficavam com o dedo da
-    // corrida ANTERIOR, e a ponte joga-os. Report do dono (05/10, a arena): *«o
-    // player rotaciona e se move sozinho algumas vezes»* — um passo da vida
-    // anterior em cada quadro que devia dois tiques (gate
-    // `na_segunda_vida_sem_tecla_o_heroi_nao_anda_nem_roda`).
-    //
-    // ⚠️ **E as outras duas condições são a CORREÇÃO da W17** — a que tornou a
-    // fita persistível. Medido pela porta do produto antes de qualquer linha
-    // (`measure_player_tape`), em 120 frames ela gravava **120 tiques nas QUATRO
-    // células**: sem player na cena, e com o Physics DESARMADO. Isso não é uma
-    // corrida, é o relógio andando — e as duas consequências só aparecem quando
-    // a fita passa a viver num arquivo:
-    //
-    // * **sem player**, todo projeto do app carregaria uma fita de ninguém;
-    // * **desarmado** — que é o DEFAULT do toggle Physics —, abrir um projeto e
-    //   assistir à timeline apagaria a corrida gravada, do tique em diante, em
-    //   silêncio. Um artefato destruído pelo ato de olhar para ele.
-    //
-    // Uma entrada gravada num tique que o solver não rodou descreve um instante
-    // que não aconteceu, e o replay a reproduziria como se tivesse acontecido.
+    // ⚠️ Grava SÓ andando para a frente (W7: um scrub para trás não reescreve a corrida), em TODO
+    // tique devido e não só no alvo (gate `na_segunda_vida_sem_tecla_o_heroi_nao_anda_nem_roda`), e
+    // só com player e Physics armado (W17, `measure_player_tape`): um tique que o solver não rodou
+    // descreve um instante que não aconteceu.
     if simulate && players > 0 && target > bridge.last_stepped() {
         for tick in bridge.last_stepped() + 1..=target {
             tape.record(tick, input);

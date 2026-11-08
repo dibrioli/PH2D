@@ -250,23 +250,10 @@ pub fn physics_smoke_ccd(ctx: &mut crate::SceneCtx<'_>) {
     let world = &mut *ctx.world;
     spawn_floor(world);
 
-    // Uma pista: uma parede fina e alta, e uma bola cinco metros a' esquerda dela, lancada
-    // a 160 m/s. O `ccd` anexa o marcador.
-    //
-    // ⛔⛔ **A parede e' CINEMATICA, e a mudanca e' de 2026-08-30.** Ate' a' `rapier2d` 0.31
-    // esta cena usava uma parede **estatica** e mostrava o contraste que a bandeira comprava
-    // entao: *ligar ou desligar a varredura, contra tudo*. A 0.35 passou a varrer todo corpo
-    // rapido contra colliders **fixos de graca** ⇒ com uma parede estatica **as duas bolas
-    // param no mesmo sitio** (medido: `x = −0,2000`, identico), e a mensagem desta cena
-    // prometia que a laranja atravessava.
-    // ⚠️ *Uma cena de smoke que ensina o CONTRARIO do que acontece e' pior que uma cena
-    // ausente: e' aqui que o dono do produto aprende a ferramenta.*
-    //
-    // ⇒ A parede passa a ser **cinematica**, que e' a classe de alvo que a varredura por
-    // omissao **nao** alcanca — exactamente o que o gate
-    // `the_ccd_flag_is_what_stops_a_bullet_through_a_moving_wall` ja' mede. O contraste volta
-    // a existir, e passa a demonstrar o que a bandeira compra HOJE.
-    // Mecanismo completo: [`ph2d_physics::BodyDesc::ccd`].
+    // Uma pista: uma parede fina e alta, e uma bola a 160 m/s cinco metros a' esquerda dela.
+    // ⛔ A parede e' CINEMATICA (2026-08-30): desde a `rapier2d` 0.35 a varredura por omissao ja'
+    // para contra fixos, e uma parede estatica pararia as duas bolas. Gate
+    // `the_ccd_flag_is_what_stops_a_bullet_through_a_moving_wall`; mecanismo: [`ph2d_physics::BodyDesc::ccd`].
     let mut lane = |y: f32, hue: [f32; 4], label: &str, ccd: bool| {
         world.spawn((
             Transform::from_translation(Vec2::new(0.0, y)),

@@ -1,31 +1,9 @@
 //! **A metade da família `physics` que não precisa da shell** (W2/L2).
 //!
-//! A auditoria de velocidade de 2026-09-10 (§4-C2) mediu o mecanismo: o ADR-0075
-//! põe cada feature numa drop-crate, e **a metade da feature que fala com a `App`
-//! foi ficando na shell** — 22,8 k linhas de física entre elas. Resultado: a crate
-//! que TODO módulo recompila é a maior do repo (493 k linhas, 34–45 s sozinha no
-//! fim de cada gate), e uma cena de física que só sabe povoar um `World` estava
-//! presa lá dentro por uma razão só: ela era um **método de `App`**.
-//!
-//! Esta crate é o outro lado. O que vive aqui depende de `ph2d-core`, `ph2d-ecs`,
-//! `ph2d-physics-ecs` e `ph2d-render` — e **de mais nada**. ⛔ Em particular, não
-//! depende da shell: o `shells/desktop` é um `bin`, logo não pode ser dependência
-//! de ninguém, e é essa direcção de seta que torna a extracção possível.
-//!
-//! ## O que uma cena PEDE à shell é DADO, nunca uma chamada
-//!
-//! Uma cena de smoke faz duas coisas: povoa um `World` (que é desta crate) e pede
-//! à shell que enquadre a câmera, abra um painel ou escolha um objecto (que é da
-//! shell). A segunda metade viaja como **dados** num [`SceneSetup`] que o roteador
-//! aplica depois de a cena correr — ADR-0075 ao pé da letra: *components +
-//! events/resources, systems não se chamam*.
-//!
-//! ⚠️ **Porque não um trait `SceneHost` com métodos:** um trait obrigaria esta
-//! crate a declarar a superfície da shell (câmera, painéis, gizmo) e a shell a
-//! implementá-la — o acoplamento mudava de forma, não de tamanho. Um registo de
-//! intenções é inspeccionável, testável sem janela, e **não cresce** quando a
-//! shell muda por dentro. É também o que deixa um gate perguntar *«esta cena pede
-//! o painel certo?»* sem GPU nenhuma.
+//! Depende das crates do módulo e do ECS, **nunca da shell** (auditoria de velocidade
+//! 2026-09-10, §4-C2). O que uma cena pede à shell viaja como **dados** num [`SceneSetup`]
+//! que o roteador aplica depois (ADR-0075: systems não se chamam) — inspeccionável e
+//! testável sem janela, ao contrário de um trait `SceneHost`.
 
 /// O que uma cena pede à shell **depois** de povoar o mundo.
 ///
@@ -198,23 +176,12 @@ pub mod physics_smoke_zones;
 
 /// **O que esta família declara à shell** (`ph2d-app-registry-init`).
 ///
-/// ⭐⭐ **A Fase B trouxe o roteador, e `"physics"` SAIU da catraca**
-/// `FAMILIAS_COM_O_ROTEADOR_AINDA_NA_SHELL` (2026-09-11). O `env::var` que escolhe a cena vive em
-/// [`smoke::armed_scene`], nesta crate, e o `max_level` é [`smoke::CENAS`] — **contado ao lado do
-/// `match`**, nunca escrito aqui.
-///
-/// ⛔⛔ **Este bloco dizia exactamente o CONTRÁRIO até à integração** (*«`routers: &[]` é a verdade
-/// medida»*, *«o `env::var` ficou na shell»*), uma linha acima do código que o desmente. A dívida
-/// foi paga e o texto não foi apagado — e *uma dívida cumprida e não apagada lê-se como dívida
-/// aberta para sempre*, pelo próximo agente e pelo integrador. ⚠️ **Quem fecha uma catraca apaga a
-/// prosa que a descrevia, no mesmo commit.**
+/// O `env::var` que escolhe a cena vive em [`smoke::armed_scene`] e o `max_level` é
+/// [`smoke::CENAS`], contado ao lado do `match`.
 pub const FAMILY: ph2d_app_host::AppFamily = ph2d_app_host::AppFamily {
     key: "physics",
     routers: &[ph2d_app_host::SmokeRouter {
         env: "PH2D_PHYSICS_SMOKE",
-        // ⚠️⚠️ **CONTADO no `match`, nunca escrito aqui** (CLAUDE.md §5.0). A fonte é
-        // [`smoke::CENAS`], que vive ao lado do roteador e tem gate nas duas pontas —
-        // *um tecto declarado longe do `match` é uma nota à espera de envelhecer*.
         max_level: smoke::CENAS,
     }],
 };
@@ -233,43 +200,12 @@ pub mod physics_smoke_pulley_tackle;
 pub mod physics_smoke_rig;
 pub mod run_stash;
 
-// ─────────────────────────────────────────────────────────────────────────
-// ⭐⭐ **O que um GESTO DE CANVAS precisa da shell, escrito em TIPOS.**
-//
-// A Fase C trouxe a metade que toca a `App`: arrastar a âncora de uma junta,
-// desenhar uma junta nova, agarrar uma roldana. O bloco de reabertura avisava
-// que *«é aqui que um sexto método parece necessário, e não é»* — e a régua 4
-// do §1 resolveu-o: escritas em tipos, as três funções de `impl App` pediam
-// **sete coisas que a `App` por acaso segurava**, e nenhuma delas é a `App`.
-//
-// | o que era | o que é | de onde vem |
-// |---|---|---|
-// | `gfx.camera` | `&Camera2d` | `ph2d-render` |
-// | `gfx.surface.size()` | `WindowSize` | `ph2d-host` |
-// | `gfx.sim` | `&mut SimWorld` | `ph2d-ecs` |
-// | `gfx.physics` | `&PhysicsBridge` | `ph2d-physics-ecs` |
-// | `gfx.present` | `&mut PresentWorld` | `ph2d-ecs` |
-// | `gfx.toasts` | `&mut ToastQueue` | `ph2d-editor` |
-// | `gfx.hero_screen` | `Option<&mut HeroScreen>` | `ph2d-editor` |
-//
-// ⛔ **Zero sextos métodos no `AppHost`**, e a razão é estrutural: um método
-// que devolvesse o `gfx` seria um HANDLE, que o trait proíbe por escrito — a
-// fronteira inteira desfazia-se nele. O que atravessa são os SETE TIPOS.
-//
-// ⚠️ **Nem todo gesto lê os sete, e isso não é um campo a mentir:** um contexto
-// é a superfície que a shell entrega, não uma lista de tudo o que o chamado vai
-// tocar. O `advance_joint_anchor_drag` não escreve toasts; o `joint_draw` não lê
-// a ponte. Os dois recebem a mesma superfície porque é a mesma superfície.
-// ─────────────────────────────────────────────────────────────────────────
+// ⭐⭐ O que um GESTO DE CANVAS precisa da shell, escrito em TIPOS (Fase C): os sete campos do
+// `AppGfx` que ele lê, e zero métodos novos no `AppHost` (um handle desfaria a fronteira).
 
 /// A superfície de canvas que a shell empresta a um gesto da física.
 ///
-/// ⚠️ **Os empréstimos são DISJUNTOS por construção** — cada campo é um campo
-/// diferente do `AppGfx`, logo a shell constrói isto numa expressão só sem
-/// emprestar nada duas vezes. Era exactamente esse duplo empréstimo que obrigava
-/// o `player_input` a um `std::mem::take` e o `disarm` a ser função livre: *o
-/// truque não era uma lei do domínio, era o preço de a função estar na struct
-/// errada.*
+/// ⚠️ Os empréstimos são DISJUNTOS por construção: a shell constrói isto numa expressão só.
 pub struct CanvasCtx<'a> {
     pub camera: &'a ph2d_render::Camera2d,
     pub window: ph2d_host::WindowSize,
@@ -293,21 +229,8 @@ pub mod bridge;
 pub mod inspector;
 pub mod overlay;
 
-// ─────────────────────────────────────────────────────────────────────────
-// ⭐ **A AUTORIA, vinda de `shells/desktop/src/physics/`** (W2/L2 Fase C,
-// 2026-09-12). São os 48 ficheiros que a Fase B deixou lá **não por causa da
-// `App`**, mas por três folhas da shell (`inspector_ordering`, `preview_drive`,
-// `name_unique`) que a `line/shell-folhas` fez crates em 12/09, e por uma
-// struct de três campos (`GroupDragSnapshot`) que foi para o
-// `ph2d-editor-core`, onde o conteúdo dela já vivia.
-//
-// ⚠️ **Os nomes NÃO foram encurtados de propósito.** O `physics_` é redundante
-// aqui — dentro desta crate tudo é a física —, mas um rename por nome corrompe
-// as citações de prosa que o repo tem em doc-comments (a Fase A pagou **76**
-// numa só varredura), e o valor de tirar um prefixo é cosmético. Só mudou de
-// nome quem COLIDIA: o `bridge.rs` (contra o directório `bridge/`) e as seis
-// metades de fronteira, que tinham um homónimo já aqui.
-// ─────────────────────────────────────────────────────────────────────────
+// ⭐ A AUTORIA, vinda de `shells/desktop/src/physics/` (Fase C, 2026-09-12); o prefixo
+// `physics_` fica de propósito (um rename corrompe as citações em prosa).
 
 // O assador e a ponte.
 pub mod bake;
@@ -380,9 +303,7 @@ pub mod player_input {
     }
 }
 
-// ⚠️ **`#[cfg(test)]` e MAIS NADA**: estes eram `#[cfg(test)] mod X;` no
-// `physics/mod.rs` e continuam a sê-lo. O `measure_player_tape` é um
-// instrumento de medição, não produto.
+// `#[cfg(test)]` e mais nada; o `measure_player_tape` é instrumento, não produto.
 #[cfg(test)]
 mod joint_break_tests;
 #[cfg(test)]
@@ -410,20 +331,12 @@ mod tape_second_life_tests;
 #[cfg(test)]
 mod topdown_finger_tests;
 
-// ⚠️ **`pub(crate)` e não privado**: a porta `apply` (um edit do §11 aplicado
-// ao ECS) é o caminho do PRODUTO, e várias cenas a usam para provar que afinar
-// uma peça muda a simulação. Uma segunda cópia da fiação seria uma segunda
-// resposta a *«o que este edit faz»*.
-// ⚠️ **`test-support` além do `test`** (HOWTO §2.5): três gates que ficam na
-// shell atravessam a porta de produção do Inspector e precisam deste arnês, e
-// um `cfg(test)` é falso nesta crate quando a shell a compila.
+// A porta `apply` é a do PRODUTO (as cenas usam-na); `test-support` porque três gates da shell
+// atravessam-na e `cfg(test)` é falso aqui quando a shell compila (HOWTO §2.5).
 #[cfg(any(test, feature = "test-support"))]
 pub mod physics_tests;
 
-/// ⭐ **Veio da shell na integração de 2026-09-16** — a catraca `the_shell_only_shrinks`
-/// ficou vermelha por ACUMULAÇÃO das seis linhas da rodada, e a cura dela é MOVER, nunca
-/// subir o número. Este ficheiro não tocava em nada da shell (zero `crate::`): ele é
-/// código DESTA família, e o sítio dele é aqui.
+/// Veio da shell na integração de 2026-09-16 (zero `crate::` lá: é desta família).
 #[cfg(test)]
 mod inspector_part_tests;
 pub mod physics_smoke_base;

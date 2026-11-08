@@ -66,37 +66,16 @@ pub(crate) fn create_joint_at(
     if a == b {
         return None;
     }
-    // ⚠️ **MUNDO, não `Transform` cru.** `Transform` é LOCAL e compõe com o pai
-    // (W5), então um corpo PARENTEADO devolve o próprio offset — e o "meio entre
-    // os dois" saía entre a pose de mundo de um e o offset do outro, um lugar que
-    // não é nem um nem outro. Medido na cena 67 antes do conserto: o pescoço de um
-    // boneco nascia **1,65 m abaixo** da emenda, e o ragdoll esparramava porque
-    // cada membro pendia de um ponto no ar.
-    //
-    // Sobreviveu desde o W3 porque toda fixture, cena e demo usava corpos-RAIZ,
-    // onde local e mundo coincidem — a mesma frase que o W5 escreveu sobre si.
+    // ⚠️ MUNDO, não `Transform` cru (LOCAL, compõe com o pai — W5): na cena 67 o pescoço nascia
+    // 1,65 m abaixo da emenda.
     let pa = ph2d_ecs::world_transform(sim.world(), a)?.translation;
     let pb = ph2d_ecs::world_transform(sim.world(), b)?.translation;
 
     let name_a = ensure_named(sim, a, "Body")?;
     let name_b = ensure_named(sim, b, "Body")?;
 
-    // ⭐ **Esta guarda DISSOLVEU com o `StableId`** (ADR-0164 F1), e a razão dela é a melhor
-    // descrição do defeito que a wave cura. Ela dizia:
-    //
-    // > *"O `a == b` acima compara ENTIDADES; esta compara o que o joint de facto guarda.
-    // > Dois corpos que por acaso partilhem o nome resolvem para UM id, então o joint nunca
-    // > poderia prender — e reportaria sucesso."*
-    //
-    // Isso era verdade enquanto o que o joint guardava era o **hash do nome**. Hoje ele
-    // guarda a identidade, e dois corpos homónimos têm ids **diferentes**: o joint prende
-    // certo. Recusar o gesto agora seria proibir uma coisa que passou a funcionar.
-    //
-    // ⚠️ A guarda `a == b` de cima **fica** — ela é sobre o caso degenerado real (um corpo
-    // preso a si mesmo), que continua a não ter sentido.
-    // ⚠️ **Pela ENTIDADE, não pelo nome.** Este sítio tem `a` e `b` em mãos — passar pelo nome
-    // seria uma volta que reintroduz a pergunta dos homónimos que acabou de deixar de existir.
-    // O `stable_id_for_name` existe para quem só tem o nome (as cenas de smoke), não para aqui.
+    // ⭐ A guarda «nomes iguais ⇒ um id» dissolveu com o `StableId` (ADR-0164 F1): homónimos têm
+    // ids diferentes. Pela ENTIDADE, não pelo nome (`stable_id_for_name` é para as cenas).
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     let id_a = ph2d_ecs::stable_id_of(sim.world(), a).map_or(0, |s| s.0);
     let id_b = ph2d_ecs::stable_id_of(sim.world(), b).map_or(0, |s| s.0);
@@ -105,18 +84,13 @@ pub(crate) fn create_joint_at(
     // "Joint (3)" it replaces is a row you have to click to identify, in a rig
     // where every row looks the same.
     //
-    // ⚠️ **A snapshot at creation, not a live binding, and that is deliberate.**
-    // Renaming a body does not rewrite this label. The name is the artist's — the
-    // Hierarchy lets them edit it — and a label that rewrote itself would fight a
-    // rename it cannot know was intentional. (What DOES follow a rename is the
-    // BINDING, which travels by name hash and re-attaches by itself.)
+    // ⚠️ A snapshot at creation, not a live binding: the name is the artist's (the BINDING follows
+    // a rename; the label does not).
     let label = ph2d_unique_name::unique_name(sim, &format!("{name_a} : {name_b}"));
     // The authored poses of the two bodies — what a body-local anchor is
     // measured against (the seed uses the same `rest`, and using the LIVE pose
     // would bake a swing into the local; W-AnchorFollow).
-    // A mesma correção do outro lado: a conversão mundo→local de uma âncora tem
-    // de ser contra a pose de MUNDO do corpo, senão a rota do canvas planta o
-    // mesmo erro que o ponto médio plantava.
+    // A pose de MUNDO, a mesma correção do ponto médio.
     let pose = |e: Entity| {
         ph2d_ecs::world_transform(sim.world(), e)
             .map(|t| [t.translation.x, t.translation.y, t.rotation])
@@ -132,19 +106,9 @@ pub(crate) fn create_joint_at(
             wb,
         ))
     });
-    // **A EMENDA**, quando o gesto não nomeou um ponto (W-Rig): onde as duas
-    // SILHUETAS se encontram na linha entre os centros, e não o meio entre os
-    // centros. O meio era uma aproximação da emenda — o doc antigo dizia
-    // exatamente isso (*"entre dois corpos que se TOCAM … o meio É o pivô
-    // certo"*), e ela só vale entre formas do mesmo tamanho: uma cabeça pequena
-    // sobre um tronco grande punha o pivô DENTRO do tronco, e a cabeça girava em
-    // torno de um ponto no peito.
-    //
-    // ⚠️ Reduz ao ponto médio no caso que o desenho antigo acertava (formas
-    // iguais encostadas, o elo de corrente), então a corrente que já shipa não
-    // se move. Sem collider dos dois lados não há silhueta a medir, e aí o
-    // fallback é o meio — o que se sabe sem geometria nenhuma.
-    // A silhueta é a da forma PRINCIPAL, no corpo ou numa filha (opção B).
+    // **A EMENDA**, quando o gesto não nomeou um ponto (W-Rig): onde as SILHUETAS (da forma
+    // principal, opção B) se encontram na linha entre os centros — o meio punha o pivô de uma
+    // cabeça pequena dentro do tronco. Formas iguais reduzem ao meio; sem collider, o meio.
     let silhueta = |e: Entity| {
         let w = sim.world();
         let f = ph2d_physics_ecs::main_shape(w, e)?;
@@ -156,16 +120,8 @@ pub(crate) fn create_joint_at(
     // `sync_joint_pivots` will keep deriving), the seam otherwise.
     let origin = anchored.map_or(seam, |(_, _, wa, _)| ph2d_core::Vec2::new(wa[0], wa[1]));
     let base = PhysicsJoint::of_kind(kind);
-    // ⚠️ **A geometria autorada de uma POLIA é MAIS que as duas âncoras** — ela
-    // tem ROLDANAS —, e `anchored: true` diz ao reconcile *"leia o que está
-    // guardado, não semeie"*. Uma polia criada por este gesto saía com as duas
-    // roldanas na **origem do mundo**, com a corda indo de cada corpo até lá (o
-    // que o artista fotografou). A rota por SELEÇÃO nunca teve o defeito, porque
-    // ela deixa `anchored: false` e o semeio do reconcile roda.
-    //
-    // Um sentinela, duas perguntas — então o gesto estabelece as DUAS metades,
-    // pela MESMA `pulley_rig` que o resto do sistema chama. Uma cópia da regra de
-    // montagem aqui divergiria dela na primeira vez que qualquer uma mudasse.
+    // ⚠️ Uma POLIA autora também as ROLDANAS (`anchored: true` diz ao reconcile «não semeie»; sem
+    // isto nasciam na origem do mundo) — pela MESMA `pulley_rig` do resto do sistema.
     let rig = (kind == JointKind::Pulley).then(|| {
         ph2d_physics_ecs::pulley_rig(
             [pa.x, pa.y],

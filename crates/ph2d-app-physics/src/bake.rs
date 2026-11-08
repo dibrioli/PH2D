@@ -272,18 +272,9 @@ pub fn bake_selection(
     let entities: &[Entity] = &group;
 
     let ticks = ticks_for(end, fixed_dt);
-    // ⚠️ The bake advances the SCENE as well as the clock. Without it, every
-    // body the timeline drives — which is every body baked before this one —
-    // stands still through the whole simulation, and the curve written here
-    // describes a scene that does not exist.
-    //
-    // ⚠️ **E ele replaya a FITA, pela MESMA razão** (W16): sem ela um player é
-    // dirigido pelo `player_input` RETIDO, ou seja pelo dedo do instante do
-    // clique. Medido: uma corrida gravada que leva o personagem a `x = 8,765`
-    // era assada como X **CONSTANTE** com o dedo parado (nenhuma track
-    // horizontal para quem andou nove metros) e como `x = −8,765` — o espelho
-    // exacto — com a ESQUERDA segurada. As duas frases são uma só: *um bake que
-    // não reproduz a entrada assa uma corrida diferente*.
+    // ⚠️ The bake advances the SCENE (timeline-driven bodies) and replays the TAPE (W16: without it
+    // a player is baked with the finger of the click instant) — a bake that does not reproduce
+    // the input bakes a different run.
     let trajectories = {
         let mut scene = TimelineScene {
             doc: &mut timeline.doc,
@@ -343,20 +334,9 @@ pub fn bake_selection(
     let interp = Interp::Linear;
     for (entity_bits, prop, samples) in &work {
         for &(t, v) in samples {
-            // ⚠️ The key lands on the ENTITY's clock, not the playhead's, and
-            // through the same door every other authoring path in the shell
-            // uses (`key_time` = the strip's map, then the clip's own clock).
-            //
-            // A bake that stamped raw playhead seconds is
-            // `feedback_derived_coordinate_seed_must_match_sample` verbatim: the
-            // apply samples at `remapped_time`, so under a Time Remap the curve
-            // is read at times it was never written at. Measured on the wave's
-            // own fixture with a half-speed remap: the baked curve missed the
-            // simulated pose by **1.618 m** on a ~2 m drop.
-            //
-            // Priming per sample is what makes the answer depend on the instant
-            // being asked about rather than on whichever instant happened to be
-            // primed last.
+            // ⚠️ The key lands on the ENTITY's clock (`key_time`, the same door as every authoring
+            // path): raw playhead seconds missed the pose by 1.618 m under a half-speed remap
+            // (`feedback_derived_coordinate_seed_must_match_sample`). Primed per sample.
             timeline.doc.prime_stack(t);
             let Some(t) = ph2d_timeline::key_time(&timeline.doc, *entity_bits, t) else {
                 // No single answer — the clip plays zero times or twice at this
@@ -366,12 +346,8 @@ pub fn bake_selection(
                 timeline.history.cancel();
                 return BakeOutcome::unmappable();
             };
-            // Real seconds, NOT frame-snapped: the fit reads the shape of the
-            // motion, and snapping 300 samples onto frame boundaries before
-            // fitting throws away the sub-frame timing the curve is made of.
-            // (This is also why the bake writes keys directly rather than
-            // emitting `AddKey` intents, which snap — and which would each open
-            // an undo step of their own.)
+            // Real seconds, NOT frame-snapped, written directly (an `AddKey` intent snaps and
+            // opens its own undo step).
             timeline.doc.upsert_key(
                 *entity_bits,
                 *prop,
@@ -390,16 +366,8 @@ pub fn bake_selection(
     // Hand the pose over — but only to the bodies this bake actually WROTE a
     // curve for. Same door as the §11 chip.
     //
-    // ⚠️ Not `&trajectories`: that is the deduped SELECTION, and a selection is
-    // routinely mixed (the smoke scene says "select Roller + both boxes", and a
-    // marquee catches the floor). Flipping all of it granted a plain sprite a
-    // `RigidBody{Kinematic}` with no `Collider` — invisible in §11, which needs
-    // both components to offer the Remove button, never a rapier body, and
-    // saved into the project file anyway. A static floor caught in the marquee
-    // silently lost its authored kind.
-    //
-    // Asked as: did the simulation have anything to say about this body? A body
-    // whose curve was written is exactly a body whose pose the scene now owns.
+    // ⚠️ Not `&trajectories` (the SELECTION, routinely mixed: a marquee catches the floor, which
+    // would silently become Kinematic): only a body whose curve was written.
     let baked: std::collections::BTreeSet<u64> = work.iter().map(|(bits, _, _)| *bits).collect();
     let mut bodies = 0usize;
     for bits in baked {

@@ -21,7 +21,10 @@ pub(crate) fn apply_ray_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent)
 
     // A camada pela lista (a mesma do collider) e os quadros «Sees» (a linha da matriz do mundo).
     if let WidgetEvent::Click(id) = ev {
-        if let Some(n) = crate::ids::INSP_RAY_LAYER_OPTS.iter().position(|&o| o == id) {
+        if let Some(n) = crate::ids::INSP_RAY_LAYER_OPTS
+            .iter()
+            .position(|&o| o == id)
+        {
             #[allow(clippy::cast_possible_truncation)]
             push(host, bits, RayFieldEdit::Layer(n as u32));
             return true;

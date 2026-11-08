@@ -236,11 +236,21 @@ pub(crate) fn take_pending_action_tag_dd() -> Option<ph2d_editor_core::zones::Re
     PENDING_ACTION_TAG_DD.with(|c| c.take())
 }
 
-pub(crate) fn set_pending_phys_layer_dd(chip: Option<(&'static crate::sections::physics_colide::Quem, u8, ph2d_editor_core::zones::Rect)>) {
+pub(crate) fn set_pending_phys_layer_dd(
+    chip: Option<(
+        &'static crate::sections::physics_colide::Quem,
+        u8,
+        ph2d_editor_core::zones::Rect,
+    )>,
+) {
     PENDING_PHYS_LAYER_DD.with(|c| c.set(chip));
 }
 
-pub(crate) fn take_pending_phys_layer_dd() -> Option<(&'static crate::sections::physics_colide::Quem, u8, ph2d_editor_core::zones::Rect)> {
+pub(crate) fn take_pending_phys_layer_dd() -> Option<(
+    &'static crate::sections::physics_colide::Quem,
+    u8,
+    ph2d_editor_core::zones::Rect,
+)> {
     PENDING_PHYS_LAYER_DD.with(|c| c.take())
 }
 

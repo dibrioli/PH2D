@@ -38,7 +38,14 @@ pub(super) fn linha_classica(
         x,
         w,
     };
-    linha_da_camada(&mut t, y, &DO_COLLIDER, camada, Rotulo::from(rotulo), seccao)
+    linha_da_camada(
+        &mut t,
+        y,
+        &DO_COLLIDER,
+        camada,
+        Rotulo::from(rotulo),
+        seccao,
+    )
 }
 
 /// A linha «Layer» de `quem`: rótulo, lista suspensa com o nome e o contorno da cor, e o losango
@@ -56,7 +63,15 @@ pub(super) fn linha_da_camada(
     let ao_lado = crate::cards::active() || chip_cabe_ao_lado(t.text, &dd, t.x, t.w, y, seccao);
     let (control, dot, fim) = if ao_lado {
         let linha = ph2d_editor_core::property_row::paint_label_row(
-            t.scene, t.text, t.theme, t.x, t.w, y, ROW_H_PX, rotulo.texto, seccao,
+            t.scene,
+            t.text,
+            t.theme,
+            t.x,
+            t.w,
+            y,
+            ROW_H_PX,
+            rotulo.texto,
+            seccao,
         );
         (
             linha.control,

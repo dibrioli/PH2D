@@ -107,7 +107,11 @@ fn clica(
 }
 
 /// Pinta o Ray Sensor `olho`, abre a lista se `id` for uma opção dela, e clica no meio de `id`.
-fn clique_no_raio(cartoes: bool, olho: InspectorRayInfo, id: ph2d_a11y::NodeId) -> Vec<EditorAction> {
+fn clique_no_raio(
+    cartoes: bool,
+    olho: InspectorRayInfo,
+    id: ph2d_a11y::NodeId,
+) -> Vec<EditorAction> {
     let mut host = crate::host_em_metros();
     let mut state = InspectorState::default();
     set_current_inspector_ray(Some(olho));
@@ -147,18 +151,32 @@ fn o_ray_sensor_escolhe_a_camada_pela_lista_e_ve_pela_matriz() {
         set_current_inspector_ray(None);
         let chip = achar(&rects, INSP_RAY_LAYER).expect("o chip Layer do raio");
         let c = ph2d_editor_core::paint::layer_outline_of(INSP_RAY_LAYER).expect("contorno");
-        assert_eq!((c.camada, c.rect), (20, chip), "o chip veste a cor da camada do raio ({cartoes})");
+        assert_eq!(
+            (c.camada, c.rect),
+            (20, chip),
+            "o chip veste a cor da camada do raio ({cartoes})"
+        );
         let canal: Vec<_> = key_mark::rotulos_pintados()
             .into_iter()
             .filter(|(_, k)| *k == "component.field.ray_sensor.3")
             .map(|(id, _)| id)
             .collect();
-        assert_eq!(canal, vec![INSP_RAY_LAYER], "o losango do Layer é o canal de sempre ({cartoes})");
+        assert_eq!(
+            canal,
+            vec![INSP_RAY_LAYER],
+            "o losango do Layer é o canal de sempre ({cartoes})"
+        );
         // Os quadros «Sees»: as visíveis e a do raio (a 0, 1, 2 e 20), mais o «+».
         for j in [0, 1, 2, 20] {
-            assert!(rects.iter().any(|(n, _)| *n == INSP_RAY_SEES[j]), "o quadro {j} ({cartoes})");
+            assert!(
+                rects.iter().any(|(n, _)| *n == INSP_RAY_SEES[j]),
+                "o quadro {j} ({cartoes})"
+            );
         }
-        assert!(rects.iter().any(|(n, _)| *n == INSP_RAY_SEES_ADD), "o «+» ({cartoes})");
+        assert!(
+            rects.iter().any(|(n, _)| *n == INSP_RAY_SEES_ADD),
+            "o «+» ({cartoes})"
+        );
         // A camada 20 pela lista, o clique real.
         let fora = clique_no_raio(cartoes, olho_na(2), INSP_RAY_LAYER_OPTS[20]);
         assert_eq!(
@@ -171,7 +189,11 @@ fn o_ray_sensor_escolhe_a_camada_pela_lista_e_ve_pela_matriz() {
         );
         // «Sees» edita a MESMA célula da matriz que o «Collides with» do collider na mesma camada.
         let raio = clique_no_raio(cartoes, olho_na(2), INSP_RAY_SEES[1]);
-        assert_eq!(raio, [EditorAction::LayerPairToggle { a: 2, b: 1 }], "o quadro do raio ({cartoes})");
+        assert_eq!(
+            raio,
+            [EditorAction::LayerPairToggle { a: 2, b: 1 }],
+            "o quadro do raio ({cartoes})"
+        );
         {
             let mut corpo = with_body();
             corpo.layer = 2;

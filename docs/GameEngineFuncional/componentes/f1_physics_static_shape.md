@@ -42,6 +42,8 @@ Desta conversa, 07/11, todas por «faça como você sugere»:
 4. **Polígono pelo contorno: item próprio, logo depois desta revisão.** Mexe no motor e no formato salvo.
 5. **Static Body continua a nascer com o bloco de pedra.**
 
+**Decisões do dono, 08/11/2026 (emendas 2 e 3, depois do smoke):** na pergunta do «Remove» da aba, *«a aparência aqui poderia ser melhor»* e *«use os retângulos coloridos ao lado do nome no dropdown»*; no Ray Sensor, olhando o cartão Collision Layers, *«Ray Sensor não deveria ter os mesmos campos????»*. Feitas na secção «Fecho da linha».
+
 **Decisão do dono, 08/11/2026 (depois do smoke do fecho), no cartão «Collision Layers»:** *«Duplo clique em layer vamos retirar pois já temos o botão.»* e *«Vamos passar os botões Rename layer e Open in tab para acima de collides with e abaixo de layers.»* — a ordem passa a Layer → [«Rename layers…» · «Open in tab…»] → «Collides with» → a frase; renomear só pelo botão. Feita na emenda (secção «Fecho da linha»).
 
 **Decisão do dono, 07/11/2026 (depois do smoke da onda 9g):** *«sombra escura por baixo dos contornos do canvas, SIM»* — para o contorno da cor da camada não sumir sobre arte da mesma cor (o Crate laranja). Feita no fecho (secção «Fecho da linha»). Também dele, para depois da integração: o polígono pelo contorno da imagem como item novo, com proposta.

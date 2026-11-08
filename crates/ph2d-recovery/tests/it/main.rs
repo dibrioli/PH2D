@@ -405,3 +405,44 @@ fn a_serializacao_corre_no_fio_da_escrita() {
     );
     let _ = std::fs::remove_dir_all(root);
 }
+
+/// ⭐ P12 smoke 2: a cópia sai SEM quadros. Um traço (um quadro com entrada) e depois só voltas do
+/// laço (`tick`), sem nenhum `input` — a janela tapada no Wayland: a cópia está no disco, a sessão
+/// morta oferece-a ao arranque seguinte.
+#[test]
+fn a_copia_sai_sem_quadros_so_com_as_voltas_do_laco() {
+    let root = tmpdir("no-frames");
+    let mut r = ph2d_recovery::Recovery::start(Some(&root), Period::from_secs(10));
+    let t0 = Instant::now();
+    r.input(true, t0);
+    let project = || {
+        Some((
+            || Some(b"drawn".to_vec()),
+            Some("/x/Hero.ph2dproj".to_owned()),
+        ))
+    };
+    r.tick(10, t0 + Duration::from_secs(2), project);
+    assert!(
+        r.autosave.finish().is_none(),
+        "antes da hora não se serializa"
+    );
+    r.tick(10, t0 + Duration::from_secs(11), project);
+    assert_eq!(
+        r.autosave.finish(),
+        Some(Offer::Written),
+        "a hora correu sem quadros"
+    );
+    let dir = r.session.as_ref().expect("sessão").dir().to_path_buf();
+    assert_eq!(
+        std::fs::read(dir.join("project.ph2dproj")).ok(),
+        Some(b"drawn".to_vec())
+    );
+    let found = scan(&root, ph2d_recovery::now_secs(), None, &dead);
+    assert_eq!(
+        found.len(),
+        1,
+        "o arranque seguinte oferece a cópia (sinal ≠ fecho)"
+    );
+    assert_eq!(found[0].meta.name, "Hero.ph2dproj");
+    let _ = std::fs::remove_dir_all(&root);
+}

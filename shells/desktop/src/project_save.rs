@@ -86,13 +86,11 @@ impl crate::App {
     /// ⭐ A cópia de recuperação (P12 S): os MESMOS bytes do Save, serializados no fio da escrita.
     pub(crate) fn recovery_tick(&mut self) {
         let now = std::time::Instant::now();
-        self.recovery
-            .follow(ph2d_editor_core::recovery_pref::secs(), now);
-        if self.recovery.due(now)
+        if (self.recovery).ready(ph2d_editor_core::recovery_pref::secs(), now)
             && let Some((file, pixel)) = self.project_file()
         {
-            let path = self.project_path.clone();
-            (self.recovery).offer_with(move || serialize(file, &pixel), path.as_deref(), now);
+            let make = move || serialize(file, &pixel);
+            (self.recovery).offer_with(make, self.project_path.as_deref(), now);
         }
     }
 

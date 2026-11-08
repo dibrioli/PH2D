@@ -893,7 +893,6 @@ impl App {
         // **O menu Ficheiro**, no mesmo sítio e pela mesma razão: `self` está livre do borrow do
         // render loop, e um diálogo nativo é modal — abri-lo a meio do frame prenderia o `gfx`.
         self.drain_project_io();
-        self.recovery_tick();
     }
 }
 
@@ -978,6 +977,9 @@ impl ApplicationHandler for App {
         }
     }
 
+    fn about_to_wait(&mut self, _: &ActiveEventLoop) {
+        self.recovery_tick();
+    }
     fn exiting(&mut self, _event_loop: &ActiveEventLoop) {
         crate::input_drop::release_wayland_receivers();
         self.recovery.close();

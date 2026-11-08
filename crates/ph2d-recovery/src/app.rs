@@ -146,6 +146,28 @@ impl Recovery {
         self.autosave.set_period(Period::from_secs(secs), now);
     }
 
+    /// ⭐ O relógio da cópia, chamado a cada volta do laço de eventos (`about_to_wait`), NUNCA só
+    /// no quadro: no Wayland uma janela tapada ou minimizada não recebe quadros, e a cópia não pode
+    /// depender deles (P12 smoke 2, 08/11). `secs` = Settings ▸ Recovery; `project` junta o
+    /// projecto (no fio da janela) e devolve o que se serializa no fio da escrita e o caminho.
+    pub fn tick<P, F>(&mut self, secs: u64, now: Instant, project: P)
+    where
+        P: FnOnce() -> Option<(F, Option<String>)>,
+        F: FnOnce() -> Option<Vec<u8>> + Send + 'static,
+    {
+        if self.ready(secs, now)
+            && let Some((make, path)) = project()
+        {
+            self.offer_with(make, path.as_deref(), now);
+        }
+    }
+
+    /// [`Self::follow`] e [`Self::due`] juntos: a pergunta barata (~µs) de cada volta do laço.
+    pub fn ready(&mut self, secs: u64, now: Instant) -> bool {
+        self.follow(secs, now);
+        self.due(now)
+    }
+
     /// Os bytes do Save, à hora: o fio grava a cópia se mudaram.
     pub fn offer(&mut self, bytes: Vec<u8>, project: Option<&str>, now: Instant) {
         let Some(s) = self.session.as_ref() else {

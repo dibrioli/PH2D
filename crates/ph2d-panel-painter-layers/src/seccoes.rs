@@ -234,6 +234,12 @@ pub(crate) const BRUSH: &[&str] = &[
     "panel.painter_layers.brush.smear_fine_thread",
     "panel.painter_layers.brush.blend",
     "panel.painter_layers.brush.blend_on_empty",
+    "panel.painter_layers.brush.mix_mode",
+    "panel.painter_layers.brush.mix_amount",
+    "panel.painter_layers.brush.mix_density",
+    "panel.painter_layers.brush.mix_stretch",
+    "panel.painter_layers.brush.mix_amount_pressure",
+    "panel.painter_layers.brush.mix_density_pressure",
     "panel.painter_layers.brush.color",
     "panel.painter_layers.brush.paint_mode",
     // O bloco de presets do Wet Painter (W1) toma o lugar do Preset no Wet Paint: o mesmo cartão.

@@ -166,6 +166,32 @@ fn nenhum_nome_da_secao_shape_se_repete() {
     }
 }
 
+/// O Bristle Size do painel vai a 16 (dono 07/11), o Shape guarda, e o `2` de fábrica continua `36/76`.
+#[test]
+fn o_bristle_size_do_painel_chega_a_16() {
+    use ph2d_editor_core::tool::PanelEvent;
+    let mut t = pincel(PaintMedia::Digital, TextureKind::Bristles);
+    let id = crate::ids::PAINTER_SHAPE_PARAMS[2];
+    t.handle_panel_event(PanelEvent::SetValue(id, 2.0));
+    assert_eq!(
+        ph2d_painter_brush::texture::bristle_knobs(&t.paint.brush.shape.params).bristle_size,
+        2.0
+    );
+    assert!((t.paint.brush.shape.params[2] - 36.0 / 76.0).abs() < 1e-6);
+    t.handle_panel_event(PanelEvent::SetValue(id, 16.0));
+    let e = ph2d_painter_brush::param_escala(TextureKind::Bristles, 2);
+    assert_eq!((e.min, e.max), (0.2, 16.0));
+    assert!((e.mostra(t.paint.brush.shape.params[2]) - 16.0).abs() < 1e-3);
+    let k = ph2d_painter_brush::texture::bristle_knobs(&t.paint.brush.shape.params);
+    assert_eq!(k.bristle_size, 16.0);
+    t.handle_panel_event(PanelEvent::SetValue(id, 99.0));
+    assert_eq!(
+        ph2d_painter_brush::texture::bristle_knobs(&t.paint.brush.shape.params).bristle_size,
+        16.0,
+        "o topo prende"
+    );
+}
+
 /// **Nada das cerdas se perde ao sair do Tuning** (dono 13/10): o Shape e o Grain mostram e aceitam os
 /// quatro knobs nas MESMAS unidades do Tuning — digitar `1500` no Count, `3` na Bristle Strength, `0,5` na
 /// Bristle Size e `0,05` no Felt dá EXACTAMENTE esses knobs, nos dois slots; um tipo comum continua na

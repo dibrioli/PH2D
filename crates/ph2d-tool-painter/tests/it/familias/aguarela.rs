@@ -585,11 +585,27 @@ const SALPICO: Receita = Receita {
 /// A Aquarela básica (dono, 23/10): o pincel de fábrica do meio — os números do painel dele
 /// (`state_default::aquarela_de_fabrica`), capturados sem nada por cima — o mesmo nome e o mesmo pincel
 /// do preset de fábrica «Watercolor Basic».
-pub const MEIOS: &[ReceitaMeio] = &[ReceitaMeio::aquarela(
-    "Watercolor",
-    "Basic",
-    "Watercolor Basic",
-)];
+pub const MEIOS: &[ReceitaMeio] = &[
+    ReceitaMeio::aquarela("Watercolor", "Basic", "Watercolor Basic"),
+    // Lote 1 do estudo CSP (`docs/Painter/ESTUDO_CLIP_STUDIO_PINCEIS_2026-11-07.md` §3 e §5): a aguarela redonda — o
+    // carimbo do Digital com o flag watercolor (o meio Watercolor), 80 px, o disco duro (dureza 100 → 0,8: a lavagem
+    // amacia), a borda de água FRACA e estreita (raio 2, alfa 5 → `edge_gain` 0,1 a 2 px), a pressão no tamanho. A
+    // composição «Multiplicar» do CSP: a lavagem ignora o `blend` (`watercolor_wash_ignores_the_brush_blend_mode`), e
+    // o que escurece por cima é o Pigment (a composição subtractiva da aguada). A opacidade pela pressão e pela
+    // velocidade não tem linha neste meio (fica fora); o papel é o da tela (a granulação de fábrica).
+    ReceitaMeio {
+        pincel: &[
+            ("hardness", "0.8"),
+            ("spacing", "0.1"),
+            ("edge_gain", "0.1"),
+            ("edge_spread", "2.0"),
+            ("pigment", "true"),
+        ],
+        mao: &[("pressureSize", 0.9), ("pressureSizeCurve", 1.0)],
+        size_px: Some(80.0),
+        ..ReceitaMeio::aquarela("Watercolor", "Round", "Round Watercolor")
+    },
+];
 
 // Medido contra `fixtures/rebelle/wcliner.png` à largura dela; as formas (prompt 44, doc 44 §3) e a pressão que
 // ESMAECE (prompt 45, doc 45).

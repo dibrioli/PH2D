@@ -439,7 +439,41 @@ const WAX_C: Receita = Receita {
     ..OIL_PASTEL
 };
 
-pub const MEIOS: &[ReceitaMeio] = &[];
+pub const MEIOS: &[ReceitaMeio] = &[
+    // Lote 1 do estudo CSP (`docs/Painter/ESTUDO_CLIP_STUDIO_PINCEIS_2026-11-07.md` §3): o pau de carvão no Digital —
+    // 20 px, a pressão no tamanho (mínimo 50 %) e no fluxo (mínimo 30 %), a espessura 90 % (`dab_flatten` 0,1), o
+    // papel de desenho a densidade 100 que a pressão leva de 10 % a 100 %, a 2.ª ponta que rasga a orla e o valor
+    // sorteado por dab (o −5 do CSP). ⚠️ A ponta de CARVÃO (imagem ×2) e o papel «Drawing paper» não existem nossos: o
+    // disco `Sharp` + o dual tomam-lhes o lugar, e o papel é o `Noise` procedural mais grosso que o do Sketch Pencil.
+    ReceitaMeio {
+        pincel: &[
+            ("hardness", "0.7"),
+            ("falloff", "\"Sharp\""),
+            ("spacing", "0.1"),
+            ("jitter", "0.1"),
+            ("dab_flatten", "0.1"),
+            ("dual", ORLA_DO_PAU),
+            ("texture", PAPEL_DO_PAU),
+            ("grain_depth", "1.0"),
+            ("color_jitter_enabled", "true"),
+            ("color_jitter_val", "0.05"),
+        ],
+        mao: &[
+            ("pressureSize", 0.5),
+            ("pressureSizeCurve", 1.0),
+            ("pressureOpacity", 0.7),
+            ("pressureOpacityCurve", 1.0),
+        ],
+        size_px: Some(20.0),
+        opacity: Some(1.0),
+        ..ReceitaMeio::digital("Pencil", "Charcoal", "Charcoal Stick")
+    },
+];
+
+/// A orla do Charcoal Stick: a 2.ª ponta (dual Multiply) de três marcas a 0,5 do diâmetro, espalhadas e rodadas.
+const ORLA_DO_PAU: &str = r#"{"angulo": 0, "atraves": 0.3, "contagem": 3, "dureza": 0.2, "escala": 0.5, "espalhar": 0.5, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 1.0}"#;
+/// O papel do Charcoal Stick: o `Noise` procedural preso à tela; a profundidade segue a pressão (10 % → 100 %).
+const PAPEL_DO_PAU: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "lei": {"depth_jitter": 0.9, "depth_min": 0.0, "depth_pressure": true, "mode": 0}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [64.0, 64.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 // O Cruzamento do Wax Scrape não entra (0,166 do controlo, abaixo de 3× o ruído desta régua); o raio do Wax por grelha.
 #[rustfmt::skip]

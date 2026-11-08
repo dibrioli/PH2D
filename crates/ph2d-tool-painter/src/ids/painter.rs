@@ -198,6 +198,28 @@ pub const PAINTER_BRUSH_WASH: NodeId = hash_node_id("painter_brush.wash");
 /// **Fine Thread** toggle do Smear (`BrushSpec::smear_fio`, J6). `Click` → `toggle_brush_smear_fio`.
 pub const PAINTER_BRUSH_SMEAR_FIO: NodeId = hash_node_id("painter_brush.smear_fio");
 
+/// O grupo do seletor **Color mixing** no painel de antes (`PH2D_CARDS=0`); as opções são as de baixo.
+pub const PAINTER_BRUSH_MIX_MODE: NodeId = hash_node_id("painter_brush.mix.mode");
+/// **Color mixing** do Digital (`BrushSpec::mistura_opaca`): as opções do seletor, pela ordem de
+/// `ModoMisturaOpaca::TODOS` (Off · Wet blend, 08/11). `Click` → `set_brush_mistura_modo`.
+pub const PAINTER_BRUSH_MIX_MODES: [NodeId; 2] = [
+    hash_node_id("painter_brush.mix.off"),
+    hash_node_id("painter_brush.mix.wet_blend"),
+];
+/// Os números da mistura: Amount · Density · Color stretch · Amount pressure · Density pressure · Pigment (`0..1`; o painel
+/// mostra-os por [`PAINTER_BRUSH_MIX_ORDEM`]). `SetValue` → `set_brush_mistura_numero` (`tool/paint/mistura_settings.rs`).
+pub const PAINTER_BRUSH_MIX_FIELDS: [NodeId; 6] = [
+    hash_node_id("painter_brush.mix.paint_amount"),
+    hash_node_id("painter_brush.mix.paint_density"),
+    hash_node_id("painter_brush.mix.color_stretch"),
+    hash_node_id("painter_brush.mix.amount_pressure"),
+    hash_node_id("painter_brush.mix.density_pressure"),
+    hash_node_id("painter_brush.mix.pigment_amount"),
+];
+/// A ordem em que o painel mostra os [`PAINTER_BRUSH_MIX_FIELDS`]: Amount · Density · Color stretch · Pigment · as
+/// pressões (a ordem do CSP).
+pub const PAINTER_BRUSH_MIX_ORDEM: [usize; 6] = [0, 1, 2, 5, 3, 4];
+
 /// ⭐ O modo sobre o VAZIO (L7), na linha do Blend (`0`/`1`). `SetValue` → `route_blend_vazio_event`
 /// (`tool/paint/blend_vazio_settings.rs`). O nome do hash é o de antes da secção Rendering sair (24/10): as macros
 /// gravadas com ele tocam igual.

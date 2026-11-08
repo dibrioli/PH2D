@@ -625,6 +625,9 @@ pub(crate) struct PaintState {
     /// Pull) drags it downstream. Reset on pen-down; inert unless `wet_charge < 1` (default → skipped,
     /// byte-identical). See [`super::watercolor_mixer`].
     pub(super) wet_mix: watercolor_mixer::WetMix,
+    /// A **mistura opaca** do Digital neste traço (`super::stamp_route::mistura`): o reservatório e a
+    /// pressão da caneta do último evento. Renasce no pen-down e a cada re-carimbo de figura.
+    pub(super) mistura_opaca: super::stamp_route::mistura::MisturaDoTraco,
     /// The previous dab centre of the Smudge TRUE-SMEAR chain (`None` = stroke start / no smear yet).
     /// With `wet_smudge > 0` each dab DRAGS the frozen base's paint from here to its own centre
     /// (`smear_dab` on the forked [`Self::watercolor_base`]) before the wash composites over it — the

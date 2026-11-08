@@ -83,7 +83,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
         KnobGroup::Hidden, // a ponta mora no Shape (plano 27 W2): o tipo Bristles
         "bristleSize",
         0.2,
-        4.0,
+        16.0, // pedido do dono 07/11; o ficheiro guarda 1 = 4,0: `brush/unidade.rs`
         0.05,
         1.0,
         Some(Rebuild::Brush),
@@ -242,7 +242,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::TiltLag, KnobGroup::Paint, "tiltLag", 0.0, 500.0, 1.0, 0.0, None),
     k(Knob::BristlePressure, KnobGroup::Bristles, "bristlePressure", 0.0, 3.0, 0.01, 0.0, None),
     k(Knob::BristleNoiseLength, KnobGroup::Bristles, "bristleNoiseLength", 10.0, 2000.0, 1.0, 150.0, None),
-    k(Knob::BristleLaneWidth, KnobGroup::Bristles, "bristleLaneWidth", 0.5, 24.0, 0.1, 3.0, None),
+    k(Knob::BristleLaneWidth, KnobGroup::Hidden, "bristleLaneWidth", 0.5, 24.0, 0.1, 3.0, None),
     k(Knob::BristleWave, KnobGroup::Bristles, "bristleWave", 0.0, 0.75, 0.01, 0.0, None),
     k(Knob::BristleWaveLength, KnobGroup::Bristles, "bristleWaveLength", 50.0, 2000.0, 1.0, 500.0, None),
     k(Knob::BristleOscillation, KnobGroup::Bristles, "bristleOscillation", 0.0, 12.0, 0.1, 0.0, None),
@@ -252,7 +252,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::BristleNoiseSat, KnobGroup::Bristles, "bristleNoiseSat", 0.0, 0.5, 0.005, 0.0, None),
     k(Knob::BristleNoiseLight, KnobGroup::Bristles, "bristleNoiseLight", 0.0, 0.7, 0.005, 0.0, None),
     k(Knob::BristleLift, KnobGroup::Bristles, "bristleLift", 0.0, 2.0, 0.01, 0.0, None),
-    k(Knob::BristleHeight, KnobGroup::Bristles, "bristleHeight", 0.0, 8.0, 0.01, 0.0, None),
+    k(Knob::BristleHeight, KnobGroup::Hidden, "bristleHeight", 0.0, 8.0, 0.01, 0.0, None),
     k(Knob::BristleRemove, KnobGroup::Bristles, "bristleRemove", 0.0, 1.0, 0.01, 0.5, None),
     k(Knob::PigmentSpacing, KnobGroup::Hidden, "pigmentSpacing", 0.0, 0.5, 0.005, 0.025, None),
     k(Knob::CapsuleSpacing, KnobGroup::Hidden, "capsuleSpacing", 0.005, 0.1, 0.0025, 0.025, None),
@@ -260,7 +260,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     k(Knob::CapsuleRoundNearest, KnobGroup::Hidden, "capsuleRoundNearest", 0.0, 1.0, 1.0, 0.0, None),
     k(Knob::EmbossSizeExp, KnobGroup::Hidden, "embossSizeExp", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::EmbossSizeRef, KnobGroup::Hidden, "embossSizeRef", 1.0, 1000.0, 0.5, 41.0, None),
-    k(Knob::BristleTipRagged, KnobGroup::Bristles, "bristleTipRagged", 0.0, 1.0, 0.01, 0.0, None),
+    k(Knob::BristleTipRagged, KnobGroup::Hidden, "bristleTipRagged", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::TipReservoir, KnobGroup::Hidden, "tipReservoir", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::PressureGrain, KnobGroup::Stroke, "pressureGrain", 0.0, 1.0, 0.01, 0.0, None),
     k(Knob::StrokeFilm, KnobGroup::Stroke, "strokeFilm", 0.0, 1.0, 1.0, 0.0, None),
@@ -320,7 +320,7 @@ pub const KNOB_DEFS: [KnobDef; KNOB_COUNT] = [
     // J6 (guache, lacuna 7): a tinta nova cobre a molhada de outra cor — neutro 0 = a mistura de sempre, ao bit
     k(Knob::WetCover, KnobGroup::Hidden, "wetCover", 0.0, 1.0, 0.01, 0.0, None),
     // J6 (cerdas): os fios crescem com o diâmetro — neutro 0 = os px escritos, ao bit
-    k(Knob::BristleLaneSizeExp, KnobGroup::Bristles, "bristleLaneSizeExp", 0.0, 1.5, 0.01, 0.0, None),
+    k(Knob::BristleLaneSizeExp, KnobGroup::Hidden, "bristleLaneSizeExp", 0.0, 1.5, 0.01, 0.0, None),
     // Paper Press (dono 28/10): neutro 1 = o amassado de sempre, ao bit (o preset sem a chave)
     k(Knob::PaperPress, KnobGroup::Material, "paperPress", 0.0, 1.0, 0.01, 1.0, None),
     // J10 (dono 30/10): a água que re-molha e a tinta que se deixa dissolver — no Inspector, não no Tuning (Hidden);

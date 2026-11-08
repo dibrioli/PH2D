@@ -72,10 +72,18 @@ pub enum Dependente {
     MaterialSemOleo,
     // O expoente através só vale com o seletor em «Own exponent» (`lote.rs::escala_atraves`).
     ExpoenteAtravesSemProprio,
+    // Os fios que penteiam só existem no Wet Paint (`wetpaint/dab_route.rs`); o resto só lê o tapete do Shape.
+    PenteadoForaDoMolhado,
+    // Largura, ponta e escala dos fios não têm o que mudar sem relevo nem nenhuma lei por fio (`Fios::neutro`).
+    PenteadoSemFios,
+    // O relevo gravado só se vê com luz: o emboss ou o Real Oil (`render.rs`, `oleo_campo.rs`).
+    PenteadoSemLuz,
+    // Os números da mistura opaca só agem com ela num modo (`mistura_opaca_dab`: `Off` devolve sem tocar).
+    MisturaDesligada,
 }
 
 impl Dependente {
-    pub const TODOS: [Dependente; 45] = [
+    pub const TODOS: [Dependente; 49] = [
         Dependente::ForaDaPontaDePixel,
         Dependente::TaperTip,
         Dependente::TaperOpacity,
@@ -121,6 +129,10 @@ impl Dependente {
         Dependente::WashComAccumulate,
         Dependente::MaterialSemOleo,
         Dependente::ExpoenteAtravesSemProprio,
+        Dependente::PenteadoForaDoMolhado,
+        Dependente::PenteadoSemFios,
+        Dependente::PenteadoSemLuz,
+        Dependente::MisturaDesligada,
     ];
 
     /// Os ids que o painel pinta para este controlo.
@@ -225,6 +237,10 @@ impl Dependente {
             // «Speed lag», pela ordem de `LINHAS_DA_MAO`.
             Dependente::AtrasoSemVelocidade => &[ids::PAINTER_PEN_FIELDS[20]],
             Dependente::MaterialSemOleo => material_do_oleo(),
+            Dependente::PenteadoForaDoMolhado => penteado(),
+            Dependente::PenteadoSemFios => penteado_sem_o_relevo(),
+            Dependente::PenteadoSemLuz => relevo_do_penteado(),
+            Dependente::MisturaDesligada => &ids::PAINTER_BRUSH_MIX_FIELDS,
             Dependente::ExpoenteAtravesSemProprio => expoente_atraves(),
         }
     }
@@ -283,6 +299,10 @@ impl Dependente {
             Dependente::AtrasoSemVelocidade => "panel.painter_layers.inerte.speed_on",
             Dependente::MaterialSemOleo => "panel.wet_tuning.inerte.real_oil_on",
             Dependente::ExpoenteAtravesSemProprio => "panel.wet_tuning.inerte.texture_across_own",
+            Dependente::PenteadoForaDoMolhado => "panel.painter_ponta.inerte.combing_wet_only",
+            Dependente::PenteadoSemFios => "panel.painter_ponta.inerte.combing_needs_bristles",
+            Dependente::PenteadoSemLuz => "panel.painter_ponta.inerte.combing_needs_light",
+            Dependente::MisturaDesligada => "panel.painter_layers.brush.inerte.mix_off",
         }
     }
 
@@ -304,7 +324,8 @@ impl Dependente {
         match self {
             Dependente::CorDaTexturaSemLeitor
             | Dependente::OpacidadeNaAguada
-            | Dependente::DualForaDoDigital => Natureza::MeioNaoLe,
+            | Dependente::DualForaDoDigital
+            | Dependente::PenteadoForaDoMolhado => Natureza::MeioNaoLe,
             _ => Natureza::DependeDeOutro,
         }
     }
@@ -323,6 +344,35 @@ fn material_do_oleo() -> &'static [NodeId] {
             .flat_map(|k| [ids::wet_tuning_slider_id(k), ids::wet_tuning_chip_id(k)])
             .collect()
     })
+}
+
+/// As quatro linhas do penteado: só o chip, o que o cartão pinta (o slider antigo não se pinta mais).
+fn penteado() -> &'static [NodeId] {
+    static IDS: std::sync::OnceLock<Vec<NodeId>> = std::sync::OnceLock::new();
+    IDS.get_or_init(|| {
+        ids::CERDAS_DO_PENTEADO
+            .iter()
+            .map(|k| ids::wet_tuning_chip_id(k))
+            .collect()
+    })
+}
+
+/// O penteado menos o Bristle relief, que é o que o liga.
+fn penteado_sem_o_relevo() -> &'static [NodeId] {
+    static IDS: std::sync::OnceLock<Vec<NodeId>> = std::sync::OnceLock::new();
+    IDS.get_or_init(|| {
+        ids::CERDAS_DO_PENTEADO
+            .iter()
+            .filter(|k| **k != "bristleHeight")
+            .map(|k| ids::wet_tuning_chip_id(k))
+            .collect()
+    })
+}
+
+/// O Bristle relief.
+fn relevo_do_penteado() -> &'static [NodeId] {
+    static IDS: std::sync::OnceLock<[NodeId; 1]> = std::sync::OnceLock::new();
+    IDS.get_or_init(|| [ids::wet_tuning_chip_id("bristleHeight")])
 }
 
 /// A linha do expoente através: o slider e o chip.

@@ -149,6 +149,9 @@ pub struct BrushSpec {
     /// (`warp::session::reamostra_por_area`), e o fio sub-píxel que o dedo puxa sai contínuo e pálido em vez de contas
     /// soltas. Desligado = o ponto de sempre, ao bit.
     pub smear_fio: bool,
+    /// **Mistura opaca** do Digital (Paint amount · density · Color stretch, Blend × Running color),
+    /// sem o flag `watercolor` ([`crate::mistura_opaca`]). `Off` (o default) = a rota de sempre, ao bit.
+    pub mistura_opaca: crate::mistura_opaca::MisturaOpaca,
     /// **Style: Solid** — o gesto ganha a área que ele CERCA, preenchida com cobertura exata por
     /// área ([`crate::solid`]), **além** do traço que a cerca. Um laço fino e solto vira uma mancha
     /// gorda com o contorno do pincel por cima. `false` (o default) é o mundo de sempre, byte a byte.

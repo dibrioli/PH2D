@@ -110,6 +110,7 @@ impl Numero {
         let casas = ph2d_tool_painter::Escala {
             min: min as f32,
             max: max as f32,
+            um: max as f32,
             step: passo,
         }
         .decimals();

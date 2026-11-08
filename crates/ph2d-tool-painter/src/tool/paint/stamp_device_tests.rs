@@ -614,3 +614,43 @@ fn a_ponte_leva_a_opacidade_que_a_cpu_carimba() {
         }
     }
 }
+
+/// **A mistura opaca lê a tela por dab: com ela ligada o lote nunca sobe ao device**; desligada (mesmo
+/// com os outros números mexidos) o pincel de fábrica continua a subir, como antes.
+#[test]
+fn a_mistura_opaca_ligada_fica_na_cpu_e_desligada_no_device() {
+    use ph2d_painter_brush::mistura_opaca::{MisturaOpaca, ModoMisturaOpaca};
+    let mexida = MisturaOpaca {
+        paint_amount: 0.2,
+        color_stretch: 0.9,
+        ..MisturaOpaca::default()
+    };
+    assert!(eligible(&BrushSpec {
+        mistura_opaca: mexida,
+        ..BrushSpec::default()
+    }));
+    for modo in [ModoMisturaOpaca::WetBlend] {
+        assert!(!eligible(&BrushSpec {
+            mistura_opaca: MisturaOpaca { modo, ..mexida },
+            ..BrushSpec::default()
+        }));
+    }
+    for modo in ModoMisturaOpaca::TODOS {
+        let mut t = figure_tool();
+        t.paint.brush.mistura_opaca = MisturaOpaca { modo, ..mexida };
+        let (bridge, log) = spy(|_| None);
+        t.set_device_stamp(Some(bridge));
+        draw(&mut t);
+        let chamada = !log.lock().expect("mutex").is_empty();
+        assert_eq!(
+            chamada,
+            modo == ModoMisturaOpaca::Off,
+            "{modo:?}: a ponte {}",
+            if chamada { "foi chamada" } else { "não foi chamada" }
+        );
+        assert!(
+            t.canvas_rgba.iter().any(|&b| b != 255),
+            "{modo:?}: a figura não pintou"
+        );
+    }
+}

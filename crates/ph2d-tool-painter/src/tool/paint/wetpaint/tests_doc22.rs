@@ -260,6 +260,66 @@ fn tuning_resets_restore_their_own_scope_only() {
     let _ = KnobGroup::Paint; // (vocabulary anchor)
 }
 
+/// ⭐ **Os quatro fios do Shape** (dono 07/11): saíram do Tuning, os ids antigos continuam a chegar ao motor (as macros
+/// gravaram-nos), o repor do grupo Bristles já não os toca, e ficam esmaecidos fora do Wet Paint ou sem fios.
+#[test]
+fn os_quatro_fios_do_shape_chegam_ao_motor_pelos_ids_de_sempre() {
+    use crate::tool::paint::inercia::Dependente as D;
+    let mut t = wet_tool_fixture();
+    for (chave, knob, v) in [
+        ("bristleLaneWidth", Knob::BristleLaneWidth, 4.0),
+        ("bristleHeight", Knob::BristleHeight, 0.25),
+        ("bristleTipRagged", Knob::BristleTipRagged, 0.64),
+        ("bristleLaneSizeExp", Knob::BristleLaneSizeExp, 1.5),
+    ] {
+        assert_eq!(KNOB_DEFS[knob as usize].group, KnobGroup::Hidden, "{chave}");
+        set(&mut t, crate::ids::wet_tuning_chip_id(chave), v);
+        assert_eq!(t.paint.wetpaint.knobs.get(knob), v, "chip de {chave}");
+        set(&mut t, crate::ids::wet_tuning_slider_id(chave), v / 2.0);
+        assert_eq!(
+            t.paint.wetpaint.knobs.get(knob),
+            v / 2.0,
+            "slider de {chave}"
+        );
+    }
+    let i = crate::ids::WET_TUNING_RESET_GROUPS
+        .iter()
+        .position(|g| *g == KnobGroup::Bristles)
+        .expect("Bristles tem repor");
+    click(&mut t, crate::ids::WET_TUNING_GROUP_RESETS[i]);
+    assert_eq!(t.paint.wetpaint.knobs.get(Knob::BristleHeight), 0.125);
+    let linhas = t.paint.wetpaint.knobs.penteado();
+    assert_eq!(linhas.map(|l| l.chave), crate::ids::CERDAS_DO_PENTEADO);
+    assert_eq!(linhas[1].valor, 0.125);
+
+    let k = &mut t.paint.wetpaint.knobs;
+    k.set(Knob::BristleHeight, 0.0);
+    assert!(!t.inercias().inerte(D::PenteadoForaDoMolhado));
+    let sem_fios = t.fios_do_pincel().neutro();
+    assert_eq!(t.inercias().inerte(D::PenteadoSemFios), sem_fios);
+    let k = &mut t.paint.wetpaint.knobs;
+    k.set(Knob::BristleHeight, 0.5);
+    k.set(Knob::Emboss, 0.0);
+    assert!(
+        t.inercias().inerte(D::PenteadoSemLuz),
+        "relevo sem luz não se vê"
+    );
+    assert!(
+        t.inercias().inerte(D::PenteadoSemFios),
+        "e a largura não muda nada"
+    );
+    let k = &mut t.paint.wetpaint.knobs;
+    k.set(Knob::Emboss, 0.5);
+    assert!(!t.inercias().inerte(D::PenteadoSemLuz), "o emboss acende-o");
+    assert!(!t.inercias().inerte(D::PenteadoSemFios), "o relevo liga-os");
+    t.set_paint_media(crate::tool::paint::media::PaintMedia::Digital);
+    assert!(t.inercias().inerte(D::PenteadoForaDoMolhado), "fora do Wet");
+    assert!(
+        !t.inercias().inerte(D::PenteadoSemFios),
+        "só uma dica de cada vez"
+    );
+}
+
 /// Os grupos AVANÇADOS do Tuning (25/10): a linha de um ex-`Hidden` chega aos knobs, e o repor do
 /// grupo Bristles repõe só os fios — nem o Wet effects, nem o Leveling e o Backrun do cartão (fora do Tuning
 /// desde a janela 7: o Backrun lê-se pela porta do cartão).

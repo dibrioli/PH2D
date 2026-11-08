@@ -89,6 +89,8 @@ pub(crate) enum Linha {
     Accumulate,
     Wash,
     Fio,
+    /// O grupo Color mixing (`cards_mistura`).
+    Mistura,
     Clone,
     Inpaint,
     /// A linha do traço, com o número que sobrou à frente e a caixa do Composite atrás: irmãos curtos.
@@ -203,6 +205,9 @@ pub(crate) fn dos_basicos(brush: BrushSettings) -> Vec<Linha> {
         && PaintMedia::from_u8(brush.media) == PaintMedia::Digital
     {
         l.push(Linha::Fio);
+    }
+    if crate::cards_mistura::oferecida(&brush) {
+        l.push(Linha::Mistura);
     }
     l
 }
@@ -543,6 +548,7 @@ fn pinta_linha(c: &mut CardCtx<'_>, linha: &Linha, b: &BrushSettings, y: f32) ->
             b.smear_fio,
             y,
         ),
+        Linha::Mistura => crate::cards_mistura::grupo_da_mistura(c, b, y),
         Linha::Clone => cards_ferramenta::clone(c, b, y),
         Linha::Inpaint => cards_ferramenta::inpaint(c, y),
         Linha::Traco { sobra, composto } => cards_ferramenta::linha(c, b, *sobra, *composto, y),

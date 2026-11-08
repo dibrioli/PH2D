@@ -579,6 +579,8 @@ pub(crate) fn pincel_para_json(b: &BrushSpec, campos: &[&str]) -> BTreeMap<Strin
         .filter(|&&c| !(c == "tecto_por_dab" && !b.tecto_por_dab))
         .filter(|&&c| !(c == "wash" && !b.wash))
         .filter(|&&c| !(c == "smear_fio" && !b.smear_fio))
+        // A mistura opaca do Digital só ligada: o ficheiro de antes não muda.
+        .filter(|&&c| !(c == "mistura_opaca" && !b.mistura_opaca.ligada()))
         // As cordas sorteadas do Wire (J4 efeitos) só ligadas: idem.
         .filter(|&&c| !(c == "wire_sorteio" && !b.wire_sorteio))
         .filter(|&&c| !(c == "wire_cordas" && b.wire_cordas == 0))

@@ -245,6 +245,15 @@ fn pincel_mexido() -> BrushSpec {
         tecto_por_dab: true,
         wash: true,
         smear_fio: true,
+        mistura_opaca: ph2d_painter_brush::mistura_opaca::MisturaOpaca {
+            modo: ph2d_painter_brush::mistura_opaca::ModoMisturaOpaca::WetBlend,
+            paint_amount: 0.3,
+            paint_density: 0.7,
+            color_stretch: 0.8,
+            pigmento: 0.35,
+            amount_pressure: 0.5,
+            density_pressure: 0.25,
+        },
         borda_px: 1.5,
         sub_passo_fino: true,
         passo_pela_pressao: true,
@@ -393,6 +402,22 @@ fn um_preset_sem_tilt_nao_mexe_na_inclinacao() {
         (false, 2, 5),
         "um preset sem tilt mexeu na inclinação"
     );
+}
+
+/// O Bristle Size 16 (dono 07/11) sai pelo ficheiro e volta 16: o Shape guarda acima de `1`.
+#[test]
+fn o_bristle_size_16_atravessa_o_ficheiro() {
+    let mut a = ferramenta_mexida();
+    let topo = ph2d_painter_brush::param_escala(TextureKind::Bristles, 2).u_max();
+    a.paint.brush.shape.kind = TextureKind::Bristles;
+    a.paint.brush.shape.params[2] = topo;
+    let (prm, texturas) = a.wet_preset_capturar(&Parametros::novo(MEIO_DO_PRESET, "T", "Grande"));
+    let lido = pelo_ficheiro(prm, texturas);
+    let mut b = PainterTool::default();
+    b.set_paint_tool_mode("wetpaint");
+    b.wet_preset_aplicar(&lido);
+    let k = ph2d_painter_brush::texture::bristle_knobs(&b.paint.brush.shape.params);
+    assert_eq!(k.bristle_size, 16.0);
 }
 
 pub(super) fn pinta(t: &mut PainterTool) -> Vec<u8> {
@@ -572,4 +597,37 @@ fn campos_de_ondas_futuras_sobrevivem_a_captura() {
     assert_eq!(p.brush["bristle_thin"], serde_json::json!(0.52));
     assert_eq!(p.engine["oiliness"], 0.8);
     assert_eq!(p.volumes.pressure, Some(0.7));
+}
+
+#[test]
+fn mistura_opaca_preset_antigo_sem_o_campo_carrega_off() {
+    use ph2d_painter_brush::mistura_opaca::{MisturaOpaca, ModoMisturaOpaca};
+    let campos = campos_da_macro();
+    let d = BrushSpec::default();
+    // O ficheiro de antes: o campo desligado nem se grava.
+    let antigo = json::pincel_para_json(&d, &campos);
+    assert!(!antigo.contains_key("mistura_opaca"));
+    // Mesmo sobre um pincel que a tinha ligada, a ausência é `Off` (nunca o pincel anterior).
+    let base = BrushSpec {
+        mistura_opaca: MisturaOpaca { modo: ModoMisturaOpaca::WetBlend, ..MisturaOpaca::default() },
+        ..d
+    };
+    let lido = json::pincel_de_json(&antigo, &campos, base);
+    assert_eq!(lido.mistura_opaca, MisturaOpaca::default());
+    assert_eq!(lido, json::pincel_de_json(&antigo, &campos, d));
+    // Ligada: vai e volta.
+    let ligado = BrushSpec {
+        mistura_opaca: MisturaOpaca {
+            modo: ModoMisturaOpaca::WetBlend,
+            paint_amount: 0.25,
+            paint_density: 0.5,
+            color_stretch: 0.75,
+            pigmento: 0.65,
+            amount_pressure: 1.0,
+            density_pressure: 0.0,
+        },
+        ..d
+    };
+    let m = json::pincel_para_json(&ligado, &campos);
+    assert_eq!(json::pincel_de_json(&m, &campos, d).mistura_opaca, ligado.mistura_opaca);
 }

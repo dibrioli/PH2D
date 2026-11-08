@@ -403,6 +403,8 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
                 || id == ph2d_tool_painter::ids::PAINTER_BRUSH_ACCUMULATE
                 || id == ph2d_tool_painter::ids::PAINTER_BRUSH_WASH
                 || id == ph2d_tool_painter::ids::PAINTER_BRUSH_SMEAR_FIO
+                // Color mixing: as opções Off · Blend · Running color (`cards_mistura`).
+                || ph2d_tool_painter::ids::PAINTER_BRUSH_MIX_MODES.contains(&id)
                 || id == ph2d_tool_painter::ids::PAINTER_LINE_SOLID
                 || id == ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_MAGNETIFY
                 || id == ph2d_tool_painter::ids::PAINTER_LINE_WIRE_CONNECTION

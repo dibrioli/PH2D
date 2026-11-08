@@ -55,6 +55,47 @@ pub const MEIOS: &[ReceitaMeio] = &[
         opacity: Some(0.7),
         ..ReceitaMeio::digital("Ink", "Ballpoint", "Ballpoint")
     },
+    // Lote 1 do estudo CSP (`docs/Painter/ESTUDO_CLIP_STUDIO_PINCEIS_2026-11-07.md` §3 e §6; números lidos, nada
+    // copiado): a pena do mangá — disco duro (dureza 100), passo 10 %, sem estabilizador, a pressão no tamanho
+    // (linear, de 0) e as pontas afinadas (entrada/saída 20 px ≈ 1,5 diâmetros a 10 px). A inclinação no tamanho do
+    // CSP não tem linha no Digital (fica fora).
+    ReceitaMeio {
+        pincel: &[
+            ("hardness", "1.0"),
+            ("borda_px", "1.0"),
+            ("spacing", "0.1"),
+            ("continuous_spacing", "true"),
+            ("stabilizer", "0.0"),
+            (
+                "taper",
+                r#"{"start":1.5,"tip_start":0.15,"end":1.5,"tip_end":0.15,"opacity":0.0}"#,
+            ),
+        ],
+        mao: &[("pressureSize", 0.95), ("pressureSizeCurve", 1.0)],
+        size_px: Some(10.0),
+        opacity: Some(1.0),
+        ..ReceitaMeio::digital("Ink", "G-Pen", "G-Pen")
+    },
+    // A irmã sensível da G-Pen (estudo CSP §3): tamanho 8, o mesmo disco duro, um estabilizador leve (CSP 2 de 100) e
+    // as pontas mais longas em diâmetros (os mesmos 20 px a 8 px). A curva 0,8 é DEDUZIDA («toque de pincel»: a largura
+    // chega antes), não lida.
+    ReceitaMeio {
+        pincel: &[
+            ("hardness", "1.0"),
+            ("borda_px", "1.0"),
+            ("spacing", "0.1"),
+            ("continuous_spacing", "true"),
+            ("stabilizer", "0.1"),
+            (
+                "taper",
+                r#"{"start":2.0,"tip_start":0.1,"end":2.0,"tip_end":0.1,"opacity":0.0}"#,
+            ),
+        ],
+        mao: &[("pressureSize", 0.95), ("pressureSizeCurve", 0.8)],
+        size_px: Some(8.0),
+        opacity: Some(1.0),
+        ..ReceitaMeio::digital("Ink", "Turnip", "Turnip Pen")
+    },
 ];
 
 /// As receitas EM ESTUDO — medidas, com o portão, mas fora da fábrica (REPROVADAS no exame; o porquê em

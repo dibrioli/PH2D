@@ -225,6 +225,8 @@ impl DualTip {
         s.cor_mao = crate::CorDaMao::NEUTRA;
         s.pigment = false;
         s.pigment_mix = 0.0;
+        // A mistura opaca é a cor da 1.ª ponta: na máscara ela partilhava o reservatório do traço (Blend esbranquiçado).
+        s.mistura_opaca = crate::mistura_opaca::MisturaOpaca::DE_FABRICA;
         s.texture = TextureSettings::default();
         s.taper = crate::taper::Taper::NEUTRAL;
         s.tecto_por_dab = false;

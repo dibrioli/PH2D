@@ -57,6 +57,8 @@ pub(crate) fn is_param_field(id: NodeId) -> bool {
         || (ph2d_tool_painter::ids::PAINTER_PEN_FIELDS.contains(&id)
             && id != ph2d_tool_painter::ids::PAINTER_PEN_ROTATION)
         || id == ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_QUINA
+        || crate::cards_penteado::e_campo(id)
+        || crate::cards_mistura::e_campo(id)
         || id == ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_ROTATION_LAG
         || id == ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_ALEM
         || id == ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_ESBATE

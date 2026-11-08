@@ -23,6 +23,8 @@ impl PainterTool {
             _ if self.route_ponta_event(event) => true,
             // O modo sobre o vazio (L7), `blend_vazio_settings.rs`.
             _ if self.route_blend_vazio_event(event) => true,
+            // A mistura opaca do Digital (Color mixing), `mistura_settings.rs`.
+            _ if self.route_mistura_event(event) => true,
             PanelEvent::Click(id) if *id == crate::ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE => {
                 self.toggle_brush_color_jitter_enabled();
                 true

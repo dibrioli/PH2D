@@ -9,6 +9,7 @@ use crate::tool::PainterTool;
 use ph2d_painter_brush::{BrushBlend, BrushSpec, Dab};
 
 mod mascara; // a rota do pincel Mask — filho por LOC
+pub(super) mod mistura; // a mistura opaca do Digital (só com o modo ligado)
 
 impl PainterTool {
     /// Whether the active stroke method lets the shell coalesce a burst of raw pointer Moves into ONE
@@ -74,6 +75,8 @@ impl PainterTool {
             && !self.mask_protection_active()
             && !self.selection_restricts_paint()
             && !self.freehand_solid_fill_live()
+            // A mistura opaca lê a tela por dab: a força não é a cobertura.
+            && !b.mistura_opaca.ligada()
     }
 
     fn stamp_dabs_marcados(&mut self, dabs: &[Dab]) {
@@ -513,6 +516,14 @@ impl PainterTool {
                 .active()
                 .and_then(|id| self.layers.get(id))
                 .is_some_and(|l| l.alpha_locked);
+        // A MISTURA OPACA (só ligada, só a pintar): a tela sob o dab entra na cor (`stamp_route::mistura`).
+        if brush.mistura_opaca.ligada()
+            && matches!(self.paint.paint_mode, PaintMode::Paint)
+            && !self.stroke_erases()
+        {
+            self.stamp_dabs_mistura_opaca(dabs, &brush, alpha_locked, w, h);
+            return;
+        }
         // A ponta de PÍXEL (L18, só no Digital): o carimbo binário dos dabs que o trilho já ancorou.
         if self.pixel_vivo(&brush) {
             self.stamp_dabs_pixel(dabs, &brush, alpha_locked);

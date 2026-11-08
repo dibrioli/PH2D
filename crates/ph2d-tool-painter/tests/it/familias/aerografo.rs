@@ -101,7 +101,36 @@ pub const MEIOS: &[ReceitaMeio] = &[
         texturas: &[("shape", super::texturas::mancha)],
         ..ReceitaMeio::digital("Splatter", "Splatter", "Splatter")
     },
+    // Lote 1 do estudo CSP (`docs/Painter/ESTUDO_CLIP_STUDIO_PINCEIS_2026-11-07.md` §3): o aerógrafo macio do sombreado
+    // anime — dureza 1 (a queda gaussiana `Sharp`), Flow 50 %, a pressão no fluxo, as pontas a esbater (entrada/saída
+    // 20 px a 150 px ≈ 0,15 diâmetros, que se apagam) e um papel de areia NOSSO a meia densidade (o `Grain` procedural
+    // `Tiled`; a «Sand» do CSP não foi copiada). A inclinação no tamanho não tem linha no Digital (fica fora).
+    ReceitaMeio {
+        pincel: &[
+            ("hardness", "0.0"),
+            ("falloff", "\"Sharp\""),
+            ("spacing", "0.1"),
+            ("flow", "0.5"),
+            ("texture", AREIA),
+            ("grain_depth", "0.5"),
+            (
+                "taper",
+                r#"{"start":0.15,"tip_start":0.5,"end":0.15,"tip_end":0.5,"opacity":1.0}"#,
+            ),
+        ],
+        mao: &[
+            ("pressureSize", 0.0),
+            ("pressureOpacity", 1.0),
+            ("pressureOpacityCurve", 1.0),
+        ],
+        size_px: Some(150.0),
+        opacity: Some(1.0),
+        ..ReceitaMeio::digital("Airbrush", "Soft", "Soft Airbrush")
+    },
 ];
+
+/// O papel de areia do Soft Airbrush: o grão fino procedural (`Grain`) preso à tela.
+const AREIA: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Grain", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [96.0, 96.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 /// J-3 Splatter e J-5 Stipple REEXAMINADOS na J4 pela família `texturas` (`docs/Painter/Pinceis/exames/texturas.md`):
 /// o motor que pediam existe agora (a partícula em PÍXEIS, o viés da cor, as imagens desenhadas na receita), mas as
 /// revisões cegas da última ronda ainda acharam o oráculo — ficam fora da fábrica com a receita da última ronda.

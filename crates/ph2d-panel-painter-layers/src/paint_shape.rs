@@ -85,6 +85,9 @@ pub(crate) fn paint_shape_section(
             brush.watercolor_shape_auto,
         );
         if brush.watercolor_shape_auto {
+            let fios = crate::cards_penteado::padroes(&brush);
+            let sec = seccao_da_forma(ctx);
+            let y = crate::number_field::paint_num_params(ctx, theme, x, content_w, y, &fios, sec);
             return end_fold(ctx, fold, y);
         }
     }
@@ -200,6 +203,9 @@ pub(crate) fn paint_shape_section(
     // O DEPÓSITO — sempre, inclusive em `None`: o relevo é da tinta que a silhueta deixa, e o falloff
     // sozinho já é uma silhueta (mesmo que uma que quase não tem o que revelar — 0,21 nível medido).
     y = paint_shape_deposit_rows(ctx, theme, x, content_w, y, brush);
+    let fios = crate::cards_penteado::padroes(&brush);
+    let sec = seccao_da_forma(ctx);
+    y = crate::number_field::paint_num_params(ctx, theme, x, content_w, y, &fios, sec);
     // None ⇒ nothing more: the Falloff dropdown + its curve preview above ARE the silhouette.
     let out = y;
     end_fold(ctx, fold, out)

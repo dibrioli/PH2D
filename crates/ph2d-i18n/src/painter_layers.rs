@@ -170,6 +170,18 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.brush.wash" => "Wash",
         "panel.painter_layers.brush.smear_fine_thread" => "Fine Thread",
         "panel.painter_layers.brush.blend_on_empty" => "On empty",
+        "panel.painter_layers.brush.mix_mode" => "Color mixing",
+        "panel.painter_layers.brush.mix_off" => "Off",
+        "panel.painter_layers.brush.mix_wet_blend" => "Wet blend",
+        "panel.painter_layers.brush.mix_amount" => "Amount",
+        "panel.painter_layers.brush.mix_pigment_amount" => "Pigment",
+        "panel.painter_layers.brush.mix_density" => "Density",
+        "panel.painter_layers.brush.mix_stretch" => "Color stretch",
+        "panel.painter_layers.brush.mix_amount_pressure" => "Amount by pressure",
+        "panel.painter_layers.brush.mix_density_pressure" => "Density by pressure",
+        "panel.painter_layers.brush.inerte.mix_off" => {
+            "Pick Wet blend above to pick up the colors under the brush and drag them along."
+        }
         "panel.painter_layers.brush.color" => "Color",
         // O pincel de PARTIDA de cada meio (Digital Basic / Watercolor Basic): desde a L1 o «Preset» é o
         // navegador dos ficheiros, nos quatro meios, e esta fileira fica por baixo dele com o seu nome.

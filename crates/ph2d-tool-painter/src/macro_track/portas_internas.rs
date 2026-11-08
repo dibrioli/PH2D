@@ -52,6 +52,9 @@ pub const INTERNAS: &[&str] = &[
     "move_layer_up",
     "new_brush_texture",
     "pick_wet_tool",
+    // A mistura opaca do Digital (Color mixing): o cartão Basics chega-lhe pelo `handle_panel_event`.
+    "set_brush_mistura_modo",
+    "set_brush_mistura_numero",
     // A mão do pincel (L2): o cartão Pen chega-lhe pelo `handle_panel_event`.
     "set_mao",
     // O jitter da marca (L4): o cartão Jitter chega-lhe pelo `handle_panel_event`.

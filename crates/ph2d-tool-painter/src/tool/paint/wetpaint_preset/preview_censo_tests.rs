@@ -186,6 +186,7 @@ const FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ("wet_shape_norm", TRACO),
     ("wet_substrate", CACHE),
     ("wet_mix", TRACO),
+    ("mistura_opaca", TRACO),
     ("wet_smear_pos", TRACO),
     ("wet_level_smear_pos", TRACO),
     ("wet_frame_dirty", TRACO),

@@ -563,7 +563,8 @@ impl PainterTool {
     /// slider's `0..1` track; out-of-range slots are ignored. Mirror of `set_brush_texture_param_norm`.
     pub fn set_brush_shape_param_norm(&mut self, slot: usize, t: f32) {
         if slot < self.paint.brush.shape.params.len() {
-            self.paint.brush.shape.params[slot] = t.clamp(0.0, 1.0);
+            let topo = ph2d_painter_brush::param_escala(self.paint.brush.shape.kind, slot).u_max();
+            self.paint.brush.shape.params[slot] = t.clamp(0.0, topo);
         }
     }
 

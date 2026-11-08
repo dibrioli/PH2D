@@ -71,8 +71,40 @@ const TUFOS_DO_4B: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "m
 /// O grão do carpinteiro: fraco (a Textura do Rebelle 2,0 contra 10 do 4B — a mina dura e lisa).
 const GRAO_DO_CRAFT: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.1, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [128.0, 128.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
-/// Nenhum lápis novo do Digital na fábrica: os três reprovaram na revisão cega (`exames/lapis.md`).
-pub const MEIOS: &[ReceitaMeio] = &[];
+/// Os lápis do Digital na fábrica: o Sketch Pencil (lote 1 do estudo CSP). Os três de antes reprovaram na revisão cega
+/// (`exames/lapis.md`, [`EM_ESTUDO`]).
+pub const MEIOS: &[ReceitaMeio] = &[
+    // Lote 1 do estudo CSP (`docs/Painter/ESTUDO_CLIP_STUDIO_PINCEIS_2026-11-07.md` §3): o lápis do esboço — 10 px,
+    // opacidade 90 %, a pressão no tamanho (mínimo 10 % → 0,9) e no fluxo (mínimo 50 %), o papel «rough» a densidade 80
+    // que a pressão leva de 30 % a 100 % (`depth_jitter` 0,7 pela pressão, a leitura literal do CSP) e a 2.ª ponta que
+    // esfarela a orla. ⚠️ A ponta de GRAFITE (imagem ×2 no CSP) não existe nossa: o disco `Linear` macio + o dual
+    // tomam-lhe o lugar; o papel é o `Grain` procedural.
+    ReceitaMeio {
+        pincel: &[
+            ("hardness", "0.5"),
+            ("falloff", "\"Linear\""),
+            ("spacing", "0.1"),
+            ("jitter", "0.05"),
+            ("dual", ORLA_DO_SKETCH),
+            ("texture", PAPEL_DO_SKETCH),
+            ("grain_depth", "0.8"),
+        ],
+        mao: &[
+            ("pressureSize", 0.9),
+            ("pressureSizeCurve", 1.0),
+            ("pressureOpacity", 0.5),
+            ("pressureOpacityCurve", 1.0),
+        ],
+        size_px: Some(10.0),
+        opacity: Some(0.9),
+        ..ReceitaMeio::digital("Pencil", "Sketch", "Sketch Pencil")
+    },
+];
+
+/// A orla do Sketch Pencil: a 2.ª ponta (dual Multiply) de duas marcas a 0,7 do diâmetro, espalhadas 0,3.
+const ORLA_DO_SKETCH: &str = r#"{"angulo": 0, "atraves": 0.2, "contagem": 2, "dureza": 0.4, "escala": 0.7, "espalhar": 0.3, "forma": {"angle_deg": 0, "flow": false, "kind": "None", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}, "modo": 0, "passo": 0.25, "rotacao": 0.0}"#;
+/// O papel do Sketch Pencil: o `Grain` procedural preso à tela; a profundidade segue a pressão (30 % → 100 %).
+const PAPEL_DO_SKETCH: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Grain", "lei": {"depth_jitter": 0.7, "depth_min": 0.0, "depth_pressure": true, "mode": 0}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [128.0, 128.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 
 /// Os REPROVADOS do Digital (B-6, B-9, B-7; o porquê e o que falta: `exames/lapis.md`): receitas medidas, fora da
 /// fábrica (nenhum ficheiro); os portões medem-nas pela receita ([`portoes`]).

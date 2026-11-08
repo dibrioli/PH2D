@@ -38,6 +38,36 @@ impl PainterTool {
     }
 }
 
+/// Uma linha do grupo Bristle Combing do Shape: a faixa e o valor vêm do motor, sem segunda cópia no painel.
+#[derive(Clone, Copy, Debug)]
+pub struct LinhaDoPenteado {
+    pub chave: &'static str,
+    pub valor: f64,
+    pub min: f64,
+    pub max: f64,
+    pub passo: f64,
+}
+
+impl WetKnobs {
+    /// As linhas de [`crate::ids::CERDAS_DO_PENTEADO`], por essa ordem.
+    #[must_use]
+    pub fn penteado(&self) -> [LinhaDoPenteado; 4] {
+        crate::ids::CERDAS_DO_PENTEADO.map(|chave| {
+            let d = KNOB_DEFS
+                .iter()
+                .find(|d| d.key == chave)
+                .expect("chave do motor");
+            LinhaDoPenteado {
+                chave,
+                valor: self.get(d.knob),
+                min: d.min,
+                max: d.max,
+                passo: d.step,
+            }
+        })
+    }
+}
+
 /// Which face of a Tuning-panel knob row an id belongs to.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum TuneWidget {
@@ -60,7 +90,8 @@ pub(super) fn wet_tuning_id_map()
         for (i, def) in KNOB_DEFS.iter().enumerate() {
             // O PAPER não tem linhas no Tuning (W1e, F2): o papel é o da secção Paper do painel — só o
             // RELEVO da tinta (11/10).
-            if def.group == KnobGroup::Hidden
+            if (def.group == KnobGroup::Hidden
+                && !crate::ids::CERDAS_DO_PENTEADO.contains(&def.key))
                 || (def.group == KnobGroup::Paper
                     && !crate::ids::WET_TUNING_RELEVO.contains(&def.key))
             {

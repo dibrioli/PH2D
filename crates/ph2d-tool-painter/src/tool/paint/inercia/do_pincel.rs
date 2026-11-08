@@ -8,6 +8,14 @@ impl PainterTool {
         let b = &self.paint.brush;
         let aquarela = self.watercolor_render_active();
         let agua = self.paint.wetpaint.armed;
+        let sem_luz_no_relevo = agua
+            && self.paint.wetpaint.oleo_real.is_none()
+            && self
+                .paint
+                .wetpaint
+                .knobs
+                .get(ph2d_wet_paint::tuning::Knob::Emboss)
+                <= 0.0;
         // O grão com que o motor PINTA (o papel quando ele faz de Grain, `poe_o_papel_como_grain`): as perguntas do grão
         // fazem-se a ele, não ao pincel cru — que não tem grão e esmaecia o que agia.
         let (efetivo, imagem_do_grao) = self.grao_que_pinta();
@@ -165,6 +173,14 @@ impl PainterTool {
                 Dependente::MaterialSemOleo,
                 agua && self.paint.wetpaint.oleo_real.is_none(),
             ),
+            (Dependente::PenteadoForaDoMolhado, !agua),
+            (
+                Dependente::PenteadoSemFios,
+                agua && self.fios_do_pincel().neutro()
+                    && (self.relevo_do_pincel().neutro() || sem_luz_no_relevo),
+            ),
+            (Dependente::PenteadoSemLuz, sem_luz_no_relevo),
+            (Dependente::MisturaDesligada, !b.mistura_opaca.ligada()),
             (
                 Dependente::ExpoenteAtravesSemProprio,
                 agua && self

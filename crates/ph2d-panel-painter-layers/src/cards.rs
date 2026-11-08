@@ -397,6 +397,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx, theme: Theme) {
         cards_camadas::prepare(ctx);
     } else {
         cards_topo::prepare(ctx.host.store_mut(), &pincel);
+        crate::cards_mistura::prepare(ctx.host.store_mut(), &pincel);
         cards_wet::prepare(ctx.host.store_mut(), &pincel);
         cards_watercolor::prepare(ctx.host.store_mut(), &pincel);
         cards_impasto::prepare(ctx, &pincel);

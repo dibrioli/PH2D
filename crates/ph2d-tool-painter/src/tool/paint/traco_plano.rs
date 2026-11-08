@@ -137,6 +137,7 @@ impl PainterTool {
                     rng: self.paint.tex_rng,
                     ancorado: self.paint.pixel_trilhos.ja_ancorado,
                     dabs: dabs.to_vec(),
+                    mistura: self.paint.mistura_opaca.res.clone(),
                 });
             }
             self.carimba_no_plano(&mut s, dabs);
@@ -175,7 +176,11 @@ impl PainterTool {
         let shape_cor = self.paint.shape_layers.is_color_mode()
             && b.shape_silhouette_active(self.paint.shape_image.is_some());
         let linear =
-            !b.accumulate && b.effective_pigment_mix() <= 0.0 && !self.pixel_vivo(b) && !shape_cor;
+            !b.accumulate
+                && b.effective_pigment_mix() <= 0.0
+                && !b.mistura_opaca.ligada()
+                && !self.pixel_vivo(b)
+                && !shape_cor;
         if linear && b.strength > 0.0 && b.strength < 1.0 {
             b.strength
         } else {
@@ -187,7 +192,15 @@ impl PainterTool {
     /// trinco são da composição), e volta.
     fn carimba_no_plano(&mut self, s: &mut PlanoDoTraco, dabs: &[Dab]) {
         let dabs = sem_a_strength(dabs, s.escala);
+        // A mistura opaca amostra a base (o pré-traço), não o plano transparente (`stamp_route::mistura`).
+        let mistura = self.paint.brush.mistura_opaca.ligada();
+        if mistura {
+            self.paint.mistura_opaca.base_do_plano = Some(Arc::clone(&s.base));
+        }
         self.dentro_do_plano(s, |t| t.stamp_dabs_dispatch(&dabs));
+        if mistura {
+            self.paint.mistura_opaca.base_do_plano = None;
+        }
     }
 
     /// Corre `f` com o plano do traço DENTRO da tela (`Mix`, `acumulando_no_plano`): pela porta do despacho
@@ -373,6 +386,8 @@ struct Lote {
     rng: u64,
     ancorado: bool,
     dabs: Vec<Dab>,
+    /// O reservatório da mistura opaca à entrada do lote (vazio com ela desligada): a cauda re-carimba-o igual.
+    mistura: Vec<ph2d_painter_brush::mistura_opaca::ReservatorioOpaco>,
 }
 
 /// As janelas da cabeça e da cauda no fim do traço (já escaladas pela lei do traço curto).

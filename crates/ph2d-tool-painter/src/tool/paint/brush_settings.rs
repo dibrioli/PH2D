@@ -234,6 +234,8 @@ pub struct BrushSettings {
     pub wash: bool,
     /// **Fine Thread** (`BrushSpec::smear_fio`): o Smear resolve-se por área — o fio do arrasto contínuo.
     pub smear_fio: bool,
+    /// **Color mixing** do Digital (`BrushSpec::mistura_opaca`): o modo e os números.
+    pub mistura_opaca: crate::MisturaOpaca,
     /// **Style: Solid** on/off — o checkbox do card Line. Desmarcado (default) o traço é a linha de
     /// sempre; marcado ele é a região CERCADA pelo gesto, e a espessura deixa de entrar.
     pub style_solid: bool,

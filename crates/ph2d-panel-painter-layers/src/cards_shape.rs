@@ -8,7 +8,7 @@ use crate::cards_linhas::{
 use crate::cards_tela::Tela;
 use crate::paint_texture::Previa;
 use crate::paint_wetpaint::Numero;
-use crate::{esmaecer, number_field as nf, paint_brush, ponta_linhas, state};
+use crate::{cards_penteado, esmaecer, number_field as nf, paint_brush, ponta_linhas, state};
 use ph2d_a11y::NodeId;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::panel::PaintCtx;
@@ -377,6 +377,13 @@ pub(crate) fn prepare(ctx: &mut PaintCtx, b: &BrushSettings) {
     let store = ctx.host.store_mut();
     let numeros = todos(b, b);
     crate::cards_wet::arma_numeros(store, &numeros, &todos(b, &paint_brush::FALLBACK_BRUSH));
+    if le_a_forma(b) {
+        crate::cards_wet::arma_numeros(
+            store,
+            &cards_penteado::numeros(b),
+            &cards_penteado::numeros(&paint_brush::FALLBACK_BRUSH),
+        );
+    }
     for id in [
         pids::PAINTER_SHAPE_WATERCOLOR_AUTO,
         pids::PAINTER_BRUSH_FALLOFF,
@@ -552,7 +559,7 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, p: &Pecas, y: f32) -> f32 {
             y,
         );
         if automatica(&b) {
-            return y;
+            return cards_penteado::grupo_do_penteado(c, &b, y);
         }
     }
     if !le_a_forma(&b) {
@@ -565,5 +572,6 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, p: &Pecas, y: f32) -> f32 {
     y = grupo_sobre_controlo(c, "panel.painter_layers.taper.taper", y);
     y = taper_e_pegada(c, &b, y);
     y = filete(c, y);
-    textura(c, &b, p, y)
+    let y = textura(c, &b, p, y);
+    cards_penteado::grupo_do_penteado(c, &b, y)
 }

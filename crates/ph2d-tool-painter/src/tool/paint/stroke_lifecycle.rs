@@ -153,6 +153,7 @@ impl PainterTool {
         self.paint.wet_level_smear_pos = None;
         self.paint.wet_smear_pos = None; // the Wet Mix true-smear chain restarts with the stroke
         self.reset_wet_mix(); // the mixer reservoir starts fresh (no pickup) each stroke
+        self.mistura_opaca_recomeca(); // a mistura opaca do Digital: o pincel começa limpo
         // Watercolor render-path: freeze the pre-stroke canvas as the optical base (shared `Arc`, so O(1);
         // the first composite `make_mut` forks the live buffer, leaving this pristine) PLUS the real
         // ground (the composite of the layers below + document paper colour) the optics read the
@@ -208,6 +209,7 @@ impl PainterTool {
         // two don't lock-step (HR-5: deterministic per stroke).
         self.paint.tex_rng = self.paint.seed ^ 0x7465_7874_7572_6573;
         self.paint.seed = self.paint.seed.wrapping_add(1);
+        self.mistura_opaca_pressao(ev.pressure);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.set_tilt(ev.tilt);
         stroke.begin(
@@ -313,6 +315,7 @@ impl PainterTool {
                 vivo.dab_curve,
             );
         }
+        self.mistura_opaca_pressao(ev.pressure);
         let mut dabs = std::mem::take(&mut self.paint.dabs);
         stroke.set_tilt(ev.tilt);
         stroke.extend(

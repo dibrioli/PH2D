@@ -68,6 +68,15 @@ pub const WET_TUNING_GROUP_HEADERS: [NodeId; 10] = [
 /// Os knobs do grupo `Paper` do motor que são RELEVO da tinta, não papel (a secção Relief do Tuning).
 pub const WET_TUNING_RELEVO: [&str; 1] = ["emboss"];
 
+/// Os fios que penteiam a tinta no cartão Shape (dono 07/11), fora do Tuning. Os ids continuam os do Tuning: as macros
+/// gravaram-nos pelo número, e o `wet_tuning_id_map` segue a resolvê-los.
+pub const CERDAS_DO_PENTEADO: [&str; 4] = [
+    "bristleLaneWidth",
+    "bristleHeight",
+    "bristleTipRagged",
+    "bristleLaneSizeExp",
+];
+
 /// Per-group reset buttons (the model's header `resetGroup`), same order as
 /// the four first headers, then Relief and the four advanced groups (Experimental has no reset — two
 /// checkboxes). Index `i` resets [`WET_TUNING_RESET_GROUPS`]`[i]`.

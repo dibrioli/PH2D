@@ -98,7 +98,7 @@ pub fn blend_over_espectral(
 
 /// `log2(x)` para `x > 0` normal: a mantissa em `[√½, √2)` e a série de `atanh` até `t⁹` (erro < 1e-7).
 #[inline]
-fn log2(x: f32) -> f32 {
+pub(crate) fn log2(x: f32) -> f32 {
     let bits = x.to_bits();
     let mut e = ((bits >> 23) & 0xff) as i32 - 127;
     let mut m = f32::from_bits((bits & 0x007f_ffff) | 0x3f80_0000);
@@ -115,7 +115,7 @@ fn log2(x: f32) -> f32 {
 /// `2^y` para `y ∈ [−126, 4]` (as reflectâncias passam pouco de 1): `2^n · e^(f·ln2)` com `f ∈ [−½, ½]` e Taylor
 /// até ao 7.º termo.
 #[inline]
-fn exp2(y: f32) -> f32 {
+pub(crate) fn exp2(y: f32) -> f32 {
     let y = y.clamp(-126.0, 4.0);
     let n = (y + 0.5).floor();
     let x = (y - n) * std::f32::consts::LN_2;

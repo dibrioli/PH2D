@@ -429,3 +429,6 @@ mod o_traco_numa_camada_nova_tests; // ADR-0177: a camada nova é a base (o repo
 
 #[path = "diag_cura_da_pilha.rs"]
 mod diag_cura_da_pilha; // o que a ACUMULAÇÃO entregou // AUDITORIA 2026-09-21: o preço e o carimbo da recomposição regional
+
+#[path = "mistura_opaca_ferramenta_tests.rs"]
+mod mistura_opaca_ferramenta_tests; // a mistura opaca do Digital pela ferramenta (07/11)

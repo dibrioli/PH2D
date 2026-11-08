@@ -59,6 +59,18 @@ pub(super) fn ler(b: &BrushSpec, campo: &str) -> Value {
         "tecto_por_dab" => json!(b.tecto_por_dab),
         "wash" => json!(b.wash),
         "smear_fio" => json!(b.smear_fio),
+        "mistura_opaca" => {
+            let m = &b.mistura_opaca;
+            json!({
+                "modo": nome(m.modo),
+                "paint_amount": num(m.paint_amount),
+                "paint_density": num(m.paint_density),
+                "color_stretch": num(m.color_stretch),
+                "pigment": num(m.pigmento),
+                "amount_pressure": num(m.amount_pressure),
+                "density_pressure": num(m.density_pressure),
+            })
+        }
         // O dual brush (L6): gravado só ARMADO (`pincel_para_json`).
         "dual" => b.dual.map_or(Value::Null, |d| {
             json!({
@@ -158,6 +170,25 @@ pub(super) fn escrever(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
         "wash" => b.wash = booleano(v, false),
         // O fio do arrasto (J6): só se grava ligado; ausente = desligado.
         "smear_fio" => b.smear_fio = booleano(v, false),
+        // A mistura opaca: só se grava ligada; ausente = `Off` (o pincel de antes, ao bit).
+        "mistura_opaca" => {
+            use ph2d_painter_brush::mistura_opaca::{MisturaOpaca, ModoMisturaOpaca};
+            let fab = MisturaOpaca::default();
+            let c = |k: &str| v.and_then(|v| v.get(k));
+            b.mistura_opaca = MisturaOpaca {
+                // Os nomes de antes de 07/11 (`Blend`, `RunningColor`) carregam como `WetBlend`.
+                modo: c("modo")
+                    .and_then(Value::as_str)
+                    .and_then(ModoMisturaOpaca::do_nome)
+                    .unwrap_or(fab.modo),
+                paint_amount: f(c("paint_amount"), fab.paint_amount).clamp(0.0, 1.0),
+                paint_density: f(c("paint_density"), fab.paint_density).clamp(0.0, 1.0),
+                color_stretch: f(c("color_stretch"), fab.color_stretch).clamp(0.0, 1.0),
+                pigmento: f(c("pigment"), fab.pigmento).clamp(0.0, 1.0),
+                amount_pressure: f(c("amount_pressure"), fab.amount_pressure).clamp(0.0, 1.0),
+                density_pressure: f(c("density_pressure"), fab.density_pressure).clamp(0.0, 1.0),
+            };
+        }
         // Campo ausente = o pincel de `b` (a lei do módulo); campo PRESENTE com uma sub-chave ausente (gravado
         // antes dela, a `opacity` da L2) = a de fábrica dessa sub-chave, nunca a de agora.
         "pen_tilt" if v.is_some() => {

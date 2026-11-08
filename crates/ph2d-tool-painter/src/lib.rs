@@ -145,6 +145,7 @@ pub use ph2d_painter_brush::{
     // law, so the picture and the paint cannot drift -- see `ph2d_painter_brush::taper`.
     taper::{MAX_FALL_OFF_DIAMETERS, MAX_TAPER_DIAMETERS, Taper},
 };
+pub use ph2d_painter_brush::mistura_opaca::{MisturaOpaca, ModoMisturaOpaca};
 pub use tool::paint::ferramenta_linhas::{FerramentaDoPincel, LinhaDaFerramenta, NAO_LE};
 pub use tool::paint::mao::{LINHAS_DA_MAO, LinhaDaMao, MAO_DE_FABRICA, N_LINHAS_DA_MAO};
 pub use tool::paint::marca::{
@@ -167,7 +168,7 @@ pub use tool::{
     BrushSettings, CurveOverlay, DEFORM_TEMPERAMENT_NONE, DEFORM_TEMPERAMENT_RESHAPE,
     DEFORM_TEMPERAMENT_TRANSFORM, DrainBranch, EllipseOverlay, FilterScope, GridAxis, ImpastoLamp,
     ImpastoLight, ImpastoPlanes, LightRig, LineCornerGizmo, LineDimensions, LineOverlay,
-    MAX_COMPOSITE_LAYER_SIZE, MAX_IMPASTO_LIGHTS, MAX_SHAPE_LAYERS, MIN_ELEV_DEG,
+    LinhaDoPenteado, MAX_COMPOSITE_LAYER_SIZE, MAX_IMPASTO_LIGHTS, MAX_SHAPE_LAYERS, MIN_ELEV_DEG,
     N_COMPOSITE_ERASE_SCOPES, N_COMPOSITE_LAYERS, N_COMPOSITE_OPS, PANEL_RAMP_STOPS, PaintMedia,
     PainterTool, PolygonOverlay, SelectionGizmoView, StencilOverlay, StencilPreview, StrokeOpBadge,
     TangentHandles, TransformGizmo, UsoDaCamada, WetKnobs, WetTool, brush_dab_weight_at,

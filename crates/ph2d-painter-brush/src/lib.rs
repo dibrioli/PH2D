@@ -84,6 +84,9 @@ pub mod marca;
 pub mod mask_ops;
 pub mod material;
 mod mistura;
+pub mod mistura_opaca;
+#[cfg(test)]
+mod mistura_opaca_tests;
 pub mod pen;
 #[cfg(test)]
 mod pen_tests;

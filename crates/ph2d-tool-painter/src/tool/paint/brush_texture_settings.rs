@@ -99,7 +99,9 @@ impl PainterTool {
     /// Set per-pattern parameter `slot` from the `0..1` track (normalized; each pattern maps its own range).
     pub fn set_brush_texture_param_norm(&mut self, slot: usize, t: f32) {
         if slot < ph2d_painter_brush::MAX_TEX_PARAMS {
-            self.paint.brush.texture.params[slot] = t.clamp(0.0, 1.0);
+            let topo =
+                ph2d_painter_brush::param_escala(self.paint.brush.texture.kind, slot).u_max();
+            self.paint.brush.texture.params[slot] = t.clamp(0.0, topo);
         }
         self.arm_stencil_preview();
     }

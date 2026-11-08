@@ -355,5 +355,9 @@ pub(crate) fn paint_accumulate_e_fio(
             brush.smear_fio,
         );
     }
+    // Color mixing (a mistura opaca do Digital): onde a lei age, o mesmo grupo do cartão Basics.
+    if crate::cards_mistura::oferecida(brush) {
+        y = crate::cards_mistura::paint_de_antes(ctx, theme, x, content_w, y, brush);
+    }
     y
 }

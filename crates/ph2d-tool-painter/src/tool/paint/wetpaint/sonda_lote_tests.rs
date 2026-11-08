@@ -360,6 +360,204 @@ fn sonda_folha_de_tamanhos() {
     }
 }
 
+/// O Dabber com um ajuste por override, no mesmo gesto da folha: a régua da «escovada» (dono 07/11).
+fn traco_ajustado(
+    px: f32,
+    caminho: &str,
+    ajusta: &dyn Fn(&mut PainterTool),
+) -> (Vec<u8>, usize, usize, f64) {
+    let (w, h) = ((12.0 * px) as usize, (4.0 * px) as usize);
+    let _r = razoes::com(1, 1);
+    let mut t = m::tela(w, h, caminho, px);
+    t.set_brush_color_srgb8([40, 90, 180]);
+    ajusta(&mut t);
+    let a = Instant::now();
+    t.on_canvas_pointer(ponteiro(1.5 * px, 2.0 * px, PointerPhase::Down));
+    for i in 1..=60 {
+        let u = i as f32 / 60.0;
+        t.on_canvas_pointer(ponteiro(
+            (1.5 + 9.0 * u) * px,
+            (2.0 + 0.5 * (u * std::f32::consts::TAU).sin()) * px,
+            PointerPhase::Move,
+        ));
+        t.ticks_em_blocos(1);
+    }
+    t.on_canvas_pointer(ponteiro(10.5 * px, 2.0 * px, PointerPhase::Up));
+    t.ticks_em_blocos(90);
+    let ms = a.elapsed().as_secs_f64() * 1e3;
+    (mostrada(&mut t), w, h, ms)
+}
+
+/// ⭐ Por que o Dabber fica escovado ao crescer: cada knob fora do padrão volta ao padrão, um de cada vez, em dois
+/// tamanhos, mais os sliders do Shape, o jitter e os fios que crescem com o pincel. `dabber@tamanho.variante.ppm`.
+#[test]
+#[ignore = "sonda: --ignored --nocapture --test-threads=1, PH2D_SONDA_DIR"]
+fn sonda_a_escovada_do_dabber() {
+    use ph2d_wet_paint::tuning::KNOB_DEFS;
+    const DABBER: &str = m::DABBER;
+    const REF: f64 = 102.0;
+    let dir = std::env::var("PH2D_SONDA_DIR").expect("PH2D_SONDA_DIR");
+    let base = m::tela(64, 64, DABBER, 51.0);
+    let padrao = crate::tool::paint::WetKnobs::DEFAULT;
+    let fora: Vec<_> = KNOB_DEFS
+        .iter()
+        .filter(|d| base.paint.wetpaint.knobs.get(d.knob) != padrao.get(d.knob))
+        .collect();
+    for d in &fora {
+        eprintln!(
+            "LOTE\tknob\t{}\t{}\t{}",
+            d.key,
+            base.paint.wetpaint.knobs.get(d.knob),
+            padrao.get(d.knob)
+        );
+    }
+    let b = &base.paint.brush;
+    eprintln!(
+        "LOTE\tbrush\tjitter {} forma {:?} params {:?} size {:?} flow {} mapa {:?}",
+        b.jitter,
+        b.shape.kind,
+        &b.shape.params[..4],
+        b.shape.size,
+        b.shape.flow,
+        b.shape.mapping
+    );
+    let mut vs: Vec<(String, Box<dyn Fn(&mut PainterTool)>)> =
+        vec![("F".to_owned(), Box::new(|_| {}))];
+    for d in fora {
+        let (kn, v) = (d.knob, padrao.get(d.knob));
+        vs.push((
+            format!("sem_{}", d.key),
+            Box::new(move |t| t.paint.wetpaint.knobs.set(kn, v)),
+        ));
+    }
+    let fios = [
+        Knob::BristlePressure,
+        Knob::BristleLift,
+        Knob::BristleNoiseSat,
+        Knob::BristleNoiseLight,
+        Knob::BristleHeight,
+    ];
+    vs.push((
+        "sem_fios_todos".to_owned(),
+        Box::new(move |t| {
+            for k in fios {
+                t.paint.wetpaint.knobs.set(k, 0.0);
+            }
+        }),
+    ));
+    vs.push((
+        "jitter0".to_owned(),
+        Box::new(|t| t.paint.brush.jitter = 0.0),
+    ));
+    for (nome, slot, u) in [
+        ("shape_count_min", 0, 0.1f32),
+        ("shape_strength_max", 1, 1.0),
+        ("shape_size_min", 2, 0.0),
+        ("shape_size_max", 2, 1.0),
+        ("shape_felt_max", 3, 1.0),
+    ] {
+        vs.push((
+            nome.to_owned(),
+            Box::new(move |t| t.paint.brush.shape.params[slot] = u),
+        ));
+    }
+    for (nome, tex, fio) in [
+        ("cresce_tapete", true, false),
+        ("cresce_fios", false, true),
+        ("cresce_ambos", true, true),
+    ] {
+        vs.push((
+            nome.to_owned(),
+            Box::new(move |t| {
+                let k = &mut t.paint.wetpaint.knobs;
+                k.set(Knob::TextureSizeRef, REF);
+                if tex {
+                    k.set(Knob::TextureSizeExp, 1.0);
+                }
+                if fio {
+                    k.set(Knob::BristleLaneSizeExp, 1.0);
+                }
+            }),
+        ));
+    }
+    for px in [25.0f32, 51.0, 100.0, 200.0] {
+        for (i, (nome, f)) in vs.iter().enumerate() {
+            if i > 0 && px != 51.0 && px != 200.0 {
+                continue;
+            }
+            let arq = format!("dabber@{px}.{nome}");
+            if std::path::Path::new(&format!("{dir}/{arq}.ppm")).exists() {
+                continue;
+            }
+            let (img, w, h, ms) = traco_ajustado(px, DABBER, f.as_ref());
+            grava_ppm(&arq, &img, w, h);
+            eprintln!("LOTE\tescovada\t{px}\t{nome}\t{ms:.0}");
+        }
+    }
+}
+
+/// ⭐ O relevo gravado na grade cresce com o pincel? O desvio de `altura` no miolo e o declive ao longo e através, com a
+/// dureza da ponta como a outra alavanca que depende do raio.
+#[test]
+#[ignore = "sonda: --ignored --nocapture --test-threads=1, PH2D_SONDA_DIR"]
+fn sonda_o_relevo_gravado_por_tamanho() {
+    for (px, dureza) in [
+        (25.0f32, None),
+        (51.0, None),
+        (100.0, None),
+        (200.0, None),
+        (51.0, Some(0.2f32)),
+        (51.0, Some(2.0)),
+        (200.0, Some(0.2)),
+        (200.0, Some(2.0)),
+    ] {
+        let (w, h) = ((12.0 * px) as usize, (4.0 * px) as usize);
+        let _r = razoes::com(1, 1);
+        let mut t = m::tela(w, h, m::DABBER, px);
+        t.set_brush_color_srgb8([40, 90, 180]);
+        if let Some(d) = dureza {
+            t.paint.brush.hardness = d;
+        }
+        t.on_canvas_pointer(ponteiro(1.5 * px, 2.0 * px, PointerPhase::Down));
+        // Recto: o declive «ao longo» é o x da grade, sem a curva a misturar os eixos.
+        for i in 1..=60 {
+            let u = i as f32 / 60.0;
+            t.on_canvas_pointer(ponteiro((1.5 + 9.0 * u) * px, 2.0 * px, PointerPhase::Move));
+            t.ticks_em_blocos(1);
+        }
+        t.on_canvas_pointer(ponteiro(10.5 * px, 2.0 * px, PointerPhase::Up));
+        t.ticks_em_blocos(90);
+        let nome = dureza.map_or("F".to_owned(), |d| format!("dur{d}"));
+        let (img, iw, ih) = (mostrada(&mut t), w, h);
+        grava_ppm(&format!("recto@{px}.{nome}"), &img, iw, ih);
+        let s = t.paint.wetpaint.session.as_mut().expect("a sessão");
+        s.bring_home();
+        let g = s.engine.active_grid_mut();
+        let cel = |x: usize, y: usize| f64::from(g.altura[y * g.s + x]);
+        let (x0, x1) = ((4.0 * px) as usize, (8.0 * px) as usize);
+        let (y0, y1) = ((1.8 * px) as usize, (2.2 * px) as usize);
+        let (mut n, mut soma, mut soma2, mut ao_longo, mut atraves) = (0.0, 0.0, 0.0, 0.0, 0.0);
+        for y in y0..y1 {
+            for x in x0..x1 {
+                let v = cel(x, y);
+                n += 1.0;
+                soma += v;
+                soma2 += v * v;
+                ao_longo += (cel(x + 1, y) - v).powi(2);
+                atraves += (cel(x, y + 1) - v).powi(2);
+            }
+        }
+        let var = soma2 / n - (soma / n) * (soma / n);
+        eprintln!(
+            "LOTE\taltura\t{px}\t{nome}\tdesvio {:.3}\tao_longo {:.4}\tatraves {:.4}\tcomprimento {:.1}",
+            var.max(0.0).sqrt(),
+            (ao_longo / n).sqrt(),
+            (atraves / n).sqrt(),
+            (atraves / ao_longo.max(1e-12)).sqrt(),
+        );
+    }
+}
+
 /// O preço de um passo do undo vivo com o fluxo do dono.
 #[test]
 #[ignore = "sonda: --ignored --nocapture"]

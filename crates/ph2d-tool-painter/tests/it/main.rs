@@ -14,6 +14,8 @@ mod a_caneta_deitada;
 mod a_cauda_das_pontas; // L5 + L18/L19: a cauda pela porta do despacho e com o fim do trilho de píxel
 mod a_estrela_pequena; // o Stars pequeno sem degraus
 mod a_lei_da_tinta;
+mod a_mistura_pigmento_digital; // o Color mixing «Pigment mix» e o Watercolor Basic intacto (07/11)
+mod a_mistura_opaca_nos_presets; // a mistura opaca com os presets de fábrica (smoke do dono 07/11)
 mod a_luz_do_impasto_e_a_de_antes_da_poda;
 mod a_ponta_de_n_imagens;
 mod a_ponta_de_pixel;
@@ -56,12 +58,15 @@ mod receitas_de_fabrica;
 mod regua_escada;
 mod regua_midia;
 mod sonda_cartao_pen; // auditoria do cartão Pen (24/10)
+mod sonda_composite_vs_mixing; // Composite × Color mixing (pergunta do dono 07/11)
+mod sonda_csp_comparacao; // os mesmos traços do Clip Studio nos nossos pincéis (pedido do dono 08/11, sonda)
 mod sonda_continuo; // o Continuous em contas (dono 25/10)
 mod sonda_custo_no_app;
 mod sonda_etapas;
 mod sonda_falloff_do_traco; // o falloff do traço × o de um dab, e o Accumulate do Glaze Round (24/10)
 mod sonda_gestos;
 mod sonda_largura;
+mod sonda_mescla_espacial; // a mescla espacial do Watercolor Basic, ingrediente a ingrediente (08/11, sonda)
 mod sonda_macro_custo;
 mod sonda_midias;
 mod sonda_secao_render; // a secção Rendering do Digital, antes e depois da retirada (24/10)
@@ -69,4 +74,5 @@ mod sonda_spacing_continuo;
 mod sonda_tilt_do_preset;
 mod sonda_traco_rapido;
 mod sonda_tracos_por_meio;
+mod sonda_watercolor_no_digital; // a mistura do Watercolor Basic no Digital? (pedido do dono 07/11)
 mod textura_do_tamanho; // W3 K2: a textura acompanha o tamanho do pincel e a marca do spray pousa // W3 K3b: as cerdas crescem com o pincel e a ponta esfarela pelo grão

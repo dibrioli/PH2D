@@ -334,6 +334,7 @@ impl Default for PaintState {
             wet_styles: Default::default(),
             stroke_water: Vec::new(),
             wet_mix: watercolor_mixer::WetMix::default(),
+            mistura_opaca: Default::default(),
             wet_smear_pos: None,
             wet_level_smear_pos: None,
             wet_frame_dirty: None,

@@ -73,8 +73,125 @@ Smoke A, B e C: **OK**. Item 4: **as duas leis no painel, «agua/alisar» por pa
 
 ⛔ **Trava do item 4 (lida no código, não testada):** a sonda pôs `grid_ratio` por tela, com um só tamanho. No produto a razão é da SESSÃO: `set_wet_grid_ratio` chama `wetpaint_end_session` (`wetpaint_settings.rs:523`) e o acordar recusa grade diferente (`adormecida.rs:351`). Trocar o Size entre traços acabaria a tinta viva, contra a decisão de 06/11. Não ligue `grid_ratio` ao Size.
 
+## Item 4, protótipo: MEDIDO e ⛔ RECUSADO pelo dono em 07/11 («deixar como está»; o código saiu, as tabelas ficam)
+Sonda `sonda_prototipo_do_carimbo`, `wetpaint/carimbo_grosso.rs` (só `cfg(test)`), `b = Size ÷ 60` fracionário, grade da sessão 1. Variantes: `C` carimbo em blocos (silhueta, grão/tapete, pente) · `O` a tinta pousada em blocos (massa, cor por massa, relevo), UMA vez ao fim do traço, sem a água depois · `CO` as duas · `GS` a grade sem o `Suave`. Folhas: [zoom 100 %](material_2026-11-07/folha_C_zoom100_size200.png) · [traço inteiro](material_2026-11-07/folha_C_traco_inteiro.png). Imagens em `target/lote/proto` (não versionadas).
+
+Detalhe relativo ao Size 60, a Size 200 (régua NOVA: gradiente médio na tinta, `target/lote/proto.log`; os números não casam com a tabela de cima, só comparam entre si):
+| | hoje | `G` | `C` | `O` | `CO` |
+|---|---|---|---|---|---|
+| Flat Bristle | 3,01 | 1,09 | 2,61 | 1,96 | 2,07 |
+| Thick Impasto | 2,29 | 0,28 | 1,54 | 1,44 | 1,16 |
+| Knife Textured | 1,03 | 1,02 | 1,04 | 0,77 | 0,77 |
+| Fan Brush | 1,15 | 0,67 | 0,95 | 0,93 | 0,79 |
+| Dabber 4 | 1,12 | 0,70 | 0,95 | 0,65 | 0,68 |
+| Wet Wash | 1,06 | 1,05 | 1,05 | 1,04 | 1,04 |
+| Wet Round | 0,75 | 0,74 | 0,77 | 0,63 | 0,64 |
+
+Tempo do traço a 200, mínimo de 3 intercaladas, carga ~12 (`hoje / G / C`): Flat 19,6 / 6,9 / 68,8 s · Thick 4,8 / 1,2 / 5,3 s · Wet Round 1,42 / 0,26 / 1,50 s.
+
+- **O que dá a cara da `G` NÃO é o carimbo nem o alisar:** `C` muda pouco e nenhum canal sozinho basta; `GS` igual a `G` a olho (0–59 mil px de 1,9 M, detalhe igual). Com a grade fixa, `O` e `CO` não reproduzem a `G` no Flat, Fan e Dabber. Falta a água a correr em células grossas, que a grade fixa não exprime.
+- **Com a grade fixa o ganho que sobra é ZERO:** vem todo da grade. `C` é mais lento; no Flat 3,5×, por uma tabela por dab. Otimizável, não medido.
+- **Saltos:** `G` só tem razões inteiras e ondula no Flat (90→200: 0,70 · 0,80 · 0,99 · 0,71 · 0,96 · 1,09). `C` e `O`, de `b` fracionário, sobem sem degrau.
+- **Só o zoom 100 % mostra, e a folha reduzida escondeu:** `G` borra o Thick, põe pontos (furos) no Dabber e um xadrez no Knife. `CO` guarda o caráter e fica o mais perto do 60 no Thick.
+- **Controlos:** F = C ao byte no 60 (por construção). `O` foi um único passe no fim: não prova o traço ao vivo, nem a água depois. `C` não cobre a cor por célula (`cor_arg`).
+
+## A escovada do Dabber ao crescer (dono 07/11): MEDIDO
+
+Sondas `sonda_a_escovada_do_dabber` (cada knob fora do padrão de volta ao padrão, Size 51 e 200) e `sonda_o_relevo_gravado_por_tamanho` (`Grid::altura` no miolo, traço recto). Foto: [folha D](material_2026-11-07/folha_D_dabber_relevo_zoom100.png). A régua de coerência (tensor de estrutura, janela 9 px) só compara dentro de si e sobe também quando a tinta alisa: ler junto com o gradiente.
+
+- **Causa:** o relevo dos fios, `bristleHeight` 0,75 (`Tuning › Bristles › Bristle relief`). Sem ele o Size 200 fica granulado: coerência 0,471 → 0,349 (Size 51: 0,386 → 0,322). Os fios têm largura fixa (`bristleLaneWidth` 1,5 px) e o Shape não entra: os sliders do Shape não movem a escovada.
+- **O que cresce com o Size é o COMPRIMENTO, não a altura:** ÷ declive através pelo declive ao longo: 6,2 · 8,1 · 14,0 · 22,5 (Size 25 · 51 · 100 · 200), com desvio 0,32–0,39. É a queda macia da ponta: a 200, Hardness 0,2 · 0,6 · 0,8 · 1 dá 29,3 · 22,5 · 16,9 · 3,6 (a Hardness do painel prende em 1; o «2» das sondas é igual a 1). Como isto aciona o comprimento é inferência (a fronteira macia ∝ raio penteia mais células iguais), **não medido por dentro**.
+
+| ⛔ Recusas MEDIDAS | Resultado a 200 |
+|---|---|
+| Hardness 1 | risca curta, mas vira tijolinho, não granulado |
+| pente com cobertura ×4–×16 só nele | comprimento 14,8–10,2: tijolinho |
+| pente limitado ao comprimento (L60) | comprimento 8,7, a foto continua riscada |
+| Spacing ÷2, ÷4, ÷8 | coerência 0,466–0,477 |
+| jitter no mesmo px do Size 51 (0,0765) | coerência 0,456, e jitter 0 são carris (0,72) |
+| fios que crescem com o pincel | fios mais largos, ainda riscas |
+
+**O que dá a cara:** `Bristle relief` 0,25 reduz, 0,12 fica granulado (coerência 0,404 · 0,364), com gradiente 12,8 contra 16,3 do Size 51: um pouco mais plano. Tempo do traço igual. Candidato, se o dono aprovar depois de provar: o relevo do Dabber a cair com o tamanho só acima de 60, com o abaixo ao byte. Não construído.
+
+## Bristle Size até 16 (dono 07/11): FEITO, sem commit
+
+`Knob::BristleSize.max` 4 → 16. ⛔ O Shape guarda `u` normalizado e os presets gravaram `u = 1` = 4: **a escala não foi refeita** (`valor_em_um`, `Escala::um`); a faixa cresce acima de 1 (topo 4,158), e os setters prendem em `Escala::u_max`, sem migração. Mapa antigo do motor prende em 4 em `wet_preset_aplicar`: sem isso, Fan Brush e Express Oil (receita 7) mudam, e os dois alarmes apanharam (mutação natural: Fan 14,74 → 20,14). Custo do ladrilho, mínimo de 5, por fio e por mudança: 0,21 ms (Size 2, Count 2000) · 3,73 ms (16, 2000) · 7,29 ms (16, 4000). Portões: `o_bristle_size_vai_a_16_sem_mudar_o_que_esta_gravado`, `o_bristle_size_do_painel_chega_a_16`, `o_bristle_size_16_atravessa_o_ficheiro`; os dois alarmes de pincel verdes, nada regravado. Falta o fecho (fmt/clippy 1×, suíte na integração).
+
+## Bristle Combing no cartão Shape (dono 07/11): FEITO, sem commit
+
+Ordens de 13/10 e 01/11 incompletas: o plano 27 §1.6 só levou os 4 sliders do tapete. Agora `bristleLaneWidth`, `bristleHeight`, `bristleTipRagged`, `bristleLaneSizeExp` são `KnobGroup::Hidden`, num grupo próprio abaixo do tapete (`cards_penteado.rs`, `ids::CERDAS_DO_PENTEADO`). Os outros 17 ficam no Tuning (dono: «apenas os 4»). Formato gravado igual (chave do knob); ids do Tuning mantidos e resolvidos por `wet_tuning_id_map` (macros). Três leis novas: `PenteadoForaDoMolhado` (meio que não lê), `PenteadoSemFios`, `PenteadoSemLuz` (o relevo só acende com emboss ou Real Oil: quem apontou foi o censo). A prévia do Shape continua só o tapete. Foto: `bristle_combing_foto`.
+
+## Clip Studio: estudo, 6 pincéis novos e a mistura opaca (07/11): FEITO, sem commit
+
+**Ordem do dono (07/11):** estudar os pincéis do Clip Studio e aumentar o nosso número; «PLANEJE, ESCOLHA E SIGA»; não estragar o que existe (sobretudo o Wet Paint); uma lei nova de mistura de cor entra como opção EXTRA, nunca no lugar de outra. Os 4 valores de cerdas do dono (width 3, relief 0, ragged 0,64, follow 1,5) ficam só como referência para uma futura missão autónoma noturna: presets por tamanho no menu Size, para o pincel parecer o mesmo em todos os tamanhos. **Nenhum pincel de fábrica foi regravado por eles.**
+
+### Estudo
+[`ESTUDO_CLIP_STUDIO_PINCEIS_2026-11-07.md`](../ESTUDO_CLIP_STUDIO_PINCEIS_2026-11-07.md): leitura só-leitura do `EditImageTool.todb` (SQLite) do CSP 1.13.2; nenhuma ponta ou textura da Celsys copiada; o app não foi corrido. ⚠️ O mapeamento dos bits de efetor P/T/V/R é DEDUZIDO, não confirmado.
+
+### Seis pincéis de fábrica novos (78 → 84; Digital 21 → 26, Watercolor 1 → 2)
+- Receitas em `crates/ph2d-tool-painter/tests/it/familias/{canetas,aerografo,lapis,pastel_carvao,aguarela}.rs`; ficheiros em `assets/brushes/Digital/{Ink/G-Pen,Ink/Turnip,Airbrush/Soft,Pencil/Sketch,Pencil/Charcoal}` e `assets/brushes/Watercolor/Watercolor/Round`.
+- Gerados com `PH2D_REGERA_PRESETS=1 PH2D_REGERA_SO=... gera_os_presets_de_fabrica`.
+- Correção: as receitas traziam `"area": false` em `lei`, que o pincel não serializa; removido.
+- Grão procedural + ponta redonda. **A desenhar:** pontas próprias de grafite/carvão e papéis rugoso/desenho/areia.
+- O motor não exprime tilt→size, nem pressão/velocidade→opacidade no Watercolor.
+- Folha: `material_2026-11-07/seis_pinceis_novos.png`.
+- ⚠️ CLAUDE.md §5 diz «78 pincéis de fábrica»: vira 84 na integração (contado; não editado agora).
+
+### Lei de mistura opaca (opção EXTRA, Off por omissão)
+- Núcleo: `crates/ph2d-painter-brush/src/mistura_opaca.rs` (+`_tests.rs`). `BrushSpec.mistura_opaca` = {modo Off|Blend|RunningColor, paint_amount, paint_density, color_stretch, amount_pressure, density_pressure}.
+- Por carimbo: amostra da tela ponderada pelo falloff; reservatório `r = lerp(amostra, r, stretch)`; `m = lerp(r, cor, amount)`; deposita com `density × falloff × coverage × flow`. Blend mantém `m` no reservatório; Running mantém a cor da tela.
+- `DE_FABRICA.paint_amount` mudou 1,0 → 0,5: com 1,0 Blend/Running pintavam igual a Off e o censo `o_censo_dos_controlos_so_encolhe` reprovou.
+- Preset JSON grava o campo só quando ligado (`wetpaint_preset/{campos.rs (CAMPOS_FORA 80→81), json.rs, json/meio.rs}`).
+- Fiação: `crates/ph2d-tool-painter/src/tool/paint/stamp_route/mistura.rs` + ramo em `stamp_dabs_inner` (só ligado, modo Paint, sem apagar). `stamp_device.rs::eligible()` recusa mixer ligado (só CPU). Reset ao baixar a caneta (`stroke_lifecycle.rs`) e a cada re-carimbo de forma inteira (`stamp_preview.rs`).
+- Pressão = último evento da caneta por lote (o `Dab` não tem pressão; 173 construtores). Simetria: um reservatório por espelho. Tiling: as cópias partilham o estado inicial. Alpha lock tratado dentro da rota. Undo via `fork_canvas`. Testes `mistura_opaca_ferramenta_tests.rs`.
+- Painel: grupo «Color mixing» no fim do cartão Basics (cartões e clássico), `cards_mistura.rs`; ids `PAINTER_BRUSH_MIX_MODE/_MODES[3]/_FIELDS[5]` em `ids/painter.rs`; setters `mistura_settings.rs`; `Dependente::MisturaDesligada` (49 entradas); portas de macro; 11 chaves i18n em `ph2d-i18n/src/painter_layers.rs`. Só aparece para pincel Digital sem flags watercolor/Wet (escondido nos outros, como Fine Thread); sliders esmaecidos em Off. Testes `tests/it/color_mixing.rs`.
+- Fotos em `material_2026-11-07/`: `painel_mistura_{off,blend}.png`, `mistura_opaca_{off,blend,running,comparacao,ferramenta}.png`.
+
+### Verde (por nome)
+Painel inteiro 454/455 e a 1 falha curada · censo · `color_mixing` · ferramenta `mistura` (50) · pincel `mistura_opaca` (7) · os 2 alarmes de pincel · `the_factory_presets_are_counted` · `cada_preset_de_fabrica_e_a_sua_receita`. Suíte completa NÃO correu.
+
+### ABERTO
+1. Blend/Running apanham o PRÓPRIO depósito fresco (carimbos sobrepostos): Blend vai à cor pura do pincel depressa e Running nunca apanha o azul. Cura candidata: amostrar um snapshot da camada de antes do traço. Espera o olho do dono no smoke.
+2. Shape/Grain não moldam o carimbo do mixer (só falloff; o código da pegada é privado na crate do pincel).
+3. Sem testes de re-carimbo/simetria/tiling com mixer ligado.
+4. Lote 2 de presets (Round mixing, Gouache, Dry/Thin Gouache, Oil paint, Paint and apply, Crayon, Pastel, Chalk) não feito: depois do smoke do dono.
+5. Lote 3 (versões Wet Paint) só se o dono quiser.
+6. Pressão é peso linear, sem curvas.
+7. fmt/clippy das crates tocadas ainda não correram (passo de fecho).
+
+## Color mixing → Pigment mix (07–08/11): o que foi feito e o que o dono quer
+
+Tudo sem commit. Esta secção SUPERA «Lei de mistura opaca» acima (Blend/Running já não existem como modos).
+
+### 1. Blend/Running (lei opaca por carimbo): corrigidos, depois substituídos
+Smoke do dono: «sem efeito». Causas achadas e curadas:
+- Auto-apanha: a amostra passa a vir dos ladrilhos de ANTES da caneta descer (`Ladrilhos`, `stamp_route/mistura.rs`). Fecha o ABERTO 1 acima.
+- Taxas por distância (`DIAMETROS_REF`, `mistura_opaca.rs`), não por carimbo.
+- A ponta dual vazava para o mixer: `dual.rs:229` força Off.
+- G-Pen, costura: o re-pintar da cauda (taper) restaura o reservatório por lote (`Lote.mistura`, `traco_plano/cauda.rs`); anéis: `perfil_da_cor` (⚠️ nome dado pela janela principal, não achado por grep — conferir).
+- Grão/forma agora moldam o depósito (máscara de `stamp_dab_textured_masked` + teto de cobertura `Pegada`): fecha o ABERTO 2.
+- Camada vazia não lava a cor; bug do caminho Accumulate ligado (alpha 10) curado.
+- Comparação com o Composite Brush: [`COMPARACAO_COMPOSITE_VS_COLOR_MIXING_2026-11-07.md`](../COMPARACAO_COMPOSITE_VS_COLOR_MIXING_2026-11-07.md), folhas `material_2026-11-07/comparacao_composite_vs_mixing_*`, sonda `crates/ph2d-tool-painter/tests/it/sonda_composite_vs_mixing.rs`. Defeito do Composite NOTADO, não aberto: G-Pen com riscos brancos e cauda redonda.
+
+### 2. Pigment mix (substitui Blend/Running)
+- O dono viu o Watercolor Basic com Mixing=Pigment (azul+amarelo=verde) e achou muito superior. Estudo: [`ESTUDO_MISTURA_DO_WATERCOLOR_PARA_O_DIGITAL_2026-11-07.md`](../ESTUDO_MISTURA_DO_WATERCOLOR_PARA_O_DIGITAL_2026-11-07.md).
+- `ModoMisturaOpaca::{Off, PigmentMix}` (`ph2d-painter-brush/src/mistura_opaca.rs`); presets/macros com Blend/Running carregam como PigmentMix. Knobs: Amount, Pickup (novo), Pull, Density + 2 pesos de pressão.
+- Lei: por pixel, mistura ESPECTRAL do pigmento da tela sob a caneta com a cor do pincel sujada pelo reservatório; branco/vazio NÃO é pigmento.
+- Testes `tests/it/a_mistura_pigmento_digital.rs`, com a **prova por hash do Watercolor Basic** (gravada ANTES das edições, verde): Watercolor Basic segue byte-idêntico (regra permanente do dono).
+- Custo por traço (G-Pen): Off 17,95 ms · Pigment mix 24,13 ms · Watercolor Basic 258,98 ms.
+- Fotos: `material_2026-11-07/pigment_mix_digital.png`, `painel_pigment_mix.png`.
+- Conhecidos: azul sobre vermelho dá bordô quase preto (lei espectral, amount 0,5, saturado); no painel, Pickup, Pull e Amount-by-pressure mostram todos a letra «P»; `painel_mistura_blend.png` está obsoleta.
+
+### 3. Veredito do dono em 08/11: ARTIFICIAL
+«O que eu gostaria de ter trazido do watercolor era o modo como ele mescla as tintas, o smear, o blur, etc. não apenas a cor.» A foto dele: amarelo sobre azul = placas empilhadas de borda dura. Ele quer a mescla ESPACIAL do Watercolor (smear, blur, sangrar, molhado-sobre-molhado) na tinta opaca do Digital, no lugar do Pigment mix (que é só cor). Um agente de estudo corre: `docs/Painter/ESTUDO_MESCLA_ESPACIAL_DO_WATERCOLOR_2026-11-08.md` + folha de ablação `ablacao_watercolor_basic.png` (resultado pendente ao escrever; os ficheiros NÃO existiam no disco nesse momento). Ler o estudo ANTES de desenhar.
+
+### 4. Outras coisas de hoje (todas sem commit)
+- 6 pincéis CSP novos (84 no total), estudo `ESTUDO_CLIP_STUDIO_PINCEIS_2026-11-07.md`. Os 4 valores de cerdas do dono ficam só de referência para a missão noturna de presets por tamanho.
+- Lote 2 (pincéis de tinta grossa à CSP) espera a lei de mistura que o dono aceitar.
+
 ## Próximos, por ordem
-1. Item 4, protótipo por override, sem mudar produto: separar DENTRO de `G` o que dá a cara (o carimbo do pincel em resolução menor, a água, o alisar `SUAVE_RAIO_MAX_PX`) e achar a mesma cara com a grade da sessão fixa, a tinta de outros tamanhos viva. Medir o que sobra do ganho de 3–4×. Corrigir os saltos (Size 90, 150). Foto antes × depois, com zoom 100 %, e PARE.
+0. ⏳ Mescla espacial no Digital (secção acima, §3): ler o estudo de 08/11, desenhar a lei que traz smear/blur/bleed do Watercolor ao opaco (Pigment mix sai ou vira só a parte da cor), manter Watercolor Basic byte-idêntico (hash), medir custo, fotografar lado a lado com a foto do dono ANTES do smoke. Depois do veredito dele: lote 2. Fecho: fmt/clippy das crates tocadas 1×. Smoke dos 6 pincéis CSP segue pendente. Missão noturna futura: presets por tamanho no menu Size.
+1. ⏳ Smoke do dono do grupo Bristle Combing. Abertos, decisão dele: que pincéis a óleo ganham width 3, relief 0, ragged 0,64, follow 1,5 (foto antes de regravar alarme); depois levar os fios ao Digital e ao Impasto, um por vez, Watercolor por último. O item 2 (aguada) segue parado; base: [estudo de custo](../ESTUDO_CUSTO_WET_PAINT_2026-11-07.md).
 2. Item 4, depois da foto aprovada: o controle no painel em cartões (seletor, inglês, HR-15, todas as pontas e teste de costura), padrão «agua/alisar»; definir onde mora (por pincel ou da ferramenta), macro e preset sem mudar os de fábrica; «tex+fios» sem as estrias do Wet Round. Alarmes: só regravam com aprovação.
 3. Item 2: até 3 protótipos com ganho medido e pixels iguais. Primeiro: separar o compositor do pool da simulação (medir a hipótese; a imagem não muda). Respeitar J13 §5 e a recusa de compor por linhas.
 4. ABERTO 1 do handoff de 07/11 (corrigido acima), se o dono quiser.

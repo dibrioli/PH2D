@@ -21,8 +21,29 @@ pub const BRISTLE_UNIT_KNOBS: [Knob; 4] = [
 struct Grelha {
     lo: i64,
     n: i64,
+    /// Os passos que valem `u = 1`. Igual a `n`, salvo se a faixa do knob cresceu depois de haver ficheiros gravados.
+    n_na_unidade: i64,
     num: f64,
     den: f64,
+}
+
+/// O valor que `u = 1` guarda: o tecto de quando os presets foram gravados. A faixa cresce ACIMA de 1 e um preset antigo
+/// continua a ler o mesmo número, sem migração.
+fn valor_em_um(knob: Knob) -> f64 {
+    match knob {
+        Knob::BristleSize => 4.0,
+        _ => KNOB_DEFS[knob as usize].max,
+    }
+}
+
+/// O valor que o slider guarda em `u = 1`, e o `u` do topo da faixa (`≥ 1`).
+#[must_use]
+pub fn unidade_do_knob(knob: Knob) -> (f64, f32) {
+    let g = grelha(knob);
+    (
+        valor_em_um(knob),
+        (g.n as f64 / g.n_na_unidade as f64) as f32,
+    )
 }
 
 fn grelha(knob: Knob) -> Grelha {
@@ -34,9 +55,11 @@ fn grelha(knob: Knob) -> Grelha {
     };
     let lo = (d.min * den / num).round() as i64;
     let hi = (d.max * den / num).round() as i64;
+    let um = (valor_em_um(knob) * den / num).round() as i64;
     Grelha {
         lo,
         n: hi - lo,
+        n_na_unidade: um - lo,
         num,
         den,
     }
@@ -46,16 +69,16 @@ fn grelha(knob: Knob) -> Grelha {
 #[must_use]
 pub fn knob_from_unit(knob: Knob, u: f32) -> f64 {
     let g = grelha(knob);
-    let passos = (f64::from(u.clamp(0.0, 1.0)) * g.n as f64).round() as i64;
-    (g.lo + passos) as f64 * g.num / g.den
+    let passos = (f64::from(u.max(0.0)) * g.n_na_unidade as f64).round() as i64;
+    (g.lo + passos.min(g.n)) as f64 * g.num / g.den
 }
 
-/// O slider `[0, 1]` de um valor do knob (fora da faixa ⇒ a ponta).
+/// O slider de um valor do knob (fora da faixa ⇒ a ponta).
 #[must_use]
 pub fn unit_from_knob(knob: Knob, v: f64) -> f32 {
     let g = grelha(knob);
     let passos = ((v * g.den / g.num).round() as i64 - g.lo).clamp(0, g.n);
-    (passos as f64 / g.n as f64) as f32
+    (passos as f64 / g.n_na_unidade as f64) as f32
 }
 
 impl BristleKnobs {
@@ -88,6 +111,32 @@ impl BristleKnobs {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// O Bristle Size vai a 16 e um preset gravado lê o mesmo número: `u = k ÷ 76` continua a ser `0,2 + k · 0,05`.
+    #[test]
+    fn o_bristle_size_vai_a_16_sem_mudar_o_que_esta_gravado() {
+        for k in 0..=76 {
+            let u = k as f32 / 76.0;
+            assert_eq!(
+                knob_from_unit(Knob::BristleSize, u).to_bits(),
+                (((4 + k) as f64) / 20.0).to_bits(),
+                "passo {k}"
+            );
+            assert_eq!(
+                unit_from_knob(Knob::BristleSize, f64::from(4 + k) / 20.0),
+                u
+            );
+        }
+        let (um, topo) = unidade_do_knob(Knob::BristleSize);
+        assert_eq!(um, 4.0);
+        assert_eq!(knob_from_unit(Knob::BristleSize, topo), 16.0);
+        assert_eq!(
+            knob_from_unit(Knob::BristleSize, 99.0),
+            16.0,
+            "o topo prende"
+        );
+        assert_eq!(unidade_do_knob(Knob::Felt).1, 1.0, "o resto não muda");
+    }
 
     /// Todo valor no passo de cada knob faz a ida-e-volta AO BIT, e os da fábrica são os literais.
     #[test]

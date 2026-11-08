@@ -92,6 +92,8 @@ pub fn eligible(brush: &BrushSpec) -> bool {
         && brush.borda_px <= 0.0
         // A curva Custom lê-se pela área do píxel de CADA dab (`weight_area`): a tabela do traço é de um raio só.
         && !matches!(brush.falloff, ph2d_painter_brush::Falloff::Custom)
+        // A mistura opaca lê a tela por dab: só a CPU (`stamp_route::mistura`).
+        && !brush.mistura_opaca.ligada()
 }
 
 /// A tabela que sobe ao device — **preenchida com as funções que o produto usa**, na ordem que ele

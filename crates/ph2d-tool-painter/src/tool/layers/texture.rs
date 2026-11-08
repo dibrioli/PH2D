@@ -110,7 +110,8 @@ impl PainterTool {
         if slot < MAX_TEX_PARAMS
             && let Some(t) = self.layers.texture_mut(id)
         {
-            t.params[slot] = t01.clamp(0.0, 1.0);
+            let kind = TextureKind::from_u8(t.kind);
+            t.params[slot] = t01.clamp(0.0, ph2d_painter_brush::param_escala(kind, slot).u_max());
         }
         self.rerender_texture_layer(id);
     }

@@ -53,6 +53,7 @@ campos_do_traco!(
     wet_level_smear_pos,
     wet_stroke_dirty,
     wet_mix,
+    mistura_opaca,
     wet_soak_pos,
     plano_do_traco,
     pixel_trilhos,

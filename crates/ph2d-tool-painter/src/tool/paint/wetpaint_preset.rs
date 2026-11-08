@@ -380,6 +380,9 @@ impl PainterTool {
             .iter()
             .any(|kn| prm.engine.contains_key(KNOB_DEFS[*kn as usize].key));
         if traz_cerdas && self.paint.brush.shape.kind == TextureKind::None {
+            // Esse mapa antigo sempre leu o tecto de 4: o Fan Brush e o Express Oil trazem 7 e pintam 4.
+            let (teto_antigo, _) = ph2d_wet_paint::brush::unidade_do_knob(Knob::BristleSize);
+            k.set(Knob::BristleSize, k.get(Knob::BristleSize).min(teto_antigo));
             self.paint.brush.shape = k.cerdas_no_shape(self.paint.brush.shape);
         }
         // A velocidade (L12), a curva em S, o jitter e o atraso não são knobs do motor: moram na `Dynamics` do pincel,

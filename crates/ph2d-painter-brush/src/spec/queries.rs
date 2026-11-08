@@ -388,6 +388,17 @@ impl BrushSpec {
         self.passo_de(self.spacing)
     }
 
+    /// O Spacing que o percurso usa: o do pincel, ou no máximo [`crate::mistura_opaca::PASSO_DA_MISTURA`] com o
+    /// Color mixing ligado (a amostra por carimbo só é lisa com o carimbo a andar 3 % do diâmetro).
+    #[must_use]
+    pub fn spacing_do_traco(&self) -> f32 {
+        if self.mistura_opaca.ligada() {
+            self.spacing.min(crate::mistura_opaca::PASSO_DA_MISTURA)
+        } else {
+            self.spacing
+        }
+    }
+
     /// [`Self::dab_spacing_px`] a outra fracção `spacing` do diâmetro.
     #[must_use]
     pub fn passo_de(&self, spacing: f32) -> f32 {

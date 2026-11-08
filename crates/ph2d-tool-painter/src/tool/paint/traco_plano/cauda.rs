@@ -143,6 +143,7 @@ impl PainterTool {
                 rng: self.paint.tex_rng,
                 ancorado: false,
                 dabs: extra,
+                mistura: self.paint.mistura_opaca.res.clone(),
             });
         }
         let tudo: Vec<Dab> = lotes.iter().flat_map(|l| l.dabs.iter().copied()).collect();
@@ -167,23 +168,37 @@ impl PainterTool {
         if self.paint.stroke_mask.len() * 4 == s.plano.len() {
             limpa_regiao(&mut self.paint.stroke_mask, w, c.limpa, 1);
         }
+        // A sombra `f32` da mistura opaca era a do plano antes da limpeza: relê-se do plano.
+        self.paint.mistura_opaca.sombra.recomeca();
         let (rng, ancorado) = (self.paint.tex_rng, self.paint.pixel_trilhos.ja_ancorado);
         // O trilho de píxel (L18) anda de novo do início do re-carimbo; o último píxel pendente já está no lote
         // ANCORADO que o pen-up gravou — o que sobra no trilho no fim é ele outra vez, e descarta-se.
         self.paint.pixel_trilhos.zera();
         let escala = s.escala;
+        // A mistura opaca: cada lote volta com o reservatório que teve e amostra a base (o pré-traço).
+        let mistura = std::mem::take(&mut self.paint.mistura_opaca.res);
+        let ligada = self.paint.brush.mistura_opaca.ligada();
+        if ligada {
+            self.paint.mistura_opaca.base_do_plano = Some(Arc::clone(&s.base));
+        }
         self.dentro_do_plano(s, |t| {
             for l in &c.lotes {
                 t.paint.tex_rng = l.rng;
                 t.paint.pixel_trilhos.ja_ancorado = l.ancorado;
+                t.paint.mistura_opaca.res.clone_from(&l.mistura);
                 t.stamp_dabs_dispatch(&sem_a_strength(&l.dabs, escala));
             }
         });
+        self.paint.mistura_opaca.res = mistura;
+        if ligada {
+            self.paint.mistura_opaca.base_do_plano = None;
+        }
         self.paint.pixel_trilhos.zera();
         self.paint.pixel_trilhos.ja_ancorado = ancorado;
         self.paint.tex_rng = rng;
         let p: &mut Vec<u8> = Arc::make_mut(&mut s.plano);
         repoe_fora(p, &antes, w, c.tocados, c.limpa, 4);
+        self.paint.mistura_opaca.sombra.recomeca();
         if mascara_antes.len() == self.paint.stroke_mask.len() && !mascara_antes.is_empty() {
             repoe_fora(
                 &mut self.paint.stroke_mask,

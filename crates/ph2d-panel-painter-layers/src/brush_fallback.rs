@@ -172,6 +172,7 @@ pub const FALLBACK_BRUSH: BrushSettings = BrushSettings {
     accumulate: false,
     wash: false,
     smear_fio: false,
+    mistura_opaca: ph2d_tool_painter::MisturaOpaca::DE_FABRICA,
     style_solid: false,
     solid_owns_the_gesture: false,
     line_kind: 0,

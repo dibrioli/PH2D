@@ -107,6 +107,8 @@ impl PainterTool {
         // …e a BORRACHA pelo mesmo motivo, um canal adiante: ela tambem reescreve o plano da
         // camada ao vivo, e sem isto a mordida de toda figura por onde a mao passou fica para sempre.
         self.restamp_reset_erase();
+        // …e o reservatório da mistura opaca: a figura inteira é carimbada de novo, do pincel limpo.
+        self.mistura_opaca_recomeca();
         // …e a PILHA do Composite Brush, que é o QUARTO canal desta lista e não estava nela
         // (report do dono, 2026-09-21). Ela acumula por TRAÇO e uma sessão de figuras é UM traço:
         // sem isto os planos guardam a figura anterior e a posição anterior, e a composição

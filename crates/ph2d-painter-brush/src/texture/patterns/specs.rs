@@ -230,8 +230,10 @@ pub fn param_specs(kind: TextureKind) -> &'static [ParamSpec] {
 pub struct Escala {
     /// The value shown at `0`.
     pub min: f32,
-    /// The value shown at `1`.
+    /// The top of the range the panel shows.
     pub max: f32,
+    /// The value stored as `1`: `max`, unless the range grew after files were saved (Bristle Size).
+    pub um: f32,
     /// The stepper / scrub step, in shown units.
     pub step: f64,
 }
@@ -241,6 +243,7 @@ impl Escala {
     pub const UNIT: Self = Self {
         min: 0.0,
         max: 1.0,
+        um: 1.0,
         step: 0.01,
     };
 
@@ -259,13 +262,19 @@ impl Escala {
     /// The shown value of the stored `u`.
     #[must_use]
     pub fn mostra(self, u: f32) -> f32 {
-        self.min + u.clamp(0.0, 1.0) * (self.max - self.min)
+        self.min + u.clamp(0.0, self.u_max()) * (self.um - self.min)
     }
 
-    /// The stored `[0, 1]` value of a typed/scrubbed `v` (clamped to the range).
+    /// The stored value at the top of the range (`1` unless the range outgrew the saved scale).
+    #[must_use]
+    pub fn u_max(self) -> f32 {
+        (self.max - self.min) / (self.um - self.min)
+    }
+
+    /// The stored value of a typed/scrubbed `v` (clamped to the range).
     #[must_use]
     pub fn guarda(self, v: f32) -> f32 {
-        ((v - self.min) / (self.max - self.min)).clamp(0.0, 1.0)
+        ((v - self.min) / (self.um - self.min)).clamp(0.0, self.u_max())
     }
 }
 
@@ -280,6 +289,7 @@ pub fn param_escala(kind: TextureKind, slot: usize) -> Escala {
             Escala {
                 min: d.min as f32,
                 max: d.max as f32,
+                um: ph2d_wet_paint::brush::unidade_do_knob(k).0 as f32,
                 step: d.step,
             }
         }

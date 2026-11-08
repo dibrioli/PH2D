@@ -347,14 +347,14 @@ mod tests {
     /// Mais 1 a 31/10: o arco dos tufos do leque (`tuftArc`) no Bristles (20 → 21).
     #[test]
     fn every_visible_knob_has_a_row() {
-        assert_eq!(rows().len(), 92);
+        assert_eq!(rows().len(), 88);
         for g in [
             (KnobGroup::Paint, 19),
             (KnobGroup::Water, 7),
             (KnobGroup::Physics, 6),
             (KnobGroup::Tools, 6),
             (KnobGroup::Paper, 1),
-            (KnobGroup::Bristles, 21),
+            (KnobGroup::Bristles, 17),
             (KnobGroup::Stroke, 12),
             (KnobGroup::WetEffects, 4),
             (KnobGroup::Material, 16),
@@ -368,12 +368,17 @@ mod tests {
     /// esta lista: um knob novo nasce aqui (e alguém decide onde mora) ou num grupo à vista.
     #[test]
     fn os_escondidos_sao_so_os_de_outra_superficie_ou_de_calibracao() {
-        const NOUTRA_SUPERFICIE: [&str; 38] = [
+        const NOUTRA_SUPERFICIE: [&str; 42] = [
             // a Shape › Bristles (plano 27 W2)
             "felt",
             "bristleCount",
             "bristleStrength",
             "bristleSize",
+            // a Shape › Bristle Combing (dono 07/11)
+            "bristleLaneWidth",
+            "bristleHeight",
+            "bristleTipRagged",
+            "bristleLaneSizeExp",
             // o Spacing do Stroke manda (dono 11/10)
             "spacing",
             // o cartão Wet Paint do Painter (dono 13/10 e 19/10)

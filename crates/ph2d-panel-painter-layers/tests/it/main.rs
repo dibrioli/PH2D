@@ -15,6 +15,8 @@ pub(crate) fn host_de_antes() -> ph2d_ui_testkit::MockPanelHost {
 mod a_pilha_de_ajustes_fala_a_tabela_e_mostra_o_numero;
 mod as_seccoes_arrastam_e_tem_tema; // o tema e o arrasto das secções do corpo do pincel
 mod auditoria_l2_continuous; // AUDITORIA lente 2 (15/10): o Continuous pelo ponteiro — sonda, não portão
+mod bristle_combing; // os fios que penteiam, no cartão Shape (dono 07/11)
+mod color_mixing; // a mistura opaca do Digital, no cartão Basics, nos dois painéis
 mod cada_nome_deste_painel_cabe_na_coluna_da_seccao;
 mod censo_dos_controlos; // cada controlo pintado, em cada meio, muda o traço (ou diz porquê)
 mod censo_ferramenta_x_linha; // a ferramenta do trilho × cada linha do painel (23/10)

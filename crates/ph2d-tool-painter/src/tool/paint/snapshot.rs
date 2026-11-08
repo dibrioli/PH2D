@@ -325,6 +325,7 @@ impl PainterTool {
             accumulate: b.accumulate,
             wash: b.wash,
             smear_fio: b.smear_fio,
+            mistura_opaca: b.mistura_opaca,
             style_solid: b.style_solid,
             solid_owns_the_gesture: self.solid_owns_the_gesture(),
             line_kind: b.line_kind.to_wire(),

@@ -15,6 +15,7 @@ mod tela_e_oleo; // Smooth Edges, Óleo Real, Live Water, Heavy Edge — filho p
 mod tuning; // o roteamento do painel Tuning — filho por LOC
 pub(crate) use tabelas::CORPO_DA_AGUA;
 use tabelas::{KNOBS_DA_FERRAMENTA, KNOBS_NO_CARTAO, LIDOS_SO_PELA_FERRAMENTA};
+pub use tuning::LinhaDoPenteado;
 #[cfg(test)]
 use tuning::wet_tuning_id_map;
 

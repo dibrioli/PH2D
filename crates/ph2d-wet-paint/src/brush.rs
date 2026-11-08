@@ -17,7 +17,7 @@ use crate::jsmath::{js_round, wrap_mask};
 use crate::rng::Rng;
 
 mod unidade;
-pub use unidade::{BRISTLE_UNIT_KNOBS, knob_from_unit, unit_from_knob};
+pub use unidade::{BRISTLE_UNIT_KNOBS, knob_from_unit, unidade_do_knob, unit_from_knob};
 
 pub const BRISTLE_SIZE: usize = 128;
 const BMASK: i32 = BRISTLE_SIZE as i32 - 1;

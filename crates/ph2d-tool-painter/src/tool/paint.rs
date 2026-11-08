@@ -49,7 +49,7 @@ mod thread_deposit;
 pub use self::stroke_multi::StrokeOpBadge;
 pub use self::watercolor_flow::render_classic_flow_preview;
 pub use self::watercolor_settings::UsoDaCamada;
-pub use self::wetpaint_settings::{WetKnobs, WetTool};
+pub use self::wetpaint_settings::{LinhaDoPenteado, WetKnobs, WetTool};
 mod impasto; // Impasto: the height channel (paint thickness) — the dab pipeline's SECOND output
 mod impasto_ceiling; // Impasto: the glass ceiling — how the paint TOPS OUT (a compression, not a clamp)
 /// A SESSAO da borracha de impasto: o `pre` da massa e a devolucao que um re-carimbo faz.
@@ -141,6 +141,7 @@ mod wet_editable;
 mod wetpaint; // Wet Paint (PaintMode::WetPaint): the fluid-engine session — ADR-0134; see its module doc
 pub(crate) use wetpaint::fita; // a fita do worker que a trilha da macro (`crate::macro_track`) grava e toca
 mod blend_vazio_settings; // a porta do painel do modo sobre o vazio (L7)
+mod mistura_settings; // a porta do painel da mistura opaca do Digital (Color mixing)
 mod dual; // o DUAL BRUSH (L6): a 2.ª ponta, o motor dela e a máscara do traço que recorta a 1.ª
 mod dual_ferramenta; // …e nas ferramentas do Digital: a borracha, o Blur, o Smear e o Clone
 mod macro_estado;

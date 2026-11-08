@@ -62,6 +62,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_ponta.dual_rotation" => "Dual rotation",
         "panel.painter_ponta.dual_hardness" => "Dual hardness",
         "panel.painter_ponta.dual_pattern" => "Dual pattern",
+        "panel.painter_ponta.inerte.combing_wet_only" => {
+            "Only Wet Paint combs the paint. These do nothing in this mode yet."
+        }
+        "panel.painter_ponta.inerte.combing_needs_bristles" => {
+            "Raise Bristle relief, or Pressure per bristle in Tuning, to see this."
+        }
+        "panel.painter_ponta.inerte.combing_needs_light" => {
+            "Turn on Real Oil, or raise Emboss in Tuning, to see the relief."
+        }
         "panel.painter_ponta.inerte.dual_medium" => {
             "Only Digital and Wet Paint cut a stroke with a dual tip"
         }

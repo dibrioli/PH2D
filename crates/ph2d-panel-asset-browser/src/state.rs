@@ -224,6 +224,23 @@ pub struct AssetBrowserState {
 pub struct Choosing {
     pub entity_bits: u64,
     pub name: String,
+    /// `true` = a imagem de uma folha NOVA do Animated (**Load sheet**, plano GEF 26), não a troca da imagem.
+    pub sheet: bool,
+}
+
+impl Choosing {
+    /// A resposta à escolha de `asset`: a folha nova (Load sheet) ou a troca da imagem.
+    #[must_use]
+    pub fn answer(&self, asset: [u8; 32]) -> ph2d_editor_core::action_bus::EditorAction {
+        use ph2d_editor_core::action_bus::EditorAction;
+        let entity_bits = self.entity_bits;
+        if self.sheet {
+            let edit = ph2d_editor_core::ImageUseEdit::AddSheet(asset);
+            EditorAction::ImageUseEdit { entity_bits, edit }
+        } else {
+            EditorAction::ChooseImage { entity_bits, asset }
+        }
+    }
 }
 
 /// O campo de renomear aberto: **quem**, e se o buffer já foi semeado.

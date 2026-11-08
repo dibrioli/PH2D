@@ -124,6 +124,7 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
     }
     crate::sections::ordering::prepara_opcoes(store);
     crate::cards_anim::prepara();
+    crate::cards_sprite_folhas::prepara(store);
     semeia_do_objeto(store);
 }
 
@@ -428,7 +429,8 @@ pub(crate) fn proprio<'a>(p: &'a Presente, actions: Vec<HeadAction>) -> Option<C
 
 /// Os verbos da imagem; as opções do Ordering revelam a linha. Clicar na miniatura é `event::texture_slot_click`.
 pub(crate) fn evento(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    if crate::sections::ordering::evento_das_opcoes(ev)
+    if crate::cards_sprite_folhas::evento(host, ev)
+        || crate::sections::ordering::evento_das_opcoes(ev)
         || sections::look::evento_dos_cantos(host, ev)
         || evento_do_pivot(host, ev)
     {

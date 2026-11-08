@@ -123,6 +123,12 @@ impl crate::App {
         let Some(gfx) = self.gfx.as_mut() else {
             return;
         };
+        if edit == ph2d_editor_core::ImageUseEdit::LoadSheet
+            && let Some(hero) = gfx.hero_screen.as_mut()
+        {
+            crate::render_loop::abre_o_seletor(hero, &gfx.sim, entity_bits, true);
+            return;
+        }
         let ppm = gfx
             .hero_screen
             .as_ref()

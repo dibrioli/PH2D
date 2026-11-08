@@ -264,6 +264,8 @@ pub(crate) fn paint_deferred_popovers(
     // Os menus de uma REGRA do cartão «Animation» (plano GameEngineFuncional 08) — no irmão, pelo
     // tecto de 200 LOC desta função.
     anim_rule_popover(scene, text_system, theme, hit_index, store, region);
+    // O dropdown das folhas do cartão Image (plano GEF 26 §3.3).
+    crate::cards_sprite_folhas::paint_deferred(scene, text_system, theme, hit_index, store, region);
 }
 
 /// O menu aberto do FORMATO DO JOGO do cartão Camera, com a escolha atual vinda do slot.

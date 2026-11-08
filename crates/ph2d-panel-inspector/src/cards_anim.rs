@@ -95,6 +95,7 @@ fn corpo(c: &mut CardCtx<'_>, y: f32, info: &InspectorAnimInfo, a: Abertas) -> f
     if let Some(r) = campo_do_nome {
         c.text_box(r, ids::INSP_ANIM_NAME, "");
     }
+    let y = crate::cards_sprite_folhas::limpeza(c, y, info);
     let y = com_corpo(c, y, |t, theme, store, x, w, y| {
         sections::anim_cartao::resto(t, theme, store, x, w, y, info, selected)
     });

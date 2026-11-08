@@ -17,7 +17,10 @@ ph2d-asset = { path = "../ph2d-asset" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-i18n = { path = "../ph2d-i18n" }
+# O `Sprite` da folha 0 e a textura da folha promovida (`SheetTextures`); o corte proposto de uma imagem nova.
+ph2d-render = { path = "../ph2d-render" }
 ph2d-sprite-edit = { path = "../ph2d-sprite-edit" }
+ph2d-sprite-sheet = { path = "../ph2d-sprite-sheet" }
 
 [lints]
 workspace = true

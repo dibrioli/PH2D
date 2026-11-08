@@ -80,10 +80,12 @@ mod cards_objeto;
 mod cards_pilha;
 mod cards_sprite;
 mod cards_sprite_cabeca;
+mod cards_sprite_folhas;
 #[doc(hidden)]
 pub use cards_sprite_cabeca::{
     CabecaPintada, cabeca_pintada, imagens_pintadas, miniatura_pintada, troca_pintada,
 };
+pub use cards_sprite_folhas::{dropdown_aberto, linhas_em_alerta};
 mod cards_sprite_pivot;
 pub use cards_componentes::reset_of as card_reset_of;
 mod cards_presos;
@@ -200,6 +202,7 @@ mod reveal;
 mod sections;
 /// ⭐ A imagem que a ranhura mostra (plano GEF 12).
 pub mod slot_image;
+pub mod slot_sheets;
 pub mod state;
 /// ⭐ Os instantâneos das secções da fila do TOP-20 — irmão do [`state`] por CAP de LOC.
 /// Ver o cabeçalho dele.

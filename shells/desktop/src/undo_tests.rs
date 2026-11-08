@@ -400,6 +400,9 @@ mod tags_tests;
 #[path = "undo_library_tests.rs"]
 mod library;
 
+#[path = "undo_folhas_tests.rs"]
+mod folhas_tests;
+
 /// ⭐ **As regras do mundo e da mesa no undo** (F41) — irmão por assunto, ver o cabeçalho de lá.
 #[path = "undo_regras_tests.rs"]
 mod regras_tests;

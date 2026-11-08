@@ -305,6 +305,7 @@ mod fase_pixel_panel;
 mod fase_pointer_subjects;
 /// Fase do quadro: os verbos de receita e de assets.
 mod fase_recipe_and_asset_verbs;
+pub(crate) use fase_recipe_and_asset_verbs::abre_o_seletor;
 /// Fase do quadro: o som de cena (as vozes dos objectos).
 mod fase_scene_audio;
 /// Fase do quadro: o passo do GC do Luau (M7).

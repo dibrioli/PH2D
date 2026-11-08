@@ -82,11 +82,17 @@ pub(crate) fn paint_list(
     let gap = ph2d_tokens::control_gap_px();
     // O resumo manda na coluna da direita: mede-se (nunca se elide) até no máximo `1 - SUMMARY_COL_FRAC`
     // da linha; o nome fica com o que sobra, e o vão o deixa cortado longe do resumo.
-    let resumos: Vec<(String, bool)> = info
+    let resumos: Vec<(String, ColorToken)> = info
         .rows
         .iter()
         .map(|row| {
             let plays = row.plays_on(&info.sheets);
+            let vazios = crate::cards_sprite_folhas::vazios(row);
+            // Os quadros de uma folha apagada: a linha fica em alerta (plano GEF 26 §3.3).
+            if vazios > 0 {
+                let texto = tr_with("panel.inspector.anim_card.empty", &[("n", &vazios)]);
+                return (texto, ColorToken::Warn);
+            }
             let texto = if plays {
                 tr_with(
                     "panel.inspector.anim_card.frames",
@@ -95,7 +101,14 @@ pub(crate) fn paint_list(
             } else {
                 tr("panel.inspector.animation.out_of_grid").to_owned()
             };
-            (texto, plays)
+            (
+                texto,
+                if plays {
+                    ColorToken::Text3
+                } else {
+                    ColorToken::Danger
+                },
+            )
         })
         .collect();
     let resumo_w = ph2d_editor_core::paint::label_column_width(
@@ -133,6 +146,16 @@ pub(crate) fn paint_list(
             },
             0.0,
         );
+        let alerta = crate::cards_sprite_folhas::vazios(row) > 0;
+        if alerta {
+            ph2d_editor_core::paint::fill_rounded_rect(
+                scene,
+                rect,
+                ph2d_card_stack::metrics::SEG_RADIUS,
+                resolve(ColorToken::WarnSoft, theme),
+            );
+            crate::cards_sprite_folhas::marca_alerta(row_id);
+        }
         let cells = row_cells(row, &info.sheets);
         let mut text_x = x + Spacing::Sm.px();
         if let Some(sheet) = info.card.sheet.as_ref() {
@@ -150,7 +173,9 @@ pub(crate) fn paint_list(
             }
             text_x = thumb.x + thumb.w + Spacing::Sm.px();
         }
-        let color = if info.current == row.name {
+        let color = if alerta {
+            resolve(ColorToken::Warn, theme)
+        } else if info.current == row.name {
             resolve(ColorToken::Accent, theme)
         } else if is_open {
             resolve(ColorToken::Text1, theme)
@@ -167,7 +192,14 @@ pub(crate) fn paint_list(
             _ => paint_text(
                 text_system,
                 scene,
-                &row.name,
+                &if alerta {
+                    tr_with(
+                        "panel.inspector.anim_card.alert_name",
+                        &[("name", &row.name)],
+                    )
+                } else {
+                    row.name.clone()
+                },
                 text_x,
                 cur_y + super::rows::folga_da_linha(ROW_H, font),
                 font,
@@ -175,7 +207,7 @@ pub(crate) fn paint_list(
                 color,
             ),
         }
-        let (summary, plays) = &resumos[i];
+        let (summary, tinta) = &resumos[i];
         paint_text(
             text_system,
             scene,
@@ -184,14 +216,7 @@ pub(crate) fn paint_list(
             cur_y + super::rows::folga_da_linha(ROW_H, font),
             font,
             resumo_w + 1.0, // LITERAL-PX-OK: folga de arredondamento da medida
-            resolve(
-                if *plays {
-                    ColorToken::Text3
-                } else {
-                    ColorToken::Danger
-                },
-                theme,
-            ),
+            resolve(*tinta, theme),
         );
         // O ▶ é o ÍCONE (uma caixa de linha não tem respiro para o glifo de texto); a linha que está
         // no ecrã a tocar mostra ⏸ — a mesma pergunta que o clique faz (`row_shows_pause`).

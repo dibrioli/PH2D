@@ -97,10 +97,8 @@ fn linha_do_tamanho(info: &InspectorSpriteInfo) -> Option<String> {
 }
 
 /// Em Animated a linha diz o corte (`1536 × 768 px · 8 × 4`): a grade mora no editor. A forma mais curta é só o corte.
-fn formas_com_o_corte(info: &InspectorSpriteInfo) -> Vec<String> {
-    let (c, l) = (info.hframes, info.vframes);
-    let mut formas: Vec<String> = info
-        .source_pixels
+fn formas_com_o_corte(px: Option<(u32, u32)>, [c, l]: [u32; 2]) -> Vec<String> {
+    let mut formas: Vec<String> = px
         .into_iter()
         .flat_map(|(pw, ph)| {
             [
@@ -153,15 +151,27 @@ struct Moldura<'a> {
     verbos: &'a [Verbo<'a>],
     /// Clicar na miniatura troca a imagem?
     trocavel: bool,
+    /// Com duas ou mais folhas, a miniatura abre o dropdown delas em vez de trocar a imagem.
+    folhas: Option<&'a crate::slot_sheets::SheetCard>,
     qualidade: ImageQuality,
 }
 
 /// A moldura da imagem: o único verbo é o do Painter (dono 06/11).
 pub(crate) fn cabeca(c: &mut CardCtx<'_>, y: f32, info: &InspectorSpriteInfo) -> f32 {
-    let img = slot_image::current_slot_image(info.entity_bits);
+    // Em Animated a moldura mostra a folha VISÍVEL (plano GEF 26 §3.3).
+    let folhas = crate::cards_sprite_folhas::folhas(info);
+    let img = folhas
+        .as_ref()
+        .and_then(|f| f.visible())
+        .map(|f| f.image.clone())
+        .or_else(|| slot_image::current_slot_image(info.entity_bits));
     let nome = nome_da_imagem(img.as_ref());
-    let tamanhos = if info.image_use == InspectorImageUse::Animated {
-        formas_com_o_corte(info)
+    let tamanhos = if let Some(card) = &folhas {
+        crate::cards_sprite_folhas::formas_da_folha(card, |px, grade| {
+            formas_com_o_corte(Some(px), grade)
+        })
+    } else if info.image_use == InspectorImageUse::Animated {
+        formas_com_o_corte(info.source_pixels, [info.hframes, info.vframes])
     } else {
         linha_do_tamanho(info)
             .into_iter()
@@ -177,7 +187,7 @@ pub(crate) fn cabeca(c: &mut CardCtx<'_>, y: f32, info: &InspectorSpriteInfo) ->
         seta: IconId::Export,
         nome: tr("card.insp.verb_painter"),
     }];
-    moldura(
+    let fundo = moldura(
         c,
         y,
         &Moldura {
@@ -187,9 +197,11 @@ pub(crate) fn cabeca(c: &mut CardCtx<'_>, y: f32, info: &InspectorSpriteInfo) ->
             tamanhos,
             verbos: &verbos,
             trocavel: true,
+            folhas: crate::cards_sprite_folhas::varias(folhas.as_ref()),
             qualidade: ImageQuality::Medium,
         },
-    )
+    );
+    crate::cards_sprite_folhas::verbos_das_folhas(c, fundo, folhas.as_ref())
 }
 
 /// A moldura do Pixel Sprite: o único verbo é o do Pixel (dono 06/11); a miniatura não troca nada, e sai nítida.
@@ -224,6 +236,7 @@ pub(crate) fn cabeca_do_pixel(
             tamanhos: vec![tamanho_em_px(px), tamanho_nu(px), tamanho_junto(px)],
             verbos: &verbos,
             trocavel: false,
+            folhas: None,
             qualidade: ImageQuality::Low,
         },
     )
@@ -257,7 +270,9 @@ fn moldura(c: &mut CardCtx<'_>, y: f32, m: &Moldura<'_>) -> f32 {
     let foto = Rect::new(x0 + pad, topo, lado, lado);
     miniatura(c, foto, m.img, m.qualidade);
     TROCA_PINTADA.with(|p| p.set(false));
-    if m.trocavel {
+    if let Some(card) = m.folhas {
+        crate::cards_sprite_folhas::miniatura_escolhe(c, foto, card);
+    } else if m.trocavel {
         c.hit_index.register(ids::INSP_RENDER_TEXTURE_SLOT, foto);
         troca_em_hover(c, foto);
     }

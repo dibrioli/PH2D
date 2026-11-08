@@ -2,6 +2,7 @@
 //! [`docs/GameEngineFuncional/26_animated_sprite_varias_folhas_plano.md`](../../../docs/GameEngineFuncional/26_animated_sprite_varias_folhas_plano.md)).
 //! Lei pura sobre os componentes de `ph2d-ecs`; quem escreve no mundo é a família (`ph2d-app-sprite-anim`).
 
+pub mod apply;
 pub mod ops;
 pub mod panel_frame;
 pub mod split;

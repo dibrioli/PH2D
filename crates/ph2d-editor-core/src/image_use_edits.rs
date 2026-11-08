@@ -49,6 +49,19 @@ pub enum ImageUseEdit {
     CutAgain,
     /// **Keep the cut**, no aviso de imagem trocada: fecha o aviso.
     KeepCut,
+    /// O dropdown das folhas (plano GEF 26 §3.3): a folha `k` passa a ser a visível do painel. Estado de UI.
+    ShowSheet(u8),
+    /// **Load sheet**: abre o painel de Assets para escolher a imagem de uma folha NOVA.
+    LoadSheet,
+    /// A resposta do painel de Assets ao **Load sheet**: a imagem (`AssetId`) da folha nova, que fica visível e não
+    /// cria animação (decisão 7).
+    AddSheet([u8; 32]),
+    /// **Delete sheet**: apaga a folha visível; os quadros dela ficam vazios no lugar (decisão 6).
+    DeleteSheet,
+    /// **Remove empty frames**: tira os vazios das animações que têm algum quadro de verdade.
+    RemoveEmptyFrames,
+    /// **Delete empty animations**: apaga as animações TODAS vazias.
+    DeleteEmptyAnimations,
 }
 
 /// O aviso de imagem trocada, como o cartão Image o escreve.

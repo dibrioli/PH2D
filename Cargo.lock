@@ -5548,7 +5548,9 @@ dependencies = [
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-i18n",
+ "ph2d-render",
  "ph2d-sprite-edit",
+ "ph2d-sprite-sheet",
 ]
 
 [[package]]

@@ -20,7 +20,24 @@ thread_local! {
 
 /// ⭐ **O shell pede o seletor para a sprite `entity_bits`** (cujo nome a faixa mostra).
 pub fn choose_image_for(entity_bits: u64, name: String) {
-    REQUEST.with(|r| *r.borrow_mut() = Some(Choosing { entity_bits, name }));
+    REQUEST.with(|r| {
+        *r.borrow_mut() = Some(Choosing {
+            entity_bits,
+            name,
+            sheet: false,
+        })
+    });
+}
+
+/// ⭐ **Load sheet** (plano GEF 26): o seletor escolhe a imagem de uma folha NOVA do Animated `entity_bits`.
+pub fn choose_sheet_for(entity_bits: u64, name: String) {
+    REQUEST.with(|r| {
+        *r.borrow_mut() = Some(Choosing {
+            entity_bits,
+            name,
+            sheet: true,
+        })
+    });
 }
 
 /// O pedido pendente passa para o estado (chamado no início do `paint` do painel aberto).
@@ -70,10 +87,12 @@ pub(crate) fn paint(
     ctx.host
         .hit_index_mut()
         .register(ids::ASSET_CHOOSE_CANCEL, cancel);
-    let label = ph2d_i18n::tr_with(
-        "panel.asset_browser.pick.choose_for",
-        &[("name", &choosing.name)],
-    );
+    let key = if choosing.sheet {
+        "panel.asset_browser.pick.choose_sheet_for"
+    } else {
+        "panel.asset_browser.pick.choose_for"
+    };
+    let label = ph2d_i18n::tr_with(key, &[("name", &choosing.name)]);
     paint_text(
         ctx.text_system,
         ctx.scene,

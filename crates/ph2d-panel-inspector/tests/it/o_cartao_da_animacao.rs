@@ -15,6 +15,7 @@ use ph2d_editor_core::widget::key_mark;
 use ph2d_editor_core::zones::Rect;
 use ph2d_host::{PointerButton, PointerEvent, PointerKind};
 use ph2d_panel_inspector::ids::*;
+use ph2d_panel_inspector::slot_sheets::set_current_sheets;
 use ph2d_panel_inspector::{
     CARD_LOOK_ANIMADA, CARD_ORDERING, InspectorPanel, InspectorState, cabeca_pintada, set_cards_on,
     set_current_inspector_anim, set_current_inspector_sprite,
@@ -334,6 +335,7 @@ fn campos_do_animated() -> Vec<Vec<NodeId>> {
         INSP_ANIM_SIGNAL_LOOP,
         INSP_ANIM_MARKER_ADD,
         INSP_ANIM_START_DD,
+        INSP_IMAGE_SHEET_LOAD,
     ]));
     c.push(INSP_ANIM_ROW.to_vec());
     c.push(INSP_ANIM_PLAY_ROW.to_vec());
@@ -348,6 +350,8 @@ fn campos_do_animated() -> Vec<Vec<NodeId>> {
 #[test]
 fn o_censo_dos_campos_do_animated_em_uso() {
     let (mut host, mut st) = cena();
+    // Uma folha (plano GEF 26 §3.3): o cartão de hoje mais «+ Load sheet», o único campo que sobe.
+    set_current_sheets(Some(crate::as_folhas_do_animated::folhas(1, 0)));
     let conta = |r: &[(NodeId, Rect)]| {
         let tem = |id: &NodeId| r.iter().any(|(i, q)| i == id && q.w > 0.0);
         let campos = campos_do_animated();
@@ -361,7 +365,7 @@ fn o_censo_dos_campos_do_animated_em_uso() {
     for id in [core_ids::INSP_LIVE_RENDER_SECTION, CARD_ORDERING] {
         host.store_mut().set_collapsed(id, true);
     }
-    assert_eq!(conta(&pinta(&mut host, &mut st)), (17, 22), "à vista");
+    assert_eq!(conta(&pinta(&mut host, &mut st)), (18, 22), "à vista");
     for id in [
         core_ids::INSP_LIVE_RENDER_SECTION,
         CARD_ORDERING,
@@ -371,7 +375,8 @@ fn o_censo_dos_campos_do_animated_em_uso() {
     ] {
         host.store_mut().set_collapsed(id, false);
     }
-    assert_eq!(conta(&pinta(&mut host, &mut st)), (48, 22), "no total");
+    assert_eq!(conta(&pinta(&mut host, &mut st)), (49, 22), "no total");
+    set_current_sheets(None);
     limpa();
 }
 

@@ -38,4 +38,12 @@ pub(super) fn publish_slot_image(
             h: t.h,
         })
     }));
+    let folhas = alvo
+        .bits
+        .and_then(|b| folhas::sheet_card(sim, asset_db, atlas_asset_map, ppm, b));
+    ph2d_panel_inspector::slot_sheets::set_current_sheets(folhas);
 }
+
+/// As folhas de um Animated no cartão Image (plano GEF 26 §3.3).
+#[path = "snapshots_slot_sheets.rs"]
+mod folhas;

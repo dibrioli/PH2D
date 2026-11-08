@@ -87,3 +87,22 @@ pub const INSP_SPRITE_FLIP_X: NodeId = hash_node_id("insp_sprite_flip_x");
 
 /// Vertical flip checkbox — see [`INSP_SPRITE_FLIP_X`].
 pub const INSP_SPRITE_FLIP_Y: NodeId = hash_node_id("insp_sprite_flip_y");
+
+/// ⭐ As folhas de um Animated Sprite (plano GEF 26 §3.3). A miniatura, com duas ou mais: abre o dropdown.
+pub const INSP_IMAGE_SHEET_PICK: NodeId = hash_node_id("insp_image_sheet_pick");
+/// **+ Load sheet** sob a moldura.
+pub const INSP_IMAGE_SHEET_LOAD: NodeId = hash_node_id("insp_image_sheet_load");
+/// **Delete sheet** sob a moldura (só com duas ou mais).
+pub const INSP_IMAGE_SHEET_DELETE: NodeId = hash_node_id("insp_image_sheet_delete");
+/// O véu do dropdown aberto: o clique fora fecha-o sem chegar a ninguém.
+pub const INSP_IMAGE_SHEET_SCRIM: NodeId = hash_node_id("insp_image_sheet_scrim");
+/// **Quantas folhas têm item no dropdown.** O recurso é o índice `u8` do `ShowSheet`, menos o `255` do quadro vazio
+/// (`AnimFrameRef::EMPTY_SHEET`): toda folha que o modelo exprime tem item.
+pub const MAX_SHEET_ITEMS: usize = 255;
+/// O item da folha `k` no dropdown.
+pub const INSP_IMAGE_SHEET_ITEM: [NodeId; MAX_SHEET_ITEMS] =
+    super::inspector_audio::tabela_de_linha(hash_node_id("insp_image_sheet_item"));
+/// **Remove empty frames** no cartão Animation.
+pub const INSP_ANIM_REMOVE_EMPTY_FRAMES: NodeId = hash_node_id("insp_anim_remove_empty_frames");
+/// **Delete empty animations** no cartão Animation.
+pub const INSP_ANIM_DELETE_EMPTY_ANIMS: NodeId = hash_node_id("insp_anim_delete_empty_anims");

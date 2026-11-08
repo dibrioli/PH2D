@@ -646,11 +646,13 @@ pub fn apply_edit(
         }
         ImageUseEdit::KeepSize(tamanho) => crate::sprite_card::keep_size(world, e, tamanho),
         ImageUseEdit::Pivot(p) => ph2d_sprite_edit::pivot::set_pivot(world, e, db, atlas, ppm, p),
-        ImageUseEdit::MirrorInPlace(eixo) => {
-            ph2d_sprite_edit::pivot::espelha_no_lugar(world, e, ppm, usize::from(eixo))
+        ImageUseEdit::MirrorInPlace(k) => {
+            ph2d_sprite_edit::pivot::espelha_no_lugar(world, e, ppm, k.into())
         }
         ImageUseEdit::CutAgain => crate::sprite_card::cut_again(world, e, db, atlas, facts),
         ImageUseEdit::KeepCut => crate::sprite_card::keep_cut(world, e),
+        // As folhas (plano GEF 26 F10/F11): o dropdown, Load/Delete sheet e as limpezas.
+        folhas => ph2d_anim_sheets::apply::apply(world, e, db, atlas, ppm, folhas).unwrap_or(false),
     }
 }
 

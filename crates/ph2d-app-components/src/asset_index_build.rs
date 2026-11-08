@@ -421,6 +421,11 @@ pub fn image_card(
     Some((name, thumb))
 }
 
+/// A miniatura da imagem `id` inteira (as folhas de um Animated no cartão Image, plano GEF 26 §3.3).
+pub fn image_thumb(db: &AssetDb, id: AssetId) -> Option<ph2d_asset_index::Thumb> {
+    SWATCHES.with(|sw| thumb_for(db, id, &mut sw.borrow_mut(), &mut { THUMB_BUDGET_PX }))
+}
+
 /// ⭐⭐⭐ **TIRAR UMA TEXTURA DA BIBLIOTECA** — a porta que a memória declarava não existir.
 ///
 /// ⛔⛔ Report do Enio (2026-08-30, 2.ª ronda): *«uma sprite que foi deletada do canvas não

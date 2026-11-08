@@ -20,6 +20,29 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Open the animation editor: pick frames on the sheet, set their timing and how they loop."
         }
         "panel.inspector.anim_card.frames" => "{n} {n?frame|frames}",
+        // As folhas de um Animated (plano GEF 26 §3.3).
+        "panel.inspector.anim_card.empty" => "{n} empty",
+        "panel.inspector.anim_card.alert_name" => "\u{26A0} {name}",
+        "panel.inspector.anim_card.remove_empty_frames" => "Remove empty frames",
+        "panel.inspector.anim_card.remove_empty_frames_tip" => {
+            "Take the empty frames out of every animation that still has real frames. Empty frames come from a deleted sheet; in the game they show nothing."
+        }
+        "panel.inspector.anim_card.delete_empty_anims" => "Delete empty animations",
+        "panel.inspector.anim_card.delete_empty_anims_tip" => {
+            "Delete every animation whose frames are all empty."
+        }
+        "card.insp.image_sheet_of" => "{size} \u{00b7} sheet {i} of {n}",
+        "card.insp.sheet_load" => "Load sheet",
+        "card.insp.sheet_load_tip" => {
+            "Add another image to this sprite. Its frames can go into any animation; no new animation is made."
+        }
+        "card.insp.sheet_delete" => "Delete sheet",
+        "card.insp.sheet_delete_tip" => {
+            "Remove the sheet on show. Its frames stay in the animations as empty frames, marked with a warning."
+        }
+        "card.insp.sheet_pick_tip" => {
+            "Choose which sheet the card shows. Every animation plays, whatever sheet is shown."
+        }
         "panel.inspector.anim_card.who_picks" => "Who Picks",
         "panel.inspector.anim_card.who_picks_live" => "Who Picks · LIVE",
         "panel.inspector.anim_card.me" => "Auto",

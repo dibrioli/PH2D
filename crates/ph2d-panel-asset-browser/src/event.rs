@@ -49,10 +49,7 @@ pub(crate) fn apply_event(
             let Some(c) = state.choosing.take() else {
                 return EventOutcome::Ignored;
             };
-            host.bus_mut().push(EditorAction::ChooseImage {
-                entity_bits: c.entity_bits,
-                asset,
-            });
+            host.bus_mut().push(c.answer(asset));
             host.set_panel_visible(AssetBrowserPanel::ID, false);
             EventOutcome::Consumed
         }

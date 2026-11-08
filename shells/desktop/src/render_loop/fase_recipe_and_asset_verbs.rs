@@ -63,7 +63,7 @@ impl crate::App {
         // correctamente as quatro.
         //
         if let Some(bits) = open_image_picker {
-            abre_o_seletor(hero, sim, bits);
+            abre_o_seletor(hero, sim, bits, false);
         }
         // ⭐⭐⭐ **APLICAR num degrau da escada** (ADR-0164 / F5, critério 4).
         //
@@ -218,14 +218,24 @@ impl crate::App {
     }
 }
 
-/// ⭐ O seletor de imagem para a sprite `bits` (plano GEF 12): o navegador abre com esse alvo.
-fn abre_o_seletor(hero: &mut ph2d_editor_core::screens::HeroScreen, sim: &SimWorld, bits: u64) {
-    let name = sim
-        .world()
-        .get::<ph2d_ecs::Name>(ph2d_ecs::Entity::from_bits(bits))
+/// ⭐ O seletor de imagem para a sprite `bits` (plano GEF 12): o navegador abre com esse alvo. `folha` = Load sheet
+/// (GEF 26); num Animated ainda sem imagem é a 1.ª imagem, pela porta de sempre.
+pub(crate) fn abre_o_seletor(
+    hero: &mut ph2d_editor_core::screens::HeroScreen,
+    sim: &SimWorld,
+    bits: u64,
+    folha: bool,
+) {
+    let (w, e) = (sim.world(), ph2d_ecs::Entity::from_bits(bits));
+    let name = w
+        .get::<ph2d_ecs::Name>(e)
         .map(|n| n.0.clone())
         .unwrap_or_default();
-    ph2d_panel_asset_browser::choose_image_for(bits, name);
+    if folha && !ph2d_sprite_edit::vazio::sem_imagem(w, e) {
+        ph2d_panel_asset_browser::choose_sheet_for(bits, name);
+    } else {
+        ph2d_panel_asset_browser::choose_image_for(bits, name);
+    }
     <_ as ph2d_editor_core::panel::PanelHostInternal>::set_panel_visible(
         hero,
         ph2d_panel_asset_browser::PANEL_ID,

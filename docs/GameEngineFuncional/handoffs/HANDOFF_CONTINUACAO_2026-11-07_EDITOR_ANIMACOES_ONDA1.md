@@ -66,3 +66,5 @@ Um agente auditor comparou o Animated Sprite com a seção `#animated` da Críti
 5. **Crítica B1: o vazio mostrava Look, Transform, Ordering e Advanced.** `cards_objeto::animada_vazia()`: sem esses quatro; os componentes que o artista juntou ficam. Gate `o_vazio_do_animated_so_pede_a_folha` (com sanidade: com imagem, os quatro estão).
 
 Fotos depois da cura (cenas `animado_vazio`, `animado_editor`, `animado_regra` + `PH2D_GAME_SMOKE_DRIVE=editor`): só Image no vazio; no Play a Image em «Hero», Who Picks · LIVE com a regra 3 à vista e um aviso só; no editor o quadro tocado com o fio fino. Tecto da crate continua 7545, pago com comentários de `paint.rs` e `image_use.rs`.
+
+**Smoke do dono, 07/11: OK** («acho que finalizamos aqui»). O Animated Sprite e o editor de animações fecham; a próxima onda é o Add Object (Crítica `#addobject`).

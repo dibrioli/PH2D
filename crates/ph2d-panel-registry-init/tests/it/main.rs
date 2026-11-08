@@ -88,6 +88,8 @@ mod the_pixel_export_answers_a_real_pointer;
 mod the_pixel_keys_answers_a_real_pointer;
 #[cfg(feature = "panel-pixel-prefs")]
 mod the_pixel_prefs_answers_a_real_pointer;
+#[cfg(all(feature = "panel-pixel-prefs", feature = "panel-pixel-timeline"))]
+mod the_pixel_onion_range_answers_a_real_pointer;
 #[cfg(feature = "panel-pixel-slices")]
 mod the_pixel_slices_answers_a_real_pointer;
 #[cfg(feature = "panel-pixel-tools")]

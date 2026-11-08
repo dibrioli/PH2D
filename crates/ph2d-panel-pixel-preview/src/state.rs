@@ -14,10 +14,12 @@ pub struct PixelPreviewPanelState {
     pub(crate) escala: f32,
     /// Os cantos `(x0, y0, x1, y1)` passados ao `draw_stable_image` na última pintura.
     pub(crate) destino: Option<(f64, f64, f64, f64)>,
-    /// O xadrez de transparência por baixo do quadro (o mesmo do canvas).
-    pub(crate) xadrez: ph2d_pixel_render::Checker,
+    /// O xadrez de transparência por baixo do quadro: o do documento, como no canvas.
+    pub(crate) xadrez: ph2d_pixel_render::prefs_view::DocChecker,
     /// O que o xadrez pintou na última vez: `(largura, altura, escala, x, y)` do sprite no ecrã.
     pub(crate) xadrez_pintado: Option<(u32, u32, f64, f64, f64)>,
+    /// As casas desse xadrez (`checker_layout`: colunas, linhas, lado em células do sprite).
+    pub(crate) casas: Option<(u32, u32, f64, f64)>,
 }
 
 impl PixelPreviewPanelState {
@@ -26,6 +28,13 @@ impl PixelPreviewPanelState {
     #[must_use]
     pub fn xadrez(&self) -> Option<(u32, u32, f64, f64, f64)> {
         self.xadrez_pintado
+    }
+
+    /// As casas do último xadrez: `(colunas, linhas, lado x, lado y)` em células do sprite.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn casas_do_xadrez(&self) -> Option<(u32, u32, f64, f64)> {
+        self.casas
     }
 
     /// O rect da janela como foi pintado (para os gates).
@@ -52,13 +61,19 @@ impl PixelPreviewPanelState {
 
 /// Pinta o xadrez por baixo do quadro `w × h` e regista onde (para os gates).
 pub(crate) fn desenha_xadrez(
-    xadrez: &mut ph2d_pixel_render::Checker,
-    registo: &mut Option<(u32, u32, f64, f64, f64)>,
+    st: &mut PixelPreviewPanelState,
     scene: &mut ph2d_vector::VectorScene,
     (w, h): (u32, u32),
+    c: &ph2d_pixel_core::Checker,
     to_screen: ph2d_vector::Affine,
 ) {
+    use ph2d_pixel_render::prefs_view::checker_layout;
     let [sx, _, _, _, tx, ty] = to_screen.as_coeffs();
-    *registo = Some((w, h, sx, tx, ty));
-    xadrez.draw_under(scene, w, h, to_screen);
+    st.xadrez_pintado = Some((w, h, sx, tx, ty));
+    st.casas = Some(checker_layout(
+        c,
+        (w, h),
+        ph2d_pixel_render::px_per_cell(to_screen),
+    ));
+    st.xadrez.draw_under(scene, (w, h), c, to_screen);
 }

@@ -49,6 +49,9 @@ pub(crate) fn populate(store: &mut WidgetStore) {
     for id in ids::RANGE_EDGES {
         superficie(store, id, H::RangeOutline);
     }
+    for (right, id) in [false, true].into_iter().zip(ids::ONION_EDGES) {
+        superficie(store, id, H::OnionEdge { right });
+    }
     for (id, (min, max, step)) in ids::NUMBERS {
         let value = min.max(0.0);
         store.register(

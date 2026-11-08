@@ -22,6 +22,8 @@ pub struct PreviewFrame {
     pub frame: u32,
     /// A Preview está a tocar (o botão do título vira *Stop*).
     pub playing: bool,
+    /// O xadrez do DOCUMENTO (P12 P: o mesmo do canvas, `Apply Zoom` incluído).
+    pub checker: ph2d_pixel_core::Checker,
 }
 
 thread_local! {
@@ -127,6 +129,7 @@ impl PreviewPlay {
             CURRENT.with(|c| {
                 if let Some(f) = c.borrow_mut().as_mut() {
                     f.playing = playing;
+                    f.checker = sprite.prefs().checker;
                 }
             });
             return;
@@ -142,6 +145,7 @@ impl PreviewPlay {
             seq: self.seq,
             frame: frame.0,
             playing,
+            checker: sprite.prefs().checker,
         }));
     }
 }

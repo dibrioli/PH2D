@@ -408,6 +408,7 @@ fn arma_a_preview() {
         seq: 1,
         frame: 1,
         playing: false,
+        checker: Default::default(),
     }));
 }
 

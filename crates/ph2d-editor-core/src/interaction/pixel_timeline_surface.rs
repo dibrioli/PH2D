@@ -23,6 +23,9 @@ pub enum PixelTimelineHitKind {
     TagEdge { index: u16, right: bool },
     /// A moldura do intervalo escolhido: arrastar move os quadros dele.
     RangeOutline,
+    /// O colchete `[` (`right = false`) ou `]` da faixa do onion (P12 R4): arrastar muda quantos
+    /// quadros antes / depois do actual.
+    OnionEdge { right: bool },
 }
 
 /// Um gesto de ponteiro na linha do tempo do Pixel (posições globais).
@@ -100,7 +103,9 @@ impl WidgetStore {
             .and_then(|a| self.pixel_timeline_surface_at_id(a));
         let (_, kind) = agarrada.or_else(|| self.pixel_timeline_surface_at_id(hover?))?;
         match kind {
-            PixelTimelineHitKind::TagEdge { .. } => Some(L::ResizeEw),
+            PixelTimelineHitKind::TagEdge { .. } | PixelTimelineHitKind::OnionEdge { .. } => {
+                Some(L::ResizeEw)
+            }
             PixelTimelineHitKind::RangeOutline if agarrada.is_some() => Some(L::Grabbing),
             PixelTimelineHitKind::RangeOutline => Some(L::Grab),
             _ => None,

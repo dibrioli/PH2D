@@ -27,6 +27,7 @@ fn mesa(cartoes: bool) -> Mesa<PixelPreviewPanel> {
         seq: 1,
         frame: 7,
         playing: false,
+        checker: Default::default(),
     }));
     let mut m0 = Mesa::nova(PixelPreviewPanelState::default());
     m0.host.set_panel_visible(PixelPreviewPanel::ID, true);

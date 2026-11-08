@@ -70,6 +70,8 @@ pub(crate) enum Arrasto {
         right: bool,
         alvo: usize,
     },
+    /// Um colchete da faixa do onion ([`crate::onion_faixa`]).
+    Onion { right: bool },
     /// A moldura do intervalo, agora sobre a fronteira `alvo`; o rato premiu em `de` e está em `a`
     /// (o bloco voa com ele, [`crate::paint_grid`]); `copy` = Ctrl premido agora.
     Bloco {
@@ -320,6 +322,10 @@ fn pedidos(
             st.arrasto = Some(Arrasto::Ponta { index, right, alvo });
             Vec::new()
         }
+        (H::OnionEdge { right }, GesturePhase::Begin) => {
+            st.arrasto = Some(Arrasto::Onion { right });
+            Vec::new()
+        }
         (H::RangeOutline, GesturePhase::Begin) => {
             st.arrasto = Some(Arrasto::Bloco {
                 alvo: geo.fronteira(g.x, n),
@@ -362,6 +368,10 @@ fn pedidos(
                         let (from, to) = tag_previsto(st, index, t.from, t.to);
                         PixelRequest::TagRange { index, from, to }
                     })
+                }
+                Some(Arrasto::Onion { right }) => {
+                    crate::onion_faixa::arrasta(info, right, geo.col(g.x, n));
+                    None
                 }
                 Some(Arrasto::Bloco { de, .. }) => {
                     let (alvo, a, copy) = (geo.fronteira(g.x, n), (g.x, g.y), g.mods.cmd);

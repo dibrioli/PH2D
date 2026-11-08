@@ -183,6 +183,12 @@ pub fn tag_edge_id(i: usize, right: bool) -> NodeId {
     hash_node_id_runtime(&format!("pixel_timeline.tag.{i}.edge.{right}"))
 }
 
+/// O colchete `[` (`right = false`) ou `]` da faixa do onion (R4): arrastar muda o alcance.
+pub const ONION_EDGES: [NodeId; 2] = [
+    hash_node_id("pixel_timeline.onion.edge.left"),
+    hash_node_id("pixel_timeline.onion.edge.right"),
+];
+
 /// Os quatro lados da moldura do intervalo escolhido (arrastar move os quadros dele).
 pub const RANGE_EDGES: [NodeId; 4] = [
     hash_node_id("pixel_timeline.range.edge.top"),

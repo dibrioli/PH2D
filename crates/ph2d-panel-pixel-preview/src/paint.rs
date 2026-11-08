@@ -188,20 +188,14 @@ pub(crate) fn paint(st: &mut PixelPreviewPanelState, ctx: &mut PaintCtx) {
         f64::from(y + dh),
     );
     st.destino = Some(dest);
-    if let Some((_, img)) = &st.imagem {
+    if let Some((_, img)) = st.imagem.clone() {
         ctx.scene.push_clip(&rect_to_vello(body));
         // O transparente lê-se no xadrez, como no canvas (o do Aseprite: a Preview mostra o fundo).
         let to_screen = ph2d_vector::Affine::translate((f64::from(x), f64::from(y)))
             * ph2d_vector::Affine::scale(f64::from(escala));
-        crate::state::desenha_xadrez(
-            &mut st.xadrez,
-            &mut st.xadrez_pintado,
-            ctx.scene,
-            (f.w, f.h),
-            to_screen,
-        );
+        crate::state::desenha_xadrez(st, ctx.scene, (f.w, f.h), &f.checker, to_screen);
         ctx.scene
-            .draw_stable_image(img, dest, ph2d_vector::ImageQuality::Low);
+            .draw_stable_image(&img, dest, ph2d_vector::ImageQuality::Low);
         ctx.scene.pop_layer();
     }
 }

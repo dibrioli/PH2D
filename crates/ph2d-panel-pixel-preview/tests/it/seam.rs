@@ -35,6 +35,7 @@ impl Palco {
             seq: 1,
             frame: 7,
             playing: false,
+            checker: Default::default(),
         }));
         let mut p = Self {
             host: MockPanelHost::with_panel::<PixelPreviewPanel>(),
@@ -245,5 +246,44 @@ fn o_xadrez_pinta_se_por_baixo_do_quadro_a_escala_e_ao_canto_da_imagem() {
     assert!(
         (x - x0).abs() < 0.5 && (y - y0).abs() < 0.5,
         "canto ({x}, {y}) ≠ ({x0}, {y0})"
+    );
+}
+
+/// P12 P: o xadrez da Preview é o do DOCUMENTO, com a lei do canvas — `Apply Zoom` = casas em
+/// células do sprite; sem ele, em píxeis do ecrã (o lado em células é `w / escala`).
+#[test]
+fn the_preview_checker_is_the_documents_with_the_canvas_apply_zoom_rule() {
+    let mut p = Palco::novo();
+    let (cols, rows, kx, ky) = p.st.casas_do_xadrez().expect("o xadrez foi pintado");
+    assert_eq!(
+        (cols, rows, kx, ky),
+        (1, 1, 16.0, 16.0),
+        "de fábrica: 16 células"
+    );
+    let checker = ph2d_pixel_core::Checker {
+        w: 4,
+        h: 2,
+        apply_zoom: false,
+        ..Default::default()
+    };
+    publish(Some(PreviewFrame {
+        rgba: Arc::new(vec![255; 16 * 8 * 4]),
+        w: 16,
+        h: 8,
+        seq: 2,
+        frame: 7,
+        playing: false,
+        checker,
+    }));
+    p.pinta();
+    let s = f64::from(p.st.escala());
+    let (cols, rows, kx, ky) = p.st.casas_do_xadrez().expect("o xadrez foi pintado");
+    assert!(
+        (kx - 4.0 / s).abs() < 1e-6 && (ky - 2.0 / s).abs() < 1e-6,
+        "sem Apply Zoom o lado é de ecrã: {kx} {ky} a {s}"
+    );
+    assert_eq!(
+        (cols, rows),
+        ((16.0 / kx).ceil() as u32, (8.0 / ky).ceil() as u32)
     );
 }

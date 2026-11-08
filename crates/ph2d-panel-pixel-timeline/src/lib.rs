@@ -17,6 +17,7 @@ mod barra_cartoes;
 mod event;
 mod gestos;
 pub mod ids;
+mod onion_faixa;
 mod paint;
 mod paint_grid;
 mod paint_props;

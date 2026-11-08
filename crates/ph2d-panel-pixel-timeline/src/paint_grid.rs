@@ -115,6 +115,7 @@ pub(crate) fn paint(
     ctx.scene.push_clip(&rect_to_vello(colunas));
     ctx.host.hit_index_mut().push_clip(colunas);
     cabecalhos(ctx, info, &g, &duracoes);
+    crate::onion_faixa::pinta(ctx, original, &g);
     let rename_tag = st.rename_tag.map(|(t, _)| t);
     for (i, t) in info.tags.iter().enumerate() {
         let (from, to) = crate::gestos::tag_previsto(st, i, t.from, t.to);

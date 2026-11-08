@@ -128,3 +128,59 @@ fn o_cartao_onion_skin_abre_pelo_pedido_do_onion_e_muda_o_documento() {
     );
     let _ = std::fs::remove_dir_all(pasta);
 }
+
+/// A amostra `Color` da grade: o ponteiro abre o seletor nela; a cor escolhida chega ao documento;
+/// fechar o seletor não muda mais nada (uma mudança só).
+#[test]
+fn the_grid_colour_swatch_opens_the_picker_and_the_pick_changes_the_documents_grid_once() {
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let doc = PixelPrefs::default();
+    assert_eq!(canal::troca_em(Some(doc), None), None);
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let mut hero = HeroScreen::new(NodeId(1));
+    hero.panel_visibility.insert(PANEL_PIXEL_PREFS, true);
+    assenta(&mut hero, &mut ts, 60);
+    let amostra = ids::cor(canal::Cor::Grid);
+    let r = hero
+        .hit_index
+        .rect_for(amostra)
+        .expect("a amostra da grade");
+    let (x, y) = (r.x + r.w * 0.5, r.y + r.h * 0.5);
+    let arena = Bump::new();
+    let mut ev = hero
+        .handle_pointer(ptr(PointerKind::Down, x, y), &arena)
+        .to_vec();
+    ev.extend_from_slice(hero.handle_pointer(ptr(PointerKind::Up, x, y), &arena));
+    for e in ev {
+        hero.apply_event(e);
+    }
+    assenta(&mut hero, &mut ts, 2);
+    assert_eq!(hero.store.picker_target(), Some(amostra), "o seletor abriu");
+    assert_eq!(
+        canal::troca_em(Some(doc), None),
+        None,
+        "abrir não muda nada"
+    );
+    let quer = [10, 200, 30, 255];
+    hero.store.set_blender_value(
+        ph2d_editor_core::ids::INSP_BLENDER_PICKER,
+        ph2d_tokens::ColorValue::from_rgba8(quer[0], quer[1], quer[2], quer[3]),
+    );
+    hero.store
+        .note_colour_pick(ph2d_editor_core::ids::INSP_BLENDER_PICKER);
+    assenta(&mut hero, &mut ts, 3);
+    let p = canal::troca_em(Some(doc), None).expect("a cor mudou");
+    assert_eq!(p.grid.color, quer);
+    assert_eq!(
+        PixelPrefs {
+            grid: doc.grid,
+            ..p
+        },
+        doc,
+        "só a grade mudou"
+    );
+    assenta(&mut hero, &mut ts, 2);
+    hero.store.set_picker_target(None);
+    assenta(&mut hero, &mut ts, 2);
+    assert_eq!(canal::troca_em(Some(p), None), None, "fechar não muda mais");
+}

@@ -5,7 +5,7 @@
 use crate::{Gesto, no_quadro};
 use ph2d_pixel_core::selection::Mask;
 use ph2d_pixel_core::transform::{Floating, Image, lift, resize_nearest, stamp};
-use ph2d_pixel_core::{CelKey, Op, Rect, SliceId, SliceShape, Sprite, Stroke, apply};
+use ph2d_pixel_core::{CelKey, Op, Rect, SliceId, SliceKey, SliceShape, Sprite, Stroke, apply};
 
 /// O par de caixas (antes, depois) das slices que mudaram de caixa neste gesto.
 #[must_use]
@@ -65,13 +65,52 @@ fn pixels(s: &Sprite, key: CelKey, caixas: &[(Rect, Rect)], fundo: u32) -> Vec<O
     ops
 }
 
-/// **O passo inteiro**: `slices` e os píxeis de cada caixa; sem caixas, `slices` só.
+/// A cel é LIGADA (§10): os píxeis mudam em cada quadro que a partilha, e a slice também, onde lá
+/// caía na MESMA caixa que no quadro de `key`; um quadro com outra caixa não emoldurava esta arte.
+fn nos_ligados(s: &Sprite, slices: Op, key: CelKey) -> Op {
+    let (Op::Slices(novas), Some(aqui)) = (&slices, s.frame_index(key.1)) else {
+        return slices;
+    };
+    let dono = s.owner(key);
+    let ligados: Vec<u32> = (0..s.frames().len())
+        .filter(|&i| i != aqui && s.entry((key.0, s.frames()[i].id)).is_some())
+        .filter(|&i| s.owner((key.0, s.frames()[i].id)) == dono)
+        .map(|i| i as u32)
+        .collect();
+    let mut out = novas.clone();
+    for c in &mut out {
+        let Some(velha) = s.slice(c.id) else { continue };
+        let (Some(era), Some(fica)) = (velha.shape_at(aqui as u32), c.shape_at(aqui as u32)) else {
+            continue;
+        };
+        for &f in ligados
+            .iter()
+            .filter(|&&f| era != fica && velha.shape_at(f) == Some(era))
+        {
+            match c.keys.binary_search_by_key(&f, |k| k.frame) {
+                Ok(i) => c.keys[i].shape = fica,
+                Err(i) => c.keys.insert(
+                    i,
+                    SliceKey {
+                        frame: f,
+                        shape: fica,
+                    },
+                ),
+            }
+        }
+        c.keys.dedup_by(|b, a| a.shape == b.shape);
+    }
+    Op::Slices(out)
+}
+
+/// **O passo inteiro**: `slices` (também nos quadros que partilham a cel) e os píxeis de cada
+/// caixa; sem caixas, `slices` só.
 #[must_use]
 pub fn com_pixels(s: &Sprite, slices: Op, key: CelKey, caixas: &[(Rect, Rect)], fundo: u32) -> Op {
     if caixas.is_empty() {
         return slices;
     }
-    let mut ops = vec![slices];
+    let mut ops = vec![nos_ligados(s, slices, key)];
     ops.extend(pixels(s, key, caixas, fundo));
     Op::Batch(ops)
 }

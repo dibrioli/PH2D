@@ -62,7 +62,10 @@ fn escrever_pela_fisica_muda_o_que_o_catalogo_le() {
         let antes = ler(&retrato(&sim, b).expect("retrato"), k.campo).expect("campo");
         let (_, ficou) = escrever(&mut sim, &reg, b, k.campo, outro(k, antes)).expect("escreve");
         assert!(!perto(ficou, antes), "{k:?}: a escrita não pegou ({antes})");
-        let lido = cc::ler_pelo_catalogo(&reg, sim.world(), e, c, fid, x)
+        // Opção B: o campo de forma mora na forma principal; o resto, no corpo.
+        let dono =
+            ph2d_ecs::Entity::from_bits(ph2d_physics_ecs::dono_do_campo(sim.world(), b, k.campo));
+        let lido = cc::ler_pelo_catalogo(&reg, sim.world(), dono, c, fid, x)
             .unwrap_or_else(|| panic!("{c}.{fid}.{x}: o catálogo não lê"));
         assert!(
             perto(lido, ficou),

@@ -35,7 +35,10 @@ fn fit_to_picture_volta_a_acompanhar_a_imagem() {
     assert_eq!(segue(&sim), Some(false), "mudada à mão");
     apply(&mut sim, e, PhysicsFieldEdit::FitToPicture);
     assert_eq!(segue(&sim), Some(true));
-    let c = *sim.world().get::<Collider>(e).expect("forma");
+    let c = *sim
+        .world()
+        .get::<Collider>(shape_of(&sim, e))
+        .expect("forma");
     assert_eq!(c.offset, [0.0, 0.0]);
     assert_eq!(c.density, 3.0, "o Fit só mexe na medida e no sítio");
     apply(&mut sim, e, PhysicsFieldEdit::Shape(0));
@@ -47,7 +50,12 @@ fn fit_to_picture_volta_a_acompanhar_a_imagem() {
 fn fit_to_picture_mantem_o_tipo_da_forma() {
     let (mut sim, e) = sprite_scene(); // 2 × 1 m
     apply(&mut sim, e, PhysicsFieldEdit::Add);
-    let forma = |sim: &SimWorld| sim.world().get::<Collider>(e).expect("forma").shape;
+    let forma = |sim: &SimWorld| {
+        sim.world()
+            .get::<Collider>(shape_of(&sim, e))
+            .expect("forma")
+            .shape
+    };
     let segue = |sim: &SimWorld| info_de(sim, e, 0).shape_follows;
     apply(&mut sim, e, PhysicsFieldEdit::OffsetX(0.5));
     apply(&mut sim, e, PhysicsFieldEdit::Shape(0));
@@ -58,7 +66,10 @@ fn fit_to_picture_mantem_o_tipo_da_forma() {
         "metade do menor lado"
     );
     assert_eq!(
-        sim.world().get::<Collider>(e).expect("forma").offset,
+        sim.world()
+            .get::<Collider>(shape_of(&sim, e))
+            .expect("forma")
+            .offset,
         [0.0, 0.0]
     );
     assert_eq!(segue(&sim), Some(false), "a bola nunca diz que acompanha");
@@ -104,7 +115,13 @@ fn density_fica_guardada_ao_trocar_de_tipo() {
     apply(&mut sim, e, PhysicsFieldEdit::Density(7.5));
     for kind in [1, 2, 0] {
         apply(&mut sim, e, PhysicsFieldEdit::Kind(kind));
-        assert_eq!(sim.world().get::<Collider>(e).expect("forma").density, 7.5);
+        assert_eq!(
+            sim.world()
+                .get::<Collider>(shape_of(&sim, e))
+                .expect("forma")
+                .density,
+            7.5
+        );
     }
 }
 
@@ -126,21 +143,28 @@ fn undoing_remove_brings_body_and_shape_back() {
         out
     };
     let antes = snap(&mut sim);
-    let forma = *sim.world().get::<Collider>(e).expect("forma");
+    let forma = *sim
+        .world()
+        .get::<Collider>(shape_of(&sim, e))
+        .expect("forma");
     apply(&mut sim, e, PhysicsFieldEdit::Remove);
     assert_ne!(antes, snap(&mut sim), "o Remove não daria passo de undo");
     // Como o `undo::restore`: despawna e repõe; os bits mudam, o objecto é o que tem Transform.
     let _ = sim.world_mut().despawn(e);
     ph2d_ecs::scene::snapshot_to_world(sim.world_mut(), &antes, &reg).expect("restore");
-    let de_volta = sim
+    // Opção B: a forma volta na filha principal do corpo, nunca no próprio corpo.
+    let (corpo, kind) = sim
         .world_mut()
-        .query::<(Entity, &RigidBody, &Collider)>()
+        .query::<(Entity, &RigidBody)>()
         .iter(sim.world())
-        .map(|(e, b, c)| (e, b.kind, *c))
+        .map(|(e, b)| (e, b.kind))
         .next()
-        .expect("o corpo e a forma voltam");
-    assert_eq!(de_volta.1, BodyKind::Static);
-    assert_eq!(de_volta.2, forma);
+        .expect("o corpo volta");
+    let de_volta = ph2d_physics_ecs::main_shape(sim.world(), corpo)
+        .and_then(|f| sim.world().get::<Collider>(f).copied())
+        .expect("a forma volta");
+    assert_eq!(kind, BodyKind::Static);
+    assert_eq!(de_volta, forma);
 }
 
 /// ⭐ **Corpo sem forma** (dono 08/11): a info diz `body_without_shape`, o «Add Shape» dá a caixa da

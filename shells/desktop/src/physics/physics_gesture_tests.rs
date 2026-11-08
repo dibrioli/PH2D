@@ -369,9 +369,12 @@ fn adding_a_body_to_a_plain_sprite_still_seeds_a_collider_from_it() {
         "a fixture tem de comecar SEM collider, senao este gate mede o outro caso"
     );
     apply(&mut sim, e, PhysicsFieldEdit::Add);
+    // Opção B: o collider semeado nasce na filha principal «Collision Shape».
+    let forma = ph2d_physics_ecs::main_shape(sim.world(), e)
+        .expect("um sprite pelado tem de GANHAR um collider");
     let col = sim
         .world()
-        .get::<Collider>(e)
+        .get::<Collider>(forma)
         .expect("um sprite pelado tem de GANHAR um collider");
     assert!(
         matches!(col.shape, ColliderShape::Cuboid { half_x, half_y } if half_x > 0.0 && half_y > 0.0),

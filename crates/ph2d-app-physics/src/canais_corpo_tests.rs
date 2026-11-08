@@ -92,20 +92,22 @@ fn a_forma_decide_as_medidas() {
     let reg = registry();
     let (mut sim, e) = corpo();
     let b = e.to_bits();
+    // Opção B: a forma mora na filha principal do corpo.
+    let s = ph2d_physics_ecs::main_shape(sim.world(), e).expect("forma");
     let _ = escrever(&mut sim, &reg, b, f::RAIO, 0.3);
     assert!(matches!(
-        sim.world().get::<Collider>(e).unwrap().shape,
+        sim.world().get::<Collider>(s).unwrap().shape,
         ColliderShape::Cuboid { .. }
     ));
     let _ = escrever(&mut sim, &reg, b, f::FORMA, 0.2);
     let _ = escrever(&mut sim, &reg, b, f::RAIO, 0.3);
     assert_eq!(
-        sim.world().get::<Collider>(e).unwrap().shape,
+        sim.world().get::<Collider>(s).unwrap().shape,
         ColliderShape::Ball { radius: 0.3 }
     );
     let _ = escrever(&mut sim, &reg, b, f::CAMADA, 99.0);
     assert_eq!(
-        usize::from(sim.world().get::<Collider>(e).unwrap().layer),
+        usize::from(sim.world().get::<Collider>(s).unwrap().layer),
         insp::INSP_PHYS_LAYER.len() - 1
     );
 }
@@ -133,11 +135,13 @@ fn o_canal_e_a_edicao_do_painel_dao_o_mesmo_corpo() {
 fn a_peca_publica_so_a_face_dela() {
     let (mut sim, e) = sprite_scene();
     apply(&mut sim, e, PhysicsFieldEdit::Add);
+    // Opção B: o colisor nasce na filha principal; sem o corpo, é ela a peça.
+    let peca = ph2d_physics_ecs::main_shape(sim.world(), e).expect("forma");
     sim.world_mut().entity_mut(e).remove::<RigidBody>();
     let solta = sim.world_mut().spawn(Transform::default()).id();
-    publicar(&mut sim, &[e.to_bits(), solta.to_bits()]);
+    publicar(&mut sim, &[peca.to_bits(), solta.to_bits()]);
     let l = sim.world().resource::<CanaisLidos>();
-    let campos: Vec<u16> = l.campos(e.to_bits()).map(|(kk, _)| kk.campo).collect();
+    let campos: Vec<u16> = l.campos(peca.to_bits()).map(|(kk, _)| kk.campo).collect();
     assert_eq!(
         campos,
         [

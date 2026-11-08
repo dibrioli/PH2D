@@ -101,7 +101,9 @@ fn the_collider_of_a_generated_body_matches_the_sprite_box() {
     let (mut sim, torso) = doll();
     rig(&mut sim, torso);
     let head = named(&mut sim, "Head");
-    let col = sim.world().get::<Collider>(head).expect("collider");
+    // Opção B: a forma do corpo gerado mora na filha principal, não no corpo.
+    let forma = ph2d_physics_ecs::main_shape(sim.world(), head).expect("collider");
+    let col = sim.world().get::<Collider>(forma).expect("collider");
     match col.shape {
         ColliderShape::Cuboid { half_x, half_y } => {
             assert!((half_x - 0.2).abs() < 1e-4, "half_x = {half_x}");

@@ -91,6 +91,14 @@ pub fn apply(sim: &mut SimWorld, e: Entity, edit: PhysicsFieldEdit) {
     apply_editor_commands(sim.world_mut(), &queue, &reg).expect("commit");
 }
 
+/// **Where a body's shape-side data lives** (option B): its main shape, the child «Collision
+/// Shape» ([`ph2d_physics_ecs::main_shape`]); `e` itself when it has no shape at all, so an
+/// "is it absent?" probe on a bare sprite still looks at the sprite.
+#[cfg(test)]
+pub(super) fn shape_of(sim: &SimWorld, e: Entity) -> Entity {
+    ph2d_physics_ecs::main_shape(sim.world(), e).unwrap_or(e)
+}
+
 /// **The collider is the sprite's own box.** This is the rule that prevents
 /// the mismatch Enio reported on 2026-07-18 from ever being *authored*: a
 /// default ball under a 2×1 sprite would draw as a rectangle and behave as a
@@ -100,7 +108,10 @@ fn the_added_collider_is_boxed_to_the_sprite() {
     let (mut sim, e) = sprite_scene();
     apply(&mut sim, e, PhysicsFieldEdit::Add);
 
-    let col = *sim.world().get::<Collider>(e).expect("collider attached");
+    let col = *sim
+        .world()
+        .get::<Collider>(shape_of(&sim, e))
+        .expect("collider attached");
     assert_eq!(
         col.shape,
         ColliderShape::Cuboid {
@@ -158,7 +169,7 @@ fn editing_one_field_preserves_the_rest() {
     apply(&mut sim, e, PhysicsFieldEdit::Restitution(0.9));
     apply(&mut sim, e, PhysicsFieldEdit::Friction(1.25));
 
-    let col = *sim.world().get::<Collider>(e).unwrap();
+    let col = *sim.world().get::<Collider>(shape_of(&sim, e)).unwrap();
     assert_eq!(col.density, 4.0);
     assert_eq!(col.restitution, 0.9);
     assert_eq!(col.friction, 1.25);
@@ -180,7 +191,7 @@ fn switching_shape_keeps_the_footprint() {
     let (mut sim, e) = sprite_scene();
     apply(&mut sim, e, PhysicsFieldEdit::Add); // box 1.0 × 0.5
     apply(&mut sim, e, PhysicsFieldEdit::Shape(0)); // → ball
-    let col = *sim.world().get::<Collider>(e).unwrap();
+    let col = *sim.world().get::<Collider>(shape_of(&sim, e)).unwrap();
     assert_eq!(
         col.shape,
         ColliderShape::Ball { radius: 0.5 },
@@ -190,7 +201,10 @@ fn switching_shape_keeps_the_footprint() {
 
     apply(&mut sim, e, PhysicsFieldEdit::Shape(1)); // → box again
     assert_eq!(
-        sim.world().get::<Collider>(e).unwrap().shape,
+        sim.world()
+            .get::<Collider>(shape_of(&sim, e))
+            .unwrap()
+            .shape,
         ColliderShape::Cuboid {
             half_x: 0.5,
             half_y: 0.5,
@@ -265,14 +279,18 @@ fn combine_rule_read_modify_writes_and_detaches_at_neutral() {
     apply(&mut sim, e, PhysicsFieldEdit::Add);
     // No override yet: a fresh body carries no component.
     assert!(
-        sim.world().get::<MaterialCombine>(e).is_none(),
+        sim.world()
+            .get::<MaterialCombine>(shape_of(&sim, e))
+            .is_none(),
         "a freshly-added body should carry no MaterialCombine (Average is the default)"
     );
 
     // Bounce Combine → Max: the component attaches with friction still Average.
     apply(&mut sim, e, PhysicsFieldEdit::RestitutionCombine(3));
     assert_eq!(
-        sim.world().get::<MaterialCombine>(e).copied(),
+        sim.world()
+            .get::<MaterialCombine>(shape_of(&sim, e))
+            .copied(),
         Some(MaterialCombine {
             restitution: CombineRule::Max,
             friction: CombineRule::Average,
@@ -283,7 +301,9 @@ fn combine_rule_read_modify_writes_and_detaches_at_neutral() {
     // Friction Combine → Min: RESTITUTION MUST BE PRESERVED (the read-modify-write).
     apply(&mut sim, e, PhysicsFieldEdit::FrictionCombine(1));
     assert_eq!(
-        sim.world().get::<MaterialCombine>(e).copied(),
+        sim.world()
+            .get::<MaterialCombine>(shape_of(&sim, e))
+            .copied(),
         Some(MaterialCombine {
             restitution: CombineRule::Max,
             friction: CombineRule::Min,
@@ -295,7 +315,9 @@ fn combine_rule_read_modify_writes_and_detaches_at_neutral() {
     // Bounce Combine back to Average: still attached (friction is not neutral).
     apply(&mut sim, e, PhysicsFieldEdit::RestitutionCombine(0));
     assert_eq!(
-        sim.world().get::<MaterialCombine>(e).copied(),
+        sim.world()
+            .get::<MaterialCombine>(shape_of(&sim, e))
+            .copied(),
         Some(MaterialCombine {
             restitution: CombineRule::Average,
             friction: CombineRule::Min,
@@ -306,7 +328,9 @@ fn combine_rule_read_modify_writes_and_detaches_at_neutral() {
     // Friction Combine back to Average: now BOTH are neutral → the component detaches.
     apply(&mut sim, e, PhysicsFieldEdit::FrictionCombine(0));
     assert!(
-        sim.world().get::<MaterialCombine>(e).is_none(),
+        sim.world()
+            .get::<MaterialCombine>(shape_of(&sim, e))
+            .is_none(),
         "with both rules back at Average the component must detach — a project file \
          should not carry a no-op {{Average, Average}}"
     );
@@ -405,7 +429,7 @@ fn the_force_zone_read_modify_writes_and_is_refused_on_a_solid_collider() {
     // SOLID (what Add produces): the edit is refused outright.
     apply(&mut sim, e, PhysicsFieldEdit::ForceX(5.0));
     assert!(
-        sim.world().get::<AreaEffector>(e).is_none(),
+        sim.world().get::<AreaEffector>(shape_of(&sim, e)).is_none(),
         "a Force edit on a SOLID collider must be refused — the narrow phase records \
          no overlap for it, so the force would be authored and inert"
     );
@@ -414,7 +438,7 @@ fn the_force_zone_read_modify_writes_and_is_refused_on_a_solid_collider() {
     apply(&mut sim, e, PhysicsFieldEdit::Sensor(true));
     apply(&mut sim, e, PhysicsFieldEdit::ForceX(5.0));
     assert_eq!(
-        sim.world().get::<AreaEffector>(e).copied(),
+        sim.world().get::<AreaEffector>(shape_of(&sim, e)).copied(),
         Some(AreaEffector { force: [5.0, 0.0] }),
         "setting Force X on a sensor should attach the component"
     );
@@ -422,7 +446,9 @@ fn the_force_zone_read_modify_writes_and_is_refused_on_a_solid_collider() {
     // The other axis must PRESERVE the first — they share one component.
     apply(&mut sim, e, PhysicsFieldEdit::ForceY(-2.0));
     assert_eq!(
-        sim.world().get::<AreaEffector>(e).map(|a| a.force),
+        sim.world()
+            .get::<AreaEffector>(shape_of(&sim, e))
+            .map(|a| a.force),
         Some([5.0, -2.0]),
         "setting Force Y must not reset Force X"
     );
@@ -431,7 +457,7 @@ fn the_force_zone_read_modify_writes_and_is_refused_on_a_solid_collider() {
     apply(&mut sim, e, PhysicsFieldEdit::ForceX(0.0));
     apply(&mut sim, e, PhysicsFieldEdit::ForceY(0.0));
     assert!(
-        sim.world().get::<AreaEffector>(e).is_none(),
+        sim.world().get::<AreaEffector>(shape_of(&sim, e)).is_none(),
         "a zero force is neutral — the component must detach"
     );
 }
@@ -453,7 +479,7 @@ fn the_area_drag_is_its_own_component_and_leaves_the_force_alone() {
     // SOLID: refused, exactly like Force.
     apply(&mut sim, e, PhysicsFieldEdit::AreaDrag(4.0));
     assert!(
-        sim.world().get::<AreaDrag>(e).is_none(),
+        sim.world().get::<AreaDrag>(shape_of(&sim, e)).is_none(),
         "an area-drag edit on a SOLID collider must be refused — the narrow phase \
          records no overlap for it"
     );
@@ -461,32 +487,37 @@ fn the_area_drag_is_its_own_component_and_leaves_the_force_alone() {
     apply(&mut sim, e, PhysicsFieldEdit::Sensor(true));
     apply(&mut sim, e, PhysicsFieldEdit::AreaDrag(4.0));
     assert_eq!(
-        sim.world().get::<AreaDrag>(e).copied(),
+        sim.world().get::<AreaDrag>(shape_of(&sim, e)).copied(),
         Some(AreaDrag(4.0)),
         "setting Drag on a sensor should attach the component"
     );
     assert!(
-        sim.world().get::<AreaEffector>(e).is_none(),
+        sim.world().get::<AreaEffector>(shape_of(&sim, e)).is_none(),
         "a zone that only RESISTS must carry no force component — that is the whole \
          reason the two are separate"
     );
 
     // And the force lands beside it without disturbing the drag.
     apply(&mut sim, e, PhysicsFieldEdit::ForceY(3.0));
-    assert_eq!(sim.world().get::<AreaDrag>(e).copied(), Some(AreaDrag(4.0)));
     assert_eq!(
-        sim.world().get::<AreaEffector>(e).map(|a| a.force),
+        sim.world().get::<AreaDrag>(shape_of(&sim, e)).copied(),
+        Some(AreaDrag(4.0))
+    );
+    assert_eq!(
+        sim.world()
+            .get::<AreaEffector>(shape_of(&sim, e))
+            .map(|a| a.force),
         Some([0.0, 3.0])
     );
 
     // Zero (and negative — a drag that ADDS energy is not a thing) detaches.
     apply(&mut sim, e, PhysicsFieldEdit::AreaDrag(-2.0));
     assert!(
-        sim.world().get::<AreaDrag>(e).is_none(),
+        sim.world().get::<AreaDrag>(shape_of(&sim, e)).is_none(),
         "a non-positive drag is neutral — the component must detach"
     );
     assert!(
-        sim.world().get::<AreaEffector>(e).is_some(),
+        sim.world().get::<AreaEffector>(shape_of(&sim, e)).is_some(),
         "detaching the drag must not take the force with it"
     );
 }
@@ -532,7 +563,7 @@ fn every_presence_marker_attaches_detaches_and_is_refused_without_a_body() {
         ),
         (
             PhysicsFieldEdit::OneWay,
-            |s, e| s.world().get::<OneWayPlatform>(e).is_some(),
+            |s, e| s.world().get::<OneWayPlatform>(shape_of(s, e)).is_some(),
             "OneWayPlatform",
         ),
         (
@@ -581,7 +612,7 @@ fn the_area_buoyancy_is_its_own_component_and_leaves_the_siblings_alone() {
     // SÓLIDO: recusado, exatamente como Force e Drag.
     apply(&mut sim, e, PhysicsFieldEdit::AreaDensity(6.0));
     assert!(
-        sim.world().get::<AreaBuoyancy>(e).is_none(),
+        sim.world().get::<AreaBuoyancy>(shape_of(&sim, e)).is_none(),
         "densidade de fluido num collider SÓLIDO tem de ser recusada — a narrow phase \
          não registra sobreposição para ele"
     );
@@ -589,12 +620,13 @@ fn the_area_buoyancy_is_its_own_component_and_leaves_the_siblings_alone() {
     apply(&mut sim, e, PhysicsFieldEdit::Sensor(true));
     apply(&mut sim, e, PhysicsFieldEdit::AreaDensity(6.0));
     assert_eq!(
-        sim.world().get::<AreaBuoyancy>(e).copied(),
+        sim.world().get::<AreaBuoyancy>(shape_of(&sim, e)).copied(),
         Some(AreaBuoyancy(6.0)),
         "num sensor, a densidade anexa o componente"
     );
     assert!(
-        sim.world().get::<AreaEffector>(e).is_none() && sim.world().get::<AreaDrag>(e).is_none(),
+        sim.world().get::<AreaEffector>(shape_of(&sim, e)).is_none()
+            && sim.world().get::<AreaDrag>(shape_of(&sim, e)).is_none(),
         "uma poça que só faz BOIAR não pode carregar blob de força nem de arrasto — é a \
          razão inteira de serem três componentes"
     );
@@ -604,9 +636,11 @@ fn the_area_buoyancy_is_its_own_component_and_leaves_the_siblings_alone() {
     apply(&mut sim, e, PhysicsFieldEdit::ForceX(1.0));
     assert_eq!(
         (
-            sim.world().get::<AreaBuoyancy>(e).copied(),
-            sim.world().get::<AreaDrag>(e).copied(),
-            sim.world().get::<AreaEffector>(e).map(|a| a.force),
+            sim.world().get::<AreaBuoyancy>(shape_of(&sim, e)).copied(),
+            sim.world().get::<AreaDrag>(shape_of(&sim, e)).copied(),
+            sim.world()
+                .get::<AreaEffector>(shape_of(&sim, e))
+                .map(|a| a.force),
         ),
         (
             Some(AreaBuoyancy(6.0)),
@@ -618,9 +652,9 @@ fn the_area_buoyancy_is_its_own_component_and_leaves_the_siblings_alone() {
     // Zero destaca só o dele.
     apply(&mut sim, e, PhysicsFieldEdit::AreaDensity(0.0));
     assert!(
-        sim.world().get::<AreaBuoyancy>(e).is_none()
-            && sim.world().get::<AreaDrag>(e).is_some()
-            && sim.world().get::<AreaEffector>(e).is_some(),
+        sim.world().get::<AreaBuoyancy>(shape_of(&sim, e)).is_none()
+            && sim.world().get::<AreaDrag>(shape_of(&sim, e)).is_some()
+            && sim.world().get::<AreaEffector>(shape_of(&sim, e)).is_some(),
         "destacar a densidade não pode levar os irmãos junto"
     );
 }

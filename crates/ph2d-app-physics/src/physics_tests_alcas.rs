@@ -54,7 +54,7 @@ fn arrasta(sim: &mut SimWorld, e: Entity, cam: Camera2d, a: Alca, para: (f32, f3
 
 fn ecra(sim: &SimWorld, e: Entity, cam: Camera2d, a: Alca) -> (f32, f32) {
     let w = sim.world();
-    let m = Medida::de(w.get::<Collider>(e).expect("forma"));
+    let m = Medida::de(w.get::<Collider>(shape_of(sim, e)).expect("forma"));
     no_ecra(&Pose::de(w, e).expect("pose"), &m, a, &cam, WIN)
 }
 
@@ -294,7 +294,11 @@ fn a_bola_pousa_onde_a_forma_puxada_passou_a_estar() {
 fn o_valor_do_down_devolve_forma_e_offset_juntos() {
     let (mut sim, e) = sprite_scene();
     apply(&mut sim, e, PhysicsFieldEdit::Add);
-    let antes = Medida::de(sim.world().get::<Collider>(e).expect("forma"));
+    let antes = Medida::de(
+        sim.world()
+            .get::<Collider>(shape_of(&sim, e))
+            .expect("forma"),
+    );
     apply(
         &mut sim,
         e,
@@ -303,7 +307,11 @@ fn o_valor_do_down_devolve_forma_e_offset_juntos() {
             offset: [0.5, -0.5],
         },
     );
-    let depois = Medida::de(sim.world().get::<Collider>(e).expect("forma"));
+    let depois = Medida::de(
+        sim.world()
+            .get::<Collider>(shape_of(&sim, e))
+            .expect("forma"),
+    );
     assert_eq!(
         depois.shape,
         ColliderShape::Cuboid {
@@ -314,7 +322,11 @@ fn o_valor_do_down_devolve_forma_e_offset_juntos() {
     assert_eq!(depois.offset, [0.5, -0.5]);
     apply(&mut sim, e, antes.edicao());
     assert_eq!(
-        Medida::de(sim.world().get::<Collider>(e).expect("forma")),
+        Medida::de(
+            sim.world()
+                .get::<Collider>(shape_of(&sim, e))
+                .expect("forma")
+        ),
         antes
     );
 }

@@ -48,9 +48,9 @@ nome canónico o grupo e a posição. Grupos (ordem da maquete B), com o conteú
 |---|---|---|---|
 | 1 | Move and collide | Physics Body · Top-Down Player · Projectile Motion · Path Follow · Motion Input · Ray Sensor | 6 |
 | 2 | Find a path | Nav Agent · Nav Region · Nav Cost Area · Nav Link | 4 |
-| 3 | Game rules | Signal Actions · Trigger · Counter · Counter Watch · Timers · Lifetime · Destroy Outside · Factory · Weapon · Damage · Health | 11 |
+| 3 | Game rules | Signal Actions · Trigger · Counter · Counter Watch · Timers · Lifetime · Destroy Outside · Factory · Weapon · Damage · Health · Shake Emitter | 12 |
 | 4 | On screen | HUD Canvas · Label · Button · Health Bar · Anchors · Anchor Mount · Clip Children | 7 |
-| 5 | Camera | Camera Follow · Camera Limits · Camera Shake · Shake Emitter | 4 |
+| 5 | Camera | Camera Follow · Camera Limits · Camera Shake (só numa câmera) | 3 |
 | 6 | Background | Parallax · Parallax Limits · Parallax Drift · Parallax Repeat | 4 |
 | 7 | Change over time | Animation · Animations · Animator · State Machine · Tween · Sequence Player · Script | 7 |
 | 8 | Look | Blend Mode · Mask · Mask Interaction · 9-Slice · Texture Filter · Texture Repeat · UV Transform · Particles · Light Occluder · Unlit | 10 |
@@ -152,3 +152,5 @@ duplo clique, opt-in, altura reservada, filtro de palavras, corte de 3 do Recent
 4. Variáveis de foto. Fotos: 1 · ao abrir na moeda; 2 · dica do Nav Agent; 3 · busca `damage`; 4 · o recibo
    do Physics Body. Cada uma ao lado da maquete B 1–3 / A 4, com o acabamento comparado.
 5. Testes por nome + a rodada de mutação. Depois, o smoke do dono em passos numerados.
+
+**08/11, depois do smoke:** o Shake Emitter passa a *Game rules* (vai em quem explode, não na câmera); sem isso o grupo Camera ficava com uma entrada só num objecto que não é câmera.

@@ -230,6 +230,12 @@ pub const ENTRADAS: &[Entrada] = &[
         d::HEALTH,
     ),
     e(
+        "ph2d::ecs::ShakeEmitter",
+        A::Rules,
+        "component_add.tip.shake_emitter",
+        d::SHAKE_EMITTER,
+    ),
+    e(
         "ph2d::ecs::UiCanvas",
         A::Screen,
         "component_add.tip.ui_canvas",
@@ -288,12 +294,6 @@ pub const ENTRADAS: &[Entrada] = &[
         A::Camera,
         "component_add.tip.camera_shake",
         d::CAMERA_SHAKE,
-    ),
-    e(
-        "ph2d::ecs::ShakeEmitter",
-        A::Camera,
-        "component_add.tip.shake_emitter",
-        d::SHAKE_EMITTER,
     ),
     e(
         "ph2d::ecs::ScrollFactor",

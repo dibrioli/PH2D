@@ -231,6 +231,12 @@ fn os_grupos_seguem_os_onze_assuntos_e_o_primeiro_vem_destacado() {
         );
     }
     assert_eq!(m.select.as_ref().map(|s| s.initial), ids.first().copied());
+    // Numa imagem nova nenhum assunto aparece com uma entrada só (dono 08/11: o Shake Emitter mora nas regras).
+    let nova = build(ObjectKind::Image, &[], &buildable, false);
+    for g in &nova.groups {
+        let n: usize = g.subs.iter().map(|s| s.items.len()).sum();
+        assert!(n >= 2, "{} com {n}", g.title);
+    }
     let moeda = ["ph2d::physics::RigidBody", "ph2d::physics::Collider"];
     let m = build(ObjectKind::Image, &moeda, &buildable, false);
     let primeiro = m.groups[0].subs[0].items[0].id;

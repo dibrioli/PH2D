@@ -1,0 +1,23 @@
+# oráculo: Godot 4.7.2 (MIT), headless, 08/11/2026 — entradas: mk.py (idle 128x32 = 4x1 de 32 px; run 288x96 = 6x2 de 48 px)
+# comando: PH2D_GPU=1 bash scripts/ph2d-run.sh godot --headless --path <proj> -s oraculo.gd
+ANIMS ["idle", "run"]
+FRAME idle 0 atlas=(128.0, 32.0) region=[P: (0.0, 0.0), S: (32.0, 32.0)] dur=1.0
+FRAME idle 1 atlas=(128.0, 32.0) region=[P: (32.0, 0.0), S: (32.0, 32.0)] dur=1.0
+FRAME idle 2 atlas=(128.0, 32.0) region=[P: (64.0, 0.0), S: (32.0, 32.0)] dur=1.0
+FRAME idle 3 atlas=(128.0, 32.0) region=[P: (96.0, 0.0), S: (32.0, 32.0)] dur=1.0
+FRAME run 0 atlas=(288.0, 96.0) region=[P: (0.0, 0.0), S: (48.0, 48.0)] dur=1.0
+FRAME run 1 atlas=(288.0, 96.0) region=[P: (48.0, 0.0), S: (48.0, 48.0)] dur=1.0
+FRAME run 2 atlas=(288.0, 96.0) region=[P: (96.0, 0.0), S: (48.0, 48.0)] dur=1.0
+FRAME run 3 atlas=(288.0, 96.0) region=[P: (144.0, 0.0), S: (48.0, 48.0)] dur=1.0
+FRAME run 4 atlas=(288.0, 96.0) region=[P: (192.0, 0.0), S: (48.0, 48.0)] dur=1.0
+FRAME run 5 atlas=(288.0, 96.0) region=[P: (240.0, 0.0), S: (48.0, 48.0)] dur=1.0
+FRAME run 6 atlas=(288.0, 96.0) region=[P: (0.0, 48.0), S: (48.0, 48.0)] dur=1.0
+FRAME run 7 atlas=(288.0, 96.0) region=[P: (48.0, 48.0), S: (48.0, 48.0)] dur=1.0
+FRAME run 8 atlas=(288.0, 96.0) region=[P: (96.0, 48.0), S: (48.0, 48.0)] dur=1.0
+FRAME run 9 atlas=(288.0, 96.0) region=[P: (144.0, 48.0), S: (48.0, 48.0)] dur=1.0
+FRAME run 10 atlas=(288.0, 96.0) region=[P: (192.0, 48.0), S: (48.0, 48.0)] dur=1.0
+FRAME run 11 atlas=(288.0, 96.0) region=[P: (240.0, 48.0), S: (48.0, 48.0)] dur=1.0
+FRAME run 12 atlas=(128.0, 32.0) region=[P: (0.0, 0.0), S: (32.0, 32.0)] dur=2.0
+PLAY idle size=(32.0, 32.0) centered=true offset=(0.0, 0.0)
+PLAY run size=(48.0, 48.0) centered=true offset=(0.0, 0.0)
+ATLAS_DISTINTOS true

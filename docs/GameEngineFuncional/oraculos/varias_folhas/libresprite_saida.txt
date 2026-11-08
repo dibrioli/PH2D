@@ -1,0 +1,4 @@
+# oráculo: LibreSprite 1.3 (GPL-2.0, só CORRIDO), 08/11/2026 — libresprite -b idle.png run.png --sheet juntas.png --data juntas.json --format json-array --sheet-pack
+idle.png {'x': 288, 'y': 0, 'w': 128, 'h': 32}
+run.png {'x': 0, 'y': 0, 'w': 288, 'h': 96}
+meta.size {'w': 512, 'h': 256} frameTags None

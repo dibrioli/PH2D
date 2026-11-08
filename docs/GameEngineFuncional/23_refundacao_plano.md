@@ -42,7 +42,7 @@ Também: `docs/Sprite_projeto/` e os docs `12`–`16` desta pasta.
 | Animated Sprite | Animated Sprite | AnimatedSprite | `fechado` 07/11 ([ficha](componentes/02_animated_sprite.md)) |
 | Add Object | Add Object | Objeto e Inspector | `fechado` 07/11 (smoke do dono) |
 | Add Component | Add Component | Objeto e Inspector | `fechado` 08/11 ([plano](25_add_component_plano.md) · [handoff](handoffs/HANDOFF_CONTINUACAO_2026-11-08_ADD_COMPONENT.md)) |
-| Animated Sprite · várias folhas | pedido do dono 08/11 | AnimatedSprite | `na fila`: um Animated Sprite com MAIS de uma sprite sheet (ex.: idle numa folha, run noutra) |
+| Animated Sprite · várias folhas | pedido do dono 08/11 | AnimatedSprite | `plano` 08/11 ([plano](26_animated_sprite_varias_folhas_plano.md)): um Animated Sprite com MAIS de uma sprite sheet |
 | Inspector e Hierarchy | pendente | Objeto e Inspector | `a revisar` |
 | Prefab | pendente | Prefab | `a revisar` |
 

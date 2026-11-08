@@ -307,6 +307,8 @@ pub enum CardEdit {
 }
 
 thread_local! {
+    static ESCOLHIDA: std::cell::RefCell<std::collections::BTreeMap<u64, [u8; 4]>> =
+        const { std::cell::RefCell::new(std::collections::BTreeMap::new()) };
     static SUBMETIDO: std::cell::RefCell<Option<(u64, CardEdit)>> = const { std::cell::RefCell::new(None) };
     static ABERTOS: std::cell::RefCell<std::collections::BTreeSet<u64>> =
         const { std::cell::RefCell::new(std::collections::BTreeSet::new()) };
@@ -388,23 +390,32 @@ pub fn on_event(
     Some(e)
 }
 
-/// A cor do seletor aberto sobre o swatch do cartão, quando difere da do documento: o gesto `Color`.
-#[must_use]
-pub fn picked_color(store: &WidgetStore, ids: &UserDataIds, v: &UserDataView) -> Option<CardEdit> {
-    if store.picker_target() != Some(ids.color) {
-        return None;
-    }
-    store
+/// A cor que o seletor aberto sobre o swatch escreveu, quando difere da do documento: o gesto `Color`
+/// sai ao FECHAR o seletor (um arrasto pelo disco é um passo, não um por quadro).
+fn picked_color(store: &WidgetStore, ids: &UserDataIds, v: &UserDataView) -> Option<CardEdit> {
+    let aberto = store.picker_target() == Some(ids.color);
+    let agora = store
         .widget_color(ids.color)
-        .filter(|c| *c != v.color)
-        .map(CardEdit::Color)
+        .filter(|c| aberto && *c != v.color);
+    ESCOLHIDA.with(|e| {
+        let mut e = e.borrow_mut();
+        if aberto {
+            if let Some(c) = agora {
+                e.insert(ids.color.0, c);
+            }
+            None
+        } else {
+            e.remove(&ids.color.0).map(CardEdit::Color)
+        }
+    })
 }
 
 /// Cada quadro, antes de pintar, o cartão completo (cor + texto + tabela): regista, semeia e devolve
-/// a cor que o seletor escreveu (o gesto `Color`).
+/// a cor que o seletor escreveu ao fechar (o gesto `Color`).
 pub fn frame(store: &mut WidgetStore, ids: &UserDataIds, v: &UserDataView) -> Option<CardEdit> {
+    let e = picked_color(store, ids, v);
     prepare(store, ids, v, true);
-    picked_color(store, ids, v)
+    e
 }
 
 /// O nome do dono com o botão `User Data` à direita, numa linha (O17).

@@ -18,7 +18,7 @@ fn dono(o: PixelOwner) -> Owner {
 }
 
 fn gestos(p: &mut Palco, o: PixelOwner) {
-    let antes = p.app.doc(p.key).expect("doc").history.entries().count();
+    let antes = p.app.doc(p.key).expect("doc").history.undo_len();
     let original = p.sprite().user_of(dono(o)).expect("dono").clone();
     for e in [
         CardEdit::Color([10, 20, 30, 255]),
@@ -32,7 +32,7 @@ fn gestos(p: &mut Palco, o: PixelOwner) {
     }
     let d = p.app.doc(p.key).expect("doc");
     assert_eq!(
-        d.history.entries().count(),
+        d.history.undo_len(),
         antes + 5,
         "{o:?}: o valor que não é Bool não é passo"
     );

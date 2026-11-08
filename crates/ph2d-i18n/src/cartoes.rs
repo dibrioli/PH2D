@@ -44,12 +44,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.phys.collides_self_off" => {
             "Things on {this} pass through each other. Click to make them bump."
         }
-        "card.insp.phys.collides_add" => "+",
+        "card.insp.phys.collides_add" => "+ Add layer",
         "card.insp.phys.collides_add_tip" => "Show one more layer here and in the matrix.",
         "card.insp.phys.edit_matrix" => "Open in tab…",
         "card.insp.phys.edit_matrix_tip" => "Open the Collision Layers tab at this layer.",
-        "card.insp.phys.layer_rename" => "Rename…",
-        "card.insp.phys.layer_name" => "Layer name",
+        "card.insp.phys.layer_rename" => "Rename layers…",
+        "card.insp.phys.layer_rename_done" => "Done",
         "card.insp.phys.stretched" => "Scale stretches this round shape into an oval.",
         "card.insp.phys.scale_one" => "Set Scale to 1",
         "card.insp.phys.use_box" => "Use Box",

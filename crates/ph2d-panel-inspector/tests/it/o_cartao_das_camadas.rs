@@ -362,17 +362,17 @@ fn duplo_clique_no_chip_da_layer_renomeia_num_passo() {
         &mut st,
         WidgetEvent::DoubleClick(INSP_PHYS_LAYER_PICK),
     );
-    assert_eq!(host.store().focus_id(), Some(INSP_PHYS_LAYER_NAME));
+    assert_eq!(host.store().focus_id(), Some(INSP_PHYS_LAYER_NAMES[2]));
     assert!(
         !host.store().is_collapsed(INSP_PHYS_LAYER_RENAMING),
         "o campo abriu"
     );
-    host.set_text(INSP_PHYS_LAYER_NAME, "Mud");
+    host.set_text(INSP_PHYS_LAYER_NAMES[2], "Mud");
     assert!(
         evento(
             &mut host,
             &mut st,
-            WidgetEvent::TextChanged(INSP_PHYS_LAYER_NAME)
+            WidgetEvent::TextChanged(INSP_PHYS_LAYER_NAMES[2])
         )
         .is_empty(),
         "escrever não grava"
@@ -381,7 +381,7 @@ fn duplo_clique_no_chip_da_layer_renomeia_num_passo() {
         evento(
             &mut host,
             &mut st,
-            WidgetEvent::Submit(INSP_PHYS_LAYER_NAME)
+            WidgetEvent::Submit(INSP_PHYS_LAYER_NAMES[2])
         ),
         [EditorAction::LayerRename {
             layer: 2,
@@ -389,20 +389,20 @@ fn duplo_clique_no_chip_da_layer_renomeia_num_passo() {
         }]
     );
     assert!(
-        host.store().is_collapsed(INSP_PHYS_LAYER_RENAMING),
-        "Enter fecha"
+        !host.store().is_collapsed(INSP_PHYS_LAYER_RENAMING),
+        "Enter fica no modo Rename (passa ao campo seguinte)"
     );
     let _ = evento(
         &mut host,
         &mut st,
         WidgetEvent::DoubleClick(INSP_PHYS_LAYER_PICK),
     );
-    host.set_text(INSP_PHYS_LAYER_NAME, "Nope");
+    host.set_text(INSP_PHYS_LAYER_NAMES[2], "Nope");
     assert!(
         evento(
             &mut host,
             &mut st,
-            WidgetEvent::Cancel(INSP_PHYS_LAYER_NAME)
+            WidgetEvent::Cancel(INSP_PHYS_LAYER_NAMES[2])
         )
         .is_empty(),
         "Esc nunca grava"
@@ -412,12 +412,12 @@ fn duplo_clique_no_chip_da_layer_renomeia_num_passo() {
         &mut st,
         WidgetEvent::DoubleClick(INSP_PHYS_LAYER_PICK),
     );
-    host.set_text(INSP_PHYS_LAYER_NAME, "  ");
+    host.set_text(INSP_PHYS_LAYER_NAMES[2], "  ");
     assert_eq!(
         evento(
             &mut host,
             &mut st,
-            WidgetEvent::Submit(INSP_PHYS_LAYER_NAME)
+            WidgetEvent::Submit(INSP_PHYS_LAYER_NAMES[2])
         ),
         [EditorAction::LayerRename {
             layer: 2,
@@ -425,5 +425,130 @@ fn duplo_clique_no_chip_da_layer_renomeia_num_passo() {
         }],
         "vazio volta a «Layer n»"
     );
+    fim();
+}
+
+/// ⭐ Onda 9c (dono 07/11): «Rename layers…» pelo clique REAL troca as caixinhas pela lista de TODAS as camadas
+/// visíveis, cada uma com o seu campo e o nome INTEIRO; Enter num campo grava ESSA camada (não a do objecto) e
+/// passa ao seguinte; Esc sai sem gravar; «Done» sai e as caixinhas voltam. O botão diz «Rename layers…».
+#[test]
+fn o_modo_rename_lista_todas_as_camadas_e_grava_a_do_campo() {
+    use ph2d_editor_core::interaction::WidgetEvent;
+    mundo();
+    let mut nomes: [String; 32] = Default::default();
+    for (i, n) in [
+        "Ground",
+        "Player Shots From The Big Boss Ship",
+        "Props",
+        "Zones",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        nomes[i] = n.into();
+    }
+    let linhas = [u32::MAX; 32];
+    set_current(nomes, linhas, 0b1111);
+    let (mut host, mut st) = cena(na(2, with_body()), [1.0, 1.0]);
+    let r = pinta(&mut host, &mut st);
+    assert!(
+        achado(&r, INSP_PHYS_COLLIDES[1]).is_some(),
+        "as caixinhas antes"
+    );
+    assert!(
+        achado(&r, INSP_PHYS_LAYER_NAMES[0]).is_none(),
+        "sem campos antes"
+    );
+    assert_eq!(
+        ph2d_i18n::tr("card.insp.phys.layer_rename"),
+        "Rename layers…"
+    );
+    let _ = clica(
+        &mut host,
+        &mut st,
+        achado(&r, INSP_PHYS_LAYER_RENAME).unwrap(),
+    );
+    let r = pinta(&mut host, &mut st);
+    for j in 0..4 {
+        assert!(
+            achado(&r, INSP_PHYS_LAYER_NAMES[j]).is_some(),
+            "o campo da camada {j}"
+        );
+        assert!(
+            achado(&r, INSP_PHYS_COLLIDES[j]).is_none(),
+            "a caixinha {j} sumiu"
+        );
+    }
+    assert!(
+        achado(&r, INSP_PHYS_LAYER_NAMES[4]).is_none(),
+        "só as visíveis"
+    );
+    assert_eq!(
+        host.store().focus_id(),
+        Some(INSP_PHYS_LAYER_NAMES[2]),
+        "foco na do objecto"
+    );
+    assert_eq!(
+        host.store().text(INSP_PHYS_LAYER_NAMES[1]),
+        Some("Player Shots From The Big Boss Ship"),
+        "o campo mostra o nome inteiro"
+    );
+    let evento = |host: &mut ph2d_ui_testkit::MockPanelHost,
+                  st: &mut ph2d_panel_inspector::InspectorState,
+                  ev: WidgetEvent| {
+        let _ = host.drained_actions();
+        let _ = host.apply_panel_event::<ph2d_panel_inspector::InspectorPanel>(st, ev);
+        host.drained_actions()
+    };
+    host.set_text(INSP_PHYS_LAYER_NAMES[1], "Rock");
+    assert_eq!(
+        evento(
+            &mut host,
+            &mut st,
+            WidgetEvent::Submit(INSP_PHYS_LAYER_NAMES[1])
+        ),
+        [EditorAction::LayerRename {
+            layer: 1,
+            name: "Rock".into()
+        }],
+        "grava a camada do CAMPO, um passo"
+    );
+    assert_eq!(
+        host.store().focus_id(),
+        Some(INSP_PHYS_LAYER_NAMES[2]),
+        "passa ao seguinte"
+    );
+    host.set_text(INSP_PHYS_LAYER_NAMES[3], "Nope");
+    assert!(
+        evento(
+            &mut host,
+            &mut st,
+            WidgetEvent::Cancel(INSP_PHYS_LAYER_NAMES[3])
+        )
+        .is_empty(),
+        "Esc nunca grava"
+    );
+    assert!(
+        host.store().is_collapsed(INSP_PHYS_LAYER_RENAMING),
+        "Esc sai"
+    );
+    // O 2.º clique no MESMO botão com o relógio do mock parado seria um duplo clique: vai pelo evento.
+    let _ = evento(
+        &mut host,
+        &mut st,
+        WidgetEvent::Click(INSP_PHYS_LAYER_RENAME),
+    );
+    let r = pinta(&mut host, &mut st);
+    let _ = clica(
+        &mut host,
+        &mut st,
+        achado(&r, INSP_PHYS_LAYER_RENAME_DONE).unwrap(),
+    );
+    let r = pinta(&mut host, &mut st);
+    assert!(
+        achado(&r, INSP_PHYS_COLLIDES[1]).is_some(),
+        "Done: as caixinhas voltam"
+    );
+    assert!(achado(&r, INSP_PHYS_LAYER_NAMES[1]).is_none());
     fim();
 }

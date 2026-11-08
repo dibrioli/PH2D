@@ -194,12 +194,21 @@ mod alinhamento_tests {
                 assert!((centro_y(cel) - centro_y(fim)).abs() <= tol, "k={k} l={l}");
                 let rot = g.rotulo_da_linha(l);
                 let pil = g.pilula_da_linha(l);
-                assert!((centro_y(rot) - centro_y(cel)).abs() <= tol, "rótulo×linha k={k} l={l}");
-                assert!((centro_y(pil) - centro_y(cel)).abs() <= tol, "pílula×linha k={k} l={l}");
+                assert!(
+                    (centro_y(rot) - centro_y(cel)).abs() <= tol,
+                    "rótulo×linha k={k} l={l}"
+                );
+                assert!(
+                    (centro_y(pil) - centro_y(cel)).abs() <= tol,
+                    "pílula×linha k={k} l={l}"
+                );
                 assert!((pil.h - cel.h).abs() <= tol, "altura da pílula k={k} l={l}");
                 let col = g.rotulo_da_coluna(l);
                 let cel_c = g.celula(k - 1, l);
-                assert!((centro_x(col) - centro_x(cel_c)).abs() <= tol, "topo×coluna k={k} c={l}");
+                assert!(
+                    (centro_x(col) - centro_x(cel_c)).abs() <= tol,
+                    "topo×coluna k={k} c={l}"
+                );
                 assert!(g.fonte_da_grade(row) <= cel.h + tol, "a letra cabe k={k}");
             }
         }

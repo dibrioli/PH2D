@@ -239,6 +239,7 @@ pub(super) fn populate_physics(store: &mut WidgetStore) {
             ids::INSP_PHYS_USE_BOX,
             ids::INSP_PHYS_REMOVED_UNDO,
             ids::INSP_PHYS_LAYER_RENAME,
+            ids::INSP_PHYS_LAYER_RENAME_DONE,
             ids::INSP_PHYS_COLLIDES_ADD,
             ids::INSP_PHYS_EDIT_MATRIX,
         ],
@@ -259,16 +260,18 @@ pub(super) fn populate_physics(store: &mut WidgetStore) {
             selected_index: None,
         },
     );
-    store.register(
-        ids::INSP_PHYS_LAYER_NAME,
-        InteractiveState::TextInput {
-            state: TextInputState::Normal,
-            text: String::new(),
-            caret: 0,
-            selection_anchor: None,
-        },
-    );
-    store.mark_cancel_on_escape(ids::INSP_PHYS_LAYER_NAME);
+    for id in ids::INSP_PHYS_LAYER_NAMES {
+        store.register(
+            id,
+            InteractiveState::TextInput {
+                state: TextInputState::Normal,
+                text: String::new(),
+                caret: 0,
+                selection_anchor: None,
+            },
+        );
+        store.mark_cancel_on_escape(id);
+    }
     for id in ids::INSP_PHYS_FOLDS {
         store.mark_collapsible_section(id);
     }

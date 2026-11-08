@@ -167,9 +167,9 @@ const LINHAS: &[(&str, &str)] = &[
 /// A classe de uma chamada por um dos seus ids — exacto, ou PREFIXO quando acaba em `_`.
 const POR_ID: &[(&str, Classe, &str)] = &[
     (
-        "INSP_PHYS_LAYER_NAME",
+        "INSP_PHYS_LAYER_NAMES",
         NaoAnimavel,
-        "o nome da camada no «Rename…»: fiação por nome (§8)",
+        "os nomes das camadas no modo «Rename layers…»: fiação por nome (§8)",
     ),
     (
         "INSP_SPRITE_CORNERS_ON",

@@ -11,39 +11,69 @@ use ph2d_editor_core::interaction::WidgetEvent;
 use ph2d_editor_core::panel::PanelHostInternal;
 use ph2d_editor_core::screens::hero::{InspectorPhysicsInfo, PhysicsFieldEdit};
 
-/// ⭐ O nome da camada (onda 8): duplo clique no chip da Layer abre o campo ali; Enter grava UM passo,
-/// Esc desiste; vazio volta a «Layer n». O «Rename…» abre o mesmo campo.
+/// ⭐ O modo Rename (onda 9c, dono 07/11): «Rename layers…» (ou duplo clique no chip da Layer) troca as caixinhas
+/// pela lista de TODAS as camadas, cada uma com o seu campo; Enter grava ESSE nome (um passo de undo) e passa ao
+/// seguinte; vazio volta ao padrão; Esc e «Done» saem.
 fn nome_da_camada(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
-    let campo = crate::ids::INSP_PHYS_LAYER_NAME;
     let renomeando = crate::ids::INSP_PHYS_LAYER_RENAMING;
+    let campos = &crate::ids::INSP_PHYS_LAYER_NAMES;
+    let entra = |host: &mut dyn PanelHostInternal| {
+        let camada = state::current_inspector_physics().map_or(0, |f| usize::from(f.layer));
+        let store = host.store_mut();
+        store.set_collapsed(renomeando, false);
+        ph2d_editor_core::interaction::dispatch::focus_text_field(store, campos[camada]);
+    };
     match ev {
         WidgetEvent::DoubleClick(id) if id == crate::ids::INSP_PHYS_LAYER_PICK => {
-            let store = host.store_mut();
             if let Some(ph2d_editor_core::interaction::InteractiveState::Dropdown {
                 open, ..
-            }) = store.get_mut(id)
+            }) = host.store_mut().get_mut(id)
             {
                 *open = false;
             }
-            store.set_collapsed(renomeando, false);
-            ph2d_editor_core::interaction::dispatch::focus_text_field(store, campo);
+            entra(host);
             true
         }
-        WidgetEvent::Submit(id) if id == campo => {
-            if let Some(info) = state::current_inspector_physics() {
-                let name = host.store().text(id).unwrap_or("").trim().to_string();
-                if name != crate::camadas_fisica::nome(usize::from(info.layer)) {
-                    host.bus_mut().push(EditorAction::LayerRename {
-                        layer: info.layer,
-                        name,
-                    });
-                }
+        WidgetEvent::Click(id) if id == crate::ids::INSP_PHYS_LAYER_RENAME => {
+            ph2d_editor_core::panel::seam_reset_button(host, id);
+            if host.store().is_collapsed(renomeando) {
+                entra(host);
+            } else {
+                host.store_mut().set_collapsed(renomeando, true);
             }
+            true
+        }
+        WidgetEvent::Click(id) if id == crate::ids::INSP_PHYS_LAYER_RENAME_DONE => {
+            ph2d_editor_core::panel::seam_reset_button(host, id);
             host.store_mut().set_collapsed(renomeando, true);
             true
         }
-        WidgetEvent::Cancel(id) if id == campo => {
-            host.store_mut().set_collapsed(renomeando, true);
+        WidgetEvent::Submit(id) if campos.contains(&id) => {
+            let Some(j) = campos.iter().position(|&c| c == id) else {
+                return false;
+            };
+            let name = host.store().text(id).unwrap_or("").trim().to_string();
+            if name != crate::camadas_fisica::nome(j) {
+                host.bus_mut().push(EditorAction::LayerRename {
+                    layer: j as u8,
+                    name,
+                });
+            }
+            let camada = state::current_inspector_physics().map_or(0, |f| usize::from(f.layer));
+            let fila: Vec<usize> =
+                crate::sections::physics_colide::fila_do_rename(camada).collect();
+            if let Some(&seguinte) = fila.iter().skip_while(|&&k| k != j).nth(1) {
+                ph2d_editor_core::interaction::dispatch::focus_text_field(
+                    host.store_mut(),
+                    campos[seguinte],
+                );
+            }
+            true
+        }
+        WidgetEvent::Cancel(id) if campos.contains(&id) => {
+            let store = host.store_mut();
+            store.set_collapsed(renomeando, true);
+            store.set_focus(None);
             true
         }
         _ => false,
@@ -55,12 +85,6 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
         return true;
     }
     if crate::recibo_fisica::click(host, ev) || crate::sections::physics_colide::clique(host, ev) {
-        return true;
-    }
-    if ev == WidgetEvent::Click(crate::ids::INSP_PHYS_LAYER_RENAME) {
-        let id = crate::ids::INSP_PHYS_LAYER_RENAMING;
-        let fechado = host.store().is_collapsed(id);
-        host.store_mut().set_collapsed(id, !fechado);
         return true;
     }
     // A metade do CLIQUE: um chip, um botao. Resolvida por uma fn pura

@@ -137,8 +137,18 @@ fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
     let y = linha.fim(ph2d_tokens::row_pitch_px());
     let camada = usize::from(info.layer);
     let solta = solta(info);
+    if !t.store.is_collapsed(ids::INSP_PHYS_LAYER_RENAMING) {
+        let y = rename(t, y, camada);
+        let (r, y) = t.botao(
+            ids::INSP_PHYS_LAYER_RENAME_DONE,
+            tr("card.insp.phys.layer_rename_done"),
+            y,
+        );
+        t.hit.register(ids::INSP_PHYS_LAYER_RENAME_DONE, r);
+        return y;
+    }
     let y = if solta { y } else { colide_com(t, y, info) };
-    let y = if solta {
+    if solta {
         let (r, y) = t.botao(
             ids::INSP_PHYS_LAYER_RENAME,
             tr("card.insp.phys.layer_rename"),
@@ -155,27 +165,44 @@ fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
             ),
             (ids::INSP_PHYS_EDIT_MATRIX, tr("card.insp.phys.edit_matrix")),
         )
-    };
-    if t.store.is_collapsed(ids::INSP_PHYS_LAYER_RENAMING) {
-        return y;
     }
-    let dica = camadas::rotulo_padrao(camada);
-    let rotulo = tr("card.insp.phys.layer_name");
-    let seccao = ph2d_editor_core::property_row::Seccao::medida(t.text, 1, &[rotulo]);
-    ph2d_editor_core::property_row::paint_text_row(
-        t.scene,
-        t.text,
-        t.theme,
-        t.hit,
-        t.store,
-        t.x,
-        t.w,
-        y,
-        rotulo,
-        ids::INSP_PHYS_LAYER_NAME,
-        TextInput::new(ids::INSP_PHYS_LAYER_NAME, "").placeholder(&dica),
-        seccao,
-    )
+}
+
+/// As camadas do modo Rename: as visíveis e a do objecto (a mesma fila das caixinhas).
+pub(crate) fn fila_do_rename(camada: usize) -> impl Iterator<Item = usize> {
+    da_fila(camada)
+}
+
+/// ⭐ O modo Rename: um campo por camada, com o nome INTEIRO; a do objecto na pílula (a mesma da aba).
+fn rename(t: &mut Tinta<'_>, mut y: f32, camada: usize) -> f32 {
+    let fila: Vec<usize> = da_fila(camada).collect();
+    let rotulos: Vec<String> = fila.iter().map(|j| j.to_string()).collect();
+    let refs: Vec<&str> = rotulos.iter().map(String::as_str).collect();
+    let seccao = ph2d_editor_core::property_row::Seccao::medida(t.text, 1, &refs);
+    for (p, &j) in fila.iter().enumerate() {
+        if j == camada {
+            let raio = frame_radius(t.theme, Radius::Sm.px());
+            let r = Rect::new(t.x, y, t.w, ph2d_tokens::ROW_H_PX);
+            fill_rounded_rect(t.scene, r, raio, resolve(ColorToken::AccentSoft, t.theme));
+        }
+        let id = ids::INSP_PHYS_LAYER_NAMES[j];
+        let dica = camadas::rotulo_padrao(j);
+        y = ph2d_editor_core::property_row::paint_text_row(
+            t.scene,
+            t.text,
+            t.theme,
+            t.hit,
+            t.store,
+            t.x,
+            t.w,
+            y,
+            refs[p],
+            id,
+            TextInput::new(id, "").placeholder(&dica),
+            seccao,
+        );
+    }
+    y
 }
 
 /// As opções da lista: as camadas visíveis e a do objecto, pelo nome ou pelo número.

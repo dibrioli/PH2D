@@ -78,7 +78,7 @@ pub const INSP_PHYS_USE_BOX: NodeId = hash_node_id("insp_phys_use_box");
 pub const INSP_PHYS_LAYER_PICK: NodeId = hash_node_id("insp_phys_layer_pick");
 pub const INSP_PHYS_LAYER_RENAME: NodeId = hash_node_id("insp_phys_layer_rename");
 pub const INSP_PHYS_LAYER_RENAMING: NodeId = hash_node_id("insp_phys_layer_renaming");
-pub const INSP_PHYS_LAYER_NAME: NodeId = hash_node_id("insp_phys_layer_name");
+pub const INSP_PHYS_LAYER_RENAME_DONE: NodeId = hash_node_id("insp_phys_layer_rename_done");
 /// O «Undo» do recibo de Remove.
 pub const INSP_PHYS_REMOVED_UNDO: NodeId = hash_node_id("insp_phys_removed_undo");
 
@@ -222,6 +222,9 @@ pub static INSP_PHYS_LAYER: [NodeId; INSP_PHYS_LAYERS] = tabela_por_camada(b"ins
 /// «Collides with»: um quadro por camada, o «+» no fim da fila e o «Edit matrix…».
 pub static INSP_PHYS_COLLIDES: [NodeId; INSP_PHYS_LAYERS] =
     tabela_por_camada(b"insp_phys_collides_");
+/// ⭐ O modo Rename (onda 9c): o campo do nome de cada camada, pelo número.
+pub static INSP_PHYS_LAYER_NAMES: [NodeId; INSP_PHYS_LAYERS] =
+    tabela_por_camada(b"insp_phys_layer_names_");
 pub const INSP_PHYS_COLLIDES_ADD: NodeId = hash_node_id("insp_phys_collides_add");
 pub const INSP_PHYS_EDIT_MATRIX: NodeId = hash_node_id("insp_phys_edit_matrix");
 

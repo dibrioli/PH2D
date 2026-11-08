@@ -512,7 +512,7 @@ fn section_text_changed(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bo
     // `leave` enfiado na mesma ação com um bool tornaria impossível ler o
     // barramento sem perguntar duas coisas para saber uma.
     // O nome da camada grava no Enter (`event_physics::nome_da_camada`): um nome = um passo de undo.
-    if id == ids::INSP_PHYS_LAYER_NAME {
+    if ids::INSP_PHYS_LAYER_NAMES.contains(&id) {
         return true;
     }
     if id == ids::INSP_PHYS_SIGNAL

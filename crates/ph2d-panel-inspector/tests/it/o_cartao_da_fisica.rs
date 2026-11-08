@@ -707,7 +707,7 @@ fn rename_abre_o_campo_e_o_enter_renomeia_a_camada_do_objecto() {
     let (mut host, mut st) = cena(info, [1.0, 1.0]);
     let r = pinta(&mut host, &mut st);
     assert!(
-        achado(&r, INSP_PHYS_LAYER_NAME).is_none(),
+        achado(&r, INSP_PHYS_LAYER_NAMES[3]).is_none(),
         "fechado por omissão"
     );
     let _ = clica(
@@ -716,18 +716,18 @@ fn rename_abre_o_campo_e_o_enter_renomeia_a_camada_do_objecto() {
         achado(&r, INSP_PHYS_LAYER_RENAME).unwrap(),
     );
     let r = pinta(&mut host, &mut st);
-    assert!(achado(&r, INSP_PHYS_LAYER_NAME).is_some());
+    assert!(achado(&r, INSP_PHYS_LAYER_NAMES[3]).is_some());
     let _ = host.drained_actions();
-    host.set_text(INSP_PHYS_LAYER_NAME, "Enemy");
+    host.set_text(INSP_PHYS_LAYER_NAMES[3], "Enemy");
     let _ = host.apply_panel_event::<InspectorPanel>(
         &mut st,
-        ph2d_editor_core::interaction::WidgetEvent::TextChanged(INSP_PHYS_LAYER_NAME),
+        ph2d_editor_core::interaction::WidgetEvent::TextChanged(INSP_PHYS_LAYER_NAMES[3]),
     );
     // Onda 8: escrever não grava; o Enter grava UM passo.
     assert!(host.drained_actions().is_empty(), "um passo por tecla");
     let _ = host.apply_panel_event::<InspectorPanel>(
         &mut st,
-        ph2d_editor_core::interaction::WidgetEvent::Submit(INSP_PHYS_LAYER_NAME),
+        ph2d_editor_core::interaction::WidgetEvent::Submit(INSP_PHYS_LAYER_NAMES[3]),
     );
     assert_eq!(
         host.drained_actions().last(),

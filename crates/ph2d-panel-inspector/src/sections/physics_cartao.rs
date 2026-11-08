@@ -123,18 +123,19 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
     }
 }
 
-/// O campo do nome mostra a camada escolhida, salvo enquanto se escreve nele.
+/// Cada campo do modo Rename mostra o nome INTEIRO da sua camada, salvo enquanto se escreve nele.
 fn semeia_o_nome_da_camada(store: &mut WidgetStore) {
-    let camada = crate::state::current_inspector_physics().map_or(0, |f| usize::from(f.layer));
-    let nome = crate::camadas_fisica::nome(camada);
-    if let Some(InteractiveState::TextInput {
-        state, text, caret, ..
-    }) = store.get_mut(ids::INSP_PHYS_LAYER_NAME)
-        && *state != TextInputState::Focused
-        && *text != nome
-    {
-        *caret = nome.len();
-        *text = nome;
+    for (camada, &id) in ids::INSP_PHYS_LAYER_NAMES.iter().enumerate() {
+        let nome = crate::camadas_fisica::nome(camada);
+        if let Some(InteractiveState::TextInput {
+            state, text, caret, ..
+        }) = store.get_mut(id)
+            && *state != TextInputState::Focused
+            && *text != nome
+        {
+            *caret = nome.len();
+            *text = nome;
+        }
     }
 }
 

@@ -34,7 +34,11 @@ pub fn caracteres(s: &str) -> usize {
 #[must_use]
 pub fn encurta(s: &str, max: usize) -> String {
     match inicios(s).nth(max) {
-        Some(corte) => format!("{}{}", &s[..corte], ph2d_i18n::tr("card.physics.name_ellipsis")),
+        Some(corte) => format!(
+            "{}{}",
+            &s[..corte],
+            ph2d_i18n::tr("card.physics.name_ellipsis")
+        ),
         None => s.to_owned(),
     }
 }
@@ -60,7 +64,10 @@ mod tests {
         let familia = "\u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}";
         assert_eq!(caracteres(familia), 1);
         let longo = format!("{}{familia}X", "a".repeat(11));
-        assert_eq!(nome_de_camada(&longo), format!("{}{familia}…", "a".repeat(11)));
+        assert_eq!(
+            nome_de_camada(&longo),
+            format!("{}{familia}…", "a".repeat(11))
+        );
         assert_eq!(nome_de_camada(""), "");
     }
 }

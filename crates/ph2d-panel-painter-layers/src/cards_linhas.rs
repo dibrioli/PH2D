@@ -37,6 +37,46 @@ pub(crate) fn aberta(store: &WidgetStore, id: NodeId) -> bool {
     )
 }
 
+/// A largura de cada coluna quando o par cabe lado a lado; `None` se a coluna é estreita e o par desce (05 §4, lei 5).
+fn meia_do_par(c: &CardCtx<'_>) -> Option<f32> {
+    let meia = ((c.w - m::FIELD_GAP) * 0.5).max(0.0);
+    (meia >= m::ICON_CELL + m::FIELD_VALUE_MIN_W).then_some(meia)
+}
+
+/// O par em que algo é inerte pinta-se célula a célula: o véu é de cada uma. Uma caixa sem rótulo ao lado de um campo
+/// rotulado assenta na linha do campo, como em `compact` (05 §4, lei 1) — pintadas a sós, a faixa do rótulo descia o campo.
+/// O par cujo texto não cabe em meia coluna desce, uma célula por linha, como em `compact` (lei 5: nada cortado).
+fn par_com_inerte(c: &mut CardCtx<'_>, par: &[Item], y: f32) -> f32 {
+    let pinta = |c: &mut CardCtx<'_>, item: &Item, y: f32| {
+        com_lei(c, item.id(), y, |c, y| c.row(&[item.cell()], y))
+    };
+    let rotulado = |i: &Item| i.cell().label.is_some();
+    let ([a, b], Some(meia)) = (par, meia_do_par(c)) else {
+        return em_pares(c, par, y, pinta);
+    };
+    if !c.cabem_lado_a_lado(&[a.cell(), b.cell()]) {
+        let y = pinta(c, a, y);
+        return pinta(c, b, y);
+    }
+    if rotulado(a) == rotulado(b) {
+        return em_pares(c, par, y, pinta);
+    }
+    let (x, w) = (c.x, c.w);
+    let coluna = |i: usize| (x + i as f32 * (meia + m::FIELD_GAP), meia);
+    let r = usize::from(rotulado(b));
+    (c.x, c.w) = coluna(r);
+    let mut fundo = pinta(c, &par[r], y);
+    let linha = c
+        .hit_index
+        .rect_for(par[r].id())
+        .map_or(y, |campo| campo.y - m::FIELD_ROW_GAP);
+    (c.x, c.w) = coluna(1 - r);
+    fundo = fundo.max(pinta(c, &par[1 - r], linha));
+    c.x = x;
+    c.w = w;
+    fundo
+}
+
 /// Os itens de dois em dois, na mesma linha, cada um na sua metade; o que sobra fica com a linha inteira.
 pub(crate) fn em_pares<T>(
     c: &mut CardCtx<'_>,
@@ -48,11 +88,7 @@ pub(crate) fn em_pares<T>(
     let meia = ((w - m::FIELD_GAP) * 0.5).max(0.0);
     let mut topo = y;
     // Coluna estreita: o par desce, nunca corta o valor (05 §4, lei 5).
-    let por_linha = if meia < m::ICON_CELL + m::FIELD_VALUE_MIN_W {
-        1
-    } else {
-        2
-    };
+    let por_linha = if meia_do_par(c).is_some() { 2 } else { 1 };
     for par in itens.chunks(por_linha) {
         let mut fundo = topo;
         for (i, item) in par.iter().enumerate() {
@@ -367,9 +403,7 @@ pub(crate) fn fila(c: &mut CardCtx<'_>, itens: &[Item], y: f32) -> f32 {
         resto = &resto[corrida..];
         if !resto.is_empty() {
             let n = resto.len().min(2);
-            y = em_pares(c, &resto[..n], y, |c, item, y| {
-                com_lei(c, item.id(), y, |c, y| c.row(&[item.cell()], y))
-            });
+            y = par_com_inerte(c, &resto[..n], y);
             resto = &resto[n..];
         }
     }

@@ -681,3 +681,21 @@ fn the_inert_grain_colors_keep_their_hint() {
         esperada
     );
 }
+
+/// O Grain do dono (08/11): «Same as Paper» ligado com Paper: None — a caixa esmaece (inércias da FERRAMENTA), a Depth
+/// ao lado não, e continuam irmãs (05 §4, lei 1): a caixa na linha do campo, nunca uma faixa acima; numa doca estreita o
+/// par desce em vez de cortar «Same as Paper» (lei 5). *Mutação: `par_com_inerte` → `em_pares` (`cards_linhas.rs`) ⇒ vermelho.*
+#[test]
+fn the_dimmed_same_as_paper_stays_on_the_depth_row_and_uncut() {
+    use super::censo_dos_controlos::{Bancada, Gesto};
+    let caixa = p::PAINTER_BRUSH_GRAIN_SAME_AS_PAPER;
+    let b = Bancada::nova(PaintMedia::Digital, &[Gesto::Clique(caixa)])
+        .tool
+        .brush_settings();
+    assert!(b.grain_same_as_paper && b.paper_kind == 0);
+    assert!(b.inercias.dica_de(caixa).is_some(), "a caixa não esmaeceu");
+    let (m, c) = censo::grava(|| abre(true, b));
+    na_mesma_linha(&m, caixa, p::PAINTER_BRUSH_GRAIN_DEPTH);
+    let cortados = c.textos_cortados();
+    assert!(cortados.is_empty(), "{cortados:#?}");
+}

@@ -614,7 +614,8 @@ fn paint_strip(
             x >= thumb.x && x < thumb.x + thumb.w && y >= thumb.y && y < thumb.y + thumb.h
         });
         if frames.len() > 1 && hovered {
-            let d = Spacing::Sm.px();
+            // Margem mínima: o × ocupa quase toda a caixa (dono 08/11: «um pouco maior»).
+            let d = Spacing::Xxs.px();
             let icon = Rect::new(
                 close.x + d,
                 close.y + d,

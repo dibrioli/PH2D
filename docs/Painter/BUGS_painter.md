@@ -915,17 +915,29 @@ Fonte: dono 31/10, [`project_rebelle_no_longer_the_reference_2026_10_31.md`](../
 | `familias::pastel_carvao::portoes::o_square_hard_tapa_o_vermelho_como_a_foto` (inteira) | R ≤ 86 (Rebelle 74) e a mutação «carga 75» que já não o cruza com o Pigment mixing de fábrica (`0170428784`: 63,2/88,0 → 40,0/55,1, as duas tapam) | — |
 | `as_leis_da_escala::o_relevo_nao_cresce_com_o_pincel` | o tecto da família do Rebelle (0,824) e o alvo ±2 do Bristle Flat (`0170428784`: razão 0,793 → 0,886) | a lei: razão 200 ÷ 40 < 1 (sem a lei 1,13) |
 
-## Bugs #73–#80 (ABERTOS, 08/11) — a mistura Wet blend × Composite, rampas de cor, esbatedores, pincéis que espalham
+## Bugs #73–#80 (CURADOS, 08/11) — a mistura Wet blend × Composite, rampas de cor, esbatedores, pincéis que espalham
 
-Medidos pela auditoria de 08/11; tabela completa (medição · mecanismo ficheiro:linha · cura · decisão do dono) em
-[`AUDITORIA_MISTURA_2026-11-08.md`](AUDITORIA_MISTURA_2026-11-08.md). Em uma linha: **#73** a camada Erase do Composite
-pinta com Wet blend · **#74** camadas do Composite partilham um reservatório → o byte depende da cadência dos eventos ·
-**#75** a Strength da camada Brush não age com Wet blend · **#76** esbatedores (Amount 0) pintam a cor do pincel no
-rasto sobre o vazio · **#77** Grain Colors / Shape Color / Per-Layer Color mortos com Wet blend (a rota sai em
-`stamp_route.rs:520`) · **#78** pincéis que espalham ficam cheios (`PASSO_DA_MISTURA` 3 %) · **#79** a mistura só vê a
-própria camada (opção «This layer · All visible layers» aprovada) · **#80** a Depth do Grain não esmaece com Same as
-Paper sem papel. A raiz comum de #73/#75/#77: **a rota da mistura sai cedo e não lê o que as rotas seguintes leem**
-(blend, Strength, rampas) — cure-os juntos e varra a mesma porta por tudo o que ela salta.
+Medidos pela auditoria de 08/11 ([`AUDITORIA_MISTURA_2026-11-08.md`](AUDITORIA_MISTURA_2026-11-08.md): medição ·
+mecanismo · decisão do dono); curados em `0604fd6f5c` (#73–#78) e `6b0522894b` (#79–#80); fecho da onda em
+[`HANDOFF_ONDA_..._CURAS_DA_MISTURA`](handoffs/HANDOFF_ONDA_line_PainterWatercolor_2026-11-08_CURAS_DA_MISTURA.md).
+Testes `it/curas_da_mistura.rs` (crate `ph2d-tool-painter`), todos com mutação que sangra.
+
+| # | Cura | Commit | Teste |
+|---|---|---|---|
+| #73 | a porta da mistura em `stamp_route.rs` só exclui `BrushBlend::EraseAlpha`; Erase/Blur do Composite correm | `0604fd6f5c` | `a_camada_erase_do_composite_apaga_com_a_mistura` · `a_camada_blur_do_composite_borra_com_a_mistura` |
+| #74 | estado da mistura por camada (`mistura_camada[pos]`, trocado em `composite_acumulado.rs::acumula_camada`) | `0604fd6f5c` | `o_composite_com_mistura_da_o_mesmo_byte_em_qualquer_cadencia` · `a_camada_de_cima_do_composite_nao_apanha_a_tinta_da_de_baixo` |
+| #75 | consequência de #73+#74 (a mutação só sangra com porta + slot partilhado juntos) | `0604fd6f5c` | `a_strength_da_brush_na_receita_do_dono_age_com_a_mistura` |
+| #76 | `peso_do_pincel(amount, carga) = a/(c·(1−a)+a)` em `mistura_opaca.rs` | `0604fd6f5c` | `o_esbatedor_nao_solta_a_cor_do_pincel_no_rasto_que_vai_ao_vazio` |
+| #77 | rampas, Per-Layer Color e ponta de pixel pintam com a mistura (`Pegada::Mascara.com_cor`) | `0604fd6f5c` | `as_rampas_de_cor_pintam_com_a_mistura` · `o_per_layer_color_pinta_com_a_mistura` · `a_ponta_de_pixel_carimba_binaria_com_a_mistura` |
+| #78 | `Deposito::SoAmostra` entre passos do pincel, só com spacing > `PASSO_DA_MISTURA` (Wet Wash Mix fica de fora) | `0604fd6f5c` | `os_pinceis_que_espalham_nao_enchem_com_a_mistura` |
+| #79 | `AmostraDaMistura` («This layer · All visible layers»), json `"sample"` só fora do default; Gouache Blender e Finger Tip de fábrica em All | `6b0522894b` (+ `24c82ab7c3`: esmaece inteiro com a mistura Off) | `o_esbatedor_numa_camada_nova_arrasta_a_cor_das_de_baixo` · `a_amostra_da_mistura_vai_e_volta_e_o_default_nao_se_grava` · `it color_mixing` |
+| #80 | regras de inércia `ProfundidadeDoGraoSemPapel` e `ProfundidadeNaAguada` (`inercia.rs`) | `6b0522894b` | `censo_dos_controlos` (4 meios) · `same_as_paper_sem_papel_escolhido_nao_tem_grao` |
+
+Brinde: `o_pincel_guardado_pinta_o_mesmo_traco` curado (`dab_spec.rs::authored_spec` põe a mistura Off no ramo não-Digital;
+diferia 848 px). **Efeito esperado de #78:** o alarme de miniatura fica VERMELHO para Pastel, Pointillism e Chalk (NÃO
+regravado). **Veredito do dono 08/11:** «Pointillism melhor como era antes. Pastel está parecendo em Spray ruim» — ABERTO,
+na fila do handoff. A raiz comum de #73/#75/#77 (a rota da mistura sai cedo e não lê o que as seguintes leem) fica
+como lição: varra a mesma porta por tudo o que ela salta.
 
 ## Como adicionar um bug aqui
 

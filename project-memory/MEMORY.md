@@ -151,3 +151,4 @@
 
 - ⭐⭐ [Dono 07/11: Add Object versão B; Sprite já destacada com a dica embaixo, 1 clique destaca, 2 criam e fecham; Physics Body e Ambient Light saem](project_add_object_owner_decisions_2026_11_07.md)
 - ⭐⭐ [Dono 08/11: Add Component versão B + recibo com Undo; 1.º da lista destacado; «+N»; Show all fica](project_add_component_owner_decisions_2026_11_08.md)
+- ⭐⭐ [Dono 08/11: smoke das curas da mistura — Pointillism como antes, Pastel «spray ruim», sizes do Composite em px, busca no dropdown, prévia dos esbatedores](project_mixing_smoke_verdicts_and_queue_2026_11_08.md)

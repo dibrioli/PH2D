@@ -1,4 +1,6 @@
-# Auditoria da mistura Wet blend (08/11) — os defeitos ABERTOS (#73–#80)
+# Auditoria da mistura Wet blend (08/11) — os defeitos #73–#80 (CURADOS no mesmo dia)
+
+> ✅ **CURADOS em 08/11** — `0604fd6f5c` (#73–#78) e `6b0522894b` (#79–#80); commit e teste de cada em [`BUGS_painter.md`](BUGS_painter.md) (§ Bugs #73–#80) e o fecho da onda no [handoff](handoffs/HANDOFF_ONDA_line_PainterWatercolor_2026-11-08_CURAS_DA_MISTURA.md). O texto abaixo é a medição ANTES da cura (mecanismo e linhas de 08/11 de manhã); a seção «Outros abertos» continua viva.
 
 > Pedido do dono (08/11): *«conferir como os novos pincéis com o novo color mixing reagem com paper, grain, color
 > shape, color grain, assim como o composite brush e o sistema layer per color. Auditoria pesada.»* Duas lentes

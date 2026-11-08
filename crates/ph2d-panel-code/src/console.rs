@@ -14,7 +14,7 @@ use ph2d_a11y::{Action, Node, NodeBuilder, NodeId, Role};
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::rect_to_vello;
 use ph2d_editor_core::zones::Rect;
-use ph2d_i18n::{tr, tr_with};
+use ph2d_i18n::tr;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{INLINE_ICON_PX, LineHeight, ROW_H_PX, Spacing, StrokeToken, Theme};
 use ph2d_vector::VectorScene;

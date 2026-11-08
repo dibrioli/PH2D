@@ -70,13 +70,11 @@ pub(crate) fn game_time(at_us: u64) -> String {
 
 /// As linhas de um script. Os tectos são os do console do motor ([`CONSOLE_LINES_MAX`] linhas e
 /// [`CONSOLE_BYTES_MAX`] bytes de texto, medidos; cada linha já chega cortada ao tecto por linha):
-/// a mais antiga sai primeiro. Os erros e os bytes contam-se ao entrar e sair — o título e o tecto
-/// não percorrem as linhas.
+/// a mais antiga sai primeiro. Os bytes contam-se ao entrar e sair — o tecto não percorre as linhas.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub(crate) struct Store {
     entries: VecDeque<Entry>,
     bytes: usize,
-    errors: usize,
     pub open: bool,
     /// O separador da faixa (por script, como o `open`).
     pub tab: BandTab,
@@ -182,7 +180,6 @@ impl Store {
             self.pop_front();
         }
         self.bytes += text.len() + tag.as_ref().map_or(0, String::len);
-        self.errors += usize::from(tone == Tone::Error);
         self.entries.push_back(Entry {
             text,
             tone,
@@ -194,7 +191,6 @@ impl Store {
     fn pop_front(&mut self) {
         if let Some(e) = self.entries.pop_front() {
             self.bytes -= e.text.len() + e.tag.as_ref().map_or(0, String::len);
-            self.errors -= usize::from(e.tone == Tone::Error);
         }
     }
 
@@ -208,10 +204,6 @@ impl Store {
         }
     }
 
-    pub fn errors(&self) -> usize {
-        self.errors
-    }
-
     pub fn len(&self) -> usize {
         self.entries.len()
     }
@@ -222,7 +214,7 @@ impl Store {
 
     pub fn clear(&mut self) {
         self.entries.clear();
-        (self.bytes, self.errors) = (0, 0);
+        self.bytes = 0;
     }
 
     /// O texto de cada linha (os testes leem o que a aba mostra).

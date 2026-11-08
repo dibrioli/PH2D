@@ -58,21 +58,33 @@ Lição: o dono quer o poder do Godot (quadro de qualquer folha) **sem** o salto
 
 - **Folha 0** = `Sprite` + `SpriteGrid`, como hoje. Todos os escritores e leitores atuais (render, Pivot, Painter,
   `.ase`, Character, uso da imagem) continuam certos para ela, sem mudança.
-- **Folhas 1..N** = componente novo `SpriteSheets` ao lado do `Sprite` (precisa de `SpriteSource`, que mora em
-  `ph2d-render`):
+- **Folhas 1..N** = componente novo `SpriteSheets` ao lado do `Sprite` (em `ph2d-render`), que guarda **só o nome
+  durável** de cada imagem, nunca o id de runtime:
 
   ```rust
-  // ph2d-render/src/sprite/sheets.rs
-pub struct ExtraSheet { source: SpriteSource, size: [f32; 2], anchor: [f32; 2], hframes: u32, vframes: u32 }
-  pub struct SpriteSheets(pub SmallVec<[ExtraSheet; 2]>);   // índice k+1 no quadro
+  // ph2d-render/src/sprite/sheets.rs — registado, gravado, no undo
+  pub struct ExtraSheet { asset: AssetId, size: [f32; 2], anchor: [f32; 2], hframes: u32, vframes: u32 }
+  pub struct SpriteSheets(pub SmallVec<[ExtraSheet; 2]>);   // folha k = SpriteSheets[k-1]
+  // derivado, NÃO registado (como `ImageOverride` de `ph2d-app-components/src/script_image.rs`)
+  pub struct SheetTextures(SmallVec<[Option<Resolved>; 2]>); // texture_id / célula do atlas por folha
   ```
+
+  A textura resolve-se pelo `AssetId` na fase do quadro que tem o renderer, com a MESMA lei e o mesmo `upload` do
+  override de script (`OverrideLaw`, `texture_of`). Gravar, abrir e desfazer não re-apontam nada: o cache é
+  derivado e refaz-se sozinho. **Medido 08/11** (explorador): guardar o `SpriteSource` por folha (via A) obrigaria
+  a ensinar ~43 ficheiros que tocam `SpritePixels` a re-apontar folhas extra; folhas como entidades filhas
+  escondidas (via B) não têm marcador de «escondido» que a Hierarchy e o pick respeitem (o único precedente,
+  `Cena`, esconde-se por não ter `Transform`, o que o tira também do save) e ~17 queries sobre `Sprite` as veriam.
+  A via escolhida (C) só toca quem pergunta «que imagens este objeto usa»: lista em §4.
 
 - **O quadro diz a folha:** `SpriteAnimFrames` passa de `Vec<u32>` a `Vec<FrameRef>`, com `enum FrameRef { Cell { sheet: u8, cell: u32 }, Empty }` em `ph2d-ecs`, e
   `SpriteGrid` ganha `sheet: u8` ao lado de `frame` (o que está na tela). Uma tag de intervalo `from..=to` ganha
   `sheet: u8` (todo o intervalo numa folha; a mistura é sempre uma lista). **`PROJECT_SCHEMA` 219 → 220**, sem leitor
   de formato velho (CLAUDE §0.11).
-- **O render** resolve `(sheet, frame)`: `sheet == 0` é o caminho de hoje; `sheet = k` lê `source`, `size`, `anchor`
-  e grelha de `SpriteSheets[k-1]`. Um ponto só: `sim_extract_sheet.rs::cell`, mais a miniatura e a prévia.
+- **O render** resolve `(sheet, frame)` num ponto só, à entrada de `sim_extract_emit::sprite`: `sheet == 0` é o
+  caminho de hoje; `sheet = k` troca, numa CÓPIA do `Sprite` e da `SpriteGrid`, `source` (do `SheetTextures`), `size`,
+  `anchor` e grelha pelos da folha `k`, e o resto do pipeline corre sem saber; `sheet == EMPTY_SHEET` não emite
+  instância (ocupa o rank, como o CookedTexture sem tier). A miniatura e a prévia chamam a mesma função.
 - **A folha visível do painel** é estado de UI (como a aba aberta), não do documento: não entra no save nem no undo.
 
 **Por que não «trocar de lugar» ao tocar** (a 1.ª versão deste plano): com quadros misturados a troca seria a cada
@@ -123,7 +135,9 @@ são 40 bytes no componente, e as texturas já são assets partilhados; 255 folh
 | F1 | Tique, início, ▶, linha do cartão, `vai_para_o_inicio` | escrevem `(sheet, frame)` juntos |
 | F2 | Quem lista as imagens em uso (agrupar usos `image_use.rs:674`, «used by», apagar asset) | contar também `SpriteSheets` |
 | F3 | Edit in Pixel/Painter devolve a imagem (`ph2d-sprite-edit/src/imagem.rs:82` `aponta`), `vazio.rs` | reescrever a folha que casa, seja 0 ou k |
-| F4 | Abrir o projeto: texturas a re-inserir no `AssetDb` | incluir as de `SpriteSheets` |
+| F4 | Gravar/abrir: a imagem de uma folha extra tem de ir no arquivo (`project_sprite_pixels.rs`, `atlas_assets`) e o índice de assets tem de a ver como usada (`asset_index_build.rs:322,402,625`, `asset_card_verbs::users_of`) | somar `SpriteSheets` às duas portas; o runtime refaz-se pelo cache |
+| F12 | Macros: o mundo embute os pixels de cada objeto (`ph2d-app-macros/src/mundo/{mod,embute,formato,aplica,portas}.rs`) | embutir também as folhas extra |
+| F13 | Painter sobre a folha visível extra: editar muda o conteúdo e o `AssetId` (blake3) | `imagem.rs::aponta` reescreve também os `ExtraSheet.asset` que casam |
 | F5 | Duplicar, instância, prefab | componente registado viaja; prova por nome |
 | F6 | Miniatura na Hierarchy / Assets / prévia do cartão | quadro atual resolvido pela folha dele |
 | F7 | Character (herói), `.ase` | continuam folha 0; nada muda |

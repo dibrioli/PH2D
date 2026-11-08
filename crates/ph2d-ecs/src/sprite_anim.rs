@@ -186,6 +186,8 @@ pub struct AnimationTag {
     /// A cor desta animação no editor: índice da paleta, `0..ANIM_COLORS`. Mora na animação para não mudar ao
     /// reordenar nem ao apagar outra; quem a escolhe é [`SpriteAnimations::insert`].
     pub color: u8,
+    /// A folha do intervalo `from..=to` (plano GEF 26): `0` = a do `Sprite`. Uma lista de quadros diz a folha de cada um.
+    pub sheet: u8,
 }
 
 /// Quantas cores a paleta das animações tem; o editor dá um token a cada índice.
@@ -207,6 +209,7 @@ impl AnimationTag {
             signal_on_loop: String::new(),
             per_frame_ms: Vec::new(),
             color: 0,
+            sheet: 0,
         }
     }
 

@@ -49,8 +49,11 @@ pub struct SpriteGrid {
     pub hframes: u32,
     /// Linhas. `>= 1`.
     pub vframes: u32,
-    /// Célula viva, `< hframes * vframes`.
+    /// Célula viva, `< hframes * vframes` da folha [`Self::sheet`].
     pub frame: u32,
+    /// A folha do quadro na tela: `0` = a do `Sprite` e desta grelha; `k` = a folha extra `k` (plano GEF 26);
+    /// [`Self::EMPTY_SHEET`] = um quadro vazio, que não pinta nada.
+    pub sheet: u8,
 }
 
 impl SpriteGrid {
@@ -62,7 +65,46 @@ impl SpriteGrid {
         hframes: 1,
         vframes: 1,
         frame: 0,
+        sheet: 0,
     };
+
+    /// O `sheet` de um quadro vazio. As folhas reais vão de `0` a `EMPTY_SHEET - 1`.
+    pub const EMPTY_SHEET: u8 = u8::MAX;
+
+    /// Uma grelha `hframes × vframes` na célula `0` da folha `0`.
+    #[must_use]
+    pub const fn new(hframes: u32, vframes: u32) -> Self {
+        Self {
+            hframes,
+            vframes,
+            frame: 0,
+            sheet: 0,
+        }
+    }
+
+    /// O quadro que está na tela.
+    #[must_use]
+    pub const fn shown(self) -> crate::FrameRef {
+        if self.sheet == Self::EMPTY_SHEET {
+            crate::FrameRef::Empty
+        } else {
+            crate::FrameRef::Cell {
+                sheet: self.sheet,
+                cell: self.frame,
+            }
+        }
+    }
+
+    /// Põe `f` na tela; o vazio guarda a célula de antes (não pinta, e não há outra a guardar).
+    pub fn show(&mut self, f: crate::FrameRef) {
+        match f {
+            crate::FrameRef::Cell { sheet, cell } => {
+                self.sheet = sheet;
+                self.frame = cell;
+            }
+            crate::FrameRef::Empty => self.sheet = Self::EMPTY_SHEET,
+        }
+    }
 
     /// Quantas células a grelha tem. Satura em vez de estourar: `hframes`/`vframes` vêm de um
     /// campo digitável, e um `u32 * u32` a transbordar num painel seria um pânico por dedada.
@@ -78,7 +120,7 @@ impl SpriteGrid {
     /// vezes, porque «o que conta como vazio» é uma lei do tipo.
     #[must_use]
     pub const fn is_single(self) -> bool {
-        self.hframes <= 1 && self.vframes <= 1 && self.frame == 0
+        self.hframes <= 1 && self.vframes <= 1 && self.frame == 0 && self.sheet == 0
     }
 }
 

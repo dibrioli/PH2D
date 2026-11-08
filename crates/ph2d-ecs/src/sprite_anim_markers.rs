@@ -13,8 +13,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::sprite_anim_frames::advance_frames_visiting;
 use crate::{
-    AnimOutcome, AnimationTag, SimComponent, SpriteAnimFrames, SpriteAnimations, SpriteAnimator,
-    SpriteGrid, entry_cell, tag_cells,
+    AnimOutcome, AnimationTag, FrameRef, SimComponent, SpriteAnimFrames, SpriteAnimations,
+    SpriteAnimator, SpriteGrid, entry_cell, tag_cells,
 };
 
 /// Um marcador.
@@ -101,18 +101,20 @@ impl SpriteAnimMarkers {
     }
 }
 
-/// Quantos quadros a animação `name` toca na grelha de hoje (`0` = não resolve).
+/// Quantos quadros a animação `name` toca nas folhas de hoje (`0` = não resolve). `sheets[k]` = células da folha
+/// `k`; vazio = só a grelha deste objeto (a folha `0`).
 #[must_use]
-pub fn anim_steps(world: &World, entity: Entity, name: &str) -> u32 {
-    let cells = world
+pub fn anim_steps(world: &World, entity: Entity, name: &str, sheets: &[u32]) -> u32 {
+    let own = [world
         .get::<SpriteGrid>(entity)
-        .map_or(1, |g| g.cells().max(1));
+        .map_or(1, |g| g.cells().max(1))];
+    let sheets = if sheets.is_empty() { &own[..] } else { sheets };
     world
         .get::<SpriteAnimations>(entity)
         .and_then(|l| l.get(name))
         .and_then(|t| {
             let frames = world.get::<SpriteAnimFrames>(entity);
-            tag_cells(t, frames.and_then(|f| f.get(name)), cells)
+            tag_cells(t, frames.and_then(|f| f.get(name)), sheets)
         })
         .map_or(0, |seq| u32::try_from(seq.len()).unwrap_or(u32::MAX))
 }
@@ -126,10 +128,10 @@ pub fn anim_steps(world: &World, entity: Entity, name: &str) -> u32 {
 pub fn advance_frames_marked(
     animator: &mut SpriteAnimator,
     tag: &AnimationTag,
-    list: Option<&[u32]>,
-    frame: &mut u32,
+    list: Option<&[FrameRef]>,
+    frame: &mut FrameRef,
     step: &mut u32,
-    cells: u32,
+    sheets: &[u32],
     dt_ticks: u64,
     markers: Option<&SpriteAnimMarkers>,
     fired: &mut Vec<String>,
@@ -149,13 +151,13 @@ pub fn advance_frames_marked(
         && animator.elapsed_ticks == 0
         && animator.repeat_count == 0;
     if comeca
-        && let Some((celula, passo)) = entry_cell(animator, tag, list, cells)
+        && let Some((celula, passo)) = entry_cell(animator, tag, list, sheets)
         && celula == *frame
     {
         grita(passo);
     }
     advance_frames_visiting(
-        animator, tag, list, frame, step, cells, dt_ticks, &mut grita,
+        animator, tag, list, frame, step, sheets, dt_ticks, &mut grita,
     )
 }
 

@@ -20,12 +20,48 @@ use crate::{SimComponent, SpriteAnimations};
 /// Quantos quadros uma lista guarda: uma folha de 64 × 64 células cabe inteira.
 pub const ANIM_FRAMES_MAX: usize = 4096;
 
+/// **Um quadro de uma lista**: uma célula de uma folha, ou o buraco que uma folha apagada deixou (plano GEF 26).
+///
+/// A folha `0` é a do `Sprite` + [`crate::SpriteGrid`]; as outras são as folhas extra do objeto, por ordem.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum FrameRef {
+    Cell {
+        sheet: u8,
+        cell: u32,
+    },
+    /// O quadro de uma folha que foi apagada: não pinta nada e dura o seu tempo, até o artista o tirar.
+    Empty,
+}
+
+impl FrameRef {
+    /// Uma célula da folha `0`.
+    #[must_use]
+    pub const fn cell(cell: u32) -> Self {
+        Self::Cell { sheet: 0, cell }
+    }
+
+    /// Cabe nas folhas de hoje? `sheets[k]` = células da folha `k`. O vazio cabe sempre.
+    #[must_use]
+    pub fn fits(self, sheets: &[u32]) -> bool {
+        match self {
+            Self::Cell { sheet, cell } => cell < sheet_cells(sheets, sheet),
+            Self::Empty => true,
+        }
+    }
+}
+
+/// Células da folha `sheet` (`0` se a folha não existe).
+#[must_use]
+pub fn sheet_cells(sheets: &[u32], sheet: u8) -> u32 {
+    sheets.get(usize::from(sheet)).copied().unwrap_or(0)
+}
+
 /// As células de UMA tag, na ordem em que tocam.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TagFrames {
     /// O nome da [`AnimationTag`] dona — renomear a tag reescreve-o ([`rename_tag`]).
     pub tag: String,
-    pub cells: Vec<u32>,
+    pub cells: Vec<FrameRef>,
 }
 
 /// **As listas de quadros de uma sprite.** Componente opcional: uma tag sem entrada toca o intervalo.
@@ -37,7 +73,7 @@ impl SimComponent for SpriteAnimFrames {}
 impl SpriteAnimFrames {
     /// A lista da tag `name`, se ela tem uma.
     #[must_use]
-    pub fn get(&self, name: &str) -> Option<&[u32]> {
+    pub fn get(&self, name: &str) -> Option<&[FrameRef]> {
         self.0
             .iter()
             .find(|f| f.tag == name)
@@ -45,7 +81,7 @@ impl SpriteAnimFrames {
     }
 
     /// Põe (ou tira, com `cells` vazio) a lista da tag `name`. Corta em [`ANIM_FRAMES_MAX`].
-    pub fn set(&mut self, name: &str, mut cells: Vec<u32>) {
+    pub fn set(&mut self, name: &str, mut cells: Vec<FrameRef>) {
         cells.truncate(ANIM_FRAMES_MAX);
         if cells.is_empty() {
             self.0.retain(|f| f.tag != name);
@@ -79,15 +115,27 @@ pub struct SpriteAnimCursor {
 
 impl SimComponent for SpriteAnimCursor {}
 
-/// **As células que a tag toca hoje**: a lista, se existe e cabe toda na grelha, senão o intervalo.
+/// **Os quadros que a tag toca hoje**: a lista, se existe e cabe toda nas folhas, senão o intervalo na folha da tag.
+/// `sheets[k]` = células da folha `k`.
 ///
-/// ⚠️ Uma lista com UMA célula fora da grelha não toca (a tag fica pendurada), e não se apara: aparar
-/// tocaria outra animação que ninguém autorou. O editor mostra essas células a vermelho.
+/// ⚠️ Uma lista com UMA célula fora da folha dela não toca (a tag fica pendurada), e não se apara: aparar
+/// tocaria outra animação que ninguém autorou. O editor mostra essas células a vermelho. O vazio cabe.
 #[must_use]
-pub fn tag_cells(tag: &AnimationTag, list: Option<&[u32]>, cells: u32) -> Option<Vec<u32>> {
+pub fn tag_cells(
+    tag: &AnimationTag,
+    list: Option<&[FrameRef]>,
+    sheets: &[u32],
+) -> Option<Vec<FrameRef>> {
     match list {
-        Some(l) if !l.is_empty() => (cells > 0 && l.iter().all(|&c| c < cells)).then(|| l.to_vec()),
-        _ => tag.resolve(cells).map(|(lo, hi)| (lo..=hi).collect()),
+        Some(l) if !l.is_empty() => l.iter().all(|f| f.fits(sheets)).then(|| l.to_vec()),
+        _ => tag.resolve(sheet_cells(sheets, tag.sheet)).map(|(lo, hi)| {
+            (lo..=hi)
+                .map(|cell| FrameRef::Cell {
+                    sheet: tag.sheet,
+                    cell,
+                })
+                .collect()
+        }),
     }
 }
 
@@ -96,10 +144,10 @@ pub fn tag_cells(tag: &AnimationTag, list: Option<&[u32]>, cells: u32) -> Option
 pub fn advance_frames(
     animator: &mut SpriteAnimator,
     tag: &AnimationTag,
-    list: Option<&[u32]>,
-    frame: &mut u32,
+    list: Option<&[FrameRef]>,
+    frame: &mut FrameRef,
     step: &mut u32,
-    cells: u32,
+    sheets: &[u32],
     dt_ticks: u64,
 ) -> AnimOutcome {
     advance_frames_visiting(
@@ -108,7 +156,7 @@ pub fn advance_frames(
         list,
         frame,
         step,
-        cells,
+        sheets,
         dt_ticks,
         &mut |_| {},
     )
@@ -119,22 +167,36 @@ pub fn advance_frames(
 pub(crate) fn advance_frames_visiting(
     animator: &mut SpriteAnimator,
     tag: &AnimationTag,
-    list: Option<&[u32]>,
-    frame: &mut u32,
+    list: Option<&[FrameRef]>,
+    frame: &mut FrameRef,
     step: &mut u32,
-    cells: u32,
+    sheets: &[u32],
     dt_ticks: u64,
     visit: &mut dyn FnMut(u32),
 ) -> AnimOutcome {
     let Some(l) = list.filter(|l| !l.is_empty()) else {
-        let Some((lo, hi)) = tag.resolve(cells) else {
+        let Some((lo, hi)) = tag.resolve(sheet_cells(sheets, tag.sheet)) else {
             return AnimOutcome::default();
         };
-        let out = advance_span_visiting(animator, tag, frame, lo, hi, dt_ticks, visit);
-        *step = frame.saturating_sub(lo);
-        return out;
+        // Um quadro de outra folha (ou o vazio) está fora do intervalo: entra pela ponta certa.
+        let mut cell = match *frame {
+            FrameRef::Cell { sheet, cell } if sheet == tag.sheet => cell,
+            _ => u32::MAX,
+        };
+        let out = advance_span_visiting(animator, tag, &mut cell, lo, hi, dt_ticks, visit);
+        let now = FrameRef::Cell {
+            sheet: tag.sheet,
+            cell,
+        };
+        let changed = now != *frame || out.frame_changed;
+        *frame = now;
+        *step = cell.saturating_sub(lo);
+        return AnimOutcome {
+            frame_changed: changed,
+            ..out
+        };
     };
-    if cells == 0 || l.iter().any(|&c| c >= cells) {
+    if !l.iter().all(|f| f.fits(sheets)) {
         return AnimOutcome::default();
     }
     let n = l.len() as u32;
@@ -144,7 +206,7 @@ pub(crate) fn advance_frames_visiting(
         *step
     } else {
         l.iter()
-            .position(|&c| c == *frame)
+            .position(|c| c == frame)
             .map_or(u32::MAX, |p| p as u32)
     };
     let out = advance_span_visiting(animator, tag, &mut s, 0, n - 1, dt_ticks, visit);
@@ -164,10 +226,10 @@ pub(crate) fn advance_frames_visiting(
 pub fn entry_cell(
     animator: &SpriteAnimator,
     tag: &AnimationTag,
-    list: Option<&[u32]>,
-    cells: u32,
-) -> Option<(u32, u32)> {
-    let seq = tag_cells(tag, list, cells)?;
+    list: Option<&[FrameRef]>,
+    sheets: &[u32],
+) -> Option<(FrameRef, u32)> {
+    let seq = tag_cells(tag, list, sheets)?;
     let step = if animator.direction(tag).starts_reversed() {
         seq.len() - 1
     } else {
@@ -175,7 +237,15 @@ pub fn entry_cell(
     };
     match list.filter(|l| !l.is_empty()) {
         Some(_) => Some((seq[step], step as u32)),
-        None => crate::entry_frame(animator, tag, cells).map(|f| (f, step as u32)),
+        None => crate::entry_frame(animator, tag, sheet_cells(sheets, tag.sheet)).map(|cell| {
+            (
+                FrameRef::Cell {
+                    sheet: tag.sheet,
+                    cell,
+                },
+                step as u32,
+            )
+        }),
     }
 }
 

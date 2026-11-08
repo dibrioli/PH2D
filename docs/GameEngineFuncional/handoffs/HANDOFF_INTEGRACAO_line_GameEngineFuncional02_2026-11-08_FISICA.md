@@ -1,12 +1,12 @@
 # HANDOFF de integração — `line/GameEngineFuncional02`, 08/11 (física em cartões: Physics Body, Static Body, Collision Shape, Collision Layers)
 
-Leitor: o agente integrador. Branch `line/GameEngineFuncional02`, HEAD `04a158179c` (antes deste commit de docs), **104 commits** sobre a base `652b506b58` = merge-base = ponta do `main` (`git rev-parse main` = `652b506b58`, conferido 08/11: o `main` NÃO andou; `--ff-only` serve sem rebase). `git diff --shortstat 652b506b58..HEAD`: 372 files, +17106 −1885. Nada integrado, nenhum push. **Suíte completa e `nextest-impacted` NÃO correram** (regra do dono, 23/10: só o integrador). Mecanismo de cada onda: [continuação 07/11](HANDOFF_CONTINUACAO_2026-11-07_FISICA.md) (ondas 4 a 9g) e a ficha [`f1_physics_static_shape.md`](../componentes/f1_physics_static_shape.md) (decisões do dono, ondas 6–9g, «Fecho da linha (07–08/11)»). Aqui só o que a integração precisa.
+Leitor: o agente integrador. Branch `line/GameEngineFuncional02`, HEAD `a67cd35119` (antes do commit de docs do fecho 2), **122 commits** sobre a base `652b506b58` = merge-base = ponta do `main` (`git rev-parse main` = `652b506b58`, reconferido 08/11 depois do fecho 2: o `main` NÃO andou; `--ff-only` serve sem rebase). `git diff --shortstat 652b506b58..HEAD`: 413 files, +18598 −2053. Nada integrado, nenhum push. **Suíte completa e `nextest-impacted` NÃO correram** (regra do dono, 23/10: só o integrador). Mecanismo de cada onda: [continuação 07/11](HANDOFF_CONTINUACAO_2026-11-07_FISICA.md) (ondas 4 a 9g) e a ficha [`f1_physics_static_shape.md`](../componentes/f1_physics_static_shape.md) (decisões do dono, ondas 6–9g, «Fecho da linha (07–08/11)», «Depois do smoke de 08/11 (fecho 2)»). Aqui só o que a integração precisa.
 
 ⚠️ **Linha irmã `line/GameEngineFuncional`** (Sprite + Animated Sprite, [handoff 07/11](HANDOFF_INTEGRACAO_line_GameEngineFuncional_2026-11-07_ANIMATED_SPRITE.md)) também está fora do `main` e parte da mesma base. Ordem e partilha: §8.
 
 ## 1. O que entra
 
-Ondas 4–9g e o fecho 07–08/11: cartões Physics Body / Static Body / Collision Shape (forma com alças no canvas, Esc a meio com Auto Key); cartão **Collision Layers**; **32 camadas com nome** (schema 218/219, §3); **aba central «Collision Layers»** (`ph2d-panel-physics::aba`, um `DocumentSurface`: matriz, camada aberta, objetos, Rename, «+ Layer», «Remove» com destino); canvas com contorno na cor da camada, tipo do corpo pelo traço e, no fecho, **sombra escura sob os contornos** (`tinta_canvas::sombra_do_contorno`; decisão do dono 07/11, com a regra «não perder poder de configuração»). Fecho: destino do Remove em lista suspensa (`PHYSICS_LAYER_MOVE_PICK`, ✓ na escolhida, «Move them to» ≥ 4,5:1), duplo clique no Layer conduzido no app, nome da camada no Ray Sensor (clássica: ao lado do número ou linha própria; cartão: «Layer · nome»), face clássica `PH2D_CARDS=0` com a lista suspensa.
+Ondas 4–9g e o fecho 07–08/11: cartões Physics Body / Static Body / Collision Shape (forma com alças no canvas, Esc a meio com Auto Key); cartão **Collision Layers**; **32 camadas com nome** (schema 218/219, §3); **aba central «Collision Layers»** (`ph2d-panel-physics::aba`, um `DocumentSurface`: matriz, camada aberta, objetos, Rename, «+ Layer», «Remove» com destino); canvas com contorno na cor da camada, tipo do corpo pelo traço e, no fecho, **sombra escura sob os contornos** (`tinta_canvas::sombra_do_contorno`; decisão do dono 07/11, com a regra «não perder poder de configuração»). Fecho: destino do Remove em lista suspensa (`PHYSICS_LAYER_MOVE_PICK`, ✓ na escolhida, «Move them to» ≥ 4,5:1), duplo clique no Layer conduzido no app, nome da camada no Ray Sensor (depois das emendas 2/3: a mesma lista suspensa do collider + «Sees»), face clássica `PH2D_CARDS=0` com a lista suspensa.
 
 ## 2. Superfície de colisão (foundational) — por que é aditiva
 
@@ -38,7 +38,7 @@ git diff --stat 652b506b58..HEAD -- crates/ph2d-editor-core/src/tool.rs crates/p
 - ⚠️ A [continuação 07/11](HANDOFF_CONTINUACAO_2026-11-07_FISICA.md) diz «218»: é anterior à onda 5. **O valor no código é 219.**
 - **O integrador RECONTA**: o degrau é DELTA **+2** sobre o `main` do dia (aqui `main` = 217). Se o `main` andar, `python3 scripts/schema-recount.py <valor que o degrau passa a ter no main>` e as constantes `..._SEM_NOMES_DE_CAMADA` / `..._MATRIZ_DE_OITO` seguem. A escada e a tripla moram em ficheiros irmãos (`project_schema*.rs`, `project_schema_tests.rs`, três sítios). Os degraus do 3D antigos foram arquivados em `project_schema_history_v99.rs` (−183).
 
-**Símbolos que podem colidir (grep na integração):** ids `physics.layers.move_pick` (`PHYSICS_LAYER_MOVE_PICK`), `physics.matrix.open`; variantes `EditorAction::LayerRename|LayerShow|LayerPairToggle|LayerMatrixOpen|LayerRemove`; chaves i18n `panel.inspector.ray.layer_named` = `"Layer · {name}"`, `card.glyph.l` = `"L"`; cenas de smoke `PH2D_PHYSICS_SMOKE=120` e `PH2D_PHYSICS_SMOKE_ABA`/`_SELECT`/`_CLIQUE` (pré-existentes na linha) (passos novos `layer`, `duplo:layer`, `escreve:<t>`, `ray`, `fisica`); tokens em `ph2d-tokens/src/camadas_de_colisao.rs`.
+**Símbolos que podem colidir (grep na integração):** ids `physics.layers.move_pick` (`PHYSICS_LAYER_MOVE_PICK`), `physics.matrix.open`; variantes `EditorAction::LayerRename|LayerShow|LayerPairToggle|LayerMatrixOpen|LayerRemove`; chaves i18n `panel.inspector.ray.layer_named` = `"Layer · {name}"`, `card.glyph.l` = `"L"`; ids/i18n do fecho 2 `insp_phys_add_shape` (`INSP_PHYS_ADD_SHAPE`), `insp_phys_collides_applies`, `insp_ray_sees_applies`, `physics.layers.title` (`PHYSICS_LAYER_TITLE`), `card.insp.phys.no_shape`, `card.insp.phys.add_shape`; campo `InspectorPhysicsInfo.body_without_shape` (§5.4); cenas de smoke `PH2D_PHYSICS_SMOKE=120` (+ objeto «No Shape Body») e `PH2D_PHYSICS_SMOKE_ABA`/`_SELECT`/`_CLIQUE` (pré-existentes na linha) (passos novos `layer`, `duplo:layer`, `escreve:<t>`, `ray`, `fisica`); tokens em `ph2d-tokens/src/camadas_de_colisao.rs`.
 
 ## 4. Catracas e pisos MOVIDOS com medição (o integrador RECONTA, soma entre linhas)
 
@@ -89,6 +89,12 @@ Se a linha irmã também gastou folga da shell, **a soma estoura**: cura = MOVER
 - **Foundational (aditivo):** `ProbeMark.layer: Option<u8>` + `na_camada` (`ph2d-physics-ecs`); `Tinta::Sonda` + `SONDA_PX` (`ph2d-panel-physics::tinta_canvas`). Quem constrói `ProbeMark { .. }` à mão noutra linha precisa de `layer: None`.
 - Detalhe, testes, mutações e fotos: ficha, «Fecho da linha» → «Emenda 4».
 
+### 5.4 Fecho 2 (depois do smoke de 08/11)
+
+Commits `b09cf47e98` · `735c157f9c` · `8fa1b50e54` · `a67cd35119` · `cb0065c8ac` (docs). Lista «Layers» da aba pela régua do editor de animações ATUAL da irmã (decisão do dono: não a maquete v2), faixa da linha pairada sob as células, título da camada aberta com dica; corpo sem forma avisa e «Add Shape» (`PhysicsFieldEdit::AddShape`, um passo de undo); balão do nome inteiro **só quando o texto visível foi cortado** (frase, título dobrado incl. `curto_se_a_fila_nao_cabe`; opções da lista sem balão, mostram o nome inteiro); oráculo Godot do contorno (`docs/GameEngineFuncional/oraculo_contorno/`).
+- ⚠️ **Foundational (aditivo):** `ph2d-editor-core` `InspectorPhysicsInfo.body_without_shape: bool`. O struct **não tem `Default`**: outra linha que o construa à mão (`InspectorPhysicsInfo { .. }`) precisa de `body_without_shape: false` — o `cargo check --workspace` da árvore combinada acusa.
+- Por nome verdes, fmt/clippy do inspector, `cargo machete` nas 6 crates da física (limpo), mutações: ficha, «Depois do smoke de 08/11 (fecho 2)». Nenhuma catraca movida; `physics_colide.rs` 596/600 (`architecture_panel_loc_cap`).
+
 ## 6. Auditoria (duas lentes) do fecho: achado · cura
 
 | Achado | Cura |
@@ -102,12 +108,11 @@ Se a linha irmã também gastou folga da shell, **a soma estoura**: cura = MOVER
 
 ## 7. NÃO provado / ABERTO
 
-**Não provado:** o rótulo «Layer · nome» do Ray no CARTÃO só por foto (o arnês não abre o corpo desse cartão) · cursor no app · teclas ←/→/↑ e Play na cena 120 · o resto: continuação 07/11 («Não provado», fim da 9b) · `suite-completa` e `nextest-impacted` (integrador).
+**Não provado:** cursor no app · teclas ←/→/↑ e Play na cena 120 · o resto: continuação 07/11 («Não provado», fim da 9b) · `suite-completa` e `nextest-impacted` (integrador). (O rótulo «Layer · nome» do Ray saiu nas emendas 2/3: obsoleto.)
 
-**Aberto, para DEPOIS da integração:**
-1. **Polígono pelo contorno da imagem** — decisão do dono (07/11): item novo, com proposta; mexe no motor e no formato salvo.
-2. Das ondas 8 e 9e–9g: faixa da linha pairada sobre as células, linhas da lista sem vão, a referência é a maquete v2 e não o editor atual da irmã (continuação, «NÃO feito / aberto»).
-3. Smoke do dono: onda 5, 6, 7 e este fecho (§9). **Passo 10 do smoke de 07/11** (rótulo, decisão dele) por repetir.
+**Aberto:**
+1. **Polígono pelo contorno da imagem** — próximo, proposta aprovada (08/11): UM contorno para o Animated Sprite (união dos quadros), côncavo = sólido (peças convexas); **pendente do dono:** buraco fica buraco? Oráculo feito (`oraculo_contorno/`). Mexe no motor e no formato salvo: depois da integração.
+2. Smoke do dono do fecho 2 (§9, passos 8–10).
 
 ## 8. Riscos de integração
 
@@ -115,7 +120,7 @@ Se a linha irmã também gastou folga da shell, **a soma estoura**: cura = MOVER
 - **Primário:** `git -C /home/enio/Documentos/Projetos/PH2D status --short` ANTES; nunca descartar `M`/`??` alheio.
 - **`CLAUDE.md` §5:** o §5 inteiro tem tecto; reconte após fundir as duas linhas (`architecture_claude_md_cabe_no_orcamento`).
 - `.config/testes-lentos.tsv` e `Cargo.lock`: regenerar. Existem: `scripts/collision-surface.sh` (caminho ABSOLUTO), `censos-da-arvore-combinada.sh`, `recontar.py`, `schema-recount.py <n>`, `integrar-rodada.sh`.
-- **O que só o `ship.sh` pega:** `cargo machete` NÃO foi corrido neste fecho (a crate nova `ph2d-shape-handles` e as deps de `ph2d-physics-ecs`/`ph2d-panel-physics` merecem-no). `cfg(target_os` novo: 0 (`git diff -U0 652b506b58..HEAD -- '*.rs' | grep -c '^+.*cfg(target_os'`).
+- **O que só o `ship.sh` pega:** `cargo machete` corrido no fecho 2 nas 6 crates da física (incl. a nova `ph2d-shape-handles`): limpo. `cfg(target_os` novo: 0 (`git diff -U0 652b506b58..HEAD -- '*.rs' | grep -c '^+.*cfg(target_os'`).
 
 ## 9. SMOKE do dono (depois da integração; antes, na árvore da linha)
 
@@ -127,11 +132,12 @@ Se a linha irmã também gastou folga da shell, **a soma estoura**: cura = MOVER
 4. **Face clássica.** `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional02 && PH2D_CARDS=0 PH2D_PHYSICS_SMOKE=120 ./target/smoke/ph2d-host-desktop`. Selecione o Crate: a **Layer** é uma lista com nomes (0–7 e as visíveis até 31); com o Inspector estreito o nome fica por cima do chip. Errado: só números, ou nome cortado.
 5. **Ray Sensor.** `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional02 && PH2D_RAY_SMOKE=1 ./target/smoke/ph2d-host-desktop`. Selecione o Ray Sensor: **Layer** é uma lista com os nomes das camadas (como a do collider); debaixo, **Sees** com um quadro por camada e «+ Add layer». Escolha outra camada na lista: o contorno do campo muda de cor; clique num quadro de «Sees»: liga/desliga o que o raio vê (o mesmo que o «Collides with» do collider). Errado: um campo de número, ou o quadro não muda nada.
 6. **Botões e cor do Ray.** `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional02 && PH2D_RAY_SMOKE=1 ./target/smoke/ph2d-host-desktop`. Selecione «Olho que ve»: logo abaixo de **Layer** estão **Rename layers…** e **Open in tab…**, e só depois **Sees**. **Open in tab…** abre a aba Collision Layers na camada do raio. **Rename layers…** mostra os nomes de todas as camadas com o da camada do raio já selecionado; escreva `Eyes`, Enter, **Done**: o nome muda em todo o lado; Ctrl+Z volta num passo. No canvas, a linha do raio tem a cor da camada dele (a mesma do contorno do campo Layer) com sombra escura; troque a camada na lista e a cor da linha muda. Errado: botões ausentes ou abaixo de «Sees», a aba abre noutra camada, o raio azul-claro fixo.
-7. Diga o que deu errado em cada passo.
+**Fecho 2 (por fazer)** — ⚠️ o binário abaixo é da emenda 4: recompile antes (`cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional02 && bash scripts/ph2d-run.sh cargo build -p ph2d-host-desktop --profile smoke`).
 
-
-
-Larguras próprias para a aba (segue as do editor de animações, onda 9g) · tabela de camadas com 8 fixas (o dono quis 32, schema 219) · cura do contorno do Crate por espessura (é a cor contra a arte; a cura é a sombra) · harness de gesto dentro da `App` em `cargo test` (a `App` segura uma surface de janela; trabalho grande, não feito).
+8. **Corpo sem forma.** (1) `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional02 && PH2D_PHYSICS_SMOKE=120 ./target/smoke/ph2d-host-desktop`. (2) Na lista da esquerda clique em **No Shape Body**; no Inspector, cartão **Static Body**. (3) Aparece o aviso «This body has no collision shape, so nothing will touch it.» e o botão **Add Shape**; clique nele: o aviso some e, no canvas, aparece a caixa do tamanho da imagem; **Ctrl+Z** tira a caixa num só passo e o aviso volta. (4) Errado: sem aviso, o botão não faz nada, a caixa não segue a imagem, ou o Ctrl+Z precisa de mais de um passo.
+9. **Lista da aba como o editor de animações.** (1) `cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-GameEngineFuncional02 && PH2D_PHYSICS_SMOKE=120 PH2D_PHYSICS_SMOKE_ABA=abre ./target/smoke/ph2d-host-desktop`. (2) Abre a aba **Collision Layers**; olhe a lista **Layers** à esquerda. (3) Linhas coladas, mesma letra e altura das linhas do editor de animações do Animated Sprite; a selecionada com faixa na largura toda; quadradinho de cor à esquerda do nome, contagem à direita. Na matriz, passe o rato numa linha: a faixa clara passa por baixo das caixinhas dessa linha. (4) Errado: vão entre linhas, letra maior/menor que a do editor, faixa só atrás do nome.
+10. **Nome comprido volta inteiro.** (1) O mesmo comando do passo 8. (2) Selecione o **Crate**, cartão **Collision Layers**, **Rename layers…**, escreva um nome longo (ex.: `Flying Enemies Of The North`), Enter, **Done**. (3) O nome aparece cortado com «…»; com o rato parado sobre a frase «Applies to everything on …» aparece o nome inteiro; dobre o cartão e pare sobre o título: o resumo inteiro. Com um nome curto (`Props`), parar o rato ali não mostra balão nenhum. (4) Errado: balão com o nome curto a repetir o que já se lê, ou nome cortado sem balão.
+11. Diga o que deu errado em cada passo.
 ## ⛔ Recusas MEDIDAS (na ficha)
 
 Larguras próprias para a aba (segue o editor de animações, 9g) · 8 camadas fixas (o dono quis 32) · cura do contorno do Crate por espessura (é a cor contra a arte; a cura é a sombra) · harness de gesto dentro da `App` em `cargo test`.

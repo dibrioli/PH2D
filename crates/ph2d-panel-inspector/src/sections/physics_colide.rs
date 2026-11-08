@@ -123,6 +123,7 @@ fn camada(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
         .open(aberta)
         .visual(t.store.dropdown_visual(ids::INSP_PHYS_LAYER_PICK));
     paint_dropdown_chip(&dd, linha.control, t.scene, t.text, t.theme);
+    bolinha_do_rotulo(t, linha.control, rotulo, usize::from(info.layer));
     if aberta {
         crate::state_popovers::set_pending_phys_layer_dd(Some((info.layer, linha.control)));
     }
@@ -201,8 +202,28 @@ fn rename(t: &mut Tinta<'_>, mut y: f32, camada: usize) -> f32 {
             TextInput::new(id, "").placeholder(&dica),
             seccao,
         );
+        if let Some(campo) = t.hit.rect_for(id) {
+            bolinha_do_rotulo(t, campo, refs[p], j);
+        }
     }
     y
+}
+
+/// A bolinha da cor da camada `j` no rótulo do controlo (o seletor Layer, o campo do Rename): no
+/// cartão o rótulo está EM CIMA e ela vem logo depois dele; fora do cartão, antes do controlo.
+fn bolinha_do_rotulo(t: &mut Tinta<'_>, controlo: Rect, rotulo: &str, j: usize) {
+    use ph2d_card_stack::metrics as m;
+    let lado = TypeToken::Sm.px() - Spacing::Xs.px();
+    let ponto = if ph2d_editor_core::widget::card_ink::card_body().is_some() {
+        let topo = controlo.y - m::LABEL_BOTTOM - m::LABEL_PX;
+        let x = controlo.x + t.text.prefix_width(rotulo, m::LABEL_PX).ceil() + Spacing::Xs.px();
+        Rect::new(x, topo + (m::LABEL_PX - lado) * 0.5, lado, lado)
+    } else {
+        let x = controlo.x - Spacing::Xs.px() - lado;
+        Rect::new(x, controlo.y + (controlo.h - lado) * 0.5, lado, lado)
+    };
+    let raio = frame_radius(t.theme, Radius::Sm.px()) * 0.5;
+    fill_rounded_rect(t.scene, ponto, raio, resolve(ColorToken::layer(j), t.theme));
 }
 
 /// As opções da lista: as camadas visíveis e a do objecto, pelo nome ou pelo número.

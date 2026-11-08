@@ -374,6 +374,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // As fotos do smoke da aba (`PH2D_PHYSICS_SMOKE_ABA`): os nomes da maquete B, separados por «|».
         "card.physics.smoke_layer_names" => "Ground|Player|Enemy|Pickup|Player Shots",
         "card.physics.smoke_layer_rename" => "Enemy Bats",
+        "card.physics.smoke_long_name" => "Flying Enemies That Only Hit The Players",
         "card.physics.tab_layers" => "Layers",
         "card.physics.tab_add" => "+ Add layer",
         "card.physics.tab_add_tip" => {

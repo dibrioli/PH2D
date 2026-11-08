@@ -65,6 +65,16 @@ pub(super) fn fotos(ctx: &mut PaintCtx) {
                 name: nome.to_owned(),
             });
     }
+    // `muitas`: 27 camadas (0..26), a 7 com um nome de 40 letras, o ponteiro numa célula baixa (26, 2).
+    if caso == "muitas" {
+        for layer in 5..27u8 {
+            let bus = ctx.host.bus_mut();
+            bus.push(ph2d_editor_core::action_bus::EditorAction::LayerShow { layer });
+        }
+        let name = tr("card.physics.smoke_long_name").to_owned();
+        let bus = ctx.host.bus_mut();
+        bus.push(ph2d_editor_core::action_bus::EditorAction::LayerRename { layer: 7, name });
+    }
     if caso == "nome" {
         let campo = i::PHYSICS_LAYER_NAME[2];
         let store = ctx.host.store_mut();
@@ -78,10 +88,12 @@ pub(super) fn fotos(ctx: &mut PaintCtx) {
 }
 
 pub(super) fn pairar_da_foto(ctx: &mut PaintCtx) {
-    if std::env::var("PH2D_PHYSICS_SMOKE_ABA").as_deref() != Ok("pairar") {
-        return;
-    }
-    let id = i::PHYSICS_LAYER_CELL[i::physics_layer_cell_index(4, 1)];
+    let (a, b) = match std::env::var("PH2D_PHYSICS_SMOKE_ABA").as_deref() {
+        Ok("pairar") => (4, 1),
+        Ok("muitas") => (26, 2),
+        _ => return,
+    };
+    let id = i::PHYSICS_LAYER_CELL[i::physics_layer_cell_index(a, b)];
     if let Some(InteractiveState::Button { state, .. }) = ctx.host.store_mut().get_mut(id) {
         *state = ButtonState::Hovered;
     }

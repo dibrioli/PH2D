@@ -173,6 +173,10 @@ pub fn dispatch(
     run: RunTapes<'_>,
     mundo: &mut crate::canais_mundo::ConducaoMundo,
 ) -> bool {
+    if std::env::var_os("PH2D_PHYSICS_SMOKE_RENAME").is_some() {
+        ph2d_panel_inspector::camadas_fisica::abre_o_rename(&mut hero.store);
+        ph2d_panel_inspector::camadas_fisica::dobra_os_cartoes_de_cima(&mut hero.store);
+    }
     // ── 1. Publish. Every row reads this; the panel keeps no copy. ──
     ph2d_panel_physics::set_current_physics(Some(PhysicsSnapshot {
         settings: physics.settings(),

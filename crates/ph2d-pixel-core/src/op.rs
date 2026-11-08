@@ -81,6 +81,12 @@ fn user_slot(
             .find(|t| t.id == id)
             .map(|t| &mut t.user)
             .ok_or(OpError::BadTiles("tileset")),
+        Owner::Slice(id) => s
+            .slices
+            .iter_mut()
+            .find(|c| c.id == id)
+            .map(|c| &mut c.user)
+            .ok_or(OpError::BadSlices("slice")),
     }
 }
 
@@ -282,7 +288,8 @@ fn slices_bytes(v: &[Slice]) -> usize {
         .map(|s| {
             std::mem::size_of::<Slice>()
                 + s.name.len()
-                + s.data.len()
+                + s.user.text.len()
+                + 64 * s.user.props.values().map(|m| m.len() + 1).sum::<usize>()
                 + s.keys.len() * std::mem::size_of::<SliceKey>()
         })
         .sum()

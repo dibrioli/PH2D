@@ -102,6 +102,7 @@ pub(super) fn extensoes(s: &Sprite) -> Vec<AseExternalFile> {
     s.entries().for_each(|(_, c)| junta(&c.user));
     s.tags().iter().for_each(|t| junta(&t.user));
     s.tilesets().iter().for_each(|t| junta(&t.user));
+    s.slices().iter().for_each(|c| junta(&c.user));
     nomes
         .into_iter()
         .zip(1..)

@@ -117,8 +117,8 @@ impl UserData {
 /// A cor de uma tag é `Tag::color` (no Aseprite 1.3 a tag tem UMA cor, a do user data: o Trial
 /// mostra-a por cima da `rgb` do chunk); a `UserData::color` de uma tag não vai ao `.ase`.
 ///
-/// ⚠️ Sem `Slice`: a slice ainda guarda cor e texto nos campos próprios (`Slice::color`/`data`,
-/// porta `Op::Slices`); a migração para [`UserData`] espera pelos chamadores de fora do núcleo.
+/// A slice também passa por `Op::Slices` (nome, cor e texto no cartão da slice); as duas portas
+/// escrevem o mesmo `Slice::user`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Owner {
     Sprite,
@@ -126,4 +126,5 @@ pub enum Owner {
     Cel(CelKey),
     Tag(usize),
     Tileset(TilesetId),
+    Slice(crate::slice::SliceId),
 }

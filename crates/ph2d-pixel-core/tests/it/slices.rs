@@ -165,7 +165,7 @@ fn creating_clips_to_the_canvas_and_names_never_reuse_a_deleted_top_gap() {
         "T1"
     );
     assert_eq!(so_a(&s, a).name, "Slice 1");
-    assert_eq!(so_a(&s, a).color, Some([0, 0, 255, 255]), "T1 #0000FF");
+    assert_eq!(so_a(&s, a).user.color, [0, 0, 255, 255], "T1 #0000FF");
     let b = novo(&mut s, Rect::new(0, 0, 2, 2));
     let c = novo(&mut s, Rect::new(0, 0, 2, 2));
     let d = novo(&mut s, Rect::new(0, 0, 2, 2));

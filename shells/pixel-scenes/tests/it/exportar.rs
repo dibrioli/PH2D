@@ -403,10 +403,10 @@ fn import_sprite_sheet_recorta_pela_grelha() {
 fn o_aviso_de_abrir_chega_ao_artista() {
     let frases = ph2d_panel_pixel_export::textos::do_aberto(
         "x",
-        vec![ph2d_pixel_io::ase::Aviso::PropriedadesDeSlices(2)],
+        vec![ph2d_pixel_io::ase::Aviso::TerrenosFicam],
     );
     assert_eq!(frases.len(), 2);
-    assert!(frases[1].1.contains('2'), "{:?}", frases[1]);
+    assert!(!frases[1].1.is_empty(), "{:?}", frases[1]);
 }
 
 /// **Exporta a folha e volta a importá-la: os tempos e as tags são os mesmos** (smoke do dono 05/11:

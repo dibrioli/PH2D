@@ -457,7 +457,7 @@ fn the_marks_show_the_preview_hide_the_empty_box_and_default_the_color() {
         },
     );
     let mut sem_cor = s.slices().to_vec();
-    sem_cor[1].color = None;
+    sem_cor[1].user.color = [0; 4];
     apply(&mut s, ph2d_pixel_core::Op::Slices(sem_cor)).unwrap();
     let mut sel = vec![a];
     let mut g = Gesto::press(&s, 0, &mut sel, (10.5, 10.5), TOL, false);

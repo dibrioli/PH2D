@@ -1,6 +1,6 @@
 //! **O gesto**: premir, arrastar, largar. A seleção é do chamador e entra emprestada.
 
-use ph2d_pixel_core::slice::{DEFAULT_SLICE_COLOR, create, set_shapes};
+use ph2d_pixel_core::slice::{create, set_shapes};
 use ph2d_pixel_core::{Op, Rect, Slice, SliceId, SliceShape, Sprite};
 
 use crate::alcas::{Grab, aplica, hit};
@@ -239,7 +239,7 @@ pub fn marcas(s: &Sprite, frame: u32, g: Option<&Gesto>, sel: &[SliceId]) -> Vec
             Some(Marca {
                 id: c.id,
                 shape: vista.or_else(|| c.visible_at(frame))?,
-                color: c.color.unwrap_or(DEFAULT_SLICE_COLOR),
+                color: c.draw_color(),
                 selected: sel.contains(&c.id),
                 name: c.name.clone(),
             })

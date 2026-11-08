@@ -13,9 +13,6 @@ use ph2d_pixel_io::saida::{AvisoSaida, ErroSaida, Formato};
 #[must_use]
 pub fn aviso_ase(a: Aviso) -> String {
     match a {
-        Aviso::PropriedadesDeSlices(n) => {
-            tr_with("pixel.io.warn.slice_properties", &[("n", &n.to_string())])
-        }
         Aviso::Tilemap => tr("pixel.io.warn.tilemap").to_owned(),
         Aviso::TerrenosFicam => tr("pixel.io.warn.terrains").to_owned(),
         Aviso::FormaVaiComoImagem => tr("pixel.io.warn.grid_shape").to_owned(),

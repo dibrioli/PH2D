@@ -13,8 +13,8 @@ pub(super) fn json_slices(s: &Sprite) -> Vec<ph2d_sprite_sheet::aseprite::JsonSl
         .rev()
         .map(|c| JsonSlice {
             name: c.name.clone(),
-            color: c.color,
-            data: c.data.clone(),
+            color: (c.user.color != [0; 4]).then_some(c.user.color),
+            data: c.user.text.clone(),
             keys: c
                 .keys
                 .iter()

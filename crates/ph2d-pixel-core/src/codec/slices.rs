@@ -2,6 +2,7 @@
 //!
 //! ```text
 //! Slice    : 1 id · 2 nome · 3 cor (4 bytes; sem = não tem) · 4 texto · 5 Key*
+//!            · 6 propriedades (o registo de user data, MINOR 6, só com os mapas)
 //! Key      : 1 quadro · 2 x (zigzag) · 3 y (zigzag) · 4 w · 5 h
 //!            · 6 centro (x, y em zigzag; w, h) · 7 pivot (x, y em zigzag)
 //! ```
@@ -9,6 +10,7 @@
 use super::{CodecError, Fields, put_field, put_uint, u32_of, uint, unzigzag, zigzag};
 use crate::slice::{Slice, SliceId, SliceKey, SliceShape};
 use crate::sprite::Rect;
+use crate::user::UserData;
 
 fn key_record(k: &SliceKey) -> Vec<u8> {
     let mut b = Vec::new();
@@ -41,14 +43,21 @@ pub(super) fn slice_record(c: &Slice) -> Vec<u8> {
     let mut b = Vec::new();
     put_uint(&mut b, 1, u64::from(c.id.0));
     put_field(&mut b, 2, c.name.as_bytes());
-    if let Some(cor) = &c.color {
-        put_field(&mut b, 3, cor);
+    if c.user.color != [0; 4] {
+        put_field(&mut b, 3, &c.user.color);
     }
-    if !c.data.is_empty() {
-        put_field(&mut b, 4, c.data.as_bytes());
+    if !c.user.text.is_empty() {
+        put_field(&mut b, 4, c.user.text.as_bytes());
     }
     for k in &c.keys {
         put_field(&mut b, 5, &key_record(k));
+    }
+    if !c.user.props.is_empty() {
+        let props = UserData {
+            props: c.user.props.clone(),
+            ..UserData::default()
+        };
+        super::user::put_user(&mut b, 6, &props);
     }
     b.push(0);
     b
@@ -104,8 +113,7 @@ pub(super) fn read_slice(bytes: &[u8]) -> Result<Slice, CodecError> {
     let mut c = Slice {
         id: SliceId(0),
         name: String::new(),
-        color: None,
-        data: String::new(),
+        user: UserData::default(),
         keys: Vec::new(),
     };
     let text =
@@ -115,11 +123,12 @@ pub(super) fn read_slice(bytes: &[u8]) -> Result<Slice, CodecError> {
             1 => c.id = SliceId(u32_of(v, "slice.id")?),
             2 => c.name = text(v, "slice.name")?,
             3 => {
-                c.color =
-                    Some(<[u8; 4]>::try_from(v).map_err(|_| CodecError::Invalid("slice.color"))?);
+                c.user.color =
+                    <[u8; 4]>::try_from(v).map_err(|_| CodecError::Invalid("slice.color"))?;
             }
-            4 => c.data = text(v, "slice.data")?,
+            4 => c.user.text = text(v, "slice.data")?,
             5 => c.keys.push(read_key(v)?),
+            6 => c.user.props = super::user::read_user(v)?.props,
             _ => {}
         }
     }

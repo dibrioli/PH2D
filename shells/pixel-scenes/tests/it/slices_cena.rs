@@ -68,8 +68,8 @@ fn a_cena_24_abre_com_a_ferramenta_e_as_slices_sobre_a_arte() {
     let (button, hero) = (nomeada(s, "button"), nomeada(s, "hero"));
     assert_eq!(m.app.slices_selected(m.key), [hero.id], "abre com hero");
     assert_eq!(
-        (button.color, hero.color),
-        (Some(COLOR_BUTTON), Some(COLOR_HERO))
+        (button.user.color, hero.user.color),
+        (COLOR_BUTTON, COLOR_HERO)
     );
     assert_ne!(COLOR_BUTTON, COLOR_HERO);
 

@@ -133,12 +133,16 @@ fn os_campos_editam_a_key_do_quadro_e_o_nome_a_slice_inteira() {
     assert_eq!(t.passos(), antes + 4);
     for s in t.sprite().slices() {
         assert_eq!(s.name, "zzz");
-        assert_eq!(s.color, Some([255, 0, 255, 255]));
-        assert_eq!(s.data, "hello");
+        assert_eq!(s.user.color, [255, 0, 255, 255]);
+        assert_eq!(s.user.text, "hello");
     }
     assert_eq!(t.sprite().slice(id).expect("slice").keys.len(), 2);
     assert!(t.app.undo(t.key));
-    assert_eq!(t.sprite().slices()[0].data, "", "o desfazer volta o texto");
+    assert_eq!(
+        t.sprite().slices()[0].user.text,
+        "",
+        "o desfazer volta o texto"
+    );
 }
 
 /// O seletor aberto reescreve o MESMO passo; fechado, a cor seguinte é outro.
@@ -152,8 +156,8 @@ fn arrastar_no_seletor_de_cor_e_um_passo() {
     }
     assert_eq!(t.passos(), antes + 1);
     assert_eq!(
-        t.sprite().slice(id).expect("slice").color,
-        Some([4, 0, 0, 255])
+        t.sprite().slice(id).expect("slice").user.color,
+        [4, 0, 0, 255]
     );
     t.pede(Pedido::PassoFechou);
     t.pede(Pedido::Cor([9, 0, 0, 255]));

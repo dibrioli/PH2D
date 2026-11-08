@@ -2,7 +2,7 @@
 //! nosso escritor tem de dar os mesmos bytes (`docs/PixelArt/P11_oraculos_arquivo.md` F3, F5).
 
 use ph2d_pixel_core::{Slice, Sprite};
-use ph2d_pixel_io::ase::{Aviso, escrever, ler};
+use ph2d_pixel_io::ase::{escrever, ler};
 use ph2d_pixel_io::sheet::{OpcoesFolha, OpcoesJson, json_da_folha, montar};
 use serde_json::Value;
 
@@ -50,7 +50,7 @@ fn sem_ids(v: &[Slice]) -> Vec<Slice> {
     for c in &mut v {
         c.id = ph2d_pixel_core::SliceId(0);
         // A cor em falta grava-se: sem ela o Trial não desenha a slice (F3).
-        c.color.get_or_insert(ph2d_pixel_core::DEFAULT_SLICE_COLOR);
+        c.user.color = c.draw_color();
     }
     v
 }
@@ -113,28 +113,49 @@ fn user_data_belongs_only_to_the_chunk_right_before_it() {
     assert!(avisos.is_empty(), "{avisos:?}");
     let (r, _) = ler(&ase("realorder")).unwrap();
     assert!(
-        r.slices().iter().all(|c| c.color.is_some()),
+        r.slices().iter().all(|c| c.user.color != [0; 4]),
         "camadas → slice+user → cels"
     );
 }
 
-/// Propriedades tipadas de uma slice ainda não têm onde morar no documento (a `Slice` guarda só cor e
-/// texto, P12): a slice fica, e o artista é avisado.
+/// As propriedades tipadas de uma slice moram no `Slice::user` (P12): lê-se sem aviso, e o `.ase`
+/// que se grava devolve-as iguais — também as de uma extensão.
 #[test]
-fn typed_properties_warn_and_the_slice_stays() {
+fn slice_typed_properties_round_trip() {
     let (limpo, _) = ler(&ase("full")).unwrap();
     let (bytes, _) = escrever(&limpo).unwrap();
     assert_eq!(ler(&bytes).unwrap().1, Vec::new());
 
     let mut f = ph2d_aseprite::parse_file(&bytes).unwrap();
-    f.slices[0].maps = vec![ph2d_aseprite::AsePropMap {
-        key: 0,
-        props: vec![("hp".into(), ph2d_aseprite::AseProp::I32(3))],
-    }];
+    f.external_files.push(ph2d_aseprite::AseExternalFile {
+        id: 7,
+        kind: 3,
+        name: "ext.x".into(),
+    });
+    f.slices[0].maps = vec![
+        ph2d_aseprite::AsePropMap {
+            key: 0,
+            props: vec![("hp".into(), ph2d_aseprite::AseProp::I32(3))],
+        },
+        ph2d_aseprite::AsePropMap {
+            key: 7,
+            props: vec![("p".into(), ph2d_aseprite::AseProp::Point(1, -2))],
+        },
+    ];
     let marcado = ph2d_aseprite::write_file(&f).unwrap();
     let (s, avisos) = ler(&marcado).unwrap();
-    assert_eq!(avisos, vec![Aviso::PropriedadesDeSlices(1)]);
+    assert_eq!(avisos, Vec::new());
     assert_eq!(s.slices().len(), 3);
+    let u = &s.slices()[0].user;
+    assert_eq!(u.props[""]["hp"], ph2d_pixel_core::PropValue::I32(3));
+    assert_eq!(
+        u.props["ext.x"]["p"],
+        ph2d_pixel_core::PropValue::Point(1, -2)
+    );
+
+    let (de_novo, _) = escrever(&s).unwrap();
+    let (s2, _) = ler(&de_novo).unwrap();
+    assert_eq!(s2.slices()[0].user, *u);
 }
 
 // --- O corte por slice: lei nossa, sem paridade (o Trial não grava imagem, `P11_plano.md` §2) ---
@@ -298,7 +319,7 @@ fn split_slices_makes_one_piece_per_visible_key_and_twins_do_not_collide() {
     let (op, gemea) = slice::create(&mut s, 0, Rect::new(0, 0, 2, 2)).unwrap();
     apply(&mut s, op).unwrap();
     let c = s.slice(gemea).unwrap();
-    let (nome, cor, data) = ("Slice 1".to_owned(), c.color.unwrap(), c.data.clone());
+    let (nome, cor, data) = ("Slice 1".to_owned(), c.user.color, c.user.text.clone());
     let op = slice::set_info(&s, gemea, &nome, cor, &data).unwrap();
     apply(&mut s, op).unwrap();
     let f = montar(&s, &o, "x", "ase");
@@ -338,7 +359,7 @@ fn split_slice_names_never_collide_even_with_a_custom_pattern_without_slice() {
         let (op, id) = slice::create(&mut s, 0, Rect::new(0, 0, 2, 2)).unwrap();
         apply(&mut s, op).unwrap();
         let c = s.slice(id).unwrap();
-        let (cor, data) = (c.color.unwrap(), c.data.clone());
+        let (cor, data) = (c.user.color, c.user.text.clone());
         let op = slice::set_info(&s, id, nome, cor, &data).unwrap();
         apply(&mut s, op).unwrap();
     }

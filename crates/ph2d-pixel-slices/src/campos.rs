@@ -2,7 +2,7 @@
 //! escreve vira um número pela lei do Trial; com várias selecionadas, o valor comum, ou vazio, e o que
 //! se escreve vale para todas, num passo só.
 
-use ph2d_pixel_core::slice::{DEFAULT_SLICE_COLOR, default_center, duplicate};
+use ph2d_pixel_core::slice::{default_center, duplicate};
 use ph2d_pixel_core::{Op, Slice, SliceId, SliceShape, Sprite};
 
 /// Um número do cartão.
@@ -145,13 +145,13 @@ pub fn nome(s: &Sprite, sel: &[SliceId], t: &str) -> Option<Op> {
 /// A cor, como o nome.
 #[must_use]
 pub fn cor(s: &Sprite, sel: &[SliceId], rgba: [u8; 4]) -> Option<Op> {
-    em_todas(s, sel, |c| c.color = Some(rgba))
+    em_todas(s, sel, |c| c.user.color = rgba)
 }
 
 /// O texto do utilizador, como o nome.
 #[must_use]
 pub fn dados(s: &Sprite, sel: &[SliceId], t: &str) -> Option<Op> {
-    em_todas(s, sel, |c| t.clone_into(&mut c.data))
+    em_todas(s, sel, |c| t.clone_into(&mut c.user.text))
 }
 
 /// `Duplicate Slice` de todas as selecionadas, num passo; devolve as cópias, a nova seleção (T2).
@@ -240,11 +240,8 @@ pub fn vista(s: &Sprite, frame: u32, sel: &[SliceId]) -> Option<Vista> {
     let de = |f: &dyn Fn(&SliceShape) -> Option<i32>| comum(v.iter().map(|(_, k)| f(k))).flatten();
     Some(Vista {
         nome: comum(v.iter().map(|(c, _)| c.name.clone())),
-        cor: comum(
-            v.iter()
-                .map(|(c, _)| c.color.unwrap_or(DEFAULT_SLICE_COLOR)),
-        ),
-        dados: comum(v.iter().map(|(c, _)| c.data.clone())),
+        cor: comum(v.iter().map(|(c, _)| c.draw_color())),
+        dados: comum(v.iter().map(|(c, _)| c.user.text.clone())),
         bounds: [
             de(&|k| Some(k.bounds.x)),
             de(&|k| Some(k.bounds.y)),

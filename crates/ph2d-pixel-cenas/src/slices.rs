@@ -152,8 +152,10 @@ fn named(id: SliceId, name: &str, color: [u8; 4], keys: Vec<SliceKey>) -> Slice 
     Slice {
         id,
         name: name.to_owned(),
-        color: Some(color),
-        data: String::new(),
+        user: ph2d_pixel_core::UserData {
+            color,
+            ..Default::default()
+        },
         keys,
     }
 }

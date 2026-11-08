@@ -40,13 +40,23 @@ pub struct SliceKey {
 pub struct Slice {
     pub id: SliceId,
     pub name: String,
-    /// `None` só em ficheiro alheio: desenha-se a [`DEFAULT_SLICE_COLOR`].
-    pub color: Option<[u8; 4]>,
-    pub data: String,
+    /// Cor, texto e propriedades (P12). Cor `#00000000` só em ficheiro alheio: desenha-se a
+    /// [`DEFAULT_SLICE_COLOR`] ([`Slice::draw_color`]).
+    pub user: crate::user::UserData,
     pub keys: Vec<SliceKey>,
 }
 
 impl Slice {
+    /// A cor com que se desenha: a do user data, ou a de fábrica se não tem.
+    #[must_use]
+    pub fn draw_color(&self) -> [u8; 4] {
+        if self.user.color == [0; 4] {
+            DEFAULT_SLICE_COLOR
+        } else {
+            self.user.color
+        }
+    }
+
     /// O valor no quadro `frame`, escondido ou não.
     #[must_use]
     pub fn shape_at(&self, frame: u32) -> Option<SliceShape> {
@@ -128,8 +138,10 @@ pub fn create(s: &mut Sprite, frame: u32, r: Rect) -> Option<(Op, SliceId)> {
     slices.push(Slice {
         id,
         name: next_name(s),
-        color: Some(DEFAULT_SLICE_COLOR),
-        data: String::new(),
+        user: crate::user::UserData {
+            color: DEFAULT_SLICE_COLOR,
+            ..Default::default()
+        },
         keys: vec![SliceKey {
             frame,
             shape: SliceShape {
@@ -186,8 +198,8 @@ pub fn set_info(s: &Sprite, id: SliceId, name: &str, color: [u8; 4], data: &str)
     let mut slices = s.slices.clone();
     let c = slices.iter_mut().find(|c| c.id == id)?;
     name.clone_into(&mut c.name);
-    c.color = Some(color);
-    data.clone_into(&mut c.data);
+    c.user.color = color;
+    data.clone_into(&mut c.user.text);
     set(s, slices)
 }
 

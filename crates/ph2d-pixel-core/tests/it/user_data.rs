@@ -217,3 +217,31 @@ fn as_preferencias_vao_e_voltam_em_texto() {
     assert_eq!(PixelPrefs::from_lines(com_lixo), p);
     assert_eq!(PixelPrefs::from_lines([]), PixelPrefs::default());
 }
+
+/// A slice também é dono (P12 U): a porta única tem inverso exacto, e os mapas (com os da extensão)
+/// vão e voltam no formato ao lado da cor e do texto de sempre.
+#[test]
+fn a_slice_e_dona_de_user_data_com_inverso_e_formato() {
+    let mut s = com_donos();
+    let (op, id) =
+        ph2d_pixel_core::slice::create(&mut s, 0, ph2d_pixel_core::Rect::new(1, 1, 4, 4))
+            .expect("slice");
+    apply(&mut s, op).expect("slice");
+    let antes = s.clone();
+    let o = Owner::Slice(id);
+    let inv = apply(
+        &mut s,
+        ph2d_pixel_core::Op::UserData {
+            owner: o,
+            data: Box::new(cheio("s")),
+        },
+    )
+    .expect("aplica");
+    assert_eq!(s.user_of(o), Some(&cheio("s")));
+    assert_eq!(s.slice(id).expect("slice").draw_color(), cheio("s").color);
+    let lib = BTreeMap::from([(1, s.clone())]);
+    let back = read_library(&write_library(&lib)).expect("lê");
+    assert_eq!(back, lib, "cor, texto e mapas da slice no formato");
+    apply(&mut s, inv).expect("desfaz");
+    assert_eq!(s, antes);
+}

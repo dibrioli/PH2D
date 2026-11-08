@@ -543,6 +543,7 @@ impl Sprite {
             Owner::Cel(k) => self.cels.get(&k).map(|c| &c.user),
             Owner::Tag(i) => self.tags.get(i).map(|t| &t.user),
             Owner::Tileset(id) => self.tilesets.iter().find(|t| t.id == id).map(|t| &t.user),
+            Owner::Slice(id) => self.slices.iter().find(|c| c.id == id).map(|c| &c.user),
         }
     }
 

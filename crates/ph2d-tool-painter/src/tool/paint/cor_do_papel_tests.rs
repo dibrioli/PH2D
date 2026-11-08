@@ -397,7 +397,7 @@ fn no_digital_a_tinta_entra_no_dente() {
         traco(PaintMedia::Impasto, 1.0, 2.0),
         "o Tooth mexeu na camada do Impasto"
     );
-    // Com um Grain escolhido, ELE é a textura do traço: o Tooth não mexe.
+    // Com um Grain escolhido o papel MORDE por cima dele (dono 08/11), e o Tooth é o multiplicador dessa mordida.
     let com_grain = |tooth: f32| {
         let mut t = tool(128, PaintMedia::Digital, 30.0);
         t.set_brush_paper_kind(26);
@@ -409,10 +409,10 @@ fn no_digital_a_tinta_entra_no_dente() {
         t.on_canvas_pointer(cp([120.0, 64.0], PointerPhase::Up));
         t.canvas_rgba.to_vec()
     };
-    assert_eq!(
+    assert_ne!(
         com_grain(0.0),
         com_grain(2.0),
-        "com um Grain escolhido o Tooth mexeu no traço"
+        "com um Grain escolhido o Tooth não mexeu na mordida do papel"
     );
 }
 

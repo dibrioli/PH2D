@@ -1,0 +1,235 @@
+diff --git a/crates/ph2d-tool-painter/src/layers/mod.rs b/crates/ph2d-tool-painter/src/layers/mod.rs
+index 079e661318..90ab69f8b3 100644
+--- a/crates/ph2d-tool-painter/src/layers/mod.rs
++++ b/crates/ph2d-tool-painter/src/layers/mod.rs
+@@ -155,6 +155,11 @@ pub struct Layer {
+     /// gate pins the invariant — a stale flag here means a knob that does nothing, the exact species
+     /// this line has already exterminated twice.
+     pub has_relief: bool,
++    /// A camada recebeu tinta do **Wet Paint**, que desenha o papel DENTRO dos píxeis dela (`grao_no_filme`): a luz do
++    /// relevo do papel esconde-se sob a sua tinta opaca. Na outra tinta (Digital, aguada) o papel vê-se, e só o corpo do
++    /// relevo o enche (`ReliefFields::height_at`, dono 08/11). Escrita só por `LayerStack::marca_tinta_molhada`.
++    #[serde(default)]
++    pub tinta_molhada: bool,
+ }
+ 
+ impl Layer {
+@@ -174,6 +179,7 @@ impl Layer {
+             impasto_depth: DEPTH_NEUTRAL,
+             impasto_composite: ReliefComposite::Add,
+             has_relief: false,
++            tinta_molhada: false,
+         }
+     }
+ 
+diff --git a/crates/ph2d-tool-painter/src/layers/stack.rs b/crates/ph2d-tool-painter/src/layers/stack.rs
+index ae2ce6bf38..e846f63652 100644
+--- a/crates/ph2d-tool-painter/src/layers/stack.rs
++++ b/crates/ph2d-tool-painter/src/layers/stack.rs
+@@ -71,6 +71,17 @@ impl LayerStack {
+         matches!(self.get(id).map(|l| &l.kind), Some(LayerKind::Mask(_)))
+     }
+ 
++    /// Marca que a camada `id` recebeu tinta do Wet Paint ([`Layer::tinta_molhada`]). `true` se mudou.
++    pub fn marca_tinta_molhada(&mut self, id: LayerId) -> bool {
++        match self.get_mut(id) {
++            Some(l) if !l.tinta_molhada => {
++                l.tinta_molhada = true;
++                true
++            }
++            _ => false,
++        }
++    }
++
+     /// Set the primary selection. No-op if `id` is unknown.
+     pub fn set_active(&mut self, id: LayerId) {
+         if self.index_of(id).is_some() {
+diff --git a/crates/ph2d-tool-painter/src/tool/paint/impasto_light.rs b/crates/ph2d-tool-painter/src/tool/paint/impasto_light.rs
+index c738d88b4d..d6519d6bd9 100644
+--- a/crates/ph2d-tool-painter/src/tool/paint/impasto_light.rs
++++ b/crates/ph2d-tool-painter/src/tool/paint/impasto_light.rs
+@@ -243,7 +243,7 @@ impl PainterTool {
+                     } else {
+                         self.images.get(&id)?.rgba8.as_slice()
+                     };
+-                    (px.len() == n * 4).then_some((px, l.opacity.clamp(0.0, 1.0)))
++                    (px.len() == n * 4).then_some((px, l.opacity.clamp(0.0, 1.0), l.tinta_molhada))
+                 })
+                 .collect()
+         } else {
+diff --git a/crates/ph2d-tool-painter/src/tool/paint/relief_fields.rs b/crates/ph2d-tool-painter/src/tool/paint/relief_fields.rs
+index 448a117239..9d860ed3ad 100644
+--- a/crates/ph2d-tool-painter/src/tool/paint/relief_fields.rs
++++ b/crates/ph2d-tool-painter/src/tool/paint/relief_fields.rs
+@@ -56,8 +56,8 @@ pub(super) struct ReliefFields<'a> {
+     pub(super) substrate: Option<super::substrate_relief::Substrate<'a>>,
+     /// §BUG-papel (smoke do dono 27/10): os píxeis RGBA8 de cada camada raster VISÍVEL com a opacidade dela —
+     /// a TINTA que cobre o papel. O dente vê-se pela parte que a tinta deixa passar ([`Self::papel_a_vista`]).
+-    /// Vazio sem substrato.
+-    pub(super) tinta: Vec<(&'a [u8], f32)>,
++    /// Vazio sem substrato. O `bool` é a [`crate::layers::Layer::tinta_molhada`] da camada.
++    pub(super) tinta: Vec<(&'a [u8], f32, bool)>,
+     pub(super) width: usize,
+     pub(super) height: usize,
+ }
+@@ -107,7 +107,13 @@ impl ReliefFields<'_> {
+                 let cx = x.clamp(0, self.width as i64 - 1);
+                 let cy = y.clamp(0, self.height as i64 - 1);
+                 // A tinta tapa o dente mas fica à altura média dele: sem o degrau que a fazia parecer afundada (Bug #71).
+-                let v = self.papel_a_vista(i);
++                // Só a tinta com CORPO o enche (doc 19 §1.2; dono 08/11: no Digital o relevo do papel tem de se ver na
++                // tinta): a opaca tapa-o na proporção da altura dela sobre a do dente — sem corpo (Digital, aguada)
++                // a tinta segue o papel; mais alta que o dente (o óleo grosso, §BUG-papel), enterra-o como antes.
++                // A tinta do Wet (que já traz o papel desenhado) tapa-o pela opacidade, como sempre (§BUG-papel).
++                let enche = (h / (CORPO_QUE_ENCHE * s.amplitude_em_cargas())).clamp(0.0, 1.0);
++                let (molhada, outra) = self.papel_a_vista(i);
++                let v = molhada * (1.0 - enche * (1.0 - outra));
+                 h + s.tooth_loads(cx, cy) * v + s.meio_do_dente() * (1.0 - v)
+             }
+             None => h,
+@@ -119,13 +125,20 @@ impl ReliefFields<'_> {
+     /// opacidade do pincel, a da camada, a aguada — deixa-o ver na proporção. Antes o dente SOMAVA à tinta em
+     /// toda a parte e o grão aparecia pela tinta grossa «como se fosse transparente» (`oraculo/README.md`
+     /// §BUG-papel).
++    ///
++    /// Devolve `(sob a tinta do Wet, sob a outra)` — as duas leis de [`Self::height_at`].
+     #[inline]
+-    fn papel_a_vista(&self, i: usize) -> f32 {
+-        let mut deixa = 1.0f32;
+-        for &(px, op) in &self.tinta {
+-            deixa *= 1.0 - f32::from(px[i * 4 + 3]) / 255.0 * op;
++    fn papel_a_vista(&self, i: usize) -> (f32, f32) {
++        let (mut molhada, mut outra) = (1.0f32, 1.0f32);
++        for &(px, op, wet) in &self.tinta {
++            let deixa = 1.0 - f32::from(px[i * 4 + 3]) / 255.0 * op;
++            if wet {
++                molhada *= deixa;
++            } else {
++                outra *= deixa;
++            }
+         }
+-        deixa
++        (molhada, outra)
+     }
+ 
+     /// **A PRESENÇA do papel** — `1` quando há substrato, `0` quando não há.
+@@ -308,3 +321,8 @@ impl crate::layers::ReliefSamples for Amostras<'_, '_> {
+         self.mascaras.get(&id).cloned()
+     }
+ }
++
++/// A espessura de tinta que ENCHE o dente do papel, em fracções da altura dele ([`ReliefFields::height_at`]): a tinta tão
++/// alta como o dente enche-o. Sonda 08/11: a pilha do Dabber do Wet não chega a este plano (o corpo dela vive na grade do
++/// Wet), por isso a tinta do Wet esconde o papel pela marca da camada, não por aqui.
++const CORPO_QUE_ENCHE: f32 = 1.0;
+diff --git a/crates/ph2d-tool-painter/src/tool/paint/stroke_lifecycle.rs b/crates/ph2d-tool-painter/src/tool/paint/stroke_lifecycle.rs
+index da818fe5cf..f1c2ec7259 100644
+--- a/crates/ph2d-tool-painter/src/tool/paint/stroke_lifecycle.rs
++++ b/crates/ph2d-tool-painter/src/tool/paint/stroke_lifecycle.rs
+@@ -66,6 +66,9 @@ impl PainterTool {
+                 }
+                 self.wetpaint_guard(); // o que outra ferramenta escreveu desde o último quadro é um passo à parte
+                 self.wet_guarda_o_passo(); // o undo deste passo devolve a tinta viva de agora
++                if let Some(id) = self.layers.active() {
++                    let _ = self.layers.marca_tinta_molhada(id);
++                }
+             }
+         }
+         // ⚠️ **ELIDINDO o relevo** (degrau 4, doc 28 §5.72): este `before` DESCREVE os três planos em
+diff --git a/crates/ph2d-tool-painter/src/tool/paint/substrate_relief.rs b/crates/ph2d-tool-painter/src/tool/paint/substrate_relief.rs
+index 95325f35bc..0b7d1182b6 100644
+--- a/crates/ph2d-tool-painter/src/tool/paint/substrate_relief.rs
++++ b/crates/ph2d-tool-painter/src/tool/paint/substrate_relief.rs
+@@ -200,6 +200,12 @@ impl<'a> Substrate<'a> {
+         texture::contrasta(t, ganho_do_dente(self.rough)) * self.amp_px
+     }
+ 
++    /// A altura INTEIRA do dente nas cargas do [`Self::tooth_loads`] — a espessura de tinta que o enche
++    /// (`ReliefFields::height_at`). Nunca 0 (o Relief 0 não resolve substrato).
++    pub(super) fn amplitude_em_cargas(&self) -> f32 {
++        (self.amp_px / DEPTH_UNIT_PX).max(f32::MIN_POSITIVE)
++    }
++
+     /// A altura média do dente, nas cargas do [`Self::tooth_loads`]: meia amplitude nos tipos centrados, a média real nos
+     /// outros e na imagem, que o `contrasta` satura (0,10..0,80; tabela no Bug #71 de `docs/Painter/BUGS_painter.md`).
+     pub(super) fn meio_do_dente(&self) -> f32 {
+diff --git a/crates/ph2d-tool-painter/src/tool/paint/substrate_relief_tests.rs b/crates/ph2d-tool-painter/src/tool/paint/substrate_relief_tests.rs
+index e3b84f275b..bb4b04e7c6 100644
+--- a/crates/ph2d-tool-painter/src/tool/paint/substrate_relief_tests.rs
++++ b/crates/ph2d-tool-painter/src/tool/paint/substrate_relief_tests.rs
+@@ -593,3 +593,75 @@ fn probe_substrate_undo() {
+     );
+     println!();
+ }
++
++/// A tela final (composite + luz) de um traço Digital OPACO de cor sólida no meio da tela, com o papel a `relief`.
++fn digital_opaco(relief: f32) -> Vec<u8> {
++    use ph2d_editor_core::tool::{CanvasPaintTool, CanvasPointer, PointerPhase};
++    // O documento do produto: a tela branca nasce PAPEL com a camada de tinta vazia por cima (`abre_a_sprite`).
++    let mut t = PainterTool::default();
++    t.abre_a_sprite(vec![255u8; (N * N * 4) as usize], N, N);
++    t.set_substrate_depth(relief);
++    // Tooth 0: a cobertura não entra no dente — a régua lê só a LUZ do relevo sobre a tinta.
++    t.set_brush_paper_depth(0.0);
++    t.set_brush_size_px(18.0);
++    t.set_brush_color_srgb8([200, 40, 40]);
++    let cp = |pos, phase| CanvasPointer {
++        pos,
++        pressure: 1.0,
++        tilt: [0.0, 0.0],
++        phase,
++    };
++    t.on_canvas_pointer(cp([4.0, 48.0], PointerPhase::Down));
++    for k in 1..=46 {
++        t.on_canvas_pointer(cp([4.0 + 2.0 * k as f32, 48.0], PointerPhase::Move));
++        t.on_tick(8.0);
++    }
++    t.on_canvas_pointer(cp([96.0, 48.0], PointerPhase::Up));
++    t.on_tick(8.0);
++    let mut px = t.run_full().0;
++    t.apply_impasto_light(
++        &mut px,
++        Region {
++            x: 0,
++            y: 0,
++            w: N,
++            h: N,
++        },
++    );
++    px
++}
++
++/// O desvio da luminância que o Relief acrescenta (`px − liso`) nas linhas `ys` (colunas 10..86).
++fn dente_nas_linhas(px: &[u8], liso: &[u8], ys: std::ops::Range<usize>) -> f64 {
++    let l =
++        |p: &[u8]| 0.2126 * f64::from(p[0]) + 0.7152 * f64::from(p[1]) + 0.0722 * f64::from(p[2]);
++    let d: Vec<f64> = ys
++        .flat_map(|y| (10..86).map(move |x| (y * N as usize + x) * 4))
++        .map(|i| l(&px[i..i + 4]) - l(&liso[i..i + 4]))
++        .collect();
++    let mu = d.iter().sum::<f64>() / d.len() as f64;
++    (d.iter().map(|v| (v - mu).powi(2)).sum::<f64>() / d.len() as f64).sqrt()
++}
++
++/// ⭐ **No Digital o relevo do papel vê-se NA tinta** (dono 08/11: «no digital parece que a sombra do relevo não
++/// aparece na tinta… é importante paper funcionar bem no digital independente de Grain»). A tinta Digital não tem
++/// corpo: segue o dente, e a luz dele desenha-se por cima dela como no papel nu (antes: a opacidade enterrava-o,
++/// ~0). O irmão do lado grosso é `o_dente_do_papel_nao_atravessa_a_tinta_grossa` (o óleo continua a enterrá-lo).
++#[test]
++fn no_digital_o_relevo_do_papel_ve_se_na_tinta_opaca() {
++    let liso = digital_opaco(0.0);
++    let px = digital_opaco(0.6);
++    let a = dente_nas_linhas(&px, &liso, 45..52);
++    let b = dente_nas_linhas(&px, &liso, 2..14);
++    assert!(
++        liso[(48 * N as usize + 48) * 4 + 1] < 120,
++        "o traço não pintou o miolo (a régua não mede nada)"
++    );
++    assert!(b > 1.0, "o papel nu devia mostrar o dente: {b}");
++    // A luz MULTIPLICA a cor: o vermelho (luminância ~74 contra 255) mostra menos níveis que o papel branco. Medido
++    // 08/11: 7,29 contra 14,32 (51 %); a lei de antes dava 0,00.
++    assert!(
++        a >= 0.3 * b,
++        "a tinta Digital enterra o relevo do papel: {a:.2} × papel nu {b:.2}"
++    );
++}

@@ -83,9 +83,6 @@ pub fn build_physics_info(
     // componentes tornaria o Rig inalcançável precisamente no caso para que ele existe — e ele é um
     // gesto sobre uma SUBÁRVORE, que a paleta de componentes não sabe exprimir.
     //
-    // ⚠️ O `join_count` não precisa de estar aqui: ele exige `RigidBody` + `Collider` em **toda** a
-    // seleção, logo o primário já tem os dois e o primeiro ramo responde.
-    //
     // ⭐⭐ **E um CORPO ACIMA na árvore também conta** (ordem do dono, 2026-09-14: *«um objeto de
     // física (Physics Body) e todas as opções aparecem com ele, inclusive Collision Shape»*). O
     // `Collider` deixou de ser oferecido na paleta, e a rota que ele era — *esta forma é mais uma
@@ -149,15 +146,11 @@ pub fn build_physics_info(
     // not wall material. Read for any kind, and from the SAME entity as the collider —
     // a part carries its own, which is what lets one face of a body be unclimbable.
     let no_wall_cling = world.get::<ph2d_physics_ecs::NoWallCling>(entity).is_some();
-    // Optional AreaForceWorldAxes marker (W-AreaFrame); its presence pins the zone's
-    // force to world axes, its absence authors it in the zone's own frame. Read for any
-    // kind for the same reason as the marker above: it is a collider question.
+    // Optional AreaForceWorldAxes marker (W-AreaFrame): the zone's force on world axes.
     let force_world_axes = world
         .get::<ph2d_physics_ecs::AreaForceWorldAxes>(entity)
         .is_some();
-    // Optional AreaEffector (W-Area); absent = a body that pushes nothing. Read for any
-    // kind here; the rows are SENSOR-only in paint, which is a collider question, not a
-    // body-kind one.
+    // Optional AreaEffector (W-Area); absent = pushes nothing. Rows are SENSOR-only in paint.
     let force = world
         .get::<AreaEffector>(entity)
         .map_or([0.0, 0.0], |a| a.force);
@@ -168,11 +161,9 @@ pub fn build_physics_info(
     // da mesma área e pela mesma razão: um campo novo seria bump de schema.
     let area_density = world.get::<AreaBuoyancy>(entity).map_or(0.0, |b| b.0);
     let area_form_drag = world.get::<AreaFormDrag>(entity).map_or(0.0, |f| f.0);
-    // Optional AreaTorque (W-AreaTorque) — o giro que a área imprime, quinto componente
-    // da mesma zona e pela mesma razão (campo novo seria bump). Mesma condição de Sensor.
+    // Optional AreaTorque (W-AreaTorque) — o giro que a área imprime; mesma condição de Sensor.
     let area_torque = world.get::<AreaTorque>(entity).map_or(0.0, |t| t.0);
-    // Optional AreaFalloff (W-AreaFalloff) — quanto o empurrão perde do centro à borda,
-    // sétimo componente da mesma zona e pela mesma razão. Mesma condição de Sensor.
+    // Optional AreaFalloff (W-AreaFalloff) — o empurrão perde do centro à borda; idem.
     let area_falloff = world.get::<AreaFalloff>(entity).map_or(0.0, |f| f.0);
     // ⚠️ A pergunta é pelo COLLIDER, não pelo par (W-PartFace): uma peça é simulada.
     let Some(col) = col else {
@@ -242,6 +233,7 @@ pub fn build_physics_info(
             area_torque: 0.0,
             area_falloff: 0.0,
             own_body_note: false,
+            shapes: Vec::new(),
         });
     };
     // Each arm also carries what the OTHER shapes' rows would seed if the artist
@@ -384,6 +376,9 @@ pub fn build_physics_info(
         own_body_note: rb.is_some()
             && world.get::<ph2d_ecs::ChildOf>(entity).is_some()
             && ph2d_physics_ecs::owner_body(world, entity).is_none(),
+        shapes: rb.map_or_else(Vec::new, |_| {
+            ph2d_physics_ecs::shapes_in_order(world, entity)
+        }),
     })
 }
 

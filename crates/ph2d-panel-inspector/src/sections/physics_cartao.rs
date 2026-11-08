@@ -461,7 +461,9 @@ pub fn resumo_do_cartao(id: NodeId) -> Option<String> {
     if id == ids::CARD_PHYS_LAYERS {
         Some(super::physics_colide::resumo(&info))
     } else if id == CARD_PHYS_SHAPE {
-        forma()
+        let n = info.shapes.len();
+        let mais = (n > 1).then(|| tr_with("card.insp.phys.n_shapes", &[("n", &n)]));
+        forma().map(|f| mais.map_or_else(|| f.clone(), |m| format!("{f} \u{b7} {m}")))
     } else if id == core_ids::INSP_LIVE_PHYSICS_SECTION && info.has_body {
         KIND_LABELS
             .get(usize::from(info.kind_tag))

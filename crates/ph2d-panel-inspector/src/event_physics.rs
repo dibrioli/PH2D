@@ -110,9 +110,24 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
     // corte e o que as duas metades JA eram, *que controle foi apertado* contra
     // *que numero foi digitado*, e ele deixa o push no barramento escrito UMA
     // vez em vez de duas identicas.
+    // A lista «Shapes» (W3-B): clicar numa linha seleciona aquela forma — a seleção, não uma edição.
+    if let WidgetEvent::Click(id) = ev
+        && let Some(i) = crate::ids::INSP_PHYS_SHAPE_ROW
+            .iter()
+            .position(|&o| o == id)
+        && let Some(info) = state::current_inspector_physics()
+        && let Some(&(entity_bits, ..)) = info.shapes.get(i)
+    {
+        host.bus_mut().push(EditorAction::SelectSprite {
+            entity_bits,
+            modifier: ph2d_editor_core::action_bus::SelectModifier::Replace,
+        });
+        return true;
+    }
     if let WidgetEvent::Click(id) = ev
         && let Some(info) = state::current_inspector_physics()
-        && let Some(edit) = click_edit(id, info.clone())
+        && let Some(edit) = crate::sections::physics_formas::clique(id, &info)
+            .or_else(|| click_edit(id, info.clone()))
     {
         host.bus_mut().push(EditorAction::InspectorPhysicsEdit {
             entity_bits: info.entity_bits,

@@ -11,9 +11,7 @@ fn all_ids() -> Vec<NodeId> {
         .collect()
 }
 
-/// ⭐⭐ **O clique REAL num item do menu deixa o pick, e o dreno do menu reconhece-o** — por cada
-/// entrada compilada, pela porta do quadro (`HeroScreen::apply_event`), com os painéis registados
-/// (um painel que consumisse o id calaria o clique). A criação de cada família tem gate na crate dela.
+/// ⭐⭐ **O clique REAL em cada item do menu deixa o pick que o dreno reconhece**, com os painéis registados.
 /// (Mutação: o `apply` da paleta deixar de chamar `set_command_pick` ⇒ RED.)
 #[test]
 fn a_real_click_on_every_entry_reaches_the_drain() {
@@ -219,9 +217,8 @@ fn editing_a_light_then_undoing_returns_the_project_to_the_bit() {
     assert_eq!(luz.intensidade, std::f32::consts::TAU);
 }
 
-/// O que fica SELECCIONADO depois de criar `entry` pela porta da família (a que a fase chama) —
-/// mais o que o artista selecciona a seguir num modo da família (o osso do Pose). Para a imagem,
-/// o pixel sprite e o desenho vetorial: o que o diálogo/1.º traço faz nascer.
+/// O que fica SELECCIONADO depois de criar `entry` pela porta da família — e o osso do Pose; para a imagem,
+/// o pixel sprite e o vetor, o que o diálogo/1.º traço faz nascer.
 fn seleccionados_ao_nascer(entry: ph2d_editor_core::object_add::AddEntry) -> Vec<u64> {
     use ph2d_editor_core::object_add as core;
     let reg = ph2d_app_components::test_support::registo();
@@ -316,10 +313,8 @@ fn assert_ordering(
     b
 }
 
-/// ⭐⭐ **Todo tipo do Add tem o Z Index no Inspector** (dono, 01/11; plano 19 E5) — cada entrada
-/// compilada criada pela porta da SUA família, a entidade que fica seleccionada (e o osso do
-/// Pose), a §7 presente e o `Z Index` escrito a chegar. ⚠️ Os modos (Draw/Edit/Pose)
-/// não escondem a §7: o snapshot lê só `hero.gizmo.selection` (`ObjectModeState::still_holds`).
+/// ⭐⭐ **Todo tipo do Add tem o Z Index no Inspector** (dono, 01/11; plano 19 E5): pela porta da família,
+/// a entidade seleccionada (e o osso do Pose), a §7 e o `Z Index` a chegar; os modos não a escondem.
 /// (Mutação, 01/11: o `build_ordering_info` devolver `None` a quem tem `Macro` ⇒ RED.)
 #[test]
 fn a_seccao_ordering_existe_em_todo_tipo_do_add() {
@@ -350,4 +345,74 @@ fn a_sprite_e_o_animated_nascem_a_pedir_a_imagem() {
     }
     pede_a_imagem(CHARACTER, 7, &mut bus);
     assert_eq!(bus.drain().count(), 0);
+}
+
+/// «+ Add shape» e «Remove shape» (W3-B): um passo cada, o Ctrl+Z volta ao bit; o Remove nunca apaga o corpo.
+#[test]
+fn add_shape_and_remove_shape_on_a_body_each_undo_to_the_bit() {
+    use ph2d_physics_ecs::{Collider, RigidBody, shapes_in_order};
+    let reg = ph2d_app_components::test_support::registo();
+    let (vec_scene, flip) = (ph2d_vec_scene::VecScene::new(), ph2d_flip::FlipDoc::new());
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let chao = ph2d_app_components::object_add::spawn_empty_root(&mut sim, "Floor");
+    let rb = RigidBody::default();
+    let corpo = ph2d_ecs::Entity::from_bits(chao);
+    sim.world_mut()
+        .entity_mut(corpo)
+        .insert((Collider::default(), rb));
+    let anexa = |s: &mut ph2d_ecs::SimWorld, b, n: &str| {
+        ph2d_app_components::component_attach::attach_by_name(s, &reg, &[], b, n)
+    };
+    let raiz = ph2d_app_components::object_add::spawn_empty_root;
+    let portas = || ph2d_app_game::object_add::Portas {
+        raiz,
+        anexa: &anexa,
+    };
+    let add = |sim: &mut ph2d_ecs::SimWorld, pai: u64| {
+        let shape = ph2d_app_game::object_add::COLLISION_SHAPE;
+        let r = ph2d_app_game::object_add::add(shape, sim, portas(), Some(pai));
+        r.expect("é do jogo").expect("nasceu")
+    };
+    // O restore pode refazer as entidades: o corpo acha-se pelo nome.
+    let floor = |sim: &mut ph2d_ecs::SimWorld| {
+        let w = sim.world_mut();
+        let mut q = w.query::<(ph2d_ecs::Entity, &ph2d_ecs::Name)>();
+        q.iter(w)
+            .find(|(_, n)| n.0 == "Floor")
+            .map(|(e, _)| e)
+            .expect("o Floor")
+    };
+    let formas = |sim: &mut ph2d_ecs::SimWorld| {
+        let b = floor(sim);
+        shapes_in_order(sim.world(), b).len()
+    };
+    let before = capture(&mut sim, &vec_scene, &flip, &reg);
+    add(&mut sim, chao);
+    assert_eq!(formas(&mut sim), 2, "o Add não pendurou uma peça no corpo");
+    let (rvec, _v, rflip, _f) = before.restore(&mut sim, &reg);
+    assert_eq!(
+        capture(&mut sim, &rvec, &rflip, &reg),
+        before,
+        "Ctrl+Z do Add"
+    );
+    assert_eq!(formas(&mut sim), 1);
+    let corpo = floor(&mut sim).to_bits();
+    let peca = add(&mut sim, corpo);
+    let before = capture(&mut sim, &vec_scene, &flip, &reg);
+    let q = ph2d_ecs::scene::EditorCommandQueue::new();
+    let remove = ph2d_editor_core::PhysicsFieldEdit::RemovePart(peca);
+    ph2d_app_physics::inspector::body::apply_physics_edit(&sim, corpo, remove, &q, &reg);
+    ph2d_ecs::scene::apply_editor_commands(sim.world_mut(), &q, &reg).expect("aplica");
+    assert_eq!(
+        formas(&mut sim),
+        1,
+        "o Remove não tirou a peça (ou apagou o corpo)"
+    );
+    let (rvec, _v, rflip, _f) = before.restore(&mut sim, &reg);
+    assert_eq!(
+        capture(&mut sim, &rvec, &rflip, &reg),
+        before,
+        "Ctrl+Z do Remove"
+    );
+    assert_eq!(formas(&mut sim), 2, "o Ctrl+Z não devolveu a peça");
 }

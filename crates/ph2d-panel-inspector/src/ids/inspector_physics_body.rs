@@ -397,3 +397,16 @@ pub const INSP_PHYS_AREA_DENSITY: NodeId = hash_node_id("insp_phys_area_density"
 /// §11 Arrasto de FORMA (W-FormDrag) — a resistência que sabe para onde o corpo aponta.
 /// Irmã de `Drag` (viscosidade, uniforme) e não substituta: são mecanismos diferentes.
 pub const INSP_PHYS_AREA_FORM_DRAG: NodeId = hash_node_id("insp_phys_area_form_drag");
+
+/// **Quantas linhas da lista «Shapes» têm id** (W3-B). O recurso é a tabela compilada, nunca o corpo: o
+/// mesmo orçamento medido em [`super::MAX_SOUND_SET_ROWS`] (64 linhas: 1 557 µs de pintura, registo 1,1 ms);
+/// o que passa disso a lista não mostra e o resumo conta.
+pub const MAX_SHAPE_ROWS: usize = 64;
+/// Clicar na linha `i` da lista «Shapes» seleciona aquela forma.
+pub const INSP_PHYS_SHAPE_ROW: [NodeId; MAX_SHAPE_ROWS] =
+    super::tabela_de_linha(hash_node_id("insp_phys_shape_row"));
+/// O «×» da linha `i` (só nas peças): «Remove shape».
+pub const INSP_PHYS_SHAPE_DEL: [NodeId; MAX_SHAPE_ROWS] =
+    super::tabela_de_linha(hash_node_id("insp_phys_shape_del"));
+/// «+ Add shape» no cartão Shape de um corpo.
+pub const INSP_PHYS_ADD_PART: NodeId = hash_node_id("insp_phys_add_part");

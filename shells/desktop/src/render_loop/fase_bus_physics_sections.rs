@@ -5,15 +5,13 @@ use super::*;
 use ph2d_editor_core::action_bus::EditorAction;
 
 impl crate::App {
-    /// O Inspector — a física (§11 corpo, §12 junta, §14 player e a roda). ⚠️ As interceptações que NÃO se espalham
-    /// correm antes do fan-out de cada braço, e os quatro braços ficam juntos por isso.
+    /// O Inspector — a física (§11, §12, §14 e a roda); as interceptações correm antes do fan-out.
     pub(super) fn fase_bus_physics_sections(
         &mut self,
         action: EditorAction,
         pd: &mut DrainOut,
     ) -> Option<EditorAction> {
         match action {
-            // §11 Physics Body: espalha-se pela seleção, como as irmãs.
             EditorAction::InspectorPhysicsEdit { entity_bits, edit } => {
                 // ⚠️ Join é UM gesto sobre o PAR: espalhado, faria dois joints entre os mesmos dois.
                 if matches!(edit, ph2d_editor_core::PhysicsFieldEdit::Join) {
@@ -40,6 +38,12 @@ impl crate::App {
                 } else if let ph2d_editor_core::PhysicsFieldEdit::JoinKind(tag) = edit {
                     // O tipo do próximo Join: a mesma classe do BakeChannels.
                     self.physics.join_kind = tag;
+                } else if matches!(edit, ph2d_editor_core::PhysicsFieldEdit::AddPart) {
+                    // «+ Add shape» = Add ▸ Collision Shape com o corpo seleccionado: nasce peça dele.
+                    if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                        h.store
+                            .set_command_pick(ph2d_app_game::object_add::COLLISION_SHAPE.id());
+                    }
                 } else if matches!(edit, ph2d_editor_core::PhysicsFieldEdit::EditShapeOnCanvas) {
                     if let Some(g) = self.gfx.as_mut() {
                         ph2d_shape_handles::alterna(g.sim.world_mut(), entity_bits);

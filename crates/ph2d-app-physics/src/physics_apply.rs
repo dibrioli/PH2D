@@ -45,7 +45,12 @@ pub fn apply_physics_edit(
 
     let entity = Entity::from_bits(entity_bits);
     let world = sim.world();
-
+    if let PhysicsFieldEdit::RemovePart(p) = edit {
+        if ph2d_physics_ecs::is_part_of(world, Entity::from_bits(p), entity) {
+            let _ = queue.push(ph2d_ecs::scene::EditorCommand::Despawn { entity: p });
+        }
+        return;
+    }
     if matches!(edit, PhysicsFieldEdit::Add) {
         queue_set(
             queue,
@@ -415,25 +420,16 @@ pub fn apply_physics_edit(
         // brings us here. Reaching this arm would mean the interception was
         // removed — and the fan-out would then create one joint per selected
         // body instead of one joint.
-        // Neither of these is a field edit. Both are one gesture over the
-        // SELECTION, intercepted before the per-entity fan-out that brings us
-        // here — `Join` because fanning out would make one joint per body
-        // instead of one joint, `Bake` because it would re-run the whole
-        // simulation once per body and file a separate undo step each time.
-        // Reaching either arm means an interception was removed. `BakeChannels`
-        // and `JoinKind` join them: both are GLOBAL app-state options (the next
-        // bake's channels; the next Join's kind), not Collider edits, and the
-        // render loop consumes them before this fan-out.
+        // Not field edits: gestures over the SELECTION or app-state options, intercepted
+        // before the per-entity fan-out (fanned out, Join/Bake/Rig would run once per body).
         PhysicsFieldEdit::Join
         | PhysicsFieldEdit::Bake
         | PhysicsFieldEdit::BakeChannels(_)
         | PhysicsFieldEdit::JoinKind(_)
         | PhysicsFieldEdit::JoinDraw
-        // W-Rig entra na mesma lista pelo mesmo motivo: um rig é UM gesto sobre a
-        // subárvore, e espalhado ele rodaria o gerador inteiro uma vez por
-        // entidade selecionada.
         | PhysicsFieldEdit::Rig
-        // O botão das alças é estado do canvas: a composição consome-o, como a `JoinDraw`.
+        | PhysicsFieldEdit::AddPart
+        | PhysicsFieldEdit::RemovePart(_)
         | PhysicsFieldEdit::EditShapeOnCanvas => {}
         // Switching shape PRESERVES the footprint: a box becomes the ball
         // that fits inside it and back, so the object does not jump size.

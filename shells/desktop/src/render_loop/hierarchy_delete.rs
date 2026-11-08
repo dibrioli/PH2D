@@ -12,11 +12,7 @@
 //! receita e as irmãs ficam intactas (F5.10) |
 //! | uma peça de cópia cuja raiz não se resolve | fica, e a voz diz onde a apagar |
 //!
-//! ⛔ **Até 2026-09-06 a segunda era uma RECUSA em voz alta**, e ela estava certa para o modelo de
-//! então: a forma de uma cópia era **sempre** a da receita, e um `despawn` cru era desfeito pelo
-//! passe estrutural no quadro seguinte — *«um gesto que não faz nada é mau; um que desfaz outra
-//! coisa é pior»*. O que faltava não era permitir o `despawn`: era o modelo ter onde guardar a
-//! **intenção**.
+//! ⛔ Até 06/09 a segunda era uma RECUSA em voz alta: faltava ao modelo onde guardar a **intenção**.
 //!
 //! ⚠️ **E o gesto NÃO despawna a peça recusada** — ele escreve o id dela no `removed` da raiz, e o
 //! passe estrutural faz o resto (sepultar as excepções, apagar a sub-árvore, nunca mais a
@@ -39,34 +35,14 @@ pub(super) fn drain(
         && let Some(live) = hero_live
         && let Some(clicked_entity_bits) = live.bridge.entity_for(row)
     {
-        // Onda 2 fix: if the clicked row is part of the multi-
-        // selection, delete EVERY selected sprite (Photoshop / Figma
-        // convention — multi-select right-click → Delete affects the
-        // whole group). Otherwise just the clicked row. bevy_ecs 0.19
-        // `ChildOf` cascade despawns descendants.
+        // A linha clicada dentro da multi-selecção apaga a selecção inteira (Figma); o `ChildOf` cascateia.
         let wanted: Vec<u64> = if hero.gizmo.is_selected(clicked_entity_bits) {
             hero.gizmo.iter_selected().collect()
         } else {
             vec![clicked_entity_bits]
         };
-        // ⭐⭐⭐ **UMA PEÇA QUE A RECEITA DEU NÃO SE APAGA NUMA CÓPIA** (report do Enio,
-        // 2026-09-05: *«ao tentar deletar o objeto, ele não é deletado e volta para sua posição de
-        // origem»*).
-        //
-        // ⛔⛔ **Sem esta guarda o gesto era o pior dos três resultados possíveis**, e foi medido:
-        // o `despawn` passava, o passe estrutural **re-materializava** a peça no quadro seguinte
-        // (o mestre continua a tê-la — *só o que a receita deu é que a receita tira*), e ela
-        // voltava com a pose do **MESTRE** ⇒ a edição do artista naquela peça **desaparecia em
-        // silêncio**, com a chave de override dela a sobreviver a apontar para o valor que já não
-        // existe. *Um gesto que não faz nada é mau; um que desfaz outra coisa é pior.*
-        //
-        // ⚠️ **A voz diz ONDE fazer**: a mesma pergunta com resposta «não» e sem saída foi o que
-        // levou este report a existir — o artista tinha duas linhas chamadas `Body` na Hierarquia,
-        // uma da receita e uma da cópia, e nada lhe disse qual era qual.
-        //
-        // ⛔ **A recusa é NARROW e a porta é uma só** ([`ph2d_app_components::instance_verbs_walk::is_a_recipe_given_piece`]):
-        // apagar a cópia INTEIRA continua a ser um gesto normal, e o que o artista pendurou dentro
-        // dela (sem elo) também — *o passe estrutural já declara as duas metades*.
+        // ⭐⭐⭐ **Uma peça que a RECEITA deu não se apaga numa cópia** (Enio 05/09; o `despawn` era
+        // re-materializado com a pose do mestre) — ver o cabeçalho; a porta é `is_a_recipe_given_piece`.
         let (to_delete, from_a_recipe): (Vec<u64>, Vec<u64>) =
             wanted.into_iter().partition(|bits| {
                 !ph2d_app_components::instance_verbs::is_a_recipe_given_piece(
@@ -78,11 +54,7 @@ pub(super) fn drain(
             let entity = ph2d_ecs::Entity::from_bits(*bits);
             sim.world_mut().despawn(entity);
         }
-        // Remove every deleted bits from the selection set. Without
-        // this, `selected_len()` stays > 1 even after a multi-delete,
-        // which keeps the global gizmo painted around vanished sprites
-        // (user-reported: "se deletar algumas e sobrar 1, o gizmo
-        // global fica aparecendo mesmo com uma sprite").
+        // Tira os apagados da selecção: senão o gizmo global fica à volta de sprites que sumiram.
         for bits in &to_delete {
             if hero.gizmo.selection == Some(*bits) {
                 hero.gizmo.selection = None;
@@ -94,26 +66,10 @@ pub(super) fn drain(
         if hero.gizmo.selection.is_none() && !hero.gizmo.extra_selection.is_empty() {
             hero.gizmo.selection = Some(hero.gizmo.extra_selection.remove(0));
         }
-        // ⭐⭐⭐ **A peça da receita passa a ser RECUSADA por esta cópia** (F5.10, Enio 2026-09-06:
-        // *«sim, quero que construa»*) — o *Removed GameObject* do Unity.
-        //
-        // ⛔ **Até aqui isto era uma RECUSA em voz alta**, e ela estava certa para o modelo de
-        // então: a forma de uma cópia era sempre a da receita, e um `despawn` cru era desfeito pelo
-        // passe estrutural no quadro seguinte — *«um gesto que não faz nada é mau; um que desfaz
-        // outra coisa é pior»*. O que faltava não era permitir o `despawn`: era o modelo ter onde
-        // guardar a **intenção**.
-        //
-        // ⚠️ **E o gesto NÃO despawna** — ele escreve o id da peça do mestre no `removed` da raiz, e
-        // o passe estrutural faz tudo o resto (sepultar as excepções dela, apagar a sub-árvore, e
-        // nunca mais a materializar). *Despawnar aqui saltaria o sepultador e deixaria a excepção
-        // daquela peça nem viva nem enterrada* — a mesma lei que a raiz do `swap` pagou ontem.
+        // ⭐⭐⭐ **A peça da receita passa a ser RECUSADA por esta cópia** (F5.10, o *Removed GameObject*
+        // do Unity): o id vai ao `removed` da raiz e o passe estrutural faz o resto (cabeçalho).
         let refused = ph2d_app_components::instance_structure::refuse_pieces(sim, &from_a_recipe);
-        // ⭐⭐ **Recusar uma peça move a selecção para a CÓPIA**, e não é conveniência: a peça que
-        // estava escolhida vai deixar de existir no quadro seguinte, e uma selecção pendurada num
-        // objecto morto **apaga o cartão do Inspector** — que é exactamente onde vive o *Put back*
-        // que desfaz este gesto. *O gesto que esconde a sua própria saída é irreversível pelo
-        // painel.* ⚠️ Vai para a RAIZ porque é lá que a decisão fica guardada, e é o cartão dela
-        // que a lista.
+        // ⭐⭐ **Recusar uma peça move a selecção para a CÓPIA**: o cartão dela tem o *Put back*.
         if refused > 0
             && let Some(first) = from_a_recipe.first()
             && let Some(root) = ph2d_app_components::instance_verbs::instance_root_of(
@@ -125,11 +81,7 @@ pub(super) fn drain(
         }
         let n = to_delete.len();
         let kept = from_a_recipe.len() - refused;
-        // ⚠️ **Os dois números são ditos, e o zero também**: um gesto que apaga metade e cala a
-        // outra metade lê-se como um apagar que falhou às vezes.
-        // ⚠️ **Os TRÊS números são ditos, e o zero também**: um gesto que apaga uma parte e cala a
-        // outra lê-se como um apagar que falhou às vezes. E *«removido só desta cópia»* é uma
-        // resposta diferente de *«apagado»* — o artista tem de saber que a receita ficou intacta.
+        // ⚠️ Os TRÊS números são ditos, e o zero também; «removido desta cópia» ≠ «apagado».
         if n > 0 || refused > 0 {
             toasts.push(Toast::warning(match (n, refused, kept) {
                 (1, 0, 0) => tr("shell.hierarchy_delete.deleted_entity").to_string(),

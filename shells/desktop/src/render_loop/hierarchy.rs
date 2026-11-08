@@ -118,13 +118,8 @@ pub(super) fn dispatch(
         camera,
         toasts,
     );
-    // M14.6 F: drain per-row Hierarchy context-menu actions. Each is
-    // a `HierDuplicate/AddChild/ResetTransform/Delete` bus variant
-    // — bridge resolves row → Entity, then we apply the corresponding
-    // ECS mutation. Order is intentional: Delete last, so a
-    // (degenerate) frame that queues "duplicate then delete" leaves
-    // the duplicate in place and removes the original. The next
-    // snapshot rebuild picks up the result automatically.
+    // M14.6 F: the per-row context-menu verbs (row → Entity by the bridge). Delete LAST, so
+    // "duplicate then delete" in one frame keeps the duplicate.
     if let Some(row) = duplicate_row
         && let Some(live) = hero_live.as_ref()
         && let Some(entity_bits) = live.bridge.entity_for(row)
@@ -162,17 +157,13 @@ pub(super) fn dispatch(
     }
     // ⭐ **O objeto VAZIO na raiz** (ADR-0166 / F3) — o primeiro passo do smoke desta fase.
     //
-    // ⚠️ **`Transform` + `Name`, e mais NADA.** É esta a base de que a F3 fala: o Inspector passa a
-    // mostrar o que o objeto TEM, então um objeto acabado de nascer mostra duas seções, não doze. A
-    // tentação de lhe dar um `Sprite` "para se ver alguma coisa" é exatamente o que a fase apaga.
-    //
+    // ⚠️ **`Transform` + `Name`, e mais NADA** (a base da F3: o Inspector mostra o que o objeto TEM).
     // ⚠️ **`assign_missing_root_order` a seguir, não depois:** uma raiz sem `RootOrder` colate em
     // `u32::MAX` e o desempate cai no `Entity::to_bits()`, que muda a cada respawn do undo — foi
     // esse o defeito que fez a captura deixar de ser ponto fixo (BUGS #15). O `StableId` vem pela
     // mesma porta, e por isso os dois assigners andam em par (precedente: `inspector_joint_create`).
     //
-    // ⚠️ **E o objeto novo fica SELECIONADO**, senão o `+` do Inspector não teria sobre quem abrir:
-    // criar um objeto e não o mostrar obriga o artista a caçá-lo na lista para continuar o gesto.
+    // ⚠️ **E o objeto novo fica SELECIONADO**, senão o `+` do Inspector não teria sobre quem abrir.
     // ⭐ **DEVOLVER à receita** (ADR-0164 / F4.4) — o dreno mora em `instance_sync`, com o verbo:
     // ele é sobre INSTÂNCIAS, e não sobre a mecânica da Hierarquia. (E este ficheiro estava no
     // teto de 600 LOC — *o corte é por assunto*.)
@@ -234,12 +225,7 @@ pub(super) fn dispatch(
     if super::hierarchy_delete::drain(delete_row, hero, hero_live.as_ref(), sim, toasts) {
         title_dirty = true;
     }
-    // M14.6 D: drain pending hierarchy-row click → sync
-    // `gizmo_selection` to whichever entity the user just picked in
-    // the hierarchy panel. Legacy single-select path (kept for
-    // double-click + any consumer still emitting the variant). Fase 0c
-    // shifted the Hierarchy panel to `HierSelectRow` / `HierRangeSelect`
-    // which carry modifier semantics — see the dispatch below.
+    // M14.6 D: the legacy single-select row click (double-click); Fase 0c uses `HierSelectRow` below.
     if let Some(row) = hierarchy_row_click
         && let Some(live) = hero_live.as_ref()
         && let Some(entity_bits) = live.bridge.entity_for(row)
@@ -247,17 +233,8 @@ pub(super) fn dispatch(
         hero.gizmo.replace_selection(Some(entity_bits));
     }
     select::apply(hierarchy_select_intent, hero, hero_live);
-    // M14.7 polish: one-shot seed of the rename TextInput when rename
-    // mode opens. `HierRenameSeed` is pushed by hero on the open path
-    // (right-click Rename / long-press) and drained here exactly once
-    // — so subsequent Backspace edits that empty the buffer don't get
-    // clobbered back to the original name on the next frame.
-    // ⭐⭐ **O RENOMEAR mudou-se para o irmão** ([`super::hierarchy_rename`]) quando este ficheiro
-    // bateu no teto de 600 LOC do shell (HR-18) — pago por CORTE, nunca por excepção.
-    //
-    // ⚠️ **É um corte por RESPONSABILIDADE, não pelo fim do ficheiro:** semear o campo, gravar o
-    // nome, limpar o buffer e honrar as chaves que o nome declara são **uma** coisa — *renomear uma
-    // linha* —, e ela não tem nada a ver com os verbos de instância que este ficheiro dreno.
+    // M14.7: the rename seed is drained ONCE (a Backspace that empties the buffer is not undone);
+    // ⭐⭐ renomear mora no irmão [`super::hierarchy_rename`] — um corte por responsabilidade.
     title_dirty |= super::hierarchy_rename::drain(
         rename_seed_row,
         rename_commit,

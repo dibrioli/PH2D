@@ -77,15 +77,7 @@ pub(super) fn cartao_de_fisica(
 
 fn forma(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
     let mut y = medidas_e_estado(t, y, info);
-    if info.part_count > 0 {
-        let n = info.part_count;
-        let frase = if n == 1 {
-            tr("panel.inspector.physics.plus_1_more_shape_from").to_string()
-        } else {
-            tr_with("panel.inspector.physics.more_shapes", &[("n", &n)])
-        };
-        y = t.frase(y, &frase, ColorToken::Text3);
-    }
+    y = super::physics_formas::lista(t, y, info);
     y = toque(t, y, info);
     if info.is_sensor {
         y = sinais(t, y, info);

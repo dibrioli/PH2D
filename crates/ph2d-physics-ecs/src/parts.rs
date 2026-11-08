@@ -142,3 +142,95 @@ pub fn auto_mass_with_parts(
         .sum();
     own.auto_mass() + parts
 }
+
+/// `part` é uma peça cujo corpo ancestral mais próximo é `body`?
+#[must_use]
+pub fn is_part_of(world: &World, part: Entity, body: Entity) -> bool {
+    is_part(world, part) && owner_body(world, part) == Some(body)
+}
+
+/// **As formas de `body`, na ordem da lista «Shapes»** (W3-B): a dele primeiro (se tem `Collider`),
+/// depois cada peça na ordem da árvore (pai antes dos filhos, irmãos por `SiblingOrder`).
+///
+/// Cada linha é `(bits, nome, tag)` com tag `0` Ball · `1` Box · `2` Capsule — a do Inspector. A
+/// descida pára num corpo filho (as peças dele são dele) e atravessa grupos e peças, a mesma regra
+/// do [`owner_body`] vista de cima.
+#[must_use]
+pub fn shapes_in_order(world: &World, body: Entity) -> Vec<(u64, String, u8)> {
+    fn linha(world: &World, e: Entity, c: &Collider) -> (u64, String, u8) {
+        let tag = match c.shape {
+            crate::ColliderShape::Ball { .. } => 0,
+            crate::ColliderShape::Cuboid { .. } => 1,
+            crate::ColliderShape::Capsule { .. } => 2,
+        };
+        let nome = world
+            .get::<ph2d_ecs::Name>(e)
+            .map_or_else(String::new, |n| n.0.clone());
+        (e.to_bits(), nome, tag)
+    }
+    fn desce(world: &World, pai: Entity, out: &mut Vec<(u64, String, u8)>) {
+        for f in ph2d_ecs::ordered_children(world, pai) {
+            if world.get::<RigidBody>(f).is_some() {
+                continue;
+            }
+            if let Some(c) = world.get::<Collider>(f) {
+                out.push(linha(world, f, c));
+            }
+            desce(world, f, out);
+        }
+    }
+    let mut out = Vec::new();
+    if let Some(c) = world.get::<Collider>(body) {
+        out.push(linha(world, body, c));
+    }
+    desce(world, body, &mut out);
+    out
+}
+
+#[cfg(test)]
+mod shapes_tests {
+    use super::*;
+    use crate::{BodyKind, ColliderShape};
+    use ph2d_ecs::Name;
+
+    fn forma(world: &mut World, nome: &str, pai: Entity, shape: ColliderShape) -> Entity {
+        let c = Collider {
+            shape,
+            ..Collider::default()
+        };
+        world.spawn((Name::new(nome), c, ChildOf(pai))).id()
+    }
+
+    /// O «Floor» da cena 120 com mais formas: um grupo no meio, um corpo filho (que leva as dele) e uma
+    /// ordem de irmãos que não é a de inserção.
+    #[test]
+    fn as_formas_saem_na_ordem_da_arvore_e_param_num_corpo_filho() {
+        let mut w = World::new();
+        let caixa = ColliderShape::Cuboid {
+            half_x: 1.0,
+            half_y: 1.0,
+        };
+        let rb = RigidBody {
+            kind: BodyKind::Static,
+        };
+        let chao = w.spawn((Name::new("Floor"), Collider::default(), rb)).id();
+        let parede = forma(&mut w, "Invisible Wall", chao, caixa);
+        let grupo = w.spawn((Name::new("Group"), ChildOf(chao))).id();
+        let teto = forma(&mut w, "Roof", grupo, ColliderShape::Ball { radius: 1.0 });
+        let outro = w
+            .spawn((Name::new("Crate"), Collider::default(), rb, ChildOf(chao)))
+            .id();
+        let _dele = forma(&mut w, "Crate lid", outro, caixa);
+        ph2d_ecs::set_sibling_order(&mut w, chao, &[grupo, outro, parede]);
+        let nomes: Vec<(String, u8)> = shapes_in_order(&w, chao)
+            .into_iter()
+            .map(|(_, n, t)| (n, t))
+            .collect();
+        let esperado = [("Floor", 0), ("Roof", 0), ("Invisible Wall", 1)];
+        let esperado: Vec<(String, u8)> = esperado.iter().map(|(n, t)| ((*n).into(), *t)).collect();
+        assert_eq!(nomes, esperado);
+        assert!(is_part_of(&w, teto, chao) && is_part_of(&w, parede, chao));
+        assert!(!is_part_of(&w, chao, chao), "o corpo não é peça dele mesmo");
+        assert!(!is_part_of(&w, outro, chao), "um corpo filho não é peça");
+    }
+}

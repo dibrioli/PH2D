@@ -88,3 +88,11 @@ filho do corpo»** (confirma e estende o ADR-0110; não o revoga).
 
 Outline (W0–W6) passa para a FILHA: `ColliderOutline` na forma, `source` = antepassado com imagem mais próximo até ao
 corpo. **Último ponto seguro para integrar:** o commit da B0 (sem a lista revogada, sem mudança de formato).
+
+### Respostas do dono à B (08/11)
+
+1. Add ▸ Collision Shape **sem seleção** → objeto raiz «Static Body» (Static, sem imagem) + filha «Collision Shape», a filha selecionada.
+2. **Com uma imagem sem corpo selecionada** → a imagem VIRA corpo Static (um passo de undo) e a forma nasce filha dela (opção a).
+   A nota «Own body (Static) — make the parent a body to join it» sai.
+3. **A forma é como qualquer outro objeto:** alças só aparecem, e ela só se edita, quando ELA está selecionada.
+   ⇒ **B5 muda:** corpo selecionado NÃO mostra alças da forma filha (o contorno no canvas continua, como hoje).

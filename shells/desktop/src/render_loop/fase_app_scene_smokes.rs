@@ -13,10 +13,8 @@ mod macro_smoke;
 impl crate::App {
     /// Ver o cabeçalho do módulo.
     pub(super) fn fase_app_scene_smokes(&mut self) {
-        // **Shape Builder:** abre/renova o arranjo das formas selecionadas. Roda ANTES do
-        // borrow mutável do `gfx` (ele precisa ler a cena e escrever em `self`), e só
-        // reconstrói quando a SELEÇÃO muda — refazê-lo por frame jogaria fora o memo do
-        // arranjo e cada hover voltaria a pagar a booleana.
+        // **Shape Builder:** renova o arranjo das formas selecionadas, ANTES do borrow do `gfx` e só
+        // quando a SELEÇÃO muda (por frame jogaria fora o memo e cada hover pagaria a booleana).
         self.build_smoke();
         self.stack_smoke();
         self.animacao_smoke();

@@ -59,10 +59,12 @@ pub fn publica_as_camadas(world: &ph2d_ecs::World, physics: &PhysicsBridge) {
     ph2d_panel_inspector::camadas_fisica::set_current(nomes.0, vivo, visiveis);
 }
 
-/// Um passo de `PH2D_PHYSICS_SMOKE_CLIQUE` (`quadro:<camada>`, `matriz`, `desfaz`, separados por vírgula).
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+/// Um passo de `PH2D_PHYSICS_SMOKE_CLIQUE` (`quadro:<camada>`, `matriz`, `layer`, `duplo:layer`, `ray`/`fisica` (abrem a secção), `escreve:<texto>`
+/// (+ Enter), `desfaz`, separados por vírgula). `Clica(id, n)`: `n` cliques seguidos no mesmo ponto (2 = duplo).
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum PassoDaFila {
-    Clica(ph2d_editor_core::NodeId),
+    Clica(ph2d_editor_core::NodeId, u8),
+    Escreve(String),
     Desfaz,
 }
 
@@ -83,17 +85,29 @@ pub fn passo_da_fila(physics: &PhysicsBridge) -> Option<PassoDaFila> {
     if n <= passos.len() {
         let linhas = physics.settings_vivos().layer_matrix;
         let pedaco = passos.get(n).copied().unwrap_or("fim");
+        let nomes: Vec<String> = (0..4)
+            .map(ph2d_panel_inspector::camadas_fisica::rotulo)
+            .collect();
         eprintln!(
-            "[fila-mao] antes de {pedaco}: linhas 0..4 = {:x?}",
+            "[fila-mao] antes de {pedaco}: linhas 0..4 = {:x?} · nomes {nomes:?}",
             &linhas[..4]
         );
     }
     match passos.get(n)?.trim() {
-        "matriz" => Some(PassoDaFila::Clica(i::INSP_PHYS_EDIT_MATRIX)),
+        "matriz" => Some(PassoDaFila::Clica(i::INSP_PHYS_EDIT_MATRIX, 1)),
+        "layer" => Some(PassoDaFila::Clica(i::INSP_PHYS_LAYER_PICK, 1)),
+        "duplo:layer" => Some(PassoDaFila::Clica(i::INSP_PHYS_LAYER_PICK, 2)),
+        s @ ("ray" | "fisica") => {
+            use ph2d_editor_core::ids::{INSP_LIVE_PHYSICS_SECTION, INSP_LIVE_RAY_SECTION};
+            let secao =
+                [INSP_LIVE_RAY_SECTION, INSP_LIVE_PHYSICS_SECTION][usize::from(s == "fisica")];
+            Some(PassoDaFila::Clica(secao, 1))
+        }
         "desfaz" => Some(PassoDaFila::Desfaz),
+        p if p.starts_with("escreve:") => Some(PassoDaFila::Escreve(p["escreve:".len()..].into())),
         p => {
             let j: usize = p.strip_prefix("quadro:")?.parse().ok()?;
-            Some(PassoDaFila::Clica(*i::INSP_PHYS_COLLIDES.get(j)?))
+            Some(PassoDaFila::Clica(*i::INSP_PHYS_COLLIDES.get(j)?, 1))
         }
     }
 }

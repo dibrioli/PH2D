@@ -76,11 +76,17 @@ impl crate::App {
         use ph2d_app_physics::panel_bridge::{PassoDaFila as F, passo_da_fila};
         use ph2d_shape_handles::{PassoDaMao as P, passo_da_mao};
         match self.gfx.as_ref().and_then(|g| passo_da_fila(&g.physics)) {
-            Some(F::Clica(id)) => {
+            Some(F::Clica(id, vezes)) => {
                 if let Some((x, y)) = self.smoke_find_widget(id) {
-                    self.smoke_pointer_down(x, y);
-                    self.smoke_pointer_up();
+                    for _ in 0..vezes {
+                        self.smoke_pointer_down(x, y);
+                        self.smoke_pointer_up();
+                    }
                 }
+            }
+            Some(F::Escreve(t)) => {
+                self.smoke_type(&t);
+                self.smoke_key_enter();
             }
             Some(F::Desfaz) => self.undo_request = Some(false),
             None => {}

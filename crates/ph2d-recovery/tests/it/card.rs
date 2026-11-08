@@ -137,15 +137,14 @@ fn abrir_poe_a_linha_de_base_e_restore_fica_por_gravar() {
     assert!(r.due(later));
     assert!(!r.unsaved(b"aberto"));
     assert!(r.unsaved(b"mudou"));
-    assert_eq!(
-        r.offer(b"aberto".to_vec(), None, later),
-        ph2d_recovery::Offer::Unchanged
-    );
+    r.offer(b"aberto".to_vec(), None, later);
+    assert_eq!(r.autosave.finish(), Some(ph2d_recovery::Offer::Unchanged));
     r.opened(Some(b"restaurado"), true);
     assert!(r.unsaved(b"restaurado"), "restaurado = por gravar");
+    r.offer(b"restaurado".to_vec(), None, later);
     assert_eq!(
-        r.offer(b"restaurado".to_vec(), None, later),
-        ph2d_recovery::Offer::Unchanged,
+        r.autosave.finish(),
+        Some(ph2d_recovery::Offer::Unchanged),
         "mas a cópia dele já está no disco"
     );
     r.close();

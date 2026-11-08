@@ -135,13 +135,6 @@ pub fn save(p: &Prefs) {
     }
 }
 
-/// O intervalo da recuperação, lido UMA vez (não há UI que o mude a meio da sessão).
-#[must_use]
-pub fn recovery() -> ph2d_recovery::Period {
-    static P: std::sync::OnceLock<ph2d_recovery::Period> = std::sync::OnceLock::new();
-    *P.get_or_init(|| load().recovery)
-}
-
 /// Lê as preferências. **Default quando o ficheiro está ausente, ilegível ou malformado** — as
 /// três degradam para o mesmo sítio, que é o app a abrir como abre hoje.
 #[must_use]

@@ -114,9 +114,16 @@ impl crate::App {
         }
     }
 
-    pub(super) fn ramo_aperto_solta_teclado(&mut self, state: ElementState, evt: PointerEvent) {
-        // A pressão fecha o que um cartão abriu, pelo mesmo motivo do teclado abaixo: no canvas ela
-        // é tomada antes de chegar ao despacho.
+    /// `true` = a janela modal da recuperação tomou o clique (nada por baixo o vê).
+    pub(super) fn ramo_aperto_solta_teclado(
+        &mut self,
+        state: ElementState,
+        evt: PointerEvent,
+    ) -> bool {
+        if self.recovery_click(&evt) {
+            return true;
+        }
+        // A pressão fecha o que um cartão abriu: no canvas ela é tomada antes de chegar ao despacho.
         if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
             h.premido_fisico(evt);
         }
@@ -150,25 +157,13 @@ impl crate::App {
         {
             forward_blur_to_hero(self.gfx.as_mut());
         }
+        false
     }
 
     /// O arrasto de um asset da biblioteca: o `Down` arma sem consumir, o `Up` larga sem consumir.
     pub(super) fn ramo_arrasto_biblioteca(&mut self, state: ElementState, button: MouseButton) {
-        // ⭐⭐⭐ **O ARRASTO DA BIBLIOTECA** (plano `docs/Components/07`, etapa B).
-        //
-        // ⛔⛔ **E ele vem DEPOIS da soltura das mãos, não antes — a 1.ª versão tinha-o antes e o
-        // comentário logo acima descreve exactamente o defeito que isso cria:** este handler tem
-        // muitos early-returns, e uma mão que sobrevive ao release fica colada ao cursor para
-        // sempre. Eu acrescentei um `return` **à frente** da própria linha que existe para o
-        // evitar. *Ler a regra não é o mesmo que estar do lado certo dela.*
-        //
-        // ⚠️ **O `Down` NÃO consome**: enquanto o limiar não for passado isto ainda é um clique, e
-        // o clique do cartão tem de chegar ao painel como sempre (ele escolhe; o duplo-clique
-        // instancia).
-        //
-        // ⚠️ **O `Up` consome, e só quando o gesto foi de facto um arrasto.** Sem isso o mesmo
-        // gesto largaria o asset na tela **e** contaria como clique no cartão — o `forward_to_hero`
-        // que emite o `Click` corre mais abaixo neste mesmo handler.
+        // (plano `docs/Components/07`, etapa B) ⛔ DEPOIS da soltura das mãos: uma mão que
+        // sobrevive ao release fica colada ao cursor. O `Down` não consome (ainda é um clique).
         if button == MouseButton::Left {
             match state {
                 ElementState::Pressed => {
@@ -177,18 +172,8 @@ impl crate::App {
                 }
                 ElementState::Released => {
                     let (x, y) = self.last_pointer;
-                    // ⛔⛔ **E ele NÃO consome, e a 1.ª versão consumia.** Um `return` aqui salta o
-                    // resto deste handler — e com ele o `held_button = None` e, mais abaixo, o
-                    // `forward_to_hero` que é o **único** sítio do app que faz `set_active(None)`.
-                    // Consequências medidas na auditoria: o cartão fica preso em `Pressed`, o
-                    // widget activo aponta para ele para sempre, e o `post_frame_undo` recusa-se a
-                    // registar um passo enquanto `held_button.is_some()` ⇒ **a queda não era
-                    // desfazível** até ao clique seguinte.
-                    //
-                    // ⚠️ **E não há nada a suprimir:** o `Click` que o despachante emite a seguir
-                    // cai num cartão, e o `apply_event` do navegador **não tem braço para
-                    // `Click(cartão)`** — só para `DoubleClick`. *Suprimir um evento inofensivo
-                    // custou quatro fugas de estado.*
+                    // ⛔ Também NÃO consome: um `return` saltaria o `forward_to_hero` (o único
+                    // `set_active(None)`) e a queda deixava de ser desfazível.
                     self.asset_drag_up(x, y);
                 }
             }

@@ -152,6 +152,9 @@ impl App {
         // Diagnostics: count every raw winit move (input rate), paired with `paint_stamps_this_frame`
         // in the HUD so the coalescing is visible (high events → 1 stamp).
         self.input_events_this_frame = self.input_events_this_frame.saturating_add(1);
+        if self.recovery.is_modal() {
+            return; // a janela da recuperação é modal: nem o hover passa por baixo.
+        }
         let prev = self.last_pointer;
         self.last_pointer = (evt.x, evt.y);
         // (Graph keyboard focus is set every frame by `motion_bridge` from the
@@ -388,9 +391,6 @@ impl App {
             _ => ElementState::Released,
         };
         self.any_input_this_frame = true;
-        if self.recovery_click(&evt) {
-            return;
-        }
         // W-Grab: soltar a mão (e a alça da âncora, §12) vem ANTES dos early-returns, qualquer botão.
         if state == ElementState::Released {
             if let Some(gfx) = self.gfx.as_mut() {
@@ -400,8 +400,10 @@ impl App {
             }
             self.end_anchor_gizmo_drag();
         }
+        if self.ramo_aperto_solta_teclado(state, evt) {
+            return;
+        }
         self.ramo_arrasto_biblioteca(state, button);
-        self.ramo_aperto_solta_teclado(state, evt);
         // O rato do JOGO (itens 6–7): com a cena a correr o clique na cena é SÓ dele (`posse_do_jogo`).
         if self.rato_do_jogo(mapped_button, state == ElementState::Pressed) {
             self.clique_so_do_jogo(mapped_button, state == ElementState::Pressed);

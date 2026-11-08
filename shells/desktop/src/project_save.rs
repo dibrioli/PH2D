@@ -33,7 +33,8 @@ impl crate::App {
 
     /// Arranque da recuperação: a sessão, a varredura e a janela em cartões (`ph2d_recovery::card`).
     pub(crate) fn recovery_start(&mut self, root: Option<&std::path::Path>) {
-        self.recovery = ph2d_recovery::Recovery::start(root, crate::prefs::recovery());
+        let period = ph2d_recovery::Period::from_secs(ph2d_editor_core::recovery_pref::secs());
+        self.recovery = ph2d_recovery::Recovery::start(root, period);
         self.recovery_opened(false);
     }
 
@@ -48,6 +49,7 @@ impl crate::App {
     pub(crate) fn recovery_click(&mut self, evt: &ph2d_host::PointerEvent) -> bool {
         use ph2d_recovery::card::Hit;
         let down = evt.kind == ph2d_host::PointerKind::Down;
+        self.recovery.pointer(down);
         let Some(hit) = ph2d_recovery::card::click(&mut self.recovery, evt.x, evt.y) else {
             return false;
         };
@@ -85,6 +87,8 @@ impl crate::App {
     /// ⭐ A cópia de recuperação (P12 S, `ph2d_recovery`): à hora, os MESMOS bytes do Save.
     pub(crate) fn recovery_tick(&mut self) {
         let now = std::time::Instant::now();
+        self.recovery
+            .follow(ph2d_editor_core::recovery_pref::secs(), now);
         if self.recovery.due(now)
             && let Some(bytes) = self.project_bytes()
         {

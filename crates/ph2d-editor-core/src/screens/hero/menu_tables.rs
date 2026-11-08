@@ -334,10 +334,8 @@ pub(super) const SETTINGS_MENU_ROWS: &[MenuRow] = &[
     menu_row(ids::CTX_MENU_SETTINGS_SCALE, "chrome.menu.interface_scale"),
     menu_row(ids::CTX_MENU_SETTINGS_MOTION, "chrome.menu.motion"),
     menu_row(ids::CTX_MENU_SETTINGS_LIGHT, "chrome.menu.light_2d"),
-    // ⚠️ **Esta entrada NÃO é uma categoria** — ela abre a janela flutuante do Input Map,
-    // não um submenu. Fica aqui porque é a casa que o Godot lhe dá (*Project Settings >
-    // Input Map*) e a equivalência era o pedido; as reticências dizem *"isto abre uma
-    // janela"*, que é a convenção que toda a UI de desktop usa.
+    menu_row(ids::CTX_MENU_SETTINGS_RECOVERY, "chrome.menu.recovery"),
+    // ⚠️ NÃO é uma categoria: abre a janela do Input Map (a casa que o Godot lhe dá; «…» = janela).
     // ⛔ **A NOTAR NO SMOKE:** o laço deste menu põe um `ChevronRight` em cada linha por
     // ser `SettingsMenu`, e um chevron promete um submenu que esta linha não tem. Se o Enio
     // o vir como errado, a cura é o laço perguntar pela LINHA e não pelo tipo do menu.
@@ -452,37 +450,40 @@ pub(super) const SETTINGS_LIGHT_SUBMENU_ROWS: &[MenuRow] = &[
     menu_row(ids::CTX_MENU_LIGHT_AUTO, "chrome.menu.light_automatic"),
 ];
 
-// M14.6 F + M14.7: per-row Hierarchy actions. Order follows
-// the Unity / Godot / Blender convention: Rename first (the
-// most common edit), then additive ops (Duplicate, Add
-// Child), then the milder revert (Reset Transform), with
-// Delete last as the destructive endpoint.
+/// As linhas de `ContextMenuKind::SettingsRecoverySubmenu` — pela ordem de
+/// [`crate::recovery_pref::OPTIONS_SECS`].
+pub(super) const SETTINGS_RECOVERY_SUBMENU_ROWS: &[MenuRow] = &[
+    menu_row(ids::CTX_MENU_RECOVERY[0], "chrome.menu.recovery_off"),
+    menu_row(ids::CTX_MENU_RECOVERY[1], "chrome.menu.recovery_10s"),
+    menu_row(ids::CTX_MENU_RECOVERY[2], "chrome.menu.recovery_30s"),
+    menu_row(ids::CTX_MENU_RECOVERY[3], "chrome.menu.recovery_1m"),
+    menu_row(ids::CTX_MENU_RECOVERY[4], "chrome.menu.recovery_2m"),
+    menu_row(ids::CTX_MENU_RECOVERY[5], "chrome.menu.recovery_5m"),
+    menu_row(ids::CTX_MENU_RECOVERY[6], "chrome.menu.recovery_10m"),
+    menu_row(ids::CTX_MENU_RECOVERY[7], "chrome.menu.recovery_15m"),
+    menu_row(ids::CTX_MENU_RECOVERY[8], "chrome.menu.recovery_30m"),
+];
+
+// M14.6 F + M14.7: Rename, additive ops, the milder revert, Delete last (Unity/Godot/Blender).
 /// As linhas de `ContextMenuKind::HierarchyRow { .. }`.
 pub(super) const HIERARCHY_ROW_ROWS: &[MenuRow] = &[
     menu_row(ids::CTX_MENU_HIER_RENAME, "chrome.menu.rename"),
     menu_row(ids::CTX_MENU_HIER_DUPLICATE, "chrome.menu.duplicate"),
     menu_row(ids::CTX_MENU_HIER_ADD_CHILD, "chrome.menu.add_child"),
-    // ⭐⭐⭐ **AGRUPAR / DESAGRUPAR** (Enio, 2026-08-30), e ficam AQUI de propósito: são a
-    // forma mais **suave** de juntar a seleção num objeto, e o bloco abaixo é o das outras
-    // duas — o Merge FUNDE os pixels e destrói os originais, o Pack ARRANJA-os numa folha.
-    // Lidos em sequência, os três respondem *"quão junto?"* em ordem crescente de dano.
-    //
-    // ⚠️ O par fica junto porque **um verbo cujo inverso não se vê não se usa**.
+    // ⭐ Group/Ungroup (Enio, 30/08): a forma mais suave de juntar; com Merge e Pack abaixo, os três
+    // respondem «quão junto?» em ordem crescente de dano. O par fica junto (o inverso vê-se).
     menu_row(ids::CTX_MENU_HIER_GROUP, "chrome.menu.group"),
     menu_row(ids::CTX_MENU_HIER_UNGROUP, "chrome.menu.ungroup"),
     menu_row(
         ids::CTX_MENU_HIER_MERGE_SPRITES,
         "chrome.menu.merge_sprites",
     ),
-    // A mesma fusão, mas reversível: cada sprite fica numa camada do Painter. Vizinha da
-    // de cima porque a escolha entre as duas só existe neste instante.
+    // A mesma fusão, reversível: cada sprite numa camada do Painter.
     menu_row(
         ids::CTX_MENU_HIER_MERGE_TO_LAYERS,
         "chrome.menu.merge_to_layers",
     ),
-    // Vizinho do Merge de propósito: os dois juntam a seleção num objeto. O Merge FUNDE
-    // os pixels e destrói os originais; este ARRANJA-os e mantém cada peça viva e
-    // editável dentro da folha. A ordem lê-se como "junte-os" → "quão junto?".
+    // Vizinho do Merge: ARRANJA as peças numa folha e mantém cada uma editável.
     menu_row(ids::CTX_MENU_HIER_PACK_SHEET, "chrome.menu.pack_into_sheet"),
     // Os três verbos da folha ficam juntos e nesta ordem — entrar, arrumar, sair —, que é
     // a ordem em que o artista os encontra. O do meio ESTEVE dentro do primeiro, e foi

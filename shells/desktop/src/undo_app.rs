@@ -439,7 +439,7 @@ impl crate::App {
             .quadro(&esperam, self.undo_baseline.as_ref());
         let had_input =
             std::mem::take(&mut self.any_input_this_frame) || self.reescrita_aterrou() || acabou;
-        self.recovery.touched |= had_input;
+        self.recovery.input(had_input, std::time::Instant::now());
         // O botão Undo/Redo da barra entra pela MESMA porta do Ctrl+Z (Áudio, Painter, global ou
         // image-edit): arma o `undo_request` logo abaixo, aplicado ainda neste frame.
         if let Some(redo) = self.undo_button.take() {

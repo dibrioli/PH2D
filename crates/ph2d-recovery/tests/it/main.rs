@@ -72,20 +72,22 @@ fn so_grava_quando_os_bytes_mudaram() {
     assert!(!a.due(t0), "antes do período não é hora");
     let t1 = t0 + Duration::from_secs(120);
     assert!(a.due(t1));
-    assert_eq!(a.offer(b"A".to_vec(), meta(1), &s, t1), Offer::Started);
-    a.finish();
+    a.offer(b"A".to_vec(), meta(1), &s, t1);
+    assert_eq!(a.finish(), Some(Offer::Written));
     assert_eq!(
         std::fs::read(s.dir().join("project.ph2dproj")).expect("copy"),
         b"A"
     );
     let t2 = t1 + Duration::from_secs(120);
-    assert_eq!(a.offer(b"A".to_vec(), meta(2), &s, t2), Offer::Unchanged);
+    a.offer(b"A".to_vec(), meta(2), &s, t2);
+    assert_eq!(a.finish(), Some(Offer::Unchanged));
     // O Save apaga a cópia e lembra os bytes gravados: os mesmos bytes não voltam a escrever.
     a.mark_saved(b"B", &s, t2);
     assert!(!s.dir().join("project.ph2dproj").exists());
-    assert_eq!(a.offer(b"B".to_vec(), meta(3), &s, t2), Offer::Unchanged);
-    assert_eq!(a.offer(b"C".to_vec(), meta(4), &s, t2), Offer::Started);
-    a.finish();
+    a.offer(b"B".to_vec(), meta(3), &s, t2);
+    assert_eq!(a.finish(), Some(Offer::Unchanged));
+    a.offer(b"C".to_vec(), meta(4), &s, t2);
+    assert_eq!(a.finish(), Some(Offer::Written));
     let _ = std::fs::remove_dir_all(root);
 }
 
@@ -185,6 +187,12 @@ fn o_intervalo_vai_a_opcao_do_aseprite_mais_proxima() {
     );
     assert_eq!(Period::from_minutes("lixo"), Period::default());
     assert_eq!(Period::from_minutes("-1"), Period::default());
+    assert!(Period::from_minutes("0").is_off(), "0 = Off");
+    assert_eq!(Period::from_minutes(&Period::OFF.to_minutes()), Period::OFF);
+    assert_eq!(Period::from_secs(0), Period::OFF);
+    for s in Period::OPTIONS_SECS {
+        assert_eq!(Period::from_secs(s).duration().as_secs(), s);
+    }
     for s in Period::OPTIONS_SECS {
         let p = Period::from_minutes(&format!("{}", s as f64 / 60.0));
         assert_eq!(Period::from_minutes(&p.to_minutes()), p, "{s}");
@@ -272,3 +280,86 @@ fn a_janela_diz_nome_hora_e_tamanho() {
 }
 
 mod card;
+
+/// ⭐ Sem soluço a meio do gesto: com a hora vencida, um traço em curso (mesmo parado) e a entrada a
+/// chegar ADIAM a serialização; o quadro calmo depois do fim do traço ou 1 s sem entrada liberta-a;
+/// sem pausa nenhuma, o prazo duro de 2 × o intervalo grava na mesma. `Off` nunca é hora.
+#[test]
+fn a_hora_espera_a_pausa_do_artista_com_prazo_duro() {
+    let root = tmpdir("idle");
+    let mut r = ph2d_recovery::Recovery::start(Some(&root), Period::default());
+    let p = r.autosave.period.duration();
+    let t0 = Instant::now();
+    let hora = t0 + p + Duration::from_millis(1);
+    // A entrada chega em todos os quadros: a hora venceu, mas o artista não parou.
+    r.input(true, hora);
+    assert!(!r.due(hora), "entrada a chegar adia");
+    assert!(r.due(hora + ph2d_recovery::IDLE), "1 s sem entrada é pausa");
+    // Um traço premido e PARADO (sem eventos) também não é pausa.
+    r.pointer(true);
+    r.input(false, hora + Duration::from_millis(10));
+    assert!(
+        !r.due(hora + Duration::from_secs(5)),
+        "o traço em curso adia"
+    );
+    // O traço acaba: o quadro seguinte sem entrada já é pausa (não espera o segundo).
+    r.pointer(false);
+    let fim = hora + Duration::from_secs(6);
+    r.input(true, fim);
+    assert!(!r.due(fim), "o quadro do Up ainda tem entrada");
+    r.input(false, fim + Duration::from_millis(16));
+    assert!(
+        r.due(fim + Duration::from_millis(16)),
+        "o quadro calmo depois do traço"
+    );
+    // Sem pausa nenhuma: o prazo duro (2 × o intervalo desde a última hora) grava na mesma.
+    r.pointer(true);
+    r.input(true, t0 + 2 * p);
+    assert!(!r.due(t0 + 2 * p - Duration::from_millis(1)));
+    assert!(r.due(t0 + 2 * p + Duration::from_millis(1)), "o prazo duro");
+    // Off: nunca é hora; mudar o intervalo vale já (a próxima hora conta de agora).
+    r.follow(0, t0);
+    assert!(!r.due(t0 + Duration::from_secs(10_000)), "Off");
+    r.follow(10, t0);
+    r.pointer(false);
+    r.input(false, t0);
+    assert!(!r.due(t0 + Duration::from_secs(9)));
+    assert!(r.due(t0 + Duration::from_secs(11)), "10 s vale já");
+    r.close();
+    let _ = std::fs::remove_dir_all(root);
+}
+
+/// ⭐ A MEDIDA do que fica no fio da janela à hora: antes (impressão SipHash no fio + entrega) ×
+/// depois (só a entrega; o fio tira a impressão e escreve), 128 MiB, MESMO processo, intercalado,
+/// mínimo de 5 (`docs/DevOps/MEDIR_VELOCIDADE.md`). Corre com `--profile smoke`.
+#[test]
+fn o_fio_da_janela_so_entrega_os_bytes() {
+    let root = tmpdir("entrega");
+    let s = Session::start(&root, 1, 4243).expect("session");
+    let mut a = Autosave::new(Period::default(), Instant::now());
+    let (mut antes, mut depois) = (Duration::MAX, Duration::MAX);
+    for i in 0..10u8 {
+        let bytes = vec![i; 128 << 20];
+        if i % 2 == 0 {
+            // O caminho de antes: a impressão no fio da janela, depois o fio só escreve.
+            let t = Instant::now();
+            let p = ph2d_recovery::print_of(&bytes);
+            let dir = s.dir().to_path_buf();
+            let h = std::thread::spawn(move || {
+                ph2d_recovery::atomic::write_atomic(&dir.join("x"), &bytes).map(|()| p)
+            });
+            antes = antes.min(t.elapsed());
+            h.join().expect("fio").expect("escrita");
+        } else {
+            let t = Instant::now();
+            a.offer(bytes, meta(u64::from(i)), &s, Instant::now());
+            depois = depois.min(t.elapsed());
+            assert_eq!(a.finish(), Some(Offer::Written));
+        }
+    }
+    eprintln!(
+        "[medida] 128 MiB no fio da janela: antes {antes:?} · depois {depois:?} (mínimo de 5)"
+    );
+    assert!(depois < antes, "a entrega custa menos que a impressão");
+    let _ = std::fs::remove_dir_all(root);
+}

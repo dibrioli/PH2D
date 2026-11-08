@@ -4,7 +4,12 @@
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use crate::{Autosave, Choice, Meta, Offer, Period, Prompt, Session, now_secs, scan};
+use std::time::Duration;
+
+use crate::{Autosave, Choice, Meta, Period, Prompt, Session, now_secs, scan};
+
+/// A pausa que conta como «o artista parou» (sem entrada nem botão premido).
+pub const IDLE: Duration = Duration::from_secs(1);
 
 /// O estado da recuperação que a shell guarda.
 #[derive(Debug)]
@@ -17,11 +22,18 @@ pub struct Recovery {
     pub prompt: Prompt,
     /// A pergunta do fecho com alterações por gravar.
     pub quit: Quit,
-    /// Houve entrada do artista desde a última serialização? Sem ela o projecto não mudou e a hora
-    /// NÃO serializa: medido (`a_serializacao_de_um_projeto_grande_custa`, `--profile smoke`), 128 MiB
-    /// de Pixel custam codec 84 ms + cópia 22 ms + impressão 33 ms no fio da janela, muito acima dos
-    /// 8 ms de orçamento — pagos só quando o artista mexeu, nunca com o app parado.
+    /// Houve entrada do artista desde a última serialização? Sem ela a hora NÃO serializa (com o
+    /// app parado custa zero). Medido: 128 MiB de Pixel custam codec 84 ms + cópia 22 ms no fio da
+    /// janela (a impressão já é do fio) — por isso também se espera uma PAUSA ([`Self::due`]).
     pub touched: bool,
+    /// A última entrada do artista (o gesto em curso adia a hora).
+    last_input: Option<Instant>,
+    /// Um botão do ponteiro está premido (um traço em curso, mesmo parado).
+    held: bool,
+    /// O último quadro não teve entrada.
+    quiet: bool,
+    /// Um traço acabou desde a última hora (o quadro calmo seguinte já é pausa).
+    released: bool,
     /// Onde a janela se pintou no último quadro (o ecrã e a escala do chrome): o clique lê daqui.
     pub screen: Option<(
         ph2d_editor_core::zones::Rect,
@@ -51,6 +63,10 @@ impl Recovery {
             prompt: Prompt::default(),
             quit: Quit::Idle,
             touched: false,
+            last_input: None,
+            held: false,
+            quiet: true,
+            released: false,
             screen: None,
         }
     }
@@ -74,19 +90,55 @@ impl Recovery {
         r
     }
 
-    /// Chegou a hora de serializar?
-    #[must_use]
-    pub fn due(&self, now: Instant) -> bool {
-        self.session.is_some() && self.touched && self.autosave.due(now)
+    /// O quadro acabou: `had` = houve entrada do artista nele.
+    pub fn input(&mut self, had: bool, now: Instant) {
+        self.quiet = !had;
+        if had {
+            self.touched = true;
+            self.last_input = Some(now);
+        }
     }
 
-    /// Os bytes do Save, à hora: grava a cópia se mudaram.
-    pub fn offer(&mut self, bytes: Vec<u8>, project: Option<&str>, now: Instant) -> Offer {
+    /// Um botão do ponteiro desceu (`true`) ou subiu: um traço não se interrompe para serializar.
+    pub fn pointer(&mut self, down: bool) {
+        self.released |= self.held && !down;
+        self.held = down;
+    }
+
+    /// O artista está em pausa: nada premido e, ou o quadro depois do fim de um traço sem entrada,
+    /// ou [`IDLE`] sem entrada.
+    #[must_use]
+    pub fn idle(&self, now: Instant) -> bool {
+        !self.held
+            && ((self.released && self.quiet)
+                || self
+                    .last_input
+                    .is_none_or(|t| now.saturating_duration_since(t) >= IDLE))
+    }
+
+    /// Chegou a hora de serializar? Com trabalho por copiar, na primeira pausa do artista depois
+    /// da hora — ou, sem pausa, no prazo duro de 2 × o intervalo ([`Autosave::overdue`]).
+    #[must_use]
+    pub fn due(&self, now: Instant) -> bool {
+        self.session.is_some()
+            && self.touched
+            && self.autosave.due(now)
+            && (self.idle(now) || self.autosave.overdue(now))
+    }
+
+    /// Settings ▸ Recovery mudou (`secs`, `0` = Off): vale já.
+    pub fn follow(&mut self, secs: u64, now: Instant) {
+        self.autosave.set_period(Period::from_secs(secs), now);
+    }
+
+    /// Os bytes do Save, à hora: o fio grava a cópia se mudaram.
+    pub fn offer(&mut self, bytes: Vec<u8>, project: Option<&str>, now: Instant) {
         let Some(s) = self.session.as_ref() else {
-            return Offer::Unchanged;
+            return;
         };
         self.touched = false;
-        self.autosave.offer(bytes, meta_of(project), s, now)
+        self.released = false;
+        self.autosave.offer(bytes, meta_of(project), s, now);
     }
 
     /// O Save gravou `bytes`: a cópia sai.

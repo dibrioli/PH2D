@@ -21,7 +21,7 @@ pub mod card;
 mod prompt;
 mod session;
 
-pub use app::{Quit, Recovery, meta_of};
+pub use app::{IDLE, Quit, Recovery, meta_of};
 pub use ask::{ago, body, size};
 pub use autosave::{Autosave, Offer, Period, print_of};
 pub use prompt::{Choice, Prompt};

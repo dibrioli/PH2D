@@ -197,6 +197,7 @@ pub mod pixel_panel;
 /// ⭐⭐⭐ **O vocabulário do MOVER DE VISTA DE CIMA** (TOP-20 #13) — ver o cabeçalho dele.
 pub mod projectile_edits;
 pub mod ray_edits;
+pub mod recovery_pref;
 /// ⭐⭐⭐ **O vocabulário do SCRIPT DO ARTISTA** (TOP-20 #16) — o sexto degrau da mesma migração.
 pub mod script_edits;
 pub mod sequence_edits;

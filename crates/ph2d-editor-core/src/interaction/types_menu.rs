@@ -177,6 +177,9 @@ pub enum ContextMenuKind {
     /// ⭐ Settings ▸ Light — a nitidez da luz 2D (Baixa · Média · Alta, um rádio) e o «Automatic» (um
     /// toggle). Escolher escreve em `HeroScreen.luz2d`; a shell persiste e aplica.
     SettingsLightSubmenu,
+    /// ⭐ Settings ▸ Recovery — o intervalo da cópia de recuperação (Off, 10 s … 30 min; um rádio).
+    /// Escolher escreve em [`crate::recovery_pref`]; a shell aplica já e persiste.
+    SettingsRecoverySubmenu,
     /// ⭐ Settings ▸ Interface font — a FONTE do texto da interface ([`ph2d_tokens::UiFont`]).
     SettingsFontSubmenu,
     /// ⭐ Settings ▸ Font weight — o PESO ([`ph2d_tokens::UiWeight`]).
@@ -476,6 +479,7 @@ impl ContextMenuKind {
         Self::SettingsTextSubmenu,
         Self::SettingsMotionSubmenu,
         Self::SettingsLightSubmenu,
+        Self::SettingsRecoverySubmenu,
         Self::SettingsFontSubmenu,
         Self::SettingsWeightSubmenu,
         Self::SettingsSizeSubmenu,

@@ -591,6 +591,8 @@ fn populate_global_context_menu(store: &mut WidgetStore) {
             ids::CTX_MENU_LIGHT_AUTO,
         ])
         .chain(ids::CTX_MENU_LIGHT_NIVEL)
+        .chain([ids::CTX_MENU_SETTINGS_RECOVERY])
+        .chain(ids::CTX_MENU_RECOVERY)
     {
         store.register(id, InteractiveState::Plain);
     }

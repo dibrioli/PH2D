@@ -48,3 +48,18 @@ fn o_arranque_abre_a_janela_em_cartoes_esc_e_later_restore_pelo_ponteiro() {
     assert!(!app.recovery_quit_guard(), "respondido, fecha");
     app.recovery.close();
 }
+
+/// A janela da recuperação é modal também para o hover: mover por baixo dela não chega ao editor.
+#[test]
+fn o_hover_por_baixo_da_janela_nao_chega_ao_editor() {
+    let mut app = crate::App::new();
+    app.recovery.quit = Quit::Asking("Hero.ph2dproj".into());
+    let antes = app.last_pointer;
+    let (x, y) = (antes.0 + 40.0, antes.1 + 30.0);
+    let evt = ph2d_pen::ponteiro::do_rato(x, y, PointerKind::Move, PointerButton::Primary, 0);
+    app.pointer_moved(evt);
+    assert_eq!(app.last_pointer, antes, "o hover passou por baixo");
+    app.recovery.quit = Quit::Idle;
+    app.pointer_moved(evt);
+    assert_eq!(app.last_pointer, (x, y));
+}

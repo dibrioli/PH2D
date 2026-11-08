@@ -3,14 +3,21 @@
 //!
 //! ⚠️ **A regra «mudou» é a impressão dos BYTES do Save, não um carimbo do undo.** O projecto tem
 //! várias histórias (a fila por diff da cena, a do Pixel, a do Painter, a dos quadros e abas) e
-//! nenhum carimbo único as cobre; os bytes do Save cobrem-nas todas, por definição. O custo é
-//! serializar uma vez por período (2 min de fábrica), no fio da janela.
+//! nenhum carimbo único as cobre; os bytes do Save cobrem-nas todas, por definição.
 //!
-//! ⚠️ **A escrita vai num fio à parte** — medido (`tests/it/medida.rs`,
-//! `a_escrita_de_um_projeto_grande_custa`, btrfs/NVMe desta máquina, load ~14, 08/11): `write_atomic`
-//! de 64 MB = **40–44 ms** (mínimo de 3, duas corridas; em tmpfs 13 ms — o disco e o `fsync`
-//! dominam), acima dos 16 ms de um quadro. Os bytes saem do fio
-//! da janela já prontos (a fotografia); o disco é do fio.
+//! ⚠️ **A impressão e a escrita vão num fio à parte** ([`Autosave::offer`] só entrega o `Vec`):
+//! `write_atomic` de 64 MB = 40–44 ms (btrfs/NVMe, `a_escrita_de_um_projeto_grande_custa`) e a
+//! impressão SipHash de 128 MiB = 33 ms (`a_serializacao_de_um_projeto_grande_custa`), ambos acima
+//! dos 16 ms de um quadro. Medido no MESMO processo, intercalado, mínimo de 5 (`--profile smoke`,
+//! `o_fio_da_janela_so_entrega_os_bytes`, 08/11; P12_plano §4.3):
+//!
+//! | 128 MiB, no fio da janela (load ~6) | antes (impressão + entrega) | depois (só entrega) |
+//! |---|---|---|
+//! | mínimo de 5, corrida 1 | 32,5 ms | 35 µs |
+//! | mínimo de 5, corrida 2 | 34,1 ms | 43 µs |
+//!
+//! Fica no fio da janela o codec do Pixel (~80 ms) e o `postcard` do `ProjectFile` (~23 ms), só na
+//! primeira PAUSA do artista depois da hora ([`crate::Recovery::due`]).
 
 use std::hash::{Hash, Hasher};
 use std::thread::JoinHandle;
@@ -27,19 +34,42 @@ impl Period {
     /// As opções do O15, em segundos.
     pub const OPTIONS_SECS: [u64; 8] = [10, 30, 60, 120, 300, 600, 900, 1800];
 
-    /// O intervalo.
+    /// Desligada (`recovery.minutes=0`, Settings ▸ Recovery ▸ Off): nunca é hora.
+    pub const OFF: Self = Self(Duration::ZERO);
+
+    /// A opção de `secs` segundos (`0` = [`Self::OFF`]; fora das opções = a mais próxima).
+    #[must_use]
+    pub fn from_secs(secs: u64) -> Self {
+        if secs == 0 {
+            return Self::OFF;
+        }
+        let near = |x: u64| x.abs_diff(secs);
+        let best = Self::OPTIONS_SECS.iter().copied().min_by_key(|&x| near(x));
+        Self(Duration::from_secs(best.unwrap_or(120)))
+    }
+
+    /// O intervalo (`ZERO` = desligada).
     #[must_use]
     pub fn duration(self) -> Duration {
         self.0
     }
 
+    /// Desligada?
+    #[must_use]
+    pub fn is_off(self) -> bool {
+        self.0.is_zero()
+    }
+
     /// `recovery.minutes=<n>` de `prefs.txt` (fracção aceita: `0.1667` = 10 s, como o `.ini` do
-    /// Aseprite): o valor vai à opção mais próxima; ilegível = a de fábrica.
+    /// Aseprite): o valor vai à opção mais próxima; `0` = [`Self::OFF`]; ilegível = a de fábrica.
     #[must_use]
     pub fn from_minutes(text: &str) -> Self {
         let Ok(min) = text.trim().parse::<f64>() else {
             return Self::default();
         };
+        if min == 0.0 {
+            return Self::OFF;
+        }
         if !min.is_finite() || min <= 0.0 {
             return Self::default();
         }
@@ -73,14 +103,17 @@ impl Default for Period {
     }
 }
 
-/// O que o relógio fez com os bytes.
+/// O que o fio fez com os bytes que recebeu (devolvido por [`Autosave::finish`]).
 #[derive(Debug, PartialEq, Eq)]
 pub enum Offer {
     /// Iguais à última cópia (ou ao último Save): nada se escreveu.
     Unchanged,
-    /// A escrita começou no fio.
-    Started,
+    /// A cópia nova está no disco.
+    Written,
 }
+
+/// O que o fio devolve: a impressão dos bytes e se os escreveu.
+type Job = JoinHandle<std::io::Result<(u64, bool)>>;
 
 /// A impressão dos bytes (o «mudou?» do relógio e do fecho).
 #[must_use]
@@ -99,7 +132,7 @@ pub struct Autosave {
     last: Option<u64>,
     /// A impressão do que está no disco do artista (o último Save ou Open); `None` = por gravar.
     saved: Option<u64>,
-    writing: Option<JoinHandle<std::io::Result<()>>>,
+    writing: Option<Job>,
 }
 
 impl Autosave {
@@ -118,7 +151,23 @@ impl Autosave {
     /// Chegou a hora (e não há escrita em curso)? Só então a shell serializa.
     #[must_use]
     pub fn due(&self, now: Instant) -> bool {
-        now >= self.next && self.writing.as_ref().is_none_or(JoinHandle::is_finished)
+        !self.period.is_off()
+            && now >= self.next
+            && self.writing.as_ref().is_none_or(JoinHandle::is_finished)
+    }
+
+    /// Passou o prazo duro (2 × o intervalo desde a última hora): grava mesmo sem pausa do artista.
+    #[must_use]
+    pub fn overdue(&self, now: Instant) -> bool {
+        now >= self.next + self.period.duration()
+    }
+
+    /// Muda o intervalo agora (Settings ▸ Recovery): a próxima hora conta a partir de `now`.
+    pub fn set_period(&mut self, period: Period, now: Instant) {
+        if period != self.period {
+            self.period = period;
+            self.next = now + period.duration();
+        }
     }
 
     /// O Save gravou estes bytes: lembra a impressão
@@ -151,36 +200,44 @@ impl Autosave {
         self.last = None;
     }
 
-    /// A hora chegou e a shell serializou: escreve no fio se os bytes mudaram.
-    pub fn offer(&mut self, bytes: Vec<u8>, meta: Meta, session: &Session, now: Instant) -> Offer {
+    /// A hora chegou e a shell serializou: ENTREGA os bytes ao fio, que tira a impressão e só
+    /// escreve se mudaram. No fio da janela não se lê um byte (o resultado vem em [`Self::finish`]).
+    pub fn offer(&mut self, bytes: Vec<u8>, meta: Meta, session: &Session, now: Instant) {
         self.next = now + self.period.duration();
-        let p = print_of(&bytes);
-        if self.last == Some(p) {
-            return Offer::Unchanged;
-        }
         self.finish();
-        self.last = Some(p);
+        let last = self.last;
         let dir = session.dir().to_path_buf();
         self.writing = Some(std::thread::spawn(move || {
-            crate::session::write_copy_at(&dir, &bytes, &meta)
+            let p = print_of(&bytes);
+            if last == Some(p) {
+                return Ok((p, false));
+            }
+            crate::session::write_copy_at(&dir, &bytes, &meta).map(|()| (p, true))
         }));
-        Offer::Started
     }
 
-    /// Espera a escrita em curso (antes de apagar a cópia, e no fecho).
-    pub fn finish(&mut self) {
-        if let Some(h) = self.writing.take() {
-            match h.join() {
-                Ok(Ok(())) => {}
-                // Falhou: esquece a impressão, para a próxima hora tentar de novo.
-                Ok(Err(e)) => {
-                    eprintln!("[recovery] a cópia não se gravou: {e}");
-                    self.last = None;
-                }
-                Err(_) => {
-                    eprintln!("[recovery] o fio da cópia caiu");
-                    self.last = None;
-                }
+    /// Espera o fio em curso (antes de apagar a cópia, e no fecho) e diz o que ele fez.
+    pub fn finish(&mut self) -> Option<Offer> {
+        let h = self.writing.take()?;
+        match h.join() {
+            Ok(Ok((p, wrote))) => {
+                self.last = Some(p);
+                Some(if wrote {
+                    Offer::Written
+                } else {
+                    Offer::Unchanged
+                })
+            }
+            // Falhou: esquece a impressão, para a próxima hora tentar de novo.
+            Ok(Err(e)) => {
+                eprintln!("[recovery] a cópia não se gravou: {e}");
+                self.last = None;
+                None
+            }
+            Err(_) => {
+                eprintln!("[recovery] o fio da cópia caiu");
+                self.last = None;
+                None
             }
         }
     }

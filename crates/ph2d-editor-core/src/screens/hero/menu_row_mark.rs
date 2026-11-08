@@ -206,6 +206,15 @@ pub(super) fn id_is_currently_selected(
     if Some(id) == nivel || (id == ids::CTX_MENU_LIGHT_AUTO && luz.automatica) {
         return true;
     }
+    // O intervalo da recuperação — um RÁDIO.
+    let secs = crate::recovery_pref::secs();
+    if let Some(i) = crate::recovery_pref::OPTIONS_SECS
+        .iter()
+        .position(|&s| s == secs)
+        && id == ids::CTX_MENU_RECOVERY[i]
+    {
+        return true;
+    }
     false
 }
 

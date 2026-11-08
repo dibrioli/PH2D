@@ -110,6 +110,20 @@ pub const CTX_MENU_LIGHT_NIVEL: [NodeId; 3] = [
 /// «Automatic» — um TOGGLE: o nível escolhido vira o teto e o editor desce quando a placa não
 /// aguenta.
 pub const CTX_MENU_LIGHT_AUTO: NodeId = hash_node_id("ctx_menu_light_auto");
+/// ⭐ Settings ▸ Recovery — o intervalo da cópia de recuperação (P12 S).
+pub const CTX_MENU_SETTINGS_RECOVERY: NodeId = hash_node_id("ctx_menu_settings_recovery");
+/// Off e as oito opções — um RÁDIO (a posição é a de [`crate::recovery_pref::OPTIONS_SECS`]).
+pub const CTX_MENU_RECOVERY: [NodeId; 9] = [
+    hash_node_id("ctx_menu_recovery_off"),
+    hash_node_id("ctx_menu_recovery_10s"),
+    hash_node_id("ctx_menu_recovery_30s"),
+    hash_node_id("ctx_menu_recovery_1m"),
+    hash_node_id("ctx_menu_recovery_2m"),
+    hash_node_id("ctx_menu_recovery_5m"),
+    hash_node_id("ctx_menu_recovery_10m"),
+    hash_node_id("ctx_menu_recovery_15m"),
+    hash_node_id("ctx_menu_recovery_30m"),
+];
 
 /// ⭐ Os três eixos do TEXTO da interface ([`ph2d_tokens::UiTextStyle`], ordem do dono 2026-10-01) —
 /// três categorias do Settings, cada uma com o seu submenu de escolha. ⚠️ A ligação entre cada

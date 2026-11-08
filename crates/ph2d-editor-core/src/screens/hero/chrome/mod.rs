@@ -88,6 +88,7 @@ mod settings_luz;
 mod settings_motion;
 mod settings_ppm;
 mod settings_present;
+mod settings_recovery;
 mod settings_text;
 mod settings_unit;
 mod sheet_size;
@@ -186,6 +187,7 @@ pub fn dispatch_all(hero: &mut HeroScreen, event: WidgetEvent) -> bool {
         || settings_motion::apply(hero, event)
         || settings_text::apply(hero, event)
         || settings_luz::apply(hero, event)
+        || settings_recovery::apply(hero, event)
         || palette_rename::apply(hero, event)
         || new_image::apply(hero, event)
         || sheet_size::apply(hero, event)

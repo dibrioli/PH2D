@@ -7,7 +7,7 @@ use crate::paint_wetpaint::Numero;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::WidgetStore;
 use ph2d_editor_core::panel::PaintCtx;
-use ph2d_editor_core::panel::cards::{CardCtx, Seg};
+use ph2d_editor_core::panel::cards::{CardCtx, Seg, Widget};
 use ph2d_i18n::tr;
 use ph2d_tool_painter::ids as pids;
 use ph2d_tool_painter::{
@@ -142,7 +142,10 @@ pub(crate) fn grupo_da_mistura(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -
             on: i == atual,
         })
         .collect();
-    let y = escolha(c, tr(AMOSTRA), &segs, y);
+    // O rótulo esmaece com os botões, como o dos números: a camada da linha inteira, sem o véu por opção.
+    let y = crate::cards_linhas::com_lei(c, pids::PAINTER_BRUSH_MIX_SAMPLES[0], y, |c, y| {
+        c.full(Some(tr(AMOSTRA)), Widget::Choice(&segs), y)
+    });
     let itens: Vec<Item> = numeros(b).into_iter().map(Item::Num).collect();
     fila(c, &itens, y)
 }
@@ -166,23 +169,26 @@ pub(crate) fn paint_de_antes(
             "panel.painter_layers.brush.mix_mode",
             OPCOES.iter().zip(pids::PAINTER_BRUSH_MIX_MODES),
             indice(b),
+            &[][..],
         ),
         (
             pids::PAINTER_BRUSH_MIX_SAMPLE,
             AMOSTRA,
             AMOSTRAS.iter().zip(pids::PAINTER_BRUSH_MIX_SAMPLES),
             indice_da_amostra(b),
+            &pids::PAINTER_BRUSH_MIX_SAMPLES[..],
         ),
     ];
     let row = ph2d_tokens::ROW_H_PX;
     let mut y = y;
-    for (grupo, rotulo, opcoes, atual) in seletores {
+    for (grupo, rotulo, opcoes, atual, lei) in seletores {
         let opcoes = opcoes
             .map(|(k, id)| SegmentedOption::new(id, tr(k)))
             .collect();
         let seg = SegmentedAdaptive::new(grupo, tr(rotulo), opcoes).selected(atual);
         let h = measure_segmented_adaptive(&seg, w, row, ctx.text_system);
-        {
+        // O Sample esmaece com os números quando a mistura está em `Off` (a mesma camada da linha inerte).
+        crate::esmaecer::talvez_esmaecido(ctx, theme, Rect::new(x, y, w, h), lei, |ctx| {
             let scene = &mut *ctx.scene;
             let text_system = &mut *ctx.text_system;
             let (store, hit_index) = ctx.host.store_and_hit_index_mut();
@@ -195,7 +201,7 @@ pub(crate) fn paint_de_antes(
                 store,
                 hit_index,
             );
-        }
+        });
         y += h + ph2d_tokens::control_gap_px();
     }
     poe_dicas(ctx.host.store_mut());

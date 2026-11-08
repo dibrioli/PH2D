@@ -177,7 +177,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.brush.mix_sample_this_layer" => "This layer",
         "panel.painter_layers.brush.mix_sample_all_visible" => "All visible layers",
         "panel.painter_layers.brush.mix_sample_tip" => {
-            "Where the brush picks up color: only this layer, or every visible layer as it was when the stroke began."
+            "Pick up color from this layer or all visible layers"
         }
         "panel.painter_layers.brush.mix_amount" => "Amount",
         "panel.painter_layers.brush.mix_pigment_amount" => "Pigment",

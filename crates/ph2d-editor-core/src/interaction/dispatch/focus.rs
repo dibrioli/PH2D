@@ -95,7 +95,12 @@ pub(super) fn apply_click<'a>(
         }
         Some(InteractiveState::Dropdown { open, .. }) => {
             *open = !*open;
-            // No event — caller observes via store.get(id).
+            // No event for a click — caller observes via store.get(id). ⭐ A DOUBLE click is reported
+            // (GEF02 fecho 07/11: the Inspector's Layer chip renames on double-click, and conducted in
+            // the app it never fired); the two toggles leave the list closed.
+            if matches!(click_event, WidgetEvent::DoubleClick(_)) {
+                events.push(click_event);
+            }
         }
         Some(InteractiveState::Combobox { open, .. }) => {
             *open = !*open;

@@ -299,6 +299,7 @@ mod caret_doors;
 mod clipboard;
 mod context_menu_close;
 mod curve;
+mod dropdown_duplo;
 mod eyedropper;
 mod field_hover;
 mod graph;

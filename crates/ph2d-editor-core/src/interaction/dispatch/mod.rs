@@ -228,6 +228,17 @@ pub fn focus_text_field(store: &mut WidgetStore, id: ph2d_a11y::NodeId) -> bool 
     true
 }
 
+/// ⭐ O mesmo, com o texto TODO seleccionado: o que se escreve substitui (renomear, como Figma, Finder e o F2 do
+/// Blender; GEF02 fecho 07/11 — conduzido no app, «Boxes» escrito sobre «Props» dava «PropsBoxes»). As setas
+/// continuam a desfazer a selecção para editar só um pedaço.
+pub fn focus_text_field_selected(store: &mut WidgetStore, id: ph2d_a11y::NodeId) -> bool {
+    let focou = focus_text_field(store, id);
+    if focou {
+        select_all_in_text_widget(store, id);
+    }
+    focou
+}
+
 pub(super) fn init_number_buffer(store: &mut WidgetStore, id: ph2d_a11y::NodeId) {
     // BlenderColorPicker channel chip: seed `value` from the parent
     // picker's current channel value (the chip's stored `value` is

@@ -115,3 +115,27 @@ fn a_caixa_do_gizmo_e_a_da_folha_na_tela() {
     show(&mut w, e, FrameRef::Empty);
     assert_eq!(drawn_geometry(&w, e).unwrap().0.size, sprite.size);
 }
+
+/// ⭐ **A imagem aberta no Painter é a da folha VISÍVEL** (plano GEF 26 F13), seja qual for o quadro na tela, sobre a
+/// geometria da folha `0` (a que o ponteiro do Painter mede). *Mutações: sem o ramo da imagem aberta ⇒ o quadro na tela
+/// (folha 0) desenha `idle`; Pivot da folha ⇒ a âncora deixa de ser a do `Sprite`.*
+#[test]
+fn a_imagem_aberta_no_painter_e_a_da_folha_visivel() {
+    let (mut w, e, sprite) = two_sheets();
+    resolve_sheet_textures(&mut w, &BTreeMap::new(), &mut |_| Some(42));
+    w.entity_mut(e).insert(ph2d_ecs::ShownSheet(1));
+    assert_eq!(sheet_view(&w, e, &sprite), SheetView::Own, "fechada: o quadro na tela");
+    w.insert_resource(ph2d_ecs::ImagemAberta {
+        entity: e,
+        quad: [1.0, 1.0],
+    });
+    let SheetView::Other(s, g) = sheet_view(&w, e, &sprite) else {
+        panic!("a folha visível");
+    };
+    assert_eq!(s.source, SpriteSource::Individual { texture_id: 42 });
+    assert_eq!((s.anchor, s.size), (sprite.anchor, sprite.size));
+    assert_eq!((g.hframes, g.vframes, g.frame), (4, 1, 0));
+    // CONTROLO: com a folha 0 visível, aberta, é ela.
+    w.entity_mut(e).insert(ph2d_ecs::ShownSheet(0));
+    assert_eq!(sheet_view(&w, e, &sprite), SheetView::Own);
+}

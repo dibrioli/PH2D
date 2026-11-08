@@ -85,6 +85,41 @@ fn com_o_botao_a_pintura_chega_aos_outros_e_a_seguinte_tambem() {
     EDICAO.with(|c| c.set(None));
 }
 
+/// ⭐ **Edit in Painter na folha extra VISÍVEL** (plano GEF 26 F13): marca a imagem DELA, e a pintura chega também a
+/// quem a mostra como folha `0` (com a textura reta das folhas). *Mutações: `marca_edicao` pela folha `0` ⇒ marca
+/// `antigo` e `b` não segue; `premultiplied` da folha 0 ⇒ `b` fica pré-multiplicado.*
+#[test]
+fn com_a_folha_extra_visivel_o_painter_marca_e_devolve_a_imagem_dela() {
+    let db = AssetDb::default();
+    let (mut w, antigo, a, b, _) = mundo(&db);
+    let run = db.insert_image_rgba8(1, 1, px(30));
+    let folha = |asset| ph2d_ecs::ExtraSheet {
+        asset,
+        size: [1.0, 1.0],
+        anchor: [0.0, 0.0],
+        hframes: 1,
+        vframes: 1,
+    };
+    w.entity_mut(a).insert((
+        ph2d_ecs::SpriteSheets([folha(run)].into_iter().collect()),
+        ph2d_ecs::ShownSheet(1),
+    ));
+    w.entity_mut(b).insert(SpritePixels(run));
+    // A folha 0 de `a` já foi pintada (pré-multiplicada): não é ela que diz a bandeira da folha extra.
+    w.get_mut::<Sprite>(a).unwrap().premultiplied = true;
+    let atlas = BTreeMap::new();
+    marca_edicao(&w, a, &atlas);
+    assert_eq!(EDICAO.with(Cell::get), Some((a, run)));
+    let pintada = db.insert_image_rgba8(1, 1, px(90));
+    w.get_mut::<ph2d_ecs::SpriteSheets>(a).unwrap().0[0].asset = pintada;
+    let t = segue_a_pintura(&mut w, &atlas, a, 99).expect("segue");
+    assert_eq!((t.antigo, t.novo, t.quem), (run, pintada, vec![b]));
+    assert_eq!(w.get::<SpritePixels>(b).unwrap().0, pintada);
+    assert!(!w.get::<Sprite>(b).unwrap().premultiplied, "a textura da folha é reta");
+    assert_eq!(w.get::<SpritePixels>(a).unwrap().0, antigo, "a folha 0 de a fica");
+    EDICAO.with(|c| c.set(None));
+}
+
 /// ⭐ **Editar não muda o nome da imagem** (dono 05/11: a «Platform» editada não vira «Platform Low»).
 #[test]
 fn a_imagem_editada_herda_o_nome_da_de_onde_veio() {

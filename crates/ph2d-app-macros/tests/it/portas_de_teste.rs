@@ -29,6 +29,15 @@ pub(crate) fn sem_recurso(_: &[u8; 32]) -> Option<Vec<u8>> {
     None
 }
 
+/// O id que o `AssetDb` daria a estes píxeis (lados + bytes), sem `AssetDb`.
+pub(crate) fn poe_recurso((rgba, w, h): (Vec<u8>, u32, u32)) -> [u8; 32] {
+    let mut b = Vec::with_capacity(8 + rgba.len());
+    b.extend_from_slice(&w.to_le_bytes());
+    b.extend_from_slice(&h.to_le_bytes());
+    b.extend_from_slice(&rgba);
+    *ph2d_asset_id::AssetId::from_bytes(&b).as_bytes()
+}
+
 struct Leitor;
 impl LeitorDaFamilia for Leitor {
     fn etapas(&self, ev: &[Event]) -> Vec<Etapa> {

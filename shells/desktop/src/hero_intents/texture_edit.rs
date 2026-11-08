@@ -66,6 +66,20 @@ pub(crate) fn read_sprite_straight(
     })
 }
 
+/// O bind do Painter: a folha VISÍVEL (plano GEF 26 F13); a `0` pelo [`read_sprite_straight`] de sempre.
+pub(crate) fn read_shown_straight(
+    entity: Entity,
+    sim: &SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    atlas_asset_map: &BTreeMap<u32, AssetId>,
+) -> Option<(Vec<u8>, u32, u32)> {
+    match ph2d_anim_sheets::shown_image::shown_extra(sim.world(), entity) {
+        Some(_) => ph2d_anim_sheets::shown_image::read_shown_extra(sim.world(), entity, asset_db),
+        None => read_sprite_straight(entity, sim, renderer, asset_db, atlas_asset_map),
+    }
+}
+
 /// Read `entity`'s sprite source as a [`SpriteImage`] carrying its native
 /// [`AlphaMode`] — Atlas resolves to the straight asset pixels; Individual
 /// reads the texture back, premultiplied iff `Sprite.premultiplied`.

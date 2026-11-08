@@ -64,6 +64,9 @@ pub struct Portas<'a> {
     pub registo: &'a ph2d_ecs::scene::ComponentRegistry,
     /// Os bytes de um recurso pelo id de conteúdo (o `AssetDb`): o que a família «mundo» embute.
     pub recurso: &'a dyn Fn(&[u8; 32]) -> Option<Vec<u8>>,
+    /// Põe píxeis crus (RGBA reto) no `AssetDb` do destino e devolve o id que lá têm: as folhas extra de um Animated
+    /// (plano GEF 26 F12), que são só o nome de uma imagem.
+    pub poe_recurso: &'a dyn Fn(Rgba) -> [u8; 32],
     /// O remapeador das referências entre objectos (`StableId` antigo → novo) da composição — a tabela
     /// da casa (`ph2d_app_components::instance_refs::remap_object_refs`); devolve quantos mudou.
     pub remapeia: &'a Remapeia,
@@ -356,6 +359,7 @@ pub fn sem_placa(
         centro: [0.0, 0.0],
         registo: &registo,
         recurso: &|_| None,
+        poe_recurso: &|_| [0; 32],
         remapeia: &remapeia,
     };
     let mut f = Familias {

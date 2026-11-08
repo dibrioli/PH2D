@@ -18,5 +18,9 @@ ph2d-render = { path = "../ph2d-render" }
 # `Affine` — o tipo que esta folha devolve.
 ph2d-vector = { path = "../ph2d-vector" }
 
+[dev-dependencies]
+# O nome de uma folha extra no teste da imagem aberta (plano GEF 26 F13).
+ph2d-asset-id = { path = "../ph2d-asset-id" }
+
 [lints]
 workspace = true

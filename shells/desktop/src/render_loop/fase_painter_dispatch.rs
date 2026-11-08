@@ -148,7 +148,7 @@ impl crate::App {
             crate::input_dispatch::fill_drag::fill_drag_armed(),
             // O funil de leitura desta shell: a família não conhece o `texture_edit`.
             // PRECISION-READONLY: o bind só lê; a escrita de volta é o Apply.
-            crate::hero_intents::texture_edit::read_sprite_straight,
+            crate::hero_intents::texture_edit::read_shown_straight,
             &note_preview_px,
         );
         // Live-preview a non-selected sprite used as the brush Shape (so its opacity/blend remote-

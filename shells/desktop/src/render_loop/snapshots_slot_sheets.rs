@@ -4,13 +4,7 @@ use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::{Entity, SimWorld, SpriteGrid, SpriteSheets};
 use ph2d_panel_inspector::slot_image::SlotImage;
 use ph2d_panel_inspector::slot_sheets::{SheetCard, SheetFace};
-use std::cell::RefCell;
 use std::collections::BTreeMap;
-
-thread_local! {
-    /// Os nomes da biblioteca de cada imagem: ordenar a biblioteca só quando as imagens mudam.
-    static NOMES: RefCell<(Vec<AssetId>, Vec<String>)> = const { RefCell::new((Vec::new(), Vec::new())) };
-}
 
 /// As folhas do objeto `b` (a `0` primeiro); `None` fora de um Animated com imagem.
 pub(super) fn sheet_card(
@@ -39,18 +33,11 @@ pub(super) fn sheet_card(
             .chain(extra.iter().map(|x| (x.asset, [x.hframes, x.vframes])))
             .unzip();
     let shown = ph2d_ecs::shown_sheet(w, e);
-    let nomes = NOMES.with(|c| {
-        let mut c = c.borrow_mut();
-        if c.0 != ids {
-            let lib = ph2d_app_components::library_names::session_library(sim, db, atlas);
-            let nomes = ids
-                .iter()
-                .map(|id| lib.get(id).cloned().unwrap_or_default())
-                .collect();
-            *c = (ids.clone(), nomes);
-        }
-        c.1.clone()
-    });
+    // O nome é o da biblioteca, a MESMA fonte do editor de animações (`ph2d_ecs::SheetNames`).
+    let nomes: Vec<String> = ids
+        .iter()
+        .map(|id| ph2d_ecs::sheet_name(w, *id).unwrap_or_default().to_owned())
+        .collect();
     let sheets = ids
         .into_iter()
         .zip(grids)

@@ -5,7 +5,7 @@
 //! O editor (`ph2d_app_sprite_anim::editor`) chama isto; a folha escolhida é a MESMA do cartão Image
 //! (`ph2d_ecs::ShownSheet`), escrita pela porta `ImageUseEdit::ShowSheet`.
 
-use crate::sheet_cache::SheetCache;
+use crate::sheet_cache::{SheetCache, SheetKey};
 use ph2d_ecs::{Entity, SpriteGrid, SpriteSheets, World};
 use ph2d_editor_core::paint::{
     fill_rounded_rect, frame_radius, label_column_width, paint_text, paint_text_centered,
@@ -74,8 +74,14 @@ pub fn editor_sheets(world: &World, bits: u64) -> (Vec<EditorSheet>, u8) {
     let sheets = grids
         .enumerate()
         .map(|(k, [hframes, vframes])| {
-            let entry = u8::try_from(k).ok().and_then(|k| cache?.of_sheet(bits, k));
-            let name = entry.and_then(|x| x.name.clone()).filter(|n| !n.is_empty());
+            let k8 = u8::try_from(k).ok();
+            let entry = k8.and_then(|k| cache?.of_sheet(bits, k));
+            // ⭐ Uma fonte só para o nome (o do cartão Image): a biblioteca; a arte de fábrica tem o seu.
+            let name = match k8.and_then(|k| cache?.key_of(bits, k)) {
+                Some(SheetKey::Asset(id)) => ph2d_ecs::sheet_name(world, id).map(str::to_owned),
+                _ => entry.and_then(|x| x.name.clone()),
+            }
+            .filter(|n| !n.is_empty());
             EditorSheet {
                 image: entry.map(|x| x.sheet.clone()),
                 guess: entry.and_then(|x| x.guess),

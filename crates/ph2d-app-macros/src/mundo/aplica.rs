@@ -177,6 +177,40 @@ fn imagem_de(
     Ok(Some(Imagem { w, h, rgba, nome }))
 }
 
+/// O blob de `nome` no projeto de destino: as folhas extra trazem as imagens delas; o resto passa como veio.
+fn no_destino(
+    nome: &str,
+    b: Vec<u8>,
+    recursos: &BTreeMap<[u8; 32], &Recurso>,
+    poe: &dyn Fn(crate::aplicar::Rgba) -> [u8; 32],
+) -> Result<Vec<u8>, ErroDaMacroView> {
+    if nome == super::FOLHAS {
+        folhas_no_destino(&b, recursos, poe)
+    } else {
+        Ok(b)
+    }
+}
+
+/// ⭐ **As folhas extra noutro projeto** (plano GEF 26 F12): a imagem de cada uma entra na biblioteca do destino pela
+/// porta, e a folha passa ao id que ela lá tem. Sem o recurso embutido, a macro não nasce (o mesmo erro da imagem).
+fn folhas_no_destino(
+    b: &[u8],
+    recursos: &BTreeMap<[u8; 32], &Recurso>,
+    poe: &dyn Fn(crate::aplicar::Rgba) -> [u8; 32],
+) -> Result<Vec<u8>, ErroDaMacroView> {
+    let falha = |e: &dyn std::fmt::Display| nao_nasce(super::FOLHAS, e);
+    let mut s: ph2d_ecs::SpriteSheets = postcard::from_bytes(b).map_err(|e| falha(&e))?;
+    for x in &mut s.0 {
+        let r = recursos.get(x.asset.as_bytes()).ok_or_else(|| falha(&"∅"))?;
+        let (mut rgba, w, h) = de_png(&r.bytes).ok_or_else(|| falha(&"png"))?;
+        if r.premultiplicado {
+            ph2d_render::unpremultiply_rgba8(&mut rgba);
+        }
+        x.asset = ph2d_asset_id::AssetId::from_digest(poe((rgba, w, h)));
+    }
+    postcard::to_allocvec(&s).map_err(|e| falha(&e))
+}
+
 /// O `Sprite` gravado sobre o que a porta de produto pôs: tudo menos a fonte (o atlas do destino).
 fn funde_o_sprite(
     w: &mut World,
@@ -282,7 +316,7 @@ fn nasce(
             {
                 continue;
             }
-            let b = r.blob(nome, bytes)?;
+            let b = no_destino(nome, r.blob(nome, bytes)?, &recursos, portas.poe_recurso)?;
             if imagem && nome == SPRITE {
                 funde_o_sprite(w, e, &b, r)?;
                 continue;
@@ -339,4 +373,52 @@ fn transpoe(t: &Track, lida: Lida, r: &mut Rascunho<'_>) -> Result<Track, ErroDa
         e.payload = ev.escreve();
     }
     Ok(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn png(rgba: &[u8], w: u32, h: u32) -> Vec<u8> {
+        let img = image::RgbaImage::from_raw(w, h, rgba.to_vec()).unwrap();
+        let mut out = std::io::Cursor::new(Vec::new());
+        img.write_to(&mut out, image::ImageFormat::Png).unwrap();
+        out.into_inner()
+    }
+
+    /// ⭐ **As folhas extra chegam ao outro projeto** (plano GEF 26 F12): a imagem de cada uma entra pela porta e a
+    /// folha passa ao id que ela lá tem; sem o recurso, a macro não nasce. *Mutações: não chamar a porta ⇒ o id fica o
+    /// da gravação e `postos` vazio; aceitar sem recurso ⇒ o `Err` some.*
+    #[test]
+    fn as_folhas_extra_chegam_ao_outro_projeto_com_a_imagem() {
+        let rgba = [9u8, 8, 7, 255, 1, 2, 3, 255];
+        let gravado = [5u8; 32];
+        let r = Recurso {
+            id: gravado,
+            bytes: png(&rgba, 2, 1),
+            premultiplicado: false,
+        };
+        let recursos: BTreeMap<[u8; 32], &Recurso> = [(gravado, &r)].into();
+        let folha = ph2d_ecs::ExtraSheet {
+            asset: ph2d_asset_id::AssetId::from_digest(gravado),
+            size: [1.0, 1.0],
+            anchor: [0.0, 0.0],
+            hframes: 2,
+            vframes: 1,
+        };
+        let b = postcard::to_allocvec(&ph2d_ecs::SpriteSheets([folha].into_iter().collect())).unwrap();
+        let postos = std::cell::RefCell::new(Vec::new());
+        let poe = |px: crate::aplicar::Rgba| {
+            postos.borrow_mut().push(px);
+            [6u8; 32]
+        };
+        let f = no_destino(super::super::FOLHAS, b.clone(), &recursos, &poe).expect("nasce");
+        let s: ph2d_ecs::SpriteSheets = postcard::from_bytes(&f).unwrap();
+        assert_eq!(*s.0[0].asset.as_bytes(), [6; 32]);
+        assert_eq!(*postos.borrow(), [(rgba.to_vec(), 2, 1)]);
+        assert!(folhas_no_destino(&b, &BTreeMap::new(), &poe).is_err(), "sem recurso não nasce");
+        // CONTROLO: outro componente passa como veio, sem tocar na porta.
+        assert_eq!(no_destino("ph2d::ecs::Name", vec![1, 2], &recursos, &poe).unwrap(), [1, 2]);
+        assert_eq!(postos.borrow().len(), 1);
+    }
 }

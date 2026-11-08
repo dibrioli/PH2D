@@ -124,6 +124,7 @@ impl Palco {
             centro: [0.0, 0.0],
             registo: &crate::portas_de_teste::registo(),
             recurso: &crate::portas_de_teste::sem_recurso,
+            poe_recurso: &crate::portas_de_teste::poe_recurso,
             remapeia: &crate::portas_de_teste::remapeia,
         };
         let mut f = Familias {

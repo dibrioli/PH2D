@@ -73,6 +73,9 @@ pub fn drawn_geometry(world: &World, entity: Entity) -> Option<(Sprite, Option<S
 /// ⭐ **A lei de um ponto só**: a folha do quadro na tela decide a imagem, o tamanho, o Pivot e a grelha.
 #[must_use]
 pub fn sheet_view(world: &World, entity: Entity, sprite: &Sprite) -> SheetView {
+    if ph2d_ecs::imagem_aberta(world, entity).is_some() {
+        return open_sheet_view(world, entity, sprite);
+    }
     let Some(grid) = world.get::<SpriteGrid>(entity).copied() else {
         return SheetView::Own;
     };
@@ -95,6 +98,37 @@ pub fn sheet_view(world: &World, entity: Entity, sprite: &Sprite) -> SheetView {
                 _ => SheetView::Nothing,
             }
         }
+    }
+}
+
+/// ⭐ **A imagem aberta no Painter é a da folha VISÍVEL** (plano GEF 26 F13), desenhada inteira sobre a geometria da
+/// folha `0` — a mesma que o ponteiro e o chrome do Painter medem (`ph2d_sprite_screen::sprite_mostrada` + a grelha do
+/// objeto); o quad que a desdobra ao tamanho dela é o de `ph2d_ecs::ImagemAberta`.
+fn open_sheet_view(world: &World, entity: Entity, sprite: &Sprite) -> SheetView {
+    let k = ph2d_ecs::shown_sheet(world, entity);
+    if k == 0 {
+        return SheetView::Own;
+    }
+    let source = world
+        .get::<SheetTextures>(entity)
+        .and_then(|t| t.0.get(usize::from(k) - 1).copied().flatten());
+    let grid = world
+        .get::<SpriteGrid>(entity)
+        .map_or(SpriteGrid::SINGLE, |g| SpriteGrid {
+            frame: 0,
+            sheet: 0,
+            ..*g
+        });
+    match source {
+        Some((_, source)) => SheetView::Other(
+            Sprite {
+                source,
+                premultiplied: false,
+                ..*sprite
+            },
+            grid,
+        ),
+        None => SheetView::Nothing,
     }
 }
 

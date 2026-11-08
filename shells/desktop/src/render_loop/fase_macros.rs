@@ -49,6 +49,7 @@ impl crate::App {
                 centro: gfx.camera.center,
                 registo: &gfx.component_registry,
                 recurso: &recurso,
+                poe_recurso: &|px| atlas.borrow().poe_recurso(px),
                 remapeia: &ph2d_app_components::instance_refs::remap_object_refs,
             }),
             escolhido,

@@ -31,7 +31,7 @@ pub struct SheetEntry {
     pub sheet: SheetImage,
     /// A grelha que a transparência propõe (`guess_grid`), calculada ao descodificar.
     pub guess: Option<GridGuess>,
-    /// O nome do ficheiro (sem extensão), quando a base de assets o conhece.
+    /// O nome da arte de FÁBRICA; o de uma imagem da biblioteca é o de `ph2d_ecs::SheetNames`.
     pub name: Option<String>,
 }
 
@@ -55,6 +55,12 @@ impl SheetCache {
     pub fn of_sheet(&self, bits: u64, k: u8) -> Option<&SheetEntry> {
         let key = self.by_entity.get(&(bits, k))?;
         self.entries.iter().find(|(c, _)| c == key).map(|(_, e)| e)
+    }
+
+    /// A fonte da folha `k` da entidade, se [`refresh`] a resolveu.
+    #[must_use]
+    pub fn key_of(&self, bits: u64, k: u8) -> Option<SheetKey> {
+        self.by_entity.get(&(bits, k)).copied()
     }
 
     fn entry(&mut self, key: SheetKey, decode: impl FnOnce() -> Option<SheetEntry>) -> bool {
@@ -118,12 +124,8 @@ fn decode(key: SheetKey, db: &AssetDb) -> Option<SheetEntry> {
         SheetKey::Asset(id) => {
             let asset = db.get(&id)?;
             let (w, h, px) = asset.image_rgba8()?;
-            let name = db
-                .tracked_paths()
-                .into_iter()
-                .find(|p| db.id_for_path(p) == Some(id))
-                .and_then(|p| p.file_stem().map(|n| n.to_string_lossy().into_owned()));
-            (SheetImage::new(Arc::new(px.into_owned()), w, h)?, name)
+            // O nome é o da biblioteca (`ph2d_ecs::SheetNames`), o MESMO do cartão Image: não se lê aqui.
+            (SheetImage::new(Arc::new(px.into_owned()), w, h)?, None)
         }
     };
     let alpha: Vec<u8> = sheet.rgba.as_chunks::<4>().0.iter().map(|p| p[3]).collect();

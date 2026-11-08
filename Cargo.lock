@@ -7440,6 +7440,7 @@ dependencies = [
  "libm",
  "miniz_oxide 0.8.9",
  "ph2d-anim",
+ "ph2d-anim-sheets",
  "ph2d-app-audio",
  "ph2d-app-board",
  "ph2d-app-code",
@@ -11025,6 +11026,7 @@ dependencies = [
 name = "ph2d-sprite-screen"
 version = "0.0.0"
 dependencies = [
+ "ph2d-asset-id",
  "ph2d-ecs",
  "ph2d-host",
  "ph2d-render",

@@ -113,6 +113,13 @@ impl AtlasDaCena<'_> {
         img.write_to(&mut out, image::ImageFormat::Png).ok()?;
         Some(out.into_inner())
     }
+
+    /// **Põe uma imagem crua na biblioteca** (RGBA reto) e devolve o id que ela lá tem: a folha extra de uma macro
+    /// aplicada noutro projeto (plano GEF 26 F12) — o nome durável, sem objeto nem célula de atlas.
+    #[must_use]
+    pub fn poe_recurso(&self, (rgba, w, h): (Vec<u8>, u32, u32)) -> [u8; 32] {
+        *self.asset_db.insert_image_rgba8(w, h, rgba).as_bytes()
+    }
 }
 
 /// O objecto mostra píxeis (tem `Sprite`): pode receber uma macro do Painter por cima.

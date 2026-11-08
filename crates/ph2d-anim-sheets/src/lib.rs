@@ -6,5 +6,7 @@ pub mod apply;
 pub mod editor_ui;
 pub mod ops;
 pub mod panel_frame;
+pub mod recut;
+pub mod shown_image;
 pub mod sheet_cache;
 pub mod split;

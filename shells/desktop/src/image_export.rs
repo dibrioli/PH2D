@@ -116,7 +116,9 @@ fn source_for(
     asset_db: &AssetDb,
     atlas_asset_map: &BTreeMap<u32, AssetId>,
 ) -> Option<SpriteSource> {
-    escolhe(por_assar, || {
+    // A folha extra visível exporta-se a si (plano GEF 26): a do cartão Image, a que o Painter pinta.
+    let extra = || ph2d_anim_sheets::shown_image::read_shown_extra(sim.world(), entity, asset_db);
+    escolhe(por_assar.or_else(extra), || {
         crate::hero_intents::texture_edit::read_sprite_source(
             entity,
             sim,

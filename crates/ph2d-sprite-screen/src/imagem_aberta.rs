@@ -12,6 +12,13 @@ use ph2d_render::Sprite;
 #[must_use]
 pub fn quad_da_imagem_inteira(world: &World, e: Entity, canvas: (u32, u32)) -> Option<[f32; 2]> {
     let size = world.get::<Sprite>(e)?.size;
+    // A folha extra visível (plano GEF 26 F13): a imagem inteira dela, dita no quad que a grelha da folha `0` desdobra.
+    let k = ph2d_ecs::shown_sheet(world, e);
+    if let Some(s) = world.get::<ph2d_ecs::SpriteSheets>(e).and_then(|x| x.sheet(k)) {
+        let g = world.get::<ph2d_ecs::SpriteGrid>(e).copied().unwrap_or(ph2d_ecs::SpriteGrid::SINGLE);
+        let (n, n0) = ([s.hframes, s.vframes], [g.hframes, g.vframes]);
+        return Some(std::array::from_fn(|i| s.size[i] * n[i] as f32 / n0[i].max(1) as f32));
+    }
     if let Some(t) = world.get::<TiledDraw>(e) {
         return Some(t.tile);
     }
@@ -111,6 +118,30 @@ mod tests {
             ))
             .id();
         assert_eq!(quad_da_imagem_inteira(&w, e, IMAGEM), Some([4.0, 2.0]));
+    }
+
+    /// ⭐ A folha extra visível abre inteira, no quad que a grelha da folha `0` desdobra ao tamanho DELA (plano GEF 26
+    /// F13): 6 × 2 células de 1,5 m sobre uma grelha 4 × 1 ⇒ 9 m × 3 m ⇒ quad 2,25 × 3. *Mutação: ignorar a folha ⇒
+    /// o quad de uma célula da folha 0.*
+    #[test]
+    fn a_folha_extra_visivel_abre_inteira_ao_tamanho_dela() {
+        let mut w = World::new();
+        let run = ph2d_ecs::ExtraSheet {
+            asset: ph2d_asset_id::AssetId::from_digest([2; 32]),
+            size: [1.5, 1.5],
+            anchor: [0.0, 0.0],
+            hframes: 6,
+            vframes: 2,
+        };
+        let e = w
+            .spawn((
+                Sprite::atlas(0, [1.0, 1.0], [1.0; 4]),
+                ph2d_ecs::SpriteGrid::new(4, 1),
+                ph2d_ecs::SpriteSheets([run].into_iter().collect()),
+                ph2d_ecs::ShownSheet(1),
+            ))
+            .id();
+        assert_eq!(quad_da_imagem_inteira(&w, e, (288, 96)), Some([2.25, 3.0]));
     }
 
     /// CONTROLO: uma imagem parada não muda de quad.

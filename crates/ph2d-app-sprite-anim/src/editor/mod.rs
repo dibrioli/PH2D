@@ -326,6 +326,8 @@ pub fn frame(
             if let AnimFieldEdit::Grid(h, v) = edit
                 && ph2d_anim_sheets::apply::set_shown_grid(sim.world_mut(), e, side(h), side(v))
             {
+                let k = ph2d_ecs::shown_sheet(sim.world(), e);
+                crate::image_use::recut_sheet_users(sim.world_mut(), e, k);
                 continue;
             }
             let queue = EditorCommandQueue::new();
@@ -342,6 +344,10 @@ pub fn frame(
                     &[("e", &format!("{e:?}"))],
                 )));
                 continue;
+            }
+            // O corte é da imagem: quem a mostra segue, e os quadros de fora viram buraco (plano GEF 26).
+            if matches!(edit, AnimFieldEdit::Grid(..)) {
+                crate::image_use::recut_users(sim.world_mut(), e);
             }
             edits.extend(added.map(AnimFieldEdit::SetCurrent));
         }

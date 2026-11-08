@@ -93,6 +93,24 @@ pub fn sheet_assets(world: &World, entity: Entity) -> SmallVec<[AssetId; 4]> {
         .unwrap_or_default()
 }
 
+/// ⭐ **O nome de cada imagem usada como folha**, o da biblioteca (`door`, `door (2)`): a fonte ÚNICA do cartão Image e
+/// do editor de animações (plano GEF 26). Derivado, não registado; `ids` é a chave do recálculo.
+#[derive(bevy_ecs::prelude::Resource, Clone, Debug, Default, PartialEq)]
+pub struct SheetNames {
+    pub ids: Vec<AssetId>,
+    pub names: std::collections::BTreeMap<AssetId, String>,
+}
+
+/// O nome de biblioteca de `id`, se [`SheetNames`] o tem.
+#[must_use]
+pub fn sheet_name(world: &World, id: AssetId) -> Option<&str> {
+    world
+        .get_resource::<SheetNames>()?
+        .names
+        .get(&id)
+        .map(String::as_str)
+}
+
 /// [`sheet_cells_of`] sobre os componentes já em mão (o tique, numa query).
 #[must_use]
 pub fn cells_per_sheet(

@@ -54,6 +54,8 @@ ph2d-app-physics = { path = "../../crates/ph2d-app-physics" }
 ph2d-app-components = { path = "../../crates/ph2d-app-components" }
 # A animação de sprite (tique, cartão Animation, editor) — GameEngineFuncional plano 07.
 ph2d-app-sprite-anim = { path = "../../crates/ph2d-app-sprite-anim" }
+# O Painter na folha extra visível (plano GEF 26 F13).
+ph2d-anim-sheets = { path = "../../crates/ph2d-anim-sheets" }
 # As MACROS (ADR-0186, W5d): Gravar ▸ Parar, as etapas e as edições delas.
 ph2d-app-macros = { path = "../../crates/ph2d-app-macros" }
 # ⭐ A família do QUADRO (MiroClone): a cena de smoke que o arranque encena pelo nome.

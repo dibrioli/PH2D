@@ -64,6 +64,18 @@ pub fn shown_id(world: &World, e: Entity, atlas: &BTreeMap<u32, AssetId>) -> Opt
     texture_of(world.get::<SpritePixels>(e), world.get::<Sprite>(e), atlas)
 }
 
+/// A imagem da folha VISÍVEL de `e` (plano GEF 26 F13): a que o botão Edit in Painter abre.
+#[must_use]
+pub fn visible_id(world: &World, e: Entity, atlas: &BTreeMap<u32, AssetId>) -> Option<AssetId> {
+    match ph2d_ecs::shown_sheet(world, e) {
+        0 => shown_id(world, e, atlas),
+        k => world
+            .get::<ph2d_ecs::SpriteSheets>(e)?
+            .sheet(k)
+            .map(|s| s.asset),
+    }
+}
+
 /// Os objectos que mostram a imagem `id`, salvo `fora`.
 fn usuarios(
     world: &mut World,
@@ -116,7 +128,7 @@ pub struct Trocados {
 
 /// O botão Edit in Painter foi carregado em `e`.
 pub fn marca_edicao(world: &World, e: Entity, atlas: &BTreeMap<u32, AssetId>) {
-    EDICAO.with(|c| c.set(shown_id(world, e, atlas).map(|id| (e, id))));
+    EDICAO.with(|c| c.set(visible_id(world, e, atlas).map(|id| (e, id))));
 }
 
 /// O artista saiu do Draw: a pintura seguinte, por outro caminho, volta a ser só do objecto.
@@ -139,9 +151,15 @@ pub fn segue_a_pintura(
     texture_id: u32,
 ) -> Option<Trocados> {
     let (quem, antigo) = EDICAO.with(Cell::get).filter(|(q, _)| *q == e)?;
-    let novo = world.get::<SpritePixels>(e).map(|p| p.0)?;
+    let extra = ph2d_ecs::shown_sheet(world, e) > 0;
+    let novo = if extra {
+        visible_id(world, e, atlas)?
+    } else {
+        world.get::<SpritePixels>(e).map(|p| p.0)?
+    };
     veio_de(novo, antigo);
-    let premultiplied = world.get::<Sprite>(e).is_some_and(|s| s.premultiplied);
+    // A textura de uma folha extra sobe RETA (`ph2d_render::upload_sheet_image`).
+    let premultiplied = !extra && world.get::<Sprite>(e).is_some_and(|s| s.premultiplied);
     let outros = usuarios(world, antigo, Some(e), atlas);
     for o in &outros {
         aponta(world, *o, texture_id, novo, premultiplied);

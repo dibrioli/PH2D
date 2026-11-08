@@ -656,44 +656,16 @@ pub fn apply_edit(
     }
 }
 
-/// ⭐ **O corte é da IMAGEM** (plano GEF 13 D3): todo objecto que mostra a MESMA imagem de `e` passa ao corte dele;
-/// a célula de cada um fica dentro da grelha. Devolve quantos mudaram.
+/// ⭐ **O corte é da IMAGEM** (plano GEF 13 D3): todo objecto que mostra a MESMA imagem da folha `0` de `e` passa ao
+/// corte dele, e cada um prende os quadros à grelha nova. Devolve quantos mudaram.
 pub fn recut_users(world: &mut World, e: Entity) -> usize {
-    let Some(s) = world.get::<Sprite>(e).copied() else {
-        return 0;
-    };
-    let g = world
-        .get::<SpriteGrid>(e)
-        .copied()
-        .unwrap_or(SpriteGrid::SINGLE);
-    let px = world.get::<SpritePixels>(e).copied();
-    let mut q = world.query::<(Entity, &Sprite, Option<&SpritePixels>, Option<&SpriteGrid>)>();
-    let outros: Vec<(Entity, u32)> = q
-        .iter(world)
-        .filter(|(o, os, opx, _)| {
-            *o != e
-                && match (px, opx) {
-                    (Some(a), Some(b)) => a == **b,
-                    (None, None) => {
-                        matches!(s.source, ph2d_render::SpriteSource::Atlas { .. })
-                            && os.source == s.source
-                    }
-                    _ => false,
-                }
-        })
-        .filter(|(_, _, _, og)| {
-            og.map_or((1, 1), |x| (x.hframes, x.vframes)) != (g.hframes, g.vframes)
-        })
-        .map(|(o, _, _, og)| (o, og.map_or(0, |x| x.frame)))
-        .collect();
-    let n = (g.hframes.max(1) * g.vframes.max(1)).max(1);
-    for (o, frame) in &outros {
-        world.entity_mut(*o).insert(SpriteGrid {
-            hframes: g.hframes,
-            vframes: g.vframes,
-            frame: (*frame).min(n - 1),
-            sheet: 0,
-        });
+    recut_sheet_users(world, e, 0)
+}
+
+/// [`recut_users`] a partir da folha `k` de `e` (plano GEF 26): as folhas extra de qualquer objeto também seguem.
+pub fn recut_sheet_users(world: &mut World, e: Entity, k: u8) -> usize {
+    let outros = ph2d_anim_sheets::recut::recut_users(world, e, k);
+    for o in &outros {
         crate::sprite_card::aviso_segue_a_grade(world, *o);
     }
     outros.len()

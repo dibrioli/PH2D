@@ -1,4 +1,4 @@
-//! ⭐ Onda 9f: na caixa avermelhada do Remove os nomes dos destinos leem-se a ≥ 4,5:1 (WCAG 2.2 AA 1.4.3) sobre o
+//! ⭐ Onda 9f: na caixa avermelhada do Remove os nomes dos destinos (e, fecho 07/11, o rótulo «Move them to») leem-se a ≥ 4,5:1 (WCAG 2.2 AA 1.4.3) sobre o
 //! fundo dela, em todos os temas, com e sem cartões — a tinta e o fundo que a pintura usa.
 
 use ph2d_panel_physics::{aba, cards};
@@ -32,6 +32,14 @@ fn os_nomes_da_pergunta_do_remove_leem_se_a_4_5() {
             eprintln!("contraste {t:?} cartões={com_cartoes}: {r:.2}");
             assert!(r >= 4.5, "{t:?} (cartões {com_cartoes}): {r:.2}:1 < 4,5:1");
             menor = menor.min(r);
+            // Fecho 07/11: o rótulo «Move them to» também (era `Text3`, nunca medido).
+            let rotulo = razao(aba::tinta_do_rotulo(t), aba::fundo_da_pergunta(t));
+            eprintln!("rótulo {t:?} cartões={com_cartoes}: {rotulo:.2}");
+            assert!(
+                rotulo >= 4.5,
+                "rótulo {t:?} (cartões {com_cartoes}): {rotulo:.2}:1 < 4,5:1"
+            );
+            menor = menor.min(rotulo);
         }
     }
     cards::force_cards_on_this_thread(None);

@@ -44,6 +44,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx) {
         Some(p) => {
             super::remove::pinta(ctx, &q, p);
             super::remove::alvos(ctx, p);
+            super::remove::pinta_a_lista(ctx, &q, p);
         }
         None => {
             super::camada::pinta(ctx, &q);

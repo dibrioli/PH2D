@@ -199,11 +199,32 @@ fn remove_pergunta_para_onde_vao_os_objetos_e_a_default_fica() {
     assert!(mesa.clica(ids::PHYSICS_LAYER_REMOVE).is_empty());
     mesa.pinta();
     assert_eq!(aba::removendo(), Some(0));
+    // Fecho 07/11: o destino escolhe-se numa lista SUSPENSA (maquete B) — fechada, só o chip, com o contorno
+    // da escolhida; aberta pelo clique real, uma linha por camada por cima de tudo, acima dos botões ou não.
+    assert!(
+        (0..MAX_LAYERS).all(|d| mesa.rect(ids::PHYSICS_LAYER_MOVE_TO[d]).is_none()),
+        "fechada, nenhuma opção apanha o clique"
+    );
+    let chip = mesa
+        .rect(ids::PHYSICS_LAYER_MOVE_PICK)
+        .expect("o chip do destino");
+    let ok = mesa
+        .rect(ids::PHYSICS_LAYER_MOVE_OK)
+        .expect("Move and remove");
+    assert!(ok.y >= chip.y + chip.h, "os botões vêm depois do chip");
+    let c =
+        ph2d_editor_core::paint::layer_outline_of(ids::PHYSICS_LAYER_MOVE_PICK).expect("contorno");
+    assert_eq!(
+        (c.camada, c.rect),
+        (0, chip),
+        "o chip veste a cor da escolhida"
+    );
+    let _ = mesa.clica(ids::PHYSICS_LAYER_MOVE_PICK);
+    mesa.pinta();
     assert!(
         mesa.rect(ids::PHYSICS_LAYER_MOVE_TO[2]).is_none(),
         "não vai para si mesma"
     );
-    // Onda 9e: o destino escolhe-se numa LISTA (uma coluna, uma linha por camada), dentro da caixa, acima dos botões.
     let destinos: Vec<Rect> = [0, 1, 3, 4]
         .iter()
         .map(|&d| {
@@ -218,23 +239,33 @@ fn remove_pergunta_para_onde_vao_os_objetos_e_a_default_fica() {
             "uma linha por camada"
         );
     }
-    let ok = mesa
-        .rect(ids::PHYSICS_LAYER_MOVE_OK)
-        .expect("Move and remove");
-    assert!(
-        ok.y >= destinos[3].y + destinos[3].h,
-        "os botões vêm depois da lista"
-    );
     let sub =
         ph2d_editor_core::paint::layer_outline_of(ids::PHYSICS_LAYER_MOVE_TO[3]).expect("contorno");
     assert_eq!(sub.camada, 3);
     assert_eq!(Some(sub.rect), mesa.rect(ids::PHYSICS_LAYER_MOVE_TO[3]));
+    // Escolher fecha a lista e o chip passa a dizer a escolhida.
+    let _ = mesa.clica(ids::PHYSICS_LAYER_MOVE_TO[3]);
+    mesa.pinta();
+    assert_eq!(aba::removendo(), Some(3));
+    assert!(
+        mesa.rect(ids::PHYSICS_LAYER_MOVE_TO[1]).is_none(),
+        "escolher fecha a lista"
+    );
+    let c =
+        ph2d_editor_core::paint::layer_outline_of(ids::PHYSICS_LAYER_MOVE_PICK).expect("contorno");
+    assert_eq!(c.camada, 3);
     let _ = mesa.clica(ids::PHYSICS_LAYER_MOVE_CANCEL);
     mesa.pinta();
     assert_eq!(aba::removendo(), None);
     assert!(mesa.host.drained_actions().is_empty(), "Cancel não escreve");
     // De novo: escolhe Ground e confirma.
     let _ = mesa.clica(ids::PHYSICS_LAYER_REMOVE);
+    mesa.pinta();
+    assert!(
+        mesa.rect(ids::PHYSICS_LAYER_MOVE_TO[1]).is_none(),
+        "a pergunta nova nasce com a lista fechada"
+    );
+    let _ = mesa.clica(ids::PHYSICS_LAYER_MOVE_PICK);
     mesa.pinta();
     let _ = mesa.clica(ids::PHYSICS_LAYER_MOVE_TO[1]);
     mesa.pinta();

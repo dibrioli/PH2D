@@ -109,7 +109,7 @@ fn evento_do_nome(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<b
                 *caret = nome.len();
                 nome.clone_into(text);
             }
-            ph2d_editor_core::interaction::dispatch::focus_text_field(store, campo);
+            ph2d_editor_core::interaction::dispatch::focus_text_field_selected(store, campo);
             crate::aba::comeca_a_renomear(n, onde);
             Some(true)
         }
@@ -200,6 +200,7 @@ fn evento_do_nome(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<b
                 if state::layer_count(n) == 0 {
                     remove_a_camada(host, n, 0);
                 } else {
+                    crate::aba::fecha_a_lista(host.store_mut());
                     crate::aba::pergunta_o_destino(Some(0));
                 }
             }
@@ -211,11 +212,13 @@ fn evento_do_nome(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<b
                 .iter()
                 .position(|&c| c == id)
                 .expect("guard matched");
+            crate::aba::fecha_a_lista(host.store_mut());
             crate::aba::pergunta_o_destino(Some(d));
             Some(true)
         }
         WidgetEvent::Click(id) if id == crate::ids::PHYSICS_LAYER_MOVE_OK => {
             seam_reset_button(host, id);
+            crate::aba::fecha_a_lista(host.store_mut());
             if let Some(d) = crate::aba::removendo() {
                 remove_a_camada(host, crate::aba::camada_aberta(), d);
             }
@@ -223,6 +226,7 @@ fn evento_do_nome(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> Option<b
         }
         WidgetEvent::Click(id) if id == crate::ids::PHYSICS_LAYER_MOVE_CANCEL => {
             seam_reset_button(host, id);
+            crate::aba::fecha_a_lista(host.store_mut());
             crate::aba::pergunta_o_destino(None);
             Some(true)
         }

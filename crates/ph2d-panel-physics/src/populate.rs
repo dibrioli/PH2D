@@ -134,6 +134,14 @@ pub fn populate(store: &mut WidgetStore) {
     ] {
         button(store, id);
     }
+    store.register(
+        crate::ids::PHYSICS_LAYER_MOVE_PICK,
+        InteractiveState::Dropdown {
+            state: ph2d_editor_core::widget::DropdownState::Normal,
+            open: false,
+            selected_index: None,
+        },
+    );
     for &id in crate::ids::PHYSICS_LAYER_ROW_LABEL
         .iter()
         .chain(&crate::ids::PHYSICS_LAYER_COL_LABEL)

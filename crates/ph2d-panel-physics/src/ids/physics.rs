@@ -222,6 +222,8 @@ pub const PHYSICS_LAYER_MORE: NodeId = hash_node_id("physics.layers.more");
 pub const PHYSICS_LAYER_REMOVE: NodeId = hash_node_id("physics.layers.remove");
 /// O seletor do destino dos objetos ao remover: a camada `d`.
 pub static PHYSICS_LAYER_MOVE_TO: [NodeId; MAX_LAYERS] = tabela_de(b"physics.layers.move_to_");
+/// A lista suspensa do destino dos objetos ao remover (o chip; as opções são os `PHYSICS_LAYER_MOVE_TO`).
+pub const PHYSICS_LAYER_MOVE_PICK: NodeId = hash_node_id("physics.layers.move_pick");
 /// «Move and remove».
 pub const PHYSICS_LAYER_MOVE_OK: NodeId = hash_node_id("physics.layers.move_ok");
 /// «Cancel» da pergunta do «Remove».
@@ -428,6 +430,7 @@ mod tabela_tests {
                 PHYSICS_LAYER_SELECT_ALL,
                 PHYSICS_LAYER_MORE,
                 PHYSICS_LAYER_REMOVE,
+                PHYSICS_LAYER_MOVE_PICK,
                 PHYSICS_LAYER_MOVE_OK,
                 PHYSICS_LAYER_MOVE_CANCEL,
             ])

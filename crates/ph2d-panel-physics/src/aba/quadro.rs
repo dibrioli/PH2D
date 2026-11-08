@@ -47,9 +47,13 @@ pub(super) fn fotos(ctx: &mut PaintCtx) {
     FEITO.set(true);
     abre(Some(1));
     // `remove`: a Enemy (2) aberta, com a pergunta do «Remove» (destino Ground).
-    if caso == "remove" {
+    // `remove_lista`: a mesma, com a lista suspensa do destino aberta.
+    if caso.starts_with("remove") {
         abre(Some(2));
         super::pergunta_o_destino(Some(0));
+        if caso == "remove_lista" {
+            super::remove::abre_a_lista(ctx.host.store_mut());
+        }
     }
     // `default`: a camada 0 perde o nome (lê-se «Default»); os outros casos dão os nomes da maquete B.
     let nomes: Vec<&str> = if caso == "default" {

@@ -12,7 +12,7 @@ while IFS='|' read -r caso k quer; do
   if [ ! -f "$FOTOS/$caso.log" ]; then
     cena=PH2D_GAME_SMOKE=4; alt=1400
     case "$caso" in
-      forma_ponta) cena=PH2D_PHYSICS_SMOKE=120; export PH2D_PHYSICS_SMOKE_SELECT="Collision Shape" ;;
+      forma_ponta) cena=PH2D_PHYSICS_SMOKE=120; export PH2D_PHYSICS_SMOKE_SELECT="Loose Shape" ;;
       # O Fit fica abaixo do cartão da animação: a janela alta.
       forma_fit) cena=PH2D_PHYSICS_SMOKE=120; alt=2700; export PH2D_PHYSICS_SMOKE_SELECT="Player" ;;
       *) unset PH2D_PHYSICS_SMOKE_SELECT ;;
@@ -40,7 +40,7 @@ forma_desfaz|36|half_x: 0\.5, half_y: 0\.5 \} offset=\[0\.2, 0\.1\].*editando=tr
 forma_chave_desfaz|36|half_x: 0\.5, half_y: 0\.5 \} offset=\[0\.2, 0\.1\].*editando=true · curvas=0
 forma_clique|8|editando=true
 forma_clique|20|editando=false
-forma_ponta|8|half_x: 4\.0, half_y: 0\.25.*alvo=Collision Shape editando=true
+forma_ponta|8|half_x: 4\.0, half_y: 0\.25.*alvo=Loose Shape editando=true
 forma_ponta|20|alvo=Updraft Zone editando=false
 forma_fit|antes|Capsule \{ half_height: 0\.15, radius: 0\.2 \}.*passos=0
 forma_fit|8|Capsule \{ half_height: 0\.0, radius: 0\.5 \}.*passos=1

@@ -25,7 +25,8 @@ fn receita(sim: &mut SimWorld, nome: &str) -> (RigidBody, Collider, Health) {
     let w = sim.world();
     (
         *w.get::<RigidBody>(c).expect("a cópia sem corpo"),
-        *w.get::<Collider>(c).expect("a cópia sem forma"),
+        *w.get::<Collider>(ph2d_physics_ecs::main_shape(w, c).expect("a cópia sem forma"))
+            .expect("a cópia sem forma"),
         w.get::<Health>(c)
             .unwrap_or_else(|| {
                 panic!("a CÓPIA de «{nome}» nasceu SEM VIDA — a fábrica não a copia")
@@ -39,7 +40,8 @@ fn bala(sim: &mut SimWorld) -> (RigidBody, Collider, ProjectileMotion, Damage) {
     let w = sim.world();
     (
         *w.get::<RigidBody>(c).expect("a bala sem corpo"),
-        *w.get::<Collider>(c).expect("a bala sem forma"),
+        *w.get::<Collider>(ph2d_physics_ecs::main_shape(w, c).expect("a bala sem forma"))
+            .expect("a bala sem forma"),
         *w.get::<ProjectileMotion>(c).expect("a bala sem voo"),
         w.get::<Damage>(c)
             .expect("a CÓPIA da bala nasceu SEM DANO — a fábrica não a copia")

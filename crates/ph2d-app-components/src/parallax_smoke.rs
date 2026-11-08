@@ -350,11 +350,8 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
     } else {
         cena_um(world)
     };
-    ph2d_ecs::assign_missing_stable_ids(world);
-    // ⚠️⚠️ **Os nomes que o roteiro manda procurar saem da MESMA porta que o painel pinta** (`tr`) e
-    // nunca de um literal: *um passo que nomeia uma fileira AFIRMA que ela está na tela com aquele
-    // nome*, e um literal aqui envelhece no dia em que alguém renomear a chave — com o dono a
-    // aprovar o smoke com o passo impossível dentro. Há gate.
+    ph2d_physics_ecs::migra_formas_para_filhos(world);
+    // Os nomes do roteiro saem da porta que o painel pinta (`tr`), nunca de um literal (gate).
     let t = ph2d_i18n::tr;
     let (camera, dolly, active) = (
         t("component.game_camera.name"),

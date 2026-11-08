@@ -225,6 +225,7 @@ pub fn monta(sim: &mut SimWorld, cena: &mut VecScene, mapa: &mut VecEntityMap) -
     );
     w.insert_resource(PortaPorPintar(porta));
     ph2d_ecs::assign_missing_stable_ids(w);
+    ph2d_physics_ecs::migra_formas_para_filhos(w);
     let mut out = vec![heroi];
     out.extend(vec_ents);
     out.extend([porta, camera, vida, maximo]);

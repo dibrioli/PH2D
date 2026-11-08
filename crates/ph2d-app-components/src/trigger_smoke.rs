@@ -260,10 +260,8 @@ pub struct Montada {
 pub fn montar(world: &mut World, _nivel: u32) -> Montada {
     let escolhido = cena_um(world);
     resolver_receitas(world);
-    // ⚠️ **O roteiro é da CENA e imprime-se AQUI**, como o das irmãs (`particles_smoke`): ele fala
-    // do que a cena montou e da tecla que ela declara, e nada disso é da shell. ⛔ Ele viveu no
-    // prólogo até a catraca `the_shell_only_shrinks` o mandar para casa — e as duas respostas
-    // coincidem, que é o sinal de que o corte é por responsabilidade.
+    ph2d_physics_ecs::migra_formas_para_filhos(world);
+    // O roteiro é da cena e imprime-se aqui, como o das irmãs.
     println!(
         "[trigger-smoke] cena=1  accao=«{ACCAO}» (tecla {TECLA_NOME})  sinal=«{SINAL}»\n\
          (1) carregue no {TECLA_NOME}: sai uma bala AMARELA do retangulo AZUL, para onde ele \

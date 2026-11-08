@@ -83,7 +83,8 @@ fn detaching_stops_the_following_and_changes_nothing_else() {
     let mine = piece(&sim, roots[0], "Arm");
     let before = tint(&sim, mine);
     // O gesto, feito a partir de uma PEÇA — e ele solta a instância INTEIRA.
-    assert_eq!(detach(&mut sim, mine), Ok(4));
+    // Raiz, Hub, Arm, Pin e as DUAS «Collision Shape» (ADR-0199).
+    assert_eq!(detach(&mut sim, mine), Ok(6));
     assert!(sim.world().get::<InstanceOf>(roots[0]).is_none());
     assert!(sim.world().get::<InstanceOf>(mine).is_none());
     assert_eq!(tint(&sim, mine), before, "destacar mudou o que se ve'");

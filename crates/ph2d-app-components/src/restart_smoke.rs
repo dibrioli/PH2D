@@ -285,7 +285,7 @@ fn cena_um(world: &mut World) -> Entity {
 /// **Monta a cena que `nivel` pede, e devolve QUAL montou.**
 pub fn montar(world: &mut World, _nivel: u32) -> Montada {
     let escolhido = cena_um(world);
-    ph2d_ecs::assign_missing_stable_ids(world);
+    ph2d_physics_ecs::migra_formas_para_filhos(world);
     println!(
         "[restart-smoke] cena=1  {VIDAS_INICIAIS} vidas · {ESPINHOS} espinhos · batida de {:.1} s\n\
          (1) ande com as SETAS para CIMA: o quadrado azul toca no espinho VERMELHO do meio e uma \

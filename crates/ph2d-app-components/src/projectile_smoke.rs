@@ -223,6 +223,7 @@ pub fn montar(world: &mut World, nivel: u32) -> u32 {
     match nivel {
         2 => {
             cena_dois(world);
+            ph2d_physics_ecs::migra_formas_para_filhos(world);
             println!(
                 "[projectile-smoke] =2 o missil VERMELHO curva e vai atras do alvo cinzento; o \
                  projectil cinzento (o controlo, sem perseguicao) segue a direito. Ande com o \
@@ -232,6 +233,7 @@ pub fn montar(world: &mut World, nivel: u32) -> u32 {
         }
         _ => {
             cena_um(world);
+            ph2d_physics_ecs::migra_formas_para_filhos(world);
             println!(
                 "[projectile-smoke] =1 quatro balas, um knob cada: amarela recta (morre na \
                  parede) · laranja RICOCHETEIA · azul faz ARCO e aponta para onde voa · verde \

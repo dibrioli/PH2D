@@ -187,7 +187,7 @@ fn monta_com(world: &mut World, na_filha: bool) {
             .id(),
     );
     world.spawn((
-        Name::new("Collision Shape"),
+        Name::new("Loose Shape"),
         pose(LOOSE_AT),
         caixa([1.0, 0.25], GROUND),
     ));

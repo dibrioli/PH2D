@@ -114,6 +114,8 @@ pub fn spawn_master(sim: &mut SimWorld) -> ph2d_ecs::Entity {
     ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
     ph2d_ecs::assign_missing_root_order(sim.world_mut());
     ph2d_ecs::assign_missing_sibling_order(sim.world_mut());
+    // O mestre já nasce com a forma em filha: as cópias levam-na (a migração salta instâncias).
+    ph2d_physics_ecs::migra_formas_para_filhos(sim.world_mut());
     root
 }
 
@@ -252,28 +254,16 @@ pub fn instance_smoke(cx: &mut crate::scene_ctx::SceneCtx) {
     match which.trim() {
         "1" => instance_smoke_ragdoll(cx),
         "2" => instance_smoke_vector(cx),
-        // ⭐⭐⭐ **A receita DENTRO da receita** (F5 critério 4) — irmão por assunto, ver o
-        // cabeçalho de lá.
         "3" => crate::instance_nested_smoke::instance_smoke_nested(cx),
-        // ⭐⭐⭐ **A troca por um componente SEM PARENTESCO** (F5, o último critério) — irmã por
-        // assunto, ver o cabeçalho de lá.
         "4" => crate::instance_replace_smoke::instance_smoke_replace(cx),
-        // ⭐⭐⭐ **O que é SÓ desta cópia** (F5.10) — irmã por assunto, ver o cabeçalho de lá.
         "5" => crate::instance_removed_smoke::instance_smoke_removed(cx),
-        // ⭐⭐⭐ **DAR uma peça ao componente** (F5.11) — o espelho da `=5`, e a montagem é a
-        // MESMA função; ver o cabeçalho de lá.
         "6" => crate::instance_added_smoke::instance_smoke_added(cx),
-        // ⭐⭐⭐ **MUDAR uma peça de lugar no componente** (F5.12) — o contrário das duas
-        // acima: ali o que é só de uma cópia, aqui o que a receita manda em todas.
         "7" => crate::instance_move_smoke::instance_smoke_move(cx),
         other => {
             println!("[instance smoke] cena {other:?} nao existe (ha' a 1..7)")
         }
     }
-    // ⚠️ **O relógio TEM de partir a andar**, e a linha vive no prólogo pela razão do smoke da
-    // física: uma lista por-cena seria a enumeração de que a próxima cena nasce fora. Sem isto
-    // os três pêndulos ficam pendurados no ar e o smoke lê-se como *"a física está morta"* —
-    // que é precisamente o defeito que ele existe para distinguir.
+    // O relógio parte a andar: sem isto os pêndulos ficam no ar («a física está morta»).
     if let Some(hero) = cx.hero_screen.as_deref_mut() {
         hero.panel_visibility.insert("timeline", true);
     }
@@ -289,21 +279,7 @@ pub fn instance_smoke_vector(cx: &mut crate::scene_ctx::SceneCtx) {
     };
     let (master, roots) = spawn_vector_scene(cx.sim, cx.registry, &mut docs);
     let master_bits = master.to_bits();
-    // ⚠️ **O DIAGNÓSTICO do que ela montou, peça a peça.** Uma cópia sem `VecPathRef` é o modo
-    // de falha que não deixa linha nenhuma em lado nenhum — e é o 1.º suspeito do §14.
-    // ⚠️ **A receita NAO esta' na tela ate' alguem a escolher** — a marca `MasterEditing`
-    // (F4.6) e' derivada da selecao, e ate' 2026-08-27 estas linhas descreviam coordenadas
-    // vazias: o smoke que existe para dar o meio-caminho entregava «o mestre ficou invisivel»,
-    // que e' exactamente o report que ele existe para evitar.
-    // ⛔⛔⛔ **O PASSO 1 que aqui esteve tornou-se IMPOSSÍVEL, e ninguém o notou** (medido em
-    // 2026-09-06). Ele mandava *«clique na linha 'Badge'»* — verdade quando foi escrito
-    // (27/08) e falso desde 30/08, quando a Hierarquia passou a **retirar da lista** tudo o
-    // que o `off_canvas::is_unedited_recipe` acusa: o `MasterRoot` também é `MasterPiece`,
-    // logo a receita inteira sai. *É a lei do §5.0 à letra — quando um comportamento muda, a
-    // cena que o demonstra é o último sítio a ser lembrado e o primeiro que o dono lê.*
-    //
-    // ⇒ a cena **abre a receita ela própria** (a marca é derivada da selecção), e o texto passa
-    // a dizer o estado em vez de mandar um gesto que não existe.
+    // O diagnóstico peça a peça; a cena abre a receita ela própria (a Hierarquia esconde-a).
     println!(
         "[instance smoke 2] o componente ja' esta' ABERTO (a linha 'Badge' nasce acesa) — e' \
          por isso que o cracha' da RECEITA aparece a' ESQUERDA das tres copias"
@@ -381,19 +357,13 @@ pub fn instance_smoke_ragdoll(cx: &mut crate::scene_ctx::SceneCtx) {
             ..Collider::default()
         },
     ));
-    // Campos DISJUNTOS do `AppGfx` (+ o mapa, que é do `App`) — empréstimos separados, sem
-    // clonar o registo nem o documento.
     let mut docs = crate::instance_docs::OwnedDocs {
         vec_scene: cx.vec_scene,
         vec_entities: cx.vec_entities,
     };
     let (master, roots) = spawn_ragdoll_scene(cx.sim, cx.registry, &mut docs);
     let master_bits = master.to_bits();
-    // ⚠️ A cena **imprime o que montou** — se estas linhas não aparecerem, PARE: o que está
-    // na tela não é o que este smoke descreve.
-    // ⛔⛔⛔ **O PASSO 1 que aqui esteve era IMPOSSÍVEL desde 2026-08-30** — ver a nota da
-    // cena 2: a Hierarquia retira da lista a receita inteira, e ele mandava clicar na linha
-    // dela. A cena abre-a agora, e o texto diz o estado.
+    // A cena imprime o que montou e abre a receita ela própria (ver a cena 2).
     println!(
         "[instance smoke 1] o componente ja' esta' ABERTO (a linha 'Ragdoll' nasce acesa) — e' \
          por isso que a RECEITA aparece la' em cima (ela NAO se mexe)"

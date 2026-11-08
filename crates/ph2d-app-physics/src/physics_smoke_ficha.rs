@@ -26,7 +26,7 @@ pub fn physics_smoke_ficha(ctx: &mut crate::SceneCtx<'_>) {
             .map(|(e, _)| e.to_bits());
     }
     println!(
-        "[physics-smoke 120] O item inteiro, PARADO. Espaço dá Play: o Crate atravessa a Collision Shape solta e \
+        "[physics-smoke 120] O item inteiro, PARADO. Espaço dá Play: o Crate atravessa a Loose Shape e \
          pousa no Floor; a Stretched Ball cai na Updraft Zone e a zona empurra-a para cima. ←/→ andam, ↑ salta: o \
          Player sobe pela One-way Platform por baixo e pousa em cima; ele atravessa o Crate porque a camada dele só \
          toca Ground. O Stop devolve tudo."

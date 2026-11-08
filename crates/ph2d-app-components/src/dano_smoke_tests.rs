@@ -290,9 +290,12 @@ fn so_a_bala_passa_a_cerca_do_alvo() {
 
     let corpos: Vec<(String, bool, bool)> = {
         let w = sim.world_mut();
-        let mut q = w.query::<(&Name, &ph2d_physics_ecs::Collider, Option<&Tags>)>();
+        let mut q = w.query::<(ph2d_ecs::Entity, &Name, Option<&Tags>)>();
+        let w = &*w;
         q.iter(w)
-            .map(|(n, _, t)| {
+            .filter(|&(e, _, _)| w.get::<RigidBody>(e).is_some())
+            .filter(|&(e, _, _)| ph2d_physics_ecs::main_shape(w, e).is_some())
+            .map(|(_, n, t)| {
                 let passa = t.is_some_and(|t| ph2d_ecs::tags::belongs(t, &tree, bala));
                 (n.as_str().to_string(), t.is_some(), passa)
             })

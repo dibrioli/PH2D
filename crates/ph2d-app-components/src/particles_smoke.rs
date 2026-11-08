@@ -283,6 +283,7 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
     match nivel {
         2 => {
             let escolhido = cena_dois(world);
+            ph2d_physics_ecs::migra_formas_para_filhos(world);
             println!(
                 "[particles-smoke] =2 os dois voam iguais: o de cima deixa RASTO (as particulas \
                  ficam onde nasceram) e o de baixo leva o penacho COLADO. Eles vao e voltam entre \
@@ -296,6 +297,7 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
         }
         _ => {
             let escolhido = cena_um(world);
+            ph2d_physics_ecs::migra_formas_para_filhos(world);
             println!(
                 "[particles-smoke] =1 quatro fontes, um knob de diferenca cada: Jet (de fabrica) · \
                  Ring (nasce num anel) · Fade (apaga-se a meio) · Burst (fica parado e REBENTA de \

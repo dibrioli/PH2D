@@ -160,6 +160,7 @@ fn montar(sim: &mut SimWorld) -> (Entity, Entity, Entity) {
     ph2d_ecs::item_id::assign_missing_item_ids(w);
     ph2d_ecs::assign_missing_root_order(w);
     ph2d_ecs::assign_missing_sibling_order(w);
+    ph2d_physics_ecs::migra_formas_para_filhos(w);
     (bola, chao, relogio)
 }
 

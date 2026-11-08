@@ -353,6 +353,7 @@ pub struct Montada {
 pub fn montar(world: &mut World, _nivel: u32) -> Montada {
     let escolhido = cena_um(world);
     resolver_receitas(world);
+    ph2d_physics_ecs::migra_formas_para_filhos(world);
     // ⚠️ **CONTADO e não escrito à mão:** quantas recargas o depósito paga sai dos dois números
     // que a cena declara — *um literal aqui envelhece no dia em que um deles mudar*.
     let recargas = RESERVA_N / CARTUCHAS_N;

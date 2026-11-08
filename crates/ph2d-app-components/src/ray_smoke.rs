@@ -290,6 +290,7 @@ pub struct Montada {
 /// **Monta a cena que `nivel` pede, e devolve QUAL montou.**
 pub fn montar(world: &mut World, _nivel: u32) -> Montada {
     let escolhido = cena_um(world);
+    ph2d_physics_ecs::migra_formas_para_filhos(world);
     println!(
         "[ray-smoke] cena=1  alcance={ALCANCE} m\n\
          (1) o poste da esquerda tem DOIS olhos, e de cada um sai uma linha fina — uma para a \

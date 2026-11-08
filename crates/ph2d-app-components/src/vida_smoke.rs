@@ -493,6 +493,7 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
     if nivel == 4 {
         let escolhido = crate::vida_arena_smoke::cena_quatro(world);
         resolver_receitas(world);
+        ph2d_physics_ecs::migra_formas_para_filhos(world);
         crate::vida_arena_smoke::roteiro();
         return Montada {
             nivel: 4,
@@ -502,6 +503,7 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
     if nivel == 3 {
         let escolhido = crate::vida_tipos_smoke::cena_tres(world);
         resolver_receitas(world);
+        ph2d_physics_ecs::migra_formas_para_filhos(world);
         crate::vida_tipos_smoke::roteiro();
         return Montada {
             nivel: 3,
@@ -511,6 +513,7 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
     if nivel == 2 {
         let escolhido = crate::vida_impacto_smoke::cena_dois(world);
         resolver_receitas(world);
+        ph2d_physics_ecs::migra_formas_para_filhos(world);
         crate::vida_impacto_smoke::roteiro();
         return Montada {
             nivel: 2,
@@ -519,6 +522,7 @@ pub fn montar(world: &mut World, nivel: u32) -> Montada {
     }
     let escolhido = cena_um(world);
     resolver_receitas(world);
+    ph2d_physics_ecs::migra_formas_para_filhos(world);
     println!(
         "[vida-smoke] cena=1  tecla={TECLA_NOME}  dano de uma bala={DANO}\n\
          (0) o quadrado de contorno verde no MEIO do ecra' sao os MOLDES (o do alvo e o da bala): \

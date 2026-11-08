@@ -371,6 +371,7 @@ pub struct Montada {
 pub fn montar(world: &mut World, tree: &mut TagTree, _nivel: u32) -> Montada {
     let escolhido = cena_um(world, tree);
     resolver_receitas(world);
+    ph2d_physics_ecs::migra_formas_para_filhos(world);
     println!(
         "[dano-smoke] cena=1  tecla={TECLA_NOME}  alvos={POR_FILEIRA} por fileira\n\
          (1) espere um instante: as duas fileiras NASCEM — tres alvos VERMELHOS em cima e tres \

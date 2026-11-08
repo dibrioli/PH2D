@@ -358,7 +358,7 @@ fn o_heroi_tem_corpo_cinematico() {
         w.get::<RigidBody>(h).map(|b| b.kind),
         Some(BodyKind::Kinematic)
     ));
-    assert!(w.get::<Collider>(h).is_some());
+    assert!(ph2d_physics_ecs::main_shape(w, h).is_some_and(|f| w.get::<Collider>(f).is_some()));
 }
 
 /// ⭐⭐ **Quem nasce escolhido é o sujeito do roteiro:** as Árvores na `=1`, a câmera na `=2`.

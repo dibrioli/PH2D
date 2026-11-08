@@ -193,6 +193,7 @@ pub fn montar(world: &mut World, nivel: u32) -> u32 {
     match nivel {
         2 => {
             cena_dois(world);
+            ph2d_physics_ecs::migra_formas_para_filhos(world);
             println!(
                 "[topdown-smoke] =2 a isometria: a seta `→` anda para NORDESTE na linha do \
                  tabuleiro, e o quadrado cinzento (o controlo, sem isometria) vai para a direita. \
@@ -203,6 +204,7 @@ pub fn montar(world: &mut World, nivel: u32) -> u32 {
         }
         _ => {
             cena_um(world);
+            ph2d_physics_ecs::migra_formas_para_filhos(world);
             println!(
                 "[topdown-smoke] =1 setas para andar; encoste numa parede na DIAGONAL e ele \
                  desliza a' velocidade CHEIA (de cabeca, ele para)"

@@ -26,7 +26,8 @@ fn inimigo(
     let w = sim.world();
     (
         *w.get::<RigidBody>(c).expect("sem corpo"),
-        *w.get::<Collider>(c).expect("sem forma"),
+        *w.get::<Collider>(ph2d_physics_ecs::main_shape(w, c).expect("sem forma"))
+            .expect("sem forma"),
         *w.get::<GravityScale>(c)
             .expect("sem a gravidade a zero — ele cairia"),
         *w.get::<DampingOverride>(c)
@@ -50,7 +51,8 @@ fn quanto_voa(nome: &str) -> f32 {
         let w = cena.world();
         (
             *w.get::<RigidBody>(b).unwrap(),
-            *w.get::<Collider>(b).unwrap(),
+            *w.get::<Collider>(ph2d_physics_ecs::main_shape(w, b).unwrap())
+                .unwrap(),
             *w.get::<ProjectileMotion>(b).unwrap(),
             w.get::<Damage>(b).expect("a bala sem dano").clone(),
         )

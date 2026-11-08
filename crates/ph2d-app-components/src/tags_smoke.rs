@@ -253,9 +253,14 @@ pub(crate) fn montar(world: &mut World, tree: &mut TagTree, nivel: u32) -> (u32,
     match nivel {
         2 => {
             cena_dois(world, &a);
+            ph2d_physics_ecs::migra_formas_para_filhos(world);
             (2, None)
         }
-        _ => (1, cena_um(world, &a)),
+        _ => {
+            let s = cena_um(world, &a);
+            ph2d_physics_ecs::migra_formas_para_filhos(world);
+            (1, s)
+        }
     }
 }
 

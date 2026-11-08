@@ -219,7 +219,7 @@ fn nome_do_perfil(p: ph2d_shake::Perfil) -> &'static str {
 /// **Monta a cena que `nivel` pede, e devolve QUAL montou.**
 pub fn montar(world: &mut World, _nivel: u32) -> Montada {
     let escolhido = cena_um(world);
-    ph2d_ecs::assign_missing_stable_ids(world);
+    ph2d_physics_ecs::migra_formas_para_filhos(world);
     let preset = ph2d_i18n::tr("panel.inspector.shake.preset");
     let (recuo, impacto, explosao) = (
         nome_do_perfil(ph2d_shake::Perfil::Recuo),

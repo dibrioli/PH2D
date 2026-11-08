@@ -324,8 +324,14 @@ fn cena_um(world: &mut World) -> Montada {
     }
 }
 
-/// **Monta a cena `nivel`** — o roteador.
+/// **Monta a cena `nivel`** — o roteador; cada forma acaba numa filha do corpo (ADR-0199).
 pub fn montar(world: &mut World, nivel: u32) -> Montada {
+    let m = monta(world, nivel);
+    ph2d_physics_ecs::migra_formas_para_filhos(world);
+    m
+}
+
+fn monta(world: &mut World, nivel: u32) -> Montada {
     if nivel == 7 {
         let e = crate::nav_smoke_estreita::montar(world);
         crate::nav_smoke_estreita::anuncia();
@@ -434,6 +440,7 @@ pub fn monta_tres(
     mapa: &mut ph2d_vec_entities::entities::VecEntityMap,
 ) -> Montada {
     let g = crate::nav_smoke_guarda::monta_em(sim, cena, mapa);
+    ph2d_physics_ecs::migra_formas_para_filhos(sim.world_mut());
     crate::nav_smoke_guarda::anuncia();
     Montada {
         nivel: 3,

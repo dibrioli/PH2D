@@ -24,8 +24,8 @@ use ph2d_editor_core::nav_edits::{
     InspectorNavRegion, NAV_AREA_COST_MIN, NavAgora, NavAlvoModo, NavEstado, NavFieldEdit,
 };
 use ph2d_physics_ecs::{
-    BodyKind, Collider, Health, NavAgent, NavCostArea, NavCostAreaNow, NavLink, NavNow, NavRegion,
-    NavStatus, NavTarget, PlatformPlayer, RigidBody, TopDownPlayer,
+    BodyKind, Health, NavAgent, NavCostArea, NavCostAreaNow, NavLink, NavNow, NavRegion, NavStatus,
+    NavTarget, PlatformPlayer, RigidBody, TopDownPlayer,
 };
 
 /// O estado da ponte, no vocabulário do painel.
@@ -163,7 +163,7 @@ pub fn build_info(
             forbidden: c.forbidden,
             // ⚠️ As MESMAS perguntas da ponte (`custos_deste_tique`): só um corpo com colisor tem
             // forma, e só um corpo PARADO a recorta (um `Dynamic` nunca é obstáculo).
-            has_shape: corpo.is_some() && world.get::<Collider>(e).is_some(),
+            has_shape: corpo.is_some() && ph2d_physics_ecs::main_shape(world, e).is_some(),
             body_moves: corpo.is_some_and(|b| b.kind == BodyKind::Dynamic),
             too_narrow_for: world.get::<NavCostAreaNow>(e).map(|n| n.too_narrow_for),
         }

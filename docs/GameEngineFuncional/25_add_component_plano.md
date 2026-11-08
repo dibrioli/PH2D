@@ -50,14 +50,21 @@ nome canónico o grupo e a posição. Grupos (ordem da maquete B), com o conteú
 | 2 | Find a path | Nav Agent · Nav Region · Nav Cost Area · Nav Link | 4 |
 | 3 | Game rules | Signal Actions · Trigger · Counter · Counter Watch · Timers · Lifetime · Destroy Outside · Factory · Weapon · Damage · Health | 11 |
 | 4 | On screen | HUD Canvas · Label · Button · Health Bar · Anchors · Anchor Mount · Clip Children | 7 |
-| 5 | Camera | Game Camera · Camera Follow · Camera Limits · Camera Shake · Shake Emitter | 5 |
+| 5 | Camera | Camera Follow · Camera Limits · Camera Shake · Shake Emitter | 4 |
 | 6 | Background | Parallax · Parallax Limits · Parallax Drift · Parallax Repeat | 4 |
 | 7 | Change over time | Animation · Animations · Animator · State Machine · Tween · Sequence Player · Script | 7 |
 | 8 | Look | Blend Mode · Mask · Mask Interaction · 9-Slice · Texture Filter · Texture Repeat · UV Transform · Particles · Light Occluder · Unlit | 10 |
 | 9 | Sound | Audio Source 2D · Audio Listener 2D | 2 |
 | 10 | Bones | Bone · Bone Angle Limit · Smart Bone | 3 |
 | 11 | Organize | Transform · Tags · Constraints · Visibility Layer · On-Screen Enabler | 5 |
-| | | | **64** |
+| | | | **63** |
+
+⭐ **Dono 08/11 — a Game Camera sai do Add Component**: nasce só por Add Object ▸ Camera
+(`Attach::Intrinsic`, como a `Luz`; o cartão fica). `ObjectKind::Camera` (marcador `GameCamera`, o
+último do `ALL`) e Follow/Limits/Shake com `O::CAMERA` — os sistemas (`camera-frame`, `camera_2d`,
+`shake_bridge`) só as lêem na câmera; no *Show all* ficam esmaecidas com a razão genérica, e a dica
+diz «Put it on a Camera.». Sem ensino na busca: «camera» já acha Camera Follow. Gate
+`a_game_camera_so_nasce_pelo_objeto_e_as_pecas_de_camera_so_numa_camera`.
 
 Cor por grupo: um `NodeCat*` cada, como o `AddGroup`. Título: chave `component_add.group.*`.
 

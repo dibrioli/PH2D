@@ -34,6 +34,7 @@ pub fn kind_of(
         ObjectKind::Skeleton => world.get::<ph2d_skeleton_ecs::Skeleton>(entity).is_some(),
         ObjectKind::Motion => world.get::<ph2d_ecs::MotionGenerator>(entity).is_some(),
         ObjectKind::PixelSprite => world.get::<ph2d_ecs::PixelSprite>(entity).is_some(),
+        ObjectKind::Camera => world.get::<ph2d_ecs::GameCamera>(entity).is_some(),
     };
     ObjectKind::ALL
         .into_iter()

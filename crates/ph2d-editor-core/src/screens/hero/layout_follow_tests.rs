@@ -12,6 +12,7 @@ fn cada_tipo_tem_a_sua_aba() {
         (ObjectKind::Image, TaskLayout::Scene),
         (ObjectKind::Skeleton, TaskLayout::Scene),
         (ObjectKind::PixelSprite, TaskLayout::Scene),
+        (ObjectKind::Camera, TaskLayout::Scene),
         (ObjectKind::Vector, TaskLayout::Vector),
         (ObjectKind::Painted, TaskLayout::Drawing2d),
         (ObjectKind::Flip, TaskLayout::Flip),

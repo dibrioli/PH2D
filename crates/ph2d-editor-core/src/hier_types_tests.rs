@@ -103,7 +103,8 @@ fn o_tipo_vem_do_marcador() {
     for k in ObjectKind::ALL {
         let t = ObjectType::of(k, com(&[]));
         assert_eq!(t == ObjectType::Empty, k == ObjectKind::Empty, "{k:?}");
-        assert!(t.marker().is_none(), "{k:?}");
+        // A câmera é o único ObjectKind cujo marcador é também o do tipo da hierarquia (GEF 25).
+        assert_eq!(t.marker().is_none(), k != ObjectKind::Camera, "{k:?}");
     }
 }
 

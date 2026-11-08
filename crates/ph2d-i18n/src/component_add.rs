@@ -95,14 +95,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Hides the parts of its children that fall outside the shape of this object\u{2019}s picture."
         }
         // Camera
-        "component_add.tip.game_camera" => "What the player sees when the game runs.",
         "component_add.tip.camera_follow" => {
-            "The camera goes after an object and keeps it in view."
+            "The camera goes after an object and keeps it in view. Put it on a Camera."
         }
         "component_add.tip.camera_limits" => {
-            "The camera stays inside the level and never shows past its edges."
+            "The camera stays inside the level and never shows past its edges. Put it on a Camera."
         }
-        "component_add.tip.camera_shake" => "Lets the screen shake, for hits and explosions.",
+        "component_add.tip.camera_shake" => {
+            "Lets the screen shake, for hits and explosions. Put it on a Camera."
+        }
         "component_add.tip.shake_emitter" => {
             "When a signal is heard, it tells nearby cameras with Camera Shake to shake, more when it is close."
         }

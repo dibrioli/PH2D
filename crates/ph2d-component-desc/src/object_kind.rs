@@ -33,11 +33,15 @@ pub enum ObjectKind {
     /// ⭐ Um sprite de pixel art (`ph2d::ecs::PixelSprite`, ADR-0196): o documento de pixels vive na
     /// família `ph2d-app-pixel`, o objecto só o liga.
     PixelSprite,
+    /// ⭐ Uma câmera de jogo (`ph2d::ecs::GameCamera`, GEF 25, dono 08/11): nasce só por Add Object ▸
+    /// Camera, e as peças de câmera (Follow, Limits, Shake) só se oferecem a ela. Última: um objecto que
+    /// já é de outro tipo continua desse tipo.
+    Camera,
 }
 
 impl ObjectKind {
     /// Todos, em ordem — a fonte da iteração (⛔ nunca escreva a lista uma segunda vez).
-    pub const ALL: [ObjectKind; 8] = [
+    pub const ALL: [ObjectKind; 9] = [
         ObjectKind::Empty,
         ObjectKind::Image,
         ObjectKind::Vector,
@@ -46,6 +50,7 @@ impl ObjectKind {
         ObjectKind::Skeleton,
         ObjectKind::Motion,
         ObjectKind::PixelSprite,
+        ObjectKind::Camera,
     ];
 
     /// O rótulo que o artista lê no filtro da paleta. Inglês (HR-15).
@@ -60,6 +65,7 @@ impl ObjectKind {
             ObjectKind::Skeleton => "component.object_kind.skeleton",
             ObjectKind::Motion => "component.object_kind.motion",
             ObjectKind::PixelSprite => "component.object_kind.pixel_sprite",
+            ObjectKind::Camera => "component.object_kind.camera",
         }
     }
 
@@ -79,6 +85,7 @@ impl ObjectKind {
             ObjectKind::Skeleton => Some("ph2d::skeleton::Skeleton"),
             ObjectKind::Motion => Some("ph2d::ecs::MotionGenerator"),
             ObjectKind::PixelSprite => Some("ph2d::ecs::PixelSprite"),
+            ObjectKind::Camera => Some("ph2d::ecs::GameCamera"),
         }
     }
 
@@ -103,9 +110,11 @@ impl ObjectKinds {
     pub const IMAGE: ObjectKinds = ObjectKinds(ObjectKind::Image.bit());
     /// Só vetor.
     pub const VECTOR: ObjectKinds = ObjectKinds(ObjectKind::Vector.bit());
+    /// Só câmera — o que segue, limita ou abana a vista.
+    pub const CAMERA: ObjectKinds = ObjectKinds(ObjectKind::Camera.bit());
 
     /// Qualquer objeto que tenha uma forma visível — tudo menos [`ObjectKind::Empty`],
-    /// [`ObjectKind::Skeleton`] e [`ObjectKind::Motion`]. É a resposta certa para o que precisa de
+    /// [`ObjectKind::Skeleton`], [`ObjectKind::Motion`] e [`ObjectKind::Camera`]. É a resposta certa para o que precisa de
     /// algo para desenhar (blend, máscara, camada de visibilidade): um vazio ou um esqueleto não têm
     /// pixels a misturar (os ossos são overlay do editor), e o que um Motion desenha é o fluxo dos
     /// sinks dele, não pixels da entidade.
@@ -114,7 +123,8 @@ impl ObjectKinds {
             & !ObjectKind::Empty.bit()
             & !ObjectKind::Skeleton.bit()
             & !ObjectKind::Motion.bit()
-            & !ObjectKind::PixelSprite.bit(),
+            & !ObjectKind::PixelSprite.bit()
+            & !ObjectKind::Camera.bit(),
     );
 
     /// Constrói a partir de uma lista.

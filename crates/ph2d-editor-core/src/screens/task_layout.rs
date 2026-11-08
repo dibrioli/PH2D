@@ -207,7 +207,8 @@ impl TaskLayout {
             ObjectKind::Empty
             | ObjectKind::Image
             | ObjectKind::Skeleton
-            | ObjectKind::PixelSprite => Self::Scene,
+            | ObjectKind::PixelSprite
+            | ObjectKind::Camera => Self::Scene,
         }
     }
 

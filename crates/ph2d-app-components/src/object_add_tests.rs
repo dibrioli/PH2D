@@ -162,6 +162,9 @@ fn every_marker_derives_its_kind() {
             ObjectKind::PixelSprite => {
                 e.insert(ph2d_ecs::PixelSprite(1));
             }
+            ObjectKind::Camera => {
+                e.insert(ph2d_ecs::GameCamera::default());
+            }
         }
         let e = e.id();
         assert_eq!(kind_of(sim.world(), e), kind, "{kind:?}");

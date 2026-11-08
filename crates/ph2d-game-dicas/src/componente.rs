@@ -101,7 +101,7 @@ const fn e(
 
 use Assunto as A;
 
-/// ⭐ As 64 entradas, agrupadas e na ordem da janela.
+/// ⭐ As 63 entradas, agrupadas e na ordem da janela.
 pub const ENTRADAS: &[Entrada] = &[
     e(
         "ph2d::physics::RigidBody",
@@ -270,12 +270,6 @@ pub const ENTRADAS: &[Entrada] = &[
         A::Screen,
         "component_add.tip.clip_children",
         d::CLIP_CHILDREN,
-    ),
-    e(
-        "ph2d::ecs::GameCamera",
-        A::Camera,
-        "component_add.tip.game_camera",
-        d::GAME_CAMERA,
     ),
     e(
         "ph2d::ecs::CameraFollow",

@@ -148,6 +148,7 @@ impl ObjectType {
             ObjectKind::Skeleton => Self::Skeleton,
             ObjectKind::Motion => Self::Motion,
             ObjectKind::PixelSprite => Self::PixelSprite,
+            ObjectKind::Camera => Self::Camera,
             ObjectKind::Empty => Self::ALL.into_iter().find(by_marker).unwrap_or(Self::Empty),
         }
     }

@@ -567,6 +567,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.nao_recebe_luz.name" => "Unlit",
         "component.no_wall_cling.name" => "No Wall Cling",
         "component.object_instance.name" => "Overrides",
+        "component.object_kind.camera" => "Camera",
         "component.object_kind.empty" => "Empty",
         "component.object_kind.flip" => "Flip",
         "component.object_kind.motion" => "Motion",

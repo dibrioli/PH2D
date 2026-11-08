@@ -115,14 +115,14 @@ const MOTION_FIELDS: &[FieldDesc] =
 
 /// Os descritores da família.
 pub const DESCS: &[ComponentDesc] = &[
-    // ⚠️ **`O::ANY` nos três, e é a decisão**: uma câmera é quase sempre um objecto VAZIO — o ponto
-    // de vista que o artista põe onde quer. Restringir a `DRAWABLE` tornaria o caso canónico
-    // inexprimível, que é o mesmo argumento que o ouvinte de áudio já pagou.
+    // ⭐ **`O::CAMERA` nas três peças da vista** (dono 08/11, GEF 25): a `GameCamera` nasce só por
+    // Add Object ▸ Camera, e o `camera_frame`/`camera_2d`/`shake_bridge` só as lêem NA câmera — noutro
+    // objecto eram inertes. No *Show all* ficam esmaecidas com a razão.
     D::authored(
         "ph2d::ecs::CameraFollow",
         "component.camera_follow.name",
         C::Camera,
-        O::ANY,
+        O::CAMERA,
         FOLLOW_FIELDS,
     )
     .coded("camera_follow"),
@@ -130,7 +130,7 @@ pub const DESCS: &[ComponentDesc] = &[
         "ph2d::ecs::CameraLimits",
         "component.camera_limits.name",
         C::Camera,
-        O::ANY,
+        O::CAMERA,
         LIMITS_FIELDS,
     )
     .coded("camera_limits"),
@@ -141,22 +141,21 @@ pub const DESCS: &[ComponentDesc] = &[
     // que existe. *Um descritor que não é encontrado lê-se exactamente como um que não existe*, e a
     // 1.ª redacção pôs este bloco no topo do ficheiro.
     //
-    // ⛔ **Ele NÃO requer a `GameCamera`, e a ausência é a decisão:** um abanão numa entidade sem
-    // câmera é inerte e o painel DI-LO (*«This is not the camera in command»*), enquanto exigi-lo
-    // impediria o artista de o preparar antes de anexar a câmera.
+    // ⛔ **Ele NÃO requer a `GameCamera`:** o `requires` faria a porta anexá-la e transformar um objecto
+    // qualquer em câmera; o `O::CAMERA` já só o oferece a uma (dono 08/11).
     D::authored(
         "ph2d::ecs::CameraShake",
         "component.camera_shake.name",
         C::Camera,
-        O::ANY,
+        O::CAMERA,
         SHAKE_FIELDS,
     )
     .coded("camera_shake"),
-    D::authored(
+    // ⭐ **`Intrinsic`** (dono 08/11): chega pelo gesto Add Object ▸ Camera, como a `Luz`; o cartão fica.
+    D::intrinsic(
         "ph2d::ecs::GameCamera",
         "component.game_camera.name",
         C::Camera,
-        O::ANY,
         CAMERA_FIELDS,
     )
     .coded("game_camera"),
@@ -245,5 +244,29 @@ mod tests {
         }
         let f = super::super::desc_for("ph2d::ecs::ScrollFactor").expect("factor");
         assert!(f.requires.is_empty());
+    }
+
+    /// ⭐ **Dono 08/11 (GEF 25):** a `GameCamera` nasce só por Add Object ▸ Camera (fora do Add
+    /// Component, com cartão), e Follow/Limits/Shake só se oferecem a uma câmera — os sistemas só as
+    /// lêem nela. O CONTROLO: o `ShakeEmitter` serve a qualquer objecto. *Mutação: a `GameCamera`
+    /// de volta a `authored` ⇒ RED.*
+    #[test]
+    fn a_game_camera_so_nasce_pelo_objeto_e_as_pecas_de_camera_so_numa_camera() {
+        use crate::ObjectKind as K;
+        let d = |n| super::super::desc_for(n).expect(n);
+        let cam = d("ph2d::ecs::GameCamera");
+        assert!(!cam.is_offered() && cam.may_have_section());
+        assert_eq!(K::Camera.marker(), Some(cam.canonical_name));
+        for n in [
+            "ph2d::ecs::CameraFollow",
+            "ph2d::ecs::CameraLimits",
+            "ph2d::ecs::CameraShake",
+        ] {
+            for k in K::ALL {
+                assert_eq!(d(n).is_offered_to(k), k == K::Camera, "{n} em {k:?}");
+            }
+        }
+        let emissor = d("ph2d::ecs::ShakeEmitter");
+        assert!(K::ALL.into_iter().all(|k| emissor.is_offered_to(k)));
     }
 }

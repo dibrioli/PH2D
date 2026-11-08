@@ -141,18 +141,6 @@ pub const CLIP_CHILDREN: &[Mark] = &[
     l(0.3, 0.8, 0.3, 0.2, C::Text1),
 ];
 
-/// A moldura da câmera sobre a cena: o que fica dentro é o que o jogador vê.
-const H_CAM: [Mark; 2] = boneco(0.48, 0.62);
-pub const GAME_CAMERA: &[Mark] = &[
-    d(0.18, 0.84, 0.32, C::Info),
-    CHAO,
-    r(0.82, 0.48, 0.05, 0.34, C::Success),
-    d(0.845, 0.44, 0.1, C::Success),
-    H_CAM[0],
-    H_CAM[1],
-    t(0.3, 0.16, 0.38, 0.7, C::ObjCamera),
-];
-
 /// O boneco anda; a moldura vem atrás dele (seta) e o mantém no meio.
 const H_SEGUE: [Mark; 2] = boneco(0.64, 0.62);
 pub const CAMERA_FOLLOW: &[Mark] = &[

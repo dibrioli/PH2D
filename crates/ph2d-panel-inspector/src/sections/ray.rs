@@ -217,10 +217,12 @@ fn corpo(
             seccao,
         );
     } else {
-        // O valor arranca na coluna da secção; o nome sai só do fim da caixa.
-        let controlo_w = ph2d_editor_core::property_row::caixa_do_controlo(x, w, cur_y, seccao).w;
+        // O valor arranca na coluna da secção; o nome sai só do fim da caixa — ou, se ali cortaria, desce
+        // para uma linha própria na coluna do valor.
+        let controlo = ph2d_editor_core::property_row::caixa_do_controlo(x, w, cur_y, seccao);
         let gap = Spacing::Xs.px();
-        let nome_w = super::camada_por_nome::largura_do_nome(text_system, controlo_w, camada) + gap;
+        let ao_lado = super::camada_por_nome::largura_do_nome(text_system, controlo.w, camada, gap);
+        let nome_w = ao_lado.map_or(0.0, |n| n + gap);
         let (y, fim) = ph2d_editor_core::property_row::paint_fields_row_com_fim(
             scene,
             text_system,
@@ -235,7 +237,13 @@ fn corpo(
             nome_w,
         );
         cur_y = y;
-        let caixa = Rect::new(fim.x + gap, fim.y, (fim.w - gap).max(0.0), fim.h);
+        let caixa = if ao_lado.is_some() {
+            Rect::new(fim.x + gap, fim.y, (fim.w - gap).max(0.0), fim.h)
+        } else {
+            let caixa = Rect::new(controlo.x, cur_y, controlo.w, fim.h);
+            cur_y += ph2d_tokens::row_pitch_px();
+            caixa
+        };
         super::camada_por_nome::nome_do_raio(scene, text_system, theme, caixa, camada);
     }
     // ⚠️ **Os dois NOMES, e vazio = calado** — a regra do `SignalOnHit`, palavra por palavra.

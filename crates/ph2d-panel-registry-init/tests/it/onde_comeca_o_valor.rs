@@ -450,4 +450,5 @@ fn dentro_de_um_troco_o_valor_arranca_numa_coluna_so() {
 /// desta população. Quem guarda a régua contra o vazio é o [`PISO_DE_LINHAS`], que não mudou.
 /// ⬇️ `5` em 2026-11-04 (NovaUI R3): a mesma razão, medido depois dos blocos I, G e H.
 /// ⬇️ `3` em 2026-11-04 (NovaUI H8): o `painter_layers` e o armado dele saíram (mediam 1 coluna cada) ao deixarem a captura.
-const COLUNA_UNICA_PISO: usize = 3;
+/// ⬇️ `2` em 2026-11-08 (GEF02 ondas 8/9a): o `physics` saiu (8 linhas da matriz em x=36) — a matriz foi para a aba «Collision Layers».
+const COLUNA_UNICA_PISO: usize = 2;

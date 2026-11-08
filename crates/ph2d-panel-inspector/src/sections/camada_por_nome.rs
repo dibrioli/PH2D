@@ -133,12 +133,18 @@ fn nome_por_cima(
 }
 
 /// Quanto do controlo do Ray Sensor (`controlo_w`) o nome da camada leva à direita: o nome mais um
-/// respiro, sem deixar a caixa do número abaixo do piso dela.
+/// respiro, sem deixar a caixa do número abaixo do piso dela. `None` = não cabe ao lado sem cortar: o
+/// nome desce para uma linha própria na coluna do valor (o mesmo idioma do [`nome_por_cima`]).
 #[must_use]
-pub(super) fn largura_do_nome(text_system: &mut TextSystem, controlo_w: f32, camada: usize) -> f32 {
+pub(super) fn largura_do_nome(
+    text_system: &mut TextSystem,
+    controlo_w: f32,
+    camada: usize,
+    gap: f32,
+) -> Option<f32> {
     let texto = camadas::rotulo(camada);
     let pede = text_system.prefix_width(&texto, TypeToken::Sm.px()).ceil() + Spacing::Sm.px() * 2.0;
-    pede.min((controlo_w - ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX).max(0.0))
+    (pede + gap <= controlo_w - ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX).then_some(pede)
 }
 
 /// O nome da camada do Ray Sensor em `caixa`, no contorno da cor da camada (o mesmo idioma do seletor Layer).

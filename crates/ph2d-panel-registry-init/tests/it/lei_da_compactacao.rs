@@ -59,7 +59,8 @@ const POPULACAO_RITMO: &[(&str, usize, usize, usize)] = &[
     ("skeleton", 31, 21, 18),
     ("inspector", 1500, 800, 1170),
     ("painter_layers", 2600, 1100, 1740),
-    ("physics", 144, 117, 117),
+    // ⬇️ 08/11 (GEF02 ondas 8/9a): a matriz (16 rótulos + 36 células) foi para a aba «Collision Layers»; medido 122/54/68.
+    ("physics", 116, 51, 65),
     ("audio_editor", 166, 63, 140),
     #[cfg(feature = "panel-flip-frames")]
     ("flip_frames", 54, 59, 43),

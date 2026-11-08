@@ -379,27 +379,6 @@ impl App {
         }
     }
 
-    pub(crate) fn on_mouse_input(&mut self, state: ElementState, button: MouseButton) {
-        let kind = match state {
-            ElementState::Pressed => PointerKind::Down,
-            ElementState::Released => PointerKind::Up,
-        };
-        let mapped_button = match button {
-            MouseButton::Left => ph2d_host::PointerButton::Primary,
-            MouseButton::Right => ph2d_host::PointerButton::Secondary,
-            MouseButton::Middle => ph2d_host::PointerButton::Middle,
-            _ => ph2d_host::PointerButton::Primary,
-        };
-        let (x, y, t) = (
-            self.last_pointer.0,
-            self.last_pointer.1,
-            Self::timestamp_ns(),
-        );
-        let evt = ph2d_pen::ponteiro::do_rato(x, y, kind, mapped_button, t);
-        self.pointer_button(evt, button);
-        self.sync_cursor_preso();
-    }
-
     /// ⭐ A porta ÚNICA do clique (ver [`Self::pointer_moved`]); `button` = o do winit.
     pub(crate) fn pointer_button(&mut self, evt: PointerEvent, button: MouseButton) {
         ph2d_pen::porta::poe_tinta(&evt);
@@ -582,6 +561,10 @@ impl App {
         self.ramo_pan_e_barra_lateral(state, button);
     }
 }
+
+/// O botão do rato do winit vira o evento único do ponteiro.
+#[path = "input_dispatch/rato.rs"]
+mod rato;
 
 #[cfg(test)]
 #[path = "input_dispatch/despacho_testes.rs"]

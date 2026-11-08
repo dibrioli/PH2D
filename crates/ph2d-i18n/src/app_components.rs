@@ -29,7 +29,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.components.component_palette.not_for_this_object_type_2" => {
             "  \u{2014}  not for this object type"
         }
-        "app.components.component_palette.brings" => "  \u{2014}  brings ",
         "app.components.instance_open.editing_move_a_piece_and_every_copy_follows" => {
             "Editing \u{201c}{name}\u{201d} \u{2014} move a piece and every copy follows"
         }

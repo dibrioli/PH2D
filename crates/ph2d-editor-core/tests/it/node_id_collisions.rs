@@ -106,6 +106,12 @@ const FORMAS_NAO_LITERAIS: &[(&str, &str, Especie, &str)] = &[
         "o rato do smoke (`PH2D_OBJECT_ADD_HOVER=<chave>`) = o MESMO hash da chave que o `id` acima usa — aponta para um item que já existe, não cria id novo; inerte sem a env",
     ),
     (
+        "shells/desktop/src/render_loop/fase_component_add_smoke.rs",
+        "escolhe",
+        Especie::HashDeExpressao,
+        "o pick do smoke do Add Component (GEF 25, `PH2D_COMPONENT_ADD_PICK=<nome canónico>`) = o MESMO hash do nome canónico que o `item_id` da paleta usa — aponta para um item que já existe; inerte sem a env, uma vez",
+    ),
+    (
         "crates/ph2d-app-motion/src/motion_bridge_library.rs",
         "build_palette_model",
         Especie::HashDeExpressao,

@@ -57,17 +57,17 @@ impl Assunto {
         .tr()
     }
 
-    /// A tinta (7 tokens `NodeCat*` para 11 assuntos; vizinhos nunca partilham).
+    /// A tinta: a da maquete B da Crítica (7 tokens `NodeCat*` para 11 assuntos; mexer-se e o som são
+    /// saídas, regras e ecrã utilidades, câmera e fundo enquadram, tempo e ossos transformam).
     #[must_use]
     pub const fn color(self) -> ColorToken {
         match self {
-            Self::Move | Self::Sound => ColorToken::NodeCatOutput,
-            Self::Path | Self::Background => ColorToken::NodeCatDistribute,
-            Self::Rules | Self::Organize => ColorToken::NodeCatUtility,
-            Self::Screen => ColorToken::NodeCatSource,
-            Self::Camera => ColorToken::NodeCatFocus,
+            Self::Move | Self::Path | Self::Sound => ColorToken::NodeCatOutput,
+            Self::Rules | Self::Screen => ColorToken::NodeCatUtility,
+            Self::Camera | Self::Background => ColorToken::NodeCatFocus,
             Self::Time | Self::Bones => ColorToken::NodeCatTransform,
             Self::Look => ColorToken::NodeCatFx,
+            Self::Organize => ColorToken::NodeCatSource,
         }
     }
 }

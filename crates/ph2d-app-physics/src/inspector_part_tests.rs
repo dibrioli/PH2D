@@ -398,35 +398,3 @@ fn the_mass_seed_of_a_plain_body_is_its_own_shape() {
         "um corpo de UMA forma passou a semear {seeded:.4} em vez de 0,600"
     );
 }
-
-/// W3-A: o Static que Add ▸ Collision Shape dá a um filho sem corpo acima diz-se no cartão — só aí.
-#[test]
-fn own_body_note_only_for_a_child_static_with_no_body_above() {
-    let (mut sim, arm, leg) = ell();
-    let w = sim.world_mut();
-    let root = w
-        .spawn((
-            Name::new("Root"),
-            Transform::default(),
-            RigidBody {
-                kind: BodyKind::Static,
-            },
-        ))
-        .id();
-    w.entity_mut(root).insert(Collider::default());
-    let plain = w.spawn(Name::new("Plain")).id();
-    let own = w
-        .spawn((Name::new("Own"), Collider::default(), Transform::default()))
-        .id();
-    ph2d_physics_ecs::pendura_forma(sim.world_mut(), own, Some(plain));
-    sim.world_mut().entity_mut(leg).insert(RigidBody {
-        kind: BodyKind::Static,
-    });
-    assert!(
-        info(&mut sim, own).own_body_note,
-        "filho Static sem corpo acima"
-    );
-    assert!(!info(&mut sim, root).own_body_note, "na raiz");
-    assert!(!info(&mut sim, arm).own_body_note, "o corpo raiz do L");
-    assert!(!info(&mut sim, leg).own_body_note, "antepassado com corpo");
-}

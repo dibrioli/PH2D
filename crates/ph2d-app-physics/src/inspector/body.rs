@@ -232,7 +232,6 @@ pub fn build_physics_info(
             area_form_drag: 0.0,
             area_torque: 0.0,
             area_falloff: 0.0,
-            own_body_note: false,
         });
     };
     // Each arm also carries what the OTHER shapes' rows would seed if the artist
@@ -372,9 +371,6 @@ pub fn build_physics_info(
         area_form_drag,
         area_torque,
         area_falloff,
-        own_body_note: rb.is_some()
-            && world.get::<ph2d_ecs::ChildOf>(entity).is_some()
-            && ph2d_physics_ecs::owner_body(world, entity).is_none(),
     })
 }
 

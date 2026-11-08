@@ -15,15 +15,25 @@ fn a_cena_migrada_simula_igual_e_a_segunda_corrida_nao_move_nada() {
     let mut depois = cena(false);
     let m = migra_formas_para_filhos_com_pares(depois.sim.world_mut());
     assert_eq!(m.pares.len(), 6);
-    assert_eq!(migra_formas_para_filhos(depois.sim.world_mut()), 0, "idempotente");
+    assert_eq!(
+        migra_formas_para_filhos(depois.sim.world_mut()),
+        0,
+        "idempotente"
+    );
     let w = depois.sim.world();
     for (i, &corpo) in depois.corpos.iter().enumerate() {
         let filha = main_shape(w, corpo).expect("forma");
         assert_ne!(filha, corpo, "a forma saiu do corpo");
         assert_eq!(w.get::<ChildOf>(filha).map(ChildOf::parent), Some(corpo));
-        assert_eq!(w.get::<Name>(filha).map(|n| n.0.as_str()), Some(NOME_DA_FORMA));
+        assert_eq!(
+            w.get::<Name>(filha).map(|n| n.0.as_str()),
+            Some(NOME_DA_FORMA)
+        );
         assert_eq!(w.get::<Transform>(filha), Some(&Transform::IDENTITY));
-        assert!(w.get::<ph2d_ecs::Visibility>(filha).is_some_and(|v| v.hidden));
+        assert!(
+            w.get::<ph2d_ecs::Visibility>(filha)
+                .is_some_and(|v| v.hidden)
+        );
         assert!(w.get::<Collider>(corpo).is_none());
         // Os pares vêm por ordem de `StableId` do corpo e as filhas recebem ids na mesma ordem.
         let sid = |e| w.get::<StableId>(e).unwrap().0;
@@ -60,7 +70,13 @@ fn a_forma_migrada_e_a_primeira_irma_e_a_principal() {
     let mut sim = ph2d_ecs::SimWorld::new();
     let w = sim.world_mut();
     let corpo = w
-        .spawn((RigidBody { kind: BodyKind::Dynamic }, caixa(1.0), Transform::IDENTITY))
+        .spawn((
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            caixa(1.0),
+            Transform::IDENTITY,
+        ))
         .id();
     let peca = w
         .spawn((caixa(0.2), Transform::IDENTITY, ChildOf(corpo)))
@@ -84,10 +100,20 @@ fn a_instancia_nao_ganha_forma_e_o_override_do_lado_forma_recusa_o_mestre() {
     let mut sim = ph2d_ecs::SimWorld::new();
     let w = sim.world_mut();
     let mestre = w
-        .spawn((RigidBody::default(), caixa(1.0), Transform::IDENTITY, StableId(10)))
+        .spawn((
+            RigidBody::default(),
+            caixa(1.0),
+            Transform::IDENTITY,
+            StableId(10),
+        ))
         .id();
     let outro = w
-        .spawn((RigidBody::default(), caixa(1.0), Transform::IDENTITY, StableId(11)))
+        .spawn((
+            RigidBody::default(),
+            caixa(1.0),
+            Transform::IDENTITY,
+            StableId(11),
+        ))
         .id();
     let inst = w
         .spawn((

@@ -14,8 +14,8 @@
 
 use bevy_ecs::prelude::{Entity, World};
 use ph2d_ecs::{
-    ChildOf, InstanceOf, Name, ObjectInstance, StableId, Transform, Visibility,
-    ordered_children, set_sibling_order,
+    ChildOf, InstanceOf, Name, ObjectInstance, StableId, Transform, Visibility, ordered_children,
+    set_sibling_order,
 };
 
 /// O nome da filha que a migração cria (o mesmo do menu Add).

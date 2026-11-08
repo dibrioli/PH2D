@@ -339,7 +339,7 @@ fn same_as_paper_acompanha_cada_controlo_do_cartao_paper() {
                 "{m:?}: Roughness — o papel visível ×{rv:.2}, o grão ×{rg:.2}"
             ));
         }
-        // O Relief: a profundidade do grão segue-o (0,6 → 1 com a Depth do Grain inteira).
+        // O Relief: a profundidade do grão cresce a CADA passo dele (dono 08/11; o piso de antes achatava abaixo de 0,6).
         let d = |relief| {
             let mut t = tool(LADO as u32, m, 22.0);
             t.set_paper_field(|b| b.paper = cold);
@@ -347,10 +347,10 @@ fn same_as_paper_acompanha_cada_controlo_do_cartao_paper() {
             t.toggle_brush_grain_same_as_paper();
             t.stroke_spec().grain_depth
         };
-        let (d6, d10) = (d(0.6), d(1.0));
-        if d10 <= d6 * 1.3 {
+        let por_relief = [0.2, 0.4, 0.6, 0.8, 1.0].map(d);
+        if por_relief.windows(2).any(|p| p[1] <= p[0] + 0.02) {
             falhas.push(format!(
-                "{m:?}: Relief 0,6 → 1 não aprofunda o grão ({d6} → {d10})"
+                "{m:?}: o Relief 0,2 → 1 não aprofunda o grão a cada passo ({por_relief:?})"
             ));
         }
     }

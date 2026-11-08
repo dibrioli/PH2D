@@ -144,6 +144,7 @@ pub(crate) fn paint_paper_section(
     let Some(fold) = fold else {
         return y;
     };
+    crate::cards_papel::poe_dicas(ctx.host.store_mut());
     // ── Paper COLOUR — the document ground the watercolor optics see where nothing is painted
     //    below the active layer (Rebelle: canvas colour is a user-pickable document property).
     //    Painted before the Kind gate: the ground matters even with no paper texture set. ──

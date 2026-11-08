@@ -166,6 +166,24 @@ pub(crate) fn prepare(ctx: &mut PaintCtx, b: &BrushSettings) {
         usize::from(b.paper_kind),
     );
     let _ = esmaecer::poe_dica(store, &[pids::PAINTER_WATERCOLOR_PAPER_KIND]);
+    poe_dicas(store);
+}
+
+/// As dicas do Relief e do Tooth (dono 08/11: o Tooth É o multiplicador do efeito do papel na tinta) — as mesmas nos
+/// dois painéis.
+pub(crate) fn poe_dicas(store: &mut ph2d_editor_core::interaction::WidgetStore) {
+    for (id, chave) in [
+        (
+            pids::PAINTER_SUBSTRATE_RELIEF,
+            "panel.painter_layers.paper.relief_tip",
+        ),
+        (
+            pids::PAINTER_WATERCOLOR_PAPER_DEPTH,
+            "panel.painter_layers.paper.tooth_tip",
+        ),
+    ] {
+        store.set_tooltip(id, tr(chave));
+    }
 }
 
 /// A lista do Paper abriu no cartão.

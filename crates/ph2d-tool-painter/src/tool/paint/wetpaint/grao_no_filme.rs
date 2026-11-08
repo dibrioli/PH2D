@@ -13,10 +13,12 @@ use super::super::substrate_relief::Substrate;
 /// o Paper Relief e a Transmission mostram a textura do papel a esta profundidade; acima dela, a do papel.
 pub(in crate::tool::paint) const RELIEF_NA_TINTA_MIN: f32 = 0.6;
 
-/// A profundidade do papel NA tinta: o Relief do papel com o piso [`RELIEF_NA_TINTA_MIN`].
+/// A profundidade do papel NA tinta: de [`RELIEF_NA_TINTA_MIN`] no Relief 0 a `1` no Relief 1, sempre a crescer com
+/// ele (dono 08/11: «independente da intensidade do relevo, o efeito sobre a tinta é o mesmo» — o piso `max` de antes
+/// achatava todo Relief abaixo de 0,6). As pontas são as de antes.
 #[must_use]
 pub(in crate::tool::paint) fn relief_na_tinta(relief: f32) -> f32 {
-    relief.clamp(0.0, 1.0).max(RELIEF_NA_TINTA_MIN)
+    RELIEF_NA_TINTA_MIN + (1.0 - RELIEF_NA_TINTA_MIN) * relief.clamp(0.0, 1.0)
 }
 
 /// O papel que o filme transmissivo mostra: o do documento (a textura escolhida) ou, sem papel escolhido, o de

@@ -37,6 +37,17 @@ fn pinta_com(v: V, com_grao: bool) -> Vec<u8> {
 
 /// `sem_mistura` tira a mistura do preset; `vista` põe o Grain em View (o que a máscara em cache servia).
 fn pinta_cfg(v: V, com_grao: bool, sem_mistura: bool, vista: bool) -> Vec<u8> {
+    pinta_rt(v, com_grao, sem_mistura, vista, (0.8, 1.6))
+}
+
+/// [`pinta_cfg`] com o `(Relief, Tooth)` do papel.
+fn pinta_rt(
+    v: V,
+    com_grao: bool,
+    sem_mistura: bool,
+    vista: bool,
+    (relief, tooth): (f32, f32),
+) -> Vec<u8> {
     let r = FAMILIAS
         .iter()
         .flat_map(|f| f.meios.iter())
@@ -65,11 +76,11 @@ fn pinta_cfg(v: V, com_grao: bool, sem_mistura: bool, vista: bool) -> Vec<u8> {
     t.set_brush_color_srgb8([0, 160, 60]);
     if v.papel {
         // O Relief arma o papel; desligá-lo depois deixa o papel ATIVO e só o Relief a 0.
-        t.set_substrate_depth(0.8);
+        t.set_substrate_depth(relief);
         if !v.relevo {
             t.set_substrate_depth(0.0);
         }
-        t.set_brush_paper_depth(1.6);
+        t.set_brush_paper_depth(tooth);
     }
     if v.cor_grao {
         t.set_texture_ramp(ColorRamp::new(
@@ -223,6 +234,38 @@ fn sem_relevo_o_grain_e_o_grain_colors_ficam_ao_byte() {
     }
 }
 
+/// ⭐ **O efeito do papel na tinta cresce com o Relief, e o Tooth multiplica-o** (dono 08/11: *«independente da
+/// intensidade do relevo de paper, o efeito sobre a tinta é o mesmo»* · o multiplicador é o Tooth). Nos DOIS
+/// caminhos do Digital: o papel como Grain (pincel sem Grain) e o dente por cima do Grain do pincel. A régua é o
+/// alfa médio do miolo (a tinta que o papel tira dos vales; o desvio não serve: com Grain, mais papel ALISA a soma
+/// das duas texturas). Antes: Relief 0,2 = 0,5 = 0,8 = 1, ao byte.
+#[test]
+fn o_efeito_do_papel_cresce_com_o_relief_e_o_tooth() {
+    let v = V {
+        papel: true,
+        relevo: true,
+        cor_grao: false,
+    };
+    for com_grao in [false, true] {
+        let alfa_de = |rt| miolo(&pinta_rt(v, com_grao, false, false, rt)).0;
+        let por_relief: Vec<f64> = [0.2, 0.5, 0.8, 1.0].map(|r| alfa_de((r, 1.0))).to_vec();
+        let (fraco, forte) = (alfa_de((0.5, 0.5)), alfa_de((0.5, 2.0)));
+        eprintln!(
+            "[relief] Grain {com_grao}: alfa por Relief 0,2/0,5/0,8/1 (Tooth 1) {por_relief:.3?} · Relief 0,5 Tooth 0,5 {fraco:.3} · Tooth 2 {forte:.3}"
+        );
+        for par in por_relief.windows(2) {
+            assert!(
+                par[1] < par[0] - 0.005,
+                "Grain {com_grao}: mais Relief, mais papel na tinta: {por_relief:.3?}"
+            );
+        }
+        assert!(
+            forte < fraco - 0.01,
+            "Grain {com_grao}: o Tooth multiplica o efeito: {fraco:.3} (0,5) contra {forte:.3} (2)"
+        );
+    }
+}
+
 /// O custo do dente (A × B no MESMO processo, intercalado, o MÍNIMO de 9): um traço de grão com o papel,
 /// com e sem o dente. Corre à mão: `cargo test --profile smoke -p ph2d-tool-painter --test it
 /// sonda_custo_do_dente -- --ignored --nocapture`.
@@ -254,5 +297,33 @@ fn sonda_custo_do_dente() {
             "[custo] {nome} + papel: com dente {:.2} ms · sem {:.2} ms (mín. de 9)",
             min[0], min[1]
         );
+    }
+}
+
+/// A foto do Relief × Tooth para o dono: grava `<PH2D_AUD_OUT>/relief_<grão>_<relief>_<tooth>.rgba` (220×80). Corre à
+/// mão: `PH2D_AUD_OUT=<pasta> cargo test --profile smoke -p ph2d-tool-painter --test it sonda_foto_relief_tooth -- --ignored`.
+#[test]
+#[ignore = "sonda de foto"]
+fn sonda_foto_relief_tooth() {
+    let o = std::path::PathBuf::from(std::env::var("PH2D_AUD_OUT").expect("PH2D_AUD_OUT"));
+    std::fs::create_dir_all(&o).expect("pasta");
+    let v = V {
+        papel: true,
+        relevo: true,
+        cor_grao: false,
+    };
+    for com_grao in [false, true] {
+        for rt in [
+            (0.2, 1.0),
+            (0.5, 1.0),
+            (0.8, 1.0),
+            (1.0, 1.0),
+            (0.5, 0.5),
+            (0.5, 2.0),
+        ] {
+            let px = pinta_rt(v, com_grao, false, false, rt);
+            let nome = format!("relief_{}_{:.1}_{:.1}.rgba", u8::from(com_grao), rt.0, rt.1);
+            std::fs::write(o.join(nome), px).expect("grava");
+        }
     }
 }

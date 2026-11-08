@@ -170,3 +170,73 @@ fn enter_no_campo_escolhe_o_primeiro_achado() {
         Some(PedidoPreset::Escolher(WASH.to_owned()))
     );
 }
+
+/// ⭐ **O campo fica no topo e a faixa dele tapa as linhas** (dono 08/11: o de antes «ficou feio» — rolava com a lista).
+/// Com 80 pincéis a lista rola; rolada, o campo está no MESMO sítio, e um clique na faixa (por cima de uma linha
+/// que passou por baixo) é do campo, nunca de um pincel escondido.
+#[test]
+fn o_campo_fica_no_topo_quando_a_lista_rola_e_a_faixa_tapa_as_linhas() {
+    let entradas: Vec<VistaPreset> = (0..80)
+        .map(|k| VistaPreset {
+            relativo: format!("WetPainter/Gouache/G{k:02}.ph2d-brush.png"),
+            nome: format!("Gouache {k:02}"),
+            categoria: "Gouache".to_owned(),
+            favorito: false,
+            apagavel: false,
+        })
+        .collect();
+    let mut t = PainterTool::default();
+    t.set_paint_media(PaintMedia::WetPaint);
+    set_current_wet_presets(Some(Arc::new(VistaPresets {
+        entradas,
+        ativo: None,
+        politica: 0,
+        ilegiveis: 0,
+        ordem_manual: false,
+    })));
+    let mut host = crate::host_de_antes();
+    let mut st = PainterLayersPanelState;
+    let rects = pinta(&t, &mut host, &mut st);
+    let chip = rect_of(&rects, ids::PAINTER_WETPAINT_PRESET).expect("o chip do Preset");
+    for ev in host.click_at(chip.x + chip.w * 0.5, chip.y + chip.h * 0.5) {
+        host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
+    }
+    let rects = pinta(&t, &mut host, &mut st);
+    let faixa = rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_SEARCH).expect("a faixa do campo");
+    host.store_mut()
+        .set_panel_scroll(ids::PAINTER_WETPAINT_PRESET, 3.0 * chip.h);
+    let rects = pinta(&t, &mut host, &mut st);
+    assert_eq!(
+        host.store().panel_scroll(ids::PAINTER_WETPAINT_PRESET),
+        3.0 * chip.h,
+        "a lista de 80 não rolou (a régua não mede nada)"
+    );
+    let rolada =
+        rect_of(&rects, ids::PAINTER_WETPAINT_PRESET_SEARCH).expect("o campo sumiu ao rolar");
+    assert_eq!(rolada, faixa, "o campo rolou com a lista");
+    let por_baixo = rects
+        .iter()
+        .filter(|(id, r)| {
+            *id != ids::PAINTER_WETPAINT_PRESET_SEARCH
+                && r.y < faixa.y + faixa.h
+                && r.y + r.h > faixa.y
+                && r.x < faixa.x + faixa.w
+                && r.x + r.w > faixa.x
+        })
+        .count();
+    assert!(
+        por_baixo > 0,
+        "nenhuma linha passou por baixo da faixa (a régua não mede nada)"
+    );
+    for fy in [
+        faixa.y + 2.0,
+        faixa.y + faixa.h * 0.5,
+        faixa.y + faixa.h - 2.0,
+    ] {
+        assert_eq!(
+            host.hit_at(faixa.x + faixa.w * 0.5, fy),
+            Some(ids::PAINTER_WETPAINT_PRESET_SEARCH),
+            "um clique na faixa (y {fy}) foi para uma linha escondida"
+        );
+    }
+}

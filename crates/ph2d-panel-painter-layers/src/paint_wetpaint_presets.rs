@@ -435,6 +435,12 @@ pub(crate) fn paint_wetpaint_presets_popovers(ctx: &mut PaintCtx, theme: ph2d_to
         let realce = busca::realce(ctx, &opcoes, r, atual, &q);
         let opcoes = busca::com_campo(opcoes);
         let arrasta = q.trim().is_empty();
+        // A tinta do cartão do chip, que a lista vai levar (espreitada e reposta): a faixa do campo pinta-se nela.
+        let tinta = ph2d_editor_core::widget::card_ink::troca_popover(None);
+        let _ = ph2d_editor_core::widget::card_ink::troca_popover(tinta);
+        let tinta = tinta
+            .filter(|(id, _)| *id == ids::PAINTER_WETPAINT_PRESET)
+            .map(|(_, ink)| ink);
         let p = crate::paint_wetpaint_presets_biblioteca::paint_popover(
             ctx,
             theme,
@@ -443,7 +449,7 @@ pub(crate) fn paint_wetpaint_presets_popovers(ctx: &mut PaintCtx, theme: ph2d_to
             realce,
             arrasta,
         );
-        busca::pinta_campo(ctx, theme, &opcoes, r, p);
+        busca::pinta_campo(ctx, theme, tinta, r, p);
     } else {
         crate::paint_wetpaint_presets_busca::fecha(ctx);
         crate::paint_wetpaint_presets_biblioteca::sem_popover(ctx);

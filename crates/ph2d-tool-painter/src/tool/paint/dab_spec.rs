@@ -109,9 +109,9 @@ impl PainterTool {
             brush.grain_depth = 0.0;
         } else if self.grao_e_o_papel_do(brush) {
             // «Same as Paper» (dono 28/10): o papel do documento, preso à tela, como o papel VISÍVEL o mostra —
-            // a Roughness do cartão é o contraste do dente e o Relief a profundidade (com o piso do papel na tinta,
-            // `relief_na_tinta`), × a Depth do próprio Grain (smoke 28/10: «corresponde parcialmente»). A lei do
-            // grão («Grain behaviour», que o painel mostra com a caixa ligada) continua a do pincel.
+            // a Roughness do cartão é o contraste do dente e o Relief a profundidade (`relief_na_tinta`: 0,6 no
+            // Relief 0, a crescer até 1), × a Depth do próprio Grain (smoke 28/10: «corresponde parcialmente»). A lei
+            // do grão («Grain behaviour», que o painel mostra com a caixa ligada) continua a do pincel.
             let lei = brush.texture.lei;
             brush.texture = super::substrate_relief::papel_do_documento(brush.paper);
             brush.texture.lei = ph2d_painter_brush::texture::GrainLaw {
@@ -123,8 +123,7 @@ impl PainterTool {
             .clamp(0.0, 1.0);
         } else if self.papel_como_grain_do(brush) {
             brush.texture = brush.paper;
-            brush.grain_depth =
-                (brush.paper_depth / ph2d_painter_brush::PAPER_TOOTH_MAX).clamp(0.0, 1.0);
+            brush.grain_depth = self.mordida_do_papel(brush);
         } else if self.papel_pode_morder()
             && brush.texture.is_active()
             && !ph2d_painter_brush::dente::sonda_desligou_o_dente()
@@ -133,9 +132,18 @@ impl PainterTool {
             // parecia chapada mesmo com paper com relevo»): o mesmo fator que ele dá como Grain, preso à tela.
             brush.dente = ph2d_painter_brush::dente::Dente::do_papel(
                 brush.paper,
-                brush.paper_depth / ph2d_painter_brush::PAPER_TOOTH_MAX,
+                self.mordida_do_papel(brush),
             );
         }
+    }
+
+    /// ⭐ **Quanto o papel morde a tinta** (dono 08/11): `Relief × Tooth / PAPER_TOOTH_MAX` — o Relief do papel é a
+    /// força e o Tooth o multiplicador dela («usar o Tooth»). Relief 1 = a mordida de antes, quando o Relief só ligava.
+    #[must_use]
+    pub(crate) fn mordida_do_papel(&self, brush: &ph2d_painter_brush::BrushSpec) -> f32 {
+        (self.paint.substrate_depth.clamp(0.0, 1.0) * brush.paper_depth
+            / ph2d_painter_brush::PAPER_TOOTH_MAX)
+            .clamp(0.0, 1.0)
     }
 
     /// O pincel de AGORA com o grão com que o motor pinta ([`Self::poe_o_papel_como_grain`]) e se esse grão tem

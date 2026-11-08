@@ -44,6 +44,9 @@ pub struct TextInput {
     /// Quanto do hover está presente. [`crate::motion::SETTLED`] = assente no estado que o campo
     /// diz ter, que é o mundo pré-UI-viva byte a byte.
     pub hover_t: f32,
+    /// O foco pinta um anel FINO (`StrokeToken::Thin`) em vez da moldura de foco do tema — o campo de busca que
+    /// mora dentro de uma lista aberta (dono 08/11: o anel grosso «ficou feio»). `false` = o de sempre.
+    pub anel_fino: bool,
 }
 
 impl TextInput {
@@ -56,7 +59,15 @@ impl TextInput {
             state: TextInputState::Normal,
             caret_byte: 0,
             hover_t: crate::motion::SETTLED,
+            anel_fino: false,
         }
+    }
+
+    /// Ver [`Self::anel_fino`].
+    #[must_use]
+    pub fn anel_fino(mut self) -> Self {
+        self.anel_fino = true;
+        self
     }
 
     pub fn value(mut self, value: impl Into<String>) -> Self {
@@ -300,7 +311,17 @@ pub fn paint_text_input_with_buffer(
     // ⭐ Pela porta — ver [`field_fill`]. Ela nasceu deste `if`, quando o report do dono mostrou
     //   que os dois pintores irmãos não o tinham.
     fill_rounded_rect(scene, rect, radius, field_fill(input.state, theme));
-    if chrome.field_border.is_visible() {
+    if input.anel_fino && input.state == TextInputState::Focused {
+        let w = ph2d_tokens::StrokeToken::Thin.px();
+        let anel = Rect::new(
+            rect.x + w * 0.5,
+            rect.y + w * 0.5,
+            (rect.w - w).max(0.0),
+            (rect.h - w).max(0.0),
+        );
+        let cor = crate::widget::card_ink::tinta(ColorToken::Accent, theme);
+        stroke_rounded_rect(scene, anel, (radius - w * 0.5).max(0.0), w, cor);
+    } else if chrome.field_border.is_visible() {
         let stroke_w = if input.state == TextInputState::Focused {
             chrome.field_focus.width
         } else {

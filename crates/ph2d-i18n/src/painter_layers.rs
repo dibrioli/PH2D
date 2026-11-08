@@ -582,6 +582,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.paper.offset" => "Offset",
         "panel.painter_layers.paper.size" => "Size",
         "panel.painter_layers.paper.tooth" => "Tooth",
+        "panel.painter_layers.paper.relief_tip" => {
+            "How deep the paper texture is. Deeper paper shows more in the paint."
+        }
+        "panel.painter_layers.paper.tooth_tip" => {
+            "How much the paper bites into the paint. 1 = normal, 2 = double."
+        }
         "panel.painter_layers.paper.texture_on_paint" => "Paint Texture",
         "panel.painter_layers.paper.color" => "Color",
         "panel.painter_layers.paper.same_as_paper" => "Same as Paper",

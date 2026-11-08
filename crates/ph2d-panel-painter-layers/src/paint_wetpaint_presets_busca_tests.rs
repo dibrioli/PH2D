@@ -81,14 +81,16 @@ fn as_setas_andam_so_entre_pinceis_e_param_nas_pontas() {
 }
 
 #[test]
-fn a_linha_do_campo_e_um_titulo_vazio_no_topo() {
+fn as_linhas_da_faixa_sao_titulos_vazios_no_topo() {
     let (o, _) = opcoes_filtradas(&vista(), "pencil");
     let c = com_campo(o);
-    assert!(c[0].header && c[0].label.is_empty());
-    assert_eq!(c.len(), 3);
+    let n = super::LINHAS_DO_CAMPO;
+    assert!(c[..n].iter().all(|o| o.header && o.label.is_empty()));
+    assert_ne!(c[0].id, c[1].id, "as linhas da faixa têm ids distintos");
+    assert_eq!(c.len(), n + 2);
     assert_eq!(
         passo(&c, None, 1),
-        Some(c[2].value),
+        Some(c[n + 1].value),
         "o campo não se realça"
     );
 }

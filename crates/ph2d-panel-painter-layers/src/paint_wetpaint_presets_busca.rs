@@ -2,8 +2,11 @@
 //! de texto na primeira linha da lista aberta filtra os pincéis pelo nome (sem caixa nem acento); só os
 //! títulos de família com algum achado ficam. O teclado: o foco vai ao campo quando a lista abre, ↑/↓
 //! movem o realce (as setas armadas do campo, `arm_list_nav`, a porta das menções do Quadro), Enter
-//! escolhe, Esc limpa e, vazio, fecha. A linha do campo é um título vazio no topo das opções, e o
-//! campo pinta-se por cima dela, recortado ao popover: rola com a lista.
+//! escolhe, Esc limpa e, vazio, fecha. O campo mora numa FAIXA fixa no topo da lista (dono 08/11: o de antes
+//! «ficou feio» — encostava nas bordas e rolava com a lista): a faixa tem o fundo da lista e a folga dos cartões
+//! (`LIST_PAD_X` dos lados, o campo centrado com a altura e a tinta dos campos do cartão, anel fino no foco), e as
+//! linhas passam por BAIXO dela. A faixa cobre exactamente [`LINHAS_DO_CAMPO`] títulos vazios no topo das opções:
+//! o filete do 1.º título de família é o fundo dela, e com a lista rolada a faixa pinta o seu.
 
 use crate::paint_wetpaint_presets::{escolher_preset, preset_escolhido};
 use ph2d_a11y::NodeId;
@@ -15,13 +18,24 @@ use ph2d_editor_core::widget::{
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::tr;
-use ph2d_tokens::Spacing;
 use ph2d_tool_painter::ids;
 use std::cell::{Cell, RefCell};
 
 const CAMPO: NodeId = ids::PAINTER_WETPAINT_PRESET_SEARCH;
-/// O valor da linha do campo: nenhum preset o tem, nem o vão do arrasto nem o «sem preset».
+/// O valor das linhas do campo: nenhum preset o tem, nem o vão do arrasto nem o «sem preset».
 const VALOR_DO_CAMPO: usize = usize::MAX - 2;
+/// Quantas linhas da lista a faixa do campo cobre: o campo do cartão (`FIELD_H` 28) com folga não cabe numa (28).
+pub(crate) const LINHAS_DO_CAMPO: usize = 2;
+const FOLGA: f32 = ph2d_card_stack::metrics::LIST_PAD_X;
+const ALTO_DO_CAMPO: f32 = ph2d_card_stack::metrics::FIELD_H;
+
+/// A altura da faixa fixa do campo, do topo da lista ao fundo das suas [`LINHAS_DO_CAMPO`] linhas.
+#[must_use]
+fn altura_da_faixa(chip: Rect, panel: Rect) -> f32 {
+    let dd = Dropdown::<usize>::new(ids::PAINTER_WETPAINT_PRESET, "", Vec::new());
+    let ultima = dd.option_rect_in(chip, panel, LINHAS_DO_CAMPO - 1);
+    ultima.y + ultima.h - panel.y
+}
 
 thread_local! {
     /// A lista estava aberta no quadro anterior (abrir = limpar a busca e focar o campo).
@@ -186,12 +200,12 @@ pub(crate) fn realce(
     if passos != 0
         && let Some(i) = linha
     {
-        a_vista(ctx, opcoes, chip, i + 1);
+        a_vista(ctx, opcoes, chip, i + LINHAS_DO_CAMPO);
     }
     mostra
 }
 
-/// Rola a lista (com a linha do campo no topo) até a linha `i` caber.
+/// Rola a lista até a linha `i` (já contadas as do campo) caber por baixo da faixa fixa.
 fn a_vista(ctx: &mut PaintCtx, opcoes: &[DropdownOption<usize>], chip: Rect, i: usize) {
     let dd = Dropdown::new(ids::PAINTER_WETPAINT_PRESET, "", com_campo(opcoes.to_vec())).open(true);
     let panel = dd.popover_rect_fitted(chip, Some(ctx.viewport), ctx.text_system);
@@ -199,27 +213,29 @@ fn a_vista(ctx: &mut PaintCtx, opcoes: &[DropdownOption<usize>], chip: Rect, i: 
     let topo = r.y - panel.y;
     let store = ctx.host.store_mut();
     let mut s = store.panel_scroll(ids::PAINTER_WETPAINT_PRESET);
-    if topo - r.h < s {
-        // A linha de cima (título ou campo) vem com ela.
-        s = (topo - r.h).max(0.0);
+    let faixa = altura_da_faixa(chip, panel);
+    if topo - faixa < s {
+        // A linha de cima (o título da família) vem com ela.
+        s = (topo - r.h - faixa).max(0.0);
     } else if topo + r.h > s + panel.h {
         s = topo + r.h - panel.h;
     }
     store.set_panel_scroll(ids::PAINTER_WETPAINT_PRESET, s);
 }
 
-/// As opções com a linha do campo no topo (um título vazio: não se escolhe nem se arrasta).
-pub(crate) fn com_campo(mut opcoes: Vec<DropdownOption<usize>>) -> Vec<DropdownOption<usize>> {
-    opcoes.insert(
-        0,
-        DropdownOption::new(
-            ids::painter_wetpaint_preset_title_id(usize::MAX),
-            VALOR_DO_CAMPO,
-            String::new(),
-        )
-        .header(true),
-    );
-    opcoes
+/// As opções com as [`LINHAS_DO_CAMPO`] linhas da faixa no topo (títulos vazios: não se escolhem nem se arrastam).
+pub(crate) fn com_campo(opcoes: Vec<DropdownOption<usize>>) -> Vec<DropdownOption<usize>> {
+    (0..LINHAS_DO_CAMPO)
+        .map(|k| {
+            DropdownOption::new(
+                ids::painter_wetpaint_preset_title_id(usize::MAX - k),
+                VALOR_DO_CAMPO,
+                String::new(),
+            )
+            .header(true)
+        })
+        .chain(opcoes)
+        .collect()
 }
 
 /// A linha «No brushes found» (apagada) quando a busca não acha nada.
@@ -232,21 +248,31 @@ pub(crate) fn sem_achados(k: usize) -> DropdownOption<usize> {
     .disabled(true)
 }
 
-/// Pinta o campo sobre a linha 0 da lista pintada, recortado ao popover, e regista o alvo dele.
+/// Pinta a faixa fixa do campo no topo da lista pintada (por cima das linhas que passam por baixo), com a
+/// tinta da lista (`tinta` = a do cartão do chip; `None` = a das listas fora de cartão), e regista o alvo:
+/// a faixa INTEIRA é do campo, para um clique nela nunca escolher a linha escondida por baixo.
 pub(crate) fn pinta_campo(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
-    opcoes: &[DropdownOption<usize>],
+    tinta: Option<ph2d_editor_core::widget::card_ink::CardInk>,
     chip: Rect,
     p: PaintedPopover,
 ) {
-    let dd = Dropdown::new(ids::PAINTER_WETPAINT_PRESET, "", opcoes.to_vec()).open(true);
-    let linha = dd.option_rect_in_scrolled(chip, p.panel, 0, p.scroll);
-    let m = Spacing::Xs.px();
-    let r = Rect::new(linha.x + m, linha.y, (linha.w - 2.0 * m).max(0.0), linha.h);
-    let topo = r.y.max(p.panel.y);
-    let base = (r.y + r.h).min(p.panel.y + p.panel.h);
-    if base <= topo {
+    let faixa = Rect::new(
+        p.panel.x,
+        p.panel.y,
+        p.panel.w,
+        altura_da_faixa(chip, p.panel).min(p.panel.h),
+    );
+    let alto = ALTO_DO_CAMPO.min(faixa.h);
+    let r = Rect::new(
+        faixa.x + FOLGA,
+        faixa.y + (faixa.h - alto) * 0.5,
+        (faixa.w - 2.0 * FOLGA).max(0.0),
+        alto,
+    );
+    let filete = p.scroll > 0.0;
+    if r.h <= 0.0 {
         return;
     }
     let store = ctx.host.store();
@@ -261,17 +287,12 @@ pub(crate) fn pinta_campo(
     };
     let campo = TextInput::new(CAMPO, "")
         .placeholder(tr("panel.painter_layers.wetpaint.preset_search"))
-        .visual((estado, store.hover_live(CAMPO)));
+        .visual((estado, store.hover_live(CAMPO)))
+        .anel_fino();
     let focado = store.focus_id() == Some(CAMPO);
     let texto_sistema = &mut *ctx.text_system;
-    camada_das_listas::por_cima(ctx.scene, |cena| {
-        let clip = ph2d_vector::Rect::new(
-            f64::from(p.panel.x),
-            f64::from(p.panel.y),
-            f64::from(p.panel.x + p.panel.w),
-            f64::from(p.panel.y + p.panel.h),
-        );
-        cena.push_clip(&clip);
+    let mut pinta = |cena: &mut ph2d_vector::VectorScene| {
+        pinta_faixa(cena, faixa, filete, theme);
         paint_text_input_with_buffer(
             &campo,
             Some(texto.as_str()),
@@ -282,10 +303,58 @@ pub(crate) fn pinta_campo(
             texto_sistema,
             theme,
         );
-        cena.pop_layer();
+    };
+    camada_das_listas::por_cima(ctx.scene, |cena| match tinta {
+        Some(ink) => ph2d_editor_core::widget::card_ink::com(ink, || pinta(cena)),
+        None => {
+            let _veste = ph2d_editor_core::widget::Superficie::de(theme).veste();
+            pinta(cena);
+        }
     });
     let hit = ctx.host.hit_index_mut();
-    camada_das_listas::alvo(hit, CAMPO, Rect::new(r.x, topo, r.w, base - topo));
+    camada_das_listas::alvo(hit, CAMPO, faixa);
+}
+
+/// O fundo da faixa (o da lista, cantos de cima redondos como os dela) e, com a lista rolada, o filete que a separa
+/// das linhas (no topo, é o do 1.º título que lá está).
+fn pinta_faixa(
+    cena: &mut ph2d_vector::VectorScene,
+    faixa: Rect,
+    filete: bool,
+    theme: ph2d_tokens::Theme,
+) {
+    use ph2d_editor_core::paint::fill_rounded_rect;
+    use ph2d_editor_core::widget::resolve_opaque as opaque;
+    let fundo = opaque(ph2d_tokens::ColorToken::BgElev, theme);
+    let raio = ph2d_card_stack::metrics::FIELD_RADIUS.min(faixa.h * 0.5);
+    fill_rounded_rect(
+        cena,
+        Rect::new(faixa.x, faixa.y, faixa.w, raio * 2.0),
+        raio,
+        fundo,
+    );
+    cena.fill_rect(
+        ph2d_editor_core::paint::rect_to_vello(Rect::new(
+            faixa.x,
+            faixa.y + raio,
+            faixa.w,
+            (faixa.h - raio).max(0.0),
+        )),
+        fundo,
+    );
+    if !filete {
+        return;
+    }
+    let fio = ph2d_tokens::StrokeToken::Thin.px();
+    cena.fill_rect(
+        ph2d_editor_core::paint::rect_to_vello(Rect::new(
+            faixa.x + FOLGA,
+            faixa.y + faixa.h - fio,
+            (faixa.w - 2.0 * FOLGA).max(0.0),
+            fio,
+        )),
+        opaque(ph2d_tokens::ColorToken::Border, theme),
+    );
 }
 
 /// Os eventos do campo. `None` = não é daqui.

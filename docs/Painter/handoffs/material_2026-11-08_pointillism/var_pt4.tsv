@@ -1,0 +1,4 @@
+Pointillism	n1	pen_tilt={"rotation": 1}	dab_angle_deg=0	dab_flatten=0.75	spray_count=1	jitter=0.0
+Pointillism	n2	pen_tilt={"rotation": 1}	dab_angle_deg=0	dab_flatten=0.75	-mistura_opaca=
+Pointillism	n3	pen_tilt={"rotation": 1}	dab_angle_deg=0	dab_flatten=0.75	spray_count=1	jitter=0.0	-mistura_opaca=
+Pointillism	n4	pen_tilt={"rotation": 1}	dab_angle_deg=0	dab_flatten=0.75	spray_count=1	jitter=0.45

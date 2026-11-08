@@ -1,0 +1,2 @@
+Pointillism	g6	pen_tilt={"rotation": 1}	dab_angle_deg=0	dab_jitter={"across": 0.0, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 0.33, "roundness": 0.0}	mistura.paint_density=1.0	opacity=0.75	spray_count=3	dab_flatten=0.75
+Pointillism	g7	pen_tilt={"rotation": 1}	dab_angle_deg=0	dab_jitter={"across": 0.0, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 0.33, "roundness": 0.0}	mistura.paint_density=1.0	opacity=0.75	spray_count=3	dab_flatten=0.75	color_jitter_sat=0.16

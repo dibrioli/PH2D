@@ -1,0 +1,8 @@
+Pointillism	f0	pen_tilt={"rotation": 1}	dab_angle_deg=0
+Pointillism	f90	pen_tilt={"rotation": 1}	dab_angle_deg=90
+Pointillism	fp	pen_tilt={"rotation": 1}	dab_angle_deg=0	dab_jitter={"across": 0.0, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 0.33, "roundness": 0.0}
+Pointillism	fpd	pen_tilt={"rotation": 1}	dab_angle_deg=0	dab_jitter={"across": 0.0, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 0.33, "roundness": 0.0}	mistura.paint_density=1.0	opacity=0.75
+Pointillism	fpo	pen_tilt={"rotation": 1}	dab_angle_deg=0	dab_jitter={"across": 0.0, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 0.33, "roundness": 0.0}	mistura.paint_density=1.0	mistura.paint_amount=0.5
+Pointillism	fpj	pen_tilt={"rotation": 1}	dab_angle_deg=0	dab_jitter={"across": 0.0, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 0.33, "roundness": 0.0}	jitter=0.25
+Pointillism	h1	hardness=1.0	borda_px=0.5
+Pointillism	b0	opacity=1.0

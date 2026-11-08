@@ -1,0 +1,22 @@
+Round Mixing	fim	mistura.paint_amount=0.25	hardness=0.5
+Gouache	fim	mistura.paint_amount=0.35	hardness=0.5	mistura.color_stretch=0.3
+Dry Gouache	fim	mistura.paint_amount=0.35	mistura.color_stretch=0.3
+Thin Gouache	fim	mistura.paint_amount=0.3	hardness=0.5
+Oil Paint	fim	mistura.paint_amount=0.35
+Paint And Apply	fim	mistura.paint_amount=0.3
+Thick Oil Paint	fim	mistura.paint_amount=0.45	hardness=0.7
+Crayon	fim	mistura.paint_amount=0.35
+Chalk	fim
+Gouache Blender	fim	mistura.paint_density=0.7	mistura.color_stretch=0.8
+Finger Tip	fim	hardness=0.5	mistura.color_stretch=0.8
+Pastel	p_d0.7_a0.35_g1.0	mistura.paint_density=0.7	mistura.paint_amount=0.35	grain_depth=1.0
+Pastel	p_d0.7_a0.35_g0.6	mistura.paint_density=0.7	mistura.paint_amount=0.35	grain_depth=0.6
+Pastel	p_d0.7_a0.5_g1.0	mistura.paint_density=0.7	mistura.paint_amount=0.5	grain_depth=1.0
+Pastel	p_d0.7_a0.5_g0.6	mistura.paint_density=0.7	mistura.paint_amount=0.5	grain_depth=0.6
+Pastel	p_d1.0_a0.35_g1.0	mistura.paint_density=1.0	mistura.paint_amount=0.35	grain_depth=1.0
+Pastel	p_d1.0_a0.35_g0.6	mistura.paint_density=1.0	mistura.paint_amount=0.35	grain_depth=0.6
+Pastel	p_d1.0_a0.5_g1.0	mistura.paint_density=1.0	mistura.paint_amount=0.5	grain_depth=1.0
+Pastel	p_d1.0_a0.5_g0.6	mistura.paint_density=1.0	mistura.paint_amount=0.5	grain_depth=0.6
+Finger Tip	f65	mistura.color_stretch=0.65
+Gouache Blender	g65	mistura.paint_density=0.7	mistura.color_stretch=0.65
+Thick Oil Paint	t5	mistura.paint_amount=0.45	hardness=0.5

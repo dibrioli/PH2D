@@ -34,7 +34,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("color_jitter_val", "0.02"),
             (
                 "mistura_opaca",
-                r#"{"modo": "WetBlend", "paint_amount": 0.45, "paint_density": 1.0, "color_stretch": 0.15, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
+                r#"{"modo": "WetBlend", "paint_amount": 0.35, "paint_density": 1.0, "color_stretch": 0.15, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
             ),
         ],
         mao: &[
@@ -61,11 +61,11 @@ pub const MEIOS: &[ReceitaMeio] = &[
                 r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.5, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.5, "particle": 0.05, "particle_px": 2.0, "roundness": 0.0, "subpixel_area": true}"#,
             ),
             ("texture", PAPEL_ASPERO),
-            ("grain_depth", "1.0"),
+            ("grain_depth", "0.6"),
             ("color_jitter_sat", "0.06"),
             (
                 "mistura_opaca",
-                r#"{"modo": "WetBlend", "paint_amount": 0.3, "paint_density": 0.4, "color_stretch": 0.4, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
+                r#"{"modo": "WetBlend", "paint_amount": 0.5, "paint_density": 0.7, "color_stretch": 0.4, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
             ),
         ],
         mao: &[
@@ -114,9 +114,9 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("borda_px", "1.0"),
             ("spacing", "0.1"),
             ("continuous_spacing", "false"),
-            ("dab_flatten", "0.7"),
-            ("dab_angle_deg", "135"),
-            ("spray_count", "4"),
+            ("dab_flatten", "0.75"),
+            ("dab_angle_deg", "0"),
+            ("spray_count", "3"),
             ("jitter", "0.45"),
             ("jitter_scale", "0.3"),
             ("color_jitter_hue", "0.04"),
@@ -124,16 +124,16 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("color_jitter_val", "0.12"),
             (
                 "dab_jitter",
-                r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 0.22, "roundness": 0.0}"#,
+                r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 0.33, "roundness": 0.0}"#,
             ),
             (
                 "mistura_opaca",
-                r#"{"modo": "WetBlend", "paint_amount": 0.3, "paint_density": 0.5, "color_stretch": 0.15, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
+                r#"{"modo": "WetBlend", "paint_amount": 0.3, "paint_density": 1.0, "color_stretch": 0.15, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
             ),
         ],
-        mao: &[("pressureSize", 0.1)],
+        mao: &[("pressureSize", 0.1), ("dabRotation", 1.0)],
         size_px: Some(80.0),
-        opacity: Some(1.0),
+        opacity: Some(0.75),
         ..ReceitaMeio::digital("Texture", "Pointillism", "Pointillism")
     },
     // Wet wash (CSP: 30 px, intervalo ~1 contínuo, «Dappled cloud», mistura 70/50/10, spray 120 dens 4 desvio −50,
@@ -175,7 +175,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
         pincel: &[
             ("hardness", "0.7"),
             ("falloff", "\"Sharp\""),
-            ("spacing", "0.1"),
+            ("spacing", "0.2"),
             ("continuous_spacing", "false"),
             ("blend", "\"Multiply\""),
             ("blend_sobre_vazio", "true"),
@@ -184,16 +184,26 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("jitter_scale", "0.5"),
             ("jitter_rotate", "1.0"),
             ("color_jitter_hue", "0.0"),
+            ("shape", PONTA_IMG),
+            (
+                "hose",
+                r#"{"n": 3, "mode": 0, "pesos": [1, 1, 1, 1, 1, 1, 1, 1]}"#,
+            ),
             ("texture", NUVEM),
-            ("grain_depth", "0.6"),
+            ("grain_depth", "0.3"),
             (
                 "dab_jitter",
-                r#"{"across": 0.3, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.3, "particle": 0.25, "roundness": 0.3}"#,
+                r#"{"across": 0.8, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.5, "flip_y": 0.5, "opacity": 0.3, "particle": 0.5, "roundness": 0.0}"#,
             ),
         ],
         mao: &[("pressureSize", 0.5), ("pressureOpacity", 0.6)],
         size_px: Some(300.0),
         opacity: Some(1.0),
+        texturas: &[
+            ("shape", img_salpico_1),
+            ("shape_2", img_salpico_2),
+            ("shape_3", img_salpico_3),
+        ],
         ..ReceitaMeio::digital("Watercolor", "Splash", "Watercolor Splash")
     },
     // Brush pen (CSP: 70 px, intervalo 2 contínuo, ponta dupla de cerdas, «Dappled cloud» dens 100, estab. 15,
@@ -227,7 +237,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("stabilizer", "0.04"),
             (
                 "mistura_opaca",
-                r#"{"modo": "WetBlend", "paint_amount": 0.0, "paint_density": 1.0, "color_stretch": 0.2, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
+                r#"{"modo": "WetBlend", "paint_amount": 0.0, "paint_density": 1.0, "color_stretch": 0.8, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
             ),
         ],
         mao: &[("pressureSize", 0.5), ("pressureOpacity", 0.6)],
@@ -238,3 +248,27 @@ pub const MEIOS: &[ReceitaMeio] = &[
 ];
 
 pub const MIDIAS: &[Midia] = &[];
+
+// As imagens CC0 da Watercolor Splash (fonte e preparo: `assets/brush-images/watercolor/FONTES.md`).
+/// A ponta em imagem (a mancha inteira no dab).
+const PONTA_IMG: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Image", "mapping": "ViewPlane", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [1.0, 1.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+
+fn imagem_cc0(png: &[u8]) -> Vec<u8> {
+    let (lum, w, h) = ph2d_brush_presets::ler_textura(png).expect("imagem CC0");
+    ph2d_brush_presets::escrever_textura(&lum, w, h)
+}
+fn img_salpico_1() -> Vec<u8> {
+    imagem_cc0(include_bytes!(
+        "../../../../../assets/brush-images/watercolor/splash_1.png"
+    ))
+}
+fn img_salpico_2() -> Vec<u8> {
+    imagem_cc0(include_bytes!(
+        "../../../../../assets/brush-images/watercolor/splash_2.png"
+    ))
+}
+fn img_salpico_3() -> Vec<u8> {
+    imagem_cc0(include_bytes!(
+        "../../../../../assets/brush-images/watercolor/splash_3.png"
+    ))
+}

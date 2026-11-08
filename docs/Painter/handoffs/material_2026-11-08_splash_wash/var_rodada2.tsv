@@ -1,0 +1,7 @@
+Watercolor Splash	t1	dab_jitter={"across": 1.0, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.5, "flip_y": 0.5, "opacity": 0.3, "particle": 0.6, "roundness": 0.0}
+Watercolor Splash	t2	dab_jitter={"across": 0.8, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.5, "flip_y": 0.5, "opacity": 0.3, "particle": 0.5, "roundness": 0.0}	spacing=0.2
+Watercolor Splash	t3	dab_jitter={"across": 1.0, "angle_per_stroke": 0.0, "count": 0.5, "flip_x": 0.5, "flip_y": 0.5, "opacity": 0.3, "particle": 0.7, "roundness": 0.0}	spacing=0.15	grain_depth=0.0
+Watercolor Splash	t4	dab_jitter={"across": 1.0, "angle_per_stroke": 0.0, "count": 0.3, "flip_x": 0.5, "flip_y": 0.5, "opacity": 0.3, "particle": 0.6, "roundness": 0.0}	spacing=0.15	opacity=0.8
+Wet Wash Mix	x1	grain_depth=1.0
+Wet Wash Mix	x2	dab_jitter={"across": 0.0, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 1.0, "roundness": 1.0, "veu": 0.0, "veu_escala": 4.5, "veu_opacidade": 1.0}	grain_depth=0.6
+Wet Wash Mix	x3	dab_jitter={"across": 0.0, "angle_per_stroke": 0.0, "count": 0.0, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.0, "particle": 1.0, "roundness": 1.0, "veu": 1.0, "veu_escala": 2.0, "veu_opacidade": 1.0}	grain_depth=0.8

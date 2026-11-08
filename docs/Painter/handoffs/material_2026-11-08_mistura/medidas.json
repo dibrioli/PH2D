@@ -1,0 +1,242 @@
+{
+"Crayon__b0.rgba": {
+"M": 1.0,
+"C": 0.53,
+"W": 21,
+"step": 36.0,
+"branco": 0.47,
+"vazio_a": 0.84,
+"vazio_dcor": 6.1,
+"orla_px": 8.0
+},
+"Dry_Gouache__b0.rgba": {
+"M": 0.94,
+"C": 0.25,
+"W": 21,
+"step": 27.0,
+"branco": 0.74,
+"vazio_a": 0.87,
+"vazio_dcor": 0.0,
+"orla_px": 36.5
+},
+"Gouache__b0.rgba": {
+"M": 0.0,
+"C": 0.1,
+"W": 21,
+"step": 2.0,
+"branco": 0.89,
+"vazio_a": 0.99,
+"vazio_dcor": 0.0,
+"orla_px": 13.5
+},
+"Oil_Paint__b0.rgba": {
+"M": 0.93,
+"C": 0.44,
+"W": 169,
+"step": 3.0,
+"branco": 0.53,
+"vazio_a": 0.99,
+"vazio_dcor": 0.8,
+"orla_px": 5.5
+},
+"Paint_And_Apply__b0.rgba": {
+"M": 0.0,
+"C": 0.15,
+"W": 73,
+"step": 4.0,
+"branco": 0.85,
+"vazio_a": 0.98,
+"vazio_dcor": 0.0,
+"orla_px": 8.0
+},
+"Round_Mixing__b0.rgba": {
+"M": 0.0,
+"C": 0.07,
+"W": 136,
+"step": 1.0,
+"branco": 0.93,
+"vazio_a": 1.0,
+"vazio_dcor": 0.0,
+"orla_px": 1.0
+},
+"Thick_Oil_Paint__b0.rgba": {
+"M": 0.0,
+"C": 0.14,
+"W": 129,
+"step": 3.0,
+"branco": 0.86,
+"vazio_a": 1.0,
+"vazio_dcor": 1.6,
+"orla_px": 2.0
+},
+"Thin_Gouache__b0.rgba": {
+"M": 0.0,
+"C": 0.05,
+"W": 21,
+"step": 24.0,
+"branco": 0.95,
+"vazio_a": 0.95,
+"vazio_dcor": 0.0,
+"orla_px": 5.5
+},
+"Chalk__b0.rgba": {
+"M": 1.0,
+"C": 0.66,
+"W": 22,
+"step": 38.0,
+"branco": 0.34,
+"vazio_a": 0.85,
+"vazio_dcor": 3.7,
+"orla_px": 11.5
+},
+"Finger_Tip__b0.rgba": {
+"M": 0.06,
+"C": 1.0,
+"W": 27,
+"step": 12.0,
+"branco": 0.0,
+"vazio_a": 0.0,
+"vazio_dcor": -1,
+"orla_px": 0.0
+},
+"Gouache_Blender__b0.rgba": {
+"M": 0.16,
+"C": 0.98,
+"W": 76,
+"step": 58.0,
+"branco": 0.0,
+"vazio_a": 0.0,
+"vazio_dcor": -1,
+"orla_px": 0.0
+},
+"Pastel__b0.rgba": {
+"M": 0.02,
+"C": 0.93,
+"W": 0,
+"step": 206.0,
+"branco": 0.07,
+"vazio_a": 0.2,
+"vazio_dcor": 60.6,
+"orla_px": 8.5
+},
+"Chalk__fim.rgba": {
+"M": 1.0,
+"C": 0.66,
+"W": 22,
+"step": 38.0,
+"branco": 0.34,
+"vazio_a": 0.85,
+"vazio_dcor": 3.7,
+"orla_px": 11.5
+},
+"Crayon__fim.rgba": {
+"M": 1.0,
+"C": 0.62,
+"W": 21,
+"step": 36.0,
+"branco": 0.38,
+"vazio_a": 0.84,
+"vazio_dcor": 5.9,
+"orla_px": 8.0
+},
+"Dry_Gouache__fim.rgba": {
+"M": 1.0,
+"C": 0.61,
+"W": 60,
+"step": 29.0,
+"branco": 0.37,
+"vazio_a": 0.87,
+"vazio_dcor": 0.0,
+"orla_px": 36.5
+},
+"Finger_Tip__fim.rgba": {
+"M": 0.39,
+"C": 1.01,
+"W": 143,
+"step": 3.0,
+"branco": 0.0,
+"vazio_a": 0.0,
+"vazio_dcor": -1,
+"orla_px": 0.0
+},
+"Gouache_Blender__fim.rgba": {
+"M": 0.77,
+"C": 0.9,
+"W": 177,
+"step": 15.0,
+"branco": 0.0,
+"vazio_a": 0.0,
+"vazio_dcor": -1,
+"orla_px": 0.0
+},
+"Gouache__fim.rgba": {
+"M": 1.0,
+"C": 0.53,
+"W": 64,
+"step": 3.0,
+"branco": 0.45,
+"vazio_a": 0.99,
+"vazio_dcor": 0.0,
+"orla_px": 16.0
+},
+"Oil_Paint__fim.rgba": {
+"M": 1.0,
+"C": 0.53,
+"W": 172,
+"step": 4.0,
+"branco": 0.43,
+"vazio_a": 0.99,
+"vazio_dcor": 0.8,
+"orla_px": 5.5
+},
+"Paint_And_Apply__fim.rgba": {
+"M": 1.0,
+"C": 0.61,
+"W": 91,
+"step": 7.0,
+"branco": 0.39,
+"vazio_a": 0.98,
+"vazio_dcor": 0.0,
+"orla_px": 8.0
+},
+"Pastel__p_d0.7_a0.5_g0.6.rgba": {
+"M": 0.44,
+"C": 0.83,
+"W": 21,
+"step": 180.0,
+"branco": 0.17,
+"vazio_a": 0.29,
+"vazio_dcor": 60.6,
+"orla_px": 8.5
+},
+"Round_Mixing__fim.rgba": {
+"M": 1.0,
+"C": 0.66,
+"W": 165,
+"step": 2.0,
+"branco": 0.34,
+"vazio_a": 1.0,
+"vazio_dcor": 0.0,
+"orla_px": 4.0
+},
+"Thick_Oil_Paint__fim.rgba": {
+"M": 1.0,
+"C": 0.54,
+"W": 132,
+"step": 2.0,
+"branco": 0.46,
+"vazio_a": 1.0,
+"vazio_dcor": 1.3,
+"orla_px": 4.0
+},
+"Thin_Gouache__fim.rgba": {
+"M": 1.0,
+"C": 0.62,
+"W": 83,
+"step": 24.0,
+"branco": 0.38,
+"vazio_a": 0.95,
+"vazio_dcor": 0.0,
+"orla_px": 6.0
+}
+}

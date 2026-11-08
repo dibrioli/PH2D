@@ -53,11 +53,11 @@ pub const MEIOS: &[ReceitaMeio] = &[
     // Round mixing brush (CSP 50 · dureza 100 · 10 % contínuo · 80/50/100, Alpha P(90)): o redondo que apanha e arrasta.
     ReceitaMeio {
         pincel: &[
-            ("hardness", "0.9"),
+            ("hardness", "0.5"),
             ("spacing", "0.1"),
             ("continuous_spacing", "true"),
             ("stabilizer", "0.02"),
-            ("mistura_opaca", mistura!(0.9, 0.8, 1.0, 0.0, 0.1)),
+            ("mistura_opaca", mistura!(0.25, 0.8, 1.0, 0.0, 0.1)),
         ],
         mao: &[("pressureSize", 0.8), ("pressureSizeCurve", 1.0)],
         size_px: Some(50.0),
@@ -67,12 +67,12 @@ pub const MEIOS: &[ReceitaMeio] = &[
     // Gouache (CSP 80 · cerda @45° · Paper 100 · 70/45/15, Mix/Alpha P(10)): cobre com estrias e esquece depressa.
     ReceitaMeio {
         pincel: &[
-            ("hardness", "0.6"),
+            ("hardness", "0.5"),
             ("spacing", "0.1"),
             ("continuous_spacing", "true"),
             ("dab_angle_deg", "45"),
             ("shape", cerdas!(1.0, 1.0, 0.4, 1.0)),
-            ("mistura_opaca", mistura!(0.85, 0.7, 0.15, 0.9, 0.9)),
+            ("mistura_opaca", mistura!(0.35, 0.7, 0.3, 0.9, 0.9)),
         ],
         mao: &[("pressureSize", 0.9), ("pressureSizeCurve", 1.0)],
         size_px: Some(80.0),
@@ -88,7 +88,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("dab_angle_deg", "45"),
             ("shape", cerdas!(0.5, 1.0, 0.5, 0.0)),
             ("flow", "0.5"),
-            ("mistura_opaca", mistura!(0.8, 0.8, 0.0, 0.9, 0.5)),
+            ("mistura_opaca", mistura!(0.35, 0.8, 0.3, 0.9, 0.5)),
         ],
         mao: &[("pressureSize", 0.7), ("pressureSizeCurve", 1.0)],
         size_px: Some(80.0),
@@ -98,13 +98,13 @@ pub const MEIOS: &[ReceitaMeio] = &[
     // Thin Gouache (CSP 20 · @63° · Paper 85 · 100/55/70): guache diluído — só a cor do pincel, que vela e arrasta.
     ReceitaMeio {
         pincel: &[
-            ("hardness", "0.9"),
+            ("hardness", "0.5"),
             ("spacing", "0.1"),
             ("continuous_spacing", "true"),
             ("dab_angle_deg", "63"),
             ("texture", PAPEL),
             ("grain_depth", "0.3"),
-            ("mistura_opaca", mistura!(1.0, 0.55, 0.7, 0.9, 0.9)),
+            ("mistura_opaca", mistura!(0.3, 0.55, 0.7, 0.9, 0.9)),
         ],
         mao: &[("pressureSize", 0.9), ("pressureSizeCurve", 1.0)],
         size_px: Some(20.0),
@@ -120,7 +120,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("continuous_spacing", "true"),
             ("texture", PAPEL),
             ("grain_depth", "0.2"),
-            ("mistura_opaca", mistura!(0.0, 0.15, 0.2, 0.0, 0.5)),
+            ("mistura_opaca", mistura!(0.0, 0.7, 0.8, 0.0, 0.5)),
         ],
         mao: &[("pressureSize", 0.5), ("pressureSizeCurve", 1.0)],
         size_px: Some(80.0),
@@ -137,7 +137,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("shape", cerdas!(1.0, 0.8, 0.5, 0.6)),
             ("color_jitter_enabled", "true"),
             ("color_jitter_val", "0.02"),
-            ("mistura_opaca", mistura!(0.45, 0.7, 0.87, 0.9, 0.9)),
+            ("mistura_opaca", mistura!(0.35, 0.7, 0.87, 0.9, 0.9)),
         ],
         mao: &[("pressureSize", 0.9), ("pressureSizeCurve", 1.0)],
         size_px: Some(80.0),
@@ -151,7 +151,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("falloff", "\"Smooth\""),
             ("spacing", "0.1"),
             ("continuous_spacing", "true"),
-            ("mistura_opaca", mistura!(0.8, 0.5, 0.5, 0.5, 0.0)),
+            ("mistura_opaca", mistura!(0.3, 0.5, 0.5, 0.5, 0.0)),
         ],
         mao: &[
             ("pressureSize", 0.0),
@@ -166,14 +166,14 @@ pub const MEIOS: &[ReceitaMeio] = &[
     // valor −3): óleo grosso que cobre com a cor do pincel, a 2.ª ponta rasga a orla.
     ReceitaMeio {
         pincel: &[
-            ("hardness", "0.9"),
+            ("hardness", "0.7"),
             ("spacing", "0.1"),
             ("continuous_spacing", "true"),
             ("dab_angle_deg", "70"),
             ("dab_flatten", "0.4"),
             ("color_jitter_enabled", "true"),
             ("color_jitter_val", "0.03"),
-            ("mistura_opaca", mistura!(0.85, 0.9, 0.6, 0.7, 0.0)),
+            ("mistura_opaca", mistura!(0.45, 0.9, 0.6, 0.7, 0.0)),
         ],
         mao: &[("pressureSize", 0.7), ("pressureSizeCurve", 1.0)],
         size_px: Some(60.0),

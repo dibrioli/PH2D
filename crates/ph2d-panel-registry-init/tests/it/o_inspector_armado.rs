@@ -290,6 +290,7 @@ pub fn arma_tudo() {
             markers: Vec::new(),
             steps: 4,
             color: 0,
+            sheet: 0,
         }],
         player_present: true,
         cells: 8,
@@ -299,7 +300,8 @@ pub fn arma_tudo() {
         speed: 1.0,
         direction_override_tag: 0,
         loop_override_tag: 0,
-        frame: 1,
+        frame: ph2d_editor_core::AnimFrameRef::cell(1),
+        sheets: vec![8],
         selected_count: selecionados(),
         card: Default::default(),
     }));

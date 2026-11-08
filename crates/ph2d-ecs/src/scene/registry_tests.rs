@@ -259,7 +259,10 @@ fn register_ecs_components_populates_registry() {
     //   (line/BlenderConstraints W5.5/W6; DELTA sobre o `113` do main, que já traz os +5 da GEF). Quem integrar conta o DELTA, nunca o literal.
     // ⚠️ **2026-10-25: `115` -> `116`, delta +1** -- o `PixelSprite` (ADR-0196, line/PixelArt P0).
     //   DELTA sobre o `115` do main. Quem integrar conta o DELTA, nunca o literal.
-    assert_eq!(reg.len(), 118);
+    // ⚠️ **2026-11-08: `118` -> `119`, delta +1** -- o `SpriteSheets` (as folhas extra do Animated Sprite,
+    //   line/GameEngineFuncional plano 26). Quem integrar conta o DELTA, nunca o literal.
+    assert_eq!(reg.len(), 119);
+    assert!(reg.get_by_name("ph2d::ecs::SpriteSheets").is_some());
     assert!(reg.get_by_name("ph2d::ecs::PixelSprite").is_some());
     assert!(reg.get_by_name("ph2d::ecs::VecObject").is_none());
     assert!(reg.get_by_name("ph2d::ecs::MotionGenerator").is_some());

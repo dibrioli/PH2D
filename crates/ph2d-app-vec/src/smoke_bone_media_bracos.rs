@@ -111,6 +111,7 @@ pub(super) fn bracos(
                 hframes: QUADROS,
                 vframes: 1,
                 frame: QUADRO_VIVO,
+                sheet: 0,
             });
             tamanho(sim, e, celula);
         },

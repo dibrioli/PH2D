@@ -60,7 +60,7 @@ impl Driven {
                     elapsed_ticks: a.elapsed_ticks,
                     pingpong_reverse: a.pingpong_reverse,
                     repeat_count: a.repeat_count,
-                    frame: g.frame,
+                    frame: g.shown(),
                 })
             }
             Driver::SolverPose => Some(Self::SolverPose(*sim.world().get::<Transform>(entity)?)),
@@ -157,9 +157,9 @@ impl Driven {
                     }
                 }
                 if let Some(mut g) = sim.world_mut().get_mut::<ph2d_ecs::SpriteGrid>(entity)
-                    && g.frame != frame
+                    && g.shown() != frame
                 {
-                    g.frame = frame;
+                    g.show(frame);
                 }
             }
             Self::SolverPose(pose) => {

@@ -30,6 +30,7 @@ fn cena() -> Cena {
         hframes: 6,
         vframes: 1,
         frame: 0,
+        sheet: 0,
     };
     let e = sim.world_mut().spawn((grade, lib, a)).id().to_bits();
     let mut reg = ComponentRegistry::new();

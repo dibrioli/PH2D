@@ -5541,6 +5541,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-anim-sheets"
+version = "0.0.0"
+dependencies = [
+ "ph2d-asset",
+ "ph2d-ecs",
+ "ph2d-editor-core",
+ "ph2d-i18n",
+ "ph2d-sprite-edit",
+]
+
+[[package]]
 name = "ph2d-anim-signals"
 version = "0.0.0"
 dependencies = [
@@ -6270,6 +6281,7 @@ version = "0.0.0"
 dependencies = [
  "bevy_ecs",
  "ph2d-a11y",
+ "ph2d-anim-sheets",
  "ph2d-anim-signals",
  "ph2d-app-host",
  "ph2d-asset",

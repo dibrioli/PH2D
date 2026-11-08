@@ -159,6 +159,7 @@ pub mod sprite_pixels;
 pub mod sprite_region;
 pub mod sprite_sheet_frame;
 pub mod sprite_sheet_ref;
+pub mod sprite_sheets;
 pub mod stable_id;
 /// ⭐⭐⭐ **O cérebro autorável** (TOP-20 #15) — ver o cabeçalho do módulo.
 pub mod state_machine;
@@ -298,6 +299,7 @@ pub use sprite_pixels::SpritePixels;
 pub use sprite_region::SpriteRegion;
 pub use sprite_sheet_frame::SpriteSheetFrame;
 pub use sprite_sheet_ref::SpriteSheetRef;
+pub use sprite_sheets::{ExtraSheet, SHEETS_MAX, SpriteSheets, cells_per_sheet, sheet_cells_of};
 pub use stable_id::{
     ReataPorIdentidade, StableId, StableIdCounter, assign_missing_stable_ids, entity_of_stable_id,
     entity_with_stable_id, stable_id_for_name, stable_id_named, stable_id_of,

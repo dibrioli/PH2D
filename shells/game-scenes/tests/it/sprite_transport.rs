@@ -34,6 +34,7 @@ fn sprite(sim: &mut SimWorld, cells: u32) -> Entity {
                 hframes: cells,
                 vframes: 1,
                 frame: 0,
+                sheet: 0,
             },
         ))
         .id()
@@ -92,7 +93,7 @@ fn rewinding_puts_the_picture_back_at_the_start() {
     }
     edit(&mut sim, e, &reg, AnimFieldEdit::Rewind);
     assert_eq!(
-        info(&sim, e).frame,
+        info(&sim, e).frame.cell,
         2,
         "rebobinar tem de devolver a imagem a' primeira celula do intervalo"
     );
@@ -100,7 +101,7 @@ fn rewinding_puts_the_picture_back_at_the_start() {
     // ⚠️ E a ponta certa segue a DIREÇÃO: uma tag ao contrario rebobina para o fim.
     edit(&mut sim, e, &reg, AnimFieldEdit::SetCurrent("back".into()));
     assert_eq!(
-        info(&sim, e).frame,
+        info(&sim, e).frame.cell,
         6,
         "uma tag Reverse comeca no fim do intervalo"
     );
@@ -129,7 +130,7 @@ fn choosing_an_overlapping_animation_still_starts_it_at_its_own_beginning() {
     }
     edit(&mut sim, e, &reg, AnimFieldEdit::SetCurrent("idle".into()));
     assert_eq!(
-        info(&sim, e).frame,
+        info(&sim, e).frame.cell,
         3,
         "a `idle` tem de comecar na PRIMEIRA celula DELA, e nao onde a `walk` estava"
     );
@@ -179,13 +180,13 @@ fn turning_playing_back_on_replays_an_animation_that_had_finished() {
         );
     }
     assert!(!info(&sim, e).playing, "a de uma volta para-se sozinha");
-    assert_eq!(info(&sim, e).frame, 7, "e para na ULTIMA celula");
+    assert_eq!(info(&sim, e).frame.cell, 7, "e para na ULTIMA celula");
 
     // O artista marca a caixa outra vez. ⚠️ E o relogio corre — sem isto o gate ficaria verde
     // sobre um `playing = true` que o proximo tique apaga.
     edit(&mut sim, e, &reg, AnimFieldEdit::Playing(true));
     assert_eq!(
-        info(&sim, e).frame,
+        info(&sim, e).frame.cell,
         4,
         "ligar de novo devolve a imagem ao inicio"
     );
@@ -203,17 +204,17 @@ fn turning_playing_back_on_replays_an_animation_that_had_finished() {
          um `playing` que dura um quadro e' um interruptor morto"
     );
     assert!(
-        after.frame > 4,
+        after.frame.cell > 4,
         "e a imagem tem de andar (viu frame {})",
-        after.frame
+        after.frame.cell
     );
 
     // ⚠️ A OUTRA METADE: quem PAUSOU a meio continua de onde estava.
     edit(&mut sim, e, &reg, AnimFieldEdit::Playing(false));
-    let paused = info(&sim, e).frame;
+    let paused = info(&sim, e).frame.cell;
     edit(&mut sim, e, &reg, AnimFieldEdit::Playing(true));
     assert_eq!(
-        info(&sim, e).frame,
+        info(&sim, e).frame.cell,
         paused,
         "retomar uma pausa nao pode rebobinar -- so' o FIM rebobina"
     );
@@ -278,7 +279,7 @@ fn choosing_another_animation_resumes_one_that_had_run_itself_out_but_not_a_paus
         info(&sim, e).playing,
         "escolher outra animacao depois de uma se ESGOTAR tem de a tocar"
     );
-    let start = info(&sim, e).frame;
+    let start = info(&sim, e).frame.cell;
     for _ in 0..3 {
         ph2d_app_sprite_anim::tick::tick_sprite_animations(
             &mut sim,
@@ -289,7 +290,7 @@ fn choosing_another_animation_resumes_one_that_had_run_itself_out_but_not_a_paus
         );
     }
     assert!(
-        info(&sim, e).frame != start,
+        info(&sim, e).frame.cell != start,
         "e a imagem tem de andar de verdade"
     );
 
@@ -342,7 +343,7 @@ fn dragging_the_frame_bar_sets_the_cell_pauses_and_stays_inside_the_range() {
 
     edit(&mut sim, e, &reg, AnimFieldEdit::SetFrame(4));
     let after = info(&sim, e);
-    assert_eq!(after.frame, 4, "a celula arrastada e' a que fica");
+    assert_eq!(after.frame.cell, 4, "a celula arrastada e' a que fica");
     assert!(
         !after.playing,
         "quem pega no volante conduz -- arrastar a barra tem de PAUSAR"
@@ -359,16 +360,24 @@ fn dragging_the_frame_bar_sets_the_cell_pauses_and_stays_inside_the_range() {
         );
     }
     assert_eq!(
-        info(&sim, e).frame,
+        info(&sim, e).frame.cell,
         4,
         "com a reproducao pausada o tique nao pode mexer na celula arrastada"
     );
 
     // O CLAMP, nas duas pontas: fora do intervalo da tag, o commit fixa.
     edit(&mut sim, e, &reg, AnimFieldEdit::SetFrame(0));
-    assert_eq!(info(&sim, e).frame, 2, "abaixo do intervalo fixa no `from`");
+    assert_eq!(
+        info(&sim, e).frame.cell,
+        2,
+        "abaixo do intervalo fixa no `from`"
+    );
     edit(&mut sim, e, &reg, AnimFieldEdit::SetFrame(99));
-    assert_eq!(info(&sim, e).frame, 5, "acima do intervalo fixa no `to`");
+    assert_eq!(
+        info(&sim, e).frame.cell,
+        5,
+        "acima do intervalo fixa no `to`"
+    );
 }
 
 /// **UMA FOLHA EM PINTURA TOCA, mesmo com o transporte parado** (Enio, 2026-08-23: *«o preview não
@@ -404,7 +413,7 @@ fn a_sheet_under_a_tool_preview_plays_even_when_the_transport_is_paused() {
     assert!(!info(&sim, e).playing, "a fixtura tem de estar PAUSADA");
 
     // 1. Sem ferramenta a pintar, uma cena pausada não anda.
-    let before = info(&sim, e).frame;
+    let before = info(&sim, e).frame.cell;
     for _ in 0..20 {
         ph2d_app_sprite_anim::tick::tick_sprite_animations(
             &mut sim,
@@ -415,7 +424,7 @@ fn a_sheet_under_a_tool_preview_plays_even_when_the_transport_is_paused() {
         );
     }
     assert_eq!(
-        info(&sim, e).frame,
+        info(&sim, e).frame.cell,
         before,
         "pausada e sem pintura, o tique nao pode mexer no frame"
     );
@@ -436,7 +445,7 @@ fn a_sheet_under_a_tool_preview_plays_even_when_the_transport_is_paused() {
             &painted,
             &mut ph2d_preview_drive::PreviewDrive::default(),
         );
-        seen.insert(info(&sim, e).frame);
+        seen.insert(info(&sim, e).frame.cell);
     }
     let after = info(&sim, e);
     assert!(
@@ -454,7 +463,7 @@ fn a_sheet_under_a_tool_preview_plays_even_when_the_transport_is_paused() {
 
     // 4. E a pré-visualização de OUTRA entidade não põe esta a tocar.
     let other = [Some(e.to_bits() ^ 0xFFFF)];
-    let held = info(&sim, e).frame;
+    let held = info(&sim, e).frame.cell;
     for _ in 0..20 {
         ph2d_app_sprite_anim::tick::tick_sprite_animations(
             &mut sim,
@@ -464,7 +473,7 @@ fn a_sheet_under_a_tool_preview_plays_even_when_the_transport_is_paused() {
             &mut ph2d_preview_drive::PreviewDrive::default(),
         );
         assert_eq!(
-            info(&sim, e).frame,
+            info(&sim, e).frame.cell,
             held,
             "a pintura do vizinho nao toca esta -- e a asserção é DENTRO do laço, senão ela \
              mediria outra vez o fim de um ciclo"

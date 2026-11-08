@@ -105,7 +105,7 @@ pub(super) fn paint_sheet(
             let order: Vec<String> = frames
                 .iter()
                 .enumerate()
-                .filter(|(_, f)| **f == c as u32)
+                .filter(|(_, f)| f.sheet == doc.snap.shown_sheet && f.cell == c as u32)
                 .map(|(i, _)| (i + 1).to_string())
                 .collect();
             paint_text(

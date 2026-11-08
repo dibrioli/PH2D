@@ -312,6 +312,7 @@ pub(crate) fn import_ase(
             hframes: cols,
             vframes: rows,
             frame: 0,
+            sheet: 0,
         });
     let (lib, mut notes) = library(&doc, &name);
     notes.splice(0..0, doc.notes.iter().cloned());

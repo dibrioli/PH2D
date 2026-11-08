@@ -28,6 +28,14 @@ pub(super) fn sprite(
     sort_inputs: &mut Vec<SortInput>,
     sheet_preview: Option<Entity>,
 ) {
+    // A folha do quadro na tela (plano GEF 26): a `k` desenha-se numa cópia com a imagem, o tamanho, o Pivot e a
+    // grelha dela; o vazio não desenha.
+    let folha = match ph2d_render::sheet_view(sim, sim_entity, spr) {
+        ph2d_render::SheetView::Own => None,
+        ph2d_render::SheetView::Other(s, g) => Some((s, g)),
+        ph2d_render::SheetView::Nothing => return,
+    };
+    let spr = folha.as_ref().map_or(spr, |f| &f.0);
     // A imagem aberta no Painter desenha-se inteira, uma cópia (`ph2d_ecs::ImagemAberta`): é este o quad dela.
     let aberta = ph2d_ecs::imagem_aberta(sim, sim_entity).map(|size| Sprite { size, ..*spr });
     let spr = aberta.as_ref().unwrap_or(spr);
@@ -68,7 +76,10 @@ pub(super) fn sprite(
     // tint, z) is identical so the override paints the
     // SAME quad the source sprite would have.
     // A imagem que um script pôs a correr (`sprite.image`): pela lei da troca (plano GEF 13 D6), sem região.
-    let cut = script_image::cut(sim, sim_entity, override_for_entity.is_some());
+    let mut cut = script_image::cut(sim, sim_entity, override_for_entity.is_some());
+    if let Some((_, g)) = folha {
+        (cut.grid, cut.sheet_grid, cut.region) = (g, Some(g), None);
+    }
     let law = cut.image.and_then(|s| s.law);
     let (atlas_uv, texture_id, premultiplied_flag) = if let Some(ov) = override_for_entity {
         ([0.0, 0.0, 1.0, 1.0], ov.texture_id, ov.premultiplied)

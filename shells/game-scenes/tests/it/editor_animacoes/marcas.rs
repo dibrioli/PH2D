@@ -28,6 +28,7 @@ fn com_a_folha(m: &mut Mesa, lib: SpriteAnimations) {
         hframes: 4,
         vframes: 3,
         frame: 0,
+        sheet: 0,
     };
     m.sim.world_mut().entity_mut(e).insert((grade, lib));
     m.frame();
@@ -248,7 +249,7 @@ fn a_tira_rola_com_a_mao_na_borda() {
     let mut m = Mesa::new();
     m.doc().pending.push(AnimFieldEdit::Frames(
         0,
-        (0..32).chain(0..32).collect::<Vec<u32>>(),
+        fr(&(0..32).chain(0..32).collect::<Vec<u32>>()),
     ));
     m.frame();
     let l = m.doc().layout.clone();
@@ -284,5 +285,9 @@ fn a_tira_rola_com_a_mao_na_borda() {
     let Some(AnimFieldEdit::Frames(_, f)) = m.pending().first().cloned() else {
         panic!("a largada grava os quadros");
     };
-    assert_eq!(f[to], 0, "o quadro pegado está onde a mão largou");
+    assert_eq!(
+        f[to],
+        AnimFrameRef::cell(0),
+        "o quadro pegado está onde a mão largou"
+    );
 }

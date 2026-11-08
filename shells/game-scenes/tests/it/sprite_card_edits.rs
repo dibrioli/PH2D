@@ -14,6 +14,15 @@ use ph2d_physics_ecs::{
     AnimRule, AnimRules, AnimWhen, CharacterAnimations, LifeEvent, PlatformPlayer,
 };
 
+/// Os quadros da folha `0` com estas células.
+fn fr(cells: &[u32]) -> Vec<ph2d_editor_core::AnimFrameRef> {
+    cells
+        .iter()
+        .copied()
+        .map(ph2d_editor_core::AnimFrameRef::cell)
+        .collect()
+}
+
 fn registry() -> ComponentRegistry {
     let mut r = ComponentRegistry::new();
     ph2d_ecs::scene::register_ecs_components(&mut r);
@@ -35,6 +44,7 @@ fn hero(sim: &mut SimWorld) -> Entity {
                 hframes: 8,
                 vframes: 4,
                 frame: 0,
+                sheet: 0,
             },
             lib,
             SpriteAnimator::new("idle"),
@@ -60,19 +70,19 @@ fn a_lista_clicada_chega_a_cena_e_volta_ao_snapshot() {
         &mut sim,
         e,
         &reg,
-        AnimFieldEdit::Frames(1, vec![9, 8, 9, 31]),
+        AnimFieldEdit::Frames(1, fr(&[9, 8, 9, 31])),
     );
     let w = sim.world();
     assert_eq!(
         w.get::<SpriteAnimFrames>(e).and_then(|f| f.get("run")),
-        Some(&[9, 8, 9, 31][..])
+        Some(&ph2d_ecs::FrameRef::run(0, [9, 8, 9, 31])[..])
     );
     assert!(
         w.get::<SpriteAnimCursor>(e).is_some(),
         "a lista traz o seu passo"
     );
-    assert_eq!(info(&sim, e).rows[1].frames, [9, 8, 9, 31]);
-    edit(&mut sim, e, &reg, AnimFieldEdit::Frames(1, vec![]));
+    assert_eq!(info(&sim, e).rows[1].frames, fr(&[9, 8, 9, 31]));
+    edit(&mut sim, e, &reg, AnimFieldEdit::Frames(1, fr(&[])));
     let w = sim.world();
     assert!(w.get::<SpriteAnimFrames>(e).is_none() && w.get::<SpriteAnimCursor>(e).is_none());
     assert!(
@@ -234,7 +244,7 @@ fn as_regras_do_personagem_escolhem_se_e_acompanham_o_renomear() {
     );
     edit(&mut sim, e, &reg, AnimFieldEdit::CharacterRunFrom(1.25));
     edit(&mut sim, e, &reg, AnimFieldEdit::CharacterFlip(false));
-    edit(&mut sim, e, &reg, AnimFieldEdit::Frames(1, vec![8, 9]));
+    edit(&mut sim, e, &reg, AnimFieldEdit::Frames(1, fr(&[8, 9])));
     edit(&mut sim, e, &reg, AnimFieldEdit::SetCurrent("run".into()));
     edit(&mut sim, e, &reg, AnimFieldEdit::Rename(1, "corre".into()));
     let w = sim.world();
@@ -250,7 +260,7 @@ fn as_regras_do_personagem_escolhem_se_e_acompanham_o_renomear() {
     assert_eq!(w.get::<SpriteAnimator>(e).unwrap().current, "corre");
     assert_eq!(
         w.get::<SpriteAnimFrames>(e).and_then(|f| f.get("corre")),
-        Some(&[8, 9][..])
+        Some(&ph2d_ecs::FrameRef::run(0, [8, 9])[..])
     );
     assert_eq!(info(&sim, e).card.rules[1].play, "corre");
 }
@@ -259,7 +269,7 @@ fn as_regras_do_personagem_escolhem_se_e_acompanham_o_renomear() {
 fn apagar_uma_animacao_leva_a_sua_lista() {
     let (mut sim, reg) = (SimWorld::new(), registry());
     let e = hero(&mut sim);
-    edit(&mut sim, e, &reg, AnimFieldEdit::Frames(1, vec![8]));
+    edit(&mut sim, e, &reg, AnimFieldEdit::Frames(1, fr(&[8])));
     edit(&mut sim, e, &reg, AnimFieldEdit::Remove(1));
     assert!(sim.world().get::<SpriteAnimFrames>(e).is_none());
 }
@@ -279,7 +289,7 @@ fn a_grelha_confirmada_e_o_passo_escolhido() {
     );
 
     edit(&mut sim, e, &reg, AnimFieldEdit::Grid(8, 4));
-    edit(&mut sim, e, &reg, AnimFieldEdit::Frames(0, vec![3, 1, 3]));
+    edit(&mut sim, e, &reg, AnimFieldEdit::Frames(0, fr(&[3, 1, 3])));
     edit(&mut sim, e, &reg, AnimFieldEdit::SetStep(2));
     let w = sim.world();
     assert_eq!(w.get::<SpriteGrid>(e).unwrap().frame, 3);
@@ -295,7 +305,7 @@ fn a_grelha_confirmada_e_o_passo_escolhido() {
 fn o_tique_toca_a_lista_na_ordem_clicada() {
     let (mut sim, reg) = (SimWorld::new(), registry());
     let e = hero(&mut sim);
-    edit(&mut sim, e, &reg, AnimFieldEdit::Frames(0, vec![5, 2, 7]));
+    edit(&mut sim, e, &reg, AnimFieldEdit::Frames(0, fr(&[5, 2, 7])));
     edit(&mut sim, e, &reg, AnimFieldEdit::SetCurrent("idle".into()));
     edit(&mut sim, e, &reg, AnimFieldEdit::Playing(true));
     let mut drive = ph2d_preview_drive::PreviewDrive::default();

@@ -24,8 +24,8 @@ pub mod task_layout;
 
 pub use hero::{
     ActionFieldEdit, AnchorFieldEdit, AnimCardInfo, AnimCharacterInfo, AnimChooser, AnimCycleMode,
-    AnimFieldEdit, AnimRuleInfo, AnimWhenInfo, AudioFieldEdit, BlendFieldEdit, BottomHudStats,
-    CameraFieldEdit, EMISSIVE_MAX_UI, FactoryFieldEdit, HeroScreen, HeroSelection,
+    AnimFieldEdit, AnimFrameRef, AnimRuleInfo, AnimWhenInfo, AudioFieldEdit, BlendFieldEdit,
+    BottomHudStats, CameraFieldEdit, EMISSIVE_MAX_UI, FactoryFieldEdit, HeroScreen, HeroSelection,
     InspectorActionInfo, InspectorActionRow, InspectorAnchorInfo, InspectorAnchorRow,
     InspectorAnimInfo, InspectorAnimMarker, InspectorAnimRow, InspectorAudioInfo,
     InspectorAudioSource, InspectorBlendInfo, InspectorBlendMixed, InspectorCameraFollow,

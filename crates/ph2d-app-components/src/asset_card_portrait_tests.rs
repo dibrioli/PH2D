@@ -216,6 +216,7 @@ fn a_sheet_piece_shows_the_live_cell_and_not_the_whole_sheet() {
                 hframes: 2,
                 vframes: 1,
                 frame: 1,
+                sheet: 0,
             },
             ChildOf(root),
         ))

@@ -31,12 +31,13 @@ fn film_range(t: &AnimationTag, n: usize) -> Vec<(u32, bool)> {
 }
 
 fn film_list(t: &AnimationTag, list: &[u32], n: usize) -> Vec<(u32, bool)> {
+    let list = FrameRef::run(0, list.iter().copied());
     let mut a = playing(t);
-    let (mut frame, mut step) = (99, 0);
+    let (mut frame, mut step) = (FrameRef::cell(99), 0);
     (0..n)
         .map(|_| {
-            advance_frames(&mut a, t, Some(list), &mut frame, &mut step, 8, TICK);
-            (frame, a.playing)
+            advance_frames(&mut a, t, Some(&list), &mut frame, &mut step, &[8], TICK);
+            (frame.cell_on(0).unwrap_or(u32::MAX), a.playing)
         })
         .collect()
 }
@@ -60,12 +61,12 @@ fn sem_lista_e_o_intervalo_de_sempre_e_o_passo_acompanha() {
     let t = tag(2, 5, AnimDirection::Forward, None);
     let mut a = playing(&t);
     let mut b = a.clone();
-    let (mut fa, mut fb, mut step) = (99, 99, 0);
+    let (mut fa, mut fb, mut step) = (99, FrameRef::cell(99), 0);
     for _ in 0..40 {
         crate::advance(&mut a, &t, &mut fa, 8, TICK);
-        advance_frames(&mut b, &t, None, &mut fb, &mut step, 8, TICK);
-        assert_eq!((fa, &a), (fb, &b));
-        assert_eq!(step, fb - 2);
+        advance_frames(&mut b, &t, None, &mut fb, &mut step, &[8], TICK);
+        assert_eq!((FrameRef::cell(fa), &a), (fb, &b));
+        assert_eq!(step, fa - 2);
     }
 }
 
@@ -84,22 +85,24 @@ fn a_lista_toca_na_ordem_clicada_com_repeticoes() {
 fn uma_celula_fora_da_grelha_cala_a_lista() {
     let t = tag(0, 0, AnimDirection::Forward, None);
     let mut a = playing(&t);
-    let (mut frame, mut step) = (0, 0);
+    let (mut frame, mut step) = (FrameRef::cell(0), 0);
+    let fora = FrameRef::run(0, [1, 9]);
     let out = advance_frames(
         &mut a,
         &t,
-        Some(&[1, 9]),
+        Some(&fora),
         &mut frame,
         &mut step,
-        8,
+        &[8],
         1_000_000,
     );
-    assert_eq!((frame, out), (0, AnimOutcome::default()));
-    assert_eq!(tag_cells(&t, Some(&[1, 9]), 8), None);
-    assert_eq!(tag_cells(&t, Some(&[1, 7]), 8), Some(vec![1, 7]));
+    assert_eq!((frame, out), (FrameRef::cell(0), AnimOutcome::default()));
+    assert_eq!(tag_cells(&t, Some(&fora), &[8]), None);
+    let dentro = FrameRef::run(0, [1, 7]);
+    assert_eq!(tag_cells(&t, Some(&dentro), &[8]), Some(dentro.clone()));
     assert_eq!(
-        tag_cells(&tag(2, 5, AnimDirection::Forward, None), None, 4),
-        Some(vec![2, 3])
+        tag_cells(&tag(2, 5, AnimDirection::Forward, None), None, &[4]),
+        Some(FrameRef::run(0, [2, 3]))
     );
 }
 
@@ -120,7 +123,7 @@ fn renomear_leva_a_lista_e_o_tocador() {
     lib.insert(AnimationTag::new("run", 0, 3)).unwrap();
     lib.insert(AnimationTag::new("idle", 4, 5)).unwrap();
     let mut frames = SpriteAnimFrames::default();
-    frames.set("run", vec![3, 2, 1]);
+    frames.set("run", FrameRef::run(0, [3, 2, 1]));
     let mut anim = SpriteAnimator::new("run");
     assert!(rename_tag(
         &mut lib,
@@ -130,7 +133,7 @@ fn renomear_leva_a_lista_e_o_tocador() {
         "corre"
     ));
     assert!(lib.get("corre").is_some() && lib.get("run").is_none());
-    assert_eq!(frames.get("corre"), Some(&[3, 2, 1][..]));
+    assert_eq!(frames.get("corre"), Some(&FrameRef::run(0, [3, 2, 1])[..]));
     assert_eq!(anim.current, "corre");
     assert!(
         !rename_tag(&mut lib, None, None, "corre", "idle"),
@@ -146,7 +149,7 @@ fn renomear_leva_a_lista_e_o_tocador() {
 #[test]
 fn por_uma_lista_vazia_apaga_a_entrada() {
     let mut f = SpriteAnimFrames::default();
-    f.set("a", vec![1]);
+    f.set("a", vec![FrameRef::cell(1)]);
     f.set("a", vec![]);
     assert!(f.is_empty());
 }
@@ -162,4 +165,98 @@ fn um_tempo_igual_ao_ritmo_nao_e_tempo_proprio() {
     );
     t.per_frame_ms[2] = 300;
     assert!(t.has_per_frame_timing());
+}
+
+// ── Várias folhas (plano GEF 26) ──
+
+/// O que se vê, quadro a quadro, de uma lista sobre as folhas `sheets`.
+fn film_refs(t: &AnimationTag, list: &[FrameRef], sheets: &[u32], n: usize) -> Vec<FrameRef> {
+    let mut a = playing(t);
+    let (mut frame, mut step) = (FrameRef::cell(99), 0);
+    (0..n)
+        .map(|_| {
+            advance_frames(&mut a, t, Some(list), &mut frame, &mut step, sheets, TICK);
+            frame
+        })
+        .collect()
+}
+
+#[test]
+fn uma_animacao_mistura_duas_folhas_na_ordem_da_tira() {
+    let t = tag(0, 0, AnimDirection::Forward, None);
+    let idle = |c| FrameRef::Cell { sheet: 0, cell: c };
+    let run = |c| FrameRef::Cell { sheet: 1, cell: c };
+    let list = [idle(0), idle(1), run(5), idle(2), run(0)];
+    let seen = film_refs(&t, &list, &[4, 12], 14);
+    // 30 ms por quadro sobre tiques de 10 ms: três tiques cada (o 1.º já conta um), e a folha viaja com a célula.
+    let esperado: Vec<FrameRef> = list.iter().flat_map(|f| [*f; 3]).skip(1).collect();
+    assert_eq!(seen, esperado);
+}
+
+#[test]
+fn um_quadro_fora_da_folha_dele_cala_a_lista_mas_a_outra_folha_cabe() {
+    let t = tag(0, 0, AnimDirection::Forward, None);
+    let fora = [FrameRef::cell(1), FrameRef::Cell { sheet: 1, cell: 12 }];
+    assert_eq!(
+        tag_cells(&t, Some(&fora), &[4, 12]),
+        None,
+        "célula 12 de 12"
+    );
+    let sem_folha = [FrameRef::Cell { sheet: 2, cell: 0 }];
+    assert_eq!(
+        tag_cells(&t, Some(&sem_folha), &[4, 12]),
+        None,
+        "folha 2 não existe"
+    );
+    let dentro = [FrameRef::cell(3), FrameRef::Cell { sheet: 1, cell: 11 }];
+    assert_eq!(
+        tag_cells(&t, Some(&dentro), &[4, 12]),
+        Some(dentro.to_vec())
+    );
+}
+
+#[test]
+fn o_vazio_a_tocar_dura_o_seu_tempo() {
+    let t = tag(0, 0, AnimDirection::Forward, None);
+    let list = [FrameRef::cell(0), FrameRef::Empty, FrameRef::cell(1)];
+    let seen = film_refs(&t, &list, &[4], 8);
+    assert_eq!(
+        seen,
+        [
+            FrameRef::cell(0),
+            FrameRef::cell(0),
+            FrameRef::Empty,
+            FrameRef::Empty,
+            FrameRef::Empty,
+            FrameRef::cell(1),
+            FrameRef::cell(1),
+            FrameRef::cell(1),
+        ],
+        "o buraco não se salta: o ritmo da animação fica"
+    );
+}
+
+#[test]
+fn o_intervalo_de_outra_folha_entra_pela_ponta_e_toca_nela() {
+    let mut t = tag(2, 4, AnimDirection::Forward, None);
+    t.sheet = 1;
+    let mut a = playing(&t);
+    // A tela está num quadro da folha 0 (outra animação): o intervalo da folha 1 entra pelo início dele.
+    let (mut frame, mut step) = (FrameRef::cell(3), 0);
+    let mut seen = Vec::new();
+    for _ in 0..9 {
+        advance_frames(&mut a, &t, None, &mut frame, &mut step, &[4, 12], TICK);
+        seen.push(frame);
+    }
+    let run = |c| FrameRef::Cell { sheet: 1, cell: c };
+    assert_eq!(seen[0], run(2));
+    assert!(
+        seen.iter()
+            .all(|f| matches!(f, FrameRef::Cell { sheet: 1, .. }))
+    );
+    assert_eq!(seen[7], run(4));
+    assert_eq!(
+        entry_cell(&playing(&t), &t, None, &[4, 12]),
+        Some((run(2), 0))
+    );
 }

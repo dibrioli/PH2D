@@ -265,6 +265,7 @@ fn o_marcador_do_editor_chega_a_regra_e_a_tabela_sem_script() {
                 hframes: 8,
                 vframes: 1,
                 frame: 0,
+                sheet: 0,
             },
             lib,
             tocador,

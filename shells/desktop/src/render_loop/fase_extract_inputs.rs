@@ -100,6 +100,10 @@ impl crate::App {
         ph2d_app_components::script_image::upload(renderer, asset_db, sim, &mut |w, e, id| {
             ph2d_app_sprite_anim::image_choice::override_law(w, e, id, asset_db, atlas, ppm)
         });
+        // As folhas extra do Animated Sprite (plano GEF 26): a textura de cada uma, pela mesma lei do átlas.
+        ph2d_render::resolve_sheet_textures(sim.world_mut(), atlas, &mut |id| {
+            ph2d_render::upload_sheet_image(renderer, asset_db, id)
+        });
         let gravada = ph2d_app_macros::com(|m| m.sprite_gravada());
         use crate::hero_intents::texture_edit::read_sprite_straight as reta;
         // PRECISION-READONLY: a imagem atual (o Painter ligado, senão a sprite) só se compara (W7).

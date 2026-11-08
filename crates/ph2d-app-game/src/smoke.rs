@@ -459,6 +459,7 @@ fn folha(sim: &mut SimWorld, e: Entity, art: FactoryArt, tag: &str, ms: u32) {
             hframes: art.grid[0],
             vframes: art.grid[1],
             frame: 0,
+            sheet: 0,
         },
         tags,
         animator,

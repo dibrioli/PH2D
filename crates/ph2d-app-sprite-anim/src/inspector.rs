@@ -52,8 +52,8 @@ fn rewind_to_start(
     let list = world
         .get::<ph2d_ecs::SpriteAnimFrames>(entity)
         .and_then(|f| f.get(&tag.name));
-    let Some((frame, step)) = ph2d_ecs::entry_cell(player, tag, list, cells_of(world, entity))
-    else {
+    let sheets = ph2d_ecs::sheet_cells_of(world, entity);
+    let Some((frame, step)) = ph2d_ecs::entry_cell(player, tag, list, &sheets) else {
         return;
     };
     if let Some(c) = world.get::<ph2d_ecs::SpriteAnimCursor>(entity)
@@ -62,10 +62,10 @@ fn rewind_to_start(
         let c = ph2d_ecs::SpriteAnimCursor { step };
         queue_set(queue, registry, entity_bits, crate::card::CURSOR, &c);
     }
-    if grid.frame == frame {
+    if grid.shown() == frame {
         return;
     }
-    grid.frame = frame;
+    grid.show(frame);
     queue_set(queue, registry, entity_bits, GRID, &grid);
 }
 
@@ -83,17 +83,23 @@ fn set_frame(
     let Some(mut grid) = world.get::<ph2d_ecs::SpriteGrid>(entity).copied() else {
         return;
     };
-    let cells = cells_of(world, entity);
+    // A cabeça anda na folha da animação em curso (plano GEF 26).
+    let tag = current_tag(world, entity, &player.current);
+    let sheet = tag.as_ref().map_or(0, |t| t.sheet);
+    let cells = ph2d_ecs::sheet_cells(&ph2d_ecs::sheet_cells_of(world, entity), sheet);
     // Sem tag que resolva, o pool inteiro é o alcance — é o que a spec §8.9 descreve para uma
     // sprite sem animação escolhida.
-    let (lo, hi) = current_tag(world, entity, &player.current)
+    let (lo, hi) = tag
         .and_then(|t| t.resolve(cells))
         .unwrap_or((0, cells.saturating_sub(1)));
-    let frame = cell.clamp(lo, hi);
-    if grid.frame == frame {
+    let frame = ph2d_ecs::FrameRef::Cell {
+        sheet,
+        cell: cell.clamp(lo, hi),
+    };
+    if grid.shown() == frame {
         return;
     }
-    grid.frame = frame;
+    grid.show(frame);
     queue_set(queue, registry, entity_bits, GRID, &grid);
 }
 
@@ -144,6 +150,7 @@ pub fn build_anim_info(
                     markers: ph2d_anim_signals::row_markers(world, entity, &t.name),
                     steps: ph2d_ecs::anim_steps(world, entity, &t.name),
                     color: t.color,
+                    sheet: t.sheet,
                 })
                 .collect()
         })
@@ -154,6 +161,7 @@ pub fn build_anim_info(
         rows,
         player_present: player.is_some(),
         cells,
+        sheets: ph2d_ecs::sheet_cells_of(world, entity).to_vec(),
         current: player.map(|p| p.current.clone()).unwrap_or_default(),
         playing: player.is_some_and(|p| p.playing),
         autoplay: player.is_some_and(|p| p.autoplay),
@@ -169,7 +177,9 @@ pub fn build_anim_info(
         ),
         frame: world
             .get::<ph2d_ecs::SpriteGrid>(entity)
-            .map_or(0, |g| g.frame),
+            .map_or(ph2d_editor_core::AnimFrameRef::cell(0), |g| {
+                crate::panel_frame::to_panel(g.shown())
+            }),
         selected_count,
         card: crate::card::build_card_info(world, entity),
     })
@@ -303,7 +313,8 @@ pub fn apply_anim_edit(
                 frames,
                 rows,
                 hf,
-                cells_of(world, entity),
+                0,
+                &ph2d_ecs::sheet_cells_of(world, entity),
             ) {
                 Err(e) => {
                     return Some(Toast::error(tr_with(

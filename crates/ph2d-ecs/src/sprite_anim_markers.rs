@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 use crate::sprite_anim_frames::advance_frames_visiting;
 use crate::{
     AnimOutcome, AnimationTag, FrameRef, SimComponent, SpriteAnimFrames, SpriteAnimations,
-    SpriteAnimator, SpriteGrid, entry_cell, tag_cells,
+    SpriteAnimator, entry_cell, tag_cells,
 };
 
 /// Um marcador.
@@ -101,20 +101,16 @@ impl SpriteAnimMarkers {
     }
 }
 
-/// Quantos quadros a animação `name` toca nas folhas de hoje (`0` = não resolve). `sheets[k]` = células da folha
-/// `k`; vazio = só a grelha deste objeto (a folha `0`).
+/// Quantos quadros a animação `name` toca nas folhas de hoje (`0` = não resolve).
 #[must_use]
-pub fn anim_steps(world: &World, entity: Entity, name: &str, sheets: &[u32]) -> u32 {
-    let own = [world
-        .get::<SpriteGrid>(entity)
-        .map_or(1, |g| g.cells().max(1))];
-    let sheets = if sheets.is_empty() { &own[..] } else { sheets };
+pub fn anim_steps(world: &World, entity: Entity, name: &str) -> u32 {
+    let sheets = crate::sheet_cells_of(world, entity);
     world
         .get::<SpriteAnimations>(entity)
         .and_then(|l| l.get(name))
         .and_then(|t| {
             let frames = world.get::<SpriteAnimFrames>(entity);
-            tag_cells(t, frames.and_then(|f| f.get(name)), sheets)
+            tag_cells(t, frames.and_then(|f| f.get(name)), &sheets)
         })
         .map_or(0, |seq| u32::try_from(seq.len()).unwrap_or(u32::MAX))
 }

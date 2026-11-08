@@ -1,6 +1,6 @@
 use super::*;
 use crate::timer::step_ticks;
-use crate::{AnimDirection, SpriteAnimFrames, advance_frames};
+use crate::{AnimDirection, FrameRef, SpriteAnimFrames, advance_frames};
 
 const FRAME_MS: u32 = 100;
 
@@ -18,6 +18,7 @@ fn tag(direction: AnimDirection, repeat: Option<u32>) -> AnimationTag {
         per_frame_ms: Vec::new(),
         signal_on_loop: String::new(),
         color: 0,
+        sheet: 0,
     }
 }
 
@@ -38,12 +39,13 @@ fn tocando() -> SpriteAnimator {
 /// Toca `tiques` passos de `ms` e devolve quantos gritos houve.
 fn gritos(
     t: &AnimationTag,
-    list: Option<&[u32]>,
+    list: Option<&[FrameRef]>,
     m: &SpriteAnimMarkers,
     ms: f64,
     tiques: u32,
 ) -> usize {
-    let (mut a, mut frame, mut step) = (tocando(), list.map_or(t.from, |l| l[0]), 0);
+    let (mut a, mut frame, mut step) =
+        (tocando(), list.map_or(FrameRef::cell(t.from), |l| l[0]), 0);
     let mut out = Vec::new();
     let dt = step_ticks(ms / 1000.0);
     for _ in 0..tiques {
@@ -53,7 +55,7 @@ fn gritos(
             list,
             &mut frame,
             &mut step,
-            16,
+            &[16],
             dt,
             Some(m),
             &mut out,
@@ -94,7 +96,7 @@ fn um_tique_atrasado_nao_perde_nem_duplica_o_marcador() {
 #[test]
 fn marcador_vale_com_lista_de_quadros() {
     let t = tag(AnimDirection::Forward, None);
-    let lista = [7, 2, 9];
+    let lista = FrameRef::run(0, [7, 2, 9]);
     for passo in 0..3 {
         assert_eq!(
             gritos(&t, Some(&lista), &marca(passo), 10.0, 299),
@@ -131,7 +133,7 @@ fn outra_tag_ou_sinal_vazio_nao_gritam() {
 #[test]
 fn parada_nao_grita() {
     let t = tag(AnimDirection::Forward, None);
-    let (mut a, mut frame, mut step) = (tocando(), 0, 0);
+    let (mut a, mut frame, mut step) = (tocando(), FrameRef::cell(0), 0);
     a.playing = false;
     let mut out = Vec::new();
     for _ in 0..10 {
@@ -141,7 +143,7 @@ fn parada_nao_grita() {
             None,
             &mut frame,
             &mut step,
-            16,
+            &[16],
             1000,
             Some(&marca(0)),
             &mut out,
@@ -154,18 +156,18 @@ fn parada_nao_grita() {
 #[test]
 fn os_marcadores_nao_mudam_a_animacao() {
     let t = tag(AnimDirection::PingPong, None);
-    let (mut a, mut f, mut s) = (tocando(), 0, 0);
-    let (mut b, mut g, mut r) = (tocando(), 0, 0);
+    let (mut a, mut f, mut s) = (tocando(), FrameRef::cell(0), 0);
+    let (mut b, mut g, mut r) = (tocando(), FrameRef::cell(0), 0);
     let mut out = Vec::new();
     for _ in 0..500 {
-        advance_frames(&mut a, &t, None, &mut f, &mut s, 16, 700);
+        advance_frames(&mut a, &t, None, &mut f, &mut s, &[16], 700);
         advance_frames_marked(
             &mut b,
             &t,
             None,
             &mut g,
             &mut r,
-            16,
+            &[16],
             700,
             Some(&marca(2)),
             &mut out,

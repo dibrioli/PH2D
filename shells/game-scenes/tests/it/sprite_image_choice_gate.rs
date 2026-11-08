@@ -231,6 +231,7 @@ fn a_folha_nova_do_player_mantem_as_animacoes() {
                 hframes: 8,
                 vframes: 4,
                 frame: 11,
+                sheet: 0,
             },
             tags.clone(),
         ))
@@ -243,7 +244,8 @@ fn a_folha_nova_do_player_mantem_as_animacoes() {
         Some(SpriteGrid {
             hframes: 8,
             vframes: 4,
-            frame: 11
+            frame: 11,
+            sheet: 0,
         })
     );
     assert_eq!(w.get::<Sprite>(e).unwrap().size, [1.0, 1.0]);

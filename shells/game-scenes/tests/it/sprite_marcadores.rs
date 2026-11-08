@@ -21,6 +21,7 @@ fn sprite(sim: &mut SimWorld, cells: u32) -> Entity {
         hframes: cells,
         vframes: 1,
         frame: 0,
+        sheet: 0,
     };
     let arte = ph2d_render::Sprite::atlas(0, [1.0, 1.0], [1.0; 4]);
     sim.world_mut()

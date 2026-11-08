@@ -46,7 +46,7 @@ fn o_marcador_pintado_e_onde_a_largada_poe_o_quadro() {
     let mut m = Mesa::new();
     m.doc()
         .pending
-        .push(AnimFieldEdit::Frames(0, vec![5, 2, 7, 1]));
+        .push(AnimFieldEdit::Frames(0, fr(&[5, 2, 7, 1])));
     m.frame();
     let authored = m.doc().authored_frames();
     let l = m.doc().layout.clone();
@@ -96,9 +96,5 @@ fn o_fantasma_segue_a_mao_e_some_ao_largar() {
     m.pointer(PointerKind::Up, to);
     m.paint();
     let p = m.doc().painted;
-    assert_eq!(
-        (p.marker, p.ghost),
-        (None, None),
-        "nada depois de soltar"
-    );
+    assert_eq!((p.marker, p.ghost), (None, None), "nada depois de soltar");
 }

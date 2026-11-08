@@ -532,7 +532,7 @@ fn paint_list(
 fn paint_strip(
     doc: &AnimDoc,
     l: &super::doc::Layout,
-    frames: &[u32],
+    frames: &[ph2d_editor_core::AnimFrameRef],
     info: Option<&InspectorAnimInfo>,
     scene: &mut VectorScene,
     text: &mut TextSystem,
@@ -573,15 +573,8 @@ fn paint_strip(
             frame_radius(theme, m::FIELD_RADIUS),
             tom(ColorToken::Bg2, theme),
         );
-        if let Some(sheet) = &doc.snap.sheet {
-            paint_sheet_cell(
-                scene,
-                sheet,
-                doc.snap.hframes,
-                doc.snap.vframes,
-                *cell,
-                *thumb,
-            );
+        if let (Some(sheet), Some(c)) = (&doc.snap.sheet, doc.shown_cell(*cell)) {
+            paint_sheet_cell(scene, sheet, doc.snap.hframes, doc.snap.vframes, c, *thumb);
         }
         if drag.is_some_and(|d| d.from == i) {
             // O lugar de onde o quadro saiu fica apagado enquanto ele anda.
@@ -668,15 +661,9 @@ fn paint_strip(
     {
         let thumb = f.0;
         let mut content = VectorScene::new();
-        if let Some(sheet) = &doc.snap.sheet {
-            paint_sheet_cell(
-                &mut content,
-                sheet,
-                doc.snap.hframes,
-                doc.snap.vframes,
-                *cell,
-                thumb,
-            );
+        if let (Some(sheet), Some(c)) = (&doc.snap.sheet, doc.shown_cell(*cell)) {
+            let (hf, vf) = (doc.snap.hframes, doc.snap.vframes);
+            paint_sheet_cell(&mut content, sheet, hf, vf, c, thumb);
         }
         // A borda separa o fantasma (meio transparente) da miniatura por cima da qual passa.
         stroke_rect(

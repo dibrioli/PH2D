@@ -56,6 +56,7 @@ fn playing_sprite(sim: &mut SimWorld) -> Entity {
                 hframes: 8,
                 vframes: 1,
                 frame: 0,
+                sheet: 0,
             },
             animator,
             lib,

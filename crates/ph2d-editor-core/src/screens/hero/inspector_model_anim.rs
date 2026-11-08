@@ -47,14 +47,16 @@ pub struct InspectorAnimRow {
     /// para cada quadro, crie»*), e um campo que EDITA precisa de ler o valor. O predicado passou a
     /// ser derivado ([`Self::has_per_frame_timing`]) — *uma fonte, e a pergunta calcula-se dela*.
     pub per_frame_ms: Vec<u32>,
-    /// A lista de quadros (`SpriteAnimFrames`), na ordem tocada. Vazia = o intervalo `from..=to`.
-    pub frames: Vec<u32>,
+    /// A lista de quadros (`SpriteAnimFrames`), na ordem tocada, cada um com a sua folha. Vazia = o intervalo `from..=to`.
+    pub frames: Vec<AnimFrameRef>,
     /// Os marcadores em quadro desta animação (`SpriteAnimMarkers`), na ordem da lista.
     pub markers: Vec<InspectorAnimMarker>,
     /// Quantos quadros a animação toca (`0` = não resolve na grelha de hoje). Teto do «Frame».
     pub steps: u32,
     /// O índice da cor dela na paleta do editor (`ph2d_ecs::AnimationTag::color`).
     pub color: u8,
+    /// A folha do intervalo `from..=to` (`ph2d_ecs::AnimationTag::sheet`).
+    pub sheet: u8,
 }
 
 /// Um marcador em quadro: ao entrar no passo `step` (`0`-based), a animação grita `signal`.
@@ -89,11 +91,14 @@ impl InspectorAnimRow {
     /// cabem (a lei de `ph2d_ecs::tag_cells`: aparar tocaria outra animação); um intervalo, se o
     /// início cabe.
     #[must_use]
-    pub fn plays_on(&self, cells: u32) -> bool {
+    pub fn plays_on(&self, sheets: &[u32]) -> bool {
+        let cells_of = |k: u8| sheets.get(usize::from(k)).copied().unwrap_or(0);
         if self.frames.is_empty() {
-            self.fits(cells)
+            self.fits(cells_of(self.sheet))
         } else {
-            cells > 0 && self.frames.iter().all(|&c| c < cells)
+            self.frames
+                .iter()
+                .all(|f| f.is_empty() || f.cell < cells_of(f.sheet))
         }
     }
 
@@ -117,6 +122,8 @@ pub struct InspectorAnimInfo {
     pub player_present: bool,
     /// **Quantas células a grelha desta sprite tem** (`hframes × vframes`) — o pool.
     pub cells: u32,
+    /// Células de cada folha (`[0] == cells`; plano GEF 26).
+    pub sheets: Vec<u32>,
     /// O nome da animação a tocar. Vazio = nenhuma.
     pub current: String,
     pub playing: bool,
@@ -127,8 +134,8 @@ pub struct InspectorAnimInfo {
     pub direction_override_tag: u8,
     /// `0` = herdar · `1` = ligado · `2` = desligado.
     pub loop_override_tag: u8,
-    /// O frame que está no ecrã agora (`Sprite::frame`).
-    pub frame: u32,
+    /// O quadro que está no ecrã agora (`SpriteGrid::shown`).
+    pub frame: AnimFrameRef,
     /// Quantas entidades estão selecionadas.
     ///
     /// ⚠️ **A §11 NÃO se espalha sobre a seleção** (uma animação identifica-se pelo nome, e o
@@ -160,7 +167,7 @@ impl InspectorAnimInfo {
         }
         match self.current_index() {
             None => true,
-            Some(i) => !self.rows[i].plays_on(self.cells),
+            Some(i) => !self.rows[i].plays_on(&self.sheets),
         }
     }
 
@@ -194,7 +201,7 @@ impl InspectorAnimInfo {
     pub fn scrub_cell(&self, v: f32) -> Option<u32> {
         let row = self.rows.get(self.current_index()?)?;
         let seq = self.playing_cells(row)?;
-        Some(seq[self.scrub_step(v, seq.len())])
+        Some(seq[self.scrub_step(v, seq.len())].cell)
     }
 
     /// O passo (`0..n`) que a posição `v` da barra escolhe — a inversa de [`Self::scrub_position`].
@@ -213,16 +220,16 @@ impl InspectorAnimInfo {
         let seq = self.playing_cells(row)?;
         let step = self.scrub_step(v, seq.len());
         Some(if row.frames.is_empty() {
-            AnimFieldEdit::SetFrame(seq[step])
+            AnimFieldEdit::SetFrame(seq[step].cell)
         } else {
             AnimFieldEdit::SetStep(u32::try_from(step).ok()?)
         })
     }
 
     /// As células que `row` toca hoje, ou `None` se não toca (fora da grelha). Ver [`InspectorAnimRow::plays_on`].
-    fn playing_cells(&self, row: &InspectorAnimRow) -> Option<Vec<u32>> {
-        row.plays_on(self.cells)
-            .then(|| super::row_cells(row, self.cells))
+    fn playing_cells(&self, row: &InspectorAnimRow) -> Option<Vec<AnimFrameRef>> {
+        row.plays_on(&self.sheets)
+            .then(|| super::row_cells(row, &self.sheets))
             .filter(|s| !s.is_empty())
     }
 
@@ -232,8 +239,9 @@ impl InspectorAnimInfo {
         let seq = self.playing_cells(row)?;
         if row.frames.is_empty() {
             let lo = row.from.min(row.to);
-            return (self.frame >= lo && ((self.frame - lo) as usize) < seq.len())
-                .then(|| (self.frame - lo) as usize);
+            let f = self.frame;
+            return (f.sheet == row.sheet && f.cell >= lo && ((f.cell - lo) as usize) < seq.len())
+                .then(|| (f.cell - lo) as usize);
         }
         let step = self.card.step as usize;
         if seq.get(step) == Some(&self.frame) {
@@ -327,9 +335,11 @@ impl InspectorAnimInfo {
         // ainda não correu um tique). Saturar é honesto: a barra mostra o princípio (ou o fim).
         let step = match self.current_step(row) {
             Some(s) => u32::try_from(s).ok()?,
-            None if row.frames.is_empty() => {
-                self.frame.saturating_sub(row.from.min(row.to)).min(n - 1)
-            }
+            None if row.frames.is_empty() => self
+                .frame
+                .cell
+                .saturating_sub(row.from.min(row.to))
+                .min(n - 1),
             None => 0,
         };
         Some((step, n))
@@ -414,7 +424,7 @@ pub enum AnimFieldEdit {
 
     // ── O cartão «Animation» e o editor (plano GameEngineFuncional 07) ──────────────────────────
     /// A lista de quadros da animação `row`, na ordem tocada. Vazia = volta ao intervalo.
-    Frames(u8, Vec<u32>),
+    Frames(u8, Vec<AnimFrameRef>),
     /// O modo do ciclo (`AnimCycleMode::tag`) — `repeat` e `direction` num só passo de undo.
     CycleMode(u8, u8),
     /// Quem escolhe a animação (`AnimChooser::tag`).
@@ -467,6 +477,7 @@ mod tests {
             markers: Vec::new(),
             steps: 4,
             color: 0,
+            sheet: 0,
         }
     }
 
@@ -482,7 +493,8 @@ mod tests {
             speed: 1.0,
             direction_override_tag: 0,
             loop_override_tag: 0,
-            frame: 0,
+            frame: AnimFrameRef::cell(0),
+            sheets: vec![cells],
             selected_count: 1,
             card: crate::AnimCardInfo::default(),
         }
@@ -529,7 +541,7 @@ mod tests {
     fn the_scrub_position_and_the_cell_are_inverses() {
         let mut i = info(8, "walk"); // walk = 2..=5 sobre 8 celulas
         for cell in 2..=5u32 {
-            i.frame = cell;
+            i.frame = AnimFrameRef::cell(cell);
             let pos = i.scrub_position().expect("ha' barra");
             assert!(
                 (0.0..=1.0).contains(&pos),
@@ -543,13 +555,13 @@ mod tests {
         }
         // ⚠️ As DUAS PONTAS do curso alcancam as duas pontas do intervalo — e e' a metade que a
         // regua de PROGRESSO nao dava: com ela o minimo do widget ja' valia uma celula.
-        i.frame = 2;
+        i.frame = AnimFrameRef::cell(2);
         assert_eq!(
             i.scrub_position(),
             Some(0.0),
             "a primeira celula fica no ZERO do curso"
         );
-        i.frame = 5;
+        i.frame = AnimFrameRef::cell(5);
         assert_eq!(i.scrub_position(), Some(1.0), "e a ultima no fim");
         assert_eq!(i.scrub_cell(0.0), Some(2));
         assert_eq!(i.scrub_cell(1.0), Some(5));
@@ -567,14 +579,14 @@ mod tests {
     #[test]
     fn the_progress_bar_counts_steps_inside_the_range_and_saturates() {
         let mut i = info(8, "walk"); // walk = 2..=5, 4 passos
-        i.frame = 2;
+        i.frame = AnimFrameRef::cell(2);
         assert_eq!(i.progress(), Some((0, 4)));
-        i.frame = 4;
+        i.frame = AnimFrameRef::cell(4);
         assert_eq!(i.progress(), Some((2, 4)));
         // ⚠️ Fora do intervalo (a grelha mudou, ou a escolha é deste quadro): satura.
-        i.frame = 0;
+        i.frame = AnimFrameRef::cell(0);
         assert_eq!(i.progress(), Some((0, 4)));
-        i.frame = 99;
+        i.frame = AnimFrameRef::cell(99);
         assert_eq!(i.progress(), Some((3, 4)));
         // Sem animação, ou sem intervalo, não há barra.
         assert_eq!(info(8, "").progress(), None);
@@ -590,11 +602,11 @@ mod tests {
     fn the_duration_field_points_at_the_cell_the_bar_shows() {
         let mut i = info(8, "attack");
         i.rows = vec![row("attack", 4, 7)];
-        i.frame = 4;
+        i.frame = AnimFrameRef::cell(4);
         assert_eq!(i.this_frame_index(), Some(0), "o `from` e' o indice ZERO");
-        i.frame = 5;
+        i.frame = AnimFrameRef::cell(5);
         assert_eq!(i.this_frame_index(), Some(1));
-        i.frame = 7;
+        i.frame = AnimFrameRef::cell(7);
         assert_eq!(i.this_frame_index(), Some(3));
     }
 
@@ -605,10 +617,10 @@ mod tests {
     fn outside_the_range_there_is_no_cell_to_edit() {
         let mut i = info(8, "attack");
         i.rows = vec![row("attack", 4, 7)];
-        i.frame = 2;
+        i.frame = AnimFrameRef::cell(2);
         assert_eq!(i.this_frame_index(), None);
         assert_eq!(i.this_frame_ms(), None);
-        i.frame = 4;
+        i.frame = AnimFrameRef::cell(4);
         assert!(i.this_frame_index().is_some(), "e dentro dele ha'");
     }
 
@@ -621,11 +633,11 @@ mod tests {
         r.per_frame_ms = vec![0, 250];
         assert!(r.has_per_frame_timing(), "um valor > 0 conta");
         i.rows = vec![r];
-        i.frame = 4;
+        i.frame = AnimFrameRef::cell(4);
         assert_eq!(i.this_frame_ms(), Some(0), "declarado como herdar");
-        i.frame = 5;
+        i.frame = AnimFrameRef::cell(5);
         assert_eq!(i.this_frame_ms(), Some(250));
-        i.frame = 6;
+        i.frame = AnimFrameRef::cell(6);
         assert_eq!(i.this_frame_ms(), Some(0), "fora do vetor tambem herda");
     }
 
@@ -636,8 +648,13 @@ mod tests {
     #[test]
     fn a_frame_list_is_walked_by_step_not_by_cell() {
         let mut i = info(8, "walk");
-        i.rows[1].frames = vec![6, 2, 6, 7];
-        i.frame = 6;
+        i.rows[1].frames = vec![
+            AnimFrameRef::cell(6),
+            AnimFrameRef::cell(2),
+            AnimFrameRef::cell(6),
+            AnimFrameRef::cell(7),
+        ];
+        i.frame = AnimFrameRef::cell(6);
         i.card.step = 2;
         assert_eq!(i.progress(), Some((2, 4)), "o SEGUNDO 6, pelo cursor");
         assert_eq!(i.this_frame_index(), Some(2));
@@ -646,7 +663,7 @@ mod tests {
         assert_eq!(i.scrub_cell(1.0 / 3.0), Some(2));
         i.card.step = 9; // um cursor velho: a célula visível decide
         assert_eq!(i.this_frame_index(), Some(0));
-        i.rows[1].frames = vec![6, 9];
+        i.rows[1].frames = vec![AnimFrameRef::cell(6), AnimFrameRef::cell(9)];
         assert!(
             i.current_dangling(),
             "uma célula fora da grelha cala a lista inteira"
@@ -667,3 +684,7 @@ mod tests {
         assert!(!r.has_per_frame_timing());
     }
 }
+
+#[path = "inspector_model_anim_frame.rs"]
+mod frame;
+pub use frame::AnimFrameRef;

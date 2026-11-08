@@ -39,6 +39,7 @@ fn heroi(world: &mut World) -> Entity {
                 hframes: 8,
                 vframes: 4,
                 frame: 9,
+                sheet: 0,
             },
             tags,
             SpriteAnimator::new("run"),
@@ -128,7 +129,8 @@ fn a_folha_nova_do_heroi_mantem_as_animacoes_por_intervalo() {
         Some(SpriteGrid {
             hframes: 8,
             vframes: 4,
-            frame: 9
+            frame: 9,
+            sheet: 0,
         })
     );
     assert_eq!(w.get::<SpriteAnimator>(e).unwrap().current, "run");

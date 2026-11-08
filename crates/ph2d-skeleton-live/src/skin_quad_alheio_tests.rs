@@ -59,6 +59,7 @@ fn sonda_as_tres_formas() {
             hframes: 4,
             vframes: 1,
             frame: 1,
+            sheet: 0,
         },
         |_s, mut i| {
             i.atlas_uv = [0.25, 0.0, 0.5, 1.0];
@@ -241,6 +242,7 @@ fn a_malha_de_uma_folha_e_a_da_celula() {
             hframes: 4,
             vframes: 1,
             frame: 0,
+            sheet: 0,
         },
     );
     assert_eq!(
@@ -278,6 +280,7 @@ fn a_tinta_da_celula_cobre_todos_os_quadros() {
             hframes: 2,
             vframes: 1,
             frame: 0,
+            sheet: 0,
         },
     );
     let b = caixa_rest(&m.mesh);
@@ -297,6 +300,7 @@ fn a_tinta_da_celula_cobre_todos_os_quadros() {
             hframes: 2,
             vframes: 1,
             frame: 0,
+            sheet: 0,
         },
     );
     let b1 = caixa_rest(&so_um.mesh);

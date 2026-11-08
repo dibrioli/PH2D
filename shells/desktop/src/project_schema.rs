@@ -362,7 +362,13 @@
 ///
 /// `AnimationTag.color: u8` no FIM: o índice da paleta do editor, escolhido ao inserir. SEM leitura dos anteriores
 /// (§0.11). ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 223;
+///
+/// # `223 → 224` — **as várias folhas do Animated Sprite** (`line/GameEngineFuncional`, plano GEF 26)
+///
+/// `SpriteAnimFrames` guarda `FrameRef` (folha + célula, ou vazio) em vez de `u32`; `SpriteGrid.sheet: u8` e
+/// `AnimationTag.sheet: u8` no FIM; o componente `SpriteSheets` entra no registo (`118 → 119`). SEM leitura dos
+/// anteriores (§0.11). ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 224;
 
 /// O último degrau com a forma de colisão no próprio corpo.
 pub(crate) const PROJECT_SCHEMA_FORMA_NO_CORPO: u32 = 219;

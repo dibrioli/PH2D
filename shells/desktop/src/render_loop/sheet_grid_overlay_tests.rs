@@ -24,6 +24,7 @@ fn spr(hf: u32, vf: u32, live: u32) -> (Sprite, ph2d_ecs::SpriteGrid) {
             hframes: hf,
             vframes: vf,
             frame: live,
+            sheet: 0,
         },
     )
 }

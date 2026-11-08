@@ -90,16 +90,19 @@ pub fn build_card_info(world: &World, entity: Entity) -> AnimCardInfo {
             })
         })
         .unwrap_or_else(|| {
-            let lo = player
+            player
                 .and_then(|p| {
                     world
                         .get::<SpriteAnimations>(entity)?
                         .get(&p.current)
                         .cloned()
                 })
-                .and_then(|t| t.resolve(grid.cells().max(1)))
-                .map_or(0, |(lo, _)| lo);
-            grid.frame.saturating_sub(lo)
+                .and_then(|t| {
+                    let sheets = ph2d_ecs::sheet_cells_of(world, entity);
+                    let lo = t.resolve(ph2d_ecs::sheet_cells(&sheets, t.sheet))?.0;
+                    grid.shown().cell_on(t.sheet).map(|c| c.saturating_sub(lo))
+                })
+                .unwrap_or(grid.frame)
         });
     let starts_with = player
         .zip(world.get::<SpriteAnimations>(entity))
@@ -140,11 +143,15 @@ pub fn build_card_info(world: &World, entity: Entity) -> AnimCardInfo {
 
 /// A lista de quadros de cada linha da biblioteca (vazia = intervalo), na ordem da biblioteca.
 #[must_use]
-pub fn row_frames(world: &World, entity: Entity, name: &str) -> Vec<u32> {
+pub fn row_frames(
+    world: &World,
+    entity: Entity,
+    name: &str,
+) -> Vec<ph2d_editor_core::AnimFrameRef> {
     world
         .get::<SpriteAnimFrames>(entity)
         .and_then(|f| f.get(name))
-        .map(<[u32]>::to_vec)
+        .map(|l| l.iter().map(|f| crate::panel_frame::to_panel(*f)).collect())
         .unwrap_or_default()
 }
 
@@ -171,7 +178,13 @@ pub fn apply_card_edit(
                 .get::<SpriteAnimFrames>(entity)
                 .cloned()
                 .unwrap_or_default();
-            frames.set(&name, cells.clone());
+            frames.set(
+                &name,
+                cells
+                    .iter()
+                    .map(|f| crate::panel_frame::from_panel(*f))
+                    .collect(),
+            );
             if frames.is_empty() {
                 queue_remove(queue, registry, entity_bits, FRAMES);
                 queue_remove(queue, registry, entity_bits, CURSOR);
@@ -286,7 +299,7 @@ pub fn apply_card_edit(
             let list = world
                 .get::<SpriteAnimFrames>(entity)
                 .and_then(|f| f.get(&tag.name));
-            let seq = ph2d_ecs::tag_cells(&tag, list, grid.cells().max(1))?;
+            let seq = ph2d_ecs::tag_cells(&tag, list, &ph2d_ecs::sheet_cells_of(world, entity))?;
             let step = (*n).min(seq.len() as u32 - 1);
             p.playing = false;
             p.elapsed_ticks = 0;
@@ -301,8 +314,8 @@ pub fn apply_card_edit(
                 );
             }
             let cell = seq[step as usize];
-            if grid.frame != cell {
-                grid.frame = cell;
+            if grid.shown() != cell {
+                grid.show(cell);
                 queue_set(queue, registry, entity_bits, GRID, &grid);
             }
         }

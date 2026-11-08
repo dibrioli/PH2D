@@ -96,6 +96,7 @@ pub(crate) fn spawn_if_enabled(
         hframes: CELLS,
         vframes: 1,
         frame: 0,
+        sheet: 0,
     });
 
     let lib = demo_library()?;

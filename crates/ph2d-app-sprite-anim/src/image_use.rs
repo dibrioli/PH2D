@@ -164,6 +164,7 @@ pub(crate) fn show(world: &mut World, e: Entity, facts: ImageFacts, grid: [u32; 
         hframes: grid[0],
         vframes: grid[1],
         frame: 0,
+        sheet: 0,
     });
     crate::sprite_card::aviso_segue_a_grade(world, e);
 }
@@ -689,6 +690,7 @@ pub fn recut_users(world: &mut World, e: Entity) -> usize {
             hframes: g.hframes,
             vframes: g.vframes,
             frame: (*frame).min(n - 1),
+            sheet: 0,
         });
         crate::sprite_card::aviso_segue_a_grade(world, *o);
     }

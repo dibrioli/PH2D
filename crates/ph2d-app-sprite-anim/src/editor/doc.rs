@@ -7,7 +7,9 @@
 
 use ph2d_editor_core::interaction::field_scrub::FieldScrub;
 use ph2d_editor_core::zones::Rect;
-use ph2d_editor_core::{AnimCycleMode, AnimFieldEdit, InspectorAnimInfo, SheetImage, row_cells};
+use ph2d_editor_core::{
+    AnimCycleMode, AnimFieldEdit, AnimFrameRef, InspectorAnimInfo, SheetImage, row_cells,
+};
 use ph2d_host::Modifiers;
 use ph2d_sprite_sheet::GridGuess;
 use ph2d_tokens::ROW_H_PX;
@@ -29,6 +31,8 @@ pub struct EditorSnapshot {
     pub guess: Option<GridGuess>,
     pub hframes: u32,
     pub vframes: u32,
+    /// A folha que a aba mostra (`0` = a do `Sprite`; plano GEF 26): os cliques juntam quadros dela.
+    pub shown_sheet: u8,
 }
 
 /// Um campo de texto aberto.
@@ -48,7 +52,10 @@ enum Drag {
     #[default]
     None,
     /// Arrastar (ou clicar) na folha: as células juntam-se por ordem a `base`.
-    Cells { base: Vec<u32>, added: Vec<u32> },
+    Cells {
+        base: Vec<AnimFrameRef>,
+        added: Vec<AnimFrameRef>,
+    },
     /// Arrastar um quadro da faixa para outro intervalo (`gap`, `0..=n`); `at` é a mão.
     Frame {
         from: usize,
@@ -173,37 +180,38 @@ impl AnimDoc {
 
     /// Os quadros da animação aberta como estão autorados (sem o arrasto em curso).
     #[must_use]
-    pub fn authored_frames(&self) -> Vec<u32> {
+    pub fn authored_frames(&self) -> Vec<AnimFrameRef> {
         let Some(info) = &self.snap.info else {
             return Vec::new();
         };
         info.rows
             .get(self.selected)
-            .map(|r| row_cells(r, self.cells()))
+            .map(|r| row_cells(r, &info.sheets))
             .unwrap_or_default()
     }
 
     /// A base a que um clique na folha junta células. ⚠️ Uma animação SEM lista cujo intervalo é a
     /// folha inteira é a que o «+» acabou de criar (o default `0..=células-1`): ninguém a escolheu,
     /// então o primeiro clique começa uma lista nova em vez de juntar a célula a todas as outras.
-    fn click_base(&self) -> Vec<u32> {
-        let Some(row) = self
-            .snap
-            .info
-            .as_ref()
-            .and_then(|i| i.rows.get(self.selected))
-        else {
+    fn click_base(&self) -> Vec<AnimFrameRef> {
+        let Some(info) = self.snap.info.as_ref() else {
             return Vec::new();
         };
-        if row.frames.is_empty() && row.span(self.cells()) == self.cells() {
+        let Some(row) = info.rows.get(self.selected) else {
+            return Vec::new();
+        };
+        if row.frames.is_empty()
+            && row.sheet == self.snap.shown_sheet
+            && row.span(self.cells()) == self.cells()
+        {
             return Vec::new();
         }
-        row_cells(row, self.cells())
+        row_cells(row, &info.sheets)
     }
 
     /// Os quadros que a faixa mostra agora (com o arrasto na folha, ou a reordenação, em curso).
     #[must_use]
-    pub fn shown_frames(&self) -> Vec<u32> {
+    pub fn shown_frames(&self) -> Vec<AnimFrameRef> {
         match &self.drag {
             Drag::Cells { base, added } => base.iter().chain(added).copied().collect(),
             _ => self.authored_frames(),
@@ -355,7 +363,25 @@ impl AnimDoc {
 
     // ── Os gestos ──────────────────────────────────────────────────────────────────────────────
 
-    fn push_frames(&mut self, frames: Vec<u32>) {
+    /// A célula de `f`, se `f` é da folha que a aba mostra (a única cuja imagem a aba tem em mão).
+    #[must_use]
+    pub const fn shown_cell(&self, f: AnimFrameRef) -> Option<u32> {
+        if f.sheet == self.snap.shown_sheet {
+            Some(f.cell)
+        } else {
+            None
+        }
+    }
+
+    /// A célula `cell` da folha que a aba mostra.
+    const fn frame_of(&self, cell: u32) -> AnimFrameRef {
+        AnimFrameRef {
+            sheet: self.snap.shown_sheet,
+            cell,
+        }
+    }
+
+    fn push_frames(&mut self, frames: Vec<AnimFrameRef>) {
         if let Some(row) = self.row() {
             self.pending.push(AnimFieldEdit::Frames(row, frames));
         }
@@ -483,7 +509,7 @@ impl AnimDoc {
         {
             self.drag = Drag::Cells {
                 base: self.click_base(),
-                added: vec![cell],
+                added: vec![self.frame_of(cell)],
             };
         }
         true
@@ -506,7 +532,7 @@ impl AnimDoc {
             self.drag = Drag::Scrub(f, s, last);
             return true;
         }
-        let cell = self.cell_at(x, y);
+        let cell = self.cell_at(x, y).map(|c| self.frame_of(c));
         let slot = self.drop_gap(x);
         match &mut self.drag {
             Drag::Cells { added, .. } => {
@@ -627,7 +653,7 @@ impl AnimDoc {
 
 /// Mover o elemento `from` para a posição `to`.
 #[must_use]
-pub fn reorder(frames: &[u32], from: usize, to: usize) -> Vec<u32> {
+pub fn reorder<T: Clone>(frames: &[T], from: usize, to: usize) -> Vec<T> {
     let mut v = frames.to_vec();
     if from < v.len() {
         let c = v.remove(from);

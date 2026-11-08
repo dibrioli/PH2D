@@ -184,8 +184,8 @@ pub use registry::register_render_components;
 pub use renderer::SpriteRenderer;
 pub use screen_pick::{compose_screen_bytes, read_texel, screen_color, world_source};
 pub use sprite::{
-    GpuTexRun, OverrideLaw, QuadVertex, RenderInstance, SourceCells, Sprite, SpriteSource,
-    texture_of,
+    GpuTexRun, OverrideLaw, QuadVertex, RenderInstance, SheetTextures, SheetView, SourceCells,
+    Sprite, SpriteSource, resolve_sheet_textures, sheet_view, texture_of, upload_sheet_image,
 };
 pub use sprite_collect::sort_render_order;
 pub use sprite_mesh::{LiftedInstances, SpriteMesh};

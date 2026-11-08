@@ -26,18 +26,9 @@ pub(crate) fn paint_selected_editor(
     selected: usize,
 ) -> f32 {
     match selected_row(info, selected) {
-        Some(row) => range_and_timing_rows(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            y,
-            row,
-            info.cells,
-        ),
+        Some(row) => {
+            range_and_timing_rows(scene, text_system, theme, hit_index, store, x, w, y, row)
+        }
         None => y,
     }
 }
@@ -143,7 +134,6 @@ fn range_and_timing_rows(
     w: f32,
     y: f32,
     row: &ph2d_editor_core::screens::hero::InspectorAnimRow,
-    cells: u32,
 ) -> f32 {
     let seccao = seccao_da_animacao(text_system);
     let mut cur_y = super::anim::subtitle(
@@ -171,7 +161,7 @@ fn range_and_timing_rows(
         seccao,
     );
     if !row.frames.is_empty() {
-        let n = ph2d_editor_core::screens::hero::row_cells(row, cells).len();
+        let n = row.frames.len();
         cur_y = super::rows::aviso(
             scene,
             text_system,

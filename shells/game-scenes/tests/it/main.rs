@@ -35,4 +35,5 @@ mod sprite_starts_with;
 mod sprite_tick_sinais;
 mod sprite_tiled;
 mod sprite_transport;
+mod sprite_varias_folhas;
 mod sprite_vazio_e_marcador;

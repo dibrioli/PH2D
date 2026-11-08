@@ -34,6 +34,7 @@ fn scene(finish: &str, on_loop: &str, repeat: Option<u32>) -> (SimWorld, Entity)
                 hframes: 4,
                 vframes: 1,
                 frame: 0,
+                sheet: 0,
             },
             player,
             lib,

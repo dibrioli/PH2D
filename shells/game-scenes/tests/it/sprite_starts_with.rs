@@ -26,6 +26,7 @@ fn cena() -> (SimWorld, Entity) {
                 hframes: 8,
                 vframes: 1,
                 frame: 0,
+                sheet: 0,
             },
             lib,
             a,

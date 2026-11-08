@@ -186,7 +186,8 @@ pub enum Driven {
         elapsed_ticks: u64,
         pingpong_reverse: bool,
         repeat_count: u32,
-        frame: u32,
+        /// O quadro na tela: a folha e a célula (plano GEF 26), ou o vazio.
+        frame: ph2d_ecs::FrameRef,
     },
     /// A pose de um corpo rígido — ou de um objeto keyado.
     SolverPose(Transform),

@@ -311,6 +311,7 @@ fn um_bloco_gravado_antes_abre_com_o_mesmo_desenho() {
         hframes: PLATFORM_TILE.grid[0],
         vframes: PLATFORM_TILE.grid[1],
         frame: PLATFORM_TILE.middle_frame(),
+        sheet: 0,
     };
     sim.world_mut().entity_mut(bloco).insert(antiga);
     let grelha_da_bandeira = sim.world().get::<SpriteGrid>(bandeira).copied();
@@ -359,6 +360,7 @@ fn re_cortar_um_re_corta_todos_os_que_mostram_a_imagem() {
         hframes: 4,
         vframes: 2,
         frame: 0,
+        sheet: 0,
     };
     sim.world_mut().entity_mut(um).insert(quatro);
     assert_eq!(recut_users(sim.world_mut(), um), 1);

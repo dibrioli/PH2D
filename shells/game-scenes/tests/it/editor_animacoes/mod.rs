@@ -15,7 +15,7 @@ use ph2d_ecs::{Entity, SimWorld};
 use ph2d_editor_core::AnimCycleMode;
 use ph2d_editor_core::doc_surface::{DocumentSurface, Key, KeyInput, PointerInput};
 use ph2d_editor_core::zones::Rect;
-use ph2d_editor_core::{AnimFieldEdit, HeroScreen, ToastQueue};
+use ph2d_editor_core::{AnimFieldEdit, AnimFrameRef, HeroScreen, ToastQueue};
 use ph2d_host::Modifiers;
 use ph2d_host::{PointerButton, PointerKind};
 use ph2d_text::TextSystem;
@@ -64,6 +64,7 @@ impl Mesa {
                     hframes: 8,
                     vframes: 4,
                     frame: 0,
+                    sheet: 0,
                 },
                 lib,
                 SpriteAnimator::new("idle"),
@@ -183,8 +184,28 @@ impl Mesa {
             .world()
             .get::<SpriteAnimFrames>(Entity::from_bits(self.e))
             .and_then(|f| f.get(name))
-            .map(<[u32]>::to_vec)
+            .map(|f| {
+                f.iter()
+                    .map(|r| r.cell_on(0).expect("a célula vive na folha 0"))
+                    .collect()
+            })
     }
+}
+
+/// Os quadros da folha `0` com estas células.
+fn fr(cells: &[u32]) -> Vec<AnimFrameRef> {
+    cells.iter().copied().map(AnimFrameRef::cell).collect()
+}
+
+/// As células de uma lista de quadros da folha `0`.
+fn cells(frames: &[AnimFrameRef]) -> Vec<u32> {
+    frames
+        .iter()
+        .map(|f| {
+            assert_eq!(f.sheet, 0, "o quadro vive na folha 0");
+            f.cell
+        })
+        .collect()
 }
 
 fn centre(r: Rect) -> (f32, f32) {
@@ -226,12 +247,12 @@ fn clicar_uma_celula_junta_a_ao_fim_e_chega_a_cena() {
     m.click(at);
     assert_eq!(
         m.pending(),
-        [AnimFieldEdit::Frames(0, vec![0, 1, 2, 3, 4, 5, 20])],
+        [AnimFieldEdit::Frames(0, fr(&[0, 1, 2, 3, 4, 5, 20]))],
         "a idle (0..=5) ganha a célula 20 no fim"
     );
     m.frame();
     assert_eq!(m.world_frames("idle"), Some(vec![0, 1, 2, 3, 4, 5, 20]));
-    assert_eq!(m.doc().shown_frames(), [0, 1, 2, 3, 4, 5, 20]);
+    assert_eq!(cells(&m.doc().shown_frames()), [0, 1, 2, 3, 4, 5, 20]);
 }
 
 #[test]
@@ -245,7 +266,10 @@ fn arrastar_por_tres_celulas_junta_as_pela_ordem_do_arrasto() {
     m.pointer(PointerKind::Up, c);
     assert_eq!(
         m.pending(),
-        [AnimFieldEdit::Frames(0, vec![0, 1, 2, 3, 4, 5, 11, 10, 18])]
+        [AnimFieldEdit::Frames(
+            0,
+            fr(&[0, 1, 2, 3, 4, 5, 11, 10, 18])
+        )]
     );
 }
 
@@ -258,7 +282,7 @@ fn uma_animacao_acabada_de_criar_comeca_do_primeiro_clique() {
     assert_eq!(m.doc().selected, 2, "a nova fica escolhida");
     let at = m.cell(7);
     m.click(at);
-    assert_eq!(m.pending(), [AnimFieldEdit::Frames(2, vec![7])]);
+    assert_eq!(m.pending(), [AnimFieldEdit::Frames(2, fr(&[7]))]);
 }
 
 #[test]
@@ -266,7 +290,7 @@ fn arrastar_um_quadro_na_faixa_reordena() {
     let mut m = Mesa::new();
     m.doc()
         .pending
-        .push(AnimFieldEdit::Frames(0, vec![5, 2, 7]));
+        .push(AnimFieldEdit::Frames(0, fr(&[5, 2, 7])));
     m.frame();
     let l = m.doc().layout.clone();
     let from = centre(l.frames[0].0);
@@ -276,13 +300,13 @@ fn arrastar_um_quadro_na_faixa_reordena() {
     m.drag_to(to);
     m.paint();
     assert_eq!(
-        m.doc().shown_frames(),
+        cells(&m.doc().shown_frames()),
         [5, 2, 7],
         "a faixa fica como está; quem mostra o destino é o marcador"
     );
     assert_eq!(m.doc().painted.marker, Some(3));
     m.pointer(PointerKind::Up, to);
-    assert_eq!(m.pending(), [AnimFieldEdit::Frames(0, vec![2, 7, 5])]);
+    assert_eq!(m.pending(), [AnimFieldEdit::Frames(0, fr(&[2, 7, 5]))]);
     m.frame();
     assert_eq!(m.world_frames("idle"), Some(vec![2, 7, 5]));
 }
@@ -293,10 +317,13 @@ fn arrastar_um_quadro_na_faixa_reordena() {
 #[test]
 fn um_intervalo_como_o_do_ase_continua_editavel_no_editor() {
     let mut m = Mesa::new();
-    assert_eq!(m.doc().authored_frames(), [0, 1, 2, 3, 4, 5]);
+    assert_eq!(cells(&m.doc().authored_frames()), [0, 1, 2, 3, 4, 5]);
     let x = centre(m.doc().layout.frames[0].1);
     m.click(x);
-    assert_eq!(m.pending(), [AnimFieldEdit::Frames(0, vec![1, 2, 3, 4, 5])]);
+    assert_eq!(
+        m.pending(),
+        [AnimFieldEdit::Frames(0, fr(&[1, 2, 3, 4, 5]))]
+    );
     m.frame();
     assert_eq!(m.world_frames("idle"), Some(vec![1, 2, 3, 4, 5]));
     let at = m.cell(20);
@@ -313,18 +340,18 @@ fn clicar_um_quadro_mostra_o_e_o_x_e_o_delete_tiram_no() {
     let mut m = Mesa::new();
     m.doc()
         .pending
-        .push(AnimFieldEdit::Frames(0, vec![5, 2, 7]));
+        .push(AnimFieldEdit::Frames(0, fr(&[5, 2, 7])));
     m.frame();
     let t = centre(m.doc().layout.frames[1].0);
     m.click(t);
     assert_eq!(m.pending(), [AnimFieldEdit::SetStep(1)]);
     m.frame();
     m.key(Key::Delete, None);
-    assert_eq!(m.pending(), [AnimFieldEdit::Frames(0, vec![5, 7])]);
+    assert_eq!(m.pending(), [AnimFieldEdit::Frames(0, fr(&[5, 7]))]);
     m.frame();
     let x = centre(m.doc().layout.frames[0].1);
     m.click(x);
-    assert_eq!(m.pending(), [AnimFieldEdit::Frames(0, vec![7])]);
+    assert_eq!(m.pending(), [AnimFieldEdit::Frames(0, fr(&[7]))]);
     m.frame();
     let x = centre(m.doc().layout.frames[0].1);
     m.click(x);
@@ -483,6 +510,7 @@ fn respawna(m: &mut Mesa, tira: bool) -> Option<u64> {
                 hframes: 8,
                 vframes: 4,
                 frame: 0,
+                sheet: 0,
             },
             lib,
             SpriteAnimator::new("idle"),

@@ -61,6 +61,7 @@ pub(crate) fn anim(playing: bool, autoplay: bool) -> InspectorAnimInfo {
                 markers: Vec::new(),
                 steps: 4,
                 color: 0,
+                sheet: 0,
             },
             InspectorAnimRow {
                 name: "attack".into(),
@@ -78,6 +79,7 @@ pub(crate) fn anim(playing: bool, autoplay: bool) -> InspectorAnimInfo {
                 markers: Vec::new(),
                 steps: 4,
                 color: 0,
+                sheet: 0,
             },
         ],
         player_present: true,
@@ -90,7 +92,8 @@ pub(crate) fn anim(playing: bool, autoplay: bool) -> InspectorAnimInfo {
         speed: 2.5,
         direction_override_tag: 0,
         loop_override_tag: 0,
-        frame: 1,
+        frame: ph2d_editor_core::AnimFrameRef::cell(1),
+        sheets: vec![8],
         selected_count: 1,
         card: Default::default(),
     }
@@ -828,7 +831,7 @@ fn the_duration_field_edits_the_animation_the_bar_shows() {
     // que é exactamente a divergência do smoke.
     let mut info = anim(true, false);
     info.current = "attack".into();
-    info.frame = 5; // a 2.ª célula de `attack` (4..7)
+    info.frame = ph2d_editor_core::AnimFrameRef::cell(5); // a 2.ª célula de `attack` (4..7)
     assert_eq!(info.current_index(), Some(1));
     assert_eq!(
         info.this_frame_target(),

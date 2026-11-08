@@ -26,6 +26,7 @@ fn sprite(sim: &mut SimWorld, cells: u32) -> Entity {
                 hframes: cells,
                 vframes: 1,
                 frame: 0,
+                sheet: 0,
             },
         ))
         .id()
@@ -307,7 +308,7 @@ fn the_tick_writes_the_frame_and_only_when_it_changes() {
         &[],
         &mut ph2d_preview_drive::PreviewDrive::default(),
     );
-    assert_eq!(info(&sim, e).frame, 1);
+    assert_eq!(info(&sim, e).frame.cell, 1);
     crate::tick::tick_sprite_animations(
         &mut sim,
         6,
@@ -315,7 +316,7 @@ fn the_tick_writes_the_frame_and_only_when_it_changes() {
         &[],
         &mut ph2d_preview_drive::PreviewDrive::default(),
     );
-    assert_eq!(info(&sim, e).frame, 2);
+    assert_eq!(info(&sim, e).frame.cell, 2);
 
     // Pausado: o frame fica.
     edit(&mut sim, e, &reg, AnimFieldEdit::Playing(false));
@@ -326,7 +327,7 @@ fn the_tick_writes_the_frame_and_only_when_it_changes() {
         &[],
         &mut ph2d_preview_drive::PreviewDrive::default(),
     );
-    assert_eq!(info(&sim, e).frame, 2, "pausado nao anda");
+    assert_eq!(info(&sim, e).frame.cell, 2, "pausado nao anda");
 }
 
 /// **O `autoplay` arranca ao carregar o projeto, e mais em lado nenhum.**

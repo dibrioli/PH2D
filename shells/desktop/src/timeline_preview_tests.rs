@@ -236,6 +236,7 @@ fn the_frame_and_the_alpha_are_driven_side_by_side() {
                 hframes: 4,
                 vframes: 1,
                 frame: 0,
+                sheet: 0,
             },
             // ⚠️ **O animador faz parte da fixtura**, e o gate ensinou-o: o facto `SpriteAnim` é
             // lido do PAR (`SpriteAnimator` + `Sprite`), então uma sprite sem tocador não é
@@ -252,13 +253,13 @@ fn the_frame_and_the_alpha_are_driven_side_by_side() {
             elapsed_ticks: 0,
             pingpong_reverse: false,
             repeat_count: 0,
-            frame: 0,
+            frame: ph2d_ecs::FrameRef::cell(0),
         },
         Driven::SpriteAnim {
             elapsed_ticks: 100,
             pingpong_reverse: false,
             repeat_count: 0,
-            frame: 2,
+            frame: ph2d_ecs::FrameRef::cell(2),
         },
     );
     drive.driven(e, Driven::SpriteAlpha(1.0), Driven::SpriteAlpha(0.4));

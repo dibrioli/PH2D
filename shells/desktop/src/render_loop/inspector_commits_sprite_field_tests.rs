@@ -144,6 +144,7 @@ fn clamp_frame_is_idempotent_in_range() {
         hframes: 3,
         vframes: 3,
         frame: 4,
+        sheet: 0,
     };
     clamp_frame(&mut g);
     assert_eq!(g.frame, 4);

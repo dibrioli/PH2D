@@ -17,6 +17,8 @@
 mod component;
 mod image_of;
 mod instance;
+/// As folhas extra do Animated Sprite no ecrã (plano GEF 26).
+mod sheets;
 /// ⭐ **ONDE a sprite lê os pixels** — a célula da folha como RECTÂNGULO (o irmão devolve a UV;
 /// este devolve os pixels), com o terceiro leitor: quem prende a imagem ao esqueleto.
 mod source_cells;
@@ -31,6 +33,9 @@ mod tests;
 pub use component::{Sprite, SpriteSource};
 pub use image_of::{OverrideLaw, texture_of};
 pub use instance::{GpuTexRun, RenderInstance};
+pub use sheets::{
+    SheetTextures, SheetView, resolve_sheet_textures, sheet_view, upload_sheet_image,
+};
 pub use source_cells::SourceCells;
 pub use subrect::{region_subrect, sprite_sheet_subrect};
 pub use vertex::QuadVertex;

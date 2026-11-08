@@ -40,6 +40,23 @@ impl FrameRef {
         Self::Cell { sheet: 0, cell }
     }
 
+    /// As células `cells` da folha `sheet`, por ordem.
+    pub fn run(sheet: u8, cells: impl IntoIterator<Item = u32>) -> Vec<Self> {
+        cells
+            .into_iter()
+            .map(|cell| Self::Cell { sheet, cell })
+            .collect()
+    }
+
+    /// A célula, se é da folha `sheet`.
+    #[must_use]
+    pub fn cell_on(self, sheet: u8) -> Option<u32> {
+        match self {
+            Self::Cell { sheet: s, cell } if s == sheet => Some(cell),
+            _ => None,
+        }
+    }
+
     /// Cabe nas folhas de hoje? `sheets[k]` = células da folha `k`. O vazio cabe sempre.
     #[must_use]
     pub fn fits(self, sheets: &[u32]) -> bool {

@@ -61,9 +61,11 @@ pub fn tick_sprite_animations(
         Option<&ph2d_ecs::SpriteAnimFrames>,
         Option<&mut ph2d_ecs::SpriteAnimCursor>,
         Option<&ph2d_ecs::SpriteAnimMarkers>,
+        Option<&ph2d_ecs::SpriteSheets>,
     )>();
     let mut gritos = Vec::new();
-    for (entity, mut animator, tags, mut grid, lists, cursor, markers) in q.iter_mut(world) {
+    for (entity, mut animator, tags, mut grid, lists, cursor, markers, sheets) in q.iter_mut(world)
+    {
         // Uma folha em pintura toca mesmo com o transporte parado (Enio 23/08, «o preview não está
         // animado»), sem ligar o `playing`. A pausa do enabler vem antes, sem excepção.
         let painted = is_tool_previewed(tool_preview_bits, entity);
@@ -84,9 +86,9 @@ pub fn tick_sprite_animations(
             run.playing = true;
             run.loop_override = Some(true);
         }
-        // O pool é a grelha lida agora: mudar `hframes` encolhe o intervalo no mesmo quadro.
-        let cells = grid.cells().max(1);
-        let mut frame = grid.frame;
+        // O pool são as folhas lidas agora: mudar `hframes` encolhe o intervalo no mesmo quadro.
+        let cells = ph2d_ecs::cells_per_sheet(Some(&grid), sheets);
+        let mut frame = grid.shown();
         // O que o artista tem no documento, ANTES de este tique lhe tocar (`crate::preview_drive`).
         let before = ph2d_preview_drive::Driven::SpriteAnim {
             elapsed_ticks: animator.elapsed_ticks,
@@ -104,7 +106,7 @@ pub fn tick_sprite_animations(
             list,
             &mut frame,
             &mut step,
-            cells,
+            &cells,
             dt * u64::from(ticks),
             markers.filter(|_| !preview_only),
             &mut gritos,
@@ -122,8 +124,8 @@ pub fn tick_sprite_animations(
             *animator = run;
         }
         // Escreve só quando MUDA: o `bevy` marca a mudança no `deref_mut` e o undo regista por diff.
-        if grid.frame != frame {
-            grid.frame = frame;
+        if grid.shown() != frame {
+            grid.show(frame);
         }
         // A declaração lê o que ficou escrito (no `preview_only`, `run` mentiria sobre o animador).
         let after = ph2d_preview_drive::Driven::SpriteAnim {
@@ -212,14 +214,12 @@ fn vai_para_o_inicio(world: &mut ph2d_ecs::World, e: ph2d_ecs::Entity, nome: &st
     let list = world
         .get::<ph2d_ecs::SpriteAnimFrames>(e)
         .and_then(|f| f.get(nome))
-        .map(<[u32]>::to_vec);
-    let cells = world
-        .get::<ph2d_ecs::SpriteGrid>(e)
-        .map_or(1, |g| g.cells().max(1));
-    let entrada = ph2d_ecs::entry_cell(&a, &tag, list.as_deref(), cells);
+        .map(<[ph2d_ecs::FrameRef]>::to_vec);
+    let cells = ph2d_ecs::sheet_cells_of(world, e);
+    let entrada = ph2d_ecs::entry_cell(&a, &tag, list.as_deref(), &cells);
     if let Some((frame, step)) = entrada {
         if let Some(mut g) = world.get_mut::<ph2d_ecs::SpriteGrid>(e) {
-            g.frame = frame;
+            g.show(frame);
         }
         if let Some(mut c) = world.get_mut::<ph2d_ecs::SpriteAnimCursor>(e) {
             c.step = step;

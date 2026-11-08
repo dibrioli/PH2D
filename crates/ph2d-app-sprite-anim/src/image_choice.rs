@@ -63,6 +63,7 @@ pub fn choose_image(
             hframes: s.grid[0].max(1),
             vframes: s.grid[1].max(1),
             frame: old_grid.map_or(0, |g| g.frame),
+            sheet: 0,
         }),
         (None, true, Some(g)) => Some(g),
         _ => None,

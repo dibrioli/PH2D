@@ -31,14 +31,17 @@ pub(crate) fn paint_preview(
         return y;
     };
     let h = ROW_H * PREVIEW_ROWS;
-    paint_sheet_cell(
-        scene,
-        sheet,
-        info.card.hframes,
-        info.card.vframes,
-        info.frame,
-        Rect::new(x, y, w, h),
-    );
+    // A imagem em mão é a da folha 0; as outras folhas pintam-se pela sua (plano GEF 26 V3).
+    if info.frame.sheet == 0 {
+        paint_sheet_cell(
+            scene,
+            sheet,
+            info.card.hframes,
+            info.card.vframes,
+            info.frame.cell,
+            Rect::new(x, y, w, h),
+        );
+    }
     y + h + ph2d_tokens::control_gap_px()
 }
 
@@ -83,11 +86,11 @@ pub(crate) fn paint_list(
         .rows
         .iter()
         .map(|row| {
-            let plays = row.plays_on(info.cells);
+            let plays = row.plays_on(&info.sheets);
             let texto = if plays {
                 tr_with(
                     "panel.inspector.anim_card.frames",
-                    &[("n", &row_cells(row, info.cells).len())],
+                    &[("n", &row_cells(row, &info.sheets).len())],
                 )
             } else {
                 tr("panel.inspector.animation.out_of_grid").to_owned()
@@ -130,18 +133,18 @@ pub(crate) fn paint_list(
             },
             0.0,
         );
-        let cells = row_cells(row, info.cells);
+        let cells = row_cells(row, &info.sheets);
         let mut text_x = x + Spacing::Sm.px();
         if let Some(sheet) = info.card.sheet.as_ref() {
             // A miniatura é um quadrado do lado da linha; o texto anda na HORIZONTAL, não é um passo.
             let thumb = Rect::new(x, cur_y, ROW_H, ROW_H);
-            if let Some(&first) = cells.first() {
+            if let Some(first) = cells.first().filter(|f| f.sheet == 0) {
                 paint_sheet_cell(
                     scene,
                     sheet,
                     info.card.hframes,
                     info.card.vframes,
-                    first,
+                    first.cell,
                     thumb,
                 );
             }

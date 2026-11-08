@@ -2,7 +2,7 @@
 //! §4): cada célula sabe quem a usa, a animação aberta primeiro. Até [`BANDS_MAX`] faixas, o resto vira «+N».
 
 use super::doc::AnimDoc;
-use ph2d_editor_core::row_cells;
+use ph2d_editor_core::{AnimFrameRef, row_cells};
 use ph2d_tokens::ColorToken;
 
 /// Quantas faixas empilhadas uma célula mostra antes do «+N».
@@ -41,9 +41,11 @@ impl AnimDoc {
         let cells = self.snap.hframes.max(1) * self.snap.vframes.max(1);
         let mut users = vec![Vec::new(); cells as usize];
         let rows = self.snap.info.as_ref().map_or(&[][..], |i| &i.rows);
-        let mut mark = |i: usize, frames: &[u32]| {
-            for c in frames {
-                if let Some(u) = users.get_mut(*c as usize)
+        let sheets = self.snap.info.as_ref().map_or(&[][..], |i| &i.sheets[..]);
+        let shown = self.snap.shown_sheet;
+        let mut mark = |i: usize, frames: &[AnimFrameRef]| {
+            for c in frames.iter().filter(|f| f.sheet == shown) {
+                if let Some(u) = users.get_mut(c.cell as usize)
                     && !u.contains(&i)
                 {
                     u.push(i);
@@ -55,7 +57,7 @@ impl AnimDoc {
         }
         for (i, r) in rows.iter().enumerate() {
             if i != self.selected {
-                mark(i, &row_cells(r, cells));
+                mark(i, &row_cells(r, sheets));
             }
         }
         users

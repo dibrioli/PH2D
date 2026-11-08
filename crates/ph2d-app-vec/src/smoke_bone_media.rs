@@ -285,6 +285,7 @@ fn formas(
                 hframes: QUADROS,
                 vframes: 1,
                 frame: QUADRO_VIVO,
+                sheet: 0,
             });
             // ⚠️ **O quad é o de UMA célula** — a `spawn_rgba` mede-o pela imagem inteira, que numa
             // folha é a grelha toda.

@@ -116,6 +116,7 @@ pub fn veste_o_heroi(world: &mut ph2d_ecs::World, e: ph2d_ecs::Entity) -> Result
             hframes: HERO_SHEET_COLS,
             vframes: HERO_SHEET_ROWS,
             frame: 0,
+            sheet: 0,
         },
         tags,
         animator,

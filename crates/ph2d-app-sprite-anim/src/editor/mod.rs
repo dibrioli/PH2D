@@ -10,7 +10,7 @@ pub mod layout;
 mod marks;
 pub mod paint;
 pub mod paint_sheet;
-pub mod split;
+pub use ph2d_anim_sheets::split;
 
 use std::collections::BTreeMap;
 
@@ -263,6 +263,7 @@ pub fn snapshot(sim: &SimWorld, bits: u64) -> EditorSnapshot {
         guess: entry.and_then(|e| e.guess),
         hframes: grid.hframes,
         vframes: grid.vframes,
+        shown_sheet: 0,
     }
 }
 

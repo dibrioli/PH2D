@@ -102,6 +102,7 @@ pub const PORTAS: &[(&str, Porta)] = &[
     ("ph2d::ecs::SpriteRegion", Gravado),
     ("ph2d::ecs::SpriteSheetFrame", Gravado),
     ("ph2d::ecs::SpriteSheetRef", Recusado(DO_PROJECTO)),
+    ("ph2d::ecs::SpriteSheets", Gravado),
     ("ph2d::ecs::StateMachine", Gravado),
     ("ph2d::ecs::Tags", Recusado(DO_PROJECTO)),
     ("ph2d::ecs::TextureFilter", Gravado),

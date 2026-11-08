@@ -6,6 +6,7 @@ pub mod editor;
 pub mod image_choice;
 pub mod image_use;
 pub mod inspector;
+pub use ph2d_anim_sheets::panel_frame;
 pub mod previa;
 pub mod region;
 pub mod sheet;

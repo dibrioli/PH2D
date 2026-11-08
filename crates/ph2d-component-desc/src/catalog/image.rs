@@ -308,6 +308,12 @@ pub const DESCS: &[D] = &[
         "component.sprite_sheet_ref.name",
         C::Image,
     ),
+    // As folhas extra do Animated Sprite (plano GEF 26): o cartão Image escreve-as (Load sheet / Delete sheet).
+    D::machinery(
+        "ph2d::ecs::SpriteSheets",
+        "component.sprite_sheets.name",
+        C::Animation,
+    ),
     // ⚠️ O MARCADOR de ObjectKind::Image. Sem `Default` ⇒ sem `insert_default` ⇒ a paleta
     // não a oferece; ela chega pelo gesto que cria a imagem. **Tem seção**, e das maiores —
     // é o caso que a variante `Intrinsic` existe para exprimir.

@@ -75,6 +75,7 @@ fn the_source_px_is_the_cell_not_the_whole_sheet() {
         hframes: 4,
         vframes: 2,
         frame: 0,
+        sheet: 0,
     };
     assert_eq!(
         sub_rect_source_px(SliceSource {

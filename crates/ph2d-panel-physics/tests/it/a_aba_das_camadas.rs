@@ -617,3 +617,25 @@ fn o_losango_da_matriz_mora_na_aba() {
     aba::fecha();
     assert!(tem, "a matriz perdeu a marca de animação na aba");
 }
+
+/// ⭐ O Auto Key da caixinha «Bumps into» grava como a célula (onda 9d): o Auto Key lê só o pedido
+/// `SetSettings(autorado, toque)`, e a caixinha da camada 2 na camada 1 aberta pede o MESMO que a
+/// célula (1, 2) — os mesmos campos tocados, o mesmo valor. Mutação: a caixinha alternar (b, a)
+/// com outro toque, ou não pedir nada, reprova aqui.
+#[test]
+fn a_caixinha_bumps_into_pede_o_mesmo_que_a_celula_e_o_auto_key_grava_igual() {
+    let mut mesa = Mesa::nova(nomes_b(), false);
+    aba::abre(Some(1));
+    aba::poe_area_fixa(AREA);
+    mesa.pinta();
+    let caixinha = mesa.clica(ids::PHYSICS_LAYER_BUMPS[2]);
+    let mut mesa = Mesa::nova(nomes_b(), false);
+    abre(&mut mesa);
+    let pela_celula = mesa.clica(celula(1, 2));
+    aba::fecha();
+    assert!(!caixinha.is_empty(), "a caixinha não pediu nada");
+    assert_eq!(
+        caixinha, pela_celula,
+        "a caixinha e a célula pedem coisas diferentes"
+    );
+}

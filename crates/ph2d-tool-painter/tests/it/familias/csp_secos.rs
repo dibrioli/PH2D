@@ -110,7 +110,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
     // 30/20/10 lido como frações de 360/100/100 (matiz 0,04 — a 0,17 a folha de 08/11 virou arco-íris).
     ReceitaMeio {
         pincel: &[
-            ("hardness", "0.9"),
+            ("hardness", "0.5"),
             ("borda_px", "1.0"),
             ("spacing", "0.1"),
             ("continuous_spacing", "false"),

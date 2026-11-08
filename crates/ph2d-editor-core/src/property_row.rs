@@ -36,7 +36,7 @@ pub mod inativa;
 use crate::zones::Rect;
 pub use botao::{abaixo_do_botao, caixa_do_botao};
 mod casas;
-pub use casas::paint_fields_row_com_casas;
+pub use casas::{paint_fields_row_com_casas, paint_fields_row_com_fim};
 pub use escolha::{paint_choice_row, paint_icon_choice_row};
 /// ⭐ As linhas de MARCAR — ver [`marca`].
 mod marca;
@@ -249,6 +249,7 @@ fn paint_fields_row_inner(
     unit: Option<Unit>,
     casas: Option<usize>,
     seccao: Seccao,
+    fim_w: f32,
 ) -> (f32, Option<Rect>) {
     let (row, por_linha, linhas, cw) = row_and_layout(
         text_system,
@@ -265,10 +266,12 @@ fn paint_fields_row_inner(
     let passo = ph2d_tokens::row_pitch_px();
     let mut primeiro = None;
     for (i, &id) in field_ids.iter().enumerate() {
+        // `fim_w` sai só do fim da última caixa: as colunas são as da linha inteira.
+        let ultima = i + 1 == field_ids.len();
         let rect = Rect::new(
             row.control.x + (cw + gap) * (i % por_linha) as f32,
             row.control.y + passo * (i / por_linha) as f32,
-            cw,
+            if ultima { (cw - fim_w).max(0.0) } else { cw },
             ROW_H_PX,
         );
         hit_index.register(id, rect);
@@ -353,6 +356,7 @@ pub fn paint_fields_row<'a>(
         unit,
         None,
         seccao,
+        0.0,
     )
     .0
 }
@@ -399,6 +403,7 @@ pub fn paint_field_row<'a>(
         unit,
         None,
         seccao,
+        0.0,
     );
     (
         next_y,

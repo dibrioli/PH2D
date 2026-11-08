@@ -154,7 +154,6 @@ pub(super) fn layers_section(
     };
     // A matriz inteira mora no modal (onda 8); aqui, o resumo e a porta dele, como nos cartões.
     let _ = snapshot;
-    let y = super::paint_hint_text(ctx, theme, &crate::aba::resumo(), x, w, y);
     let y = command(
         ctx,
         theme,
@@ -165,6 +164,7 @@ pub(super) fn layers_section(
         y,
     );
     crate::aba::declara_a_porta();
+    let y = super::paint_hint_text(ctx, theme, &crate::aba::resumo(), x, w, y);
     end_fold(ctx, fold, y + Spacing::Md.px())
 }
 

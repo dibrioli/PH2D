@@ -333,7 +333,6 @@ fn cartao_das_camadas(_snap: PhysicsSnapshot) -> CardDef<'static> {
         "panel.physics.section.layers",
         Some(resumo.clone()),
         move |c, y| {
-            let y = c.hint(&resumo, y);
             let y = c.full(
                 None,
                 Widget::Button {
@@ -344,7 +343,7 @@ fn cartao_das_camadas(_snap: PhysicsSnapshot) -> CardDef<'static> {
                 y,
             );
             crate::aba::declara_a_porta();
-            y
+            c.hint(&resumo, y)
         },
     )
 }

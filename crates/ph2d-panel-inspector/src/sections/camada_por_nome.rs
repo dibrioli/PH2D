@@ -73,16 +73,14 @@ pub(super) fn linha_classica(
     linha.fim(ph2d_tokens::row_pitch_px())
 }
 
-/// Quanto da linha do Ray Sensor o nome da camada leva à direita: o nome mais um respiro, no máximo 2/5.
+/// Quanto do controlo do Ray Sensor (`controlo_w`) o nome da camada leva à direita: o nome mais um
+/// respiro, sem deixar a caixa do número abaixo do piso dela.
 #[must_use]
-pub(super) fn largura_do_nome(text_system: &mut TextSystem, w: f32, camada: usize) -> f32 {
+pub(super) fn largura_do_nome(text_system: &mut TextSystem, controlo_w: f32, camada: usize) -> f32 {
     let texto = camadas::rotulo(camada);
     let pede = text_system.prefix_width(&texto, TypeToken::Sm.px()).ceil() + Spacing::Sm.px() * 2.0;
-    pede.min(w * NOME_NO_MAXIMO)
+    pede.min((controlo_w - ph2d_editor_core::widget::NUMBER_INPUT_MIN_W_PX).max(0.0))
 }
-
-/// A fração da linha que o nome pode levar (o campo de número fica com o resto).
-const NOME_NO_MAXIMO: f32 = 0.4; // LITERAL-PX-OK: fração da linha, não medida de desenho
 
 /// O nome da camada do Ray Sensor em `caixa`, no contorno da cor da camada (o mesmo idioma do seletor Layer).
 /// O contorno regista-se pelo id do campo (`INSP_RAY_LAYER`): é a caixa do NOME dele.

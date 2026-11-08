@@ -185,11 +185,6 @@ fn corpo(
     // sozinho, no próprio rótulo («Layer · Default»); na face clássica, ao lado do número no contorno da cor.
     let cartao = crate::cards::active();
     let camada = i.layer as usize;
-    let nome_w = if cartao {
-        0.0
-    } else {
-        super::camada_por_nome::largura_do_nome(text_system, w, camada) + Spacing::Xs.px()
-    };
     let rotulo_com_nome = tr_with(
         "panel.inspector.ray.layer_named",
         &[("name", &crate::camadas_fisica::rotulo(camada))],
@@ -204,33 +199,44 @@ fn corpo(
     };
     // A letra da caixa continua a de «Layer» (a regra da última palavra daria a do nome).
     rotulo.eixos = ph2d_editor_core::widget::key_mark::Eixos::Letra(tr("card.glyph.l"));
-    let linha_y = cur_y;
-    cur_y = super::rows::fields_row(
-        scene,
-        text_system,
-        theme,
-        hit_index,
-        store,
-        x,
-        w - nome_w,
-        cur_y,
-        rotulo,
-        &[crate::ids::INSP_RAY_LAYER],
-        1.0, // LITERAL-PX-OK: passo de um índice
-        None,
-        seccao,
-    );
-    if !cartao {
-        let r = hit_index.rect_for(crate::ids::INSP_RAY_LAYER);
-        let (cy, ch) = r.map_or((linha_y, ph2d_tokens::ROW_H_PX), |r| (r.y, r.h));
-        let caixa_w = nome_w - Spacing::Xs.px();
-        super::camada_por_nome::nome_do_raio(
+    let passo = 1.0; // LITERAL-PX-OK: passo de um índice
+    if cartao {
+        cur_y = super::rows::fields_row(
             scene,
             text_system,
             theme,
-            Rect::new(x + w - caixa_w, cy, caixa_w, ch),
-            camada,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            rotulo,
+            &[crate::ids::INSP_RAY_LAYER],
+            passo,
+            None,
+            seccao,
         );
+    } else {
+        // O valor arranca na coluna da secção; o nome sai só do fim da caixa.
+        let controlo_w = ph2d_editor_core::property_row::caixa_do_controlo(x, w, cur_y, seccao).w;
+        let gap = Spacing::Xs.px();
+        let nome_w = super::camada_por_nome::largura_do_nome(text_system, controlo_w, camada) + gap;
+        let (y, fim) = ph2d_editor_core::property_row::paint_fields_row_com_fim(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            (x, w, cur_y),
+            rotulo,
+            crate::ids::INSP_RAY_LAYER,
+            passo,
+            seccao,
+            nome_w,
+        );
+        cur_y = y;
+        let caixa = Rect::new(fim.x + gap, fim.y, (fim.w - gap).max(0.0), fim.h);
+        super::camada_por_nome::nome_do_raio(scene, text_system, theme, caixa, camada);
     }
     // ⚠️ **Os dois NOMES, e vazio = calado** — a regra do `SignalOnHit`, palavra por palavra.
     //

@@ -218,6 +218,9 @@ impl Drop for SemFisica {
 #[test]
 fn an_undo_that_takes_a_card_away_closes_it_on_the_spring_and_the_redo_opens_it() {
     use ph2d_editor_core::ids::INSP_LIVE_PHYSICS_SECTION as FISICA;
+    use ph2d_panel_inspector::ids::{CARD_PHYS_LAYERS, CARD_PHYS_SHAPE};
+    // O componente Physics tem três cartões: o desfazer tira os três.
+    const DA_FISICA: [NodeId; 3] = [FISICA, CARD_PHYS_SHAPE, CARD_PHYS_LAYERS];
     let _limpa = SemFisica;
     // Só com o que cabe: com a lista a transbordar, a altura dela é a da janela e não mede a mola.
     let mut m = Mesa::nova();
@@ -241,7 +244,9 @@ fn an_undo_that_takes_a_card_away_closes_it_on_the_spring_and_the_redo_opens_it(
     depois_com(&mut m, &antes);
     publica_a_fisica(&m, false);
     m.quadro();
-    assert_eq!(entra_sai::saindo(INSP_PANEL), [FISICA], "só a física sai");
+    let mut saindo = entra_sai::saindo(INSP_PANEL).to_vec();
+    saindo.sort_by_key(|k| DA_FISICA.iter().position(|d| d == k));
+    assert_eq!(saindo, DA_FISICA, "só os cartões da física saem");
     let um = lista(&mut m, &[]);
     assert_eq!(um.rolagem, cheia.rolagem, "a rolagem saltou");
     let mut ultima = altura(&um);
@@ -260,7 +265,7 @@ fn an_undo_that_takes_a_card_away_closes_it_on_the_spring_and_the_redo_opens_it(
     let vazia = lista(&mut m, &[]);
     assert!(entra_sai::saindo(INSP_PANEL).is_empty(), "ficou a sair");
     assert!(
-        !vazia.cartoes.iter().any(|(k, _)| *k == FISICA),
+        !vazia.cartoes.iter().any(|(k, _)| DA_FISICA.contains(k)),
         "não saiu: {vazia:?}"
     );
     assert!(
@@ -280,7 +285,7 @@ fn an_undo_that_takes_a_card_away_closes_it_on_the_spring_and_the_redo_opens_it(
         l.cartoes
             .iter()
             .map(|(k, _)| *k)
-            .filter(|k| *k != FISICA)
+            .filter(|k| !DA_FISICA.contains(k))
             .collect()
     };
     assert_eq!(outros(&vazia), outros(&cheia), "outro cartão saiu com ela");

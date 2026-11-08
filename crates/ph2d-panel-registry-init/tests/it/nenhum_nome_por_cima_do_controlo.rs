@@ -173,8 +173,8 @@ const FORA: &[(&str, &str, &str)] = &[
     ),
     (
         "physics",
-        "physics.layer_0_0",
-        "a matriz de camadas da Física: cada célula liga e desliga sozinha, como a grelha de bits",
+        "physics.matrix.open",
+        "a porta é a face da matriz, um valor só, não uma escolha um-entre-N",
     ),
     (
         "widget_gallery",

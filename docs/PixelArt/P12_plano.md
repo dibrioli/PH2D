@@ -148,6 +148,7 @@ Respondidas pelo dono em 08/11: **«faça conforme sugere»**, as seis recomenda
 6. **Grade, xadrez, onion: em cada documento + «Set as Defaults» para os novos**, como o Aseprite.
 7. **Sem conflito com o resto do app.** Lei: uma tecla do Pixel nunca pode ser uma tecla GLOBAL do app (as que valem em qualquer aba) salvo as passagens declaradas (o Pixel deixa-a ao app: `G`, `F2`, `Ctrl+K`…). Prova por nome: censo das teclas globais × tabela do Pixel (fábrica **e** a do utilizador: a janela recusa atribuir uma tecla global, dizendo de quem é).
 8. **Smoke 1 do dono (08/11), trocar um atalho num passo só:** «clicar no atalho, o próprio campo é limpo e aguarda o novo atalho; não precisa do `+` nem de 2 etapas». Revoga o `Add` + `Confirm` do Aseprite (O5). Defeitos do mesmo smoke: `Don't Save` ao fechar trava o app · UNDO HISTORY não estreita · janelas novas sem `X` e fora do menu Window · a tecla capturada aparece uma atrasada.
+9. **Dono 08/11, depois do smoke 1:** a pergunta «Save changes before closing?» em todo o app está **aprovada** · o `G` continua a ser a grade do app «por enquanto»; a grade do documento é `Ctrl+'` · o `Restore` também trava o app (mesma família do `Don't Save`, curados juntos).
 
 ## 10. Rodada 2 de medição
 

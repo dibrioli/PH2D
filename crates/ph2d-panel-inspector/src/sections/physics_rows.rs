@@ -390,29 +390,21 @@ pub(super) fn paint_collision_rows(
         yy,
         layer,
     );
-    for (label, group, opts, labels, sel) in [(
+    yy = seg_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
         TextKey::new("component.field.collider.5"),
         ids::INSP_LIVE_PHYSICS_SENSOR,
         &ids::INSP_PHYS_SENSOR[..],
         &SENSOR_LABELS.map(TextKey::tr),
         u8::from(is_sensor),
-    )] {
-        yy = seg_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            yy,
-            label,
-            group,
-            opts,
-            labels,
-            sel,
-        );
-    }
+    );
     if !is_sensor {
         // A SOLID collider: which side is it solid from?
         yy = seg_row(

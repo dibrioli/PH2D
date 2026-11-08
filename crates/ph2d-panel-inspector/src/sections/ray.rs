@@ -166,28 +166,21 @@ fn corpo(
             seccao,
         );
     }
-    for (label, id, step, unidade) in [(
+    cur_y = super::rows::fields_row(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        cur_y,
         TextKey::new("component.field.ray_sensor.2"),
-        crate::ids::INSP_RAY_REACH,
+        &[crate::ids::INSP_RAY_REACH],
         0.1, // LITERAL-PX-OK: passo de arrasto em METROS
         Some(ph2d_editor_core::widget::Unit::Meters),
-    )] {
-        cur_y = super::rows::fields_row(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            x,
-            w,
-            cur_y,
-            label,
-            &[id],
-            step,
-            unidade,
-            seccao,
-        );
-    }
+        seccao,
+    );
     // A camada pelo número (arrastar, escrever, Auto Key) e o NOME (fecho 07/11): no cartão, que arruma as linhas
     // sozinho, no próprio rótulo («Layer · Default»); na face clássica, ao lado do número no contorno da cor.
     let cartao = crate::cards::active();

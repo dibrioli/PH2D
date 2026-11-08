@@ -428,7 +428,7 @@ impl CodeDoc {
         let find_h = self.find.bar_height();
         let console_h =
             ConsoleView::height(console_open, area.h).min((area.h - find_h - g).max(0.0));
-        let card_h = self.debug_card_h();
+        let card_h = self.debug_card_h(area.w);
         let card = if card_h > 0.0 { card_h + g } else { 0.0 };
         let code = Rect::new(
             area.x,
@@ -442,7 +442,7 @@ impl CodeDoc {
 
     /// O cartão do depurador, entre o código e a faixa de baixo (`None` = nenhum).
     pub(crate) fn debug_rect(&self, area: Rect, console_open: bool) -> Option<Rect> {
-        let h = self.debug_card_h();
+        let h = self.debug_card_h(area.w);
         if h <= 0.0 {
             return None;
         }

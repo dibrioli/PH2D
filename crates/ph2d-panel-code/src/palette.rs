@@ -7,6 +7,9 @@ use ph2d_editor_core::widget::section_cards::CardDepth;
 use ph2d_tokens::{ColorToken, Spacing, Theme};
 use ph2d_vector::{Affine, BezPath, Brush, Color, VectorScene};
 
+/// A fracção de tinta âmbar da faixa parada (o `HIGHLIGHT_A` dos `*-soft` do tema).
+const BAND_INK: f32 = 0.275; // LITERAL-PX-OK: opacidade de realce, a do tema, não uma medida
+
 pub(crate) struct Palette {
     inks: [Color; Ink::ALL.len()],
     pub bg: Color,
@@ -26,6 +29,8 @@ pub(crate) struct Palette {
     pub number_current: Color,
     pub error: Color,
     pub warn: Color,
+    /// A faixa da linha onde o depurador parou: âmbar translúcido (o `warn-soft` da pele é cinza).
+    pub stopped_band: Color,
     pub info: Color,
     pub fold: Color,
     pub pill: Color,
@@ -59,6 +64,7 @@ impl Palette {
             number_current: c(ColorToken::Text2),
             error: c(ColorToken::Danger),
             warn: c(ColorToken::Warn),
+            stopped_band: c(ColorToken::Warn).with_alpha(BAND_INK),
             info: c(ColorToken::Info),
             fold: c(ColorToken::Text2),
             pill: c(ColorToken::Bg3),

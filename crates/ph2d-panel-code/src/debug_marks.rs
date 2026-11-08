@@ -8,7 +8,7 @@ use crate::view::CodeView;
 use ph2d_editor_core::paint::{fill_circle, paint_text, rect_to_vello};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
-use ph2d_tokens::{Spacing, TypeToken};
+use ph2d_tokens::{Spacing, StrokeToken, TypeToken};
 use ph2d_vector::{Affine, BezPath, Brush, VectorScene};
 
 /// Um ponto de parada (linha 0-based). `armed = false`: não há código nessa linha (ponto oco —
@@ -37,7 +37,7 @@ pub struct DebugMarks<'a> {
 }
 
 impl CodeView {
-    /// A faixa da linha parada, por baixo do texto.
+    /// A faixa da linha parada, por baixo do texto: tinta âmbar com o fio cheio à esquerda.
     pub(crate) fn paint_stopped_band(
         &self,
         frame: &CodeFrame<'_>,
@@ -48,14 +48,19 @@ impl CodeView {
             return;
         };
         let tr = self.text_rect();
+        let band = Rect {
+            x: tr.x,
+            y: row.y,
+            w: tr.w,
+            h: self.m.line_h,
+        };
+        scene.fill_rect(rect_to_vello(band), pal.stopped_band);
         scene.fill_rect(
             rect_to_vello(Rect {
-                x: tr.x,
-                y: row.y,
-                w: tr.w,
-                h: self.m.line_h,
+                w: StrokeToken::Thick.px(),
+                ..band
             }),
-            pal.match_current,
+            pal.warn,
         );
     }
 
@@ -99,8 +104,8 @@ impl CodeView {
         }
     }
 
-    /// Na coluna das marcas: o ponto de cada ponto de parada (oco se não armou) e a seta da linha
-    /// parada por cima.
+    /// Na coluna das marcas: o ponto vermelho de cada ponto de parada (anel se não armou) e a seta
+    /// âmbar da linha parada — por cima do ponto, menor e contornada, para os dois se lerem.
     pub(crate) fn paint_debug_gutter(
         &self,
         frame: &CodeFrame<'_>,
@@ -116,8 +121,9 @@ impl CodeView {
             h: tr.h,
         }));
         let cx = a.x + self.m.mark_w * 0.5;
-        let r = (self.m.mark_w * 0.5 - Spacing::Xxs.px()).min(self.m.line_h * 0.5);
-        let hole = r * 0.5;
+        let r = self.dot_r();
+        let ring = StrokeToken::Thick.px();
+        let mut dot_on = false;
         for b in frame.debug.breakpoints {
             let Some(row) = self.row_of(b.line) else {
                 continue;
@@ -125,20 +131,56 @@ impl CodeView {
             let cy = row.y + self.m.line_h * 0.5;
             fill_circle(scene, cx, cy, r, pal.error);
             if !b.armed {
-                fill_circle(scene, cx, cy, hole, pal.gutter);
+                fill_circle(scene, cx, cy, r - ring, pal.gutter);
+            }
+            if frame.debug.stopped == Some(b.line) {
+                dot_on = true;
             }
         }
         if let Some(row) = frame.debug.stopped.and_then(|l| self.row_of(l)) {
             let cy = f64::from(row.y + self.m.line_h * 0.5);
-            let (x0, x1) = (f64::from(a.x + Spacing::Xxs.px()), f64::from(cx + r));
-            let h = f64::from(r);
+            // Sobre o ponto, a seta encolhe para dentro dele e leva o contorno do fundo.
+            let h = f64::from(if dot_on { r * 0.5 } else { r });
+            let x0 = f64::from(cx) - h;
+            let x1 = f64::from(cx) + h;
             let mut p = BezPath::new();
             p.move_to((x0, cy - h));
             p.line_to((x1, cy));
             p.line_to((x0, cy + h));
             p.close_path();
+            if dot_on {
+                scene.stroke_path(
+                    &ph2d_vector::Stroke::new(f64::from(ring)),
+                    Affine::IDENTITY,
+                    &Brush::Solid(pal.gutter),
+                    &p,
+                );
+            }
             scene.fill_path(&p, &Brush::Solid(pal.warn), Affine::IDENTITY);
         }
         scene.pop_layer();
+    }
+
+    /// Um valor na mono do código, centrado numa linha de `row_h` que começa em `y` (o cartão do
+    /// depurador da aba); devolve onde acabou.
+    #[allow(clippy::too_many_arguments)]
+    pub fn paint_code_value(
+        &mut self,
+        ts: &mut TextSystem,
+        scene: &mut VectorScene,
+        theme: ph2d_tokens::Theme,
+        text: &str,
+        ink: crate::style::Ink,
+        (x, y, row_h): (f32, f32, f32),
+        right: f32,
+    ) -> f32 {
+        let pal = Palette::new(theme);
+        let row_y = y + (row_h - self.m.line_h) * 0.5;
+        self.paint_mono(ts, scene, &pal, text, ink, x, row_y, right)
+    }
+
+    /// O raio do ponto de parada: a meia linha menos a folga (≈ 60 % da linha de diâmetro).
+    fn dot_r(&self) -> f32 {
+        (self.m.line_h * 0.5 - Spacing::Xs.px()).max(Spacing::Xxs.px())
     }
 }

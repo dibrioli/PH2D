@@ -30,7 +30,7 @@ pub struct Metrics {
     /// Do topo da caixa do texto à linha de base.
     pub baseline: f32,
     pub digits: usize,
-    /// Largura da coluna da marca de problema.
+    /// Largura da coluna das marcas (problema, ponto de parada, seta).
     pub mark_w: f32,
     pub number_w: f32,
     /// Largura da coluna do marcador de dobra.
@@ -56,7 +56,8 @@ impl Metrics {
             (l.metrics().line_height, l.metrics().baseline)
         });
         let digits = count_digits(line_count).max(2);
-        let mark_w = Spacing::Md.px();
+        // Quadrada: o ponto de parada (≈ 60 % da linha) cabe com folga.
+        let mark_w = line_h.max(Spacing::Md.px());
         let number_w = digits as f32 * advance;
         let fold_w = Spacing::Lg.px();
         let pad = Spacing::Sm.px();

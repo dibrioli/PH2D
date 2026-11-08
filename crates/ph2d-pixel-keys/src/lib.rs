@@ -8,8 +8,9 @@ mod chord;
 mod factory;
 mod keymap;
 mod search;
+pub mod user_file;
 
-pub use action::{PixelAction, Section};
+pub use action::{PixelAction, Section, ZoomKey};
 pub use chord::{Chord, ChordError, key_name, key_of_name};
 pub use factory::{
     ASEPRITE, Context, FACTORY, OWNER_EXCEPTIONS, RESERVED_GLOBAL, SAME_MEANING, reserved,

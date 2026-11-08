@@ -117,7 +117,7 @@ impl Janela {
             (Gesto::Reset(a), Modo::Lista) => self.keys.reset(a),
             (Gesto::ResetAll, Modo::Lista) => self.modo = Modo::ResetAll,
             (Gesto::Importa(texto), _) => {
-                let rep = crate::shim::import_text(&mut self.keys, &texto);
+                let rep = self.keys.import_text(&texto);
                 let n = rep.unknown_ids.len() + rep.rejected.len();
                 self.aviso = (n > 0)
                     .then(|| tr("panel.pixel_keys.import_skipped").replace("{n}", &n.to_string()));

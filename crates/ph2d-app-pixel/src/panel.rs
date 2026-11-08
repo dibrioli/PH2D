@@ -216,6 +216,9 @@ pub fn frame(
             .unwrap_or(false);
         hero.panel_visibility.insert(TIMELINE_ID, !on);
     }
+    if std::mem::take(&mut app.mostra_timeline) {
+        hero.panel_visibility.insert(TIMELINE_ID, true);
+    }
     let pv = ph2d_editor_core::screens::hero::PANEL_PIXEL_PREVIEW;
     let aberta = hero.panel_visibility.get(pv).copied().unwrap_or(false);
     let aberta = (aberta != std::mem::take(&mut app.preview.alternar))

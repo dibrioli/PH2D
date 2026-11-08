@@ -132,6 +132,8 @@ pub struct PixelApp {
     pub onion_on: bool,
     /// O `F4` pediu mostrar/esconder a linha do tempo (aplica-se no painel, que vê o `hero`).
     pub(crate) alterna_timeline: bool,
+    /// O `F2` com a Timeline fechada: abre-a (o campo do nome é dela).
+    pub(crate) mostra_timeline: bool,
     /// A linha do tempo da casa estava aberta antes do Draw (a banda de baixo volta-lhe ao sair).
     pub(crate) timeline_casa: Option<bool>,
     /// O instante do quadro anterior (o relógio do tocar).
@@ -265,6 +267,7 @@ impl Default for PixelApp {
             onion: ph2d_pixel_core::Onion::default(),
             onion_on: false,
             alterna_timeline: false,
+            mostra_timeline: false,
             timeline_casa: None,
             relogio: None,
             fit: None,

@@ -148,6 +148,23 @@ actions! {
     CancelStroke = "stroke.cancel", Commands;
     DeleteSlices = "slices.delete", Commands;
     DeselectSlices = "slices.deselect", Commands;
+    Zoom50 = "view.zoom_50", Commands;
+    Zoom100 = "view.zoom_100", Commands;
+    Zoom200 = "view.zoom_200", Commands;
+    Zoom400 = "view.zoom_400", Commands;
+    Zoom800 = "view.zoom_800", Commands;
+    Zoom1600 = "view.zoom_1600", Commands;
+    Zoom3200 = "view.zoom_3200", Commands;
+    ZoomIn = "view.zoom_in", Commands;
+    ZoomOut = "view.zoom_out", Commands;
+    BrushSmaller = "brush.smaller", Commands;
+    BrushBigger = "brush.bigger", Commands;
+    ColorPrevious = "color.fg_previous", Commands;
+    ColorNext = "color.fg_next", Commands;
+    LayerAbove = "layer.above", Commands;
+    LayerBelow = "layer.below", Commands;
+    FramePreviousInTag = "frame.previous_in_tag", Commands;
+    FrameNextInTag = "frame.next_in_tag", Commands;
     // Tools.
     ToolRectMarquee = "tool.rect_marquee", Tools;
     ToolEllipseMarquee = "tool.ellipse_marquee", Tools;
@@ -173,7 +190,33 @@ actions! {
     ToolText = "tool.text", Tools;
 }
 
+/// O zoom que uma tecla pede (o app prende-o à escada inteira do Draw).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ZoomKey {
+    /// Em por cento (100 = uma célula por píxel de ecrã).
+    Percent(u32),
+    In,
+    Out,
+}
+
 impl PixelAction {
+    /// O zoom da acção, se é de zoom.
+    #[must_use]
+    pub const fn zoom(self) -> Option<ZoomKey> {
+        Some(match self {
+            Self::Zoom50 => ZoomKey::Percent(50),
+            Self::Zoom100 => ZoomKey::Percent(100),
+            Self::Zoom200 => ZoomKey::Percent(200),
+            Self::Zoom400 => ZoomKey::Percent(400),
+            Self::Zoom800 => ZoomKey::Percent(800),
+            Self::Zoom1600 => ZoomKey::Percent(1600),
+            Self::Zoom3200 => ZoomKey::Percent(3200),
+            Self::ZoomIn => ZoomKey::In,
+            Self::ZoomOut => ZoomKey::Out,
+            _ => return None,
+        })
+    }
+
     /// A acção de um id do ficheiro.
     #[must_use]
     pub fn from_id(id: &str) -> Option<Self> {
@@ -343,6 +386,14 @@ impl PixelAction {
                 | Self::BrushSlot9
                 | Self::DeleteSlices
                 | Self::DeselectSlices
+                | Self::BrushSmaller
+                | Self::BrushBigger
+                | Self::ColorPrevious
+                | Self::ColorNext
+                | Self::LayerAbove
+                | Self::LayerBelow
+                | Self::FramePreviousInTag
+                | Self::FrameNextInTag
         )
     }
 }

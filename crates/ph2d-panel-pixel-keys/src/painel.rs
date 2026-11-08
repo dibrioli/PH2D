@@ -327,6 +327,11 @@ pub(crate) fn paint(st: &mut PixelKeysPanelState, ctx: &mut PaintCtx) {
         ctx.host.store_mut().clear_panel_rect(node);
         return;
     }
+    match canal::take_escolhido() {
+        Some((canal::Troca::Export, p)) => exporta(st, &p),
+        Some((canal::Troca::Import, p)) => importa(st, &p),
+        None => {}
+    }
     if janela(st).a_capturar()
         && let Some(t) = canal::take_tecla()
     {
@@ -376,26 +381,21 @@ fn aplica(st: &mut PixelKeysPanelState, g: Gesto) {
     }
 }
 
-fn exporta(st: &mut PixelKeysPanelState) {
+fn exporta(st: &mut PixelKeysPanelState, p: &std::path::Path) {
     let j = janela(st);
-    let r = canal::ficheiro_de_troca()
-        .ok_or_else(|| std::io::Error::other("no home"))
-        .and_then(|p| std::fs::write(&p, j.keys.to_text()).map(|()| p));
-    j.aviso = Some(match r {
-        Ok(p) => tr("panel.pixel_keys.exported").replace("{path}", &p.display().to_string()),
+    j.aviso = Some(match ph2d_pixel_keys::user_file::save_to(p, &j.keys) {
+        Ok(()) => tr("panel.pixel_keys.exported").replace("{path}", &p.display().to_string()),
         Err(e) => tr("panel.pixel_keys.save_failed").replace("{error}", &e.to_string()),
     });
 }
 
-fn importa(st: &mut PixelKeysPanelState) {
-    let lido =
-        canal::ficheiro_de_troca().and_then(|p| std::fs::read_to_string(&p).ok().map(|t| (p, t)));
-    match lido {
-        Some((_, t)) => aplica(st, Gesto::Importa(t)),
-        None => {
-            let p = canal::ficheiro_de_troca().map(|p| p.display().to_string());
+/// O Import SOMA (Aseprite R6).
+fn importa(st: &mut PixelKeysPanelState, p: &std::path::Path) {
+    match std::fs::read_to_string(p) {
+        Ok(t) => aplica(st, Gesto::Importa(t)),
+        Err(_) => {
             janela(st).aviso = Some(
-                tr("panel.pixel_keys.import_missing").replace("{path}", &p.unwrap_or_default()),
+                tr("panel.pixel_keys.import_missing").replace("{path}", &p.display().to_string()),
             );
         }
     }
@@ -440,12 +440,13 @@ pub(crate) fn apply_event(
         host.set_panel_visible(PixelKeysPanel::ID, false);
         return EventOutcome::Consumed;
     }
-    if id == ids::EXPORT {
-        exporta(st);
-        return EventOutcome::Consumed;
-    }
-    if id == ids::IMPORT {
-        importa(st);
+    if id == ids::EXPORT || id == ids::IMPORT {
+        let t = if id == ids::EXPORT {
+            canal::Troca::Export
+        } else {
+            canal::Troca::Import
+        };
+        canal::pede_troca(t);
         return EventOutcome::Consumed;
     }
     match gesto_de(st, id) {

@@ -10,11 +10,9 @@ pub mod canal;
 pub mod ids;
 pub mod lei;
 mod painel;
-/// O ficheiro do utilizador e o Import (ponte até à `ph2d-pixel-keys`).
-mod shim;
 
-pub use canal::{a_capturar, oferece, pede_abrir, toma_keymap};
-pub use shim::load_user;
+pub use canal::{Troca, a_capturar, entrega_troca, oferece, pede_abrir, toma_keymap, toma_troca};
+pub use ph2d_pixel_keys::user_file::load_user;
 
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};

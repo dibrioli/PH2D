@@ -5,7 +5,7 @@
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-use ph2d_pixel_keys::{Chord, Keymap};
+use ph2d_pixel_keys::{Chord, Keymap, user_file};
 
 static ABRIR: AtomicBool = AtomicBool::new(false);
 static A_CAPTURAR: AtomicBool = AtomicBool::new(false);
@@ -80,8 +80,8 @@ pub(crate) fn carrega() -> Keymap {
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .clone();
     match outro {
-        Some(p) => Keymap::from_text(&std::fs::read_to_string(p).unwrap_or_default()).0,
-        None => crate::shim::load_user().0,
+        Some(p) => user_file::load_from(&p).0,
+        None => user_file::load_user().0,
     }
 }
 
@@ -92,18 +92,47 @@ pub(crate) fn grava(k: &Keymap) -> std::io::Result<()> {
         .unwrap_or_else(std::sync::PoisonError::into_inner)
         .clone();
     match outro {
-        Some(p) => crate::shim::save_to(&p, k),
-        None => crate::shim::save_user(k),
+        Some(p) => user_file::save_to(&p, k),
+        None => user_file::save_user(k),
     }
 }
 
-/// O ficheiro do Import/Export: ao lado do do utilizador.
-pub(crate) fn ficheiro_de_troca() -> Option<std::path::PathBuf> {
-    let outro = FICHEIRO
+/// O Import/Export pedido pela janela: a família abre o diálogo de ficheiro do app
+/// (`ph2d_app_host::modal`, a porta cronometrada) e devolve o caminho por [`entrega_troca`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Troca {
+    Import,
+    Export,
+}
+
+static TROCA: Mutex<Option<Troca>> = Mutex::new(None);
+static ESCOLHIDO: Mutex<Option<(Troca, std::path::PathBuf)>> = Mutex::new(None);
+
+pub(crate) fn pede_troca(t: Troca) {
+    *TROCA
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(t);
+}
+
+/// O Import/Export que a janela pediu, uma vez (a família abre o diálogo).
+#[must_use]
+pub fn toma_troca() -> Option<Troca> {
+    TROCA
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner)
-        .clone();
-    outro
-        .or_else(crate::shim::user_path)
-        .map(|p| p.with_file_name("pixel-keys-export.txt"))
+        .take()
+}
+
+/// O caminho que o artista escolheu no diálogo (a janela grava ou lê no próximo quadro).
+pub fn entrega_troca(t: Troca, p: std::path::PathBuf) {
+    *ESCOLHIDO
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some((t, p));
+}
+
+pub(crate) fn take_escolhido() -> Option<(Troca, std::path::PathBuf)> {
+    ESCOLHIDO
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+        .take()
 }

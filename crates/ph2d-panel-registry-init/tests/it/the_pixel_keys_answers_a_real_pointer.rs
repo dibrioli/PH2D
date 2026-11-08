@@ -95,7 +95,14 @@ fn add_captura_e_confirm_juntam_a_tecla_e_a_tomada_pergunta() {
     );
     assenta(&mut hero, &mut ts, 2);
     clica(&mut hero, ids::EXPORT, "Export");
+    // A família abre o diálogo do app e devolve o caminho; a janela grava no quadro seguinte.
     let troca = pasta.join("pixel-keys-export.txt");
+    assert_eq!(
+        ph2d_panel_pixel_keys::toma_troca(),
+        Some(ph2d_panel_pixel_keys::Troca::Export)
+    );
+    ph2d_panel_pixel_keys::entrega_troca(ph2d_panel_pixel_keys::Troca::Export, troca.clone());
+    assenta(&mut hero, &mut ts, 1);
     assert_eq!(std::fs::read_to_string(&troca).ok(), Some(k.to_text()));
     assert!(!ph2d_panel_pixel_keys::a_capturar());
 
@@ -129,6 +136,12 @@ fn add_captura_e_confirm_juntam_a_tecla_e_a_tomada_pergunta() {
     // Import SOMA o ficheiro exportado (Aseprite R6): o F12 volta.
     assenta(&mut hero, &mut ts, 2);
     clica(&mut hero, ids::IMPORT, "Import");
+    assert_eq!(
+        ph2d_panel_pixel_keys::toma_troca(),
+        Some(ph2d_panel_pixel_keys::Troca::Import)
+    );
+    ph2d_panel_pixel_keys::entrega_troca(ph2d_panel_pixel_keys::Troca::Import, troca);
+    assenta(&mut hero, &mut ts, 1);
     let k = ph2d_panel_pixel_keys::toma_keymap().expect("o Import muda o mapa");
     assert!(k.keys_of(A::ExportAs).contains(&(f12, Context::Normal)));
     // A busca atravessa as secções: escrever no campo deixa só as acções que casam. (No MESMO

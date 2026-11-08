@@ -186,10 +186,35 @@ impl PixelApp {
         let Some(answer) = crate::input_teclas::key_with(self, v.world, v.editing, code, m) else {
             return false;
         };
-        if let KeyAnswer::Toast(t) = answer {
-            v.toasts.push(ph2d_editor_core::Toast::info(t));
+        match answer {
+            KeyAnswer::Toast(t) => {
+                let _ = v.toasts.push(ph2d_editor_core::Toast::info(t));
+            }
+            KeyAnswer::Zoom(z) => self.zoom_da_tecla(v, z),
+            KeyAnswer::Quiet => {}
         }
         true
+    }
+
+    /// `1`..`6`, `` ` ``, `Ctrl+=`/`Ctrl+-`: o degrau da escada inteira mais perto do pedido, à volta
+    /// do meio da vista (o 50 % do Aseprite cai no 100 %: o Draw não desce de uma célula por píxel).
+    fn zoom_da_tecla(&mut self, v: &mut View<'_>, z: ph2d_pixel_keys::ZoomKey) {
+        use ph2d_pixel_render::zoom;
+        let Some(bits) = v.editing else { return };
+        let Some(doc) = input::key_of(v.world, bits).and_then(|k| self.docs.get(&k)) else {
+            return;
+        };
+        let Some(m) = input::to_screen(v.world, bits, doc, v.camera, v.window, v.ppm) else {
+            return;
+        };
+        let agora = ph2d_pixel_render::px_per_cell(m);
+        let alvo = match z {
+            ph2d_pixel_keys::ZoomKey::Percent(p) => zoom::nearest(f64::from(p) / 100.0),
+            ph2d_pixel_keys::ZoomKey::In => zoom::step(agora, true),
+            ph2d_pixel_keys::ZoomKey::Out => zoom::step(agora, false),
+        };
+        let meio = (v.window.width as f32 * 0.5, v.window.height as f32 * 0.5);
+        input::set_zoom(v.world, bits, doc, v.camera, v.window, v.ppm, alvo, meio);
     }
 }
 
@@ -203,6 +228,7 @@ impl PixelApp {
         hero: &HeroScreen,
         spawn_root: impl FnOnce(&mut ph2d_ecs::SimWorld, &str) -> u64,
     ) {
+        crate::input_teclas::troca_de_teclas();
         let editing = crate::mode::editing(sim.world(), hero);
         let ppm = hero.project.pixels_per_meter;
         // O relógio do tocar: os ms reais desde o quadro anterior (o núcleo não lê relógio).

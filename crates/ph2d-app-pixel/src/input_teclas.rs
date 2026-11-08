@@ -127,7 +127,71 @@ pub(crate) fn acao(app: &mut PixelApp, key: u32, a: A) -> Option<KeyAnswer> {
                 KeyAnswer::Toast(ph2d_i18n::tr("pixel.nothing_to_redo").to_owned())
             }
         }
-        A::PixelGrid => {
+        _ if a.zoom().is_some() => KeyAnswer::Zoom(a.zoom()?),
+        A::BrushSmaller | A::BrushBigger => {
+            let mut o = app.options;
+            o.size = if a == A::BrushBigger {
+                o.size + 1
+            } else {
+                o.size.saturating_sub(1)
+            }
+            .clamp(1, ph2d_editor_core::pixel_panel::PIXEL_MAX_BRUSH);
+            app.pede(PixelRequest::Options(Box::new(o)));
+            KeyAnswer::Quiet
+        }
+        A::ColorPrevious | A::ColorNext => {
+            let pal = app.docs.get(&key)?.sprite.palette();
+            let n = pal.len();
+            let i = (app.ultima.filter(|&i| pal.get(i) == Some(&app.fg)))
+                .or_else(|| pal.iter().position(|c| *c == app.fg));
+            if n > 0 {
+                let index = match (i, a == A::ColorNext) {
+                    (Some(i), true) => (i + 1) % n,
+                    (Some(i), false) => (i + n - 1) % n,
+                    (None, _) => 0,
+                };
+                let how = ph2d_editor_core::pixel_panel::PixelSelect::Only;
+                app.pede(PixelRequest::Swatch { index, how });
+            }
+            KeyAnswer::Quiet
+        }
+        A::LayerAbove | A::LayerBelow => {
+            let doc = app.docs.get(&key)?;
+            let ls = doc.sprite.layers();
+            let i = ls.iter().position(|l| l.id == doc.layer).unwrap_or(0);
+            let j = if a == A::LayerAbove {
+                (i + 1).min(ls.len().saturating_sub(1))
+            } else {
+                i.saturating_sub(1)
+            };
+            if let Some(l) = ls.get(j).filter(|_| j != i) {
+                let id = l.id.0;
+                app.pede(PixelRequest::LayerSelect(id));
+            }
+            KeyAnswer::Quiet
+        }
+        A::FramePreviousInTag | A::FrameNextInTag => {
+            let doc = app.docs.get_mut(&key)?;
+            let s = &doc.sprite;
+            let (i, n) = (s.frame_index(doc.frame).unwrap_or(0), s.frames().len());
+            let (de, ate) = ph2d_pixel_core::play::tag_at(s.tags(), i)
+                .and_then(|t| s.tags().get(t))
+                .map_or((0, n.saturating_sub(1)), |t| {
+                    (t.from as usize, t.to as usize)
+                });
+            let j = match (a == A::FrameNextInTag, i) {
+                (true, i) if i >= ate => de,
+                (true, i) => i + 1,
+                (false, i) if i <= de => ate,
+                (false, i) => i - 1,
+            };
+            if let Some(f) = s.frames().get(j) {
+                doc.frame = f.id;
+                doc.play = None;
+            }
+            KeyAnswer::Quiet
+        }
+        A::PixelGrid | A::ShowGrid => {
             app.grid = !app.grid;
             let k = if app.grid {
                 "pixel.grid_on"
@@ -142,6 +206,8 @@ pub(crate) fn acao(app: &mut PixelApp, key: u32, a: A) -> Option<KeyAnswer> {
             KeyAnswer::Quiet
         }
         A::LayerRename => {
+            // Com a Timeline fechada ela abre: o campo do nome é dela (o que o artista vê).
+            app.mostra_timeline = true;
             ph2d_panel_pixel_timeline::pede_rename_layer();
             KeyAnswer::Quiet
         }
@@ -169,6 +235,22 @@ pub(crate) fn acao(app: &mut PixelApp, key: u32, a: A) -> Option<KeyAnswer> {
             KeyAnswer::Quiet
         }
     })
+}
+
+/// O Import/Export da janela de atalhos pelo diálogo de ficheiro do app (a porta cronometrada).
+pub(crate) fn troca_de_teclas() {
+    use ph2d_panel_pixel_keys::Troca;
+    let Some(t) = ph2d_panel_pixel_keys::toma_troca() else {
+        return;
+    };
+    let d = rfd::FileDialog::new().add_filter(ph2d_i18n::tr("pixel.keys.file_kind"), &["txt"]);
+    let p = match t {
+        Troca::Export => ph2d_app_host::modal::save_file(d.set_file_name("pixel-keys.txt")),
+        Troca::Import => ph2d_app_host::modal::pick_file(d),
+    };
+    if let Some(p) = p {
+        ph2d_panel_pixel_keys::entrega_troca(t, p);
+    }
 }
 
 fn ferramenta(app: &mut PixelApp, t: Tool) -> KeyAnswer {

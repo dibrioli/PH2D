@@ -9,10 +9,33 @@ delta do utilizador lê-se de `~/.ph2d/pixel-keys.txt` no arranque (`with_armed_
 `teclas::no_app_wide_key_is_taken_by_the_pixel` e `teclas::every_factory_key_in_normal_does_its_action`
 (`shells/pixel-scenes`).
 
-⚠️ Ainda sem porta: `Ctrl+'` Show Grid (a grade do app não tem pedido do Pixel: a tecla passa ao app,
-que não a usa) e `Ctrl+Alt+Shift+K` (a janela de atalhos é a P12 seguinte). `F2` pede ao painel
-Timeline que abra o campo do nome da camada activa (só com a Timeline à vista). O laço poligonal
-aberto conta como gesto a meio (contexto `Stroking`).
+**P12a, fecho das teclas (08/11).** `Ctrl+'` Show Grid liga a grade de píxeis do canvas (`app.grid`, a
+mesma do `Ctrl+Shift+'`). `F2` com a Timeline FECHADA abre-a e o campo do nome da camada activa abre
+nela (`PixelApp::mostra_timeline` → `panel.rs`): o artista vê o campo onde sempre o viu. Novas, todas em
+`Normal` (prova por nome, porta real `compose::keyboard`: `teclas::as_teclas_novas_*`,
+`teclas::f2_opens_the_timeline_to_rename_the_layer`):
+
+| Tecla | Acção | Nota |
+|---|---|---|
+| `1`..`6` | Zoom 100…3200 % | o degrau da escada inteira (`ph2d_pixel_render::zoom`) à volta do meio da vista |
+| `` ` `` | Zoom 50 % | ⚠️ cai no 100 %: o Draw é zoom INTEIRO (uma célula = N píxeis de ecrã, `LEVELS[0] = 1`) |
+| `Ctrl+=` · `Ctrl+Shift+=` / `Ctrl+-` | Zoom In / Out | um degrau |
+| `-` · `NumpadMinus` / `Shift+=` (`+`) · `NumpadPlus` | Brush Smaller / Bigger | ±1, `1..=PIXEL_MAX_BRUSH` |
+| `[` · `9` / `]` · `0` | FG: cor anterior / seguinte da paleta | dá a volta; parte da última clicada ou da posição do FG |
+| `↑` / `↓` | Camada de cima / de baixo | pára nas pontas |
+| `,` / `.` | Quadro anterior / seguinte DENTRO da tag | a tag mais interior do quadro (`play::tag_at`); sem tag, a linha inteira; dá a volta |
+
+O zoom é um `KeyAnswer::Zoom` que a porta (`compose`) aplica, porque a câmera é dela.
+
+⚠️ **Não feito:** `Ctrl+Alt+Shift+K` SEM sprite em Draw. Não há «aba do Pixel» no roteamento: o Pixel é
+um modo do objecto, e a `View` só sabe o objecto em Draw; abrir a janela fora do Draw tomaria a tecla
+em toda a cena. Fora do Draw abre-se pelo menu Edit ▸ Keyboard Shortcuts.
+
+**Import/Export** da janela: o diálogo de ficheiro do app (`ph2d_app_host::modal::save_file`/`pick_file`,
+a porta cronometrada, a mesma do Save Palette). A janela pede (`canal::Troca`), a família abre o
+diálogo em `compose::frame_of` (`input_teclas::troca_de_teclas`) e devolve o caminho
+(`entrega_troca`); o Import SOMA (Aseprite R6, `Keymap::import_text`). O ficheiro e a escrita atómica
+vivem em `ph2d_pixel_keys::user_file` (era o `shim.rs` da janela).
 
 ## 1. O que muda com a ligação
 
@@ -57,8 +80,7 @@ no `Normal`; a gesto a meio só caem as acções que hoje valem a meio (`PixelAc
 | `Tab` timeline | `Tab` é o modo (dono 06/11): `F4` |
 | `F4` Edit Palette Mode / `A` paleta | `F4` é a timeline; sem pedido de painel para a paleta |
 | `Ctrl+K` Preferences · `Ctrl+Space` Run Command · `Ctrl+P` Sprite Properties · `Ctrl+0` Fit · `Ctrl+N/O/S`, `Ctrl+Shift+S` · `Ctrl+Tab` · `F5` | teclas do app (§2 abaixo) |
-| Zoom `1..6`, `` ` ``, `Ctrl+=`/`Ctrl+-`/`Ctrl+Shift+=` · pincel `-`/`+` (e do teclado numérico) · `[`/`]`/`9`/`0` índice da cor | sem `PixelRequest` simples (zoom é da vista do app; o tamanho do pincel vai nas `Options` inteiras; o índice precisa do estado) — ficam para a ligação |
-| setas na selecção, `↑`/`↓` camada, `,`/`.` dentro da tag, `Alt+G`, `Alt+D`, `Shift+E`, `Shift+Space+N`, `Space+D`, `Shift+S`, `Ctrl+H`, `F6`, `F8`, `F11`, `Shift+W`, `Shift+Z`, `Ctrl+Alt+N`, `Ctrl+F`, `Z` (Zoom tool), `Ctrl+W/Q`, `Alt+F/E/…` | o Pixel não tem o comando (ou o pedido precisa de estado) |
+| setas na selecção (mover o conteúdo), `Alt+G`, `Alt+D`, `Shift+E`, `Shift+Space+N`, `Space+D`, `Shift+S`, `Ctrl+H`, `F6`, `F8`, `F11`, `Shift+W`, `Shift+Z`, `Ctrl+Alt+N`, `Ctrl+F`, `Z` (Zoom tool), `Ctrl+W/Q`, `Alt+F/E/…` | o Pixel não tem o comando (ou o pedido precisa de estado) |
 
 ## 4. Teclas do app
 

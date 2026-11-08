@@ -636,6 +636,8 @@ pub use roda::{Notch, Roda, Turn, wheel};
 pub enum KeyAnswer {
     Quiet,
     Toast(String),
+    /// Um zoom de tecla: a câmera é da porta ([`crate::compose`]).
+    Zoom(ph2d_pixel_keys::ZoomKey),
 }
 
 /// `Espaço` segurado/solto em Draw — a mão temporária. `true` = consumido.

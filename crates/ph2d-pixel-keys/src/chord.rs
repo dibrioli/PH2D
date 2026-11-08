@@ -127,6 +127,8 @@ const NAMES: &[(K, &str)] = &[
     (K::Slash, "/"),
     (K::Semicolon, ";"),
     (K::Backslash, "\\"),
+    (K::NumpadSubtract, "NumpadMinus"),
+    (K::NumpadAdd, "NumpadPlus"),
 ];
 
 /// O nome estável da tecla, ou `None` se ela não está na tabela.

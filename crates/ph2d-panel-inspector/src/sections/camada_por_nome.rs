@@ -29,18 +29,6 @@ pub(super) fn linha_classica(
 ) -> f32 {
     let rotulo = ph2d_i18n::tr("component.field.collider.4");
     let seccao = ph2d_editor_core::property_row::Seccao::medida(text_system, 1, &[rotulo]);
-    let linha = ph2d_editor_core::property_row::paint_label_row(
-        scene,
-        text_system,
-        theme,
-        x,
-        w,
-        y,
-        ROW_H_PX,
-        rotulo,
-        seccao,
-    );
-    hit_index.register(ids::INSP_PHYS_LAYER_PICK, linha.control);
     let aberta = matches!(
         store.get(ids::INSP_PHYS_LAYER_PICK),
         Some(InteractiveState::Dropdown { open: true, .. })
@@ -48,29 +36,100 @@ pub(super) fn linha_classica(
     let dd = lista_da_camada(camada)
         .open(aberta)
         .visual(store.dropdown_visual(ids::INSP_PHYS_LAYER_PICK));
-    paint_dropdown_chip(&dd, linha.control, scene, text_system, theme);
+    let (control, dot, fim) = if chip_cabe_ao_lado(text_system, &dd, x, w, y, seccao) {
+        let linha = ph2d_editor_core::property_row::paint_label_row(
+            scene,
+            text_system,
+            theme,
+            x,
+            w,
+            y,
+            ROW_H_PX,
+            rotulo,
+            seccao,
+        );
+        (
+            linha.control,
+            linha.dot,
+            linha.fim(ph2d_tokens::row_pitch_px()),
+        )
+    } else {
+        nome_por_cima(scene, text_system, theme, x, w, y, rotulo)
+    };
+    hit_index.register(ids::INSP_PHYS_LAYER_PICK, control);
+    paint_dropdown_chip(&dd, control, scene, text_system, theme);
     let raio = frame_radius(theme, Radius::Sm.px());
     paint_layer_outline(
         scene,
         theme,
         ids::INSP_PHYS_LAYER_PICK,
         usize::from(camada),
-        linha.control,
+        control,
         raio,
         true,
     );
     if aberta {
-        crate::state_popovers::set_pending_phys_layer_dd(Some((camada, linha.control)));
+        crate::state_popovers::set_pending_phys_layer_dd(Some((camada, control)));
     }
     if let Some(alvo) = ph2d_editor_core::widget::key_mark::paint_decorator_for(
         scene,
         theme,
-        linha.dot,
+        dot,
         &ids::INSP_PHYS_LAYER,
     ) {
-        hit_index.register(alvo, linha.dot);
+        hit_index.register(alvo, dot);
     }
-    linha.fim(ph2d_tokens::row_pitch_px())
+    fim
+}
+
+/// O chip da opção MAIS LARGA da lista (na fonte do chip, pela inversa do orçamento) cabe na caixa ao
+/// lado do nome? Medido pela lista, nunca pela escolhida: ao trocar de camada a linha não salta.
+fn chip_cabe_ao_lado(
+    text_system: &mut TextSystem,
+    dd: &ph2d_editor_core::widget::Dropdown<u8>,
+    x: f32,
+    w: f32,
+    y: f32,
+    seccao: ph2d_editor_core::property_row::Seccao,
+) -> bool {
+    let texto = dd
+        .options
+        .iter()
+        .map(|o| text_system.prefix_width(&o.label, TypeToken::Base.px()))
+        .fold(0.0_f32, f32::max);
+    let caixa = ph2d_editor_core::property_row::caixa_do_controlo(x, w, y, seccao);
+    ph2d_editor_core::widget::dropdown_chip_width_for(texto, ROW_H_PX) <= caixa.w
+}
+
+/// ⭐ O degrau estreito: o chip não cabe ao lado sem encolher a coluna partilhada do corpo ⇒ o nome
+/// por cima e o chip a toda a largura por baixo — o mesmo idioma da [`paint_choice_row`] quando ela
+/// refluiria (e o que os oito chips «0»–«7» de antes faziam). Devolve (caixa do chip, ponto, fim).
+///
+/// [`paint_choice_row`]: ph2d_editor_core::property_row::paint_choice_row
+fn nome_por_cima(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+    rotulo: &str,
+) -> (Rect, Rect, f32) {
+    let fonte = TypeToken::Sm.px();
+    ph2d_editor_core::paint::paint_text(
+        text_system,
+        scene,
+        rotulo,
+        x,
+        y,
+        fonte,
+        w,
+        resolve(ColorToken::Text2, theme),
+    );
+    let (_, dot) = ph2d_editor_core::widget::form_row_columns(x, w, y, fonte);
+    let gy = y + fonte + ph2d_editor_core::widget::panel_chrome::SECTION_LABEL_TO_CONTROL_PX;
+    let chip = Rect::new(x, gy, w, ROW_H_PX);
+    (chip, dot, gy + ROW_H_PX + ph2d_tokens::control_gap_px())
 }
 
 /// Quanto do controlo do Ray Sensor (`controlo_w`) o nome da camada leva à direita: o nome mais um

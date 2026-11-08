@@ -241,10 +241,8 @@ fn each_layer_paints_its_outline_in_its_own_colour() {
     use ph2d_tokens::{ColorToken, Theme};
     let mut sim = physics_scene();
     let mut q = sim.world_mut().query::<&mut ph2d_physics_ecs::Collider>();
-    let mut n = 0u8;
-    for mut c in q.iter_mut(sim.world_mut()) {
+    for (n, mut c) in (0u8..).zip(q.iter_mut(sim.world_mut())) {
         c.layer = n;
-        n += 1;
     }
     let out = outlines(true, false, &mut sim, &[], false, &camera(), window());
     for theme in [Theme::Forge, Theme::Sunstone] {

@@ -282,8 +282,9 @@ fn pinta_a_largura(
     r
 }
 
-/// O Look nasce dobrado em Animated e aberto em Still; quem já abriu o Look continua com ele aberto.
-/// *Mutação: semear a dobra do Look da Sprite (`INSP_LIVE_COLOR_SECTION`) ⇒ a Still dobra.*
+/// O Look nasce dobrado em Animated e aberto em Still; quem abre o da Animated fica com ele aberto.
+/// *Mutação: semear a dobra do Look da Sprite (`INSP_LIVE_COLOR_SECTION`) ⇒ a Still dobra; voltar a herdar
+/// a dobra da Still ⇒ a Animated abre no arranque.*
 #[test]
 fn o_look_nasce_dobrado_so_em_animated() {
     let (mut host, mut st) = cena();
@@ -295,9 +296,17 @@ fn o_look_nasce_dobrado_so_em_animated() {
     let r = pinta(&mut host, &mut st);
     assert!(pintou(&r, INSP_SPRITE_TINT_SWATCH), "Still: como antes");
 
+    // O arranque do app (`shells/desktop/src/init.rs`) abre o Look da Still ANTES do 1.º quadro: a
+    // Animated continua dobrada (auditoria 07/11: abria, e este teste não corria o arranque).
     let (mut host, mut st) = cena();
     host.store_mut()
         .set_collapsed(core_ids::INSP_LIVE_COLOR_SECTION, false);
+    let r = pinta(&mut host, &mut st);
+    assert!(
+        !pintou(&r, INSP_SPRITE_TINT_SWATCH),
+        "o arranque não a abre"
+    );
+    host.store_mut().set_collapsed(CARD_LOOK_ANIMADA, false);
     let r = pinta(&mut host, &mut st);
     assert!(
         pintou(&r, INSP_SPRITE_TINT_SWATCH),
@@ -516,7 +525,17 @@ fn verbo_da_imagem(a: &[EditorAction]) -> Vec<ph2d_editor_core::ImageUseEdit> {
 /// *Mutação: tirar o `continue` de `presentes` ⇒ a lista da animação pinta no vazio.*
 #[test]
 fn o_vazio_do_animated_so_pede_a_folha() {
+    // Auditoria 07/11 (Crítica B1): o vazio mostrava ainda Look, Transform, Ordering e Advanced.
+    let os_outros = [
+        CARD_LOOK_ANIMADA,
+        ph2d_panel_inspector::ids::INSP_TRANSFORM_RESET,
+        core_ids::INSP_LIVE_RENDER_SECTION,
+    ];
     let (mut host, mut st) = cena();
+    let r = pinta(&mut host, &mut st);
+    for id in os_outros {
+        assert!(pintou(&r, id), "com imagem, {id:?} está");
+    }
     facts(ph2d_panel_inspector::slot_image::SpriteFacts {
         sem_imagem: true,
         ..Default::default()
@@ -526,6 +545,31 @@ fn o_vazio_do_animated_so_pede_a_folha() {
     assert!(pintou(&r, INSP_RENDER_TEXTURE_SLOT), "o alvo da escolha");
     assert!(!pintou(&r, INSP_ANIM_ROW[0]), "sem Animation");
     assert!(!pintou(&r, INSP_ANIM_ADD));
+    for id in os_outros {
+        assert!(!pintou(&r, id), "vazio: {id:?} espera pela imagem");
+    }
+    limpa();
+}
+
+/// Crítica B3 (auditoria 07/11): no Play com uma regra acesa, a Image fica no resumo e o cartão Animation só
+/// com o Who Picks, para a regra caber; parado, tudo volta, sem gravar dobra nenhuma.
+/// *Mutação: `regras_ao_vivo` sempre `false` ⇒ a lista e o alvo da imagem pintam.*
+#[test]
+fn no_play_com_regras_so_a_regra_acesa_fica_a_vista() {
+    let (mut host, mut st) = cena_com(com_regras(Some(1)));
+    let r = pinta(&mut host, &mut st);
+    assert!(pintou(&r, INSP_ANIM_RULE_GRIP[1]), "as regras à vista");
+    assert!(!pintou(&r, INSP_RENDER_TEXTURE_SLOT), "a Image no resumo");
+    assert!(!pintou(&r, INSP_ANIM_ROW[0]), "a lista dobra");
+    assert_eq!(
+        host.store()
+            .collapsed_choice(ph2d_panel_inspector::CARD_IMAGE),
+        None,
+        "nada gravado como escolha"
+    );
+    set_current_inspector_anim(Some(com_regras(None)));
+    let r = pinta(&mut host, &mut st);
+    assert!(pintou(&r, INSP_RENDER_TEXTURE_SLOT) && pintou(&r, INSP_ANIM_ROW[0]));
     limpa();
 }
 

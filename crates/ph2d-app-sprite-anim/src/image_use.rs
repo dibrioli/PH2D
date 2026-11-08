@@ -1,8 +1,7 @@
 //! ⭐ **O USO de uma imagem num objecto** (planos [GEF 13](../../../docs/GameEngineFuncional/13_isolamento_por_uso_plano.md)
 //! D4 e [GEF 15](../../../docs/GameEngineFuncional/15_uso_da_imagem_a_vista_plano.md) D3): parada · repetida (bloco,
 //! fundo) · animada · região ([GEF 16](../../../docs/GameEngineFuncional/16_uso_region_plano.md)). O seletor «Use» do
-//! Inspector escolhe-o; um uso exclui os outros, e por isso «imagem animada num bloco» deixou de ser um estado que se
-//! possa escrever.
+//! Inspector escolhe-o; um uso exclui os outros («imagem animada num bloco» não se escreve).
 
 use crate::image_choice::{ImageFacts, Slicing, library_facts};
 use ph2d_asset::{AssetDb, AssetId};
@@ -104,9 +103,8 @@ pub fn make_animated(world: &mut World, e: Entity, facts: ImageFacts) -> bool {
 }
 
 /// ⭐ **A escala a que `e` mostra a imagem** — metros no ecrã por metro nativo, lidos do que ele MOSTRA (a sua
-/// grelha ou a sua área; o ladrilho de um Tiled, de um fundo ou de um UV à mão; senão o tamanho). É o invariante do seletor
-/// «Use» (dono 27/10, «mudando entre os modos a imagem ficou gigante»): cada uso deriva o tamanho dela, e por
-/// isso nenhuma troca, nem uma volta inteira, muda o tamanho a que a imagem se vê.
+/// grelha ou a sua área; o ladrilho de um Tiled, de um fundo ou de um UV à mão; senão o tamanho). O invariante do
+/// «Use» (dono 27/10): nenhuma troca, nem uma volta inteira, muda o tamanho a que a imagem se vê.
 #[must_use]
 pub fn display_scale(world: &World, e: Entity, facts: ImageFacts) -> [f32; 2] {
     let Some(size) = world.get::<Sprite>(e).map(|s| s.size) else {
@@ -170,8 +168,7 @@ pub(crate) fn show(world: &mut World, e: Entity, facts: ImageFacts, grid: [u32; 
     crate::sprite_card::aviso_segue_a_grade(world, e);
 }
 
-/// Tira a animação de `e` (a lista, o animador e o estado de corrida). As regras «quando → animação» ficam:
-/// sem animações dormem, e voltar a animada devolve-as.
+/// Tira a animação de `e` (lista, animador, corrida); as regras ficam e dormem até voltar a animada.
 fn stop_animating(world: &mut World, e: Entity) {
     world.entity_mut(e).remove::<(
         SpriteAnimations,

@@ -92,7 +92,9 @@ pub(super) fn paint_card_with(
     let ix = r.x + m::CARD_PAD_X;
     let iw = r.w - m::CARD_PAD_X * 2.0;
     let hy = r.y + m::CARD_PAD_TOP;
-    let dobrado = store.is_collapsed(card.section);
+    // Sem corpo e com resumo = só o resumo, sem gravar dobra (a Image no Play com regras, Crítica B3).
+    let dobrado =
+        store.is_collapsed(card.section) || (card.body.is_none() && card.summary.is_some());
     let ausente = card.add.is_some();
     let mut acoes: Vec<HeadAction> = card.actions.clone();
     if let Some(add) = card.add {

@@ -95,6 +95,11 @@ fn acesa(info: &InspectorAnimInfo) -> Option<usize> {
         .filter(|i| *i < shown_rules(info))
 }
 
+/// O Play está a correr e uma regra com linha no cartão está acesa (o «LIVE»).
+pub(crate) fn regras_ao_vivo(info: &InspectorAnimInfo) -> bool {
+    acesa(info).is_some()
+}
+
 /// O rótulo da fila Who Picks: com uma regra acesa, leva a etiqueta LIVE.
 pub(crate) fn rotulo_de_quem_escolhe(info: &InspectorAnimInfo) -> &'static str {
     if acesa(info).is_some() {

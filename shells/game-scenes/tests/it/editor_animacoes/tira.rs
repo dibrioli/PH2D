@@ -95,9 +95,10 @@ fn o_fantasma_segue_a_mao_e_some_ao_largar() {
     );
     m.pointer(PointerKind::Up, to);
     m.paint();
+    let p = m.doc().painted;
     assert_eq!(
-        m.doc().painted,
-        doc::DragPaint::default(),
+        (p.marker, p.ghost),
+        (None, None),
         "nada depois de soltar"
     );
 }

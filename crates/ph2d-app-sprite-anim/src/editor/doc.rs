@@ -79,6 +79,8 @@ pub struct DragPaint {
     pub marker: Option<usize>,
     /// O rectângulo (antes do afim do fantasma) do quadro que segue a mão.
     pub ghost: Option<Rect>,
+    /// O quadro com o fio da prévia (`[0]`) e o com a moldura de escolhido (`[1]`).
+    pub outlined: [Option<usize>; 2],
 }
 
 /// A posição final de um quadro tirado de `from` e largado no intervalo `gap` (`0..=n`).

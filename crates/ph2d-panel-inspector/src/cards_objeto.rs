@@ -40,6 +40,14 @@ pub(crate) fn animacao_em_cartao(s: &InspectorSpriteInfo) -> bool {
     crate::cards::active() && s.image_use == InspectorImageUse::Animated
 }
 
+/// O Animated Sprite ainda sem imagem: só o convite do cartão Image, nada do que a imagem decide
+/// (Crítica B1, auditoria 07/11). Os componentes que o artista juntou continuam.
+pub(crate) fn animada_vazia() -> bool {
+    crate::state::current_inspector_sprite().is_some_and(|s| {
+        s.image_use == InspectorImageUse::Animated && crate::slot_image::sem_imagem(s.entity_bits)
+    })
+}
+
 /// ⭐ Os cartões logo abaixo do objecto, pela ordem de leitura do painel de antes: de quem é cópia, o
 /// que declara, a imagem e o uso dela, os controlos de visibilidade.
 pub(crate) fn do_topo(store: &WidgetStore) -> Vec<CardDef<'static>> {

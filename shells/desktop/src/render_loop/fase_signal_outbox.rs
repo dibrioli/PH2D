@@ -142,7 +142,7 @@ impl crate::App {
         // ⚠️ **Cada consumidor tem cursor próprio e lê a saída com `&self`**, então segura `&mut` no
         // PRÓPRIO estado enquanto lê — o que um barramento de handlers boxeados não permite.
         for sig in self.signals.read_notices(&mut self.signal_readers.toast) {
-            toasts.push(Toast::info(tr_with(
+            toasts.push_or_refresh(Toast::info(tr_with(
                 "shell.fase_signal_outbox.signal",
                 &[("sig", &(sig.name))],
             )));

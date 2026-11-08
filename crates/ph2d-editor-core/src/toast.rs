@@ -145,6 +145,17 @@ impl ToastQueue {
         true
     }
 
+    /// O `push` de um aviso que se REPETE (um sinal por passo, auditoria 07/11): se a mesma frase com a
+    /// mesma gravidade já está à vista, ela recomeça a contar em vez de empilhar outra.
+    pub fn push_or_refresh(&mut self, toast: Toast) -> bool {
+        let same = |t: &&mut Toast| t.message == toast.message && t.severity == toast.severity;
+        if let Some(t) = self.inner.iter_mut().find(|t| same(t)) {
+            t.age_s = 0.0;
+            return true;
+        }
+        self.push(toast)
+    }
+
     /// Anda `dt` **segundos de parede**; larga os expirados.
     ///
     /// ⚠️ **Segundos, nunca quadros** — ver [`Toast::DEFAULT_TTL_S`]. `retain` e não «tira da
@@ -345,6 +356,23 @@ mod tests {
         assert_eq!(q.len(), 2);
         let labels: Vec<&str> = q.iter().map(|t| t.message.as_str()).collect();
         assert_eq!(labels, vec!["Saved", "Slow load"]);
+    }
+
+    /// Auditoria 07/11: um marcador de passo empilhava cinco «Signal: footstep» sobre a barra.
+    #[test]
+    fn a_repeated_notice_refreshes_instead_of_stacking() {
+        let mut q = ToastQueue::new();
+        q.push_or_refresh(Toast::info("Signal: footstep"));
+        q.tick(1.0);
+        q.push_or_refresh(Toast::info("Signal: footstep"));
+        q.push_or_refresh(Toast::warning("Signal: footstep"));
+        q.push_or_refresh(Toast::info("Signal: jump"));
+        let ages: Vec<f32> = q.iter().map(|t| t.age_s).collect();
+        assert_eq!(
+            ages,
+            [0.0, 0.0, 0.0],
+            "a mesma frase renova; outra gravidade ou frase empilha"
+        );
     }
 
     #[test]

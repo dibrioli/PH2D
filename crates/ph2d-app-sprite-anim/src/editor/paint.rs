@@ -215,7 +215,6 @@ pub fn paint_doc(
         card(scene, theme, r);
     }
     paint_list(doc, &l, info.as_ref(), scene, text, theme);
-    // ── A folha ──
     let mut hint = tr("anim_editor.sheet_hint");
     if label_column_width(text, FONT_TOKEN.px(), [hint]) > l.sheet_title.w {
         hint = tr("anim_editor.sheet");
@@ -246,8 +245,6 @@ pub fn paint_doc(
     }
     let users = doc.cell_users();
     doc.painted_cells = paint_sheet(doc, &l, &users, scene, text, theme);
-
-    // ── A animação aberta ──
     paint_frames_title(doc, &l, info.as_ref(), scene, text, theme);
     let frames = doc.shown_frames();
     doc.painted = paint_strip(doc, &l, &frames, info.as_ref(), scene, text, theme);
@@ -562,6 +559,7 @@ fn paint_strip(
             .is_some_and(|r| r.name == i.current)
     });
     let step = info.map(|i| i.card.step as usize);
+    let mut painted = DragPaint::default();
     scene.push_clip(&ph2d_vector::Rect::new(
         f64::from(l.strip.x),
         f64::from(l.strip.y),
@@ -594,22 +592,26 @@ fn paint_strip(
                 tom(ColorToken::BgScrim, theme),
             );
         }
-        if doc.frame_selected == Some(i) || (on_screen && step == Some(i)) {
+        // Escolhido = moldura de acento; o que a prévia toca = fio neutro (auditoria 07/11: eram iguais).
+        let chosen = doc.frame_selected == Some(i);
+        if chosen || (on_screen && step == Some(i)) {
             let radius = frame_radius(theme, m::FIELD_RADIUS);
-            let c = tom(ColorToken::Accent, theme);
-            stroke_rounded_rect(scene, *thumb, radius, StrokeToken::Thick.px(), c);
+            let (w, c) = [
+                (StrokeToken::Thin, ColorToken::Text2),
+                (StrokeToken::Thick, ColorToken::Accent),
+            ][usize::from(chosen)];
+            stroke_rounded_rect(scene, *thumb, radius, w.px(), tom(c, theme));
+            painted.outlined[usize::from(chosen)] = Some(i);
         }
-        let n = (i + 1).to_string();
-        let c = tom(ColorToken::Text2, theme);
         paint_text(
             text,
             scene,
-            &n,
+            &(i + 1).to_string(),
             thumb.x + Spacing::Sm.px(),
             thumb.y,
             font,
             thumb.w,
-            c,
+            tom(ColorToken::Text2, theme),
         );
         let hovered = doc.hover.is_some_and(|(x, y)| {
             x >= thumb.x && x < thumb.x + thumb.w && y >= thumb.y && y < thumb.y + thumb.h
@@ -652,7 +654,6 @@ fn paint_strip(
         }
     }
     scene.pop_layer();
-    let mut painted = DragPaint::default();
     if let Some((gap, bar)) = l.marker {
         fill_rounded_rect(
             scene,

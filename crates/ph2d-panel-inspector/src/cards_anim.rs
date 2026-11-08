@@ -64,6 +64,12 @@ pub(crate) fn proprio<'a>(
 }
 
 fn corpo(c: &mut CardCtx<'_>, y: f32, info: &InspectorAnimInfo, a: Abertas) -> f32 {
+    // Play com uma regra acesa: só o Who Picks, para a regra caber à vista (Crítica B3, auditoria 07/11).
+    if sections::anim_rules::regras_ao_vivo(info) {
+        return com_corpo(c, y, |t, theme, store, x, w, y| {
+            sections::anim_cartao::so_quem_escolhe(t, theme, store, x, w, y, info)
+        });
+    }
     let selected = a.anim().min(info.rows.len().saturating_sub(1));
     let mut campo_do_nome = None;
     let y = com_corpo(c, y, |t, theme, store, x, w, y| {

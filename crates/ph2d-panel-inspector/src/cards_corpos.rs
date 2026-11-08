@@ -29,12 +29,16 @@ pub(crate) fn cards(store: &WidgetStore) -> Vec<CardDef<'static>> {
     let visivel = crate::state::current_inspector_visibility().is_none_or(|v| v.mixed || v.visible);
     out.push(objeto(store, visivel));
     out.extend(crate::cards_objeto::do_topo(store));
-    out.push(transform());
+    // O Animated vazio espera pela imagem (Crítica B1): sem Transform nem Ordering.
+    let vazia = crate::cards_objeto::animada_vazia();
+    if !vazia {
+        out.push(transform());
+    }
     if let Some(a) = appearance::current_appearance() {
         out.push(aparencia(&a, visivel));
         out.extend(tintas(&a));
     }
-    out.extend(ordering());
+    out.extend(ordering().filter(|_| !vazia));
     out.extend(material());
     out
 }

@@ -16,7 +16,7 @@ use ph2d_editor_core::ids as core_ids;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent, WidgetStore};
 use ph2d_editor_core::paint::resolve;
 use ph2d_editor_core::panel::PanelHostInternal;
-use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, HeadAction, Widget};
+use ph2d_editor_core::panel::cards::{CardBody, CardCtx, CardDef, Cell, HeadAction, Widget};
 use ph2d_editor_core::pixel_panel::PixelSpriteCard;
 use ph2d_editor_core::screens::hero::{
     InspectorSpriteInfo, InspectorSpriteSource, InspectorTransformInfo,
@@ -93,10 +93,9 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
         "card.insp.sheet_use_region_tip",
     );
     store.set_collapsed_if_unchosen(crate::cards::CARD_TRANSFORM_IMAGE, true);
-    // O Look de uma folha animada nasce dobrado (ficha 02, decisão 6), com a dobra dele: a Still não muda, e
-    // quem já escolheu a do Look fica com a escolha que fez.
-    let escolha = store.collapsed_choice(core_ids::INSP_LIVE_COLOR_SECTION);
-    store.set_collapsed_if_unchosen(CARD_LOOK_ANIMADA, escolha.unwrap_or(true));
+    // O Look de uma folha animada nasce dobrado (ficha 02, decisão 6), com a dobra só dele. Não herda a da
+    // Still: o arranque semeia-a aberta e o store não distingue semente de escolha (auditoria 07/11).
+    store.set_collapsed_if_unchosen(CARD_LOOK_ANIMADA, true);
     botao(
         store,
         ids::INSP_SPRITE_PIVOT_NOME,
@@ -147,26 +146,32 @@ pub(crate) fn semeia_do_objeto(store: &mut WidgetStore) {
 
 /// O cartão Image: a imagem, o seletor Use e os campos do uso.
 pub(crate) fn imagem(info: InspectorSpriteInfo) -> CardDef<'static> {
+    // Play com uma regra acesa: a Image fica só no resumo, para a regra caber (Crítica B3, auditoria 07/11).
+    let ao_vivo = crate::state::current_inspector_anim().is_some_and(|a| {
+        a.entity_bits == info.entity_bits && sections::anim_rules::regras_ao_vivo(&a)
+    });
+    let summary = slot_image::current_slot_image(info.entity_bits).map(|i| i.name);
+    let body: CardBody<'static> = Box::new(move |c: &mut CardCtx<'_>, y| {
+        if slot_image::sem_imagem(info.entity_bits) {
+            return convite(c, y, info.image_use == InspectorImageUse::Animated);
+        }
+        let y = cabeca(c, y, &info);
+        let y = com_corpo(c, y, |t, theme, store, x, w, y| {
+            sections::image_use_rows::paint_image_use(
+                t.scene, t.text, theme, t.hit, store, x, w, y, &info, None,
+            )
+        });
+        let y = recibo_do_replace(c, y, &info);
+        let y = aviso_de_corte(c, y, info.entity_bits);
+        aviso_de_folha(c, y, info.entity_bits)
+    });
     CardDef {
         section: crate::cards_objeto::CARD_IMAGE,
         title: tr("panel.inspector.image"),
         actions: Vec::new(),
         add: None,
-        summary: slot_image::current_slot_image(info.entity_bits).map(|i| i.name),
-        body: Some(Box::new(move |c: &mut CardCtx<'_>, y| {
-            if slot_image::sem_imagem(info.entity_bits) {
-                return convite(c, y, info.image_use == InspectorImageUse::Animated);
-            }
-            let y = cabeca(c, y, &info);
-            let y = com_corpo(c, y, |t, theme, store, x, w, y| {
-                sections::image_use_rows::paint_image_use(
-                    t.scene, t.text, theme, t.hit, store, x, w, y, &info, None,
-                )
-            });
-            let y = recibo_do_replace(c, y, &info);
-            let y = aviso_de_corte(c, y, info.entity_bits);
-            aviso_de_folha(c, y, info.entity_bits)
-        })),
+        summary,
+        body: (!ao_vivo).then_some(body),
     }
 }
 

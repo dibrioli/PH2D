@@ -174,11 +174,14 @@ pub(crate) fn presentes(
         if so.is_some_and(|s| s != id) {
             continue; // T61: o cartão preso só precisa da secção dele
         }
-        // O Animated Sprite vazio é só o convite do cartão Image (ficha 02): sem Animation.
-        if id == ph2d_editor_core::ids::INSP_LIVE_ANIM_SECTION
-            && crate::state::current_inspector_anim()
-                .is_some_and(|i| crate::slot_image::sem_imagem(i.entity_bits))
-        {
+        // O Animated Sprite vazio é só o convite do cartão Image (ficha 02): sem Animation, Look nem Advanced.
+        use ph2d_editor_core::ids as c;
+        let da_imagem = [
+            c::INSP_LIVE_ANIM_SECTION,
+            c::INSP_LIVE_COLOR_SECTION,
+            c::INSP_LIVE_RENDER_SECTION,
+        ];
+        if da_imagem.contains(&id) && crate::cards_objeto::animada_vazia() {
             continue;
         }
         let mut cena = VectorScene::new();

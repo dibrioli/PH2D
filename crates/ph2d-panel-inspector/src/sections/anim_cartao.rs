@@ -55,6 +55,19 @@ pub(crate) fn resto(
         tr("panel.inspector.anim_card.more"),
         Some(tr("panel.inspector.anim_card.more_summary")),
     );
+    so_quem_escolhe(t, theme, store, x, w, y, info)
+}
+
+/// Só o Who Picks e as regras: o corpo inteiro do cartão durante o Play com uma regra acesa (Crítica B3).
+pub(crate) fn so_quem_escolhe(
+    t: &mut Tela<'_>,
+    theme: Theme,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorAnimInfo,
+) -> f32 {
     let sec = super::anim_rows::seccao_da_animacao(t.text);
     super::anim_card::paint_chooser(t.scene, t.text, theme, t.hit, store, x, w, y, info, sec)
 }

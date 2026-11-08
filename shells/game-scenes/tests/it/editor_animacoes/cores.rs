@@ -167,3 +167,25 @@ fn os_numeros_dos_quadros_ficam_na_tira_e_na_folha() {
         assert!(vezes >= 2, "o {n} aparece na tira e na folha, leu {vezes}");
     }
 }
+
+/// Auditoria 07/11: o quadro que a prévia toca tinha a moldura de escolhido, com This frame a dizer «—».
+/// *Mutação: a moldura de acento voltar a cobrir o quadro tocado.*
+#[test]
+fn o_quadro_tocado_nao_parece_escolhido() {
+    let mut m = Mesa::new();
+    m.paint();
+    assert_eq!(
+        m.doc().painted.outlined,
+        [Some(0), None],
+        "só o fio da prévia"
+    );
+    let quadro = centre(m.doc().layout.frames[2].0);
+    m.click(quadro);
+    m.frame();
+    m.paint();
+    assert_eq!(
+        m.doc().painted.outlined[1],
+        Some(2),
+        "a moldura é do escolhido"
+    );
+}

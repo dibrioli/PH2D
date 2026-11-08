@@ -1,10 +1,12 @@
 //! Os cartões: a lista e as propriedades da slice.
 
 use ph2d_a11y::NodeId;
-use ph2d_editor_core::panel::cards::ferramenta::{caixa, caixas_aos_pares, cartao, opcoes};
+use ph2d_editor_core::panel::TextKey;
+use ph2d_editor_core::panel::cards::ferramenta::{caixa, cartao, opcoes};
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, Widget};
 use ph2d_editor_core::widget::CheckboxValue;
 use ph2d_editor_core::widget::card_field::Glyph;
+use ph2d_editor_core::widget::key_mark::Rotulo;
 use ph2d_i18n::tr;
 use ph2d_pixel_slices::campos::Vista;
 
@@ -91,6 +93,22 @@ fn linha_xywh(c: &mut CardCtx<'_>, campos: [NodeId; 4], y: f32) -> f32 {
     c.row(&[numero(campos[2], r[2]), numero(campos[3], r[3])], y)
 }
 
+/// A caixa de uma propriedade que nem todas as selecionadas têm: marcada (todas), traço (algumas,
+/// misto) ou vazia (nenhuma). Clicar a mista liga em todas, como no Figma e no Aseprite.
+fn marca(id: NodeId, chave: &'static str, todas: bool, alguma: bool) -> Cell<'static> {
+    let value = match (todas, alguma) {
+        (true, _) => CheckboxValue::Checked,
+        (false, true) => CheckboxValue::Indeterminate,
+        (false, false) => CheckboxValue::Unchecked,
+    };
+    Cell::new(Widget::Check {
+        id,
+        label: Rotulo::vista(TextKey::new(chave)),
+        value,
+        off: false,
+    })
+}
+
 fn propriedades(c: &mut CardCtx<'_>, v: &Vista, y: f32) -> f32 {
     let y = c.row(&[texto(ids::SLICE_NAME, tr("panel.pixel.slices.name"))], y);
     let codigo = v.cor.map_or_else(String::new, hex);
@@ -115,23 +133,23 @@ fn propriedades(c: &mut CardCtx<'_>, v: &Vista, y: f32) -> f32 {
         y,
     );
     // Sem campos no meio, as duas caixas dividem a linha.
+    let nove = marca(ids::NINE, "panel.pixel.slices.nine", v.nove, v.algum_nove);
+    let pivot = marca(
+        ids::PIVOT,
+        "panel.pixel.slices.pivot",
+        v.pivot,
+        v.algum_pivot,
+    );
     if v.algum_nove {
-        y = caixa(c, ids::NINE, "panel.pixel.slices.nine", v.nove, y);
+        y = c.row(&[nove], y);
         y = linha_xywh(
             c,
             [ids::CENTER_X, ids::CENTER_Y, ids::CENTER_W, ids::CENTER_H],
             y,
         );
-        y = caixa(c, ids::PIVOT, "panel.pixel.slices.pivot", v.pivot, y);
+        y = c.row(&[pivot], y);
     } else {
-        y = caixas_aos_pares(
-            c,
-            &[
-                (ids::NINE, "panel.pixel.slices.nine", v.nove),
-                (ids::PIVOT, "panel.pixel.slices.pivot", v.pivot),
-            ],
-            y,
-        );
+        y = c.compact(&[nove, pivot], y);
     }
     if v.algum_pivot {
         let r = rotulos_xywh();

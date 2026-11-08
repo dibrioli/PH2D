@@ -606,6 +606,10 @@ fn the_card_fields_coerce_text_and_edit_only_what_exists() {
     assert_eq!(v.bounds[2], Some(10));
     assert_eq!(v.bounds[3], Some(7));
     assert_eq!(v.nome, None, "nomes diferentes: vazio");
+    // Só `a` tem centro e pivot: a caixa é mista e os números ficam vazios, nunca os de `a`.
+    assert!(!v.nove && v.algum_nove && !v.pivot && v.algum_pivot);
+    assert_eq!(v.centro, [None; 4], "centro de uma só não é comum");
+    assert_eq!(v.ponto, [None; 2], "pivot de uma só não é comum");
     let v = vista(&s, 0, &[a]).unwrap();
     assert!(v.pivot);
 

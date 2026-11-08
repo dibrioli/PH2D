@@ -236,7 +236,8 @@ pub fn vista(s: &Sprite, frame: u32, sel: &[SliceId]) -> Option<Vista> {
     if v.is_empty() {
         return None;
     }
-    let de = |f: &dyn Fn(&SliceShape) -> Option<i32>| comum(v.iter().filter_map(|(_, k)| f(k)));
+    // Comum só se TODAS o têm: a que não tem centro (ou pivot) torna o número misto.
+    let de = |f: &dyn Fn(&SliceShape) -> Option<i32>| comum(v.iter().map(|(_, k)| f(k))).flatten();
     Some(Vista {
         nome: comum(v.iter().map(|(c, _)| c.name.clone())),
         cor: comum(

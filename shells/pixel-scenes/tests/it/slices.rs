@@ -402,3 +402,71 @@ fn the_slices_reach_the_scene_with_any_tool_and_selected_adds_outline_handles_an
     assert!(t.tecla(KeyCode::KeyB, NADA));
     assert_eq!(caminhos(&mut t), uma, "com o lápis, a slice sem a seleção");
 }
+
+/// ⭐ Dono 08/11: *«mouse hover sobre as linhas deve destacar a linha e aparecer a seta
+/// bidirecional»* — e o mesmo nas alças da caixa e no pivot. O pairar pergunta a MESMA função que o
+/// premir: onde a seta aparece é onde o arrasto agarra; longe, nada; a meio do arrasto, a seta fica.
+#[test]
+fn hovering_a_slice_line_or_handle_shows_the_drag_arrow_and_the_press_grabs_the_same() {
+    use ph2d_pixel_slices::{Grab, Lados};
+    use winit::window::CursorIcon as C;
+    let mut t = Mesa::nova();
+    assert!(t.tecla(KeyCode::KeyC, SHIFT));
+    t.arrasta(px(4, 6), px(24, 16), NADA);
+    let id = t.sprite().slices()[0].id;
+    t.arrasta(px(12, 11), px(12, 11), NADA);
+    assert_eq!(t.app.slices_selected(t.key), [id], "um clique seleciona");
+    // As linhas do centro: x = 8 e 18, y = 8 e 14; o pivot no píxel (5, 7).
+    t.liga(id, Rect::new(4, 2, 10, 6), (1, 1));
+    let paira = |t: &mut Mesa, c: (f64, f64)| {
+        assert!(!t.mexe(c, NADA), "pairar não é um gesto");
+        let q = t.app.slice_cursor(&t.hero, t.ecra(c.0, c.1));
+        q.map(|(seta, s, g)| (seta, (s == id).then_some(g)))
+    };
+    let lado = |left, right, top, bottom| Lados {
+        left,
+        right,
+        top,
+        bottom,
+    };
+    let (f, v) = (false, true);
+    for (c, seta, g) in [
+        ((8.0, 11.0), C::EwResize, Grab::Center(lado(v, f, f, f))),
+        ((18.0, 11.0), C::EwResize, Grab::Center(lado(f, v, f, f))),
+        ((13.0, 8.0), C::NsResize, Grab::Center(lado(f, f, v, f))),
+        ((13.0, 14.0), C::NsResize, Grab::Center(lado(f, f, f, v))),
+        ((24.0, 16.0), C::NwseResize, Grab::Bounds(lado(f, v, f, v))),
+        ((24.0, 6.0), C::NeswResize, Grab::Bounds(lado(f, v, v, f))),
+        ((4.0, 11.0), C::EwResize, Grab::Bounds(lado(v, f, f, f))),
+        ((13.0, 16.0), C::NsResize, Grab::Bounds(lado(f, f, f, v))),
+        ((5.5, 7.5), C::Move, Grab::Pivot),
+        ((12.5, 11.0), C::Move, Grab::Move),
+    ] {
+        assert_eq!(paira(&mut t, c), Some((seta, Some(g))), "em {c:?}");
+    }
+    assert_eq!(
+        paira(&mut t, (30.5, 28.5)),
+        None,
+        "longe: nem seta nem realce"
+    );
+
+    // Premir onde a seta ↔ apareceu: só a linha da esquerda anda, e a seta fica a meio do arrasto.
+    let antes = t.forma(id);
+    assert!(paira(&mut t, (8.0, 11.0)).is_some());
+    t.ponteiro(PointerKind::Down, (8.0, 11.0), NADA);
+    assert!(t.mexe((10.0, 11.0), NADA), "o arrasto é consumido");
+    let q = t.app.slice_cursor(&t.hero, t.ecra(10.0, 11.0));
+    assert_eq!(
+        q.map(|q| q.0),
+        Some(C::EwResize),
+        "a seta fica a meio do arrasto"
+    );
+    t.ponteiro(PointerKind::Up, (10.0, 11.0), NADA);
+    let k = t.forma(id);
+    assert_eq!(
+        k.center,
+        Some(Rect::new(6, 2, 8, 6)),
+        "só a linha da esquerda"
+    );
+    assert_eq!((k.bounds, k.pivot), (antes.bounds, antes.pivot));
+}

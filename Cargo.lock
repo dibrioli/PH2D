@@ -7688,6 +7688,7 @@ dependencies = [
  "ph2d-pixel-core",
  "ph2d-pixel-io",
  "ph2d-pixel-render",
+ "ph2d-pixel-slices",
  "ph2d-pixel-text",
  "ph2d-pixel-tiles",
  "ph2d-render",
@@ -10662,6 +10663,7 @@ name = "ph2d-pixel-render"
 version = "0.0.0"
 dependencies = [
  "ph2d-pixel-core",
+ "ph2d-pixel-slices",
  "ph2d-vector",
 ]
 
@@ -10671,6 +10673,7 @@ version = "0.0.0"
 dependencies = [
  "ph2d-pixel-core",
  "serde_json",
+ "winit",
 ]
 
 [[package]]

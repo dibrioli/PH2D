@@ -70,6 +70,26 @@ pub fn no_quadro(s: &Sprite, frame: ph2d_pixel_core::FrameId) -> u32 {
     s.frame_index(frame).unwrap_or(0) as u32
 }
 
+/// **O que um premir em `p` agarra, e em que slice**: as alças das selecionadas primeiro (podem estar
+/// fora da caixa), depois o interior de qualquer uma (mover). O pairar pergunta a MESMA função, para
+/// a seta aparecer onde o arrasto agarra.
+#[must_use]
+pub fn sob(
+    s: &Sprite,
+    frame: u32,
+    sel: &[SliceId],
+    p: (f64, f64),
+    tol: f64,
+) -> Option<(SliceId, Grab)> {
+    visiveis(s, frame)
+        .filter(|(c, _)| sel.contains(&c.id))
+        .find_map(|(c, k)| match hit(&k, p, tol) {
+            Some(Grab::Move) | None => None,
+            Some(g) => Some((c.id, g)),
+        })
+        .or_else(|| interior(s, frame, celula(p)).map(|id| (id, Grab::Move)))
+}
+
 impl Gesto {
     /// **Premir em `p`** (células contínuas), com `tol` células de alcance nas alças. Muda a seleção
     /// como o Trial: premir numa não selecionada substitui (T1); premir em vazio limpa.
@@ -85,7 +105,7 @@ impl Gesto {
         let at = celula(p);
         let tipo = if shift {
             Tipo::Marquise
-        } else if let Some(t) = Self::agarra(s, frame, sel, p, at, tol) {
+        } else if let Some(t) = Self::agarra(s, frame, sel, p, tol) {
             t
         } else {
             sel.clear();
@@ -104,27 +124,13 @@ impl Gesto {
         frame: u32,
         sel: &mut Vec<SliceId>,
         p: (f64, f64),
-        at: (i32, i32),
         tol: f64,
     ) -> Option<Tipo> {
-        // As alças das selecionadas primeiro: podem estar fora da caixa.
-        let alca = visiveis(s, frame)
-            .filter(|(c, _)| sel.contains(&c.id))
-            .find_map(|(c, k)| match hit(&k, p, tol) {
-                Some(Grab::Move) | None => None,
-                Some(g) => Some((c.id, g)),
-            });
-        let (tocada, grab) = match alca {
-            Some(a) => a,
-            None => {
-                let id = interior(s, frame, at)?;
-                if !sel.contains(&id) {
-                    sel.clear();
-                    sel.push(id);
-                }
-                (id, Grab::Move)
-            }
-        };
+        let (tocada, grab) = sob(s, frame, sel, p, tol)?;
+        if grab == Grab::Move && !sel.contains(&tocada) {
+            sel.clear();
+            sel.push(tocada);
+        }
         // Mover e as bordas valem para toda a seleção (G3, §10); o 9-slice e o pivot são de cada uma.
         let todas = matches!(grab, Grab::Move | Grab::Bounds(_));
         let base = visiveis(s, frame)
@@ -138,6 +144,15 @@ impl Gesto {
             .map(|(c, k)| (c.id, k))
             .collect();
         Some(Tipo::Editar { grab, tocada, base })
+    }
+
+    /// A alça agarrada e a slice dela, se o gesto edita (a seta fica a mesma até largar).
+    #[must_use]
+    pub fn agarrado(&self) -> Option<(SliceId, Grab)> {
+        match &self.tipo {
+            Tipo::Editar { grab, tocada, .. } => Some((*tocada, *grab)),
+            _ => None,
+        }
     }
 
     /// O ponteiro está em `p`.

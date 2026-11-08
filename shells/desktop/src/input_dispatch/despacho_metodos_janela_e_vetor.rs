@@ -219,14 +219,10 @@ impl crate::App {
         }
     }
 
-    /// Reflect the current hover context in the OS cursor. Called each
-    /// CursorMoved and each frame (deduped here: winit's Wayland backend resends
-    /// every call), the only `set_cursor` of the shell. Priority: an armed colour-picker
-    /// eyedropper wins (a crosshair "target"), else the Motion graph's split
-    /// divider shows a double-arrow resize cursor (`NsResize` ↕ for a horizontal
-    /// divider, `EwResize` ↔ for a vertical one), else a timeline grab band
-    /// (panel edge, label splitter, graph-height grip), else what the active
-    /// family tab asks for (`DocumentSurface::pointer_look`), else the arrow.
+    /// Reflect the hover context in the OS cursor (each CursorMoved and frame, deduped: Wayland resends
+    /// every call), the only `set_cursor` of the shell. Priority: an armed eyedropper (crosshair), the
+    /// Motion split divider (↕/↔), a timeline grab band, a dock seam, the camera frame, the Pixel Slice
+    /// Tool's handle/line, the board, what the family tab asks (`pointer_look`), else the arrow.
     pub(crate) fn update_eyedropper_cursor(&self) {
         let Some(win) = self.window.as_ref() else {
             return;
@@ -255,8 +251,9 @@ impl crate::App {
                     // ⭐ A borda de uma coluna docada — a MESMA porta que o arrasto pergunta.
                     icon
                 } else if let Some(icon) =
-                    self.forma_cursor().or_else(|| self.camera_frame_cursor())
-                {
+                    self.forma_cursor().or_else(|| self.camera_frame_cursor()) {
+                    icon
+                } else if let Some((icon, ..)) = self.pixel.slice_cursor(h, self.last_pointer) {
                     icon
                 } else if let Some(c) = ph2d_editor_core::screens::hero::board_view::cursor(
                     h,

@@ -4,6 +4,7 @@
 
 use ph2d_pixel_core::selection::Mask;
 use ph2d_pixel_core::{Rect, SliceShape};
+use ph2d_pixel_slices::{Grab, Lados};
 use ph2d_vector::{Affine, BezPath, Color, Fill, Point, Rect as KRect, Stroke as Pen, VectorScene};
 
 use crate::view::{CURSOR_CORE, HALO, HALO_PX};
@@ -83,6 +84,8 @@ pub fn draw_marching_ants(
 
 /// A largura do quadradinho de uma alça e do pivot, em píxeis de ECRÃ: a mesma a qualquer zoom.
 pub const SLICE_HANDLE_PX: f64 = 6.0; // LITERAL-PX-OK: alça da slice, em píxeis de ecrã
+/// A alça (ou o pivot) sob o ponteiro: maior, para se ver o que o premir agarra.
+pub const SLICE_HANDLE_HOT_PX: f64 = 10.0; // LITERAL-PX-OK: alça quente da slice, em píxeis de ecrã
 
 /// Uma slice como se desenha neste quadro.
 #[derive(Debug, Clone, Copy)]
@@ -90,6 +93,8 @@ pub struct SliceMark {
     pub shape: SliceShape,
     pub color: [u8; 4],
     pub selected: bool,
+    /// O que o premir agarraria sob o ponteiro (ou o que está agarrado): realça-se.
+    pub hot: Option<Grab>,
 }
 
 /// Uma aresta horizontal ou vertical cortada em `clip`, se sobra alguma coisa.
@@ -120,8 +125,9 @@ pub fn rect_edges(r: Rect, canvas: Rect) -> Vec<Edge> {
     .collect()
 }
 
-/// As linhas do 9-slice, de lado a lado da caixa e dentro dela, cortadas no canvas.
-fn center_edges(s: &SliceShape, canvas: Rect) -> Vec<Edge> {
+/// As linhas do 9-slice (esquerda, direita, cima, baixo), de lado a lado da caixa e dentro dela,
+/// cortadas no canvas; `so` escolhe quais.
+fn center_edges_of(s: &SliceShape, canvas: Rect, so: Lados) -> Vec<Edge> {
     let Some(c) = s.center else {
         return Vec::new();
     };
@@ -131,14 +137,59 @@ fn center_edges(s: &SliceShape, canvas: Rect) -> Vec<Edge> {
     let (cx, cy) = (b.x + c.x, b.y + c.y);
     let (cx1, cy1) = (cx + c.w as i32, cy + c.h as i32);
     [
-        ((cx, b.y), (cx, y1)),
-        ((cx1, b.y), (cx1, y1)),
-        ((b.x, cy), (x1, cy)),
-        ((b.x, cy1), (x1, cy1)),
+        (so.left, (cx, b.y), (cx, y1)),
+        (so.right, (cx1, b.y), (cx1, y1)),
+        (so.top, (b.x, cy), (x1, cy)),
+        (so.bottom, (b.x, cy1), (x1, cy1)),
     ]
     .into_iter()
-    .filter_map(|(p, q)| cut(p, q, clip))
+    .filter(|e| e.0)
+    .filter_map(|(_, p, q)| cut(p, q, clip))
     .collect()
+}
+
+const TODAS: Lados = Lados {
+    left: true,
+    right: true,
+    top: true,
+    bottom: true,
+};
+
+#[cfg(test)]
+fn center_edges(s: &SliceShape, canvas: Rect) -> Vec<Edge> {
+    center_edges_of(s, canvas, TODAS)
+}
+
+/// As bordas da caixa presas a `l`, cortadas no canvas.
+fn bound_edges(r: Rect, canvas: Rect, l: Lados) -> Vec<Edge> {
+    let (x1, y1) = (r.x + r.w as i32, r.y + r.h as i32);
+    [
+        (l.top, (r.x, r.y), (x1, r.y)),
+        (l.bottom, (r.x, y1), (x1, y1)),
+        (l.left, (r.x, r.y), (r.x, y1)),
+        (l.right, (x1, r.y), (x1, y1)),
+    ]
+    .into_iter()
+    .filter(|e| e.0)
+    .filter_map(|(_, a, b)| cut(a, b, canvas))
+    .collect()
+}
+
+/// O realce do que o ponteiro agarra: cheio, núcleo claro com o anel, como o contorno selecionado.
+fn realce(scene: &mut VectorScene, path: &BezPath, core: f64) {
+    let s = scene.inner_mut();
+    let halo = Pen::new(core + 2.0 * HALO_PX);
+    s.stroke(&halo, Affine::IDENTITY, HALO, None, path);
+    s.stroke(&Pen::new(core), Affine::IDENTITY, CURSOR_CORE, None, path);
+}
+
+/// O lado do quadradinho: maior se é o que o ponteiro agarra.
+const fn lado(quente: bool) -> f64 {
+    if quente {
+        SLICE_HANDLE_HOT_PX
+    } else {
+        SLICE_HANDLE_PX
+    }
 }
 
 fn edges_path(edges: &[Edge], m: Affine) -> BezPath {
@@ -151,8 +202,8 @@ fn edges_path(edges: &[Edge], m: Affine) -> BezPath {
 }
 
 /// Um quadradinho de tamanho fixo no ecrã, cheio de `fill`, com o anel escuro.
-fn handle(scene: &mut VectorScene, at: Point, fill: Color) {
-    let h = SLICE_HANDLE_PX / 2.0;
+fn handle(scene: &mut VectorScene, at: Point, fill: Color, side_px: f64) {
+    let h = side_px / 2.0;
     let r = KRect::new(at.x - h, at.y - h, at.x + h, at.y + h);
     let s = scene.inner_mut();
     s.stroke(&Pen::new(2.0 * HALO_PX), Affine::IDENTITY, HALO, None, &r);
@@ -174,11 +225,19 @@ pub fn draw_slice(
     let cor = Color::from_rgba8(r, g, b, a);
     let nucleo = 2.0 * width_px;
     let contorno = edges_path(&rect_edges(s.bounds, canvas), to_screen);
-    let linhas = edges_path(&center_edges(&s, canvas), to_screen);
+    let linhas = edges_path(&center_edges_of(&s, canvas, TODAS), to_screen);
     let dash = Pen::new(width_px).with_dashes(0.0, [ANTS_DASH_PX, ANTS_DASH_PX]);
     let inner = scene.inner_mut();
     inner.stroke(&dash, Affine::IDENTITY, cor, None, &linhas);
+    if let Some(Grab::Center(l)) = mark.hot {
+        realce(
+            scene,
+            &edges_path(&center_edges_of(&s, canvas, l), to_screen),
+            nucleo,
+        );
+    }
     if mark.selected {
+        let inner = scene.inner_mut();
         let halo = Pen::new(nucleo + 2.0 * HALO_PX);
         inner.stroke(&halo, Affine::IDENTITY, HALO, None, &contorno);
         inner.stroke(
@@ -192,6 +251,28 @@ pub fn draw_slice(
         let (w, h) = (f64::from(s.bounds.w), f64::from(s.bounds.h));
         let (x1, y1) = (x0 + w, y0 + h);
         let (mx, my) = (x0 + w / 2.0, y0 + h / 2.0);
+        let mut quente = None;
+        if let Some(Grab::Bounds(l)) = mark.hot {
+            let borda = edges_path(&bound_edges(s.bounds, canvas, l), to_screen);
+            realce(scene, &borda, 2.0 * nucleo);
+            let x = if l.left {
+                x0
+            } else if l.right {
+                x1
+            } else {
+                mx
+            };
+            quente = Some((
+                x,
+                if l.top {
+                    y0
+                } else if l.bottom {
+                    y1
+                } else {
+                    my
+                },
+            ));
+        }
         for (x, y) in [
             (x0, y0),
             (mx, y0),
@@ -202,16 +283,24 @@ pub fn draw_slice(
             (mx, y1),
             (x1, y1),
         ] {
-            handle(scene, to_screen * Point::new(x, y), CURSOR_CORE);
+            let at = to_screen * Point::new(x, y);
+            handle(scene, at, CURSOR_CORE, lado(quente == Some((x, y))));
         }
     } else {
-        inner.stroke(&Pen::new(nucleo), Affine::IDENTITY, cor, None, &contorno);
+        scene
+            .inner_mut()
+            .stroke(&Pen::new(nucleo), Affine::IDENTITY, cor, None, &contorno);
     }
     if let Some((px, py)) = s.pivot {
         let (x, y) = (s.bounds.x + px, s.bounds.y + py);
         if mark.selected || canvas.contains(x, y) {
             let at = Point::new(f64::from(x) + 0.5, f64::from(y) + 0.5);
-            handle(scene, to_screen * at, cor);
+            handle(
+                scene,
+                to_screen * at,
+                cor,
+                lado(mark.hot == Some(Grab::Pivot)),
+            );
         }
     }
 }

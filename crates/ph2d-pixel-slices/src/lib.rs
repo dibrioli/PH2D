@@ -9,7 +9,9 @@
 pub mod alcas;
 pub mod campos;
 pub mod gesto;
+pub mod seta;
 pub mod transforma;
 
-pub use alcas::{Grab, Lados, aplica, hit};
-pub use gesto::{Gesto, Marca, interior, marcas, no_quadro};
+pub use alcas::{Grab, Lados, alcance, aplica, hit};
+pub use gesto::{Gesto, Marca, interior, marcas, no_quadro, sob};
+pub use seta::seta;

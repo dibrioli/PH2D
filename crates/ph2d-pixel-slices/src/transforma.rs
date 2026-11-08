@@ -49,9 +49,13 @@ fn um(s: &Sprite, key: CelKey, de: Rect, para: Rect, fundo: u32) -> Option<Op> {
 }
 
 /// **O passo inteiro**: `slices` e os píxeis de cada caixa, em sequência, para caixas que se sobrepõem
-/// verem o resultado da anterior. `fundo` é o valor do buraco numa camada Background.
+/// verem o resultado da anterior; sem caixas, `slices` só. `fundo` é o valor do buraco numa camada
+/// Background.
 #[must_use]
 pub fn com_pixels(s: &Sprite, slices: Op, key: CelKey, caixas: &[(Rect, Rect)], fundo: u32) -> Op {
+    if caixas.is_empty() {
+        return slices;
+    }
     let mut copia = s.clone();
     let mut ops = vec![slices];
     for (de, para) in caixas {

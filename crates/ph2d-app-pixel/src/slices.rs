@@ -16,24 +16,22 @@ use ph2d_pixel_core::{SliceId, Sprite};
 use ph2d_pixel_render::{SliceMark, draw_marching_ants, draw_slice, px_per_cell, rect_edges};
 use ph2d_pixel_slices::campos::quadros_com_key;
 use ph2d_pixel_slices::transforma::{caixas_que_mudam, com_pixels};
-use ph2d_pixel_slices::{Gesto, Marca, interior, no_quadro};
+use ph2d_pixel_slices::{Gesto, Grab, Marca, alcance, interior, no_quadro, seta, sob};
 use ph2d_tokens::Theme;
 use ph2d_vector::{Affine, Point, VectorScene};
 use winit::keyboard::KeyCode;
+use winit::window::CursorIcon;
 
 use crate::gesture::Mods;
 use crate::input::{Button, Canvas, KeyAnswer, Press, image_point, key_of, to_screen};
 use crate::{PixelApp, Tool};
 
-/// O alcance das alças em píxeis de ECRÃ: o mesmo a qualquer zoom.
-const GRAB_PX: f64 = 6.0; // LITERAL-PX-OK: alcance do ponteiro sobre uma alça, em píxeis de ecrã
-/// Mas nunca menos que a célula que o ponteiro está a tocar (T4: o píxel da linha agarra-a).
-const GRAB_MIN_CELLS: f64 = 0.5;
-
 #[derive(Default)]
 pub(crate) struct Estado {
     pub(crate) sel: BTreeMap<u32, Vec<SliceId>>,
     gesto: Option<(u32, Gesto)>,
+    /// O que o premir agarra sob o ponteiro (ou o agarrado): a seta e o realce.
+    quente: Option<(u32, SliceId, Grab)>,
     transform: bool,
     /// O último clique: o segundo, depressa e na mesma célula, mostra o cartão (T2).
     clique: Option<(Instant, (i32, i32))>,
@@ -63,6 +61,36 @@ impl PixelApp {
     pub fn hover_cell(&self) -> Option<(i32, i32)> {
         self.hover.map(|h| h.1)
     }
+
+    /// A seta da Slice Tool em `p` fora do chrome, e o realçado: o que o premir agarra.
+    #[must_use]
+    pub fn slice_cursor(&self, hero: &HeroScreen, (x, y): (f32, f32)) -> Option<Quente> {
+        let livre = hero.chrome_panel_at(x, y).is_none() && hero.chrome_hit(x, y).is_none();
+        let q = self
+            .slices
+            .quente
+            .filter(|_| livre && self.tool == Tool::Slice);
+        q.map(|q| (seta(q.2), q.1, q.2))
+    }
+}
+
+/// O ponto em células, o alcance das alças e o quadro: os MESMOS no premir e no pairar.
+fn alvo(app: &PixelApp, c: &Canvas<'_>, bits: u64, key: u32, p: (f32, f32)) -> Option<Alvo> {
+    let doc = app.docs.get(&key)?;
+    let m = to_screen(c.world, bits, doc, c.camera, c.window, c.ppm)?;
+    let (q, f) = (image_point(m, p), no_quadro(&doc.sprite, doc.frame));
+    Some(((q.x, q.y), alcance(px_per_cell(m)), f))
+}
+type Alvo = ((f64, f64), f64, u32);
+pub type Quente = (CursorIcon, SliceId, Grab);
+
+/// O que o premir agarraria sob o ponteiro, com a ferramenta na mão.
+fn paira(app: &PixelApp, c: &Canvas<'_>, p: (f32, f32)) -> Option<(u32, SliceId, Grab)> {
+    let bits = c.editing.filter(|_| app.tool == Tool::Slice)?;
+    let key = key_of(c.world, bits)?;
+    let (q, tol, frame) = alvo(app, c, bits, key, p)?;
+    let s = &app.docs.get(&key)?.sprite;
+    sob(s, frame, app.slices_selected(key), q, tol).map(|(id, g)| (key, id, g))
 }
 
 /// Premir com a ferramenta na mão. O botão direito é do menu da slice, nunca do gesto.
@@ -78,13 +106,10 @@ pub(crate) fn press(
     let Some(doc) = app.docs.get(&key) else {
         return Press::NotMine;
     };
-    let Some(screen) = to_screen(c.world, bits, doc, c.camera, c.window, c.ppm) else {
+    let Some((q, tol, frame)) = alvo(app, c, bits, key, p) else {
         return Press::Done;
     };
-    let q = image_point(screen, p);
-    let tol = (GRAB_PX / px_per_cell(screen)).max(GRAB_MIN_CELLS);
-    let frame = no_quadro(&doc.sprite, doc.frame);
-    let cel = (q.x.floor() as i32, q.y.floor() as i32);
+    let cel = (q.0.floor() as i32, q.1.floor() as i32);
     if button != Button::Primary {
         app.slices.menu = Some((cel, p));
         return Press::Done;
@@ -98,14 +123,16 @@ pub(crate) fn press(
         canal::mostrar_propriedades();
     }
     let sel = app.slices.sel.entry(key).or_default();
-    let g = Gesto::press(&doc.sprite, frame, sel, (q.x, q.y), tol, m.shift);
+    let g = Gesto::press(&doc.sprite, frame, sel, q, tol, m.shift);
+    app.slices.quente = g.agarrado().map(|(id, a)| (key, id, a));
     app.slices.gesto = Some((key, g));
     Press::Done
 }
 
-/// Mover. `false`: não há gesto de slice.
+/// Mover. `false`: não há gesto de slice (pairar só realça e escolhe a seta).
 pub(crate) fn moved(app: &mut PixelApp, c: &Canvas<'_>, p: (f32, f32)) -> bool {
-    let Some((key, _)) = app.slices.gesto.as_ref() else {
+    let Some(key) = app.slices.gesto.as_ref().map(|g| &g.0) else {
+        app.slices.quente = paira(app, c, p);
         return false;
     };
     let q = c.editing.and_then(|bits| {
@@ -132,11 +159,8 @@ pub(crate) fn release(app: &mut PixelApp) -> bool {
         return true;
     };
     let frame = no_quadro(&doc.sprite, doc.frame);
-    let caixas = if app.slices.transform {
-        caixas_que_mudam(&doc.sprite, frame, &g.previa())
-    } else {
-        Vec::new()
-    };
+    let previa = app.slices.transform.then(|| g.previa()).unwrap_or_default();
+    let caixas = caixas_que_mudam(&doc.sprite, frame, &previa);
     if let Some(motivo) = crate::camadas::recusa_pintar(doc).filter(|_| !caixas.is_empty()) {
         app.recusa(motivo);
         return true;
@@ -144,12 +168,7 @@ pub(crate) fn release(app: &mut PixelApp) -> bool {
     let fundo = doc.sprite.value_of_rgba(app.bg);
     let sel = app.slices.sel.entry(key).or_default();
     if let Some(op) = g.release(&mut doc.sprite, frame, sel) {
-        let cel = (doc.layer, doc.frame);
-        let op = if caixas.is_empty() {
-            op
-        } else {
-            com_pixels(&doc.sprite, op, cel, &caixas, fundo)
-        };
+        let op = com_pixels(&doc.sprite, op, (doc.layer, doc.frame), &caixas, fundo);
         let _ = app.commit(key, op);
     }
     true
@@ -285,11 +304,16 @@ pub(crate) fn desenha(app: &PixelApp, key: u32, m: Affine, linha: f64, scene: &m
         return;
     };
     let canvas = s.bounds();
+    let quente = app
+        .slices
+        .quente
+        .filter(|q| q.0 == key && app.tool == Tool::Slice);
     for k in marcas(app, key) {
         let mark = SliceMark {
             shape: k.shape,
             color: k.color,
             selected: k.selected,
+            hot: quente.filter(|q| q.1 == k.id).map(|q| q.2),
         };
         draw_slice(scene, &mark, canvas, m, linha);
     }

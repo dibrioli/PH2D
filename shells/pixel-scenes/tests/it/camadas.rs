@@ -260,3 +260,23 @@ fn renaming_and_mode_reach_the_document() {
     );
     assert!(ph2d_app_pixel::camadas::blend_to(PixelBlend::Divide).code() == 18);
 }
+
+/// ⭐ Dono 06/11: *«vamos tirar os layers da hierarchy. Eles vivem apenas no painter/pixel»*: um Pixel
+/// Sprite, com as suas camadas, não declara linha nenhuma.
+#[test]
+fn o_pixel_sprite_nao_tem_linhas_de_camadas() {
+    use ph2d_editor_core::ToolRegistry;
+    use ph2d_editor_core::screens::hero::mode_drive::ModeFamily;
+    let mut world = ph2d_ecs::World::new();
+    world.spawn(ph2d_ecs::PixelSprite(1));
+    assert_eq!(
+        mode::sprites(&world).len(),
+        1,
+        "CONTROLO: a família vê o objecto"
+    );
+    let mut app = PixelApp::default();
+    let mut family = mode::Family::new(&mut app, &world);
+    let mut linhas = ph2d_editor_core::hier_rows::ContentMap::default();
+    family.content(&mut ToolRegistry::new(), &mut linhas);
+    assert!(linhas.is_empty());
+}

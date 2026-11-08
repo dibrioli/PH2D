@@ -30,6 +30,17 @@ pub enum Grab {
     Move,
 }
 
+/// O alcance das alças em píxeis de ECRÃ: o mesmo a qualquer zoom.
+const GRAB_PX: f64 = 6.0; // LITERAL-PX-OK: alcance do ponteiro sobre uma alça, em píxeis de ecrã
+/// Mas nunca menos que a célula que o ponteiro está a tocar (T4: o píxel da linha agarra-a).
+const GRAB_MIN_CELLS: f64 = 0.5;
+
+/// **O alcance das alças, em células**, a `px_per_cell` píxeis de ecrã por célula.
+#[must_use]
+pub fn alcance(px_per_cell: f64) -> f64 {
+    (GRAB_PX / px_per_cell).max(GRAB_MIN_CELLS)
+}
+
 /// A fração do lado que uma alça pode ocupar por DENTRO: o miolo de qualquer caixa é sempre mover,
 /// mesmo com a tolerância de um zoom baixo.
 const FRACAO_POR_DENTRO: f64 = 0.2;

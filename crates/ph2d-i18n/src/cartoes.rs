@@ -368,7 +368,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "card.physics.layer_default" => "Layer {n}",
         "card.physics.matrix_title" => "Collision Layers",
-        "card.physics.matrix_summary" => "{n} layers shown · {off} pairs that do not collide",
+        "card.physics.matrix_summary" => "{n} {n?layer|layers} shown · {off} {off?pair that does|pairs that do} not collide",
         "card.physics.layer_label_tip" => "Double-click to rename",
         "card.physics.layer_label_tip_named" => "{name}. Double-click to rename",
         "card.physics.layer_zero" => "Default",

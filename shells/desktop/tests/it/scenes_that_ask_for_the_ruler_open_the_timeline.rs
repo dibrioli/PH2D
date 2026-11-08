@@ -185,7 +185,17 @@ fn every_physics_smoke_scene_has_a_ruler_because_the_prologue_opens_the_timeline
     // da timeline e no `HeroScreen` — composição, não família.
     let prologo_src =
         fs::read_to_string("src/physics/physics_smoke.rs").expect("o prólogo, na shell");
-    let prologue = body_of(&prologo_src, "physics_smoke").expect("o prólogo do smoke sumiu");
+    let prologo = body_of(&prologo_src, "physics_smoke").expect("o prólogo do smoke sumiu");
+    // Desde 6aab653770 o prólogo corre a cena e entrega o pedido à família: a porta da
+    // timeline mora em `aplica_o_pedido`. Segue-se a cadeia inteira, elo a elo.
+    let corre = body_of(&prologo_src, "run_physics_scene").expect("run_physics_scene sumiu");
+    let familia_src = fs::read_to_string("../../crates/ph2d-app-physics/src/smoke.rs")
+        .expect("o smoke da família");
+    let aplica = body_of(&familia_src, "aplica_o_pedido").expect("aplica_o_pedido sumiu");
+    let por_delegacao = prologo.contains("self.run_physics_scene(")
+        && corre.contains("smoke::aplica_o_pedido(")
+        && aplica.contains(OPENS_TIMELINE);
+    let prologue = if por_delegacao { aplica } else { prologo };
     let asking: Vec<String> = ruler_scenes()
         .into_iter()
         .filter(|(_, _, body)| !body.contains(OPENS_TIMELINE))

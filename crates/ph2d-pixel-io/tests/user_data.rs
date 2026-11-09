@@ -183,3 +183,46 @@ fn a_camada_normal_map_vai_e_volta_pelo_ase() {
         "o user data volta sem a propriedade da bandeira"
     );
 }
+
+/// P14d: um `.ase` Indexed vindo de fora com `ph2d.normal` entra SEM a bandeira (a camada indexada
+/// não guarda RGB), e a propriedade fica no user data. Controlo: o mesmo user data em RGBA liga-a.
+#[test]
+fn um_ase_indexado_com_ph2d_normal_entra_sem_a_bandeira() {
+    let lido = |mode: ColorMode| {
+        let mut s = Sprite::new(NewSprite {
+            width: 4,
+            height: 4,
+            mode,
+            ..NewSprite::default()
+        })
+        .expect("sprite");
+        let id = s.layers()[0].id;
+        // O que outro programa gravaria: a propriedade no mapa do artista, sem a nossa bandeira.
+        let mut u = UserData::default();
+        u.props
+            .entry(String::new())
+            .or_default()
+            .insert("ph2d.normal".into(), PropValue::Bool(true));
+        let op = Op::UserData {
+            owner: Owner::Layer(id),
+            data: Box::new(u),
+        };
+        apply(&mut s, op).expect("user");
+        let (bytes, _) = escrever(&s).expect("escreve");
+        ler(&bytes).expect("lê").0
+    };
+    let rgb = lido(ColorMode::Rgba);
+    assert!(
+        rgb.layers()[0].normal,
+        "o controlo: em RGBA a bandeira liga"
+    );
+    let back = lido(ColorMode::Indexed);
+    assert_eq!(back.mode(), ColorMode::Indexed);
+    let l = &back.layers()[0];
+    assert!(!l.normal, "em Indexed a bandeira cai");
+    assert_eq!(
+        l.user.props.get("").and_then(|m| m.get("ph2d.normal")),
+        Some(&PropValue::Bool(true)),
+        "a propriedade fica no user data"
+    );
+}

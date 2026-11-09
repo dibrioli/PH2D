@@ -414,7 +414,9 @@ pub fn ler(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>), AseErro> {
         c.reference = l.flags & LAYER_REFERENCE != 0;
         c.opacity = l.opacity;
         c.user = user::de(l.user_data.as_ref(), &file.external_files);
-        c.normal = user::tira_normal(&mut c.user);
+        // Fora de RGB a camada não guarda uma normal (P14c-pixel 1b (d)): a bandeira cai e a
+        // propriedade fica no user data, como veio.
+        c.normal = mode == ColorMode::Rgba && user::tira_normal(&mut c.user);
         c.parent = abertos.last().copied();
         c.background =
             l.flags & LAYER_BACKGROUND != 0 && i == 0 && c.parent.is_none() && l.kind != KIND_GROUP;

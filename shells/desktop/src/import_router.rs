@@ -171,6 +171,7 @@ pub(crate) fn import_paths_grid(
                 animations,
                 bits,
                 notes,
+                ..
             } => {
                 let size = sim
                     .world()

@@ -60,6 +60,12 @@ pub struct SpriteImportado {
     pub colliders: Vec<ColliderImportado>,
     /// O mesmo pivô e as mesmas formas, no idioma do Sprite do motor ([`liga_celulas`]).
     pub celulas: ph2d_ecs::CelulasDaFolha,
+    /// O documento não tinha tags (o clip único com o nome do ficheiro foi inventado).
+    pub sem_tags: bool,
+    /// As tags que o motor recusou, com o motivo.
+    pub recusas: Vec<(String, ph2d_ecs::AnimTagError)>,
+    /// O que o leitor do `.ase` não honrou.
+    pub avisos: Vec<ph2d_pixel_io::ase::Aviso>,
 }
 
 /// Deriva o import de um documento Pixel.
@@ -75,6 +81,7 @@ pub fn importa(sprite: &Sprite, nome_sem_tags: &str, m_por_px: f64) -> SpriteImp
         .iter()
         .any(|l| l.normal)
         .then(|| quadros.iter().map(|&f| compose_normal(sprite, f)).collect());
+    let (clips, recusas) = crate::clips_e_recusas(sprite, nome_sem_tags);
     let pivos_px: Vec<(f64, f64)> = quadros.iter().map(|&f| crate::pivo_px(sprite, f)).collect();
     let colliders = sprite
         .slices()
@@ -94,7 +101,10 @@ pub fn importa(sprite: &Sprite, nome_sem_tags: &str, m_por_px: f64) -> SpriteImp
         altura: sprite.height(),
         cor,
         normal,
-        clips: crate::clips_das_tags(sprite, nome_sem_tags),
+        clips,
+        sem_tags: sprite.tags().is_empty(),
+        recusas,
+        avisos: Vec::new(),
         celulas: celulas_de(sprite, &pivos_px),
         pivos_px,
         colliders,
@@ -110,8 +120,11 @@ pub fn importa_ase(
     nome_sem_tags: &str,
     m_por_px: f64,
 ) -> Result<SpriteImportado, String> {
-    let (s, _) = ph2d_pixel_io::ase::ler(bytes).map_err(|e| format!("{e:?}"))?;
-    Ok(importa(&s, nome_sem_tags, m_por_px))
+    let (s, avisos) = ph2d_pixel_io::ase::ler(bytes).map_err(|e| e.to_string())?;
+    Ok(SpriteImportado {
+        avisos,
+        ..importa(&s, nome_sem_tags, m_por_px)
+    })
 }
 
 /// O pivô e as formas por célula da folha `0` (a folha do import é uma célula por quadro, na

@@ -30,6 +30,8 @@ ph2d-asset = { path = "../ph2d-asset" }
 # Largar uma imagem no canvas nasce a sprite pela mesma porta da troca (`image_choice::place_library_image`).
 ph2d-core = { path = "../ph2d-core" }
 ph2d-image-import = { path = "../ph2d-image-import" }
+# P14e: o import do `.ase` (a normal liga-se aqui, pela porta `normal_map`).
+ph2d-sprite-ase-import = { path = "../ph2d-sprite-ase-import" }
 ph2d-app-host = { path = "../ph2d-app-host" }
 # O Pivot e a marca do Edit in Painter (`ImageUseEdit`).
 ph2d-sprite-edit = { path = "../ph2d-sprite-edit" }

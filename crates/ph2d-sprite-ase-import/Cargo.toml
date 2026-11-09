@@ -1,0 +1,33 @@
+[package]
+name = "ph2d-sprite-ase-import"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# O import do `.ase` como Sprite do motor (P14e), movido da shell: lê pelo leitor do Pixel e deriva
+# pelas portas do Pixel Sprite (`ph2d-pixel-cena`). A normal liga-se na família
+# (`ph2d_app_sprite_anim::ase_import`, a porta `normal_map`).
+[dependencies]
+ph2d-asset = { path = "../ph2d-asset" }
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-i18n = { path = "../ph2d-i18n" }
+ph2d-image-import = { path = "../ph2d-image-import" }
+ph2d-panel-pixel-export = { path = "../ph2d-panel-pixel-export" }
+ph2d-pixel-cena = { path = "../ph2d-pixel-cena" }
+ph2d-render = { path = "../ph2d-render" }
+
+[dev-dependencies]
+# A normal entra pela porta da família (dev: o ciclo só existe nos testes).
+ph2d-app-sprite-anim = { path = "../ph2d-app-sprite-anim" }
+ph2d-aseprite = { path = "../ph2d-aseprite" }
+ph2d-pixel-core = { path = "../ph2d-pixel-core" }
+ph2d-pixel-io = { path = "../ph2d-pixel-io" }
+
+[lints]
+workspace = true

@@ -8,7 +8,27 @@
 //! pelo smoke.
 
 use super::*;
+use ph2d_aseprite::{AseFrame, AseTag};
 use ph2d_ecs::AnimDirection;
+
+/// A tag do ficheiro pela porta única, com a nota do ritmo (o `tag_from_ase` que a shell tinha).
+fn tag_from_ase(t: &AseTag, frames: &[AseFrame]) -> (AnimationTag, Option<String>) {
+    let d: Vec<u32> = frames.iter().map(|f| u32::from(f.duration_ms)).collect();
+    let tag = ph2d_ecs::tag_do_aseprite(
+        &t.name,
+        u32::from(t.from),
+        u32::from(t.to),
+        t.direction,
+        t.repeat,
+        &d,
+    );
+    let n = nota_do_ritmo(&tag);
+    (tag, n)
+}
+
+fn rgba(fs: &[AseFrame]) -> Vec<Vec<u8>> {
+    fs.iter().map(|f| f.rgba.clone()).collect()
+}
 
 fn frame(ms: u16, w: u16, h: u16, fill: u8) -> AseFrame {
     AseFrame {
@@ -73,7 +93,7 @@ fn frames_that_do_not_fit_wrap_into_rows() {
 fn the_frames_are_packed_row_major_because_a_tag_indexes_cells() {
     // Quatro quadros de 1x1, cada um com um valor diferente, numa grelha 2x2.
     let frames: Vec<AseFrame> = (0..4).map(|i| frame(100, 1, 1, 10 + i as u8)).collect();
-    let sheet = pack(&frames, 1, 1, 2, 2);
+    let sheet = pack(&rgba(&frames), 1, 1, 2, 2);
     // Linha 0: quadros 0 e 1. Linha 1: quadros 2 e 3.
     assert_eq!(sheet[0], 10, "celula (0,0) = quadro 0");
     assert_eq!(sheet[4], 11, "celula (1,0) = quadro 1");
@@ -86,7 +106,7 @@ fn the_frames_are_packed_row_major_because_a_tag_indexes_cells() {
 #[test]
 fn the_leftover_cells_are_transparent() {
     let frames: Vec<AseFrame> = (0..3).map(|_| frame(100, 1, 1, 255)).collect();
-    let sheet = pack(&frames, 1, 1, 2, 2);
+    let sheet = pack(&rgba(&frames), 1, 1, 2, 2);
     assert_eq!(
         &sheet[12..16],
         &[0, 0, 0, 0],
@@ -111,7 +131,9 @@ fn a_tag_crosses_over_whole() {
 
     let (pp, _) = tag_from_ase(&ase_tag("hit", 2, 5, 2, 3), &frames);
     assert_eq!(pp.direction, AnimDirection::PingPong);
-    assert_eq!(pp.repeat, Some(3));
+    // P14a-3: o `repeat` do Aseprite conta PASSADAS; 3 no ping-pong = ⌈3/2⌉ ciclos, o último meio.
+    assert_eq!(pp.repeat, Some(2));
+    assert!(pp.acaba_na_ponta_de_chegada);
 
     // As quatro direcções do ficheiro dão as quatro da §11, e um número fora da lista não inventa.
     let dirs: Vec<_> = (0..4)
@@ -185,20 +207,35 @@ fn the_vector_covers_the_tags_own_range() {
 /// diz que a animação foi inventada por nós.
 #[test]
 fn a_file_without_tags_still_gets_something_to_play() {
-    let doc = AseDoc {
+    let mut s = ph2d_pixel_core::Sprite::new(ph2d_pixel_core::NewSprite {
         width: 1,
         height: 1,
-        frames: (0..5).map(|_| frame(120, 1, 1, 0)).collect(),
-        tags: Vec::new(),
-        notes: Vec::new(),
-    };
-    let (lib, notes) = library(&doc, "hero");
-    let tags: Vec<_> = lib.iter().collect();
+        ..ph2d_pixel_core::NewSprite::default()
+    })
+    .expect("1x1");
+    for _ in 1..5 {
+        let last = s.frames().last().expect("um").id;
+        let (op, _) = ph2d_pixel_core::frames::new_frame(
+            &mut s,
+            last,
+            ph2d_pixel_core::frames::NewFrame::Empty,
+        )
+        .expect("quadro");
+        ph2d_pixel_core::apply(&mut s, op).expect("quadro");
+    }
+    let imp = ph2d_pixel_cena::importa(&s, "hero", 1.0);
+    let tags: Vec<_> = imp.clips.iter().collect();
     assert_eq!(tags.len(), 1);
     assert_eq!(tags[0].name, "hero", "o nome do ficheiro");
     assert_eq!((tags[0].from, tags[0].to), (0, 4), "cobre TODOS os quadros");
-    assert_eq!(tags[0].frame_ms, 120);
-    assert_eq!(notes.len(), 1, "e diz que a animacao foi inventada");
+    let n = notas(
+        &imp.clips,
+        imp.sem_tags,
+        &imp.recusas,
+        "hero",
+        imp.cor.len(),
+    );
+    assert_eq!(n.len(), 1, "e diz que a animacao foi inventada");
 }
 
 /// **Uma tag que a §11 recusa sai NOMEADA, com o motivo.** ⛔ «Alguma coisa não entrou» manda o
@@ -206,18 +243,20 @@ fn a_file_without_tags_still_gets_something_to_play() {
 /// diferentes.
 #[test]
 fn a_rejected_tag_names_itself_and_the_reason() {
-    let doc = AseDoc {
-        width: 1,
-        height: 1,
-        frames: (0..4).map(|_| frame(100, 1, 1, 0)).collect(),
-        tags: vec![
-            ase_tag("walk", 0, 1, 0, 0),
-            ase_tag("walk", 2, 3, 0, 0), // o mesmo nome
-            ase_tag("", 0, 1, 0, 0),     // vazio
-        ],
-        notes: Vec::new(),
-    };
-    let (lib, notes) = library(&doc, "hero");
+    let frames: Vec<AseFrame> = (0..4).map(|_| frame(100, 1, 1, 0)).collect();
+    let mut lib = SpriteAnimations::new();
+    let mut recusas = Vec::new();
+    for t in [
+        ase_tag("walk", 0, 1, 0, 0),
+        ase_tag("walk", 2, 3, 0, 0), // o mesmo nome
+        ase_tag("", 0, 1, 0, 0),     // vazio
+    ] {
+        let (tag, _) = tag_from_ase(&t, &frames);
+        if let Err(e) = lib.insert(tag) {
+            recusas.push((t.name.clone(), e));
+        }
+    }
+    let notes = notas(&lib, false, &recusas, "hero", 4);
     assert_eq!(lib.iter().count(), 1, "so' a primeira `walk` entra");
     assert_eq!(notes.len(), 2, "duas recusas, duas linhas: {notes:?}");
     assert!(notes[0].contains("walk") && notes[0].contains("Duplicate"));
@@ -234,4 +273,98 @@ fn both_aseprite_extensions_are_recognised() {
     assert!(is_ase_file(Path::new("/a/hero.ASE")));
     assert!(!is_ase_file(Path::new("/a/hero.png")));
     assert!(!is_ase_file(Path::new("/a/hero")));
+}
+
+/// ⭐ P14e: o `.ase` que o Pixel grava da `heroi_p14` (com Add Collider em `body`), ligado à sprite do
+/// import: o pivô do quadro 0 é o da folha e o de cada célula vai nas `SpriteCells`; a forma é uma
+/// filha que segue a célula; a biblioteca são as 3 tags. *Mutações: `liga` sem `liga_celulas`; o
+/// pivô da folha ignorado.*
+#[test]
+fn o_import_liga_o_pivo_e_a_forma() {
+    let mut sim = SimWorld::new();
+    let (e, _) = heroi_importado(&mut sim);
+    let w = sim.world();
+    let spr = w.get::<ph2d_render::Sprite>(e).expect("sprite");
+    assert_eq!(spr.size, [1.0, 1.0], "uma célula");
+    assert_eq!(
+        spr.anchor,
+        [0.0, 15.0 / 16.0 - 0.5],
+        "o pivô do quadro 0 (8,15)"
+    );
+    assert_eq!(
+        ph2d_ecs::anchor_da_celula(w, e, 0, 4, spr.size),
+        Some([0.5 - 6.0 / 16.0, 15.0 / 16.0 - 0.5]),
+        "o pivô do quadro 4 (6,15)"
+    );
+    let filha = w.get::<ph2d_ecs::Children>(e).expect("filha")[0];
+    assert!(w.get::<ph2d_pixel_cena::SegueCelula>(filha).is_some());
+    assert_eq!(
+        w.get::<SpriteAnimations>(e).map(|l| l.iter().count()),
+        Some(3)
+    );
+}
+
+/// O Sprite do motor da `heroi_p14` como o import o liga (sem placa: a sprite nasce à mão no átlas 7).
+pub fn heroi_importado(sim: &mut SimWorld) -> (ph2d_ecs::Entity, ph2d_pixel_cena::SpriteImportado) {
+    use ph2d_pixel_cena::fixture::{body, heroi_p14};
+    let s = heroi_p14();
+    let marcadas = std::collections::BTreeSet::from([body(&s).0]);
+    let (bytes, _) = ph2d_pixel_io::ase::escrever(&ph2d_pixel_cena::com_colliders(&s, &marcadas))
+        .expect("grava");
+    let m = 1.0 / 16.0;
+    let imp = ph2d_pixel_cena::importa_ase(&bytes, "heroi", m).expect("import");
+    let (cols, rows) = grid_for(imp.cor.len(), imp.largura, imp.altura);
+    assert_eq!((cols, rows), (6, 1));
+    let e = sim
+        .world_mut()
+        .spawn((
+            ph2d_render::Sprite::atlas(7, [6.0, 1.0], [1.0; 4]),
+            ph2d_ecs::Transform::IDENTITY,
+        ))
+        .id();
+    liga(sim, e, &imp, cols, rows, m);
+    (e, imp)
+}
+
+/// ⭐ P14e: a normal da camada Normal Map da `heroi_p14` ENTRA na imagem do Sprite importado e é a
+/// do Pixel (`compose_normal`, na grelha da cor). *Mutação: `liga_normal` não chamada ⇒ sem normal.*
+#[test]
+fn a_normal_do_ase_entra_na_imagem_importada() {
+    use crate::{grid_for, pack};
+    use ph2d_pixel_cena::fixture::heroi_p14;
+    let s = heroi_p14();
+    let (bytes, _) = ph2d_pixel_io::ase::escrever(&s).expect("grava");
+    let imp = ph2d_pixel_cena::importa_ase(&bytes, "heroi", 1.0 / 16.0).expect("import");
+    let (cols, rows) = grid_for(imp.cor.len(), 16, 16);
+    ph2d_app_sprite_anim::normal_map::set_normais(&[]);
+    let db = ph2d_asset::AssetDb::new();
+    let cor = db.insert_image_rgba8(96, 16, pack(&imp.cor, 16, 16, cols, rows));
+    let atlas = [(7, cor)].into_iter().collect();
+    let mut w = ph2d_ecs::World::new();
+    let e = w
+        .spawn(ph2d_render::Sprite::atlas(7, [1.0; 2], [1.0; 4]))
+        .id();
+    let n = imp.normal.as_ref().expect("a fixture tem Normal Map");
+    ph2d_app_sprite_anim::ase_import::liga_normal(
+        &w,
+        &db,
+        &atlas,
+        e.to_bits(),
+        (96, 16, pack(n, 16, 16, cols, rows)),
+    )
+    .expect("liga");
+    let id = ph2d_app_sprite_anim::normal_map::normal_de(cor).expect("a imagem tem normal");
+    let pixel: Vec<Vec<u8>> = s
+        .frames()
+        .iter()
+        .map(|f| ph2d_pixel_core::compose_normal(&s, f.id))
+        .collect();
+    let px = db
+        .get(&id)
+        .and_then(|a| a.image_rgba8().map(|(_, _, p)| p.into_owned()));
+    assert_eq!(
+        px,
+        Some(pack(&pixel, 16, 16, cols, rows)),
+        "a normal é a do Pixel"
+    );
 }

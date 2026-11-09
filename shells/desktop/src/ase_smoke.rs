@@ -243,6 +243,7 @@ pub(crate) fn spawn_if_enabled(
             animations,
             bits,
             notes,
+            ..
         } => {
             let mut lines = vec![format!(
                 "{name}: {frames} frames, {animations} animations — from {}",

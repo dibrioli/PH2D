@@ -6344,6 +6344,7 @@ dependencies = [
  "ph2d-pixel-core",
  "ph2d-preview-drive",
  "ph2d-render",
+ "ph2d-sprite-ase-import",
  "ph2d-sprite-edit",
  "ph2d-sprite-sheet",
  "ph2d-text",
@@ -11385,6 +11386,24 @@ dependencies = [
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-physics-ecs",
+]
+
+[[package]]
+name = "ph2d-sprite-ase-import"
+version = "0.0.0"
+dependencies = [
+ "ph2d-app-sprite-anim",
+ "ph2d-aseprite",
+ "ph2d-asset",
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-i18n",
+ "ph2d-image-import",
+ "ph2d-panel-pixel-export",
+ "ph2d-pixel-cena",
+ "ph2d-pixel-core",
+ "ph2d-pixel-io",
+ "ph2d-render",
 ]
 
 [[package]]

@@ -22,11 +22,11 @@ ph2d-inspector-ordering = { path = "../ph2d-inspector-ordering" }
 # The pixels (`AssetDb::image_rgba8`) and the card edit that asks for a retrace.
 ph2d-asset = { path = "../ph2d-asset" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
+# «Merge by distance» (a lei pura dos pontos e a seleção do canvas); W5 testa pelas portas do ponteiro.
+ph2d-shape-handles = { path = "../ph2d-shape-handles" }
 
 [dev-dependencies]
 ph2d-core = { path = "../ph2d-core" }
-# W5: os pontos do «Outline» pelas portas reais do ponteiro.
-ph2d-shape-handles = { path = "../ph2d-shape-handles" }
 ph2d-host = { path = "../ph2d-host" }
 
 [lints]

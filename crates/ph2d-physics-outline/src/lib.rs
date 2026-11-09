@@ -10,6 +10,9 @@ use ph2d_outline_trace::{Mask, Params, trace_fitted};
 use ph2d_physics_ecs::{Collider, ColliderOutline, ColliderShape, RigidBody};
 use ph2d_render::Sprite;
 
+mod merge;
+pub use merge::{MergeReport, merged, outline_edited};
+
 /// Os pixels RGBA8 de uma folha, linha a linha.
 #[derive(Clone, Debug)]
 pub struct Picture<'a> {
@@ -232,6 +235,7 @@ pub fn asked_with(cur: &ColliderOutline, e: ph2d_editor_core::OutlineEdit) -> Co
         E::Detail(px) => next.detail_q4 = to_u16(px * 16.0).max(1),
         E::AlphaCutoff(v) => next.alpha_cutoff = (v.clamp(0.0, 1.0) * 255.0).round() as u8,
         E::Specks(px) => next.min_island_px = to_u16(px),
+        E::Merge(_) => {}
     }
     next
 }
@@ -258,12 +262,12 @@ pub fn follows(world: &World, shape: Entity) -> Option<bool> {
     })
 }
 
-/// O que o cartão mostra de um «Outline» (`None` noutra forma, ou sem imagem a traçar: aí Detail,
-/// Alpha cutoff e Ignore specks under não mudariam nada — controlos mortos).
+/// O que o cartão mostra de um «Outline» (`None` noutra forma). Sem imagem a traçar, `traced` é falso: aí Detail,
+/// Alpha cutoff e Ignore specks under não mudariam nada — controlos mortos —, mas o «Merge» serve.
 #[must_use]
 pub fn card_info(world: &World, shape: Entity) -> Option<ph2d_editor_core::InspectorOutlineInfo> {
     let c = world.get::<Collider>(shape)?;
-    if !matches!(c.shape, ColliderShape::Outline { .. }) || picture_owner(world, shape).is_none() {
+    if !matches!(c.shape, ColliderShape::Outline { .. }) {
         return None;
     }
     let o = world
@@ -277,6 +281,8 @@ pub fn card_info(world: &World, shape: Entity) -> Option<ph2d_editor_core::Inspe
         alpha_cutoff: (f32::from(o.alpha_cutoff) / 2.55).round() / 100.0,
         specks_px: f32::from(o.min_island_px),
         raised: (o.raised_q4 > o.detail_q4).then(|| (f32::from(o.raised_q4) / 16.0, max)),
+        traced: picture_owner(world, shape).is_some(),
+        merged: merged(world, shape, &o),
     })
 }
 
@@ -402,7 +408,9 @@ pub fn retrace_edited(
     let picture = db_picture(world, db, atlas);
     let mut n = 0;
     for &(bits, edit) in edits {
-        if !matches!(edit, P::Shape(3) | P::FitToPicture | P::Outline(_)) {
+        if !matches!(edit, P::Shape(3) | P::FitToPicture | P::Outline(_))
+            || matches!(edit, P::Outline(ph2d_editor_core::OutlineEdit::Merge(_)))
+        {
             continue;
         }
         let pedido = Entity::from_bits(bits);

@@ -201,6 +201,27 @@ fn cada_gesto_dos_pontos_do_outline_e_um_passo_de_desfazer() {
     );
     fotos.push(d);
     assert_eq!((pts(&sim).len(), n7), (4, 7), "a fusão é UM passo");
+    // «Merge by distance» (dono 09/11): o cacho num passo, o Merge do cartão noutro, um só.
+    let (bits, q) = (e.to_bits(), ph2d_ecs::scene::EditorCommandQueue::new());
+    p::escreve(
+        sim.world_mut(),
+        bits,
+        vec![vec![[0, 0], [8, 0], [64, 0], [64, 64], [0, 64]]],
+        true,
+    );
+    for m in [None, Some(ph2d_editor_core::OutlineEdit::Merge(3.0))] {
+        if let Some(m) = m.map(ph2d_editor_core::PhysicsFieldEdit::Outline) {
+            ph2d_app_physics::inspector::body::apply_physics_edit(&mut sim, bits, m, &q, &reg);
+            ph2d_ecs::scene::apply_editor_commands(sim.world_mut(), &q, &reg).expect("aplica");
+        }
+        fotos.push(capture(&mut sim, &vec, &reg));
+        quadro(&app, &mut fila, &mut base, fotos[fotos.len() - 1].clone());
+    }
+    assert_eq!(
+        (pts(&sim).len(), fila.depth()),
+        (4, 9),
+        "o Merge é UM passo"
+    );
     let mut agora = fotos.pop().expect("foto");
     while let Some(antes) = fotos.pop() {
         let (volta, _) = fila

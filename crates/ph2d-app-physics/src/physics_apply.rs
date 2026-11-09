@@ -85,17 +85,17 @@ pub fn apply_physics_edit(
         );
         return;
     }
-    // O PEDIDO grava-se aqui (o canal lê-o); o traço é da cola (`retrace_edited`/`retrace_followed`).
+    // O PEDIDO (ou o «Merge») grava-se aqui; o traço é da cola (`retrace_edited`/`retrace_followed`).
     if let PhysicsFieldEdit::Outline(e) = edit {
-        let cur = world.get::<ph2d_physics_ecs::ColliderOutline>(entity);
-        let next = ph2d_physics_outline::asked_with(&cur.cloned().unwrap_or_default(), e);
-        queue_set(
-            queue,
-            registry,
-            entity_bits,
-            "ph2d::physics::ColliderOutline",
-            &next,
-        );
+        if let Some(next) = ph2d_physics_outline::outline_edited(sim.world_mut(), entity, e) {
+            queue_set(
+                queue,
+                registry,
+                entity_bits,
+                "ph2d::physics::ColliderOutline",
+                &next,
+            );
+        }
         return;
     }
     if matches!(edit, PhysicsFieldEdit::FitToPicture) {

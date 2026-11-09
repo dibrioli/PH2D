@@ -63,6 +63,9 @@ pub const INSP_PHYS_SHAPE: [NodeId; 4] = [
 pub const INSP_PHYS_OUTLINE_DETAIL: NodeId = hash_node_id("insp_phys_outline_detail");
 pub const INSP_PHYS_OUTLINE_ALPHA: NodeId = hash_node_id("insp_phys_outline_alpha");
 pub const INSP_PHYS_OUTLINE_SPECKS: NodeId = hash_node_id("insp_phys_outline_specks");
+/// «Merge by distance»: a distância (px da imagem, só do painel) e o botão que funde.
+pub const INSP_PHYS_OUTLINE_MERGE_DIST: NodeId = hash_node_id("insp_phys_outline_merge_dist");
+pub const INSP_PHYS_OUTLINE_MERGE: NodeId = hash_node_id("insp_phys_outline_merge");
 
 /// O segundo cartão da física de um corpo (ficha f1): a forma.
 pub const CARD_PHYS_SHAPE: NodeId = hash_node_id("cards.insp.phys_shape");

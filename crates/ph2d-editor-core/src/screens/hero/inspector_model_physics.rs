@@ -566,6 +566,8 @@ pub enum OutlineEdit {
     AlphaCutoff(f32),
     /// Ignore specks under, px de área.
     Specks(f32),
+    /// «Merge»: funde os pontos a no máximo esta distância (px da imagem); os selecionados, ou todos.
+    Merge(f32),
 }
 
 /// O que o cartão mostra de um «Outline»: os três pedidos e o Detail que o tecto impôs.
@@ -576,6 +578,10 @@ pub struct InspectorOutlineInfo {
     pub specks_px: f32,
     /// `Some((Detail usado em px, tecto de peças))` quando o tecto subiu o Detail.
     pub raised: Option<(f32, u32)>,
+    /// Há imagem a traçar: só aí Detail, Alpha cutoff e Ignore specks under mudam alguma coisa.
+    pub traced: bool,
+    /// O último «Merge» destes anéis: `(pontos fundidos, grupos retidos para o anel ficar válido)`.
+    pub merged: Option<(u32, u32)>,
 }
 
 impl PhysicsFieldEdit {

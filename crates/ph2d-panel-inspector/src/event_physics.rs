@@ -112,7 +112,7 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
     // vez em vez de duas identicas.
     if let WidgetEvent::Click(id) = ev
         && let Some(info) = state::current_inspector_physics()
-        && let Some(edit) = click_edit(id, info.clone())
+        && let Some(edit) = click_edit(id, info.clone()).or_else(|| funde(host, id, &info))
     {
         host.bus_mut().push(EditorAction::InspectorPhysicsEdit {
             entity_bits: info.entity_bits,
@@ -140,6 +140,20 @@ pub(crate) fn apply_physics_event(host: &mut dyn PanelHostInternal, ev: WidgetEv
         }
     }
     false
+}
+
+/// «Merge»: a distância é a do campo ao lado (só do painel), lida no clique.
+fn funde(
+    host: &dyn PanelHostInternal,
+    id: ph2d_editor_core::NodeId,
+    info: &InspectorPhysicsInfo,
+) -> Option<PhysicsFieldEdit> {
+    let d = host
+        .store()
+        .number_value(crate::ids::INSP_PHYS_OUTLINE_MERGE_DIST)?;
+    (id == crate::ids::INSP_PHYS_OUTLINE_MERGE && info.outline.is_some()).then_some(
+        PhysicsFieldEdit::Outline(ph2d_editor_core::OutlineEdit::Merge(d as f32)),
+    )
 }
 
 /// ⭐ **A edição que o controlo `id` da §11 emite** — o clique (`valor = None`) ou o número

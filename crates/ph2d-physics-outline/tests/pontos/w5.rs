@@ -546,3 +546,50 @@ fn merge_funde_o_cacho_selecionado_ou_todos_e_marca_custom() {
     let card = ph2d_physics_outline::card_info(sim.world(), shape).expect("cartão");
     assert_eq!(card.merged, Some((0, 0)));
 }
+
+/// ⭐ (11) **O crescer do ponto sob o ponteiro** é `ease-out` pelo relógio do quadro: 0 ao chegar, já mais de meio a
+/// meio do tempo, 1 no fim; outro ponto = 0; o pulso da fusão vai de 0 a 1 e volta. E o `passo` real arranca o
+/// relógio quando o ponteiro chega ao ponto e diz que ainda mexe. *Mutação: `suave` linear ⇒ o meio dá 0,5.*
+#[test]
+fn o_ponto_sob_o_ponteiro_cresce_suave_pelo_relogio() {
+    use ph2d_shape_handles::anima_pontos::{AnimaPontos, CRESCE_MS, PULSO_MS, passo, pulso, suave};
+    use ph2d_shape_handles::pontos::Ponto;
+    assert_eq!(suave(0.0), 0.0);
+    assert!((suave(0.5) - 0.875).abs() < 1e-6, "{}", suave(0.5));
+    assert_eq!(suave(1.0), 1.0);
+    assert_eq!(suave(2.0), 1.0, "depois do fim fica");
+    let pt = Ponto { anel: 0, i: 3 };
+    let a = |agora| AnimaPontos {
+        sob: Some((pt, 1000.0)),
+        agora_ms: agora,
+    };
+    assert_eq!(a(1000.0).crescimento(pt), 0.0);
+    assert!(a(1000.0 + CRESCE_MS / 2.0).crescimento(pt) > 0.8);
+    assert_eq!(a(1000.0 + CRESCE_MS).crescimento(pt), 1.0);
+    assert_eq!(a(5000.0).crescimento(Ponto { anel: 0, i: 4 }), 0.0);
+    assert!(pulso(0.0) < 1e-6 && (pulso(PULSO_MS / 2.0) - 1.0).abs() < 1e-6);
+    let (_reg, mut sim, _body, shape, _db) = followed_ring();
+    alterna(sim.world_mut(), shape.to_bits());
+    let canto = ecra(perto(&sim, shape, 0, [2.0, 2.0]));
+    assert!(
+        passo(sim.world_mut(), &cam(), WIN, canto, 500.0),
+        "chegou: mexe"
+    );
+    assert!(passo(
+        sim.world_mut(),
+        &cam(),
+        WIN,
+        canto,
+        500.0 + CRESCE_MS / 2.0
+    ));
+    assert!(
+        !passo(sim.world_mut(), &cam(), WIN, canto, 500.0 + CRESCE_MS),
+        "cresceu: pára"
+    );
+    let an = *sim.world().resource::<AnimaPontos>();
+    assert_eq!(
+        an.sob.map(|s| s.1),
+        Some(500.0),
+        "o relógio nasce na chegada, não a cada quadro"
+    );
+}

@@ -1,5 +1,5 @@
 //! **Os controlos do «Outline»** no cartão Shape (W4, plano `f2_contorno_e_formas_plano.md`): Detail,
-//! Alpha cutoff, Ignore specks under, e o aviso de quando o tecto de peças subiu o Detail.
+//! Alpha cutoff, Ignore specks under, o aviso de quando o tecto de peças subiu o Detail, e o «Merge by distance».
 
 use super::physics_cartao::Tinta;
 use super::rows::num_row_unit;
@@ -64,4 +64,40 @@ pub(super) fn aviso(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f
     let x = ph2d_editor_core::interaction::format_number(f64::from(usado));
     let frase = tr_with("card.insp.phys.outline_raised", &[("x", &x), ("n", &n)]);
     t.frase(y, &frase, ColorToken::Warn)
+}
+
+/// **«Merge by distance»** (dono 09/11): a distância, o botão e o que o último «Merge» fez. Só num «Outline».
+pub(super) fn fundir(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
+    let Some(o) = info.outline else {
+        return y;
+    };
+    let y = num_row_unit(
+        t.scene,
+        t.text,
+        t.theme,
+        t.hit,
+        t.store,
+        t.x,
+        t.w,
+        y,
+        tr("card.insp.phys.outline_merge_dist"),
+        ids::INSP_PHYS_OUTLINE_MERGE_DIST,
+        Some(Unit::Px),
+        None,
+    );
+    let (r, mut y) = t.botao(
+        ids::INSP_PHYS_OUTLINE_MERGE,
+        tr("card.insp.phys.outline_merge"),
+        y,
+    );
+    t.hit.register(ids::INSP_PHYS_OUTLINE_MERGE, r);
+    if let Some((n, k)) = o.merged {
+        let frase = tr_with("card.insp.phys.outline_merged", &[("n", &n)]);
+        y = t.frase(y, &frase, ColorToken::Text3);
+        if k > 0 {
+            let frase = tr_with("card.insp.phys.outline_merge_kept", &[("k", &k)]);
+            y = t.frase(y, &frase, ColorToken::Warn);
+        }
+    }
+    y
 }

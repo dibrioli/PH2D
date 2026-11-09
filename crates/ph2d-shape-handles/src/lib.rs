@@ -5,6 +5,7 @@
 //! meias-medidas são `medida × |escala|`, por isso a rotação, o pai e o espelho entram numa só conta.
 
 pub mod cursor_pontos;
+pub mod fusao;
 mod ponteiro;
 pub mod pontos;
 mod roteiro;

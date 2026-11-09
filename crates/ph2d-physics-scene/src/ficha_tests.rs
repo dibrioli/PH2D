@@ -312,10 +312,15 @@ fn os_controlos_do_traco_so_aparecem_com_imagem_a_tracar() {
         ph2d_physics_outline::card_info(c.sim.world(), f)
     };
     assert!(
-        card("Rock").is_some(),
+        card("Rock").is_some_and(|o| o.traced),
         "controlo: a Rock traça-se da imagem"
     );
-    assert_eq!(card("Ring"), None, "a Ring não tem imagem: nada a traçar");
+    // O cartão existe (o «Merge» serve à Ring), mas sem os três controlos do traço.
+    assert_eq!(
+        card("Ring").map(|o| o.traced),
+        Some(false),
+        "a Ring não tem imagem: nada a traçar"
+    );
 }
 
 /// Detail · Alpha cutoff · Ignore specks under pela passagem da shell (o pedido gravado, `retrace_edited`,
@@ -416,3 +421,102 @@ fn a_arte_do_outline_da_cena_muda_com_detail_alpha_e_specks() {
 }
 
 const OUTLINE_DEMO: &str = "Rock";
+
+/// **A distância por omissão do «Merge»** (dono 09/11): a Rock em Detail 2, cada distância em px da imagem — quantos
+/// pontos saem, quanto o ponto mais deslocado anda (px) e a área que muda. O padrão limpa os cachos sem comer as
+/// reentrâncias. *A tabela vive no plano §Merge; este teste a reimprime e guarda o padrão.*
+#[test]
+fn a_distancia_padrao_do_merge_limpa_os_cachos_da_rock_sem_comer_as_reentrancias() {
+    use ph2d_shape_handles::fusao::{DISTANCIA_PADRAO_PX, fundidos};
+    let mut c = Corrida::nova();
+    traca_como_a_shell(&mut c);
+    let o = edita_o_contorno(
+        &mut c,
+        OUTLINE_DEMO,
+        ph2d_editor_core::OutlineEdit::Detail(2.0),
+    );
+    let area = |rs: &[Vec<[i32; 2]>]| -> f64 {
+        rs.iter()
+            .map(|r| {
+                (0..r.len())
+                    .map(|i| {
+                        let (a, b) = (r[i], r[(i + 1) % r.len()]);
+                        f64::from(a[0]) * f64::from(b[1]) - f64::from(b[0]) * f64::from(a[1])
+                    })
+                    .sum::<f64>()
+                    / 2.0
+            })
+            .sum::<f64>()
+            .abs()
+            / 256.0
+    };
+    // O ponto mais deslocado: a distância de cada ponto original ao ponto novo mais perto (px).
+    let anda = |a: &[Vec<[i32; 2]>], b: &[Vec<[i32; 2]>]| -> f64 {
+        a.iter()
+            .zip(b)
+            .flat_map(|(ra, rb)| {
+                ra.iter().map(move |p| {
+                    rb.iter()
+                        .map(|q| f64::from(p[0] - q[0]).hypot(f64::from(p[1] - q[1])))
+                        .fold(f64::MAX, f64::min)
+                })
+            })
+            .fold(0.0, f64::max)
+            / 16.0
+    };
+    let gaps: Vec<f64> = o
+        .rings
+        .iter()
+        .flat_map(|r| {
+            (0..r.len()).map(|i| {
+                let (a, b) = (r[i], r[(i + 1) % r.len()]);
+                f64::from(a[0] - b[0]).hypot(f64::from(a[1] - b[1])) / 16.0
+            })
+        })
+        .collect();
+    let n0: usize = o.rings.iter().map(Vec::len).sum();
+    let a0 = area(&o.rings);
+    println!(
+        "Rock Detail 2: {n0} pontos, {} anéis, área {a0:.0} px²",
+        o.rings.len()
+    );
+    for lim in [0.5, 1.0, 2.0, 3.0, 4.0, 6.0] {
+        println!(
+            "  vizinhos a ≤ {lim} px: {}",
+            gaps.iter().filter(|g| **g <= lim).count()
+        );
+    }
+    println!(
+        "| Distance (px) | pontos que saem | retidos | maior deslocamento (px) | área (px²) |"
+    );
+    let mut padrao = None;
+    for d in [0.5f32, 1.0, 1.5, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0] {
+        let f = fundidos(&o.rings, &[], d * 16.0);
+        let (sai, ret, mv, ar) = f.as_ref().map_or((0, 0, 0.0, a0), |f| {
+            (
+                f.fundidos,
+                f.retidos,
+                anda(&o.rings, &f.rings),
+                area(&f.rings),
+            )
+        });
+        println!(
+            "| {d} | {sai} | {ret} | {mv:.2} | {ar:.0} ({:+.2} %) |",
+            (ar - a0) / a0 * 100.0
+        );
+        if (d - DISTANCIA_PADRAO_PX).abs() < f32::EPSILON {
+            padrao = Some((sai, mv, (ar - a0).abs() / a0));
+        }
+    }
+    let (sai, mv, dar) = padrao.expect("o padrão está na tabela");
+    assert!(sai > 0, "o padrão limpa os cachos da Rock");
+    assert!(
+        mv <= f64::from(DISTANCIA_PADRAO_PX),
+        "nenhum ponto anda mais que a distância: {mv}"
+    );
+    assert!(
+        dar < 0.01,
+        "a reentrância fica: a área muda {:.2} %",
+        dar * 100.0
+    );
+}

@@ -197,6 +197,8 @@ fn w4_o_outline_pinta_as_linhas_e_o_aviso_so_quando_subiu() {
                 alpha_cutoff: 0.5,
                 specks_px: 0.0,
                 raised,
+                traced: true,
+                merged: raised.map(|_| (5, 1)),
             }),
             ..da_filha()
         };
@@ -207,12 +209,63 @@ fn w4_o_outline_pinta_as_linhas_e_o_aviso_so_quando_subiu() {
             INSP_PHYS_OUTLINE_DETAIL,
             INSP_PHYS_OUTLINE_ALPHA,
             INSP_PHYS_OUTLINE_SPECKS,
+            INSP_PHYS_OUTLINE_MERGE_DIST,
+            INSP_PHYS_OUTLINE_MERGE,
         ] {
             assert!(achado(&r, id).is_some(), "a linha {id:?}");
         }
         assert!(achado(&r, INSP_PHYS_HALF_X).is_none(), "sem Width");
         let tem = avisos.iter().any(|a| a.texto == frase);
         assert_eq!(tem, raised.is_some(), "{frase:?} em {avisos:?}");
+        // «Merge by distance»: o que o último Merge fez, e o aviso dos grupos retidos.
+        let fundiu = ph2d_i18n::tr_with("card.insp.phys.outline_merged", &[("n", &5u32)]);
+        let reteve = ph2d_i18n::tr_with("card.insp.phys.outline_merge_kept", &[("k", &1u32)]);
+        for f in [&fundiu, &reteve] {
+            let tem = avisos.iter().any(|a| &a.texto == f);
+            assert_eq!(tem, raised.is_some(), "{f:?} em {avisos:?}");
+        }
+        sai();
+    }
+}
+
+/// **«Merge» despacha a distância do campo ao lado** (dono 09/11): o padrão de fábrica (3 px, medido na Rock) e,
+/// depois de digitar 5, os 5. *Mutação: o id fora do `register_button_ids` ⇒ o clique não despacha, vermelho.*
+#[test]
+fn o_merge_despacha_a_distancia_do_campo() {
+    use ph2d_editor_core::OutlineEdit;
+    use ph2d_editor_core::panel::PanelHostInternal;
+    use ph2d_editor_core::screens::hero::InspectorOutlineInfo;
+    let info = InspectorPhysicsInfo {
+        shape_tag: 3,
+        outline: Some(InspectorOutlineInfo {
+            traced: false,
+            ..InspectorOutlineInfo::default()
+        }),
+        ..da_filha()
+    };
+    for (digitado, esperado) in [(None, 3.0), (Some(5.0), 5.0)] {
+        let (mut host, mut st) = cena(info.clone(), [1.0, 1.0]);
+        if let Some(v) = digitado {
+            host.store_mut()
+                .set_number_value(INSP_PHYS_OUTLINE_MERGE_DIST, v);
+        }
+        let r = pinta(&mut host, &mut st);
+        assert!(
+            achado(&r, INSP_PHYS_OUTLINE_DETAIL).is_none(),
+            "sem imagem: sem Detail"
+        );
+        let b = achado(&r, INSP_PHYS_OUTLINE_MERGE).expect("o botão Merge");
+        let a = clica(&mut host, &mut st, b);
+        assert!(
+            a.iter().any(|a| matches!(
+                a,
+                EditorAction::InspectorPhysicsEdit {
+                    edit: E::Outline(OutlineEdit::Merge(d)),
+                    ..
+                } if (*d - esperado).abs() < 1e-6
+            )),
+            "{a:?}"
+        );
         sai();
     }
 }

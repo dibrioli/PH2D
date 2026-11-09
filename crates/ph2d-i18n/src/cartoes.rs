@@ -44,6 +44,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.phys.outline_specks_tip" => {
             "Leave out islands and fill holes smaller than this many pixels."
         }
+        "card.insp.phys.outline_merge_dist" => "Merge by distance",
+        "card.insp.phys.outline_merge" => "Merge",
+        "card.insp.phys.outline_merge_tip" => {
+            "Join points closer than this many pixels into one. Works on the selected points, or on all of them."
+        }
+        "card.insp.phys.outline_merged" => "Merged {n} points",
+        "card.insp.phys.outline_merge_kept" => {
+            "{k} groups were left as they are so the outline does not cross itself"
+        }
         "card.insp.phys.outline_raised" => {
             "Too detailed — Detail raised to {x} px to stay under {n} pieces"
         }

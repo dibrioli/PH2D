@@ -235,6 +235,7 @@ pub(super) fn populate_physics(store: &mut WidgetStore) {
             ids::INSP_PHYS_BAKE,
             ids::INSP_PHYS_REMOVE,
             ids::INSP_PHYS_FIT_PICTURE,
+            ids::INSP_PHYS_OUTLINE_MERGE,
             ids::INSP_PHYS_EDIT_SHAPE,
             ids::INSP_PHYS_SCALE_ONE,
             ids::INSP_PHYS_USE_BOX,
@@ -258,6 +259,14 @@ pub(super) fn populate_physics(store: &mut WidgetStore) {
         (
             ids::INSP_PHYS_OUTLINE_SPECKS,
             "card.insp.phys.outline_specks_tip",
+        ),
+        (
+            ids::INSP_PHYS_OUTLINE_MERGE_DIST,
+            "card.insp.phys.outline_merge_tip",
+        ),
+        (
+            ids::INSP_PHYS_OUTLINE_MERGE,
+            "card.insp.phys.outline_merge_tip",
         ),
     ] {
         store.set_tooltip(id, ph2d_i18n::tr(dica));
@@ -336,6 +345,8 @@ pub(super) fn populate_physics(store: &mut WidgetStore) {
         (ids::INSP_PHYS_OUTLINE_DETAIL, 2.0, 0.0625, 64.0, 0.0625), // LITERAL-PX-OK: px, Q4 step
         (ids::INSP_PHYS_OUTLINE_ALPHA, 0.5, 0.0, 1.0, 0.01), // LITERAL-PX-OK: alpha 0..=1
         (ids::INSP_PHYS_OUTLINE_SPECKS, 0.0, 0.0, 4096.0, 1.0), // LITERAL-PX-OK: px of area
+        // = `ph2d_shape_handles::fusao::DISTANCIA_PADRAO_PX` (medida na Rock); passo Q4.
+        (ids::INSP_PHYS_OUTLINE_MERGE_DIST, 3.0, 0.0, 64.0, 0.0625), // LITERAL-PX-OK: picture px
         // Explicit mass override (W-Mass), Manual mode. min 0.001 (mass must be
         // positive — a zero-mass dynamic body is degenerate); the range bounds the
         // DRAG only, the component/BodyDesc take any positive f32.

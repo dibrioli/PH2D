@@ -71,11 +71,11 @@ const SHAPE_CAPSULE: u8 = 2;
 /// Tag for the traced Outline (`ColliderShape::Outline`).
 const SHAPE_OUTLINE: u8 = 3;
 
-/// A linha de dimensões a pintar: um «Outline» sem imagem a traçar (`outline == None`) mostra Width e
+/// A linha de dimensões a pintar: um «Outline» sem imagem a traçar (`traced` falso) mostra Width e
 /// Height da caixa, nunca Detail, Alpha cutoff e Ignore specks under, que nada mudariam.
 pub(super) fn dims_tag(info: &ph2d_editor_core::screens::hero::InspectorPhysicsInfo) -> u8 {
-    match (info.shape_tag, &info.outline) {
-        (SHAPE_OUTLINE, None) => u8::MAX,
+    match (info.shape_tag, info.outline.is_some_and(|o| o.traced)) {
+        (SHAPE_OUTLINE, false) => u8::MAX,
         (t, _) => t,
     }
 }

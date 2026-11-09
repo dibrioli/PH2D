@@ -96,3 +96,42 @@ corpo. **Último ponto seguro para integrar:** o commit da B0 (sem a lista revog
    A nota «Own body (Static) — make the parent a body to join it» sai.
 3. **A forma é como qualquer outro objeto:** alças só aparecem, e ela só se edita, quando ELA está selecionada.
    ⇒ **B5 muda:** corpo selecionado NÃO mostra alças da forma filha (o contorno no canvas continua, como hoje).
+
+## W2 — desenho fechado (09/11, depois da W0; vale sobre o «Desenho técnico» acima onde divergirem)
+
+**Modelo (ECS, `ph2d-physics-ecs`), na forma FILHA (opção B):**
+- `ColliderShape::Outline { half_x, half_y }` — variante ANEXADA (`Copy`). É a caixa do RETÂNGULO DA IMAGEM em
+  metros, não a dos anéis: o anel mapeia o retângulo da imagem para `[-half_x, half_x] × [-half_y, half_y]`.
+  «Follows the picture» é DERIVADO como no `Cuboid` (`shape_fitted_to(picture)` = metade da imagem; `follows_picture`
+  compara) — **sem campo `follows`**. «Custom size» = mudar `half_*`; «Fit to picture» = `shape_fitted_to`.
+- Componente registado novo **`ColliderOutline { rings: Arc<[Ring]>, picture_px: [u32; 2], detail_q4: u16,
+  alpha_cutoff: u8, min_island_px: u16 }`** na mesma entidade do `Collider`. `rings` em Q4 (1/16 px, y para baixo,
+  origem no canto da imagem de `picture_px`) — é a VERDADE editável (pontos do W5); as peças são DERIVADAS
+  (`ph2d_outline_trace::convex_pieces(rings, detail_q4)`), nunca gravadas. **Sem `source`**: a imagem é derivada
+  (o antepassado com imagem mais próximo, até ao corpo; o próprio objeto se ele tiver imagem). Sem `cell_px`
+  (o Animated Sprite traça a UNIÃO das células do tamanho de uma célula = `picture_px`).
+- Ponto em metros locais da forma: `x = (qx / (16·pw) − ½)·2·half_x·sx`, `y = −(qy / (16·ph) − ½)·2·half_y·sy`,
+  com a escala do `Transform` COM SINAL. Espelho (`sx·sy < 0`): cada peça entra por `SharedShape::convex_hull`,
+  que não depende do sentido — nada a inverter à mão. ⚠️ `scale.rs` usa `abs()` para as outras formas; o Outline
+  precisa do sinal (uma forma assimétrica espelhada é OUTRA forma).
+
+**Motor (`ph2d-physics`):**
+- `ShapeDesc::Outline { half_x, half_y, key: OutlineKey }` (`Copy`; `OutlineKey(u64)` = hash de conteúdo das
+  peças JÁ em metros e escaladas). `PhysicsWorld::register_outline(Vec<Vec<[f32; 2]>>) -> OutlineKey` guarda em
+  `outlines: BTreeMap<OutlineKey, Arc<[Vec<Vector>]>>` — só insere (conteúdo endereçado; o checkpoint clona os
+  conjuntos do rapier com o compound dentro, e o rewind do ECS que re-spawna por `BodyDesc` acha a chave porque
+  ela nunca sai). `shape_builder` → `ColliderBuilder::compound` de `convex_hull` por peça; chave ausente ou vazia
+  → `cuboid(half_x, half_y)` (nunca pânico). Massa = densidade × área do compound (o rapier calcula).
+- Cada `match` sobre `ShapeDesc` ganha o braço: nav e sombras leem a caixa (`half_*`) como um `Cuboid`.
+
+**Ponte:** onde um `BodyDesc`/peça nasce (`scale.rs::body_desc`, `bridge/bodies.rs`, `bridge/parts.rs`), o
+`Outline` lê o `ColliderOutline` da entidade da FORMA, deriva as peças (cache por `(hash dos anéis, detail)` —
+nunca por tique), converte com a escala com sinal, regista e põe a chave. Forma sem `ColliderOutline` ou de
+anéis vazios → a caixa.
+
+**Formato:** variante + componente novo ⇒ `PROJECT_SCHEMA` sobe UM degrau, CONTADO (`python3 scripts/schema-recount.py`,
+o main está em 225). Sem leitor antigo (§0.11).
+
+**Produtor (W2c):** quem escreve o `ColliderOutline` é o «trace» da imagem-fonte (máscara pelo `alpha_cutoff`;
+Animated Sprite: OR das células usadas pelas tags, todas se não houver tags) → `trace_fitted` → `queue_set` (um
+passo de undo); o cartão diz quando o tecto subiu o Detail (W4).

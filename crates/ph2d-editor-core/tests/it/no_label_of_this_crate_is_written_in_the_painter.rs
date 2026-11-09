@@ -97,6 +97,12 @@ const NOT_LANGUAGE_TEXT: &[ph2d_label_census::gate::Excecao] = &[
          que o próprio leitor procura, nunca texto de ecrã; traduzi-la partiria o ficheiro por língua",
     ),
     (
+        "interaction/state/palette_select_ops.rs",
+        "add_recent={}",
+        "a mesma sintaxe do `sections.txt` — os últimos itens do Add Object/Component (GEF), chave que o \
+         próprio leitor procura, nunca texto de ecrã",
+    ),
+    (
         "interaction/state/section_prefs_ops.rs",
         "theme.{}={}",
         "a mesma sintaxe do `sections.txt` — o tema de uma secção, chave e `Theme::id`",

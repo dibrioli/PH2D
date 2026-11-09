@@ -86,8 +86,7 @@ mod code_explain;
 /// A página de ajuda do editor de scripts: o texto de cada biblioteca do Luau (Onda 2, item 5).
 mod code_help;
 mod component_add;
-/// ⭐⭐ **As palavras do MOTOR DA CENA** (`ph2d-ecs`) — a 7.ª fatia da fronteira dos motores, e a
-/// primeira achada por um instrumento.
+/// ⭐⭐ **As palavras do MOTOR DA CENA** (`ph2d-ecs`) — a 7.ª fatia da fronteira dos motores.
 mod ecs_scene;
 /// O fim da cadeia do `tr_ingles`: as famílias `ph2d-app-*`, o editor de scripts e o Kanban.
 mod familias;

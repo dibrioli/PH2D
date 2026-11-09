@@ -78,15 +78,11 @@ pub const PANEL_Z_ORDER_FALLBACK: &[ph2d_a11y::NodeId] = &[
     // Its `paint()` no-ops when hidden. WITHOUT this entry the panel is
     // registered, visible, and NEVER painted — nothing breaks, nothing warns.
     ids::PHYSICS_PANEL,
-    // Wet Tuning side panel (doc 22, docked beside the painter panel):
-    // visibility mirrored from the tool's Tuning checkbox by the painter
-    // bridge; `paint()` no-ops when hidden. WITHOUT this entry the panel
-    // is registered, visible, and NEVER painted.
+    // Wet Tuning side panel (doc 22): visibility mirrored from the tool's Tuning checkbox;
+    // `paint()` no-ops when hidden. WITHOUT this entry it is NEVER painted.
     ids::WET_TUNING_PANEL,
-    // Tokens world panel (plano UI/UX W6, docked `ph2d-panel-tokens`): a
-    // tabela de cor do design system, mesma categoria do painel de física.
-    // `paint()` no-ops when hidden — sem esta entrada ele fica registado,
-    // visível, e NUNCA pintado.
+    // Tokens world panel (plano UI/UX W6, `ph2d-panel-tokens`): a tabela de cor do design
+    // system; `paint()` no-ops when hidden — sem esta entrada ele NUNCA é pintado.
     ids::TOKENS_PANEL,
     // O painel AUTORADO (plano UI/UX W8b.2): o painel que o artista desenhou. `paint()`
     // no-opa quando escondido — sem esta entrada ele fica registado, visível, e NUNCA
@@ -98,19 +94,14 @@ pub const PANEL_Z_ORDER_FALLBACK: &[ph2d_a11y::NodeId] = &[
     ids::ASSET_PANEL,
     ids::INSP_BLENDER_PICKER,
     ids::GAL_PANEL,
-    // A janela Preview do Pixel (`ph2d-panel-pixel-preview`, P5): flutuante, nasce fechada.
+    // As janelas acessórias do Pixel (`ph2d-panel-pixel-*`: Preview P5, Export P9b, Tiles P10b,
+    // Slices P11b, Keys e History P12a, Grid & Background P12 P): flutuantes, nascem fechadas.
     ids::PIXEL_PREVIEW_PANEL,
-    // A janela de Export e Import do Pixel (`ph2d-panel-pixel-export`, P9b): nasce fechada.
     ids::PIXEL_EXPORT_PANEL,
-    // A tela dos tilemaps do Pixel (`ph2d-panel-pixel-tiles`, P10b): nasce fechada.
     ids::PIXEL_TILES_PANEL,
-    // A janela SLICES do Pixel (`ph2d-panel-pixel-slices`, P11b): nasce fechada.
     ids::PIXEL_SLICES_PANEL,
-    // A janela KEYBOARD SHORTCUTS do Pixel (`ph2d-panel-pixel-keys`, P12a): nasce fechada.
     ids::PIXEL_KEYS_PANEL,
-    // A janela UNDO HISTORY do Pixel (`ph2d-panel-pixel-history`, P12a): nasce fechada.
     ids::PIXEL_HISTORY_PANEL,
-    // A janela GRID & BACKGROUND do Pixel (`ph2d-panel-pixel-prefs`, P12 P): nasce fechada.
     ids::PIXEL_PREFS_PANEL,
     // A bancada de widgets (`ph2d-panel-widget-lab`). ⚠️ **Sétima vez que este arquivo paga o
     // mesmo defeito** — o painel nasceu registado, visível ao clique do menu, e o passeio de

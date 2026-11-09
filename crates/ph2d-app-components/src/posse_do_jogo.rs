@@ -405,12 +405,14 @@ mod tests {
         );
         assert!(
             !f.premido(&mut input, no_palco, false),
-            "um clique fora tira-o"
+            "um clique fora da cena não é do jogo"
         );
         f.quadro(&mut input, no_palco);
+        // ⭐ Pausa padrão-ouro (dono 07/11): no palco não há editor a quem dar o foco — um clique nos
+        // botões do jogo não lhe tira o teclado.
         assert!(
-            !f.tem_o_teclado(no_palco),
-            "só a ABERTURA do palco o dá, não cada quadro nele"
+            f.tem_o_teclado(no_palco),
+            "no palco um clique fora não tira o teclado ao jogo"
         );
         f.quadro(&mut input, por_abrir);
         f.quadro(&mut input, PARADA);

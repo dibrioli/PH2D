@@ -41,7 +41,7 @@ ADR: nenhum
 |---|---|
 | A | Um problema, um lugar (Play e editor fundem; some ao consertar a linha); print com quem e quando; Ctrl+/ · Alt+F; contagem de usos na lista; a aba em cartões; luau-lsp/StyLua ao lado do binário. Cena 11. Smoke do dono OK |
 | C | Menu da própria aba; caminho até o cursor; cartão Script options; Ctrl+K com funções; escolha ao soltar; «Make it a property»; botão direito com os consertos primeiro. Smoke do dono OK |
-| D | O depurador: ponto de parada (clique/F9), cartão Stopped com valores, Next line, Pause on Error, valores ao vivo do script da aba aberta, menu Run, o jogo inteiro congela e o Continue retoma. Cena 12. **Smoke do dono PENDENTE** |
+| D | O depurador: ponto de parada (clique/F9), cartão Stopped com valores, Next line, Pause on Error, valores ao vivo do script da aba aberta, menu Run, o jogo inteiro congela e o Continue retoma. Cena 12. Smoke do dono OK (09/11, depois da integração; passos 1–8 e cena 4) |
 
 ## 4. Números medidos (Onda D, gancho de linha do Luau — [plano 13 §4](../13_plano_bancada.md))
 

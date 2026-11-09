@@ -120,7 +120,7 @@ impl crate::App {
                 self.toast_refused("shell.project_load.project_refused_its_layer_names", e);
             })
         else {
-            return;
+            return false;
         };
         file.state.regras.camadas = camadas;
         // ---- Daqui pra baixo o arquivo foi ACEITO. ----

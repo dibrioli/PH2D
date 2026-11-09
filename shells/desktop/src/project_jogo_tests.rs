@@ -68,6 +68,7 @@ fn a_forma_outline_atravessa_o_arquivo() {
         .into(),
         picture_px: [4, 4],
         detail_q4: 5,
+        custom: true,
         ..ColliderOutline::default()
     };
     let shape = ColliderShape::Outline {
@@ -79,9 +80,23 @@ fn a_forma_outline_atravessa_o_arquivo() {
         shape,
         ..Collider::default()
     };
-    sim.world_mut()
+    let e = sim
+        .world_mut()
         .spawn((ph2d_ecs::Transform::default(), c, o.clone()));
     let mut file = arquivo(Vec::new());
+    // GEF02 09/11: os anéis à mão (`custom`) e a trilha dos pontos (51/52) atravessam o arquivo.
+    let mut tl = ph2d_timeline::TimelineState::new();
+    for (kk, v) in ph2d_physics_outline::canais_pontos::publicados(&o) {
+        let (p, z) = (ph2d_timeline::PropKind::Field(kk), Default::default());
+        tl.doc.upsert_key(
+            e.id().to_bits(),
+            p,
+            z,
+            ph2d_timeline::AnimValue::Float(v),
+            ph2d_timeline::Interp::Linear,
+        );
+    }
+    file.timeline = ph2d_timeline_persist::serialize(&mut tl, sim.world_mut()).expect("timeline");
     let mut prop = ph2d_ecs::TransformPropagationState::new(sim.world_mut());
     let mut wl = ph2d_ecs::WorklistBuf::new();
     ph2d_ecs::scene::world_to_snapshot(
@@ -106,5 +121,7 @@ fn a_forma_outline_atravessa_o_arquivo() {
     let mut dst = ph2d_ecs::SimWorld::new();
     let e = snapshot_to_world(dst.world_mut(), &back.state.world, &reg).expect("restaura")[0];
     assert_eq!(dst.world().get::<ColliderOutline>(e), Some(&o));
+    let tl = ph2d_timeline_persist::install_from_project(&back.timeline).expect("timeline");
+    assert_eq!(tl.doc.bindings().len(), 16, "8 pontos × (X, Y)");
     assert_eq!(dst.world().get::<Collider>(e).map(|c| c.shape), Some(shape));
 }

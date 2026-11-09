@@ -6,7 +6,7 @@ use ph2d_tool_registry::hash_node_id;
 
 /// As linhas numéricas da ponta — UMA lista para o reencaminhar do painel (`number_field::is_param_field`), o
 /// `populate` e o encaminhamento do tool.
-pub const PAINTER_PONTA_FIELDS: [NodeId; 26] = [
+pub const PAINTER_PONTA_FIELDS: [NodeId; 28] = [
     hash_node_id("painter_brush.ponta.pixel"),
     hash_node_id("painter_brush.ponta.grainMode"),
     hash_node_id("painter_brush.ponta.depthMin"),
@@ -33,6 +33,8 @@ pub const PAINTER_PONTA_FIELDS: [NodeId; 26] = [
     hash_node_id("painter_brush.ponta.dualRotation"),
     hash_node_id("painter_brush.ponta.dualHardness"),
     hash_node_id("painter_brush.ponta.dualPattern"),
+    hash_node_id("painter_brush.ponta.softness"),
+    hash_node_id("painter_brush.ponta.tipContact"),
 ];
 
 /// O botão «Add image» da secção Shape (L19): pede o seletor de ficheiro e a imagem entra na ponta.

@@ -277,3 +277,39 @@ fn o_dual_brush_pelo_ponteiro() {
         0.0
     );
 }
+
+/// ⭐ **A maciez e o contacto da ponta do Height** (o Pastel K1): só aparecem no modo Height; a caixa «Grain
+/// softness» e o menu «Tip contact» chegam ao pincel (`GrainLaw::softness`, `GrainLaw::tip_depth`).
+#[test]
+fn a_maciez_e_o_contacto_da_ponta_so_no_height_e_chegam_ao_pincel() {
+    let mut t = PainterTool::default();
+    t.set_paint_media(PaintMedia::Digital);
+    t.set_brush_texture_kind(1);
+    let (s, c) = (
+        indice(LinhaDaPonta::Softness),
+        indice(LinhaDaPonta::TipContact),
+    );
+    {
+        let (_h, _s, rects) = aberto(&mut t);
+        assert!(
+            rect_of(&rects, ids::PAINTER_PONTA_FIELDS[s]).is_none(),
+            "o Multiply não lê a maciez"
+        );
+        assert!(rect_of(&rects, ids::PAINTER_PONTA_FIELDS[c]).is_none());
+    }
+    escolhe(&mut t, LinhaDaPonta::GrainMode, 4);
+    escolhe(&mut t, LinhaDaPonta::TipContact, 1);
+    assert_eq!(t.brush_settings().ponta[c], 1.0);
+    let (mut host, mut st, _) = aberto(&mut t);
+    for ev in host.type_into_number(ids::PAINTER_PONTA_FIELDS[s], "0.3") {
+        host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
+    }
+    for action in host.drained_actions() {
+        if let EditorAction::ToolPanelEvent(pe) = action {
+            t.handle_panel_event(pe);
+        }
+    }
+    assert_eq!(t.brush_settings().ponta[s], 0.3);
+    escolhe(&mut t, LinhaDaPonta::TipContact, 0);
+    assert_eq!(t.brush_settings().ponta[c], 0.0);
+}

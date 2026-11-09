@@ -11,6 +11,8 @@ pub const WET: &[Receita] = &[];
 
 /// O papel áspero NOSSO dos secos (o «Rough textured» do CSP não foi copiado): `Noise` procedural preso à tela.
 const PAPEL_ASPERO: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "lei": {"depth_jitter": 0.5, "depth_min": 0.0, "depth_pressure": true, "mode": 0}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [48.0, 48.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
+/// O papel do Pastel (K1): `Noise` 32 px de 3 oitavas, contraste 0,4, lido pelo Height com maciez e ponta afundada.
+const PAPEL_DO_PASTEL: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "lei": {"depth_jitter": 0.8, "depth_min": 0.0, "depth_pressure": true, "mode": 4, "softness": 0.3, "tip_depth": true}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.4, 0.5, 0.3, 0.5, 0.5, 0.5], "rake": false, "size": [32.0, 32.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 /// O papel de desenho do Chalk (mais grosso).
 const PAPEL_DE_DESENHO: &str = r#"{"angle_deg": 0, "flow": false, "kind": "Noise", "lei": {"depth_jitter": 0.3, "depth_min": 0.0, "depth_pressure": true, "mode": 0}, "mapping": "Tiled", "offset": [0.0, 0.0], "params": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5], "rake": false, "size": [80.0, 80.0], "stencil_angle_deg": 0, "stencil_offset": [0.0, 0.0], "stencil_size": [0.5, 0.5]}"#;
 /// A nuvem manchada das aguadas (o «Dappled cloud» do CSP não foi copiado): `Clouds` procedural.
@@ -46,22 +48,16 @@ pub const MEIOS: &[ReceitaMeio] = &[
         opacity: Some(1.0),
         ..ReceitaMeio::digital("Pastel", "Crayon", "Crayon")
     },
-    // Pastel (CSP: 40 px, dureza 1, intervalo 10, «Rough textured» dens 60, mistura 40/40/40, sat. +15 por dab,
-    // Size P·T(40), Flow P(15)): o pó macio que esbate na cor de baixo — no CSP um
-    // pontilhado esparso quase sem cor, aqui um spray de grãos de 2 px.
+    // Pastel — receita K1 (09/11, medida contra o Krita Chalk Soft; aprovada pelo dono): sem spray, o papel
+    // decide a cobertura pelo Height com borda macia e ponta que afunda
+    // (`docs/Painter/handoffs/material_2026-11-09_pastel/README.md` FASE 3).
     ReceitaMeio {
         pincel: &[
-            ("hardness", "1.0"),
-            ("falloff", "\"Sharp\""),
+            ("hardness", "0.75"),
+            ("falloff", "\"Smooth\""),
             ("spacing", "0.1"),
-            ("jitter", "0.5"),
-            ("spray_count", "20"),
-            (
-                "dab_jitter",
-                r#"{"across": 0.0, "angle_per_stroke": 0.0, "count": 0.5, "flip_x": 0.0, "flip_y": 0.0, "opacity": 0.5, "particle": 0.05, "particle_px": 2.0, "roundness": 0.0, "subpixel_area": true}"#,
-            ),
-            ("texture", PAPEL_ASPERO),
-            ("grain_depth", "0.6"),
+            ("texture", PAPEL_DO_PASTEL),
+            ("grain_depth", "1.0"),
             ("color_jitter_sat", "0.06"),
             (
                 "mistura_opaca",
@@ -71,10 +67,10 @@ pub const MEIOS: &[ReceitaMeio] = &[
         mao: &[
             ("pressureSize", 0.6),
             ("pressureSizeCurve", 1.0),
-            ("pressureOpacity", 0.85),
+            ("pressureOpacity", 0.3),
         ],
         size_px: Some(40.0),
-        opacity: Some(0.6),
+        opacity: Some(1.0),
         ..ReceitaMeio::digital("Pastel", "Pastel", "Pastel")
     },
     // Chalk (CSP: 30 px, dureza 81, intervalo 10, espessura 50, «Drawing paper C» dens 80, mistura 41/100/15, HSV

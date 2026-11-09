@@ -42,6 +42,8 @@ pub(crate) const ROTULOS_DA_PONTA: [&str; ph2d_tool_painter::N_LINHAS_DA_PONTA] 
     "panel.painter_ponta.dual_rotation",
     "panel.painter_ponta.dual_hardness",
     "panel.painter_ponta.dual_pattern",
+    "panel.painter_ponta.softness",
+    "panel.painter_ponta.tip_contact",
 ];
 
 /// Os índices das linhas da ponta que se pintam no cartão `c`.
@@ -225,6 +227,11 @@ pub(crate) fn decode_dual_follow_option(id: ph2d_a11y::NodeId) -> Option<u8> {
     decode(indice(LinhaDaPonta::DualFollow), id)
 }
 
+/// O menu do contacto da ponta no Height.
+pub(crate) fn decode_tip_contact_option(id: ph2d_a11y::NodeId) -> Option<u8> {
+    decode(indice(LinhaDaPonta::TipContact), id)
+}
+
 /// A linha `i` pinta-se agora: as da ponta de N imagens só com duas imagens ou mais, e os pesos só das imagens que
 /// há e no sorteio (os outros modos não os leem).
 pub(crate) fn visivel(i: usize, brush: &BrushSettings) -> bool {
@@ -238,6 +245,11 @@ pub(crate) fn visivel(i: usize, brush: &BrushSettings) -> bool {
         // O dual brush (L6): as linhas da 2.ª ponta só com ela armada; a dureza é do disco (sem forma), o tamanho
         // do padrão só de um padrão.
         LinhaDaPonta::DualMode => true,
+        // A maciez e o contacto da ponta só o Height os lê.
+        LinhaDaPonta::Softness | LinhaDaPonta::TipContact => {
+            brush.ponta[indice(LinhaDaPonta::GrainMode)]
+                == f64::from(ph2d_tool_painter::GrainMode::Height.to_u8())
+        }
         LinhaDaPonta::DualHardness => dual && forma == ph2d_tool_painter::TextureKind::None,
         LinhaDaPonta::DualPattern => {
             dual && !matches!(

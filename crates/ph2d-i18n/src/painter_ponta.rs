@@ -62,6 +62,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_ponta.dual_rotation" => "Dual rotation",
         "panel.painter_ponta.dual_hardness" => "Dual hardness",
         "panel.painter_ponta.dual_pattern" => "Dual pattern",
+        "panel.painter_ponta.softness" => "Grain softness",
+        "panel.painter_ponta.tip_contact" => "Tip contact",
+        "panel.painter_ponta.tip_contact.flat" => "Flat",
+        "panel.painter_ponta.tip_contact.rounded" => "Rounded",
         "panel.painter_ponta.inerte.combing_wet_only" => {
             "Only Wet Paint combs the paint. These do nothing in this mode yet."
         }

@@ -110,6 +110,7 @@ pub use ph2d_painter_brush::{
     FalloffCurve,
     FalloffPoint,
     FootprintDeform,
+    GrainMode,
     HandleType,
     ImageMask,
     JitterUnit,

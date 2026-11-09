@@ -50,6 +50,10 @@ pub enum LinhaDaPonta {
     DualHardness,
     /// O tamanho do padrão da forma da 2.ª ponta.
     DualPattern,
+    /// A maciez do Height ([`ph2d_painter_brush::GrainLaw::softness`]): `0` = o degrau de sempre.
+    Softness,
+    /// O contacto da ponta no Height: `0` plana · `1` redonda ([`ph2d_painter_brush::GrainLaw::tip_depth`]).
+    TipContact,
 }
 
 /// Onde a linha se pinta.
@@ -66,7 +70,7 @@ pub enum CartaoDaPonta {
 }
 
 /// As linhas, pela ordem do painel.
-pub const LINHAS_DA_PONTA: [LinhaDaPonta; 26] = [
+pub const LINHAS_DA_PONTA: [LinhaDaPonta; 28] = [
     LinhaDaPonta::Pixel,
     LinhaDaPonta::GrainMode,
     LinhaDaPonta::DepthMin,
@@ -93,6 +97,9 @@ pub const LINHAS_DA_PONTA: [LinhaDaPonta; 26] = [
     LinhaDaPonta::DualRotation,
     LinhaDaPonta::DualHardness,
     LinhaDaPonta::DualPattern,
+    // No FIM: os índices das linhas de cima estão escritos à mão no painel.
+    LinhaDaPonta::Softness,
+    LinhaDaPonta::TipContact,
 ];
 const _: () = assert!(HOSE_MAX == 8, "uma linha de peso por imagem da ponta");
 
@@ -181,6 +188,8 @@ impl LinhaDaPonta {
                 0.01,
                 1.0,
             ),
+            Self::Softness => ("softness", 0.0, 1.0, 0.01, 0.0),
+            Self::TipContact => ("tipContact", 0.0, 1.0, 1.0, 0.0),
         }
     }
 
@@ -262,6 +271,10 @@ impl LinhaDaPonta {
                 "panel.painter_ponta.dual_follow.rake",
                 "panel.painter_ponta.dual_follow.flow",
             ],
+            Self::TipContact => &[
+                "panel.painter_ponta.tip_contact.flat",
+                "panel.painter_ponta.tip_contact.rounded",
+            ],
             _ => &[],
         }
     }
@@ -309,6 +322,8 @@ pub(crate) fn escreve(b: &mut BrushSpec, l: LinhaDaPonta, v: f64) {
         LinhaDaPonta::DepthPressure => lei.depth_pressure = v >= 0.5,
         LinhaDaPonta::HoseMode => b.hose.mode = HoseMode::from_u8(v as u8),
         LinhaDaPonta::Peso(k) => b.hose.pesos[usize::from(k)] = v as u8,
+        LinhaDaPonta::Softness => lei.softness = v as f32,
+        LinhaDaPonta::TipContact => lei.tip_depth = v >= 0.5,
         _ => {}
     }
 }
@@ -378,6 +393,8 @@ pub(crate) fn le(b: &BrushSpec, l: LinhaDaPonta) -> f64 {
         LinhaDaPonta::DepthPressure => f32::from(u8::from(lei.depth_pressure)),
         LinhaDaPonta::HoseMode => f32::from(b.hose.mode.to_u8()),
         LinhaDaPonta::Peso(k) => f32::from(b.hose.pesos[usize::from(k)]),
+        LinhaDaPonta::Softness => lei.softness,
+        LinhaDaPonta::TipContact => f32::from(u8::from(lei.tip_depth)),
         dual => le_o_dual(b, dual),
     };
     format!("{v}").parse().unwrap_or(f64::from(v))

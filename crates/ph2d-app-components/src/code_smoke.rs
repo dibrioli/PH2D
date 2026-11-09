@@ -15,8 +15,8 @@
 //!   vai com o nome). Cada passo tem a sua foto (`ph2d_app_code::smoke_drive`).
 //! - **4** — o acabamento (Onda 2): as mesmas três formas correm o `problemas.luau`, com um erro
 //!   (`math.sinn`) e dois avisos (um `local` que ninguém lê, antes dele; `self.ampiltude`). Com o Ctrl
-//!   carregado o nome que o Ctrl+clique alcança sublinha (o `set`, não o `ampiltude`); Ctrl+Shift+M
-//!   abre a lista de problemas (o erro primeiro); o clique e o F8 seleccionam o culpado; um `ph2d.set`
+//!   carregado o nome que o Ctrl+clique alcança sublinha (o `set`, não o `ampiltude`); o erro do
+//!   Play abre sozinho a lista de problemas (o erro primeiro); o clique selecciona o culpado (parado no erro, o F8 é o Continue); um `ph2d.set`
 //!   escolhido dentro do `entity` de outro funde os buracos.
 //! - **5** — a página de ajuda (Onda 2, item 5): as mesmas três formas correm o `ajuda.luau` e
 //!   balançam para os lados. O Ctrl+clique em `sin` abre a página `math` no membro; um link na
@@ -156,7 +156,7 @@ pub fn montar(cx: crate::scene_ctx::SceneCtx<'_>, nivel: u32) -> Option<u64> {
         println!(
             "[code-smoke] =4 {} formas: o círculo, a estrela e o hexágono correm o problemas.luau, já \
              aberto numa aba — PARADAS: o script tem um erro («math.sinn») e dois avisos. Ctrl + rato \
-             sobre «set» sublinha; Ctrl+Shift+M abre a lista de problemas; F8 salta entre eles.",
+             sobre «set» sublinha; a lista de problemas abre-se sozinha; um clique numa linha leva ao problema.",
             formas.len()
         );
         return None;

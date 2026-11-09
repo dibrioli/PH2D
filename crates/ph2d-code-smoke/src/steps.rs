@@ -104,20 +104,21 @@ pub const STEPS_4: &[&[Gesture]] = &[
         },
         Gesture::Wait(Until::Reach(false)),
     ],
-    // 3 — o Ctrl largado, o rato num comentário; Ctrl+Shift+M: a lista, o erro primeiro.
+    // 3 — o Ctrl largado, o rato num comentário; a lista já aberta pelo erro do Play (Onda A: um
+    // erro de runtime abre a faixa nos Problems — um Ctrl+Shift+M aqui FECHÁ-LA-IA).
     &[
         Gesture::Ctrl(false),
         Gesture::Point {
-            needle: "-- 2) Ctrl+Shift+M",
+            needle: "-- 2) O erro abriu",
             ahead: 3,
         },
-        Gesture::Key(Key::Char('m'), CTRL_SHIFT),
         Gesture::Wait(Until::ProblemRows),
     ],
     // 4 — o clique na linha do erro: o culpado seleccionado no texto.
     &[Gesture::ClickProblem(0)],
-    // 5 — F8: o problema seguinte da lista (o 1.º aviso, mais acima no texto).
-    &[Gesture::Key(Key::F(8), NONE)],
+    // 5 — o clique no 1.º aviso (mais acima no texto). ⚠️ Não o F8: o erro PAROU o jogo (Pause on
+    // Error, Onda D, ligado de fábrica) e parado o F8 é o Continue (`commands::row_state`).
+    &[Gesture::ClickProblem(1)],
     // 6 — `ph2d.set` numa linha nova e, dentro do `entity`, outra vez: os buracos fundem-se; dois
     //     Tabs andam pelos de dentro.
     &[

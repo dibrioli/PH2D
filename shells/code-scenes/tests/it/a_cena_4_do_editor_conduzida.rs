@@ -3,7 +3,7 @@
 //! (tecla, rato, clique, o Ctrl no `WidgetStore`), sobre a cena montada como a shell a monta e pintada
 //! a cada quadro como a shell a pinta; cada passo confere o que o smoke do dono promete — o
 //! sublinhado do Ctrl+rato no `set` e não no `ampiltude` (a mão também), a lista de problemas pela
-//! gravidade, o clique e o F8 no culpado, e a sequência dos buracos fundidos. Precisa do `luau-lsp`
+//! gravidade (aberta sozinha pelo erro do Play), o clique no culpado, e a sequência dos buracos fundidos. Precisa do `luau-lsp`
 //! e do StyLua fixados (`bash scripts/luau-lsp-fetch.sh`, `bash scripts/stylua-fetch.sh`).
 
 use ph2d_app_code::CodeDocs;
@@ -203,7 +203,11 @@ fn confere(p: &mut Palco, passo: usize, buracos: &[Range<usize>]) {
                 [
                     (
                         Severity::Error,
-                        "\u{201c}math\u{201d} has no \u{201c}sinn\u{201d}".into(),
+                        // Onda A (`13_plano_bancada.md` §1): o erro do Play na MESMA linha
+                        // funde-se no do texto, e o sufixo diz quem e quantas vezes.
+                        "\u{201c}math\u{201d} has no \u{201c}sinn\u{201d} \u{2014} on Hexagon, \
+                         Star, Circle \u{b7} \u{d7}3 in Play"
+                            .into(),
                         erro
                     ),
                     (
@@ -241,7 +245,11 @@ fn confere(p: &mut Palco, passo: usize, buracos: &[Range<usize>]) {
         5 => {
             let sel = p.selecao();
             let sobra = palavra("local sobra", "sobra");
-            assert_eq!(sel, [sobra], "o F8 vai para o 1.º aviso (o de cima)");
+            assert_eq!(
+                sel,
+                [sobra],
+                "o clique no 1.º aviso (o de cima) selecciona-o"
+            );
         }
         6 => {
             let t = p.texto();

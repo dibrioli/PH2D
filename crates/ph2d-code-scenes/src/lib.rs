@@ -135,16 +135,16 @@ end
 pub const PROBLEMAS_NAME: &str = "problemas.luau";
 
 /// ⭐ **O script do nível 4** — um erro (`math.sinn`) entre dois avisos (o `local` que ninguém lê,
-/// ANTES dele, e o `self.ampiltude`, depois): a lista ordena por gravidade, o erro sobe e o F8 a
-/// seguir a ele vai para cima. As agulhas do condutor das fotos
+/// ANTES dele, e o `self.ampiltude`, depois): a lista ordena por gravidade, o erro sobe e o aviso
+/// seguinte é o de cima. As agulhas do condutor das fotos
 /// (`ph2d_app_code::smoke_drive::STEPS_4`) vivem neste texto (conferido no teste da cena).
 pub const PROBLEMAS_LUAU: &str = r#"-- problemas.luau — as TRÊS formas da esquerda correm ESTE script. Ele tem um erro e dois
 -- avisos de propósito (por isso as formas estão paradas).
 --
 -- 1) Carregue Ctrl e passe o rato por cima de «set», lá em baixo: o nome sublinha e o
 --    ponteiro vira uma mão (o Ctrl+clique leva à ajuda). Por cima de «ampiltude», não.
--- 2) Ctrl+Shift+M abre a lista de problemas: o erro primeiro, depois os avisos.
---    Clique numa linha da lista; F8 salta para o problema seguinte.
+-- 2) O erro abriu a lista de problemas lá em baixo: o erro primeiro, depois os avisos.
+--    Clique numa linha; o jogo parou no erro, e parado o F8 é o Continue.
 -- 3) Na linha marcada com 3), escreva ph2d. e escolha set; com «entity» escolhido,
 --    outra vez ph2d. e set. O Tab passa pelos buracos de dentro e depois pelos de fora.
 

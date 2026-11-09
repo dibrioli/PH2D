@@ -79,6 +79,41 @@ pub fn desenhar(
         None,
         &contorno(&pose, &m, cam, win),
     );
+    // W5: os anéis do «Outline» e os pontos que se arrastam.
+    if let Some((pose, m, o)) = crate::pontos::do_alvo(world, alvo) {
+        for r in crate::pontos::no_ecra(&pose, &m, &o, cam, win) {
+            let mut path = BezPath::new();
+            for (i, &(x, y)) in r.iter().enumerate() {
+                let p = Point::new(f64::from(x), f64::from(y));
+                if i == 0 {
+                    path.move_to(p);
+                } else {
+                    path.line_to(p);
+                }
+            }
+            path.close_path();
+            s.stroke(&traco, Affine::IDENTITY, &Brush::Solid(cor), None, &path);
+            for (x, y) in r {
+                let sob = (x - ponteiro.0).hypot(y - ponteiro.1) <= crate::AGARRE_PX;
+                let raio = if sob { ALCA_SOB_PX } else { MIOLO_PX };
+                let c = ph2d_vector::Circle::new((f64::from(x), f64::from(y)), raio);
+                s.fill(
+                    Fill::NonZero,
+                    Affine::IDENTITY,
+                    &Brush::Solid(fundo),
+                    None,
+                    &c,
+                );
+                s.stroke(
+                    &Stroke::new(TRACO_PX),
+                    Affine::IDENTITY,
+                    &Brush::Solid(cor),
+                    None,
+                    &c,
+                );
+            }
+        }
+    }
     for a in alcas(m.shape) {
         let (x, y) = no_ecra(&pose, &m, a, cam, win);
         let (px, py) = (f64::from(x), f64::from(y));

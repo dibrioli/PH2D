@@ -14,6 +14,7 @@ authors.workspace = true
 # ponteiro, a família da física lê o estado para o cartão.
 [dependencies]
 bevy_ecs = "0.20"
+ph2d-core = { path = "../ph2d-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-host = { path = "../ph2d-host" }
@@ -23,7 +24,6 @@ ph2d-tokens = { path = "../ph2d-tokens" }
 ph2d-vector = { path = "../ph2d-vector" }
 
 [dev-dependencies]
-ph2d-core = { path = "../ph2d-core" }
 
 [lints]
 workspace = true

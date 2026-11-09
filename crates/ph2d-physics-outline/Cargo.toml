@@ -25,6 +25,9 @@ ph2d-editor-core = { path = "../ph2d-editor-core" }
 
 [dev-dependencies]
 ph2d-core = { path = "../ph2d-core" }
+# W5: os pontos do «Outline» pelas portas reais do ponteiro.
+ph2d-shape-handles = { path = "../ph2d-shape-handles" }
+ph2d-host = { path = "../ph2d-host" }
 
 [lints]
 workspace = true

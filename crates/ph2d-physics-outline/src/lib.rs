@@ -217,6 +217,7 @@ pub fn trace(mask: &Mask, asked: &ColliderOutline) -> Traced {
             alpha_cutoff: asked.alpha_cutoff,
             min_island_px: asked.min_island_px,
             raised_q4: if up { f.params.detail_q4 } else { 0 },
+            custom: false,
         },
     }
 }
@@ -243,6 +244,12 @@ pub fn follows(world: &World, shape: Entity) -> Option<bool> {
     let c = world.get::<Collider>(shape)?;
     let size = world.get::<Sprite>(owner)?.size;
     let same = |a: f32, b: f32| (a - b).abs() <= 1e-4 * b.abs().max(1.0);
+    if world
+        .get::<ColliderOutline>(shape)
+        .is_some_and(|o| o.custom)
+    {
+        return Some(false);
+    }
     Some(match (c.shape, world.get::<OutlineSeen>(shape)) {
         (ColliderShape::Outline { half_x, half_y }, Some(s)) => {
             same(half_x, s.layout.half[0]) && same(half_y, s.layout.half[1])
@@ -514,9 +521,10 @@ pub fn retrace_followed(
         }
         if let (Some(b), ColliderShape::Outline { half_x, half_y }) = (before, c.shape) {
             let size = w.get::<Sprite>(owner).map(|s| s.size);
-            let follows = near([half_x, half_y], &b.layout)
-                || near([half_x, half_y], &lay)
-                || size.is_some_and(|s| c.follows_picture(s));
+            let follows = !o.custom
+                && (near([half_x, half_y], &b.layout)
+                    || near([half_x, half_y], &lay)
+                    || size.is_some_and(|s| c.follows_picture(s)));
             // O pedido mudado retraça sempre; o «Custom size» guarda a caixa.
             let keep = !follows;
             if (follows || b.asked != asked)

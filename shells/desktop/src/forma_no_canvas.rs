@@ -14,17 +14,21 @@ impl crate::App {
         })
     }
 
+    fn forma_teclas(&self) -> Teclas {
+        let (alt, shift) = (self.modifiers.alt_key(), self.modifiers.shift_key());
+        Teclas { alt, shift }
+    }
+
+    /// Alt+clique tira um ponto do «Outline»; o duplo clique numa aresta acrescenta (W5).
     pub(crate) fn forma_down(&mut self, sx: f32, sy: f32) -> bool {
-        self.forma_porta().is_some_and(|mut p| p.desce((sx, sy)))
+        let t = self.forma_teclas();
+        self.forma_porta()
+            .is_some_and(|mut p| p.desce_teclas((sx, sy), t))
     }
 
     pub(crate) fn forma_move(&mut self, sx: f32, sy: f32) -> bool {
-        let teclas = Teclas {
-            alt: self.modifiers.alt_key(),
-            shift: self.modifiers.shift_key(),
-        };
-        self.forma_porta()
-            .is_some_and(|mut p| p.move_((sx, sy), teclas))
+        let t = self.forma_teclas();
+        self.forma_porta().is_some_and(|mut p| p.move_((sx, sy), t))
     }
 
     /// O miolo que não armou era um clique: volta à seleção normal, como o da câmera (17b A1).

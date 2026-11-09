@@ -10739,10 +10739,12 @@ dependencies = [
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor-core",
+ "ph2d-host",
  "ph2d-inspector-ordering",
  "ph2d-outline-trace",
  "ph2d-physics-ecs",
  "ph2d-render",
+ "ph2d-shape-handles",
 ]
 
 [[package]]

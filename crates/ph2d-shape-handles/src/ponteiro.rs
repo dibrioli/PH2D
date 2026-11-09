@@ -87,6 +87,7 @@ pub fn quadro(world: &mut World, selecao: Option<u64>, jogando: bool) -> bool {
         if let Some(mut f) = world.get_resource_mut::<FormaNoCanvas>() {
             *f = FormaNoCanvas::default();
         }
+        world.remove_resource::<crate::pontos::PontosNoCanvas>();
         publica_a_mao(world, None);
     }
     vivo
@@ -178,9 +179,32 @@ impl Porta<'_> {
 
     /// `true` = agarrou (o `Down` não segue para a seleção).
     pub fn desce(&mut self, s: (f32, f32)) -> bool {
+        self.desce_teclas(s, Teclas::default())
+    }
+
+    /// O `Down` com as teclas; o duplo clique mede-se aqui (dois `Down` perto, dentro de [`crate::pontos::DUPLO_MS`]).
+    pub fn desce_teclas(&mut self, s: (f32, f32), teclas: Teclas) -> bool {
+        let agora = std::time::Instant::now();
+        let mut p = self
+            .world
+            .get_resource_or_insert_with(crate::pontos::PontosNoCanvas::default);
+        let duplo = p.ultimo.is_some_and(|(t, u)| {
+            agora.duration_since(t).as_millis() <= crate::pontos::DUPLO_MS
+                && (u.0 - s.0).hypot(u.1 - s.1) <= crate::AGARRE_PX
+        });
+        p.ultimo = (!duplo).then_some((agora, s));
+        self.desce_com(s, teclas, duplo)
+    }
+
+    /// O `Down` dos pontos do «Outline» antes das alças: Alt+clique tira, duplo clique na aresta acrescenta,
+    /// o resto agarra o ponto. `true` = consumido.
+    pub fn desce_com(&mut self, s: (f32, f32), teclas: Teclas, duplo: bool) -> bool {
         let Some(alvo) = editando(self.world) else {
             return false;
         };
+        if self.desce_no_ponto(alvo, s, teclas, duplo) {
+            return true;
+        }
         let Some((pose, m)) = self.forma(alvo) else {
             return false;
         };
@@ -202,8 +226,78 @@ impl Porta<'_> {
         true
     }
 
+    fn desce_no_ponto(&mut self, alvo: u64, s: (f32, f32), teclas: Teclas, duplo: bool) -> bool {
+        use crate::pontos as p;
+        let Some((pose, m, o)) = p::do_alvo(self.world, alvo) else {
+            return false;
+        };
+        let ecra = p::no_ecra(&pose, &m, &o, &self.camera, self.window);
+        let q = pose.do_mundo(self.camera.screen_to_world(s, self.window));
+        if let Some(pt) = p::ponto_em(&ecra, s) {
+            if teclas.alt {
+                if let Some(v) = p::tirado(&o.rings, pt) {
+                    p::escreve(self.world, alvo, v, true);
+                }
+                return true;
+            }
+            let at = p::locais(&pose, &m, &o)[pt.anel][pt.i];
+            let arrasto = p::ArrastoDoPonto {
+                ponto: pt,
+                inicio: o.rings.clone(),
+                custom: o.custom,
+                folga: [q[0] - at[0], q[1] - at[1]],
+                ecra0: s,
+                armado: false,
+            };
+            self.world
+                .get_resource_or_insert_with(p::PontosNoCanvas::default)
+                .arrasto = Some(arrasto);
+            return true;
+        }
+        if duplo && let Some((pt, _)) = p::aresta_em(&ecra, s) {
+            if let Some(v) = p::acrescentado(&o.rings, pt, p::para_q4(&pose, &m, &o, q)) {
+                p::escreve(self.world, alvo, v, true);
+            }
+            return true;
+        }
+        false
+    }
+
+    /// O arrasto de um ponto: a posição que cruzaria é recusada e o ponto fica na última válida.
+    fn move_ponto(&mut self, alvo: u64, s: (f32, f32)) -> bool {
+        use crate::pontos as p;
+        let Some(mut a) = self
+            .world
+            .get_resource::<p::PontosNoCanvas>()
+            .and_then(|x| x.arrasto.clone())
+        else {
+            return false;
+        };
+        if !a.armado && (s.0 - a.ecra0.0).hypot(s.1 - a.ecra0.1) < ARMA_PX {
+            return true;
+        }
+        a.armado = true;
+        publica_a_mao(self.world, Some(alvo));
+        if let Some((pose, m, o)) = p::do_alvo(self.world, alvo) {
+            let q = pose.do_mundo(self.camera.screen_to_world(s, self.window));
+            let e = [q[0] - a.folga[0], q[1] - a.folga[1]];
+            if let Some(v) = p::movido(&o.rings, a.ponto, p::para_q4(&pose, &m, &o, e)) {
+                p::escreve(self.world, alvo, v, true);
+            }
+        }
+        if let Some(mut x) = self.world.get_resource_mut::<p::PontosNoCanvas>() {
+            x.arrasto = Some(a);
+        }
+        true
+    }
+
     /// `true` = consumiu o movimento. Pose e vista são as de agora: o pai pode ter andado.
     pub fn move_(&mut self, s: (f32, f32), teclas: Teclas) -> bool {
+        if let Some(alvo) = editando(self.world)
+            && self.move_ponto(alvo, s)
+        {
+            return true;
+        }
         let Some(f) = self.world.get_resource::<FormaNoCanvas>().copied() else {
             return false;
         };
@@ -230,11 +324,17 @@ impl Porta<'_> {
 
     /// `true` = havia um arrasto. O desfazer pós-quadro fecha o gesto num passo.
     pub fn sobe(&mut self) -> bool {
-        let havia = self
+        let ponto = self
             .world
-            .get_resource_mut::<FormaNoCanvas>()
-            .and_then(|mut f| f.arrasto.take())
+            .get_resource_mut::<crate::pontos::PontosNoCanvas>()
+            .and_then(|mut p| p.arrasto.take())
             .is_some();
+        let havia = ponto
+            || self
+                .world
+                .get_resource_mut::<FormaNoCanvas>()
+                .and_then(|mut f| f.arrasto.take())
+                .is_some();
         if havia {
             publica_a_mao(self.world, None);
         }
@@ -249,7 +349,16 @@ impl Porta<'_> {
         let Some(alvo) = f.alvo else {
             return false;
         };
-        if let Some(a) = f.arrasto {
+        let ponto = self
+            .world
+            .get_resource_mut::<crate::pontos::PontosNoCanvas>()
+            .and_then(|mut p| p.arrasto.take());
+        if let Some(a) = ponto {
+            if a.armado {
+                crate::pontos::escreve(self.world, alvo, a.inicio.to_vec(), a.custom);
+            }
+            publica_a_mao(self.world, None);
+        } else if let Some(a) = f.arrasto {
             if a.armado {
                 self.escreve(alvo, &a.inicio);
             }

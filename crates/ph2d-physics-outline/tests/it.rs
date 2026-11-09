@@ -654,3 +654,6 @@ fn o_outline_sem_aneis_traca_a_primeira_vista() {
     assert_eq!(follow(&mut sim, &db, &q, &reg), 0, "a seguinte só confere");
     assert!(q.is_empty());
 }
+
+#[path = "pontos/w5.rs"]
+mod w5;

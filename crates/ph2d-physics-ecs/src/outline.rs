@@ -30,6 +30,8 @@ pub struct ColliderOutline {
     pub min_island_px: u16,
     /// O Detail que o tecto de peças/pontos impôs (Q4); `0` = o pedido serviu.
     pub raised_q4: u16,
+    /// Pontos editados à mão no canvas (W5): «Custom», a imagem deixa de os retraçar; o Fit volta.
+    pub custom: bool,
 }
 
 impl Default for ColliderOutline {
@@ -42,6 +44,7 @@ impl Default for ColliderOutline {
             alpha_cutoff: 128,
             min_island_px: 0,
             raised_q4: 0,
+            custom: false,
         }
     }
 }

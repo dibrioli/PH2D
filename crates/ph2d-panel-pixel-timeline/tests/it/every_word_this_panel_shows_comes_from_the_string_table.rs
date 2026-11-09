@@ -3,7 +3,11 @@
 use ph2d_label_census::gate::{self, Excecao};
 
 const PREFIX: &str = "panel.pixel.timeline.";
-const TABLES: &[&str] = &["crates/ph2d-i18n/src/pixel.rs"];
+/// O `pixel_slices` (e os submódulos dele, que o censo lê com ele) guarda a dica do onion (P12 P).
+const TABLES: &[&str] = &[
+    "crates/ph2d-i18n/src/pixel.rs",
+    "crates/ph2d-i18n/src/pixel_slices.rs",
+];
 
 /// ⭐ As excepções, **com o mecanismo** — nunca uma lista aberta.
 const NOT_LANGUAGE: &[Excecao] = &[];

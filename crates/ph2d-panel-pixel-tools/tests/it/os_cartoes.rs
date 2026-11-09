@@ -67,6 +67,7 @@ fn info(tool: PixelTool) -> PixelPanelInfo {
                 size: 4,
             },
         }],
+        tool_keys: crate::teclas_de_fabrica(),
         ..PixelPanelInfo::default()
     }
 }

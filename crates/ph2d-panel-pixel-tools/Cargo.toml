@@ -32,6 +32,8 @@ ph2d-pixel-core = { path = "../ph2d-pixel-core" }
 [dev-dependencies]
 ph2d-host = { path = "../ph2d-host" }
 ph2d-label-census = { path = "../ph2d-label-census" }
+# As teclas que a família publica (`PixelPanelInfo.tool_keys`), do mapa de fábrica.
+ph2d-pixel-keys = { path = "../ph2d-pixel-keys" }
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 # O Esc a meio do arrasto da paleta vai pelo `dispatch_key` do produto (a arena dele).
 bumpalo = { version = "3", features = ["collections"] }

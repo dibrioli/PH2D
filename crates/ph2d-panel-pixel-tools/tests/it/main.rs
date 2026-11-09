@@ -13,6 +13,12 @@ mod seam_pixel_texto;
 mod seletor_arrasto;
 mod seletor_leis;
 
+/// As teclas que a família publica a cada quadro, do mapa de FÁBRICA (o `Default` é vazio: um painel
+/// sem mapa).
+pub(crate) fn teclas_de_fabrica() -> ph2d_editor_core::pixel_panel::PixelToolKeys {
+    ph2d_pixel_keys::tool_keys(&ph2d_pixel_keys::Keymap::factory())
+}
+
 /// O corpo de antes (`PH2D_CARDS=0`), que estes gates descrevem; os cartões provam-se em `os_cartoes`.
 pub(crate) fn host_de_antes() -> ph2d_ui_testkit::MockPanelHost {
     ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(false));

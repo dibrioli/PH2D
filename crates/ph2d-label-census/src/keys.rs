@@ -65,6 +65,38 @@ fn outra_checkout(dir: &Path) -> bool {
     g.is_file() || g.join("HEAD").exists()
 }
 
+/// ⭐ **Uma tabela é o MÓDULO, com os submódulos dele** (`pixel_slices.rs` + `pixel_slices/*.rs`, a
+/// disposição de módulos do Rust): o `tr` de `pixel_slices` delega a `history`/`prefs`/`user_data`, e
+/// um censo que lê só o ficheiro-raiz acusa as chaves dos filhos de «usadas e não declaradas».
+fn modulo_inteiro(repo: &Path, tables: &[&str]) -> Vec<PathBuf> {
+    fn filhos(dir: &Path, out: &mut Vec<PathBuf>) {
+        let Ok(rd) = fs::read_dir(dir) else {
+            return;
+        };
+        let mut ps: Vec<PathBuf> = rd.flatten().map(|e| e.path()).collect();
+        ps.sort();
+        for p in ps {
+            if p.is_dir() {
+                filhos(&p, out);
+            } else if p.extension().is_some_and(|x| x == "rs") {
+                out.push(p);
+            }
+        }
+    }
+    let mut out = Vec::new();
+    for t in tables {
+        let p = repo.join(t);
+        if let Some(stem) = p.file_stem().filter(|s| *s != "mod" && *s != "lib") {
+            let dir = p.with_file_name(stem);
+            out.push(p);
+            filhos(&dir, &mut out);
+        } else {
+            out.push(p);
+        }
+    }
+    out
+}
+
 /// Todas as chaves `<prefix>…` **usadas** na árvore do repo, com o primeiro ficheiro onde aparecem.
 ///
 /// ⚠️ As tabelas declaram; elas não usam — `tables` ficam de fora, senão o censo lê a própria fonte
@@ -92,7 +124,7 @@ pub fn keys_used(repo: &Path, prefix: &str, tables: &[&str]) -> BTreeMap<String,
             }
         }
     }
-    let tables: Vec<PathBuf> = tables.iter().map(|t| repo.join(t)).collect();
+    let tables = modulo_inteiro(repo, tables);
     let mut files = Vec::new();
     walk(repo, &mut files);
     files.sort();
@@ -131,8 +163,7 @@ pub fn keys_used(repo: &Path, prefix: &str, tables: &[&str]) -> BTreeMap<String,
 pub fn keys_declared(repo: &Path, tables: &[&str], prefix: &str) -> BTreeSet<String> {
     let needle = format!("\"{prefix}");
     let mut out = BTreeSet::new();
-    for table_rel in tables {
-        let p = repo.join(table_rel);
+    for p in modulo_inteiro(repo, tables) {
         let code = code_of(&p).unwrap_or_else(|| panic!("a tabela {p:?} não se lê"));
         let mut i = 0usize;
         while let Some(k) = code[i..].find(&needle) {

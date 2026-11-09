@@ -31,6 +31,7 @@ fn info(editing: bool) -> PixelPanelInfo {
         bg: [0, 0, 0, 255],
         palette: paleta(),
         options: Default::default(),
+        tool_keys: crate::teclas_de_fabrica(),
         ..Default::default()
     }
 }

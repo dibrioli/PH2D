@@ -39,6 +39,7 @@ fn info(tool: PixelTool, tudo: bool) -> PixelPanelInfo {
         can_reselect: tudo,
         transform: tudo.then_some(MOLDURA),
         size: (64, 32),
+        tool_keys: crate::teclas_de_fabrica(),
         ..Default::default()
     }
 }

@@ -78,13 +78,8 @@ pub fn stage_heroi(
         chao: nova(app, chao.clone())?,
         parede: nova(app, parede)?,
     };
-    h::monta(
-        sim.world_mut(),
-        ph2d_ecs::Entity::from_bits(bits),
-        &s,
-        &k,
-        &chao,
-    )?;
+    let e = ph2d_ecs::Entity::from_bits(bits);
+    h::monta(sim.world_mut(), e, &s, &k, &chao)?;
     app.wants_edit = None;
     Some(bits)
 }

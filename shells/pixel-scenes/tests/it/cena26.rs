@@ -103,7 +103,7 @@ fn tique(w: &mut World, e: Entity, dt_us: u64) {
 
 /// O Play: o Autoplay põe o 1.º clip (o `idle`); a regra do cartão, com `move_right` premida a
 /// partir de `prime` ms, troca para `run` (a `troca` do `personagem.rs`). Devolve a célula em cada ms.
-fn toca(c: &mut Cena, prime: Option<u32>, ate: u32) -> Vec<usize> {
+fn toca(c: &mut Cena, prime: Option<u32>, solta: u32, ate: u32) -> Vec<usize> {
     let s = sprite_de(&c.app, c.sim.world(), c.heroi);
     let w = c.sim.world_mut();
     ph2d_pixel_cena::deriva(w, |_| Some((&s, 1)));
@@ -129,7 +129,16 @@ fn toca(c: &mut Cena, prime: Option<u32>, ate: u32) -> Vec<usize> {
         FrameRef::Empty => usize::MAX,
     };
     let mut fita = vec![celula(w)];
+    let entrada = ph2d_physics_ecs::clip_de_entrada(w, e);
+    let mut antes = None;
     for t in 1..=ate {
+        // A lei real do «Key held» (`segura_regra`, a que o `personagem.rs` chama): laço e soltar.
+        let manda = prime.filter(|p| (*p..solta).contains(&t)).map(|_| 0);
+        if prime.is_some_and(|p| t > p) {
+            let mut a = w.get_mut::<SpriteAnimator>(e).unwrap();
+            antes =
+                ph2d_physics_ecs::segura_regra(&regra.0, manda, antes, &mut a, entrada.as_deref());
+        }
         if prime == Some(t) {
             let mut a = w.get_mut::<SpriteAnimator>(e).unwrap();
             a.current.clone_from(&run);
@@ -328,9 +337,9 @@ fn mede(gpu: &ph2d_gpu::GpuContext, normal: bool, bloqueia: bool, presente: bool
 fn a_cena_26_mede_o_heroi() {
     // 1. O quadro mostrado (idle por Autoplay; → premida a partir de 1000 ms ⇒ run).
     let mut c = montada();
-    let so_idle = toca(&mut c, None, 1500);
+    let so_idle = toca(&mut c, None, 0, 1500);
     let mut c = montada();
-    let com_run = toca(&mut c, Some(1000), 1500);
+    let com_run = toca(&mut c, Some(1000), 2600, 2700);
     let em = |f: &[usize]| [500, 580, 1000, 1500].map(|t| f[t]);
     eprintln!(
         "quadros t=500/580/1000/1500: só idle {:?} · → desde 1000 {:?} (run em 1100/1300/1450: {:?})",
@@ -343,6 +352,25 @@ fn a_cena_26_mede_o_heroi() {
     // run PingPong 2 3 4 3 2 (120 120 60 120 120): +100 ⇒ 2, +300 ⇒ 3 (2.º), +450 ⇒ 2 (o último).
     assert_eq!([1100, 1300, 1450].map(|t| com_run[t]), [2, 3, 2], "run");
     assert!((2..=4).contains(&com_run[1500]), "run a tocar em 1500");
+    // Segurado 1,6 s: o run (540 ms) volta em laço — sem laço ficaria parado no 2 depois de 1540.
+    let segurado = &com_run[1000..2600];
+    let depois: Vec<usize> = [1700, 2000, 2300].map(|t| com_run[t]).to_vec();
+    eprintln!(
+        "segurado: run em 1700/2000/2300 = {depois:?} · soltar em 2600 ⇒ {} em 2600, {} em 2700",
+        com_run[2600], com_run[2700]
+    );
+    assert!(
+        segurado.iter().all(|c| (2..=4).contains(c)),
+        "segurado, só quadros do run"
+    );
+    assert!(
+        com_run[1600..2600].iter().any(|&c| c != 2),
+        "o run segue em laço"
+    );
+    assert!(
+        com_run[2600] <= 1 && com_run[2700] <= 1,
+        "soltar volta ao idle"
+    );
 
     // 2. O pouso pela slice `body` (fundo 16, pés 15 ⇒ a origem 1 px acima do topo do chão).
     let mut c = montada();

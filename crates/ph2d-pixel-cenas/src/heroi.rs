@@ -14,13 +14,13 @@ use ph2d_pixel_core::{NewSprite, Op, Patch, Rect, Sprite, apply, slice};
 /// A régua da cena: a do projecto por omissão (`DEFAULT_PIXELS_PER_METER`).
 pub const PPM: f64 = 100.0;
 /// O herói nasce aqui (m) e cai.
-pub const HEROI: [f32; 2] = [0.0, 0.4];
+pub const HEROI: [f32; 2] = [0.0, 0.0];
 /// A lâmpada, à esquerda do herói, à altura dele já pousado.
-pub const LAMPADA: [f32; 2] = [-0.6, -0.2];
-/// O chão: 200 × 10 px, centro em (0, −0,4) m ⇒ o topo em −0,35 m.
-pub const CHAO: (u32, u32, [f32; 2]) = (200, 10, [0.0, -0.4]);
-/// A parede: 10 × 80 px, centro em (0,5, 0,05) m ⇒ a face esquerda em x = 0,45 m.
-pub const PAREDE: (u32, u32, [f32; 2]) = (10, 80, [0.5, 0.05]);
+pub const LAMPADA: [f32; 2] = [-0.6, -0.12];
+/// O chão: 100 × 10 px, centro em (0, −0,4) m ⇒ o topo em −0,35 m.
+pub const CHAO: (u32, u32, [f32; 2]) = (100, 10, [0.0, -0.4]);
+/// A parede: 8 × 40 px, centro em (0,34, −0,15) m ⇒ a face esquerda em x = 0,30 m, do chão a 0,05 m.
+pub const PAREDE: (u32, u32, [f32; 2]) = (8, 40, [0.34, -0.15]);
 /// Cores das peças.
 pub const COR_CHAO: [u8; 4] = [120, 100, 80, 255];
 pub const COR_PAREDE: [u8; 4] = [200, 200, 200, 255];
@@ -98,7 +98,7 @@ pub fn monta(
     s: &Sprite,
     k: &Chaves,
     chao: &Sprite,
-) -> Option<()> {
+) -> Option<[Entity; 4]> {
     let m = 1.0 / PPM;
     world.entity_mut(heroi).insert((
         em(HEROI[0], HEROI[1]),
@@ -127,12 +127,14 @@ pub fn monta(
     ph2d_pixel_cena::adiciona_collider_da_slice(world, e, id, chao, chao.frames()[0].id, m)?;
     let w = peca(world, "Wall", k.parede, PAREDE.2);
     world.entity_mut(w).insert(BloqueiaLuz { opacidade: 1.0 });
-    world.spawn((
-        em(LAMPADA[0], LAMPADA[1]),
-        Name::new("Light"),
-        Luz::default(),
-    ));
+    let l = world
+        .spawn((
+            em(LAMPADA[0], LAMPADA[1]),
+            Name::new("Light"),
+            Luz::default(),
+        ))
+        .id();
     ph2d_ecs::assign_missing_stable_ids(world);
     ph2d_ecs::assign_missing_root_order(world);
-    Some(())
+    Some([heroi, e, w, l])
 }

@@ -144,7 +144,7 @@ fn a_busca_acha_pela_palavra_de_uso() {
 /// (Mutação: uma palavra de ensino que um objecto acha, ou «Weapon Fire» na frase ⇒ RED.)
 #[test]
 fn cada_ensino_so_cita_o_que_existe_e_so_aparece_sem_resultado() {
-    use ph2d_editor_core::widget::command_palette::{item_matches, teach_for};
+    use ph2d_editor_core::widget::command_palette::{model_item_matches, teach_for};
     let model = super::add_model(&[]);
     let names: Vec<&str> = ph2d_component_desc::all()
         .map(|d| ph2d_i18n::tr(d.display_key))
@@ -175,7 +175,7 @@ fn cada_ensino_so_cita_o_que_existe_e_so_aparece_sem_resultado() {
         .collect();
     for t in &model.select.as_ref().expect("o menu destaca").teach {
         for w in t.words.split(',').map(str::trim) {
-            let hit = items.iter().find(|i| item_matches(w, i));
+            let hit = items.iter().find(|i| model_item_matches(&model, w, i));
             assert!(
                 hit.is_none(),
                 "«{w}» acha «{}»: o ensino nunca se veria",

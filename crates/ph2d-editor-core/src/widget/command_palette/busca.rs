@@ -45,6 +45,19 @@ pub fn item_matches(query: &str, item: &PaletteItem) -> bool {
         || intent_matches(query, item)
 }
 
+/// [`item_matches`] as the palette `model` reads it: a palette that SELECTS ([`PaletteModel::select`],
+/// the Add Object menu) drops the [`fuzzy_score`] tier — its teaching shows only with NO result
+/// (dono 07/11), and a subsequence finds something for almost any word («coin» → *Collision Shape*).
+/// The fuzzy tier is the Run Command's (Ctrl+K, `docs/PixelArt/P12_oraculos.md` O10).
+#[must_use]
+pub fn model_item_matches(model: &PaletteModel, query: &str, item: &PaletteItem) -> bool {
+    if model.select.is_some() {
+        label_matches(query, &item.label) || intent_matches(query, item)
+    } else {
+        item_matches(query, item)
+    }
+}
+
 /// Every word of `query` is in the label or the item's intent words.
 fn intent_matches(query: &str, item: &PaletteItem) -> bool {
     if item.keywords.is_empty() {
@@ -97,7 +110,7 @@ pub fn top_match(model: &PaletteModel, query: &str) -> Option<NodeId> {
         .find(|it| label_matches(query, &it.label))
         .or_else(|| items().find(|it| keyword_is(query, it)))
         .or_else(|| items().find(|it| intent_matches(query, it)))
-        .or_else(best_fuzzy)
+        .or_else(|| model.select.is_none().then(best_fuzzy).flatten())
         .map(|it| it.id)
 }
 
@@ -154,13 +167,16 @@ pub(super) fn filter_model(model: &PaletteModel, query: &str) -> PaletteModel {
                     let mut items: Vec<PaletteItem> = s
                         .items
                         .iter()
-                        .filter(|it| item_matches(query, it))
+                        .filter(|it| model_item_matches(model, query, it))
                         .cloned()
                         .collect();
                     // Best match first (O10); a stable sort keeps the display order on a tie.
-                    items.sort_by_key(|it| {
-                        std::cmp::Reverse(fuzzy_score(query, &it.label).unwrap_or(i32::MIN))
-                    });
+                    // A palette that selects keeps its order (no fuzzy tier there).
+                    if model.select.is_none() {
+                        items.sort_by_key(|it| {
+                            std::cmp::Reverse(fuzzy_score(query, &it.label).unwrap_or(i32::MIN))
+                        });
+                    }
                     (!items.is_empty()).then(|| PaletteSub {
                         title: s.title.clone(),
                         items,

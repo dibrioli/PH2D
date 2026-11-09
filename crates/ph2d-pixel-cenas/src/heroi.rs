@@ -13,15 +13,21 @@ use ph2d_pixel_core::{NewSprite, Op, Patch, Rect, Sprite, apply, slice};
 
 /// A régua da cena: a do projecto por omissão (`DEFAULT_PIXELS_PER_METER`).
 pub const PPM: f64 = 100.0;
-/// O herói nasce aqui (m) e cai.
-pub const HEROI: [f32; 2] = [0.0, 0.0];
-/// A lâmpada, acima e à esquerda do herói pousado: o ícone fica longe do chão e do herói, e o
-/// topo da sombra dele ainda cai na parede.
-pub const LAMPADA: [f32; 2] = [-0.55, -0.04];
-/// O chão: 100 × 10 px, centro em (0, −0,4) m ⇒ o topo em −0,35 m.
-pub const CHAO: (u32, u32, [f32; 2]) = (100, 10, [0.0, -0.4]);
-/// A parede: 8 × 40 px, centro em (0,34, −0,15) m ⇒ a face esquerda em x = 0,30 m, do chão a 0,05 m.
-pub const PAREDE: (u32, u32, [f32; 2]) = (8, 40, [0.34, -0.15]);
+/// O herói nasce aqui (m) e cai 14 cm até ao chão.
+pub const HEROI: [f32; 2] = [0.0, -0.2];
+/// A lâmpada, à esquerda do herói pousado e à altura do meio dele: a sombra cai na face da parede.
+/// A cena é compacta para o *Frame All* pôr o herói a ~1/4 da altura (o anel do objecto mede 24 px
+/// de arte de raio, a qualquer régua).
+pub const LAMPADA: [f32; 2] = [-0.28, -0.25];
+/// O disco da lâmpada da cena (m): 5 cm, um quinto do de fábrica, para não dominar a vista.
+pub const LAMPADA_RAIO_M: f32 = 0.05;
+/// A intensidade da cena: metade da de fábrica, porque a lâmpada está a metade da distância
+/// (0,28 m contra 0,55 m) — o herói recebe a mesma luz e não satura.
+pub const LAMPADA_INTENSIDADE: f32 = std::f32::consts::PI;
+/// O chão: 56 × 10 px, centro em (0, −0,4) m ⇒ o topo em −0,35 m.
+pub const CHAO: (u32, u32, [f32; 2]) = (56, 10, [0.0, -0.4]);
+/// A parede: 8 × 25 px, centro em (0,19, −0,225) m ⇒ a face esquerda em x = 0,15 m, do chão a −0,10 m.
+pub const PAREDE: (u32, u32, [f32; 2]) = (8, 25, [0.19, -0.225]);
 /// Cores das peças.
 pub const COR_CHAO: [u8; 4] = [120, 100, 80, 255];
 pub const COR_PAREDE: [u8; 4] = [200, 200, 200, 255];
@@ -132,7 +138,11 @@ pub fn monta(
         .spawn((
             em(LAMPADA[0], LAMPADA[1]),
             Name::new("Light"),
-            Luz::default(),
+            Luz {
+                tamanho_m: LAMPADA_RAIO_M,
+                intensidade: LAMPADA_INTENSIDADE,
+                ..Luz::default()
+            },
         ))
         .id();
     ph2d_ecs::assign_missing_stable_ids(world);

@@ -108,8 +108,9 @@ fn posicao(sim: &SimWorld, e: Entity) -> [f32; 2] {
 }
 
 /// ⭐ *Frame All* na cena 26 enquadra o herói, o chão, a parede e a lâmpada; o herói (16 px) ocupa
-/// uma fracção legível da altura da vista (medido 11,2 % nesta área: o anel da Luz, 24 px de arte de
-/// raio, e o chão de 1 m mandam na largura), nunca os 16 px de 1000 da vista por omissão.
+/// uma fracção legível da altura da vista (medido 18,2 % nesta área de 1000 × 900 com a cena compacta
+/// de 09/11 — era 11,2 % com o chão de 1 m; na janela do app ~1/4), nunca os 16 px de 1000 da vista
+/// por omissão.
 #[test]
 fn o_frame_all_enquadra_o_pixel_sprite() {
     let (_app, mut sim) = montada();
@@ -130,7 +131,7 @@ fn o_frame_all_enquadra_o_pixel_sprite() {
         100.0 * fracao
     );
     assert!(
-        fracao > 0.10,
+        fracao > 0.15,
         "o herói ocupa só {:.1} % da altura da vista",
         100.0 * fracao
     );

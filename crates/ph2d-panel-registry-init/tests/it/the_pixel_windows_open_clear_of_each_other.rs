@@ -6,7 +6,8 @@ use bumpalo::Bump;
 use ph2d_editor_core::interaction::{InteractiveState, WidgetEvent};
 use ph2d_editor_core::panel::cards::{borda, busca};
 use ph2d_editor_core::screens::hero::{
-    PANEL_PIXEL_HISTORY, PANEL_PIXEL_KEYS, PANEL_PIXEL_PREFS, PANEL_PIXEL_SLICES, paint_hero_screen,
+    PANEL_PIXEL_HISTORY, PANEL_PIXEL_KEYS, PANEL_PIXEL_PREFS, PANEL_PIXEL_PREVIEW,
+    PANEL_PIXEL_SLICES, paint_hero_screen,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{HeroScreen, NodeId, ids};
@@ -165,6 +166,31 @@ fn a_janela_que_abre_nao_cai_sobre_outra() {
         hero.panel_visibility.insert(painel, true);
         assenta(&mut hero, &mut ts);
         nenhuma_sobre_outra(&hero, &format!("{ordem:?}, reabriu {painel}"));
+    }
+}
+
+/// ⭐ U6 (fecho P12): os obstáculos são TODAS as janelas no ecrã, não só as do «×» acessório — a
+/// Preview (F7) aberta antes, no mesmo canto à esquerda da coluna, não fica tapada por nenhuma.
+#[test]
+fn a_janela_que_abre_nao_cai_sobre_a_preview() {
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    for &(painel, node) in &JANELAS {
+        let _ = ph2d_panel_registry_init::register_all_panels();
+        publica_conteudo();
+        let mut hero = HeroScreen::new(NodeId(1));
+        hero.panel_visibility.insert(PANEL_PIXEL_PREVIEW, true);
+        assenta(&mut hero, &mut ts);
+        let preview = hero
+            .store
+            .panel_rect(ids::PIXEL_PREVIEW_PANEL)
+            .expect("a Preview abriu");
+        hero.panel_visibility.insert(painel, true);
+        assenta(&mut hero, &mut ts);
+        let r = hero.store.panel_rect(node).expect("a janela abriu");
+        assert!(
+            !sobrepoe(r, preview),
+            "{painel} {r:?} cai sobre a Preview {preview:?}"
+        );
     }
 }
 

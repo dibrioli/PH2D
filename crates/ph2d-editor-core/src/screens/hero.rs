@@ -107,6 +107,7 @@ pub mod menu_rows;
 mod menu_tables;
 mod menu_tables_board;
 mod menu_tables_section;
+mod menu_tables_settings;
 pub mod mode_drive;
 /// O que esta tela OFERECE agora — as portas de *«esta superfície está viva?»*.
 mod offers;

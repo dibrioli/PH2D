@@ -8,6 +8,7 @@
 //! (`state::accessory_width_ops`); aqui moram o piso, o tecto e o desenho.
 
 use crate::interaction::{BlenderHitKind, InteractiveState, WidgetStore};
+use crate::math::safe_clamp;
 use crate::panel::PaintCtx;
 use crate::panel::cards::banda::metrics as m;
 use crate::screens::hero::dock_reopen::paint_seam_mark;
@@ -84,25 +85,56 @@ pub fn piso_das_linhas<'a>(
     (maior.ceil() + MOLDURA_DA_LINHA).max(PISO_DO_CABECALHO)
 }
 
+/// ⭐ **O rect de uma janela acessória à esquerda da coluna** (Slices, Tilemap, Undo History, Keys,
+/// Preferences): de omissão `base_x` (a direita colada à coluna), abaixo de `teto`, até `fundo`;
+/// o arrasto do título soma-se, limitado a `[esquerda, base_x] × [teto, fundo − cabeçalho]` (o
+/// limitado volta ao store, sem borracha) e, no quadro em que abre, [`assenta_ao_abrir`].
+pub fn coloca(
+    store: &mut WidgetStore,
+    panel: NodeId,
+    w: f32,
+    x: (f32, f32),
+    y: (f32, f32),
+) -> Rect {
+    let ((esquerda, base_x), (teto, fundo)) = (x, y);
+    let base_x = base_x.max(esquerda);
+    let piso_y = (fundo - m::LIST_HEAD_H).max(teto);
+    let (dx, dy) = store.blender_picker_offset(panel);
+    let px = safe_clamp(base_x + dx, esquerda, base_x);
+    let py = safe_clamp(teto + dy, teto, piso_y);
+    if (px - base_x, py - teto) != (dx, dy) {
+        store.set_blender_picker_offset(panel, px - base_x, py - teto);
+    }
+    let r = Rect::new(px, py, w, (fundo - py).max(0.0));
+    assenta_ao_abrir(
+        store,
+        panel,
+        r,
+        Rect::new(esquerda, teto, base_x + w - esquerda, fundo - teto),
+    )
+}
+
 /// ⭐ **A janela que ABRE não cai sobre outra** (smoke do dono 08/11: a Undo History reaberta caiu
-/// sobre a Slices). `r` é o rect de omissão da janela `panel`, já com o arrasto; `esquerda` é o piso
-/// do `x`. Só no quadro em que ela abre (ainda sem rect publicado): fora dele quem manda é o arrasto
-/// do artista. Os obstáculos são as outras janelas acessórias visíveis (as do [`declara_fecho`]).
-/// Os candidatos são o próprio `x` e as posições coladas a cada obstáculo que caem em
-/// `[esquerda, r.x]`; ganha a menor área sobreposta e, no empate, o mais perto da coluna. O desvio
-/// escolhido vai para o arrasto da janela, e ela fica onde abriu.
-pub fn assenta_ao_abrir(store: &mut WidgetStore, panel: NodeId, r: Rect, esquerda: f32) -> Rect {
+/// sobre a Slices). `r` é o rect de omissão da janela `panel`, já com o arrasto; `dentro` é onde ela
+/// pode ficar (o topo dela em `[dentro.y, fundo − cabeçalho]`, o fundo dela é o de `dentro`). Só no
+/// quadro em que ela abre (ainda sem rect publicado): fora dele quem manda é o arrasto do artista.
+/// Os obstáculos são TODOS os rects publicados neste ecrã — janelas acessórias, a Preview, o Export,
+/// o seletor de cor, cartões soltos, os painéis encaixados. Os candidatos são o próprio sítio e os
+/// colados a cada obstáculo nos quatro lados que caem em `dentro`; ganha a menor área sobreposta e,
+/// no empate, o mais perto do sítio de omissão. O desvio escolhido vai para o arrasto da janela.
+pub fn assenta_ao_abrir(store: &mut WidgetStore, panel: NodeId, r: Rect, dentro: Rect) -> Rect {
     if store.panel_rect(panel).is_some() {
         return r;
     }
+    let fundo = (r.y + r.h).max(dentro.y + dentro.h);
     let outras: Vec<Rect> = store
         .panel_rects_by_id()
-        .filter(|&(id, _)| id != panel && store.card_list_close(id) == Some(fecho_de(id)))
+        .filter(|&(id, _)| id != panel)
         .map(|(_, o)| o)
         .collect();
-    let em = |x: f32| Rect::new(x, r.y, r.w, r.h);
-    let sobra = |x: f32| -> f32 {
-        let a = em(x);
+    let em = |(x, y): (f32, f32)| Rect::new(x, y, r.w, (fundo - y).max(0.0));
+    let sobra = |p: (f32, f32)| -> f32 {
+        let a = em(p);
         outras
             .iter()
             .map(|o| {
@@ -113,18 +145,28 @@ pub fn assenta_ao_abrir(store: &mut WidgetStore, panel: NodeId, r: Rect, esquerd
             .sum()
     };
     let folga = Spacing::Lg.px();
-    let x = std::iter::once(r.x)
+    let (x0, x1) = (dentro.x, (dentro.x + dentro.w - r.w).max(dentro.x));
+    let (y0, y1) = (dentro.y, (fundo - m::LIST_HEAD_H).max(dentro.y));
+    let xs = std::iter::once(r.x)
         .chain(outras.iter().map(|o| o.x - folga - r.w))
-        .chain(outras.iter().map(|o| o.x + o.w + folga))
-        .filter(|&x| x >= esquerda && x <= r.x)
-        .map(|x| (sobra(x), x))
-        .min_by(|a, b| a.0.total_cmp(&b.0).then(b.1.total_cmp(&a.1)))
-        .map_or(r.x, |(_, x)| x);
-    if x != r.x {
+        .chain(outras.iter().map(|o| o.x + o.w + folga));
+    let ys: Vec<f32> = std::iter::once(r.y)
+        .chain(outras.iter().map(|o| o.y + o.h + folga))
+        .collect();
+    let cabe =
+        |&(x, y): &(f32, f32)| x >= x0 - 0.5 && x <= x1 + 0.5 && y >= y0 - 0.5 && y <= y1 + 0.5;
+    let longe = |(x, y): (f32, f32)| (x - r.x).abs() + (y - r.y).abs();
+    let p = xs
+        .flat_map(|x| ys.iter().map(move |&y| (x, y)))
+        .filter(cabe)
+        .map(|p| (sobra(p), longe(p), p))
+        .min_by(|a, b| a.0.total_cmp(&b.0).then(a.1.total_cmp(&b.1)))
+        .map_or((r.x, r.y), |(_, _, p)| p);
+    if p != (r.x, r.y) {
         let (dx, dy) = store.blender_picker_offset(panel);
-        store.set_blender_picker_offset(panel, dx + x - r.x, dy);
+        store.set_blender_picker_offset(panel, dx + p.0 - r.x, dy + p.1 - r.y);
     }
-    em(x)
+    em(p)
 }
 
 /// O id do «×» da janela `panel` (derivado dele: uma janela, um fecho).

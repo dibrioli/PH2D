@@ -32,18 +32,7 @@ fn solta(ctx: &mut PaintCtx, piso: f32) -> Rect {
     let w = borda::largura_com_piso(store, node, area, coluna, piso)
         .min((coluna - Spacing::Lg.px() - esquerda).max(0.0));
     let base = (coluna - Spacing::Lg.px() - w).max(esquerda);
-    let (dx, dy) = store.blender_picker_offset(node);
-    let x = (base + dx).clamp(esquerda, base);
-    let y = (teto + dy).clamp(teto, (fundo - m::LIST_HEAD_H).max(teto));
-    if (x - base, y - teto) != (dx, dy) {
-        store.set_blender_picker_offset(node, x - base, y - teto);
-    }
-    borda::assenta_ao_abrir(
-        store,
-        node,
-        Rect::new(x, y, w, (fundo - y).max(0.0)),
-        esquerda,
-    )
+    borda::coloca(store, node, w, (esquerda, base), (teto, fundo))
 }
 
 fn cartao_lista(v: HistoryView) -> CardDef<'static> {

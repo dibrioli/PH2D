@@ -302,14 +302,13 @@ fn solta(ctx: &mut PaintCtx) -> Rect {
     let esquerda = livre.x.max(area.x);
     w = w.min((coluna - Spacing::Lg.px() - esquerda).max(0.0));
     let base = (coluna - Spacing::Lg.px() - w).max(esquerda);
-    let (dx, dy) = store.blender_picker_offset(PixelKeysPanel::NODE_ID);
-    let x = (base + dx).clamp(esquerda, (coluna - Spacing::Lg.px() - w).max(esquerda));
-    let y = (teto + dy).clamp(teto, (fundo - m::LIST_HEAD_H).max(teto));
-    if (x - base, y - teto) != (dx, dy) {
-        store.set_blender_picker_offset(PixelKeysPanel::NODE_ID, x - base, y - teto);
-    }
-    let r = Rect::new(x, y, w, (fundo - y).max(0.0));
-    borda::assenta_ao_abrir(store, PixelKeysPanel::NODE_ID, r, esquerda)
+    borda::coloca(
+        store,
+        PixelKeysPanel::NODE_ID,
+        w,
+        (esquerda, base),
+        (teto, fundo),
+    )
 }
 
 fn janela(st: &mut PixelKeysPanelState) -> &mut Janela {

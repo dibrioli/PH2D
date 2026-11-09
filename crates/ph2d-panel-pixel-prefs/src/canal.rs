@@ -84,10 +84,11 @@ fn de_pct(p: f64) -> u8 {
 /// Escreve um número (cortado à faixa do campo: tamanhos ≥ 1, opacidade 0–255).
 pub fn poe_numero(p: &mut PixelPrefs, n: Numero, v: f64) {
     let r = v.round();
-    let lado = r.clamp(1.0, f64::from(u16::MAX)) as u32;
-    let op = r.clamp(0.0, 255.0) as u8;
-    let pos = r.clamp(f64::from(i16::MIN), f64::from(i16::MAX)) as i32;
-    let alcance = r.clamp(0.0, f64::from(u16::MAX)) as u32;
+    let faixa = |lo: f64, hi: f64| ph2d_editor_core::math::safe_clamp_f64(r, lo, hi);
+    let lado = faixa(1.0, f64::from(u16::MAX)) as u32;
+    let op = faixa(0.0, 255.0) as u8;
+    let pos = faixa(f64::from(i16::MIN), f64::from(i16::MAX)) as i32;
+    let alcance = faixa(0.0, f64::from(u16::MAX)) as u32;
     match n {
         Numero::GridX => p.grid.x = pos,
         Numero::GridY => p.grid.y = pos,

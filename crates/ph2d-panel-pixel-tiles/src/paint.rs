@@ -39,14 +39,17 @@ fn imagens(st: &mut PixelTilesPanelState, x: &Contexto) {
     st.fontes = x.imagens.clone();
 }
 
+/// A beira de cima das janelas soltas: logo abaixo da régua.
+fn teto(ctx: &PaintCtx) -> f32 {
+    let r = ph2d_editor_core::ruler::top_band(ctx.layout.draw_area);
+    r.y + r.h + Spacing::Sm.px()
+}
+
 /// O rect de uma janela solta, na área do desenho; o arrasto soma-se a ele. `x_de` recebe a área e a
 /// largura.
 fn solta(ctx: &PaintCtx, w: f32, x_de: impl FnOnce(Rect, f32) -> f32) -> Rect {
     let area = ctx.layout.draw_area;
-    let teto = {
-        let r = ph2d_editor_core::ruler::top_band(area);
-        r.y + r.h + Spacing::Sm.px()
-    };
+    let teto = teto(ctx);
     let (dx, dy) = ctx
         .host
         .store()
@@ -83,6 +86,10 @@ fn janela(st: &PixelTilesPanelState, x: &Contexto, ctx: &mut PaintCtx) {
         )
     };
     let slot = solta(ctx, PANEL_MIN_W_PX, |a, w| a.x + (a.w - w) * 0.5);
+    let area = ctx.layout.draw_area;
+    let dentro = Rect::new(area.x, slot.y, area.w, slot.h);
+    let slot =
+        borda::assenta_ao_abrir(ctx.host.store_mut(), PixelTilesPanel::NODE_ID, slot, dentro);
     let cartoes = cards::janela(st, x);
     let encaixe = ctx.slot;
     ctx.slot = slot;
@@ -90,6 +97,7 @@ fn janela(st: &PixelTilesPanelState, x: &Contexto, ctx: &mut PaintCtx) {
     let node = PixelTilesPanel::NODE_ID;
     let tudo = pinta_lista_curta(ctx, node, titulo, &cartoes, cancel, (ids::TILES_OK, verbo));
     ctx.slot = encaixe;
+    ctx.host.store_mut().set_panel_rect(node, tudo);
     alca(ctx, tudo);
 }
 
@@ -128,8 +136,9 @@ pub(crate) fn paint(st: &mut PixelTilesPanelState, ctx: &mut PaintCtx) {
     let coluna = ctx.slot.x;
     let area = ctx.layout.draw_area;
     let w = borda::largura(ctx.host.store_mut(), node, area, coluna);
-    let slot = solta(ctx, w, |a, w| (coluna - w - Spacing::Lg.px()).max(a.x));
-    let slot = borda::assenta_ao_abrir(ctx.host.store_mut(), node, slot, area.x);
+    let (teto, fundo) = (teto(ctx), borda::fundo(ctx.layout));
+    let base = coluna - w - Spacing::Lg.px();
+    let slot = borda::coloca(ctx.host.store_mut(), node, w, (area.x, base), (teto, fundo));
     let encaixe = ctx.slot;
     ctx.slot = slot;
     borda::declara_fecho(ctx.host.store_mut(), node);

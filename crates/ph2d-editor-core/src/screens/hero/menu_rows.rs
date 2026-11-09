@@ -53,20 +53,46 @@ pub fn menu_rows(kind: ContextMenuKind) -> &'static [crate::ids::MenuRow] {
         ContextMenuKind::MenuBarWindow => menu_tables::MENU_BAR_WINDOW_ROWS,
         ContextMenuKind::SaveMenu => menu_tables::SAVE_MENU_ROWS,
         ContextMenuKind::OpenMenu => menu_tables::OPEN_MENU_ROWS,
-        ContextMenuKind::SettingsMenu => menu_tables::SETTINGS_MENU_ROWS,
-        ContextMenuKind::SettingsPpmSubmenu => menu_tables::SETTINGS_PPM_SUBMENU_ROWS,
-        ContextMenuKind::SettingsUnitSubmenu => menu_tables::SETTINGS_UNIT_SUBMENU_ROWS,
-        ContextMenuKind::SettingsAngleSubmenu => menu_tables::SETTINGS_ANGLE_SUBMENU_ROWS,
-        ContextMenuKind::SettingsFilterSubmenu => menu_tables::SETTINGS_FILTER_SUBMENU_ROWS,
-        ContextMenuKind::SettingsDisplaySubmenu => menu_tables::SETTINGS_DISPLAY_SUBMENU_ROWS,
-        ContextMenuKind::SettingsTextSubmenu => menu_tables::SETTINGS_TEXT_SUBMENU_ROWS,
-        ContextMenuKind::SettingsMotionSubmenu => menu_tables::SETTINGS_MOTION_SUBMENU_ROWS,
-        ContextMenuKind::SettingsLightSubmenu => menu_tables::SETTINGS_LIGHT_SUBMENU_ROWS,
-        ContextMenuKind::SettingsRecoverySubmenu => menu_tables::SETTINGS_RECOVERY_SUBMENU_ROWS,
-        ContextMenuKind::SettingsFontSubmenu => menu_tables::SETTINGS_FONT_SUBMENU_ROWS,
-        ContextMenuKind::SettingsWeightSubmenu => menu_tables::SETTINGS_WEIGHT_SUBMENU_ROWS,
-        ContextMenuKind::SettingsSizeSubmenu => menu_tables::SETTINGS_SIZE_SUBMENU_ROWS,
-        ContextMenuKind::SettingsScaleSubmenu => menu_tables::SETTINGS_SCALE_SUBMENU_ROWS,
+        ContextMenuKind::SettingsMenu => super::menu_tables_settings::SETTINGS_MENU_ROWS,
+        ContextMenuKind::SettingsPpmSubmenu => {
+            super::menu_tables_settings::SETTINGS_PPM_SUBMENU_ROWS
+        }
+        ContextMenuKind::SettingsUnitSubmenu => {
+            super::menu_tables_settings::SETTINGS_UNIT_SUBMENU_ROWS
+        }
+        ContextMenuKind::SettingsAngleSubmenu => {
+            super::menu_tables_settings::SETTINGS_ANGLE_SUBMENU_ROWS
+        }
+        ContextMenuKind::SettingsFilterSubmenu => {
+            super::menu_tables_settings::SETTINGS_FILTER_SUBMENU_ROWS
+        }
+        ContextMenuKind::SettingsDisplaySubmenu => {
+            super::menu_tables_settings::SETTINGS_DISPLAY_SUBMENU_ROWS
+        }
+        ContextMenuKind::SettingsTextSubmenu => {
+            super::menu_tables_settings::SETTINGS_TEXT_SUBMENU_ROWS
+        }
+        ContextMenuKind::SettingsMotionSubmenu => {
+            super::menu_tables_settings::SETTINGS_MOTION_SUBMENU_ROWS
+        }
+        ContextMenuKind::SettingsLightSubmenu => {
+            super::menu_tables_settings::SETTINGS_LIGHT_SUBMENU_ROWS
+        }
+        ContextMenuKind::SettingsRecoverySubmenu => {
+            super::menu_tables_settings::SETTINGS_RECOVERY_SUBMENU_ROWS
+        }
+        ContextMenuKind::SettingsFontSubmenu => {
+            super::menu_tables_settings::SETTINGS_FONT_SUBMENU_ROWS
+        }
+        ContextMenuKind::SettingsWeightSubmenu => {
+            super::menu_tables_settings::SETTINGS_WEIGHT_SUBMENU_ROWS
+        }
+        ContextMenuKind::SettingsSizeSubmenu => {
+            super::menu_tables_settings::SETTINGS_SIZE_SUBMENU_ROWS
+        }
+        ContextMenuKind::SettingsScaleSubmenu => {
+            super::menu_tables_settings::SETTINGS_SCALE_SUBMENU_ROWS
+        }
         // The SceneList kind is rendered by its dedicated branch
         // below — `items` stays empty so the simple-row loop is
         // skipped.

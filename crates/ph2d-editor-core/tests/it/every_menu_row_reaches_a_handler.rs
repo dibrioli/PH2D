@@ -63,6 +63,8 @@ const MENU_ROWS: &[&str] = &[
     "crates/ph2d-editor-core/src/screens/hero/menu_tables_section.rs",
     // ⭐ Os menus do quadro (aba e elemento), cortados pelo tecto de LOC em 2026-10-20.
     "crates/ph2d-editor-core/src/screens/hero/menu_tables_board.rs",
+    // ⭐ O menu da engrenagem (Settings), cortado pelo tecto de LOC em 2026-11-08.
+    "crates/ph2d-editor-core/src/screens/hero/menu_tables_settings.rs",
 ];
 
 /// **A população** — todo `ids::NOME` que a tabela de linhas menciona, menos as tabelas.
@@ -134,6 +136,7 @@ fn dispatch_sources(root: &Path) -> Vec<(PathBuf, String)> {
                 && !s.ends_with("menu_tables.rs")
                 && !s.ends_with("menu_tables_section.rs")
                 && !s.ends_with("menu_tables_board.rs")
+                && !s.ends_with("menu_tables_settings.rs")
                 && !s.contains("pre_populate")
                 && !s.ends_with("populate.rs")
                 && !s.contains("/tests/")

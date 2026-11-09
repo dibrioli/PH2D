@@ -14,11 +14,11 @@ use ph2d_vector::{
 };
 
 /// O espaçamento de ecrã abaixo do qual a grade não se desenha (cobriria cada píxel de ecrã).
-pub const MIN_LINE_SPACING_PX: f64 = 2.0;
+pub const MIN_LINE_SPACING_PX: f64 = 2.0; // LITERAL-PX-OK: limiar de ecrã da grade (não é medida de UI)
 /// Onde o `Auto` começa a mostrar a grade e onde ela fica inteira (píxeis de ecrã entre linhas).
-pub const AUTO_FADE_PX: (f64, f64) = (4.0, 16.0);
+pub const AUTO_FADE_PX: (f64, f64) = (4.0, 16.0); // LITERAL-PX-OK: rampa de ecrã da grade (não é medida de UI)
 /// A espessura das linhas, em píxeis de ecrã (a do Trial: uma linha de ecrã).
-pub const GRID_LINE_PX: f64 = 1.0;
+pub const GRID_LINE_PX: f64 = 1.0; // LITERAL-PX-OK: uma linha de píxel de ecrã (a do Trial)
 
 /// A opacidade desenhada de uma grade cujas linhas distam `spacing_px` no ecrã.
 #[must_use]

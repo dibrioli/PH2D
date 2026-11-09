@@ -87,8 +87,8 @@ impl crate::App {
         let now = std::time::Instant::now();
         let secs = ph2d_editor_core::recovery_pref::secs();
         if self.recovery.wants_pulse(secs, now) {
-            let cap = self.capture_project().and(self.gfx.as_ref());
-            let world = cap.is_some_and(|g| g.undo_capture_cache.last_report().changed());
+            let cap = self.capture_project().and(self.gfx.as_mut());
+            let world = cap.is_some_and(|g| g.undo_capture_cache.take_changed());
             let g = self.gfx.as_ref();
             let docs = g.and_then(|g| g.hero_screen.as_ref()).map(|h| &h.documents);
             let boards = docs.into_iter().flat_map(|d| d.boards().boards().iter());

@@ -148,6 +148,9 @@ pub struct CaptureCache {
     /// O relatório da última captura — para o `PH2D_UNDO_LOG` o poder imprimir sem que a
     /// assinatura da captura tenha de o devolver por 11 sítios de chamada.
     last_report: CaptureReport,
+    /// Alguma captura viu o mundo mudar desde o último [`Self::take_changed`] — o sinal da cópia de
+    /// recuperação, que não pode depender de quem capturou por último (undo, digest do jogo).
+    changed: bool,
 }
 
 impl Default for CaptureCache {
@@ -168,6 +171,7 @@ impl CaptureCache {
             primed: false,
             known_components: 0,
             last_report: CaptureReport::default(),
+            changed: false,
         }
     }
 
@@ -175,6 +179,12 @@ impl CaptureCache {
     #[must_use]
     pub fn last_report(&self) -> CaptureReport {
         self.last_report
+    }
+
+    /// O mundo mudou em alguma captura desde a última leitura? Lê e desce o sinal (o pulso da cópia
+    /// de recuperação é o único leitor).
+    pub fn take_changed(&mut self) -> bool {
+        std::mem::take(&mut self.changed)
     }
 
     /// **Esquece tudo.** O restore do undo repõe um mundo que esta cache não viu nascer, então
@@ -412,6 +422,7 @@ pub fn capture_incremental(
 
     // ⚠️⚠️ Condição 5 — UMA vez, por CAPTURA, e é a última coisa que acontece.
     cache.last_report = report;
+    cache.changed |= report.changed();
     world.clear_trackers();
     // ⚠️⚠️ **`last_change_tick()`, e NÃO `change_tick()`** — a diferença de um é a diferença
     // entre ver as mudanças e não ver nenhuma, e ela custou os quatro gates deste ficheiro.

@@ -413,3 +413,30 @@ fn a_component_type_born_after_the_first_capture_is_still_watched() {
     );
     let _ = es;
 }
+
+/// ⭐ **O «mudou» da cópia de recuperação é PEGAJOSO** (auditoria R8 F3): o undo, o digest do jogo e
+/// o pulso partilham a cache, e o `last_report` só diz «desde a última captura de QUALQUER um» — uma
+/// captura alheia entre dois pulsos comia a edição de um script. `take_changed` acumula até ser lido.
+///
+/// (Mutação: devolver `last_report().changed()` em `take_changed` ⇒ a 2.ª captura, limpa, apaga o
+/// sinal — RED.)
+#[test]
+fn the_incremental_change_survives_an_unrelated_capture_until_the_pulse_takes_it() {
+    let reg = registry();
+    let (mut w, es) = world_with(3);
+    let mut cache = CaptureCache::new();
+    capture(&mut w, &mut cache, &reg);
+    let _ = cache.take_changed(); // o pulso de arranque consome o nascimento
+    assert!(!cache.take_changed(), "sem captura nova, nada por dizer");
+
+    w.entity_mut(es[1]).insert(Name::new("editado por script"));
+    let (r1, _) = capture(&mut w, &mut cache, &reg); // o undo
+    assert!(r1.changed());
+    let (r2, _) = capture(&mut w, &mut cache, &reg); // o digest do jogo, sem mudança
+    assert!(!r2.changed(), "o ponto fixo: a captura alheia está limpa");
+    assert!(
+        cache.take_changed(),
+        "o pulso perdeu a mudança comida pela captura alheia"
+    );
+    assert!(!cache.take_changed(), "lido, o sinal desce");
+}

@@ -248,5 +248,8 @@ pub fn scroll_for_track_press(track: Rect, cursor_y: f32, content_h: f32, visibl
     t * max
 }
 
+mod own_bar;
+pub use own_bar::{BarDrag, OwnBar};
+
 #[cfg(test)]
 mod tests;

@@ -91,7 +91,7 @@ impl CodeDoc {
                 self.refs = None;
             }
         }
-        if self.debug_press(x, y) {
+        if self.debug_press(x, y) || self.view.bar_press(x, y) {
             return true;
         }
         self.find.focus = None;
@@ -147,7 +147,7 @@ impl CodeDoc {
 
     /// O rato mexeu com o botão em baixo: a seleção vai do início do arrasto ao byte sob o rato.
     pub fn drag_to(&mut self, x: f32, y: f32) -> bool {
-        if self.debug.view.drag_to(x, y) {
+        if self.debug.view.drag_to(x, y) || self.view.bar_drag_to(y) {
             return true;
         }
         let Some(anchor) = self.drag else {
@@ -166,7 +166,7 @@ impl CodeDoc {
     }
 
     pub fn release(&mut self) -> bool {
-        let resized = self.debug.view.release();
+        let resized = self.debug.view.release() | self.view.bar_release();
         self.drag.take().is_some() || resized
     }
 

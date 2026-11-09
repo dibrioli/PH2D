@@ -122,3 +122,35 @@ Decisão do dono (smoke 09/11): nos **Cards** cada cartão rola por si.
   `ph2d-editor-core` `shell_only_shrinks file_loc_cap panel_loc_cap no_magic_numeric no_literal_color hr15` verdes.
   ⚠️ O filtro de testes da Bancada em `ph2d-panel-code` não correu: o guarda dos subagentes recusa a palavra (pesado).
 - **Foto** `ferramentas/smoke/cena14/passo_4.png`: Locals 2 · self 8 (5 à vista, com indicador) · Call stack.
+
+## 7. Barras arrastáveis (09/11)
+
+O dono (smoke 09/11): «não consigo arrastar o novo scroll com o mouse». As três barras da aba eram só indicador.
+
+- **Uma lei, a da casa** (`ph2d-editor-core::widget::scroll_area::{OwnBar, BarDrag}`, ficheiro novo `own_bar.rs`):
+  para a barra cuja rolagem o DONO guarda (fora do `WidgetStore`). Mesma conta do despachante (`begin_bar_drag`):
+  regista a TRILHA (nunca o polegar); carregar no polegar agarra sem rolar; carregar na trilha fora dele salta o
+  polegar para debaixo do dedo (`scroll_for_track_press`, a lei GTK/Blender da casa — não é página); arrastar é
+  proporcional (`scrollbar_delta_for_drag`), preso a 0 e ao fim, com as medidas fotografadas no Down. Zona de
+  toque = a trilha até à borda direita do corpo (12 px), nunca menos que `Spacing::Sm`.
+- **Código** (`CodeView::{bar, bar_press, bar_drag_to, bar_release}`, campo `bar_drag`): a mesma `OwnBar` pinta e agarra;
+  a arrastar o polegar fica `Accent` (`ScrollbarState::Dragging`).
+- **Cards** (`CardBox::track: OwnBar`, `DebugCardView::cards_drag`, `bar_dragging`): só o cartão agarrado rola; o
+  puxador de cima não mexe.
+- **Sheet** (`ph2d-ui-table`): `Hit::Bar` (antes das células, depois do cabeçalho), `Layout::bar()`,
+  `TableState::press(hit, (x, y), ..)` / `drag_to((x, y), ..)` (assinaturas com o `y`), `bar_dragging`. ⚠️ A barra
+  pintada à mão (fina, `BorderStrong`) passou a ser o `paint_scrollbar` da casa (10 px, trilha `Bg3`) — a mesma
+  geometria pinta e agarra. Durante o arrasto nenhuma coluna muda de largura.
+- **Bancada**: listas/grelha da `ph2d-panel-code` não têm barra (só `paint.rs` e `boxes.rs` chamam `paint_scrollbar`).
+- **`ph2d-app-code`** só encaminha (`pointer.rs`: 3 linhas reescritas, 0 novas). Tecto: o teste de costura pagou-se
+  em `tests/it`: `Mesa::arrasta_com` (carregar · mover · largar; o `clica_com` passa a ser um caso dele) e os laços de
+  clique à mão de `ajuda.rs::clica_aba` e `botao_direito.rs::direito` passaram a usá-lo ⇒ catraca 26 628 / 26 628.
+- **Provas**: `ph2d-ui-table` 9/9 (novo `a_barra_do_corpo_arrasta_pelo_polegar_e_salta_pela_trilha`);
+  `ph2d-panel-code` `quadro_do_depurador` 3 (novo `a_barra_de_um_cartao_arrasta_pelo_polegar_e_salta_pela_trilha`);
+  `ph2d-app-code` `parado_o_codigo_rola_e_o_quadro_tem_tecto_roda_e_puxador` estendido com arrastos reais (Sheet ao
+  fim sem mexer em colunas; código rola e a seleção fica; puxador; self dos Cards ao fim, Locals a 0) +
+  `depurador` 12 · `barra_da_aba` 6 · `botao_direito` 6 · `selec` 5 · `arrastar` 17 · `ajuda` 5 verdes;
+  `ph2d-editor-core` `shell_only_shrinks workspace_file_loc_cap panel_loc_cap no_magic_numeric no_literal_color hr15
+  panel_wiring_parity` verdes.
+- **Fotos** `ferramentas/smoke/cena14/passo_1|4.png` refeitas (a barra da Sheet é agora a da casa). O arrasto não se
+  fotografa (a tela virtual ignora eventos sintéticos): prova-se pelo teste de costura.

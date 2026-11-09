@@ -309,11 +309,10 @@ fn o_card_style_troca_o_stopped_e_o_cabecalho_esconde_a_coluna_type() {
 
 /// Smoke do dono 09/11 (cena 14): parado, o código ROLA pela roda (e fica rolado nos quadros
 /// seguintes); o Stopped fica num terço da aba, rola por dentro (a Sheet, e cada cartão dos Cards por si) e o puxador de
-/// cima muda-lhe a altura entre o mínimo e o tecto.
+/// cima muda-lhe a altura entre o mínimo e o tecto; as barras (código, Sheet, cartão) arrastam.
 #[test]
 fn parado_o_codigo_rola_e_o_quadro_tem_tecto_roda_e_puxador() {
-    use ph2d_editor_core::doc_surface::PointerInput;
-    use ph2d_host::{PointerButton::Primary, PointerKind::*};
+    use ph2d_host::PointerButton::Primary;
     let locais: String = (0..30)
         .map(|i| format!("  local v{i} = {i}; self.f{i} = {i}\n"))
         .collect();
@@ -342,18 +341,26 @@ fn parado_o_codigo_rola_e_o_quadro_tem_tecto_roda_e_puxador() {
     );
     let v = roda(&mut m, centro(v.painted.table.expect("Sheet").0.body));
     assert!(v.table.scroll > 0.0, "a Sheet rolou");
-    // O puxador de cima, por carregar · mover · largar reais: o quadro cresce.
+    let arrasta = |m: &mut Mesa, x, ys| m.arrasta_com(id, x, ys, Modifiers::default(), Primary);
+    let lay = v.painted.table.clone().expect("Sheet").0;
+    let bar = lay.bar().hit().expect("a Sheet transborda");
+    arrasta(&mut m, centro(bar).0, (bar.y + 1.0, bar.y + bar.h * 9.0));
+    let v = passo(&mut m);
+    assert!((v.table.scroll - lay.max_scroll()).abs() < 1e-3 && v.table.widths.is_empty());
+    // A barra do código: na borda direita do texto, dentro do recuo do cartão.
+    let code = m.docs().card_rects(id).expect("cartões")[1];
+    let (sel, sy) = (m.docs().selection_of(id), |m: &mut Mesa| {
+        m.docs().scroll_of(id).unwrap().1
+    });
+    let (bx, top) = (code.x + code.w - 14.0, code.y + 14.0); // LITERAL-PX-OK: meio passo de linha
+    arrasta(&mut m, bx, (top, top));
+    let topo = sy(&mut m);
+    arrasta(&mut m, bx, (top, top + 80.0));
+    assert!(sy(&mut m) > topo + 1.0, "a barra do código arrasta");
+    assert_eq!(m.docs().selection_of(id), sel, "a barra não seleciona");
+    // O puxador de cima: o quadro cresce.
     let (gx, gy) = centro(v.painted.grip.expect("o puxador"));
-    let mut ts = ph2d_text::TextSystem::without_system_fonts();
-    for (kind, y) in [(Down, gy), (Up, gy - 150.0)] {
-        let input = PointerInput {
-            text: &mut ts,
-            mods: Modifiers::default(),
-            now_ns: 1,
-        };
-        assert!(m.docs().pointer(id.0, input, kind, Primary, gx, y));
-        m.rato(id, gx, gy - 150.0);
-    }
+    arrasta(&mut m, gx, (gy, gy - 150.0));
     let alto = passo(&mut m).painted.card.expect("o quadro").h;
     assert!(alto > card.h + 100.0, "cresceu: {} → {alto}", card.h);
     assert!(
@@ -369,4 +376,8 @@ fn parado_o_codigo_rola_e_o_quadro_tem_tecto_roda_e_puxador() {
         "{:?}",
         v.cards_scroll
     );
+    let bar = v.painted.cards[1].track.hit().expect("o self transborda");
+    arrasta(&mut m, centro(bar).0, (bar.y + 1.0, bar.y + bar.h * 9.0));
+    let v = passo(&mut m);
+    assert!((v.cards_scroll[1] - v.painted.cards[1].max).abs() < 1e-3 && v.cards_scroll[0] == 0.0);
 }

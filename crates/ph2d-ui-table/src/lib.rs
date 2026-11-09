@@ -201,6 +201,8 @@ pub struct TableState {
     /// A linha sob o rato.
     pub hover: Option<String>,
     drag: Option<Drag>,
+    /// O arrasto da barra de rolagem.
+    bar: Option<ph2d_editor_core::widget::scroll_area::BarDrag>,
 }
 
 /// Onde o rato está na tabela.
@@ -209,6 +211,8 @@ pub enum Hit {
     /// O puxador à direita da coluna.
     Resize(&'static str),
     Header(&'static str),
+    /// A barra de rolagem do corpo (polegar ou trilha).
+    Bar,
     /// O ▸ de uma linha (ou um cabeçalho de grupo inteiro).
     Toggle(usize),
     Cell {
@@ -258,9 +262,17 @@ impl TableState {
         out
     }
 
-    /// Um botão premido em `hit` (x do rato): começa o arrasto ou vira a dobra. `true` = mudou.
-    pub fn press(&mut self, hit: &Hit, x: f32, lay: &Layout, rows: &[Row]) -> bool {
+    /// Um botão premido em `hit` (`(x, y)` do rato): começa o arrasto (puxador ou barra) ou vira a
+    /// dobra. `true` = mudou.
+    pub fn press(&mut self, hit: &Hit, (x, y): (f32, f32), lay: &Layout, rows: &[Row]) -> bool {
         match hit {
+            Hit::Bar => {
+                self.bar = lay.bar().press(x, y, self.scroll).map(|(d, s)| {
+                    self.scroll = s;
+                    d
+                });
+                self.bar.is_some()
+            }
             Hit::Resize(key) => {
                 let w0 = lay.col(key).map_or(0.0, |c| c.w);
                 self.drag = Some(Drag { key, x0: x, w0 });
@@ -277,8 +289,12 @@ impl TableState {
         }
     }
 
-    /// O rato moveu-se com o botão premido. `true` = a largura mudou.
-    pub fn drag_to(&mut self, x: f32, m: &Metrics) -> bool {
+    /// O rato moveu-se com o botão premido. `true` = a largura (ou a rolagem) mudou.
+    pub fn drag_to(&mut self, (x, y): (f32, f32), m: &Metrics) -> bool {
+        if let Some(b) = self.bar {
+            let before = std::mem::replace(&mut self.scroll, b.scroll_at(y));
+            return (self.scroll - before).abs() > f32::EPSILON;
+        }
         let Some(d) = self.drag else { return false };
         let w = (d.w0 + x - d.x0).max(m.min_col);
         self.widths.insert(d.key, w) != Some(w)
@@ -286,12 +302,18 @@ impl TableState {
 
     /// Larga o arrasto. `true` = havia um.
     pub fn release(&mut self) -> bool {
-        self.drag.take().is_some()
+        self.bar.take().is_some() | self.drag.take().is_some()
     }
 
     #[must_use]
     pub fn dragging(&self) -> bool {
-        self.drag.is_some()
+        self.drag.is_some() || self.bar.is_some()
+    }
+
+    /// A barra de rolagem está a ser arrastada?
+    #[must_use]
+    pub fn bar_dragging(&self) -> bool {
+        self.bar.is_some()
     }
 
     /// A roda sobre o corpo. `true` = rolou.
@@ -354,6 +376,16 @@ impl Layout {
         (self.content_h - self.body.h).max(0.0)
     }
 
+    /// A barra de rolagem do corpo (a da casa: a mesma geometria pinta e agarra).
+    #[must_use]
+    pub fn bar(&self) -> ph2d_editor_core::widget::scroll_area::OwnBar {
+        ph2d_editor_core::widget::scroll_area::OwnBar {
+            body: self.body,
+            content_h: self.content_h,
+            visible_h: self.body.h,
+        }
+    }
+
     #[must_use]
     pub fn col(&self, key: &str) -> Option<&ColSpan> {
         self.cols.iter().find(|c| c.key == key)
@@ -378,6 +410,9 @@ impl Layout {
                 .iter()
                 .find(|c| x >= c.x && x < c.x + c.w)
                 .map(|c| Hit::Header(c.key));
+        }
+        if self.bar().hit().is_some_and(|b| b.contains(x, y)) {
+            return Some(Hit::Bar);
         }
         let span = self
             .rows

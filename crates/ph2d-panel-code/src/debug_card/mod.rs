@@ -17,6 +17,7 @@ use crate::view::CodeView;
 use ph2d_a11y::NodeId;
 use ph2d_code_debugcard::{Ask, CardStyle, DebugCard, columns, sheet_rows};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
+use ph2d_editor_core::widget::scroll_area::{BarDrag, OwnBar};
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme, TypeToken};
@@ -75,6 +76,8 @@ pub struct CardBox {
     pub rect: Rect,
     pub max: f32,
     pub bar: Option<Rect>,
+    /// A geometria do indicador (agarra-se no polegar ou na trilha).
+    pub track: OwnBar,
 }
 
 /// ⭐ O quadro de uma aba: a aparência, a tabela (larguras, Type escondida, dobras, rolagem) e o
@@ -93,6 +96,8 @@ pub struct DebugCardView {
     pub cards_scroll: [f32; 3],
     /// O arrasto do puxador: `(y onde começou, altura de então)`.
     resizing: Option<(f32, f32)>,
+    /// O arrasto da barra de um cartão dos Cards: `(cartão, arrasto)`.
+    cards_drag: Option<(usize, BarDrag)>,
 }
 
 /// Os ids dos dois botões (os comandos da aba: Continue, Next line).
@@ -212,6 +217,15 @@ impl DebugCardView {
         if !p.card.is_some_and(|r| r.contains(x, y)) {
             return None;
         }
+        let cards = p.cards.iter().enumerate();
+        if let Some((i, (d, s))) = cards
+            .filter_map(|(i, b)| Some((i, b.track.press(x, y, self.cards_scroll[i])?)))
+            .next()
+        {
+            self.cards_scroll[i] = s;
+            self.cards_drag = Some((i, d));
+            return Some(CardClick::Taken);
+        }
         if let Some(&(ask, _)) = p.buttons.iter().find(|(_, r)| r.contains(x, y)) {
             return Some(CardClick::Ask(ask));
         }
@@ -229,7 +243,7 @@ impl DebugCardView {
                 _ => None,
             };
             let (lay, rows) = (lay.clone(), rows.clone());
-            self.table.press(&hit, x, &lay, &rows);
+            self.table.press(&hit, (x, y), &lay, &rows);
             return Some(copy.unwrap_or(CardClick::Taken));
         }
         Some(
@@ -258,16 +272,26 @@ impl DebugCardView {
             self.user_h = Some((h0 + y0 - y).max(0.0));
             return true;
         }
+        if let Some((i, d)) = self.cards_drag {
+            self.cards_scroll[i] = d.scroll_at(y);
+            return true;
+        }
         self.table.dragging() && {
-            self.table.drag_to(x, &Metrics::standard());
+            self.table.drag_to((x, y), &Metrics::standard());
             true
         }
     }
 
-    /// Largar o botão (o puxador de cima ou o de uma coluna). `true` = havia arrasto.
+    /// Largar o botão (o puxador de cima, o de uma coluna ou uma barra). `true` = havia arrasto.
     pub fn release(&mut self) -> bool {
-        let resized = self.resizing.take().is_some();
+        let resized = self.resizing.take().is_some() | self.cards_drag.take().is_some();
         self.table.release() || resized
+    }
+
+    /// Uma barra do quadro (Sheet ou um cartão) está a ser arrastada?
+    #[must_use]
+    pub fn bar_dragging(&self) -> bool {
+        self.cards_drag.is_some() || self.table.bar_dragging()
     }
 
     /// A roda em `(x, y)`: sobre o quadro rola a tabela da Sheet ou o cartão debaixo dela. `true` = sobre o

@@ -147,3 +147,42 @@ fn os_cards_rolam_cada_um_por_si_e_a_roda_fora_do_quadro_nao_e_dele() {
     assert_eq!(vals.last().copied(), Some("39"), "o self chegou ao fim");
     assert!(!vals[2..].contains(&"0"), "a primeira do self saiu de cima");
 }
+
+/// Smoke do dono 09/11 («não consigo arrastar o novo scroll»): a barra de um cartão dos Cards
+/// arrasta-se pelo polegar (proporcional, presa aos fins) e salta pela trilha; só esse cartão rola
+/// e o puxador de cima não mexe.
+#[test]
+fn a_barra_de_um_cartao_arrasta_pelo_polegar_e_salta_pela_trilha() {
+    use ph2d_editor_core::widget::{scrollbar_thumb_rect, scrollbar_track_rect};
+    let mut c = parado(2);
+    c.this = parado(40).locals;
+    let mut v = DebugCardView::default();
+    v.style = CardStyle::Cards;
+    let _ = pinta(&mut v, &c);
+    let b = v.painted.cards[1];
+    let hit = b.track.hit().expect("o self transborda");
+    assert!(hit.w >= ph2d_tokens::Spacing::Sm.px());
+    assert!(v.painted.cards[0].track.hit().is_none(), "os Locals cabem");
+    let track = scrollbar_track_rect(b.track.body);
+    let thumb = scrollbar_thumb_rect(track, 0.0, b.track.content_h, b.track.visible_h);
+    let range = track.h - thumb.h;
+    let (x, y0) = (hit.x + hit.w * 0.5, thumb.y + thumb.h * 0.5);
+    assert!(v.press(x, y0).is_some());
+    assert_eq!(v.cards_scroll[1], 0.0, "carregar no polegar não rola");
+    assert!(v.bar_dragging());
+    assert!(v.drag_to(x, y0 + range * 0.5));
+    assert!(
+        (v.cards_scroll[1] - b.max * 0.5).abs() < 1e-2,
+        "{:?}",
+        v.cards_scroll
+    );
+    assert!(v.drag_to(x, y0 + range * 10.0));
+    assert!((v.cards_scroll[1] - b.max).abs() < 1e-3, "preso ao fim");
+    assert!(v.cards_scroll[0] == 0.0 && v.user_h.is_none(), "só o self");
+    assert!(v.release() && !v.bar_dragging());
+    assert!(!v.drag_to(x, y0), "largado");
+    let _ = pinta(&mut v, &c);
+    assert!(v.press(x, track.y + 1.0).is_some());
+    assert_eq!(v.cards_scroll[1], 0.0, "a trilha no topo salta ao início");
+    assert!(v.release());
+}

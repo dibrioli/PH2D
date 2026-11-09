@@ -191,22 +191,7 @@ fn shift() -> Modifiers {
 
 /// Um clique real (carregar + largar) na aba `tab` em `(x, y)`.
 fn clica_aba(m: &mut Mesa, tab: u64, (x, y): (f32, f32)) {
-    use ph2d_editor_core::doc_surface::PointerInput;
-    use ph2d_host::{PointerButton, PointerKind};
-    let mut ts = std::mem::replace(&mut m.ts, TextSystem::without_system_fonts());
-    for kind in [PointerKind::Down, PointerKind::Up] {
-        let input = PointerInput {
-            text: &mut ts,
-            mods: Modifiers::default(),
-            now_ns: 1,
-        };
-        assert!(
-            m.docs()
-                .pointer(tab, input, kind, PointerButton::Primary, x, y),
-            "o clique em ({x}, {y}) não foi tomado"
-        );
-    }
-    m.ts = ts;
+    m.clica(ph2d_script::ScriptId(tab), x, y, Modifiers::default());
 }
 
 /// O byte do `n`-ésimo (0-based) `agulha` do texto da sonda, deslocado `off`.

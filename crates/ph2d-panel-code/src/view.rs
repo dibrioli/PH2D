@@ -87,6 +87,8 @@ pub struct CodeView {
     pub(crate) counter_label: String,
     /// As marcas da Bancada do último quadro (a linha e a caixa da marca e dos pontos).
     pub(crate) bancada_marks: Vec<(usize, Rect)>,
+    /// O arrasto da barra de rolagem do texto.
+    pub(crate) bar_drag: Option<ph2d_editor_core::widget::scroll_area::BarDrag>,
 }
 
 /// ⛔ **Os bytes de uma linha que a pintura mostra** — o resto acaba num «…». ⚠️ **De que recurso
@@ -131,6 +133,7 @@ impl Default for CodeView {
             },
             counter_label: String::new(),
             bancada_marks: Vec::new(),
+            bar_drag: None,
         }
     }
 }
@@ -319,6 +322,40 @@ impl CodeView {
     pub fn scroll_by(&mut self, dy_px: f32) {
         self.scroll_y += dy_px;
         self.clamp_scroll();
+    }
+
+    /// A barra de rolagem do texto (a mesma geometria pinta e agarra).
+    pub(crate) fn bar(&self) -> ph2d_editor_core::widget::scroll_area::OwnBar {
+        let tr = self.text_rect();
+        let content_h = self.total_rows() as f32 * self.m.line_h;
+        ph2d_editor_core::widget::scroll_area::OwnBar {
+            body: tr,
+            content_h,
+            visible_h: tr.h,
+        }
+    }
+
+    /// Carregar na barra do texto: no polegar agarra, na trilha salta para debaixo do dedo. `true` = tomado.
+    pub fn bar_press(&mut self, x: f32, y: f32) -> bool {
+        let Some((d, s)) = self.bar().press(x, y, self.scroll_y) else {
+            return false;
+        };
+        self.scroll_y = s;
+        self.bar_drag = Some(d);
+        true
+    }
+
+    /// O arrasto da barra do texto: o conteúdo segue o polegar. `true` = há arrasto.
+    pub fn bar_drag_to(&mut self, y: f32) -> bool {
+        let Some(d) = self.bar_drag else { return false };
+        self.scroll_y = d.scroll_at(y);
+        self.clamp_scroll();
+        true
+    }
+
+    /// Largar a barra do texto. `true` = havia arrasto.
+    pub fn bar_release(&mut self) -> bool {
+        self.bar_drag.take().is_some()
     }
 
     pub fn scroll_x_by(&mut self, dx_px: f32) {

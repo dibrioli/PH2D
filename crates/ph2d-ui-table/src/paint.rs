@@ -4,8 +4,8 @@
 use crate::{Align, Column, Ink, Layout, Row, TableState};
 use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, frame_radius, paint_icon, paint_text, paint_text_title,
-    rect_to_vello, resolve, stroke_polyline,
+    fill_circle, fill_rounded_rect, paint_icon, paint_text, paint_text_title, rect_to_vello,
+    resolve, stroke_polyline,
 };
 use ph2d_editor_core::zones::Rect;
 use ph2d_text::TextSystem;
@@ -272,19 +272,18 @@ pub fn paint(
         ink(ColorToken::Border),
     );
 
-    // A barra de rolagem (só indica; a roda e o arrasto do corpo rolam).
-    if lay.max_scroll() > 0.0 && lay.content_h > 0.0 {
-        let b = lay.body;
-        let bar = m.handle;
-        let th = (b.h * b.h / lay.content_h).max(m.row_h);
-        let ty = b.y + (b.h - th) * (lay.scroll / lay.max_scroll());
-        fill_rounded_rect(
-            scene,
-            Rect::new(b.x + b.w - bar * 2.0, ty, bar, th),
-            frame_radius(theme, ph2d_tokens::Radius::Full.px().min(bar * 0.5)),
-            ink(ColorToken::BorderStrong),
-        );
-    }
+    // A barra de rolagem da casa: agarra-se no polegar ou na trilha (`Hit::Bar`).
+    let bar = lay.bar();
+    let state = if st.bar_dragging() {
+        ph2d_editor_core::widget::ScrollbarState::Dragging
+    } else {
+        ph2d_editor_core::widget::ScrollbarState::Normal
+    };
+    let (body, content, visible) = (bar.body, bar.content_h, bar.visible_h);
+    let visual = (state, ph2d_editor_core::motion::SETTLED);
+    let _ = ph2d_editor_core::widget::paint_scrollbar(
+        body, lay.scroll, content, visible, visual, scene, theme,
+    );
 }
 
 /// O fundo de uma linha que mudou: o âmbar do tema à opacidade do realce de linha (o `WarnSoft`

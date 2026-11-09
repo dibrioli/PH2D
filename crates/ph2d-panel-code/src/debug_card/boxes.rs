@@ -9,6 +9,7 @@ use ph2d_code_debugcard::{DebugCard, VarGroup, VarRow, shown_value, value_ink};
 use ph2d_editor_core::paint::{
     fill_rounded_rect, frame_radius, paint_text, paint_text_title, resolve, stroke_rounded_rect,
 };
+use ph2d_editor_core::widget::scroll_area::OwnBar;
 use ph2d_editor_core::widget::{ScrollbarState, paint_scrollbar, scrollbar_track_rect};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
@@ -116,13 +117,24 @@ fn scroll_card(
     st.cards_scroll[i] = st.cards_scroll[i].min(max);
     let first = ((st.cards_scroll[i] / rh).round() as usize).min(over);
     let rows = Rect::new(card.x, card.y + rh, card.w, fits as f32 * rh);
-    let rest = (ScrollbarState::Normal, 0.0);
+    let state = if st.cards_drag.is_some_and(|(k, _)| k == i) {
+        ScrollbarState::Dragging
+    } else {
+        ScrollbarState::Normal
+    };
     let content = n as f32 * rh;
-    let bar = paint_scrollbar(rows, first as f32 * rh, content, rows.h, rest, scene, theme);
+    let (y, visual) = (first as f32 * rh, (state, 0.0));
+    let bar = paint_scrollbar(rows, y, content, rows.h, visual, scene, theme);
+    let track = OwnBar {
+        body: rows,
+        content_h: content,
+        visible_h: rows.h,
+    };
     st.painted.cards.push(CardBox {
         rect: card,
         max,
         bar,
+        track,
     });
     let keep = bar.map_or(card.w, |_| scrollbar_track_rect(rows).x - card.x);
     (first, fits.min(n), Rect::new(card.x, card.y, keep, card.h))

@@ -121,12 +121,12 @@ fn arrastar_o_puxador_muda_a_largura_e_nunca_desce_do_minimo() {
     let y = l.header.y + l.header.h * 0.5;
     let hit = l.hit(&r, edge, y).expect("puxador");
     assert_eq!(hit, Hit::Resize("value"));
-    assert!(st.press(&hit, edge, &l, &r));
+    assert!(st.press(&hit, (edge, y), &l, &r));
     assert!(st.dragging());
-    assert!(st.drag_to(edge + m.min_col, &m));
+    assert!(st.drag_to((edge + m.min_col, y), &m));
     let (l2, _) = lay(&mut st, area(&m));
     assert!((l2.col("value").unwrap().w - (l.cols[1].w + m.min_col)).abs() < 1e-3);
-    st.drag_to(edge - m.min_col * 100.0, &m);
+    st.drag_to((edge - m.min_col * 100.0, y), &m);
     let (l3, _) = lay(&mut st, area(&m));
     assert!((l3.col("value").unwrap().w - m.min_col).abs() < 1e-3);
     assert!(st.release());
@@ -166,7 +166,7 @@ fn o_clique_no_chevron_vira_a_dobra_e_no_valor_e_uma_celula() {
     let cx = l.cols[0].x + m.pad + m.indent + m.chevron() * 0.5;
     let hit = l.hit(&r, cx, cy).expect("chevron");
     assert_eq!(hit, Hit::Toggle(pos.index));
-    assert!(st.press(&hit, cx, &l, &r));
+    assert!(st.press(&hit, (cx, cy), &l, &r));
     assert!(st.is_open(&r[pos.index]));
     let vx = l.cols[1].x + l.cols[1].w * 0.5;
     assert_eq!(
@@ -214,4 +214,58 @@ fn o_traco_poe_o_minimo_em_baixo_o_maximo_em_cima_e_a_serie_plana_a_meio() {
     let flat = spark_points(&[5.0, 5.0], r, &m);
     assert!((flat[0].1 - 10.0).abs() < 1e-3);
     assert!(spark_points(&[f32::NAN], r, &m).is_empty());
+}
+
+/// ⭐ A barra do corpo arrasta-se (smoke do dono 09/11: «não consigo arrastar o novo scroll»): no
+/// polegar o conteúdo segue o dedo na proporção da trilha, preso aos dois fins; na trilha o polegar
+/// salta para debaixo do dedo; durante o arrasto nenhuma coluna muda de largura.
+#[test]
+fn a_barra_do_corpo_arrasta_pelo_polegar_e_salta_pela_trilha() {
+    use ph2d_editor_core::widget::{scrollbar_thumb_rect, scrollbar_track_rect};
+    let m = Metrics::standard();
+    let mut st = TableState::default();
+    st.toggle_row("pos");
+    let r = rows();
+    let small = Rect::new(0.0, 0.0, m.min_col * 8.0, m.header_h + m.row_h * 3.0);
+    let (l, _) = lay(&mut st, small);
+    let max = l.max_scroll();
+    assert!(max > 0.0);
+    let track = scrollbar_track_rect(l.body);
+    let thumb = scrollbar_thumb_rect(track, 0.0, l.content_h, l.body.h);
+    let range = track.h - thumb.h;
+    assert!(range > 1.0, "o polegar tem por onde andar");
+    let bx = l.body.x + l.body.w - 1.0;
+    let y0 = thumb.y + thumb.h * 0.5;
+    assert_eq!(l.hit(&r, bx, y0), Some(Hit::Bar));
+    assert_ne!(l.hit(&r, l.cols[1].x + 1.0, y0), Some(Hit::Bar));
+    // O polegar: carregar não salta; meio caminho = meia rolagem; preso aos dois fins.
+    assert!(st.press(&Hit::Bar, (bx, y0), &l, &r));
+    assert!(st.bar_dragging() && st.dragging());
+    assert!(st.scroll.abs() < 1e-3, "carregar no polegar não rola");
+    assert!(st.drag_to((bx, y0 + range * 0.5), &m));
+    assert!(
+        (st.scroll - max * 0.5).abs() < 1e-2,
+        "{} vs {}",
+        st.scroll,
+        max * 0.5
+    );
+    st.drag_to((bx, y0 + range * 10.0), &m);
+    assert!((st.scroll - max).abs() < 1e-3, "preso ao fim");
+    st.drag_to((bx - m.min_col * 3.0, y0 - range * 10.0), &m);
+    assert!(st.scroll.abs() < 1e-3, "preso ao início");
+    assert!(
+        st.widths.is_empty(),
+        "o arrasto da barra não mexe em colunas"
+    );
+    assert!(st.release());
+    assert!(!st.dragging());
+    assert!(
+        !st.drag_to((bx, y0 + range), &m),
+        "largado, o rato não rola"
+    );
+    // A trilha: o polegar salta para debaixo do dedo (o fundo da trilha = o fim).
+    let (l, _) = lay(&mut st, small);
+    assert!(st.press(&Hit::Bar, (bx, track.y + track.h - 1.0), &l, &r));
+    assert!((st.scroll - max).abs() < 1e-3, "a trilha salta");
+    assert!(st.release());
 }

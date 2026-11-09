@@ -6,30 +6,16 @@ use crate::acoes::{TEXTO as TYPO, sem_assistente, texto};
 use crate::completar::{T0, quadro_em};
 use crate::definicao::{clica_em, cursor};
 use crate::{Mesa, centro, ctrl};
-use ph2d_editor_core::doc_surface::{DocumentSurface, Key, PointerInput};
-use ph2d_host::{Modifiers, PointerButton, PointerKind};
+use ph2d_editor_core::doc_surface::Key;
+use ph2d_host::{Modifiers, PointerButton};
 use ph2d_script::ScriptId;
-use ph2d_text::TextSystem;
 
 const BOB: &str = "local a = 1\n\nfunction update(self, dt)\n  a = a + dt\nend\n";
 
 /// Um clique com o botão direito no centro do byte `at`.
 fn direito(m: &mut Mesa, id: ScriptId, at: usize) {
     let (x, y) = m.docs().glyph_center(id, at).expect("à vista");
-    let mut ts = std::mem::replace(&mut m.ts, TextSystem::without_system_fonts());
-    for kind in [PointerKind::Down, PointerKind::Up] {
-        let input = PointerInput {
-            text: &mut ts,
-            mods: Modifiers::default(),
-            now_ns: 1,
-        };
-        assert!(
-            m.docs()
-                .pointer(id.0, input, kind, PointerButton::Secondary, x, y),
-            "o botão direito não foi tomado"
-        );
-    }
-    m.ts = ts;
+    m.clica_com(id, x, y, Modifiers::default(), PointerButton::Secondary);
     quadro_em(m, T0);
     m.pinta(id);
 }

@@ -3,7 +3,7 @@
 use ph2d_i18n::{tr, tr_with};
 use std::collections::BTreeMap;
 
-use ph2d_anim_sheets::shown_edit::{island_spawn, pixel_box_centre};
+use ph2d_anim_sheets::shown_edit::{island_pose, pixel_box_centre};
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::{Toast, ToastQueue};
@@ -160,10 +160,18 @@ pub(crate) fn drain_bgremoval(
         ph2d_render::SpriteImage::from_bytes(w, h, rgba, ph2d_render::AlphaMode::Straight)
             .into_premultiplied()
     };
-    // O centro da caixa como o objeto andaria (o `place` o leva); a ilha nova nasce lá MAIS o Pivot da fonte.
+    // O centro da caixa como o objeto andaria (o `place` o leva); a ilha nova nasce onde foi desenhada, com o Pivot,
+    // a pose e o pai da fonte, medidos ANTES de o `place` mexer na fonte.
     let (t0, s0, a0) = (old_translation, old_size_world, old_anchor);
     let island_world_centre = |x, y, w, h| pixel_box_centre(t0, s0, px_per_m, [x, y, w, h]);
-    let island_spawn = |x, y, w, h| island_spawn(t0, s0, px_per_m, a0, [x, y, w, h]);
+    let poses: Vec<_> = islands
+        .iter()
+        .map(|i| island_pose(sim.world(), entity, s0, px_per_m, a0, [i.x, i.y, i.w, i.h]))
+        .collect();
+    let pai = sim
+        .world()
+        .get::<ph2d_ecs::ChildOf>(entity)
+        .map(|c| c.parent());
 
     // Borrow the base name BEFORE any spawn — `world_mut().get::<Name>`
     // and `spawn` need disjoint borrows.
@@ -214,7 +222,7 @@ pub(crate) fn drain_bgremoval(
 
     let msg = spawn_islands(
         &islands,
-        island_spawn,
+        (&poses, pai),
         bake_premul,
         px_per_m,
         &base_name,
@@ -232,7 +240,10 @@ pub(crate) fn drain_bgremoval(
 #[allow(clippy::too_many_arguments)]
 fn spawn_islands(
     islands: &[ph2d_tool_bgremoval::IslandPayload],
-    island_world_centre: impl Fn(u32, u32, u32, u32) -> [f32; 2],
+    (poses, pai): (
+        &[Option<(ph2d_ecs::Transform, [bool; 2])>],
+        Option<ph2d_ecs::Entity>,
+    ),
     bake_premul: impl Fn(u32, u32, Vec<u8>) -> ph2d_render::SpriteImage,
     px_per_m: f32,
     base_name: &str,
@@ -246,7 +257,9 @@ fn spawn_islands(
     let mut spawn_failed = 0usize;
     for (i, island) in islands.iter().enumerate().skip(1) {
         let n = i + 1; // "_island2" for index 1, etc. (contract).
-        let centre = island_world_centre(island.x, island.y, island.w, island.h);
+        let Some((transform, [flip_x, flip_y])) = poses.get(i).copied().flatten() else {
+            continue;
+        };
         let img = bake_premul(island.w, island.h, island.rgba.clone());
         match renderer.acquire_individual(img.width, img.height, &img.pixels) {
             Err(e) => {
@@ -259,15 +272,13 @@ fn spawn_islands(
             Ok(tex_id) => {
                 let world_w = island.w as f32 / px_per_m;
                 let world_h = island.h as f32 / px_per_m;
-                let mut transform = ph2d_ecs::Transform::default();
-                transform.translation.x = centre[0];
-                transform.translation.y = centre[1];
                 let mut sprite = ph2d_render::Sprite::individual(
                     tex_id,
                     [world_w, world_h],
                     [1.0, 1.0, 1.0, 1.0],
                 );
                 sprite.premultiplied = true;
+                (sprite.flip_x, sprite.flip_y) = (flip_x, flip_y);
                 // ⚠️ **O CARIMBO DURÁVEL DOS PIXELS, que faltava aqui desde que as ilhas nasceram.**
                 //
                 // Enio, 2026-08-20: *"remove background com separate islands fez cair para rgba8 e
@@ -282,12 +293,15 @@ fn spawn_islands(
                 // *Um bug que só aparece depois de fechar o projeto tem de ser encontrado por outro
                 // caminho, e este foi o caminho.*
                 let pixels_id = asset_db.insert_image_rgba8(img.width, img.height, img.pixels);
-                sim.world_mut().spawn((
+                let mut ilha = sim.world_mut().spawn((
                     transform,
                     sprite,
                     ph2d_ecs::Name::new(format!("{base_name}_island{n}")),
                     ph2d_ecs::SpritePixels(pixels_id),
                 ));
+                if let Some(p) = pai {
+                    ilha.insert(ph2d_ecs::ChildOf(p));
+                }
                 spawned += 1;
             }
         }

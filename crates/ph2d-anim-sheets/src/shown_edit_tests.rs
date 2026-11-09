@@ -275,16 +275,37 @@ fn a_previa_so_desfaz_o_que_ela_escreveu() {
     );
 }
 
-/// ⭐ Auditoria do fecho 08/11 (G): a ilha separada nasce onde foi desenhada, com o Pivot da fonte: a caixa
-/// `[0, 0, 2, 2]` de uma imagem `8 × 4` a 4 px/m em `(10, 20)` com o Pivot `(0,5, −0,25)`. *Mutação: sem o Pivot ⇒
-/// `[9,25, 20,25]`.*
+/// ⭐ Auditoria do fecho 08/11 (G) e doc 27 §3 item 6: a ilha separada nasce onde foi desenhada, com o Pivot e a POSE
+/// da fonte. A caixa `[0, 0, 2, 2]` de uma imagem `8 × 4` a 4 px/m em `(10, 20)` com o Pivot `(0,5, −0,25)`.
+/// *Mutações: sem o Pivot ⇒ `[9,25, 20,25]`; sem a pose (escala 1, sem flip) ⇒ a ilha virada e escalada sai do lugar
+/// e do tamanho; o flip sem virar o centro ⇒ cai do outro lado.*
 #[test]
-fn a_ilha_separada_nasce_com_o_pivot_da_fonte() {
+fn a_ilha_separada_nasce_com_o_pivot_e_a_pose_da_fonte() {
     let c = pixel_box_centre([10.0, 20.0], [2.0, 1.0], 4.0, [0, 0, 2, 2]);
     assert_eq!(c, [9.25, 20.25]);
+    let mut w = World::new();
+    let mut t = Transform::default();
+    (t.translation.x, t.translation.y) = (10.0, 20.0);
+    let e = w
+        .spawn((t, ph2d_render::Sprite::atlas(0, [2.0, 1.0], [1.0; 4])))
+        .id();
+    let pose = |w: &World| island_pose(w, e, [2.0, 1.0], 4.0, [0.5, -0.25], [0, 0, 2, 2]).unwrap();
+    let (ilha, flip) = pose(&w);
     assert_eq!(
-        island_spawn([10.0, 20.0], [2.0, 1.0], 4.0, [0.5, -0.25], [0, 0, 2, 2]),
-        [9.75, 20.0]
+        ([ilha.translation.x, ilha.translation.y], flip),
+        ([9.75, 20.0], [false, false])
+    );
+    // Escala 2 e flip horizontal: o centro da caixa, `(−0,75, 0,25)` desde o centro do quad, vira `(0,75, 0,25)`; com
+    // o Pivot fica `(1,25, 0)`, e a escala dobra-o.
+    t.scale.x = 2.0;
+    t.scale.y = 2.0;
+    w.entity_mut(e).insert(t);
+    w.get_mut::<ph2d_render::Sprite>(e).unwrap().flip_x = true;
+    let (ilha, flip) = pose(&w);
+    assert_eq!([ilha.translation.x, ilha.translation.y], [12.5, 20.0]);
+    assert_eq!(
+        ([ilha.scale.x, ilha.scale.y], flip),
+        ([2.0, 2.0], [true, false])
     );
 }
 

@@ -95,17 +95,32 @@ pub fn pixel_box_centre(
     ]
 }
 
-/// Onde nasce a ilha NOVA da caixa `bx`: o [`pixel_box_centre`] mais o Pivot `anchor` da fonte.
+/// ⭐ **A pose da ilha NOVA da caixa `bx`** (doc 27 §3 item 6): nasce onde foi desenhada e com a pose da fonte — a
+/// escala, a rotação e o skew do `Transform` dela e o flip do `Sprite` (o flip vira o desenho dentro do quad, logo
+/// vira também o centro da caixa). Sem rotação, escala nem flip: o [`pixel_box_centre`] mais o Pivot
+/// `anchor` da fonte. `(Transform, [flip_x, flip_y])`.
 #[must_use]
-pub fn island_spawn(
-    old_t: [f32; 2],
+pub fn island_pose(
+    world: &World,
+    e: Entity,
     size: [f32; 2],
     ppm: f32,
     anchor: [f32; 2],
-    bx: [u32; 4],
-) -> [f32; 2] {
-    let c = pixel_box_centre(old_t, size, ppm, bx);
-    [c[0] + anchor[0], c[1] + anchor[1]]
+    [x, y, w, h]: [u32; 4],
+) -> Option<(Transform, [bool; 2])> {
+    let t = *world.get::<Transform>(e)?;
+    let flip = world
+        .get::<ph2d_render::Sprite>(e)
+        .map_or([false, false], |s| [s.flip_x, s.flip_y]);
+    let lx = (x as f32 + w as f32 * 0.5) / ppm - size[0] * 0.5;
+    let ly = size[1] * 0.5 - (y as f32 + h as f32 * 0.5) / ppm;
+    let vira = |f: bool, v: f32| if f { -v } else { v };
+    let mut filho = Transform::default();
+    filho.translation.x = anchor[0] + vira(flip[0], lx);
+    filho.translation.y = anchor[1] + vira(flip[1], ly);
+    let mut ilha = t;
+    ilha.translation = Transform::compose(t, filho).translation;
+    Some((ilha, flip))
 }
 
 /// O recurso da folha `sheet ≥ 1` de `e`; `None` na folha `0` ou numa folha que já não existe.
@@ -178,7 +193,7 @@ pub fn set_image(world: &mut World, e: Entity, sheet: u8, asset: AssetId, whole:
 }
 
 /// Edita a folha `sheet ≥ 1` de `e`; `false` se não existe.
-fn edit_sheet(
+pub(crate) fn edit_sheet(
     world: &mut World,
     e: Entity,
     sheet: u8,

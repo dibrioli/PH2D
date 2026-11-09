@@ -38,6 +38,8 @@ impl crate::App {
             | P::Ferramenta(n, _)
             | P::Corta(n)
             | P::Ouve(n)
+            | P::Edita(n)
+            | P::Pivo(n, _)
             | P::Relata(_, n) => n,
             P::Foto(f) => f.map_or(a::PLAYER, a::Foto::alvo),
             P::RelataRegra => a::PLAYER,
@@ -95,12 +97,29 @@ impl crate::App {
                 }
             }
             (P::Foto(f), b) => self.foto_do_animado(f, b),
+            (P::Edita(_), Some(_)) => {
+                if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                    let pedido = ph2d_editor_core::object_mode::ModeRequest::Enter(
+                        ph2d_editor_core::object_mode::ObjectMode::Edit,
+                    );
+                    h.bus.push(EditorAction::ObjectMode(pedido));
+                }
+            }
+            (P::Pivo(_, fase), Some(b)) => self.pivo_do_animado(fase, b),
             (P::Entrada, _) => self.any_input_this_frame = true,
             (P::Desfaz, _) => self.smoke_undo(false),
             (P::Relata(t, n), Some(b)) => {
                 if let Some(g) = self.gfx.as_ref() {
                     let e = ph2d_ecs::Entity::from_bits(b);
-                    eprintln!("[animado-prova] {t}: {}", a::relato(&g.sim, n, e));
+                    let folha0 = g
+                        .sim
+                        .world()
+                        .get::<ph2d_render::Sprite>(e)
+                        .map(|s| (s.size, s.anchor));
+                    eprintln!(
+                        "[animado-prova] {t}: {} folha0={folha0:?}",
+                        a::relato(&g.sim, n, e)
+                    );
                 }
             }
             (P::RelataRegra, Some(b)) => {
@@ -112,6 +131,74 @@ impl crate::App {
             }
             _ => {}
         }
+    }
+
+    /// O gesto do Pivot com Ctrl pelas portas do rato (`smoke_pointer_*`), uma fase por quadro: um clique humano tem
+    /// o botão abaixo e acima em quadros separados.
+    fn pivo_do_animado(&mut self, fase: u8, bits: u64) {
+        use ph2d_editor_core::gizmo::ids::GIZMO_PIVOT;
+        let achar = |app: &Self, id, o_que: &str| {
+            let p = app.smoke_find_widget(id);
+            if p.is_none() {
+                eprintln!("[animado-prova] pivô: {o_que} não está na tela");
+            }
+            p
+        };
+        match fase {
+            0 => {
+                if let Some((x, y)) =
+                    achar(self, ph2d_editor_core::ids::TOOL_PIVOT, "o botão Pivot")
+                {
+                    self.smoke_pointer_down(x, y);
+                }
+            }
+            1 => self.smoke_pointer_up(),
+            2 => {
+                eprintln!("[animado-prova] pivô antes: {}", self.relato_do_pivo(bits));
+                if let Some((x, y)) = achar(self, GIZMO_PIVOT, "o ponto do pivô") {
+                    // Ctrl SEGURO pela porta do teclado real: o `sync_touch_modifiers` relê-a em todo quadro.
+                    crate::touch_input::set_keyboard(winit::keyboard::ModifiersState::CONTROL);
+                    self.apply_modifiers(self.effective_modifiers());
+                    self.smoke_pointer_down(x, y);
+                }
+            }
+            3 => {
+                let alvo = self.gfx.as_ref().and_then(|g| {
+                    let c = centro_do_quad(g.sim.world(), ph2d_ecs::Entity::from_bits(bits))?;
+                    let (x, y) = g
+                        .camera
+                        .world_to_screen(c, crate::field_gizmo_host::scene_window_of(g));
+                    Some((x + 5.0, y + 4.0))
+                });
+                if let Some((x, y)) = alvo {
+                    self.smoke_pointer_move(x, y);
+                }
+            }
+            _ => {
+                self.smoke_pointer_up();
+                crate::touch_input::set_keyboard(winit::keyboard::ModifiersState::empty());
+                self.apply_modifiers(self.effective_modifiers());
+                eprintln!("[animado-prova] pivô depois: {}", self.relato_do_pivo(bits));
+            }
+        }
+    }
+
+    /// Selecionado? · a origem · a folha visível e o Pivot dela · o centro do quad dela no mundo.
+    fn relato_do_pivo(&self, bits: u64) -> String {
+        let Some(g) = self.gfx.as_ref() else {
+            return String::new();
+        };
+        let e = ph2d_ecs::Entity::from_bits(bits);
+        let sel = g.hero_screen.as_ref().and_then(|h| h.gizmo.selection) == Some(bits);
+        let t = g
+            .sim
+            .world()
+            .get::<ph2d_ecs::Transform>(e)
+            .map(|t| t.translation);
+        let pivo =
+            ph2d_sprite_edit::pivot::sprite_do_pivot(g.sim.world(), e).map(|(k, s)| (k, s.anchor));
+        let c = centro_do_quad(g.sim.world(), e);
+        format!("selecionado={sel} origem={t:?} folha_e_pivo={pivo:?} desenho={c:?}")
     }
 
     fn foto_do_animado(&mut self, foto: Option<a::Foto>, bits: Option<u64>) {
@@ -145,4 +232,14 @@ impl crate::App {
             _ => {}
         }
     }
+}
+
+/// O centro do quad da folha visível de `e` no espaço do pai (a origem mais o Pivot dela, pela pose do objeto).
+fn centro_do_quad(world: &ph2d_ecs::World, e: ph2d_ecs::Entity) -> Option<[f32; 2]> {
+    let (_, s) = ph2d_sprite_edit::pivot::sprite_do_pivot(world, e)?;
+    let t = *world.get::<ph2d_ecs::Transform>(e)?;
+    let mut filho = ph2d_ecs::Transform::default();
+    (filho.translation.x, filho.translation.y) = (s.anchor[0], s.anchor[1]);
+    let c = ph2d_ecs::Transform::compose(t, filho).translation;
+    Some([c.x, c.y])
 }

@@ -145,7 +145,17 @@ pub(super) fn sprite_view(
     sheet_gizmo_bits: Option<u64>,
     tool_preview_bits: &[Option<u64>],
 ) -> Option<ph2d_editor_core::GizmoView> {
-    let (sprite, grade) = ph2d_render::drawn_geometry(sim.world(), sim_entity)?;
+    // A imagem aberta (Painter, modo Edit) desenha-se INTEIRA, desdobrada à volta do Pivot: a caixa é a dela.
+    let aberta = ph2d_ecs::imagem_aberta(sim.world(), sim_entity).is_some();
+    let (sprite, grade) = if aberta {
+        let s = ph2d_sprite_screen::sprite_mostrada(sim.world(), sim_entity)?;
+        (
+            s,
+            sim.world().get::<ph2d_ecs::SpriteGrid>(sim_entity).copied(),
+        )
+    } else {
+        ph2d_render::drawn_geometry(sim.world(), sim_entity)?
+    };
     let mut q = present
         .world_mut()
         .query::<(&SimRef, &ph2d_ecs::GlobalTransform)>();
@@ -167,8 +177,12 @@ pub(super) fn sprite_view(
         &sprite,
         grade,
         gizmo_ppm,
-        sheet_gizmo_bits == Some(bits),
-        crate::render_loop::sim_extract_sheet::is_tool_previewed(tool_preview_bits, sim_entity),
+        aberta || sheet_gizmo_bits == Some(bits),
+        aberta
+            || crate::render_loop::sim_extract_sheet::is_tool_previewed(
+                tool_preview_bits,
+                sim_entity,
+            ),
         malha,
     );
     let skew = ph2d_ecs::world_skew(sim.world(), sim_entity);

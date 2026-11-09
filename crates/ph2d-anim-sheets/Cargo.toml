@@ -14,6 +14,9 @@ authors.workspace = true
 # `the_shell_only_shrinks_and_every_app_crate_too`; família não chama família.
 [dependencies]
 ph2d-asset = { path = "../ph2d-asset" }
+# O Padding de cada quadro usa a geometria do `add_padding` (cell_edit).
+ph2d-tool-padding = { path = "../ph2d-tool-padding" }
+bytemuck = "1"
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-i18n = { path = "../ph2d-i18n" }

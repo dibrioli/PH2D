@@ -47,6 +47,33 @@ pub(crate) fn drain_make_square(
         toasts.push(Toast::error(tr("tool.make_square.toast.unavailable")));
         return true;
     };
+    let (w, h) = (src.image.width, src.image.height);
+    if let Some(cut) = ph2d_anim_sheets::cell_edit::cut_of(sim.world(), entity, src.sheet, w, h) {
+        match ph2d_anim_sheets::cell_edit::square(&cut) {
+            Some(ch) => {
+                let label = (
+                    tr("shell.make_square.make_square"),
+                    "shell.make_square.make_square_failed",
+                );
+                let undo = pending_undo_entries;
+                super::cells::grava(
+                    entity_bits,
+                    &src,
+                    (cut, ch),
+                    label,
+                    sim,
+                    renderer,
+                    asset_db,
+                    toasts,
+                    undo,
+                );
+            }
+            None => {
+                toasts.push(Toast::info(tr("tool.make_square.toast.already_square")));
+            }
+        }
+        return true;
+    }
     // Wave 11 migration (ADR-0042 §6 #2): make_square takes typed
     // `&[SrgbRgba]`. Zero-copy cast via bytemuck.
     let typed: &[ph2d_color::SrgbRgba] = bytemuck::cast_slice(&src.image.pixels);

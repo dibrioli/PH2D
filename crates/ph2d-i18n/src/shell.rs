@@ -80,6 +80,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.image_edit.layers_flattened" => "Layers flattened. Undo brings them back.",
         "shell.asset_drop_apply.could_not_apply" => "Could not apply: {e}",
         "shell.asset_drop_apply.texture_applied" => "Texture applied",
+        "shell.asset_drop_apply.sheet_not_replaced" => {
+            "The sheet on view was not replaced: the image is the same or could not be read"
+        }
         "shell.asset_index_build.pieces" => "{n} {n?piece|pieces}",
         "shell.asset_index_build.n1_piece" => "1 piece",
         "shell.asset_index_build.component" => "Prefab {stable_id}",

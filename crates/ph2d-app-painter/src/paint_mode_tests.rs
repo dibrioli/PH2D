@@ -304,7 +304,7 @@ fn o_painter_abre_o_repetido_numa_copia_e_ao_sair_volta_o_mesmo() {
         256,
         128,
     );
-    crate::imagem_aberta::publica(c.sim.world_mut(), &mut c.tools);
+    crate::imagem_aberta::publica(c.sim.world_mut(), &mut c.tools, None);
     let w = c.sim.world();
     let uv = resolve_uv_xform(w, alta, [6.0, 1.0]);
     assert_eq!(uv, [1.0, 1.0, 0.0, 0.0], "o Draw ainda desenha as cópias");
@@ -319,7 +319,7 @@ fn o_painter_abre_o_repetido_numa_copia_e_ao_sair_volta_o_mesmo() {
     assert_eq!(c.gravado(), antes, "entrar no Draw mudou o que se grava");
 
     c.quadro(Some(ModeRequest::Toggle));
-    crate::imagem_aberta::publica(c.sim.world_mut(), &mut c.tools);
+    crate::imagem_aberta::publica(c.sim.world_mut(), &mut c.tools, None);
     let w = c.sim.world();
     assert_eq!(resolve_uv_xform(w, alta, [6.0, 1.0]), uv_antes);
     assert_eq!(

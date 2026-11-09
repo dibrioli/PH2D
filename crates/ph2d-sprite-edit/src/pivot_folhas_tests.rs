@@ -52,27 +52,33 @@ fn ancora_extra(w: &World, e: Entity) -> [f32; 2] {
     w.get::<SpriteSheets>(e).unwrap().0[0].anchor
 }
 
-/// O que não pode mexer quando se edita uma folha extra.
-fn o_objeto(w: &World, e: Entity, filho: Entity) -> (Transform, [f32; 2], [f32; 2], Transform) {
+/// O que fica no MUNDO quando se edita o Pivot da folha 1 (sem rotação nem escala): o centro do quad dela, o filho, a
+/// colisão — e o Pivot da folha 0, que ela guarda para seguir a origem.
+fn no_mundo(w: &World, e: Entity, filho: Entity) -> ([f32; 2], [f32; 2], [f32; 2], [f32; 2]) {
+    let t = w.get::<Transform>(e).unwrap().translation;
+    let a = ancora_extra(w, e);
+    let f = w.get::<Transform>(filho).unwrap().translation;
+    let c = w.get::<Collider>(e).unwrap().offset;
     (
-        *w.get::<Transform>(e).unwrap(),
+        [t.x + a[0], t.y + a[1]],
+        [t.x + f.x, t.y + f.y],
+        [t.x + c[0], t.y + c[1]],
         w.get::<Sprite>(e).unwrap().anchor,
-        w.get::<Collider>(e).unwrap().offset,
-        *w.get::<Transform>(filho).unwrap(),
     )
 }
 
-/// ⭐ Com a folha 1 à vista, o Pivot de 9 pontos conta sobre o desenho DELA e só ela muda: a posição, o Pivot da
-/// folha 0, a colisão e os filhos ficam. Com a folha 0 à vista, a lei de sempre, e a folha 1 fica.
+/// ⭐ Com a folha 1 à vista, o Pivot de 9 pontos conta sobre o desenho DELA; o desenho dela, o filho e a colisão
+/// ficam no mundo e a origem anda (smoke do dono 09/11: «quem move é a imagem»). A folha 0 guarda o Pivot dela e
+/// segue a origem. Com a folha 0 à vista, a mesma lei, e a folha 1 guarda o dela.
 ///
 /// *Mutações: ignorar a folha visível ⇒ muda o `Sprite` e reprova; medir a caixa opaca da folha 0 (o quad inteiro)
-/// ⇒ Top Left cai em −1,5 e reprova; mover a origem como na folha 0 ⇒ a posição anda e reprova.*
+/// ⇒ Top Left cai em −1,5 e reprova; a origem ficar (a lei antiga) ⇒ o desenho da folha 1 anda e reprova.*
 #[test]
 fn o_pivot_mexe_na_folha_visivel() {
     let db = AssetDb::default();
     let atlas = BTreeMap::new();
     let (mut w, e, filho) = duas_folhas(&db);
-    let antes = o_objeto(&w, e, filho);
+    let antes = no_mundo(&w, e, filho);
     assert!(set_pivot(
         &mut w,
         e,
@@ -83,7 +89,12 @@ fn o_pivot_mexe_na_folha_visivel() {
     ));
     // O desenho em u 0,25..0,75, v 0,5..1 de um quad 3 × 3: Top Left = (−0,75, 0) desde o centro.
     assert_eq!(ancora_extra(&w, e), [0.75, 0.0]);
-    assert_eq!(o_objeto(&w, e, filho), antes, "nada mais se mexe");
+    assert_eq!(no_mundo(&w, e, filho), antes, "nada se mexe no mundo");
+    assert_eq!(
+        w.get::<Transform>(e).unwrap().translation,
+        Vec2::new(4.25, 7.0),
+        "a origem foi ao Top Left"
+    );
     assert_eq!(
         pivot_de(&w, e, &db, &atlas, 100.0).map(|p| p.0),
         Some(Some([0, 0])),
@@ -98,6 +109,7 @@ fn o_pivot_mexe_na_folha_visivel() {
         SpritePivot::Ponto([1, 2])
     ));
     assert_eq!(ancora_extra(&w, e), [0.0, 1.5], "Bottom = o pé do desenho");
+    assert_eq!(no_mundo(&w, e, filho), antes);
     assert!(!set_pivot(
         &mut w,
         e,
@@ -106,8 +118,9 @@ fn o_pivot_mexe_na_folha_visivel() {
         100.0,
         SpritePivot::Ponto([1, 2])
     ));
-    // A folha 0 à vista: a lei de sempre (a origem compensa), e a folha 1 não muda.
+    // A folha 0 à vista: a mesma lei (a origem compensa), e a folha 1 guarda o Pivot dela.
     w.entity_mut(e).insert(ShownSheet(0));
+    let origem = w.get::<Transform>(e).unwrap().translation;
     assert!(set_pivot(
         &mut w,
         e,
@@ -117,27 +130,29 @@ fn o_pivot_mexe_na_folha_visivel() {
         SpritePivot::Px([0.0, -100.0])
     ));
     assert_eq!(w.get::<Sprite>(e).unwrap().anchor, [0.0, 1.0]);
-    assert_ne!(
-        w.get::<Transform>(e).unwrap().translation,
-        antes.0.translation
-    );
+    assert_ne!(w.get::<Transform>(e).unwrap().translation, origem);
     assert_eq!(ancora_extra(&w, e), [0.0, 1.5]);
 }
 
-/// A ferramenta Pivot do canvas sobre a folha extra: a âncora dela e só.
+/// ⭐ A ferramenta Pivot do canvas sobre a folha extra: o pivô vai ao cursor e o desenho DELA fica (smoke do dono
+/// 09/11). A âncora e a origem chegam do arrasto, que mantém o centro do quad: `origem + âncora = (5, 7)`.
 ///
-/// *Mutação: o arrasto seguir a lei da folha 0 ⇒ a origem vai para `(9, 9)` e reprova.*
+/// *Mutação: a lei antiga (só a âncora, a origem fica) ⇒ a origem não vai a `(4, 6)` e o desenho anda; reprova.*
 #[test]
-fn arrastar_o_pivot_da_folha_extra_nao_move_o_objeto() {
+fn arrastar_o_pivot_da_folha_extra_deixa_o_desenho_dela_no_lugar() {
     let db = AssetDb::default();
     let (mut w, e, filho) = duas_folhas(&db);
-    let antes = o_objeto(&w, e, filho);
-    arrasta(&mut w, e, [9.0, 9.0], [0.2, 0.3]);
-    assert_eq!(ancora_extra(&w, e), [0.2, 0.3]);
-    assert_eq!(o_objeto(&w, e, filho), antes);
+    let antes = no_mundo(&w, e, filho);
+    arrasta(&mut w, e, [4.0, 6.0], [1.0, 1.0]);
+    assert_eq!(ancora_extra(&w, e), [1.0, 1.0]);
+    assert_eq!(
+        w.get::<Transform>(e).unwrap().translation,
+        Vec2::new(4.0, 6.0)
+    );
+    assert_eq!(no_mundo(&w, e, filho), antes);
     assert_eq!(
         sprite_do_pivot(&w, e).map(|(k, s)| (k, s.anchor, s.size)),
-        Some((1, [0.2, 0.3], [3.0, 3.0]))
+        Some((1, [1.0, 1.0], [3.0, 3.0]))
     );
 }
 

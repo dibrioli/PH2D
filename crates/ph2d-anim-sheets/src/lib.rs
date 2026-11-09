@@ -3,6 +3,7 @@
 //! Lei pura sobre os componentes de `ph2d-ecs`; quem escreve no mundo é a família (`ph2d-app-sprite-anim`).
 
 pub mod apply;
+pub mod cell_edit;
 pub mod editor_ui;
 pub mod names;
 pub mod ops;

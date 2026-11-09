@@ -25,6 +25,7 @@
 //! drain hub's size.
 
 mod bgremoval;
+mod cells;
 mod color_equalization;
 mod equalize_sizes;
 mod make_square;

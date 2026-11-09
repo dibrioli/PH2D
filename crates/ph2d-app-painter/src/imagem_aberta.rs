@@ -5,13 +5,15 @@ use ph2d_ecs::{Entity, World};
 use ph2d_editor_core::{ToolId, ToolRegistry};
 use ph2d_tool_painter::PainterTool;
 
-/// ⭐ **A porta que a shell chama a cada quadro, antes do extract.** Sem Painter em mãos, a vista sai sozinha.
-pub fn publica(world: &mut World, tools: &mut ToolRegistry) {
+/// ⭐ **A porta que a shell chama a cada quadro, antes do extract.** A imagem em mãos do Painter, senão a do modo Edit
+/// (`ph2d_anim_sheets::shown_image::em_edit`); sem nenhuma, a vista sai sozinha.
+pub fn publica(world: &mut World, tools: &mut ToolRegistry, em_edit: Option<(Entity, (u32, u32))>) {
     let aberta = tools
         .active_mut()
         .filter(|t| t.id() == ToolId::new("painter"))
         .and_then(|t| t.as_any_mut().downcast_mut::<PainterTool>())
-        .and_then(|p| Some((Entity::try_from_bits(p.bound_document()?)?, p.canvas_size())));
+        .and_then(|p| Some((Entity::try_from_bits(p.bound_document()?)?, p.canvas_size())))
+        .or(em_edit);
     ph2d_sprite_screen::imagem_aberta::publica(world, aberta);
 }
 

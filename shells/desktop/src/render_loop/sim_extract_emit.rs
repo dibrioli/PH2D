@@ -39,6 +39,9 @@ pub(super) fn sprite(
     // A imagem aberta no Painter desenha-se inteira, uma cópia (`ph2d_ecs::ImagemAberta`): é este o quad dela.
     let aberta = ph2d_ecs::imagem_aberta(sim, sim_entity).map(|size| Sprite { size, ..*spr });
     let spr = aberta.as_ref().unwrap_or(spr);
+    // A imagem INTEIRA (a prévia de uma ferramenta, o Painter, o modo Edit): o quad desdobra-se e a UV não escolhe
+    // célula. Sem isto a imagem aberta no Edit, sem o Painter, mostrava um pedaço da folha (foto 09/11).
+    let inteira = override_for_entity.is_some() || aberta.is_some();
     let p = gt.translation();
     // ADR-0070-amendment-4: the FULL 2x2 world basis (rotation + scale + skew, column-major:
     // col0 = basis.xy, col1 = basis.zw); `size`/`anchor` stay LOCAL.
@@ -102,8 +105,9 @@ pub(super) fn sprite(
     // ⚠️ O caminho do PONTEIRO faz a mesma conta
     // (`ph2d_sprite_screen::sprite_image_to_screen_affine`), e é por isso que ele
     // chama a MESMA função: pintar-se-ia num sítio e ver-se-ia noutro.
-    let quad_size = override_for_entity
-        .and(cut.sheet_grid)
+    let quad_size = cut
+        .sheet_grid
+        .filter(|_| inteira)
         .and_then(|g| crate::render_loop::sim_extract_sheet::unfolded_quad(spr, g))
         .or(law.map(|l| l.size))
         .unwrap_or(spr.size);
@@ -156,7 +160,7 @@ pub(super) fn sprite(
     // é ela que a folha aberta percorre. Derivá-la de volta a partir da célula
     // seria multiplicar por `hframes` uma conta que este sítio já tem exacta.
     let sheet_uv = atlas_uv;
-    let atlas_uv = if override_for_entity.is_some() {
+    let atlas_uv = if inteira {
         atlas_uv
     } else {
         sprite_sheet_subrect(atlas_uv, grid.hframes, grid.vframes, grid.frame)

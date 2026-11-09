@@ -67,6 +67,13 @@ pub enum Foto {
     FolhasApagada,
     /// …depois de Trim com a `run` à vista (dono 08/11): só ela perde a margem; a `idle` fica.
     FolhasTrim,
+    /// …depois de Trim na `idle`, a folha 0 (dono 09/11, opção A): cada quadro perde a mesma margem.
+    FolhasTrim0,
+    /// …no modo Edit (dono 08/11): a `run` inteira, como um Still.
+    FolhasEdit,
+    /// A ferramenta Pivot com Ctrl sobre o pivô, por cliques no `on_mouse_input` (smoke do dono 09/11): o objeto
+    /// fica selecionado, o pivô encaixa no centro do quad e o desenho da `run` não anda.
+    FolhasPivo,
 }
 
 #[must_use]
@@ -86,6 +93,9 @@ pub fn foto() -> Option<Foto> {
         "animado_folhas_editor" => Some(Foto::FolhasEditor),
         "animado_folhas_apagada" => Some(Foto::FolhasApagada),
         "animado_folhas_trim" => Some(Foto::FolhasTrim),
+        "animado_folhas_trim0" => Some(Foto::FolhasTrim0),
+        "animado_folhas_edit" => Some(Foto::FolhasEdit),
+        "animado_folhas_pivo" => Some(Foto::FolhasPivo),
         _ => None,
     }
 }
@@ -100,7 +110,13 @@ impl Foto {
             Self::Inicio | Self::Estreito | Self::ProvaPlay => INICIO,
             Self::Aviso | Self::ProvaDesfaz => TROCADA,
             Self::RegraAcesa => PLAYER,
-            Self::Folhas | Self::FolhasEditor | Self::FolhasApagada | Self::FolhasTrim => DUAS,
+            Self::Folhas
+            | Self::FolhasEditor
+            | Self::FolhasApagada
+            | Self::FolhasTrim
+            | Self::FolhasTrim0
+            | Self::FolhasEdit
+            | Self::FolhasPivo => DUAS,
         }
     }
 }
@@ -124,6 +140,11 @@ pub enum Passo {
     Ouve(&'static str),
     /// A selecção e a vista da foto.
     Foto(Option<Foto>),
+    /// Entra no modo Edit do objecto selecionado.
+    Edita(&'static str),
+    /// A fase `0..=4` do gesto do Pivot com Ctrl ([`Foto::FolhasPivo`]): o botão Pivot (abaixo, acima), Ctrl e o
+    /// botão sobre o pivô, o arrasto até perto do centro do quad, soltar e relatar.
+    Pivo(&'static str, u8),
     /// A entrada do artista, que fecha o passo de desfazer.
     Entrada,
     Desfaz,
@@ -221,6 +242,10 @@ fn duas_folhas(q: u32, foto: Option<Foto>) -> Vec<Passo> {
         10 if foto == Some(Foto::FolhasApagada) => vec![P::Verbo(DUAS, Verbo::ShowSheet(0))],
         11 if foto == Some(Foto::FolhasApagada) => vec![P::Verbo(DUAS, Verbo::DeleteSheet)],
         10 if foto == Some(Foto::FolhasTrim) => vec![P::Ferramenta(DUAS, "trim_transparency")],
+        10 if foto == Some(Foto::FolhasTrim0) => vec![P::Verbo(DUAS, Verbo::ShowSheet(0))],
+        11 if foto == Some(Foto::FolhasTrim0) => vec![P::Ferramenta(DUAS, "trim_transparency")],
+        13 if foto == Some(Foto::FolhasEdit) => vec![P::Edita(DUAS)],
+        15..=19 if foto == Some(Foto::FolhasPivo) => vec![P::Pivo(DUAS, (q - 15) as u8)],
         14 => vec![P::Relata("as folhas".into(), DUAS)],
         _ => Vec::new(),
     }

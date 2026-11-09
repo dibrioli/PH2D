@@ -24,6 +24,10 @@ const VERBOS: [&str; 9] = [
     "painter",
 ];
 
+/// ⭐ **A gravação quadro a quadro** (dono 09/11, opção A): grava pelo Trim, Padding e Make Square de uma folha cortada
+/// (a lei é `ph2d_anim_sheets::cell_edit`). Não lê — recebe o que o verbo leu —, mas grava: as regras da gravação valem.
+const AJUDANTES: [&str; 1] = ["cells"];
+
 /// Quem só LÊ para mostrar ao artista a mesma folha em que o verbo vai gravar (a prévia) ou para copiar a imagem
 /// que ele vê.
 const LEITORES: [&str; 6] = [
@@ -50,7 +54,11 @@ fn a_lista_dos_verbos_e_a_pasta_inteira() {
         .filter(|n| n != "mod" && n != "undo")
         .collect();
     na_pasta.sort();
-    let mut lista: Vec<String> = VERBOS.iter().map(|s| (*s).to_owned()).collect();
+    let mut lista: Vec<String> = VERBOS
+        .iter()
+        .chain(&AJUDANTES)
+        .map(|s| (*s).to_owned())
+        .collect();
     lista.sort();
     assert_eq!(na_pasta, lista);
 }
@@ -100,7 +108,7 @@ fn chamadas<'a>(s: &'a str, call: &str) -> Vec<&'a str> {
 /// objeto. *Mutações: passar `0` num verbo ⇒ vermelho; voltar a escrever o `Transform` no Trim ⇒ vermelho.*
 #[test]
 fn cada_verbo_grava_na_folha_que_leu() {
-    for nome in VERBOS {
+    for nome in VERBOS.iter().chain(&AJUDANTES) {
         let s = verbo(nome);
         let mut n = 0;
         for call in ["commit_edited_texture(", "commit_geometric_edit("] {
@@ -135,7 +143,7 @@ fn cada_verbo_grava_na_folha_que_leu() {
 /// dele está atrás de `sheet == 0`; a folha extra desfaz-se pelo documento. *Mutação: tirar um `if` ⇒ vermelho.*
 #[test]
 fn so_a_folha_zero_usa_o_desfazer_de_imagem() {
-    for nome in VERBOS {
+    for nome in VERBOS.iter().chain(&AJUDANTES) {
         let s = verbo(nome);
         let linhas: Vec<&str> = s.lines().collect();
         for (i, l) in linhas.iter().enumerate() {
@@ -176,4 +184,30 @@ fn so_a_folha_zero_mexe_no_transform_do_objeto() {
         u.contains("if src.sheet == 0\n                && let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>"),
         "o Upscale repõe a escala do objeto numa folha extra"
     );
+}
+
+/// ⭐ **Numa folha cortada, Trim, Padding e Make Square agem em cada quadro** (dono 09/11, opção A): o corte entra antes
+/// da conta da imagem inteira e a gravação é a dos quadros. *Mutação: tirar o ramo de um verbo ⇒ vermelho com o nome
+/// dele (e a folha volta a células de 44,8 px no smoke).*
+#[test]
+fn numa_folha_cortada_os_tres_verbos_agem_em_cada_quadro() {
+    for (nome, lei) in [
+        ("trim_transparency", "cell_edit::trim("),
+        ("make_square", "cell_edit::square("),
+        ("padding", "cell_edit::padding("),
+    ] {
+        let s = verbo(nome);
+        let corte = s
+            .find("cell_edit::cut_of(")
+            .unwrap_or_else(|| panic!("`{nome}` não pergunta pelo corte"));
+        let inteira = s.find("bytemuck::cast_slice").unwrap_or(usize::MAX);
+        assert!(
+            corte < inteira,
+            "`{nome}` corta a imagem inteira antes de perguntar pelo corte"
+        );
+        assert!(
+            s.contains(lei) && s.contains("cells::grava("),
+            "`{nome}` não grava quadro a quadro"
+        );
+    }
 }

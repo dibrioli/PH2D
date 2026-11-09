@@ -221,9 +221,11 @@ pub fn o_resto_fica(world: &mut World, e: Entity, t: Transform, d: [f32; 2]) {
     }
 }
 
-/// Põe o pivô de `e` em `alvo` (metros locais a partir do centro do quad), sem mover o desenho. `false` se nada mudou.
-fn pousa(world: &mut World, e: Entity, ppm: f32, alvo: [f32; 2]) -> bool {
-    let Some(s) = world.get::<Sprite>(e).copied() else {
+/// ⭐ **Uma lei para todas as folhas** (smoke do dono 09/11): o Pivot da folha `k` vai para `alvo` (metros locais a
+/// partir do centro do quad dela) e o desenho DESSA folha, os filhos e a colisão ficam no mundo; a origem anda. As
+/// outras folhas guardam o Pivot delas e seguem a origem: os pés de cada uma continuam no pivô. `false` se nada mudou.
+fn pousa(world: &mut World, e: Entity, ppm: f32, k: u8, alvo: [f32; 2]) -> bool {
+    let Some((s, _)) = ph2d_render::sheet_geometry(world, e, k, 0) else {
         return false;
     };
     let Some(t) = world.get::<Transform>(e).copied() else {
@@ -237,58 +239,56 @@ fn pousa(world: &mut World, e: Entity, ppm: f32, alvo: [f32; 2]) -> bool {
     }
     let delta = no_pai(t, antes) - no_pai(t, depois);
     o_resto_fica(world, e, t, [antes[0] - depois[0], antes[1] - depois[1]]);
-    let mut ent = world.entity_mut(e);
-    if let Some(mut tr) = ent.get_mut::<Transform>() {
+    if let Some(mut tr) = world.get_mut::<Transform>(e) {
         tr.translation += delta;
     }
-    if let Some(mut sp) = ent.get_mut::<Sprite>() {
-        sp.anchor = depois;
-        sp.centered = true;
-        sp.offset = [0.0, 0.0];
-    }
+    poe_ancora(world, e, k, depois);
     true
 }
 
-/// O Pivot de uma folha EXTRA `k`: só onde ela se encaixa no objeto. A origem, os filhos, a colisão e as outras folhas
-/// não se mexem (mexer a origem faria a folha `0` saltar). `false` se nada mudou.
-fn pousa_na_folha(world: &mut World, e: Entity, k: u8, anchor: [f32; 2]) -> bool {
-    let Some(mut sheets) = world.get_mut::<SpriteSheets>(e) else {
-        return false;
-    };
-    let Some(s) = usize::from(k)
-        .checked_sub(1)
-        .and_then(|i| sheets.0.get_mut(i))
-    else {
-        return false;
-    };
-    if (s.anchor[0] - anchor[0]).abs() < MESMO_PONTO_M
-        && (s.anchor[1] - anchor[1]).abs() < MESMO_PONTO_M
-    {
-        return false;
-    }
-    s.anchor = anchor;
-    true
-}
-
-/// A ferramenta Pivot do canvas: a mesma lei, com a origem e a âncora que o arrasto calculou. Numa folha extra
-/// visível a origem fica e só a âncora dela muda (o arrasto captou o centro do quad DELA: [`sprite_do_pivot`]).
-pub fn arrasta(world: &mut World, e: Entity, origem: [f32; 2], anchor: [f32; 2]) {
-    let k = ph2d_ecs::shown_sheet(world, e);
-    if k > 0 {
-        pousa_na_folha(world, e, k, anchor);
+/// O Pivot da folha `k` passa a `anchor`: o do `Sprite` na `0` (centrado, sem `offset`), o da folha extra nas outras.
+fn poe_ancora(world: &mut World, e: Entity, k: u8, anchor: [f32; 2]) {
+    if k == 0 {
+        if let Some(mut sp) = world.get_mut::<Sprite>(e) {
+            sp.anchor = anchor;
+            sp.centered = true;
+            sp.offset = [0.0, 0.0];
+        }
         return;
     }
+    if let Some(mut sheets) = world.get_mut::<SpriteSheets>(e)
+        && let Some(s) = usize::from(k)
+            .checked_sub(1)
+            .and_then(|i| sheets.0.get_mut(i))
+    {
+        s.anchor = anchor;
+    }
+}
+
+/// A ferramenta Pivot do canvas: a lei do [`pousa`], com a origem e a âncora que o arrasto calculou sobre o quad da
+/// folha visível ([`sprite_do_pivot`]).
+pub fn arrasta(world: &mut World, e: Entity, origem: [f32; 2], anchor: [f32; 2]) {
+    let k = ph2d_ecs::shown_sheet(world, e);
     let Some(t) = world.get::<Transform>(e).copied() else {
         return;
     };
-    if let Some(a) = world.get::<Sprite>(e).map(|s| s.anchor) {
-        o_resto_fica(world, e, t, [a[0] - anchor[0], a[1] - anchor[1]]);
+    if let Some((s, _)) = ph2d_render::sheet_geometry(world, e, k, 0) {
+        o_resto_fica(
+            world,
+            e,
+            t,
+            [s.anchor[0] - anchor[0], s.anchor[1] - anchor[1]],
+        );
     }
     if let Some(mut tr) = world.get_mut::<Transform>(e) {
         tr.translation = Vec2::new(origem[0], origem[1]);
     }
-    if let Some(mut s) = world.get_mut::<Sprite>(e) {
-        s.anchor = anchor;
+    if k == 0 {
+        if let Some(mut s) = world.get_mut::<Sprite>(e) {
+            s.anchor = anchor;
+        }
+    } else {
+        poe_ancora(world, e, k, anchor);
     }
 }
 
@@ -355,10 +355,7 @@ pub fn set_pivot(
         SpritePivot::Ponto(p) => ponto_local(&s, fracao_de(world, e, db, atlas, k), p),
         SpritePivot::Px(px) => [px[0] / ppm, px[1] / ppm],
     };
-    if k > 0 {
-        return pousa_na_folha(world, e, k, [-alvo[0], -alvo[1]]);
-    }
-    pousa(world, e, ppm, alvo)
+    pousa(world, e, ppm, k, alvo)
 }
 
 /// O pivô de `e`: o ponto da grade em que ele cai (`None` = Custom) e a posição em px a partir do centro do quad, `y`

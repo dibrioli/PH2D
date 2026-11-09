@@ -37,10 +37,20 @@ impl crate::App {
             sort_inputs,
             frame_order,
             hero_screen,
+            asset_db,
+            atlas_asset_map,
             ..
         } = FrameGfx::of(gfx);
 
-        ph2d_app_painter::imagem_aberta::publica(sim.world_mut(), tools);
+        let em_edit = hero_screen.as_ref().and_then(|h| {
+            ph2d_anim_sheets::shown_image::em_edit(
+                sim.world(),
+                (h.image_edit.mode_on, h.gizmo.selection),
+                asset_db,
+                atlas_asset_map,
+            )
+        });
+        ph2d_app_painter::imagem_aberta::publica(sim.world_mut(), tools, em_edit);
         sim_extract::run(
             dt,
             sim,

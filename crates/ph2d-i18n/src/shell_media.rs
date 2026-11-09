@@ -62,6 +62,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.equalize_sizes.equalize_sizes_no" => {
             "Equalize Sizes: no eligible sprites in selection"
         }
+        "shell.cells.every_frame" => {
+            "{label} · every frame is now {width} × {height} px · Cmd+Z to undo"
+        }
+        "shell.cells.too_big" => {
+            "all the frames together would be {width} × {height} px, more than the graphics card's {max_dim}"
+        }
         "shell.make_square.made_square_px_cmd_z" => {
             "Made square · {size} × {size2} px · Cmd+Z to undo"
         }

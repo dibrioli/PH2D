@@ -400,7 +400,17 @@ impl crate::App {
                     &self.flip_state.entities,
                     (evt.x, evt.y),
                 );
-                if let Some(bits) = hits.first().copied() {
+                // Com a ferramenta Pivot, Ctrl sobre o pivô ou o selecionado é o ENCAIXE do arrasto, não a seleção
+                // (smoke do dono 09/11: Ctrl+clique no pivô desselecionava). Segue para `ramo_gizmo_pivo_e_ancora`.
+                let encaixe_do_pivo = cmd_held_early
+                    && !shift_held_early
+                    && hero.store.button_state(ph2d_editor_core::ids::TOOL_PIVOT)
+                        == Some(ph2d_editor_core::widget::ButtonState::Pressed)
+                    && hero.gizmo.selection.is_some()
+                    && (hero.chrome_hit(evt.x, evt.y)
+                        == Some(ph2d_editor_core::gizmo::ids::GIZMO_PIVOT)
+                        || hits.first().copied() == hero.gizmo.selection);
+                if !encaixe_do_pivo && let Some(bits) = hits.first().copied() {
                     hero.gizmo.toggle_in_selection(bits);
                     let primary = hero.gizmo.selection;
                     if let Some(entry) = resolve_live_entry(gfx.hero_live.as_ref(), primary) {

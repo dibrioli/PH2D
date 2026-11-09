@@ -304,3 +304,57 @@ fn load_sheet_de_um_recurso_premultiplicado_leva_a_copia_recta() {
     assert!(add_sheet(&mut w, e, &db, &BTreeMap::new(), PPM, reta));
     assert_eq!(w.get::<SpriteSheets>(e).unwrap().0[1].asset, reta);
 }
+
+/// ⭐ **Escolher uma imagem com a folha extra à vista troca ESSA folha** (dono 09/11): a folha `0`, as animações e a
+/// visível ficam; o pixel guarda o tamanho na tela; o corte fica quando a imagem nova se divide nele. Com a `0` à
+/// vista a porta é a de sempre (`None`).
+///
+/// *Mutações: trocar a folha `0` ⇒ `SpritePixels` muda e reprova; recalcular o tamanho pelo `ppm` em vez do pixel da
+/// folha velha ⇒ a largura na tela sai errada; perder o corte ⇒ `hframes` muda.*
+#[test]
+fn a_imagem_escolhida_troca_a_folha_a_vista() {
+    let db = AssetDb::default();
+    let (mut w, e) = animado(&db);
+    let run = com_run(&db, &mut w, e);
+    let velha = w.get::<SpriteSheets>(e).unwrap().0[0];
+    let pixels_da_0 = *w.get::<SpritePixels>(e).unwrap();
+    let nova = db.insert_image_rgba8(128, 64, opaca(128, 64));
+    assert_eq!(
+        replace_shown_sheet(&mut w, e, &db, &BTreeMap::new(), nova),
+        Some(true)
+    );
+    let s = w.get::<SpriteSheets>(e).unwrap().0[0];
+    assert_eq!(s.asset, nova);
+    assert_eq!(
+        (s.hframes, s.vframes),
+        (velha.hframes, velha.vframes),
+        "o corte fica"
+    );
+    // O mesmo metro por pixel: o dobro dos píxeis por célula, o dobro do tamanho na tela.
+    assert_eq!(s.size, [velha.size[0] * 2.0, velha.size[1] * 2.0]);
+    assert_eq!(
+        *w.get::<SpritePixels>(e).unwrap(),
+        pixels_da_0,
+        "a folha 0 fica"
+    );
+    assert_eq!(shown_sheet(&w, e), 1);
+    assert_eq!(
+        replace_shown_sheet(&mut w, e, &db, &BTreeMap::new(), nova),
+        Some(false),
+        "a mesma"
+    );
+    // Uma imagem que não se divide no corte leva o corte que ela propõe.
+    let torta = db.insert_image_rgba8(33, 32, opaca(33, 32));
+    assert_eq!(
+        replace_shown_sheet(&mut w, e, &db, &BTreeMap::new(), torta),
+        Some(true)
+    );
+    let s = w.get::<SpriteSheets>(e).unwrap().0[0];
+    assert_eq!((s.hframes, s.vframes), (1, 1));
+    assert_ne!(s.asset, run);
+    w.entity_mut(e).insert(ShownSheet(0));
+    assert_eq!(
+        replace_shown_sheet(&mut w, e, &db, &BTreeMap::new(), nova),
+        None
+    );
+}

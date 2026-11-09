@@ -46,6 +46,33 @@ pub(crate) fn drain_trim_transparency(
         toasts.push(Toast::error(tr("tool.trim_transparency.toast.unavailable")));
         return true;
     };
+    let (w, h) = (src.image.width, src.image.height);
+    if let Some(cut) = ph2d_anim_sheets::cell_edit::cut_of(sim.world(), entity, src.sheet, w, h) {
+        match ph2d_anim_sheets::cell_edit::trim(&src.image.pixels, w, &cut) {
+            Some(ch) => {
+                let label = (
+                    tr("shell.trim_transparency.trim"),
+                    "shell.trim_transparency.trim_failed",
+                );
+                let undo = pending_undo_entries;
+                super::cells::grava(
+                    entity_bits,
+                    &src,
+                    (cut, ch),
+                    label,
+                    sim,
+                    renderer,
+                    asset_db,
+                    toasts,
+                    undo,
+                );
+            }
+            None => {
+                toasts.push(Toast::info(tr("tool.trim_transparency.toast.nothing")));
+            }
+        }
+        return true;
+    }
     // Wave 11 migration (ADR-0042 §6 #2): typed `&[SrgbRgba]` input.
     let typed: &[ph2d_color::SrgbRgba] = bytemuck::cast_slice(&src.image.pixels);
     let result =

@@ -49,7 +49,7 @@ fn mudar_o_pivo_nao_move_o_desenho() {
         no_pai(*w.get::<Transform>(e).unwrap(), s.resolve_anchor(100.0))
     };
     let antes = centro(&w);
-    assert!(pousa(&mut w, e, 100.0, [0.0, -1.0]));
+    assert!(pousa(&mut w, e, 100.0, 0, [0.0, -1.0]));
     let depois = centro(&w);
     assert!((antes - depois).length() < 1.0e-4, "{antes:?} → {depois:?}");
     assert_eq!(w.get::<Sprite>(e).unwrap().anchor, [0.0, 1.0]);
@@ -130,7 +130,7 @@ fn centered_e_offset_antigos_normalizam_sem_mover_o_desenho() {
         no_pai(*w.get::<Transform>(e).unwrap(), s.resolve_anchor(100.0))
     };
     let antes = centro(&w);
-    assert!(pousa(&mut w, e, 100.0, [0.5, 0.5]));
+    assert!(pousa(&mut w, e, 100.0, 0, [0.5, 0.5]));
     assert!((antes - centro(&w)).length() < 1.0e-4);
     let s = w.get::<Sprite>(e).unwrap();
     assert!(s.centered);
@@ -140,7 +140,7 @@ fn centered_e_offset_antigos_normalizam_sem_mover_o_desenho() {
 #[test]
 fn o_pivo_no_mesmo_ponto_nao_muda_nada() {
     let (mut w, e) = mundo_com(sprite_2x2(), Transform::default());
-    assert!(!pousa(&mut w, e, 100.0, [0.0, 0.0]));
+    assert!(!pousa(&mut w, e, 100.0, 0, [0.0, 0.0]));
 }
 
 #[test]
@@ -192,7 +192,7 @@ fn tocar_o_pivo_sem_a_posicao_move_o_desenho() {
     };
     let desenho = centro(&w);
     let anchor = w.get::<Sprite>(e).unwrap().anchor;
-    assert!(pousa(&mut w, e, 100.0, [0.0, -1.0]));
+    assert!(pousa(&mut w, e, 100.0, 0, [0.0, -1.0]));
     w.get_mut::<Sprite>(e).unwrap().anchor = anchor;
     assert!(
         (centro(&w) - desenho).length() > 0.5,
@@ -238,7 +238,7 @@ fn mudar_o_pivo_nao_move_a_colisao() {
             ..Default::default()
         });
         let antes = centro_da_colisao(&w, e);
-        assert!(pousa(&mut w, e, 100.0, [0.0, -1.0]));
+        assert!(pousa(&mut w, e, 100.0, 0, [0.0, -1.0]));
         let depois = centro_da_colisao(&w, e);
         assert_ne!(w.get::<Transform>(e).unwrap().translation, t.translation);
         assert!(
@@ -257,7 +257,7 @@ fn a_escala_nula_nao_envenena_o_offset() {
     };
     let (mut w, e) = mundo_com(sprite_2x2(), t);
     w.entity_mut(e).insert(Collider::default());
-    assert!(pousa(&mut w, e, 100.0, [1.0, -1.0]));
+    assert!(pousa(&mut w, e, 100.0, 0, [1.0, -1.0]));
     let o = w.get::<Collider>(e).unwrap().offset;
     assert!(o[0].is_finite() && o[1].is_finite(), "{o:?}");
 }

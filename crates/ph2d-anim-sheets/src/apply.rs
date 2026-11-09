@@ -207,6 +207,70 @@ pub fn add_sheet(
     true
 }
 
+/// ⭐ **Escolher ou soltar uma imagem no cartão com uma folha extra à vista troca ESSA folha** (dono 09/11: «SIM»). O
+/// pixel guarda o tamanho na tela e o Pivot a fração da caixa opaca da imagem que sai (a lei do Load sheet, com a
+/// folha visível no lugar da `0`); o corte fica se a imagem nova se divide nele, senão é o que ela propõe. As
+/// animações, a visível e as outras folhas ficam. `None` = a visível é a `0` (a porta de sempre); `Some(mudou)` senão.
+pub fn replace_shown_sheet(
+    world: &mut World,
+    e: Entity,
+    db: &AssetDb,
+    atlas: &BTreeMap<u32, AssetId>,
+    id: AssetId,
+) -> Option<bool> {
+    let k = shown_sheet(world, e);
+    let velha = world.get::<SpriteSheets>(e)?.sheet(k).copied()?;
+    let flip = world
+        .get::<Sprite>(e)
+        .map_or([false, false], |s| [s.flip_x, s.flip_y]);
+    let (Some((px_velho, rgba_velho)), Some((px, mut rgba))) =
+        (pixels_of(velha.asset, db, atlas), pixels_of(id, db, atlas))
+    else {
+        return Some(false);
+    };
+    let corte = [velha.hframes.max(1), velha.vframes.max(1)];
+    let opaque = (rgba_velho.len() == px_velho[0] as usize * px_velho[1] as usize * 4)
+        .then(|| {
+            ph2d_sprite_edit::pivot::fracao_opaca(
+                &rgba_velho,
+                px_velho[0],
+                [0, 0, px_velho[0], px_velho[1]],
+                corte,
+            )
+        })
+        .flatten();
+    let antes = FirstSheet {
+        size: velha.size,
+        pivot: [-velha.anchor[0], -velha.anchor[1]],
+        flip,
+        cell_px: [px_velho[0] / corte[0], px_velho[1] / corte[1]],
+        opaque,
+    };
+    let grid = if px[0] % corte[0] == 0 && px[1] % corte[1] == 0 {
+        corte
+    } else {
+        proposed_cut(world, id, px, &rgba, atlas)
+    };
+    let id = straight_id(world, db, id, px, &mut rgba);
+    let nova = ops::new_sheet(
+        &antes,
+        NewSheetImage {
+            asset: id,
+            rgba: &rgba,
+            px,
+            grid,
+        },
+    );
+    let mut sheets = world.get::<SpriteSheets>(e)?.clone();
+    let lugar = sheets.0.get_mut(usize::from(k) - 1)?;
+    if *lugar == nova {
+        return Some(false);
+    }
+    *lugar = nova;
+    world.entity_mut(e).insert(sheets);
+    Some(true)
+}
+
 /// ⭐ A folha extra desenha-se SEMPRE em alfa recto (`sheet_sprite`), mas um recurso da biblioteca guarda os bytes
 /// pré-multiplicados quando uma sprite o mostra assim (o BG removal): o flag vive só no `Sprite`. Então a folha
 /// leva uma cópia RECTA, com id próprio; senão o id de sempre (auditoria do fecho 08/11, item D).

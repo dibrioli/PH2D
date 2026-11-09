@@ -56,6 +56,44 @@ pub(crate) fn drain_padding(
         return true;
     };
     let (src_w, src_h) = (src.image.width, src.image.height);
+    if let Some(cut) =
+        ph2d_anim_sheets::cell_edit::cut_of(sim.world(), entity, src.sheet, src_w, src_h)
+    {
+        match ph2d_anim_sheets::cell_edit::padding(&src.image.pixels, src_w, &cut, spec) {
+            Some(ch) => {
+                let label = (tr("shell.padding.padding"), "shell.padding.padding_failed");
+                let undo = pending_undo_entries;
+                let feito = super::cells::grava(
+                    entity_bits,
+                    &src,
+                    (cut, ch),
+                    label,
+                    sim,
+                    renderer,
+                    asset_db,
+                    toasts,
+                    undo,
+                );
+                // Recenter: o Pivot da folha vai ao centro da célula nova, o desenho fica (a lei do Pivot).
+                if feito && recenter_pivot {
+                    let centro = ph2d_editor_core::SpritePivot::Px([0.0, 0.0]);
+                    let w = sim.world_mut();
+                    ph2d_sprite_edit::pivot::set_pivot(
+                        w,
+                        entity,
+                        asset_db,
+                        atlas_asset_map,
+                        px_per_m,
+                        centro,
+                    );
+                }
+            }
+            None => {
+                toasts.push(Toast::info(tr("shell.padding.padding_nothing")));
+            }
+        }
+        return true;
+    }
     // Wave 11 migration (ADR-0042 §6 #2): add_padding now takes typed
     // `&[SrgbRgba]` instead of raw `&[u8]`. `SrgbRgba` is
     // `#[repr(transparent)]` + `bytemuck::Pod`, so the cast is zero-copy.

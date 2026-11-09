@@ -796,6 +796,9 @@ struct ParcelaHrc {
     i: u32,
     f: vec3<f32>,
     ok: bool,
+    // ⭐ P14c-placa 6: a sonda lida (`u` com o «+1», `v`) e o τ que multiplicou o R0 (a `hrc_soma` não os lê).
+    sonda: vec2<u32>,
+    escala: f32,
 }
 
 // ── A fluência do quadrante: L(u, v) += R0((u + 1, v), 0) ──
@@ -813,7 +816,7 @@ fn hrc_soma(@builtin(global_invocation_id) gid: vec3<u32>, @builtin(num_workgrou
 }
 
 fn parcela_da_soma(gid: vec3<u32>, nw: vec3<u32>) -> ParcelaHrc {
-    let nada = ParcelaHrc(0u, vec3<f32>(0.0), false);
+    let nada = ParcelaHrc(0u, vec3<f32>(0.0), false, vec2<u32>(0u), 0.0);
     let e = entrada(gid, nw);
     if e >= hrcs[iq()].total {
         return nada;
@@ -837,9 +840,12 @@ fn parcela_da_soma(gid: vec3<u32>, nw: vec3<u32>) -> ParcelaHrc {
     // que u vê (misturá-la por τ perdia τ·brilho: a sala a 0,99, −1 %; handoff W5m §2).
     let tau = meio(na_grade(f32(u), f32(v))).tau;
     var f = r0_na_sonda(u, v);
+    var lida = u;
     if MAIS_UM_HRC && meio(na_grade(f32(u + 1u), f32(v))).tau >= max(tau, 1e-30) {
         f = r0_na_sonda(u + 1u, v);
+        lida = u + 1u;
     }
+    var escala = 1.0;
     // Partir de DENTRO de um translúcido conta como entrada (a lei do gabarito): os traços da sonda
     // começam «já dentro» e não a contam — o τ do TEXEL (W5k: não o da sonda lida). A sonda dentro de
     // um OPACO fica com a luz que a rodeia: a máscara tira-a da bilinear, mas onde as quatro de um texel
@@ -847,9 +853,10 @@ fn parcela_da_soma(gid: vec3<u32>, nw: vec3<u32>) -> ParcelaHrc {
     // cena 2, W5c).
     if tau > 0.0 && tau < 1.0 {
         f *= tau;
+        escala = tau;
     }
     let t = texel_da_grade(u, v);
-    return ParcelaHrc(t.y * hrcs[iq()].grade.x + t.x, f, true);
+    return ParcelaHrc(t.y * hrcs[iq()].grade.x + t.x, f, true, vec2<u32>(lida, v), escala);
 }
 
 // ── A c0: o acumulado (com o filtro em cruz da Eq. 21) e a máscara do preenchimento ──

@@ -283,9 +283,11 @@ fn junto(l: &Lido, gab: &Gabarito, [x0, x1, y0, y1]: [f64; 4], modo: &str) -> f6
 /// `(0, 1)` 0,0554 · `(0, −1)` 0,0629. Visto vermelho sem a c0 de `Mx` (0,4123 · 0,5276).
 const TETO_JUNTO: f64 = 0.10;
 /// ⭐ P14c-placa 5 — a holográfica (09/11, RADV): `n = 0` 0,0285 · `(1, 0)` 0,1298 · `(−1, 0)` 0,1551 · `(0, 1)`
-/// 0,0515 · `(0, −1)` 0,0585. O `±x` (a parede é vertical) é o cone de 90° do nível 0: a metade tapada do cone
-/// de `±y` fica com `ω̂_q` (o plano §11 «P14c-placa 5»: as metades da descida do nível 0).
-const TETO_JUNTO_HOLO: f64 = 0.17;
+/// 0,0515 · `(0, −1)` 0,0585. O `±x` (a parede é vertical) era o cone de 90° do nível 0: a metade tapada do cone
+/// de `±y` ficava com `ω̂_q`. ⭐ P14c-placa 6 — curado pelas METADES do cone 0 (`hrc_metades_momento`, a diferença
+/// `R₊ − R₋` × `ω̂_q⊥·sin(π/8)·sinc(π/8)`): 0,0285 · 0,0555 · 0,0621 · 0,0378 · 0,0373 (RADV). Visto vermelho com
+/// `METADES_DO_MOMENTO = false`: os números da placa 5, exatos.
+const TETO_JUNTO_HOLO: f64 = 0.075;
 
 /// ⭐ P14c-placa 5 — COM O REBOTE (a sala do G9: chão e teto brancos, parede vermelha à esquerda, verde à
 /// direita; o degrau Baixo): o `M` da luz que volta das paredes, nos quatro pontos do G9 e nas quatro normais de
@@ -344,8 +346,9 @@ fn com_o_rebote_a_placa_e_o_gabarito_concordam_com_normal() {
 
 /// ⭐ P14c-placa 5 — o MEDIDO + folga (09/11, RADV, degrau Baixo, o pior dos 16): clássica 0,1832 (o F sozinho
 /// tem 0,131 no G9 deste degrau) · holográfica 0,1329 (junto às paredes, `±x`: o cone de 90° do nível 0; no meio
-/// da sala ≤ 0,07). Visto vermelho com `ω̂ → −ω̂` só na holográfica.
-const TETO_REBOTE: [f64; 2] = [0.20, 0.15];
+/// da sala ≤ 0,07). Visto vermelho com `ω̂ → −ω̂` só na holográfica. ⭐ P14c-placa 6 — com as METADES do cone 0
+/// (`hrc_metades_momento`) a holográfica dá 0,0407; vista vermelha (0,1329) com `METADES_DO_MOMENTO = false`.
+const TETO_REBOTE: [f64; 2] = [0.20, 0.05];
 
 /// ⭐ P14c-placa 6 — DENTRO DE UM OPACO (onde o Pixel Sprite que bloqueia recebe): uma lâmpada à esquerda e o
 /// céu, um corpo opaco largo; o `luz_em_n` dos texels de dentro (a mais de meio texel da borda) contra o
@@ -401,5 +404,6 @@ fn dentro_do_opaco_o_momento_e_o_do_gabarito() {
 /// cru, e visto vermelho com o miolo de `M` desligado): 0,0645 · 0,8590 · 0,2770 · 0,1795 · 0,1527. O `(1, 0)`
 /// é a face de COSTAS para a lâmpada (quase só o céu: o relativo de um número pequeno).
 const TETO_DENTRO: f64 = 0.20;
-/// ⭐ A holográfica (09/11, RADV): 0,0546 · 0,2137 · 0,0766 · 0,0923 · 0,0800.
-const TETO_DENTRO_HOLO: f64 = 0.235;
+/// ⭐ A holográfica (09/11, RADV, com as metades do cone 0): 0,0546 · 0,1703 · 0,0678 · 0,0826 · 0,0715 (sem
+/// as metades 0,2137 · 0,0766 · 0,0923 · 0,0800 nos quatro de normal).
+const TETO_DENTRO_HOLO: f64 = 0.19;

@@ -364,6 +364,7 @@ fn g5_o_momento_e_o_que_a_pass_list_declara() {
         ..c
     };
     let passes = [
+        "luz2d momento hrc metades",
         "luz2d momento hrc soma",
         "luz2d momento hrc saída",
         "luz2d momento fina",

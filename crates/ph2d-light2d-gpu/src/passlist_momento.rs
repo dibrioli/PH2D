@@ -25,6 +25,13 @@ pub(crate) const NOMES_DO_MOMENTO: [&str; 4] = [
     "luz2d/tex/momento_y",
 ];
 
+/// ⭐ P14c-placa 6 — o acumulado de `M` na holográfica: `Mx`, `My` e a diferença das metades do cone 0 do nível 0
+/// (`hrc_metades_momento`; um bloco por quadrante com os quadrantes juntos), `vec4<f32>` por texel da grade.
+pub(crate) fn bytes_do_acumulado(cfg: &Config) -> u64 {
+    let blocos = 2 + if cfg.hrc_quadrantes_juntos { 4 } else { 1 };
+    blocos * 16 * u64::from(cfg.grade.largura) * u64::from(cfg.grade.altura)
+}
+
 impl PassList {
     /// Esta lista e o momento depois dela: as quatro texturas no fim (a 1.ª no índice `self.texturas.len()`)
     /// e os passes `luz2d momento c0` (lê o nível 1 das cascatas) e `luz2d momento fina` (lê a c0 de `F`,
@@ -56,13 +63,18 @@ impl PassList {
             // ⭐ P14c-placa 5: na holográfica a c0 de `M` nasce no laço dos quadrantes (os R, buffers).
             l.buffers.push(Buffer {
                 nome: NOME_ACUMULADO_DO_MOMENTO,
-                bytes: 2 * 16 * u64::from(grossa[0]) * u64::from(grossa[1]),
+                bytes: bytes_do_acumulado(cfg),
                 usos: wgpu::BufferUsages::STORAGE,
             });
             l.buffers.push(Buffer {
                 nome: NOME_GRADE_DO_MOMENTO,
                 bytes: 16,
                 usos: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
+            l.passes.push(Passe {
+                nome: "luz2d momento hrc metades".into(),
+                le: vec![],
+                escreve: vec![],
             });
             l.passes.push(Passe {
                 nome: "luz2d momento hrc soma".into(),

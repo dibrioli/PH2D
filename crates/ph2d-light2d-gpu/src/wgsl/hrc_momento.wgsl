@@ -12,12 +12,65 @@
 // no uniforme 46.
 
 @group(1) @binding(40) var<storage, read_write> acumulado_momento: array<vec4<f32>>;
+// ⭐ P14c-placa 6 — `false` = o cone 0 inteiro com `ω̂_q` (a placa 5; o controlo da mutação).
+override METADES_DO_MOMENTO: bool = true;
 @group(1) @binding(44) var c0_momento_x_hrc: texture_storage_2d<rgba16float, write>;
 @group(1) @binding(45) var c0_momento_y_hrc: texture_storage_2d<rgba16float, write>;
 @group(1) @binding(46) var<uniform> grade_do_momento: vec4<u32>;
 
 // sin(π/4) / (π/4).
 const SINC_DO_QUADRANTE: f32 = 0.9003163161571061;
+// ⭐ P14c-placa 6 — sin(π/8)·sinc(π/8) = sin²(π/8)/(π/8): o peso da DIFERENÇA das metades do cone 0 do nível 0.
+// As metades cobrem [θ_q − 45°, θ_q] e [θ_q, θ_q + 45°]; `∫ω̂` de cada uma é `R·ω̂(θ_q ∓ 22,5°)·sinc(π/8)`, e a
+// soma das duas dá `R0·ω̂_q·cos(π/8)·sinc(π/8)` (= o SINC_DO_QUADRANTE de antes) `+ (R₊ − R₋)·ω̂_q⊥·sin(π/8)·sinc(π/8)`.
+const PESO_DA_DIFERENCA: f32 = 0.37292323725032257;
+
+// ⭐ P14c-placa 6 — onde mora a diferença `R₊ − R₋` da sonda `(u, v)` no acumulado (depois de `Mx`, `My`): um
+// bloco por quadrante com os quadrantes juntos, um só em série (a soma do quadrante lê-a antes do seguinte).
+fn indice_da_diferenca(u: u32, v: u32) -> u32 {
+    let n = hrcs[iq()].grade.x * hrcs[iq()].grade.y;
+    let bloco = select(0u, hrcs[iq()].quadrante, JUNTOS_HRC);
+    return (2u + bloco) * n + v * hrcs[iq()].eixo.x + u;
+}
+
+// ⭐ P14c-placa 6 — logo depois da `hrc_desce` do nível 0 (o mesmo despacho, os mesmos R de cima): as duas metades
+// do cone 0 (a conta da `descer_cones`) e a diferença delas guardada para a `hrc_soma_momento`.
+@compute @workgroup_size(64)
+fn hrc_metades_momento(
+    @builtin(global_invocation_id) gid0: vec3<u32>,
+    @builtin(num_workgroups) nw: vec3<u32>,
+    @builtin(workgroup_id) wg: vec3<u32>,
+    @builtin(local_invocation_id) li: vec3<u32>,
+) {
+    let gid = id_do_fio(gid0, wg, li, nw);
+    if hrcs[iq()].nivel != 0u {
+        return;
+    }
+    var xi = gid.y;
+    var v = gid.x;
+    if GRADE3D_HRC && COLUNAS_HRC {
+        if gid.x >= hrcs[iq()].eixo.y || gid.z != 0u {
+            return;
+        }
+    } else {
+        let e = entrada(gid, nw);
+        if e >= hrcs[iq()].total {
+            return;
+        }
+        let d = decompor(e, 1u);
+        if d.x != 0u {
+            return;
+        }
+        xi = d.y;
+        v = d.z;
+    }
+    if fora_do_arquivo(xi, v) || xi >= hrcs[iq()].eixo.x {
+        return;
+    }
+    let menos = metade_da_descida(xi, v, 0u, 0u, t_da_aresta(xi, v, 0u));
+    let mais = metade_da_descida(xi, v, 1u, 1u, t_da_aresta(xi, v, 1u));
+    acumulado_momento[indice_da_diferenca(xi, v)] = vec4<f32>(mais - menos, 0.0);
+}
 
 // A direção do quadrante na grade (0 = +x, 1 = +y, 2 = −x, 3 = −y: o `na_grade`).
 fn direcao_do_quadrante(q: u32) -> vec2<f32> {
@@ -39,9 +92,17 @@ fn hrc_soma_momento(
         return;
     }
     let n = hrcs[iq()].grade.x * hrcs[iq()].grade.y;
-    let w = direcao_do_quadrante(hrcs[iq()].quadrante) * SINC_DO_QUADRANTE;
-    let mx = vec4<f32>(p.f * w.x, 0.0);
-    let my = vec4<f32>(p.f * w.y, 0.0);
+    let q = direcao_do_quadrante(hrcs[iq()].quadrante);
+    let w = q * SINC_DO_QUADRANTE;
+    var mx = vec4<f32>(p.f * w.x, 0.0);
+    var my = vec4<f32>(p.f * w.y, 0.0);
+    // A diferença das metades (a sonda além da última, a de fora, fica só com `ω̂_q`).
+    if p.sonda.x < hrcs[iq()].nx && p.sonda.x < hrcs[iq()].eixo.x && METADES_DO_MOMENTO {
+        let d = acumulado_momento[indice_da_diferenca(p.sonda.x, p.sonda.y)].rgb * p.escala;
+        let perp = vec2<f32>(-q.y, q.x) * PESO_DA_DIFERENCA;
+        mx += vec4<f32>(d * perp.x, 0.0);
+        my += vec4<f32>(d * perp.y, 0.0);
+    }
     if hrcs[iq()].quadrante == 0u {
         acumulado_momento[p.i] = mx;
         acumulado_momento[n + p.i] = my;

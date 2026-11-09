@@ -385,6 +385,8 @@ impl Solver {
 /// `hrc_soma` (os R do quadrante ainda lá) e a `hrc_saida_momento` depois da `hrc_saida`. Pipelines PRÓPRIAS
 /// com o grupo 1 (as da holográfica não o têm: nenhuma ligação nova nelas); os grupos 0, 2 e 3 são os dela.
 pub(super) struct MomentoHrc {
+    /// ⭐ P14c-placa 6 — depois do `Desce` (só o nível 0 escreve): a diferença das metades do cone 0.
+    metades: wgpu::ComputePipeline,
     soma: (wgpu::ComputePipeline, wgpu::BindGroup),
     saida: (wgpu::ComputePipeline, wgpu::BindGroup),
     _acumulado: wgpu::Buffer,
@@ -445,7 +447,7 @@ impl MomentoHrc {
         };
         let acumulado = gpu.device.create_buffer(&wgpu::BufferDescriptor {
             label: Some(crate::passlist_momento::NOME_ACUMULADO_DO_MOMENTO),
-            size: 2 * 16 * u64::from(cfg.grade.largura) * u64::from(cfg.grade.altura),
+            size: crate::passlist_momento::bytes_do_acumulado(cfg),
             usage: wgpu::BufferUsages::STORAGE,
             mapped_at_creation: false,
         });
@@ -483,6 +485,10 @@ impl MomentoHrc {
             ],
         });
         Self {
+            metades: pipeline(
+                "hrc_metades_momento",
+                &[Some(&g0), Some(&g1_soma), Some(&g2), Some(&g3)],
+            ),
             soma: (
                 pipeline(
                     "hrc_soma_momento",
@@ -502,8 +508,9 @@ impl MomentoHrc {
     /// Depois do passo `etapa` da holográfica (com os grupos 0, 2 e 3 dele ligados): o do momento, se houver.
     pub(super) fn depois(&self, p: &mut wgpu::ComputePass<'_>, etapa: usize, [x, y, z]: [u32; 3]) {
         let (pipeline, grupo) = match etapa {
-            3 => &self.soma,
-            4 => &self.saida,
+            2 => (&self.metades, &self.soma.1),
+            3 => (&self.soma.0, &self.soma.1),
+            4 => (&self.saida.0, &self.saida.1),
             _ => return,
         };
         p.set_pipeline(pipeline);

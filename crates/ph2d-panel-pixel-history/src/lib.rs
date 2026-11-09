@@ -31,7 +31,7 @@ impl Panel for PixelHistoryPanel {
     /// Nasce FECHADO: abre por Edit ▸ Undo History.
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: TextKey = TextKey::new("panel.pixel_history.title");
-    const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::History;
+    const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Undo;
     const ALLOWED_SLOTS: ph2d_editor_core::screens::slot::SlotSet =
         ph2d_editor_core::screens::slot::SlotSet::SIDES;
     const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =

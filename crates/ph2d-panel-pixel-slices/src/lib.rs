@@ -30,7 +30,7 @@ impl Panel for PixelSlicesPanel {
     /// Nasce FECHADO: abre e fecha com a Slice Tool na mão.
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: TextKey = TextKey::new("panel.pixel_slices.title");
-    const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::PixelJumble;
+    const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Knife;
     const ALLOWED_SLOTS: ph2d_editor_core::screens::slot::SlotSet =
         ph2d_editor_core::screens::slot::SlotSet::SIDES;
     const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =

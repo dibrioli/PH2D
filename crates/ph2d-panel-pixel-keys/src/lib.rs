@@ -36,7 +36,7 @@ impl Panel for PixelKeysPanel {
     /// Nasce FECHADA: abre pelo menu Edit ▸ Keyboard Shortcuts ou `Ctrl+Alt+Shift+K`.
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: TextKey = TextKey::new("panel.pixel_keys.title");
-    const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::PixelJumble;
+    const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Kbd;
     const ALLOWED_SLOTS: ph2d_editor_core::screens::slot::SlotSet =
         ph2d_editor_core::screens::slot::SlotSet::SIDES;
     const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =

@@ -35,7 +35,7 @@ impl Panel for PixelPrefsPanel {
     /// Nasce FECHADO: abre por Edit ▸ Grid & Background… ou pelo Run Command.
     const DEFAULT_VISIBLE: bool = false;
     const TITLE: TextKey = TextKey::new("panel.pixel_prefs.title");
-    const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::PixelJumble;
+    const ICON: ph2d_editor_core::icons::IconId = ph2d_editor_core::icons::IconId::Settings;
     const ALLOWED_SLOTS: ph2d_editor_core::screens::slot::SlotSet =
         ph2d_editor_core::screens::slot::SlotSet::SIDES;
     const DEFAULT_SLOT: ph2d_editor_core::screens::slot::Slot =

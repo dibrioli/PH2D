@@ -41,6 +41,7 @@ fn desc(shape: ShapeDesc, x: f32, y: f32, body_type: RigidBodyType) -> BodyDesc 
         one_way: false,
         effector: None,
         shape_pose: [0.0; 3],
+        collide: [0; 2],
         offset: [0.0, 0.0],
     }
 }

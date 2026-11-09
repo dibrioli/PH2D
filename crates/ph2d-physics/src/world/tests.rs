@@ -113,6 +113,7 @@ fn servo_gain_sweep() {
         one_way: false,
         effector: None,
         shape_pose: [0.0; 3],
+        collide: [0; 2],
         offset: [0.0, 0.0],
     };
     // (settled angle deg, worst overshoot deg, seconds to within 1 deg)
@@ -244,6 +245,7 @@ fn linear_motor_tracking_sweep() {
         one_way: false,
         effector: None,
         shape_pose: [0.0; 3],
+        collide: [0; 2],
         offset: [0.0, 0.0],
     };
     println!("told 0.5 m/s up a VERTICAL rail, against gravity:");
@@ -427,6 +429,7 @@ fn the_hand_does_not_tunnel_at_any_gap() {
                 one_way: false,
                 effector: None,
                 shape_pose: [0.0; 3],
+                collide: [0; 2],
                 offset: [0.0, 0.0],
             });
             assert!(w.grab_body(ball, [start, 0.0]));

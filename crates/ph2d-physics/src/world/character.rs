@@ -341,8 +341,10 @@ impl PhysicsWorld {
         };
 
         let dispatcher = DefaultQueryDispatcher;
+        let sees = super::layer_override::query_sees(layer, self.layer_matrix);
         let filter = QueryFilter {
             groups: Some(groups_for(layer as usize, self.layer_matrix)),
+            predicate: Some(&sees),
             exclude_rigid_body: Some(handle),
             exclude_collider,
             // Ver o aviso do módulo: um gatilho não é uma parede.

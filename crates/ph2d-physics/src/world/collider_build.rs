@@ -125,11 +125,21 @@ fn collider_from(shape: ColliderBuilder, desc: &BodyDesc) -> Collider {
         // the hook for this pair at all — without it the bit is inert. A collider
         // that is not one-way sets neither, so it never reaches the hook and is
         // byte-identical to before this existed (see `oneway`).
-        .user_data(if desc.one_way { oneway::ONE_WAY_BIT } else { 0 })
-        .active_hooks(if desc.one_way {
-            ActiveHooks::MODIFY_SOLVER_CONTACTS
-        } else {
-            ActiveHooks::empty()
-        })
+        .user_data(
+            (if desc.one_way { oneway::ONE_WAY_BIT } else { 0 })
+                | super::layer_override::override_bits(desc.layer, desc.collide),
+        )
+        .active_hooks(
+            (if desc.one_way {
+                ActiveHooks::MODIFY_SOLVER_CONTACTS
+            } else {
+                ActiveHooks::empty()
+            }) | if desc.collide == [0; 2] {
+                ActiveHooks::empty()
+            } else {
+                // A exceção de camadas decide-se no filtro de pares (`layer_override`).
+                ActiveHooks::FILTER_CONTACT_PAIRS | ActiveHooks::FILTER_INTERSECTION_PAIR
+            },
+        )
         .build()
 }

@@ -149,8 +149,10 @@ impl PhysicsWorld {
         let ray = Ray::new(Vector::new(origin[0], origin[1]), unit);
 
         let dispatcher = DefaultQueryDispatcher;
+        let sees = super::layer_override::query_sees(layer, self.layer_matrix);
         let filter = QueryFilter {
             groups: Some(groups_for(layer as usize, self.layer_matrix)),
+            predicate: Some(&sees),
             exclude_rigid_body: exclude_body,
             exclude_collider,
             // ⚠️ **UM SENSOR NÃO É MATÉRIA, e esta porta pergunta por matéria.**
@@ -289,6 +291,7 @@ mod tests {
             one_way: false,
             effector: None,
             shape_pose: [0.0; 3],
+            collide: [0; 2],
             offset: [0.0, 0.0],
         };
 

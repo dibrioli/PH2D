@@ -74,6 +74,7 @@ fn corpo(x: f32, y: f32) -> BodyDesc {
         one_way: false,
         effector: None,
         shape_pose: [0.0; 3],
+        collide: [0; 2],
         offset: [0.0, 0.0],
     }
 }

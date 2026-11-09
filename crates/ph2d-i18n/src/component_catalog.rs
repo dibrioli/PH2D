@@ -83,6 +83,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "component.character_animations.name" => "Auto Animate",
         "component.clip_children.name" => "Clip Children",
         "component.collider.name" => "Collision Shape",
+        "component.collision_override.name" => "Collision Override",
         "component.counter.name" => "Counter",
         "component.counter_watch.name" => "Counter Watch",
         "component.damping_override.name" => "Damping",

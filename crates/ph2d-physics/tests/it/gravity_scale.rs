@@ -52,6 +52,7 @@ fn gravity_scale_multiplies_the_bodys_fall() {
         one_way: false,
         effector: None,
         shape_pose: [0.0; 3],
+        collide: [0; 2],
         offset: [0.0, 0.0],
     };
     // Spaced 3 m apart (radius 0.5) so no two ever collide — this is free fall.

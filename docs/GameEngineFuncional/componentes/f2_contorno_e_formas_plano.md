@@ -70,7 +70,7 @@ filho do corpo»** (confirma e estende o ADR-0110; não o revoga).
 - ⛔ Recusados: corpos sem collider próprio com todas as formas como partes (parte os 5 leitores da forma principal e a
   ordem dos handles) · motor que recusa `Collider` no corpo (234 ficheiros de teste sem ganho) · sistema por quadro que
   converte (muta o documento e o undo) · `Collider.shapes: Vec` · lista «Shapes» no Inspector do corpo.
-- **Migração** `migra_formas_para_filhos(world)` no load, `ver <= 219` → **schema 220** (o Outline passa a **221**): por
+- **Migração** `migra_formas_para_filhos(world)` no load, `ver <= 219` → **schema 220** (o Outline passa a **222**: o 221 é a exceção de camadas da forma, B9): por
   `StableId`, filha «Collision Shape» primeira entre irmãs, Transform identidade, leva o `Collider` e o lado-forma; mestre
   só (instâncias materializam); trilhas da Timeline do lado-forma re-alvejadas para a filha; macros resolvem
   `main_shape(body)` ao tocar.

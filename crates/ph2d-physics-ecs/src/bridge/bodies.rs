@@ -125,7 +125,13 @@ impl PhysicsBridge {
                 one_way,
                 effector,
             );
-            let desc = BodyDesc { shape_pose, ..desc };
+            // A exceção de camadas da forma (GEF02 B9), lida da FORMA como o resto do lado-forma.
+            let collide = collide_of(world, shape);
+            let desc = BodyDesc {
+                shape_pose,
+                collide,
+                ..desc
+            };
             match self.bodies.get(&e) {
                 None => self.to_spawn.push((e, desc, rb.kind)),
                 // **The rest pose is the authored pose at tick 0** — read, not
@@ -223,6 +229,16 @@ impl PhysicsBridge {
 }
 
 /// O que um corpo É para o solver, sem a pose e a velocidade INICIAL (que são da criação).
+/// `[include, exclude]` da [`crate::CollisionOverride`] da forma; `[0, 0]` sem ela.
+pub(super) fn collide_of(
+    world: &bevy_ecs::world::World,
+    shape: bevy_ecs::entity::Entity,
+) -> [u32; 2] {
+    world
+        .get::<crate::CollisionOverride>(shape)
+        .map_or([0; 2], |o| [o.include, o.exclude])
+}
+
 fn sem_pose(d: BodyDesc) -> BodyDesc {
     BodyDesc {
         x: 0.0,

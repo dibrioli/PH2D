@@ -92,15 +92,15 @@ pub use bridge::{
 pub use components::{
     AnimRule, AnimRules, AnimWhen, AreaBuoyancy, AreaDrag, AreaEffector, AreaFalloff,
     AreaForceWorldAxes, AreaFormDrag, AreaTorque, BodyKind, Ccd, CharacterAnimations,
-    CharacterPose, Collider, ColliderShape, CombineRule, ComprimentoDaRota, Damage, DampMode,
-    DampingOverride, Dominance, GravityScale, Health, HealthBar, HealthNow, InitialVelocity,
-    LifeEvent, LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, NavAgent,
-    NavCostArea, NavCostAreaNow, NavLink, NavNow, NavRegion, NavRoute, NavTarget, NoWallCling,
-    OnHit, OneWayPlatform, PlatformLift, PlatformPlayer, PlayerMode, PlayerSignals,
-    ProjectileMotion, PulleyWheel, RESISTANCES_MAX, RayHit, RaySensor, RaySignals, Resistance,
-    RigidBody, RopeStops, SignalOnHit, SignalOnLeave, SignalTagFilter, TopDownPlayer, WalkSurface,
-    WestonAxle, WrapSide, anim_target, kind_key, reseat_mounted_axle, reseat_wheel_geometry,
-    rope_joint_of,
+    CharacterPose, Collider, ColliderShape, CollisionOverride, CombineRule, ComprimentoDaRota,
+    Damage, DampMode, DampingOverride, Dominance, GravityScale, Health, HealthBar, HealthNow,
+    InitialVelocity, LifeEvent, LockPositionX, LockPositionY, LockRotation, MassOverride,
+    MaterialCombine, NavAgent, NavCostArea, NavCostAreaNow, NavLink, NavNow, NavRegion, NavRoute,
+    NavTarget, NoWallCling, OnHit, OneWayPlatform, PlatformLift, PlatformPlayer, PlayerMode,
+    PlayerSignals, ProjectileMotion, PulleyWheel, RESISTANCES_MAX, RayHit, RaySensor, RaySignals,
+    Resistance, RigidBody, RopeStops, SignalOnHit, SignalOnLeave, SignalTagFilter, TopDownPlayer,
+    WalkSurface, WestonAxle, WrapSide, anim_target, kind_key, reseat_mounted_axle,
+    reseat_wheel_geometry, rope_joint_of,
 };
 pub use components::{MIN_EXTENT, collider_box_or};
 pub use interaction::{
@@ -224,6 +224,7 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     reg.register_default::<PulleyWheel>("ph2d::physics::PulleyWheel");
     reg.register_default::<DampingOverride>("ph2d::physics::DampingOverride");
     reg.register_default::<OneWayPlatform>("ph2d::physics::OneWayPlatform");
+    reg.register_default::<CollisionOverride>("ph2d::physics::CollisionOverride");
     reg.register_default::<AreaEffector>("ph2d::physics::AreaEffector");
     reg.register_default::<AreaDrag>("ph2d::physics::AreaDrag");
     reg.register_default::<AreaBuoyancy>("ph2d::physics::AreaBuoyancy");
@@ -309,7 +310,7 @@ mod tests {
         // ⭐ **+1 (GameEngineFuncional N1: `CharacterAnimations`)** ⇒ `44 -> 45`; delta contra o
         // merge-base desta linha **+1**. Quem integrar conta o DELTA, nunca o literal.
         // ⭐ **+1 (GameEngineFuncional 08: `AnimRules`)** ⇒ `45 -> 46`; delta contra o merge-base **+2**.
-        assert_eq!(reg.len(), 46);
+        assert_eq!(reg.len(), 47);
         assert!(reg.get_by_name("ph2d::physics::NavCostArea").is_some());
         assert!(reg.get_by_name("ph2d::physics::NavLink").is_some());
         assert!(reg.get_by_name("ph2d::physics::NavRegion").is_some());

@@ -47,6 +47,7 @@ fn rest_y_with_offset(x: f32, offset: [f32; 2]) -> f32 {
         one_way: false,
         effector: None,
         shape_pose: [0.0; 3],
+        collide: [0; 2],
         offset: [0.0, 0.0],
     });
     let body = w.spawn_body(BodyDesc {
@@ -74,6 +75,7 @@ fn rest_y_with_offset(x: f32, offset: [f32; 2]) -> f32 {
         one_way: false,
         effector: None,
         shape_pose: [0.0; 3],
+        collide: [0; 2],
         offset,
     });
     for _ in 0..300 {

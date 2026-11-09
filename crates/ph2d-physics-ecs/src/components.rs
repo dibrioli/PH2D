@@ -362,8 +362,9 @@ pub use nav::{
     NavAgent, NavCostArea, NavCostAreaNow, NavLink, NavNow, NavRegion, NavRoute, NavTarget,
 };
 pub use overrides::{
-    Ccd, CombineRule, DampMode, DampingOverride, Dominance, GravityScale, InitialVelocity,
-    LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine, OneWayPlatform,
+    Ccd, CollisionOverride, CombineRule, DampMode, DampingOverride, Dominance, GravityScale,
+    InitialVelocity, LockPositionX, LockPositionY, LockRotation, MassOverride, MaterialCombine,
+    OneWayPlatform,
 };
 pub use player::{PlatformLift, PlatformPlayer, PlayerMode};
 pub use projectile::ProjectileMotion;

@@ -156,6 +156,8 @@ impl PhysicsWorld {
             one_way: _,
             effector: _,
             shape_pose: _,
+            // Vai no `user_data` do colisor fresco, copiado abaixo; o `stamp_layer` lê-o.
+            collide: _,
         } = *desc;
         let Some(&collider_handle) = self.bodies.get(handle).and_then(|b| b.colliders().first())
         else {

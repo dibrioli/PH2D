@@ -228,6 +228,12 @@ pub const DESCS: &[D] = &[
     )
     .coded("collision_shape")
     .row_without_neutral("ph2d::physics::RigidBody"),
+    // A exceção da forma à matriz (GEF02 B9): edita-se na linha «Collides with» do cartão Collision Layers.
+    i(
+        "ph2d::physics::CollisionOverride",
+        "component.collision_override.name",
+    )
+    .hidden(H::OtherEditor),
     il(
         "ph2d::physics::DampingOverride",
         "component.damping_override.name",

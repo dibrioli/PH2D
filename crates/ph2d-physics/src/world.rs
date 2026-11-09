@@ -34,6 +34,7 @@ pub mod joint_desc;
 pub mod joint_gains;
 pub mod joints;
 pub mod kinematic;
+pub mod layer_override;
 pub mod layers;
 pub mod oneway;
 /// Os colliders EXTRA de um corpo composto (docs dele).
@@ -387,6 +388,12 @@ impl PhysicsWorld {
     fn stamp_layer(&mut self, handle: ColliderHandle, layer: usize) {
         let groups = groups_for(layer, self.layer_matrix);
         if let Some(c) = self.colliders.get_mut(handle) {
+            // Com exceção de camadas os grupos são abertos e o gancho decide (`layer_override`).
+            let groups = if layer_override::has_override(c) {
+                layer_override::open_groups()
+            } else {
+                groups
+            };
             c.set_collision_groups(groups);
         }
     }

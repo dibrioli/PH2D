@@ -466,3 +466,41 @@ impl SimComponent for DampingOverride {}
 pub struct OneWayPlatform;
 
 impl SimComponent for OneWayPlatform {}
+
+/// **A exceção de uma forma à matriz de camadas** (GEF02 B9; o `Collider2D.includeLayers/
+/// excludeLayers` do Unity). A matriz da aba Collision Layers é o DEFAULT por camada; esta forma
+/// colide também com `include` e nunca com `exclude` (o `exclude` ganha, dos dois lados do par —
+/// `ph2d_physics::world::layer_override::pair_collides`). Mora na FORMA (lado-forma), à parte do
+/// `Collider`, que fica `Copy` e com o mesmo fio. Ausente = a linha da camada.
+#[derive(Component, Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CollisionOverride {
+    pub include: u32,
+    pub exclude: u32,
+}
+
+impl CollisionOverride {
+    /// A linha efetiva desta forma, dada a linha da camada dela.
+    #[must_use]
+    pub fn effective_row(row: u32, o: Option<Self>) -> u32 {
+        let o = o.unwrap_or_default();
+        ph2d_physics::world::layer_override::effective_row(row, [o.include, o.exclude])
+    }
+
+    /// Põe o bit `layer` da linha efetiva em `on`, contra a linha `row` da camada: igual ao
+    /// default limpa a exceção desse bit. `None` = sem exceção (o componente sai).
+    #[must_use]
+    pub fn with_bit(row: u32, o: Option<Self>, layer: u8, on: bool) -> Option<Self> {
+        let mut o = o.unwrap_or_default();
+        let bit = 1u32 << u32::from(layer).min(31);
+        o.include &= !bit;
+        o.exclude &= !bit;
+        if on && row & bit == 0 {
+            o.include |= bit;
+        } else if !on && row & bit != 0 {
+            o.exclude |= bit;
+        }
+        (o != Self::default()).then_some(o)
+    }
+}
+
+impl SimComponent for CollisionOverride {}

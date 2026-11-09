@@ -482,6 +482,9 @@ pub struct BodyDesc {
     /// relativa ao corpo, composta por fora do [`offset`](BodyDesc::offset). Zero = a forma vive no
     /// próprio corpo, byte-idêntico a antes deste campo.
     pub shape_pose: [f32; 3],
+    /// **A exceção da forma à matriz** (GEF02 B9): `[include, exclude]`, máscaras de camadas.
+    /// `[0, 0]` = a linha da matriz, byte-idêntico a antes. Regra: [`super::layer_override`].
+    pub collide: [u32; 2],
 }
 
 impl BodyDesc {

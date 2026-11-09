@@ -121,6 +121,7 @@ impl PhysicsWorld {
             // a one-way collider sets.
             let physics_hooks = oneway::OneWayHooks {
                 ledger: &self.drop_ledger,
+                matrix: self.layer_matrix,
             };
             let event_handler = ();
             self.physics_pipeline.step(

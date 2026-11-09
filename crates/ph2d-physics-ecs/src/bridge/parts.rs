@@ -186,6 +186,7 @@ impl PhysicsBridge {
                 x: 0.0,
                 y: 0.0,
                 rotation: 0.0,
+                collide: super::bodies::collide_of(world, e),
                 ..desc
             };
             wanted.push((

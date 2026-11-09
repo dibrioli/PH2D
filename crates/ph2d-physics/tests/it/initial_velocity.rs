@@ -32,6 +32,7 @@ fn ball(x: f32, y: f32, linvel: [f32; 2], angvel: f32) -> BodyDesc {
         one_way: false,
         effector: None,
         shape_pose: [0.0; 3],
+        collide: [0; 2],
         offset: [0.0, 0.0],
     }
 }

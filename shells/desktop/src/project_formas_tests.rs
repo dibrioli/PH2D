@@ -82,3 +82,21 @@ fn um_v219_abre_com_as_formas_filhas_e_um_v220_abre_como_esta() {
     );
     assert!(f219.stable_id_counter > doc.bindings()[0].wire_id.0);
 }
+
+/// `220 → 221` (GEF02 B9): um v220 abre como está e nenhuma forma ganha exceção de camadas.
+#[test]
+fn um_v220_abre_sem_excecao_de_camadas() {
+    let _fio = ph2d_physics_ecs::LayerRowsV218::enter();
+    let (f, _) = cena_120();
+    let (f220, mut s220) = abre(PROJECT_SCHEMA - 1, &f);
+    let (f221, _) = abre(PROJECT_SCHEMA, &f);
+    assert_eq!(
+        f220.state.world.entities.len(),
+        f221.state.world.entities.len()
+    );
+    let mut q = s220
+        .world_mut()
+        .query::<&ph2d_physics_ecs::CollisionOverride>();
+    assert_eq!(q.iter(s220.world()).count(), 0, "um v220 não tem exceção");
+    assert!(ph2d_physics_ecs::LADO_FORMA.contains(&"ph2d::physics::CollisionOverride"));
+}

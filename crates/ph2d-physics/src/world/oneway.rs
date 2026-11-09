@@ -168,14 +168,32 @@ impl DropLedger {
 /// byte-identical for every scene authored before one-way platforms existed.
 pub struct OneWayHooks<'a> {
     pub(super) ledger: &'a DropLedger,
+    /// A matriz de camadas, para o filtro de pares das formas com exceção (`layer_override`).
+    pub(super) matrix: super::layers::LayerMatrix,
+}
+
+/// O par passa pela regra das exceções de camadas ([`super::layer_override::pair_collides`]).
+fn pair_passes(context: &PairFilterContext, m: super::layers::LayerMatrix) -> bool {
+    match (
+        context.colliders.get(context.collider1),
+        context.colliders.get(context.collider2),
+    ) {
+        (Some(a), Some(b)) => super::layer_override::pair_of(a, b, m),
+        _ => true,
+    }
 }
 
 impl PhysicsHooks for OneWayHooks<'_> {
     /// Left at rapier's default deliberately: a one-way platform still needs its
     /// contacts COMPUTED (that is how we learn which side the body is on) — it is the
     /// solver contacts that get cleared, one manifold at a time, below.
-    fn filter_contact_pair(&self, _context: &PairFilterContext) -> Option<SolverFlags> {
-        Some(SolverFlags::COMPUTE_RIGID_IMPULSES)
+    fn filter_contact_pair(&self, context: &PairFilterContext) -> Option<SolverFlags> {
+        // Só chamado quando um lado pediu `FILTER_CONTACT_PAIRS` — a exceção de camadas.
+        pair_passes(context, self.matrix).then_some(SolverFlags::COMPUTE_RIGID_IMPULSES)
+    }
+
+    fn filter_intersection_pair(&self, context: &PairFilterContext) -> bool {
+        pair_passes(context, self.matrix)
     }
 
     fn modify_solver_contacts(&self, context: &mut ContactModificationContext) {

@@ -141,6 +141,10 @@ impl PhysicsWorld {
     pub fn set_layer_matrix(&mut self, matrix: LayerMatrix) {
         self.layer_matrix = matrix;
         for (_, collider) in self.colliders.iter_mut() {
+            // Uma forma com exceção fica aberta: o gancho lê a matriz nova a cada passo.
+            if super::layer_override::has_override(collider) {
+                continue;
+            }
             let membership_bits = collider.collision_groups().memberships.bits();
             let layer = membership_bits.trailing_zeros() as usize;
             collider.set_collision_groups(groups_for(layer, matrix));

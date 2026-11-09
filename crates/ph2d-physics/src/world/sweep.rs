@@ -99,8 +99,10 @@ impl PhysicsWorld {
         let rb = self.bodies.get(handle)?;
 
         let dispatcher = DefaultQueryDispatcher;
+        let sees = super::layer_override::query_sees(layer, self.layer_matrix);
         let filter = QueryFilter {
             groups: Some(groups_for(layer as usize, self.layer_matrix)),
+            predicate: Some(&sees),
             exclude_rigid_body: Some(handle),
             flags: QueryFilterFlags::EXCLUDE_SENSORS,
             ..QueryFilter::default()

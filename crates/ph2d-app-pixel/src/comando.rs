@@ -60,6 +60,7 @@ pub fn group(app: &mut PixelApp) -> Option<PaletteGroup> {
             label: label(app, a),
             id: id(a),
             keywords: "",
+            badge: None,
         });
         PaletteSub {
             title,

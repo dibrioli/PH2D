@@ -215,15 +215,35 @@ fn o_navegador_agrupa_por_categoria_na_ordem_fixa() {
             blocos.push(&v.categoria);
         }
     }
-    let das_ferramentas = rotulo_da_categoria(idioma(), categoria_da_pasta("Blend"));
+    // As categorias que a fábrica ocupa com presets DO PINCEL (o Finger Tip, esbatedor do Pincel em
+    // `Digital/Blend`, põe «Blend & Erase» na gaveta), na ordem da tabela.
+    let ocupadas: BTreeSet<usize> = p
+        .bib
+        .entradas
+        .iter()
+        .filter(|e| {
+            ph2d_tool_painter::ferramenta_do_preset(&e.preset.parametros)
+                == ph2d_tool_painter::FerramentaDoPincel::Pincel
+        })
+        .map(|e| categoria_da_pasta(e.partes()[1]))
+        .collect();
     let ordem: Vec<&str> = (0..CATEGORIAS.len())
+        .filter(|i| ocupadas.contains(i))
         .map(|i| rotulo_da_categoria(idioma(), i))
-        .filter(|r| *r != das_ferramentas)
         .collect();
     assert_eq!(
         blocos, ordem,
-        "as 10 categorias do Pincel, cada uma num bloco, na ordem da tabela"
+        "as categorias do Pincel, cada uma num bloco, na ordem da tabela"
     );
+    // As borrachas e o Smear de fábrica são das ferramentas: nenhum na gaveta do Pincel.
+    for v in &p.vista.entradas {
+        let pasta = v.relativo.split('/').nth(1).unwrap_or("");
+        assert!(
+            !["Eraser", "Smear"].contains(&pasta),
+            "{}: preset de ferramenta na gaveta do Pincel",
+            v.relativo
+        );
+    }
     let pastas: BTreeSet<&str> = p
         .bib
         .entradas
@@ -294,9 +314,15 @@ fn o_navegador_abre_em_qualquer_meio_e_escolher_troca_o_meio() {
         .iter()
         .position(|v| v.relativo == LAPIS)
         .unwrap();
+    // A fábrica tem lápis do Digital (Charcoal Stick) antes do exemplo: o que se mede é que a categoria
+    // Pencil abre por um do Digital, e não por um do Wet Painter.
+    let primeiro = (0..=i)
+        .find(|&j| p.vista.entradas[j].categoria == p.vista.entradas[i].categoria)
+        .unwrap();
     assert!(
-        i == 0 || p.vista.entradas[i - 1].categoria != p.vista.entradas[i].categoria,
-        "o lápis do exemplo abre a categoria Pencil"
+        p.vista.entradas[primeiro].relativo.starts_with("Digital/"),
+        "a categoria Pencil abre por {}, não por um lápis do Digital",
+        p.vista.entradas[primeiro].relativo
     );
     assert_eq!(p.vista.ativo, None);
     p.atender(&mut t, PedidoPreset::Escolher(EMPASTE.into()), &mut toasts);

@@ -51,7 +51,7 @@ pub fn stage_historia(
     Some(bits)
 }
 
-/// As cenas 26 e 27 (P14 §8): o `heroi_p14` no mundo no arranjo `a` (`ph2d_pixel_cenas::heroi`).
+/// As cenas 26 e 27 (P14 §8): o `heroi_da_cena` no mundo no arranjo `a` (`ph2d_pixel_cenas::heroi`).
 pub fn stage_heroi(
     app: &mut PixelApp,
     sim: &mut SimWorld,
@@ -61,7 +61,7 @@ pub fn stage_heroi(
     use ph2d_pixel_cenas::heroi as h;
     let bits = crate::object_add::spawn(sim, app, NewSprite::default(), spawn_root).ok()?;
     let key = crate::input::key_of(sim.world(), bits)?;
-    let s = ph2d_pixel_cena::fixture::heroi_p14();
+    let s = h::heroi_da_cena();
     let doc_de = |app: &mut PixelApp, k: u32, s: Sprite| {
         let d = app.docs.get_mut(&k)?;
         (d.frame, d.layer) = (s.frames()[0].id, s.layers()[0].id);

@@ -40,10 +40,10 @@ fn afim() -> Affine {
     .world_to_screen_affine(WindowSize::new(W, H))
 }
 
-struct Cena {
-    app: PixelApp,
-    sim: SimWorld,
-    heroi: Entity,
+pub(crate) struct Cena {
+    pub(crate) app: PixelApp,
+    pub(crate) sim: SimWorld,
+    pub(crate) heroi: Entity,
 }
 
 fn por_nome(w: &mut World, nome: &str) -> Entity {
@@ -56,7 +56,7 @@ fn chave(w: &World, e: Entity) -> u32 {
 }
 
 /// A cena 26 pelo roteador da família, como o `PH2D_PIXEL_SMOKE=26` a monta.
-fn montada() -> Cena {
+pub(crate) fn montada() -> Cena {
     let mut app = PixelApp::default();
     let mut sim = SimWorld::new();
     let mut nasceu = None;
@@ -70,12 +70,12 @@ fn montada() -> Cena {
     Cena { app, sim, heroi }
 }
 
-fn sprite_de(app: &PixelApp, w: &World, e: Entity) -> Sprite {
+pub(crate) fn sprite_de(app: &PixelApp, w: &World, e: Entity) -> Sprite {
     app.doc(chave(w, e)).expect("doc").sprite.clone()
 }
 
 /// O tique de `ph2d_app_sprite_anim::tick` (a lei `advance_frames_marked`), como em `derivado.rs`.
-fn tique(w: &mut World, e: Entity, dt_us: u64) {
+pub(crate) fn tique(w: &mut World, e: Entity, dt_us: u64) {
     let tags = w.get::<SpriteAnimations>(e).expect("clips").clone();
     let mut grid = *w.get::<SpriteGrid>(e).expect("grelha");
     let mut anim = w.get::<SpriteAnimator>(e).expect("animador").clone();

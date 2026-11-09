@@ -97,6 +97,73 @@ pub fn veste_o_do_motor(world: &mut World, e: Entity, at: [f32; 2]) {
     ));
 }
 
+/// **O herói das cenas 26 e 27** — o que um artista desenharia para o dono VER a regra: a
+/// `heroi_p14` (tags, durações, camada Normal Map) com quadros visivelmente diferentes (olhos que
+/// piscam no `idle`, pernas que alternam no `run`, olhos em X no `hit`) e a slice `body` ESTÁVEL
+/// (uma key só, o pivô nos pés em todos os quadros). A `heroi_p14` dos gates continua com a key que
+/// encolhe e o pivô que muda (P14 §7). Ver «Smoke do dono 1 — pulinhos» no plano.
+#[must_use]
+pub fn heroi_da_cena() -> Sprite {
+    use ph2d_pixel_cena::fixture as fx;
+    let mut s = fx::heroi_p14();
+    let body = fx::body(&s);
+    let mut lista = s.slices().to_vec();
+    if let Some(b) = lista.iter_mut().find(|c| c.id == body) {
+        b.keys.truncate(1);
+    }
+    apply(&mut s, Op::Slices(lista)).expect("a slice estável");
+    let r = s.bounds();
+    let cor = s.layers()[0].id;
+    let ids: Vec<_> = s.frames().iter().map(|f| f.id).collect();
+    for (i, f) in ids.into_iter().enumerate() {
+        let pixels = (0..r.h)
+            .flat_map(|y| (0..r.w).map(move |x| (x, y)))
+            .flat_map(|(x, y)| {
+                fx::hemisferio(x, y).map_or([0; 4], |_| {
+                    if detalhe(i, x, y) {
+                        COR_DETALHE
+                    } else {
+                        fx::COR
+                    }
+                })
+            })
+            .collect();
+        apply(
+            &mut s,
+            Op::Patch(Patch {
+                layer: cor,
+                frame: f,
+                bbox: Some(r),
+                rect: r,
+                pixels,
+            }),
+        )
+        .expect("o quadro desenhado");
+    }
+    s
+}
+
+/// A cor dos olhos e das pernas.
+pub const COR_DETALHE: [u8; 4] = [20, 30, 60, 255];
+
+/// O píxel `(x, y)` do quadro `i` é olho ou perna? Quadros: 0 idle · 1 idle a piscar · 2–4 run
+/// (perna esquerda à frente, as duas ao meio, a direita à frente) · 5 hit (olhos em X).
+fn detalhe(i: usize, x: u32, y: u32) -> bool {
+    let olhos = match i {
+        1 => y == 6 && matches!(x, 5 | 6 | 9 | 10),
+        5 => matches!((x, y), (5 | 7 | 9 | 11, 4 | 6) | (6 | 10, 5)),
+        _ => matches!(y, 5 | 6) && matches!(x, 6 | 10),
+    };
+    let perna = |x0: u32, y0: u32| (x0..x0 + 2).contains(&x) && (y0..y0 + 3).contains(&y);
+    let pernas = match i {
+        2 => perna(4, 12) || perna(10, 10),
+        3 => perna(6, 12) || perna(8, 12),
+        4 => perna(4, 10) || perna(10, 12),
+        _ => perna(5, 12) || perna(9, 12),
+    };
+    olhos || pernas
+}
+
 /// O topo do chão (m).
 #[must_use]
 pub fn topo_do_chao() -> f64 {
@@ -166,7 +233,7 @@ pub struct Chaves {
     pub parede: u32,
 }
 
-/// Monta a cena sobre o herói `heroi` (Pixel Sprite já nascido, com o documento `s` = `heroi_p14`).
+/// Monta a cena sobre o herói `heroi` (Pixel Sprite já nascido, com o documento `s` = [`heroi_da_cena`]).
 pub fn monta(
     world: &mut World,
     heroi: Entity,

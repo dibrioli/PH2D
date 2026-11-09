@@ -11,6 +11,7 @@ mod cena18;
 mod cena19;
 mod cena25;
 mod cena26;
+mod cena26_pulos;
 mod cena27;
 mod comando;
 mod comum;

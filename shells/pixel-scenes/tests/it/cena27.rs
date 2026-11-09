@@ -214,9 +214,13 @@ fn a_cena_27_os_dois_herois_sao_iguais() {
     let c = montada();
     let s = doc(&c);
     let (cor, normal) = (diferenca(&c, &s, false, 0), diferenca(&c, &s, true, 0));
-    // Os 6 quadros da `heroi_p14` têm os MESMOS píxeis (mudam pivô e durações): o quadro k contra a
-    // célula k+1 também dá 0, logo esta régua não vê uma troca de quadros — quem a vê é a fita (1).
+    // O herói da cena (`heroi_da_cena`) tem quadros desenhados diferentes: o quadro k contra a
+    // célula k+1 tem de diferir — a régua vê uma troca de quadros.
     let vizinha = diferenca(&c, &s, false, 1);
+    assert!(
+        vizinha.iter().filter(|&&n| n > 0).count() >= 4,
+        "quadros vizinhos diferem: {vizinha:?}"
+    );
     // Controlo: a régua vê píxeis diferentes (a cor do quadro 0 contra a NORMAL da célula 0).
     let mut px = Vec::new();
     ph2d_pixel_core::compose_rgba(&s, s.frames()[0].id, None, &mut px);

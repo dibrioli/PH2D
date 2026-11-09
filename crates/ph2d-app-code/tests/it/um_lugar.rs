@@ -196,6 +196,9 @@ fn typo_no_play() -> (Mesa, ScriptId) {
     let (m, ids) = Mesa::new(&[("typo.luau", TYPO)]);
     let id = ids[0];
     let mut m = com_nomes(m, id, &["Circle", "Star"]);
+    // A lei é a do erro do Play como problema, com os DOIS objectos a correr: sem o Pause on Error
+    // (Onda D, ligado por omissão), que pararia o jogo no 1.º erro e levaria o cursor até ele.
+    m.host.as_mut().unwrap().set_pause_on_error(false);
     m.pede(id);
     crate::completar::quadro_em(&mut m, crate::completar::T0);
     m.cena();

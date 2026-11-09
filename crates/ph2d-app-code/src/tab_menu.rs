@@ -91,9 +91,12 @@ pub(crate) fn label(
 /// linha do cursor (1-based).
 pub struct Crumb {
     pub script: String,
-    pub func: Option<(String, usize, usize)>,
+    pub func: CrumbFunc,
     pub line: usize,
 }
+
+/// A função que contém o cursor: nome, linha e coluna da definição.
+pub type CrumbFunc = Option<(String, usize, usize)>;
 
 impl Bar {
     /// Pinta a barra em `r` (o fundo é o do cartão, pintado por quem chama).
@@ -301,31 +304,38 @@ impl CodeDocs {
         }
     }
 
-    /// O caminho até o cursor da aba `id`.
+    /// O caminho até o cursor da aba `id`. É chrome de cada quadro: nunca reparsa (com a árvore
+    /// velha fica a função da última árvore exacta até o worker a trocar) e só procura a função
+    /// quando a árvore ou a linha mudam — com as dobras das funções candidatas, nunca as do ficheiro.
     fn crumb(&mut self, id: u64) -> Option<Crumb> {
         let d = self.docs.iter_mut().find(|d| d.script.0 == id)?;
         let t = d.buffer.text();
-        d.syntax.fresh(t);
         let line = t.line_of_byte(d.buffer.selection().primary().head);
-        let folds = d.syntax.folds_in(t, 0..t.line_count());
-        let func = d
-            .syntax
-            .symbols(t)
-            .into_iter()
-            .filter(|s| s.kind == ph2d_code_syntax::SymbolKind::Function)
-            .filter_map(|s| {
-                let l = t.line_of_byte(s.byte);
-                let end = folds
-                    .iter()
-                    .find(|f| f.start_line == l)
-                    .map_or(l, |f| f.end_line);
-                let col = t.slice(t.byte_of_line(l)..s.byte).chars().count();
-                (l <= line && line <= end).then_some((s.name, l, col))
-            })
-            .next_back();
+        let key = (d.syntax.generation(), line);
+        let cached = d.crumb_func.as_ref();
+        if !d.syntax.is_stale() && cached.is_none_or(|c| (c.0, c.1) != key) {
+            let func = d
+                .syntax
+                .symbols(t)
+                .into_iter()
+                .filter(|s| s.kind == ph2d_code_syntax::SymbolKind::Function)
+                .map(|s| (t.line_of_byte(s.byte), s))
+                .filter(|(l, _)| *l <= line)
+                .collect::<Vec<_>>()
+                .into_iter()
+                .rev()
+                .find(|(l, _)| {
+                    d.syntax.fold_at(t, *l).is_some_and(|f| line <= f.end_line) || *l == line
+                })
+                .map(|(l, s)| {
+                    let col = t.slice(t.byte_of_line(l)..s.byte).chars().count();
+                    (s.name, l, col)
+                });
+            d.crumb_func = Some((key.0, key.1, func));
+        }
         Some(Crumb {
             script: d.title.clone(),
-            func,
+            func: d.crumb_func.as_ref().and_then(|c| c.2.clone()),
             line: line + 1,
         })
     }

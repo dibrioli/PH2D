@@ -130,6 +130,8 @@ pub(crate) struct CodeDoc {
     pub(crate) scene: crate::scene_names::Shared,
     /// O Ctrl+clique num nome de objecto: seleccioná-lo na cena (a família fá-lo no quadro).
     pub(crate) select_object: Option<String>,
+    /// A função do caminho até o cursor, por `(geração da árvore, linha)` (`tab_menu::crumb`).
+    pub(crate) crumb_func: Option<(u64, usize, crate::tab_menu::CrumbFunc)>,
     /// O depurador (Onda D): os pontos de parada, a paragem, os valores ao vivo.
     pub(crate) debug: crate::debug::DocDebug,
     derived: Derived,
@@ -193,6 +195,7 @@ impl CodeDoc {
             dropping: None,
             scene: crate::scene_names::Shared::default(),
             select_object: None,
+            crumb_func: None,
             debug: crate::debug::DocDebug::default(),
             derived: Derived::default(),
         }

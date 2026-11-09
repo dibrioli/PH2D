@@ -273,6 +273,17 @@ struct Varredura {
     corpos: usize,
 }
 
+/// A forma de `e` e a pose dela no referencial de `e`: o `Collider` no próprio (corpo antigo) ou, na
+/// opção B (ADR-0199), o da filha «Collision Shape» ([`ph2d_physics_ecs::main_shape`]).
+fn forma_de(world: &World, e: ph2d_ecs::Entity) -> Option<(ph2d_physics_ecs::ColliderShape, Transform)> {
+    if let Some(col) = world.get::<Collider>(e) {
+        return Some((col.shape, Transform::IDENTITY));
+    }
+    let f = ph2d_physics_ecs::main_shape(world, e)?;
+    let pose = world.get::<Transform>(f).copied().unwrap_or_default();
+    Some((world.get::<Collider>(f)?.shape, pose))
+}
+
 fn varre(world: &World) -> Varredura {
     let mut v = Varredura::default();
     for er in world.iter_entities() {
@@ -284,18 +295,20 @@ fn varre(world: &World) -> Varredura {
             .get::<Name>()
             .map_or_else(|| format!("{:?}", er.id()), |n| n.0.clone());
         // O corpo e o referencial em que o desenho se confronta com ele.
-        let (corpo, d) = if let Some(col) = er.get::<Collider>() {
-            (col.shape, desenho(sprite, [0.0, 0.0], 0.0, [1.0, 1.0]))
-        } else if let Some(pai) = er
+        let (corpo, d) = if let Some((shape, f)) = forma_de(world, er.id()) {
+            let pos = [-f.translation.x, -f.translation.y];
+            (shape, desenho(sprite, pos, -f.rotation, [1.0, 1.0]))
+        } else if let Some((shape, f)) = er
             .get::<ChildOf>()
-            .and_then(|p| world.get::<Collider>(p.parent()))
+            .and_then(|p| forma_de(world, p.parent()))
         {
             let t = t.unwrap_or_default();
             let esc = [t.scale.x, t.scale.y];
-            (
-                pai.shape,
-                desenho(sprite, [t.translation.x, t.translation.y], t.rotation, esc),
-            )
+            let pos = [
+                t.translation.x - f.translation.x,
+                t.translation.y - f.translation.y,
+            ];
+            (shape, desenho(sprite, pos, t.rotation - f.rotation, esc))
         } else {
             continue;
         };

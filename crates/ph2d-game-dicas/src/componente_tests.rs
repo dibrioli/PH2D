@@ -77,10 +77,15 @@ fn toda_dependencia_tem_o_seu_porque() {
             }
         }
     }
+    for (a, b) in NASCE_EM_FILHA {
+        arestas += 1;
+        assert!(porque(a, b).is_some_and(resolve), "{a} → {b} (filha) sem porquê");
+    }
     for (a, b, _) in PORQUE {
         assert!(
-            ph2d_component_desc::desc_for(a).is_some_and(|d| d.requires.contains(b)),
-            "{a} → {b} não é aresta"
+            ph2d_component_desc::desc_for(a).is_some_and(|d| d.requires.contains(b))
+                || NASCE_EM_FILHA.contains(&(*a, *b)),
+            "{a} → {b} não é aresta nem filha"
         );
     }
     assert_eq!(PORQUE.len(), arestas);

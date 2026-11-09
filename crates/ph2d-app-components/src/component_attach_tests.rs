@@ -263,46 +263,61 @@ fn bytes(
     (e.serialize)(sim.world(), ph2d_ecs::Entity::from_bits(bits)).ok()?
 }
 
-/// ⭐ **T60 — o ↺ do cartão Physics Body**: o corpo, a forma (linha dele) e as zonas (linhas da
-/// forma) voltam ao que o «+» anexa; um componente de outro cartão fica.
+/// A semente do corpo da composição (`ph2d_app_physics::physics_seed`), aqui sem a família: a forma nasce
+/// numa filha «Collision Shape» (opção B, ADR-0199). Idempotente, como a real.
+fn semente_do_corpo(sim: &mut SimWorld, bits: u64) {
+    let e = ph2d_ecs::Entity::from_bits(bits);
+    if !ph2d_physics_ecs::tem_forma(sim.world(), e) {
+        let caixa = ph2d_physics_ecs::ColliderShape::Cuboid {
+            half_x: 0.5,
+            half_y: 0.5,
+        };
+        ph2d_physics_ecs::nasce_com_forma(sim.world_mut(), e, caixa);
+    }
+}
+
+const SEMENTES: crate::component_seed::SeedTable<'static> =
+    &[("ph2d::physics::RigidBody", semente_do_corpo)];
+
+/// ⭐ **T60 — o ↺ do cartão Physics Body** (opção B): o corpo volta ao que o «+» anexa; a forma é a
+/// filha (outro objecto, com o seu cartão) e fica — o Reset não cria segunda; nenhuma forma no corpo;
+/// um componente de outro cartão fica.
 #[test]
 fn resetting_the_body_puts_body_shape_and_zones_back_as_attached() {
-    use ph2d_physics_ecs::{AreaDrag, BodyKind, Collider, Health, RigidBody};
+    use ph2d_physics_ecs::{BodyKind, Collider, Health, RigidBody};
     const BODY: &str = "ph2d::physics::RigidBody";
-    const SHAPE: &str = "ph2d::physics::Collider";
     let reg = registry();
     let mut sim = SimWorld::new();
     let bits = image(&mut sim);
-    crate::component_attach::attach_by_name(&mut sim, &reg, &[], bits, BODY).expect("anexa");
-    let (corpo, forma) = (
-        bytes(&sim, &reg, bits, BODY),
-        bytes(&sim, &reg, bits, SHAPE),
-    );
-    assert!(forma.is_some(), "a cascata anexa a forma");
+    crate::component_attach::attach_by_name(&mut sim, &reg, SEMENTES, bits, BODY).expect("anexa");
     let e = ph2d_ecs::Entity::from_bits(bits);
+    let corpo = bytes(&sim, &reg, bits, BODY);
+    assert!(sim.world().get::<Collider>(e).is_none(), "a forma não vai no corpo");
+    let forma = ph2d_physics_ecs::main_shape(sim.world(), e).expect("a forma nasce na filha");
+    assert_ne!(forma, e);
     sim.world_mut().get_mut::<RigidBody>(e).expect("corpo").kind = BodyKind::Static;
     sim.world_mut()
-        .get_mut::<Collider>(e)
+        .get_mut::<Collider>(forma)
         .expect("forma")
         .density = 9.0;
-    sim.world_mut()
-        .entity_mut(e)
-        .insert((AreaDrag(0.5), Health::default()));
+    sim.world_mut().entity_mut(e).insert(Health::default());
     let vida = bytes(&sim, &reg, bits, "ph2d::physics::Health");
-    crate::component_attach::reset_by_name(&mut sim, &reg, &[], bits, BODY).expect("repõe");
+    crate::component_attach::reset_by_name(&mut sim, &reg, SEMENTES, bits, BODY).expect("repõe");
     assert_eq!(
         bytes(&sim, &reg, bits, BODY),
         corpo,
         "o corpo volta ao de fábrica"
     );
+    assert!(sim.world().get::<Collider>(e).is_none(), "nem o Reset põe a forma no corpo");
     assert_eq!(
-        bytes(&sim, &reg, bits, SHAPE),
-        forma,
-        "a forma (linha do corpo) também"
+        ph2d_physics_ecs::main_shape(sim.world(), e),
+        Some(forma),
+        "a filha fica, e o Reset não cria segunda"
     );
-    assert!(
-        sim.world().get::<AreaDrag>(e).is_none(),
-        "a zona (linha da forma) sai"
+    assert_eq!(
+        sim.world().get::<Collider>(forma).map(|c| c.density),
+        Some(9.0),
+        "a forma tem o seu cartão: o ↺ do corpo não a toca"
     );
     assert_eq!(
         bytes(&sim, &reg, bits, "ph2d::physics::Health"),
@@ -315,12 +330,12 @@ fn resetting_the_body_puts_body_shape_and_zones_back_as_attached() {
 /// (que tem o seu cartão).
 #[test]
 fn resetting_the_player_leaves_the_body_it_needs() {
-    use ph2d_physics_ecs::{Collider, PlatformPlayer};
+    use ph2d_physics_ecs::{BodyKind, PlatformPlayer, RigidBody};
     const PLAYER: &str = "ph2d::physics::PlatformPlayer";
     let reg = registry();
     let mut sim = SimWorld::new();
     let bits = image(&mut sim);
-    crate::component_attach::attach_by_name(&mut sim, &reg, &[], bits, PLAYER).expect("anexa");
+    crate::component_attach::attach_by_name(&mut sim, &reg, SEMENTES, bits, PLAYER).expect("anexa");
     let player = bytes(&sim, &reg, bits, PLAYER);
     let e = ph2d_ecs::Entity::from_bits(bits);
     sim.world_mut()
@@ -328,18 +343,18 @@ fn resetting_the_player_leaves_the_body_it_needs() {
         .expect("player")
         .float_height = 7.0;
     sim.world_mut()
-        .get_mut::<Collider>(e)
-        .expect("forma")
-        .density = 9.0;
-    crate::component_attach::reset_by_name(&mut sim, &reg, &[], bits, PLAYER).expect("repõe");
+        .get_mut::<RigidBody>(e)
+        .expect("corpo")
+        .kind = BodyKind::Static;
+    crate::component_attach::reset_by_name(&mut sim, &reg, SEMENTES, bits, PLAYER).expect("repõe");
     assert_eq!(
         bytes(&sim, &reg, bits, PLAYER),
         player,
         "o Player volta ao de fábrica"
     );
     assert_eq!(
-        sim.world().get::<Collider>(e).map(|c| c.density),
-        Some(9.0),
+        sim.world().get::<RigidBody>(e).map(|c| c.kind),
+        Some(BodyKind::Static),
         "o corpo fica"
     );
 }

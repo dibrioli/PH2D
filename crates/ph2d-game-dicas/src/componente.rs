@@ -564,6 +564,10 @@ pub const PORQUE: &[(&str, &str, TextKey)] = &[
     ),
 ];
 
+/// ⭐ **O que a SEMENTE faz nascer numa filha** (opção B, ADR-0199): `(quem, o componente da filha)`. Não é
+/// aresta `requires` — nenhuma porta põe a forma no corpo —, mas vem junto, e o artista lê-o no «+N» e no recibo.
+pub const NASCE_EM_FILHA: &[(&str, &str)] = &[("ph2d::physics::RigidBody", "ph2d::physics::Collider")];
+
 /// O porquê de `needs` trazer `needed`.
 #[must_use]
 pub fn porque(needs: &str, needed: &str) -> Option<TextKey> {
@@ -586,10 +590,19 @@ pub fn trazidos(name: &str, ja: &[&str]) -> Vec<(&'static str, &'static str)> {
         let Some(d) = ph2d_component_desc::desc_for(n) else {
             continue;
         };
+        // O que o objecto já tem não anexa de novo: nem ele, nem o que ele traria.
+        if n != name && ja.contains(&n) {
+            continue;
+        }
         for r in d.requires {
             if *r != name && !out.iter().any(|(_, b)| b == r) {
                 out.push((d.canonical_name, *r));
                 stack.push(r);
+            }
+        }
+        for (_, f) in NASCE_EM_FILHA.iter().filter(|(a, _)| *a == n) {
+            if !out.iter().any(|(_, b)| b == f) {
+                out.push((d.canonical_name, *f));
             }
         }
     }

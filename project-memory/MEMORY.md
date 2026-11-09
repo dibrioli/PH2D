@@ -16,7 +16,7 @@
 - ⛔⛔⛔ [Dono 05/11: lei nova ARQUIVADA, não apagar; produto na antiga](project_new_paint_law_for_all_brushes_2026_11_05.md)
 - ⛔⛔⛔ [Dono 07/11: não existem projetos antigos; zero migração e compatibilidade até o app ser funcional](feedback_no_old_projects_no_compatibility_until_the_app_works.md)
 - [Enio (dibrioli): dono/decisor; o dev é a LLM · ⛔ SEMPRE PT-BR](user_role.md)
-- 📚 [Decisões de produto do dono, por módulo (67) — Luau, Pixel Art, Kanban, macros, constraints, imagem, modos…](reference_topic_owner_product_decisions.md)
+- 📚 [Decisões de produto do dono, por módulo (68) — Luau, Pixel Art, Kanban, macros, constraints, imagem, modos…](reference_topic_owner_product_decisions.md)
 - ⭐⭐⭐ [Dono 05/11: Game Engine recomeça item a item pela Sprite](project_game_engine_refounded_item_by_item_2026_11_05.md)
 - ⭐⭐⭐ [Dono 05/11: «adoro os pincéis como estão»: a lei VELHA é a referência](project_brushes_as_they_are_are_the_reference_2026_11_05.md)
 - ⭐ [Bug #71 (tinta afundada em relevo): cura DESLIGADA; o dono decide `PH2D_PAPEL_SEM_DEGRAU`](project_relief_step_awaits_owner_eye_2026_11_05.md)

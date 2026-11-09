@@ -840,8 +840,7 @@ impl App {
             undo_button: None,
             any_input_this_frame: false,
             preview_drive: ph2d_preview_drive::PreviewDrive::default(),
-            project_path: crate::App::initial_project_path(),
-            recovery: ph2d_recovery::Recovery::off(),
+            recovery: ph2d_recovery::Recovery::for_project(crate::App::initial_project_path()),
             // ⭐ O cadeado do padrão nasce LIGADO — o comportamento que a secção tinha antes de os
             // dois eixos existirem (plano 33, W10).
             texpat_lock_aspect: [true, true],

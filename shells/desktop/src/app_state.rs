@@ -796,10 +796,9 @@ pub(crate) struct App {
     ///
     /// Vazio = zero custo, e é o estado normal.
     pub(crate) preview_drive: ph2d_preview_drive::PreviewDrive,
-    /// **O ficheiro que este projeto tem AGORA** (`crate::project_io`). `None` = ainda sem nome, e
-    /// o primeiro `Ctrl+S` pergunta. Semeado pela env `PH2D_PROJECT_PATH` quando ela existe.
-    pub(crate) project_path: Option<String>,
-    /// A cópia de recuperação do projecto inteiro e a janela do arranque (P12 S, `ph2d_recovery`).
+    /// A cópia de recuperação do projecto inteiro e a janela do arranque (P12 S, `ph2d_recovery`),
+    /// e o ficheiro que o projecto tem AGORA (`recovery.project_path`, semeado pela env
+    /// `PH2D_PROJECT_PATH`; `crate::project_io`).
     pub(crate) recovery: ph2d_recovery::Recovery,
     /// ⭐ **O CADEADO de proporção do padrão de textura** (plano 33, W10) — mexer num eixo do
     /// tamanho leva o outro pelo mesmo factor.

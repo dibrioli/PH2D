@@ -2,7 +2,7 @@
 //!
 //! # A sessão tem um caminho, e ele é a diferença entre Save e Save As
 //!
-//! [`crate::App::project_path`] é o ficheiro **desta** sessão. Ele nasce da env quando ela existe
+//! `App::recovery.project_path` é o ficheiro **desta** sessão. Ele nasce da env quando ela existe
 //! (é o que mantém os smokes e os scripts a funcionar como sempre), do ficheiro que um `Open`
 //! abriu, ou de um `Save As`. A política é uma função pura:
 //!
@@ -148,7 +148,7 @@ impl crate::App {
 
     /// **Grava.** `force_ask` = `Save As…`.
     pub(crate) fn project_save_gesture(&mut self, force_ask: bool) {
-        let target = save_target(self.project_path.as_deref(), force_ask);
+        let target = save_target(self.recovery.project_path.as_deref(), force_ask);
         let path = match target {
             IoTarget::Path(p) => p,
             IoTarget::Ask { suggested } => match Self::ask_where_to_save(&suggested) {
@@ -156,21 +156,21 @@ impl crate::App {
                 None => return, // o artista desistiu — e desistir não é um erro
             },
         };
-        self.project_path = Some(path.clone());
+        self.recovery.project_path = Some(path.clone());
         self.project_save_to(&path);
         self.title_dirty = true;
     }
 
     /// **Abre.** Pergunta sempre (ver o doc do módulo).
     pub(crate) fn project_open_gesture(&mut self) {
-        let IoTarget::Ask { .. } = open_target(self.project_path.as_deref()) else {
+        let IoTarget::Ask { .. } = open_target(self.recovery.project_path.as_deref()) else {
             return;
         };
         let Some(path) = Self::ask_what_to_open() else {
             return;
         };
         if self.project_load_from(&path) {
-            (self.project_path, self.title_dirty) = (Some(path), true);
+            (self.recovery.project_path, self.title_dirty) = (Some(path), true);
             self.recovery_opened();
         }
     }

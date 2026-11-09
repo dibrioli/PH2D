@@ -47,7 +47,7 @@ impl crate::App {
                 ph2d_editor_core::aviso_da_placa::prefixo_do_titulo(
                     ph2d_gpu::memoria::sem_memoria()
                 ),
-                crate::project_io::title_name(self.project_path.as_deref()),
+                crate::project_io::title_name(self.recovery.project_path.as_deref()),
                 if *atlas_is_real { "PNG" } else { "dummy" },
                 asset_db.len_assets(),
                 if script.is_some() { "ok" } else { "off" },

@@ -209,7 +209,7 @@ impl crate::App {
         let sel = (hero.gizmo.selection, hero.gizmo.selected_len());
         let s = tardios::Sessao::nova(sel, self.playhead.is_playing(), &hero.input_map, motion);
         tardios::publica(sim, tags, script.as_ref(), particles, &s);
-        let filed = self.project_path.is_some();
+        let filed = self.recovery.project_path.is_some();
         ph2d_app_code::frame(sim, script.as_mut(), hero, toasts, filed);
         let tl = (&self.timeline.doc, &mut self.timeline_intents);
         kanban_families(sim, hero, tl, toasts);

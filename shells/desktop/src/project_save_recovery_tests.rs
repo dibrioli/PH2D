@@ -36,14 +36,14 @@ fn o_arranque_abre_a_janela_em_cartoes_esc_e_later_restore_pelo_ponteiro() {
     let mut app = crate::App::new();
     abre(&mut app);
     clica(card::layout(screen, 2).later, &mut app);
-    assert!(!app.recovery.is_modal() && app.project_path.is_none());
+    assert!(!app.recovery.is_modal() && app.recovery.project_path.is_none());
     app.recovery.close();
     let mut app = crate::App::new();
     abre(&mut app);
     clica(card::layout(screen, 2).rows[0].discard, &mut app);
     assert_eq!(app.recovery.prompt.entries.len(), 1, "Discard tira a linha");
     clica(card::layout(screen, 1).rows[0].restore, &mut app);
-    assert_eq!(app.project_path.as_deref(), Some(path));
+    assert_eq!(app.recovery.project_path.as_deref(), Some(path));
     assert!(!app.recovery.is_modal(), "um Restore fecha a janela");
     // A pergunta do fecho (sem janela o App não serializa: `abrir_poe_a_linha_de_base…` no crate).
     let pergunta = |app: &mut crate::App| assert!(app.recovery.ask_quit(Some(b"novo"), Some(path)));

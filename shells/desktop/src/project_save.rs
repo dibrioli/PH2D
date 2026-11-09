@@ -33,7 +33,9 @@ impl crate::App {
     /// Arranque da recuperação: a sessão, a varredura e a janela em cartões (`ph2d_recovery::card`).
     pub(crate) fn recovery_start(&mut self, root: Option<&std::path::Path>) {
         let period = ph2d_recovery::Period::from_secs(ph2d_editor_core::recovery_pref::secs());
+        let project_path = self.recovery.project_path.take();
         self.recovery = ph2d_recovery::Recovery::start(root, period);
+        self.recovery.project_path = project_path;
         self.recovery_opened();
     }
 
@@ -58,7 +60,7 @@ impl crate::App {
                     let ok = self.project_load_from(&copy.to_string_lossy());
                     let bytes = ok.then(|| self.project_bytes()).flatten();
                     if self.recovery.restored(ok, bytes.as_deref()) {
-                        (self.project_path, self.title_dirty) = (original, true);
+                        (self.recovery.project_path, self.title_dirty) = (original, true);
                     }
                 }
             }
@@ -77,7 +79,7 @@ impl crate::App {
         if self.recovery.quit == ph2d_recovery::Quit::Go {
             return false;
         }
-        let (bytes, path) = (self.project_bytes(), self.project_path.clone());
+        let (bytes, path) = (self.project_bytes(), self.recovery.project_path.clone());
         self.recovery.ask_quit(bytes.as_deref(), path.as_deref())
     }
 
@@ -105,7 +107,8 @@ impl crate::App {
             && let Some((file, pixel)) = self.project_file()
         {
             let make = move || serialize(file, &pixel);
-            (self.recovery).offer_with(make, self.project_path.as_deref(), now);
+            let project = self.recovery.project_path.clone();
+            (self.recovery).offer_with(make, project.as_deref(), now);
         }
         (self.recovery.take_notices().into_iter()).for_each(|n| self.toast(n));
     }

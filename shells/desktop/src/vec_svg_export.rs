@@ -40,6 +40,7 @@ impl crate::App {
             return;
         }
         let sugerido = self
+            .recovery
             .project_path
             .as_deref()
             .and_then(|p| std::path::Path::new(p).file_stem()?.to_str())

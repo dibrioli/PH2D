@@ -39,6 +39,10 @@ pub struct Recovery {
     /// esconde o movimento do editor — sem este cursor o clique caía onde o ponteiro estava ao
     /// abrir-se a janela, era comido, e o app parecia travado (smoke do dono, 08/11).
     pub cursor: Option<(f32, f32)>,
+    /// **O ficheiro que este projecto tem AGORA** (`None` = ainda sem nome: o primeiro `Ctrl+S`
+    /// pergunta). Mora aqui porque é a mesma vida do ficheiro: o nome da cópia, o Restore que
+    /// devolve o caminho original e a pergunta do fecho lêem-no.
+    pub project_path: Option<String>,
     /// Onde a janela se pintou no último quadro (o ecrã e a escala do chrome): o clique lê daqui.
     pub screen: Option<(
         ph2d_editor_core::zones::Rect,
@@ -87,6 +91,7 @@ impl Recovery {
             quiet: true,
             released: false,
             cursor: None,
+            project_path: None,
             screen: None,
             quit_body_h: None,
             pending: None,
@@ -94,6 +99,15 @@ impl Recovery {
             failing: false,
             notices: Vec::new(),
             print: None,
+        }
+    }
+
+    /// Desligada como [`Self::off`], já com o ficheiro do projecto (o arranque da shell).
+    #[must_use]
+    pub fn for_project(project_path: Option<String>) -> Self {
+        Self {
+            project_path,
+            ..Self::off()
         }
     }
 

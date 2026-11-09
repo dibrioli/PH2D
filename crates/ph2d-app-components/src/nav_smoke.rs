@@ -96,7 +96,9 @@ impl Montada {
     /// a queixa).
     #[must_use]
     pub fn secao_do_roteiro(&self) -> ph2d_editor_core::ids::NodeId {
-        if self.lama.is_some() || self.usos.is_some() || self.nivel == 7 {
+        if std::env::var_os("PH2D_NAV_SMOKE_OLHO").is_some() {
+            ph2d_editor_core::ids::INSP_LIVE_NAV_REGION_SECTION
+        } else if self.lama.is_some() || self.usos.is_some() || self.nivel == 7 {
             ph2d_editor_core::ids::INSP_LIVE_NAV_COST_AREA_SECTION
         } else {
             ph2d_editor_core::ids::INSP_LIVE_NAV_AGENT_SECTION
@@ -326,9 +328,28 @@ fn cena_um(world: &mut World) -> Montada {
 
 /// **Monta a cena `nivel`** — o roteador; cada forma acaba numa filha do corpo (ADR-0199).
 pub fn montar(world: &mut World, nivel: u32) -> Montada {
-    let m = monta(world, nivel);
+    let mut m = monta(world, nivel);
     ph2d_physics_ecs::migra_formas_para_filhos(world);
+    if let Some(regiao) = olho_para_as_fotos(world) {
+        m.escolhido = regiao;
+    }
     m
+}
+
+/// A foto do olho (`PH2D_NAV_SMOKE_OLHO=<nome exato de um corpo>`, dono 09/11): todas as formas desse
+/// corpo nascem de olho fechado (não barram o caminho) e a «Nav Region» fica escolhida — o aviso dela.
+fn olho_para_as_fotos(world: &mut World) -> Option<Entity> {
+    let nome = std::env::var("PH2D_NAV_SMOKE_OLHO").ok()?;
+    let achar = |world: &mut World, n: &str| {
+        let mut q = world.query::<(Entity, &Name)>();
+        q.iter(world).find(|(_, x)| x.0 == n).map(|(e, _)| e)
+    };
+    if let Some(corpo) = achar(world, nome.trim()) {
+        while let Some(f) = ph2d_physics_ecs::main_shape(world, corpo) {
+            world.entity_mut(f).insert(ph2d_ecs::Visibility::hidden());
+        }
+    }
+    achar(world, "Nav Region")
 }
 
 fn monta(world: &mut World, nivel: u32) -> Montada {

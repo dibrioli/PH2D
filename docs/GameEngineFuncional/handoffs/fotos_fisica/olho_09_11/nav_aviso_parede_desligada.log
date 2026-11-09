@@ -1,0 +1,19 @@
+gilrs: initialized; no gamepads connected yet
+audio: Default Audio Device @ 48000 Hz, 2 ch, F32
+PH2D desktop shell starting (close window or Cmd+Q to exit)…
+[ph2d-gpu] surface present mode: Fifo
+[   266ms] M6: real atlas composed from ./assets/sprites (16 assets cached)
+[   287ms] live hero mode (cena vazia; a Hierarquia mostra o que VOCE criar)
+[   287ms] M7: ScriptHost initialized (placeholder script loaded)
+[ph2d] theme = dark
+[   295ms] M11: VelloPass initialized (1024×768 intermediate)
+[   299ms] M14.5: RT pipeline ready (game_rt Rgba16Float HDR + AgX tonemap + compositor)
+[   313ms] PR 8: tool registry built (14 manifests, installed in editor)
+[   341ms] ADR-0054 W0.T6: imageio registries built (16 importer(s), 16 exporter(s))
+[   349ms] lifecycle: Foreground
+[   349ms] resize: 1024x768 @ 1.00x scale
+[nav-smoke] =1 setas para andar com o AMARELO. O VERMELHO da' a volta as paredes para te apanhar; o ROXO e' grande demais para a porta de baixo e fica do lado de ca' da parede; o CINZENTO (o controlo) persegue em linha recta e bate nas paredes. A linha azul de cada um e' o caminho que ele planeou (tecla B), e o contorno CLARO e' por onde o centro de cada um pode andar: ha' um por tamanho, e o do ROXO fecha a porta de baixo. O ROXO esta' escolhido: a seccao Nav Agent do Inspector diz o que ele esta' a fazer agora e porque espera
+[ph2d-gpu] surface present mode → Immediate
+[   356ms] resize: 1930x1372 @ 1.00x scale
+warn: dropped 0.217s of sim time (max_substeps cap)
+[ph2d-gpu] surface present mode → Fifo

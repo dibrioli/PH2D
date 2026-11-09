@@ -11611,6 +11611,7 @@ version = "0.0.0"
 dependencies = [
  "bytemuck",
  "dhat",
+ "image",
  "ph2d-a11y",
  "ph2d-brush-presets",
  "ph2d-color",

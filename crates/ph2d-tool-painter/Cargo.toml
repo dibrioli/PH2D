@@ -104,6 +104,8 @@ rayon = "1"
 zstd = { version = "0.14", default-features = false }
 
 [dev-dependencies]
+# Os PNG dos render-and-look `wet_*_look_probe` (vieram da shell, 09/11).
+image = { version = "0.25", default-features = false, features = ["png"] }
 # dhat-rs: a medição do HR-13 emendado pelo ADR-0117 — *quem declara budget possui um gate que MEDE*.
 # O undo estrutural do painter guarda `ModelSnapshot`s canvas-shaped e o cap dele é por CONTAGEM
 # (`DEFAULT_MAX_DEPTH = 300`), que é multiplicador e não teto: `tests/measure_undo_memory.rs`.

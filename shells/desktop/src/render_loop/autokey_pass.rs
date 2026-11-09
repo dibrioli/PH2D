@@ -477,6 +477,9 @@ mod opacidade_vetor_tests;
 #[path = "autokey_performing_tests.rs"]
 mod performing_tests;
 #[cfg(test)]
+#[path = "autokey_pontos_tests.rs"]
+mod pontos_tests;
+#[cfg(test)]
 #[path = "autokey_preso_tests.rs"]
 mod preso_tests;
 #[cfg(test)]

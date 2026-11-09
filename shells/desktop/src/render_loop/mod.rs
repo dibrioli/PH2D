@@ -82,11 +82,6 @@ mod timeline_presets_tests;
 /// Reset. A shell é o único escritor da camada de override de cor.
 pub(crate) mod tokens_bridge;
 pub(crate) mod tokens_bridge_dtcg;
-#[cfg(test)]
-mod wet_brush_look_probe; // render-and-look do pincel GRANDE do wet paint
-/// Render-and-look da razão da grade do fluido (diagnóstica, `#[ignore]`d).
-#[cfg(test)]
-mod wet_grid_look_probe;
 // `pub(crate)`: `apply_layer_reparent` is called from `input_dispatch` (outside
 // render_loop) to route the W3.T3.8 layer drag-reparent through the allowlisted
 // bridge-queries module instead of downcasting in central dispatch.

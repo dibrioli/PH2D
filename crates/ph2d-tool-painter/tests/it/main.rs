@@ -86,3 +86,5 @@ mod sonda_traco_rapido;
 mod sonda_tracos_por_meio;
 mod sonda_watercolor_no_digital; // a mistura do Watercolor Basic no Digital? (pedido do dono 07/11)
 mod textura_do_tamanho; // W3 K2: a textura acompanha o tamanho do pincel e a marca do spray pousa // W3 K3b: as cerdas crescem com o pincel e a ponta esfarela pelo grão
+mod wet_brush_look_probe; // render-and-look do pincel GRANDE do Wet Paint (veio da shell, 09/11)
+mod wet_grid_look_probe; // render-and-look da razão da grade do fluido (veio da shell, 09/11)

@@ -939,6 +939,24 @@ regravado). **Veredito do dono 08/11:** «Pointillism melhor como era antes. Pas
 na fila do handoff. A raiz comum de #73/#75/#77 (a rota da mistura sai cedo e não lê o que as seguintes leem) fica
 como lição: varra a mesma porta por tudo o que ela salta.
 
+## Bug #81 (CURADO 10/11, os 14 pincéis de mistura à espera do dono) — a cor de baixo aparecia ANTES da borda
+
+**Sintoma (foto do dono, 10/11):** traço azul a entrar no vermelho → o roxo começa antes da borda; do vermelho para
+fora → o vermelho não é levado para fora. «A direção da mistura está invertida.»
+**Pista errada:** o LOTE (`stamp_dabs_mistura_opaca` a ler a tela sob dabs seguintes) — não: cada carimbo lê só a tela do
+pen-down. **Mecanismo:** cada carimbo amostrava a média do DISCO INTEIRO (um raio à frente) e pintava essa cor no disco
+inteiro; a 3 % de passo, cada texel fica com a cor do último carimbo que o cobre — o que está um raio À FRENTE e viu até
+dois raios adiante. Medido (raio 10, faixa em `x 80–120`): roxo desde `x ≈ 66`, nos dois sentidos.
+**Cura (`mistura_opaca.rs`):** amostra só a metade de TRÁS; o texel atrás do centro recebe o estado do reservatório de
+quando o centro passou por ele (`Historico`, 32 marcos a raio/16); `DESFASAGEM` 1,0 → 1,25, varrida no mesmo processo
+para guardar o patamar afinado pelo dono (fração do fundo a Amount 0,8: disco 0,136 · causal 0,123). Antes/depois pela
+ferramenta: [`antes_depois.png`](handoffs/material_2026-11-10_mistura_causal/antes_depois.png).
+**O gate que estava verde:** os 10 `wet_blend_*` mediam patamares e memória, nenhum ONDE a cor muda em relação à
+borda, nem os dois sentidos. Teste `wet_blend_a_cor_de_baixo_vai_no_sentido_do_traco` (as duas metades da cura
+sangram por mutação). Alarme de miniatura VERMELHO para os 14 pincéis de mistura — NÃO regravado.
+**Lição:** uma lei com um estado por carimbo tem de dizer em que INSTANTE cada texel o lê; com passo pequeno, o
+último carimbo a cobrir o texel é o que manda, e ele está à frente.
+
 ## Como adicionar um bug aqui
 
 Uma seção `## Bug #N — <título>` + linha na tabela (o fim do pedaço [#41–#46](BUGS_painter_fechados_41_a_46.md)). Foque nos bugs cuja **causa enganou** (vários rounds

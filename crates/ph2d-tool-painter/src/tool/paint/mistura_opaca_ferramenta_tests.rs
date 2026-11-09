@@ -188,9 +188,10 @@ fn bloco_vermelho(m: MisturaOpaca, spacing: Option<f32>) -> PainterTool {
 
 fn arrasto(t: &mut PainterTool, x0: f32, x1: f32, y: f32) {
     t.on_canvas_pointer(cp([x0, y], PointerPhase::Down));
+    let passo = 4.0f32.copysign(x1 - x0);
     let mut x = x0;
-    while x < x1 {
-        x += 4.0;
+    while (x1 - x) * passo > 0.0 {
+        x += passo;
         t.on_canvas_pointer(cp([x, y], PointerPhase::Move));
     }
     t.on_canvas_pointer(cp([x1, y], PointerPhase::Up));
@@ -274,9 +275,9 @@ fn a_mistura_opaca_nao_depende_do_espacamento() {
     }
 }
 
-/// A foto do arrasto do dono: bloco vermelho sobre branco, três traços azuis de fábrica (Off, Blend,
-/// Running) que entram pelo branco, cruzam o vermelho e acabam no branco (`PH2D_MISTURA_FOTO=<rgba>`,
-/// recorte 400×300 a partir de `(340, 362)`); imprime os píxeis medidos.
+/// A foto do arrasto do dono: bloco vermelho sobre branco, três traços azuis de fábrica (Off e Wet blend da esquerda
+/// para a direita, Wet blend da direita para a esquerda) que entram pelo branco, cruzam o vermelho e acabam no branco
+/// (`PH2D_MISTURA_FOTO=<rgba>`, recorte 400×300 a partir de `(340, 362)`); imprime os píxeis medidos.
 #[test]
 #[ignore = "foto: corre à mão"]
 fn foto_mistura_opaca_arrasto_de_fabrica() {
@@ -286,13 +287,13 @@ fn foto_mistura_opaca_arrasto_de_fabrica() {
         "raio {} spacing {}",
         t.paint.brush.radius_px, t.paint.brush.spacing
     );
-    for (modo, y) in [
-        (ModoMisturaOpaca::Off, 412.0f32),
-        (ModoMisturaOpaca::WetBlend, 512.0),
-        (ModoMisturaOpaca::WetBlend, 612.0),
+    for (modo, y, de, ate) in [
+        (ModoMisturaOpaca::Off, 412.0f32, 360.0, 720.0),
+        (ModoMisturaOpaca::WetBlend, 512.0, 360.0, 720.0),
+        (ModoMisturaOpaca::WetBlend, 612.0, 720.0, 360.0),
     ] {
         t.paint.brush.mistura_opaca = de_fabrica(modo);
-        arrasto(&mut t, 360.0, 720.0, y);
+        arrasto(&mut t, de, ate, y);
         let p = |x: u32| {
             let i = ((y as u32 * SIZE + x) * 4) as usize;
             [t.canvas_rgba[i], t.canvas_rgba[i + 1], t.canvas_rgba[i + 2]]

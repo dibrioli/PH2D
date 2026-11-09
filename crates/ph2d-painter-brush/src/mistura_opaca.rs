@@ -2,13 +2,15 @@
 //! (`docs/Painter/CSP_COMO_MISTURA_2026-11-08.md`). Substitui o Pigment mix por píxel de 07/11, que deixava a
 //! costura dura da tinta de baixo DENTRO do traço (foto do dono, 08/11).
 //!
-//! Por CARIMBO (nunca por píxel ou cerda):
-//! 1. amostra a **média** da tela de antes do traço sob a pegada (peso = a pegada × o alfa) — UMA cor;
+//! Por CARIMBO (nunca por píxel ou cerda), e CAUSAL (Bug #81: a cor de baixo vai no sentido do traço):
+//! 1. amostra a **média** da tela de antes do traço sob a metade de TRÁS da pegada (o toque parado: a pegada
+//!    inteira; peso = a pegada × o alfa) — UMA cor;
 //! 2. a amostra entra no **reservatório**, que esquece pelo *Color stretch* (memória em diâmetros, por distância);
 //! 3. a tinta do carimbo é `P = lerp(reservatório, cor do pincel, Amount)` — em RGB, ou em pigmento pelo
 //!    *Pigment* (azul + amarelo = verde, a espectral do pincel);
 //! 4. a pegada (falloff, Shape, Grain) dá só a **cobertura α** por píxel, × *Density*, normalizada pela distância
 //!    (a Density é a opacidade de uma passada, qualquer que seja o passo); source-over sobre a tela VIVA.
+//!    O texel ATRÁS do centro recebe a tinta de quando o centro passou por ele (o histórico do reservatório).
 //! 5. o passo cai a [`PASSO_DA_MISTURA`] do diâmetro ([`BrushSpec::spacing_do_traco`]): a amostra é refeita a cada
 //!    píxel de avanço — é isto, e a cor única por carimbo, que dá a mescla lisa sem manchas nem degraus.
 //!
@@ -186,6 +188,74 @@ fn potencia(x: f32, t: f32) -> f32 {
     crate::espectral::exp2((t * crate::espectral::log2(x)).max(-126.0))
 }
 
+/// Marcos do [`Historico`]: um a cada `raio / MARCOS_POR_RAIO` de caminho, cobrindo dois raios para trás.
+const MARCOS: usize = 32;
+const MARCOS_POR_RAIO: f32 = 16.0;
+
+/// O estado do pincel num ponto do caminho: o que um texel ATRÁS do centro recebe (a tinta que o pincel levava
+/// quando o centro passou por cima dele). A mistura é CAUSAL: a cor apanhada à frente não pinta o que ficou atrás
+/// (Bug #81, dono 10/11: o vermelho aparecia ~1,4 raio antes da borda).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+struct Marco {
+    arco: f32,
+    /// `reservatório.cor`, o peso do pincel e a tinta com a cor do pincel do carimbo.
+    cor: [f32; 3],
+    a_eff: f32,
+    tinta: [f32; 3],
+}
+
+impl Marco {
+    fn lerp(a: Self, b: Self, t: f32) -> Self {
+        let l = |x: f32, y: f32| x + (y - x) * t;
+        Self {
+            arco: l(a.arco, b.arco),
+            cor: std::array::from_fn(|k| l(a.cor[k], b.cor[k])),
+            a_eff: l(a.a_eff, b.a_eff),
+            tinta: std::array::from_fn(|k| l(a.tinta[k], b.tinta[k])),
+        }
+    }
+}
+
+/// Os últimos [`MARCOS`] estados do reservatório, por caminho andado (anel).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+struct Historico {
+    marcos: [Marco; MARCOS],
+    n: u8,
+    /// O índice do mais NOVO.
+    cabeca: u8,
+}
+
+impl Historico {
+    fn novo(&self) -> Option<Marco> {
+        (self.n > 0).then(|| self.marcos[self.cabeca as usize])
+    }
+
+    fn guarda(&mut self, m: Marco) {
+        self.cabeca = ((self.cabeca as usize + 1) % MARCOS) as u8;
+        self.marcos[self.cabeca as usize] = m;
+        self.n = (self.n + 1).min(MARCOS as u8);
+    }
+
+    /// O estado no caminho `alvo`, interpolado; `agora` é o do carimbo corrente (o mais novo de todos).
+    fn em(&self, alvo: f32, agora: Marco) -> Marco {
+        let mut depois = agora;
+        for k in 0..self.n as usize {
+            let m = self.marcos[(self.cabeca as usize + MARCOS - k) % MARCOS];
+            if m.arco <= alvo {
+                let vao = depois.arco - m.arco;
+                let t = if vao > 0.0 {
+                    ((alvo - m.arco) / vao).clamp(0.0, 1.0)
+                } else {
+                    1.0
+                };
+                return Marco::lerp(m, depois, t);
+            }
+            depois = m;
+        }
+        depois
+    }
+}
+
 /// O reservatório do pincel durante UM traço (cor recta `0..1` + carga). Novo a cada pen-down.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct ReservatorioOpaco {
@@ -197,6 +267,9 @@ pub struct ReservatorioOpaco {
     ultimo: [f32; 2],
     /// O caminho andado pelos carimbos deste reservatório (px): a idade da película.
     arco: f32,
+    /// A direção do movimento (unitária), `None` antes do 2.º carimbo ou parado.
+    dir: Option<[f32; 2]>,
+    historico: Historico,
 }
 
 impl ReservatorioOpaco {
@@ -220,7 +293,12 @@ const SEM_TINTA: f32 = f32::INFINITY;
 /// dependia do spacing do pincel. Varrido contra a folha do CSP (erro médio por região, 4 pincéis): 0,75 → 95 ·
 /// 1,0 → 79 · 1,25 → 69 · 1,5 → 67; o Round mixing (a mesma ponta redonda nos dois) 7 · 12 · 16 · 20 — 1,0 é o
 /// equilíbrio (`docs/Painter/handoffs/material_2026-11-08/wetblend_vs_csp_medidas.txt`).
-const DESFASAGEM: f32 = 1.0;
+///
+/// Com a amostra CAUSAL (só a metade de trás, Bug #81) a película da passada corrente cobre-a desde `arco − b − raio`;
+/// varrido no mesmo processo contra a lei de disco inteiro (fração do fundo a Amount 0,8 · 0,5 · vermelho máximo ao
+/// atravessar uma faixa): disco 1,0 → 0,136 · 0,379 · 132 | causal 1,0 → 0,060 · 0,183 · 66 · 1,25 → 0,123 · 0,349 ·
+/// 122 · 1,5 → 0,179 · 0,455 · 157 · 2,0 → 0,204 · 0,498 · 166. 1,25 guarda o patamar afinado pelo dono (08/11).
+const DESFASAGEM: f32 = 1.25;
 
 /// A PELÍCULA do traço em `f32` (RGB recto `0..1` + a cobertura), por ladrilhos de [`LADO`]², criados no 1.º toque
 /// (vazios na tela directa; lidos do plano do traço, que já é a película). Vive do pen-down ao pen-up; quem repõe a tela por baixo dela (re-carimbo de figura, a cauda)
@@ -418,13 +496,27 @@ pub fn mistura_opaca_carimbo(
     let arco = res.arco + dist;
     let velha_desde = arco - DESFASAGEM * c.radius_px;
     let sombra_valida = tela.sombra.mesma_tela(w, h);
+    let dir = if dist > 1e-4 {
+        Some([
+            (c.center[0] - res.ultimo[0]) / dist,
+            (c.center[1] - res.ultimo[1]) / dist,
+        ])
+    } else {
+        res.dir
+    };
+    // Quanto o texel ficou ATRÁS do centro, ao longo do movimento (`≤ 0` = à frente ou ao lado).
+    let atras = |x: u32, y: u32| -> f32 {
+        dir.map_or(0.0, |d| {
+            -((x as f32 + 0.5 - c.center[0]) * d[0] + (y as f32 + 0.5 - c.center[1]) * d[1])
+        })
+    };
     // 1. A amostra: a média sob a pegada da tela de antes com a película VELHA deste traço por cima, pesada pelo
-    // alfa; a carga = quanto ali é tinta.
+    // alfa; a carga = quanto ali é tinta. Em movimento, só a metade de TRÁS: o pincel leva o que já atravessou.
     let (mut soma, mut soma_a, mut soma_w) = ([0.0f32; 3], 0.0f32, 0.0f32);
     for y in y0..y1 {
         for x in x0..x1 {
             let wt = peso(x, y);
-            if wt <= 0.0 {
+            if wt <= 0.0 || atras(x, y) < 0.0 {
                 continue;
             }
             let i = ((y * w + x) * 4) as usize;
@@ -479,12 +571,12 @@ pub fn mistura_opaca_carimbo(
     res.cheio = true;
     res.ultimo = c.center;
     res.arco = arco;
+    res.dir = dir;
     // 3. A tinta do carimbo: o papel transparente não suja (o pincel fica com a cor dele onde não apanhou nada).
     let amount = MisturaOpaca::pela_pressao(m.paint_amount, m.amount_pressure, c.pressao);
     let a_eff = peso_do_pincel(amount, res.carga);
     let pig = m.pigmento.clamp(0.0, 1.0);
-    let res_cor = res.cor;
-    let tinta_de = |pincel: [f32; 3]| -> [f32; 3] {
+    let tinta_de = |res_cor: [f32; 3], a_eff: f32, pincel: [f32; 3]| -> [f32; 3] {
         let rgb: [f32; 3] = std::array::from_fn(|k| res_cor[k] + (pincel[k] - res_cor[k]) * a_eff);
         if pig > 0.0 {
             let e = crate::espectral::mistura(res_cor, pincel, a_eff);
@@ -493,7 +585,33 @@ pub fn mistura_opaca_carimbo(
             rgb
         }
     };
-    let tinta_unica = tinta_de(pincel);
+    let agora = Marco {
+        arco,
+        cor: res.cor,
+        a_eff,
+        tinta: tinta_de(res.cor, a_eff, pincel),
+    };
+    // O texel atrás do centro recebe o estado de quando o centro passou por ele: uma tabela por fração do raio.
+    let tabela: [Marco; MARCOS] = std::array::from_fn(|k| {
+        res.historico
+            .em(arco - c.radius_px * k as f32 / (MARCOS - 1) as f32, agora)
+    });
+    if res
+        .historico
+        .novo()
+        .is_none_or(|m| arco - m.arco >= c.radius_px / MARCOS_POR_RAIO)
+    {
+        res.historico.guarda(agora);
+    }
+    let estado_em = |x: u32, y: u32| -> Marco {
+        let b = atras(x, y);
+        if b <= 0.0 {
+            return agora;
+        }
+        let f = (b / c.radius_px.max(1e-6)).min(1.0) * (MARCOS - 1) as f32;
+        let k = (f as usize).min(MARCOS - 2);
+        Marco::lerp(tabela[k], tabela[k + 1], f - k as f32)
+    };
     let cor_da_mascara = match pegada {
         Pegada::Mascara {
             mascara,
@@ -567,9 +685,14 @@ pub fn mistura_opaca_carimbo(
             if px[4] == SEM_TINTA {
                 px[4] = arco;
             }
+            let estado = estado_em(x, y);
             let tinta = match cor_da_mascara {
-                Some(mc) => tinta_de([mc[i], mc[i + 1], mc[i + 2]].map(|v| f32::from(v) / 255.0)),
-                None => tinta_unica,
+                Some(mc) => tinta_de(
+                    estado.cor,
+                    estado.a_eff,
+                    [mc[i], mc[i + 1], mc[i + 2]].map(|v| f32::from(v) / 255.0),
+                ),
+                None => estado.tinta,
             };
             let s0 = px[3];
             let s_livre = s0 + alfa * (1.0 - s0);

@@ -280,3 +280,83 @@ fn wet_blend_amount_zero_so_arrasta() {
     let p = px(&b, 66, 20);
     assert!(p[0] > 60 && p[1] < 60, "{p:?}");
 }
+
+/// Faixa vermelha `x ∈ [80, 120)` sobre o vazio; traço azul de `de` a `ate` em `y = 20`, raio 10.
+fn atravessa_a_faixa(de: f32, ate: f32, spec: &BrushSpec) -> Vec<u8> {
+    let mut buf = vec![0u8; (W * H * 4) as usize];
+    for y in 0..H {
+        for x in 80..120 {
+            let i = ((y * W + x) * 4) as usize;
+            buf[i..i + 4].copy_from_slice(&VERMELHO);
+        }
+    }
+    let antes = buf.clone();
+    let mut res = ReservatorioOpaco::default();
+    let mut sombra = Sombra::default();
+    let passo = 2.0 * spec.radius_px * spec.spacing_do_traco();
+    let dir = (ate - de).signum();
+    let mut x = de;
+    while (ate - x) * dir >= 0.0 {
+        let mut tela = Tela {
+            buf: &mut buf,
+            width: W,
+            height: H,
+            sombra: &mut sombra,
+            trava_alfa: false,
+            plano: false,
+        };
+        let _ = mistura_opaca_carimbo(
+            &mut tela,
+            |i| [antes[i], antes[i + 1], antes[i + 2], antes[i + 3]],
+            |i| [antes[i], antes[i + 1], antes[i + 2], antes[i + 3]],
+            spec,
+            Carimbo {
+                center: [x, 20.0],
+                radius_px: spec.radius_px,
+                cor: [0.08, 0.16, 0.86],
+                coverage: 1.0,
+                pressao: 1.0,
+            },
+            Pegada::Disco {
+                centro: [x, 20.0],
+                raio: spec.radius_px,
+            },
+            &mut res,
+        );
+        x += passo * dir;
+    }
+    buf
+}
+
+/// Bug #81 (foto do dono, 10/11): a mistura é CAUSAL. O azul que entra no vermelho fica azul até à borda (o
+/// vermelho aparecia ~1,4 raio ANTES dela: cada carimbo pintava o disco inteiro com a cor apanhada à frente), e o
+/// vermelho é levado para FORA no sentido do traço. Os dois sentidos dão o mesmo perfil, espelhado.
+#[test]
+fn wet_blend_a_cor_de_baixo_vai_no_sentido_do_traco() {
+    let mut spec = pincel(0.25, 1.0, 0.5);
+    spec.radius_px = 10.0;
+    let ida = atravessa_a_faixa(10.0, 190.0, &spec);
+    let volta = atravessa_a_faixa(190.0, 10.0, &spec);
+    let azul = px(&ida, 40, 20)[0];
+    for (nome, b, antes_da_borda, depois_da_saida) in
+        [("ida", &ida, 78, 135), ("volta", &volta, 121, 64)]
+    {
+        let p = px(b, antes_da_borda, 20);
+        assert!(
+            p[0] <= azul + 6,
+            "{nome}: o vermelho chegou antes da borda em x={antes_da_borda}: {p:?}"
+        );
+        let q = px(b, depois_da_saida, 20);
+        assert!(
+            q[0] >= azul + 80,
+            "{nome}: o vermelho não foi levado para fora em x={depois_da_saida}: {q:?}"
+        );
+    }
+    for x in 60..140u32 {
+        let (a, v) = (px(&ida, x, 20), px(&volta, 199 - x, 20));
+        assert!(
+            a.iter().zip(v).all(|(&p, q)| p.abs_diff(q) <= 12),
+            "o perfil não é o espelho do outro sentido em x={x}: {a:?} × {v:?}"
+        );
+    }
+}

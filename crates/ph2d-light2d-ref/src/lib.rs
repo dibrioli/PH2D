@@ -17,6 +17,7 @@
 mod geometria;
 mod integra;
 mod miolo;
+mod momento;
 pub mod queda;
 mod rebote;
 
@@ -24,6 +25,8 @@ use std::f64::consts::TAU;
 
 use geometria::{Fronteira, angulo, cruzamentos, intersecoes};
 pub use miolo::{MIOLO_PADRAO, OpcoesDoMiolo};
+pub(crate) use momento::de_frente;
+use momento::{cardioide, junta, momento_do_arco, momento_do_emissor, separa, somar_momento};
 use ph2d_light2d_ecs::{CenaDeLuz, Emissor};
 use queda::queda;
 pub use rebote::{ALBEDO_MAX, OpcoesDoRebote, Rebote};
@@ -298,6 +301,8 @@ pub struct Gabarito {
     ceu: [f64; 3],
     op: OpcoesDoMiolo,
     miolo: std::sync::OnceLock<Option<miolo::Miolo>>,
+    /// O miolo de `[F; M]` (P14), resolvido na 1.ª pergunta com normal de dentro.
+    miolo_n: std::sync::OnceLock<Option<miolo::Miolo<9>>>,
 }
 
 impl Gabarito {
@@ -315,6 +320,7 @@ impl Gabarito {
             ceu: rgb(cena.ceu),
             op,
             miolo: std::sync::OnceLock::new(),
+            miolo_n: std::sync::OnceLock::new(),
         }
     }
 
@@ -326,8 +332,29 @@ impl Gabarito {
             self.ceu,
             &rebote::Elementos::vazio(),
             p,
+            false,
         )
         .direto
+    }
+
+    fn fluencia_e_momento(&self, ponto: [f64; 2]) -> [f64; 9] {
+        let vazio = rebote::Elementos::vazio();
+        let fora = |q| {
+            let l = linha(&self.objetos, &self.pontuais, self.ceu, &vazio, q, true);
+            junta(l.direto, l.momento)
+        };
+        let transmitida = |q| {
+            let l = linha_sem_projetar(&self.objetos, &self.pontuais, self.ceu, &vazio, q, true);
+            junta(l.direto, l.momento)
+        };
+        no_miolo(
+            &self.objetos,
+            self.op,
+            &self.miolo_n,
+            ponto,
+            &fora,
+            &transmitida,
+        )
     }
 
     #[must_use]
@@ -340,6 +367,7 @@ impl Gabarito {
                 self.ceu,
                 &rebote::Elementos::vazio(),
                 q,
+                false,
             )
             .direto
         };
@@ -357,19 +385,48 @@ impl Gabarito {
     pub fn luz_em(&self, ponto: [f64; 2]) -> [f64; 3] {
         self.fluencia(ponto).map(|f| f / TAU)
     }
+
+    /// O primeiro momento angular `M = ∫L(θ)(cos θ, sin θ) dθ` em `ponto`, por canal (`[Mx, My]`);
+    /// dentro de um corpo, o miolo difunde-o como difunde `F`.
+    #[must_use]
+    pub fn momento(&self, ponto: [f64; 2]) -> [[f64; 3]; 2] {
+        separa(self.fluencia_e_momento(ponto)).1
+    }
+
+    /// A luz que um receptor de normal `n_xy` (`|n_xy| ≤ 1`) recebe: `(F + n_xy·M)/2π`. Com
+    /// `n_xy = 0`, o caminho de [`Self::luz_em`] (o mesmo bit).
+    #[must_use]
+    pub fn luz_em_n(&self, ponto: [f64; 2], n_xy: [f64; 2]) -> [f64; 3] {
+        if de_frente(n_xy) {
+            return self.luz_em(ponto);
+        }
+        cardioide(self.fluencia_e_momento(ponto), n_xy)
+    }
+}
+
+/// O primeiro momento angular da luz em `ponto` (ver [`Gabarito::momento`]).
+#[must_use]
+pub fn momento(cena: &CenaDeLuz, ponto: [f64; 2]) -> [[f64; 3]; 2] {
+    gabarito_de(cena).momento(ponto)
+}
+
+/// A luz num receptor de normal `n_xy` (ver [`Gabarito::luz_em_n`]).
+#[must_use]
+pub fn luz_em_n(cena: &CenaDeLuz, ponto: [f64; 2], n_xy: [f64; 2]) -> [f64; 3] {
+    gabarito_de(cena).luz_em_n(ponto, n_xy)
 }
 
 /// A luz em `ponto` com o miolo: fora da união dos corpos a lei de `exterior`; dentro, a mistura dela
 /// com a difusão (`suavidade`) — e ⭐ W5k, num corpo de opacidade `α < 1`, essa mistura com a
 /// `transmitida` (a luz que atravessa o corpo até `ponto`) por `α`: contínua em `α`, a de antes em 1.
-pub(crate) fn no_miolo(
+pub(crate) fn no_miolo<const N: usize>(
     objetos: &[Objeto],
     op: OpcoesDoMiolo,
-    miolo: &std::sync::OnceLock<Option<miolo::Miolo>>,
+    miolo: &std::sync::OnceLock<Option<miolo::Miolo<N>>>,
     ponto: [f64; 2],
-    exterior: &(dyn Fn([f64; 2]) -> [f64; 3] + Sync),
-    transmitida: &dyn Fn([f64; 2]) -> [f64; 3],
-) -> [f64; 3] {
+    exterior: &(dyn Fn([f64; 2]) -> [f64; N] + Sync),
+    transmitida: &dyn Fn([f64; 2]) -> [f64; N],
+) -> [f64; N] {
     if !miolo::dentro_da_uniao(objetos, ponto, &mut Vec::new()) {
         return exterior(ponto);
     }
@@ -379,17 +436,17 @@ pub(crate) fn no_miolo(
         return corpo;
     }
     let t = transmitida(ponto);
-    [0, 1, 2].map(|c| t[c] + (corpo[c] - t[c]) * a)
+    std::array::from_fn(|c| t[c] + (corpo[c] - t[c]) * a)
 }
 
 /// A luz dentro da união dos corpos como se fossem opacos: o exterior mais próximo e a difusão.
-fn no_miolo_do_corpo(
+fn no_miolo_do_corpo<const N: usize>(
     objetos: &[Objeto],
     op: OpcoesDoMiolo,
-    miolo: &std::sync::OnceLock<Option<miolo::Miolo>>,
+    miolo: &std::sync::OnceLock<Option<miolo::Miolo<N>>>,
     ponto: [f64; 2],
-    exterior: &(dyn Fn([f64; 2]) -> [f64; 3] + Sync),
-) -> [f64; 3] {
+    exterior: &(dyn Fn([f64; 2]) -> [f64; N] + Sync),
+) -> [f64; N] {
     let s = op.suavidade.clamp(0.0, 1.0);
     if s <= 0.0 {
         return exterior(ponto);
@@ -402,7 +459,7 @@ fn no_miolo_do_corpo(
         return d;
     }
     let e = exterior(ponto);
-    [0, 1, 2].map(|c| e[c] + (d[c] - e[c]) * s)
+    std::array::from_fn(|c| e[c] + (d[c] - e[c]) * s)
 }
 
 /// ⭐ W5c — o que `ponto` recebe, partido em duas: a parte que não depende do rebote (`direto`: céu,
@@ -411,6 +468,9 @@ fn no_miolo_do_corpo(
 pub(crate) struct Linha {
     pub(crate) direto: [f64; 3],
     pub(crate) pesos: Vec<(usize, f64)>,
+    /// P14 — o momento de `direto` e o de cada peso (só com `com_momento`; vazios sem ele).
+    pub(crate) momento: [[f64; 3]; 2],
+    pub(crate) pesos_m: Vec<(usize, [f64; 2])>,
 }
 
 pub(crate) fn linha(
@@ -419,9 +479,10 @@ pub(crate) fn linha(
     ceu: [f64; 3],
     refletores: &rebote::Elementos,
     ponto: [f64; 2],
+    com_momento: bool,
 ) -> Linha {
     let ponto = fora_dos_opacos(objetos, ponto);
-    linha_sem_projetar(objetos, pontuais, ceu, refletores, ponto)
+    linha_sem_projetar(objetos, pontuais, ceu, refletores, ponto, com_momento)
 }
 
 /// A [`linha`] no próprio `ponto`, mesmo dentro de um corpo: a luz que o atravessa até lá.
@@ -431,10 +492,13 @@ pub(crate) fn linha_sem_projetar(
     ceu: [f64; 3],
     refletores: &rebote::Elementos,
     ponto: [f64; 2],
+    com_momento: bool,
 ) -> Linha {
     let mut buf = Vec::new();
     let mut total = [0.0_f64; 3];
     let mut pesos: Vec<(usize, f64)> = Vec::new();
+    let mut momento = [[0.0_f64; 3]; 2];
+    let mut pesos_m: Vec<(usize, [f64; 2])> = Vec::new();
 
     for intervalo in eventos(objetos, ponto, &refletores.pontos).windows(2) {
         let (a, b) = (intervalo[0], intervalo[1]);
@@ -459,6 +523,18 @@ pub(crate) fn linha_sem_projetar(
             let (l, peso) = peso_do_emissor(&objetos[k], ponto, a, b);
             somar(l, tr * peso);
         }
+        if com_momento {
+            let m = match raio.acerto {
+                None => momento_do_arco(a, b),
+                Some((k, _)) => momento_do_emissor(&objetos[k], ponto, a, b),
+            };
+            somar_momento(&mut momento, fundo, raio.transmissao, m);
+            for &(k, tr) in &raio.lampadas {
+                let (l, _) = objetos[k].emissao.expect("uma lâmpada");
+                let m = momento_do_emissor(&objetos[k], ponto, a, b);
+                somar_momento(&mut momento, l, tr, m);
+            }
+        }
         // ⭐ O corpo refletor acertado ANTES do que termina o raio: a radiância do elemento da
         // entrada, × a transmissão até ela (um opaco mais perto já a zera).
         let limite = raio.acerto.map_or(f64::INFINITY, |(_, t)| t);
@@ -472,9 +548,14 @@ pub(crate) fn linha_sem_projetar(
             if t >= limite {
                 continue;
             }
-            let w = transmissao_ate(objetos, &buf, t) * (b - a);
+            let tr = transmissao_ate(objetos, &buf, t);
+            let w = tr * (b - a);
             if w > 0.0 {
-                pesos.push((refletores.elemento(r, aresta, u), w));
+                let e = refletores.elemento(r, aresta, u);
+                pesos.push((e, w));
+                if com_momento {
+                    pesos_m.push((e, momento_do_arco(a, b).map(|x| tr * x)));
+                }
             }
         }
     }
@@ -499,6 +580,9 @@ pub(crate) fn linha_sem_projetar(
         for (tot, &i) in total.iter_mut().zip(&q.intensidade) {
             *tot += i * w;
         }
+        if com_momento {
+            somar_momento(&mut momento, q.intensidade, w, [v[0] / r, v[1] / r]);
+        }
     }
     pesos.sort_unstable_by_key(|&(e, _)| e);
     pesos.dedup_by(|b, a| {
@@ -509,9 +593,21 @@ pub(crate) fn linha_sem_projetar(
             false
         }
     });
+    pesos_m.sort_unstable_by_key(|&(e, _)| e);
+    pesos_m.dedup_by(|b, a| {
+        if a.0 == b.0 {
+            a.1[0] += b.1[0];
+            a.1[1] += b.1[1];
+            true
+        } else {
+            false
+        }
+    });
     Linha {
         direto: total,
         pesos,
+        momento,
+        pesos_m,
     }
 }
 

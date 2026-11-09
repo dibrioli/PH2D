@@ -39,20 +39,20 @@ const TOLERANCIA: f64 = 1e-10;
 
 /// A vizinha de um nó de dentro: outro nó de dentro, ou a borda a `θ` da aresta com a luz `g` lá.
 #[derive(Clone, Copy)]
-enum Viz {
+enum Viz<const N: usize> {
     Dentro(u32),
-    Borda { theta: f64, g: [f64; 3] },
+    Borda { theta: f64, g: [f64; N] },
 }
 
-/// O miolo resolvido de uma cena.
-pub(crate) struct Miolo {
+/// O miolo resolvido de uma cena, com `N` componentes lineares (3 = F; 9 = F e o momento M, P14).
+pub(crate) struct Miolo<const N: usize = 3> {
     origem: [f64; 2],
     h: f64,
     n: [usize; 2],
     /// O índice da incógnita de cada nó (`u32::MAX` = fora da união).
     indice: Vec<u32>,
-    viz: Vec<[Viz; 4]>,
-    u: Vec<[f64; 3]>,
+    viz: Vec<[Viz<N>; 4]>,
+    u: Vec<[f64; N]>,
 }
 
 const DIRS: [[isize; 2]; 4] = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -80,13 +80,13 @@ fn cortes_da_reta(polis: &[&[[f64; 2]]], eixo: usize, c: f64, out: &mut Vec<f64>
     }
 }
 
-impl Miolo {
+impl<const N: usize> Miolo<N> {
     /// Resolve o miolo da união dos corpos de `objetos`, com `exterior(q)` a luz num ponto `q` FORA
     /// dela. `None` sem nenhum corpo.
     pub(crate) fn resolver(
         objetos: &[Objeto],
         op: OpcoesDoMiolo,
-        exterior: &(dyn Fn([f64; 2]) -> [f64; 3] + Sync),
+        exterior: &(dyn Fn([f64; 2]) -> [f64; N] + Sync),
     ) -> Option<Self> {
         let polis: Vec<&[[f64; 2]]> = objetos
             .iter()
@@ -242,7 +242,7 @@ impl Miolo {
 
     /// O miolo em `p` (dentro da união): a bilinear dos nós da célula, com a luz da borda no lugar de
     /// um canto de fora. `None` se a célula não tem nenhum nó de dentro.
-    pub(crate) fn em(&self, p: [f64; 2]) -> Option<[f64; 3]> {
+    pub(crate) fn em(&self, p: [f64; 2]) -> Option<[f64; N]> {
         let fx = (p[0] - self.origem[0]) / self.h;
         let fy = (p[1] - self.origem[1]) / self.h;
         if fx < 0.0 || fy < 0.0 {
@@ -259,9 +259,9 @@ impl Miolo {
             return None;
         }
         // A luz da borda nas arestas da célula que saem de um canto de dentro, por canto de fora.
-        let mut valores = [[0.0; 3]; 4];
-        let mut todas = ([0.0; 3], 0.0);
-        let mut na_borda = [([0.0; 3], 0.0); 4];
+        let mut valores = [[0.0; N]; 4];
+        let mut todas = ([0.0; N], 0.0);
+        let mut na_borda = [([0.0; N], 0.0); 4];
         // (canto, vizinho na célula, direção de canto → vizinho)
         let arestas: [(usize, usize, usize); 8] = [
             (0, 1, 0),
@@ -300,7 +300,7 @@ impl Miolo {
                 return None;
             };
         }
-        Some([0, 1, 2].map(|c| {
+        Some(std::array::from_fn(|c| {
             let a = valores[0][c] + (valores[1][c] - valores[0][c]) * tx;
             let b = valores[2][c] + (valores[3][c] - valores[2][c]) * tx;
             a + (b - a) * ty
@@ -313,7 +313,7 @@ impl Miolo {
 /// iteração em vez de seis (o produto com o `p·Ap`; a atualização com o `r·z` e o `r·r`); a ordem de
 /// cada soma é a de sempre, logo o resultado é o mesmo bit
 /// (`docs/DevOps/VELOCIDADE_DOS_PORTOES.md`).
-fn gradientes_conjugados(viz: &[[Viz; 4]], kh2: f64) -> Vec<[f64; 3]> {
+fn gradientes_conjugados<const N: usize>(viz: &[[Viz<N>; 4]], kh2: f64) -> Vec<[f64; N]> {
     let n = viz.len();
     let diag: Vec<f64> = viz
         .iter()
@@ -404,12 +404,12 @@ fn gradientes_conjugados(viz: &[[Viz; 4]], kh2: f64) -> Vec<[f64; 3]> {
         Some(x)
     };
     let xs: Vec<Option<Vec<f64>>> = std::thread::scope(|s| {
-        let fios: Vec<_> = (0..3).map(|c| s.spawn(move || canal(c))).collect();
+        let fios: Vec<_> = (0..N).map(|c| s.spawn(move || canal(c))).collect();
         fios.into_iter()
             .map(|f| f.join().expect("um canal do miolo"))
             .collect()
     });
-    let mut u = vec![[0.0; 3]; n];
+    let mut u = vec![[0.0; N]; n];
     for (c, x) in xs.into_iter().enumerate() {
         for (uk, xk) in u.iter_mut().zip(x.unwrap_or_else(|| vec![0.0; n])) {
             uk[c] = xk;

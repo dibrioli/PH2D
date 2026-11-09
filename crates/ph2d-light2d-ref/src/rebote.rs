@@ -120,6 +120,7 @@ pub struct Rebote {
     /// ⭐ W5h: o miolo dos opacos (resolvido na 1.ª pergunta de dentro).
     op_miolo: OpcoesDoMiolo,
     miolo: std::sync::OnceLock<Option<Miolo>>,
+    miolo_n: std::sync::OnceLock<Option<Miolo<9>>>,
 }
 
 impl Rebote {
@@ -135,7 +136,7 @@ impl Rebote {
         let (elementos, todos) = partir(&objetos, op.passo_m);
         // As linhas de cada elemento (a matriz), uma vez: cada rebote é só o produto.
         let linhas = em_paralelo(&todos, |e| {
-            linha(&objetos, &pontuais, ceu, &elementos, e.fora)
+            linha(&objetos, &pontuais, ceu, &elementos, e.fora, false)
         });
         let mut radiancia = vec![[0.0; 3]; todos.len()];
         let mut residuo = 0.0;
@@ -164,6 +165,7 @@ impl Rebote {
             residuo,
             op_miolo: MIOLO_PADRAO,
             miolo: std::sync::OnceLock::new(),
+            miolo_n: std::sync::OnceLock::new(),
         }
     }
 
@@ -172,6 +174,7 @@ impl Rebote {
     pub fn com_miolo(mut self, op: OpcoesDoMiolo) -> Self {
         self.op_miolo = op;
         self.miolo = std::sync::OnceLock::new();
+        self.miolo_n = std::sync::OnceLock::new();
         self
     }
 
@@ -179,11 +182,25 @@ impl Rebote {
     #[must_use]
     pub fn fluencia(&self, ponto: [f64; 2]) -> [f64; 3] {
         let fora = |q| {
-            let l = linha(&self.objetos, &self.pontuais, self.ceu, &self.elementos, q);
+            let l = linha(
+                &self.objetos,
+                &self.pontuais,
+                self.ceu,
+                &self.elementos,
+                q,
+                false,
+            );
             aplicar(&l, &self.radiancia)
         };
         let transmitida = |q| {
-            let l = linha_sem_projetar(&self.objetos, &self.pontuais, self.ceu, &self.elementos, q);
+            let l = linha_sem_projetar(
+                &self.objetos,
+                &self.pontuais,
+                self.ceu,
+                &self.elementos,
+                q,
+                false,
+            );
             aplicar(&l, &self.radiancia)
         };
         crate::no_miolo(
@@ -202,6 +219,55 @@ impl Rebote {
         self.fluencia(ponto).map(|f| f / TAU)
     }
 
+    fn fluencia_e_momento(&self, ponto: [f64; 2]) -> [f64; 9] {
+        let fora = |q| {
+            let l = linha(
+                &self.objetos,
+                &self.pontuais,
+                self.ceu,
+                &self.elementos,
+                q,
+                true,
+            );
+            aplicar_n(&l, &self.radiancia)
+        };
+        let transmitida = |q| {
+            let l = linha_sem_projetar(
+                &self.objetos,
+                &self.pontuais,
+                self.ceu,
+                &self.elementos,
+                q,
+                true,
+            );
+            aplicar_n(&l, &self.radiancia)
+        };
+        crate::no_miolo(
+            &self.objetos,
+            self.op_miolo,
+            &self.miolo_n,
+            ponto,
+            &fora,
+            &transmitida,
+        )
+    }
+
+    /// O momento angular da luz em `ponto` com os rebotes (ver [`crate::Gabarito::momento`]).
+    #[must_use]
+    pub fn momento(&self, ponto: [f64; 2]) -> [[f64; 3]; 2] {
+        crate::separa(self.fluencia_e_momento(ponto)).1
+    }
+
+    /// A luz num receptor de normal `n_xy`, com os rebotes: `(F + n_xy·M)/2π`; `n_xy = 0` é
+    /// [`Self::luz_em`] (o mesmo bit).
+    #[must_use]
+    pub fn luz_em_n(&self, ponto: [f64; 2], n_xy: [f64; 2]) -> [f64; 3] {
+        if crate::de_frente(n_xy) {
+            return self.luz_em(ponto);
+        }
+        crate::cardioide(self.fluencia_e_momento(ponto), n_xy)
+    }
+
     /// A maior mudança de radiância de um elemento no ÚLTIMO rebote (0 sem rebotes).
     #[must_use]
     pub fn residuo(&self) -> f64 {
@@ -213,6 +279,19 @@ impl Rebote {
     pub fn n_elementos(&self) -> usize {
         self.radiancia.len()
     }
+}
+
+/// `[F; M]` com os rebotes: `aplicar` e o momento de cada peso × a radiância do elemento.
+fn aplicar_n(l: &Linha, radiancia: &[[f64; 3]]) -> [f64; 9] {
+    let f = aplicar(l, radiancia);
+    let mut m = l.momento;
+    for &(e, w) in &l.pesos_m {
+        for c in 0..3 {
+            m[0][c] += w[0] * radiancia[e][c];
+            m[1][c] += w[1] * radiancia[e][c];
+        }
+    }
+    crate::junta(f, m)
 }
 
 /// `direto + Σ peso · L(elemento)`.

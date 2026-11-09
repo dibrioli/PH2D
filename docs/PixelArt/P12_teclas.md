@@ -99,6 +99,28 @@ como o Painter e o Vector): `M` tema (`input_handlers.rs:148`) · `B` colliders 
 (`:172`) · `T` tokens (`:194`) · `L` timeline (`handlers_teclas_editor.rs:134`) · `K` keyframe
 (`:152`) · `F`/`Home` enquadrar (`:47`) · `Space` tocar (`:86`) · setas (Flip, `:110`).
 
+**A lei é um CENSO** (U3, `crates/ph2d-pixel-keys/tests/the_app_keys_census.rs`): as teclas do app
+lêem-se dos braços `KeyCode::…` da cadeia da shell que corre na aba do Pixel (`keyboard.rs`,
+`posse_do_jogo.rs`, `keyboard_files.rs`, `keyboard_timeline.rs`, `keyboard_hierarchy.rs`,
+`input_handlers.rs`, `handlers_teclas_editor.rs`), com os modificadores que o braço e os `if` à
+volta exigem e as `LETRAS_SOLTAS` de `letra_solta.rs`. Toda tecla de fábrica que casa uma delas
+está em `RESERVED_GLOBAL`, `SAME_MEANING`, `SHADOWED` ou `OWNER_EXCEPTIONS`; toda linha de
+`RESERVED_GLOBAL`/`SHADOWED` tem de ainda casar uma tecla do app. Fora do censo: `keyboard_cadeia.rs`
+(vetor e Motion, só com a tool deles viva) e o `keymap.rs` do grafo (só com o cursor no grafo).
+
+**`SHADOWED`** (a tabela, com onde e porquê) junta às letras de cena acima o que o censo achou sem
+lista: `Ctrl+D`/`Ctrl+Shift+D` (duplicar a linha da Hierarquia, `keyboard_hierarchy.rs:141`, só com
+o cursor sobre ela; duplicar chaves do dope-sheet, `keyboard_timeline.rs:136`) — no canvas do Pixel
+é Deselect/Reselect, como no Aseprite; ⚠️ hoje o Pixel toma-o mesmo com o cursor sobre a Hierarquia
+(o Pixel tem o teclado antes da cadeia) · `,`/`.` (`handlers_teclas_editor.rs:91`): o MESMO verbo
+(um quadro), no relógio do sprite, dentro da tag · `Ctrl+R`/`Ctrl+E` (inverter/distribuir chaves,
+`keyboard_timeline.rs:140`/`:145`) · `Backspace`/`Shift+Del` (apagar linha/chaves, `:140`/`:78`) ·
+`Ctrl+Shift+C/X/V` (o editor de áudio e o dope-sheet ignoram o Shift, `handlers_teclas_editor.rs:172`,
+`keyboard_timeline.rs:129`) · `Ctrl+Alt+Shift+K` (o braço do `Ctrl+K` ignora Shift/Alt; o `Ctrl+K`
+continua reservado) · `Space+Tab` (o braço do `Tab` ignora o Espaço preso; o `Tab` continua
+reservado). Nenhuma é acção GLOBAL do app: todas são de painel, de selecção ou letra de cena, por
+isso nenhuma tecla do Pixel mudou.
+
 ## 5. O ficheiro do utilizador
 
 `~/.ph2d/pixel-keys.txt`, só o que difere da fábrica (como o delta do Aseprite, O2/O3), uma linha por

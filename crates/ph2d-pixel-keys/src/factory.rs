@@ -451,3 +451,134 @@ pub const OWNER_EXCEPTIONS: &[(A, Chord, &str)] = &[
         "Tab is the app mode (owner 06/11); timeline is F4",
     ),
 ];
+
+/// Teclas de CONTEXTO do editor de cena que a aba do Pixel sombreia (o Pixel tem o teclado antes,
+/// `pixel_owns_the_keyboard`): `(tecla, onde no app, porquê)`. O censo que as deriva da shell é
+/// `tests/the_app_keys_census.rs` (`P12_teclas.md` §4).
+pub const SHADOWED: &[(Chord, &str, &str)] = &[
+    (
+        k(K::KeyM),
+        "input_handlers.rs:148 theme · input_dispatch/keyboard_timeline.rs:103 marker",
+        "scene letter; the Pixel timeline has its own markers",
+    ),
+    (
+        k(K::KeyM).shift(),
+        "input_handlers.rs:148 theme",
+        "the M arm ignores Shift",
+    ),
+    (
+        k(K::KeyB),
+        "input_handlers.rs:160 colliders",
+        "scene letter (physics outlines)",
+    ),
+    (
+        k(K::KeyB).shift(),
+        "input_handlers.rs:160 colliders",
+        "the B arm ignores Shift",
+    ),
+    (
+        k(K::KeyW),
+        "input_handlers.rs:172 physics panel",
+        "scene letter",
+    ),
+    (
+        k(K::KeyT),
+        "input_handlers.rs:194 tokens panel",
+        "scene letter",
+    ),
+    (
+        k(K::KeyL),
+        "input_dispatch/handlers_teclas_editor.rs:134 timeline panel",
+        "scene letter; the Pixel has F4 for its timeline",
+    ),
+    (
+        k(K::KeyL).shift(),
+        "input_dispatch/handlers_teclas_editor.rs:134 timeline panel",
+        "the L arm ignores Shift",
+    ),
+    (
+        k(K::KeyF),
+        "input_dispatch/handlers_teclas_editor.rs:39,47 frame selected",
+        "scene fit; the Pixel fits with Ctrl+0 (reserved)",
+    ),
+    (
+        k(K::Home),
+        "input_dispatch/handlers_teclas_editor.rs:47 frame selected",
+        "scene fit; Home is First Frame in the sprite",
+    ),
+    (
+        k(K::Comma),
+        "input_dispatch/handlers_teclas_editor.rs:91 frame step",
+        "same verb, the sprite clock: steps inside the tag",
+    ),
+    (
+        k(K::Period),
+        "input_dispatch/handlers_teclas_editor.rs:91 frame step",
+        "same verb, the sprite clock: steps inside the tag",
+    ),
+    (
+        k(K::ArrowUp),
+        "input_dispatch/handlers_teclas_editor.rs:110 Flip drawing step",
+        "only with the Flip tool, never live in the Pixel tab",
+    ),
+    (
+        k(K::ArrowDown),
+        "input_dispatch/handlers_teclas_editor.rs:110 Flip drawing step",
+        "only with the Flip tool, never live in the Pixel tab",
+    ),
+    (
+        k(K::KeyX).ctrl().shift(),
+        "input_dispatch/handlers_teclas_editor.rs:172 audio cut · input_dispatch/keyboard_timeline.rs:130 keys cut",
+        "the arms ignore Shift; Ctrl+X is same-meaning",
+    ),
+    (
+        k(K::KeyC).ctrl().shift(),
+        "input_dispatch/handlers_teclas_editor.rs:172 audio copy · input_dispatch/keyboard_timeline.rs:129 keys copy",
+        "the arms ignore Shift; Ctrl+C is same-meaning",
+    ),
+    (
+        k(K::KeyV).ctrl().shift(),
+        "input_dispatch/handlers_teclas_editor.rs:172 audio paste · input_dispatch/keyboard_timeline.rs:131 keys paste",
+        "the arms ignore Shift; Ctrl+V is same-meaning",
+    ),
+    (
+        k(K::KeyD).ctrl(),
+        "input_dispatch/keyboard_hierarchy.rs:141 duplicate row · input_dispatch/keyboard_timeline.rs:136 duplicate keys",
+        "panel verbs (pointer over Hierarchy / dope-sheet selection); Deselect in the canvas",
+    ),
+    (
+        k(K::KeyD).ctrl().shift(),
+        "input_dispatch/keyboard_hierarchy.rs:141 · input_dispatch/keyboard_timeline.rs:136",
+        "the Ctrl+D arms ignore Shift",
+    ),
+    (
+        k(K::KeyR).ctrl(),
+        "input_dispatch/keyboard_timeline.rs:140 reverse keys",
+        "dope-sheet selection only",
+    ),
+    (
+        k(K::KeyE).ctrl(),
+        "input_dispatch/keyboard_timeline.rs:145 distribute keys",
+        "dope-sheet selection only",
+    ),
+    (
+        k(K::Backspace),
+        "input_dispatch/keyboard_hierarchy.rs:140 delete row · input_dispatch/keyboard_timeline.rs:78 delete keys",
+        "panel verbs; Delete is same-meaning",
+    ),
+    (
+        k(K::Delete).shift(),
+        "input_dispatch/keyboard_hierarchy.rs:140 · input_dispatch/keyboard_timeline.rs:78",
+        "the Delete arms ignore Shift",
+    ),
+    (
+        k(K::KeyK).ctrl().alt().shift(),
+        "input_handlers.rs:137 palette",
+        "the Ctrl+K arm ignores Shift/Alt; Ctrl+K stays reserved",
+    ),
+    (
+        k(K::Tab).space(),
+        "input_handlers.rs:124 mode",
+        "the Tab arm ignores a held Space; Tab stays reserved",
+    ),
+];

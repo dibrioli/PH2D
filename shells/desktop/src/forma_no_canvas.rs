@@ -19,11 +19,15 @@ impl crate::App {
         Teclas { alt, shift }
     }
 
-    /// Alt+clique tira um ponto do «Outline»; o duplo clique numa aresta acrescenta (W5).
     pub(crate) fn forma_down(&mut self, sx: f32, sy: f32) -> bool {
         let t = self.forma_teclas();
         self.forma_porta()
-            .is_some_and(|mut p| p.desce_teclas((sx, sy), t))
+            .is_some_and(|mut p| p.desce_com((sx, sy), t))
+    }
+
+    /// O Delete tira os pontos selecionados do «Outline».
+    pub(crate) fn forma_apaga(&mut self) -> bool {
+        self.forma_porta().is_some_and(|mut p| p.apaga())
     }
 
     pub(crate) fn forma_move(&mut self, sx: f32, sy: f32) -> bool {

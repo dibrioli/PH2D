@@ -179,36 +179,23 @@ impl Porta<'_> {
 
     /// `true` = agarrou (o `Down` não segue para a seleção).
     pub fn desce(&mut self, s: (f32, f32)) -> bool {
-        self.desce_teclas(s, Teclas::default())
+        self.desce_com(s, Teclas::default())
     }
 
-    /// O `Down` com as teclas; o duplo clique mede-se aqui (dois `Down` perto, dentro de [`crate::pontos::DUPLO_MS`]).
-    pub fn desce_teclas(&mut self, s: (f32, f32), teclas: Teclas) -> bool {
-        let agora = std::time::Instant::now();
-        let mut p = self
-            .world
-            .get_resource_or_insert_with(crate::pontos::PontosNoCanvas::default);
-        let duplo = p.ultimo.is_some_and(|(t, u)| {
-            agora.duration_since(t).as_millis() <= crate::pontos::DUPLO_MS
-                && (u.0 - s.0).hypot(u.1 - s.1) <= crate::AGARRE_PX
-        });
-        p.ultimo = (!duplo).then_some((agora, s));
-        self.desce_com(s, teclas, duplo)
-    }
-
-    /// O `Down` dos pontos do «Outline» antes das alças: Alt+clique tira, duplo clique na aresta acrescenta,
-    /// o resto agarra o ponto. `true` = consumido.
-    pub fn desce_com(&mut self, s: (f32, f32), teclas: Teclas, duplo: bool) -> bool {
+    /// O `Down` dos pontos do «Outline» antes das alças. Com pontos, as alças da caixa NÃO arrastam: um clique
+    /// dentro dela é consumido (os pontos são donos do canvas). `true` = consumido.
+    pub fn desce_com(&mut self, s: (f32, f32), teclas: Teclas) -> bool {
         let Some(alvo) = editando(self.world) else {
             return false;
         };
-        if self.desce_no_ponto(alvo, s, teclas, duplo) {
-            return true;
-        }
         let Some((pose, m)) = self.forma(alvo) else {
             return false;
         };
-        let Some(alca) = alca_em(&pose, &m, &self.camera, self.window, s) else {
+        let alca = alca_em(&pose, &m, &self.camera, self.window, s);
+        if crate::pontos::do_alvo(self.world, alvo).is_some() {
+            return self.desce_no_ponto(alvo, s, teclas) || alca.is_some();
+        }
+        let Some(alca) = alca else {
             return false;
         };
         let q = pose.do_mundo(self.camera.screen_to_world(s, self.window));
@@ -226,41 +213,92 @@ impl Porta<'_> {
         true
     }
 
-    fn desce_no_ponto(&mut self, alvo: u64, s: (f32, f32), teclas: Teclas, duplo: bool) -> bool {
+    /// Alt+clique tira; Shift+clique alterna na seleção; clique seleciona e agarra; clique na aresta acrescenta e
+    /// seleciona o novo; no vazio a seleção limpa.
+    fn desce_no_ponto(&mut self, alvo: u64, s: (f32, f32), teclas: Teclas) -> bool {
         use crate::pontos as p;
         let Some((pose, m, o)) = p::do_alvo(self.world, alvo) else {
             return false;
         };
         let ecra = p::no_ecra(&pose, &m, &o, &self.camera, self.window);
         let q = pose.do_mundo(self.camera.screen_to_world(s, self.window));
-        if let Some(pt) = p::ponto_em(&ecra, s) {
+        let mut sel = self
+            .world
+            .get_resource::<p::PontosNoCanvas>()
+            .map(|x| x.selecionados.clone())
+            .unwrap_or_default();
+        let mut arrasto = None;
+        let consumido = if let Some(pt) = p::ponto_em(&ecra, s) {
             if teclas.alt {
                 if let Some(v) = p::tirado(&o.rings, pt) {
                     p::escreve(self.world, alvo, v, true);
+                    sel.clear();
                 }
-                return true;
+            } else if teclas.shift {
+                match sel.binary_search(&pt) {
+                    Ok(k) => {
+                        sel.remove(k);
+                    }
+                    Err(k) => sel.insert(k, pt),
+                }
+            } else {
+                if sel.binary_search(&pt).is_err() {
+                    sel = vec![pt];
+                }
+                let at = p::locais(&pose, &m, &o)[pt.anel][pt.i];
+                arrasto = Some(p::ArrastoDoPonto {
+                    ponto: pt,
+                    inicio: o.rings.clone(),
+                    custom: o.custom,
+                    folga: [q[0] - at[0], q[1] - at[1]],
+                    ecra0: s,
+                    ecra: s,
+                    armado: false,
+                });
             }
-            let at = p::locais(&pose, &m, &o)[pt.anel][pt.i];
-            let arrasto = p::ArrastoDoPonto {
-                ponto: pt,
-                inicio: o.rings.clone(),
-                custom: o.custom,
-                folga: [q[0] - at[0], q[1] - at[1]],
-                ecra0: s,
-                armado: false,
-            };
-            self.world
-                .get_resource_or_insert_with(p::PontosNoCanvas::default)
-                .arrasto = Some(arrasto);
-            return true;
-        }
-        if duplo && let Some((pt, _)) = p::aresta_em(&ecra, s) {
+            true
+        } else if let Some((pt, _)) = p::aresta_em(&ecra, s) {
             if let Some(v) = p::acrescentado(&o.rings, pt, p::para_q4(&pose, &m, &o, q)) {
                 p::escreve(self.world, alvo, v, true);
+                sel = vec![p::Ponto {
+                    anel: pt.anel,
+                    i: pt.i + 1,
+                }];
             }
-            return true;
+            true
+        } else {
+            sel.clear();
+            false
+        };
+        let mut x = self
+            .world
+            .get_resource_or_insert_with(p::PontosNoCanvas::default);
+        x.selecionados = sel;
+        x.arrasto = arrasto;
+        consumido
+    }
+
+    /// O Delete: tira os pontos selecionados num passo (o que deixaria um anel abaixo de 3 fica). `true` = havia
+    /// seleção (a tecla não chega a apagar o objecto).
+    pub fn apaga(&mut self) -> bool {
+        use crate::pontos as p;
+        let Some(alvo) = editando(self.world) else {
+            return false;
+        };
+        let sel = self
+            .world
+            .get_resource_mut::<p::PontosNoCanvas>()
+            .map(|mut x| std::mem::take(&mut x.selecionados))
+            .unwrap_or_default();
+        if sel.is_empty() {
+            return false;
         }
-        false
+        if let Some((_, _, o)) = p::do_alvo(self.world, alvo)
+            && let Some(v) = p::tirados(&o.rings, &sel)
+        {
+            p::escreve(self.world, alvo, v, true);
+        }
+        true
     }
 
     /// O arrasto de um ponto: a posição que cruzaria é recusada e o ponto fica na última válida.
@@ -277,6 +315,7 @@ impl Porta<'_> {
             return true;
         }
         a.armado = true;
+        a.ecra = s;
         publica_a_mao(self.world, Some(alvo));
         if let Some((pose, m, o)) = p::do_alvo(self.world, alvo) {
             let q = pose.do_mundo(self.camera.screen_to_world(s, self.window));
@@ -324,11 +363,14 @@ impl Porta<'_> {
 
     /// `true` = havia um arrasto. O desfazer pós-quadro fecha o gesto num passo.
     pub fn sobe(&mut self) -> bool {
-        let ponto = self
+        let solto = self
             .world
             .get_resource_mut::<crate::pontos::PontosNoCanvas>()
-            .and_then(|mut p| p.arrasto.take())
-            .is_some();
+            .and_then(|mut p| p.arrasto.take());
+        let ponto = solto.is_some();
+        if let Some(a) = solto.filter(|a| a.armado) {
+            self.funde(a);
+        }
         let havia = ponto
             || self
                 .world
@@ -339,6 +381,26 @@ impl Porta<'_> {
             publica_a_mao(self.world, None);
         }
         havia
+    }
+
+    /// Soltar sobre outro ponto do mesmo anel tira o arrastado (no mesmo passo do arrasto).
+    fn funde(&mut self, a: crate::pontos::ArrastoDoPonto) {
+        use crate::pontos as p;
+        let Some(alvo) = editando(self.world) else {
+            return;
+        };
+        let Some((pose, m, o)) = p::do_alvo(self.world, alvo) else {
+            return;
+        };
+        let ecra = p::no_ecra(&pose, &m, &o, &self.camera, self.window);
+        if p::alvo_da_fusao(&ecra, a.ponto, a.ecra).is_some()
+            && let Some(v) = p::tirado(&o.rings, a.ponto)
+        {
+            p::escreve(self.world, alvo, v, true);
+            if let Some(mut x) = self.world.get_resource_mut::<p::PontosNoCanvas>() {
+                x.selecionados.clear();
+            }
+        }
     }
 
     /// O `Esc`: a meio do arrasto devolve a forma do `Down`; parado, encerra a edição. `true` = consumido.

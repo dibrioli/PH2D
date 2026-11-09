@@ -1,6 +1,7 @@
-//! **Os pontos do «Outline» no canvas** (W5, plano `f2_contorno_e_formas_plano.md`): arrastar um ponto, duplo
-//! clique numa aresta acrescenta, Alt+clique tira. Só com a FORMA em edição (a entidade do `ColliderOutline`; o
-//! corpo não tem pontos). A verdade são os anéis Q4 da imagem; o gesto escreve-os inteiros e marca «Custom».
+//! **Os pontos do «Outline» no canvas** (W5, plano `f2_contorno_e_formas_plano.md`): clicar seleciona (Shift
+//! alterna), arrastar move, soltar sobre outro ponto do anel funde (o arrastado sai), clicar numa aresta acrescenta,
+//! Alt+clique e Delete tiram. Só com a FORMA em edição (a entidade do `ColliderOutline`; o corpo não tem pontos).
+//! A verdade são os anéis Q4 da imagem; o gesto escreve-os inteiros e marca «Custom».
 //!
 //! **Anéis válidos:** nenhuma aresta cruza outra (de qualquer anel), cada anel guarda o sentido e área não nula,
 //! e nunca menos de 3 pontos. O arrasto que cruzaria é RECUSADO: o ponto fica na última posição válida do gesto;
@@ -16,7 +17,7 @@ use ph2d_render::Camera2d;
 use std::sync::Arc;
 
 /// Um ponto: o anel (0 = o de fora) e o índice nele.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Ponto {
     pub anel: usize,
     pub i: usize,
@@ -30,18 +31,17 @@ pub struct ArrastoDoPonto {
     pub custom: bool,
     pub(crate) folga: [f32; 2],
     pub(crate) ecra0: (f32, f32),
+    /// O ponteiro do último `Move`: soltar sobre outro ponto funde.
+    pub ecra: (f32, f32),
     pub armado: bool,
 }
 
-/// O gesto dos pontos e o último clique (o duplo clique).
+/// O gesto dos pontos e os pontos selecionados (ordenados, sem repetição).
 #[derive(Resource, Clone, Debug, Default, PartialEq)]
 pub struct PontosNoCanvas {
     pub arrasto: Option<ArrastoDoPonto>,
-    pub(crate) ultimo: Option<(std::time::Instant, (f32, f32))>,
+    pub selecionados: Vec<Ponto>,
 }
-
-/// A janela do duplo clique.
-pub const DUPLO_MS: u128 = 400;
 
 /// A forma em edição com os seus pontos: só a entidade do `ColliderOutline` com anéis, numa forma `Outline`.
 #[must_use]
@@ -234,6 +234,40 @@ pub fn tirado(rings: &[Ring], p: Ponto) -> Option<Vec<Ring>> {
     }
     r.remove(p.i);
     validos(rings, &v).then_some(v)
+}
+
+/// Tira vários pontos, do fim para o começo de cada anel; o que deixaria um anel abaixo de 3 ou cruzaria é recusado
+/// e os outros saem. `None` = nada saiu.
+#[must_use]
+pub fn tirados(rings: &[Ring], pontos: &[Ponto]) -> Option<Vec<Ring>> {
+    let mut v = pontos.to_vec();
+    v.sort_unstable_by(|a, b| b.cmp(a));
+    v.dedup();
+    let mut cur = rings.to_vec();
+    let mut tirou = false;
+    for p in v {
+        if let Some(n) = tirado(&cur, p) {
+            cur = n;
+            tirou = true;
+        }
+    }
+    tirou.then_some(cur)
+}
+
+/// O alvo da fusão: outro ponto do MESMO anel sob o ponteiro (o arrastado não conta).
+#[must_use]
+pub fn alvo_da_fusao(ecra: &[Vec<(f32, f32)>], arrastado: Ponto, s: (f32, f32)) -> Option<Ponto> {
+    let r = ecra.get(arrastado.anel)?;
+    r.iter()
+        .enumerate()
+        .filter(|(i, _)| *i != arrastado.i)
+        .map(|(i, p)| (i, (p.0 - s.0).hypot(p.1 - s.1)))
+        .filter(|(_, d)| *d <= AGARRE_PX)
+        .min_by(|a, b| a.1.total_cmp(&b.1))
+        .map(|(i, _)| Ponto {
+            anel: arrastado.anel,
+            i,
+        })
 }
 
 /// Grava os anéis na forma (a pré-visualização é o documento; o undo pós-quadro fecha o gesto num passo).

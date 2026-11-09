@@ -46,7 +46,7 @@ fn perto(sim: &SimWorld, shape: ph2d_ecs::Entity, anel: usize, w: [f32; 2]) -> [
 fn arrasta(sim: &mut SimWorld, de: [f32; 2], para: [f32; 2]) {
     let mut bus = ActionBus::default();
     let mut p = porta(sim, &mut bus);
-    assert!(p.desce_com(ecra(de), Teclas::default(), false), "agarrou");
+    assert!(p.desce_com(ecra(de), Teclas::default()), "agarrou");
     assert!(p.move_(ecra(para), Teclas::default()));
     assert!(p.sobe());
 }
@@ -98,7 +98,7 @@ fn arrastar_um_ponto_move_o_e_a_bola_pousa_na_nova_altura() {
     {
         let mut bus = ActionBus::default();
         let mut p = porta(&mut sim, &mut bus);
-        assert!(p.desce_com(ecra(de), Teclas::default(), false));
+        assert!(p.desce_com(ecra(de), Teclas::default()));
         assert!(p.move_(ecra([de[0], de[1] + 1.0]), Teclas::default()));
         assert!(p.esc());
     }
@@ -119,12 +119,12 @@ fn arrastar_um_ponto_move_o_e_a_bola_pousa_na_nova_altura() {
     );
 }
 
-/// ⭐ (2) **Duplo clique numa aresta acrescenta o ponto ONDE se clicou; Alt+clique tira-o**; tirar um canto de
-/// fora é recusado (a diagonal cruzaria o buraco); um clique simples na aresta não acrescenta.
+/// ⭐ (2) **Um clique numa aresta acrescenta o ponto ONDE se clicou (dono 09/11); Alt+clique tira-o**; tirar um
+/// canto de fora é recusado (a diagonal cruzaria o buraco).
 /// *Mutações: `acrescentado` no índice errado ⇒ o anel cruza-se e nada entra; `tirado` sem `validos` ⇒ o canto
 /// sai.*
 #[test]
-fn duplo_clique_acrescenta_e_alt_clique_tira() {
+fn clique_na_aresta_acrescenta_e_alt_clique_tira() {
     let (_reg, mut sim, _body, shape, _db) = followed_ring();
     alterna(sim.world_mut(), shape.to_bits());
     let n = |sim: &SimWorld| outline(sim, shape).rings[0].len();
@@ -133,16 +133,10 @@ fn duplo_clique_acrescenta_e_alt_clique_tira() {
     let mut bus = ActionBus::default();
     {
         let mut p = porta(&mut sim, &mut bus);
-        let _ = p.desce_com(ecra(clique), Teclas::default(), false);
+        assert!(p.desce_com(ecra(clique), Teclas::default()));
         let _ = p.sobe();
     }
-    assert_eq!(n(&sim), n0, "um clique simples não acrescenta");
-    {
-        let mut p = porta(&mut sim, &mut bus);
-        assert!(p.desce_com(ecra(clique), Teclas::default(), true));
-        let _ = p.sobe();
-    }
-    assert_eq!(n(&sim), n0 + 1, "o duplo clique acrescentou");
+    assert_eq!(n(&sim), n0 + 1, "o clique na aresta acrescentou");
     let novo = perto(&sim, shape, 0, clique);
     assert!(
         (novo[0] - clique[0]).hypot(novo[1] - clique[1]) < 0.01,
@@ -155,14 +149,14 @@ fn duplo_clique_acrescenta_e_alt_clique_tira() {
     };
     {
         let mut p = porta(&mut sim, &mut bus);
-        assert!(p.desce_com(ecra(novo), alt, false));
+        assert!(p.desce_com(ecra(novo), alt));
         let _ = p.sobe();
     }
     assert_eq!(n(&sim), n0, "Alt+clique tirou-o");
     let canto = perto(&sim, shape, 0, [-2.0, 2.0]);
     {
         let mut p = porta(&mut sim, &mut bus);
-        assert!(p.desce_com(ecra(canto), alt, false));
+        assert!(p.desce_com(ecra(canto), alt));
         let _ = p.sobe();
     }
     assert_eq!(n(&sim), n0, "o canto não sai: a diagonal cruzaria o buraco");
@@ -178,7 +172,7 @@ fn o_arrasto_que_cruzaria_fica_na_ultima_posicao_valida() {
     let de = perto(&sim, shape, 0, [-2.0, 2.0]);
     let mut bus = ActionBus::default();
     let mut p = porta(&mut sim, &mut bus);
-    assert!(p.desce_com(ecra(de), Teclas::default(), false));
+    assert!(p.desce_com(ecra(de), Teclas::default()));
     assert!(p.move_(ecra([-2.5, 2.5]), Teclas::default()));
     assert!(p.move_(ecra([0.0, 0.0]), Teclas::default()));
     assert!(p.sobe());
@@ -203,7 +197,7 @@ fn os_pontos_so_aparecem_com_a_forma_selecionada() {
     let mut bus = ActionBus::default();
     {
         let mut p = porta(&mut sim, &mut bus);
-        let _ = p.desce_com(ecra(canto), Teclas::default(), false);
+        let _ = p.desce_com(ecra(canto), Teclas::default());
     }
     assert!(
         sim.world()
@@ -217,7 +211,7 @@ fn os_pontos_so_aparecem_com_a_forma_selecionada() {
         "a forma tem pontos"
     );
     let mut p = porta(&mut sim, &mut bus);
-    assert!(p.desce_com(ecra(canto), Teclas::default(), false));
+    assert!(p.desce_com(ecra(canto), Teclas::default()));
     assert!(
         p.world
             .get_resource::<PontosNoCanvas>()
@@ -267,4 +261,141 @@ fn editar_pontos_e_custom_e_o_fit_retraca() {
         ph2d_physics_outline::follows(sim.world(), shape),
         Some(true)
     );
+}
+
+fn clica(sim: &mut SimWorld, w: [f32; 2], t: Teclas) -> bool {
+    let mut bus = ActionBus::default();
+    let mut p = porta(sim, &mut bus);
+    let c = p.desce_com(ecra(w), t);
+    let _ = p.sobe();
+    c
+}
+
+fn selecionados(sim: &SimWorld) -> usize {
+    sim.world()
+        .get_resource::<PontosNoCanvas>()
+        .map_or(0, |p| p.selecionados.len())
+}
+
+fn apaga(sim: &mut SimWorld) -> bool {
+    let mut bus = ActionBus::default();
+    porta(sim, &mut bus).apaga()
+}
+
+/// ⭐ (6) **Selecionar e apagar** (dono 09/11): o clique seleciona e a seleção fica depois de soltar; Shift alterna;
+/// o vazio limpa; o Delete tira TODOS os selecionados; um anel nunca desce de 3 (o excesso fica).
+/// *Mutações: `apaga` tirar só o 1.º ⇒ sobra um; `tirados` sem o piso de 3 ⇒ o buraco vira segmento.*
+#[test]
+fn clicar_seleciona_shift_alterna_o_vazio_limpa_e_delete_tira_os_selecionados() {
+    let (_reg, mut sim, _body, shape, _db) = followed_ring();
+    alterna(sim.world_mut(), shape.to_bits());
+    let n = |sim: &SimWorld, k: usize| outline(sim, shape).rings[k].len();
+    let n0 = n(&sim, 0);
+    let (a, b) = ([-0.5, 2.0], [0.5, 2.0]);
+    assert!(clica(&mut sim, a, Teclas::default()));
+    assert!(clica(&mut sim, b, Teclas::default()));
+    assert_eq!(n(&sim, 0), n0 + 2, "dois pontos novos na aresta de cima");
+    assert_eq!(selecionados(&sim), 1, "o ponto novo nasce selecionado");
+    let shift = Teclas {
+        shift: true,
+        ..Teclas::default()
+    };
+    assert!(clica(&mut sim, a, shift));
+    assert_eq!(selecionados(&sim), 2, "Shift acrescenta à seleção");
+    assert!(clica(&mut sim, a, shift));
+    assert_eq!(selecionados(&sim), 1, "Shift de novo tira");
+    assert!(!clica(&mut sim, [0.0, 0.0], Teclas::default()) || selecionados(&sim) == 0);
+    assert_eq!(selecionados(&sim), 0, "o vazio limpa");
+    assert!(!apaga(&mut sim), "sem seleção o Delete não é dos pontos");
+    assert!(clica(&mut sim, a, Teclas::default()));
+    assert!(clica(&mut sim, b, shift));
+    assert!(apaga(&mut sim));
+    assert_eq!(n(&sim, 0), n0, "o Delete tirou os dois");
+    assert_eq!(selecionados(&sim), 0);
+    // O buraco: os quatro cantos selecionados, sai um só — o anel fica com 3.
+    assert_eq!(n(&sim, 1), 4, "o buraco é um quadrado");
+    for (k, w) in [[-1.0, -1.0], [1.0, -1.0], [1.0, 1.0], [-1.0, 1.0]]
+        .into_iter()
+        .enumerate()
+    {
+        let t = if k == 0 { Teclas::default() } else { shift };
+        let w = perto(&sim, shape, 1, w);
+        assert!(clica(&mut sim, w, t));
+    }
+    assert_eq!(selecionados(&sim), 4);
+    assert!(apaga(&mut sim));
+    assert_eq!(n(&sim, 1), 3, "um anel nunca desce de 3");
+}
+
+/// ⭐ (7) **Soltar um ponto sobre outro funde** (dono 09/11): o arrastado sai; soltar longe só move.
+/// *Mutação: `funde` sem tirar ⇒ o anel fica com o ponto.*
+#[test]
+fn soltar_um_ponto_sobre_outro_tira_o_arrastado() {
+    let (_reg, mut sim, _body, shape, _db) = followed_ring();
+    alterna(sim.world_mut(), shape.to_bits());
+    let n = |sim: &SimWorld| outline(sim, shape).rings[0].len();
+    assert!(clica(&mut sim, [0.0, 2.0], Teclas::default()));
+    let n1 = n(&sim);
+    let canto = perto(&sim, shape, 0, [2.0, 2.0]);
+    arrasta(&mut sim, [0.0, 2.0], [1.0, 2.0]);
+    assert_eq!(n(&sim), n1, "soltar longe só move");
+    arrasta(&mut sim, [1.0, 2.0], canto);
+    assert_eq!(n(&sim), n1 - 1, "soltar sobre o canto tirou o arrastado");
+    assert_eq!(perto(&sim, shape, 0, [2.0, 2.0]), canto, "o canto fica");
+}
+
+/// ⭐ (8) **Com os pontos, a caixa da forma não arrasta** (dono 09/11): o miolo e as alças consomem o clique e nada
+/// muda. *Mutação: `desce_com` armar a alça no Outline ⇒ o miolo move o Offset.*
+#[test]
+fn com_os_pontos_a_caixa_da_forma_nao_arrasta() {
+    use ph2d_editor_core::action_bus::EditorAction;
+    let (_reg, mut sim, _body, shape, _db) = followed_ring();
+    alterna(sim.world_mut(), shape.to_bits());
+    let mut bus = ActionBus::default();
+    {
+        let mut p = porta(&mut sim, &mut bus);
+        assert!(
+            p.desce_com(ecra([0.0, 0.0]), Teclas::default()),
+            "consumido"
+        );
+        let _ = p.move_(ecra([1.5, 0.5]), Teclas::default());
+        let _ = p.move_(ecra([3.0, 1.0]), Teclas::default());
+        let _ = p.sobe();
+    }
+    let acoes: Vec<_> = bus.drain().collect();
+    assert!(
+        !acoes
+            .iter()
+            .any(|a| matches!(a, EditorAction::InspectorPhysicsEdit { .. })),
+        "a caixa não escreveu: {acoes:?}"
+    );
+}
+
+/// ⭐ (9) **Os indicadores**: sob o ponto = esse ponto; sobre a aresta = o «+» no sítio projetado; a meio do
+/// arrasto sobre outro ponto = o alvo da fusão. *Mutação: `estados` sem o `+` ⇒ nenhum fantasma.*
+#[test]
+fn os_indicadores_seguem_o_ponteiro() {
+    use ph2d_shape_handles::pontos::no_ecra;
+    use ph2d_shape_handles::tinta_pontos::estados;
+    let (_reg, mut sim, _body, shape, _db) = followed_ring();
+    alterna(sim.world_mut(), shape.to_bits());
+    let ecra_de = |sim: &SimWorld| {
+        let (pose, m, o) = do_alvo(sim.world(), shape.to_bits()).expect("pontos");
+        no_ecra(&pose, &m, &o, &cam(), WIN)
+    };
+    let canto = perto(&sim, shape, 0, [2.0, 2.0]);
+    let e = ecra_de(&sim);
+    assert!(estados(sim.world(), &e, ecra(canto)).sob.is_some());
+    let mais = estados(sim.world(), &e, ecra([0.3, 2.02])).mais.expect("+");
+    let alvo = ecra([0.3, 2.0]);
+    assert!((mais.0 - alvo.0).hypot(mais.1 - alvo.1) < 0.5, "{mais:?}");
+    assert!(clica(&mut sim, [0.0, 2.0], Teclas::default()));
+    let mut bus = ActionBus::default();
+    let mut p = porta(&mut sim, &mut bus);
+    assert!(p.desce_com(ecra([0.0, 2.0]), Teclas::default()));
+    assert!(p.move_(ecra([1.0, 2.0]), Teclas::default()));
+    let e = ecra_de(&sim);
+    let est = estados(sim.world(), &e, ecra(canto));
+    assert!(est.fusao.is_some(), "o canto é alvo da fusão");
+    assert!(estados(sim.world(), &e, ecra([1.0, 2.0])).fusao.is_none());
 }

@@ -106,6 +106,16 @@ impl App {
         {
             return true;
         }
+        if state == ElementState::Pressed
+            && matches!(
+                physical_key,
+                PhysicalKey::Code(KeyCode::Delete | KeyCode::Backspace)
+            )
+            && !self.hero_ref().is_some_and(|h| h.text_entry_focused())
+            && self.forma_apaga()
+        {
+            return true;
+        }
 
         // Shape Builder: Escape DESMARCA o que foi pintado, sem tocar na arte. Vem antes do
         // Escape do Pen porque um modo exclui o outro, e este consome só quando há

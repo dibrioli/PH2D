@@ -8,6 +8,7 @@ mod ponteiro;
 pub mod pontos;
 mod roteiro;
 pub mod tinta;
+pub mod tinta_pontos;
 
 pub use ponteiro::{
     CursorDaAlca, FormaNoCanvas, Porta, a_meio, alterna, ativo, clique_parado, cursor_em, editando,

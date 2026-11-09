@@ -163,7 +163,7 @@ fn cada_gesto_dos_pontos_do_outline_e_um_passo_de_desfazer() {
     let (d, n1) = gesto(
         &mut sim,
         &|po, i| match i {
-            0 => po.desce_com(s0, t, false),
+            0 => po.desce_com(s0, t),
             1 => po.move_(s1, t),
             _ => po.move_(s2, t),
         },
@@ -173,15 +173,34 @@ fn cada_gesto_dos_pontos_do_outline_e_um_passo_de_desfazer() {
     assert_eq!(n1, 1, "o arrasto do ponto tem de ser UM passo");
     let v = pts(&sim);
     let meio = ecra([(v[1][0] + v[2][0]) / 2.0, (v[1][1] + v[2][1]) / 2.0]);
-    let (d, n2) = gesto(&mut sim, &|po, _| po.desce_com(meio, t, true), 1);
+    let (d, n2) = gesto(&mut sim, &|po, _| po.desce_com(meio, t), 1);
     fotos.push(d);
     assert_eq!(pts(&sim).len(), 5, "o duplo clique acrescentou");
     assert_eq!(n2, 2, "o duplo clique é UM passo");
     let alt = Teclas { alt: true, ..t };
-    let (d, n3) = gesto(&mut sim, &|po, _| po.desce_com(meio, alt, false), 1);
+    let (d, n3) = gesto(&mut sim, &|po, _| po.desce_com(meio, alt), 1);
     fotos.push(d);
     assert_eq!(pts(&sim).len(), 4, "o Alt+clique tirou");
     assert_eq!(n3, 3, "o Alt+clique é UM passo");
+    let (d, _) = gesto(&mut sim, &|po, _| po.desce_com(meio, t), 1);
+    fotos.push(d);
+    let (d, n5) = gesto(&mut sim, &|po, _| po.apaga(), 1);
+    fotos.push(d);
+    assert_eq!((pts(&sim).len(), n5), (4, 5), "o Delete é UM passo");
+    let (d, _) = gesto(&mut sim, &|po, _| po.desce_com(meio, t), 1);
+    fotos.push(d);
+    let alvo = ecra(pts(&sim)[3]);
+    let (d, n7) = gesto(
+        &mut sim,
+        &|po, i| match i {
+            0 => po.desce_com(meio, t),
+            1 => po.move_(((meio.0 + alvo.0) / 2.0, (meio.1 + alvo.1) / 2.0), t),
+            _ => po.move_(alvo, t),
+        },
+        3,
+    );
+    fotos.push(d);
+    assert_eq!((pts(&sim).len(), n7), (4, 7), "a fusão é UM passo");
     let mut agora = fotos.pop().expect("foto");
     while let Some(antes) = fotos.pop() {
         let (volta, _) = fila

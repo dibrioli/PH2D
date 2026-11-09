@@ -261,3 +261,44 @@ fn a_escolha_do_outline_no_corpo_traca_pelo_asset_db() {
     let o = sim.world().get::<ColliderOutline>(shape).expect("traçado");
     assert_eq!((o.rings.len(), o.picture_px), (2, [32, 32]));
 }
+
+/// (1) **Folha que não divide certo** (10×4 px, 3 colunas): a célula é a do motor (`SourceCells`,
+/// canto `floor`, lado `ceil` = 4 px) e a última coluna de pixels (x = 9) entra no contorno.
+/// *Mutação: o lado por baixo (3 px) ⇒ a coluna 9 fica de fora.*
+#[test]
+fn a_folha_que_nao_divide_certo_traca_a_ultima_coluna() {
+    let mut sim = SimWorld::new();
+    let px = img(10, 4, |x, _| x == 9);
+    let grid = SpriteGrid {
+        hframes: 3,
+        vframes: 1,
+        frame: 0,
+        sheet: 0,
+    };
+    let e = sim
+        .world_mut()
+        .spawn((Sprite::atlas(0, [1.0, 1.0], [1.0; 4]), grid))
+        .id();
+    let pic = |_| {
+        Some(Picture {
+            w: 10,
+            h: 4,
+            rgba: (&px[..]).into(),
+        })
+    };
+    let frames = traced_frames(sim.world(), e);
+    let m = frames_mask(sim.world(), e, &frames, pic, 128).expect("máscara");
+    assert_eq!([m.w, m.h], [4, 4], "a célula do motor: ceil(10/3) × 4");
+    assert!((0..4).all(|y| m.get(3, y)), "a coluna 9 da folha");
+    let asked = ColliderOutline {
+        detail_q4: 4,
+        ..ColliderOutline::default()
+    };
+    let o = ph2d_outline_trace::Outline {
+        rings: trace(&m, &asked).outline.rings.to_vec(),
+    };
+    assert!(
+        o.contains_q4([3 * 16 + 8, 2 * 16 + 8]),
+        "o contorno cobre-a"
+    );
+}

@@ -101,6 +101,16 @@ impl SourceCells {
             (self.cell[1].ceil() as u32).max(1),
         ]
     }
+
+    /// ⭐ **Os pixels inteiros da célula `k`** `[x, y, w, h]`: o canto por baixo (`floor`) e o lado
+    /// [`Self::cell_px`] (`ceil`) — a última célula de uma folha que não divide certo chega à borda
+    /// da imagem (o contorno da física e o bind leem a mesma régua).
+    #[must_use]
+    pub fn cell_rect_px(&self, k: u32) -> [u32; 4] {
+        let o = self.cell_origin(k);
+        let [w, h] = self.cell_px();
+        [o[0].max(0.0) as u32, o[1].max(0.0) as u32, w, h]
+    }
 }
 
 #[cfg(test)]

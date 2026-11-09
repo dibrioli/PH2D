@@ -95,19 +95,32 @@ pub fn frames_mask<'a>(
         let (Some(p), Some([cols, rows])) = (picture(k), grid_of(world, owner, k)) else {
             continue;
         };
-        let (cw, ch) = (p.w / cols, p.h / rows);
-        if cw == 0 || ch == 0 || p.rgba.len() < (p.w * p.h * 4) as usize {
+        if p.rgba.len() < (p.w as usize) * (p.h as usize) * 4 {
             continue;
         }
-        let (x0, y0) = ((cell % cols) * cw, (cell / cols).min(rows - 1) * ch);
-        let mut rgba = Vec::with_capacity((cw * ch * 4) as usize);
-        for y in y0..y0 + ch {
-            let at = ((y * p.w + x0) * 4) as usize;
-            rgba.extend_from_slice(&p.rgba[at..at + (cw * 4) as usize]);
-        }
-        masks.push(Mask::from_rgba8(cw, ch, &rgba, cutoff));
+        // A célula que o quad desenha: a régua do motor (região na folha 0, `floor`/`ceil`).
+        let region = (k == 0)
+            .then(|| world.get::<ph2d_ecs::SpriteRegion>(owner).map(|r| r.rect))
+            .flatten();
+        let Some(cells) = ph2d_render::SourceCells::of([p.w, p.h], region, cols, rows) else {
+            continue;
+        };
+        let r = cells.cell_rect_px(cell);
+        masks.push(Mask::from_rgba8(r[2], r[3], &crop(&p, r), cutoff));
     }
     Mask::union(&masks)
+}
+
+/// Os pixels `[x, y, w, h]` de `p`; o que cai fora da imagem é transparente.
+fn crop(p: &Picture<'_>, [x0, y0, w, h]: [u32; 4]) -> Vec<u8> {
+    let mut out = vec![0u8; (w as usize) * (h as usize) * 4];
+    for y in 0..h.min(p.h.saturating_sub(y0)) {
+        let n = w.min(p.w.saturating_sub(x0)) as usize * 4;
+        let at = (((y0 + y) * p.w + x0) * 4) as usize;
+        let to = (y * w * 4) as usize;
+        out[to..to + n].copy_from_slice(&p.rgba[at..at + n]);
+    }
+    out
 }
 
 /// **O traço**: `trace_fitted` com o Detail e o Ignore specks under de `asked`; os anéis e os

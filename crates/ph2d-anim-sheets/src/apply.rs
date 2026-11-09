@@ -210,14 +210,14 @@ pub fn add_sheet(
 /// ⭐ **Escolher ou soltar uma imagem no cartão com uma folha extra à vista troca ESSA folha** (dono 09/11: «SIM»). O
 /// pixel guarda o tamanho na tela e o Pivot a fração da caixa opaca da imagem que sai (a lei do Load sheet, com a
 /// folha visível no lugar da `0`); o corte fica se a imagem nova se divide nele, senão é o que ela propõe. As
-/// animações, a visível e as outras folhas ficam. `None` = a visível é a `0` (a porta de sempre); `Some(mudou)` senão.
+/// animações, a visível e as outras folhas ficam. `None` = a visível é a `0` (a porta de sempre).
 pub fn replace_shown_sheet(
     world: &mut World,
     e: Entity,
     db: &AssetDb,
     atlas: &BTreeMap<u32, AssetId>,
     id: AssetId,
-) -> Option<bool> {
+) -> Option<ShownSwap> {
     let k = shown_sheet(world, e);
     let velha = world.get::<SpriteSheets>(e)?.sheet(k).copied()?;
     let flip = world
@@ -226,7 +226,7 @@ pub fn replace_shown_sheet(
     let (Some((px_velho, rgba_velho)), Some((px, mut rgba))) =
         (pixels_of(velha.asset, db, atlas), pixels_of(id, db, atlas))
     else {
-        return Some(false);
+        return Some(ShownSwap::Same);
     };
     let corte = [velha.hframes.max(1), velha.vframes.max(1)];
     let opaque = (rgba_velho.len() == px_velho[0] as usize * px_velho[1] as usize * 4)
@@ -264,11 +264,53 @@ pub fn replace_shown_sheet(
     let mut sheets = world.get::<SpriteSheets>(e)?.clone();
     let lugar = sheets.0.get_mut(usize::from(k) - 1)?;
     if *lugar == nova {
-        return Some(false);
+        return Some(ShownSwap::Same);
     }
     *lugar = nova;
     world.entity_mut(e).insert(sheets);
-    Some(true)
+    Some(if grid == corte {
+        ShownSwap::Kept(corte)
+    } else {
+        ShownSwap::Recut {
+            old: corte,
+            new: grid,
+        }
+    })
+}
+
+/// O aviso de uma troca da folha à vista: o que ficou da imagem de antes e pode não servir à nova (dono 09/11).
+#[must_use]
+pub fn swap_toast(troca: ShownSwap) -> ph2d_editor_core::Toast {
+    use ph2d_editor_core::Toast;
+    use ph2d_i18n::{tr, tr_with};
+    match troca {
+        ShownSwap::Same => Toast::info(tr("shell.asset_drop_apply.sheet_not_replaced")),
+        ShownSwap::Kept([c, r]) => Toast::warning(tr_with(
+            "shell.asset_drop_apply.sheet_kept_settings",
+            &[("cols", &c), ("rows", &r)],
+        )),
+        ShownSwap::Recut { old, new } => Toast::warning(tr_with(
+            "shell.asset_drop_apply.sheet_recut",
+            &[
+                ("cols", &new[0]),
+                ("rows", &new[1]),
+                ("old_cols", &old[0]),
+                ("old_rows", &old[1]),
+            ],
+        )),
+    }
+}
+
+/// Em que deu trocar a imagem da folha à vista — o aviso ao artista diz o que pode não servir à imagem nova (dono 09/11).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ShownSwap {
+    /// Nada mudou: a mesma imagem, ou ilegível.
+    Same,
+    /// A imagem nova divide-se no corte `[colunas, linhas]` de antes, e ficou com ele, o tamanho e o Pivot.
+    Kept([u32; 2]),
+    /// A imagem nova não se divide no corte de antes e leva o que ela propõe: as animações podem apontar a quadros
+    /// que já não existem.
+    Recut { old: [u32; 2], new: [u32; 2] },
 }
 
 /// ⭐ A folha extra desenha-se SEMPRE em alfa recto (`sheet_sprite`), mas um recurso da biblioteca guarda os bytes

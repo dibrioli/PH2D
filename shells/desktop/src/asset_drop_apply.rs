@@ -56,18 +56,14 @@ impl crate::App {
             })
             .max(crate::EPS_PIXELS_PER_METER);
         // Com uma folha extra à vista, a imagem troca ESSA folha (dono 09/11).
-        if let Some(mudou) = ph2d_anim_sheets::apply::replace_shown_sheet(
+        if let Some(troca) = ph2d_anim_sheets::apply::replace_shown_sheet(
             gfx.sim.world_mut(),
             ph2d_ecs::Entity::from_bits(entity_bits),
             &gfx.asset_db,
             &gfx.atlas_asset_map,
             AssetId::from_digest(asset),
         ) {
-            gfx.toasts.push(if mudou {
-                ph2d_editor_core::Toast::success(tr("shell.asset_drop_apply.texture_applied"))
-            } else {
-                ph2d_editor_core::Toast::info(tr("shell.asset_drop_apply.sheet_not_replaced"))
-            });
+            gfx.toasts.push(ph2d_anim_sheets::apply::swap_toast(troca));
             return;
         }
         let renderer = &mut gfx.renderer;

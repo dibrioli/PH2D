@@ -83,6 +83,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.asset_drop_apply.sheet_not_replaced" => {
             "The sheet on view was not replaced: the image is the same or could not be read"
         }
+        "shell.asset_drop_apply.sheet_kept_settings" => {
+            "New image on this sheet. It kept the old cut ({cols} × {rows}), size and pivot: check that frames, pivot and animations still fit"
+        }
+        "shell.asset_drop_apply.sheet_recut" => {
+            "New image on this sheet, cut {cols} × {rows} (was {old_cols} × {old_rows}). Animations may point to frames that no longer exist: check them"
+        }
         "shell.asset_index_build.pieces" => "{n} {n?piece|pieces}",
         "shell.asset_index_build.n1_piece" => "1 piece",
         "shell.asset_index_build.component" => "Prefab {stable_id}",

@@ -1,9 +1,9 @@
 //! ⭐ **O canvas diz o USO da imagem** (smoke do dono 09/11: *«belos indicativos visuais de que estamos lidando com
 //! Animated ou Repeated ou Region… molduras por quadro, moldura global com label»*).
 //!
-//! Para cada objecto selecionado que não é Still: uma moldura POR FORA do quad, na cor do uso, com uma etiqueta
-//! na quina superior-esquerda (`Animated · 6 × 2`). Em Edit a folha inteira está à vista ([`ph2d_ecs::imagem_aberta`]):
-//! a moldura envolve-a e cada quadro ganha a sua, com o quadro que toca em traço grosso.
+//! Só com a folha INTEIRA à vista ([`ph2d_ecs::imagem_aberta`]: Edit, a pintura): uma moldura por fora dela, na cor do
+//! uso, com a etiqueta (`Animated · 6 × 2`) na quina superior-esquerda, e a moldura de cada quadro, com o que toca em
+//! traço grosso. ⛔ Sobre o resultado final no canvas a etiqueta atrapalha (dono 09/11, com foto): lá não se desenha.
 //!
 //! Em pixels de TELA (a lei do [`ph2d_sheet_bounds::overlay`]): é legenda, e lê-se igual em qualquer zoom.
 
@@ -86,27 +86,16 @@ struct Desenho {
 }
 
 fn desenho(world: &World, e: Entity, ppm: f32) -> Option<Desenho> {
-    if ph2d_ecs::imagem_aberta(world, e).is_some() {
-        let (spr, grid, toca) = folha(world, e)?;
-        let l = ph2d_sprite_screen::sheet_lattice::lattice(&spr, grid, ppm, true)?;
-        let viva = toca.then_some((l.live_cx, l.live_cy));
-        return Some(Desenho {
-            x0: l.x0,
-            y0: l.y0,
-            w: l.w,
-            h: l.h,
-            celulas: Some((grid.hframes.max(1), grid.vframes.max(1), viva)),
-        });
-    }
-    let (spr, _) = ph2d_render::drawn_geometry(world, e)?;
-    let c = spr.resolve_anchor(ppm);
-    let (w, h) = (f64::from(spr.size[0]), f64::from(spr.size[1]));
-    (w > 0.0 && h > 0.0).then_some(Desenho {
-        x0: f64::from(c[0]) - w * 0.5,
-        y0: f64::from(c[1]) + h * 0.5,
-        w,
-        h,
-        celulas: None,
+    ph2d_ecs::imagem_aberta(world, e)?;
+    let (spr, grid, toca) = folha(world, e)?;
+    let l = ph2d_sprite_screen::sheet_lattice::lattice(&spr, grid, ppm, true)?;
+    let viva = toca.then_some((l.live_cx, l.live_cy));
+    Some(Desenho {
+        x0: l.x0,
+        y0: l.y0,
+        w: l.w,
+        h: l.h,
+        celulas: Some((grid.hframes.max(1), grid.vframes.max(1), viva)),
     })
 }
 

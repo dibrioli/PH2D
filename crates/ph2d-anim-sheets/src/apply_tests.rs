@@ -321,7 +321,7 @@ fn a_imagem_escolhida_troca_a_folha_a_vista() {
     let nova = db.insert_image_rgba8(128, 64, opaca(128, 64));
     assert_eq!(
         replace_shown_sheet(&mut w, e, &db, &BTreeMap::new(), nova),
-        Some(true)
+        Some(ShownSwap::Kept([velha.hframes, velha.vframes]))
     );
     let s = w.get::<SpriteSheets>(e).unwrap().0[0];
     assert_eq!(s.asset, nova);
@@ -340,14 +340,19 @@ fn a_imagem_escolhida_troca_a_folha_a_vista() {
     assert_eq!(shown_sheet(&w, e), 1);
     assert_eq!(
         replace_shown_sheet(&mut w, e, &db, &BTreeMap::new(), nova),
-        Some(false),
+        Some(ShownSwap::Same),
         "a mesma"
     );
-    // Uma imagem que não se divide no corte leva o corte que ela propõe.
+    // Uma imagem que não se divide no corte leva o corte que ela propõe — e o aviso di-lo.
+    w.get_mut::<SpriteSheets>(e).unwrap().0[0].hframes = 2;
     let torta = db.insert_image_rgba8(33, 32, opaca(33, 32));
     assert_eq!(
         replace_shown_sheet(&mut w, e, &db, &BTreeMap::new(), torta),
-        Some(true)
+        Some(ShownSwap::Recut {
+            old: [2, velha.vframes],
+            new: [1, 1]
+        }),
+        "o aviso diz que o corte mudou"
     );
     let s = w.get::<SpriteSheets>(e).unwrap().0[0];
     assert_eq!((s.hframes, s.vframes), (1, 1));

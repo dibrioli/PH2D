@@ -47,7 +47,8 @@ fn cada_uso_tem_a_sua_cor() {
     assert_eq!(use_color(ImageUse::Still), None);
 }
 
-/// ⭐ Em Edit a moldura envolve a folha INTEIRA e conta os quadros; fora dele, o quad de uma célula.
+/// ⭐ Em Edit a moldura envolve a folha INTEIRA e conta os quadros; fora dele, nada (dono 09/11: a etiqueta sobre o
+/// resultado final atrapalha).
 #[test]
 fn em_edit_a_moldura_envolve_a_folha_inteira() {
     let mut sim = SimWorld::new();
@@ -55,8 +56,10 @@ fn em_edit_a_moldura_envolve_a_folha_inteira() {
     sim.world_mut()
         .entity_mut(e)
         .insert(SpriteAnimations::new());
-    let fora = desenho(sim.world(), e, 100.0).expect("quad");
-    assert_eq!((fora.w, fora.h, fora.celulas.is_none()), (1.0, 2.0, true));
+    assert!(
+        desenho(sim.world(), e, 100.0).is_none(),
+        "fora do Edit não há moldura"
+    );
     sim.world_mut().insert_resource(ph2d_ecs::ImagemAberta {
         entity: e,
         quad: [6.0, 4.0],

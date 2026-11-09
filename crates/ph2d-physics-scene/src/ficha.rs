@@ -297,6 +297,13 @@ pub fn excecao_para_as_fotos(world: &mut World) -> Option<Entity> {
             include: 0,
             exclude: (1 << GROUND) | (1 << PROPS),
         });
+    // A segunda forma desliga só Ground: a camada Ground mostra duas que diferem, com o traço entre elas.
+    world
+        .entity_mut(formas[1])
+        .insert(ph2d_physics_ecs::CollisionOverride {
+            include: 0,
+            exclude: 1 << GROUND,
+        });
     Some(excecao)
 }
 

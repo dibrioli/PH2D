@@ -127,7 +127,10 @@ fn a_normal_so_existe_num_sprite_rgb() {
         let mut s = sprite(mode);
         let l = s.layers()[0].id;
         let op = layers::set_normal(&s, l, true).expect("op");
-        assert!(apply(&mut s, op).is_err(), "{mode:?}: SetLayerNormal recusado");
+        assert!(
+            apply(&mut s, op).is_err(),
+            "{mode:?}: SetLayerNormal recusado"
+        );
         assert!(s.layer(l).is_some_and(|l| !l.normal));
     }
     let (s, _, _) = cena();

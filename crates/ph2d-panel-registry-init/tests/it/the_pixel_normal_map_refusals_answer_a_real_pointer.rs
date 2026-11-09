@@ -59,7 +59,11 @@ fn dica_no_ponteiro(hero: &mut HeroScreen, id: NodeId, nome: &str) -> Option<Str
     {
         hero.apply_event(e);
     }
-    assert_eq!(hero.store.hot_id(), Some(id), "{nome}: o ponteiro não o achou");
+    assert_eq!(
+        hero.store.hot_id(),
+        Some(id),
+        "{nome}: o ponteiro não o achou"
+    );
     hero.store.tooltip_for(id).map(str::to_owned)
 }
 
@@ -151,11 +155,17 @@ fn the_pixel_normal_map_refusals_answer_a_real_pointer() {
     );
     assert_eq!(clica(&mut hero, caixa, "a caixa Normal Map"), []);
     // ... e o Merge Down de duas camadas de cor voltou a ligar-se.
-    assert_eq!(clica(&mut hero, merge, "Merge Down"), [PixelRequest::LayerAction(PixelLayerAction::MergeDown)]);
+    assert_eq!(
+        clica(&mut hero, merge, "Merge Down"),
+        [PixelRequest::LayerAction(PixelLayerAction::MergeDown)]
+    );
 
     // RGB: a mesma caixa liga-se e o clique chega.
     ph2d_panel_pixel_tools::set_current_pixel(info(NewSpriteMode::Rgba, false));
     pinta(&mut hero, &mut ts);
     assert_ne!(hero.store.checkbox_visual(caixa).0, CheckboxState::Disabled);
-    assert_eq!(clica(&mut hero, caixa, "a caixa Normal Map"), [PixelRequest::LayerNormal(5)]);
+    assert_eq!(
+        clica(&mut hero, caixa, "a caixa Normal Map"),
+        [PixelRequest::LayerNormal(5)]
+    );
 }

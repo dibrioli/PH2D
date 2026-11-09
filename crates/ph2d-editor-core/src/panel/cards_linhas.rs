@@ -595,8 +595,7 @@ impl<'s> CardCtx<'s> {
         let hover = self.store.hover_live(id) > 0.0;
         // Desligado no store (o dispatch já recusa o clique): pinta-se como o `ButtonOff`, mas o
         // rect fica, para a dica de porquê chegar ao ponteiro.
-        let desligado =
-            self.store.button_state(id) == Some(crate::widget::ButtonState::Disabled);
+        let desligado = self.store.button_state(id) == Some(crate::widget::ButtonState::Disabled);
         let (fundo, tinta) = if desligado {
             (ColorToken::CardField, ColorToken::CardLabel)
         } else if primary {

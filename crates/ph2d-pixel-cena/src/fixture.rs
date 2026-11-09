@@ -3,11 +3,11 @@
 //! Map com o hemisfério no mesmo recorte (P14c).
 
 use ph2d_pixel_core::frames::{self, NewFrame};
-use ph2d_pixel_core::{layers, slice};
 use ph2d_pixel_core::{
     Direction, FrameSet, NewSprite, Op, Patch, Rect, SliceId, SliceKey, SliceShape, Sprite, Tag,
     UserData, apply,
 };
+use ph2d_pixel_core::{layers, slice};
 
 /// As durações dos 6 quadros, em ms.
 pub const DURACOES_MS: [u32; 6] = [80, 80, 120, 120, 60, 200];

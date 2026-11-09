@@ -37,7 +37,11 @@ fn a_normal_da_fixture_e_um_hemisferio_no_recorte_da_cor() {
         assert!(at(&n, 8, topo)[1] > 128 + 64);
         for y in 0..w {
             for x in 0..w {
-                assert_eq!(at(&n, x, y)[3], at(&c, x, y)[3], "o recorte da cor em ({x},{y})");
+                assert_eq!(
+                    at(&n, x, y)[3],
+                    at(&c, x, y)[3],
+                    "o recorte da cor em ({x},{y})"
+                );
                 if at(&c, x, y)[3] != 0 {
                     assert_eq!(at(&c, x, y), COR, "a normal não entra na cor");
                 }

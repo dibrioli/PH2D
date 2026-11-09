@@ -84,7 +84,10 @@ fn apagar_a_slice_do_pivo_desfaz_num_passo() {
 fn o_pixel_formato_le_o_que_grava() {
     let s = heroi_p14();
     assert!(s.pivot_slice().is_some());
-    assert!(s.layers().iter().any(|l| l.normal), "a fixture leva a Normal Map");
+    assert!(
+        s.layers().iter().any(|l| l.normal),
+        "a fixture leva a Normal Map"
+    );
     let lib = std::collections::BTreeMap::from([(1_u64, s.clone())]);
     let bytes = write_library(&lib);
     let minor = ph2d_pixel_core::codec::MINOR;

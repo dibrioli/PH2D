@@ -17,6 +17,10 @@ FEITO nesta janela (desempenho do Wet Wash Mix, **Bug #84**; dono: «muito mais 
 - Deps/features: o rayon em `ph2d-painter-brush` ganhou usos (ADR-0200) e há a `float_roundtrip` do 10b ⇒ na integração: suíte inteira.
 
 ABERTO:
+- ⭐ **Dono 10/11 (depois do smoke): miniaturas APROVADAS** (regravadas: Wet Wash Mix + 6 de mistura, commit das miniaturas)
+  e **«o véu com metade da definição: vamos tentar»** — o véu do Wet Wash Mix (raio 67–98 px, macio) calculado a meia
+  resolução e interpolado (só este pincel; ~3× estimado no kernel). Fazê-lo DEPOIS de medir o caminho do app (item abaixo),
+  como variante em execução na sonda (o de antes × meia resolução, intercalados), e mostrar ao dono lado a lado antes do smoke.
 - ⛔⛔ **PRIMEIRO — smoke do dono 10/11 depois de 5a02ad9c9d: «bem melhor mas inaceitável em traços rápidos (30 px = 6 fps)».**
   A sonda (`sonda_custo_do_veu`, só o `on_canvas_pointer` + drenagem a cada 3 eventos, sem GPU nem quadro) dava ~0,26 ms
   por px ⇒ ~35 fps a 90 px/quadro: o APP paga ~5× o que a sonda vê. NÃO cure às cegas: meça no caminho do app

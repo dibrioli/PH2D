@@ -42,6 +42,9 @@ pub const INSP_IMAGE_SHEET_REGION: NodeId = hash_node_id("insp_image_sheet_regio
 pub const INSP_IMAGE_CUT_AGAIN: NodeId = hash_node_id("insp_image_cut_again");
 /// «Keep the cut», no aviso de imagem trocada.
 pub const INSP_IMAGE_KEEP_CUT: NodeId = hash_node_id("insp_image_keep_cut");
+/// A ranhura **Normal Map** do cartão Image (abre o seletor) e o **None** que a tira (P14).
+pub const INSP_IMAGE_NORMAL_SLOT: NodeId = hash_node_id("insp_image_normal_slot");
+pub const INSP_IMAGE_NORMAL_NONE: NodeId = hash_node_id("insp_image_normal_none");
 
 /// Os nove pontos do Pivot, por linhas, a de cima primeiro.
 pub const INSP_SPRITE_PIVOT: [NodeId; 9] = [

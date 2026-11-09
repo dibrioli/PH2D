@@ -402,7 +402,6 @@ fn project_file_round_trips_through_postcard() {
             width: 2,
             height: 2,
             rgba: vec![10, 20, 30, 40],
-            normal: vec![255, 128, 128, 255],
         }],
         motion: motion.clone(),
         timeline: animation_of_hero(),
@@ -476,11 +475,6 @@ fn project_file_round_trips_through_postcard() {
         back.assets[0].rgba,
         vec![10, 20, 30, 40],
         "pixels preservados"
-    );
-    assert_eq!(
-        back.assets[0].normal,
-        vec![255, 128, 128, 255],
-        "o normal map da célula (v228)"
     );
     assert_eq!(back.motion, motion, "o grafo de Motion preservado");
     assert!(

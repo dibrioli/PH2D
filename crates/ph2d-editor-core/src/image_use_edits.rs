@@ -73,6 +73,10 @@ pub enum ImageUseEdit {
     /// **Align ▸ Pivot** (GEF 29): o Pivot do objeto vai a este ponto, em metros locais desde o de agora. Todas as
     /// folhas e o objeto no jogo ficam onde estão; a posição compensa.
     MovePivot([f32; 2]),
+    /// A ranhura **Normal Map** (P14): abre o painel de Assets para escolher a normal da imagem mostrada.
+    LoadNormalMap,
+    /// A normal (`AssetId`) da imagem mostrada; `None` = tira (o «None» da linha). A normal é da IMAGEM.
+    SetNormalMap(Option<[u8; 32]>),
 }
 
 /// O aviso de imagem trocada, como o cartão Image o escreve.

@@ -63,7 +63,7 @@ impl crate::App {
         // correctamente as quatro.
         //
         if let Some(bits) = open_image_picker {
-            abre_o_seletor(hero, sim, bits, false);
+            abre_o_seletor(hero, sim, bits, ph2d_panel_asset_browser::ChooseFor::Image);
         }
         // ⭐⭐⭐ **APLICAR num degrau da escada** (ADR-0164 / F5, critério 4).
         //
@@ -224,18 +224,21 @@ pub(crate) fn abre_o_seletor(
     hero: &mut ph2d_editor_core::screens::HeroScreen,
     sim: &SimWorld,
     bits: u64,
-    folha: bool,
+    para: ph2d_panel_asset_browser::ChooseFor,
 ) {
     let (w, e) = (sim.world(), ph2d_ecs::Entity::from_bits(bits));
     let name = w
         .get::<ph2d_ecs::Name>(e)
         .map(|n| n.0.clone())
         .unwrap_or_default();
-    if folha && !ph2d_sprite_edit::vazio::sem_imagem(w, e) {
-        ph2d_panel_asset_browser::choose_sheet_for(bits, name);
-    } else {
-        ph2d_panel_asset_browser::choose_image_for(bits, name);
-    }
+    let vazia = ph2d_sprite_edit::vazio::sem_imagem(w, e);
+    let para = match para {
+        ph2d_panel_asset_browser::ChooseFor::Sheet if vazia => {
+            ph2d_panel_asset_browser::ChooseFor::Image
+        }
+        p => p,
+    };
+    ph2d_panel_asset_browser::choose_for(bits, name, para);
     <_ as ph2d_editor_core::panel::PanelHostInternal>::set_panel_visible(
         hero,
         ph2d_panel_asset_browser::PANEL_ID,

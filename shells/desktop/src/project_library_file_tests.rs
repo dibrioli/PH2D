@@ -33,6 +33,7 @@ fn the_library_travels_in_the_file() {
     let library = crate::project_library::LibraryDoc {
         catalog_bytes: crate::project_catalogs::collect(&tree),
         forgotten: vec![[9; 32]],
+        normals: vec![([1; 32], [2; 32])],
     };
     let state = ProjectState {
         world: WorldSnapshot::new(),
@@ -64,5 +65,10 @@ fn the_library_travels_in_the_file() {
         back.library.forgotten,
         vec![[9u8; 32]],
         "as lapides nao atravessaram — reabrir o projecto traria de volta o que o artista tirou"
+    );
+    assert_eq!(
+        back.library.normals,
+        [([1; 32], [2; 32])],
+        "o normal map da imagem (v228)"
     );
 }

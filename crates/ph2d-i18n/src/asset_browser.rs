@@ -60,6 +60,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.asset_browser.pick.choose_sheet_for" => {
             "Choose a new sheet for \u{201c}{name}\u{201d}"
         }
+        "panel.asset_browser.pick.choose_normal_for" => {
+            "Choose the normal map for the image of \u{201c}{name}\u{201d}"
+        }
         _ => return None,
     })
 }

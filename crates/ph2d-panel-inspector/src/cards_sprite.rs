@@ -131,6 +131,7 @@ pub(crate) fn prepara(store: &mut WidgetStore) {
     crate::cards_anim::prepara();
     crate::cards_pixel_pivot::prepara(store);
     crate::cards_sprite_folhas::prepara(store);
+    crate::cards_sprite_normal::prepara(store);
     semeia_do_objeto(store);
 }
 
@@ -170,6 +171,7 @@ pub(crate) fn imagem(info: InspectorSpriteInfo) -> CardDef<'static> {
         });
         let y = recibo_do_replace(c, y, &info);
         let y = aviso_de_corte(c, y, info.entity_bits);
+        let y = crate::cards_sprite_normal::linha(c, y, info.entity_bits);
         aviso_de_folha(c, y, info.entity_bits)
     });
     CardDef {
@@ -437,6 +439,7 @@ pub(crate) fn proprio<'a>(p: &'a Presente, actions: Vec<HeadAction>) -> Option<C
 /// Os verbos da imagem; as opções do Ordering revelam a linha. Clicar na miniatura é `event::texture_slot_click`.
 pub(crate) fn evento(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     if crate::cards_sprite_folhas::evento(host, ev)
+        || crate::cards_sprite_normal::evento(host, ev)
         || crate::sections::ordering::evento_das_opcoes(ev)
         || sections::look::evento_dos_cantos(host, ev)
         || evento_do_pivot(host, ev)

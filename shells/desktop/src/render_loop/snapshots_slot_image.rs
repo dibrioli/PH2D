@@ -39,6 +39,17 @@ pub(super) fn publish_slot_image(
             h: t.h,
         })
     }));
+    ph2d_panel_inspector::slot_image::set_current_normal_map(alvo.bits.and_then(|b| {
+        let e = ph2d_ecs::Entity::from_bits(b);
+        use ph2d_app_sprite_anim::normal_map as nm;
+        let n = nm::normal_do_sprite(sim.world(), atlas_asset_map, e)?;
+        let nome = nm::nome_da_normal(n, || {
+            let mut lib =
+                ph2d_app_components::library_names::session_library(sim, asset_db, atlas_asset_map);
+            lib.remove(&n).unwrap_or_default()
+        });
+        Some((b, nome))
+    }));
     let folhas = alvo
         .bits
         .and_then(|b| folhas::sheet_card(sim, asset_db, atlas_asset_map, ppm, b));

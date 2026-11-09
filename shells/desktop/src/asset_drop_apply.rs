@@ -143,12 +143,38 @@ impl crate::App {
             );
             match (nao, gfx.hero_screen.as_mut()) {
                 (None, Some(hero)) => {
-                    crate::render_loop::abre_o_seletor(hero, &gfx.sim, entity_bits, true);
+                    crate::render_loop::abre_o_seletor(
+                        hero,
+                        &gfx.sim,
+                        entity_bits,
+                        ph2d_panel_asset_browser::ChooseFor::Sheet,
+                    );
                 }
                 (k, _) => {
                     let k = k.unwrap_or("card.insp.sheet_load_no_assets");
                     let _ = gfx.toasts.push(ph2d_editor_core::Toast::warning(tr(k)));
                 }
+            }
+            return;
+        }
+        if let Some(r) = ph2d_app_sprite_anim::normal_map::aplica_edicao(
+            gfx.sim.world(),
+            &gfx.asset_db,
+            &gfx.atlas_asset_map,
+            entity_bits,
+            edit,
+        ) {
+            match (r, gfx.hero_screen.as_mut()) {
+                (Ok(true), Some(hero)) => crate::render_loop::abre_o_seletor(
+                    hero,
+                    &gfx.sim,
+                    entity_bits,
+                    ph2d_panel_asset_browser::ChooseFor::NormalMap,
+                ),
+                (Err(e), _) => {
+                    let _ = gfx.toasts.push(ph2d_editor_core::Toast::warning(e));
+                }
+                _ => {}
             }
             return;
         }

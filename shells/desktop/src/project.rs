@@ -216,8 +216,6 @@ pub(crate) struct SavedAsset {
     width: u32,
     height: u32,
     rgba: Vec<u8>,
-    /// ⭐ P14 (v228): o NORMAL MAP da célula, `width·height·4` bytes (vazio = sem normal).
-    normal: Vec<u8>,
 }
 
 /// **O que a troca de documento faz os produtores VIVOS esquecerem** — irmão pelo teto de LOC

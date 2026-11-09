@@ -318,6 +318,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "card.insp.keep_cut" => "Keep the cut",
         "card.insp.keep_cut_tip" => "Leave the cut as it is and close this notice",
+        // A linha Normal Map do cartão Image (P14): a normal é da IMAGEM.
+        "card.insp.normal_map" => "Normal Map",
+        "card.insp.normal_map_none" => "None",
+        "card.insp.normal_map_tip" => {
+            "Pick the image that tells 2D lights which way each pixel faces. Every object that shows this image uses it."
+        }
+        "card.insp.normal_map_none_tip" => "Take the normal map off this image",
         "card.insp.image_drop_hint" => "or click to choose",
         "card.insp.silhouette" => "Silhouette (Tint Fill)",
         "card.insp.tint_each_corner" => "Tint each corner",

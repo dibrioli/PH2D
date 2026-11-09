@@ -51,11 +51,6 @@ impl crate::App {
                     width: *width,
                     height: *height,
                     rgba: pixels.to_vec(),
-                    normal: gfx
-                        .renderer
-                        .normal_da_celula(key)
-                        .map(<[u8]>::to_vec)
-                        .unwrap_or_default(),
                 });
             }
         }
@@ -95,11 +90,6 @@ impl crate::App {
                 renderer.insert_atlas_sprite_with_regrow(a.key, a.width, a.height, &a.rgba, fetch)
             {
                 eprintln!("[proj] atlas insert key={}: {e}", a.key);
-            } else if !a.normal.is_empty()
-                && let Err(e) =
-                    renderer.definir_normal_da_celula(a.key, Some((a.width, a.height, &a.normal)))
-            {
-                eprintln!("[proj] normal da célula key={}: {e}", a.key);
             }
         }
         // 3. Imports futuros nesta sessão não podem colidir com os keys do projeto.

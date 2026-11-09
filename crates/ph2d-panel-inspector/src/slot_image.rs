@@ -53,6 +53,7 @@ thread_local! {
     static PINTAR_NO_LUGAR_DE: std::cell::Cell<Option<u64>> = const { std::cell::Cell::new(None) };
     static FACTS: std::cell::Cell<Option<SpriteFacts>> = const { std::cell::Cell::new(None) };
     static CURRENT: RefCell<Option<SlotImage>> = const { RefCell::new(None) };
+    static NORMAL: RefCell<Option<(u64, String)>> = const { RefCell::new(None) };
     /// A textura estável de cada miniatura à vista (a da seleção e as dos presos) — sem ela o `vello`
     /// reenvia os bytes todo o quadro. A mais antiga sai ao passar de [`TEXTURAS`].
     static TEX: RefCell<Vec<(Arc<Vec<u8>>, StableImage)>> = const { RefCell::new(Vec::new()) };
@@ -106,6 +107,22 @@ pub(crate) fn tem_filhos(entity_bits: u64) -> bool {
 /// O shell publica a imagem da sprite seleccionada (`None` = nenhuma da biblioteca).
 pub fn set_current_slot_image(img: Option<SlotImage>) {
     CURRENT.with(|c| *c.borrow_mut() = img);
+}
+
+/// O shell publica o nome da normal da imagem da sprite seleccionada (`None` = sem normal), P14.
+pub fn set_current_normal_map(n: Option<(u64, String)>) {
+    NORMAL.with(|c| *c.borrow_mut() = n);
+}
+
+/// O nome da normal publicada para `entity_bits`.
+#[must_use]
+pub fn current_normal_map(entity_bits: u64) -> Option<String> {
+    NORMAL.with(|c| {
+        c.borrow()
+            .as_ref()
+            .filter(|n| n.0 == entity_bits)
+            .map(|n| n.1.clone())
+    })
 }
 
 /// A imagem publicada (o retrato do objecto, T61).

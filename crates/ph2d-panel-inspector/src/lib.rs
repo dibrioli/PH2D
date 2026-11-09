@@ -83,6 +83,7 @@ mod cards_pixel_pivot;
 mod cards_sprite;
 mod cards_sprite_cabeca;
 mod cards_sprite_folhas;
+mod cards_sprite_normal;
 #[doc(hidden)]
 pub use cards_sprite_cabeca::{
     CabecaPintada, cabeca_pintada, imagens_pintadas, miniatura_pintada, troca_pintada,

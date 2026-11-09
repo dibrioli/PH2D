@@ -862,6 +862,8 @@ pub(crate) fn campos_da_sprite() -> Vec<Vec<NodeId>> {
         INSP_RENDER_STRATEGY_INDIVIDUAL,
     ]);
     c.push(vec![INSP_RENDER_FORMAT_RGBA8, INSP_RENDER_FORMAT_RGBA16]);
+    // P14: a linha Normal Map do cartão Image.
+    c.push(vec![INSP_IMAGE_NORMAL_SLOT, INSP_IMAGE_NORMAL_NONE]);
     c
 }
 
@@ -883,7 +885,7 @@ fn o_censo_dos_campos_da_sprite_em_uso() {
     for id in [core_ids::INSP_LIVE_RENDER_SECTION, CARD_ORDERING] {
         host.store_mut().set_collapsed(id, true);
     }
-    assert_eq!(conta(&pinta(&mut host, &mut st)), (13, 19), "à vista");
+    assert_eq!(conta(&pinta(&mut host, &mut st)), (14, 19), "à vista");
     for id in [
         core_ids::INSP_LIVE_RENDER_SECTION,
         CARD_ORDERING,
@@ -891,7 +893,7 @@ fn o_censo_dos_campos_da_sprite_em_uso() {
     ] {
         host.store_mut().set_collapsed(id, false);
     }
-    assert_eq!(conta(&pinta(&mut host, &mut st)), (31, 19), "no total");
+    assert_eq!(conta(&pinta(&mut host, &mut st)), (32, 19), "no total");
 }
 
 /// Na Sprite o `Mirror object` mora no Look, e clicá-lo troca o sinal da escala (dono 06/11).
@@ -962,4 +964,25 @@ fn virar_e_tingir_com_os_cartoes_fechados_sao_tres_gestos() {
         Some(INSP_SPRITE_TINT_SWATCH),
         "o 2.º gesto abre o seletor, e o 3.º é escolher a cor"
     );
+}
+
+/// ⭐ P14: a linha **Normal Map** do cartão Image — pintada e registada, o clique REAL na ranhura pede o seletor
+/// (`LoadNormalMap`) e o **None** (só com normal) tira-a. Mutação que sangra: tirar o `cards_sprite_normal::evento`
+/// do `evento` do cartão.
+#[test]
+fn a_linha_normal_map_responde_a_um_ponteiro_real() {
+    slot_image::set_current_normal_map(None);
+    let (mut host, mut st) = cena(factos());
+    assert!(
+        !pinta(&mut host, &mut st)
+            .iter()
+            .any(|(i, _)| *i == INSP_IMAGE_NORMAL_NONE),
+        "sem normal não há None"
+    );
+    let (_, a) = clica(&mut host, &mut st, INSP_IMAGE_NORMAL_SLOT);
+    assert_eq!(edicoes(&a), [ImageUseEdit::LoadNormalMap]);
+    slot_image::set_current_normal_map(Some((7, "rock_n".into())));
+    let (_, a) = clica(&mut host, &mut st, INSP_IMAGE_NORMAL_NONE);
+    assert_eq!(edicoes(&a), [ImageUseEdit::SetNormalMap(None)]);
+    slot_image::set_current_normal_map(None);
 }

@@ -224,8 +224,19 @@ pub struct AssetBrowserState {
 pub struct Choosing {
     pub entity_bits: u64,
     pub name: String,
-    /// `true` = a imagem de uma folha NOVA do Animated (**Load sheet**, plano GEF 26), não a troca da imagem.
-    pub sheet: bool,
+    /// Para quê se escolhe a imagem.
+    pub para: ChooseFor,
+}
+
+/// Para quê o seletor escolhe a imagem.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ChooseFor {
+    /// A troca da imagem.
+    Image,
+    /// A imagem de uma folha NOVA do Animated (**Load sheet**, plano GEF 26).
+    Sheet,
+    /// O normal map da imagem mostrada (P14).
+    NormalMap,
 }
 
 impl Choosing {
@@ -234,12 +245,12 @@ impl Choosing {
     pub fn answer(&self, asset: [u8; 32]) -> ph2d_editor_core::action_bus::EditorAction {
         use ph2d_editor_core::action_bus::EditorAction;
         let entity_bits = self.entity_bits;
-        if self.sheet {
-            let edit = ph2d_editor_core::ImageUseEdit::AddSheet(asset);
-            EditorAction::ImageUseEdit { entity_bits, edit }
-        } else {
-            EditorAction::ChooseImage { entity_bits, asset }
-        }
+        let edit = match self.para {
+            ChooseFor::Image => return EditorAction::ChooseImage { entity_bits, asset },
+            ChooseFor::Sheet => ph2d_editor_core::ImageUseEdit::AddSheet(asset),
+            ChooseFor::NormalMap => ph2d_editor_core::ImageUseEdit::SetNormalMap(Some(asset)),
+        };
+        EditorAction::ImageUseEdit { entity_bits, edit }
     }
 }
 

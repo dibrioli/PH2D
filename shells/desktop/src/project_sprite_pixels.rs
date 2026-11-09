@@ -294,8 +294,17 @@ fn wanted_pixels(
         .filter(|(sprite, _, painted)| should_collect(&sprite.source, painted.is_some()))
         .map(|(sprite, pixels, _)| (pixels.0, sprite.premultiplied))
         .collect();
+    // As folhas extra e as imagens NORMAIS (P14) que vivem fora do átlas: ninguém as mostra como cor.
+    let normais = ph2d_app_sprite_anim::normal_map::normais();
+    let normais = normais
+        .iter()
+        .map(|(_, n)| ph2d_asset::AssetId::from_digest(*n));
     let mut q = world.query::<&ph2d_ecs::SpriteSheets>();
-    for a in q.iter(world).flat_map(|s| s.0.iter().map(|x| x.asset)) {
+    let folhas: Vec<_> = q
+        .iter(world)
+        .flat_map(|s| s.0.iter().map(|x| x.asset))
+        .collect();
+    for a in folhas.into_iter().chain(normais) {
         if !atlas.values().any(|v| *v == a) && !wanted.iter().any(|(w, _)| *w == a) {
             wanted.push((a, false));
         }
@@ -426,6 +435,32 @@ mod tests {
         };
         let bytes = ph2d_sprite_sheet::encode(std::slice::from_ref(&doc), &[]).unwrap();
         assert_eq!(ph2d_sprite_sheet::decode(&bytes).unwrap().0, [doc]);
+    }
+
+    /// ⭐ P14: a normal de uma imagem de textura PRÓPRIA atravessa o ficheiro — o par no `LibraryDoc` e os píxeis da
+    /// normal (fora do átlas) nos pixels de sprite. Mutação que sangra: `wanted_pixels` sem as normais.
+    #[test]
+    fn a_normal_da_textura_individual_vai_e_volta_pelo_projeto() {
+        use ph2d_app_sprite_anim::normal_map as nm;
+        let (cor, normal) = (AssetId::from_bytes(b"cor"), AssetId::from_bytes(b"normal"));
+        nm::set_normais(&[(*cor.as_bytes(), *normal.as_bytes())]);
+        let mut w = ph2d_ecs::World::new();
+        w.spawn((Sprite::individual(1, [1.0; 2], [1.0; 4]), SpritePixels(cor)));
+        let quem = wanted_pixels(&mut w, &BTreeMap::new());
+        assert_eq!(
+            quem,
+            [(cor, false), (normal, false)],
+            "os píxeis da normal vão ao ficheiro"
+        );
+        let doc = crate::project_library::LibraryDoc {
+            normals: nm::normais(),
+            ..Default::default()
+        };
+        let back: crate::project_library::LibraryDoc =
+            postcard::from_bytes(&postcard::to_allocvec(&doc).unwrap()).unwrap();
+        nm::set_normais(&[]);
+        crate::project_library::apply_forgotten(&back);
+        assert_eq!(nm::normal_de(cor), Some(normal), "o par volta ao abrir");
     }
 
     #[test]

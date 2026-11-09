@@ -155,6 +155,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // A troca de imagem (plano GEF 12).
         "app.sprite_anim.image_choice.not_an_image" => "That asset is not an image",
         "app.sprite_anim.image_choice.not_a_sprite" => "This object has no image to change",
+        // O normal map da imagem (P14).
+        "app.sprite_anim.normal_map.other_size" => {
+            "The normal map must be the same size as the image. Pick an image with the same width and height."
+        }
         _ => return None,
     })
 }

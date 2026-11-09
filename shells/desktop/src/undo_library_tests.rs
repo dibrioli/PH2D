@@ -200,3 +200,48 @@ fn a_restored_tree_encodes_to_the_same_bytes() {
         "a árvore restaurada codifica-se noutros bytes — todo undo registaria um passo espúrio"
     );
 }
+
+/// ⭐ P14: **escolher a normal de uma imagem é UM passo e Ctrl+Z volta** — pela porta do Inspector
+/// (`normal_map::aplica_edicao`), o par entra no `LibraryDoc` da captura seguinte e o undo repõe o de antes.
+/// **Mutação que sangra:** o `LibraryCache::doc` sem a linha `normals`.
+#[test]
+fn escolher_a_normal_e_um_passo_e_desfaz() {
+    use ph2d_app_sprite_anim::normal_map as nm;
+    nm::set_normais(&[]);
+    let reg = registry();
+    let (mut sim, vec) = scene();
+    let db = ph2d_asset::AssetDb::new();
+    let cor = db.insert_image_rgba8(1, 1, vec![9, 9, 9, 255]);
+    let normal = db.insert_image_rgba8(1, 1, vec![128, 128, 255, 255]);
+    let e = sim.world_mut().spawn((
+        ph2d_render::Sprite::individual(1, [1.0; 2], [1.0; 4]),
+        ph2d_ecs::SpritePixels(cor),
+    ));
+    let bits = e.id().to_bits();
+    let tree = ph2d_asset_index::CatalogTree::new();
+    let mut cache = crate::project_library::LibraryCache::default();
+    let antes = capture_with_library(&mut sim, &vec, &reg, &cache.doc(&tree).clone());
+    let edit = ph2d_editor_core::ImageUseEdit::SetNormalMap(Some(*normal.as_bytes()));
+    let r = nm::aplica_edicao(
+        sim.world(),
+        &db,
+        &std::collections::BTreeMap::new(),
+        bits,
+        edit,
+    );
+    assert_eq!(r, Some(Ok(false)));
+    let depois = capture_with_library(&mut sim, &vec, &reg, &cache.doc(&tree).clone());
+    assert_ne!(
+        antes.library, depois.library,
+        "escolher a normal não fez passo"
+    );
+    assert_eq!(
+        antes.world, depois.world,
+        "o passo é da biblioteca, não do mundo do objecto"
+    );
+    crate::project_library::apply_forgotten(&antes.library);
+    assert_eq!(nm::normal_de(cor), None, "Ctrl+Z não tirou a normal");
+    crate::project_library::apply_forgotten(&depois.library);
+    assert_eq!(nm::normal_de(cor), Some(normal), "Ctrl+Shift+Z não a repôs");
+    nm::set_normais(&[]);
+}

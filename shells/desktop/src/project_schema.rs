@@ -404,7 +404,9 @@
 ///
 /// # `229 → 230` — **o normal map do Sprite do motor** (`line/PixelArt`, P14 Sprite com normal, 2026-11-09)
 ///
-/// `SavedAsset.normal: Vec<u8>` no FIM (vazio = sem normal): a 2.ª textura da célula do átlas, o MESMO retângulo da
-/// cor (`SpriteRenderer::definir_normal_da_celula`). SEM leitura dos anteriores (§0.11). Gate:
-/// `project_file_round_trips_through_postcard`. Registos: `0`. ⚠️ **A tripla NÃO vê este degrau.**
+/// `LibraryDoc.normals: Vec<([u8; 32], [u8; 32])>` no FIM: a normal é da IMAGEM (`cor → normal`, por conteúdo;
+/// `ph2d_app_sprite_anim::normal_map`), no `ProjectState` (undo e ficheiro); os píxeis da normal são os de qualquer
+/// imagem (átlas: `SavedAsset`; fora dele: os pixels de sprite). SEM leitura dos anteriores (§0.11). Gates:
+/// `the_library_travels_in_the_file`, `a_normal_da_textura_individual_vai_e_volta_pelo_projeto`. Registos: `0`.
+/// ⚠️ **A tripla NÃO vê este degrau.**
 pub(crate) const PROJECT_SCHEMA: u32 = 230;

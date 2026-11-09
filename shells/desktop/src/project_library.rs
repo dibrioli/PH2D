@@ -55,6 +55,8 @@ pub(crate) struct LibraryDoc {
     /// ⚠️ **Ordenado** (vem de um `BTreeSet`), senão duas capturas do mesmo estado dariam bytes
     /// diferentes e o diff registaria um passo por quadro.
     pub(crate) forgotten: Vec<[u8; 32]>,
+    /// ⭐ P14 (v228): o normal map de cada imagem, `(cor, normal)` ordenado — [`ph2d_app_sprite_anim::normal_map`].
+    pub(crate) normals: Vec<([u8; 32], [u8; 32])>,
 }
 
 /// A cache que impede a re-codificação por quadro. Vive no `App`.
@@ -88,6 +90,7 @@ impl LibraryCache {
             }
         }
         self.doc.forgotten = ph2d_app_components::asset_index_build::forgotten_textures();
+        self.doc.normals = ph2d_app_sprite_anim::normal_map::normais();
         &self.doc
     }
 
@@ -116,6 +119,7 @@ impl LibraryCache {
 /// global é governada pela guarda do valor.*
 pub(crate) fn apply_forgotten(doc: &LibraryDoc) {
     ph2d_app_components::asset_index_build::set_forgotten_textures(&doc.forgotten);
+    ph2d_app_sprite_anim::normal_map::set_normais(&doc.normals);
 }
 
 /// ⭐ **A taxonomia restaurada** — a metade que tem dono.

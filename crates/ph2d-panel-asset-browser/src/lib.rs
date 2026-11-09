@@ -51,7 +51,8 @@ pub mod state;
 pub const PANEL_ID: &str = "asset_browser";
 
 pub use paint::{default_rect, probe_query};
-pub use paint_choose::{choose_image_for, choose_sheet_for};
+pub use paint_choose::{choose_for, choose_image_for, choose_sheet_for};
+pub use state::ChooseFor;
 pub use state::{
     AssetBrowserState, CELL_DEFAULT_PX, CELL_MAX_PX, CELL_MIN_PX, CatalogPick, CatalogRename,
     catalog_row_pick, last_content_h, last_visible_h, payload_at, probe_catalogs,

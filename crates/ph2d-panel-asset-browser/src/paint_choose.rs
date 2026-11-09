@@ -5,7 +5,7 @@
 
 use crate::ids;
 use crate::paint::pad;
-use crate::state::{AssetBrowserState, Choosing};
+use crate::state::{AssetBrowserState, ChooseFor, Choosing};
 use ph2d_editor_core::paint::{fill_rounded_rect, paint_text, resolve};
 use ph2d_editor_core::panel::PaintCtx;
 use ph2d_editor_core::widget::{IconButtonStyle, IconGlyph, paint_icon_button};
@@ -20,22 +20,21 @@ thread_local! {
 
 /// ⭐ **O shell pede o seletor para a sprite `entity_bits`** (cujo nome a faixa mostra).
 pub fn choose_image_for(entity_bits: u64, name: String) {
-    REQUEST.with(|r| {
-        *r.borrow_mut() = Some(Choosing {
-            entity_bits,
-            name,
-            sheet: false,
-        })
-    });
+    choose_for(entity_bits, name, ChooseFor::Image);
 }
 
 /// ⭐ **Load sheet** (plano GEF 26): o seletor escolhe a imagem de uma folha NOVA do Animated `entity_bits`.
 pub fn choose_sheet_for(entity_bits: u64, name: String) {
+    choose_for(entity_bits, name, ChooseFor::Sheet);
+}
+
+/// O seletor para `para` da sprite `entity_bits` (a ranhura **Normal Map**: [`ChooseFor::NormalMap`]).
+pub fn choose_for(entity_bits: u64, name: String, para: ChooseFor) {
     REQUEST.with(|r| {
         *r.borrow_mut() = Some(Choosing {
             entity_bits,
             name,
-            sheet: true,
+            para,
         })
     });
 }
@@ -87,10 +86,10 @@ pub(crate) fn paint(
     ctx.host
         .hit_index_mut()
         .register(ids::ASSET_CHOOSE_CANCEL, cancel);
-    let key = if choosing.sheet {
-        "panel.asset_browser.pick.choose_sheet_for"
-    } else {
-        "panel.asset_browser.pick.choose_for"
+    let key = match choosing.para {
+        ChooseFor::Image => "panel.asset_browser.pick.choose_for",
+        ChooseFor::Sheet => "panel.asset_browser.pick.choose_sheet_for",
+        ChooseFor::NormalMap => "panel.asset_browser.pick.choose_normal_for",
     };
     let label = ph2d_i18n::tr_with(key, &[("name", &choosing.name)]);
     paint_text(

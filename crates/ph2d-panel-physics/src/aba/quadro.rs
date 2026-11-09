@@ -417,7 +417,7 @@ impl Quadro {
                     self.camada
                         .excecoes
                         .iter()
-                        .map(|e| (e.1.clone(), e.2.clone()))
+                        .map(|e| (e.nome.clone(), e.difere.clone()))
                         .collect()
                 } else {
                     Vec::new()

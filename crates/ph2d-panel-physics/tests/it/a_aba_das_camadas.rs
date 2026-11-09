@@ -1279,3 +1279,61 @@ fn uma_excecao_publicada_sem_gesto_aparece_no_quadro_seguinte() {
     ph2d_panel_physics::set_layer_objects(Vec::new());
     aba::fecha();
 }
+
+/// ⭐ Dono 09/11 («em linha como Objects on this layer»): as formas de «Differ from this layer» correm numa FILA —
+/// numa aba larga as três ficam na mesma linha, da esquerda para a direita na ordem da lista; numa estreita a
+/// fila quebra (mais de uma linha), sem trocar a ordem de leitura; e o clique em cada uma seleciona ESSA forma.
+/// Mutação: uma linha por forma de volta ⇒ vermelho na larga.
+#[test]
+fn as_formas_que_diferem_correm_em_fila_e_quebram_na_aba_estreita() {
+    use ph2d_editor_core::action_bus::SelectModifier;
+    let formas = [(0xB2_u64, "Box"), (0xB1, "Wall"), (0xB3, "Spike")];
+    for (w, uma_linha) in [(AREA.w, true), (AREA.w * 0.64, false)] {
+        let mut mesa = Mesa::nova(nomes_b(), false);
+        ph2d_panel_physics::set_layer_objects(vec![
+            forma_em(1, 0xB1, "Wall", [0, 1]),
+            forma_em(1, 0xB2, "Box", [1 << 3, 0]),
+            forma_em(2, 0xB3, "Spike", [1 << 1, 0]),
+        ]);
+        aba::abre(Some(1));
+        aba::poe_area_fixa(Rect { w, ..AREA });
+        mesa.pinta();
+        let nomes: Vec<String> = aba::lente().excecoes.into_iter().map(|e| e.0).collect();
+        assert_eq!(nomes, formas.map(|f| f.1), "{w}: a ordem da lista");
+        let rs: Vec<Rect> = (0..3)
+            .map(|k| {
+                mesa.rect(ids::PHYSICS_LAYER_EXCEPTION[k])
+                    .unwrap_or_else(|| panic!("{w}: botão {k}"))
+            })
+            .collect();
+        let mut ys: Vec<f32> = rs.iter().map(|r| r.y).collect();
+        ys.dedup_by(|a, b| (*a - *b).abs() < 0.01);
+        if uma_linha {
+            assert_eq!(ys.len(), 1, "{w}: as três na mesma linha {rs:?}");
+        } else {
+            assert!(ys.len() > 1, "{w}: a fila quebra {rs:?}");
+        }
+        for par in rs.windows(2) {
+            let (a, b) = (par[0], par[1]);
+            let mesma = (a.y - b.y).abs() < 0.01;
+            assert!(
+                (mesma && b.x > a.x + a.w) || b.y > a.y + a.h,
+                "{w}: a ordem de leitura {a:?} → {b:?}"
+            );
+        }
+        for (k, (bits, _)) in formas.iter().enumerate() {
+            let _ = mesa.host.drained_actions();
+            let _ = mesa.clica(ids::PHYSICS_LAYER_EXCEPTION[k]);
+            assert_eq!(
+                mesa.host.drained_actions(),
+                [EditorAction::SelectSprite {
+                    entity_bits: *bits,
+                    modifier: SelectModifier::Replace
+                }],
+                "{w}: o botão {k} seleciona a sua forma"
+            );
+        }
+        ph2d_panel_physics::set_layer_objects(Vec::new());
+        aba::fecha();
+    }
+}

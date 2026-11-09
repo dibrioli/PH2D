@@ -35,9 +35,48 @@ pub(super) struct Camada {
     pub(super) vazio_y: Option<f32>,
     /// «Differ from this layer» (dono 09/11): a linha de título, se há formas com exceção.
     pub(super) excecoes_y: Option<f32>,
-    /// (índice, nome, o que difere, botão, onde o texto do que difere começa).
-    pub(super) excecoes: Vec<(usize, String, String, Rect, f32)>,
+    /// Em fila como «Objects on this layer» (dono 09/11): cada forma é botão + o que difere, juntos.
+    pub(super) excecoes: Vec<Excecao>,
+    /// O traço discreto entre duas formas da MESMA linha da fila (nunca na quebra).
+    pub(super) separadores: Vec<Rect>,
     pub(super) altura: f32,
+}
+
+/// Uma forma de «Differ from this layer»: o botão e, à direita dele, o texto do que difere.
+#[derive(Clone, Debug)]
+pub(super) struct Excecao {
+    pub(super) k: usize,
+    pub(super) nome: String,
+    pub(super) difere: String,
+    pub(super) botao: Rect,
+    /// Onde o texto começa e quanto cabe (a unidade mais larga que a linha elide o texto).
+    pub(super) texto: Rect,
+}
+
+impl Excecao {
+    fn desloca(&mut self, x: f32, y: f32) {
+        for r in [&mut self.botao, &mut self.texto] {
+            r.x += x;
+            r.y += y;
+        }
+    }
+}
+
+/// O vão de cada lado do traço entre duas formas.
+fn folga_do_separador() -> f32 {
+    Spacing::Md.px()
+}
+
+/// O traço entre duas unidades da fila, centrado no vão e recolhido `Xs` em cima e em baixo (a língua das
+/// divisórias das abas, `tab_dividers`).
+fn separador_entre(a: Rect, vao: f32) -> Rect {
+    let (w, recolhe) = (StrokeToken::Hairline.px(), Spacing::Xs.px());
+    Rect::new(
+        a.x + a.w + (vao - w) * 0.5,
+        a.y + recolhe,
+        w,
+        (a.h - recolhe * 2.0).max(0.0),
+    )
 }
 
 impl Camada {
@@ -134,20 +173,39 @@ impl Camada {
             y += row;
             titulo
         });
-        let excecoes = excecoes
+        let excecoes: Vec<_> = excecoes.iter().take(i::PHYSICS_LAYER_OBJECTS).collect();
+        // Cada unidade = botão + `Sm` + o texto; mais larga que a linha, fica com a linha e o texto elide.
+        let botoes: Vec<f32> = excecoes
             .iter()
-            .take(i::PHYSICS_LAYER_OBJECTS)
+            .map(|(nome, _)| largura(nome, true).min(dentro))
+            .collect();
+        let unidades: Vec<f32> = excecoes
+            .iter()
+            .zip(&botoes)
+            .map(|((_, difere), &b)| (b + Spacing::Sm.px() + largura(difere, false)).min(dentro))
+            .collect();
+        let vao = folga_do_separador() * 2.0 + StrokeToken::Hairline.px();
+        let (rs, linhas) = fila(pad, y, dentro, &unidades, (bh, vao, bv));
+        y += linhas as f32 * (bh + bv);
+        let separadores = rs
+            .windows(2)
+            .filter(|par| (par[0].y - par[1].y).abs() < f32::EPSILON)
+            .map(|par| separador_entre(par[0], vao))
+            .collect();
+        let excecoes = excecoes
+            .into_iter()
+            .zip(botoes)
+            .zip(rs)
             .enumerate()
-            .map(|(k, (nome, difere))| {
-                let r = Rect::new(pad, y, largura(nome, true).min(dentro), bh);
-                y += bh + bv;
-                (
+            .map(|(k, (((nome, difere), b), u))| {
+                let tx = (u.x + b + Spacing::Sm.px()).min(u.x + u.w);
+                Excecao {
                     k,
-                    nome.clone(),
-                    difere.clone(),
-                    r,
-                    r.x + r.w + Spacing::Sm.px(),
-                )
+                    nome: nome.clone(),
+                    difere: difere.clone(),
+                    botao: Rect::new(u.x, u.y, b, bh),
+                    texto: Rect::new(tx, u.y, u.x + u.w - tx, bh),
+                }
             })
             .collect();
         Self {
@@ -161,6 +219,7 @@ impl Camada {
             vazio_y,
             excecoes_y,
             excecoes,
+            separadores,
             altura: y + pad,
         }
     }
@@ -175,10 +234,8 @@ impl Camada {
         self.objetos_y += y;
         self.vazio_y = self.vazio_y.map(|v| v + y);
         self.excecoes_y = self.excecoes_y.map(|v| v + y);
-        for e in &mut self.excecoes {
-            m(&mut e.3);
-            e.4 += x;
-        }
+        self.excecoes.iter_mut().for_each(|e| e.desloca(x, y));
+        self.separadores.iter_mut().for_each(m);
         self.caixas.iter_mut().for_each(|c| m(&mut c.1));
         self.objetos.iter_mut().for_each(|o| m(&mut o.2));
         if let Some((r, _)) = self.mais.as_mut() {
@@ -209,7 +266,7 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro) {
     let excecoes_acesas: Vec<bool> = c
         .excecoes
         .iter()
-        .map(|e| aceso(i::PHYSICS_LAYER_EXCEPTION[e.0]))
+        .map(|e| aceso(i::PHYSICS_LAYER_EXCEPTION[e.k]))
         .collect();
     let (mais_aceso, todos_aceso) = (
         aceso(i::PHYSICS_LAYER_MORE),
@@ -340,19 +397,22 @@ pub(super) fn pinta(ctx: &mut PaintCtx, q: &super::quadro::Quadro) {
             );
         }
         for (e, &hover) in c.excecoes.iter().zip(&excecoes_acesas) {
-            botao(texto, cena, e.3, &e.1, (hover, true));
-            let topo = e.3.y + (e.3.h - font) * 0.5;
-            let cabe = (x + w - e.4).max(0.0);
+            botao(texto, cena, e.botao, &e.nome, (hover, true));
+            let t = e.texto;
             ph2d_editor_core::paint::paint_text_elided(
                 texto,
                 cena,
-                &e.2,
-                e.4,
-                topo,
+                &e.difere,
+                t.x,
+                t.y + (t.h - font) * 0.5,
                 font,
-                cabe,
+                t.w.min(x + w - t.x).max(0.0),
                 tom!(ColorToken::Warn, theme),
             );
+        }
+        let traco = tom!(ColorToken::Border, theme);
+        for &s in &c.separadores {
+            cena.fill_rect(ph2d_editor_core::paint::rect_to_vello(s), traco);
         }
     });
 }
@@ -372,7 +432,7 @@ pub(super) fn alvos(ctx: &mut PaintCtx, c: &Camada) {
             )
             .chain(c.excecoes.iter().map(|e| {
                 (
-                    i::PHYSICS_LAYER_EXCEPTION[e.0],
+                    i::PHYSICS_LAYER_EXCEPTION[e.k],
                     "card.physics.tab_differs_tip",
                 )
             }))
@@ -400,9 +460,61 @@ pub(super) fn alvos(ctx: &mut PaintCtx, c: &Camada) {
         camada_das_listas::alvo(hit, i::PHYSICS_LAYER_MORE, *r);
     }
     for e in &c.excecoes {
-        camada_das_listas::alvo(hit, i::PHYSICS_LAYER_EXCEPTION[e.0], e.3);
+        camada_das_listas::alvo(hit, i::PHYSICS_LAYER_EXCEPTION[e.k], e.botao);
     }
     if let Some(r) = c.todos {
         camada_das_listas::alvo(hit, i::PHYSICS_LAYER_SELECT_ALL, r);
+    }
+}
+
+#[cfg(test)]
+mod testes {
+    use super::*;
+
+    /// Dono 09/11: o traço discreto só entre vizinhas da MESMA linha — a 3.ª forma quebra e não leva traço; o
+    /// traço fica no meio do vão, mais baixo que o botão e dentro da linha dele.
+    #[test]
+    fn o_traco_das_formas_que_diferem_fica_so_entre_vizinhas_da_mesma_linha() {
+        let r = ROW_H_PX;
+        let (b, t) = (r * 2.0, r * 3.0);
+        let vao = folga_do_separador() * 2.0 + StrokeToken::Hairline.px();
+        let unidade = b + Spacing::Sm.px() + t;
+        let w = MARGEM_DO_CARTAO * 2.0 + unidade * 2.0 + vao + r;
+        let ex: Vec<(String, String)> = ["A", "B", "C"]
+            .iter()
+            .map(|s| ((*s).to_owned(), (*s).to_owned()))
+            .collect();
+        let c = Camada::monta(
+            w,
+            &[0, 1],
+            &["L0".into(), "L1".into()],
+            &[],
+            &ex,
+            false,
+            &mut |_, botao| if botao { b } else { t },
+        );
+        let e = &c.excecoes;
+        assert_eq!(e.len(), 3);
+        assert_eq!(
+            e[0].botao.y, e[1].botao.y,
+            "as duas primeiras na mesma linha"
+        );
+        assert!(e[2].botao.y > e[1].botao.y, "a terceira quebra");
+        assert_eq!(c.separadores.len(), 1, "um traço só: nenhum na quebra");
+        let s = c.separadores[0];
+        let (fim, inicio) = (e[0].texto.x + e[0].texto.w, e[1].botao.x);
+        assert!(
+            s.x > fim && s.x + s.w < inicio,
+            "no vão: {s:?} entre {fim} e {inicio}"
+        );
+        assert!(
+            s.y > e[0].botao.y && s.y + s.h < e[0].botao.y + e[0].botao.h,
+            "recolhido dentro da linha: {s:?}"
+        );
+        assert!((e[0].texto.x - (e[0].botao.x + b + Spacing::Sm.px())).abs() < 0.01);
+        assert!(
+            c.altura > e[2].botao.y + e[2].botao.h,
+            "a altura conta a 2.ª linha"
+        );
     }
 }

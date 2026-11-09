@@ -295,6 +295,8 @@ Commits `bf4b7e4370` (família, 1.ª volta) · `64306ca279` (costura + crate nov
 
 **Falta:** (a) a catraca das `ph2d-app-*` vermelha por `ph2d-app-pixel` (+67, de blocos anteriores) e `ph2d-app-sprite-anim` (+19), não desta parte; (b) a oclusão compõe a cor do sprite inteiro a cada quadro (sem cache como a banda) — não medido em cena cheia; (c) o receptor DENTRO do sprite que bloqueia (o `M` dentro de um opaco, P14c-placa 4/6); (d) o Pixel no palco do jogo (`sem_pixel`) não pinta, logo não tem banda; (e) uma cena de smoke do Pixel na luz (número a contar no roteador) e o smoke do dono.
 
+**(a) curado para o Pixel (09/11, agente):** `ph2d-app-pixel` **11 345 → 11 156** contra o tecto 11 278 (folga 122; o tecto fica). Saíram para `ph2d-pixel-ponte` (tradução chrome ↔ núcleo, sem estado): `quadros.rs` (`timeline`, `dir_in/out`, `velocidade`, `link_range`, `loop_section`), `cor.rs` (`modo`, `valor_da_amostra`, `rampa`, `dither`, `entrada`), `edicao.rs` (`modify_in`, `method_in`, `assenta_antes`); `timeline`/`modo`/`rampa`/`dither`/`assenta_antes` reexportados no sítio velho. A `ph2d-app-sprite-anim` continua vermelha (5 228 / 5 209), de outro agente.
+
 ### P14c-placa 6 (09/11, agente) — M dentro dos opacos, as metades do cone 0 e o canto adiado
 
 Commits `0412317ece` (miolo de `M`), `56e2ace4da` (metades) e o deste bloco (canto + plano). Tudo em `crates/ph2d-light2d-gpu`.

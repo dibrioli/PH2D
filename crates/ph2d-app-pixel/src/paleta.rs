@@ -13,6 +13,7 @@ use ph2d_pixel_core::{Cel, ColorMode, Op, Patch, Rect, Sprite, Whole, compose_rg
 use ph2d_pixel_io::palette_file::{self, PaletteFormat};
 
 use crate::PixelApp;
+pub use ph2d_pixel_ponte::cor::{modo, rampa, valor_da_amostra};
 use ph2d_pixel_ponte::leis::{conversao, sort_key, usados};
 
 #[path = "paleta_predefinicoes.rs"]
@@ -26,34 +27,6 @@ pub use ph2d_pixel_core::palette::drag_permutation;
 
 /// A cor com que *Palette Size* estende a paleta (Aseprite: preto).
 const PRETO: [u8; 4] = [0, 0, 0, 255];
-
-/// O modo do documento no vocabulário do chrome.
-#[must_use]
-pub fn modo(m: ColorMode) -> NewSpriteMode {
-    match m {
-        ColorMode::Rgba => NewSpriteMode::Rgba,
-        ColorMode::Gray => NewSpriteMode::Gray,
-        ColorMode::Indexed => NewSpriteMode::Indexed,
-    }
-}
-
-/// O valor (no modo do sprite) da amostra `i` da paleta: Indexed = o índice, RGBA = os bytes,
-/// cinza = a cor levada a cinza.
-#[must_use]
-pub fn valor_da_amostra(s: &Sprite, i: usize) -> Option<u32> {
-    let c = *s.palette().get(i)?;
-    Some(match s.mode() {
-        ColorMode::Indexed => u32::try_from(i).ok()?,
-        ColorMode::Rgba => u32::from_le_bytes(c),
-        ColorMode::Gray => s.value_of_rgba(c),
-    })
-}
-
-/// A rampa do Shading: as amostras seleccionadas em ordem de paleta, como valores do sprite.
-#[must_use]
-pub fn rampa(s: &Sprite, sel: &BTreeSet<usize>) -> Vec<u32> {
-    sel.iter().filter_map(|&i| valor_da_amostra(s, i)).collect()
-}
 
 /// Os cels guardados do sprite (um ligado não tem bytes: a imagem é a do dono).
 fn cels(

@@ -3,9 +3,7 @@
 //! viram o [`Stroke::with_values`] do gesto (a pré-visualização) e o largar grava UM passo pelo
 //! `finish` de sempre; `Esc` larga sem gravar.
 
-use ph2d_editor_core::pixel_panel::PixelGradientDither;
 use ph2d_pixel_core::brush::spray_seed;
-use ph2d_pixel_core::dither::Dither;
 use ph2d_pixel_core::filter::smudge::{self, Smudge};
 use ph2d_pixel_core::gradient::{Gradient, Shape, palette_ramp};
 use ph2d_pixel_core::raster::{Cell, line_cells};
@@ -15,39 +13,14 @@ use crate::gesture::{Kind, Mods};
 use crate::input::Press;
 use crate::state::Gesture;
 use crate::{PixelApp, Tool};
+pub use ph2d_pixel_ponte::cor::dither;
+use ph2d_pixel_ponte::cor::entrada;
 
 /// O Blur/Jumble em curso: o estado de trabalho, o pincel e o último ponto.
 pub(crate) struct Mancha {
     smudge: Smudge,
     paint: Paint,
     last: Cell,
-}
-
-/// A matriz do Gradient no vocabulário do núcleo.
-#[must_use]
-pub fn dither(d: PixelGradientDither) -> Dither {
-    match d {
-        PixelGradientDither::None => Dither::None,
-        PixelGradientDither::Bayer2 => Dither::Bayer2,
-        PixelGradientDither::Bayer4 => Dither::Bayer4,
-        PixelGradientDither::Bayer8 => Dither::Bayer8,
-    }
-}
-
-/// A entrada da paleta da cor `c`: a igual, senão a mais próxima em RGBA (no Indexed a frente e o
-/// fundo já são entradas da paleta; no RGB uma cor fora dela anda até à vizinha — a rampa nunca
-/// inventa uma cor que a paleta não tem).
-fn entrada(palette: &[[u8; 4]], c: [u8; 4]) -> usize {
-    let d = |p: &[u8; 4]| -> u32 {
-        (0..4)
-            .map(|k| (i32::from(p[k]) - i32::from(c[k])).unsigned_abs().pow(2))
-            .sum()
-    };
-    palette
-        .iter()
-        .enumerate()
-        .min_by_key(|(_, p)| d(p))
-        .map_or(0, |(i, _)| i)
 }
 
 /// Os valores do gradiente de `from` a `to` com as opções da mão, sobre a região inteira

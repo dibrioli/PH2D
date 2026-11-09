@@ -4,18 +4,20 @@
 //! do desfazer do sprite (`ph2d_pixel_core::{edit, canvas, selection}`).
 
 use ph2d_editor_core::pixel_panel::{
-    PixelDialogChoice, PixelDialogKind, PixelEditAction as E, PixelModify, PixelModifyBrush,
-    PixelRequest, PixelSizeMethod, PixelSpriteAction as Sp,
+    PixelDialogChoice, PixelDialogKind, PixelEditAction as E, PixelModifyBrush, PixelRequest,
+    PixelSpriteAction as Sp,
 };
-use ph2d_pixel_core::canvas::{self, Borders, SizeMethod};
+use ph2d_pixel_core::canvas::{self, Borders};
 use ph2d_pixel_core::edit::{self, Rotation};
 use ph2d_pixel_core::fill::BucketSample;
 use ph2d_pixel_core::layers::Clip;
-use ph2d_pixel_core::selection::{self, Mask, Modify, ModifyBrush, SelectMode};
+use ph2d_pixel_core::selection::{self, Mask, ModifyBrush, SelectMode};
 use ph2d_pixel_core::transform::{Floating, Image, stamp};
 use ph2d_pixel_core::{ColorMode, Op, Sprite};
 
 use crate::PixelApp;
+pub use ph2d_pixel_ponte::edicao::assenta_antes;
+use ph2d_pixel_ponte::edicao::{method_in, modify_in};
 
 /// **A área de transferência**: a imagem copiada (com modo e paleta, para colar noutro sprite) e
 /// quais células são da selecção de onde saiu.
@@ -89,41 +91,6 @@ pub(crate) fn limpa(s: &Sprite, key: ph2d_pixel_core::CelKey, m: &Mask, bg: u32)
         keep: Vec::new(),
     };
     stamp(s, key, &nada, Some(m), None, bg)
-}
-
-fn modify_in(k: PixelModify) -> Modify {
-    match k {
-        PixelModify::Expand => Modify::Expand,
-        PixelModify::Contract => Modify::Contract,
-        PixelModify::Border => Modify::Border,
-    }
-}
-
-fn method_in(m: PixelSizeMethod) -> SizeMethod {
-    match m {
-        PixelSizeMethod::Nearest => SizeMethod::Nearest,
-        PixelSizeMethod::Bilinear => SizeMethod::Bilinear,
-        PixelSizeMethod::RotSprite => SizeMethod::RotSprite,
-    }
-}
-
-/// O pedido larga a moldura solta antes (o Aseprite assenta as células levantadas antes de outro
-/// comando): tudo o que muda o documento, salvo a própria moldura.
-#[must_use]
-pub fn assenta_antes(r: &PixelRequest) -> bool {
-    !matches!(
-        r,
-        PixelRequest::Tool(_)
-            | PixelRequest::Group(_)
-            | PixelRequest::Options(_)
-            | PixelRequest::Fg(_)
-            | PixelRequest::Bg(_)
-            | PixelRequest::Swap
-            | PixelRequest::Swatch { .. }
-            | PixelRequest::SortKey(_)
-            | PixelRequest::TransformField { .. }
-            | PixelRequest::Edit(E::Commit | E::Cancel | E::Transform | E::Copy | E::CopyMerged)
-    )
 }
 
 impl PixelApp {

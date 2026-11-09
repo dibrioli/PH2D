@@ -72,7 +72,8 @@ fn try_context_menu_row(
         || id == ids::CTX_MENU_HIER_USE_AS_BRUSH_SHAPE
         || id == ids::CTX_MENU_HIER_USE_AS_PAPER
         || id == ids::CTX_MENU_HIER_USE_AS_GRANULATION
-        || id == ids::CTX_MENU_HIER_USE_AS_FLOW)
+        || id == ids::CTX_MENU_HIER_USE_AS_FLOW
+        || id == ids::CTX_MENU_HIER_CONVERT_TO_OUTLINE)
     {
         return false;
     }
@@ -97,6 +98,10 @@ fn try_context_menu_row(
                 .push(EditorAction::Hierarchy(HierRequest::UseAsGranulation {
                     row,
                 }));
+        } else if id == ids::CTX_MENU_HIER_CONVERT_TO_OUTLINE {
+            host.bus_mut().push(EditorAction::Hierarchy(
+                HierRequest::ConvertToCollisionOutline { row },
+            ));
         } else if id == ids::CTX_MENU_HIER_USE_AS_FLOW {
             host.bus_mut()
                 .push(EditorAction::Hierarchy(HierRequest::UseAsFlow { row }));

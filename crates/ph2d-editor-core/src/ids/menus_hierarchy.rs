@@ -35,6 +35,11 @@ pub const CTX_MENU_HIER_USE_AS_GRANULATION: NodeId =
 /// Ragged Edge FLOW map (the path the water's edge follows, like a Corel Painter flow map; BUGS #31).
 pub const CTX_MENU_HIER_USE_AS_FLOW: NodeId = hash_node_id("ctx_menu_hier_use_as_flow");
 
+/// «Convert to Collision Outline» (dono 09/11): a Vector drawing becomes a «Collision Shape» with an
+/// Outline in its place (`ph2d_physics_outline_vec::convert`). Only shown for Vector rows.
+pub const CTX_MENU_HIER_CONVERT_TO_OUTLINE: NodeId =
+    hash_node_id("ctx_menu_hier_convert_to_outline");
+
 // M14.6 F: per-row Hierarchy context menu entries. Triggered by a
 // secondary (right-button) click on any hierarchy row in live mode;
 // `ContextMenuKind::HierarchyRow { row }` carries the target row's

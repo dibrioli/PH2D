@@ -216,3 +216,33 @@ fn the_kanban_background_row_raises_its_request_by_a_real_click() {
         "{asked:?}"
     );
 }
+
+/// «Convert to Collision Outline» (dono 09/11): só uma linha VECTOR a tem; na imagem e no esqueleto
+/// ela não aparece, e o clique nela chega ao painel ⇒ o pedido.
+#[test]
+fn convert_to_collision_outline_is_only_for_a_vector_row() {
+    let mut t = T::new();
+    for row in [BONES, PICTURE] {
+        t.press(row, PointerButton::Secondary);
+        assert!(t.locate(ids::CTX_MENU_HIER_DUPLICATE).is_some(), "o menu da linha");
+        assert!(
+            t.locate(ids::CTX_MENU_HIER_CONVERT_TO_OUTLINE).is_none(),
+            "oferecido a quem não é Vector"
+        );
+        t.hero.store.close_context_menu();
+        t.paint();
+    }
+    t.hero.store.set_hierarchy_board_rows(
+        std::iter::once((PICTURE, ph2d_component_desc::ObjectKind::Vector)).collect(),
+    );
+    t.paint();
+    t.press(PICTURE, PointerButton::Secondary);
+    t.press(ids::CTX_MENU_HIER_CONVERT_TO_OUTLINE, PointerButton::Primary);
+    let asked: Vec<_> = t.hero.bus.drain().collect();
+    assert!(
+        asked.contains(&EditorAction::Hierarchy(
+            HierRequest::ConvertToCollisionOutline { row: PICTURE }
+        )),
+        "{asked:?}"
+    );
+}

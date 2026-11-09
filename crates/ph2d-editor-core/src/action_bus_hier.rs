@@ -285,4 +285,8 @@ pub enum HierRequest {
         row: ph2d_a11y::NodeId,
         kanban: Option<u64>,
     },
+
+    /// «Convert to Collision Outline» (dono 09/11): a shell troca o desenho Vector da linha por uma
+    /// «Collision Shape» com Outline (`ph2d_physics_outline_vec::convert`) — ou diz porque não.
+    ConvertToCollisionOutline { row: ph2d_a11y::NodeId },
 }

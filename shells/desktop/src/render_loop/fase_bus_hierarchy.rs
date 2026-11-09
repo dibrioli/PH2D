@@ -240,6 +240,11 @@ impl crate::App {
                 pd.send_to_board.get_or_insert((row, kanban, true));
             }
             EditorAction::Hierarchy(
+                ph2d_editor_core::action_bus::HierRequest::ConvertToCollisionOutline { row },
+            ) => {
+                pd.convert_outline_row.get_or_insert(row);
+            }
+            EditorAction::Hierarchy(
                 ph2d_editor_core::action_bus::HierRequest::RemoveFromSheet { row },
             ) => {
                 pd.remove_from_sheet_row.get_or_insert(row);

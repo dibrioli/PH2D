@@ -332,6 +332,8 @@ mod fase_selection_mirror_path_links;
 mod fase_selection_mirror_skin;
 /// Fase do quadro: «Send to board…» da Hierarquia (MiroClone W15).
 mod fase_send_to_board;
+/// Fase do quadro: «Convert to Collision Outline» da Hierarquia (dono 09/11).
+mod fase_convert_outline;
 mod fase_sequences;
 /// Fase do quadro: a manutenção de sessão (Shape Builder, tween, Colorize, Gap Closure).
 mod fase_session_upkeep;

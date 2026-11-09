@@ -389,6 +389,11 @@ pub(super) const HIERARCHY_ROW_ROWS: &[MenuRow] = &[
         "chrome.menu.use_as_granulation",
     ),
     menu_row(ids::CTX_MENU_HIER_USE_AS_FLOW, "chrome.menu.use_as_flow"),
+    // Só para Vector: o pintor esconde-a nas outras (`menu_row_is_hidden`).
+    menu_row(
+        ids::CTX_MENU_HIER_CONVERT_TO_OUTLINE,
+        "chrome.menu.convert_to_collision_outline",
+    ),
     menu_row(
         ids::CTX_MENU_HIER_RESET_TRANSFORM,
         "chrome.menu.reset_transform",

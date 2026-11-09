@@ -49,6 +49,7 @@ ph2d-topdown = { path = "../../crates/ph2d-topdown" }
 # smoke e as leis que só povoam um `World`. A seta aponta só nesta direcção.
 ph2d-app-physics = { path = "../../crates/ph2d-app-physics" }
 ph2d-physics-outline = { path = "../../crates/ph2d-physics-outline" }
+ph2d-physics-outline-vec = { path = "../../crates/ph2d-physics-outline-vec" }
 # ⭐ A família das INSTÂNCIAS (W2 Fase D) — receitas, cópias vivas, variantes, o
 # prefab que se abre, e os quatro componentes do TOP-20. Dep directa e
 # não-opcional: o `render_loop` chama-lhe os passes pelo nome, em ordem.

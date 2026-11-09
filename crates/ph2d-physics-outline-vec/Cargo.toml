@@ -1,0 +1,26 @@
+[package]
+name = "ph2d-physics-outline-vec"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# «Convert to Collision Outline» (Hierarchy menu, dono 09/11): a Vector drawing becomes a «Collision
+# Shape» with an `Outline`. Drop-crate: the vector document dependency stays out of `ph2d-physics-outline`.
+[dependencies]
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-vec-scene = { path = "../ph2d-vec-scene" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+ph2d-physics-outline = { path = "../ph2d-physics-outline" }
+ph2d-outline-trace = { path = "../ph2d-outline-trace" }
+ph2d-unique-name = { path = "../ph2d-unique-name" }
+
+[dev-dependencies]
+ph2d-core = { path = "../ph2d-core" }
+
+[lints]
+workspace = true

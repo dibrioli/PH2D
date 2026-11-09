@@ -286,3 +286,63 @@ const TETO_JUNTO: f64 = 0.10;
 /// 0,0515 · `(0, −1)` 0,0585. O `±x` (a parede é vertical) é o cone de 90° do nível 0: a metade tapada do cone
 /// de `±y` fica com `ω̂_q` (o plano §11 «P14c-placa 5»: as metades da descida do nível 0).
 const TETO_JUNTO_HOLO: f64 = 0.17;
+
+/// ⭐ P14c-placa 5 — COM O REBOTE (a sala do G9: chão e teto brancos, parede vermelha à esquerda, verde à
+/// direita; o degrau Baixo): o `M` da luz que volta das paredes, nos quatro pontos do G9 e nas quatro normais de
+/// eixo, contra o `Rebote::luz_em_n` do gabarito. O erro é relativo à luz do plano (`n = 0`) do gabarito: a face
+/// de costas para a luz é quase zero.
+#[test]
+fn com_o_rebote_a_placa_e_o_gabarito_concordam_com_normal() {
+    use crate::g9_rebote::{luz_na_placa, pontos, sala};
+    use ph2d_light2d_ref::{OpcoesDoRebote, Rebote};
+    let Some(gpu) = gpu() else { return };
+    let cena = CenaDeLuz {
+        com_normal: true,
+        ..sala()
+    };
+    let serie = Rebote::resolver(
+        &cena,
+        OpcoesDoRebote {
+            passo_m: 0.01,
+            rebotes: 300,
+        },
+    );
+    let (_, lado, texel) = crate::cenas::DEGRAUS[2];
+    let mut falhas = Vec::new();
+    for ((modo, cfg), teto) in modos().into_iter().zip(TETO_REBOTE) {
+        let cfg = Config {
+            rebote: true,
+            grade: grade(lado, texel),
+            ..cfg
+        };
+        let l = rodar_com(&gpu, &cena, cfg, 60);
+        let [mx, my] = l.m.as_ref().expect("o momento");
+        let mut pior = 0.0_f64;
+        for p in pontos() {
+            let plano = serie.luz_em(p);
+            let (f, x, y) = (
+                luz_na_placa(&l.f, &l.g, p),
+                luz_na_placa(mx, &l.g, p),
+                luz_na_placa(my, &l.g, p),
+            );
+            for n in [[1.0, 0.0], [-1.0, 0.0], [0.0, 1.0], [0.0, -1.0]] {
+                let r = serie.luz_em_n(p, n);
+                let e = (0..3)
+                    .map(|c| (f[c] + n[0] * x[c] + n[1] * y[c] - r[c]).abs() / plano[c])
+                    .fold(0.0, f64::max);
+                eprintln!("{modo} rebote {p:?} n = {n:?}: {e:.4}");
+                pior = pior.max(e);
+            }
+        }
+        eprintln!("{modo} rebote: pior {pior:.4}");
+        if pior > teto {
+            falhas.push(format!("{modo}: {pior:.4} > {teto}"));
+        }
+    }
+    assert!(falhas.is_empty(), "com o rebote: {falhas:#?}");
+}
+
+/// ⭐ P14c-placa 5 — o MEDIDO + folga (09/11, RADV, degrau Baixo, o pior dos 16): clássica 0,1832 (o F sozinho
+/// tem 0,131 no G9 deste degrau) · holográfica 0,1329 (junto às paredes, `±x`: o cone de 90° do nível 0; no meio
+/// da sala ≤ 0,07). Visto vermelho com `ω̂ → −ω̂` só na holográfica.
+const TETO_REBOTE: [f64; 2] = [0.20, 0.15];

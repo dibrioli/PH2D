@@ -365,7 +365,8 @@ fn o_censo_dos_campos_do_animated_em_uso() {
     for id in [core_ids::INSP_LIVE_RENDER_SECTION, CARD_ORDERING] {
         host.store_mut().set_collapsed(id, true);
     }
-    assert_eq!(conta(&pinta(&mut host, &mut st)), (18, 23), "à vista");
+    // 18 → 19: a linha Normal Map (ff3b7bc616) é do cartão Image, que a Animated partilha com a Still.
+    assert_eq!(conta(&pinta(&mut host, &mut st)), (19, 23), "à vista");
     for id in [
         core_ids::INSP_LIVE_RENDER_SECTION,
         CARD_ORDERING,
@@ -375,7 +376,7 @@ fn o_censo_dos_campos_do_animated_em_uso() {
     ] {
         host.store_mut().set_collapsed(id, false);
     }
-    assert_eq!(conta(&pinta(&mut host, &mut st)), (49, 23), "no total");
+    assert_eq!(conta(&pinta(&mut host, &mut st)), (50, 23), "no total");
     set_current_sheets(None);
     limpa();
 }

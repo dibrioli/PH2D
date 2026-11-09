@@ -58,14 +58,14 @@ const HANDLE_WORDS: &[&str] = &[
 /// *"até a próxima `fn `"* — um segundo critério de fronteira seria a segunda
 /// porta que diverge da primeira.
 fn scene_sources() -> String {
-    // ⚠️⚠️ **DUAS pastas desde a W2/L2, e ler só uma deixa este gate CEGO a 70 das
-    // 108 cenas** — que é o defeito que ele existe para apanhar. A família partiu-se
-    // em `shells/desktop/src/physics/` (o que precisa da `App`) e
-    // `crates/ph2d-app-physics/src/` (o que só povoa um `World`), e um varredor de
-    // uma pasta só devolveria um conjunto mais pequeno **sem reprovar**: é o
-    // controlo positivo abaixo (`…_can_match_something`) que o obriga a falar.
+    // ⚠️⚠️ **TRÊS pastas** (a shell, a família e a folha das cenas): ler menos devolve um conjunto
+    // menor **sem reprovar** (82 ficheiros, 09/11); o controlo `…_can_match_something` obriga-o a falar.
     let mut out = String::new();
-    for dir in ["src/physics", "../../crates/ph2d-app-physics/src"] {
+    for dir in [
+        "src/physics",
+        "../../crates/ph2d-app-physics/src",
+        "../../crates/ph2d-physics-smoke-scenes/src",
+    ] {
         let Ok(rd) = fs::read_dir(dir) else {
             continue;
         };

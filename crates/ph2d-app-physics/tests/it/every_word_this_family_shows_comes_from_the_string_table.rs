@@ -99,7 +99,10 @@ fn every_named_exemption_still_shelters_what_it_names() {
         "isenções mortas:\n  {}",
         mortas.join("\n  ")
     );
-    let em_cena = gate::literais_de_cena(&src, gate::CENAS);
+    // ⚠️ As cenas que só povoam um `World` moram na folha irmã (GEF02 onda 0): o piso soma as duas.
+    let folha = src.join("../../ph2d-physics-smoke-scenes/src");
+    let em_cena =
+        gate::literais_de_cena(&src, gate::CENAS) + gate::literais_de_cena(&folha, gate::CENAS);
     assert!(
         em_cena >= 600,
         "as cenas de smoke abrigam {em_cena} textos — em 2026-09-16 eram 816 (117 cenas). Ou elas \

@@ -1,0 +1,33 @@
+[package]
+name = "ph2d-physics-smoke-scenes"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# As cenas de smoke da física que só povoam um `World` através do `SceneCtx` (GEF02 onda 0, 09/11):
+# saíram da `ph2d-app-physics`, que estava no tecto exacto de LOC. Folha pura — a família
+# re-exporta o `SceneCtx` e os módulos, e nenhum chamador muda de caminho.
+[lib]
+
+[dependencies]
+# Versões LITERAIS, como as irmãs: este workspace não tem `[workspace.dependencies]`.
+bevy_ecs = "0.20"
+ph2d-core = { path = "../ph2d-core" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+ph2d-physics-scene = { path = "../ph2d-physics-scene" }
+ph2d-render = { path = "../ph2d-render" }
+# `libm`: HR-5, a trigonometria bit-idêntica entre OS (a pose dos rigs).
+libm = { version = "=0.2.16", default-features = false }
+# ⚠️ As MESMAS features que a `ph2d-app-physics` pede (HOWTO §2.4): o `SceneCtx` leva o `TimelineDoc`.
+ph2d-timeline = { path = "../ph2d-timeline", features = ["render", "physics"] }
+
+[dev-dependencies]
+# Os gates dos sinais leem os eventos contra uma árvore de tags vazia.
+ph2d-tags = { path = "../ph2d-tags" }
+
+[lints]
+workspace = true

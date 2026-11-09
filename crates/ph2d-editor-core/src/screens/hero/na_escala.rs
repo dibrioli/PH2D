@@ -104,6 +104,15 @@ impl HeroScreen {
             .or_else(|| self.store.panel_at(x, y))
     }
 
+    /// A costura de largura de coluna sob um ponto FÍSICO, se nenhum cartão solto a tapa. É chrome,
+    /// nunca canvas (smoke do dono 09/11: no Pixel o lápis comia o premir e a coluna não estreitava).
+    #[must_use]
+    pub fn costura_fisica(&self, x: f32, y: f32) -> Option<crate::screens::layout::DockSide> {
+        let p = self.escala().to_logical((x, y));
+        let tapada = self.store.loose_card_covers(Rect::new(p.0, p.1, 0.0, 0.0));
+        self.last_layout?.dock_seam_at(p).filter(|_| !tapada)
+    }
+
     /// F9 — o chrome legado entra ou sai; devolve o estado novo. Durante a apresentação do quadro
     /// a tecla é recusada (`None`: ela cobre a janela, e o chrome que voltasse por baixo dela
     /// mudaria a área do quadro a meio).

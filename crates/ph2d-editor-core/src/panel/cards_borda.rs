@@ -128,10 +128,12 @@ pub fn assenta_ao_abrir(store: &mut WidgetStore, panel: NodeId, r: Rect, dentro:
         return r;
     }
     let fundo = (r.y + r.h).max(dentro.y + dentro.h);
+    // Cada obstáculo vai até ao fundo: a janela cresce com o conteúdo (a Undo History com cada passo,
+    // e no quadro em que abre ainda não o mediu), logo o que está por baixo dela é dela (smoke 09/11).
     let outras: Vec<Rect> = store
         .panel_rects_by_id()
         .filter(|&(id, _)| id != panel)
-        .map(|(_, o)| o)
+        .map(|(_, o)| Rect::new(o.x, o.y, o.w, (fundo - o.y).max(o.h)))
         .collect();
     let em = |(x, y): (f32, f32)| Rect::new(x, y, r.w, (fundo - y).max(0.0));
     let corta = |a: Rect, o: Rect| -> f32 {

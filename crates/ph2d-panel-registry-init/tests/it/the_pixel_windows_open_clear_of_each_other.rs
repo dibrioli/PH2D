@@ -339,3 +339,65 @@ fn sem_sitio_livre_a_janela_reaberta_nao_tapa_o_titulo_de_outra() {
         );
     }
 }
+
+/// ⭐ Smoke do dono 09/11 (*«ao abrir o app os painéis acessórios estão sobrepostos»*): a cena 25 pede
+/// a Undo History e os Keyboard Shortcuts no MESMO quadro. Nenhuma das abertas no mesmo quadro cai
+/// sobre outra — nem no 1.º quadro, nem assente.
+#[test]
+fn as_janelas_que_abrem_no_mesmo_quadro_nao_caem_umas_sobre_as_outras() {
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let pares: [&[usize]; 3] = [&[1, 2], &[0, 1, 2, 3], &[3, 2, 1, 0]];
+    for abre in pares {
+        let _ = ph2d_panel_registry_init::register_all_panels();
+        publica_conteudo();
+        let mut hero = HeroScreen::new(NodeId(1));
+        assenta(&mut hero, &mut ts);
+        for &k in abre {
+            hero.panel_visibility.insert(JANELAS[k].0, true);
+        }
+        quadros(&mut hero, &mut ts, ECRA_DO_DONO, 1);
+        nenhuma_sobre_outra(&hero, &format!("{abre:?} no 1.º quadro"));
+        assenta(&mut hero, &mut ts);
+        nenhuma_sobre_outra(&hero, &format!("{abre:?} assente"));
+    }
+}
+
+/// ⭐ Smoke do dono 09/11 (*«a largura do painel ficou travada»*): no Pixel o lápis tomava o premir
+/// na borda da coluna. A borda é chrome — `costura_fisica` a responde, com as janelas da cena 25
+/// abertas — e a largura pedida chega ao painel PIXEL até ao piso.
+#[test]
+fn a_borda_da_coluna_pixel_e_chrome_e_estreita_o_painel() {
+    use ph2d_editor_core::interaction::WidgetStore;
+    use ph2d_editor_core::screens::hero::PANEL_PIXEL;
+    use ph2d_editor_core::screens::layout::DockSide;
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    publica_conteudo();
+    let mut hero = HeroScreen::new(NodeId(1));
+    for p in [PANEL_PIXEL, PANEL_PIXEL_HISTORY, PANEL_PIXEL_KEYS] {
+        hero.panel_visibility.insert(p, true);
+    }
+    assenta(&mut hero, &mut ts);
+    let antes = hero
+        .store
+        .panel_rect(ids::PIXEL_PANEL)
+        .expect("o PIXEL abriu");
+    let s = hero.last_layout.expect("layout").dock_seam(DockSide::Right);
+    assert!(s.w > 0.0 && s.h > 0.0, "a coluna PIXEL sem borda {s:?}");
+    for dy in [0.1_f32, 0.5, 0.9] {
+        let p = (s.x + s.w * 0.5, s.y + s.h * dy);
+        assert_eq!(
+            hero.costura_fisica(p.0, p.1),
+            Some(DockSide::Right),
+            "{p:?} na borda {s:?} não é a borda"
+        );
+    }
+    hero.store
+        .set_dock_width(DockSide::Right, Some(WidgetStore::DOCK_W_MIN));
+    assenta(&mut hero, &mut ts);
+    let depois = hero.store.panel_rect(ids::PIXEL_PANEL).expect("o PIXEL");
+    assert!(
+        depois.w + 40.0 < antes.w,
+        "o PIXEL não estreitou: {antes:?} → {depois:?}"
+    );
+}

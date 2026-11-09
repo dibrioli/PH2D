@@ -67,32 +67,28 @@ impl crate::App {
         if self.dock_seam_drag.is_some() {
             return Some(winit::window::CursorIcon::EwResize);
         }
-        let (x, y) = self.ponto_do_chrome((x, y));
-        let layout = self.hero_layout()?;
+        let (layout, p) = (self.hero_layout()?, self.ponto_do_chrome((x, y)));
         // ⚠️ **A alça de uma coluna FECHADA promete o mesmo gesto** — puxar a borda — logo tem de
         //    mostrar a mesma seta. Um cursor diferente diria que é outra coisa, e o que muda é só
         //    a direcção em que a borda ainda pode ir.
-        if layout.dock_reopen_at((x, y)).is_some() {
+        if layout.dock_reopen_at(p).is_some() {
             return Some(winit::window::CursorIcon::EwResize);
         }
-        self.seam_livre((x, y))
+        self.seam_livre(x, y)
             .map(|_| winit::window::CursorIcon::EwResize)
     }
 
-    /// A costura em `p`, se nenhum cartão solto está por cima dela.
-    fn seam_livre(&self, p: (f32, f32)) -> Option<ph2d_editor_core::screens::layout::DockSide> {
+    /// A costura sob o ponto FÍSICO, se nenhum cartão solto está por cima dela.
+    pub(crate) fn seam_livre(&self, x: f32, y: f32) -> Option<DockSide> {
         let hero = self.gfx.as_ref()?.hero_screen.as_ref()?;
-        let livre = !hero
-            .store
-            .loose_card_covers(ph2d_editor_core::zones::Rect::new(p.0, p.1, 0.0, 0.0));
-        hero.last_layout?.dock_seam_at(p).filter(|_| livre)
+        hero.costura_fisica(x, y)
     }
 
     /// Press: começa o arrasto se o ponto estiver na costura. `true` = a tecla foi consumida.
     pub(crate) fn dock_seam_down(&mut self, x: f32, y: f32) -> bool {
-        let (x, y) = self.ponto_do_chrome((x, y));
+        let p = self.ponto_do_chrome((x, y));
         // A alça vem primeiro e reabre no DOWN: um toque reabre, um arrasto reabre e redimensiona.
-        if let Some(side) = self.hero_layout().and_then(|l| l.dock_reopen_at((x, y)))
+        if let Some(side) = self.hero_layout().and_then(|l| l.dock_reopen_at(p))
             && self.open_column(side)
         {
             // ⚠️ Capturada DEPOIS de reabrir: a largura de partida deste arrasto é a que a
@@ -100,7 +96,7 @@ impl crate::App {
             self.dock_seam_drag = Some(SeamDrag { side });
             return true;
         }
-        let Some(side) = self.seam_livre((x, y)) else {
+        let Some(side) = self.seam_livre(x, y) else {
             return false;
         };
         self.dock_seam_drag = Some(SeamDrag { side });

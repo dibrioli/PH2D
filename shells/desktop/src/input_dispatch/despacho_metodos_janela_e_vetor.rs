@@ -405,10 +405,11 @@ impl crate::App {
     }
 
     /// Uma aba de família activa é dona do teclado (`surface_input::owns_the_keyboard`).
-    /// A CENA está sob `(x, y)` — nem o corpo de um painel, nem um widget do chrome.
+    /// A CENA está sob `(x, y)` — nem painel, nem widget do chrome, nem a borda de uma coluna.
     pub(crate) fn pointer_on_canvas(&self, x: f32, y: f32) -> bool {
         self.hero_ref()
             .is_some_and(|h| h.chrome_panel_at(x, y).is_none() && h.chrome_hit(x, y).is_none())
+            && self.seam_livre(x, y).is_none()
     }
 
     pub(crate) fn surface_owns_the_keyboard(&self) -> bool {

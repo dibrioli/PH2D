@@ -171,3 +171,26 @@ Mutação (fecho): tirar a guarda `n_xy = 0`, trocar o sinal de `ω̂`, ler `doc
 | Normal com «altura da lâmpada» (Godot/Unity) | parâmetro novo em toda luz; quebra o forno branco e a identidade byte a byte do plano |
 | Normal map de tela inteira sempre ligado (Unity) | custo em toda cena; a nossa banda só existe com normal à vista |
 | Gerar normais da cor (Sprite Lamp) | pixel «mole»; o idioma é pintar com a roda |
+
+## 11. Estado (09/11, fim da janela 1 — a próxima janela começa aqui)
+
+Commits da onda (`git log --oneline 1eb5eff0a4^..HEAD`), cada um com o relatório na mensagem. Nada integrado.
+
+| Parte | Estado | Commits |
+|---|---|---|
+| Gabarito CPU da luz com normal (`luz_em_n`, `momento`, miolo de 9 componentes, rebote) | ✅ gates verdes, vistos vermelhos | `d69428bd90` |
+| P14a — animação: `derivado_quando` (o `grava` sai, o `serialize` fica), porta `tag_do_aseprite`, `ph2d-pixel-cena` (`clips_das_tags`, `quadro_mostrado`, `deriva`), ping-pong do Aseprite (N passadas ⇒ `ceil(N/2)` ciclos + `acaba_na_ponta_de_chegada`), `current` vazio ⇒ 1.º clip, cartão Animation (só Autoplay e Starts with; editores escondidos) | ✅ | `dedc76163c` `7dc42e2776` `bb340489fa` `96bfbc00ce` `270fb31a1d` `8671c7588f` |
+| Censos do Inspector (o × de f7688dbaad é moldura: 18→19, 22→23) | ✅ | `a3c2fcbf9e` |
+| P14b — pivô (`pivot_slice`, `Op::PivotSlice`, `MINOR 7`), `forma_de_retangulo`, `SegueSlice`, `campos_derivados_quando` (forma e offset do `Collider` não se gravam), gesto Add Collider, origem = pivô em todo leitor, forma segue a slice e slice escondida emudece | 🔶 em curso (agente P14b-2; relatório em §11 «P14b-2») | `da7fa11154` `f651bee09d` `d5072adb7c` … |
+| P14c-placa — receptor `luz_receber_n` + banda normal (1); shaders de M `c3_momento.wgsl` (2); ligar M no Rust + gates placa×gabarito (3) | 🔶 (1)(2) feitos; (3) em curso (relatório em §11 «P14c-placa 3») | `790581ebf9` `980da1d295` … |
+| `PROJECT_SCHEMA` | 225 → 227 (animação 226, `SegueSlice` 227), contado pela escada; o integrador reconta | — |
+
+**Ainda por fazer (ordem):**
+1. Fechar P14b-2 e P14c-placa 3 pelos relatórios abaixo.
+2. **P14c-pixel:** camada `Layer.normal` (op + `MINOR 8`), `compose_normal`, a família desenha a BANDA NORMAL com o mesmo `Affine` (⚠️ rodar a normal pela base da instância — a banda assume eixo do mundo), liga `CenaDeLuz.com_normal`; Pixel Sprite **bloqueia** como «outro» (`CamadaDeOclusao`, `present_luz.rs:46`); `NaoRecebeLuz` por objeto na colagem (hoje a banda inteira recebe); Layer Properties ▸ Normal Map (4 condições).
+3. **Sprite do motor com normal** (2.ª textura em `sprite.wgsl:376,382`) — necessário para a P14e.
+4. **P14d:** `_n.png` na folha; export Godot `.tres` (fps = 1000/mdc das durações, múltiplos exatos; ping-pong desenrolado); oráculos Godot (sequência, recorte, sinal da normal) como fixtures com cabeçalho.
+5. **P14e:** Sprite Inspector importa slices (pivô → `Sprite.anchor`, colliders) e a normal do `.ase`/folha que o Pixel grava.
+6. Fixture `heroi_p14` completa (falta a camada Normal Map), sonda headless, cenas 26–27 fotografadas, smoke do dono, `/pd-onda-fechar`.
+
+**Lições desta janela:** (a) o `serialize` do registo tem 13 leitores que NÃO gravam (Inspector, cópias, instâncias, Simular) — o derivado sai só do `grava`; (b) `ColliderShape` é campo do `Collider`, não componente — `campos_derivados_quando`; (c) um commit de UI (o × de f7688dbaad) que não corre os censos de moldura por nome deixa-os vermelhos para a onda seguinte.

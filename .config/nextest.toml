@@ -219,6 +219,9 @@ slow-timeout = { period = "300s", terminate-after = 8 }
 [test-groups.luz2d-placa]
 max-threads = 2
 
+[test-groups.undo-matriz]
+max-threads = 2
+
 # ⭐ W5n (12/10) — os três portões LENTOS da luz (o gabarito na CPU de uma thread por ponto). Sozinhos,
 # `dev`, load ~1: o interior na grade 513 s (três leis por caso desde a W5n) · o oclusor fino 380 s (W5m §5)
 # · a holográfica junto à face passou na corrida em série (os 4 do GPU em 364 s); na suíte paralela os três
@@ -255,3 +258,8 @@ slow-timeout = { period = "60s", terminate-after = 6 }
 [[profile.default.overrides]]
 filter = 'test(/^tool::paint::wetpaint::undo_matriz_tests::undo_vivo_grade_/)'
 slow-timeout = { period = "60s", terminate-after = 8 }
+# Na suíte de 09/11 (load ~12) TRÊS ainda estouraram os 480 s com as seis a correr juntas (cada uma enche o pool
+# rayon): dois de cada vez, com 4 fios reservados, e no INÍCIO da fila (não alongam a cauda da suíte).
+test-group = 'undo-matriz'
+threads-required = 4
+priority = 90

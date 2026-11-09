@@ -97,7 +97,7 @@ pub const CAMPOS_FORA: [(&str, &str); 82] = [
     ("paper", DA_OBRA),
     // O dente do papel é da TELA (dono 27/10, W3b): o pincel não o grava, e o de um preset antigo é ignorado.
     ("paper_depth", DA_OBRA),
-    ("dente", DA_OBRA), // o dente do papel, enchido no dab por `poe_o_papel_como_grain`
+    ("dente", POR_DAB), // o dente do papel, enchido em cada dab a partir do papel da tela (`Dente::do_papel`)
     ("symmetry", DA_OBRA),
     ("stroke_method", DO_GESTO),
     ("grid_cell_px", DO_GESTO),

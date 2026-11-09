@@ -74,7 +74,7 @@ fn pct(v: u8) -> i64 {
 
 /// % → 0–255, o inverso exacto de [`pct`] (`floor`: 27 % → 68, 11 % → 28).
 fn de_pct(p: f64) -> u8 {
-    (p.clamp(0.0, PCT_MAX) * BYTE_MAX / PCT_MAX).floor() as u8
+    (ph2d_editor_core::math::safe_clamp_f64(p, 0.0, PCT_MAX) * BYTE_MAX / PCT_MAX).floor() as u8
 }
 
 /// Escreve um número (cortado à faixa do campo: tamanhos ≥ 1, opacidade 0–255).

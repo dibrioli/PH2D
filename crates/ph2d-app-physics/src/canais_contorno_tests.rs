@@ -285,12 +285,7 @@ fn com_pontos_animados_o_detail_dentro_da_edicao_nao_retraca_e_pede_o_modal() {
     ph2d_shape_handles::pontos::escreve(sim.world_mut(), forma, mao.clone(), true);
     let mut tl = ph2d_timeline::TimelineState::new();
     tl.flags.auto_key = false;
-    let kk = ph2d_ecs::FieldKey::new(
-        ph2d_ecs::canal::familia::FISICA,
-        f::CONTORNO_PONTO_X,
-        0,
-        0,
-    );
+    let kk = ph2d_ecs::FieldKey::new(ph2d_ecs::canal::familia::FISICA, f::CONTORNO_PONTO_X, 0, 0);
     tl.doc.upsert_key(
         forma,
         ph2d_timeline::PropKind::Field(kk),

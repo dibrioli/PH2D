@@ -71,6 +71,8 @@ fn o_grain_a_mao_morde_na_borracha_e_apaga_o_mesmo() {
             t.set_brush_texture_image(imagem_com_desenho(), 64, 64);
         }),
         ("Same as Paper", |t| {
+            // Um papel escolhido: com Paper: None o «Same as Paper» não tem grão (dono 08/11).
+            t.set_paper_field(|b| b.paper = crate::tool::paint::substrate_relief::default_paper());
             t.set_brush_texture_kind(1);
             t.toggle_brush_grain_same_as_paper();
         }),

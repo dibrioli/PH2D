@@ -40,7 +40,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("color_jitter_val", "0.02"),
             (
                 "mistura_opaca",
-                r#"{"modo": "WetBlend", "paint_amount": 0.35, "paint_density": 1.0, "color_stretch": 0.15, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
+                r#"{"modo": "WetBlend", "paint_amount": 0.35, "paint_density": 1.0, "color_stretch": 0.15, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
             ),
         ],
         mao: &[
@@ -65,7 +65,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("color_jitter_sat", "0.06"),
             (
                 "mistura_opaca",
-                r#"{"modo": "WetBlend", "paint_amount": 0.5, "paint_density": 0.7, "color_stretch": 0.4, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
+                r#"{"modo": "WetBlend", "paint_amount": 0.5, "paint_density": 0.7, "color_stretch": 0.4, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
             ),
         ],
         mao: &[
@@ -93,7 +93,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("color_jitter_val", "0.04"),
             (
                 "mistura_opaca",
-                r#"{"modo": "WetBlend", "paint_amount": 0.3, "paint_density": 1.0, "color_stretch": 0.15, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
+                r#"{"modo": "WetBlend", "paint_amount": 0.3, "paint_density": 1.0, "color_stretch": 0.15, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
             ),
         ],
         mao: &[
@@ -131,7 +131,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ),
             (
                 "mistura_opaca",
-                r#"{"modo": "WetBlend", "paint_amount": 0.3, "paint_density": 1.0, "color_stretch": 0.15, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
+                r#"{"modo": "WetBlend", "paint_amount": 0.3, "paint_density": 1.0, "color_stretch": 0.15, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
             ),
         ],
         mao: &[("pressureSize", 0.1), ("dabRotation", 1.0)],
@@ -142,7 +142,8 @@ pub const MEIOS: &[ReceitaMeio] = &[
     // Wet wash (CSP: 30 px, intervalo ~1 contínuo, «Dappled cloud», mistura 70/50/10, spray 120 dens 4 desvio −50,
     // ponta dupla com spray, Opac P(10), composição Multiplicar): um véu largo e liso, maior que o tamanho nominal,
     // que multiplica (o traço é uma camada: não escurece a si mesmo). O nome «Wet Wash» é do Wet Painter. A largura
-    // de ~3× o nominal (folha CSP de 08/11) vem do spray com véu 2× e espalhamento de 2 diâmetros.
+    // de ~3× o nominal (folha CSP de 08/11) vem da 2.ª partícula do spray, o véu a 4,5× o raio, sem espalhamento
+    // (`jitter 0`); a mistura corre a meia definição (`meia_definicao`, Bug #84: o véu era ~83 % do traço).
     ReceitaMeio {
         pincel: &[
             ("hardness", "0.7"),
@@ -163,7 +164,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("grain_depth", "0.15"),
             (
                 "mistura_opaca",
-                r#"{"modo": "WetBlend", "paint_amount": 0.3, "paint_density": 0.5, "color_stretch": 0.1, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0}"#,
+                r#"{"modo": "WetBlend", "paint_amount": 0.3, "paint_density": 0.5, "color_stretch": 0.1, "amount_pressure": 0.0, "density_pressure": 0.0, "meia_definicao": true}"#,
             ),
         ],
         mao: &[("pressureSize", 0.0), ("pressureOpacity", 0.9)],
@@ -240,7 +241,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("stabilizer", "0.04"),
             (
                 "mistura_opaca",
-                r#"{"modo": "WetBlend", "paint_amount": 0.0, "paint_density": 1.0, "color_stretch": 0.8, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.0, "sample": "AllVisibleLayers"}"#,
+                r#"{"modo": "WetBlend", "paint_amount": 0.0, "paint_density": 1.0, "color_stretch": 0.8, "amount_pressure": 0.0, "density_pressure": 0.0, "sample": "AllVisibleLayers"}"#,
             ),
         ],
         mao: &[("pressureSize", 0.5), ("pressureOpacity", 0.6)],

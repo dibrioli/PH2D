@@ -16,9 +16,13 @@ const EVENTOS: usize = 200;
 
 #[derive(Clone, Copy, Debug)]
 enum Variante {
-    Antigo,
-    SoACopia,
+    /// A película à definição inteira (a cópia do véu saltada).
+    Inteira,
+    /// A meia definição (`MisturaOpaca::meia_definicao`).
+    Meia,
     Off,
+    /// O preset de fábrica como está.
+    Fabrica,
 }
 
 fn cena(nome: &str, tamanho: f32, v: Variante) -> PainterTool {
@@ -39,9 +43,10 @@ fn cena(nome: &str, tamanho: f32, v: Variante) -> PainterTool {
     // Como o app: a ponte drena a pré-visualização uma vez por quadro (`traco`).
     t.set_compor_por_quadro(true);
     match v {
-        Variante::Antigo => t.set_mistura_salta_a_copia_do_veu(false),
-        Variante::SoACopia => t.set_mistura_salta_a_copia_do_veu(true),
+        Variante::Inteira => t.set_mistura_meia_definicao(false),
+        Variante::Meia => t.set_mistura_meia_definicao(true),
         Variante::Off => t.set_brush_mistura_modo(ModoMisturaOpaca::Off),
+        Variante::Fabrica => {}
     }
     t
 }
@@ -97,7 +102,7 @@ fn sonda_custo_do_veu() {
         ("Wet Wash Mix", 80.0),
         ("Round Mixing", 80.0),
     ];
-    let variantes = [Variante::Antigo, Variante::SoACopia, Variante::Off];
+    let variantes = [Variante::Inteira, Variante::Meia, Variante::Off];
     const N: usize = 3;
     for &(nome, tam) in casos {
         let mut tempos = [f64::INFINITY; N];
@@ -117,7 +122,7 @@ fn sonda_custo_do_veu() {
         for (vi, v) in variantes.iter().enumerate() {
             let (m, x, n) = delta(&telas[vi], &telas[0]);
             eprintln!(
-                "[veu] {nome} {tam} px {v:?}: {:.3} s ({:.2}× o antigo) · Δ ao antigo médio {m:.3} máx {x} Δ>2 {n} px",
+                "[veu] {nome} {tam} px {v:?}: {:.3} s ({:.2}× a inteira) · Δ à inteira médio {m:.3} máx {x} Δ>2 {n} px",
                 tempos[vi],
                 tempos[0] / tempos[vi]
             );
@@ -138,7 +143,7 @@ fn sonda_perfil_do_veu() {
         .and_then(|s| s.parse().ok())
         .unwrap_or(30.0);
     for _ in 0..4 {
-        let mut t = cena("Wet Wash Mix", tam, Variante::SoACopia);
+        let mut t = cena("Wet Wash Mix", tam, Variante::Meia);
         eprintln!("[perfil] {tam} px: {:.3} s", traco(&mut t));
     }
 }
@@ -153,7 +158,7 @@ fn a_mistura_do_wet_wash_mix_nao_custa_mais_que_sem_ela() {
     for volta in 0..3 {
         for j in 0..2 {
             let vi = (j + volta) % 2;
-            let v = [Variante::SoACopia, Variante::Off][vi];
+            let v = [Variante::Meia, Variante::Off][vi];
             let mut t = cena("Wet Wash Mix", 30.0, v);
             min[vi] = min[vi].min(traco(&mut t));
         }
@@ -165,5 +170,35 @@ fn a_mistura_do_wet_wash_mix_nao_custa_mais_que_sem_ela() {
          voltou a pagar por carimbo o que o kernel não paga (`docs/Painter/BUGS_painter.md` #84)",
         min[0],
         min[1]
+    );
+}
+
+/// ⭐ **O véu a meia definição fica perto da inteira** (Bug #84, `MisturaOpaca::meia_definicao`): o Wet Wash Mix de
+/// fábrica arma-a (a tela difere da inteira: a rota correu) e a mancha não se afasta da inteira mais do que o medido
+/// em 10/11 (Δ médio 0,35 · máx 14 a 30 px). Uma ampliação deslocada meio texel, sem pré-multiplicar ou com o grão
+/// fora de escala passa daqui.
+#[test]
+fn o_veu_a_meia_definicao_fica_perto_da_inteira() {
+    let telas: Vec<Vec<u8>> = [Variante::Inteira, Variante::Meia, Variante::Fabrica]
+        .into_iter()
+        .map(|v| {
+            let mut t = cena("Wet Wash Mix", 30.0, v);
+            traco(&mut t);
+            t.run_full().0
+        })
+        .collect();
+    assert!(
+        telas[2] == telas[1],
+        "o Wet Wash Mix de fábrica não arma a meia definição (`csp_secos.rs`, `meia_definicao`)"
+    );
+    let (m, x, n) = delta(&telas[1], &telas[0]);
+    eprintln!("[meia] Δ à inteira médio {m:.3} máx {x} · {n} px com Δ > 2");
+    assert!(
+        n > 0,
+        "a meia definição não correu: a tela é a da inteira, ao bit"
+    );
+    assert!(
+        m <= 0.6 && x <= 24,
+        "a meia definição afastou-se da inteira: Δ médio {m:.3} máx {x} ({n} px com Δ > 2)"
     );
 }

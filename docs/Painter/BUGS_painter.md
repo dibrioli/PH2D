@@ -1044,6 +1044,19 @@ mutação da origem; as `.ppm` da `sonda_custo_do_veu` iguais em `cmp`; os dois 
 **67 → 41 ms**, 90 px/quadro 17,8 → **12,7 ms**; `sonda_custo_do_veu` 30 px 0,29 → 0,255 s. **Aberto:** a película é agora
 ~60 % e sequencial entre carimbos; o próximo corte é o véu a MEIA definição (pegada e película a ¼ dos texels; o dono
 aprovou tentar, 10/11), que o fork-join não come.
+**Cura 6 (10/11, a mistura a MEIA definição, `stamp_route/mistura/meia.rs`, `MisturaOpaca::meia_definicao` — só a receita
+do Wet Wash Mix a liga, sem UI):** no plano do traço a pegada e a película correm numa tela de metade do lado (o dab com centro,
+raio, passo e arco ÷ 2; o grão Tiled com o `size` × 2 — o `size` é a FREQUÊNCIA —, preso a `TEX_SIZE_MAX` 256: o Clouds 160
+fica a 256, não 320); a amostra lê a base em médias 2×2 pré-multiplicadas na hora; a ampliação bilinear pré-multiplicada
+escreve o plano na caixa tocada, uma vez por lote. Arma só na rota do Grain sem Shape/rampa/píxel/pó/papel/trinco/cauda/dual.
+`sonda_custo_no_app` (9 × 40 px, 1024², load 10–13, intercalado): 360 px/quadro **43,5 → 24,1 ms**, 90 px/quadro 13,4 → 8,7
+ms; `sonda_custo_do_veu` 30 px 0,264 → 0,157 s (1,68×), 80 px 0,440 → 0,252 s (1,75×). Tela: Δ médio 0,35/0,71, máx 14; o
+grão fino perde metade da energia (desvio do passa-alto 2,14 → 1,05 a 30 px, 1,62 → 0,81 a 80 px). A definição inteira e os
+outros pincéis ao bit (`cmp` das `.ppm`). Gate `o_veu_a_meia_definicao_fica_perto_da_inteira` (a fábrica arma-a, a tela
+difere, Δ médio ≤ 0,6 e máx ≤ 24): vermelho por mutação da ampliação deslocada meio texel, sem pré-multiplicar, da porta
+fechada e da receita sem a chave; ⚠️ **sobrevive** o grão sem a escala (Δ 0,336 × 0,346, energia 0,97 × 1,05: a 1,6 px de
+período o grão é sub-texel e as duas leituras não se distinguem). Lado a lado: `handoffs/material_2026-11-10_veu_meia/`.
+**À espera do olho do dono.**
 **Guia geral (método, curas, recusas):** [Pinceis/COMO_ACELERAR_UM_PINCEL.md](Pinceis/COMO_ACELERAR_UM_PINCEL.md).
 
 ## Como adicionar um bug aqui

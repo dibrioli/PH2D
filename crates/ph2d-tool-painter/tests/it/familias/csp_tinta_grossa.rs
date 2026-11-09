@@ -23,7 +23,7 @@ macro_rules! mistura {
             $d,
             r#", "color_stretch": "#,
             $s,
-            r#", "pigment": 0.0, "amount_pressure": "#,
+            r#", "amount_pressure": "#,
             $ap,
             r#", "density_pressure": "#,
             $dp,
@@ -123,7 +123,7 @@ pub const MEIOS: &[ReceitaMeio] = &[
             ("grain_depth", "0.2"),
             (
                 "mistura_opaca",
-                r#"{"modo": "WetBlend", "paint_amount": 0.0, "paint_density": 0.7, "color_stretch": 0.8, "pigment": 0.0, "amount_pressure": 0.0, "density_pressure": 0.5, "sample": "AllVisibleLayers"}"#,
+                r#"{"modo": "WetBlend", "paint_amount": 0.0, "paint_density": 0.7, "color_stretch": 0.8, "amount_pressure": 0.0, "density_pressure": 0.5, "sample": "AllVisibleLayers"}"#,
             ),
         ],
         mao: &[("pressureSize", 0.5), ("pressureSizeCurve", 1.0)],

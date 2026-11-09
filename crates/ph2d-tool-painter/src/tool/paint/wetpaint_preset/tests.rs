@@ -258,6 +258,7 @@ fn pincel_mexido() -> BrushSpec {
             amount_pressure: 0.5,
             density_pressure: 0.25,
             amostra: ph2d_painter_brush::mistura_opaca::AmostraDaMistura::TodasVisiveis,
+            meia_definicao: true,
         },
         borda_px: 1.5,
         sub_passo_fino: true,
@@ -633,6 +634,7 @@ fn mistura_opaca_preset_antigo_sem_o_campo_carrega_off() {
             amount_pressure: 1.0,
             density_pressure: 0.0,
             amostra: ph2d_painter_brush::mistura_opaca::AmostraDaMistura::TodasVisiveis,
+            meia_definicao: true,
         },
         ..d
     };

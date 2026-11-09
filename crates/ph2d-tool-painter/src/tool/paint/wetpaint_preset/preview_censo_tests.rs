@@ -89,6 +89,7 @@ const FORA_DO_PREVIEW: &[(&str, &str)] = &[
     ("rng_camada", TRACO),
     ("pilha_por_replay", "porta de bissecção"),
     ("acumulando_no_plano", TRACO),
+    ("po_do_papel", TRACO),
     ("clone_source", OUTRA),
     ("clone_offset", OUTRA),
     ("clone_aligned", OUTRA),

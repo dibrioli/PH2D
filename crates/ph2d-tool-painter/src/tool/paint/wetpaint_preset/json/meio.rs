@@ -73,6 +73,9 @@ pub(super) fn ler(b: &BrushSpec, campo: &str) -> Value {
             if m.amostra != Default::default() {
                 o["sample"] = json!(m.amostra.nome());
             }
+            if m.meia_definicao {
+                o["meia_definicao"] = json!(true);
+            }
             o
         }
         // O dual brush (L6): gravado só ARMADO (`pincel_para_json`).
@@ -195,6 +198,9 @@ pub(super) fn escrever(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
                     .and_then(Value::as_str)
                     .and_then(ph2d_painter_brush::mistura_opaca::AmostraDaMistura::do_nome)
                     .unwrap_or(fab.amostra),
+                meia_definicao: c("meia_definicao")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(fab.meia_definicao),
             };
         }
         // Campo ausente = o pincel de `b` (a lei do módulo); campo PRESENTE com uma sub-chave ausente (gravado

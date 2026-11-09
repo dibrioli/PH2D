@@ -11,7 +11,8 @@
 //! `PH2D_SONDA_PISOS`: o piso de tempo do depósito (`ph2d_wet_paint::par::PISO_NS_DEPOSITO`) de cada variante —
 //! `max` = a rota de antes (abaixo do piso de células, sempre em série). `PH2D_SONDA_TAMS` = diâmetros (0 = o do
 //! preset). `PH2D_SONDA_ABLA="k=v;k=v,k2=v2"` = variantes do 1.º pincel com chaves do motor trocadas
-//! (`brush.<campo>` para o pincel).
+//! (`brush.<campo>` para o pincel; `brush.<objeto>.<campo>` para um campo de um objeto, ex.
+//! `brush.mistura_opaca.meia_definicao=true`).
 
 use crate::exame_bancada::{Fonte, Pincel, pinceis};
 use ph2d_editor_core::Tool;
@@ -116,7 +117,15 @@ fn ablacoes(ps: &mut Vec<Pincel>) {
         let mut p = preset.clone();
         for kv in var.split(',') {
             let (k, v) = kv.split_once('=').expect("k=v");
-            if let Some(b) = k.strip_prefix("brush.") {
+            if let Some((obj, campo)) = k.strip_prefix("brush.").and_then(|b| b.split_once('.')) {
+                // `brush.<objeto>.<campo>`: um campo de um objeto do pincel (o JSON com vírgula não cabe).
+                let o = p
+                    .parametros
+                    .brush
+                    .entry(obj.to_owned())
+                    .or_insert_with(|| serde_json::json!({}));
+                o[campo] = serde_json::from_str(v).expect("json");
+            } else if let Some(b) = k.strip_prefix("brush.") {
                 p.parametros
                     .brush
                     .insert(b.into(), serde_json::from_str(v).expect("json"));

@@ -41,6 +41,7 @@ mais relógios `Instant` temporários são o instrumento. Remova os relógios an
 | 3 | Memória do grão Tiled (`texture/grao_cache.rs`) | com Tiled o `sample` só depende do píxel; cada píxel recebe ~90 dabs → guarda a 1.ª amostra (blocos 64²) | grão 75 → 27 ns/visita (3× no kernel); 30 px 0,585 → 0,349 s | ao bit |
 | 4 | Pegada lisa na MESMA visita (`dab/liso.rs`) | o kernel escreve o `liso` antes do grão/dente/stencil; some a 2.ª passagem | 30 px 0,360 → ~0,31 s | ao bit |
 | 5 | Pegadas do lote em paralelo ENTRE os dabs (10/11, `6537d5309a`) | a pegada de um dab **não lê a tela**, só a película lê: `pegada_textured_masked_po_com_liso` → `PegadaLocal` (buffer da caixa do dab, `DabCtx::ox`; a película lê por `Pegada::Mascara::{org, largura}`); a cópia no centro da anterior (a que a cura 1 salta) não se calcula — calcula-se na hora se não saltar | 360 px/quadro **67 → 41 ms**; 90 px/quadro 17,8 → 12,7 ms | ao bit |
+| 6 | Mistura a MEIA definição (10/11, `stamp_route/mistura/meia.rs`, `MisturaOpaca::meia_definicao`, só o Wet Wash Mix) | no plano do traço, pegada e película numa tela de metade do lado (dab ÷ 2, grão `size` × 2 — é frequência), amostra por médias 2×2 pré-multiplicadas, ampliação bilinear pré-multiplicada por lote | 360 px/quadro **43,5 → 24 ms**; 90 px/quadro 13,4 → 8,7 ms | **muda**: Δ médio 0,35–0,7, máx 14; o grão fino com metade da energia — dono decide |
 
 Prova da cura 5: gate `a_pegada_na_caixa_e_a_da_tela_ao_bit` (`dab/tests.rs`, vermelho por mutação da origem), `.ppm` da
 `sonda_custo_do_veu` iguais em `cmp`, alarmes de pincel verdes. Smoke do dono 10/11: «muito melhor e aceitável».
@@ -67,6 +68,5 @@ Prova da cura 5: gate `a_pegada_na_caixa_e_a_da_tela_ao_bit` (`dab/tests.rs`, ve
 
 ## 5. Aberto / próximo
 
-O véu a **MEIA definição** (pegada e película a ¼ dos texels; o dono aprovou tentar em 10/11): a película é ~60 % do que resta e
-sequencial entre carimbos, que o fork-join não come. Ver
-[PROMPT_CONTINUACAO_2026-11-10d_veu_meia_definicao.md](../handoffs/PROMPT_CONTINUACAO_2026-11-10d_veu_meia_definicao.md).
+A cura 6 espera o olho do dono (lado a lado em `../handoffs/material_2026-11-10_veu_meia/`). O que resta a 360 px/quadro
+(~24 ms) não foi dividido por fase — meça antes de cortar.

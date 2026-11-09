@@ -6,8 +6,12 @@
 //! A ida ao teto foi a W-Compound, quando o passe passou a perguntar **de quem**
 //! cada forma é (um corpo composto tem mais de uma).
 
+use ph2d_core::Vec2;
+use ph2d_ecs::{Entity, World};
 use ph2d_host::WindowSize;
-use ph2d_physics_ecs::{ShapeDesc, capsule_vertices, ellipse_vertices};
+use ph2d_physics_ecs::{
+    ColliderShape, ShapeDesc, capsule_vertices, ellipse_vertices, outline_rings_world, scaled_shape,
+};
 use ph2d_render::Camera2d;
 use ph2d_vector::{BezPath, Point};
 
@@ -102,7 +106,7 @@ pub fn collider_outline(
         } => {
             ring(&mut path, &capsule_vertices(half_height, rx, ry), rx);
         }
-        // O Outline desenha, por ora, a caixa da imagem (as peças chegam ao overlay na W2b).
+        // O Outline sem anéis é a caixa da imagem (com anéis: `shape_outline`).
         ShapeDesc::Cuboid { half_x, half_y } | ShapeDesc::Outline { half_x, half_y, .. } => {
             path.move_to(place(-half_x, -half_y));
             path.line_to(place(half_x, -half_y));
@@ -110,6 +114,39 @@ pub fn collider_outline(
             path.line_to(place(-half_x, half_y));
             path.close_path();
         }
+    }
+    path
+}
+
+/// **A figura da forma `e` como o solver a simula**: os anéis de um `Outline` (W2b, buracos
+/// incluídos, espelho com sinal), senão [`collider_outline`] da forma resolvida.
+#[allow(clippy::too_many_arguments)]
+pub fn shape_outline(
+    world: &World,
+    e: Entity,
+    shape: ColliderShape,
+    scale: Vec2,
+    x: f32,
+    y: f32,
+    rotation: f32,
+    camera: &Camera2d,
+    window: WindowSize,
+) -> BezPath {
+    let Some(rings) = outline_rings_world(world, e, shape, scale, [x, y], rotation) else {
+        return collider_outline(scaled_shape(shape, scale), x, y, rotation, camera, window);
+    };
+    let mut path = BezPath::new();
+    for r in rings {
+        for (i, w) in r.into_iter().enumerate() {
+            let (sx, sy) = camera.world_to_screen(w, window);
+            let p = Point::new(f64::from(sx), f64::from(sy));
+            if i == 0 {
+                path.move_to(p)
+            } else {
+                path.line_to(p)
+            }
+        }
+        path.close_path();
     }
     path
 }

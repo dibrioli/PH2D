@@ -200,3 +200,38 @@ fn o_contorno_vai_e_volta_pelo_snapshot() {
     let back = dst.world().get::<ColliderOutline>(spawned[0]).cloned();
     assert_eq!(back, Some(o));
 }
+
+/// **Nunca um buraco onde a arte é sólida**, também na imagem PEQUENA espelhada (4×4 px, Detail
+/// 2 px = metade da imagem). Aí o Detail funde o L numa peça só, com o canto de dentro em rampa de
+/// 45° (1,5 px para fora, dentro do Detail): a sonda do lado do pé escorrega e sai pela ponta — não
+/// é buraco (era o «y = −50» de 09/11). A lei medida: enquanto a bola está sobre a arte, nunca
+/// afunda abaixo do topo dela (poste y = 2, pé y = −1), nas duas mãos e nos dois lados.
+/// *Mutação: a escala em módulo no `resolve` ⇒ o poste espelhado fica do outro lado e a sonda
+/// sobre ele afunda até a rampa, vermelho.*
+#[test]
+fn o_l_pequeno_espelhado_nao_tem_buraco_onde_a_arte_e_solida() {
+    let px: Vec<[i32; 2]> = [[0, 0], [1, 0], [1, 3], [4, 3], [4, 4], [0, 4]]
+        .iter()
+        .map(|&[x, y]| [x * Q, y * Q])
+        .collect();
+    for sx in [1.0f32, -1.0] {
+        for x0 in [-1.5f32, 1.5] {
+            let mut sim = SimWorld::new();
+            static_outline(&mut sim, px.clone(), Vec2::new(sx, 1.0));
+            let mut o = sim.world_mut().query::<&mut ColliderOutline>();
+            o.single_mut(sim.world_mut()).expect("a forma").picture_px = [4, 4];
+            let b = ball(&mut sim, x0, 5.0);
+            let mut bridge = PhysicsBridge::new();
+            for tick in 1..=240 {
+                bridge.dispatch(&mut sim, true, tick);
+                let (x, y, _) = bridge.body_pose(b).expect("corpo");
+                let topo = if x * sx < -1.0 { 2.0 } else { -1.0 };
+                assert!(
+                    x.abs() > 1.7 || y > topo + 0.25,
+                    "sx = {sx}, sonda em {x0}: no tique {tick} a bola está em ({x}, {y}), \
+                     dentro da arte (topo {topo})"
+                );
+            }
+        }
+    }
+}

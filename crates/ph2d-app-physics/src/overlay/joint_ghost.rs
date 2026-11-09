@@ -92,8 +92,11 @@ pub fn limit_ghost(
     let (ox, oy) = (col.offset[0] * t.scale.x, col.offset[1] * t.scale.y);
     let (sin_r, cos_r) = (t.rotation + d).sin_cos();
     let (wox, woy) = (ox * cos_r - oy * sin_r, ox * sin_r + oy * cos_r);
-    Some(crate::overlay::outline::collider_outline(
-        ph2d_physics_ecs::scaled_shape(col.shape, t.scale),
+    Some(crate::overlay::outline::shape_outline(
+        world,
+        body_b,
+        col.shape,
+        t.scale,
         centre[0] + wox,
         centre[1] + woy,
         t.rotation + d,

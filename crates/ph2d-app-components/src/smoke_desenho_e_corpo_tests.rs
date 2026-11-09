@@ -181,6 +181,9 @@ fn dist_segmento(p: [f32; 2], hh: f32) -> f32 {
 /// Quanto o desenho sai do corpo (≤ 0 = dentro).
 fn excesso(d: Desenho, corpo: ColliderShape) -> f32 {
     match (d, corpo) {
+        (d, ColliderShape::Outline { half_x, half_y }) => {
+            excesso(d, ColliderShape::Cuboid { half_x, half_y })
+        }
         (Desenho::Retangulo { c, w, h, rot }, ColliderShape::Ball { radius }) => {
             cantos(c, w, h, rot)
                 .iter()
@@ -220,7 +223,9 @@ fn excesso(d: Desenho, corpo: ColliderShape) -> f32 {
 fn area_corpo(c: ColliderShape) -> f32 {
     match c {
         ColliderShape::Ball { radius } => std::f32::consts::PI * radius * radius,
-        ColliderShape::Cuboid { half_x, half_y } => 4.0 * half_x * half_y,
+        ColliderShape::Cuboid { half_x, half_y } | ColliderShape::Outline { half_x, half_y } => {
+            4.0 * half_x * half_y
+        }
         ColliderShape::Capsule {
             half_height,
             radius,
@@ -253,7 +258,7 @@ fn txt_desenho(d: Desenho) -> String {
 fn txt_corpo(c: ColliderShape) -> String {
     match c {
         ColliderShape::Ball { radius } => format!("Ball r={radius:.3}"),
-        ColliderShape::Cuboid { half_x, half_y } => {
+        ColliderShape::Cuboid { half_x, half_y } | ColliderShape::Outline { half_x, half_y } => {
             format!("Cuboid {:.3}x{:.3}", 2.0 * half_x, 2.0 * half_y)
         }
         ColliderShape::Capsule {

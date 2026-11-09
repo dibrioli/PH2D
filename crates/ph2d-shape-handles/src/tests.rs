@@ -124,6 +124,10 @@ impl Cena {
                     half_x: medidas[0],
                     half_y: medidas[1],
                 },
+                ColliderShape::Outline { .. } => ColliderShape::Outline {
+                    half_x: medidas[0],
+                    half_y: medidas[1],
+                },
                 ColliderShape::Ball { .. } => ColliderShape::Ball { radius: medidas[0] },
                 ColliderShape::Capsule { .. } => ColliderShape::Capsule {
                     half_height: medidas[1],

@@ -219,7 +219,8 @@ fn the_lanes_never_touch() {
             continue;
         };
         let half_x = match c.shape {
-            ph2d_physics_ecs::ColliderShape::Cuboid { half_x, .. } => half_x,
+            ph2d_physics_ecs::ColliderShape::Cuboid { half_x, .. }
+            | ph2d_physics_ecs::ColliderShape::Outline { half_x, .. } => half_x,
             ph2d_physics_ecs::ColliderShape::Capsule { radius, .. } => radius,
             ph2d_physics_ecs::ColliderShape::Ball { radius } => radius,
         };

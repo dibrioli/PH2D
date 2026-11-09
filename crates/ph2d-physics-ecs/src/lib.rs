@@ -34,7 +34,7 @@ pub use migra_formas::{
     migra_formas_para_filhos, migra_formas_para_filhos_com_pares, move_forma_para_filha,
     nasce_com_forma, tira_corpo, torna_corpo,
 };
-pub use outline::{ColliderOutline, Ring as OutlineRing};
+pub use outline::{ColliderOutline, Ring as OutlineRing, outline_rings_world};
 pub mod player_input;
 pub use layer_names::{
     LayerNames, ObjetoDaCamada, layers_in_use, objects_on_layers, objects_per_layer, visible_layers,

@@ -8,9 +8,11 @@ use std::sync::Arc;
 
 use bevy_ecs::component::Component;
 use ph2d_core::Vec2;
-use ph2d_ecs::SimComponent;
+use ph2d_ecs::{Entity, SimComponent, World};
 use ph2d_physics::{OutlineKey, PhysicsWorld, ShapeDesc};
 use serde::{Deserialize, Serialize};
+
+use crate::ColliderShape;
 
 /// Um anel em Q4 (1/16 px), y para baixo, origem no canto da imagem de `picture_px`.
 pub type Ring = Vec<[i32; 2]>;
@@ -79,6 +81,32 @@ impl ColliderOutline {
             .map(|r| r.iter().map(|&q| self.to_metres(q, half, scale)).collect())
             .collect()
     }
+}
+
+/// **A figura de uma forma `Outline` em MUNDO** (o que o overlay desenha): os anéis do
+/// [`ColliderOutline`] de `e` — buracos incluídos, espelhados pela escala COM SINAL — girados por
+/// `rotation` em torno de `at`. `None` = não é um `Outline` com anéis (a figura é a caixa).
+#[must_use]
+pub fn outline_rings_world(
+    world: &World,
+    e: Entity,
+    shape: ColliderShape,
+    scale: Vec2,
+    at: [f32; 2],
+    rotation: f32,
+) -> Option<Vec<Vec<[f32; 2]>>> {
+    let ColliderShape::Outline { half_x, half_y } = shape else {
+        return None;
+    };
+    let o = world
+        .get::<ColliderOutline>(e)
+        .filter(|o| !o.rings.is_empty())?;
+    let (s, c) = rotation.sin_cos();
+    let mut rings = o.rings_m([half_x, half_y], scale);
+    for p in rings.iter_mut().flatten() {
+        *p = [at[0] + p[0] * c - p[1] * s, at[1] + p[0] * s + p[1] * c];
+    }
+    Some(rings)
 }
 
 /// Peças em Q4 por `(hash dos anéis, detail)`, e a chave do motor por conversão.

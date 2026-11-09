@@ -11,7 +11,7 @@
 
 use ph2d_ecs::SimWorld;
 use ph2d_host::WindowSize;
-use ph2d_physics_ecs::{Collider, scaled_shape};
+use ph2d_physics_ecs::Collider;
 use ph2d_render::Camera2d;
 use ph2d_tokens::Theme;
 use ph2d_vector::{BezPath, Stroke, VectorScene};
@@ -19,7 +19,7 @@ use ph2d_vector::{BezPath, Stroke, VectorScene};
 /// A GEOMETRIA do contorno mora no irmão (cap de 600 LOC da shell); re-exportada
 /// por este caminho porque é por ele que os chamadores sempre a pediram — o corte
 /// é meu, não deles.
-pub use crate::overlay::shapes::collider_outline;
+pub use crate::overlay::shapes::{collider_outline, shape_outline};
 
 use crate::overlay::annotations::{
     BELT_RGBA, EFFECTOR_RGBA, FALLOFF_RGBA, FALLOFF_RING, TORQUE_RGBA, VELOCITY_RGBA, belt_arrow,
@@ -41,17 +41,9 @@ pub const CIRCLE_SEGS: u32 = 32;
 
 pub use crate::overlay::tinta::{Marca, Tinta, sombra_do_contorno, tinta_do_contorno};
 
-/// **What to draw, decided once.** Pure: the toggle and the "is there any
-/// physics here at all" question are answered here and returned as data, not
-/// resolved inside a paint loop. That is the repo's `hit_plan` shape — a
-/// refusal that lives in a loop cannot be tested, and an overlay that quietly
-/// draws when it was switched off is exactly the kind of thing nobody notices
-/// until it is in a screenshot.
-/// `show_velocity` adds the initial-velocity arrow to each body that has a
-/// launch armed. It is separate from `show` because the arrow is only truthful
-/// while the bodies are at their AUTHORED rest (before the sim steps): once a
-/// body has moved, its live velocity is no longer the authored one, so the
-/// caller passes `false` while the clock is running.
+/// **What to draw, decided once** — pure, returned as data (the `hit_plan` shape). `show_velocity`
+/// adds the armed launch arrow, true only at the AUTHORED rest (the caller passes `false` while the
+/// clock runs).
 /// De quem é esta forma: o corpo dela ou o ancestral mais próximo (`governing_kind`); `None` = solta.
 use ph2d_physics_ecs::governing_kind as owning_kind;
 
@@ -98,11 +90,12 @@ pub fn outlines(
         let (ox, oy) = (col.offset[0] * t.scale.x, col.offset[1] * t.scale.y);
         let (sin_r, cos_r) = t.rotation.sin_cos();
         let (wox, woy) = (ox * cos_r - oy * sin_r, ox * sin_r + oy * cos_r);
-        // The SAME resolution the bridge does — so the outline is drawn at the
-        // size (and shape: circle vs ellipse) the solver actually simulates
-        // under this body's world scale.
-        let path = collider_outline(
-            scaled_shape(col.shape, t.scale),
+        // The SAME resolution the bridge does (size, ellipse, Outline rings, signed mirror).
+        let path = shape_outline(
+            world,
+            e,
+            col.shape,
+            t.scale,
             t.translation.x + wox,
             t.translation.y + woy,
             t.rotation,
@@ -131,9 +124,7 @@ pub fn outlines(
         {
             out.push((arrow, Tinta::Fixa(VELOCITY_RGBA)));
         }
-        // The force zone's push — WHICH WAY DOES THIS BLOW, and how hard. A zone is a
-        // sensor, so it is already magenta; the arrow is what makes it a *directed*
-        // area rather than a region that merely notices things.
+        // The force zone's push — WHICH WAY DOES THIS BLOW, and how hard.
         if show
             && let Some(a) = world.get::<ph2d_physics_ecs::AreaEffector>(e)
             && let Some(arrow) = effector_arrow(
@@ -145,10 +136,7 @@ pub fn outlines(
                         .get::<ph2d_physics_ecs::AreaForceWorldAxes>(e)
                         .is_some(),
                     t.rotation,
-                    // ⚠️ A lateralidade do frame vem da MESMA escala sincada que o `body_desc`
-                    // dobra para o solver (W-AreaMirror). Uma seta desenhada de um espelho
-                    // que o solver não usa aponta para onde o vento não sopra, e é o único
-                    // lugar onde uma pessoa lê essa direção.
+                    // ⚠️ A lateralidade da MESMA escala que o `body_desc` dobra (W-AreaMirror).
                     zone_mirror(t.scale),
                 ),
                 camera,
@@ -157,9 +145,7 @@ pub fn outlines(
         {
             out.push((arrow, Tinta::Fixa(EFFECTOR_RGBA)));
         }
-        // A ESTEIRA desta superfície — PARA QUE LADO ELA CORRE (W-Surface).
-        //
-        // ⚠️ A tangente e a régua moram no `belt_arrow` — ver o doc dele.
+        // A ESTEIRA desta superfície — PARA QUE LADO ELA CORRE (W-Surface; ver `belt_arrow`).
         if show
             && let Some(surf) = world.get::<ph2d_physics_ecs::WalkSurface>(e)
             && let Some(arrow) = belt_arrow(
@@ -173,18 +159,13 @@ pub fn outlines(
         {
             out.push((arrow, Tinta::Fixa(BELT_RGBA)));
         }
-        // The torque zone's spin — WHICH WAY DOES THIS TURN. The rotational sibling of the
-        // force arrow, drawn for the same reason and under the same rule (authored, so it
-        // is true whether or not the clock is running). A pure whirlpool carries no force
-        // arrow, so without this glyph a spin zone would be an invisible property.
+        // The torque zone's spin — WHICH WAY DOES THIS TURN (the force arrow's sibling).
         if show
             && let Some(a) = world.get::<ph2d_physics_ecs::AreaTorque>(e)
             && let Some(glyph) = torque_glyph(
                 t.translation.x + wox,
                 t.translation.y + woy,
-                // ⚠️ Um giro visto num ESPELHO gira ao contrário — um torque 2D é um
-                // pseudoescalar. Pela mesma porta que o solver (`zone_spin_sign`), senão o
-                // glifo violeta apontaria a mão errada e ninguém confere isso numa foto.
+                // ⚠️ Num ESPELHO o giro inverte (pseudoescalar): a porta do solver.
                 a.0 * ph2d_physics_ecs::zone_spin_sign(zone_mirror(t.scale)),
                 camera,
                 window,
@@ -201,11 +182,11 @@ pub fn outlines(
             && zone_pushes(world, e)
         {
             out.push((
-                collider_outline(
-                    scaled_shape(
-                        col.shape,
-                        ph2d_core::Vec2::new(t.scale.x * FALLOFF_RING, t.scale.y * FALLOFF_RING),
-                    ),
+                shape_outline(
+                    world,
+                    e,
+                    col.shape,
+                    ph2d_core::Vec2::new(t.scale.x * FALLOFF_RING, t.scale.y * FALLOFF_RING),
                     t.translation.x + wox,
                     t.translation.y + woy,
                     t.rotation,
@@ -231,19 +212,13 @@ pub fn draw(
     // O ângulo de cada roldana, paralelo à arena (W-Pulley W1).
     joint_spins: &[f32],
     joint_gravity: [f32; 2],
-    // O limite sendo POSADO agora `(joint, rad relativo)` — desenha o fantasma
-    // de B (W-J3). `None` sem arrasto de limite em voo.
+    // O limite sendo POSADO `(joint, rad relativo)`: o fantasma de B (W-J3).
     posed_limit: Option<(ph2d_ecs::Entity, f32)>,
-    // W-J4: a banda elástica do gesto de criar `(de, para)` em mundo. Desenhada
-    // mesmo com `show` FALSO — é gesto, não anotação (ver `draw_band`).
+    // W-J4: a banda do gesto de criar `(de, para)`; gesto, desenhada mesmo com `show` falso.
     join_band: Option<([f32; 2], [f32; 2])>,
-    // W-Grab: a mola da MÃO `(cursor, ponto de pega)` em mundo. Desenhada mesmo
-    // com `show` FALSO, pela mesma razão da banda: é gesto, não anotação.
+    // W-Grab: a mola da MÃO `(cursor, ponto de pega)`; gesto, como a banda.
     grab: Option<([f32; 2], [f32; 2])>,
-    // W-Hand: a MIRA das ferramentas de ponto `(centro, alcance)` — onde o próximo
-    // estouro/puxão vai agir. `None` para a mão (que não tem alcance) e sempre que
-    // o gesto está inerte (relógio parado / física desarmada): uma mira que promete
-    // o que o clique não faz é pior que mira nenhuma.
+    // W-Hand: a MIRA `(centro, alcance)`; `None` para a mão e com o gesto inerte.
     aim: Option<([f32; 2], f32)>,
     // W-Hand: o campo de atração VIVO `(centro, alcance)`, lido da ponte.
     pull: Option<([f32; 2], f32)>,
@@ -255,12 +230,9 @@ pub fn draw(
     // W-Probes: onde os sensores do player olharam, e o que responderam.
     probes: &[ph2d_physics_ecs::ProbeMark],
     triggered: &[ph2d_ecs::Entity],
-    // W20: algum player está a atravessar uma prancha AGORA? O bit da descida
-    // viaja no CORPO e vale para toda plataforma one-way da cena, então a
-    // resposta é uma só e o contorno de TODAS elas a veste (ver `PASSABLE_RGBA`).
+    // W20: algum player atravessa uma prancha AGORA (veste todas as one-way, `PASSABLE_RGBA`).
     ghost: bool,
-    // W-J7b: quem está selecionado, para o readout de carga de um joint que
-    // ainda NÃO é quebrável — é preciso ler a carga antes de escolher um teto.
+    // W-J7b: o selecionado, para o readout de carga de um joint ainda não quebrável.
     selected_joint: Option<ph2d_ecs::Entity>,
     camera: &Camera2d,
     window: WindowSize,
@@ -282,8 +254,7 @@ pub fn draw(
             .inner_mut()
             .stroke(&traco, Affine::IDENTITY, &Brush::Solid(cor), None, path);
     }
-    // A linha d'água ANTES dos corpos: ela é o cenário (onde a superfície está), e o
-    // que se lê por cima dela são as coisas que boiam.
+    // A linha d'água ANTES dos corpos: é o cenário; por cima lê-se o que boia.
     for path in waterline_marks(show, waterlines, camera, window) {
         vector_scene.inner_mut().stroke(
             &Stroke::new(OUTLINE_PX),
@@ -293,10 +264,7 @@ pub fn draw(
             &path,
         );
     }
-    // ⚠️ **Os SENSORES depois dos corpos e ANTES dos contatos** (W-Probes): eles
-    // descrevem para onde o personagem olha, então têm de ficar por cima da arte
-    // que atravessam — e por baixo das cruzes, que marcam um evento e são as
-    // menores marcas da tela.
+    // ⚠️ Os SENSORES depois dos corpos e ANTES dos contatos (W-Probes).
     // O raio do objecto veste a cor da camada com a sombra por baixo, como o contorno (emenda 4).
     let sondas = crate::overlay::probes::probe_marks(show, probes, sim, camera, window);
     let sombras = sondas
@@ -310,9 +278,7 @@ pub fn draw(
             .inner_mut()
             .stroke(&traco, Affine::IDENTITY, &Brush::Solid(cor), None, path);
     }
-    // Contacts ON TOP of everything: a contact is the smallest mark on screen (a few
-    // pixels) and it sits exactly ON the outlines of the two bodies that meet, so any
-    // other order buries it under the shapes it is describing.
+    // Contacts ON TOP: the smallest mark, sitting exactly ON the two outlines that meet.
     for path in contact_marks(show, contacts, camera, window) {
         vector_scene.inner_mut().stroke(
             &Stroke::new(OUTLINE_PX),
@@ -322,9 +288,7 @@ pub fn draw(
             &path,
         );
     }
-    // And the BEGIN-flash on top of the standing marks: it lives a few ticks and it is
-    // the visible half of the contact-events channel (`contact_flashes`). Last, so the
-    // spark is never buried by the very cross it is announcing.
+    // The BEGIN-flash on top of the standing marks, never buried by its own cross.
     for path in contact_flashes(show, flashes, camera, window) {
         vector_scene.inner_mut().stroke(
             &Stroke::new(OUTLINE_PX),
@@ -346,10 +310,7 @@ pub fn draw(
             &band,
         );
     }
-    // E a MÃO, ao lado da banda e pela mesma razão (gesto em andamento, sem o
-    // gate de `show`). Depois da banda porque as duas nunca coexistem — criar um
-    // joint é gesto de repouso, pegar um corpo é de play — e a ordem entre elas
-    // só teria de ser decidida se algum dia coexistissem.
+    // E a MÃO, como a banda (gesto, sem o gate de `show`; as duas nunca coexistem).
     if let Some(path) = crate::overlay::gesture::draw_grab(grab, camera, window) {
         vector_scene.inner_mut().stroke(
             &Stroke::new(OUTLINE_PX),
@@ -360,12 +321,9 @@ pub fn draw(
         );
     }
     // ── As ferramentas de PONTO (W-Hand) ──────────────────────────────────
-    // Sem o gate de `show`, pela mesma razão da banda e da mão: são gesto. O
-    // desenho mora em `physics_overlay_annotations` porque é isso que ele é — uma
-    // anotação — e porque este arquivo tem cap de 600 LOC.
+    // Sem o gate de `show`: são gesto, como a banda e a mão.
     crate::overlay::annotations::draw_interaction(aim, pull, blast, camera, window, vector_scene);
-    // O FANTASMA primeiro: ele é o fundo do arco que o artista está arrastando,
-    // e desenhá-lo por cima do glifo faria a silhueta apagar a agulha viva.
+    // O FANTASMA primeiro: é o fundo do arco arrastado, por baixo da agulha viva.
     if show
         && let Some(ghost) =
             crate::overlay::joint_ghost::limit_ghost(sim, joint_views, posed_limit, camera, window)
@@ -378,10 +336,7 @@ pub fn draw(
             &ghost,
         );
     }
-    // ⚠️ **A lista sai do DESENHO e é lida pelo READOUT**, nesta ordem
-    // (W-RopeSays): quem sabe se a rota de uma corda resolve é a chamada que a
-    // desenhou, e uma segunda pergunta divergiria — o desenho vermelho com um
-    // `0 N` âmbar ao lado era exatamente essa divergência.
+    // ⚠️ A lista sai do DESENHO e é lida pelo READOUT (W-RopeSays): uma pergunta, não duas.
     let marks = joint_marks(
         show,
         joint_views,
@@ -400,9 +355,7 @@ pub fn draw(
             &path,
         );
     }
-    // ⚠️ Os NÚMEROS por ÚLTIMO, depois do último uso do `vector_scene` para
-    // traço — a cena tem de estar livre para o renderizador de texto, que é a
-    // mesma ordem (e o mesmo comentário) do overlay de dimensões do Line.
+    // ⚠️ Os NÚMEROS por ÚLTIMO: a cena tem de estar livre para o renderizador de texto.
     for r in crate::overlay::joint_readout::joint_readouts(
         show,
         joint_views,

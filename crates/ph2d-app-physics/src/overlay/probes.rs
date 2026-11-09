@@ -10,11 +10,11 @@
 
 use ph2d_ecs::SimWorld;
 use ph2d_host::WindowSize;
-use ph2d_physics_ecs::{Collider, ProbeKind, ProbeMark, ProbeShape, ProbeState, scaled_shape};
+use ph2d_physics_ecs::{Collider, ProbeKind, ProbeMark, ProbeShape, ProbeState};
 use ph2d_render::Camera2d;
 use ph2d_vector::{BezPath, Point};
 
-use crate::overlay::shapes::collider_outline;
+use crate::overlay::shapes::shape_outline;
 use ph2d_panel_physics::tinta_canvas::Tinta;
 
 /// As marcas do personagem: cor fixa, sem camada.
@@ -230,8 +230,8 @@ fn profile_path(
 
 /// A **VARREDURA** do agachar: o corpo desenhado onde ele quer ficar de pé.
 ///
-/// ⚠️ **A forma sai da MESMA porta do contorno vivo** (`scaled_shape` +
-/// `collider_outline`), deslocada pelo `offset` que o sensor varreu — é isso que
+/// ⚠️ **A forma sai da MESMA porta do contorno vivo** (`shape_outline`),
+/// deslocada pelo `offset` que o sensor varreu — é isso que
 /// torna o fantasma *o que o produto perguntou* em vez de uma segunda ideia de
 /// como aquele corpo é. Um overlay que só soubesse linhas desenharia este sensor
 /// como um raio que ele não é, e o artista afinaria o `crouch_height` contra um
@@ -268,8 +268,11 @@ fn sweep_ghost(
         let (sin_r, cos_r) = t.rotation.sin_cos();
         let (wox, woy) = (ox * cos_r - oy * sin_r, ox * sin_r + oy * cos_r);
         out.push((
-            collider_outline(
-                scaled_shape(col.shape, t.scale),
+            shape_outline(
+                world,
+                e,
+                col.shape,
+                t.scale,
                 t.translation.x + wox + offset[0],
                 t.translation.y + woy + offset[1],
                 t.rotation,

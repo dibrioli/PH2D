@@ -210,3 +210,40 @@ fn the_geometry_is_in_screen_pixels_so_the_stroke_width_is_not_scaled() {
         b / a
     );
 }
+
+/// **Um `Outline` desenha os ANÉIS, não a caixa da imagem** (W2b), espelhado pela escala COM SINAL:
+/// o U de 8 vértices (unidades de 8 px, imagem 32 px = 4 m) sai com os 8, no sítio que o solver usa.
+/// *Mutação: o overlay ler a caixa ⇒ 4 cantos; a escala em módulo ⇒ o U do outro lado.*
+#[test]
+fn an_outline_draws_its_rings_mirrored_not_the_picture_box() {
+    use ph2d_physics_ecs::{Collider, ColliderOutline, ColliderShape};
+    let u = [0, 0, 1, 0, 1, 3, 3, 3, 3, 0, 4, 0, 4, 4, 0, 4];
+    let mut sim = ph2d_ecs::SimWorld::new();
+    sim.world_mut().spawn((
+        Collider {
+            shape: ColliderShape::Outline {
+                half_x: 2.0,
+                half_y: 2.0,
+            },
+            ..Collider::default()
+        },
+        ColliderOutline {
+            rings: vec![u.chunks(2).map(|p| [p[0] * 128, p[1] * 128]).collect()].into(),
+            picture_px: [32, 32],
+            ..ColliderOutline::default()
+        },
+        ph2d_ecs::Transform {
+            scale: ph2d_core::Vec2::new(-1.0, 1.0),
+            ..ph2d_ecs::Transform::default()
+        },
+    ));
+    let drawn = super::outlines(true, false, &mut sim, &[], false, &camera(), window());
+    // Espelhado: x = 2 − ux m, y = 2 − uy m; 1 m = 100 px, y para baixo.
+    let want = u.chunks(2).map(|p| {
+        (
+            700.0 - 100.0 * f64::from(p[0]),
+            300.0 + 100.0 * f64::from(p[1]),
+        )
+    });
+    assert_eq!(points(&drawn[0].0), want.collect::<Vec<_>>());
+}

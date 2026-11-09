@@ -41,3 +41,18 @@ pub(super) fn a11y_value(b: ph2d_a11y::NodeBuilder, input: &TextInput) -> ph2d_a
         None => b.value(input.value.clone()),
     }
 }
+
+/// How far the single line is slid LEFT so the caret stays inside the box.
+///
+/// Pure, so the rule can be stated and tested without a scene. Exactly as far as
+/// the caret overhangs, plus the caret's own width — a caret parked ON the right
+/// boundary is trimmed by the clip precisely while you are typing at the end of
+/// the name, which is the one moment you need to see it. An unfocused field never
+/// scrolls: there is no caret to follow, and the reader wants the name's start.
+pub(super) fn caret_scroll(focused: bool, inner_w: f32, caret_w: f32) -> f32 {
+    if focused {
+        (caret_w - (inner_w - super::CARET_W)).max(0.0)
+    } else {
+        0.0
+    }
+}

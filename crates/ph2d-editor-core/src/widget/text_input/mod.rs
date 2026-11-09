@@ -409,23 +409,8 @@ pub fn paint_text_input_with_buffer(
     scene.pop_layer();
 }
 
-/// How far the single line is slid LEFT so the caret stays inside the box.
-///
-/// Pure, so the rule can be stated and tested without a scene. Exactly as far as
-/// the caret overhangs, plus the caret's own width — a caret parked ON the right
-/// boundary is trimmed by the clip precisely while you are typing at the end of
-/// the name, which is the one moment you need to see it. An unfocused field never
-/// scrolls: there is no caret to follow, and the reader wants the name's start.
-fn caret_scroll(focused: bool, inner_w: f32, caret_w: f32) -> f32 {
-    if focused {
-        (caret_w - (inner_w - CARET_W)).max(0.0)
-    } else {
-        0.0
-    }
-}
-
 mod compose;
-use compose::with_composition;
+use compose::{caret_scroll, with_composition};
 
 #[cfg(test)]
 mod tests;

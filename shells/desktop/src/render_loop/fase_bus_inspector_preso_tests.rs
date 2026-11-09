@@ -315,9 +315,13 @@ fn mover_e_remover_e_um_passo_e_ctrl_z_devolve_camada_nome_regra_e_objetos() {
     assert_eq!(camadas, [2], "o objeto voltou à camada dele");
 }
 
-/// ⭐ GEF02, dono 09/11: «Collides with» com DUAS formas selecionadas. O clique pede UMA edição sobre a primária; o dreno
-/// real espalha-a pela seleção no MESMO quadro (o desfazer é o diff do quadro ⇒ um passo) e Ctrl+Z devolve as DUAS.
-/// Mutação: espalhar só à primária (`fase_bus_physics_sections`) deixa a segunda sem exceção e reprova aqui.
+/// ⭐ GEF02, dono 09/11: «Collides with» com DUAS formas selecionadas, em QUADROS do caminho real: o dreno
+/// `fase_bus_physics_sections` e a aplicação `inspector_commits::drain_section_edits` correm em cada quadro;
+/// quadro 1 = o clique, quadro 2 = vazio. O passo de desfazer é a lei de `post_frame_undo_steps` (o quadro cuja
+/// captura difere do baseline empurra o baseline e torna-se o baseline), modelada aqui porque o `App` inteiro
+/// não corre sem janela (`capture_project` pede o `gfx`); o quadro 2 conta como quadro COM entrada (o soltar do
+/// botão), o caso em que um segundo passo NASCE em vez de se fundir. Ctrl+Z depois do quadro 2 devolve AS DUAS
+/// formas e a fila fica a zero. Mutações: só a primária · `take(1)` · a 2.ª forma aplicada um quadro depois.
 #[test]
 fn colide_com_duas_formas_e_um_passo_e_ctrl_z_devolve_as_duas() {
     use crate::undo::{ProjectUndo, SelectionMark};
@@ -342,50 +346,221 @@ fn colide_com_duas_formas_e_um_passo_e_ctrl_z_devolve_as_duas() {
     let b = ph2d_physics_ecs::nasce_com_forma(sim.world_mut(), corpo, bola);
     let tem = |sim: &SimWorld, e| sim.world().get::<CollisionOverride>(e).copied();
     assert_eq!((tem(&sim, a), tem(&sim, b)), (None, None));
-    let antes = captura(&mut sim, &vec, &reg);
-    let mut pd = DrainOut {
-        inspector_selection: vec![a.to_bits(), b.to_bits()],
-        ..DrainOut::default()
+    let mut app = crate::App::new();
+    let hero = ph2d_editor_core::HeroScreen::new(ph2d_editor_core::NodeId(1));
+    let mut fila_de_comandos = EditorCommandQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
+    let mut baseline = captura(&mut sim, &vec, &reg);
+    let antes = baseline.clone();
+    let mut fila = ProjectUndo::default();
+    let mut quadro = |sim: &mut SimWorld, acao: Option<EditorAction>| {
+        let mut pd = DrainOut {
+            inspector_selection: vec![a.to_bits(), b.to_bits()],
+            ..DrainOut::default()
+        };
+        if let Some(acao) = acao {
+            assert!(app.fase_bus_physics_sections(acao, &mut pd).is_none());
+        }
+        let _ = super::super::inspector_commits::drain_section_edits(
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &pd.physics_edits,
+            &[],
+            &hero,
+            sim,
+            &mut fila_de_comandos,
+            &reg,
+            &mut toasts,
+        );
+        let atual = captura(sim, &vec, &reg);
+        if atual != baseline {
+            fila.push_undo(
+                std::mem::replace(&mut baseline, atual),
+                SelectionMark::default(),
+            );
+        }
     };
-    let acao = EditorAction::InspectorPhysicsEdit {
+    let clique = EditorAction::InspectorPhysicsEdit {
         entity_bits: a.to_bits(),
         edit: PhysicsFieldEdit::CollidesWith {
             layer: 0,
             on: false,
         },
     };
-    let mut app = crate::App::new();
-    assert!(app.fase_bus_physics_sections(acao, &mut pd).is_none());
-    let fila_de_comandos = EditorCommandQueue::default();
-    for &(bits, edit) in &pd.physics_edits {
-        ph2d_app_physics::inspector::body::apply_physics_edit(
-            &mut sim,
-            bits,
-            edit,
-            &fila_de_comandos,
-            &reg,
-        );
-        apply_editor_commands(sim.world_mut(), &fila_de_comandos, &reg).expect("aplica");
-    }
+    quadro(&mut sim, Some(clique));
     let quer = Some(CollisionOverride {
         include: 0,
         exclude: 1,
     });
+    eprintln!("quadro 1: a {:?} · b {:?}", tem(&sim, a), tem(&sim, b));
     assert_eq!(
         (tem(&sim, a), tem(&sim, b)),
         (quer, quer),
-        "o MESMO dreno muda as duas formas"
+        "o MESMO quadro muda as duas formas"
     );
-    let depois = captura(&mut sim, &vec, &reg);
+    quadro(&mut sim, None);
+    let depois = baseline.clone();
     assert_ne!(depois, antes, "o documento mudou");
-    let mut fila = ProjectUndo::default();
-    fila.push_undo(antes.clone(), SelectionMark::default());
+    eprintln!("passos na fila depois do quadro 2: {}", fila.depth());
     let (volta, _) = fila
         .undo(depois, SelectionMark::default())
         .expect("o passo");
+    let _ = volta.restore(&mut sim, &reg);
+    // ⚠️ Pelo MUNDO, não pelos `Entity` de antes: o restauro pode recriar as entidades, e um id
+    // velho leria `None` mesmo com a exceção ainda lá.
+    let excecoes = {
+        let mut q = sim
+            .world_mut()
+            .query::<(&ph2d_physics_ecs::Collider, Option<&CollisionOverride>)>();
+        q.iter(sim.world())
+            .map(|(_, o)| o.copied())
+            .collect::<Vec<_>>()
+    };
+    eprintln!(
+        "Ctrl+Z: formas {excecoes:?} · fila {} · documento = o de antes {}",
+        fila.depth(),
+        volta == antes
+    );
     assert_eq!(
-        (volta, fila.depth()),
-        (antes, 0),
+        (excecoes, fila.depth()),
+        (vec![None, None], 0),
         "um passo, e Ctrl+Z devolve as duas"
+    );
+    assert_eq!(volta, antes);
+}
+
+/// ⭐ GEF02, dono 09/11: duas formas de linhas DIVERGENTES selecionadas (a primária sem exceção, a outra sem a
+/// camada 0). A §11 que a shell publica (`build_physics_info` + `com_a_selecao`, o par de
+/// `snapshots_inspector_physics`) acende o quadro MISTO da camada 0 — o clique nele pede `on: true` (aceso para
+/// todas), onde um quadro aceso pediria `off` — e «Use layer default» aparece; clicado no Inspector pintado, o dreno
+/// real espalha-o e a aplicação real tira a exceção das DUAS. Mutação: o misto lido só da primária.
+#[cfg(feature = "panel-inspector")]
+#[test]
+fn duas_formas_divergentes_mostram_o_misto_e_o_default_tira_a_excecao_das_duas() {
+    use super::super::bus_hierarchy::tests::{
+        clica_no_inspector, inspector_da_fisica, sai_do_inspector,
+    };
+    use ph2d_editor_core::PhysicsFieldEdit;
+    use ph2d_panel_inspector::ids::{INSP_PHYS_COLLIDES, INSP_PHYS_LAYER_DEFAULT};
+    use ph2d_physics_ecs::{BodyKind, ColliderShape, CollisionOverride, RigidBody};
+    let mut sim = SimWorld::new();
+    let mut reg = ComponentRegistry::new();
+    register_ecs_components(&mut reg);
+    ph2d_physics_ecs::register_physics_components(&mut reg);
+    let corpo = sim
+        .world_mut()
+        .spawn((
+            Name::new("Crate"),
+            Transform::default(),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+        ))
+        .id();
+    let bola = ColliderShape::Ball { radius: 0.5 };
+    let a = ph2d_physics_ecs::nasce_com_forma(sim.world_mut(), corpo, bola);
+    let b = ph2d_physics_ecs::nasce_com_forma(sim.world_mut(), corpo, bola);
+    let hero = ph2d_editor_core::HeroScreen::new(ph2d_editor_core::NodeId(1));
+    let mut fila_de_comandos = EditorCommandQueue::default();
+    let mut toasts = ph2d_editor_core::ToastQueue::default();
+    let mut aplica = |sim: &mut SimWorld, edits: &[(u64, PhysicsFieldEdit)]| {
+        let _ = super::super::inspector_commits::drain_section_edits(
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            &[],
+            edits,
+            &[],
+            &hero,
+            sim,
+            &mut fila_de_comandos,
+            &reg,
+            &mut toasts,
+        );
+    };
+    let sem_0 = PhysicsFieldEdit::CollidesWith {
+        layer: 0,
+        on: false,
+    };
+    aplica(&mut sim, &[(b.to_bits(), sem_0)]);
+    let tem = |sim: &SimWorld, e| sim.world().get::<CollisionOverride>(e).copied();
+    assert_eq!(tem(&sim, a), None);
+    assert!(tem(&sim, b).is_some(), "a exceção na 2.ª forma");
+    let sel = [a.to_bits(), b.to_bits()];
+    let info = ph2d_app_physics::inspector::body::build_physics_info(
+        sim.world(),
+        a.to_bits(),
+        0,
+        0,
+        0,
+        false,
+        0,
+        (0.0, 5.0),
+        0,
+        &ph2d_tags::TagTree::new(),
+    )
+    .map(|i| ph2d_app_physics::inspector::body::com_a_selecao(sim.world(), i, &sel))
+    .expect("a §11 da primária");
+    eprintln!(
+        "§11 da primária: misto {:#b} · difere {} · fixos {:#b}",
+        info.collides_mixed, info.collides_differs, info.collides_pinned
+    );
+    let (mut host, mut st, r) = inspector_da_fisica(info, a.to_bits());
+    let achado = |id| {
+        r.iter()
+            .rev()
+            .find(|(i, q)| *i == id && q.w > 0.0)
+            .map(|(_, q)| *q)
+    };
+    let quadro_0 = achado(INSP_PHYS_COLLIDES[0]);
+    let default = achado(INSP_PHYS_LAYER_DEFAULT);
+    let pede_0 = quadro_0.map(|q| clica_no_inspector(&mut host, &mut st, q));
+    let pede_default = default.map(|q| clica_no_inspector(&mut host, &mut st, q));
+    sai_do_inspector();
+    eprintln!("quadro da camada 0 pede {pede_0:?}; «Use layer default» pede {pede_default:?}");
+    let edicao = |edit| {
+        vec![EditorAction::InspectorPhysicsEdit {
+            entity_bits: a.to_bits(),
+            edit,
+        }]
+    };
+    assert_eq!(
+        pede_0,
+        Some(edicao(PhysicsFieldEdit::CollidesWith {
+            layer: 0,
+            on: true
+        })),
+        "o quadro misto acende para todas"
+    );
+    let reset = pede_default.expect("«Use layer default» com uma exceção na seleção");
+    assert_eq!(reset, edicao(PhysicsFieldEdit::UseLayerDefault));
+    let mut pd = DrainOut {
+        inspector_selection: sel.to_vec(),
+        ..DrainOut::default()
+    };
+    let mut app = crate::App::new();
+    for acao in reset {
+        assert!(app.fase_bus_physics_sections(acao, &mut pd).is_none());
+    }
+    aplica(&mut sim, &pd.physics_edits);
+    eprintln!(
+        "depois do reset: a {:?} · b {:?}",
+        tem(&sim, a),
+        tem(&sim, b)
+    );
+    assert_eq!(
+        (tem(&sim, a), tem(&sim, b)),
+        (None, None),
+        "o reset tira a exceção das duas"
     );
 }

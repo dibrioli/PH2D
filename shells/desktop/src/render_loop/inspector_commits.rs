@@ -257,7 +257,7 @@ pub(super) fn dispatch(
 /// Os drenos das secções de componente OPCIONAL do Inspector (§7 a §12, a física e a §8), cada
 /// edição aplicada à fila de comandos logo a seguir; devolve se o título ficou sujo.
 #[allow(clippy::too_many_arguments)]
-fn drain_section_edits(
+pub(super) fn drain_section_edits(
     ordering_edits: &[(u64, OrderingFieldEdit)],
     sampling_edits: &[(u64, SamplingFieldEdit)],
     anchor_edits: &[(u64, ph2d_editor_core::AnchorFieldEdit)],

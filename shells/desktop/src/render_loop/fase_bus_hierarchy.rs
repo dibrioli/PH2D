@@ -340,4 +340,4 @@ impl crate::App {
 
 #[cfg(test)]
 #[path = "fase_bus_hierarchy_tests.rs"]
-mod tests;
+pub(super) mod tests;

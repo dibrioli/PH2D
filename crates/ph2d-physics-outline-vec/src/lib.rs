@@ -10,8 +10,8 @@
 //! picture to retrace.
 //!
 //! The shape takes the vector object's place: same parent, same slot among the siblings, same
-//! `Transform`; the drawing's children move under it. Despawning the vector entity removes its path
-//! (`ph2d_vec_entities::entities::sync`, direction 1); undo is the editor's diff of the frame.
+//! `Transform`; the drawing's children move under it. The vector entity and its path leave together,
+//! in the same frame, so the editor's per-frame diff makes ONE undo step.
 
 use ph2d_ecs::{
     ChildOf, Entity, Name, RootOrder, Transform, VecPathRef, World,
@@ -115,10 +115,10 @@ pub fn shape_of(path: &VecPath) -> Result<(Collider, ColliderOutline), Refusal> 
 
 /// **The conversion**: `e` (a Vector object of `scene`) is replaced by a «Collision Shape» with its
 /// outline. Returns the shape (to select). Nothing changes on a refusal.
-pub fn convert(world: &mut World, scene: &VecScene, e: Entity) -> Result<Entity, Refusal> {
-    let path = world
-        .get::<VecPathRef>(e)
-        .and_then(|r| scene.path(r.0))
+pub fn convert(world: &mut World, scene: &mut VecScene, e: Entity) -> Result<Entity, Refusal> {
+    let id = world.get::<VecPathRef>(e).map(|r| r.0);
+    let path = id
+        .and_then(|id| scene.path(id))
         .ok_or(Refusal::NotAVector)?;
     let (collider, outline) = shape_of(path)?;
     let transform = world.get::<Transform>(e).copied().unwrap_or_default();
@@ -148,6 +148,11 @@ pub fn convert(world: &mut World, scene: &VecScene, e: Entity) -> Result<Entity,
     }
     set_sibling_order(world, shape, &kids);
     world.despawn(e);
+    // The path leaves the document in the SAME frame: a later `sync` would split the gesture in two
+    // undo steps (the shape without the path, then the path gone).
+    if let Some(id) = id {
+        scene.remove_path(id);
+    }
     if parent.is_none() && world.get::<RootOrder>(shape).is_none() {
         ph2d_ecs::assign_missing_root_order(world);
     }

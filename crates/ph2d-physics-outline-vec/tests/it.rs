@@ -93,8 +93,9 @@ fn settle(sim: &mut SimWorld, balls: &[Entity]) -> Vec<[f32; 2]> {
 /// frame sits at the origin and the side ball misses it; the slot not kept ⇒ order `[a, b, shape]`.*
 #[test]
 fn o_desenho_com_buraco_vira_a_forma_do_corpo_no_lugar_dele() {
-    let (mut sim, doc, body, [a, v, b]) = scene(frame());
-    let shape = convert(sim.world_mut(), &doc, v).expect("converts");
+    let (mut sim, mut doc, body, [a, v, b]) = scene(frame());
+    let shape = convert(sim.world_mut(), &mut doc, v).expect("converts");
+    assert!(doc.is_empty(), "the path leaves the document with the drawing");
     let w = sim.world();
     assert!(w.get_entity(v).is_err(), "the drawing is replaced");
     assert_eq!(w.get::<Name>(shape).map(Name::as_str), Some("Collision Shape"));
@@ -132,8 +133,8 @@ fn o_traco_aberto_e_plataforma_e_as_recusas_nao_mexem() {
         stroke: Some(StrokeSpec::new(INK, 0.4)),
         ..VecPath::default()
     };
-    let (mut sim, doc, _, [_, v, _]) = scene(line.clone());
-    let shape = convert(sim.world_mut(), &doc, v).expect("a stroked line converts");
+    let (mut sim, mut doc, _, [_, v, _]) = scene(line.clone());
+    let shape = convert(sim.world_mut(), &mut doc, v).expect("a stroked line converts");
     let one = ball(&mut sim, 0.5, 3.0);
     let at = settle(&mut sim, &[one]);
     assert!(
@@ -147,9 +148,9 @@ fn o_traco_aberto_e_plataforma_e_as_recusas_nao_mexem() {
         stroke: None,
         ..line
     };
-    let (mut sim, doc, body, kids) = scene(bare);
-    assert_eq!(convert(sim.world_mut(), &doc, kids[1]), Err(Refusal::NoArea));
-    assert_eq!(convert(sim.world_mut(), &doc, kids[0]), Err(Refusal::NotAVector));
+    let (mut sim, mut doc, body, kids) = scene(bare);
+    assert_eq!(convert(sim.world_mut(), &mut doc, kids[1]), Err(Refusal::NoArea));
+    assert_eq!(convert(sim.world_mut(), &mut doc, kids[0]), Err(Refusal::NotAVector));
     assert_eq!(ordered_children(sim.world(), body), kids.to_vec(), "nothing moved");
 }
 

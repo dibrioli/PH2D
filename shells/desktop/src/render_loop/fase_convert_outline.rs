@@ -19,7 +19,7 @@ impl crate::App {
             return;
         };
         let e = ph2d_ecs::Entity::from_bits(bits);
-        match ph2d_physics_outline_vec::convert(gfx.sim.world_mut(), &gfx.vec_scene, e) {
+        match ph2d_physics_outline_vec::convert(gfx.sim.world_mut(), &mut gfx.vec_scene, e) {
             Ok(shape) => {
                 if let Some(hero) = gfx.hero_screen.as_mut() {
                     hero.gizmo.replace_selection(Some(shape.to_bits()));

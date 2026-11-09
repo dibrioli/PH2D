@@ -386,3 +386,42 @@ fn split_slices_e_area_so_com_slices_e_chegam_ao_pedido() {
         o => panic!("{o:?}"),
     }
 }
+
+/// P14d: Output ▸ **Godot SpriteFrames (.tres)** e **Normal map sheet** respondem ao ponteiro e chegam
+/// ao pedido; a caixa Normal map sheet só aparece quando o sprite tem camada Normal Map.
+#[test]
+fn normal_map_sheet_e_godot_chegam_ao_pedido() {
+    use ph2d_pixel_io::exporta::Export;
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let mut hero = HeroScreen::new(NodeId(1));
+    pinta(&mut hero, &mut ts);
+    let contexto = |tem_normal| canal::Contexto {
+        lados: (16, 8),
+        quadros: 3,
+        tem_normal,
+        ..canal::Contexto::default()
+    };
+    canal::publish_contexto(contexto(false));
+    canal::abrir(Tela::Folha);
+    hero.panel_visibility.insert(PANEL_PIXEL_EXPORT, true);
+    assenta(&mut hero, &mut ts);
+    assert!(
+        hero.hit_index.rect_for(e::NORMAL_SHEET).is_none(),
+        "sem camada Normal Map, sem Normal map sheet"
+    );
+    canal::publish_contexto(contexto(true));
+    assenta(&mut hero, &mut ts);
+    clica(&mut hero, e::NORMAL_SHEET, "Normal map sheet");
+    assenta(&mut hero, &mut ts);
+    clica(&mut hero, e::GODOT, "Godot SpriteFrames (.tres)");
+    assenta(&mut hero, &mut ts);
+    clica(&mut hero, e::OK, "Export da folha");
+    match canal::take_pedido() {
+        Some(Pedido::Exportar(Export::Folha(x))) => {
+            assert!(x.opcoes.normal, "Normal map sheet no pedido");
+            assert!(x.opcoes.godot, "Godot no pedido");
+        }
+        o => panic!("{o:?}"),
+    }
+}

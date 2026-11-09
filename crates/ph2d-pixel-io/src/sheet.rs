@@ -5,8 +5,10 @@
 
 pub(crate) mod fatias;
 mod nomes;
+mod normal;
 pub use nomes::nome_do_quadro;
 use nomes::padrao;
+pub use normal::tem_normal;
 
 use std::collections::BTreeMap;
 
@@ -67,6 +69,10 @@ pub struct OpcoesFolha {
     pub inner: u32,
     /// `None` = o padrão do Aseprite para o caso.
     pub nome: Option<String>,
+    /// P14d: Normal map sheet — a `_n.png` com o MESMO lugar de cada peça ([`Folha::normal`]).
+    pub normal: bool,
+    /// P14d: Godot SpriteFrames — o `.tres` ao lado ([`crate::godot`]).
+    pub godot: bool,
 }
 
 /// Uma linha do JSON.
@@ -89,6 +95,9 @@ pub struct Folha {
     pub h: u32,
     pub rgba: Vec<u8>,
     pub entradas: Vec<Entrada>,
+    /// P14d: a folha das normais, `w * h * 4`, peça a peça no lugar da de cor; `None` sem pedido ou
+    /// sem camada Normal Map.
+    pub normal: Option<Vec<u8>>,
 }
 
 /// Uma peça antes de ter lugar.
@@ -100,6 +109,9 @@ struct Peca {
     duration_ms: u32,
     /// O dono do cel ligado, em `split`: quem aponta para o mesmo partilha retângulo (medido).
     dono: Option<(LayerId, FrameId)>,
+    /// O quadro e o canto de `px` no canvas (pode sair dele, na grelha): a normal corta-se igual.
+    quadro: FrameId,
+    de: [i32; 2],
 }
 
 /// A grelha de `--split-grid` e `--trim-by-grid`. O Trial usa a do sprite, que abre com a do tile numa
@@ -274,6 +286,8 @@ fn pecas(s: &Sprite, o: &OpcoesFolha, titulo: &str, ext: &str, feito: &dyn Fn(f3
                             px: celula_da_grelha(&px, w, h, (x, y), *tw, *th),
                             duration_ms: fr.duration_ms,
                             dono: None,
+                            quadro: fr.id,
+                            de: [x, y],
                         });
                         item += 1;
                     }
@@ -300,6 +314,8 @@ fn pecas(s: &Sprite, o: &OpcoesFolha, titulo: &str, ext: &str, feito: &dyn Fn(f3
                             px: recorte(&px, w, rect),
                             duration_ms: fr.duration_ms,
                             dono: None,
+                            quadro: fr.id,
+                            de: [r.x, r.y],
                         });
                         itens_da_slice[k] += 1;
                     }
@@ -320,6 +336,8 @@ fn pecas(s: &Sprite, o: &OpcoesFolha, titulo: &str, ext: &str, feito: &dyn Fn(f3
                     px,
                     duration_ms: fr.duration_ms,
                     dono,
+                    quadro: fr.id,
+                    de: [0, 0],
                 });
             }
             grupo += 1;
@@ -372,6 +390,7 @@ fn apara(mut v: Vec<Peca>, o: &OpcoesFolha, grade: Option<(u32, u32, i32, i32)>)
         if let Some(r) = r {
             let dentro = [r[0] - p.rect[0], r[1] - p.rect[1], r[2], r[3]];
             p.px = recorte(&p.px, p.rect[2], dentro);
+            p.de = [p.de[0] + dentro[0] as i32, p.de[1] + dentro[1] as i32];
             p.rect = r;
         }
         true
@@ -515,9 +534,11 @@ pub fn montar_com(
     }
     let mut rgba = vec![0_u8; fw as usize * fh as usize * 4];
     let mut lugar_de = vec![[0_u32; 2]; v.len()];
+    let mut normal = normal::Normais::nova(s, o, rgba.len());
     for (k, &i) in pintadas.iter().enumerate() {
         lugar_de[i] = lugares[k];
         carimba(&mut rgba, fw, lugares[k], &v[i], o);
+        normal.carimba(fw, lugares[k], &v[i], o);
     }
     let entradas = v
         .iter()
@@ -544,6 +565,7 @@ pub fn montar_com(
         h: fh,
         rgba,
         entradas,
+        normal: normal.folha(),
     }
 }
 

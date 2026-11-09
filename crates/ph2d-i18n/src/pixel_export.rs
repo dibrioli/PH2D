@@ -15,6 +15,11 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.export.columns" => "Tiles per row",
         "panel.pixel.export.split_grid" => "Split grid",
         "panel.pixel.export.split_slices" => "Split slices",
+        "panel.pixel.export.normal_sheet" => "Normal map sheet",
+        "panel.pixel.export.godot" => "Godot SpriteFrames (.tres)",
+        "pixel.io.err.godot_frames" => {
+            "Godot SpriteFrames needs one image per frame. Turn off the Split options."
+        }
         "panel.pixel.export.area" => "Area",
         "panel.pixel.export.area_canvas" => "Canvas",
         "panel.pixel.export.trim_by_grid" => "Trim by grid",

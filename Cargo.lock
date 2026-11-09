@@ -10842,6 +10842,8 @@ dependencies = [
  "ph2d-pixel-core",
  "ph2d-pixel-io",
  "serde",
+ "serde_json",
+ "sha2 0.11.1",
 ]
 
 [[package]]

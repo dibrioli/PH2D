@@ -58,6 +58,7 @@ pub fn erro_gravar(e: &ErroGravar) -> String {
         ),
         ErroGravar::AlvoSumiu => tr("pixel.io.err.target_gone").to_owned(),
         ErroGravar::Preset => tr("pixel.io.err.preset").to_owned(),
+        ErroGravar::GodotSemQuadros => tr("pixel.io.err.godot_frames").to_owned(),
     }
 }
 

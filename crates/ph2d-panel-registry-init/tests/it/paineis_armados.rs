@@ -435,6 +435,7 @@ fn arma_a_preview() {
 fn arma_o_export() {
     use ph2d_panel_pixel_export::canal;
     canal::publish_contexto(canal::Contexto {
+        tem_normal: false,
         lados: (16, 8),
         quadros: 3,
         camadas: vec![(ph2d_pixel_core::LayerId(1), "Layer 1".to_owned())],

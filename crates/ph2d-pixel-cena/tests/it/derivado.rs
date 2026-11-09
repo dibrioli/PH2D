@@ -251,3 +251,33 @@ fn o_jogo_e_o_editor_tocam_o_mesmo_quadro() {
     .expect("tags");
     confere(&s, "run");
 }
+
+/// P14d: o quadro que o JOGO mostra em cada ms de `t = 0..=2000` a tocar `tag` desde o início — o
+/// lado nosso de `a_sequencia_e_a_do_godot`.
+pub(crate) fn sequencia_do_jogo(s: &Sprite, tag: &str) -> Vec<usize> {
+    let mut sim = mundo(s);
+    deriva(sim.world_mut(), |_| Some((s, 1)));
+    let e = pixel_de(sim.world_mut());
+    let clip = sim
+        .world()
+        .get::<SpriteAnimations>(e)
+        .and_then(|l| l.get(tag))
+        .cloned()
+        .expect("clip");
+    let mut a = SpriteAnimator::new(tag);
+    a.playing = true;
+    a.rewind(Some(&clip));
+    sim.world_mut().entity_mut(e).insert(a);
+    tique(sim.world_mut(), e, 0);
+    (0..=2000u32)
+        .map(|t| {
+            if t > 0 {
+                tique(sim.world_mut(), e, 1000);
+            }
+            match sim.world().get::<SpriteGrid>(e).expect("grelha").shown() {
+                FrameRef::Cell { cell, .. } => cell as usize,
+                FrameRef::Empty => usize::MAX,
+            }
+        })
+        .collect()
+}

@@ -51,6 +51,23 @@ pub enum ErroGravar {
     AlvoSumiu,
     /// As opções guardadas não se leem.
     Preset,
+    /// Godot SpriteFrames pede uma peça por quadro (sem split).
+    GodotSemQuadros,
+}
+
+/// `meta.pivots`: o pivô de cada quadro, em píxeis do sprite, para quem lê a folha com o `.tres`.
+fn com_pivos(s: &Sprite, json: &str) -> String {
+    let Ok(mut v) = serde_json::from_str::<serde_json::Value>(json) else {
+        return json.to_owned();
+    };
+    let p: Vec<serde_json::Value> = crate::godot::pivos(s)
+        .into_iter()
+        .map(|(x, y)| serde_json::json!({ "x": x, "y": y }))
+        .collect();
+    if let Some(m) = v.get_mut("meta").and_then(|m| m.as_object_mut()) {
+        m.insert("pivots".to_owned(), serde_json::Value::Array(p));
+    }
+    serde_json::to_string_pretty(&v).unwrap_or_else(|_| json.to_owned())
 }
 
 /// A camada e os quadros escolhidos ainda existem?
@@ -143,10 +160,39 @@ pub fn gravar_com(
                 .map_err(|e| ErroGravar::Saida(ErroSaida::Formato(e.to_string())))?;
             escreve(caminho, &png)?;
             let mut ficheiros = vec![caminho.to_owned()];
+            let imagem = caminho.file_name().unwrap_or_default().to_string_lossy();
+            let normal = match &f.normal {
+                Some(n) => {
+                    let c = com_sufixo(caminho, "_n");
+                    let png = ph2d_imageio_png::encode_pixel(
+                        f.w,
+                        f.h,
+                        &ph2d_imageio_png::PixelPng::Rgba,
+                        n,
+                    )
+                    .map_err(|e| ErroGravar::Saida(ErroSaida::Formato(e.to_string())))?;
+                    escreve(&c, &png)?;
+                    let nome = c
+                        .file_name()
+                        .unwrap_or_default()
+                        .to_string_lossy()
+                        .into_owned();
+                    ficheiros.push(c);
+                    Some(nome)
+                }
+                None => None,
+            };
             if let Some(j) = x.json {
-                let imagem = caminho.file_name().unwrap_or_default().to_string_lossy();
                 let t = sheet::json_da_folha(s, &f, &imagem, saida::formato_json(&modo), j);
+                let t = if x.opcoes.godot { com_pivos(s, &t) } else { t };
                 let c = caminho.with_extension("json");
+                escreve(&c, t.as_bytes())?;
+                ficheiros.push(c);
+            }
+            if x.opcoes.godot {
+                let t = crate::godot::tres(s, &f, &imagem, normal.as_deref())
+                    .ok_or(ErroGravar::GodotSemQuadros)?;
+                let c = caminho.with_extension("tres");
                 escreve(&c, t.as_bytes())?;
                 ficheiros.push(c);
             }
@@ -334,6 +380,8 @@ fn para_texto(s: &Sprite, e: &Export) -> String {
             if let Some(n) = &o.nome {
                 l.push(format!("name={}", esc(n)));
             }
+            l.push(format!("normal={}", u8::from(o.normal)));
+            l.push(format!("godot={}", u8::from(o.godot)));
             if let Some(j) = x.json {
                 l.push(format!(
                     "json={} {} {} {}",
@@ -467,6 +515,8 @@ fn de_texto(s: &Sprite, t: &str) -> Option<Export> {
                     shape: num("shape")?,
                     inner: num("inner")?,
                     nome: campo("name").map(sem_esc),
+                    normal: sim("normal"),
+                    godot: sim("godot"),
                 },
                 json,
             }))

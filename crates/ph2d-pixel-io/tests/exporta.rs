@@ -183,6 +183,9 @@ fn o_repeat_grava_os_mesmos_bytes_depois_de_passar_pelo_projeto() {
                 split_layers: false,
                 split_tags: true,
                 split_slices: true,
+                normal: true,
+                // Com split o Godot recusa (`GodotSemQuadros`): o par godot vai e volta em `saida_godot`.
+                godot: false,
                 split_grid: true,
                 trim_by_grid: true,
                 trim_cels: true,

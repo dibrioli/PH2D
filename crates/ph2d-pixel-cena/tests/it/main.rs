@@ -7,3 +7,4 @@ mod forma;
 mod normal_da_fixture;
 mod porta_da_tag;
 mod quadro_mostrado;
+mod saida_godot;

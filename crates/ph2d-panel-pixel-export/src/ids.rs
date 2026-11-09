@@ -145,7 +145,9 @@ pub const SPLIT_SLICES: NodeId = hash_node_id("pixel_export.split_slices");
 pub const AREA: NodeId = hash_node_id("pixel_export.area");
 pub const AREA_CANVAS: NodeId = hash_node_id("pixel_export.area.canvas");
 
-pub const CHECKS: [NodeId; 14] = [
+pub const CHECKS: [NodeId; 16] = [
+    NORMAL_SHEET,
+    GODOT,
     SPLIT_GRID,
     SPLIT_SLICES,
     TRIM_BY_GRID,
@@ -170,6 +172,10 @@ pub const BY_ROWS: NodeId = hash_node_id("pixel_export.by_rows");
 pub const BY_COLUMNS: NodeId = hash_node_id("pixel_export.by_columns");
 /// O formato do nome de cada quadro no JSON.
 pub const ITEM_NAME: NodeId = hash_node_id("pixel_export.item_name");
+/// P14d: Output ▸ Normal map sheet (só com camada Normal Map).
+pub const NORMAL_SHEET: NodeId = hash_node_id("pixel_export.normal_sheet");
+/// P14d: Output ▸ Godot SpriteFrames (.tres).
+pub const GODOT: NodeId = hash_node_id("pixel_export.godot");
 
 /// A linha da slice `i` na lista Area, na ordem por nome.
 #[must_use]

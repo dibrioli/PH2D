@@ -162,6 +162,7 @@ pub(crate) fn cards(
     let tem_lista_de_limite = limites.len() > 1;
     let tem_tiles = !x.tilesets.is_empty();
     let tem_slices = !x.slices.is_empty();
+    let tem_normal = x.tem_normal;
     let (json_ligado, json) = (o.json_ligado, o.json);
     vec![
         cartao_da_previa(img),
@@ -288,6 +289,15 @@ pub(crate) fn cards(
             tr("panel.pixel.export.sec_output"),
             None,
             move |c, y| {
+                let mut saidas = vec![(ids::GODOT, "panel.pixel.export.godot", f.godot)];
+                if tem_normal {
+                    saidas.push((
+                        ids::NORMAL_SHEET,
+                        "panel.pixel.export.normal_sheet",
+                        f.normal,
+                    ));
+                }
+                let y = caixas_aos_pares(c, &saidas, y);
                 let y = caixa(c, ids::JSON, "panel.pixel.export.json", json_ligado, y);
                 if !json_ligado {
                     return y;

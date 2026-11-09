@@ -11,6 +11,7 @@ pub mod ase;
 pub mod brush_file;
 pub mod exporta;
 pub mod gif_cores;
+pub mod godot;
 pub mod msk;
 pub mod palette_file;
 pub mod render;

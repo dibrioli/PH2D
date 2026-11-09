@@ -24,6 +24,7 @@ const JANELA: Rect = Rect {
 
 fn mesa(t: Tela) -> Mesa<PixelExportPanel> {
     canal::publish_contexto(Contexto {
+        tem_normal: false,
         lados: (64, 32),
         quadros: 16,
         camadas: vec![

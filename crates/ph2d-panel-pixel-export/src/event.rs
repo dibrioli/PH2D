@@ -224,6 +224,8 @@ fn clique(st: &mut PixelExportPanelState, id: NodeId) -> bool {
         i if i == ids::TRIM_CELS => &mut f.trim_cels,
         i if i == ids::TRIM_SPRITE => &mut f.trim_sprite,
         i if i == ids::JSON => &mut st.fo.json_ligado,
+        i if i == ids::NORMAL_SHEET => &mut f.normal,
+        i if i == ids::GODOT => &mut f.godot,
         i if i == ids::JSON_TAGS => &mut j.tags,
         i if i == ids::JSON_LAYERS => &mut j.layers,
         i if i == ids::JSON_SLICES => &mut j.slices,

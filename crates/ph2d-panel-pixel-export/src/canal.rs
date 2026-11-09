@@ -52,6 +52,8 @@ pub struct Contexto {
     pub tilesets: Vec<(u32, u32, u16, u16)>,
     /// As slices do sprite, por nome, gémeas incluídas (F4).
     pub slices: Vec<(SliceId, String)>,
+    /// P14d: o sprite tem camada Normal Map (a caixa Normal map sheet só aparece assim).
+    pub tem_normal: bool,
 }
 
 /// Uma imagem para um cartão (RGBA de alfa reto): a folha ao vivo ou a do Import.
@@ -195,6 +197,7 @@ pub fn publish_contexto_de(s: &Sprite) {
             .into_iter()
             .map(|c| (c.id, c.name.clone()))
             .collect(),
+        tem_normal: ph2d_pixel_io::sheet::tem_normal(s),
     });
 }
 

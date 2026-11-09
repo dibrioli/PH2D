@@ -300,6 +300,22 @@ pub fn retrace_asked<'a>(
     queue: &EditorCommandQueue,
     registry: &ComponentRegistry,
 ) -> Option<Traced> {
+    retrace_sized(world, shape, asked, picture, ppm, queue, registry, false)
+}
+
+/// [`retrace_asked`]; `keep` = o «Custom size» fica (caixa e desvio): os anéis, normalizados à
+/// imagem, esticam-se à meia-extensão de agora.
+#[allow(clippy::too_many_arguments)]
+fn retrace_sized<'a>(
+    world: &World,
+    shape: Entity,
+    asked: &ColliderOutline,
+    picture: impl Fn(Entity, u8) -> Option<Picture<'a>>,
+    ppm: f32,
+    queue: &EditorCommandQueue,
+    registry: &ComponentRegistry,
+    keep: bool,
+) -> Option<Traced> {
     let collider = world.get::<Collider>(shape).copied()?;
     let owner = picture_owner(world, shape)?;
     let frames = traced_frames(world, owner);
@@ -312,13 +328,17 @@ pub fn retrace_asked<'a>(
         ppm,
     )?;
     let traced = trace(&mask, asked);
-    let mut next = Collider {
-        shape: ColliderShape::Outline {
-            half_x: lay.half[0],
-            half_y: lay.half[1],
-        },
-        offset: lay.centre,
-        ..collider
+    let mut next = if keep {
+        collider
+    } else {
+        Collider {
+            shape: ColliderShape::Outline {
+                half_x: lay.half[0],
+                half_y: lay.half[1],
+            },
+            offset: lay.centre,
+            ..collider
+        }
     };
     next.sanitize();
     if next == collider && world.get::<ColliderOutline>(shape) == Some(&traced.outline) {
@@ -390,7 +410,10 @@ pub fn retrace_edited(
             P::Outline(e) => asked_with(&cur.unwrap_or_default(), e),
             _ => cur.unwrap_or_default(),
         };
-        if outline && retrace_asked(world, shape, &asked, &picture, ppm, queue, registry).is_some()
+        // Só o pedido mudou: o «Custom size» fica; escolher «Outline» ou «Fit» mede a imagem.
+        let keep = matches!(edit, P::Outline(_)) && follows(world, shape) == Some(false);
+        if outline
+            && retrace_sized(world, shape, &asked, &picture, ppm, queue, registry, keep).is_some()
         {
             n += 1;
         }
@@ -485,9 +508,12 @@ pub fn retrace_followed(
             let size = w.get::<Sprite>(owner).map(|s| s.size);
             let follows = near([half_x, half_y], &b.layout)
                 || near([half_x, half_y], &lay)
-                || size.is_some_and(|s| c.follows_picture(s))
-                || b.asked != asked;
-            if follows && retrace(w, shape, &picture, ppm, queue, registry).is_some() {
+                || size.is_some_and(|s| c.follows_picture(s));
+            // O pedido mudado retraça sempre; o «Custom size» guarda a caixa.
+            let keep = !follows;
+            if (follows || b.asked != asked)
+                && retrace_sized(w, shape, &o, &picture, ppm, queue, registry, keep).is_some()
+            {
                 n += 1;
             }
         }

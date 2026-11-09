@@ -562,3 +562,41 @@ fn a_curva_do_detail_retraca_com_menos_pontos() {
     let _ = follow(&mut sim, &db, &q, &reg);
     assert!(q.is_empty(), "o Undo já é o traço gravado");
 }
+
+/// (W4 1) **O «Custom size» guarda a caixa quando o pedido muda**: o Detail mudado (pela curva, em
+/// `retrace_followed`, e pelo cartão, em `retrace_edited`) retraça, mas a meia-extensão e o desvio
+/// ficam os do artista — os anéis esticam-se a ela. *Mutação: `keep` sempre `false` ⇒ a caixa volta à
+/// da imagem (2 × 2 m), vermelho.*
+#[test]
+fn o_custom_size_retraca_e_guarda_a_caixa() {
+    use ph2d_editor_core::{OutlineEdit, PhysicsFieldEdit as P};
+    let (reg, mut sim, body, shape, db) = followed_ring();
+    let q = EditorCommandQueue::new();
+    let mut custom = sim.world().get::<Collider>(shape).copied().expect("c");
+    custom.shape = ColliderShape::Outline {
+        half_x: 1.5,
+        half_y: 2.5,
+    };
+    custom.offset = [0.25, -0.5];
+    sim.world_mut().entity_mut(shape).insert(custom);
+    let antes = sim
+        .world()
+        .get::<ColliderOutline>(shape)
+        .cloned()
+        .expect("o");
+    let pedido = ph2d_physics_outline::asked_with(&antes, OutlineEdit::Detail(6.0));
+    sim.world_mut().entity_mut(shape).insert(pedido);
+    assert_eq!(follow(&mut sim, &db, &q, &reg), 1, "o pedido mudou");
+    apply_editor_commands(sim.world_mut(), &q, &reg).expect("aplica");
+    let w = sim.world();
+    assert_eq!(w.get::<ColliderOutline>(shape).expect("o").detail_q4, 96);
+    assert_eq!(w.get::<Collider>(shape).copied(), Some(custom), "a curva");
+    let none = std::collections::BTreeMap::new();
+    let edit = [(body.to_bits(), P::Outline(OutlineEdit::Detail(2.0)))];
+    let n = ph2d_physics_outline::retrace_edited(sim.world(), &edit, &db, &none, PPM, &q, &reg);
+    assert_eq!(n, 1, "o cartão retraça");
+    apply_editor_commands(sim.world_mut(), &q, &reg).expect("aplica");
+    let w = sim.world();
+    assert_eq!(w.get::<ColliderOutline>(shape).expect("o").detail_q4, 32);
+    assert_eq!(w.get::<Collider>(shape).copied(), Some(custom), "o cartão");
+}

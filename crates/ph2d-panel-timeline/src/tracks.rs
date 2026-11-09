@@ -163,14 +163,9 @@ pub(crate) fn paint_rows(
         if y + h <= region.y || y >= bottom {
             continue;
         }
-        // Zebra so lanes read as discrete rows.
-        if n % 2 == 1 {
-            fill_row(
-                ctx,
-                theme,
-                Rect::new(region.x, y, region.w, ROW_H_PX),
-                ColorToken::TimelineRowAlt,
-            );
+        // Zebra so lanes read as discrete rows; o cabeçalho do objecto tem o fundo dele.
+        if let Some(tok) = crate::linhas::fundo_da_linha(b.linha, n) {
+            fill_row(ctx, theme, Rect::new(region.x, y, region.w, ROW_H_PX), tok);
         }
         let (i, grupo) = match b.linha {
             Linha::Grupo(gi) => {
@@ -187,7 +182,13 @@ pub(crate) fn paint_rows(
         };
         let track = &snap.tracks[i];
         // Um membro de um grupo aberto recua uma coluna, sob o ▶ do grupo.
+        // Nos cartões a faixa recua sob o cabeçalho do objecto, e leva o ícone da propriedade.
         let x0 = region.x + if grupo.is_some() { TWIRL_W } else { 0.0 };
+        let icone = if arvore {
+            crate::linhas::icone_da_propriedade(track.prop)
+        } else {
+            None
+        };
         let t = track.target.get();
         let twirl = TimelineHitKind::Twirl { target: t };
         let open = state.is_expanded(t);
@@ -243,8 +244,15 @@ pub(crate) fn paint_rows(
             snap,
             track,
             (&text, color),
-            (x0 + TWIRL_W, region.x + label_w, y),
+            (
+                x0 + TWIRL_W + crate::linhas::icone_w(icone),
+                region.x + label_w,
+                y,
+            ),
         );
+        if let Some(ic) = icone {
+            crate::linhas::paint_icone(ctx, theme, ic, (x0 + TWIRL_W, y), ColorToken::Text3);
+        }
         if arvore {
             crate::linhas::paint_barras(ctx, theme, track, view, preview_dx, y);
         }

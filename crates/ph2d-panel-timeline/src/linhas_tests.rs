@@ -388,3 +388,53 @@ fn as_tres_barras_leem_se_diferentes_nos_oito_temas() {
     }
     eprintln!("pior distancia entre barras: {pior:.3}");
 }
+
+/// ⭐ Dono 09/11 (smoke da onda 2): a linha do OBJECTO tem cara própria — fundo de ponta a ponta
+/// diferente das duas cores da zebra das propriedades, em todo tema; ícone do tipo vindo da
+/// Hierarquia; propriedades com o ícone do gizmo.
+#[test]
+fn o_cabecalho_do_objeto_tem_fundo_e_icones_proprios() {
+    use ph2d_editor_core::icons::IconId;
+    use ph2d_tokens::Theme;
+    let cab = |n| fundo_da_linha(Linha::Objeto(9), n);
+    let faixa = |n| fundo_da_linha(Linha::Faixa { i: 0, grupo: None }, n);
+    for n in [0, 1] {
+        assert_eq!(cab(n), Some(ColorToken::TimelineObjectRow));
+        assert_ne!(cab(n), faixa(n));
+    }
+    for t in [
+        Theme::Forge,
+        Theme::Workshop,
+        Theme::Sunstone,
+        Theme::Blueprint,
+        Theme::Dark,
+        Theme::Gray,
+        Theme::Light,
+        Theme::Oled,
+    ] {
+        let c = resolve(ColorToken::TimelineObjectRow, t).to_rgba8();
+        for outro in [ColorToken::TimelineRowAlt, ColorToken::PanelBg] {
+            assert_ne!(
+                c,
+                resolve(outro, t).to_rgba8(),
+                "{t:?}: cabeçalho igual a {outro:?}"
+            );
+        }
+    }
+    assert_eq!(
+        icone_da_propriedade(PropKind::TranslationX),
+        Some(IconId::Move)
+    );
+    assert_eq!(
+        icone_da_propriedade(PropKind::Rotation),
+        Some(IconId::Rotate)
+    );
+    assert_eq!(icone_da_propriedade(PropKind::ScaleY), Some(IconId::Scale));
+    assert_eq!(
+        crate::hier::icone_do_objeto(424_242),
+        IconId::Cube,
+        "sem declaração: objecto vazio"
+    );
+    crate::hier::publica_icone(424_242, IconId::Sprite);
+    assert_eq!(crate::hier::icone_do_objeto(424_242), IconId::Sprite);
+}

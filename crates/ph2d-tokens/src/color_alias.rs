@@ -47,6 +47,8 @@ pub(crate) const fn parent_of(t: ColorToken) -> Option<ColorToken> {
         | ColorToken::TimelineSummaryRing => ColorToken::Accent,
         ColorToken::TimelineHandleLine | ColorToken::TimelineLoopRegion => ColorToken::AccentSoft,
         ColorToken::TimelineRowAlt | ColorToken::TimelineRulerBg => ColorToken::Bg2,
+        // O cabeçalho do objecto (doc 15 onda 2): um degrau acima da zebra das propriedades.
+        ColorToken::TimelineObjectRow => ColorToken::Bg3,
         ColorToken::TimelineMarker | ColorToken::TimelineSummaryKey => ColorToken::Warn,
         ColorToken::TimelineKeyActive => ColorToken::AccentPress,
         ColorToken::TimelineMissing | ColorToken::TimelineRecord => ColorToken::Danger,

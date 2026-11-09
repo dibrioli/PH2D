@@ -81,6 +81,8 @@ Testes por nome desta rodada: `linhas` 16 ✓ · `tracks_value` 6 ✓ · `scroll
 `ph2d-tokens color` 17 ✓ · i18n `ordenad`/`known_keys`/`a_text_key`/`honesto` ✓; crate inteira 300 + 161 ✓. Clippy
 `-D warnings` limpo em `ph2d-panel-timeline`, `ph2d-editor-core`, `ph2d-tokens`, `ph2d-i18n`; fmt; smoke compilado.
 
+- **2c (dono 09/11, cabeçalho do objecto):** fundo próprio de ponta a ponta (token `TimelineObjectRow` → `Bg3`, via `linhas::fundo_da_linha`), fio `BorderStrong` antes de cada objecto, ▾ SÓ PINTADO (não há id/evento de recolher objecto), ícone do tipo lido do `entry.icon` da Hierarquia em `hier::declare_in_row` (mapa `hier::publica_icone`/`icone_do_objeto`, sem linha nova na shell; `Cube` até a Hierarquia declarar), ícone por propriedade (`Move`/`Rotate`/`Scale`/`CardOpacity`), piso da coluna nos cartões `geom::min_arvore_label_w` (nomes inteiros); teste `o_cabecalho_do_objeto_tem_fundo_e_icones_proprios`; crate 301 + 162 ✓; `color.rs` 699/700.
+
 ## Superfície de colisão
 
 `ph2d-panel-timeline`: `linhas.rs`, `tracks.rs`, `tracks_label.rs`, `tracks_value.rs`, `paint.rs`, `ruler.rs`, `state.rs`,

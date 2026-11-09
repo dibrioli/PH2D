@@ -12,6 +12,7 @@
 
 use std::collections::BTreeMap;
 
+use ph2d_editor_core::icons::IconId;
 use ph2d_editor_core::interaction::{InteractiveState, TimelineHitKind, TrackMenuKind};
 use ph2d_editor_core::paint::{paint_text_elided, resolve};
 use ph2d_editor_core::panel::PaintCtx;
@@ -332,6 +333,54 @@ pub(crate) fn paint_grupo(
     }
 }
 
+/// A espessura do fio entre dois objectos.
+const DIVISORIA_H: f32 = ph2d_editor_core::panel::cards::banda::SEPARADOR_W;
+/// O lado de um ícone da coluna de nomes (o do texto inline).
+pub(crate) const ICONE_PX: f32 = ph2d_tokens::INLINE_ICON_PX;
+
+/// ⭐ **O fundo de uma linha** (doc 15 onda 2): o cabeçalho do objecto tem o seu, um degrau acima
+/// da zebra, de ponta a ponta (nomes e fita); as faixas alternam. Exposto ao teste do estilo.
+pub(crate) fn fundo_da_linha(l: Linha, n: usize) -> Option<ColorToken> {
+    match l {
+        Linha::Objeto(_) => Some(ColorToken::TimelineObjectRow),
+        _ if n % 2 == 1 => Some(ColorToken::TimelineRowAlt),
+        _ => None,
+    }
+}
+
+/// O ícone da propriedade na faixa (o mesmo glifo do gizmo: mover, rodar, escalar), ou nenhum.
+pub(crate) fn icone_da_propriedade(p: PropKind) -> Option<IconId> {
+    match p {
+        PropKind::TranslationX | PropKind::TranslationY | PropKind::Position => Some(IconId::Move),
+        PropKind::Rotation => Some(IconId::Rotate),
+        PropKind::ScaleX | PropKind::ScaleY => Some(IconId::Scale),
+        PropKind::Opacity => Some(IconId::CardOpacity),
+        _ => None,
+    }
+}
+
+/// A largura que um ícone (ou nenhum) ocupa antes do texto.
+pub(crate) fn icone_w(i: Option<IconId>) -> f32 {
+    i.map_or(0.0, |_| ICONE_PX + Spacing::Xs.px())
+}
+
+/// Um ícone da coluna de nomes, a começar em `x`, centrado na altura da linha `y`.
+pub(crate) fn paint_icone(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    ic: IconId,
+    (x, y): (f32, f32),
+    tok: ColorToken,
+) {
+    ph2d_editor_core::paint::paint_icon(
+        ctx.scene,
+        ic,
+        Rect::new(x, y + (ROW_H_PX - ICONE_PX) * 0.5, ICONE_PX, ICONE_PX),
+        resolve(tok, theme),
+        ph2d_tokens::StrokeToken::Default.px(),
+    );
+}
+
 /// O losango do cabeçalho do objecto: metade do da faixa (a maquete B1 pinta-o como um ponto).
 const OBJ_DIAMOND_H: f32 = DIAMOND_H * 0.6; // LITERAL-PX-OK: fraction of the row diamond
 /// A espessura da barra entre duas chaves (maquete B1: 3 px numa linha de 22).
@@ -352,15 +401,36 @@ pub(crate) fn paint_objeto(
     linha: (u64, f32),
 ) {
     let (entity, y) = linha;
+    let x = geo.rows.x;
+    // O fio que separa um objecto do de cima (não no primeiro, que encosta no Summary).
+    if y > geo.rows.y + ROW_H_PX {
+        ph2d_editor_core::paint::fill_rounded_rect(
+            ctx.scene,
+            Rect::new(x, y, geo.rows.w, DIVISORIA_H),
+            0.0,
+            resolve(ColorToken::BorderStrong, theme),
+        );
+    }
+    // ▾ só marca o grupo: não há gesto de recolher um objecto (nenhum id/evento), então é pintura.
+    paint_icone(ctx, theme, IconId::ChevronDown, (x, y), ColorToken::Text3);
+    let ic = crate::hier::icone_do_objeto(entity);
+    paint_icone(
+        ctx,
+        theme,
+        ic,
+        (x + TWIRL_W * 0.5 + ICONE_PX * 0.5, y),
+        ColorToken::Text2,
+    );
+    let tx = x + TWIRL_W * 0.5 + icone_w(Some(ic)) + ICONE_PX * 0.5;
     let font = TypeToken::Sm.px();
     ph2d_editor_core::paint::paint_text_title_elided(
         ctx.text_system,
         ctx.scene,
         &crate::tracks::objeto_snap(snap, entity),
-        geo.rows.x + TWIRL_W,
+        tx,
         y + (ROW_H_PX - font) * 0.5,
         font,
-        (geo.label_w - TWIRL_W - Spacing::Xs.px()).max(0.0),
+        (x + geo.label_w - tx - Spacing::Xs.px()).max(0.0),
         resolve(ColorToken::Text1, theme),
     );
     let cy = y + ROW_H_PX * 0.5;

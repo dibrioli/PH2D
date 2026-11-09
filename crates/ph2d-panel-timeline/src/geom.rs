@@ -105,6 +105,18 @@ pub(crate) const MIN_LABEL_W: f32 = 56.0; // LITERAL-PX-OK: min track-name colum
 /// there, this is it.
 pub(crate) const MIN_LANE_LABEL_W: f32 = 148.0; // LITERAL-PX-OK: lane controls (94) + a name
 
+/// O texto mais largo da faixa nos cartões, «Translate X (px)»: 16 caracteres a `TypeToken::Sm`.
+const NOME_ARVORE_W: f32 = 112.0; // LITERAL-PX-OK: 16 chars at TypeToken::Sm, measured on the smoke photo
+/// ⭐ O piso da coluna de nomes na árvore dos cartões (doc 15 onda 2): ▶ + ícone da propriedade + o
+/// nome inteiro + o valor — o dono viu «Translate…» cortado e a coluna existe para o ler.
+fn min_arvore_label_w() -> f32 {
+    crate::tracks::TWIRL_W
+        + crate::linhas::ICONE_PX
+        + NOME_ARVORE_W
+        + crate::tracks_value::VALUE_W
+        + ph2d_tokens::Spacing::Xs.px() * 3.0
+}
+
 /// What the label column may not go below, given what it currently holds.
 ///
 /// **What it holds is what the TAB shows.** The lane controls that force the wider
@@ -122,6 +134,8 @@ pub(crate) const MIN_LANE_LABEL_W: f32 = 148.0; // LITERAL-PX-OK: lane controls 
 pub(crate) fn min_label_w(_snap: &TimelineViewSnapshot, tab: Tab) -> f32 {
     if tab.shows_lanes() {
         MIN_LANE_LABEL_W
+    } else if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        min_arvore_label_w()
     } else {
         MIN_LABEL_W
     }

@@ -65,6 +65,8 @@ pub enum Foto {
     FolhasEditor,
     /// …depois de Delete sheet na `idle`: quadros vazios em alerta (painel 6).
     FolhasApagada,
+    /// …depois de Trim com a `run` à vista (dono 08/11): só ela perde a margem; a `idle` fica.
+    FolhasTrim,
 }
 
 #[must_use]
@@ -83,6 +85,7 @@ pub fn foto() -> Option<Foto> {
         "animado_folhas" => Some(Foto::Folhas),
         "animado_folhas_editor" => Some(Foto::FolhasEditor),
         "animado_folhas_apagada" => Some(Foto::FolhasApagada),
+        "animado_folhas_trim" => Some(Foto::FolhasTrim),
         _ => None,
     }
 }
@@ -97,7 +100,7 @@ impl Foto {
             Self::Inicio | Self::Estreito | Self::ProvaPlay => INICIO,
             Self::Aviso | Self::ProvaDesfaz => TROCADA,
             Self::RegraAcesa => PLAYER,
-            Self::Folhas | Self::FolhasEditor | Self::FolhasApagada => DUAS,
+            Self::Folhas | Self::FolhasEditor | Self::FolhasApagada | Self::FolhasTrim => DUAS,
         }
     }
 }
@@ -113,6 +116,8 @@ pub enum Passo {
     Imagem(&'static str, usize),
     /// Load sheet respondido com a imagem da biblioteca da cena (pela ordem em que a cena as traz).
     Folha(&'static str, usize),
+    /// Uma ferramenta de imagem de um clique (`OneShotImageOp`, «Trim Transparency»…) sobre `nome`.
+    Ferramenta(&'static str, &'static str),
     /// O botão Split by rows sobre a folha que `nome` mostra.
     Corta(&'static str),
     /// A regra que ouve o marcador.
@@ -215,6 +220,7 @@ fn duas_folhas(q: u32, foto: Option<Foto>) -> Vec<Passo> {
         ],
         10 if foto == Some(Foto::FolhasApagada) => vec![P::Verbo(DUAS, Verbo::ShowSheet(0))],
         11 if foto == Some(Foto::FolhasApagada) => vec![P::Verbo(DUAS, Verbo::DeleteSheet)],
+        10 if foto == Some(Foto::FolhasTrim) => vec![P::Ferramenta(DUAS, "trim_transparency")],
         14 => vec![P::Relata("as folhas".into(), DUAS)],
         _ => Vec::new(),
     }
@@ -287,7 +293,7 @@ pub fn ouve_o_marcador(sim: &mut SimWorld, e: Entity) {
 pub fn relato(sim: &SimWorld, nome: &str, e: Entity) -> String {
     let w = sim.world();
     format!(
-        "{nome}: toca={:?} inicio={:?} anims={} grade={:?} aviso={:?} folhas={} visivel={} quadros={:?}",
+        "{nome}: toca={:?} inicio={:?} anims={} grade={:?} aviso={:?} folhas={} visivel={} quadros={:?} extra={:?}",
         w.get::<SpriteAnimator>(e).map(|p| p.current.as_str()),
         w.get::<SpriteAnimator>(e).and_then(|p| p.start.as_deref()),
         w.get::<SpriteAnimations>(e).map_or(0, |l| l.iter().count()),
@@ -297,6 +303,8 @@ pub fn relato(sim: &SimWorld, nome: &str, e: Entity) -> String {
         ph2d_ecs::shown_sheet(w, e),
         w.get::<ph2d_ecs::SpriteAnimFrames>(e)
             .map(|f| f.0.iter().map(|t| (t.tag.clone(), t.cells.len())).collect::<Vec<_>>()),
+        w.get::<ph2d_ecs::SpriteSheets>(e)
+            .map(|s| s.0.iter().map(|x| (x.size, x.anchor)).collect::<Vec<_>>()),
     )
 }
 

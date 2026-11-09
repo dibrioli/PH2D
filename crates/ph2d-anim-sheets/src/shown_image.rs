@@ -2,7 +2,7 @@
 //! DELA. A folha guarda só o nome da imagem ([`ExtraSheet::asset`]), e a textura refaz-se sozinha pelo cache derivado;
 //! a pintura volta pelo funil de todas as ferramentas de imagem ([`crate::shown_edit`]).
 
-use ph2d_asset::{AssetDb, AssetId};
+use ph2d_asset::AssetDb;
 use ph2d_ecs::{Entity, ExtraSheet, SpriteSheets, World, shown_sheet};
 
 /// A folha extra visível de `e`: `None` com a folha `0` à vista.

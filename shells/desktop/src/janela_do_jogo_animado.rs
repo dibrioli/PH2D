@@ -35,6 +35,7 @@ impl crate::App {
             | P::Heroi(n)
             | P::Imagem(n, _)
             | P::Folha(n, _)
+            | P::Ferramenta(n, _)
             | P::Corta(n)
             | P::Ouve(n)
             | P::Relata(_, n) => n,
@@ -46,6 +47,14 @@ impl crate::App {
         match (p, bits) {
             (P::Anim(_, edit), Some(b)) => bus(self, b, edit),
             (P::Verbo(_, v), Some(b)) => self.image_use_edit(b, v),
+            (P::Ferramenta(_, tool_id), Some(entity_bits)) => {
+                if let Some(h) = self.gfx.as_mut().and_then(|g| g.hero_screen.as_mut()) {
+                    h.bus.push(EditorAction::OneShotImageOp {
+                        tool_id,
+                        entity_bits,
+                    });
+                }
+            }
             (P::Heroi(_), Some(b)) => {
                 if let Some(g) = self.gfx.as_mut() {
                     let e = ph2d_ecs::Entity::from_bits(b);

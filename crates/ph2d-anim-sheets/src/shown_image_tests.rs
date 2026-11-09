@@ -1,4 +1,5 @@
 use super::*;
+use ph2d_asset::AssetId;
 use ph2d_ecs::ShownSheet;
 
 fn com_duas(db: &AssetDb) -> (World, Entity, AssetId, AssetId) {

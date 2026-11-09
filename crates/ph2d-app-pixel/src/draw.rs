@@ -22,6 +22,8 @@ struct Drawn {
     bits: u64,
     to_screen: ph2d_vector::Affine,
     size: (u32, u32),
+    /// A origem (o pivô, píxeis do sprite) com que `to_screen` foi feito.
+    pivo: (f64, f64),
 }
 
 thread_local! {
@@ -46,16 +48,18 @@ pub fn pick_at(p: (f32, f32)) -> Vec<u64> {
     })
 }
 
-/// A meia-extensão no espaço LOCAL do objecto (metros, antes da escala) do Pixel Sprite `bits` —
-/// a caixa do gizmo de objecto. `None` = não foi desenhado no último quadro.
+/// A caixa do gizmo de objecto do Pixel Sprite `bits` no espaço LOCAL (metros, antes da escala,
+/// Y para cima): `(centro relativo à origem = o pivô, meia-extensão)`. `None` = não foi desenhado
+/// no último quadro.
 #[must_use]
-pub fn half_extents(bits: u64, ppm: f32) -> Option<[f32; 2]> {
+pub fn caixa_local(bits: u64, ppm: f32) -> Option<([f32; 2], [f32; 2])> {
     let ppm = ppm.max(f32::MIN_POSITIVE);
     DRAWN.with(|d| {
-        d.borrow()
-            .iter()
-            .find(|s| s.bits == bits)
-            .map(|s| [s.size.0 as f32 * 0.5 / ppm, s.size.1 as f32 * 0.5 / ppm])
+        d.borrow().iter().find(|s| s.bits == bits).map(|s| {
+            let (hw, hh) = (s.size.0 as f32 * 0.5, s.size.1 as f32 * 0.5);
+            let (px, py) = (s.pivo.0 as f32, s.pivo.1 as f32);
+            ([(hw - px) / ppm, (py - hh) / ppm], [hw / ppm, hh / ppm])
+        })
     })
 }
 
@@ -165,6 +169,7 @@ fn art_of(
             bits,
             to_screen: m,
             size: (w, h),
+            pivo: crate::input::origem_px(world, entity, doc),
         });
     }
     drawn
@@ -194,6 +199,7 @@ pub fn draw(
         bits,
         to_screen: m,
         size: (w, h),
+        ..
     }) = edited
     else {
         return;

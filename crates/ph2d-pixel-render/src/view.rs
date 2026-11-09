@@ -296,12 +296,13 @@ pub fn draw_checker(
     scene.inner_mut().pop_layer();
 }
 
-/// `pixel da imagem → mundo` de um sprite `w × h` posto pelo `Transform` do objecto: o centro do
-/// sprite na origem, 1 célula = `1 / ppm` metros, y da imagem para baixo e do mundo para cima.
+/// ⭐ **A porta ÚNICA imagem → mundo** (P14 §4: «onde está a origem?»): o ponto `pivo` (píxeis do
+/// sprite, Y para baixo — `ph2d_pixel_cena::pivo_px`, o centro sem pivô) fica na posição do
+/// `Transform`; 1 célula = `1 / ppm` metros, y da imagem para baixo e do mundo para cima. Desenho,
+/// clique, onion, Tiled Mode, chrome e miniatura passam todos por aqui.
 #[must_use]
 pub fn image_to_world(
-    w: u32,
-    h: u32,
+    pivo: (f64, f64),
     ppm: f64,
     translation: (f64, f64),
     rotation: f64,
@@ -309,8 +310,8 @@ pub fn image_to_world(
     skew: (f64, f64),
 ) -> Affine {
     let ppm = ppm.max(f64::MIN_POSITIVE);
-    let img_to_local = Affine::scale_non_uniform(1.0 / ppm, -1.0 / ppm)
-        * Affine::translate((-f64::from(w) * 0.5, -f64::from(h) * 0.5));
+    let img_to_local =
+        Affine::scale_non_uniform(1.0 / ppm, -1.0 / ppm) * Affine::translate((-pivo.0, -pivo.1));
     let local_to_world = Affine::translate(translation)
         * Affine::rotate(rotation)
         * Affine::skew(skew.0.tan(), skew.1.tan())

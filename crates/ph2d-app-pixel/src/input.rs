@@ -67,8 +67,7 @@ pub fn to_view(
     let entity = ph2d_ecs::Entity::try_from_bits(bits)?;
     let tr = ph2d_ecs::world_transform(world, entity)?;
     let img = image_to_world(
-        doc.sprite.width(),
-        doc.sprite.height(),
+        origem_px(world, entity, doc),
         f64::from(ppm),
         (f64::from(tr.translation.x), f64::from(tr.translation.y)),
         f64::from(tr.rotation),
@@ -76,6 +75,14 @@ pub fn to_view(
         (f64::from(tr.skew_x), f64::from(tr.skew_y)),
     );
     Some(cam * img)
+}
+
+/// **A origem do objecto** em píxeis do sprite: o pivô no [`ph2d_pixel_cena::quadro_mostrado`]
+/// (o centro sem pivô). A única leitura do pivô para a geometria imagem ↔ mundo.
+#[must_use]
+pub fn origem_px(world: &ph2d_ecs::World, entity: ph2d_ecs::Entity, doc: &Doc) -> (f64, f64) {
+    let quadro = ph2d_pixel_cena::quadro_mostrado(world, entity, &doc.sprite, doc.frame);
+    ph2d_pixel_cena::pivo_px(&doc.sprite, quadro)
 }
 
 /// A chave do documento do objecto `bits`.

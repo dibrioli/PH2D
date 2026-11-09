@@ -27,6 +27,7 @@ mod intervalo;
 mod painel_e_dialogo;
 mod paleta;
 mod pincel;
+mod pivo;
 mod pontas;
 mod preview;
 mod quadros;

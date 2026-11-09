@@ -559,3 +559,24 @@ pub fn retrace_followed(
     }
     n
 }
+
+/// ⭐ **A fase do quadro que SEGUE a imagem**: [`retrace_followed`] e a fila aplicada. Corre DEPOIS do
+/// último escritor de pixels do quadro (o Apply das ferramentas de imagem e do Painter), para o
+/// retraço cair no passo de undo do gesto e nunca num passo seu nem no da acção seguinte.
+///
+/// # Errors
+/// O da aplicação da fila do editor.
+pub fn follow_phase(
+    world: &mut World,
+    db: &ph2d_asset::AssetDb,
+    atlas: &std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
+    ppm: f32,
+    queue: &EditorCommandQueue,
+    registry: &ComponentRegistry,
+) -> Result<usize, ph2d_ecs::scene::ApplyError> {
+    let n = retrace_followed(world, db, atlas, ppm, queue, registry);
+    if n > 0 {
+        ph2d_ecs::scene::apply_editor_commands(world, queue, registry)?;
+    }
+    Ok(n)
+}

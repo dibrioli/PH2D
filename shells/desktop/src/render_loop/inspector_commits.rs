@@ -215,12 +215,11 @@ pub(super) fn dispatch(
         component_registry,
         toasts,
     );
-    // «Outline», «Fit to picture» ou a imagem que um Outline segue mudou: o traço nesta leva (W2c).
-    use ph2d_physics_outline::{retrace_edited, retrace_followed};
+    // «Outline» ou «Fit to picture»: o traço nesta leva (W2c); seguir a imagem é depois do Apply.
     let (ppm, db, atlas) = (hero.project.pixels_per_meter, asset_db, atlas_asset_map);
-    let (q, reg) = (&*editor_queue, &*component_registry);
-    let traced = retrace_edited(sim.world(), physics_edits, db, atlas, ppm, q, reg)
-        + retrace_followed(sim.world_mut(), db, atlas, ppm, q, reg);
+    let (q, reg) = (&*editor_queue, component_registry);
+    let traced =
+        ph2d_physics_outline::retrace_edited(sim.world(), physics_edits, db, atlas, ppm, q, reg);
     if traced > 0
         && let Err(e) = apply_editor_commands(sim.world_mut(), editor_queue, component_registry)
     {
@@ -539,6 +538,6 @@ mod sprite_field_tests;
 /// Um aviso de falha com a razão — a forma de TODA recusa deste despacho: a frase é da tabela
 /// (HR-15), a razão é a do erro. ⚠️ Uma porta só, e não vinte chamadas de quatro linhas: foi a
 /// migração para a tabela que as fez crescer, e o tecto de linhas por função apanhou-o.
-fn failed(key: &str, e: &dyn std::fmt::Display) -> Toast {
+pub(super) fn failed(key: &str, e: &dyn std::fmt::Display) -> Toast {
     Toast::error(tr_with(key, &[("e", e)]))
 }

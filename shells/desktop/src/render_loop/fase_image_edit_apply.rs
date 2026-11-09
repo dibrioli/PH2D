@@ -53,6 +53,8 @@ impl crate::App {
             next_import_cell,
             atlas_asset_map,
             image_edit_undo,
+            editor_queue,
+            component_registry,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -66,12 +68,7 @@ impl crate::App {
             rasterize_entities,
             undo_image_edit,
         } = intents;
-        // Image-edit drain phase + file-picker import — extracted
-        // to sibling `image_edit.rs` as a free fn (Wave 3.2 stage A).
-        // Returns whether any drain pushed a toast.
-        // `padding_apply` carries a `Vec<u64>` (not `Copy`) — capture
-        // the Apply-fired flag here so the teardown below can run
-        // after the dispatch consumes the value.
+        // O dreno (`image_edit.rs`) consome o `padding_apply`: o «disparou» guarda-se antes.
         let padding_apply_fired = padding_apply.is_some();
         // Did a texture-RESIZING edit (rasterize / trim / make-square / real-size) hit the SELECTED
         // sprite? If so the Painter's working canvas is now the wrong resolution — reset the
@@ -110,19 +107,20 @@ impl crate::App {
         ) {
             self.title_dirty = true;
         }
+        // O Outline que segue a imagem retraça DEPOIS do Apply: o traço cai no passo de undo dele.
+        let (q, reg) = (&*editor_queue, &*component_registry);
+        let (db, at, ppm) = (&*asset_db, &*atlas_asset_map, hero.project.pixels_per_meter);
+        if let Err(e) = ph2d_physics_outline::follow_phase(sim.world_mut(), db, at, ppm, q, reg) {
+            let key = "shell.inspector_commits.physics_commit_failed";
+            toasts.push(super::inspector_commits::failed(key, &e));
+        }
         // A resize hit the selected sprite → force the Painter to re-read it at the new resolution
         // (see `painter_src_resized` above). The re-push replaces the now-invalid working canvas.
         if painter_src_resized {
             self.last_painter_pushed_entity = None;
         }
-        // Apply teardown — runs AFTER the bake above (which needs
-        // the BgRemovalTool still active to read the result). Now
-        // that the committed alpha lives in the sprite texture,
-        // deactivate the tool exactly like Cancel: the panel hides,
-        // the sprite un-suppresses, the Inspector returns, and the
-        // on-canvas preview overlay stops re-rendering on top of the
-        // freshly baked sprite (that double-draw was the ghost edge
-        // outline that appeared only while the image stayed selected).
+        // Desmonte do Apply, DEPOIS do assar (que lê a ferramenta ainda activa): como o Cancel — sem
+        // isto a prévia redesenhava-se sobre a sprite assada (a borda-fantasma).
         if bgremoval_apply_committed
             && let Some(default_id) = tools.default_tool_id()
             && tools.set_active(&default_id)

@@ -80,7 +80,18 @@ Testes da linha por nome (todos verdes; contagens):
 
 ## 9. Provas de mutação
 
-(a preencher pela janela principal)
+12 mutações sobre 7 leis, cada guarda vista VERDE antes, árvore restaurada do `HEAD` depois de cada uma. **12/12 sangram.**
+
+| Lei | Mutação | Guarda (por nome) |
+|---|---|---|
+| Nenhuma porta põe a forma no corpo | `nasce_com_forma` insere o `Collider` no corpo · `torna_corpo` sem `move_lado_forma` | `nenhuma_porta_do_editor_poe_a_forma_no_corpo` |
+| idem | `move_forma_para_filha` sem `move_lado_forma` | `b4_move_shape_to_a_child_leva_a_forma_do_corpo_antigo` (a guarda acima não a apanha — sobreviveu a ela) |
+| Olho fechado = não colide | `forma_desligada` sempre `false` · sem a subida aos antepassados | `olho_da_forma` |
+| Exceção por forma | `pair_collides` sem o `exclude` · sem o `include` | `layer_override`, `query` |
+| Forma filha ≡ forma no corpo | `shape_pose` zerada em `bridge/bodies.rs` | `forma_filha` / `zona_forma_filha` |
+| Zonas no checkpoint | `checkpoint()` sem `effectors` · `restore()` sem `effectors` | `uma_zona_tirada_depois_do_checkpoint_volta_com_o_restore` |
+| Edição chega à forma de olho fechado | `forma_para_editar` salta desligadas | `nenhuma_porta_…`, `olho_da_forma` |
+| Remove leva a «Collision Shape» | `tira_corpo` sem `despawn` | `removing_a_body_detaches_both_components` |
 
 ## 10. Smokes (dono; passos)
 

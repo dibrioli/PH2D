@@ -45,7 +45,15 @@ pub struct SheetCache {
     live: Option<(u64, u8, (u64, u64), SheetEntry)>,
     /// A revisão vista no quadro anterior: só se lê a tinta quando ela PAROU (o traço acabou).
     seen: Option<(u64, (u64, u64))>,
+    /// Há quantos quadros seguidos a revisão vista não muda ([`QUADROS_PARADOS`]).
+    parado: u32,
 }
+
+/// ⭐ **Quantos quadros a tinta tem de ficar PARADA antes de se ler** ([`follow_live`]): meio segundo a 60 Hz. A água do
+/// Wet re-revisa a tinta muito depois do traço, a ~24 Hz (log do dono 09/11: `TAXA DA AGUA 24.4 Hz`), e com UM quadro
+/// parado a leitura (a tela inteira composta e acesa pelo relevo do papel: 61 ms por quadro a 1024² Textured Paper)
+/// corria a cada passo dela — o dono viu o raw cair de 170 para 14 ao pintar. Parada meio segundo, a água assentou.
+pub const QUADROS_PARADOS: u32 = 30;
 
 impl SheetCache {
     /// A folha `0` da entidade, se [`refresh`] a resolveu.
@@ -164,9 +172,9 @@ pub fn refresh(world: &mut World, entities: &[u64], db: &AssetDb, atlas: &BTreeM
 
 /// ⭐ **A folha que o Painter pinta, AO VIVO** (dono 08/11: o editor de animações só se atualizava depois de assar).
 /// `vivo` = o objeto que o Painter pinta com tinta por assar e a revisão do conteúdo dele (`None` = nada por assar: a
-/// imagem gravada volta a ser a verdade). Quando a revisão pára de andar (o traço acabou), `read` dá os píxeis retos
-/// da tinta, e a folha visível desse objeto passa a mostrá-los — no editor, no cartão e nas miniaturas. Uma leitura
-/// por traço, nunca por quadro.
+/// imagem gravada volta a ser a verdade). Quando a revisão fica [`QUADROS_PARADOS`] quadros sem andar (o traço acabou e
+/// a água assentou), `read` dá os píxeis retos da tinta, e a folha visível desse objeto passa a mostrá-los — no editor,
+/// no cartão e nas miniaturas. Uma leitura por traço, nunca por quadro nem por passo da água.
 pub fn follow_live(
     world: &mut World,
     vivo: Option<(u64, (u64, u64))>,
@@ -175,11 +183,16 @@ pub fn follow_live(
     let k = vivo.map(|(b, _)| ph2d_ecs::shown_sheet(world, Entity::from_bits(b)));
     let mut cache = world.get_resource_or_init::<SheetCache>();
     let (Some((bits, rev)), Some(k)) = (vivo, k) else {
-        (cache.live, cache.seen) = (None, None);
+        (cache.live, cache.seen, cache.parado) = (None, None, 0);
         return;
     };
     if cache.seen.replace((bits, rev)) != Some((bits, rev)) {
+        cache.parado = 0;
         return; // ainda a mudar
+    }
+    cache.parado = cache.parado.saturating_add(1);
+    if cache.parado < QUADROS_PARADOS {
+        return; // parada há pouco: a água do Wet ainda pode andar
     }
     if cache
         .live

@@ -132,8 +132,7 @@ pub(crate) fn drain_upscale(
         px_per_m,
     );
     match texture_edit::commit_geometric_edit(
-        entity,
-        src.sheet,
+        (entity, src.sheet),
         sim,
         renderer,
         asset_db,

@@ -2,11 +2,10 @@
 
 use super::super::scroll::metrics;
 use super::super::{
-    PaletteGroup, PaletteItem, PaletteModel, PaletteSelect, PaletteSub, WidgetStore,
+    HitIndex, PaletteGroup, PaletteItem, PaletteModel, PaletteSelect, PaletteSub, WidgetStore,
     paint as paint_palette,
 };
 use super::*;
-use crate::interaction::HitIndex;
 use crate::zones::Rect;
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, Theme};

@@ -5,8 +5,7 @@
 
 use super::layout::{badge_font, badge_gap, badge_size};
 use super::look::Look;
-use super::{CardLayout, Placed};
-use crate::interaction::HitIndex;
+use super::{CardLayout, HitIndex, Placed};
 use crate::paint::{fill_rounded_rect, paint_text, paint_text_weighted, resolve};
 use crate::widget::lista_flutuante::Superficie;
 use crate::zones::Rect;

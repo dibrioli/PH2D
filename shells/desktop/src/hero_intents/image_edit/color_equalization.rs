@@ -68,8 +68,7 @@ pub(crate) fn drain_color_equalization(
         ph2d_render::SpriteImage::from_bytes(out_w, out_h, out, ph2d_render::AlphaMode::Straight)
             .into_premultiplied();
     match texture_edit::commit_edited_texture(
-        entity,
-        src.sheet,
+        (entity, src.sheet),
         sim,
         renderer,
         asset_db,

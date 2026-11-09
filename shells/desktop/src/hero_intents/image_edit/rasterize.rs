@@ -106,8 +106,7 @@ pub(crate) fn drain_rasterize(
         result.height as f32 / px_per_m,
     ];
     match texture_edit::commit_edited_texture(
-        entity,
-        src.sheet,
+        (entity, src.sheet),
         sim,
         renderer,
         asset_db,

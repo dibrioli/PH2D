@@ -221,7 +221,13 @@ pub(super) fn dispatch(
             let image =
                 SpriteImage::from_bytes(w, h, pixels, AlphaMode::Straight).into_premultiplied();
             if let Err(e) = texture_edit::commit_edited_texture(
-                entity, sheet, sim, renderer, asset_db, &image, size_world, toasts,
+                (entity, sheet),
+                sim,
+                renderer,
+                asset_db,
+                &image,
+                size_world,
+                toasts,
             ) {
                 toasts.push(Toast::error(tr_with(
                     "shell.color_equalization_bridge.color_equalization_gpu",
@@ -387,8 +393,7 @@ fn revert_one(
     }
     let image = SpriteImage::from_bytes(v.width, v.height, v.pixels, v.alpha);
     if let Err(e) = texture_edit::commit_edited_texture(
-        entity,
-        v.sheet,
+        (entity, v.sheet),
         sim,
         renderer,
         asset_db,

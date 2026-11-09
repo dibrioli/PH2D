@@ -91,15 +91,7 @@ impl crate::App {
         hero.gizmo.handles_only = caixa == ph2d_app_vec::overlay::ObjectBox::HandlesOnly;
         // ⭐ O editor de animações (plano GEF 07), ANTES dos snapshots: descodifica as folhas do cartão.
         let (db, at, reg) = (&*asset_db, &*atlas_asset_map, &*component_registry);
-        if let Some(ids) = ph2d_anim_sheets::names::stale_ids(sim.world_mut(), at) {
-            let lib = ph2d_app_components::library_names::session_library(sim, db, at);
-            ph2d_anim_sheets::names::publish(sim.world_mut(), ids, &lib);
-        }
-        let vivo = ph2d_app_painter::painter_bridge_queries::revisao_viva(tools);
-        ph2d_anim_sheets::sheet_cache::follow_live(sim.world_mut(), vivo, || {
-            ph2d_app_painter::painter_bridge_queries::imagem_por_assar(tools, vivo?.0)
-        });
-        anim_editor(sim, hero, db, at, reg, toasts);
+        animation_editor(sim, hero, tools, (db, at, reg), toasts);
         let pixel_edit = ph2d_app_pixel::mode::editing(sim.world(), hero).is_some();
         snapshots::publish(
             hero,
@@ -246,6 +238,30 @@ impl crate::App {
         });
         Some(tool_preview_bits)
     }
+}
+
+/// O editor de animações do quadro: nomes das folhas, a tinta viva do Painter na folha visível e o editor — à parte
+/// pelo tecto de função da `fase_snapshots_publish`.
+fn animation_editor(
+    sim: &mut ph2d_ecs::SimWorld,
+    hero: &mut ph2d_editor_core::screens::hero::HeroScreen,
+    tools: &mut ph2d_editor_core::ToolRegistry,
+    (db, at, reg): (
+        &ph2d_asset::AssetDb,
+        &std::collections::BTreeMap<u32, ph2d_asset::AssetId>,
+        &ph2d_ecs::scene::ComponentRegistry,
+    ),
+    toasts: &mut ph2d_editor_core::ToastQueue,
+) {
+    if let Some(ids) = ph2d_anim_sheets::names::stale_ids(sim.world_mut(), at) {
+        let lib = ph2d_app_components::library_names::session_library(sim, db, at);
+        ph2d_anim_sheets::names::publish(sim.world_mut(), ids, &lib);
+    }
+    let vivo = ph2d_app_painter::painter_bridge_queries::revisao_viva(tools);
+    ph2d_anim_sheets::sheet_cache::follow_live(sim.world_mut(), vivo, || {
+        ph2d_app_painter::painter_bridge_queries::imagem_por_assar(tools, vivo?.0)
+    });
+    anim_editor(sim, hero, db, at, reg, toasts);
 }
 
 /// As famílias do Kanban no quadro (o catálogo da cena para os cartões, o Kanban, o Planner) — à parte

@@ -52,8 +52,7 @@ pub(crate) fn auto_commit_painter(
         ph2d_render::SpriteImage::from_bytes(w, h, canvas, ph2d_render::AlphaMode::Straight)
             .into_premultiplied();
     if let Ok(texture_id) = texture_edit::commit_edited_texture(
-        entity,
-        src.sheet,
+        (entity, src.sheet),
         sim,
         renderer,
         asset_db,
@@ -166,8 +165,7 @@ pub(crate) fn drain_painter(
         ph2d_render::SpriteImage::from_bytes(w, h, canvas, ph2d_render::AlphaMode::Straight)
             .into_premultiplied();
     match texture_edit::commit_edited_texture(
-        entity,
-        src.sheet,
+        (entity, src.sheet),
         sim,
         renderer,
         asset_db,

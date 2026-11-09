@@ -113,7 +113,7 @@ fn an_entry_with_a_tip_puts_it_in_the_model() {
 /// ⭐ **O Recent guarda três também nas pontas que não passam pelo `push`**: o modelo que recebe uma lista maior só
 /// pinta três, e o ficheiro de preferências com cinco ids volta com três.
 ///
-/// (Mutação: tirar o `take(RECENT_MAX)` do `build` ⇒ RED; tirar o `truncate` do `le_recentes` ⇒ RED.)
+/// (Mutação: tirar o `take(ADD_RECENT_MAX)` do `build` ⇒ RED; tirar o `truncate` do `le_recentes` ⇒ RED.)
 #[test]
 fn o_recent_so_mostra_e_so_le_tres_mesmo_vindo_com_mais() {
     let fams: &[&[AddEntry]] = &[CORE, A, B];

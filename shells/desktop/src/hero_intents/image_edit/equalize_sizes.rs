@@ -309,8 +309,7 @@ fn commit_per_entity(
             };
             let new_size_world = [out.width as f32 / px_per_m, out.height as f32 / px_per_m];
             match texture_edit::commit_edited_texture(
-                entity,
-                entry.src.sheet,
+                (entity, entry.src.sheet),
                 sim,
                 renderer,
                 asset_db,

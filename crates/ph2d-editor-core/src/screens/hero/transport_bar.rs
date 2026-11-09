@@ -44,7 +44,7 @@ pub fn rects(bar: Rect, start_x: f32, end_x: f32) -> Vec<(NodeId, IconId, Rect)>
     if ate - de < total {
         return Vec::new();
     }
-    let x = (bar.x + (bar.w - total) * 0.5).clamp(de, ate - total);
+    let x = crate::math::safe_clamp(bar.x + (bar.w - total) * 0.5, de, ate - total);
     BOTOES
         .iter()
         .enumerate()

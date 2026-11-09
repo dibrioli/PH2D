@@ -147,8 +147,7 @@ impl crate::App {
                 atlas_asset_map,
             ) {
                 let _ = crate::hero_intents::texture_edit::commit_edited_texture(
-                    copy,
-                    0,
+                    (copy, 0),
                     sim,
                     renderer,
                     asset_db,

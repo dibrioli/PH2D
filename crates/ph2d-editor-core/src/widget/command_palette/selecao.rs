@@ -6,8 +6,7 @@
 //! ⚠️ **A faixa tem a altura da dica MAIS ALTA** do modelo, medida: trocar de destaque nunca faz a janela
 //! saltar.
 
-use super::{PaletteModel, PaletteTip};
-use crate::interaction::HitIndex;
+use super::{HitIndex, PaletteModel, PaletteTip};
 use crate::paint::{fill_rounded_rect, paint_text_block, resolve};
 use crate::widget::lista_flutuante::Superficie;
 use crate::zones::Rect;

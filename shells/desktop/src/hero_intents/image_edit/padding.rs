@@ -155,8 +155,7 @@ pub(crate) fn drain_padding(
         src.image.alpha,
     );
     match texture_edit::commit_geometric_edit(
-        entity,
-        src.sheet,
+        (entity, src.sheet),
         sim,
         renderer,
         asset_db,

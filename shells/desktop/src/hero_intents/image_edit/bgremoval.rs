@@ -112,8 +112,7 @@ pub(crate) fn drain_bgremoval(
         )
         .into_premultiplied();
         return match texture_edit::commit_geometric_edit(
-            entity,
-            sheet,
+            (entity, sheet),
             sim,
             renderer,
             asset_db,
@@ -180,8 +179,7 @@ pub(crate) fn drain_bgremoval(
     let largest_world = [largest.w as f32 / px_per_m, largest.h as f32 / px_per_m];
     let edited = bake_premul(largest.w, largest.h, largest.rgba.clone());
     match texture_edit::commit_edited_texture(
-        entity,
-        sheet,
+        (entity, sheet),
         sim,
         renderer,
         asset_db,

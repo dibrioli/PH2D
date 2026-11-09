@@ -64,8 +64,6 @@ impl AddGroup {
 
 /// A cor do grupo *Recent*.
 const RECENT_COLOR: ColorToken = ColorToken::NodeCatFocus;
-/// Quantos tipos o *Recent* guarda (as três linhas da maquete B).
-pub const RECENT_MAX: usize = 3;
 
 /// ⭐ **Uma busca que não acha, a ensinar** (plano 24 §2.5) — as palavras e a frase por chave i18n, e a
 /// entrada que o botão destaca. Mora na família que sabe montar a peça.
@@ -215,7 +213,7 @@ pub fn build(
         .iter()
         .filter_map(|id| entry_of_pick(families, *id))
         .filter(|e| why_not(*e).is_none())
-        .take(RECENT_MAX)
+        .take(crate::interaction::WidgetStore::ADD_RECENT_MAX)
         .map(item)
         .collect();
     let recent = (!recent.is_empty()).then(|| PaletteGroup {

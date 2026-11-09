@@ -423,7 +423,7 @@ mod tests {
             pixels: ph2d_sprite_sheet::PixelPayload::Rgba8(vec![9, 8, 7, 255]),
             premultiplied: false,
         };
-        let bytes = ph2d_sprite_sheet::encode(&[doc.clone()], &[]).unwrap();
+        let bytes = ph2d_sprite_sheet::encode(std::slice::from_ref(&doc), &[]).unwrap();
         assert_eq!(ph2d_sprite_sheet::decode(&bytes).unwrap().0, [doc]);
     }
 

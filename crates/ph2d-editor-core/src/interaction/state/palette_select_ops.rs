@@ -104,8 +104,11 @@ impl WidgetStore {
 }
 
 impl WidgetStore {
+    /// Quantos tipos o *Recent* do Add Object guarda (as três linhas da maquete B).
+    pub const ADD_RECENT_MAX: usize = 3;
+
     /// ⭐ **Os tipos que o Add Object criou por último**, o mais novo primeiro (até
-    /// [`crate::object_add::RECENT_MAX`]). Gravam-se com as preferências das secções (`~/.ph2d/sections.txt`).
+    /// [`Self::ADD_RECENT_MAX`]). Gravam-se com as preferências das secções (`~/.ph2d/sections.txt`).
     #[must_use]
     pub fn add_recent(&self) -> &[NodeId] {
         &self.section_prefs.add_recent
@@ -116,7 +119,7 @@ impl WidgetStore {
         let list = &mut self.section_prefs.add_recent;
         list.retain(|x| *x != id);
         list.insert(0, id);
-        list.truncate(crate::object_add::RECENT_MAX);
+        list.truncate(Self::ADD_RECENT_MAX);
         self.mark_section_prefs_dirty();
     }
 }
@@ -150,7 +153,7 @@ pub(in crate::interaction::state) fn le_recentes(
             list.push(id);
         }
     }
-    list.truncate(crate::object_add::RECENT_MAX);
+    list.truncate(WidgetStore::ADD_RECENT_MAX);
     store.section_prefs.add_recent = list;
     true
 }

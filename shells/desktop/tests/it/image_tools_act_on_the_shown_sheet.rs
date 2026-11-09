@@ -96,7 +96,7 @@ fn chamadas<'a>(s: &'a str, call: &str) -> Vec<&'a str> {
     out
 }
 
-/// ⭐ Cada gravação leva a folha que foi LIDA (o 2.º argumento), e na folha extra quem anda é o Pivot dela, não o
+/// ⭐ Cada gravação leva a folha que foi LIDA (o 2.º membro do alvo `(entidade, folha)`), e na folha extra quem anda é o Pivot dela, não o
 /// objeto. *Mutações: passar `0` num verbo ⇒ vermelho; voltar a escrever o `Transform` no Trim ⇒ vermelho.*
 #[test]
 fn cada_verbo_grava_na_folha_que_leu() {
@@ -105,10 +105,13 @@ fn cada_verbo_grava_na_folha_que_leu() {
         let mut n = 0;
         for call in ["commit_edited_texture(", "commit_geometric_edit("] {
             for args in chamadas(&s, call) {
-                let segundo = args.split(',').nth(1).unwrap_or("").trim();
+                // O alvo é o 1.º argumento, o par `(entidade, folha)`: a folha é o 2.º membro dele.
+                let mut partes = args.split(',');
+                let entidade = partes.next().unwrap_or("").trim();
+                let segundo = partes.next().unwrap_or("").trim();
                 assert!(
-                    segundo.ends_with("sheet"),
-                    "`{nome}`: {call} com `{segundo}`"
+                    entidade.starts_with('(') && segundo.ends_with("sheet)"),
+                    "`{nome}`: {call} com o alvo `{entidade}, {segundo}`"
                 );
                 n += 1;
             }

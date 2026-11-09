@@ -204,8 +204,7 @@ pub(crate) fn read_shown_source(
 
 /// A folha `sheet ≥ 1` passa à imagem `img`: sobe-a à placa ANTES, e só então troca a folha.
 fn commit_extra_sheet(
-    entity: Entity,
-    sheet: u8,
+    (entity, sheet): (Entity, u8),
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
@@ -347,9 +346,9 @@ pub(crate) fn warn_precision_loss(
     }
 }
 
+/// O alvo é `(entidade, folha que foi LIDA)`: a gravação cai na mesma folha que a ferramenta leu.
 pub(crate) fn commit_edited_texture(
-    entity: Entity,
-    sheet: u8,
+    (entity, sheet): (Entity, u8),
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
@@ -359,8 +358,7 @@ pub(crate) fn commit_edited_texture(
 ) -> Result<u32, String> {
     if sheet != 0 {
         return commit_extra_sheet(
-            entity,
-            sheet,
+            (entity, sheet),
             sim,
             renderer,
             asset_db,
@@ -413,8 +411,7 @@ pub(crate) fn commit_edited_texture(
 /// `halves` a `None` ⇒ caminho de 8 bits, idêntico ao de sempre (incluindo o aviso de perda).
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn commit_geometric_edit(
-    entity: Entity,
-    sheet: u8,
+    (entity, sheet): (Entity, u8),
     sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
@@ -436,8 +433,7 @@ pub(crate) fn commit_geometric_edit(
             edited.alpha.is_premultiplied(),
         ),
         None => commit_edited_texture(
-            entity,
-            sheet,
+            (entity, sheet),
             sim,
             renderer,
             asset_db,

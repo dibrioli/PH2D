@@ -1,9 +1,9 @@
 use super::*;
-use ph2d_asset::AssetId;
 use ph2d_ecs::ShownSheet;
 
-fn com_duas(db: &AssetDb) -> (World, Entity, AssetId, AssetId) {
-    let idle = db.insert_image_rgba8(8, 2, vec![255; 8 * 2 * 4]);
+fn com_duas(db: &AssetDb) -> (World, Entity) {
+    // A folha 0 (`idle`) só ocupa o seu lugar no banco.
+    db.insert_image_rgba8(8, 2, vec![255; 8 * 2 * 4]);
     let run = db.insert_image_rgba8(12, 4, vec![200; 12 * 4 * 4]);
     let mut w = World::new();
     let e = w
@@ -19,7 +19,7 @@ fn com_duas(db: &AssetDb) -> (World, Entity, AssetId, AssetId) {
             .collect(),
         ))
         .id();
-    (w, e, idle, run)
+    (w, e)
 }
 
 /// ⭐ Com a folha `run` à vista, o Painter lê os píxeis DELA (a volta é o funil das ferramentas, `shown_edit`); com a
@@ -27,7 +27,7 @@ fn com_duas(db: &AssetDb) -> (World, Entity, AssetId, AssetId) {
 #[test]
 fn o_painter_abre_a_folha_visivel() {
     let db = AssetDb::default();
-    let (mut w, e, _, run) = com_duas(&db);
+    let (mut w, e) = com_duas(&db);
     assert!(read_shown_extra(&w, e, &db).is_none(), "a folha 0 à vista");
     w.entity_mut(e).insert(ShownSheet(1));
     let (px, pw, ph) = read_shown_extra(&w, e, &db).expect("a folha run");

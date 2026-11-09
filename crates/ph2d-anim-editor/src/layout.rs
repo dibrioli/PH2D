@@ -269,11 +269,13 @@ impl AnimDoc {
         let group_h = group_pad + line + row + group_pad;
         let label_need = fit(&[ph2d_i18n::tr("anim_editor.this_frame")]);
         // A moldura do Align, à direita das outras (dono 09/11): dois botões por fila e o título por cima.
+        // Cada botão leva o ícone à esquerda da palavra (dono 09/11): a largura da maior palavra mais uma célula de ícone.
         let align_button = fit(&[
             ph2d_i18n::tr("anim_editor.align"),
             ph2d_i18n::tr("anim_editor.align_previous"),
             ph2d_i18n::tr("anim_editor.align_reference"),
-        ]);
+            ph2d_i18n::tr("anim_editor.align_pick"),
+        ]) + row;
         let align_w = if self.snap.sheet.is_some() {
             2.0 * (align_button + group_pad) + gap // LITERAL-PX-OK: dois botões e as margens
         } else {
@@ -406,7 +408,7 @@ impl AnimDoc {
             l.align.title = Rect::new(bx, by, f.w - 2.0 * group_pad, line); // LITERAL-PX-OK: as duas margens
             let fila = |k: f32| by + line + k * (row + gap);
             l.align.toggle = Rect::new(bx, fila(0.0), align_button, row);
-            l.align.pick = Rect::new(bx + align_button + gap, fila(0.0), row, row);
+            l.align.pick = Rect::new(bx + align_button + gap, fila(0.0), align_button, row);
             l.align.show_prev = Rect::new(bx, fila(1.0), align_button, row);
             l.align.show_ref = Rect::new(bx + align_button + gap, fila(1.0), align_button, row);
         } else {

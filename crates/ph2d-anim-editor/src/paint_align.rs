@@ -7,8 +7,7 @@ use super::paint::tom;
 use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::paint::{
     fill_circle, fill_rounded_rect, frame_radius, label_column_width, paint_icon, paint_text,
-    paint_text_centered, rect_for_label, rect_to_vello, stroke_polyline, stroke_rect,
-    stroke_rounded_rect,
+    rect_for_label, rect_to_vello, stroke_polyline, stroke_rect, stroke_rounded_rect,
 };
 use ph2d_editor_core::widget::sheet_cell::paint_sheet_cell_with;
 use ph2d_editor_core::zones::Rect;
@@ -219,50 +218,115 @@ fn paint_frame(doc: &AnimDoc, scene: &mut VectorScene, text: &mut TextSystem, th
     };
     paint_text(text, scene, &s, t.x, y, font, t.w, tom(c, theme));
     let a = &doc.align;
-    let on = |b: bool| a.on && b;
-    chip(scene, text, theme, l.toggle, tr("anim_editor.align"), a.on);
-    chip(scene, text, theme, l.pick, "", a.picking);
-    let pad = Spacing::Xs.px();
-    let icon = Rect::new(
-        l.pick.x + pad,
-        l.pick.y + pad,
-        l.pick.w - 2.0 * pad,
-        l.pick.h - 2.0 * pad,
-    ); // LITERAL-PX-OK: as duas margens
-    let c = if a.picking {
-        ColorToken::Accent
-    } else {
-        ColorToken::Text1
-    };
-    paint_icon(scene, IconId::Eyedropper, icon, tom(c, theme), fio);
-    let prev = tr("anim_editor.align_previous");
-    chip(scene, text, theme, l.show_prev, prev, on(a.show_prev));
-    let refe = tr("anim_editor.align_reference");
-    chip(scene, text, theme, l.show_ref, refe, on(a.show_ref));
+    let fio = StrokeToken::Thin.px();
+    let toggle = (IconId::AlignBottom, tr("anim_editor.align"));
+    chip(
+        scene,
+        text,
+        theme,
+        l.toggle,
+        toggle,
+        Look::of(true, a.on),
+        fio,
+    );
+    let pick = (IconId::Eyedropper, tr("anim_editor.align_pick"));
+    chip(
+        scene,
+        text,
+        theme,
+        l.pick,
+        pick,
+        Look::of(true, a.picking),
+        fio,
+    );
+    // Previous e Reference só valem com o Align ligado: até lá, apagados.
+    let prev = (IconId::SkipBack, tr("anim_editor.align_previous"));
+    chip(
+        scene,
+        text,
+        theme,
+        l.show_prev,
+        prev,
+        Look::of(a.on, a.show_prev),
+        fio,
+    );
+    let refe = (IconId::Pin, tr("anim_editor.align_reference"));
+    chip(
+        scene,
+        text,
+        theme,
+        l.show_ref,
+        refe,
+        Look::of(a.on, a.show_ref),
+        fio,
+    );
 }
 
-/// Um botão da moldura do Align no idioma dos campos ao lado («F 10», «C 6»): a caixa um degrau acima da moldura;
-/// ligado, o fio e a letra de acento (smoke do dono 09/11: no tom da moldura, os botões liam-se como texto solto).
+/// Como um botão da moldura se mostra.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Look {
+    /// Sem efeito agora (o Align desligado): letra e ícone apagados.
+    Off,
+    Idle,
+    On,
+}
+
+impl Look {
+    const fn of(enabled: bool, on: bool) -> Self {
+        match (enabled, on) {
+            (false, _) => Self::Off,
+            (true, false) => Self::Idle,
+            (true, true) => Self::On,
+        }
+    }
+}
+
+/// Um botão da moldura do Align no idioma dos campos ao lado («F 10», «C 6»): a caixa um degrau acima da moldura, o
+/// ícone e a palavra; ligado, o fio e a tinta de acento; sem efeito, apagado (smoke do dono 09/11).
 fn chip(
     scene: &mut VectorScene,
     text: &mut TextSystem,
     theme: Theme,
     r: Rect,
-    label: &str,
-    on: bool,
+    (icon, label): (IconId, &str),
+    look: Look,
+    fio: f32,
 ) {
     let radius = frame_radius(theme, m::FIELD_RADIUS);
     fill_rounded_rect(scene, r, radius, tom(ColorToken::Bg3, theme));
-    if on {
-        let c = tom(ColorToken::Accent, theme);
-        stroke_rounded_rect(scene, r, radius, StrokeToken::Thin.px(), c);
-    }
-    let fg = if on {
-        ColorToken::Accent
-    } else {
-        ColorToken::Text1
+    let fg = match look {
+        Look::Off => ColorToken::TextDisabled,
+        Look::Idle => ColorToken::Text1,
+        Look::On => ColorToken::Accent,
     };
-    paint_text_centered(text, scene, label, r, TypeToken::Base.px(), tom(fg, theme));
+    if look == Look::On {
+        stroke_rounded_rect(scene, r, radius, fio, tom(fg, theme));
+    }
+    let font = TypeToken::Base.px();
+    let pad = Spacing::Xs.px();
+    let side = r.h - 2.0 * pad; // LITERAL-PX-OK: as duas margens
+    let word = label_column_width(text, font, [label]);
+    let gap = Spacing::Xs.px();
+    let x = r.x + ((r.w - side - gap - word) / 2.0).max(pad);
+    paint_icon(
+        scene,
+        icon,
+        Rect::new(x, r.y + pad, side, side),
+        tom(fg, theme),
+        fio,
+    );
+    let y = r.y + (r.h - ROW_H_PX).max(0.0) / 2.0;
+    let tx = x + side + gap;
+    paint_text(
+        text,
+        scene,
+        label,
+        tx,
+        y,
+        font,
+        (r.x + r.w - tx).max(0.0),
+        tom(fg, theme),
+    );
 }
 
 /// O menu do clique direito sobre um quadro da tira, por cima de tudo.

@@ -63,6 +63,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Drag: move the sheet \u{b7} corners: sheet size \u{b7} Alt+drag or arrows: this frame only (Shift: 10 px)"
         }
         "anim_editor.use_as_reference" => "Use as reference",
+        "anim_editor.align_pick" => "Pick",
         "anim_editor.align_picking" => "Pick a frame below",
         "anim_editor.commit_failed" => "The animation edit did not apply: {e}",
         // O editor de Region (plano GEF 16 D2): a área que o objecto mostra.

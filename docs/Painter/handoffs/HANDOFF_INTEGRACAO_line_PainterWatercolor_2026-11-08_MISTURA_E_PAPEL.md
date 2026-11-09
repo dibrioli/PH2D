@@ -5,7 +5,7 @@ regressão. Nada integrado nem enviado; **o dono pediu só a preparação** (08/
 
 ## 1. Identidade
 
-- Branch `line/PainterWatercolor`, HEAD `o commit deste handoff (código em `10435a4196`)`, merge-base com o main `652b506b58`, 41 (40 + o deste handoff) commits.
+- Branch `line/PainterWatercolor`, HEAD `o commit deste handoff (código em `10435a4196`)`, merge-base com o main `652b506b58`, 42 (os 2 últimos só de docs) commits.
 - Ondas desde o registo anterior ([tinta viva, 07/11](HANDOFF_INTEGRACAO_line_PainterWatercolor_2026-11-07_TINTA_VIVA.md)):
   [undo/refazer + lote 07/11](HANDOFF_CONTINUACAO_2026-11-07_undo_redo_e_lote.md) ·
   [curas da mistura](HANDOFF_ONDA_line_PainterWatercolor_2026-11-08_CURAS_DA_MISTURA.md) ·

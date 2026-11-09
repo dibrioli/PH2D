@@ -695,6 +695,14 @@ const PORTAS_DE_CRATE_VERIFICADAS: &[(&str, &str, &str, &str)] = &[
     // ⭐ 2026-10-28 (PixelArt P6b): as opções da forma (`paint_formas.rs`) pintam-se pelos campos,
     //    escolhas e caixas do `Corpo` do painel, que delegam na `property_row` da casa.
     ("escolha", "ph2d-panel-pixel-tools", "src/paint.rs", ""),
+    // ⭐ 2026-11-09 (PixelArt P12 U): o Sprite ▸ Properties… (`paint_sprite_props.rs`) pinta-se pelo
+    //    botão do `Corpo` e pelas linhas do cartão — `botoes` acaba no `paint_button` do irmão.
+    (
+        "botoes",
+        "ph2d-panel-pixel-tools",
+        "src/paint_cartoes_linhas.rs",
+        "",
+    ),
     (
         "fileira_de_param",
         "ph2d-panel-audio-editor",

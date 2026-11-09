@@ -216,6 +216,7 @@ pub fn build_physics_info(
             gravity_scale: GravityScale::NEUTRAL,
             cap_half_height: 0.25,
             shape_follows: None,
+            outline: None,
             shape_edit_on: false,
             linvel: InitialVelocity::REST.linvel,
             angvel: InitialVelocity::REST.angvel,
@@ -245,22 +246,16 @@ pub fn build_physics_info(
             area_falloff: 0.0,
         });
     };
-    // Each arm also carries what the OTHER shapes' rows would seed if the artist
-    // switched — the rows for an inactive shape are not painted, so these are
-    // display seeds, and `apply_physics_edit` owns the real conversion.
+    // Each arm also seeds the OTHER shapes' rows (display only; `apply_physics_edit` converts).
+    let caixa = |tag: u8, half_x: f32, half_y: f32| {
+        let cap = (half_y - half_x).max(0.0);
+        (tag, half_x.max(half_y), half_x, half_y, cap)
+    };
     let (shape_tag, radius, half_x, half_y, cap_half_height) = match col.shape {
         ColliderShape::Ball { radius } => (0u8, radius, radius, radius, 0.0),
-        // O Outline lê-se como a caixa da imagem até o cartão ganhar o tipo (W4).
-        ColliderShape::Cuboid { half_x, half_y } | ColliderShape::Outline { half_x, half_y } => (
-            1u8,
-            half_x.max(half_y),
-            half_x,
-            half_y,
-            (half_y - half_x).max(0.0),
-        ),
-        // A capsule's own radius IS the ball radius; its box equivalent is
-        // `radius` wide and `half_height + radius` tall (the TOTAL half-extent,
-        // which is what a box would need to cover the same silhouette).
+        ColliderShape::Cuboid { half_x, half_y } => caixa(1, half_x, half_y),
+        ColliderShape::Outline { half_x, half_y } => caixa(3, half_x, half_y),
+        // The capsule's box equivalent: `radius` wide, `half_height + radius` tall.
         ColliderShape::Capsule {
             half_height,
             radius,
@@ -332,8 +327,8 @@ pub fn build_physics_info(
         bake_channels_tag,
         gravity_scale,
         cap_half_height,
-        shape_follows: crate::physics_apply::imagem_da_forma(world, entity)
-            .map(|s| col.follows_picture(s.size)),
+        shape_follows: ph2d_physics_outline::follows(world, forma),
+        outline: ph2d_physics_outline::card_info(world, forma),
         shape_edit_on: ph2d_shape_handles::editando(world) == Some(entity_bits),
         linvel: iv.linvel,
         angvel: iv.angvel,

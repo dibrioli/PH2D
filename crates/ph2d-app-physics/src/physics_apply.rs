@@ -92,6 +92,9 @@ pub fn apply_physics_edit(
         );
         return;
     }
+    if matches!(edit, PhysicsFieldEdit::Outline(_)) {
+        return; // o traço é da cola `ph2d_physics_outline::retrace_edited`
+    }
     if matches!(edit, PhysicsFieldEdit::FitToPicture) {
         if let Some(cur) = world.get::<Collider>(entity).copied()
             && let Some(imagem) = imagem_da_forma(world, entity)
@@ -546,6 +549,7 @@ pub fn apply_physics_edit(
         | PhysicsFieldEdit::MoveShapeToChild
         | PhysicsFieldEdit::Remove
         | PhysicsFieldEdit::FitToPicture
+        | PhysicsFieldEdit::Outline(_)
         | PhysicsFieldEdit::Kind(_)
         | PhysicsFieldEdit::GravityScale(_)
         | PhysicsFieldEdit::LinvelX(_)

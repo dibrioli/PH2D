@@ -24,9 +24,12 @@ pub struct ColliderOutline {
     pub rings: Arc<[Ring]>,
     /// O retângulo da imagem que os anéis cobrem, em px: mapeia para `[-half, half]` da forma.
     pub picture_px: [u32; 2],
+    /// O Detail PEDIDO (o do cartão e do canal); o traço usa [`Self::detail_used_q4`].
     pub detail_q4: u16,
     pub alpha_cutoff: u8,
     pub min_island_px: u16,
+    /// O Detail que o tecto de peças/pontos impôs (Q4); `0` = o pedido serviu.
+    pub raised_q4: u16,
 }
 
 impl Default for ColliderOutline {
@@ -38,6 +41,7 @@ impl Default for ColliderOutline {
             detail_q4: 2 * 16,
             alpha_cutoff: 128,
             min_island_px: 0,
+            raised_q4: 0,
         }
     }
 }
@@ -45,6 +49,12 @@ impl Default for ColliderOutline {
 impl SimComponent for ColliderOutline {}
 
 impl ColliderOutline {
+    /// O Detail com que os anéis foram traçados (o pedido, ou o que o tecto subiu).
+    #[must_use]
+    pub fn detail_used_q4(&self) -> u16 {
+        self.detail_q4.max(self.raised_q4)
+    }
+
     /// Hash de conteúdo dos anéis (blake3, cada anel prefixado pelo comprimento).
     #[must_use]
     pub fn rings_hash(&self) -> u64 {
@@ -120,12 +130,12 @@ impl OutlineCache {
     /// As peças convexas (Q4) dos anéis, derivadas UMA vez por `(anéis, detail)`.
     fn pieces_q4(&mut self, o: &ColliderOutline, hash: u64) -> Arc<[Ring]> {
         self.pieces
-            .entry((hash, o.detail_q4))
+            .entry((hash, o.detail_used_q4()))
             .or_insert_with(|| {
                 let outline = ph2d_outline_trace::Outline {
                     rings: o.rings.to_vec(),
                 };
-                ph2d_outline_trace::convex_pieces(&outline, o.detail_q4).into()
+                ph2d_outline_trace::convex_pieces(&outline, o.detail_used_q4()).into()
             })
             .clone()
     }
@@ -150,7 +160,7 @@ impl OutlineCache {
         let hash = o.rings_hash();
         let memo = (
             hash,
-            o.detail_q4,
+            o.detail_used_q4(),
             o.picture_px,
             [
                 half_x.to_bits(),

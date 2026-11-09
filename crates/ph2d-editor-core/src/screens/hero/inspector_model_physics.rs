@@ -56,6 +56,8 @@ pub struct InspectorPhysicsInfo {
     /// A forma em relação à imagem do objecto: `None` sem imagem · `Some(true)` a caixa mede o desenho e
     /// o acompanha (`Collider::follows_picture`) · `Some(false)` não acompanha (mudada à mão, bola, cápsula).
     pub shape_follows: Option<bool>,
+    /// Os controlos do traço quando a forma é «Outline» (`shape_tag == 3`).
+    pub outline: Option<InspectorOutlineInfo>,
     /// As alças da forma estão acesas neste objecto (`ph2d_shape_handles`).
     pub shape_edit_on: bool,
     pub density: f32,
@@ -384,6 +386,8 @@ pub enum PhysicsFieldEdit {
     /// preserves the footprint (a box becomes the ball that fits it, and back;
     /// a capsule keeps the box's width as its radius).
     Shape(u8),
+    /// Um controlo do traço do «Outline» (W4): a cola `ph2d-physics-outline` retraça, um passo de undo.
+    Outline(OutlineEdit),
     Radius(f32),
     HalfX(f32),
     HalfY(f32),
@@ -553,6 +557,27 @@ pub enum PhysicsFieldEdit {
     SignalTagFilter(u64),
 }
 
+/// Os controlos do traço do «Outline», nas unidades do cartão.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum OutlineEdit {
+    /// Detail, px: quanto o contorno pode sair da arte ao simplificar.
+    Detail(f32),
+    /// Alpha cutoff, `0..=1`.
+    AlphaCutoff(f32),
+    /// Ignore specks under, px de área.
+    Specks(f32),
+}
+
+/// O que o cartão mostra de um «Outline»: os três pedidos e o Detail que o tecto impôs.
+#[derive(Copy, Clone, Debug, Default, PartialEq)]
+pub struct InspectorOutlineInfo {
+    pub detail_px: f32,
+    pub alpha_cutoff: f32,
+    pub specks_px: f32,
+    /// `Some((Detail usado em px, tecto de peças))` quando o tecto subiu o Detail.
+    pub raised: Option<(f32, u32)>,
+}
+
 impl PhysicsFieldEdit {
     /// ⭐ **A edição mora na FORMA** (opção B, a irmã de `ph2d_ecs::canal_fisica::e_da_forma`): num
     /// corpo, a shell aplica-a à forma principal, nunca põe o `Collider` no corpo.
@@ -564,6 +589,7 @@ impl PhysicsFieldEdit {
             P::FitToPicture
                 | P::ShapeDrag { .. }
                 | P::Shape(_)
+                | P::Outline(_)
                 | P::Radius(_)
                 | P::HalfX(_)
                 | P::HalfY(_)

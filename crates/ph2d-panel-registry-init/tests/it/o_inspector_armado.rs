@@ -422,6 +422,7 @@ pub fn fisica_armada() -> InspectorPhysicsInfo {
         half_y: 0.5,
         cap_half_height: 0.25,
         shape_follows: None,
+        outline: None,
         shape_edit_on: false,
         density: 1.0,
         restitution: 0.2,

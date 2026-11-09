@@ -155,6 +155,7 @@ pub(super) fn medidas_e_estado(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysic
         y,
         info.shape_tag,
     );
+    let y = super::physics_cartao_contorno::aviso(t, y, info);
     let y = estado_da_forma(t, y, info);
     let y = aviso_de_escala(t, y, info);
     botao_das_alcas(t, y, info)

@@ -32,6 +32,21 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.phys.follows" => "Follows the picture",
         "card.insp.phys.custom" => "Custom size",
         "card.insp.phys.fit" => "Fit to picture",
+        "card.insp.phys.outline_detail" => "Detail",
+        "card.insp.phys.outline_alpha" => "Alpha cutoff",
+        "card.insp.phys.outline_specks" => "Ignore specks under",
+        "card.insp.phys.outline_detail_tip" => {
+            "How far the outline may move out from the picture to stay simple. Bigger means fewer points."
+        }
+        "card.insp.phys.outline_alpha_tip" => {
+            "How solid a pixel must be to count as part of the shape. 0.5 means half see-through."
+        }
+        "card.insp.phys.outline_specks_tip" => {
+            "Leave out islands and fill holes smaller than this many pixels."
+        }
+        "card.insp.phys.outline_raised" => {
+            "Too detailed — Detail raised to {x} px to stay under {n} pieces"
+        }
         "card.insp.phys.edit_shape" => "Edit shape on canvas",
         "card.insp.phys.editing_shape" => "Editing shape · Esc to finish",
         "card.insp.phys.collides_with" => "Collides with",

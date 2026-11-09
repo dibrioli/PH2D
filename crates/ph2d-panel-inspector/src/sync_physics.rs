@@ -77,6 +77,7 @@ pub(crate) fn sync_physics_fields(host: &mut dyn PanelHostInternal) {
     if !info.has_body && !info.has_collider {
         return;
     }
+    let o = info.outline.unwrap_or_default();
     for (id, v) in [
         (crate::ids::INSP_PHYS_RADIUS, info.radius),
         // Width e Height no ecrã; o `Collider` guarda metades. Cápsula: o segmento e as duas tampas.
@@ -93,6 +94,9 @@ pub(crate) fn sync_physics_fields(host: &mut dyn PanelHostInternal) {
         (crate::ids::INSP_PHYS_WALK_BELT, info.walk_belt),
         (crate::ids::INSP_PHYS_OFFSET_Y, info.offset[1]),
         (crate::ids::INSP_PHYS_DENSITY, info.density),
+        (crate::ids::INSP_PHYS_OUTLINE_DETAIL, o.detail_px),
+        (crate::ids::INSP_PHYS_OUTLINE_ALPHA, o.alpha_cutoff),
+        (crate::ids::INSP_PHYS_OUTLINE_SPECKS, o.specks_px),
         (crate::ids::INSP_PHYS_MASS, info.mass),
         (crate::ids::INSP_PHYS_RESTITUTION, info.restitution),
         (crate::ids::INSP_PHYS_FRICTION, info.friction),

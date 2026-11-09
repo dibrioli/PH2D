@@ -168,11 +168,13 @@ fn value_edit(
     }
     // As medidas só da forma que o painel mostra (`paint_shape_dims`): o `Radius` numa caixa a
     // TROCARIA por uma bola (o funil converte), e o canal escreve por aqui.
-    let (bola, caixa, capsula) = (
+    let (bola, caixa, capsula, contorno) = (
         info.shape_tag == 0,
         info.shape_tag == 1,
         info.shape_tag == 2,
+        info.shape_tag == 3,
     );
+    use ph2d_editor_core::{OutlineEdit as E, PhysicsFieldEdit as P};
     match id {
         crate::ids::INSP_PHYS_RADIUS if bola || capsula => Some(PhysicsFieldEdit::Radius(v)),
         // O ecrã fala Width e Height; o `Collider` guarda metades (ficha f1), e o ficheiro não muda.
@@ -184,6 +186,9 @@ fn value_edit(
         // Collider offset — a collider property, honoured for any body (not
         // Dynamic-gated like velocity/gravity).
         crate::ids::INSP_PHYS_OFFSET_X => Some(PhysicsFieldEdit::OffsetX(v)),
+        crate::ids::INSP_PHYS_OUTLINE_DETAIL if contorno => Some(P::Outline(E::Detail(v))),
+        crate::ids::INSP_PHYS_OUTLINE_ALPHA if contorno => Some(P::Outline(E::AlphaCutoff(v))),
+        crate::ids::INSP_PHYS_OUTLINE_SPECKS if contorno => Some(P::Outline(E::Specks(v))),
         crate::ids::INSP_PHYS_WALK_GRIP => Some(PhysicsFieldEdit::WalkGrip(v)),
         crate::ids::INSP_PHYS_WALK_BELT => Some(PhysicsFieldEdit::WalkBelt(v)),
         crate::ids::INSP_PHYS_OFFSET_Y => Some(PhysicsFieldEdit::OffsetY(v)),

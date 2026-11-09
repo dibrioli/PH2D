@@ -134,6 +134,7 @@ mod physics_area_rows;
 mod physics_body;
 /// Os cartões Body e Shape da física (ficha f1, opção B).
 pub(crate) mod physics_cartao;
+pub(crate) mod physics_cartao_contorno;
 pub(crate) mod physics_cartao_forma;
 mod physics_cartao_peca;
 pub(crate) mod physics_colide;

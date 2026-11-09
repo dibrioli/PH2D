@@ -246,6 +246,22 @@ pub(super) fn populate_physics(store: &mut WidgetStore) {
             ids::INSP_PHYS_LAYER_DEFAULT,
         ],
     );
+    for (id, dica) in [
+        (
+            ids::INSP_PHYS_OUTLINE_DETAIL,
+            "card.insp.phys.outline_detail_tip",
+        ),
+        (
+            ids::INSP_PHYS_OUTLINE_ALPHA,
+            "card.insp.phys.outline_alpha_tip",
+        ),
+        (
+            ids::INSP_PHYS_OUTLINE_SPECKS,
+            "card.insp.phys.outline_specks_tip",
+        ),
+    ] {
+        store.set_tooltip(id, ph2d_i18n::tr(dica));
+    }
     store.set_tooltip(
         ids::INSP_PHYS_COLLIDES_ADD,
         ph2d_i18n::tr("card.insp.phys.collides_add_tip"),
@@ -317,6 +333,9 @@ pub(super) fn populate_physics(store: &mut WidgetStore) {
         (ids::INSP_PHYS_LINVEL_Y, 0.0, -100.0, 100.0, 0.1), // LITERAL-PX-OK: m/s
         (ids::INSP_PHYS_ANGVEL, 0.0, -3600.0, 3600.0, 1.0), // LITERAL-PX-OK: deg/s
         (ids::INSP_PHYS_DENSITY, 1.0, 0.0, 1000.0, 0.01),   // LITERAL-PX-OK: kg/m^2
+        (ids::INSP_PHYS_OUTLINE_DETAIL, 2.0, 0.0625, 64.0, 0.0625), // LITERAL-PX-OK: px, Q4 step
+        (ids::INSP_PHYS_OUTLINE_ALPHA, 0.5, 0.0, 1.0, 0.01), // LITERAL-PX-OK: alpha 0..=1
+        (ids::INSP_PHYS_OUTLINE_SPECKS, 0.0, 0.0, 4096.0, 1.0), // LITERAL-PX-OK: px of area
         // Explicit mass override (W-Mass), Manual mode. min 0.001 (mass must be
         // positive — a zero-mass dynamic body is degenerate); the range bounds the
         // DRAG only, the component/BodyDesc take any positive f32.

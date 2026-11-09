@@ -23,10 +23,11 @@ use ph2d_i18n::tr_with;
 /// ⚠️ `pub(super)` porque a face de PEÇA (W-PartFace) pinta o MESMO seletor: a
 /// forma de uma peça é a mesma pergunta que a forma de um corpo, e uma segunda
 /// tabela de rótulos divergiria no dia em que a quarta forma chegasse.
-pub(super) const SHAPE_LABELS: [TextKey; 3] = [
+pub(super) const SHAPE_LABELS: [TextKey; 4] = [
     TextKey::new("panel.inspector.physics.ball"),
     TextKey::new("panel.inspector.physics.box"),
     TextKey::new("panel.inspector.physics.capsule"),
+    TextKey::new("panel.inspector.physics.outline"),
 ];
 
 /// The Bake button's label, carrying the window it would cover.
@@ -67,6 +68,8 @@ const SHAPE_BALL: u8 = 0;
 /// Tag for the Capsule shape (`ColliderShape::Capsule`), named for the same
 /// reason as [`SHAPE_BALL`].
 const SHAPE_CAPSULE: u8 = 2;
+/// Tag for the traced Outline (`ColliderShape::Outline`).
+const SHAPE_OUTLINE: u8 = 3;
 
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn paint_physics_section(
@@ -234,6 +237,18 @@ pub(super) fn paint_shape_dims(
             ),
             Campo::new(tr("card.insp.phys.height"), ids::INSP_PHYS_CAP_HALF_H, m),
         ),
+        SHAPE_OUTLINE => {
+            return super::physics_cartao_contorno::controlos(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                x,
+                w,
+                y,
+            );
+        }
         // Width e Height inteiros, um rótulo sobre cada caixa: quem quer 200 px digita 200.
         _ => par(
             None,

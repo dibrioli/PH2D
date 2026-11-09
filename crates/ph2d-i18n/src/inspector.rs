@@ -365,6 +365,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.physics.ball" => "Ball",
         "panel.inspector.physics.box" => "Box",
         "panel.inspector.physics.capsule" => "Capsule",
+        "panel.inspector.physics.outline" => "Outline",
         "panel.inspector.physics.radius_m" => "Radius",
         "panel.inspector.physics.init_velocity" => "Init Velocity",
         "panel.inspector.physics.dynamic" => "Dynamic",

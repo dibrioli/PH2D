@@ -52,12 +52,17 @@ pub const INSP_PHYS_KIND: [NodeId; 3] = [
     hash_node_id("insp_phys_kind_kinematic"),
 ];
 
-/// §11 Collider shape segmented, indexed by `ColliderShape` tag: Ball / Box.
-pub const INSP_PHYS_SHAPE: [NodeId; 3] = [
+/// §11 Collider shape segmented, indexed by `ColliderShape` tag: Ball · Box · Capsule · Outline.
+pub const INSP_PHYS_SHAPE: [NodeId; 4] = [
     hash_node_id("insp_phys_shape_ball"),
     hash_node_id("insp_phys_shape_box"),
     hash_node_id("insp_phys_shape_capsule"),
+    hash_node_id("insp_phys_shape_outline"),
 ];
+/// Os três controlos do traço do «Outline» (W4): Detail, Alpha cutoff, Ignore specks under.
+pub const INSP_PHYS_OUTLINE_DETAIL: NodeId = hash_node_id("insp_phys_outline_detail");
+pub const INSP_PHYS_OUTLINE_ALPHA: NodeId = hash_node_id("insp_phys_outline_alpha");
+pub const INSP_PHYS_OUTLINE_SPECKS: NodeId = hash_node_id("insp_phys_outline_specks");
 
 /// O segundo cartão da física de um corpo (ficha f1): a forma.
 pub const CARD_PHYS_SHAPE: NodeId = hash_node_id("cards.insp.phys_shape");

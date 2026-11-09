@@ -207,16 +207,68 @@ pub fn trace(mask: &Mask, asked: &ColliderOutline) -> Traced {
         min_island_px: asked.min_island_px,
     };
     let f = trace_fitted(mask, want);
+    let up = f.params.detail_q4 > want.detail_q4;
     Traced {
         raised: f.raised(want),
         outline: ColliderOutline {
             rings: f.outline.rings.into(),
             picture_px: [mask.w, mask.h],
-            detail_q4: f.params.detail_q4,
+            detail_q4: asked.detail_q4,
             alpha_cutoff: asked.alpha_cutoff,
-            min_island_px: f.params.min_island_px,
+            min_island_px: asked.min_island_px,
+            raised_q4: if up { f.params.detail_q4 } else { 0 },
         },
     }
+}
+
+/// O pedido de `cur` com a edição `e` do cartão (px → Q4, `0..=1` → byte).
+#[must_use]
+pub fn asked_with(cur: &ColliderOutline, e: ph2d_editor_core::OutlineEdit) -> ColliderOutline {
+    use ph2d_editor_core::OutlineEdit as E;
+    let to_u16 = |v: f32| v.round().clamp(0.0, f32::from(u16::MAX)) as u16;
+    let mut next = cur.clone();
+    match e {
+        E::Detail(px) => next.detail_q4 = to_u16(px * 16.0).max(1),
+        E::AlphaCutoff(v) => next.alpha_cutoff = (v.clamp(0.0, 1.0) * 255.0).round() as u8,
+        E::Specks(px) => next.min_island_px = to_u16(px),
+    }
+    next
+}
+
+/// **«Follows the picture»** da forma `shape` (`None` sem imagem): a caixa compara-se à imagem do
+/// dono; o «Outline», à UNIÃO dos quadros traçados ([`OutlineSeen`]), nunca só à folha `0`.
+#[must_use]
+pub fn follows(world: &World, shape: Entity) -> Option<bool> {
+    let owner = picture_owner(world, shape)?;
+    let c = world.get::<Collider>(shape)?;
+    let size = world.get::<Sprite>(owner)?.size;
+    let same = |a: f32, b: f32| (a - b).abs() <= 1e-4 * b.abs().max(1.0);
+    Some(match (c.shape, world.get::<OutlineSeen>(shape)) {
+        (ColliderShape::Outline { half_x, half_y }, Some(s)) => {
+            same(half_x, s.layout.half[0]) && same(half_y, s.layout.half[1])
+        }
+        _ => c.follows_picture(size),
+    })
+}
+
+/// O que o cartão mostra de um «Outline» (`None` noutra forma).
+#[must_use]
+pub fn card_info(world: &World, shape: Entity) -> Option<ph2d_editor_core::InspectorOutlineInfo> {
+    let c = world.get::<Collider>(shape)?;
+    if !matches!(c.shape, ColliderShape::Outline { .. }) {
+        return None;
+    }
+    let o = world
+        .get::<ColliderOutline>(shape)
+        .cloned()
+        .unwrap_or_default();
+    let max = u32::try_from(ph2d_outline_trace::MAX_PIECES).unwrap_or(u32::MAX);
+    Some(ph2d_editor_core::InspectorOutlineInfo {
+        detail_px: f32::from(o.detail_q4) / 16.0,
+        alpha_cutoff: f32::from(o.alpha_cutoff) / 255.0,
+        specks_px: f32::from(o.min_island_px),
+        raised: (o.raised_q4 > o.detail_q4).then(|| (f32::from(o.raised_q4) / 16.0, max)),
+    })
 }
 
 /// **Retraça a forma `shape`** pela imagem do dono ([`picture_owner`]); `picture(owner, k)` dá os
@@ -231,12 +283,25 @@ pub fn retrace<'a>(
     queue: &EditorCommandQueue,
     registry: &ComponentRegistry,
 ) -> Option<Traced> {
-    let collider = world.get::<Collider>(shape).copied()?;
-    let owner = picture_owner(world, shape)?;
     let asked = world
         .get::<ColliderOutline>(shape)
         .cloned()
         .unwrap_or_default();
+    retrace_asked(world, shape, &asked, picture, ppm, queue, registry)
+}
+
+/// [`retrace`] com o pedido `asked` (Detail, Alpha cutoff, Ignore specks under) no lugar do gravado.
+pub fn retrace_asked<'a>(
+    world: &World,
+    shape: Entity,
+    asked: &ColliderOutline,
+    picture: impl Fn(Entity, u8) -> Option<Picture<'a>>,
+    ppm: f32,
+    queue: &EditorCommandQueue,
+    registry: &ComponentRegistry,
+) -> Option<Traced> {
+    let collider = world.get::<Collider>(shape).copied()?;
+    let owner = picture_owner(world, shape)?;
     let frames = traced_frames(world, owner);
     let (mask, lay) = frames_mask(
         world,
@@ -246,7 +311,7 @@ pub fn retrace<'a>(
         asked.alpha_cutoff,
         ppm,
     )?;
-    let traced = trace(&mask, &asked);
+    let traced = trace(&mask, asked);
     let mut next = Collider {
         shape: ColliderShape::Outline {
             half_x: lay.half[0],
@@ -308,7 +373,7 @@ pub fn retrace_edited(
     let picture = db_picture(world, db, atlas);
     let mut n = 0;
     for &(bits, edit) in edits {
-        if !matches!(edit, P::Shape(3) | P::FitToPicture) {
+        if !matches!(edit, P::Shape(3) | P::FitToPicture | P::Outline(_)) {
             continue;
         }
         let pedido = Entity::from_bits(bits);
@@ -320,7 +385,13 @@ pub fn retrace_edited(
         let outline = world
             .get::<Collider>(shape)
             .is_some_and(|c| matches!(c.shape, ColliderShape::Outline { .. }));
-        if outline && retrace(world, shape, &picture, ppm, queue, registry).is_some() {
+        let cur = world.get::<ColliderOutline>(shape).cloned();
+        let asked = match edit {
+            P::Outline(e) => asked_with(&cur.unwrap_or_default(), e),
+            _ => cur.unwrap_or_default(),
+        };
+        if outline && retrace_asked(world, shape, &asked, &picture, ppm, queue, registry).is_some()
+        {
             n += 1;
         }
     }

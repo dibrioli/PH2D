@@ -13,6 +13,8 @@
 //! `Transform`; the drawing's children move under it. The vector entity and its path leave together,
 //! in the same frame, so the editor's per-frame diff makes ONE undo step.
 
+pub mod smoke;
+
 use ph2d_ecs::{
     ChildOf, Entity, Name, RootOrder, Transform, VecPathRef, World,
     ordered_children, set_sibling_order,

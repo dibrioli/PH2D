@@ -18,9 +18,10 @@ ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 ph2d-physics-outline = { path = "../ph2d-physics-outline" }
 ph2d-outline-trace = { path = "../ph2d-outline-trace" }
 ph2d-unique-name = { path = "../ph2d-unique-name" }
+# The smoke seed's `Transform` position.
+ph2d-core = { path = "../ph2d-core" }
 
 [dev-dependencies]
-ph2d-core = { path = "../ph2d-core" }
 
 [lints]
 workspace = true

@@ -13,8 +13,17 @@ impl crate::App {
             &mut self.timeline.doc,
         );
         ph2d_app_physics::smoke::scene(which, &mut ctx);
-        let want = std::mem::take(&mut ctx.want);
+        let mut want = std::mem::take(&mut ctx.want);
         drop(ctx);
+        // `PH2D_PHYSICS_SMOKE_VETOR=1`: o desenho Vector do «Convert to Collision Outline», escolhido.
+        if let Some(s) = ph2d_physics_outline_vec::smoke::seed(gfx.sim.world_mut(), &mut gfx.vec_scene) {
+            if let Some(p) = s.path {
+                self.vec.entities.insert(p, s.drawing.to_bits());
+            }
+            want.camera_center = Some(s.centre);
+            want.camera_height_world = Some(ph2d_physics_outline_vec::smoke::VIEW_HEIGHT);
+            want.select = Some(s.drawing.to_bits());
+        }
         if let Some((a, b)) = want.playhead_loop {
             self.playhead.set_loop(a, b);
         }

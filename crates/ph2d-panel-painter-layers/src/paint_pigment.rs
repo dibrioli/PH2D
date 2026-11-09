@@ -95,7 +95,7 @@ pub(crate) fn paint_mixing_section(
         x,
         content_w,
         y,
-        tr("panel.painter_layers.brush.mixing"),
+        tr("panel.painter_layers.brush.paint_mixing"),
         1,
     );
     let _ = paint_pigment_row(ctx, theme, ix, iw, ry, brush);

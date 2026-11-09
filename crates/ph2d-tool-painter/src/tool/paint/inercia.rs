@@ -376,13 +376,13 @@ impl Dependente {
 
 /// As linhas do Tuning que só o Real Oil lê: o slider e o chip de cada (os ids do Tuning hasheiam-se em execução).
 /// Os números da mistura e o seletor Sample: esmaecem juntos com o Color mixing em `Off`.
-const MISTURA_DESLIGADA: [NodeId; 8] = [
+/// O Pigment (`PAINTER_WATERCOLOR_MIX`) NÃO: age também com a mistura em `Off`.
+const MISTURA_DESLIGADA: [NodeId; 7] = [
     ids::PAINTER_BRUSH_MIX_FIELDS[0],
     ids::PAINTER_BRUSH_MIX_FIELDS[1],
     ids::PAINTER_BRUSH_MIX_FIELDS[2],
     ids::PAINTER_BRUSH_MIX_FIELDS[3],
     ids::PAINTER_BRUSH_MIX_FIELDS[4],
-    ids::PAINTER_BRUSH_MIX_FIELDS[5],
     ids::PAINTER_BRUSH_MIX_SAMPLES[0],
     ids::PAINTER_BRUSH_MIX_SAMPLES[1],
 ];

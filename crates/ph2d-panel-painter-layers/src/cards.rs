@@ -27,11 +27,10 @@ use ph2d_tokens::Theme;
 use ph2d_tool_painter::ids as pids;
 
 /// Os cartões dos blocos sem título do corpo do pincel, pela ordem de `plano_do_corpo`.
-const BLOCOS: [NodeId; 4] = [
+const BLOCOS: [NodeId; 3] = [
     pids::PAINTER_CARD_TOPO,
     pids::PAINTER_CARD_BASICOS,
     pids::PAINTER_BRUSH_MIX_SECTION,
-    pids::PAINTER_CARD_MIXING,
 ];
 
 thread_local! {
@@ -164,7 +163,7 @@ fn secoes_do_pincel(ctx: &mut PaintCtx) -> Vec<Presente> {
             continue;
         }
         if id == pids::PAINTER_BRUSH_MIX_SECTION {
-            if crate::cards_mistura::oferecida(&brush) {
+            if crate::cards_mistura::presente(&brush) {
                 presentes.push(Presente {
                     id,
                     titulo: crate::cards_mistura::titulo().to_owned(),

@@ -29,8 +29,8 @@ fn abre_o_basics(m: &mut Mesa) {
 fn color_mixing_e_um_cartao_proprio_logo_depois_do_basics() {
     let (b, _) = pincel(PaintMedia::Digital, "brush");
     assert_eq!(
-        ph2d_i18n::tr("panel.painter_layers.brush.color_mixing"),
-        "Color Mixing"
+        ph2d_i18n::tr("panel.painter_layers.brush.paint_mixing"),
+        "Paint Mixing"
     );
     let mut m = Mesa::nova(true, b, false);
     m.so_abertos(&[p::PAINTER_CARD_BASICOS]);
@@ -241,11 +241,12 @@ fn color_mixing_foto() {
     };
     let gpu = ph2d_gpu::GpuContext::new(ph2d_gpu::GpuContext::default_instance(), None)
         .expect("a foto precisa da placa");
-    for (nome, modo) in [
-        ("painel_mistura_off", ModoMisturaOpaca::Off),
-        ("painel_pigment_mix", ModoMisturaOpaca::WetBlend),
+    for (nome, modo, meio) in [
+        ("painel_mistura_off", ModoMisturaOpaca::Off, PaintMedia::Digital),
+        ("painel_pigment_mix", ModoMisturaOpaca::WetBlend, PaintMedia::Digital),
+        ("painel_paint_mixing_watercolor", ModoMisturaOpaca::Off, PaintMedia::Watercolor),
     ] {
-        let (mut b, _) = pincel(PaintMedia::Digital, "brush");
+        let (mut b, _) = pincel(meio, "brush");
         b.mistura_opaca.modo = modo;
         if modo != ModoMisturaOpaca::Off {
             b.inercias = ph2d_tool_painter::Inercias::NENHUMA;
@@ -258,5 +259,45 @@ fn color_mixing_foto() {
             p::PAINTER_BRUSH_MIX_SECTION,
         ]);
         foto(&gpu, &dir, nome, &mut m);
+    }
+}
+
+/// ⭐ **Paint Mixing: UM cartão, UM Pigment** (dono 10/11: «junte e mude de nome»). Onde o Pigment age (Digital,
+/// Watercolor, Impasto) o cartão aparece uma vez com uma linha Pigment só; o Color mixing (seletor, Sample, números)
+/// só no Digital. Nos dois painéis.
+#[test]
+fn paint_mixing_e_um_cartao_com_um_pigment_so() {
+    let casos = [
+        (PaintMedia::Digital, true),
+        (PaintMedia::Watercolor, false),
+        (PaintMedia::Impasto, false),
+    ];
+    for (meio, com_wet_blend) in casos {
+        for cartoes in [true, false] {
+            let (b, _) = pincel(meio, "brush");
+            assert!(b.pigment_offered, "{meio:?}: o Pigment age aqui");
+            let mut m = Mesa::nova(cartoes, b, false);
+            abre_o_basics(&mut m);
+            m.quadro();
+            let pigmentos = m
+                .rects
+                .iter()
+                .filter(|(id, r)| *id == p::PAINTER_WATERCOLOR_MIX && r.w > 0.0 && r.h > 0.0)
+                .count();
+            assert_eq!(pigmentos, 1, "{meio:?} cartões={cartoes}: um Pigment só");
+            if cartoes {
+                let cartoes_mix = super::h1_os_cartoes::TODAS
+                    .iter()
+                    .filter(|s| m.rect(grip_of(**s)).is_some())
+                    .filter(|s| **s == p::PAINTER_BRUSH_MIX_SECTION)
+                    .count();
+                assert_eq!(cartoes_mix, 1, "{meio:?}: o cartão Paint Mixing");
+            }
+            assert_eq!(
+                m.rect(p::PAINTER_BRUSH_MIX_MODES[1]).is_some(),
+                com_wet_blend,
+                "{meio:?} cartões={cartoes}: o Color mixing só no Digital"
+            );
+        }
     }
 }

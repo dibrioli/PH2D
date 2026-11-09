@@ -214,19 +214,17 @@ pub const PAINTER_BRUSH_MIX_SAMPLES: [NodeId; 2] = [
     hash_node_id("painter_brush.mix.sample.this_layer"),
     hash_node_id("painter_brush.mix.sample.all_visible"),
 ];
-/// Os números da mistura: Amount · Density · Color stretch · Amount pressure · Density pressure · Pigment (`0..1`; o painel
-/// mostra-os por [`PAINTER_BRUSH_MIX_ORDEM`]). `SetValue` → `set_brush_mistura_numero` (`tool/paint/mistura_settings.rs`).
-pub const PAINTER_BRUSH_MIX_FIELDS: [NodeId; 6] = [
+/// Os números da mistura: Amount · Density · Color stretch · Amount pressure · Density pressure (`0..1`; o painel
+/// mostra-os por [`PAINTER_BRUSH_MIX_ORDEM`]; o Pigment é o `PAINTER_WATERCOLOR_MIX`, um só para as duas misturas). `SetValue` → `set_brush_mistura_numero` (`tool/paint/mistura_settings.rs`).
+pub const PAINTER_BRUSH_MIX_FIELDS: [NodeId; 5] = [
     hash_node_id("painter_brush.mix.paint_amount"),
     hash_node_id("painter_brush.mix.paint_density"),
     hash_node_id("painter_brush.mix.color_stretch"),
     hash_node_id("painter_brush.mix.amount_pressure"),
     hash_node_id("painter_brush.mix.density_pressure"),
-    hash_node_id("painter_brush.mix.pigment_amount"),
 ];
-/// A ordem em que o painel mostra os [`PAINTER_BRUSH_MIX_FIELDS`]: Amount · Density · Color stretch · Pigment · as
-/// pressões (a ordem do CSP).
-pub const PAINTER_BRUSH_MIX_ORDEM: [usize; 6] = [0, 1, 2, 5, 3, 4];
+/// A ordem em que o painel mostra os [`PAINTER_BRUSH_MIX_FIELDS`]: Amount · Density · Color stretch · as pressões.
+pub const PAINTER_BRUSH_MIX_ORDEM: [usize; 5] = [0, 1, 2, 3, 4];
 
 /// ⭐ O modo sobre o VAZIO (L7), na linha do Blend (`0`/`1`). `SetValue` → `route_blend_vazio_event`
 /// (`tool/paint/blend_vazio_settings.rs`). O nome do hash é o de antes da secção Rendering sair (24/10): as macros

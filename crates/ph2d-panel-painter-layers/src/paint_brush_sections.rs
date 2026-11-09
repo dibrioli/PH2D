@@ -115,24 +115,8 @@ pub(crate) fn declara_aparencia(
         crate::paint_wetpaint::paint_wetpaint_section(ctx, theme, x, content_w, y, brush)
     });
 
-    // ── O cartão **Mixing** (a fileira `Pigment`) — o ÚNICO hospedeiro dela, nos três meios.
-    //
-    //    ⭐⭐ Ele nasceu da ordem do dono de 2026-09-20 (*«ligue o digital»*), que tirou a cerca
-    //    `watercolor &&` do `effective_pigment_mix`. Desde aquela ordem o `Pigment` vale para três
-    //    meios, logo deixou de pertencer à secção de um — e fica no LUGAR, junto do meio.
-    //
-    //    ⛔ **A condição é UMA** (`pigment_offered`, derivada pela ferramenta do MEIO ∧ do GESTO), e é
-    //    ela que responde ao 2.º report do dono — *«confira se funciona para Blur e Smear»*: não
-    //    funciona, e antes desta linha a fileira aparecia lá na mesma. ──
-    plano.bloco(move |ctx, theme, y| {
-        // No Wet Paint (lei `Pigmento`, E10-B2) só quem move tinta pela lei da sim (`MisturaDoPigmento`).
-        let gesto = !brush.wetpaint || brush.le(LinhaDaFerramenta::MisturaDoPigmento);
-        if !brush.is_inpaint && brush.pigment_offered && gesto {
-            crate::paint_pigment::paint_mixing_section(ctx, theme, x, content_w, y, &brush)
-        } else {
-            y
-        }
-    });
+    // O cartão **Mixing** (a fileira `Pigment`) juntou-se ao Paint Mixing, logo depois dos básicos (dono 10/11):
+    // `paint_brush_top::paint_color_mixing`.
 
     // ── Section 6: Randomize Color (collapsible; activates on amount > 0). Hidden in Smear/Blur/Clone,
     //    Eraser AND Mask (all colourless — nothing to randomize). ──

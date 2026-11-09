@@ -387,3 +387,52 @@ fn diag_o_pigmento_por_meio() {
     }
     println!();
 }
+
+/// Azul sobre amarelo com os DOIS «Pigment» (o do composite, `pigment_mix`, e o do reservatório do Wet blend,
+/// `mistura_opaca.pigmento`) e o modo da mistura opaca — devolve a tela inteira.
+fn os_dois_pigmentos(media: PaintMedia, wet: bool, a: f32, b: f32) -> Vec<u8> {
+    use ph2d_painter_brush::mistura_opaca::ModoMisturaOpaca as M;
+    let mut t = tela(media);
+    traco(&mut t, [0.98, 0.90, 0.10]);
+    t.set_brush_pigment_mixing(a);
+    t.set_brush_mistura_modo(if wet { M::WetBlend } else { M::Off });
+    t.set_brush_mistura_numero(5, b);
+    traco(&mut t, [0.10, 0.25, 0.85]);
+    t.canvas_rgba.to_vec()
+}
+
+#[test]
+#[ignore = "sonda de estudo; roda sob demanda"]
+fn diag_os_dois_pigmentos() {
+    let mut linhas = Vec::new();
+    let conta = |x: &[u8], y: &[u8]| x.chunks(4).zip(y.chunks(4)).filter(|(p, q)| p != q).count();
+    for media in [
+        PaintMedia::Digital,
+        PaintMedia::Watercolor,
+        PaintMedia::Impasto,
+        PaintMedia::WetPaint,
+    ] {
+        for wet in [false, true] {
+            let base = os_dois_pigmentos(media, wet, 0.0, 0.0);
+            let a = os_dois_pigmentos(media, wet, 1.0, 0.0);
+            let b = os_dois_pigmentos(media, wet, 0.0, 1.0);
+            let ab = os_dois_pigmentos(media, wet, 1.0, 1.0);
+            let mid = |v: &[u8]| {
+                let i = ((32 * SIZE + 32) * 4) as usize;
+                format!("{},{},{}", v[i], v[i + 1], v[i + 2])
+            };
+            linhas.push(format!(
+                "DOIS {media:?} wet={wet}: A {} px · B {} px · AB×A {} px · AB×B {} px | base {} A {} B {} AB {}",
+                conta(&base, &a),
+                conta(&base, &b),
+                conta(&a, &ab),
+                conta(&b, &ab),
+                mid(&base),
+                mid(&a),
+                mid(&b),
+                mid(&ab)
+            ));
+        }
+    }
+    panic!("{}", linhas.join(" ## "));
+}

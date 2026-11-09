@@ -169,7 +169,6 @@ pub(super) const TODAS: &[NodeId] = &[
     p::PAINTER_CARD_TOPO,
     p::PAINTER_CARD_BASICOS,
     p::PAINTER_BRUSH_MIX_SECTION,
-    p::PAINTER_CARD_MIXING,
     p::PAINTER_MASK_SECTION,
     p::PAINTER_WATERCOLOR_SECTION,
     p::PAINTER_IMPASTO_SECTION,
@@ -313,7 +312,7 @@ fn scrubbing_pigment_reaches_the_tool_and_escape_gives_it_back() {
     brush.pigment = true;
     brush.pigment_mix = 0.25;
     let mut mesa = Mesa::nova(true, brush, false);
-    mesa.so_abertos(&[p::PAINTER_CARD_MIXING]);
+    mesa.so_abertos(&[p::PAINTER_BRUSH_MIX_SECTION]);
     let antes = mesa.host.store().number_value(id).expect("semeado");
     assert!((antes - 0.25).abs() < 1e-6, "semente {antes}");
     let ev = mesa.arrasta_a_pega(id, 60.0);
@@ -570,7 +569,7 @@ fn every_mute_control_has_a_tooltip() {
 #[test]
 fn cards_off_paints_the_old_body() {
     let mesa = Mesa::nova(false, FALLBACK_BRUSH, false);
-    assert!(mesa.rect(grip_of(p::PAINTER_CARD_MIXING)).is_none());
+    assert!(mesa.rect(grip_of(p::PAINTER_BRUSH_MIX_SECTION)).is_none());
     assert!(mesa.rect(p::PAINTER_BRUSH_SYMMETRY_RESET).is_some());
     assert_eq!(mesa.host.store().floating_panel_rects().count(), 0);
 }

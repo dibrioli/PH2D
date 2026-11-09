@@ -480,8 +480,6 @@ pub const PAINTER_BRUSH_MIX_SECTION: NodeId = hash_node_id("painter_brush.mix_se
 pub const PAINTER_CARD_TOPO: NodeId = hash_node_id("painter_brush.card_topo");
 /// Os básicos do pincel: Blend, Color, Size, Strength, Flow…
 pub const PAINTER_CARD_BASICOS: NodeId = hash_node_id("painter_brush.card_basicos");
-/// A mistura: a fileira `Pigment`.
-pub const PAINTER_CARD_MIXING: NodeId = hash_node_id("painter_brush.card_mixing");
 /// O corpo inteiro de uma ferramenta exclusiva: Deform, Selection.
 pub const PAINTER_CARD_EXCLUSIVO: NodeId = hash_node_id("painter_brush.card_exclusivo");
 /// A vista Layers.

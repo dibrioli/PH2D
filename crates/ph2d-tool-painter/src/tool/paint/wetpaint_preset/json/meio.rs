@@ -66,7 +66,6 @@ pub(super) fn ler(b: &BrushSpec, campo: &str) -> Value {
                 "paint_amount": num(m.paint_amount),
                 "paint_density": num(m.paint_density),
                 "color_stretch": num(m.color_stretch),
-                "pigment": num(m.pigmento),
                 "amount_pressure": num(m.amount_pressure),
                 "density_pressure": num(m.density_pressure),
             });
@@ -189,7 +188,6 @@ pub(super) fn escrever(b: &mut BrushSpec, campo: &str, v: Option<&Value>) {
                 paint_amount: f(c("paint_amount"), fab.paint_amount).clamp(0.0, 1.0),
                 paint_density: f(c("paint_density"), fab.paint_density).clamp(0.0, 1.0),
                 color_stretch: f(c("color_stretch"), fab.color_stretch).clamp(0.0, 1.0),
-                pigmento: f(c("pigment"), fab.pigmento).clamp(0.0, 1.0),
                 amount_pressure: f(c("amount_pressure"), fab.amount_pressure).clamp(0.0, 1.0),
                 density_pressure: f(c("density_pressure"), fab.density_pressure).clamp(0.0, 1.0),
                 // «Sample» (#79): ausente = This layer (gravado antes de 08/11).

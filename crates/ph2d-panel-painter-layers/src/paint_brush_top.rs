@@ -358,8 +358,8 @@ pub(crate) fn paint_accumulate_e_fio(
     y
 }
 
-/// O bloco **Color mixing** do painel de antes, logo depois dos básicos: o mesmo do cartão Color Mixing, numa dobra
-/// que nasce fechada (`PAINTER_BRUSH_MIX_SECTION`, também o id do cartão).
+/// O bloco **Paint Mixing** do painel de antes, logo depois dos básicos: o mesmo do cartão Paint Mixing — no Digital uma
+/// dobra que nasce fechada (`PAINTER_BRUSH_MIX_SECTION`, também o id do cartão), nos outros meios o cartão do Pigment.
 pub(crate) fn paint_color_mixing(
     ctx: &mut PaintCtx,
     theme: ph2d_tokens::Theme,
@@ -375,7 +375,7 @@ pub(crate) fn paint_color_mixing(
             x,
             content_w,
             y,
-            ph2d_i18n::tr("panel.painter_layers.brush.mix_mode"),
+            ph2d_i18n::tr("panel.painter_layers.brush.paint_mixing"),
             ph2d_tool_painter::ids::PAINTER_BRUSH_MIX_SECTION,
         );
         y = match fold {
@@ -386,6 +386,8 @@ pub(crate) fn paint_color_mixing(
             }
             None => y_dobra,
         };
+    } else if crate::cards_mistura::pigmento_oferecido(brush) {
+        y = crate::paint_pigment::paint_mixing_section(ctx, theme, x, content_w, y, brush);
     }
     y
 }

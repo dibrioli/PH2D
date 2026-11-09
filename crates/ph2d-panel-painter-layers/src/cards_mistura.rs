@@ -1,8 +1,16 @@
-//! **Color mixing** (a mistura opaca do Digital, `BrushSpec::mistura_opaca`): o cartão próprio **Color Mixing**, logo
-//! depois do Basics (dono 10/11), e no painel de antes um bloco com a dobra logo depois dos básicos. Só onde a lei age — o Pincel do Digital sem o flag da aquarela, como o Fine Thread só no Smear do
-//! Digital. Com `Off` os números ficam à vista, esmaecidos ([`ph2d_tool_painter::Dependente::MisturaDesligada`]).
+//! O cartão **Paint Mixing** (dono 10/11: «junte e mude de nome»), logo depois do Basics: o ÚNICO lugar de como as
+//! cores se misturam, nos meios onde isso age.
+//!
+//! * **Pigment** (`pigment`/`pigment_mix`, id `PAINTER_WATERCOLOR_MIX`): `0` = como luz, `1` = como tinta. UM número
+//!   que as duas misturas leem — a tinta sobre a tela (`blend_over_pigmento`) e o pincel com o que apanhou no Wet
+//!   blend (`mistura_opaca_dab`). Até 10/11 o Wet blend tinha o seu próprio `Pigment` (`mistura_opaca.pigmento`) num
+//!   cartão Color Mixing, e o cartão Mixing o outro; medido (`diag_os_dois_pigmentos`): os dois somavam no Digital
+//!   com Wet blend e o do Wet blend era MORTO com `Off` e fora do Digital. Linha onde `pigment_offered`.
+//! * **Color mixing** (a mistura opaca do Digital, `BrushSpec::mistura_opaca`): o seletor, o Sample e os números, só
+//!   no Pincel do Digital sem a aquarela. Com `Off` ficam à vista, esmaecidos
+//!   ([`ph2d_tool_painter::Dependente::MisturaDesligada`]); o Pigment não esmaece (age com `Off`).
 
-use crate::cards_linhas::{Item, escolha_sem_rotulo, fila};
+use crate::cards_linhas::{Item, fila};
 use crate::paint_wetpaint::Numero;
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::interaction::WidgetStore;
@@ -26,21 +34,34 @@ const AMOSTRAS: [&str; 2] = [
     "panel.painter_layers.brush.mix_sample_all_visible",
 ];
 
+/// O rótulo do seletor Color mixing.
+const MODO: &str = "panel.painter_layers.brush.mix_mode";
+
 /// O rótulo e a dica do seletor Sample.
 const AMOSTRA: &str = "panel.painter_layers.brush.mix_sample";
 const DICA_DA_AMOSTRA: &str = "panel.painter_layers.brush.mix_sample_tip";
 
 /// Os rótulos dos números, pela ordem de `PAINTER_BRUSH_MIX_FIELDS`.
-const ROTULOS: [&str; 6] = [
+const ROTULOS: [&str; 5] = [
     "panel.painter_layers.brush.mix_amount",
     "panel.painter_layers.brush.mix_density",
     "panel.painter_layers.brush.mix_stretch",
     "panel.painter_layers.brush.mix_amount_pressure",
     "panel.painter_layers.brush.mix_density_pressure",
-    "panel.painter_layers.brush.mix_pigment_amount",
 ];
 
-/// A lei age neste pincel: o Pincel do Digital, sem a aquarela (`mistura_opaca_dab` só corre na rota opaca).
+/// O Pigment age neste pincel (o meio ∧ o gesto, `pigment_offered`; no Wet Paint só a lei da sim).
+pub(crate) fn pigmento_oferecido(b: &BrushSettings) -> bool {
+    let gesto = !b.wetpaint || b.le(ph2d_tool_painter::LinhaDaFerramenta::MisturaDoPigmento);
+    !b.is_inpaint && b.pigment_offered && gesto
+}
+
+/// O cartão está à vista: alguma das duas linhas age.
+pub(crate) fn presente(b: &BrushSettings) -> bool {
+    oferecida(b) || pigmento_oferecido(b)
+}
+
+/// A mistura opaca (Wet blend) age neste pincel: o Pincel do Digital, sem a aquarela (`mistura_opaca_dab` só corre na rota opaca).
 pub(crate) fn oferecida(b: &BrushSettings) -> bool {
     b.ferramenta() == FerramentaDoPincel::Pincel
         && PaintMedia::from_u8(b.media) == PaintMedia::Digital
@@ -53,7 +74,7 @@ pub(crate) fn e_campo(id: NodeId) -> bool {
     pids::PAINTER_BRUSH_MIX_FIELDS.contains(&id)
 }
 
-/// Os seis números, com os valores de `b` (todos `0..1`), na ordem do painel (`PAINTER_BRUSH_MIX_ORDEM`).
+/// Os cinco números, com os valores de `b` (todos `0..1`), na ordem do painel (`PAINTER_BRUSH_MIX_ORDEM`).
 pub(crate) fn numeros(b: &BrushSettings) -> Vec<Numero> {
     let m = b.mistura_opaca;
     let valores = [
@@ -62,7 +83,6 @@ pub(crate) fn numeros(b: &BrushSettings) -> Vec<Numero> {
         m.color_stretch,
         m.amount_pressure,
         m.density_pressure,
-        m.pigmento,
     ];
     pids::PAINTER_BRUSH_MIX_ORDEM
         .iter()
@@ -116,11 +136,19 @@ pub(crate) fn prepare(store: &mut WidgetStore, b: &BrushSettings) {
 
 /// O título do cartão (o id dele é `PAINTER_BRUSH_MIX_SECTION`, a dobra do painel de antes; nasce dobrado).
 pub(crate) fn titulo() -> &'static str {
-    tr("panel.painter_layers.brush.color_mixing")
+    tr("panel.painter_layers.brush.paint_mixing")
 }
 
-/// O corpo do cartão Color Mixing: o seletor vai sem rótulo, porque o título do cartão já é o nome dele.
+/// O corpo do cartão Paint Mixing: o Pigment primeiro (age sempre), depois o Color mixing e o que depende dele.
 pub(crate) fn corpo(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
+    let y = if pigmento_oferecido(b) {
+        crate::cards_nativos::linha_do_pigmento(c, y)
+    } else {
+        y
+    };
+    if !oferecida(b) {
+        return y;
+    }
     let atual = indice(b);
     let segs: Vec<Seg<'_>> = OPCOES
         .iter()
@@ -133,7 +161,7 @@ pub(crate) fn corpo(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
             on: i == atual,
         })
         .collect();
-    let y = escolha_sem_rotulo(c, &segs, y);
+    let y = c.full(Some(tr(MODO)), Widget::Choice(&segs), y);
     let atual = indice_da_amostra(b);
     let segs: Vec<Seg<'_>> = AMOSTRAS
         .iter()
@@ -170,7 +198,7 @@ pub(crate) fn paint_de_antes(
     let seletores = [
         (
             pids::PAINTER_BRUSH_MIX_MODE,
-            "panel.painter_layers.brush.mix_mode",
+            MODO,
             OPCOES.iter().zip(pids::PAINTER_BRUSH_MIX_MODES),
             indice(b),
             &[][..],
@@ -184,7 +212,11 @@ pub(crate) fn paint_de_antes(
         ),
     ];
     let row = ph2d_tokens::ROW_H_PX;
-    let mut y = y;
+    let mut y = if pigmento_oferecido(b) {
+        crate::paint_pigment::paint_pigment_row(ctx, theme, x, w, y, b)
+    } else {
+        y
+    };
     for (grupo, rotulo, opcoes, atual, lei) in seletores {
         let opcoes = opcoes
             .map(|(k, id)| SegmentedOption::new(id, tr(k)))
@@ -225,16 +257,13 @@ mod tests {
         let mut b = crate::paint_brush::FALLBACK_BRUSH;
         b.mistura_opaca.color_stretch = 0.25;
         b.mistura_opaca.density_pressure = 0.75;
-        b.mistura_opaca.pigmento = 0.125;
         b.mistura_opaca.paint_density = 0.5;
         let n = numeros(&b);
-        assert_eq!(n.len(), 6);
-        // A ordem do CSP: Amount · Density · Color stretch · Pigment · as pressões.
+        assert_eq!(n.len(), 5, "o Pigment não é número da mistura opaca: é o do cartão, um só");
         assert_eq!(n[1].valor, 0.5, "Density logo depois do Amount");
         assert_eq!(n[2].valor, 0.25);
-        assert_eq!(n[3].valor, 0.125, "Pigment depois do Color stretch");
-        assert_eq!(n[5].valor, 0.75);
-        assert_eq!(tr(ROTULOS[5]), "Pigment");
+        assert_eq!(n[4].valor, 0.75);
+        assert!(ROTULOS.iter().all(|k| tr(k) != "Pigment"));
         assert_eq!(tr(ROTULOS[2]), "Color stretch");
         assert!(
             n.iter()

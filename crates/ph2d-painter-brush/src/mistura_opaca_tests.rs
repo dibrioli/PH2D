@@ -192,7 +192,8 @@ fn wet_blend_pigmento_faz_verde() {
     let verde = |pig: f32, amount: f32| {
         let mut b = fundo();
         let mut s = pincel(amount, 1.0, 0.3);
-        s.mistura_opaca.pigmento = pig;
+        s.pigment = pig > 0.0;
+        s.pigment_mix = pig;
         traco(&mut b, &s, AMARELO);
         let p = px(&b, 170, 20).map(i32::from);
         p[1] - p[0].max(p[2])

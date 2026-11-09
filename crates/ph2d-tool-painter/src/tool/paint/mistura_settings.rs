@@ -31,7 +31,6 @@ impl PainterTool {
             2 => m.color_stretch = v,
             3 => m.amount_pressure = v,
             4 => m.density_pressure = v,
-            5 => m.pigmento = v,
             _ => {}
         }
     }
@@ -85,7 +84,7 @@ mod tests {
             assert_eq!(t.paint.brush.mistura_opaca.modo, modo);
             assert_eq!(t.brush_settings().mistura_opaca.modo, modo);
         }
-        let valores: [f32; 6] = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6];
+        let valores: [f32; 5] = [0.1, 0.2, 0.3, 0.4, 0.5];
         for (id, v) in ids::PAINTER_BRUSH_MIX_FIELDS.iter().zip(valores) {
             t.handle_panel_event(PanelEvent::SetValue(*id, f64::from(v)));
         }
@@ -96,7 +95,6 @@ mod tests {
             m.color_stretch,
             m.amount_pressure,
             m.density_pressure,
-            m.pigmento,
         ];
         assert_eq!(lidos, valores);
         t.handle_panel_event(PanelEvent::SetValue(ids::PAINTER_BRUSH_MIX_FIELDS[0], 7.0));

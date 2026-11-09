@@ -105,8 +105,6 @@ pub struct MisturaOpaca {
     pub paint_density: f32,
     /// **Color stretch**: o comprimento da memória do reservatório (`0` = esquece já; `1` = arrasta longe).
     pub color_stretch: f32,
-    /// **Pigment**: `0` = a mistura em RGB do CSP; `1` = como pigmento (azul + amarelo = verde).
-    pub pigmento: f32,
     /// Quanto a pressão escala o Amount (`0` = ignora; `1` = amount × pressão).
     pub amount_pressure: f32,
     /// Quanto a pressão escala a Density (`0` = ignora; `1` = density × pressão).
@@ -129,7 +127,6 @@ impl MisturaOpaca {
         paint_amount: 0.5,
         paint_density: 1.0,
         color_stretch: 0.5,
-        pigmento: 0.0,
         amount_pressure: 0.0,
         density_pressure: 0.0,
         amostra: AmostraDaMistura::EstaCamada,
@@ -589,7 +586,9 @@ pub fn mistura_opaca_carimbo(
     // 3. A tinta do carimbo: o papel transparente não suja (o pincel fica com a cor dele onde não apanhou nada).
     let amount = MisturaOpaca::pela_pressao(m.paint_amount, m.amount_pressure, c.pressao);
     let a_eff = peso_do_pincel(amount, res.carga);
-    let pig = m.pigmento.clamp(0.0, 1.0);
+    // O «Pigment» é UM controlo do pincel (`BrushSpec::effective_pigment_mix`, cartão Paint Mixing, dono 10/11): o mesmo
+    // número mistura o pincel com o que ele apanhou e a tinta com a tela.
+    let pig = spec.effective_pigment_mix();
     let tinta_de = |res_cor: [f32; 3], a_eff: f32, pincel: [f32; 3]| -> [f32; 3] {
         let rgb: [f32; 3] = std::array::from_fn(|k| res_cor[k] + (pincel[k] - res_cor[k]) * a_eff);
         if pig > 0.0 {

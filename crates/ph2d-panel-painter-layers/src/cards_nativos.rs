@@ -15,9 +15,7 @@ type Corpo = fn(&mut CardCtx<'_>, f32) -> f32;
 
 /// O corpo da secção `id`, se ela já foi convertida.
 pub(crate) fn corpo(id: NodeId) -> Option<Corpo> {
-    let f: Corpo = if id == pids::PAINTER_CARD_MIXING {
-        mixing
-    } else if id == pids::PAINTER_BRUSH_SYMMETRY_SECTION {
+    let f: Corpo = if id == pids::PAINTER_BRUSH_SYMMETRY_SECTION {
         simetria
     } else if id == pids::PAINTER_BRUSH_TILING_SECTION {
         tiling
@@ -34,11 +32,7 @@ pub(crate) fn presente(
 ) -> Option<(String, Option<NodeId>)> {
     use ph2d_tool_painter::LinhaDaFerramenta as L;
     let fora = !b.is_inpaint;
-    if id == pids::PAINTER_CARD_MIXING {
-        let gesto = !b.wetpaint || b.le(L::MisturaDoPigmento);
-        (fora && b.pigment_offered && gesto)
-            .then(|| (tr("panel.painter_layers.brush.mixing").to_owned(), None))
-    } else if id == pids::PAINTER_BRUSH_SYMMETRY_SECTION {
+    if id == pids::PAINTER_BRUSH_SYMMETRY_SECTION {
         (fora && b.le(L::Simetria)).then(|| {
             (
                 tr("panel.painter_layers.symmetry.symmetry").to_owned(),
@@ -83,6 +77,10 @@ pub(crate) fn prepare(store: &mut WidgetStore) {
         number_field::FINE_STEP,
         2,
     );
+    store.set_tooltip(
+        pids::PAINTER_WATERCOLOR_MIX,
+        tr("panel.painter_layers.brush.pigment_tip"),
+    );
     let segmentos = pids::PAINTER_BRUSH_SYMMETRY_SEGMENTS_CHIP;
     store.mark_card_field(
         segmentos,
@@ -105,7 +103,8 @@ fn campo(id: NodeId, rotulo: &str) -> Cell<'_> {
     .label(rotulo)
 }
 
-fn mixing(c: &mut CardCtx<'_>, y: f32) -> f32 {
+/// A linha Pigment do cartão Paint Mixing (`cards_mistura`).
+pub(crate) fn linha_do_pigmento(c: &mut CardCtx<'_>, y: f32) -> f32 {
     c.row(
         &[campo(
             pids::PAINTER_WATERCOLOR_MIX,

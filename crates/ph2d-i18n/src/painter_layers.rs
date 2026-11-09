@@ -171,7 +171,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.brush.smear_fine_thread" => "Fine Thread",
         "panel.painter_layers.brush.blend_on_empty" => "On empty",
         "panel.painter_layers.brush.mix_mode" => "Color mixing",
-        "panel.painter_layers.brush.color_mixing" => "Color Mixing",
+        "panel.painter_layers.brush.paint_mixing" => "Paint Mixing",
+        "panel.painter_layers.brush.pigment_tip" => {
+            "How colors mix. 0: like light (blue and yellow make gray). 1: like real paint (blue and yellow make green)."
+        }
         "panel.painter_layers.brush.mix_off" => "Off",
         "panel.painter_layers.brush.mix_wet_blend" => "Wet blend",
         "panel.painter_layers.brush.mix_sample" => "Sample",
@@ -181,7 +184,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Pick up color from this layer or all visible layers"
         }
         "panel.painter_layers.brush.mix_amount" => "Amount",
-        "panel.painter_layers.brush.mix_pigment_amount" => "Pigment",
         "panel.painter_layers.brush.mix_density" => "Density",
         "panel.painter_layers.brush.mix_stretch" => "Color stretch",
         "panel.painter_layers.brush.mix_amount_pressure" => "Amount by pressure",
@@ -193,7 +195,6 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         // O pincel de PARTIDA de cada meio (Digital Basic / Watercolor Basic): desde a L1 o «Preset» é o
         // navegador dos ficheiros, nos quatro meios, e esta fileira fica por baixo dele com o seu nome.
         "panel.painter_layers.brush.paint_mode" => "Paint Mode",
-        "panel.painter_layers.brush.mixing" => "Mixing",
         "panel.painter_layers.brush.basics" => "Basics",
         "panel.painter_layers.brush.reset_section" => "Reset this section to its defaults",
         "panel.painter_layers.brush.layers" => "Layers",

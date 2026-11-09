@@ -114,8 +114,9 @@ pub use joint::{
 pub use joint_group::{jointed_by, jointed_group, jointed_rig};
 pub use joint_tool::{DragReach, JointGesture, JointTool};
 pub use parts::{
-    auto_mass_with_parts, corpo_da_forma, count_parts, dono_do_campo, governing_kind, is_part,
-    is_part_of, main_shape, owner_body, pendura_forma, shapes_in_order, tem_corpo,
+    auto_mass_with_parts, corpo_da_forma, count_parts, dono_do_campo, forma_desligada,
+    governing_kind, is_part, is_part_of, main_shape, owner_body, pendura_forma, shapes_in_order,
+    tem_corpo, tem_forma,
 };
 /// A geometria do LIMITADOR (W-RopeStop) — a marca, e a inversa dela.
 ///

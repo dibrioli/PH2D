@@ -119,7 +119,7 @@ impl PhysicsBridge {
         for (e, col, _local) in q.iter(world) {
             // A forma PRINCIPAL filha já viaja no `BodyDesc` do corpo: pendurá-la de novo seria um
             // collider dobrado.
-            if self.main_body_of(e).is_some() {
+            if self.main_body_of(e).is_some() || crate::forma_desligada(world, e) {
                 continue;
             }
             let Some((owner, handle)) = self.owner_body(sim, e) else {

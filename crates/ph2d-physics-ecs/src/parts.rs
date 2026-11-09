@@ -216,21 +216,30 @@ pub fn shapes_in_order(world: &World, body: Entity) -> Vec<(u64, String, u8)> {
     out
 }
 
-/// **A forma PRINCIPAL de `body`** (opção B, 08/11): a 1.ª de [`shapes_in_order`] — o `Collider` do
-/// próprio corpo se ele o carrega, senão a primeira forma descendente em ordem de árvore (pára num
-/// corpo filho, atravessa grupos). É ela que viaja no `BodyDesc`; as outras são peças.
+/// **A forma está DESLIGADA** (GEF02 B8): uma forma filha (`Collider` sem `RigidBody`) com o olho
+/// da Hierarquia fechado — não colide e o contorno não se desenha. O olho de um corpo continua a ser
+/// só o da imagem.
 #[must_use]
-pub fn main_shape(world: &World, body: Entity) -> Option<Entity> {
-    fn desce(world: &World, pai: Entity) -> Option<Entity> {
+pub fn forma_desligada(world: &World, e: Entity) -> bool {
+    world.get::<RigidBody>(e).is_none()
+        && world.get::<Collider>(e).is_some()
+        && world
+            .get::<ph2d_ecs::Visibility>(e)
+            .is_some_and(|v| v.hidden)
+}
+
+/// A 1.ª forma de `body` em ordem de árvore; `ligadas` salta as [`forma_desligada`].
+fn primeira_forma(world: &World, body: Entity, ligadas: bool) -> Option<Entity> {
+    fn desce(world: &World, pai: Entity, ligadas: bool) -> Option<Entity> {
         // Sem alocar (caminho quente: cada reconcile), na mesma ordem de `shapes_in_order`.
         for f in ph2d_ecs::ordered_children_iter(world, pai) {
             if world.get::<RigidBody>(f).is_some() {
                 continue;
             }
-            if world.get::<Collider>(f).is_some() {
+            if world.get::<Collider>(f).is_some() && !(ligadas && forma_desligada(world, f)) {
                 return Some(f);
             }
-            if let Some(m) = desce(world, f) {
+            if let Some(m) = desce(world, f, ligadas) {
                 return Some(m);
             }
         }
@@ -239,7 +248,22 @@ pub fn main_shape(world: &World, body: Entity) -> Option<Entity> {
     if world.get::<Collider>(body).is_some() {
         return Some(body);
     }
-    desce(world, body)
+    desce(world, body, ligadas)
+}
+
+/// **A forma PRINCIPAL de `body`** (opção B, 08/11): o `Collider` do próprio corpo se ele o carrega,
+/// senão a primeira forma descendente LIGADA em ordem de árvore (pára num corpo filho, atravessa
+/// grupos). É ela que viaja no `BodyDesc`; as outras ligadas são peças. Desligar a principal passa o
+/// papel à seguinte; sem nenhuma ligada, `None` (o corpo sai do solver).
+#[must_use]
+pub fn main_shape(world: &World, body: Entity) -> Option<Entity> {
+    primeira_forma(world, body, true)
+}
+
+/// `body` tem alguma forma, ligada ou não — a pergunta de quem CRIA uma («já tem forma?»).
+#[must_use]
+pub fn tem_forma(world: &World, body: Entity) -> bool {
+    primeira_forma(world, body, false).is_some()
 }
 
 /// **Quem guarda o campo FISICA `campo` de `bits`** (opção B): o de forma

@@ -136,7 +136,7 @@ pub fn seed_attached_body(sim: &mut SimWorld, entity_bits: u64) {
 /// corpo ou já tem forma — a porta do seed e do «Add Shape».
 pub(crate) fn forma_que_falta(world: &mut ph2d_ecs::World, entity: Entity) -> Option<Entity> {
     if world.get::<ph2d_physics_ecs::RigidBody>(entity).is_none()
-        || ph2d_physics_ecs::main_shape(world, entity).is_some()
+        || ph2d_physics_ecs::tem_forma(world, entity)
     {
         return None;
     }

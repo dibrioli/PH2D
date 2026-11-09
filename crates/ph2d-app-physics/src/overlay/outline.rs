@@ -101,6 +101,9 @@ pub fn outlines(
     let mut chain = Vec::new();
     let mut out = Vec::new();
     for (e, col, one_way) in q.iter(world) {
+        if ph2d_physics_ecs::forma_desligada(world, e) {
+            continue;
+        }
         // De QUEM é esta forma? Dela mesma, se ela for um corpo; senão do corpo
         // ancestral mais próximo (W-Compound — o mesmo walk do `rig_edges`, e um
         // GRUPO no meio fica transparente pelo mesmo motivo).

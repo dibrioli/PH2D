@@ -31,8 +31,9 @@ fn a_cena_migrada_simula_igual_e_a_segunda_corrida_nao_move_nada() {
         );
         assert_eq!(w.get::<Transform>(filha), Some(&Transform::IDENTITY));
         assert!(
-            w.get::<ph2d_ecs::Visibility>(filha)
-                .is_some_and(|v| v.hidden)
+            !w.get::<ph2d_ecs::Visibility>(filha)
+                .is_some_and(|v| v.hidden),
+            "a forma nasce com o olho aberto: ligada (B8)"
         );
         assert!(w.get::<Collider>(corpo).is_none());
         // Os pares vêm por ordem de `StableId` do corpo e as filhas recebem ids na mesma ordem.

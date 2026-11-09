@@ -118,13 +118,13 @@ fn marker_half(pixels_per_meter: f32) -> f32 {
 pub fn empty_objects(sim: &SimWorld) -> Vec<Entity> {
     // ⚠️ Pelos ARQUÉTIPOS, e não por uma `query` — esta é a única travessia do mundo inteiro que
     // corre com `&World` (uma `query` pede `&mut`, e o passe de pintura só tem a partilhada).
-    // Precedente: a contagem de componentes em `snapshots`.
     let w = sim.world();
     let mut out: Vec<(u64, Entity)> = Vec::new();
     for archetype in w.archetypes().iter() {
         for ae in archetype.entities() {
             let e = ae.id();
-            if w.get::<Visibility>(e).is_some_and(|v| v.hidden) || !is_empty_object(sim, e) {
+            let f = w.get::<ph2d_physics_ecs::Collider>(e).is_some(); // a forma: tem contorno, sem anel
+            if f || w.get::<Visibility>(e).is_some_and(|v| v.hidden) || !is_empty_object(sim, e) {
                 continue;
             }
             out.push((w.get::<ph2d_ecs::StableId>(e).map_or(0, |s| s.0), e));

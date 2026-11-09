@@ -136,6 +136,7 @@ mod nav_mundo;
 mod nav_nascer;
 mod nav_ordens;
 mod no_std_transcendental_on_the_hash_path;
+mod olho_da_forma;
 mod one_way;
 mod persistence;
 mod platform_brink;

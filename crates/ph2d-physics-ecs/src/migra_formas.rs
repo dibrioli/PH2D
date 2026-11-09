@@ -3,7 +3,7 @@
 //! `docs/GameEngineFuncional/componentes/f2_contorno_e_formas_plano.md` («REVISÃO 08/11»).
 //!
 //! Lei: por `StableId`, cada corpo (`RigidBody` + `Collider` na mesma entidade) ganha uma filha
-//! invisível com `Transform` identidade, PRIMEIRA entre as irmãs (logo a forma principal de
+//! com `Transform` identidade (sem imagem; o olho dela liga/desliga a forma), PRIMEIRA entre as irmãs (logo a forma principal de
 //! [`crate::main_shape`]), que leva o `Collider` e todo o lado-forma ([`LADO_FORMA`]). Nenhum nome
 //! muda. Idempotente: um corpo sem `Collider` próprio não é tocado.
 //!
@@ -14,7 +14,7 @@
 
 use bevy_ecs::prelude::{Entity, World};
 use ph2d_ecs::{
-    ChildOf, InstanceOf, Name, ObjectInstance, StableId, Transform, Visibility, ordered_children,
+    ChildOf, InstanceOf, Name, ObjectInstance, StableId, Transform, ordered_children,
     set_sibling_order,
 };
 
@@ -59,7 +59,7 @@ lado_forma!(
     AreaFalloff,
 );
 
-/// A filha «Collision Shape» vazia de `corpo`: invisível, `Transform` identidade, PRIMEIRA entre as
+/// A filha «Collision Shape» vazia de `corpo`: olho aberto (ligada), `Transform` identidade, PRIMEIRA entre as
 /// irmãs (logo a forma principal de [`crate::main_shape`]). A fonte única da migração e das portas.
 fn filha_vazia(world: &mut World, corpo: Entity) -> Entity {
     let irmas = ordered_children(world, corpo);
@@ -67,7 +67,6 @@ fn filha_vazia(world: &mut World, corpo: Entity) -> Entity {
         .spawn((
             Name::new(NOME_DA_FORMA),
             Transform::IDENTITY,
-            Visibility::hidden(),
             ChildOf(corpo),
         ))
         .id();
@@ -125,7 +124,7 @@ pub fn torna_corpo(
     let corpo_de = crate::RigidBody { kind };
     if world.get::<crate::Collider>(e).is_none() {
         world.entity_mut(e).insert(corpo_de);
-        if crate::main_shape(world, e).is_none() {
+        if !crate::tem_forma(world, e) {
             let [half_x, half_y] = caixa;
             nasce_com_forma(world, e, crate::ColliderShape::Cuboid { half_x, half_y });
         }

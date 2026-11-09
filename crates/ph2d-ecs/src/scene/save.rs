@@ -309,7 +309,7 @@ pub fn world_to_snapshot(
             parent: None,
         };
         for entry in registry.iter() {
-            match (entry.serialize)(world, *entity) {
+            match (entry.grava)(world, *entity) {
                 Ok(Some(bytes)) => {
                     row.components.push(ComponentBlob {
                         type_id: entry.type_id,

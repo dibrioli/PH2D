@@ -96,6 +96,10 @@ pub struct ComponentTypeEntry {
     pub type_id: ComponentTypeId,
     pub insert_from_bytes: InsertFromBytesFn,
     pub serialize: SerializeFn,
+    /// O `serialize` do que se GRAVA (ficheiro, diff do undo, foto do Play): o mesmo, salvo onde o
+    /// tipo é [`ComponentRegistry::derivado_quando`]. Os outros leitores (Inspector, cópias,
+    /// instâncias, Simular) continuam no `serialize` e veem o derivado.
+    pub grava: SerializeFn,
     pub remove: RemoveFn,
     /// `None` quando o tipo **não implementa `Default`** — hoje só a `Sprite`, que
     /// precisa de uma `source` e por isso não é uma escolha do Inspector: ela chega
@@ -139,40 +143,10 @@ pub struct ComponentTypeEntry {
 /// determinism friendly). Lookups are O(log N) but `N` is the
 /// number of registered types — single digits in practice.
 pub struct ComponentRegistry {
-    by_id: BTreeMap<ComponentTypeId, ComponentTypeEntry>,
+    pub(super) by_id: BTreeMap<ComponentTypeId, ComponentTypeEntry>,
     by_name: BTreeMap<&'static str, ComponentTypeId>,
     /// O tipo Rust → id: só o [`Self::derivado_quando`] o lê.
-    by_rust: BTreeMap<std::any::TypeId, ComponentTypeId>,
-}
-
-/// O `serialize` de sempre: postcard do `T`, `None` sem ele.
-fn serialize_of<T: Component + Serialize>(
-    world: &World,
-    entity: Entity,
-) -> Result<Option<Vec<u8>>, RegistryError> {
-    let e = world
-        .get_entity(entity)
-        .map_err(|_| RegistryError::EntityMissing(entity))?;
-    match e.get::<T>() {
-        Some(v) => Ok(Some(
-            postcard::to_allocvec(v).map_err(RegistryError::Encode)?,
-        )),
-        None => Ok(None),
-    }
-}
-
-/// O `serialize` de um `C` derivado na entidade com `M` ([`ComponentRegistry::derivado_quando`]).
-fn serialize_derivado<C: Component + Serialize, M: Component>(
-    world: &World,
-    entity: Entity,
-) -> Result<Option<Vec<u8>>, RegistryError> {
-    let e = world
-        .get_entity(entity)
-        .map_err(|_| RegistryError::EntityMissing(entity))?;
-    if e.contains::<M>() {
-        return Ok(None);
-    }
-    serialize_of::<C>(world, entity)
+    pub(super) by_rust: BTreeMap<std::any::TypeId, ComponentTypeId>,
 }
 
 impl ComponentRegistry {
@@ -264,7 +238,8 @@ impl ComponentRegistry {
                 e.insert(v);
                 Ok(())
             },
-            serialize: serialize_of::<T>,
+            serialize: super::registry_derivado::serialize_of::<T>,
+            grava: super::registry_derivado::serialize_of::<T>,
             remove: |world, entity| {
                 if let Ok(mut e) = world.get_entity_mut(entity) {
                     e.remove::<T>();
@@ -279,30 +254,6 @@ impl ComponentRegistry {
         self.by_id.insert(id, entry);
         self.by_name.insert(canonical_name, id);
         self.by_rust.insert(std::any::TypeId::of::<T>(), id);
-    }
-
-    /// **`C` é derivado na entidade que tem `M`**: ali o `serialize` dele devolve `Ok(None)`, logo
-    /// `C` não entra no ficheiro, no diff do undo nem na foto do Play (os três leem o `serialize`).
-    /// Noutra entidade, `C` grava-se como sempre. Quem reescreve o derivado é a família de `M`.
-    /// Porquê: [P14 §4 A](../../../../docs/PixelArt/P14_plano.md).
-    ///
-    /// Panics se `C` não estiver registado — chame depois do `register` dele.
-    pub fn derivado_quando<C, M>(&mut self)
-    where
-        C: Component + Serialize + 'static,
-        M: Component,
-    {
-        let entry = self
-            .by_rust
-            .get(&std::any::TypeId::of::<C>())
-            .and_then(|id| self.by_id.get_mut(id))
-            .unwrap_or_else(|| {
-                panic!(
-                    "ComponentRegistry::derivado_quando: '{}' is not registered — register it first",
-                    std::any::type_name::<C>()
-                )
-            });
-        entry.serialize = serialize_derivado::<C, M>;
     }
 
     pub fn get_by_id(&self, id: ComponentTypeId) -> Option<&ComponentTypeEntry> {

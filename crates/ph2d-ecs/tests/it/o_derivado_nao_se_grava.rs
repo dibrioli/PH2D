@@ -85,6 +85,26 @@ fn o_derivado_nao_se_grava_so_na_entidade_com_a_marca() {
     assert_eq!(rep.reserialized, 1, "o controlo: o comum tem de marcar");
 }
 
+/// Inspector, cópias, instâncias e Simular leem o `serialize`: eles têm de VER o derivado (sem isto o
+/// Pixel Sprite aparecia sem clips, a paleta oferecia-os de novo e a cópia nascia sem eles).
+#[test]
+fn os_outros_leitores_veem_o_derivado() {
+    let r = reg();
+    let mut sim = SimWorld::new();
+    let pixel = sim
+        .world_mut()
+        .spawn((Transform::IDENTITY, Name::new("Pixel"), Clips(9), Marca))
+        .id();
+    let entry = r.get_by_name("p14::test::Clips").expect("registado");
+    let visto = (entry.serialize)(sim.world(), pixel).expect("lê");
+    assert_eq!(
+        visto.map(|b| postcard::from_bytes::<Clips>(&b).expect("decode").0),
+        Some(9),
+        "o serialize escondeu o derivado dos leitores que não gravam"
+    );
+    assert_eq!((entry.grava)(sim.world(), pixel).expect("lê"), None);
+}
+
 #[test]
 #[should_panic(expected = "is not registered")]
 fn derivado_de_um_tipo_nao_registado_e_panico_claro() {

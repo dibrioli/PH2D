@@ -17,6 +17,8 @@ pub mod registry;
 /// ⭐ O registo da família da CÂMERA — irmão por CAP de LOC; ver o cabeçalho.
 mod registry_audio;
 mod registry_camera;
+/// O componente derivado (`derivado_quando`) — irmão por CAP de LOC.
+mod registry_derivado;
 /// O valor de um componente por nome de campo — irmão por CAP de LOC.
 mod registry_value;
 pub mod save;

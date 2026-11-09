@@ -454,7 +454,7 @@ fn build_row(
         parent: None,
     };
     for entry in registry.iter() {
-        match (entry.serialize)(world, entity) {
+        match (entry.grava)(world, entity) {
             Ok(Some(bytes)) => row.components.push(super::save::blob(entry.type_id, bytes)),
             Ok(None) => {}
             Err(e) => return Err(e.into()),

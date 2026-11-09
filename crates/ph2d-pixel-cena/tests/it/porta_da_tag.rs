@@ -103,11 +103,11 @@ fn os_clips_do_pixel_sprite_nao_se_gravam() {
         .get_by_name("ph2d::ecs::SpriteAnimations")
         .expect("registado");
     assert!(
-        matches!((e.serialize)(&w, pixel), Ok(None)),
+        matches!((e.grava)(&w, pixel), Ok(None)),
         "no Pixel Sprite é derivado"
     );
     assert!(
-        matches!((e.serialize)(&w, comum), Ok(Some(_))),
+        matches!((e.grava)(&w, comum), Ok(Some(_))),
         "num sprite comum grava-se"
     );
 }

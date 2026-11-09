@@ -421,10 +421,7 @@ color_tokens! {
     /// `attr-write` — gold badge for attribute-write on a node.
     AttrWrite => "attr-write",
 
-    // ── Timeline panel (W2.E9) ─────────────────────────────────────
-    // Dedicated, retintable slots for the animation timeline. Seeded
-    // byte-identical to the generic tokens they used to borrow, so a
-    // theme can recolor the timeline without touching global accent.
+    // ── Timeline panel (W2.E9): retintable aliases of general slots (`color_alias`) ──
     /// `timeline-ruler-bg` — ruler strip background.
     TimelineRulerBg => "timeline-ruler-bg",
     /// `timeline-ruler-tick` — ruler tick marks (minor + major).
@@ -457,6 +454,10 @@ color_tokens! {
     TimelineSummaryRing => "timeline-summary-ring",
     /// `timeline-missing` — track label whose bound object is missing.
     TimelineMissing => "timeline-missing",
+    #[doc = "`timeline-interp-curve` — dope-sheet bar after an eased/bézier key."] TimelineInterpCurve => "timeline-interp-curve",
+    #[doc = "`timeline-interp-linear` — dope-sheet bar after a linear key."] TimelineInterpLinear => "timeline-interp-linear",
+    #[doc = "`timeline-interp-hold` — dashed dope-sheet bar after a hold key."] TimelineInterpHold => "timeline-interp-hold",
+    #[doc = "`timeline-record` — the sheet's border while Auto Key records."] TimelineRecord => "timeline-record",
 
     // ── Esqueleto ──────────────────────────────────────────────────
     /// ⭐⭐⭐ `bone-handle` — **as alças de curvatura do osso que dobra**, e a razão de ele existir

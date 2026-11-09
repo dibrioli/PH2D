@@ -60,7 +60,14 @@ fn cena() -> TimelineViewSnapshot {
     }
 }
 
+/// O agrupamento é o mesmo nos dois caminhos; estes testes leem-no na disposição plana (sem o
+/// cabeçalho do objecto dos cartões, que tem os testes dele no fim do ficheiro).
+fn classico() {
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(false));
+}
+
 fn linhas(snap: &TimelineViewSnapshot, abertos: &[GrupoChave]) -> Vec<Linha> {
+    classico();
     layout(snap, Tab::Keys, &[], abertos, GH, 0.0, 0.0)
         .bandas
         .iter()
@@ -197,6 +204,7 @@ fn o_triangulo_do_grupo_abre_e_fecha_os_membros() {
 /// O retângulo de seleção sobre a linha do grupo leva as chaves dos membros dentro dele.
 #[test]
 fn o_retangulo_sobre_a_linha_do_grupo_leva_os_membros() {
+    classico();
     let s = cena();
     let st = TimelinePanelState::default();
     let view = TimeView {
@@ -242,5 +250,80 @@ fn a_tinta_de_uma_camada_da_pilha_leva_o_numero_dela() {
     assert_eq!(
         (base.as_str(), camada.as_str()),
         ("Star · Fill", "Star · Fill 1")
+    );
+}
+
+/// ⭐ Doc 15 onda 2 (maquete B1): nos cartões cada objecto abre com UMA linha de cabeçalho, e as
+/// faixas dele vêm por baixo; um segundo objecto abre o seu, e as faixas de um objecto juntam-se mesmo chegando intercaladas.
+#[test]
+fn nos_cartoes_o_objeto_e_o_cabecalho_das_suas_faixas() {
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(true));
+    let mut s = cena();
+    s.tracks
+        .insert(1, track(7, 11, PropKind::Rotation, &[0.0, 1.0]));
+    let l: Vec<_> = layout(&s, Tab::Keys, &[], &[], GH, 0.0, 0.0)
+        .bandas
+        .iter()
+        .map(|b| b.linha)
+        .collect();
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(None);
+    assert_eq!(
+        l,
+        vec![
+            Linha::Objeto(9),
+            Linha::Faixa { i: 0, grupo: None },
+            Linha::Grupo(0),
+            Linha::Faixa { i: 6, grupo: None },
+            Linha::Objeto(11),
+            Linha::Faixa { i: 1, grupo: None },
+        ]
+    );
+}
+
+/// ⭐ A faixa sob o cabeçalho diz só a propriedade, inteira — o «Herói · Translat…» cortado era o nome
+/// do objecto repetido a comer a coluna (smoke do dono, onda 1).
+#[test]
+fn a_faixa_diz_so_a_propriedade_e_o_cabecalho_o_objeto() {
+    let mut s = cena();
+    s.object_names.insert(9, "Hero".to_owned());
+    let u =
+        crate::tracks_value::Unidades::of(&ph2d_editor_core::project::ProjectSettings::default());
+    let p = crate::tracks::propriedade_snap(&s, PropKind::TranslationX, u);
+    assert_eq!(p, ph2d_i18n::tr("panel.timeline.prop.translate_x"));
+    assert!(!p.contains("Hero"));
+    assert_eq!(crate::tracks::objeto_snap(&s, 9), "Hero");
+}
+
+/// ⭐ A barra entre duas chaves veste a interpolação da chave de SAÍDA: curva, reta ou segura.
+#[test]
+fn a_barra_veste_a_interpolacao_da_chave_de_saida() {
+    assert_eq!(cor_da_barra(Interp::Hold), ColorToken::TimelineInterpHold);
+    assert_eq!(
+        cor_da_barra(Interp::Linear),
+        ColorToken::TimelineInterpLinear
+    );
+    assert_eq!(
+        cor_da_barra(Interp::Bezier {
+            x1: 0.4,
+            y1: 0.0,
+            x2: 0.6,
+            y2: 1.0
+        }),
+        ColorToken::TimelineInterpCurve
+    );
+    for t in [
+        ColorToken::TimelineInterpHold,
+        ColorToken::TimelineInterpLinear,
+        ColorToken::TimelineInterpCurve,
+    ] {
+        assert!(
+            t.alias_parent().is_some(),
+            "{t:?} é apelido de um slot geral"
+        );
+    }
+    assert_ne!(
+        ColorToken::TimelineInterpCurve.alias_parent(),
+        ColorToken::TimelineInterpLinear.alias_parent(),
+        "curva e reta leem-se diferentes"
     );
 }

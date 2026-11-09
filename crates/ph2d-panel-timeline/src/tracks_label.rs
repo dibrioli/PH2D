@@ -55,21 +55,55 @@ pub(crate) fn prop_label(p: PropKind) -> &'static str {
 /// Um canal de família cujo grupo se parte por entrada (a tinta e o traço da camada `i` da pilha)
 /// leva o número da entrada — «Fill 2» —, senão a camada e a base liam-se iguais.
 pub(crate) fn track_label(name: Option<&str>, entity: u64, prop: PropKind) -> String {
-    let rotulo = match prop {
+    compoe(dono(name, prop), entity, rotulo(prop))
+}
+
+/// O nome do dono do canal: o do objecto, ou «Scene» para um canal do mundo (F30 §B).
+fn dono(name: Option<&str>, prop: PropKind) -> Option<&str> {
+    let cena = matches!(prop, PropKind::Field(k) if k.da_cena());
+    name.or(cena.then(|| ph2d_i18n::tr("canal.mundo.cena")))
+}
+
+/// Só a propriedade («Fill 2», «Rotation») — o que a faixa diz sob o cabeçalho do objecto.
+fn rotulo(prop: PropKind) -> String {
+    match prop {
         PropKind::Field(k) => match k.grupo() {
             // Com `item` o sub é o id, nunca um número de linha (o nome vem de `channel_names`).
             Some((_, _, i)) if i > 0 && k.item.is_none() => format!("{} {i}", prop_label(prop)),
             _ => prop_label(prop).to_owned(),
         },
         _ => prop_label(prop).to_owned(),
-    };
-    // A Cena (F30 §B) não tem `Name`: o dono do canal do mundo diz-se «Scene».
-    let cena = matches!(prop, PropKind::Field(k) if k.da_cena());
-    compoe(
-        name.or(cena.then(|| ph2d_i18n::tr("canal.mundo.cena"))),
-        entity,
-        rotulo,
-    )
+    }
+}
+
+/// ⭐ **Nos cartões, a faixa sob o cabeçalho do objecto** (doc 15 onda 2): a propriedade com a unidade
+/// do projecto entre parênteses quando o canal tem grandeza («Radius (px)», «Angle (°)»); o objecto
+/// já está escrito em negrito na linha de cima ([`objeto_snap`]).
+pub(crate) fn propriedade_snap(
+    snap: &ph2d_timeline::TimelineViewSnapshot,
+    prop: PropKind,
+    u: crate::tracks_value::Unidades,
+) -> String {
+    let base = snap
+        .channel_name(prop)
+        .map_or_else(|| rotulo(prop), str::to_owned);
+    match crate::tracks_value::sufixo_da_unidade(prop, u) {
+        Some(su) => format!("{base} ({})", su.trim()),
+        None => base,
+    }
+}
+
+/// O cabeçalho do objecto nos cartões: o nome, ou o id curto quando ele não publicou nenhum.
+pub(crate) fn objeto_snap(snap: &ph2d_timeline::TimelineViewSnapshot, entity: u64) -> String {
+    let prop = snap
+        .tracks
+        .iter()
+        .find(|t| t.entity == entity)
+        .map(|t| t.prop);
+    match prop.and_then(|p| dono(snap.object_name(entity), p)) {
+        Some(n) => n.to_owned(),
+        None => format!("#{}", entity % 10_000),
+    }
 }
 
 /// [`track_label`] lido do instantâneo: o nome do objecto, e o da propriedade quando a row tem um

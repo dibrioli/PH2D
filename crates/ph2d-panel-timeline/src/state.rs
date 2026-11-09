@@ -98,6 +98,9 @@ pub struct TimelinePanelState {
     pub opcoes_abertas: bool,
     /// O menu do «⋯» do clipe ativo (barra em cartões, doc 15 onda 1).
     pub menu_do_clip: bool,
+    /// O clipe que a vista enquadrou da última vez (cartões, doc 15 onda 2): trocar de clipe faz o `F`
+    /// sozinho. `None` até o primeiro quadro, que só o anota.
+    pub enquadrado: Option<usize>,
     /// In-progress key-diamond drag (dope-sheet), while the pointer is down on a
     /// key: the pointer x at Begin and the latest x, so `paint` can draw the
     /// selected diamonds shifted by the live delta and `event`/`interact` can
@@ -289,6 +292,7 @@ impl Default for TimelinePanelState {
             add_track_open: false,
             opcoes_abertas: false,
             menu_do_clip: false,
+            enquadrado: None,
             key_drag: None,
             macro_drag: None,
             macro_largada: None,

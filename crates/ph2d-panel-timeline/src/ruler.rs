@@ -89,6 +89,14 @@ pub(crate) fn paint(
             Radius::Xs.px(),
             resolve(ColorToken::BgScrim, theme),
         );
+        // Nos cartões a zona morta é LISTRADA (doc 15 onda 2, maquete B1), não só escura.
+        if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+            ph2d_editor_core::panel::cards::banda::listras_em(
+                ctx.scene,
+                shade,
+                resolve(ColorToken::Border, theme),
+            );
+        }
     }
 
     // The loop's shaded band goes BEHIND the ticks + labels so it tints the strip

@@ -567,3 +567,21 @@ impl CardCtx<'_> {
         paint_card_chip(self.scene, self.text_system, self.ink, r, texto, aceso);
     }
 }
+
+/// O passo entre duas listras de [`listras_em`]: o campo do cartão (a maquete B1 usa ~1/3 da faixa).
+pub const LISTRA_PASSO: f32 = m::SEG_ICON_GAP * 2.0;
+
+/// ⭐ **Listras diagonais a 45° dentro de `r`** — a zona morta de uma banda (Timeline: depois do fim
+/// do clipe, doc 15 onda 2). Fio de [`SEPARADOR_W`], cortado pelo próprio `r`. Só pintura.
+pub fn listras_em(scene: &mut VectorScene, r: Rect, cor: ph2d_vector::Color) {
+    if r.w <= 0.0 || r.h <= 0.0 {
+        return;
+    }
+    scene.push_clip(&crate::paint::rect_to_vello(r));
+    let mut x = r.x - r.h;
+    while x < r.x + r.w {
+        crate::paint::stroke_polyline(scene, &[(x, r.y + r.h), (x + r.h, r.y)], SEPARADOR_W, cor);
+        x += LISTRA_PASSO;
+    }
+    scene.pop_layer();
+}

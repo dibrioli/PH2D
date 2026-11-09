@@ -17,7 +17,7 @@ mod label;
 mod lista;
 #[cfg(test)]
 pub(crate) use label::track_label;
-pub(crate) use label::{prop_label, track_label_snap};
+pub(crate) use label::{objeto_snap, prop_label, propriedade_snap, track_label_snap};
 #[cfg(test)]
 use lista::lista_y;
 pub(crate) use lista::paint_add_track_popover;
@@ -154,6 +154,8 @@ pub(crate) fn paint_rows(
             + geom::summary_h(snap, state.tab),
         |b| b.y + b.h,
     );
+    let arvore = ph2d_editor_core::panel::cards::ferramenta::cards_on();
+    let unidades = crate::tracks_value::Unidades::of(ctx.host.project());
     for (n, b) in lay.bandas.iter().enumerate() {
         let (y, h) = (b.y, b.h);
         // Cull the rows outside the band entirely: a long track list then neither
@@ -175,6 +177,10 @@ pub(crate) fn paint_rows(
                 let aberto = state.grupos_abertos.contains(&lay.grupos[gi].chave);
                 let linha = (&lay.grupos[gi], y, aberto);
                 crate::linhas::paint_grupo(ctx, theme, g, view, preview_dx, snap, linha);
+                continue;
+            }
+            Linha::Objeto(e) => {
+                crate::linhas::paint_objeto(ctx, theme, g, view, preview_dx, snap, (e, y));
                 continue;
             }
             Linha::Faixa { i, grupo } => (i, grupo.map(|gi| &lay.grupos[gi])),
@@ -221,6 +227,7 @@ pub(crate) fn paint_rows(
         ctx.host.hit_index_mut().register(row_id, row_hit);
         let text = match grupo {
             Some(gr) => crate::linhas::rotulo_membro(snap, gr, i),
+            None if arvore => label::propriedade_snap(snap, track.prop, unidades),
             None => track_label_snap(snap, track.entity, track.prop),
         };
         let color = if track.missing {
@@ -238,6 +245,9 @@ pub(crate) fn paint_rows(
             (&text, color),
             (x0 + TWIRL_W, region.x + label_w, y),
         );
+        if arvore {
+            crate::linhas::paint_barras(ctx, theme, track, view, preview_dx, y);
+        }
         paint_lane_keys(ctx, theme, track, view, preview_dx, y, lane);
         if h > ROW_H_PX {
             let band = Rect::new(region.x, y + ROW_H_PX, region.w, h - ROW_H_PX);

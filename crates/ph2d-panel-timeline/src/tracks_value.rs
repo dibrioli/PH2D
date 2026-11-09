@@ -120,6 +120,19 @@ pub(crate) fn com_unidade(prop: PropKind, v: f64, u: Unidades) -> Option<String>
     Some(format!("{num}{e}{sufixo}"))
 }
 
+/// O sufixo da unidade do projecto para um canal com grandeza (o mesmo de [`com_unidade`]).
+pub(crate) fn sufixo_da_unidade(prop: PropKind, u: Unidades) -> Option<&'static str> {
+    use ph2d_ecs::canal::{Unidade, unidade};
+    let PropKind::Field(k) = prop else {
+        return None;
+    };
+    match unidade(k) {
+        Unidade::Nenhuma => None,
+        Unidade::Comprimento => Some(u.comprimento.suffix()),
+        Unidade::Angulo => Some(u.angulo.suffix()),
+    }
+}
+
 /// O número com até duas casas que cabe em `largura` caracteres, sem zeros à direita.
 fn cabe(v: f32, largura: usize) -> Option<String> {
     (0..=2)

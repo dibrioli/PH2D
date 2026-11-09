@@ -25,8 +25,10 @@ fn row_bands(
     crate::linhas::layout(snap, tab, expanded, &[], graph_h, top, scroll)
         .bandas
         .into_iter()
-        .map(|b| match b.linha {
-            crate::linhas::Linha::Faixa { i, .. } => (i, b.y, b.h),
+        .filter_map(|b| match b.linha {
+            crate::linhas::Linha::Faixa { i, .. } => Some((i, b.y, b.h)),
+            // O cabeçalho do objecto (cartões, doc 15 onda 2) não é uma faixa.
+            crate::linhas::Linha::Objeto(_) => None,
             crate::linhas::Linha::Grupo(_) => unreachable!("no field tracks in these fixtures"),
         })
 }
@@ -45,6 +47,8 @@ fn lane() -> ph2d_timeline::LaneView {
 
 /// `n` collapsed tracks, with those in `expanded` opened.
 fn snap_with(n: usize) -> TimelineViewSnapshot {
+    // Geometria das faixas planas; o cabeçalho do objecto dos cartões tem testes em `linhas`.
+    ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(false));
     TimelineViewSnapshot {
         tracks: (0..n)
             .map(|i| ph2d_timeline::TrackView {

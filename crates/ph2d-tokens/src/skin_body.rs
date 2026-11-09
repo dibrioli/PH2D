@@ -260,6 +260,10 @@ impl ColorToken {
             | T::TimelineSummaryKey
             | T::TimelineSummaryRing
             | T::TimelineMissing
+            | T::TimelineInterpCurve
+            | T::TimelineInterpLinear
+            | T::TimelineInterpHold
+            | T::TimelineRecord
             | T::BoneHandle
             | T::ShapeHandle
             | T::Person0

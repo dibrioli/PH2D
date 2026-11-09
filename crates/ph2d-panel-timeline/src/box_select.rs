@@ -97,6 +97,8 @@ mod tests {
     /// Two rows at 100 px/s from `time_x = 0`: row 0 has keys at x = 10 and
     /// x = 200, row 1 a key at x = 15.
     fn snap_two_rows() -> TimelineViewSnapshot {
+        // Geometria das faixas planas; o cabeçalho do objecto dos cartões tem testes em `linhas`.
+        ph2d_editor_core::panel::cards::ferramenta::force_cards_on_this_thread(Some(false));
         use ph2d_timeline::{AnimTarget, Interp, KeyId, KeyView, TrackView};
         let key = |id: u64, t: f64| KeyView {
             id: KeyId::new(id),

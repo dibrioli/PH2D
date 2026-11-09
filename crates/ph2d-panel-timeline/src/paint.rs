@@ -233,7 +233,9 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
 
     // `F` fits the time axis to the keys; it needs the time area's pixel width,
     // known only now. Runs before the view is read, so the fit lands this frame.
-    if state::take_fit_request() {
+    let troca = cartoes && state.enquadrado.is_some_and(|c| c != snapshot.active_clip);
+    state.enquadrado = Some(snapshot.active_clip);
+    if state::take_fit_request() || troca {
         crate::view::apply_fit(state, g.time_area.w, &snapshot);
     }
     // A transport jump (go-to-start/end, frame step, typed time) pans the view
@@ -320,6 +322,16 @@ pub(crate) fn paint(state: &mut TimelinePanelState, ctx: &mut PaintCtx) {
         clock,
     );
 
+    // Auto Key a gravar acende a borda da folha (doc 15 onda 2): o aviso mora onde a chave nasce.
+    if cartoes && snapshot.auto_key {
+        ph2d_editor_core::paint::stroke_rounded_rect(
+            ctx.scene,
+            g.region,
+            ph2d_tokens::Radius::Xs.px(),
+            ph2d_editor_core::panel::cards::banda::metrics::FIELD_BORDER * 2.0,
+            resolve(ColorToken::TimelineRecord, theme),
+        );
+    }
     // The label/time splitter sits over the lanes AND the ruler, so it is
     // registered after both — a grab on the seam must not scrub the ruler.
     paint_label_splitter(

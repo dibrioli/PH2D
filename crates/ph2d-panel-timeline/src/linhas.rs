@@ -95,8 +95,14 @@ impl Grupo {
 /// de um grupo (índice em [`Layout::grupos`]).
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub(crate) enum Linha {
-    Faixa { i: usize, grupo: Option<usize> },
+    Faixa {
+        i: usize,
+        grupo: Option<usize>,
+    },
     Grupo(usize),
+    /// Nos cartões, o cabeçalho do objecto (molde do Rive, doc 15 onda 2): o nome em negrito e as
+    /// colunas das chaves dele; as faixas abaixo dizem só a propriedade.
+    Objeto(u64),
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -161,8 +167,29 @@ pub(crate) fn layout(
         });
         *y += h;
     };
-    for (i, d) in de.iter().copied().enumerate() {
-        match d.filter(|&g| out.grupos[g].membros.len() > 1) {
+    let arvore = ph2d_editor_core::panel::cards::ferramenta::cards_on();
+    let mut dono: Option<u64> = None;
+    // Nos cartões as faixas de um objecto ficam juntas sob UM cabeçalho, pela ordem em que ele aparece.
+    let mut ordem: Vec<usize> = (0..de.len()).collect();
+    if arvore {
+        let primeiro = |e: u64| snap.tracks.iter().position(|t| t.entity == e);
+        ordem.sort_by_key(|&i| (primeiro(snap.tracks[i].entity), i));
+    }
+    for i in ordem {
+        let d = de[i];
+        let multi = d.filter(|&g| out.grupos[g].membros.len() > 1);
+        let entra = multi.is_none_or(|g| !posto[g]);
+        let e = snap.tracks[i].entity;
+        if arvore && entra && dono != Some(e) {
+            dono = Some(e);
+            out.bandas.push(Banda {
+                linha: Linha::Objeto(e),
+                y,
+                h: ROW_H_PX,
+            });
+            y += ROW_H_PX;
+        }
+        match multi {
             None => faixa(&mut out, &mut y, i, None),
             Some(g) if !posto[g] => {
                 posto[g] = true;
@@ -252,10 +279,16 @@ pub(crate) fn paint_grupo(
     ctx.host.hit_index_mut().register(row_id, row_hit);
     let rep = &snap.tracks[g.membros[0]];
     let font = TypeToken::Sm.px();
+    let texto = if ph2d_editor_core::panel::cards::ferramenta::cards_on() {
+        let u = crate::tracks_value::Unidades::of(ctx.host.project());
+        crate::tracks::propriedade_snap(snap, rep.prop, u)
+    } else {
+        crate::tracks::track_label_snap(snap, rep.entity, rep.prop)
+    };
     paint_text_elided(
         ctx.text_system,
         ctx.scene,
-        &crate::tracks::track_label_snap(snap, rep.entity, rep.prop),
+        &texto,
         x + TWIRL_W,
         y + (ROW_H_PX - font) * 0.5,
         font,
@@ -299,6 +332,113 @@ pub(crate) fn paint_grupo(
     }
 }
 
+/// O losango do cabeçalho do objecto: metade do da faixa (a maquete B1 pinta-o como um ponto).
+const OBJ_DIAMOND_H: f32 = DIAMOND_H * 0.6; // LITERAL-PX-OK: fraction of the row diamond
+/// A espessura da barra entre duas chaves (maquete B1: 3 px numa linha de 22).
+const BARRA_TH: f32 = 3.0; // LITERAL-PX-OK: interpolation bar thickness
+/// O traço e o vão da barra de uma chave segura (Hold), tracejada.
+const BARRA_DASH: f32 = 3.0; // LITERAL-PX-OK: hold bar dash length
+const BARRA_GAP: f32 = 3.0; // LITERAL-PX-OK: hold bar dash gap
+
+/// ⭐ **O cabeçalho do objecto nos cartões** (doc 15 onda 2, maquete B1): o nome em negrito e um
+/// ponto por instante em que o objecto tem chave. Só pinta: o clique continua nas faixas.
+pub(crate) fn paint_objeto(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    geo: &geom::Geom,
+    view: TimeView,
+    preview_dx: f32,
+    snap: &TimelineViewSnapshot,
+    linha: (u64, f32),
+) {
+    let (entity, y) = linha;
+    let font = TypeToken::Sm.px();
+    ph2d_editor_core::paint::paint_text_title_elided(
+        ctx.text_system,
+        ctx.scene,
+        &crate::tracks::objeto_snap(snap, entity),
+        geo.rows.x + TWIRL_W,
+        y + (ROW_H_PX - font) * 0.5,
+        font,
+        (geo.label_w - TWIRL_W - Spacing::Xs.px()).max(0.0),
+        resolve(ColorToken::Text1, theme),
+    );
+    let cy = y + ROW_H_PX * 0.5;
+    for c in columns_of(snap.tracks.iter().filter(|t| t.entity == entity)) {
+        let base = view.time_x + ((c.t_seconds - view.view_start) * view.px_per_s) as f32;
+        let kx = if c.all_selected {
+            base + preview_dx
+        } else {
+            base
+        };
+        if kx < view.time_x - DIAMOND_H || kx > view.right + DIAMOND_H {
+            continue;
+        }
+        paint_diamond(
+            ctx,
+            kx,
+            cy,
+            OBJ_DIAMOND_H,
+            resolve(ColorToken::Text3, theme),
+        );
+    }
+}
+
+/// A cor da barra que SAI de uma chave: a da interpolação dela (curva · reta · segura).
+pub(crate) fn cor_da_barra(i: ph2d_anim::Interp) -> ColorToken {
+    match i {
+        ph2d_anim::Interp::Hold => ColorToken::TimelineInterpHold,
+        ph2d_anim::Interp::Linear => ColorToken::TimelineInterpLinear,
+        _ => ColorToken::TimelineInterpCurve,
+    }
+}
+
+/// ⭐ **A barra entre duas chaves** (doc 15 onda 2, maquete B1): pintada por baixo dos losangos, na
+/// cor da interpolação da chave de saída; a segura é tracejada. Segue o arrasto como os losangos.
+pub(crate) fn paint_barras(
+    ctx: &mut PaintCtx,
+    theme: Theme,
+    track: &TrackView,
+    view: TimeView,
+    preview_dx: f32,
+    y: f32,
+) {
+    let x_de = |k: &ph2d_timeline::KeyView| {
+        let base = view.time_x + ((k.t_seconds - view.view_start) * view.px_per_s) as f32;
+        if k.selected { base + preview_dx } else { base }
+    };
+    let top = y + (ROW_H_PX - BARRA_TH) * 0.5;
+    for par in track.keys.windows(2) {
+        let (a, b) = (x_de(&par[0]), x_de(&par[1]));
+        let (x0, x1) = (a.min(b).max(view.time_x), a.max(b).min(view.right));
+        if x1 <= x0 {
+            continue;
+        }
+        let tok = cor_da_barra(par[0].interp);
+        let cor = resolve(tok, theme);
+        if tok == ColorToken::TimelineInterpHold {
+            let mut x = x0;
+            while x < x1 {
+                let w = BARRA_DASH.min(x1 - x);
+                ph2d_editor_core::paint::fill_rounded_rect(
+                    ctx.scene,
+                    Rect::new(x, top, w, BARRA_TH),
+                    0.0,
+                    cor,
+                );
+                x += BARRA_DASH + BARRA_GAP;
+            }
+        } else {
+            ph2d_editor_core::paint::fill_rounded_rect(
+                ctx.scene,
+                Rect::new(x0, top, x1 - x0, BARRA_TH),
+                BARRA_TH * 0.5,
+                cor,
+            );
+        }
+    }
+}
+
 /// Every key whose diamond **centre** falls inside `sel` (a marquee in global px) — a group row
 /// contributes every member key under its diamonds. Mirrors the row/column math of the painters
 /// exactly: a key the user can see inside the box is a key that gets selected.
@@ -336,6 +476,7 @@ pub(crate) fn keys_in_rect(
         let faixas: &[usize] = match &b.linha {
             Linha::Faixa { i, .. } => std::slice::from_ref(i),
             Linha::Grupo(g) => &lay.grupos[*g].membros,
+            Linha::Objeto(_) => &[],
         };
         for &i in faixas {
             let track = &snap.tracks[i];

@@ -7644,6 +7644,7 @@ dependencies = [
  "ph2d-pen",
  "ph2d-physics-ecs",
  "ph2d-physics-outline",
+ "ph2d-physics-outline-vec",
  "ph2d-physics-scene",
  "ph2d-pick-order",
  "ph2d-pixel-keys",
@@ -10748,6 +10749,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-physics-outline-vec"
+version = "0.0.0"
+dependencies = [
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-outline-trace",
+ "ph2d-physics-ecs",
+ "ph2d-physics-outline",
+ "ph2d-unique-name",
+ "ph2d-vec-scene",
+]
+
+[[package]]
 name = "ph2d-physics-scene"
 version = "0.0.0"
 dependencies = [
@@ -10755,6 +10769,7 @@ dependencies = [
  "ph2d-asset",
  "ph2d-core",
  "ph2d-ecs",
+ "ph2d-editor-core",
  "ph2d-physics-ecs",
  "ph2d-physics-outline",
  "ph2d-render",

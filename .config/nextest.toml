@@ -247,3 +247,11 @@ priority = -100
 filter = 'package(ph2d-app-light2d) | package(ph2d-light2d-gpu)'
 test-group = 'luz2d-placa'
 slow-timeout = { period = "60s", terminate-after = 6 }
+
+# A matriz do undo vivo (07/11, `wetpaint/undo_matriz_tests.rs`): cada célula corre os 26 testes do undo vivo com as
+# razões da grade e do fluxo postas, em série (o `teto`/`grade_inteira` são estado do fio). Sozinho (integ 09/11,
+# `--profile smoke`, load ~40): `undo_vivo_grade_1_fluxo_2` 78,0 s; os seis estouraram os 180 s na suíte (load > 40).
+# Tecto 8 × 60 s ≈ 6× o medido sozinho (a suíte custa 2,5×–4,6×, ver acima).
+[[profile.default.overrides]]
+filter = 'test(/^tool::paint::wetpaint::undo_matriz_tests::undo_vivo_grade_/)'
+slow-timeout = { period = "60s", terminate-after = 8 }

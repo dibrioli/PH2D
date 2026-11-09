@@ -118,7 +118,7 @@
 - 📚 [Arquitetura / norte / perf: mais (29) lições — caminho DERIVADO × do ARTISTA · ASSAR (7,7×)](reference_topic_architecture_north_perf_lessons.md)
 - [fixture (19)](reference_topic_fixture_discipline.md)
 - [Provas de mutação (43) — 4 controlos, pré-voo das âncoras · cercas em SEQUÊNCIA](reference_topic_mutation_proofs.md)
-- ⭐ [07/11: GEF entregue ao integrador SEM smoke do dono do Animated; smoke dele depois da integração](project_gef_animated_sprite_delivered_without_owner_smoke_2026_11_07.md)
+- ⭐ [Animated Sprite: smoke do dono feito 07/11 e 09/11; próximo = Align (GEF 28)](project_gef_animated_sprite_delivered_without_owner_smoke_2026_11_07.md)
 - ⛔ [Janela passada de 300 mil/passo: uma rodada de smoke = um agente novo; a janela só decide e confere (05/11)](feedback_a_main_window_past_300k_delegates_each_round.md)
 
 - ⛔⛔ [Pincel comparado ao original SÓ sobre blocos escondeu Multiply que não pinta no vazio: 3 fundos sempre (08/11)](feedback_brush_oracle_must_include_blank_canvas.md)

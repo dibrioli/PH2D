@@ -80,3 +80,4 @@ metadata:
 - ⭐⭐ [Dono 08/11: modo Edit volta a sprite a Still; mudar tamanho/margem avisa — DEPOIS da integração GEF 26](project_edit_mode_turns_sprite_still_2026_11_08.md)
 - ⭐⭐ [Dono 08/11: Pastel «parece ruim», mas fica para DEPOIS da integração; referência por perguntar](project_pastel_after_integration_2026_11_08.md)
 - **Dono 09/11 — Pastel:** a receita K1 (motor `softness` + `tip_depth`, folha `material_2026-11-09_pastel/folha_motor.png`) SERVE; e repassar ENCHE o dente do papel «paulatinamente em várias repassadas» (além do Krita, que não enche).
+- ⭐⭐ [Dono 09/11: ferramenta Align — folha + quadro, SEM giro; onion = anterior + referência](project_align_tool_owner_decisions_2026_11_09.md)

@@ -48,7 +48,7 @@ fn play_twice(sim: &mut SimWorld, e: Entity) -> ((f32, f32), (f32, f32)) {
         gravity_y: 0.0,
         ..Default::default()
     });
-    let mut run = |bridge: &mut PhysicsBridge, sim: &mut SimWorld| {
+    let run = |bridge: &mut PhysicsBridge, sim: &mut SimWorld| {
         for t in 1..=60 {
             bridge.dispatch(sim, true, t);
         }

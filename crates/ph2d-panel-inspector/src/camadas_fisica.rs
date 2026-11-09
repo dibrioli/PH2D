@@ -91,12 +91,6 @@ pub(crate) fn rotulo_padrao(i: usize) -> String {
     ph2d_i18n::tr_with("card.physics.layer_default", &[("n", &i.to_string())])
 }
 
-/// A linha de `a` da matriz do mundo inclui `b`?
-#[must_use]
-pub(crate) fn colide(a: usize, b: usize) -> bool {
-    linha(a) & (1 << b) != 0
-}
-
 /// A linha `a` da matriz viva.
 #[must_use]
 pub(crate) fn linha(a: usize) -> u32 {

@@ -9,17 +9,13 @@ use crate::camadas_fisica as camadas;
 use crate::ids;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::{WidgetEvent, WidgetStore};
-use ph2d_editor_core::paint::{
-    fill_rounded_rect, folga_do_texto, frame_radius, paint_layer_outline, paint_text_elided,
-    resolve,
-};
+use ph2d_editor_core::paint::{fill_rounded_rect, frame_radius, paint_layer_outline, resolve};
 use ph2d_editor_core::panel::{PanelHostInternal, seam_reset_button};
 use ph2d_editor_core::screens::hero::InspectorPhysicsInfo;
-use ph2d_editor_core::widget::card_ink::tinta;
 use ph2d_editor_core::widget::{Dropdown, DropdownOption, paint_dropdown_chip};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
-use ph2d_tokens::{ColorToken, Radius, Spacing, StrokeToken, TypeToken};
+use ph2d_tokens::{ColorToken, Radius};
 
 /// ⭐ Quem pergunta pela camada: o collider ou o Ray Sensor (dono 08/11: «os mesmos campos»). A mesma lista, os
 /// mesmos quadros da matriz do mundo; só os ids são de cada um.

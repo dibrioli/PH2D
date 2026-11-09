@@ -21,8 +21,7 @@
 //! | a família na paleta | `component.category.<snake>` | 16 |
 //! | o tipo de objecto no filtro | `component.object_kind.<snake>` | 5 |
 //!
-//! (As duas últimas eram `16` e `7`: a família *3D* e os tipos *3D Model* e *Sculpt* saíram com o
-//! 3D, ADR-0179.)
+//! (As duas últimas eram `16` e `7`: o 3D saiu, ADR-0179.)
 //!
 //! ⚠️ **O dono da chave de um campo é o BLOCO e não o componente**, e isso foi medido: `MARKER` é
 //! partilhado por **5** descritores e `TAGS` por **2**. Um `FieldDesc` partilhado só pode carregar

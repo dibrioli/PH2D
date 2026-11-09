@@ -17,7 +17,7 @@ use ph2d_ecs::{
 };
 use ph2d_editor_core::tool::PointerPhase;
 use ph2d_physics_ecs::{
-    BodyKind, Collider, ColliderShape, InputTape, PhysicsBridge, PhysicsSettings, RigidBody,
+    BodyKind, ColliderShape, InputTape, PhysicsBridge, PhysicsSettings, RigidBody,
 };
 use ph2d_preview_drive::PreviewDrive;
 use ph2d_tool_painter::{PaintMedia, PainterTool};

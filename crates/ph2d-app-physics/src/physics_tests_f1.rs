@@ -52,7 +52,7 @@ fn fit_to_picture_mantem_o_tipo_da_forma() {
     apply(&mut sim, e, PhysicsFieldEdit::Add);
     let forma = |sim: &SimWorld| {
         sim.world()
-            .get::<Collider>(shape_of(&sim, e))
+            .get::<Collider>(shape_of(sim, e))
             .expect("forma")
             .shape
     };

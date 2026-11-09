@@ -31,6 +31,9 @@ pub struct TextInput {
     /// O foco pinta um anel FINO (`StrokeToken::Thin`) em vez da moldura de foco do tema — o campo de busca que
     /// mora dentro de uma lista aberta (dono 08/11: o anel grosso «ficou feio»). `false` = o de sempre.
     pub anel_fino: bool,
+    /// O que a ponta direita guarda para um botão por cima da caixa (o «×» da busca): o texto e o
+    /// caret nunca entram nela.
+    pub reserva_direita: f32,
 }
 
 impl TextInput {
@@ -44,7 +47,15 @@ impl TextInput {
             caret_byte: 0,
             hover_t: crate::motion::SETTLED,
             anel_fino: false,
+            reserva_direita: 0.0,
         }
+    }
+
+    /// Ver [`Self::reserva_direita`].
+    #[must_use]
+    pub fn reserva_direita(mut self, px: f32) -> Self {
+        self.reserva_direita = px.max(0.0);
+        self
     }
 
     /// Ver [`Self::anel_fino`].

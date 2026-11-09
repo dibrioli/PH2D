@@ -63,25 +63,41 @@ pub fn limpou(
     true
 }
 
+/// ⭐ **A ponta do «×»** na caixa `r`: dentro da moldura do foco, nunca por cima dela (smoke do dono
+/// 08/11: o «×» invadia o contorno). `borda` é a largura do contorno do foco.
+#[must_use]
+pub fn ponta(r: Rect, borda: f32) -> Rect {
+    let lado = (r.h.min(m::FIELD_H) - borda * 2.0).max(0.0);
+    Rect::new(
+        r.x + r.w - lado - borda,
+        r.y + (r.h - lado) * 0.5,
+        lado,
+        lado,
+    )
+}
+
+/// ⭐ **O que o texto guarda à direita** com o «×» visível: a ponta inteira, para o texto e o caret
+/// pararem antes dela (fecho P12: o texto deslizava por baixo do «×»).
+#[must_use]
+pub fn reserva(r: Rect, borda: f32) -> f32 {
+    let p = ponta(r, borda);
+    r.x + r.w - p.x
+}
+
 impl CardCtx<'_> {
-    /// O campo de texto e, com texto, o «×» por cima da ponta direita (registado depois: ganha).
+    /// O campo de texto e, com texto, o «×» na ponta direita; o texto pára antes dele.
     pub(super) fn search(&mut self, r: Rect, id: NodeId, placeholder: &str) {
-        self.text(r, id, placeholder);
-        if self.store.text(id).is_none_or(str::is_empty) {
-            return;
-        }
-        let x = limpa_de(id);
-        // Dentro da moldura do foco, nunca por cima dela (smoke do dono 08/11: o «×» invadia o contorno).
         let borda = ph2d_tokens::visuals::Chrome::of(self.ink.theme)
             .field_focus
             .width;
-        let lado = (r.h.min(m::FIELD_H) - borda * 2.0).max(0.0);
-        let ponta = Rect::new(
-            r.x + r.w - lado - borda,
-            r.y + (r.h - lado) * 0.5,
-            lado,
-            lado,
-        );
+        let com_texto = !self.store.text(id).is_none_or(str::is_empty);
+        let guarda = if com_texto { reserva(r, borda) } else { 0.0 };
+        self.text_reservando(r, id, placeholder, guarda);
+        if !com_texto {
+            return;
+        }
+        let x = limpa_de(id);
+        let ponta = ponta(r, borda);
         self.hit_index.register(x, ponta);
         let fundo = if self.store.hover_live(x) > 0.0 {
             ColorToken::CardFieldHover

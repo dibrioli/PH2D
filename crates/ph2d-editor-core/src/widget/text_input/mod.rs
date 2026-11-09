@@ -273,7 +273,7 @@ pub fn paint_text_input_with_buffer(
     } else {
         rect.y + (rect.h - font_size) * 0.5 - pad_y * 0.0
     };
-    let inner_w = (rect.w - pad_x * 2.0).max(0.0);
+    let inner_w = (rect.w - pad_x * 2.0 - input.reserva_direita).max(0.0);
 
     let displayed: &str = buffer.unwrap_or(input.value.as_str());
     let displayed_caret = caret.unwrap_or(input.caret_byte);

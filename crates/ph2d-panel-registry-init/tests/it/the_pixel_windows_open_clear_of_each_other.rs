@@ -214,6 +214,17 @@ fn a_busca_dos_atalhos_limpa_pelo_x() {
         r.x >= caixa.x && r.x + r.w <= caixa.x + caixa.w + 0.5 && r.y >= caixa.y - 0.5,
         "o «×» {r:?} fica dentro da caixa {caixa:?}"
     );
+    // U7: o texto (em repouso e a editar) pára antes do «×» — a reserva cobre a ponta inteira.
+    let borda = caixa.x + caixa.w - (r.x + r.w);
+    assert_eq!(
+        busca::ponta(caixa, borda),
+        r,
+        "o «×» pintado é a ponta da régua"
+    );
+    assert!(
+        busca::reserva(caixa, borda) >= caixa.x + caixa.w - r.x,
+        "o texto desliza por baixo do «×» {r:?}"
+    );
     clica(&mut hero, x, "o «×» da busca");
     assenta(&mut hero, &mut ts);
     assert_eq!(hero.store.text(campo), Some(""), "o «×» não esvaziou");

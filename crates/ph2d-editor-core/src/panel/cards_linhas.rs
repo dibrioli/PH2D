@@ -358,6 +358,11 @@ impl<'s> CardCtx<'s> {
     }
 
     pub(super) fn text(&mut self, r: Rect, id: NodeId, placeholder: &str) {
+        self.text_reservando(r, id, placeholder, 0.0);
+    }
+
+    /// [`Self::text`] com a ponta direita `reserva` guardada para um botão por cima (o «×» da busca).
+    pub(super) fn text_reservando(&mut self, r: Rect, id: NodeId, placeholder: &str, reserva: f32) {
         use crate::interaction::InteractiveState;
         use crate::widget::{TextInput, TextInputState, paint_text_input_with_buffer};
         self.hit_index.register(id, r);
@@ -389,14 +394,15 @@ impl<'s> CardCtx<'s> {
                 r.x + m::FIELD_PAD_R,
                 r.y + crate::paint::folga_do_texto(r.h, m::VALUE_PX),
                 m::VALUE_PX,
-                (r.w - m::FIELD_PAD_R * 2.0).max(0.0),
+                (r.w - m::FIELD_PAD_R * 2.0 - reserva).max(0.0),
                 self.ink.color(tinta),
             );
             return;
         }
         let input = TextInput::new(id, "")
             .placeholder(placeholder)
-            .visual((state, self.store.hover_live(id)));
+            .visual((state, self.store.hover_live(id)))
+            .reserva_direita(reserva);
         paint_text_input_with_buffer(
             &input,
             text,

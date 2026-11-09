@@ -305,7 +305,10 @@ fn chip(
     let font = TypeToken::Base.px();
     let pad = Spacing::Xs.px();
     let side = r.h - 2.0 * pad; // LITERAL-PX-OK: as duas margens
-    let word = label_column_width(text, font, [label]);
+    // A largura que se PINTA (a do `paint_text_centered`), não a da coluna de rótulos: noutro peso, ícone e palavra
+    // saíam encostados à esquerda na tela do dono (09/11).
+    let medida = text.layout(label, font, f32::INFINITY);
+    let (word, word_h) = (medida.width(), medida.height());
     let gap = Spacing::Xs.px();
     let x = r.x + ((r.w - side - gap - word) / 2.0).max(pad);
     paint_icon(
@@ -315,7 +318,7 @@ fn chip(
         tom(fg, theme),
         fio,
     );
-    let y = r.y + (r.h - ROW_H_PX).max(0.0) / 2.0;
+    let y = r.y + (r.h - word_h) / 2.0;
     let tx = x + side + gap;
     paint_text(
         text,

@@ -314,3 +314,78 @@ fn mover_e_remover_e_um_passo_e_ctrl_z_devolve_camada_nome_regra_e_objetos() {
     let camadas: Vec<u8> = q.iter(sim.world()).map(|c| c.layer).collect();
     assert_eq!(camadas, [2], "o objeto voltou à camada dele");
 }
+
+/// ⭐ GEF02, dono 09/11: «Collides with» com DUAS formas selecionadas. O clique pede UMA edição sobre a primária; o dreno
+/// real espalha-a pela seleção no MESMO quadro (o desfazer é o diff do quadro ⇒ um passo) e Ctrl+Z devolve as DUAS.
+/// Mutação: espalhar só à primária (`fase_bus_physics_sections`) deixa a segunda sem exceção e reprova aqui.
+#[test]
+fn colide_com_duas_formas_e_um_passo_e_ctrl_z_devolve_as_duas() {
+    use crate::undo::{ProjectUndo, SelectionMark};
+    use ph2d_editor_core::PhysicsFieldEdit;
+    use ph2d_physics_ecs::{BodyKind, ColliderShape, CollisionOverride, RigidBody};
+    let (mut sim, vec) = (SimWorld::new(), VecScene::new());
+    let mut reg = ComponentRegistry::new();
+    register_ecs_components(&mut reg);
+    ph2d_physics_ecs::register_physics_components(&mut reg);
+    let corpo = sim
+        .world_mut()
+        .spawn((
+            Name::new("Crate"),
+            Transform::default(),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+        ))
+        .id();
+    let bola = ColliderShape::Ball { radius: 0.5 };
+    let a = ph2d_physics_ecs::nasce_com_forma(sim.world_mut(), corpo, bola);
+    let b = ph2d_physics_ecs::nasce_com_forma(sim.world_mut(), corpo, bola);
+    let tem = |sim: &SimWorld, e| sim.world().get::<CollisionOverride>(e).copied();
+    assert_eq!((tem(&sim, a), tem(&sim, b)), (None, None));
+    let antes = captura(&mut sim, &vec, &reg);
+    let mut pd = DrainOut {
+        inspector_selection: vec![a.to_bits(), b.to_bits()],
+        ..DrainOut::default()
+    };
+    let acao = EditorAction::InspectorPhysicsEdit {
+        entity_bits: a.to_bits(),
+        edit: PhysicsFieldEdit::CollidesWith {
+            layer: 0,
+            on: false,
+        },
+    };
+    let mut app = crate::App::new();
+    assert!(app.fase_bus_physics_sections(acao, &mut pd).is_none());
+    let fila_de_comandos = EditorCommandQueue::default();
+    for &(bits, edit) in &pd.physics_edits {
+        ph2d_app_physics::inspector::body::apply_physics_edit(
+            &mut sim,
+            bits,
+            edit,
+            &fila_de_comandos,
+            &reg,
+        );
+        apply_editor_commands(sim.world_mut(), &fila_de_comandos, &reg).expect("aplica");
+    }
+    let quer = Some(CollisionOverride {
+        include: 0,
+        exclude: 1,
+    });
+    assert_eq!(
+        (tem(&sim, a), tem(&sim, b)),
+        (quer, quer),
+        "o MESMO dreno muda as duas formas"
+    );
+    let depois = captura(&mut sim, &vec, &reg);
+    assert_ne!(depois, antes, "o documento mudou");
+    let mut fila = ProjectUndo::default();
+    fila.push_undo(antes.clone(), SelectionMark::default());
+    let (volta, _) = fila
+        .undo(depois, SelectionMark::default())
+        .expect("o passo");
+    assert_eq!(
+        (volta, fila.depth()),
+        (antes, 0),
+        "um passo, e Ctrl+Z devolve as duas"
+    );
+}

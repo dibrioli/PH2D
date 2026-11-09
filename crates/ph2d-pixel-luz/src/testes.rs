@@ -50,7 +50,8 @@ fn sem_normal(mut s: Sprite) -> Sprite {
         .collect();
     assert!(!ids.is_empty(), "controlo: a fixture tem Normal Map");
     for id in ids {
-        let op = ph2d_pixel_core::layers::set_normal(&s, id, false).unwrap();
+        // Escondida (a bandeira fica): sem normal À VISTA, e a cor não ganha a camada.
+        let op = ph2d_pixel_core::layers::edit(&s, id, |l| l.visible = false).unwrap();
         ph2d_pixel_core::apply(&mut s, op).unwrap();
     }
     s

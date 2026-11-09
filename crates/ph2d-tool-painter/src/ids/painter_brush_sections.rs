@@ -472,7 +472,8 @@ pub const PAINTER_BRUSH_JITTER_SECTION: NodeId = hash_node_id("painter_brush.jit
 pub const PAINTER_BRUSH_GRAIN_BEHAVIOR_SECTION: NodeId =
     hash_node_id("painter_brush.grain_behavior_section");
 
-/// O título que dobra da Color mixing no Basics (o seletor, o Sample e os seis números); nasce dobrado.
+/// O cartão **Color Mixing** (o seletor, o Sample e os seis números), logo depois do Basics; no painel de antes, a
+/// dobra do bloco dele. Nasce dobrado.
 pub const PAINTER_BRUSH_MIX_SECTION: NodeId = hash_node_id("painter_brush.mix_section");
 
 /// Cartões sem secção no painel de antes (`docs/CartoesUI/13`): o topo do pincel (Paint Mode, Preset, Sync).

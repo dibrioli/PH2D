@@ -168,6 +168,7 @@ pub(super) fn pincel(meio: PaintMedia, modo: &str) -> (BrushSettings, BTreeSet<N
 pub(super) const TODAS: &[NodeId] = &[
     p::PAINTER_CARD_TOPO,
     p::PAINTER_CARD_BASICOS,
+    p::PAINTER_BRUSH_MIX_SECTION,
     p::PAINTER_CARD_MIXING,
     p::PAINTER_MASK_SECTION,
     p::PAINTER_WATERCOLOR_SECTION,

@@ -140,6 +140,10 @@ pub(crate) fn plano_do_corpo<'s>(x: f32, content_w: f32, brush: BrushSettings) -
     // Preset, o Sync), e abaixo *os controles que todo pincel tem*. O corte veio de a função ter
     // cruzado o teto de 200 LOC, e ele é onde o próprio comentário já dizia que um assunto acabava.
     plano.bloco(move |ctx, theme, y| paint_top_basics(ctx, theme, x, content_w, y, brush));
+    // O cartão **Color Mixing** (dono 10/11: fora do Basics, num cartão próprio, logo a seguir).
+    plano.bloco(move |ctx, theme, y| {
+        crate::paint_brush_top::paint_color_mixing(ctx, theme, x, content_w, y, &brush)
+    });
 
     crate::paint_brush_sections::declara_aparencia(&mut plano, x, content_w, brush);
     plano

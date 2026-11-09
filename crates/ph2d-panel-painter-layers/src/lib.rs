@@ -55,7 +55,7 @@ mod cards_ferramenta; // Line, Clone, Inpaint e os verbos do Sculpt
 mod cards_grao; // o cartão Grain, e o editor da camada Texture
 mod cards_impasto;
 mod cards_linhas; // listas de caixa, linha esmaecida e pares, das linhas de cartão
-mod cards_mistura; // Color mixing: a mistura opaca do Digital, um grupo do cartão Basics
+mod cards_mistura; // o cartão Color Mixing: a mistura opaca do Digital, logo depois do Basics
 mod cards_nativos;
 mod cards_papel; // o cartão Paper: só a prévia capturada
 mod cards_penteado; // os fios que penteiam a tinta: um grupo do Shape, à parte do tapete

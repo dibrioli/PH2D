@@ -224,7 +224,6 @@ fn pinta_linha(c: &mut CardCtx<'_>, linha: &Linha, b: &BrushSettings, y: f32) ->
             b.smear_fio,
             y,
         ),
-        Linha::Mistura => crate::cards_mistura::grupo_da_mistura(c, b, y),
         Linha::Clone => cards_ferramenta::clone(c, b, y),
         Linha::Inpaint => cards_ferramenta::inpaint(c, y),
         Linha::Traco { sobra, composto } => cards_ferramenta::linha(c, b, *sobra, *composto, y),

@@ -1,32 +1,77 @@
-//! **Color mixing** (a mistura opaca do Digital) no cartão Basics e no painel de antes: só onde a lei age, os números
-//! esmaecidos com `Off`, e o clique real chega ao barramento.
+//! **Color mixing** (a mistura opaca do Digital) no cartão próprio **Color Mixing** (logo depois do Basics, dono 10/11)
+//! e no painel de antes: só onde a lei age, os números esmaecidos com `Off`, e o clique real chega ao barramento.
 
 use super::h1_os_cartoes::{Mesa, pincel};
 use super::h10_fotos::foto;
 use ph2d_editor_core::panel::PanelHostInternal;
+use ph2d_editor_core::panel::cards::grip_of;
 use ph2d_editor_core::zones::Rect;
 use ph2d_tool_painter::ids as p;
 use ph2d_tool_painter::{ModoMisturaOpaca, PaintMedia};
 
-/// Só Topo e Basics abertos, e a Color mixing (`PAINTER_BRUSH_MIX_SECTION`, nasce dobrada) aberta.
-fn abre_o_basics(m: &mut Mesa) {
-    m.so_abertos(&[p::PAINTER_CARD_TOPO, p::PAINTER_CARD_BASICOS]);
-    if m.host.store().is_collapsed(p::PAINTER_BRUSH_MIX_SECTION) {
-        m.host
-            .store_mut()
-            .toggle_collapsed(p::PAINTER_BRUSH_MIX_SECTION);
-    }
-    m.assenta();
+/// Os ids de controlo da mistura: o seletor, o Sample e os seis números.
+fn controlos() -> impl Iterator<Item = &'static ph2d_a11y::NodeId> {
+    p::PAINTER_BRUSH_MIX_MODES
+        .iter()
+        .chain(&p::PAINTER_BRUSH_MIX_SAMPLES)
+        .chain(&p::PAINTER_BRUSH_MIX_FIELDS)
 }
 
-/// ⭐ **Color mixing dobra** (nasce dobrado, o Basics abre sem ele): o clique no título esconde o seletor, o Sample e os
+/// Só Topo e Color Mixing abertos (`PAINTER_BRUSH_MIX_SECTION` nasce dobrado; no painel de antes é a dobra do bloco).
+fn abre_o_basics(m: &mut Mesa) {
+    m.so_abertos(&[p::PAINTER_CARD_TOPO, p::PAINTER_BRUSH_MIX_SECTION]);
+}
+
+/// ⭐ **Color Mixing é um cartão próprio** (dono 10/11): o cabeçalho dele vem logo depois do Basics, o título é
+/// «Color Mixing», e com o Basics aberto e o Color Mixing dobrado nenhum controlo da mistura está à vista — o Basics já
+/// não os tem.
+#[test]
+fn color_mixing_e_um_cartao_proprio_logo_depois_do_basics() {
+    let (b, _) = pincel(PaintMedia::Digital, "brush");
+    assert_eq!(
+        ph2d_i18n::tr("panel.painter_layers.brush.color_mixing"),
+        "Color Mixing"
+    );
+    let mut m = Mesa::nova(true, b, false);
+    m.so_abertos(&[p::PAINTER_CARD_BASICOS]);
+    let basics = m.rect(grip_of(p::PAINTER_CARD_BASICOS)).expect("o Basics");
+    let mistura = m
+        .rect(grip_of(p::PAINTER_BRUSH_MIX_SECTION))
+        .expect("o cartão Color Mixing");
+    assert!(mistura.y > basics.y, "o Color Mixing vem depois do Basics");
+    let entre: Vec<_> = super::h1_os_cartoes::TODAS
+        .iter()
+        .filter_map(|s| m.rect(grip_of(*s)).map(|r| (*s, r.y)))
+        .filter(|(_, y)| *y > basics.y && *y < mistura.y)
+        .collect();
+    assert!(
+        entre.is_empty(),
+        "um cartão entre Basics e Color Mixing: {entre:?}"
+    );
+    for id in controlos() {
+        assert!(m.rect(*id).is_none(), "{id:?} ainda no Basics");
+    }
+    abre_o_basics(&mut m);
+    let mistura = m
+        .rect(grip_of(p::PAINTER_BRUSH_MIX_SECTION))
+        .expect("o cartão Color Mixing");
+    for id in controlos() {
+        assert!(m.rect(*id).is_some(), "{id:?} fora do cartão aberto");
+        assert!(
+            m.rect(*id).expect("pintado").y > mistura.y,
+            "{id:?} acima do cabeçalho do Color Mixing"
+        );
+    }
+}
+
+/// ⭐ **Color Mixing dobra** (nasce dobrado): o clique no cabeçalho do cartão esconde o seletor, o Sample e os
 /// números, e outro clique devolve-os.
 #[test]
 fn a_mistura_dobra_pelo_titulo() {
     let (b, _) = pincel(PaintMedia::Digital, "brush");
     let mut m = Mesa::nova(true, b, false);
     abre_o_basics(&mut m);
-    let _ = m.clica(p::PAINTER_BRUSH_MIX_SECTION);
+    let _ = m.clica(grip_of(p::PAINTER_BRUSH_MIX_SECTION));
     m.assenta();
     for id in p::PAINTER_BRUSH_MIX_MODES
         .iter()
@@ -35,7 +80,7 @@ fn a_mistura_dobra_pelo_titulo() {
     {
         assert!(m.rect(*id).is_none(), "{id:?} à vista com a dobra fechada");
     }
-    let _ = m.clica(p::PAINTER_BRUSH_MIX_SECTION);
+    let _ = m.clica(grip_of(p::PAINTER_BRUSH_MIX_SECTION));
     m.assenta();
     assert!(
         m.rect(p::PAINTER_BRUSH_MIX_MODES[1]).is_some(),
@@ -187,7 +232,7 @@ fn a_mistura_some_onde_a_lei_nao_corre() {
     }
 }
 
-/// `PH2D_FOTO_DIR=<pasta>`: o cartão Basics do Digital com a mistura em Off e em Pigment mix.
+/// `PH2D_FOTO_DIR=<pasta>`: o cartão Color Mixing do Digital com a mistura em Off e em Wet blend.
 #[test]
 #[ignore = "foto: PH2D_FOTO_DIR=<pasta>, --ignored"]
 fn color_mixing_foto() {
@@ -207,7 +252,11 @@ fn color_mixing_foto() {
         }
         let janela = Rect::new(0.0, 0.0, 1600.0, 2400.0);
         let mut m = Mesa::na_janela(true, b, false, janela);
-        abre_o_basics(&mut m);
+        m.so_abertos(&[
+            p::PAINTER_CARD_TOPO,
+            p::PAINTER_CARD_BASICOS,
+            p::PAINTER_BRUSH_MIX_SECTION,
+        ]);
         foto(&gpu, &dir, nome, &mut m);
     }
 }

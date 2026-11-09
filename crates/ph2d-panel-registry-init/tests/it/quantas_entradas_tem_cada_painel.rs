@@ -2276,7 +2276,10 @@ const ALTURA_DE_ABERTURA: &[(&str, f32)] = &[
     // ⬆️ `1 670 → 1 694` na integração de 09/11 (PainterWatercolor, Color mixing «Wet blend» no Basics): o grupo chegou
     //    ABERTO e abria com `1 884` (seletor, Sample e seis números); a cura foi semeá-lo recolhido
     //    (`PAINTER_BRUSH_MIX_SECTION`). Os `24 px` que ficam são o título que dobra (`HEAD_ICON_BOX`), o nome do grupo.
-    ("painter_layers", 1694.0),
+    // ⬆️ `1 694 → 1 718` em 2026-11-10 (dono no smoke de 10/11: «Color mixing ainda não está no seu próprio card»): o
+    //    grupo saiu do Basics para o cartão próprio Color Mixing, que continua a nascer DOBRADO (o mesmo id). Os `+24 px`
+    //    são o cromo de um cartão a mais (cabeçalho do cartão e o vão entre cartões) contra o título que dobra de antes.
+    ("painter_layers", 1718.0),
     // ⬆️ `2 866 → 3 091` em 2026-10-10 (MiroClone W11), e NÃO é uma secção a nascer aberta: o painel
     //    é UMA LISTA, uma fileira por `ColorToken::ALL` (sem secções a recolher), e a W11 acrescentou
     //    nove cores (`person-0`…`person-7` + `person-ink`, as das pessoas do quadro ao vivo):

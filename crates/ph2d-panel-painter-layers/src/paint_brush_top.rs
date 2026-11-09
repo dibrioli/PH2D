@@ -355,8 +355,19 @@ pub(crate) fn paint_accumulate_e_fio(
             brush.smear_fio,
         );
     }
-    // Color mixing (a mistura opaca do Digital): onde a lei age, o mesmo grupo do cartão Basics.
-    // Nasce dobrada, como no cartão (`PAINTER_BRUSH_MIX_SECTION`).
+    y
+}
+
+/// O bloco **Color mixing** do painel de antes, logo depois dos básicos: o mesmo do cartão Color Mixing, numa dobra
+/// que nasce fechada (`PAINTER_BRUSH_MIX_SECTION`, também o id do cartão).
+pub(crate) fn paint_color_mixing(
+    ctx: &mut PaintCtx,
+    theme: ph2d_tokens::Theme,
+    x: f32,
+    content_w: f32,
+    mut y: f32,
+    brush: &BrushSettings,
+) -> f32 {
     if crate::cards_mistura::oferecida(brush) {
         let (y_dobra, fold) = paint_sub_section(
             ctx,

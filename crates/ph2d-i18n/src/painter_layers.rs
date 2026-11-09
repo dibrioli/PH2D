@@ -171,6 +171,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.painter_layers.brush.smear_fine_thread" => "Fine Thread",
         "panel.painter_layers.brush.blend_on_empty" => "On empty",
         "panel.painter_layers.brush.mix_mode" => "Color mixing",
+        "panel.painter_layers.brush.color_mixing" => "Color Mixing",
         "panel.painter_layers.brush.mix_off" => "Off",
         "panel.painter_layers.brush.mix_wet_blend" => "Wet blend",
         "panel.painter_layers.brush.mix_sample" => "Sample",

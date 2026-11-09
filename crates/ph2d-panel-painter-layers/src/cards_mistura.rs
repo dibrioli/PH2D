@@ -1,5 +1,5 @@
-//! **Color mixing** (a mistura opaca do Digital, `BrushSpec::mistura_opaca`): uma opção a mais no cartão Basics,
-//! nos dois painéis. Só onde a lei age — o Pincel do Digital sem o flag da aquarela, como o Fine Thread só no Smear do
+//! **Color mixing** (a mistura opaca do Digital, `BrushSpec::mistura_opaca`): o cartão próprio **Color Mixing**, logo
+//! depois do Basics (dono 10/11), e no painel de antes um bloco com a dobra logo depois dos básicos. Só onde a lei age — o Pincel do Digital sem o flag da aquarela, como o Fine Thread só no Smear do
 //! Digital. Com `Off` os números ficam à vista, esmaecidos ([`ph2d_tool_painter::Dependente::MisturaDesligada`]).
 
 use crate::cards_linhas::{Item, escolha_sem_rotulo, fila};
@@ -114,19 +114,13 @@ pub(crate) fn prepare(store: &mut WidgetStore, b: &BrushSettings) {
     }
 }
 
-/// O grupo no cartão Basics: um título que dobra (nasce dobrado, como o Grain Behavior) é o nome do grupo, e o
-/// seletor por baixo dele vai sem rótulo (nunca um 2.º título).
-pub(crate) fn grupo_da_mistura(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
-    let y = crate::cards_rampa::titulo_que_dobra(
-        c,
-        pids::PAINTER_BRUSH_MIX_SECTION,
-        "panel.painter_layers.brush.mix_mode",
-        None,
-        y,
-    );
-    if c.store.is_collapsed(pids::PAINTER_BRUSH_MIX_SECTION) {
-        return y;
-    }
+/// O título do cartão (o id dele é `PAINTER_BRUSH_MIX_SECTION`, a dobra do painel de antes; nasce dobrado).
+pub(crate) fn titulo() -> &'static str {
+    tr("panel.painter_layers.brush.color_mixing")
+}
+
+/// O corpo do cartão Color Mixing: o seletor vai sem rótulo, porque o título do cartão já é o nome dele.
+pub(crate) fn corpo(c: &mut CardCtx<'_>, b: &BrushSettings, y: f32) -> f32 {
     let atual = indice(b);
     let segs: Vec<Seg<'_>> = OPCOES
         .iter()

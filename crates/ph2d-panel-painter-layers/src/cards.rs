@@ -27,9 +27,10 @@ use ph2d_tokens::Theme;
 use ph2d_tool_painter::ids as pids;
 
 /// Os cartões dos blocos sem título do corpo do pincel, pela ordem de `plano_do_corpo`.
-const BLOCOS: [NodeId; 3] = [
+const BLOCOS: [NodeId; 4] = [
     pids::PAINTER_CARD_TOPO,
     pids::PAINTER_CARD_BASICOS,
+    pids::PAINTER_BRUSH_MIX_SECTION,
     pids::PAINTER_CARD_MIXING,
 ];
 
@@ -77,6 +78,8 @@ enum Conteudo {
     /// Um corpo de `cards_nativos`, com o Reset dele.
     Nativo(Option<NodeId>),
     Linhas(Vec<cards_topo::Linha>),
+    /// Color Mixing (`cards_mistura`).
+    Mistura,
     Wet,
     /// A prévia do Flow.
     Watercolor(Previa),
@@ -101,6 +104,7 @@ impl Presente {
         match &self.conteudo {
             Conteudo::Nativo(r) => *r,
             Conteudo::Linhas(_)
+            | Conteudo::Mistura
             | Conteudo::Camadas(_)
             | Conteudo::Mascara
             | Conteudo::Deform
@@ -155,6 +159,16 @@ fn secoes_do_pincel(ctx: &mut PaintCtx) -> Vec<Presente> {
                     id,
                     titulo: titulo_do_bloco(id),
                     conteudo: Conteudo::Linhas(linhas),
+                });
+            }
+            continue;
+        }
+        if id == pids::PAINTER_BRUSH_MIX_SECTION {
+            if crate::cards_mistura::oferecida(&brush) {
+                presentes.push(Presente {
+                    id,
+                    titulo: crate::cards_mistura::titulo().to_owned(),
+                    conteudo: Conteudo::Mistura,
                 });
             }
             continue;
@@ -327,6 +341,9 @@ fn cartoes<'a>(presentes: &'a [Presente]) -> Vec<CardDef<'a>> {
                 (None, Conteudo::Linhas(l)) => {
                     Box::new(move |c: &mut CardCtx<'_>, y| cards_topo::corpo(c, l, y))
                 }
+                (None, Conteudo::Mistura) => Box::new(|c: &mut CardCtx<'_>, y| {
+                    crate::cards_mistura::corpo(c, &pincel_atual(), y)
+                }),
                 (None, Conteudo::Wet) => Box::new(cards_wet::corpo),
                 (None, Conteudo::Watercolor(previa)) => {
                     Box::new(move |c: &mut CardCtx<'_>, y| cards_watercolor::corpo(c, previa, y))

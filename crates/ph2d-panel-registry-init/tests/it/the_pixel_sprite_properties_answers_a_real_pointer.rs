@@ -6,7 +6,8 @@
 use bumpalo::Bump;
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::panel::cards::user_data::{self, CardEdit, UserDataView};
+use ph2d_editor_core::panel::cards::user_data;
+use ph2d_editor_core::pixel_panel::user_data::{CardEdit, UserDataView};
 use ph2d_editor_core::pixel_panel::{
     PixelOwner, PixelPanelInfo, PixelRequest, PixelSpriteAction, PixelUserInfo, sprite_props,
 };

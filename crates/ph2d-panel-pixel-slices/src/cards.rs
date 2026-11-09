@@ -3,8 +3,9 @@
 use ph2d_a11y::NodeId;
 use ph2d_editor_core::panel::TextKey;
 use ph2d_editor_core::panel::cards::ferramenta::{caixa, cartao, opcoes};
-use ph2d_editor_core::panel::cards::user_data::{self, UserDataView};
+use ph2d_editor_core::panel::cards::user_data;
 use ph2d_editor_core::panel::cards::{CardCtx, CardDef, Cell, Widget};
+use ph2d_editor_core::pixel_panel::user_data::UserDataView;
 use ph2d_editor_core::widget::CheckboxValue;
 use ph2d_editor_core::widget::card_field::Glyph;
 use ph2d_editor_core::widget::key_mark::Rotulo;
@@ -37,7 +38,7 @@ fn botao(id: NodeId, chave: &'static str) -> Cell<'static> {
 
 fn cartao_lista(linhas: Vec<Linha>, transform: bool, na_mao: bool) -> CardDef<'static> {
     cartao(
-        ids::SEC_LIST,
+        ids::SLICES_SEC_LIST,
         tr("panel.pixel.slices.sec_list"),
         None,
         move |c, mut y| {

@@ -3,7 +3,7 @@
 //! devolve o de antes; o `.ase` guarda o do sprite (o JSON do Trial não tem campo do sprite: a
 //! verificação é o nosso leitor).
 
-use ph2d_editor_core::panel::cards::user_data::CardEdit;
+use ph2d_editor_core::pixel_panel::user_data::CardEdit;
 use ph2d_editor_core::pixel_panel::{
     PixelOwner, PixelRequest, PixelSpriteAction as Sp, sprite_props,
 };

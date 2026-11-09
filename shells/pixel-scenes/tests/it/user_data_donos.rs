@@ -1,7 +1,7 @@
 //! **O cartão User Data da camada, do cel e da tag, do pedido ao documento** (P12 U, O17/R5): cada
 //! gesto é UM passo «User Data» pela porta `Op::UserData`, e o desfazer devolve o de antes.
 
-use ph2d_editor_core::panel::cards::user_data::CardEdit;
+use ph2d_editor_core::pixel_panel::user_data::CardEdit;
 use ph2d_editor_core::pixel_panel::{PixelFrameAction, PixelOwner, PixelRequest};
 use ph2d_pixel_core::{FrameId, LayerId, Owner, PropValue};
 

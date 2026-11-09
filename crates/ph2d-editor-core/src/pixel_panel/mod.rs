@@ -13,6 +13,7 @@ mod shapes;
 pub mod sprite_props;
 mod timeline;
 mod tools;
+pub mod user_data;
 
 pub use shapes::{
     PixelShape, PixelShapeValues, PixelShapes, SHAPE_COUNT, field_name, set_field_names,
@@ -466,11 +467,11 @@ pub enum PixelOwner {
 /// O user data da camada, do cel e da tag activos, já na vista do cartão.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PixelUserInfo {
-    pub layer: Option<crate::panel::cards::user_data::UserDataView>,
-    pub cel: Option<crate::panel::cards::user_data::UserDataView>,
-    pub tag: Option<crate::panel::cards::user_data::UserDataView>,
+    pub layer: Option<user_data::UserDataView>,
+    pub cel: Option<user_data::UserDataView>,
+    pub tag: Option<user_data::UserDataView>,
     /// O do sprite (Sprite ▸ Properties…).
-    pub sprite: Option<crate::panel::cards::user_data::UserDataView>,
+    pub sprite: Option<user_data::UserDataView>,
 }
 
 /// Um gesto do painel PIXEL (`EditorAction::Pixel`).
@@ -478,7 +479,7 @@ pub struct PixelUserInfo {
 pub enum PixelRequest {
     Tool(PixelTool),
     /// P12 U: um gesto do cartão User Data sobre um dono (um passo «User Data»).
-    UserData(PixelOwner, crate::panel::cards::user_data::CardEdit),
+    UserData(PixelOwner, user_data::CardEdit),
     /// Um botão de grupo: a última usada na mão, e o flyout abre/fecha.
     Group(PixelToolGroup),
     Fg([u8; 4]),

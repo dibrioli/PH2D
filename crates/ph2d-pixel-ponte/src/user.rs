@@ -2,7 +2,7 @@
 //! gesto do cartão ([`CardEdit`]) no [`Op::UserData`] da porta única. Partilhado pela slice, camada,
 //! cel e tag (as janelas só vêem a vista; a família só traduz).
 
-use ph2d_editor_core::panel::cards::user_data::{CardEdit, PropRow, UserDataView};
+use ph2d_editor_core::pixel_panel::user_data::{CardEdit, PropRow, UserDataView};
 use ph2d_editor_core::pixel_panel::{PixelOwner, PixelUserInfo};
 use ph2d_pixel_core::user::edit::{PropKind, UserEdit, apply_edit, kind_of, type_key, value_text};
 use ph2d_pixel_core::user::{Owner, PropMap};

@@ -379,8 +379,8 @@ fn camada_do_pixel(id: u32, name: &str) -> ph2d_editor_core::pixel_panel::PixelL
     feature = "panel-pixel-timeline",
     feature = "panel-pixel-tiles"
 ))]
-fn user_data_armado() -> ph2d_editor_core::panel::cards::user_data::UserDataView {
-    use ph2d_editor_core::panel::cards::user_data::{PropRow, UserDataView};
+fn user_data_armado() -> ph2d_editor_core::pixel_panel::user_data::UserDataView {
+    use ph2d_editor_core::pixel_panel::user_data::{PropRow, UserDataView};
     let linha = |name: &str, value: &str, kind: &'static str, editable: bool| PropRow {
         name: name.to_owned(),
         value: value.to_owned(),

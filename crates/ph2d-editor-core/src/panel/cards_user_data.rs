@@ -7,32 +7,11 @@
 
 use super::{CardCtx, Cell, Widget};
 use crate::interaction::{InteractiveState, WidgetStore};
+use crate::pixel_panel::user_data::{CardEdit, PropRow, UserDataView};
 use crate::widget::{ButtonState, TextInputState};
 use ph2d_a11y::NodeId;
 use ph2d_i18n::tr;
 use ph2d_tool_registry::hash_node_id_runtime;
-
-/// Uma linha da tabela, já escrita.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PropRow {
-    pub name: String,
-    pub value: String,
-    /// A CHAVE do nome do tipo no chip (`pixel.user.type.int` → `Int`, ou o do `.ase`).
-    pub kind: &'static str,
-    /// `false`: um tipo do `.ase` que a tela não edita; mostra-se, não se toca.
-    pub editable: bool,
-}
-
-/// O que o cartão mostra.
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
-pub struct UserDataView {
-    pub color: [u8; 4],
-    pub text: String,
-    /// O mapa do artista (`""`).
-    pub rows: Vec<PropRow>,
-    /// Os mapas de extensão, só de leitura, sob o nome da extensão.
-    pub extensions: Vec<(String, Vec<PropRow>)>,
-}
 
 /// Os ids de um cartão, a partir do prefixo do dono.
 #[derive(Debug, Clone)]
@@ -202,7 +181,7 @@ fn so_leitura(c: &mut CardCtx<'_>, r: &PropRow, remove: Option<NodeId>, y: f32) 
     let mut cells = vec![
         Cell::new(Widget::Readout { text: &r.name }),
         Cell::new(Widget::Readout { text: &r.value }),
-        Cell::new(Widget::Readout { text: tr(r.kind) }),
+        Cell::new(Widget::Readout { text: r.kind }),
     ];
     if let Some(id) = remove {
         cells.push(Cell::new(Widget::Button {
@@ -272,7 +251,7 @@ pub fn paint_body(
         };
         let tipo = Cell::new(Widget::Button {
             id: ids.kind(i),
-            text: tr(r.kind),
+            text: r.kind,
             primary: false,
         });
         y = c.row(&[nome, valor, tipo, remove], y);
@@ -292,18 +271,6 @@ pub fn paint_body(
         }
     }
     y
-}
-
-/// Um gesto do cartão em nomes de linha (o dono traduz para o documento; `Kind` roda o tipo).
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CardEdit {
-    Color([u8; 4]),
-    Text(String),
-    Add,
-    Remove(String),
-    Rename(String, String),
-    Kind(String),
-    Value(String, String),
 }
 
 thread_local! {

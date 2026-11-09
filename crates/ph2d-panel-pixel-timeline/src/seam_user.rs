@@ -3,8 +3,9 @@
 
 use ph2d_editor_core::action_bus::EditorAction;
 use ph2d_editor_core::interaction::WidgetEvent;
-use ph2d_editor_core::panel::cards::user_data::{self, UserDataIds, UserDataView};
+use ph2d_editor_core::panel::cards::user_data::{self, UserDataIds};
 use ph2d_editor_core::panel::{EventOutcome, PanelHostInternal};
+use ph2d_editor_core::pixel_panel::user_data::UserDataView;
 use ph2d_editor_core::pixel_panel::{PixelOwner, PixelPanelInfo, PixelRequest};
 
 use crate::state::with_current;

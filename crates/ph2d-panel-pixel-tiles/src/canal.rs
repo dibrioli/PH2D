@@ -23,7 +23,7 @@ pub struct Contexto {
     pub forma: Forma,
     pub terrenos: Vec<String>,
     /// O user data do tileset activo (P12 U), na vista do cartão.
-    pub user: Option<ph2d_editor_core::panel::cards::user_data::UserDataView>,
+    pub user: Option<ph2d_editor_core::pixel_panel::user_data::UserDataView>,
 }
 
 /// A janela de criar ou converter.
@@ -75,7 +75,7 @@ pub enum Pedido {
     /// A janela fechou sem criar nada.
     Fechou,
     /// Um gesto do cartão User Data do tileset activo: um passo «User Data».
-    UserData(ph2d_editor_core::panel::cards::user_data::CardEdit),
+    UserData(ph2d_editor_core::pixel_panel::user_data::CardEdit),
 }
 
 #[derive(Default)]

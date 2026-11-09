@@ -110,6 +110,8 @@ impl PainterTool {
     pub(crate) fn compoe_o_pendente(&mut self) {
         // O Wet Paint adia pela MESMA lei e é composto pelas MESMAS portas (`wetpaint::por_quadro`).
         self.wet_compoe_o_pendente();
+        // O plano do traço adia pela MESMA lei (`stamp_dabs_no_plano`).
+        self.plano_compoe_o_pendente();
         let Some(caixa) = self.paint.pilha.pendente.take() else {
             return;
         };

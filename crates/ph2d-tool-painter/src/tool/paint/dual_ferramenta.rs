@@ -84,6 +84,7 @@ impl PainterTool {
             return;
         };
         let n4 = self.canvas_rgba.len();
+        self.plano_compoe_o_pendente();
         let mut s = match self.paint.plano_do_traco.take() {
             Some(s) if s.ferramenta.is_some() && s.base.len() == n4 && s.plano.len() == n4 => s,
             _ => PlanoDoTraco::da_ferramenta(&self.canvas_rgba),

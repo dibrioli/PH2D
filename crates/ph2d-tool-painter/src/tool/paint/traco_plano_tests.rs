@@ -656,3 +656,55 @@ fn a_cauda_com_a_taxa_afila_sem_discos() {
         );
     }
 }
+
+/// ⭐ **O plano compõe UMA vez por quadro** (ADR-0200): com a drenagem por quadro os lotes juntam as caixas e a
+/// composição espera pela drenagem — a tela final é a mesma ao byte das composições por evento, e entre duas
+/// drenagens há de facto um pendente (sem ele o Wet Wash Mix recompunha a caixa do véu a cada evento).
+#[test]
+fn o_plano_compoe_uma_vez_por_quadro_e_da_a_mesma_tela() {
+    let b = BrushSpec {
+        blend: BrushBlend::Multiply,
+        ..pincel(12.0)
+    };
+    let pts: Vec<[f32; 2]> = (0..=30).map(|k| [20.0 + 5.0 * k as f32, 50.0]).collect();
+    let pinta = |por_quadro: bool| {
+        let mut t = tool(200, 100, [200, 180, 40, 255], b);
+        t.set_compor_por_quadro(por_quadro);
+        let mut viu_pendente = false;
+        let mut telas = Vec::new();
+        t.on_canvas_pointer(cp(pts[0], PointerPhase::Down));
+        for (k, p) in pts[1..].iter().enumerate() {
+            t.on_canvas_pointer(cp(*p, PointerPhase::Move));
+            viu_pendente |= t
+                .paint
+                .plano_do_traco
+                .as_ref()
+                .is_some_and(|s| s.pendente.is_some());
+            if k % 3 == 2 {
+                let _ = t.take_preview_dirty();
+                // O que o quadro mostra: a tela depois da drenagem.
+                telas.push(t.canvas_rgba.to_vec());
+            }
+        }
+        t.on_canvas_pointer(cp(*pts.last().unwrap(), PointerPhase::Up));
+        telas.push(t.canvas_rgba.to_vec());
+        (telas, viu_pendente)
+    };
+    let (por_evento, pendente_sem) = pinta(false);
+    let (por_quadro, pendente_com) = pinta(true);
+    assert!(
+        !pendente_sem,
+        "sem drenagem por quadro o plano compõe no evento"
+    );
+    assert!(
+        pendente_com,
+        "com a drenagem por quadro a composição tem de esperar por ela"
+    );
+    for (q, (a, b)) in por_evento.iter().zip(&por_quadro).enumerate() {
+        assert!(
+            a == b,
+            "quadro {q}: compor a união por quadro mudou a tela ({} bytes diferem)",
+            a.iter().zip(b).filter(|(x, y)| x != y).count()
+        );
+    }
+}

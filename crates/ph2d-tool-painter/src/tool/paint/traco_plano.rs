@@ -50,6 +50,9 @@ pub(crate) struct PlanoDoTraco {
     pub(super) ferramenta: Option<Box<super::dual_ferramenta::Ferramenta>>,
     /// A Strength que a composição aplica ([`PainterTool::escala_do_plano`]): o plano guarda o traço a `1/escala`.
     escala: f32,
+    /// A união das caixas que os lotes deste quadro deixaram por compor (`composite_por_quadro`): a composição é
+    /// função pura da base e do plano, logo compor a união uma vez dá a imagem das composições por evento.
+    pub(super) pendente: Option<Region>,
 }
 
 impl PlanoDoTraco {
@@ -62,6 +65,7 @@ impl PlanoDoTraco {
             mascara: None,
             ferramenta: Some(Box::default()),
             escala: 1.0,
+            pendente: None,
         }
     }
 }
@@ -143,6 +147,25 @@ impl PainterTool {
             self.carimba_no_plano(&mut s, dabs);
         }
         if let Some(r) = une(r, r_dual) {
+            // Com a drenagem por quadro e ninguém a ler a tela antes dela, a caixa espera pela do quadro: o véu do
+            // Wet Wash Mix recompunha a mesma caixa a cada evento (100–255 ms por traço, ADR-0200).
+            if self.pilha_pode_adiar() {
+                s.pendente = une(s.pendente, Some(r));
+                self.preview_dirty = true;
+            } else {
+                self.compoe_o_plano(&s, r);
+            }
+        }
+        self.paint.plano_do_traco = Some(s);
+    }
+
+    /// Compõe o que os lotes do quadro deixaram por compor no plano (as portas de [`Self::compoe_o_pendente`], o
+    /// fecho do traço e a troca para o plano de uma ferramenta).
+    pub(super) fn plano_compoe_o_pendente(&mut self) {
+        let Some(mut s) = self.paint.plano_do_traco.take() else {
+            return;
+        };
+        if let Some(r) = s.pendente.take() {
             self.compoe_o_plano(&s, r);
         }
         self.paint.plano_do_traco = Some(s);
@@ -160,6 +183,7 @@ impl PainterTool {
                 mascara: None,
                 ferramenta: None,
                 escala: self.escala_do_plano(),
+                pendente: None,
             },
         }
     }
@@ -302,6 +326,7 @@ impl PainterTool {
     /// ⭐ **O pen-up do plano**: a cauda (L5) re-pintada, e a sessão fecha. Antes do fecho do traço, e pelo
     /// MESMO gate de proteção/seleção que os lotes atravessam.
     pub(super) fn fecha_o_plano_do_traco(&mut self) {
+        self.plano_compoe_o_pendente();
         let Some(mut s) = self.paint.plano_do_traco.take() else {
             return;
         };

@@ -1008,7 +1008,9 @@ verde:** `o_custo_no_caminho_do_app` só mede o Filbert e o Express Oil — a po
 **Cura 2 ([ADR-0200](../architecture/decisions/0200-o-carimbo-de-mistura-e-o-kernel-em-faixas-no-pool-do-rayon.md)):** a
 película em faixas de 16 linhas no pool, a taxa por tabela de 256, o kernel no pool. 30 px 1,29 → 0,66 s, 80 px 1,94 → ~1,0
 (o `Off` 0,76 · 1,2). Gate `a_mistura_do_wet_wash_mix_nao_custa_mais_que_sem_ela` (razão ≤ 1,3, vermelho por mutação).
-**Aberto:** a composição do plano por evento (100–255 ms por traço) e o kernel a ~107 ns por visita.
+E o plano do traço compõe uma vez por quadro (gate `o_plano_compoe_uma_vez_por_quadro_e_da_a_mesma_tela`): 30 px 0,60 s,
+80 px 0,85 s (traço drenado a cada 3 eventos). **Aberto:** o kernel a ~107 ns por visita (55 % do traço); ~45–64 ms por
+quadro a 90 px/quadro.
 
 ## Como adicionar um bug aqui
 

@@ -30,15 +30,22 @@ o véu (~38 mil visitas de ~107 ns) a 6 faixas.
 3. **O kernel no pool.** `band_split` e `parallel_band_cached` (`dab/bands.rs`) correm as faixas no pool do `rayon` em vez
    de abrir threads; a contagem é `faixas_no_pool` (≥ 2 048 visitas por faixa, até os núcleos). Linhas disjuntas: o byte de
    todo pincel é o mesmo (alarme de miniaturas: nenhum fora dos de mistura).
+4. **O plano do traço compõe uma vez por quadro.** Com a drenagem por quadro (`pilha_pode_adiar`, a mesma lei da pilha do
+   Composite e do Wet Paint) o lote junta a sua caixa a `PlanoDoTraco::pendente` e a composição corre na drenagem
+   (`compoe_o_pendente`), no fecho do traço e antes do plano de uma ferramenta. A composição é função pura da base e do
+   plano: a tela de cada quadro é a mesma ao byte (gate `o_plano_compoe_uma_vez_por_quadro_e_da_a_mesma_tela`, vermelho
+   com a drenagem sem o plano).
 
 ## Resultado medido
 
 `sonda_custo_do_veu`, o mínimo de 3 intercalados, sob a fatia da linha (≤ 16 núcleos):
 
-| Wet Wash Mix | antes (10/11) | só a cópia | + faixas e tabela | + pool no kernel | `Off` |
-|---|---|---|---|---|---|
-| 30 px | 2,50 s | 1,29 | 0,83 | 0,66 | 0,76 |
-| 80 px | 3,64 s | 1,94 | 0,95 | ~1,0 | 1,2 |
+| Wet Wash Mix | antes (10/11) | só a cópia | + faixas e tabela | + pool no kernel | + plano por quadro | `Off` (por quadro) |
+|---|---|---|---|---|---|---|
+| 30 px | 2,50 s | 1,29 | 0,83 | 0,66 | 0,60 | 0,67 |
+| 80 px | 3,64 s | 1,94 | 0,95 | ~1,0 | 0,85 | 1,00 |
+
+A última coluna de mistura drena a cada 3 eventos (o quadro do app a 18 px/quadro neste traço).
 
 Gate: `a_mistura_do_wet_wash_mix_nao_custa_mais_que_sem_ela` (Wet blend ÷ `Off` ≤ 1,3 no mesmo processo; vermelho com a
 película serial e a cópia de volta).
@@ -58,5 +65,5 @@ núcleo. Nenhuma espera dentro de job (o gate `o_motor_nao_se_espera_dentro_do_p
 
 ## Aberto
 
-A composição do plano (`compoe_o_plano`) recompõe a caixa inteira do véu a cada evento: 100 ms (30 px) e 255 ms (80 px)
-por traço — por quadro bastaria uma. O kernel custa ~107 ns por visita no véu (amostra da textura, rampa, dente).
+O kernel custa ~107 ns por visita no véu (amostra da textura, rampa, dente): 55 % do traço depois desta decisão. A 90 px
+por quadro o Wet Wash Mix fica em ~45 ms (30 px) e ~64 ms (80 px) sob a fatia de 16 núcleos — ainda acima dos 16 ms.

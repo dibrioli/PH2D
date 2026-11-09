@@ -36,6 +36,8 @@ fn cena(nome: &str, tamanho: f32, v: Variante) -> PainterTool {
     );
     t.set_brush_size_px(tamanho);
     t.set_brush_color_srgb8([0, 40, 220]);
+    // Como o app: a ponte drena a pré-visualização uma vez por quadro (`traco`).
+    t.set_compor_por_quadro(true);
     match v {
         Variante::Antigo => t.set_mistura_salta_a_copia_do_veu(false),
         Variante::SoACopia => t.set_mistura_salta_a_copia_do_veu(true),
@@ -44,7 +46,8 @@ fn cena(nome: &str, tamanho: f32, v: Variante) -> PainterTool {
     t
 }
 
-/// O traço de 1 200 px em 200 eventos; devolve os segundos de Down→Up.
+/// O traço de 1 200 px em 200 eventos (6 px cada), drenado a cada 3 como o quadro do app; devolve os segundos de
+/// Down→Up.
 fn traco(t: &mut PainterTool) -> f64 {
     let cp = |pos: [f32; 2], phase| CanvasPointer {
         pos,
@@ -57,6 +60,9 @@ fn traco(t: &mut PainterTool) -> f64 {
     for k in 1..=EVENTOS {
         let u = k as f32 / EVENTOS as f32;
         t.on_canvas_pointer(cp([100.0 + 1200.0 * u, Y], PointerPhase::Move));
+        if k % 3 == 0 {
+            let _ = t.take_preview_dirty();
+        }
     }
     t.on_canvas_pointer(cp([1300.0, Y], PointerPhase::Up));
     t0.elapsed().as_secs_f64()

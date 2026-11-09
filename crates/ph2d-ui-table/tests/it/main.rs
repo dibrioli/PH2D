@@ -361,3 +361,28 @@ fn o_polegar_agarrado_segue_o_rato_atraves_dos_quadros() {
     }
     assert!((last - max).abs() < 1e-3, "o fim do curso é o fim");
 }
+
+/// Plano 14 Q3: o anel de cada linha guarda as últimas `cap` amostras, sabe o texto da anterior
+/// (o «mudou»), larga o traço de quem deixa de ser número e esquece quem não veio.
+#[test]
+fn o_anel_guarda_as_ultimas_amostras_e_o_que_mudou() {
+    use ph2d_ui_table::{Span, Trails};
+    let mut t = Trails::new(3);
+    let um = |k: &str, v: f32| (k.to_owned(), v.to_string(), Some(v));
+    for i in 1..=5 {
+        let i = i as f32;
+        t.sample([um("a", i), um("b", 7.0)]);
+    }
+    assert_eq!(t.samples("a"), Some(vec![3.0, 4.0, 5.0]), "só as 3 últimas");
+    assert_eq!(t.old("a"), Some("4"), "mudou desde a amostra anterior");
+    assert_eq!(t.old("b"), None, "igual: não mudou");
+    let s = Span::of(&t.samples("a").unwrap()).unwrap();
+    assert_eq!((s.min, s.max, s.now), (3.0, 5.0, 5.0));
+    t.sample([("a".to_owned(), "\"x\"".to_owned(), None)]);
+    assert_eq!(t.samples("a"), None, "um texto não tem traço");
+    assert_eq!(t.old("a"), Some("5"));
+    assert_eq!(t.samples("b"), None, "quem não veio sai");
+    t.sample([um("b", 1.0)]);
+    assert_eq!(t.old("b"), None, "quem volta recomeça");
+    assert_eq!(Span::of(&[f32::NAN]), None);
+}

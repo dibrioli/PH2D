@@ -10,6 +10,7 @@
 //! ([`paint`]) e o clique partilham — o mesmo rectângulo desenha e recebe.
 
 mod paint;
+mod trail;
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -20,6 +21,7 @@ use ph2d_tokens::{ColorToken, ROW_H_PX, Spacing};
 pub use paint::{
     CellText, UiText, changed_tint, ink_color, paint, paint_spark, spark_points, ui_font,
 };
+pub use trail::{Span, Trails};
 
 /// Onde o texto encosta na célula (os números à direita, para os dígitos se compararem).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

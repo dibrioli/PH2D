@@ -16,6 +16,7 @@ pub mod field;
 pub mod find_bar;
 pub mod frame;
 mod geom;
+pub mod live_sampler;
 mod glyphs;
 pub mod help;
 mod hint;

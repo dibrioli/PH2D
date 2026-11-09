@@ -1,5 +1,4 @@
-//! **Os roteiros das cenas 3, 4, 5 e 10** — cada `STEPS*[k]` é o passo `k + 1`. Sairam do `ph2d-app-code/src/smoke_drive.rs`
-//! por tecto de LOC (fecho da Onda 2, 20/10); a porta que os conduz continua lá.
+//! **Os roteiros das cenas** — cada `STEPS*[k]` é o passo `k + 1`; conduz-os o `ph2d-app-code::smoke_drive`.
 
 use crate::{Gesture, Until};
 use ph2d_code_viewmodel::Aim;
@@ -105,8 +104,7 @@ pub const STEPS_4: &[&[Gesture]] = &[
         },
         Gesture::Wait(Until::Reach(false)),
     ],
-    // 3 — o Ctrl largado, o rato num comentário; a lista já aberta pelo erro do Play (Onda A: um
-    // erro de runtime abre a faixa nos Problems — um Ctrl+Shift+M aqui FECHÁ-LA-IA).
+    // 3 — o Ctrl largado, o rato num comentário; a lista já aberta pelo erro do Play (Onda A).
     &[
         Gesture::Ctrl(false),
         Gesture::Point {
@@ -117,11 +115,9 @@ pub const STEPS_4: &[&[Gesture]] = &[
     ],
     // 4 — o clique na linha do erro: o culpado seleccionado no texto.
     &[Gesture::ClickProblem(0)],
-    // 5 — o clique no 1.º aviso (mais acima no texto). ⚠️ Não o F8: o erro PAROU o jogo (Pause on
-    // Error, Onda D, ligado de fábrica) e parado o F8 é o Continue (`commands::row_state`).
+    // 5 — o clique no 1.º aviso. ⚠️ Não o F8: o erro parou o jogo, e parado o F8 é o Continue.
     &[Gesture::ClickProblem(1)],
-    // 6 — `ph2d.set` numa linha nova e, dentro do `entity`, outra vez: os buracos fundem-se; dois
-    //     Tabs andam pelos de dentro.
+    // 6 — `ph2d.set` numa linha nova e, no `entity`, outra vez: dois Tabs andam pelos de dentro.
     &[
         Gesture::Go {
             needle: "-- 3) escreva aqui",
@@ -158,13 +154,9 @@ pub const STEPS_4: &[&[Gesture]] = &[
     ],
 ];
 
-/// ⭐ O roteiro da cena 5 (a página de ajuda): `STEPS_5[k]` é o passo `k + 1`. O histórico é o do
-/// Godot 4.7.2 (`crate::nav`): o link na MESMA página só rola, logo o Alt+← do passo 4 volta ao
-/// SCRIPT (no cursor do Ctrl+clique), não ao `sin`.
+/// ⭐ O roteiro da cena 5 (a página de ajuda; o histórico é o do Godot, `crate::nav`).
 pub const STEPS_5: &[&[Gesture]] = &[
-    // 1 — Ctrl com o rato sobre o `sin` do `math.sin`: o nome sublinha (e o ponteiro é a mão). Só
-    //     depois de o assistente verificar o script: na shell, o Ctrl a ~0,4 s do arranque deixou a
-    //     janela parada nas fotos (as da cena 4 esperavam pelos três problemas).
+    // 1 — Ctrl sobre o `sin` do `math.sin` (depois de o assistente verificar): sublinha, mão.
     &[
         Gesture::Wait(Until::Script),
         Gesture::Wait(Until::Checked),
@@ -291,8 +283,7 @@ pub const STEPS_10: &[&[Gesture]] = &[
     ],
 ];
 
-/// O roteiro da cena 11 (13 §4 itens 11–13b): o cursor dentro de `update`, o menu Edit aberto com o
-/// rato em «Toggle Comment»; depois o cartão «Script options» pela engrenagem.
+/// O roteiro da cena 11 (13 §4 itens 11–16): o menu Edit, o «Script options», largar e consertos.
 pub const STEPS_11: &[&[Gesture]] = &[
     // 1 — o cursor em `update` (o caminho diz `update`) e o menu Edit aberto.
     &[
@@ -350,8 +341,7 @@ pub const STEPS_11: &[&[Gesture]] = &[
 /// A linha do ponto de parada da cena 12 (a mesma agulha do `ph2d_app_components::code_smoke`).
 pub const DEPURA_BREAK: &str = "local swing = ";
 
-/// ⭐ **Cena 12 — o depurador** (Onda D): o jogo pára no ponto que a cena traz; Continue passa ao
-/// objecto seguinte; tirado o ponto, os valores ao vivo aparecem.
+/// ⭐ **Cena 12 — o depurador** (Onda D): parar, Continue ao objecto seguinte, os valores ao vivo.
 pub const STEPS_12: &[&[Gesture]] = &[
     // 1 — parado no Circle: a seta, a faixa e o cartão «Stopped» com as variáveis.
     &[Gesture::Wait(Until::Stopped("Circle"))],
@@ -373,8 +363,7 @@ pub const STEPS_12: &[&[Gesture]] = &[
     ],
 ];
 
-/// ⭐ **Cena 13 — a Bancada** (Onda B): o balão «em quem» de `speed`, a célula alterada do Hero 2,
-/// a célula do Hero escrita à mão (a MESMA edição do Inspector), e o espiar da cena.
+/// ⭐ **Cena 13 — a Bancada** (Onda B): o balão de `speed`, a grelha, a edição e o espiar da cena.
 pub const STEPS_13: &[&[Gesture]] = &[
     // 1 — o rato na marca ◆ de `speed` (linha 1): o balão diz Hero 220 · default, Hero 2 180 · changed.
     &[
@@ -412,11 +401,9 @@ pub const STEPS_13: &[&[Gesture]] = &[
     ],
 ];
 
-/// Cena 14: o ponto de parada no `DEPURA_LUAU` (os passos: Sheet, `self.t` e `self.pos.x` em âmbar
-/// pelo Next line, Cards, Strip, e o menu das colunas).
 pub const QUADROS_BREAK: &str = "self.t = self.t + dt";
 
-/// ⭐ **Cena 14 — os quadros do depurador** (plano 14).
+/// ⭐ **Cena 14 — os quadros do depurador** (plano 14; 7–10: o Live, o gráfico, Cards, Strip).
 pub const STEPS_14: &[&[Gesture]] = &[
     &[Gesture::Wait(Until::Stopped("Circle")), Gesture::Frame],
     &[
@@ -447,5 +434,27 @@ pub const STEPS_14: &[&[Gesture]] = &[
         Gesture::ClickTabMenuRow(2),
         Gesture::Frame,
         Gesture::RightClickDebugHeader,
+    ],
+    &[
+        Gesture::TabKey(Key::Escape, NONE),
+        Gesture::Frame,
+        Gesture::ClickMark {
+            needle: QUADROS_BREAK,
+        },
+        Gesture::Frame,
+        Gesture::ClickDebug(0),
+        Gesture::Frame,
+        Gesture::Wait(Until::Live),
+    ],
+    &[Gesture::Frame, Gesture::ClickDebugRow("17:self.t")],
+    &[
+        Gesture::ClickTabMenu(4),
+        Gesture::Frame,
+        Gesture::ClickTabMenuRow(3),
+    ],
+    &[
+        Gesture::ClickTabMenu(4),
+        Gesture::Frame,
+        Gesture::ClickTabMenuRow(4),
     ],
 ];

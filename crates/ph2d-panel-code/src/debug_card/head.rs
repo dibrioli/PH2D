@@ -151,7 +151,26 @@ pub(super) fn paint(
     let ink = |t: ColorToken| resolve(t, theme);
     let ty = r.y + (r.h - font) * 0.5;
     let bh = r.h - ph2d_tokens::control_gap_px();
-    let limit = (buttons(st, c, r, scene, ts, theme) - gap).max(r.x);
+    let mut limit = (buttons(st, c, r, scene, ts, theme) - gap).max(r.x);
+    if c.state == CardState::Live {
+        // O ritmo da amostra à direita (a maquete: «2.5×/s»).
+        let rate = crate::live_sampler::rate_text();
+        let small = TypeToken::Xs.px();
+        let rw = ts.layout(&rate, small, f32::INFINITY).width();
+        let rx = (r.x + r.w - rw).max(r.x);
+        let tone = ink(ColorToken::Text3);
+        paint_text(
+            ts,
+            scene,
+            &rate,
+            rx,
+            r.y + (r.h - small) * 0.5,
+            small,
+            rw + pad,
+            tone,
+        );
+        limit = (rx - gap).max(r.x);
+    }
     let (word, tone) = match c.state {
         CardState::Paused => (
             tr("code.debug.paused"),
@@ -162,12 +181,14 @@ pub(super) fn paint(
     };
     let sq = font * super::MARK_SHARE;
     let mut x = r.x;
-    fill_rounded_rect(
-        scene,
-        Rect::new(x, r.y + (r.h - sq) * 0.5, sq, sq),
-        StrokeToken::Thick.px(),
-        tone,
-    );
+    // ■ parado, ● ao vivo (a maquete 14).
+    let corner = if c.stopped() {
+        StrokeToken::Thick.px()
+    } else {
+        sq * 0.5
+    };
+    let mark = Rect::new(x, r.y + (r.h - sq) * 0.5, sq, sq);
+    fill_rounded_rect(scene, mark, corner, tone);
     x += sq + Spacing::Xs.px() * 2.0;
     let ww = text_w(ts, word);
     paint_text_title(ts, scene, word, x, ty, font, (limit - x).max(0.0), tone);

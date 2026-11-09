@@ -247,6 +247,26 @@ unsafe fn locals_at(t: *mut ffi::lua_State, level: i32, depth: u8) -> Vec<Var> {
     out
 }
 
+/// Os valores ao vivo de uma linha (plano 14 Q3): as locais e os campos de cima do `self`
+/// (`self.t`), nenhum a descer mais.
+fn live_vars(locals: Vec<Var>) -> Vec<Var> {
+    let mut out = Vec::with_capacity(locals.len());
+    for mut v in locals {
+        if v.name == "self" && v.kind == ValueKind::Table {
+            out.extend(v.fields.drain(..).map(|mut f| {
+                let sep = if f.name.starts_with('[') { "" } else { "." };
+                f.name = format!("self{sep}{}", f.name);
+                f.fields.clear();
+                f
+            }));
+        } else {
+            v.fields.clear();
+            out.push(v);
+        }
+    }
+    out
+}
+
 /// A chave de um campo: os nomes primeiro (por ordem), depois os índices (por número).
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 enum Key {
@@ -543,7 +563,7 @@ unsafe fn live_step(l: *mut ffi::lua_State, s: &mut State, line: i32) {
         return;
     }
     // SAFETY: o gancho tem `LUA_MINSTACK` livre; cada valor sai a seguir.
-    let now = unsafe { locals_at(l, 0, 0) };
+    let now = live_vars(unsafe { locals_at(l, 0, 1) });
     let at = u32::try_from(line).unwrap_or(0);
     match s.frames.last_mut() {
         Some(top) if top.depth == depth => {

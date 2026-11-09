@@ -16,36 +16,17 @@ use ph2d_ecs::{Entity, World};
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{Toast, ToastQueue};
 use ph2d_i18n::tr;
-use ph2d_panel_code::{Breakpoint, DebugMarks, Ghost, ghosts_due};
-use ph2d_script::{DebugStop, LineLive, ProjectScripts, ScriptHost, ScriptId, StopKind};
+use ph2d_panel_code::live_sampler::LiveSampler;
+use ph2d_panel_code::{Breakpoint, DebugMarks};
+use ph2d_script::{DebugStop, ProjectScripts, ScriptHost, ScriptId, StopKind};
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 /// O espelho do Pause on Error do `ScriptHost` (o rótulo do menu lê-o; o host é a verdade).
 pub(crate) static PAUSE_ON_ERROR: AtomicBool = AtomicBool::new(true);
 
-pub(crate) use ph2d_code_debugcard::{
-    Ask, DebugCard, StepMemory, WhoTag, ghost_text, live_card, stop_card,
-};
-
-/// Se o jogo está parado, e porquê: a linha (Continue e Next Line) ou um erro (só Continue).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum GameStop {
-    #[default]
-    Running,
-    Line,
-    Error,
-}
-
-impl GameStop {
-    fn of(stop: Option<&DebugStop>) -> Self {
-        match stop.map(|s| &s.why) {
-            None => Self::Running,
-            Some(StopKind::Error(_)) => Self::Error,
-            Some(_) => Self::Line,
-        }
-    }
-}
+pub use ph2d_code_debugcard::GameStop;
+pub(crate) use ph2d_code_debugcard::{Ask, DebugCard, StepMemory, WhoTag, live_card, stop_card};
 
 /// O depurador de UM documento.
 #[derive(Debug, Default)]
@@ -60,9 +41,7 @@ pub(crate) struct DocDebug {
     /// O motor carregou este script (respondeu por ele): só então o que não armou é oco.
     answered: bool,
     pub(crate) stopped: Option<usize>,
-    pub(crate) ghosts: Vec<Ghost>,
-    /// Quando os valores ao vivo foram amostrados (ns do relógio da aba).
-    sampled: Option<u128>,
+    pub(crate) live: LiveSampler,
     pub(crate) card: Option<DebugCard>,
     pub(crate) ask: Option<Ask>,
     marks_view: Vec<Breakpoint>,
@@ -101,7 +80,7 @@ impl DocDebug {
         DebugMarks {
             breakpoints: &self.marks_view,
             stopped: self.stopped,
-            ghosts: &self.ghosts,
+            ghosts: &self.live.ghosts,
         }
     }
 }
@@ -182,19 +161,6 @@ impl CodeDoc {
     }
 }
 
-/// ⭐ **O ritmo dos valores ao vivo** (smoke do dono 09/11: «piscam e não se leem»): o token `Slow`,
-/// Os valores ao vivo de um script, por linha (0-based).
-pub(crate) fn ghosts(live: &BTreeMap<u32, LineLive>) -> Vec<Ghost> {
-    live.iter()
-        .filter(|(n, _)| **n >= 1)
-        .map(|(n, l)| Ghost {
-            line: *n as usize - 1,
-            text: ghost_text(l),
-        })
-        .filter(|g| !g.text.is_empty())
-        .collect()
-}
-
 /// ⭐ **Um quadro do depurador**: os pontos vão ao host, os pedidos também; a paragem e os valores
 /// ao vivo voltam para as abas. `watched` = o script da aba de código activa; `selected` = o
 /// objecto seleccionado na Hierarchy.
@@ -222,35 +188,15 @@ pub(crate) fn frame(
         }
     }
     for d in &mut docs.docs {
-        match &d.debug.sent {
-            // Uma aba que abre lembra-se dos pontos que o host guarda.
-            // (os da aba, se já os tem, mandam).
-            None => {
-                let mine: Vec<u32> = d
-                    .breakpoint_lines()
-                    .into_iter()
-                    .map(|l| l as u32 + 1)
-                    .collect();
-                if mine.is_empty() {
-                    let lines = h.breakpoints(d.script).to_vec();
-                    d.set_breakpoint_lines(&lines);
-                    d.debug.sent = Some(lines);
-                } else {
-                    h.set_breakpoints(d.script, mine.clone());
-                    d.debug.sent = Some(mine);
-                }
-            }
-            Some(sent) => {
-                let lines: Vec<u32> = d
-                    .breakpoint_lines()
-                    .into_iter()
-                    .map(|l| l as u32 + 1)
-                    .collect();
-                if &lines != sent {
-                    h.set_breakpoints(d.script, lines.clone());
-                    d.debug.sent = Some(lines);
-                }
-            }
+        let mine: Vec<u32> = d.breakpoint_lines().iter().map(|&l| l as u32 + 1).collect();
+        // Uma aba que abre lembra-se dos pontos que o host guarda (os da aba, se já os tem, mandam).
+        if d.debug.sent.is_none() && mine.is_empty() {
+            let lines = h.breakpoints(d.script).to_vec();
+            d.set_breakpoint_lines(&lines);
+            d.debug.sent = Some(lines);
+        } else if d.debug.sent.as_ref() != Some(&mine) {
+            h.set_breakpoints(d.script, mine.clone());
+            d.debug.sent = Some(mine);
         }
         d.debug.armed = h.armed_lines(d.script).to_vec();
         d.debug.answered = h.scene_info(d.script).is_some();
@@ -292,15 +238,15 @@ pub(crate) fn frame(
             .and_then(|s| s.frame.as_ref())
             .map(|f| (f.line as usize).saturating_sub(1));
         if Some(d.script) != watched {
-            d.debug.ghosts.clear();
-            d.debug.sampled = None;
-        } else if d.debug.ghosts.is_empty() || ghosts_due(d.debug.sampled, now_ns) {
-            d.debug.ghosts = ghosts(&h.live_values(d.script));
-            d.debug.sampled = Some(now_ns);
+            d.debug.live = LiveSampler::default();
+        } else if d.debug.live.due(now_ns) {
+            d.debug.live.take(now_ns, &h.live_values(d.script));
         }
         d.debug.card = match here {
             Some(_) => stopped_card.clone(),
-            None if !d.debug.ghosts.is_empty() => live_who.clone().map(live_card),
+            None if !d.debug.live.ghosts.is_empty() => live_who
+                .clone()
+                .map(|w| live_card(w, d.debug.live.rows.clone())),
             None => None,
         };
         if let Some(a) = d.debug.ask.take() {
@@ -440,6 +386,7 @@ impl CodeDocs {
             .find(|d| d.script == id)
             .map(|d| {
                 d.debug
+                    .live
                     .ghosts
                     .iter()
                     .map(|g| (g.line, g.text.clone()))

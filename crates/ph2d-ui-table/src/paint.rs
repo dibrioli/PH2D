@@ -337,7 +337,7 @@ pub fn paint_spark(
     theme: Theme,
 ) {
     let pts = spark_points(samples, r, m);
-    let c = resolve(ColorToken::Accent, theme);
+    let c = ink_color(Ink::Number, theme);
     if pts.len() >= 2 {
         stroke_polyline(scene, &pts, StrokeToken::Default.px(), c);
     }

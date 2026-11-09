@@ -12,6 +12,7 @@ mod medicoes_do_fecho;
 mod pagina;
 mod quadro_do_depurador;
 mod sublinhado;
+mod valores_ao_vivo;
 mod virtualizacao;
 
 use ph2d_code_buffer::Buffer;

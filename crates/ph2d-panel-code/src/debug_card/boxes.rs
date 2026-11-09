@@ -23,7 +23,7 @@ use ph2d_vector::VectorScene;
 const NAME_SHARE: f32 = 0.45; // LITERAL-PX-OK: fração da largura do cartão, não píxeis
 
 /// O título e a contagem de um cartão; devolve o y da 1.ª linha.
-fn card_head(
+pub(super) fn card_head(
     card: Rect,
     title: &str,
     count: &str,

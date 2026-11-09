@@ -11,6 +11,7 @@
 
 mod boxes;
 mod head;
+pub mod live;
 mod sheet;
 pub mod split;
 
@@ -71,6 +72,8 @@ pub struct CardPainted {
     pub cards: Vec<CardBox>,
     /// O separador da Sheet entre a tabela e a coluna do lado.
     pub split: Option<split::Split>,
+    /// Os traços ao vivo (e o gráfico grande) à vista: `(chave, caixa)` — pairar e clicar.
+    pub sparks: Vec<(String, Rect)>,
 }
 
 /// Um cartão dos Cards: a caixa, a rolagem máxima dele e o indicador (só se transborda).
@@ -107,6 +110,10 @@ pub struct DebugCardView {
     splitting: Option<(f32, f32)>,
     /// O rato sobre o separador (o `look` lembra-o; a pintura acende-o).
     split_hover: std::cell::Cell<bool>,
+    /// A linha ao vivo cujo gráfico grande está aberto (clicar no traço abre e fecha).
+    pub graph: Option<String>,
+    /// O traço debaixo do rato (o `look` lembra-o; a pintura mostra mín · máx · actual).
+    spark_hover: std::cell::RefCell<Option<String>>,
 }
 
 /// Os ids dos dois botões (os comandos da aba: Continue, Next line).
@@ -119,7 +126,7 @@ impl DebugCardView {
         let pad = Spacing::Sm.px();
         let rh = ph2d_tokens::row_pitch_px();
         let head = rh + pad * 2.0 + if c.error.is_some() { rh } else { 0.0 };
-        if !c.stopped() {
+        if !c.stopped() && c.live.is_empty() {
             return head;
         }
         let least = head + rh * MIN_ROWS;
@@ -128,6 +135,7 @@ impl DebugCardView {
         }
         let cap = (area.h * CARD_SHARE).max(least);
         let body = match self.style {
+            _ if !c.stopped() => live::body_height(self, c, area.w),
             CardStyle::Sheet => {
                 let table = natural_height(&sheet_rows(c), &self.table, &Metrics::standard());
                 let side = rh * (2 + c.stack.len() + c.waiting.len()) as f32;
@@ -180,7 +188,7 @@ impl DebugCardView {
             );
             y += rh;
         }
-        if !c.stopped() {
+        if !c.stopped() && c.live.is_empty() {
             return;
         }
         self.paint_grip(r, scene, theme);
@@ -192,6 +200,7 @@ impl DebugCardView {
         );
         let body = Rect::new(r.x, y, r.w, (r.y + r.h - y - pad).max(0.0));
         match self.style {
+            _ if !c.stopped() => live::paint(self, c, body, view, scene, ts, theme),
             CardStyle::Sheet => sheet::paint(self, c, body, view, scene, ts, theme),
             CardStyle::Cards => boxes::paint_cards(self, c, body, view, scene, ts, theme),
             CardStyle::Strip => boxes::paint_strip(self, c, body, view, scene, ts, theme),
@@ -244,14 +253,24 @@ impl DebugCardView {
         if let Some(&(line, _)) = p.stack.iter().find(|(_, r)| r.contains(x, y)) {
             return Some(CardClick::Jump(line));
         }
-        if let Some((lay, rows, _)) = &p.table
+        if let Some((key, _)) = p.sparks.iter().find(|(_, r)| r.contains(x, y)) {
+            let open = self.graph.as_deref() != Some(key.as_str());
+            self.graph = open.then(|| key.clone());
+            self.revealed = None;
+            return Some(CardClick::Taken);
+        }
+        if let Some((lay, rows, cols)) = &p.table
             && let Some(hit) = lay.hit(rows, x, y)
         {
+            let text = |row: usize, key: &str| {
+                let i = cols.iter().position(|c| c.key == key)?;
+                rows.get(row)?.cells.get(i).map(|c| c.text.clone())
+            };
             let copy = match &hit {
-                Hit::Cell { row, col: "value" } => rows
-                    .get(*row)
-                    .and_then(|r| r.cells.get(1))
-                    .map(|c| CardClick::Copy(c.text.clone())),
+                Hit::Cell { row, col: "value" } => text(*row, "value").map(CardClick::Copy),
+                Hit::Cell { row, col: "line" } => text(*row, "line")
+                    .and_then(|l| l.parse().ok())
+                    .map(CardClick::Jump),
                 _ => None,
             };
             let (lay, rows) = (lay.clone(), rows.clone());
@@ -280,6 +299,10 @@ impl DebugCardView {
         }
         if self.split_look(x, y) {
             return Some(ResizeEw);
+        }
+        if let Some((key, _)) = p.sparks.iter().find(|(_, r)| r.contains(x, y)) {
+            self.spark_hover.replace(Some(key.clone()));
+            return Some(ph2d_editor_core::doc_surface::PointerLook::Hand);
         }
         let sheet = p.table.as_ref().and_then(|(lay, ..)| lay.bar().hit());
         let mut bars = sheet
@@ -355,7 +378,8 @@ impl DebugCardView {
     /// As colunas que se escondem: `(chave, título, à vista)`.
     #[must_use]
     pub fn column_menu(&self) -> Vec<(&'static str, String, bool)> {
-        let cols = columns();
+        let painted = self.painted.table.as_ref().map(|t| t.2.clone());
+        let cols = painted.unwrap_or_else(columns);
         self.table
             .column_menu(&cols)
             .into_iter()
@@ -363,9 +387,12 @@ impl DebugCardView {
             .collect()
     }
 
-    /// ⚠️ SONDA (o condutor das fotos): o ▸ da linha `key` da tabela pintada.
+    /// ⚠️ SONDA (o condutor das fotos): o que abre a linha `key` — o ▸ do Stopped, o traço do Live.
     #[must_use]
     pub fn chevron_of(&self, key: &str) -> Option<Rect> {
+        if let Some((_, r)) = self.painted.sparks.iter().find(|(k, _)| k == key) {
+            return Some(*r);
+        }
         let (lay, rows, _) = self.painted.table.as_ref()?;
         let m = lay.m?;
         let span = lay.rows.iter().find(|s| rows[s.index].key == key)?;

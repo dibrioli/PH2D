@@ -1,8 +1,4 @@
-//! ⭐ **Os roteiros do smoke conduzido do editor de scripts** (`PH2D_CODE_SMOKE=<n>
-//! PH2D_CODE_SMOKE_PASSO=<k>`): os gestos (`Gesture`), as esperas (`Until`) e o roteiro de cada cena
-//! (`STEPS*`). Só dados: quem os conduz pelas portas do artista é o `ph2d-app-code::smoke_drive`;
-//! os scripts e as formas das cenas moram no `ph2d-code-scenes`. Saíram das `ph2d-app-*` no fecho da Onda D
-//! (catraca `the_shell_only_shrinks_and_every_app_crate_too`).
+//! ⭐ **Os roteiros do smoke do editor de scripts** (gestos, esperas, passos; só dados).
 
 use ph2d_editor_core::doc_surface::Key;
 use ph2d_host::Modifiers;
@@ -10,8 +6,7 @@ use ph2d_host::Modifiers;
 /// O passo até onde a cena 3 se conduz sozinha (0 = nada, o estado em que o dono a recebe).
 pub const STEP_ENV: &str = "PH2D_CODE_SMOKE_PASSO";
 
-/// `cena` = acabado o roteiro, a aba `Scene` passa à frente (o clique do dono na aba): a foto das
-/// formas, que a aba do script tapa.
+/// `cena` = acabado o roteiro, a aba `Scene` passa à frente (a foto das formas).
 pub const VIEW_ENV: &str = "PH2D_CODE_SMOKE_FOTO";
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -27,8 +22,7 @@ pub enum Gesture {
         needle: &'static str,
         name: &'static str,
     },
-    /// Uma letra por quadro, como a mão: a gramática assenta entre as teclas (num quadro só, a
-    /// letra depois de um Enter num comentário ainda se lia como comentário e a lista não abria).
+    /// Uma letra por quadro, como a mão (a gramática assenta entre as teclas).
     Type(&'static str),
     Wait(Until),
     /// O rato (sem botão) sobre o carácter `ahead` bytes depois da 1.ª `needle`.
@@ -52,7 +46,7 @@ pub enum Gesture {
     ClickDebug(usize),
     /// Um clique na linha `k` do menu aberto da barra.
     ClickTabMenuRow(usize),
-    /// Um clique no ▸ da linha `key` da tabela do Stopped (`self.pos`).
+    /// Um clique no ▸ da linha `key` do Stopped (`self.pos`) ou no traço de uma do Live (`17:self.t`).
     ClickDebugRow(&'static str),
     /// O botão direito no cabeçalho da tabela do Stopped (o menu das colunas).
     RightClickDebugHeader,
@@ -108,8 +102,7 @@ pub enum Until {
     Saved,
     /// Pelo menos `n` problemas na calha.
     Problems(usize),
-    /// O assistente respondeu sobre o nome sob o rato: `true` = o Ctrl+clique alcança-o e o
-    /// sublinhado foi pintado; `false` = não alcança, e nada se pintou.
+    /// O assistente respondeu sobre o nome sob o rato: `true` = alcança e sublinhou; `false` = não.
     Reach(bool),
     /// A lista de problemas pintada com linhas.
     ProblemRows,

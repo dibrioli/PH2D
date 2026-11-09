@@ -388,3 +388,55 @@ fn parado_o_codigo_rola_e_o_quadro_tem_tecto_roda_e_puxador() {
     let v = passo(&mut m);
     assert!((v.cards_scroll[1] - v.painted.cards[1].max).abs() < 1e-3 && v.cards_scroll[0] == 0.0);
 }
+
+/// Plano 14 Q3, pela porta do artista: a 2,5 Hz o Live é a tabela com o traço de 4 s do `self.x`;
+/// sobre o traço a mão, o clique abre o gráfico por baixo da linha e o Line leva à linha.
+#[test]
+fn ao_vivo_a_tabela_tem_o_traco_e_o_clique_abre_o_grafico() {
+    let (m, id) = aberto(MOVE);
+    let mut m = m.com_cena(id, 1);
+    for k in 1..=12u128 {
+        m.hero.store.note_clock(k * 400_000_000);
+        (m.cena(), m.host.as_mut().unwrap().debug_end_frame());
+        (m.quadro(), m.pinta(id));
+    }
+    let tabela = |m: &mut Mesa| {
+        m.docs()
+            .debug_view_of(id)
+            .unwrap()
+            .painted
+            .table
+            .clone()
+            .unwrap()
+    };
+    let (lay, rows, _) = tabela(&mut m);
+    let x = rows
+        .iter()
+        .position(|r| r.key == "7:self.x")
+        .expect("o self.x");
+    let ambar = format!("{:?}", rows[x].cells[2].ink) == "Changed";
+    assert!(
+        rows.iter().any(|r| r.key == "6:step") && ambar,
+        "o self.x mudou: âmbar"
+    );
+    assert_eq!(
+        rows[x].cells[3].spark.as_ref().map(Vec::len),
+        Some(10),
+        "4 s"
+    );
+    let (sx, sy) = centro(lay.cell_rect(x, "trail").unwrap());
+    let hand = Some(ph2d_editor_core::doc_surface::PointerLook::Hand);
+    assert_eq!(m.docs().pointer_look(id.0, sx, sy), hand);
+    m.clica(id, sx, sy, Modifiers::default());
+    (m.quadro(), m.pinta(id));
+    let (lay, aberto, _) = tabela(&mut m);
+    let graph = ph2d_panel_code::debug_card::live::GRAPH_ROWS;
+    assert_eq!(
+        aberto.len(),
+        rows.len() + graph,
+        "o gráfico por baixo da linha"
+    );
+    let (lx, ly) = centro(lay.cell_rect(x, "line").unwrap());
+    m.clica(id, lx, ly, Modifiers::default());
+    assert_eq!(m.docs().cursor_of(id).map(|c| c.0), Some(6), "a linha 7");
+}

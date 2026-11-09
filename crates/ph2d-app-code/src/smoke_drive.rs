@@ -268,7 +268,7 @@ fn holds(docs: &mut CodeDocs, id: ScriptId, until: Until) -> bool {
         Until::Live => docs
             .docs
             .iter()
-            .any(|d| d.script == id && !d.is_stopped_here() && !d.debug.ghosts.is_empty()),
+            .any(|d| d.script == id && !d.is_stopped_here() && !d.debug.live.ghosts.is_empty()),
         Until::Checked => docs.assist_diagnostics(id).1.is_some(),
         Until::Found => docs
             .active

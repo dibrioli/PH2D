@@ -2,17 +2,35 @@
 //! linha, a partir do que a VM do `ph2d-script` relata.
 
 use ph2d_i18n::{tr, tr_with};
-use ph2d_script::{DebugStop, LineLive, StopKind, ValueKind, Var};
+use ph2d_script::{DebugStop, StopKind, ValueKind, Var};
 use std::collections::BTreeMap;
-
-/// Os caracteres de um valor ao vivo no fim da linha (legibilidade; o resto é «…»).
-const GHOST_CHARS: usize = 60;
 
 /// O que a aba pede ao jogo parado.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Ask {
     Continue,
     NextLine,
+}
+
+/// Se o jogo está parado, e porquê: a linha (Continue e Next Line) ou um erro (só Continue).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum GameStop {
+    #[default]
+    Running,
+    Line,
+    Error,
+}
+
+impl GameStop {
+    /// O estado da paragem `stop` (`None` = o jogo corre).
+    #[must_use]
+    pub fn of(stop: Option<&DebugStop>) -> Self {
+        match stop.map(|s| &s.why) {
+            None => Self::Running,
+            Some(StopKind::Error(_)) => Self::Error,
+            Some(_) => Self::Line,
+        }
+    }
 }
 
 /// O estado do quadro: a cor e a palavra da faixa de cima.
@@ -68,7 +86,7 @@ pub struct StackEntry {
 /// ⭐ **O quadro de baixo do código** (plano 14): parado (faixa com o estado, a linha, a função, o
 /// objecto e os botões; Locals e self em árvore com o tipo; Call stack e Waiting here) ou de quem
 /// são os valores ao vivo.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct DebugCard {
     pub state: CardState,
     /// «Stopped at line 14 — on Circle» / «Live values: Circle» (a faixa compacta e a leitura).
@@ -86,6 +104,8 @@ pub struct DebugCard {
     pub stack: Vec<StackEntry>,
     /// O Next line (escondido num erro).
     pub can_step: bool,
+    /// Os valores ao vivo (o jogo corre).
+    pub live: Vec<crate::LiveRow>,
 }
 
 impl DebugCard {
@@ -119,6 +139,11 @@ impl DebugCard {
         let frames = self.stack.iter();
         rows.extend(frames.map(|s| format!("{stack}  {} {}", s.function, s.line)));
         rows.extend(self.waiting.iter().map(|w| format!("waiting {}", w.name)));
+        rows.extend(
+            self.live
+                .iter()
+                .map(|r| format!("{} = {}", r.var.key, r.var.value)),
+        );
         rows
     }
 
@@ -300,43 +325,18 @@ pub fn stop_card(
         this,
         stack,
         can_step: !matches!(stop.why, StopKind::Error(_)),
+        live: Vec::new(),
     }
 }
 
-/// O quadro dos valores ao vivo de `who` (o jogo corre).
+/// O quadro dos valores ao vivo de `who` (o jogo corre), com as linhas da última amostra.
 #[must_use]
-pub fn live_card(who: WhoTag) -> DebugCard {
+pub fn live_card(who: WhoTag, live: Vec<crate::LiveRow>) -> DebugCard {
     DebugCard {
         state: CardState::Live,
         title: tr_with("code.debug.live", &[("who", &who.name)]),
         who,
+        live,
         ..DebugCard::default()
-    }
-}
-
-/// «x = 412, step = 1  ×3  printed 2×» de uma linha.
-pub fn ghost_text(live: &LineLive) -> String {
-    let mut parts: Vec<String> = Vec::new();
-    let vals: Vec<String> = live
-        .values
-        .iter()
-        .map(|v| format!("{} = {}", v.name, v.value))
-        .collect();
-    if !vals.is_empty() {
-        parts.push(vals.join(", "));
-    }
-    if live.hits > 1 {
-        parts.push(tr_with("code.debug.hits", &[("count", &live.hits)]));
-    }
-    if live.prints > 0 {
-        parts.push(tr_with("code.debug.printed", &[("count", &live.prints)]));
-    }
-    let s = parts.join("  ");
-    if s.chars().count() > GHOST_CHARS {
-        let mut cut: String = s.chars().take(GHOST_CHARS).collect();
-        cut.push_str(tr("code.fold.ellipsis"));
-        cut
-    } else {
-        s
     }
 }

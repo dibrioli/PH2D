@@ -197,7 +197,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "code.debug.col.value" => "Value",
         "code.debug.col.type" => "Type",
         "code.debug.col.line" => "Line",
-        "code.debug.col.last" => "Last 4 s",
+        "code.debug.col.last" => "Last {seconds} s",
+        "code.debug.live_rate" => "{rate}\u{00d7}/s",
+        "code.debug.live_foot" => {
+            "Hover a trace: lowest, highest, now \u{00b7} Click it for the big graph \u{00b7} Changed since the last sample: amber"
+        }
+        "code.debug.span" => "min {min} \u{00b7} max {max} \u{00b7} now {now}",
+        "code.debug.ago" => "\u{2212}{seconds} s",
+        "code.debug.now" => "now",
+        "code.debug.live_name" => "{name} \u{00b7} ln {line}",
         "code.debug.type_changed" => "{type} \u{00b7} changed",
         "code.debug.waiting_here" => "Waiting here \u{00b7} {count}",
         "code.debug.stack_line" => "ln {line}",

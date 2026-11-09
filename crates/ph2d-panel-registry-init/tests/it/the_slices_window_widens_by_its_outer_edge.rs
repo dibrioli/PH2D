@@ -58,6 +58,7 @@ fn hero(ts: &mut ph2d_text::TextSystem) -> HeroScreen {
         }),
         transform: false,
         user: None,
+        collider: None,
     });
     let mut hero = HeroScreen::new(NodeId(1));
     hero.panel_visibility.insert(PANEL_PIXEL_SLICES, true);

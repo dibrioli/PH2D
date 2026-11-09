@@ -91,6 +91,21 @@ pub fn adiciona_collider_da_slice(
     Some(filha)
 }
 
+/// A «Collision Shape» filha de `e` que segue a slice `slice`, se já existe (o «Add Collider» não
+/// duplica).
+#[must_use]
+pub fn collider_da_slice(world: &World, e: Entity, slice: SliceId) -> Option<Entity> {
+    world
+        .get::<ph2d_ecs::Children>(e)?
+        .iter()
+        .copied()
+        .find(|&f| {
+            world
+                .get::<SegueSlice>(f)
+                .is_some_and(|s| s.slice == slice.0)
+        })
+}
+
 /// **A forma por quadro**: em cada filha com [`SegueSlice`] cujo pai é um Pixel Sprite, escreve a
 /// forma e o offset da key da slice no [`crate::quadro_mostrado`] (só se mudaram, para não acordar
 /// a ponte). `doc_de(chave)` dá o documento e o quadro do editor. A ponte do rapier refaz o collider

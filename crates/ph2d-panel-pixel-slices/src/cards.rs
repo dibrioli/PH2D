@@ -130,6 +130,7 @@ fn propriedades(
     c: &mut CardCtx<'_>,
     v: &Vista,
     user: Option<&(UserDataView, bool)>,
+    collider: Option<bool>,
     y: f32,
 ) -> f32 {
     let ud = ids::user_data();
@@ -187,13 +188,26 @@ fn propriedades(
         let r = rotulos_xywh();
         y = c.row(&[numero(ids::PIVOT_X, r[0]), numero(ids::PIVOT_Y, r[1])], y);
     }
-    c.row(
+    let y = c.row(
         &[
             botao(ids::DUPLICATE, "panel.pixel.slices.duplicate"),
             botao(ids::DELETE, "panel.pixel.slices.delete"),
         ],
         y,
-    )
+    );
+    match collider {
+        Some(false) => c.row(
+            &[botao(ids::ADD_COLLIDER, "panel.pixel.slices.add_collider")],
+            y,
+        ),
+        Some(true) => c.row(
+            &[Cell::new(Widget::ButtonOff {
+                text: tr("panel.pixel.slices.collider_added"),
+            })],
+            y,
+        ),
+        None => y,
+    }
 }
 
 /// Sem seleção: os mesmos rótulos, sem caixa nem clique, e a frase do que falta.
@@ -235,7 +249,7 @@ fn sem_selecao(c: &mut CardCtx<'_>, y: f32) -> f32 {
 
 /// Os cartões da janela.
 pub(crate) fn cartoes(x: &Contexto, user_aberto: bool) -> Vec<CardDef<'static>> {
-    let vista = x.vista.clone();
+    let (vista, collider) = (x.vista.clone(), x.collider);
     let user = x
         .user
         .as_ref()
@@ -247,7 +261,7 @@ pub(crate) fn cartoes(x: &Contexto, user_aberto: bool) -> Vec<CardDef<'static>> 
             tr("panel.pixel.slices.sec_props"),
             None,
             move |c, y| match &vista {
-                Some(v) => propriedades(c, v, user.as_ref(), y),
+                Some(v) => propriedades(c, v, user.as_ref(), collider, y),
                 None => sem_selecao(c, y),
             },
         ),

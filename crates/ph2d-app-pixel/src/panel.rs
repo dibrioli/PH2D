@@ -146,7 +146,7 @@ pub fn frame(
     }
     crate::exportar::frame(app, hero);
     crate::tiles::frame(app, hero);
-    crate::slices::frame(app, hero);
+    crate::slices::frame(app, hero, world, editing);
     historia(app);
     if let Some(c) = hero.store.take_pixel_edit_request() {
         app.aplica_dialogo(c);

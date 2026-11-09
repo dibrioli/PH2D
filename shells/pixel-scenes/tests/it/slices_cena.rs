@@ -288,3 +288,66 @@ fn esc_com_o_menu_da_slice_fecha_so_o_menu() {
     assert!(t.tecla(KeyCode::Escape, NADA));
     assert!(t.app.slices_selected(t.key).is_empty(), "sem menu, limpa");
 }
+
+/// ⭐ **Add Collider** (P14 §6), a SEQUÊNCIA: o pedido do painel ⇒ no quadro seguinte da família a
+/// filha com o nome da slice nasce no objecto, segue a slice, e o painel passa a dizer «Collider
+/// added»; o segundo pedido não duplica. (O passo único do desfazer é o diff do `post_frame_undo`
+/// da shell: uma mutação do mundo num quadro.)
+#[test]
+fn o_collider_nasce_por_gesto() {
+    let mut m = cena_24();
+    let id = nomeada(m.sprite(), "hero").id;
+    canal::pede(Pedido::Seleciona(id));
+    m.quadro();
+    assert_eq!(canal::contexto().collider, Some(false), "o botão vivo");
+    canal::pede(Pedido::AddCollider);
+    m.quadro();
+    m.app.frame(
+        &mut m.sim,
+        &mut m.cam,
+        WINDOW,
+        PPM,
+        Some(m.bits),
+        spawn_root,
+    );
+    let e = ph2d_ecs::Entity::try_from_bits(m.bits).expect("e");
+    let f = m
+        .sim
+        .world()
+        .get::<ph2d_ecs::Children>(e)
+        .and_then(|c| c.iter().next().copied())
+        .expect("a filha nasceu");
+    assert_eq!(
+        m.sim
+            .world()
+            .get::<ph2d_ecs::Name>(f)
+            .map(|n| n.as_str().to_owned()),
+        Some("hero".to_owned()),
+        "a Hierarchy mostra o nome da slice"
+    );
+    assert_eq!(
+        m.sim
+            .world()
+            .get::<ph2d_ecs::ChildOf>(f)
+            .map(|c| c.parent()),
+        Some(e)
+    );
+    m.quadro();
+    assert_eq!(canal::contexto().collider, Some(true), "«Collider added»");
+    canal::pede(Pedido::AddCollider);
+    m.quadro();
+    m.app.frame(
+        &mut m.sim,
+        &mut m.cam,
+        WINDOW,
+        PPM,
+        Some(m.bits),
+        spawn_root,
+    );
+    let filhas = m
+        .sim
+        .world()
+        .get::<ph2d_ecs::Children>(e)
+        .map_or(0, |c| c.iter().count());
+    assert_eq!(filhas, 1, "o segundo pedido não duplica");
+}

@@ -154,6 +154,7 @@ fn uma_selecionada() -> Contexto {
         }),
         transform: false,
         user: None,
+        collider: None,
     }
 }
 
@@ -611,5 +612,36 @@ fn the_pixel_slice_user_data_card_answers_a_real_pointer() {
     assert_eq!(
         canal::take_pedidos(),
         [Pedido::UserData(SliceId(1), UserEdit::Add)]
+    );
+}
+
+/// ⭐ **Add Collider** (P14 §6): com a slice selecionada num objecto, o botão é pintado e o clique
+/// chega à família; com a forma já feita ele diz «Collider added» desligado e nada pede; sem
+/// objecto não existe. O caminho até à filha na cena: `shells/pixel-scenes/tests/it/pivo.rs`.
+#[test]
+fn o_add_collider_chega_a_familia_e_nao_duplica() {
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let com = |c| Contexto {
+        collider: c,
+        ..uma_selecionada()
+    };
+    let mut hero = hero_com(&mut ts, com(Some(false)));
+    assert_eq!(
+        ph2d_i18n::tr("panel.pixel.slices.add_collider"),
+        "Add Collider"
+    );
+    clica(&mut hero, ids::ADD_COLLIDER, "Add Collider");
+    assert_eq!(canal::take_pedidos(), [Pedido::AddCollider]);
+    for c in [Some(true), None] {
+        let hero = hero_com(&mut ts, com(c));
+        assert!(
+            hero.hit_index.rect_for(ids::ADD_COLLIDER).is_none(),
+            "{c:?}: o botão vivo não podia estar pintado"
+        );
+        assert_eq!(canal::take_pedidos(), []);
+    }
+    assert_eq!(
+        ph2d_i18n::tr("panel.pixel.slices.collider_added"),
+        "Collider added"
     );
 }

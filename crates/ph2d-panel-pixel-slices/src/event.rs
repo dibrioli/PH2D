@@ -57,7 +57,7 @@ fn regista_numeros(store: &mut WidgetStore) {
 }
 
 pub(crate) fn populate(store: &mut WidgetStore) {
-    for id in ids::BOTOES {
+    for id in ids::BOTOES.into_iter().chain([ids::ADD_COLLIDER]) {
         botao(store, id);
     }
     store.set_tooltip(ids::TRANSFORM, tr("panel.pixel.slices.transform_tip"));
@@ -257,6 +257,7 @@ fn pedido_de(id: NodeId, x: &Contexto) -> Option<Pedido> {
         i if i == ids::DELETE || i == ids::MENU_DELETE => Pedido::Apaga,
         i if i == ids::DUPLICATE || i == ids::MENU_DUPLICATE => Pedido::Duplica,
         i if i == ids::MENU_REMOVE_KEY => Pedido::RemoveMudanca,
+        i if i == ids::ADD_COLLIDER && x.collider == Some(false) => Pedido::AddCollider,
         _ => {
             let i = (0..x.linhas.len()).find(|&i| ids::linha(i) == id)?;
             Pedido::Seleciona(x.linhas[i].id)

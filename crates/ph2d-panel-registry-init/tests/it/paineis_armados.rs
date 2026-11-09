@@ -504,6 +504,7 @@ fn arma_as_slices() {
         }),
         transform: false,
         user: None,
+        collider: None,
     });
 }
 

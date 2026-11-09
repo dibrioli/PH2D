@@ -57,6 +57,7 @@ impl PixelApp {
             eprintln!("[pixel-smoke] nível {level} desconhecido ou falhou");
         }
         self.reconcile(sim);
+        crate::slices::adiciona_collider(self, sim, ppm);
         let prefs = self
             .chave
             .and_then(|k| Some(*self.docs.get(&k)?.sprite.prefs()));

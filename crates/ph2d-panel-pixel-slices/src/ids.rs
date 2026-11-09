@@ -40,6 +40,8 @@ pub const MENU_REMOVE_KEY: NodeId = hash_node_id("pixel_slices.menu.remove_key")
 /// As caixas apagadas, sem seleção: ninguém as escuta.
 pub const NINE_OFF: NodeId = hash_node_id("pixel_slices.nine.off");
 pub const PIVOT_OFF: NodeId = hash_node_id("pixel_slices.pivot.off");
+/// «Add Collider» (P14 §6): a forma de colisão que segue a slice selecionada.
+pub const ADD_COLLIDER: NodeId = hash_node_id("pixel_slices.add_collider");
 
 pub const BOTOES: [NodeId; 11] = [
     ALL,

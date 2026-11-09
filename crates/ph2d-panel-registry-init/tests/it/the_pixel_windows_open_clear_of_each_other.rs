@@ -107,6 +107,7 @@ fn publica_conteudo() {
         }),
         transform: false,
         user: None,
+        collider: None,
     });
 }
 

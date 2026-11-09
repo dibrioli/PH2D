@@ -39,6 +39,8 @@ pub(crate) struct Estado {
     visto: JanelaDaMao,
     /// O documento e o desfazer depois da última cor ou do último arrasto: reescreve-se o mesmo passo.
     cor: Option<(u32, usize)>,
+    /// «Add Collider» pedido no painel: `(documento, objecto)`; o quadro com a cena na mão o faz.
+    add_collider: Option<(u32, u64)>,
 }
 
 impl Estado {
@@ -221,8 +223,17 @@ fn pedido(app: &mut PixelApp, key: u32, p: &Pedido) {
 }
 
 /// O quadro: os pedidos do painel, o que ele mostra, o menu, e quando abre (a ferramenta na mão).
-pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
+pub(crate) fn frame(
+    app: &mut PixelApp,
+    hero: &mut HeroScreen,
+    world: &ph2d_ecs::World,
+    editing: Option<u64>,
+) {
     for p in canal::take_pedidos() {
+        if p == Pedido::AddCollider {
+            app.slices.add_collider = app.chave.zip(editing);
+            continue;
+        }
         if let Some(key) = app.chave {
             app.assenta();
             crate::viva::assenta(app);
@@ -236,6 +247,9 @@ pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
         let (f, sel) = (no_quadro(&d.sprite, d.frame), app.slices_selected(k));
         x = familia::contexto(&d.sprite, f, sel, app.slices.transform);
         x.na_mao = na_mao;
+        if let ([id], Some(e)) = (sel, editing.and_then(ph2d_ecs::Entity::try_from_bits)) {
+            x.collider = Some(ph2d_pixel_cena::collider_da_slice(world, e, *id).is_some());
+        }
         if let Some(m) = menu.filter(|_| na_mao).and_then(|(cel, p)| {
             familia::menu_em(&d.sprite, f, sel, cel, hero.escala().to_logical(p))
         }) {
@@ -246,6 +260,27 @@ pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
     app.slices
         .visto
         .segue(hero, PANEL_PIXEL_SLICES, na_mao && app.chave.is_some());
+}
+
+/// ⭐ **«Add Collider»** (P14 §6) com a cena na mão: a forma que segue a slice selecionada nasce no
+/// objecto em Draw — UMA mutação do mundo neste quadro, logo um passo do desfazer do mundo (o diff do
+/// `post_frame_undo`). Sem duplicar: a slice que já tem forma não ganha outra.
+pub(crate) fn adiciona_collider(app: &mut PixelApp, sim: &mut ph2d_ecs::SimWorld, ppm: f32) {
+    let Some((key, bits)) = app.slices.add_collider.take() else {
+        return;
+    };
+    let (Some(e), Some(d)) = (ph2d_ecs::Entity::try_from_bits(bits), app.docs.get(&key)) else {
+        return;
+    };
+    let [id] = app.slices_selected(key) else {
+        return;
+    };
+    if ph2d_pixel_cena::collider_da_slice(sim.world(), e, *id).is_some() {
+        return;
+    }
+    let q = ph2d_pixel_cena::quadro_mostrado(sim.world(), e, &d.sprite, d.frame);
+    let m_por_px = 1.0 / f64::from(ppm.max(f32::MIN_POSITIVE));
+    ph2d_pixel_cena::adiciona_collider_da_slice(sim.world_mut(), e, *id, &d.sprite, q, m_por_px);
 }
 
 /// Os quadros com key das selecionadas, para a linha do tempo (§9.2): só com a ferramenta na mão.

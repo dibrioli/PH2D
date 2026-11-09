@@ -51,6 +51,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.slices.pivot" => "Pivot",
         "panel.pixel.slices.delete" => "Delete",
         "panel.pixel.slices.duplicate" => "Duplicate",
+        "panel.pixel.slices.add_collider" => "Add Collider",
+        "panel.pixel.slices.collider_added" => "Collider added",
         "panel.pixel.slices.no_selection" => "Select a slice to edit it.",
         "panel.pixel.slices.no_value" => "–",
         "panel.pixel.slices.menu_properties" => "Slice Properties...",

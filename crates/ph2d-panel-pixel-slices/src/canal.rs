@@ -26,6 +26,9 @@ pub struct Contexto {
     pub transform: bool,
     /// O user data da slice, só com UMA selecionada (a tabela de propriedades, P12 U).
     pub user: Option<(SliceId, ph2d_pixel_core::UserData)>,
+    /// «Add Collider» (P14 §6): `None` sem UMA slice selecionada num objecto da cena; `Some(true)`
+    /// = a slice já tem a forma (o botão diz «Collider added», desligado).
+    pub collider: Option<bool>,
 }
 
 /// O menu do botão direito: onde abre, em píxeis da interface, e se há mudança para remover aqui.
@@ -60,6 +63,8 @@ pub enum Pedido {
     RemoveMudanca,
     /// Um gesto do cartão User Data sobre a slice selecionada: um passo do desfazer.
     UserData(SliceId, ph2d_pixel_core::user::edit::UserEdit),
+    /// «Add Collider» na slice selecionada: a forma de colisão que a segue (um passo do mundo).
+    AddCollider,
 }
 
 impl Pedido {

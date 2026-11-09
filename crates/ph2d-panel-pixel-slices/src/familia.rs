@@ -47,7 +47,8 @@ pub fn responde(
         Pedido::Nome(t) => op(campos::nome(s, sel, t)),
         Pedido::Dados(t) => op(campos::dados(s, sel, t)),
         Pedido::Cor(c) => op(campos::cor(s, sel, *c)),
-        Pedido::PassoFechou => Resposta::default(),
+        // O passo é do MUNDO, não do documento: a família o faz com a cena na mão.
+        Pedido::PassoFechou | Pedido::AddCollider => Resposta::default(),
         Pedido::Campo(c, t) | Pedido::Arrasta(c, t) => op(campos::edita(s, frame, sel, *c, t)),
         Pedido::Nove(on) => op(campos::nove(s, frame, sel, *on)),
         Pedido::Pivot(on) => op(campos::pivot(s, frame, sel, *on)),
@@ -94,6 +95,7 @@ pub fn contexto(s: &Sprite, frame: u32, sel: &[SliceId], transform: bool) -> Con
             [id] => s.slice(*id).map(|c| (*id, c.user.clone())),
             _ => None,
         },
+        collider: None,
     }
 }
 

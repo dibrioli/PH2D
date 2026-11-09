@@ -28,6 +28,7 @@ fn contexto() -> Contexto {
         }),
         transform: false,
         user: None,
+        collider: None,
     }
 }
 

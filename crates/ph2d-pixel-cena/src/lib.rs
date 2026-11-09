@@ -15,7 +15,9 @@ pub mod fixture;
 mod forma;
 
 pub use deriva::{CLIP_SEM_TAGS, DerivadoDe, animador_de_nascenca, deriva, grelha};
-pub use forma::{SEGUE_SLICE, SegueSlice, adiciona_collider_da_slice, deriva_formas, pivo_px};
+pub use forma::{
+    SEGUE_SLICE, SegueSlice, adiciona_collider_da_slice, collider_da_slice, deriva_formas, pivo_px,
+};
 
 /// As tags do documento como clips do motor, pela porta única [`tag_do_aseprite`] (a mesma do
 /// import de `.ase`). Sem tags ⇒ uma que cobre todos os quadros, chamada `nome_sem_tags`.

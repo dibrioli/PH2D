@@ -47,21 +47,43 @@ fn so_o_outline_a_mao_publica_os_pontos() {
 }
 
 /// ⭐ A curva leva os anéis; a meio de duas chaves válidas cujo caminho se cruza (o quadrado rodado
-/// 180°: a meio colapsa num ponto), o quadro SEGURA o que tem. *Mutação: escrever sem a guarda de
-/// `validos` ⇒ vermelho.*
+/// 180°: a meio colapsa num ponto), o quadro dá os anéis da chave ANTERIOR (`anterior`).
+/// *Mutação: escrever sem a guarda de `validos` ⇒ vermelho.*
 #[test]
-fn o_anel_interpolado_que_se_cruza_segura_o_que_tem() {
+fn o_anel_interpolado_que_se_cruza_da_a_chave_anterior() {
     let q = quadrado();
     let rodado = vec![vec![[160, 160], [0, 160], [0, 0], [160, 0]]];
     let a = publicados(&contorno(q.clone(), true));
     let b = publicados(&contorno(rodado.clone(), true));
-    let quarto = escritos(&q, &entre(&a, &b, 0.25)).expect("a um quarto o anel é válido");
+    let na_a = |kk: FieldKey| valor(&q, kk);
+    let quarto = escritos(&q, &entre(&a, &b, 0.25), na_a).expect("a um quarto o anel é válido");
     assert_eq!(quarto[0][0], [40, 40], "a curva leva o ponto");
+    let meio = escritos(&quarto, &entre(&a, &b, 0.5), na_a);
+    assert_eq!(meio, Some(q.clone()), "a meio, colapsa: a chave anterior");
     assert_eq!(
-        escritos(&q, &entre(&a, &b, 0.5)),
-        None,
-        "a meio, colapsa: segura"
+        escritos(&q, &b, na_a),
+        Some(rodado),
+        "a chave B chega inteira"
     );
-    assert_eq!(escritos(&q, &b), Some(rodado), "a chave B chega inteira");
-    assert_eq!(escritos(&q, &a), None, "nada mudou");
+    assert_eq!(escritos(&q, &a, na_a), None, "nada mudou");
+}
+
+/// ⭐ Determinístico: o quadro inválido dá o MESMO a tocar (passando pelos quadros do meio) e a saltar
+/// para ele. *Mutação: segurar o que o mundo tem ⇒ vermelho.*
+#[test]
+fn tocar_e_saltar_dao_o_mesmo_quadro() {
+    let q = quadrado();
+    let rodado = vec![vec![[160, 160], [0, 160], [0, 0], [160, 0]]];
+    let a = publicados(&contorno(q.clone(), true));
+    let b = publicados(&contorno(rodado, true));
+    let na_a = |kk: FieldKey| valor(&q, kk);
+    let mut tocando = q.clone();
+    for s in [0.1, 0.2, 0.3, 0.4, 0.5] {
+        if let Some(r) = escritos(&tocando, &entre(&a, &b, s), na_a) {
+            tocando = r;
+        }
+    }
+    let saltando = escritos(&q, &entre(&a, &b, 0.5), na_a).unwrap_or_else(|| q.clone());
+    assert_eq!(tocando, saltando, "o mesmo quadro, por dois caminhos");
+    assert_eq!(saltando, q);
 }

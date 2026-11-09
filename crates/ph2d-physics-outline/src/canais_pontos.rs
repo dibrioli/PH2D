@@ -45,13 +45,10 @@ pub fn valor(rings: &[Ring], kk: FieldKey) -> Option<f32> {
     }
 }
 
-/// ⭐ **Os anéis que a curva pede** sobre `rings` (a topologia é a de hoje; a propagação leva-a a todas
-/// as chaves). `None` = nada mudou, ou o anel interpolado reprova [`ph2d_shape_handles::pontos::validos`]
-/// (auto-intersecção a meio): o quadro SEGURA os anéis que tem — nunca entrega ao solver um inválido.
-#[must_use]
-pub fn escritos(rings: &[Ring], escritas: &[(FieldKey, f32)]) -> Option<Vec<Ring>> {
+/// `escritas` sobre uma cópia de `rings` (a topologia de hoje; o que cai fora dos anéis é ignorado).
+fn sobre(rings: &[Ring], escritas: impl Iterator<Item = (FieldKey, f32)>) -> Vec<Ring> {
     let mut novos = rings.to_vec();
-    for &(kk, v) in escritas {
+    for (kk, v) in escritas {
         let eixo = match kk.campo {
             f::CONTORNO_PONTO_X => 0,
             f::CONTORNO_PONTO_Y => 1,
@@ -65,5 +62,26 @@ pub fn escritos(rings: &[Ring], escritas: &[(FieldKey, f32)]) -> Option<Vec<Ring
             p[eixo] = v.round() as i32;
         }
     }
-    (novos != rings && ph2d_shape_handles::pontos::validos(rings, &novos)).then_some(novos)
+    novos
+}
+
+/// ⭐ **Os anéis que a curva pede** sobre `rings` (a topologia é a de hoje; a propagação leva-a a todas
+/// as chaves). Se o anel interpolado reprova [`ph2d_shape_handles::pontos::validos`] (auto-intersecção a
+/// meio), o quadro dá a chave ANTERIOR (`anterior(kk)`: o valor de cada canal nela) — determinístico,
+/// o mesmo a tocar e a saltar; nunca entrega ao solver um anel inválido. `None` = nada a mudar.
+#[must_use]
+pub fn escritos(
+    rings: &[Ring],
+    escritas: &[(FieldKey, f32)],
+    anterior: impl Fn(FieldKey) -> Option<f32>,
+) -> Option<Vec<Ring>> {
+    let valido = |r: &Vec<Ring>| ph2d_shape_handles::pontos::validos(rings, r);
+    let mut novos = sobre(rings, escritas.iter().copied());
+    if !valido(&novos) {
+        let chave = escritas
+            .iter()
+            .filter_map(|&(kk, _)| Some((kk, anterior(kk)?)));
+        novos = sobre(rings, chave);
+    }
+    (novos != rings && valido(&novos)).then_some(novos)
 }

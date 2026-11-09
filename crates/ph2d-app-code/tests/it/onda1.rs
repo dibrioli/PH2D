@@ -46,10 +46,7 @@ fn a_paleta_lista_go_to_line_com_a_aba_activa_e_escolher_abre_o_campo() {
     );
     // Na paleta o atalho vai para a coluna da direita (Onda C, item 13).
     let na_paleta = ph2d_editor_core::widget::command_palette::shortcut_column(goto);
-    assert!(
-        rotulos(&m).contains(&na_paleta),
-        "o Ctrl+K lista-o"
-    );
+    assert!(rotulos(&m).contains(&na_paleta), "o Ctrl+K lista-o");
 
     assert!(global_palette::route_global_pick(&mut m.hero, CMD_GOTO));
     m.pinta(ids[0]);

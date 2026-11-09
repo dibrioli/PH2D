@@ -71,8 +71,17 @@ impl CardCtx<'_> {
             return;
         }
         let x = limpa_de(id);
-        let lado = r.h.min(m::FIELD_H);
-        let ponta = Rect::new(r.x + r.w - lado, r.y + (r.h - lado) * 0.5, lado, lado);
+        // Dentro da moldura do foco, nunca por cima dela (smoke do dono 08/11: o «×» invadia o contorno).
+        let borda = ph2d_tokens::visuals::Chrome::of(self.ink.theme)
+            .field_focus
+            .width;
+        let lado = (r.h.min(m::FIELD_H) - borda * 2.0).max(0.0);
+        let ponta = Rect::new(
+            r.x + r.w - lado - borda,
+            r.y + (r.h - lado) * 0.5,
+            lado,
+            lado,
+        );
         self.hit_index.register(x, ponta);
         let fundo = if self.store.hover_live(x) > 0.0 {
             ColorToken::CardFieldHover

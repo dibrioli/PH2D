@@ -79,7 +79,8 @@ impl Pergunta {
         );
         let mut y = topo + dentro_da_caixa;
         let frase_y = y;
-        y += row;
+        // Da frase à fila dos botões: o passo de linha do app (a linha e o vão entre dois controlos).
+        y += row + ph2d_tokens::control_gap_px();
         // Dono 08/11: «Move them to», o chip e os dois botões numa linha só, da altura dos campos (`FIELD_H`,
         // letra `Base`, acolchoados por `rect_for_label`, vãos `FIELD_GAP`); a lista aberta cai em espaço livre.
         let caixa_de = |s: &str, largura: &mut dyn FnMut(&str) -> f32| {
@@ -330,7 +331,10 @@ pub fn fundo_da_pergunta(theme: ph2d_tokens::Theme) -> ph2d_vector::Color {
     if razao(tinta_do_destino(theme), perigo) >= ph2d_tokens::contrast::TEXT_MIN_RATIO {
         perigo
     } else {
-        tom!(ColorToken::Bg1, theme)
+        tom!(
+            ph2d_editor_core::widget::section_cards::CardDepth::Section.token(),
+            theme
+        )
     }
 }
 

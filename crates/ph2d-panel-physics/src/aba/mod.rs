@@ -443,7 +443,9 @@ macro_rules! tom {
         let t: ColorToken = $t;
         let cartao = match t {
             ColorToken::PanelBg => Some(ColorToken::KanbanList),
-            ColorToken::Bg1 => Some(ColorToken::KanbanCard),
+            t if t == ph2d_editor_core::widget::section_cards::CardDepth::Section.token() => {
+                Some(ColorToken::KanbanCard)
+            }
             ColorToken::Bg2 => Some(ColorToken::CardField),
             ColorToken::Bg3 => Some(ColorToken::KanbanCardRaised),
             ColorToken::Text1 => Some(ColorToken::KanbanCardFg),

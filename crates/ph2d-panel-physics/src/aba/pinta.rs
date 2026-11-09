@@ -81,7 +81,15 @@ fn pinta_lista(ctx: &mut PaintCtx, q: &Quadro) {
     camada_das_listas::por_cima(ctx.scene, |cena| {
         fill_rounded_rect(cena, area, 0.0, tom!(ColorToken::PanelBg, theme));
         for r in [g.lista, g.grade, g.camada] {
-            fill_rounded_rect(cena, r, raio, tom!(ColorToken::Bg1, theme));
+            fill_rounded_rect(
+                cena,
+                r,
+                raio,
+                tom!(
+                    ph2d_editor_core::widget::section_cards::CardDepth::Section.token(),
+                    theme
+                ),
+            );
         }
         // A lista «Layers», pela régua do editor de animações (dono 08/11): a letra dele, linhas de
         // `ROW_H_PX` sem vão, a selecionada numa faixa da largura inteira, o nome a `Text1` e a contagem a `Text2`.

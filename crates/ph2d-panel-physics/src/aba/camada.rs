@@ -70,7 +70,8 @@ impl Camada {
                 .collect();
             let (rs, linhas) = fila(pad, y, dentro, &larg, Geometria::fila_de_botoes());
             let (bh, _, bv) = Geometria::fila_de_botoes();
-            y += linhas as f32 * (bh + bv) + Spacing::Sm.px();
+            // Dos botões das camadas à linha «Objects»: o vão entre dois controlos da secção.
+            y += linhas as f32 * (bh + bv) + ph2d_tokens::control_gap_px();
             visiveis.iter().copied().zip(rs).collect()
         };
         let objetos_y = y;

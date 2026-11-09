@@ -6,7 +6,8 @@
 //! Módulo-filho do [`super`] (o tecto de 700 LOC do `solver.rs`).
 
 use super::*;
-use crate::passlist::Opcionais;
+use crate::passlist::{FLUENCIA, Opcionais};
+use crate::passlist_momento::{NOME_CONHECIDO_DO_MIOLO, NOME_UNIFORME_DO_MIOLO};
 
 const FORMATO: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 
@@ -42,6 +43,65 @@ pub(super) struct Momento {
     lista: PassList,
     /// O que a lista declara a mais que a do solver (texturas e, na holográfica, os buffers).
     bytes: u64,
+    /// ⭐ P14c-placa 6 — o miolo de `M` (com o miolo de `F`).
+    miolo: Option<MioloDoMomento>,
+}
+
+/// ⭐ P14c-placa 6 — `M` DENTRO dos opacos pela difusão do miolo (a lei do gabarito, que difunde `[F; M]`):
+/// depois do miolo de `F`, a pirâmide dele (livre até o quadro seguinte) corre outra vez para `Mx` e para
+/// `My`, com pipelines PRÓPRIAS (`miolo_classifica_momento`: o rgb da fina de `M`, o peso do conhecido de
+/// `F`). O conhecido fino e o uniforme são próprios; sem o anel de fora da região (o uniforme de `F` tem-no):
+/// com a região menor que a grade, as vizinhas de fora dela não contam (Neumann, a lei da W5h).
+struct MioloDoMomento {
+    xy: [super::miolo::DoMiolo; 2],
+    conhecido: wgpu::Texture,
+}
+
+impl MioloDoMomento {
+    fn novo(s: &Solver, gpu: &GpuContext, lista: &PassList, fina: [&wgpu::Texture; 2]) -> Option<Self> {
+        let f = s.miolo.as_ref()?;
+        let [i0, ..] = Opcionais::de(&s.cfg).miolo?;
+        let decl = lista.texturas.iter().find(|t| t.nome == NOME_CONHECIDO_DO_MIOLO)?;
+        let conhecido = textura(&gpu.device, decl);
+        let u = lista.buffers.iter().find(|b| b.nome == NOME_UNIFORME_DO_MIOLO)?;
+        let uniforme = super::criar_buffer(&gpu.device, u.nome, u.bytes, u.usos);
+        let cfg = Config {
+            anel_fora_da_regiao: false,
+            ..s.cfg
+        };
+        let device = crate::Placa {
+            device: &gpu.device,
+            fabrica: &s.fabrica,
+            conta: None,
+        };
+        let padrao = wgpu::TextureViewDescriptor::default();
+        let k0_de_f = s.texturas[i0].create_view(&padrao);
+        let um = |k: usize| {
+            let mut texturas = s.texturas.clone();
+            texturas[FLUENCIA] = fina[k].clone();
+            texturas[i0] = conhecido.clone();
+            let vistas: Vec<wgpu::TextureView> =
+                texturas.iter().map(|t| t.create_view(&padrao)).collect();
+            // A «transmitida» é a OUTRA fina de `M` (alfa 1 em todo texel): `M` não atravessa os translúcidos.
+            let outra = fina[1 - k].create_view(&padrao);
+            let mut m = super::miolo::DoMiolo::novo(&super::miolo::Entradas {
+                placa: device,
+                cfg: &cfg,
+                texturas: &texturas,
+                vistas: &vistas,
+                uniforme: uniforme.clone(),
+                ladrilhos: &s.ladrilhos.as_ref()?.buffer,
+                momento: Some([&k0_de_f, &outra]),
+            })?;
+            let (inicio, fim) = f.regiao_de();
+            m.regiao(inicio, fim);
+            Some(m)
+        };
+        Some(Self {
+            xy: [um(0)?, um(1)?],
+            conhecido,
+        })
+    }
 }
 
 /// Uma textura do momento, como a lista a declara.
@@ -208,7 +268,9 @@ impl Momento {
             pipeline("luz2d momento fina", &grupos, "c3_momento", &c)
         };
         let fina_p = [Some(fina_com(0.0)), cfg.distantes.then(|| fina_com(1.0))];
+        let miolo = MioloDoMomento::novo(s, gpu, &lista, [&texturas[2], &texturas[3]]);
         Some(Self {
+            miolo,
             bytes: lista.bytes_alocados() - s.lista.bytes_alocados(),
             c0,
             hrc,
@@ -244,6 +306,19 @@ impl Momento {
         p.dispatch_workgroups(gx, gy, 1);
     }
 
+    /// ⭐ P14c-placa 6 — o miolo de `M`, depois do de `F` (a pirâmide dele está livre).
+    pub(super) fn gravar_miolo(&self, gpu: &GpuContext, enc: &mut wgpu::CommandEncoder, texel_m: f64) {
+        for m in self.miolo.iter().flat_map(|m| &m.xy) {
+            m.gravar(gpu, enc, texel_m, None);
+        }
+    }
+
+    pub(super) fn regiao(&mut self, inicio: [u32; 2], fim: [u32; 2]) {
+        for m in self.miolo.iter_mut().flat_map(|m| &mut m.xy) {
+            m.regiao(inicio, fim);
+        }
+    }
+
     /// `[Mx, My]` na grade da fluência.
     pub(super) fn vistas(&self) -> [&wgpu::TextureView; 2] {
         [&self.vistas[2], &self.vistas[3]]
@@ -261,11 +336,12 @@ impl Momento {
 
     /// As texturas do momento com o rótulo de cada uma (as da lista que o solver não guarda).
     pub(super) fn recursos(&self) -> impl Iterator<Item = (&'static str, &wgpu::Texture)> {
-        let base = self.lista.texturas.len() - self.texturas.len();
+        let proprias = self.texturas.len() + usize::from(self.miolo.is_some());
+        let base = self.lista.texturas.len() - proprias;
         self.lista.texturas[base..]
             .iter()
             .map(|t| t.nome)
-            .zip(&self.texturas)
+            .zip(self.texturas.iter().chain(self.miolo.as_ref().map(|m| &m.conhecido)))
     }
 }
 

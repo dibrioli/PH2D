@@ -492,6 +492,7 @@ impl Solver {
                     vistas: &vistas,
                     uniforme: buffer("luz2d/buf/miolo"),
                     ladrilhos: ladrilhos.as_ref()?,
+                    momento: None,
                 })
             });
             let fina = op.captura.map(|c| {

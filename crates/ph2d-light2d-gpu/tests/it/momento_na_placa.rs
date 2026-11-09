@@ -346,3 +346,60 @@ fn com_o_rebote_a_placa_e_o_gabarito_concordam_com_normal() {
 /// tem 0,131 no G9 deste degrau) · holográfica 0,1329 (junto às paredes, `±x`: o cone de 90° do nível 0; no meio
 /// da sala ≤ 0,07). Visto vermelho com `ω̂ → −ω̂` só na holográfica.
 const TETO_REBOTE: [f64; 2] = [0.20, 0.15];
+
+/// ⭐ P14c-placa 6 — DENTRO DE UM OPACO (onde o Pixel Sprite que bloqueia recebe): uma lâmpada à esquerda e o
+/// céu, um corpo opaco largo; o `luz_em_n` dos texels de dentro (a mais de meio texel da borda) contra o
+/// gabarito, que difunde `[F; M]` no miolo (`Miolo<9>`). Prende a difusão de `M` na pirâmide do miolo.
+#[test]
+fn dentro_do_opaco_o_momento_e_o_do_gabarito() {
+    let Some(gpu) = gpu() else { return };
+    let (x0, x1, y0, y1) = (2.4_f64, 3.2, 1.6, 3.4);
+    let cena = CenaDeLuz {
+        emissores: vec![Emissor::Ponto {
+            centro: [1.2, 2.3],
+            intensidade: [1.0, 0.8, 0.6],
+            alcance_m: 4.0,
+        }],
+        oclusores: vec![oclusor(
+            vec![
+                [x0 as f32, y0 as f32],
+                [x1 as f32, y0 as f32],
+                [x1 as f32, y1 as f32],
+                [x0 as f32, y1 as f32],
+            ],
+            1.0,
+        )],
+        ceu: [0.05, 0.05, 0.08],
+        com_normal: true,
+        ..Default::default()
+    };
+    let gab = Gabarito::novo(&cena);
+    for ((modo, cfg), teto) in modos().into_iter().zip([TETO_DENTRO, TETO_DENTRO_HOLO]) {
+        let l = rodar_com(&gpu, &cena, cfg, 1);
+        let g = l.g;
+        let dentro = |k: usize| {
+            let p = g.centro(k as u32 % g.largura, k as u32 / g.largura);
+            let d = (p[0] - x0).min(x1 - p[0]).min(p[1] - y0).min(y1 - p[1]);
+            d > 0.5 * g.texel_m
+        };
+        let mut pior = 0.0_f64;
+        for n in [[0.0, 0.0], [1.0, 0.0], [-1.0, 0.0], [0.0, 1.0], [0.0, -1.0]] {
+            let r = gabarito_por(&g, |p| gab.luz_em_n(p, n));
+            let e = rmse_rel(&l.luz_em_n(n), &r, dentro);
+            eprintln!("{modo} dentro do opaco, n = {n:?}: rmse relativo {e:.4}");
+            pior = pior.max(e);
+        }
+        assert!(
+            pior <= teto,
+            "{modo} dentro do opaco: placa × gabarito {pior:.4} > {teto}"
+        );
+    }
+}
+
+/// O MEDIDO + folga (09/11, RADV, rmse relativo; `n = 0` é o miolo de `F`, o mesmo antes e depois):
+/// `n = 0` 0,0645 · `(1, 0)` 0,1779 · `(−1, 0)` 0,0716 · `(0, 1)` 0,0941 · `(0, −1)` 0,0728. Antes (o bilinear
+/// cru, e visto vermelho com o miolo de `M` desligado): 0,0645 · 0,8590 · 0,2770 · 0,1795 · 0,1527. O `(1, 0)`
+/// é a face de COSTAS para a lâmpada (quase só o céu: o relativo de um número pequeno).
+const TETO_DENTRO: f64 = 0.20;
+/// ⭐ A holográfica (09/11, RADV): 0,0546 · 0,2137 · 0,0766 · 0,0923 · 0,0800.
+const TETO_DENTRO_HOLO: f64 = 0.235;

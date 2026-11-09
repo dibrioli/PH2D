@@ -4,12 +4,18 @@
 //! acrescenta-as por [`PassList::com_momento`] quando a cena as pede. Ficheiro irmão pelo tecto de 700 LOC.
 
 use crate::config::Config;
-use crate::passlist::{Buffer, CASCATAS, Opcionais, PassList, Passe, SEMENTES, Textura};
+use crate::passlist::{
+    Buffer, CASCATAS, FATIAS_DA_BASE, Opcionais, PASSO_UNIFORME, PassList, Passe, SEMENTES, Textura,
+};
 
 /// ⭐ P14c-placa 5 — o acumulado de `M` na holográfica (`Mx` e `My` de cada texel da grade, `vec4<f32>`).
 pub(crate) const NOME_ACUMULADO_DO_MOMENTO: &str = "luz2d/buf/hrc_acumulado_momento";
 /// ⭐ P14c-placa 5 — a grade das cascatas para a `hrc_saida_momento` (um `vec4<u32>`).
 pub(crate) const NOME_GRADE_DO_MOMENTO: &str = "luz2d/buf/hrc_momento_grade";
+
+/// ⭐ P14c-placa 6 — o conhecido fino do miolo de `M` (o índice `base + 4`) e o uniforme dele.
+pub(crate) const NOME_CONHECIDO_DO_MIOLO: &str = "luz2d/tex/momento_miolo_conhecido";
+pub(crate) const NOME_UNIFORME_DO_MIOLO: &str = "luz2d/buf/momento_miolo";
 
 /// Os rótulos, por ordem: `[c0 x, c0 y, fina x, fina y]`.
 pub(crate) const NOMES_DO_MOMENTO: [&str; 4] = [
@@ -84,6 +90,27 @@ impl PassList {
             le,
             escreve: vec![base + 2, base + 3],
         });
+        // ⭐ P14c-placa 6: o miolo de `M` — a pirâmide do de `F` (livre depois dele) difunde `Mx` e `My`; o
+        // conhecido fino de `M` e o uniforme são dele (`solver_momento.rs`, `MioloDoMomento`).
+        if let (Some(niveis), Some([k0, k, a, b, _, d])) = (cfg.niveis_do_miolo(), op.miolo) {
+            l.texturas.push(Textura {
+                nome: NOME_CONHECIDO_DO_MIOLO,
+                formato: wgpu::TextureFormat::Rgba16Float,
+                tamanho: fina,
+                usos: T::STORAGE_BINDING | T::TEXTURE_BINDING,
+                mips: 1,
+            });
+            l.buffers.push(Buffer {
+                nome: NOME_UNIFORME_DO_MIOLO,
+                bytes: PASSO_UNIFORME * (2 * u64::from(niveis + 1) + FATIAS_DA_BASE),
+                usos: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            });
+            l.passes.push(Passe {
+                nome: "luz2d momento miolo".into(),
+                le: vec![base + 2, base + 3, k0],
+                escreve: vec![base + 2, base + 3, base + 4, k, a, b, d],
+            });
+        }
         l
     }
 }

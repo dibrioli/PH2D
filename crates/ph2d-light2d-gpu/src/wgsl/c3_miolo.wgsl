@@ -112,6 +112,18 @@ fn miolo_classifica(@builtin(global_invocation_id) gid: vec3<u32>) {
     textureStore(saida, t, vec4<f32>(f.rgb, w));
 }
 
+// ⭐ P14c-placa 6 — o conhecido fino de `M`: o rgb da fina de `M` (`entrada`) com o PESO do conhecido
+// fino de `F` (`conhecido`, já classificado): a mesma pirâmide difunde `M` como difunde `F` (o gabarito
+// difunde `[F; M]`, `Miolo<9>`).
+@compute @workgroup_size(8, 8)
+fn miolo_classifica_momento(@builtin(global_invocation_id) gid: vec3<u32>) {
+    let t = alvo(gid);
+    if !na_regiao(t) {
+        return;
+    }
+    textureStore(saida, t, vec4<f32>(textureLoad(entrada, t, 0).rgb, textureLoad(conhecido, t, 0).a));
+}
+
 // `entrada` = o conhecido do nível de baixo; a região é a DESTE nível.
 @compute @workgroup_size(8, 8)
 fn miolo_puxa(@builtin(global_invocation_id) gid: vec3<u32>) {

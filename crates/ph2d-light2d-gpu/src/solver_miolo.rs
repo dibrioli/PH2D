@@ -16,9 +16,8 @@ struct UniformeNivel {
     outro_fim: [u32; 2],
     kh2: f32,
     suavidade: f32,
-    /// ⭐ W5n: 1 = a região é menor que a grade (o `miolo_classifica` deixa a moldura ao anel).
+    /// ⭐ W5n/W5q: a moldura é do anel · o `puxa` do nível 1 lê um ladrilho apagado como fora.
     moldura: f32,
-    /// ⭐ W5q: 1 = o `puxa` do nível 1 lê um ladrilho apagado como fora ([`crate::ladrilhos`]).
     ladrilhos: f32,
     /// ⭐ W5q: as relaxações por despacho do bloco neste nível (a solução, o erro; 0 = sem bloco).
     blocos: [u32; 2],
@@ -62,11 +61,8 @@ struct UniformeBase {
 /// ⭐ W5o — a memória de grupo por texel da base: 13 `f32` (o conhecido, os dois lados, o defeito).
 const BYTES_POR_TEXEL_DA_BASE: u32 = 52;
 
-/// ⭐ W5q — o bloco (K relaxações por despacho, a borda repetida) só nos níveis de até tantos texels: nos
-/// grandes a borda custa mais que o despacho poupado. Medido (`medida_luz2d_w5q_bloco`, 1080p, RTX
-/// 5060 Ti, K = 4, o miolo mín ms, Low cena 5 · High cena 5 · caixa Low; o nível 3 tem 57 408 texels,
-/// o 4 14 352): sem bloco 0,827 · 0,809 · 0,934; desde o 1 0,921 · 0,898 · 1,038; desde o 3 0,792 ·
-/// 0,774 · 0,910; **desde o 4 0,784 · 0,764 · 0,896**; desde o 5 0,795 · 0,784 · 0,906.
+/// ⭐ W5q — o bloco (K relaxações por despacho) só nos níveis até tantos texels (`medida_luz2d_w5q_bloco`;
+/// a tabela em `docs/Luz2D/handoffs/HANDOFF_CONTINUACAO_W5q_2026-10-14_CUSTO_DO_QUADRO.md`).
 const BLOCO_ATE_TEXELS: u32 = 16_384;
 
 /// Uma caixa `[inicio, fim)` num nível.
@@ -150,9 +146,10 @@ pub(super) struct Entradas<'a> {
     pub vistas: &'a [wgpu::TextureView],
     pub uniforme: wgpu::Buffer,
     pub ladrilhos: &'a wgpu::Buffer,
+    /// ⭐ P14c-placa 6 — o miolo de `M`: `[conhecido fino de F, transmitida]` (o classifica copia o peso de F).
+    pub momento: Option<[&'a wgpu::TextureView; 2]>,
 }
 
-/// O buffer dos ladrilhos, só leitura (o miolo e o anel).
 fn de_leitura(binding: u32) -> wgpu::BindGroupLayoutEntry {
     wgpu::BindGroupLayoutEntry {
         binding,
@@ -181,7 +178,6 @@ impl DoMiolo {
         let niveis = cfg.niveis_do_miolo()?;
         let [i0, ik, ia, ib, it, id] = Opcionais::de(cfg).miolo?;
         let device = e.placa;
-        // Um módulo e um layout por formato da `saida` (o WGSL fixa-o na declaração).
         let por_formato = |formato: wgpu::TextureFormat| {
             let nome = match formato {
                 wgpu::TextureFormat::Rgba32Float => "rgba32float",
@@ -250,7 +246,8 @@ impl DoMiolo {
                     1 => f16,
                     _ => f32,
                 };
-                pipeline(ENTRADAS[i], formato)
+                let de_m = i == 0 && e.momento.is_some();
+                pipeline(if de_m { "miolo_classifica_momento" } else { ENTRADAS[i] }, formato)
             })
             .collect();
         // ⭐ W5o: a base — o nível mais fino `b ≥ 2` de onde os níveis até ao topo cabem na memória de
@@ -346,7 +343,7 @@ impl DoMiolo {
             let quinto = if matches!(tipo, Tipo::Soma) {
                 a(1)
             } else {
-                transmitida
+                e.momento.map_or(transmitida, |m| m[1])
             };
             let (_, layout, _) = de(saida_de(tipo));
             let entrada = |binding, vista| wgpu::BindGroupEntry {
@@ -392,7 +389,8 @@ impl DoMiolo {
                 grupo,
             });
         };
-        por(Tipo::Classifica, 0, 0, [fl, a(1), a(1), k0]);
+        let k0_de_f = e.momento.map_or(a(1), |m| m[0]);
+        por(Tipo::Classifica, 0, 0, [fl, k0_de_f, a(1), k0]);
         for l in 1..=niveis {
             por(Tipo::Puxa, l, 0, [k(l - 1), a(1), a(1), k(l)]);
         }
@@ -493,6 +491,10 @@ impl DoMiolo {
             regiao: ([0; 2], [gf.largura, gf.altura]),
             fases: None,
         })
+    }
+
+    pub(super) fn regiao_de(&self) -> Caixa {
+        self.regiao
     }
 
     pub(super) fn regiao(&mut self, inicio: [u32; 2], fim: [u32; 2]) {

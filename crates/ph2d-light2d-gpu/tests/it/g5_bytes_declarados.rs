@@ -355,8 +355,8 @@ fn g5_o_momento_e_o_que_a_pass_list_declara() {
     o_momento_declarado(
         &gpu,
         c.clone(),
-        &["luz2d momento c0", "luz2d momento fina"],
-        4,
+        &["luz2d momento c0", "luz2d momento fina", "luz2d momento miolo"],
+        6,
     );
     // ⭐ P14c-placa 5 — a holográfica: a c0 de `M` no laço dos quadrantes (o acumulado e a grade, buffers).
     let holo = Config {
@@ -367,8 +367,10 @@ fn g5_o_momento_e_o_que_a_pass_list_declara() {
         "luz2d momento hrc soma",
         "luz2d momento hrc saída",
         "luz2d momento fina",
+        "luz2d momento miolo",
     ];
-    o_momento_declarado(&gpu, holo, &passes, 6);
+    // ⭐ P14c-placa 6 — com o miolo de `M`: o conhecido fino e o uniforme dele.
+    o_momento_declarado(&gpu, holo, &passes, 8);
 }
 
 fn o_momento_declarado(gpu: &ph2d_gpu::GpuContext, cfg: Config, passes: &[&str], n: usize) {

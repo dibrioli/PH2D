@@ -98,8 +98,8 @@ fn convex(p: &[[i32; 2]]) -> bool {
     })
 }
 
-/// Bound measured 08/11 (README table): the worst empty-covered share over all cases × details.
-const EMPTY_COVERED_MAX_PERMILLE: usize = 110; // worst: sint_crescente at 4 px, 224/2169 = 10.3 %
+/// Bound measured 09/11 (README table): the worst empty-covered share over all cases × details.
+const EMPTY_COVERED_MAX_PERMILLE: usize = 170; // outward law 09/11, worst: sint_anel at 4 px, 594/3496 = 17.0 %
 
 #[test]
 fn no_opaque_pixel_is_left_outside_and_empty_covered_is_bounded() {
@@ -281,7 +281,7 @@ fn hero_union_outline_is_byte_stable() {
     let hex: String = h.finalize().iter().map(|b| format!("{b:02x}")).collect();
     assert_eq!(
         hex,
-        "c3183329676f6d0b2cb884777e924038c44119c07e64344c19f38039a16033be"
+        "4d870de44bc63d5c56ad1141c51220c771dc5a74aab2553da65b7b056a9ea0d6"
     );
 }
 

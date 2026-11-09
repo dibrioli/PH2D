@@ -7,6 +7,10 @@ Leitor: a próxima LLM desta linha. Aprovado pelo dono em 08/11/2026 («faça co
 
 - Animated Sprite: **um contorno só** = união (OR) do alfa dos quadros usados pelas tags (todos, se não houver tags).
 - Reentrância = **sólida** (peças convexas). **Buraco fechado continua buraco.**
+- ⭐ **Dono 09/11 («SIM» a «a Godot deixa o contorno sair um pouco para fora da imagem para usar menos pontos»):
+  Detail = desvio máximo PARA FORA da arte (nunca para dentro; no buraco, «fora» é para dentro do buraco). Moeda
+  r = 20 px: 92 pontos em qualquer Detail antes → 92 · 14 · 8 · 7 a 0 · 2 · 4 · 8 px; herói parado a 2 px 57 → 26.
+  Tabela antes × depois e mutações: `crates/ph2d-outline-trace/README.md` §Outward law; portões `tests/fora.rs`.
 - Controlos: **Detail** (px, 2), **Alpha cutoff** (0.5), **Ignore specks under** (px), pontos editáveis no canvas
   (arrastar · duplo clique na aresta acrescenta · Alt+clique tira); «Follows the picture» × «Custom size» + «Fit to picture».
   Auto Key grava também Detail e Alpha cutoff (lei de 19/10; retraçar custa 80–310 µs, medido no oráculo).

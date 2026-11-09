@@ -300,6 +300,23 @@ pub fn excecao_para_as_fotos(world: &mut World) -> Option<Entity> {
     Some(excecao)
 }
 
+/// A foto do olho (`PH2D_PHYSICS_SMOKE_OLHO=<nome exato>`, dono 09/11): o objecto com esse nome nasce com o olho
+/// da Hierarquia fechado — a única forma do Player desligada: ele cai e atravessa o Floor.
+pub fn olho_para_as_fotos(world: &mut World) {
+    let Ok(nome) = std::env::var("PH2D_PHYSICS_SMOKE_OLHO") else {
+        return;
+    };
+    let alvo = {
+        let mut q = world.query::<(Entity, &Name)>();
+        q.iter(world)
+            .find(|(_, n)| n.0 == nome.trim())
+            .map(|(e, _)| e)
+    };
+    if let Some(e) = alvo {
+        world.entity_mut(e).insert(ph2d_ecs::Visibility::hidden());
+    }
+}
+
 /// As regras do mundo da cena: a matriz das quatro camadas.
 #[must_use]
 pub fn regras(base: PhysicsSettings) -> PhysicsSettings {

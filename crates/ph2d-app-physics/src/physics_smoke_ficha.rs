@@ -18,6 +18,7 @@ pub fn physics_smoke_ficha(ctx: &mut crate::SceneCtx<'_>) {
         ctx.want.panels.push("physics");
     }
     ph2d_physics_scene::ficha::nomeia_para_as_fotos(ctx.world);
+    ph2d_physics_scene::ficha::olho_para_as_fotos(ctx.world);
     let excecao = ph2d_physics_scene::ficha::excecao_para_as_fotos(ctx.world);
     ctx.want.select = excecao.map(Entity::to_bits);
     if let Ok(nome) = std::env::var("PH2D_PHYSICS_SMOKE_SELECT") {

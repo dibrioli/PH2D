@@ -577,7 +577,7 @@ fn the_card_fields_coerce_text_and_edit_only_what_exists() {
             ..SliceShape::default()
         },
     );
-    let mut ed = |s: &mut Sprite, c, t| {
+    let ed = |s: &mut Sprite, c, t| {
         let op = edita(s, 0, &[a, b], c, t).expect("muda");
         apply(s, op).unwrap();
     };

@@ -162,7 +162,11 @@ pub(crate) fn release(app: &mut PixelApp) -> bool {
         return true;
     };
     let frame = no_quadro(&doc.sprite, doc.frame);
-    let previa = app.slices.transform.then(|| g.previa()).unwrap_or_default();
+    let previa = if app.slices.transform {
+        g.previa()
+    } else {
+        Default::default()
+    };
     let caixas = caixas_que_mudam(&doc.sprite, frame, &previa);
     if let Some(motivo) = crate::camadas::recusa_pintar(doc).filter(|_| !caixas.is_empty()) {
         app.recusa(motivo);

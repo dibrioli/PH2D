@@ -13,7 +13,7 @@ use crate::comum::Palco;
 
 fn passo(p: &Palco) -> (usize, Label) {
     let d = p.app.doc(p.key).expect("doc");
-    let ultimo = d.history.entries().last().expect("passo").0.clone();
+    let ultimo = d.history.entries().last().expect("passo").0;
     (d.history.undo_len(), ultimo)
 }
 

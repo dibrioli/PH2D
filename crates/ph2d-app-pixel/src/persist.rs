@@ -102,7 +102,7 @@ mod tests {
                     d.history.commit(&mut d.sprite, op).expect("passo");
                 }
                 2 => {
-                    let mut p = d.sprite.prefs().clone();
+                    let mut p = *d.sprite.prefs();
                     p.grid.w = 3;
                     d.sprite.set_prefs(p);
                 }

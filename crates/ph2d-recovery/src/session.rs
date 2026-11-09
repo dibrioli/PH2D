@@ -207,6 +207,6 @@ pub fn scan(
             size,
         });
     }
-    out.sort_by(|a, b| b.meta.saved.cmp(&a.meta.saved));
+    out.sort_by_key(|s| std::cmp::Reverse(s.meta.saved));
     out
 }

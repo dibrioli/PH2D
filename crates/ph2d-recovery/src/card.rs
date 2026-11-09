@@ -366,7 +366,7 @@ fn paint_quit(
     theme: Theme,
 ) {
     let q = quit_layout(vp, body_h);
-    frame(q.dialog, &tr("recovery.quit_title"), scene, text, theme);
+    frame(q.dialog, tr("recovery.quit_title"), scene, text, theme);
     // Quebra em linhas (como o corpo de toda janela do app): nunca elide uma frase.
     paint_text_block(
         text,
@@ -400,7 +400,7 @@ fn paint_prompt(
     theme: Theme,
 ) {
     let l = layout(viewport, prompt.entries.len());
-    frame(l.dialog, &tr("recovery.title"), scene, text, theme);
+    frame(l.dialog, tr("recovery.title"), scene, text, theme);
     for (i, (row, o)) in l.rows.iter().zip(&prompt.entries).enumerate() {
         fill_rounded_rect(
             scene,

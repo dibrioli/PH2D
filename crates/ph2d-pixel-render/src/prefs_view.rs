@@ -144,7 +144,10 @@ pub fn checker_layout(c: &Checker, (w, h): (u32, u32), ppc: f64) -> (u32, u32, f
 
 /// O xadrez do documento, em cache (refaz-se quando as casas ou as cores mudam).
 #[derive(Clone, Default)]
-pub struct DocChecker(Option<((u32, u32, [u8; 4], [u8; 4]), StableImage)>);
+pub struct DocChecker(Option<(ChaveDoXadrez, StableImage)>);
+
+/// As casas e as duas cores de um xadrez feito.
+type ChaveDoXadrez = (u32, u32, [u8; 4], [u8; 4]);
 
 impl DocChecker {
     /// O xadrez `c` por baixo de um sprite `w × h` posto por `to_screen`.

@@ -355,10 +355,10 @@ impl PixelApp {
             A::LoopSection => (envelope.and_then(|(a, b)| loop_section(s, a, b)), None),
             _ => (None, None),
         };
-        if self.passo_nomeado(key, op, ph2d_pixel_ponte::nomes::nome_quadro(a)) {
-            if let (Some(id), Some(doc)) = (vai_para.flatten(), self.docs.get_mut(&key)) {
-                doc.frame = id;
-            }
+        if self.passo_nomeado(key, op, ph2d_pixel_ponte::nomes::nome_quadro(a))
+            && let (Some(id), Some(doc)) = (vai_para.flatten(), self.docs.get_mut(&key))
+        {
+            doc.frame = id;
         }
     }
 }

@@ -38,9 +38,9 @@ fn a_revisao_muda_em_todo_passo_e_nao_num_passo_vazio() {
         assert_ne!(h.revision(), rev, "{o_que} não mudou a revisão");
         rev = h.revision();
     };
-    let ops: Vec<(&str, fn(&mut Sprite) -> Op)> = vec![
+    let ops: Vec<(&str, FazOp)> = vec![
         ("Patch", |s| traco(s, 3, 0xff00_00ff)),
-        ("Palette", |s| Op::Palette {
+        ("Palette", |_| Op::Palette {
             colors: vec![[0, 0, 0, 0], [9, 9, 9, 255]],
             transparent: 0,
         }),
@@ -172,7 +172,7 @@ fn a_cache_da_os_mesmos_bytes_que_a_escrita_inteira() {
                     h.redo(s);
                 }
                 4 => {
-                    let mut p = s.prefs().clone();
+                    let mut p = *s.prefs();
                     p.grid.w = 1 + u32::try_from(rnd(30)).expect("w");
                     s.set_prefs(p);
                 }
@@ -288,3 +288,6 @@ fn o_codec_reaproveita_os_documentos_que_nao_mudaram() {
         m[2]
     );
 }
+
+/// Uma edição de fixtura: o sprite → o Op que o muda.
+type FazOp = fn(&mut Sprite) -> Op;

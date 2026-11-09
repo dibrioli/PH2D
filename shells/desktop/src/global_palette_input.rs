@@ -30,10 +30,9 @@ impl App {
         if let Some(id) = h
             .store
             .take_command_pick_if(|id| comando::action_of(id).is_some())
+            && let Some(KeyAnswer::Toast(t)) = comando::run(&mut self.pixel, id)
         {
-            if let Some(KeyAnswer::Toast(t)) = comando::run(&mut self.pixel, id) {
-                g.toasts.push(ph2d_editor_core::Toast::info(t));
-            }
+            g.toasts.push(ph2d_editor_core::Toast::info(t));
         }
         global_palette::drain(h);
     }

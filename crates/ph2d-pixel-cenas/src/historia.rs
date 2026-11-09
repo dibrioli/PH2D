@@ -266,7 +266,7 @@ pub fn passo(s: &mut Sprite, i: usize) -> Option<(Op, Label)> {
         6 => patch(s, cor, 0, |x, y| color(0, 7, x, y))?,
         _ => return None,
     };
-    Some((op, Label::new(*PASSOS.get(i)?)))
+    Some((op, Label::new(PASSOS.get(i)?)))
 }
 
 /// As teclas da cena: a fábrica com o `Fill` em `Shift+F`, gravadas num ficheiro DA CENA (nunca o

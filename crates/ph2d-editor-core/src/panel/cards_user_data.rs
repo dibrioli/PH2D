@@ -198,7 +198,7 @@ pub fn toggle_cell(ids: &UserDataIds) -> Cell<'static> {
 
 /// Uma linha que a tela não edita; `remove` = o `×` (o mapa do artista: a linha é dele e sai inteira;
 /// os mapas de extensão não o levam).
-fn so_leitura<'a>(c: &mut CardCtx<'_>, r: &'a PropRow, remove: Option<NodeId>, y: f32) -> f32 {
+fn so_leitura(c: &mut CardCtx<'_>, r: &PropRow, remove: Option<NodeId>, y: f32) -> f32 {
     let mut cells = vec![
         Cell::new(Widget::Readout { text: &r.name }),
         Cell::new(Widget::Readout { text: &r.value }),

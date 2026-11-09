@@ -7,9 +7,16 @@ const BRANCO: [f32; 4] = [1.0; 4];
 struct Placa(BTreeMap<Alvo, Vec<u8>>);
 
 impl PlacaDeNormais for Placa {
-    fn definir(&mut self, alvo: Alvo, normal: Option<(u32, u32, &[u8])>) -> Result<(), String> {
+    fn definir(
+        &mut self,
+        alvo: Alvo,
+        normal: Option<(u32, u32, TexeisDaNormal<'_>)>,
+    ) -> Result<(), String> {
         match normal {
-            Some((_, _, px)) => self.0.insert(alvo, px.to_vec()),
+            Some((_, _, TexeisDaNormal::Rgba8(px))) => self.0.insert(alvo, px.to_vec()),
+            Some((_, _, TexeisDaNormal::Rgba16F(h))) => self
+                .0
+                .insert(alvo, h.iter().flat_map(|x| x.to_le_bytes()).collect()),
             None => self.0.remove(&alvo),
         };
         Ok(())
@@ -93,7 +100,11 @@ fn a_normal_de_outro_tamanho_e_recusada_na_escolha() {
 struct PlacaQueRecusa(usize);
 
 impl PlacaDeNormais for PlacaQueRecusa {
-    fn definir(&mut self, _: Alvo, normal: Option<(u32, u32, &[u8])>) -> Result<(), String> {
+    fn definir(
+        &mut self,
+        _: Alvo,
+        normal: Option<(u32, u32, TexeisDaNormal<'_>)>,
+    ) -> Result<(), String> {
         if normal.is_none() {
             return Ok(());
         }
@@ -149,5 +160,46 @@ fn uma_normal_recusada_pela_placa_nao_repete_a_cada_quadro() {
     set_normais(&normais());
     let _ = sincronizar(&mut w, &db, &atlas, &mut placa);
     assert_eq!(placa.0, 3, "o undo (set_normais) também tira a cerca");
+    set_normais(&[]);
+}
+
+/// ⭐ **A normal de 16 bits sobe em 16 na textura própria** (o sRGB codificado em float, sem o byte) e em 8 na
+/// célula do átlas (a irmã do átlas é uma textura só).
+///
+/// **Mutação que sangra:** `dezasseis = None` (a imagem de 16 bits volta a subir em 8 por `image_rgba8`).
+#[test]
+fn uma_normal_de_16_bits_sobe_em_16_na_textura_propria() {
+    set_normais(&[]);
+    let db = AssetDb::new();
+    let cor = imagem(&db, 10);
+    // 0,5 · 0,25 · 0,75 · 1 em meio-float (IEEE binary16).
+    let linear = vec![0x3800_u16, 0x3400, 0x3A00, 0x3C00];
+    let normal = db.insert_image_rgba16(1, 1, linear.clone());
+    let atlas: BTreeMap<u32, AssetId> = [(7, cor)].into_iter().collect();
+    let mut w = World::new();
+    let a = w
+        .spawn((Sprite::individual(3, [1.0; 2], BRANCO), SpritePixels(cor)))
+        .id();
+    w.spawn((Sprite::atlas(7, [1.0; 2], BRANCO),));
+    escolher_normal(&w, &db, &atlas, a, Some(normal)).expect("mesmo tamanho");
+    let mut placa = Placa::default();
+    let _ = sincronizar(&mut w, &db, &atlas, &mut placa);
+    let dezasseis: Vec<u8> = ph2d_render::normal_de_meio_float_linear(&linear)
+        .iter()
+        .flat_map(|x| x.to_le_bytes())
+        .collect();
+    assert_eq!(
+        placa.0.get(&Alvo::Textura(3)),
+        Some(&dezasseis),
+        "16 bits na textura própria"
+    );
+    let oito = db
+        .get(&normal)
+        .and_then(|n| n.image_rgba8().map(|(_, _, b)| b.to_vec()));
+    assert_eq!(
+        placa.0.get(&Alvo::Celula(7)),
+        oito.as_ref(),
+        "a célula do átlas fica em 8"
+    );
     set_normais(&[]);
 }

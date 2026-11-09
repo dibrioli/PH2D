@@ -7,7 +7,7 @@
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::{Entity, SpritePixels, World};
-use ph2d_render::{Sprite, SpriteRenderer, SpriteSource};
+use ph2d_render::{Sprite, SpriteRenderer, SpriteSource, TexeisDaNormal};
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 
@@ -20,20 +20,34 @@ pub enum Alvo {
 
 /// O que a placa sabe fazer com uma normal (o `SpriteRenderer`; os gates trazem a sua).
 pub trait PlacaDeNormais {
-    /// Regista (`Some((w, h, rgba))`) ou tira (`None`) a normal de `alvo`.
+    /// Regista (`Some((w, h, texels))`) ou tira (`None`) a normal de `alvo` (16 bits só na textura própria).
     ///
     /// # Errors
     /// A placa recusa (outro tamanho, alvo desconhecido).
-    fn definir(&mut self, alvo: Alvo, normal: Option<(u32, u32, &[u8])>) -> Result<(), String>;
+    fn definir(
+        &mut self,
+        alvo: Alvo,
+        normal: Option<(u32, u32, TexeisDaNormal<'_>)>,
+    ) -> Result<(), String>;
     /// `alvo` tem normal na placa? (uma textura reciclada perde-a sem avisar.)
     fn tem(&self, alvo: Alvo) -> bool;
 }
 
 impl PlacaDeNormais for SpriteRenderer {
-    fn definir(&mut self, alvo: Alvo, normal: Option<(u32, u32, &[u8])>) -> Result<(), String> {
-        match alvo {
-            Alvo::Celula(key) => self.definir_normal_da_celula(key, normal),
-            Alvo::Textura(id) => self.definir_normal(id, normal),
+    fn definir(
+        &mut self,
+        alvo: Alvo,
+        normal: Option<(u32, u32, TexeisDaNormal<'_>)>,
+    ) -> Result<(), String> {
+        match (alvo, normal) {
+            (Alvo::Textura(id), n) => self.definir_normal_texeis(id, n),
+            (Alvo::Celula(key), None) => self.definir_normal_da_celula(key, None),
+            (Alvo::Celula(key), Some((w, h, TexeisDaNormal::Rgba8(b)))) => {
+                self.definir_normal_da_celula(key, Some((w, h, b)))
+            }
+            (Alvo::Celula(key), Some((_, _, TexeisDaNormal::Rgba16F(_)))) => Err(format!(
+                "a célula {key} do átlas só guarda normais de 8 bits"
+            )),
         }
     }
     fn tem(&self, alvo: Alvo) -> bool {
@@ -230,8 +244,19 @@ pub fn sincronizar(
             continue;
         }
         let Some(asset) = db.get(m) else { continue };
-        if let Some((w, h, px)) = asset.image_rgba8()
-            && let Err(e) = placa.definir(*alvo, Some((w, h, &px)))
+        // A fonte de 16 bits sobe em 16 na textura própria (8 bits davam degraus); a célula fica em 8.
+        let dezasseis = matches!(alvo, Alvo::Textura(_))
+            .then(|| asset.image_rgba16())
+            .flatten()
+            .map(|(w, h, px)| (w, h, ph2d_render::normal_de_meio_float_linear(px)));
+        let oito = dezasseis.is_none().then(|| asset.image_rgba8()).flatten();
+        let pedido = match (&dezasseis, &oito) {
+            (Some((w, h, px)), _) => Some((*w, *h, TexeisDaNormal::Rgba16F(px))),
+            (None, Some((w, h, px))) => Some((*w, *h, TexeisDaNormal::Rgba8(px))),
+            (None, None) => None,
+        };
+        if let Some(n) = pedido
+            && let Err(e) = placa.definir(*alvo, Some(n))
         {
             recusadas.insert(*alvo, *m);
             avisos.push(ph2d_i18n::tr_with(

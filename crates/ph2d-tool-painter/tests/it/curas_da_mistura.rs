@@ -395,10 +395,11 @@ fn a_ponta_de_pixel_carimba_binaria_com_a_mistura() {
 }
 
 /// ⭐ Dono 08/11 (revoga o #78): os pincéis que SORTEIAM a pegada (Pointillism, Pastel) carimbam a 3 % com a mistura
-/// e ENCHEM — o look cheio que ele aprovou (Pointillism 0,71 contra 0,38 Off; Pastel 0,36 contra 0,16).
+/// e ENCHEM — o look cheio que ele aprovou (Pointillism 0,71 contra 0,38 Off). O Pastel saiu (receita K1, 09/11: já
+/// não sorteia a pegada e cobre 1,0 também no Off — o teste estava vermelho desde `3d8d15e0eb`).
 #[test]
 fn os_pinceis_que_espalham_enchem_com_a_mistura() {
-    for nome in ["Pointillism", "Pastel"] {
+    for nome in ["Pointillism"] {
         let a = |off: bool| {
             let p = pinta_listras(nome, |t| {
                 if off {

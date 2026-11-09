@@ -957,6 +957,20 @@ sangram por mutação). Alarme de miniatura VERMELHO para os 14 pincéis de mist
 **Lição:** uma lei com um estado por carimbo tem de dizer em que INSTANTE cada texel o lê; com passo pequeno, o
 último carimbo a cobrir o texel é o que manda, e ele está à frente.
 
+## Bug #82 (CURADO 10/11) — o Finger Tip nunca esmaecia: arrastava a tinta pelo papel vazio sem fim
+
+**Smoke do dono 10/11.** Medido (dedo Amount 0, stretch 0,8, raio 10): alfa 255 até 75 px além do bloco. **Mecanismo**
+(dois, juntos): (1) a amostra recarregava a CARGA com a película que o próprio traço acabou de pôr (o pincel nunca
+perdia a tinta que depositava); (2) o `corpo` (a carga) entrava como TAXA e não como alvo — carimbos a 3 % empilhavam
+uma carga pequena até ao opaco. **Cura (`mistura_opaca.rs`):** a película desta passada tinge a amostra mas só a
+recarrega se for mais velha que `(DESFASAGEM + 2) × raio` (a volta de um zigue-zague recarrega); a película tende a
+`corpo` (com `corpo = 1`, Amount ≥ 0,25, é a lei de antes). Rasto de 255 → 31 em 75 px; patamar dos pincéis aprovados
+intacto (0,123 · 0,349); miniaturas: 1–2 px de arredondamento em 3. Teste `wet_blend_o_dedo_esgota_no_papel_vazio`
+(as duas metades sangram por mutação). Foto: [`dedo_antes_depois.png`](handoffs/material_2026-11-10_mistura_causal/dedo_antes_depois.png).
+**O gate que estava verde:** nenhum `wet_blend_*` deixava o traço sair da tinta para o vazio com Amount 0.
+**Brinde:** `os_pinceis_que_espalham_enchem_com_a_mistura` estava VERMELHO desde a K1 do Pastel (`3d8d15e0eb`: já não
+sorteia a pegada, cobre 1,0 no Off) — o Pastel saiu da lista.
+
 ## Como adicionar um bug aqui
 
 Uma seção `## Bug #N — <título>` + linha na tabela (o fim do pedaço [#41–#46](BUGS_painter_fechados_41_a_46.md)). Foque nos bugs cuja **causa enganou** (vários rounds

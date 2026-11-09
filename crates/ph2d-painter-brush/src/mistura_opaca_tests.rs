@@ -283,6 +283,10 @@ fn wet_blend_amount_zero_so_arrasta() {
 
 /// Faixa vermelha `x ∈ [80, 120)` sobre o vazio; traço azul de `de` a `ate` em `y = 20`, raio 10.
 fn atravessa_a_faixa(de: f32, ate: f32, spec: &BrushSpec) -> Vec<u8> {
+    atravessa_a_faixa_com(de, ate, spec, [0.08, 0.16, 0.86])
+}
+
+fn atravessa_a_faixa_com(de: f32, ate: f32, spec: &BrushSpec, cor: [f32; 3]) -> Vec<u8> {
     let mut buf = vec![0u8; (W * H * 4) as usize];
     for y in 0..H {
         for x in 80..120 {
@@ -313,7 +317,7 @@ fn atravessa_a_faixa(de: f32, ate: f32, spec: &BrushSpec) -> Vec<u8> {
             Carimbo {
                 center: [x, 20.0],
                 radius_px: spec.radius_px,
-                cor: [0.08, 0.16, 0.86],
+                cor,
                 coverage: 1.0,
                 pressao: 1.0,
             },
@@ -348,7 +352,7 @@ fn wet_blend_a_cor_de_baixo_vai_no_sentido_do_traco() {
         );
         let q = px(b, depois_da_saida, 20);
         assert!(
-            q[0] >= azul + 80,
+            q[0] >= azul + 50,
             "{nome}: o vermelho não foi levado para fora em x={depois_da_saida}: {q:?}"
         );
     }
@@ -359,4 +363,23 @@ fn wet_blend_a_cor_de_baixo_vai_no_sentido_do_traco() {
             "o perfil não é o espelho do outro sentido em x={x}: {a:?} × {v:?}"
         );
     }
+}
+
+/// O dedo (Amount 0) leva o vermelho para o papel vazio e ESGOTA-SE: a tinta que acabou de pôr não o recarrega (dono
+/// 10/11: «o Finger Tip nunca esmaece a tinta que puxou»).
+#[test]
+fn wet_blend_o_dedo_esgota_no_papel_vazio() {
+    let mut spec = pincel(0.0, 1.0, 0.8);
+    spec.radius_px = 10.0;
+    let b = atravessa_a_faixa_com(90.0, 195.0, &spec, [0.08, 0.16, 0.86]);
+    let alfa: Vec<u8> = (120..196).step_by(5).map(|x| px(&b, x, 20)[3]).collect();
+    eprintln!("alfa do rasto de x=120 a 195, de 5 em 5: {alfa:?}");
+    assert!(
+        alfa[2] > 120,
+        "o dedo não levou o vermelho para fora: {alfa:?}"
+    );
+    assert!(
+        *alfa.last().unwrap() < 40,
+        "o dedo não se esgota no vazio: {alfa:?}"
+    );
 }

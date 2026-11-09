@@ -495,6 +495,10 @@ pub fn mistura_opaca_carimbo(
     };
     let arco = res.arco + dist;
     let velha_desde = arco - DESFASAGEM * c.radius_px;
+    // A película desta PASSADA (a metade de trás foi coberta há no máximo dois raios) tinge a amostra mas não
+    // RECARREGA o pincel: a tinta que ele acabou de pôr saiu dele (o dedo esgota-se no vazio, dono 10/11). A volta de
+    // um zigue-zague, mais velha, recarrega.
+    let carrega_desde = arco - (DESFASAGEM + 2.0) * c.radius_px;
     let sombra_valida = tela.sombra.mesma_tela(w, h);
     let dir = if dist > 1e-4 {
         Some([
@@ -513,6 +517,7 @@ pub fn mistura_opaca_carimbo(
     // 1. A amostra: a média sob a pegada da tela de antes com a película VELHA deste traço por cima, pesada pelo
     // alfa; a carga = quanto ali é tinta. Em movimento, só a metade de TRÁS: o pincel leva o que já atravessou.
     let (mut soma, mut soma_a, mut soma_w) = ([0.0f32; 3], 0.0f32, 0.0f32);
+    let mut soma_carga = 0.0f32;
     for y in y0..y1 {
         for x in x0..x1 {
             let wt = peso(x, y);
@@ -521,17 +526,26 @@ pub fn mistura_opaca_carimbo(
             }
             let i = ((y * w + x) * 4) as usize;
             let fundo = amostra_de(i).map(|v| f32::from(v) / 255.0);
-            let px = match sombra_valida.then(|| tela.sombra.le(x, y)).flatten() {
+            let (px, carga_px) = match sombra_valida.then(|| tela.sombra.le(x, y)).flatten() {
                 Some(f) if f[4] <= velha_desde && f[3] > 0.0 => {
-                    sobre([f[0], f[1], f[2], f[3]], fundo)
+                    let px = sobre([f[0], f[1], f[2], f[3]], fundo);
+                    (
+                        px,
+                        if f[4] <= carrega_desde {
+                            px[3]
+                        } else {
+                            fundo[3]
+                        },
+                    )
                 }
-                _ => fundo,
+                _ => (fundo, fundo[3]),
             };
             let t = wt * px[3];
             for k in 0..3 {
                 soma[k] += t * px[k];
             }
             soma_a += t;
+            soma_carga += wt * carga_px;
             soma_w += wt;
         }
     }
@@ -539,7 +553,7 @@ pub fn mistura_opaca_carimbo(
         return None;
     }
     let pincel = c.cor.map(|v| v.clamp(0.0, 1.0));
-    let carga_aqui = soma_a / soma_w;
+    let carga_aqui = soma_carga / soma_w;
     let amostra = if soma_a > 0.0 {
         soma.map(|v| v / soma_a)
     } else {
@@ -631,7 +645,9 @@ pub fn mistura_opaca_carimbo(
     let cobertura = c.coverage.clamp(0.0, 1.0);
     // O CSP medido (08/11, `wetblend_vs_csp_medidas.txt`): a Density é a TAXA por carimbo (Density 45–50 ainda
     // cobre 88–98 % numa passada) e o tecto é a opacidade do pincel; como tecto ela dava um véu chapado.
-    let taxa = densidade * spec.flow.clamp(0.0, 1.0) * corpo;
+    // O `corpo` é a opacidade que a tinta ATINGE (a película tende a ele), não uma taxa: com a taxa, o dedo de carga
+    // pequena empilhava carimbos até ao opaco e nunca esmaecia (dono 10/11). Com `corpo = 1` é a lei de antes.
+    let taxa = densidade * spec.flow.clamp(0.0, 1.0);
     let tecto = if spec.accumulate { 1.0 } else { cobertura };
     let taxa = if spec.accumulate {
         taxa * cobertura
@@ -695,11 +711,13 @@ pub fn mistura_opaca_carimbo(
                 None => estado.tinta,
             };
             let s0 = px[3];
-            let s_livre = s0 + alfa * (1.0 - s0);
-            for k in 0..3 {
-                px[k] = (px[k] * s0 * (1.0 - alfa) + tinta[k] * alfa) / s_livre;
+            let s_livre = s0 * (1.0 - alfa) + corpo * alfa;
+            if s_livre > 0.0 {
+                for k in 0..3 {
+                    px[k] = (px[k] * s0 * (1.0 - alfa) + tinta[k] * corpo * alfa) / s_livre;
+                }
             }
-            px[3] = s_livre.min(tecto.max(s0));
+            px[3] = s_livre.max(s0).min(tecto.max(s0));
             let pel = [px[0], px[1], px[2], px[3]];
             let out = if tela.plano {
                 pel

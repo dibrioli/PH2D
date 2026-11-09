@@ -397,6 +397,14 @@ fn dobra_bake(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
     })
 }
 
+/// Quem oferece `INSP_PHYS_REMOVE`: o corpo («Remove Physics Body») e a peça ou forma solta («Remove Shape»,
+/// o inverso de «Add Shape to X» que guarda a imagem). A forma filha de um corpo (opção B) NÃO — dono 09/11:
+/// ela é um objecto, e apagá-lo na Hierarchy é o mesmo passo de undo. O pintor, o handler e o recibo leem isto.
+#[must_use]
+pub(crate) fn oferece_remove(info: &InspectorPhysicsInfo) -> bool {
+    info.has_body || (info.has_collider && info.shape_of.is_empty())
+}
+
 /// O recibo do Remove, se houver: a frase e o «Undo».
 pub(super) fn recibo(t: &mut Tinta<'_>, y: f32) -> f32 {
     if !crate::cards::active() {

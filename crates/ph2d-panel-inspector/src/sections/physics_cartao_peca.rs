@@ -26,11 +26,11 @@ pub(super) fn peca(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f3
 }
 
 /// A forma de um corpo (opção B, B4): diz de quem é; as linhas dela vêm no cartão Shape ao lado.
+/// Sem «Remove Shape» (dono 09/11): a forma é um objecto, e apagá-lo na Hierarchy é o mesmo passo de undo.
 pub(super) fn forma_do_corpo(t: &mut Tinta<'_>, y: f32, info: &InspectorPhysicsInfo) -> f32 {
     let frase = tr_with("card.insp.phys.shape_of", &[("owner", &info.shape_of)]);
     let y = t.frase(y, &frase, ColorToken::Text2);
-    let y = dobra_densidade(t, y);
-    remover(t, y)
+    dobra_densidade(t, y) + SECTION_BOTTOM_PAD_PX
 }
 
 fn remover(t: &mut Tinta<'_>, y: f32) -> f32 {

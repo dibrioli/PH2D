@@ -107,7 +107,7 @@ pub(crate) fn click(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     }
     if id == crate::ids::INSP_PHYS_REMOVE
         && let Some(f) = crate::state::current_inspector_physics()
-        && (f.has_body || f.has_collider)
+        && crate::sections::physics_cartao::oferece_remove(&f)
     {
         RECIBO.with(|r| {
             *r.borrow_mut() = Some(Recibo {

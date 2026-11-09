@@ -294,12 +294,12 @@ fn click_controle(
     }
     if id == crate::ids::INSP_PHYS_ADD && !info.has_body {
         Some(PhysicsFieldEdit::Add)
-    } else if id == crate::ids::INSP_PHYS_REMOVE && (info.has_body || info.has_collider) {
-        // ⚠️ **`has_collider` também** (W-PartFace): numa PEÇA este botão se
-        // chama *Remove Shape* e faz exatamente o mesmo — tira corpo e collider,
-        // e `queue_remove` de um componente ausente é no-op. Sem a segunda
-        // metade, uma peça era uma porta de mão ÚNICA: criada por um clique e
-        // desfeita só apagando o objeto.
+    } else if id == crate::ids::INSP_PHYS_REMOVE
+        && crate::sections::physics_cartao::oferece_remove(&info)
+    {
+        // ⚠️ **A peça também** (W-PartFace): nela o botão se chama *Remove Shape* e faz o
+        // mesmo — tira corpo e collider (`queue_remove` de um ausente é no-op); sem isto uma peça
+        // era porta de mão única. A forma FILHA de um corpo não: apaga-se na Hierarchy (dono 09/11).
         Some(PhysicsFieldEdit::Remove)
     } else if let Some(i) = crate::ids::INSP_PHYS_LAYER.iter().position(|&o| o == id) {
         // ⚠️ **`has_collider`** (W-PartFace): a camada é propriedade do

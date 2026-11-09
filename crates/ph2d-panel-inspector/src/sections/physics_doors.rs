@@ -139,6 +139,9 @@ pub(super) fn paint_empty_face(
 /// e apaga a forma autorada em silêncio (medido: barra `0,17 × 0,91` → caixa do
 /// sprite `0,20 × 1,00`, offset/densidade/camada zerados). A recusa mora nas duas
 /// metades: o painter não a pinta e o handler não a honra.
+///
+/// `com_remove` é [`super::physics_cartao::oferece_remove`]: a forma filha de um corpo não oferece
+/// *Remove Shape* (dono 09/11).
 #[allow(clippy::too_many_arguments)]
 pub(super) fn paint_part_doors(
     scene: &mut VectorScene,
@@ -149,9 +152,10 @@ pub(super) fn paint_part_doors(
     x: f32,
     w: f32,
     y: f32,
+    com_remove: bool,
 ) -> f32 {
     let mut yy = y;
-    for (id, label) in [
+    let portas = [
         (
             ids::INSP_PHYS_ADD,
             tr("panel.inspector.physics.make_independent_body"),
@@ -160,7 +164,11 @@ pub(super) fn paint_part_doors(
             ids::INSP_PHYS_REMOVE,
             tr("panel.inspector.physics.remove_shape"),
         ),
-    ] {
+    ];
+    for (id, label) in portas
+        .into_iter()
+        .filter(|(id, _)| com_remove || *id != ids::INSP_PHYS_REMOVE)
+    {
         let rect = ph2d_editor_core::property_row::caixa_do_botao(text_system, x, w, yy, label);
         let btn = Button::new(id, label)
             .kind(ButtonKind::Default)

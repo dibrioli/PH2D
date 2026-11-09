@@ -65,6 +65,80 @@ fn b4_a_filha_tem_shape_e_camadas_e_diz_de_quem_e() {
     sai();
 }
 
+/// Dono 09/11: a forma é um OBJECTO filho — apagá-la na Hierarchy (ou Delete no canvas) é o mesmo passo de
+/// undo —, por isso o cartão dela não oferece «Remove Shape»: nem nos cartões, nem na face de referência, nem no
+/// handler (o id vive no store a sessão inteira), nem no recibo. O corpo guarda «Remove Physics Body».
+#[test]
+fn b4_a_filha_nao_oferece_remove_shape_e_o_corpo_guarda_o_remove() {
+    use ph2d_editor_core::interaction::WidgetEvent;
+    use ph2d_editor_core::panel::PanelHostInternal;
+    let (mut host, mut st) = cena(da_filha(), [1.0, 1.0]);
+    let r = pinta(&mut host, &mut st);
+    assert!(achado(&r, CARD_PHYS_SHAPE).is_some(), "o cartão pintou");
+    assert!(
+        achado(&r, INSP_PHYS_REMOVE).is_none(),
+        "a filha não pinta «Remove Shape»"
+    );
+    let _ = host.drained_actions();
+    let _ = host.apply_panel_event::<ph2d_panel_inspector::InspectorPanel>(
+        &mut st,
+        WidgetEvent::Click(INSP_PHYS_REMOVE),
+    );
+    let a = host.drained_actions();
+    assert!(
+        !a.iter().any(|a| matches!(
+            a,
+            EditorAction::InspectorPhysicsEdit {
+                edit: E::Remove,
+                ..
+            }
+        )),
+        "o id que ficou no store não despacha na filha: {a:?}"
+    );
+    ph2d_panel_inspector::set_current_inspector_physics(None);
+    assert!(
+        achado(&pinta(&mut host, &mut st), INSP_PHYS_REMOVED_UNDO).is_none(),
+        "nada foi removido: sem recibo «Shape removed»"
+    );
+    sai();
+    // A face de referência (`PH2D_CARDS=0`) diz o mesmo.
+    let mut host = crate::host_em_metros();
+    let mut st = ph2d_panel_inspector::InspectorState::default();
+    ph2d_panel_inspector::set_current_inspector_physics(Some(da_filha()));
+    let r = host.paint::<ph2d_panel_inspector::InspectorPanel>(
+        &mut st,
+        ph2d_editor_core::zones::Rect::new(0.0, 0.0, 320.0, 2400.0),
+    );
+    assert!(
+        r.iter().any(|(n, _)| *n == INSP_PHYS_DENSITY),
+        "a face de referência pintou a forma"
+    );
+    assert!(
+        achado(&r, INSP_PHYS_REMOVE).is_none(),
+        "a face de referência não pinta «Remove Shape» na filha"
+    );
+    sai();
+    // O corpo com a forma na filha: «Remove Physics Body» fica e despacha.
+    let corpo = InspectorPhysicsInfo {
+        shape_on_child: true,
+        ..with_body()
+    };
+    let (mut host, mut st) = cena(corpo, [1.0, 1.0]);
+    let b = achado(&pinta(&mut host, &mut st), INSP_PHYS_REMOVE).expect("«Remove Physics Body»");
+    let a = clica(&mut host, &mut st, b);
+    assert!(
+        a.iter().any(|a| matches!(
+            a,
+            EditorAction::InspectorPhysicsEdit {
+                edit: E::Remove,
+                ..
+            }
+        )),
+        "{a:?}"
+    );
+    sai();
+}
+
 #[test]
 fn b4_o_corpo_antigo_oferece_mover_a_forma_para_a_filha() {
     let (mut host, mut st) = cena(with_body(), [1.0, 1.0]);

@@ -21,6 +21,16 @@ fn info_de(sim: &SimWorld, e: Entity, partes: u8) -> ph2d_editor_core::Inspector
     .expect("i")
 }
 
+/// A captura do undo (`ProjectState` leva o `WorldSnapshot`).
+fn snap(sim: &mut SimWorld) -> ph2d_ecs::scene::WorldSnapshot {
+    let mut prop = ph2d_ecs::TransformPropagationState::new(sim.world_mut());
+    let (mut work, reg) = (ph2d_ecs::WorklistBuf::default(), registry());
+    let mut out = ph2d_ecs::scene::WorldSnapshot::default();
+    ph2d_ecs::scene::world_to_snapshot(sim.world_mut(), &mut prop, &mut work, &reg, &mut out)
+        .expect("captura");
+    out
+}
+
 /// Fit to picture devolve a caixa do desenho, centrada, e o estado volta a «Follows the picture»;
 /// o resto do colisor fica. A bola e a mão dizem «Custom size». (Ficha f1.)
 #[test]
@@ -133,15 +143,6 @@ fn undoing_remove_brings_body_and_shape_back() {
     apply(&mut sim, e, PhysicsFieldEdit::Add);
     apply(&mut sim, e, PhysicsFieldEdit::Kind(1));
     apply(&mut sim, e, PhysicsFieldEdit::Density(3.5));
-    let reg = registry();
-    let mut prop = ph2d_ecs::TransformPropagationState::new(sim.world_mut());
-    let mut work = ph2d_ecs::WorklistBuf::default();
-    let mut snap = |sim: &mut SimWorld| {
-        let mut out = ph2d_ecs::scene::WorldSnapshot::default();
-        ph2d_ecs::scene::world_to_snapshot(sim.world_mut(), &mut prop, &mut work, &reg, &mut out)
-            .expect("captura");
-        out
-    };
     let antes = snap(&mut sim);
     let forma = *sim
         .world()
@@ -151,7 +152,7 @@ fn undoing_remove_brings_body_and_shape_back() {
     assert_ne!(antes, snap(&mut sim), "o Remove não daria passo de undo");
     // Como o `undo::restore`: despawna e repõe; os bits mudam, o objecto é o que tem Transform.
     let _ = sim.world_mut().despawn(e);
-    ph2d_ecs::scene::snapshot_to_world(sim.world_mut(), &antes, &reg).expect("restore");
+    ph2d_ecs::scene::snapshot_to_world(sim.world_mut(), &antes, &registry()).expect("restore");
     // Opção B: a forma volta na filha principal do corpo, nunca no próprio corpo.
     let (corpo, kind) = sim
         .world_mut()
@@ -183,15 +184,6 @@ fn corpo_sem_forma_ganha_a_caixa_da_imagem_num_passo() {
         !info(&sim, 1).body_without_shape,
         "uma peça pendurada já é forma"
     );
-    let reg = registry();
-    let mut prop = ph2d_ecs::TransformPropagationState::new(sim.world_mut());
-    let mut work = ph2d_ecs::WorklistBuf::default();
-    let mut snap = |sim: &mut SimWorld| {
-        let mut out = ph2d_ecs::scene::WorldSnapshot::default();
-        ph2d_ecs::scene::world_to_snapshot(sim.world_mut(), &mut prop, &mut work, &reg, &mut out)
-            .expect("captura");
-        out
-    };
     let antes = snap(&mut sim);
     apply(&mut sim, e, PhysicsFieldEdit::AddShape);
     // Opção B: a forma nasce FILHA «Collision Shape», nunca no corpo.
@@ -224,8 +216,29 @@ fn corpo_sem_forma_ganha_a_caixa_da_imagem_num_passo() {
     assert!(!info(&sim, 1).body_without_shape, "o aviso fica");
     assert_ne!(antes, snap(&mut sim), "o Add Shape não daria passo de undo");
     let _ = sim.world_mut().despawn(e);
-    ph2d_ecs::scene::snapshot_to_world(sim.world_mut(), &antes, &reg).expect("restore");
+    ph2d_ecs::scene::snapshot_to_world(sim.world_mut(), &antes, &registry()).expect("restore");
     let mut q = sim.world_mut().query::<(&RigidBody, Option<&Collider>)>();
     let (b, c) = q.iter(sim.world()).next().expect("o corpo volta");
     assert_eq!((b.kind, c), (BodyKind::Static, None));
+}
+
+/// Dono 09/11: a filha sem «Remove Shape» apaga-se na Hierarchy (`hierarchy_delete::drain` = `despawn`):
+/// UM passo de undo, o corpo fica sem forma, e repor a captura devolve a filha com a mesma forma.
+#[test]
+fn apagar_a_forma_filha_na_hierarchy_e_um_passo_de_undo() {
+    let (mut sim, e) = sprite_scene();
+    apply(&mut sim, e, PhysicsFieldEdit::Add);
+    let (antes, f) = (snap(&mut sim), shape_of(&sim, e));
+    let forma = sim.world().get::<Collider>(f).copied();
+    assert!(f != e && forma.is_some(), "opção B: a forma é filha");
+    let _ = sim.world_mut().despawn(f);
+    let (depois, info) = (snap(&mut sim), info_de(&sim, e, 0));
+    assert!(antes != depois, "apagar a filha não daria passo de undo");
+    assert!(info.body_without_shape, "o corpo fica, sem forma");
+    let _ = sim.world_mut().despawn(e);
+    ph2d_ecs::scene::snapshot_to_world(sim.world_mut(), &antes, &registry()).expect("restore");
+    let mut q = sim.world_mut().query::<(Entity, &RigidBody)>();
+    let (corpo, _) = q.iter(sim.world()).next().expect("o corpo");
+    let de_volta = sim.world().get::<Collider>(shape_of(&sim, corpo)).copied();
+    assert_eq!(de_volta, forma, "a filha volta com a forma");
 }

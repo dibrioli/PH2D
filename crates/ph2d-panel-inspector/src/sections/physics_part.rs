@@ -173,5 +173,16 @@ pub(super) fn paint_part_face(
         info.signal_tag,
         &info.signal_tag_path,
     );
-    super::physics_doors::paint_part_doors(scene, text_system, theme, hit_index, store, x, w, yy)
+    let com_remove = super::physics_cartao::oferece_remove(info);
+    super::physics_doors::paint_part_doors(
+        scene,
+        text_system,
+        theme,
+        hit_index,
+        store,
+        x,
+        w,
+        yy,
+        com_remove,
+    )
 }

@@ -3,10 +3,12 @@
 
 use super::align::{AlignPaint, View};
 use super::doc::AnimDoc;
-use super::paint::{button, tom};
+use super::paint::tom;
+use ph2d_card_stack::metrics as m;
 use ph2d_editor_core::paint::{
     fill_circle, fill_rounded_rect, frame_radius, label_column_width, paint_icon, paint_text,
-    rect_for_label, rect_to_vello, stroke_polyline, stroke_rect, stroke_rounded_rect,
+    paint_text_centered, rect_for_label, rect_to_vello, stroke_polyline, stroke_rect,
+    stroke_rounded_rect,
 };
 use ph2d_editor_core::widget::sheet_cell::paint_sheet_cell_with;
 use ph2d_editor_core::zones::Rect;
@@ -217,8 +219,9 @@ fn paint_frame(doc: &AnimDoc, scene: &mut VectorScene, text: &mut TextSystem, th
     };
     paint_text(text, scene, &s, t.x, y, font, t.w, tom(c, theme));
     let a = &doc.align;
-    button(scene, text, theme, l.toggle, tr("anim_editor.align"), a.on);
-    button(scene, text, theme, l.pick, "", a.picking);
+    let on = |b: bool| a.on && b;
+    chip(scene, text, theme, l.toggle, tr("anim_editor.align"), a.on);
+    chip(scene, text, theme, l.pick, "", a.picking);
     let pad = Spacing::Xs.px();
     let icon = Rect::new(
         l.pick.x + pad,
@@ -226,29 +229,40 @@ fn paint_frame(doc: &AnimDoc, scene: &mut VectorScene, text: &mut TextSystem, th
         l.pick.w - 2.0 * pad,
         l.pick.h - 2.0 * pad,
     ); // LITERAL-PX-OK: as duas margens
-    paint_icon(
-        scene,
-        IconId::Eyedropper,
-        icon,
-        tom(ColorToken::Text1, theme),
-        fio,
-    );
-    button(
-        scene,
-        text,
-        theme,
-        l.show_prev,
-        tr("anim_editor.align_previous"),
-        a.on && a.show_prev,
-    );
-    button(
-        scene,
-        text,
-        theme,
-        l.show_ref,
-        tr("anim_editor.align_reference"),
-        a.on && a.show_ref,
-    );
+    let c = if a.picking {
+        ColorToken::Accent
+    } else {
+        ColorToken::Text1
+    };
+    paint_icon(scene, IconId::Eyedropper, icon, tom(c, theme), fio);
+    let prev = tr("anim_editor.align_previous");
+    chip(scene, text, theme, l.show_prev, prev, on(a.show_prev));
+    let refe = tr("anim_editor.align_reference");
+    chip(scene, text, theme, l.show_ref, refe, on(a.show_ref));
+}
+
+/// Um botão da moldura do Align no idioma dos campos ao lado («F 10», «C 6»): a caixa um degrau acima da moldura;
+/// ligado, o fio e a letra de acento (smoke do dono 09/11: no tom da moldura, os botões liam-se como texto solto).
+fn chip(
+    scene: &mut VectorScene,
+    text: &mut TextSystem,
+    theme: Theme,
+    r: Rect,
+    label: &str,
+    on: bool,
+) {
+    let radius = frame_radius(theme, m::FIELD_RADIUS);
+    fill_rounded_rect(scene, r, radius, tom(ColorToken::Bg3, theme));
+    if on {
+        let c = tom(ColorToken::Accent, theme);
+        stroke_rounded_rect(scene, r, radius, StrokeToken::Thin.px(), c);
+    }
+    let fg = if on {
+        ColorToken::Accent
+    } else {
+        ColorToken::Text1
+    };
+    paint_text_centered(text, scene, label, r, TypeToken::Base.px(), tom(fg, theme));
 }
 
 /// O menu do clique direito sobre um quadro da tira, por cima de tudo.

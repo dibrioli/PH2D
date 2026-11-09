@@ -236,14 +236,14 @@ pub(crate) fn drain_bgremoval(
     true
 }
 
+/// A pose da fonte que cada ilha herda: o `Transform` e o espelho.
+type PoseDaIlha = (ph2d_ecs::Transform, [bool; 2]);
+
 /// As ilhas `[1..]` do [`drain_bgremoval`] viram sprites novas no centro delas; devolve o texto do toast que as conta.
 #[allow(clippy::too_many_arguments)]
 fn spawn_islands(
     islands: &[ph2d_tool_bgremoval::IslandPayload],
-    (poses, pai): (
-        &[Option<(ph2d_ecs::Transform, [bool; 2])>],
-        Option<ph2d_ecs::Entity>,
-    ),
+    (poses, pai): (&[Option<PoseDaIlha>], Option<ph2d_ecs::Entity>),
     bake_premul: impl Fn(u32, u32, Vec<u8>) -> ph2d_render::SpriteImage,
     px_per_m: f32,
     base_name: &str,

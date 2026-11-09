@@ -81,9 +81,12 @@ struct Desenho {
     y0: f64,
     w: f64,
     h: f64,
-    /// `(colunas, linhas, quadro que toca)` quando a folha inteira está à vista.
-    celulas: Option<(u32, u32, Option<(f64, f64)>)>,
+    /// A grelha quando a folha inteira está à vista.
+    celulas: Option<Celulas>,
 }
+
+/// `(colunas, linhas, centro do quadro que toca)`.
+type Celulas = (u32, u32, Option<(f64, f64)>);
 
 fn desenho(world: &World, e: Entity, ppm: f32) -> Option<Desenho> {
     ph2d_ecs::imagem_aberta(world, e)?;

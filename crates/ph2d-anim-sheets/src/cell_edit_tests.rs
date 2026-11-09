@@ -11,7 +11,7 @@ fn folha() -> Vec<u8> {
     for (q, [x0, x1, y0, y1]) in [[2, 5, 4, 8], [3, 6, 2, 7]].into_iter().enumerate() {
         for y in y0..y1 {
             for x in x0..x1 {
-                let i = ((y * 16 + q * 8 + x) * 4) as usize;
+                let i = (y * 16 + q * 8 + x) * 4;
                 px[i..i + 4].copy_from_slice(&[x as u8, y as u8, q as u8, 255]);
             }
         }
@@ -53,7 +53,7 @@ fn no_lugar(
             }
         }
     }
-    v.sort_by(|a, b| a.0.cmp(&b.0));
+    v.sort_by_key(|a| a.0);
     v
 }
 

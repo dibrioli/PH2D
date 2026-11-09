@@ -33,7 +33,8 @@ pub fn cut_of(world: &World, e: Entity, sheet: u8, w: u32, h: u32) -> Option<Cut
     let (s, grid) = ph2d_render::sheet_geometry(world, e, sheet, 0)?;
     let g = grid.unwrap_or(SpriteGrid::SINGLE);
     let (cols, rows) = (g.hframes.max(1), g.vframes.max(1));
-    if u64::from(cols) * u64::from(rows) <= 1 || w % cols != 0 || h % rows != 0 {
+    if u64::from(cols) * u64::from(rows) <= 1 || !w.is_multiple_of(cols) || !h.is_multiple_of(rows)
+    {
         return None;
     }
     let cell = [w / cols, h / rows];

@@ -7,7 +7,7 @@ use super::hierarchy::{HierDrop, find_hierarchy_drop, find_panel_row_drop};
 use super::hover::set_widget_released;
 use crate::interaction::flip_strip::FlipStripGesture;
 use crate::interaction::types::{GesturePhase, GraphGesture, TimelineGesture};
-use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore, drag};
+use crate::interaction::{HitIndex, InteractiveState, WidgetEvent, WidgetStore};
 use bumpalo::collections::Vec as BumpVec;
 use ph2d_host::PointerEvent;
 

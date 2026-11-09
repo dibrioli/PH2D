@@ -10728,6 +10728,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-physics-outline"
+version = "0.0.0"
+dependencies = [
+ "ph2d-core",
+ "ph2d-ecs",
+ "ph2d-inspector-ordering",
+ "ph2d-outline-trace",
+ "ph2d-physics-ecs",
+ "ph2d-render",
+]
+
+[[package]]
 name = "ph2d-physics-scene"
 version = "0.0.0"
 dependencies = [

@@ -1,0 +1,25 @@
+[package]
+name = "ph2d-physics-outline"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# The PRODUCER of the «Outline» collision shape (plan f2, W2c): picture → mask → trace → ECS write.
+# Glue outside `ph2d-app-*` (their LOC ceilings); the app only calls it.
+[dependencies]
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-render = { path = "../ph2d-render" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+ph2d-outline-trace = { path = "../ph2d-outline-trace" }
+ph2d-inspector-ordering = { path = "../ph2d-inspector-ordering" }
+
+[dev-dependencies]
+ph2d-core = { path = "../ph2d-core" }
+
+[lints]
+workspace = true

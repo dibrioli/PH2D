@@ -4,13 +4,13 @@
 use super::align::{AlignPaint, View};
 use super::doc::AnimDoc;
 use super::paint::{button, tom};
-use ph2d_editor_core::AnimFrameRef;
 use ph2d_editor_core::paint::{
-    fill_circle, fill_rounded_rect, frame_radius, label_column_width, paint_text, rect_for_label,
-    rect_to_vello, stroke_polyline, stroke_rect,
+    fill_circle, fill_rounded_rect, frame_radius, label_column_width, paint_icon, paint_text,
+    rect_for_label, rect_to_vello, stroke_polyline, stroke_rect, stroke_rounded_rect,
 };
 use ph2d_editor_core::widget::sheet_cell::paint_sheet_cell_with;
 use ph2d_editor_core::zones::Rect;
+use ph2d_editor_core::{AnimFrameRef, IconId};
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
 use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
@@ -69,35 +69,10 @@ pub(super) fn paint_align(
         menu_item,
         ..AlignPaint::default()
     };
-    if l.toggle.w > 0.0 {
-        button(
-            scene,
-            text,
-            theme,
-            l.toggle,
-            tr("anim_editor.align"),
-            doc.align.on,
-        );
-    }
+    paint_frame(doc, scene, text, theme);
     if !doc.align.on {
         return;
     }
-    button(
-        scene,
-        text,
-        theme,
-        l.show_prev,
-        tr("anim_editor.align_previous"),
-        doc.align.show_prev,
-    );
-    button(
-        scene,
-        text,
-        theme,
-        l.show_ref,
-        tr("anim_editor.align_reference"),
-        doc.align.show_ref,
-    );
     let p = l.preview;
     fill_rounded_rect(
         scene,
@@ -106,26 +81,7 @@ pub(super) fn paint_align(
         tom(ColorToken::Bg0, theme),
     );
     let font = FONT.px();
-    let y_text = |r: Rect| r.y + (r.h - ROW_H_PX).max(0.0) / 2.0;
     let reference = doc.align_reference();
-    if let Some(f) = reference {
-        let s = tr_with(
-            "anim_editor.align_ref_is",
-            &[
-                (
-                    "sheet",
-                    &doc.snap
-                        .sheets
-                        .get(usize::from(f.sheet))
-                        .map_or("", |s| s.name.as_str()),
-                ),
-                ("n", &(f.cell + 1)),
-            ],
-        );
-        let r = l.ref_label;
-        let c = tom(ColorToken::Info, theme);
-        paint_text(text, scene, &s, r.x, y_text(r), font, r.w, c);
-    }
     let Some(v) = doc.align_view(p) else {
         return;
     };
@@ -153,15 +109,25 @@ pub(super) fn paint_align(
         painted.current = layer(doc, scene, v, f, 1.0, None);
     }
     let thin = StrokeToken::Thin.px();
-    // O contorno do desenho da referência, por cima: a imagem dela fica por baixo e o quadro aberto tapa-a.
+    // A silhueta da referência, POR CIMA do quadro aberto (dono 09/11): a imagem dela fica por baixo e é tapada.
     let caixa = doc.align.show_ref.then(|| doc.reference_box()).flatten();
     if let Some((lo, hi)) = caixa {
-        let r = v.quad((
+        painted.reference_box = Some(v.quad((
             [(lo[0] + hi[0]) / 2.0, (lo[1] + hi[1]) / 2.0],
             [hi[0] - lo[0], hi[1] - lo[1]],
-        ));
-        stroke_rect(scene, r, thin, tom(ColorToken::Info, theme));
-        painted.reference_box = Some(r);
+        )));
+    }
+    if doc.align.show_ref
+        && let Some((f, sil)) = doc.reference_silhouette()
+        && let Some(q) = doc.frame_quad(f)
+    {
+        let r = v.quad(q);
+        let at = |fx: f32, fy: f32| (r.x + fx * r.w, r.y + fy * r.h);
+        let c = tom(ColorToken::Info, theme);
+        for e in &sil.arestas {
+            stroke_polyline(scene, &[at(e[0], e[1]), at(e[2], e[3])], thin, c);
+        }
+        painted.wireframe = sil.arestas.len();
     }
     if doc.align.show_ref
         && let Some(floor) = doc.align.floor.or(caixa.map(|(lo, _)| lo[1]))
@@ -175,9 +141,17 @@ pub(super) fn paint_align(
     if let Some(r) = painted.current {
         stroke_rect(scene, r, thin, accent);
         let side = ROW_H_PX * HANDLE_ROWS;
-        let h = Rect::new(r.x + r.w - side / 2.0, r.y + r.h - side / 2.0, side, side);
-        fill_rounded_rect(scene, h, 0.0, accent);
-        painted.handle = Some(h);
+        let quinas = [
+            (r.x, r.y),
+            (r.x + r.w, r.y),
+            (r.x, r.y + r.h),
+            (r.x + r.w, r.y + r.h),
+        ];
+        for (slot, (qx, qy)) in painted.handles.iter_mut().zip(quinas) {
+            let h = Rect::new(qx - side / 2.0, qy - side / 2.0, side, side);
+            fill_rounded_rect(scene, h, 0.0, accent);
+            *slot = Some(h);
+        }
     }
     let (ox, oy) = v.to_screen([0.0, 0.0]);
     let arm = ROW_H_PX * CROSS_ROWS;
@@ -201,6 +175,80 @@ pub(super) fn paint_align(
     );
     scene.pop_layer();
     doc.align.painted = painted;
+}
+
+/// ⭐ A moldura própria do Align, embaixo à direita (dono 09/11): o título com a referência, «Align» e o conta-gotas,
+/// «Previous» e «Reference». A moldura é a das outras com um fio de acento — levemente diferente.
+fn paint_frame(doc: &AnimDoc, scene: &mut VectorScene, text: &mut TextSystem, theme: Theme) {
+    let l = doc.layout.align;
+    if l.frame.w <= 0.0 {
+        return;
+    }
+    let radius = frame_radius(theme, Radius::Sm.px());
+    fill_rounded_rect(scene, l.frame, radius, tom(ColorToken::Bg2, theme));
+    let fio = StrokeToken::Thin.px();
+    stroke_rounded_rect(
+        scene,
+        l.frame,
+        radius,
+        fio,
+        tom(ColorToken::AccentSoft, theme),
+    );
+    let font = TypeToken::Base.px();
+    let t = l.title;
+    let y = t.y + (t.h - ROW_H_PX).max(0.0) / 2.0;
+    // A fila do título diz o que o Align está a fazer: a referência, o conta-gotas armado, ou só o nome dele.
+    let reference = doc.align_reference().filter(|_| doc.align.on);
+    let (s, c) = match reference {
+        _ if doc.align.picking => (tr("anim_editor.align_picking").to_owned(), ColorToken::Info),
+        Some(f) => {
+            let name = doc
+                .snap
+                .sheets
+                .get(usize::from(f.sheet))
+                .map_or("", |s| s.name.as_str());
+            let s = tr_with(
+                "anim_editor.align_ref_is",
+                &[("sheet", &name), ("n", &(f.cell + 1))],
+            );
+            (s, ColorToken::Info)
+        }
+        None => (tr("anim_editor.align").to_owned(), ColorToken::Text2),
+    };
+    paint_text(text, scene, &s, t.x, y, font, t.w, tom(c, theme));
+    let a = &doc.align;
+    button(scene, text, theme, l.toggle, tr("anim_editor.align"), a.on);
+    button(scene, text, theme, l.pick, "", a.picking);
+    let pad = Spacing::Xs.px();
+    let icon = Rect::new(
+        l.pick.x + pad,
+        l.pick.y + pad,
+        l.pick.w - 2.0 * pad,
+        l.pick.h - 2.0 * pad,
+    ); // LITERAL-PX-OK: as duas margens
+    paint_icon(
+        scene,
+        IconId::Eyedropper,
+        icon,
+        tom(ColorToken::Text1, theme),
+        fio,
+    );
+    button(
+        scene,
+        text,
+        theme,
+        l.show_prev,
+        tr("anim_editor.align_previous"),
+        a.on && a.show_prev,
+    );
+    button(
+        scene,
+        text,
+        theme,
+        l.show_ref,
+        tr("anim_editor.align_reference"),
+        a.on && a.show_ref,
+    );
 }
 
 /// O menu do clique direito sobre um quadro da tira, por cima de tudo.

@@ -172,6 +172,10 @@ impl DocumentSurface for AnimDocs {
         }
         match input.key {
             Key::Escape if d.cancel_scrub() => consumed(true),
+            Key::Escape if d.align.picking => {
+                d.align.picking = false;
+                consumed(true)
+            }
             Key::Enter if d.editing.is_some() => {
                 d.close_field(true);
                 consumed(true)

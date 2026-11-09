@@ -7,6 +7,7 @@
 use super::doc::AnimDoc;
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{AnimFrameRef, ImageUseEdit, row_cells};
+use std::sync::Arc;
 
 /// A fração da prévia que o desenho ocupa ao encaixar (o resto é ar à volta).
 const FIT: f32 = 0.8; // LITERAL-PX-OK: fração de layout
@@ -20,13 +21,15 @@ const GRAB_ROWS: f32 = 0.35; // LITERAL-PX-OK: fração do token de linha
 /// Onde fica cada peça da prévia (vazia com «Align» desligado).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct AlignLayout {
-    /// O botão «Align» no título da folha.
+    /// A moldura própria, embaixo à direita (dono 09/11), e a fila do título (com o nome da referência).
+    pub frame: Rect,
+    pub title: Rect,
+    /// O botão «Align» e o conta-gotas da referência.
     pub toggle: Rect,
+    pub pick: Rect,
     /// Os botões «Previous» e «Reference».
     pub show_prev: Rect,
     pub show_ref: Rect,
-    /// O texto que diz qual é a referência.
-    pub ref_label: Rect,
     /// A prévia.
     pub preview: Rect,
 }
@@ -80,12 +83,13 @@ pub struct AlignPaint {
     pub reference: Option<Rect>,
     /// A cruz do Pivot.
     pub pivot: Option<(f32, f32)>,
-    /// O contorno do desenho da referência.
+    /// A caixa do desenho da referência (no ecrã) e quantas arestas da silhueta dela foram pintadas por cima.
     pub reference_box: Option<Rect>,
+    pub wireframe: usize,
     /// A altura da linha do chão no ecrã.
     pub floor: Option<f32>,
-    /// A pega do canto (o tamanho da folha).
-    pub handle: Option<Rect>,
+    /// As pegas das quatro quinas (o tamanho da folha).
+    pub handles: [Option<Rect>; 4],
     /// O item «Use as reference» do menu aberto.
     pub menu_item: Option<Rect>,
 }
@@ -102,13 +106,85 @@ pub struct AlignUi {
     pub floor: Option<f32>,
     /// O menu do clique direito sobre o quadro `i` da tira, aberto em `(x, y)`.
     pub menu: Option<(usize, (f32, f32))>,
+    /// O conta-gotas armado: o próximo clique num quadro da tira escolhe a referência.
+    pub picking: bool,
     pub view: Option<View>,
     fit_key: Option<FitKey>,
     drag: AlignDrag,
     /// A caixa do desenho de uma célula, em frações dela `[x0, y0, x1, y1]` a partir do canto de cima (chave: folha,
     /// célula, corte, imagem).
-    floor_cache: Option<((u8, u32, u32, u32, usize), Option<[f32; 4]>)>,
+    floor_cache: Option<((u8, u32, u32, u32, usize), Option<Arc<Silhueta>>)>,
     pub painted: AlignPaint,
+}
+
+/// O desenho de uma célula (os píxeis com alfa), em frações dela a partir do canto de cima: a caixa `[x0, y0, x1,
+/// y1]` e as arestas da silhueta `[xa, ya, xb, yb]` (as bordas entre um píxel com alfa e um sem), fundidas em corridas.
+#[derive(Debug, PartialEq)]
+pub struct Silhueta {
+    pub caixa: [f32; 4],
+    pub arestas: Vec<[f32; 4]>,
+}
+
+impl Silhueta {
+    /// `None` = a célula não tem desenho.
+    #[must_use]
+    pub fn of(px: &[u8], w: usize, h: usize) -> Option<Self> {
+        let on = |x: isize, y: isize| {
+            x >= 0
+                && y >= 0
+                && (x as usize) < w
+                && (y as usize) < h
+                && px[(y as usize * w + x as usize) * 4 + 3] > 0
+        };
+        let mut caixa: Option<[usize; 4]> = None;
+        for y in 0..h {
+            for x in (0..w).filter(|x| on(*x as isize, y as isize)) {
+                let o = caixa.get_or_insert([x, y, x, y]);
+                *o = [o[0].min(x), o[1].min(y), o[2].max(x), o[3].max(y)];
+            }
+        }
+        let [a, t, r, d] = caixa?;
+        let (fw, fh) = (w.max(1) as f32, h.max(1) as f32);
+        let mut arestas = Vec::new();
+        // As bordas horizontais (por cima de cada linha `y`, entre `y - 1` e `y`) e as verticais, em corridas.
+        for y in 0..=h as isize {
+            let mut run: Option<usize> = None;
+            for x in 0..=w {
+                let borda = x < w && on(x as isize, y) != on(x as isize, y - 1);
+                match (borda, run) {
+                    (true, None) => run = Some(x),
+                    (false, Some(x0)) => {
+                        arestas.push([x0 as f32 / fw, y as f32 / fh, x as f32 / fw, y as f32 / fh]);
+                        run = None;
+                    }
+                    _ => {}
+                }
+            }
+        }
+        for x in 0..=w as isize {
+            let mut run: Option<usize> = None;
+            for y in 0..=h {
+                let borda = y < h && on(x, y as isize) != on(x - 1, y as isize);
+                match (borda, run) {
+                    (true, None) => run = Some(y),
+                    (false, Some(y0)) => {
+                        arestas.push([x as f32 / fw, y0 as f32 / fh, x as f32 / fw, y as f32 / fh]);
+                        run = None;
+                    }
+                    _ => {}
+                }
+            }
+        }
+        Some(Self {
+            caixa: [
+                a as f32 / fw,
+                t as f32 / fh,
+                (r + 1) as f32 / fw,
+                (d + 1) as f32 / fh,
+            ],
+            arestas,
+        })
+    }
 }
 
 type FitKey = ([u32; 4], usize, Option<AnimFrameRef>, usize, u8);
@@ -122,6 +198,7 @@ impl Default for AlignUi {
             reference: None,
             floor: None,
             menu: None,
+            picking: false,
             view: None,
             fit_key: None,
             drag: AlignDrag::None,
@@ -262,50 +339,35 @@ impl AnimDoc {
     /// A caixa do desenho (os píxeis com alfa) da referência, em metros locais: `(baixo-esquerda, cima-direita)`. A
     /// base dela é a linha do chão.
     pub fn reference_box(&mut self) -> Option<([f32; 2], [f32; 2])> {
-        let f = self.align_reference()?;
+        let (f, sil) = self.reference_silhouette()?;
         let (c, s) = self.frame_quad(f)?;
-        let sheet = self.snap.sheets.get(usize::from(f.sheet))?;
-        let img = sheet.image.as_ref()?;
-        let (hf, vf) = (sheet.hframes.max(1), sheet.vframes.max(1));
-        let key = (
-            f.sheet,
-            f.cell,
-            hf,
-            vf,
-            std::sync::Arc::as_ptr(&img.rgba) as usize,
-        );
-        let frac = match self.align.floor_cache {
-            Some((k, v)) if k == key => v,
-            _ => {
-                let [x0, y0, x1, y1] = img.limites_da_celula(hf, vf, f.cell);
-                let px = img.pixels_da_celula(hf, vf, f.cell);
-                let (w, h) = ((x1 - x0) as usize, (y1 - y0) as usize);
-                let mut b: Option<[usize; 4]> = None;
-                for y in 0..h {
-                    for x in (0..w).filter(|x| px[(y * w + x) * 4 + 3] > 0) {
-                        let o = b.get_or_insert([x, y, x, y]);
-                        *o = [o[0].min(x), o[1].min(y), o[2].max(x), o[3].max(y)];
-                    }
-                }
-                let (fw, fh) = (w.max(1) as f32, h.max(1) as f32);
-                let v = b.map(|[a, t, r, d]| {
-                    [
-                        a as f32 / fw,
-                        t as f32 / fh,
-                        (r + 1) as f32 / fw,
-                        (d + 1) as f32 / fh,
-                    ]
-                });
-                self.align.floor_cache = Some((key, v));
-                v
-            }
-        }?;
+        let frac = sil.caixa;
         let (sw, sh) = (s[0].abs(), s[1].abs());
         let (left, top) = (c[0] - sw / 2.0, c[1] + sh / 2.0);
         Some((
             [left + frac[0] * sw, top - frac[3] * sh],
             [left + frac[2] * sw, top - frac[1] * sh],
         ))
+    }
+
+    /// A silhueta do desenho da referência (guardada enquanto a célula, o corte e a imagem forem os mesmos).
+    pub fn reference_silhouette(&mut self) -> Option<(AnimFrameRef, Arc<Silhueta>)> {
+        let f = self.align_reference()?;
+        let sheet = self.snap.sheets.get(usize::from(f.sheet))?;
+        let img = sheet.image.as_ref()?;
+        let (hf, vf) = (sheet.hframes.max(1), sheet.vframes.max(1));
+        let key = (f.sheet, f.cell, hf, vf, Arc::as_ptr(&img.rgba) as usize);
+        let sil = match &self.align.floor_cache {
+            Some((k, v)) if *k == key => v.clone(),
+            _ => {
+                let [x0, y0, x1, y1] = img.limites_da_celula(hf, vf, f.cell);
+                let px = img.pixels_da_celula(hf, vf, f.cell);
+                let v = Silhueta::of(&px, (x1 - x0) as usize, (y1 - y0) as usize).map(Arc::new);
+                self.align.floor_cache = Some((key, v.clone()));
+                v
+            }
+        }?;
+        Some((f, sil))
     }
 
     /// Antes da primeira edição de um gesto: a folha do quadro aberto passa a ser a visível (os verbos agem nela).
@@ -330,7 +392,20 @@ impl AnimDoc {
         let l = self.layout.align;
         if hit(l.toggle, x, y) {
             self.align.on = !self.align.on;
-            self.align.drag = AlignDrag::None;
+            (self.align.drag, self.align.picking) = (AlignDrag::None, false);
+            return true;
+        }
+        if hit(l.pick, x, y) {
+            self.align.picking = !self.align.picking;
+            self.align.on |= self.align.picking;
+            return true;
+        }
+        // O conta-gotas: um quadro da tira (de qualquer animação aberta na lista) vira a referência.
+        if self.align.picking
+            && let Some(i) = self.layout.frames.iter().position(|f| hit(f.0, x, y))
+            && let Some(f) = self.authored_frames().get(i).copied()
+        {
+            (self.align.reference, self.align.floor, self.align.picking) = (Some(f), None, false);
             return true;
         }
         if !self.align.on {
@@ -349,13 +424,13 @@ impl AnimDoc {
         }
         let grab = ph2d_tokens::ROW_H_PX * GRAB_ROWS;
         let p = self.align.painted;
-        self.align.drag = if p.handle.is_some_and(|h| {
-            hit(
-                Rect::new(h.x - grab, h.y - grab, h.w + 2.0 * grab, h.h + 2.0 * grab), // LITERAL-PX-OK: as duas margens
-                x,
-                y,
-            )
-        }) {
+        let na_pega = |h: &Option<Rect>| {
+            h.is_some_and(|h| {
+                let r = Rect::new(h.x - grab, h.y - grab, h.w + 2.0 * grab, h.h + 2.0 * grab); // LITERAL-PX-OK: as duas margens
+                hit(r, x, y)
+            })
+        };
+        self.align.drag = if p.handles.iter().any(na_pega) {
             let Some((ox, oy)) = p.pivot else {
                 return true;
             };

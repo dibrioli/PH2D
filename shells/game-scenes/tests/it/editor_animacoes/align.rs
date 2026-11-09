@@ -122,7 +122,12 @@ fn o_botao_align_troca_a_folha_pela_previa() {
         floor > py && floor <= cur.y + cur.h + 1.0,
         "os pés ficam abaixo do Pivot, dentro do quad"
     );
-    assert!(p.handle.is_some());
+    assert!(p.handles.iter().all(Option::is_some), "as quatro quinas");
+    assert!(
+        p.wireframe > 4,
+        "a silhueta da referência por cima ({} arestas)",
+        p.wireframe
+    );
     let caixa = p
         .reference_box
         .expect("o contorno do desenho da referência");
@@ -130,7 +135,14 @@ fn o_botao_align_troca_a_folha_pela_previa() {
         (caixa.y + caixa.h - floor).abs() < 1.0,
         "a linha do chão é a base do desenho da referência"
     );
-    let t = d.layout.align.toggle;
+    let cut = m.paint_in(super::AREA);
+    assert!(cut.is_empty(), "nada do Align se corta: {cut:?}");
+    let pick = m.doc().layout.align.pick;
+    m.click(centre(pick));
+    let cut = m.paint_in(super::AREA);
+    assert!(cut.is_empty(), "nem com o conta-gotas armado: {cut:?}");
+    m.key(Key::Escape, None);
+    let t = m.doc().layout.align.toggle;
     m.click(centre(t));
     m.frame();
     assert!(
@@ -173,7 +185,8 @@ fn o_canto_da_previa_muda_o_tamanho_da_folha() {
     let mut m = Mesa::new();
     m.align_on();
     let p = m.doc().align.painted;
-    let h = centre(p.handle.expect("a pega"));
+    // A quina de cima à esquerda: qualquer uma muda o tamanho em volta do Pivot.
+    let h = centre(p.handles[0].expect("a pega"));
     let (ox, oy) = p.pivot.unwrap();
     let longe = (ox + (h.0 - ox) * 1.5, oy + (h.1 - oy) * 1.5);
     m.drag(h, longe, Modifiers::default());
@@ -294,4 +307,47 @@ fn o_gesto_age_na_folha_do_quadro_aberto() {
     assert_eq!(sprite(&m).anchor, antes0, "a folha 0 fica");
     let s = m.sim.world().get::<SpriteSheets>(e).unwrap().0[0].anchor;
     assert!((s[0] * 32.0 - 4.0).abs() < 1e-3, "{s:?}");
+}
+
+/// O conta-gotas: armado, o próximo clique num quadro da tira fixa a referência (e não escolhe o quadro); Esc desarma.
+/// *Mutação: o clique armado a cair no gesto da tira ⇒ a referência fica a de entrada.*
+#[test]
+fn o_conta_gotas_escolhe_a_referencia_na_tira() {
+    let mut m = Mesa::new();
+    m.align_on();
+    let pick = m.doc().layout.align.pick;
+    m.click(centre(pick));
+    assert!(m.doc().align.picking);
+    m.key(Key::Escape, None);
+    assert!(!m.doc().align.picking, "Esc desarma");
+    m.click(centre(pick));
+    let q = centre(m.doc().layout.frames[2].0);
+    m.click(q);
+    m.frame();
+    assert_eq!(m.doc().align_reference(), Some(AnimFrameRef::cell(2)));
+    assert!(!m.doc().align.picking);
+    assert!(m.pending().is_empty(), "o clique não mexeu na animação");
+}
+
+/// Os controlos do Align moram numa moldura própria embaixo à direita, ao lado de Cols/Rows e dos modos.
+#[test]
+fn a_moldura_do_align_fica_embaixo_a_direita() {
+    let mut m = Mesa::new();
+    let l = m.doc().layout.clone();
+    let f = l.align.frame;
+    assert!(
+        f.w > 0.0 && f.x > l.grid_group.x + l.grid_group.w && f.x > l.modes[2].x + l.modes[2].w
+    );
+    assert!(f.y >= l.strip_bar.y && f.y + f.h <= l.frames_card.y + l.frames_card.h);
+    for r in [
+        l.align.toggle,
+        l.align.pick,
+        l.align.show_prev,
+        l.align.show_ref,
+    ] {
+        assert!(
+            r.x >= f.x && r.x + r.w <= f.x + f.w && r.y >= f.y && r.y + r.h <= f.y + f.h,
+            "{r:?} fora de {f:?}"
+        );
+    }
 }

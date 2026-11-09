@@ -208,10 +208,10 @@ impl crate::App {
             (0, _) => self.smoke_pointer_down(c(toggle).0, c(toggle).1),
             (1 | 7, _) => self.smoke_pointer_up(),
             (2, _) => {
-                *pega = p.handle.map(c).zip(p.pivot);
+                *pega = p.handles[3].map(c).zip(p.pivot);
                 eprintln!(
                     "[animado-prova] align: pega={:?} pivô={:?}",
-                    p.handle, p.pivot
+                    p.handles[3], p.pivot
                 );
                 if let Some(((x, y), _)) = *pega {
                     self.smoke_pointer_down(x, y);

@@ -668,8 +668,9 @@ impl Mesa {
 }
 
 /// Os controlos fixos da tela.
-fn controlos(l: &doc::Layout) -> [Rect; 7] {
+fn controlos(l: &doc::Layout) -> [Rect; 8] {
     [
+        l.align.frame,
         l.fps,
         l.this_frame,
         l.modes[0],

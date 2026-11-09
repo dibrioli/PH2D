@@ -268,7 +268,37 @@ impl AnimDoc {
         let group_pad = Spacing::Sm.px();
         let group_h = group_pad + line + row + group_pad;
         let label_need = fit(&[ph2d_i18n::tr("anim_editor.this_frame")]);
-        let side_w = (card_w - gap) / PER_GROUP;
+        // A moldura do Align, à direita das outras (dono 09/11): dois botões por fila e o título por cima.
+        let align_button = fit(&[
+            ph2d_i18n::tr("anim_editor.align"),
+            ph2d_i18n::tr("anim_editor.align_previous"),
+            ph2d_i18n::tr("anim_editor.align_reference"),
+        ]);
+        let align_w = if self.snap.sheet.is_some() {
+            2.0 * (align_button + group_pad) + gap // LITERAL-PX-OK: dois botões e as margens
+        } else {
+            0.0
+        };
+        let needs = [
+            "anim_editor.repeat",
+            "anim_editor.once",
+            "anim_editor.ping_pong",
+        ]
+        .map(|k| fit(&[ph2d_i18n::tr(k)]));
+        // Se ao lado dela os campos e os modos já não cabem, a moldura desce para uma fila própria.
+        let beside = (card_w - align_w - gap).max(0.0);
+        let cabe = |w: f32| {
+            (w - PER_GROUP * group_pad - gap) / PER_GROUP >= label_need
+                && w >= needs.iter().sum::<f32>()
+        };
+        let align_below = align_w > 0.0 && !cabe(beside);
+        let align_h = 2.0 * group_pad + line + row + gap + row; // LITERAL-PX-OK: as margens e as duas filas
+        let left_w = if align_w > 0.0 && !align_below {
+            beside
+        } else {
+            card_w
+        };
+        let side_w = (left_w - gap) / PER_GROUP;
         let side_field = (side_w - PER_GROUP * group_pad - gap) / PER_GROUP;
         let side_by_side = side_field >= label_need;
         let group_line = if side_by_side { 0.0 } else { group_h + gap };
@@ -283,7 +313,8 @@ impl AnimDoc {
             + group_h
             + group_line
             + gap
-            + row; // LITERAL-PX-OK: as margens
+            + row
+            + if align_below { gap + align_h } else { 0.0 }; // LITERAL-PX-OK: as margens
         let banner_h = if self.proposal().is_some() {
             row + gap
         } else {
@@ -331,7 +362,7 @@ impl AnimDoc {
         y += thumb + gap;
         l.strip_bar = Rect::new(cx, y, card_w, bar);
         y += bar + gap;
-        let group_w = if side_by_side { side_w } else { card_w };
+        let group_w = if side_by_side { side_w } else { left_w };
         l.time_group = Rect::new(cx, y, group_w, group_h);
         l.grid_group = if side_by_side {
             Rect::new(cx + group_w + gap, y, group_w, group_h)
@@ -350,14 +381,8 @@ impl AnimDoc {
         (l.cols, l.rows) = pair(l.grid_group);
         y = l.grid_group.y + group_h + gap;
         // Partes iguais, como na maquete; se o maior não couber, cada um mede o seu texto e reparte a sobra.
-        let needs = [
-            "anim_editor.repeat",
-            "anim_editor.once",
-            "anim_editor.ping_pong",
-        ]
-        .map(|k| fit(&[ph2d_i18n::tr(k)]));
-        let equal = card_w / needs.len() as f32;
-        let spare = (card_w - needs.iter().sum::<f32>()) / needs.len() as f32;
+        let equal = left_w / needs.len() as f32;
+        let spare = (left_w - needs.iter().sum::<f32>()) / needs.len() as f32;
         let fits_equal = needs.iter().all(|n| *n <= equal);
         let mut mode_x = cx;
         for (m, need) in l.modes.iter_mut().zip(needs) {
@@ -365,18 +390,33 @@ impl AnimDoc {
             *m = Rect::new(mode_x, y, w, row);
             mode_x += w;
         }
+        if align_w > 0.0 {
+            let f = if align_below {
+                Rect::new(cx + card_w - align_w, y + row + gap, align_w, align_h)
+            } else {
+                Rect::new(
+                    cx + left_w + gap,
+                    l.time_group.y,
+                    align_w,
+                    y + row - l.time_group.y,
+                )
+            };
+            let (bx, by) = (f.x + group_pad, f.y + group_pad);
+            l.align.frame = f;
+            l.align.title = Rect::new(bx, by, f.w - 2.0 * group_pad, line); // LITERAL-PX-OK: as duas margens
+            let fila = |k: f32| by + line + k * (row + gap);
+            l.align.toggle = Rect::new(bx, fila(0.0), align_button, row);
+            l.align.pick = Rect::new(bx + align_button + gap, fila(0.0), row, row);
+            l.align.show_prev = Rect::new(bx, fila(1.0), align_button, row);
+            l.align.show_ref = Rect::new(bx + align_button + gap, fila(1.0), align_button, row);
+        } else {
+            self.align.on = false;
+        }
 
         // ── A folha, em cima ──
         l.sheet_card = Rect::new(mid_x, top, mid_w, (l.frames_card.y - pad - top).max(0.0));
         let mut y = top + inner;
         l.sheet_title = Rect::new(cx, y, card_w, row);
-        if self.snap.sheet.is_some() {
-            let w = fit(&[ph2d_i18n::tr("anim_editor.align")]);
-            l.align.toggle = Rect::new(cx + card_w - w, y, w, row);
-            l.sheet_title.w = (card_w - w - gap).max(0.0);
-        } else {
-            self.align.on = false;
-        }
         y += row + gap;
         if self.proposal().is_some() {
             let use_w = fit(&[ph2d_i18n::tr("anim_editor.use_grid")]);
@@ -391,18 +431,9 @@ impl AnimDoc {
             (l.sheet_card.y + l.sheet_card.h - inner - y).max(0.0),
         );
         if self.align.on {
-            // A prévia toma o lugar da folha: a barra com os dois botões e o nome da referência, e a prévia por baixo.
-            let w = fit(&[
-                ph2d_i18n::tr("anim_editor.align_previous"),
-                ph2d_i18n::tr("anim_editor.align_reference"),
-            ]);
-            l.align.show_prev = Rect::new(cx, mid.y, w, row);
-            l.align.show_ref = Rect::new(cx + w + gap, mid.y, w, row);
-            let lx = cx + 2.0 * (w + gap); // LITERAL-PX-OK: depois dos dois botões
-            l.align.ref_label = Rect::new(lx, mid.y, (cx + card_w - lx).max(0.0), row);
-            let py = mid.y + row + gap;
-            l.align.preview = Rect::new(cx, py, card_w, (mid.y + mid.h - py).max(0.0));
-            l.sheet = Rect::new(cx, py, 0.0, 0.0);
+            // A prévia toma o lugar da folha inteira.
+            l.align.preview = mid;
+            l.sheet = Rect::new(cx, mid.y, 0.0, 0.0);
         } else {
             l.sheet = match &self.snap.sheet {
                 Some(s) if s.w > 0 && s.h > 0 && mid.w > 0.0 && mid.h > 0.0 => {

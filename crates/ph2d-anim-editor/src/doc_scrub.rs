@@ -80,6 +80,9 @@ impl AnimDoc {
     /// A seta ↔ sobre uma letra que arrasta, e durante o arrasto (`None` = a shell decide).
     #[must_use]
     pub fn pointer_look(&self, x: f32, y: f32) -> Option<PointerLook> {
+        if self.align.picking {
+            return Some(PointerLook::Pick);
+        }
         let pega = self.scrub_target(x, y).and_then(|f| self.scrub_law(&f));
         (matches!(self.drag, Drag::Scrub(..)) || pega.is_some()).then_some(PointerLook::ResizeEw)
     }

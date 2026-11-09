@@ -551,7 +551,13 @@ pub fn paint_text_row<'a>(
         }) => (*state, Some(text.as_str()), *caret, *selection_anchor),
         _ => (crate::widget::TextInputState::Normal, None, 0, None),
     };
-    let input = input.visual((state, store.hover_live(id)));
+    let sufixo = crate::widget::field_suffix::de(id, text.unwrap_or(""));
+    let reserva = sufixo.as_ref().map_or(0.0, |s| {
+        crate::widget::field_suffix::largura(text_system, s)
+    });
+    let input = input
+        .visual((state, store.hover_live(id)))
+        .reserva_direita(reserva);
     crate::widget::paint_text_input_with_buffer(
         &input,
         text,
@@ -562,6 +568,17 @@ pub fn paint_text_row<'a>(
         text_system,
         theme,
     );
+    if let Some(s) = &sufixo {
+        let pad = crate::widget::field_pad_x();
+        crate::widget::field_suffix::pinta(
+            text_system,
+            scene,
+            s,
+            rect,
+            pad,
+            resolve(s.tinta, theme),
+        );
+    }
     if let Some(alvo) =
         crate::widget::key_mark::paint_decorator_campo(scene, theme, row.dot, &[id], label)
     {

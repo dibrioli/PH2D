@@ -200,6 +200,7 @@ mod populate_weapon;
 pub mod recibo;
 mod reveal;
 mod sections;
+pub mod signal_hint;
 /// ⭐ A imagem que a ranhura mostra (plano GEF 12).
 pub mod slot_image;
 pub mod slot_sheets;
@@ -326,6 +327,7 @@ pub fn player_row_labels() -> Vec<&'static str> {
 pub use sections::slice_grid::{
     CORNER_LETTERS, MIXED_LETTER, REGION_CELLS, REGION_LETTERS, is_corner_cell,
 };
+pub use signal_hint::set_signal_census;
 pub use state::current_inspector_anim;
 pub use state::{
     InspectorState, last_inspector_content_h, last_inspector_visible_h, open_anchor_row,

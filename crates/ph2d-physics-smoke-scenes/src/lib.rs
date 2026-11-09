@@ -139,6 +139,7 @@ pub mod physics_smoke_rail_rope;
 pub mod physics_smoke_rigs;
 pub mod physics_smoke_rod;
 pub mod physics_smoke_signal;
+pub mod physics_smoke_signal_ends;
 pub mod physics_smoke_signal_leave;
 pub mod physics_smoke_soft_weld;
 pub mod physics_smoke_stone;

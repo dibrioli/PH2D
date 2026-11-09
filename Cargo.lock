@@ -7670,6 +7670,7 @@ dependencies = [
  "ph2d-shake",
  "ph2d-shape-handles",
  "ph2d-sheet-bounds",
+ "ph2d-signal-census",
  "ph2d-skeleton",
  "ph2d-skeleton-demo",
  "ph2d-skeleton-ecs",
@@ -10111,6 +10112,7 @@ dependencies = [
  "ph2d-label-census",
  "ph2d-label-fold",
  "ph2d-shake",
+ "ph2d-signal-ends",
  "ph2d-text",
  "ph2d-tokens",
  "ph2d-tool-registry",
@@ -10802,6 +10804,7 @@ dependencies = [
  "ph2d-physics-ecs",
  "ph2d-physics-scene",
  "ph2d-render",
+ "ph2d-signal-census",
  "ph2d-tags",
  "ph2d-timeline",
 ]
@@ -11197,6 +11200,21 @@ dependencies = [
  "ph2d-tokens",
  "ph2d-vector",
 ]
+
+[[package]]
+name = "ph2d-signal-census"
+version = "0.0.0"
+dependencies = [
+ "ph2d-ecs",
+ "ph2d-physics-ecs",
+ "ph2d-script",
+ "ph2d-script-doc",
+ "ph2d-signal-ends",
+]
+
+[[package]]
+name = "ph2d-signal-ends"
+version = "0.0.0"
 
 [[package]]
 name = "ph2d-skeleton"

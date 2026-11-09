@@ -63,6 +63,7 @@ mod scrollbar_ids;
 pub mod section_cards;
 mod section_header;
 pub mod section_plan;
+pub mod field_suffix;
 mod segmented_adaptive;
 mod segmented_layout;
 pub mod sheet_cell;

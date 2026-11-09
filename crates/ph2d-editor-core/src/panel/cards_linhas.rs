@@ -375,6 +375,11 @@ impl<'s> CardCtx<'s> {
             }) => (*state, Some(text.as_str()), *caret, *selection_anchor),
             _ => (TextInputState::Normal, None, 0, None),
         };
+        let sufixo = crate::widget::field_suffix::de(id, text.unwrap_or(""));
+        let reserva = reserva
+            + sufixo.as_ref().map_or(0.0, |s| {
+                crate::widget::field_suffix::largura(self.text_system, s)
+            });
         // Em repouso, a mesma caixa dos outros campos (maquete C); a editar, a caixa de texto.
         if matches!(state, TextInputState::Normal | TextInputState::Hovered) {
             let fundo = if self.store.hover_live(id) > 0.0 {
@@ -397,7 +402,7 @@ impl<'s> CardCtx<'s> {
                 (r.w - m::FIELD_PAD_R * 2.0 - reserva).max(0.0),
                 self.ink.color(tinta),
             );
-            return;
+            return self.sufixo_por_cima(sufixo.as_ref(), r);
         }
         let input = TextInput::new(id, "")
             .placeholder(placeholder)
@@ -413,6 +418,22 @@ impl<'s> CardCtx<'s> {
             self.text_system,
             self.ink.theme,
         );
+        self.sufixo_por_cima(sufixo.as_ref(), r);
+    }
+
+    /// O [`crate::widget::field_suffix`] da caixa `r`, por cima do fundo e à direita do texto.
+    fn sufixo_por_cima(&mut self, s: Option<&crate::widget::field_suffix::Sufixo>, r: Rect) {
+        if let Some(s) = s {
+            let cor = self.ink.color(s.tinta);
+            crate::widget::field_suffix::pinta(
+                self.text_system,
+                self.scene,
+                s,
+                r,
+                m::FIELD_PAD_R,
+                cor,
+            );
+        }
     }
 
     /// Ícones sem caixa: o aceso ganha o fundo do segmento ativo; o pairado, o do hover.

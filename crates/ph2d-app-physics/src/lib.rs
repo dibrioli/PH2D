@@ -21,10 +21,10 @@ pub use ph2d_physics_smoke_scenes::{
     physics_smoke_player_flank, physics_smoke_player_grab, physics_smoke_player_run,
     physics_smoke_player_slope, physics_smoke_player_wall, physics_smoke_probes,
     physics_smoke_props, physics_smoke_raft, physics_smoke_rail_rope, physics_smoke_rigs,
-    physics_smoke_rod, physics_smoke_signal, physics_smoke_signal_leave, physics_smoke_soft_weld,
-    physics_smoke_stone, physics_smoke_surface, physics_smoke_swim, physics_smoke_terminal,
-    physics_smoke_water, physics_smoke_wheel, physics_smoke_world_pin, physics_smoke_zone_force,
-    physics_smoke_zones,
+    physics_smoke_rod, physics_smoke_signal, physics_smoke_signal_ends, physics_smoke_signal_leave,
+    physics_smoke_soft_weld, physics_smoke_stone, physics_smoke_surface, physics_smoke_swim,
+    physics_smoke_terminal, physics_smoke_water, physics_smoke_wheel, physics_smoke_world_pin,
+    physics_smoke_zone_force, physics_smoke_zones,
 };
 
 // ─────────────────────────────────────────────────────────────────────────

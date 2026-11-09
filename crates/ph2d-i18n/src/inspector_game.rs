@@ -552,6 +552,13 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         // ⭐ A LEITURA VIVA — quantas balas ela tem AGORA.
         "panel.inspector.weapon.x_of_y_rounds" => "{have} of {full} {full?round|rounds}",
+        // GEF02 onda 1: o sufixo de uma caixa de nome de sinal — quem está na outra ponta.
+        "panel.inspector.signal.n_listen" => "{n} {n?listens|listen}",
+        "panel.inspector.signal.nobody_listens" => "nobody listens",
+        "panel.inspector.signal.script_may_listen" => "a script may listen",
+        "panel.inspector.signal.n_send" => "{n} {n?sends|send}",
+        "panel.inspector.signal.nobody_sends" => "nobody sends",
+        "panel.inspector.signal.script_may_send" => "a script may send",
         "panel.inspector.weapon.reloading_u" => "Reloading\u{2026}",
         // ⭐⭐⭐ **OS NOMES das linhas de TEXTO** — report do dono, 2026-09-22: *«campos de texto
         //    difíceis de saber para que servem»*. A chave irmã sem `_label` é o EXEMPLO que a caixa

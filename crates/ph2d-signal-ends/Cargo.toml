@@ -1,0 +1,18 @@
+[package]
+name = "ph2d-signal-ends"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ A RESPOSTA do censo de sinais (GEF02 onda 1): quantos emitem e quantos ouvem cada nome, e o
+# sufixo que o Inspector mostra. FOLHA sem dependências — o painel lê-a sem atravessar a parede do
+# ADR-0029 (o painel não depende da `ph2d-ecs`); quem varre o `World` é a `ph2d-signal-census`.
+[dependencies]
+
+[lints]
+workspace = true

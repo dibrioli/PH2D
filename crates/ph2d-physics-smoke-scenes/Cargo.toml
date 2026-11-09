@@ -26,6 +26,7 @@ libm = { version = "=0.2.16", default-features = false }
 ph2d-timeline = { path = "../ph2d-timeline", features = ["render", "physics"] }
 
 [dev-dependencies]
+ph2d-signal-census = { path = "../ph2d-signal-census" }
 # Os gates dos sinais leem os eventos contra uma árvore de tags vazia.
 ph2d-tags = { path = "../ph2d-tags" }
 

@@ -38,6 +38,7 @@ pub(crate) fn paint(inspector_state: &mut state::InspectorState, ctx: &mut Paint
         .store_mut()
         .set_panel_rect(ids::INSP_PANEL, ctx.slot);
     sync_inspector_from_snapshots(inspector_state, ctx.host);
+    crate::signal_hint::instala();
     let display_unit = ctx.host.project().display_unit;
     let ppm = ctx.host.project().pixels_per_meter;
     let display_angle = ctx.host.project().display_angle;

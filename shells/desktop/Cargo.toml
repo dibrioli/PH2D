@@ -298,6 +298,8 @@ ph2d-editor-core = { path = "../../crates/ph2d-editor-core" }
 # writes. Gated by the `panel-inspector` feature alongside the
 # registry-init's mirror feature.
 ph2d-panel-inspector = { path = "../../crates/ph2d-panel-inspector", optional = true }
+# GEF02 onda 1: o censo dos nomes de sinal, publicado ao Inspector uma vez por quadro.
+ph2d-signal-census = { path = "../../crates/ph2d-signal-census" }
 # ⭐ O NAVEGADOR DE ASSETS (plano `docs/Components/07`) — o shell publica-lhe o índice do quadro.
 ph2d-panel-asset-browser = { path = "../../crates/ph2d-panel-asset-browser" }
 # Audio Editor panel (docs/Audio/, W1) — the render_loop editor bridge reads the

@@ -46,6 +46,8 @@ pub const PAUSED_SCENES: &[&str] = &[
     "95",
     // A 120 (ficha f1) espera o Play do artista: o Crate e a bola têm de cair à vista.
     "120",
+    // A 121 (sinais, GEF02 onda 1) mostra o Inspector de uma moeda: nada tem de cair antes da foto.
+    "121",
 ];
 
 /// A cena nasce parada? `PH2D_PHYSICS_SMOKE_TOCA=1` é a foto do Play, numa tela onde a mão não chega.
@@ -63,7 +65,7 @@ pub fn nasce_parada(which: &str) -> bool {
 ///
 /// ⚠️ Esta nota do `CLAUDE.md` já esteve parada em `97` com cenas até `102` noutro módulo —
 /// é exactamente por isso que o número vive ao lado do `match` e tem gate.
-pub const CENAS: u32 = 120;
+pub const CENAS: u32 = 121;
 
 /// **O nível que o dono pediu, lido DENTRO da crate.**
 ///
@@ -219,6 +221,7 @@ pub fn scene(which: &str, ctx: &mut crate::SceneCtx<'_>) {
         // ⚠️ **O NUMERO E' CONTADO, nunca escolhido** — lido deste `match`.
         "119" => crate::physics_smoke_brink::physics_smoke_brink(ctx),
         "120" => crate::physics_smoke_ficha::physics_smoke_ficha(ctx),
+        "121" => crate::physics_smoke_signal_ends::physics_smoke_signal_ends(ctx),
         _ => crate::physics_smoke_base::physics_smoke_drop(ctx),
     }
 }

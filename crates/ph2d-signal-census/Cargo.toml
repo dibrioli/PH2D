@@ -1,0 +1,25 @@
+[package]
+name = "ph2d-signal-census"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+
+# ⭐ O CENSO dos nomes de sinal autorados (GEF02 onda 1): varre os componentes de dados e os scripts
+# Luau do `World` e devolve a `SignalCensus` da `ph2d-signal-ends`. Folha de DADOS: nunca
+# `ph2d-app-*`, nunca painel.
+[dependencies]
+ph2d-signal-ends = { path = "../ph2d-signal-ends" }
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+ph2d-script = { path = "../ph2d-script" }
+
+[lints]
+workspace = true
+
+[dev-dependencies]
+ph2d-script-doc = { path = "../ph2d-script-doc" }

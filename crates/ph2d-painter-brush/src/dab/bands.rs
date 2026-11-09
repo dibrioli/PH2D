@@ -325,6 +325,8 @@ pub(super) struct DabCtx<'a> {
     /// The dab-capsule ([`crate::capsula`]) and its law, read once per dab; `None` ⇒ the plain dab.
     pub(super) capsula: Option<crate::capsula::Capsula>,
     pub(super) lei: crate::capsula::Lei,
+    /// O pó pousado antes do traço: o Height lê o papel com o dente cheio ([`crate::GrainLaw::papel_com_po`]).
+    pub(super) po: Option<crate::texture::PoDoPapel<'a>>,
 }
 
 /// Stamp the dab's pixels for the full-width row band `dst` whose first row is `band_y0` (so global
@@ -468,8 +470,9 @@ pub(super) fn stamp_band(
                     ctx.image.as_ref(),
                 )
             });
-            let (depth, gran) = (ctx.spec.grain_depth(), ctx.spec.effective_granulation());
             let lei = &ctx.spec.texture.lei;
+            let grain = grain.map(|t| lei.papel_com_po(t, ctx.po.as_ref(), px, py));
+            let (depth, gran) = (ctx.spec.grain_depth(), ctx.spec.effective_granulation());
             let tinta = match cor_cap {
                 Some(cc) => {
                     let mordida =

@@ -357,6 +357,8 @@ pub(crate) struct PaintState {
     pub(super) stroke_mask: Vec<u8>,
     /// **O plano do traço** (L8/L5/L6, só no Digital, [`super::traco_plano`]); `None` fora de um traço que o pede.
     pub(super) plano_do_traco: Option<super::traco_plano::PlanoDoTraco>,
+    /// **O pó pousado** do traço ([`super::po_do_papel`]): `None` = por preparar; vazio = nada a encher.
+    pub(super) po_do_papel: Option<Vec<u8>>,
     pub(super) dual: super::dual::DualEstado, // a 2.ª ponta do dual brush (L6)
     /// O trilho da ponta de PÍXEL (L18, [`super::pixel_route::Trilhos`]); zerado no pen-down.
     pub(super) pixel_trilhos: super::pixel_route::Trilhos,

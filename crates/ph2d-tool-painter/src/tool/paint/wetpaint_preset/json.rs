@@ -109,6 +109,9 @@ fn textura_para_json(t: &TextureSettings) -> Value {
             if t.lei.tip_depth {
                 l.insert("tip_depth".to_owned(), json!(true));
             }
+            if t.lei.fill > 0.0 {
+                l.insert("fill".to_owned(), json!(num(t.lei.fill)));
+            }
         }
     }
     v
@@ -145,6 +148,7 @@ fn lei_de_json(v: Option<&Value>) -> GrainLaw {
         contraste: n.contraste,
         softness: f(o.get("softness"), n.softness).clamp(0.0, 1.0),
         tip_depth: booleano(o.get("tip_depth"), n.tip_depth),
+        fill: f(o.get("fill"), n.fill).clamp(0.0, 1.0),
     }
 }
 

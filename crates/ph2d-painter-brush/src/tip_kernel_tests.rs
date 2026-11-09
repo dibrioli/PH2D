@@ -358,6 +358,7 @@ fn every_kernel(spec: &BrushSpec, dab_deg: f32) -> Vec<Escrita> {
         1.0,
         false,
         None,
+        None,
     );
     out.push(("blit_canvas_cached", true, written_box(&canvas, 4)));
 

@@ -457,6 +457,8 @@ struct CanvasBlitCtx<'a> {
     x0: i64,
     x1: i64,
     width: usize,
+    /// O pó pousado antes do traço (o cache guarda o papel nu: o pó muda de traço para traço).
+    po: Option<crate::texture::PoDoPapel<'a>>,
 }
 
 /// Composite a **Tiled / Stencil** dab using a lazily-filled CANVAS-SPACE texture cache: the texture
@@ -483,6 +485,7 @@ pub fn blit_canvas_cached(
     coverage: f32,
     preserve_alpha: bool,
     forca: Option<&mut [u16]>,
+    po: Option<crate::texture::PoDoPapel<'_>>,
 ) -> Option<DirtyRect> {
     let coverage = coverage.clamp(0.0, 1.0) * spec.flow.clamp(0.0, 1.0);
     if coverage <= 0.0 || width == 0 || height == 0 || radius <= 0.0 {
@@ -539,6 +542,7 @@ pub fn blit_canvas_cached(
         x0,
         x1,
         width: width as usize,
+        po,
     };
     let touched = crate::dab::parallel_band_cached(
         canvas,
@@ -630,7 +634,12 @@ fn canvas_blit_band(
             // The FILM, on the silhouette, before the Grain (see `render_stamp_mask`).
             w = crate::height::film_coverage(ctx.spec.deposits_height(), w);
             // GRAIN Depth + watercolor Granulation (the shared combine); byte-identical at Depth 1 / Gran 0.
-            let g = f32::from(tex[mi]) / 255.0;
+            let g = ctx.spec.texture.lei.papel_com_po(
+                f32::from(tex[mi]) / 255.0,
+                ctx.po.as_ref(),
+                px,
+                py,
+            );
             w *= ctx
                 .spec
                 .texture

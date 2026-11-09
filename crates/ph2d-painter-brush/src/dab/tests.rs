@@ -57,6 +57,7 @@ fn ramped_stamp_paints_the_ramp_colours_not_the_brush_colour() {
         None,
         [1.0, 0.0],
         None,
+        None,
     )
     .expect("ramped dab painted");
     let (mut red, mut blue, mut green) = (0, 0, 0);
@@ -121,6 +122,7 @@ fn ramp_alpha_dab(buf: &mut [u8], w: u32, h: u32, a1: f32, mode: crate::ramp_alp
         },
         None,
         [1.0, 0.0],
+        None,
         None,
     )
     .expect("ramped dab painted");

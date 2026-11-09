@@ -99,6 +99,9 @@ pub struct GrainLaw {
     /// `w ×` ela — a borda do traço quebra-se pelo papel (o bastão redondo só toca os picos na orla). Desligado = o
     /// Height de sempre, ao bit.
     pub tip_depth: bool,
+    /// ⭐ O ENCHIMENTO do dente (`0..1`): no Height o papel sobe a fracção `fill·pó` do que lhe falta onde a camada já tinha
+    /// tinta no pen-down ([`super::PoDoPapel`]) — cada repasse cobre mais vales. `0` = o papel de sempre, ao bit.
+    pub fill: f32,
 }
 
 impl Default for GrainLaw {
@@ -118,7 +121,25 @@ impl GrainLaw {
         contraste: 1.0,
         softness: 0.0,
         tip_depth: false,
+        fill: 0.0,
     };
+
+    /// O pó pousado conta ([`Self::papel_com_po`] muda o papel): Height com enchimento.
+    #[must_use]
+    pub fn enche_o_dente(&self) -> bool {
+        self.mode == GrainMode::Height && self.fill > 0.0
+    }
+
+    /// ⭐ O papel `t` no texel `(px, py)` com o dente cheio do `po` de antes do traço: `t + fill·pó·(1 − t)` — o vale sobe
+    /// mais que o pico, e o grão fica macio (somar `fill·pó` por igual chapava os grãos já pintados, medido 10/11); sem pó
+    /// ou sem enchimento, `t` ao bit.
+    #[must_use]
+    pub fn papel_com_po(&self, t: f32, po: Option<&super::PoDoPapel>, px: i64, py: i64) -> f32 {
+        match po {
+            Some(p) if self.enche_o_dente() => t + self.fill * p.em(px, py) * (1.0 - t).max(0.0),
+            _ => t,
+        }
+    }
 
     /// A profundidade varia por dab (o dab leva o multiplicador na pegada, [`crate::DabTilt::grao`]).
     #[must_use]
@@ -155,7 +176,11 @@ impl GrainLaw {
                     f32::from(u8::from(t > 1.0 - d))
                 };
                 // Com a ponta na profundidade, a cobertura É o papel alcançado: o factor sobre `w` é `alcanca / w`.
-                let r = if self.tip_depth { alcanca / ponta } else { alcanca };
+                let r = if self.tip_depth {
+                    alcanca / ponta
+                } else {
+                    alcanca
+                };
                 return r * super::granulation_gate(t, granulation);
             }
             GrainMode::LinearHeight => {
@@ -261,8 +286,15 @@ mod tests {
             for j in 1..=10 {
                 let (t, d) = (i as f32 / 40.0, j as f32 / 10.0);
                 let degrau = f32::from(u8::from(t > 1.0 - d));
-                assert_eq!(h(0.0).factor(0.7, t, d, 0.0).to_bits(), degrau.to_bits(), "t {t} d {d}");
-                assert!((h(d).factor(0.7, t, d, 0.0) - lh.factor(0.7, t, d, 0.0)).abs() < 1e-6, "t {t} d {d}");
+                assert_eq!(
+                    h(0.0).factor(0.7, t, d, 0.0).to_bits(),
+                    degrau.to_bits(),
+                    "t {t} d {d}"
+                );
+                assert!(
+                    (h(d).factor(0.7, t, d, 0.0) - lh.factor(0.7, t, d, 0.0)).abs() < 1e-6,
+                    "t {t} d {d}"
+                );
                 let m = h(0.1).factor(0.7, t, d, 0.0);
                 let esperado = ((t - (1.0 - d)) / 0.1).clamp(0.0, 1.0);
                 assert!((m - esperado).abs() < 1e-6, "t {t} d {d}: {m} × {esperado}");
@@ -287,7 +319,10 @@ mod tests {
         let (mut orla_base, mut orla_ponta) = (0, 0);
         for i in 0..=99 {
             let t = i as f32 / 99.0;
-            assert_eq!(ponta.factor(1.0, t, 0.8, 0.0).to_bits(), base.factor(1.0, t, 0.8, 0.0).to_bits());
+            assert_eq!(
+                ponta.factor(1.0, t, 0.8, 0.0).to_bits(),
+                base.factor(1.0, t, 0.8, 0.0).to_bits()
+            );
             assert_eq!(ponta.factor(0.0, t, 0.8, 0.0), 0.0);
             for w in [0.1_f32, 0.4, 0.7] {
                 let r = w * ponta.factor(w, t, 0.8, 0.0);
@@ -299,8 +334,18 @@ mod tests {
         // a orla com a ponta na profundidade toca MENOS píxeis (só os picos), mas os que toca pintam cheio
         assert!(orla_ponta < orla_base, "{orla_ponta} × {orla_base}");
         // e a orla mais fraca toca menos que a mais forte
-        let toca = |w: f32| (0..=99).filter(|i| ponta.factor(w, *i as f32 / 99.0, 0.8, 0.0) > 0.0).count();
-        assert!(toca(0.1) < toca(0.4) && toca(0.4) < toca(0.7), "{} {} {}", toca(0.1), toca(0.4), toca(0.7));
+        let toca = |w: f32| {
+            (0..=99)
+                .filter(|i| ponta.factor(w, *i as f32 / 99.0, 0.8, 0.0) > 0.0)
+                .count()
+        };
+        assert!(
+            toca(0.1) < toca(0.4) && toca(0.4) < toca(0.7),
+            "{} {} {}",
+            toca(0.1),
+            toca(0.4),
+            toca(0.7)
+        );
     }
 
     #[test]
@@ -315,5 +360,43 @@ mod tests {
         assert_eq!(l.profundidade_do_dab(0.5, 0.0), 0.5);
         assert_eq!(l.profundidade_do_dab(0.0, 0.9), 0.2);
         assert_eq!(GrainLaw::NEUTRA.profundidade_do_dab(0.1, 0.1), 1.0);
+    }
+
+    /// ⭐ O enchimento do dente: sem enchimento, sem pó ou fora do Height o papel é `t` AO BIT; com ele, o vale sobe a
+    /// fracção `fill·pó` do que lhe falta (o pico já no topo não muda).
+    #[test]
+    fn o_enchimento_sobe_o_vale_e_e_neutro_sem_po() {
+        let plano = [255u8, 128, 0, 255];
+        let po = super::super::PoDoPapel {
+            plano: &plano,
+            largura: 2,
+        };
+        let h = GrainLaw {
+            mode: GrainMode::Height,
+            fill: 0.5,
+            ..GrainLaw::NEUTRA
+        };
+        for t in [0.0f32, 0.123, 0.5, 0.97] {
+            assert_eq!(
+                GrainLaw { fill: 0.0, ..h }
+                    .papel_com_po(t, Some(&po), 0, 0)
+                    .to_bits(),
+                t.to_bits()
+            );
+            assert_eq!(h.papel_com_po(t, None, 0, 0).to_bits(), t.to_bits());
+            assert_eq!(
+                h.papel_com_po(t, Some(&po), 0, 1).to_bits(),
+                t.to_bits(),
+                "pó zero"
+            );
+            let m = GrainLaw {
+                mode: GrainMode::Multiply,
+                ..h
+            };
+            assert_eq!(m.papel_com_po(t, Some(&po), 0, 0).to_bits(), t.to_bits());
+            assert!((h.papel_com_po(t, Some(&po), 0, 0) - (t + 0.5 * (1.0 - t))).abs() < 1e-6);
+        }
+        assert_eq!(h.papel_com_po(1.0, Some(&po), 0, 0), 1.0);
+        assert!(h.papel_com_po(0.2, Some(&po), 1, 0) < h.papel_com_po(0.2, Some(&po), 0, 0));
     }
 }

@@ -163,6 +163,7 @@ impl PainterTool {
     ) {
         self.ensure_canvas_cache(brush, w, h);
         self.ensure_shape_ramp_lut();
+        self.prepara_o_po(brush, w, h);
         let mut plano = self.undo.marca.toma_o_plano((w, h));
         // Disjoint borrows: the canvas (Arc), the cache (tex+ready), the imported images + the Shape
         // ramp LUT are all separate fields, so they can be held at once.
@@ -185,6 +186,7 @@ impl PainterTool {
             return;
         };
         let (tex, ready) = (&mut cache.tex, &mut cache.ready);
+        let po = super::po_do_papel::po(self.paint.po_do_papel.as_ref(), w);
         let buf = super::plane_fork::fork_canvas(
             &mut self.canvas_rgba,
             &self.undo.write_state,
@@ -212,6 +214,7 @@ impl PainterTool {
                 d.coverage,
                 alpha_locked,
                 plano.as_deref_mut(),
+                po,
             ) {
                 let rect = Region {
                     x: r.x,
@@ -263,6 +266,7 @@ impl PainterTool {
         h: u32,
     ) {
         self.ensure_shape_ramp_lut();
+        self.prepara_o_po(brush, w, h);
         let textured = brush.texture.is_active();
         let papel = self.papel_como_grain(); // a imagem do slot que faz de Grain (`dab_spec`)
         let image = if papel {
@@ -436,7 +440,7 @@ impl PainterTool {
                     fp,
                 )
             });
-            if let Some(r) = ph2d_painter_brush::stamp_dab_textured_masked(
+            if let Some(r) = ph2d_painter_brush::stamp_dab_textured_masked_po(
                 buf,
                 w,
                 h,
@@ -451,6 +455,7 @@ impl PainterTool {
                 plano.as_deref_mut(),
                 rotor,
                 d.capsula(&spec),
+                super::po_do_papel::po(self.paint.po_do_papel.as_ref(), w),
             ) {
                 let rect = Region {
                     x: r.x,

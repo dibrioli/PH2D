@@ -107,6 +107,7 @@ impl PainterTool {
         w: u32,
         h: u32,
     ) {
+        self.prepara_o_po(brush, w, h);
         let owner = self.color_ramp_owner(brush.texture.is_active());
         self.ensure_ramp_lut(owner);
         self.ensure_shape_ramp_lut();
@@ -224,6 +225,7 @@ impl PainterTool {
                 mask.as_deref_mut(),
                 rotor,
                 d.capsula(&spec),
+                super::po_do_papel::po(self.paint.po_do_papel.as_ref(), w),
             ) {
                 let rect = Region {
                     x: r.x,

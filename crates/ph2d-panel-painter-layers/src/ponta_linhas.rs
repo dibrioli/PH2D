@@ -44,6 +44,7 @@ pub(crate) const ROTULOS_DA_PONTA: [&str; ph2d_tool_painter::N_LINHAS_DA_PONTA] 
     "panel.painter_ponta.dual_pattern",
     "panel.painter_ponta.softness",
     "panel.painter_ponta.tip_contact",
+    "panel.painter_ponta.fill",
 ];
 
 /// Os índices das linhas da ponta que se pintam no cartão `c`.
@@ -245,8 +246,8 @@ pub(crate) fn visivel(i: usize, brush: &BrushSettings) -> bool {
         // O dual brush (L6): as linhas da 2.ª ponta só com ela armada; a dureza é do disco (sem forma), o tamanho
         // do padrão só de um padrão.
         LinhaDaPonta::DualMode => true,
-        // A maciez e o contacto da ponta só o Height os lê.
-        LinhaDaPonta::Softness | LinhaDaPonta::TipContact => {
+        // A maciez, o contacto da ponta e o enchimento do dente só o Height os lê.
+        LinhaDaPonta::Softness | LinhaDaPonta::TipContact | LinhaDaPonta::Fill => {
             brush.ponta[indice(LinhaDaPonta::GrainMode)]
                 == f64::from(ph2d_tool_painter::GrainMode::Height.to_u8())
         }

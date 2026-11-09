@@ -220,6 +220,7 @@ impl PainterTool {
         let mut sombra = std::mem::take(&mut self.paint.mistura_opaca.sombra);
         // A pegada real (Shape, Grain); o stream de RNG anda por dab como na rota normal.
         self.ensure_shape_ramp_lut();
+        self.prepara_o_po(brush, w, h);
         let papel = self.papel_como_grain();
         let shape_tom = self.shape_tom_ativo();
         let shape_active = brush.shape_silhouette_active(self.paint.shape_image.is_some());
@@ -267,6 +268,7 @@ impl PainterTool {
         .map(|i| i.as_mask());
         let shape_image = self.paint.shape_image.as_ref().map(|i| i.as_mask());
         let shape_ramp_lut = shape_tom.then_some(self.paint.shape_ramp_lut.as_slice());
+        let po = super::super::po_do_papel::po(self.paint.po_do_papel.as_ref(), w);
         let rampa = if rampa_px {
             Some(ph2d_painter_brush::RampPaint {
                 lut: &self.paint.texture_ramp_lut,
@@ -485,9 +487,10 @@ impl PainterTool {
                     None,
                     spec.dab_rotor(d),
                     d.capsula(&branco),
+                    po,
                 )
             } else {
-                ph2d_painter_brush::stamp_dab_textured_masked(
+                ph2d_painter_brush::stamp_dab_textured_masked_po(
                     &mut mascara,
                     w,
                     h,
@@ -502,6 +505,7 @@ impl PainterTool {
                     None,
                     spec.dab_rotor(d),
                     d.capsula(&branco),
+                    po,
                 )
             };
             let Some(r) = r else {

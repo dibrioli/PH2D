@@ -166,6 +166,7 @@ fn shape_with_tiled_grain_canvas_cached_matches_per_pixel() {
         1.0,
         false,
         None,
+        None,
     );
     let maxdiff = (0..(w * h * 4) as usize)
         .map(|i| i32::from(a[i]).abs_diff(i32::from(b[i])))
@@ -339,6 +340,7 @@ fn canvas_cached_blit_matches_the_per_pixel_tiled_stamp() {
         1.0,
         false,
         None,
+        None,
     );
     // Bit-close: the only difference is the texture's u8 quantisation in the cache.
     let maxdiff = (0..(w * h * 4) as usize)
@@ -369,6 +371,7 @@ fn canvas_cached_blit_matches_the_per_pixel_tiled_stamp() {
         None,
         1.0,
         false,
+        None,
         None,
     );
     assert_eq!(

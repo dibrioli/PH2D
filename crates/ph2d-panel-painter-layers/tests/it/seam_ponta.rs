@@ -278,8 +278,9 @@ fn o_dual_brush_pelo_ponteiro() {
     );
 }
 
-/// ⭐ **A maciez e o contacto da ponta do Height** (o Pastel K1): só aparecem no modo Height; a caixa «Grain
-/// softness» e o menu «Tip contact» chegam ao pincel (`GrainLaw::softness`, `GrainLaw::tip_depth`).
+/// ⭐ **A maciez, o contacto da ponta e o enchimento do dente do Height** (o Pastel K1): só aparecem no modo Height; as
+/// caixas «Grain softness» e «Tooth fill» e o menu «Tip contact» chegam ao pincel (`GrainLaw::softness`, `fill`,
+/// `tip_depth`).
 #[test]
 fn a_maciez_e_o_contacto_da_ponta_so_no_height_e_chegam_ao_pincel() {
     let mut t = PainterTool::default();
@@ -310,6 +311,17 @@ fn a_maciez_e_o_contacto_da_ponta_so_no_height_e_chegam_ao_pincel() {
         }
     }
     assert_eq!(t.brush_settings().ponta[s], 0.3);
+    let f = indice(LinhaDaPonta::Fill);
+    let (mut host, mut st, _) = aberto(&mut t);
+    for ev in host.type_into_number(ids::PAINTER_PONTA_FIELDS[f], "0.5") {
+        host.apply_panel_event::<PainterLayersPanel>(&mut st, ev);
+    }
+    for action in host.drained_actions() {
+        if let EditorAction::ToolPanelEvent(pe) = action {
+            t.handle_panel_event(pe);
+        }
+    }
+    assert_eq!(t.brush_settings().ponta[f], 0.5, "o Tooth fill");
     escolhe(&mut t, LinhaDaPonta::TipContact, 0);
     assert_eq!(t.brush_settings().ponta[c], 0.0);
 }

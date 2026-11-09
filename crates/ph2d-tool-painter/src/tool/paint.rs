@@ -149,6 +149,7 @@ pub mod mao; // a MÃO do pincel (pressão, inclinação) nos quatro meios, por 
 pub mod marca; // as linhas da MARCA (o jitter da L4) no cartão Jitter, nos quatro meios
 mod mistura_settings; // a porta do painel da mistura opaca do Digital (Color mixing)
 mod pixel_route; // a ponta de PÍXEL (L18): o trilho ancorado e o carimbo binário, só no Digital
+mod po_do_papel; // o pó pousado: o Height lê o papel com o dente cheio da tinta de antes do traço
 pub mod ponta; // as linhas da PONTA (L9 o grão · L18 o píxel · L19 as imagens) nas secções Brush/Grain/Shape
 mod traco_plano; // o PLANO do traço: o traço num modo de cor como uma camada, o dual e a cauda (L5), só no Digital
 mod uma_passagem; // o nível de UMA passagem do traço: o alvo da mancha do Solid

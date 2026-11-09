@@ -303,6 +303,7 @@ pub fn stamp_dab_textured(
         None,
         None,
         None,
+        None,
         [1.0, 0.0],
         PARALLEL_MIN_AREA,
         None,
@@ -345,6 +346,49 @@ pub fn stamp_dab_textured_masked(
         None,
         mask,
         forca,
+        None,
+        dab_rotation,
+        PARALLEL_MIN_AREA,
+        capsula,
+    )
+}
+
+/// [`stamp_dab_textured_masked`] com o PÓ pousado antes do traço ([`crate::texture::PoDoPapel`]): o Height lê o
+/// papel com o dente cheio.
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn stamp_dab_textured_masked_po(
+    buf: &mut [u8],
+    width: u32,
+    height: u32,
+    center: [f32; 2],
+    spec: &BrushSpec,
+    coverage: f32,
+    preserve_alpha: bool,
+    tex: Option<&TexDabBasis>,
+    image: Option<&ImageMask>,
+    shape: Option<ShapeInput>,
+    mask: Option<&mut [u8]>,
+    forca: Option<&mut [u16]>,
+    dab_rotation: [f32; 2],
+    capsula: Option<crate::capsula::Capsula>,
+    po: Option<crate::texture::PoDoPapel<'_>>,
+) -> Option<DirtyRect> {
+    stamp_dab_inner(
+        buf,
+        width,
+        height,
+        center,
+        spec,
+        coverage,
+        preserve_alpha,
+        tex,
+        image,
+        shape,
+        None,
+        mask,
+        forca,
+        po,
         dab_rotation,
         PARALLEL_MIN_AREA,
         capsula,
@@ -393,6 +437,7 @@ pub fn stamp_dab_textured_masked_with(
         None,
         mask,
         forca,
+        None,
         dab_rotation,
         min_area,
         None,
@@ -423,6 +468,7 @@ pub fn stamp_dab_ramped(
     mask: Option<&mut [u8]>,
     dab_rotation: [f32; 2],
     capsula: Option<crate::capsula::Capsula>,
+    po: Option<crate::texture::PoDoPapel<'_>>,
 ) -> Option<DirtyRect> {
     stamp_dab_inner(
         buf,
@@ -438,6 +484,7 @@ pub fn stamp_dab_ramped(
         Some(ramp),
         mask,
         None,
+        po,
         dab_rotation,
         PARALLEL_MIN_AREA,
         capsula,
@@ -464,6 +511,8 @@ fn stamp_dab_inner(
     mask: Option<&mut [u8]>,
     // A força com que o lote pinta cada texel (canvas-sized, `u16`; [`crate::stroke_cover::compoe_forca`]).
     forca: Option<&mut [u16]>,
+    // O pó pousado antes do traço ([`crate::texture::PoDoPapel`]): o Height lê o papel com o dente cheio.
+    po: Option<crate::texture::PoDoPapel<'_>>,
     // The dab's composed footprint rotor ([`crate::BrushSpec::dab_rotor`], `[1, 0]` = none): the
     // per-dab **Jitter Rotate** spin composed with the **stroke-follow** rotation. It spins the whole
     // footprint — falloff + Shape + View-Grain — together, which is what keeps a following tip and the
@@ -582,6 +631,7 @@ fn stamp_dab_inner(
         lut,
         capsula,
         lei: crate::capsula::lei(),
+        po,
     };
 
     // The per-pixel work is independent, so a LARGE dab (e.g. a big Anchored stamp re-drawn every

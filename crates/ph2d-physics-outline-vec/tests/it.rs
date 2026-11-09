@@ -8,6 +8,7 @@ use ph2d_physics_ecs::{
     BodyKind, Collider, ColliderOutline, ColliderShape, PhysicsBridge, RigidBody,
 };
 use ph2d_physics_outline_vec::{Refusal, convert};
+use ph2d_vec_entities::entities::VecEntityMap;
 use ph2d_vec_scene::{Contour, FillRule, Paint, Rgba8, StrokeSpec, VecPath, VecScene, rectangle};
 
 const INK: Rgba8 = Rgba8 {
@@ -45,7 +46,9 @@ fn scene(path: VecPath) -> (SimWorld, VecScene, Entity, [Entity; 3]) {
             Transform::default(),
         ))
         .id();
-    let a = w.spawn((Name::new("a"), Transform::default(), ChildOf(body))).id();
+    let a = w
+        .spawn((Name::new("a"), Transform::default(), ChildOf(body)))
+        .id();
     let v = w
         .spawn((
             Name::new("Drawing"),
@@ -54,7 +57,9 @@ fn scene(path: VecPath) -> (SimWorld, VecScene, Entity, [Entity; 3]) {
             ChildOf(body),
         ))
         .id();
-    let b = w.spawn((Name::new("b"), Transform::default(), ChildOf(body))).id();
+    let b = w
+        .spawn((Name::new("b"), Transform::default(), ChildOf(body)))
+        .id();
     ph2d_ecs::set_sibling_order(w, body, &[a, v, b]);
     (sim, doc, body, [a, v, b])
 }
@@ -95,10 +100,16 @@ fn settle(sim: &mut SimWorld, balls: &[Entity]) -> Vec<[f32; 2]> {
 fn o_desenho_com_buraco_vira_a_forma_do_corpo_no_lugar_dele() {
     let (mut sim, mut doc, body, [a, v, b]) = scene(frame());
     let shape = convert(sim.world_mut(), &mut doc, v).expect("converts");
-    assert!(doc.is_empty(), "the path leaves the document with the drawing");
+    assert!(
+        doc.is_empty(),
+        "the path leaves the document with the drawing"
+    );
     let w = sim.world();
     assert!(w.get_entity(v).is_err(), "the drawing is replaced");
-    assert_eq!(w.get::<Name>(shape).map(Name::as_str), Some("Collision Shape"));
+    assert_eq!(
+        w.get::<Name>(shape).map(Name::as_str),
+        Some("Collision Shape")
+    );
     assert_eq!(w.get::<ChildOf>(shape).map(|c| c.0), Some(body));
     assert_eq!(ordered_children(w, body), vec![a, shape, b], "same slot");
     assert_eq!(
@@ -149,8 +160,134 @@ fn o_traco_aberto_e_plataforma_e_as_recusas_nao_mexem() {
         ..line
     };
     let (mut sim, mut doc, body, kids) = scene(bare);
-    assert_eq!(convert(sim.world_mut(), &mut doc, kids[1]), Err(Refusal::NoArea));
-    assert_eq!(convert(sim.world_mut(), &mut doc, kids[0]), Err(Refusal::NotAVector));
-    assert_eq!(ordered_children(sim.world(), body), kids.to_vec(), "nothing moved");
+    assert_eq!(
+        convert(sim.world_mut(), &mut doc, kids[1]),
+        Err(Refusal::NoArea)
+    );
+    assert_eq!(
+        convert(sim.world_mut(), &mut doc, kids[0]),
+        Err(Refusal::NotAVector)
+    );
+    assert_eq!(
+        ordered_children(sim.world(), body),
+        kids.to_vec(),
+        "nothing moved"
+    );
 }
 
+/// The project state the editor's undo stores (the shell's `ProjectState::capture`/`restore`, minus the
+/// parts this law never touches): the incremental world capture plus the vector document.
+type State = (ph2d_ecs::scene::WorldSnapshot, VecScene);
+fn capture(sim: &mut SimWorld, doc: &VecScene, reg: &ph2d_ecs::scene::ComponentRegistry) -> State {
+    let mut w = ph2d_ecs::scene::WorldSnapshot::new();
+    let mut cache = ph2d_ecs::scene::incremental::CaptureCache::new();
+    ph2d_ecs::scene::incremental::capture_incremental(sim.world_mut(), &mut cache, reg, &mut w)
+        .expect("capture");
+    (w, doc.clone())
+}
+fn restore(
+    s: &State,
+    sim: &mut SimWorld,
+    reg: &ph2d_ecs::scene::ComponentRegistry,
+) -> VecEntityMap {
+    let mut q = sim
+        .world_mut()
+        .query_filtered::<Entity, ph2d_ecs::With<Transform>>();
+    for e in q.iter(sim.world()).collect::<Vec<_>>() {
+        let _ = sim.world_mut().despawn(e);
+    }
+    ph2d_ecs::scene::snapshot_to_world(sim.world_mut(), &s.0, reg).expect("restore");
+    ph2d_vec_entities::entities::rebuild_map(sim)
+}
+fn by_name(sim: &mut SimWorld, n: &str) -> Option<Entity> {
+    let mut q = sim.world_mut().query::<(Entity, &Name)>();
+    q.iter(sim.world())
+        .find(|(_, x)| x.as_str() == n)
+        .map(|(e, _)| e)
+}
+
+/// Undo through the editor's per-frame diff (moved from the shell, `undo_convert_outline_tests.rs`): the
+/// click frame (`convert` + the frame-end vector `sync`) is ONE step; undo gives back the drawing — name,
+/// parent, slot, `Transform` and the SAME vector document — and drops the shape; redo converts again.
+/// *Mutation: no map rebuild (`rebuild_map` empty) ⇒ the `sync` spawns a twin (red, 09/11). Dropping
+/// `convert`'s own `remove_path` stays green: the same frame's `sync` removes the orphan path.*
+#[test]
+fn converter_o_desenho_e_um_passo_e_o_ctrl_z_devolve_o_vetor() {
+    let mut reg = ph2d_ecs::scene::ComponentRegistry::new();
+    ph2d_ecs::scene::register_ecs_components(&mut reg);
+    ph2d_physics_ecs::register_physics_components(&mut reg);
+    let (mut sim, mut doc, body, [_, v, _]) = scene(frame());
+    sim.world_mut().entity_mut(body).insert(Name::new("Body"));
+    let (id, pose) = (
+        sim.world().get::<VecPathRef>(v).expect("ref").0,
+        Transform::from_translation(Vec2::new(0.5, 0.0)),
+    );
+    let mut map = VecEntityMap::default();
+    map.insert(id, v.to_bits());
+    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
+    ph2d_vec_entities::entities::sync(&mut sim, &mut doc, &mut map);
+    let (doc_before, before) = (doc.clone(), capture(&mut sim, &doc, &reg));
+    let (mut base, mut steps) = (before.clone(), Vec::new());
+    let shape = convert(sim.world_mut(), &mut doc, v).expect("converts");
+    for _ in 0..2 {
+        ph2d_vec_entities::entities::sync(&mut sim, &mut doc, &mut map);
+        let now = capture(&mut sim, &doc, &reg);
+        if now != base {
+            steps.push(std::mem::replace(&mut base, now));
+        }
+    }
+    assert_eq!(steps.len(), 1, "converting must be ONE step");
+    assert!(sim.world().get::<ColliderOutline>(shape).is_some());
+    let names = |sim: &SimWorld, p| -> Vec<String> {
+        let kids = ordered_children(sim.world(), p);
+        kids.iter()
+            .map(|&c| {
+                sim.world()
+                    .get::<Name>(c)
+                    .map_or_else(String::new, |n| n.as_str().to_owned())
+            })
+            .collect()
+    };
+    assert_eq!(names(&sim, body), ["a", "Collision Shape", "b"]);
+    let after = base.clone();
+
+    let back = steps.pop().expect("a step");
+    assert_eq!(
+        back, before,
+        "undo gives back the state before, vector document included"
+    );
+    let mut map = restore(&back, &mut sim, &reg);
+    let mut doc = back.1.clone();
+    assert_eq!(doc, doc_before, "the SAME vector document");
+    let body = by_name(&mut sim, "Body").expect("body");
+    let f = by_name(&mut sim, "Drawing").expect("the drawing is back");
+    assert!(
+        by_name(&mut sim, "Collision Shape").is_none(),
+        "the shape is gone"
+    );
+    assert_eq!(names(&sim, body), ["a", "Drawing", "b"], "the same slot");
+    assert_eq!(sim.world().get::<ChildOf>(f).map(|c| c.0), Some(body));
+    assert_eq!(sim.world().get::<Transform>(f), Some(&pose));
+    let r = sim
+        .world()
+        .get::<VecPathRef>(f)
+        .copied()
+        .expect("VecPathRef");
+    assert_eq!(doc.path(r.0), doc_before.path(id), "the same path");
+    ph2d_vec_entities::entities::sync(&mut sim, &mut doc, &mut map);
+    assert_eq!(doc, doc_before, "the sync does not undo the restore");
+    let refs = sim
+        .world_mut()
+        .query::<&VecPathRef>()
+        .iter(sim.world())
+        .count();
+    assert_eq!(
+        refs, 1,
+        "ONE object for the path (map rebuilt; no twin from the sync)"
+    );
+
+    let _ = restore(&after, &mut sim, &reg);
+    assert!(after.1.is_empty(), "redo converts again");
+    assert!(by_name(&mut sim, "Collision Shape").is_some());
+    assert!(by_name(&mut sim, "Drawing").is_none());
+}

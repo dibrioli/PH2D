@@ -593,8 +593,3 @@ mod selection_tests;
 #[cfg(test)]
 #[path = "undo_drag_tests.rs"]
 mod drag_tests;
-
-/// «Convert to Collision Outline» (dono 09/11): UM passo, e o Ctrl+Z devolve o desenho e o documento.
-#[cfg(test)]
-#[path = "undo_convert_outline_tests.rs"]
-mod convert_outline_tests;

@@ -10767,6 +10767,7 @@ dependencies = [
  "ph2d-physics-ecs",
  "ph2d-physics-outline",
  "ph2d-unique-name",
+ "ph2d-vec-entities",
  "ph2d-vec-scene",
 ]
 

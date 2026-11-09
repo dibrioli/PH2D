@@ -22,6 +22,8 @@ ph2d-unique-name = { path = "../ph2d-unique-name" }
 ph2d-core = { path = "../ph2d-core" }
 
 [dev-dependencies]
+# The editor's undo rebuilds the path↔entity map on restore (`rebuild_map`) and the frame-end `sync`.
+ph2d-vec-entities = { path = "../ph2d-vec-entities" }
 
 [lints]
 workspace = true

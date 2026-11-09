@@ -157,3 +157,40 @@ passo de undo); o cartão diz quando o tecto subiu o Detail (W4).
   registado); precedentes não-`Copy`: `JOINT` (`ph2d-app-physics/src/joint.rs:327`), `SpriteAnimMarkers`. `serde` com `rc` no `ph2d-ecs`.
 - ⚠️ **Tecto de LOC:** `ph2d-app-physics` está 64 linhas ACIMA (55 579 > 55 515, `crates/ph2d-editor-core/tests/it/architecture_the_shell_only_shrinks.rs:221`)
   por commits anteriores desta linha. Cura = MOVER para crate não-`app` antes de W4 (que acrescenta lá).
+
+## Auto Key dos pontos do Outline — desenho (09/11, ABERTO)
+
+Lei do dono (19–20/10, `project-memory/project_autokey_records_everything_2026_10_19.md`): o Auto Key grava TUDO, pontos
+incluídos; mexer um ponto grava a FORMA INTEIRA numa chave; acrescentar/apagar ponto vale em TODAS as chaves (chave por
+ponto recusada). Hoje (W5, `ph2d-shape-handles/src/pontos.rs`) os gestos sobre os pontos são passo de undo mas NÃO têm canal:
+`every_editable_field_is_a_channel` só vê Detail/Alpha/Specks (`canal_fisica.rs` 48–50). Não coube nesta janela sem meio-feito.
+
+**Medido no vetor (a lei a seguir, não outra):** cada vértice é escalar `FieldKey(VETOR, campo, i = contorno, j = vértice)`
+(`canal_vetor.rs` `ANCORA_X..TIPO_VERTICE`), todos no MESMO grupo `FORMA` (uma chave = a forma inteira), interpolação
+contínua (linear, a das âncoras); a topologia corre em `shells/desktop/src/render_loop/autokey_pass.rs:105`
+`propagar_topologia` → `ph2d_app_vec::canais_topologia::{mudou, propagar}` (alinhamento LCS por âncora exacta, um passo de
+undo da timeline próprio ou o do gesto aberto). Um blob de anéis com degrau seria uma SEGUNDA lei — recusado.
+
+**Representação:** `canal_fisica::CONTORNO_PONTO_X = 51`, `CONTORNO_PONTO_Y = 52`, `FieldKey(FISICA, campo, i = anel,
+j = ponto)`, valor = o `[i32; 2]` Q4 de `Ring` como `f32` (exacto até 2^24 — o tecto de pontos `raised_q4` fica muito
+abaixo), grupo `canal.fisica.contorno_pontos` (um grupo = uma chave por forma), na trilha da FORMA (`dono_da_chave`, opção B).
+Publicados por `canais_corpo::publicar` **só quando `ColliderOutline.custom`**: um Outline traçado da imagem é derivado
+(Detail/Alpha/Specks são as suas chaves); o Fit (volta ao traçado) é estrutura — apaga a trilha dos pontos num passo de undo.
+
+**Interpolação:** linear entre chaves com o MESMO nº de anéis e de pontos por anel (garantido pela propagação: a topologia de
+hoje é levada a todas as chaves, como no vetor). Se o anel interpolado reprovar `pontos::validos` (auto-intersecção a meio),
+esse quadro segura a chave anterior (degrau só nesse caso, medido por quadro) — nunca entrega ao solver um anel inválido.
+
+**Onde:** (1) `ph2d-ecs/src/canal_fisica.rs` — 51/52 em `CAMPOS` só se a família aceitar `i,j` (hoje os da FISICA são
+`i=j=0`: conferir `e_da_forma` e a tabela de nomes); (2) `ph2d-app-physics/src/canais_corpo.rs` `publicar`/`escrever` — leitor
+e escritor dos anéis; (3) `ConducaoFisica` (`canais_corpo.rs:356`, já guarda o par autorado `(Collider, ColliderOutline)`
+desde `e6e90d8364`) — a tocar, a chave dos pontos é pré-visualização: a fotografia do undo vê os anéis autorados;
+(4) a propagação: extrair o alinhamento LCS de `canais_topologia` para uma função pura parametrizada por (família, campos de
+âncora) e chamá-la em `propagar_topologia` também para FISICA — UMA função, dois chamadores; (5) `pontos::escreve` não muda:
+o Auto Key grava ao soltar pela mão da família (`ponteiro::publica_a_mao`, já publicada).
+
+**Gates a escrever:** arrastar um ponto com Auto Key armado = UMA chave com todos os pontos (pelo caminho do quadro, não por
+chamada directa); duplo clique numa forma com 2 chaves ⇒ as duas chaves ganham o ponto (alinhado); a tocar, quadro entre
+chaves = anéis interpolados e nenhum passo de undo; Fit apaga a trilha; `every_editable_field_is_a_channel` classifica os
+gestos dos pontos como `Canal`. Mutações: sem propagar à outra chave ⇒ vermelho; publicar com `custom = false` ⇒ vermelho;
+interpolar sem a guarda de `validos` ⇒ vermelho no caso da auto-intersecção.

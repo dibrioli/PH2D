@@ -71,7 +71,7 @@ Contratos §6 **não tocados:** `git diff --name-only 652b506b58..HEAD` sem fich
 - fmt + clippy `-D warnings` em 26 pacotes tocados + `ph2d-ecs`/`ph2d-label-census`.
 - `ph2d-editor-core`: `arch_*`, `the_shell_only_shrinks`, `workspace_src_files_under_loc_cap`, `architecture_*_contract_surface` (nodegraph 3, vector-doc 11, imageio 2, tool), `architecture_claude_md_cabe_no_orcamento`.
 - `registry-init` 64 nomeados · `host-desktop` `file_loc_caps` etc. 8 · `pixel-scenes` 341 + mapa 2 · `panel-pixel-tools` 75 · `-timeline` 32 · `ph2d-pixel-keys` 22 · `ph2d-recovery` 27 · `ph2d-ecs` incremental 12 · conjuntos das crates novas.
-- **Medido** (`--profile smoke`, mesmo processo, intercalado, mínimo; Ryzen 9 9950X): custo da recuperação no fio da janela ~1 ms (medição anterior, [P12_plano.md §4.3](../P12_plano.md)); `wants_pulse` **17,2 ns/volta** (n=9, load ~29); `capture_incremental` 10k entidades parado **0,613 ms**, 1 % mudado **0,777 ms**, 1 entidade 0,0044 ms; `print_of` 1 MiB 0,118 ms. **Não medido:** a captura do projeto inteiro da shell dentro do pulso.
+- **Medido** (`--profile smoke`, mesmo processo, intercalado, mínimo; Ryzen 9 9950X): parte do Pixel na cópia, no fio da janela: **1,12 ms** (projeto de 128 MiB, um documento editado; antes 76,1 ms; a impressão sai do fio: 34,1 ms → 43 µs — [P12_plano.md §4.3](../P12_plano.md)); `wants_pulse` **17,2 ns/volta** (n=9, load ~29); `capture_incremental` 10k entidades parado **0,613 ms**, 1 % mudado **0,777 ms**, 1 entidade 0,0044 ms; `print_of` 1 MiB 0,118 ms. **Não medido:** a captura do projeto inteiro da shell dentro do pulso.
 
 ## 7. O que um merge pode partir
 

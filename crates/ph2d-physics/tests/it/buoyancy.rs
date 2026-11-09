@@ -532,3 +532,53 @@ fn shape_drag_resists_by_section_where_uniform_drag_cannot() {
         "sem Shape Drag a orientação não pode mudar nada ({a} vs {b})"
     );
 }
+
+/// **Uma piscina de olho fechado não tem linha d'água** (a recusa `shape_off` do `zone_effect`): a
+/// forma desligada não é zona — nem na criação nem quando o olho fecha a meio do play pelo
+/// `retune_body`; reaberta, a linha volta. O registo das zonas é lido SEM a fase estreita (a linha
+/// d'água), então é aqui que uma zona desligada registada se veria.
+#[test]
+fn a_pool_with_its_shape_off_has_no_waterline() {
+    let piscina = |shape_off: bool| BodyDesc {
+        is_sensor: true,
+        shape_off,
+        effector: Some(AreaEffect {
+            force: [0.0, 0.0],
+            drag: 1.5,
+            density: 4.0,
+            form_drag: 0.0,
+            torque: 0.0,
+            world_axes: false,
+            falloff: 0.0,
+            mirror: [1.0, 1.0],
+        }),
+        ..desc(
+            RigidBodyType::Fixed,
+            0.0,
+            -2.0,
+            ShapeDesc::Cuboid {
+                half_x: 4.0,
+                half_y: 2.0,
+            },
+        )
+    };
+    let mut w = PhysicsWorld::new();
+    w.spawn_body(piscina(true));
+    assert!(
+        w.waterlines().is_empty(),
+        "nasceu de olho fechado e tem linha d'água"
+    );
+
+    let mut w = PhysicsWorld::new();
+    let h = w.spawn_body(piscina(false));
+    assert_eq!(w.waterlines().len(), 1, "o CONTROLO de olho aberto");
+    assert!(w.retune_body(h, &piscina(true)));
+    w.step();
+    assert!(
+        w.waterlines().is_empty(),
+        "o olho fechou a meio do play e a linha d'água ficou"
+    );
+    assert!(w.retune_body(h, &piscina(false)));
+    w.step();
+    assert_eq!(w.waterlines().len(), 1, "reaberta, a linha volta");
+}

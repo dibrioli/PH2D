@@ -29,6 +29,9 @@ exclude = [
     "crates/ph2d-board-words/vendor/snowball",
     # wgpu-core 30.0.1 + the backport of gfx-rs/wgpu#10160: `crates/ph2d-gpu/vendor/wgpu-core/VENDOR.md`.
     "crates/ph2d-gpu/vendor/wgpu-core",
+    # rapier2d 0.36.1 + a shape change invalidates the cached contact points:
+    # `crates/ph2d-physics/vendor/rapier2d/VENDOR.md`.
+    "crates/ph2d-physics/vendor/rapier2d",
 ]
 
 [workspace.package]
@@ -265,3 +268,6 @@ opt-level = 3
 # versão com o #10160 — `crates/ph2d-gpu/vendor/wgpu-core/VENDOR.md`.
 [patch.crates-io]
 wgpu-core = { path = "crates/ph2d-gpu/vendor/wgpu-core" }
+# ⚠️ Temporário: rapier2d 0.36.1 sem invalidar os pontos de contacto ao trocar a forma (o corpo pousado
+# saltava a diferença dos offsets) — `crates/ph2d-physics/vendor/rapier2d/VENDOR.md`.
+rapier2d = { path = "crates/ph2d-physics/vendor/rapier2d" }

@@ -26,6 +26,7 @@ mod damping;
 mod dominance;
 mod effector;
 mod ellipse_collider;
+mod forma_encolhe;
 mod grab;
 mod gravity_scale;
 mod initial_velocity;

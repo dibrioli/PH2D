@@ -271,8 +271,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "shell.hierarchy.view_zero_camera_reset" => "View · Zero (camera reset)",
         "shell.hierarchy.transform_reset" => "Transform reset",
         "shell.hierarchy.converted_to_outline" => "Converted to a Collision Shape (Outline)",
-        "shell.hierarchy.outline_needs_vector" => "Only a Vector drawing can become a Collision Outline",
-        "shell.hierarchy.outline_needs_area" => "This drawing has no filled area or stroke to turn into a Collision Outline",
+        "shell.hierarchy.outline_needs_vector" => {
+            "Only a Vector drawing can become a Collision Outline"
+        }
+        "shell.hierarchy.outline_needs_area" => {
+            "This drawing has no filled area or stroke to turn into a Collision Outline"
+        }
         // ⭐⭐⭐ As duas respostas que um OSSO dá ao *Reset Transform* — ver
         // `ph2d_skeleton_live::pose_de_repouso`. ⚠️ A palavra é **repouso** e não *«transformação
         // reposta»*: num osso as duas coisas não são a mesma, e foi essa confusão que mandou a arte

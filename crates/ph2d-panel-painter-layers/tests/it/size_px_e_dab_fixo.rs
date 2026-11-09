@@ -129,3 +129,31 @@ fn a_caixa_do_ponto_fixo_aparece_em_todo_meio_e_so_age_a_espalhar() {
         }
     }
 }
+
+/// **O Tooth e o Relief esmaecidos mostram a dica de inércia nos dois painéis** (auditoria 08/11: no cartão a
+/// explicação escrevia por cima dela, e o corpo do cartão não a repunha). Digital sem Relief: o Tooth não age.
+#[test]
+fn o_tooth_esmaecido_mostra_o_que_o_liga_nos_dois_paineis() {
+    let mut t = Bancada::nova(PaintMedia::Digital, &[]);
+    t.no_modo("brush");
+    let b = t.tool.brush_settings();
+    let inerte = "panel.painter_layers.inerte.paper_and_relief";
+    assert_eq!(
+        b.inercias.dica_de(p::PAINTER_WATERCOLOR_PAPER_DEPTH),
+        Some(inerte),
+        "a régua precisa do Tooth esmaecido"
+    );
+    for cartoes in [true, false] {
+        let mut m = Mesa::nova(cartoes, b, false);
+        if cartoes {
+            m.so_abertos(&[p::PAINTER_WATERCOLOR_PAPER_SECTION]);
+        }
+        assert_eq!(
+            m.host
+                .store()
+                .tooltip_for(p::PAINTER_WATERCOLOR_PAPER_DEPTH),
+            Some(ph2d_i18n::tr(inerte)),
+            "cartões {cartoes}: a dica do Tooth esmaecido"
+        );
+    }
+}

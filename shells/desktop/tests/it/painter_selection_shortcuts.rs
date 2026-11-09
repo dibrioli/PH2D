@@ -218,3 +218,39 @@ fn the_live_pen_owns_enter_and_escape_before_the_outer_sessions() {
         .expect("o cancel de figura segue no Esc");
     assert!(pen < shape, "a caneta descarta antes do cancel de figura");
 }
+
+/// **Com um campo de texto focado (a busca do Preset), as teclas do Painter são do campo** (auditoria 08/11:
+/// escrever «wet» ligava a Borracha e o campo ficava «wt»). A guarda vem ANTES de `[`/`]`, `E`, a cadeia do
+/// Delete e o clipboard da seleção; e o Enter/Esc da figura aberta perguntam pelo foco.
+///
+/// **Mutação que sangra:** tirar o `if self.text_entry_focused()` da cadeia ou o `!self.text_entry_focused()`
+/// de um dos dois braços da figura.
+#[test]
+fn a_busca_do_preset_fica_com_as_teclas_do_painter() {
+    let src = read("shells/desktop/src/input_dispatch/keyboard_cadeia.rs");
+    let body = &src[src
+        .find("fn ramo_teclas_timeline_painter_hierarquia")
+        .expect("a cadeia existe")..];
+    let guarda = body
+        .find("if self.text_entry_focused() {")
+        .expect("a cadeia pergunta pelo campo focado");
+    for verbo in [
+        "painter_nudge_brush_size",
+        "painter_toggle_eraser",
+        "painter_delete_chain",
+        "painter_selection_clipboard_chain",
+    ] {
+        let at = body.find(verbo).expect(verbo);
+        assert!(guarda < at, "{verbo} corre antes da guarda do campo focado");
+    }
+    let esc = read(ESCAPES);
+    for braco in ["self.painter_shape_cancel()", "self.painter_shape_commit()"] {
+        let at = esc.find(braco).expect(braco);
+        let antes = &esc[..at];
+        let cond = &antes[antes.rfind("if state").expect("o braço é um if")..];
+        assert!(
+            cond.contains("!self.text_entry_focused()"),
+            "{braco} rouba o Enter/Esc do campo focado"
+        );
+    }
+}

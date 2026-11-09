@@ -79,7 +79,10 @@ impl PainterTool {
         if matches!(self.paint.paint_mode, PaintMode::WetPaint)
             && let Some(id) = self.layers.active()
         {
-            self.tintas_molhadas.insert(id);
+            // A marca muda a lei da camada INTEIRA: a luz fora do traço tem de se refazer.
+            if self.tintas_molhadas.insert(id) {
+                self.invalidate_composite();
+            }
         }
         self.paint.drag_preview = None;
         self.paint.plano_do_traco = None; // o plano do traço (L8/L5) nasce no 1.º lote deste traço

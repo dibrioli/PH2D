@@ -3,6 +3,7 @@
 //! testes ali viraria um "widget" sem showcase nem a11y (a cicatriz do `command_palette`).
 
 use super::*;
+use ph2d_a11y::{NodeId, Role};
 
 /// **A TINTA, e não o token:** a borda de um campo aceso não é a de um campo em repouso.
 ///

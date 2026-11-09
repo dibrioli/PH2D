@@ -393,78 +393,7 @@ fn try_apply_brush_event(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> O
     }
     match ev {
         // Toggles + momentary buttons → forward as a Click (the tool flips the matching bool / acts).
-        WidgetEvent::Click(id)
-            if id == ph2d_tool_painter::ids::PAINTER_BRUSH_ERASER
-                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_ENABLE
-                || ph2d_tool_painter::ids::PAINTER_BRUSH_COLOR_JITTER_SCOPES.contains(&id)
-                || ph2d_tool_painter::ids::PAINTER_BRUSH_TILING.contains(&id)
-                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_REPEAT_IMAGE
-                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_SPACE_ATTEN
-                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_CONTINUOUS_SPACING
-                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_ACCUMULATE
-                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_WASH
-                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_SMEAR_FIO
-                // Color mixing: as opções Off · Wet blend e as do Sample (`cards_mistura`).
-                || ph2d_tool_painter::ids::PAINTER_BRUSH_MIX_MODES.contains(&id)
-                || ph2d_tool_painter::ids::PAINTER_BRUSH_MIX_SAMPLES.contains(&id)
-                || id == ph2d_tool_painter::ids::PAINTER_LINE_SOLID
-                || id == ph2d_tool_painter::ids::PAINTER_LINE_SKETCHY_MAGNETIFY
-                || id == ph2d_tool_painter::ids::PAINTER_LINE_WIRE_CONNECTION
-                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_SYNC
-                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_LINE_DIMENSIONS
-                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_EDGE_TO_EDGE
-                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_GRID_SHOW
-                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAKE
-                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_GRAIN_SAME_AS_PAPER
-                || id == ph2d_tool_painter::ids::PAINTER_SHAPE_WATERCOLOR_AUTO
-                || id == ph2d_tool_painter::ids::PAINTER_SHAPE_RESET
-                || id == ph2d_tool_painter::ids::PAINTER_SHAPE_USE_LAYERS
-                || id == ph2d_tool_painter::ids::PAINTER_SHAPE_HOSE_ADD
-                || id == ph2d_tool_painter::ids::PAINTER_SHAPE_HOSE_CLEAR
-                || id == ph2d_tool_painter::ids::PAINTER_DUAL_IMAGE
-                || id == ph2d_tool_painter::ids::PAINTER_SHAPE_PER_LAYER_COLOR
-                || id == ph2d_tool_painter::ids::PAINTER_SHAPE_ALPHA_FROM_IMAGE
-                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_PONTAS_RECTAS
-                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_DAB_FIXO
-                || ph2d_tool_painter::ids::PAINTER_BRUSH_TEXTURE_RAMP_BUTTONS.contains(&id)
-                || ph2d_tool_painter::ids::PAINTER_SHAPE_RAMP_BUTTONS.contains(&id)
-                || ph2d_tool_painter::ids::PAINTER_SHAPE_COLOR_BUTTONS.contains(&id)
-                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_FALLOFF_ADD // Custom-falloff "+" point button
-                // Stroke shape-editor buttons (Apply/Apply&Keep/Delete/Convert/Simplify/Merge) — MUST be
-                // forwarded or the Click is dropped. Plus the Offset-card Trim + the Operation segments.
-                || ph2d_tool_painter::ids::PAINTER_BRUSH_STROKE_BUTTONS.contains(&id)
-                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_OFFSET_TRIM
-                || ph2d_tool_painter::ids::PAINTER_STROKE_OP_IDS.contains(&id)
-                // Symmetry: Use/Circular checkboxes, X/Y/Custom axis segments, Draw-Line/Pick-Center, reset.
-                || ph2d_tool_painter::ids::PAINTER_BRUSH_SYMMETRY_CLICKABLE.contains(&id)
-                || ph2d_tool_painter::ids::PAINTER_BRUSH_SECTION_RESETS.contains(&id)
-                // Wet Paint (see PAINTER_WETPAINT_CLICKS: absent here = dead under the mouse).
-                || ph2d_tool_painter::ids::PAINTER_WETPAINT_CLICKS.contains(&id)
-                // Watercolor section: Wet-edges + Pigment toggles + the section reset.
-                || ph2d_tool_painter::ids::PAINTER_WATERCOLOR_CLICKS.contains(&id)
-                // Impasto: Enable + the section reset + Depth-Source / Draw-To segments + Show Impasto.
-                || ph2d_tool_painter::ids::PAINTER_IMPASTO_CLICKS.contains(&id)
-                || ph2d_tool_painter::ids::PAINTER_BRUSH_COMPOSITE_BUTTONS.contains(&id)
-                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_CLONE_SET_SOURCE
-                || id == ph2d_tool_painter::ids::PAINTER_BRUSH_CLONE_ALIGNED
-                // Mask: sub-brush segments, canvas op buttons, overlay-colour swatches, Apply.
-                || ph2d_tool_painter::ids::PAINTER_MASK_BRUSH.contains(&id)
-                || ph2d_tool_painter::ids::PAINTER_MASK_OP.contains(&id)
-                || ph2d_tool_painter::ids::PAINTER_MASK_COLOR.contains(&id)
-                || id == ph2d_tool_painter::ids::PAINTER_MASK_APPLY
-                // Selection (ADR-0103): mode/op/action segments + Edit/Convert + Wave-5 content actions.
-                || ph2d_tool_painter::ids::PAINTER_SEL_MODE_IDS.contains(&id)
-                || ph2d_tool_painter::ids::PAINTER_SEL_OP_IDS.contains(&id)
-                || ph2d_tool_painter::ids::PAINTER_SEL_ACTION_IDS.contains(&id)
-                || ph2d_tool_painter::ids::PAINTER_SEL_WAVE5_IDS.contains(&id)
-                || id == ph2d_tool_painter::ids::PAINTER_SEL_EDIT
-                || id == ph2d_tool_painter::ids::PAINTER_SEL_CONVERT || id == ph2d_tool_painter::ids::PAINTER_SEL_SIMPLIFY
-                || id == ph2d_tool_painter::ids::PAINTER_SEL_MERGE
-                || ph2d_tool_painter::ids::PAINTER_SEL_OFFSET_APPLY_IDS.contains(&id)
-                || crate::event_brush_forward::is_deform_click(id)
-                // Sculpt (`docs/Painter/18…`): the Smooth / Sharpen sub-mode segments.
-                || crate::event_brush_forward::is_sculpt_click(id) =>
-        {
+        WidgetEvent::Click(id) if crate::event_brush_forward::is_forwarded_click(id) => {
             host.bus_mut()
                 .push(EditorAction::ToolPanelEvent(PanelEvent::Click(id)));
             Some(true)

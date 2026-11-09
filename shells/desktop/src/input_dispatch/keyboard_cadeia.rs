@@ -30,6 +30,11 @@ impl crate::App {
         if self.escape_key(physical_key, state, repeat) {
             return true;
         }
+        // Campo de texto focado (a busca do Preset): `[`/`]`/`E`/Delete/Ctrl+… são do campo (a Hierarquia
+        // também o recusa, `verb_for`).
+        if self.text_entry_focused() {
+            return false;
+        }
 
         // Painter brush size: `[` shrinks, `]` grows the active brush
         // (Blender/Photoshop convention). Consumed only when the Painter tool is

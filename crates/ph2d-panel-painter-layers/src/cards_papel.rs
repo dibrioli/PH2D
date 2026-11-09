@@ -170,7 +170,7 @@ pub(crate) fn prepare(ctx: &mut PaintCtx, b: &BrushSettings) {
 }
 
 /// As dicas do Relief e do Tooth (dono 08/11: o Tooth É o multiplicador do efeito do papel na tinta) — as mesmas nos
-/// dois painéis.
+/// dois painéis. Esmaecido, fica a dica de inércia (o corpo do cartão não a repõe).
 pub(crate) fn poe_dicas(store: &mut ph2d_editor_core::interaction::WidgetStore) {
     for (id, chave) in [
         (
@@ -182,7 +182,9 @@ pub(crate) fn poe_dicas(store: &mut ph2d_editor_core::interaction::WidgetStore) 
             "panel.painter_layers.paper.tooth_tip",
         ),
     ] {
-        store.set_tooltip(id, tr(chave));
+        if esmaecer::poe_dica(store, &[id]).is_none() {
+            store.set_tooltip(id, tr(chave));
+        }
     }
 }
 

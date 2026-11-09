@@ -153,6 +153,7 @@ impl App {
         if state == ElementState::Pressed
             && !repeat
             && matches!(physical_key, PhysicalKey::Code(KeyCode::Escape))
+            && !self.text_entry_focused()
             && self.painter_shape_cancel()
         {
             return true;
@@ -163,6 +164,7 @@ impl App {
                 physical_key,
                 PhysicalKey::Code(KeyCode::Enter | KeyCode::NumpadEnter)
             )
+            && !self.text_entry_focused()
             && self.painter_shape_commit()
         {
             return true;

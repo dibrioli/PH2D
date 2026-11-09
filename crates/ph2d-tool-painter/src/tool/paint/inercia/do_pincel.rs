@@ -94,11 +94,11 @@ impl PainterTool {
             (Dependente::Pull, aquarela && !self.wet_mixer_active()),
             (Dependente::DepthSourceGrain, !g.texture.is_active()),
             (Dependente::EraseDaAgua, agua && !self.paint.eraser),
-            // No Digital o Tooth é a profundidade do papel feito Grain (`papel_como_grain`).
+            // No Digital o Tooth é a mordida do papel: como Grain sem Grain, por cima dele com um.
             (
                 Dependente::ToothDoDigital,
                 matches!(self.paint_media(), super::super::media::PaintMedia::Digital)
-                    && !self.papel_pode_ser_grain(),
+                    && !self.papel_pode_morder(),
             ),
             // A Heavy Edge só age com a tela inclinada (`Sim::sedimenta` multiplica `|g|`).
             (

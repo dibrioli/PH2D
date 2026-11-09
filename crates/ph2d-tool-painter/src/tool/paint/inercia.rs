@@ -294,7 +294,7 @@ impl Dependente {
             Dependente::Pull => "panel.painter_layers.inerte.charge_below_full",
             Dependente::DepthSourceGrain => "panel.painter_layers.inerte.grain_chosen",
             Dependente::EraseDaAgua => "panel.painter_layers.inerte.eraser_on",
-            Dependente::ToothDoDigital => "panel.painter_layers.inerte.relief_and_no_grain",
+            Dependente::ToothDoDigital => "panel.painter_layers.inerte.paper_and_relief",
             Dependente::BordaSemTilt => "panel.painter_layers.inerte.tilt_on",
             Dependente::SemPapel
             | Dependente::GraoDoPapelSemPapel

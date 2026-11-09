@@ -202,13 +202,8 @@ pub(crate) struct PaintState {
     /// **Clone** "Set Source" pick mode armed — the next canvas Down sets [`Self::clone_source`] instead of painting.
     pub(super) clone_sample_armed: bool,
     /// **De onde o próximo dab do Smear levanta tinta: o centro do dab anterior E o arco dele.**
-    /// `None` no início do traço. [`stamp_route`]
-    ///
-    /// ⚠️ **O arco viaja JUNTO, num par, de propósito.** Ele é o que diz onde uma sub-figura acaba
-    /// e a seguinte começa (todo `fill_*_preview` recomeça o `arc_len` em zero), e a corrente do
-    /// esfregão tem de PARTIR ali — senão o último dab de um círculo esfrega até ao primeiro dab
-    /// do círculo seguinte, atravessando a tela. *Dois campos que têm de concordar são um campo
-    /// que alguém esquece de escrever.*
+    /// `None` no início do traço. [`stamp_route`] ⚠️ O arco viaja no par: é onde uma sub-figura acaba
+    /// e a corrente do esfregão tem de PARTIR (senão um círculo esfrega até ao seguinte).
     pub(super) last_smear_pos: Option<([f32; 2], f32)>,
     /// Reused per-dab scratch for the Smear's map composition (no allocation in a hot stroke).
     pub(super) smear_scratch: ph2d_painter_brush::smear_field::SmearScratch,
@@ -226,31 +221,15 @@ pub(crate) struct PaintState {
     pub(super) moved_this_frame: bool,
     /// Restore record for the in-progress Drag Dot's single moving dab; `None` for every other method.
     pub(super) drag_preview: Option<DragPreview>,
-    /// **Um gesto de shape está em VOO** — entre o Down e o Up de um arrasto no canvas.
-    ///
-    /// Enquanto isto vale, o re-carimbo da figura roda um RASCUNHO: o meio caro (Impasto, Aquarela)
-    /// é desarmado e a figura sai plana. No Up ele cai e o editor re-carimba pela última vez, agora
-    /// com o meio de verdade — *o caro renderiza em REPOUSO*. Medido a 4096² com figura de 400 px:
-    /// um move de Impasto custa **101,17 ms** com o meio ligado e **4,38** sem
-    /// (`measure_what_a_flat_preview_would_cost`), porque o carimbo é 99,3% do evento e o shape
-    /// editor re-carimba a figura INTEIRA a cada quadro do arrasto.
-    ///
-    /// ⚠️ **Transiente, como o `line_constrain`:** não entra no `ModelSnapshot` nem no arquivo — é
-    /// fato sobre a mão do artista, não sobre o documento.
+    /// **Um gesto de shape está em VOO** (Down..Up): o re-carimbo roda um RASCUNHO plano e o meio caro
+    /// só renderiza em REPOUSO, no Up (`measure_what_a_flat_preview_would_cost`: 101 × 4,4 ms a 4096²).
+    /// ⚠️ Transiente: fora do `ModelSnapshot` e do arquivo.
     pub(super) shape_draft: bool,
-    /// **A mesma mão, no PAINEL** — um arrasto de knob (Size, Offset, Spacing…) com uma figura viva.
-    ///
-    /// ⚠️ Campo próprio, e não uma 2ª escrita no [`Self::shape_draft`]: são dois gestos diferentes com
-    /// donos diferentes (o roteador de ponteiro de canvas × a shell, que é quem sabe que um botão está
-    /// preso). Cada um escreve o seu; quem LÊ (`draft_stamp`) faz o OU — a pergunta é uma só (*"há uma
-    /// mão sobre esta figura agora?"*), as respostas é que vêm de dois lugares.
+    /// **A mesma mão, no PAINEL** — um arrasto de knob com uma figura viva. Campo próprio (outro dono
+    /// que o [`Self::shape_draft`]); quem LÊ (`draft_stamp`) faz o OU.
     pub(super) shape_draft_hold: bool,
-    /// **A tela NÃO mostra as figuras abertas** — um re-carimbo foi pulado pela lei do rascunho.
-    ///
-    /// ⚠️ Ele existe porque a alternativa é **enumerar** quais ramos de Up de quais editores refazem a
-    /// figura, e essa lista apodrece no dia em que um ramo ganha um early-return. Com o fato guardado,
-    /// quem precisa de uma tela honesta (o Up do gesto, e toda captura de undo) pergunta
-    /// `settle_shape_draft` e a paga **uma vez, se for devida**.
+    /// **A tela NÃO mostra as figuras abertas** — um re-carimbo foi pulado pela lei do rascunho; quem
+    /// precisa da tela honesta (Up, captura de undo) chama `settle_shape_draft`, que paga uma vez.
     pub(super) shape_stale: bool,
     /// The press point of the in-progress stroke — the pivot the Line's Alt-constrain snaps around (45°).
     pub(super) line_anchor: Option<[f32; 2]>,
@@ -268,16 +247,9 @@ pub(crate) struct PaintState {
     /// Last NON-shape method — the rail's Brush button restores it. See [`PainterTool::restore_non_shape_stroke_method`].
     pub(super) last_non_shape_method: StrokeMethod,
     /// **The last stroke method the artist used in each medium**, indexed by [`crate::tool::PaintMedia`]'s
-    /// wire value — what a medium goes back to when the method in hand is one it does not offer.
-    ///
-    /// ⚠️ It exists because three of the four media SHARE a brush slot: Watercolor and Impasto are flags
-    /// on `PaintMode::Paint`'s [`ph2d_painter_brush::BrushSpec`], so they and Digital have exactly one
-    /// `stroke_method` between them, and only Wet Paint (its own slot, 11) remembers anything on its own.
-    /// Measured 2026-08-10: from Digital + Grid Stamp, Watercolor and Impasto both landed on `Dots` and
-    /// came back to Digital having FORGOTTEN Grid Stamp, while Wet Paint kept both sides.
-    ///
-    /// The sibling of [`Self::last_non_shape_method`], and the same shape of fact: *what did this artist
-    /// last mean, in this context, so we can put them back there instead of guessing.*
+    /// wire value — what a medium goes back to when the method in hand is one it does not offer. ⚠️ Three
+    /// media SHARE the Paint slot's `stroke_method`, so without this they forget it. Sibling of
+    /// [`Self::last_non_shape_method`].
     pub(super) method_by_media: [u8; crate::tool::PaintMedia::COUNT as usize],
     /// In-progress Curve session (the on-canvas point editor); `None` when idle. [`curve`].
     pub(super) curve: Option<curve::CurveEditor>,
@@ -304,12 +276,7 @@ pub(crate) struct PaintState {
     /// Pending SELECTION op-cycle tap — Down on a shape's centre-move square arms `Some((shape, pos))`; Up without a drag past the slop cycles THAT shape's Add↔Remove op; a drag clears it + moves the shape. Mirrors [`op_tap`] but selection toggles only Add/Remove. [`selection_gizmo`].
     pub(super) selection_op_tap: Option<(usize, [f32; 2])>,
     /// **Shift / Ctrl / Alt durante um arrasto de gizmo**, publicados pelo shell (o `CanvasPointer` não os
-    /// carrega, e alargá-lo mexeria numa superfície que muitos leitores compartilham).
-    ///
-    /// ⚠️ É a MESMA `GizmoModifiers` do gizmo de sprite, de propósito: o doc-comment dela **é** a lei
-    /// (*Shift trava a razão de aspecto; Ctrl/Cmd troca a âncora do escalonamento para o CENTRO, sendo o
-    /// default a quina oposta*), e dois gizmos do mesmo app que discordem sobre o que Shift significa é
-    /// exatamente o que uma segunda cópia produz.
+    /// carrega). ⚠️ A MESMA `GizmoModifiers` do gizmo de sprite, de propósito: o doc-comment dela é a lei.
     pub(super) gizmo_mods: ph2d_editor_core::GizmoModifiers,
     /// Control-handle grab radius (image px) for the shape editors — shell forwards a footprint-scaled value.
     pub(super) shape_grab_tol_px: f32,
@@ -317,20 +284,12 @@ pub(crate) struct PaintState {
     /// imagem que não está deformada) — a shell reenvia-a a cada evento, como o `shape_grab_tol_px`.
     /// O [`super::PainterTool::stroke_spec`] compõe-na no raio e na elipse do dab para o traço sair
     /// redondo **no ecrã** sobre uma arte presa a um esqueleto e dobrada
-    /// ([`ph2d_painter_brush::canvas_warp`]; report do dono com foto, 2026-09-14).
-    ///
-    /// ⭐ **E ela carrega também a CURVATURA da dobra** ([`ph2d_painter_brush::canvas_warp::CanvasWarp`]):
-    /// um mapa linear não acompanha uma curva, e o que sobrava era `20 %` de oval no pincel grande
-    /// (4.ª foto do dono: *«quase bom»*).
+    /// ([`ph2d_painter_brush::canvas_warp`]), com a CURVATURA da dobra
+    /// ([`ph2d_painter_brush::canvas_warp::CanvasWarp`]).
     pub(super) canvas_warp: ph2d_painter_brush::canvas_warp::CanvasWarp,
     /// ⭐⭐⭐ **O spec AUTORADO congelado no pen-down** — de que o traço em curso recompõe a forma do
-    /// dab a cada ponto, contra a deformação VIVA da arte.
-    ///
-    /// ⛔ Um traço congela o `BrushSpec` no pen-down por desenho (mexer num slider a meio não muda
-    /// o traço já começado), e quatro daqueles campos **não são do artista**: eles são derivados da
-    /// dobra da arte, que muda de sítio para sítio. Congelá-los fazia o traço inteiro usar a dobra
-    /// do SÍTIO ONDE COMEÇOU — o que o dono viu como *«pinta com diâmetro menor onde é mais
-    /// estreito»*. Ver [`ph2d_painter_brush::Stroke::set_canvas_dab`].
+    /// dab a cada ponto, contra a deformação VIVA da arte (os campos da dobra não são do artista e não
+    /// se congelam). Ver [`ph2d_painter_brush::Stroke::set_canvas_dab`].
     pub(super) stroke_authored: Option<ph2d_painter_brush::BrushSpec>,
     /// **Offset** slider track (`0..1`, `0.5` = none) — perpendicular path offset for the shape editors.
     pub(super) shape_offset_norm: f32,
@@ -449,11 +408,7 @@ pub(crate) struct PaintState {
     /// **O RELEVO DO DEPÓSITO** (`0` = desligado, o neutro byte-idêntico): quanta ESPESSURA a silhueta
     /// deixa na tinta que ela deposita. Multiplica [`super::shape_relief::MAX_FILM_PX`] e vira o
     /// `BrushSpec::film_depth` de todos os slots, que o `derive_height` soma ao corpo do impasto **sem**
-    /// o `size_scale` dele — um filme não engrossa porque o pincel é maior.
-    ///
-    /// ⚠️ Ele mora ao lado dos dois campos do substrato por HISTÓRIA (nasceu como a segunda metade do
-    /// bloco `paper_on` do Wet Paint) e é editado na seção **Shape**, que é de quem o número é: a
-    /// silhueta que deposita. A calibração é que continua ancorada no dente.
+    /// o `size_scale` dele. Editado na seção **Shape**; a calibração ancora-se no dente.
     pub(super) shape_relief: f32,
     /// **Grid Stamp — desenhar a grade.** Exibição, não pintura: com ela ligada ou desligada o carimbo
     /// pousa exatamente nas mesmas células (gate `show_grid_is_display_only`). Mora aqui, e não no
@@ -463,30 +418,16 @@ pub(crate) struct PaintState {
     /// **Grid Stamp — o gesto vigente APAGA** (o botão direito). Transiente: o shell o arma logo antes
     /// de entregar o Down secundário e o desarma no Up, exatamente como empurra Shift/Ctrl/Alt, porque
     /// o [`ph2d_editor_core::tool::CanvasPaintTool`] é contrato congelado e o ponteiro dele **não
-    /// carrega botão**.
-    ///
-    /// ⚠️ **Ele NÃO é o `eraser` autorado, e a diferença é load-bearing:** aquele é a escolha que o
-    /// artista fez no chip da barra e que o painel espelha; este é o que a MÃO está fazendo agora.
-    /// Escrevê-lo no `eraser` durante o arrasto deixaria o chip piscando e — pior — um gesto abandonado
-    /// deixaria a borracha do artista ligada por conta própria.
+    /// carrega botão**. ⚠️ NÃO é o `eraser` autorado (a escolha do chip): é o que a MÃO faz agora.
     pub(super) grid_erase: bool,
     /// The canvas's **light rig** — up to `MAX_LIGHTS` lamps, each with its own angle / elevation /
     /// intensity / colour, plus which one the card is editing. Light 0 is the key and starts on; the
     /// rest start off, so a canvas nobody has opened the rig on is byte-identical to the one-lamp build.
     /// See [`impasto_rig`].
     pub(super) impasto_rig: impasto_rig::LightRig,
-    // (`impasto_shine` used to live HERE, canvas-global, while its own doc-comment called it "a
-    // property of the PAINT". It is the paint's, and paint is per-pixel — so it moved to `BrushSpec`
-    // and is baked into the canvas with the stroke, like Depth and Body. Enio, 2026-07-13.)
-    /// **Adjust Last Stroke** — whether moving a slider re-derives the stroke already on the canvas.
-    /// ON (the default, and how the section has always behaved): the artist lays a stroke and then
-    /// dials it in *while looking at it* — every knob in the Body and Material cards re-derives the last
-    /// stroke live, because the stroke stored its INGREDIENTS rather than its result.
-    ///
-    /// OFF: the sliders speak only to the strokes still to come. The stroke on the canvas is FINISHED —
-    /// which is what an artist wants the moment they are happy with it and start dialling the brush in
-    /// for the next one (Enio, 2026-07-13). It is a property of the EDITING SESSION, not of the paint,
-    /// so it lives here and is never baked into a pixel.
+    /// **Adjust Last Stroke** — ON (default): every Body/Material knob re-derives the last stroke live
+    /// (it stored its INGREDIENTS). OFF: sliders speak only to strokes to come. Session property, never
+    /// baked into a pixel.
     pub(super) impasto_live_edit: bool,
     /// **Watercolor render-path** per-stroke water DWELL (1 byte/px, `w*h`): how long the held brush
     /// soaked each pixel ([`PainterTool::grow_wet_soak`], tick heartbeat). The rewet reads it `0..1`:

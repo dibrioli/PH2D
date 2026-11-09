@@ -165,9 +165,10 @@ pub fn apply_event(_store: &mut WidgetStore, event: WidgetEvent) -> bool {
 /// escondida na primeira.*
 #[must_use]
 pub fn tooltip_rect(target: Rect, pill_w: f32, pill_h: f32, gap: f32, viewport: Rect) -> Rect {
+    // Afastada da borda pelo mesmo `gap` (auditoria 08/11: a dica do Tooth encostava na borda direita).
     let x = (target.x + (target.w - pill_w) * 0.5)
-        .min(viewport.x + viewport.w - pill_w)
-        .max(viewport.x);
+        .min(viewport.x + viewport.w - pill_w - gap)
+        .max(viewport.x + gap);
     let below = target.y + target.h + gap;
     let y = if below + pill_h <= viewport.y + viewport.h {
         below
@@ -541,7 +542,7 @@ mod tooltip_placement_tests {
     fn a_target_at_the_left_edge_keeps_the_tooltip_inside() {
         let target = Rect::new(8.0, 400.0, 24.0, 24.0);
         let got = tooltip_rect(target, 200.0, 22.0, GAP, VP);
-        assert!(got.x >= VP.x - 1e-3, "nao pode comecar fora: {got:?}");
+        assert!(got.x >= VP.x + GAP - 1e-3, "nao pode encostar na borda: {got:?}");
         assert!(got.x + got.w <= VP.x + VP.w + 1e-3);
     }
 
@@ -552,8 +553,8 @@ mod tooltip_placement_tests {
         let target = Rect::new(VP.w - 32.0, 400.0, 24.0, 24.0);
         let got = tooltip_rect(target, 200.0, 22.0, GAP, VP);
         assert!(
-            got.x + got.w <= VP.x + VP.w + 1e-3,
-            "nao pode acabar fora: {got:?}"
+            got.x + got.w <= VP.x + VP.w - GAP + 1e-3,
+            "nao pode encostar na borda: {got:?}"
         );
         assert!(got.x >= VP.x - 1e-3);
     }

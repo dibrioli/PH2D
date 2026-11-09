@@ -200,6 +200,7 @@ mod composite;
 /// por cima da de baixo ao longo do gesto inteiro, e não só dentro de um lote.
 mod composite_acumulado;
 mod composite_esfregao_regiao; // o que o esfregão lê: a região que muda quando a tinta de baixo muda
+mod composite_eventos; // os eventos do cartão Composite — irmão de composite por LOC
 mod composite_linhas; // as passagens POR PIXEL da composição, em linhas disjuntas (ADR-0172)
 mod composite_montagem;
 mod composite_pilha;
@@ -386,6 +387,8 @@ mod substrate_relief; // O SUBSTRATO ACENDE: o dente do papel como superfície, 
 // A chave do reconcile do substrato viaja até o campo que a guarda (`PainterTool::lit_substrate`), e é
 // só ela que sai daqui — o `Substrate` em si segue interno ao passe de luz.
 pub(crate) use substrate_relief::SubstrateKey;
+#[cfg(test)]
+mod substrate_relief_digital_tests; // o relevo do papel no Digital — irmão por LOC
 #[cfg(test)]
 mod substrate_relief_tests;
 #[cfg(test)]

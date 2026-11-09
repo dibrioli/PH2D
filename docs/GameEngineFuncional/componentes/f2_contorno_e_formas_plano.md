@@ -135,3 +135,25 @@ o main está em 225). Sem leitor antigo (§0.11).
 **Produtor (W2c):** quem escreve o `ColliderOutline` é o «trace» da imagem-fonte (máscara pelo `alpha_cutoff`;
 Animated Sprite: OR das células usadas pelas tags, todas se não houver tags) → `trace_fitted` → `queue_set` (um
 passo de undo); o cartão diz quando o tecto subiu o Detail (W4).
+
+### Endereços conferidos (09/11) para W2b–W6
+
+- **Pixels:** `SpritePixels(AssetId)` (`ph2d-ecs/src/sprite_pixels.rs:48`) ou atlas → `AssetId` (`ph2d-render/src/sprite/image_of.rs:31`
+  `texture_of`) → `AssetDb::image_rgba8` (`ph2d-asset/src/asset.rs:152`); folhas decodificadas em `ph2d-anim-sheets/src/sheet_cache.rs`
+  (`:135` `image_rgba8`, `:147` `refresh`). Animated: `SpriteAnimations` (`ph2d-ecs/src/sprite_anim.rs:243`), folhas extra
+  `sprite_sheets.rs:51`, células de uma tag `sprite_anim_frames.rs:141` (`tag_cells`), `:72` (`sheet_cells`). Tamanho em metros:
+  `Sprite.size` (`ph2d-render/src/sprite/component.rs:66`). Precedente de leitor de alfa: `ph2d-sprite-edit/src/pivot.rs:31,51`.
+- **Cartão Shape:** seletor `INSP_PHYS_SHAPE` (`ph2d-panel-inspector/src/ids/inspector_physics_body.rs:56`, `sections/physics_cartao_forma.rs:143`);
+  `PhysicsFieldEdit` (`ph2d-editor-core/src/screens/hero/inspector_model_physics.rs:359`, `FitToPicture :371`, `HalfX :388`); evento
+  `ph2d-panel-inspector/src/event_physics.rs:177-179,285`; aplicação `ph2d-app-physics/src/physics_apply.rs:95-107` (Fit), `:422-530`
+  (por tipo; ficheiro NO tecto de 600); leitura `inspector/body.rs:252-263,334`; strings `ph2d-i18n/src/cartoes.rs:9,32-35`.
+- **Auto Key:** `ph2d-ecs/src/canal_fisica.rs` (`RAIO = 21 :45`, `CAMPOS :79`, `e_da_forma :156`, `info :162`; só APPEND);
+  ler/escrever `ph2d-app-physics/src/canais_corpo.rs:57,96,114,156,232,276,304`.
+- **Canvas:** `ph2d-shape-handles` (`lib.rs:112` `alcas`, `:183` `alca_em`, `:226` `puxa`; `ponteiro.rs:16,61,165-245`; `tinta.rs:21,50`);
+  cola `shells/desktop/src/forma_no_canvas.rs`; contorno sem seleção `ph2d-app-physics/src/overlay/outline.rs:77`, `overlay/shapes.rs:29`.
+  Vetor: inserir na aresta `ph2d-vec-edit/src/node_hit.rs:105`, apagar vértice `selection.rs:594` (o «duplo clique / Alt+clique» não existe lá).
+- **Cena 120:** `ph2d-physics-scene/src/ficha.rs:120` `monta`; com imagem: Crate (`azulejo`), Stretched Ball (`COIN_SHEET`), Updraft Zone.
+- **`queue_set`** (`ph2d-inspector-ordering/src/lib.rs:179`) serializa por postcard qualquer `T: Serialize` registado (no-op calado se não
+  registado); precedentes não-`Copy`: `JOINT` (`ph2d-app-physics/src/joint.rs:327`), `SpriteAnimMarkers`. `serde` com `rc` no `ph2d-ecs`.
+- ⚠️ **Tecto de LOC:** `ph2d-app-physics` está 64 linhas ACIMA (55 579 > 55 515, `crates/ph2d-editor-core/tests/it/architecture_the_shell_only_shrinks.rs:221`)
+  por commits anteriores desta linha. Cura = MOVER para crate não-`app` antes de W4 (que acrescenta lá).

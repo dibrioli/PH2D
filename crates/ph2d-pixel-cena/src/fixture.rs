@@ -144,6 +144,8 @@ fn com_slice_body(s: &mut Sprite) {
         key(3, BODY_3, (3, 9)),
         key(4, BODY_3, (1, 9)),
     ];
+    // P14e: `body` é collider (o que o Add Collider marca) ⇒ o `.ase` leva `ph2d.collider`.
+    crate::marca_collider(body, true);
     apply(s, Op::Slices(lista)).expect("keys");
     let op = slice::set_pivot(s, Some(id)).expect("pivô");
     apply(s, op).expect("pivô");

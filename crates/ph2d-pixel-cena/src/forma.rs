@@ -53,6 +53,20 @@ fn collider_da_key(sprite: &Sprite, frame: FrameId, k: SliceShape, m_por_px: f64
     }
 }
 
+/// A forma da slice `slice` no quadro `frame` (key visível), ou `None` se escondida/inexistente:
+/// a regra única do `deriva_formas` e do import do Sprite Inspector (P14e).
+#[must_use]
+pub(crate) fn collider_visivel(
+    sprite: &Sprite,
+    slice: SliceId,
+    frame: FrameId,
+    m_por_px: f64,
+) -> Option<Collider> {
+    let pos = u32::try_from(sprite.frame_index(frame)?).ok()?;
+    let k = sprite.slice(slice)?.visible_at(pos)?;
+    Some(collider_da_key(sprite, frame, k, m_por_px))
+}
+
 fn key_em(sprite: &Sprite, slice: SliceId, frame: FrameId) -> Option<SliceShape> {
     let pos = u32::try_from(sprite.frame_index(frame)?).ok()?;
     sprite.slice(slice)?.shape_at(pos)

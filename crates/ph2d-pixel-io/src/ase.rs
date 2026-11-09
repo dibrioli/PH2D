@@ -106,7 +106,7 @@ fn posicao(b: Rect) -> Result<(i16, i16), AseErro> {
 }
 
 mod slices;
-use slices::{slices_de, slices_saida};
+use slices::{slices_de, slices_saida, tira_pivo};
 mod saida_tiles;
 mod user;
 use saida_tiles::{mapa_saida, tilesets_saida, vai_em_tiles};
@@ -499,6 +499,8 @@ pub fn ler(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>), AseErro> {
         .chain(tilesets.iter().map(|t| t.id.0))
         .max()
         .map_or(1, |n| n + 1);
+    let mut slices = slices_de(&file, proximo_id);
+    let pivo = tira_pivo(&mut slices);
     let sprite = Sprite::from_parts(SpriteParts {
         width: u32::from(file.width),
         height: u32::from(file.height),
@@ -509,11 +511,16 @@ pub fn ler(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>), AseErro> {
         frames,
         cels,
         tags,
-        slices: slices_de(&file, proximo_id),
+        slices,
         tilesets,
         user: user::de(file.user_data.as_ref(), &file.external_files),
     })
     .map_err(AseErro::Documento)?;
+    let mut sprite = sprite;
+    // O id veio da MESMA lista de slices do documento: o op não tem como recusar.
+    if pivo.is_some() {
+        let _ = ph2d_pixel_core::apply(&mut sprite, ph2d_pixel_core::Op::PivotSlice(pivo));
+    }
     Ok((sprite, avisos))
 }
 

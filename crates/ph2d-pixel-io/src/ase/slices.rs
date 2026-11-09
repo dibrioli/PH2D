@@ -43,7 +43,7 @@ pub(super) fn slices_saida(s: &Sprite, ext: &[AseExternalFile]) -> Vec<AseSlice>
             name: c.name.clone(),
             color: (c.user.color != [0; 4]).then_some(c.user.color),
             text: c.user.text.clone(),
-            maps: super::user::saida(&c.user, ext).map_or_else(Vec::new, |u| u.maps),
+            maps: super::user::saida(&com_pivo(s, c), ext).map_or_else(Vec::new, |u| u.maps),
             keys: c
                 .keys
                 .iter()
@@ -62,4 +62,37 @@ pub(super) fn slices_saida(s: &Sprite, ext: &[AseExternalFile]) -> Vec<AseSlice>
                 .collect(),
         })
         .collect()
+}
+
+/// P14e: a propriedade do mapa do artista que diz «esta slice é a do pivô do sprite».
+pub const PIVOT_PROP: &str = "ph2d.pivot";
+
+/// O user data da slice, com `ph2d.pivot` se ela é a `pivot_slice`.
+fn com_pivo(s: &Sprite, c: &Slice) -> ph2d_pixel_core::user::UserData {
+    let mut u = c.user.clone();
+    if s.pivot_slice() == Some(c.id) {
+        u.props.entry(String::new()).or_default().insert(
+            PIVOT_PROP.to_owned(),
+            ph2d_pixel_core::user::PropValue::Bool(true),
+        );
+    }
+    u
+}
+
+/// Tira `ph2d.pivot` das slices lidas: a 1.ª que a tinha é a `pivot_slice`.
+pub(super) fn tira_pivo(slices: &mut [Slice]) -> Option<SliceId> {
+    let mut pivo = None;
+    for c in slices {
+        let Some(m) = c.user.props.get_mut("") else {
+            continue;
+        };
+        let v = m.remove(PIVOT_PROP);
+        if m.is_empty() {
+            c.user.props.remove("");
+        }
+        if v == Some(ph2d_pixel_core::user::PropValue::Bool(true)) && pivo.is_none() {
+            pivo = Some(c.id);
+        }
+    }
+    pivo
 }

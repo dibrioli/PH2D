@@ -13,6 +13,12 @@ mod deriva;
 #[doc(hidden)]
 pub mod fixture;
 mod forma;
+mod importa;
+
+pub use importa::{
+    COLLIDER_PROP, ColliderImportado, SpriteImportado, importa, importa_ase, marca_collider,
+    slice_e_collider,
+};
 
 pub use deriva::{CLIP_SEM_TAGS, DerivadoDe, animador_de_nascenca, deriva, grelha};
 pub use forma::{

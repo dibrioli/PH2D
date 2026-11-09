@@ -16,13 +16,13 @@ authors.workspace = true
 ph2d-pixel-core = { path = "../ph2d-pixel-core" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+# P14e: o import do Sprite Inspector lê o `.ase` pelo MESMO leitor do Pixel.
+ph2d-pixel-io = { path = "../ph2d-pixel-io" }
 serde = { version = "1", features = ["derive"] }
 # O `#[derive(Component)]` do `DerivadoDe` expande para caminhos `bevy_ecs::`.
 bevy_ecs = "0.20"
 
 [dev-dependencies]
-# O gate da porta única: o `.ase` que o Pixel grava, lido pelo leitor do import.
-ph2d-pixel-io = { path = "../ph2d-pixel-io" }
 ph2d-aseprite = { path = "../ph2d-aseprite" }
 # P14d: a fixture do oráculo do Godot e o sha do `.tres`.
 serde_json = "1"

@@ -2,11 +2,13 @@
 //! ([`doc::AnimDoc`]), a disposição ([`layout`]), os gestos e a pintura. Não toca no mundo: cada gesto vira uma edição
 //! que a família (`ph2d_app_sprite_anim::editor`) aplica pela porta do Inspector.
 
+pub mod align;
 pub mod bands;
 pub mod doc;
 pub mod layout;
 mod marks;
 pub mod paint;
+mod paint_align;
 pub mod paint_sheet;
 pub mod strip_bar;
 pub use ph2d_anim_sheets::split;

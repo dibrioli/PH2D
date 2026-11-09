@@ -232,8 +232,13 @@ pub fn paint_doc(
             FONT_TOKEN.px(),
         );
     }
+    super::paint_align::paint_align(doc, scene, text, theme);
     let users = doc.cell_users();
-    doc.painted_cells = paint_sheet(doc, &l, &users, scene, text, theme);
+    doc.painted_cells = if doc.align.on {
+        Vec::new()
+    } else {
+        paint_sheet(doc, &l, &users, scene, text, theme)
+    };
     paint_frames_title(doc, &l, info.as_ref(), scene, text, theme);
     let frames = doc.shown_frames();
     doc.painted = paint_strip(doc, &l, &frames, info.as_ref(), scene, text, theme);
@@ -250,6 +255,7 @@ pub fn paint_doc(
     paint_hover_list(doc, &l, &names, scene, text, theme);
     let (sheets, shown) = (&doc.snap.sheets, doc.snap.shown_sheet);
     doc.sheet_ui.paint_menu(scene, text, theme, sheets, shown);
+    super::paint_align::paint_align_menu(doc, scene, text, theme);
 }
 
 /// «run · 8 frames», com a duração de um ciclo à direita.

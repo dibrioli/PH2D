@@ -115,6 +115,58 @@ pub fn nudge_cell(world: &mut World, e: Entity, k: u8, cell: u32, by: [f32; 2]) 
         .is_some()
 }
 
+/// ⭐ **A geometria de uma folha como o editor a mostra** (GEF 28, onda B): o centro do quad e o tamanho em metros
+/// locais (Y para cima, a origem do objecto = o Pivot), e o acerto de cada célula do corte ATUAL.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct SheetGeo {
+    pub center: [f32; 2],
+    pub size: [f32; 2],
+    pub offsets: std::collections::BTreeMap<u32, [f32; 2]>,
+}
+
+impl SheetGeo {
+    /// O centro do quad da célula `cell`, com o acerto dela.
+    #[must_use]
+    pub fn center_of(&self, cell: u32) -> [f32; 2] {
+        let d = self.offsets.get(&cell).copied().unwrap_or_default();
+        [self.center[0] + d[0], self.center[1] + d[1]]
+    }
+}
+
+/// A geometria de cada folha de `e` (a `0` primeiro), com `ppm` a converter o `offset` em pixels da folha `0`.
+#[must_use]
+pub fn sheet_geos(world: &World, e: Entity, ppm: f32) -> Vec<SheetGeo> {
+    let n = ph2d_ecs::sheet_cells_of(world, e).len();
+    (0..n)
+        .filter_map(|k| {
+            let k = u8::try_from(k).ok()?;
+            let (s, _) = ph2d_render::sheet_geometry(world, e, k, 0)?;
+            let offsets = if k == 0 {
+                let cut = world
+                    .get::<SpriteGrid>(e)
+                    .copied()
+                    .unwrap_or(SpriteGrid::SINGLE)
+                    .cut();
+                world
+                    .get::<CellOffsets>(e)
+                    .filter(|o| o.cut == cut)
+                    .map(|o| o.cells.clone())
+            } else {
+                world
+                    .get::<SpriteSheets>(e)
+                    .and_then(|x| x.sheet(k))
+                    .filter(|x| x.offsets.cut == x.cut())
+                    .map(|x| x.offsets.cells.clone())
+            };
+            Some(SheetGeo {
+                center: s.resolve_anchor(ppm),
+                size: s.size,
+                offsets: offsets.unwrap_or_default(),
+            })
+        })
+        .collect()
+}
+
 #[cfg(test)]
 #[path = "align_tests.rs"]
 mod tests;

@@ -75,6 +75,8 @@ pub struct Layout {
     pub mark_toggle: Rect,
     pub mark_signal: Rect,
     pub modes: [Rect; 3],
+    /// A prévia Align e o botão dela (GEF 28).
+    pub align: super::align::AlignLayout,
 }
 
 impl Default for Layout {
@@ -111,6 +113,7 @@ impl Default for Layout {
             mark_toggle: z,
             mark_signal: z,
             modes: [z; 3],
+            align: super::align::AlignLayout::default(),
         }
     }
 }
@@ -296,7 +299,7 @@ impl AnimDoc {
             .snap
             .sheet
             .as_ref()
-            .filter(|s| s.w > 0 && s.h > 0)
+            .filter(|s| s.w > 0 && s.h > 0 && !self.align.on)
             .map_or(0.0, |s| {
                 let k = (card_w / s.w as f32).min(sheet_room / s.h as f32);
                 (sheet_room - s.h as f32 * k).max(0.0)
@@ -367,6 +370,13 @@ impl AnimDoc {
         l.sheet_card = Rect::new(mid_x, top, mid_w, (l.frames_card.y - pad - top).max(0.0));
         let mut y = top + inner;
         l.sheet_title = Rect::new(cx, y, card_w, row);
+        if self.snap.sheet.is_some() {
+            let w = fit(&[ph2d_i18n::tr("anim_editor.align")]);
+            l.align.toggle = Rect::new(cx + card_w - w, y, w, row);
+            l.sheet_title.w = (card_w - w - gap).max(0.0);
+        } else {
+            self.align.on = false;
+        }
         y += row + gap;
         if self.proposal().is_some() {
             let use_w = fit(&[ph2d_i18n::tr("anim_editor.use_grid")]);
@@ -380,14 +390,29 @@ impl AnimDoc {
             card_w,
             (l.sheet_card.y + l.sheet_card.h - inner - y).max(0.0),
         );
-        l.sheet = match &self.snap.sheet {
-            Some(s) if s.w > 0 && s.h > 0 && mid.w > 0.0 && mid.h > 0.0 => {
-                let k = (mid.w / s.w as f32).min(mid.h / s.h as f32);
-                let (w, h) = (s.w as f32 * k, s.h as f32 * k);
-                Rect::new(mid.x, mid.y, w, h)
-            }
-            _ => mid,
-        };
+        if self.align.on {
+            // A prévia toma o lugar da folha: a barra com os dois botões e o nome da referência, e a prévia por baixo.
+            let w = fit(&[
+                ph2d_i18n::tr("anim_editor.align_previous"),
+                ph2d_i18n::tr("anim_editor.align_reference"),
+            ]);
+            l.align.show_prev = Rect::new(cx, mid.y, w, row);
+            l.align.show_ref = Rect::new(cx + w + gap, mid.y, w, row);
+            let lx = cx + 2.0 * (w + gap); // LITERAL-PX-OK: depois dos dois botões
+            l.align.ref_label = Rect::new(lx, mid.y, (cx + card_w - lx).max(0.0), row);
+            let py = mid.y + row + gap;
+            l.align.preview = Rect::new(cx, py, card_w, (mid.y + mid.h - py).max(0.0));
+            l.sheet = Rect::new(cx, py, 0.0, 0.0);
+        } else {
+            l.sheet = match &self.snap.sheet {
+                Some(s) if s.w > 0 && s.h > 0 && mid.w > 0.0 && mid.h > 0.0 => {
+                    let k = (mid.w / s.w as f32).min(mid.h / s.h as f32);
+                    let (w, h) = (s.w as f32 * k, s.h as f32 * k);
+                    Rect::new(mid.x, mid.y, w, h)
+                }
+                _ => mid,
+            };
+        }
 
         // ── Os quadros da tira ──
         self.scroll_at_edge(l.strip, row * EDGE_SCROLL_ROWS, row);

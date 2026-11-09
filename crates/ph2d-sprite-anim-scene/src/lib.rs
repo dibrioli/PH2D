@@ -88,6 +88,12 @@ pub enum Foto {
     AlinhadasIdle,
     /// …e num quadro da `run`: a de cima cresce, a alinhada não.
     AlinhadasRun,
+    /// A prévia Align (GEF 28 B) no editor de «Two Sheets», num quadro da `run`, ligada pelo botão real.
+    Alinhar,
+    /// …e a pega do canto arrastada com o rato real até `2/3`: a `run` encolhe para o tamanho da `idle`.
+    AlinharEscala,
+    /// …e um Ctrl+Z depois: a escala inteira desfaz-se num passo.
+    AlinharDesfaz,
 }
 
 #[must_use]
@@ -113,6 +119,9 @@ pub fn foto() -> Option<Foto> {
         "animado_folhas_troca" => Some(Foto::FolhasTroca),
         "animado_alinhadas_idle" => Some(Foto::AlinhadasIdle),
         "animado_alinhadas_run" => Some(Foto::AlinhadasRun),
+        "animado_align" => Some(Foto::Alinhar),
+        "animado_align_escala" => Some(Foto::AlinharEscala),
+        "animado_align_desfaz" => Some(Foto::AlinharDesfaz),
         _ => None,
     }
 }
@@ -143,7 +152,10 @@ impl Foto {
             | Self::FolhasTrim0
             | Self::FolhasEdit
             | Self::FolhasPivo
-            | Self::FolhasTroca => DUAS,
+            | Self::FolhasTroca
+            | Self::Alinhar
+            | Self::AlinharEscala
+            | Self::AlinharDesfaz => DUAS,
             Self::AlinhadasIdle | Self::AlinhadasRun => ALINHADAS,
         }
     }
@@ -173,6 +185,8 @@ pub enum Passo {
     /// A fase `0..=4` do gesto do Pivot com Ctrl ([`Foto::FolhasPivo`]): o botão Pivot (abaixo, acima), Ctrl e o
     /// botão sobre o pivô, o arrasto até perto do centro do quad, soltar e relatar.
     Pivo(&'static str, u8),
+    /// A fase da prévia Align pelas portas do rato ([`previa_align`]): `0`/`1` o botão Align, `2..=7` a pega do canto.
+    Alinha(&'static str, u8),
     /// A entrada do artista, que fecha o passo de desfazer.
     Entrada,
     Desfaz,
@@ -236,6 +250,7 @@ pub fn passos(q: u32, foto: Option<Foto>) -> Vec<Passo> {
             let mut v = duas_folhas(DUAS, q, foto);
             v.extend(duas_folhas(ALINHADAS, q, None));
             v.extend(alinha(q, foto));
+            v.extend(previa_align(q, foto));
             v
         }
     };
@@ -308,6 +323,32 @@ fn alinha(q: u32, foto: Option<Foto>) -> Vec<Passo> {
         (11, Some(Foto::AlinhadasIdle)) => quadro("idle"),
         (11, Some(Foto::AlinhadasRun)) => quadro("run"),
         (15, _) => vec![P::Relata("alinhadas".into(), ALINHADAS)],
+        _ => Vec::new(),
+    }
+}
+
+/// ⭐ A prévia Align (GEF 28 B) com o rato real: a `run` parada no 4.º quadro, o botão Align, e (nas fotos do gesto)
+/// a pega do canto puxada para o Pivot até `2/3`; depois um Ctrl+Z. Cada etapa relata as folhas.
+fn previa_align(q: u32, foto: Option<Foto>) -> Vec<Passo> {
+    use Passo as P;
+    let Some(f) =
+        foto.filter(|f| matches!(f, Foto::Alinhar | Foto::AlinharEscala | Foto::AlinharDesfaz))
+    else {
+        return Vec::new();
+    };
+    let gesto = f != Foto::Alinhar;
+    match q {
+        20 => vec![
+            P::Anim(DUAS, Ed::SetCurrent("run".into())),
+            P::Anim(DUAS, Ed::Playing(false)),
+            P::Anim(DUAS, Ed::SetStep(3)),
+        ],
+        24 | 25 => vec![P::Alinha(DUAS, (q - 24) as u8)],
+        30 => vec![P::Relata("align antes".into(), DUAS)],
+        32..=37 if gesto => vec![P::Alinha(DUAS, (q - 30) as u8)],
+        40 if gesto => vec![P::Relata("align escalada".into(), DUAS)],
+        50 if f == Foto::AlinharDesfaz => vec![P::Desfaz],
+        60 if f == Foto::AlinharDesfaz => vec![P::Relata("align 1 Ctrl+Z".into(), DUAS)],
         _ => Vec::new(),
     }
 }

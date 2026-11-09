@@ -54,6 +54,15 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "anim_editor.remove_frame" => "\u{d7}",
         "anim_editor.frame_factor" => "{x}x",
+        // A prévia Align (GEF 28, onda B).
+        "anim_editor.align" => "Align",
+        "anim_editor.align_previous" => "Previous",
+        "anim_editor.align_reference" => "Reference",
+        "anim_editor.align_ref_is" => "Reference: {sheet} \u{b7} cell {n}",
+        "anim_editor.align_hint" => {
+            "Drag: move the sheet \u{b7} corner: sheet size \u{b7} Alt+drag or arrows: this frame only (Shift: 10 px)"
+        }
+        "anim_editor.use_as_reference" => "Use as reference",
         "anim_editor.commit_failed" => "The animation edit did not apply: {e}",
         // O editor de Region (plano GEF 16 D2): a área que o objecto mostra.
         "region_editor.tab" => "Region \u{2014} {name}",

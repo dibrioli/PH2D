@@ -132,6 +132,23 @@ pub fn paint_sheet_cell(
     cell: u32,
     dest: Rect,
 ) {
+    paint_sheet_cell_with(
+        scene,
+        sheet,
+        (hframes, vframes, cell),
+        dest,
+        ImageQuality::Medium,
+    );
+}
+
+/// [`paint_sheet_cell`] com o filtro dado (`Low` = o píxel nítido de uma ampliação de pixel art).
+pub fn paint_sheet_cell_with(
+    scene: &mut VectorScene,
+    sheet: &SheetImage,
+    (hframes, vframes, cell): (u32, u32, u32),
+    dest: Rect,
+    quality: ImageQuality,
+) {
     let (hf, vf) = (hframes.max(1), vframes.max(1));
     if cell >= hf * vf {
         return;
@@ -159,7 +176,7 @@ pub fn paint_sheet_cell(
             f64::from(fit.w) / f64::from(x1 - x0),
             f64::from(fit.h) / f64::from(y1 - y0),
         );
-    scene.draw_stable_image_transformed(&imagem, t, ImageQuality::Medium);
+    scene.draw_stable_image_transformed(&imagem, t, quality);
     scene.pop_layer();
 }
 

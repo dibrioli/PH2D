@@ -38,6 +38,8 @@ pub struct EditorSnapshot {
     /// A folha que a aba mostra (`ph2d_ecs::shown_sheet`, a do cartão Image): `sheet`/`guess`/grelha são dela.
     pub shown_sheet: u8,
     pub sheets: Vec<ph2d_anim_sheets::editor_ui::EditorSheet>,
+    /// A geometria de cada folha (GEF 28): o que a prévia Align desenha e o que o rato mede.
+    pub geo: Vec<ph2d_anim_sheets::align::SheetGeo>,
 }
 
 /// Um campo de texto aberto.
@@ -150,6 +152,8 @@ pub struct AnimDoc {
     pub pending: Vec<AnimFieldEdit>,
     /// As folhas (plano GEF 26 §3.4): o dropdown, a limpeza dos vazios e o que a tira pintou.
     pub sheet_ui: ph2d_anim_sheets::editor_ui::SheetUi,
+    /// A prévia Align (GEF 28, onda B).
+    pub align: super::align::AlignUi,
 }
 
 impl AnimDoc {
@@ -384,7 +388,7 @@ impl AnimDoc {
         if !hit(l.area, x, y) {
             return false;
         }
-        if self.sheet_ui.press(x, y) || self.bar_press(x, y) {
+        if self.align_press(x, y) || self.sheet_ui.press(x, y) || self.bar_press(x, y) {
             return true;
         }
         if let Some(f) = self.scrub_target(x, y)
@@ -468,7 +472,7 @@ impl AnimDoc {
     /// O rato moveu-se (com ou sem botão).
     pub fn motion(&mut self, x: f32, y: f32) -> bool {
         self.hover = hit(self.layout.area, x, y).then_some((x, y));
-        if self.bar_motion(x) {
+        if self.bar_motion(x) || self.align_motion(x, y) {
             return true;
         }
         if matches!(self.drag, Drag::Scrub(..))
@@ -524,6 +528,9 @@ impl AnimDoc {
 
     /// Botão solto.
     pub fn release(&mut self, x: f32, y: f32) -> bool {
+        if self.align_release(x, y) {
+            return true;
+        }
         self.motion(x, y);
         if self.bar_grab.take().is_some() {
             return true;

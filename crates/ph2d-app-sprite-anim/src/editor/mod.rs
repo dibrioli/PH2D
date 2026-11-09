@@ -131,6 +131,9 @@ impl DocumentSurface for AnimDocs {
             return false;
         };
         d.mods = input.mods;
+        if button == PointerButton::Secondary && kind == PointerKind::Down {
+            return d.align_secondary(x, y);
+        }
         if button != PointerButton::Primary {
             return false;
         }
@@ -178,6 +181,16 @@ impl DocumentSurface for AnimDocs {
                 consumed(true)
             }
             Key::Backspace | Key::Delete => consumed(d.backspace_or_delete()),
+            // A prévia Align: as setas acertam o quadro aberto (GEF 28).
+            Key::Left | Key::Right | Key::Up | Key::Down if d.editing.is_none() => {
+                let (dx, dy) = match input.key {
+                    Key::Left => (-1.0, 0.0),
+                    Key::Right => (1.0, 0.0),
+                    Key::Up => (0.0, 1.0),
+                    _ => (0.0, -1.0),
+                };
+                consumed(d.align_arrow(dx, dy, input.mods.shift))
+            }
             // Um atalho (Ctrl/Cmd) passa, mesmo com um campo aberto: o Ctrl+Z é do projecto.
             _ if d.editing.is_some() && !(input.mods.ctrl || input.mods.meta) => {
                 if let Some(t) = input.text {
@@ -237,7 +250,7 @@ fn name_of(sim: &SimWorld, bits: u64) -> String {
 
 /// O snapshot de uma aba: a §11 com o cartão e as folhas da [`crate::sheet::SheetCache`]; a grelha é a da visível.
 #[must_use]
-pub fn snapshot(sim: &SimWorld, bits: u64) -> EditorSnapshot {
+pub fn snapshot(sim: &SimWorld, bits: u64, ppm: f32) -> EditorSnapshot {
     let (sheets, shown) = ph2d_anim_sheets::editor_ui::editor_sheets(sim.world(), bits);
     let s = sheets.get(usize::from(shown)).cloned().unwrap_or_default();
     EditorSnapshot {
@@ -248,6 +261,9 @@ pub fn snapshot(sim: &SimWorld, bits: u64) -> EditorSnapshot {
         vframes: s.vframes,
         shown_sheet: shown,
         sheets,
+        geo: Entity::try_from_bits(bits)
+            .map(|e| ph2d_anim_sheets::align::sheet_geos(sim.world(), e, ppm))
+            .unwrap_or_default(),
     }
 }
 
@@ -353,7 +369,7 @@ pub fn frame(
             }
             edits.extend(added.map(AnimFieldEdit::SetCurrent));
         }
-        d.set_snapshot(snapshot(sim, d.entity));
+        d.set_snapshot(snapshot(sim, d.entity, ppm));
     }
     // A aba à frente cuja sprite mudou de bits continua à frente.
     if let Some(t) = active

@@ -40,6 +40,7 @@ impl crate::App {
             | P::Ouve(n)
             | P::Edita(n)
             | P::Pivo(n, _)
+            | P::Alinha(n, _)
             | P::Relata(_, n) => n,
             P::Foto(f) => f.map_or(a::PLAYER, a::Foto::alvo),
             P::RelataRegra => a::PLAYER,
@@ -106,6 +107,7 @@ impl crate::App {
                 }
             }
             (P::Pivo(_, fase), Some(b)) => self.pivo_do_animado(fase, b),
+            (P::Alinha(_, fase), Some(b)) => self.alinha_do_animado(fase, b),
             (P::Entrada, _) => self.any_input_this_frame = true,
             (P::Desfaz, _) => self.smoke_undo(false),
             (P::Relata(t, n), Some(b)) => {
@@ -183,6 +185,46 @@ impl crate::App {
         }
     }
 
+    /// A prévia Align pelas portas do rato, uma fase por quadro: `0`/`1` o botão Align; `2` a pega do canto, `3..=6` o
+    /// caminho até `2/3` da distância ao Pivot, `7` soltar.
+    fn alinha_do_animado(&mut self, fase: u8, bits: u64) {
+        static PEGA: std::sync::Mutex<Option<((f32, f32), (f32, f32))>> =
+            std::sync::Mutex::new(None);
+        let doc = self.gfx.as_mut().and_then(|g| {
+            let d = g.hero_screen.as_mut()?.documents.surfaces_mut();
+            let d = d
+                .find_mut::<ph2d_app_sprite_anim::editor::AnimDocs>()?
+                .doc(bits)?;
+            Some((d.layout.align.toggle, d.align.painted))
+        });
+        let Some((toggle, p)) = doc else {
+            return eprintln!("[animado-prova] align: o editor não está aberto");
+        };
+        let c = |r: ph2d_editor_core::zones::Rect| (r.x + r.w / 2.0, r.y + r.h / 2.0);
+        let mut pega = PEGA
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        match (fase, *pega) {
+            (0, _) => self.smoke_pointer_down(c(toggle).0, c(toggle).1),
+            (1 | 7, _) => self.smoke_pointer_up(),
+            (2, _) => {
+                *pega = p.handle.map(c).zip(p.pivot);
+                eprintln!(
+                    "[animado-prova] align: pega={:?} pivô={:?}",
+                    p.handle, p.pivot
+                );
+                if let Some(((x, y), _)) = *pega {
+                    self.smoke_pointer_down(x, y);
+                }
+            }
+            (_, Some(((hx, hy), (ox, oy)))) => {
+                let s = 1.0 - (1.0 - a::ESCALA_DA_RUN) * f32::from(fase - 2) / 4.0;
+                self.smoke_pointer_move(ox + (hx - ox) * s, oy + (hy - oy) * s);
+            }
+            _ => {}
+        }
+    }
+
     /// Selecionado? · a origem · a folha visível e o Pivot dela · o centro do quad dela no mundo.
     fn relato_do_pivo(&self, bits: u64) -> String {
         let Some(g) = self.gfx.as_ref() else {
@@ -223,7 +265,14 @@ impl crate::App {
                 );
             }
             (
-                Some(a::Foto::Editor | a::Foto::FolhasEditor | a::Foto::FolhasApagada),
+                Some(
+                    a::Foto::Editor
+                    | a::Foto::FolhasEditor
+                    | a::Foto::FolhasApagada
+                    | a::Foto::Alinhar
+                    | a::Foto::AlinharEscala
+                    | a::Foto::AlinharDesfaz,
+                ),
                 Some(entity_bits),
             ) => h.bus.push(EditorAction::InspectorAnimEdit {
                 entity_bits,

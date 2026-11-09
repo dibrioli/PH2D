@@ -1,0 +1,239 @@
+//! **A pintura da prévia Align** ([`super::align`]): o botão, a barra, os três quadros (referência, anterior, aberto),
+//! a linha do chão, a cruz do Pivot, a pega do canto e o menu do clique direito. Lê a disposição; não decide nada.
+
+use super::align::{AlignPaint, View};
+use super::doc::AnimDoc;
+use super::paint::{button, tom};
+use ph2d_editor_core::AnimFrameRef;
+use ph2d_editor_core::paint::{
+    fill_circle, fill_rounded_rect, frame_radius, label_column_width, paint_text, rect_for_label,
+    rect_to_vello, stroke_polyline, stroke_rect,
+};
+use ph2d_editor_core::widget::sheet_cell::paint_sheet_cell_with;
+use ph2d_editor_core::zones::Rect;
+use ph2d_i18n::{tr, tr_with};
+use ph2d_text::TextSystem;
+use ph2d_tokens::{ColorToken, ROW_H_PX, Radius, Spacing, StrokeToken, Theme, TypeToken};
+use ph2d_vector::{Color, Compose, ImageQuality, Mix, VectorScene, VelloBlend};
+
+/// A opacidade do quadro anterior (ténue: o idioma do onion skin).
+const PREVIOUS_ALPHA: f32 = 0.3; // LITERAL-PX-OK: opacidade
+/// A opacidade da referência e o quanto a tinta dela cobre o desenho.
+const REFERENCE_ALPHA: f32 = 0.5; // LITERAL-PX-OK: opacidade
+const REFERENCE_TINT: f32 = 0.6; // LITERAL-PX-OK: opacidade da tinta
+/// O braço da cruz do Pivot e o lado da pega do canto, em alturas de linha.
+const CROSS_ROWS: f32 = 0.6; // LITERAL-PX-OK: múltiplo do token de linha
+const HANDLE_ROWS: f32 = 0.4; // LITERAL-PX-OK: múltiplo do token de linha
+const FONT: TypeToken = TypeToken::Sm;
+
+/// Um quadro da prévia: a célula da folha dele esticada no quad, numa camada com `alpha` e, se dada, a tinta por cima
+/// só do desenho (SrcAtop: o vazio fica vazio).
+fn layer(
+    doc: &AnimDoc,
+    scene: &mut VectorScene,
+    v: View,
+    f: AnimFrameRef,
+    alpha: f32,
+    tint: Option<Color>,
+) -> Option<Rect> {
+    let r = v.quad(doc.frame_quad(f)?);
+    let sheet = doc.snap.sheets.get(usize::from(f.sheet))?;
+    let img = sheet.image.as_ref()?;
+    let vr = rect_to_vello(r);
+    scene.push_object_layer(&vr, VelloBlend::default(), alpha);
+    let cut = (sheet.hframes, sheet.vframes, f.cell);
+    paint_sheet_cell_with(scene, img, cut, r, ImageQuality::Low);
+    if let Some(c) = tint {
+        scene.push_object_layer(
+            &vr,
+            VelloBlend::new(Mix::Normal, Compose::SrcAtop),
+            REFERENCE_TINT,
+        );
+        scene.fill_rect(vr, c);
+        scene.pop_layer();
+    }
+    scene.pop_layer();
+    Some(r)
+}
+
+/// O botão «Align» e, ligado, a barra e a prévia.
+pub(super) fn paint_align(
+    doc: &mut AnimDoc,
+    scene: &mut VectorScene,
+    text: &mut TextSystem,
+    theme: Theme,
+) {
+    let l = doc.layout.align;
+    let menu_item = doc.align.painted.menu_item;
+    doc.align.painted = AlignPaint {
+        menu_item,
+        ..AlignPaint::default()
+    };
+    if l.toggle.w > 0.0 {
+        button(
+            scene,
+            text,
+            theme,
+            l.toggle,
+            tr("anim_editor.align"),
+            doc.align.on,
+        );
+    }
+    if !doc.align.on {
+        return;
+    }
+    button(
+        scene,
+        text,
+        theme,
+        l.show_prev,
+        tr("anim_editor.align_previous"),
+        doc.align.show_prev,
+    );
+    button(
+        scene,
+        text,
+        theme,
+        l.show_ref,
+        tr("anim_editor.align_reference"),
+        doc.align.show_ref,
+    );
+    let p = l.preview;
+    fill_rounded_rect(
+        scene,
+        p,
+        frame_radius(theme, Radius::Sm.px()),
+        tom(ColorToken::Bg0, theme),
+    );
+    let font = FONT.px();
+    let y_text = |r: Rect| r.y + (r.h - ROW_H_PX).max(0.0) / 2.0;
+    let reference = doc.align_reference();
+    if let Some(f) = reference {
+        let s = tr_with(
+            "anim_editor.align_ref_is",
+            &[
+                (
+                    "sheet",
+                    &doc.snap
+                        .sheets
+                        .get(usize::from(f.sheet))
+                        .map_or("", |s| s.name.as_str()),
+                ),
+                ("n", &(f.cell + 1)),
+            ],
+        );
+        let r = l.ref_label;
+        let c = tom(ColorToken::Info, theme);
+        paint_text(text, scene, &s, r.x, y_text(r), font, r.w, c);
+    }
+    let Some(v) = doc.align_view(p) else {
+        return;
+    };
+    scene.push_clip(&rect_to_vello(p));
+    let mut painted = doc.align.painted;
+    if doc.align.show_ref
+        && let Some(f) = reference
+    {
+        painted.reference = layer(
+            doc,
+            scene,
+            v,
+            f,
+            REFERENCE_ALPHA,
+            Some(tom(ColorToken::Info, theme)),
+        );
+    }
+    if doc.align.show_prev
+        && let Some(f) = doc.align_previous()
+    {
+        painted.previous = layer(doc, scene, v, f, PREVIOUS_ALPHA, None);
+    }
+    let current = doc.align_current();
+    if let Some((_, f)) = current {
+        painted.current = layer(doc, scene, v, f, 1.0, None);
+    }
+    let thin = StrokeToken::Thin.px();
+    // O contorno do desenho da referência, por cima: a imagem dela fica por baixo e o quadro aberto tapa-a.
+    let caixa = doc.align.show_ref.then(|| doc.reference_box()).flatten();
+    if let Some((lo, hi)) = caixa {
+        let r = v.quad((
+            [(lo[0] + hi[0]) / 2.0, (lo[1] + hi[1]) / 2.0],
+            [hi[0] - lo[0], hi[1] - lo[1]],
+        ));
+        stroke_rect(scene, r, thin, tom(ColorToken::Info, theme));
+        painted.reference_box = Some(r);
+    }
+    if doc.align.show_ref
+        && let Some(floor) = doc.align.floor.or(caixa.map(|(lo, _)| lo[1]))
+    {
+        let (_, fy) = v.to_screen([0.0, floor]);
+        let c = tom(ColorToken::Warn, theme);
+        stroke_polyline(scene, &[(p.x, fy), (p.x + p.w, fy)], thin, c);
+        painted.floor = Some(fy);
+    }
+    let accent = tom(ColorToken::Accent, theme);
+    if let Some(r) = painted.current {
+        stroke_rect(scene, r, thin, accent);
+        let side = ROW_H_PX * HANDLE_ROWS;
+        let h = Rect::new(r.x + r.w - side / 2.0, r.y + r.h - side / 2.0, side, side);
+        fill_rounded_rect(scene, h, 0.0, accent);
+        painted.handle = Some(h);
+    }
+    let (ox, oy) = v.to_screen([0.0, 0.0]);
+    let arm = ROW_H_PX * CROSS_ROWS;
+    let thick = StrokeToken::Thick.px();
+    stroke_polyline(scene, &[(ox - arm, oy), (ox + arm, oy)], thick, accent);
+    stroke_polyline(scene, &[(ox, oy - arm), (ox, oy + arm)], thick, accent);
+    fill_circle(scene, ox, oy, thick, tom(ColorToken::Bg0, theme));
+    painted.pivot = Some((ox, oy));
+    let hint = tr("anim_editor.align_hint");
+    let hy = p.y + p.h - ROW_H_PX - Spacing::Xs.px();
+    let hx = p.x + Spacing::Sm.px();
+    paint_text(
+        text,
+        scene,
+        hint,
+        hx,
+        hy,
+        font,
+        p.w,
+        tom(ColorToken::Text3, theme),
+    );
+    scene.pop_layer();
+    doc.align.painted = painted;
+}
+
+/// O menu do clique direito sobre um quadro da tira, por cima de tudo.
+pub(super) fn paint_align_menu(
+    doc: &mut AnimDoc,
+    scene: &mut VectorScene,
+    text: &mut TextSystem,
+    theme: Theme,
+) {
+    doc.align.painted.menu_item = None;
+    let Some((_, (x, y))) = doc.align.menu else {
+        return;
+    };
+    let font = FONT.px();
+    let label = tr("anim_editor.use_as_reference");
+    let w = rect_for_label(label_column_width(text, font, [label]));
+    let r = Rect::new(x, y, w, ROW_H_PX);
+    fill_rounded_rect(
+        scene,
+        r,
+        frame_radius(theme, Radius::Sm.px()),
+        tom(ColorToken::Bg3, theme),
+    );
+    let c = tom(ColorToken::Text1, theme);
+    paint_text(
+        text,
+        scene,
+        label,
+        r.x + Spacing::Sm.px(),
+        r.y,
+        font,
+        r.w,
+        c,
+    );
+    doc.align.painted.menu_item = Some(r);
+}

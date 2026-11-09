@@ -109,3 +109,32 @@ fn an_entry_with_a_tip_puts_it_in_the_model() {
     assert_ne!(WITH, B[0], "a dica faz parte da entrada");
     assert_eq!(WITH.id(), B[0].id(), "mas não da identidade do item");
 }
+
+/// ⭐ **O Recent guarda três também nas pontas que não passam pelo `push`**: o modelo que recebe uma lista maior só
+/// pinta três, e o ficheiro de preferências com cinco ids volta com três.
+///
+/// (Mutação: tirar o `take(RECENT_MAX)` do `build` ⇒ RED; tirar o `truncate` do `le_recentes` ⇒ RED.)
+#[test]
+fn o_recent_so_mostra_e_so_le_tres_mesmo_vindo_com_mais() {
+    let fams: &[&[AddEntry]] = &[CORE, A, B];
+    let cinco: Vec<_> = fams.iter().flat_map(|f| f.iter()).map(|e| e.id()).collect();
+    assert_eq!(cinco.len(), 5);
+    let select = AddSelect {
+        initial: IMAGE,
+        teach: &[],
+        recent: &cinco,
+    };
+    let model = build(fams, &|_| None, Some(select));
+    let recent: Vec<_> = model.groups[0].subs[0].items.iter().map(|i| i.id).collect();
+    assert_eq!(recent, cinco[..3], "o modelo pintou mais de três recentes");
+
+    let linha: Vec<String> = cinco.iter().map(|n| n.0.to_string()).collect();
+    let mut store = crate::interaction::WidgetStore::with_capacity(4);
+    let text = format!("add_recent={}\n", linha.join(","));
+    crate::interaction::restore_section_prefs_text(&mut store, &text);
+    assert_eq!(
+        store.add_recent(),
+        &cinco[..3],
+        "o ficheiro deixou passar mais de três"
+    );
+}

@@ -16,7 +16,7 @@ FEITO nesta janela:
 
 SMOKE DO DONO 10/11 (2.ª rodada) — ABERTOS, ordem sugerida **3+4 · 1 · 5 · 2**:
 
-3+4. **Pastel «ainda não está com o grain que solicitei» + Chalk/Crayon enchem (dono: SIM)** — UM bloco, rodada já medida em
+3+4. ✅ **FEITO `288616b743` (dono 10/11: P_dono SIM, Ch/Cr H10; presets regerados, alarmes verdes)** — era: **Pastel «ainda não está com o grain que solicitei» + Chalk/Crayon enchem (dono: SIM)** — UM bloco, rodada já medida em
    `material_2026-11-10_secos/` (README, `var_secos.tsv`, `corre.sh`, `folha_secos.png`). Grão do dono: Noise Tiled 120×120, Angle 0,
    Depth 1,0, Contrast 0,55, Brightness 0,55, Detail 0,30, Roughness 0,50, Warp 0,50 ⇒ params `[0.55,0.55,0.30,0.50,0.50,0.5]`
    (ordem conferida em `texture/patterns/specs.rs:84-90`; Size do cartão = `texture.size`, `brush_texture_settings.rs:95,164`).

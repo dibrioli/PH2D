@@ -229,7 +229,6 @@ impl PhysicsWorld {
             // é outra: o canal de TRIGGERS (W7), que é o grafo de interseção do
             // solver e não um raio.
             flags: QueryFilterFlags::EXCLUDE_SENSORS,
-            ..QueryFilter::default()
         };
         let pipeline: QueryPipeline<'_> =
             self.broad_phase

@@ -354,7 +354,6 @@ impl PhysicsWorld {
             exclude_collider,
             // Ver o aviso do módulo: um gatilho não é uma parede.
             flags: QueryFilterFlags::EXCLUDE_SENSORS,
-            ..QueryFilter::default()
         };
         let queries: QueryPipeline<'_> =
             self.broad_phase

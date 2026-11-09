@@ -157,9 +157,9 @@ pub struct PhysicsWorld {
     ///
     /// CONFIG, not solver state: the bridge re-stamps the whole table every
     /// dispatch from the authored components, which is why it is absent from the
-    /// checkpoint ring for the same reason `effectors` is — a restore keeps the
-    /// table the bridge just installed rather than resurrecting one from a run
-    /// that ended.
+    /// checkpoint ring — a restore keeps the table the bridge just installed
+    /// rather than resurrecting one from a run that ended. (`effectors` DOES travel:
+    /// it is keyed by collider handles, which the checkpoint restores.)
     pulleys: Vec<pulley::PulleyDesc>,
     /// As roldanas que as faixas de `pulleys` indexam — uma arena só para todas
     /// as cordas, pelo motivo escrito no [`pulley::PulleyDesc`]: um `Vec` por

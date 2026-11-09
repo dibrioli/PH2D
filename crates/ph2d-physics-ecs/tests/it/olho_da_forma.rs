@@ -186,3 +186,43 @@ fn o_olho_da_forma_desliga_e_liga_o_collider() {
         "sem forma ligada não há corpo"
     );
 }
+
+/// **O olho de um ANCESTRAL abaixo do corpo desliga as formas debaixo dele** (GEF02 fecho): um grupo
+/// escondido entre o corpo e a forma, ou a filha visível de uma forma de olho fechado, não colidem.
+/// E a chave/edição de um campo de forma vai à 1.ª forma mesmo desligada, nunca ao corpo.
+#[test]
+fn o_olho_de_um_ancestral_desliga_as_formas_debaixo_dele() {
+    let mut w = ph2d_ecs::World::new();
+    let rb = RigidBody {
+        kind: BodyKind::Dynamic,
+    };
+    let corpo = w.spawn((Name::new("Body"), rb)).id();
+    let grupo = w.spawn((Name::new("Group"), ChildOf(corpo))).id();
+    let dentro = w.spawn((caixa(0.3), ChildOf(grupo))).id();
+    w.entity_mut(grupo).insert(Visibility::hidden());
+    assert!(
+        forma_desligada(&w, dentro),
+        "o grupo escondido não desligou a forma"
+    );
+    assert_eq!(main_shape(&w, corpo), None);
+    w.entity_mut(grupo).insert(Visibility::default());
+    w.entity_mut(dentro).insert(Visibility::hidden());
+    let neta = w.spawn((caixa(0.2), ChildOf(dentro))).id();
+    assert!(
+        forma_desligada(&w, neta),
+        "a filha da forma desligada colide"
+    );
+    assert_eq!(
+        main_shape(&w, corpo),
+        None,
+        "a filha da forma desligada virou principal"
+    );
+    let campo = ph2d_ecs::canal_fisica::MEIO_X;
+    assert!(ph2d_ecs::canal_fisica::e_da_forma(campo));
+    let dono = ph2d_physics_ecs::dono_do_campo(&w, corpo.to_bits(), campo);
+    assert_eq!(
+        dono,
+        dentro.to_bits(),
+        "a chave da forma desligada foi para o corpo"
+    );
+}

@@ -214,6 +214,7 @@ impl PhysicsBridge {
         for e in stale {
             if let Some(p) = self.parts.remove(&e) {
                 self.world.detach_part(p.handle);
+                self.ring.clear(); // estrutural: os checkpoints indexam o collider que saiu
             }
         }
         self.part_seen = seen;
@@ -230,6 +231,7 @@ impl PhysicsBridge {
                 // simulado.
                 Some(p) if p.owner == owner && p.rest == desc && p.local == local => {}
                 _ => {
+                    self.ring.clear(); // estrutural, como o spawn/remove de um corpo
                     if let Some(old) = self.parts.remove(&e) {
                         self.world.detach_part(old.handle);
                     }

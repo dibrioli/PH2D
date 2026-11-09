@@ -217,15 +217,24 @@ pub fn shapes_in_order(world: &World, body: Entity) -> Vec<(u64, String, u8)> {
 }
 
 /// **A forma está DESLIGADA** (GEF02 B8): uma forma filha (`Collider` sem `RigidBody`) com o olho
-/// da Hierarquia fechado — não colide e o contorno não se desenha. O olho de um corpo continua a ser
-/// só o da imagem.
+/// da Hierarquia fechado — o dela ou o de um ancestral ABAIXO do corpo dono (grupo, outra forma) —
+/// não colide e o contorno não se desenha. O olho de um corpo continua a ser só o da imagem.
 #[must_use]
 pub fn forma_desligada(world: &World, e: Entity) -> bool {
-    world.get::<RigidBody>(e).is_none()
-        && world.get::<Collider>(e).is_some()
-        && world
-            .get::<ph2d_ecs::Visibility>(e)
+    if world.get::<RigidBody>(e).is_some() || world.get::<Collider>(e).is_none() {
+        return false;
+    }
+    let mut cur = Some(e);
+    while let Some(c) = cur.filter(|&c| world.get::<RigidBody>(c).is_none()) {
+        if world
+            .get::<ph2d_ecs::Visibility>(c)
             .is_some_and(|v| v.hidden)
+        {
+            return true;
+        }
+        cur = world.get::<ChildOf>(c).map(ChildOf::parent);
+    }
+    false
 }
 
 /// A 1.ª forma de `body` em ordem de árvore; `ligadas` salta as [`forma_desligada`].
@@ -260,6 +269,13 @@ pub fn main_shape(world: &World, body: Entity) -> Option<Entity> {
     primeira_forma(world, body, true)
 }
 
+/// **A forma que a EDIÇÃO de `body` alveja** (opção B): a 1.ª em ordem de árvore, ligada ou não — o
+/// olho fechado não pode mandar um campo de forma (ou a chave dele) para o corpo.
+#[must_use]
+pub fn forma_para_editar(world: &World, body: Entity) -> Option<Entity> {
+    primeira_forma(world, body, false)
+}
+
 /// `body` tem alguma forma, ligada ou não — a pergunta de quem CRIA uma («já tem forma?»).
 #[must_use]
 pub fn tem_forma(world: &World, body: Entity) -> bool {
@@ -267,7 +283,7 @@ pub fn tem_forma(world: &World, body: Entity) -> bool {
 }
 
 /// **Quem guarda o campo FISICA `campo` de `bits`** (opção B): o de forma
-/// ([`ph2d_ecs::canal_fisica::e_da_forma`]) num corpo é da [`main_shape`]; o resto fica.
+/// ([`ph2d_ecs::canal_fisica::e_da_forma`]) num corpo é da [`forma_para_editar`]; o resto fica.
 #[must_use]
 pub fn dono_do_campo(world: &World, bits: u64, campo: u16) -> u64 {
     let Some(e) = Entity::try_from_bits(bits) else {
@@ -276,7 +292,7 @@ pub fn dono_do_campo(world: &World, bits: u64, campo: u16) -> u64 {
     if !ph2d_ecs::canal_fisica::e_da_forma(campo) || world.get::<RigidBody>(e).is_none() {
         return bits;
     }
-    main_shape(world, e).map_or(bits, Entity::to_bits)
+    forma_para_editar(world, e).map_or(bits, Entity::to_bits)
 }
 
 /// **O corpo que fala pela forma `bits`** (opção B): a forma principal de um corpo devolve o corpo
@@ -287,7 +303,7 @@ pub fn corpo_da_forma(world: &World, bits: u64) -> u64 {
         return bits;
     };
     match owner_body(world, e) {
-        Some(b) if b != e && main_shape(world, b) == Some(e) => b.to_bits(),
+        Some(b) if b != e && forma_para_editar(world, b) == Some(e) => b.to_bits(),
         _ => bits,
     }
 }

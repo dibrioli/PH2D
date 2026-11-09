@@ -377,6 +377,44 @@ fn nenhuma_porta_do_editor_poe_a_forma_no_corpo() {
     let out = ph2d_app_physics::joint_rig::apply(&mut sim, &plano, kind, &q, &reg);
     assert_eq!((out.bodies, out.joints), (2, 1), "o rig");
     nenhum_corpo_com_forma(&mut sim, "Rig");
+
+    let edita = |sim: &mut SimWorld, e: Entity, edit| {
+        let q = ph2d_ecs::scene::EditorCommandQueue::default();
+        ph2d_app_physics::inspector::body::apply_physics_edit(sim, e.to_bits(), edit, &q, &reg);
+        ph2d_ecs::scene::apply_editor_commands(sim.world_mut(), &q, &reg)
+    };
+    // *Add Body* espalhado sobre um Static que já existe: ele continua Static.
+    add(&mut sim, chao);
+    let tipo = sim.world().get::<RigidBody>(chao).map(|r| r.kind);
+    assert_eq!(
+        tipo,
+        Some(BodyKind::Static),
+        "o Add Body tornou o Static Dynamic"
+    );
+    // O olho da ÚNICA forma fechado: o campo de forma vai à forma, nunca ao corpo.
+    let so = imagem(&mut sim);
+    add(&mut sim, so);
+    let f = ph2d_ecs::ordered_children(sim.world(), so)[0];
+    sim.world_mut()
+        .entity_mut(f)
+        .insert(ph2d_ecs::Visibility::hidden());
+    let half = ph2d_editor_core::PhysicsFieldEdit::HalfX(1.5);
+    edita(&mut sim, so, half).expect("commit");
+    assert!(
+        sim.world().get::<Collider>(so).is_none(),
+        "HalfX pôs o Collider no corpo"
+    );
+    let ColliderShape::Cuboid { half_x, .. } = sim.world().get::<Collider>(f).expect("f").shape
+    else {
+        panic!("caixa");
+    };
+    assert_eq!(half_x, 1.5, "a forma desligada recebeu a edição");
+    // *Remove* espalhado sobre o corpo E a forma filha dele: sem erro de commit.
+    let remove = ph2d_editor_core::PhysicsFieldEdit::Remove;
+    for alvo in [so, f] {
+        edita(&mut sim, alvo, remove).expect("o Remove da forma já levada pelo corpo");
+    }
+    assert!(sim.world().get::<RigidBody>(so).is_none(), "o corpo saiu");
 }
 
 /// A cena 2 continua a mesma: a parede invisível é PEÇA do chão da direita, sem corpo próprio.

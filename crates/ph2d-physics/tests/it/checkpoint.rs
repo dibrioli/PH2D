@@ -565,3 +565,79 @@ fn a_winch_carries_what_it_reeled_through_a_checkpoint() {
         }
     }
 }
+
+/// **As zonas viajam no checkpoint** (GEF02 fecho): a tabela `effectors` chaveia-se pelo
+/// handle do COLLIDER, que o checkpoint restaura por inteiro — uma zona-peça tirada depois do
+/// checkpoint volta com o collider dela, e o empurrão tem de voltar com ela.
+#[test]
+fn uma_zona_tirada_depois_do_checkpoint_volta_com_o_restore() {
+    use ph2d_physics::{AreaEffect, BodyDesc, RigidBodyType, ShapeDesc};
+    let mut w = PhysicsWorld::new();
+    let (chao, _) = w.add_static_cuboid(0.0, -20.0, 0.5, 0.5);
+    let (bola, _) = w.add_dynamic_circle(0.0, 0.0, 0.25, 1.0);
+    let zona = BodyDesc {
+        body_type: RigidBodyType::Fixed,
+        x: 0.0,
+        y: 0.0,
+        rotation: 0.0,
+        density: 1.0,
+        shape: ShapeDesc::Cuboid {
+            half_x: 5.0,
+            half_y: 5.0,
+        },
+        restitution: 0.0,
+        friction: 0.5,
+        layer: 0,
+        is_sensor: true,
+        gravity_scale: 1.0,
+        linvel: [0.0, 0.0],
+        angvel: 0.0,
+        ccd: false,
+        lock_rotation: false,
+        lock_x: false,
+        lock_y: false,
+        mass_override: None,
+        dominance: 0,
+        material: Default::default(),
+        damping: None,
+        one_way: false,
+        effector: Some(AreaEffect {
+            force: [0.0, 30.0],
+            drag: 0.0,
+            density: 0.0,
+            form_drag: 0.0,
+            torque: 0.0,
+            world_axes: true,
+            falloff: 0.0,
+            mirror: AreaEffect::UNMIRRORED,
+        }),
+        shape_pose: [0.0; 3],
+        collide: [0; 2],
+        offset: [0.0, 0.0],
+    };
+    let peca = w
+        .attach_part(chao, &zona, [0.0, 20.0, 0.0])
+        .expect("a zona-peça");
+    let cp = w.checkpoint();
+    let corre = |w: &mut PhysicsWorld| {
+        (0..20)
+            .map(|_| {
+                w.step();
+                w.body_pose(bola).expect("bola").translation.y.to_bits()
+            })
+            .collect::<Vec<u32>>()
+    };
+    let verdade = corre(&mut w);
+    assert!(
+        f32::from_bits(*verdade.last().unwrap()) > 0.0,
+        "a fixture não empurra: a zona não está a agir"
+    );
+    w.restore(&cp);
+    w.detach_part(peca);
+    w.restore(&cp);
+    assert_eq!(
+        corre(&mut w),
+        verdade,
+        "o restore devolveu o collider da zona sem o empurrão dela"
+    );
+}

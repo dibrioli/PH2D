@@ -122,7 +122,11 @@ pub fn torna_corpo(
     caixa: [f32; 2],
     tem_imagem: bool,
 ) -> Entity {
-    let corpo_de = crate::RigidBody { kind };
+    // Um corpo que já existe mantém o tipo (o «Add Body» espalhado não torna Dynamic um Static).
+    let corpo_de = world
+        .get::<crate::RigidBody>(e)
+        .copied()
+        .unwrap_or(crate::RigidBody { kind });
     if world.get::<crate::Collider>(e).is_none() {
         world.entity_mut(e).insert(corpo_de);
         if !crate::tem_forma(world, e) {
@@ -131,7 +135,7 @@ pub fn torna_corpo(
         }
         return e;
     }
-    if tem_imagem {
+    if tem_imagem || world.get::<crate::RigidBody>(e).is_some() {
         world.entity_mut(e).insert(corpo_de);
         let filha = filha_vazia(world, e);
         move_lado_forma(world, e, filha);

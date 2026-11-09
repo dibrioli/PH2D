@@ -80,6 +80,9 @@ pub struct PhysicsCheckpoint {
     /// restaurar. Só o que ATRAVESSA um passo é estado.
     pulley_broken_ropes: std::collections::BTreeSet<u64>,
     pulley_broken_wheels: std::collections::BTreeSet<u64>,
+    /// **As zonas** (GEF02 fecho): chaveadas pelo handle do COLLIDER, que este checkpoint restaura
+    /// por inteiro — uma zona-peça tirada depois dele voltaria com o collider e sem o empurrão.
+    effectors: Vec<super::effector::Zone>,
 }
 
 impl PhysicsCheckpoint {
@@ -129,6 +132,7 @@ impl PhysicsWorld {
             pulley_payout: self.pulley_payout.clone(),
             pulley_broken_ropes: self.pulley_broken_ropes.clone(),
             pulley_broken_wheels: self.pulley_broken_wheels.clone(),
+            effectors: self.effectors.clone(),
         }
     }
 
@@ -151,6 +155,7 @@ impl PhysicsWorld {
         self.pulley_payout = cp.pulley_payout.clone();
         self.pulley_broken_ropes = cp.pulley_broken_ropes.clone();
         self.pulley_broken_wheels = cp.pulley_broken_wheels.clone();
+        self.effectors.clone_from(&cp.effectors);
     }
 }
 

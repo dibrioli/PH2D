@@ -256,6 +256,12 @@ impl SpriteRenderer {
             .definir_celula(&self.gpu, &self.pipeline, &self.atlas, key, normal)
     }
 
+    /// Os bytes do normal map da célula `key` (a cópia que o projeto grava), ou `None`.
+    #[must_use]
+    pub fn normal_da_celula(&self, key: u32) -> Option<&[u8]> {
+        self.normais.bytes_da_celula(key)
+    }
+
     /// A célula `key` do átlas tem normal registada?
     #[must_use]
     pub fn celula_tem_normal(&self, key: u32) -> bool {

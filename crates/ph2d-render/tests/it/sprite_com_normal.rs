@@ -485,3 +485,32 @@ fn a_celula_do_atlas_com_normal_acende_e_a_vizinha_e_a_de_hoje() {
         "a célula vizinha SEM normal mudou (lê alfa 0 = n 0, a luz de hoje)"
     );
 }
+
+#[test]
+fn a_normal_da_celula_vai_e_volta_pelo_renderer() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sprite normal: sem placa — saltado");
+        return;
+    };
+    let mut atlas = TextureAtlas::new(&gpu, 256);
+    let cor: Vec<u8> = (0..CEL * CEL).flat_map(|_| COR_A).collect();
+    atlas.insert(&gpu, 7, CEL, CEL, &cor).expect("célula 7");
+    let mut r = SpriteRenderer::new(gpu.clone(), wgpu::TextureFormat::Rgba8Unorm, atlas, 8);
+    assert_eq!(r.normal_da_celula(7), None);
+    let n: Vec<u8> = (0..CEL * CEL).flat_map(|_| N_MENOS_X).collect();
+    assert!(
+        r.definir_normal_da_celula(7, Some((CEL, 2, &n[..32])))
+            .is_err()
+    );
+    r.definir_normal_da_celula(7, Some((CEL, CEL, &n)))
+        .expect("normal da célula 7");
+    assert_eq!(
+        r.normal_da_celula(7),
+        Some(&n[..]),
+        "o projeto grava estes bytes"
+    );
+    assert!(r.celula_tem_normal(7));
+    r.definir_normal_da_celula(7, None).expect("tirar");
+    assert_eq!(r.normal_da_celula(7), None);
+    assert_eq!(r.normais_alocadas(), 0);
+}

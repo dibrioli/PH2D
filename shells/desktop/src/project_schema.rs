@@ -401,4 +401,10 @@
 /// tem grava a forma e o offset no ponto neutro (derivados da slice). O blob Pixel sobe `MINOR 6 → 7`
 /// (`Sprite.pivot_slice`; versão própria, campo desconhecido saltado). SEM leitura dos anteriores (§0.11).
 /// ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 229;
+///
+/// # `229 → 230` — **o normal map do Sprite do motor** (`line/PixelArt`, P14 Sprite com normal, 2026-11-09)
+///
+/// `SavedAsset.normal: Vec<u8>` no FIM (vazio = sem normal): a 2.ª textura da célula do átlas, o MESMO retângulo da
+/// cor (`SpriteRenderer::definir_normal_da_celula`). SEM leitura dos anteriores (§0.11). Gate:
+/// `project_file_round_trips_through_postcard`. Registos: `0`. ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 230;

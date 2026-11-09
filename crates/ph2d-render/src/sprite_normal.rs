@@ -67,6 +67,10 @@ impl NormaisDosSprites {
         self.mapa.contains_key(&texture_id)
     }
 
+    pub(crate) fn bytes_da_celula(&self, key: u32) -> Option<&[u8]> {
+        self.celulas.get(&key).map(|(_, _, b)| b.as_slice())
+    }
+
     pub(crate) fn tem_celula(&self, key: u32) -> bool {
         self.celulas.contains_key(&key)
     }

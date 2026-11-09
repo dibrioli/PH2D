@@ -24,6 +24,7 @@ mod every_word_this_family_shows_comes_from_the_string_table;
 mod fotos_do_f4;
 mod g11_pan_sem_tremor;
 mod g6_ponto_neutro;
+mod o_sprite_com_normal_liga_o_momento;
 mod medida_luz2d_borda_topo;
 mod medida_luz2d_cantos_aquecidos;
 mod medida_luz2d_cantos_bits;

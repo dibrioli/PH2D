@@ -84,6 +84,8 @@ pub struct LuzDoQuadro {
     outros: crate::outras::CamadaDeOutros,
     /// ⭐ P14c-pixel 2: a banda normal de cada faixa (com alguma, a cena liga `com_normal`).
     normais: crate::NormaisDasFaixas,
+    /// ⭐ P14 (Sprite do motor): algum sprite do passe de sprites tem normal map (`SpriteRenderer::normais_alocadas`).
+    sprites_com_normal: bool,
     /// ⭐ A fábrica das pipelines, partilhada pelos solvers de cada grade: a janela redimensionada (o
     /// maximizar muda o tamanho a cada quadro) só realoca — recompilar custava ~2 s por quadro.
     fabrica: ph2d_light2d_gpu::Fabrica,
@@ -159,6 +161,7 @@ impl LuzDoQuadro {
             vetores: crate::vetor::CamadaVetorial::default(),
             outros: crate::outras::CamadaDeOutros::default(),
             normais: crate::NormaisDasFaixas::default(),
+            sprites_com_normal: false,
             fabrica: ph2d_light2d_gpu::Fabrica::default(),
             smoke_encenado: false,
             semeadas: Vec::new(),
@@ -229,7 +232,7 @@ impl LuzDoQuadro {
         alvo_px: (u32, u32),
     ) -> bool {
         self.cena = cena_de_luz(world);
-        self.cena.com_normal = self.normais.alguma();
+        self.cena.com_normal = self.normais.alguma() || self.sprites_com_normal;
         self.sem_luz_no_quadro = false;
         self.mundo_para_tela = mundo_para_tela;
         self.alvo_px = alvo_px;
@@ -327,6 +330,11 @@ impl LuzDoQuadro {
         self.degrau = base.com_fina_engrossada(k);
     }
 
+    /// ⭐ P14: a shell diz se o passe de sprites tem algum normal map (liga o momento `M` do solver).
+    pub fn com_sprites_de_normal(&mut self, sim: bool) {
+        self.sprites_com_normal = sim;
+    }
+
     /// ⭐ **Porta 2a** — re-coleta a cena logo antes do solver. As edições do quadro (o Inspector, o
     /// arrasto do gizmo) aplicam-se DEPOIS da codificação; sem isto a luz respondia um quadro
     /// atrasado. A guarda e a grade ficam as da codificação (o documento já foi às faixas por elas):
@@ -336,7 +344,7 @@ impl LuzDoQuadro {
             return;
         }
         self.cena = cena_de_luz(world);
-        self.cena.com_normal = self.normais.alguma();
+        self.cena.com_normal = self.normais.alguma() || self.sprites_com_normal;
         self.sem_luz_no_quadro = self.cena.luzes == 0;
         self.sem_luz.clear();
         self.sem_luz.extend(self.cena.nao_recebem.iter().copied());

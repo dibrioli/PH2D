@@ -932,6 +932,9 @@ impl ApplicationHandler for App {
         if self.recovery.quit == ph2d_recovery::Quit::Go {
             return self.on_close_request(event_loop);
         }
+        if let (Some(g), Some(w)) = (self.gfx.as_mut(), self.window.as_ref()) {
+            g.cursores.prepara(event_loop, w.scale_factor(), g.theme);
+        }
         // A pure dispatch table (PR 9b): one arm here + one `input_dispatch::App::on_<arm>` there.
         match event {
             // Com o jogo no palco, fechar pára o jogo; o app só fecha depois (dono 07/11).

@@ -4,12 +4,15 @@
 //! (`overlay::outline`) e do solver. Nele o centro é `offset × escala` (com sinal: o espelho dobra o Offset) e as
 //! meias-medidas são `medida × |escala|`, por isso a rotação, o pai e o espelho entram numa só conta.
 
+pub mod cursor_pontos;
 mod ponteiro;
 pub mod pontos;
 mod roteiro;
 pub mod tinta;
 pub mod tinta_pontos;
 
+pub use cursor_pontos::{TeclasNoCanvas, cursor_dos_pontos};
+pub use ph2d_cursor_art::Figura;
 pub use ponteiro::{
     CursorDaAlca, FormaNoCanvas, Porta, a_meio, alterna, ativo, clique_parado, cursor_em, editando,
     quadro,

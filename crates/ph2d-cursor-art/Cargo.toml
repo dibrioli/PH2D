@@ -1,0 +1,18 @@
+[package]
+name = "ph2d-cursor-art"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+license.workspace = true
+authors.workspace = true
+
+# Os cursores de edição desenhados pelo app (seta directa, pena +/−, fundir…): a arte em RGBA a partir dos
+# tokens e o jogo de `CustomCursor` do winit. Folha: os editores (pontos do Outline, vector) só escolhem a figura.
+
+[dependencies]
+ph2d-tokens = { path = "../ph2d-tokens" }
+winit = "0.30"
+
+[lints]
+workspace = true

@@ -332,6 +332,10 @@ impl Porta<'_> {
 
     /// `true` = consumiu o movimento. Pose e vista são as de agora: o pai pode ter andado.
     pub fn move_(&mut self, s: (f32, f32), teclas: Teclas) -> bool {
+        if editando(self.world).is_some() {
+            self.world
+                .insert_resource(crate::cursor_pontos::TeclasNoCanvas(teclas));
+        }
         if let Some(alvo) = editando(self.world)
             && self.move_ponto(alvo, s)
         {

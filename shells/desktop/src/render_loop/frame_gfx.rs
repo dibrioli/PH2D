@@ -110,6 +110,7 @@ impl<'a> FrameGfx<'a> {
             guides: doc_guides,
             // O ponteiro do sistema já pedido: é da janela, não do quadro.
             cursor_shown: _,
+            cursores: _,
             // Os ESTADOS de UI (plano UI/UX W7) e as MÁQUINAS que os mostram. Os dois viajam
             // juntos por toda a autoria: gravar lê o mundo e escreve a tabela, mostrar lê a
             // tabela e pede à máquina, e a máquina escreve o mundo de volta.

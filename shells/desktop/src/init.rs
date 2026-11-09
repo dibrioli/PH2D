@@ -148,6 +148,7 @@ pub(crate) fn build_initial_state(
     let gfx = AppGfx {
         surface,
         cursor_shown: Default::default(),
+        cursores: ph2d_cursor_art::Jogo::default(),
         renderer,
         sim,
         present,

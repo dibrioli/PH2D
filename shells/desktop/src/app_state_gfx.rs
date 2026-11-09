@@ -20,7 +20,9 @@ use super::*;
 pub(crate) struct AppGfx {
     pub(crate) surface: SurfaceContext,
     /// O ponteiro do sistema já pedido à janela: o Wayland do winit reenvia-o a cada `set_cursor`.
-    pub(crate) cursor_shown: std::cell::Cell<Option<winit::window::CursorIcon>>,
+    pub(crate) cursor_shown: std::cell::RefCell<Option<winit::window::Cursor>>,
+    /// Os cursores de edição desenhados pelo app (pontos do Outline), à escala e tema da janela.
+    pub(crate) cursores: ph2d_cursor_art::Jogo,
     pub(crate) renderer: SpriteRenderer,
     pub(crate) sim: SimWorld,
     pub(crate) present: PresentWorld,

@@ -215,71 +215,81 @@ impl crate::App {
             return;
         };
         use winit::window::CursorIcon;
-        let cursor = self
+        let escolha = self
             .gfx
             .as_ref()
             .and_then(|g| g.hero_screen.as_ref())
-            .map(|h| {
-                if h.store.eyedropper_pending().is_some() || ph2d_app_painter::mira_na_tela() {
-                    CursorIcon::Crosshair
-                } else if self.sobre_a_pega_de_um_campo(h) {
-                    CursorIcon::EwResize
-                } else if self.over_motion_split_divider(h) {
-                    if h.view.center_split.is_vertical() {
+            .map(|h| -> Result<CursorIcon, ph2d_cursor_art::Figura> {
+                Ok(
+                    if h.store.eyedropper_pending().is_some() || ph2d_app_painter::mira_na_tela() {
+                        CursorIcon::Crosshair
+                    } else if self.sobre_a_pega_de_um_campo(h) {
                         CursorIcon::EwResize
+                    } else if self.over_motion_split_divider(h) {
+                        if h.view.center_split.is_vertical() {
+                            CursorIcon::EwResize
+                        } else {
+                            CursorIcon::NsResize
+                        }
+                    } else if let Some(icon) = self.timeline_resize_cursor(h) {
+                        icon
+                    } else if let Some(icon) =
+                        self.dock_seam_cursor(self.last_pointer.0, self.last_pointer.1)
+                    {
+                        // ⭐ A borda de uma coluna docada — a MESMA porta que o arrasto pergunta.
+                        icon
+                    } else if let Some(f) = self.forma_figura() {
+                        return Err(f);
+                    } else if let Some(icon) =
+                        self.forma_cursor().or_else(|| self.camera_frame_cursor())
+                    {
+                        icon
+                    } else if let Some((icon, ..)) = self.pixel.slice_cursor(h, self.last_pointer) {
+                        icon
+                    } else if let Some(c) = ph2d_editor_core::screens::hero::board_view::cursor(
+                        h,
+                        self.last_pointer.0,
+                        self.last_pointer.1,
+                    ) {
+                        use ph2d_editor_core::screens::hero::board_view::BoardCursor as B;
+                        match c {
+                            B::ResizeNs => CursorIcon::NsResize,
+                            B::ResizeEw => CursorIcon::EwResize,
+                            B::ResizeNesw => CursorIcon::NeswResize,
+                            B::ResizeNwse => CursorIcon::NwseResize,
+                            B::Rotate => CursorIcon::Grab,
+                        }
                     } else {
-                        CursorIcon::NsResize
-                    }
-                } else if let Some(icon) = self.timeline_resize_cursor(h) {
-                    icon
-                } else if let Some(icon) =
-                    self.dock_seam_cursor(self.last_pointer.0, self.last_pointer.1)
-                {
-                    // ⭐ A borda de uma coluna docada — a MESMA porta que o arrasto pergunta.
-                    icon
-                } else if let Some(icon) =
-                    self.forma_cursor().or_else(|| self.camera_frame_cursor())
-                {
-                    icon
-                } else if let Some((icon, ..)) = self.pixel.slice_cursor(h, self.last_pointer) {
-                    icon
-                } else if let Some(c) = ph2d_editor_core::screens::hero::board_view::cursor(
-                    h,
-                    self.last_pointer.0,
-                    self.last_pointer.1,
-                ) {
-                    use ph2d_editor_core::screens::hero::board_view::BoardCursor as B;
-                    match c {
-                        B::ResizeNs => CursorIcon::NsResize,
-                        B::ResizeEw => CursorIcon::EwResize,
-                        B::ResizeNesw => CursorIcon::NeswResize,
-                        B::ResizeNwse => CursorIcon::NwseResize,
-                        B::Rotate => CursorIcon::Grab,
-                    }
-                } else {
-                    use ph2d_editor_core::doc_surface::PointerLook;
-                    let (x, y) = self.last_pointer;
-                    match ph2d_editor_core::screens::hero::board_view::pointer_look(h, x, y) {
-                        Some(PointerLook::Text) => CursorIcon::Text,
-                        Some(PointerLook::Hand) => CursorIcon::Pointer,
-                        Some(PointerLook::Grab) => CursorIcon::Grab,
-                        Some(PointerLook::Grabbing) => CursorIcon::Grabbing,
-                        Some(PointerLook::ResizeEw) => CursorIcon::EwResize,
-                        Some(PointerLook::ResizeNs) => CursorIcon::NsResize,
-                        Some(PointerLook::Pick) => CursorIcon::Crosshair,
-                        Some(PointerLook::Arrow) | None => CursorIcon::Default,
-                    }
-                }
+                        use ph2d_editor_core::doc_surface::PointerLook;
+                        let (x, y) = self.last_pointer;
+                        match ph2d_editor_core::screens::hero::board_view::pointer_look(h, x, y) {
+                            Some(PointerLook::Text) => CursorIcon::Text,
+                            Some(PointerLook::Hand) => CursorIcon::Pointer,
+                            Some(PointerLook::Grab) => CursorIcon::Grab,
+                            Some(PointerLook::Grabbing) => CursorIcon::Grabbing,
+                            Some(PointerLook::ResizeEw) => CursorIcon::EwResize,
+                            Some(PointerLook::ResizeNs) => CursorIcon::NsResize,
+                            Some(PointerLook::Pick) => CursorIcon::Crosshair,
+                            Some(PointerLook::Arrow) | None => CursorIcon::Default,
+                        }
+                    },
+                )
             })
-            .unwrap_or(CursorIcon::Default);
+            .unwrap_or(Ok(CursorIcon::Default));
+        // A figura desenhada (pontos do Outline) ou o ícone do sistema; a caneta leva o ícone mais próximo.
+        let (cursor, icone): (winit::window::Cursor, _) = match (escolha, self.gfx.as_ref()) {
+            (Ok(i), _) => (i.into(), i),
+            (Err(f), Some(g)) => (g.cursores.cursor(f), f.do_sistema()),
+            (Err(f), None) => (f.do_sistema().into(), f.do_sistema()),
+        };
         let novo = self
             .gfx
             .as_ref()
-            .is_none_or(|g| g.cursor_shown.replace(Some(cursor)) != Some(cursor));
+            .is_none_or(|g| g.cursor_shown.replace(Some(cursor.clone())).as_ref() != Some(&cursor));
         if novo {
             win.set_cursor(cursor);
         }
-        ph2d_pen::porta::cursor(cursor);
+        ph2d_pen::porta::cursor(icone);
     }
 
     /// The double-arrow cursor for the timeline grab band under the pointer, if

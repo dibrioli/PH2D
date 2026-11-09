@@ -15,6 +15,7 @@ authors.workspace = true
 [dependencies]
 bevy_ecs = "0.20"
 ph2d-core = { path = "../ph2d-core" }
+ph2d-cursor-art = { path = "../ph2d-cursor-art" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 ph2d-host = { path = "../ph2d-host" }

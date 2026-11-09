@@ -56,6 +56,21 @@ impl crate::App {
         self.forma_porta().is_some_and(|mut p| p.esc())
     }
 
+    /// A figura do cursor dos pontos do «Outline» (a tabela vive em [`ph2d_shape_handles::cursor_dos_pontos`]).
+    pub(crate) fn forma_figura(&self) -> Option<ph2d_cursor_art::Figura> {
+        let g = self.gfx.as_ref()?;
+        let hero = g.hero_screen.as_ref()?;
+        let (s, w) = (self.last_pointer, g.sim.world());
+        let agarrado = w
+            .get_resource::<ph2d_shape_handles::pontos::PontosNoCanvas>()
+            .is_some_and(|p| p.arrasto.is_some());
+        if !agarrado && !self.pointer_on_canvas(s.0, s.1) {
+            return None;
+        }
+        let win = crate::scene_mapping::janela(hero.view.center_split, g.surface.size());
+        ph2d_shape_handles::cursor_dos_pontos(w, &g.camera, win, s, self.forma_teclas())
+    }
+
     /// O cursor da alça agarrada ou sob o ponteiro.
     pub(crate) fn forma_cursor(&self) -> Option<winit::window::CursorIcon> {
         use ph2d_shape_handles::CursorDaAlca as K;

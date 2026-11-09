@@ -7112,6 +7112,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "ph2d-cursor-art"
+version = "0.0.0"
+dependencies = [
+ "ph2d-tokens",
+ "winit",
+]
+
+[[package]]
 name = "ph2d-cursor-preso"
 version = "0.0.0"
 dependencies = [
@@ -7583,6 +7591,7 @@ dependencies = [
  "ph2d-component-desc",
  "ph2d-constraints-ecs",
  "ph2d-core",
+ "ph2d-cursor-art",
  "ph2d-cursor-preso",
  "ph2d-ecs",
  "ph2d-editor-core",
@@ -11143,6 +11152,7 @@ version = "0.0.0"
 dependencies = [
  "bevy_ecs",
  "ph2d-core",
+ "ph2d-cursor-art",
  "ph2d-ecs",
  "ph2d-editor-core",
  "ph2d-host",

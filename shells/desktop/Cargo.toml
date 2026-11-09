@@ -461,6 +461,7 @@ ph2d-entity-visibility = { path = "../../crates/ph2d-entity-visibility" }
 ph2d-app-skeleton = { path = "../../crates/ph2d-app-skeleton" }
 ph2d-card-rope = { path = "../../crates/ph2d-card-rope" }
 ph2d-cursor-preso = { path = "../../crates/ph2d-cursor-preso" }
+ph2d-cursor-art = { path = "../../crates/ph2d-cursor-art" }
 ph2d-skeleton-demo = { path = "../../crates/ph2d-skeleton-demo" }
 ph2d-preview-drive = { path = "../../crates/ph2d-preview-drive" }
 ph2d-inspector-ordering = { path = "../../crates/ph2d-inspector-ordering" }

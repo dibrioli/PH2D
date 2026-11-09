@@ -399,3 +399,150 @@ fn os_indicadores_seguem_o_ponteiro() {
     assert!(est.fusao.is_some(), "o canto é alvo da fusão");
     assert!(estados(sim.world(), &e, ecra([1.0, 2.0])).fusao.is_none());
 }
+
+/// ⭐ (10) **O cursor dos pontos** é UMA tabela: vazio = seta directa · ponto = seta com o ponto (Alt = pena «−»,
+/// Shift = «±») · aresta = pena «+» · arrasto = mão fechada · arrasto sobre outro ponto = fundir. E a tinta acende o
+/// mesmo: a aresta do «+» e o ponto que o Alt tira. *Mutação: o `Alt` ignorado ⇒ `SetaPonto` e nenhum `tira`.*
+#[test]
+fn o_cursor_e_os_indicadores_dizem_o_que_o_clique_faz() {
+    use ph2d_shape_handles::pontos::no_ecra;
+    use ph2d_shape_handles::tinta_pontos::estados_com;
+    use ph2d_shape_handles::{Figura as F, cursor_dos_pontos};
+    let (_reg, mut sim, _body, shape, _db) = followed_ring();
+    let cur = |sim: &SimWorld, w: [f32; 2], t: Teclas| {
+        cursor_dos_pontos(sim.world(), &cam(), WIN, ecra(w), t)
+    };
+    assert_eq!(
+        cur(&sim, [0.0, 0.0], Teclas::default()),
+        None,
+        "sem edição, o cursor é de outro"
+    );
+    alterna(sim.world_mut(), shape.to_bits());
+    let canto = perto(&sim, shape, 0, [2.0, 2.0]);
+    let (alt, shift) = (
+        Teclas {
+            alt: true,
+            shift: false,
+        },
+        Teclas {
+            alt: false,
+            shift: true,
+        },
+    );
+    let tabela = [
+        ([30.0, 30.0], Teclas::default(), F::Seta),
+        (canto, Teclas::default(), F::SetaPonto),
+        (canto, alt, F::PenaMenos),
+        (canto, shift, F::Alterna),
+        ([0.3, 2.02], Teclas::default(), F::PenaMais),
+    ];
+    for (w, t, f) in tabela {
+        assert_eq!(cur(&sim, w, t), Some(f), "{w:?} {t:?}");
+    }
+    let e = {
+        let (pose, m, o) = do_alvo(sim.world(), shape.to_bits()).expect("pontos");
+        no_ecra(&pose, &m, &o, &cam(), WIN)
+    };
+    let est = estados_com(sim.world(), &e, ecra(canto), alt);
+    assert_eq!(est.tira, est.sob, "Alt sobre o ponto: o que sai");
+    assert!(est.tira.is_some());
+    assert!(
+        estados_com(sim.world(), &e, ecra(canto), Teclas::default())
+            .tira
+            .is_none()
+    );
+    let est = estados_com(sim.world(), &e, ecra([0.3, 2.02]), Teclas::default());
+    assert!(
+        est.aresta.is_some() && est.mais.is_some(),
+        "a aresta do «+» acende"
+    );
+    assert!(clica(&mut sim, [0.0, 2.0], Teclas::default()));
+    let mut bus = ActionBus::default();
+    let mut p = porta(&mut sim, &mut bus);
+    assert!(p.desce_com(ecra([0.0, 2.0]), Teclas::default()));
+    assert_eq!(
+        cur(&sim, [0.0, 2.0], Teclas::default()),
+        Some(F::SetaPonto),
+        "antes de armar não é mão"
+    );
+    let mut p = porta(&mut sim, &mut bus);
+    assert!(p.move_(ecra([0.6, 2.0]), Teclas::default()));
+    assert_eq!(cur(&sim, [0.6, 2.0], Teclas::default()), Some(F::Agarrando));
+    let mut p = porta(&mut sim, &mut bus);
+    assert!(p.move_(ecra([1.0, 2.0]), Teclas::default()));
+    assert_eq!(cur(&sim, canto, Teclas::default()), Some(F::Funde));
+}
+
+/// **«Merge by distance»** (dono 09/11): a argola com um cacho (dois pontos a 0,5 e 1 px do ponto 0, na aresta). Com
+/// a forma em edição e os dois selecionados, só eles se fundem (o ponto 0 fica) e o fundido continua selecionado;
+/// sem seleção, o cacho inteiro vira um. Sempre «Custom», e o cartão diz quantos saíram. *Mutações: `outline_edited`
+/// sem a seleção ⇒ 0 sai; sem `custom: true` ⇒ vermelho.*
+#[test]
+fn merge_funde_o_cacho_selecionado_ou_todos_e_marca_custom() {
+    use ph2d_editor_core::OutlineEdit as E;
+    use ph2d_shape_handles::pontos::Ponto;
+    let (_reg, mut sim, _body, shape, _db) = followed_ring();
+    let mut o = outline(&sim, shape);
+    let mut rings: Vec<Vec<[i32; 2]>> = o.rings.to_vec();
+    let (a, b) = (rings[0][0], rings[0][1]);
+    let len = f64::from(b[0] - a[0]).hypot(f64::from(b[1] - a[1]));
+    assert!(len > 48.0, "a aresta tem de caber o cacho: {len}");
+    let em = |t: f64| {
+        [
+            a[0] + (f64::from(b[0] - a[0]) * t / len).round() as i32,
+            a[1] + (f64::from(b[1] - a[1]) * t / len).round() as i32,
+        ]
+    };
+    rings[0].insert(1, em(8.0));
+    rings[0].insert(2, em(16.0));
+    o.rings = rings.clone().into();
+    o.custom = false;
+    sim.world_mut().entity_mut(shape).insert(o.clone());
+    let total = |o: &ColliderOutline| o.rings.iter().map(Vec::len).sum::<usize>();
+    let n0 = total(&o);
+    alterna(sim.world_mut(), shape.to_bits());
+    let sel = vec![Ponto { anel: 0, i: 1 }, Ponto { anel: 0, i: 2 }];
+    sim.world_mut().insert_resource(PontosNoCanvas {
+        selecionados: sel,
+        ..Default::default()
+    });
+    let um =
+        ph2d_physics_outline::outline_edited(sim.world_mut(), shape, E::Merge(3.0)).expect("funde");
+    assert_eq!(total(&um), n0 - 1, "só os dois selecionados");
+    assert!(um.custom, "o Merge é Custom");
+    assert!(
+        um.rings[0].contains(&a),
+        "o ponto 0 não estava selecionado e fica"
+    );
+    let s = sim
+        .world()
+        .resource::<PontosNoCanvas>()
+        .selecionados
+        .clone();
+    assert_eq!(s.len(), 1, "o fundido continua selecionado: {s:?}");
+    // Sem seleção: todos.
+    sim.world_mut().entity_mut(shape).insert(o.clone());
+    sim.world_mut().insert_resource(PontosNoCanvas::default());
+    let todos =
+        ph2d_physics_outline::outline_edited(sim.world_mut(), shape, E::Merge(3.0)).expect("funde");
+    assert!(
+        total(&todos) <= n0 - 2,
+        "o cacho inteiro vira um: {n0} → {}",
+        total(&todos)
+    );
+    assert!(!todos.rings[0].contains(&a), "o ponto 0 entrou na média");
+    sim.world_mut().entity_mut(shape).insert(todos.clone());
+    let card = ph2d_physics_outline::card_info(sim.world(), shape).expect("cartão");
+    assert_eq!(
+        card.merged,
+        Some(((n0 - total(&todos)) as u32, 0)),
+        "o cartão diz quantos saíram"
+    );
+    // Nada perto: nada a gravar, e o cartão diz 0.
+    assert_eq!(
+        ph2d_physics_outline::outline_edited(sim.world_mut(), shape, E::Merge(0.25)),
+        None
+    );
+    let card = ph2d_physics_outline::card_info(sim.world(), shape).expect("cartão");
+    assert_eq!(card.merged, Some((0, 0)));
+}

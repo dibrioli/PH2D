@@ -10,7 +10,7 @@ O dono, em 2026-11-06, ao receber o plano da W4 (`docs/SfxLab/05_W4_plano.md`): 
 1. Roll, Mutate, Next, Explore e Heard tocam no mesmo volume; o `Space` na tela normal toca o volume real (WaveLab e AB Loudness Match nivelam só a escuta, a 400 ms).
 2. Next é a tecla `N`, não o `X` da crítica.
 3. Heard e as travas salvam com o projeto (Venom salva as travas com o patch).
-4. Sem profissional disponível, a W5 pode seguir; o teste às cegas fica marcado antes de congelar a tela.
+4. Sem profissional disponível, a W5 pode seguir; o teste às cegas fica marcado antes de congelar a tela. **Dono 07/11: não há profissional; ele mesmo testa, seguindo `docs/SfxLab/06_roteiro_de_teste_do_dono.md`. Não proponha convidar alguém.** Smoke da W4 sobre o main aprovado em 07/11, incluindo o cursor.
 
 **Why:** ele é dono do produto e delegou; o que mede a escolha é o ouvido dele no smoke e o teste às cegas.
 

@@ -42,6 +42,8 @@ campos_do_traco!(
     drag_preview,
     rng_camada,
     composite_mask,
+    mistura_camada,
+    mistura_visivel,
     composite_arco,
     pilha,
     limite_do_smear,

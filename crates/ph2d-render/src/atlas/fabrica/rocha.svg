@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+<!-- rocha 1×1 (GEF02 W6): reentrâncias, borda macia (dois halos de alfa) e três pedrinhas soltas — a arte em que Detail, Alpha cutoff e Ignore specks under mudam o «Outline». -->
+<path fill="none" stroke="#8A8F98" stroke-opacity="0.3" stroke-width="10" stroke-linejoin="round" d="M20,30 L32.4,25.7 L40,15 L48,32 L60,12 L68.6,23.2 L82,28 L70,45 L88,62 L76.8,71.1 L72,85 L52,72 L40,88 L31,78 L18,75 L30,55 Z"/>
+<path fill="none" stroke="#8A8F98" stroke-opacity="0.6" stroke-width="5" stroke-linejoin="round" d="M20,30 L32.4,25.7 L40,15 L48,32 L60,12 L68.6,23.2 L82,28 L70,45 L88,62 L76.8,71.1 L72,85 L52,72 L40,88 L31,78 L18,75 L30,55 Z"/>
+<path fill="#8A8F98" d="M20,30 L32.4,25.7 L40,15 L48,32 L60,12 L68.6,23.2 L82,28 L70,45 L88,62 L76.8,71.1 L72,85 L52,72 L40,88 L31,78 L18,75 L30,55 Z"/>
+<path fill="#6B7079" d="M40,40 L56,38 L60,52 L46,60 L36,52 Z"/>
+<circle fill="#8A8F98" cx="6" cy="8" r="2.5"/>
+<circle fill="#8A8F98" cx="94" cy="6" r="2.5"/>
+<circle fill="#8A8F98" cx="7" cy="93" r="2.5"/>
+</svg>

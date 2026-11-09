@@ -48,8 +48,8 @@ pub fn physics_smoke_ficha(ctx: &mut crate::SceneCtx<'_>) {
         "[physics-smoke 120] The whole item, PAUSED. Space plays: the Crate falls through the Loose Shape and \
          lands on the Floor; the Stretched Ball falls into the Updraft Zone and the zone pushes it up. Left/Right \
          walk, Up jumps: the Player goes up through the One-way Platform from below and lands on top; he passes \
-         through the Crate because his layer only hits Ground. The Coin's shape is an Outline traced from its \
-         picture; it lands on the Floor. The Marble falls inside the Ring's hole and rests on its bottom. The Table \
+         through the Crate because his layer only hits Ground. The Rock's shape is an Outline traced from its \
+         picture: Detail, Alpha cutoff and Ignore specks under each reshape it. It lands on the Floor. The Marble falls inside the Ring's hole and rests on its bottom. The Table \
          stands on its two legs: one body, three shapes. Stop puts everything back."
     );
 }

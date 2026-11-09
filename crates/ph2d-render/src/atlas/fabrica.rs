@@ -72,6 +72,8 @@ pub const FLAG_SHEET_KEY: u32 = u32::MAX - 7;
 pub const CLOUDS_TILE_KEY: u32 = u32::MAX - 8;
 /// Os montes ao longe do fundo (plano 11): 8 × 6 m, repete na horizontal.
 pub const HILLS_TILE_KEY: u32 = u32::MAX - 9;
+/// A rocha do «Outline» (GEF02 W6): reentrâncias, borda macia e pedrinhas soltas, 1 × 1 m.
+pub const ROCK_KEY: u32 = u32::MAX - 10;
 
 const _: () = assert!(HILLS_TILE_KEY > super::FIRST_IMPORT_KEY);
 
@@ -157,9 +159,20 @@ pub const HILLS_TILE: FactoryArt = FactoryArt {
     texels_per_m: B,
 };
 
+/// A rocha da cena 120 (GEF02 W6): a arte onde Detail, Alpha cutoff e Ignore specks under mudam o contorno.
+pub const ROCK_ART: FactoryArt = FactoryArt {
+    key: ROCK_KEY,
+    name: "asset.factory.rock",
+    svg: include_bytes!("fabrica/rocha.svg"),
+    px: [128, 128],
+    grid: [1, 1],
+    tile: false,
+    texels_per_m: 128,
+};
+
 /// Toda a arte de fábrica, na ordem em que entra no atlas. ⚠️ Arte nova entra no FIM (gate
 /// `as_artes_antigas_sao_as_de_antes`).
-pub const FACTORY_ART: [FactoryArt; 8] = [
+pub const FACTORY_ART: [FactoryArt; 9] = [
     HERO_ART,
     GROUND_TILE,
     PLATFORM_TILE,
@@ -168,6 +181,7 @@ pub const FACTORY_ART: [FactoryArt; 8] = [
     FLAG_SHEET,
     CLOUDS_TILE,
     HILLS_TILE,
+    ROCK_ART,
 ];
 
 /// Milissegundos por célula da moeda e da bandeira (laços uniformes).

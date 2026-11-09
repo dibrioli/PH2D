@@ -217,7 +217,7 @@ fn traca_como_a_shell(c: &mut Corrida) {
     let q = EditorCommandQueue::new();
     let w = c.sim.world_mut();
     let n = ph2d_physics_outline::retrace_followed(w, &db, &atlas, 100.0, &q, &reg);
-    assert_eq!(n, 1, "só a Coin nasce Outline sem anéis");
+    assert_eq!(n, 1, "só a Rock nasce Outline sem anéis");
     apply_editor_commands(c.sim.world_mut(), &q, &reg).expect("aplica");
 }
 
@@ -230,17 +230,17 @@ fn contorno(c: &Corrida, nome: &str) -> ColliderOutline {
         .unwrap_or_default()
 }
 
-/// «The Coin's shape is an Outline traced from its picture; it lands on the Floor.» Controlo: sem a cola não há
+/// «The Rock's shape is an Outline traced from its picture: … It lands on the Floor.» Controlo: sem a cola não há
 /// anéis (a frase é da cola, não da cena).
 #[test]
-fn a_coin_e_um_outline_tracado_da_imagem_e_pousa_no_floor() {
+fn a_rock_e_um_outline_tracado_da_imagem_e_pousa_no_floor() {
     let mut c = Corrida::nova();
     assert!(
-        contorno(&c, "Coin").rings.is_empty(),
+        contorno(&c, "Rock").rings.is_empty(),
         "controlo: a cena não traz anéis"
     );
     traca_como_a_shell(&mut c);
-    let o = contorno(&c, "Coin");
+    let o = contorno(&c, "Rock");
     assert!(!o.rings.is_empty() && !o.custom, "traçado da imagem: {o:?}");
     assert!(
         o.rings[0].len() > 4,
@@ -248,11 +248,8 @@ fn a_coin_e_um_outline_tracado_da_imagem_e_pousa_no_floor() {
         o.rings[0].len()
     );
     c.corre(240);
-    let [x, y] = c.at("Coin");
-    assert!(
-        (x - COIN_AT[0]).abs() < 1.0,
-        "cai na sua coluna (rola um pouco: é redonda): {x}"
-    );
+    let [x, y] = c.at("Rock");
+    assert!((x - ROCK_AT[0]).abs() < 1.0, "cai na sua coluna: {x}");
     assert!(y > 0.0 && y < 1.0, "pousa no Floor: {y}");
 }
 
@@ -305,10 +302,9 @@ fn a_table_e_um_corpo_de_tres_formas_e_fica_de_pe() {
     assert!(r.abs() < 0.02, "direita: {r}");
 }
 
-
 /// (dono 09/11, «mudar os parâmetros não atualiza a shape do seu desenho») **Detail, Alpha cutoff e Ignore specks
 /// under só aparecem onde há imagem a traçar**: a Ring (anéis à mão, sem imagem) não os mostra — eram três controlos
-/// mortos; a Coin (traçada da imagem) mostra. *Mutação: `card_info` sem a guarda da imagem ⇒ vermelho.*
+/// mortos; a Rock (traçada da imagem) mostra. *Mutação: `card_info` sem a guarda da imagem ⇒ vermelho.*
 #[test]
 fn os_controlos_do_traco_so_aparecem_com_imagem_a_tracar() {
     let mut c = Corrida::nova();
@@ -317,6 +313,108 @@ fn os_controlos_do_traco_so_aparecem_com_imagem_a_tracar() {
         let f = ph2d_physics_ecs::main_shape(c.sim.world(), c.por_nome(nome)).expect("forma");
         ph2d_physics_outline::card_info(c.sim.world(), f)
     };
-    assert!(card("Coin").is_some(), "controlo: a Coin traça-se da imagem");
+    assert!(
+        card("Rock").is_some(),
+        "controlo: a Rock traça-se da imagem"
+    );
     assert_eq!(card("Ring"), None, "a Ring não tem imagem: nada a traçar");
 }
+
+/// Detail · Alpha cutoff · Ignore specks under pela passagem da shell (o pedido gravado, `retrace_edited`,
+/// `retrace_followed`, fila); devolve os anéis depois de cada edição.
+fn edita_o_contorno(
+    c: &mut Corrida,
+    nome: &str,
+    e: ph2d_editor_core::OutlineEdit,
+) -> ColliderOutline {
+    use ph2d_ecs::scene::{ComponentRegistry, EditorCommandQueue, apply_editor_commands};
+    let mut reg = ComponentRegistry::new();
+    ph2d_ecs::scene::register_ecs_components(&mut reg);
+    ph2d_physics_ecs::register_physics_components(&mut reg);
+    let db = ph2d_asset::AssetDb::new();
+    let mut atlas = std::collections::BTreeMap::new();
+    ph2d_render::factory_images::register(&db, &mut atlas);
+    let corpo = c.por_nome(nome);
+    let forma = ph2d_physics_ecs::main_shape(c.sim.world(), corpo).expect("forma");
+    let cur = contorno(c, nome);
+    let w = c.sim.world_mut();
+    w.entity_mut(forma)
+        .insert(ph2d_physics_outline::asked_with(&cur, e));
+    let q = EditorCommandQueue::new();
+    let edits = [(
+        corpo.to_bits(),
+        ph2d_editor_core::PhysicsFieldEdit::Outline(e),
+    )];
+    ph2d_physics_outline::retrace_edited(c.sim.world(), &edits, &db, &atlas, 100.0, &q, &reg);
+    ph2d_physics_outline::retrace_followed(c.sim.world_mut(), &db, &atlas, 100.0, &q, &reg);
+    apply_editor_commands(c.sim.world_mut(), &q, &reg).expect("aplica");
+    contorno(c, nome)
+}
+
+fn pontos(o: &ColliderOutline) -> usize {
+    o.rings.iter().map(|r| r.len()).sum()
+}
+
+/// (dono 09/11, «mudar os parâmetros não atualiza a shape do seu desenho») **A arte da cena muda com os três
+/// controlos do traço**: Detail 8 dá menos pontos que Detail 2; Alpha cutoff 0,05 e 0,95 dão anéis diferentes (a
+/// borda macia); Ignore specks under acima das pedrinhas tira-as (menos anéis). Era a Coin: convexa, borda dura,
+/// sem pedrinhas — 48 pontos em Detail 2 e 8. *Mutação: a arte sem halos e sem pedrinhas ⇒ vermelho.*
+#[test]
+fn a_arte_do_outline_da_cena_muda_com_detail_alpha_e_specks() {
+    use ph2d_editor_core::OutlineEdit as E;
+    let mut c = Corrida::nova();
+    traca_como_a_shell(&mut c);
+    let nome = OUTLINE_DEMO;
+    let d2 = edita_o_contorno(&mut c, nome, E::Detail(2.0));
+    let d8 = edita_o_contorno(&mut c, nome, E::Detail(8.0));
+    assert!(
+        pontos(&d8) < pontos(&d2),
+        "Detail 2 → 8: {} → {}",
+        pontos(&d2),
+        pontos(&d8)
+    );
+    let _ = edita_o_contorno(&mut c, nome, E::Detail(2.0));
+    let a_baixo = edita_o_contorno(&mut c, nome, E::AlphaCutoff(0.05));
+    let a_alto = edita_o_contorno(&mut c, nome, E::AlphaCutoff(0.95));
+    // A borda macia, não o antisserrilhado de 1 px: o maior anel encolhe ≥ 4 px de largura (Q4).
+    let largura = |o: &ColliderOutline| {
+        let area = |r: &[[i32; 2]]| {
+            (0..r.len())
+                .map(|i| {
+                    let (a, b) = (r[i], r[(i + 1) % r.len()]);
+                    i64::from(a[0]) * i64::from(b[1]) - i64::from(b[0]) * i64::from(a[1])
+                })
+                .sum::<i64>()
+                .abs()
+        };
+        let maior = o.rings.iter().max_by_key(|r| area(r)).expect("anel");
+        let xs = maior.iter().map(|p| p[0]);
+        xs.clone().max().unwrap_or(0) - xs.min().unwrap_or(0)
+    };
+    assert!(
+        largura(&a_baixo) - largura(&a_alto) >= 4 * 16,
+        "Alpha cutoff 0,05 × 0,95: largura {} × {} (Q4)",
+        largura(&a_baixo),
+        largura(&a_alto)
+    );
+    let _ = edita_o_contorno(&mut c, nome, E::AlphaCutoff(0.5));
+    let s0 = edita_o_contorno(&mut c, nome, E::Specks(0.0));
+    let s64 = edita_o_contorno(&mut c, nome, E::Specks(64.0));
+    assert!(
+        s64.rings.len() < s0.rings.len(),
+        "Specks 0 → 64: {} → {} anéis",
+        s0.rings.len(),
+        s64.rings.len()
+    );
+    println!(
+        "Detail 2/8: {}/{} pontos · Alpha 0,05/0,95: {}/{} · Specks 0/64: {}/{} anéis",
+        pontos(&d2),
+        pontos(&d8),
+        pontos(&a_baixo),
+        pontos(&a_alto),
+        s0.rings.len(),
+        s64.rings.len()
+    );
+}
+
+const OUTLINE_DEMO: &str = "Rock";

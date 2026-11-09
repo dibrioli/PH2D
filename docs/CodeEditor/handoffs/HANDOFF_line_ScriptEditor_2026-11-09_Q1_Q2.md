@@ -263,3 +263,7 @@ Coloque um separador vertical onde o cursor vai pegar» pedem um SEPARADOR que s
   −100 px ⇒ lado +100 e tabela −100, presos nos dois fins com Name ≥ `min_col` e Type inteira); `ph2d-app-code`
   `parado_o_codigo_rola_…` arrasta o separador 60 px à esquerda pelo `Mesa::arrasta_com` (agora de ponto a ponto)
   e confere ↔ e `side_w`. Catraca 26 628 / 26 628: o cabeçalho de `goto.rs` encolheu (o porquê mora no I0b).
+- **Foto** (Xvfb 1900×1050 + `xdotool`, binário `--profile smoke` novo): `docs/CodeEditor/ferramentas/smoke/cena14/passo_1_separador.png` (separador
+  arrastado 200 px à esquerda, largado) e `passo_1_separador_tres_tempos.png` (por cima aceso · a arrastar · largado).
+  A foto apanhou o aceso a ficar preso depois de largar com o rato sobre o console (o `look` não chega ao quadro):
+  o «por cima» passou a valer um quadro (`split_hover.replace(false)` na pintura).

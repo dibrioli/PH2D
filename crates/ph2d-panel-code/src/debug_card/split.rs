@@ -55,7 +55,8 @@ pub(super) fn paint(
     theme: Theme,
 ) {
     let b = band();
-    let hot = st.splitting.is_some() || st.split_hover.get();
+    // O «por cima» vale um quadro: o `look` volta a escrevê-lo enquanto o rato lá estiver.
+    let hot = st.splitting.is_some() || st.split_hover.replace(false);
     let (line_w, line_tone, mark_tone) = if hot {
         (
             StrokeToken::Thick.px(),

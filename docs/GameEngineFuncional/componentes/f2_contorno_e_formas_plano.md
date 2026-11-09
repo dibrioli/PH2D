@@ -18,6 +18,9 @@ Leitor: a próxima LLM desta linha. Aprovado pelo dono em 08/11/2026 («faça co
   Com objeto selecionado → **objeto FILHO** (`ChildOf`, linha nova na Hierarchy), nunca componente do selecionado. Pai
   (ou antepassado) com corpo → mais uma forma desse corpo (W-Compound, «Part of: X»). Pai sem corpo → o filho nasce com
   o seu próprio Static (Inspector: «Own body (Static) — make the parent a body to join it»).
+- **Dono 09/11 (smoke: «a Collision Shape filha de outra Collision Shape não arrasta na Hierarchy»):** com uma FORMA
+  selecionada, Add ▸ Collision Shape continua a criar a FILHA dela (como hoje). A cura é o ARRASTO funcionar, nunca
+  mudar onde ela nasce.
 - **Várias formas num corpo: UM jeito só — os filhos** (ADR-0110, `ph2d-physics-ecs/src/bridge/parts.rs`). O cartão Shape
   ganha a lista **«Shapes»**, que é VISTA dos filhos (linha 0 = a forma do corpo; depois cada parte na ordem da árvore;
   tipo, tamanho, offset, rotação; clicar seleciona o filho; «+ Add shape» = o spawn acima; «Remove shape» = apagar o filho,

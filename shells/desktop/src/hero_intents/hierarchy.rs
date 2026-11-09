@@ -50,7 +50,12 @@ pub(crate) fn drain_reparent(
         before: entity(intent.before),
         after: entity(intent.after),
     };
-    match reparentar(sim, &quem, queda) {
+    let desfecho = reparentar(sim, &quem, queda);
+    // O DESFECHO (smoke 09/11, forma neta «não arrasta»): quem viajou de facto, ou a recusa muda.
+    if crate::App::undo_log_on() {
+        eprintln!("[hier] desfecho: agarrado={agarrado:?} quem={quem:?} -> {desfecho:?}");
+    }
+    match desfecho {
         Desfecho::RecusaPecaDeReceita => {
             toasts.push(ph2d_editor_core::Toast::warning(tr(
                 "shell.hierarchy.that_piece_s_place",

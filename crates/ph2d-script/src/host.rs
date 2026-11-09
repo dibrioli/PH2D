@@ -203,6 +203,7 @@ impl ScriptHost {
         if self.scene.follow_epoch(epoch) {
             // O que o projecto anterior imprimiu e ninguém leu nomeia os ids dele.
             let _ = self.console.drain();
+            self.forget_debug_threads();
         }
         let (lua, deadline, scene) = (self.runtime.lua(), &self.deadline, &mut self.scene);
         if world.contains_resource::<crate::ProjectScripts>() {
@@ -260,9 +261,13 @@ impl ScriptHost {
         signals: &[(&str, Option<u64>)],
         doors: &mut dyn SceneDoors,
     ) -> SceneReport {
+        let later = std::mem::take(&mut self.debug.heard_later);
+        let mut all: Vec<(&str, Option<u64>)> =
+            later.iter().map(|(n, d)| (n.as_str(), *d)).collect();
+        all.extend_from_slice(signals);
         let mut r = self
             .scene
-            .hear(self.runtime.lua(), &self.deadline, sim, signals, doors);
+            .hear(self.runtime.lua(), &self.deadline, sim, &all, doors);
         self.scene.absorb_error_stop(&mut r);
         self.forget_the_dead(&r);
         r
@@ -298,6 +303,7 @@ impl ScriptHost {
     /// ⭐ **Rebobinar é renascer** — devolve quantos objectos tinham vivo. As esperas, o estado
     /// lateral (é da corrida) e as bordas por ver vão com ela.
     pub fn scene_rewind(&mut self) -> usize {
+        self.forget_debug_threads();
         self.state_table.clear_all();
         self.devices.forget_edges();
         self.console.rewind();

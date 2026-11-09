@@ -57,6 +57,17 @@ impl Relogio {
         self
     }
 
+    /// Só os primeiros `ticks` passos (os que correram antes de um script parar no depurador).
+    #[must_use]
+    pub fn ate(self, ticks: u32) -> Self {
+        let ticks = ticks.min(self.ticks);
+        Self {
+            ticks,
+            frame_dt: f64::from(ticks) * self.dt,
+            ..self
+        }
+    }
+
     /// ⭐ **Retido no depurador, os motores veem a PAUSA** (gatilho, armas, partículas, vigias,
     /// barras): o Play continua aceso, mas nada do jogo anda até ao Continue.
     #[must_use]
@@ -104,16 +115,21 @@ pub fn correm(
     portas: &mut crate::script_bridge::ScriptDoors<'_, '_>,
 ) -> Vec<ph2d_ecs::Death> {
     // Lido ANTES dos scripts: quem parar neste quadro só congela os motores no seguinte.
-    let relogio = &relogio.retido_por(script.as_ref());
-    let mortes = scripts(
+    let relogio = relogio.retido_por(script.as_ref());
+    let (mortes, corridos) = scripts(
         sim,
         script,
         drive,
         signals,
         leitores.script,
-        relogio,
+        &relogio,
         portas,
     );
+    // Parou a meio do quadro: o resto do jogo anda só os tiques que os scripts correram.
+    let relogio = &match corridos {
+        Some(t) if script.as_ref().is_some_and(ScriptHost::is_held) => relogio.ate(t),
+        _ => relogio,
+    };
     particulas(
         sim,
         particles,
@@ -167,14 +183,14 @@ fn scripts(
     reader: &mut SignalReader,
     relogio: &Relogio,
     portas: &mut crate::script_bridge::ScriptDoors<'_, '_>,
-) -> Vec<ph2d_ecs::Death> {
+) -> (Vec<ph2d_ecs::Death>, Option<u32>) {
     // Cada sinal leva quem o emitiu (`on_signal(self, nome, de)` e o `ph2d.connect`).
     let ouvidos: Vec<(String, Option<u64>)> = signals
         .read(reader)
         .map(|s| (s.name.to_string(), s.origin.quem().map(|b| b.0)))
         .collect();
     let Some(host) = script.as_mut() else {
-        return Vec::new();
+        return (Vec::new(), None);
     };
     let nomes: Vec<(&str, Option<u64>)> = ouvidos.iter().map(|(n, de)| (n.as_str(), *de)).collect();
     let f = crate::script_bridge::frame(
@@ -194,14 +210,16 @@ fn scripts(
     for (bits, msg) in f.failed {
         eprintln!("[script] o objecto {bits} parou: {msg}");
     }
-    f.despawned
+    let mortes = f
+        .despawned
         .into_iter()
         .map(|entity| ph2d_ecs::Death {
             entity,
             signal: String::new(),
             why: ph2d_ecs::DeathCause::Killed,
         })
-        .collect()
+        .collect();
+    (mortes, Some(f.ticks_run))
 }
 
 /// ⭐⭐⭐ **OS EMISSORES DE PARTÍCULAS** (TOP-20 #18) — o que um emissor GRITA ao acabar chega à

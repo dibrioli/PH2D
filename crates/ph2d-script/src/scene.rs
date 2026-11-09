@@ -417,11 +417,15 @@ impl SceneScripts {
             self.refresh(lua, deadline, lib, id, users);
         }
         let instances = &self.instances;
-        self.parked.retain(|p| {
+        wait::drop_parked(lua, &mut self.parked, |p| {
             instances
                 .get(&p.entity.to_bits())
                 .is_some_and(|i| i.script == p.script && i.runs())
         });
+        // Parado num erro de quem saiu ou trocou de script: já não há o que mostrar.
+        if self.held_error.as_ref().is_some_and(|e| !e.of(instances)) {
+            self.held_error = None;
+        }
     }
 }
 

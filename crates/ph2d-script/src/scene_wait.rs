@@ -24,6 +24,8 @@ pub(super) struct Parked {
     pub(super) script: ScriptId,
     pub(super) thread: Thread,
     pub(super) kind: Park,
+    /// Parado num módulo que já foi recarregado: o ponto dele já não está armado.
+    pub(super) old: bool,
 }
 
 pub(super) enum Park {
@@ -41,6 +43,18 @@ impl Parked {
     pub(super) fn is_held(&self) -> bool {
         matches!(self.kind, Park::Held { .. })
     }
+}
+
+/// Larga as corrotinas paradas que `keep` recusa (o estado delas sai do depurador).
+pub(super) fn drop_parked(lua: &Lua, parked: &mut Vec<Parked>, keep: impl Fn(&Parked) -> bool) {
+    let d = debugger(lua);
+    parked.retain(|p| {
+        let k = keep(p);
+        if !k && let Some(d) = &d {
+            d.forget(&p.thread);
+        }
+        k
+    });
 }
 
 /// O que uma chamada de gancho deu.
@@ -92,26 +106,35 @@ pub(super) fn resume(lua: &Lua, th: Thread, args: impl IntoLuaMulti) -> mlua::Re
         None => th.resume::<MultiValue>(args),
     };
     let yielded = th.status() == mlua::thread::ThreadStatus::Resumable;
-    match out {
+    let ran = match out {
         Ok(vals) if yielded => match wait_of(lua, &vals) {
-            Some(us) => Ok(Ran::Waiting(th, us)),
+            Some(us) => return Ok(Ran::Waiting(th, us)),
             None => match dbg.as_ref().and_then(|d| d.took_stop(&th)) {
-                Some(why) => Ok(Ran::Held(th, why)),
+                Some(why) => return Ok(Ran::Held(th, why)),
                 None => Err(mlua::Error::RuntimeError(
                     "coroutine.yield in a hook: use ph2d.wait(seconds) to pause".into(),
                 )),
             },
         },
         Ok(_) => Ok(Ran::Done),
-        Err(e) => {
-            // Pause on Error: a pilha da corrotina que errou ainda está de pé — lê-se AGORA.
-            if let Some(d) = dbg.as_ref().filter(|d| d.pause_on_error())
-                && let Ok(Some(frame)) = d.frame(lua, &th)
-            {
-                d.stash_error_frame(frame);
-            }
-            Err(e)
+        Err(e) => Err(e),
+    };
+    // Acabou, errou ou foi largado: o estado do fio sai do depurador (o erro lê a pilha antes).
+    if let Some(d) = &dbg {
+        if ran.is_err() && !yielded {
+            keep_error_frame(lua, d, &th);
         }
+        d.forget(&th);
+    }
+    ran
+}
+
+/// Pause on Error: a pilha da corrotina que errou ainda está de pé — lê-se AGORA.
+fn keep_error_frame(lua: &Lua, d: &Debugger, th: &Thread) {
+    if d.pause_on_error()
+        && let Ok(Some(frame)) = d.frame(lua, th)
+    {
+        d.stash_error_frame(frame);
     }
 }
 
@@ -148,6 +171,7 @@ pub(super) fn park(
                     target_us,
                     elapsed_us: 0,
                 },
+                old: false,
             });
             Ok(())
         }
@@ -160,6 +184,7 @@ pub(super) fn park(
                     why,
                     then: Vec::new(),
                 },
+                old: false,
             });
             Ok(())
         }
@@ -182,6 +207,12 @@ pub(super) fn resume_due(
     report: &mut SceneReport,
 ) {
     let mut due = Vec::new();
+    // Um objecto parado no depurador não retoma as esperas: ficam devidas até ao Continue.
+    let held: Vec<Entity> = parked
+        .iter()
+        .filter(|p| p.is_held())
+        .map(|p| p.entity)
+        .collect();
     for mut p in std::mem::take(parked) {
         let Park::Wait {
             target_us,
@@ -192,27 +223,32 @@ pub(super) fn resume_due(
             continue;
         };
         *elapsed_us = elapsed_us.saturating_add(dt_us);
-        if *elapsed_us >= *target_us {
+        if *elapsed_us >= *target_us && !held.contains(&p.entity) {
             due.push(p);
         } else {
             parked.push(p);
         }
     }
+    let dbg = debugger(lua);
+    let forget = |th: &Thread| {
+        if let Some(d) = &dbg {
+            d.forget(th);
+        }
+    };
     for p in due {
         let bits = p.entity.to_bits();
-        if cell.borrow().is_dying(p.entity) {
-            continue;
-        }
-        let Some(inst) = instances.get_mut(&bits) else {
+        let inst = instances
+            .get_mut(&bits)
+            .filter(|_| !cell.borrow().is_dying(p.entity));
+        // Retomada por fora (o script guardou `coroutine.running()`)? Já não espera.
+        let Some(inst) = inst.filter(|i| {
+            i.script == p.script
+                && i.runs()
+                && p.thread.status() == mlua::thread::ThreadStatus::Resumable
+        }) else {
+            forget(&p.thread);
             continue;
         };
-        // Retomada por fora (o script guardou `coroutine.running()`)? Já não espera.
-        if inst.script != p.script
-            || !inst.runs()
-            || p.thread.status() != mlua::thread::ThreadStatus::Resumable
-        {
-            continue;
-        }
         cell.borrow_mut().speaker = Some(p.entity);
         #[expect(
             clippy::cast_precision_loss,

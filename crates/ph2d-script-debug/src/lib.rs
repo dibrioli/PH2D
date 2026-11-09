@@ -69,7 +69,6 @@ pub struct LineLive {
 /// Um passo em curso (*Next line*).
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Step {
-    pub(crate) thread: usize,
     pub(crate) line: i32,
     pub(crate) depth: i32,
 }
@@ -88,9 +87,13 @@ pub struct State {
     pub(crate) current: usize,
     /// O fio que o gancho acabou de ceder para uma paragem.
     pub(crate) stop_pending: Option<(usize, StopKind)>,
-    /// Retomado numa paragem: não pára de novo na mesma linha antes de ela mudar.
-    pub(crate) suppress: Option<(usize, i32)>,
-    pub(crate) step: Option<Step>,
+    /// Retomado numa paragem: o 1.º toque na mesma linha (o da própria paragem) não pára; gasta-se
+    /// nele ou quando a linha muda.
+    pub(crate) suppress: BTreeMap<usize, i32>,
+    /// Os *Next line* em curso, por fio.
+    pub(crate) step: BTreeMap<usize, Step>,
+    /// Dentro de um `exit` (sem fila a quem voltar): os ganchos não param.
+    pub(crate) quiet: u32,
     /// O fio vigiado (valores ao vivo) e o nome do chunk dele (`=nome`).
     pub(crate) watched: usize,
     pub(crate) watched_chunk: String,
@@ -168,9 +171,43 @@ impl Debugger {
     /// Corre `f` com `th` como o fio de gancho da cena (o único que um gancho pode ceder).
     pub fn running<R>(&self, th: &Thread, f: impl FnOnce() -> R) -> R {
         let prev = std::mem::replace(&mut self.state.borrow_mut().current, ptr(th));
-        let out = f();
-        self.state.borrow_mut().current = prev;
-        out
+        let _back = Restore(&self.state, move |s: &mut State| s.current = prev);
+        f()
+    }
+
+    /// Corre `f` sem paragens: um ponto ou um passo atingido nele segue (o `exit`, que não tem
+    /// fila a quem voltar).
+    pub fn quiet<R>(&self, f: impl FnOnce() -> R) -> R {
+        self.state.borrow_mut().quiet += 1;
+        let _back = Restore(&self.state, |s: &mut State| s.quiet -= 1);
+        f()
+    }
+
+    /// `th` acabou (ou foi largado): o estado dele sai — o endereço pode voltar noutro fio.
+    pub fn forget(&self, th: &Thread) {
+        let me = ptr(th);
+        let mut s = self.state.borrow_mut();
+        s.step.remove(&me);
+        s.suppress.remove(&me);
+        s.stopped.remove(&me);
+        if s.stop_pending.as_ref().is_some_and(|(t, _)| *t == me) {
+            s.stop_pending = None;
+        }
+        if s.watched == me {
+            s.watched = 0;
+            s.frames.clear();
+        }
+    }
+
+    /// Todos os fios saem (rebobinar, outro projecto).
+    pub fn forget_all(&self) {
+        let mut s = self.state.borrow_mut();
+        s.step.clear();
+        s.suppress.clear();
+        s.stopped.clear();
+        s.stop_pending = None;
+        s.watched = 0;
+        s.frames.clear();
     }
 
     /// `th` acabou de ceder para uma paragem? Consome-a.
@@ -198,12 +235,12 @@ impl Debugger {
                 .stopped
                 .remove(&ptr(th))
                 .map_or(seen, |f| i32::try_from(f.line).unwrap_or(seen));
-            s.suppress = Some((ptr(th), line));
-            s.step = step.then_some(Step {
-                thread: ptr(th),
-                line,
-                depth,
-            });
+            s.suppress.insert(ptr(th), line);
+            if step {
+                s.step.insert(ptr(th), Step { line, depth });
+            } else {
+                s.step.remove(&ptr(th));
+            }
         }
         ffi::thread_single_step(lua, th, true)
     }
@@ -319,10 +356,44 @@ impl Drop for Inner {
     }
 }
 
+/// Repõe um campo do estado ao sair do âmbito — também num pânico.
+struct Restore<'a, F: FnMut(&mut State)>(&'a RefCell<State>, F);
+
+impl<F: FnMut(&mut State)> Drop for Restore<'_, F> {
+    fn drop(&mut self) {
+        if let Ok(mut s) = self.0.try_borrow_mut() {
+            (self.1)(&mut s);
+        }
+    }
+}
+
 fn ptr(th: &Thread) -> usize {
     th.to_pointer() as usize
 }
 
 fn line_i32(l: u32) -> i32 {
     i32::try_from(l).unwrap_or(i32::MAX)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::panic::{AssertUnwindSafe, catch_unwind};
+
+    #[test]
+    fn depurador_running_e_quiet_repoem_o_estado_num_panico() {
+        let lua = Lua::new();
+        let d = Debugger::install(&lua).expect("ganchos");
+        let f = lua.create_function(|_, ()| Ok(())).expect("função");
+        let th = lua.create_thread(f).expect("fio");
+        d.watch(&lua, &th, "t").expect("vigia");
+        let r = catch_unwind(AssertUnwindSafe(|| d.running(&th, || panic!("dentro"))));
+        assert!(r.is_err());
+        assert!(!d.watching_now(), "o fio corrente voltou ao de antes");
+        let r = catch_unwind(AssertUnwindSafe(|| d.quiet(|| panic!("dentro"))));
+        assert!(r.is_err());
+        assert_eq!(d.state.borrow().quiet, 0, "as paragens voltaram");
+        d.forget(&th);
+        assert_eq!(d.state.borrow().watched, 0, "esquecido");
+    }
 }

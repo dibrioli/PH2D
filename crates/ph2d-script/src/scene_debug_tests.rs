@@ -398,3 +398,6 @@ fn depurador_rebobinar_larga_quem_estava_parado() {
     m.host.scene_rewind();
     assert!(!m.host.is_held());
 }
+
+#[path = "scene_debug_tests_fecho.rs"]
+mod fecho;

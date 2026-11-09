@@ -20,7 +20,7 @@ use ph2d_ecs::{Entity, SimWorld};
 use ph2d_script_doc::ScriptId;
 
 use super::this::{apply_props, born};
-use super::wait::{Park, Parked, micros, park, resume_due, run_hook};
+use super::wait::{Park, Parked, drop_parked, micros, park, resume_due, run_hook};
 use super::{
     Deadline, Instance, SceneReport, SceneScripts, Slot, absorb_lane, actors, apply_writes,
     chunk_in, library_id, module_in, settle_call,
@@ -148,18 +148,24 @@ pub(super) fn exit(
     };
     cell.borrow_mut().speaker = Some(entity);
     let this = inst.this.clone();
-    // Uma espera no `exit` não tem a quem voltar.
-    call(
-        lua,
-        deadline,
-        entity,
-        inst,
-        &hook,
-        this,
-        &mut Vec::new(),
-        writes,
-        report,
-    );
+    // Uma espera no `exit` não tem a quem voltar; um ponto de parada nele também não pára.
+    let run = || {
+        call(
+            lua,
+            deadline,
+            entity,
+            inst,
+            &hook,
+            this,
+            &mut Vec::new(),
+            writes,
+            report,
+        )
+    };
+    match super::wait::debugger(lua) {
+        Some(d) => d.quiet(run),
+        None => run(),
+    };
 }
 
 /// Os `exit` de quem saiu entre quadros, no início do tique.
@@ -281,7 +287,7 @@ impl SceneScripts {
                     .is_some_and(|i| Some(i.script) != library_id(&a.cfg))
                 {
                     let mut old = instances.remove(&bits).expect("visto acima");
-                    parked.retain(|p| p.entity != a.entity);
+                    drop_parked(lua, parked, |p| p.entity != a.entity);
                     let hook = exit_of(slots, old.script);
                     exit(
                         lua,

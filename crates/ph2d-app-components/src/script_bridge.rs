@@ -47,6 +47,8 @@ pub struct ScriptFrame {
     pub calls: usize,
     /// Objectos da corrida que um script mandou apagar — mortes para o dreno único da fábrica.
     pub despawned: Vec<Entity>,
+    /// Os passos fixos que correram (o que parou no depurador conta): o resto do jogo anda só estes.
+    pub ticks_run: u32,
 }
 
 /// ⭐⭐ **A porta da `Factory` para os scripts** (`ph2d.spawn("Mestre")`, CodeEditor item 6): a
@@ -257,19 +259,21 @@ pub fn frame(
     let mut before = poses(sim, drive);
     crate::script_properties::observe(sim, drive);
     // O Continue / Next line da aba corre mesmo com o transporte em pausa: acaba o `update` parado.
-    if let Some(r) = host.debug_frame_with(sim, doors) {
-        absorb(&mut out, &mut before, r);
-    }
+    let resumed = host.debug_frame_with(sim, doors);
+    let resumed = resumed.map(|r| absorb(&mut out, &mut before, r));
     if playing && !host.is_held() {
         // Um ponto de parada a meio do quadro: os tiques que faltam deste quadro já não correm.
         for _ in 0..ticks {
             let r = host.scene_tick_with(sim, fixed_dt, doors);
             absorb(&mut out, &mut before, r);
+            out.ticks_run += 1;
             if host.is_held() {
                 break;
             }
         }
-        if !host.is_held() {
+        if host.is_held() {
+            host.defer_heard(heard);
+        } else {
             let r = host.scene_hear_with(sim, heard, doors);
             absorb(&mut out, &mut before, r);
             let r = host.scene_process_with(sim, frame_dt, doors);
@@ -277,6 +281,10 @@ pub fn frame(
             host.debug_end_frame();
         }
     } else {
+        // Retido (ou solto agora): os sinais lidos esperam pelo quadro que corre.
+        if playing || resumed.is_some() || host.is_held() {
+            host.defer_heard(heard);
+        }
         // Parado (ou retido no depurador), nenhuma borda espera: o que se tecla na aba do código
         // não cai no jogo ao Continue.
         host.devices().forget_edges();

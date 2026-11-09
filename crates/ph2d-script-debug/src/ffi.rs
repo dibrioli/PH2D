@@ -343,7 +343,12 @@ pub(crate) unsafe extern "C-unwind" fn on_break(l: *mut ffi::lua_State, ar: *mut
     // SAFETY: o Luau entrega um `ar` válido durante o gancho.
     let line = unsafe { (*ar).currentline };
     let me = l as usize;
-    if s.suppress == Some((me, line)) {
+    if s.suppress.get(&me) == Some(&line) {
+        // A própria paragem a voltar a bater: gasta-se aqui (um laço numa linha pára de novo).
+        s.suppress.remove(&me);
+        return;
+    }
+    if s.quiet > 0 {
         return;
     }
     // SAFETY: `l` é o fio que corre.
@@ -356,8 +361,8 @@ pub(crate) unsafe extern "C-unwind" fn on_break(l: *mut ffi::lua_State, ar: *mut
     if let Some(f) = unsafe { snap(l, line) } {
         s.stopped.insert(me, f);
     }
-    s.step = None;
-    s.suppress = None;
+    s.step.remove(&me);
+    s.suppress.remove(&me);
     drop(s);
     // SAFETY: o fio pode ceder (verificado); o Luau retoma-o na mesma instrução.
     unsafe { ffi::lua_yield(l, 0) };
@@ -372,20 +377,23 @@ pub(crate) unsafe extern "C-unwind" fn on_step(l: *mut ffi::lua_State, ar: *mut 
     // SAFETY: o Luau entrega um `ar` válido durante o gancho.
     let line = unsafe { (*ar).currentline };
     let me = l as usize;
-    if let Some((t, at)) = s.suppress
-        && t == me
-        && at != line
-    {
-        s.suppress = None;
+    if me != s.watched && !s.step.contains_key(&me) && !s.suppress.contains_key(&me) {
+        // Uma corrotina que herdou o passo-a-passo de um fio vigiado ou a andar: desliga-o.
+        // SAFETY: `l` corre este gancho; só o bit dele muda.
+        unsafe { ffi::lua_singlestep(l, 0) };
+        return;
     }
-    if let Some(step) = s.step
-        && step.thread == me
+    if s.suppress.get(&me).is_some_and(|at| *at != line) {
+        s.suppress.remove(&me);
+    }
+    if let Some(step) = s.step.get(&me).copied()
         && step.line != line
+        && s.quiet == 0
     {
         // SAFETY: `l` é o fio que corre.
         let depth = unsafe { ffi::lua_stackdepth(l) };
         if depth <= step.depth {
-            s.step = None;
+            s.step.remove(&me);
             // SAFETY: idem.
             if me == s.current && unsafe { ffi::lua_isyieldable(l) } != 0 {
                 s.stop_pending = Some((me, StopKind::Step));

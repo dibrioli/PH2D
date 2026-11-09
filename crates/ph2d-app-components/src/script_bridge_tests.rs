@@ -460,3 +460,56 @@ fn id_do_script(c: &Cena) -> ph2d_script::ScriptId {
         _ => panic!("fixture: o script é da biblioteca"),
     }
 }
+
+/// ⭐ **Parou a meio do quadro: o resto do jogo anda só os tiques que correram**, e os sinais que a
+/// ponte já leu não se perdem — ouvem-se no quadro do Continue, uma vez.
+#[test]
+fn depurador_parado_a_meio_do_quadro_conta_so_os_tiques_que_correram() {
+    const SRC: &str = "local n = 0\nfunction update(self, dt)\n  n = n + 1\n  if n == 2 then\n    local stop = 1\n  end\nend\nfunction on_signal(self, name, de)\n  ph2d.set(self.id, \"y\", ph2d.get(self.id, \"y\") + 1)\nend\n";
+    let mut c = cena(SRC);
+    let id = id_do_script(&c);
+    c.host.set_breakpoints(id, vec![5]);
+    let y = |c: &Cena| {
+        c.sim
+            .world()
+            .get::<Transform>(c.e)
+            .expect("pose")
+            .translation
+            .y
+    };
+    let quadro = |c: &mut Cena, ticks: u32, heard: &[(&str, Option<u64>)]| {
+        let f = frame(
+            &mut c.host,
+            &mut c.sim,
+            &mut c.drive,
+            true,
+            ticks,
+            0.5,
+            2.0,
+            heard,
+            &mut ph2d_script::NoDoors,
+        );
+        c.drive.settle();
+        f
+    };
+    let f = quadro(&mut c, 4, &[("ping", None)]);
+    assert!(c.host.is_held());
+    assert_eq!(
+        f.ticks_run, 2,
+        "o 2.º tique parou: os outros 2 não correram"
+    );
+    let r = crate::motores::Relogio::do_quadro(true, 4, 0.5).ate(f.ticks_run);
+    assert_eq!((r.ticks, r.frame_dt), (2, 1.0), "os motores andam só esses");
+    assert_eq!(y(&c), 0.0, "o sinal não se ouviu com o jogo parado");
+    c.host.set_breakpoints(id, Vec::new());
+    c.host.request_continue();
+    quadro(&mut c, 1, &[]);
+    assert!(!c.host.is_held());
+    assert_eq!(
+        y(&c),
+        1.0,
+        "o sinal guardado ouviu-se no quadro do Continue"
+    );
+    quadro(&mut c, 1, &[]);
+    assert_eq!(y(&c), 1.0, "uma vez só");
+}

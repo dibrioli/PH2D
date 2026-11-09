@@ -9,7 +9,7 @@
 
 use std::collections::BTreeMap;
 
-use mlua::Lua;
+use mlua::{Function, Lua};
 use ph2d_ecs::{Entity, SimWorld};
 use ph2d_script_debug::{StopFrame, StopKind};
 use ph2d_script_doc::ScriptId;
@@ -22,8 +22,8 @@ use crate::lane::{Lane, SceneDoors, with_lane};
 
 /// Os pontos de parada armados num módulo.
 pub(super) struct Armed {
-    /// O topo do módulo em que foram armados (outro = recarregou, rearma-se).
-    main: usize,
+    /// O topo do módulo em que foram armados (outro = recarregou: desarma-se este, arma-se o novo).
+    main: Function,
     asked: Vec<u32>,
     got: Vec<u32>,
 }
@@ -48,6 +48,15 @@ pub struct DebugStop {
     pub queued: usize,
 }
 
+impl HeldError {
+    /// O objecto ainda tem o vivo deste script?
+    pub(super) fn of(&self, instances: &BTreeMap<u64, super::Instance>) -> bool {
+        instances
+            .get(&self.entity.to_bits())
+            .is_some_and(|i| i.script == self.script)
+    }
+}
+
 impl SceneScripts {
     /// Arma `wanted` (linhas 1-based por script) em cada módulo carregado — só o que mudou.
     pub(crate) fn arm_breakpoints(&mut self, lua: &Lua, wanted: &BTreeMap<ScriptId, Vec<u32>>) {
@@ -58,9 +67,17 @@ impl SceneScripts {
                 continue;
             };
             let main = m.main();
-            let at = main.to_pointer() as usize;
             let asked = wanted.get(id).cloned().unwrap_or_default();
-            let prev = self.armed.get(id).filter(|a| a.main == at);
+            if let Some(old) = self.armed.get(id).filter(|a| a.main != *main) {
+                // Recarregou: o módulo velho ainda corre nos parados — desarma-o, e o ponto de
+                // quem parou nele fica obsoleto (o Continue solta-o).
+                let _ = d.arm(lua, &old.main, &[], &old.got);
+                self.armed.remove(id);
+                for p in self.parked.iter_mut().filter(|p| p.script == *id) {
+                    p.old = true;
+                }
+            }
+            let prev = self.armed.get(id);
             if prev.is_some_and(|a| a.asked == asked) {
                 continue;
             }
@@ -73,7 +90,7 @@ impl SceneScripts {
             self.armed.insert(
                 *id,
                 Armed {
-                    main: at,
+                    main: main.clone(),
                     asked,
                     got,
                 },
@@ -148,6 +165,9 @@ impl SceneScripts {
         else {
             return false;
         };
+        if p.old {
+            return true;
+        }
         let Some(line) = debugger(lua)
             .and_then(|d| d.frame(lua, &p.thread).ok().flatten())
             .map(|f| f.line)
@@ -202,11 +222,12 @@ impl SceneScripts {
             return SceneReport::default();
         };
         let mut report = self.resume_at(lua, deadline, sim, doors, at, step);
-        while let Some(at) = self
-            .parked
-            .iter()
-            .position(|p| p.is_held() && self.stale(lua, p))
-        {
+        // Cada obsoleto solta-se UMA vez por Continue (um que volte a parar fica para o próximo).
+        let mut done = Vec::new();
+        while let Some(at) = self.parked.iter().position(|p| {
+            p.is_held() && self.stale(lua, p) && !done.contains(&p.thread.to_pointer())
+        }) {
+            done.push(self.parked[at].thread.to_pointer());
             let more = self.resume_at(lua, deadline, sim, doors, at, false);
             merge(&mut report, more);
         }
@@ -229,9 +250,17 @@ impl SceneScripts {
         let Park::Held { then, .. } = p.kind else {
             return report;
         };
+        // Retomado por fora (o script guardou `coroutine.running()`): já não há o que retomar,
+        // mas os ganchos que esperavam a vez correm.
+        let resumable = p.thread.status() == mlua::thread::ThreadStatus::Resumable;
         if let Some(d) = debugger(lua) {
-            let _ = d.before_resume(lua, &p.thread, step);
+            if resumable {
+                let _ = d.before_resume(lua, &p.thread, step);
+            } else {
+                d.forget(&p.thread);
+            }
         }
+        let old = p.old;
         let mut writes = Vec::new();
         let Self {
             instances,
@@ -242,22 +271,30 @@ impl SceneScripts {
         let lane = Lane::new(sim, doors, dying);
         let (entity, script, thread) = (p.entity, p.script, p.thread);
         let ran = with_lane(lua, lane, |cell| {
-            let Some(inst) = instances.get_mut(&entity.to_bits()) else {
+            let inst = instances.get_mut(&entity.to_bits());
+            let Some(inst) =
+                inst.filter(|i| i.script == script && i.runs() && !cell.borrow().is_dying(entity))
+            else {
+                if let Some(d) = debugger(lua) {
+                    d.forget(&thread);
+                }
                 return;
             };
-            if inst.script != script || !inst.runs() || cell.borrow().is_dying(entity) {
-                return;
-            }
             cell.borrow_mut().speaker = Some(entity);
-            report.calls += 1;
-            let ran = speaking(lua, inst.script, Some(entity), || {
-                deadline.within(|| resume(lua, thread, ()))
-            });
             let mut again = Vec::new();
-            let ran = park(ran, entity, script, &mut again);
+            let ran = if resumable {
+                report.calls += 1;
+                let ran = speaking(lua, inst.script, Some(entity), || {
+                    deadline.within(|| resume(lua, thread, ()))
+                });
+                park(ran, entity, script, &mut again)
+            } else {
+                Ok(())
+            };
             let alive = settle_call(lua, entity, ran, inst, &mut writes, &mut report);
             let mut then = Some(then);
             for mut q in again {
+                q.old = old;
                 if let Park::Held { then: t, .. } = &mut q.kind {
                     // Parou outra vez: à frente da fila, com os ganchos que esperavam.
                     *t = then.take().unwrap_or_default();

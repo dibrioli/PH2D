@@ -23,6 +23,8 @@ pub(crate) struct DebugConfig {
     target: Option<(ScriptId, Entity)>,
     /// Um Continue (`false`) ou Next line (`true`) por executar.
     resume: Option<bool>,
+    /// Os sinais que chegaram com o jogo parado no depurador: ouvem-se no próximo quadro que corre.
+    pub(crate) heard_later: Vec<(String, Option<u64>)>,
 }
 
 impl Default for DebugConfig {
@@ -33,6 +35,7 @@ impl Default for DebugConfig {
             watch: None,
             target: None,
             resume: None,
+            heard_later: Vec::new(),
         }
     }
 }
@@ -142,6 +145,14 @@ impl ScriptHost {
         Some(r)
     }
 
+    /// O jogo parou no depurador antes de ouvir `signals`: guardam-se para o próximo quadro que corre
+    /// ([`Self::scene_hear_with`] entrega-os primeiro) — o cursor de quem os leu já passou por eles.
+    pub fn defer_heard(&mut self, signals: &[(&str, Option<u64>)]) {
+        self.debug
+            .heard_later
+            .extend(signals.iter().map(|(n, de)| ((*n).to_owned(), *de)));
+    }
+
     /// Fecha o quadro desenhado: o que o vigiado fez nele passa a ser o mostrado.
     pub fn debug_end_frame(&mut self) {
         if let Some(d) = self.debugger() {
@@ -165,6 +176,15 @@ impl ScriptHost {
         }
         if let Some(d) = self.debugger() {
             d.set_pause_on_error(self.debug.pause_on_error);
+        }
+    }
+
+    /// As corrotinas da corrida saem (rebobinar, outro projecto): o depurador esquece-as, e os
+    /// sinais guardados durante uma paragem também.
+    pub(crate) fn forget_debug_threads(&mut self) {
+        self.debug.heard_later.clear();
+        if let Some(d) = self.debugger() {
+            d.forget_all();
         }
     }
 

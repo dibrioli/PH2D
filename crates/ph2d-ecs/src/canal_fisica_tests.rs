@@ -54,6 +54,8 @@ fn o_vocabulario_da_fisica_nao_renumera() {
         (CONTORNO_DETALHE, 48),
         (CONTORNO_ALFA, 49),
         (CONTORNO_MANCHAS, 50),
+        (CONTORNO_PONTO_X, 51),
+        (CONTORNO_PONTO_Y, 52),
     ];
     assert_eq!(fixos.len(), CAMPOS.len(), "um campo sem número fixado");
     for (n, (atual, gravado)) in fixos.iter().enumerate() {
@@ -119,4 +121,26 @@ fn cada_campo_do_corpo_diz_o_que_e() {
     }
     assert!(!k(RESTITUICAO).mesmo_grupo(k(ATRITO)), "duas linhas");
     assert!(k(8).info().is_none(), "buraco no vocabulário");
+}
+
+/// Os pontos do «Outline» (`i` = anel, `j` = ponto) gravam-se numa chave: todos os anéis e pontos são
+/// UM grupo, contínuo, da FORMA. *Mutação: `por_i` ou grupo próprio do Y ⇒ vermelho.*
+#[test]
+fn os_pontos_do_outline_sao_um_grupo_da_forma() {
+    let p = |c, i, j| FieldKey::new(familia::FISICA, c, i, j);
+    let a = p(CONTORNO_PONTO_X, 0, 0);
+    for b in [
+        p(CONTORNO_PONTO_Y, 0, 0),
+        p(CONTORNO_PONTO_X, 0, 7),
+        p(CONTORNO_PONTO_Y, 2, 3),
+    ] {
+        assert!(a.mesmo_grupo(b), "{b:?} é a mesma chave");
+    }
+    assert!(
+        !a.mesmo_grupo(k(CONTORNO_DETALHE)),
+        "o Detail é outra linha"
+    );
+    assert!(a.info().is_some_and(|i| !i.discreto()), "linear");
+    assert!(e_da_forma(CONTORNO_PONTO_X) && e_da_forma(CONTORNO_PONTO_Y));
+    assert!(e_do_ponto(CONTORNO_PONTO_Y) && !e_do_ponto(CONTORNO_MANCHAS));
 }

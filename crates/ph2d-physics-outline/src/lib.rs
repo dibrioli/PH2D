@@ -10,6 +10,7 @@ use ph2d_outline_trace::{Mask, Params, trace_fitted};
 use ph2d_physics_ecs::{Collider, ColliderOutline, ColliderShape, RigidBody};
 use ph2d_render::Sprite;
 
+pub mod canais_pontos;
 mod merge;
 pub use merge::{MergeReport, PendingMerge, merged, outline_edited};
 

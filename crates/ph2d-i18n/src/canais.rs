@@ -120,6 +120,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "canal.fisica.contorno_detalhe" => "Outline Detail",
         "canal.fisica.contorno_alfa" => "Outline Alpha Cutoff",
         "canal.fisica.contorno_manchas" => "Outline Ignore Specks",
+        "canal.fisica.contorno_pontos" => "Outline Points",
         "canal.fisica.x" => "X",
         "canal.fisica.y" => "Y",
         // O mundo da física sobre a Cena (`ph2d_ecs::canal_mundo`, F30 §B).

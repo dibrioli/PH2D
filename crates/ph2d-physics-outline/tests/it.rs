@@ -657,3 +657,6 @@ fn o_outline_sem_aneis_traca_a_primeira_vista() {
 
 #[path = "pontos/w5.rs"]
 mod w5;
+
+#[path = "pontos/canais.rs"]
+mod canais;

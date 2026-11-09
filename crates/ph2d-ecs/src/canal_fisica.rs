@@ -79,9 +79,13 @@ pub const ZONA_QUEDA: u16 = 47;
 pub const CONTORNO_DETALHE: u16 = 48;
 pub const CONTORNO_ALFA: u16 = 49;
 pub const CONTORNO_MANCHAS: u16 = 50;
+/// Os pontos de um «Outline» editado à mão (`ColliderOutline::custom`), em Q4: `i` = anel, `j` = ponto;
+/// todos num grupo (uma chave = a forma inteira, como os vértices do vetor).
+pub const CONTORNO_PONTO_X: u16 = 51;
+pub const CONTORNO_PONTO_Y: u16 = 52;
 
 /// Todos os campos, na ordem do vocabulário.
-pub const CAMPOS: [u16; 44] = [
+pub const CAMPOS: [u16; 46] = [
     TIPO,
     CCD,
     TRAVA_ROTACAO,
@@ -126,6 +130,8 @@ pub const CAMPOS: [u16; 44] = [
     CONTORNO_DETALHE,
     CONTORNO_ALFA,
     CONTORNO_MANCHAS,
+    CONTORNO_PONTO_X,
+    CONTORNO_PONTO_Y,
 ];
 
 const fn c(rotulo: &'static str, grupo: u16) -> CampoInfo {
@@ -162,7 +168,7 @@ const COMBINA: &[&str] = &[
 /// Shape» (`ph2d_physics_ecs::LADO_FORMA`). O resto (tipo, travas, massa, `SEM_PAREDE`) é do corpo.
 #[must_use]
 pub const fn e_da_forma(campo: u16) -> bool {
-    matches!(campo, FORMA..=UMA_VIA | ADERENCIA | ESTEIRA | FORCA_X..=CONTORNO_MANCHAS)
+    matches!(campo, FORMA..=UMA_VIA | ADERENCIA | ESTEIRA | FORCA_X..=CONTORNO_PONTO_Y)
 }
 
 /// O que o campo `campo` do corpo é.
@@ -265,16 +271,23 @@ pub fn info(campo: u16) -> Option<CampoInfo> {
         CONTORNO_DETALHE => c("canal.fisica.contorno_detalhe", campo),
         CONTORNO_ALFA => c("canal.fisica.contorno_alfa", campo),
         CONTORNO_MANCHAS => c("canal.fisica.contorno_manchas", campo),
+        CONTORNO_PONTO_X | CONTORNO_PONTO_Y => c("canal.fisica.contorno_pontos", CONTORNO_PONTO_X),
         _ => return None,
     })
+}
+
+/// `true` ⇒ o campo é um ponto do «Outline» (`i` = anel, `j` = ponto); os outros são `i = j = 0`.
+#[must_use]
+pub const fn e_do_ponto(campo: u16) -> bool {
+    matches!(campo, CONTORNO_PONTO_X | CONTORNO_PONTO_Y)
 }
 
 /// O nome do campo dentro do grupo: os pares nomeiam o eixo; o resto, o grupo.
 #[must_use]
 pub fn membro(campo: u16) -> Option<&'static str> {
     Some(match campo {
-        VEL_X | MEIO_X | DESLOC_X | FORCA_X => "canal.fisica.x",
-        VEL_Y | MEIO_Y | DESLOC_Y | FORCA_Y => "canal.fisica.y",
+        VEL_X | MEIO_X | DESLOC_X | FORCA_X | CONTORNO_PONTO_X => "canal.fisica.x",
+        VEL_Y | MEIO_Y | DESLOC_Y | FORCA_Y | CONTORNO_PONTO_Y => "canal.fisica.y",
         _ => info(campo)?.rotulo,
     })
 }

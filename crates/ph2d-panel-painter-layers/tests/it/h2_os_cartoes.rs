@@ -258,13 +258,19 @@ fn scrubbing_a_basic_number_reaches_its_own_bar_and_escape_gives_it_back() {
 fn typing_a_basic_number_sends_the_same_action_as_the_old_panel() {
     let (digital, _) = pincel(PaintMedia::Digital, "brush");
     for (chip, texto) in [
-        (p::PAINTER_BRUSH_SIZE_CHIP, "0.6"),
+        // O Size é a caixa «Size (px)» em todo meio (dono 08/11).
+        (p::PAINTER_WETPAINT_VOL_SIZE, "40"),
         (p::PAINTER_BRUSH_STRENGTH_CHIP, "0.7"),
         (p::PAINTER_BRUSH_FLOW_CHIP, "0.8"),
         (p::PAINTER_BRUSH_BLEND_ON_EMPTY, "1"),
     ] {
         let escreve = |cartoes: bool| {
             let mut mesa = Mesa::nova(cartoes, digital, false);
+            // Escrever numa caixa que não se pintou não mede nada (era o Size fraccionário depois de 08/11).
+            assert!(
+                mesa.rect(chip).is_some(),
+                "{chip:?} cartões {cartoes}: a caixa não foi pintada"
+            );
             let ev = mesa.host.type_into_number(chip, texto);
             mesa.aplica(ev)
         };

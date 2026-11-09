@@ -37,8 +37,12 @@ thread_local! {
 
 fn assenta(hero: &mut HeroScreen, ts: &mut ph2d_text::TextSystem) {
     // O ecrã do dono (1 930 × 1 040): é nele que as quatro cabem lado a lado.
-    let vp = Rect::new(0.0, 0.0, ECRA_DO_DONO.0, ECRA_DO_DONO.1);
-    for _ in 0..30 {
+    quadros(hero, ts, ECRA_DO_DONO, 30);
+}
+
+fn quadros(hero: &mut HeroScreen, ts: &mut ph2d_text::TextSystem, ecra: (f32, f32), n: usize) {
+    let vp = Rect::new(0.0, 0.0, ecra.0, ecra.1);
+    for _ in 0..n {
         let mut scene = ph2d_vector::VectorScene::new();
         ph2d_editor_core::aquecimento::com_passo_fixo(
             ph2d_editor_core::aquecimento::PASSO_DE_QUADRO_S,
@@ -237,4 +241,101 @@ fn a_busca_dos_atalhos_limpa_pelo_x() {
         hero.hit_index.rect_for(x).is_none(),
         "vazia outra vez, sem «×»"
     );
+}
+
+const ECRA_PEQUENO: (f32, f32) = (1024.0, 768.0);
+
+/// As janelas da cena 25 e as outras do menu *Window*, todas a abrir no MESMO quadro.
+const TODAS: [(&str, NodeId); 5] = [
+    (PANEL_PIXEL_PREVIEW, ids::PIXEL_PREVIEW_PANEL),
+    (PANEL_PIXEL_SLICES, ids::PIXEL_SLICES_PANEL),
+    (PANEL_PIXEL_HISTORY, ids::PIXEL_HISTORY_PANEL),
+    (PANEL_PIXEL_KEYS, ids::PIXEL_KEYS_PANEL),
+    (PANEL_PIXEL_PREFS, ids::PIXEL_PREFS_PANEL),
+];
+
+/// O rect de `node` no ecrã `ecra`: inteiro dentro dele e com mais que o cabeçalho à vista.
+fn no_ecra(hero: &HeroScreen, painel: &str, node: NodeId, ecra: (f32, f32), quando: &str) -> Rect {
+    use ph2d_editor_core::panel::cards::banda::metrics as m;
+    let r = hero
+        .store
+        .panel_rect(node)
+        .unwrap_or_else(|| panic!("{quando}: {painel} marcada e sem rect"));
+    assert!(
+        r.x >= -0.5 && r.y >= -0.5 && r.x + r.w <= ecra.0 + 0.5 && r.y + r.h <= ecra.1 + 0.5,
+        "{quando}: {painel} {r:?} sai do ecrã {ecra:?}"
+    );
+    assert!(
+        r.w >= m::LIST_HEAD_H && r.h > m::LIST_HEAD_H,
+        "{quando}: {painel} {r:?} não se vê"
+    );
+    if node == ids::PIXEL_PREVIEW_PANEL {
+        return r; // o «×» da Preview é o do seu cabeçalho próprio
+    }
+    let hit = hero
+        .hit_index
+        .rect_for(borda::fecho_de(node))
+        .unwrap_or_else(|| panic!("{quando}: o «×» de {painel} não foi pintado"));
+    let (cx, cy) = (hit.x + hit.w * 0.5, hit.y + hit.h * 0.5);
+    assert_eq!(
+        hero.hit_index.hit_with_rect(cx, cy).map(|(id, _)| id),
+        Some(borda::fecho_de(node)),
+        "{quando}: o «×» de {painel} {hit:?} está tapado"
+    );
+    r
+}
+
+/// ⭐ F1 (fecho P12, ecrã de 1 024 × 768): no PRIMEIRO quadro, toda janela marcada no menu está no
+/// ecrã, inteira, com o corpo à vista e o «×» por cima de tudo — a marca é a janela no ecrã.
+#[test]
+fn no_ecra_pequeno_toda_janela_marcada_esta_no_ecra_no_primeiro_quadro() {
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    publica_conteudo();
+    let mut hero = HeroScreen::new(NodeId(1));
+    quadros(&mut hero, &mut ts, ECRA_PEQUENO, 30);
+    for &(p, _) in &TODAS {
+        hero.panel_visibility.insert(p, true);
+    }
+    quadros(&mut hero, &mut ts, ECRA_PEQUENO, 1);
+    for &(p, n) in &TODAS {
+        no_ecra(&hero, p, n, ECRA_PEQUENO, "1.º quadro");
+    }
+    quadros(&mut hero, &mut ts, ECRA_PEQUENO, 30);
+    for &(p, n) in &TODAS {
+        no_ecra(&hero, p, n, ECRA_PEQUENO, "assente");
+    }
+}
+
+/// ⭐ F1: sem sítio livre do tamanho inteiro, a janela que (re)abre não tapa o título (nem o «×»)
+/// de nenhuma outra — em cascata, sempre no ecrã.
+#[test]
+fn sem_sitio_livre_a_janela_reaberta_nao_tapa_o_titulo_de_outra() {
+    use ph2d_editor_core::panel::cards::banda::metrics as m;
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    let _ = ph2d_panel_registry_init::register_all_panels();
+    publica_conteudo();
+    let mut hero = HeroScreen::new(NodeId(1));
+    quadros(&mut hero, &mut ts, ECRA_PEQUENO, 30);
+    for &(p, _) in &TODAS {
+        hero.panel_visibility.insert(p, true);
+        quadros(&mut hero, &mut ts, ECRA_PEQUENO, 30);
+    }
+    let (painel, node) = TODAS[2];
+    clica(&mut hero, borda::fecho_de(node), painel);
+    quadros(&mut hero, &mut ts, ECRA_PEQUENO, 30);
+    hero.panel_visibility.insert(painel, true);
+    quadros(&mut hero, &mut ts, ECRA_PEQUENO, 30);
+    let r = no_ecra(&hero, painel, node, ECRA_PEQUENO, "reaberta");
+    for &(p, n) in &TODAS {
+        if n == node {
+            continue;
+        }
+        let o = no_ecra(&hero, p, n, ECRA_PEQUENO, "reaberta");
+        let titulo = Rect::new(o.x, o.y, o.w, m::LIST_HEAD_H);
+        assert!(
+            !sobrepoe(r, titulo),
+            "{painel} {r:?} tapa o título de {p} {o:?}"
+        );
+    }
 }

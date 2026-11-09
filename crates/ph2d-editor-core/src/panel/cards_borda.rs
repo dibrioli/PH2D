@@ -118,10 +118,12 @@ pub fn coloca(
 /// sobre a Slices). `r` é o rect de omissão da janela `panel`, já com o arrasto; `dentro` é onde ela
 /// pode ficar (o topo dela em `[dentro.y, fundo − cabeçalho]`, o fundo dela é o de `dentro`). Só no
 /// quadro em que ela abre (ainda sem rect publicado): fora dele quem manda é o arrasto do artista.
-/// Os obstáculos são TODOS os rects publicados neste ecrã — janelas acessórias, a Preview, o Export,
-/// o seletor de cor, cartões soltos, os painéis encaixados. Os candidatos são o próprio sítio e os
-/// colados a cada obstáculo nos quatro lados que caem em `dentro`; ganha a menor área sobreposta e,
-/// no empate, o mais perto do sítio de omissão. O desvio escolhido vai para o arrasto da janela.
+/// Os obstáculos são TODOS os rects publicados neste ecrã. Os candidatos são o próprio sítio, os
+/// colados a cada obstáculo e a CASCATA (um cabeçalho abaixo e à direita de cada um), todos dentro
+/// de `dentro` — nunca fora do ecrã. Ganha, por esta ordem: (1) o menor número de cabeçalhos tapados
+/// — o dela debaixo de outra, ou o de outra debaixo do topo dela (F1, ecrã de 1 024 × 768: sem sítio
+/// livre a Undo History ia para debaixo da Preview e a marca do menu mentia); (2) a menor área
+/// sobreposta; (3) o mais perto do sítio de omissão. O desvio escolhido vai para o arrasto.
 pub fn assenta_ao_abrir(store: &mut WidgetStore, panel: NodeId, r: Rect, dentro: Rect) -> Rect {
     if store.panel_rect(panel).is_some() {
         return r;
@@ -133,35 +135,50 @@ pub fn assenta_ao_abrir(store: &mut WidgetStore, panel: NodeId, r: Rect, dentro:
         .map(|(_, o)| o)
         .collect();
     let em = |(x, y): (f32, f32)| Rect::new(x, y, r.w, (fundo - y).max(0.0));
-    let sobra = |p: (f32, f32)| -> f32 {
+    let corta = |a: Rect, o: Rect| -> f32 {
+        let w = (a.x + a.w).min(o.x + o.w) - a.x.max(o.x);
+        let h = (a.y + a.h).min(o.y + o.h) - a.y.max(o.y);
+        w.max(0.0) * h.max(0.0)
+    };
+    let cabeca = |a: Rect| Rect::new(a.x, a.y, a.w, m::LIST_HEAD_H.min(a.h));
+    // O topo que se vê ao abrir: o cabeçalho e um cartão — o resto da coluna pode ficar por baixo.
+    let topo = |a: Rect| Rect::new(a.x, a.y, a.w, (m::LIST_HEAD_H * 3.0).min(a.h));
+    let tapa = |p: (f32, f32)| -> usize {
         let a = em(p);
         outras
             .iter()
-            .map(|o| {
-                let w = (a.x + a.w).min(o.x + o.w) - a.x.max(o.x);
-                let h = (a.y + a.h).min(o.y + o.h) - a.y.max(o.y);
-                w.max(0.0) * h.max(0.0)
-            })
-            .sum()
+            .filter(|&&o| corta(cabeca(a), o) > 0.0 || corta(topo(a), cabeca(o)) > 0.0)
+            .count()
     };
+    let sobra = |p: (f32, f32)| -> f32 { outras.iter().map(|&o| corta(em(p), o)).sum() };
     let folga = Spacing::Lg.px();
     let (x0, x1) = (dentro.x, (dentro.x + dentro.w - r.w).max(dentro.x));
     let (y0, y1) = (dentro.y, (fundo - m::LIST_HEAD_H).max(dentro.y));
-    let xs = std::iter::once(r.x)
+    let xs: Vec<f32> = std::iter::once(r.x)
         .chain(outras.iter().map(|o| o.x - folga - r.w))
-        .chain(outras.iter().map(|o| o.x + o.w + folga));
+        .chain(outras.iter().map(|o| o.x + o.w + folga))
+        .chain(outras.iter().map(|o| o.x + m::LIST_HEAD_H))
+        .chain([x0, x1])
+        .collect();
     let ys: Vec<f32> = std::iter::once(r.y)
         .chain(outras.iter().map(|o| o.y + o.h + folga))
+        .chain(outras.iter().map(|o| o.y + m::LIST_HEAD_H))
+        .chain([y0])
         .collect();
     let cabe =
         |&(x, y): &(f32, f32)| x >= x0 - 0.5 && x <= x1 + 0.5 && y >= y0 - 0.5 && y <= y1 + 0.5;
     let longe = |(x, y): (f32, f32)| (x - r.x).abs() + (y - r.y).abs();
     let p = xs
-        .flat_map(|x| ys.iter().map(move |&y| (x, y)))
+        .iter()
+        .flat_map(|&x| ys.iter().map(move |&y| (x, y)))
         .filter(cabe)
-        .map(|p| (sobra(p), longe(p), p))
-        .min_by(|a, b| a.0.total_cmp(&b.0).then(a.1.total_cmp(&b.1)))
-        .map_or((r.x, r.y), |(_, _, p)| p);
+        .map(|p| (tapa(p), sobra(p), longe(p), p))
+        .min_by(|a, b| {
+            a.0.cmp(&b.0)
+                .then(a.1.total_cmp(&b.1))
+                .then(a.2.total_cmp(&b.2))
+        })
+        .map_or((r.x, r.y), |(_, _, _, p)| p);
     if p != (r.x, r.y) {
         let (dx, dy) = store.blender_picker_offset(panel);
         store.set_blender_picker_offset(panel, dx + p.0 - r.x, dy + p.1 - r.y);

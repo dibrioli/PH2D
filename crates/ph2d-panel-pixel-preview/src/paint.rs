@@ -63,6 +63,18 @@ pub(crate) fn paint(st: &mut PixelPreviewPanelState, ctx: &mut PaintCtx) {
         if resize2 != resize {
             store.set_panel_resize_delta(node, resize2.0, resize2.1);
         }
+        // F1: ao abrir, foge das janelas já no ecrã como as outras janelas do Pixel.
+        let area = ctx.layout.draw_area;
+        let esquerda = ctx.layout.clear_of_left_list(area).x.max(area.x);
+        let fundo = ph2d_editor_core::panel::cards::borda::fundo(ctx.layout).max(teto + rect.h);
+        let dentro = Rect::new(
+            esquerda,
+            teto,
+            (ctx.slot.x - Spacing::Lg.px() - esquerda).max(rect.w),
+            fundo - teto,
+        );
+        let a = ph2d_editor_core::panel::cards::borda::assenta_ao_abrir(store, node, rect, dentro);
+        (rect.x, rect.y) = (a.x, a.y);
         store.set_panel_rect(node, rect);
     }
     let theme = ctx.host.theme();

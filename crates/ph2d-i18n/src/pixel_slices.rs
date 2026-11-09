@@ -15,7 +15,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.slices.all" => "All",
         "panel.pixel.slices.none" => "None",
         "panel.pixel.slices.empty" => "No slices yet. Drag on the canvas to make one.",
-        "panel.pixel.slices.empty_tool" => "No slices yet. Pick the Slice tool, then drag on the canvas.",
+        "panel.pixel.slices.empty_tool" => {
+            "No slices yet. Pick the Slice tool, then drag on the canvas."
+        }
         "panel.pixel.slices.transform" => "Transform",
         "panel.pixel.slices.transform_tip" => "Transform pixels along slice modification",
         "panel.pixel.slices.name" => "Name",

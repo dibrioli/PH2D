@@ -82,6 +82,10 @@ and 5.0 µs (two stacked).
   after a merge only piece `i` is new) — byte-identical over 21 masks × 3 Details × 2 speck settings
   (16 107 pieces, one sha256), and `hero_union_outline_is_byte_stable` unchanged. 14× at 512 teeth.
 - ⛔ Not done: the remaining O(points²) (ear search, chord-conflict pass) — a lower order moves `MAX_POINTS`.
+- W2a (09/11): the measure now goes through the PRODUCT path (`register_outline` + a `ShapeDesc::Outline`
+  body), and «build» is register + spawn in an empty world: 11 / 39 / 76 / 150 / 285 µs at 17 / 65 / 129 /
+  257 / 513 pieces (the content hash and the body ride on top of the bare compound). The ticks are unchanged
+  (21 / 77 / 151 / 299 / 599 µs resting, 41 / 155 / 319 / 607 / 1239 µs stacked), so both ceilings stand.
 
 | mutation (09/11) | red |
 |---|---|

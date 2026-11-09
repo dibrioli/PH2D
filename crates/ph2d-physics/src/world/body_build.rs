@@ -109,7 +109,7 @@ impl PhysicsWorld {
         if let Some(d) = desc.damping {
             self.apply_damping_override(handle, d);
         }
-        let collider = collider_build::build_collider(&desc);
+        let collider = collider_build::build_collider(&self.outlines, &desc);
         let collider_handle = self
             .colliders
             .insert_with_parent(collider, handle, &mut self.bodies);
@@ -212,7 +212,7 @@ impl PhysicsWorld {
         if let Some(d) = damping {
             self.apply_damping_override(handle, d);
         }
-        let fresh = collider_build::build_collider(desc);
+        let fresh = collider_build::build_collider(&self.outlines, desc);
         if let Some(c) = self.colliders.get_mut(collider_handle) {
             c.set_shape(fresh.shared_shape().clone());
             match mass_override {

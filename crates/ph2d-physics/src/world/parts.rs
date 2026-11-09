@@ -57,7 +57,7 @@ impl PhysicsWorld {
         local: [f32; 3],
     ) -> Option<ColliderHandle> {
         self.bodies.get(body)?;
-        let mut collider = collider_build::build_collider(desc);
+        let mut collider = collider_build::build_collider(&self.outlines, desc);
         // O que o `build_collider` deixou em `position` é o OFFSET da peça, no
         // frame dela. A pose local entra POR FORA (docs do módulo).
         let offset = *collider.position();

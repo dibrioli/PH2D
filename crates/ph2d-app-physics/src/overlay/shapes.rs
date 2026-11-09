@@ -102,7 +102,8 @@ pub fn collider_outline(
         } => {
             ring(&mut path, &capsule_vertices(half_height, rx, ry), rx);
         }
-        ShapeDesc::Cuboid { half_x, half_y } => {
+        // O Outline desenha, por ora, a caixa da imagem (as peças chegam ao overlay na W2b).
+        ShapeDesc::Cuboid { half_x, half_y } | ShapeDesc::Outline { half_x, half_y, .. } => {
             path.move_to(place(-half_x, -half_y));
             path.line_to(place(half_x, -half_y));
             path.line_to(place(half_x, half_y));

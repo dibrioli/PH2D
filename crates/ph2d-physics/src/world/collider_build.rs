@@ -11,19 +11,26 @@ use rapier2d::pipeline::ActiveHooks;
 
 use super::desc::BodyDesc;
 use super::oneway;
+use super::outline::{self, Outlines};
 use super::shape::{ShapeDesc, capsule_vertices, ellipse_vertices};
 
 /// Turn a [`BodyDesc`]'s collider half into a rapier `Collider`.
 ///
 /// Every branch here is byte-neutral at its default, which is what lets each wave
 /// append a collider property without re-simulating existing art.
-pub(super) fn build_collider(desc: &BodyDesc) -> Collider {
-    collider_from(shape_builder(desc.shape), desc)
+pub(super) fn build_collider(outlines: &Outlines, desc: &BodyDesc) -> Collider {
+    collider_from(shape_builder(outlines, desc.shape), desc)
 }
 
 /// The shape alone — what a spawn builds and what [`super::PhysicsWorld::reshape_body`] swaps in.
-pub(super) fn shape_builder(shape: ShapeDesc) -> ColliderBuilder {
+/// `outlines` is the world's piece table, read only by [`ShapeDesc::Outline`].
+pub(super) fn shape_builder(outlines: &Outlines, shape: ShapeDesc) -> ColliderBuilder {
     match shape {
+        ShapeDesc::Outline {
+            half_x,
+            half_y,
+            key,
+        } => outline::builder(outlines, half_x, half_y, key),
         ShapeDesc::Ball { radius } => ColliderBuilder::ball(radius),
         ShapeDesc::Cuboid { half_x, half_y } => ColliderBuilder::cuboid(half_x, half_y),
         // A true capsule: rapier has it natively, so a uniformly-scaled

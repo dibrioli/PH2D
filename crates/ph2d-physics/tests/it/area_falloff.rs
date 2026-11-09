@@ -258,6 +258,16 @@ fn the_measure_is_invariant_under_scale() {
             rx: rx * sx,
             ry: ry * sy,
         },
+        // A régua do Outline é a caixa da imagem; as peças escalam-se do lado da ponte.
+        ShapeDesc::Outline {
+            half_x,
+            half_y,
+            key,
+        } => ShapeDesc::Outline {
+            half_x: half_x * sx,
+            half_y: half_y * sy,
+            key,
+        },
     };
     for shape in [
         ShapeDesc::Ball { radius: 2.0 },

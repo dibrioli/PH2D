@@ -214,17 +214,19 @@ pub(super) fn forma(d: &BodyDesc, (s, c): Rot) -> Shape {
             center: mundo([0.0, 0.0]),
             radius: f64::from(radius.abs()),
         },
-        ShapeDesc::Cuboid { half_x, half_y } => Shape::Convex(
-            [
-                [-half_x, -half_y],
-                [half_x, -half_y],
-                [half_x, half_y],
-                [-half_x, half_y],
-            ]
-            .into_iter()
-            .map(mundo)
-            .collect(),
-        ),
+        ShapeDesc::Cuboid { half_x, half_y } | ShapeDesc::Outline { half_x, half_y, .. } => {
+            Shape::Convex(
+                [
+                    [-half_x, -half_y],
+                    [half_x, -half_y],
+                    [half_x, half_y],
+                    [-half_x, half_y],
+                ]
+                .into_iter()
+                .map(mundo)
+                .collect(),
+            )
+        }
         ShapeDesc::Ellipse { rx, ry } => {
             Shape::Convex(ellipse_vertices(rx, ry).into_iter().map(mundo).collect())
         }

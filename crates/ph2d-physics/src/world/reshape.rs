@@ -14,11 +14,12 @@ use super::{PhysicsWorld, collider_build};
 
 impl ShapeDesc {
     /// Quanto o topo pode baixar com a base no sítio: o troço recto (cápsula, estádio, caixa).
-    /// Bola e elipse não têm troço recto — só a perna as agacha.
+    /// Bola e elipse não têm troço recto — só a perna as agacha. O Outline também não: as peças
+    /// não se encolhem sem deformar a arte.
     #[must_use]
     pub fn top_shrink_room(self) -> f32 {
         match self {
-            Self::Ball { .. } | Self::Ellipse { .. } => 0.0,
+            Self::Ball { .. } | Self::Ellipse { .. } | Self::Outline { .. } => 0.0,
             Self::Cuboid { half_y, .. } => 2.0 * half_y,
             Self::Capsule { half_height, .. } | Self::Stadium { half_height, .. } => {
                 2.0 * half_height
@@ -90,7 +91,7 @@ impl PhysicsWorld {
             return false;
         }
         let mass = c.mass();
-        c.set_shape(collider_build::shape_builder(shape).shape);
+        c.set_shape(collider_build::shape_builder(&self.outlines, shape).shape);
         if rest.shape_pose == [0.0; 3] {
             c.set_translation_wrt_parent(Vector::new(local[0], local[1]));
         } else {

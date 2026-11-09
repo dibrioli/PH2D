@@ -297,7 +297,7 @@ fn forma(d: &BodyDesc) -> Forma {
     let o = [f64::from(ox), f64::from(oy)];
     let (meia, ax, ay) = match d.shape {
         ShapeDesc::Ball { radius } => return Forma::Disco(o, f64::from(radius.abs())),
-        ShapeDesc::Cuboid { half_x, half_y } => {
+        ShapeDesc::Cuboid { half_x, half_y } | ShapeDesc::Outline { half_x, half_y, .. } => {
             let (x, y) = (f64::from(half_x.abs()), f64::from(half_y.abs()));
             return Forma::Poligono(
                 [[-x, -y], [x, -y], [x, y], [-x, y]]

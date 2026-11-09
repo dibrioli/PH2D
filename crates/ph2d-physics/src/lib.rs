@@ -48,7 +48,7 @@ pub use world::oneway::{ALLOWED_ANGLE, ALLOWED_COS};
 pub use world::queries::FluidAt;
 pub use world::{
     AreaEffect, BodyDesc, CAPSULE_CAP_SEGS, CombineRules, DampingDesc, ELLIPSE_SEGS,
-    MASS_WITHOUT_SHAPE_KG, PhysicsWorld, ShapeDesc, capsule_vertices, ellipse_vertices,
+    MASS_WITHOUT_SHAPE_KG, OutlineKey, PhysicsWorld, ShapeDesc, capsule_vertices, ellipse_vertices,
 };
 
 /// The checkpoint ring's stride, in ticks — the bound on how many steps a

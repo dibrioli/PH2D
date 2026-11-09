@@ -646,7 +646,10 @@ fn comprimento(a: f32, b: f32) -> f32 {
 fn raio_que_envolve(d: &BodyDesc) -> f32 {
     let r = match d.shape {
         ShapeDesc::Ball { radius } => radius,
-        ShapeDesc::Cuboid { half_x, half_y } => comprimento(half_x, half_y),
+        // O Outline cabe na caixa da imagem (`half_*`): a nav lê-o como ela.
+        ShapeDesc::Cuboid { half_x, half_y } | ShapeDesc::Outline { half_x, half_y, .. } => {
+            comprimento(half_x, half_y)
+        }
         ShapeDesc::Ellipse { rx, ry } => rx.max(ry),
         ShapeDesc::Capsule {
             half_height,

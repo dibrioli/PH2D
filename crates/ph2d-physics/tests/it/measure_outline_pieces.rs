@@ -4,7 +4,8 @@
 //! `ph2d_outline_trace::convex_pieces` deriva do alfa da imagem). O tecto de peças tem de dizer de
 //! que recurso é (CLAUDE.md §0.0), então mede-se aqui o que cada peça custa:
 //!
-//! - `build`: montar o compound (o que um retraço paga: Detail chaveado, Fit to picture);
+//! - `build`: registar as peças e criar o corpo `ShapeDesc::Outline` num mundo vazio — o caminho
+//!   do produto (W2a), o que um retraço paga (Detail chaveado, Fit to picture);
 //! - `trace`: alfa → anéis → peças (a outra metade do retraço);
 //! - `pousado`: um tique (`PhysicsWorld::step`, 4 sub-passos, os parâmetros do produto) com o corpo
 //!   pousado num chão, TODAS as peças a tocar (um pente de dentes para baixo — o pior caso de
@@ -17,9 +18,7 @@
 //! `bash scripts/ph2d-run.sh cargo test -p ph2d-physics --profile smoke --test it measure_outline_pieces -- --ignored --nocapture`
 
 use ph2d_outline_trace::{Mask, Params, Q4, convex_pieces, trace};
-use ph2d_physics::rmath::{Pose, Vector};
 use ph2d_physics::{BodyDesc, PhysicsWorld, RigidBodyHandle, RigidBodyType, ShapeDesc};
-use rapier2d::geometry::SharedShape;
 use std::time::Instant;
 
 /// O Detail de fábrica (2 px).
@@ -42,8 +41,10 @@ fn pente(dentes: u32) -> Mask {
     Mask { w, h, bits }
 }
 
+type Pecas = Vec<Vec<[f32; 2]>>;
+
 /// As peças em metros, y para cima, centradas na caixa da imagem.
-fn pecas_em_metros(m: &Mask, pecas: &[Vec<[i32; 2]>]) -> Vec<Vec<Vector>> {
+fn pecas_em_metros(m: &Mask, pecas: &[Vec<[i32; 2]>]) -> Pecas {
     let (cx, cy) = (m.w as f32 / 2.0, m.h as f32 / 2.0);
     pecas
         .iter()
@@ -51,37 +52,28 @@ fn pecas_em_metros(m: &Mask, pecas: &[Vec<[i32; 2]>]) -> Vec<Vec<Vector>> {
             p.iter()
                 .map(|&[x, y]| {
                     let (px, py) = (x as f32 / Q4 as f32, y as f32 / Q4 as f32);
-                    Vector::new((px - cx) * M_POR_PX, -(py - cy) * M_POR_PX)
+                    [(px - cx) * M_POR_PX, -(py - cy) * M_POR_PX]
                 })
                 .collect()
         })
         .collect()
 }
 
-fn compound(pecas: &[Vec<Vector>]) -> SharedShape {
-    let partes = pecas
-        .iter()
-        .map(|p| {
-            (
-                Pose::IDENTITY,
-                SharedShape::convex_hull(p).expect("peça convexa"),
-            )
-        })
-        .collect();
-    SharedShape::compound(partes)
+fn caixa(half: [f32; 2]) -> ShapeDesc {
+    ShapeDesc::Cuboid {
+        half_x: half[0],
+        half_y: half[1],
+    }
 }
 
-fn desc(body_type: RigidBodyType, x: f32, y: f32, half: [f32; 2]) -> BodyDesc {
+fn desc(body_type: RigidBodyType, x: f32, y: f32, shape: ShapeDesc) -> BodyDesc {
     BodyDesc {
         body_type,
         x,
         y,
         rotation: 0.0,
         density: 1.0,
-        shape: ShapeDesc::Cuboid {
-            half_x: half[0],
-            half_y: half[1],
-        },
+        shape,
         restitution: 0.0,
         friction: 0.5,
         layer: 0,
@@ -106,37 +98,26 @@ fn desc(body_type: RigidBodyType, x: f32, y: f32, half: [f32; 2]) -> BodyDesc {
     }
 }
 
-fn veste(w: &mut PhysicsWorld, h: RigidBodyHandle, forma: &SharedShape) {
-    let c = w.bodies().get(h).expect("corpo").colliders()[0];
-    w.colliders_mut()
-        .get_mut(c)
-        .expect("collider")
-        .set_shape(forma.clone());
-}
-
 /// O mundo da cena: o chão e `andares` corpos empilhados (1 = pousado, 2 = par); `forma` `None` = a caixa.
-fn cena(
-    meia: [f32; 2],
-    forma: Option<&SharedShape>,
-    andares: u32,
-) -> (PhysicsWorld, RigidBodyHandle) {
+fn cena(meia: [f32; 2], forma: Option<&Pecas>, andares: u32) -> (PhysicsWorld, RigidBodyHandle) {
     let mut w = PhysicsWorld::new();
     let chao = [meia[0] + 2.0, 0.5];
-    w.spawn_body(desc(RigidBodyType::Fixed, 0.0, -0.5, chao));
+    w.spawn_body(desc(RigidBodyType::Fixed, 0.0, -0.5, caixa(chao)));
+    let shape = forma.map_or(caixa(meia), |p| ShapeDesc::Outline {
+        half_x: meia[0],
+        half_y: meia[1],
+        key: w.register_outline(p.clone()),
+    });
     let mut topo = None;
     for k in 0..andares {
         let y = meia[1] * (2 * k + 1) as f32 + 0.001 * (k + 1) as f32;
-        let h = w.spawn_body(desc(RigidBodyType::Dynamic, 0.0, y, meia));
-        if let Some(f) = forma {
-            veste(&mut w, h, f);
-        }
-        topo = Some(h);
+        topo = Some(w.spawn_body(desc(RigidBodyType::Dynamic, 0.0, y, shape)));
     }
     (w, topo.expect("um corpo"))
 }
 
 /// µs por tique, depois de assentar; e o y do corpo de cima (para ver que pousou).
-fn tique(meia: [f32; 2], forma: Option<&SharedShape>, andares: u32) -> (f64, f32) {
+fn tique(meia: [f32; 2], forma: Option<&Pecas>, andares: u32) -> (f64, f32) {
     let (mut w, topo) = cena(meia, forma, andares);
     for _ in 0..ASSENTA {
         w.step();
@@ -153,7 +134,7 @@ fn tique(meia: [f32; 2], forma: Option<&SharedShape>, andares: u32) -> (f64, f32
 struct Caso {
     dentes: u32,
     mask: Mask,
-    pecas: Vec<Vec<Vector>>,
+    pecas: Pecas,
     vertices: usize,
     meia: [f32; 2],
 }
@@ -207,13 +188,25 @@ fn measure_outline_pieces() {
             std::hint::black_box(convex_pieces(&o, DETAIL_Q4));
             let tr = t.elapsed().as_secs_f64() * 1e6;
             aneis[i] = aneis[i].min(so_aneis);
+            let pecas = c.pecas.clone();
+            let mut w = PhysicsWorld::new();
             let t = Instant::now();
-            let forma = compound(&c.pecas);
+            let key = w.register_outline(pecas);
+            std::hint::black_box(w.spawn_body(desc(
+                RigidBodyType::Dynamic,
+                0.0,
+                0.0,
+                ShapeDesc::Outline {
+                    half_x: c.meia[0],
+                    half_y: c.meia[1],
+                    key,
+                },
+            )));
             let bu = t.elapsed().as_secs_f64() * 1e6;
             let (cx1, y0) = tique(c.meia, None, 1);
-            let (pe1, y1) = tique(c.meia, Some(&forma), 1);
+            let (pe1, y1) = tique(c.meia, Some(&c.pecas), 1);
             let (cx2, y2) = tique(c.meia, None, 2);
-            let (pe2, y3) = tique(c.meia, Some(&forma), 2);
+            let (pe2, y3) = tique(c.meia, Some(&c.pecas), 2);
             let m = &mut min[i];
             for (k, v) in [tr, bu, cx1, pe1, cx2, pe2].into_iter().enumerate() {
                 m[k] = m[k].min(v);

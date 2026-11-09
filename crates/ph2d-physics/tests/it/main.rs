@@ -66,6 +66,7 @@ mod measure_weston;
 mod measure_wheel;
 mod one_way;
 mod oraculo_da_pilha_do_motion;
+mod outline_shape;
 mod penetration;
 mod pulley;
 mod pulley_break;

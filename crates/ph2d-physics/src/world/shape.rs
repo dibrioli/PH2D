@@ -46,6 +46,14 @@ pub enum ShapeDesc {
     ///
     /// (A stadium is the proper name for a rectangle capped by two half-discs.)
     Stadium { half_height: f32, rx: f32, ry: f32 },
+    /// **N peças convexas** registadas por [`crate::world::PhysicsWorld::register_outline`]
+    /// (W2 do plano f2): o collider é o compound delas. `half_*` é a caixa da IMAGEM — o que
+    /// nav, sombras e overlays leem (como um `Cuboid`) e a forma quando a chave não acha peças.
+    Outline {
+        half_x: f32,
+        half_y: f32,
+        key: super::outline::OutlineKey,
+    },
 }
 
 impl ShapeDesc {
@@ -87,7 +95,8 @@ impl ShapeDesc {
         match self {
             Self::Ball { radius } => Self::ellipse_fraction(x, y, radius, radius),
             Self::Ellipse { rx, ry } => Self::ellipse_fraction(x, y, rx, ry),
-            Self::Cuboid { half_x, half_y } => {
+            // O Outline mede-se pela caixa da imagem (W2: nav, sombras e zonas leem `half_*`).
+            Self::Cuboid { half_x, half_y } | Self::Outline { half_x, half_y, .. } => {
                 if half_x <= 0.0 || half_y <= 0.0 {
                     return 0.0;
                 }
@@ -146,7 +155,7 @@ impl ShapeDesc {
         match self {
             Self::Ball { radius } => Self::cardinal_rim(out, radius, radius),
             Self::Ellipse { rx, ry } => Self::cardinal_rim(out, rx, ry),
-            Self::Cuboid { half_x, half_y } => {
+            Self::Cuboid { half_x, half_y } | Self::Outline { half_x, half_y, .. } => {
                 out[1] = [-half_x, half_y];
                 out[2] = [half_x, half_y];
                 out[3] = [-half_x, -half_y];

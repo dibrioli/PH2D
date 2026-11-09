@@ -37,6 +37,8 @@ pub mod kinematic;
 pub mod layer_override;
 pub mod layers;
 pub mod oneway;
+/// A forma de N peças convexas (docs dele).
+pub mod outline;
 /// Os colliders EXTRA de um corpo composto (docs dele).
 pub mod parts;
 /// Aplicar o motor de um player ao corpo (docs dele).
@@ -66,6 +68,7 @@ pub(super) use layers::groups_for;
 pub use desc::{
     AreaEffect, BodyDesc, BodySnapshot, CombineRules, DampingDesc, MASS_WITHOUT_SHAPE_KG,
 };
+pub use outline::OutlineKey;
 pub use shape::{CAPSULE_CAP_SEGS, ELLIPSE_SEGS, ShapeDesc, capsule_vertices, ellipse_vertices};
 
 use crate::rmath::{Pose, Vector};
@@ -281,6 +284,8 @@ pub struct PhysicsWorld {
     /// então nenhum replay o reproduz e um `restore` que o trouxesse de volta
     /// descreveria uma corrida que já acabou.
     attract: Option<blast::Attract>,
+    /// As peças das formas `Outline`, por chave de conteúdo — config que só cresce (ver [`outline`]).
+    outlines: outline::Outlines,
 }
 
 impl PhysicsWorld {
@@ -366,6 +371,7 @@ impl PhysicsWorld {
             joint_breaks: Vec::new(),
             grab: None,
             attract: None,
+            outlines: outline::Outlines::new(),
         }
     }
 

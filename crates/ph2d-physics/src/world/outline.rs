@@ -82,4 +82,16 @@ impl PhysicsWorld {
         });
         key
     }
+
+    /// Se a chave tem peças registadas neste mundo.
+    #[must_use]
+    pub fn has_outline(&self, key: OutlineKey) -> bool {
+        self.outlines.contains_key(&key)
+    }
+
+    /// Leva a tabela de peças de `old` para este mundo — o rewind do ECS troca o `PhysicsWorld`
+    /// por um novo e re-spawna por `BodyDesc`, cujas chaves têm de continuar a achar as peças.
+    pub fn carry_outlines_from(&mut self, old: &mut PhysicsWorld) {
+        self.outlines.append(&mut old.outlines);
+    }
 }

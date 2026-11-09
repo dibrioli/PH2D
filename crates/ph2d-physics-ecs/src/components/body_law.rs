@@ -29,6 +29,11 @@ impl Collider {
                 half_height: (h - w).max(0.0),
                 radius: w,
             },
+            // O contorno mapeia o retângulo da imagem: caber nela é a caixa dela, como o `Cuboid`.
+            ColliderShape::Outline { .. } => ColliderShape::Outline {
+                half_x: w,
+                half_y: h,
+            },
         }
     }
 
@@ -45,6 +50,13 @@ impl Collider {
                     half_y: y,
                 },
             ) => same(half_x, x) && same(half_y, y),
+            (
+                ColliderShape::Outline { half_x, half_y },
+                ColliderShape::Outline {
+                    half_x: x,
+                    half_y: y,
+                },
+            ) => same(half_x, x) && same(half_y, y),
             _ => false,
         }
     }
@@ -57,6 +69,10 @@ impl Collider {
                 radius: radius.max(MIN_EXTENT),
             },
             ColliderShape::Cuboid { half_x, half_y } => ColliderShape::Cuboid {
+                half_x: half_x.max(MIN_EXTENT),
+                half_y: half_y.max(MIN_EXTENT),
+            },
+            ColliderShape::Outline { half_x, half_y } => ColliderShape::Outline {
                 half_x: half_x.max(MIN_EXTENT),
                 half_y: half_y.max(MIN_EXTENT),
             },

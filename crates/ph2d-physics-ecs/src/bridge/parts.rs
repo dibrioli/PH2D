@@ -186,6 +186,12 @@ impl PhysicsBridge {
                 y: 0.0,
                 rotation: 0.0,
                 collide: super::bodies::collide_of(world, e),
+                shape: self.outlines.resolve(
+                    &mut self.world,
+                    world.get::<crate::ColliderOutline>(e),
+                    desc.shape,
+                    t_part.scale,
+                ),
                 ..desc
             };
             wanted.push((

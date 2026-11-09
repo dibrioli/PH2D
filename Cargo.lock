@@ -10714,6 +10714,7 @@ dependencies = [
  "ph2d-nav",
  "ph2d-navmesh",
  "ph2d-orca",
+ "ph2d-outline-trace",
  "ph2d-physics",
  "ph2d-platformer",
  "ph2d-projectile",

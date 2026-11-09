@@ -230,7 +230,9 @@ impl PhysicsBridge {
         let mut table = Vec::new();
         let mut arena = Vec::new();
         self.world.swap_pulleys(&mut table, &mut arena);
-        self.world = PhysicsWorld::new();
+        let mut velho = std::mem::replace(&mut self.world, PhysicsWorld::new());
+        // As peças dos Outline (W2b): os `BodyDesc` re-spawnados levam chaves do mundo velho.
+        self.world.carry_outlines_from(&mut velho);
         self.vivo.apply_to(&mut self.world);
         // BTreeMap → entity order, so the fresh handles are assigned in the
         // same deterministic order as the original spawn (HR-5).

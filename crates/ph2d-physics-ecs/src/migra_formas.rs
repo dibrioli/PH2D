@@ -45,6 +45,7 @@ macro_rules! lado_forma {
 lado_forma!(
     Collider,
     CollisionOverride,
+    ColliderOutline,
     MaterialCombine,
     OneWayPlatform,
     WalkSurface,

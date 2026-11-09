@@ -101,6 +101,7 @@ impl PhysicsBridge {
             toques_do_mover: Vec::new(),
             nav: super::nav::NavWorld::default(),
             player_drop: BTreeMap::new(),
+            outlines: Default::default(),
         }
     }
 

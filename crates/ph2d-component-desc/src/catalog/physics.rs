@@ -228,6 +228,12 @@ pub const DESCS: &[D] = &[
     )
     .coded("collision_shape")
     .row_without_neutral("ph2d::physics::RigidBody"),
+    // O contorno da forma Outline (W2b): escreve-o o traçado da imagem e o cartão Shape (W2c/W4).
+    i(
+        "ph2d::physics::ColliderOutline",
+        "component.collider_outline.name",
+    )
+    .hidden(H::OtherEditor),
     // A exceção da forma à matriz (GEF02 B9): edita-se na linha «Collides with» do cartão Collision Layers.
     i(
         "ph2d::physics::CollisionOverride",

@@ -28,11 +28,13 @@ pub mod joint_tool;
 pub mod keyboard_driven;
 mod layer_names;
 mod migra_formas;
+mod outline;
 pub use migra_formas::{
     LADO_FORMA, Migracao, NOME_DA_FORMA, NOME_DO_CORPO, migra_formas_no_retrato,
     migra_formas_para_filhos, migra_formas_para_filhos_com_pares, move_forma_para_filha,
     nasce_com_forma, tira_corpo, torna_corpo,
 };
+pub use outline::{ColliderOutline, Ring as OutlineRing};
 pub mod player_input;
 pub use layer_names::{
     LayerNames, ObjetoDaCamada, layers_in_use, objects_on_layers, objects_per_layer, visible_layers,
@@ -227,6 +229,7 @@ pub fn register_physics_components(reg: &mut ComponentRegistry) {
     reg.register_default::<DampingOverride>("ph2d::physics::DampingOverride");
     reg.register_default::<OneWayPlatform>("ph2d::physics::OneWayPlatform");
     reg.register_default::<CollisionOverride>("ph2d::physics::CollisionOverride");
+    reg.register_default::<ColliderOutline>("ph2d::physics::ColliderOutline");
     reg.register_default::<AreaEffector>("ph2d::physics::AreaEffector");
     reg.register_default::<AreaDrag>("ph2d::physics::AreaDrag");
     reg.register_default::<AreaBuoyancy>("ph2d::physics::AreaBuoyancy");
@@ -311,7 +314,7 @@ mod tests {
         // ⭐ **+1 (GameEngineFuncional N1: `CharacterAnimations`)** ⇒ `44 -> 45`; delta contra o
         // merge-base desta linha **+1**. Quem integrar conta o DELTA, nunca o literal.
         // ⭐ **+1 (GameEngineFuncional 08: `AnimRules`)** ⇒ `45 -> 46`; delta contra o merge-base **+2**.
-        assert_eq!(reg.len(), 47);
+        assert_eq!(reg.len(), 48);
         assert!(reg.get_by_name("ph2d::physics::NavCostArea").is_some());
         assert!(reg.get_by_name("ph2d::physics::NavLink").is_some());
         assert!(reg.get_by_name("ph2d::physics::NavRegion").is_some());

@@ -21,7 +21,8 @@ const TRACEJADO_PX: [f64; 2] = [6.0, 4.0]; // LITERAL-PX-OK: o tracejado do Sens
 pub fn contorno(pose: &Pose, m: &Medida, cam: &Camera2d, win: WindowSize) -> BezPath {
     let (c, h) = caixa(pose, m);
     let local: Vec<[f32; 2]> = match m.shape {
-        ColliderShape::Cuboid { .. } => {
+        // O Outline mostra a caixa da imagem até a W5 dar alças aos pontos.
+        ColliderShape::Cuboid { .. } | ColliderShape::Outline { .. } => {
             vec![[-h[0], -h[1]], [h[0], -h[1]], [h[0], h[1]], [-h[0], h[1]]]
         }
         ColliderShape::Ball { .. } => ellipse_vertices(h[0], h[1]).to_vec(),

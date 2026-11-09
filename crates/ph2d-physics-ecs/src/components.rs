@@ -113,6 +113,10 @@ pub enum ColliderShape {
     /// (the `BodyKind::Kinematic` precedent — appending a variant needs no
     /// `PROJECT_SCHEMA` bump; only reordering or inserting would).
     Capsule { half_height: f32, radius: f32 },
+    /// **O contorno da imagem** (W2b do plano f2): `half_*` é a caixa do RETÂNGULO DA IMAGEM em
+    /// metros; os anéis vivem no [`crate::ColliderOutline`] da mesma entidade e mapeiam esse
+    /// retângulo para `[-half, half]`. Sem anéis, é a caixa. Anexada (`PROJECT_SCHEMA` 226).
+    Outline { half_x: f32, half_y: f32 },
 }
 
 impl Default for ColliderShape {
@@ -218,6 +222,8 @@ impl Collider {
                 half_height,
                 radius,
             } => 4.0 * half_height * radius + PI * radius * radius,
+            // A caixa da imagem: semente por cima (os anéis moram noutro componente).
+            ColliderShape::Outline { half_x, half_y } => 4.0 * half_x * half_y,
         };
         (self.density * area).max(1e-3)
     }
@@ -235,6 +241,7 @@ impl Collider {
                 half_height,
                 radius,
             } => [radius, half_height + radius],
+            ColliderShape::Outline { half_x, half_y } => [half_x, half_y],
         };
         (self.offset, [half[0].abs(), half[1].abs()])
     }

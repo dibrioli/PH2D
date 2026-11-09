@@ -93,7 +93,8 @@ impl Medida {
     #[must_use]
     pub const fn edicao(&self) -> PhysicsFieldEdit {
         let medidas = match self.shape {
-            ColliderShape::Cuboid { half_x, half_y } => [half_x, half_y],
+            ColliderShape::Cuboid { half_x, half_y }
+            | ColliderShape::Outline { half_x, half_y } => [half_x, half_y],
             ColliderShape::Ball { radius } => [radius, 0.0],
             ColliderShape::Capsule {
                 half_height,
@@ -111,7 +112,7 @@ impl Medida {
 #[must_use]
 pub fn alcas(shape: ColliderShape) -> Vec<Alca> {
     let mut v = match shape {
-        ColliderShape::Cuboid { .. } => vec![
+        ColliderShape::Cuboid { .. } | ColliderShape::Outline { .. } => vec![
             Alca::Lado(-1, -1),
             Alca::Lado(1, -1),
             Alca::Lado(1, 1),
@@ -136,7 +137,9 @@ pub fn caixa(pose: &Pose, m: &Medida) -> ([f32; 2], [f32; 2]) {
     let [sx, sy] = [pose.s[0].abs(), pose.s[1].abs()];
     let c = [m.offset[0] * pose.s[0], m.offset[1] * pose.s[1]];
     let h = match m.shape {
-        ColliderShape::Cuboid { half_x, half_y } => [half_x * sx, half_y * sy],
+        ColliderShape::Cuboid { half_x, half_y } | ColliderShape::Outline { half_x, half_y } => {
+            [half_x * sx, half_y * sy]
+        }
         ColliderShape::Ball { radius } => [radius * sx, radius * sy],
         ColliderShape::Capsule {
             half_height,
@@ -167,7 +170,7 @@ fn dentro(pose: &Pose, m: &Medida, q: [f32; 2]) -> bool {
     let (c, h) = caixa(pose, m);
     let (dx, dy) = ((q[0] - c[0]).abs(), (q[1] - c[1]).abs());
     match m.shape {
-        ColliderShape::Cuboid { .. } => dx <= h[0] && dy <= h[1],
+        ColliderShape::Cuboid { .. } | ColliderShape::Outline { .. } => dx <= h[0] && dy <= h[1],
         ColliderShape::Ball { .. } => (dx / h[0]).powi(2) + (dy / h[1]).powi(2) <= 1.0,
         ColliderShape::Capsule { half_height, .. } => {
             let reta = half_height * pose.s[1].abs();
@@ -232,6 +235,18 @@ pub fn puxa(inicio: &Medida, a: Alca, pose: &Pose, e: [f32; 2], t: Teclas) -> Me
         return m;
     };
     let (fx, fy) = (f32::from(lx), f32::from(ly));
+    // O Outline estica a caixa da imagem (os anéis vão junto): o gesto da caixa, de volta a Outline.
+    if let ColliderShape::Outline { half_x, half_y } = inicio.shape {
+        let caixa = Medida {
+            shape: ColliderShape::Cuboid { half_x, half_y },
+            ..*inicio
+        };
+        let mut m = puxa(&caixa, a, pose, e, t);
+        if let ColliderShape::Cuboid { half_x, half_y } = m.shape {
+            m.shape = ColliderShape::Outline { half_x, half_y };
+        }
+        return m;
+    }
     match inicio.shape {
         ColliderShape::Cuboid { half_x, half_y } => {
             let piso = [MIN_EXTENT * abs[0], MIN_EXTENT * abs[1]];
@@ -301,6 +316,7 @@ pub fn puxa(inicio: &Medida, a: Alca, pose: &Pose, e: [f32; 2], t: Teclas) -> Me
                 };
             }
         }
+        ColliderShape::Outline { .. } => {}
     }
     m
 }

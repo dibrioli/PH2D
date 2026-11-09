@@ -181,7 +181,7 @@ pub fn is_part_of(world: &World, part: Entity, body: Entity) -> bool {
 /// **As formas de `body`, na ordem da lista «Shapes»** (W3-B): a dele primeiro (se tem `Collider`),
 /// depois cada peça na ordem da árvore (pai antes dos filhos, irmãos por `SiblingOrder`).
 ///
-/// Cada linha é `(bits, nome, tag)` com tag `0` Ball · `1` Box · `2` Capsule — a do Inspector. A
+/// Cada linha é `(bits, nome, tag)` com tag `0` Ball · `1` Box · `2` Capsule · `3` Outline — a do Inspector. A
 /// descida pára num corpo filho (as peças dele são dele) e atravessa grupos e peças, a mesma regra
 /// do [`owner_body`] vista de cima.
 #[must_use]
@@ -191,6 +191,7 @@ pub fn shapes_in_order(world: &World, body: Entity) -> Vec<(u64, String, u8)> {
             crate::ColliderShape::Ball { .. } => 0,
             crate::ColliderShape::Cuboid { .. } => 1,
             crate::ColliderShape::Capsule { .. } => 2,
+            crate::ColliderShape::Outline { .. } => 3,
         };
         let nome = world
             .get::<ph2d_ecs::Name>(e)

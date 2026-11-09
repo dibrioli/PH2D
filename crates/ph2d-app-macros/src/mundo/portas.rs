@@ -172,6 +172,7 @@ pub const PORTAS: &[(&str, Porta)] = &[
     ("ph2d::physics::Ccd", Gravado),
     ("ph2d::physics::CharacterAnimations", Gravado),
     ("ph2d::physics::Collider", Gravado),
+    ("ph2d::physics::ColliderOutline", Gravado),
     // A exceção da forma à matriz (GEF02 B9): camadas por índice, sem referência a objecto.
     ("ph2d::physics::CollisionOverride", Gravado),
     ("ph2d::physics::Damage", Gravado),

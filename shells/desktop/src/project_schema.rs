@@ -381,4 +381,10 @@
 /// `ExtraSheet.offsets: CellOffsets` no FIM; o componente `CellOffsets` (o da folha `0`) entra no registo. SEM leitura
 /// dos anteriores (§0.11). `SpriteAnimFrames` `Some(vec![])` passa a querer dizer «não toca nada» (guarda-se, não se
 /// apaga), sem mudar o formato. ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 226;
+///
+/// # `226 → 227` — **a forma «Outline»** (`line/GameEngineFuncional02`, W2b, 2026-11-09)
+///
+/// `ColliderShape::Outline { half_x, half_y }` ANEXADA e o componente NOVO registado
+/// `ph2d::physics::ColliderOutline { rings, picture_px, detail_q4, alpha_cutoff, min_island_px }` no
+/// lado-forma. SEM leitura dos anteriores (§0.11). Registos: `+1`. ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 227;

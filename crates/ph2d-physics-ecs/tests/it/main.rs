@@ -139,6 +139,7 @@ mod nav_ordens;
 mod no_std_transcendental_on_the_hash_path;
 mod olho_da_forma;
 mod one_way;
+mod outline_bridge;
 mod persistence;
 mod platform_brink;
 mod platform_corner;

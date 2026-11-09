@@ -40,6 +40,8 @@ bevy_ecs = "0.20"
 # (holds only the re-exported handle types), so determinism is guarded
 # in exactly one Cargo.toml (HR-5).
 ph2d-physics = { path = "../ph2d-physics" }
+# A forma «Outline» (W2b): as peças convexas derivadas dos anéis do `ColliderOutline`. Folha pura.
+ph2d-outline-trace = { path = "../ph2d-outline-trace" }
 # A LEI do player de plataforma (W2) — uma folha PURA, sem rapier e sem ECS.
 # Ela mora fora desta crate de propósito: é o que torna o coyote gateável sem
 # GPU e a fita de entrada (W7) testável sem janela. Esta ponte é o fio entre a
@@ -81,7 +83,8 @@ libm = { version = "=0.2.16", default-features = false }
 # serde derives on RigidBody/Collider so the ComponentRegistry can
 # postcard them into the WorldSnapshot (same pattern as every other
 # SimComponent).
-serde = { version = "1", features = ["derive"] }
+# `rc`: o `ColliderOutline.rings` é um `Arc<[Ring]>` (serializa como o conteúdo).
+serde = { version = "1", features = ["derive", "rc"] }
 # Os nomes das camadas (`LayerNames`) viajam num blob postcard com versão própria.
 postcard = { version = "1", features = ["use-std"] }
 # blake3 for the ECS-bridged determinism hash over the readback poses

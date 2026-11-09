@@ -223,6 +223,8 @@ pub struct PhysicsBridge {
     /// randomised hasher seed (HR-5). The repo's disallowed-`HashMap` lint
     /// is the standing structural guard for this.
     bodies: BTreeMap<Entity, BodyRef>,
+    /// As peças dos `Outline` por `(anéis, detail)` e as chaves já registadas (W2b).
+    outlines: crate::outline::OutlineCache,
     /// Last fixed tick the world was stepped **to** — the physics analog
     /// of the Motion pump's `last_cooked_tick`. The play/scrub decision in
     /// [`dispatch`](PhysicsBridge::dispatch) reads it.

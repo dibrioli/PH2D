@@ -128,7 +128,11 @@ impl PhysicsBridge {
             );
             // A exceção de camadas da forma (GEF02 B9), lida da FORMA como o resto do lado-forma.
             let collide = collide_of(world, shape);
+            let outline = world.get::<crate::ColliderOutline>(shape);
             let desc = BodyDesc {
+                shape: self
+                    .outlines
+                    .resolve(&mut self.world, outline, desc.shape, t.scale),
                 shape_pose,
                 collide,
                 shape_off,

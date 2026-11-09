@@ -80,6 +80,13 @@ pub fn scaled_shape(shape: ColliderShape, scale: Vec2) -> ShapeDesc {
             half_x: half_x * sx,
             half_y: half_y * sy,
         },
+        // A caixa da imagem em módulo; a chave das peças (com a escala COM SINAL) põe-na a ponte,
+        // que lê o `ColliderOutline` (`OutlineCache::resolve`). Chave por pôr = a caixa.
+        ColliderShape::Outline { half_x, half_y } => ShapeDesc::Outline {
+            half_x: half_x * sx,
+            half_y: half_y * sy,
+            key: ph2d_physics::OutlineKey(0),
+        },
         ColliderShape::Ball { radius } => {
             if sx == sy {
                 ShapeDesc::Ball {

@@ -391,10 +391,13 @@ fn user_data_armado() -> ph2d_editor_core::panel::cards::user_data::UserDataView
         color: [200, 60, 60, 255],
         text: "hero".to_owned(),
         rows: vec![
-            linha("hp", "3", "Int", true),
+            linha("hp", "3", "pixel.user.type.int", true),
             linha("size", "16x8", "Size", false),
         ],
-        extensions: vec![("ext".to_owned(), vec![linha("id", "7", "Int", true)])],
+        extensions: vec![(
+            "ext".to_owned(),
+            vec![linha("id", "7", "pixel.user.type.int", true)],
+        )],
     }
 }
 

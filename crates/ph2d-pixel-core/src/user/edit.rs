@@ -88,29 +88,30 @@ pub fn value_text(v: &PropValue) -> String {
     }
 }
 
-/// O nome do tipo no chip, como o `.ase` o chama (`docs/PixelArt/P12_oraculos.md` O17).
+/// A CHAVE do nome do tipo no chip (o texto é o do `.ase`, `docs/PixelArt/P12_oraculos.md` O17, na
+/// tabela do `ph2d-i18n`; o cartão traduz-a).
 #[must_use]
-pub const fn type_name(v: &PropValue) -> &'static str {
+pub const fn type_key(v: &PropValue) -> &'static str {
     use PropValue as P;
     match v {
-        P::Bool(_) => "Bool",
-        P::I32(_) | P::I64(_) => "Int",
-        P::F64(_) => "Float",
-        P::Str(_) => "Text",
-        P::I8(_) => "Int8",
-        P::U8(_) => "UInt8",
-        P::I16(_) => "Int16",
-        P::U16(_) => "UInt16",
-        P::U32(_) => "UInt32",
-        P::U64(_) => "UInt64",
-        P::Fixed(_) => "Fixed",
-        P::F32(_) => "Float32",
-        P::Point(..) => "Point",
-        P::Size(..) => "Size",
-        P::Rect(..) => "Rect",
-        P::Vector(_) => "Vector",
-        P::Map(_) => "Map",
-        P::Uuid(_) => "UUID",
+        P::Bool(_) => "pixel.user.type.bool",
+        P::I32(_) | P::I64(_) => "pixel.user.type.int",
+        P::F64(_) => "pixel.user.type.float",
+        P::Str(_) => "pixel.user.type.text",
+        P::I8(_) => "pixel.user.type.int8",
+        P::U8(_) => "pixel.user.type.uint8",
+        P::I16(_) => "pixel.user.type.int16",
+        P::U16(_) => "pixel.user.type.uint16",
+        P::U32(_) => "pixel.user.type.uint32",
+        P::U64(_) => "pixel.user.type.uint64",
+        P::Fixed(_) => "pixel.user.type.fixed",
+        P::F32(_) => "pixel.user.type.float32",
+        P::Point(..) => "pixel.user.type.point",
+        P::Size(..) => "pixel.user.type.size",
+        P::Rect(..) => "pixel.user.type.rect",
+        P::Vector(_) => "pixel.user.type.vector",
+        P::Map(_) => "pixel.user.type.map",
+        P::Uuid(_) => "pixel.user.type.uuid",
     }
 }
 

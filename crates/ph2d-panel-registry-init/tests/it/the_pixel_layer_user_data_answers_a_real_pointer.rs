@@ -126,7 +126,7 @@ fn the_pixel_layer_user_data_card_answers_a_real_pointer() {
                 rows: vec![PropRow {
                     name: "hp".to_owned(),
                     value: "3".to_owned(),
-                    kind: "Int",
+                    kind: "pixel.user.type.int",
                     editable: true,
                 }],
                 ..UserDataView::default()

@@ -4,7 +4,7 @@
 
 use ph2d_editor_core::panel::cards::user_data::{CardEdit, PropRow, UserDataView};
 use ph2d_editor_core::pixel_panel::{PixelOwner, PixelUserInfo};
-use ph2d_pixel_core::user::edit::{PropKind, UserEdit, apply_edit, kind_of, type_name, value_text};
+use ph2d_pixel_core::user::edit::{PropKind, UserEdit, apply_edit, kind_of, type_key, value_text};
 use ph2d_pixel_core::user::{Owner, PropMap};
 use ph2d_pixel_core::{FrameId, LayerId, Op, Sprite, UserData};
 
@@ -13,7 +13,7 @@ fn linhas(m: &PropMap) -> Vec<PropRow> {
         .map(|(k, v)| PropRow {
             name: k.clone(),
             value: value_text(v),
-            kind: type_name(v),
+            kind: type_key(v),
             editable: kind_of(v).is_some(),
         })
         .collect()

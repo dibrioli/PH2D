@@ -17,7 +17,7 @@ use ph2d_tool_registry::hash_node_id_runtime;
 pub struct PropRow {
     pub name: String,
     pub value: String,
-    /// O nome do tipo no chip (`Bool`, `Int`, `Float`, `Text`, ou o do `.ase`).
+    /// A CHAVE do nome do tipo no chip (`pixel.user.type.int` → `Int`, ou o do `.ase`).
     pub kind: &'static str,
     /// `false`: um tipo do `.ase` que a tela não edita; mostra-se, não se toca.
     pub editable: bool,
@@ -202,7 +202,7 @@ fn so_leitura(c: &mut CardCtx<'_>, r: &PropRow, remove: Option<NodeId>, y: f32) 
     let mut cells = vec![
         Cell::new(Widget::Readout { text: &r.name }),
         Cell::new(Widget::Readout { text: &r.value }),
-        Cell::new(Widget::Readout { text: r.kind }),
+        Cell::new(Widget::Readout { text: tr(r.kind) }),
     ];
     if let Some(id) = remove {
         cells.push(Cell::new(Widget::Button {
@@ -272,7 +272,7 @@ pub fn paint_body(
         };
         let tipo = Cell::new(Widget::Button {
             id: ids.kind(i),
-            text: r.kind,
+            text: tr(r.kind),
             primary: false,
         });
         y = c.row(&[nome, valor, tipo, remove], y);

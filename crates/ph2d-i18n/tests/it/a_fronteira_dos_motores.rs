@@ -80,6 +80,25 @@ const POR_PAGAR: &[(&str, usize, &str)] = &[];
 /// deste repo; e a metade justa abaixo apaga a que já não abriga nada.
 const ISENTOS: &[(&str, &str, &str)] = &[
     (
+        "ph2d-painter-brush",
+        "mistura_opaca.rs",
+        "⭐ e' o NOME GRAVADO do modo e da amostra da mistura no preset (`\"WetBlend\"`, `\"ThisLayer\"`, \
+`\"AllVisibleLayers\"`, lidos por `do_nome`, PainterWatercolor 08/11). FORMATO, nao rotulo: traduzi-lo faria \
+o mesmo pincel recusar-se noutra lingua.",
+    ),
+    (
+        "ph2d-pixel-keys",
+        "factory.rs",
+        "⭐ e' o id GRAVADO do contexto de atalho no keymap do Pixel (`tecla @Selection`, P12, lido por \
+`eq_ignore_ascii_case`). FORMATO do ficheiro de atalhos, nao rotulo.",
+    ),
+    (
+        "ph2d-code-smoke",
+        "steps.rs",
+        "⭐ e' `\"Door\"`, o NOME do objecto que o roteiro da cena 11 larga no texto (ScriptEditor 08/11). \
+DOCUMENTO da cena, nao rotulo: e' o que o artista escreveria na Hierarchy.",
+    ),
+    (
         "ph2d-tool-painter",
         "tool/paint/wetpaint_preset/meios.rs",
         "⭐ e' o `media` GRAVADO no `.ph2d-brush.png` (`\"Digital\"`, `\"Watercolor\"`, `\"Impasto\"`, ao lado do \

@@ -63,13 +63,13 @@ fn cada_controlo_chega_ao_pedido() {
     }
 }
 
-/// Sem a ferramenta na mão a janela fecha-se e não fica rect nenhum a roubar o ponteiro.
+/// Aberta sem a ferramenta na mão (menu *Window*), a janela fica e ensina; sem slices não há All.
 #[test]
-fn sem_a_ferramenta_a_janela_fecha() {
+fn sem_a_ferramenta_a_janela_aberta_fica() {
     let mut m = mesa(Contexto::default());
     m.assenta_em(JANELA);
     assert!(m.rect(ids::ALL).is_none());
-    assert!(!m.host.panel_visible(PixelSlicesPanel::ID));
+    assert!(m.host.panel_visible(PixelSlicesPanel::ID));
 }
 
 /// Sem slices a janela ensina a criar uma; não há All nem None para carregar.

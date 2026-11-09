@@ -359,8 +359,3 @@ fn user_data_event(
     }
     Some(EventOutcome::Consumed)
 }
-
-/// Fecha o painel que ficou sem nada a mostrar.
-pub(crate) fn sem_nada(host: &mut dyn PanelHostInternal) {
-    host.set_panel_visible(PixelSlicesPanel::ID, false);
-}

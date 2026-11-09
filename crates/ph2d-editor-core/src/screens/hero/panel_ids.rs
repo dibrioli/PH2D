@@ -98,3 +98,38 @@ pub(super) fn canonical_panel_id(id: &str) -> Option<&'static str> {
         _ => None,
     }
 }
+
+/// ⭐ **A janela que a mão abre** (P12 U4): abre sozinha quando a mão a pede (a ferramenta Slice, uma
+/// camada tilemap) e fecha sozinha só se foi ela quem a abriu. Aberta pelo menu *Window* fica até ao
+/// «×» e mostra a linha de vazio: a marca do menu é a janela no ecrã.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct JanelaDaMao {
+    visto: Option<bool>,
+    sozinha: bool,
+}
+
+impl JanelaDaMao {
+    /// Um quadro: `tem` = a mão pede a janela agora.
+    pub fn segue(&mut self, hero: &mut super::HeroScreen, painel: &'static str, tem: bool) {
+        let aberta = hero.is_panel_visible(painel);
+        self.sozinha &= aberta;
+        if self.visto.replace(tem) == Some(tem) {
+            return;
+        }
+        if tem != aberta && (tem || self.sozinha) {
+            hero.panel_visibility.insert(painel, tem);
+            self.sozinha = tem;
+        }
+    }
+
+    /// Abre-a por um comando que não é o menu *Window*: fecha sozinha quando a mão deixar de a pedir.
+    pub fn abre_sozinha(&mut self, hero: &mut super::HeroScreen, painel: &'static str) {
+        hero.panel_visibility.insert(painel, true);
+        self.sozinha = true;
+    }
+
+    /// Esquece o último estado da mão: o próximo quadro volta a decidir.
+    pub fn esquece(&mut self) {
+        self.visto = None;
+    }
+}

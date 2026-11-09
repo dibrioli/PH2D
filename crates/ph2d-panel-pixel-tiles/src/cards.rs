@@ -1,6 +1,7 @@
 //! Os cartões: Draw e Tileset, e o da janela de criar ou converter.
 
 use ph2d_a11y::NodeId;
+use ph2d_editor_core::panel::Panel;
 use ph2d_editor_core::panel::cards::ferramenta::{
     Numero, aos_pares, caixa, caixas_aos_pares, campo, cartao, opcoes,
 };
@@ -13,7 +14,7 @@ use ph2d_tokens::{ColorToken, StrokeToken};
 
 use crate::canal::{Alvo, Contexto, Mao, Tela};
 use crate::state::TILE_INICIAL;
-use crate::{PixelTilesPanelState, ids};
+use crate::{PixelTilesPanel, PixelTilesPanelState, ids};
 
 /// O lado de uma célula do tileset, em alturas de campo: cabem 4 por linha na janela.
 const LADO_DA_CELULA: f32 = 1.25; // LITERAL-PX-OK: razão de alturas, não píxeis
@@ -336,7 +337,16 @@ fn cartao_terreno(m: Mao, x: &Contexto) -> CardDef<'static> {
 
 /// Os cartões do painel, com a camada de tilemap activa.
 pub(crate) fn tileset(st: &PixelTilesPanelState, x: &Contexto) -> Vec<CardDef<'static>> {
-    let Some(m) = x.mao else { return Vec::new() };
+    let Some(m) = x.mao else {
+        // Aberta pelo menu *Window* sem camada tilemap: diz como fazer uma (a marca é a janela).
+        let vazio = |c: &mut CardCtx<'_>, y| c.hint(tr("panel.pixel.tiles.empty"), y);
+        return vec![cartao(
+            ids::SEC_TILESET,
+            PixelTilesPanel::TITLE.tr(),
+            None,
+            vazio,
+        )];
+    };
     let mut v = vec![cartao_draw(m, x.forma)];
     if x.forma.tem_terreno() {
         v.push(cartao_terreno(m, x));

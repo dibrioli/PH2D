@@ -169,11 +169,6 @@ fn a_linha_do_menu_window_alterna_cada_janela() {
             assenta(&mut hero, &mut ts);
             clica(&mut hero, linha, painel);
             assert_eq!(hero.is_panel_visible(painel), esperado, "{painel}");
-            if painel == PANEL_PIXEL_TILES {
-                // Sem camada tilemap a janela fecha-se sozinha ao pintar (`event::sem_nada`): só o
-                // clique de abrir se mede aqui.
-                break;
-            }
             assenta(&mut hero, &mut ts);
             assert_eq!(hero.is_panel_visible(painel), esperado, "{painel}");
             assert_eq!(
@@ -183,6 +178,64 @@ fn a_linha_do_menu_window_alterna_cada_janela() {
                 "{painel}: a marca do menu não segue a janela"
             );
         }
+    }
+}
+
+/// ⭐⭐ **A marca do menu *Window* é a janela no ecrã** (P12 U4, smoke do dono 08/11): sem a
+/// ferramenta Slice na mão, sem passos e sem camada tilemap, a linha abre a janela com a linha de
+/// vazio — nunca uma marca sem janela.
+#[test]
+fn a_marca_do_menu_e_a_janela_no_ecra_mesmo_sem_nada_a_mostrar() {
+    let mut ts = ph2d_text::TextSystem::without_system_fonts();
+    for (painel, linha, node) in [
+        (
+            PANEL_PIXEL_SLICES,
+            ids::TOPBAR_PIXEL_SLICES,
+            ids::PIXEL_SLICES_PANEL,
+        ),
+        (
+            PANEL_PIXEL_TILES,
+            ids::TOPBAR_PIXEL_TILES,
+            ids::PIXEL_TILES_PANEL,
+        ),
+        (
+            PANEL_PIXEL_HISTORY,
+            ids::TOPBAR_PIXEL_HISTORY,
+            ids::PIXEL_HISTORY_PANEL,
+        ),
+    ] {
+        let _ = ph2d_panel_registry_init::register_all_panels();
+        publish_view(HistoryView::default());
+        // O Lápis na mão: a família publica as slices, mas não a mão.
+        ph2d_panel_pixel_slices::canal::publish_contexto(
+            ph2d_panel_pixel_slices::canal::Contexto::default(),
+        );
+        ph2d_panel_pixel_tiles::canal::publish_contexto(
+            ph2d_panel_pixel_tiles::canal::Contexto::default(),
+        );
+        let mut hero = HeroScreen::new(NodeId(1));
+        assenta(&mut hero, &mut ts);
+        hero.store.open_context_menu(ContextMenuRequest {
+            x: 40.0,
+            y: 40.0,
+            kind: ContextMenuKind::MenuBarWindow,
+        });
+        assenta(&mut hero, &mut ts);
+        clica(&mut hero, linha, painel);
+        assenta(&mut hero, &mut ts);
+        assert!(
+            hero.is_panel_visible(painel),
+            "{painel}: a linha não a abriu"
+        );
+        assert_eq!(
+            hero.store.button_state(linha),
+            Some(ph2d_editor_core::widget::ButtonState::Pressed),
+            "{painel}: sem marca"
+        );
+        assert!(
+            hero.store.panel_rect(node).is_some(),
+            "{painel}: a marca acesa e nenhuma janela no ecrã"
+        );
     }
 }
 

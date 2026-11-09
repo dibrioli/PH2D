@@ -294,6 +294,16 @@ fn a_janela_segue_a_ferramenta() {
     assert!(t.tecla(KeyCode::KeyB, NADA));
     t.quadro();
     assert_eq!(aberta(&t), Some(false));
+    // Aberta pelo menu *Window* com o Lápis na mão, fica até ao «×» (P12 U4).
+    t.hero.panel_visibility.insert("pixel_slices", true);
+    t.quadro();
+    assert!(t.tecla(KeyCode::KeyE, NADA));
+    t.quadro();
+    assert_eq!(
+        aberta(&t),
+        Some(true),
+        "a janela aberta pelo menu fechou sozinha"
+    );
 }
 
 /// As marcas: os quadros com key das selecionadas, com a ferramenta na mão.

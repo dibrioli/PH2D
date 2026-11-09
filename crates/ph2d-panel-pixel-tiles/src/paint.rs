@@ -116,11 +116,6 @@ pub(crate) fn paint(st: &mut PixelTilesPanelState, ctx: &mut PaintCtx) {
         janela(st, &x, ctx);
         return;
     }
-    if x.mao.is_none() {
-        ctx.host.store_mut().clear_panel_rect(node);
-        event::sem_nada(ctx.host);
-        return;
-    }
     imagens(st, &x);
     event::regista_tiles(ctx.host.store_mut(), x.imagens.len());
     event::regista_terrenos(ctx.host.store_mut(), x.terrenos.len());

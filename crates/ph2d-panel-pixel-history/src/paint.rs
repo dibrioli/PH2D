@@ -41,6 +41,10 @@ fn cartao_lista(v: HistoryView) -> CardDef<'static> {
         tr("panel.pixel.history.sec_list"),
         None,
         move |c, mut y| {
+            if v.rows.is_empty() {
+                // Aberta pelo menu *Window* sem documento: a marca do menu é a janela no ecrã.
+                y = c.hint(tr("panel.pixel.history.empty"), y);
+            }
             for (i, r) in v.rows.iter().enumerate() {
                 y = c.list_row(
                     &ListRow {
@@ -62,7 +66,7 @@ pub(crate) fn paint(ctx: &mut PaintCtx) {
     if canal::take_abrir() {
         ctx.host.set_panel_visible(PixelHistoryPanel::ID, true);
     }
-    if !ctx.host.panel_visible(PixelHistoryPanel::ID) || v.rows.is_empty() {
+    if !ctx.host.panel_visible(PixelHistoryPanel::ID) {
         ctx.host.store_mut().clear_panel_rect(node);
         return;
     }

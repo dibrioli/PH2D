@@ -4,7 +4,7 @@
 use std::sync::Arc;
 
 use ph2d_editor_core::pixel_panel::{PixelLayerAction as A, PixelRequest};
-use ph2d_editor_core::screens::hero::{HeroScreen, PANEL_PIXEL_TILES};
+use ph2d_editor_core::screens::hero::{HeroScreen, JanelaDaMao, PANEL_PIXEL_TILES};
 use ph2d_panel_pixel_tiles::canal::{self, Alvo, Contexto, Mao, Pedido, Tela};
 use ph2d_panel_pixel_tiles::familia;
 use ph2d_pixel_core::{Onion, Op, Sprite, Stroke, Tileset, TilesetId, apply};
@@ -23,7 +23,7 @@ pub(crate) struct Estado {
     pub(crate) mao: Mao,
     pub(crate) carimbo: Option<(u64, u32, Carimbo)>,
     janela: bool,
-    visto: Option<bool>,
+    visto: JanelaDaMao,
     publicado: Option<Publicado>,
 }
 
@@ -231,7 +231,7 @@ pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
             Pedido::Fechou | Pedido::NovaCamada { .. } | Pedido::Converte { .. }
         ) {
             app.tiles.janela = false;
-            app.tiles.visto = None;
+            app.tiles.visto.esquece();
         }
         if let Some(key) = app.chave {
             app.assenta();
@@ -271,10 +271,9 @@ pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
     let tem = x.mao.is_some();
     canal::publish_contexto(x);
     if t.janela {
-        hero.panel_visibility.insert(PANEL_PIXEL_TILES, true);
-    } else if t.visto != Some(tem) {
-        hero.panel_visibility.insert(PANEL_PIXEL_TILES, tem);
-        t.visto = Some(tem);
+        t.visto.abre_sozinha(hero, PANEL_PIXEL_TILES);
+    } else {
+        t.visto.segue(hero, PANEL_PIXEL_TILES, tem);
     }
 }
 

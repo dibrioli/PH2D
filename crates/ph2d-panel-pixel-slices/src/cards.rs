@@ -35,7 +35,7 @@ fn botao(id: NodeId, chave: &'static str) -> Cell<'static> {
     })
 }
 
-fn cartao_lista(linhas: Vec<Linha>, transform: bool) -> CardDef<'static> {
+fn cartao_lista(linhas: Vec<Linha>, transform: bool, na_mao: bool) -> CardDef<'static> {
     cartao(
         ids::SEC_LIST,
         tr("panel.pixel.slices.sec_list"),
@@ -49,7 +49,12 @@ fn cartao_lista(linhas: Vec<Linha>, transform: bool) -> CardDef<'static> {
                 y = c.full(None, Widget::Choice(&o), y);
             }
             if linhas.is_empty() {
-                y = c.hint(tr("panel.pixel.slices.empty"), y);
+                let vazio = if na_mao {
+                    "panel.pixel.slices.empty"
+                } else {
+                    "panel.pixel.slices.empty_tool"
+                };
+                y = c.hint(tr(vazio), y);
             } else {
                 y = c.row(
                     &[
@@ -231,7 +236,7 @@ pub(crate) fn cartoes(x: &Contexto, user_aberto: bool) -> Vec<CardDef<'static>> 
         .as_ref()
         .map(|(_, u)| (ph2d_pixel_ponte::user::vista(u), user_aberto));
     vec![
-        cartao_lista(x.linhas.clone(), x.transform),
+        cartao_lista(x.linhas.clone(), x.transform, x.na_mao),
         cartao(
             ids::SEC_PROPS,
             tr("panel.pixel.slices.sec_props"),

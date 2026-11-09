@@ -7,7 +7,7 @@ use std::time::Instant;
 
 use ph2d_editor_core::interaction::DOUBLE_CLICK_WINDOW_NS;
 use ph2d_editor_core::readout::{CHIP_H_PX, chip_width, paint_chip};
-use ph2d_editor_core::screens::hero::{HeroScreen, PANEL_PIXEL_SLICES};
+use ph2d_editor_core::screens::hero::{HeroScreen, JanelaDaMao, PANEL_PIXEL_SLICES};
 use ph2d_editor_core::zones::Rect as Zona;
 use ph2d_panel_pixel_slices::canal::{self, Contexto, Pedido};
 use ph2d_panel_pixel_slices::familia;
@@ -36,7 +36,7 @@ pub(crate) struct Estado {
     clique: Option<(Instant, (i32, i32))>,
     /// O botão direito premido: a célula e o ponto; o quadro abre o menu.
     menu: Option<((i32, i32), (f32, f32))>,
-    visto: Option<bool>,
+    visto: JanelaDaMao,
     /// O documento e o desfazer depois da última cor ou do último arrasto: reescreve-se o mesmo passo.
     cor: Option<(u32, usize)>,
 }
@@ -231,23 +231,21 @@ pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
     }
     let menu = app.slices.menu.take();
     let mut x = Contexto::default();
-    if let Some((k, d)) = app.chave.and_then(|k| Some((k, app.docs.get(&k)?)))
-        && app.tool == Tool::Slice
-    {
+    let na_mao = app.tool == Tool::Slice;
+    if let Some((k, d)) = app.chave.and_then(|k| Some((k, app.docs.get(&k)?))) {
         let (f, sel) = (no_quadro(&d.sprite, d.frame), app.slices_selected(k));
         x = familia::contexto(&d.sprite, f, sel, app.slices.transform);
-        if let Some(m) = menu.and_then(|(cel, p)| {
+        x.na_mao = na_mao;
+        if let Some(m) = menu.filter(|_| na_mao).and_then(|(cel, p)| {
             familia::menu_em(&d.sprite, f, sel, cel, hero.escala().to_logical(p))
         }) {
             canal::abrir_menu(m);
         }
     }
-    let tem = x.na_mao;
     canal::publish_contexto(x);
-    if app.slices.visto != Some(tem) {
-        hero.panel_visibility.insert(PANEL_PIXEL_SLICES, tem);
-        app.slices.visto = Some(tem);
-    }
+    app.slices
+        .visto
+        .segue(hero, PANEL_PIXEL_SLICES, na_mao && app.chave.is_some());
 }
 
 /// Os quadros com key das selecionadas, para a linha do tempo (§9.2): só com a ferramenta na mão.

@@ -88,13 +88,9 @@ pub(crate) fn paint(st: &mut PixelSlicesPanelState, ctx: &mut PaintCtx) {
         return;
     }
     let x = canal::contexto();
-    if !x.na_mao {
-        canal::publish_menu_aberto(false);
-        ctx.host.store_mut().clear_panel_rect(node);
-        event::sem_nada(ctx.host);
-        return;
-    }
-    if let Some(novo) = canal::take_menu() {
+    // Aberta pelo menu *Window* sem a ferramenta na mão, mostra a lista (ou como fazer uma): a
+    // marca do menu é a janela no ecrã.
+    if let Some(novo) = canal::take_menu().filter(|_| x.na_mao) {
         st.menu = Some(novo);
         if let Some(InteractiveState::Dropdown { open, .. }) =
             ctx.host.store_mut().get_mut(ids::MENU)
@@ -104,7 +100,7 @@ pub(crate) fn paint(st: &mut PixelSlicesPanelState, ctx: &mut PaintCtx) {
     }
     let store = ctx.host.store_mut();
     // `Esc` limpou a seleção: o menu ficaria a oferecer verbos sem alvo.
-    let fechar = canal::take_fechar_menu() || x.vista.is_none();
+    let fechar = canal::take_fechar_menu() || x.vista.is_none() || !x.na_mao;
     if let Some(InteractiveState::Dropdown { open, .. }) = store.get_mut(ids::MENU) {
         *open &= !fechar;
         canal::publish_menu_aberto(*open);

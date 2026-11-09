@@ -210,8 +210,3 @@ pub(crate) fn apply_event(
         _ => EventOutcome::Ignored,
     }
 }
-
-/// Fecha o painel que ficou sem nada a mostrar.
-pub(crate) fn sem_nada(host: &mut dyn PanelHostInternal) {
-    host.set_panel_visible(PixelTilesPanel::ID, false);
-}

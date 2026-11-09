@@ -7,6 +7,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel.edit.undo_history" => "Undo History",
         "panel.pixel.edit.keyboard_shortcuts" => "Keyboard Shortcuts…",
         "panel.pixel.history.sec_list" => "Steps",
+        "panel.pixel.history.empty" => "No steps yet.",
         "panel.pixel.history.bytes" => "bytes",
         "panel.pixel.history.kib" => "K",
         "panel.pixel.history.mib" => "M",

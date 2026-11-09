@@ -224,7 +224,10 @@ fn convert_to_collision_outline_is_only_for_a_vector_row() {
     let mut t = T::new();
     for row in [BONES, PICTURE] {
         t.press(row, PointerButton::Secondary);
-        assert!(t.locate(ids::CTX_MENU_HIER_DUPLICATE).is_some(), "o menu da linha");
+        assert!(
+            t.locate(ids::CTX_MENU_HIER_DUPLICATE).is_some(),
+            "o menu da linha"
+        );
         assert!(
             t.locate(ids::CTX_MENU_HIER_CONVERT_TO_OUTLINE).is_none(),
             "oferecido a quem não é Vector"
@@ -237,7 +240,10 @@ fn convert_to_collision_outline_is_only_for_a_vector_row() {
     );
     t.paint();
     t.press(PICTURE, PointerButton::Secondary);
-    t.press(ids::CTX_MENU_HIER_CONVERT_TO_OUTLINE, PointerButton::Primary);
+    t.press(
+        ids::CTX_MENU_HIER_CONVERT_TO_OUTLINE,
+        PointerButton::Primary,
+    );
     let asked: Vec<_> = t.hero.bus.drain().collect();
     assert!(
         asked.contains(&EditorAction::Hierarchy(

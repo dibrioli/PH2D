@@ -161,3 +161,61 @@ fn o_agente_passa_a_direito_pela_parede_de_olho_fechado() {
         }
     }
 }
+
+/// ⭐ **Um corpo que ANDA, de olho fechado, sai do DESVIO** (o filtro `shape_off` de `nav_desvio`): um
+/// herói parado no caminho (Kinematic com mover — não recorta a malha, é obstáculo só do desvio) com a
+/// forma FILHA. De olho aberto o agente contorna-o; de olho fechado passa a direito.
+#[test]
+fn um_corpo_que_anda_de_olho_fechado_nao_e_desviado() {
+    use super::nav_desvio::{agente, corre, mover, regiao};
+    for fechado in [false, true] {
+        let mut sim = SimWorld::new();
+        regiao(&mut sim);
+        let heroi = sim
+            .world_mut()
+            .spawn((
+                Name::new("Hero"),
+                RigidBody {
+                    kind: BodyKind::Kinematic,
+                },
+                mover(),
+                Transform::from_translation(Vec2::new(0.0, 0.0)),
+            ))
+            .id();
+        let forma = sim
+            .world_mut()
+            .spawn((
+                Name::new("Collision Shape"),
+                Collider {
+                    shape: ColliderShape::Ball { radius: 0.6 },
+                    ..Collider::default()
+                },
+                Transform::IDENTITY,
+                ChildOf(heroi),
+            ))
+            .id();
+        if fechado {
+            flip(sim.world_mut(), forma, RowFlag::Visible);
+        }
+        let quem = agente(
+            &mut sim,
+            "A",
+            (-4.0, 0.0),
+            NavTarget::Point([4.0, 0.0]),
+            true,
+        );
+        let c = corre(&mut sim, &mut PhysicsBridge::new(), &[quem], 1, 300);
+        let fora = c.iter().map(|ps| ps[0].1.abs()).fold(0.0f32, f32::max);
+        let fim = c.last().expect("a corrida")[0];
+        assert!(
+            (fim.0 - 4.0).hypot(fim.1) < 0.2,
+            "não chegou (olho {}): {fim:?}",
+            if fechado { "fechado" } else { "aberto" }
+        );
+        if fechado {
+            assert!(fora < 0.05, "desviou-se de um corpo desligado: |y| {fora}");
+        } else {
+            assert!(fora > 0.5, "o CONTROLO não se desviou do herói: |y| {fora}");
+        }
+    }
+}

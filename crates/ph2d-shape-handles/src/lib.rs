@@ -4,6 +4,7 @@
 //! (`overlay::outline`) e do solver. Nele o centro é `offset × escala` (com sinal: o espelho dobra o Offset) e as
 //! meias-medidas são `medida × |escala|`, por isso a rotação, o pai e o espelho entram numa só conta.
 
+pub mod anima_pontos;
 pub mod cursor_pontos;
 pub mod fusao;
 mod ponteiro;

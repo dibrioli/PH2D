@@ -136,6 +136,14 @@ impl crate::App {
                 crate::scene_mapping::janela(hero.view.center_split, surface.size()),
                 (&mut *vector_scene, &mut *paint_ctx.text),
             );
+            // O relógio dos indicadores dos pontos (o quadro é contínuo: `ControlFlow::Poll`).
+            ph2d_shape_handles::anima_pontos::passo(
+                sim.world_mut(),
+                camera,
+                crate::scene_mapping::janela(hero.view.center_split, surface.size()),
+                self.last_pointer,
+                self.handler.elapsed_ms() as f64,
+            );
             ph2d_shape_handles::tinta::desenhar(
                 sim.world(),
                 camera,

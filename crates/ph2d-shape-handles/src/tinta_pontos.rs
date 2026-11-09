@@ -24,6 +24,9 @@ const ARESTA_PX: f64 = 3.0; // LITERAL-PX-OK: a aresta sob o ponteiro
 const TRACEJADO_PX: [f64; 2] = [4.0, 3.0]; // LITERAL-PX-OK: o fio até ao alvo da fusão
 const BRILHO_ALFA: f32 = 0.28; // LITERAL-PX-OK: opacidade do brilho
 const HALO_ALFA: f32 = 0.7; // LITERAL-PX-OK: opacidade do halo
+const LINHA_HALO_PX: f64 = 0.75; // LITERAL-PX-OK: o halo fino do caminho, de cada lado
+const LINHA_HALO_ALFA: f32 = 0.45; // LITERAL-PX-OK: opacidade do halo do caminho
+const PULSO_PX: f64 = 3.0; // LITERAL-PX-OK: quanto o anel de fora da fusão respira
 const FANTASMA_ALFA: f32 = 0.85; // LITERAL-PX-OK: o miolo do «+» fantasma
 
 fn disco(s: &mut ph2d_vector::Scene, c: (f32, f32), r: f64, cor: Color) {
@@ -160,8 +163,7 @@ pub(crate) fn desenhar(
     let Some((pose, m, o)) = p::do_alvo(world, alvo) else {
         return;
     };
-    let (cor, fundo, claro) = (
-        resolve(ColorToken::Selection, theme),
+    let (fundo, claro) = (
         resolve(ColorToken::Bg0, theme),
         resolve(ColorToken::Text1, theme),
     );
@@ -170,6 +172,9 @@ pub(crate) fn desenhar(
         resolve(ColorToken::Danger, theme),
     );
     let halo = fundo.with_alpha(HALO_ALFA);
+    let anima = world.get_resource::<crate::anima_pontos::AnimaPontos>();
+    // Sem relógio (testes, 1.º quadro) desenha-se o fim do crescer.
+    let cresceu = |pt| anima.map_or(1.0, |a| f64::from(a.crescimento(pt)));
     let ecra = p::no_ecra(&pose, &m, &o, cam, win);
     let est = estados(world, &ecra, ponteiro);
     let sel = world
@@ -177,9 +182,10 @@ pub(crate) fn desenhar(
         .map(|x| x.selecionados.clone())
         .unwrap_or_default();
     let s = scene.inner_mut();
-    // O contorno com halo: lê-se sobre arte clara e escura.
+    // O caminho editável: o traço de realce com um halo escuro fino, que só o separa da arte.
     let mut largo = traco.clone();
-    largo.width += 2.0 * HALO_PX;
+    largo.width += 2.0 * LINHA_HALO_PX;
+    let halo_da_linha = fundo.with_alpha(LINHA_HALO_ALFA);
     for r in &ecra {
         let mut path = BezPath::new();
         for (i, &(x, y)) in r.iter().enumerate() {
@@ -191,8 +197,14 @@ pub(crate) fn desenhar(
             }
         }
         path.close_path();
-        s.stroke(&largo, Affine::IDENTITY, &Brush::Solid(halo), None, &path);
-        s.stroke(traco, Affine::IDENTITY, &Brush::Solid(cor), None, &path);
+        s.stroke(
+            &largo,
+            Affine::IDENTITY,
+            &Brush::Solid(halo_da_linha),
+            None,
+            &path,
+        );
+        s.stroke(traco, Affine::IDENTITY, &Brush::Solid(realce), None, &path);
     }
     if let Some(a) = est.aresta
         && let Some(r) = ecra.get(a.anel)
@@ -228,18 +240,22 @@ pub(crate) fn desenhar(
                 barra(s, c, false, claro);
             } else if sel.binary_search(&pt).is_ok() {
                 if sob {
-                    disco(
-                        s,
-                        c,
-                        SELECIONADO_PX + BRILHO_PX,
-                        realce.with_alpha(BRILHO_ALFA),
-                    );
+                    let k = cresceu(pt);
+                    let brilho = realce.with_alpha(BRILHO_ALFA * k as f32);
+                    disco(s, c, SELECIONADO_PX + BRILHO_PX * k, brilho);
                 }
                 bola(s, c, SELECIONADO_PX, realce, realce, halo);
                 anel(s, c, MIOLO_PX, TRACO_PX, claro);
             } else if sob {
-                disco(s, c, SOB_PX + BRILHO_PX, realce.with_alpha(BRILHO_ALFA));
-                bola(s, c, SOB_PX, claro, realce, halo);
+                let k = cresceu(pt);
+                let r = PONTO_PX + (SOB_PX - PONTO_PX) * k;
+                disco(
+                    s,
+                    c,
+                    r + BRILHO_PX * k,
+                    realce.with_alpha(BRILHO_ALFA * k as f32),
+                );
+                bola(s, c, r, claro, realce, halo);
             } else {
                 bola(s, c, PONTO_PX, claro, realce, halo);
             }
@@ -250,12 +266,14 @@ pub(crate) fn desenhar(
     {
         anel(s, c, FUSAO_PX, TRACO_PX * 2.0 + 2.0 * HALO_PX, halo);
         anel(s, c, FUSAO_PX, TRACO_PX * 2.0, perigo);
+        let k = anima.map_or(0.5, |a| crate::anima_pontos::pulso(a.agora_ms));
+        let fora = perigo.with_alpha(BRILHO_ALFA * 2.0 * (1.0 - 0.6 * k));
         anel(
             s,
             c,
-            FUSAO_FORA_PX,
+            FUSAO_FORA_PX + PULSO_PX * f64::from(k),
             TRACO_PX,
-            perigo.with_alpha(BRILHO_ALFA * 2.0),
+            fora,
         );
     }
     if let Some(c) = est.mais {

@@ -574,5 +574,7 @@ fn o_modo_blender_casa_com_o_cycles_e_o_clear_glass_e_o_de_antes() {
 /// `0x65a9_16d3_3d87_ed2f`): o lobo da lâmpada passou ao microfacet físico (`oleo_real`, cura do Cycles).
 /// Regravado 05/11 (era `0x92f6_8918_af19_c165` · `0xfc73_0fc0_9f11_537a`): o relevo sem degrau que o dono aprovou
 /// (Bug #71); tirar o `meio_do_dente` de `height_at` devolve os de antes ao bit.
-const CLEAR_GLASS_05: u64 = 0xa302_b939_db67_365e;
-const CLEAR_GLASS_1: u64 = 0x5180_1609_f93c_f777;
+/// Regravado 09/11 (era `0xa302_b939_db67_365e` · `0x5180_1609_f93c_f777`): o papel morde a tinta pelo Relief × Tooth
+/// (`60c3bfcb6f`, dono 08/11 «usar o Tooth»); bisseção: `bc6167c6f2` dá os de antes, `60c3bfcb6f` estes.
+const CLEAR_GLASS_05: u64 = 0xac49_1cf4_5ba7_e3fb;
+const CLEAR_GLASS_1: u64 = 0x2ebc_2040_0011_d3fb;

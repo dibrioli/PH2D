@@ -387,4 +387,10 @@
 /// `ColliderShape::Outline { half_x, half_y }` ANEXADA e o componente NOVO registado
 /// `ph2d::physics::ColliderOutline { rings, picture_px, detail_q4, alpha_cutoff, min_island_px }` no
 /// lado-forma. SEM leitura dos anteriores (§0.11). Registos: `+1`. ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 227;
+///
+/// # `227 → 228` — **as passadas do Aseprite no ping-pong** (`line/PixelArt`, P14a-3)
+///
+/// `AnimationTag.acaba_na_ponta_de_chegada: bool` no FIM: `repeat` N do Aseprite conta passadas, o motor ciclos; N
+/// ímpar ⇒ o último ciclo é meio (`ph2d_ecs::tag_do_aseprite`). SEM leitura dos anteriores (§0.11). Registos: `0`.
+/// ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 228;

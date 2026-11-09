@@ -188,6 +188,10 @@ pub struct AnimationTag {
     pub color: u8,
     /// A folha do intervalo `from..=to` (plano GEF 26): `0` = a do `Sprite`. Uma lista de quadros diz a folha de cada um.
     pub sheet: u8,
+    /// Ping-pong com um número ÍMPAR de passadas do Aseprite ([`tag_do_aseprite`]): o último ciclo é
+    /// meio — pára na ponta de CHEGADA, sem voltar. Só vale com o `repeat` da tag (sem `loop_override`).
+    #[serde(default)]
+    pub acaba_na_ponta_de_chegada: bool,
 }
 
 /// Quantas cores a paleta das animações tem; o editor dá um token a cada índice.
@@ -210,6 +214,7 @@ impl AnimationTag {
             per_frame_ms: Vec::new(),
             color: 0,
             sheet: 0,
+            acaba_na_ponta_de_chegada: false,
         }
     }
 
@@ -315,6 +320,9 @@ impl SimComponent for SpriteAnimations {}
 /// `duracoes_ms` é a duração de CADA quadro do documento inteiro. Uniforme no intervalo ⇒
 /// `frame_ms` dessa duração e `per_frame_ms` vazio; senão `frame_ms` = a dominante (empate ⇒ a
 /// menor; intervalo fora ⇒ 100) e `per_frame_ms` o do intervalo. `repeat 0` ⇒ para sempre.
+/// `repeat` N conta PASSADAS (lei do Aseprite, medida no Trial: `ph2d_pixel_core::play`); o motor
+/// conta CICLOS. No ping-pong, N passadas = `ceil(N/2)` ciclos e, N ímpar, o último é meio
+/// ([`AnimationTag::acaba_na_ponta_de_chegada`]).
 /// A direcção passa por [`AnimDirection::from_tag`], nunca por cast.
 #[must_use]
 pub fn tag_do_aseprite(
@@ -347,11 +355,19 @@ pub fn tag_do_aseprite(
     } else {
         span.iter().map(|d| (*d).max(1)).collect()
     };
+    let direction = AnimDirection::from_tag(direcao);
+    let n = u32::from(repeat);
+    let (ciclos, meio) = if direction.bounces() {
+        (n.div_ceil(2), n % 2 == 1)
+    } else {
+        (n, false)
+    };
     AnimationTag {
         frame_ms: ms.max(1),
-        direction: AnimDirection::from_tag(direcao),
-        repeat: (repeat > 0).then_some(u32::from(repeat)),
+        direction,
+        repeat: (ciclos > 0).then_some(ciclos),
         per_frame_ms,
+        acaba_na_ponta_de_chegada: meio,
         ..AnimationTag::new(nome, from, to)
     }
 }
@@ -654,8 +670,8 @@ fn is_cycle_end(
         // Num ping-pong o ciclo fecha ao voltar à ponta de PARTIDA.
         let start_at_hi = dir.starts_reversed();
         if animator.pingpong_reverse == start_at_hi {
-            // A ir na direção de partida: o ciclo fecha na outra ponta? Não — só depois da volta.
-            false
+            // A ir na direção de partida: só o meio ciclo final fecha na ponta de chegada.
+            meio_ciclo_final(animator, tag) && frame == if start_at_hi { lo } else { hi }
         } else {
             frame == if start_at_hi { hi } else { lo }
         }
@@ -709,7 +725,7 @@ fn step_one(
     if dir.bounces() {
         let start_at_hi = dir.starts_reversed();
         let closes_here = animator.pingpong_reverse != start_at_hi;
-        if closes_here && !will_continue {
+        if (closes_here || meio_ciclo_final(animator, tag)) && !will_continue {
             close_cycle(animator, tag, out);
             return;
         }
@@ -726,6 +742,13 @@ fn step_one(
         out.frame_changed = true;
     }
     close_cycle(animator, tag, out);
+}
+
+/// O ciclo a correr é o ÚLTIMO e é meio ([`AnimationTag::acaba_na_ponta_de_chegada`]).
+fn meio_ciclo_final(animator: &SpriteAnimator, tag: &AnimationTag) -> bool {
+    tag.acaba_na_ponta_de_chegada
+        && animator.loop_override.is_none()
+        && tag.repeat.is_some_and(|n| animator.repeat_count + 1 >= n)
 }
 
 /// Fecha um ciclo: conta-o, e pára se já não há mais.

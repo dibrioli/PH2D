@@ -19,6 +19,7 @@ fn tag(direction: AnimDirection, repeat: Option<u32>) -> AnimationTag {
         signal_on_loop: String::new(),
         color: 0,
         sheet: 0,
+        acaba_na_ponta_de_chegada: false,
     }
 }
 

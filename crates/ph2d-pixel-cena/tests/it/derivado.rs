@@ -183,41 +183,71 @@ fn tique(w: &mut World, e: Entity, dt_us: u64) {
     w.entity_mut(e).insert((grid, anim));
 }
 
-#[test]
-fn o_jogo_e_o_editor_tocam_o_mesmo_quadro() {
-    let s = heroi_p14();
-    let mut sim = mundo(&s);
-    deriva(sim.world_mut(), |_| Some((&s, 1)));
+/// O jogo e o editor tocam `tag` desde o início: o MESMO quadro em cada ms enquanto a tag toca no
+/// editor; depois dela o editor segue a linha do tempo (lei do Aseprite) e o jogo fica na pose final
+/// (lei do motor), que é o último quadro que o editor mostrou dentro da tag.
+fn confere(s: &Sprite, tag: &str) {
+    let mut sim = mundo(s);
+    deriva(sim.world_mut(), |_| Some((s, 1)));
     let e = pixel_de(sim.world_mut());
-    let run = sim
+    let clip = sim
         .world()
         .get::<SpriteAnimations>(e)
-        .and_then(|l| l.get("run"))
+        .and_then(|l| l.get(tag))
         .cloned()
-        .expect("run");
-    let mut a = SpriteAnimator::new("run");
+        .expect("clip");
+    let mut a = SpriteAnimator::new(tag);
     a.playing = true;
-    a.rewind(Some(&run));
+    a.rewind(Some(&clip));
     sim.world_mut().entity_mut(e).insert(a);
-    let mut editor = Play::start(&s, run.from as usize, PlayOptions::default());
+    let mut editor = Play::start(s, clip.from as usize, PlayOptions::default());
     let celula = |w: &World| match w.get::<SpriteGrid>(e).expect("grelha").shown() {
         FrameRef::Cell { cell, .. } => cell as usize,
         FrameRef::Empty => usize::MAX,
     };
+    let dentro = |i: usize| (clip.from as usize..=clip.to as usize).contains(&i);
     tique(sim.world_mut(), e, 0);
-    let mut diverge = Vec::new();
+    let (mut pose, mut saiu, mut diverge) = (editor.index, None, Vec::new());
     for t in 0..=2000u32 {
         if t > 0 {
-            editor.advance(&s, 1);
+            editor.advance(s, 1);
             tique(sim.world_mut(), e, 1000);
         }
         let (jogo, ed) = (celula(sim.world()), editor.index);
-        if jogo != ed && diverge.len() < 8 {
-            diverge.push((t, jogo, ed));
+        if saiu.is_none() && !dentro(ed) {
+            saiu = Some(t);
+        }
+        let quer = if saiu.is_some() { pose } else { ed };
+        pose = if saiu.is_some() { pose } else { ed };
+        if jogo != quer && diverge.len() < 8 {
+            diverge.push((t, jogo, quer));
         }
     }
+    assert!(saiu.is_some(), "{tag}: a tag do editor não acabou em 2 s");
     assert!(
         diverge.is_empty(),
-        "(t ms, quadro do jogo, quadro do editor): {diverge:?}"
+        "{tag} (t ms, quadro do jogo, o que devia): {diverge:?}"
     );
+    let a = sim.world().get::<SpriteAnimator>(e).expect("animador");
+    assert!(!a.playing, "{tag}: o jogo parou na pose final");
+}
+
+#[test]
+fn o_jogo_e_o_editor_tocam_o_mesmo_quadro() {
+    let mut s = heroi_p14();
+    confere(&s, "run"); // PingPong, 2 passadas: 2 3 4 3 2
+    let mut tags = s.tags().to_vec();
+    tags[1].repeat = 3; // ímpar: 2 3 4 3 2 3 4, pára em 4
+    let (frames, slices) = (s.frames().to_vec(), s.slices().to_vec());
+    apply(
+        &mut s,
+        Op::Frames(Box::new(FrameSet {
+            frames,
+            cels: Vec::new(),
+            tags,
+            slices,
+        })),
+    )
+    .expect("tags");
+    confere(&s, "run");
 }

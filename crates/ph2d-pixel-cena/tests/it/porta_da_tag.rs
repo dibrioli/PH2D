@@ -46,7 +46,8 @@ fn a_tag_do_pixel_e_a_do_aseprite_pela_mesma_porta() {
     let run = pixel.get("run").expect("run");
     assert_eq!(
         (run.from, run.to, run.direction, run.repeat),
-        (2, 4, AnimDirection::PingPong, Some(2))
+        (2, 4, AnimDirection::PingPong, Some(1)),
+        "2 passadas do Aseprite = 1 ciclo do motor"
     );
     assert_eq!(
         (run.frame_ms, run.per_frame_ms.as_slice()),

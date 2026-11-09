@@ -277,5 +277,7 @@ pub fn cena_de_luz(world: &World) -> CenaDeLuz {
         vetores: vetores.into_values().collect(),
         outros: outros.into_values().collect(),
         luzes_emissoras,
+        // P14 «L»: nenhum receptor do ECS leva normal ainda (o Pixel Sprite liga-o na P14c-sprite).
+        com_normal: false,
     }
 }

@@ -71,6 +71,9 @@ pub struct CenaDeLuz {
     /// ⭐ Cada `Luz` que virou emissor, com o índice dela em [`Self::emissores`] (W4): a UI diz o
     /// que a captura fez com ESTA lâmpada.
     pub luzes_emissoras: Vec<(bevy_ecs::entity::Entity, usize)>,
+    /// ⭐ P14 «L» — algum receptor à vista tem normal: o solver calcula o momento `M` (sem ela, nem o
+    /// aloca: o quadro é o de sempre).
+    pub com_normal: bool,
 }
 
 /// ⭐ W5e — um objeto de OUTRA família que bloqueia a luz (o traço do Flip, as formas do Motion).

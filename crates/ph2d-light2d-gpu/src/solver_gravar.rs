@@ -94,6 +94,7 @@ impl Solver {
         cena: &CenaDeLuz,
         sprites: &CapturaDeSprites<'_>,
     ) -> RelatorioC0 {
+        self.acertar_o_momento(gpu, cena.com_normal);
         let diretas = crate::direta::lampadas_diretas(cena);
         let cap = capturar_sem(cena, &self.cfg.grade, &sprites.substituidos, &diretas);
         // ⭐ W5b (F4): o mundo fora da grade no caminho até cada lâmpada direta.
@@ -401,6 +402,9 @@ impl Solver {
             (&self.lampadas_grupo, !distante.indices.is_empty(), reflete),
             self.tempos.as_ref(),
         );
+        if let Some(m) = &self.momento {
+            m.gravar(self, enc, !distante.indices.is_empty());
+        }
         match &self.miolo {
             Some(m) => m.gravar(
                 gpu,

@@ -18,6 +18,7 @@ mod holografica;
 mod junto_a_face;
 mod medicao;
 mod medida_luz2d;
+mod momento_na_placa;
 mod o_custo_do_miolo;
 mod o_miolo_na_placa;
 mod sonda_g4_holografica;

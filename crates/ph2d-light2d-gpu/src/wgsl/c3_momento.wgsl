@@ -8,6 +8,8 @@
 //   c0 do momento interpolada como a `c0_em`.
 
 override MOMENTO: bool = false;
+// A fina que o momento acompanha: `c3_fina_exata` (true) ou `c3_fina` (false).
+override MOMENTO_EXATA: bool = false;
 
 @group(2) @binding(30) var c0_momento_x: texture_2d<f32>;
 @group(2) @binding(31) var c0_momento_y: texture_2d<f32>;
@@ -22,6 +24,9 @@ var<private> momento_y: vec3<f32>;
 // O do texel: as duas faces misturadas como a luz (`mix` por `f2`).
 var<private> momento_fina_x: vec3<f32>;
 var<private> momento_fina_y: vec3<f32>;
+// Os pontos das duas faces (xy, zw) e o peso da segunda: onde a `c3_momento` lê a c0 de `M`.
+var<private> momento_faces: vec4<f32>;
+var<private> momento_f2: f32;
 
 // A parcela de uma lâmpada `L` vista de `P` com luz `l = s·v` (o [`luz_das_lampadas`]).
 fn momento_da_lampada(P: vec2<f32>, L: Lampada, l: vec3<f32>) {
@@ -88,7 +93,18 @@ fn c3_momento(@builtin(global_invocation_id) gid: vec3<u32>) {
     }
     borda_aqui = true;
     let tau = meio(ponto_fino(alvo)).tau;
-    _ = luz_do_texel(alvo, onde_calcular(alvo), tau, false, false);
+    _ = luz_do_texel(alvo, onde_calcular(alvo), tau, MOMENTO_EXATA, false);
+    // A c0 de `M` nas duas faces, misturada como as lâmpadas (a mistura é linear: somar depois dá o mesmo).
+    c0_momento_em(momento_faces.xy);
+    var cx = momento_x;
+    var cy = momento_y;
+    if momento_f2 > 0.0 {
+        c0_momento_em(momento_faces.zw);
+        cx = mix(cx, momento_x, momento_f2);
+        cy = mix(cy, momento_y, momento_f2);
+    }
+    momento_fina_x += cx;
+    momento_fina_y += cy;
     textureStore(fina_momento_x, alvo, vec4<f32>(momento_fina_x, 1.0));
     textureStore(fina_momento_y, alvo, vec4<f32>(momento_fina_y, 1.0));
 }

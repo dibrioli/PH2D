@@ -57,7 +57,8 @@ pub(super) struct Entradas<'a> {
 
 pub(super) struct C3 {
     /// O grupo 0: a cena capturada e o uniforme da c0 (a marcha da c0, sem as saídas das cascatas).
-    cena: wgpu::BindGroup,
+    pub(super) cena: wgpu::BindGroup,
+    pub(super) cena_layout: wgpu::BindGroupLayout,
     visibilidade: Option<(Par, wgpu::BindGroup)>,
     preenchimento: Option<Preenchimento>,
     fina: Option<Par>,
@@ -75,7 +76,7 @@ pub(super) struct C3 {
     tabela: wgpu::Buffer,
     /// A grade das cascatas (a fonte do rebote cobre-a inteira).
     tamanho_grosso: [u32; 2],
-    uniforme: wgpu::Buffer,
+    pub(super) uniforme: wgpu::Buffer,
     /// O uniforme deste quadro: a grade fina inteira por omissão, a região da janela com
     /// [`Self::regiao`].
     u: UniformeFina,
@@ -501,6 +502,7 @@ impl C3 {
         let gf = cfg.grade_da_fluencia();
         let mut c3 = Self {
             cena,
+            cena_layout,
             visibilidade,
             preenchimento,
             fina,

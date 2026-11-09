@@ -56,7 +56,7 @@ pub fn comuns(cfg: &Config) -> [(&'static str, f64); 24] {
 }
 
 /// A visibilidade das sondas corre (o refino por bordas, fora do entorno `so_a_c0`).
-pub(super) fn com_visibilidade(cfg: &Config) -> bool {
+pub(crate) fn com_visibilidade(cfg: &Config) -> bool {
     matches!(cfg.refino, Refino::Bordas(_)) && cfg.usa_visibilidade() && !cfg.so_a_c0
 }
 

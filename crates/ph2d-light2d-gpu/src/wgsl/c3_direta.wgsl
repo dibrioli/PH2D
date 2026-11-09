@@ -1388,7 +1388,10 @@ fn luz_do_texel(alvo: vec2<u32>, onde: Onde, tau: f32, exata: bool, transmitida:
             c0e = c0_em(P);
         }
         if MOMENTO {
-            c0_momento_em(P);
+            // Só as lâmpadas aqui: a c0 de `M` soma-se na `c3_momento` (ler as texturas dela daqui
+            // punha as ligações 30–31 em toda pipeline que chama esta função).
+            momento_x = vec3<f32>(0.0);
+            momento_y = vec3<f32>(0.0);
         }
         var x = luz_das_lampadas(P, pf, modo, select(c0e, c0l, longo && !exata));
         if longo && exata {
@@ -1397,9 +1400,13 @@ fn luz_do_texel(alvo: vec2<u32>, onde: Onde, tau: f32, exata: bool, transmitida:
         if MOMENTO && passo == 0u {
             momento_fina_x = momento_x;
             momento_fina_y = momento_y;
+            momento_faces = vec4<f32>(P, P);
+            momento_f2 = 0.0;
         } else if MOMENTO && passo == 1u {
             momento_fina_x = mix(momento_fina_x, momento_x, onde.f2);
             momento_fina_y = mix(momento_fina_y, momento_y, onde.f2);
+            momento_faces = vec4<f32>(momento_faces.xy, P);
+            momento_f2 = onde.f2;
         }
         if passo == 0u {
             l = x;

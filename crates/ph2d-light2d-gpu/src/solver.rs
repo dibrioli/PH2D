@@ -46,6 +46,9 @@ mod holo;
 /// ⭐ O miolo dos opacos pela difusão (W5h) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_miolo.rs"]
 mod miolo;
+/// ⭐ P14 «L»: o momento `M` (só com normal à vista) — ficheiro irmão pelo mesmo tecto.
+#[path = "solver_momento.rs"]
+mod momento;
 /// ⭐ O nascimento sob os tetos do dispositivo (W5e) — ficheiro irmão pelo mesmo tecto.
 #[path = "solver_nascer.rs"]
 mod nascer;
@@ -175,6 +178,7 @@ pub struct Solver {
     /// ⭐ W5q: os ladrilhos do anel (com o miolo).
     ladrilhos: Option<crate::ladrilhos::Ladrilhos>,
     tempos: Option<Tempos>,
+    momento: Option<momento::Momento>,
 }
 
 fn entrada_uniforme(binding: u32, vis: wgpu::ShaderStages) -> wgpu::BindGroupLayoutEntry {
@@ -306,20 +310,7 @@ impl Solver {
         let ladrilhos = cfg.niveis_do_miolo().map(|_| buffer(NOME_LADRILHOS));
         let sementes_finais = SEMENTES[saltos.len() % 2];
         // ── C2 e C3: o módulo, as lâmpadas e a amostra que a C3 lê ──
-        let rc_modulo = device.create_shader_module(wgpu::ShaderModuleDescriptor {
-            label: Some("luz2d c2_rc.wgsl"),
-            source: wgpu::ShaderSource::Wgsl(
-                cfg.modulo_rc
-                    .unwrap_or_else(|| {
-                        shaders::rc(
-                            cfg.aritmetica,
-                            cfg.armazenamento,
-                            cfg.hrc_niveis_em_textura(),
-                        )
-                    })
-                    .into(),
-            ),
-        });
+        let rc_modulo = momento::modulo_rc(&device, &cfg);
         // ⭐ C3 — as lâmpadas diretas, no grupo 1 (o buffer é fixo: o teto de lâmpadas), e o mundo
         // fora da grade (W5b, F4: objetos, arestas, índices e a atlas das máscaras).
         let armazenado = |binding| wgpu::BindGroupLayoutEntry {
@@ -593,6 +584,7 @@ impl Solver {
             hrc,
             ladrilhos,
             tempos,
+            momento: None,
         })
     }
 

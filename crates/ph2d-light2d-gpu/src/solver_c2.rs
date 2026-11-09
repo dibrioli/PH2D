@@ -40,6 +40,23 @@ pub(super) fn tabela_vazia(device: &wgpu::Device, nome: &'static str) -> wgpu::B
     })
 }
 
+/// As constantes da `cascata` (e da `cascata_momento`, P14 «L»).
+pub(super) fn constantes(cfg: &Config) -> [(&'static str, f64); 5] {
+    [
+        ("FUSAO", cfg.fusao.codigo()),
+        ("PASSO", f64::from(cfg.passo_perto)),
+        (
+            "MASCARA_C0",
+            f64::from(u8::from(cfg.preenchimento.is_some())),
+        ),
+        ("MASCARA_DA_FUSAO", cfg.mascara_da_fusao.codigo()),
+        (
+            "FRONTEIRA_NA_FACE",
+            f64::from(u8::from(cfg.fronteira_na_face)),
+        ),
+    ]
+}
+
 /// A pipeline das cascatas e o grupo de cada nível.
 pub(super) fn cascatas(e: &Entradas<'_>) -> (wgpu::ComputePipeline, Vec<wgpu::BindGroup>) {
     let formato = e.lista.texturas[CASCATAS[0]].formato;
@@ -73,19 +90,7 @@ pub(super) fn cascatas(e: &Entradas<'_>) -> (wgpu::ComputePipeline, Vec<wgpu::Bi
             bind_group_layouts: &[Some(&rc_layout), Some(e.lampadas_layout)],
             immediate_size: 0,
         });
-    let constantes = [
-        ("FUSAO", e.cfg.fusao.codigo()),
-        ("PASSO", f64::from(e.cfg.passo_perto)),
-        (
-            "MASCARA_C0",
-            f64::from(u8::from(e.cfg.preenchimento.is_some())),
-        ),
-        ("MASCARA_DA_FUSAO", e.cfg.mascara_da_fusao.codigo()),
-        (
-            "FRONTEIRA_NA_FACE",
-            f64::from(u8::from(e.cfg.fronteira_na_face)),
-        ),
-    ];
+    let constantes = constantes(e.cfg);
     let rc = e
         .device
         .create_compute_pipeline(&wgpu::ComputePipelineDescriptor {

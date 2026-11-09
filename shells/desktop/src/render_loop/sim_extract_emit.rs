@@ -170,7 +170,8 @@ pub(super) fn sprite(
     };
     // The cell is cut from the EXACT rect; a half-texel inset (filter_clip, or an atlas sprite that wraps and so
     // skips the shader's in-rect clamp) moves only the FINAL rect, the same for every frame.
-    let wraps_atlas = texture_id == RenderInstance::ATLAS_TEXTURE_ID && sprite_wraps(flip_uv, uv_xform);
+    let wraps_atlas =
+        texture_id == RenderInstance::ATLAS_TEXTURE_ID && sprite_wraps(flip_uv, uv_xform);
     let atlas_ht = 0.5 / atlas.size_px.max(1) as f32;
     let clip = clip.or(wraps_atlas.then_some((atlas_ht, atlas_ht)));
     let atlas_uv = clip.map_or(cell, |ht| inset_half_texel(cell, ht));
@@ -408,7 +409,10 @@ fn region_uv(
                 } else {
                     None
                 };
-                (region_subrect(atlas_uv, region.rect, sw as f32, sh as f32, None), half_texel)
+                (
+                    region_subrect(atlas_uv, region.rect, sw as f32, sh as f32, None),
+                    half_texel,
+                )
             }
             None => (atlas_uv, None),
         }

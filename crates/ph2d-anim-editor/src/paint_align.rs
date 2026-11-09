@@ -260,6 +260,47 @@ fn paint_frame(doc: &AnimDoc, scene: &mut VectorScene, text: &mut TextSystem, th
         Look::of(a.on, a.show_ref),
         fio,
     );
+    // Ações de um clique (onda C): nunca acesas; apagadas com o Align desligado.
+    let feet = (IconId::AlignBottom, tr("anim_editor.align_by_feet"));
+    chip(
+        scene,
+        text,
+        theme,
+        l.by_feet,
+        feet,
+        Look::of(a.on, false),
+        fio,
+    );
+    let centre = (IconId::AlignMiddle, tr("anim_editor.align_by_centre"));
+    chip(
+        scene,
+        text,
+        theme,
+        l.by_centre,
+        centre,
+        Look::of(a.on, false),
+        fio,
+    );
+}
+
+/// ⭐ A marca na tira de um quadro com acerto próprio (onda C): o ícone de mover, no canto de cima à direita (o de baixo
+/// é o nome da folha), na tinta do Align. Sob o rato o canto é do ×, e a marca cede-lhe o lugar.
+pub(super) fn paint_nudge_mark(scene: &mut VectorScene, theme: Theme, thumb: Rect) {
+    let side = TypeToken::Base.px();
+    let pad = Spacing::Xs.px();
+    let r = Rect::new(
+        thumb.x + thumb.w - side - pad,
+        thumb.y + pad,
+        side,
+        side,
+    );
+    paint_icon(
+        scene,
+        IconId::Move,
+        r,
+        tom(ColorToken::Info, theme),
+        StrokeToken::Default.px(),
+    );
 }
 
 /// Como um botão da moldura se mostra.

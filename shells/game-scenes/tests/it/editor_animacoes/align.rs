@@ -344,10 +344,109 @@ fn a_moldura_do_align_fica_embaixo_a_direita() {
         l.align.pick,
         l.align.show_prev,
         l.align.show_ref,
+        l.align.by_feet,
+        l.align.by_centre,
     ] {
         assert!(
             r.x >= f.x && r.x + r.w <= f.x + f.w && r.y >= f.y && r.y + r.h <= f.y + f.h,
             "{r:?} fora de {f:?}"
         );
+    }
+}
+
+/// Uma folha 64 × 32 (2 × 1, um quad de 1 m) com o desenho de cada quadro noutro lugar: o 1.º com os pés em `y = 30`
+/// e o meio em `x = 8`; o 2.º com os pés em `y = 24` e o meio em `x = 46` (`14` na célula). A animação `idle` é
+/// os dois quadros, e o 1.º é a referência.
+fn desalinhada(m: &mut Mesa) {
+    let (w, h) = (64_usize, 32_usize);
+    let mut px = vec![0_u8; w * h * 4];
+    for (x0, x1, y0, y1) in [(4, 12, 20, 30), (40, 52, 10, 24)] {
+        for y in y0..y1 {
+            for x in x0..x1 {
+                px[(y * w + x) * 4..][..4].copy_from_slice(&[200, 80, 40, 255]);
+            }
+        }
+    }
+    let run = m.db.insert_image_rgba8(64, 32, px);
+    let e = Entity::from_bits(m.e);
+    let extra = ExtraSheet {
+        asset: run,
+        size: [1.0, 1.0],
+        anchor: [0.0, 0.0],
+        hframes: 2,
+        vframes: 1,
+        offsets: Default::default(),
+    };
+    let mut frames = SpriteAnimFrames::default();
+    frames.set(
+        "idle",
+        vec![
+            FrameRef::Cell { sheet: 1, cell: 0 },
+            FrameRef::Cell { sheet: 1, cell: 1 },
+        ],
+    );
+    m.sim
+        .world_mut()
+        .entity_mut(e)
+        .insert((SpriteSheets(std::iter::once(extra).collect()), frames));
+    m.frame();
+}
+
+/// «By feet» leva os pés de cada quadro da animação aos da referência, num clique; a referência e a folha ficam; o
+/// quadro acertado ganha a marca na tira. «By centre» faz o mesmo com o meio do desenho.
+/// *Mutação: o alvo tirado do quadro aberto em vez da referência · o passo sem `round` · a marca a ler o acerto da
+/// folha 0 para todo quadro ⇒ vermelho.*
+#[test]
+fn by_feet_e_by_centre_levam_cada_quadro_ao_ponto_da_referencia() {
+    use ph2d_app_sprite_anim::editor::align::AlignBy;
+    // O acerto esperado do 2.º quadro, em px da folha (Y para cima): 6 para a esquerda (meio 14 → 8); os pés descem
+    // 6 (base 24 → 30, a imagem conta para baixo); o centro desce 8 (meio da caixa 17 → 25).
+    for (by, esperado) in [
+        (AlignBy::Feet, [-6.0, -6.0]),
+        (AlignBy::Centre, [-6.0, -8.0]),
+    ] {
+        let mut m = Mesa::new();
+        desalinhada(&mut m);
+        m.align_on();
+        let r = m.doc().align_reference().expect("a referência");
+        assert_eq!((r.sheet, r.cell), (1, 0));
+        let alvo = m.doc().align_point(r, by).expect("o ponto da referência");
+        let botao = match by {
+            AlignBy::Feet => m.doc().layout.align.by_feet,
+            AlignBy::Centre => m.doc().layout.align.by_centre,
+        };
+        assert!(botao.w > 0.0, "o botão {by:?} na moldura");
+        m.click(centre(botao));
+        assert!(
+            !m.sheet_edits().is_empty()
+                && m.sheet_edits()
+                    .iter()
+                    .all(|e| matches!(e, ImageUseEdit::NudgeCell { sheet: 1, .. })),
+            "só acertos de quadro, na folha deles: {:?}",
+            m.sheet_edits()
+        );
+        m.frame();
+        m.paint();
+        let e = Entity::from_bits(m.e);
+        let x = m.sim.world().get::<SpriteSheets>(e).unwrap().0[0].clone();
+        assert_eq!(x.anchor, [0.0, 0.0], "a folha fica");
+        assert_eq!(x.offsets.of(x.cut(), 0), [0.0, 0.0], "a referência fica");
+        let d = x.offsets.of(x.cut(), 1);
+        assert_eq!([d[0] * 32.0, d[1] * 32.0], esperado, "{by:?}");
+        for f in m.doc().authored_frames() {
+            let p = m.doc().align_point(f, by).expect("o desenho do quadro");
+            assert!(
+                (p[0] - alvo[0]).abs() < 1e-4 && (p[1] - alvo[1]).abs() < 1e-4,
+                "{by:?} {f:?}: {p:?} × {alvo:?}"
+            );
+        }
+        let marcas: Vec<bool> = m
+            .doc()
+            .authored_frames()
+            .iter()
+            .map(|f| m.doc().frame_nudged(*f))
+            .collect();
+        assert_eq!(marcas, [false, true], "a marca só no quadro acertado");
+        assert_eq!(m.doc().align_reference(), Some(r));
     }
 }

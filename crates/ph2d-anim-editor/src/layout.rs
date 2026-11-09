@@ -268,16 +268,19 @@ impl AnimDoc {
         let group_pad = Spacing::Sm.px();
         let group_h = group_pad + line + row + group_pad;
         let label_need = fit(&[ph2d_i18n::tr("anim_editor.this_frame")]);
-        // A moldura do Align, à direita das outras (dono 09/11): dois botões por fila e o título por cima.
+        // A moldura do Align, à direita das outras (dono 09/11): três botões por fila (onda C: By feet, By centre) e o
+        // título por cima.
         // Cada botão leva o ícone à esquerda da palavra (dono 09/11): a largura da maior palavra mais uma célula de ícone.
         let align_button = fit(&[
             ph2d_i18n::tr("anim_editor.align"),
             ph2d_i18n::tr("anim_editor.align_previous"),
             ph2d_i18n::tr("anim_editor.align_reference"),
             ph2d_i18n::tr("anim_editor.align_pick"),
+            ph2d_i18n::tr("anim_editor.align_by_feet"),
+            ph2d_i18n::tr("anim_editor.align_by_centre"),
         ]) + row;
         let align_w = if self.snap.sheet.is_some() {
-            2.0 * (align_button + group_pad) + gap // LITERAL-PX-OK: dois botões e as margens
+            3.0 * align_button + 2.0 * (group_pad + gap) // LITERAL-PX-OK: três botões, as margens e os vãos
         } else {
             0.0
         };
@@ -411,6 +414,9 @@ impl AnimDoc {
             l.align.pick = Rect::new(bx + align_button + gap, fila(0.0), align_button, row);
             l.align.show_prev = Rect::new(bx, fila(1.0), align_button, row);
             l.align.show_ref = Rect::new(bx + align_button + gap, fila(1.0), align_button, row);
+            let col3 = bx + 2.0 * (align_button + gap); // LITERAL-PX-OK: a terceira coluna
+            l.align.by_feet = Rect::new(col3, fila(0.0), align_button, row);
+            l.align.by_centre = Rect::new(col3, fila(1.0), align_button, row);
         } else {
             self.align.on = false;
         }

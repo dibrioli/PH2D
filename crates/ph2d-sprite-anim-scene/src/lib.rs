@@ -97,6 +97,11 @@ pub enum Foto {
     AlinharEscala,
     /// …e um Ctrl+Z depois: a escala inteira desfaz-se num passo.
     AlinharDesfaz,
+    /// A prévia Align na «attack» (run e idle misturadas) e o botão «By feet» pelo rato real (onda C): cada quadro
+    /// leva os pés aos da referência, e os acertados ganham a marca na tira…
+    AlinharPes,
+    /// …e um Ctrl+Z depois: todos os acertos desfazem-se num passo.
+    AlinharPesDesfaz,
 }
 
 #[must_use]
@@ -129,6 +134,8 @@ pub fn foto() -> Option<Foto> {
         "animado_align" => Some(Foto::Alinhar),
         "animado_align_escala" => Some(Foto::AlinharEscala),
         "animado_align_desfaz" => Some(Foto::AlinharDesfaz),
+        "animado_align_pes" => Some(Foto::AlinharPes),
+        "animado_align_pes_desfaz" => Some(Foto::AlinharPesDesfaz),
         _ => None,
     }
 }
@@ -164,6 +171,8 @@ impl Foto {
             | Self::Alinhar
             | Self::AlinharEscala
             | Self::AlinharDesfaz
+            | Self::AlinharPes
+            | Self::AlinharPesDesfaz
             | Self::IdleQuadro(_) => DUAS,
             Self::AlinhadasIdle | Self::AlinhadasRun => ALINHADAS,
         }
@@ -194,7 +203,8 @@ pub enum Passo {
     /// A fase `0..=4` do gesto do Pivot com Ctrl ([`Foto::FolhasPivo`]): o botão Pivot (abaixo, acima), Ctrl e o
     /// botão sobre o pivô, o arrasto até perto do centro do quad, soltar e relatar.
     Pivo(&'static str, u8),
-    /// A fase da prévia Align pelas portas do rato ([`previa_align`]): `0`/`1` o botão Align, `2..=7` a pega do canto.
+    /// A fase da prévia Align pelas portas do rato ([`previa_align`]): `0`/`1` o botão Align, `2..=7` a pega do canto,
+    /// `8`/`9` o botão «By feet».
     Alinha(&'static str, u8),
     /// A entrada do artista, que fecha o passo de desfazer.
     Entrada,
@@ -345,6 +355,9 @@ fn alinha(q: u32, foto: Option<Foto>) -> Vec<Passo> {
 /// a pega do canto puxada para o Pivot até `2/3`; depois um Ctrl+Z. Cada etapa relata as folhas.
 fn previa_align(q: u32, foto: Option<Foto>) -> Vec<Passo> {
     use Passo as P;
+    if let Some(f) = foto.filter(|f| matches!(f, Foto::AlinharPes | Foto::AlinharPesDesfaz)) {
+        return pes(q, f);
+    }
     let Some(f) =
         foto.filter(|f| matches!(f, Foto::Alinhar | Foto::AlinharEscala | Foto::AlinharDesfaz))
     else {
@@ -363,6 +376,26 @@ fn previa_align(q: u32, foto: Option<Foto>) -> Vec<Passo> {
         40 if gesto => vec![P::Relata("align escalada".into(), DUAS)],
         50 if f == Foto::AlinharDesfaz => vec![P::Desfaz],
         60 if f == Foto::AlinharDesfaz => vec![P::Relata("align 1 Ctrl+Z".into(), DUAS)],
+        _ => Vec::new(),
+    }
+}
+
+/// ⭐ «By feet» (GEF 28 C) com o rato real na «attack», parada num quadro da `run`: o botão Align, o «By feet», e
+/// (na foto do desfazer) um Ctrl+Z. Cada etapa relata os acertos.
+fn pes(q: u32, f: Foto) -> Vec<Passo> {
+    use Passo as P;
+    match q {
+        20 => vec![
+            P::Anim(DUAS, Ed::SetCurrent("attack".into())),
+            P::Anim(DUAS, Ed::Playing(false)),
+            P::Anim(DUAS, Ed::SetStep(1)),
+        ],
+        24 | 25 => vec![P::Alinha(DUAS, (q - 24) as u8)],
+        30 => vec![P::Relata("pés antes".into(), DUAS)],
+        32 | 33 => vec![P::Alinha(DUAS, (q - 24) as u8)],
+        40 => vec![P::Relata("pés alinhados".into(), DUAS)],
+        50 if f == Foto::AlinharPesDesfaz => vec![P::Desfaz],
+        60 if f == Foto::AlinharPesDesfaz => vec![P::Relata("pés 1 Ctrl+Z".into(), DUAS)],
         _ => Vec::new(),
     }
 }
@@ -450,8 +483,12 @@ pub fn relato(sim: &SimWorld, nome: &str, e: Entity) -> String {
         w.get::<ph2d_ecs::SpriteSheets>(e).map(|s| s
             .0
             .iter()
-            .map(|x| (x.size, x.anchor))
+            .map(|x| (x.size, x.anchor, x.offsets.cells.len()))
             .collect::<Vec<_>>()),
+    ) + &format!(
+        " acertos0={}",
+        w.get::<ph2d_ecs::CellOffsets>(e)
+            .map_or(0, |o| o.cells.len())
     )
 }
 

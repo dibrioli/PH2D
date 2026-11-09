@@ -197,7 +197,7 @@ fn a_folha_promovida_leva_os_acertos() {
     assert_eq!(ph2d_ecs::cell_offset(&w, e, 0, 0), [0.0, 0.0]);
 }
 
-/// Os três verbos chegam pelo `apply` do cartão sobre a folha VISÍVEL.
+/// Os três verbos chegam pelo `apply` do cartão: escala e posição sobre a folha VISÍVEL, o acerto sobre a folha dita.
 /// *Mata: o `apply` mandar os verbos para a folha 0 sempre · devolver `None` (o shell não os veria).*
 #[test]
 fn os_verbos_do_align_agem_na_folha_visivel() {
@@ -214,6 +214,7 @@ fn os_verbos_do_align_agem_na_folha_visivel() {
         apply(
             &mut w,
             ImageUseEdit::NudgeCell {
+                sheet: 1,
                 cell: 1,
                 by: [0.0, 0.5]
             }

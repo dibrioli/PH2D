@@ -195,9 +195,13 @@ impl crate::App {
             let d = d
                 .find_mut::<ph2d_app_sprite_anim::editor::AnimDocs>()?
                 .doc(bits)?;
-            Some((d.layout.align.toggle, d.align.painted))
+            Some((
+                d.layout.align.toggle,
+                d.layout.align.by_feet,
+                d.align.painted,
+            ))
         });
-        let Some((toggle, p)) = doc else {
+        let Some((toggle, pes, p)) = doc else {
             return eprintln!("[animado-prova] align: o editor não está aberto");
         };
         let c = |r: ph2d_editor_core::zones::Rect| (r.x + r.w / 2.0, r.y + r.h / 2.0);
@@ -206,7 +210,8 @@ impl crate::App {
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         match (fase, *pega) {
             (0, _) => self.smoke_pointer_down(c(toggle).0, c(toggle).1),
-            (1 | 7, _) => self.smoke_pointer_up(),
+            (8, _) => self.smoke_pointer_down(c(pes).0, c(pes).1),
+            (1 | 7 | 9, _) => self.smoke_pointer_up(),
             (2, _) => {
                 *pega = p.handles[3].map(c).zip(p.pivot);
                 eprintln!(
@@ -271,7 +276,9 @@ impl crate::App {
                     | a::Foto::FolhasApagada
                     | a::Foto::Alinhar
                     | a::Foto::AlinharEscala
-                    | a::Foto::AlinharDesfaz,
+                    | a::Foto::AlinharDesfaz
+                    | a::Foto::AlinharPes
+                    | a::Foto::AlinharPesDesfaz,
                 ),
                 Some(entity_bits),
             ) => h.bus.push(EditorAction::InspectorAnimEdit {

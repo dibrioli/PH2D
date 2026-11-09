@@ -34,8 +34,8 @@ pub fn apply(
             crate::align::scale_sheet(world, e, shown_sheet(world, e), f)
         }
         ImageUseEdit::MoveSheet(d) => crate::align::move_sheet(world, e, shown_sheet(world, e), d),
-        ImageUseEdit::NudgeCell { cell, by } => {
-            crate::align::nudge_cell(world, e, shown_sheet(world, e), cell, by)
+        ImageUseEdit::NudgeCell { sheet, cell, by } => {
+            crate::align::nudge_cell(world, e, sheet, cell, by)
         }
         _ => return None,
     })

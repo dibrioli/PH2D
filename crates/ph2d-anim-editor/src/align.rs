@@ -30,6 +30,9 @@ pub struct AlignLayout {
     /// Os botões «Previous» e «Reference».
     pub show_prev: Rect,
     pub show_ref: Rect,
+    /// «By feet» e «By centre» (onda C): cada quadro da animação vai aos pés ou ao centro da referência.
+    pub by_feet: Rect,
+    pub by_centre: Rect,
     /// A prévia.
     pub preview: Rect,
 }
@@ -67,7 +70,7 @@ enum AlignDrag {
     Nudge {
         from: (f32, f32),
         sent: [f32; 2],
-        cell: u32,
+        cell: AnimFrameRef,
     },
     /// O canto: a escala total pedida em relação à distância do Down ao Pivot.
     Scale { d0: f32, applied: f32 },
@@ -92,6 +95,13 @@ pub struct AlignPaint {
     pub handles: [Option<Rect>; 4],
     /// O item «Use as reference» do menu aberto.
     pub menu_item: Option<Rect>,
+}
+
+/// O ponto do desenho que os botões de alinhar levam ao da referência.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AlignBy {
+    Feet,
+    Centre,
 }
 
 /// O estado da prévia numa aba.
@@ -340,6 +350,11 @@ impl AnimDoc {
     /// base dela é a linha do chão.
     pub fn reference_box(&mut self) -> Option<([f32; 2], [f32; 2])> {
         let (f, sil) = self.reference_silhouette()?;
+        self.drawing_box(f, &sil)
+    }
+
+    /// A caixa do desenho `sil` do quadro `f`, em metros locais: `(baixo-esquerda, cima-direita)`.
+    fn drawing_box(&self, f: AnimFrameRef, sil: &Silhueta) -> Option<([f32; 2], [f32; 2])> {
         let (c, s) = self.frame_quad(f)?;
         let frac = sil.caixa;
         let (sw, sh) = (s[0].abs(), s[1].abs());
@@ -360,14 +375,80 @@ impl AnimDoc {
         let sil = match &self.align.floor_cache {
             Some((k, v)) if *k == key => v.clone(),
             _ => {
-                let [x0, y0, x1, y1] = img.limites_da_celula(hf, vf, f.cell);
-                let px = img.pixels_da_celula(hf, vf, f.cell);
-                let v = Silhueta::of(&px, (x1 - x0) as usize, (y1 - y0) as usize).map(Arc::new);
+                let v = self.silhouette_of(f).map(Arc::new);
                 self.align.floor_cache = Some((key, v.clone()));
                 v
             }
         }?;
         Some((f, sil))
+    }
+
+    /// O desenho do quadro `f` (`None` = célula vazia ou folha sem imagem).
+    fn silhouette_of(&self, f: AnimFrameRef) -> Option<Silhueta> {
+        let sheet = self.snap.sheets.get(usize::from(f.sheet))?;
+        let img = sheet.image.as_ref()?;
+        let (hf, vf) = (sheet.hframes.max(1), sheet.vframes.max(1));
+        let [x0, y0, x1, y1] = img.limites_da_celula(hf, vf, f.cell);
+        let px = img.pixels_da_celula(hf, vf, f.cell);
+        Silhueta::of(&px, (x1 - x0) as usize, (y1 - y0) as usize)
+    }
+
+    /// O ponto do desenho que «By feet» (o meio da base) ou «By centre» (o meio da caixa) alinha, em metros locais.
+    #[must_use]
+    pub fn align_point(&self, f: AnimFrameRef, by: AlignBy) -> Option<[f32; 2]> {
+        let (lo, hi) = self.drawing_box(f, &self.silhouette_of(f)?)?;
+        let y = match by {
+            AlignBy::Feet => lo[1],
+            AlignBy::Centre => (lo[1] + hi[1]) / 2.0,
+        };
+        Some([(lo[0] + hi[0]) / 2.0, y])
+    }
+
+    /// ⭐ **By feet / By centre** (onda C): cada quadro da animação aberta anda, pelo acerto da célula dele, até o
+    /// ponto da REFERÊNCIA — os pés dela (na linha do chão, se foi arrastada) ou o centro. A referência fica onde está,
+    /// e o objeto no jogo também; o passo é em pixels inteiros da folha de cada quadro. Tudo numa edição: um Ctrl+Z.
+    /// Devolve se algum quadro andou.
+    pub fn align_frames(&mut self, by: AlignBy) -> bool {
+        let Some(mut target) = self.align_reference().and_then(|r| self.align_point(r, by)) else {
+            return false;
+        };
+        if by == AlignBy::Feet
+            && let Some(floor) = self.align.floor
+        {
+            target[1] = floor;
+        }
+        let mut seen = std::collections::BTreeSet::new();
+        let mut moved = false;
+        for f in self.authored_frames() {
+            if !seen.insert((f.sheet, f.cell)) {
+                continue;
+            }
+            let (Some(p), Some(mpp)) = (self.align_point(f, by), self.meters_per_px(f.sheet))
+            else {
+                continue;
+            };
+            let px = |a: usize| ((target[a] - p[a]) / mpp).round() * mpp;
+            let by = [px(0), px(1)];
+            if by != [0.0, 0.0] {
+                self.sheet_ui.pending.push(ImageUseEdit::NudgeCell {
+                    sheet: f.sheet,
+                    cell: f.cell,
+                    by,
+                });
+                moved = true;
+            }
+        }
+        moved
+    }
+
+    /// O quadro `f` tem acerto próprio (a marca na tira).
+    #[must_use]
+    pub fn frame_nudged(&self, f: AnimFrameRef) -> bool {
+        self.snap
+            .geo
+            .get(usize::from(f.sheet))
+            .and_then(|g| g.offsets.get(&f.cell))
+            .is_some_and(|d| *d != [0.0, 0.0])
     }
 
     /// Antes da primeira edição de um gesto: a folha do quadro aberto passa a ser a visível (os verbos agem nela).
@@ -419,6 +500,12 @@ impl AnimDoc {
             self.align.show_ref = !self.align.show_ref;
             return true;
         }
+        for (r, by) in [(l.by_feet, AlignBy::Feet), (l.by_centre, AlignBy::Centre)] {
+            if hit(r, x, y) {
+                self.align_frames(by);
+                return true;
+            }
+        }
         if !hit(l.preview, x, y) {
             return false;
         }
@@ -448,7 +535,7 @@ impl AnimDoc {
             AlignDrag::Nudge {
                 from: (x, y),
                 sent: [0.0; 2],
-                cell: f.cell,
+                cell: f,
             }
         } else {
             if self.target_sheet().is_none() {
@@ -493,9 +580,11 @@ impl AnimDoc {
                 let now = px(from);
                 let by = [(now[0] - sent[0]) * mpp, (now[1] - sent[1]) * mpp];
                 if by != [0.0, 0.0] {
-                    self.sheet_ui
-                        .pending
-                        .push(ImageUseEdit::NudgeCell { cell, by });
+                    self.sheet_ui.pending.push(ImageUseEdit::NudgeCell {
+                        sheet: cell.sheet,
+                        cell: cell.cell,
+                        by,
+                    });
                 }
                 self.align.drag = AlignDrag::Nudge {
                     from,
@@ -542,6 +631,7 @@ impl AnimDoc {
         };
         let n = if big { BIG_STEP_PX } else { 1.0 };
         self.sheet_ui.pending.push(ImageUseEdit::NudgeCell {
+            sheet: f.sheet,
             cell: f.cell,
             by: [dx * n * mpp, dy * n * mpp],
         });

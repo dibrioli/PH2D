@@ -11205,11 +11205,17 @@ dependencies = [
 name = "ph2d-signal-census"
 version = "0.0.0"
 dependencies = [
+ "ph2d-anim",
  "ph2d-ecs",
+ "ph2d-node-pulse-signal",
+ "ph2d-node-value-input",
+ "ph2d-nodegraph",
  "ph2d-physics-ecs",
  "ph2d-script",
  "ph2d-script-doc",
  "ph2d-signal-ends",
+ "ph2d-timeline",
+ "ph2d-ui-state",
 ]
 
 [[package]]

@@ -79,6 +79,7 @@ impl crate::App {
             luz2d,
             toasts,
             motion,
+            ui_states,
             ..
         } = FrameGfx::of(gfx);
         // O bloco do quadro só chama esta fase com o `HeroScreen` vivo.
@@ -201,7 +202,8 @@ impl crate::App {
             // ⭐ A Animação por objecto (doc ObjectsAndComponents 01 §6): o 🎞 e os clips na Hierarquia.
             &self.timeline,
         );
-        // ⭐⭐⭐ **O painel TAGS** (TOP-20 #9) — fase-filha própria; ver o `mod tags_snapshot`.
+        let fora = ph2d_signal_census::Fora::new(&motion.doc.graph, &self.timeline.doc, ui_states);
+        fora.when_changed(sim.world(), ph2d_panel_inspector::set_signal_census); // censo de sinais
         #[cfg(feature = "panel-tags")]
         tags_snapshot::publica(sim, hero, tags, tags_problem.as_ref());
         // ⭐⭐ **As secções que o `publish` NÃO pode calcular** (leem a VM, o relógio, as partículas

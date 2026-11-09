@@ -17,9 +17,16 @@ ph2d-signal-ends = { path = "../ph2d-signal-ends" }
 ph2d-ecs = { path = "../ph2d-ecs" }
 ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
 ph2d-script = { path = "../ph2d-script" }
+# Os documentos de fora do `World` (a tabela `FORA`): o grafo do Motion, a timeline, os estados de UI.
+ph2d-nodegraph = { path = "../ph2d-nodegraph" }
+ph2d-timeline = { path = "../ph2d-timeline" }
+ph2d-ui-state = { path = "../ph2d-ui-state" }
 
 [lints]
 workspace = true
 
 [dev-dependencies]
 ph2d-script-doc = { path = "../ph2d-script-doc" }
+ph2d-node-pulse-signal = { path = "../ph2d-node-pulse-signal" }
+ph2d-node-value-input = { path = "../ph2d-node-value-input" }
+ph2d-anim = { path = "../ph2d-anim" }

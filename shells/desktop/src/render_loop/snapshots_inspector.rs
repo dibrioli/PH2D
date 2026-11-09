@@ -62,7 +62,6 @@ pub(super) fn publish_global(
         tags,
     ));
     ph2d_panel_inspector::set_current_display_unit(unit, ppm);
-    ph2d_signal_census::when_changed(sim.world(), ph2d_panel_inspector::set_signal_census);
 }
 
 /// O Inspector de `alvo` neste quadro: cada secção construída pela ordem de sempre e publicada ao

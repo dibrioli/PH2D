@@ -101,7 +101,7 @@ fn a_cena_ensina_1_listens_e_nobody_listens() {
     use ph2d_signal_census::{Hint, Role, census};
     let mut w = World::new();
     build_signal_ends_scene(&mut w);
-    let c = census(&w);
+    let c = census(&w, &ph2d_signal_census::Fora::default());
     assert_eq!(c.hint(OUVIDO, Role::Emit), Hint::Count(1));
     assert_eq!(c.hint(TROCADO, Role::Emit), Hint::Nobody);
     assert_eq!(c.hint(OUVIDO, Role::Listen), Hint::Count(1));

@@ -20,7 +20,12 @@ use ph2d_physics_ecs::{
 };
 use ph2d_script::{LuauScript, ProjectScripts};
 use ph2d_script_doc::ScriptLibrary;
-use ph2d_signal_census::{CAMPOS, Hint, Role, census};
+use ph2d_signal_census::{CAMPOS, Fora, Hint, Role, SignalCensus};
+
+/// O censo só do mundo (sem documentos de fora).
+fn census(w: &World) -> SignalCensus {
+    ph2d_signal_census::census(w, &Fora::default())
+}
 
 /// O nome distinto de cada linha da tabela: `Componente.campo`.
 fn n(comp: &str, field: &str) -> String {
@@ -259,7 +264,7 @@ fn mede_o_custo_do_censo_por_quadro() {
         std::hint::black_box(census(&vazio));
         so_consultas = so_consultas.min(t.elapsed());
         let t = std::time::Instant::now();
-        std::hint::black_box(ph2d_signal_census::fingerprint(&w));
+        std::hint::black_box(ph2d_signal_census::fingerprint(&w, &Fora::default()));
         digital = digital.min(t.elapsed());
     }
     println!(
@@ -272,11 +277,11 @@ fn a_porta_do_quadro_so_publica_quando_um_nome_muda() {
     let mut w = World::new();
     let e = w.spawn(SignalOnHit("a".into())).id();
     let mut vezes = 0;
-    ph2d_signal_census::when_changed(&w, |_| vezes += 1);
-    ph2d_signal_census::when_changed(&w, |_| vezes += 1);
+    ph2d_signal_census::when_changed(&w, &Fora::default(), |_| vezes += 1);
+    ph2d_signal_census::when_changed(&w, &Fora::default(), |_| vezes += 1);
     assert_eq!(vezes, 1, "o mesmo mundo não republica");
     w.entity_mut(e).insert(SignalOnHit("b".into()));
-    ph2d_signal_census::when_changed(&w, |c| {
+    ph2d_signal_census::when_changed(&w, &Fora::default(), |c| {
         vezes += 1;
         assert_eq!(c.ends("b").emit, 1);
     });

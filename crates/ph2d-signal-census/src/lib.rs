@@ -4,7 +4,10 @@
 
 pub use ph2d_signal_ends::{Ends, Hint, Role, SignalCensus};
 
+pub mod fora;
 mod luau;
+
+pub use fora::{FORA, Fora, Origem};
 
 use ph2d_ecs::SpriteAnimMarkers;
 use ph2d_ecs::World;
@@ -135,25 +138,36 @@ pub static CAMPOS: &[Campo] = &[
     )),
 ];
 
-/// ⭐ **O censo do mundo**: cada linha de [`CAMPOS`] e cada script Luau ligado a um objecto.
+/// ⭐ **O censo do mundo**: cada linha de [`CAMPOS`], cada script Luau ligado a um objecto, e cada
+/// linha de [`FORA`] sobre os documentos que a composição passa.
 #[must_use]
-pub fn census(world: &World) -> SignalCensus {
+pub fn census(world: &World, fora: &Fora<'_>) -> SignalCensus {
     let mut out = SignalCensus::default();
     for c in CAMPOS {
         (c.read)(world, &mut |n| out.add(n, c.role));
+    }
+    for o in FORA {
+        (o.read)(fora, &mut |n| out.add(n, o.role));
     }
     luau::scripts(world, &mut out);
     out
 }
 
-/// A impressão digital do que o censo lê (nomes por linha da tabela e os scripts ligados), sem
-/// alocar: FNV-1a de 64 bits, determinística.
+/// A impressão digital do que o censo lê (nomes por linha das duas tabelas e os scripts ligados),
+/// sem alocar: FNV-1a de 64 bits, determinística.
 #[must_use]
-pub fn fingerprint(world: &World) -> u64 {
+pub fn fingerprint(world: &World, fora: &Fora<'_>) -> u64 {
     let mut h = Fnv(0xcbf2_9ce4_8422_2325);
     for (i, c) in CAMPOS.iter().enumerate() {
         h.u64(i as u64);
         (c.read)(world, &mut |n| {
+            h.bytes(n.as_bytes());
+            h.u64(u64::MAX);
+        });
+    }
+    for (i, o) in FORA.iter().enumerate() {
+        h.u64((CAMPOS.len() + i) as u64);
+        (o.read)(fora, &mut |n| {
             h.bytes(n.as_bytes());
             h.u64(u64::MAX);
         });
@@ -192,9 +206,9 @@ thread_local! {
 /// ⭐ **A porta do quadro**: entrega a `publish` o censo novo só quando a [`fingerprint`] mudou
 /// (medido 09/11, `--profile smoke`, 200 objectos: censo `58 µs`, impressão digital bem menos —
 /// ver `mede_o_custo_do_censo_por_quadro`).
-pub fn when_changed(world: &World, publish: impl FnOnce(SignalCensus)) {
-    let f = fingerprint(world);
+pub fn when_changed(world: &World, fora: &Fora<'_>, publish: impl FnOnce(SignalCensus)) {
+    let f = fingerprint(world, fora);
     if ULTIMA.with(|u| u.replace(Some(f))) != Some(f) {
-        publish(census(world));
+        publish(census(world, fora));
     }
 }

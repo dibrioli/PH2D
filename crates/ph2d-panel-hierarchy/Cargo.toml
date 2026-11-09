@@ -30,6 +30,10 @@ bumpalo = "3"
 ph2d-ui-testkit = { path = "../ph2d-ui-testkit" }
 # O gate `every_word_this_panel_shows_comes_from_the_string_table` — a régua lexical partilhada.
 ph2d-label-census = { path = "../ph2d-label-census" }
+# A forma neta arrasta-se para o corpo (smoke 09/11): as portas do Add, o retrato e a lei do reparent.
+ph2d-ecs = { path = "../ph2d-ecs" }
+ph2d-physics-ecs = { path = "../ph2d-physics-ecs" }
+ph2d-app-components = { path = "../ph2d-app-components" }
 
 [lints]
 workspace = true

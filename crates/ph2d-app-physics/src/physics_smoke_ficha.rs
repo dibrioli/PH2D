@@ -21,8 +21,12 @@ pub fn physics_smoke_ficha(ctx: &mut crate::SceneCtx<'_>) {
     ph2d_physics_scene::ficha::olho_para_as_fotos(ctx.world);
     let excecao = ph2d_physics_scene::ficha::excecao_para_as_fotos(ctx.world);
     let outline = ph2d_physics_scene::ficha::outline_para_as_fotos(ctx.world);
-    if let Some((_, centro)) = outline {
+    if let Some((forma, centro)) = outline {
         ctx.want.camera_center = Some(centro);
+        // A foto dos pontos (`PH2D_PHYSICS_SMOKE_OUTLINE_PONTOS=1`): a forma já nasce em edição no canvas.
+        if std::env::var_os("PH2D_PHYSICS_SMOKE_OUTLINE_PONTOS").is_some() {
+            ph2d_shape_handles::alterna(ctx.world, forma.to_bits());
+        }
     }
     ctx.want.select = excecao.or(outline.map(|o| o.0)).map(Entity::to_bits);
     if let Ok(nome) = std::env::var("PH2D_PHYSICS_SMOKE_SELECT") {

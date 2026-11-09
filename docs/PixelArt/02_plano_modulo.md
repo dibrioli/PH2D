@@ -208,6 +208,8 @@ Pixel Sprite como objeto do mundo: **tags viram clips** de Animação (Objectos 
 slices viram colliders/pivots (Física), **normal map** da roda de normais alimenta a Luz 2D,
 o Sprite Inspector abre o que o módulo grava. (Diálogo com o Painter fica para quando ele fechar.)
 
+**Estado: feita, smoke do dono OK (09/11, cenas 26–27); continuação em [handoffs/HANDOFF_CONTINUACAO_line_PixelArt_2026-11-09_P14.md](handoffs/HANDOFF_CONTINUACAO_line_PixelArt_2026-11-09_P14.md).**
+
 ## §6 — Ordem e paralelismo
 
 P0 é série (todos dependem do documento). Depois: **P1 ∥ P2 ∥ P3** (ferramentas, paleta, camadas

@@ -181,8 +181,8 @@ Commits da onda (`git log --oneline 1eb5eff0a4^..HEAD`), cada um com o relatóri
 | Gabarito CPU da luz com normal (`luz_em_n`, `momento`, miolo de 9 componentes, rebote) | ✅ gates verdes, vistos vermelhos | `d69428bd90` |
 | P14a — animação: `derivado_quando` (o `grava` sai, o `serialize` fica), porta `tag_do_aseprite`, `ph2d-pixel-cena` (`clips_das_tags`, `quadro_mostrado`, `deriva`), ping-pong do Aseprite (N passadas ⇒ `ceil(N/2)` ciclos + `acaba_na_ponta_de_chegada`), `current` vazio ⇒ 1.º clip, cartão Animation (só Autoplay e Starts with; editores escondidos) | ✅ | `dedc76163c` `7dc42e2776` `bb340489fa` `96bfbc00ce` `270fb31a1d` `8671c7588f` |
 | Censos do Inspector (o × de f7688dbaad é moldura: 18→19, 22→23) | ✅ | `a3c2fcbf9e` |
-| P14b — pivô (`pivot_slice`, `Op::PivotSlice`, `MINOR 7`), `forma_de_retangulo`, `SegueSlice`, `campos_derivados_quando` (forma e offset do `Collider` não se gravam), gesto Add Collider, origem = pivô em todo leitor, forma segue a slice e slice escondida emudece | 🔶 em curso (agente P14b-2; relatório em §11 «P14b-2») | `da7fa11154` `f651bee09d` `d5072adb7c` … |
-| P14c-placa — receptor `luz_receber_n` + banda normal (1); shaders de M `c3_momento.wgsl` (2); ligar M no Rust + gates placa×gabarito (3) | 🔶 (1)(2) feitos; (3) em curso (relatório em §11 «P14c-placa 3») | `790581ebf9` `980da1d295` … |
+| P14b — pivô (`pivot_slice`, `Op::PivotSlice`, `MINOR 7`), `forma_de_retangulo`, `SegueSlice`, `campos_derivados_quando` (forma e offset do `Collider` não se gravam), gesto Add Collider, origem = pivô em todo leitor, forma segue a slice e slice escondida emudece | ✅ fechado (P14b-2, P14b-3; relatório em §11) | `da7fa11154` `f651bee09d` `d5072adb7c` … |
+| P14c-placa — receptor `luz_receber_n` + banda normal (1); shaders de M `c3_momento.wgsl` (2); ligar M no Rust + gates placa×gabarito (3) | ✅ fechado (placa 3–6; o que resta está no handoff) | `790581ebf9` `980da1d295` … |
 | `PROJECT_SCHEMA` | 225 → 227 (animação 226, `SegueSlice` 227), contado pela escada; o integrador reconta | — |
 
 **Ainda por fazer (ordem):**
@@ -494,3 +494,5 @@ Fecha os itens (2), (4) e (5) do «Falta» de «Sprite: a linha Normal Map»; (3
   - `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PixelArt/docs/PixelArt/handoffs/smoke_P14_cena27_play_2026-11-09.png` (`PH2D_PIXEL_SMOKE_PLAY=1`) — os dois pousados à mesma altura e AGORA no mesmo quadro (os dois a piscar, olhos em traço).
   - `/home/enio/Documentos/Projetos/PH2D/Worktrees/line-PixelArt/docs/PixelArt/handoffs/smoke_P14_cena27_editor_2026-11-09.png` — no ar; o motor a piscar e o Pixel de olhos abertos.
 - **Aberto (produto, para o dono):** no EDITOR os dois continuam diferentes — o Sprite do motor importado toca o idle fora do Play (o import liga `playing`), o Pixel Sprite fica parado no quadro do editor. Não adianta o jogo (o Play rebobina), mas a cena do editor mostra-os desencontrados. Igualar (o Pixel tocar no editor, ou o import nascer parado) é decisão do dono.
+
+**Smoke do dono OK (09/11)** — cenas 26 e 27; continuação em [handoffs/HANDOFF_CONTINUACAO_line_PixelArt_2026-11-09_P14.md](handoffs/HANDOFF_CONTINUACAO_line_PixelArt_2026-11-09_P14.md).

@@ -104,6 +104,24 @@ impl DebugCard {
         ]
     }
 
+    /// O quadro em texto (as sondas e a árvore de acessibilidade): quem espera, cada variável
+    /// (`chave = valor (was antigo)`), a pilha (com o rótulo `stack`) e quem espera, um a um.
+    #[must_use]
+    pub fn text_rows(&self, stack: &str) -> Vec<String> {
+        let mut rows: Vec<String> = self.waiting_text().into_iter().collect();
+        rows.extend(self.locals.iter().chain(&self.this).map(|r| {
+            let v = crate::shown_value(r);
+            match &r.old {
+                Some(old) => format!("{} = {v} (was {old})", r.key),
+                None => format!("{} = {v}", r.key),
+            }
+        }));
+        let frames = self.stack.iter();
+        rows.extend(frames.map(|s| format!("{stack}  {} {}", s.function, s.line)));
+        rows.extend(self.waiting.iter().map(|w| format!("waiting {}", w.name)));
+        rows
+    }
+
     /// «2 more waiting» (o chip da faixa), se alguém espera.
     #[must_use]
     pub fn waiting_text(&self) -> Option<String> {

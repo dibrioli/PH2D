@@ -114,33 +114,43 @@ pub(super) fn paint_cards(
     let cw = ((body.w - gap * (n + 1.0)) / n).max(0.0);
     let ch = (body.h - pad * 2.0).max(0.0);
     let adv = view.metrics().advance;
+    let groups = c.groups();
+    // As linhas rolam por baixo dos títulos; a mais comprida decide quanto.
+    let most = groups.iter().map(|g| g.1.len()).max().unwrap_or(0);
+    let room = (ch - rh).max(0.0);
+    st.painted.cards_max = (rh * most.max(c.stack.len()) as f32 - room).max(0.0);
+    st.cards_scroll = st.cards_scroll.min(st.painted.cards_max);
+    let shown = |card: Rect, y: f32| y >= card.y + rh && y + rh <= card.y + card.h;
     let mut cx = body.x + gap;
-    for (group, vars) in c.groups() {
+    for (group, vars) in groups {
         let title = match group {
             VarGroup::Locals => tr("code.debug.group.locals"),
             VarGroup::This => tr("code.debug.group.self"),
         };
         let card = Rect::new(cx, body.y + pad, cw, ch);
         let count = vars.iter().filter(|v| v.depth == 0).count().to_string();
-        let mut y = card_head(card, title, &count, scene, ts, theme);
+        let mut y = card_head(card, title, &count, scene, ts, theme) - st.cards_scroll;
         let name_w = vars
             .iter()
             .map(|v| (v.name.chars().count() as f32 + f32::from(v.depth) * 2.0) * adv)
             .fold(0.0f32, f32::max)
             .min(card.w * NAME_SHARE);
         for v in vars {
-            if y + rh > card.y + card.h {
-                break;
+            if shown(card, y) {
+                field_row(st, v, (card, y, name_w), view, scene, ts, theme);
             }
-            field_row(st, v, (card, y, name_w), view, scene, ts, theme);
             y += rh;
         }
         cx += cw + gap;
     }
     let card = Rect::new(cx, body.y + pad, cw, ch);
-    let mut y = card_head(card, tr("code.debug.stack"), "", scene, ts, theme);
+    let mut y = card_head(card, tr("code.debug.stack"), "", scene, ts, theme) - st.cards_scroll;
     let font = TypeToken::Sm.px();
     for s in &c.stack {
+        if !shown(card, y) {
+            y += rh;
+            continue;
+        }
         let name = if s.function.is_empty() {
             tr("code.debug.top_level").to_owned()
         } else {

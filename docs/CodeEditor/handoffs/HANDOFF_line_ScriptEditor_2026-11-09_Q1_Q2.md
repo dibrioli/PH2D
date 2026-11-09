@@ -76,3 +76,29 @@ Não corrido (fecho da linha): clippy das crates tocadas, `PH2D_SUITE=fecho`, au
   para a `ph2d-ui-table`.
 - ⚠️ **Tecto da `ph2d-app-code`: 1 linha de folga.** Q3/Q4 têm de pôr o código novo no `ph2d-panel-code` (sem tecto de
   crate, 600/ficheiro) ou numa Folha, e cortar na cola.
+
+## 5. Rodada do smoke 09/11
+
+O dono (cena 14): o Stopped tomava mais área que o código, não rolava nos Cards, sem puxador, e «o texto do script não rola».
+
+- **Altura** (`ph2d-panel-code::debug_card`): sozinho o quadro vai até `CARD_SHARE = 1/3` da aba (era ½), mínimo
+  faixa + 4 linhas. **Puxador** na borda de cima (`painted.grip`, faixa `PANEL_RESIZE_HANDLE_SIZE_PX`, traço `Text3` ao
+  meio): carregar · arrastar · largar muda `user_h`, preso entre o mínimo e `USER_SHARE = 2/3`. Ponteiro: `Grab` /
+  `Grabbing` (`DebugCardView::look`, não há `ResizeNs` no `PointerLook`).
+- **Roda**: `DebugCardView::wheel` toma a roda sobre o quadro (Sheet → `TableState::wheel`; Cards → `cards_scroll`,
+  preso a `painted.cards_max`; os títulos ficam, as linhas rolam por baixo e as parciais não se pintam).
+- **«O código não rola»**: o teste de costura PROVA que a roda sobre o texto rola com o quadro aberto e fica rolada
+  nos quadros seguintes (verde já antes da cura). A causa do que o dono viu: a vista do código **não tinha barra de
+  rolagem nenhuma** e o quadro a ½ deixava 9 linhas. Cura: a barra da casa (`paint_scrollbar`, só indica) em
+  `CodeView::paint` + o tecto de ⅓.
+- **Tecto da `ph2d-app-code`** (26 619 / 26 628): o teste novo pagou-se movendo `ghosts_due` (+ teste) e `wheel_rows`
+  para `ph2d-panel-code::debug_marks`, as linhas em texto do quadro para `DebugCard::text_rows`, e tirando
+  `debug_buttons_of` (o teste lê `debug_view_of(..).painted.buttons`).
+- **Provas**: `ph2d-panel-code` `quadro_do_depurador` (2: tecto ⅓, puxador até ⅔ e ao mínimo, ponteiro; Cards rolam e a
+  roda fora do quadro não é dele) e `os_valores_ao_vivo_amostram…`; `ph2d-app-code`
+  `parado_o_codigo_rola_e_o_quadro_tem_tecto_roda_e_puxador` (cliques reais: roda no código, na Sheet, puxador, Cards)
+  + `depurador barra_da_aba onda1 botao_direito completar` verdes; `ph2d-ui-table` 8/8; `ph2d-code-debugcard` 2/2;
+  `ph2d-editor-core` `shell_only_shrinks file_loc_cap panel_loc_cap no_magic_numeric no_literal_color hr15
+  no_dependency_climbs` verdes.
+- **Fotos** `ferramentas/smoke/cena14/passo_1|3|4.png`: código maior que o quadro, barra do código, puxador, Sheet e
+  Cards cortados com rolagem. ⚠️ Os Cards não têm barra de rolagem própria (só a roda) — por decidir no próximo smoke.

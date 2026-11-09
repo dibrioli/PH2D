@@ -19,6 +19,27 @@ pub struct Breakpoint {
     pub armed: bool,
 }
 
+/// 2,5 amostras por segundo — o ritmo do mostrador de um multímetro, abaixo dos 3 Hz da WCAG 2.3.1.
+/// Antes era a cada quadro (60 Hz). Sem nada mostrado, a 1.ª amostra é já (sem 400 ms de atraso).
+#[must_use]
+pub fn ghosts_due(sampled: Option<u128>, now_ns: u128) -> bool {
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    let period = (f64::from(ph2d_tokens::Duration::Slow.ms()) * 1e6) as u128;
+    sampled.is_none_or(|t| now_ns.saturating_sub(t) >= period)
+}
+
+/// As linhas que um toque da roda (`dy` px, linhas de `line_h`) anda numa lista: uma no mínimo (o
+/// trackpad manda fracções), para cima com `dy` positivo.
+#[must_use]
+pub fn wheel_rows(dy: f32, line_h: f32) -> isize {
+    let lines = -dy / line_h.max(1.0);
+    if lines.abs() < 1.0 {
+        lines.signum() as isize
+    } else {
+        lines.round() as isize
+    }
+}
+
 /// O pior problema da linha 0-based `line` (`problems` vem ordenado por linha).
 pub(crate) fn worst_problem(
     problems: &[crate::frame::Problem],
@@ -202,5 +223,24 @@ impl CodeView {
     /// O raio do ponto de parada: a meia linha menos a folga (≈ 60 % da linha de diâmetro).
     fn dot_r(&self) -> f32 {
         (self.m.line_h * 0.5 - Spacing::Xs.px()).max(Spacing::Xxs.px())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    /// Um segundo a 60 quadros: os valores ao vivo mudam 3 vezes (0, 400 e 800 ms), não 60.
+    #[test]
+    fn os_valores_ao_vivo_amostram_duas_vezes_e_meia_por_segundo() {
+        let quadro_ns: u128 = 1_000_000_000 / 60;
+        let mut sampled = None;
+        let mut vezes = 0;
+        for i in 0..60 {
+            let now = 5_000_000_000 + i * quadro_ns;
+            if super::ghosts_due(sampled, now) {
+                sampled = Some(now);
+                vezes += 1;
+            }
+        }
+        assert_eq!(vezes, 3);
     }
 }

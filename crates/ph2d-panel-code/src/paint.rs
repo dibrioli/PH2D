@@ -63,6 +63,19 @@ impl CodeView {
         self.paint_carets(&frame, scene, &pal);
         self.paint_drop_caret(&frame, scene, &pal);
         scene.pop_layer();
+        // A barra de rolagem da casa (só indica; a roda rola): sem ela, num código mais alto que a
+        // aba, o artista não via que havia mais (smoke do dono 09/11, cena 14).
+        let content = self.total_rows() as f32 * self.m.line_h;
+        let rest = (ph2d_editor_core::widget::ScrollbarState::Normal, 0.0);
+        let _ = ph2d_editor_core::widget::paint_scrollbar(
+            tr,
+            self.scroll_y,
+            content,
+            tr.h,
+            rest,
+            scene,
+            *theme,
+        );
         self.paint_gutter(&frame, scene, &pal);
         self.paint_debug_gutter(&frame, scene, &pal);
         self.paint_bancada_gutter(&frame, scene, &pal);

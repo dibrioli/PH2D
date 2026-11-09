@@ -147,7 +147,7 @@ impl CodeDoc {
 
     /// O rato mexeu com o botão em baixo: a seleção vai do início do arrasto ao byte sob o rato.
     pub fn drag_to(&mut self, x: f32, y: f32) -> bool {
-        if self.debug.view.drag_to(x) {
+        if self.debug.view.drag_to(x, y) {
             return true;
         }
         let Some(anchor) = self.drag else {
@@ -166,7 +166,7 @@ impl CodeDoc {
     }
 
     pub fn release(&mut self) -> bool {
-        let resized = self.debug.view.table.release();
+        let resized = self.debug.view.release();
         self.drag.take().is_some() || resized
     }
 
@@ -191,39 +191,23 @@ impl CodeDoc {
     /// A roda: sobre o console rola-o, senão rola o texto — na horizontal com o Shift.
     pub fn wheel(&mut self, x: f32, y: f32, dy: f32, shift: bool, console: &Store) {
         self.hints.hover = None;
-        if self
-            .debug
-            .view
-            .painted
-            .card
-            .is_some_and(|r| r.contains(x, y))
-        {
-            let _ = self.debug.view.wheel(x, y, dy);
-        } else if self.view.completion_hit(x, y).is_some() && self.refs.is_some() {
-            self.refs_scroll(-(dy / self.view.metrics().line_h).round() as isize);
-        } else if self.view.completion_hit(x, y).is_some() && self.actions.is_some() {
-            let lines = -dy / self.view.metrics().line_h;
-            self.actions_scroll(if lines.abs() < 1.0 {
-                lines.signum() as isize
-            } else {
-                lines.round() as isize
-            });
-        } else if self.view.completion_hit(x, y).is_some() {
+        let rows = ph2d_panel_code::wheel_rows(dy, self.view.metrics().line_h);
+        let over_list = self.view.completion_hit(x, y).is_some();
+        if self.debug.view.wheel(x, y, dy) {
+            // O quadro do depurador rola por dentro.
+        } else if over_list && self.refs.is_some() {
+            self.refs_scroll(rows);
+        } else if over_list && self.actions.is_some() {
+            self.actions_scroll(rows);
+        } else if over_list {
             let head = self.buffer.selection().primary().head;
             if let Some(len) = self
                 .complete
                 .shown(self.buffer.text(), head)
                 .map(|l| l.len())
             {
-                // Uma linha por toque da roda, no mínimo (o trackpad manda fracções).
-                let lines = -dy / self.view.metrics().line_h;
-                let lines = if lines.abs() < 1.0 {
-                    lines.signum() as isize
-                } else {
-                    lines.round() as isize
-                };
-                self.complete
-                    .scroll(lines, len, ph2d_panel_code::COMPLETION_ROWS);
+                let shown = ph2d_panel_code::COMPLETION_ROWS;
+                self.complete.scroll(rows, len, shown);
             }
         } else if self.console_view.area().contains(x, y) {
             self.console_view.scroll_by(dy, console.len());

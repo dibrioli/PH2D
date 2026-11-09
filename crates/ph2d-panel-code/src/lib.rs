@@ -37,7 +37,7 @@ pub use console::{
     Band, BandProbe, BandTab, ConsoleHit, ConsoleRow, ConsoleSource, ConsoleView, PaintedProblem,
     ProblemRow, problem_label, problems_title, title_text as console_title_text,
 };
-pub use debug_marks::{Breakpoint, DebugMarks, Ghost};
+pub use debug_marks::{Breakpoint, DebugMarks, Ghost, ghosts_due, wheel_rows};
 pub use drop_mark::DropView;
 pub use find_bar::{FindBar, FindBarView, FindCount, FindField, FindHit, count_text};
 pub use frame::{

@@ -23,8 +23,11 @@ use ph2d_tokens::{ColorToken, Spacing, StrokeToken, Theme, TypeToken};
 use ph2d_ui_table::{Column, Hit, Layout, Metrics, Row, TableState, natural_height};
 use ph2d_vector::VectorScene;
 
-/// A parte da altura da aba que o quadro pode tomar: o código manda, a tabela rola.
-const CARD_SHARE: f32 = 1.0 / 2.0; // LITERAL-PX-OK: fração da aba (metade), não píxeis
+/// A parte da altura da aba que o quadro toma sozinho: o código manda, o corpo rola (smoke do
+/// dono 09/11: a metade tirava ao texto mais do que lhe deixava).
+const CARD_SHARE: f32 = 1.0 / 3.0; // LITERAL-PX-OK: fração da aba (um terço), não píxeis
+/// O máximo a que o puxador de cima o leva: o código fica sempre com o resto.
+const USER_SHARE: f32 = 2.0 / 3.0; // LITERAL-PX-OK: fração da aba (dois terços), não píxeis
 /// As linhas que o quadro parado mostra no mínimo, mesmo numa aba baixa.
 const MIN_ROWS: f32 = 4.0; // LITERAL-PX-OK: uma contagem de linhas, não píxeis
 /// A parte da letra que o ■ do estado e o ● de um objecto ocupam.
@@ -60,6 +63,10 @@ pub struct CardPainted {
     pub stack: Vec<(u32, Rect)>,
     /// O valor (escrito) de cada caixa que copia ao clicar (Cards e Strip).
     pub values: Vec<(String, Rect)>,
+    /// O puxador da borda de cima (arrastar muda a altura do quadro).
+    pub grip: Option<Rect>,
+    /// A rolagem máxima dos Cards (o que as linhas passam do corpo).
+    pub cards_max: f32,
 }
 
 /// ⭐ O quadro de uma aba: a aparência, a tabela (larguras, Type escondida, dobras, rolagem) e o
@@ -72,6 +79,12 @@ pub struct DebugCardView {
     /// A linha âmbar já trazida à vista (`linha da paragem:chave`): o passo seguinte rola até à
     /// nova; rolar à mão depois disso fica.
     pub revealed: Option<String>,
+    /// A altura que o artista deu ao quadro pelo puxador (`None` = a natural, até ao tecto).
+    pub user_h: Option<f32>,
+    /// A rolagem dos Cards, em píxeis.
+    pub cards_scroll: f32,
+    /// O arrasto do puxador: `(y onde começou, altura de então)`.
+    resizing: Option<(f32, f32)>,
 }
 
 /// Os ids dos dois botões (os comandos da aba: Continue, Next line).
@@ -87,7 +100,11 @@ impl DebugCardView {
         if !c.stopped() {
             return head;
         }
-        let cap = (area.h * CARD_SHARE).max(head + rh * MIN_ROWS);
+        let least = head + rh * MIN_ROWS;
+        if let Some(h) = self.user_h {
+            return ph2d_editor_core::math::safe_clamp(h, least, (area.h * USER_SHARE).max(least));
+        }
+        let cap = (area.h * CARD_SHARE).max(least);
         let body = match self.style {
             CardStyle::Sheet => {
                 let table = natural_height(&sheet_rows(c), &self.table, &Metrics::standard());
@@ -144,6 +161,7 @@ impl DebugCardView {
         if !c.stopped() {
             return;
         }
+        self.paint_grip(r, scene, theme);
         fill_rounded_rect(
             scene,
             Rect::new(r.x, y, r.w, StrokeToken::Thin.px()),
@@ -158,8 +176,30 @@ impl DebugCardView {
         }
     }
 
+    /// O puxador: a faixa da borda de cima recebe o arrasto; ao meio, um traço curto mostra-o.
+    fn paint_grip(&mut self, r: Rect, scene: &mut VectorScene, theme: Theme) {
+        let band = ph2d_tokens::PANEL_RESIZE_HANDLE_SIZE_PX;
+        self.painted.grip = Some(Rect::new(r.x, r.y - band * 0.5, r.w, band));
+        let (w, h) = (Spacing::Xl4.px(), StrokeToken::Thick.px());
+        let mark = Rect::new(
+            r.x + (r.w - w) * 0.5,
+            r.y + (Spacing::Sm.px() - h) * 0.5,
+            w,
+            h,
+        );
+        fill_rounded_rect(scene, mark, h * 0.5, resolve(ColorToken::Text3, theme));
+    }
+
     /// Um clique em `(x, y)`: `None` = fora do quadro.
     pub fn press(&mut self, x: f32, y: f32) -> Option<CardClick> {
+        if let Some(r) = self
+            .painted
+            .card
+            .filter(|_| self.painted.grip.is_some_and(|g| g.contains(x, y)))
+        {
+            self.resizing = Some((y, r.h));
+            return Some(CardClick::Taken);
+        }
         let p = &self.painted;
         if !p.card.is_some_and(|r| r.contains(x, y)) {
             return None;
@@ -192,21 +232,51 @@ impl DebugCardView {
         )
     }
 
-    /// O arrasto do puxador de uma coluna. `true` = tomado.
-    pub fn drag_to(&mut self, x: f32) -> bool {
+    /// O ponteiro sobre o puxador de cima: a mão aberta (a mão fechada a arrastar).
+    #[must_use]
+    pub fn look(&self, x: f32, y: f32) -> Option<ph2d_editor_core::doc_surface::PointerLook> {
+        use ph2d_editor_core::doc_surface::PointerLook::{Grab, Grabbing};
+        let over = self.painted.grip.is_some_and(|g| g.contains(x, y));
+        (self.resizing.is_some() || over).then_some(if self.resizing.is_some() {
+            Grabbing
+        } else {
+            Grab
+        })
+    }
+
+    /// O arrasto do puxador de cima (a altura) ou do de uma coluna. `true` = tomado.
+    pub fn drag_to(&mut self, x: f32, y: f32) -> bool {
+        if let Some((y0, h0)) = self.resizing {
+            self.user_h = Some((h0 + y0 - y).max(0.0));
+            return true;
+        }
         self.table.dragging() && {
             self.table.drag_to(x, &Metrics::standard());
             true
         }
     }
 
-    /// A roda sobre a tabela. `true` = rolou.
+    /// Largar o botão (o puxador de cima ou o de uma coluna). `true` = havia arrasto.
+    pub fn release(&mut self) -> bool {
+        let resized = self.resizing.take().is_some();
+        self.table.release() || resized
+    }
+
+    /// A roda em `(x, y)`: sobre o quadro rola a tabela da Sheet ou os Cards. `true` = sobre o
+    /// quadro (tomada, mesmo sem nada a rolar: o código por baixo não rola).
     pub fn wheel(&mut self, x: f32, y: f32, dy: f32) -> bool {
-        let Some((lay, ..)) = &self.painted.table else {
+        if !self.painted.card.is_some_and(|r| r.contains(x, y)) {
             return false;
-        };
-        let lay = lay.clone();
-        self.table.wheel(&lay, x, y, dy)
+        }
+        if let Some((lay, ..)) = &self.painted.table {
+            let lay = lay.clone();
+            let _ = self.table.wheel(&lay, x, y, dy);
+        } else {
+            let max = self.painted.cards_max;
+            self.cards_scroll =
+                ph2d_editor_core::math::safe_clamp(self.cards_scroll - dy, 0.0, max);
+        }
+        true
     }
 
     /// O cabeçalho da tabela contém `(x, y)`? (O botão direito abre o menu das colunas.)

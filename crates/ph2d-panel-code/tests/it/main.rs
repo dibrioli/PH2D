@@ -10,6 +10,7 @@ mod estado;
 mod ligaduras;
 mod medicoes_do_fecho;
 mod pagina;
+mod quadro_do_depurador;
 mod sublinhado;
 mod virtualizacao;
 

@@ -16,7 +16,7 @@ use ph2d_ecs::{Entity, World};
 use ph2d_editor_core::zones::Rect;
 use ph2d_editor_core::{Toast, ToastQueue};
 use ph2d_i18n::tr;
-use ph2d_panel_code::{Breakpoint, DebugMarks, Ghost};
+use ph2d_panel_code::{Breakpoint, DebugMarks, Ghost, ghosts_due};
 use ph2d_script::{DebugStop, LineLive, ProjectScripts, ScriptHost, ScriptId, StopKind};
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -183,14 +183,6 @@ impl CodeDoc {
 }
 
 /// ⭐ **O ritmo dos valores ao vivo** (smoke do dono 09/11: «piscam e não se leem»): o token `Slow`,
-/// 2,5 amostras por segundo — o ritmo do mostrador de um multímetro, abaixo dos 3 Hz da WCAG 2.3.1.
-/// Antes era a cada quadro (60 Hz). Sem nada mostrado, a 1.ª amostra é já (sem 400 ms de atraso).
-pub(crate) fn ghosts_due(sampled: Option<u128>, now_ns: u128) -> bool {
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-    let period = (f64::from(ph2d_tokens::Duration::Slow.ms()) * 1e6) as u128;
-    sampled.is_none_or(|t| now_ns.saturating_sub(t) >= period)
-}
-
 /// Os valores ao vivo de um script, por linha (0-based).
 pub(crate) fn ghosts(live: &BTreeMap<u32, LineLive>) -> Vec<Ghost> {
     live.iter()
@@ -418,20 +410,7 @@ impl CodeDocs {
             .debug
             .card
             .clone()?;
-        let mut rows: Vec<String> = c.waiting_text().into_iter().collect();
-        rows.extend(c.locals.iter().chain(&c.this).map(|r| {
-            let v = ph2d_code_debugcard::shown_value(r);
-            match &r.old {
-                Some(old) => format!("{} = {v} (was {old})", r.key),
-                None => format!("{} = {v}", r.key),
-            }
-        }));
-        rows.extend(
-            c.stack
-                .iter()
-                .map(|s| format!("{}  {} {}", tr("code.debug.stack"), s.function, s.line)),
-        );
-        rows.extend(c.waiting.iter().map(|w| format!("waiting {}", w.name)));
+        let rows = c.text_rows(tr("code.debug.stack"));
         Some((c.title, c.error, rows))
     }
 
@@ -445,16 +424,6 @@ impl CodeDocs {
             .iter()
             .find(|d| d.script == id)
             .map(|d| &d.debug.view)
-    }
-
-    /// Os botões do cartão pintados no último quadro (0 = Continue, 1 = Next line).
-    #[must_use]
-    pub fn debug_buttons_of(&self, id: ScriptId) -> Vec<Rect> {
-        self.docs
-            .iter()
-            .find(|d| d.script == id)
-            .map(|d| d.debug.view.painted.buttons.iter().map(|b| b.1).collect())
-            .unwrap_or_default()
     }
 
     /// A linha parada (0-based) da aba `id`.
@@ -486,24 +455,5 @@ impl CodeDocs {
             .iter()
             .find(|d| d.script == id)?
             .mark_rect_of(needle)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    /// Um segundo a 60 quadros: os valores ao vivo mudam 3 vezes (0, 400 e 800 ms), não 60.
-    #[test]
-    fn os_valores_ao_vivo_amostram_duas_vezes_e_meia_por_segundo() {
-        let quadro_ns: u128 = 1_000_000_000 / 60;
-        let mut sampled = None;
-        let mut vezes = 0;
-        for i in 0..60 {
-            let now = 5_000_000_000 + i * quadro_ns;
-            if super::ghosts_due(sampled, now) {
-                sampled = Some(now);
-                vezes += 1;
-            }
-        }
-        assert_eq!(vezes, 3);
     }
 }

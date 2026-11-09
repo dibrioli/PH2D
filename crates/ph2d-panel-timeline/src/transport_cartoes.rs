@@ -238,6 +238,11 @@ impl Fluxo {
         self.lim.0 + self.lim.1 - self.x
     }
 
+    /// Nada pintado ainda na fileira de agora.
+    pub(crate) fn no_inicio(&self) -> bool {
+        self.x <= self.lim.0
+    }
+
     /// Um grupo de largura `w` que não cabe no resto da fileira mas cabe numa inteira desce inteiro.
     pub(crate) fn guarda_para(&mut self, w: f32) {
         if self.x > self.lim.0 && w > self.resta() && w <= self.body.w {
@@ -359,6 +364,11 @@ fn grupo_de_tocar(
 ) {
     let ink = CardInk::of_list(theme);
     let mut c = cartao(ctx, ink, body);
+    // O separador das abas (onda 1c) só entra se o tocar vem logo a seguir na MESMA fileira.
+    if f.resta() >= banda::SEPARADOR_W + m::FIELD_GAP + banda::icones_w(TRANSPORT_BTNS) {
+        let (x, y) = f.poe(banda::SEPARADOR_W);
+        c.separador_em(x, y);
+    }
     let at = f.poe(banda::icones_w(TRANSPORT_BTNS));
     c.icones_em_fila(&fileira_do_transporte(snap, view), at.0, at.1);
     // Time e Frame são um grupo: não se partem entre fileiras.

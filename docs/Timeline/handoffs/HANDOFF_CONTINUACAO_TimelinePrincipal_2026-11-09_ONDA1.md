@@ -122,3 +122,4 @@ i18n em `ph2d-i18n/src/timeline.rs` (NÃO no `lib.rs`, que está em 700/700): ch
   nova); dono + engrenagem continuam na fileira do título; a moldura das caixas é preenchimento `CardField` sem traço (é o
   que a maquete faz: fundo a 4 %).
 - Superfície de colisão nova: `cards_banda.rs` (editor-core), `breadcrumb.rs`.
+- **1c — separadores** (dono 09/11): fio vertical `banda::separador_em` (`SEPARADOR_W` = `FIELD_BORDER`, altura `FIELD_H − 2·SEG_ICON_GAP` ≈ 64 %, `BorderStrong` — o `Border` de lista vira `CardField` e some a 1 px) entre Arrange e |◁ (só se o tocar cabe na mesma fileira) e entre Marker e «Clips» (nunca no início de fileira; entra na conta do `guarda_para`). `a_barra_tem_duas_fileiras_no_molde_do_rive` afirma as duas folgas (mutação: tirar o da fileira 2 ⇒ vermelho). `os_cartoes` 20 ✓, `_seam` 78 ✓, clippy limpo. Foto: [`15_onda1c_separadores.png`](../fotos/15_onda1c_separadores.png).

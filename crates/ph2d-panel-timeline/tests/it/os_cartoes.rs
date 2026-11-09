@@ -557,6 +557,24 @@ fn a_barra_tem_duas_fileiras_no_molde_do_rive() {
             par[1]
         );
     }
+    // Os separadores (onda 1c): um fio com a folga do fluxo dos DOIS lados, entre Arrange e o |◁ e
+    // entre Marker e «Clips». Sem eles a folga é UM vão (o rótulo «Clips» medido à parte).
+    let sep = ph2d_editor_core::panel::cards::banda::SEPARADOR_W + m::FIELD_GAP * 2.0;
+    let abas = r(ids::TIMELINE_TAB_ARRANGE);
+    let folga = r(ids::TIMELINE_GO_START).x - (abas.x + abas.w);
+    assert!(
+        folga >= sep + m::SEG_PAD - 0.5,
+        "sem separador entre Arrange e o |◁: folga {folga}"
+    );
+    let marker = r(ids::TIMELINE_ADD_MARKER);
+    let clips_w = ph2d_text::TextSystem::without_system_fonts()
+        .prefix_width(ph2d_i18n::tr("panel.timeline.card.clips"), m::LABEL_PX)
+        .ceil();
+    let folga = r(ids::TIMELINE_CLIP_OPT[0]).x - (marker.x + marker.w) - clips_w - m::FIELD_GAP;
+    assert!(
+        (folga - sep).abs() < 0.5,
+        "sem separador entre Marker e Clips: folga {folga}, esperada {sep}"
+    );
     // Nada abaixo da 2.ª fileira: a barra tem DUAS.
     let add = r(ids::TIMELINE_ADD_TRACK);
     assert!(

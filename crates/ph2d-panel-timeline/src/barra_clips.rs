@@ -245,7 +245,14 @@ pub(crate) fn paint(
     // Depois do gravar (onda 1b) o grupo inteiro desce se não cabe no resto e cabe numa fileira.
     let nome = ph2d_i18n::tr(chave);
     let nome_w = ctx.text_system.prefix_width(nome, m::LABEL_PX).ceil();
-    f.guarda_para(nome_w + m::FIELD_GAP + tudo);
+    f.guarda_para(banda::SEPARADOR_W + m::FIELD_GAP + nome_w + m::FIELD_GAP + tudo);
+    // O separador do Marker (onda 1c): nunca no início de uma fileira.
+    if !f.no_inicio() {
+        let (x, y) = f.poe(banda::SEPARADOR_W);
+        let (store, hit) = ctx.host.store_and_hit_index_mut();
+        CardCtx::flutuante(ctx.scene, ctx.text_system, store, hit, ink, body.x, body.w)
+            .separador_em(x, y);
+    }
     rotulo(ctx, ink, f, nome);
     let resta = f.resta();
     let texto_mais = |n: usize| ph2d_i18n::tr_with("panel.timeline.card.more", &[("n", &n)]);

@@ -207,6 +207,12 @@ pub const SOBRA_DO_CABECALHO: f32 = (m::LIST_HEAD_H - m::FIELD_H) * 0.5 - m::FIE
 /// O vão entre a última fileira e a folha: a altura de faixa é o recurso do painel-banda (doc 14).
 pub const VAO_ATE_A_FOLHA: f32 = m::SEG_RADIUS;
 
+/// A largura do separador vertical entre dois grupos de uma fileira: o fio do campo. A folga dos dois
+/// lados é o `FIELD_GAP` do fluxo.
+pub const SEPARADOR_W: f32 = m::FIELD_BORDER;
+/// A altura do fio: ~64 % do campo, centrado.
+const SEPARADOR_H: f32 = m::FIELD_H - m::SEG_ICON_GAP * 2.0;
+
 /// A largura de uma fila de `n` ícones.
 #[must_use]
 pub fn icones_w(n: usize) -> f32 {
@@ -308,6 +314,22 @@ impl CardCtx<'_> {
         if let Some(s) = c.fim {
             self.pinta_sinal(s, cx + tw + m::SEG_ICON_GAP, meio);
         }
+    }
+
+    /// Um separador vertical de [`SEPARADOR_W`] em `(x, y)` (topo da fileira): o fio forte do tema
+    /// (`BorderStrong`: o `Border` de lista vira `CardField`, que some a 1 px), centrado na altura do campo. Só pintura, sem alvo.
+    pub fn separador_em(&mut self, x: f32, y: f32) {
+        fill_rounded_rect(
+            self.scene,
+            Rect::new(
+                x,
+                y + (m::FIELD_H - SEPARADOR_H) * 0.5,
+                SEPARADOR_W,
+                SEPARADOR_H,
+            ),
+            SEPARADOR_W * 0.5,
+            self.ink.color(ColorToken::BorderStrong),
+        );
     }
 
     /// A largura natural de [`Self::rotulo_com_sinal`].

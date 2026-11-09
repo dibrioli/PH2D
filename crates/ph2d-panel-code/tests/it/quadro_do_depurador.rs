@@ -86,26 +86,64 @@ fn o_stopped_tem_tecto_de_um_terco_e_o_puxador_vai_do_minimo_a_dois_tercos() {
     }
 }
 
+/// Smoke do dono 09/11: nos Cards cada cartão rola por si (a roda sobre o self não mexe nos
+/// Locals), preso ao seu conteúdo, sem linhas a meio, com o indicador só no que transborda.
 #[test]
-fn os_cards_rolam_por_dentro_e_a_roda_fora_do_quadro_nao_e_dele() {
-    let (c, mut v) = (parado(40), DebugCardView::default());
+fn os_cards_rolam_cada_um_por_si_e_a_roda_fora_do_quadro_nao_e_dele() {
+    let mut c = parado(2);
+    c.this = parado(40).locals;
+    let mut v = DebugCardView::default();
     v.style = CardStyle::Cards;
     let r = pinta(&mut v, &c);
-    assert!(v.painted.cards_max > 0.0, "40 locais não cabem num terço");
+    let cards = v.painted.cards.clone();
+    assert_eq!(cards.len(), 3, "Locals, self, Call stack");
+    assert!(
+        cards[0].bar.is_none() && cards[2].bar.is_none(),
+        "cabem: sem indicador"
+    );
+    let bar = cards[1].bar.expect("o self transborda: indicador");
+    assert!(
+        bar.x + bar.w <= cards[1].rect.x + cards[1].rect.w,
+        "à direita, dentro dele"
+    );
+    assert!(cards[0].max == 0.0 && cards[1].max > 0.0);
+    let inteiras = |v: &DebugCardView| {
+        v.painted.values.iter().all(|(_, f)| {
+            v.painted
+                .cards
+                .iter()
+                .any(|b| f.y >= b.rect.y && f.y + f.h <= b.rect.y + b.rect.h)
+        })
+    };
+    assert!(inteiras(&v), "nenhuma linha a meio");
     let shown = v.painted.values.len();
-    assert!(shown > 0 && shown < 40, "só as que cabem: {shown}");
+    assert!(shown > 2 && shown < 42, "só as que cabem: {shown}");
     assert!(
         !v.wheel(r.x + 10.0, r.y - 50.0, -100.0),
         "acima do quadro é do código"
     );
-    assert!(v.wheel(r.x + r.w * 0.5, r.y + r.h * 0.5, -100.0));
-    assert!((v.cards_scroll - 100.0).abs() < 1e-3);
-    assert!(v.wheel(r.x + r.w * 0.5, r.y + r.h * 0.5, -1e6));
+    let (sx, sy) = {
+        let b = cards[1].rect;
+        (b.x + b.w * 0.5, b.y + b.h * 0.5)
+    };
+    assert!(v.wheel(sx, sy, -100.0));
     assert!(
-        (v.cards_scroll - v.painted.cards_max).abs() < 1e-3,
+        v.cards_scroll[1] > 0.0 && v.cards_scroll[0] == 0.0,
+        "{:?}",
+        v.cards_scroll
+    );
+    let b0 = cards[0].rect;
+    assert!(v.wheel(b0.x + b0.w * 0.5, b0.y + b0.h * 0.5, -100.0));
+    assert_eq!(v.cards_scroll[0], 0.0, "os Locals cabem: não rolam");
+    assert!(v.wheel(sx, sy, -1e6));
+    assert!(
+        (v.cards_scroll[1] - cards[1].max).abs() < 1e-3,
         "preso ao fim"
     );
     pinta(&mut v, &c);
-    let first = v.painted.values.first().map(|(s, _)| s.clone());
-    assert_ne!(first.as_deref(), Some("0"), "a primeira saiu de cima");
+    assert!(inteiras(&v));
+    let vals: Vec<&str> = v.painted.values.iter().map(|(s, _)| s.as_str()).collect();
+    assert_eq!(&vals[..2], ["0", "1"], "os Locals ficaram");
+    assert_eq!(vals.last().copied(), Some("39"), "o self chegou ao fim");
+    assert!(!vals[2..].contains(&"0"), "a primeira do self saiu de cima");
 }

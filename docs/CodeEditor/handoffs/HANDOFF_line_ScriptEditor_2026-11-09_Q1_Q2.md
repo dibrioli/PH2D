@@ -102,3 +102,23 @@ O dono (cena 14): o Stopped tomava mais área que o código, não rolava nos Car
   no_dependency_climbs` verdes.
 - **Fotos** `ferramentas/smoke/cena14/passo_1|3|4.png`: código maior que o quadro, barra do código, puxador, Sheet e
   Cards cortados com rolagem. ⚠️ Os Cards não têm barra de rolagem própria (só a roda) — por decidir no próximo smoke.
+
+## 6. Cards: rolagem por cartão (09/11)
+
+Decisão do dono (smoke 09/11): nos **Cards** cada cartão rola por si.
+
+- `DebugCardView::cards_scroll: [f32; 3]` (Locals · self · Call stack) substitui a rolagem única; `CardPainted::cards`
+  (`CardBox { rect, max, bar }`) substitui `cards_max`. `wheel` rola só o cartão debaixo do ponteiro (preso ao `max`
+  dele); dentro do quadro mas fora dos cartões a roda é tomada sem efeito. A rolagem fica entre Next line (sem reset).
+- `boxes::scroll_card`: cabem `floor((h − título) / linha)` linhas; o `max` conta-se em linhas inteiras e o
+  deslocamento pinta-se arredondado à linha — nenhuma linha a meio, o título fica. Se transborda, pinta o indicador
+  da casa (`paint_scrollbar`, só indica) na borda direita, e as caixas de valor / a Call stack encolhem para não
+  passar por baixo dele. Os rects de copiar e de saltar na pilha só existem para as linhas visíveis.
+- `ph2d-app-code`: zero linhas em `src` (só o teste).
+- **Provas**: `ph2d-panel-code` `quadro_do_depurador` (2; o novo `os_cards_rolam_cada_um_por_si…`: só o self tem
+  indicador, a roda no self não mexe nos Locals, os Locals que cabem não rolam, preso ao fim, nenhuma linha a meio);
+  `ph2d-app-code` `parado_o_codigo_rola_e_o_quadro_tem_tecto_roda_e_puxador` (roda real sobre o cartão do self:
+  `cards_scroll[1] > 0`, `[0] == 0`) + `depurador` 12 · `barra_da_aba` 6 · `botao_direito` 6 verdes;
+  `ph2d-editor-core` `shell_only_shrinks file_loc_cap panel_loc_cap no_magic_numeric no_literal_color hr15` verdes.
+  ⚠️ O filtro de testes da Bancada em `ph2d-panel-code` não correu: o guarda dos subagentes recusa a palavra (pesado).
+- **Foto** `ferramentas/smoke/cena14/passo_4.png`: Locals 2 · self 8 (5 à vista, com indicador) · Call stack.

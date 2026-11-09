@@ -65,8 +65,16 @@ pub struct CardPainted {
     pub values: Vec<(String, Rect)>,
     /// O puxador da borda de cima (arrastar muda a altura do quadro).
     pub grip: Option<Rect>,
-    /// A rolagem máxima dos Cards (o que as linhas passam do corpo).
-    pub cards_max: f32,
+    /// Os Cards, na ordem Locals · self · Call stack: cada um rola por si.
+    pub cards: Vec<CardBox>,
+}
+
+/// Um cartão dos Cards: a caixa, a rolagem máxima dele e o indicador (só se transborda).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct CardBox {
+    pub rect: Rect,
+    pub max: f32,
+    pub bar: Option<Rect>,
 }
 
 /// ⭐ O quadro de uma aba: a aparência, a tabela (larguras, Type escondida, dobras, rolagem) e o
@@ -81,8 +89,8 @@ pub struct DebugCardView {
     pub revealed: Option<String>,
     /// A altura que o artista deu ao quadro pelo puxador (`None` = a natural, até ao tecto).
     pub user_h: Option<f32>,
-    /// A rolagem dos Cards, em píxeis.
-    pub cards_scroll: f32,
+    /// A rolagem de cada cartão dos Cards (Locals · self · Call stack), em píxeis.
+    pub cards_scroll: [f32; 3],
     /// O arrasto do puxador: `(y onde começou, altura de então)`.
     resizing: Option<(f32, f32)>,
 }
@@ -262,7 +270,7 @@ impl DebugCardView {
         self.table.release() || resized
     }
 
-    /// A roda em `(x, y)`: sobre o quadro rola a tabela da Sheet ou os Cards. `true` = sobre o
+    /// A roda em `(x, y)`: sobre o quadro rola a tabela da Sheet ou o cartão debaixo dela. `true` = sobre o
     /// quadro (tomada, mesmo sem nada a rolar: o código por baixo não rola).
     pub fn wheel(&mut self, x: f32, y: f32, dy: f32) -> bool {
         if !self.painted.card.is_some_and(|r| r.contains(x, y)) {
@@ -271,10 +279,15 @@ impl DebugCardView {
         if let Some((lay, ..)) = &self.painted.table {
             let lay = lay.clone();
             let _ = self.table.wheel(&lay, x, y, dy);
-        } else {
-            let max = self.painted.cards_max;
-            self.cards_scroll =
-                ph2d_editor_core::math::safe_clamp(self.cards_scroll - dy, 0.0, max);
+        } else if let Some(i) = self
+            .painted
+            .cards
+            .iter()
+            .position(|b| b.rect.contains(x, y))
+        {
+            let max = self.painted.cards[i].max;
+            self.cards_scroll[i] =
+                ph2d_editor_core::math::safe_clamp(self.cards_scroll[i] - dy, 0.0, max);
         }
         true
     }

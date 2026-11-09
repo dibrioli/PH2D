@@ -2,13 +2,14 @@
 //! de campo, como o Inspector) e **Strip** (uma célula por variável de cima, nome pequeno em cima e
 //! valor em baixo, a altura de antes).
 
-use super::DebugCardView;
+use super::{CardBox, DebugCardView};
 use crate::table_text::CodeCells;
 use crate::view::CodeView;
 use ph2d_code_debugcard::{DebugCard, VarGroup, VarRow, shown_value, value_ink};
 use ph2d_editor_core::paint::{
     fill_rounded_rect, frame_radius, paint_text, paint_text_title, resolve, stroke_rounded_rect,
 };
+use ph2d_editor_core::widget::{ScrollbarState, paint_scrollbar, scrollbar_track_rect};
 use ph2d_editor_core::zones::Rect;
 use ph2d_i18n::{tr, tr_with};
 use ph2d_text::TextSystem;
@@ -97,7 +98,38 @@ fn field_row(
     st.painted.values.push((v.value.clone(), field));
 }
 
-/// ⭐ Cards de `c` em `body`.
+/// A rolagem do cartão `i` com `n` linhas (presa às dele e em linhas inteiras: nenhuma pinta a
+/// meio): regista o cartão, pinta o indicador da casa se transborda e devolve `(primeira, quantas,
+/// o cartão sem a faixa do indicador)`.
+fn scroll_card(
+    st: &mut DebugCardView,
+    i: usize,
+    card: Rect,
+    n: usize,
+    scene: &mut VectorScene,
+    theme: Theme,
+) -> (usize, usize, Rect) {
+    let rh = ph2d_tokens::row_pitch_px();
+    let fits = ((card.h - rh).max(0.0) / rh).floor() as usize;
+    let over = n.saturating_sub(fits);
+    let max = over as f32 * rh;
+    st.cards_scroll[i] = st.cards_scroll[i].min(max);
+    let first = ((st.cards_scroll[i] / rh).round() as usize).min(over);
+    let rows = Rect::new(card.x, card.y + rh, card.w, fits as f32 * rh);
+    let rest = (ScrollbarState::Normal, 0.0);
+    let content = n as f32 * rh;
+    let bar = paint_scrollbar(rows, first as f32 * rh, content, rows.h, rest, scene, theme);
+    st.painted.cards.push(CardBox {
+        rect: card,
+        max,
+        bar,
+    });
+    let keep = bar.map_or(card.w, |_| scrollbar_track_rect(rows).x - card.x);
+    (first, fits.min(n), Rect::new(card.x, card.y, keep, card.h))
+}
+
+/// ⭐ Cards de `c` em `body`: Locals, self e a Call stack, cada um com a sua rolagem (a roda sobre
+/// um cartão rola só esse; o título fica).
 pub(super) fn paint_cards(
     st: &mut DebugCardView,
     c: &DebugCard,
@@ -114,43 +146,33 @@ pub(super) fn paint_cards(
     let cw = ((body.w - gap * (n + 1.0)) / n).max(0.0);
     let ch = (body.h - pad * 2.0).max(0.0);
     let adv = view.metrics().advance;
-    let groups = c.groups();
-    // As linhas rolam por baixo dos títulos; a mais comprida decide quanto.
-    let most = groups.iter().map(|g| g.1.len()).max().unwrap_or(0);
-    let room = (ch - rh).max(0.0);
-    st.painted.cards_max = (rh * most.max(c.stack.len()) as f32 - room).max(0.0);
-    st.cards_scroll = st.cards_scroll.min(st.painted.cards_max);
-    let shown = |card: Rect, y: f32| y >= card.y + rh && y + rh <= card.y + card.h;
     let mut cx = body.x + gap;
-    for (group, vars) in groups {
+    for (i, (group, vars)) in c.groups().into_iter().enumerate() {
         let title = match group {
             VarGroup::Locals => tr("code.debug.group.locals"),
             VarGroup::This => tr("code.debug.group.self"),
         };
         let card = Rect::new(cx, body.y + pad, cw, ch);
         let count = vars.iter().filter(|v| v.depth == 0).count().to_string();
-        let mut y = card_head(card, title, &count, scene, ts, theme) - st.cards_scroll;
+        let y0 = card_head(card, title, &count, scene, ts, theme);
+        let (first, fits, inner) = scroll_card(st, i, card, vars.len(), scene, theme);
         let name_w = vars
             .iter()
             .map(|v| (v.name.chars().count() as f32 + f32::from(v.depth) * 2.0) * adv)
             .fold(0.0f32, f32::max)
-            .min(card.w * NAME_SHARE);
-        for v in vars {
-            if shown(card, y) {
-                field_row(st, v, (card, y, name_w), view, scene, ts, theme);
-            }
-            y += rh;
+            .min(inner.w * NAME_SHARE);
+        for (k, v) in vars.iter().skip(first).take(fits).enumerate() {
+            let y = y0 + rh * k as f32;
+            field_row(st, v, (inner, y, name_w), view, scene, ts, theme);
         }
         cx += cw + gap;
     }
     let card = Rect::new(cx, body.y + pad, cw, ch);
-    let mut y = card_head(card, tr("code.debug.stack"), "", scene, ts, theme) - st.cards_scroll;
+    let y0 = card_head(card, tr("code.debug.stack"), "", scene, ts, theme);
+    let (first, fits, inner) = scroll_card(st, 2, card, c.stack.len(), scene, theme);
     let font = TypeToken::Sm.px();
-    for s in &c.stack {
-        if !shown(card, y) {
-            y += rh;
-            continue;
-        }
+    for (k, s) in c.stack.iter().skip(first).take(fits).enumerate() {
+        let y = y0 + rh * k as f32;
         let name = if s.function.is_empty() {
             tr("code.debug.top_level").to_owned()
         } else {
@@ -160,13 +182,13 @@ pub(super) fn paint_cards(
             "code.debug.frame",
             &[("function", &name), ("line", &s.line)],
         );
-        let w = (card.w - pad * 2.0).max(0.0);
+        let w = (inner.w - pad * 2.0).max(0.0);
         let ink = resolve(ColorToken::Text1, theme);
         paint_text(
             ts,
             scene,
             &t,
-            card.x + pad,
+            inner.x + pad,
             y + (rh - font) * 0.5,
             font,
             w,
@@ -174,8 +196,7 @@ pub(super) fn paint_cards(
         );
         st.painted
             .stack
-            .push((s.line, Rect::new(card.x, y, card.w, rh)));
-        y += rh;
+            .push((s.line, Rect::new(inner.x, y, inner.w, rh)));
     }
 }
 

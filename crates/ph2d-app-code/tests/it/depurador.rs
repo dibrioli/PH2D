@@ -308,13 +308,15 @@ fn o_card_style_troca_o_stopped_e_o_cabecalho_esconde_a_coluna_type() {
 }
 
 /// Smoke do dono 09/11 (cena 14): parado, o código ROLA pela roda (e fica rolado nos quadros
-/// seguintes); o Stopped fica num terço da aba, rola por dentro (Sheet e Cards) e o puxador de
+/// seguintes); o Stopped fica num terço da aba, rola por dentro (a Sheet, e cada cartão dos Cards por si) e o puxador de
 /// cima muda-lhe a altura entre o mínimo e o tecto.
 #[test]
 fn parado_o_codigo_rola_e_o_quadro_tem_tecto_roda_e_puxador() {
     use ph2d_editor_core::doc_surface::PointerInput;
     use ph2d_host::{PointerButton::Primary, PointerKind::*};
-    let locais: String = (0..30).map(|i| format!("  local v{i} = {i}\n")).collect();
+    let locais: String = (0..30)
+        .map(|i| format!("  local v{i} = {i}; self.f{i} = {i}\n"))
+        .collect();
     let (m, id) = aberto(&format!(
         "function update(self, dt)\n{locais}  local s = 1\nend\n"
     ));
@@ -358,6 +360,13 @@ fn parado_o_codigo_rola_e_o_quadro_tem_tecto_roda_e_puxador() {
         m.docs()
             .command(id.0, ph2d_app_code::commands::CMD_CARD_CARDS)
     );
+    // Cards: a roda sobre o cartão do self rola só esse (os Locals ficam), com o indicador.
     let v = passo(&mut m);
-    assert!(roda(&mut m, centro(v.painted.card.unwrap())).cards_scroll > 0.0);
+    assert!(v.painted.cards[1].bar.is_some(), "o self transborda");
+    let v = roda(&mut m, centro(v.painted.cards[1].rect));
+    assert!(
+        v.cards_scroll[1] > 0.0 && v.cards_scroll[0] == 0.0,
+        "{:?}",
+        v.cards_scroll
+    );
 }

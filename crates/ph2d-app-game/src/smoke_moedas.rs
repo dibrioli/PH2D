@@ -54,7 +54,7 @@ pub fn veste_moeda(sim: &mut SimWorld, portas: Portas<'_>, e: Entity) {
         mais(sim, portas, e, c);
     }
     // A forma e o sinal do toque (lado-forma) moram na filha «Collision Shape» (opção B).
-    let f = ph2d_physics_ecs::main_shape(sim.world(), e).expect("Collision Shape");
+    let f = ph2d_physics_ecs::forma_para_editar(sim.world(), e).expect("Collision Shape");
     mais(sim, portas, f, "ph2d::physics::SignalOnHit");
     let mut m = sim.world_mut().entity_mut(f);
     let mut col = m.get_mut::<Collider>().expect("Collision Shape");

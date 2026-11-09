@@ -107,11 +107,11 @@ pub(crate) fn create_joint_at(
         ))
     });
     // **A EMENDA**, quando o gesto não nomeou um ponto (W-Rig): onde as SILHUETAS (da forma
-    // principal, opção B) se encontram na linha entre os centros — o meio punha o pivô de uma
-    // cabeça pequena dentro do tronco. Formas iguais reduzem ao meio; sem collider, o meio.
+    // autorada, olho aberto ou não — opção B) se encontram na linha entre os centros — o meio punha o
+    // pivô de uma cabeça pequena dentro do tronco. Formas iguais reduzem ao meio; sem collider, o meio.
     let silhueta = |e: Entity| {
         let w = sim.world();
-        let f = ph2d_physics_ecs::main_shape(w, e)?;
+        let f = ph2d_physics_ecs::forma_para_editar(w, e)?;
         w.get::<ph2d_physics_ecs::Collider>(f)
             .zip(ph2d_ecs::world_transform(w, f))
     };

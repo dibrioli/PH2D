@@ -296,3 +296,31 @@ fn o_olho_de_um_ancestral_desliga_as_formas_debaixo_dele() {
         "a chave da forma desligada foi para o corpo"
     );
 }
+
+/// **O «Collides with» de um corpo de formas todas desligadas mora na FORMA** (GEF02 09/11): a leitura
+/// (`linha_efetiva`, o cartão) acha a mesma forma que a escrita alveja — nunca o corpo, que não tem
+/// `Collider` e fazia o cartão mostrar «sem exceção».
+#[test]
+fn a_excecao_de_um_corpo_de_formas_desligadas_mora_na_forma() {
+    use ph2d_physics_ecs::CollisionOverride;
+    use ph2d_physics_ecs::excecao::{forma_da_excecao, linha_efetiva};
+    let mut w = ph2d_ecs::World::new();
+    let rb = RigidBody {
+        kind: BodyKind::Dynamic,
+    };
+    let corpo = w.spawn((Name::new("Body"), rb)).id();
+    let forma = w
+        .spawn((caixa(0.3), Visibility::hidden(), ChildOf(corpo)))
+        .id();
+    let o = CollisionOverride::with_bit(u32::MAX, None, 0, false).expect("exceção");
+    w.entity_mut(forma).insert(o);
+    assert_eq!(main_shape(&w, corpo), None, "a forma devia estar desligada");
+    assert_eq!(
+        forma_da_excecao(&w, corpo),
+        forma,
+        "a exceção foi lida no corpo"
+    );
+    let (linha, difere) = linha_efetiva(&w, corpo).expect("o corpo perdeu a linha da forma");
+    assert!(difere, "a exceção da forma desligada não aparece");
+    assert_eq!(linha & 1, 0, "a camada 0 devia estar fora da linha");
+}

@@ -398,3 +398,48 @@ fn the_mass_seed_of_a_plain_body_is_its_own_shape() {
         "um corpo de UMA forma passou a semear {seeded:.4} em vez de 0,600"
     );
 }
+
+/// **Manual num corpo de formas todas desligadas parte da massa que o solver lhe dá AGORA** (GEF02
+/// 09/11): `MASS_WITHOUT_SHAPE_KG`, nunca «nada acontece» (a busca caía no corpo, que não tem
+/// `Collider`). Voltar a Auto tira o override.
+#[test]
+fn manual_num_corpo_de_formas_desligadas_semeia_1_kg() {
+    use ph2d_physics_ecs::MassOverride;
+
+    let mut sim = SimWorld::new();
+    let body = sim
+        .world_mut()
+        .spawn((
+            Name::new("Box"),
+            RigidBody {
+                kind: BodyKind::Dynamic,
+            },
+            Transform::IDENTITY,
+        ))
+        .id();
+    sim.world_mut().spawn((
+        Name::new("Collision Shape"),
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 0.6,
+                half_y: 0.25,
+            },
+            density: 1.0,
+            ..Collider::default()
+        },
+        ph2d_ecs::Visibility::hidden(),
+        Transform::IDENTITY,
+        ChildOf(body),
+    ));
+    let manual = ph2d_editor_core::PhysicsFieldEdit::MassMode(true);
+    crate::physics_tests::apply(&mut sim, body, manual);
+    let seeded = sim.world().get::<MassOverride>(body).map(|m| m.0);
+    assert_eq!(
+        seeded,
+        Some(ph2d_physics_ecs::MASS_WITHOUT_SHAPE_KG),
+        "Manual num corpo de formas desligadas não semeou 1 kg"
+    );
+    let auto = ph2d_editor_core::PhysicsFieldEdit::MassMode(false);
+    crate::physics_tests::apply(&mut sim, body, auto);
+    assert!(sim.world().get::<MassOverride>(body).is_none());
+}

@@ -277,7 +277,7 @@ fn round_count(v: f32) -> u32 {
 /// um `float_height` autorado alto nunca é rebaixado.
 pub fn seed_attached_player(sim: &mut SimWorld, entity_bits: u64) {
     let entity = Entity::from_bits(entity_bits);
-    let shape = ph2d_physics_ecs::main_shape(sim.world(), entity)
+    let shape = ph2d_physics_ecs::forma_para_editar(sim.world(), entity)
         .and_then(|f| sim.world().get::<Collider>(f))
         .map(|c| c.shape);
     let Some(mut p) = sim.world().get::<PlatformPlayer>(entity).copied() else {

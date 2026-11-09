@@ -29,11 +29,12 @@ impl LiveLayerRows {
     }
 }
 
-/// A forma que guarda a exceção de `e`: a principal de um corpo (opção B), ou `e` (peça, corpo antigo).
+/// A forma que guarda a exceção de `e`: a [`crate::forma_para_editar`] de um corpo (opção B; a mesma
+/// que a escrita alveja, olho aberto ou não), ou `e` (peça, corpo antigo).
 #[must_use]
 pub fn forma_da_excecao(world: &World, e: Entity) -> Entity {
     if world.get::<RigidBody>(e).is_some() {
-        crate::main_shape(world, e).unwrap_or(e)
+        crate::forma_para_editar(world, e).unwrap_or(e)
     } else {
         e
     }

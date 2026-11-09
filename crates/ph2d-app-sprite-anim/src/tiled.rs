@@ -67,7 +67,7 @@ pub(crate) fn follow_auto_collider(
     depois: [f32; 2],
 ) {
     // A forma do corpo mora na filha «Collision Shape» (opção B); uma forma no próprio `e` também serve.
-    let f = ph2d_physics_ecs::main_shape(world, e).unwrap_or(e);
+    let f = ph2d_physics_ecs::forma_para_editar(world, e).unwrap_or(e);
     if let Some(mut c) = world.get_mut::<Collider>(f)
         && c.follows_picture(antes)
         && antes != depois

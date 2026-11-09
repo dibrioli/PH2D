@@ -204,14 +204,29 @@ pub fn apply_physics_edit(
     if let PhysicsFieldEdit::MassMode(manual) = edit {
         // Mass source (W-Mass): another RigidBody-level, optional presence-override
         // component (`MassOverride`), handled here beside the constraints. Gated on a
-        // live collider: without one there is no shape to seed the mass from.
-        let fonte = ph2d_physics_ecs::main_shape(world, entity).unwrap_or(entity);
-        let Some(col) = world.get::<Collider>(fonte).copied() else {
+        // shape, live or not: a body with none is not in the solver.
+        let viva = ph2d_physics_ecs::main_shape(world, entity)
+            .and_then(|f| world.get::<Collider>(f).copied());
+        if viva.is_none() && !ph2d_physics_ecs::tem_forma(world, entity) {
             return;
-        };
+        }
         if manual {
-            // Auto → Manual: seed the override with the current AUTO mass so the number does not
-            // jump (Unity does the same), SUMMING the parts (W-PartMass: a two-half raft seeded
+            // Auto → Manual: seed the override with the mass the solver gives the body NOW so the
+            // number does not jump (Unity does the same). Every shape off: `MASS_WITHOUT_SHAPE_KG`.
+            let Some(col) = viva else {
+                let agora = world
+                    .get::<MassOverride>(entity)
+                    .map_or(ph2d_physics_ecs::MASS_WITHOUT_SHAPE_KG, |m| m.0);
+                queue_set(
+                    queue,
+                    registry,
+                    entity_bits,
+                    MASS_OVERRIDE,
+                    &MassOverride(agora),
+                );
+                return;
+            };
+            // Live shapes: the AUTO mass, SUMMING the parts (W-PartMass: a two-half raft seeded
             // `0,600` against `1,200`). `QueryState::try_new` keeps the `&SimWorld` read pass.
             let candidates: Vec<Entity> = {
                 let mut q = bevy_ecs::query::QueryState::<

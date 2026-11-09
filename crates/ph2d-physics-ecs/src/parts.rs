@@ -263,7 +263,8 @@ fn primeira_forma(world: &World, body: Entity, ligadas: bool) -> Option<Entity> 
 /// **A forma PRINCIPAL de `body`** (opção B, 08/11): o `Collider` do próprio corpo se ele o carrega,
 /// senão a primeira forma descendente LIGADA em ordem de árvore (pára num corpo filho, atravessa
 /// grupos). É ela que viaja no `BodyDesc`; as outras ligadas são peças. Desligar a principal passa o
-/// papel à seguinte; sem nenhuma ligada, `None` (o corpo sai do solver).
+/// papel à seguinte; sem nenhuma ligada, `None` — o corpo FICA no solver sem tocar nada (1 kg). É a
+/// pergunta do que SIMULA; quem edita ou lê a forma do corpo usa [`forma_para_editar`].
 #[must_use]
 pub fn main_shape(world: &World, body: Entity) -> Option<Entity> {
     primeira_forma(world, body, true)

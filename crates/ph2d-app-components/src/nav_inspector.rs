@@ -162,8 +162,9 @@ pub fn build_info(
             cost: c.cost,
             forbidden: c.forbidden,
             // ⚠️ As MESMAS perguntas da ponte (`custos_deste_tique`): só um corpo com colisor tem
-            // forma, e só um corpo PARADO a recorta (um `Dynamic` nunca é obstáculo).
-            has_shape: corpo.is_some() && ph2d_physics_ecs::main_shape(world, e).is_some(),
+            // forma (a ponte recorta pelo `BodyDesc`, que leva a 1.ª forma mesmo de olho fechado), e só
+            // um corpo PARADO a recorta (um `Dynamic` nunca é obstáculo).
+            has_shape: corpo.is_some() && ph2d_physics_ecs::tem_forma(world, e),
             body_moves: corpo.is_some_and(|b| b.kind == BodyKind::Dynamic),
             too_narrow_for: world.get::<NavCostAreaNow>(e).map(|n| n.too_narrow_for),
         }

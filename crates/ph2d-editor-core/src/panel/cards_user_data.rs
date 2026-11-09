@@ -385,10 +385,12 @@ pub fn frame(store: &mut WidgetStore, ids: &UserDataIds, v: &UserDataView) -> Op
     e
 }
 
-/// O nome do dono com o botão `User Data` à direita, numa linha (O17).
+/// O nome do dono com o botão `User Data` à direita, numa linha (O17); na coluna estreita o botão desce
+/// em vez de cortar o nome (lei 1 do 05 §4).
 pub fn title_row(c: &mut CardCtx<'_>, ids: &UserDataIds, name: &str, y: f32) -> f32 {
-    c.row(
-        &[Cell::new(Widget::Readout { text: name }), toggle_cell(ids)],
+    c.pair(
+        Cell::new(Widget::Readout { text: name }),
+        toggle_cell(ids),
         y,
     )
 }

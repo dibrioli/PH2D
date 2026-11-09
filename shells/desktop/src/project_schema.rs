@@ -409,4 +409,11 @@
 /// imagem (átlas: `SavedAsset`; fora dele: os pixels de sprite). SEM leitura dos anteriores (§0.11). Gates:
 /// `the_library_travels_in_the_file`, `a_normal_da_textura_individual_vai_e_volta_pelo_projeto`. Registos: `0`.
 /// ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 230;
+///
+/// # `230 → 231` — **o pivô e as formas por célula** (`line/PixelArt`, P14e D1, 2026-11-09)
+///
+/// Dois componentes no registo (`+2`): `ph2d::ecs::SpriteCells` (pivô e retângulos de colisão por célula do Sprite
+/// do motor, o padrão da Unity; o da folha é o padrão) e `ph2d::pixel::SegueCelula` (a filha que segue a célula;
+/// `shape`/`offset` do `Collider` derivados, como o `SegueSlice`). SEM leitura dos anteriores (§0.11). Gates:
+/// `ph2d-pixel-cena inspector_abre::`. ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 231;

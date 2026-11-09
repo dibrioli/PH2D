@@ -220,3 +220,35 @@ fn o_render_desenha_o_quadro_com_o_acerto_dele() {
         "a folha sem acerto"
     );
 }
+
+/// P14e D1: a célula com pivô próprio (`SpriteCells`) desenha-se com o anchor dela; a que não tem
+/// fica com o da folha (`Sprite.anchor`). Desenho (`sheet_view`) e geometria (`drawn_geometry`) iguais.
+#[test]
+fn a_celula_com_pivo_proprio_desenha_com_o_anchor_dela() {
+    let mut w = World::new();
+    let mut sprite = Sprite::atlas(7, [1.0, 1.0], [1.0; 4]);
+    sprite.anchor = [0.1, 0.2];
+    let cells = ph2d_ecs::SpriteCells {
+        folhas: vec![ph2d_ecs::CelulasDaFolha {
+            celula_px: [16, 16],
+            pivos_px: vec![None, Some([6.0, 15.0])],
+            formas: Vec::new(),
+        }],
+    };
+    let e = w.spawn((sprite, SpriteGrid::new(2, 1), cells)).id();
+    let quatro = [0.5 - 6.0 / 16.0, 15.0 / 16.0 - 0.5];
+    assert_eq!(
+        sheet_view(&w, e, &sprite),
+        SheetView::Own,
+        "célula 0: a da folha"
+    );
+    show(&mut w, e, FrameRef::Cell { sheet: 0, cell: 1 });
+    match sheet_view(&w, e, &sprite) {
+        SheetView::Other(s, g) => {
+            assert_eq!(s.anchor, quatro);
+            assert_eq!(g.frame, 1);
+        }
+        v => panic!("célula 1 devia ter o anchor dela: {v:?}"),
+    }
+    assert_eq!(drawn_geometry(&w, e).map(|(s, _)| s.anchor), Some(quatro));
+}

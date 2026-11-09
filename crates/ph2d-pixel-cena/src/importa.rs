@@ -58,6 +58,8 @@ pub struct SpriteImportado {
     /// O pivô (origem) por quadro, em píxeis do sprite.
     pub pivos_px: Vec<(f64, f64)>,
     pub colliders: Vec<ColliderImportado>,
+    /// O mesmo pivô e as mesmas formas, no idioma do Sprite do motor ([`liga_celulas`]).
+    pub celulas: ph2d_ecs::CelulasDaFolha,
 }
 
 /// Deriva o import de um documento Pixel.
@@ -73,7 +75,7 @@ pub fn importa(sprite: &Sprite, nome_sem_tags: &str, m_por_px: f64) -> SpriteImp
         .iter()
         .any(|l| l.normal)
         .then(|| quadros.iter().map(|&f| compose_normal(sprite, f)).collect());
-    let pivos_px = quadros.iter().map(|&f| crate::pivo_px(sprite, f)).collect();
+    let pivos_px: Vec<(f64, f64)> = quadros.iter().map(|&f| crate::pivo_px(sprite, f)).collect();
     let colliders = sprite
         .slices()
         .iter()
@@ -93,6 +95,7 @@ pub fn importa(sprite: &Sprite, nome_sem_tags: &str, m_por_px: f64) -> SpriteImp
         cor,
         normal,
         clips: crate::clips_das_tags(sprite, nome_sem_tags),
+        celulas: celulas_de(sprite, &pivos_px),
         pivos_px,
         colliders,
     }
@@ -109,4 +112,72 @@ pub fn importa_ase(
 ) -> Result<SpriteImportado, String> {
     let (s, _) = ph2d_pixel_io::ase::ler(bytes).map_err(|e| format!("{e:?}"))?;
     Ok(importa(&s, nome_sem_tags, m_por_px))
+}
+
+/// O pivô e as formas por célula da folha `0` (a folha do import é uma célula por quadro, na
+/// ordem do ficheiro).
+#[allow(clippy::cast_possible_truncation)]
+fn celulas_de(sprite: &Sprite, pivos: &[(f64, f64)]) -> ph2d_ecs::CelulasDaFolha {
+    let quadros: Vec<_> = sprite.frames().iter().map(|f| f.id).collect();
+    ph2d_ecs::CelulasDaFolha {
+        celula_px: [sprite.width(), sprite.height()],
+        pivos_px: pivos
+            .iter()
+            .map(|&(x, y)| Some([x as f32, y as f32]))
+            .collect(),
+        formas: sprite
+            .slices()
+            .iter()
+            .filter(|s| slice_e_collider(s))
+            .map(|s| ph2d_ecs::FormaPorCelula {
+                nome: s.name.clone(),
+                rects_px: quadros
+                    .iter()
+                    .map(|&f| {
+                        let pos = u32::try_from(sprite.frame_index(f)?).ok()?;
+                        let b = s.visible_at(pos)?.bounds;
+                        Some([b.x as f32, b.y as f32, b.w as f32, b.h as f32])
+                    })
+                    .collect(),
+            })
+            .collect(),
+    }
+}
+
+/// Liga ao Sprite do motor `e` (já com a grelha do import) o pivô e as formas por célula: insere
+/// [`ph2d_ecs::SpriteCells`] e, por forma, uma «Collision Shape» filha que a segue
+/// ([`crate::SegueCelula`]) — o mesmo gesto do Add Collider do Pixel (corpo `Dynamic`).
+pub fn liga_celulas(
+    world: &mut ph2d_ecs::World,
+    e: ph2d_ecs::Entity,
+    celulas: ph2d_ecs::CelulasDaFolha,
+    m_por_px: f64,
+) -> Vec<ph2d_ecs::Entity> {
+    let formas: Vec<(u32, String)> = celulas
+        .formas
+        .iter()
+        .enumerate()
+        .map(|(i, f)| (i as u32, f.nome.clone()))
+        .collect();
+    let cells = ph2d_ecs::SpriteCells {
+        folhas: vec![celulas],
+    };
+    let mut filhas = Vec::new();
+    for (i, nome) in formas {
+        if world.get::<ph2d_physics_ecs::RigidBody>(e).is_none() {
+            world.entity_mut(e).insert(ph2d_physics_ecs::RigidBody {
+                kind: ph2d_physics_ecs::BodyKind::Dynamic,
+            });
+        }
+        let c = crate::collider_da_celula(&cells, i, 0, m_por_px).unwrap_or_default();
+        let filha = ph2d_physics_ecs::nasce_com_forma(world, e, c.shape);
+        let mut f = world.entity_mut(filha);
+        if let Some(mut col) = f.get_mut::<Collider>() {
+            col.offset = c.offset;
+        }
+        f.insert((crate::SegueCelula { forma: i }, ph2d_ecs::Name::new(nome)));
+        filhas.push(filha);
+    }
+    world.entity_mut(e).insert(cells);
+    filhas
 }

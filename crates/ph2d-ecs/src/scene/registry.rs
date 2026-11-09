@@ -562,6 +562,8 @@ pub fn register_ecs_components(reg: &mut ComponentRegistry) {
     reg.register_default::<crate::SpriteSheets>("ph2d::ecs::SpriteSheets");
     // O acerto de cada quadro da folha `0` (GEF 28, Align); o das outras viaja na `ExtraSheet`.
     reg.register_default::<crate::CellOffsets>("ph2d::ecs::CellOffsets");
+    // O pivô e as formas por célula (P14e D1, o padrão da Unity): o da folha é o padrão.
+    reg.register_default::<crate::SpriteCells>("ph2d::ecs::SpriteCells");
     // O que cada uso da imagem guarda enquanto o objecto usa outro (plano GEF 15, dono 27/10): sem o registo o
     // Desfazer e o projecto reaberto perdiam a configuração do uso que o artista deixou.
     reg.register_default::<crate::ImageUseMemory>("ph2d::ecs::ImageUseMemory");

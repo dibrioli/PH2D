@@ -263,6 +263,12 @@ pub const DESCS: &[D] = &[
         // «Starts with» (GEF 24/26): a linha própria do cartão Animated Sprite, escolhida da lista.
         ("start", Hidden::OwnSection),
     ]),
+    // O pivô e as formas por célula (P14e): o import do `.ase` escreve-o.
+    D::machinery(
+        "ph2d::ecs::SpriteCells",
+        "component.sprite_cells.name",
+        C::Animation,
+    ),
     // ⭐ Os TRÊS do corte (ADR-0164 F1 passo 6 / ADR-0166) — `Authored` e `O::IMAGE`: é a
     // paleta do F3 que os anexa, e só a um objeto-imagem. A ausência de cada um é o default
     // benigno que o campo tinha, então nada aparece no Inspector até o artista o pedir.

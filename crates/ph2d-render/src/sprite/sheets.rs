@@ -53,12 +53,14 @@ pub fn sheet_geometry(
 ) -> Option<(Sprite, Option<SpriteGrid>)> {
     let sprite = world.get::<Sprite>(entity)?;
     let grid = world.get::<SpriteGrid>(entity).copied();
-    Some(
-        match world.get::<SpriteSheets>(entity).and_then(|s| s.sheet(k)) {
-            Some(s) => (sheet_sprite(s, sprite), Some(s.grid(frame))),
-            None => (*sprite, grid),
-        },
-    )
+    let (mut s, g) = match world.get::<SpriteSheets>(entity).and_then(|s| s.sheet(k)) {
+        Some(s) => (sheet_sprite(s, sprite), Some(s.grid(frame))),
+        None => (*sprite, grid),
+    };
+    if let Some(a) = ph2d_ecs::anchor_da_celula(world, entity, k, frame, s.size) {
+        s.anchor = a;
+    }
+    Some((s, g))
 }
 
 /// `sprite` com o desenho deslocado `d` metros locais (o acerto de um quadro, GEF 28): o Pivot fica, o quad anda.
@@ -96,8 +98,12 @@ pub fn sheet_view(world: &World, entity: Entity, sprite: &Sprite) -> SheetView {
     };
     let d = ph2d_ecs::cell_offset(world, entity, grid.sheet, grid.frame);
     match grid.sheet {
-        0 if d == [0.0, 0.0] => SheetView::Own,
-        0 => SheetView::OwnNudged(nudged(*sprite, d)),
+        // P14e: o pivô da célula é a âncora base; o acerto do quadro (GEF 28) desloca o quad por cima dela.
+        0 => match ph2d_ecs::anchor_da_celula(world, entity, 0, grid.frame, sprite.size) {
+            Some(anchor) => SheetView::Other(nudged(Sprite { anchor, ..*sprite }, d), grid),
+            None if d == [0.0, 0.0] => SheetView::Own,
+            None => SheetView::OwnNudged(nudged(*sprite, d)),
+        },
         SpriteGrid::EMPTY_SHEET => SheetView::Nothing,
         k => {
             let sheet = world.get::<SpriteSheets>(entity).and_then(|s| s.sheet(k));
@@ -105,13 +111,18 @@ pub fn sheet_view(world: &World, entity: Entity, sprite: &Sprite) -> SheetView {
                 .get::<SheetTextures>(entity)
                 .and_then(|t| t.0.get(usize::from(k) - 1).copied().flatten());
             match (sheet, source) {
-                (Some(s), Some((asset, source))) if asset == s.asset => SheetView::Other(
-                    Sprite {
+                (Some(s), Some((asset, source))) if asset == s.asset => {
+                    let mut c = Sprite {
                         source,
-                        ..nudged(sheet_sprite(s, sprite), d)
-                    },
-                    s.grid(grid.frame),
-                ),
+                        ..sheet_sprite(s, sprite)
+                    };
+                    if let Some(a) =
+                        ph2d_ecs::anchor_da_celula(world, entity, k, grid.frame, c.size)
+                    {
+                        c.anchor = a;
+                    }
+                    SheetView::Other(nudged(c, d), s.grid(grid.frame))
+                }
                 _ => SheetView::Nothing,
             }
         }

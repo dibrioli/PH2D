@@ -58,6 +58,26 @@ pub(super) fn serialize_sem_derivados<C: CamposDerivados, M: Component>(
     if !e.contains::<M>() {
         return serialize_of::<C>(world, entity);
     }
+    grava_sem_derivados::<C>(&e)
+}
+
+/// Como [`serialize_sem_derivados`], com DUAS marcas (basta uma).
+pub(super) fn serialize_sem_derivados_2<C: CamposDerivados, M1: Component, M2: Component>(
+    world: &World,
+    entity: Entity,
+) -> Result<Option<Vec<u8>>, RegistryError> {
+    let e = world
+        .get_entity(entity)
+        .map_err(|_| RegistryError::EntityMissing(entity))?;
+    if !e.contains::<M1>() && !e.contains::<M2>() {
+        return serialize_of::<C>(world, entity);
+    }
+    grava_sem_derivados::<C>(&e)
+}
+
+fn grava_sem_derivados<C: CamposDerivados>(
+    e: &bevy_ecs::world::EntityRef<'_>,
+) -> Result<Option<Vec<u8>>, RegistryError> {
     match e.get::<C>() {
         Some(v) => Ok(Some(
             postcard::to_allocvec(&v.sem_derivados()).map_err(RegistryError::Encode)?,
@@ -93,6 +113,18 @@ impl ComponentRegistry {
         M: Component,
     {
         *self.grava_de::<C>("campos_derivados_quando") = serialize_sem_derivados::<C, M>;
+    }
+
+    /// Como [`Self::campos_derivados_quando`], para `C` derivado com QUALQUER das duas marcas
+    /// (uma chamada por `C`: a segunda substituiria a primeira).
+    pub fn campos_derivados_quando_algum<C, M1, M2>(&mut self)
+    where
+        C: CamposDerivados + 'static,
+        M1: Component,
+        M2: Component,
+    {
+        *self.grava_de::<C>("campos_derivados_quando_algum") =
+            serialize_sem_derivados_2::<C, M1, M2>;
     }
 
     /// **`C` é derivado na entidade que tem `M`**: ali o `grava` dele devolve `Ok(None)`, logo `C`

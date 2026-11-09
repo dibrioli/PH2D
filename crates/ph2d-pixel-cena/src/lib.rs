@@ -16,13 +16,15 @@ mod forma;
 mod importa;
 
 pub use importa::{
-    COLLIDER_PROP, ColliderImportado, SpriteImportado, importa, importa_ase, marca_collider,
+    COLLIDER_PROP, ColliderImportado, SpriteImportado, importa, importa_ase, liga_celulas,
+    marca_collider,
     slice_e_collider,
 };
 
 pub use deriva::{CLIP_SEM_TAGS, DerivadoDe, animador_de_nascenca, deriva, grelha};
 pub use forma::{
-    SEGUE_SLICE, SegueSlice, adiciona_collider_da_slice, collider_da_slice, deriva_formas, pivo_px,
+    SEGUE_CELULA, SEGUE_SLICE, SegueCelula, SegueSlice, adiciona_collider_da_slice,
+    collider_da_celula, collider_da_slice, deriva_formas, pivo_px,
 };
 
 /// As tags do documento como clips do motor, pela porta única [`tag_do_aseprite`] (a mesma do
@@ -125,5 +127,7 @@ pub fn registar(reg: &mut ComponentRegistry) {
     reg.derivado_quando::<SpriteAnimations, PixelSprite>();
     reg.derivado_quando::<SpriteGrid, PixelSprite>();
     reg.register_default::<SegueSlice>(SEGUE_SLICE);
-    reg.campos_derivados_quando::<ph2d_physics_ecs::Collider, SegueSlice>();
+    reg.register_default::<SegueCelula>(SEGUE_CELULA);
+    // Uma chamada só: a forma da filha é derivada se ela segue uma slice OU uma célula (P14e).
+    reg.campos_derivados_quando_algum::<ph2d_physics_ecs::Collider, SegueSlice, SegueCelula>();
 }

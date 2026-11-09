@@ -34,7 +34,7 @@ pub fn pivo_px(sprite: &Sprite, frame: FrameId) -> (f64, f64) {
 /// A forma e o offset (metros, Y para cima, relativo à origem) da key `k` no quadro `frame`.
 fn collider_da_key(sprite: &Sprite, frame: FrameId, k: SliceShape, m_por_px: f64) -> Collider {
     let b = k.bounds;
-    let (shape, off) = forma_de_retangulo(
+    collider_de_rect(
         [
             f64::from(b.x),
             f64::from(b.y),
@@ -43,7 +43,12 @@ fn collider_da_key(sprite: &Sprite, frame: FrameId, k: SliceShape, m_por_px: f64
         ],
         pivo_px(sprite, frame),
         m_por_px,
-    );
+    )
+}
+
+/// A regra única retângulo + pivô ⇒ `Collider` (Pixel Sprite e Sprite do motor por célula).
+fn collider_de_rect(rect_px: [f64; 4], pivo: (f64, f64), m_por_px: f64) -> Collider {
+    let (shape, off) = forma_de_retangulo(rect_px, pivo, m_por_px);
     #[allow(clippy::cast_possible_truncation)]
     let offset = [off[0] as f32, off[1] as f32];
     Collider {
@@ -169,6 +174,7 @@ pub fn deriva_formas<'a>(
             fazer.push((e, novo.shape, novo.offset));
         }
     }
+    formas_das_celulas(world, m_por_px, &mut fazer, &mut ligar);
     for (e, shape, offset) in fazer {
         if let Some(mut c) = world.get_mut::<Collider>(e) {
             c.shape = shape;
@@ -180,6 +186,68 @@ pub fn deriva_formas<'a>(
             world.entity_mut(e).remove::<FormaDesligada>();
         } else {
             world.entity_mut(e).insert(FormaDesligada);
+        }
+    }
+}
+
+/// P14e D1: a «Collision Shape» filha de um Sprite do motor que segue a forma `forma` das
+/// [`ph2d_ecs::SpriteCells`] do pai, na célula mostrada. Gravado; a forma e o offset do `Collider`
+/// são derivados (`campos_derivados_quando`), como no [`SegueSlice`].
+#[derive(Component, Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct SegueCelula {
+    pub forma: u32,
+}
+
+impl ph2d_ecs::SimComponent for SegueCelula {}
+
+pub const SEGUE_CELULA: &str = "ph2d::pixel::SegueCelula";
+
+/// A forma `forma` na célula `cell` da folha `0` (`None` = escondida ou inexistente).
+#[must_use]
+pub fn collider_da_celula(
+    cells: &ph2d_ecs::SpriteCells,
+    forma: u32,
+    cell: u32,
+    m_por_px: f64,
+) -> Option<Collider> {
+    let f = cells.folha(0)?;
+    let [x, y, w, h] = (*f.formas.get(forma as usize)?.rects_px.get(cell as usize)?)?;
+    Some(collider_de_rect(
+        [f64::from(x), f64::from(y), f64::from(w), f64::from(h)],
+        f.pivo_px(cell),
+        m_por_px,
+    ))
+}
+
+type Fazer = Vec<(Entity, ph2d_physics_ecs::ColliderShape, [f32; 2])>;
+
+fn formas_das_celulas(
+    world: &mut World,
+    m_por_px: f64,
+    fazer: &mut Fazer,
+    ligar: &mut Vec<(Entity, bool)>,
+) {
+    let mut q = world.query::<(Entity, &SegueCelula, &ChildOf, &Collider)>();
+    for (e, segue, pai, col) in q.iter(world) {
+        let p = pai.parent();
+        let (Some(cells), Some(cell)) = (
+            world.get::<ph2d_ecs::SpriteCells>(p),
+            ph2d_ecs::celula_mostrada(world, p),
+        ) else {
+            continue;
+        };
+        let desligada = world.get::<FormaDesligada>(e).is_some();
+        let Some(novo) = collider_da_celula(cells, segue.forma, cell, m_por_px) else {
+            if !desligada {
+                ligar.push((e, false));
+            }
+            continue;
+        };
+        if desligada {
+            ligar.push((e, true));
+        }
+        if novo.shape != col.shape || novo.offset != col.offset {
+            fazer.push((e, novo.shape, novo.offset));
         }
     }
 }

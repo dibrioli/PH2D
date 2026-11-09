@@ -368,7 +368,8 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⚠️ **`228` em 2026-11-09** (`line/PixelArt`, P14a-3) — passadas do ping-pong. A tripla NÃO vê.
         // ⚠️ **`229` em 2026-11-09** (`line/PixelArt`, P14b-1) — `SegueSlice` no registo. A tripla NÃO vê.
         // ⚠️ **`230` em 2026-11-09** (`line/PixelArt`, P14 Sprite com normal) — `LibraryDoc.normals`. A tripla NÃO vê.
-        (230, 13, 29),
+        // ⚠️ **`231` em 2026-11-09** (`line/PixelArt`, P14e) — `SpriteCells` e `SegueCelula`. A tripla NÃO vê.
+        (231, 13, 29),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

@@ -91,3 +91,180 @@ fn o_inspector_abre_o_que_o_pixel_grava() {
         imp.colliders[0].por_quadro[3]
     );
 }
+
+/// O Sprite do motor importado da `heroi_p14`: grelha 6×1, pivô e formas por célula ligados.
+fn sprite_importado(s: &ph2d_pixel_core::Sprite, w: &mut ph2d_ecs::World, y: f32) -> Entity {
+    let (bytes, _) = ph2d_pixel_io::ase::escrever(s).expect("grava");
+    let imp = importa_ase(&bytes, "heroi_p14", M).expect("import");
+    let mut t = Transform::IDENTITY;
+    t.translation.y = y;
+    let e = w
+        .spawn((
+            t,
+            Name::new("Importado"),
+            ph2d_physics_ecs::LockRotation,
+            SpriteGrid {
+                hframes: 6,
+                vframes: 1,
+                frame: 0,
+                sheet: 0,
+            },
+        ))
+        .id();
+    ph2d_pixel_cena::liga_celulas(w, e, imp.celulas, M);
+    e
+}
+
+/// D1: o pivô do quadro 4 importado é o do Pixel (a key do 4 muda os pés de (8,15) para (6,15)), e o
+/// anchor da célula mostrada é o desse pivô. *Mutação: `pivos_px` vazio ⇒ o anchor cai no da folha.*
+#[test]
+fn o_pivo_do_quadro_4_importado_e_o_do_pixel() {
+    let s = heroi_p14();
+    let mut sim = SimWorld::new();
+    let e = sprite_importado(&s, sim.world_mut(), 0.0);
+    let w = sim.world();
+    let cells = w.get::<ph2d_ecs::SpriteCells>(e).expect("células");
+    for (i, fr) in s.frames().iter().enumerate() {
+        assert_eq!(
+            cells.folha(0).expect("folha 0").pivo_px(i as u32),
+            pivo_px(&s, fr.id),
+            "pivô da célula {i}"
+        );
+    }
+    // Quad de 1 m (16 px a 16 px/m): anchor = do pivô ao centro, Y para cima.
+    let a = |c| ph2d_ecs::anchor_da_celula(w, e, 0, c, [1.0, 1.0]);
+    assert_eq!(
+        a(0),
+        Some([0.0, 15.0 / 16.0 - 0.5]),
+        "quadro 0: os pés (8,15)"
+    );
+    assert_eq!(
+        a(4),
+        Some([0.5 - 6.0 / 16.0, 15.0 / 16.0 - 0.5]),
+        "quadro 4: (6,15)"
+    );
+}
+
+/// D1, o molde `a_forma_segue_a_key_da_slice_no_rapier`: o Sprite do MOTOR importado, sem documento
+/// Pixel, troca a caixa do rapier quando a célula mostrada passa de 2 a 3 e volta.
+#[test]
+fn a_forma_do_sprite_importado_segue_o_quadro_no_rapier() {
+    use ph2d_ecs::Children;
+    use ph2d_physics_ecs::{BodyKind, ColliderShape, PhysicsBridge, RigidBody};
+    let mut s = heroi_p14();
+    let id = body(&s);
+    let mut lista = s.slices().to_vec();
+    let b = lista.iter_mut().find(|c| c.id == id).expect("body");
+    let k3 = b.keys.iter_mut().find(|k| k.frame == 3).expect("key 3");
+    k3.shape.bounds = ph2d_pixel_core::Rect::new(4, 0, 4, 8);
+    k3.shape.pivot = Some((4, 15));
+    ph2d_pixel_core::apply(&mut s, ph2d_pixel_core::Op::Slices(lista)).expect("key 3");
+    let mut sim = SimWorld::new();
+    sim.world_mut().spawn((
+        Name::new("Floor"),
+        RigidBody {
+            kind: BodyKind::Static,
+        },
+        Collider {
+            shape: ColliderShape::Cuboid {
+                half_x: 50.0,
+                half_y: 0.1,
+            },
+            ..Collider::default()
+        },
+        Transform::IDENTITY,
+    ));
+    let e = sprite_importado(&s, sim.world_mut(), 3.0);
+    let f = sim.world().get::<Children>(e).expect("filha")[0];
+    let caixa_0 = ([0.0, 6.0 / 16.0], [0.25, 7.0 / 16.0]);
+    let caixa_3 = ([-2.0 / 16.0, 11.0 / 16.0], [2.0 / 16.0, 4.0 / 16.0]);
+    let mut ponte = PhysicsBridge::new();
+    let mut tick = 0_u64;
+    let mut passo = |sim: &mut SimWorld, ponte: &mut PhysicsBridge, cell: u32, n: u64| {
+        sim.world_mut()
+            .get_mut::<SpriteGrid>(e)
+            .expect("grelha")
+            .frame = cell;
+        for _ in 0..n {
+            tick += 1;
+            deriva_formas(sim.world_mut(), |_| None, M);
+            ponte.dispatch(sim, true, tick);
+        }
+    };
+    let caixa = |ponte: &PhysicsBridge| {
+        let (lo, hi) = ponte.body_aabb(e).expect("corpo no rapier");
+        let (x, y, _) = ponte.body_pose(e).expect("pose");
+        (
+            [(lo[0] + hi[0]) * 0.5 - x, (lo[1] + hi[1]) * 0.5 - y],
+            [(hi[0] - lo[0]) * 0.5, (hi[1] - lo[1]) * 0.5],
+        )
+    };
+    let perto = |a: ([f32; 2], [f32; 2]), b: ([f32; 2], [f32; 2])| {
+        let d = |p: [f32; 2], q: [f32; 2]| (p[0] - q[0]).abs().max((p[1] - q[1]).abs());
+        d(a.0, b.0) < 1e-4 && d(a.1, b.1) < 1e-4
+    };
+    passo(&mut sim, &mut ponte, 2, 10);
+    let corpos = ponte.arena_body_count();
+    assert!(
+        perto(caixa(&ponte), caixa_0),
+        "célula 2: {:?}",
+        caixa(&ponte)
+    );
+    passo(&mut sim, &mut ponte, 3, 1);
+    assert!(
+        perto(caixa(&ponte), caixa_3),
+        "célula 3: {:?}",
+        caixa(&ponte)
+    );
+    let gizmo = sim.world().get::<Collider>(f).expect("c").local_aabb();
+    assert!(perto(gizmo, caixa_3), "célula 3: o gizmo {gizmo:?}");
+    assert_eq!(ponte.arena_body_count(), corpos, "trocou no lugar");
+    passo(&mut sim, &mut ponte, 2, 1);
+    assert!(perto(caixa(&ponte), caixa_0), "de volta à 2");
+}
+
+/// D1: a forma que segue a célula é DERIVADA — trocar de célula não marca a filha no undo (a mesma
+/// regra do `SegueSlice`, `campos_derivados_quando_algum`).
+#[test]
+fn a_forma_da_celula_nao_entra_no_undo() {
+    use ph2d_ecs::scene::incremental::{CaptureCache, capture_incremental};
+    use ph2d_ecs::scene::registry::{ComponentRegistry, register_ecs_components};
+    use ph2d_ecs::scene::save::WorldSnapshot;
+    let mut r = ComponentRegistry::new();
+    register_ecs_components(&mut r);
+    ph2d_physics_ecs::register_physics_components(&mut r);
+    ph2d_pixel_cena::registar(&mut r);
+    let mut s = heroi_p14();
+    let id = body(&s);
+    let mut lista = s.slices().to_vec();
+    let b = lista.iter_mut().find(|c| c.id == id).expect("body");
+    b.keys
+        .iter_mut()
+        .find(|k| k.frame == 3)
+        .expect("3")
+        .shape
+        .bounds = ph2d_pixel_core::Rect::new(4, 0, 4, 8);
+    ph2d_pixel_core::apply(&mut s, ph2d_pixel_core::Op::Slices(lista)).expect("key 3");
+    let mut sim = SimWorld::new();
+    let e = sprite_importado(&s, sim.world_mut(), 0.0);
+    sim.world_mut().get_mut::<SpriteGrid>(e).expect("g").frame = 2;
+    deriva_formas(sim.world_mut(), |_| None, M);
+    let mut cache = CaptureCache::new();
+    let mut out = WorldSnapshot::default();
+    capture_incremental(sim.world_mut(), &mut cache, &r, &mut out).expect("1.ª");
+    sim.world_mut().get_mut::<SpriteGrid>(e).expect("g").frame = 3;
+    // A grelha muda (é gravada); a filha só pela forma derivada.
+    let f = sim.world().get::<ph2d_ecs::Children>(e).expect("filha")[0];
+    let antes = sim.world().get::<Collider>(f).expect("c").shape;
+    deriva_formas(sim.world_mut(), |_| None, M);
+    assert_ne!(
+        sim.world().get::<Collider>(f).expect("c").shape,
+        antes,
+        "a forma mudou"
+    );
+    let rep = capture_incremental(sim.world_mut(), &mut cache, &r, &mut out).expect("2.ª");
+    assert_eq!(
+        rep.reserialized, 1,
+        "só a grelha do pai; a filha derivada não"
+    );
+}

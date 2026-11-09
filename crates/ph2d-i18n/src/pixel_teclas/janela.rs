@@ -32,6 +32,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.pixel_keys.save_failed" => "Could not save the shortcuts: {error}",
         "panel.pixel_keys.key.enter" => "Enter",
         "panel.pixel_keys.key.numpadenter" => "Numpad Enter",
+        "panel.pixel_keys.key.numpadminus" => "Numpad Minus",
+        "panel.pixel_keys.key.numpadplus" => "Numpad Plus",
         "panel.pixel_keys.key.esc" => "Esc",
         "panel.pixel_keys.key.tab" => "Tab",
         "panel.pixel_keys.key.space" => "Space",

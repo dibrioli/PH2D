@@ -27,10 +27,7 @@
 //!      relevo — que é o que faltava ao Digital. ⚠️ **Olhe as bordas do rastro:** o papel dentro do que
 //!      o pincel acabou de tocar tem de ser o MESMO de fora. Um degrau retangular ali é o defeito
 //!      voltando (o fold parcial dobrando dente novo só dentro do rect).
-//!      5b. **O DEPÓSITO como relevo** — as duas rows no fim da seção **Shape**, e é o pedido de
-//!      2026-08-10 (*"o depósito de pigmento com pouca água é visto como relevo, exatamente como faz
-//!      Wet Paint"*) com a correção do smoke seguinte (*"nome mais adequado, na seção de Shape, com
-//!      um slider de alto brilho ou fosca"*).
+//!      5b. **O DEPÓSITO como relevo** — as duas rows no fim da seção **Shape** (pedido de 2026-08-10).
 //!      ⚠️ **Escolha a SHAPE primeiro** (a mesma seção → Texture: `Stripes`, as cerdas), e é o passo
 //!      que decide: o relevo não INVENTA textura, ele revela a que o pincel já deposita — com o pincel
 //!      redondo macio o depósito é um domo, e um domo tem `n_z ≈ 1`, então a luz o desenha chato
@@ -51,11 +48,8 @@
 //!   6. E o card **Lighting** (seção Impasto) governa a luz que revela o dente: é o MESMO rig, uma luz
 //!      só para o documento. Gire o Angle e o papel vira junto.
 //!   7. **Ctrl+Z devolve a TINTA** (com o papel ligado, ao byte). ⚠️ Ele **não** desfaz o Relief nem a
-//!      Roughness: nenhum knob de ferramenta deste app entra na fila de undo, e o card **Lighting** —
-//!      que já shipou e você já smokou — se comporta exatamente igual (medido lado a lado na sonda
-//!      `probe_substrate_undo`). Isso é a decisão de *"o undo de painéis é sistema separado"*, e um
-//!      Ctrl+Z depois de mexer num knob desfaz a última PINCELADA — a armadilha vale para os dois
-//!      cards, não só para este.
+//!      Roughness: nenhum knob de ferramenta entra na fila de undo, como o card **Lighting**
+//!      (`probe_substrate_undo`); um Ctrl+Z depois de mexer num knob desfaz a última PINCELADA.
 //!
 //! ## Os números desta cena (medidos, `probe_substrate_depth_ladder`)
 //!
@@ -68,14 +62,10 @@
 //! | 0,75 | 16 | 56 | 82 |
 //! | 1,00 | 21 | 75 | **109** |
 //!
-//! ⚠️ O teto de amplitude (`MAX_TOOTH_PX = 1,0`) foi **ancorado na medição, não escolhido**: o emboss do
-//! Wet Paint declara o próprio teto (`clamp(emb, ±40)` em níveis), e é isso que dá um número a *"o mais
-//! parecido possível com o Wet Paint"*. O primeiro valor que escrevi foi `3,0` e a sonda o reprovou —
-//! 128 níveis é metade da faixa inteira, e aquilo não é papel, é chapa ondulada.
+//! ⚠️ O teto `MAX_TOOTH_PX = 1,0` foi **ancorado na medição** contra o emboss do Wet Paint
+//! (`clamp(emb, ±40)` em níveis); `3,0` dava 128 níveis — chapa ondulada, não papel.
 //!
-//! ⚠️ **Nada aqui arma um meio**, e o arquivo está no gate que exige isso
-//! (`the_smokes_open_the_painter_in_digital`): um smoke que arma estado por baixo do pano pula
-//! exatamente a costura que ele existia para provar. O que o smoke faz é dar a tela e sair da frente.
+//! ⚠️ **Nada aqui arma um meio** (gate `the_smokes_open_the_painter_in_digital`).
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_core::Vec2;

@@ -1,20 +1,15 @@
 //! `PH2D_MASK_SMOKE` — a ready-to-mask canvas for the mask/protection axis (doc 25 §13.10 + §13.12 +
 //! **§13.13**).
 //!
-//! Both defects this scene judges only appear when you **repeat**: one pass always looked fine, and that
-//! is why they survived so long ("VC não percebe porque dá poucas passadas", Enio). So the script below
-//! asks for the GESTURE, not for a stroke — and for the SPEED, because the crackle it now judges was a
-//! fact about the mouse's report rate.
+//! Both defects this scene judges only appear when you **repeat**, so the script asks for the GESTURE
+//! and the SPEED (the crackle was a fact about the mouse's report rate).
 //!
 //! ```text
 //! cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter && \
 //!   PH2D_MASK_SMOKE=1 cargo run --release -p ph2d-host-desktop
 //! ```
 //!
-//! ⚠️ **Nothing is armed in code** beyond the canvas — not the mode, not the brush (the same rule the
-//! Impasto and Wet Paint smokes learned the hard way: a smoke that arms state under the table skips
-//! exactly the seam it was supposed to prove, and hides a bad default). What you see IS the shipped
-//! default mask brush.
+//! ⚠️ **Nothing is armed in code** beyond the canvas: what you see IS the shipped default mask brush.
 //!
 //! ## The script
 //!
@@ -39,19 +34,14 @@
 //!
 //! - **The protection is a CEILING** (§13.13, Enio's call): pass over a half-protected texel as many times
 //!   as you like and the ink CONVERGES on what the mask lets through — it never wears the protection away.
-//!   It used to let `1 − (1−keep)^N` through, so eight passes erased the mask entirely. ⚠️ A ceiling is not
-//!   a wall: the brush still builds UP to it, so a low-flow stroke lands short and later strokes approach.
+//!   ⚠️ A ceiling is not a wall: the brush still builds UP to it, so a low-flow stroke lands short.
 //! - **The mask edge still tightens under very many passes** (3.53 px -> 1.38 px at fifteen). That is the
 //!   OTHER defect and it is still open (§13.10.4): both accumulation laws have been tried and each has
 //!   its artifact, so the cure is not the coverage law. Do not judge this pass on it.
-//! - **Smear / Blur / Clone dragged over a protected zone now read the UNRESTRICTED paint** (layer-mask
-//!   semantics) instead of the masked view. The old behaviour read the view, but WHAT it read depended on
-//!   the mouse's report rate, so it was never a stable reference. If this reads wrong, say so — it is a
-//!   product decision, and it is named in §13.12.
-//! - **The first frame of a protected stroke is heavier** (7.5 ms at 2048^2 against 3.3 ungated; 24.3 vs
-//!   11.7 at 4096^2): it allocates the free plane, now once per PROTECTION rather than once per stroke, so
-//!   the strokes after the first pay nothing for it. Measured, named, and deliberately not optimised in a
-//!   correctness wave (§13.12.5).
+//! - **Smear / Blur / Clone dragged over a protected zone read the UNRESTRICTED paint** (layer-mask
+//!   semantics, §13.12): the masked view depended on the mouse's report rate. A product decision.
+//! - **The first frame of a protected stroke is heavier** (7.5 ms at 2048^2 against 3.3 ungated): it
+//!   allocates the free plane once per PROTECTION (§13.12.5).
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_core::Vec2;

@@ -2,9 +2,7 @@
 //!
 //! Spawns a white 1024² paint canvas and sizes the brush for relief (Grain = None; Enio 2026-07-12).
 //! The painter opens in **Digital** (the app default) — pick **Impasto** from the Paint Mode dropdown,
-//! then drag: the paint comes out thick and lit. A new feature ships with the example that demonstrates
-//! it ([[feedback_ready_to_smoke_example]]); the example shows the DEFAULTS, so a bad default has
-//! nowhere to hide.
+//! then drag: the paint comes out thick and lit. The example shows the DEFAULTS.
 //!
 //! ```text
 //! cd /home/enio/Documentos/Projetos/PH2D/Worktrees/line-Painter && \
@@ -67,28 +65,18 @@
 //!   - Chisel → **Offset** *and* **Angle** (the plane has to be placed before the V is folded about it).
 //!   - Layer / Inflate → **Depth**, in paint-loads. Signed: the lower half carves and deflates.
 //!
-//! **Clay is not a chip, and that is deliberate**: it is Flatten with a positive Offset (the plane sits
-//! above the surface, so the hollows fill and the ridges level). Both knobs are already in front of you. A
-//! chip that is a preset of another chip cannot tell you which of the two you are holding.
+//! **Clay is not a chip**: it is Flatten with a positive Offset; both knobs are already in front of you.
 //!
-//! **The card arms the NEXT stroke — it does not rewrite the last one.** Pick Sharpen and the Smooth
-//! behind you stays a Smooth; to change a mark you have made, undo it. (It behaved the other way for one
-//! afternoon, riding the Body card's "Adjust Last Stroke", and Enio's smoke killed it: reaching for the
-//! other verb, in order to use it *somewhere else*, inverted the work already on the canvas. Paint is a
-//! substance whose properties you can keep tuning; a smoothing is a verb that already happened.)
+//! **The card arms the NEXT stroke — it does not rewrite the last one** (Enio's smoke): to change a
+//! mark you have made, undo it.
 //!
 //! The exception proves the rule: inside an **open shape editor** (Line / Curve / Ellipse / Polygon) the
 //! knobs DO re-render, because a shape is a preview with an Apply button — it is not canvas yet. Draw a
 //! Line in Sculpt, turn Radius before applying, and watch it re-render; then Apply, turn it again, and
 //! watch nothing happen.
 //!
-//! Note that the MEDIUM is not armed in code — you pick Impasto from the dropdown yourself. That is on
-//! purpose. The smoke that arms state under the table skips exactly the seam it was supposed to prove,
-//! and this line has the scar twice: `PH2D_IMPASTO_SMOKE` pre-selected the medium, which is how the
-//! master switch shipped dead under the mouse and nobody noticed for a week — and it re-appeared on
-//! 2026-07-22, opening the painter on Impasto when the app default is Digital (Enio caught it on the Wet
-//! Paint side). The medium is the Paint Mode dropdown now, a real control clicked by a real pointer in
-//! `seam_paint_media.rs`; the smoke gives you the canvas and gets out of the way.
+//! ⛔ The MEDIUM is not armed in code — you pick Impasto from the dropdown yourself: a smoke that arms
+//! state under the table skips the seam it should prove (it hid a dead master switch for a week).
 
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_core::Vec2;

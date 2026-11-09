@@ -600,3 +600,57 @@ fn o_custom_size_retraca_e_guarda_a_caixa() {
     assert_eq!(w.get::<ColliderOutline>(shape).expect("o").detail_q4, 32);
     assert_eq!(w.get::<Collider>(shape).copied(), Some(custom), "o cartão");
 }
+
+/// (W4) **O Alpha cutoff mostra a fração de 2 casas do u8 guardado**: o padrão (128) lê 0,5 (não
+/// 0,502) e a ida e volta pelo cartão é estável. *Mutação: `/ 255.0` cru ⇒ 0,502, vermelho.*
+#[test]
+fn o_alpha_cutoff_mostra_duas_casas_e_a_ida_e_volta_fica() {
+    use ph2d_editor_core::OutlineEdit;
+    let (_, sim, _, shape, _) = followed_ring();
+    let info = |sim: &SimWorld| ph2d_physics_outline::card_info(sim.world(), shape).expect("i");
+    assert_eq!(info(&sim).alpha_cutoff, 0.5, "o padrão do dono");
+    let mut sim = sim;
+    for v in [0.1_f32, 0.25, 0.51, 0.99] {
+        let cur = sim
+            .world()
+            .get::<ColliderOutline>(shape)
+            .cloned()
+            .expect("o");
+        let next = ph2d_physics_outline::asked_with(&cur, OutlineEdit::AlphaCutoff(v));
+        sim.world_mut().entity_mut(shape).insert(next.clone());
+        let lido = info(&sim).alpha_cutoff;
+        assert!((lido - v).abs() < 1e-6, "{v} → {lido}");
+        let volta = ph2d_physics_outline::asked_with(&next, OutlineEdit::AlphaCutoff(lido));
+        assert_eq!(
+            volta.alpha_cutoff, next.alpha_cutoff,
+            "a volta de {v} não anda"
+        );
+    }
+}
+
+/// (W4) **Um «Outline» sem anéis (cena montada à mão) traça-se na 1.ª passagem**; a seguinte só
+/// confere (nada na fila). *Mutação: sem o ramo da 1.ª vista ⇒ 0 traços e a caixa, vermelho.*
+#[test]
+fn o_outline_sem_aneis_traca_a_primeira_vista() {
+    let reg = registry();
+    let mut sim = SimWorld::new();
+    let (body, shape) = ring_scene(&mut sim);
+    let db = ph2d_asset::AssetDb::new();
+    let ring = db.insert_image_rgba8(32, 32, ring_px());
+    sim.world_mut().entity_mut(body).insert(SpritePixels(ring));
+    let c = Collider {
+        shape: ColliderShape::Outline {
+            half_x: 2.0,
+            half_y: 2.0,
+        },
+        ..Collider::default()
+    };
+    sim.world_mut().entity_mut(shape).insert(c);
+    assert_eq!(rings(&sim, shape), 0, "montada à mão, sem traço");
+    let q = EditorCommandQueue::new();
+    assert_eq!(follow(&mut sim, &db, &q, &reg), 1, "a 1.ª vista traça");
+    apply_editor_commands(sim.world_mut(), &q, &reg).expect("aplica");
+    assert_eq!(rings(&sim, shape), 2, "a argola: fora e buraco");
+    assert_eq!(follow(&mut sim, &db, &q, &reg), 0, "a seguinte só confere");
+    assert!(q.is_empty());
+}

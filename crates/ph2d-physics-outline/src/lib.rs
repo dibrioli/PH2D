@@ -265,7 +265,8 @@ pub fn card_info(world: &World, shape: Entity) -> Option<ph2d_editor_core::Inspe
     let max = u32::try_from(ph2d_outline_trace::MAX_PIECES).unwrap_or(u32::MAX);
     Some(ph2d_editor_core::InspectorOutlineInfo {
         detail_px: f32::from(o.detail_q4) / 16.0,
-        alpha_cutoff: f32::from(o.alpha_cutoff) / 255.0,
+        // O u8 guardado como fração de 2 casas (128 → 0,5, o padrão do dono); ida e volta estáveis.
+        alpha_cutoff: (f32::from(o.alpha_cutoff) / 2.55).round() / 100.0,
         specks_px: f32::from(o.min_island_px),
         raised: (o.raised_q4 > o.detail_q4).then(|| (f32::from(o.raised_q4) / 16.0, max)),
     })

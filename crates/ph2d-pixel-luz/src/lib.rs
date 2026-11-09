@@ -65,7 +65,7 @@ pub fn normal_no_mundo(rgba: &[u8], lin: [f64; 4]) -> Vec<u8> {
     let k = det.abs().sqrt() / det;
     let dec = |v: u8| f64::from(v) / 255.0 * 2.0 - 1.0;
     let enc = |v: f64| ((v * 0.5 + 0.5).clamp(0.0, 1.0) * 255.0).round() as u8;
-    for px in out.chunks_exact_mut(4) {
+    for px in out.as_chunks_mut::<4>().0 {
         let (nx, ny, nz) = (dec(px[0]), dec(px[1]), dec(px[2]));
         let (mx, my) = (k * (d * nx - b * ny), k * (-c * nx + a * ny));
         let len = (mx * mx + my * my + nz * nz).sqrt().max(1e-9);
@@ -106,7 +106,7 @@ pub fn imagem_normal(o: &ObjetoPixel<'_>) -> Option<StableImage> {
         }
         let mut px = ph2d_pixel_core::compose_normal(o.sprite, o.quadro);
         if o.sem_luz {
-            for t in px.chunks_exact_mut(4) {
+            for t in px.as_chunks_mut::<4>().0 {
                 t[..3].copy_from_slice(&SEM_LUZ);
             }
         } else {

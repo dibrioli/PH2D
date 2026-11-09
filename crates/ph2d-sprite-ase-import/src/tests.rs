@@ -396,9 +396,7 @@ fn a_folha_do_pixel_largada_e_um_sprite_so() {
             ..Default::default()
         },
     );
-    let (_, frase) = crate::le_folha(&p.join("heroi.json"), m)
-        .err()
-        .expect("recusada");
+    let (_, frase) = crate::le_folha(&p.join("heroi.json"), m).expect_err("recusada");
     let _ = std::fs::remove_dir_all(&d);
     assert!(
         frase.contains("Split") && frase.contains("Export it again"),

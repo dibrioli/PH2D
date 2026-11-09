@@ -354,7 +354,7 @@ fn g5_o_momento_e_o_que_a_pass_list_declara() {
     let c = Config::padrao(grade(128, 0.04));
     o_momento_declarado(
         &gpu,
-        c.clone(),
+        c,
         &[
             "luz2d momento c0",
             "luz2d momento fina",
@@ -386,7 +386,7 @@ fn o_momento_declarado(gpu: &ph2d_gpu::GpuContext, cfg: Config, passes: &[&str],
         com_normal: true,
         ..ceu_e_vidro()
     };
-    s.quadro(&gpu, &sem);
+    s.quadro(gpu, &sem);
     let base = s.pass_list().clone();
     let e_do_momento =
         |n: &str| n.starts_with("luz2d/tex/momento") || n.starts_with("luz2d momento");
@@ -397,9 +397,9 @@ fn o_momento_declarado(gpu: &ph2d_gpu::GpuContext, cfg: Config, passes: &[&str],
     );
     assert_eq!(s.bytes_do_momento(), 0);
 
-    let antes = alocacoes(&gpu).expect("relatório");
-    s.quadro(&gpu, &com);
-    let novo = novas(&antes, &alocacoes(&gpu).expect("relatório"));
+    let antes = alocacoes(gpu).expect("relatório");
+    s.quadro(gpu, &com);
+    let novo = novas(&antes, &alocacoes(gpu).expect("relatório"));
     let lista = s.pass_list();
     let decl = declarado(lista);
     let do_momento: BTreeMap<&str, u64> = lista.texturas[base.texturas.len()..]
@@ -444,7 +444,7 @@ fn o_momento_declarado(gpu: &ph2d_gpu::GpuContext, cfg: Config, passes: &[&str],
             "G5 momento: o passe «{passe}» fora da lista"
         );
     }
-    s.quadro(&gpu, &sem);
+    s.quadro(gpu, &sem);
     assert_eq!(s.pass_list(), &base, "G5 momento: sem normal a lista volta");
     assert_eq!(s.bytes_do_momento(), 0);
 }

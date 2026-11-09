@@ -6,7 +6,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use ph2d_editor_core::interaction::WidgetStore;
-use ph2d_editor_core::pixel_panel::{ColorModeChoice, NewSpriteMode, PixelRequest, PixelSelect};
+use ph2d_editor_core::pixel_panel::{ColorModeChoice, PixelRequest, PixelSelect};
 use ph2d_pixel_core::convert::convert;
 use ph2d_pixel_core::palette::{self};
 use ph2d_pixel_core::{Cel, ColorMode, Op, Patch, Rect, Sprite, Whole, compose_rgba};

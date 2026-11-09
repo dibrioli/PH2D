@@ -34,7 +34,7 @@ fn passada(de: usize, ate: usize, dir: Direction, k: u32, primeira: bool) -> Vec
         Direction::PingPong => (ida, volta),
         Direction::PingPongReverse => (volta, ida),
     };
-    let p = if k % 2 == 0 { frente } else { tras };
+    let p = if k.is_multiple_of(2) { frente } else { tras };
     if primeira || p.len() < 2 {
         p
     } else {

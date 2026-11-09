@@ -10,9 +10,9 @@
 //!   **RotSprite**, a figura **espelhada**, e um **ladrilho deslocado com volta** (Shift).
 
 use ph2d_ecs::SimWorld;
-use ph2d_pixel_core::affine::{Affine, Linear, Resample};
-use ph2d_pixel_core::selection::{self, Mask, SelectMode, Wand};
-use ph2d_pixel_core::transform::{Floating, Image, flip_h, resize_bilinear, resize_nearest};
+use ph2d_pixel_core::affine::Resample;
+use ph2d_pixel_core::selection::{self, Mask, SelectMode};
+use ph2d_pixel_core::transform::{Floating, flip_h, resize_bilinear, resize_nearest};
 use ph2d_pixel_core::{ColorMode, NewSprite, Op, Paint, Patch, Rect, Stroke, edit};
 
 use crate::PixelApp;

@@ -338,7 +338,6 @@ fn a_folha_extra_tem_as_suas_celulas() {
         let mut g = sim.world_mut().get_mut::<SpriteGrid>(e).expect("grelha");
         g.sheet = folha;
         g.frame = cell;
-        drop(g);
         deriva_formas(sim.world_mut(), |_| None, M);
     };
     let caixa = |sim: &SimWorld, f| {

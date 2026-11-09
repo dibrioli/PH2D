@@ -70,10 +70,11 @@ impl DocDasFaixas<'_> {
         target: &mut VectorScene,
     ) {
         self.dispatch(self.view, skins, cam, target);
-        let ids = self
-            .palco
-            .then(|| self.order.pixel_ids())
-            .unwrap_or_default();
+        let ids = if self.palco {
+            self.order.pixel_ids()
+        } else {
+            Default::default()
+        };
         ph2d_app_pixel::draw::art(pixel, self.world, cam, self.ppm, None, &ids, false, target);
     }
 

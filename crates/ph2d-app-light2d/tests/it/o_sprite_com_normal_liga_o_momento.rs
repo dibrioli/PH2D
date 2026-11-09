@@ -76,7 +76,7 @@ fn uma_normal_fora_da_vista_nao_liga_o_momento() {
         return;
     };
     let r = renderer(&gpu);
-    let mut bytes = |caixas: &[[f64; 4]]| {
+    let bytes = |caixas: &[[f64; 4]]| {
         let mut luz = LuzDoQuadro::new();
         luz.com_sprites_de_normal(caixas);
         luz.preparar(&world, afim(), (W, H));

@@ -52,7 +52,7 @@ fn rodar(gpu: &ph2d_gpu::GpuContext, cena: &CenaDeLuz) -> Lido {
 fn modos() -> [(&'static str, Config); 2] {
     let c = Config::padrao(grade(128, 0.04));
     [
-        ("clássica", c.clone()),
+        ("clássica", c),
         (
             "holográfica",
             Config {
@@ -209,10 +209,7 @@ fn sem_normal_nao_aloca_o_momento() {
         ..com.clone()
     };
     for (modo, cfg) in modos() {
-        let (a, b) = (
-            rodar_com(&gpu, &sem, cfg.clone(), 1),
-            rodar_com(&gpu, &com, cfg, 1),
-        );
+        let (a, b) = (rodar_com(&gpu, &sem, cfg, 1), rodar_com(&gpu, &com, cfg, 1));
         eprintln!(
             "{modo} · bytes do momento: sem {} · com {}",
             a.bytes, b.bytes
@@ -444,7 +441,7 @@ fn com_o_canto_adiado_o_momento_e_o_do_canto_em_linha() {
                 passe_proprio: true,
                 ..cfg.canto
             },
-            ..cfg.clone()
+            ..cfg
         };
         assert!(adiado.adia_o_canto() && !cfg.adia_o_canto(), "{modo}");
         let (a, b) = (

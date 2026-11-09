@@ -27,7 +27,7 @@ fn pixel_de(w: &mut World) -> Entity {
 }
 
 /// O mundo do jogo: um Pixel Sprite com o animador gravado, como nasce no `object_add`.
-fn mundo(s: &Sprite) -> SimWorld {
+fn mundo() -> SimWorld {
     let mut sim = SimWorld::new();
     sim.world_mut().spawn((
         Transform::IDENTITY,
@@ -67,7 +67,7 @@ fn com_tag_run_renomeada(s: &mut Sprite) {
 fn os_clips_voltam_depois_do_undo_e_do_stop() {
     let r = reg();
     let s = heroi_p14();
-    let mut sim = mundo(&s);
+    let mut sim = mundo();
     deriva(sim.world_mut(), |_| Some((&s, 1)));
     let e = pixel_de(sim.world_mut());
     sim.world_mut()
@@ -113,7 +113,7 @@ fn os_clips_voltam_depois_do_undo_e_do_stop() {
 fn os_clips_derivados_nao_entram_no_undo_nem_no_ficheiro() {
     let r = reg();
     let mut s = heroi_p14();
-    let mut sim = mundo(&s);
+    let mut sim = mundo();
     deriva(sim.world_mut(), |_| Some((&s, 1)));
     let e = pixel_de(sim.world_mut());
     let mut cache = CaptureCache::new();
@@ -187,7 +187,7 @@ fn tique(w: &mut World, e: Entity, dt_us: u64) {
 /// editor; depois dela o editor segue a linha do tempo (lei do Aseprite) e o jogo fica na pose final
 /// (lei do motor), que é o último quadro que o editor mostrou dentro da tag.
 fn confere(s: &Sprite, tag: &str) {
-    let mut sim = mundo(s);
+    let mut sim = mundo();
     deriva(sim.world_mut(), |_| Some((s, 1)));
     let e = pixel_de(sim.world_mut());
     let clip = sim
@@ -255,7 +255,7 @@ fn o_jogo_e_o_editor_tocam_o_mesmo_quadro() {
 /// P14d: o quadro que o JOGO mostra em cada ms de `t = 0..=2000` a tocar `tag` desde o início — o
 /// lado nosso de `a_sequencia_e_a_do_godot`.
 pub(crate) fn sequencia_do_jogo(s: &Sprite, tag: &str) -> Vec<usize> {
-    let mut sim = mundo(s);
+    let mut sim = mundo();
     deriva(sim.world_mut(), |_| Some((s, 1)));
     let e = pixel_de(sim.world_mut());
     let clip = sim

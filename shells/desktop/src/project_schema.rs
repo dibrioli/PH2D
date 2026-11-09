@@ -369,12 +369,3 @@
 /// `AnimationTag.sheet: u8` no FIM; o componente `SpriteSheets` entra no registo (`118 → 119`). SEM leitura dos
 /// anteriores (§0.11). ⚠️ **A tripla NÃO vê este degrau.**
 pub(crate) const PROJECT_SCHEMA: u32 = 224;
-
-/// O último degrau com a forma de colisão no próprio corpo.
-pub(crate) const PROJECT_SCHEMA_FORMA_NO_CORPO: u32 = 219;
-
-/// O último degrau da matriz de oito camadas.
-pub(crate) const PROJECT_SCHEMA_MATRIZ_DE_OITO: u32 = 218;
-
-/// O último degrau sem os nomes das camadas — a mesma forma do actual, sem o `Vec` final.
-pub(crate) const PROJECT_SCHEMA_SEM_NOMES_DE_CAMADA: u32 = 217;

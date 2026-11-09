@@ -50,6 +50,8 @@ struct Estado {
     mapa: BTreeMap<AssetId, AssetId>,
     /// O que a placa tem agora (para [`sincronizar`] só mexer no que mudou).
     na_placa: BTreeMap<Alvo, AssetId>,
+    /// A cerca: o que a placa RECUSOU, até a verdade mudar (nova escolha, undo, abrir) — não se repete a cada quadro.
+    recusadas: BTreeMap<Alvo, AssetId>,
 }
 
 thread_local! {
@@ -71,7 +73,9 @@ pub fn normais() -> Vec<([u8; 32], [u8; 32])> {
 /// A porta de volta (undo, abrir projeto): o conjunto inteiro.
 pub fn set_normais(pares: &[([u8; 32], [u8; 32])]) {
     NORMAIS.with(|n| {
-        n.borrow_mut().mapa = pares
+        let mut n = n.borrow_mut();
+        n.recusadas.clear();
+        n.mapa = pares
             .iter()
             .map(|(c, m)| (AssetId::from_digest(*c), AssetId::from_digest(*m)))
             .collect();
@@ -141,7 +145,9 @@ pub fn escolher_normal(
         }
     }
     NORMAIS.with(|n| {
-        let mapa = &mut n.borrow_mut().mapa;
+        let mut n = n.borrow_mut();
+        n.recusadas.clear();
+        let mapa = &mut n.mapa;
         match normal {
             Some(m) => mapa.insert(cor, m),
             None => mapa.remove(&cor),
@@ -197,32 +203,50 @@ pub fn alvos(world: &mut World, atlas: &BTreeMap<u32, AssetId>) -> BTreeMap<Alvo
 }
 
 /// ⭐ **A placa segue a verdade** — uma vez por quadro; só mexe no que mudou (nada a fazer = sem custo).
+///
+/// Devolve os avisos ao artista (chave i18n), cada recusa da placa UMA vez: o alvo recusado fica cercado até a
+/// verdade mudar ([`escolher_normal`], [`set_normais`]) — e acende sem normal, a luz de hoje.
+#[must_use]
 pub fn sincronizar(
     world: &mut World,
     db: &AssetDb,
     atlas: &BTreeMap<u32, AssetId>,
     placa: &mut dyn PlacaDeNormais,
-) {
+) -> Vec<String> {
     let quer = alvos(world, atlas);
-    let tem = NORMAIS.with(|n| n.borrow().na_placa.clone());
+    let (tem, mut recusadas) = NORMAIS.with(|n| {
+        let n = n.borrow();
+        (n.na_placa.clone(), n.recusadas.clone())
+    });
+    let mut avisos = Vec::new();
     if quer.is_empty() && tem.is_empty() {
-        return;
+        return avisos;
     }
     for alvo in tem.keys().filter(|a| !quer.contains_key(a)) {
         let _ = placa.definir(*alvo, None);
     }
     for (alvo, m) in &quer {
-        if tem.get(alvo) == Some(m) && placa.tem(*alvo) {
+        if (tem.get(alvo) == Some(m) && placa.tem(*alvo)) || recusadas.get(alvo) == Some(m) {
             continue;
         }
         let Some(asset) = db.get(m) else { continue };
         if let Some((w, h, px)) = asset.image_rgba8()
             && let Err(e) = placa.definir(*alvo, Some((w, h, &px)))
         {
-            eprintln!("[normal map] {alvo:?}: {e}");
+            recusadas.insert(*alvo, *m);
+            avisos.push(ph2d_i18n::tr_with(
+                "app.sprite_anim.normal_map.gpu_refused",
+                &[("e", &e)],
+            ));
         }
     }
-    NORMAIS.with(|n| n.borrow_mut().na_placa = quer);
+    recusadas.retain(|a, _| quer.contains_key(a));
+    NORMAIS.with(|n| {
+        let mut n = n.borrow_mut();
+        n.na_placa = quer;
+        n.recusadas = recusadas;
+    });
+    avisos
 }
 
 #[cfg(test)]

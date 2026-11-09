@@ -65,6 +65,8 @@ pub enum DropTarget {
     ///
     /// `entity_bits` é a sprite que a ranhura descreve — resolvida pelo painel que a pintou.
     InspectorTexture { entity_bits: u64 },
+    /// ⭐ P14 — a ranhura **Normal Map** do cartão Image: a normal da imagem que a sprite `entity_bits` mostra.
+    InspectorNormalMap { entity_bits: u64 },
     /// ⭐ O campo de uma propriedade de OBJECTO no cartão Script (8c do CodeEditor): o objecto do
     /// cartão e a linha.
     ScriptObject { entity_bits: u64, row: u16 },
@@ -108,6 +110,9 @@ pub enum DropAction {
     },
     /// A sprite `entity_bits` passa a mostrar `asset`.
     RetextureSprite { entity_bits: u64, asset: [u8; 32] },
+    /// ⭐ P14 — a imagem que a sprite `entity_bits` mostra passa a ter a normal `asset` (o MESMO pedido que o
+    /// seletor: `ImageUseEdit::SetNormalMap`).
+    SetNormalMap { entity_bits: u64, asset: [u8; 32] },
     /// Nasce uma sprite nova em `world`, mostrando `asset`.
     SpawnImage { asset: [u8; 32], world: [f32; 2] },
     /// ⭐⭐ **Arrumar** — o asset passa a pertencer a `catalog` (`None` = a nenhum).
@@ -181,6 +186,10 @@ pub fn field_target(id: NodeId) -> Option<DropTarget> {
     use ph2d_panel_inspector as insp;
     insp::texture_slot_pick(id)
         .map(|entity_bits| DropTarget::InspectorTexture { entity_bits })
+        .or_else(|| {
+            insp::normal_map_slot_pick(id)
+                .map(|entity_bits| DropTarget::InspectorNormalMap { entity_bits })
+        })
         .or_else(|| {
             insp::script_object_slot_pick(id)
                 .map(|(entity_bits, row)| DropTarget::ScriptObject { entity_bits, row })
@@ -320,6 +329,12 @@ pub fn resolve(payload: DragPayload, target: DropTarget) -> DropAction {
         // ⛔ **Um prefab na ranhura RECUSA** — e a recusa vê-se. Uma receita não é uma imagem, e
         // «pôr um componente dentro do campo de textura» não é um gesto que exista.
         (DragPayload::Prefab { .. }, DropTarget::InspectorTexture { .. }) => DropAction::Refuse,
+
+        // ⭐ P14 — a ranhura Normal Map recebe uma IMAGEM (a normal da imagem da sprite); um prefab recusa.
+        (DragPayload::Image { asset }, DropTarget::InspectorNormalMap { entity_bits }) => {
+            DropAction::SetNormalMap { entity_bits, asset }
+        }
+        (DragPayload::Prefab { .. }, DropTarget::InspectorNormalMap { .. }) => DropAction::Refuse,
 
         // ⛔ Fora do canvas, das linhas de catálogo e da ranhura, nada sabe receber.
         (_, DropTarget::Chrome) => DropAction::Refuse,

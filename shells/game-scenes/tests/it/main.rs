@@ -3,6 +3,13 @@
 
 mod a_lista_de_sons;
 mod comp;
+// O arnês do quadro com luz da família da luz (uma cópia seria a 2.ª cadeia); este binário usa uma parte.
+#[allow(
+    dead_code,
+    reason = "arnês partilhado com ph2d-app-light2d: só a cadeia do quadro é usada aqui"
+)]
+#[path = "../../../../crates/ph2d-app-light2d/tests/it/comum.rs"]
+mod comum_luz;
 mod editor_animacoes;
 mod fisica_b4_inspector;
 mod jogo_arte;
@@ -23,6 +30,7 @@ mod sprite_espelhar;
 mod sprite_image_choice_gate;
 mod sprite_image_use_gate;
 mod sprite_marcadores;
+mod sprite_normal_costura;
 // Carregado por `#[path]` para os dois filhos (`#[path]` também) se resolverem nesta pasta.
 mod sprite_card_edits;
 mod sprite_corte_velho;

@@ -26,18 +26,21 @@ impl crate::App {
             hero_screen,
             asset_db,
             atlas_asset_map,
+            toasts,
             ..
         } = gfx;
         if luz2d.soltar_se_renasce(surface.gpu(), renderer, band_blit) {
             flip_compose.receber_luz(surface.gpu(), None);
         }
         // A placa segue a verdade do normal map da imagem (`normal_map`), antes de a luz perguntar.
-        ph2d_app_sprite_anim::normal_map::sincronizar(
+        for aviso in ph2d_app_sprite_anim::normal_map::sincronizar(
             sim.world_mut(),
             asset_db,
             atlas_asset_map,
             renderer,
-        );
+        ) {
+            toasts.push(ph2d_editor_core::Toast::warning(aviso));
+        }
         luz2d.com_sprites_de_normal(&renderer.caixas_com_normal(present));
         luz2d.recolher(sim.world());
         let flip_models = ph2d_flip_entities::transform::build(sim, &self.flip_state.entities);

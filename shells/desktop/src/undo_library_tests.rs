@@ -245,3 +245,126 @@ fn escolher_a_normal_e_um_passo_e_desfaz() {
     assert_eq!(nm::normal_de(cor), Some(normal), "Ctrl+Shift+Z não a repôs");
     nm::set_normais(&[]);
 }
+
+/// ⭐ P14 — **largar uma imagem na linha Normal Map escolhe-a**: o widget sob o ponteiro (a ranhura
+/// `INSP_IMAGE_NORMAL_SLOT`, alcançável no ponto — o gate do painel `a_ranhura_normal_map_e_alvo_de_queda_no_ponto`)
+/// é campo pela porta única `field_target`, a lei devolve `SetNormalMap` e a shell manda-a pela MESMA porta do
+/// seletor (`image_use_edit` ⇒ `aplica_edicao`): um passo de undo, e outro tamanho recusa com o mesmo aviso.
+///
+/// **Mutações que sangram:** tirar o `normal_map_slot_pick` do `field_target` · o braço `SetNormalMap` do
+/// `perform_drop` ir para outra porta.
+#[test]
+fn largar_uma_imagem_na_linha_normal_map_e_escolhe_la() {
+    use ph2d_app_components::asset_drop::{DropAction, field_target, resolve};
+    use ph2d_app_sprite_anim::normal_map as nm;
+    use ph2d_editor_core::interaction::drag_payload::DragPayload;
+    nm::set_normais(&[]);
+    let reg = registry();
+    let (mut sim, vec) = scene();
+    let db = ph2d_asset::AssetDb::new();
+    let cor = db.insert_image_rgba8(1, 1, vec![9, 9, 9, 255]);
+    let normal = db.insert_image_rgba8(1, 1, vec![128, 128, 255, 255]);
+    let grande = db.insert_image_rgba8(2, 1, vec![128; 8]);
+    let bits = sim
+        .world_mut()
+        .spawn((
+            ph2d_render::Sprite::individual(1, [1.0; 2], [1.0; 4]),
+            ph2d_ecs::SpritePixels(cor),
+        ))
+        .id()
+        .to_bits();
+    ph2d_panel_inspector::set_current_inspector_sprite(Some(sprite_info(bits)));
+    let campo = field_target(ph2d_panel_inspector::ids::INSP_IMAGE_NORMAL_SLOT);
+    let none = field_target(ph2d_panel_inspector::ids::INSP_IMAGE_NORMAL_NONE);
+    ph2d_panel_inspector::set_current_inspector_sprite(None);
+    let campo = campo.expect("a ranhura Normal Map não é campo de queda");
+    assert!(none.is_none(), "o None não recebe quedas");
+    let queda = |asset: ph2d_asset::AssetId| match resolve(
+        DragPayload::Image {
+            asset: *asset.as_bytes(),
+        },
+        campo,
+    ) {
+        DropAction::SetNormalMap { entity_bits, asset } => {
+            assert_eq!(entity_bits, bits, "a sprite do Inspector");
+            ph2d_editor_core::ImageUseEdit::SetNormalMap(Some(asset))
+        }
+        a => panic!("a lei não escolhe a normal: {a:?}"),
+    };
+    assert_eq!(
+        resolve(DragPayload::Prefab { stable_id: 3 }, campo),
+        DropAction::Refuse,
+        "um prefab na ranhura recusa"
+    );
+    let atlas = std::collections::BTreeMap::new();
+    let tree = ph2d_asset_index::CatalogTree::new();
+    let mut cache = crate::project_library::LibraryCache::default();
+    let antes = capture_with_library(&mut sim, &vec, &reg, &cache.doc(&tree).clone());
+    let r = nm::aplica_edicao(sim.world(), &db, &atlas, bits, queda(grande));
+    assert_eq!(
+        r,
+        Some(Err(
+            ph2d_i18n::tr("app.sprite_anim.normal_map.other_size").to_owned()
+        )),
+        "outro tamanho recusa com o aviso do seletor"
+    );
+    assert_eq!(nm::normal_de(cor), None);
+    let r = nm::aplica_edicao(sim.world(), &db, &atlas, bits, queda(normal));
+    assert_eq!(r, Some(Ok(false)));
+    assert_eq!(
+        nm::normal_de(cor),
+        Some(normal),
+        "a queda escolheu a normal"
+    );
+    let depois = capture_with_library(&mut sim, &vec, &reg, &cache.doc(&tree).clone());
+    assert_ne!(antes.library, depois.library, "a queda não fez passo");
+    crate::project_library::apply_forgotten(&antes.library);
+    assert_eq!(
+        nm::normal_de(cor),
+        None,
+        "Ctrl+Z não tirou a normal largada"
+    );
+    nm::set_normais(&[]);
+    // A shell manda a acção pela porta do seletor, não por uma segunda.
+    let fio = include_str!("asset_drag_wire.rs").replace(char::is_whitespace, "");
+    assert!(
+        fio.contains(
+            "DropAction::SetNormalMap{entity_bits,asset}=>self.image_use_edit(entity_bits,ph2d_editor_core::ImageUseEdit::SetNormalMap(Some(asset)),)"
+        ),
+        "o `perform_drop` não leva a queda à porta do seletor"
+    );
+}
+
+/// O resumo mínimo de uma sprite no Inspector (o que o `field_target` lê).
+fn sprite_info(entity_bits: u64) -> ph2d_editor_core::screens::hero::InspectorSpriteInfo {
+    ph2d_editor_core::screens::hero::InspectorSpriteInfo {
+        entity_bits,
+        world_size: [1.0, 1.0],
+        source_kind: ph2d_editor_core::screens::hero::InspectorSpriteSource::Atlas { key: 3 },
+        source_precision: Some(ph2d_editor_core::Precision::Rgba8),
+        emissive: 0.0,
+        sheet_label: None,
+        source_pixels: Some((1, 1)),
+        can_reimport: true,
+        flip_x: false,
+        flip_y: false,
+        opacity: 1.0,
+        tint_fill: false,
+        hframes: 1,
+        vframes: 1,
+        image_use: ph2d_editor_core::InspectorImageUse::Still,
+        image_cells: 1,
+        draw: ph2d_editor_core::InspectorDraw::Fixed,
+        frame: 0,
+        tint: [1.0; 4],
+        self_tint: [1.0; 4],
+        per_corner_tint: [[1.0; 4]; 4],
+        region_enabled: false,
+        region_rect: [0.0; 4],
+        region_filter_clip: true,
+        centered: true,
+        offset: [0.0, 0.0],
+        selected_count: 1,
+        mixed: ph2d_editor_core::screens::hero::InspectorSpriteMixed::default(),
+    }
+}

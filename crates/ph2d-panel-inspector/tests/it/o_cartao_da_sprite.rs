@@ -986,3 +986,34 @@ fn a_linha_normal_map_responde_a_um_ponteiro_real() {
     assert_eq!(edicoes(&a), [ImageUseEdit::SetNormalMap(None)]);
     slot_image::set_current_normal_map(None);
 }
+
+/// ⭐ P14 — **a ranhura Normal Map é alvo de queda NO PONTO**: pintada, o ponto do meio dela devolve o id dela no
+/// índice de acertos, e o painel traduz esse id para a sprite do cartão (a queda da shell pergunta por esta porta,
+/// `normal_map_slot_pick`, gate `largar_uma_imagem_na_linha_normal_map_e_escolhe_la`). O **None** não recebe.
+/// Mutação que sangra: `normal_map_slot_pick` devolver `None` sempre.
+#[test]
+fn a_ranhura_normal_map_e_alvo_de_queda_no_ponto() {
+    slot_image::set_current_normal_map(Some((7, "rock_n".into())));
+    let (mut host, mut st) = cena(factos());
+    let r = pinta(&mut host, &mut st);
+    let (slot, none) = (
+        rect_de(&r, INSP_IMAGE_NORMAL_SLOT),
+        rect_de(&r, INSP_IMAGE_NORMAL_NONE),
+    );
+    let no_ponto = |q: Rect| host.hit_at(q.x + q.w * 0.5, q.y + q.h * 0.5);
+    let (a, b) = (no_ponto(slot), no_ponto(none));
+    slot_image::set_current_normal_map(None);
+    assert_eq!(
+        a,
+        Some(INSP_IMAGE_NORMAL_SLOT),
+        "a ranhura não é alcançável"
+    );
+    assert_eq!(
+        ph2d_panel_inspector::normal_map_slot_pick(a.unwrap()),
+        Some(7)
+    );
+    assert_eq!(
+        ph2d_panel_inspector::normal_map_slot_pick(b.expect("None")),
+        None
+    );
+}

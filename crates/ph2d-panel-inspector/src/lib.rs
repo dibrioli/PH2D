@@ -327,6 +327,7 @@ pub fn player_row_labels() -> Vec<&'static str> {
         .collect()
 }
 
+pub use cards_sprite_normal::normal_map_slot_pick;
 /// **A grelha 3×3 da §5 9-Slice**, exposta para o gate da shell a poder LER (e não copiar).
 pub use sections::slice_grid::{
     CORNER_LETTERS, MIXED_LETTER, REGION_CELLS, REGION_LETTERS, is_corner_cell,

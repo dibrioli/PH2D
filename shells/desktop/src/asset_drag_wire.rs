@@ -264,6 +264,10 @@ impl crate::App {
             DropAction::RetextureSprite { entity_bits, asset } => {
                 self.choose_image(entity_bits, asset);
             }
+            DropAction::SetNormalMap { entity_bits, asset } => self.image_use_edit(
+                entity_bits,
+                ph2d_editor_core::ImageUseEdit::SetNormalMap(Some(asset)),
+            ),
             DropAction::SpawnImage { asset, world } => {
                 self.drop_spawn_image(asset, world);
             }

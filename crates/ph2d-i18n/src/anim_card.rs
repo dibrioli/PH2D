@@ -159,6 +159,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "app.sprite_anim.normal_map.other_size" => {
             "The normal map must be the same size as the image. Pick an image with the same width and height."
         }
+        "app.sprite_anim.normal_map.gpu_refused" => {
+            "The graphics card could not take this normal map, so the image is lit without it. Pick it again to retry. ({e})"
+        }
         _ => return None,
     })
 }

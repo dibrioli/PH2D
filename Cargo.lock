@@ -7744,10 +7744,12 @@ dependencies = [
 name = "ph2d-host-game-scenes"
 version = "0.0.0"
 dependencies = [
+ "half",
  "ph2d-a11y",
  "ph2d-app-audio",
  "ph2d-app-components",
  "ph2d-app-game",
+ "ph2d-app-light2d",
  "ph2d-app-physics",
  "ph2d-app-sprite-anim",
  "ph2d-asset",
@@ -7756,8 +7758,11 @@ dependencies = [
  "ph2d-core",
  "ph2d-ecs",
  "ph2d-editor-core",
+ "ph2d-gpu",
  "ph2d-host",
  "ph2d-i18n",
+ "ph2d-light2d-ecs",
+ "ph2d-light2d-gpu",
  "ph2d-physics-ecs",
  "ph2d-preview-drive",
  "ph2d-render",
@@ -7772,6 +7777,8 @@ dependencies = [
  "ph2d-tokens",
  "ph2d-vec-svg",
  "ph2d-vector",
+ "vello",
+ "wgpu",
 ]
 
 [[package]]

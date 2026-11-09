@@ -45,7 +45,7 @@ fn dois_sprites_da_mesma_imagem_acendem_pela_mesma_normal() {
     escolher_normal(&w, &db, &atlas, a, Some(normal)).expect("mesmo tamanho");
     assert_eq!(normal_de(cor), Some(normal), "a normal é da IMAGEM");
     let mut placa = Placa::default();
-    sincronizar(&mut w, &db, &atlas, &mut placa);
+    let _ = sincronizar(&mut w, &db, &atlas, &mut placa);
     let n = vec![200, 200, 200, 255];
     assert_eq!(placa.0.get(&Alvo::Textura(3)), Some(&n));
     assert_eq!(
@@ -64,7 +64,7 @@ fn dois_sprites_da_mesma_imagem_acendem_pela_mesma_normal() {
     );
 
     escolher_normal(&w, &db, &atlas, a, None).expect("tirar");
-    sincronizar(&mut w, &db, &atlas, &mut placa);
+    let _ = sincronizar(&mut w, &db, &atlas, &mut placa);
     assert!(
         placa.0.is_empty(),
         "None tira a normal de todos: {:?}",
@@ -86,4 +86,68 @@ fn a_normal_de_outro_tamanho_e_recusada_na_escolha() {
     let err = escolher_normal(&w, &db, &BTreeMap::new(), e, Some(grande)).unwrap_err();
     assert_eq!(err, ph2d_i18n::tr("app.sprite_anim.normal_map.other_size"));
     assert_eq!(normal_de(cor), None);
+}
+
+/// A placa que recusa tudo, e conta as tentativas.
+#[derive(Default)]
+struct PlacaQueRecusa(usize);
+
+impl PlacaDeNormais for PlacaQueRecusa {
+    fn definir(&mut self, _: Alvo, normal: Option<(u32, u32, &[u8])>) -> Result<(), String> {
+        if normal.is_none() {
+            return Ok(());
+        }
+        self.0 += 1;
+        Err("out of memory".into())
+    }
+    fn tem(&self, _: Alvo) -> bool {
+        false
+    }
+}
+
+/// ⭐ **Uma normal recusada pela placa não repete a cada quadro**: 10 quadros = UMA tentativa e UM aviso (em
+/// inglês, com o erro); a verdade a mudar (escolher de novo, undo) tira a cerca e tenta outra vez, uma vez.
+///
+/// **Mutação que sangra:** o `sincronizar` sem a cerca (`recusadas`) — 10 tentativas e 10 avisos.
+#[test]
+fn uma_normal_recusada_pela_placa_nao_repete_a_cada_quadro() {
+    set_normais(&[]);
+    let db = AssetDb::new();
+    let (cor, normal) = (imagem(&db, 10), imagem(&db, 200));
+    let atlas = BTreeMap::new();
+    let mut w = World::new();
+    let e = w
+        .spawn((Sprite::individual(3, [1.0; 2], BRANCO), SpritePixels(cor)))
+        .id();
+    escolher_normal(&w, &db, &atlas, e, Some(normal)).expect("mesmo tamanho");
+    let mut placa = PlacaQueRecusa::default();
+    let mut avisos = Vec::new();
+    for _ in 0..10 {
+        avisos.extend(sincronizar(&mut w, &db, &atlas, &mut placa));
+    }
+    assert_eq!(
+        placa.0, 1,
+        "a placa foi tentada {} vezes em 10 quadros",
+        placa.0
+    );
+    assert_eq!(
+        avisos,
+        [ph2d_i18n::tr_with(
+            "app.sprite_anim.normal_map.gpu_refused",
+            &[("e", &"out of memory")]
+        )]
+    );
+    escolher_normal(&w, &db, &atlas, e, Some(normal)).expect("de novo");
+    for _ in 0..10 {
+        avisos.extend(sincronizar(&mut w, &db, &atlas, &mut placa));
+    }
+    assert_eq!(
+        (placa.0, avisos.len()),
+        (2, 2),
+        "escolher de novo tenta uma vez"
+    );
+    set_normais(&normais());
+    let _ = sincronizar(&mut w, &db, &atlas, &mut placa);
+    assert_eq!(placa.0, 3, "o undo (set_normais) também tira a cerca");
+    set_normais(&[]);
 }

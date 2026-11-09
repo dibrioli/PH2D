@@ -49,6 +49,16 @@ pub(crate) fn linha(c: &mut CardCtx<'_>, y: f32, bits: u64) -> f32 {
     c.row(&[slot, none], y)
 }
 
+/// ⭐ A ranhura **Normal Map** sob o ponteiro: a sprite do Inspector recebe a queda de uma imagem (o molde é o
+/// [`crate::texture_slot_pick`] da linha Image). O **None** não é campo.
+#[must_use]
+pub fn normal_map_slot_pick(id: ph2d_a11y::NodeId) -> Option<u64> {
+    if id != ids::INSP_IMAGE_NORMAL_SLOT {
+        return None;
+    }
+    crate::state::current_inspector_sprite().map(|s| s.entity_bits)
+}
+
 /// O clique: a ranhura pede o seletor (`LoadNormalMap`), o **None** tira a normal (`SetNormalMap(None)`).
 pub(crate) fn evento(host: &mut dyn PanelHostInternal, ev: WidgetEvent) -> bool {
     let edit = match ev {

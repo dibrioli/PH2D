@@ -240,3 +240,40 @@ por ~20 chamadas do motor até o `DabCtx`. Decisão do dono.
 
 Aberto: a curva de pressão do K1 a 0,5–0,65 fica abaixo da do Krita (0,32/0,60 × 0,45/0,88); no branco e nos blocos
 o nosso sai mais pálido (a `mistura_opaca` Amount 0,5 apanha a cor de baixo; o Krita não mistura).
+
+## FASE 4 — o enchimento do dente (10/11, ordem do dono 09/11: «enche o papel paulatinamente em várias repassadas»)
+
+> Motor: `GrainLaw::fill` + [`texture/po.rs`](../../../../crates/ph2d-painter-brush/src/texture/po.rs) (`PoDoPapel`,
+> `caixa`) + `tool/paint/po_do_papel.rs`. O Height lê o papel a **`t + fill·pó·(1 − t)`**; o pó é o **alfa da camada no
+> pen-down** (o `before` do desfazer) desfocado por três caixas de raio 5 (σ ≈ 5,5 px). Painel: «Tooth fill». Pastel:
+> `fill 0.5`. Testes: `o_dente_enche` (2), `o_enchimento_sobe_o_vale_e_e_neutro_sem_po`.
+>
+> Ferramentas: `var_pastel_fill.tsv` (K1 com fill 0 · 0,5 · 0,75 · 1) pela sonda v3 com `PH2D_V3_PASSADAS=1..5` (pressão 1 e
+> rampa); `M=<esta pasta> python3 -I mede_fill.py <scratch> <variantes>`; `folha_fill.py <scratch> <png> <variantes>`.
+
+Rampa, cobertura média da janela por pressão (1.ª → 5.ª passada; a 1.ª é idêntica ao bit em todas):
+
+| fill | p 0,35 | p 0,5 | p 0,65 |
+|---|---|---|---|
+| 0 (K1) | 0,17 → 0,44 | 0,32 → 0,64 | 0,60 → 0,87 |
+| **0,5 (fábrica)** | 0,17 → 0,32 → 0,45 → 0,55 → 0,64 | 0,32 → 0,58 → 0,75 → 0,84 → 0,90 | 0,60 → 0,91 → 0,98 |
+| 0,75 | 0,17 → 0,79 | 0,32 → 0,64 → 0,84 → 0,93 → 0,98 | 0,60 → 0,94 → 0,99 |
+| 1,0 | 0,17 → 0,91 | 0,32 → 0,69 → 0,89 → 0,98 | 0,60 → 0,95 → 0,99 |
+
+Folha (rampa, linhas = fill 0 · 0,5 · 0,75 · 1; colunas = 1–5 passadas): [`folha_enchimento.png`](folha_enchimento.png).
+
+Recusas MEDIDAS (não repetir):
+- **Desfoque de ~1 px e `min(1, t + fill·pó)`** (o plano de 09/11): os números sobem, mas a folha mostra manchas chapadas
+  de borda dura — o pó só existe onde já há grão pintado, e somá-lo por igual empurra esses grãos ao opaco; os vales
+  (~10 px no Noise 32) ficam vazios. [`folha_enchimento_recusado_1px.png`](folha_enchimento_recusado_1px.png).
+- **O `covers` do relevo como plano do pó**: o Digital não o escreve, a borracha do Digital não o limpa e o desfazer
+  dele passa pelo diário do relevo do Impasto (guardas de proveniência). O alfa do pen-down já está no desfazer, na
+  borracha e no mover da camada. Preço aceite: uma camada OPACA (arte que chegou pintada, não o desenho novo, cuja camada
+  nasce vazia sobre o papel) enche o dente já no 1.º traço — a tinta que lá está conta como pó.
+
+Custo: o pó a 4K = 11,1 ms (mín.) · 11,7 ms (mediana) por pen-down, só com o enchimento ligado (`mede_o_po_a_4k`, smoke,
+carga 3,7). Sem cache por ladrilho: < 1 quadro.
+
+Rotas: o pó chega à mistura opaca, à por píxel, à de cache e à da rampa. NÃO chega à ponta de píxel (L18), ao Shape de
+várias camadas coloridas (`stamp_color`) nem à máscara de stamp em cache (`render_stamp_mask`, Grain View) — com Height +
+Tooth fill nessas rotas o controlo não age.

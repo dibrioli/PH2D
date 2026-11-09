@@ -145,3 +145,41 @@ fn o_trial_le_o_user_data_que_escrevemos() {
         assert_eq!(p["ph2d.p12"]["weight"], 7);
     }
 }
+
+/// P14: a camada Normal Map vai como `ph2d.normal = true` no mapa do artista e volta como
+/// bandeira, sem deixar a propriedade no user data dela.
+#[test]
+fn a_camada_normal_map_vai_e_volta_pelo_ase() {
+    let mut s = documento();
+    let base = s.layers()[0].id;
+    let (op, n) = ph2d_pixel_core::layers::new_layer(&mut s, base).expect("n");
+    apply(&mut s, op).expect("n");
+    let op = ph2d_pixel_core::layers::set_normal(&s, n, true).expect("normal");
+    apply(&mut s, op).expect("normal");
+    let u = dados("normal", [1, 2, 3, 4]);
+    let op = Op::UserData {
+        owner: Owner::Layer(n),
+        data: Box::new(u.clone()),
+    };
+    apply(&mut s, op).expect("user");
+    let (bytes, _) = escrever(&s).expect("escreve");
+    let file = ph2d_aseprite::parse_file(&bytes).expect("o ficheiro");
+    let prop = |i: usize| {
+        file.layers[i].user_data.as_ref().is_some_and(|u| {
+            u.maps.iter().any(|m| {
+                m.key == 0
+                    && m.props.iter().any(|(k, v)| {
+                        k == "ph2d.normal" && *v == ph2d_aseprite::AseProp::Bool(true)
+                    })
+            })
+        })
+    };
+    assert!(prop(1) && !prop(0), "a propriedade só na camada Normal Map");
+    let (back, _) = ler(&bytes).expect("lê");
+    let ls = back.layers();
+    assert!(!ls[0].normal && ls[1].normal, "a bandeira voltou");
+    assert_eq!(
+        ls[1].user, u,
+        "o user data volta sem a propriedade da bandeira"
+    );
+}

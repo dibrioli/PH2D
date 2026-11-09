@@ -56,6 +56,7 @@ fn palco(ts: &mut ph2d_text::TextSystem) -> HeroScreen {
             visible: true,
             locked: false,
             continuous: false,
+            normal: false,
             reference: false,
             background: false,
             opacity: 255,

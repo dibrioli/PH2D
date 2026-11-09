@@ -37,6 +37,7 @@ fn push_children(s: &Sprite, parent: Option<LayerId>, depth: u8, out: &mut Vec<P
             visible: l.visible,
             locked: l.locked,
             continuous: l.continuous,
+            normal: l.normal,
             reference: l.reference,
             background: l.background,
             opacity: l.opacity,

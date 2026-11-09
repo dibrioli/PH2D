@@ -59,7 +59,7 @@ pub(crate) fn populate(store: &mut WidgetStore) {
         let state = ButtonState::Normal;
         store.register(id, InteractiveState::Button { state });
     }
-    for id in ids::CHECKS {
+    for id in ids::CHECKS.into_iter().chain([ids::LAYER_NORMAL]) {
         let state = CheckboxState::Normal;
         let value = CheckboxValue::Unchecked;
         store.register(id, InteractiveState::Checkbox { state, value });
@@ -154,6 +154,7 @@ pub(crate) fn register_layers(
         (ids::LayerWidget::Lock, "panel.pixel.layer.lock"),
         (ids::LayerWidget::Solo, "panel.pixel.layer.solo"),
         (ids::LayerWidget::Collapse, "panel.pixel.layer.collapse"),
+        (ids::LayerWidget::Normal, "panel.pixel.layer.normal_tip"),
     ];
     for r in rows {
         for w in ids::LayerWidget::ALL {
@@ -193,6 +194,15 @@ pub(crate) fn seed_rename(st: &mut crate::PixelToolsPanelState, store: &mut Widg
     st.rename = Some((id, true));
 }
 
+/// Layer Properties ▸ Normal Map: alterna a da camada activa.
+fn pedido_normal() -> Option<PixelRequest> {
+    with_current(|i| {
+        i.active_layer
+            .filter(|_| i.editing)
+            .map(PixelRequest::LayerNormal)
+    })
+}
+
 /// O pedido de um clique numa parte de linha de camada.
 fn pedido_camada(id: NodeId) -> Option<PixelRequest> {
     use ids::LayerWidget as W;
@@ -212,6 +222,7 @@ fn pedido_camada(id: NodeId) -> Option<PixelRequest> {
                     W::Solo => PixelRequest::LayerSolo(r.id),
                     W::Collapse => PixelRequest::LayerCollapsed(r.id),
                     W::Continuous => PixelRequest::LayerContinuous(r.id),
+                    W::Normal => PixelRequest::LayerNormal(r.id),
                 })
             })
         })
@@ -456,6 +467,9 @@ pub(crate) fn apply_event(
                 fecha_menus_da_paleta(host);
             }
             id
+        }
+        WidgetEvent::Toggled(id) if id == ids::LAYER_NORMAL => {
+            return empurra(host, pedido_normal());
         }
         WidgetEvent::Toggled(id) => {
             // O valor vem do MODELO (o instantâneo), nunca do visual da caixa.

@@ -565,6 +565,8 @@ pub enum PixelRequest {
     },
     /// O 3.º ícone da fila na linha do tempo (dois pontos / barra): não é passo do desfazer.
     LayerContinuous(u32),
+    /// P14: Layer Properties ▸ Normal Map (e o ícone da linha): alterna; um passo do desfazer.
+    LayerNormal(u32),
     /// O intervalo novo da linha do tempo (vazio = Esc).
     Range(PixelRange),
     /// Largar o intervalo de quadros arrastado pela moldura: `before` = a posição (na ordem de

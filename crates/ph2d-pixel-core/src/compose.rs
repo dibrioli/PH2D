@@ -10,6 +10,34 @@ use crate::stroke::Stroke;
 pub enum Purpose {
     View,
     Export,
+    /// P14: só as camadas Normal Map (as de referência não entram, como no Export).
+    Normal,
+}
+
+/// A normal de frente (`n_xy = 0`), em RGB: o texel sem normal pintada.
+pub const NORMAL_FLAT: [u8; 3] = [128, 128, 255];
+
+/// P14: a normal do quadro `frame`, `w * h * 4` bytes. RGB = só as camadas Normal Map compostas
+/// sobre [`NORMAL_FLAT`] (cobertura parcial mistura com a de frente); A = o alfa da COR composta
+/// (Export), para que a banda normal cubra só onde o sprite tem pixels.
+#[must_use]
+pub fn compose_normal(sprite: &Sprite, frame: FrameId) -> Vec<u8> {
+    let region = sprite.bounds();
+    let mut n = compose_window(sprite, frame, None, region, Purpose::Normal);
+    let cor = compose_window(sprite, frame, None, region, Purpose::Export);
+    for (t, c) in n
+        .as_chunks_mut::<4>()
+        .0
+        .iter_mut()
+        .zip(cor.as_chunks::<4>().0)
+    {
+        let a = u32::from(t[3]);
+        for (v, f) in t.iter_mut().zip(NORMAL_FLAT) {
+            *v = ((u32::from(*v) * a + u32::from(f) * (255 - a) + 127) / 255) as u8;
+        }
+        t[3] = c[3];
+    }
+    n
 }
 
 /// Compõe o frame `frame` em `out` (`w * h * 4` bytes, RGBA de alfa reto). `pending` é o traço em
@@ -280,7 +308,10 @@ impl Ctx<'_> {
     fn draw_picked(&self, pick: &dyn Fn(&Layer) -> bool, buf: &mut [u8]) {
         let mut flat = Vec::new();
         self.flatten(None, true, &mut flat);
-        let flat = flat.into_iter().map(|(l, _)| (l, pick(l))).collect();
+        let flat = flat
+            .into_iter()
+            .map(|(l, _)| (l, pick(l) && !l.normal))
+            .collect();
         self.draw_flat(flat, buf);
     }
 
@@ -325,10 +356,12 @@ impl Ctx<'_> {
         out: &mut Vec<(&'a Layer, bool)>,
     ) {
         for layer in self.sprite.layers().iter().filter(|l| l.parent == parent) {
-            let me =
-                shown && layer.visible && !(layer.reference && self.purpose == Purpose::Export);
+            let me = shown && layer.visible && !(layer.reference && self.purpose != Purpose::View);
+            let normal = self.purpose == Purpose::Normal;
             match layer.kind {
-                LayerKind::Image | LayerKind::Tilemap { .. } => out.push((layer, me)),
+                LayerKind::Image | LayerKind::Tilemap { .. } => {
+                    out.push((layer, me && layer.normal == normal));
+                }
                 LayerKind::Group { .. } => self.flatten(Some(layer.id), me, out),
             }
         }
@@ -437,7 +470,7 @@ pub fn pick(sprite: &Sprite, frame: FrameId, x: i32, y: i32, sample: Sample) -> 
                     .layers()
                     .iter()
                     .rev()
-                    .filter(|l| !l.is_group() && sprite.is_shown(l.id))
+                    .filter(|l| !l.is_group() && !l.normal && sprite.is_shown(l.id))
                     .map(|l| sprite.value_at((l.id, frame), x, y))
                     .find(|&v| v != sprite.transparent_value())
                     .unwrap_or_else(|| sprite.transparent_value()),

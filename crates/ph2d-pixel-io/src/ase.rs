@@ -139,7 +139,7 @@ pub fn escrever(s: &Sprite) -> Result<(Vec<u8>, Vec<Aviso>), AseErro> {
             } else {
                 0
             },
-            user_data: user::saida(&l.user, &ext),
+            user_data: user::saida_camada(l, &ext),
         })
         .collect();
     let mut avisos = Vec::new();
@@ -414,6 +414,7 @@ pub fn ler(bytes: &[u8]) -> Result<(Sprite, Vec<Aviso>), AseErro> {
         c.reference = l.flags & LAYER_REFERENCE != 0;
         c.opacity = l.opacity;
         c.user = user::de(l.user_data.as_ref(), &file.external_files);
+        c.normal = user::tira_normal(&mut c.user);
         c.parent = abertos.last().copied();
         c.background =
             l.flags & LAYER_BACKGROUND != 0 && i == 0 && c.parent.is_none() && l.kind != KIND_GROUP;

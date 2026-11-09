@@ -81,6 +81,7 @@ impl Corpo<'_> {
         let nomes = [
             tr("panel.pixel.layer.mode"),
             tr("panel.pixel.layer.opacity"),
+            tr("panel.pixel.layer.normal"),
         ];
         let sec = Seccao::medida(self.text_system, 1, &nomes);
         let titulo = format!("{} · {}", tr("panel.pixel.layer.properties"), row.name);
@@ -133,9 +134,20 @@ impl Corpo<'_> {
                 self.campos_no_cartao(&[(tr("panel.pixel.layer.opacity"), ids::LAYER_OPACITY)], y);
             self.x = x;
             self.w = w;
-            return fim.max(r.y + r.h);
+            return self.caixa_normal(row, sec, fim.max(r.y + r.h));
         }
         y = r.y + r.h + ph2d_tokens::control_gap_px();
-        self.campo(tr("panel.pixel.layer.opacity"), ids::LAYER_OPACITY, sec, y)
+        let y = self.campo(tr("panel.pixel.layer.opacity"), ids::LAYER_OPACITY, sec, y);
+        self.caixa_normal(row, sec, y)
+    }
+
+    /// P14: Layer Properties ▸ Normal Map.
+    fn caixa_normal(&mut self, row: &PixelLayerRow, sec: Seccao, y: f32) -> f32 {
+        let cx = [(
+            ids::LAYER_NORMAL,
+            tr("panel.pixel.layer.normal"),
+            row.normal,
+        )];
+        self.caixas(&cx, sec, y)
     }
 }

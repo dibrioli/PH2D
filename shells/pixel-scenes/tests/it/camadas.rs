@@ -280,3 +280,30 @@ fn o_pixel_sprite_nao_tem_linhas_de_camadas() {
     family.content(&mut ToolRegistry::new(), &mut linhas);
     assert!(linhas.is_empty());
 }
+
+/// P14 §6 Layer Properties ▸ Normal Map, a 4.ª condição: o pedido do painel chega ao documento
+/// como UM passo; a camada sai da cor e entra na normal; o Ctrl+Z devolve as duas.
+#[test]
+fn normal_map_from_the_panel_leaves_the_color_in_one_undo_step() {
+    let mut p = Palco::novo();
+    let id = p.id("Locked");
+    let cor = p.janela(LOCKED_BOX);
+    let normal = |p: &Palco| {
+        let s = &p.app.doc(p.key).expect("doc").sprite;
+        ph2d_pixel_core::compose_normal(s, s.frames()[0].id)
+    };
+    let n0 = normal(&p);
+    let antes = p.passos();
+    let info = p.pede(PixelRequest::LayerNormal(id));
+    assert_eq!(p.passos(), antes + 1, "um passo do desfazer");
+    assert!(
+        info.layers.iter().any(|r| r.id == id && r.normal),
+        "a linha da camada diz Normal Map"
+    );
+    assert_ne!(p.janela(LOCKED_BOX), cor, "a camada saiu da cor");
+    assert_ne!(normal(&p), n0, "e entrou na normal");
+    assert!(p.app.undo(p.key));
+    p.quadro();
+    assert_eq!(p.janela(LOCKED_BOX), cor, "o Ctrl+Z devolve a cor");
+    assert_eq!(normal(&p), n0, "e a normal");
+}

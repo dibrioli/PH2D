@@ -62,6 +62,7 @@ pub const fn nome_camada(r: &PixelRequest) -> &'static str {
     match r {
         PixelRequest::LayerVisible(_) | PixelRequest::LayerSolo(_) => "pixel.keys.layer.visibility",
         PixelRequest::LayerRename { .. } => "pixel.keys.layer.rename",
+        PixelRequest::LayerNormal(_) => "pixel.history.layer_normal",
         PixelRequest::LayerAction(a) => match a {
             A::NewLayer => "pixel.keys.layer.new",
             A::NewGroup => "pixel.keys.layer.new_group",

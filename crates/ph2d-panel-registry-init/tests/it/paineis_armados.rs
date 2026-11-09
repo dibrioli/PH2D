@@ -373,6 +373,7 @@ fn camada_do_pixel(id: u32, name: &str) -> ph2d_editor_core::pixel_panel::PixelL
         visible: true,
         locked: false,
         continuous: false,
+        normal: false,
         reference: false,
         background: false,
         opacity: 255,

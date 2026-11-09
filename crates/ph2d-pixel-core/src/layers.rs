@@ -173,6 +173,14 @@ pub fn edit(s: &Sprite, id: LayerId, f: impl FnOnce(&mut Layer)) -> Option<Op> {
     (layers[i] != before).then(|| set(layers, Vec::new()))
 }
 
+/// P14 `SetLayerNormal`: a camada passa a Normal Map (ou deixa de o ser). `None` se nada mudar
+/// ou se for grupo (o grupo não tem pixels).
+#[must_use]
+pub fn set_normal(s: &Sprite, id: LayerId, normal: bool) -> Option<Op> {
+    let l = s.layer(id)?;
+    (!l.is_group() && l.normal != normal).then_some(Op::LayerNormal { layer: id, normal })
+}
+
 /// Mover (arrastar na lista). `None` se o destino estiver dentro do próprio grupo que se move, ou
 /// se a Background saísse do fundo.
 #[must_use]

@@ -345,6 +345,8 @@ pub fn layer_widget_id(layer: u32, w: LayerWidget) -> NodeId {
 pub const LAYER_RENAME: NodeId = hash_node_id("pixel.layer.rename");
 /// A opacidade da camada activa (`0..=255`, a escala do Aseprite).
 pub const LAYER_OPACITY: NodeId = hash_node_id("pixel.layer.opacity");
+/// P14: Layer Properties ▸ Normal Map (caixa).
+pub const LAYER_NORMAL: NodeId = hash_node_id("pixel.layer.normal");
 /// O modo da camada activa (um menu de escolha).
 pub const LAYER_BLEND: NodeId = hash_node_id("pixel.layer.blend");
 

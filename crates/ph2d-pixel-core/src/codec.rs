@@ -35,7 +35,7 @@ use crate::tiles::{Terrain, Tileset, TilesetId};
 
 pub const MAGIC: &[u8; 9] = b"PH2DPIXEL";
 pub const MAJOR: u16 = 1;
-pub const MINOR: u16 = 7;
+pub const MINOR: u16 = 8;
 
 /// Ficheiro recusado; nunca um documento meio lido.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -171,7 +171,8 @@ fn sprite_record_with(s: &Sprite, pixels: bool) -> Vec<u8> {
                 | (u64::from(l.reference) << 3)
                 | (u64::from(group) << 4)
                 | (u64::from(collapsed) << 5)
-                | (u64::from(l.continuous) << 6),
+                | (u64::from(l.continuous) << 6)
+                | (u64::from(l.normal) << 7),
         );
         if l.opacity != 255 {
             put_uint(&mut b, 4, u64::from(l.opacity));
@@ -342,6 +343,7 @@ fn read_sprite(bytes: &[u8]) -> Result<Sprite, CodecError> {
                             l.locked = f & 4 != 0;
                             l.reference = f & 8 != 0;
                             l.continuous = f & 64 != 0;
+                            l.normal = f & 128 != 0;
                             if f & 16 != 0 {
                                 l.kind = LayerKind::Group {
                                     collapsed: f & 32 != 0,

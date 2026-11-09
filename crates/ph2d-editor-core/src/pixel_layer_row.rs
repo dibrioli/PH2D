@@ -26,18 +26,28 @@ pub enum PixelLayerWidget {
     Collapse,
     /// Só na linha do tempo: dois pontos = descontínua, barra = contínua (o 3.º ícone do Aseprite).
     Continuous,
+    /// P14: o ícone da camada Normal Map (só pintado nela); clique = deixa de o ser.
+    Normal,
 }
 
 impl PixelLayerWidget {
-    pub const ALL: [Self; 5] = [Self::Row, Self::Eye, Self::Lock, Self::Solo, Self::Collapse];
+    pub const ALL: [Self; 6] = [
+        Self::Row,
+        Self::Eye,
+        Self::Lock,
+        Self::Solo,
+        Self::Collapse,
+        Self::Normal,
+    ];
     /// As da linha do tempo (as de [`Self::ALL`] e a contínua).
-    pub const TIMELINE: [Self; 6] = [
+    pub const TIMELINE: [Self; 7] = [
         Self::Row,
         Self::Eye,
         Self::Lock,
         Self::Solo,
         Self::Collapse,
         Self::Continuous,
+        Self::Normal,
     ];
 
     /// O sufixo do id (cada painel prefixa o seu).
@@ -50,6 +60,7 @@ impl PixelLayerWidget {
             Self::Solo => "solo",
             Self::Collapse => "collapse",
             Self::Continuous => "continuous",
+            Self::Normal => "normal",
         }
     }
 
@@ -63,6 +74,7 @@ impl PixelLayerWidget {
             Self::Solo => Some("panel.pixel.layer.solo"),
             Self::Collapse => Some("panel.pixel.layer.collapse"),
             Self::Continuous => Some("panel.pixel.layer.continuous"),
+            Self::Normal => Some("panel.pixel.layer.normal_tip"),
         }
     }
 }
@@ -156,6 +168,11 @@ impl LayerRowPainter<'_> {
             };
             let id = id_of(PixelLayerWidget::Continuous);
             self.icone(id, icon, quadrado(x), row.continuous);
+            x += h + gap;
+        }
+        if row.normal && !row.group {
+            let id = id_of(PixelLayerWidget::Normal);
+            self.icone(id, IconId::Light, quadrado(x), true);
             x += h + gap;
         }
         let solo_x = x0 + w - h;

@@ -57,6 +57,7 @@ impl PixelApp {
                 | PixelRequest::LayerBlend(_)
                 | PixelRequest::LayerAction(_)
                 | PixelRequest::LayerRename { .. }
+                | PixelRequest::LayerNormal(_)
         );
         if !layer_request {
             return false;
@@ -96,6 +97,11 @@ impl PixelApp {
                     *collapsed = !*collapsed;
                 }
             }),
+            PixelRequest::LayerNormal(id) => {
+                let id = LayerId(*id);
+                s.layer(id)
+                    .and_then(|l| layers::set_normal(s, id, !l.normal))
+            }
             PixelRequest::LayerOpacity(o) => layers::edit(s, active, |l| l.opacity = *o),
             PixelRequest::LayerBlend(b) => layers::edit(s, active, |l| l.blend = blend_to(*b)),
             PixelRequest::LayerRename { id, name } => {

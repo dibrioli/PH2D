@@ -37,6 +37,7 @@ fn camada(id: u32, nome: &str) -> PixelLayerRow {
         visible: true,
         locked: false,
         continuous: false,
+        normal: false,
         reference: false,
         background: false,
         opacity: 255,

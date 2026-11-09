@@ -46,6 +46,8 @@ pub enum Op {
     Slices(Vec<Slice>),
     /// P14: a slice do pivô ([`Sprite::pivot_slice`]); `Some` tem de existir. O inverso é a de antes.
     PivotSlice(Option<crate::slice::SliceId>),
+    /// P14 (`SetLayerNormal`): a camada é Normal Map ou não. O inverso é o valor de antes.
+    LayerNormal { layer: LayerId, normal: bool },
     /// O user data de um dono (P12). O inverso é o de antes.
     UserData {
         owner: crate::user::Owner,
@@ -55,6 +57,9 @@ pub enum Op {
     /// em ordem; se um falha, os já aplicados desfazem-se e o documento fica intacto.
     Batch(Vec<Op>),
 }
+
+mod camadas;
+pub(crate) use camadas::check_layers;
 
 fn user_slot(
     s: &mut Sprite,
@@ -231,7 +236,7 @@ impl Op {
             }
             Op::Tiles(t) => t.bytes(),
             Op::Slices(v) => slices_bytes(v),
-            Op::PivotSlice(_) => std::mem::size_of::<Op>(),
+            Op::PivotSlice(_) | Op::LayerNormal { .. } => std::mem::size_of::<Op>(),
             Op::UserData { data, .. } => {
                 data.text.len()
                     + data
@@ -316,6 +321,7 @@ pub fn apply(sprite: &mut Sprite, op: Op) -> Result<Op, OpError> {
                 id,
             )))
         }
+        Op::LayerNormal { layer, normal } => camadas::apply_normal(sprite, layer, normal),
         Op::UserData { owner, data } => {
             let slot = user_slot(sprite, owner)?;
             let before = std::mem::replace(slot, *data);
@@ -539,41 +545,6 @@ fn apply_frames(s: &mut Sprite, set: FrameSet) -> Result<FrameSet, OpError> {
         tags: std::mem::replace(&mut s.tags, set.tags),
         slices: std::mem::replace(&mut s.slices, set.slices),
     })
-}
-
-/// As leis da árvore de camadas: ids únicos e já emitidos; pai existe, é grupo e vem de uma
-/// cadeia sem ciclo; a Background é no máximo uma, na raiz, a primeira e de imagem; há pelo
-/// menos uma camada de imagem.
-pub(crate) fn check_layers(layers: &[Layer], next_id: u32) -> Result<(), OpError> {
-    let bad = OpError::BadLayers;
-    if !layers.iter().any(|l| !l.is_group()) {
-        return Err(bad("no image layer"));
-    }
-    let mut seen = std::collections::BTreeSet::new();
-    for l in layers {
-        if l.id.0 == 0 || l.id.0 >= next_id || !seen.insert(l.id) {
-            return Err(bad("layer.id"));
-        }
-    }
-    for (i, l) in layers.iter().enumerate() {
-        let mut p = l.parent;
-        let mut hops = 0;
-        while let Some(id) = p {
-            let g = layers
-                .iter()
-                .find(|x| x.id == id)
-                .ok_or(bad("layer.parent"))?;
-            if !g.is_group() || hops > layers.len() {
-                return Err(bad("layer.parent"));
-            }
-            p = g.parent;
-            hops += 1;
-        }
-        if l.background && (i != 0 || l.parent.is_some() || l.is_group()) {
-            return Err(bad("layer.background"));
-        }
-    }
-    Ok(())
 }
 
 fn apply_layers(s: &mut Sprite, set: LayerSet) -> Result<LayerSet, OpError> {

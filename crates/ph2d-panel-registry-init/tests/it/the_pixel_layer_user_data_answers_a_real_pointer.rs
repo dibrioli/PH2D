@@ -123,6 +123,7 @@ fn the_pixel_layer_user_data_card_answers_a_real_pointer() {
             visible: true,
             locked: false,
             continuous: false,
+            normal: false,
             reference: false,
             background: false,
             opacity: 255,

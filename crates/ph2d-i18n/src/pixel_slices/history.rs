@@ -24,6 +24,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "pixel.history.tiles" => "Tiles",
         "pixel.history.slices" => "Slices",
         "pixel.history.pivot" => "Pivot",
+        "pixel.history.layer_normal" => "Normal Map",
         "pixel.history.user_data" => "User Data",
         "pixel.history.transform" => "Transform",
         // As ferramentas (o nome da ferramenta, não do gesto: O11).

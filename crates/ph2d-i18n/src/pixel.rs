@@ -315,6 +315,10 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
             "Continuous: a new frame links the cel instead of copying it"
         }
         "panel.pixel.layer.reference" => "{name} (reference)",
+        "panel.pixel.layer.normal" => "Normal Map",
+        "panel.pixel.layer.normal_tip" => {
+            "Normal Map: this layer is not color. It tells the light which way each pixel faces"
+        }
         "panel.pixel.layer.new" => "New Layer",
         "panel.pixel.layer.new_group" => "New Group",
         "panel.pixel.layer.delete" => "Delete",

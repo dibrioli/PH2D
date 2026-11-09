@@ -115,6 +115,8 @@ pub struct Layer {
     pub reference: bool,
     /// Camada *continuous* (Layer Properties): o New Frame liga os cels dela em vez de copiar.
     pub continuous: bool,
+    /// P14: camada Normal Map. A cor composta exclui-a; [`crate::compose_normal`] compõe só estas.
+    pub normal: bool,
     pub opacity: u8,
     pub blend: crate::blend::BlendMode,
     pub kind: LayerKind,
@@ -136,6 +138,7 @@ impl Layer {
             locked: false,
             reference: false,
             continuous: false,
+            normal: false,
             opacity: 255,
             blend: crate::blend::BlendMode::Normal,
             kind: LayerKind::Image,

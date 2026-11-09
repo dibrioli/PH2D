@@ -14,6 +14,8 @@ pub struct PixelLayerRow {
     pub locked: bool,
     /// Alt+N liga o cel novo ao anterior em vez de o copiar.
     pub continuous: bool,
+    /// P14: camada Normal Map (a cor não a leva; a luz lê-a).
+    pub normal: bool,
     pub reference: bool,
     pub background: bool,
     pub opacity: u8,

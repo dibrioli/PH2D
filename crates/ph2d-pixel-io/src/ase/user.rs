@@ -198,6 +198,37 @@ pub(super) fn saida(u: &UserData, ext: &[AseExternalFile]) -> Option<AseUserData
     })
 }
 
+/// P14: a propriedade do mapa do artista que diz «esta camada é Normal Map».
+pub const NORMAL_PROP: &str = "ph2d.normal";
+
+/// O user data da camada com a bandeira Normal Map (no mapa do artista) para o `.ase`.
+pub(super) fn saida_camada(
+    l: &ph2d_pixel_core::Layer,
+    ext: &[AseExternalFile],
+) -> Option<AseUserData> {
+    if !l.normal {
+        return saida(&l.user, ext);
+    }
+    let mut u = l.user.clone();
+    u.props
+        .entry(String::new())
+        .or_default()
+        .insert(NORMAL_PROP.to_owned(), PropValue::Bool(true));
+    saida(&u, ext)
+}
+
+/// Tira a bandeira Normal Map do mapa do artista (ao ler o `.ase`): `true` se estava ligada.
+pub(super) fn tira_normal(u: &mut UserData) -> bool {
+    let Some(m) = u.props.get_mut("") else {
+        return false;
+    };
+    let v = m.remove(NORMAL_PROP);
+    if m.is_empty() {
+        u.props.remove("");
+    }
+    v == Some(PropValue::Bool(true))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

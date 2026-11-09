@@ -123,3 +123,4 @@
 
 - ⛔⛔ [Pincel comparado ao original SÓ sobre blocos escondeu Multiply que não pinta no vazio: 3 fundos sempre (08/11)](feedback_brush_oracle_must_include_blank_canvas.md)
 - ⭐⭐⭐ [Dono 08/11: Color Mixing afina-se pelo NOSSO motor, não pelo CSP; Round Mixing = Amount 0,25 + Hardness 0,5](project_color_mixing_tuned_for_our_engine_not_csp_2026_11_08.md)
+- ⭐⭐ [Dono 09/11: crítica da física — Sensor fica, etiqueta de quem ouve o sinal, Width/Height, «More» fechado, tecla no Trigger](project_physics_critique_answers_2026_11_09.md)

@@ -281,3 +281,16 @@ fn a_ilha_separada_nasce_com_o_pivot_da_fonte() {
         [9.75, 20.0]
     );
 }
+
+/// O Rasterize recusa-se em qualquer folha de um objeto com folhas extra: assar o `Transform` partilhado numa só
+/// imagem torceria as outras. *Mutação: `true` sempre ⇒ o objeto de uma folha recusa.*
+#[test]
+fn um_objeto_com_folhas_extra_partilha_o_transform() {
+    let db = AssetDb::default();
+    let (mut w, e, _) = com_run(&db);
+    assert!(has_extra_sheets(&w, e));
+    w.entity_mut(e).insert(SpriteSheets::default());
+    assert!(!has_extra_sheets(&w, e), "sem folhas extra");
+    let so = w.spawn(Transform::default()).id();
+    assert!(!has_extra_sheets(&w, so));
+}

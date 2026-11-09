@@ -159,7 +159,11 @@ fn so_a_folha_zero_usa_o_desfazer_de_imagem() {
 #[test]
 fn so_a_folha_zero_mexe_no_transform_do_objeto() {
     let r = verbo("rasterize");
-    assert!(r.contains("if src.sheet != 0") && r.contains("shell.rasterize.first_sheet_only"));
+    assert!(
+        r.contains("if ph2d_anim_sheets::shown_edit::has_extra_sheets(")
+            && r.contains("shell.rasterize.several_sheets"),
+        "o Rasterize assa o Transform de todas as folhas numa só"
+    );
     let u = verbo("upscale");
     assert!(
         u.contains("shown_edit::density_size("),

@@ -25,7 +25,7 @@ Decisão do dono, 08/11: *Trim, Padding, Make Square, Upscale e todas as ferrame
   gravação de uma folha extra diz «Painter failed: …», e não «empty canvas» (item 4).
 
 - **Auditoria do fecho (08/11), as decisões:**
-  - **Rasterize recusa numa folha extra** (toast `shell.rasterize.first_sheet_only`): ele assa a escala e a rotação do
+  - **Rasterize recusa num objeto com folhas extra, em qualquer folha** (toast `shell.rasterize.several_sheets`): ele assa a escala e a rotação do
     OBJETO nos píxeis e põe o `Transform` em ±1. Aplicado a uma folha, as outras ficariam torcidas; aplicado a todas,
     seria outro verbo (o do objeto, com N leituras e N gravações sob um só passo). Recusar com o porquê é o padrão-ouro
     hoje: não mente e não estraga nada.
@@ -95,8 +95,8 @@ Portão da fiação: `shells/desktop/tests/it/image_tools_act_on_the_shown_sheet
 
 4. **A decidir pelo dono:** soltar/escolher uma imagem no cartão com uma folha extra à vista
    (`ph2d-app-sprite-anim/src/image_choice.rs`) troca a folha 0. Deve trocar a folha à vista?
-5. **Rasterize na folha 0 de um objeto com folhas extra** repõe o `Transform` e torce as extra. Não medido no
-   produto; a cura natural é o mesmo verbo do objeto do §1 (todas as folhas sob um passo).
+5. ~~Rasterize na folha 0 de um objeto com folhas extra torcia as extra~~ — **feito**: recusa em qualquer folha
+   (`shown_edit::has_extra_sheets`, teste `um_objeto_com_folhas_extra_partilha_o_transform`).
 6. **As ilhas separadas nascem com escala 1 e sem flip** (antigo, folha 0 incluída): com o objeto escalado ou
    virado, a ilha nova sai com outro tamanho ou desvirada. O lugar já está certo (G).
 

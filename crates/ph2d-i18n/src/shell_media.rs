@@ -96,8 +96,8 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "shell.rasterize.rasterize_already_at" => "Rasterize: already at identity Transform",
         "shell.rasterize.rasterize_source" => "Rasterize: source unavailable",
-        "shell.rasterize.first_sheet_only" => {
-            "Rasterize bakes the object's scale and rotation, which every sheet shares. Show the first sheet to rasterize."
+        "shell.rasterize.several_sheets" => {
+            "Rasterize bakes the object's scale and rotation into one image, but this object has several sheets that share them"
         }
         "shell.rasterize.rasterize_unavailable" => "Rasterize unavailable for this sprite",
         "shell.trim_transparency.trimmed_px_cmd_z_to" => {

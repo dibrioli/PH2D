@@ -55,6 +55,7 @@ linha/coluna, célula alterada) — sem cabeçalho fixo nem colunas redimension�
 
 **Estado (09/11):** Q1 e Q2 construídas juntas (a tabela sem um quadro que a use não se fotografa) — ver
 [handoff de continuação](handoffs/HANDOFF_line_ScriptEditor_2026-11-09_Q1_Q2.md); fotos e lado a lado em
-`ferramentas/smoke/cena14/`. Q3 e Q4 por fazer.
+`ferramentas/smoke/cena14/`. Q3 feita (Live values em tabela com o traço, cena 14 passos 7–10) — ver
+[handoff Q3/Q4](handoffs/HANDOFF_line_ScriptEditor_2026-11-09_Q3_Q4.md); Q4 por fazer.
 
 Cada onda: foto e maquete lado a lado ANTES do smoke do dono (`project-memory/feedback_a_mockup_is_compared_side_by_side_before_the_smoke.md`).

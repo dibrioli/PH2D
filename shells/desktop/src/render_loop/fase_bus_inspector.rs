@@ -405,3 +405,7 @@ mod luz_tests;
 #[cfg(test)]
 #[path = "fase_bus_inspector_preso_tests.rs"]
 mod preso_tests;
+
+#[cfg(test)]
+#[path = "fase_bus_outline_tests.rs"]
+mod outline_tests;

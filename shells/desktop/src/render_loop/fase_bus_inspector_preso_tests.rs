@@ -17,7 +17,7 @@ use ph2d_render::register_render_components;
 use ph2d_vec_edit::PenTool;
 use ph2d_vec_scene::{BlendMode, Opacity, VecScene, rectangle};
 
-fn captura(sim: &mut SimWorld, vec: &VecScene, reg: &ComponentRegistry) -> ProjectState {
+pub(super) fn captura(sim: &mut SimWorld, vec: &VecScene, reg: &ComponentRegistry) -> ProjectState {
     ProjectState::capture(
         &ph2d_preview_drive::PreviewDrive::default(),
         sim,

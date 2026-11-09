@@ -134,37 +134,17 @@ fn the_screen_after_an_undo_is_what_the_other_producer_would_draw() {
 }
 
 /// **O produtor devolve o frame para a GPU depois de a CPU ter sido dona — e os planos têm de estar
-/// atuais.**
+/// atuais.** Report do Enio (2026-07-25, smoke 4096²): o retângulo «aparece pintando» e fica até nova
+/// pintura, depois de alternar Digital ↔ Impasto.
 ///
-/// Este é o report que sobrou depois de duas hipóteses caírem. Enio, 2026-07-25, sobre o smoke de
-/// 4096²: o retângulo *"aparece pintando"* e *"fica até nova pintura sobrepor"*, e ele confirmou ter
-/// **alternado entre Digital e Impasto** durante a sessão.
+/// Mecanismo (bisseção; cura `gpu_lane_stale`): o `dirty_rect` é compartilhado pelas duas pistas e
+/// consumido por quem drena; enquanto a CPU é dona ela o leva, e no frame em que a GPU retoma o rect
+/// descreve só o ÚLTIMO frame da CPU. Os dois consumidores de `preview_dirty_region` (compositor e fold)
+/// adoeciam juntos. A cura espelha a da Fase D: toda drenagem da CPU levanta `gpu_lane_stale` e a
+/// próxima da GPU o consome declarando não-confinado (`None` = faça inteiro).
 ///
-/// ## O mecanismo (diagnosticado por bisseção, curado por `gpu_lane_stale`)
-///
-/// A pista GPU só é tomada quando há relevo (`gpu_eligible` recusa um documento trivial SEM relevo).
-/// Então a sessão real oscila: impasto (GPU) → undo, o relevo some (CPU) → pintar em Digital (CPU) →
-/// impasto de novo (GPU). O `dirty_rect` é **compartilhado** pelas duas pistas e **consumido por quem
-/// drena**: enquanto a CPU é dona ela o leva para o `preview_upload_bbox` dela, então no frame em que a
-/// GPU retoma o rect descreve só o ÚLTIMO frame da CPU — não a era inteira que a GPU não viu.
-///
-/// ⚠️ **A causa NÃO era o fold regional, e isso foi medido ANTES de consertar:** forçando
-/// `plane_win = (0, 0, width, height)` — o caminho de ANTES daquela wave — a falha era
-/// **byte-idêntica** (197.172 bytes, primeiro em (34, 62), pior 255 níveis). Os DOIS consumidores do
-/// `preview_dirty_region` adoeciam juntos: o compositor remendava um sub-rect numa fatia por-camada
-/// cacheada de antes da era CPU, e o fold dobrava a mesma janela sobre planos da mesma era. Corrigir só
-/// UM deixa o outro desenhando o retângulo — que é exatamente por que a bisseção não moveu um byte.
-///
-/// A cura é o ESPELHO da que a Fase D deu ao sentido oposto (`take_preview_dirty` derruba o
-/// `composited` para a próxima `take_preview_arc` recompor inteiro): toda drenagem da CPU levanta
-/// `gpu_lane_stale`, e a próxima drenagem da GPU o consome declarando **não-confinado** — `None`, que
-/// todo consumidor já lê como *faça inteiro*. Um frame cheio na retomada, confinado de novo em seguida.
-///
-/// **Mutação que sangra (medida):** `self.gpu_lane_stale = true` → `false` em `take_preview_arc`
-/// devolve os 197.172 bytes EXATOS, o mesmo primeiro pixel e o mesmo pior delta.
-///
-/// ⚠️ O oráculo é o OUTRO produtor: a pergunta é se as duas pistas desenham a mesma imagem, e uma
-/// re-derivação do que ELAS deveriam desenhar concordaria com o bug que as duas compartilham.
+/// Mutação que sangra: `self.gpu_lane_stale = true` → `false` em `take_preview_arc` devolve os 197.172
+/// bytes exatos. O oráculo é o OUTRO produtor (re-derivar o esperado concordaria com o bug).
 ///
 /// `#[ignore]`: precisa de adapter; rode com `--release --ignored`.
 #[test]

@@ -202,3 +202,14 @@ chamada directa); duplo clique numa forma com 2 chaves ⇒ as duas chaves ganham
 chaves = anéis interpolados e nenhum passo de undo; Fit apaga a trilha; `every_editable_field_is_a_channel` classifica os
 gestos dos pontos como `Canal`. Mutações: sem propagar à outra chave ⇒ vermelho; publicar com `custom = false` ⇒ vermelho;
 interpolar sem a guarda de `validos` ⇒ vermelho no caso da auto-intersecção.
+
+**Fase 1 FEITA (09/11)** — `ph2d-physics-outline::canais_pontos` (publicados só `custom`; `escritos` com a guarda; `aplicar`;
+`na_chave_anterior`; `e_fit`/`apagar_do_fit`); `canais_corpo` só chama (`aplicar_pontos`, o par autorado na `ConducaoFisica`,
+`no_tempo` = o relógio da vista, posto em `fase_timeline_drain.rs`). ⭐ A guarda é DETERMINÍSTICA: o quadro inválido dá a chave
+ANTERIOR no instante do clip (nunca «o último quadro válido do mundo», que depende do caminho — recusado pelo coordenador).
+Também: com `custom`, uma curva de 48–50 NÃO retraça (`retrace_followed`). O Fit apaga a trilha em `propagar_topologia`, no
+passo de undo dela. `every_editable_field_is_a_channel` NÃO se aplica aos pontos: a população dele são linhas pintadas com
+losango no painel, e os pontos são gesto de canvas (uma entrada não casaria nada e o censo de obsolescência reprovaria).
+**Fase 2 encaixa:** `shells/desktop/src/render_loop/autokey_pass.rs` `propagar_topologia` (o 2.º chamador do LCS, ao lado do
+`apagar_do_fit`), com o alinhamento extraído de `ph2d-app-vec/src/canais_topologia.rs:41` `alinhar`; `escritos` já assume a
+topologia de hoje em todas as chaves.

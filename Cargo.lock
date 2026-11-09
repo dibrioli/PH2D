@@ -10745,6 +10745,7 @@ name = "ph2d-physics-outline"
 version = "0.0.0"
 dependencies = [
  "bevy_ecs",
+ "ph2d-anim",
  "ph2d-asset",
  "ph2d-core",
  "ph2d-ecs",
@@ -10755,6 +10756,7 @@ dependencies = [
  "ph2d-physics-ecs",
  "ph2d-render",
  "ph2d-shape-handles",
+ "ph2d-timeline",
 ]
 
 [[package]]

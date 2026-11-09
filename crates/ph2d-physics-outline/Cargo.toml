@@ -24,6 +24,9 @@ ph2d-asset = { path = "../ph2d-asset" }
 ph2d-editor-core = { path = "../ph2d-editor-core" }
 # «Merge by distance» (a lei pura dos pontos e a seleção do canvas); W5 testa pelas portas do ponteiro.
 ph2d-shape-handles = { path = "../ph2d-shape-handles" }
+# Os pontos (51/52) nos canais: a chave anterior e o Fit que apaga a trilha (`canais_pontos`).
+ph2d-anim = { path = "../ph2d-anim" }
+ph2d-timeline = { path = "../ph2d-timeline" }
 
 [dev-dependencies]
 ph2d-core = { path = "../ph2d-core" }

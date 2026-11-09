@@ -115,13 +115,13 @@ impl crate::App {
         ph2d_app_constraints::valor::valores(sim, Some(r));
         // A tocar, o campo que a curva escreveu continua conduzido mesmo sem mudar de valor (o
         // relógio repete o instante): `ph2d_ecs::canal_conducao`. Lido DEPOIS do dreno das intents.
-        let tocando = vista
-            .pick(
-                &self.playhead,
-                &self.clip_playhead,
-                &self.container_playhead,
-            )
-            .is_playing();
+        let relogio = vista.pick(
+            &self.playhead,
+            &self.clip_playhead,
+            &self.container_playhead,
+        );
+        let tocando = relogio.is_playing();
+        self.physics.conducao.no_tempo(relogio.time());
         self.vec.conducao.a_tocar(tocando);
         self.flip_state.conducao.a_tocar(tocando);
         self.physics.conducao.a_tocar(tocando);

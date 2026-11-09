@@ -270,7 +270,8 @@ fn a_swatch_do_tint_grava_a_cor_e_o_alfa() {
 fn a_fisica_do_corpo_tem_um_losango_por_linha() {
     use ph2d_ecs::canal_fisica as fs;
     let fis = |c| PropKind::Field(FieldKey::new(FISICA, c, 0, 0));
-    for c in fs::CAMPOS {
+    // Os pontos do «Outline» (51/52) editam-se no canvas, não na §11.
+    for c in fs::CAMPOS.into_iter().filter(|&c| !fs::e_do_ponto(c)) {
         assert!(
             CAMPOS.iter().any(|(_, g)| g.contains(&fis(c))
                 || g.iter().any(|p| matches!(p, PropKind::Field(k) if k.mesmo_grupo(FieldKey::new(FISICA, c, 0, 0))))),

@@ -86,7 +86,7 @@ fn a_curva_do_detail_nao_e_passo_de_undo_a_tocar() {
         sim.world_mut()
             .get_resource_or_insert_with(CanaisEscritos::default)
             .escrever(dono, k(f::CONTORNO_DETALHE), detalhe);
-        aplicar(&mut sim, &reg, &mut conducao);
+        aplicar(&mut sim, &reg, &mut conducao, &Default::default());
         segue(&mut sim, &db, &reg);
         conducao.settle();
         let vivo = conducao.substituir(&mut sim, &reg);
@@ -160,7 +160,7 @@ fn a_curva_do_detail_nao_apaga_os_pontos_a_mao() {
         sim.world_mut()
             .get_resource_or_insert_with(CanaisEscritos::default)
             .escrever(dono, k(f::CONTORNO_DETALHE), detalhe);
-        aplicar(&mut sim, &reg, &mut conducao);
+        aplicar(&mut sim, &reg, &mut conducao, &Default::default());
         segue(&mut sim, &db, &reg);
         let o = par(&sim, Entity::from_bits(dono)).1;
         assert!(
@@ -168,4 +168,77 @@ fn a_curva_do_detail_nao_apaga_os_pontos_a_mao() {
             "Detail {detalhe}: os pontos ficam"
         );
     }
+}
+
+/// O pente com os pontos editados à mão: a forma e os anéis.
+fn a_mao(sim: &mut SimWorld, body: Entity) -> (u64, Vec<Vec<[i32; 2]>>) {
+    let forma = ph2d_physics_ecs::dono_do_campo(sim.world(), body.to_bits(), f::CONTORNO_PONTO_X);
+    let aneis = par(sim, Entity::from_bits(forma)).1.rings.to_vec();
+    ph2d_shape_handles::pontos::escreve(sim.world_mut(), forma, aneis.clone(), true);
+    (forma, aneis)
+}
+
+/// ⭐ Arrastar um ponto: `publicar` → `CanaisLidos` → `autokey_campos` (o caminho do quadro) pede UMA
+/// chave com TODOS os pontos. *Mutação: `publicar` sem os pontos ⇒ vermelho.*
+#[test]
+fn arrastar_um_ponto_grava_uma_chave_com_todos_os_pontos() {
+    let (_reg, mut sim, body, _db) = pente();
+    let (forma, mut aneis) = a_mao(&mut sim, body);
+    let n: usize = aneis.iter().map(Vec::len).sum();
+    publicar(&mut sim, &[body.to_bits()]);
+    let base = ph2d_ecs::canal::campos_lidos(&sim, forma)
+        .into_iter()
+        .collect();
+    aneis[0][1][1] += 16;
+    ph2d_shape_handles::pontos::escreve(sim.world_mut(), forma, aneis, true);
+    publicar(&mut sim, &[body.to_bits()]);
+    let lidos = ph2d_ecs::canal::campos_lidos(&sim, forma);
+    let doc = ph2d_timeline::TimelineDoc::new();
+    let plano = ph2d_timeline::autokey_campos(&doc, forma, 0.0, &lidos, &base, true, true);
+    let ponto = |p: &ph2d_timeline::PropKind| matches!(p, ph2d_timeline::PropKind::Field(kk) if f::e_do_ponto(kk.campo));
+    assert_eq!(plano.keys.iter().filter(|(p, _)| ponto(p)).count(), 2 * n);
+}
+
+/// ⭐ A tocar entre chaves os pontos andam e o rapier segue; a fotografia do undo vê os autorados
+/// (nenhum passo). *Mutação: `aplicar` sem os pontos ⇒ vermelho.*
+#[test]
+fn a_tocar_os_pontos_andam_e_o_rapier_segue_sem_passo() {
+    let (reg, mut sim, body, _db) = pente();
+    let (forma, a) = a_mao(&mut sim, body);
+    let b: Vec<Vec<[i32; 2]>> = a
+        .iter()
+        .map(|r| r.iter().map(|p| [p[0], p[1] - 64]).collect())
+        .collect();
+    let mut ponte = ph2d_physics_ecs::PhysicsBridge::new();
+    ponte.dispatch(&mut sim, true, 1);
+    let caixa = ponte.body_extent(body);
+    let mut conducao = ConducaoFisica::default();
+    conducao.a_tocar(true);
+    let alvo = ColliderOutline {
+        rings: b.clone().into(),
+        custom: true,
+        ..ColliderOutline::default()
+    };
+    for (kk, v) in ph2d_physics_outline::canais_pontos::publicados(&alvo) {
+        let mut w = sim
+            .world_mut()
+            .get_resource_or_insert_with(CanaisEscritos::default);
+        w.escrever(forma, kk, v);
+    }
+    aplicar(&mut sim, &reg, &mut conducao, &Default::default());
+    assert_eq!(
+        par(&sim, Entity::from_bits(forma)).1.rings[..],
+        b[..],
+        "a curva leva os pontos"
+    );
+    ponte.dispatch(&mut sim, true, 2);
+    assert_ne!(ponte.body_extent(body), caixa, "o collider do rapier segue");
+    conducao.settle();
+    let vivo = conducao.substituir(&mut sim, &reg);
+    assert_eq!(
+        par(&sim, Entity::from_bits(forma)).1.rings[..],
+        a[..],
+        "a fotografia: os autorados"
+    );
+    conducao.repor(&mut sim, &reg, vivo);
 }

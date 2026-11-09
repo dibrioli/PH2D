@@ -1,18 +1,8 @@
-//! ⭐⭐ **A família FISICA nos canais** (plano 35 §A.5) — os campos do corpo, do colisor e da zona
-//! que a §11 *Physics Body* do Inspector edita: [`publicar`] o que o mundo vale em `CanaisLidos`,
-//! [`aplicar`] o que a curva mandou em `CanaisEscritos` (com o eco).
-//!
-//! ⭐ **A escrita é a da edição do painel, as DUAS metades dela**: o campo vira o controlo da §11
-//! que o mostra (a opção de uma escolha, ou o número na unidade do painel) e passa pela porta
-//! única do evento ([`ph2d_panel_inspector::physics_edit_for`] — as mesmas guardas: Dynamic-only,
-//! sensor-only, a forma que o painel mostra) e depois pelo funil do Shell
-//! ([`crate::physics_apply::apply_physics_edit`] + `apply_editor_commands`) — as conversões de
-//! forma, os pisos, a presença dos opcionais.
-//!
-//! ⚠️ Daí ao rapier, o caminho da edição do painel (ADR-0131 D2; `retune_body`, F30 §C).
-//!
-//! ⭐ **A escrita da curva é pré-visualização**: o valor AUTORADO de cada campo que a curva move
-//! fica em [`ConducaoFisica`] (a irmã da `ConducaoVetor`), e a fotografia do undo e do save vê-o.
+//! ⭐⭐ **A família FISICA nos canais** (plano 35 §A.5): [`publicar`] o que o mundo vale, [`aplicar`] o
+//! que a curva mandou, pela porta do evento e o funil do painel; a escrita da curva é pré-visualização
+//! ([`ConducaoFisica`]). Os pontos do «Outline» (51/52): `ph2d_physics_outline::canais_pontos`. O porquê:
+//! [plano 35](../../../docs/UI_New_and_Simple/vetor_nova_ui/35_plano_F24_o_auto_key_grava_tudo.md) e
+//! [f2 «Auto Key dos pontos»](../../../docs/GameEngineFuncional/componentes/f2_contorno_e_formas_plano.md).
 
 use ph2d_ecs::canal::familia::FISICA;
 use ph2d_ecs::canal_conducao::ConducaoDosCanais;
@@ -23,6 +13,7 @@ use ph2d_editor_core::NodeId;
 use ph2d_editor_core::screens::hero::{InspectorPhysicsInfo, PhysicsFieldEdit};
 use ph2d_panel_inspector::ids as insp;
 use ph2d_physics_ecs::{Collider, ColliderOutline};
+use ph2d_physics_outline::canais_pontos as op;
 use std::collections::BTreeMap;
 
 /// O controlo da §11 que mostra um campo.
@@ -279,7 +270,7 @@ pub fn dono_da_chave(world: &ph2d_ecs::World, e: u64, prop: ph2d_timeline::PropK
 /// ⭐ **Publica o que cada corpo vale AGORA** (através do eco) — os campos que a §11 mostra —,
 /// esquecido antes o que cada entidade publicou desta família.
 pub fn publicar(sim: &mut SimWorld, entidades: &[u64]) {
-    let lotes: Vec<(u64, FieldKey, f32)> = entidades
+    let mut lotes: Vec<(u64, FieldKey, f32)> = entidades
         .iter()
         .filter_map(|&b| Some((b, retrato(sim, b)?)))
         .flat_map(|(b, info)| {
@@ -290,6 +281,11 @@ pub fn publicar(sim: &mut SimWorld, entidades: &[u64]) {
                 .collect::<Vec<_>>()
         })
         .collect();
+    for &b in entidades {
+        let forma = dono(sim, b, f::CONTORNO_PONTO_X);
+        let pontos = contorno(sim, forma).map(|o| op::publicados(&o.1));
+        lotes.extend(pontos.into_iter().flatten().map(|(kk, v)| (forma, kk, v)));
+    }
     let mut lidos = sim
         .world_mut()
         .get_resource_or_insert_with(CanaisLidos::default);
@@ -310,6 +306,7 @@ pub fn aplicar(
     sim: &mut SimWorld,
     registry: &ComponentRegistry,
     conducao: &mut ConducaoFisica,
+    doc: &ph2d_timeline::TimelineDoc,
 ) -> bool {
     let Some(mut escritas) = sim
         .world_mut()
@@ -323,6 +320,11 @@ pub fn aplicar(
     escritas.sort_by_key(|&(e, kk, _)| (e, kk.info().is_none_or(|i| !i.discreto()), kk));
     let mut mudou = false;
     let mut ecos = Vec::with_capacity(escritas.len());
+    let (pontos, escritas): (Vec<_>, Vec<_>) =
+        (escritas.into_iter()).partition(|&(_, kk, _)| f::e_do_ponto(kk.campo));
+    for lote in pontos.chunk_by(|a, b| a.0 == b.0) {
+        mudou |= aplicar_pontos(sim, conducao, doc, lote, &mut ecos);
+    }
     for (e, kk, v) in escritas {
         if kk.i != 0 || kk.j != 0 {
             continue;
@@ -347,13 +349,38 @@ pub fn aplicar(
     mudou
 }
 
+/// Os pontos (51/52) que a curva mandou a UMA forma; a fotografia autorada e o eco.
+fn aplicar_pontos(
+    sim: &mut SimWorld,
+    conducao: &mut ConducaoFisica,
+    doc: &ph2d_timeline::TimelineDoc,
+    lote: &[(u64, FieldKey, f32)],
+    ecos: &mut Vec<(u64, FieldKey, f32, f32)>,
+) -> bool {
+    let (e, t, mut mudou) = (lote[0].0, conducao.2, false);
+    let foto = contorno(sim, e);
+    let anterior = |kk| op::na_chave_anterior(doc, e, kk, t);
+    for (kk, v, antes, ficou) in op::aplicar(sim.world_mut(), e, lote, anterior) {
+        mudou |= conducao.escreveu(e, kk, antes, ficou);
+        ecos.push((e, kk, v, ficou));
+    }
+    if let Some(foto) = foto
+        && conducao
+            .campos()
+            .any(|(c, kk)| c == e && f::e_do_ponto(kk.campo))
+    {
+        conducao.1.entry(e).or_insert(foto);
+    }
+    mudou
+}
+
 /// **A condução dos corpos pela curva** — guarda o valor AUTORADO de cada campo que a curva está a
 /// mover, para que o undo e o save o fotografem em vez do instante da reprodução. O livro e a lei
 /// de esquecer são os de [`ConducaoDosCanais`].
 /// O traço do «Outline» é DERIVADO do pedido: a fotografia vê também o par AUTORADO
 /// (`Collider`, `ColliderOutline`) da forma cujo pedido a curva move.
 #[derive(Debug, Default, Clone, PartialEq)]
-pub struct ConducaoFisica(ConducaoDosCanais, BTreeMap<u64, Contorno>);
+pub struct ConducaoFisica(ConducaoDosCanais, BTreeMap<u64, Contorno>, f64);
 
 type Contorno = (Collider, ColliderOutline);
 
@@ -361,10 +388,7 @@ type Contorno = (Collider, ColliderOutline);
 pub struct VivoFisica(Vec<(u64, FieldKey, f32)>, Vec<(u64, Contorno)>);
 
 const fn do_contorno(campo: u16) -> bool {
-    matches!(
-        campo,
-        f::CONTORNO_DETALHE | f::CONTORNO_ALFA | f::CONTORNO_MANCHAS
-    )
+    matches!(campo, f::CONTORNO_DETALHE..=f::CONTORNO_PONTO_Y)
 }
 
 fn contorno(sim: &SimWorld, bits: u64) -> Option<Contorno> {
@@ -397,6 +421,11 @@ impl std::ops::DerefMut for ConducaoFisica {
 }
 
 impl ConducaoFisica {
+    /// O instante do clip activo neste quadro (a guarda dos pontos amostra a chave anterior nele).
+    pub fn no_tempo(&mut self, t: f64) {
+        self.2 = t;
+    }
+
     /// Esquece quem não foi conduzido neste quadro, e o contorno de quem deixou de o ser.
     pub fn settle(&mut self) {
         self.0.settle();

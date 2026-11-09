@@ -1,42 +1,5 @@
 //! **A cena 111 — O PARAPEITO** (`W-Ledge`), a beirada.
-//!
-//! Duas raias IDÊNTICAS, dois personagens IDÊNTICOS, e a única diferença entre
-//! eles é um número: o alcance do braço. O da esquerda tem **zero** (o mundo de
-//! antes desta wave), o da direita tem **0,60 m**.
-//!
-//! # ⚠️ O teclado dirige os DOIS ao mesmo tempo, e é isso que faz a cena
-//!
-//! `hand_input_to_players` entrega a entrada a **todo** `PlatformPlayer` da
-//! cena, então um único gesto do artista move os dois lado a lado — o controle
-//! está **dentro do quadro**, e não numa segunda corrida.
-//!
-//! # ⚠️ As alturas são MEDIDAS, e a do meio é a que faz a cena
-//!
-//! `measure_the_reachable_height` (a sonda da wave anterior), aperto SEGURADO:
-//! um pulo alcança **1,903 m**. Daí:
-//!
-//! | patamar | topo | quem chega |
-//! |---|---|---|
-//! | o BAIXO | **1,0 m** | os dois, a pular — é o controlo |
-//! | o ALTO | **2,4 m** | ninguém, a pular; só quem agarra a beirada |
-//!
-//! ⚠️ **E o número que de facto decide a cena é OUTRO, medido aqui:** pular
-//! **colado à parede** — que é o gesto do passo 3 — alcança **0,745 m**, contra
-//! os 1,903 do ar livre. O atrito contra a face come **61%** da subida
-//! (`measure_what_a_jump_against_the_wall_reaches`), e o topo do corpo pica em
-//! **2,145 m**. A primeira versão desta cena pôs o patamar alto em 2,60 usando o
-//! número do ar livre, e o corpo **nunca chegava à janela**.
-//!
-//! Com o lábio em 2,40 e o braço em 0,60 a janela é `[1,80 · 2,40)`, e o corpo
-//! atravessa-a de 1,80 a 2,145 — perto do ápice, onde ele é lento. E 2,40 fica
-//! acima de **2,303**, que é onde os PÉS chegam num pulo de ar livre perfeito:
-//! ninguém pousa nele sem agarrar.
-//!
-//! # ⚠️ E os dois patamares têm PAREDE, porque uma beirada é uma quina
-//!
-//! Um bloco que nasce do chão dá as duas metades de uma vez: a face vertical por
-//! onde se sobe e o topo em que se pousa. Um patamar a pairar teria um lábio de
-//! cada lado e o gesto deixaria de ser o que a cena quer mostrar.
+//! O porquê (o cabeçalho inteiro, verbatim): [docs/Physics/CABECALHOS_DAS_CENAS_DE_SMOKE.md](../../../docs/Physics/CABECALHOS_DAS_CENAS_DE_SMOKE.md).
 
 use ph2d_core::Vec2;
 use ph2d_ecs::{Entity, Name};

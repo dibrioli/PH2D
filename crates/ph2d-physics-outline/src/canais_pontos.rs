@@ -6,6 +6,7 @@ use ph2d_ecs::FieldKey;
 use ph2d_ecs::canal::familia::FISICA;
 use ph2d_ecs::canal_fisica as f;
 use ph2d_physics_ecs::{ColliderOutline, OutlineRing as Ring};
+use ph2d_timeline::{PropKind, TimelineDoc};
 
 fn chave(campo: u16, i: usize, j: usize) -> Option<FieldKey> {
     Some(FieldKey::new(
@@ -84,4 +85,71 @@ pub fn escritos(
         novos = sobre(rings, chave);
     }
     (novos != rings && valido(&novos)).then_some(novos)
+}
+
+/// ⭐ **Aplica a `e` os pontos que a curva mandou** (`lote`, a guarda de [`escritos`]); devolve, por canal,
+/// `(kk, escrito, antes, ficou)` — o eco e a condução de quem chama.
+pub fn aplicar(
+    world: &mut ph2d_ecs::World,
+    e: u64,
+    lote: &[(u64, FieldKey, f32)],
+    anterior: impl Fn(FieldKey) -> Option<f32>,
+) -> Vec<(FieldKey, f32, f32, f32)> {
+    let Some(o) = ph2d_ecs::Entity::try_from_bits(e).and_then(|x| world.get::<ColliderOutline>(x))
+    else {
+        return Vec::new();
+    };
+    let antes = o.rings.to_vec();
+    let kv: Vec<(FieldKey, f32)> = lote.iter().map(|&(_, kk, v)| (kk, v)).collect();
+    let novos = escritos(&antes, &kv, anterior);
+    let agora = novos.clone().unwrap_or_else(|| antes.clone());
+    if let Some(r) = novos {
+        ph2d_shape_handles::pontos::escreve(world, e, r, true);
+    }
+    kv.iter()
+        .filter_map(|&(kk, v)| Some((kk, v, valor(&antes, kk)?, valor(&agora, kk)?)))
+        .collect()
+}
+
+/// O valor de `kk` de `e` na chave ANTERIOR a `t` (as trilhas de uma forma têm as chaves nos mesmos tempos).
+#[must_use]
+pub fn na_chave_anterior(doc: &TimelineDoc, e: u64, kk: FieldKey, t: f64) -> Option<f32> {
+    let tr = doc
+        .active_clip()
+        .track(doc.binding_for(e, PropKind::Field(kk))?.target)?;
+    let s = tr
+        .keys()
+        .iter()
+        .map(|c| c.t.to_seconds())
+        .filter(|&s| s <= t)
+        .reduce(f64::max)?;
+    match ph2d_anim::AttributeEvaluator::sample(tr, s) {
+        ph2d_anim::AnimValue::Float(x) => Some(x),
+        _ => None,
+    }
+}
+
+fn ponto(kk: &FieldKey) -> bool {
+    kk.familia == FISICA && f::e_do_ponto(kk.campo)
+}
+
+/// `true` ⇒ `e` publicava pontos e já não publica nenhum: voltou ao traçado (o Fit).
+#[must_use]
+pub fn e_fit(antes: &std::collections::BTreeMap<FieldKey, f32>, agora: &[(FieldKey, f32)]) -> bool {
+    antes.keys().any(ponto) && !agora.iter().any(|(kk, _)| ponto(kk))
+}
+
+/// ⭐ **O Fit apaga a trilha dos pontos**: `e` publicava pontos (`antes`) e já não (`agora`: voltou ao
+/// traçado); a topologia do Auto Key chama-a no passo de undo dela. `true` se apagou.
+pub fn apagar_do_fit(
+    doc: &mut TimelineDoc,
+    e: u64,
+    antes: &std::collections::BTreeMap<FieldKey, f32>,
+    agora: &[(FieldKey, f32)],
+) -> bool {
+    if !e_fit(antes, agora) {
+        return false;
+    }
+    let props = antes.keys().filter(|kk| ponto(kk));
+    props.fold(false, |n, &kk| doc.unbind(e, PropKind::Field(kk)) | n)
 }

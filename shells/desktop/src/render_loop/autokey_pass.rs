@@ -107,7 +107,8 @@ pub(crate) fn propagar_topologia(timeline: &mut TimelineState, ak: &AutokeyState
         let Some(antes) = ak.base_campos.get(&e) else {
             continue;
         };
-        if !ph2d_app_vec::canais_topologia::mudou(antes, agora) {
+        let fit = ph2d_physics_outline::canais_pontos::e_fit(antes, agora);
+        if !fit && !ph2d_app_vec::canais_topologia::mudou(antes, agora) {
             continue;
         }
         // Um gesto já aberto (um arrasto) leva a propagação no passo dele.
@@ -115,6 +116,7 @@ pub(crate) fn propagar_topologia(timeline: &mut TimelineState, ak: &AutokeyState
         if proprio {
             timeline.history.begin(&timeline.doc);
         }
+        ph2d_physics_outline::canais_pontos::apagar_do_fit(&mut timeline.doc, e, antes, agora);
         ph2d_app_vec::canais_topologia::propagar(&mut timeline.doc, e, antes, agora);
         if proprio {
             let doc = timeline.doc.clone();

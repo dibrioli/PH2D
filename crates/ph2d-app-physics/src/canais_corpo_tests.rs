@@ -31,8 +31,13 @@ fn todo_campo_tem_controlo_leitura_e_nome() {
     let mut nomes = BTreeSet::new();
     let mut grupos = BTreeSet::new();
     for campo in f::CAMPOS {
-        assert!(porta(campo).is_some(), "campo {campo} sem controlo");
-        assert!(ler(&info, campo).is_some(), "campo {campo} sem leitura");
+        // Os pontos do «Outline» editam-se no canvas: `ph2d_physics_outline::canais_pontos`.
+        if !f::e_do_ponto(campo) {
+            assert!(
+                porta(campo).is_some() && ler(&info, campo).is_some(),
+                "campo {campo}"
+            );
+        }
         let kk = k(campo);
         if grupos.insert(kk.grupo()) {
             let rotulo = kk.info().expect("info").rotulo;
@@ -172,7 +177,7 @@ fn a_curva_chega_ao_corpo_e_nao_a_fotografia() {
         w.escrever(b, k(f::TIPO), 2.0);
     }
     let mut conducao = ConducaoFisica::default();
-    assert!(aplicar(&mut sim, &reg, &mut conducao));
+    assert!(aplicar(&mut sim, &reg, &mut conducao, &Default::default()));
     assert_eq!(
         sim.world().get::<RigidBody>(e).unwrap().kind,
         BodyKind::Kinematic
@@ -217,7 +222,7 @@ fn a_tocar_um_quadro_sem_avanco_nao_vira_documento() {
         sim.world_mut()
             .get_resource_or_insert_with(CanaisEscritos::default)
             .escrever(b, k(f::TIPO), 2.0);
-        aplicar(&mut sim, &reg, &mut conducao);
+        aplicar(&mut sim, &reg, &mut conducao, &Default::default());
         conducao.settle();
     }
     let vivo = conducao.substituir(&mut sim, &reg);
@@ -256,7 +261,7 @@ fn a_curva_da_gravidade_chega_ao_solver_em_repouso() {
                 .get_resource_or_insert_with(CanaisEscritos::default)
                 .escrever(e.to_bits(), k(f::ESCALA_GRAVIDADE), 0.0);
         }
-        aplicar(&mut sim, &reg, &mut conducao);
+        aplicar(&mut sim, &reg, &mut conducao, &Default::default());
         let mut bridge = PhysicsBridge::default();
         for t in 1..=30 {
             bridge.dispatch(&mut sim, true, t);
@@ -309,7 +314,7 @@ fn a_chave_da_forma_no_corpo_vai_para_a_filha() {
         sim.world_mut()
             .get_resource_or_insert_with(CanaisEscritos::default)
             .escrever(alvo, k(campo), v);
-        aplicar(&mut sim, &reg, &mut ConducaoFisica::default());
+        aplicar(&mut sim, &reg, &mut Default::default(), &Default::default());
         let c = *sim
             .world()
             .get::<Collider>(filha)

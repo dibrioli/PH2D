@@ -1,46 +1,6 @@
 //! **A cena 107 — A PEDRA ESTREITA** (`W-ShapeCast`), irmã de
 //! `physics_smoke_player_crouch.rs`.
-//!
-//! Uma fileira de pedras de **8 cm** penduradas à altura da cabeça, e uma laje
-//! larga no fim como CONTROLE. O gesto que a cena existe para julgar é
-//! **soltar o agachar debaixo de uma pedra estreita** — e a resposta tem de ser
-//! a mesma que debaixo da laje: ele fica agachado.
-//!
-//! # ⚠️ Por que ESTREITA, e por que várias
-//!
-//! O sensor do agachar lia o teto com **três raios** nascidos em
-//! `−0,20 · 0,00 · +0,20` do centro do corpo — a caixa envolvente mede
-//! exactamente 0,20 de meia-largura. Uma pedra de 8 cm cabe **inteira** no vão
-//! entre duas dessas amostras, e o preço estava medido: a cabeça subia a
-//! **1,267** contra uma face de pedra em **1,25**, com o solver a segurá-la lá
-//! dentro.
-//!
-//! São várias e em posições diferentes porque a grade acompanhava o CORPO: o vão
-//! cego movia-se com o personagem, então uma pedra só teria uma janela de `x` em
-//! que o defeito aparecia. Com a varredura de corpo **nenhuma** delas deixa
-//! passar, e é isso que a fileira torna visível de uma vez.
-//!
-//! # ⚠️ As alturas são ARITMÉTICA da cápsula
-//!
-//! | pose | centro | topo |
-//! |---|---|---|
-//! | de pé | 0,90 | **1,40** |
-//! | agachado | 0,55 | **1,05** |
-//!
-//! A face de baixo das pedras fica em **1,20** — entre os dois, os mesmos
-//! 0,15 m de folga para cada lado que o corredor da cena 94 usa. Mais alta e ele
-//! passaria de pé (a cena mostraria uma capacidade que não é esta); mais baixa e
-//! nem agachado caberia.
-//!
-//! # ⚠️ O que esta cena NÃO mostra, e porquê
-//!
-//! A varredura devolveu uma segunda coisa: a **quina da caixa** deixou de ser um
-//! teto (a cápsula ali alcança menos que a caixa dela), o que vale **18 cm** de
-//! altura de teto medidos. Isso **não é julgável de olho** — não há
-//! contrafactual na tela, o artista veria apenas um personagem a levantar-se
-//! normalmente. Fica **gateado** (`the_capsule_corner_is_no_longer_a_ceiling`) em
-//! vez de encenado, porque uma estação que não se pode julgar é uma que se
-//! aprova por cansaço.
+//! O porquê (o cabeçalho inteiro, verbatim): [docs/Physics/CABECALHOS_DAS_CENAS_DE_SMOKE.md](../../../docs/Physics/CABECALHOS_DAS_CENAS_DE_SMOKE.md).
 
 use ph2d_core::Vec2;
 use ph2d_ecs::Transform;

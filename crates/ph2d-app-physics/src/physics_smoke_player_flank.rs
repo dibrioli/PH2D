@@ -1,41 +1,6 @@
 //! **A cena 98 — A PAREDE COM JANELAS** (W13, o flanco), irmã de
 //! `physics_smoke_player_wall.rs`.
-//!
-//! O poço da cena 92 provou o ziguezague contra paredes **lisas**. Esta troca uma
-//! delas por uma parede com **janelas** — e é exatamente essa geometria que o
-//! sensor lateral não enxergava.
-//!
-//! # ⚠️ A janela mede 0,8 m, e o número não é decorativo
-//!
-//! O corpo do personagem mede **1,0 m** de caixa envolvente (cápsula
-//! `half_height 0,3` + `radius 0,2`). Uma janela de 0,8 m deixa **10 cm de pé E
-//! 10 cm de ombro** encostados na pedra — o jogador vê um personagem colado à
-//! parede. O sensor lia só a **cintura**, que é justamente o que atravessa o
-//! vazio, então a lei respondia *"não há parede aqui"*.
-//!
-//! **Medido** (`ph2d-physics-ecs/tests/it/measure_wall_flank.rs`), com a janela na
-//! altura da cintura:
-//!
-//! | janela | pulo de parede |
-//! |---|---|
-//! | parede lisa | **2,162 m** |
-//! | 0,60 m | 1,997 m (o *buffer* do pulo mascarava) |
-//! | 0,70 m | 2,292 m (idem) |
-//! | **0,75 m** | **0,000 m** — recusado por inteiro |
-//! | **0,80 m** | **0,000 m** |
-//! | 0,90 m | 0,000 m |
-//!
-//! ⚠️ **Abaixo de ~0,70 m o defeito era INVISÍVEL**, e não por acaso: o buffer do
-//! pulo guarda o aperto até o bloco de baixo reaparecer. Uma cena com janelas
-//! pequenas mostraria tudo a funcionar sobre um sensor cego — por isso as desta
-//! aqui têm 0,8.
-//!
-//! # ⚠️ E o ESCORREGAMENTO quase não denuncia — o oráculo é o PULO
-//!
-//! Passar pela janela custa uns centímetros de descida a mais (0,0500 →
-//! 0,0632 m/tique medidos), porque a *cola* que o `platform_wall` documenta
-//! segura o personagem de qualquer jeito. O pulo não tem cola: ou a lei vê
-//! parede naquele tique, ou o botão não faz nada.
+//! O porquê (o cabeçalho inteiro, verbatim): [docs/Physics/CABECALHOS_DAS_CENAS_DE_SMOKE.md](../../../docs/Physics/CABECALHOS_DAS_CENAS_DE_SMOKE.md).
 
 use ph2d_core::Vec2;
 use ph2d_ecs::Transform;

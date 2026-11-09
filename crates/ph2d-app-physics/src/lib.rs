@@ -270,7 +270,7 @@ pub fn aplicar_canais(
     ),
 ) {
     canais_junta::aplicar(sim, drive, doc);
-    canais_corpo::aplicar(sim, registry, &mut estado.conducao);
+    canais_corpo::aplicar(sim, registry, &mut estado.conducao, doc);
     canais_mundo::aplicar(sim, ponte, &mut estado.mundo);
 }
 pub mod joint;

@@ -166,7 +166,7 @@ passo de undo); o cartão diz quando o tecto subiu o Detail (W4).
 - ⚠️ **Tecto de LOC:** `ph2d-app-physics` está 64 linhas ACIMA (55 579 > 55 515, `crates/ph2d-editor-core/tests/it/architecture_the_shell_only_shrinks.rs:221`)
   por commits anteriores desta linha. Cura = MOVER para crate não-`app` antes de W4 (que acrescenta lá).
 
-## Auto Key dos pontos do Outline — desenho (FEITO 09/11, salvo o gate de undo pela shell — ver «Fase 2»)
+## Auto Key dos pontos do Outline — desenho (FEITO 09/11)
 
 Lei do dono (19–20/10, `project-memory/project_autokey_records_everything_2026_10_19.md`): o Auto Key grava TUDO, pontos
 incluídos; mexer um ponto grava a FORMA INTEIRA numa chave; acrescentar/apagar ponto vale em TODAS as chaves (chave por
@@ -220,7 +220,7 @@ em N campos; as duas crates já dependiam da timeline, sem ciclo) — UMA funç�
 alinhados, em cada chave; trilhas órfãs purgadas; o Fit dentro); a shell só troca a chamada (+0). Gate
 `acrescentar_e_apagar_um_ponto_vale_nas_duas_chaves` (mutações: só a 1.ª chave · sem a posição alinhada).
 `c263478e25`: `a_forma_outline_atravessa_o_arquivo` leva `custom` e a trilha 51/52 pelo `read_project_file` (mutação:
-`#[serde(skip)]` no `custom`). ⛔ **ABERTO: o gate de undo pela shell** (arrastar = um Ctrl+Z tira ponto e chave;
-acrescentar com 2 chaves = um passo; Fit = um passo) — escrito, verde, mutações vermelhas (sem `canais_pontos::propagar`;
-sem `liga_gesto_da_cena`), mas ~200 linhas e a shell tem 24 de folga: espera MOVER código da shell (HOWTO §2; o
-`morph_set_tests` e o `padding_bridge` têm armadilhas — irmão `world_tests`, censo textual de `panel_visibility`).
+`#[serde(skip)]` no `custom`). `983c9864bc`: o undo pela shell (`render_loop/autokey_pontos_tests.rs`: o passe do quadro, `push_linked` +
+`liga_gesto_da_cena`, o Ctrl+Z de `apply_undo`) — `arrastar_um_ponto_com_auto_key_e_um_ctrl_z`,
+`acrescentar_um_ponto_com_duas_chaves_e_o_fit_sao_um_ctrl_z_cada` (mutações: a shell sem `canais_pontos::propagar` · sem
+a ligação do passo à chave). Espaço: os render-and-look `wet_*_look_probe` mudaram para `ph2d-tool-painter/tests/it`.

@@ -221,12 +221,14 @@ Cada agente: 45 min, escreve o relatório na §12 deste plano, testes por nome, 
 | Linter com IA ou heurística sem fixture | cada regra tem a sua célula conhecida e o zero-falsos na DB32 |
 | CRT gravada no ficheiro | é vista, não documento |
 
-## 11. Decisões pedidas ao dono (09/11)
+## 11. Decisões do dono (09/11 — respondidas)
 
-1. **Tween:** gerar quadros de verdade que se retocam (recomendado) × movimento vivo.
-2. **Áudio:** várias faixas de som por sprite (recomendado, como camadas) × um som só.
-3. **CRT:** na prévia e também na janela do jogo (recomendado) × só na prévia.
-4. **Instalar oráculos** (licença conferida depois por `pacman -Qi`/`pip show`): coloraide (pip, MIT), pngquant (pacman), GrafX2 e RetroArch (pacman, só para olhar).
+1. **Tween: quadros de verdade que se retocam** (não movimento vivo).
+2. **Áudio: várias faixas de som por sprite**, como camadas ⇒ `Sprite.audio: Vec<FaixaDeAudio>` (já é o desenho da §4).
+3. **CRT: na prévia E na janela do jogo** ⇒ a lei `crt` é uma só; o passe do jogo é um leitor a mais (a janela do jogo é da shell: composição, nunca a família a depender da shell).
+4. **Oráculos: «todos que vc achar importante»** + pasta `~/Área de trabalho/Apps de Pixel` com os atalhos dos apps de pixel instalados (feita: Aseprite Trial, LibreSprite, Pixelorama, GIMP).
+   - **coloraide 8.14.1** instalado num venv próprio `~/.local/opt/oraculos-py` (`pip show`: `License-Expression: MIT`). Correr: `~/.local/opt/oraculos-py/bin/python3 -I script.py`.
+   - **pngquant, GrafX2, RetroArch** pedem `sudo` (senha do dono): `sudo pacman -S --needed pngquant grafx2 retroarch`. Depois: `pacman -Qi` em cada um e o atalho do GrafX2 entra na pasta.
 
 Decididos tecnicamente (delegados): color cycling só no modo Indexed; «Light: Palette» desligado por omissão; Shading passa a andar na rampa do documento.
 

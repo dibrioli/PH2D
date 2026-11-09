@@ -6169,7 +6169,6 @@ version = "0.0.0"
 dependencies = [
  "bumpalo",
  "ph2d-app-host",
- "ph2d-app-light2d",
  "ph2d-component-desc",
  "ph2d-ecs",
  "ph2d-editor-core",
@@ -7785,7 +7784,10 @@ dependencies = [
 name = "ph2d-host-pixel-scenes"
 version = "0.0.0"
 dependencies = [
+ "bevy_ecs",
+ "half",
  "ph2d-app-host",
+ "ph2d-app-light2d",
  "ph2d-app-pixel",
  "ph2d-component-desc",
  "ph2d-ecs",
@@ -7794,6 +7796,8 @@ dependencies = [
  "ph2d-host",
  "ph2d-i18n",
  "ph2d-imageio-png",
+ "ph2d-light2d-ecs",
+ "ph2d-light2d-gpu",
  "ph2d-panel-pixel-export",
  "ph2d-panel-pixel-history",
  "ph2d-panel-pixel-keys",
@@ -7802,10 +7806,12 @@ dependencies = [
  "ph2d-panel-pixel-tiles",
  "ph2d-panel-pixel-tools",
  "ph2d-pen",
+ "ph2d-pixel-cena",
  "ph2d-pixel-cenas",
  "ph2d-pixel-core",
  "ph2d-pixel-io",
  "ph2d-pixel-keys",
+ "ph2d-pixel-luz",
  "ph2d-pixel-render",
  "ph2d-pixel-slices",
  "ph2d-pixel-text",
@@ -7817,6 +7823,8 @@ dependencies = [
  "ph2d-vec-scene",
  "ph2d-vector",
  "serde_json",
+ "vello",
+ "wgpu",
  "winit",
 ]
 
@@ -10909,20 +10917,13 @@ dependencies = [
 name = "ph2d-pixel-luz"
 version = "0.0.0"
 dependencies = [
- "bevy_ecs",
- "half",
- "ph2d-app-light2d",
  "ph2d-ecs",
  "ph2d-gpu",
- "ph2d-host",
- "ph2d-light2d-ecs",
  "ph2d-light2d-gpu",
  "ph2d-pixel-cena",
  "ph2d-pixel-core",
  "ph2d-pixel-render",
- "ph2d-render",
  "ph2d-vector",
- "vello",
  "wgpu",
 ]
 

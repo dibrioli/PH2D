@@ -46,9 +46,11 @@ fn o_pixel_sprite_aparece_no_palco_do_jogo() {
     );
     let inteiro = &doc[doc.find("fn inteiro(").expect("o `inteiro`")..];
     let inteiro = &inteiro[..inteiro.find("\n    }").expect("fecha")];
+    // Sem espaços: o `rustfmt` parte a cadeia em linhas e o elo continua o mesmo.
+    let compacto: String = inteiro.split_whitespace().collect();
     assert!(
-        inteiro.contains("self.palco.then(|| self.order.pixel_ids())")
-            && inteiro.contains("ph2d_app_pixel::draw::art("),
+        compacto.contains("self.palco.then(||self.order.pixel_ids())")
+            && compacto.contains("ph2d_app_pixel::draw::art("),
         "sem faixas, o documento do palco não leva a arte do Pixel:\n{inteiro}"
     );
     assert!(

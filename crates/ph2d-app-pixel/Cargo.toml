@@ -63,7 +63,6 @@ ph2d-panel-pixel-history = { path = "../ph2d-panel-pixel-history" }
 bumpalo = "3"
 # P14c-pixel 2: o Pixel Sprite na luz 2D (a banda normal por faixa, a oclusão).
 ph2d-pixel-luz = { path = "../ph2d-pixel-luz" }
-ph2d-app-light2d = { path = "../ph2d-app-light2d" }
 # O diálogo de ficheiro do Load/Save Palette (pela porta `ph2d_app_host::modal`).
 rfd = "0.17"
 

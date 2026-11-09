@@ -50,6 +50,17 @@ ph2d-tokens = { path = "../../crates/ph2d-tokens" }
 ph2d-tool-vector = { path = "../../crates/ph2d-tool-vector" }
 ph2d-vec-scene = { path = "../../crates/ph2d-vec-scene" }
 ph2d-vector = { path = "../../crates/ph2d-vector" }
+# ⭐ P14c-pixel 2 — o Pixel Sprite na luz, pela placa (`pixel_na_luz.rs`): a família da luz e a do Pixel
+# juntas só na composição (`architecture_no_dependency_climbs_a_layer`); o arnês é o `comum.rs` da luz.
+ph2d-app-light2d = { path = "../../crates/ph2d-app-light2d" }
+ph2d-light2d-ecs = { path = "../../crates/ph2d-light2d-ecs" }
+ph2d-light2d-gpu = { path = "../../crates/ph2d-light2d-gpu" }
+ph2d-pixel-cena = { path = "../../crates/ph2d-pixel-cena" }
+ph2d-pixel-luz = { path = "../../crates/ph2d-pixel-luz" }
+bevy_ecs = "0.20"
+half = "2"
+vello = "0.11.0"
+wgpu = "30.0.1"
 serde_json = "1"
 winit = "0.30"
 

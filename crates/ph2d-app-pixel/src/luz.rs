@@ -38,20 +38,18 @@ pub fn objetos<'a>(
         .collect()
 }
 
-/// ⭐ A banda normal da próxima faixa, ao lado da cena dela (UMA chamada por faixa, na ordem das
-/// cenas): `ids` = os Pixel Sprites de uma faixa Pixel (`None` noutra família); `sem_luz` = `None`
-/// com a luz apagada ([`ph2d_app_light2d::LuzDoQuadro::normais_do_quadro`]).
+/// ⭐ A banda normal de uma faixa Pixel (`ids` = os Pixel Sprites dela); `sem_luz` = `None` com a luz
+/// apagada. A composição a põe nas normais da luz, ao lado da cena da faixa (família não vê família).
+#[must_use]
 pub fn faixa_normal(
     app: &PixelApp,
     world: &ph2d_ecs::World,
     (cam, ppm): (Affine, f32),
-    ids: Option<&[u64]>,
-    (normais, sem_luz): (&mut ph2d_app_light2d::NormaisDasFaixas, Option<&[Entity]>),
-) {
-    let banda = ids.zip(sem_luz).and_then(|(ids, sem)| {
-        ph2d_pixel_luz::banda_normal(&objetos(app, world, ppm, ids, sem), cam)
-    });
-    normais.cenas.push(banda);
+    ids: &[u64],
+    sem_luz: Option<&[Entity]>,
+) -> Option<ph2d_vector::VectorScene> {
+    let sem = sem_luz?;
+    ph2d_pixel_luz::banda_normal(&objetos(app, world, ppm, ids, sem), cam)
 }
 
 /// A camada de oclusão de TODOS os Pixel Sprites (a luz pede os que bloqueiam, por `quem`).

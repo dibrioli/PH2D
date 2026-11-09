@@ -12,6 +12,12 @@ mod cena19;
 mod cena25;
 mod comando;
 mod comum;
+#[allow(
+    dead_code,
+    reason = "arnês partilhado com ph2d-app-light2d: só a cadeia do quadro é usada aqui"
+)]
+#[path = "../../../../crates/ph2d-app-light2d/tests/it/comum.rs"]
+mod comum_luz;
 mod conta_gotas;
 mod convolucao;
 mod degrade;
@@ -29,6 +35,7 @@ mod palco_do_jogo;
 mod paleta;
 mod pincel;
 mod pivo;
+mod pixel_na_luz;
 mod pontas;
 mod preview;
 mod quadros;

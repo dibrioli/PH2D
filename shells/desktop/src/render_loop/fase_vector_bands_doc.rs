@@ -45,16 +45,10 @@ impl DocDasFaixas<'_> {
             if band.family == Family::Pixel {
                 let ids = self.order.pixel_ids_in(*band);
                 ph2d_app_pixel::draw::art(pixel, w, cam, ppm, ed, &ids, editor, &mut target);
-                let luz = (&mut *normais, sem_luz);
-                ph2d_app_pixel::luz::faixa_normal(pixel, w, (cam, ppm), Some(&ids), luz);
+                let banda = ph2d_app_pixel::luz::faixa_normal(pixel, w, (cam, ppm), &ids, sem_luz);
+                normais.cenas.push(banda);
             } else {
-                ph2d_app_pixel::luz::faixa_normal(
-                    pixel,
-                    w,
-                    (cam, ppm),
-                    None,
-                    (&mut *normais, None),
-                );
+                normais.cenas.push(None);
                 let keep = self.order.vector_ids_in(*band);
                 let mut band_view = self.view.clone();
                 for path in self.scene.paths() {

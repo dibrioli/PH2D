@@ -22,14 +22,7 @@ wgpu = "30.0.1"
 
 [dev-dependencies]
 ph2d-pixel-cena = { path = "../ph2d-pixel-cena" }
-# Os gates de placa (tests/it): a luz do quadro e a cadeia da colagem, como no editor.
-ph2d-app-light2d = { path = "../ph2d-app-light2d" }
-ph2d-light2d-ecs = { path = "../ph2d-light2d-ecs" }
-ph2d-render = { path = "../ph2d-render" }
-ph2d-host = { path = "../ph2d-host" }
-bevy_ecs = "0.20"
-half = "2"
-vello = "0.11.0"
+# Os gates de PLACA (a luz do quadro inteira) moram na composição: `shells/pixel-scenes/tests/it/pixel_na_luz.rs`.
 
 [lints]
 workspace = true

@@ -12,7 +12,7 @@ use ph2d_pixel_core::Sprite;
 use ph2d_pixel_luz::{ObjetoPixel, OclusaoDoPixel, banda_normal, base_da_instancia};
 use ph2d_vector::{ImageQuality, StableImage, VectorScene};
 
-use crate::cadeia::{Cadeia, FUNDO, H, W, afim, gpu, ler, ler_bgra};
+use crate::comum_luz::{Cadeia, FUNDO, H, W, afim, gpu, ler, ler_bgra};
 
 /// 16 px/m: a célula do sprite = 1 px da janela de `comum` (16 px/m).
 const PPM: f64 = 16.0;
@@ -191,12 +191,12 @@ fn o_pixel_sprite_faz_sombra() {
     let c = Cadeia::nova(&gpu);
     let mut l = LuzDoQuadro::com_degrau(DEGRAU_PADRAO);
     assentar(&gpu, &c, &mut l, &w, &objetos, false);
-    let sem = crate::cadeia::fluencia_lida(&gpu, l.solver().unwrap());
+    let sem = crate::comum_luz::fluencia_lida(&gpu, l.solver().unwrap());
     assentar(&gpu, &c, &mut l, &w, &objetos, true);
-    let com = crate::cadeia::fluencia_lida(&gpu, l.solver().unwrap());
+    let com = crate::comum_luz::fluencia_lida(&gpu, l.solver().unwrap());
     let (atras, frente) = ([0.85, 0.0], [-0.85, 0.0]);
-    let (a0, a1) = (sem.amostra(atras), com.amostra(atras));
-    let (f0, f1) = (sem.amostra(frente), com.amostra(frente));
+    let (a0, a1) = (sem.amostra_canal(atras, 0), com.amostra_canal(atras, 0));
+    let (f0, f1) = (sem.amostra_canal(frente, 0), com.amostra_canal(frente, 0));
     eprintln!(
         "sombra do Pixel: atrás {a1:.4} (sem a família {a0:.4}, × {:.3}) · à frente {f1:.4} (sem {f0:.4})",
         a1 / a0

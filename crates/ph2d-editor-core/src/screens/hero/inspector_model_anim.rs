@@ -144,6 +144,8 @@ pub struct InspectorAnimInfo {
     pub selected_count: usize,
     /// O cartão «Animation» e o editor (plano GameEngineFuncional 07).
     pub card: super::AnimCardInfo,
+    /// Os clips vêm das tags de outro documento (o Pixel Sprite, P14 §4 A); aqui só se escolhe o que toca.
+    pub clips_do_documento: bool,
 }
 
 impl InspectorAnimInfo {
@@ -498,6 +500,7 @@ mod tests {
             sheets: vec![cells],
             selected_count: 1,
             card: crate::AnimCardInfo::default(),
+            clips_do_documento: false,
         }
     }
 

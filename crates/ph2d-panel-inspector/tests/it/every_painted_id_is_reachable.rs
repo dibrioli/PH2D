@@ -236,6 +236,7 @@ pub(crate) fn publish_the_whole_sprite_scene() {
         sheets: vec![8],
         selected_count: 1,
         card: Default::default(),
+        clips_do_documento: false,
     }));
     set_current_inspector_blend(Some(InspectorBlendInfo {
         entity_bits: ENTITY,

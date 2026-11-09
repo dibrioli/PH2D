@@ -6339,6 +6339,8 @@ dependencies = [
  "ph2d-image-import",
  "ph2d-inspector-ordering",
  "ph2d-physics-ecs",
+ "ph2d-pixel-cena",
+ "ph2d-pixel-core",
  "ph2d-preview-drive",
  "ph2d-render",
  "ph2d-sprite-edit",

@@ -96,6 +96,7 @@ pub(crate) fn anim(playing: bool, autoplay: bool) -> InspectorAnimInfo {
         sheets: vec![8],
         selected_count: 1,
         card: Default::default(),
+        clips_do_documento: false,
     }
 }
 

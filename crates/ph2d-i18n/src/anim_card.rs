@@ -108,6 +108,9 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "panel.inspector.anim_card.cycle_once" => "Once",
         "panel.inspector.anim_card.cycle_ping_pong" => "Ping-pong",
         "panel.inspector.anim_card.own_times" => "\u{2022} some frames have their own time",
+        "panel.inspector.anim_card.tags_in_pixel" => {
+            "Edit the tags in the Pixel Sprite (Draw mode)."
+        }
         "panel.inspector.anim_card.repeat_count" => "Repeat count",
         "panel.inspector.anim_card.advanced" => "Advanced",
         "panel.inspector.anim_card.more" => "More",

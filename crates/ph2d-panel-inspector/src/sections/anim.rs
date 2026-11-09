@@ -467,6 +467,23 @@ pub(crate) fn paint_anim_section(
         selected,
         None,
     );
+    if info.clips_do_documento {
+        cur_y = super::anim_cartao::ajuda_das_tags(scene, text_system, theme, x, w, cur_y);
+        let sec = super::anim_rows::seccao_da_animacao(text_system);
+        cur_y = super::anim_card::paint_chooser(
+            scene,
+            text_system,
+            theme,
+            hit_index,
+            store,
+            x,
+            w,
+            cur_y,
+            info,
+            sec,
+        );
+        return fold.finish(store, scene, hit_index, cur_y + SECTION_BOTTOM_PAD_PX);
+    }
     cur_y = super::anim_rows::paint_add_remove(
         scene,
         text_system,

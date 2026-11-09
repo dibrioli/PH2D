@@ -34,11 +34,15 @@ pub(crate) fn proprio<'a>(
         icon,
         on: false,
     };
-    let mut cabecalho = vec![verbo(ids::INSP_ANIM_ADD, IconId::Plus)];
-    if !info.rows.is_empty() {
-        cabecalho.push(verbo(ids::INSP_ANIM_REMOVE, IconId::Minus));
+    // Clips do documento (Pixel Sprite): nada no cabeçalho os edita.
+    let mut cabecalho = Vec::new();
+    if !info.clips_do_documento {
+        cabecalho.push(verbo(ids::INSP_ANIM_ADD, IconId::Plus));
+        if !info.rows.is_empty() {
+            cabecalho.push(verbo(ids::INSP_ANIM_REMOVE, IconId::Minus));
+        }
+        cabecalho.push(verbo(ids::INSP_ANIM_OPEN_EDITOR, IconId::Film));
     }
-    cabecalho.push(verbo(ids::INSP_ANIM_OPEN_EDITOR, IconId::Film));
     // O piso do painel não leva tudo: cede o ↺, depois a contagem. O nome nunca se corta.
     // A barra de rolar, quando há, come o mesmo que a margem da lista (8 px).
     let livre = p.largura - (m::LIST_PAD_X + m::CARD_PAD_X) * 2.0 - m::LIST_PAD_X;
@@ -88,7 +92,7 @@ fn corpo(c: &mut CardCtx<'_>, y: f32, info: &InspectorAnimInfo, a: Abertas) -> f
             selected,
             // Só no cartão do objecto do renomear: o mesmo id pinta em todo cartão Animation à vista.
             a.renomeando()
-                .filter(|(dono, _)| *dono == info.entity_bits)
+                .filter(|(dono, _)| *dono == info.entity_bits && !info.clips_do_documento)
                 .map(|(_, i)| (i, &mut campo_do_nome)),
         )
     });
@@ -96,10 +100,16 @@ fn corpo(c: &mut CardCtx<'_>, y: f32, info: &InspectorAnimInfo, a: Abertas) -> f
     if let Some(r) = campo_do_nome {
         c.text_box(r, ids::INSP_ANIM_NAME, "");
     }
-    let y = crate::cards_sprite_folhas::limpeza(c, y, info);
-    let y = com_corpo(c, y, |t, theme, store, x, w, y| {
-        sections::anim_cartao::resto(t, theme, store, x, w, y, info, selected)
-    });
+    let y = if info.clips_do_documento {
+        com_corpo(c, y, |t, theme, store, x, w, y| {
+            sections::anim_cartao::so_escolha(t, theme, store, x, w, y, info)
+        })
+    } else {
+        let y = crate::cards_sprite_folhas::limpeza(c, y, info);
+        com_corpo(c, y, |t, theme, store, x, w, y| {
+            sections::anim_cartao::resto(t, theme, store, x, w, y, info, selected)
+        })
+    };
     if info.card.chooser == AnimChooser::Me && !info.rows.is_empty() {
         return comeca_com(c, y, info);
     }

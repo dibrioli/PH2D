@@ -119,8 +119,12 @@ pub fn build_anim_info(
     selected_count: usize,
 ) -> Option<InspectorAnimInfo> {
     let entity = Entity::from_bits(entity_bits);
-    // Só uma SPRITE tem animação de frames (o pool é a grelha dela).
-    world.get::<ph2d_render::Sprite>(entity)?;
+    // Só uma SPRITE tem animação de frames (o pool é a grelha dela). O Pixel Sprite também: os clips
+    // e a grelha são DERIVADOS das tags do documento (P14 §4 A) e o cartão só escolhe o que toca.
+    let clips_do_documento = world.get::<ph2d_ecs::PixelSprite>(entity).is_some();
+    if !clips_do_documento {
+        world.get::<ph2d_render::Sprite>(entity)?;
+    }
     // A §11 aparece com QUALQUER dos dois componentes (ADR-0166 F3): a biblioteca ou o tocador.
     if world.get::<SpriteAnimations>(entity).is_none()
         && world.get::<SpriteAnimator>(entity).is_none()
@@ -182,6 +186,7 @@ pub fn build_anim_info(
             }),
         selected_count,
         card: crate::card::build_card_info(world, entity),
+        clips_do_documento,
     })
 }
 
@@ -496,3 +501,7 @@ fn describe(e: ph2d_ecs::AnimTagError) -> String {
 #[cfg(test)]
 #[path = "inspector_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "inspector_pixel_tests.rs"]
+mod pixel_tests;

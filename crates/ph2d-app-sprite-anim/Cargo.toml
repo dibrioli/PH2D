@@ -46,6 +46,9 @@ bevy_ecs = "0.20"
 [dev-dependencies]
 ph2d-a11y = { path = "../ph2d-a11y" }
 ph2d-preview-drive = { path = "../ph2d-preview-drive", features = ["test-support"] }
+# O Pixel Sprite no cartão Animation (P14a-4): a deriva, a fixture e o quadro mostrado.
+ph2d-pixel-cena = { path = "../ph2d-pixel-cena" }
+ph2d-pixel-core = { path = "../ph2d-pixel-core" }
 
 [package.metadata.cargo-machete]
 # O `#[derive(Resource)]` vem por `ph2d_ecs::Resource` e expande para caminhos `bevy_ecs::` — o

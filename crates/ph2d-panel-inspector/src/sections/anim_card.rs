@@ -135,7 +135,11 @@ pub(crate) fn paint_list(
     {
         let play = Rect::new(x + w - ROW_H, cur_y, ROW_H, ROW_H);
         let rect = Rect::new(x, cur_y, w - ROW_H - gap, ROW_H);
-        hit_index.register(row_id, rect);
+        // Clips do documento: a lista é só leitura (nem escolher, nem ▶, nem renomear).
+        let so_leitura = info.clips_do_documento;
+        if !so_leitura {
+            hit_index.register(row_id, rect);
+        }
         ph2d_editor_core::widget::paint_row_stripe(
             scene,
             rect,
@@ -229,17 +233,19 @@ pub(crate) fn paint_list(
         } else {
             (IconId::Play, tr("panel.inspector.anim_card.play"))
         };
-        super::anim::icon_button(
-            scene,
-            text_system,
-            theme,
-            hit_index,
-            store,
-            play,
-            play_id,
-            icon,
-            label,
-        );
+        if !so_leitura {
+            super::anim::icon_button(
+                scene,
+                text_system,
+                theme,
+                hit_index,
+                store,
+                play,
+                play_id,
+                icon,
+                label,
+            );
+        }
         cur_y += ROW_H + ph2d_tokens::list_row_gap_px();
     }
     cur_y + ph2d_tokens::control_gap_px()

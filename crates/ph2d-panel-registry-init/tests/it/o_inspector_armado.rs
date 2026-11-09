@@ -304,6 +304,7 @@ pub fn arma_tudo() {
         sheets: vec![8],
         selected_count: selecionados(),
         card: Default::default(),
+        clips_do_documento: false,
     }));
     insp::set_current_inspector_instance(Some(InspectorInstanceInfo {
         entity_bits: BITS,

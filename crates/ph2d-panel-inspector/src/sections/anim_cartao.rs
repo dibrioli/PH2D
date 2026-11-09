@@ -58,6 +58,42 @@ pub(crate) fn resto(
     so_quem_escolhe(t, theme, store, x, w, y, info)
 }
 
+/// Clips das tags de outro documento (Pixel Sprite, P14 §6): a ajuda que diz onde se editam e o Who Picks.
+/// Nenhum editor de clip, ritmo, ciclo ou grelha: o que eles escreveriam é derivado e não se grava.
+pub(crate) fn so_escolha(
+    t: &mut Tela<'_>,
+    theme: Theme,
+    store: &WidgetStore,
+    x: f32,
+    w: f32,
+    y: f32,
+    info: &InspectorAnimInfo,
+) -> f32 {
+    let y = ajuda_das_tags(t.scene, t.text, theme, x, w, y);
+    so_quem_escolhe(t, theme, store, x, w, y, info)
+}
+
+/// «Edit the tags in the Pixel Sprite (Draw mode).» Devolve o `y` seguinte.
+pub(super) fn ajuda_das_tags(
+    scene: &mut VectorScene,
+    text_system: &mut TextSystem,
+    theme: Theme,
+    x: f32,
+    w: f32,
+    y: f32,
+) -> f32 {
+    super::rows::aviso(
+        scene,
+        text_system,
+        theme,
+        x,
+        w,
+        y,
+        tr("panel.inspector.anim_card.tags_in_pixel"),
+        ColorToken::Text3,
+    )
+}
+
 /// Só o Who Picks e as regras: o corpo inteiro do cartão durante o Play com uma regra acesa (Crítica B3).
 pub(crate) fn so_quem_escolhe(
     t: &mut Tela<'_>,

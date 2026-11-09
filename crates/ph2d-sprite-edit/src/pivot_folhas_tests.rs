@@ -23,6 +23,7 @@ fn duas_folhas(db: &AssetDb) -> (World, Entity, Entity) {
         anchor: [0.0, 0.0],
         hframes: 1,
         vframes: 1,
+        offsets: Default::default(),
     };
     let e = w
         .spawn((
@@ -171,7 +172,7 @@ fn a_folha_visivel_que_saiu_cai_na_primeira() {
 
 /// A imagem inteira da folha 1, como o `read_shown_source` da shell a lê.
 fn imagem_da_folha_1(w: &World, e: Entity, db: &AssetDb) -> ph2d_render::SpriteImage {
-    let s = w.get::<SpriteSheets>(e).unwrap().0[0];
+    let s = w.get::<SpriteSheets>(e).unwrap().0[0].clone();
     let asset = db.get(&s.asset).unwrap();
     let (lw, lh, px) = asset.image_rgba8().unwrap();
     ph2d_render::SpriteImage::from_bytes(lw, lh, px.into_owned(), ph2d_render::AlphaMode::Straight)

@@ -18,8 +18,10 @@ pub struct SheetTextures(pub Vec<Option<(AssetId, SpriteSource)>>);
 /// O que a sprite desenha neste quadro.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum SheetView {
-    /// A folha `0`: o `Sprite` e a grelha de sempre.
+    /// A folha `0` sem acerto no quadro: o `Sprite` e a grelha de sempre.
     Own,
+    /// A folha `0` com acerto no quadro: o `Sprite` com o quad deslocado; o resto (grelha, região) é o de sempre.
+    OwnNudged(Sprite),
     /// A folha `k`: uma CÓPIA do `Sprite` com a imagem, o tamanho e o Pivot dela, e a grelha dela.
     Other(Sprite, SpriteGrid),
     /// Um quadro vazio, ou a textura da folha ainda por subir: nada a desenhar.
@@ -59,18 +61,31 @@ pub fn sheet_geometry(
     )
 }
 
-/// ⭐ **O quad na tela** sem textura: o que a caixa do gizmo, o encaixe e a grelha do canvas medem. Um quadro vazio
-/// mede a folha `0` (não há desenho, mas o objeto continua agarrável).
+/// `sprite` com o desenho deslocado `d` metros locais (o acerto de um quadro, GEF 28): o Pivot fica, o quad anda.
+#[must_use]
+pub fn nudged(sprite: Sprite, d: [f32; 2]) -> Sprite {
+    Sprite {
+        anchor: [sprite.anchor[0] + d[0], sprite.anchor[1] + d[1]],
+        ..sprite
+    }
+}
+
+/// ⭐ **O quad na tela** sem textura: o que a caixa do gizmo, o encaixe e a grelha do canvas medem — com o acerto do
+/// quadro na tela, como o [`sheet_view`] o desenha. Um quadro vazio mede a folha `0` (não há desenho, mas o objeto
+/// continua agarrável). [`sheet_geometry`] é a da FOLHA (sem acerto): a que o Pivot e o Trim editam.
 #[must_use]
 pub fn drawn_geometry(world: &World, entity: Entity) -> Option<(Sprite, Option<SpriteGrid>)> {
     let g = world
         .get::<SpriteGrid>(entity)
         .copied()
         .unwrap_or(SpriteGrid::SINGLE);
-    sheet_geometry(world, entity, g.sheet, g.frame)
+    let (s, grid) = sheet_geometry(world, entity, g.sheet, g.frame)?;
+    let d = ph2d_ecs::cell_offset(world, entity, g.sheet, g.frame);
+    Some((nudged(s, d), grid))
 }
 
-/// ⭐ **A lei de um ponto só**: a folha do quadro na tela decide a imagem, o tamanho, o Pivot e a grelha.
+/// ⭐ **A lei de um ponto só**: a folha do quadro na tela decide a imagem, o tamanho, o Pivot e a grelha; o acerto da
+/// célula (GEF 28) desloca o quad. A folha `0` sem acerto desenha o próprio `Sprite` ([`SheetView::Own`]).
 #[must_use]
 pub fn sheet_view(world: &World, entity: Entity, sprite: &Sprite) -> SheetView {
     if ph2d_ecs::imagem_aberta(world, entity).is_some() {
@@ -79,8 +94,10 @@ pub fn sheet_view(world: &World, entity: Entity, sprite: &Sprite) -> SheetView {
     let Some(grid) = world.get::<SpriteGrid>(entity).copied() else {
         return SheetView::Own;
     };
+    let d = ph2d_ecs::cell_offset(world, entity, grid.sheet, grid.frame);
     match grid.sheet {
-        0 => SheetView::Own,
+        0 if d == [0.0, 0.0] => SheetView::Own,
+        0 => SheetView::OwnNudged(nudged(*sprite, d)),
         SpriteGrid::EMPTY_SHEET => SheetView::Nothing,
         k => {
             let sheet = world.get::<SpriteSheets>(entity).and_then(|s| s.sheet(k));
@@ -91,7 +108,7 @@ pub fn sheet_view(world: &World, entity: Entity, sprite: &Sprite) -> SheetView {
                 (Some(s), Some((asset, source))) if asset == s.asset => SheetView::Other(
                     Sprite {
                         source,
-                        ..sheet_sprite(s, sprite)
+                        ..nudged(sheet_sprite(s, sprite), d)
                     },
                     s.grid(grid.frame),
                 ),

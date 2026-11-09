@@ -17,6 +17,11 @@ pub const TROCADA: &str = "Swapped Image";
 pub const PLAYER: &str = "Player";
 /// O Animated de DUAS folhas (plano GEF 26 V6): `idle` 4 × 1 e `run` 6 × 2, e uma animação que as mistura.
 pub const DUAS: &str = "Two Sheets";
+/// As MESMAS duas folhas com a `run` escalada pelo Align (GEF 28 A): o boneco tem o mesmo tamanho em todo quadro.
+pub const ALINHADAS: &str = "Aligned Sheets";
+/// A `run` foi desenhada 1,5× maior que a `idle` (48 px contra 32 por célula, o boneco 42 contra 28 px de altura):
+/// o Align leva-a a 2/3, e os pés ficam no pivô.
+pub const ESCALA_DA_RUN: f32 = 2.0 / 3.0;
 /// As imagens da cena pela ordem em que a biblioteca as recebe: as duas folhas de `DUAS`.
 const IDLE: usize = 2;
 const RUN: usize = 3;
@@ -28,13 +33,14 @@ const ROW_1: u8 = 1;
 const QUADRO_DO_GRITO: u32 = 2;
 
 /// Em fila acima das moedas do chão da esquerda, à direita do Player.
-pub const OBJETOS: [(&str, [f32; 2]); 6] = [
+pub const OBJETOS: [(&str, [f32; 2]); 7] = [
     (VAZIO, [-5.5, 1.8]),
     (FOLHA, [-3.5, 1.8]),
     (OUVE, [-1.5, 1.8]),
     (INICIO, [0.5, 1.8]),
     (TROCADA, [-3.5, 4.2]),
     (DUAS, [-1.0, 4.2]),
+    (ALINHADAS, [1.5, 4.2]),
 ];
 /// Onde a vista abre: a fila de objectos e o Player.
 pub const VISTA: ([f32; 2], f32) = ([-3.5, 2.5], 9.0);
@@ -42,6 +48,7 @@ pub const VISTA: ([f32; 2], f32) = ([-3.5, 2.5], 9.0);
 pub const MENSAGEM: &str = "[game-smoke] =5 o Animated Sprite peça a peça: «Empty Sheet» vazio; «Split Sheet» cortada por \
     Split by rows com um marcador «footstep»; «Hears Step» salta quando o marcador grita; «Starts With» com outra animação \
     em prévia; «Swapped Image» com o aviso; «Two Sheets» com as folhas idle e run e a animação «attack» que as mistura; \
+    «Aligned Sheets», as mesmas folhas com a run escalada pelo Align: o boneco não cresce ao trocar de folha; \
     e o Player com regras, a que ganha acesa no Play.";
 
 /// O instante que a foto do item quer (`PH2D_GAME_SMOKE_FOTO`), ou a prova que o guião corre e relata.
@@ -74,6 +81,13 @@ pub enum Foto {
     /// A ferramenta Pivot com Ctrl sobre o pivô, por cliques no `on_mouse_input` (smoke do dono 09/11): o objeto
     /// fica selecionado, o pivô encaixa no centro do quad e o desenho da `run` não anda.
     FolhasPivo,
+    /// «Two Sheets» com a `run` à vista e a imagem `idle` escolhida para ELA: a folha troca e o aviso amarelo diz que
+    /// o corte foi refeito (dono 09/11).
+    FolhasTroca,
+    /// «Two Sheets» e «Aligned Sheets» lado a lado num quadro da `idle` (GEF 28 A)…
+    AlinhadasIdle,
+    /// …e num quadro da `run`: a de cima cresce, a alinhada não.
+    AlinhadasRun,
 }
 
 #[must_use]
@@ -96,11 +110,23 @@ pub fn foto() -> Option<Foto> {
         "animado_folhas_trim0" => Some(Foto::FolhasTrim0),
         "animado_folhas_edit" => Some(Foto::FolhasEdit),
         "animado_folhas_pivo" => Some(Foto::FolhasPivo),
+        "animado_folhas_troca" => Some(Foto::FolhasTroca),
+        "animado_alinhadas_idle" => Some(Foto::AlinhadasIdle),
+        "animado_alinhadas_run" => Some(Foto::AlinhadasRun),
         _ => None,
     }
 }
 
 impl Foto {
+    /// Onde a vista da foto abre: perto das duas folhas nas do Align, senão a [`VISTA`] da cena.
+    #[must_use]
+    pub fn vista(self) -> ([f32; 2], f32) {
+        match self {
+            Self::AlinhadasIdle | Self::AlinhadasRun => ([0.25, 4.3], 4.0),
+            _ => VISTA,
+        }
+    }
+
     /// O objecto que a foto deixa seleccionado.
     #[must_use]
     pub fn alvo(self) -> &'static str {
@@ -116,7 +142,9 @@ impl Foto {
             | Self::FolhasTrim
             | Self::FolhasTrim0
             | Self::FolhasEdit
-            | Self::FolhasPivo => DUAS,
+            | Self::FolhasPivo
+            | Self::FolhasTroca => DUAS,
+            Self::AlinhadasIdle | Self::AlinhadasRun => ALINHADAS,
         }
     }
 }
@@ -186,6 +214,7 @@ pub fn passos(q: u32, foto: Option<Foto>) -> Vec<Passo> {
             P::Imagem(FOLHA, 0),
             P::Imagem(TROCADA, 1),
             P::Imagem(DUAS, IDLE),
+            P::Imagem(ALINHADAS, IDLE),
             P::Ouve(OUVE),
         ],
         2 if !desfaz => vec![
@@ -203,7 +232,12 @@ pub fn passos(q: u32, foto: Option<Foto>) -> Vec<Passo> {
             P::Anim(FOLHA, Ed::MarkerSignal(ROW_1, 0, SINAL.into())),
         ],
         12 => vec![P::Foto(foto)],
-        _ => duas_folhas(q, foto),
+        _ => {
+            let mut v = duas_folhas(DUAS, q, foto);
+            v.extend(duas_folhas(ALINHADAS, q, None));
+            v.extend(alinha(q, foto));
+            v
+        }
     };
     match foto {
         Some(Foto::ProvaPlay) => v.extend(prova_do_play(q)),
@@ -217,38 +251,63 @@ pub fn passos(q: u32, foto: Option<Foto>) -> Vec<Passo> {
 /// ⭐ «Two Sheets» (plano GEF 26 V6), pelas portas do artista: o corte da `idle`, Load sheet com a `run`, as três
 /// animações (`idle` na folha 1, `run` na 2 e `attack` misturada) e a `run` visível. Na foto do alerta, Delete sheet
 /// apaga a `idle`.
-fn duas_folhas(q: u32, foto: Option<Foto>) -> Vec<Passo> {
+fn duas_folhas(nome: &'static str, q: u32, foto: Option<Foto>) -> Vec<Passo> {
     use Passo as P;
     use ph2d_editor_core::AnimFrameRef as F;
     let (i, r) = (|cell| F { sheet: 0, cell }, |cell| F { sheet: 1, cell });
     match q {
-        3 => vec![P::Anim(DUAS, Ed::Grid(4, 1)), P::Folha(DUAS, RUN)],
+        3 => vec![P::Anim(nome, Ed::Grid(4, 1)), P::Folha(nome, RUN)],
         4 => vec![
-            P::Anim(DUAS, Ed::Rename(0, "idle".into())),
-            P::Anim(DUAS, Ed::To(0, 3)),
-            P::Anim(DUAS, Ed::Add),
+            P::Anim(nome, Ed::Rename(0, "idle".into())),
+            P::Anim(nome, Ed::To(0, 3)),
+            P::Anim(nome, Ed::Add),
         ],
         6 => vec![
-            P::Anim(DUAS, Ed::Rename(1, "run".into())),
-            P::Anim(DUAS, Ed::Frames(1, (0..12).map(r).collect())),
-            P::Anim(DUAS, Ed::Add),
+            P::Anim(nome, Ed::Rename(1, "run".into())),
+            P::Anim(nome, Ed::Frames(1, (0..12).map(r).collect())),
+            P::Anim(nome, Ed::Add),
         ],
         9 => vec![
-            P::Anim(DUAS, Ed::Rename(2, "attack".into())),
-            P::Anim(DUAS, Ed::Frames(2, vec![r(0), r(1), i(0), i(1), r(2)])),
-            P::Anim(DUAS, Ed::SetCurrent("attack".into())),
-            P::Verbo(DUAS, Verbo::ShowSheet(1)),
+            P::Anim(nome, Ed::Rename(2, "attack".into())),
+            P::Anim(nome, Ed::Frames(2, vec![r(0), r(1), i(0), i(1), r(2)])),
+            P::Anim(nome, Ed::SetCurrent("attack".into())),
+            P::Verbo(nome, Verbo::ShowSheet(1)),
         ],
-        10 if foto == Some(Foto::FolhasApagada) => vec![P::Verbo(DUAS, Verbo::ShowSheet(0))],
-        11 if foto == Some(Foto::FolhasApagada) => vec![P::Verbo(DUAS, Verbo::DeleteSheet)],
-        10 if foto == Some(Foto::FolhasTrim) => vec![P::Ferramenta(DUAS, "trim_transparency")],
-        10 if foto == Some(Foto::FolhasTrim0) => vec![P::Verbo(DUAS, Verbo::ShowSheet(0))],
-        11 if foto == Some(Foto::FolhasTrim0) => vec![P::Ferramenta(DUAS, "trim_transparency")],
+        10 if foto == Some(Foto::FolhasApagada) => vec![P::Verbo(nome, Verbo::ShowSheet(0))],
+        11 if foto == Some(Foto::FolhasApagada) => vec![P::Verbo(nome, Verbo::DeleteSheet)],
+        13 if foto == Some(Foto::FolhasTroca) => vec![P::Imagem(nome, IDLE)],
+        10 if foto == Some(Foto::FolhasTrim) => vec![P::Ferramenta(nome, "trim_transparency")],
+        10 if foto == Some(Foto::FolhasTrim0) => vec![P::Verbo(nome, Verbo::ShowSheet(0))],
+        11 if foto == Some(Foto::FolhasTrim0) => vec![P::Ferramenta(nome, "trim_transparency")],
         // Como o dono no smoke 09/11: a ferramenta Pivot ativa antes do Edit.
-        11 | 12 if foto == Some(Foto::FolhasEdit) => vec![P::Pivo(DUAS, (q - 11) as u8)],
-        13 if foto == Some(Foto::FolhasEdit) => vec![P::Edita(DUAS)],
-        15..=19 if foto == Some(Foto::FolhasPivo) => vec![P::Pivo(DUAS, (q - 15) as u8)],
-        14 => vec![P::Relata("as folhas".into(), DUAS)],
+        11 | 12 if foto == Some(Foto::FolhasEdit) => vec![P::Pivo(nome, (q - 11) as u8)],
+        13 if foto == Some(Foto::FolhasEdit) => vec![P::Edita(nome)],
+        15..=19 if foto == Some(Foto::FolhasPivo) => vec![P::Pivo(nome, (q - 15) as u8)],
+        14 => vec![P::Relata("as folhas".into(), nome)],
+        _ => Vec::new(),
+    }
+}
+
+/// ⭐ «Aligned Sheets» (GEF 28 A): com a `run` à vista, o verbo do Align escala-a; as fotos põem as duas no mesmo
+/// quadro de uma folha, paradas.
+fn alinha(q: u32, foto: Option<Foto>) -> Vec<Passo> {
+    use Passo as P;
+    let quadro = |anim: &str| {
+        [DUAS, ALINHADAS]
+            .into_iter()
+            .flat_map(|n| {
+                [
+                    P::Anim(n, Ed::SetCurrent(anim.into())),
+                    P::Anim(n, Ed::Playing(false)),
+                ]
+            })
+            .collect()
+    };
+    match (q, foto) {
+        (10, _) => vec![P::Verbo(ALINHADAS, Verbo::ScaleSheet(ESCALA_DA_RUN))],
+        (11, Some(Foto::AlinhadasIdle)) => quadro("idle"),
+        (11, Some(Foto::AlinhadasRun)) => quadro("run"),
+        (15, _) => vec![P::Relata("alinhadas".into(), ALINHADAS)],
         _ => Vec::new(),
     }
 }

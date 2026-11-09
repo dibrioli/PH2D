@@ -205,7 +205,7 @@ impl crate::App {
         let Some(g) = self.gfx.as_mut() else {
             return;
         };
-        (g.camera.center, g.camera.height_world) = a::VISTA;
+        (g.camera.center, g.camera.height_world) = foto.map_or(a::VISTA, a::Foto::vista);
         let Some(h) = g.hero_screen.as_mut() else {
             return;
         };

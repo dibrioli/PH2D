@@ -8,6 +8,7 @@ use bevy_ecs::prelude::{Entity, World};
 use ph2d_asset::AssetId;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
+use std::collections::BTreeMap;
 
 use crate::{SimComponent, SpriteGrid};
 
@@ -15,8 +16,71 @@ use crate::{SimComponent, SpriteGrid};
 /// Não há recurso que limite abaixo (40 bytes por folha; a textura é um asset partilhado).
 pub const SHEETS_MAX: usize = SpriteGrid::EMPTY_SHEET as usize;
 
-/// Uma folha extra: a imagem, o tamanho de UMA célula na tela, o Pivot e o corte.
-#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+/// ⭐ **O acerto de cada quadro de UMA folha** (GEF 28, Align): célula → deslocamento do desenho, em metros LOCAIS (o
+/// mesmo referencial do Pivot, `y` para cima). Mora na FOLHA, não na animação: o desenho é o mesmo em qualquer animação
+/// que use a célula. Esparso: célula sem entrada = `[0, 0]`. Na folha `0` é um componente do objeto (como o `Sprite`);
+/// nas outras, um campo da [`ExtraSheet`]. Metros (não píxeis) para o Trim por quadro, que guarda o desenho no lugar
+/// em metros, não lhe mexer; a escala da folha ([`CellOffsets::scaled`]) leva-os junto.
+///
+/// ⚠️ **Vale só no corte em que foi feito** (`cut` = `[colunas, linhas]`): recortar a folha (Cut again, Split, a grade,
+/// uma imagem trocada que não se divide) muda o que cada célula É, e nenhum caminho precisa de se lembrar de o apagar —
+/// [`CellOffsets::of`] pergunta o corte de agora.
+#[derive(Component, Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub struct CellOffsets {
+    pub cut: [u32; 2],
+    pub cells: BTreeMap<u32, [f32; 2]>,
+}
+
+impl SimComponent for CellOffsets {}
+
+impl CellOffsets {
+    /// O acerto da célula `cell` no corte `cut` (`[0, 0]` sem entrada ou com o corte mudado).
+    #[must_use]
+    pub fn of(&self, cut: [u32; 2], cell: u32) -> [f32; 2] {
+        if cut != self.cut {
+            return [0.0, 0.0];
+        }
+        self.cells.get(&cell).copied().unwrap_or([0.0, 0.0])
+    }
+
+    /// Põe o acerto da célula no corte `cut` (outro corte recomeça o mapa); `[0, 0]` apaga a entrada — o mapa fica
+    /// esparso e o «quadro acertado» é só quem a tem.
+    pub fn set(&mut self, cut: [u32; 2], cell: u32, d: [f32; 2]) {
+        if cut != self.cut {
+            *self = Self {
+                cut,
+                cells: BTreeMap::new(),
+            };
+        }
+        if d == [0.0, 0.0] {
+            self.cells.remove(&cell);
+        } else {
+            self.cells.insert(cell, d);
+        }
+    }
+
+    /// Nenhum acerto.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.cells.is_empty()
+    }
+
+    /// Os mesmos acertos com a folha escalada por `s` em volta do Pivot.
+    #[must_use]
+    pub fn scaled(&self, s: f32) -> Self {
+        Self {
+            cut: self.cut,
+            cells: self
+                .cells
+                .iter()
+                .map(|(&c, d)| (c, [d[0] * s, d[1] * s]))
+                .collect(),
+        }
+    }
+}
+
+/// Uma folha extra: a imagem, o tamanho de UMA célula na tela, o Pivot, o corte e o acerto de cada quadro.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct ExtraSheet {
     pub asset: AssetId,
     /// Tamanho de uma célula, em metros (o mesmo metro por pixel da folha `0`).
@@ -25,6 +89,8 @@ pub struct ExtraSheet {
     pub anchor: [f32; 2],
     pub hframes: u32,
     pub vframes: u32,
+    /// O acerto de cada quadro desta folha.
+    pub offsets: CellOffsets,
 }
 
 impl ExtraSheet {
@@ -32,6 +98,12 @@ impl ExtraSheet {
     #[must_use]
     pub const fn cells(&self) -> u32 {
         self.grid(0).cells()
+    }
+
+    /// O corte `[colunas, linhas]` desta folha (a chave do [`CellOffsets`]).
+    #[must_use]
+    pub const fn cut(&self) -> [u32; 2] {
+        [self.hframes, self.vframes]
     }
 
     /// A grelha desta folha na célula `frame`.
@@ -109,6 +181,25 @@ pub fn sheet_name(world: &World, id: AssetId) -> Option<&str> {
         .names
         .get(&id)
         .map(String::as_str)
+}
+
+/// ⭐ **O acerto da célula `cell` da folha `sheet`** de `entity` (`[0, 0]` sem acerto, folha inexistente ou vazia).
+#[must_use]
+pub fn cell_offset(world: &World, entity: Entity, sheet: u8, cell: u32) -> [f32; 2] {
+    match sheet {
+        0 => world.get::<CellOffsets>(entity).map(|o| {
+            let g = world
+                .get::<SpriteGrid>(entity)
+                .copied()
+                .unwrap_or(SpriteGrid::SINGLE);
+            o.of(g.cut(), cell)
+        }),
+        k => world
+            .get::<SpriteSheets>(entity)
+            .and_then(|s| s.sheet(k))
+            .map(|s| s.offsets.of(s.cut(), cell)),
+    }
+    .unwrap_or([0.0, 0.0])
 }
 
 /// [`sheet_cells_of`] sobre os componentes já em mão (o tique, numa query).

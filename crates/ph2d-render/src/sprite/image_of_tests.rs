@@ -14,6 +14,7 @@ fn duas_folhas() -> (World, Entity, BTreeMap<u32, AssetId>) {
         anchor: [0.0, -0.75],
         hframes: 6,
         vframes: 2,
+        offsets: Default::default(),
     };
     let e = w
         .spawn((

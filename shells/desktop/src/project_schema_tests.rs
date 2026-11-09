@@ -363,7 +363,8 @@ fn a_schema_bump_anywhere_must_bump_the_project_schema() {
         // ⚠️ **`219` em 2026-11-07** (`line/GameEngineFuncional`) — a cor da animação. A tripla NÃO vê.
         // ⚠️ **`220` em 2026-11-08** (`line/GameEngineFuncional`, GEF 26) — as várias folhas. A tripla NÃO vê.
         // ⚠️ **`218` em 2026-11-08** (`line/PainterWatercolor`) — as TINTAS DO WET no documento pintado. A tripla NÃO vê.
-        (225, 13, 29),
+        // ⚠️ **`226` em 2026-11-09** (`line/GameEngineFuncional`, GEF 28) — o acerto de cada quadro. A tripla NÃO vê.
+        (226, 13, 29),
         "a forma do FlipDoc ou da VecScene mudou (ou o esquema do projeto): suba o \
          PROJECT_SCHEMA junto e atualize esta tripla. Postcard nao avisa - ele so le errado."
     );

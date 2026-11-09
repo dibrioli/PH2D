@@ -21,6 +21,7 @@ fn run_sheet() -> ExtraSheet {
         anchor: [0.0, -0.25],
         hframes: 6,
         vframes: 2,
+        offsets: Default::default(),
     }
 }
 

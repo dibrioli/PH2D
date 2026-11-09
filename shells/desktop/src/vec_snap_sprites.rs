@@ -53,13 +53,16 @@ impl App {
             let mut q = gfx
                 .sim
                 .world_mut()
-                .query::<(ph2d_ecs::Entity, &ph2d_render::Sprite)>();
+                .query_filtered::<ph2d_ecs::Entity, bevy_ecs::prelude::With<ph2d_render::Sprite>>();
             let world = gfx.sim.world();
-            for (e, s) in q.iter(world) {
-                if skip.contains(&e.to_bits()) {
-                    continue;
+            for e in q.iter(world) {
+                // O quad desenhado (a folha e o acerto do quadro na tela), o mesmo da caixa do gizmo.
+                if let (false, Some((s, _))) = (
+                    skip.contains(&e.to_bits()),
+                    ph2d_render::drawn_geometry(world, e),
+                ) {
+                    boxes.push((e, s.anchor, [s.size[0] * 0.5, s.size[1] * 0.5]));
                 }
-                boxes.push((e, s.anchor, [s.size[0] * 0.5, s.size[1] * 0.5]));
             }
         }
         let mut out = Vec::with_capacity(boxes.len() * 9);

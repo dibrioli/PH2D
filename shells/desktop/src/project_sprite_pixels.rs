@@ -410,6 +410,7 @@ mod tests {
             anchor: [0.0; 2],
             hframes: 6,
             vframes: 1,
+            offsets: Default::default(),
         };
         let mut w = ph2d_ecs::World::new();
         let folhas = ph2d_ecs::SpriteSheets([folha(fora), folha(no_atlas)].into_iter().collect());

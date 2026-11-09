@@ -407,6 +407,7 @@ mod tests {
             anchor: [0.0, 0.0],
             hframes: 2,
             vframes: 1,
+            offsets: Default::default(),
         };
         let b =
             postcard::to_allocvec(&ph2d_ecs::SpriteSheets([folha].into_iter().collect())).unwrap();
@@ -451,6 +452,7 @@ mod tests {
             anchor: [0.0, 0.0],
             hframes: 2,
             vframes: 1,
+            offsets: Default::default(),
         };
         let b =
             postcard::to_allocvec(&ph2d_ecs::SpriteSheets([folha].into_iter().collect())).unwrap();

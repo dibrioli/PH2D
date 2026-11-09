@@ -16,6 +16,7 @@ fn delete_sheet_deixa_quadros_vazios_no_lugar_e_um_ctrl_z_devolve_tudo() {
         anchor: [0.0, 0.5],
         hframes: 2,
         vframes: 1,
+        offsets: Default::default(),
     };
     let mut frames = SpriteAnimFrames::default();
     frames.set(
@@ -35,7 +36,7 @@ fn delete_sheet_deixa_quadros_vazios_no_lugar_e_um_ctrl_z_devolve_tudo() {
             ph2d_ecs::StableId(7),
             ph2d_render::Sprite::atlas(1, [1.0, 1.0], [1.0; 4]),
             ph2d_ecs::SpriteGrid::new(2, 1),
-            SpriteSheets([x].into_iter().collect()),
+            SpriteSheets([x.clone()].into_iter().collect()),
             frames.clone(),
             lib,
             ShownSheet(1),
@@ -90,6 +91,7 @@ fn equalize_numa_folha_extra_e_um_passo_que_devolve_folha_e_transform() {
         anchor: [0.0, 0.5],
         hframes: 2,
         vframes: 1,
+        offsets: Default::default(),
     };
     let e = sim
         .world_mut()
@@ -98,7 +100,7 @@ fn equalize_numa_folha_extra_e_um_passo_que_devolve_folha_e_transform() {
             ph2d_ecs::StableId(7),
             ph2d_ecs::Transform::default(),
             ph2d_render::Sprite::atlas(1, [1.0, 1.0], [1.0; 4]),
-            SpriteSheets([x].into_iter().collect()),
+            SpriteSheets([x.clone()].into_iter().collect()),
             ShownSheet(1),
         ))
         .id();
@@ -131,4 +133,62 @@ fn equalize_numa_folha_extra_e_um_passo_que_devolve_folha_e_transform() {
         .expect("o objeto voltou");
     assert_eq!(s.0.as_slice(), &[x][..]);
     assert_eq!((t.scale.x, t.translation.x), (1.0, 0.0));
+}
+
+/// ⭐ **Align: escala, mover e o acerto de um quadro são UM passo cada, e o `Ctrl+Z` devolve-os** (GEF 28 A) — o
+/// acerto da folha 0 é um componente próprio, o das outras viaja na `ExtraSheet`. *Mata: o `CellOffsets` fora do
+/// registo (o restauro deixa o acerto) · o campo `offsets` fora do postcard da folha.*
+#[test]
+fn os_acertos_do_align_desfazem_se_num_passo() {
+    let reg = registry();
+    let (mut sim, vec) = scene();
+    let x = ExtraSheet {
+        asset: ph2d_asset::AssetId::from_bytes(b"run.png"),
+        size: [2.0, 1.0],
+        anchor: [0.0, 0.5],
+        hframes: 2,
+        vframes: 1,
+        offsets: Default::default(),
+    };
+    let e = sim
+        .world_mut()
+        .spawn((
+            Name::new("Hero"),
+            ph2d_ecs::StableId(7),
+            ph2d_ecs::Transform::default(),
+            ph2d_render::Sprite::atlas(1, [1.0, 1.0], [1.0; 4]),
+            ph2d_ecs::SpriteGrid::new(2, 1),
+            SpriteSheets([x.clone()].into_iter().collect()),
+        ))
+        .id();
+    let antes = capture(&mut sim, &vec, &reg);
+    let w = sim.world_mut();
+    assert!(ph2d_anim_sheets::align::nudge_cell(w, e, 0, 1, [0.25, 0.0]));
+    assert!(ph2d_anim_sheets::align::nudge_cell(w, e, 1, 0, [0.0, 0.5]));
+    assert!(ph2d_anim_sheets::align::scale_sheet(w, e, 1, 0.5));
+    let depois = capture(&mut sim, &vec, &reg);
+    assert_eq!(antes.parts_that_differ(&depois), vec!["world"], "um passo");
+    // Ida e volta pelo registo: o acerto sobrevive ao gravar.
+    let _ = depois.restore(&mut sim, &reg);
+    let hero = |sim: &mut ph2d_ecs::SimWorld| {
+        let mut q = sim.world_mut().query::<(ph2d_ecs::Entity, &Name)>();
+        q.iter(sim.world())
+            .find(|(_, n)| n.as_str() == "Hero")
+            .map(|(e, _)| e)
+            .expect("o objeto")
+    };
+    let e = hero(&mut sim);
+    assert_eq!(ph2d_ecs::cell_offset(sim.world(), e, 0, 1), [0.25, 0.0]);
+    assert_eq!(
+        ph2d_ecs::cell_offset(sim.world(), e, 1, 0),
+        [0.0, 0.25],
+        "escalado"
+    );
+    let _ = antes.restore(&mut sim, &reg);
+    let e = hero(&mut sim);
+    assert!(sim.world().get::<ph2d_ecs::CellOffsets>(e).is_none());
+    assert_eq!(
+        sim.world().get::<SpriteSheets>(e).unwrap().0.as_slice(),
+        &[x][..]
+    );
 }

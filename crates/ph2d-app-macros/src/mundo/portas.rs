@@ -45,6 +45,7 @@ pub const PORTAS: &[(&str, Porta)] = &[
     ("ph2d::ecs::CameraFollow", Gravado),
     ("ph2d::ecs::CameraLimits", Gravado),
     ("ph2d::ecs::CameraShake", Gravado),
+    ("ph2d::ecs::CellOffsets", Gravado),
     ("ph2d::ecs::ClipChildren", Gravado),
     ("ph2d::ecs::Counter", Gravado),
     ("ph2d::ecs::CounterWatch", Gravado),

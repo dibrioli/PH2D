@@ -30,6 +30,7 @@ fn o_editor_mostra_o_nome_da_biblioteca_o_mesmo_do_cartao() {
                     anchor: [0.0, 0.0],
                     hframes: 3,
                     vframes: 2,
+                    offsets: Default::default(),
                 }]
                 .into_iter()
                 .collect(),

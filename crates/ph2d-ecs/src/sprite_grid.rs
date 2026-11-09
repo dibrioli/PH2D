@@ -71,6 +71,12 @@ impl SpriteGrid {
     /// O `sheet` de um quadro vazio. As folhas reais vão de `0` a `EMPTY_SHEET - 1`.
     pub const EMPTY_SHEET: u8 = u8::MAX;
 
+    /// O corte `[colunas, linhas]` da folha `0` (a chave do [`crate::CellOffsets`] dela).
+    #[must_use]
+    pub const fn cut(&self) -> [u32; 2] {
+        [self.hframes, self.vframes]
+    }
+
     /// Uma grelha `hframes × vframes` na célula `0` da folha `0`.
     #[must_use]
     pub const fn new(hframes: u32, vframes: u32) -> Self {

@@ -4,9 +4,9 @@
 use crate::ops::{self, FirstSheet, NewSheetImage};
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::{
-    Entity, SHEETS_MAX, ShownSheet, SpriteAnimCursor, SpriteAnimFrames, SpriteAnimMarkers,
-    SpriteAnimations, SpriteAnimator, SpriteGrid, SpritePixels, SpriteSheets, World,
-    sheet_cells_of, shown_sheet,
+    CellOffsets, Entity, SHEETS_MAX, ShownSheet, SpriteAnimCursor, SpriteAnimFrames,
+    SpriteAnimMarkers, SpriteAnimations, SpriteAnimator, SpriteGrid, SpritePixels, SpriteSheets,
+    World, sheet_cells_of, shown_sheet,
 };
 use ph2d_editor_core::ImageUseEdit;
 use ph2d_render::{SheetTextures, Sprite, SpriteSource, factory_images, texture_of};
@@ -30,6 +30,13 @@ pub fn apply(
         ImageUseEdit::DeleteSheet => delete_shown_sheet(world, e, atlas),
         ImageUseEdit::RemoveEmptyFrames => remove_empty_frames(world, e),
         ImageUseEdit::DeleteEmptyAnimations => delete_empty_animations(world, e),
+        ImageUseEdit::ScaleSheet(f) => {
+            crate::align::scale_sheet(world, e, shown_sheet(world, e), f)
+        }
+        ImageUseEdit::MoveSheet(d) => crate::align::move_sheet(world, e, shown_sheet(world, e), d),
+        ImageUseEdit::NudgeCell { cell, by } => {
+            crate::align::nudge_cell(world, e, shown_sheet(world, e), cell, by)
+        }
         _ => return None,
     })
 }
@@ -219,7 +226,7 @@ pub fn replace_shown_sheet(
     id: AssetId,
 ) -> Option<ShownSwap> {
     let k = shown_sheet(world, e);
-    let velha = world.get::<SpriteSheets>(e)?.sheet(k).copied()?;
+    let velha = world.get::<SpriteSheets>(e)?.sheet(k).cloned()?;
     let flip = world
         .get::<Sprite>(e)
         .map_or([false, false], |s| [s.flip_x, s.flip_y]);
@@ -252,7 +259,7 @@ pub fn replace_shown_sheet(
         proposed_cut(world, id, px, &rgba, atlas)
     };
     let id = straight_id(world, db, id, px, &mut rgba);
-    let nova = ops::new_sheet(
+    let mut nova = ops::new_sheet(
         &antes,
         NewSheetImage {
             asset: id,
@@ -261,6 +268,8 @@ pub fn replace_shown_sheet(
             grid,
         },
     );
+    // O acerto de cada quadro viaja: vale enquanto o corte for o mesmo (`CellOffsets::of`).
+    nova.offsets = velha.offsets.clone();
     let mut sheets = world.get::<SpriteSheets>(e)?.clone();
     let lugar = sheets.0.get_mut(usize::from(k) - 1)?;
     if *lugar == nova {
@@ -348,7 +357,7 @@ fn promote_first_extra(world: &mut World, e: Entity, atlas: &BTreeMap<u32, Asset
     let Some(x) = world
         .get::<SpriteSheets>(e)
         .and_then(|s| s.0.first())
-        .copied()
+        .cloned()
     else {
         return false;
     };
@@ -373,6 +382,12 @@ fn promote_first_extra(world: &mut World, e: Entity, atlas: &BTreeMap<u32, Asset
     };
     let mut ent = world.entity_mut(e);
     ent.insert(nova);
+    // O acerto de cada quadro viaja com a folha promovida.
+    if x.offsets.is_empty() {
+        ent.remove::<CellOffsets>();
+    } else {
+        ent.insert(x.offsets.clone());
+    }
     if atlas_key.is_some() {
         ent.remove::<SpritePixels>();
     } else {

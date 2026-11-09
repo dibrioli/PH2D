@@ -34,7 +34,7 @@ pub use component::{Sprite, SpriteSource};
 pub use image_of::{OverrideLaw, drawn_texture, images_of, texture_of, texture_of_entity};
 pub use instance::{GpuTexRun, RenderInstance};
 pub use sheets::{
-    SheetTextures, SheetView, drawn_geometry, open_preview_cell, resolve_sheet_textures,
+    SheetTextures, SheetView, drawn_geometry, nudged, open_preview_cell, resolve_sheet_textures,
     sheet_geometry, sheet_sprite, sheet_view, upload_sheet_image,
 };
 pub use source_cells::SourceCells;

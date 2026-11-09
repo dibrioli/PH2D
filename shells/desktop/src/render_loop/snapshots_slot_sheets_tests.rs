@@ -18,6 +18,7 @@ fn as_folhas_publicadas_sao_as_do_objeto() {
         anchor: [0.0, 0.0],
         hframes: 3,
         vframes: 2,
+        offsets: Default::default(),
     };
     let e = sim
         .world_mut()

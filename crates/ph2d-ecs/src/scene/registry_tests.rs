@@ -261,8 +261,11 @@ fn register_ecs_components_populates_registry() {
     //   DELTA sobre o `115` do main. Quem integrar conta o DELTA, nunca o literal.
     // ⚠️ **2026-11-08: `118` -> `119`, delta +1** -- o `SpriteSheets` (as folhas extra do Animated Sprite,
     //   line/GameEngineFuncional plano 26). Quem integrar conta o DELTA, nunca o literal.
-    assert_eq!(reg.len(), 119);
+    // ⚠️ **2026-11-09: `119` -> `120`, delta +1** -- o `CellOffsets` (o acerto de cada quadro da folha 0, GEF 28
+    //   Align, line/GameEngineFuncional). Quem integrar conta o DELTA, nunca o literal.
+    assert_eq!(reg.len(), 120);
     assert!(reg.get_by_name("ph2d::ecs::SpriteSheets").is_some());
+    assert!(reg.get_by_name("ph2d::ecs::CellOffsets").is_some());
     assert!(reg.get_by_name("ph2d::ecs::PixelSprite").is_some());
     assert!(reg.get_by_name("ph2d::ecs::VecObject").is_none());
     assert!(reg.get_by_name("ph2d::ecs::MotionGenerator").is_some());

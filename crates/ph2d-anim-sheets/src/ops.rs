@@ -2,7 +2,9 @@
 //! primeira, e apagar uma folha deixando BURACOS (dono 08/11: nada some sozinho; a limpeza é do artista).
 
 use ph2d_asset::AssetId;
-use ph2d_ecs::{ExtraSheet, FrameRef, SpriteAnimFrames, SpriteAnimations, sheet_cells};
+use ph2d_ecs::{
+    CellOffsets, ExtraSheet, FrameRef, SpriteAnimFrames, SpriteAnimations, sheet_cells,
+};
 
 /// O quad inteiro: a caixa opaca de uma imagem sem píxeis conhecidos ou toda transparente.
 const QUAD_INTEIRO: [f32; 4] = [0.0, 0.0, 1.0, 1.0];
@@ -67,6 +69,7 @@ pub fn new_sheet(first: &FirstSheet, img: NewSheetImage<'_>) -> ExtraSheet {
         anchor: [-pivot[0], -pivot[1]],
         hframes: grid[0],
         vframes: grid[1],
+        offsets: CellOffsets::default(),
     }
 }
 

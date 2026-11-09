@@ -99,6 +99,7 @@ fn com_a_folha_extra_visivel_o_painter_marca_e_devolve_a_imagem_dela() {
         anchor: [0.0, 0.0],
         hframes: 1,
         vframes: 1,
+        offsets: Default::default(),
     };
     w.entity_mut(a).insert((
         ph2d_ecs::SpriteSheets([folha(run)].into_iter().collect()),
@@ -164,6 +165,7 @@ fn o_painter_devolve_a_imagem_a_folha_certa() {
         anchor: [0.0; 2],
         hframes: 2,
         vframes: 1,
+        offsets: Default::default(),
     };
     let folhas = ph2d_ecs::SpriteSheets([folha(outra), folha(antigo)].into_iter().collect());
     w.entity_mut(c).insert(folhas.clone());
@@ -198,6 +200,7 @@ fn a_folha_extra_editada_herda_o_nome_da_de_antes() {
         anchor: [0.0, 0.0],
         hframes: 1,
         vframes: 1,
+        offsets: Default::default(),
     };
     let e = w
         .spawn((

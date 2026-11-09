@@ -8,6 +8,7 @@ fn folha(asset: AssetId, h: u32, v: u32) -> ExtraSheet {
         anchor: [0.0, 0.0],
         hframes: h,
         vframes: v,
+        offsets: Default::default(),
     }
 }
 
@@ -69,7 +70,7 @@ fn o_cut_again_passa_as_folhas_extra_que_mostram_a_mesma_imagem() {
     assert_eq!(devolvidos, vec![b], "só a folha 0 de b mudou de corte");
     let g = w.get::<SpriteGrid>(b).copied().unwrap();
     assert_eq!((g.hframes, g.vframes), (3, 1));
-    let s = w.get::<SpriteSheets>(c).unwrap().0[0];
+    let s = w.get::<SpriteSheets>(c).unwrap().0[0].clone();
     assert_eq!(
         (s.hframes, s.vframes),
         (3, 1),
@@ -192,7 +193,7 @@ fn o_corte_passa_entre_a_folha_de_atlas_e_a_folha_extra_da_mesma_imagem() {
     (g.hframes, g.vframes) = (3, 1);
     w.entity_mut(a).insert(g);
     recut_users(&mut w, a, 0);
-    let s = w.get::<SpriteSheets>(b).unwrap().0[0];
+    let s = w.get::<SpriteSheets>(b).unwrap().0[0].clone();
     assert_eq!(
         (s.hframes, s.vframes),
         (3, 1),

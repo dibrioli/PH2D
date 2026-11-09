@@ -21,6 +21,7 @@ fn junta_folha(m: &mut Mesa) {
         anchor: [0.5, 0.5],
         hframes: 2,
         vframes: 1,
+        offsets: Default::default(),
     };
     let e = Entity::from_bits(m.e);
     m.sim

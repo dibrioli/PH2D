@@ -113,10 +113,7 @@ fn fracao_de(
     if repete(world, e) {
         return INTEIRO;
     }
-    let extra = world
-        .get::<SpriteSheets>(e)
-        .and_then(|s| s.sheet(k))
-        .copied();
+    let extra = world.get::<SpriteSheets>(e).and_then(|s| s.sheet(k));
     let id = match extra {
         Some(s) => Some(s.asset),
         None => texture_of(world.get::<SpritePixels>(e), world.get::<Sprite>(e), atlas),

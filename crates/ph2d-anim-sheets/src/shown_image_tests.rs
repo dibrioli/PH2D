@@ -14,6 +14,7 @@ fn com_duas(db: &AssetDb) -> (World, Entity) {
                 anchor: [0.0, 0.0],
                 hframes: 3,
                 vframes: 2,
+                offsets: Default::default(),
             }]
             .into_iter()
             .collect(),

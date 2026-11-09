@@ -12,6 +12,7 @@ fn run_sheet() -> ExtraSheet {
         anchor: [0.0, -0.75],
         hframes: 6,
         vframes: 2,
+        offsets: Default::default(),
     }
 }
 
@@ -171,4 +172,51 @@ fn a_previa_ao_lado_da_folha_aberta_corta_se_pela_grelha_dela() {
     // CONTROLO: a folha 0 aberta é a de sempre.
     w.entity_mut(e).insert(ph2d_ecs::ShownSheet(0));
     assert_eq!(open_preview_cell(&w, e, &sprite, g0), (sprite, g0));
+}
+
+/// ⭐ **O acerto do quadro desloca o quad que o render desenha** (GEF 28 A): na folha `0` sem acerto é o `Sprite` de
+/// sempre (`Own`, byte a byte); com acerto, uma cópia com o quad deslocado e o resto igual; na folha `k` soma-se ao
+/// Pivot dela. O `drawn_geometry` (caixa do gizmo, encaixe) diz o mesmo.
+/// *Mutações: o render ignorar o acerto · somá-lo com o sinal trocado · `OwnNudged` mudar a grelha ou o tamanho.*
+#[test]
+fn o_render_desenha_o_quadro_com_o_acerto_dele() {
+    let (mut w, e, sprite) = two_sheets();
+    resolve_sheet_textures(&mut w, &BTreeMap::new(), &mut |_| Some(42));
+    let d = [0.25, -0.125];
+    w.entity_mut(e).insert(ph2d_ecs::CellOffsets {
+        cut: [4, 1],
+        cells: [(0, d)].into_iter().collect(),
+    });
+    let SheetView::OwnNudged(s) = sheet_view(&w, e, &sprite) else {
+        panic!("a folha 0 com acerto");
+    };
+    assert_eq!(
+        s,
+        Sprite {
+            anchor: [d[0], d[1]],
+            ..sprite
+        }
+    );
+    assert_eq!(drawn_geometry(&w, e).unwrap().0.anchor, s.anchor);
+    show(&mut w, e, FrameRef::Cell { sheet: 0, cell: 1 });
+    assert_eq!(
+        sheet_view(&w, e, &sprite),
+        SheetView::Own,
+        "a célula 1 não tem acerto"
+    );
+    w.get_mut::<SpriteSheets>(e).unwrap().0[0]
+        .offsets
+        .set([6, 2], 7, d);
+    show(&mut w, e, FrameRef::Cell { sheet: 1, cell: 7 });
+    let SheetView::Other(s, _) = sheet_view(&w, e, &sprite) else {
+        panic!("a folha 1");
+    };
+    let a = run_sheet().anchor;
+    assert_eq!(s.anchor, [a[0] + d[0], a[1] + d[1]]);
+    assert_eq!(drawn_geometry(&w, e).unwrap().0.anchor, s.anchor);
+    assert_eq!(
+        sheet_geometry(&w, e, 1, 7).unwrap().0.anchor,
+        a,
+        "a folha sem acerto"
+    );
 }

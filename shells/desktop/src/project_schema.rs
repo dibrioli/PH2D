@@ -375,4 +375,9 @@
 /// tinta; só a do Wet, que já traz o papel nos píxeis, o esconde). SEM leitura dos anteriores no
 /// arquivo (§0.11, a GEF a recusa); o documento da macro sobe `1 → 2` e lê o `1`. Gate:
 /// `project_tintas_molhadas_tests`. Registos: `0`. ⚠️ **A tripla NÃO vê este degrau.**
-pub(crate) const PROJECT_SCHEMA: u32 = 225;
+///
+/// # `225 → 226` — **o acerto de cada quadro** (`line/GameEngineFuncional`, GEF 28 Align, onda A)
+///
+/// `ExtraSheet.offsets: CellOffsets` no FIM; o componente `CellOffsets` (o da folha `0`) entra no registo. SEM leitura
+/// dos anteriores (§0.11). ⚠️ **A tripla NÃO vê este degrau.**
+pub(crate) const PROJECT_SCHEMA: u32 = 226;

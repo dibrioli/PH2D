@@ -234,6 +234,7 @@ fn o_corte_e_o_da_folha_visivel() {
         anchor: [0.0, 0.0],
         hframes: 6,
         vframes: 2,
+        offsets: Default::default(),
     };
     let e = w
         .spawn((
@@ -286,6 +287,7 @@ fn o_pivot_que_anda_e_o_da_folha_editada() {
         anchor: [0.1, 0.2],
         hframes: 6,
         vframes: 2,
+        offsets: Default::default(),
     };
     let e = w
         .spawn((

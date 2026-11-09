@@ -186,6 +186,7 @@ mod tests {
             anchor: [0.0, 0.0],
             hframes: 6,
             vframes: 2,
+            offsets: Default::default(),
         };
         let e = w
             .spawn((

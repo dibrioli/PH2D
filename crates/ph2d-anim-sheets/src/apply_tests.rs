@@ -51,7 +51,7 @@ fn load_sheet_acrescenta_e_fica_visivel() {
     assert_eq!(w.get::<SpriteSheets>(e).unwrap().0[0].asset, run);
     assert_eq!(shown_sheet(&w, e), 1);
     // O pixel tem o mesmo tamanho na tela: 64 px de largura = 2 m a 32 px por m da folha 0.
-    let s = w.get::<SpriteSheets>(e).unwrap().0[0];
+    let s = w.get::<SpriteSheets>(e).unwrap().0[0].clone();
     assert_eq!(
         (s.hframes * s.vframes, s.size[0] * s.hframes as f32),
         (s.cells(), 2.0)
@@ -103,7 +103,7 @@ fn apagar_a_primeira_folha_promove_a_segunda() {
     let db = AssetDb::default();
     let (mut w, e) = animado(&db);
     let run = com_run(&db, &mut w, e);
-    let x = w.get::<SpriteSheets>(e).unwrap().0[0];
+    let x = w.get::<SpriteSheets>(e).unwrap().0[0].clone();
     let mut frames = SpriteAnimFrames::default();
     frames.set(
         "mix",
@@ -267,6 +267,7 @@ fn o_load_sheet_diz_porque_nao_abre() {
             anchor: [0.0, 0.0],
             hframes: 1,
             vframes: 1,
+            offsets: Default::default(),
         });
         w.entity_mut(e).insert(s);
     }
@@ -292,7 +293,7 @@ fn load_sheet_de_um_recurso_premultiplicado_leva_a_copia_recta() {
         SpritePixels(pre),
     ));
     assert!(add_sheet(&mut w, e, &db, &BTreeMap::new(), PPM, pre));
-    let s = w.get::<SpriteSheets>(e).unwrap().0[0];
+    let s = w.get::<SpriteSheets>(e).unwrap().0[0].clone();
     assert_ne!(
         s.asset, pre,
         "a folha mostra os bytes pré-multiplicados como rectos"
@@ -316,14 +317,14 @@ fn a_imagem_escolhida_troca_a_folha_a_vista() {
     let db = AssetDb::default();
     let (mut w, e) = animado(&db);
     let run = com_run(&db, &mut w, e);
-    let velha = w.get::<SpriteSheets>(e).unwrap().0[0];
+    let velha = w.get::<SpriteSheets>(e).unwrap().0[0].clone();
     let pixels_da_0 = *w.get::<SpritePixels>(e).unwrap();
     let nova = db.insert_image_rgba8(128, 64, opaca(128, 64));
     assert_eq!(
         replace_shown_sheet(&mut w, e, &db, &BTreeMap::new(), nova),
         Some(ShownSwap::Kept([velha.hframes, velha.vframes]))
     );
-    let s = w.get::<SpriteSheets>(e).unwrap().0[0];
+    let s = w.get::<SpriteSheets>(e).unwrap().0[0].clone();
     assert_eq!(s.asset, nova);
     assert_eq!(
         (s.hframes, s.vframes),
@@ -354,7 +355,7 @@ fn a_imagem_escolhida_troca_a_folha_a_vista() {
         }),
         "o aviso diz que o corte mudou"
     );
-    let s = w.get::<SpriteSheets>(e).unwrap().0[0];
+    let s = w.get::<SpriteSheets>(e).unwrap().0[0].clone();
     assert_eq!((s.hframes, s.vframes), (1, 1));
     assert_ne!(s.asset, run);
     w.entity_mut(e).insert(ShownSheet(0));

@@ -30,12 +30,15 @@ pub(super) fn sprite(
 ) {
     // A folha do quadro na tela (plano GEF 26): a `k` desenha-se numa cópia com a imagem, o tamanho, o Pivot e a
     // grelha dela; o vazio não desenha.
-    let folha = match ph2d_render::sheet_view(sim, sim_entity, spr) {
-        ph2d_render::SheetView::Own => None,
-        ph2d_render::SheetView::Other(s, g) => Some((s, g)),
+    let (folha, acertada) = match ph2d_render::sheet_view(sim, sim_entity, spr) {
+        ph2d_render::SheetView::Own => (None, None),
+        ph2d_render::SheetView::OwnNudged(s) => (None, Some(s)),
+        ph2d_render::SheetView::Other(s, g) => (Some((s, g)), None),
         ph2d_render::SheetView::Nothing => return,
     };
-    let spr = folha.as_ref().map_or(spr, |f| &f.0);
+    let spr = folha
+        .as_ref()
+        .map_or(acertada.as_ref().unwrap_or(spr), |f| &f.0);
     // A imagem aberta no Painter desenha-se inteira, uma cópia (`ph2d_ecs::ImagemAberta`): é este o quad dela.
     let aberta = ph2d_ecs::imagem_aberta(sim, sim_entity).map(|size| Sprite { size, ..*spr });
     let spr = aberta.as_ref().unwrap_or(spr);

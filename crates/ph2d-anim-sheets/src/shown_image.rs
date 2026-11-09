@@ -9,7 +9,10 @@ use ph2d_ecs::{Entity, ExtraSheet, SpriteSheets, World, shown_sheet};
 #[must_use]
 pub fn shown_extra(world: &World, e: Entity) -> Option<(u8, ExtraSheet)> {
     let k = shown_sheet(world, e);
-    world.get::<SpriteSheets>(e)?.sheet(k).map(|s| (k, *s))
+    world
+        .get::<SpriteSheets>(e)?
+        .sheet(k)
+        .map(|s| (k, s.clone()))
 }
 
 /// Os píxeis RETOS da folha extra visível, `(rgba, w, h)`: o que o Painter abre.

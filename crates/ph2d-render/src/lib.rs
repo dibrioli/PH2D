@@ -185,7 +185,7 @@ pub use renderer::SpriteRenderer;
 pub use screen_pick::{compose_screen_bytes, read_texel, screen_color, world_source};
 pub use sprite::{
     GpuTexRun, OverrideLaw, QuadVertex, RenderInstance, SheetTextures, SheetView, SourceCells,
-    Sprite, SpriteSource, drawn_geometry, drawn_texture, images_of, open_preview_cell,
+    Sprite, SpriteSource, drawn_geometry, drawn_texture, images_of, nudged, open_preview_cell,
     resolve_sheet_textures, sheet_geometry, sheet_sprite, sheet_view, texture_of,
     texture_of_entity, upload_sheet_image,
 };

@@ -21,6 +21,7 @@ fn com_run(db: &AssetDb) -> (World, Entity, AssetId) {
                     anchor: [0.25, 0.0],
                     hframes: 3,
                     vframes: 2,
+                    offsets: Default::default(),
                 }]
                 .into_iter()
                 .collect(),
@@ -55,7 +56,7 @@ fn gravar_troca_a_imagem_da_folha_e_volta_a_celula() {
     let novo = db.insert_image_rgba8(9, 4, vec![9; 9 * 4 * 4]);
     assert_ne!(novo, run);
     assert!(set_image(&mut w, e, 1, novo, [3.0, 3.0]));
-    let s = w.get::<SpriteSheets>(e).unwrap().0[0];
+    let s = w.get::<SpriteSheets>(e).unwrap().0[0].clone();
     assert_eq!(s.asset, novo);
     assert_eq!(s.size, [1.0, 1.5]);
     assert!(
@@ -111,7 +112,7 @@ fn a_folha_extra_de_uma_copia_ligada_sobe_ao_mestre() {
     let (m, solta) = mestre_e_copias(&mut w, e);
     let novo = db.insert_image_rgba8(9, 4, vec![9; 9 * 4 * 4]);
     assert!(set_image(&mut w, e, 1, novo, [3.0, 3.0]));
-    let folha = |w: &World, x: Entity| w.get::<SpriteSheets>(x).unwrap().0[0];
+    let folha = |w: &World, x: Entity| w.get::<SpriteSheets>(x).unwrap().0[0].clone();
     assert_eq!(
         (folha(&w, m).asset, folha(&w, m).size),
         (novo, [1.0, 1.5]),

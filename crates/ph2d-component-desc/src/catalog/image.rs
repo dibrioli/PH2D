@@ -182,6 +182,12 @@ pub const DESCS: &[D] = &[
     )
     .coded("anchor_visibility")
     .row_of("ph2d::ecs::NamedAnchorList"),
+    // O acerto de cada quadro da folha 0 (GEF 28, Align): escreve-o o editor de animações.
+    D::machinery(
+        "ph2d::ecs::CellOffsets",
+        "component.cell_offsets.name",
+        C::Animation,
+    ),
     // O uso Region (plano GEF 16): o seletor «Use» e o editor de Region escrevem-no; a área é o `SpriteRegion`.
     D::machinery(
         "ph2d::ecs::ImageRegion",

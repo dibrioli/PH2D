@@ -7,6 +7,7 @@ fn folha(byte: u8, h: u32, v: u32) -> ExtraSheet {
         anchor: [0.0, 0.0],
         hframes: h,
         vframes: v,
+        offsets: Default::default(),
     }
 }
 

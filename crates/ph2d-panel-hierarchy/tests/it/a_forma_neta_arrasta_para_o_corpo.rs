@@ -1,6 +1,7 @@
 //! Smoke 09/11 (forma neta «não arrasta»): a cadeia inteira fora da shell — as portas do Add (`pendura_forma`)
-//! → retrato (`build_hierarchy_snapshot`) → painel em cartões pelo ponteiro real → `quem_viaja`/`reparentar`
-//! (a lei que o `drain_reparent` da shell chama) → quadro seguinte. Regressão: a neta entra no corpo.
+//! → retrato (`build_hierarchy_snapshot`) → painel em cartões pelo ponteiro real → o pedido `Reparent` com o
+//! corpo como pai. A lei que o executa (`ph2d_app_components::hierarchy_reparent`) tem os testes dela: um
+//! painel não pode depender de uma família (`architecture_no_dependency_climbs_a_layer`).
 
 use std::collections::BTreeMap;
 
@@ -88,7 +89,6 @@ fn ponteiro(
 /// seguinte. *Mutação: o drop do painel a recusar a linha ⇒ nenhum Reparent, vermelho.*
 #[test]
 fn a_forma_neta_arrasta_para_dentro_do_corpo_e_la_fica() {
-    use ph2d_app_components::hierarchy_reparent::{Desfecho, Queda, quem_viaja, reparentar};
     ph2d_panel_hierarchy::cards::force_cards_on_this_thread(Some(true));
     let mut sim = SimWorld::new();
     let w = sim.world_mut();
@@ -160,27 +160,5 @@ fn a_forma_neta_arrasta_para_dentro_do_corpo_e_la_fica() {
     let i = &pedidos[0];
     let ent = |n: Option<NodeId>| n.map(|n| Entity::from_bits(n.0));
     assert_eq!(ent(Some(i.dragged)), Some(neta));
-    let quem = quem_viaja(sim.world_mut(), neta, &[neta]);
-    let queda = Queda {
-        new_parent: ent(i.new_parent),
-        before: ent(i.before),
-        after: ent(i.after),
-    };
-    assert!(
-        matches!(reparentar(&mut sim, &quem, queda), Desfecho::Movidos { .. }),
-        "moveu"
-    );
-    ph2d_ecs::assign_missing_root_order(sim.world_mut());
-    ph2d_ecs::assign_missing_stable_ids(sim.world_mut());
-    ph2d_ecs::assign_missing_sibling_order(sim.world_mut());
-    assert_eq!(
-        sim.world().get::<ChildOf>(neta).map(ChildOf::parent),
-        Some(corpo),
-        "a neta dentro do corpo"
-    );
-    let depois = publica(&mut sim, &mut host);
-    assert!(
-        depois.contains(&(neta.to_bits(), 1)),
-        "o quadro seguinte mostra-a filha do corpo: {depois:?}"
-    );
+    assert_eq!(ent(i.new_parent), Some(corpo), "o pedido larga a neta no corpo");
 }

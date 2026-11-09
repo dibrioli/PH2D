@@ -11,7 +11,9 @@ authors.workspace = true
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+# `float_roundtrip`: sem ela o leitor erra até 1 ULP num `f64` (medido 09/11: a `intensity` do Wet Wash
+# migrada, `0.011789473684210525`, voltava `…523`) e a ida e volta do `json_canonico` recusava o preset.
+serde_json = { version = "1", features = ["float_roundtrip"] }
 # ZLIB do PNG. ⚠️ `miniz_oxide` e NÃO `flate2`: no lock o `flate2` tem dois motores (`miniz_oxide` e
 # `zlib-rs`) e a unificação de features escolhe-o pelo CONJUNTO do build — o mesmo preset sairia com
 # bytes diferentes num `-p` e num `--workspace`, e o gate «round-trip ao byte» oscilaria sem mudança.

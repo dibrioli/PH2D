@@ -77,3 +77,20 @@ fn um_filtro_fora_da_norma_e_recusado_com_o_numero() {
     let e = desfiltrar(&cab, &[5, 1, 2, 3, 4]).unwrap_err();
     assert_eq!(e, crate::Erro::MiniaturaIlegivel("filtro 5".to_owned()));
 }
+
+/// ⭐ Um `f64` CALCULADO volta ao bit pela ida e volta do JSON (09/11): a `intensity` que a migração E4 dá ao
+/// Wet Wash, `0.011789473684210525`, sem a feature `float_roundtrip` do `serde_json` lia-se `…523` e o
+/// «Save as new» recusava o pincel. O mesmo no `brush` (`Value`) e na tabela da largura.
+#[test]
+fn um_f64_calculado_volta_ao_bit_pelo_json() {
+    use crate::modelo::Parametros;
+    let x = 0.011_789_473_684_210_525_f64;
+    let mut p = Parametros::novo("WetPaint", "Fluid", "Wet Wash 2");
+    p.engine.insert("intensity".to_owned(), x);
+    p.engine
+        .insert("volume".to_owned(), 0.008_151_382_823_871_907);
+    p.brush.insert("hardness".to_owned(), serde_json::json!(x));
+    p.width_table.push([x, 2.0]);
+    let texto = super::json_canonico(&p).expect("o f64 calculado volta igual");
+    assert!(texto.contains("0.011789473684210525"), "{texto}");
+}

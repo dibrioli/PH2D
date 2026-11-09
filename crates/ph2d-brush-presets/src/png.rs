@@ -33,7 +33,8 @@ fn chunk(out: &mut Vec<u8>, tipo: &[u8; 4], dados: &[u8]) {
 }
 
 /// O JSON canónico: chaves pela ordem do struct e dos `BTreeMap`, `f64` pelo menor texto que volta
-/// ao mesmo bit. Recusa o que não voltaria igual (um `NaN` escreve-se `null` e não se lê como número).
+/// ao mesmo bit (lido de volta ao bit pela feature `float_roundtrip`). Recusa o que não voltaria igual (um
+/// `NaN` escreve-se `null` e não se lê como número).
 fn json_canonico(p: &Parametros) -> Result<String, Erro> {
     let texto = serde_json::to_string_pretty(p).map_err(|e| Erro::Json(e.to_string()))?;
     let volta: Parametros = serde_json::from_str(&texto).map_err(|e| Erro::Json(e.to_string()))?;

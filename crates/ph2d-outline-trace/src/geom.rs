@@ -35,21 +35,23 @@ pub(crate) fn area2(r: &[P]) -> i64 {
 /// Odd number of crossings of the ray `+x` from `p` with ring `r` (half-open in y).
 pub(crate) fn ring_crosses(r: &[P], p: P) -> bool {
     let n = r.len();
-    let mut inside = false;
-    for i in 0..n {
-        let a = r[i];
-        let b = r[(i + 1) % n];
-        if (a[1] > p[1]) != (b[1] > p[1]) {
-            // p.x < a.x + (p.y - a.y)(b.x - a.x)/(b.y - a.y), sign-corrected.
-            let dy = i64::from(b[1]) - i64::from(a[1]);
-            let lhs = (i64::from(p[0]) - i64::from(a[0])) * dy;
-            let rhs = (i64::from(p[1]) - i64::from(a[1])) * (i64::from(b[0]) - i64::from(a[0]));
-            if (dy > 0 && lhs < rhs) || (dy < 0 && lhs > rhs) {
-                inside = !inside;
-            }
-        }
+    (0..n)
+        .filter(|i| edge_crosses(r[*i], r[(i + 1) % n], p))
+        .count()
+        % 2
+        == 1
+}
+
+/// The ray `+x` from `p` crosses the edge `a → b` (half-open in y: `min y ≤ p.y < max y`).
+pub(crate) fn edge_crosses(a: P, b: P, p: P) -> bool {
+    if (a[1] > p[1]) == (b[1] > p[1]) {
+        return false;
     }
-    inside
+    // p.x < a.x + (p.y - a.y)(b.x - a.x)/(b.y - a.y), sign-corrected.
+    let dy = i64::from(b[1]) - i64::from(a[1]);
+    let lhs = (i64::from(p[0]) - i64::from(a[0])) * dy;
+    let rhs = (i64::from(p[1]) - i64::from(a[1])) * (i64::from(b[0]) - i64::from(a[0]));
+    (dy > 0 && lhs < rhs) || (dy < 0 && lhs > rhs)
 }
 
 pub(crate) fn rotate_to_smallest(r: &mut [P]) {

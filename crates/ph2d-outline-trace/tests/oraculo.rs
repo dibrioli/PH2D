@@ -326,3 +326,18 @@ fn a_small_hole_is_never_merged_over() {
         assert!(!inside, "a piece covers the hole: {p:?}");
     }
 }
+
+/// O guarda dos centros de píxel por filas = o de todo anel, byte a byte, nos casos do oráculo (herói, L,
+/// argola, crescente, moeda + ilha) a todo Detail de 0 a 8 px em passos de 0,25 px.
+#[test]
+fn the_row_guard_equals_the_every_ring_guard() {
+    for (name, m) in cases() {
+        for d in (0..=128).step_by(4) {
+            assert_eq!(
+                trace(&m, params(d)),
+                ph2d_outline_trace::trace_reference_guard(&m, params(d)),
+                "{name} d={d}"
+            );
+        }
+    }
+}

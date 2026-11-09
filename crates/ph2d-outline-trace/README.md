@@ -112,10 +112,23 @@ and 5.0 µs (two stacked).
 - **`MAX_PIECES = 256`** — resource: the solver tick, ~1.2 µs per touching piece per tick (0.30 ms at 257).
 - **`MAX_POINTS = 512`** — resource: the retrace, synchronous in the frame of the gesture (dragging Detail)
   and of keyed Detail in Play; 3.56 ms at 516 points, under a quarter of a 60 Hz frame. O(points²).
-  Outward law (09/11, `fora.rs::tempo_do_pente_do_tecto`, trace + pieces at 2 px, minimum of 7): the comb's
-  points are unchanged (68 / 260 / 516 / 1028 at 16 / 64 / 128 / 256 teeth: 3 px gaps do not bridge at 2 px);
-  time 0.11 / 1.39 / 4.83 / 18.5 ms — the pixel-centre guard (O(border × points)) costs +36 % at 516 points,
-  29 % of a 60 Hz frame. The ceiling stands; ⛔ open: the guard only needs the runs next to a moved vertex.
+  Outward law (09/11): the comb's points are unchanged at 2 px (3 px gaps do not bridge). The pixel-centre
+  guard first asked every ring (O(border × points)) and pushed 516 points to 4.83 ms; now each pixel row holds
+  its edges sorted by where they cross it (binary search), and the edge-conflict pass sweeps in x over
+  bounding boxes. Byte-identical by gate (`o_guarda_por_filas_e_byte_igual_ao_de_todo_anel`,
+  `the_row_guard_equals_the_every_ring_guard`: 4 + 9 masks × 33 Details; coin and hero hashes unchanged).
+  `fora.rs::tempo_do_pente_do_tecto`, trace + pieces at 2 px, both guards interleaved in one process,
+  minimum of 30 per variant, `--profile smoke`, load 4.7:
+
+  | teeth | points | rows (product) | every ring (reference) |
+  |---|---|---|---|
+  | 16 | 68 | 0.09 ms | 0.14 ms |
+  | 64 | 260 | 0.90 ms | 1.63 ms |
+  | 128 | 516 | 3.08 ms | 5.97 ms |
+  | 256 | 1028 | 11.1 ms | 22.6 ms |
+
+  516 points: 3.08 ms, under a quarter of a 60 Hz frame (4.17 ms) again — the claim above stands. At 516
+  points the trace is 0.69 ms and the pieces 2.41 ms (the O(n²) ear search now dominates).
 - Above either, `trace_fitted` raises Detail to the SMALLEST value that fits (doubling, then bisection);
   only when Detail spans the picture does Ignore specks under rise. Never cuts the art (`tests/tecto.rs`).
 - ⭐ **The pieces were CUBIC before this measure** (761 ms at 513 teeth, 14.9 ms at 129): Hertel–Mehlhorn

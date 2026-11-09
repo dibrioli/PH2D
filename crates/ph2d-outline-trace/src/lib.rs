@@ -224,13 +224,25 @@ pub fn trace_fitted(mask: &Mask, asked: Params) -> Fitted {
 /// Mask → covering outline. See `README.md` for the steps.
 #[must_use]
 pub fn trace(mask: &Mask, params: Params) -> Outline {
+    trace_with(mask, params, false)
+}
+
+/// [`trace`] with the pixel-centre guard asking every ring instead of the row buckets: the reference
+/// that `tests/fora.rs` holds byte-equal to [`trace`] and times against it.
+#[doc(hidden)]
+#[must_use]
+pub fn trace_reference_guard(mask: &Mask, params: Params) -> Outline {
+    trace_with(mask, params, true)
+}
+
+fn trace_with(mask: &Mask, params: Params, brute: bool) -> Outline {
     let min2 = 2 * i64::from(params.min_island_px);
     let rings: Vec<Ring> = march::march(mask)
         .into_iter()
         .filter(|r| geom::area2(r).abs() >= min2)
         .map(|r| r.into_iter().map(|[x, y]| [x * Q4, y * Q4]).collect())
         .collect();
-    let mut rings = simplify::simplify(&rings, i64::from(params.detail_q4));
+    let mut rings = simplify::simplify_with(&rings, i64::from(params.detail_q4), brute);
     for r in &mut rings {
         geom::rotate_to_smallest(r);
     }

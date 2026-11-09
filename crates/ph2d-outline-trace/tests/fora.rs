@@ -136,22 +136,58 @@ fn o_contorno_da_moeda_e_byte_estavel() {
     );
 }
 
-/// O retraço do pente do tecto (W0) sob a lei para fora: o guarda dos centros de píxel é O(borda ×
-/// pontos). `--profile smoke`, mínimo de 7. Números: `README.md` §Ceilings.
+/// O retraço do pente do tecto (W0): o guarda dos centros de píxel pelas FILAS (o produto) × perguntando a
+/// todo anel (a referência), intercalados no mesmo processo, `--profile smoke`, mínimo de 15. `README.md` §Ceilings.
 #[test]
 #[ignore = "timing: --profile smoke, run by name"]
 fn tempo_do_pente_do_tecto() {
+    use ph2d_outline_trace::{convex_pieces, trace_reference_guard};
     for dentes in [16u32, 64, 128, 256] {
         let m = mask(dentes * 6 + 3, 24, |x, y| y < 12 || x % 6 >= 3);
-        let mut best = u128::MAX;
+        let mut best = [u128::MAX; 2];
         let mut n = 0;
-        for _ in 0..7 {
-            let t = std::time::Instant::now();
-            let o = trace(&m, at(2));
-            n = o.vertex_count();
-            std::hint::black_box(ph2d_outline_trace::convex_pieces(&o, 32));
-            best = best.min(t.elapsed().as_micros());
+        for volta in 0..30 {
+            let ref_primeiro = volta % 2 == 1;
+            for v in 0..2 {
+                let brute = (v == 0) == ref_primeiro;
+                let t = std::time::Instant::now();
+                let o = if brute {
+                    trace_reference_guard(&m, at(2))
+                } else {
+                    trace(&m, at(2))
+                };
+                n = o.vertex_count();
+                std::hint::black_box(convex_pieces(&o, 32));
+                let s = &mut best[usize::from(brute)];
+                *s = (*s).min(t.elapsed().as_micros());
+            }
         }
-        println!("pente {dentes}: {n} pontos, trace + peças {best} us");
+        println!(
+            "pente {dentes}: {n} pontos, trace + peças: filas {} us · todo anel {} us",
+            best[0], best[1]
+        );
     }
+}
+
+/// As filas dão os MESMOS bytes que a referência (todo anel), em toda máscara e todo Detail de 0 a 8 px.
+#[test]
+fn o_guarda_por_filas_e_byte_igual_ao_de_todo_anel() {
+    use ph2d_outline_trace::trace_reference_guard;
+    let mut n = 0;
+    for m in [
+        moeda(),
+        argola(),
+        pente(),
+        mask(64 * 6 + 3, 24, |x, y| y < 12 || x % 6 >= 3),
+    ] {
+        for d in (0..=128).step_by(4) {
+            let p = Params {
+                detail_q4: d,
+                min_island_px: 0,
+            };
+            assert_eq!(trace(&m, p), trace_reference_guard(&m, p), "Detail {d} q4");
+            n += 1;
+        }
+    }
+    println!("{n} traçados byte-iguais");
 }

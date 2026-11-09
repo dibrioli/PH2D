@@ -122,18 +122,96 @@ fn corner(r: &[P], v: usize, prev: Chord, next: Chord, eps: i64) -> Option<P> {
     (dist2(p, r[v]) <= eps * eps).then_some(p)
 }
 
+/// Every polygon edge, bucketed by the pixel-centre row (`y = k·Q4 + Q4/2`) its half-open y span holds:
+/// even-odd «inside» of a pixel centre then reads only that row's edges. Same predicate and the same
+/// parity as `ring_crosses` over every ring (the crossing count mod 2 sums over rings).
+struct Rows {
+    k0: i32,
+    rows: Vec<Vec<(P, P)>>,
+}
+
+impl Rows {
+    /// First row whose centre is at or above `y` (`ceil((y - Q4/2) / Q4)`).
+    fn row_at_or_after(y: i32) -> i32 {
+        -((crate::Q4 / 2 - y).div_euclid(crate::Q4))
+    }
+
+    fn new(polys: &[Vec<P>]) -> Self {
+        let ys = polys.iter().flatten().map(|p| p[1]);
+        let (Some(lo), Some(hi)) = (ys.clone().min(), ys.max()) else {
+            return Self {
+                k0: 0,
+                rows: Vec::new(),
+            };
+        };
+        let k0 = Self::row_at_or_after(lo);
+        let n = usize::try_from(Self::row_at_or_after(hi) - k0).unwrap_or(0);
+        let mut rows = vec![Vec::new(); n];
+        for r in polys {
+            for i in 0..r.len() {
+                let (a, b) = (r[i], r[(i + 1) % r.len()]);
+                let (y0, y1) = (a[1].min(b[1]), a[1].max(b[1]));
+                for k in Self::row_at_or_after(y0)..Self::row_at_or_after(y1) {
+                    rows[usize::try_from(k - k0).unwrap_or(0)].push((a, b));
+                }
+            }
+        }
+        // Each row in the order of where its edges cross it (exact rationals): «crosses the ray from p»
+        // is then false-then-true along the row, so a binary search counts the crossings.
+        for (k, row) in (k0..).zip(rows.iter_mut()) {
+            let y = i128::from(k * crate::Q4 + crate::Q4 / 2);
+            let at = |e: &(P, P)| {
+                let (a, b) = (e.0.map(i128::from), e.1.map(i128::from));
+                let (num, den) = (
+                    a[0] * (b[1] - a[1]) + (y - a[1]) * (b[0] - a[0]),
+                    b[1] - a[1],
+                );
+                if den < 0 { (-num, -den) } else { (num, den) }
+            };
+            row.sort_by(|e, f| {
+                let ((n1, d1), (n2, d2)) = (at(e), at(f));
+                (n1 * d2).cmp(&(n2 * d1))
+            });
+        }
+        Self { k0, rows }
+    }
+
+    /// `p` must be a pixel centre.
+    fn inside(&self, p: P) -> bool {
+        debug_assert_eq!(p[1].rem_euclid(crate::Q4), crate::Q4 / 2);
+        let k = (p[1] - crate::Q4 / 2).div_euclid(crate::Q4) - self.k0;
+        usize::try_from(k)
+            .ok()
+            .and_then(|k| self.rows.get(k))
+            .is_some_and(|row| {
+                let left = row.partition_point(|(a, b)| !crate::geom::edge_crosses(*a, *b, p));
+                (row.len() - left) % 2 == 1
+            })
+    }
+}
+
 /// The chords (and their neighbours) whose run leaves a pixel centre of the art outside the polygons:
 /// each staircase edge is checked at every pixel centre beside it on the solid side. Where two pushed
 /// lines meet behind a sharp tip, a run can end up behind its own edge; this puts the vertex back.
-fn uncovered(rings: &[Vec<P>], chords: &[(usize, Chord)], polys: &[Vec<P>]) -> Vec<(usize, Chord)> {
+fn uncovered(
+    rings: &[Vec<P>],
+    chords: &[(usize, Chord)],
+    polys: &[Vec<P>],
+    brute: bool,
+) -> Vec<(usize, Chord)> {
     let half = crate::Q4 / 2;
+    let rows = Rows::new(polys);
     let inside = |p: P| {
-        polys
-            .iter()
-            .filter(|r| crate::geom::ring_crosses(r, p))
-            .count()
-            % 2
-            == 1
+        if brute {
+            polys
+                .iter()
+                .filter(|r| crate::geom::ring_crosses(r, p))
+                .count()
+                % 2
+                == 1
+        } else {
+            rows.inside(p)
+        }
     };
     let mut out = Vec::new();
     let mut base = 0;
@@ -162,7 +240,8 @@ fn uncovered(rings: &[Vec<P>], chords: &[(usize, Chord)], polys: &[Vec<P>]) -> V
     out
 }
 
-pub(crate) fn simplify(rings: &[Vec<P>], eps: i64) -> Vec<Vec<P>> {
+/// `brute`: the pixel-centre guard asks every ring (the reference the row buckets must equal byte for byte).
+pub(crate) fn simplify_with(rings: &[Vec<P>], eps: i64, brute: bool) -> Vec<Vec<P>> {
     let mut keeps: Vec<Vec<bool>> = rings.iter().map(|r| dp(r, eps)).collect();
     loop {
         // Per ring: its chords and the polygon they make.
@@ -210,9 +289,29 @@ pub(crate) fn simplify(rings: &[Vec<P>], eps: i64) -> Vec<Vec<P>> {
                     edges.push((p[t], p[(t + 1) % p.len()]));
                 }
             }
+            // Sweep in x: two edges can conflict only if their closed boxes meet. `bad` is an OR, so the
+            // visiting order cannot change it.
+            let bx = |e: (P, P)| {
+                [
+                    e.0[0].min(e.1[0]),
+                    e.0[0].max(e.1[0]),
+                    e.0[1].min(e.1[1]),
+                    e.0[1].max(e.1[1]),
+                ]
+            };
+            let mut order: Vec<usize> = (0..edges.len()).collect();
+            order.sort_unstable_by_key(|i| (bx(edges[*i])[0], *i));
             let mut bad = vec![false; edges.len()];
-            for x in 0..edges.len() {
-                for y in x + 1..edges.len() {
+            for (s, &x) in order.iter().enumerate() {
+                let bxx = bx(edges[x]);
+                for &y in &order[s + 1..] {
+                    let byy = bx(edges[y]);
+                    if byy[0] > bxx[1] {
+                        break;
+                    }
+                    if byy[2] > bxx[3] || byy[3] < bxx[2] {
+                        continue;
+                    }
                     let ((a, b), (c, d)) = (edges[x], edges[y]);
                     if segs_conflict(a, b, c, d) {
                         bad[x] = true;
@@ -229,7 +328,7 @@ pub(crate) fn simplify(rings: &[Vec<P>], eps: i64) -> Vec<Vec<P>> {
             );
         }
         if force.is_empty() {
-            force = uncovered(rings, &chords, &polys);
+            force = uncovered(rings, &chords, &polys, brute);
             if force.is_empty() {
                 return polys;
             }

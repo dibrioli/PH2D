@@ -191,3 +191,24 @@ fn o_encaixe_do_pivot_mede_a_folha_visivel() {
     w.entity_mut(e).insert(ShownSheet(0));
     assert_eq!(centro_do_desenho(&w, e, &img), Some([-0.0625, -0.5]));
 }
+
+/// ⭐ Auditoria do fecho 08/11 (J): a folha 0 de um Animated segue a MESMA lei das extra — a união das células da
+/// grelha dela sobre o quad de UMA, virada com o flip. Duas células de 8 px com o boneco em 2..6 e 1..5 ⇒ 1..6 da
+/// célula; com `flip_x` o lado vira. *Mutação: a lei antiga (a imagem inteira como uma célula, sem flip) ⇒
+/// `[−0,0625, −0,5]`.*
+#[test]
+fn o_encaixe_da_folha_zero_segue_a_grelha_e_o_flip() {
+    let db = AssetDb::default();
+    let (mut w, e, _) = duas_folhas(&db);
+    let mut px = vec![0_u8; 16 * 8 * 4];
+    for y in 4..8 {
+        for x in (2..6).chain(9..13) {
+            px[(y * 16 + x) * 4 + 3] = 255;
+        }
+    }
+    let img = ph2d_render::SpriteImage::from_bytes(16, 8, px, ph2d_render::AlphaMode::Straight);
+    w.entity_mut(e)
+        .insert((ShownSheet(0), SpriteGrid::new(2, 1)));
+    w.get_mut::<Sprite>(e).unwrap().flip_x = true;
+    assert_eq!(centro_do_desenho(&w, e, &img), Some([0.125, -0.5]));
+}

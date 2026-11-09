@@ -37,7 +37,11 @@ pub fn apply(
 /// ⭐ **Porque o Load sheet não abre** o painel de Assets para `e` (auditoria 08/11: ele calava-se), como chave da
 /// tabela de textos; `None` = abre. `has_assets_panel` = há janela do editor para o abrir.
 #[must_use]
-pub fn load_sheet_refusal(world: &World, e: Entity, has_assets_panel: bool) -> Option<&'static str> {
+pub fn load_sheet_refusal(
+    world: &World,
+    e: Entity,
+    has_assets_panel: bool,
+) -> Option<&'static str> {
     if !has_assets_panel {
         Some("card.insp.sheet_load_no_assets")
     } else if ph2d_sprite_edit::vazio::sem_imagem(world, e) {
@@ -180,13 +184,14 @@ pub fn add_sheet(
     if n >= SHEETS_MAX || ph2d_sprite_edit::vazio::sem_imagem(world, e) {
         return false;
     }
-    let (Some(first), Some((px, rgba))) = (
+    let (Some(first), Some((px, mut rgba))) = (
         first_sheet(world, e, db, atlas, ppm),
         pixels_of(id, db, atlas),
     ) else {
         return false;
     };
     let grid = proposed_cut(world, id, px, &rgba, atlas);
+    let id = straight_id(world, db, id, px, &mut rgba);
     let sheet = ops::new_sheet(
         &first,
         NewSheetImage {
@@ -200,6 +205,27 @@ pub fn add_sheet(
     sheets.0.push(sheet);
     world.entity_mut(e).insert((sheets, ShownSheet(n as u8)));
     true
+}
+
+/// ⭐ A folha extra desenha-se SEMPRE em alfa recto (`sheet_sprite`), mas um recurso da biblioteca guarda os bytes
+/// pré-multiplicados quando uma sprite o mostra assim (o BG removal): o flag vive só no `Sprite`. Então a folha
+/// leva uma cópia RECTA, com id próprio; senão o id de sempre (auditoria do fecho 08/11, item D).
+fn straight_id(
+    world: &mut World,
+    db: &AssetDb,
+    id: AssetId,
+    px: [u32; 2],
+    rgba: &mut [u8],
+) -> AssetId {
+    let pre = !rgba.is_empty()
+        && world
+            .try_query::<(&SpritePixels, &Sprite)>()
+            .is_some_and(|mut q| q.iter(world).any(|(p, s)| p.0 == id && s.premultiplied));
+    if !pre {
+        return id;
+    }
+    ph2d_render::unpremultiply_rgba8(rgba);
+    db.insert_image_rgba8(px[0], px[1], rgba.to_vec())
 }
 
 /// O quadro na tela depois de apagar a folha `k`.

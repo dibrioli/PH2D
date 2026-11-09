@@ -29,7 +29,7 @@ use ph2d_ecs::SimWorld;
 use ph2d_editor_core::HeroScreen;
 use ph2d_editor_core::ToolRegistry;
 use ph2d_host::WindowSize;
-use ph2d_render::{Camera2d, Sprite, SpriteRenderer};
+use ph2d_render::{Camera2d, SpriteRenderer};
 use ph2d_vector::VectorScene;
 use std::collections::BTreeMap;
 
@@ -183,9 +183,11 @@ pub(super) fn dispatch(
     // footprint exactly when factor > 1).
     if let Some(preview) = upscale_preview.as_ref() {
         let entity = ph2d_ecs::Entity::from_bits(preview.entity_bits);
-        if let (Some(tr), Some(sprite)) = (
+        // O quad da folha VISÍVEL (o tamanho e o Pivot dela), não o da folha 0 (auditoria 08/11, H).
+        let k = ph2d_ecs::shown_sheet(sim.world(), entity);
+        if let (Some(tr), Some((sprite, _))) = (
             sim.world().get::<ph2d_ecs::Transform>(entity),
-            sim.world().get::<Sprite>(entity),
+            ph2d_render::sheet_geometry(sim.world(), entity, k, 0),
         ) {
             let cx = tr.translation.x + sprite.anchor[0];
             let cy = tr.translation.y + sprite.anchor[1];

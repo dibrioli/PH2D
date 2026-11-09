@@ -106,7 +106,10 @@ fn cada_verbo_grava_na_folha_que_leu() {
         for call in ["commit_edited_texture(", "commit_geometric_edit("] {
             for args in chamadas(&s, call) {
                 let segundo = args.split(',').nth(1).unwrap_or("").trim();
-                assert!(segundo.ends_with("sheet"), "`{nome}`: {call} com `{segundo}`");
+                assert!(
+                    segundo.ends_with("sheet"),
+                    "`{nome}`: {call} com `{segundo}`"
+                );
                 n += 1;
             }
         }
@@ -118,7 +121,10 @@ fn cada_verbo_grava_na_folha_que_leu() {
             !s.contains("get_mut::<ph2d_ecs::Transform>(entity)"),
             "`{nome}` move o objeto: numa folha extra é o Pivot dela que anda"
         );
-        assert!(s.contains("shown_edit::place("), "`{nome}` não diz onde fica");
+        assert!(
+            s.contains("shown_edit::place("),
+            "`{nome}` não diz onde fica"
+        );
     }
 }
 
@@ -131,7 +137,11 @@ fn so_a_folha_zero_usa_o_desfazer_de_imagem() {
         let linhas: Vec<&str> = s.lines().collect();
         for (i, l) in linhas.iter().enumerate() {
             if l.contains("pending_undo_entries.push(ImageEditSnapshot") {
-                let antes = linhas[..i].iter().rev().find(|x| !x.trim().is_empty()).unwrap();
+                let antes = linhas[..i]
+                    .iter()
+                    .rev()
+                    .find(|x| !x.trim().is_empty())
+                    .unwrap();
                 assert!(
                     antes.trim_start().starts_with("if ") && antes.contains("sheet == 0"),
                     "`{nome}` linha {}: `{}`",
@@ -141,4 +151,22 @@ fn so_a_folha_zero_usa_o_desfazer_de_imagem() {
             }
         }
     }
+}
+
+/// ⭐ Auditoria do fecho 08/11 (A): o `Transform` é de todas as folhas. O Rasterize (assa a escala e a rotação do
+/// OBJETO) recusa numa folha extra; o Upscale só muda a densidade dela e só a folha 0 repõe a escala. *Mutações: tirar
+/// a recusa ou o `src.sheet == 0` ⇒ vermelho.*
+#[test]
+fn so_a_folha_zero_mexe_no_transform_do_objeto() {
+    let r = verbo("rasterize");
+    assert!(r.contains("if src.sheet != 0") && r.contains("shell.rasterize.first_sheet_only"));
+    let u = verbo("upscale");
+    assert!(
+        u.contains("shown_edit::density_size("),
+        "o tamanho da folha extra cresce"
+    );
+    assert!(
+        u.contains("if src.sheet == 0\n                && let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>"),
+        "o Upscale repõe a escala do objeto numa folha extra"
+    );
 }

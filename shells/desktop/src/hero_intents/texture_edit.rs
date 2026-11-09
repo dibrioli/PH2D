@@ -180,8 +180,13 @@ pub(crate) fn read_shown_source(
     asset_db: &AssetDb,
     atlas_asset_map: &BTreeMap<u32, AssetId>,
 ) -> Option<SourceRead> {
-    let Some(x) = ph2d_anim_sheets::shown_edit::read_extra(sim.world(), entity, asset_db) else {
-        return read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map);
+    use ph2d_anim_sheets::shown_edit::{ShownRead, read_shown};
+    let x = match read_shown(sim.world(), entity, asset_db) {
+        ShownRead::First => {
+            return read_sprite_source(entity, sim, renderer, asset_db, atlas_asset_map);
+        }
+        ShownRead::Extra(x) => x,
+        ShownRead::Unreadable => return None,
     };
     let world = sim.world();
     let t = world.get::<Transform>(entity)?.translation;
@@ -206,7 +211,9 @@ fn commit_extra_sheet(
     asset_db: &AssetDb,
     img: &SpriteImage,
     whole: [f32; 2],
+    toasts: &mut ph2d_editor_core::ToastQueue,
 ) -> Result<u32, String> {
+    ph2d_anim_sheets::shown_edit::warn_if_16_bit(sim.world(), entity, sheet, asset_db, toasts);
     let reta = img.clone().into_straight();
     let novo = asset_db.insert_image_rgba8(reta.width, reta.height, reta.pixels);
     let t = ph2d_render::upload_sheet_image(renderer, asset_db, novo)
@@ -351,7 +358,16 @@ pub(crate) fn commit_edited_texture(
     toasts: &mut ph2d_editor_core::ToastQueue,
 ) -> Result<u32, String> {
     if sheet != 0 {
-        return commit_extra_sheet(entity, sheet, sim, renderer, asset_db, img, new_size_world);
+        return commit_extra_sheet(
+            entity,
+            sheet,
+            sim,
+            renderer,
+            asset_db,
+            img,
+            new_size_world,
+            toasts,
+        );
     }
     // **A PERDA DE PRECISÃO tem de ser dita** (plano `docs/Sprite_projeto/18` W4).
     //

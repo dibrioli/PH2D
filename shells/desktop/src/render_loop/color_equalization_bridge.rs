@@ -66,16 +66,15 @@ struct CachedOriginal {
     alpha: AlphaMode,
     /// A folha lida (a visível, dono 08/11): a prévia e o Cancel gravam na mesma.
     sheet: u8,
+    /// O recurso que a folha extra mostra por obra da prévia (no início, o original): só com ele lá se grava de volta
+    /// (`shown_edit::preview_still_owns`, auditoria 08/11 F).
+    asset: Option<AssetId>,
 }
 
 thread_local! {
     static SOURCE_CACHE: RefCell<BTreeMap<u64, CachedOriginal>> =
         const { RefCell::new(BTreeMap::new()) };
 }
-
-/// Cache drain tuple — opaque alias to suppress `type_complexity` lint
-/// for the 6-field tuple used in revert/drain paths.
-type CachedDrain = (u64, Vec<u8>, u32, u32, [f32; 2], AlphaMode, u8);
 
 /// Tuple used by the active-tool drain path (5 fields — no AlphaMode).
 type DrainTuple = (u64, Vec<u8>, u32, u32, [f32; 2], u8);
@@ -160,7 +159,14 @@ pub(super) fn dispatch(
     // source (Atlas → asset bytes, Individual → GPU readback). Subsequent
     // bakes always read this snapshot, never the live ECS state.
     for &entity_bits in &selected {
-        ensure_cached(entity_bits, sim, renderer, asset_db, atlas_asset_map);
+        ensure_cached(
+            entity_bits,
+            sim,
+            renderer,
+            asset_db,
+            atlas_asset_map,
+            toasts,
+        );
     }
 
     // Drain panel-staged state in a tight tool borrow.
@@ -222,6 +228,12 @@ pub(super) fn dispatch(
                     &[("e", &e)],
                 )));
             }
+            let agora = ph2d_anim_sheets::shown_edit::sheet_asset(sim.world(), entity, sheet);
+            SOURCE_CACHE.with(|c| {
+                if let Some(v) = c.borrow_mut().get_mut(&entity_bits) {
+                    v.asset = agora;
+                }
+            });
         }
         // `collect_live_bakes` called `set_source` on the tool to feed
         // the pipeline, and that helper re-armed `params_dirty` (see
@@ -250,22 +262,34 @@ pub(super) fn dispatch(
 /// (missing atlas key / readback fault).
 fn ensure_cached(
     entity_bits: u64,
-    sim: &SimWorld,
+    sim: &mut SimWorld,
     renderer: &mut SpriteRenderer,
     asset_db: &AssetDb,
     atlas_asset_map: &BTreeMap<u32, AssetId>,
+    toasts: &mut ToastQueue,
 ) {
-    let already = SOURCE_CACHE.with(|c| c.borrow().contains_key(&entity_bits));
-    if already {
+    let entity = Entity::from_bits(entity_bits);
+    let shown = ph2d_ecs::shown_sheet(sim.world(), entity);
+    // A folha à vista mudou com a ferramenta aberta: a antiga volta ao original e a nova entra na cache.
+    let velha = SOURCE_CACHE.with(|c| {
+        let mut c = c.borrow_mut();
+        match c.get(&entity_bits) {
+            Some(v) if v.sheet != shown => c.remove(&entity_bits),
+            _ => None,
+        }
+    });
+    if let Some(v) = velha {
+        revert_one(entity_bits, v, sim, renderer, asset_db, toasts);
+    } else if SOURCE_CACHE.with(|c| c.borrow().contains_key(&entity_bits)) {
         return;
     }
-    let entity = Entity::from_bits(entity_bits);
     let Some(src) =
         texture_edit::read_shown_source(entity, sim, renderer, asset_db, atlas_asset_map)
     else {
         return;
     };
     let (size_world, sheet) = (src.old_size_world, src.sheet);
+    let asset = ph2d_anim_sheets::shown_edit::sheet_asset(sim.world(), entity, sheet);
     let SpriteImage {
         pixels,
         width,
@@ -282,6 +306,7 @@ fn ensure_cached(
                 size_world,
                 alpha,
                 sheet,
+                asset,
             },
         );
     });
@@ -341,36 +366,40 @@ fn revert_all_and_clear(
     asset_db: &AssetDb,
     toasts: &mut ToastQueue,
 ) {
-    let entries: Vec<CachedDrain> = SOURCE_CACHE.with(|c| {
-        let mut cache = c.borrow_mut();
-        let drained: Vec<_> = cache
-            .iter()
-            .map(|(k, v)| {
-                (
-                    *k,
-                    v.pixels.clone(),
-                    v.width,
-                    v.height,
-                    v.size_world,
-                    v.alpha,
-                    v.sheet,
-                )
-            })
-            .collect();
-        cache.clear();
-        drained
-    });
-    for (entity_bits, pixels, w, h, size_world, alpha, sheet) in entries {
-        let entity = Entity::from_bits(entity_bits);
-        let image = SpriteImage::from_bytes(w, h, pixels, alpha);
-        if let Err(e) = texture_edit::commit_edited_texture(
-            entity, sheet, sim, renderer, asset_db, &image, size_world, toasts,
-        ) {
-            toasts.push(Toast::error(tr_with(
-                "shell.color_equalization_bridge.color_equalization_gpu_3",
-                &[("e", &e)],
-            )));
-        }
+    let entries = SOURCE_CACHE.with(|c| std::mem::take(&mut *c.borrow_mut()));
+    for (entity_bits, v) in entries {
+        revert_one(entity_bits, v, sim, renderer, asset_db, toasts);
+    }
+}
+
+/// Um original de volta à folha dele, só se a prévia ainda é dona dela (senão larga-se calado).
+fn revert_one(
+    entity_bits: u64,
+    v: CachedOriginal,
+    sim: &mut SimWorld,
+    renderer: &mut SpriteRenderer,
+    asset_db: &AssetDb,
+    toasts: &mut ToastQueue,
+) {
+    let entity = Entity::from_bits(entity_bits);
+    if !ph2d_anim_sheets::shown_edit::preview_still_owns(sim.world(), entity, v.sheet, v.asset) {
+        return;
+    }
+    let image = SpriteImage::from_bytes(v.width, v.height, v.pixels, v.alpha);
+    if let Err(e) = texture_edit::commit_edited_texture(
+        entity,
+        v.sheet,
+        sim,
+        renderer,
+        asset_db,
+        &image,
+        v.size_world,
+        toasts,
+    ) {
+        toasts.push(Toast::error(tr_with(
+            "shell.color_equalization_bridge.color_equalization_gpu_3",
+            &[("e", &e)],
+        )));
     }
 }
 
@@ -384,37 +413,19 @@ fn prune_and_revert_unselected(
     toasts: &mut ToastQueue,
 ) {
     let live: std::collections::BTreeSet<u64> = selected.iter().copied().collect();
-    let stale: Vec<CachedDrain> = SOURCE_CACHE.with(|c| {
+    let stale: Vec<(u64, CachedOriginal)> = SOURCE_CACHE.with(|c| {
         let mut cache = c.borrow_mut();
-        let stale = cache
-            .iter()
-            .filter(|(k, _)| !live.contains(k))
-            .map(|(k, v)| {
-                (
-                    *k,
-                    v.pixels.clone(),
-                    v.width,
-                    v.height,
-                    v.size_world,
-                    v.alpha,
-                    v.sheet,
-                )
-            })
-            .collect::<Vec<_>>();
-        cache.retain(|k, _| live.contains(k));
-        stale
+        let fora: Vec<u64> = cache
+            .keys()
+            .filter(|k| !live.contains(k))
+            .copied()
+            .collect();
+        fora.into_iter()
+            .filter_map(|k| cache.remove(&k).map(|v| (k, v)))
+            .collect()
     });
-    for (entity_bits, pixels, w, h, size_world, alpha, sheet) in stale {
-        let entity = Entity::from_bits(entity_bits);
-        let image = SpriteImage::from_bytes(w, h, pixels, alpha);
-        if let Err(e) = texture_edit::commit_edited_texture(
-            entity, sheet, sim, renderer, asset_db, &image, size_world, toasts,
-        ) {
-            toasts.push(Toast::error(tr_with(
-                "shell.color_equalization_bridge.color_equalization_gpu_2",
-                &[("e", &e)],
-            )));
-        }
+    for (entity_bits, v) in stale {
+        revert_one(entity_bits, v, sim, renderer, asset_db, toasts);
     }
 }
 

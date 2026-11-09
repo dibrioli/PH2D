@@ -36,9 +36,11 @@ fn com_run(db: &AssetDb) -> (World, Entity, AssetId) {
 fn o_verbo_le_a_folha_visivel_inteira() {
     let db = AssetDb::default();
     let (mut w, e, _) = com_run(&db);
-    assert!(read_extra(&w, e, &db).is_none());
+    assert_eq!(read_shown(&w, e, &db), ShownRead::First);
     w.entity_mut(e).insert(ShownSheet(1));
-    let r = read_extra(&w, e, &db).expect("a folha run");
+    let ShownRead::Extra(r) = read_shown(&w, e, &db) else {
+        panic!("a folha run")
+    };
     assert_eq!((r.sheet, r.w, r.h, r.rgba[0]), (1, 12, 4, 200));
     assert_eq!(r.whole, [4.5, 3.0]);
     assert_eq!(r.anchor, [0.25, 0.0]);
@@ -131,4 +133,151 @@ fn a_folha_extra_de_uma_copia_ligada_sobe_ao_mestre() {
     let t = w.get::<Transform>(m).unwrap().translation;
     assert_eq!((t.x, t.y), (10.0, 20.0), "folha 0: o objeto anda sozinho");
     assert_eq!(w.get::<ph2d_render::Sprite>(m).unwrap().anchor, [0.0, 0.0]);
+}
+
+/// ⭐ Auditoria do fecho 08/11 (C): a folha extra à vista sem imagem legível é `Unreadable`, nunca a folha `0` que o
+/// artista não vê. *Mutação: devolver `First` sem o recurso ⇒ o verbo editava a folha 0.*
+#[test]
+fn a_folha_extra_ilegivel_nao_cai_na_folha_zero() {
+    let db = AssetDb::default();
+    let (mut w, e, _) = com_run(&db);
+    w.entity_mut(e).insert(ShownSheet(1));
+    let mut sheets = w.get::<SpriteSheets>(e).unwrap().clone();
+    sheets.0[0].asset = AssetId::from_digest([7; 32]);
+    w.entity_mut(e).insert(sheets);
+    assert_eq!(read_shown(&w, e, &db), ShownRead::Unreadable);
+}
+
+/// ⭐ Auditoria do fecho 08/11 (I): uma folha de 16 bits diz-se, como a folha 0; a de 8 e a folha 0 não.
+/// *Mutação: `false` sempre ⇒ a perda passa calada.*
+#[test]
+fn a_folha_de_16_bits_diz_que_perde_precisao() {
+    let db = AssetDb::default();
+    let (mut w, e, _) = com_run(&db);
+    assert!(!sheet_is_16_bit(&w, e, 1, &db));
+    let mut sheets = w.get::<SpriteSheets>(e).unwrap().clone();
+    sheets.0[0].asset = db.insert_image_rgba16(12, 4, vec![9; 12 * 4 * 4]);
+    w.entity_mut(e).insert(sheets);
+    assert!(sheet_is_16_bit(&w, e, 1, &db));
+    assert!(!sheet_is_16_bit(&w, e, 0, &db));
+}
+
+/// ⭐ Auditoria do fecho 08/11 (A): o Upscale numa folha extra só muda a densidade (a imagem inteira fica com o
+/// tamanho da tela); na folha 0, `px / ppm` como sempre. *Mutação: `px / ppm` nas duas ⇒ a folha cresce.*
+#[test]
+fn o_upscale_da_folha_extra_so_muda_a_densidade() {
+    assert_eq!(density_size(1, [4.5, 3.0], [48, 16], 4.0), [4.5, 3.0]);
+    assert_eq!(density_size(0, [4.5, 3.0], [48, 16], 4.0), [12.0, 4.0]);
+}
+
+/// Onde o centro do píxel `(px, py)` da imagem `w × h` cai no mundo: `local = anchor + quad · size` com o flip do
+/// `Sprite` dentro do quad (`sim_extract_sheet.rs`), depois a base do `Transform` (`sim_extract_emit.rs`).
+fn no_mundo(
+    t: Transform,
+    flip: [bool; 2],
+    anchor: [f32; 2],
+    size: [f32; 2],
+    img: [u32; 2],
+    p: [u32; 2],
+) -> [f32; 2] {
+    let mut u = (p[0] as f32 + 0.5) / img[0] as f32;
+    let mut v = (p[1] as f32 + 0.5) / img[1] as f32;
+    if flip[0] {
+        u = 1.0 - u;
+    }
+    if flip[1] {
+        v = 1.0 - v;
+    }
+    let mut filho = Transform::default();
+    filho.translation.x = anchor[0] + (u - 0.5) * size[0];
+    filho.translation.y = anchor[1] + (0.5 - v) * size[1];
+    let w = Transform::compose(t, filho).translation;
+    [w.x, w.y]
+}
+
+/// ⭐ Auditoria do fecho 08/11 (B): o deslocamento do Trim é em metros LOCAIS (`recenter_after_crop` só vê os
+/// píxeis), por isso somá-lo ao Pivot da folha está certo com escala negativa e rotação; o flip do `Sprite` vira os
+/// píxeis DENTRO do quad e espelha-o. Na folha 0 o `Transform` anda o mesmo, passado pela base dele. O píxel opaco
+/// `(5, 1)` de uma imagem `8 × 4` fica no mesmo ponto do mundo depois do Trim às caixas `x 4..8, y 0..2`.
+/// *Mutações: sem o espelho do flip ⇒ a arte salta 1 m; somar sem a base na folha 0 ⇒ salta com a escala.*
+#[test]
+fn o_trim_deixa_a_arte_no_mundo_com_espelho_escala_e_flip() {
+    use ph2d_editor_core::image_edit::{PixelBounds, recenter_after_crop};
+    let caixa = PixelBounds {
+        x: 4,
+        y: 0,
+        width: 4,
+        height: 2,
+    };
+    for flip in [[false, false], [true, false], [false, true]] {
+        for sheet in [0u8, 1] {
+            let db = AssetDb::default();
+            let (mut w, e, _) = com_run(&db);
+            {
+                let mut t = w.get_mut::<Transform>(e).unwrap();
+                (t.scale.x, t.scale.y, t.rotation) = (-2.0, 3.0, 0.4);
+            }
+            {
+                let mut s = w.get_mut::<ph2d_render::Sprite>(e).unwrap();
+                (s.flip_x, s.flip_y, s.size, s.anchor) =
+                    (flip[0], flip[1], [2.0, 1.0], [0.25, 0.0]);
+            }
+            let mut sheets = w.get::<SpriteSheets>(e).unwrap().clone();
+            (sheets.0[0].size, sheets.0[0].hframes, sheets.0[0].vframes) = ([2.0, 1.0], 1, 1);
+            w.entity_mut(e).insert((sheets, ShownSheet(sheet)));
+            let t0 = *w.get::<Transform>(e).unwrap();
+            let antes = no_mundo(t0, flip, [0.25, 0.0], [2.0, 1.0], [8, 4], [5, 1]);
+            let old_t = [t0.translation.x, t0.translation.y];
+            let new_t = recenter_after_crop(old_t, [2.0, 1.0], [8, 4], caixa);
+            place(&mut w, e, sheet, [old_t, new_t], None);
+            let t1 = *w.get::<Transform>(e).unwrap();
+            let a1 = if sheet == 0 {
+                w.get::<ph2d_render::Sprite>(e).unwrap().anchor
+            } else {
+                w.get::<SpriteSheets>(e).unwrap().0[0].anchor
+            };
+            let depois = no_mundo(t1, flip, a1, [1.0, 0.5], [4, 2], [1, 1]);
+            let dist = ((antes[0] - depois[0]).powi(2) + (antes[1] - depois[1]).powi(2)).sqrt();
+            assert!(
+                dist < 1e-4,
+                "folha {sheet}, flip {flip:?}: {antes:?} → {depois:?}"
+            );
+        }
+    }
+}
+
+/// ⭐ Auditoria do fecho 08/11 (F): a prévia do Color equalization só grava de volta na folha que ainda mostra o
+/// recurso dela; apagada ou trocada, nada. A folha 0 sempre. *Mutação: `true` sempre ⇒ o Cancel escreve na folha
+/// que ocupou o índice.*
+#[test]
+fn a_previa_so_desfaz_o_que_ela_escreveu() {
+    let db = AssetDb::default();
+    let (mut w, e, run) = com_run(&db);
+    assert_eq!(sheet_asset(&w, e, 1), Some(run));
+    assert!(preview_still_owns(&w, e, 1, Some(run)));
+    assert!(preview_still_owns(&w, e, 0, None));
+    let outra = db.insert_image_rgba8(1, 1, vec![1; 4]);
+    assert!(set_image(&mut w, e, 1, outra, [1.0, 1.0]));
+    assert!(
+        !preview_still_owns(&w, e, 1, Some(run)),
+        "a folha mostra outra coisa"
+    );
+    w.entity_mut(e).remove::<SpriteSheets>();
+    assert!(
+        !preview_still_owns(&w, e, 1, Some(outra)),
+        "a folha foi apagada"
+    );
+}
+
+/// ⭐ Auditoria do fecho 08/11 (G): a ilha separada nasce onde foi desenhada, com o Pivot da fonte: a caixa
+/// `[0, 0, 2, 2]` de uma imagem `8 × 4` a 4 px/m em `(10, 20)` com o Pivot `(0,5, −0,25)`. *Mutação: sem o Pivot ⇒
+/// `[9,25, 20,25]`.*
+#[test]
+fn a_ilha_separada_nasce_com_o_pivot_da_fonte() {
+    let c = pixel_box_centre([10.0, 20.0], [2.0, 1.0], 4.0, [0, 0, 2, 2]);
+    assert_eq!(c, [9.25, 20.25]);
+    assert_eq!(
+        island_spawn([10.0, 20.0], [2.0, 1.0], 4.0, [0.5, -0.25], [0, 0, 2, 2]),
+        [9.75, 20.0]
+    );
 }

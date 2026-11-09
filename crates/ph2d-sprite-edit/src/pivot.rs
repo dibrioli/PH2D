@@ -324,16 +324,19 @@ pub fn centro_do_desenho(
 ) -> Option<[f32; 2]> {
     let (k, s) = sprite_do_pivot(world, e)?;
     let janela = [0, 0, img.width, img.height];
-    let extra = world.get::<SpriteSheets>(e).and_then(|x| x.sheet(k));
-    if let Some(x) = extra.filter(|_| k > 0) {
-        let grade = [x.hframes.max(1), x.vframes.max(1)];
-        let f = fracao_opaca(&img.pixels, img.width, janela, grade)?;
-        return Some(ponto_local(&s, f, [1, 1]));
-    }
-    let f = fracao_opaca(&img.pixels, img.width, janela, [1, 1])?;
-    let u = (f[0] + f[2]) * 0.5 - 0.5;
-    let v = (f[1] + f[3]) * 0.5 - 0.5;
-    Some([u * s.size[0], -v * s.size[1]])
+    // A mesma lei nas duas: a união das células sobre o quad de UMA, com o flip (auditoria do fecho 08/11, J).
+    let extra = world
+        .get::<SpriteSheets>(e)
+        .and_then(|x| x.sheet(k))
+        .filter(|_| k > 0);
+    let grade = match extra {
+        Some(x) => [x.hframes.max(1), x.vframes.max(1)],
+        None => world
+            .get::<SpriteGrid>(e)
+            .map_or([1, 1], |g| [g.hframes.max(1), g.vframes.max(1)]),
+    };
+    let f = fracao_opaca(&img.pixels, img.width, janela, grade)?;
+    Some(ponto_local(&s, f, [1, 1]))
 }
 
 /// ⭐ O campo Pivot do cartão Look. `false` se nada mudou.

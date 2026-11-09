@@ -48,7 +48,7 @@ fn antes(rel: &str, antes: &str, depois: &str) {
 
 #[test]
 fn export_image_leva_a_tinta() {
-    tem("image_export.rs", "escolhe(por_assar,");
+    tem("image_export.rs", "escolhe(por_assar.or_else(extra),");
     tem(
         "render_loop/fase_sheet_verbs.rs",
         "imagem_por_assar(tools, bits)",
@@ -243,7 +243,11 @@ fn leitores(dir: &Path, base: &Path, out: &mut Vec<String>) {
                 .to_string_lossy()
                 .replace('\\', "/");
             let c = corpo(&rel);
-            let chama = c.contains("read_sprite_source(") || c.contains("read_sprite_straight");
+            // O funil da folha VISÍVEL (GEF 26) também é leitor: sem ele o censo emudecia (achava 7).
+            let chama = c.contains("read_sprite_source(")
+                || c.contains("read_sprite_straight")
+                || c.contains("read_shown_source(")
+                || c.contains("read_shown_straight");
             if chama && !rel.ends_with("texture_edit.rs") {
                 out.push(rel);
             }

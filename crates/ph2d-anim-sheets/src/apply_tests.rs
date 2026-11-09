@@ -275,3 +275,32 @@ fn o_load_sheet_diz_porque_nao_abre() {
         Some("card.insp.sheet_load_full")
     );
 }
+
+/// ⭐ Auditoria do fecho 08/11 (D): o recurso que uma sprite mostra PRÉ-MULTIPLICADO (o BG removal) entra como folha
+/// numa cópia recta, porque a folha extra desenha-se sempre recta; o mesmo recurso, sem ninguém pré-multiplicado,
+/// entra pelo id de sempre. *Mutação: usar sempre o `id` escolhido ⇒ a folha fica com os bytes escuros.*
+#[test]
+fn load_sheet_de_um_recurso_premultiplicado_leva_a_copia_recta() {
+    let db = AssetDb::default();
+    let (mut w, e) = animado(&db);
+    let pre = db.insert_image_rgba8(2, 1, [100, 50, 26, 128].repeat(2));
+    w.spawn((
+        Sprite {
+            premultiplied: true,
+            ..Sprite::atlas(0, [1.0, 1.0], [1.0; 4])
+        },
+        SpritePixels(pre),
+    ));
+    assert!(add_sheet(&mut w, e, &db, &BTreeMap::new(), PPM, pre));
+    let s = w.get::<SpriteSheets>(e).unwrap().0[0];
+    assert_ne!(
+        s.asset, pre,
+        "a folha mostra os bytes pré-multiplicados como rectos"
+    );
+    let a = db.get(&s.asset).unwrap();
+    let (_, _, px) = a.image_rgba8().unwrap();
+    assert_eq!(&px[..4], &[199, 100, 52, 128]);
+    let reta = db.insert_image_rgba8(64, 32, opaca(64, 32));
+    assert!(add_sheet(&mut w, e, &db, &BTreeMap::new(), PPM, reta));
+    assert_eq!(w.get::<SpriteSheets>(e).unwrap().0[1].asset, reta);
+}

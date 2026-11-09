@@ -3,6 +3,7 @@
 use ph2d_i18n::{tr, tr_with};
 use std::collections::BTreeMap;
 
+use ph2d_anim_sheets::shown_edit::{island_spawn, pixel_box_centre};
 use ph2d_asset::{AssetDb, AssetId};
 use ph2d_ecs::SimWorld;
 use ph2d_editor_core::{Toast, ToastQueue};
@@ -160,18 +161,10 @@ pub(crate) fn drain_bgremoval(
         ph2d_render::SpriteImage::from_bytes(w, h, rgba, ph2d_render::AlphaMode::Straight)
             .into_premultiplied()
     };
-    // Pixel-space (top-left, Y-down) bbox centre → world translation:
-    // sprite pixels span world `[old.x - sx/2, old.x + sx/2]` (X) and
-    // `[old.y - sy/2, old.y + sy/2]` (Y-up). Pixel (i, j) maps to
-    // world `(old.x - sx/2 + (i+0.5)/ppm, old.y + sy/2 - (j+0.5)/ppm)`.
-    let island_world_centre = |x: u32, y: u32, w: u32, h: u32| -> [f32; 2] {
-        let cx_px = x as f32 + w as f32 * 0.5;
-        let cy_px = y as f32 + h as f32 * 0.5;
-        [
-            old_translation[0] - old_size_world[0] * 0.5 + cx_px / px_per_m,
-            old_translation[1] + old_size_world[1] * 0.5 - cy_px / px_per_m,
-        ]
-    };
+    // O centro da caixa como o objeto andaria (o `place` o leva); a ilha nova nasce lá MAIS o Pivot da fonte.
+    let (t0, s0, a0) = (old_translation, old_size_world, old_anchor);
+    let island_world_centre = |x, y, w, h| pixel_box_centre(t0, s0, px_per_m, [x, y, w, h]);
+    let island_spawn = |x, y, w, h| island_spawn(t0, s0, px_per_m, a0, [x, y, w, h]);
 
     // Borrow the base name BEFORE any spawn — `world_mut().get::<Name>`
     // and `spawn` need disjoint borrows.
@@ -223,7 +216,7 @@ pub(crate) fn drain_bgremoval(
 
     let msg = spawn_islands(
         &islands,
-        island_world_centre,
+        island_spawn,
         bake_premul,
         px_per_m,
         &base_name,

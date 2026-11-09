@@ -201,9 +201,12 @@ fn folhas_no_destino(
     let falha = |e: &dyn std::fmt::Display| nao_nasce(super::FOLHAS, e);
     let mut s: ph2d_ecs::SpriteSheets = postcard::from_bytes(b).map_err(|e| falha(&e))?;
     for x in &mut s.0 {
-        let r = recursos.get(x.asset.as_bytes()).ok_or_else(|| falha(&"∅"))?;
+        let r = recursos
+            .get(x.asset.as_bytes())
+            .ok_or_else(|| falha(&"∅"))?;
         // Sem desfazer a pré-multiplicação: a folha extra desenha-se em alfa recto, e o `premultiplicado` do recurso é
-        // o da sprite que o partilha pelo id (auditoria 08/11).
+        // o da sprite que o partilha pelo id (auditoria 08/11). Os bytes de uma folha são sempre rectos: o Add sheet
+        // de um recurso mostrado pré-multiplicado já guarda uma cópia recta (`ph2d_anim_sheets::apply::straight_id`).
         let px = de_png(&r.bytes).ok_or_else(|| falha(&"png"))?;
         x.asset = ph2d_asset_id::AssetId::from_digest(poe(px));
     }
@@ -405,7 +408,8 @@ mod tests {
             hframes: 2,
             vframes: 1,
         };
-        let b = postcard::to_allocvec(&ph2d_ecs::SpriteSheets([folha].into_iter().collect())).unwrap();
+        let b =
+            postcard::to_allocvec(&ph2d_ecs::SpriteSheets([folha].into_iter().collect())).unwrap();
         let postos = std::cell::RefCell::new(Vec::new());
         let poe = |px: crate::aplicar::Rgba| {
             postos.borrow_mut().push(px);
@@ -415,9 +419,15 @@ mod tests {
         let s: ph2d_ecs::SpriteSheets = postcard::from_bytes(&f).unwrap();
         assert_eq!(*s.0[0].asset.as_bytes(), [6; 32]);
         assert_eq!(*postos.borrow(), [(rgba.to_vec(), 2, 1)]);
-        assert!(folhas_no_destino(&b, &BTreeMap::new(), &poe).is_err(), "sem recurso não nasce");
+        assert!(
+            folhas_no_destino(&b, &BTreeMap::new(), &poe).is_err(),
+            "sem recurso não nasce"
+        );
         // CONTROLO: outro componente passa como veio, sem tocar na porta.
-        assert_eq!(no_destino("ph2d::ecs::Name", vec![1, 2], &recursos, &poe).unwrap(), [1, 2]);
+        assert_eq!(
+            no_destino("ph2d::ecs::Name", vec![1, 2], &recursos, &poe).unwrap(),
+            [1, 2]
+        );
         assert_eq!(postos.borrow().len(), 1);
     }
 
@@ -442,7 +452,8 @@ mod tests {
             hframes: 2,
             vframes: 1,
         };
-        let b = postcard::to_allocvec(&ph2d_ecs::SpriteSheets([folha].into_iter().collect())).unwrap();
+        let b =
+            postcard::to_allocvec(&ph2d_ecs::SpriteSheets([folha].into_iter().collect())).unwrap();
         let postos = std::cell::RefCell::new(Vec::new());
         let poe = |px: crate::aplicar::Rgba| {
             postos.borrow_mut().push(px);

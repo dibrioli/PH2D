@@ -124,7 +124,13 @@ pub(crate) fn drain_upscale(
         edited_straight
     };
     // Sprite.size GROWS by the upscale factor (in world meters).
-    let new_size_world = [out_w as f32 / px_per_m, out_h as f32 / px_per_m];
+    // Folha extra: só a densidade muda (o Transform é de todas as folhas).
+    let new_size_world = ph2d_anim_sheets::shown_edit::density_size(
+        src.sheet,
+        old_size_world,
+        [out_w, out_h],
+        px_per_m,
+    );
     match texture_edit::commit_geometric_edit(
         entity,
         src.sheet,
@@ -148,7 +154,9 @@ pub(crate) fn drain_upscale(
             // Without the reset, an existing scale factor would
             // double-multiply against the already-grown texture and
             // visually double the on-canvas size.
-            if let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(entity) {
+            if src.sheet == 0
+                && let Some(mut t) = sim.world_mut().get_mut::<ph2d_ecs::Transform>(entity)
+            {
                 t.scale.x = if scale_sign_x < 0.0 { -1.0 } else { 1.0 };
                 t.scale.y = if scale_sign_y < 0.0 { -1.0 } else { 1.0 };
             }

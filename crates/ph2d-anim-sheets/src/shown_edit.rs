@@ -23,13 +23,28 @@ pub struct ExtraRead {
     pub anchor: [f32; 2],
 }
 
-/// A folha extra visível de `e` para um verbo; `None` com a folha `0` à vista (o caminho de sempre).
+/// O que um verbo lê de `e`: a folha `0` à vista (o caminho de sempre), a extra, ou a extra SEM imagem legível —
+/// esta nunca cai na folha `0`, que o artista não está a ver (auditoria do fecho 08/11, item C).
+#[derive(Clone, Debug, PartialEq)]
+pub enum ShownRead {
+    First,
+    Extra(ExtraRead),
+    Unreadable,
+}
+
+/// A folha visível de `e` para um verbo.
 #[must_use]
-pub fn read_extra(world: &World, e: Entity, db: &AssetDb) -> Option<ExtraRead> {
-    let (sheet, s) = shown_extra(world, e)?;
-    let asset = db.get(&s.asset)?;
-    let (w, h, px) = asset.image_rgba8()?;
-    Some(ExtraRead {
+pub fn read_shown(world: &World, e: Entity, db: &AssetDb) -> ShownRead {
+    let Some((sheet, s)) = shown_extra(world, e) else {
+        return ShownRead::First;
+    };
+    let Some(asset) = db.get(&s.asset) else {
+        return ShownRead::Unreadable;
+    };
+    let Some((w, h, px)) = asset.image_rgba8() else {
+        return ShownRead::Unreadable;
+    };
+    ShownRead::Extra(ExtraRead {
         sheet,
         rgba: px.into_owned(),
         w,
@@ -40,6 +55,97 @@ pub fn read_extra(world: &World, e: Entity, db: &AssetDb) -> Option<ExtraRead> {
         ],
         anchor: s.anchor,
     })
+}
+
+/// A folha `sheet ≥ 1` de `e` tem um recurso de 16 bits: o verbo lê-o e grava-o em 8, e tem de o dizer, como a
+/// folha 0 (`warn_precision_loss`; auditoria do fecho 08/11, item I).
+#[must_use]
+pub fn sheet_is_16_bit(world: &World, e: Entity, sheet: u8, db: &AssetDb) -> bool {
+    world
+        .get::<SpriteSheets>(e)
+        .and_then(|x| x.sheet(sheet))
+        .filter(|_| sheet > 0)
+        .and_then(|s| db.get(&s.asset))
+        .is_some_and(|a| matches!(*a, ph2d_asset::Asset::ImageRgba16 { .. }))
+}
+
+/// O centro da caixa de píxeis `[x, y, w, h]` (Y para baixo) como o objeto andaria, sem o Pivot: a imagem ocupa
+/// `old_t ± size / 2`. O BG removal «separar» leva-o ao `place` (a ilha maior); a ilha NOVA nasce nele mais o Pivot
+/// da fonte, para cair onde foi desenhada (auditoria do fecho 08/11, G).
+#[must_use]
+pub fn pixel_box_centre(
+    old_t: [f32; 2],
+    size: [f32; 2],
+    ppm: f32,
+    [x, y, w, h]: [u32; 4],
+) -> [f32; 2] {
+    let cx = x as f32 + w as f32 * 0.5;
+    let cy = y as f32 + h as f32 * 0.5;
+    [
+        old_t[0] - size[0] * 0.5 + cx / ppm,
+        old_t[1] + size[1] * 0.5 - cy / ppm,
+    ]
+}
+
+/// Onde nasce a ilha NOVA da caixa `bx`: o [`pixel_box_centre`] mais o Pivot `anchor` da fonte.
+#[must_use]
+pub fn island_spawn(
+    old_t: [f32; 2],
+    size: [f32; 2],
+    ppm: f32,
+    anchor: [f32; 2],
+    bx: [u32; 4],
+) -> [f32; 2] {
+    let c = pixel_box_centre(old_t, size, ppm, bx);
+    [c[0] + anchor[0], c[1] + anchor[1]]
+}
+
+/// O recurso da folha `sheet ≥ 1` de `e`; `None` na folha `0` ou numa folha que já não existe.
+#[must_use]
+pub fn sheet_asset(world: &World, e: Entity, sheet: u8) -> Option<AssetId> {
+    let x = world
+        .get::<SpriteSheets>(e)?
+        .sheet(sheet)
+        .filter(|_| sheet > 0)?;
+    Some(x.asset)
+}
+
+/// ⭐ **Uma prévia ao vivo só desfaz o que ela própria escreveu** (Color equalization, auditoria do fecho 08/11, F):
+/// a folha `0` existe sempre; a folha `k` só se ainda mostra `preview`, o recurso que a prévia lá deixou. Apagada,
+/// ou trocada por outra coisa, o original larga-se calado — gravar no índice escreveria na folha que chegou lá.
+#[must_use]
+pub fn preview_still_owns(world: &World, e: Entity, sheet: u8, preview: Option<AssetId>) -> bool {
+    sheet == 0 || (preview.is_some() && sheet_asset(world, e, sheet) == preview)
+}
+
+/// O aviso da perda (o mesmo texto do `warn_precision_loss` da folha 0) quando [`sheet_is_16_bit`].
+pub fn warn_if_16_bit(
+    world: &World,
+    e: Entity,
+    sheet: u8,
+    db: &AssetDb,
+    toasts: &mut ph2d_editor_core::ToastQueue,
+) {
+    if sheet_is_16_bit(world, e, sheet, db) {
+        toasts.push(ph2d_editor_core::Toast::info(ph2d_i18n::tr_with(
+            "shell.texture_edit.converted_to_rgba8",
+            &[(
+                "because",
+                &ph2d_i18n::tr("shell.texture_edit.image_tools_work_in_8"),
+            )],
+        )));
+    }
+}
+
+/// ⭐ **Só a folha `0` mexe no `Transform`** (ele é de todas as folhas). Um verbo que muda a DENSIDADE (Upscale)
+/// numa folha extra deixa a imagem inteira com o tamanho que tinha na tela: `old_whole`; na folha `0`, `px / ppm`.
+#[must_use]
+pub fn density_size(sheet: u8, old_whole: [f32; 2], px: [u32; 2], ppm: f32) -> [f32; 2] {
+    if sheet == 0 {
+        [px[0] as f32 / ppm, px[1] as f32 / ppm]
+    } else {
+        old_whole
+    }
 }
 
 /// ⭐ **Põe o resultado do verbo na folha `sheet` de `e`**: a folha passa à imagem `asset` (já na biblioteca e na
@@ -84,9 +190,11 @@ fn edit_sheet(
     true
 }
 
-/// ⭐ **Onde o objeto fica depois do verbo.** Folha `0`: o `Transform` vai para `new_t` e, se o verbo o deu, o
-/// Pivot do `Sprite` para `new_anchor` (o de sempre). Folha `k`: o objeto fica, e o Pivot da folha `k` anda o que o
-/// objeto andaria (`new_t − old_t`), a partir de `new_anchor` ou do dela.
+/// ⭐ **Onde o objeto fica depois do verbo.** O verbo diz `old_t → new_t` como se o objeto não tivesse
+/// rotação, escala nem flip (`recenter_after_crop`: a diferença é em metros LOCAIS, medida nos píxeis). Folha `0`:
+/// o `Transform` anda essa diferença passada pela base dele, e o Pivot do `Sprite` vai para `new_anchor` se o verbo
+/// o deu. Folha `k`: o objeto fica, e o Pivot da folha `k` anda a diferença, a partir de `new_anchor` ou do dela.
+/// Nos dois o flip do `Sprite` espelha a diferença (ele vira os píxeis dentro do quad, não o quad).
 pub fn place(
     world: &mut World,
     e: Entity,
@@ -94,10 +202,21 @@ pub fn place(
     [old_t, new_t]: [[f32; 2]; 2],
     new_anchor: Option<[f32; 2]>,
 ) {
+    let (fx, fy) = world
+        .get::<ph2d_render::Sprite>(e)
+        .map_or((false, false), |s| (s.flip_x, s.flip_y));
+    let sinal = |f: bool| if f { -1.0 } else { 1.0 };
+    let d = [
+        (new_t[0] - old_t[0]) * sinal(fx),
+        (new_t[1] - old_t[1]) * sinal(fy),
+    ];
     if sheet == 0 {
         if let Some(mut t) = world.get_mut::<Transform>(e) {
-            t.translation.x = new_t[0];
-            t.translation.y = new_t[1];
+            let mut base = *t;
+            (base.translation.x, base.translation.y) = (old_t[0], old_t[1]);
+            let mut filho = Transform::default();
+            (filho.translation.x, filho.translation.y) = (d[0], d[1]);
+            t.translation = Transform::compose(base, filho).translation;
         }
         if let Some(a) = new_anchor
             && let Some(mut s) = world.get_mut::<ph2d_render::Sprite>(e)
@@ -110,7 +229,7 @@ pub fn place(
     for x in ph2d_ecs::linked_art_chain(world, e) {
         edit_sheet(world, x, sheet, |s| {
             let base = new_anchor.unwrap_or(s.anchor);
-            s.anchor = [base[0] + new_t[0] - old_t[0], base[1] + new_t[1] - old_t[1]];
+            s.anchor = [base[0] + d[0], base[1] + d[1]];
         });
     }
 }

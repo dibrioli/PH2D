@@ -118,7 +118,12 @@ fn source_for(
 ) -> Option<SpriteSource> {
     // A folha extra visível exporta-se a si (plano GEF 26): a do cartão Image, a que o Painter pinta.
     let extra = || ph2d_anim_sheets::shown_image::read_shown_extra(sim.world(), entity, asset_db);
+    let folha_extra = ph2d_anim_sheets::shown_image::shown_extra(sim.world(), entity).is_some();
     escolhe(por_assar.or_else(extra), || {
+        // Folha extra à vista e ilegível: nada, nunca a folha 0 que o artista não vê (auditoria 08/11, C).
+        if folha_extra {
+            return None;
+        }
         crate::hero_intents::texture_edit::read_sprite_source(
             entity,
             sim,

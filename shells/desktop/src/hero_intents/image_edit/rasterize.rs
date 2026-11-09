@@ -52,6 +52,11 @@ pub(crate) fn drain_rasterize(
         toasts.push(Toast::error(tr("shell.rasterize.rasterize_source")));
         return true;
     };
+    // O Transform é de todas as folhas: assá-lo numa folha extra torceria as outras (doc 27 §1).
+    if src.sheet != 0 {
+        toasts.push(Toast::info(tr("shell.rasterize.first_sheet_only")));
+        return true;
+    }
     // Resample kernels operate on straight-alpha RGBA per-channel; a
     // premultiplied source would attenuate edges. Round-trip back to
     // the source alpha mode at commit (the chokepoint derives

@@ -51,3 +51,60 @@ fn o_formato_do_jogo_atravessa_o_arquivo() {
     crate::project_settings::install_jogo(&mut lido, &back.jogo);
     assert_eq!(lido, autorado);
 }
+
+/// ⭐ Uma forma «Outline» (anéis com buraco) sai e volta igual pelo `.ph2dproj` (W2b, schema 226).
+#[test]
+fn a_forma_outline_atravessa_o_arquivo() {
+    use ph2d_ecs::scene::{ComponentRegistry, register_ecs_components, snapshot_to_world};
+    use ph2d_physics_ecs::{Collider, ColliderOutline, ColliderShape};
+    let mut reg = ComponentRegistry::new();
+    register_ecs_components(&mut reg);
+    ph2d_physics_ecs::register_physics_components(&mut reg);
+    let o = ColliderOutline {
+        rings: vec![
+            vec![[0, 0], [64, 0], [64, 64], [0, 64]],
+            vec![[16, 16], [16, 48], [48, 48], [48, 16]],
+        ]
+        .into(),
+        picture_px: [4, 4],
+        detail_q4: 5,
+        ..ColliderOutline::default()
+    };
+    let shape = ColliderShape::Outline {
+        half_x: 0.5,
+        half_y: 0.25,
+    };
+    let mut sim = ph2d_ecs::SimWorld::new();
+    let c = Collider {
+        shape,
+        ..Collider::default()
+    };
+    sim.world_mut()
+        .spawn((ph2d_ecs::Transform::default(), c, o.clone()));
+    let mut file = arquivo(Vec::new());
+    let mut prop = ph2d_ecs::TransformPropagationState::new(sim.world_mut());
+    let mut wl = ph2d_ecs::WorklistBuf::new();
+    ph2d_ecs::scene::world_to_snapshot(
+        sim.world_mut(),
+        &mut prop,
+        &mut wl,
+        &reg,
+        &mut file.state.world,
+    )
+    .expect("snapshot");
+    let path = tmp_path("outline_v226");
+    std::fs::write(
+        &path,
+        postcard::to_allocvec(&(PROJECT_SCHEMA, &file)).expect("serializa"),
+    )
+    .expect("grava");
+    let (back, _) = headless_app()
+        .read_project_file(&path.to_string_lossy())
+        .expect("aceite");
+    let _ = std::fs::remove_file(&path);
+    assert_eq!(back.state.world, file.state.world);
+    let mut dst = ph2d_ecs::SimWorld::new();
+    let e = snapshot_to_world(dst.world_mut(), &back.state.world, &reg).expect("restaura")[0];
+    assert_eq!(dst.world().get::<ColliderOutline>(e), Some(&o));
+    assert_eq!(dst.world().get::<Collider>(e).map(|c| c.shape), Some(shape));
+}

@@ -295,11 +295,19 @@ fn foco_da_busca(select: bool, query: &str, focus: impl Fn(&mut WidgetStore)) ->
 #[test]
 fn a_busca_so_acende_o_foco_depois_de_um_clique_ou_de_uma_tecla() {
     let nada = |_: &mut WidgetStore| {};
-    assert_eq!(foco_da_busca(true, "", nada), (0, vec![]), "a busca nasce acesa");
+    assert_eq!(
+        foco_da_busca(true, "", nada),
+        (0, vec![]),
+        "a busca nasce acesa"
+    );
     let clique = |s: &mut WidgetStore| s.focus_command_palette_search();
     let (aneis, vazia) = foco_da_busca(true, "", clique);
     assert_eq!(aneis, 1, "o clique na busca não pinta o anel de foco");
-    assert_eq!(vazia.len(), 1, "a busca vazia com foco não pinta o caret: {vazia:?}");
+    assert_eq!(
+        vazia.len(),
+        1,
+        "a busca vazia com foco não pinta o caret: {vazia:?}"
+    );
     let tecla = |s: &mut WidgetStore| s.command_palette_push_char('S');
     let (aneis, escrita) = foco_da_busca(true, "Spr", tecla);
     assert_eq!((aneis, escrita.len()), (1, 1), "a tecla não acende a busca");
@@ -308,13 +316,21 @@ fn a_busca_so_acende_o_foco_depois_de_um_clique_ou_de_uma_tecla() {
         s.command_palette_push_char('S');
         s.command_palette_backspace();
     };
-    assert_eq!(foco_da_busca(true, "", apagou).0, 1, "apagar tudo tirou o foco");
+    assert_eq!(
+        foco_da_busca(true, "", apagou).0,
+        1,
+        "apagar tudo tirou o foco"
+    );
     let item = |s: &mut WidgetStore| {
         s.focus_command_palette_search();
         let id = s.command_palette_highlight().expect("um item");
         s.highlight_command_palette(id);
     };
-    assert_eq!(foco_da_busca(true, "", item).0, 0, "o clique num item deixou a busca acesa");
+    assert_eq!(
+        foco_da_busca(true, "", item).0,
+        0,
+        "o clique num item deixou a busca acesa"
+    );
     assert_eq!(
         foco_da_busca(false, "", clique),
         (0, vec![]),

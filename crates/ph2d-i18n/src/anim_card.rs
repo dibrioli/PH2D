@@ -36,8 +36,12 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         "card.insp.sheet_load_tip" => {
             "Add another image to this sprite. Its frames can go into any animation; no new animation is made."
         }
-        "card.insp.sheet_load_no_assets" => "Load sheet needs the editor window: open the project in the editor",
-        "card.insp.sheet_load_no_image" => "Choose this object's first image before loading another sheet",
+        "card.insp.sheet_load_no_assets" => {
+            "Load sheet needs the editor window: open the project in the editor"
+        }
+        "card.insp.sheet_load_no_image" => {
+            "Choose this object's first image before loading another sheet"
+        }
         "card.insp.sheet_load_full" => "This object already has the most sheets it can hold",
         "card.insp.sheet_delete" => "Delete sheet",
         "card.insp.sheet_delete_tip" => {

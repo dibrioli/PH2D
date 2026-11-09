@@ -175,7 +175,13 @@ pub(crate) fn drain_padding(
         Ok(texture_id) => {
             // Keep mode pushes the resize offset into the pivot anchor (Recenter resets it to centered).
             let ts = [src.old_translation, new_translation];
-            ph2d_anim_sheets::shown_edit::place(sim.world_mut(), entity, src.sheet, ts, Some(new_anchor));
+            ph2d_anim_sheets::shown_edit::place(
+                sim.world_mut(),
+                entity,
+                src.sheet,
+                ts,
+                Some(new_anchor),
+            );
             if src.sheet == 0 {
                 pending_undo_entries.push(ImageEditSnapshot {
                     entity_bits,

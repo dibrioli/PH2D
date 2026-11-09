@@ -788,7 +788,11 @@ fn a_previa_aparece_com_so_uma_folha_extra_lida() {
     so_a_extra.frame = AnimFrameRef { sheet: 1, cell: 1 };
     let mut nenhuma = fixa();
     nenhuma.card.sheet = None;
-    let (com, extra, sem) = (y_da_linha(so_a_zero), y_da_linha(so_a_extra), y_da_linha(nenhuma));
+    let (com, extra, sem) = (
+        y_da_linha(so_a_zero),
+        y_da_linha(so_a_extra),
+        y_da_linha(nenhuma),
+    );
     limpa();
     assert!(com > sem, "controlo: a prévia ocupa lugar ({com} × {sem})");
     assert_eq!(extra, com, "com só a folha extra lida há prévia");

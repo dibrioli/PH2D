@@ -197,8 +197,8 @@ pub fn passos(q: u32, foto: Option<Foto>) -> Vec<Passo> {
 /// animações (`idle` na folha 1, `run` na 2 e `attack` misturada) e a `run` visível. Na foto do alerta, Delete sheet
 /// apaga a `idle`.
 fn duas_folhas(q: u32, foto: Option<Foto>) -> Vec<Passo> {
-    use ph2d_editor_core::AnimFrameRef as F;
     use Passo as P;
+    use ph2d_editor_core::AnimFrameRef as F;
     let (i, r) = (|cell| F { sheet: 0, cell }, |cell| F { sheet: 1, cell });
     match q {
         3 => vec![P::Anim(DUAS, Ed::Grid(4, 1)), P::Folha(DUAS, RUN)],
@@ -301,10 +301,16 @@ pub fn relato(sim: &SimWorld, nome: &str, e: Entity) -> String {
         w.get::<SpriteAnimations>(e).and_then(|l| l.1),
         1 + w.get::<ph2d_ecs::SpriteSheets>(e).map_or(0, |s| s.0.len()),
         ph2d_ecs::shown_sheet(w, e),
-        w.get::<ph2d_ecs::SpriteAnimFrames>(e)
-            .map(|f| f.0.iter().map(|t| (t.tag.clone(), t.cells.len())).collect::<Vec<_>>()),
-        w.get::<ph2d_ecs::SpriteSheets>(e)
-            .map(|s| s.0.iter().map(|x| (x.size, x.anchor)).collect::<Vec<_>>()),
+        w.get::<ph2d_ecs::SpriteAnimFrames>(e).map(|f| f
+            .0
+            .iter()
+            .map(|t| (t.tag.clone(), t.cells.len()))
+            .collect::<Vec<_>>()),
+        w.get::<ph2d_ecs::SpriteSheets>(e).map(|s| s
+            .0
+            .iter()
+            .map(|x| (x.size, x.anchor))
+            .collect::<Vec<_>>()),
     )
 }
 
@@ -320,7 +326,9 @@ mod tests {
         let v = todos(None);
         assert!(v.contains(&Passo::Folha(DUAS, RUN)));
         let attack = v.iter().find_map(|p| match p {
-            Passo::Anim(DUAS, Ed::Frames(2, f)) => Some(f.iter().map(|x| x.sheet).collect::<Vec<_>>()),
+            Passo::Anim(DUAS, Ed::Frames(2, f)) => {
+                Some(f.iter().map(|x| x.sheet).collect::<Vec<_>>())
+            }
             _ => None,
         });
         assert_eq!(attack, Some(vec![1, 1, 0, 0, 1]));

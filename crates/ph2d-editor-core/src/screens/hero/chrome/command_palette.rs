@@ -182,7 +182,10 @@ mod tests {
         assert!(hero.store.command_palette_open() && hero.store.command_palette_search_focused());
         hero.store.close_command_palette();
         hero.store.open_command_palette(model());
-        assert!(!hero.store.command_palette_search_focused(), "herdou o foco");
+        assert!(
+            !hero.store.command_palette_search_focused(),
+            "herdou o foco"
+        );
     }
 
     /// **The close-X closes the palette.**

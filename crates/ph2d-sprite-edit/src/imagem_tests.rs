@@ -115,8 +115,15 @@ fn com_a_folha_extra_visivel_o_painter_marca_e_devolve_a_imagem_dela() {
     let t = segue_a_pintura(&mut w, &atlas, a, 99).expect("segue");
     assert_eq!((t.antigo, t.novo, t.quem), (run, pintada, vec![b]));
     assert_eq!(w.get::<SpritePixels>(b).unwrap().0, pintada);
-    assert!(!w.get::<Sprite>(b).unwrap().premultiplied, "a textura da folha é reta");
-    assert_eq!(w.get::<SpritePixels>(a).unwrap().0, antigo, "a folha 0 de a fica");
+    assert!(
+        !w.get::<Sprite>(b).unwrap().premultiplied,
+        "a textura da folha é reta"
+    );
+    assert_eq!(
+        w.get::<SpritePixels>(a).unwrap().0,
+        antigo,
+        "a folha 0 de a fica"
+    );
     EDICAO.with(|c| c.set(None));
 }
 

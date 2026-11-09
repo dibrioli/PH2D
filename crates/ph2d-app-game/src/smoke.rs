@@ -28,8 +28,14 @@ pub const CENAS: u32 = 5;
 pub const IMAGENS_5: [&str; 4] = [
     IMAGENS_4[0],
     IMAGENS_4[1],
-    concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/GameEngineFuncional/arte/idle.png"),
-    concat!(env!("CARGO_MANIFEST_DIR"), "/../../docs/GameEngineFuncional/arte/run.png"),
+    concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../docs/GameEngineFuncional/arte/idle.png"
+    ),
+    concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../docs/GameEngineFuncional/arte/run.png"
+    ),
 ];
 
 pub const IMAGENS_4: [&str; 2] = [

@@ -35,7 +35,9 @@ pub enum ShownRead {
 /// `e` tem folhas extra (o `Transform` é partilhado por mais de uma imagem).
 #[must_use]
 pub fn has_extra_sheets(world: &World, e: Entity) -> bool {
-    world.get::<SpriteSheets>(e).is_some_and(|s| !s.0.is_empty())
+    world
+        .get::<SpriteSheets>(e)
+        .is_some_and(|s| !s.0.is_empty())
 }
 
 /// A folha visível de `e` para um verbo.

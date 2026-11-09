@@ -299,6 +299,10 @@ impl SpriteRenderer {
         for r in gpu_extra.map_or(&[][..], |(_, _, runs)| runs) {
             self.ensure_run_sampler_bg(r.texture_id, r.sampling);
         }
+        if gpu_extra.is_some_and(|(_, _, runs)| runs.is_empty()) {
+            // A partição vazia é o átlas em amostragem 0 (o grupo da normal do átlas, se houver).
+            self.ensure_run_sampler_bg(RenderInstance::ATLAS_TEXTURE_ID, 0);
+        }
         let count = self
             .instance_buffer
             .upload(&self.gpu, self.scratch.as_slice());
@@ -480,14 +484,31 @@ impl SpriteRenderer {
                     // ⚠️ **A partição vazia é «o átlas, em `Mix`»** — o caminho de sempre,
                     // byte a byte. Um sink que peça outra mistura emite um run explícito
                     // (ver [`crate::GpuTexRun`]), logo este ramo nunca a perde.
-                    pass.set_pipeline(self.pipeline.blend_pipeline(0));
-                    pass.set_bind_group(1, &self.material_bind_group, &[]);
+                    // ⭐ P14: o átlas com células de normal vai pela `fs_main_n`.
+                    if let Some((pl, bg)) =
+                        self.normais.do_run(RenderInstance::ATLAS_TEXTURE_ID, 0, 0)
+                    {
+                        pass.set_pipeline(pl);
+                        pass.set_bind_group(1, bg, &[]);
+                    } else {
+                        pass.set_pipeline(self.pipeline.blend_pipeline(0));
+                        pass.set_bind_group(1, &self.material_bind_group, &[]);
+                    }
                     pass.draw(0..4, 0..n);
                 } else {
                     // ⚠️ A AMOSTRAGEM é a do RUN — a do sink (doc 119 §3); cravada em `0` o
                     // `Filter` de uma saída cozida na placa não fazia nada. A missing texture
                     // (id released before render saw it) skips its run, like a scene run.
                     for r in runs {
+                        // ⭐ P14: o run com normal vai pela `fs_main_n`, como o da cena.
+                        if let Some((pl, bg)) =
+                            self.normais.do_run(r.texture_id, r.sampling, r.blend)
+                        {
+                            pass.set_pipeline(pl);
+                            pass.set_bind_group(1, bg, &[]);
+                            pass.draw(0..4, r.start..r.end);
+                            continue;
+                        }
                         let Some(bg) = material_bg(r.texture_id, r.sampling) else {
                             continue;
                         };
@@ -523,6 +544,7 @@ impl SpriteRenderer {
                 (self.mesh_buffer.buffer(), &self.mesh_frame.ranges),
                 &self.runs,
                 material_bg,
+                &self.normais,
             );
         }
         // Mask pass (only if a Mask2D source / responder exists): mark every
@@ -544,6 +566,7 @@ impl SpriteRenderer {
                 (self.mesh_buffer.buffer(), &self.mesh_frame.ranges),
                 &self.runs,
                 material_bg,
+                &self.normais,
             );
         }
         self.gpu.queue.submit(Some(encoder.finish()));

@@ -52,6 +52,8 @@ pub(crate) fn encode_clip_groups<'a>(
     meshes: (&wgpu::Buffer, &[(u32, u32)]),
     runs: &[DrawRun],
     resolve_material: impl Fn(u32, u32) -> Option<&'a wgpu::BindGroup>,
+    // ⭐ P14: um run com normal desenha a COR pela pipeline de teste `fs_main_n` (a marca não lê cor).
+    normais: &crate::sprite_normal::NormaisDosSprites,
 ) {
     let (mesh_buf, mesh_ranges) = meshes;
     let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -116,18 +118,23 @@ pub(crate) fn encode_clip_groups<'a>(
         let clip_and_draw = span
             .iter()
             .any(|r| r.clip_role == RenderInstance::CLIP_ROLE_MASK_CLIP_AND_DRAW);
-        let draw = |pass: &mut wgpu::RenderPass<'_>, run: &DrawRun| {
-            if let Some(bg) = resolve_material(run.texture_id, run.sampling) {
-                pass.set_bind_group(1, bg, &[]);
-                crate::sprite_mesh::draw_run(pass, run, quad_buf, mesh_buf, mesh_ranges);
-            }
+        let draw = |pass: &mut wgpu::RenderPass<'_>, run: &DrawRun, base: Teste| {
+            desenhar(
+                pass,
+                run,
+                base,
+                pipe,
+                normais,
+                &resolve_material,
+                (quad_buf, mesh_buf, mesh_ranges),
+            );
         };
 
         // 1. MARK — write the silhouette into the stencil (no color).
         pass.set_pipeline(&pipe.mark_pipeline);
         pass.set_stencil_reference(stencil_ref);
         for run in span.iter().filter(is_mask) {
-            draw(&mut pass, run);
+            draw(&mut pass, run, Teste::Marca);
         }
 
         pass.set_pipeline(&pipe.test_pipeline);
@@ -137,12 +144,12 @@ pub(crate) fn encode_clip_groups<'a>(
         //    parent is an invisible mould.
         if clip_and_draw {
             for run in span.iter().filter(is_mask) {
-                draw(&mut pass, run);
+                draw(&mut pass, run, Teste::Dentro);
             }
         }
         // 3. Members — clipped to the silhouette.
         for run in span.iter().filter(is_member) {
-            draw(&mut pass, run);
+            draw(&mut pass, run, Teste::Dentro);
         }
     }
 }
@@ -172,6 +179,8 @@ pub(crate) fn encode_mask_pass<'a>(
     meshes: (&wgpu::Buffer, &[(u32, u32)]),
     runs: &[DrawRun],
     resolve_material: impl Fn(u32, u32) -> Option<&'a wgpu::BindGroup>,
+    // ⭐ P14: um run com normal desenha a COR pela pipeline de teste `fs_main_n` (a marca não lê cor).
+    normais: &crate::sprite_normal::NormaisDosSprites,
 ) {
     let (mesh_buf, mesh_ranges) = meshes;
     let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -206,25 +215,68 @@ pub(crate) fn encode_mask_pass<'a>(
     pass.set_vertex_buffer(1, instance_buf.slice(..));
 
     const REF: u32 = 1;
-    let draw = |pass: &mut wgpu::RenderPass, role: u8| {
+    let draw = |pass: &mut wgpu::RenderPass, role: u8, base: Teste| {
         for run in runs.iter().filter(|r| r.mask_role == role) {
-            if let Some(bg) = resolve_material(run.texture_id, run.sampling) {
-                pass.set_bind_group(1, bg, &[]);
-                crate::sprite_mesh::draw_run(pass, run, quad_buf, mesh_buf, mesh_ranges);
-            }
+            desenhar(
+                pass,
+                run,
+                base,
+                pipe,
+                normais,
+                &resolve_material,
+                (quad_buf, mesh_buf, mesh_ranges),
+            );
         }
     };
 
     // 1. Mark every Mask2D silhouette (no color; cutoff in clip_meta).
     pass.set_pipeline(&pipe.mark_pipeline);
     pass.set_stencil_reference(REF);
-    draw(&mut pass, RenderInstance::MASK_ROLE_SOURCE);
+    draw(&mut pass, RenderInstance::MASK_ROLE_SOURCE, Teste::Marca);
     // 2. VisibleInside responders — only where masked.
     pass.set_pipeline(&pipe.test_pipeline);
     pass.set_stencil_reference(REF);
-    draw(&mut pass, RenderInstance::MASK_ROLE_INSIDE);
+    draw(&mut pass, RenderInstance::MASK_ROLE_INSIDE, Teste::Dentro);
     // 3. VisibleOutside responders — only where NOT masked.
     pass.set_pipeline(&pipe.test_outside_pipeline);
     pass.set_stencil_reference(REF);
-    draw(&mut pass, RenderInstance::MASK_ROLE_OUTSIDE);
+    draw(&mut pass, RenderInstance::MASK_ROLE_OUTSIDE, Teste::Fora);
+}
+
+/// Que pipeline está ligada quando um run se desenha: a marca (sem cor), o teste `==` ou o `!=`.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Teste {
+    Marca,
+    Dentro,
+    Fora,
+}
+
+/// Um run num passe de stencil. ⭐ P14: um run com normal fora da marca troca para a pipeline de
+/// teste `fs_main_n` (o MESMO stencil) e devolve a de sempre; sem normal, os bytes de antes.
+#[allow(clippy::type_complexity)]
+fn desenhar<'a>(
+    pass: &mut wgpu::RenderPass<'_>,
+    run: &DrawRun,
+    base: Teste,
+    pipe: &SpritePipeline,
+    normais: &crate::sprite_normal::NormaisDosSprites,
+    resolve_material: &impl Fn(u32, u32) -> Option<&'a wgpu::BindGroup>,
+    (quad_buf, mesh_buf, mesh_ranges): (&wgpu::Buffer, &wgpu::Buffer, &[(u32, u32)]),
+) {
+    let com_normal = (base != Teste::Marca)
+        .then(|| normais.do_teste(run.texture_id, run.sampling, base == Teste::Fora))
+        .flatten();
+    if let Some((pl, bg)) = com_normal {
+        pass.set_pipeline(pl);
+        pass.set_bind_group(1, bg, &[]);
+        crate::sprite_mesh::draw_run(pass, run, quad_buf, mesh_buf, mesh_ranges);
+        pass.set_pipeline(if base == Teste::Fora {
+            &pipe.test_outside_pipeline
+        } else {
+            &pipe.test_pipeline
+        });
+    } else if let Some(bg) = resolve_material(run.texture_id, run.sampling) {
+        pass.set_bind_group(1, bg, &[]);
+        crate::sprite_mesh::draw_run(pass, run, quad_buf, mesh_buf, mesh_ranges);
+    }
 }

@@ -103,13 +103,13 @@ pub mod sink_style;
 pub mod sprite;
 mod sprite_collect;
 mod sprite_mesh;
-mod sprite_normal;
 mod sprite_mesh_fit;
 /// ⭐⭐⭐ **A PELE de uma malha** — o que a PLACA lê para posar (F9 W2). Ver o cabeçalho dele.
 pub mod sprite_mesh_skin;
 /// ⭐ Os três buffers da PELE do lado do dispositivo — ver o cabeçalho.
 mod sprite_mesh_skin_gpu;
 mod sprite_mesh_warp;
+mod sprite_normal;
 pub use sprite_mesh_warp::MeshWarp;
 /// Repor no presente os donos movidos depois do extract — ver o cabeçalho.
 mod sprite_repoe;

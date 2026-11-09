@@ -127,6 +127,8 @@ struct Caso {
     normal_alheia: bool,
     /// As duas células no ÁTLAS (chaves 1 e 2, a cor `COR_A`/`COR_B`); só a 1 recebe a normal `.0`.
     no_atlas: bool,
+    /// O sprite como MEMBRO de um recorte (`ClipOnly`) cujo molde é ele mesmo (o mesmo quad).
+    recorte: bool,
 }
 
 const HOJE: Caso = Caso {
@@ -137,6 +139,7 @@ const HOJE: Caso = Caso {
     momento: Some([MOMENTO, 0.0]),
     normal_alheia: false,
     no_atlas: false,
+    recorte: false,
 };
 
 /// Devolve os bytes RGBA do alvo e quantas normais o renderer tem alocadas.
@@ -237,7 +240,27 @@ fn quadro(gpu: &GpuContext, c: Caso) -> (Vec<u8>, usize) {
         sub_order: 0,
     };
     let mut extra = LiftedInstances::default();
-    extra.push(inst, None);
+    if c.recorte {
+        let molde = RenderInstance {
+            clip_group: 1,
+            clip_meta: RenderInstance::pack_clip_meta(
+                RenderInstance::CLIP_ROLE_MASK_CLIP_ONLY,
+                0.5,
+            ),
+            ..inst
+        };
+        extra.push(molde, None);
+        extra.push(
+            RenderInstance {
+                clip_group: 1,
+                z_order: 1,
+                ..inst
+            },
+            None,
+        );
+    } else {
+        extra.push(inst, None);
+    }
     renderer.receber_luz(Some(&luz));
     renderer.render_with_streams(
         &alvo.create_view(&Default::default()),
@@ -513,4 +536,39 @@ fn a_normal_da_celula_vai_e_volta_pelo_renderer() {
     r.definir_normal_da_celula(7, None).expect("tirar");
     assert_eq!(r.normal_da_celula(7), None);
     assert_eq!(r.normais_alocadas(), 0);
+}
+
+/// ⭐ Os passes de recorte/máscara desenham o membro com normal pela `fs_main_n` (o MESMO stencil):
+/// recortado pelo próprio quad, acende igual ao livre.
+#[test]
+fn o_sprite_com_normal_recortado_acende_igual() {
+    let Some(gpu) = gpu() else {
+        eprintln!("sprite normal: sem placa — saltado");
+        return;
+    };
+    let recortado = |c: Caso| Caso { recorte: true, ..c };
+    let claro = miolo(&quadro(&gpu, com((N_MAIS_X, N_MAIS_X), 0)).0);
+    let escuro = miolo(&quadro(&gpu, com((N_MENOS_X, N_MENOS_X), 0)).0);
+    let claro_r = miolo(&quadro(&gpu, recortado(com((N_MAIS_X, N_MAIS_X), 0))).0);
+    let escuro_r = miolo(&quadro(&gpu, recortado(com((N_MENOS_X, N_MENOS_X), 0))).0);
+    let (hoje, hoje_r) = (quadro(&gpu, HOJE).0, quadro(&gpu, recortado(HOJE)).0);
+    eprintln!(
+        "sprite normal recortado: livre {claro:.1}/{escuro:.1} (razão {:.2}) · recortado {claro_r:.1}/{escuro_r:.1} (razão {:.2}) · sem normal {:.1}/{:.1}",
+        claro / escuro.max(1.0),
+        claro_r / escuro_r.max(1.0),
+        miolo(&hoje),
+        miolo(&hoje_r)
+    );
+    assert!(
+        (claro - claro_r).abs() < 1.0 && (escuro - escuro_r).abs() < 1.0,
+        "o recorte perdeu a luz da normal: livre {claro:.1}/{escuro:.1}, recortado {claro_r:.1}/{escuro_r:.1}"
+    );
+    assert!(
+        claro_r > escuro_r + 50.0,
+        "recortado sem razão: {claro_r:.1}/{escuro_r:.1}"
+    );
+    assert_eq!(
+        hoje, hoje_r,
+        "sem normal, o recorte pelo próprio quad tem de dar os bytes do livre"
+    );
 }

@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 
 use ph2d_gpu::GpuContext;
 
-use crate::pipeline::{BLEND_PIPELINE_COUNT, SpritePipeline};
+use crate::pipeline::SpritePipeline;
 
 /// Uma normal: a textura, a cor contra a qual o grupo foi feito, e os grupos por amostragem.
 struct Entrada {
@@ -25,7 +25,7 @@ struct Entrada {
 /// Layout de material com 3 entradas e uma pipeline `fs_main_n` por mistura — feitos no 1.º registo.
 struct Placa {
     bgl: wgpu::BindGroupLayout,
-    pipelines: [wgpu::RenderPipeline; BLEND_PIPELINE_COUNT],
+    pipelines: crate::pipeline::PipelinesComNormal,
 }
 
 /// A normal do ÁTLAS: uma textura do tamanho do átlas da cor, cada célula com normal no MESMO
@@ -351,16 +351,29 @@ impl NormaisDosSprites {
         sampling: u32,
         blend: u8,
     ) -> Option<(&wgpu::RenderPipeline, &wgpu::BindGroup)> {
-        let placa = self.placa.as_ref()?;
-        let bg = if cor_id == crate::RenderInstance::ATLAS_TEXTURE_ID {
-            self.atlas.as_ref()?.grupos.get(&sampling)?
+        let pls = &self.placa.as_ref()?.pipelines.mistura;
+        let pl = pls.get(blend as usize).unwrap_or(&pls[0]);
+        Some((pl, self.grupo(cor_id, sampling)?))
+    }
+
+    /// O mesmo para os passes de recorte/máscara: a pipeline de teste de stencil `fs_main_n`
+    /// (`fora` = o teste inverso do `VisibleOutside`).
+    pub(crate) fn do_teste(
+        &self,
+        cor_id: u32,
+        sampling: u32,
+        fora: bool,
+    ) -> Option<(&wgpu::RenderPipeline, &wgpu::BindGroup)> {
+        let pls = &self.placa.as_ref()?.pipelines;
+        let pl = if fora { &pls.teste_fora } else { &pls.teste };
+        Some((pl, self.grupo(cor_id, sampling)?))
+    }
+
+    fn grupo(&self, cor_id: u32, sampling: u32) -> Option<&wgpu::BindGroup> {
+        if cor_id == crate::RenderInstance::ATLAS_TEXTURE_ID {
+            self.atlas.as_ref()?.grupos.get(&sampling)
         } else {
-            self.mapa.get(&cor_id)?.grupos.get(&sampling)?
-        };
-        let pl = placa
-            .pipelines
-            .get(blend as usize)
-            .unwrap_or(&placa.pipelines[0]);
-        Some((pl, bg))
+            self.mapa.get(&cor_id)?.grupos.get(&sampling)
+        }
     }
 }

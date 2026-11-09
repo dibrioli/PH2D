@@ -24,7 +24,7 @@ pub fn outline_edited(world: &mut World, shape: Entity, e: OutlineEdit) -> Optio
         .get::<ColliderOutline>(shape)
         .cloned()
         .unwrap_or_default();
-    if ph2d_shape_handles::travados::recusa(world, shape.to_bits()) {
+    if ph2d_shape_handles::travados::recusa_numero(world, shape.to_bits()) {
         return None;
     }
     let OutlineEdit::Merge(px) = e else {

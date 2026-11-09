@@ -160,12 +160,9 @@ pub fn animados(doc: &TimelineDoc, e: u64) -> bool {
         .any(|b| b.entity == e && matches!(b.prop, PropKind::Field(kk) if ponto(&kk)))
 }
 
-/// As formas com pontos animados que o Auto Key não grava (regra B): vazio com o Auto Key ligado.
+/// As formas com trilha de pontos (regra B): o número delas trava sempre; mover, só com o Auto Key desligado.
 #[must_use]
-pub fn travadas(doc: &TimelineDoc, auto_key: bool) -> std::collections::BTreeSet<u64> {
-    if auto_key {
-        return Default::default();
-    }
+pub fn com_trilha(doc: &TimelineDoc) -> std::collections::BTreeSet<u64> {
     doc.bindings()
         .iter()
         .filter(|b| matches!(b.prop, PropKind::Field(kk) if ponto(&kk)))
@@ -195,8 +192,7 @@ pub fn regra_b(
     tl: &ph2d_timeline::TimelineState,
     store: &mut ph2d_editor_core::interaction::WidgetStore,
 ) {
-    let formas = travadas(&tl.doc, tl.flags.auto_key);
-    ph2d_shape_handles::travados::publica(world, formas);
+    ph2d_shape_handles::travados::publica(world, com_trilha(&tl.doc), tl.flags.auto_key);
     if let Some(e) = ph2d_shape_handles::travados::pedido(world) {
         ph2d_editor_core::screens::hero::document_tabs_menu::pede_pontos_animados(store, e);
     }

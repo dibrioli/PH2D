@@ -253,11 +253,11 @@ fn sample_em(doc: &ph2d_timeline::TimelineDoc, t: f64, n: u16) -> Vec<(FieldKey,
 }
 
 /// ⭐ Regra B (dono 09/11): «Delete animation» apaga TODAS as trilhas dos pontos da forma (só as dela) e deixa
-/// o Detail; `travadas` dá as formas com pontos animados só com o Auto Key desligado.
-/// *Mutação: `apagar_pontos` sem `unbind` ⇒ vermelho; `travadas` a ignorar o Auto Key ⇒ vermelho.*
+/// o Detail; `com_trilha` dá as formas com pontos animados (o Auto Key decide só o mover, em `travados`).
+/// *Mutação: `apagar_pontos` sem `unbind` ⇒ vermelho; `com_trilha` sem o filtro dos pontos ⇒ vermelho.*
 #[test]
-fn delete_animation_apaga_as_trilhas_dos_pontos_e_so_com_auto_key_off_trava() {
-    use ph2d_physics_outline::canais_pontos::{animados, apagar_pontos, travadas};
+fn delete_animation_apaga_as_trilhas_dos_pontos_e_com_trilha_da_as_formas() {
+    use ph2d_physics_outline::canais_pontos::{animados, apagar_pontos, com_trilha};
     use ph2d_timeline::PropKind;
     let mut doc = duas_chaves(&quadrado(), &quadrado());
     let detalhe = FieldKey::new(ph2d_ecs::canal::familia::FISICA, f::CONTORNO_DETALHE, 0, 0);
@@ -269,11 +269,19 @@ fn delete_animation_apaga_as_trilhas_dos_pontos_e_so_com_auto_key_off_trava() {
         ph2d_anim::Interp::Linear,
     );
     assert!(animados(&doc, 7) && !animados(&doc, 8));
-    assert_eq!(travadas(&doc, false), [7].into_iter().collect());
-    assert!(
-        travadas(&doc, true).is_empty(),
-        "Auto Key ligado: nada trava"
-    );
+    let so_o_detalhe = {
+        let mut d = ph2d_timeline::TimelineDoc::new();
+        d.upsert_key(
+            8,
+            PropKind::Field(detalhe),
+            ph2d_anim::RationalTime::ZERO,
+            ph2d_anim::AnimValue::Float(2.0),
+            ph2d_anim::Interp::Linear,
+        );
+        d
+    };
+    assert_eq!(com_trilha(&doc), [7].into_iter().collect());
+    assert!(com_trilha(&so_o_detalhe).is_empty(), "o Detail não é ponto");
     assert!(apagar_pontos(&mut doc, 7), "apagou");
     assert!(!animados(&doc, 7), "nenhuma trilha de ponto fica");
     assert!(

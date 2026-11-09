@@ -40,7 +40,7 @@ pub(crate) fn tr(key: &str) -> Option<&'static str> {
         }
         "card.insp.phys.points_animated_title" => "This shape's points are animated",
         "card.insp.phys.points_animated_hint" => {
-            "Editing them now would be undone by the animation. Delete the points animation to edit them freely?"
+            "The animation controls these points. Delete the points animation to change them freely?"
         }
         "card.insp.phys.points_animated_delete" => "Delete animation",
         "card.insp.phys.outline_locked_tip" => {

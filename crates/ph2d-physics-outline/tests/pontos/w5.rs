@@ -709,7 +709,11 @@ fn clicar_na_aresta_e_arrastar_leva_o_ponto_novo() {
 
 /// Trava os pontos de `shape` (regra B: trilha 51/52 e Auto Key desligado), como a shell publica por quadro.
 fn trava(sim: &mut SimWorld, shape: ph2d_ecs::Entity) {
-    ph2d_shape_handles::travados::publica(sim.world_mut(), [shape.to_bits()].into_iter().collect());
+    ph2d_shape_handles::travados::publica(
+        sim.world_mut(),
+        [shape.to_bits()].into_iter().collect(),
+        false,
+    );
 }
 
 fn pedido(sim: &mut SimWorld) -> Option<u64> {
@@ -736,7 +740,7 @@ fn pontos_animados_com_auto_key_off_o_arrasto_nao_muda_e_pede_o_modal() {
     assert_eq!(outline(&sim, shape), inicio, "travado: nada muda");
     assert_eq!(pedido(&mut sim), Some(shape.to_bits()), "pede o modal");
     assert_eq!(pedido(&mut sim), None, "abre uma vez");
-    ph2d_shape_handles::travados::publica(sim.world_mut(), Default::default());
+    ph2d_shape_handles::travados::publica(sim.world_mut(), Default::default(), false);
     arrasta(&mut sim, de, [de[0], de[1] + 1.0]);
     assert_ne!(outline(&sim, shape), inicio, "sem trilha: o arrasto muda");
     assert_eq!(pedido(&mut sim), None);
@@ -789,7 +793,7 @@ fn pontos_animados_merge_e_detail_nao_mudam_e_pedem_o_modal() {
         );
         assert_eq!(pedido(&mut sim), Some(shape.to_bits()), "pede o modal");
     }
-    ph2d_shape_handles::travados::publica(sim.world_mut(), Default::default());
+    ph2d_shape_handles::travados::publica(sim.world_mut(), Default::default(), false);
     assert!(
         ph2d_physics_outline::outline_edited(sim.world_mut(), shape, OutlineEdit::Detail(8.0))
             .is_some(),
@@ -848,10 +852,14 @@ fn regra_b_pelo_quadro_da_shell_trava_pergunta_e_delete_animation_desfaz_num_ctr
         loja.close_context_menu();
     }
     assert!(animados(&tl.doc, shape.to_bits()), "Cancel deixa a trilha");
-    // Auto Key ligado: não trava.
+    // Auto Key ligado: mover destrava; o número continua travado.
     tl.flags.auto_key = true;
     regra_b(sim.world_mut(), &tl, &mut loja);
     assert!(!ph2d_shape_handles::travados::travado(
+        sim.world(),
+        shape.to_bits()
+    ));
+    assert!(ph2d_shape_handles::travados::numero_travado(
         sim.world(),
         shape.to_bits()
     ));
@@ -870,4 +878,95 @@ fn regra_b_pelo_quadro_da_shell_trava_pergunta_e_delete_animation_desfaz_num_ctr
     assert!(tl.undo(), "o Ctrl+Z leva a timeline junto");
     assert_eq!(tl.doc, antes, "a trilha volta");
     assert!(!apagar_num_passo(&mut tl, 999), "sem trilha: nenhum passo");
+}
+
+/// ⭐ Regra B estendida (dono 09/11): com trilha de pontos e o Auto Key LIGADO, todo gesto que muda o NÚMERO de
+/// pontos (acrescentar na aresta, Alt+clique, Delete, fundir ao soltar, «Merge», o retraço do Detail) não muda os
+/// anéis e o quadro seguinte (`regra_b`) abre a mesma pergunta; MOVER um ponto continua livre (o Auto Key grava a
+/// chave) e não pergunta nada. Sem trilha, acrescentar muda. *Mutações (uma por porta): aresta · Alt · Delete ·
+/// fusão · `outline_edited` com a trava do arrasto em vez da do número ⇒ os anéis mudam, vermelho.*
+#[test]
+fn pontos_animados_com_auto_key_on_mudar_o_numero_de_pontos_nao_muda_e_pede_o_modal() {
+    use ph2d_editor_core::OutlineEdit;
+    use ph2d_editor_core::interaction::{ContextMenuKind, WidgetStore};
+    use ph2d_physics_outline::canais_pontos::regra_b;
+    let (_reg, mut sim, _body, shape, _db) = followed_ring();
+    alterna(sim.world_mut(), shape.to_bits());
+    let mut tl = ph2d_timeline::TimelineState::new();
+    tl.flags.auto_key = true;
+    trilha(&mut tl, shape);
+    let mut loja = WidgetStore::default();
+    let pede = ContextMenuKind::ConfirmDeletePointsAnimation {
+        shape: shape.to_bits(),
+    };
+    let mut pergunta = |sim: &mut SimWorld, tl: &ph2d_timeline::TimelineState| {
+        regra_b(sim.world_mut(), tl, &mut loja);
+        let k = loja.context_menu().map(|r| r.kind);
+        loja.close_context_menu();
+        k
+    };
+    assert_eq!(pergunta(&mut sim, &tl), None);
+    let n = |sim: &SimWorld| outline(sim, shape).rings[0].len();
+    // Mover: livre, sem pergunta.
+    let de = perto(&sim, shape, 0, [-2.0, 2.0]);
+    let inicio = outline(&sim, shape);
+    arrasta(&mut sim, de, [de[0], de[1] + 0.5]);
+    assert_ne!(outline(&sim, shape), inicio, "Auto Key ligado: mover muda");
+    assert_eq!(pergunta(&mut sim, &tl), None, "mover não pergunta");
+    let inicio = outline(&sim, shape);
+    // Acrescentar na aresta e Alt+clique.
+    let (pose, m, o) = do_alvo(sim.world(), shape.to_bits()).expect("pontos");
+    let r = &locais(&pose, &m, &o)[0];
+    let (a, b) = (r[0], r[1]);
+    let meio = [(a[0] + b[0]) * 0.5, (a[1] + b[1]) * 0.5];
+    let alt = Teclas {
+        alt: true,
+        ..Teclas::default()
+    };
+    for (s, t) in [(meio, Teclas::default()), (a, alt)] {
+        let mut bus = ActionBus::default();
+        assert!(porta(&mut sim, &mut bus).desce_com(ecra(s), t), "consumido");
+        porta(&mut sim, &mut bus).sobe();
+        assert_eq!(outline(&sim, shape), inicio, "o número travado ({s:?})");
+        assert_eq!(pergunta(&mut sim, &tl), Some(pede), "pede o modal ({s:?})");
+    }
+    // Delete.
+    sim.world_mut().insert_resource(PontosNoCanvas {
+        arrasto: None,
+        selecionados: vec![ph2d_shape_handles::pontos::Ponto { anel: 0, i: 0 }],
+    });
+    let mut bus = ActionBus::default();
+    assert!(porta(&mut sim, &mut bus).apaga(), "a tecla é do canvas");
+    assert_eq!(outline(&sim, shape), inicio, "Delete travado");
+    assert_eq!(pergunta(&mut sim, &tl), Some(pede));
+    sim.world_mut().insert_resource(PontosNoCanvas::default());
+    // Fundir ao soltar: o arrasto move (Auto Key), mas soltar sobre o vizinho não tira o ponto.
+    // (No buraco: tirar um canto dele deixa um triângulo válido.)
+    let furo = |sim: &SimWorld| outline(sim, shape).rings[1].len();
+    let n0 = furo(&sim);
+    let canto = perto(&sim, shape, 1, [1.0, 1.0]);
+    let viz = perto(&sim, shape, 1, [1.0, -1.0]);
+    arrasta(&mut sim, viz, canto);
+    assert_eq!(furo(&sim), n0, "soltar sobre o canto não fundiu");
+    assert_eq!(pergunta(&mut sim, &tl), Some(pede), "a fusão pede o modal");
+    // «Merge» e o retraço do Detail.
+    for e in [OutlineEdit::Merge(64.0), OutlineEdit::Detail(8.0)] {
+        assert_eq!(
+            ph2d_physics_outline::outline_edited(sim.world_mut(), shape, e),
+            None,
+            "o número travado ({e:?})"
+        );
+        assert_eq!(pergunta(&mut sim, &tl), Some(pede), "pede o modal ({e:?})");
+    }
+    // Sem trilha: acrescentar muda.
+    let livre = ph2d_timeline::TimelineState::new();
+    assert_eq!(pergunta(&mut sim, &livre), None);
+    let (pose, m, o) = do_alvo(sim.world(), shape.to_bits()).expect("pontos");
+    let r = &locais(&pose, &m, &o)[0];
+    let meio = [(r[0][0] + r[1][0]) * 0.5, (r[0][1] + r[1][1]) * 0.5];
+    let antes = n(&sim);
+    let mut bus = ActionBus::default();
+    assert!(porta(&mut sim, &mut bus).desce_com(ecra(meio), Teclas::default()));
+    porta(&mut sim, &mut bus).sobe();
+    assert_eq!(n(&sim), antes + 1, "sem trilha: acrescenta");
 }

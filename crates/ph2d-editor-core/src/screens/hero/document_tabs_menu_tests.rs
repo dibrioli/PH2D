@@ -415,7 +415,7 @@ fn a_pergunta_dos_pontos_animados_pinta_o_texto_do_dono_e_so_o_delete_pede() {
     );
     assert_eq!(
         ph2d_i18n::tr("card.insp.phys.points_animated_hint"),
-        "Editing them now would be undone by the animation. Delete the points animation to edit them freely?"
+        "The animation controls these points. Delete the points animation to change them freely?"
     );
     assert_eq!(
         ph2d_i18n::tr("card.insp.phys.points_animated_delete"),
@@ -429,7 +429,7 @@ fn a_pergunta_dos_pontos_animados_pinta_o_texto_do_dono_e_so_o_delete_pede() {
         rotulos,
         Some((
             "This shape's points are animated".to_owned(),
-            "Editing them now would be undone by the animation. Delete the points animation to edit them freely?"
+            "The animation controls these points. Delete the points animation to change them freely?"
                 .to_owned(),
             "Delete animation"
         ))

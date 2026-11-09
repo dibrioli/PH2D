@@ -432,7 +432,7 @@ pub fn retrace_edited(
         // Só o pedido mudou: o «Custom size» fica; escolher «Outline» ou «Fit» mede a imagem.
         let keep = matches!(edit, P::Outline(_)) && follows(world, shape) == Some(false);
         if outline
-            && !ph2d_shape_handles::travados::travado(world, shape.to_bits())
+            && !ph2d_shape_handles::travados::numero_travado(world, shape.to_bits())
             && retrace_sized(world, shape, &asked, &picture, ppm, queue, registry, keep).is_some()
         {
             n += 1;

@@ -228,7 +228,7 @@ impl Porta<'_> {
             .map(|x| x.selecionados.clone())
             .unwrap_or_default();
         let mut arrasto = None;
-        let travado = |w: &mut World| crate::travados::recusa(w, alvo);
+        let travado = |w: &mut World| crate::travados::recusa_numero(w, alvo);
         let consumido = if let Some(pt) = p::ponto_em(&ecra, s) {
             if teclas.alt && travado(self.world) {
             } else if teclas.alt {
@@ -307,7 +307,7 @@ impl Porta<'_> {
         if sel.is_empty() {
             return false;
         }
-        if crate::travados::recusa(self.world, alvo) {
+        if crate::travados::recusa_numero(self.world, alvo) {
             if let Some(mut x) = self.world.get_resource_mut::<p::PontosNoCanvas>() {
                 x.selecionados = sel;
             }
@@ -428,8 +428,8 @@ impl Porta<'_> {
             return;
         };
         let ecra = p::no_ecra(&pose, &m, &o, &self.camera, self.window);
-        if !crate::travados::travado(self.world, alvo)
-            && p::alvo_da_fusao(&ecra, a.ponto, a.ecra).is_some()
+        if p::alvo_da_fusao(&ecra, a.ponto, a.ecra).is_some()
+            && !crate::travados::recusa_numero(self.world, alvo)
             && let Some(v) = p::tirado(&o.rings, a.ponto)
         {
             p::escreve(self.world, alvo, v, true);

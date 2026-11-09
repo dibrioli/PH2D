@@ -59,6 +59,19 @@ Leitor: a próxima LLM desta linha. Aprovado pelo dono em 08/11/2026 («faça co
   reusando a pergunta de apagar do editor-core (`ContextMenuKind::ConfirmDelete*` + `paint_confirm_delete`, uma
   variante nova com a entidade e as chaves i18n do título/texto/botões); «Delete animation» = `apagar_pontos` num
   passo de undo; o teste pelo caminho real; prova de mutação da trava no `retrace_edited` (ver ABERTO acima).
+- **Dono 09/11 (B estendida, o NÚMERO de pontos):** forma com trilha de pontos (51/52), com o Auto Key LIGADO OU
+  DESLIGADO: todo gesto que muda o número de pontos — acrescentar na aresta, Alt+clique, Delete, fundir ao soltar,
+  «Merge», o retraço por Detail/Alpha/Specks — não muda nada e abre o MESMO modal. Mover: Auto Key ligado grava
+  chave; desligado, o modal (como antes). Sem trilha: tudo livre. Texto do modal (os dois casos):
+  «The animation controls these points. Delete the points animation to change them freely?». Lei:
+  `travados::{publica(formas, auto_key), travado (mover), numero_travado/recusa_numero (o número)}`;
+  `canais_pontos::com_trilha` substitui `travadas`. Provas (RED antes):
+  `pontos_animados_com_auto_key_on_mudar_o_numero_de_pontos_nao_muda_e_pede_o_modal` (pelo `regra_b` do quadro),
+  `com_pontos_animados_o_detail_dentro_da_edicao_nao_retraca_e_pede_o_modal` (Auto Key off e on); mutações por
+  porta (aresta · Alt · Delete · fusão · Merge · `retrace_edited` · `regra_b` sem o Auto Key) 7/7 sangram.
+  A propagação FISICA da topologia (`canais_pontos::propagar` em `autokey_pass::propagar_topologia`) FICA: o Fit
+  passa por ela (`apagar_do_fit`) e uma escrita do `ColliderOutline` inteiro (o macro grava-o como componente,
+  `ph2d-app-macros/src/mundo/portas.rs`) ainda pode mudar o número de uma forma com trilha sem passar por gesto.
 
 ## Desenho técnico (padrão-ouro)
 

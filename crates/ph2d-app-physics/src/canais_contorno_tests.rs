@@ -277,6 +277,13 @@ fn o_detail_dentro_da_edicao_retraca_um_outline_a_mao() {
 /// os pontos à mão dão lugar aos traçados, vermelho.*
 #[test]
 fn com_pontos_animados_o_detail_dentro_da_edicao_nao_retraca_e_pede_o_modal() {
+    // O retraço muda o NÚMERO de pontos: trava com o Auto Key desligado E ligado (dono 09/11).
+    for auto_key in [false, true] {
+        detail_com_pontos_animados(auto_key);
+    }
+}
+
+fn detail_com_pontos_animados(auto_key: bool) {
     use ph2d_editor_core::interaction::{ContextMenuKind, WidgetStore};
     use ph2d_editor_core::{OutlineEdit, PhysicsFieldEdit as P};
     let (reg, mut sim, body, db) = pente();
@@ -284,7 +291,7 @@ fn com_pontos_animados_o_detail_dentro_da_edicao_nao_retraca_e_pede_o_modal() {
     mao[0][0][0] += 16;
     ph2d_shape_handles::pontos::escreve(sim.world_mut(), forma, mao.clone(), true);
     let mut tl = ph2d_timeline::TimelineState::new();
-    tl.flags.auto_key = false;
+    tl.flags.auto_key = auto_key;
     let kk = ph2d_ecs::FieldKey::new(ph2d_ecs::canal::familia::FISICA, f::CONTORNO_PONTO_X, 0, 0);
     tl.doc.upsert_key(
         forma,

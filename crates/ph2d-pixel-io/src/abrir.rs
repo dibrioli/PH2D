@@ -482,8 +482,9 @@ pub fn sugerir_grelha(rgba: &[u8], w: u32, h: u32) -> Option<Grelha> {
     })
 }
 
-/// Um ficheiro aberto: o documento, os avisos e o nome para o objecto.
-pub type Aberto = (Sprite, Vec<ase::Aviso>, String);
+/// Um ficheiro aberto: o documento, os avisos, o nome para o objecto e as slices que o `.ase`
+/// marcava `ph2d.collider` (a filha nasce no mundo; a marca não fica no documento).
+pub type Aberto = (Sprite, Vec<ase::Aviso>, String, ase::Colliders);
 
 /// Abre os ficheiros do File ▸ Open: um é o que ele for; vários PNG são os quadros de uma sequência,
 /// pela ordem natural dos nomes.
@@ -502,8 +503,14 @@ pub fn abrir_caminhos(caminhos: &[std::path::PathBuf]) -> Result<Aberto, ErroAbr
             let e = um
                 .extension()
                 .map_or_else(String::new, |x| x.to_string_lossy().into_owned());
-            let (s, av) = abrir(&ler(um)?, &e)?;
-            Ok((s, av, nome_de(um)))
+            let bytes = ler(um)?;
+            if matches!(e.to_ascii_lowercase().as_str(), "ase" | "aseprite") {
+                let (s, av, c) =
+                    ase::ler_com_colliders(&bytes).map_err(|e| ErroAbrir::Ler(e.to_string()))?;
+                return Ok((s, av, nome_de(um), c));
+            }
+            let (s, av) = abrir(&bytes, &e)?;
+            Ok((s, av, nome_de(um), ase::Colliders::new()))
         }
         varios => {
             let mut ordem: Vec<_> = varios.iter().collect();
@@ -512,7 +519,12 @@ pub fn abrir_caminhos(caminhos: &[std::path::PathBuf]) -> Result<Aberto, ErroAbr
                 .iter()
                 .map(|c| ler(c))
                 .collect::<Result<Vec<_>, _>>()?;
-            Ok((abrir_sequencia(&bytes)?, Vec::new(), nome_de(ordem[0])))
+            Ok((
+                abrir_sequencia(&bytes)?,
+                Vec::new(),
+                nome_de(ordem[0]),
+                ase::Colliders::new(),
+            ))
         }
     }
 }

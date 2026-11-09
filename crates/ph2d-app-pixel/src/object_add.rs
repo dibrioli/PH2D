@@ -64,11 +64,15 @@ pub fn born_from_paste(
     app: &mut PixelApp,
     spawn_root: impl FnOnce(&mut SimWorld, &str) -> u64,
 ) -> Option<Result<u64, &'static str>> {
-    if let Some((sprite, nome)) = app.nasce_doc.pop() {
+    if let Some((sprite, nome, colliders)) = app.nasce_doc.pop() {
         let stamp = app.stamp();
         let key = app.docs.keys().next_back().map_or(1, |k| k + 1);
         app.docs.insert(key, crate::Doc::new(sprite, stamp));
-        return Some(spawn_doc(sim, app, key, |s, _| spawn_root(s, &nome)));
+        let r = spawn_doc(sim, app, key, |s, _| spawn_root(s, &nome));
+        if let Ok(bits) = r {
+            nasce_colliders(sim, app, key, bits, &colliders);
+        }
+        return Some(r);
     }
     let c = app.nasce.take()?;
     let spec = NewSprite {
@@ -152,4 +156,34 @@ fn spawn_doc(
     ));
     app.wants_edit = Some(bits);
     Ok(bits)
+}
+
+/// P14e-2: as slices que o `.ase` aberto marcava `ph2d.collider` ganham a filha que as segue, no
+/// MESMO quadro do nascimento (um passo do desfazer do mundo). A régua de partida é a de omissão: o
+/// `deriva_formas` reescreve a forma com a do projecto no quadro seguinte.
+fn nasce_colliders(
+    sim: &mut SimWorld,
+    app: &PixelApp,
+    key: u32,
+    bits: u64,
+    colliders: &ph2d_pixel_io::ase::Colliders,
+) {
+    let (Some(e), Some(d)) = (ph2d_ecs::Entity::try_from_bits(bits), app.docs.get(&key)) else {
+        return;
+    };
+    let m_por_px = 1.0 / f64::from(ph2d_editor_core::project::DEFAULT_PIXELS_PER_METER);
+    for &id in colliders {
+        let id = ph2d_pixel_core::SliceId(id);
+        if ph2d_pixel_cena::collider_da_slice(sim.world(), e, id).is_none() {
+            let q = ph2d_pixel_cena::quadro_mostrado(sim.world(), e, &d.sprite, d.frame);
+            let _ = ph2d_pixel_cena::adiciona_collider_da_slice(
+                sim.world_mut(),
+                e,
+                id,
+                &d.sprite,
+                q,
+                m_por_px,
+            );
+        }
+    }
 }

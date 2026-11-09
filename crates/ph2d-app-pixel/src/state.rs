@@ -192,7 +192,7 @@ pub struct PixelApp {
     /// *Paste as New Sprite*: o recorte à espera de que a shell nasça o objecto dele.
     pub(crate) nasce: Option<ph2d_pixel_core::layers::Clip>,
     /// Open e Import Sprite Sheet: o documento à espera de que a shell nasça o objecto dele.
-    pub(crate) nasce_doc: Vec<(Sprite, String)>,
+    pub(crate) nasce_doc: Vec<(Sprite, String, ph2d_pixel_io::ase::Colliders)>,
     /// A janela de Export e Import ([`crate::exportar`]).
     pub(crate) exporta: ph2d_panel_pixel_export::canal::LadoDaFamilia,
     /// A tela dos tilemaps ([`crate::tiles`]).

@@ -416,7 +416,7 @@ impl LadoDaFamilia {
     /// # Errors
     /// A frase que diz porque não se lê.
     pub fn prepara_folha(&mut self, c: &std::path::Path) -> Result<(), String> {
-        let (s, _, nome) =
+        let (s, _, nome, _) =
             ph2d_pixel_io::abrir::abrir_caminhos(std::slice::from_ref(&c.to_owned()))
                 .map_err(|e| crate::textos::erro_abrir(&e))?;
         let dados = ph2d_pixel_io::abrir::dados_ao_lado(c, (s.width(), s.height()));
@@ -445,7 +445,7 @@ impl LadoDaFamilia {
             ..Pergunta::default()
         };
         match ph2d_pixel_io::abrir::abrir_caminhos(std::slice::from_ref(primeiro)) {
-            Ok((s, _, _)) => {
+            Ok((s, ..)) => {
                 p.lados = (s.width(), s.height());
                 p.quadros = s.frames().len();
                 p.camadas = s.layers().len();

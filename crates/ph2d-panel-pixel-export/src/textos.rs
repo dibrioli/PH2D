@@ -101,13 +101,16 @@ pub fn do_aberto(nome: &str, avisos: Vec<Aviso>) -> Vec<(bool, String)> {
 }
 
 /// As frases `(é erro, texto)` e o documento com o nome, se abriu.
-type Abertura = (Vec<(bool, String)>, Option<(Sprite, String)>);
+type Abertura = (
+    Vec<(bool, String)>,
+    Option<(Sprite, String, ph2d_pixel_io::ase::Colliders)>,
+);
 
 /// As frases de um ficheiro aberto e o documento, se abriu.
 #[must_use]
 pub fn do_abrir(r: Result<Aberto, ErroAbrir>) -> Abertura {
     match r {
-        Ok((s, avisos, nome)) => (do_aberto(&nome, avisos), Some((s, nome))),
+        Ok((s, avisos, nome, c)) => (do_aberto(&nome, avisos), Some((s, nome, c))),
         Err(e) => (vec![(true, erro_abrir(&e))], None),
     }
 }

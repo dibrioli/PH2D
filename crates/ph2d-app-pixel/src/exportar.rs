@@ -140,7 +140,7 @@ pub(crate) fn frame(app: &mut PixelApp, hero: &mut HeroScreen) {
             let de = app.exporta.imagem.clone();
             de.is_some_and(|(i, nome, dados)| {
                 let r = abrir::importar_folha_com(&i.rgba, i.w, i.h, &g, dados.as_deref());
-                app.abre(r.map(|s| (s, Vec::new(), nome)))
+                app.abre(r.map(|s| (s, Vec::new(), nome, Default::default())))
             })
         }
         Some(Pedido::ImportarComo { pixel }) => {

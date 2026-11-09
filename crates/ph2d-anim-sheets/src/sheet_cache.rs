@@ -50,8 +50,10 @@ pub struct SheetCache {
     parado: u32,
     /// A folha visível ainda NÃO mostra a tinta vista (há uma leitura por fazer).
     devida: bool,
-    /// A última leitura da tinta: `(objeto, quadros desde ela)` — o check do [`SheetCache::sync`].
-    feito: Option<(u64, u32)>,
+    /// A última leitura da tinta: `(objeto, relógio dela)` — o check do [`SheetCache::sync`].
+    feito: Option<(u64, u128)>,
+    /// O relógio do quadro (ns), o da interface.
+    agora: u128,
 }
 
 /// ⭐ **Quantos quadros a tinta tem de ficar PARADA antes de se ler** ([`follow_live`]): meio segundo a 60 Hz. A água do
@@ -65,11 +67,12 @@ pub const QUADROS_PARADOS: u32 = 30;
 /// pintar) — com menos, o selo piscava entre girar e encher enquanto a água anda.
 pub const QUADROS_A_GIRAR: u32 = 10;
 
-/// Quantos quadros o check verde vive depois de a folha se atualizar (um segundo a 60 Hz).
-pub const QUADROS_DO_CHECK: u32 = 60;
+/// Quanto tempo o check verde vive depois de a folha se atualizar, pelo relógio e não por quadros (smoke 09/11: a 30
+/// quadros/s, 60 quadros eram 2 s; a 170, um terço de segundo).
+pub const VIDA_DO_CHECK_NS: u128 = 1_200_000_000;
 
-#[expect(clippy::cast_precision_loss, reason = "contagens de quadros, pequenas")]
-fn fracao(n: u32, de: u32) -> f32 {
+#[expect(clippy::cast_precision_loss, reason = "contagens pequenas")]
+fn fracao(n: u128, de: u128) -> f32 {
     n as f32 / de.max(1) as f32
 }
 
@@ -82,12 +85,16 @@ impl SheetCache {
         if self.devida && self.seen.is_some_and(|(b, _)| b == bits) {
             return Some(match self.parado.checked_sub(QUADROS_A_GIRAR) {
                 None => ProgressPhase::Indeterminate,
-                Some(n) => ProgressPhase::Filling(fracao(n, QUADROS_PARADOS - QUADROS_A_GIRAR)),
+                Some(n) => ProgressPhase::Filling(fracao(
+                    n.into(),
+                    (QUADROS_PARADOS - QUADROS_A_GIRAR).into(),
+                )),
             });
         }
-        let (b, n) = self.feito?;
-        (b == bits && n < QUADROS_DO_CHECK)
-            .then(|| ProgressPhase::Done(fracao(n, QUADROS_DO_CHECK)))
+        let (b, t0) = self.feito?;
+        let vida = self.agora.saturating_sub(t0);
+        (b == bits && vida < VIDA_DO_CHECK_NS)
+            .then(|| ProgressPhase::Done(fracao(vida, VIDA_DO_CHECK_NS)))
     }
 
     /// A folha `0` da entidade, se [`refresh`] a resolveu.
@@ -208,15 +215,17 @@ pub fn refresh(world: &mut World, entities: &[u64], db: &AssetDb, atlas: &BTreeM
 /// `vivo` = o objeto que o Painter pinta com tinta por assar e a revisão do conteúdo dele (`None` = nada por assar: a
 /// imagem gravada volta a ser a verdade). Quando a revisão fica [`QUADROS_PARADOS`] quadros sem andar (o traço acabou e
 /// a água assentou), `read` dá os píxeis retos da tinta, e a folha visível desse objeto passa a mostrá-los — no editor,
-/// no cartão e nas miniaturas. Uma leitura por traço, nunca por quadro nem por passo da água.
+/// no cartão e nas miniaturas. Uma leitura por traço, nunca por quadro nem por passo da água. `agora_ns` = o relógio da
+/// interface, que conta a vida do check do selo ([`SheetCache::sync`]).
 pub fn follow_live(
     world: &mut World,
     vivo: Option<(u64, (u64, u64))>,
+    agora_ns: u128,
     read: impl FnOnce() -> Option<(Vec<u8>, u32, u32)>,
 ) {
     let k = vivo.map(|(b, _)| ph2d_ecs::shown_sheet(world, Entity::from_bits(b)));
     let mut cache = world.get_resource_or_init::<SheetCache>();
-    cache.feito = cache.feito.map(|(b, n)| (b, n.saturating_add(1)));
+    cache.agora = agora_ns;
     let (Some((bits, rev)), Some(k)) = (vivo, k) else {
         // Assou (ou saiu do Painter): a imagem gravada é a verdade — sem check, nada se leu.
         (cache.live, cache.seen, cache.parado, cache.devida) = (None, None, 0, false);
@@ -246,7 +255,7 @@ pub fn follow_live(
             (bits, k, rev, entry)
         });
     if cache.live.is_some() {
-        (cache.devida, cache.feito) = (false, Some((bits, 0)));
+        (cache.devida, cache.feito) = (false, Some((bits, agora_ns)));
     }
 }
 

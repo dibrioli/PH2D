@@ -56,7 +56,8 @@ pub fn paint_spinner(spinner: &Spinner, rect: Rect, scene: &mut VectorScene, the
 pub enum ProgressPhase {
     /// Sem prazo conhecido: um quarto de anel a rodar.
     Indeterminate,
-    /// `0..=1` da espera conhecida, a encher a partir do topo, no sentido do relógio.
+    /// `0..=1` da espera conhecida: o mesmo arco, sem parar de rodar, cresce do quarto até fechar o anel (smoke
+    /// 09/11: recomeçar vazio no topo fazia o selo piscar um quadro na passagem).
     Filling(f32),
     /// `0..=1` da vida do check: desenha-se da esquerda, fica, e desvanece.
     Done(f32),
@@ -111,13 +112,12 @@ pub fn paint_progress_badge(
         side / 2.0,
         color(ColorToken::Bg1).multiply_alpha(fade),
     );
-    let (from, sweep) = match phase {
-        ProgressPhase::Indeterminate => {
-            let turn = (clock_ns % SPIN_PERIOD_NS) as f32 / SPIN_PERIOD_NS as f32;
-            (turn, SPIN_ARC)
-        }
-        ProgressPhase::Filling(f) => (0.0, f.clamp(0.0, 1.0)),
-        ProgressPhase::Done(t) => {
+    let (from, sweep) = match ring_arc(phase, clock_ns) {
+        Some(arc) => arc,
+        None => {
+            let ProgressPhase::Done(t) = phase else {
+                return;
+            };
             crate::paint::fill_circle(
                 scene,
                 cx,
@@ -125,11 +125,14 @@ pub fn paint_progress_badge(
                 side / 2.0,
                 color(ColorToken::SuccessSoft).multiply_alpha(fade),
             );
+            // A cortina corre só sobre o DESENHO do check (smoke 09/11: sobre a caixa toda, o disco ficava uns quadros
+            // vazio enquanto ela atravessava o respiro e o vazio à esquerda do glifo).
+            let (x0, x1) = check_span(side);
             let shown = (t / CHECK_DRAWN).clamp(0.0, 1.0);
             let wipe = ph2d_vector::Rect::new(
                 f64::from(rect.x),
                 f64::from(rect.y),
-                f64::from(rect.x + rect.w * shown),
+                f64::from(rect.x + x0 + (x1 - x0) * shown),
                 f64::from(rect.y + rect.h),
             );
             scene.push_clip(&wipe);
@@ -141,15 +144,71 @@ pub fn paint_progress_badge(
     };
     let track = arc_points(cx, cy, ring, 0.0, 1.0);
     crate::paint::stroke_polyline(scene, &track, width, color(ColorToken::Bg3));
-    if sweep > 0.0 {
-        let arc = arc_points(cx, cy, ring, from, sweep);
-        crate::paint::stroke_polyline(scene, &arc, width, color(ColorToken::Accent));
+    let arc = arc_points(cx, cy, ring, from, sweep);
+    crate::paint::stroke_polyline(scene, &arc, width, color(ColorToken::Accent));
+}
+
+/// Onde o traço do check começa e acaba na horizontal, em px a partir da borda esquerda de um quadrado de lado `side`:
+/// a caixa do caminho do glifo na viewbox 24×24, posta no quadrado como o `paint_icon` a põe (o respiro, depois a escala).
+fn check_span(side: f32) -> (f32, f32) {
+    use ph2d_vector::Shape;
+    const VIEWBOX: f64 = 24.0; // LITERAL-PX-OK: a viewbox dos ícones
+    let mut path = ph2d_vector::BezPath::new();
+    for cmd in IconId::Check.cmds() {
+        path.extend(crate::icons::cmd_to_path(*cmd));
+    }
+    let caixa = path.bounding_box();
+    let pad = crate::paint::icon_pad(side);
+    let glyph = f64::from(side - 2.0 * pad) / VIEWBOX;
+    let em = |x: f64| pad + (x * glyph) as f32;
+    (em(caixa.x0), em(caixa.x1))
+}
+
+/// O arco aceso do anel, `(início, comprimento)` em voltas; `None` no check. Gira SEMPRE pelo relógio; a espera conhecida
+/// alonga-o do quarto até à volta inteira.
+fn ring_arc(phase: ProgressPhase, clock_ns: u128) -> Option<(f32, f32)> {
+    let turn = (clock_ns % SPIN_PERIOD_NS) as f32 / SPIN_PERIOD_NS as f32;
+    match phase {
+        ProgressPhase::Indeterminate => Some((turn, SPIN_ARC)),
+        ProgressPhase::Filling(f) => Some((turn, SPIN_ARC + f.clamp(0.0, 1.0) * (1.0 - SPIN_ARC))),
+        ProgressPhase::Done(_) => None,
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// ⭐ **Girar → encher sem saltar** (smoke 09/11: o 1.º quadro «enchendo 0 %» não tinha arco e o seguinte recomeçava
+    /// no topo — o selo piscava). Em qualquer relógio, encher 0 é o arco de girar, e encher 1 fecha o anel.
+    /// *Mutação: encher a partir do topo com comprimento `f` ⇒ difere em todo relógio ≠ 0.*
+    #[test]
+    fn encher_comeca_no_arco_de_girar_e_acaba_no_anel_inteiro() {
+        for clock in [0, 123_456_789, 700_000_000, 1_999_999_999] {
+            let gira = ring_arc(ProgressPhase::Indeterminate, clock);
+            assert_eq!(
+                ring_arc(ProgressPhase::Filling(0.0), clock),
+                gira,
+                "relógio {clock}"
+            );
+            let cheio = ring_arc(ProgressPhase::Filling(1.0), clock).map(|a| a.1);
+            assert_eq!(cheio, Some(1.0));
+        }
+        assert_eq!(ring_arc(ProgressPhase::Done(0.5), 0), None);
+    }
+
+    /// A cortina do check começa onde o traço dele começa: dentro do quadrado, à direita do respiro, e acaba antes da
+    /// borda direita. *Mutação: a cortina sobre a caixa toda (`0..side`) ⇒ começa no 0.*
+    #[test]
+    fn a_cortina_do_check_corre_so_sobre_o_desenho() {
+        let side = 22.0;
+        let (x0, x1) = check_span(side);
+        let pad = crate::paint::icon_pad(side);
+        assert!(
+            x0 > pad && x1 > x0 && x1 < side - pad,
+            "{x0}..{x1} num lado {side}"
+        );
+    }
 
     #[test]
     fn defaults_match_spec() {
